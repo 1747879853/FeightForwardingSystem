@@ -6,7 +6,6 @@ import type { RequestClientOptions } from '@vben/request';
 import { useAppConfig } from '@vben/hooks';
 import { preferences } from '@vben/preferences';
 import {
-  authenticateResponseInterceptor,
   defaultResponseInterceptor,
   errorMessageResponseInterceptor,
   RequestClient,
@@ -74,30 +73,87 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   // 处理返回的响应数据格式
   client.addResponseInterceptor(
     defaultResponseInterceptor({
-      codeField: 'code',
+      codeField: 'success',
       dataField: 'result',
-      successCode: 0,
+      successCode: (code) => code === true,
     }),
   );
 
-  // token过期的处理
-  client.addResponseInterceptor(
-    authenticateResponseInterceptor({
-      client,
-      doReAuthenticate,
-      doRefreshToken,
-      enableRefreshToken: preferences.app.enableRefreshToken,
-      formatToken,
-    }),
-  );
+  // token过期的处理 - ABP框架支持
+  client.addResponseInterceptor({
+    rejected: async (error) => {
+      const { config, response } = error;
+      const responseData = response?.data;
+
+      // ABP框架会在响应中标识未授权请求
+      const isUnauthorized =
+        response?.status === 401 || responseData?.unAuthorizedRequest === true;
+
+      if (!isUnauthorized) {
+        throw error;
+      }
+
+      // 判断是否启用了 refreshToken 功能
+      if (!preferences.app.enableRefreshToken || config.__isRetryRequest) {
+        await doReAuthenticate();
+        throw error;
+      }
+
+      // 如果正在刷新 token，则将请求加入队列
+      if (client.isRefreshing) {
+        return new Promise((resolve) => {
+          client.refreshTokenQueue.push((newToken: string) => {
+            config.headers.Authorization = formatToken(newToken);
+            resolve(client.request(config.url, { ...config }));
+          });
+        });
+      }
+
+      // 标记开始刷新 token
+      client.isRefreshing = true;
+      config.__isRetryRequest = true;
+
+      try {
+        const newToken = await doRefreshToken();
+
+        // 处理队列中的请求
+        client.refreshTokenQueue.forEach((callback) => callback(newToken));
+        client.refreshTokenQueue = [];
+
+        return client.request(error.config.url, { ...error.config });
+      } catch (refreshError) {
+        client.refreshTokenQueue.forEach((callback) => callback(''));
+        client.refreshTokenQueue = [];
+        console.error('Refresh token failed, please login again.');
+        await doReAuthenticate();
+        throw refreshError;
+      } finally {
+        client.isRefreshing = false;
+      }
+    },
+  });
 
   // 通用的错误处理,如果没有进入上面的错误处理逻辑，就会进入这里
   client.addResponseInterceptor(
     errorMessageResponseInterceptor((msg: string, error) => {
-      // 这里可以根据业务进行定制,你可以拿到 error 内的信息进行定制化处理，根据不同的 code 做不同的提示，而不是直接使用 message.error 提示 msg
-      // 当前mock接口返回的错误字段是 error 或者 message
+      // ABP格式的错误处理
       const responseData = error?.response?.data ?? {};
-      const errorMessage = responseData?.error ?? responseData?.message ?? '';
+
+      // ABP框架的错误信息在 error.message 或 error.details 中
+      let errorMessage = '';
+      if (responseData?.error) {
+        const abpError = responseData.error;
+        errorMessage = abpError.message || abpError.details || '';
+
+        // 如果有验证错误，可以特殊处理
+        if (abpError.validationErrors && abpError.validationErrors.length > 0) {
+          const validationMessages = abpError.validationErrors
+            .map((ve: any) => ve.message)
+            .join(', ');
+          errorMessage = validationMessages || errorMessage;
+        }
+      }
+
       // 如果没有错误信息，则会根据状态码进行提示
       message.error(errorMessage || msg);
     }),

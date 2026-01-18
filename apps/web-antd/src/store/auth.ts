@@ -33,40 +33,75 @@ export const useAuthStore = defineStore('auth', () => {
     let userInfo: null | UserInfo = null;
     try {
       loginLoading.value = true;
-      const { accessToken } = await loginApi(params);
+      const response = await loginApi({
+        userNameOrEmailAddress: params.username,
+        password: params.password,
+        tenantId: 1,
+        tenancyName: 'default',
+      });
 
-      // 如果成功获取到 accessToken
-      if (accessToken) {
-        accessStore.setAccessToken(accessToken);
+      const {
+        accessToken,
+        refreshToken: _refreshToken,
+        userId: _userId,
+        requiresTwoFactorVerification,
+        shouldResetPassword,
+      } = response;
 
-        // 获取用户信息并存储到 accessStore 中
-        const [fetchUserInfoResult, accessCodes] = await Promise.all([
-          fetchUserInfo(),
-          getAccessCodesApi(),
-        ]);
+      // 检查是否需要双因素认证
+      if (requiresTwoFactorVerification) {
+        notification.warning({
+          description: $t('authentication.twoFactorRequired'),
+          duration: 3,
+          message: $t('authentication.loginWarning'),
+        });
+        return { userInfo };
+      }
 
-        userInfo = fetchUserInfoResult;
+      // 检查是否需要重置密码
+      if (shouldResetPassword) {
+        notification.warning({
+          description: $t('authentication.passwordResetRequired'),
+          duration: 3,
+          message: $t('authentication.loginWarning'),
+        });
+        return { userInfo };
+      }
 
-        userStore.setUserInfo(userInfo);
-        accessStore.setAccessCodes(accessCodes);
+      // 存储访问令牌
+      accessStore.setAccessToken(accessToken);
 
-        if (accessStore.loginExpired) {
-          accessStore.setLoginExpired(false);
-        } else {
-          onSuccess
-            ? await onSuccess?.()
-            : await router.push(
-                userInfo.homePath || preferences.app.defaultHomePath,
-              );
-        }
+      // 可以在这里存储 refreshToken 和 userId（如果需要）
+      // accessStore.setRefreshToken(refreshToken);
+      // userStore.setUserId(userId);
 
-        if (userInfo?.realName) {
-          notification.success({
-            description: `${$t('authentication.loginSuccessDesc')}:${userInfo?.realName}`,
-            duration: 3,
-            message: $t('authentication.loginSuccess'),
-          });
-        }
+      // 获取用户信息并存储到 accessStore 中
+      const [fetchUserInfoResult, accessCodes] = await Promise.all([
+        fetchUserInfo(),
+        getAccessCodesApi(),
+      ]);
+
+      userInfo = fetchUserInfoResult;
+
+      userStore.setUserInfo(userInfo);
+      accessStore.setAccessCodes(accessCodes);
+
+      if (accessStore.loginExpired) {
+        accessStore.setLoginExpired(false);
+      } else {
+        onSuccess
+          ? await onSuccess?.()
+          : await router.push(
+              userInfo.homePath || preferences.app.defaultHomePath,
+            );
+      }
+
+      if (userInfo?.realName) {
+        notification.success({
+          description: `${$t('authentication.loginSuccessDesc')}:${userInfo?.realName}`,
+          duration: 3,
+          message: $t('authentication.loginSuccess'),
+        });
       }
     } finally {
       loginLoading.value = false;
