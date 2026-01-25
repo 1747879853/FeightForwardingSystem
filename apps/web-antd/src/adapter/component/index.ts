@@ -509,6 +509,7 @@ export type ComponentType =
   | 'RadioGroup'
   | 'RangePicker'
   | 'Rate'
+  | 'RoleSelect'
   | 'Select'
   | 'Space'
   | 'Switch'
@@ -516,6 +517,7 @@ export type ComponentType =
   | 'TimePicker'
   | 'TreeSelect'
   | 'Upload'
+  | 'UserSelect'
   | BaseFormComponentType;
 
 async function initComponentAdapter() {
@@ -572,6 +574,9 @@ async function initComponentAdapter() {
     RadioGroup,
     RangePicker,
     Rate,
+    RoleSelect: defineAsyncComponent(
+      () => import('./biz-select/role-select.vue'),
+    ),
     Select: withDefaultPlaceholder(Select, 'select'),
     Space,
     Switch,
@@ -579,6 +584,9 @@ async function initComponentAdapter() {
     TimePicker,
     TreeSelect: withDefaultPlaceholder(TreeSelect, 'select'),
     Upload: withPreviewUpload(),
+    UserSelect: defineAsyncComponent(
+      () => import('./biz-select/user-select.vue'),
+    ),
   };
 
   // 将组件注册到全局共享状态中
@@ -598,3 +606,6 @@ async function initComponentAdapter() {
 }
 
 export { initComponentAdapter };
+
+// 导出业务选择组件
+export { RoleSelect, UserSelect } from './biz-select';

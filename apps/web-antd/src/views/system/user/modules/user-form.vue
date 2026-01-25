@@ -16,6 +16,12 @@ const emits = defineEmits(['success']);
 const formData = ref<SystemUserAdminApi.SystemUser>();
 
 const [Form, formApi] = useVbenForm({
+  commonConfig: {
+    // 所有表单项
+    componentProps: {
+      class: 'w-full',
+    },
+  },
   schema: useFormSchema(),
   showDefaultActions: false,
 });
@@ -32,9 +38,10 @@ const [Drawer, drawerApi] = useVbenDrawer({
     const submitData: SystemUserAdminApi.UserInAdminInputDto = {
       userName: values.userName,
       nickName: values.nickName,
-      email: values.email,
+      emailAddress: values.emailAddress,
       phoneNumber: values.phoneNumber,
       isActive: values.isActive,
+      status: values.status,
       roleIds: values.roleIds,
       avatar: values.avatar,
     };
@@ -77,10 +84,11 @@ const [Drawer, drawerApi] = useVbenDrawer({
           formApi.setValues({
             userName: userDetail.userName,
             nickName: userDetail.nickName,
-            email: userDetail.email,
+            emailAddress: userDetail.emailAddress,
             phoneNumber: userDetail.phoneNumber,
             isActive: userDetail.isActive,
-            roleIds: userDetail.roleIds,
+            status: userDetail.status,
+
             avatar: userDetail.avatar,
           });
 
@@ -96,9 +104,11 @@ const [Drawer, drawerApi] = useVbenDrawer({
           formApi.setValues({
             userName: data.userName,
             nickName: data.nickName,
-            email: data.email,
+            emailAddress: data.emailAddress,
             phoneNumber: data.phoneNumber,
             isActive: data.isActive,
+            status: data.status,
+
             avatar: data.avatar,
           });
         }

@@ -21,5 +21,6 @@
   "no": "否",
   "showSearchPanel": "显示搜索面板",
   "hideSearchPanel": "隐藏搜索面板",
-  "save": "保存"
+  "save": "保存",
+  "confirmDelete": "确定删除 {0} 吗？"
 }

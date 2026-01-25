@@ -42,8 +42,9 @@ const [Modal, modalApi] = useVbenModal({
     try {
       await changePassword(
         {
-          userId: userData.value.id,
-          newPassword: newPassword.value,
+          id: userData.value.id,
+          password: newPassword.value,
+          confirmPassword: confirmPassword.value,
         },
         unlock.value,
       );

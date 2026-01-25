@@ -11,7 +11,7 @@ import { Button, message, Modal } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  deleteUsers,
+  deleteUser,
   getUserPagedList,
   resetUserAllPermissions,
   createOrUpdateUser,
@@ -22,6 +22,7 @@ import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/user-form.vue';
 import PasswordModal from './modules/password-modal.vue';
 import ImportModal from './modules/import-modal.vue';
+import RoleAssignModal from './modules/role-assign-modal.vue';
 
 const router = useRouter();
 
@@ -40,6 +41,12 @@ const [PasswordModalComponent, passwordModalApi] = useVbenModal({
 // 导入弹窗
 const [ImportModalComponent, importModalApi] = useVbenModal({
   connectedComponent: ImportModal,
+  destroyOnClose: true,
+});
+
+// 角色分配弹窗
+const [RoleAssignModalComponent, roleAssignModalApi] = useVbenModal({
+  connectedComponent: RoleAssignModal,
   destroyOnClose: true,
 });
 
@@ -177,30 +184,16 @@ function onEdit(row: SystemUserAdminApi.SystemUser) {
 /**
  * 删除用户
  */
-function onDelete(row: SystemUserAdminApi.SystemUser) {
-  const userName = row.nickName || row.userName;
-  Modal.confirm({
-    title: $t('common.confirmDelete'),
-    content: $t('system.user.confirmDeleteUser', { name: userName }),
-    okType: 'danger',
-    async onOk() {
-      const hideLoading = message.loading({
-        content: $t('ui.actionMessage.deleting', [userName]),
-        duration: 0,
-        key: 'action_process_msg',
-      });
-      try {
-        await deleteUsers([row.id]);
-        message.success({
-          content: $t('ui.actionMessage.deleteSuccess', [userName]),
-          key: 'action_process_msg',
-        });
-        onRefresh();
-      } catch {
-        hideLoading();
-      }
-    },
-  });
+async function onDelete(row: SystemUserAdminApi.SystemUser) {
+  try {
+    await deleteUser(row.id);
+    message.success(
+      $t('ui.actionMessage.deleteSuccess', [row.nickName || row.userName]),
+    );
+    onRefresh();
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -213,41 +206,40 @@ async function onBatchDelete() {
     return;
   }
 
-  Modal.confirm({
-    title: $t('common.confirmDelete'),
-    content: $t('system.user.confirmBatchDelete', { count: records.length }),
-    okType: 'danger',
-    async onOk() {
-      const ids = records.map((r: SystemUserAdminApi.SystemUser) => r.id);
-      const hideLoading = message.loading({
-        content: $t('ui.actionMessage.deleting', [
-          $t('system.user.selectedUsers'),
-        ]),
-        duration: 0,
-        key: 'action_process_msg',
-      });
-      try {
-        await deleteUsers(ids);
-        message.success({
-          content: $t('ui.actionMessage.deleteSuccess', [
-            $t('system.user.selectedUsers'),
-          ]),
-          key: 'action_process_msg',
-        });
-        onRefresh();
-      } catch {
-        hideLoading();
-      }
-    },
-  });
+  // Modal.confirm({
+  //   title: $t('common.confirmDelete'),
+  //   content: $t('system.user.confirmBatchDelete', { count: records.length }),
+  //   okType: 'danger',
+  //   async onOk() {
+  //     const ids = records.map((r: SystemUserAdminApi.SystemUser) => r.id);
+  //     const hideLoading = message.loading({
+  //       content: $t('ui.actionMessage.deleting', [
+  //         $t('system.user.selectedUsers'),
+  //       ]),
+  //       duration: 0,
+  //       key: 'action_process_msg',
+  //     });
+  //     try {
+  //       await deleteUser(ids);
+  //       message.success({
+  //         content: $t('ui.actionMessage.deleteSuccess', [
+  //           $t('system.user.selectedUsers'),
+  //         ]),
+  //         key: 'action_process_msg',
+  //       });
+  //       onRefresh();
+  //     } catch {
+  //       hideLoading();
+  //     }
+  //   },
+  // });
 }
 
 /**
  * 分配角色
  */
 function onSetRoles(row: SystemUserAdminApi.SystemUser) {
-  // 跳转到用户表单编辑角色
-  formDrawerApi.setData({ ...row, focusRoles: true }).open();
+  roleAssignModalApi.setData(row).open();
 }
 
 /**
@@ -320,15 +312,16 @@ function onRefresh() {
     <FormDrawer @success="onRefresh" />
     <PasswordModalComponent @success="onRefresh" />
     <ImportModalComponent @success="onRefresh" />
+    <RoleAssignModalComponent @success="onRefresh" />
     <Grid :table-title="$t('system.user.list')">
       <template #toolbar-tools>
-        <Button class="mr-2" danger @click="onBatchDelete">
+        <!-- <Button class="mr-2" danger @click="onBatchDelete">
           {{ $t('system.user.batchDelete') }}
-        </Button>
-        <Button class="mr-2" @click="onImport">
+        </Button> -->
+        <!-- <Button class="mr-2" @click="onImport">
           <IconifyIcon class="mr-1" icon="ant-design:upload-outlined" />
           {{ $t('system.user.import') }}
-        </Button>
+        </Button> -->
         <Button type="primary" @click="onCreate">
           <Plus class="size-5" />
           {{ $t('ui.actionTitle.create', [$t('system.user.name')]) }}

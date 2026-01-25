@@ -2,14 +2,26 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SystemUserAdminApi } from '#/api';
 
-import { getRoleList } from '#/api';
+import { UserStatus } from '#/api';
 import { $t } from '#/locales';
 
 /** 用户状态选项 */
 export const userStatusOptions = [
-  { label: () => $t('system.user.statusNormal'), value: 10, color: 'success' },
-  { label: () => $t('system.user.statusLocked'), value: 20, color: 'warning' },
-  { label: () => $t('system.user.statusDisabled'), value: 40, color: 'error' },
+  {
+    label: () => $t('system.user.statusNormal'),
+    value: UserStatus.Passed,
+    color: 'success',
+  },
+  {
+    label: () => $t('system.user.statusPending'),
+    value: UserStatus.Pending,
+    color: 'warning',
+  },
+  {
+    label: () => $t('system.user.statusDisabled'),
+    value: UserStatus.Unpassed,
+    color: 'error',
+  },
 ];
 
 /** 是否选项 */
@@ -48,7 +60,7 @@ export function useFormSchema(): VbenFormSchema[] {
         maxlength: 128,
         showCount: true,
       },
-      fieldName: 'email',
+      fieldName: 'emailAddress',
       label: $t('system.user.email'),
       rules: 'email',
     },
@@ -90,23 +102,31 @@ export function useFormSchema(): VbenFormSchema[] {
       defaultValue: true,
       fieldName: 'isActive',
       label: $t('system.user.isActive'),
+      // 隐藏此字段，但保留配置和默认值
+      hide: true,
     },
     {
-      component: 'ApiSelect',
+      component: 'Select',
       componentProps: {
-        api: async () => {
-          const res = await getRoleList({ page: 1, pageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: item.displayName || item.name,
-            value: item.id,
-          }));
-        },
-        mode: 'multiple',
-        placeholder: $t('system.user.selectRoles'),
+        options: userStatusOptions.map((opt) => ({
+          label: opt.label(),
+          value: opt.value,
+        })),
+        placeholder: $t('system.user.status'),
       },
-      fieldName: 'roleIds',
-      label: $t('system.user.roles'),
+      defaultValue: UserStatus.Passed,
+      fieldName: 'status',
+      label: $t('system.user.status'),
     },
+    // {
+    //   component: 'RoleSelect',
+    //   componentProps: {
+    //     mode: 'multiple',
+    //     placeholder: $t('system.user.selectRoles'),
+    //   },
+    //   fieldName: 'roleIds',
+    //   label: $t('system.user.roles'),
+    // },
     {
       component: 'Input',
       componentProps: {
@@ -129,19 +149,19 @@ export function useGridFormSchema(): VbenFormSchema[] {
       fieldName: 'KeyWords',
       label: $t('system.user.keyword'),
     },
-    {
-      component: 'Select',
-      componentProps: {
-        allowClear: true,
-        options: [
-          { label: $t('common.yes'), value: true },
-          { label: $t('common.no'), value: false },
-        ],
-        placeholder: $t('system.user.isActive'),
-      },
-      fieldName: 'IsActive',
-      label: $t('system.user.isActive'),
-    },
+    // {
+    //   component: 'Select',
+    //   componentProps: {
+    //     allowClear: true,
+    //     options: [
+    //       { label: $t('common.yes'), value: true },
+    //       { label: $t('common.no'), value: false },
+    //     ],
+    //     placeholder: $t('system.user.isActive'),
+    //   },
+    //   fieldName: 'IsActive',
+    //   label: $t('system.user.isActive'),
+    // },
     {
       component: 'Select',
       componentProps: {
@@ -156,15 +176,8 @@ export function useGridFormSchema(): VbenFormSchema[] {
       label: $t('system.user.status'),
     },
     {
-      component: 'ApiSelect',
+      component: 'RoleSelect',
       componentProps: {
-        api: async () => {
-          const res = await getRoleList({ page: 1, pageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: item.displayName || item.name,
-            value: item.id,
-          }));
-        },
         allowClear: true,
         placeholder: $t('system.user.selectRole'),
       },
@@ -202,7 +215,7 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       minWidth: 120,
     },
     {
-      field: 'email',
+      field: 'emailAddress',
       title: $t('system.user.email'),
       minWidth: 180,
     },
@@ -222,17 +235,17 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
         return cellValue || '-';
       },
     },
-    {
-      cellRender: {
-        name: 'CellSwitch',
-        events: {
-          change: onStatusChange,
-        },
-      },
-      field: 'isActive',
-      title: $t('system.user.isActive'),
-      width: 100,
-    },
+    // {
+    //   cellRender: {
+    //     name: 'CellSwitch',
+    //     events: {
+    //       change: onStatusChange,
+    //     },
+    //   },
+    //   field: 'isActive',
+    //   title: $t('system.user.isActive'),
+    //   width: 100,
+    // },
     {
       cellRender: {
         name: 'CellTag',
@@ -265,34 +278,21 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
           nameField: 'userName',
           nameTitle: $t('system.user.name'),
           onClick: onActionClick,
-          codeField: 'code',
-          actions: [
-            { code: 'edit', text: $t('common.edit') },
-            { code: 'delete', text: $t('common.delete'), danger: true },
-            {
-              code: 'more',
-              text: $t('common.more'),
-              children: [
-                { code: 'setRoles', text: $t('system.user.setRoles') },
-                { code: 'permission', text: $t('system.user.permission') },
-                {
-                  code: 'resetPermission',
-                  text: $t('system.user.resetPermission'),
-                },
-                {
-                  code: 'changePassword',
-                  text: $t('system.user.changePassword'),
-                },
-              ],
-            },
-          ],
         },
         name: 'CellOperation',
+        options: [
+          { code: 'edit', text: $t('common.edit') },
+          { code: 'setRoles', text: $t('system.user.setRoles') },
+          { code: 'permission', text: $t('system.user.permission') },
+          // { code: 'resetPermission', text: $t('system.user.resetPermission') },
+          { code: 'changePassword', text: $t('system.user.changePassword') },
+          { code: 'delete', text: $t('common.delete'), danger: true },
+        ],
       },
       field: 'operation',
       fixed: 'right',
       title: $t('system.user.operation'),
-      width: 200,
+      width: 420,
     },
   ];
 }

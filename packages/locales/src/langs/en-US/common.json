@@ -21,5 +21,6 @@
   "no": "No",
   "showSearchPanel": "Show search panel",
   "hideSearchPanel": "Hide search panel",
-  "save": "Save"
+  "save": "Save",
+  "confirmDelete": "Are you sure to delete {0}?"
 }

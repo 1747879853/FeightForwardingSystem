@@ -1,20 +1,28 @@
 import type { Recordable } from '@vben/types';
 
 import { requestClient } from '#/api/request';
+export enum UserStatus {
+  /** 禁用 */
+  Unpassed = 10,
+  /** 待审核 */
+  Pending = 20,
+  /** 正常 */
+  Passed = 40,
+}
 
 export namespace SystemUserAdminApi {
   /** 用户状态 */
-  export type UserStatus = 10 | 20 | 40;
+  export type UserStatus = typeof UserStatus;
 
   /** 用户列表项DTO */
   export interface UserListDto {
     id: number;
     userName: string;
     nickName?: string;
-    email?: string;
+    emailAddress?: string;
     phoneNumber?: string;
     isActive: boolean;
-    isEmailConfirmed: boolean;
+
     isPhoneNumberConfirmed: boolean;
     status: UserStatus;
     avatar?: string;
@@ -36,7 +44,7 @@ export namespace SystemUserAdminApi {
   export interface UserQueryParams {
     KeyWords?: string;
     IsActive?: boolean;
-    IsEmailConfirmed?: boolean;
+
     IsPhoneNumberConfirmed?: boolean;
     Status?: UserStatus;
     RoleId?: number;
@@ -54,10 +62,10 @@ export namespace SystemUserAdminApi {
     id: number;
     userName: string;
     nickName?: string;
-    email?: string;
+    emailAddress?: string;
     phoneNumber?: string;
     isActive: boolean;
-    isEmailConfirmed: boolean;
+
     isPhoneNumberConfirmed: boolean;
     status: UserStatus;
     avatar?: string;
@@ -77,9 +85,10 @@ export namespace SystemUserAdminApi {
     id?: number;
     userName: string;
     nickName?: string;
-    email?: string;
+    emailAddress?: string;
     phoneNumber?: string;
     isActive?: boolean;
+    status?: UserStatus;
     password?: string;
     avatar?: string;
     roleIds?: number[];
@@ -93,7 +102,7 @@ export namespace SystemUserAdminApi {
   /** 用户角色分配DTO */
   export interface UserRolesDto {
     userId: number;
-    roleIds: number[];
+    roleNames: string[];
   }
 
   /** 用户权限DTO */
@@ -104,8 +113,14 @@ export namespace SystemUserAdminApi {
 
   /** 修改密码DTO */
   export interface PasswordInputDto {
-    userId: number;
-    newPassword: string;
+    /** 用户ID */
+    id: number;
+    /** 密码 */
+    password: string;
+    /** 确认密码 */
+    confirmPassword?: string;
+    /** 下次登录是否需要修改密码 */
+    shouldChangePasswordOnNextLogin?: boolean;
   }
 
   /** Identity 结果 */
@@ -127,7 +142,7 @@ async function getUserPagedList(params: Recordable<any>) {
   const queryParams: SystemUserAdminApi.UserQueryParams = {
     KeyWords: params.KeyWords || params.keyWords,
     IsActive: params.IsActive ?? params.isActive,
-    IsEmailConfirmed: params.IsEmailConfirmed ?? params.isEmailConfirmed,
+
     IsPhoneNumberConfirmed:
       params.IsPhoneNumberConfirmed ?? params.isPhoneNumberConfirmed,
     Status: params.Status ?? params.status,
@@ -207,9 +222,18 @@ async function createOrUpdateUserWithDataPermission(
  * @param ids 用户ID数组
  * @param toId 可选，将数据转移到目标用户
  */
-async function deleteUsers(ids: number[], toId?: number) {
+async function deleteUser(ids: number, toId?: number) {
   return requestClient.delete('/services/app/UserAdmin/DeleteUsersAsync', {
     params: { Id: ids, ToId: toId },
+  });
+}
+
+/**
+ * 获取用户的角色名称列表
+ */
+async function getUserRolesName(userId: number): Promise<string[]> {
+  return requestClient.get('/services/app/UserAdmin/GetRolesNameAsync', {
+    params: { Id: userId },
   });
 }
 
@@ -286,11 +310,12 @@ export {
   changePassword,
   createOrUpdateUser,
   createOrUpdateUserWithDataPermission,
-  deleteUsers,
+  deleteUser,
   getUser,
   getUserForEdit,
   getUserPagedList,
   getUserPermissions,
+  getUserRolesName,
   importUsers,
   resetUserAllPermissions,
   setUserRoles,
