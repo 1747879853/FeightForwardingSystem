@@ -5,6 +5,8 @@ import type {
 } from '#/adapter/vxe-table';
 import type { SystemRoleApi } from '#/api';
 
+import { useRouter } from 'vue-router';
+
 import { Page, useVbenDrawer } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
@@ -16,6 +18,8 @@ import { $t } from '#/locales';
 
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
+
+const router = useRouter();
 
 const [FormDrawer, formDrawerApi] = useVbenDrawer({
   connectedComponent: Form,
@@ -30,6 +34,10 @@ function onActionClick(e: OnActionClickParams<SystemRoleApi.SystemRole>) {
     }
     case 'edit': {
       onEdit(e.row);
+      break;
+    }
+    case 'permission': {
+      onPermission(e.row);
       break;
     }
   }
@@ -118,6 +126,20 @@ function confirm(content: string, title: string) {
 
 function onEdit(row: SystemRoleApi.SystemRole) {
   formDrawerApi.setData(row).open();
+}
+
+/**
+ * 权限配置
+ */
+function onPermission(row: SystemRoleApi.SystemRole) {
+  router.push({
+    path: '/system/permission',
+    query: {
+      targetType: 'role',
+      roleId: String(row.id),
+      tab: 'module',
+    },
+  });
 }
 
 function onDelete(row: SystemRoleApi.SystemRole) {
