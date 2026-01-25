@@ -15,13 +15,11 @@ interface BackendUserResponse {
   };
   user: {
     avatar: null | string;
-    emailAddress: string;
+
     id: number;
     nickName: string;
-    organizationUnit: null | string;
-    phoneNumber: null | string;
+
     tenantId: number;
-    weChatName: null | string;
   };
 }
 
@@ -34,13 +32,13 @@ function adaptUserInfo(backendData: BackendUserResponse): UserInfo {
   return {
     // 基础用户信息
     userId: String(user.id),
-    username: user.emailAddress.split('@')[0] || user.emailAddress, // 使用邮箱前缀作为用户名
+    username: user.nickName, // 使用邮箱前缀作为用户名
     realName: user.nickName,
     avatar: user.avatar || '', // 如果没有头像则使用空字符串
     roles: [], // 根据实际情况填充角色信息，可能需要从其他接口获取
 
     // 扩展信息
-    desc: user.organizationUnit || '暂无描述', // 使用组织单位作为描述
+    desc: '暂无描述', // 使用组织单位作为描述
     homePath: '/dashboard', // 默认首页路径，可根据需要调整
     token: '', // token 通常从登录接口获取，这里返回空字符串
   };

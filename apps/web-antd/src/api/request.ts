@@ -85,9 +85,17 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
       const { config, response } = error;
       const responseData = response?.data;
 
+      // 403是权限不足，不是token过期，不应该刷新token
+      if (response?.status === 403) {
+        throw error;
+      }
+
       // ABP框架会在响应中标识未授权请求
+      // 只有401或明确标记为unAuthorizedRequest才进行token刷新
       const isUnauthorized =
-        response?.status === 401 || responseData?.unAuthorizedRequest === true;
+        response?.status === 401 ||
+        (responseData?.unAuthorizedRequest === true &&
+          response?.status !== 403);
 
       if (!isUnauthorized) {
         throw error;

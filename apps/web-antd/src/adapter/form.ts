@@ -37,6 +37,28 @@ async function initSetupVbenForm() {
         }
         return true;
       },
+      // 最小长度验证
+      min: (value, params, ctx) => {
+        if (value === undefined || value === null || value === '') {
+          return true;
+        }
+        const minLength = Number(params[0]);
+        if (String(value).length < minLength) {
+          return $t('ui.formRules.minLength', [ctx.label, minLength]);
+        }
+        return true;
+      },
+      // 最大长度验证
+      max: (value, params, ctx) => {
+        if (value === undefined || value === null || value === '') {
+          return true;
+        }
+        const maxLength = Number(params[0]);
+        if (String(value).length > maxLength) {
+          return $t('ui.formRules.maxLength', [ctx.label, maxLength]);
+        }
+        return true;
+      },
     },
   });
 }

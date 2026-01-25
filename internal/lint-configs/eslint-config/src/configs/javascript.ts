@@ -211,7 +211,7 @@ export async function javascript(): Promise<Linter.Config[]> {
         'prefer-regex-literals': ['error', { disallowRedundantWrapping: true }],
         'prefer-rest-params': 'error',
         'prefer-spread': 'error',
-        'prefer-template': 'error',
+        // 'prefer-template': 'error',
         'space-before-function-paren': 'off',
         'spaced-comment': 'error',
         'symbol-description': 'error',

@@ -40,6 +40,18 @@ export namespace AuthApi {
     status: number;
   }
 
+  /** 权限DTO - 用于输出的权限信息 */
+  export interface PermissionDto {
+    /** 权限编码 */
+    name: null | string;
+    /** 父级权限编码 */
+    parentName: null | string;
+    /** 权限显示名 */
+    displayName: null | string;
+    /** 是否默认展开 */
+    isOpen: boolean;
+  }
+
   /** 用户配置接口返回值 */
   export interface UserConfigurationResult {
     auth: {
@@ -169,4 +181,123 @@ export async function getAccessCodesApi() {
   const config = await getUserConfigurationApi();
   // 从 grantedPermissions 对象中提取权限名称列表
   return Object.keys(config.auth.grantedPermissions);
+}
+
+/**
+ * 获取所有权限
+ */
+export async function getAllPermissionsApi() {
+  return requestClient.get<AuthApi.PermissionDto[]>(
+    '/services/app/Permission/GetAllPermissions',
+  );
+}
+
+/**
+ * 获取用户的权限名称集合
+ * @param userId 用户ID
+ */
+export async function getUserPermissionsApi(userId: number) {
+  return requestClient.get<string[]>(
+    '/services/app/UserAdmin/GetUserPermissionsAsync',
+    {
+      params: { Id: userId },
+    },
+  );
+}
+
+/**
+ * 权限树节点 - 对应菜单格式
+ */
+export interface PermissionTreeNode {
+  /** 菜单名称 */
+  name: string;
+  /** 父级ID */
+  pid: string;
+  /** 后端权限标识 */
+  authCode: string;
+  /** 菜单ID */
+  id: string;
+  /** 子级 */
+  children?: PermissionTreeNode[];
+}
+
+/**
+ * 将权限列表构建为树形结构
+ * @param permissions 权限列表
+ * @param t 翻译函数，用于翻译权限名称
+ * @returns 权限树
+ */
+export function buildPermissionTree(
+  permissions: AuthApi.PermissionDto[],
+  t?: (key: string) => string,
+): PermissionTreeNode[] {
+  // 创建映射表
+  const permissionMap = new Map<string, PermissionTreeNode>();
+  const rootNodes: PermissionTreeNode[] = [];
+
+  // 第一遍遍历：创建所有节点
+  for (const permission of permissions) {
+    if (!permission.name) continue;
+
+    const node: PermissionTreeNode = {
+      id: permission.name,
+      name: t
+        ? t(`auth.${permission.name.replaceAll('.', '_')}`)
+        : permission.name.replaceAll('.', '_'),
+      authCode: permission.name,
+      pid: permission.parentName || '',
+      children: [],
+    };
+
+    permissionMap.set(permission.name, node);
+  }
+
+  // 第二遍遍历：构建树形结构
+  for (const permission of permissions) {
+    if (!permission.name) continue;
+
+    const currentNode = permissionMap.get(permission.name);
+    if (!currentNode) continue;
+
+    // 如果有父级，添加到父级的children中
+    if (permission.parentName) {
+      const parentNode = permissionMap.get(permission.parentName);
+      if (parentNode) {
+        if (!parentNode.children) {
+          parentNode.children = [];
+        }
+        parentNode.children.push(currentNode);
+      } else {
+        // 父级不存在，视为根节点
+        rootNodes.push(currentNode);
+      }
+    } else {
+      // 没有父级，是根节点
+      rootNodes.push(currentNode);
+    }
+  }
+
+  // 清理空的children数组并更新父级的翻译键
+  const cleanEmptyChildren = (nodes: PermissionTreeNode[]) => {
+    for (const node of nodes) {
+      if (node.children && node.children.length === 0) {
+        delete node.children;
+      } else if (node.children && node.children.length > 0) {
+        cleanEmptyChildren(node.children);
+      }
+    }
+  };
+
+  cleanEmptyChildren(rootNodes);
+
+  return rootNodes;
+}
+
+/**
+ * 获取所有权限并构建为树形结构
+ * @param t 翻译函数，用于翻译权限名称
+ */
+export async function getAllPermissionsTreeApi(t?: (key: string) => string) {
+  const permissions = await getAllPermissionsApi();
+  return buildPermissionTree(permissions, t);
 }
