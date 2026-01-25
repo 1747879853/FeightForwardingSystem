@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { DataNode } from 'ant-design-vue/es/tree';
 
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 
 import { Page, Tree } from '@vben/common-ui';
 
@@ -28,6 +29,7 @@ import {
   updateUserPermissions,
 } from '#/api/system/permission';
 import { getRoleList } from '#/api/system/role';
+import { getUserPagedList } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
 import DataPermissionPanel from './modules/data-permission.vue';
@@ -50,6 +52,7 @@ interface UserOption {
 
 // ==================== 响应式状态 ====================
 
+const route = useRoute();
 const targetType = ref<TargetType>('role');
 const selectedRoleId = ref<number>();
 const selectedUserId = ref<number>();
@@ -94,13 +97,19 @@ async function loadRoles() {
   }
 }
 
-/** 加载用户列表 - 简化版，实际项目中应调用用户列表API */
-async function loadUsers() {
+/** 加载用户列表 */
+async function loadUsers(keyword?: string) {
   loadingOptions.value = true;
   try {
-    // TODO: 调用实际的用户列表API
-    // 这里暂时使用模拟数据，实际项目中需要替换
-    userOptions.value = [];
+    const res = await getUserPagedList({
+      KeyWords: keyword,
+      pageIndex: 1,
+      pageSize: 1000,
+    });
+    userOptions.value = (res.items || []).map((item: any) => ({
+      label: `${item.nickName || item.userName}(${item.id})`,
+      value: item.id,
+    }));
   } finally {
     loadingOptions.value = false;
   }
@@ -183,8 +192,8 @@ async function handleSaveModulePermissions() {
 }
 
 /** Tab切换 */
-function handleTabChange(key: string) {
-  activeTab.value = key;
+function handleTabChange(key: string | number) {
+  activeTab.value = String(key);
   if (key === 'module' && hasTarget.value) {
     loadCheckedPermissions();
   }
@@ -207,6 +216,39 @@ watch(
 
 // 初始化加载权限树
 loadPermissions();
+
+// 处理路由参数（从用户管理页面跳转过来时）
+onMounted(() => {
+  const query = route.query;
+  if (query.targetType === 'user') {
+    targetType.value = 'user';
+    if (query.userId) {
+      selectedUserId.value = Number(query.userId);
+    }
+    if (query.tab) {
+      activeTab.value = query.tab as string;
+    }
+    // 加载用户列表后，触发权限加载
+    loadUsers().then(() => {
+      if (selectedUserId.value) {
+        loadCheckedPermissions();
+      }
+    });
+  } else if (query.targetType === 'role') {
+    targetType.value = 'role';
+    if (query.roleId) {
+      selectedRoleId.value = Number(query.roleId);
+    }
+    if (query.tab) {
+      activeTab.value = query.tab as string;
+    }
+    loadRoles().then(() => {
+      if (selectedRoleId.value) {
+        loadCheckedPermissions();
+      }
+    });
+  }
+});
 </script>
 
 <template>

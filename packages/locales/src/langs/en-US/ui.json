@@ -8,6 +8,7 @@
     "alreadyExists": "{0} `{1}` already exists",
     "startWith": "{0} must start with `{1}`",
     "invalidURL": "Please input a valid URL",
+    "invalidEmail": "Please enter a valid {0}",
     "sizeLimit": "The file size cannot exceed {0}MB",
     "previewWarning": "Unable to open the file, there is no available URL or preview address"
   },

@@ -59,6 +59,17 @@ async function initSetupVbenForm() {
         }
         return true;
       },
+      // 邮箱格式验证
+      email: (value, _params, ctx) => {
+        if (value === undefined || value === null || value === '') {
+          return true;
+        }
+        const emailRegex = /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+        if (!emailRegex.test(String(value))) {
+          return $t('ui.formRules.invalidEmail', [ctx.label]);
+        }
+        return true;
+      },
     },
   });
 }
