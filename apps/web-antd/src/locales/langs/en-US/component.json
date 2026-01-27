@@ -1,0 +1,16 @@
+{
+  "fileUpload": {
+    "selectFile": "Select File",
+    "uploading": "Uploading...",
+    "uploadSuccess": "Upload successful",
+    "uploadFailed": "Upload failed",
+    "previewFailed": "Cannot preview, file URL does not exist",
+    "typeNotAllowed": "File type not allowed",
+    "sizeExceeded": "File size exceeds limit (max {0}MB)",
+    "maxCountExceeded": "Maximum {0} files allowed",
+    "maxCountReached": "Maximum file count reached",
+    "allowedTypes": "Allowed types",
+    "maxSize": "Max size",
+    "maxCount": "Max count"
+  }
+}

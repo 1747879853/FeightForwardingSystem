@@ -79,7 +79,7 @@ async function getRoleList(params: Recordable<any>) {
     KeyWords: params.KeyWords || params.name || params.keyWords,
     PageIndex: params.page || params.pageIndex || 1,
     PageSize: params.pageSize || 10,
-    Sorting: params.sorting || 'Id',
+    Sorting: params.sorting || 'Id desc',
   };
 
   const response =

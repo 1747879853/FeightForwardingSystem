@@ -92,6 +92,7 @@ export namespace SystemUserAdminApi {
     password?: string;
     avatar?: string;
     roleIds?: number[];
+    organizationId?: number;
   }
 
   /** 用户输入DTO（含数据权限） */
@@ -151,7 +152,7 @@ async function getUserPagedList(params: Recordable<any>) {
     CreationTimeEnd: params.CreationTimeEnd ?? params.creationTimeEnd,
     LastLoginTimeStart: params.LastLoginTimeStart ?? params.lastLoginTimeStart,
     LastLoginTimeEnd: params.LastLoginTimeEnd ?? params.lastLoginTimeEnd,
-    Sorting: params.Sorting ?? params.sorting ?? 'Id',
+    Sorting: params.Sorting ?? params.sorting ?? 'Id desc',
     PageIndex: params.page || params.pageIndex || params.PageIndex || 1,
     PageSize: params.pageSize || params.PageSize || 10,
   };

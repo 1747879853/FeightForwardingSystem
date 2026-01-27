@@ -1,20 +1,24 @@
 <script lang="ts" setup>
-import type { SystemDeptApi } from '#/api/system/dept';
+import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
 import { computed, ref } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
 
-import { Button } from 'ant-design-vue';
+import { Button, message } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
-import { createDept, updateDept } from '#/api/system/dept';
+import {
+  createOrganizationUnit,
+  moveOrganizationUnit,
+  updateOrganizationUnit,
+} from '#/api/system/organization-unit';
 import { $t } from '#/locales';
 
 import { useSchema } from '../data';
 
 const emit = defineEmits(['success']);
-const formData = ref<SystemDeptApi.SystemDept>();
+const formData = ref<SystemOrganizationUnitApi.OrganizationUnitTreeDto>();
 const getTitle = computed(() => {
   return formData.value?.id
     ? $t('ui.actionTitle.edit', [$t('system.dept.name')])
@@ -37,11 +41,30 @@ const [Modal, modalApi] = useVbenModal({
     const { valid } = await formApi.validate();
     if (valid) {
       modalApi.lock();
-      const data = await formApi.getValues();
+      const values = await formApi.getValues();
       try {
-        await (formData.value?.id
-          ? updateDept(formData.value.id, data)
-          : createDept(data));
+        if (formData.value?.id) {
+          // 编辑模式
+          // 1. 更新 displayName
+          await updateOrganizationUnit({
+            id: formData.value.id,
+            displayName: values.displayName,
+          });
+          // 2. 如果 parentId 变化，则移动
+          if (values.parentId !== formData.value.parentId) {
+            await moveOrganizationUnit({
+              id: formData.value.id,
+              newParentId: values.parentId ?? null,
+            });
+          }
+        } else {
+          // 新增模式
+          await createOrganizationUnit({
+            displayName: values.displayName,
+            parentId: values.parentId ?? null,
+          });
+        }
+        message.success($t('ui.actionMessage.operationSuccess'));
         modalApi.close();
         emit('success');
       } finally {
@@ -51,13 +74,17 @@ const [Modal, modalApi] = useVbenModal({
   },
   onOpenChange(isOpen) {
     if (isOpen) {
-      const data = modalApi.getData<SystemDeptApi.SystemDept>();
+      const data =
+        modalApi.getData<SystemOrganizationUnitApi.OrganizationUnitTreeDto>();
       if (data) {
-        if (data.pid === 0) {
-          data.pid = undefined;
-        }
         formData.value = data;
-        formApi.setValues(formData.value);
+        formApi.setValues({
+          displayName: data.displayName,
+          parentId: data.parentId ?? undefined,
+        });
+      } else {
+        formData.value = undefined;
+        formApi.resetForm();
       }
     }
   },

@@ -2,10 +2,10 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn } from '#/adapter/vxe-table';
-import type { SystemDeptApi } from '#/api/system/dept';
+import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
 import { z } from '#/adapter/form';
-import { getDeptList } from '#/api/system/dept';
+import { getOrganizationUnitTree } from '#/api/system/organization-unit';
 import { $t } from '#/locales';
 
 /**
@@ -15,56 +15,31 @@ export function useSchema(): VbenFormSchema[] {
   return [
     {
       component: 'Input',
-      fieldName: 'name',
+      componentProps: {
+        maxLength: 128,
+      },
+      fieldName: 'displayName',
       label: $t('system.dept.deptName'),
       rules: z
         .string()
-        .min(2, $t('ui.formRules.minLength', [$t('system.dept.deptName'), 2]))
+        .min(1, $t('ui.formRules.required', [$t('system.dept.deptName')]))
         .max(
-          20,
-          $t('ui.formRules.maxLength', [$t('system.dept.deptName'), 20]),
+          128,
+          $t('ui.formRules.maxLength', [$t('system.dept.deptName'), 128]),
         ),
     },
     {
       component: 'ApiTreeSelect',
       componentProps: {
         allowClear: true,
-        api: getDeptList,
+        api: getOrganizationUnitTree,
         class: 'w-full',
-        labelField: 'name',
+        labelField: 'displayName',
         valueField: 'id',
         childrenField: 'children',
       },
-      fieldName: 'pid',
+      fieldName: 'parentId',
       label: $t('system.dept.parentDept'),
-    },
-    {
-      component: 'RadioGroup',
-      componentProps: {
-        buttonStyle: 'solid',
-        options: [
-          { label: $t('common.enabled'), value: 1 },
-          { label: $t('common.disabled'), value: 0 },
-        ],
-        optionType: 'button',
-      },
-      defaultValue: 1,
-      fieldName: 'status',
-      label: $t('system.dept.status'),
-    },
-    {
-      component: 'Textarea',
-      componentProps: {
-        maxLength: 50,
-        rows: 3,
-        showCount: true,
-      },
-      fieldName: 'remark',
-      label: $t('system.dept.remark'),
-      rules: z
-        .string()
-        .max(50, $t('ui.formRules.maxLength', [$t('system.dept.remark'), 50]))
-        .optional(),
     },
   ];
 }
@@ -75,37 +50,26 @@ export function useSchema(): VbenFormSchema[] {
  * @param onActionClick 表格操作按钮点击事件
  */
 export function useColumns(
-  onActionClick?: OnActionClickFn<SystemDeptApi.SystemDept>,
-): VxeTableGridOptions<SystemDeptApi.SystemDept>['columns'] {
+  onActionClick?: OnActionClickFn<SystemOrganizationUnitApi.OrganizationUnitTreeDto>,
+): VxeTableGridOptions<SystemOrganizationUnitApi.OrganizationUnitTreeDto>['columns'] {
   return [
     {
       align: 'left',
-      field: 'name',
+      field: 'displayName',
       fixed: 'left',
       title: $t('system.dept.deptName'),
       treeNode: true,
-      width: 150,
     },
     {
-      cellRender: { name: 'CellTag' },
-      field: 'status',
-      title: $t('system.dept.status'),
-      width: 100,
+      field: 'code',
+      title: $t('system.dept.code'),
     },
-    {
-      field: 'createTime',
-      title: $t('system.dept.createTime'),
-      width: 180,
-    },
-    {
-      field: 'remark',
-      title: $t('system.dept.remark'),
-    },
+
     {
       align: 'right',
       cellRender: {
         attrs: {
-          nameField: 'name',
+          nameField: 'displayName',
           nameTitle: $t('system.dept.name'),
           onClick: onActionClick,
         },
@@ -113,12 +77,14 @@ export function useColumns(
         options: [
           {
             code: 'append',
-            text: '新增下级',
+            text: $t('system.dept.addChild'),
           },
           'edit', // 默认的编辑按钮
           {
             code: 'delete', // 默认的删除按钮
-            disabled: (row: SystemDeptApi.SystemDept) => {
+            disabled: (
+              row: SystemOrganizationUnitApi.OrganizationUnitTreeDto,
+            ) => {
               return !!(row.children && row.children.length > 0);
             },
           },
@@ -129,7 +95,6 @@ export function useColumns(
       headerAlign: 'center',
       showOverflow: false,
       title: $t('system.dept.operation'),
-      width: 200,
     },
   ];
 }

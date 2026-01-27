@@ -64,7 +64,8 @@
     "clickOrDragUpload": "点击或拖拽文件到此区域上传",
     "supportExcel": "支持 .xlsx、.xls 格式的 Excel 文件",
     "onlyExcelAllowed": "只能上传 Excel 文件",
-    "fileSizeLimit": "文件大小不能超过 10MB"
+    "fileSizeLimit": "文件大小不能超过 10MB",
+    "department": "部门"
   },
   "dept": {
     "list": "部门列表",
@@ -75,7 +76,10 @@
     "parentDept": "上级部门",
     "remark": "备注",
     "status": "状态",
-    "title": "部门管理"
+    "title": "部门管理",
+    "code": "部门编码",
+    "level": "层级",
+    "addChild": "新增下级"
   },
   "menu": {
     "list": "菜单列表",

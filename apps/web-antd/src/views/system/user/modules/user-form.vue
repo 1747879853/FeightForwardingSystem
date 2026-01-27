@@ -4,6 +4,7 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 import { computed, nextTick, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
+import { message } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
 import { createOrUpdateUser, getUserForEdit } from '#/api/system/user-admin';
@@ -44,6 +45,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
       status: values.status,
       roleIds: values.roleIds,
       avatar: values.avatar,
+      organizationId: values.organizationId,
     };
 
     // 新增时需要密码
@@ -58,6 +60,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
     drawerApi.lock();
     createOrUpdateUser(submitData)
       .then(() => {
+        message.success($t('ui.actionMessage.operationSuccess'));
         emits('success');
         drawerApi.close();
       })
@@ -88,8 +91,8 @@ const [Drawer, drawerApi] = useVbenDrawer({
             phoneNumber: userDetail.phoneNumber,
             isActive: userDetail.isActive,
             status: userDetail.status,
-
             avatar: userDetail.avatar,
+            organizationId: (userDetail as any).organizationId,
           });
 
           // 如果是从"分配角色"进入，聚焦到角色字段
@@ -108,8 +111,8 @@ const [Drawer, drawerApi] = useVbenDrawer({
             phoneNumber: data.phoneNumber,
             isActive: data.isActive,
             status: data.status,
-
             avatar: data.avatar,
+            organizationId: (data as any).organizationId,
           });
         }
       } else {

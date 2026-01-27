@@ -1,7 +1,7 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SystemUserAdminApi } from '#/api';
-
+import { getOrganizationUnitTree } from '#/api/system/organization-unit';
 import { UserStatus } from '#/api';
 import { $t } from '#/locales';
 
@@ -83,11 +83,24 @@ export function useFormSchema(): VbenFormSchema[] {
       dependencies: {
         triggerFields: ['id'],
         if: (values) => !values.id,
-        rules: ['required', 'min:6', 'max:32'],
+        rules: (values) => (values.id ? '' : 'required|min:6|max:32'),
       },
       fieldName: 'password',
       label: $t('system.user.password'),
       help: $t('system.user.passwordHelp'),
+    },
+    {
+      component: 'ApiTreeSelect',
+      componentProps: {
+        allowClear: true,
+        api: getOrganizationUnitTree,
+        class: 'w-full',
+        labelField: 'displayName',
+        valueField: 'id',
+        childrenField: 'children',
+      },
+      fieldName: 'organizationId',
+      label: $t('system.user.department'),
     },
     {
       component: 'RadioGroup',
@@ -128,13 +141,14 @@ export function useFormSchema(): VbenFormSchema[] {
     //   label: $t('system.user.roles'),
     // },
     {
-      component: 'Input',
-      componentProps: {
-        maxlength: 256,
-        showCount: true,
-      },
       fieldName: 'avatar',
       label: $t('system.user.avatar'),
+      component: 'FileUploadInput',
+      componentProps: {
+        maxSizeMB: 20,
+        allowedTypes: ['png', 'jpg'],
+        maxCount: 1,
+      },
     },
   ];
 }

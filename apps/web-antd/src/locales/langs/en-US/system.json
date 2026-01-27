@@ -64,7 +64,8 @@
     "clickOrDragUpload": "Click or drag file to this area to upload",
     "supportExcel": "Support .xlsx, .xls Excel files",
     "onlyExcelAllowed": "Only Excel files are allowed",
-    "fileSizeLimit": "File size cannot exceed 10MB"
+    "fileSizeLimit": "File size cannot exceed 10MB",
+    "department": "Department"
   },
   "dept": {
     "name": "Department",
@@ -74,7 +75,11 @@
     "createTime": "Create Time",
     "remark": "Remark",
     "operation": "Operation",
-    "parentDept": "Parent Department"
+    "parentDept": "Parent Department",
+    "list": "Department List",
+    "code": "Department Code",
+    "level": "Level",
+    "addChild": "Add Child"
   },
   "menu": {
     "title": "Menu Management",

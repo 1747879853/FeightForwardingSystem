@@ -19,6 +19,16 @@ export default defineConfig(async () => {
             target: 'http://192.144.212.84:150',
             ws: true,
           },
+          '/upload': {
+            changeOrigin: true,
+            target: 'http://192.144.212.84:150',
+            ws: true,
+          },
+          '/Uploads': {
+            changeOrigin: true,
+            target: 'http://192.144.212.84:150',
+            ws: true,
+          },
         },
       },
     },

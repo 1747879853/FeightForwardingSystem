@@ -1,9 +1,6 @@
 <script lang="ts" setup>
-import type {
-  OnActionClickParams,
-  VxeTableGridOptions,
-} from '#/adapter/vxe-table';
-import type { SystemDeptApi } from '#/api/system/dept';
+import type { OnActionClickParams } from '#/adapter/vxe-table';
+import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
@@ -11,7 +8,10 @@ import { Plus } from '@vben/icons';
 import { Button, message } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { deleteDept, getDeptList } from '#/api/system/dept';
+import {
+  deleteOrganizationUnit,
+  getOrganizationUnitTree,
+} from '#/api/system/organization-unit';
 import { $t } from '#/locales';
 
 import { useColumns } from './data';
@@ -26,7 +26,7 @@ const [FormModal, formModalApi] = useVbenModal({
  * 编辑部门
  * @param row
  */
-function onEdit(row: SystemDeptApi.SystemDept) {
+function onEdit(row: SystemOrganizationUnitApi.OrganizationUnitTreeDto) {
   formModalApi.setData(row).open();
 }
 
@@ -34,8 +34,8 @@ function onEdit(row: SystemDeptApi.SystemDept) {
  * 添加下级部门
  * @param row
  */
-function onAppend(row: SystemDeptApi.SystemDept) {
-  formModalApi.setData({ pid: row.id }).open();
+function onAppend(row: SystemOrganizationUnitApi.OrganizationUnitTreeDto) {
+  formModalApi.setData({ parentId: row.id }).open();
 }
 
 /**
@@ -49,16 +49,16 @@ function onCreate() {
  * 删除部门
  * @param row
  */
-function onDelete(row: SystemDeptApi.SystemDept) {
+function onDelete(row: SystemOrganizationUnitApi.OrganizationUnitTreeDto) {
   const hideLoading = message.loading({
-    content: $t('ui.actionMessage.deleting', [row.name]),
+    content: $t('ui.actionMessage.deleting', [row.displayName]),
     duration: 0,
     key: 'action_process_msg',
   });
-  deleteDept(row.id)
+  deleteOrganizationUnit(row.id)
     .then(() => {
       message.success({
-        content: $t('ui.actionMessage.deleteSuccess', [row.name]),
+        content: $t('ui.actionMessage.deleteSuccess', [row.displayName]),
         key: 'action_process_msg',
       });
       refreshGrid();
@@ -74,7 +74,7 @@ function onDelete(row: SystemDeptApi.SystemDept) {
 function onActionClick({
   code,
   row,
-}: OnActionClickParams<SystemDeptApi.SystemDept>) {
+}: OnActionClickParams<SystemOrganizationUnitApi.OrganizationUnitTreeDto>) {
   switch (code) {
     case 'append': {
       onAppend(row);
@@ -91,35 +91,36 @@ function onActionClick({
   }
 }
 
-const [Grid, gridApi] = useVbenVxeGrid({
-  gridEvents: {},
-  gridOptions: {
-    columns: useColumns(onActionClick),
-    height: 'auto',
-    keepSource: true,
-    pagerConfig: {
-      enabled: false,
-    },
-    proxyConfig: {
-      ajax: {
-        query: async (_params) => {
-          return await getDeptList();
+const [Grid, gridApi] =
+  useVbenVxeGrid<SystemOrganizationUnitApi.OrganizationUnitTreeDto>({
+    gridEvents: {},
+    gridOptions: {
+      columns: useColumns(onActionClick),
+      height: 'auto',
+      keepSource: true,
+      pagerConfig: {
+        enabled: false,
+      },
+      proxyConfig: {
+        ajax: {
+          query: async () => {
+            return await getOrganizationUnitTree();
+          },
         },
       },
+      toolbarConfig: {
+        custom: true,
+        export: false,
+        refresh: true,
+        zoom: true,
+      },
+      treeConfig: {
+        parentField: 'parentId',
+        rowField: 'id',
+        transform: false,
+      },
     },
-    toolbarConfig: {
-      custom: true,
-      export: false,
-      refresh: true,
-      zoom: true,
-    },
-    treeConfig: {
-      parentField: 'pid',
-      rowField: 'id',
-      transform: false,
-    },
-  } as VxeTableGridOptions,
-});
+  });
 
 /**
  * 刷新表格
@@ -131,7 +132,7 @@ function refreshGrid() {
 <template>
   <Page auto-content-height>
     <FormModal @success="refreshGrid" />
-    <Grid table-title="部门列表">
+    <Grid :table-title="$t('system.dept.list')">
       <template #toolbar-tools>
         <Button type="primary" @click="onCreate">
           <Plus class="size-5" />

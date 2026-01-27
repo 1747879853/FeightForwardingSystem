@@ -499,6 +499,7 @@ export type ComponentType =
   | 'DatePicker'
   | 'DefaultButton'
   | 'Divider'
+  | 'FileUploadInput'
   | 'IconPicker'
   | 'Input'
   | 'InputNumber'
@@ -557,6 +558,9 @@ async function initComponentAdapter() {
       return h(Button, { ...props, attrs, type: 'default' }, slots);
     },
     Divider,
+    FileUploadInput: defineAsyncComponent(
+      () => import('./file-upload/file-upload-input.vue'),
+    ),
     IconPicker: withDefaultPlaceholder(IconPicker, 'select', {
       iconSlot: 'addonAfter',
       inputComponent: Input,
