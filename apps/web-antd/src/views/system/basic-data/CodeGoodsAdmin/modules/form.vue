@@ -1,74 +1,87 @@
 <script lang="ts" setup>
-import type { CodeServiceAdminApi } from '#/api/system/base-data/code-service-admin';
+import type { CodeGoodsAdminApi } from '#/api/system/base-data/code-goods-admin';
 
 import { computed, ref } from 'vue';
 
-import { useVbenModal } from '@vben/common-ui';
+import { useVbenDrawer } from '@vben/common-ui';
 
 import { message } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
 import {
-  addCodeService,
-  editCodeService,
-  getCodeServiceDetail,
-} from '#/api/system/base-data/code-service-admin';
+  addCodeGoods,
+  editCodeGoods,
+  getCodeGoodsDetail,
+} from '#/api/system/base-data/code-goods-admin';
 import { $t } from '#/locales';
 
 import { useFormSchema } from '../data';
 
 const emit = defineEmits<{ success: [] }>();
-const formData = ref<CodeServiceAdminApi.CodeServiceDto>();
+const formData = ref<CodeGoodsAdminApi.CodeGoodsDto>();
 const getTitle = computed(() => {
   return formData.value?.id
-    ? $t('ui.actionTitle.edit', [$t('system.basicData.codeService.name')])
-    : $t('ui.actionTitle.create', [$t('system.basicData.codeService.name')]);
+    ? $t('ui.actionTitle.edit', [$t('system.basicData.codeGoods.name')])
+    : $t('ui.actionTitle.create', [$t('system.basicData.codeGoods.name')]);
 });
 
 const [Form, formApi] = useVbenForm({
   layout: 'vertical',
   schema: useFormSchema(),
   showDefaultActions: false,
+  wrapperClass: 'grid-cols-2',
 });
 
-const [Modal, modalApi] = useVbenModal({
+const [Drawer, drawerApi] = useVbenDrawer({
   async onConfirm() {
     const { valid } = await formApi.validate();
     if (!valid) {
       return;
     }
 
-    modalApi.lock();
+    drawerApi.lock();
     const values = await formApi.getValues();
 
     try {
       if (formData.value?.id) {
         // 编辑模式
-        await editCodeService({
+        await editCodeGoods({
           id: formData.value.id,
-          cnName: values.cnName,
+          code: values.code,
+          name: values.name,
+          goodNo: values.goodNo,
           enName: values.enName,
-          ediCode: values.ediCode,
+          description: values.description,
+          hsCode: values.hsCode,
+          ruleUnit: values.ruleUnit,
+          ruleUnit1: values.ruleUnit1,
+          ruleUnit2: values.ruleUnit2,
           enable: values.enable,
           sortId: values.sortId,
           remark: values.remark,
         });
       } else {
         // 新增模式
-        await addCodeService({
-          cnName: values.cnName,
+        await addCodeGoods({
+          code: values.code,
+          name: values.name,
+          goodNo: values.goodNo,
           enName: values.enName,
-          ediCode: values.ediCode,
+          description: values.description,
+          hsCode: values.hsCode,
+          ruleUnit: values.ruleUnit,
+          ruleUnit1: values.ruleUnit1,
+          ruleUnit2: values.ruleUnit2,
           enable: values.enable,
           sortId: values.sortId,
           remark: values.remark,
         });
       }
       message.success($t('ui.actionMessage.operationSuccess'));
-      modalApi.close();
+      drawerApi.close();
       emit('success');
     } finally {
-      modalApi.lock(false);
+      drawerApi.lock(false);
     }
   },
   async onOpenChange(isOpen) {
@@ -76,23 +89,29 @@ const [Modal, modalApi] = useVbenModal({
       return;
     }
 
-    const data = modalApi.getData<{ id?: number }>();
+    const data = drawerApi.getData<{ id?: number }>();
     if (data?.id) {
       // 编辑模式 - 加载详情
-      modalApi.lock();
+      drawerApi.lock();
       try {
-        const detail = await getCodeServiceDetail(data.id);
+        const detail = await getCodeGoodsDetail(data.id);
         formData.value = detail;
         formApi.setValues({
-          cnName: detail.cnName,
+          code: detail.code,
+          name: detail.name,
+          goodNo: detail.goodNo,
           enName: detail.enName,
-          ediCode: detail.ediCode,
+          description: detail.description,
+          hsCode: detail.hsCode,
+          ruleUnit: detail.ruleUnit,
+          ruleUnit1: detail.ruleUnit1,
+          ruleUnit2: detail.ruleUnit2,
           enable: detail.enable,
           sortId: detail.sortId,
           remark: detail.remark,
         });
       } finally {
-        modalApi.lock(false);
+        drawerApi.lock(false);
       }
     } else {
       // 新增模式
@@ -104,7 +123,7 @@ const [Modal, modalApi] = useVbenModal({
 </script>
 
 <template>
-  <Modal :title="getTitle">
+  <Drawer :title="getTitle">
     <Form class="mx-4" />
-  </Modal>
+  </Drawer>
 </template>

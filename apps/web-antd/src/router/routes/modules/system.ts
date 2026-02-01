@@ -95,6 +95,46 @@ const routes: RouteRecordRaw[] = [
             component: () =>
               import('#/views/system/basic-data/CodeServiceAdmin/list.vue'),
           },
+          {
+            path: '/system/basic-data/code-goods',
+            name: 'SystemBasicDataCodeGoods',
+            meta: {
+              icon: 'mdi:package-variant',
+              title: $t('system.basicData.codeGoods.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/CodeGoodsAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/code-package',
+            name: 'SystemBasicDataCodePackage',
+            meta: {
+              icon: 'mdi:cube-outline',
+              title: $t('system.basicData.codePackage.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/CodePackageAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/code-issue-type',
+            name: 'SystemBasicDataCodeIssueType',
+            meta: {
+              icon: 'mdi:file-sign',
+              title: $t('system.basicData.codeIssueType.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/CodeIssueTypeAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/code-source',
+            name: 'SystemBasicDataCodeSource',
+            meta: {
+              icon: 'mdi:source-branch',
+              title: $t('system.basicData.codeSource.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/CodeSourceAdmin/list.vue'),
+          },
         ],
       },
     ],

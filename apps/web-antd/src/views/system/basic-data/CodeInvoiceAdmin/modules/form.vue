@@ -3,9 +3,9 @@ import type { CodeInvoiceAdminApi } from '#/api/system/base-data/code-invoice-ad
 
 import { computed, ref } from 'vue';
 
-import { useVbenModal } from '@vben/common-ui';
+import { useVbenDrawer } from '@vben/common-ui';
 
-import { Button, message } from 'ant-design-vue';
+import { message } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
 import {
@@ -32,21 +32,14 @@ const [Form, formApi] = useVbenForm({
   wrapperClass: 'grid-cols-2',
 });
 
-const handleReset = () => {
-  formApi.resetForm();
-  if (formData.value?.id) {
-    formApi.setValues(formData.value);
-  }
-};
-
-const [Modal, modalApi] = useVbenModal({
+const [Drawer, drawerApi] = useVbenDrawer({
   async onConfirm() {
     const { valid } = await formApi.validate();
     if (!valid) {
       return;
     }
 
-    modalApi.lock();
+    drawerApi.lock();
     const values = await formApi.getValues();
 
     try {
@@ -95,10 +88,10 @@ const [Modal, modalApi] = useVbenModal({
         });
       }
       message.success($t('ui.actionMessage.operationSuccess'));
-      modalApi.close();
+      drawerApi.close();
       emit('success');
     } finally {
-      modalApi.lock(false);
+      drawerApi.lock(false);
     }
   },
   async onOpenChange(isOpen) {
@@ -106,10 +99,10 @@ const [Modal, modalApi] = useVbenModal({
       return;
     }
 
-    const data = modalApi.getData<{ id?: number }>();
+    const data = drawerApi.getData<{ id?: number }>();
     if (data?.id) {
       // 编辑模式 - 加载详情
-      modalApi.lock();
+      drawerApi.lock();
       try {
         const detail = await getCodeInvoiceDetail(data.id);
         formData.value = detail;
@@ -133,7 +126,7 @@ const [Modal, modalApi] = useVbenModal({
           remark: detail.remark,
         });
       } finally {
-        modalApi.lock(false);
+        drawerApi.lock(false);
       }
     } else {
       // 新增模式
@@ -145,14 +138,7 @@ const [Modal, modalApi] = useVbenModal({
 </script>
 
 <template>
-  <Modal :title="getTitle">
+  <Drawer :title="getTitle">
     <Form class="mx-4" />
-    <template #prepend-footer>
-      <div class="flex-auto">
-        <Button type="primary" danger @click="handleReset">
-          {{ $t('common.reset') }}
-        </Button>
-      </div>
-    </template>
-  </Modal>
+  </Drawer>
 </template>

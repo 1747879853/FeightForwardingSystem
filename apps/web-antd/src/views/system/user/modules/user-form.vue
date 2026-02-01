@@ -3,7 +3,7 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { computed, nextTick, ref } from 'vue';
 
-import { useVbenDrawer } from '@vben/common-ui';
+import { useVbenModal } from '@vben/common-ui';
 import { message } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
@@ -29,7 +29,7 @@ const [Form, formApi] = useVbenForm({
 
 const id = ref<number>();
 
-const [Drawer, drawerApi] = useVbenDrawer({
+const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     const { valid } = await formApi.validate();
     if (!valid) return;
@@ -57,21 +57,21 @@ const [Drawer, drawerApi] = useVbenDrawer({
       submitData.id = id.value;
     }
 
-    drawerApi.lock();
+    modalApi.lock();
     createOrUpdateUser(submitData)
       .then(() => {
         message.success($t('ui.actionMessage.operationSuccess'));
         emits('success');
-        drawerApi.close();
+        modalApi.close();
       })
       .catch(() => {
-        drawerApi.unlock();
+        modalApi.unlock();
       });
   },
 
   async onOpenChange(isOpen) {
     if (isOpen) {
-      const data = drawerApi.getData<
+      const data = modalApi.getData<
         SystemUserAdminApi.SystemUser & { focusRoles?: boolean }
       >();
       formApi.resetForm();
@@ -124,7 +124,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
   },
 });
 
-const getDrawerTitle = computed(() => {
+const getModalTitle = computed(() => {
   return formData.value?.id
     ? $t('common.edit') + $t('system.user.name')
     : $t('common.create') + $t('system.user.name');
@@ -132,7 +132,7 @@ const getDrawerTitle = computed(() => {
 </script>
 
 <template>
-  <Drawer :title="getDrawerTitle">
-    <Form />
-  </Drawer>
+  <Modal :title="getModalTitle">
+    <Form class="mx-4" />
+  </Modal>
 </template>

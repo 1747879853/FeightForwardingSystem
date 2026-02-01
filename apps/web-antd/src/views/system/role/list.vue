@@ -7,7 +7,7 @@ import type { SystemRoleApi } from '#/api';
 
 import { useRouter } from 'vue-router';
 
-import { Page, useVbenDrawer } from '@vben/common-ui';
+import { Page, useVbenModal } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
 import { Button, message, Modal } from 'ant-design-vue';
@@ -21,7 +21,7 @@ import Form from './modules/form.vue';
 
 const router = useRouter();
 
-const [FormDrawer, formDrawerApi] = useVbenDrawer({
+const [FormModal, formModalApi] = useVbenModal({
   connectedComponent: Form,
   destroyOnClose: true,
 });
@@ -128,7 +128,7 @@ function confirm(content: string, title: string) {
 }
 
 function onEdit(row: SystemRoleApi.SystemRole) {
-  formDrawerApi.setData(row).open();
+  formModalApi.setData(row).open();
 }
 
 /**
@@ -170,12 +170,12 @@ function onRefresh() {
 }
 
 function onCreate() {
-  formDrawerApi.setData({}).open();
+  formModalApi.setData({}).open();
 }
 </script>
 <template>
   <Page auto-content-height>
-    <FormDrawer @success="onRefresh" />
+    <FormModal @success="onRefresh" />
     <Grid :table-title="$t('system.role.list')">
       <template #toolbar-tools>
         <Button type="primary" @click="onCreate">

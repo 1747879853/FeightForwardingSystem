@@ -4,7 +4,7 @@ import type { SystemUserAdminApi } from '#/api';
 
 import { useRouter } from 'vue-router';
 
-import { Page, useVbenDrawer, useVbenModal } from '@vben/common-ui';
+import { Page, useVbenModal } from '@vben/common-ui';
 import { IconifyIcon, Plus } from '@vben/icons';
 
 import { Button, message, Modal } from 'ant-design-vue';
@@ -26,8 +26,8 @@ import RoleAssignModal from './modules/role-assign-modal.vue';
 
 const router = useRouter();
 
-// 表单抽屉
-const [FormDrawer, formDrawerApi] = useVbenDrawer({
+// 表单弹窗
+const [FormModal, formModalApi] = useVbenModal({
   connectedComponent: Form,
   destroyOnClose: true,
 });
@@ -174,14 +174,14 @@ function confirm(content: string, title: string) {
  * 新增用户
  */
 function onCreate() {
-  formDrawerApi.setData({}).open();
+  formModalApi.setData({}).open();
 }
 
 /**
  * 编辑用户
  */
 function onEdit(row: SystemUserAdminApi.SystemUser) {
-  formDrawerApi.setData(row).open();
+  formModalApi.setData(row).open();
 }
 
 /**
@@ -312,7 +312,7 @@ function onRefresh() {
 
 <template>
   <Page auto-content-height>
-    <FormDrawer @success="onRefresh" />
+    <FormModal @success="onRefresh" />
     <PasswordModalComponent @success="onRefresh" />
     <ImportModalComponent @success="onRefresh" />
     <RoleAssignModalComponent @success="onRefresh" />

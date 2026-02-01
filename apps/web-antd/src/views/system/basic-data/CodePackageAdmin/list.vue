@@ -1,46 +1,46 @@
 <script lang="ts" setup>
 import type { OnActionClickParams } from '#/adapter/vxe-table';
-import type { CodeInvoiceAdminApi } from '#/api/system/base-data/code-invoice-admin';
+import type { CodePackageAdminApi } from '#/api/system/base-data/code-package-admin';
 
-import { Page, useVbenDrawer } from '@vben/common-ui';
+import { Page, useVbenModal } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
 import { Button, message } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  deleteCodeInvoice,
-  getCodeInvoicePagedList,
-} from '#/api/system/base-data/code-invoice-admin';
+  deleteCodePackage,
+  getCodePackagePagedList,
+} from '#/api/system/base-data/code-package-admin';
 import { $t } from '#/locales';
 
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
 
-const [FormDrawer, formDrawerApi] = useVbenDrawer({
+const [FormModal, formModalApi] = useVbenModal({
   connectedComponent: Form,
   destroyOnClose: true,
 });
 
 const handleCreate = () => {
-  formDrawerApi.setData(null).open();
+  formModalApi.setData(null).open();
 };
 
-const handleEdit = (row: CodeInvoiceAdminApi.CodeInvoiceDto) => {
-  formDrawerApi.setData({ id: row.id }).open();
+const handleEdit = (row: CodePackageAdminApi.CodePackageDto) => {
+  formModalApi.setData({ id: row.id }).open();
 };
 
-const handleDelete = async (row: CodeInvoiceAdminApi.CodeInvoiceDto) => {
+const handleDelete = async (row: CodePackageAdminApi.CodePackageDto) => {
   const hideLoading = message.loading({
-    content: $t('ui.actionMessage.deleting', [row.name || row.code]),
+    content: $t('ui.actionMessage.deleting', [row.name]),
     duration: 0,
     key: 'action_process_msg',
   });
 
   try {
-    await deleteCodeInvoice(row.id);
+    await deleteCodePackage(row.id);
     message.success({
-      content: $t('ui.actionMessage.deleteSuccess', [row.name || row.code]),
+      content: $t('ui.actionMessage.deleteSuccess', [row.name]),
       key: 'action_process_msg',
     });
     handleRefresh();
@@ -52,7 +52,7 @@ const handleDelete = async (row: CodeInvoiceAdminApi.CodeInvoiceDto) => {
 const handleActionClick = ({
   code,
   row,
-}: OnActionClickParams<CodeInvoiceAdminApi.CodeInvoiceDto>) => {
+}: OnActionClickParams<CodePackageAdminApi.CodePackageDto>) => {
   switch (code) {
     case 'delete': {
       handleDelete(row);
@@ -65,7 +65,7 @@ const handleActionClick = ({
   }
 };
 
-const [Grid, gridApi] = useVbenVxeGrid<CodeInvoiceAdminApi.CodeInvoiceDto>({
+const [Grid, gridApi] = useVbenVxeGrid<CodePackageAdminApi.CodePackageDto>({
   formOptions: {
     schema: useGridFormSchema(),
     submitOnChange: true,
@@ -84,7 +84,7 @@ const [Grid, gridApi] = useVbenVxeGrid<CodeInvoiceAdminApi.CodeInvoiceDto>({
           { page }: { page: { currentPage: number; pageSize: number } },
           formValues: Record<string, any>,
         ) => {
-          return await getCodeInvoicePagedList({
+          return await getCodePackagePagedList({
             PageIndex: page.currentPage,
             PageSize: page.pageSize,
             ...formValues,
@@ -108,14 +108,14 @@ const handleRefresh = () => {
 
 <template>
   <Page auto-content-height>
-    <FormDrawer @success="handleRefresh" />
-    <Grid :table-title="$t('system.basicData.codeInvoice.list')">
+    <FormModal @success="handleRefresh" />
+    <Grid :table-title="$t('system.basicData.codePackage.list')">
       <template #toolbar-tools>
         <Button type="primary" @click="handleCreate">
           <Plus class="size-5" />
           {{
             $t('ui.actionTitle.create', [
-              $t('system.basicData.codeInvoice.name'),
+              $t('system.basicData.codePackage.name'),
             ])
           }}
         </Button>

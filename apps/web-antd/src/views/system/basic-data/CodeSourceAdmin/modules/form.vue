@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
+import type { CodeSourceAdminApi } from '#/api/system/base-data/code-source-admin';
 
 import { computed, ref } from 'vue';
 
@@ -9,20 +9,20 @@ import { message } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
 import {
-  addCarrier,
-  editCarrier,
-  getCarrierDetail,
-} from '#/api/system/base-data/carrier-admin';
+  addCodeSource,
+  editCodeSource,
+  getCodeSourceDetail,
+} from '#/api/system/base-data/code-source-admin';
 import { $t } from '#/locales';
 
 import { useFormSchema } from '../data';
 
 const emit = defineEmits<{ success: [] }>();
-const formData = ref<CarrierAdminApi.CarrierDto>();
+const formData = ref<CodeSourceAdminApi.CodeSourceDto>();
 const getTitle = computed(() => {
   return formData.value?.id
-    ? $t('ui.actionTitle.edit', [$t('system.basicData.carrier.name')])
-    : $t('ui.actionTitle.create', [$t('system.basicData.carrier.name')]);
+    ? $t('ui.actionTitle.edit', [$t('system.basicData.codeSource.name')])
+    : $t('ui.actionTitle.create', [$t('system.basicData.codeSource.name')]);
 });
 
 const [Form, formApi] = useVbenForm({
@@ -44,25 +44,23 @@ const [Modal, modalApi] = useVbenModal({
     try {
       if (formData.value?.id) {
         // 编辑模式
-        await editCarrier({
+        await editCodeSource({
           id: formData.value.id,
-          cnName: values.cnName,
-          cnShortName: values.cnShortName,
-          enName: values.enName,
           code: values.code,
-          otherCode: values.otherCode,
-          ediCode: values.ediCode,
+          cnName: values.cnName,
+          enName: values.enName,
+          enable: values.enable,
+          sortId: values.sortId,
           remark: values.remark,
         });
       } else {
         // 新增模式
-        await addCarrier({
-          cnName: values.cnName,
-          cnShortName: values.cnShortName,
-          enName: values.enName,
+        await addCodeSource({
           code: values.code,
-          otherCode: values.otherCode,
-          ediCode: values.ediCode,
+          cnName: values.cnName,
+          enName: values.enName,
+          enable: values.enable,
+          sortId: values.sortId,
           remark: values.remark,
         });
       }
@@ -83,15 +81,14 @@ const [Modal, modalApi] = useVbenModal({
       // 编辑模式 - 加载详情
       modalApi.lock();
       try {
-        const detail = await getCarrierDetail(data.id);
+        const detail = await getCodeSourceDetail(data.id);
         formData.value = detail;
         formApi.setValues({
-          cnName: detail.cnName,
-          cnShortName: detail.cnShortName,
-          enName: detail.enName,
           code: detail.code,
-          otherCode: detail.otherCode,
-          ediCode: detail.ediCode,
+          cnName: detail.cnName,
+          enName: detail.enName,
+          enable: detail.enable,
+          sortId: detail.sortId,
           remark: detail.remark,
         });
       } finally {

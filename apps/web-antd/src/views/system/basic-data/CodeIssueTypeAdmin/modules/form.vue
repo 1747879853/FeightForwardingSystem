@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
+import type { CodeIssueTypeAdminApi } from '#/api/system/base-data/code-issue-type-admin';
 
 import { computed, ref } from 'vue';
 
@@ -9,20 +9,20 @@ import { message } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
 import {
-  addCarrier,
-  editCarrier,
-  getCarrierDetail,
-} from '#/api/system/base-data/carrier-admin';
+  addCodeIssueType,
+  editCodeIssueType,
+  getCodeIssueTypeDetail,
+} from '#/api/system/base-data/code-issue-type-admin';
 import { $t } from '#/locales';
 
 import { useFormSchema } from '../data';
 
 const emit = defineEmits<{ success: [] }>();
-const formData = ref<CarrierAdminApi.CarrierDto>();
+const formData = ref<CodeIssueTypeAdminApi.CodeIssueTypeDto>();
 const getTitle = computed(() => {
   return formData.value?.id
-    ? $t('ui.actionTitle.edit', [$t('system.basicData.carrier.name')])
-    : $t('ui.actionTitle.create', [$t('system.basicData.carrier.name')]);
+    ? $t('ui.actionTitle.edit', [$t('system.basicData.codeIssueType.name')])
+    : $t('ui.actionTitle.create', [$t('system.basicData.codeIssueType.name')]);
 });
 
 const [Form, formApi] = useVbenForm({
@@ -44,25 +44,27 @@ const [Modal, modalApi] = useVbenModal({
     try {
       if (formData.value?.id) {
         // 编辑模式
-        await editCarrier({
+        await editCodeIssueType({
           id: formData.value.id,
-          cnName: values.cnName,
-          cnShortName: values.cnShortName,
+          billType: values.billType,
           enName: values.enName,
-          code: values.code,
-          otherCode: values.otherCode,
+          noBill: values.noBill,
+          copyNoBill: values.copyNoBill,
           ediCode: values.ediCode,
+          enable: values.enable,
+          sortId: values.sortId,
           remark: values.remark,
         });
       } else {
         // 新增模式
-        await addCarrier({
-          cnName: values.cnName,
-          cnShortName: values.cnShortName,
+        await addCodeIssueType({
+          billType: values.billType,
           enName: values.enName,
-          code: values.code,
-          otherCode: values.otherCode,
+          noBill: values.noBill,
+          copyNoBill: values.copyNoBill,
           ediCode: values.ediCode,
+          enable: values.enable,
+          sortId: values.sortId,
           remark: values.remark,
         });
       }
@@ -83,15 +85,16 @@ const [Modal, modalApi] = useVbenModal({
       // 编辑模式 - 加载详情
       modalApi.lock();
       try {
-        const detail = await getCarrierDetail(data.id);
+        const detail = await getCodeIssueTypeDetail(data.id);
         formData.value = detail;
         formApi.setValues({
-          cnName: detail.cnName,
-          cnShortName: detail.cnShortName,
+          billType: detail.billType,
           enName: detail.enName,
-          code: detail.code,
-          otherCode: detail.otherCode,
+          noBill: detail.noBill,
+          copyNoBill: detail.copyNoBill,
           ediCode: detail.ediCode,
+          enable: detail.enable,
+          sortId: detail.sortId,
           remark: detail.remark,
         });
       } finally {
