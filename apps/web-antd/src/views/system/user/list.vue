@@ -122,6 +122,9 @@ const [Grid, gridApi] = useVbenVxeGrid<SystemUserAdminApi.SystemUser>({
       highlight: true,
       reserve: true,
     },
+    pagerConfig: {
+      enabled: true,
+    },
     proxyConfig: {
       ajax: {
         query: async (

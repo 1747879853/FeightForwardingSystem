@@ -1,5 +1,67 @@
 {
   "title": "System Management",
+  "basicData": {
+    "title": "Basic Data",
+    "carrier": {
+      "title": "Carrier Management",
+      "list": "Carrier List",
+      "name": "Carrier",
+      "cnName": "Chinese Name",
+      "cnShortName": "Chinese Short Name",
+      "enName": "English Name",
+      "code": "Code",
+      "otherCode": "Alias Code",
+      "countryId": "Country",
+      "ediCode": "EDI Code",
+      "remark": "Remark",
+      "keyword": "Keyword",
+      "creationTime": "Creation Time"
+    },
+    "codeInvoice": {
+      "title": "Invoice Product Code",
+      "list": "Invoice Product Code List",
+      "name": "Invoice Product Code",
+      "code": "Code",
+      "codeName": "Name",
+      "taxCategory": "Tax Category",
+      "taxRate": "Tax Rate",
+      "zeroTaxRateEnum": "Zero Tax Rate Type",
+      "zeroTaxRateEnumOptions": {
+        "nonZero": "Non-Zero Rate",
+        "exemption": "Exemption",
+        "notLevied": "Not Levied",
+        "ordinary": "Ordinary Zero Rate",
+        "exportTaxRebate": "Export Tax Rebate"
+      },
+      "taxClassificationCode": "Tax Classification Code",
+      "taxClassificationName": "Tax Classification Name",
+      "isIncludingTax": "Including Tax",
+      "hasPreferentialPolicy": "Preferential Policy",
+      "preferentialPolicyDescription": "Policy Description",
+      "isDefault": "Default Product",
+      "defaultCurrency": "Default Currency",
+      "specification": "Specification",
+      "unit": "Unit",
+      "enable": "Status",
+      "sortId": "Sort Order",
+      "remark": "Remark",
+      "keyword": "Keyword",
+      "creationTime": "Creation Time"
+    },
+    "codeService": {
+      "title": "Service Terms",
+      "list": "Service Terms List",
+      "name": "Service Term",
+      "cnName": "Chinese Name",
+      "enName": "English Name",
+      "ediCode": "EDI Code",
+      "enable": "Status",
+      "sortId": "Sort Order",
+      "remark": "Remark",
+      "keyword": "Keyword",
+      "creationTime": "Creation Time"
+    }
+  },
   "user": {
     "title": "User Management",
     "list": "User List",

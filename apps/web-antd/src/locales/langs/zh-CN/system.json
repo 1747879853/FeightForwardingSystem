@@ -1,5 +1,68 @@
 {
   "title": "系统管理",
+  "basicData": {
+    "title": "基础数据",
+    "operation": "操作",
+    "carrier": {
+      "title": "船公司管理",
+      "list": "船公司列表",
+      "name": "船公司",
+      "cnName": "中文名称",
+      "cnShortName": "中文简称",
+      "enName": "英文名称",
+      "code": "英文简称",
+      "otherCode": "代码别名",
+      "countryId": "国家",
+      "ediCode": "EDI代码",
+      "remark": "备注",
+      "keyword": "关键字",
+      "creationTime": "创建时间"
+    },
+    "codeInvoice": {
+      "title": "发票商品编码",
+      "list": "发票商品编码列表",
+      "name": "发票商品编码",
+      "code": "编码",
+      "codeName": "名称",
+      "taxCategory": "税目",
+      "taxRate": "税率",
+      "zeroTaxRateEnum": "零税率标识",
+      "zeroTaxRateEnumOptions": {
+        "nonZero": "非零税率",
+        "exemption": "免税",
+        "notLevied": "不征税",
+        "ordinary": "普通零税率",
+        "exportTaxRebate": "出口退税"
+      },
+      "taxClassificationCode": "税收分类编码",
+      "taxClassificationName": "税收分类名称",
+      "isIncludingTax": "是否含税",
+      "hasPreferentialPolicy": "优惠政策",
+      "preferentialPolicyDescription": "优惠政策说明",
+      "isDefault": "默认商品名",
+      "defaultCurrency": "默认币别",
+      "specification": "规格型号",
+      "unit": "单位",
+      "enable": "启用状态",
+      "sortId": "排序",
+      "remark": "备注",
+      "keyword": "关键字",
+      "creationTime": "创建时间"
+    },
+    "codeService": {
+      "title": "运输条款",
+      "list": "运输条款列表",
+      "name": "运输条款",
+      "cnName": "中文名称",
+      "enName": "英文名称",
+      "ediCode": "EDI代码",
+      "enable": "启用状态",
+      "sortId": "排序",
+      "remark": "备注",
+      "keyword": "关键字",
+      "creationTime": "创建时间"
+    }
+  },
   "user": {
     "title": "用户管理",
     "list": "用户列表",

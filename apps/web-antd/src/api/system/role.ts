@@ -91,7 +91,7 @@ async function getRoleList(params: Recordable<any>) {
   // 转换为列表格式返回
   return {
     items: response.items || [],
-    total: response.totalCount || 0,
+    totalCount: response.totalCount || 0,
   };
 }
 

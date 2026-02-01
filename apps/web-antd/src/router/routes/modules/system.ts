@@ -57,6 +57,46 @@ const routes: RouteRecordRaw[] = [
         },
         component: () => import('#/views/system/dept/list.vue'),
       },
+      {
+        path: '/system/basic-data',
+        name: 'SystemBasicData',
+        meta: {
+          icon: 'mdi:database-cog-outline',
+          title: $t('system.basicData.title'),
+        },
+        children: [
+          {
+            path: '/system/basic-data/carrier',
+            name: 'SystemBasicDataCarrier',
+            meta: {
+              icon: 'mdi:ferry',
+              title: $t('system.basicData.carrier.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/CarrierAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/code-invoice',
+            name: 'SystemBasicDataCodeInvoice',
+            meta: {
+              icon: 'mdi:file-document-outline',
+              title: $t('system.basicData.codeInvoice.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/CodeInvoiceAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/code-service',
+            name: 'SystemBasicDataCodeService',
+            meta: {
+              icon: 'mdi:truck-delivery-outline',
+              title: $t('system.basicData.codeService.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/CodeServiceAdmin/list.vue'),
+          },
+        ],
+      },
     ],
   },
 ];

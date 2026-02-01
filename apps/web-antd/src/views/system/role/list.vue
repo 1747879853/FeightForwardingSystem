@@ -76,6 +76,9 @@ const [Grid, gridApi] = useVbenVxeGrid<SystemRoleApi.SystemRole>({
     columns: useColumns(onActionClick, onStatusChange),
     height: 'auto',
     keepSource: true,
+    pagerConfig: {
+      enabled: true,
+    },
     proxyConfig: {
       ajax: {
         query: async (

@@ -1,3 +1,4 @@
+export * from './base-data';
 export * from './dept';
 export * from './menu';
 export * from './organization-unit';

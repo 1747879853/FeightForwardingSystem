@@ -329,7 +329,7 @@ async function getDataPermissionList(params: Recordable<any>) {
   });
   return {
     items: response.items || [],
-    total: response.totalCount || 0,
+    totalCount: response.totalCount || 0,
   };
 }
 
@@ -383,7 +383,7 @@ async function getDataPermissionItemList(params: Recordable<any>) {
   });
   return {
     items: response.items || [],
-    total: response.totalCount || 0,
+    totalCount: response.totalCount || 0,
   };
 }
 
@@ -430,7 +430,7 @@ async function getTablePermissionList(params: Recordable<any>) {
   });
   return {
     items: response.items || [],
-    total: response.totalCount || 0,
+    totalCount: response.totalCount || 0,
   };
 }
 
@@ -484,7 +484,7 @@ async function getTablePermissionConditionList(params: Recordable<any>) {
   });
   return {
     items: response.items || [],
-    total: response.totalCount || 0,
+    totalCount: response.totalCount || 0,
   };
 }
 
@@ -531,7 +531,7 @@ async function getPropPermissionList(params: Recordable<any>) {
   });
   return {
     items: response.items || [],
-    total: response.totalCount || 0,
+    totalCount: response.totalCount || 0,
   };
 }
 

@@ -170,7 +170,7 @@ async function getUserPagedList(params: Recordable<any>) {
 
   return {
     items: response.items || [],
-    total: response.totalCount || 0,
+    totalCount: response.totalCount || 0,
   };
 }
 

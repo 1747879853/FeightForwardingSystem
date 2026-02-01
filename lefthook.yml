@@ -49,21 +49,27 @@ pre-commit:
     lint-md:
       run: pnpm prettier --cache --ignore-unknown --write {staged_files}
       glob: '*.md'
+      stage_fixed: true
     lint-vue:
       run: pnpm prettier --write {staged_files} && pnpm stylelint --fix --allow-empty-input {staged_files}
       glob: '*.vue'
+      stage_fixed: true
     lint-js:
       run: pnpm prettier --cache --ignore-unknown --write {staged_files}
       glob: '*.{js,jsx,ts,tsx}'
+      stage_fixed: true
     lint-style:
       run: pnpm prettier --cache --ignore-unknown --write {staged_files} && pnpm stylelint --fix --allow-empty-input {staged_files}
       glob: '*.{scss,less,styl,html,vue,css}'
+      stage_fixed: true
     lint-package:
       run: pnpm prettier --cache --write {staged_files}
       glob: 'package.json'
+      stage_fixed: true
     lint-json:
       run: pnpm prettier --cache --write --parser json {staged_files}
       glob: '{!(package)*.json,*.code-snippets,.!(browserslist)*rc}'
+      stage_fixed: true
 
 post-merge:
   commands:
