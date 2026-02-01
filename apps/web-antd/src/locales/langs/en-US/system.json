@@ -122,6 +122,78 @@
       "remark": "Remark",
       "keyword": "Keyword",
       "creationTime": "Creation Time"
+    },
+    "codeFrt": {
+      "title": "Payment Terms",
+      "list": "Payment Terms List",
+      "name": "Payment Term",
+      "cnName": "Chinese Name",
+      "enName": "English Name",
+      "ediCode": "EDI Code",
+      "airShowName": "Air Show Name",
+      "enable": "Status",
+      "sortId": "Sort Order",
+      "remark": "Remark",
+      "keyword": "Keyword",
+      "creationTime": "Creation Time"
+    },
+    "currency": {
+      "title": "Currency Management",
+      "list": "Currency List",
+      "name": "Currency",
+      "code": "Currency Code",
+      "cnName": "Chinese Name",
+      "enName": "English Name",
+      "description": "Description",
+      "financeSoftCode": "Finance Soft Code",
+      "defaultRate": "Default Rate",
+      "alias": "Alias",
+      "enable": "Status",
+      "sortId": "Sort Order",
+      "remark": "Remark",
+      "keyword": "Keyword",
+      "creationTime": "Creation Time"
+    },
+    "feeName": {
+      "title": "Fee Name",
+      "list": "Fee Name List",
+      "name": "Fee Name",
+      "code": "Code",
+      "feeName": "Fee Name",
+      "enName": "English Name",
+      "inOutType": "In/Out Type",
+      "inOutTypeOptions": {
+        "out": "Out",
+        "in": "In"
+      },
+      "defaultCurrency": "Default Currency",
+      "currencyEnumOptions": {
+        "rmb": "RMB",
+        "usd": "USD"
+      },
+      "feeTypeStr": "Fee Type",
+      "remark": "Remark",
+      "keyword": "Keyword",
+      "creationTime": "Creation Time"
+    },
+    "exchangeRate": {
+      "title": "Exchange Rate",
+      "list": "Exchange Rate List",
+      "name": "Exchange Rate",
+      "currencyId": "Currency",
+      "drValue": "DR Rate",
+      "crValue": "CR Rate",
+      "customValue": "Customs Rate",
+      "calculateValue": "Calculate Rate",
+      "invoiceValue": "Invoice Rate",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "localCurrency": "Local Currency",
+      "enable": "Status",
+      "sortId": "Sort Order",
+      "remark": "Remark",
+      "keyword": "Keyword",
+      "creationTime": "Creation Time"
     }
   },
   "user": {

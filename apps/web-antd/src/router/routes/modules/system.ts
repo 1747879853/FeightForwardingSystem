@@ -135,6 +135,46 @@ const routes: RouteRecordRaw[] = [
             component: () =>
               import('#/views/system/basic-data/CodeSourceAdmin/list.vue'),
           },
+          {
+            path: '/system/basic-data/code-frt',
+            name: 'SystemBasicDataCodeFrt',
+            meta: {
+              icon: 'mdi:cash-multiple',
+              title: $t('system.basicData.codeFrt.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/CodeFrtAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/currency',
+            name: 'SystemBasicDataCurrency',
+            meta: {
+              icon: 'mdi:currency-usd',
+              title: $t('system.basicData.currency.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/CurrencyAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/fee-name',
+            name: 'SystemBasicDataFeeName',
+            meta: {
+              icon: 'mdi:receipt-text-outline',
+              title: $t('system.basicData.feeName.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/FeeNameAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/exchange-rate',
+            name: 'SystemBasicDataExchangeRate',
+            meta: {
+              icon: 'mdi:chart-line',
+              title: $t('system.basicData.exchangeRate.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/ExchangeRateAdmin/list.vue'),
+          },
         ],
       },
     ],

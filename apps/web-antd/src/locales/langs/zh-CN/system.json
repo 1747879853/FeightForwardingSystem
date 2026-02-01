@@ -122,6 +122,78 @@
       "remark": "备注",
       "keyword": "关键字",
       "creationTime": "创建时间"
+    },
+    "codeFrt": {
+      "title": "付费方式",
+      "list": "付费方式列表",
+      "name": "付费方式",
+      "cnName": "中文名称",
+      "enName": "英文名称",
+      "ediCode": "EDI代码",
+      "airShowName": "空运显示名称",
+      "enable": "启用状态",
+      "sortId": "排序",
+      "remark": "备注",
+      "keyword": "关键字",
+      "creationTime": "创建时间"
+    },
+    "currency": {
+      "title": "币别管理",
+      "list": "币别列表",
+      "name": "币别",
+      "code": "币别代码",
+      "cnName": "中文名称",
+      "enName": "英文名称",
+      "description": "描述",
+      "financeSoftCode": "财务软件代码",
+      "defaultRate": "默认汇率",
+      "alias": "别称",
+      "enable": "启用状态",
+      "sortId": "排序",
+      "remark": "备注",
+      "keyword": "关键字",
+      "creationTime": "创建时间"
+    },
+    "feeName": {
+      "title": "费用名称",
+      "list": "费用名称列表",
+      "name": "费用名称",
+      "code": "代码",
+      "feeName": "费用名称",
+      "enName": "英文名称",
+      "inOutType": "出入类型",
+      "inOutTypeOptions": {
+        "out": "出",
+        "in": "入"
+      },
+      "defaultCurrency": "默认币别",
+      "currencyEnumOptions": {
+        "rmb": "人民币",
+        "usd": "美元"
+      },
+      "feeTypeStr": "费用类别",
+      "remark": "备注",
+      "keyword": "关键字",
+      "creationTime": "创建时间"
+    },
+    "exchangeRate": {
+      "title": "汇率管理",
+      "list": "汇率列表",
+      "name": "汇率",
+      "currencyId": "币别",
+      "drValue": "应收汇率",
+      "crValue": "应付汇率",
+      "customValue": "海关汇率",
+      "calculateValue": "核算汇率",
+      "invoiceValue": "发票汇率",
+      "startDate": "开始日期",
+      "endDate": "结束日期",
+      "localCurrency": "本位币",
+      "enable": "启用状态",
+      "sortId": "排序",
+      "remark": "备注",
+      "keyword": "关键字",
+      "creationTime": "创建时间"
     }
   },
   "user": {

@@ -118,7 +118,7 @@ const userConfig = {
      * type[scope]: [function] description [No more than 108 characters]
      *      ^^^^^
      */
-    'header-max-length': [2, 'always', 108],
+    'header-max-length': [0, 'always', 108],
 
     'scope-enum': [0],
     'subject-case': [0],
