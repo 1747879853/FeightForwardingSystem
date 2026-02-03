@@ -5,6 +5,7 @@ import { preferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { startProgress, stopProgress } from '@vben/utils';
 
+import { getAccessCodesApi } from '#/api';
 import { accessRoutes, coreRouteNames } from '#/router/routes';
 import { useAuthStore } from '#/store';
 
@@ -91,13 +92,21 @@ function setupAccessGuard(router: Router) {
     }
 
     // 生成路由表
-    // 当前登录用户拥有的角色标识列表
+    // 获取用户信息
     const userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
-    const userRoles = userInfo.roles ?? [];
+
+    // 使用 ABP 权限码作为路由权限判断依据
+    // 若 accessCodes 为空（如页面刷新后），则重新拉取
+    let accessCodes = accessStore.accessCodes;
+    if (!accessCodes || accessCodes.length === 0) {
+      accessCodes = await getAccessCodesApi();
+      accessStore.setAccessCodes(accessCodes);
+    }
 
     // 生成菜单和路由
+    // 这里把 roles 参数复用为 ABP 权限码列表，用于 meta.authority 匹配
     const { accessibleMenus, accessibleRoutes } = await generateAccess({
-      roles: userRoles,
+      roles: accessCodes,
       router,
       // 则会在菜单中显示，但是访问会被重定向到403
       routes: accessRoutes,

@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { $t } from '#/locales';
+import { abpPageAuthority } from '#/router/abp-authority';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -8,6 +9,8 @@ const routes: RouteRecordRaw[] = [
       icon: 'ion:settings-outline',
       order: 9997,
       title: $t('system.title'),
+      // 系统管理模块：拥有 Admin 或 Admin.Get 权限即可访问
+      authority: abpPageAuthority('Admin'),
     },
     name: 'System',
     path: '/system',
@@ -18,6 +21,8 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'mdi:account',
           title: $t('system.user.title'),
+          // 用户管理：拥有 Admin.Team.User 或 Admin.Team.User.Get 权限
+          authority: abpPageAuthority('Admin.Team.User'),
         },
         component: () => import('#/views/system/user/list.vue'),
       },
@@ -27,6 +32,8 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'mdi:account-group',
           title: $t('system.role.title'),
+          // 角色管理：拥有 Admin.Team.Role 或 Admin.Team.Role.Get 权限
+          authority: abpPageAuthority('Admin.Team.Role'),
         },
         component: () => import('#/views/system/role/list.vue'),
       },
@@ -36,6 +43,9 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'mdi:shield-key',
           title: $t('system.permission.title'),
+          // 权限管理：拥有 Admin.Permission 或 Admin.Permission.Get 权限
+          // TODO后台还没有分出来权限菜单，暂时用用户权限范围字段代替
+          authority: abpPageAuthority('Admin.UserDataPermission'),
         },
         component: () => import('#/views/system/permission/list.vue'),
       },
@@ -54,6 +64,8 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'charm:organisation',
           title: $t('system.dept.title'),
+          // 部门管理：拥有 Admin.Team.Organization 或 Admin.Team.Organization.Get 权限
+          authority: abpPageAuthority('Admin.Team.Organization'),
         },
         component: () => import('#/views/system/dept/list.vue'),
       },
@@ -63,6 +75,22 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'mdi:database-cog-outline',
           title: $t('system.basicData.title'),
+          // 基础数据模块：后端没有 BasicData 权限，使用子菜单权限组合
+          // 只要拥有任一子菜单权限即可访问父级菜单
+          authority: abpPageAuthority([
+            'Admin.Carrier',
+            'Admin.CodeInvoice',
+            'Admin.CodeService',
+            'Admin.CodeGoods',
+            'Admin.CodePackage',
+            'Admin.CodeIssueType',
+            'Admin.CodeSource',
+            'Admin.CodeFrt',
+            'Admin.Currency',
+            'Admin.FeeName',
+            'Admin.FeeCode',
+            'Admin.ExchangeRate',
+          ]),
         },
         children: [
           {
@@ -71,6 +99,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:ferry',
               title: $t('system.basicData.carrier.title'),
+              authority: abpPageAuthority('Admin.Carrier'),
             },
             component: () =>
               import('#/views/system/basic-data/CarrierAdmin/list.vue'),
@@ -81,6 +110,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:file-document-outline',
               title: $t('system.basicData.codeInvoice.title'),
+              authority: abpPageAuthority('Admin.CodeInvoice'),
             },
             component: () =>
               import('#/views/system/basic-data/CodeInvoiceAdmin/list.vue'),
@@ -91,6 +121,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:truck-delivery-outline',
               title: $t('system.basicData.codeService.title'),
+              authority: abpPageAuthority('Admin.CodeService'),
             },
             component: () =>
               import('#/views/system/basic-data/CodeServiceAdmin/list.vue'),
@@ -101,6 +132,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:package-variant',
               title: $t('system.basicData.codeGoods.title'),
+              authority: abpPageAuthority('Admin.CodeGoods'),
             },
             component: () =>
               import('#/views/system/basic-data/CodeGoodsAdmin/list.vue'),
@@ -111,6 +143,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:cube-outline',
               title: $t('system.basicData.codePackage.title'),
+              authority: abpPageAuthority('Admin.CodePackage'),
             },
             component: () =>
               import('#/views/system/basic-data/CodePackageAdmin/list.vue'),
@@ -121,6 +154,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:file-sign',
               title: $t('system.basicData.codeIssueType.title'),
+              authority: abpPageAuthority('Admin.CodeIssueType'),
             },
             component: () =>
               import('#/views/system/basic-data/CodeIssueTypeAdmin/list.vue'),
@@ -131,6 +165,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:source-branch',
               title: $t('system.basicData.codeSource.title'),
+              authority: abpPageAuthority('Admin.CodeSource'),
             },
             component: () =>
               import('#/views/system/basic-data/CodeSourceAdmin/list.vue'),
@@ -141,6 +176,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:cash-multiple',
               title: $t('system.basicData.codeFrt.title'),
+              authority: abpPageAuthority('Admin.CodeFrt'),
             },
             component: () =>
               import('#/views/system/basic-data/CodeFrtAdmin/list.vue'),
@@ -151,6 +187,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:currency-usd',
               title: $t('system.basicData.currency.title'),
+              authority: abpPageAuthority('Admin.Currency'),
             },
             component: () =>
               import('#/views/system/basic-data/CurrencyAdmin/list.vue'),
@@ -161,6 +198,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:receipt-text-outline',
               title: $t('system.basicData.feeName.title'),
+              authority: abpPageAuthority('Admin.FeeName'),
             },
             component: () =>
               import('#/views/system/basic-data/FeeNameAdmin/list.vue'),
@@ -171,6 +209,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:code-tags',
               title: $t('system.basicData.feeCode.title'),
+              authority: abpPageAuthority('Admin.FeeCode'),
             },
             component: () =>
               import('#/views/system/basic-data/FeeCodeAdmin/list.vue'),
@@ -181,6 +220,7 @@ const routes: RouteRecordRaw[] = [
             meta: {
               icon: 'mdi:chart-line',
               title: $t('system.basicData.exchangeRate.title'),
+              authority: abpPageAuthority('Admin.ExchangeRate'),
             },
             component: () =>
               import('#/views/system/basic-data/ExchangeRateAdmin/list.vue'),

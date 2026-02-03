@@ -15,9 +15,14 @@ import { Button, message, Modal } from 'ant-design-vue';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { deleteRole, getRoleList, updateRole } from '#/api';
 import { $t } from '#/locales';
+import { createAbpPermission } from '#/utils/abp-permission';
 
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
+
+// 创建角色管理的 ABP 权限对象
+// 包含：perm.get, perm.add, perm.edit, perm.delete
+const perm = createAbpPermission('Admin.Team.Role');
 
 const router = useRouter();
 
@@ -178,7 +183,8 @@ function onCreate() {
     <FormModal @success="onRefresh" />
     <Grid :table-title="$t('system.role.list')">
       <template #toolbar-tools>
-        <Button type="primary" @click="onCreate">
+        <!-- 新增按钮：需要 Admin.Team.Role.Add 权限 -->
+        <Button v-access:code="perm.add" type="primary" @click="onCreate">
           <Plus class="size-5" />
           {{ $t('ui.actionTitle.create', [$t('system.role.name')]) }}
         </Button>
