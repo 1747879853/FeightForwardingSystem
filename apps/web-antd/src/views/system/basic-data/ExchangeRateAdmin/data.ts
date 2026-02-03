@@ -26,29 +26,26 @@ export function useGridFormSchema(): VbenFormSchema[] {
 
 /**
  * 获取编辑表单的字段配置
- * @param currencyOptions 币别下拉选项
  */
-export function useFormSchema(
-  currencyOptions: Array<{ label: string; value: number }> = [],
-): VbenFormSchema[] {
+export function useFormSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'Select',
+      component: 'CurrencySelect',
       fieldName: 'currencyId',
       label: $t('system.basicData.exchangeRate.currencyId'),
-      componentProps: {
-        options: currencyOptions,
-        allowClear: true,
-        showSearch: true,
-        filterOption: (input: string, option: { label: string }) =>
-          option.label.toLowerCase().includes(input.toLowerCase()),
-        class: 'w-full',
-      },
-      rules: z.number({
-        required_error: $t('ui.formRules.selectRequired', [
-          $t('system.basicData.exchangeRate.currencyId'),
-        ]),
-      }),
+      defaultValue: undefined,
+      rules: z
+        .number({
+          required_error: $t('ui.formRules.selectRequired', [
+            $t('system.basicData.exchangeRate.currencyId'),
+          ]),
+        })
+        .min(
+          1,
+          $t('ui.formRules.selectRequired', [
+            $t('system.basicData.exchangeRate.currencyId'),
+          ]),
+        ),
     },
     {
       component: 'InputNumber',

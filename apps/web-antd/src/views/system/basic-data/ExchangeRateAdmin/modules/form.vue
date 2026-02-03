@@ -1,14 +1,13 @@
 <script lang="ts" setup>
 import type { ExchangeRateAdminApi } from '#/api/system/base-data/exchange-rate-admin';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
 
 import { message } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
-import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import {
   addExchangeRate,
   editExchangeRate,
@@ -20,7 +19,6 @@ import { useFormSchema } from '../data';
 
 const emit = defineEmits<{ success: [] }>();
 const formData = ref<ExchangeRateAdminApi.ExchangeRateDto>();
-const currencyOptions = ref<Array<{ label: string; value: number }>>([]);
 
 const getTitle = computed(() => {
   return formData.value?.id
@@ -28,36 +26,12 @@ const getTitle = computed(() => {
     : $t('ui.actionTitle.create', [$t('system.basicData.exchangeRate.name')]);
 });
 
-// 加载币别选项
-const loadCurrencyOptions = async () => {
-  try {
-    const res = await getCurrencyPagedList({ PageSize: 1000 });
-    currencyOptions.value = res.items.map((item) => ({
-      label: `${item.code} - ${item.cnName || item.enName || ''}`,
-      value: item.id,
-    }));
-  } catch {
-    currencyOptions.value = [];
-  }
-};
-
-onMounted(() => {
-  loadCurrencyOptions();
-});
-
 const [Form, formApi] = useVbenForm({
   layout: 'vertical',
-  schema: useFormSchema(currencyOptions.value),
+  schema: useFormSchema(),
   showDefaultActions: false,
   wrapperClass: 'grid-cols-2',
 });
-
-// 监听币别选项变化，更新表单schema
-const updateFormSchema = () => {
-  formApi.setState({
-    schema: useFormSchema(currencyOptions.value),
-  });
-};
 
 const [Drawer, drawerApi] = useVbenDrawer({
   async onConfirm() {
@@ -114,12 +88,6 @@ const [Drawer, drawerApi] = useVbenDrawer({
   async onOpenChange(isOpen) {
     if (!isOpen) {
       return;
-    }
-
-    // 确保币别选项已加载
-    if (currencyOptions.value.length === 0) {
-      await loadCurrencyOptions();
-      updateFormSchema();
     }
 
     const data = drawerApi.getData<{ id?: number }>();

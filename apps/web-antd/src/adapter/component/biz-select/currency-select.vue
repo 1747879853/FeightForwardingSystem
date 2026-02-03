@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { SystemUserAdminApi } from '#/api/system/user-admin';
+import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
 
 import { computed, ref, toRef } from 'vue';
 
@@ -8,25 +8,25 @@ import { $t } from '@vben/locales';
 
 import { Select } from 'ant-design-vue';
 
-import { getUserPagedList } from '#/api/system/user-admin';
+import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 
 import { usePagedSelect } from './use-paged-select';
 
 interface Props {
-  /** label 字段名，默认 'userName'，可用值：'userName' | 'nickName' */
+  /** label 字段名，默认 'cnName'，可用值：'cnName' | 'enName' | 'code' */
   labelKey?: string;
   /** 每页数量，默认 20 */
   pageSize?: number;
   /** placeholder */
   placeholder?: string;
-  /** 已选中的用户对象数组（用于编辑时回显） */
-  selectedItems?: SystemUserAdminApi.UserListDto[];
+  /** 已选中的币别对象数组（用于编辑时回显） */
+  selectedItems?: CurrencyAdminApi.CurrencyDto[];
   /** value 字段名，默认 'id' */
   valueKey?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  labelKey: 'userName',
+  labelKey: 'cnName',
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],
@@ -42,26 +42,46 @@ const modelValue = defineModel<any>();
 // 响应式引用 selectedItems
 const selectedItemsRef = toRef(props, 'selectedItems');
 
-// 将用户数据转换为 Option
-const mapUserToOption = (user: SystemUserAdminApi.UserListDto) => {
-  // 优先使用指定的 labelKey，fallback 到 userName
-  let label = (user as any)[props.labelKey];
-  if (!label && props.labelKey === 'nickName') {
-    label = user.userName;
+// 将币别数据转换为 Option
+const mapCurrencyToOption = (currency: CurrencyAdminApi.CurrencyDto) => {
+  // 优先使用指定的 labelKey，fallback 到 cnName
+  let label = (currency as any)[props.labelKey];
+  if (!label && props.labelKey === 'enName') {
+    label = currency.cnName;
   }
-  label = label || user.userName;
+  if (!label && props.labelKey === 'code') {
+    label = currency.code;
+  }
+  label = label || currency.cnName || currency.code;
 
   return {
-    disabled: !user.isActive,
+    disabled: !currency.enable,
     label,
-    value: (user as any)[props.valueKey],
+    value: (currency as any)[props.valueKey],
+  };
+};
+
+// 适配 fetchPage 函数以匹配 getCurrencyPagedList 的返回格式
+const fetchPageAdapter = async (params: {
+  KeyWords?: string;
+  PageIndex: number;
+  PageSize: number;
+}) => {
+  const res = await getCurrencyPagedList({
+    Keyword: params.KeyWords,
+    PageIndex: params.PageIndex,
+    PageSize: params.PageSize,
+  });
+  return {
+    items: res.items || [],
+    total: res.totalCount || 0,
   };
 };
 
 // 使用分页选择组合式函数
 const { api, handlePopupScroll, handleSearch, params } = usePagedSelect({
-  fetchPage: getUserPagedList,
-  mapItemToOption: mapUserToOption,
+  fetchPage: fetchPageAdapter,
+  mapItemToOption: mapCurrencyToOption,
   pageSize: props.pageSize,
   selectedItemsRef,
   valueKey: props.valueKey,

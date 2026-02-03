@@ -519,6 +519,7 @@ export type ComponentType =
   | 'TreeSelect'
   | 'Upload'
   | 'UserSelect'
+  | 'CurrencySelect'
   | BaseFormComponentType;
 
 async function initComponentAdapter() {
@@ -590,6 +591,9 @@ async function initComponentAdapter() {
     Upload: withPreviewUpload(),
     UserSelect: defineAsyncComponent(
       () => import('./biz-select/user-select.vue'),
+    ),
+    CurrencySelect: defineAsyncComponent(
+      () => import('./biz-select/currency-select.vue'),
     ),
   };
 

@@ -166,6 +166,16 @@ const routes: RouteRecordRaw[] = [
               import('#/views/system/basic-data/FeeNameAdmin/list.vue'),
           },
           {
+            path: '/system/basic-data/fee-code',
+            name: 'SystemBasicDataFeeCode',
+            meta: {
+              icon: 'mdi:code-tags',
+              title: $t('system.basicData.feeCode.title'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/FeeCodeAdmin/list.vue'),
+          },
+          {
             path: '/system/basic-data/exchange-rate',
             name: 'SystemBasicDataExchangeRate',
             meta: {

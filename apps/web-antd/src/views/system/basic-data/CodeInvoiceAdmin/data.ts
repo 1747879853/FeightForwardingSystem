@@ -182,12 +182,10 @@ export function useFormSchema(): VbenFormSchema[] {
       defaultValue: false,
     },
     {
-      component: 'Input',
+      component: 'CurrencySelect',
       fieldName: 'defaultCurrency',
       label: $t('system.basicData.codeInvoice.defaultCurrency'),
-      componentProps: {
-        maxLength: 10,
-      },
+      defaultValue: undefined,
     },
     {
       component: 'Input',

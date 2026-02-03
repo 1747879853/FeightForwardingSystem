@@ -127,14 +127,10 @@ export function useFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'Select',
+      component: 'CurrencySelect',
       fieldName: 'defaultCurrency',
       label: $t('system.basicData.feeName.defaultCurrency'),
-      componentProps: {
-        options: useCurrencyEnumOptions(),
-        allowClear: true,
-        class: 'w-full',
-      },
+      defaultValue: undefined,
     },
     {
       component: 'Input',
