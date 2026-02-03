@@ -62,7 +62,7 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[vue]": {
-    "editor.defaultFormatter": "johnsoncodehk.volar"
+    "editor.defaultFormatter": "Vue.volar"
   },
   // extensions
   "extensions.ignoreRecommendations": true,

@@ -66,15 +66,22 @@ const expanded = ref<Array<number | string>>(props.defaultExpandedKeys ?? []);
 
 const treeValue = ref();
 
+// 标记是否已初始化展开级别
+const hasInitializedExpand = ref(false);
+
 onMounted(() => {
   watchEffect(() => {
     flattenData.value = flatten(props.treeData, props.childrenField);
     updateTreeValue();
+    // 只在首次初始化时展开到指定级别
     if (
+      !hasInitializedExpand.value &&
       props.defaultExpandedLevel !== undefined &&
       props.defaultExpandedLevel > 0
-    )
+    ) {
       expandToLevel(props.defaultExpandedLevel);
+      hasInitializedExpand.value = true;
+    }
   });
 });
 
@@ -345,9 +352,6 @@ defineExpose({
               event.stopPropagation();
               return;
             }
-            if (event.detail.originalEvent.type === 'click') {
-              event.preventDefault();
-            }
             onSelect(item, event.detail.isSelected);
           }
         "
@@ -383,11 +387,10 @@ defineExpose({
             :model-value="isSelected && !isNodeDisabled(item)"
             :disabled="isNodeDisabled(item)"
             :indeterminate="isIndeterminate && !isNodeDisabled(item)"
-            @click="
+            @click.stop="
               (event: MouseEvent) => {
                 if (isNodeDisabled(item)) {
                   event.preventDefault();
-                  event.stopPropagation();
                   return;
                 }
                 handleSelect();
@@ -396,11 +399,10 @@ defineExpose({
           />
           <div
             class="flex items-center gap-1"
-            @click="
+            @click.stop="
               (event: MouseEvent) => {
                 if (isNodeDisabled(item)) {
                   event.preventDefault();
-                  event.stopPropagation();
                   return;
                 }
                 handleSelect();
