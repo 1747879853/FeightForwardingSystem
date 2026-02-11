@@ -520,6 +520,11 @@ export type ComponentType =
   | 'Upload'
   | 'UserSelect'
   | 'CurrencySelect'
+  | 'LaneSelect'
+  | 'PortSelect'
+  | 'CarrierSelect'
+  | 'CtnSelect'
+  | 'CountrySelect'
   | BaseFormComponentType;
 
 async function initComponentAdapter() {
@@ -594,6 +599,21 @@ async function initComponentAdapter() {
     ),
     CurrencySelect: defineAsyncComponent(
       () => import('./biz-select/currency-select.vue'),
+    ),
+    LaneSelect: defineAsyncComponent(
+      () => import('./biz-select/lane-select.vue'),
+    ),
+    PortSelect: defineAsyncComponent(
+      () => import('./biz-select/port-select.vue'),
+    ),
+    CarrierSelect: defineAsyncComponent(
+      () => import('./biz-select/carrier-select.vue'),
+    ),
+    CtnSelect: defineAsyncComponent(
+      () => import('./biz-select/ctn-select.vue'),
+    ),
+    CountrySelect: defineAsyncComponent(
+      () => import('./biz-select/country-select.vue'),
     ),
   };
 

@@ -22,5 +22,18 @@
   "showSearchPanel": "显示搜索面板",
   "hideSearchPanel": "隐藏搜索面板",
   "save": "保存",
-  "confirmDelete": "确定删除 {0} 吗？"
+  "confirmDelete": "确定删除 {0} 吗？",
+  "required": "{0} 必填",
+  "selectRequired": "{0} 必选",
+  "minLength": "{0} 至少 {1} 个字符",
+  "maxLength": "{0} 最多 {1} 个字符",
+  "length": "{0} 长度必须为 {1} 个字符",
+  "alreadyExists": "{0} `{1}` 已存在",
+  "startWith": "{0} 必须以 {1} 开头",
+  "invalidURL": "请输入有效的链接",
+  "invalidEmail": "请输入有效的 {0}",
+  "invalidFormat": "{0} 格式不正确",
+  "sizeLimit": "文件大小不能超过 {0}MB",
+  "previewWarning": "无法打开文件，没有可用的URL或预览地址",
+  "lengthBetween": "{0} 长度必须为 {1} 和 {2} 之间"
 }

@@ -51,6 +51,7 @@ const [Modal, modalApi] = useVbenModal({
           enName: values.enName,
           code: values.code,
           otherCode: values.otherCode,
+          countryId: values.countryId,
           ediCode: values.ediCode,
           remark: values.remark,
         });
@@ -62,6 +63,7 @@ const [Modal, modalApi] = useVbenModal({
           enName: values.enName,
           code: values.code,
           otherCode: values.otherCode,
+          countryId: values.countryId,
           ediCode: values.ediCode,
           remark: values.remark,
         });
@@ -91,6 +93,7 @@ const [Modal, modalApi] = useVbenModal({
           enName: detail.enName,
           code: detail.code,
           otherCode: detail.otherCode,
+          countryId: detail.countryId,
           ediCode: detail.ediCode,
           remark: detail.remark,
         });

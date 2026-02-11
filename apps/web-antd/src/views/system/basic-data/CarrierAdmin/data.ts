@@ -120,6 +120,13 @@ export function useFormSchema(): VbenFormSchema[] {
         .optional(),
     },
     {
+      component: 'CountrySelect',
+      fieldName: 'countryId',
+      label: $t('system.basicData.carrier.countryId'),
+      defaultValue: undefined,
+      rules: z.number().optional(),
+    },
+    {
       component: 'Input',
       fieldName: 'ediCode',
       label: $t('system.basicData.carrier.ediCode'),

@@ -4,7 +4,7 @@ import type { SystemUserAdminApi } from '#/api';
 import { getOrganizationUnitTree } from '#/api/system/organization-unit';
 import { UserStatus } from '#/api';
 import { $t } from '#/locales';
-
+import { z } from '@vben/common-ui';
 /** 用户状态选项 */
 export const userStatusOptions = [
   {
@@ -37,41 +37,90 @@ export function useFormSchema(): VbenFormSchema[] {
   return [
     {
       component: 'Input',
-      componentProps: {
-        maxlength: 64,
-        showCount: true,
+      fieldName: 'id',
+      label: 'ID',
+      // 隐藏字段，用于判断是新增还是编辑模式
+      dependencies: {
+        show: false,
+        triggerFields: ['id'],
       },
-      fieldName: 'userName',
-      label: $t('system.user.userName'),
-      rules: 'required|min:2|max:64',
     },
     {
       component: 'Input',
       componentProps: {
         maxlength: 64,
         showCount: true,
+        autocomplete: 'off',
+      },
+      fieldName: 'userName',
+      label: $t('system.user.userName'),
+      rules: z
+        .string()
+        .min(2, {
+          message: $t('ui.formRules.required', [$t('system.user.userName')]),
+        }),
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 64,
+        showCount: true,
+        autocomplete: 'off',
       },
       fieldName: 'nickName',
       label: $t('system.user.nickName'),
+      rules: z
+        .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [$t('system.user.nickName')]),
+        }),
     },
     {
       component: 'Input',
       componentProps: {
         maxlength: 128,
         showCount: true,
+        autocomplete: 'off',
+      },
+      dependencies: {
+        triggerFields: ['emailAddress'],
+        rules: (values) => {
+          // 如果邮箱有值，则校验邮箱格式
+          if (values.emailAddress && values.emailAddress.length > 0) {
+            return z
+              .string()
+              .email({
+                message: $t('common.invalidEmail', [$t('system.user.email')]),
+              })
+              .max(128, {
+                message: $t('common.maxLength', [$t('system.user.email'), 128]),
+              });
+          }
+
+          // 邮箱为空：不校验，字段可选
+          return z.string().optional();
+        },
       },
       fieldName: 'emailAddress',
       label: $t('system.user.email'),
-      rules: 'email',
     },
     {
       component: 'Input',
       componentProps: {
         maxlength: 20,
         showCount: true,
+        autocomplete: 'off',
       },
       fieldName: 'phoneNumber',
       label: $t('system.user.phoneNumber'),
+      rules: z
+        .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [$t('system.user.phoneNumber')]),
+        })
+        .regex(/^1[3-9]\d{9}$/, {
+          message: $t('common.invalidFormat', [$t('system.user.phoneNumber')]),
+        }),
     },
     {
       component: 'Input',
@@ -79,15 +128,35 @@ export function useFormSchema(): VbenFormSchema[] {
         maxlength: 32,
         showCount: true,
         type: 'password',
+        autocomplete: 'new-password',
       },
       dependencies: {
         triggerFields: ['id'],
-        if: (values) => !values.id,
-        rules: (values) => (values.id ? '' : 'required|min:6|max:32'),
+        // 只在新增模式(id 不存在)时显示密码字段
+        show: (values) => {
+          return !values.id;
+        },
       },
       fieldName: 'password',
       label: $t('system.user.password'),
       help: $t('system.user.passwordHelp'),
+      // 新增模式时密码必填，长度 6-32 位
+      rules: z
+        .string()
+        .min(6, {
+          message: $t('common.lengthBetween', [
+            $t('system.user.password'),
+            6,
+            32,
+          ]),
+        })
+        .max(32, {
+          message: $t('common.lengthBetween', [
+            $t('system.user.password'),
+            6,
+            32,
+          ]),
+        }),
     },
     {
       component: 'ApiTreeSelect',
@@ -307,44 +376,6 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       fixed: 'right',
       title: $t('system.user.operation'),
       width: 420,
-    },
-  ];
-}
-
-/**
- * 改密表单 Schema
- */
-export function usePasswordFormSchema(): VbenFormSchema[] {
-  return [
-    {
-      component: 'Input',
-      componentProps: {
-        maxlength: 32,
-        showCount: true,
-        type: 'password',
-      },
-      fieldName: 'newPassword',
-      label: $t('system.user.newPassword'),
-      rules: 'required|min:6|max:32',
-    },
-    {
-      component: 'Input',
-      componentProps: {
-        maxlength: 32,
-        showCount: true,
-        type: 'password',
-      },
-      fieldName: 'confirmPassword',
-      label: $t('system.user.confirmPassword'),
-      rules: [
-        { required: true, message: $t('system.user.confirmPasswordRequired') },
-      ],
-    },
-    {
-      component: 'Checkbox',
-      fieldName: 'unlock',
-      label: '',
-      renderComponentContent: () => $t('system.user.unlockUser'),
     },
   ];
 }

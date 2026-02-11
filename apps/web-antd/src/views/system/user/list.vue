@@ -5,7 +5,6 @@ import type { SystemUserAdminApi } from '#/api';
 import { useRouter } from 'vue-router';
 
 import { Page, useVbenModal } from '@vben/common-ui';
-import { IconifyIcon, Plus } from '@vben/icons';
 
 import { Button, message, Modal } from 'ant-design-vue';
 

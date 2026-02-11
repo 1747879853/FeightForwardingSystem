@@ -90,6 +90,10 @@ const routes: RouteRecordRaw[] = [
             'Admin.FeeName',
             'Admin.FeeCode',
             'Admin.ExchangeRate',
+            'Admin.LaneCode',
+            'Admin.PortCode',
+            'Admin.CtnCode',
+            'Admin.CountryCode',
           ]),
         },
         children: [
@@ -224,6 +228,50 @@ const routes: RouteRecordRaw[] = [
             },
             component: () =>
               import('#/views/system/basic-data/ExchangeRateAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/lane-code',
+            name: 'SystemBasicDataLaneCode',
+            meta: {
+              icon: 'mdi:highway',
+              title: $t('system.basicData.laneCode.title'),
+              // authority: abpPageAuthority('Admin.LaneCode'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/LaneCodeAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/port-code',
+            name: 'SystemBasicDataPortCode',
+            meta: {
+              icon: 'mdi:anchor',
+              title: $t('system.basicData.portCode.title'),
+              // authority: abpPageAuthority('Admin.PortCode'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/PortCodeAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/ctn-code',
+            name: 'SystemBasicDataCtnCode',
+            meta: {
+              icon: 'mdi:train-car-container',
+              title: $t('system.basicData.ctnCode.title'),
+              // authority: abpPageAuthority('Admin.CtnCode'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/CtnCodeAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/country-code',
+            name: 'SystemBasicDataCountryCode',
+            meta: {
+              icon: 'mdi:earth',
+              title: $t('system.basicData.countryCode.title'),
+              // authority: abpPageAuthority('Admin.CountryCode'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/CountryCodeAdmin/list.vue'),
           },
         ],
       },

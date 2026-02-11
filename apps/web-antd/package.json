@@ -46,7 +46,11 @@
     "ant-design-vue": "catalog:",
     "dayjs": "catalog:",
     "pinia": "catalog:",
+    "json-bigint": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"
+  },
+  "devDependencies": {
+    "@types/json-bigint": "catalog:"
   }
 }

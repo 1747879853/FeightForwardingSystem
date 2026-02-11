@@ -23,6 +23,7 @@ const [Form, formApi] = useVbenForm({
       class: 'w-full',
     },
   },
+  layout: 'vertical',
   schema: useFormSchema(),
   showDefaultActions: false,
 });
@@ -85,6 +86,7 @@ const [Modal, modalApi] = useVbenModal({
 
           await nextTick();
           formApi.setValues({
+            id: userDetail.id,
             userName: userDetail.userName,
             nickName: userDetail.nickName,
             emailAddress: userDetail.emailAddress,
@@ -105,6 +107,7 @@ const [Modal, modalApi] = useVbenModal({
           formData.value = data;
           await nextTick();
           formApi.setValues({
+            id: data.id,
             userName: data.userName,
             nickName: data.nickName,
             emailAddress: data.emailAddress,

@@ -1,7 +1,7 @@
 /**
  * 该文件可自行根据业务逻辑进行调整
  */
-import type { RequestClientOptions } from '@vben/request';
+import type { AxiosResponseHeaders, RequestClientOptions } from '@vben/request';
 
 import { useAppConfig } from '@vben/hooks';
 import { preferences } from '@vben/preferences';
@@ -11,8 +11,10 @@ import {
   RequestClient,
 } from '@vben/request';
 import { useAccessStore } from '@vben/stores';
+import { cloneDeep } from '@vben/utils';
 
 import { message } from 'ant-design-vue';
+import JSONBigInt from 'json-bigint';
 
 import { useAuthStore } from '#/store';
 
@@ -24,6 +26,18 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   const client = new RequestClient({
     ...options,
     baseURL,
+    // 使用 json-bigint 解析响应数据，将大数字（超出 JS 安全整数范围）转为字符串
+    transformResponse: (data: any, header: AxiosResponseHeaders) => {
+      if (
+        header.getContentType()?.toString().includes('application/json') &&
+        typeof data === 'string'
+      ) {
+        return cloneDeep(
+          JSONBigInt({ storeAsString: true, strict: true }).parse(data),
+        );
+      }
+      return data;
+    },
   });
 
   /**
