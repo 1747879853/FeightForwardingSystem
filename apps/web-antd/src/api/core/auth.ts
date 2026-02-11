@@ -1,5 +1,6 @@
 import { baseRequestClient, requestClient } from '#/api/request';
-
+import { useAppConfig } from '@vben/hooks';
+const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
 export namespace AuthApi {
   /** 登录接口参数 */
   export interface LoginParams {
@@ -166,10 +167,13 @@ export async function logoutApi() {
  * 注意：此接口不添加 /api 前缀
  */
 export async function getUserConfigurationApi() {
+  // 生产环境使用生产的 apiURL（去掉 /api 后缀），开发环境使用空字符串
+  const baseURL = import.meta.env.PROD ? apiURL.replace(/\/api$/, '') : '';
+
   return requestClient.get<AuthApi.UserConfigurationResult>(
     '/UserConfiguration/GetAll',
     {
-      baseURL: '', // 不使用默认的 /api 前缀
+      baseURL,
     },
   );
 }

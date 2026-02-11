@@ -24,7 +24,6 @@ import {
   updateMenu,
 } from '#/api/system/menu';
 import { $t } from '#/locales';
-import { componentKeys } from '#/router/routes';
 
 import { getMenuTypeOptions } from '../data';
 
@@ -203,28 +202,7 @@ const schema: VbenFormSchema[] = [
     fieldName: 'meta.activeIcon',
     label: $t('system.menu.activeIcon'),
   },
-  {
-    component: 'AutoComplete',
-    componentProps: {
-      allowClear: true,
-      class: 'w-full',
-      filterOption(input: string, option: { value: string }) {
-        return option.value.toLowerCase().includes(input.toLowerCase());
-      },
-      options: componentKeys.map((v) => ({ value: v })),
-    },
-    dependencies: {
-      rules: (values) => {
-        return values.type === 'menu' ? 'required' : null;
-      },
-      show: (values) => {
-        return values.type === 'menu';
-      },
-      triggerFields: ['type'],
-    },
-    fieldName: 'component',
-    label: $t('system.menu.component'),
-  },
+
   {
     component: 'Input',
     dependencies: {
