@@ -1,0 +1,304 @@
+import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
+
+import type { VbenFormSchema } from '#/adapter/form';
+import type { OnActionClickFn } from '#/adapter/vxe-table';
+import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+
+import { $t } from '#/locales';
+
+/** 客户性质枚举选项 */
+const getClientTypeOptions = () => [
+  {
+    value: 0,
+    label: $t('seaExport.client.clientTypeOptions.direct'),
+    color: 'processing',
+  },
+  {
+    value: 1,
+    label: $t('seaExport.client.clientTypeOptions.peer'),
+    color: 'warning',
+  },
+  {
+    value: 2,
+    label: $t('seaExport.client.clientTypeOptions.supplier'),
+    color: 'success',
+  },
+];
+
+/** 行业类别枚举选项 */
+const getIndustryCategoryOptions = () => [
+  { value: 'b', label: $t('seaExport.client.industryCategoryOptions.b') },
+  { value: 'c', label: $t('seaExport.client.industryCategoryOptions.c') },
+  { value: 'd', label: $t('seaExport.client.industryCategoryOptions.d') },
+  { value: 'n', label: $t('seaExport.client.industryCategoryOptions.n') },
+  { value: 'f', label: $t('seaExport.client.industryCategoryOptions.f') },
+  { value: 'g', label: $t('seaExport.client.industryCategoryOptions.g') },
+  { value: 'h', label: $t('seaExport.client.industryCategoryOptions.h') },
+  { value: 'i', label: $t('seaExport.client.industryCategoryOptions.i') },
+  { value: 'j', label: $t('seaExport.client.industryCategoryOptions.j') },
+  { value: 'k', label: $t('seaExport.client.industryCategoryOptions.k') },
+  { value: 'l', label: $t('seaExport.client.industryCategoryOptions.l') },
+  { value: 'm', label: $t('seaExport.client.industryCategoryOptions.m') },
+  { value: 'e', label: $t('seaExport.client.industryCategoryOptions.e') },
+  { value: 'o', label: $t('seaExport.client.industryCategoryOptions.o') },
+];
+
+/** 是否有效枚举选项 */
+const getEnableOptions = () => [
+  {
+    value: true,
+    label: $t('seaExport.client.enableStatus.enabled'),
+    color: 'success',
+  },
+  {
+    value: false,
+    label: $t('seaExport.client.enableStatus.disabled'),
+    color: 'default',
+  },
+];
+
+/**
+ * 将行业类别逗号字符串映射为可读 label
+ */
+const formatIndustryCategories = (value?: string): string => {
+  if (!value) return '';
+  const optionsMap = new Map(
+    getIndustryCategoryOptions().map((o) => [o.value, o.label]),
+  );
+  return value
+    .split(',')
+    .map((v) => optionsMap.get(v.trim()) || v.trim())
+    .filter(Boolean)
+    .join(', ');
+};
+
+/**
+ * 列表页搜索表单 schema
+ */
+export function useGridFormSchema(): VbenFormSchema[] {
+  return [
+    {
+      component: 'Input',
+      fieldName: 'Keyword',
+      label: $t('seaExport.client.keyword'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'IndustryCategory',
+      label: $t('seaExport.client.industryCategories'),
+      componentProps: {
+        allowClear: true,
+        options: getIndustryCategoryOptions().map(({ label, value }) => ({
+          label,
+          value,
+        })),
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+  ];
+}
+
+/**
+ * 新增/编辑表单 schema
+ */
+export function useFormSchema(): VbenFormSchema[] {
+  return [
+    {
+      component: 'Input',
+      fieldName: 'name',
+      label: $t('seaExport.client.clientName'),
+      rules: 'required',
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'Input',
+      fieldName: 'code',
+      label: $t('seaExport.client.code'),
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'Input',
+      fieldName: 'fullName',
+      label: $t('seaExport.client.fullName'),
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'Input',
+      fieldName: 'enName',
+      label: $t('seaExport.client.enName'),
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'Input',
+      fieldName: 'phone',
+      label: $t('seaExport.client.phone'),
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'Select',
+      fieldName: 'clientType',
+      label: $t('seaExport.client.clientType'),
+      componentProps: {
+        allowClear: true,
+        options: getClientTypeOptions().map(({ label, value }) => ({
+          label,
+          value,
+        })),
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'CountrySelect',
+      fieldName: 'country',
+      label: $t('seaExport.client.country'),
+      componentProps: {
+        valueKey: 'code',
+        labelKey: 'countryName',
+        allowClear: true,
+      },
+    },
+    {
+      component: 'AreaCascader',
+      fieldName: 'areaId',
+      label: $t('seaExport.client.areaId'),
+    },
+    {
+      component: 'Input',
+      fieldName: 'address',
+      label: $t('seaExport.client.address'),
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'Input',
+      fieldName: 'enAddress',
+      label: $t('seaExport.client.enAddress'),
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'CheckboxGroup',
+      fieldName: 'industryCategories',
+      label: $t('seaExport.client.industryCategories'),
+      componentProps: {
+        options: getIndustryCategoryOptions().map(({ label, value }) => ({
+          label,
+          value,
+        })),
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'mainProduct',
+      label: $t('seaExport.client.mainProduct'),
+      componentProps: { allowClear: true, maxlength: 1024 },
+    },
+    {
+      component: 'Switch',
+      fieldName: 'enable',
+      label: $t('seaExport.client.enable'),
+      defaultValue: true,
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'remark',
+      label: $t('seaExport.client.remark'),
+      componentProps: { allowClear: true, rows: 3 },
+    },
+  ];
+}
+
+/**
+ * 表格列配置
+ */
+export function useColumns(
+  onActionClick?: OnActionClickFn<ClientAdminApi.ClientDto>,
+): VxeTableGridOptions<ClientAdminApi.ClientDto>['columns'] {
+  return [
+    {
+      field: 'name',
+      title: $t('seaExport.client.clientName'),
+      minWidth: 120,
+    },
+    {
+      field: 'code',
+      title: $t('seaExport.client.code'),
+      minWidth: 100,
+    },
+    {
+      field: 'fullName',
+      title: $t('seaExport.client.fullName'),
+      minWidth: 160,
+      showOverflow: true,
+    },
+    {
+      field: 'phone',
+      title: $t('seaExport.client.phone'),
+      minWidth: 120,
+    },
+    {
+      field: 'clientType',
+      title: $t('seaExport.client.clientType'),
+      minWidth: 100,
+      cellRender: {
+        name: 'CellTag',
+        options: getClientTypeOptions(),
+      },
+    },
+    {
+      field: 'industryCategories',
+      title: $t('seaExport.client.industryCategories'),
+      minWidth: 200,
+      showOverflow: true,
+      formatter: ({ cellValue }) => formatIndustryCategories(cellValue),
+    },
+    {
+      field: 'country',
+      title: $t('seaExport.client.country'),
+      minWidth: 100,
+    },
+    {
+      field: 'enable',
+      title: $t('seaExport.client.enable'),
+      minWidth: 80,
+      cellRender: {
+        name: 'CellTag',
+        options: getEnableOptions(),
+      },
+    },
+    {
+      field: 'remark',
+      title: $t('seaExport.client.remark'),
+      minWidth: 160,
+      showOverflow: true,
+    },
+    {
+      field: 'creationTime',
+      title: $t('seaExport.client.creationTime'),
+      minWidth: 160,
+      formatter: 'formatDateTime',
+    },
+    {
+      align: 'right',
+      cellRender: {
+        attrs: {
+          nameField: 'name',
+          nameTitle: $t('seaExport.client.name'),
+          onClick: onActionClick,
+        },
+        name: 'CellOperation',
+        options: ['edit', 'delete'],
+      },
+      field: 'operation',
+      fixed: 'right',
+      headerAlign: 'center',
+      showOverflow: false,
+      title: $t('seaExport.client.operation'),
+      width: 150,
+    },
+  ];
+}
+
+export { getClientTypeOptions, getEnableOptions, getIndustryCategoryOptions };

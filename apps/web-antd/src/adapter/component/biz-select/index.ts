@@ -1,3 +1,4 @@
+export { default as AreaCascader } from './area-cascader.vue';
 export { default as RoleSelect } from './role-select.vue';
 export { default as UserSelect } from './user-select.vue';
 export { default as CarrierSelect } from './carrier-select.vue';

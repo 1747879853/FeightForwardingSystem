@@ -1,0 +1,51 @@
+{
+  "title": "Sea Export",
+  "client": {
+    "title": "Client Management",
+    "list": "Client List",
+    "name": "Client",
+    "id": "ID",
+    "clientName": "Short Name",
+    "code": "Client Code",
+    "phone": "Phone",
+    "fullName": "Full Name",
+    "enName": "English Name",
+    "country": "Country",
+    "areaId": "Province/City",
+    "address": "Address",
+    "enAddress": "Address (EN)",
+    "mainProduct": "Main Product",
+    "enable": "Status",
+    "clientType": "Client Type",
+    "industryCategories": "Industry Category",
+    "remark": "Remark",
+    "creationTime": "Creation Time",
+    "keyword": "Keyword",
+    "operation": "Operation",
+    "enableStatus": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "clientTypeOptions": {
+      "direct": "Direct",
+      "peer": "Peer",
+      "supplier": "Supplier"
+    },
+    "industryCategoryOptions": {
+      "b": "Shipper",
+      "c": "Terminal",
+      "d": "Airline",
+      "n": "Shipping Agent",
+      "f": "Customs Broker",
+      "g": "Express",
+      "h": "Notify Party",
+      "i": "Trucking",
+      "j": "Trader",
+      "k": "Agent",
+      "l": "Other",
+      "m": "Supplier",
+      "e": "Consignee",
+      "o": "Client Unit"
+    }
+  }
+}

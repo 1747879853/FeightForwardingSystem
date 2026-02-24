@@ -1,0 +1,51 @@
+{
+  "title": "海运出口",
+  "client": {
+    "title": "客户管理",
+    "list": "客户列表",
+    "name": "客户",
+    "id": "ID",
+    "clientName": "客户简称",
+    "code": "客户代码",
+    "phone": "公司电话",
+    "fullName": "客户全称",
+    "enName": "客户英文名",
+    "country": "国家",
+    "areaId": "所在省市",
+    "address": "地址",
+    "enAddress": "英文地址",
+    "mainProduct": "主营产品",
+    "enable": "是否有效",
+    "clientType": "客户性质",
+    "industryCategories": "行业类别",
+    "remark": "备注",
+    "creationTime": "创建时间",
+    "keyword": "关键字",
+    "operation": "操作",
+    "enableStatus": {
+      "enabled": "有效",
+      "disabled": "无效"
+    },
+    "clientTypeOptions": {
+      "direct": "直客",
+      "peer": "同行",
+      "supplier": "供应商"
+    },
+    "industryCategoryOptions": {
+      "b": "发货人",
+      "c": "场站",
+      "d": "航空公司",
+      "n": "船代",
+      "f": "报关行",
+      "g": "快递公司",
+      "h": "通知人",
+      "i": "车队",
+      "j": "贸易商",
+      "k": "代理",
+      "l": "其他",
+      "m": "供应商",
+      "e": "收货人",
+      "o": "委托单位"
+    }
+  }
+}
