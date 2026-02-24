@@ -1,5 +1,7 @@
 import { createApp, watchEffect } from 'vue';
 
+import { VueQueryPlugin } from '@tanstack/vue-query';
+
 import { registerAccessDirective } from '@vben/access';
 import { registerLoadingDirective } from '@vben/common-ui/es/loading';
 import { preferences } from '@vben/preferences';
@@ -52,6 +54,9 @@ async function bootstrap(namespace: string) {
   // 初始化 tippy
   const { initTippy } = await import('@vben/common-ui/es/tippy');
   initTippy(app);
+
+  // 注册 TanStack Query，提供跨组件实例的请求去重与缓存
+  app.use(VueQueryPlugin);
 
   // 配置路由及路由守卫
   app.use(router);

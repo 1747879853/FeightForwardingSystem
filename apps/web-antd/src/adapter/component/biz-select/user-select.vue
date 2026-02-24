@@ -63,6 +63,7 @@ const { api, handlePopupScroll, handleSearch, params } = usePagedSelect({
   fetchPage: getUserPagedList,
   mapItemToOption: mapUserToOption,
   pageSize: props.pageSize,
+  queryKey: ['user'],
   selectedItemsRef,
   valueKey: props.valueKey,
 });

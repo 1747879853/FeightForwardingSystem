@@ -90,6 +90,7 @@ const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
     mapItemToOption,
     extraParamsRef,
     pageSize: props.pageSize,
+    queryKey: ['exchange-rate'],
     selectedItemsRef,
     valueKey: props.valueKey,
   });

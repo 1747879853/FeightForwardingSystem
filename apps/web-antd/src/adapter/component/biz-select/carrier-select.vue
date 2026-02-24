@@ -82,6 +82,7 @@ const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
     fetchPage: fetchPageAdapter,
     mapItemToOption: mapCarrierToOption,
     pageSize: props.pageSize,
+    queryKey: ['carrier'],
     selectedItemsRef,
     valueKey: props.valueKey,
   });

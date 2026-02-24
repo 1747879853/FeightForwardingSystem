@@ -2,6 +2,8 @@ import type { ComputedRef, Ref } from 'vue';
 
 import { computed, reactive, toRefs, watch } from 'vue';
 
+import { useQueryClient } from '@tanstack/vue-query';
+
 export interface OptionItem {
   disabled?: boolean;
   label: string;
@@ -25,6 +27,15 @@ export interface PagedSelectOptions<T = any> {
   mapItemToOption: (item: T) => OptionItem;
   /** 额外参数 ref，变化时触发重新请求（如 IndustryCategory） */
   extraParamsRef?: Ref<Record<string, any>>;
+  /**
+   * TanStack Query 缓存键前缀。
+   * 提供此选项后，底层请求将通过 queryClient.fetchQuery 发起，
+   * 相同键的并发请求自动合并为一次网络调用，结果在 staleTime 内从缓存直接返回，
+   * 适用于在可编辑表格等多实例场景下共享同一数据源的 Select 组件。
+   */
+  queryKey?: readonly string[];
+  /** 缓存有效时间（毫秒），仅在提供 queryKey 时生效，默认 5 分钟 */
+  staleTime?: number;
   /** 每页数量，默认 20 */
   pageSize?: number;
   /** 已选中项的 ref（用于编辑时回显不在第一页的数据） */
@@ -68,9 +79,13 @@ export function usePagedSelect<T = any>(
     mapItemToOption,
     pageSize = 20,
     selectedItemsRef,
+    queryKey,
+    staleTime = 5 * 60 * 1000,
     valueKey = 'id',
     extraParamsRef,
   } = options;
+
+  const queryClient = useQueryClient();
 
   // 内部状态
   const state = reactive({
@@ -115,12 +130,20 @@ export function usePagedSelect<T = any>(
    */
   const api = async (): Promise<OptionItem[]> => {
     try {
-      const res = await fetchPage({
+      const fetchParams: FetchPageParams = {
         KeyWords: state.keyword || undefined,
         PageIndex: state.pageIndex,
         PageSize: state.pageSize,
         ...(extraParamsRef?.value ?? {}),
-      });
+      };
+
+      const res = queryKey
+        ? await queryClient.fetchQuery({
+            queryKey: [...queryKey, fetchParams],
+            queryFn: () => fetchPage(fetchParams),
+            staleTime,
+          })
+        : await fetchPage(fetchParams);
 
       state.total = res.total;
 

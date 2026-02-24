@@ -79,6 +79,7 @@ const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
     fetchPage: fetchPageAdapter,
     mapItemToOption,
     pageSize: props.pageSize,
+    queryKey: ['code-issue-type'],
     selectedItemsRef,
     valueKey: props.valueKey,
   });

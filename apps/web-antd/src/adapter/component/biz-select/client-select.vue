@@ -95,6 +95,7 @@ const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
     mapItemToOption: mapClientToOption,
     extraParamsRef,
     pageSize: props.pageSize,
+    queryKey: ['client'],
     selectedItemsRef,
     valueKey: props.valueKey,
   });

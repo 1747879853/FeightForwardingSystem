@@ -82,6 +82,7 @@ const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
     fetchPage: fetchPageAdapter,
     mapItemToOption,
     pageSize: props.pageSize,
+    queryKey: ['fee-name'],
     selectedItemsRef,
     valueKey: props.valueKey,
   });
