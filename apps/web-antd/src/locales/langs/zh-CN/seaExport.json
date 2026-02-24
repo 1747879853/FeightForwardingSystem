@@ -32,20 +32,25 @@
       "supplier": "供应商"
     },
     "industryCategoryOptions": {
-      "b": "发货人",
-      "c": "场站",
-      "d": "航空公司",
-      "n": "船代",
-      "f": "报关行",
-      "g": "快递公司",
-      "h": "通知人",
-      "i": "车队",
-      "j": "贸易商",
-      "k": "代理",
-      "l": "其他",
-      "m": "供应商",
-      "e": "收货人",
-      "o": "委托单位"
+      "shipCompany": "船公司",
+      "shipper": "发货人",
+      "terminal": "场站",
+      "airline": "航空公司",
+      "consignee": "收货人",
+      "customsBroker": "报关行",
+      "expressCompany": "快递公司",
+      "notifyParty": "通知人",
+      "fleet": "车队",
+      "trader": "贸易商",
+      "agent": "代理",
+      "other": "其他",
+      "supplier": "供应商",
+      "shippingAgent": "船代",
+      "bookingAgent": "订舱代理",
+      "entrustingUnit": "委托单位",
+      "warehouse": "仓库",
+      "insuranceCompany": "保险公司",
+      "destinationAgent": "目的港代理"
     }
   }
 }

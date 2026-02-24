@@ -21,11 +21,11 @@ import { useColumns, useGridFormSchema } from './data';
 const router = useRouter();
 
 const handleCreate = () => {
-  router.push('/sea-export/clients/create');
+  router.push('/clients/create');
 };
 
 const handleEdit = (row: ClientAdminApi.ClientDto) => {
-  router.push(`/sea-export/clients/${row.id}/edit`);
+  router.push(`/clients/${row.id}/edit`);
 };
 
 const getRowName = (row: ClientAdminApi.ClientDto) => {

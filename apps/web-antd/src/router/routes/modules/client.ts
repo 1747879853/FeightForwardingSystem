@@ -5,39 +5,39 @@ import { $t } from '#/locales';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      icon: 'mdi:ferry',
+      icon: 'mdi:account-multiple-outline',
       order: 100,
-      title: $t('seaExport.title'),
+      title: $t('seaExport.client.title'),
+      hideChildrenInMenu: true,
     },
-    name: 'SeaExport',
-    path: '/sea-export',
+    name: 'Client',
+    path: '/clients',
     children: [
       {
-        path: '/sea-export/clients',
-        name: 'SeaExportClients',
+        path: '',
+        name: 'ClientList',
         meta: {
-          icon: 'mdi:account-multiple-outline',
           title: $t('seaExport.client.title'),
         },
         component: () => import('#/views/sea-export/client/list.vue'),
       },
       {
-        path: '/sea-export/clients/create',
-        name: 'SeaExportClientCreate',
+        path: 'create',
+        name: 'ClientCreate',
         meta: {
           title: $t('seaExport.client.title'),
           hideInMenu: true,
-          activePath: '/sea-export/clients',
+          activePath: '/clients',
         },
         component: () => import('#/views/sea-export/client/form.vue'),
       },
       {
-        path: '/sea-export/clients/:id/edit',
-        name: 'SeaExportClientEdit',
+        path: ':id/edit',
+        name: 'ClientEdit',
         meta: {
           title: $t('seaExport.client.title'),
           hideInMenu: true,
-          activePath: '/sea-export/clients',
+          activePath: '/clients',
         },
         component: () => import('#/views/sea-export/client/form.vue'),
       },

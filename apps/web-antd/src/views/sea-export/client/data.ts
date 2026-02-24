@@ -25,22 +25,66 @@ const getClientTypeOptions = () => [
   },
 ];
 
-/** 行业类别枚举选项 */
+/** 行业类别枚举选项（value 取字母，与 IndustryCategory 注释对应：a 船公司、b 发货人、c 场站…） */
 const getIndustryCategoryOptions = () => [
-  { value: 'b', label: $t('seaExport.client.industryCategoryOptions.b') },
-  { value: 'c', label: $t('seaExport.client.industryCategoryOptions.c') },
-  { value: 'd', label: $t('seaExport.client.industryCategoryOptions.d') },
-  { value: 'n', label: $t('seaExport.client.industryCategoryOptions.n') },
-  { value: 'f', label: $t('seaExport.client.industryCategoryOptions.f') },
-  { value: 'g', label: $t('seaExport.client.industryCategoryOptions.g') },
-  { value: 'h', label: $t('seaExport.client.industryCategoryOptions.h') },
-  { value: 'i', label: $t('seaExport.client.industryCategoryOptions.i') },
-  { value: 'j', label: $t('seaExport.client.industryCategoryOptions.j') },
-  { value: 'k', label: $t('seaExport.client.industryCategoryOptions.k') },
-  { value: 'l', label: $t('seaExport.client.industryCategoryOptions.l') },
-  { value: 'm', label: $t('seaExport.client.industryCategoryOptions.m') },
-  { value: 'e', label: $t('seaExport.client.industryCategoryOptions.e') },
-  { value: 'o', label: $t('seaExport.client.industryCategoryOptions.o') },
+  {
+    value: 'a',
+    label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
+  },
+  { value: 'b', label: $t('seaExport.client.industryCategoryOptions.shipper') },
+  {
+    value: 'c',
+    label: $t('seaExport.client.industryCategoryOptions.terminal'),
+  },
+  { value: 'd', label: $t('seaExport.client.industryCategoryOptions.airline') },
+  {
+    value: 'e',
+    label: $t('seaExport.client.industryCategoryOptions.consignee'),
+  },
+  {
+    value: 'f',
+    label: $t('seaExport.client.industryCategoryOptions.customsBroker'),
+  },
+  {
+    value: 'g',
+    label: $t('seaExport.client.industryCategoryOptions.expressCompany'),
+  },
+  {
+    value: 'h',
+    label: $t('seaExport.client.industryCategoryOptions.notifyParty'),
+  },
+  { value: 'i', label: $t('seaExport.client.industryCategoryOptions.fleet') },
+  { value: 'j', label: $t('seaExport.client.industryCategoryOptions.trader') },
+  { value: 'k', label: $t('seaExport.client.industryCategoryOptions.agent') },
+  { value: 'l', label: $t('seaExport.client.industryCategoryOptions.other') },
+  {
+    value: 'm',
+    label: $t('seaExport.client.industryCategoryOptions.supplier'),
+  },
+  {
+    value: 'n',
+    label: $t('seaExport.client.industryCategoryOptions.shippingAgent'),
+  },
+  {
+    value: 'o',
+    label: $t('seaExport.client.industryCategoryOptions.bookingAgent'),
+  },
+  {
+    value: 'p',
+    label: $t('seaExport.client.industryCategoryOptions.entrustingUnit'),
+  },
+  {
+    value: 'q',
+    label: $t('seaExport.client.industryCategoryOptions.warehouse'),
+  },
+  {
+    value: 'r',
+    label: $t('seaExport.client.industryCategoryOptions.insuranceCompany'),
+  },
+  {
+    value: 's',
+    label: $t('seaExport.client.industryCategoryOptions.destinationAgent'),
+  },
 ];
 
 /** 是否有效枚举选项 */

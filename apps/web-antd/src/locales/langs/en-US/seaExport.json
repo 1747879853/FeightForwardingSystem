@@ -32,20 +32,25 @@
       "supplier": "Supplier"
     },
     "industryCategoryOptions": {
-      "b": "Shipper",
-      "c": "Terminal",
-      "d": "Airline",
-      "n": "Shipping Agent",
-      "f": "Customs Broker",
-      "g": "Express",
-      "h": "Notify Party",
-      "i": "Trucking",
-      "j": "Trader",
-      "k": "Agent",
-      "l": "Other",
-      "m": "Supplier",
-      "e": "Consignee",
-      "o": "Client Unit"
+      "shipCompany": "Ship Company",
+      "shipper": "Shipper",
+      "terminal": "Terminal",
+      "airline": "Airline",
+      "consignee": "Consignee",
+      "customsBroker": "Customs Broker",
+      "expressCompany": "Express Company",
+      "notifyParty": "Notify Party",
+      "fleet": "Fleet",
+      "trader": "Trader",
+      "agent": "Agent",
+      "other": "Other",
+      "supplier": "Supplier",
+      "shippingAgent": "Shipping Agent",
+      "bookingAgent": "Booking Agent",
+      "entrustingUnit": "Entrusting Unit",
+      "warehouse": "Warehouse",
+      "insuranceCompany": "Insurance Company",
+      "destinationAgent": "Destination Agent"
     }
   }
 }

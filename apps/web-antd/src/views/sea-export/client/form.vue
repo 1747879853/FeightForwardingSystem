@@ -89,7 +89,10 @@ const mapDetailToFormValues = async (detail: Record<string, any>) => {
     enable: detail.enable,
     clientType: detail.clientType,
     industryCategories: detail.industryCategories
-      ? detail.industryCategories.split(',').filter(Boolean)
+      ? detail.industryCategories
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean)
       : [],
     remark: detail.remark,
   };
@@ -168,7 +171,7 @@ const handleSubmit = async () => {
     }
 
     message.success($t('ui.actionMessage.operationSuccess'));
-    router.push('/sea-export/clients');
+    router.push('/clients');
   } finally {
     submitting.value = false;
   }
@@ -176,7 +179,7 @@ const handleSubmit = async () => {
 
 /** 取消返回 */
 const handleCancel = () => {
-  router.push('/sea-export/clients');
+  router.push('/clients');
 };
 
 onMounted(() => {
