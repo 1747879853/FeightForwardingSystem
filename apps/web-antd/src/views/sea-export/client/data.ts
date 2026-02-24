@@ -102,6 +102,42 @@ const getEnableOptions = () => [
 ];
 
 /**
+ * 根据行业类别生成客户下拉的表单 schema
+ * @param options.fieldName 表单字段名
+ * @param options.industryCategory 行业类别，如 'a' 船公司、'b' 发货人
+ * @param options.label 表单项标签，默认「客户」
+ * @param options.placeholder 占位符
+ * @param options.rules 校验规则，如 'required'、'selectRequired'
+ */
+export function createClientSelectSchema(options: {
+  fieldName: string;
+  industryCategory: string;
+  label?: string;
+  placeholder?: string;
+  rules?: string;
+}): VbenFormSchema {
+  const {
+    fieldName,
+    industryCategory,
+    label = $t('seaExport.client.name'),
+    placeholder,
+    rules,
+  } = options;
+
+  return {
+    component: 'ClientSelect',
+    fieldName,
+    label,
+    rules,
+    componentProps: {
+      industryCategory,
+      placeholder: placeholder ?? $t('ui.placeholder.select'),
+      allowClear: true,
+    },
+  };
+}
+
+/**
  * 将行业类别逗号字符串映射为可读 label
  */
 const formatIndustryCategories = (value?: string): string => {

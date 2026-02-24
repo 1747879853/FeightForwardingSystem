@@ -9,15 +9,22 @@ export interface OptionItem {
   [key: string]: any;
 }
 
+export interface FetchPageParams {
+  KeyWords?: string;
+  PageIndex: number;
+  PageSize: number;
+  [key: string]: any;
+}
+
 export interface PagedSelectOptions<T = any> {
   /** 获取分页数据的函数 */
-  fetchPage: (params: {
-    KeyWords?: string;
-    PageIndex: number;
-    PageSize: number;
-  }) => Promise<{ items: T[]; total: number }>;
+  fetchPage: (
+    params: FetchPageParams,
+  ) => Promise<{ items: T[]; total: number }>;
   /** 将数据项转换为 Option 的函数 */
   mapItemToOption: (item: T) => OptionItem;
+  /** 额外参数 ref，变化时触发重新请求（如 IndustryCategory） */
+  extraParamsRef?: Ref<Record<string, any>>;
   /** 每页数量，默认 20 */
   pageSize?: number;
   /** 已选中项的 ref（用于编辑时回显不在第一页的数据） */
@@ -62,6 +69,7 @@ export function usePagedSelect<T = any>(
     pageSize = 20,
     selectedItemsRef,
     valueKey = 'id',
+    extraParamsRef,
   } = options;
 
   // 内部状态
@@ -111,6 +119,7 @@ export function usePagedSelect<T = any>(
         KeyWords: state.keyword || undefined,
         PageIndex: state.pageIndex,
         PageSize: state.pageSize,
+        ...(extraParamsRef?.value ?? {}),
       });
 
       state.total = res.total;
@@ -192,6 +201,7 @@ export function usePagedSelect<T = any>(
     keyword: state.keyword,
     pageIndex: state.pageIndex,
     pageSize: state.pageSize,
+    ...(extraParamsRef?.value ?? {}),
   }));
 
   // 监听 selectedItemsRef 变化，自动合并
@@ -204,6 +214,17 @@ export function usePagedSelect<T = any>(
         }
       },
       { immediate: true },
+    );
+  }
+
+  // 监听 extraParamsRef 变化，重置并触发重新请求
+  if (extraParamsRef) {
+    watch(
+      extraParamsRef,
+      () => {
+        reset();
+      },
+      { deep: true },
     );
   }
 

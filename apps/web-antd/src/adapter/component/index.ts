@@ -524,8 +524,19 @@ export type ComponentType =
   | 'LaneSelect'
   | 'PortSelect'
   | 'CarrierSelect'
+  | 'ClientSelect'
   | 'CtnSelect'
   | 'CountrySelect'
+  | 'CodeInvoiceSelect'
+  | 'CodeServiceSelect'
+  | 'CodeGoodsSelect'
+  | 'CodePackageSelect'
+  | 'CodeIssueTypeSelect'
+  | 'CodeSourceSelect'
+  | 'CodeFrtSelect'
+  | 'FeeNameSelect'
+  | 'FeeCodeSelect'
+  | 'ExchangeRateSelect'
   | BaseFormComponentType;
 
 async function initComponentAdapter() {
@@ -616,8 +627,41 @@ async function initComponentAdapter() {
     CtnSelect: defineAsyncComponent(
       () => import('./biz-select/ctn-select.vue'),
     ),
+    ClientSelect: defineAsyncComponent(
+      () => import('./biz-select/client-select.vue'),
+    ),
     CountrySelect: defineAsyncComponent(
       () => import('./biz-select/country-select.vue'),
+    ),
+    CodeInvoiceSelect: defineAsyncComponent(
+      () => import('./biz-select/code-invoice-select.vue'),
+    ),
+    CodeServiceSelect: defineAsyncComponent(
+      () => import('./biz-select/code-service-select.vue'),
+    ),
+    CodeGoodsSelect: defineAsyncComponent(
+      () => import('./biz-select/code-goods-select.vue'),
+    ),
+    CodePackageSelect: defineAsyncComponent(
+      () => import('./biz-select/code-package-select.vue'),
+    ),
+    CodeIssueTypeSelect: defineAsyncComponent(
+      () => import('./biz-select/code-issue-type-select.vue'),
+    ),
+    CodeSourceSelect: defineAsyncComponent(
+      () => import('./biz-select/code-source-select.vue'),
+    ),
+    CodeFrtSelect: defineAsyncComponent(
+      () => import('./biz-select/code-frt-select.vue'),
+    ),
+    FeeNameSelect: defineAsyncComponent(
+      () => import('./biz-select/fee-name-select.vue'),
+    ),
+    FeeCodeSelect: defineAsyncComponent(
+      () => import('./biz-select/fee-code-select.vue'),
+    ),
+    ExchangeRateSelect: defineAsyncComponent(
+      () => import('./biz-select/exchange-rate-select.vue'),
     ),
   };
 

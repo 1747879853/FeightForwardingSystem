@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
+import type { ExchangeRateAdminApi } from '#/api/system/base-data/exchange-rate-admin';
 
 import { computed, ref, toRef, watch } from 'vue';
 
@@ -9,31 +9,31 @@ import { $t } from '@vben/locales';
 import { Select } from 'ant-design-vue';
 
 import {
-  getCurrencyDetail,
-  getCurrencyPagedList,
-} from '#/api/system/base-data/currency-admin';
+  getExchangeRateDetail,
+  getExchangeRatePagedList,
+} from '#/api/system/base-data/exchange-rate-admin';
 
 import { usePagedSelect } from './use-paged-select';
 
 interface Props {
-  /** label 字段名，默认 'cnName'，可用值：'cnName' | 'enName' | 'code' */
-  labelKey?: string;
   /** 每页数量，默认 20 */
   pageSize?: number;
   /** placeholder */
   placeholder?: string;
-  /** 已选中的币别对象数组（用于编辑时回显） */
-  selectedItems?: CurrencyAdminApi.CurrencyDto[];
+  /** 已选中的汇率对象数组（用于编辑时回显） */
+  selectedItems?: ExchangeRateAdminApi.ExchangeRateDto[];
   /** value 字段名，默认 'id' */
   valueKey?: string;
+  /** 筛选币别 ID，可选 */
+  currencyId?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  labelKey: 'cnName',
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],
   valueKey: 'id',
+  currencyId: undefined,
 });
 
 const emit = defineEmits<{
@@ -41,39 +41,42 @@ const emit = defineEmits<{
 }>();
 
 const modelValue = defineModel<any>();
-
-// 响应式引用 selectedItems
 const selectedItemsRef = toRef(props, 'selectedItems');
+const currencyIdRef = toRef(props, 'currencyId');
 
-// 将币别数据转换为 Option
-const mapCurrencyToOption = (currency: CurrencyAdminApi.CurrencyDto) => {
-  // 优先使用指定的 labelKey，fallback 到 cnName
-  let label = (currency as any)[props.labelKey];
-  if (!label && props.labelKey === 'enName') {
-    label = currency.cnName;
-  }
-  if (!label && props.labelKey === 'code') {
-    label = currency.code;
-  }
-  label = label || currency.cnName || currency.code;
+const mapItemToOption = (item: ExchangeRateAdminApi.ExchangeRateDto) => {
+  const itemAny = item as any;
+  const label =
+    item.localCurrency && item.calculateValue != null
+      ? `${item.localCurrency} / ${item.calculateValue}`
+      : item.id?.toString() || '';
 
   return {
-    disabled: !currency.enable,
-    label,
-    value: (currency as any)[props.valueKey],
+    disabled: !item.enable,
+    label: label || `#${item.id}`,
+    value: itemAny?.[props.valueKey],
   };
 };
 
-// 适配 fetchPage 函数以匹配 getCurrencyPagedList 的返回格式
+const extraParamsRef = computed(() => {
+  const params: Record<string, any> = {};
+  if (currencyIdRef.value != null) {
+    params.CurrencyId = currencyIdRef.value;
+  }
+  return params;
+});
+
 const fetchPageAdapter = async (params: {
   KeyWords?: string;
   PageIndex: number;
   PageSize: number;
+  CurrencyId?: number;
 }) => {
-  const res = await getCurrencyPagedList({
+  const res = await getExchangeRatePagedList({
     Keyword: params.KeyWords,
     PageIndex: params.PageIndex,
     PageSize: params.PageSize,
+    CurrencyId: params.CurrencyId,
   });
   return {
     items: res.items || [],
@@ -81,28 +84,25 @@ const fetchPageAdapter = async (params: {
   };
 };
 
-// 使用分页选择组合式函数
 const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
   usePagedSelect({
     fetchPage: fetchPageAdapter,
-    mapItemToOption: mapCurrencyToOption,
+    mapItemToOption,
+    extraParamsRef,
     pageSize: props.pageSize,
     selectedItemsRef,
     valueKey: props.valueKey,
   });
 
-// 计算 placeholder
 const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
 );
 
-// 处理值变化
 const handleChange = (value: any) => {
   modelValue.value = value;
   emit('update:modelValue', value);
 };
 
-// ApiComponent ref
 const apiComponentRef = ref();
 
 const parseId = (value: unknown): number | null => {
@@ -122,7 +122,7 @@ const ensureSelectedLoaded = async (rawValue: any) => {
 
     loadedSelectedIds.value.add(id);
     try {
-      const detail = await getCurrencyDetail(id);
+      const detail = await getExchangeRateDetail(id);
       mergeSelectedItems([detail]);
     } catch {
       loadedSelectedIds.value.delete(id);
@@ -140,13 +140,9 @@ watch(
   { immediate: true },
 );
 
-// 暴露方法
 defineExpose({
-  /** 获取 ApiComponent 实例 */
   getApiComponentRef: () => apiComponentRef.value,
-  /** 获取当前 options */
   getOptions: () => apiComponentRef.value?.getOptions?.() || [],
-  /** 获取当前值 */
   getValue: () => modelValue.value,
 });
 </script>

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
+import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 
 import { computed, ref, toRef, watch } from 'vue';
 
@@ -9,9 +9,9 @@ import { $t } from '@vben/locales';
 import { Select } from 'ant-design-vue';
 
 import {
-  getCurrencyDetail,
-  getCurrencyPagedList,
-} from '#/api/system/base-data/currency-admin';
+  getFeeCodeDetail,
+  getFeeCodePagedList,
+} from '#/api/system/base-data/fee-code-admin';
 
 import { usePagedSelect } from './use-paged-select';
 
@@ -22,8 +22,8 @@ interface Props {
   pageSize?: number;
   /** placeholder */
   placeholder?: string;
-  /** 已选中的币别对象数组（用于编辑时回显） */
-  selectedItems?: CurrencyAdminApi.CurrencyDto[];
+  /** 已选中的费用代码对象数组（用于编辑时回显） */
+  selectedItems?: FeeCodeAdminApi.FeeCodeDto[];
   /** value 字段名，默认 'id' */
   valueKey?: string;
 }
@@ -41,36 +41,32 @@ const emit = defineEmits<{
 }>();
 
 const modelValue = defineModel<any>();
-
-// 响应式引用 selectedItems
 const selectedItemsRef = toRef(props, 'selectedItems');
 
-// 将币别数据转换为 Option
-const mapCurrencyToOption = (currency: CurrencyAdminApi.CurrencyDto) => {
-  // 优先使用指定的 labelKey，fallback 到 cnName
-  let label = (currency as any)[props.labelKey];
+const mapItemToOption = (item: FeeCodeAdminApi.FeeCodeDto) => {
+  const itemAny = item as any;
+  let label = itemAny?.[props.labelKey];
   if (!label && props.labelKey === 'enName') {
-    label = currency.cnName;
+    label = item.cnName;
   }
   if (!label && props.labelKey === 'code') {
-    label = currency.code;
+    label = item.cnName || item.code;
   }
-  label = label || currency.cnName || currency.code;
+  label = label || item.cnName || item.enName || item.code || '';
 
   return {
-    disabled: !currency.enable,
+    disabled: !item.enable,
     label,
-    value: (currency as any)[props.valueKey],
+    value: itemAny?.[props.valueKey],
   };
 };
 
-// 适配 fetchPage 函数以匹配 getCurrencyPagedList 的返回格式
 const fetchPageAdapter = async (params: {
   KeyWords?: string;
   PageIndex: number;
   PageSize: number;
 }) => {
-  const res = await getCurrencyPagedList({
+  const res = await getFeeCodePagedList({
     Keyword: params.KeyWords,
     PageIndex: params.PageIndex,
     PageSize: params.PageSize,
@@ -81,28 +77,24 @@ const fetchPageAdapter = async (params: {
   };
 };
 
-// 使用分页选择组合式函数
 const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
   usePagedSelect({
     fetchPage: fetchPageAdapter,
-    mapItemToOption: mapCurrencyToOption,
+    mapItemToOption,
     pageSize: props.pageSize,
     selectedItemsRef,
     valueKey: props.valueKey,
   });
 
-// 计算 placeholder
 const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
 );
 
-// 处理值变化
 const handleChange = (value: any) => {
   modelValue.value = value;
   emit('update:modelValue', value);
 };
 
-// ApiComponent ref
 const apiComponentRef = ref();
 
 const parseId = (value: unknown): number | null => {
@@ -122,7 +114,7 @@ const ensureSelectedLoaded = async (rawValue: any) => {
 
     loadedSelectedIds.value.add(id);
     try {
-      const detail = await getCurrencyDetail(id);
+      const detail = await getFeeCodeDetail(id);
       mergeSelectedItems([detail]);
     } catch {
       loadedSelectedIds.value.delete(id);
@@ -140,13 +132,9 @@ watch(
   { immediate: true },
 );
 
-// 暴露方法
 defineExpose({
-  /** 获取 ApiComponent 实例 */
   getApiComponentRef: () => apiComponentRef.value,
-  /** 获取当前 options */
   getOptions: () => apiComponentRef.value?.getOptions?.() || [],
-  /** 获取当前值 */
   getValue: () => modelValue.value,
 });
 </script>
