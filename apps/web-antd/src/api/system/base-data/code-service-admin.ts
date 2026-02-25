@@ -68,11 +68,13 @@ export const getCodeServicePagedList = (
 
 /**
  * 获取运输条款详情
+ * @param id 建议传 string 避免大数精度丢失
  */
-export const getCodeServiceDetail = (id: number) => {
+export const getCodeServiceDetail = (id: number | string) => {
+  const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<CodeServiceAdminApi.CodeServiceDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: id } },
+    { params: { Id: idStr } },
   );
 };
 

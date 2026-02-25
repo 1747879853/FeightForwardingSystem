@@ -71,11 +71,13 @@ export const getCodeFrtPagedList = (
 
 /**
  * 获取付费方式详情
+ * @param id 建议传 string 避免大数精度丢失
  */
-export const getCodeFrtDetail = (id: number) => {
+export const getCodeFrtDetail = (id: number | string) => {
+  const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<CodeFrtAdminApi.CodeFrtDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: id } },
+    { params: { Id: idStr } },
   );
 };
 

@@ -115,11 +115,13 @@ export const getCodeInvoicePagedList = (
 
 /**
  * 获取发票商品编码详情
+ * @param id 建议传 string 避免大数精度丢失
  */
-export const getCodeInvoiceDetail = (id: number) => {
+export const getCodeInvoiceDetail = (id: number | string) => {
+  const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<CodeInvoiceAdminApi.CodeInvoiceDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: id } },
+    { params: { Id: idStr } },
   );
 };
 

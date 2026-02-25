@@ -68,11 +68,13 @@ export const getCodeSourcePagedList = (
 
 /**
  * 获取业务来源详情
+ * @param id 建议传 string 避免大数精度丢失
  */
-export const getCodeSourceDetail = (id: number) => {
+export const getCodeSourceDetail = (id: number | string) => {
+  const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<CodeSourceAdminApi.CodeSourceDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: id } },
+    { params: { Id: idStr } },
   );
 };
 

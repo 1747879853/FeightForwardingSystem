@@ -139,11 +139,13 @@ export const getPortCodePagedList = (
 
 /**
  * 获取港口信息详情
+ * @param id 港口 ID，建议传 string 避免大数精度丢失（超过 2^53-1 的 ID 用 number 会丢精度）
  */
-export const getPortCodeDetail = (id: number) => {
+export const getPortCodeDetail = (id: number | string) => {
+  const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<PortCodeAdminApi.PortCodeDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: id } },
+    { params: { Id: idStr } },
   );
 };
 

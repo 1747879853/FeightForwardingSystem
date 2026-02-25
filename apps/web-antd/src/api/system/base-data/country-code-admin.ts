@@ -157,11 +157,13 @@ export const getCountryCodePagedList = (
 
 /**
  * 获取国家信息详情
+ * @param id 建议传 string 避免大数精度丢失
  */
-export const getCountryCodeDetail = (id: number) => {
+export const getCountryCodeDetail = (id: number | string) => {
+  const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<CountryCodeAdminApi.CountryCodeDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: id } },
+    { params: { Id: idStr } },
   );
 };
 

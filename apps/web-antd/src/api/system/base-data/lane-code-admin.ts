@@ -107,11 +107,13 @@ export const getLaneCodePagedList = (
 
 /**
  * 获取航线详情
+ * @param id 建议传 string 避免大数精度丢失
  */
-export const getLaneCodeDetail = (id: number) => {
+export const getLaneCodeDetail = (id: number | string) => {
+  const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<LaneCodeAdminApi.LaneCodeDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: id } },
+    { params: { Id: idStr } },
   );
 };
 

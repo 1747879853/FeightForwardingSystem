@@ -54,10 +54,11 @@ const mapItemToOption = (item: CodePackageAdminApi.CodePackageDto) => {
   }
   label = label || item.name || item.description || item.ediCode || '';
 
+  const rawValue = itemAny?.[props.valueKey];
   return {
     disabled: !item.enable,
     label,
-    value: itemAny?.[props.valueKey],
+    value: rawValue === undefined || rawValue === null ? '' : String(rawValue),
   };
 };
 
@@ -91,17 +92,25 @@ const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
 );
 
-const handleChange = (value: any) => {
-  modelValue.value = value;
-  emit('update:modelValue', value);
-};
-
 const apiComponentRef = ref();
 
-const parseId = (value: unknown): number | null => {
-  if (value === undefined || value === null || value === '') return null;
-  const num = Number(value);
-  return Number.isFinite(num) ? num : null;
+/** 解析为字符串 ID，避免大数精度丢失（JS Number 安全整数上限为 2^53-1） */
+const parseIdToSafeString = (value: unknown): string | null => {
+  if (value === undefined || value === null) return null;
+  if (value === '') return null;
+  return String(value);
+};
+
+const handleChange = (value: any) => {
+  const values = Array.isArray(value) ? value : [value];
+  for (const v of values) {
+    const idStr = parseIdToSafeString(v);
+    if (idStr !== null) {
+      loadedSelectedIds.value.add(idStr);
+    }
+  }
+  modelValue.value = value;
+  emit('update:modelValue', value);
 };
 
 const ensureSelectedLoaded = async (rawValue: any) => {
@@ -109,21 +118,21 @@ const ensureSelectedLoaded = async (rawValue: any) => {
   const values = Array.isArray(rawValue) ? rawValue : [rawValue];
 
   for (const v of values) {
-    const id = parseId(v);
-    if (id === null) continue;
-    if (loadedSelectedIds.value.has(id)) continue;
+    const idStr = parseIdToSafeString(v);
+    if (idStr === null) continue;
+    if (loadedSelectedIds.value.has(idStr)) continue;
 
-    loadedSelectedIds.value.add(id);
+    loadedSelectedIds.value.add(idStr);
     try {
-      const detail = await getCodePackageDetail(id);
+      const detail = await getCodePackageDetail(idStr);
       mergeSelectedItems([detail]);
     } catch {
-      loadedSelectedIds.value.delete(id);
+      loadedSelectedIds.value.delete(idStr);
     }
   }
 };
 
-const loadedSelectedIds = ref(new Set<number>());
+const loadedSelectedIds = ref(new Set<string>());
 
 watch(
   modelValue,

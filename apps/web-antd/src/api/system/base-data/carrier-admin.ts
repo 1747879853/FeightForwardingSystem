@@ -88,11 +88,13 @@ export const getCarrierPagedList = (
 
 /**
  * 获取船公司详情
+ * @param id 建议传 string 避免大数精度丢失
  */
-export const getCarrierDetail = (id: number) => {
+export const getCarrierDetail = (id: number | string) => {
+  const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<CarrierAdminApi.CarrierDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: id } },
+    { params: { Id: idStr } },
   );
 };
 

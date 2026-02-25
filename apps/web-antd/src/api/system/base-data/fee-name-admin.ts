@@ -88,11 +88,13 @@ export const getFeeNamePagedList = (
 
 /**
  * 获取费用详情
+ * @param id 建议传 string 避免大数精度丢失
  */
-export const getFeeNameDetail = (id: number) => {
+export const getFeeNameDetail = (id: number | string) => {
+  const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<FeeNameAdminApi.FeeNameDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: id } },
+    { params: { Id: idStr } },
   );
 };
 
