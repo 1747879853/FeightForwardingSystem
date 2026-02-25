@@ -112,6 +112,7 @@ const getEnableOptions = () => [
 export function createClientSelectSchema(options: {
   fieldName: string;
   industryCategory: string;
+  formItemClass?: string;
   label?: string;
   placeholder?: string;
   rules?: string;
@@ -119,6 +120,7 @@ export function createClientSelectSchema(options: {
   const {
     fieldName,
     industryCategory,
+    formItemClass,
     label = $t('seaExport.client.name'),
     placeholder,
     rules,
@@ -127,6 +129,7 @@ export function createClientSelectSchema(options: {
   return {
     component: 'ClientSelect',
     fieldName,
+    formItemClass,
     label,
     rules,
     componentProps: {

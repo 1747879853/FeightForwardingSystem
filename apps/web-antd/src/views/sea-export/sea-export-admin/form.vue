@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
+import dayjs from 'dayjs';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -16,7 +17,11 @@ import {
 } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
 
-import { useFormSchema } from './data';
+import {
+  useLeftFormSchema,
+  useMiddleFormSchema,
+  useRightFormSchema,
+} from './data';
 
 const route = useRoute();
 const router = useRouter();
@@ -38,12 +43,40 @@ const pageLoading = ref(false);
 const submitting = ref(false);
 const transportOrderId = ref<number | undefined>();
 
-const [Form, formApi] = useVbenForm({
+/** 左侧表单：信息概览 */
+const [LeftForm, leftFormApi] = useVbenForm({
   layout: 'vertical',
-  schema: useFormSchema(),
+  schema: useLeftFormSchema(),
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-3',
+  wrapperClass: 'grid-cols-2 gap-x-4',
 });
+
+/** 中间表单：发货人、收货人、通知人、第二通知人、目的港代理及其内容 */
+const [MiddleForm, middleFormApi] = useVbenForm({
+  layout: 'vertical',
+  schema: useMiddleFormSchema(),
+  showDefaultActions: false,
+  wrapperClass: 'flex flex-col ',
+});
+
+/** 右侧表单：主表单 */
+const [RightForm, rightFormApi] = useVbenForm({
+  layout: 'vertical',
+  schema: useRightFormSchema(),
+  showDefaultActions: false,
+  wrapperClass: 'grid-cols-4 gap-x-4',
+});
+
+/** DatePicker 需要的 dayjs 对象，API 返回的是字符串 */
+const toDayjs = (val: string | null | undefined) =>
+  val && dayjs(val).isValid() ? dayjs(val) : undefined;
+
+/** 提交时 dayjs/日期 转回 ISO 字符串 */
+const toDateString = (val: unknown) => {
+  if (val == null) return undefined;
+  const d = dayjs(val as string | Date);
+  return d.isValid() ? d.toISOString() : undefined;
+};
 
 const flattenDetail = (
   detail: SeaExportAdminApi.SeaExportDto,
@@ -65,21 +98,21 @@ const flattenDetail = (
     yardId: detail.yardId,
     noBillEnum: detail.noBillEnum,
     copyNoBillEnum: detail.copyNoBillEnum,
-    goodsCompleteTime: detail.goodsCompleteTime,
-    etd: detail.etd,
-    eta: detail.eta,
-    closingTime: detail.closingTime,
-    closeVgmTime: detail.closeVgmTime,
-    closeDocTime: detail.closeDocTime,
-    closeManifestTime: detail.closeManifestTime,
-    signingTime: detail.signingTime,
+    goodsCompleteTime: toDayjs(detail.goodsCompleteTime),
+    etd: toDayjs(detail.etd),
+    eta: toDayjs(detail.eta),
+    closingTime: toDayjs(detail.closingTime),
+    closeVgmTime: toDayjs(detail.closeVgmTime),
+    closeDocTime: toDayjs(detail.closeDocTime),
+    closeManifestTime: toDayjs(detail.closeManifestTime),
+    signingTime: toDayjs(detail.signingTime),
     sortId: detail.sortId,
     remark: detail.remark,
     commissionNum: to?.commissionNum,
     mblNum: to?.mblNum,
     bookingNum: to?.bookingNum,
-    accountDate: to?.accountDate,
-    settlementDate: to?.settlementDate,
+    accountDate: toDayjs(to?.accountDate),
+    settlementDate: toDayjs(to?.settlementDate),
     codeSourceId: to?.codeSourceId,
     isBusinessLocking: to?.isBusinessLocking,
     isFeeLocking: to?.isFeeLocking,
@@ -121,7 +154,9 @@ const loadEditData = async () => {
     const detail = await getSeaExportDetail(editId.value);
     transportOrderId.value = detail.transportOrder?.id;
     const formValues = flattenDetail(detail);
-    await formApi.setValues(formValues);
+    await leftFormApi.setValues(formValues);
+    await middleFormApi.setValues(formValues);
+    await rightFormApi.setValues(formValues);
   } finally {
     pageLoading.value = false;
   }
@@ -144,14 +179,14 @@ const buildDto = (values: Record<string, any>) => {
     yardId: values.yardId ?? undefined,
     noBillEnum: values.noBillEnum ?? undefined,
     copyNoBillEnum: values.copyNoBillEnum ?? undefined,
-    goodsCompleteTime: values.goodsCompleteTime,
-    etd: values.etd,
-    eta: values.eta,
-    closingTime: values.closingTime,
-    closeVgmTime: values.closeVgmTime,
-    closeDocTime: values.closeDocTime,
-    closeManifestTime: values.closeManifestTime,
-    signingTime: values.signingTime,
+    goodsCompleteTime: toDateString(values.goodsCompleteTime),
+    etd: toDateString(values.etd),
+    eta: toDateString(values.eta),
+    closingTime: toDateString(values.closingTime),
+    closeVgmTime: toDateString(values.closeVgmTime),
+    closeDocTime: toDateString(values.closeDocTime),
+    closeManifestTime: toDateString(values.closeManifestTime),
+    signingTime: toDateString(values.signingTime),
     sortId: values.sortId,
     remark: values.remark,
   };
@@ -160,8 +195,8 @@ const buildDto = (values: Record<string, any>) => {
     commissionNum: values.commissionNum,
     mblNum: values.mblNum,
     bookingNum: values.bookingNum,
-    accountDate: values.accountDate,
-    settlementDate: values.settlementDate,
+    accountDate: toDateString(values.accountDate),
+    settlementDate: toDateString(values.settlementDate),
     codeSourceId: values.codeSourceId ?? undefined,
     isBusinessLocking: values.isBusinessLocking ?? false,
     isFeeLocking: values.isFeeLocking ?? false,
@@ -206,11 +241,20 @@ const buildDto = (values: Record<string, any>) => {
 };
 
 const handleSubmit = async () => {
-  const { valid } = await formApi.validate();
-  if (!valid) return;
+  const [leftResult, middleResult, rightResult] = await Promise.all([
+    leftFormApi.validate(),
+    middleFormApi.validate(),
+    rightFormApi.validate(),
+  ]);
+  if (!leftResult.valid || !middleResult.valid || !rightResult.valid) return;
 
   submitting.value = true;
-  const values = await formApi.getValues();
+  const [leftValues, middleValues, rightValues] = await Promise.all([
+    leftFormApi.getValues(),
+    middleFormApi.getValues(),
+    rightFormApi.getValues(),
+  ]);
+  const values = { ...leftValues, ...middleValues, ...rightValues };
   const dto = buildDto(values);
 
   try {
@@ -240,7 +284,17 @@ onMounted(() => {
   <Page auto-content-height>
     <Card :title="pageTitle">
       <Spin :spinning="pageLoading">
-        <Form class="mx-4" />
+        <div class="mx-4 flex gap-6">
+          <div class="w-[220px] shrink-0 border-r border-gray-200 pr-6">
+            <LeftForm />
+          </div>
+          <div class="w-[280px] shrink-0 pr-6">
+            <MiddleForm />
+          </div>
+          <div class="min-w-0 flex-1">
+            <RightForm />
+          </div>
+        </div>
 
         <div class="mx-4 mt-4 flex justify-end">
           <Space>
