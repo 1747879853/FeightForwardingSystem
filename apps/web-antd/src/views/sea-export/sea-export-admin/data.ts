@@ -271,7 +271,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
     {
       component: 'Textarea',
       fieldName: 'shipperContent',
-      label: $t('seaExport.export.shipperContent'),
+      label: '',
       componentProps: {
         allowClear: true,
         rows: 2,
@@ -286,7 +286,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
     {
       component: 'Textarea',
       fieldName: 'consigneeContent',
-      label: $t('seaExport.export.consigneeContent'),
+      label: '',
       componentProps: {
         allowClear: true,
         rows: 2,
@@ -301,7 +301,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
     {
       component: 'Textarea',
       fieldName: 'notifierContent',
-      label: $t('seaExport.export.notifierContent'),
+      label: '',
       componentProps: {
         allowClear: true,
         rows: 2,
@@ -316,7 +316,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
     {
       component: 'Textarea',
       fieldName: 'secondNotifierContent',
-      label: $t('seaExport.export.secondNotifierContent'),
+      label: '',
       componentProps: {
         allowClear: true,
         rows: 2,
@@ -331,7 +331,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
     {
       component: 'Textarea',
       fieldName: 'podAgentContent',
-      label: $t('seaExport.export.podAgentContent'),
+      label: '',
       componentProps: {
         allowClear: true,
         rows: 2,
@@ -354,16 +354,21 @@ export function usePortCargoFormSchema(): VbenFormSchema[] {
 export function useShipmentFormSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'Input',
+      component: 'VesselVoyageInput',
       fieldName: 'vessel',
-      label: $t('seaExport.export.vessel'),
-      componentProps: { allowClear: true },
+      label: $t('seaExport.export.vesselVoyage'),
+      componentProps: (values: Record<string, any>, formApi: any) => ({
+        formContext: formApi,
+        secondFieldName: 'innerVoyno',
+        secondFieldValue: values?.innerVoyno ?? '',
+      }),
     },
     {
       component: 'Input',
       fieldName: 'innerVoyno',
-      label: $t('seaExport.export.innerVoyno'),
-      componentProps: { allowClear: true },
+      label: '',
+      formItemClass: 'hidden',
+      componentProps: { class: 'hidden' },
     },
     {
       component: 'CarrierSelect',
@@ -393,19 +398,19 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
       component: 'DatePicker',
       fieldName: 'goodsCompleteTime',
       label: $t('seaExport.export.goodsCompleteTime'),
-      componentProps: { class: 'w-full', showTime: true },
+      componentProps: { class: 'w-full' },
     },
     {
       component: 'DatePicker',
       fieldName: 'etd',
       label: $t('seaExport.export.etd'),
-      componentProps: { class: 'w-full', showTime: true },
+      componentProps: { class: 'w-full' },
     },
     {
       component: 'DatePicker',
       fieldName: 'eta',
       label: $t('seaExport.export.eta'),
-      componentProps: { class: 'w-full', showTime: true },
+      componentProps: { class: 'w-full' },
     },
     {
       component: 'DatePicker',
@@ -435,7 +440,7 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
       component: 'DatePicker',
       fieldName: 'signingTime',
       label: $t('seaExport.export.signingTime'),
-      componentProps: { class: 'w-full', showTime: true },
+      componentProps: { class: 'w-full' },
     },
   ];
 }

@@ -23,6 +23,7 @@
     "yardId": "Yard",
     "issueType": "Issue Type",
     "vessel": "Vessel",
+    "vesselVoyage": "Vessel/Voyage",
     "innerVoyno": "Voyage",
     "carrierId": "Carrier",
     "noBillEnum": "No. of B/L",

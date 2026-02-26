@@ -49,6 +49,7 @@ const transportOrderId = ref<number | undefined>();
 /** 左侧表单：相关方信息（发货人、收货人、通知人等） */
 const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
   layout: 'vertical',
+  compact: true,
   schema: usePartyInfoFormSchema(),
   showDefaultActions: false,
   wrapperClass: 'flex flex-col',
@@ -57,6 +58,7 @@ const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
 /** 右侧表单：基础信息 */
 const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
+  compact: true,
   schema: useBasicInfoFormSchema(),
   showDefaultActions: false,
   wrapperClass: 'grid-cols-6 gap-x-4',
@@ -65,6 +67,7 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
 /** 右侧表单：船期信息 */
 const [ShipmentForm, shipmentFormApi] = useVbenForm({
   layout: 'vertical',
+  compact: true,
   schema: useShipmentFormSchema(),
   showDefaultActions: false,
   wrapperClass: 'grid-cols-6 gap-x-4',
@@ -73,6 +76,7 @@ const [ShipmentForm, shipmentFormApi] = useVbenForm({
 /** 右侧表单：港口与货物（合并：港口信息 + 货物信息） */
 const [PortCargoForm, portCargoFormApi] = useVbenForm({
   layout: 'vertical',
+  compact: true,
   schema: usePortCargoFormSchema(),
   showDefaultActions: false,
   wrapperClass: 'grid-cols-6 gap-x-4',
@@ -354,7 +358,7 @@ onMounted(() => {
         </Card>
 
         <!-- 右侧：基础信息、船期信息、港口与货物 -->
-        <div class="flex min-w-0 flex-1 flex-col gap-4">
+        <div class="flex min-w-0 flex-1 flex-col gap-2">
           <Card>
             <template #title>
               <span class="flex items-center gap-2">

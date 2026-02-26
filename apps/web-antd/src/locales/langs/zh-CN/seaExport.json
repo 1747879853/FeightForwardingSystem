@@ -23,6 +23,7 @@
     "yardId": "场站",
     "issueType": "签单方式",
     "vessel": "船名",
+    "vesselVoyage": "船名/航次",
     "innerVoyno": "航次",
     "carrierId": "船公司",
     "noBillEnum": "提单份数",

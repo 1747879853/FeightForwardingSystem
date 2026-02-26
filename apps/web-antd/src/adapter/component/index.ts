@@ -537,6 +537,7 @@ export type ComponentType =
   | 'FeeNameSelect'
   | 'FeeCodeSelect'
   | 'ExchangeRateSelect'
+  | 'VesselVoyageInput'
   | BaseFormComponentType;
 
 async function initComponentAdapter() {
@@ -662,6 +663,9 @@ async function initComponentAdapter() {
     ),
     ExchangeRateSelect: defineAsyncComponent(
       () => import('./biz-select/exchange-rate-select.vue'),
+    ),
+    VesselVoyageInput: defineAsyncComponent(
+      () => import('./vessel-voyage-input.vue'),
     ),
   };
 
