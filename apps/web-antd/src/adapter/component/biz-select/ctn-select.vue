@@ -58,7 +58,7 @@ const mapCtnToOption = (ctn: CtnCodeAdminApi.CtnCodeDto) => {
   return {
     disabled: ctn.status === 1,
     label,
-    value: rawValue === undefined || rawValue === null ? '' : String(rawValue),
+    value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
 

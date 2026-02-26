@@ -205,7 +205,11 @@ export function useMiddleFormSchema(): VbenFormSchema[] {
       component: 'Textarea',
       fieldName: 'shipperContent',
       label: $t('seaExport.export.shipperContent'),
-      componentProps: { allowClear: true, rows: 2, style: { height: '110px' } },
+      componentProps: {
+        allowClear: true,
+        rows: 2,
+        style: { minHeight: '110px' },
+      },
     },
     createClientSelectSchema({
       fieldName: 'consigneeId',
@@ -216,7 +220,11 @@ export function useMiddleFormSchema(): VbenFormSchema[] {
       component: 'Textarea',
       fieldName: 'consigneeContent',
       label: $t('seaExport.export.consigneeContent'),
-      componentProps: { allowClear: true, rows: 2, style: { height: '110px' } },
+      componentProps: {
+        allowClear: true,
+        rows: 2,
+        style: { minHeight: '110px' },
+      },
     },
     createClientSelectSchema({
       fieldName: 'notifierId',
@@ -227,7 +235,11 @@ export function useMiddleFormSchema(): VbenFormSchema[] {
       component: 'Textarea',
       fieldName: 'notifierContent',
       label: $t('seaExport.export.notifierContent'),
-      componentProps: { allowClear: true, rows: 2, style: { height: '110px' } },
+      componentProps: {
+        allowClear: true,
+        rows: 2,
+        style: { minHeight: '110px' },
+      },
     },
     createClientSelectSchema({
       fieldName: 'secondNotifierId',
@@ -238,7 +250,11 @@ export function useMiddleFormSchema(): VbenFormSchema[] {
       component: 'Textarea',
       fieldName: 'secondNotifierContent',
       label: $t('seaExport.export.secondNotifierContent'),
-      componentProps: { allowClear: true, rows: 2, style: { height: '110px' } },
+      componentProps: {
+        allowClear: true,
+        rows: 2,
+        style: { minHeight: '110px' },
+      },
     },
     createClientSelectSchema({
       fieldName: 'podAgentId',
@@ -249,7 +265,11 @@ export function useMiddleFormSchema(): VbenFormSchema[] {
       component: 'Textarea',
       fieldName: 'podAgentContent',
       label: $t('seaExport.export.podAgentContent'),
-      componentProps: { allowClear: true, rows: 2, style: { height: '110px' } },
+      componentProps: {
+        allowClear: true,
+        rows: 2,
+        style: { minHeight: '110px' },
+      },
     },
   ];
 }
@@ -518,28 +538,44 @@ export function useRightFormSchema(): VbenFormSchema[] {
       component: 'Textarea',
       fieldName: 'marks',
       label: $t('seaExport.export.marks'),
-      componentProps: { allowClear: true, rows: 2, style: { height: '110px' } },
+      componentProps: {
+        allowClear: true,
+        rows: 2,
+        style: { minHeight: '110px' },
+      },
       formItemClass: 'col-span-2',
     },
     {
       component: 'Textarea',
       fieldName: 'goodsDes',
       label: $t('seaExport.export.goodsDes'),
-      componentProps: { allowClear: true, rows: 3, style: { height: '110px' } },
+      componentProps: {
+        allowClear: true,
+        rows: 3,
+        style: { minHeight: '110px' },
+      },
       formItemClass: 'col-span-2',
     },
     {
       component: 'Textarea',
       fieldName: 'remark',
       label: $t('seaExport.export.remark'),
-      componentProps: { allowClear: true, rows: 3, style: { height: '110px' } },
+      componentProps: {
+        allowClear: true,
+        rows: 3,
+        style: { minHeight: '110px' },
+      },
       formItemClass: 'col-span-2',
     },
     {
       component: 'Textarea',
       fieldName: 'internalRemark',
       label: $t('seaExport.export.internalRemark'),
-      componentProps: { allowClear: true, rows: 3, style: { height: '110px' } },
+      componentProps: {
+        allowClear: true,
+        rows: 3,
+        style: { minHeight: '110px' },
+      },
       formItemClass: 'col-span-2',
     },
   ];

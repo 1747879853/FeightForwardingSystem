@@ -58,7 +58,7 @@ const mapItemToOption = (item: CodeGoodsAdminApi.CodeGoodsDto) => {
   return {
     disabled: !item.enable,
     label,
-    value: rawValue === undefined || rawValue === null ? '' : String(rawValue),
+    value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
 

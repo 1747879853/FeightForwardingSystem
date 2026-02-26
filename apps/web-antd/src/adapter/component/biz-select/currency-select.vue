@@ -61,7 +61,7 @@ const mapCurrencyToOption = (currency: CurrencyAdminApi.CurrencyDto) => {
   return {
     disabled: !currency.enable,
     label,
-    value: rawValue === undefined || rawValue === null ? '' : String(rawValue),
+    value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
 

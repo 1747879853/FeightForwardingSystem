@@ -55,7 +55,7 @@ const mapItemToOption = (item: ExchangeRateAdminApi.ExchangeRateDto) => {
   return {
     disabled: !item.enable,
     label: label || `#${item.id}`,
-    value: rawValue === undefined || rawValue === null ? '' : String(rawValue),
+    value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
 

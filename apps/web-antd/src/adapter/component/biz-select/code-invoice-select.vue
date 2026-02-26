@@ -55,7 +55,7 @@ const mapItemToOption = (item: CodeInvoiceAdminApi.CodeInvoiceDto) => {
   return {
     disabled: !item.enable,
     label,
-    value: rawValue === undefined || rawValue === null ? '' : String(rawValue),
+    value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
 

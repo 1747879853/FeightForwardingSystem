@@ -59,7 +59,7 @@ const mapCountryToOption = (country: CountryCodeAdminApi.CountryCodeDto) => {
   return {
     disabled: country.status === 1,
     label,
-    value: rawValue === undefined || rawValue === null ? '' : String(rawValue),
+    value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
 

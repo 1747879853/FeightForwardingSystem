@@ -64,7 +64,7 @@ const mapClientToOption = (client: ClientAdminApi.ClientDto) => {
   return {
     disabled: false,
     label,
-    value: rawValue === undefined || rawValue === null ? '' : String(rawValue),
+    value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
 

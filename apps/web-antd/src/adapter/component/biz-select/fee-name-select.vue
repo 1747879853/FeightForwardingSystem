@@ -58,7 +58,7 @@ const mapItemToOption = (item: FeeNameAdminApi.FeeNameDto) => {
   return {
     disabled: false,
     label,
-    value: rawValue === undefined || rawValue === null ? '' : String(rawValue),
+    value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
 

@@ -55,7 +55,7 @@ const mapItemToOption = (item: CodeIssueTypeAdminApi.CodeIssueTypeDto) => {
   return {
     disabled: !item.enable,
     label,
-    value: rawValue === undefined || rawValue === null ? '' : String(rawValue),
+    value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
 

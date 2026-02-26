@@ -19,11 +19,22 @@ import { useColumns, useGridFormSchema } from './data';
 
 const router = useRouter();
 
+const handleRowDblclick = ({
+  row,
+}: {
+  row: SeaExportAdminApi.SeaExportDto;
+}) => {
+  router.push(`/sea-exports/${row.id}/edit`);
+};
+
 const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
   formOptions: {
     schema: useGridFormSchema(),
     submitOnChange: true,
     showCollapseButton: false,
+  },
+  gridEvents: {
+    cellDblclick: handleRowDblclick,
   },
   gridOptions: {
     columns: useColumns(),
@@ -31,6 +42,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
     keepSource: true,
     radioConfig: {
       highlight: true,
+      trigger: 'row',
     },
     rowConfig: {
       keyField: 'id',
