@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -16,6 +16,8 @@ import {
 import { $t } from '#/locales';
 
 import { useFormSchema } from './data';
+import paymentTermsForm from './paymentTermsForm.vue';
+import paymentTerms from './paymentTerms.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -192,7 +194,7 @@ onMounted(() => {
     <Card :title="pageTitle">
       <Spin :spinning="pageLoading">
         <Form class="mx-4" />
-
+        <paymentTerms />
         <div class="mx-4 mt-4 flex justify-end">
           <Space>
             <Button @click="handleCancel">
