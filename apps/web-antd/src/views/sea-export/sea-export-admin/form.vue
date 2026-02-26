@@ -7,6 +7,8 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
+import { IconifyIcon } from '@vben/icons';
+
 import { Button, Card, message, Space, Spin } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
@@ -18,9 +20,10 @@ import {
 import { $t } from '#/locales';
 
 import {
-  useLeftFormSchema,
-  useMiddleFormSchema,
-  useRightFormSchema,
+  useBasicInfoFormSchema,
+  usePartyInfoFormSchema,
+  useShipmentFormSchema,
+  usePortCargoFormSchema,
 } from './data';
 
 const route = useRoute();
@@ -43,28 +46,36 @@ const pageLoading = ref(false);
 const submitting = ref(false);
 const transportOrderId = ref<number | undefined>();
 
-/** 左侧表单：信息概览 */
-const [LeftForm, leftFormApi] = useVbenForm({
+/** 左侧表单：相关方信息（发货人、收货人、通知人等） */
+const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
   layout: 'vertical',
-  schema: useLeftFormSchema(),
+  schema: usePartyInfoFormSchema(),
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-2 gap-x-4',
+  wrapperClass: 'flex flex-col',
 });
 
-/** 中间表单：发货人、收货人、通知人、第二通知人、目的港代理及其内容 */
-const [MiddleForm, middleFormApi] = useVbenForm({
+/** 右侧表单：基础信息 */
+const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
-  schema: useMiddleFormSchema(),
+  schema: useBasicInfoFormSchema(),
   showDefaultActions: false,
-  wrapperClass: 'flex flex-col ',
+  wrapperClass: 'grid-cols-6 gap-x-4',
 });
 
-/** 右侧表单：主表单 */
-const [RightForm, rightFormApi] = useVbenForm({
+/** 右侧表单：船期信息 */
+const [ShipmentForm, shipmentFormApi] = useVbenForm({
   layout: 'vertical',
-  schema: useRightFormSchema(),
+  schema: useShipmentFormSchema(),
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-4 gap-x-4',
+  wrapperClass: 'grid-cols-6 gap-x-4',
+});
+
+/** 右侧表单：港口与货物（合并：港口信息 + 货物信息） */
+const [PortCargoForm, portCargoFormApi] = useVbenForm({
+  layout: 'vertical',
+  schema: usePortCargoFormSchema(),
+  showDefaultActions: false,
+  wrapperClass: 'grid-cols-6 gap-x-4',
 });
 
 /** DatePicker 需要的 dayjs 对象，API 返回的是字符串 */
@@ -154,9 +165,10 @@ const loadEditData = async () => {
     const detail = await getSeaExportDetail(editId.value);
     transportOrderId.value = detail.transportOrder?.id;
     const formValues = flattenDetail(detail);
-    await leftFormApi.setValues(formValues);
-    await middleFormApi.setValues(formValues);
-    await rightFormApi.setValues(formValues);
+    await partyInfoFormApi.setValues(formValues);
+    await basicInfoFormApi.setValues(formValues);
+    await shipmentFormApi.setValues(formValues);
+    await portCargoFormApi.setValues(formValues);
   } finally {
     pageLoading.value = false;
   }
@@ -241,20 +253,37 @@ const buildDto = (values: Record<string, any>) => {
 };
 
 const handleSubmit = async () => {
-  const [leftResult, middleResult, rightResult] = await Promise.all([
-    leftFormApi.validate(),
-    middleFormApi.validate(),
-    rightFormApi.validate(),
-  ]);
-  if (!leftResult.valid || !middleResult.valid || !rightResult.valid) return;
+  const [partyResult, basicResult, shipmentResult, portCargoResult] =
+    await Promise.all([
+      partyInfoFormApi.validate(),
+      basicInfoFormApi.validate(),
+      shipmentFormApi.validate(),
+      portCargoFormApi.validate(),
+    ]);
+  const allValid =
+    partyResult.valid &&
+    basicResult.valid &&
+    shipmentResult.valid &&
+    portCargoResult.valid;
+  if (!allValid) {
+    message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
+    return;
+  }
 
   submitting.value = true;
-  const [leftValues, middleValues, rightValues] = await Promise.all([
-    leftFormApi.getValues(),
-    middleFormApi.getValues(),
-    rightFormApi.getValues(),
-  ]);
-  const values = { ...leftValues, ...middleValues, ...rightValues };
+  const [partyValues, basicValues, shipmentValues, portCargoValues] =
+    await Promise.all([
+      partyInfoFormApi.getValues(),
+      basicInfoFormApi.getValues(),
+      shipmentFormApi.getValues(),
+      portCargoFormApi.getValues(),
+    ]);
+  const values = {
+    ...partyValues,
+    ...basicValues,
+    ...shipmentValues,
+    ...portCargoValues,
+  };
   const dto = buildDto(values);
 
   try {
@@ -275,6 +304,10 @@ const handleCancel = () => {
   router.push('/sea-exports');
 };
 
+const handleBack = () => {
+  router.push('/sea-exports');
+};
+
 onMounted(() => {
   loadEditData();
 });
@@ -282,31 +315,83 @@ onMounted(() => {
 
 <template>
   <Page auto-content-height>
-    <Card :title="pageTitle">
-      <Spin :spinning="pageLoading">
-        <div class="mx-4 flex gap-6">
-          <div class="w-[220px] shrink-0 border-r border-gray-200 pr-6">
-            <LeftForm />
+    <template #title>
+      <div class="mb-2 flex items-center gap-2">
+        <Button
+          type="text"
+          class="flex items-center justify-center p-0"
+          @click="handleBack"
+        >
+          <IconifyIcon icon="lucide:arrow-left" class="size-5" />
+        </Button>
+        <span class="text-lg font-semibold">{{ pageTitle }}</span>
+      </div>
+    </template>
+    <template #extra>
+      <Space>
+        <Button @click="handleCancel">
+          {{ $t('common.cancel') }}
+        </Button>
+        <Button type="primary" :loading="submitting" @click="handleSubmit">
+          <IconifyIcon icon="lucide:save" class="mr-1 size-4" />
+          {{ $t('common.save') }}
+        </Button>
+      </Space>
+    </template>
+    <Spin :spinning="pageLoading">
+      <div class="mx-4 flex items-stretch gap-6">
+        <!-- 左侧：相关方信息，垂直方向撑满 -->
+        <Card class="flex w-[280px] shrink-0 flex-col">
+          <template #title>
+            <span class="flex items-center gap-2">
+              <IconifyIcon icon="lucide:users" class="size-4" />
+              {{ $t('seaExport.export.formCardPartyInfo') }}
+            </span>
+          </template>
+          <div class="flex-1 px-1">
+            <PartyInfoForm />
           </div>
-          <div class="w-[280px] shrink-0 pr-6">
-            <MiddleForm />
-          </div>
-          <div class="min-w-0 flex-1">
-            <RightForm />
-          </div>
-        </div>
+        </Card>
 
-        <div class="mx-4 mt-4 flex justify-end">
-          <Space>
-            <Button @click="handleCancel">
-              {{ $t('common.cancel') }}
-            </Button>
-            <Button type="primary" :loading="submitting" @click="handleSubmit">
-              {{ $t('common.confirm') }}
-            </Button>
-          </Space>
+        <!-- 右侧：基础信息、船期信息、港口与货物 -->
+        <div class="flex min-w-0 flex-1 flex-col gap-4">
+          <Card>
+            <template #title>
+              <span class="flex items-center gap-2">
+                <IconifyIcon icon="lucide:file-text" class="size-4" />
+                {{ $t('seaExport.export.formCardBasicInfo') }}
+              </span>
+            </template>
+            <div class="px-1">
+              <BasicInfoForm />
+            </div>
+          </Card>
+
+          <Card>
+            <template #title>
+              <span class="flex items-center gap-2">
+                <IconifyIcon icon="lucide:ship" class="size-4" />
+                {{ $t('seaExport.export.formCardShipment') }}
+              </span>
+            </template>
+            <div class="px-1">
+              <ShipmentForm />
+            </div>
+          </Card>
+
+          <Card>
+            <template #title>
+              <span class="flex items-center gap-2">
+                <IconifyIcon icon="lucide:map-pin" class="size-4" />
+                {{ $t('seaExport.export.formCardPortCargo') }}
+              </span>
+            </template>
+            <div class="px-1">
+              <PortCargoForm />
+            </div>
+          </Card>
         </div>
-      </Spin>
-    </Card>
+      </div>
+    </Spin>
   </Page>
 </template>

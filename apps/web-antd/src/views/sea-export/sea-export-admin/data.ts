@@ -125,44 +125,39 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
 }
 
 /**
- * 左侧表单 schema（信息概览）
+ * 基础信息表单 schema（顶部）
  */
-export function useLeftFormSchema(): VbenFormSchema[] {
+export function useBasicInfoFormSchema(): VbenFormSchema[] {
   return [
     {
       component: 'Input',
       fieldName: 'commissionNum',
       label: $t('seaExport.export.commissionNum'),
       componentProps: { allowClear: true, disabled: false },
-      formItemClass: 'col-span-2',
     },
     {
       component: 'DatePicker',
       fieldName: 'accountDate',
       label: $t('seaExport.export.accountDate'),
       componentProps: { class: 'w-full', picker: 'month' },
-      formItemClass: 'col-span-2',
     },
     {
       component: 'DatePicker',
       fieldName: 'settlementDate',
       label: $t('seaExport.export.settlementDate'),
       componentProps: { class: 'w-full' },
-      formItemClass: 'col-span-2',
     },
     {
       component: 'Switch',
       fieldName: 'isBusinessLocking',
       label: $t('seaExport.export.isBusinessLocking'),
       defaultValue: false,
-      formItemClass: 'col-span-1',
     },
     {
       component: 'Switch',
       fieldName: 'isFeeLocking',
       label: $t('seaExport.export.isFeeLocking'),
       defaultValue: false,
-      formItemClass: 'col-span-1',
     },
     {
       component: 'Select',
@@ -174,7 +169,6 @@ export function useLeftFormSchema(): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
       },
-      formItemClass: 'col-span-1',
     },
     {
       component: 'Select',
@@ -186,15 +180,88 @@ export function useLeftFormSchema(): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
       },
-      formItemClass: 'col-span-1',
     },
+    {
+      component: 'CodeSourceSelect',
+      fieldName: 'codeSourceId',
+      label: $t('seaExport.export.codeSourceId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'CodeFrtSelect',
+      fieldName: 'codeFrtId',
+      label: $t('seaExport.export.codeFrtId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'CodeServiceSelect',
+      fieldName: 'codeServiceId',
+      label: $t('seaExport.export.codeServiceId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'CodeIssueTypeSelect',
+      fieldName: 'issueType',
+      label: $t('seaExport.export.issueType'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'mblNum',
+      label: $t('seaExport.export.mblNum'),
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'Input',
+      fieldName: 'bookingNum',
+      label: $t('seaExport.export.bookingNum'),
+      componentProps: { allowClear: true },
+    },
+    createClientSelectSchema({
+      fieldName: 'clientId',
+      industryCategory: 'p',
+      label: $t('seaExport.export.clientId'),
+      rules: 'selectRequired',
+    }),
+    createClientSelectSchema({
+      fieldName: 'teamId',
+      industryCategory: 'i',
+      label: $t('seaExport.export.teamId'),
+    }),
+    createClientSelectSchema({
+      fieldName: 'custBrokerId',
+      industryCategory: 'f',
+      label: $t('seaExport.export.custBrokerId'),
+    }),
+    createClientSelectSchema({
+      fieldName: 'warehouseId',
+      industryCategory: 'q',
+      label: $t('seaExport.export.warehouseId'),
+    }),
+    createClientSelectSchema({
+      fieldName: 'insuranceId',
+      industryCategory: 'r',
+      label: $t('seaExport.export.insuranceId'),
+    }),
   ];
 }
 
 /**
- * 中间表单 schema（发货人、收货人、通知人、第二通知人、目的港代理及其内容）
+ * 相关方信息表单 schema（发货人、收货人、通知人、第二通知人、目的港代理及其内容）
  */
-export function useMiddleFormSchema(): VbenFormSchema[] {
+export function usePartyInfoFormSchema(): VbenFormSchema[] {
   return [
     createClientSelectSchema({
       fieldName: 'shipperId',
@@ -275,48 +342,17 @@ export function useMiddleFormSchema(): VbenFormSchema[] {
 }
 
 /**
- * 右侧主表单 schema
+ * 港口与货物信息表单 schema（合并：港口信息 + 货物信息）
  */
-export function useRightFormSchema(): VbenFormSchema[] {
-  return [
-    {
-      component: 'CodeSourceSelect',
-      fieldName: 'codeSourceId',
-      label: $t('seaExport.export.codeSourceId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'CodeFrtSelect',
-      fieldName: 'codeFrtId',
-      label: $t('seaExport.export.codeFrtId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'CodeServiceSelect',
-      fieldName: 'codeServiceId',
-      label: $t('seaExport.export.codeServiceId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-    },
+export function usePortCargoFormSchema(): VbenFormSchema[] {
+  return [...usePortFormSchema(), ...useCargoFormSchema()];
+}
 
-    // ─── 右侧主表单字段 ───
-    {
-      component: 'CodeIssueTypeSelect',
-      fieldName: 'issueType',
-      label: $t('seaExport.export.issueType'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-    },
+/**
+ * 船期信息表单 schema（保留供单独使用）
+ */
+export function useShipmentFormSchema(): VbenFormSchema[] {
+  return [
     {
       component: 'Input',
       fieldName: 'vessel',
@@ -338,8 +374,6 @@ export function useRightFormSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
-
-    // ─── 代理 ───
     createClientSelectSchema({
       fieldName: 'bookingAgentId',
       industryCategory: 'o',
@@ -355,8 +389,6 @@ export function useRightFormSchema(): VbenFormSchema[] {
       industryCategory: 'c',
       label: $t('seaExport.export.yardId'),
     }),
-
-    // ─── 日期字段 ───
     {
       component: 'DatePicker',
       fieldName: 'goodsCompleteTime',
@@ -405,22 +437,14 @@ export function useRightFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.signingTime'),
       componentProps: { class: 'w-full', showTime: true },
     },
+  ];
+}
 
-    // ─── TransportOrder 字段（主提单号、订舱编号等） ───
-    {
-      component: 'Input',
-      fieldName: 'mblNum',
-      label: $t('seaExport.export.mblNum'),
-      componentProps: { allowClear: true },
-    },
-    {
-      component: 'Input',
-      fieldName: 'bookingNum',
-      label: $t('seaExport.export.bookingNum'),
-      componentProps: { allowClear: true },
-    },
-
-    // ─── 港口 ───
+/**
+ * 港口信息表单 schema
+ */
+export function usePortFormSchema(): VbenFormSchema[] {
+  return [
     {
       component: 'PortSelect',
       fieldName: 'polId',
@@ -484,36 +508,14 @@ export function useRightFormSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
+  ];
+}
 
-    // ─── 客户类 ───
-    createClientSelectSchema({
-      fieldName: 'clientId',
-      industryCategory: 'p',
-      label: $t('seaExport.export.clientId'),
-      rules: 'selectRequired',
-    }),
-    createClientSelectSchema({
-      fieldName: 'teamId',
-      industryCategory: 'i',
-      label: $t('seaExport.export.teamId'),
-    }),
-    createClientSelectSchema({
-      fieldName: 'custBrokerId',
-      industryCategory: 'f',
-      label: $t('seaExport.export.custBrokerId'),
-    }),
-    createClientSelectSchema({
-      fieldName: 'warehouseId',
-      industryCategory: 'q',
-      label: $t('seaExport.export.warehouseId'),
-    }),
-    createClientSelectSchema({
-      fieldName: 'insuranceId',
-      industryCategory: 'r',
-      label: $t('seaExport.export.insuranceId'),
-    }),
-
-    // ─── 货物信息 ───
+/**
+ * 货物信息表单 schema
+ */
+export function useCargoFormSchema(): VbenFormSchema[] {
+  return [
     {
       component: 'Input',
       fieldName: 'noPkgs',
@@ -532,8 +534,6 @@ export function useRightFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.cbm'),
       componentProps: { allowClear: true },
     },
-
-    // ─── Textarea 全部放最后，宽度占 2 列；备注与内部备注同一行放最后 ───
     {
       component: 'Textarea',
       fieldName: 'marks',
@@ -543,7 +543,7 @@ export function useRightFormSchema(): VbenFormSchema[] {
         rows: 2,
         style: { minHeight: '110px' },
       },
-      formItemClass: 'col-span-2',
+      formItemClass: 'col-span-3',
     },
     {
       component: 'Textarea',
@@ -554,7 +554,7 @@ export function useRightFormSchema(): VbenFormSchema[] {
         rows: 3,
         style: { minHeight: '110px' },
       },
-      formItemClass: 'col-span-2',
+      formItemClass: 'col-span-3',
     },
     {
       component: 'Textarea',
@@ -565,7 +565,7 @@ export function useRightFormSchema(): VbenFormSchema[] {
         rows: 3,
         style: { minHeight: '110px' },
       },
-      formItemClass: 'col-span-2',
+      formItemClass: 'col-span-3',
     },
     {
       component: 'Textarea',
@@ -576,7 +576,7 @@ export function useRightFormSchema(): VbenFormSchema[] {
         rows: 3,
         style: { minHeight: '110px' },
       },
-      formItemClass: 'col-span-2',
+      formItemClass: 'col-span-3',
     },
   ];
 }

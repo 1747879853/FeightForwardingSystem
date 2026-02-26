@@ -2,6 +2,7 @@
   "formRules": {
     "required": "Please enter {0}",
     "selectRequired": "Please select {0}",
+    "pleaseCompleteRequiredFields": "Please complete all required fields before saving",
     "minLength": "{0} must be at least {1} characters",
     "maxLength": "{0} can be at most {1} characters",
     "length": "{0} must be {1} characters long",

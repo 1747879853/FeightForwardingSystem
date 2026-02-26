@@ -2,6 +2,7 @@
   "formRules": {
     "required": "请输入{0}",
     "selectRequired": "请选择{0}",
+    "pleaseCompleteRequiredFields": "请完善必填项后再保存",
     "minLength": "{0}至少{1}个字符",
     "maxLength": "{0}最多{1}个字符",
     "length": "{0}长度必须为{1}个字符",
