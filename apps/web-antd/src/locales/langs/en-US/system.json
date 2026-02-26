@@ -286,6 +286,28 @@
       "keyword": "Keyword",
       "creationTime": "Creation Time"
     },
+    "generateNum": {
+      "title": "Number Generation",
+      "list": "Number Generation List",
+      "name": "Number Rule",
+      "keyword": "Keyword",
+      "tableName": "Table",
+      "userId": "Applicable User",
+      "rules": "Rules",
+      "addRule": "Add Rule",
+      "generateEnum": "Generate Type",
+      "text": "Fixed Text",
+      "length": "Length",
+      "sortId": "Sort Order",
+      "creationTime": "Creation Time",
+      "generateEnumOptions": {
+        "autoNum": "Auto Number",
+        "text": "Fixed Text",
+        "userName": "User Name",
+        "yyyyMMdd": "Date (yyyyMMdd)",
+        "yyMMdd": "Date (yyMMdd)"
+      }
+    },
     "exchangeRate": {
       "title": "Exchange Rate",
       "list": "Exchange Rate List",

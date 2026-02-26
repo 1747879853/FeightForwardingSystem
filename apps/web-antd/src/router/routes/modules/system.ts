@@ -94,6 +94,7 @@ const routes: RouteRecordRaw[] = [
             'Admin.PortCode',
             'Admin.CtnCode',
             'Admin.CountryCode',
+            'Admin.GenerateNum',
           ]),
         },
         children: [
@@ -272,6 +273,17 @@ const routes: RouteRecordRaw[] = [
             },
             component: () =>
               import('#/views/system/basic-data/CountryCodeAdmin/list.vue'),
+          },
+          {
+            path: '/system/basic-data/generate-num',
+            name: 'SystemBasicDataGenerateNum',
+            meta: {
+              icon: 'mdi:format-list-numbered',
+              title: $t('system.basicData.generateNum.title'),
+              authority: abpPageAuthority('Admin.GenerateNum'),
+            },
+            component: () =>
+              import('#/views/system/basic-data/GenerateNumAdmin/list.vue'),
           },
         ],
       },

@@ -286,6 +286,28 @@
       "keyword": "关键字",
       "creationTime": "创建时间"
     },
+    "generateNum": {
+      "title": "编号生成",
+      "list": "编号生成列表",
+      "name": "编号规则",
+      "keyword": "关键字",
+      "tableName": "表名",
+      "userId": "规则适用人",
+      "rules": "规则明细",
+      "addRule": "新增规则",
+      "generateEnum": "生成类型",
+      "text": "固定字符串",
+      "length": "长度",
+      "sortId": "排序",
+      "creationTime": "创建时间",
+      "generateEnumOptions": {
+        "autoNum": "自增序号",
+        "text": "固定文本",
+        "userName": "用户名",
+        "yyyyMMdd": "日期(yyyyMMdd)",
+        "yyMMdd": "日期(yyMMdd)"
+      }
+    },
     "exchangeRate": {
       "title": "汇率管理",
       "list": "汇率列表",
