@@ -1,6 +1,47 @@
+import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
+
 import { requestClient } from '#/api/request';
 
 export namespace SeaExportAdminApi {
+  /** 业务箱型新增输入 */
+  export interface OrderCtnAddDto {
+    /** 箱型id */
+    ctnCodeId?: number;
+    /** 箱号 */
+    ctnNo?: string;
+    /** 封号 */
+    sealNo?: string;
+    /** 件数 */
+    pkgs?: number;
+    /** 包装id */
+    codePackageId?: number;
+    /** 毛重 */
+    grossWeight?: number;
+    /** 皮重 */
+    tareWeight?: number;
+    /** 超长 */
+    overLength?: number;
+    /** 超宽 */
+    overWidth?: number;
+    /** 超高 */
+    overHeight?: number;
+    /** 体积 */
+    volume?: number;
+    /** 商品信息(品名)id */
+    codeGoodsId?: number;
+    /** 订舱号 */
+    bookingNo?: string;
+    /** 备注 */
+    remark?: string;
+  }
+
+  /** 业务商品信息新增输入 */
+  export interface OrderCodeGoodsAddDto {
+    /** 商品信息id */
+    codeGoodsId?: number;
+  }
+
   export interface TransportOrderAddDto {
     commissionNum?: string;
     accountDate?: string;
@@ -39,6 +80,10 @@ export namespace SeaExportAdminApi {
     notifierContent?: string;
     sortId?: number;
     remark?: string;
+    /** 品名列表 */
+    orderCodeGoodss?: OrderCodeGoodsAddDto[];
+    /** 箱型箱量列表 */
+    orderCtns?: OrderCtnAddDto[];
   }
 
   export interface TransportOrderEditDto extends TransportOrderAddDto {
@@ -122,15 +167,21 @@ export namespace SeaExportAdminApi {
     billType?: number;
     secondNotifierId?: number;
     secondNotifierContent?: string;
+    secondNotifier?: ClientAdminApi.ClientDto;
     podAgentId?: number;
     podAgentContent?: string;
+    podAgent?: ClientAdminApi.ClientDto;
     bookingAgentId?: number;
+    bookingAgent?: ClientAdminApi.ClientDto;
     shipAgentId?: number;
+    shipAgent?: ClientAdminApi.ClientDto;
     yardId?: number;
+    yard?: ClientAdminApi.ClientDto;
     issueType?: number;
     vessel?: string;
     innerVoyno?: string;
     carrierId?: number;
+    carrier?: CarrierAdminApi.CarrierDto;
     noBillEnum?: number;
     copyNoBillEnum?: number;
     goodsCompleteTime?: string;

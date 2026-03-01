@@ -19,11 +19,13 @@ import {
 } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
 
+import OrderCtnTable from './modules/order-ctn-table.vue';
 import {
   useBasicInfoFormSchema,
+  useCargoFormSchema,
   usePartyInfoFormSchema,
+  usePortFormSchema,
   useShipmentFormSchema,
-  usePortCargoFormSchema,
 } from './data';
 
 const route = useRoute();
@@ -73,14 +75,26 @@ const [ShipmentForm, shipmentFormApi] = useVbenForm({
   wrapperClass: 'grid-cols-6 gap-x-4',
 });
 
-/** 右侧表单：港口与货物（合并：港口信息 + 货物信息） */
-const [PortCargoForm, portCargoFormApi] = useVbenForm({
+/** 右侧表单：港口信息 */
+const [PortForm, portFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: usePortCargoFormSchema(),
+  schema: usePortFormSchema(),
   showDefaultActions: false,
   wrapperClass: 'grid-cols-6 gap-x-4',
 });
+
+/** 右侧表单：箱型与货物（箱型由 OrderCtnTable 渲染 + 货物信息） */
+const [CtnCargoForm, ctnCargoFormApi] = useVbenForm({
+  layout: 'vertical',
+  compact: true,
+  schema: useCargoFormSchema(),
+  showDefaultActions: false,
+  wrapperClass: 'grid-cols-6 gap-x-4',
+});
+
+/** 箱型箱量数据（由 OrderCtnTable 管理） */
+const orderCtns = ref<SeaExportAdminApi.OrderCtnAddDto[]>([]);
 
 /** DatePicker 需要的 dayjs 对象，API 返回的是字符串 */
 const toDayjs = (val: string | null | undefined) =>
@@ -158,7 +172,54 @@ const flattenDetail = (
     kgs: to?.kgs,
     cbm: to?.cbm,
     internalRemark: to?.internalRemark,
+    orderCodeGoodss: to?.orderCodeGoodss ?? [],
   };
+};
+
+/** 为 orderCtns 每项添加 _rowKey，供 Table 使用 */
+const normalizeOrderCtnsWithRowKey = (
+  items: SeaExportAdminApi.OrderCtnAddDto[] | undefined,
+) => {
+  if (!items?.length) return [];
+  return items.map((item, i) => ({
+    ...item,
+    _rowKey: `ctn_${i}_${Date.now()}`,
+  })) as any[];
+};
+
+const ORDER_CTN_API_KEYS: (keyof SeaExportAdminApi.OrderCtnAddDto)[] = [
+  'ctnCodeId',
+  'ctnNo',
+  'sealNo',
+  'pkgs',
+  'codePackageId',
+  'grossWeight',
+  'tareWeight',
+  'overLength',
+  'overWidth',
+  'overHeight',
+  'volume',
+  'codeGoodsId',
+  'bookingNo',
+  'remark',
+];
+
+/** 提交时移除 _rowKey 等非 API 字段，仅保留 OrderCtnAddDto 字段 */
+const sanitizeOrderCtns = (
+  items: any[] | undefined,
+): SeaExportAdminApi.OrderCtnAddDto[] => {
+  if (!items?.length) return [];
+  return items.map((item) => {
+    const dto: Record<string, any> = {};
+    for (const key of ORDER_CTN_API_KEYS) {
+      const val = item[key];
+      if (val !== undefined && val !== null) {
+        if (typeof val === 'string' && val === '') continue;
+        dto[key] = val;
+      }
+    }
+    return dto as SeaExportAdminApi.OrderCtnAddDto;
+  });
 };
 
 const loadEditData = async () => {
@@ -169,10 +230,60 @@ const loadEditData = async () => {
     const detail = await getSeaExportDetail(editId.value);
     transportOrderId.value = detail.transportOrder?.id;
     const formValues = flattenDetail(detail);
-    await partyInfoFormApi.setValues(formValues);
-    await basicInfoFormApi.setValues(formValues);
-    await shipmentFormApi.setValues(formValues);
-    await portCargoFormApi.setValues(formValues);
+
+    await Promise.all([
+      partyInfoFormApi.setValues(formValues),
+      basicInfoFormApi.setValues(formValues),
+      shipmentFormApi.setValues(formValues),
+      portFormApi.setValues(formValues),
+      ctnCargoFormApi.setValues(formValues),
+    ]);
+
+    partyInfoFormApi.updateSchema([
+      {
+        fieldName: 'secondNotifierId',
+        componentProps: {
+          selectedItems: detail.secondNotifier ? [detail.secondNotifier] : [],
+        },
+      },
+      {
+        fieldName: 'podAgentId',
+        componentProps: {
+          selectedItems: detail.podAgent ? [detail.podAgent] : [],
+        },
+      },
+    ]);
+
+    shipmentFormApi.updateSchema([
+      {
+        fieldName: 'carrierId',
+        componentProps: {
+          selectedItems: detail.carrier ? [detail.carrier] : [],
+        },
+      },
+      {
+        fieldName: 'bookingAgentId',
+        componentProps: {
+          selectedItems: detail.bookingAgent ? [detail.bookingAgent] : [],
+        },
+      },
+      {
+        fieldName: 'shipAgentId',
+        componentProps: {
+          selectedItems: detail.shipAgent ? [detail.shipAgent] : [],
+        },
+      },
+      {
+        fieldName: 'yardId',
+        componentProps: {
+          selectedItems: detail.yard ? [detail.yard] : [],
+        },
+      },
+    ]);
+
+    orderCtns.value = normalizeOrderCtnsWithRowKey(
+      detail.transportOrder?.orderCtns as any,
+    );
   } finally {
     pageLoading.value = false;
   }
@@ -243,6 +354,8 @@ const buildDto = (values: Record<string, any>) => {
     kgs: values.kgs,
     cbm: values.cbm,
     internalRemark: values.internalRemark,
+    orderCodeGoodss: values.orderCodeGoodss ?? [],
+    orderCtns: sanitizeOrderCtns(orderCtns.value),
   };
 
   if (isEdit.value && transportOrderId.value) {
@@ -257,36 +370,40 @@ const buildDto = (values: Record<string, any>) => {
 };
 
 const handleSubmit = async () => {
-  const [partyResult, basicResult, shipmentResult, portCargoResult] =
+  const [partyResult, basicResult, shipmentResult, portResult, ctnCargoResult] =
     await Promise.all([
       partyInfoFormApi.validate(),
       basicInfoFormApi.validate(),
       shipmentFormApi.validate(),
-      portCargoFormApi.validate(),
+      portFormApi.validate(),
+      ctnCargoFormApi.validate(),
     ]);
   const allValid =
     partyResult.valid &&
     basicResult.valid &&
     shipmentResult.valid &&
-    portCargoResult.valid;
+    portResult.valid &&
+    ctnCargoResult.valid;
   if (!allValid) {
     message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
     return;
   }
 
   submitting.value = true;
-  const [partyValues, basicValues, shipmentValues, portCargoValues] =
+  const [partyValues, basicValues, shipmentValues, portValues, ctnCargoValues] =
     await Promise.all([
       partyInfoFormApi.getValues(),
       basicInfoFormApi.getValues(),
       shipmentFormApi.getValues(),
-      portCargoFormApi.getValues(),
+      portFormApi.getValues(),
+      ctnCargoFormApi.getValues(),
     ]);
   const values = {
     ...partyValues,
     ...basicValues,
     ...shipmentValues,
-    ...portCargoValues,
+    ...portValues,
+    ...ctnCargoValues,
   };
   const dto = buildDto(values);
 
@@ -387,11 +504,26 @@ onMounted(() => {
             <template #title>
               <span class="flex items-center gap-2">
                 <IconifyIcon icon="lucide:map-pin" class="size-4" />
-                {{ $t('seaExport.export.formCardPortCargo') }}
+                {{ $t('seaExport.export.formCardPort') }}
               </span>
             </template>
             <div class="px-1">
-              <PortCargoForm />
+              <PortForm />
+            </div>
+          </Card>
+
+          <Card>
+            <template #title>
+              <span class="flex items-center gap-2">
+                <IconifyIcon icon="lucide:package" class="size-4" />
+                {{ $t('seaExport.export.formCardCtnCargo') }}
+              </span>
+            </template>
+            <div class="px-1">
+              <CtnCargoForm />
+              <div class="mt-4">
+                <OrderCtnTable v-model="orderCtns" />
+              </div>
             </div>
           </Card>
         </div>

@@ -343,6 +343,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
 
 /**
  * 港口与货物信息表单 schema（合并：港口信息 + 货物信息）
+ * 注意：箱型由 OrderCtnTable 组件单独渲染，放在「箱型与货物」Card 中
  */
 export function usePortCargoFormSchema(): VbenFormSchema[] {
   return [...usePortFormSchema(), ...useCargoFormSchema()];
@@ -521,6 +522,12 @@ export function usePortFormSchema(): VbenFormSchema[] {
  */
 export function useCargoFormSchema(): VbenFormSchema[] {
   return [
+    {
+      component: 'OrderGoodsButton',
+      fieldName: 'orderCodeGoodss',
+      label: $t('seaExport.export.orderCodeGoodss'),
+      formItemClass: 'col-span-3',
+    },
     {
       component: 'Input',
       fieldName: 'noPkgs',
