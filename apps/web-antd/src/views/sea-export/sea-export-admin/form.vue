@@ -248,14 +248,6 @@ const loadEditData = async () => {
     const formValues = flattenDetail(detail);
     const to = detail.transportOrder;
 
-    await Promise.all([
-      partyInfoFormApi.setValues(formValues),
-      basicInfoFormApi.setValues(formValues),
-      shipmentFormApi.setValues(formValues),
-      portFormApi.setValues(formValues),
-      ctnCargoFormApi.setValues(formValues),
-    ]);
-
     partyInfoFormApi.updateSchema([
       {
         fieldName: 'shipperId',
@@ -494,6 +486,14 @@ const loadEditData = async () => {
           ),
         },
       },
+    ]);
+
+    await Promise.all([
+      partyInfoFormApi.setValues(formValues),
+      basicInfoFormApi.setValues(formValues),
+      shipmentFormApi.setValues(formValues),
+      portFormApi.setValues(formValues),
+      ctnCargoFormApi.setValues(formValues),
     ]);
 
     orderCtns.value = normalizeOrderCtnsWithRowKey(
