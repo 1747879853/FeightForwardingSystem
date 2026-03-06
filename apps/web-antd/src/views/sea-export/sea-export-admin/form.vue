@@ -61,7 +61,7 @@ const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
 const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: useBasicInfoFormSchema(),
+  schema: useBasicInfoFormSchema(isEdit.value),
   showDefaultActions: false,
   wrapperClass: 'grid-cols-6 gap-x-4',
 });
@@ -112,6 +112,8 @@ const flattenDetail = (
 ): Record<string, any> => {
   const to = detail.transportOrder;
   return {
+    countryName: (detail as any).countryName,
+    laneName: (detail as any).laneName,
     blType: detail.blType,
     billType: detail.billType,
     issueType: detail.issueType,

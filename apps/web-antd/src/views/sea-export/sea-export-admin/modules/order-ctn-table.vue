@@ -59,13 +59,17 @@ const updateRow = (
   modelValue.value = list;
 };
 
+const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
+  if (id == null) return [];
+  return [{ id, [labelKey]: name || '' }] as any[];
+};
+
 watch(
   () => modelValue.value,
   (val) => {
     if (val === undefined || val === null) {
       modelValue.value = [];
     }
-    // 数据变化时清除无效的选中项
     const keys = new Set((val ?? []).map((r) => (r as any)._rowKey));
     selectedRowKeys.value = selectedRowKeys.value.filter((k) => keys.has(k));
   },
@@ -105,6 +109,9 @@ watch(
         <template v-if="column.key === 'ctnCodeId'">
           <CtnSelect
             :model-value="record.ctnCodeId"
+            :selected-items="
+              toSelectedItems(record.ctnCodeId, record.ctnCodeName, 'ctnName')
+            "
             class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'ctnCodeId', v)"
@@ -139,6 +146,9 @@ watch(
         <template v-else-if="column.key === 'codePackageId'">
           <CodePackageSelect
             :model-value="record.codePackageId"
+            :selected-items="
+              toSelectedItems(record.codePackageId, record.codePackageName)
+            "
             class="w-full min-w-[90px]"
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'codePackageId', v)"
@@ -180,6 +190,9 @@ watch(
         <template v-else-if="column.key === 'codeGoodsId'">
           <CodeGoodsSelect
             :model-value="record.codeGoodsId"
+            :selected-items="
+              toSelectedItems(record.codeGoodsId, record.codeGoodsName)
+            "
             class="w-full min-w-[90px]"
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'codeGoodsId', v)"

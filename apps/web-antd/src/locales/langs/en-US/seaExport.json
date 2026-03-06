@@ -40,6 +40,7 @@
     "sortId": "Sort",
     "remark": "Remark",
     "commissionNum": "Commission No.",
+    "commissionNumAutoGenerate": "Auto Generated",
     "accountDate": "Account Date",
     "settlementDate": "Settlement Date",
     "codeSourceId": "Biz Source",
@@ -76,11 +77,13 @@
     "notifierContent": "Notify Party Content",
     "creationTime": "Creation Time",
     "blTypeOptions": {
-      "fullContainer": "FCL"
+      "fullContainer": "FCL",
+      "lclSplit": "LCL Split",
+      "lclMaster": "LCL Master"
     },
     "billTypeOptions": {
-      "m": "M",
-      "h": "H"
+      "direct": "Direct BL",
+      "split": "Split BL"
     },
     "issueTypeOptions": {
       "booking": "Booking",

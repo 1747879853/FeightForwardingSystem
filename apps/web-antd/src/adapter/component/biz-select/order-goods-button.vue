@@ -3,6 +3,8 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { computed, ref, watch } from 'vue';
 
+import { IconifyIcon } from '@vben/icons';
+
 import { Button, Modal, Space, Table } from 'ant-design-vue';
 
 import { getCodeGoodsDetail } from '#/api/system/base-data/code-goods-admin';
@@ -119,11 +121,15 @@ watch(
 <template>
   <div class="w-full">
     <Button
-      class="w-full"
-      style=" justify-content: flex-start;text-align: left"
+      class="flex w-full items-center"
+      style="justify-content: flex-start; text-align: left"
       @click="openModal"
     >
-      <span class="truncate">{{ displayText }}</span>
+      <span class="flex-1 truncate">{{ displayText }}</span>
+      <IconifyIcon
+        icon="lucide:pencil"
+        class="ml-auto flex-shrink-0 text-gray-400"
+      />
     </Button>
 
     <Modal
