@@ -448,6 +448,7 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
 
 /**
  * 港口信息表单 schema
+ * 每个港口下方紧跟备注字段（无 label），3 列布局
  */
 export function usePortFormSchema(): VbenFormSchema[] {
   return [
@@ -479,6 +480,24 @@ export function usePortFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'Textarea',
+      fieldName: 'polRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'podRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'poT1Remark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
+    },
+    {
       component: 'PortSelect',
       fieldName: 'poT2Id',
       label: $t('seaExport.export.poT2Id'),
@@ -504,6 +523,24 @@ export function usePortFormSchema(): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
       },
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'poT2Remark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'receivePortRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'deliverPortRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
     },
     {
       component: 'PortSelect',

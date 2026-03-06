@@ -81,7 +81,7 @@ const [PortForm, portFormApi] = useVbenForm({
   compact: true,
   schema: usePortFormSchema(),
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-6 gap-x-4',
+  wrapperClass: 'grid-cols-3 gap-x-4',
 });
 
 /** 右侧表单：箱型与货物（箱型由 OrderCtnTable 渲染 + 货物信息） */
@@ -148,13 +148,19 @@ const flattenDetail = (
     codeFrtId: to?.codeFrtId,
     codeServiceId: to?.codeServiceId,
     tradeTermsType: to?.tradeTermsType,
-    polId: to?.polId,
-    podId: to?.podId,
-    poT1Id: to?.poT1Id,
-    poT2Id: to?.poT2Id,
-    receivePortId: to?.receivePortId,
-    deliverPortId: to?.deliverPortId,
-    signingPortId: to?.signingPortId,
+    polId: detail.polId,
+    polRemark: detail.polRemark,
+    podId: detail.podId,
+    podRemark: detail.podRemark,
+    poT1Id: detail.poT1Id,
+    poT1Remark: detail.poT1Remark,
+    poT2Id: detail.poT2Id,
+    poT2Remark: detail.poT2Remark,
+    receivePortId: detail.receivePortId,
+    receivePortRemark: detail.receivePortRemark,
+    deliverPortId: detail.deliverPortId,
+    deliverPortRemark: detail.deliverPortRemark,
+    signingPortId: detail.signingPortId,
     clientId: to?.clientId,
     teamId: to?.teamId,
     custBrokerId: to?.custBrokerId,
@@ -222,6 +228,16 @@ const sanitizeOrderCtns = (
   });
 };
 
+/**
+ * 从 id + name 构建 select 组件的 selectedItems，
+ * 避免每个 select 组件单独调详情接口回显。
+ * @param labelKey 对应 select 组件的 labelKey，如 ClientSelect 用 'name'，CarrierSelect/PortSelect 用 'cnName'
+ */
+const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
+  if (id == null) return [];
+  return [{ id, [labelKey]: name || '' }] as any[];
+};
+
 const loadEditData = async () => {
   if (!editId.value) return;
 
@@ -230,6 +246,7 @@ const loadEditData = async () => {
     const detail = await getSeaExportDetail(editId.value);
     transportOrderId.value = detail.transportOrder?.id;
     const formValues = flattenDetail(detail);
+    const to = detail.transportOrder;
 
     await Promise.all([
       partyInfoFormApi.setValues(formValues),
@@ -241,15 +258,130 @@ const loadEditData = async () => {
 
     partyInfoFormApi.updateSchema([
       {
+        fieldName: 'shipperId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.shipperId,
+            (to as any)?.shipperName,
+          ),
+        },
+      },
+      {
+        fieldName: 'consigneeId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.consigneeId,
+            (to as any)?.consigneeName,
+          ),
+        },
+      },
+      {
+        fieldName: 'notifierId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.notifierId,
+            (to as any)?.notifierName,
+          ),
+        },
+      },
+      {
         fieldName: 'secondNotifierId',
         componentProps: {
-          selectedItems: detail.secondNotifier ? [detail.secondNotifier] : [],
+          selectedItems: toSelectedItems(
+            detail.secondNotifierId,
+            detail.secondNotifierName,
+          ),
         },
       },
       {
         fieldName: 'podAgentId',
         componentProps: {
-          selectedItems: detail.podAgent ? [detail.podAgent] : [],
+          selectedItems: toSelectedItems(
+            detail.podAgentId,
+            detail.podAgentName,
+          ),
+        },
+      },
+    ]);
+
+    basicInfoFormApi.updateSchema([
+      {
+        fieldName: 'codeSourceId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.codeSourceId,
+            (to as any)?.codeSourceName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'codeFrtId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.codeFrtId,
+            (to as any)?.codeFrtName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'codeServiceId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.codeServiceId,
+            (to as any)?.codeServiceName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'issueType',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.issueType,
+            (detail as any)?.issueTypeName,
+            'billType',
+          ),
+        },
+      },
+      {
+        fieldName: 'clientId',
+        componentProps: {
+          selectedItems: toSelectedItems(to?.clientId, (to as any)?.clientName),
+        },
+      },
+      {
+        fieldName: 'teamId',
+        componentProps: {
+          selectedItems: toSelectedItems(to?.teamId, (to as any)?.teamName),
+        },
+      },
+      {
+        fieldName: 'custBrokerId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.custBrokerId,
+            (to as any)?.custBrokerName,
+          ),
+        },
+      },
+      {
+        fieldName: 'warehouseId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.warehouseId,
+            (to as any)?.warehouseName,
+          ),
+        },
+      },
+      {
+        fieldName: 'insuranceId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.insuranceId,
+            (to as any)?.insuranceName,
+          ),
         },
       },
     ]);
@@ -258,25 +390,108 @@ const loadEditData = async () => {
       {
         fieldName: 'carrierId',
         componentProps: {
-          selectedItems: detail.carrier ? [detail.carrier] : [],
+          selectedItems: toSelectedItems(
+            detail.carrierId,
+            detail.carrierName,
+            'cnName',
+          ),
         },
       },
       {
         fieldName: 'bookingAgentId',
         componentProps: {
-          selectedItems: detail.bookingAgent ? [detail.bookingAgent] : [],
+          selectedItems: toSelectedItems(
+            detail.bookingAgentId,
+            detail.bookingAgentName,
+          ),
         },
       },
       {
         fieldName: 'shipAgentId',
         componentProps: {
-          selectedItems: detail.shipAgent ? [detail.shipAgent] : [],
+          selectedItems: toSelectedItems(
+            detail.shipAgentId,
+            detail.shipAgentName,
+          ),
         },
       },
       {
         fieldName: 'yardId',
         componentProps: {
-          selectedItems: detail.yard ? [detail.yard] : [],
+          selectedItems: toSelectedItems(detail.yardId, detail.yardName),
+        },
+      },
+    ]);
+
+    portFormApi.updateSchema([
+      {
+        fieldName: 'polId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.polId,
+            detail.polName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'podId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.podId,
+            detail.podName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'poT1Id',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.poT1Id,
+            detail.poT1Name,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'poT2Id',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.poT2Id,
+            detail.poT2Name,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'receivePortId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.receivePortId,
+            detail.receivePortName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'deliverPortId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.deliverPortId,
+            detail.deliverPortName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'signingPortId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.signingPortId,
+            detail.signingPortName,
+            'cnName',
+          ),
         },
       },
     ]);
@@ -314,6 +529,19 @@ const buildDto = (values: Record<string, any>) => {
     closeDocTime: toDateString(values.closeDocTime),
     closeManifestTime: toDateString(values.closeManifestTime),
     signingTime: toDateString(values.signingTime),
+    signingPortId: values.signingPortId ?? undefined,
+    podId: values.podId ?? undefined,
+    podRemark: values.podRemark,
+    polId: values.polId ?? undefined,
+    polRemark: values.polRemark,
+    poT1Id: values.poT1Id ?? undefined,
+    poT1Remark: values.poT1Remark,
+    poT2Id: values.poT2Id ?? undefined,
+    poT2Remark: values.poT2Remark,
+    receivePortId: values.receivePortId ?? undefined,
+    receivePortRemark: values.receivePortRemark,
+    deliverPortId: values.deliverPortId ?? undefined,
+    deliverPortRemark: values.deliverPortRemark,
     sortId: values.sortId,
     remark: values.remark,
   };
@@ -330,13 +558,6 @@ const buildDto = (values: Record<string, any>) => {
     codeFrtId: values.codeFrtId ?? undefined,
     codeServiceId: values.codeServiceId ?? undefined,
     tradeTermsType: values.tradeTermsType ?? undefined,
-    polId: values.polId ?? undefined,
-    podId: values.podId ?? undefined,
-    poT1Id: values.poT1Id ?? undefined,
-    poT2Id: values.poT2Id ?? undefined,
-    receivePortId: values.receivePortId ?? undefined,
-    deliverPortId: values.deliverPortId ?? undefined,
-    signingPortId: values.signingPortId ?? undefined,
     clientId: values.clientId,
     teamId: values.teamId ?? undefined,
     custBrokerId: values.custBrokerId ?? undefined,
