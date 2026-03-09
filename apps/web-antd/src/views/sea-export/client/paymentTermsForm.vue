@@ -111,7 +111,7 @@ watch(
         remark: newVal.remark,
         codeSourceIds:
           newVal.cbpCodeSources?.map((item) => item?.codeSourceId) || [],
-        orgsIds: newVal.cbpOrgs?.map((item) => item?.orgId) || [],
+        orgsIds: newVal.cbpOrgs?.map((item) => item?.id) || [],
         userIds: newVal.cbpUsers?.map((item) => item?.userId) || [],
       });
     } else {

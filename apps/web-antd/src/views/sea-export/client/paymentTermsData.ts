@@ -8,6 +8,7 @@ import { $t } from '#/locales';
 import form from 'ant-design-vue/es/form';
 
 import { useVbenForm } from '#/adapter/form';
+import { getOrganizationUnitTree } from '#/api/system/organization-unit';
 
 /**
  * 业务类型枚举
@@ -218,6 +219,28 @@ export function useBillFormSchema(): VbenFormSchema[] {
       fieldName: 'permanent',
       label: $t('seaExport.client.paymentTerms.longTermValid'),
       defaultValue: false,
+    },
+    {
+      component: 'ApiTreeSelect',
+      fieldName: 'orgsIds',
+      label: $t('seaExport.client.paymentTerms.orgs'),
+      componentProps: {
+        api: async () => {
+          // 调用接口获取树形数据
+          const result = await getOrganizationUnitTree();
+          return result;
+        },
+        // 字段映射配置
+        fieldNames: {
+          label: 'displayName',
+          value: 'id',
+          children: 'children',
+        },
+        multiple: true,
+        allowClear: true,
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
     },
     {
       component: 'CodeSourceSelect',
