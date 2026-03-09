@@ -12,6 +12,7 @@
     "formCardCargo": "Cargo Info",
     "formCardOrderShipment": "Order & Shipment",
     "formCardPortCargo": "Port & Cargo",
+    "formCardCtnCargo": "Container & Cargo",
     "blType": "BL Type",
     "billType": "Bill Type",
     "secondNotifierId": "Second Notifier",
@@ -39,6 +40,7 @@
     "sortId": "Sort",
     "remark": "Remark",
     "commissionNum": "Commission No.",
+    "commissionNumAutoGenerate": "Auto Generated",
     "accountDate": "Account Date",
     "settlementDate": "Settlement Date",
     "codeSourceId": "Biz Source",
@@ -75,11 +77,13 @@
     "notifierContent": "Notify Party Content",
     "creationTime": "Creation Time",
     "blTypeOptions": {
-      "fullContainer": "FCL"
+      "fullContainer": "FCL",
+      "lclSplit": "LCL Split",
+      "lclMaster": "LCL Master"
     },
     "billTypeOptions": {
-      "m": "M",
-      "h": "H"
+      "direct": "Direct BL",
+      "split": "Split BL"
     },
     "issueTypeOptions": {
       "booking": "Booking",
@@ -89,7 +93,25 @@
       "insurance": "Insurance",
       "agency": "Agency"
     },
-    "pleaseSelectOne": "Please select a record first"
+    "pleaseSelectOne": "Please select a record first",
+    "orderCtns": "Container Types & Qty",
+    "addCtn": "Add Container",
+    "ctnCodeId": "Container Type",
+    "ctnNo": "Container No.",
+    "sealNo": "Seal No.",
+    "pkgs": "Pkgs",
+    "codePackageId": "Package",
+    "grossWeight": "Gross Weight",
+    "tareWeight": "Tare Weight",
+    "volume": "Volume",
+    "codeGoodsId": "Goods",
+    "orderCodeGoodss": "Goods",
+    "selectGoods": "Select Goods",
+    "pleaseSelectGoods": "Please select goods",
+    "goodsCode": "Goods Code",
+    "goodsEnName": "English Name",
+    "goodsHsCode": "HS Code",
+    "addGoods": "Add Goods"
   },
   "client": {
     "title": "Client Management",

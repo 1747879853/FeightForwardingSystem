@@ -7,18 +7,31 @@ import { $t } from '#/locales';
 
 import { createClientSelectSchema } from '../client/data';
 
-/** 装运方式枚举（占位数据） */
+/** 装运方式枚举：整柜=0、拼箱分票=1、拼箱主票=2 */
 const getBlTypeOptions = () => [
-  {
-    value: 0,
-    label: $t('seaExport.export.blTypeOptions.fullContainer'),
-  },
+  { value: 0, label: $t('seaExport.export.blTypeOptions.fullContainer') },
+  { value: 1, label: $t('seaExport.export.blTypeOptions.lclSplit') },
+  { value: 2, label: $t('seaExport.export.blTypeOptions.lclMaster') },
 ];
 
-/** 订单类型枚举（占位数据） */
+/** 订单类型枚举：直单=0、分单=1 */
 const getBillTypeOptions = () => [
-  { value: 0, label: $t('seaExport.export.billTypeOptions.m') },
-  { value: 1, label: $t('seaExport.export.billTypeOptions.h') },
+  { value: 0, label: $t('seaExport.export.billTypeOptions.direct') },
+  { value: 1, label: $t('seaExport.export.billTypeOptions.split') },
+];
+
+/** 提单份数 / 副本份数枚举（1-10） */
+const getBillCountOptions = () => [
+  { value: 1, label: 'One' },
+  { value: 2, label: 'Two' },
+  { value: 3, label: 'Three' },
+  { value: 4, label: 'Four' },
+  { value: 5, label: 'Five' },
+  { value: 6, label: 'Six' },
+  { value: 7, label: 'Seven' },
+  { value: 8, label: 'Eight' },
+  { value: 9, label: 'Nine' },
+  { value: 10, label: 'Ten' },
 ];
 
 /** 签单方式枚举 */
@@ -127,42 +140,75 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
 /**
  * 基础信息表单 schema（顶部）
  */
-export function useBasicInfoFormSchema(): VbenFormSchema[] {
+export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
   return [
     {
       component: 'Input',
       fieldName: 'commissionNum',
       label: $t('seaExport.export.commissionNum'),
-      componentProps: { allowClear: true, disabled: false },
+      componentProps: {
+        disabled: true,
+        placeholder: isEdit
+          ? ''
+          : $t('seaExport.export.commissionNumAutoGenerate'),
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'countryName',
+      label: '国家',
+      componentProps: { disabled: true, placeholder: '自动关联' },
+    },
+    {
+      component: 'Input',
+      fieldName: 'laneName',
+      label: '航线',
+      componentProps: { disabled: true, placeholder: '自动关联' },
     },
     {
       component: 'DatePicker',
       fieldName: 'accountDate',
       label: $t('seaExport.export.accountDate'),
-      componentProps: { class: 'w-full', picker: 'month' },
+      componentProps: {
+        class: 'w-full',
+        picker: 'month',
+        disabled: true,
+        placeholder: isEdit
+          ? undefined
+          : $t('seaExport.export.commissionNumAutoGenerate'),
+      },
     },
     {
       component: 'DatePicker',
       fieldName: 'settlementDate',
       label: $t('seaExport.export.settlementDate'),
-      componentProps: { class: 'w-full' },
+      componentProps: {
+        class: 'w-full',
+        disabled: true,
+        placeholder: isEdit
+          ? undefined
+          : $t('seaExport.export.commissionNumAutoGenerate'),
+      },
     },
     {
       component: 'Switch',
       fieldName: 'isBusinessLocking',
       label: $t('seaExport.export.isBusinessLocking'),
       defaultValue: false,
+      componentProps: { disabled: true },
     },
     {
       component: 'Switch',
       fieldName: 'isFeeLocking',
       label: $t('seaExport.export.isFeeLocking'),
       defaultValue: false,
+      componentProps: { disabled: true },
     },
     {
       component: 'Select',
       fieldName: 'blType',
       label: $t('seaExport.export.blType'),
+      defaultValue: 0,
       componentProps: {
         allowClear: true,
         options: getBlTypeOptions(),
@@ -174,9 +220,32 @@ export function useBasicInfoFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'billType',
       label: $t('seaExport.export.billType'),
+      defaultValue: 0,
       componentProps: {
         allowClear: true,
         options: getBillTypeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'noBillEnum',
+      label: $t('seaExport.export.noBillEnum'),
+      componentProps: {
+        allowClear: true,
+        options: getBillCountOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'copyNoBillEnum',
+      label: $t('seaExport.export.copyNoBillEnum'),
+      componentProps: {
+        allowClear: true,
+        options: getBillCountOptions(),
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
       },
@@ -343,6 +412,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
 
 /**
  * 港口与货物信息表单 schema（合并：港口信息 + 货物信息）
+ * 注意：箱型由 OrderCtnTable 组件单独渲染，放在「箱型与货物」Card 中
  */
 export function usePortCargoFormSchema(): VbenFormSchema[] {
   return [...usePortFormSchema(), ...useCargoFormSchema()];
@@ -447,6 +517,7 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
 
 /**
  * 港口信息表单 schema
+ * 每个港口下方紧跟备注字段（无 label），3 列布局
  */
 export function usePortFormSchema(): VbenFormSchema[] {
   return [
@@ -478,6 +549,24 @@ export function usePortFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'Textarea',
+      fieldName: 'polRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'podRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'poT1Remark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
+    },
+    {
       component: 'PortSelect',
       fieldName: 'poT2Id',
       label: $t('seaExport.export.poT2Id'),
@@ -505,6 +594,24 @@ export function usePortFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'Textarea',
+      fieldName: 'poT2Remark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'receivePortRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'deliverPortRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 2 },
+    },
+    {
       component: 'PortSelect',
       fieldName: 'signingPortId',
       label: $t('seaExport.export.signingPortId'),
@@ -521,6 +628,12 @@ export function usePortFormSchema(): VbenFormSchema[] {
  */
 export function useCargoFormSchema(): VbenFormSchema[] {
   return [
+    {
+      component: 'OrderGoodsButton',
+      fieldName: 'orderCodeGoodss',
+      label: $t('seaExport.export.orderCodeGoodss'),
+      formItemClass: 'col-span-3',
+    },
     {
       component: 'Input',
       fieldName: 'noPkgs',

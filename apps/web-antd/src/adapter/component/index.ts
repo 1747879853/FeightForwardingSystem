@@ -538,6 +538,7 @@ export type ComponentType =
   | 'FeeCodeSelect'
   | 'ExchangeRateSelect'
   | 'VesselVoyageInput'
+  | 'OrderGoodsButton'
   | BaseFormComponentType;
 
 async function initComponentAdapter() {

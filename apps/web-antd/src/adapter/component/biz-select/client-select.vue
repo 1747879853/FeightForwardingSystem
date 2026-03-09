@@ -148,6 +148,19 @@ const ensureSelectedLoaded = async (rawValue: any) => {
 const loadedSelectedIds = ref(new Set<string>());
 
 watch(
+  selectedItemsRef,
+  (items) => {
+    for (const item of items) {
+      const idStr = parseIdToSafeString((item as any)[props.valueKey]);
+      if (idStr !== null) {
+        loadedSelectedIds.value.add(idStr);
+      }
+    }
+  },
+  { immediate: true },
+);
+
+watch(
   modelValue,
   (value) => {
     ensureSelectedLoaded(value);

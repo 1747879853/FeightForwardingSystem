@@ -12,6 +12,7 @@
     "formCardCargo": "货物信息",
     "formCardOrderShipment": "订单与船期",
     "formCardPortCargo": "港口与货物",
+    "formCardCtnCargo": "箱型与货物",
     "blType": "装运方式",
     "billType": "订单类型",
     "secondNotifierId": "第二通知人",
@@ -39,6 +40,7 @@
     "sortId": "排序",
     "remark": "备注",
     "commissionNum": "委托编号",
+    "commissionNumAutoGenerate": "自动生成",
     "accountDate": "会计期间",
     "settlementDate": "应结日期",
     "codeSourceId": "业务来源",
@@ -75,11 +77,13 @@
     "notifierContent": "通知人内容",
     "creationTime": "创建时间",
     "blTypeOptions": {
-      "fullContainer": "整箱"
+      "fullContainer": "整柜",
+      "lclSplit": "拼箱分票",
+      "lclMaster": "拼箱主票"
     },
     "billTypeOptions": {
-      "m": "M",
-      "h": "H"
+      "direct": "直单",
+      "split": "分单"
     },
     "issueTypeOptions": {
       "booking": "订舱",
@@ -89,7 +93,25 @@
       "insurance": "保险",
       "agency": "代收支"
     },
-    "pleaseSelectOne": "请先选择一条记录"
+    "pleaseSelectOne": "请先选择一条记录",
+    "orderCtns": "箱型箱量",
+    "addCtn": "添加箱型",
+    "ctnCodeId": "箱型",
+    "ctnNo": "箱号",
+    "sealNo": "封号",
+    "pkgs": "件数",
+    "codePackageId": "包装",
+    "grossWeight": "毛重",
+    "tareWeight": "皮重",
+    "volume": "体积",
+    "codeGoodsId": "品名",
+    "orderCodeGoodss": "品名",
+    "selectGoods": "选择品名",
+    "pleaseSelectGoods": "请选择品名",
+    "goodsCode": "品名代码",
+    "goodsEnName": "英文品名",
+    "goodsHsCode": "HS编码",
+    "addGoods": "添加品名"
   },
   "client": {
     "title": "客户管理",

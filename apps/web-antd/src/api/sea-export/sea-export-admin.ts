@@ -1,6 +1,47 @@
+import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
+
 import { requestClient } from '#/api/request';
 
 export namespace SeaExportAdminApi {
+  /** 业务箱型新增输入 */
+  export interface OrderCtnAddDto {
+    /** 箱型id */
+    ctnCodeId?: number;
+    /** 箱号 */
+    ctnNo?: string;
+    /** 封号 */
+    sealNo?: string;
+    /** 件数 */
+    pkgs?: number;
+    /** 包装id */
+    codePackageId?: number;
+    /** 毛重 */
+    grossWeight?: number;
+    /** 皮重 */
+    tareWeight?: number;
+    /** 超长 */
+    overLength?: number;
+    /** 超宽 */
+    overWidth?: number;
+    /** 超高 */
+    overHeight?: number;
+    /** 体积 */
+    volume?: number;
+    /** 商品信息(品名)id */
+    codeGoodsId?: number;
+    /** 订舱号 */
+    bookingNo?: string;
+    /** 备注 */
+    remark?: string;
+  }
+
+  /** 业务商品信息新增输入 */
+  export interface OrderCodeGoodsAddDto {
+    /** 商品信息id */
+    codeGoodsId?: number;
+  }
+
   export interface TransportOrderAddDto {
     commissionNum?: string;
     accountDate?: string;
@@ -19,13 +60,6 @@ export namespace SeaExportAdminApi {
     goodsDes?: string;
     kgs?: string;
     cbm?: string;
-    signingPortId?: number;
-    podId?: number;
-    polId?: number;
-    poT1Id?: number;
-    poT2Id?: number;
-    receivePortId?: number;
-    deliverPortId?: number;
     clientId: number;
     teamId?: number;
     custBrokerId?: number;
@@ -39,6 +73,10 @@ export namespace SeaExportAdminApi {
     notifierContent?: string;
     sortId?: number;
     remark?: string;
+    /** 品名列表 */
+    orderCodeGoodss?: OrderCodeGoodsAddDto[];
+    /** 箱型箱量列表 */
+    orderCtns?: OrderCtnAddDto[];
   }
 
   export interface TransportOrderEditDto extends TransportOrderAddDto {
@@ -81,6 +119,19 @@ export namespace SeaExportAdminApi {
     closeDocTime?: string;
     closeManifestTime?: string;
     signingTime?: string;
+    signingPortId?: number;
+    podId?: number;
+    podRemark?: string;
+    polId?: number;
+    polRemark?: string;
+    poT1Id?: number;
+    poT1Remark?: string;
+    poT2Id?: number;
+    poT2Remark?: string;
+    receivePortId?: number;
+    receivePortRemark?: string;
+    deliverPortId?: number;
+    deliverPortRemark?: string;
     sortId?: number;
     remark?: string;
     transportOrder?: TransportOrderAddDto;
@@ -111,6 +162,19 @@ export namespace SeaExportAdminApi {
     closeDocTime?: string;
     closeManifestTime?: string;
     signingTime?: string;
+    signingPortId?: number;
+    podId?: number;
+    podRemark?: string;
+    polId?: number;
+    polRemark?: string;
+    poT1Id?: number;
+    poT1Remark?: string;
+    poT2Id?: number;
+    poT2Remark?: string;
+    receivePortId?: number;
+    receivePortRemark?: string;
+    deliverPortId?: number;
+    deliverPortRemark?: string;
     sortId?: number;
     remark?: string;
     transportOrder?: TransportOrderEditDto;
@@ -122,15 +186,27 @@ export namespace SeaExportAdminApi {
     billType?: number;
     secondNotifierId?: number;
     secondNotifierContent?: string;
+    secondNotifier?: ClientAdminApi.ClientDto;
+    secondNotifierName?: string;
     podAgentId?: number;
     podAgentContent?: string;
+    podAgent?: ClientAdminApi.ClientDto;
+    podAgentName?: string;
     bookingAgentId?: number;
+    bookingAgent?: ClientAdminApi.ClientDto;
+    bookingAgentName?: string;
     shipAgentId?: number;
+    shipAgent?: ClientAdminApi.ClientDto;
+    shipAgentName?: string;
     yardId?: number;
+    yard?: ClientAdminApi.ClientDto;
+    yardName?: string;
     issueType?: number;
     vessel?: string;
     innerVoyno?: string;
     carrierId?: number;
+    carrier?: CarrierAdminApi.CarrierDto;
+    carrierName?: string;
     noBillEnum?: number;
     copyNoBillEnum?: number;
     goodsCompleteTime?: string;
@@ -141,6 +217,26 @@ export namespace SeaExportAdminApi {
     closeDocTime?: string;
     closeManifestTime?: string;
     signingTime?: string;
+    signingPortId?: number;
+    signingPortName?: string;
+    podId?: number;
+    podName?: string;
+    podRemark?: string;
+    polId?: number;
+    polName?: string;
+    polRemark?: string;
+    poT1Id?: number;
+    poT1Name?: string;
+    poT1Remark?: string;
+    poT2Id?: number;
+    poT2Name?: string;
+    poT2Remark?: string;
+    receivePortId?: number;
+    receivePortName?: string;
+    receivePortRemark?: string;
+    deliverPortId?: number;
+    deliverPortName?: string;
+    deliverPortRemark?: string;
     sortId?: number;
     remark?: string;
     transportOrder?: TransportOrderDto;

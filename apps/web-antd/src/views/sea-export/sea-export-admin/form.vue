@@ -19,11 +19,13 @@ import {
 } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
 
+import OrderCtnTable from './modules/order-ctn-table.vue';
 import {
   useBasicInfoFormSchema,
+  useCargoFormSchema,
   usePartyInfoFormSchema,
+  usePortFormSchema,
   useShipmentFormSchema,
-  usePortCargoFormSchema,
 } from './data';
 
 const route = useRoute();
@@ -59,7 +61,7 @@ const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
 const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: useBasicInfoFormSchema(),
+  schema: useBasicInfoFormSchema(isEdit.value),
   showDefaultActions: false,
   wrapperClass: 'grid-cols-6 gap-x-4',
 });
@@ -73,14 +75,26 @@ const [ShipmentForm, shipmentFormApi] = useVbenForm({
   wrapperClass: 'grid-cols-6 gap-x-4',
 });
 
-/** 右侧表单：港口与货物（合并：港口信息 + 货物信息） */
-const [PortCargoForm, portCargoFormApi] = useVbenForm({
+/** 右侧表单：港口信息 */
+const [PortForm, portFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: usePortCargoFormSchema(),
+  schema: usePortFormSchema(),
+  showDefaultActions: false,
+  wrapperClass: 'grid-cols-3 gap-x-4',
+});
+
+/** 右侧表单：箱型与货物（箱型由 OrderCtnTable 渲染 + 货物信息） */
+const [CtnCargoForm, ctnCargoFormApi] = useVbenForm({
+  layout: 'vertical',
+  compact: true,
+  schema: useCargoFormSchema(),
   showDefaultActions: false,
   wrapperClass: 'grid-cols-6 gap-x-4',
 });
+
+/** 箱型箱量数据（由 OrderCtnTable 管理） */
+const orderCtns = ref<SeaExportAdminApi.OrderCtnAddDto[]>([]);
 
 /** DatePicker 需要的 dayjs 对象，API 返回的是字符串 */
 const toDayjs = (val: string | null | undefined) =>
@@ -98,6 +112,8 @@ const flattenDetail = (
 ): Record<string, any> => {
   const to = detail.transportOrder;
   return {
+    countryName: (detail as any).countryName,
+    laneName: (detail as any).laneName,
     blType: detail.blType,
     billType: detail.billType,
     issueType: detail.issueType,
@@ -134,13 +150,19 @@ const flattenDetail = (
     codeFrtId: to?.codeFrtId,
     codeServiceId: to?.codeServiceId,
     tradeTermsType: to?.tradeTermsType,
-    polId: to?.polId,
-    podId: to?.podId,
-    poT1Id: to?.poT1Id,
-    poT2Id: to?.poT2Id,
-    receivePortId: to?.receivePortId,
-    deliverPortId: to?.deliverPortId,
-    signingPortId: to?.signingPortId,
+    polId: detail.polId,
+    polRemark: detail.polRemark,
+    podId: detail.podId,
+    podRemark: detail.podRemark,
+    poT1Id: detail.poT1Id,
+    poT1Remark: detail.poT1Remark,
+    poT2Id: detail.poT2Id,
+    poT2Remark: detail.poT2Remark,
+    receivePortId: detail.receivePortId,
+    receivePortRemark: detail.receivePortRemark,
+    deliverPortId: detail.deliverPortId,
+    deliverPortRemark: detail.deliverPortRemark,
+    signingPortId: detail.signingPortId,
     clientId: to?.clientId,
     teamId: to?.teamId,
     custBrokerId: to?.custBrokerId,
@@ -158,7 +180,64 @@ const flattenDetail = (
     kgs: to?.kgs,
     cbm: to?.cbm,
     internalRemark: to?.internalRemark,
+    orderCodeGoodss: to?.orderCodeGoodss ?? [],
   };
+};
+
+/** 为 orderCtns 每项添加 _rowKey，供 Table 使用 */
+const normalizeOrderCtnsWithRowKey = (
+  items: SeaExportAdminApi.OrderCtnAddDto[] | undefined,
+) => {
+  if (!items?.length) return [];
+  return items.map((item, i) => ({
+    ...item,
+    _rowKey: `ctn_${i}_${Date.now()}`,
+  })) as any[];
+};
+
+const ORDER_CTN_API_KEYS: (keyof SeaExportAdminApi.OrderCtnAddDto)[] = [
+  'ctnCodeId',
+  'ctnNo',
+  'sealNo',
+  'pkgs',
+  'codePackageId',
+  'grossWeight',
+  'tareWeight',
+  'overLength',
+  'overWidth',
+  'overHeight',
+  'volume',
+  'codeGoodsId',
+  'bookingNo',
+  'remark',
+];
+
+/** 提交时移除 _rowKey 等非 API 字段，仅保留 OrderCtnAddDto 字段 */
+const sanitizeOrderCtns = (
+  items: any[] | undefined,
+): SeaExportAdminApi.OrderCtnAddDto[] => {
+  if (!items?.length) return [];
+  return items.map((item) => {
+    const dto: Record<string, any> = {};
+    for (const key of ORDER_CTN_API_KEYS) {
+      const val = item[key];
+      if (val !== undefined && val !== null) {
+        if (typeof val === 'string' && val === '') continue;
+        dto[key] = val;
+      }
+    }
+    return dto as SeaExportAdminApi.OrderCtnAddDto;
+  });
+};
+
+/**
+ * 从 id + name 构建 select 组件的 selectedItems，
+ * 避免每个 select 组件单独调详情接口回显。
+ * @param labelKey 对应 select 组件的 labelKey，如 ClientSelect 用 'name'，CarrierSelect/PortSelect 用 'cnName'
+ */
+const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
+  if (id == null) return [];
+  return [{ id, [labelKey]: name || '' }] as any[];
 };
 
 const loadEditData = async () => {
@@ -169,10 +248,259 @@ const loadEditData = async () => {
     const detail = await getSeaExportDetail(editId.value);
     transportOrderId.value = detail.transportOrder?.id;
     const formValues = flattenDetail(detail);
-    await partyInfoFormApi.setValues(formValues);
-    await basicInfoFormApi.setValues(formValues);
-    await shipmentFormApi.setValues(formValues);
-    await portCargoFormApi.setValues(formValues);
+    const to = detail.transportOrder;
+
+    partyInfoFormApi.updateSchema([
+      {
+        fieldName: 'shipperId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.shipperId,
+            (to as any)?.shipperName,
+          ),
+        },
+      },
+      {
+        fieldName: 'consigneeId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.consigneeId,
+            (to as any)?.consigneeName,
+          ),
+        },
+      },
+      {
+        fieldName: 'notifierId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.notifierId,
+            (to as any)?.notifierName,
+          ),
+        },
+      },
+      {
+        fieldName: 'secondNotifierId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.secondNotifierId,
+            detail.secondNotifierName,
+          ),
+        },
+      },
+      {
+        fieldName: 'podAgentId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.podAgentId,
+            detail.podAgentName,
+          ),
+        },
+      },
+    ]);
+
+    basicInfoFormApi.updateSchema([
+      {
+        fieldName: 'codeSourceId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.codeSourceId,
+            (to as any)?.codeSourceName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'codeFrtId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.codeFrtId,
+            (to as any)?.codeFrtName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'codeServiceId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.codeServiceId,
+            (to as any)?.codeServiceName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'issueType',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.issueType,
+            (detail as any)?.issueTypeName,
+            'billType',
+          ),
+        },
+      },
+      {
+        fieldName: 'clientId',
+        componentProps: {
+          selectedItems: toSelectedItems(to?.clientId, (to as any)?.clientName),
+        },
+      },
+      {
+        fieldName: 'teamId',
+        componentProps: {
+          selectedItems: toSelectedItems(to?.teamId, (to as any)?.teamName),
+        },
+      },
+      {
+        fieldName: 'custBrokerId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.custBrokerId,
+            (to as any)?.custBrokerName,
+          ),
+        },
+      },
+      {
+        fieldName: 'warehouseId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.warehouseId,
+            (to as any)?.warehouseName,
+          ),
+        },
+      },
+      {
+        fieldName: 'insuranceId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.insuranceId,
+            (to as any)?.insuranceName,
+          ),
+        },
+      },
+    ]);
+
+    shipmentFormApi.updateSchema([
+      {
+        fieldName: 'carrierId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.carrierId,
+            detail.carrierName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'bookingAgentId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.bookingAgentId,
+            detail.bookingAgentName,
+          ),
+        },
+      },
+      {
+        fieldName: 'shipAgentId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.shipAgentId,
+            detail.shipAgentName,
+          ),
+        },
+      },
+      {
+        fieldName: 'yardId',
+        componentProps: {
+          selectedItems: toSelectedItems(detail.yardId, detail.yardName),
+        },
+      },
+    ]);
+
+    portFormApi.updateSchema([
+      {
+        fieldName: 'polId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.polId,
+            detail.polName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'podId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.podId,
+            detail.podName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'poT1Id',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.poT1Id,
+            detail.poT1Name,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'poT2Id',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.poT2Id,
+            detail.poT2Name,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'receivePortId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.receivePortId,
+            detail.receivePortName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'deliverPortId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.deliverPortId,
+            detail.deliverPortName,
+            'cnName',
+          ),
+        },
+      },
+      {
+        fieldName: 'signingPortId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            formValues.signingPortId,
+            detail.signingPortName,
+            'cnName',
+          ),
+        },
+      },
+    ]);
+
+    await Promise.all([
+      partyInfoFormApi.setValues(formValues),
+      basicInfoFormApi.setValues(formValues),
+      shipmentFormApi.setValues(formValues),
+      portFormApi.setValues(formValues),
+      ctnCargoFormApi.setValues(formValues),
+    ]);
+
+    orderCtns.value = normalizeOrderCtnsWithRowKey(
+      detail.transportOrder?.orderCtns as any,
+    );
   } finally {
     pageLoading.value = false;
   }
@@ -203,6 +531,19 @@ const buildDto = (values: Record<string, any>) => {
     closeDocTime: toDateString(values.closeDocTime),
     closeManifestTime: toDateString(values.closeManifestTime),
     signingTime: toDateString(values.signingTime),
+    signingPortId: values.signingPortId ?? undefined,
+    podId: values.podId ?? undefined,
+    podRemark: values.podRemark,
+    polId: values.polId ?? undefined,
+    polRemark: values.polRemark,
+    poT1Id: values.poT1Id ?? undefined,
+    poT1Remark: values.poT1Remark,
+    poT2Id: values.poT2Id ?? undefined,
+    poT2Remark: values.poT2Remark,
+    receivePortId: values.receivePortId ?? undefined,
+    receivePortRemark: values.receivePortRemark,
+    deliverPortId: values.deliverPortId ?? undefined,
+    deliverPortRemark: values.deliverPortRemark,
     sortId: values.sortId,
     remark: values.remark,
   };
@@ -219,13 +560,6 @@ const buildDto = (values: Record<string, any>) => {
     codeFrtId: values.codeFrtId ?? undefined,
     codeServiceId: values.codeServiceId ?? undefined,
     tradeTermsType: values.tradeTermsType ?? undefined,
-    polId: values.polId ?? undefined,
-    podId: values.podId ?? undefined,
-    poT1Id: values.poT1Id ?? undefined,
-    poT2Id: values.poT2Id ?? undefined,
-    receivePortId: values.receivePortId ?? undefined,
-    deliverPortId: values.deliverPortId ?? undefined,
-    signingPortId: values.signingPortId ?? undefined,
     clientId: values.clientId,
     teamId: values.teamId ?? undefined,
     custBrokerId: values.custBrokerId ?? undefined,
@@ -243,6 +577,8 @@ const buildDto = (values: Record<string, any>) => {
     kgs: values.kgs,
     cbm: values.cbm,
     internalRemark: values.internalRemark,
+    orderCodeGoodss: values.orderCodeGoodss ?? [],
+    orderCtns: sanitizeOrderCtns(orderCtns.value),
   };
 
   if (isEdit.value && transportOrderId.value) {
@@ -257,36 +593,40 @@ const buildDto = (values: Record<string, any>) => {
 };
 
 const handleSubmit = async () => {
-  const [partyResult, basicResult, shipmentResult, portCargoResult] =
+  const [partyResult, basicResult, shipmentResult, portResult, ctnCargoResult] =
     await Promise.all([
       partyInfoFormApi.validate(),
       basicInfoFormApi.validate(),
       shipmentFormApi.validate(),
-      portCargoFormApi.validate(),
+      portFormApi.validate(),
+      ctnCargoFormApi.validate(),
     ]);
   const allValid =
     partyResult.valid &&
     basicResult.valid &&
     shipmentResult.valid &&
-    portCargoResult.valid;
+    portResult.valid &&
+    ctnCargoResult.valid;
   if (!allValid) {
     message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
     return;
   }
 
   submitting.value = true;
-  const [partyValues, basicValues, shipmentValues, portCargoValues] =
+  const [partyValues, basicValues, shipmentValues, portValues, ctnCargoValues] =
     await Promise.all([
       partyInfoFormApi.getValues(),
       basicInfoFormApi.getValues(),
       shipmentFormApi.getValues(),
-      portCargoFormApi.getValues(),
+      portFormApi.getValues(),
+      ctnCargoFormApi.getValues(),
     ]);
   const values = {
     ...partyValues,
     ...basicValues,
     ...shipmentValues,
-    ...portCargoValues,
+    ...portValues,
+    ...ctnCargoValues,
   };
   const dto = buildDto(values);
 
@@ -387,11 +727,26 @@ onMounted(() => {
             <template #title>
               <span class="flex items-center gap-2">
                 <IconifyIcon icon="lucide:map-pin" class="size-4" />
-                {{ $t('seaExport.export.formCardPortCargo') }}
+                {{ $t('seaExport.export.formCardPort') }}
               </span>
             </template>
             <div class="px-1">
-              <PortCargoForm />
+              <PortForm />
+            </div>
+          </Card>
+
+          <Card>
+            <template #title>
+              <span class="flex items-center gap-2">
+                <IconifyIcon icon="lucide:package" class="size-4" />
+                {{ $t('seaExport.export.formCardCtnCargo') }}
+              </span>
+            </template>
+            <div class="px-1">
+              <CtnCargoForm />
+              <div class="mt-4">
+                <OrderCtnTable v-model="orderCtns" />
+              </div>
             </div>
           </Card>
         </div>
