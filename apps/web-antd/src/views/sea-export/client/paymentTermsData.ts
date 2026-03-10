@@ -222,7 +222,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'ApiTreeSelect',
-      fieldName: 'orgsIds',
+      fieldName: 'organizationUnitIds',
       label: $t('seaExport.client.paymentTerms.orgs'),
       componentProps: {
         api: async () => {
