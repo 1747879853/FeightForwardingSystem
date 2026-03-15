@@ -65,7 +65,7 @@ const addBillingPeriodItem = () => {
     days: null,
     remark: null,
     codeSourceIds: [],
-    orgsIds: [],
+    organizationUnitIds: [],
     userIds: [],
   });
   currentKey.value = [String(billList.value.length - 1)];

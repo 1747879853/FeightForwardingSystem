@@ -26,7 +26,7 @@ export namespace BillingPeriodAdminApi {
     /** 备注 */
     remark?: string;
     /** 组织id */
-    orgsIds?: number[];
+    organizationUnitIds?: number[];
     /** 用户id */
     userIds?: number[];
     /**业务来源  */
@@ -62,7 +62,7 @@ export namespace BillingPeriodAdminApi {
     /** 备注 */
     remark?: string;
     /** 组织id */
-    orgsIds?: number[];
+    organizationUnitIds?: number[];
     /** 用户id */
     userIds?: number[];
     /**业务来源  */

@@ -111,7 +111,8 @@ watch(
         remark: newVal.remark,
         codeSourceIds:
           newVal.cbpCodeSources?.map((item) => item?.codeSourceId) || [],
-        orgsIds: newVal.cbpOrgs?.map((item) => item?.id) || [],
+        organizationUnitIds:
+          newVal.cbpOrgs?.map((item) => item?.organizationUnitId) || [],
         userIds: newVal.cbpUsers?.map((item) => item?.userId) || [],
       });
     } else {
@@ -157,7 +158,7 @@ const handleSubmit = async () => {
         /** 业务来源 */
         codeSourceIds: values.codeSourceIds || [],
         /** 组织id */
-        orgsIds: values.orgsIds || [],
+        organizationUnitIds: values.organizationUnitIds || [],
         /** 用户id */
         userIds: values.userIds || [],
       });
@@ -187,7 +188,7 @@ const handleSubmit = async () => {
         /** 业务来源 */
         codeSourceIds: values.codeSourceIds || [],
         /** 组织id */
-        orgsIds: values.orgsIds || [],
+        organizationUnitIds: values.organizationUnitIds || [],
         /** 用户id */
         userIds: values.userIds || [],
       });
