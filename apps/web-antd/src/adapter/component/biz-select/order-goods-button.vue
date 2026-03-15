@@ -3,8 +3,6 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { computed, ref, watch } from 'vue';
 
-import { IconifyIcon } from '@vben/icons';
-
 import { Button, Modal, Space, Table } from 'ant-design-vue';
 
 import { getCodeGoodsDetail } from '#/api/system/base-data/code-goods-admin';
@@ -23,15 +21,25 @@ const modelValue = defineModel<
 /** codeGoodsId -> name 缓存，用于按钮文案展示 */
 const nameMap = ref<Record<number, string>>({});
 
+const toSafeText = (val: unknown) => {
+  if (val === undefined || val === null) return '';
+  return String(val).trim();
+};
+
 const displayText = computed(() => {
   const items = modelValue.value || [];
   if (!items.length) return $t('seaExport.export.pleaseSelectGoods');
   const names = items
-    .map((item) =>
-      item.codeGoodsId
-        ? (nameMap.value[item.codeGoodsId] ?? String(item.codeGoodsId))
-        : undefined,
-    )
+    .map((item) => {
+      const localName = toSafeText((item as any).codeGoodsName);
+      const localHSCode = toSafeText(
+        (item as any).codeGoodsHSCode ?? (item as any).hsCode,
+      );
+      if (localName && localHSCode) return `${localName}-${localHSCode}`;
+      if (localName) return localName;
+      if (!item.codeGoodsId) return undefined;
+      return nameMap.value[item.codeGoodsId] ?? String(item.codeGoodsId);
+    })
     .filter(Boolean);
   return names.length
     ? names.join(' / ')
@@ -73,13 +81,33 @@ const removeSelectedRows = () => {
 
 const updateRow = (index: number, codeGoodsId: number | undefined) => {
   const list = [...pendingRows.value];
-  list[index] = { ...list[index], codeGoodsId };
+  list[index] = {
+    ...list[index],
+    codeGoodsId,
+    codeGoodsName: undefined,
+    codeGoodsHSCode: undefined,
+  };
   pendingRows.value = list;
   if (codeGoodsId && !nameMap.value[codeGoodsId]) {
     getCodeGoodsDetail(codeGoodsId)
       .then((detail) => {
-        if (detail.name) {
-          nameMap.value = { ...nameMap.value, [codeGoodsId]: detail.name };
+        const hsCode = toSafeText(
+          (detail as any).codeGoodsHSCode ?? (detail as any).hsCode,
+        );
+        const fullName = detail.name
+          ? `${detail.name}${hsCode ? `-${hsCode}` : ''}`
+          : String(codeGoodsId);
+        nameMap.value = { ...nameMap.value, [codeGoodsId]: fullName };
+
+        const latest = [...pendingRows.value];
+        const row = latest[index];
+        if (row?.codeGoodsId === codeGoodsId) {
+          latest[index] = {
+            ...row,
+            codeGoodsName: detail.name || undefined,
+            codeGoodsHSCode: hsCode || undefined,
+          };
+          pendingRows.value = latest;
         }
       })
       .catch(() => {});
@@ -101,9 +129,13 @@ const loadNames = async (items: SeaExportAdminApi.OrderCodeGoodsAddDto[]) => {
     toLoad.map(async (id) => {
       try {
         const detail = await getCodeGoodsDetail(id);
-        if (detail.name) {
-          nameMap.value = { ...nameMap.value, [id]: detail.name };
-        }
+        const hsCode = toSafeText(
+          (detail as any).codeGoodsHSCode ?? (detail as any).hsCode,
+        );
+        const fullName = detail.name
+          ? `${detail.name}${hsCode ? `-${hsCode}` : ''}`
+          : String(id);
+        nameMap.value = { ...nameMap.value, [id]: fullName };
       } catch {}
     }),
   );
@@ -120,16 +152,27 @@ watch(
 
 <template>
   <div class="w-full">
-    <Button
-      class="flex w-full items-center"
-      style="justify-content: flex-start; text-align: left"
-      @click="openModal"
-    >
-      <span class="flex-1 truncate">{{ displayText }}</span>
-      <IconifyIcon
-        icon="lucide:pencil"
-        class="ml-auto flex-shrink-0 text-gray-400"
-      />
+    <Button class="w-full text-left" @click="openModal">
+      <div class="flex w-full items-center">
+        <span class="min-w-0 flex-1 truncate">{{ displayText }}</span>
+        <span
+          class="ml-auto inline-flex h-full flex-shrink-0 items-center justify-center text-primary"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="size-4"
+            aria-hidden="true"
+          >
+            <path d="M12 20h9" />
+            <path d="m16.5 3.5 4 4L7 21l-4 1 1-4 12.5-14.5z" />
+          </svg>
+        </span>
+      </div>
     </Button>
 
     <Modal

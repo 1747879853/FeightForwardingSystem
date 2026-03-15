@@ -17,7 +17,7 @@ import {
 } from '#/api';
 import { $t } from '#/locales';
 
-import { useColumns, useGridFormSchema } from './data';
+import { combineUserAttribute, useColumns, useGridFormSchema } from './data';
 import Form from './modules/user-form.vue';
 import PasswordModal from './modules/password-modal.vue';
 import ImportModal from './modules/import-modal.vue';
@@ -130,10 +130,23 @@ const [Grid, gridApi] = useVbenVxeGrid<SystemUserAdminApi.SystemUser>({
           { page }: { page: { currentPage: number; pageSize: number } },
           formValues: Record<string, any>,
         ) => {
+          const userAttributeFlags = Array.isArray(
+            formValues.UserAttributeFlags,
+          )
+            ? formValues.UserAttributeFlags
+            : [];
+          const userAttribute =
+            userAttributeFlags.length > 0
+              ? combineUserAttribute(userAttributeFlags)
+              : undefined;
+
+          const { UserAttributeFlags: _ignore, ...restFormValues } = formValues;
+
           return await getUserPagedList({
             page: page.currentPage,
             pageSize: page.pageSize,
-            ...formValues,
+            ...restFormValues,
+            userAttribute,
           });
         },
       },

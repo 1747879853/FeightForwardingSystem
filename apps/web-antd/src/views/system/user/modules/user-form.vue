@@ -10,7 +10,11 @@ import { useVbenForm } from '#/adapter/form';
 import { createOrUpdateUser, getUserForEdit } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
-import { useFormSchema } from '../data';
+import {
+  combineUserAttribute,
+  parseUserAttribute,
+  useFormSchema,
+} from '../data';
 
 const emits = defineEmits(['success']);
 
@@ -47,6 +51,7 @@ const [Modal, modalApi] = useVbenModal({
       roleIds: values.roleIds,
       avatar: values.avatar,
       organizationId: values.organizationId,
+      userAttribute: combineUserAttribute(values.userAttributeFlags ?? []),
     };
 
     // 新增时需要密码
@@ -95,6 +100,7 @@ const [Modal, modalApi] = useVbenModal({
             status: userDetail.status,
             avatar: userDetail.avatar,
             organizationId: (userDetail as any).organizationId,
+            userAttributeFlags: parseUserAttribute(userDetail.userAttribute),
           });
 
           // 如果是从"分配角色"进入，聚焦到角色字段
@@ -116,6 +122,7 @@ const [Modal, modalApi] = useVbenModal({
             status: data.status,
             avatar: data.avatar,
             organizationId: (data as any).organizationId,
+            userAttributeFlags: parseUserAttribute(data.userAttribute),
           });
         }
       } else {

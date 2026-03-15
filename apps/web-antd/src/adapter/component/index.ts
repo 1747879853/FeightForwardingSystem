@@ -665,6 +665,9 @@ async function initComponentAdapter() {
     ExchangeRateSelect: defineAsyncComponent(
       () => import('./biz-select/exchange-rate-select.vue'),
     ),
+    OrderGoodsButton: defineAsyncComponent(
+      () => import('./biz-select/order-goods-button.vue'),
+    ),
     VesselVoyageInput: defineAsyncComponent(
       () => import('./vessel-voyage-input.vue'),
     ),

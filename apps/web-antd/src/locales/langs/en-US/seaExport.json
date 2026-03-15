@@ -75,6 +75,8 @@
     "shipperContent": "Shipper Content",
     "notifierId": "Notify Party",
     "notifierContent": "Notify Party Content",
+    "countryName": "Country",
+    "laneName": "Lane",
     "creationTime": "Creation Time",
     "blTypeOptions": {
       "fullContainer": "FCL",

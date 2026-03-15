@@ -15,6 +15,8 @@ import { usePagedSelect } from './use-paged-select';
 interface Props {
   /** label 字段名，默认 'userName'，可用值：'userName' | 'nickName' */
   labelKey?: string;
+  /** 用户属性（位掩码），用于筛选用户 */
+  userAttribute?: number;
   /** 每页数量，默认 20 */
   pageSize?: number;
   /** placeholder */
@@ -41,6 +43,7 @@ const modelValue = defineModel<any>();
 
 // 响应式引用 selectedItems
 const selectedItemsRef = toRef(props, 'selectedItems');
+const userAttributeRef = toRef(props, 'userAttribute');
 
 // 将用户数据转换为 Option
 const mapUserToOption = (user: SystemUserAdminApi.UserListDto) => {
@@ -58,8 +61,13 @@ const mapUserToOption = (user: SystemUserAdminApi.UserListDto) => {
   };
 };
 
+const extraParamsRef = computed(() => ({
+  userAttribute: userAttributeRef.value,
+}));
+
 // 使用分页选择组合式函数
 const { api, handlePopupScroll, handleSearch, params } = usePagedSelect({
+  extraParamsRef,
   fetchPage: getUserPagedList,
   mapItemToOption: mapUserToOption,
   pageSize: props.pageSize,

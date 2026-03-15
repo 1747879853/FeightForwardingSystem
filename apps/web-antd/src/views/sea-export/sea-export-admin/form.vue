@@ -7,7 +7,15 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
-import { IconifyIcon } from '@vben/icons';
+import {
+  ArrowLeft,
+  FileText,
+  MapPin,
+  Package,
+  Save,
+  Ship,
+  Users,
+} from '@vben/icons';
 
 import { Button, Card, message, Space, Spin } from 'ant-design-vue';
 
@@ -666,7 +674,7 @@ onMounted(() => {
           class="flex items-center justify-center p-0"
           @click="handleBack"
         >
-          <IconifyIcon icon="lucide:arrow-left" class="size-5" />
+          <ArrowLeft class="size-5" />
         </Button>
         <span class="text-lg font-semibold">{{ pageTitle }}</span>
       </div>
@@ -676,9 +684,14 @@ onMounted(() => {
         <Button @click="handleCancel">
           {{ $t('common.cancel') }}
         </Button>
-        <Button type="primary" :loading="submitting" @click="handleSubmit">
-          <IconifyIcon icon="lucide:save" class="mr-1 size-4" />
-          {{ $t('common.save') }}
+        <Button
+          type="primary"
+          :loading="submitting"
+          class="flex items-center justify-center"
+          @click="handleSubmit"
+        >
+          <Save class="mr-1 inline-block size-4 align-middle" />
+          <span class="align-middle">{{ $t('common.save') }}</span>
         </Button>
       </Space>
     </template>
@@ -688,7 +701,7 @@ onMounted(() => {
         <Card class="flex w-[280px] shrink-0 flex-col">
           <template #title>
             <span class="flex items-center gap-2">
-              <IconifyIcon icon="lucide:users" class="size-4" />
+              <Users class="size-4" />
               {{ $t('seaExport.export.formCardPartyInfo') }}
             </span>
           </template>
@@ -702,7 +715,7 @@ onMounted(() => {
           <Card>
             <template #title>
               <span class="flex items-center gap-2">
-                <IconifyIcon icon="lucide:file-text" class="size-4" />
+                <FileText class="size-4" />
                 {{ $t('seaExport.export.formCardBasicInfo') }}
               </span>
             </template>
@@ -714,7 +727,7 @@ onMounted(() => {
           <Card>
             <template #title>
               <span class="flex items-center gap-2">
-                <IconifyIcon icon="lucide:ship" class="size-4" />
+                <Ship class="size-4" />
                 {{ $t('seaExport.export.formCardShipment') }}
               </span>
             </template>
@@ -726,7 +739,7 @@ onMounted(() => {
           <Card>
             <template #title>
               <span class="flex items-center gap-2">
-                <IconifyIcon icon="lucide:map-pin" class="size-4" />
+                <MapPin class="size-4" />
                 {{ $t('seaExport.export.formCardPort') }}
               </span>
             </template>
@@ -738,7 +751,7 @@ onMounted(() => {
           <Card>
             <template #title>
               <span class="flex items-center gap-2">
-                <IconifyIcon icon="lucide:package" class="size-4" />
+                <Package class="size-4" />
                 {{ $t('seaExport.export.formCardCtnCargo') }}
               </span>
             </template>

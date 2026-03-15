@@ -75,6 +75,8 @@
     "shipperContent": "发货人内容",
     "notifierId": "通知人",
     "notifierContent": "通知人内容",
+    "countryName": "国家",
+    "laneName": "航线",
     "creationTime": "创建时间",
     "blTypeOptions": {
       "fullContainer": "整柜",

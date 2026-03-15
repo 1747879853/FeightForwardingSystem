@@ -9,6 +9,7 @@ import form from 'ant-design-vue/es/form';
 
 import { useVbenForm } from '#/adapter/form';
 import { getOrganizationUnitTree } from '#/api/system/organization-unit';
+import { UserAttribute } from '#/api/system/user-admin';
 
 /**
  * 业务类型枚举
@@ -194,6 +195,9 @@ export const SettlementDayOptions = [
   },
 ];
 
+/** 账期规则可选用户属性：仅销售 */
+const PAYMENT_TERMS_USER_ATTRIBUTE_MASK = UserAttribute.Sales;
+
 /**
  * 新增/编辑客户账单 schema
  */
@@ -258,6 +262,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
       fieldName: 'userIds',
       label: $t('seaExport.client.paymentTerms.user'),
       componentProps: {
+        userAttribute: PAYMENT_TERMS_USER_ATTRIBUTE_MASK,
         mode: 'multiple',
         allowClear: true,
         placeholder: $t('ui.placeholder.select'),

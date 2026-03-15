@@ -10,6 +10,19 @@ export enum UserStatus {
   Passed = 40,
 }
 
+/** 用户属性（位标志枚举） */
+export enum UserAttribute {
+  None = 0,
+  Operation = 1,
+  CustomerService = 2,
+  Documentation = 4,
+  Business = 8,
+  Sales = 16,
+  Finance = 32,
+  OverseasCustomerService = 64,
+  HR = 128,
+}
+
 export namespace SystemUserAdminApi {
   /** 用户状态 */
   export type UserStatus = typeof UserStatus;
@@ -26,6 +39,7 @@ export namespace SystemUserAdminApi {
     isPhoneNumberConfirmed: boolean;
     status: UserStatus;
     avatar?: string;
+    userAttribute?: UserAttribute;
     creationTime: string;
     lastLoginTime?: string;
     roles?: string[];
@@ -45,6 +59,7 @@ export namespace SystemUserAdminApi {
     KeyWords?: string;
     IsActive?: boolean;
 
+    userAttribute?: UserAttribute;
     IsPhoneNumberConfirmed?: boolean;
     Status?: UserStatus;
     RoleId?: number;
@@ -69,6 +84,7 @@ export namespace SystemUserAdminApi {
     isPhoneNumberConfirmed: boolean;
     status: UserStatus;
     avatar?: string;
+    userAttribute?: UserAttribute;
     creationTime: string;
     lastLoginTime?: string;
     roleIds?: number[];
@@ -93,6 +109,7 @@ export namespace SystemUserAdminApi {
     avatar?: string;
     roleIds?: number[];
     organizationId?: number;
+    userAttribute?: UserAttribute;
   }
 
   /** 用户输入DTO（含数据权限） */
@@ -144,6 +161,7 @@ async function getUserPagedList(params: Recordable<any>) {
     KeyWords: params.KeyWords || params.keyWords,
     IsActive: params.IsActive ?? params.isActive,
 
+    userAttribute: params.userAttribute,
     IsPhoneNumberConfirmed:
       params.IsPhoneNumberConfirmed ?? params.isPhoneNumberConfirmed,
     Status: params.Status ?? params.status,

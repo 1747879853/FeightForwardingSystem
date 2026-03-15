@@ -156,13 +156,13 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
     {
       component: 'Input',
       fieldName: 'countryName',
-      label: '国家',
+      label: $t('seaExport.export.countryName'),
       componentProps: { disabled: true, placeholder: '自动关联' },
     },
     {
       component: 'Input',
       fieldName: 'laneName',
-      label: '航线',
+      label: $t('seaExport.export.laneName'),
       componentProps: { disabled: true, placeholder: '自动关联' },
     },
     {

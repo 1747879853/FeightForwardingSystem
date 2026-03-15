@@ -393,7 +393,18 @@
     "supportExcel": "Support .xlsx, .xls Excel files",
     "onlyExcelAllowed": "Only Excel files are allowed",
     "fileSizeLimit": "File size cannot exceed 10MB",
-    "department": "Department"
+    "department": "Department",
+    "userAttribute": "User Attribute",
+    "userAttributeOptions": {
+      "operation": "Operation",
+      "customerService": "Customer Service",
+      "documentation": "Documentation",
+      "business": "Business",
+      "sales": "Sales",
+      "finance": "Finance",
+      "overseasCustomerService": "Overseas Customer Service",
+      "hr": "HR"
+    }
   },
   "dept": {
     "name": "Department",

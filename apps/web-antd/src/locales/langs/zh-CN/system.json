@@ -393,7 +393,18 @@
     "supportExcel": "支持 .xlsx、.xls 格式的 Excel 文件",
     "onlyExcelAllowed": "只能上传 Excel 文件",
     "fileSizeLimit": "文件大小不能超过 10MB",
-    "department": "部门"
+    "department": "部门",
+    "userAttribute": "用户属性",
+    "userAttributeOptions": {
+      "operation": "操作",
+      "customerService": "客服",
+      "documentation": "单证",
+      "business": "商务",
+      "sales": "销售",
+      "finance": "财务",
+      "overseasCustomerService": "海外客服",
+      "hr": "人事"
+    }
   },
   "dept": {
     "list": "部门列表",

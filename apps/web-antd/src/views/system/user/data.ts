@@ -2,9 +2,89 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SystemUserAdminApi } from '#/api';
 import { getOrganizationUnitTree } from '#/api/system/organization-unit';
-import { UserStatus } from '#/api';
+import { UserAttribute, UserStatus } from '#/api';
 import { $t } from '#/locales';
 import { z } from '@vben/common-ui';
+
+const userAttributeValues = [
+  UserAttribute.Operation,
+  UserAttribute.CustomerService,
+  UserAttribute.Documentation,
+  UserAttribute.Business,
+  UserAttribute.Sales,
+  UserAttribute.Finance,
+  UserAttribute.OverseasCustomerService,
+  UserAttribute.HR,
+];
+
+/** 用户属性选项（位标志枚举） */
+export function getUserAttributeOptions() {
+  return [
+    {
+      label: $t('system.user.userAttributeOptions.operation'),
+      value: UserAttribute.Operation,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.customerService'),
+      value: UserAttribute.CustomerService,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.documentation'),
+      value: UserAttribute.Documentation,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.business'),
+      value: UserAttribute.Business,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.sales'),
+      value: UserAttribute.Sales,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.finance'),
+      value: UserAttribute.Finance,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.overseasCustomerService'),
+      value: UserAttribute.OverseasCustomerService,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.hr'),
+      value: UserAttribute.HR,
+    },
+  ];
+}
+
+/**
+ * 将位标志值解析为选中的选项数组
+ */
+export function parseUserAttribute(value: number | undefined): number[] {
+  if (!value) return [];
+  return userAttributeValues.filter((bit) => (value & bit) === bit);
+}
+
+/**
+ * 将选中的选项数组合并为位标志值
+ */
+export function combineUserAttribute(selected: number[]): number {
+  return selected.reduce((acc, bit) => acc | bit, 0);
+}
+
+/**
+ * 将位标志值格式化为可读文本
+ */
+export function formatUserAttribute(value: number | undefined): string {
+  const selected = parseUserAttribute(value);
+  if (!selected.length) return '-';
+
+  const optionMap = new Map(
+    getUserAttributeOptions().map((item) => [item.value, item.label]),
+  );
+  return selected
+    .map((bit) => optionMap.get(bit))
+    .filter(Boolean)
+    .join(', ');
+}
 /** 用户状态选项 */
 export const userStatusOptions = [
   {
@@ -54,11 +134,9 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       fieldName: 'userName',
       label: $t('system.user.userName'),
-      rules: z
-        .string()
-        .min(2, {
-          message: $t('ui.formRules.required', [$t('system.user.userName')]),
-        }),
+      rules: z.string().min(2, {
+        message: $t('ui.formRules.required', [$t('system.user.userName')]),
+      }),
     },
     {
       component: 'Input',
@@ -69,11 +147,9 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       fieldName: 'nickName',
       label: $t('system.user.nickName'),
-      rules: z
-        .string()
-        .min(1, {
-          message: $t('ui.formRules.required', [$t('system.user.nickName')]),
-        }),
+      rules: z.string().min(1, {
+        message: $t('ui.formRules.required', [$t('system.user.nickName')]),
+      }),
     },
     {
       component: 'Input',
@@ -210,6 +286,14 @@ export function useFormSchema(): VbenFormSchema[] {
     //   label: $t('system.user.roles'),
     // },
     {
+      component: 'CheckboxGroup',
+      componentProps: {
+        options: getUserAttributeOptions(),
+      },
+      fieldName: 'userAttributeFlags',
+      label: $t('system.user.userAttribute'),
+    },
+    {
       fieldName: 'avatar',
       label: $t('system.user.avatar'),
       component: 'FileUploadInput',
@@ -245,6 +329,17 @@ export function useGridFormSchema(): VbenFormSchema[] {
     //   fieldName: 'IsActive',
     //   label: $t('system.user.isActive'),
     // },
+    {
+      component: 'Select',
+      componentProps: {
+        mode: 'multiple',
+        allowClear: true,
+        options: getUserAttributeOptions(),
+        placeholder: $t('system.user.userAttribute'),
+      },
+      fieldName: 'UserAttributeFlags',
+      label: $t('system.user.userAttribute'),
+    },
     {
       component: 'Select',
       componentProps: {
@@ -317,6 +412,12 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
         }
         return cellValue || '-';
       },
+    },
+    {
+      field: 'userAttribute',
+      title: $t('system.user.userAttribute'),
+      minWidth: 140,
+      formatter: ({ cellValue }) => formatUserAttribute(cellValue),
     },
     // {
     //   cellRender: {
