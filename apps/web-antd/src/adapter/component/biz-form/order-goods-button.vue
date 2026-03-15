@@ -8,7 +8,7 @@ import { Button, Modal, Space, Table } from 'ant-design-vue';
 import { getCodeGoodsDetail } from '#/api/system/base-data/code-goods-admin';
 import { $t } from '@vben/locales';
 
-import CodeGoodsSelect from './code-goods-select.vue';
+import CodeGoodsSelect from '../biz-select/code-goods-select.vue';
 
 type OrderRow = SeaExportAdminApi.OrderCodeGoodsAddDto & { _rowKey: string };
 

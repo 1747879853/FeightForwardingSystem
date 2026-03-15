@@ -332,6 +332,11 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
  */
 export function usePartyInfoFormSchema(): VbenFormSchema[] {
   return [
+    {
+      component: 'OrderUsersButton',
+      fieldName: 'orderUsers',
+      label: $t('seaExport.export.orderUsers'),
+    },
     createClientSelectSchema({
       fieldName: 'shipperId',
       industryCategory: 'b',

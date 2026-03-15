@@ -1,5 +1,6 @@
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
+import type { UserAttribute } from '#/api/system/user-admin';
 
 import { requestClient } from '#/api/request';
 
@@ -42,6 +43,18 @@ export namespace SeaExportAdminApi {
     codeGoodsId?: number;
   }
 
+  /** 业务相关用户新增输入 */
+  export interface OrderUserAddDto {
+    /** 用户Id */
+    userId?: number;
+    /** 用户属性 */
+    userAttribute?: UserAttribute;
+    /** 排序id */
+    sortId?: number;
+    /** 备注 */
+    remark?: string;
+  }
+
   export interface TransportOrderAddDto {
     commissionNum?: string;
     accountDate?: string;
@@ -77,6 +90,8 @@ export namespace SeaExportAdminApi {
     orderCodeGoodss?: OrderCodeGoodsAddDto[];
     /** 箱型箱量列表 */
     orderCtns?: OrderCtnAddDto[];
+    /** 业务相关用户列表 */
+    orderUsers?: OrderUserAddDto[];
   }
 
   export interface TransportOrderEditDto extends TransportOrderAddDto {

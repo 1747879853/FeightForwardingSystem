@@ -25,6 +25,7 @@ import {
   editSeaExport,
   getSeaExportDetail,
 } from '#/api/sea-export/sea-export-admin';
+import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
@@ -55,6 +56,12 @@ const pageTitle = computed(() => {
 const pageLoading = ref(false);
 const submitting = ref(false);
 const transportOrderId = ref<number | undefined>();
+const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
+  { userAttribute: UserAttribute.Business, sortId: 4 },
+  { userAttribute: UserAttribute.Operation, sortId: 3 },
+  { userAttribute: UserAttribute.CustomerService, sortId: 2 },
+  { userAttribute: UserAttribute.Documentation, sortId: 1 },
+];
 
 /** 左侧表单：相关方信息（发货人、收货人、通知人等） */
 const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
@@ -189,6 +196,7 @@ const flattenDetail = (
     cbm: to?.cbm,
     internalRemark: to?.internalRemark,
     orderCodeGoodss: to?.orderCodeGoodss ?? [],
+    orderUsers: to?.orderUsers ?? [],
   };
 };
 
@@ -203,7 +211,9 @@ const normalizeOrderCtnsWithRowKey = (
   })) as any[];
 };
 
-const ORDER_CTN_API_KEYS: (keyof SeaExportAdminApi.OrderCtnAddDto)[] = [
+const ORDER_CTN_API_KEYS: Array<
+  Extract<keyof SeaExportAdminApi.OrderCtnAddDto, string>
+> = [
   'ctnCodeId',
   'ctnNo',
   'sealNo',
@@ -219,6 +229,10 @@ const ORDER_CTN_API_KEYS: (keyof SeaExportAdminApi.OrderCtnAddDto)[] = [
   'bookingNo',
   'remark',
 ];
+
+const ORDER_USER_API_KEYS: Array<
+  Extract<keyof SeaExportAdminApi.OrderUserAddDto, string>
+> = ['userId', 'userAttribute', 'sortId', 'remark'];
 
 /** 提交时移除 _rowKey 等非 API 字段，仅保留 OrderCtnAddDto 字段 */
 const sanitizeOrderCtns = (
@@ -236,6 +250,26 @@ const sanitizeOrderCtns = (
     }
     return dto as SeaExportAdminApi.OrderCtnAddDto;
   });
+};
+
+/** 提交时移除 userName 等非 API 字段，仅保留 OrderUserAddDto 字段 */
+const sanitizeOrderUsers = (
+  items: any[] | undefined,
+): SeaExportAdminApi.OrderUserAddDto[] => {
+  if (!items?.length) return [];
+  return items
+    .map((item) => {
+      const dto: Record<string, any> = {};
+      for (const key of ORDER_USER_API_KEYS) {
+        const val = item[key];
+        if (val !== undefined && val !== null) {
+          if (typeof val === 'string' && val === '') continue;
+          dto[key] = val;
+        }
+      }
+      return dto as SeaExportAdminApi.OrderUserAddDto;
+    })
+    .filter((item) => item.userAttribute != null || item.userId != null);
 };
 
 /**
@@ -587,6 +621,7 @@ const buildDto = (values: Record<string, any>) => {
     internalRemark: values.internalRemark,
     orderCodeGoodss: values.orderCodeGoodss ?? [],
     orderCtns: sanitizeOrderCtns(orderCtns.value),
+    orderUsers: sanitizeOrderUsers(values.orderUsers),
   };
 
   if (isEdit.value && transportOrderId.value) {
@@ -661,6 +696,11 @@ const handleBack = () => {
 };
 
 onMounted(() => {
+  if (!isEdit.value) {
+    partyInfoFormApi.setValues({
+      orderUsers: defaultOrderUsers,
+    });
+  }
   loadEditData();
 });
 </script>
@@ -668,7 +708,7 @@ onMounted(() => {
 <template>
   <Page auto-content-height>
     <template #title>
-      <div class="mb-2 flex items-center gap-2">
+      <div class="flex items-center gap-2">
         <Button
           type="text"
           class="flex items-center justify-center p-0"

@@ -539,6 +539,7 @@ export type ComponentType =
   | 'ExchangeRateSelect'
   | 'VesselVoyageInput'
   | 'OrderGoodsButton'
+  | 'OrderUsersButton'
   | BaseFormComponentType;
 
 async function initComponentAdapter() {
@@ -666,7 +667,10 @@ async function initComponentAdapter() {
       () => import('./biz-select/exchange-rate-select.vue'),
     ),
     OrderGoodsButton: defineAsyncComponent(
-      () => import('./biz-select/order-goods-button.vue'),
+      () => import('./biz-form/order-goods-button.vue'),
+    ),
+    OrderUsersButton: defineAsyncComponent(
+      () => import('./biz-form/order-users-button.vue'),
     ),
     VesselVoyageInput: defineAsyncComponent(
       () => import('./vessel-voyage-input.vue'),
