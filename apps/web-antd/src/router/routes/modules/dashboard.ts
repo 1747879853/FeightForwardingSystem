@@ -31,6 +31,16 @@ const routes: RouteRecordRaw[] = [
           title: $t('page.dashboard.workspace'),
         },
       },
+      {
+        name: 'SeaFreightGlobe',
+        path: '/sea-freight-globe',
+        component: () =>
+          import('#/views/dashboard/sea-freight-globe/index.vue'),
+        meta: {
+          icon: 'carbon:earth-filled',
+          title: '海运 3D 地球看板',
+        },
+      },
     ],
   },
 ];
