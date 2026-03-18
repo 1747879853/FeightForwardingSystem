@@ -707,18 +707,6 @@ onMounted(() => {
 
 <template>
   <Page auto-content-height>
-    <template #title>
-      <div class="flex items-center gap-2">
-        <Button
-          type="text"
-          class="flex items-center justify-center p-0"
-          @click="handleBack"
-        >
-          <ArrowLeft class="size-5" />
-        </Button>
-        <span class="text-lg font-semibold">{{ pageTitle }}</span>
-      </div>
-    </template>
     <template #extra>
       <Space>
         <Button @click="handleCancel">
