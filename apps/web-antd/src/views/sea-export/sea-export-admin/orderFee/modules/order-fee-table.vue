@@ -363,7 +363,7 @@ onMounted(() => {
         <template v-else-if="column.key === 'exchangeRate'">
           <ExchangeRateSelect
             :model-value="record.exchangeRate"
-            class="w-full min-w-[80px]"
+            class="w-full min-w-[70px]"
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'exchangeRate', v)"
           />
@@ -493,19 +493,19 @@ onMounted(() => {
       <Table.Column
         key="invoiceStatus"
         :title="$t('seaExport.export.orderFee.invoiceStatus')"
-        :min-width="100"
+        :width="80"
         fixed="left"
       />
       <Table.Column
         key="feeStatus"
         :title="$t('seaExport.export.orderFee.feeStatus')"
-        :min-width="100"
+        :width="90"
         fixed="left"
       />
       <Table.Column
         key="feeCodeId"
         :title="$t('seaExport.export.orderFee.feecodeName')"
-        :min-width="100"
+        :min-width="120"
       />
       <Table.Column
         key="industryCategory"
@@ -525,7 +525,7 @@ onMounted(() => {
       <Table.Column
         key="exchangeRate"
         :title="$t('seaExport.export.orderFee.ExchangeRate')"
-        :min-width="80"
+        :width="85"
       />
       <Table.Column
         key="unitPrice"

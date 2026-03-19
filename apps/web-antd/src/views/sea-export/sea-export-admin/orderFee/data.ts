@@ -51,16 +51,14 @@ export const getInvoiceStatusOptions = () => [
 // 费用状态
 // --------------------------------------------------------
 export const getFeeStatusOptions = () => [
-  { value: 0, label: '审核通过' },
-  { value: 1, label: '录入状态' },
-  { value: 2, label: '提交审核' },
-  { value: 3, label: '申请修改' },
-  { value: 4, label: '申请删除' },
-  { value: 5, label: '撤销申请' },
-  { value: 6, label: '驳回提交' },
-  { value: 7, label: '驳回申请' },
-  { value: 8, label: '部分结算' },
-  { value: 9, label: '结算完毕' },
+  { value: 0, label: '录入状态' },
+  { value: 1, label: '提交审核' },
+  { value: 2, label: '审核通过' },
+  { value: 3, label: '驳回' },
+  { value: 4, label: '申请修改' },
+  { value: 5, label: '申请删除' },
+  { value: 6, label: '部分结算' },
+  { value: 7, label: '结算完毕' },
 ];
 
 // --------------------------------------------------------

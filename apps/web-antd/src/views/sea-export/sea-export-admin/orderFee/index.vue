@@ -308,7 +308,7 @@ onMounted(() => {
 <template>
   <Page auto-content-height>
     <Spin :spinning="pageLoading">
-      <div class="mx-4 flex items-stretch gap-6">
+      <div class="mx-2 flex items-stretch gap-6">
         <!--  -->
         <div class="flex min-w-0 flex-1 flex-col gap-2">
           <Card>
@@ -347,7 +347,7 @@ onMounted(() => {
               {{ $t('seaExport.export.formCardInfo') }}
             </span>
           </template>
-          <div class="flex flex-1 px-1" v-for="item in displayList">
+          <div class="flex flex-1 px-1 py-1" v-for="item in displayList">
             <span class="flex w-[85px]"> {{ `${item.name} : ` }}</span>
             <span class="flex w-[145px]">{{ item.value || '--' }}</span>
           </div>

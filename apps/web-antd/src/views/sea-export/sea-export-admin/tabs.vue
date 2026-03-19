@@ -25,6 +25,7 @@ import {
 
 import From from './form.vue';
 import orderFee from './orderFee/index.vue';
+import defaultInfo from './modules/default-info.vue';
 
 import { $t } from '#/locales';
 const route = useRoute();
@@ -47,6 +48,24 @@ const pageTitle = computed(() => {
 });
 
 const activeKey = ref('base');
+
+const displayList = [
+  {
+    name: $t('seaExport.export.vessel'),
+    value: 'vessel',
+  },
+  {
+    name: $t('seaExport.export.innerVoyno'),
+    value: 'innerVoyno',
+  },
+  {
+    name: $t('seaExport.export.carrierId'),
+    value: 'carrier',
+  },
+  {
+    name: $t('seaExport.export.issueType'),
+  },
+];
 </script>
 
 <template>
@@ -63,13 +82,18 @@ const activeKey = ref('base');
         <span class="text-lg font-semibold">{{ pageTitle }}</span>
       </div>
     </template>
-    <Tabs type="card" v-model:activeKey="activeKey">
-      <TabPane key="base" tab="基础信息">
-        <From></From>
-      </TabPane>
-      <TabPane key="fee" tab="应收应付费用" force-render>
-        <orderFee />
-      </TabPane>
-    </Tabs>
+    <div class="mx-4 flex items-stretch gap-3">
+      <defaultInfo />
+      <div class="flex min-w-0 flex-1 flex-col gap-2">
+        <Tabs type="card" v-model:activeKey="activeKey">
+          <TabPane key="base" tab="基础信息">
+            <From></From>
+          </TabPane>
+          <TabPane key="fee" tab="应收应付费用" force-render>
+            <orderFee />
+          </TabPane>
+        </Tabs>
+      </div>
+    </div>
   </Page>
 </template>
