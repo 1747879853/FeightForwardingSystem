@@ -1,5 +1,5 @@
 import { requestClient } from '#/api/request';
-
+import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 const API_PREFIX = '/services/app/OrderFeeAdmin';
 
 export namespace OrderFeeAdminApi {
@@ -91,6 +91,9 @@ export namespace OrderFeeAdminApi {
   /** 修改账单期参数 */
   export interface OrderFeeEditDto extends OrderFeeAddDto {
     id: number;
+    submitOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
+    modifyOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
+    deleteOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
   }
 
   /** 业务费用列表和详情输出 Dto */

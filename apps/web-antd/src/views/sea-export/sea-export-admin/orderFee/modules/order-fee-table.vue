@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
+import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -30,6 +31,11 @@ import {
   getOrderFeePagedList,
   batchDeleteOrderFee,
 } from '#/api/sea-export/order-fee-admin';
+
+import {
+  submitOrderFee,
+  submitOrderFeeWithdrawAsync,
+} from '#/api/audit-approval/expense-admin';
 
 const dataSource = defineModel<OrderFeeAdminApi.OrderFeeEditDto[]>({
   default: () => [],
@@ -93,6 +99,7 @@ const getTableDate = () => {
     PageSize: 999,
   };
   getOrderFeePagedList(params).then((res) => {
+    console.log('res', res);
     dataSource.value = normalizeOrderFeeWithRowKey(res.items);
   });
 };
@@ -103,14 +110,63 @@ const addRow = () => {
     id: 0,
     transportOrderId: editId.value,
     paySide: props.type,
-    feeStatus: 1,
+    feeStatus: 0,
     invoiceStatus: 0,
     canInvoice: false,
     dataEntryMethod: 0,
   } as any);
   dataSource.value = list;
 };
-
+const submitOrderFeeWithdraw = () => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+  const okList = list.filter(
+    (item) => item?.submitOrderFeeTasks[0]?.taskStatus === 0,
+  );
+  if (okList.length === 0) {
+    message.error({
+      content: $t('ui.actionMessage.operationFailed'),
+      key: 'action_process_msg',
+    });
+    return;
+  }
+  let taskBaseId = okList[0]?.submitOrderFeeTasks[0]?.taskBaseId;
+  let submitOrderFeeWithdrawDto: ExpenseSubmissionAdminApi.SubmitOrderFeeWithdrawDto =
+    {
+      id: taskBaseId ?? 0,
+      orderFeeIds: list.map((item) => item.id),
+    };
+  submitOrderFeeWithdrawAsync(submitOrderFeeWithdrawDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
+const Submitted = () => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+  let SubmitOrderFeeDto = {
+    TransportOrderId: editId.value ?? 0,
+    PaySide: props.type ?? 0,
+    orderFees: sanitizeOrderFee([...(list ?? [])]),
+  };
+  console.log(SubmitOrderFeeDto);
+  submitOrderFee(SubmitOrderFeeDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
 /** 为 orderCtns 每项添加 _rowKey，供 Table 使用 */
 const normalizeOrderFeeWithRowKey = (
   items: OrderFeeAdminApi.OrderFeeEditDto[] | undefined,
@@ -140,7 +196,11 @@ const sanitizeOrderFee = (
   });
 };
 const saveRow = () => {
-  let list = sanitizeOrderFee([...(dataSource.value ?? [])]);
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
 
   console.log(list);
   batchEditOrderFee(list).then(() => {
@@ -273,7 +333,12 @@ onMounted(() => {
         <Button type="primary" size="small" @click="addRow">
           {{ $t('common.create') }}
         </Button>
-        <Button type="primary" size="small" @click="saveRow">
+        <Button
+          type="primary"
+          size="small"
+          :disabled="!selectedRowKeys.length"
+          @click="saveRow"
+        >
           {{ $t('common.save') }}
         </Button>
         <Button
@@ -284,6 +349,20 @@ onMounted(() => {
         >
           {{ $t('common.delete') }}
         </Button>
+        <Button
+          type="primary"
+          size="small"
+          :disabled="!selectedRowKeys.length"
+          @click="Submitted"
+          >{{ $t('auditApproval.status.Submitted') }}</Button
+        >
+        <Button
+          type="primary"
+          size="small"
+          :disabled="!selectedRowKeys.length"
+          @click="submitOrderFeeWithdraw"
+          >{{ $t('auditApproval.withdraw') }}</Button
+        >
       </Space>
     </div>
     <Table
@@ -332,10 +411,6 @@ onMounted(() => {
           />
         </template>
         <template v-else-if="column.key === 'settlementId'">
-          <!-- <CarrierSelect v-if="record.industryCategory === 0" :model-value="record.settlementId"
-            class=" w-full min-w-[90px]" :selected-items="toSelectedItems(record.settlementId, record.settlementName)"
-            :placeholder="$t('ui.placeholder.select')"
-            @update:model-value="(v) => updateRow(index, 'settlementId', v)" /> -->
           <ClientSelect
             :industryCategory="
               getSettlementIndustryCategory(record.industryCategory)
@@ -452,43 +527,6 @@ onMounted(() => {
             @update:value="(v) => updateRow(index, 'remark', v)"
           />
         </template>
-        <!-- <template v-else-if="column.key === 'ctnNo'">
-          <span>{{ record.invoiceStatus }}</span>
-        </template>
-        <template v-else-if="column.key === 'sealNo'">
-          <Input :value="record.sealNo" :placeholder="$t('seaExport.export.sealNo')" allow-clear
-            @update:value="(v) => updateRow(index, 'sealNo', v)" />
-        </template>
-        <template v-else-if="column.key === 'pkgs'">
-          <InputNumber :value="record.pkgs" :placeholder="$t('seaExport.export.pkgs')" class="w-full" :min="0"
-            :controls="false" @update:value="(v) => updateRow(index, 'pkgs', v)" />
-        </template>
-        <template v-else-if="column.key === 'codePackageId'">
-          <CodePackageSelect :model-value="record.codePackageId" :selected-items="toSelectedItems(record.codePackageId, record.codePackageName)
-            " class="w-full min-w-[90px]" :placeholder="$t('ui.placeholder.select')"
-            @update:model-value="(v) => updateRow(index, 'codePackageId', v)" />
-        </template>
-        <template v-else-if="column.key === 'grossWeight'">
-          <InputNumber :value="record.grossWeight" :placeholder="$t('seaExport.export.grossWeight')" class="w-full"
-            :min="0" :controls="false" :precision="2" @update:value="(v) => updateRow(index, 'grossWeight', v)" />
-        </template>
-        <template v-else-if="column.key === 'tareWeight'">
-          <InputNumber :value="record.tareWeight" :placeholder="$t('seaExport.export.tareWeight')" class="w-full"
-            :min="0" :controls="false" :precision="2" @update:value="(v) => updateRow(index, 'tareWeight', v)" />
-        </template>
-        <template v-else-if="column.key === 'volume'">
-          <InputNumber :value="record.volume" :placeholder="$t('seaExport.export.volume')" class="w-full" :min="0"
-            :controls="false" :precision="2" @update:value="(v) => updateRow(index, 'volume', v)" />
-        </template>
-        <template v-else-if="column.key === 'codeGoodsId'">
-          <CodeGoodsSelect :model-value="record.codeGoodsId" :selected-items="toSelectedItems(record.codeGoodsId, record.codeGoodsName)
-            " class="w-full min-w-[90px]" :placeholder="$t('ui.placeholder.select')"
-            @update:model-value="(v) => updateRow(index, 'codeGoodsId', v)" />
-        </template>
-        <template v-else-if="column.key === 'remark'">
-          <Input :value="record.remark" :placeholder="$t('seaExport.export.remark')" allow-clear
-            @update:value="(v) => updateRow(index, 'remark', v)" />
-        </template> -->
       </template>
       <Table.Column
         key="invoiceStatus"

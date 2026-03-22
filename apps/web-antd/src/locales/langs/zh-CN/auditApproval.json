@@ -1,0 +1,63 @@
+{
+  "title": "审核审批",
+  "expenseName": "费用",
+  "withdraw": "撤回",
+  "taskName": "任务",
+  "task": {
+    "status": "任务状态",
+    "statusOptions": {
+      "Auditing": "审核中",
+      "Passed": "审核通过",
+      "Rejected": "审核驳回",
+      "PartialPassed": "部分通过"
+    },
+    "type": "任务类型",
+    "typeOptions": {
+      "SubmitOrderFee": "费用提交",
+      "ModifyOrderFee": "费用修改",
+      "DeleteOrderFee": "费用删除"
+    },
+    "originalInfo": "原始信息",
+    "info": "任务信息",
+    "auditUserName": "审核人",
+    "auditTime": "审核时间",
+    "remark": "备注",
+    "creatorUserName": "创建人",
+    "okPass": "确认审核通过",
+    "noPass": "确认审核不通过",
+    "okReject": "确认驳回",
+    "remarkPlaceholder": "请输入审核意见（可选）"
+  },
+  "status": {
+    "Entering": "录入状态",
+    "Submitted": "提交审核",
+    "Passed": "审核通过",
+    "Rejected": "驳回",
+    "Modification": "申请修改",
+    "Deletion": "申请删除",
+    "PartialSettlement": "部分结算",
+    "Settlemented": "结算完毕"
+  },
+  "Passed": "审核通过",
+  "NoPassed": "审核不通过",
+  "Rejected": "驳回",
+  "expenseReview": {
+    "all": "全部费用审核",
+    "title": "费用审核",
+    "detail": "费用审核详情"
+  },
+  "expenseSubmission": {
+    "title": "费用提交审核",
+    "detail": "费用提交审核详情"
+  },
+  "creatorUserName": "创建人",
+  "taskItemCount": "任务项数量",
+  "submitOrderFeeItemCount": "费用提交待处理数量",
+  "modifyOrderFeeItemCount": "费用修改待处理数量",
+  "deleteOrderFeeItemCount": "费用删除待处理数量",
+  "Processed": "处理状态",
+  "ProcessedOptions": {
+    "yes": "未处理",
+    "no": "已处理"
+  }
+}
