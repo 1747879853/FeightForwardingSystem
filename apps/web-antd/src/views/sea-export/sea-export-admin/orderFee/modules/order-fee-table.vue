@@ -127,6 +127,7 @@ const submitOrderFeeWithdraw = () => {
     (item) => item?.submitOrderFeeTasks[0]?.taskStatus === 0,
   );
   if (okList.length === 0) {
+    console.log('no_task_status', list);
     message.error({
       content: $t('ui.actionMessage.operationFailed'),
       key: 'action_process_msg',

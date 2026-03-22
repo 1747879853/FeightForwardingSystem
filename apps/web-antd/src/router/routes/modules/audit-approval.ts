@@ -33,7 +33,7 @@ const routes: RouteRecordRaw[] = [
           },
           {
             path: ':id/expense-detail/:entityId',
-            name: 'SeaExportDetail',
+            name: 'ExpenseDetail',
             meta: {
               title: $t('auditApproval.expenseReview.detail'),
               hideInMenu: true,
@@ -55,7 +55,7 @@ const routes: RouteRecordRaw[] = [
           },
           {
             path: ':id/expense-submission-detail/:entityId',
-            name: 'SeaExportDetail',
+            name: 'ExpenseSubmissionDetail',
             meta: {
               title: $t('auditApproval.expenseSubmission.detail'),
               hideInMenu: true,

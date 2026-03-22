@@ -15,6 +15,7 @@ export namespace ExpenseSubmissionAdminApi {
   }
 
   export interface TransportOrderSimpleDto {
+    id?: number;
     /** 业务类型 */
     bizType?: number;
     /** 委托编号  */

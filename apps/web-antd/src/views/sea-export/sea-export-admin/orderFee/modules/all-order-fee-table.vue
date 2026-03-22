@@ -58,8 +58,13 @@ const submissionId = computed(() => {
   return id ? Number(id) : 0;
 });
 
+const transportOrderId = computed(() => {
+  const id = route.params.id;
+  return id ? Number(id) : 0;
+});
+
 const getTableDate = async () => {
-  const detail = await OrderFeeTaskDetailAsync({ id: submissionId.value });
+  const detail = await OrderFeeTaskDetailAsync({ id: transportOrderId.value });
   const orderFeeTasks =
     detail.orderFeeTasks?.filter((item) => item.paySide === props.type) || [];
   console.log('detail', detail);

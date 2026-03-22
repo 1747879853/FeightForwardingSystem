@@ -16,8 +16,9 @@ const handleRowDblclick = ({
 }: {
   row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
 }) => {
+  console.log('row', row);
   router.push(
-    `/audit-approval/expense-review/${row.id}/expense-detail/${row.entityId}`,
+    `/audit-approval/expense-review/${row.transportOrder.id}/expense-detail/${row.entityId}`,
   );
 };
 

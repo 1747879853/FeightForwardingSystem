@@ -22,7 +22,7 @@ import { Button, Card, message, Space, Spin } from 'ant-design-vue';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
 
-import OrderFeeTable from '#/views/sea-export/sea-export-admin/orderFee/modules/submission-order-fee-table.vue';
+import OrderFeeTable from '#/views/sea-export/sea-export-admin/orderFee/modules/all-order-fee-table.vue';
 
 const route = useRoute();
 const router = useRouter();
