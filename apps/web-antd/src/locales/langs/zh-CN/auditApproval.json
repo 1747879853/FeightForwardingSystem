@@ -1,7 +1,7 @@
 {
   "title": "审核审批",
   "expenseName": "费用",
-  "withdraw": "撤回",
+  "withdraw": "撤销提交",
   "taskName": "任务",
   "task": {
     "status": "任务状态",
@@ -17,6 +17,7 @@
       "ModifyOrderFee": "费用修改",
       "DeleteOrderFee": "费用删除"
     },
+    "noTasking": "任务不在审核中",
     "originalInfo": "原始信息",
     "info": "任务信息",
     "auditUserName": "审核人",
@@ -26,6 +27,10 @@
     "okPass": "确认审核通过",
     "noPass": "确认审核不通过",
     "okReject": "确认驳回",
+    "okModify": "确认修改",
+    "okDelete": "确认删除",
+    "remarkModifyPlaceholder": "请输入修改原因（可选）",
+    "remarkDeletePlaceholder": "请输入删除原因（可选）",
     "remarkPlaceholder": "请输入审核意见（可选）"
   },
   "status": {
@@ -59,5 +64,7 @@
   "ProcessedOptions": {
     "yes": "未处理",
     "no": "已处理"
-  }
+  },
+  "ApplyModification": "申请修改",
+  "ApplyDeletion": "申请删除"
 }

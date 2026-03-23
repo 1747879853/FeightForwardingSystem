@@ -62,9 +62,7 @@ const getTableDate = async () => {
   const detail = await submitOrderFeeDetailAsync({ id: submissionId.value });
   const orderFeeTasks =
     detail.orderFeeTasks?.filter((item) => item.paySide === props.type) || [];
-  console.log('detail', detail);
   dataSource.value = normalizeOrderFeeWithRowKey(orderFeeTasks);
-  console.log('dataSource', dataSource.value);
 };
 
 // ... existing code ...
@@ -145,7 +143,7 @@ const Rejected = (modalRemark: string) => {
   const list = (dataSource.value ?? []).filter((row) =>
     keysSet.has((row as any)._rowKey),
   );
-  let submitOrderFeeRejectedAsyncDto: ExpenseSubmissionAdminApi.SubmitOrderFeeRejectedAsync =
+  let submitOrderFeeRejectedAsyncDto: ExpenseSubmissionAdminApi.SubmitOrderFeeRejectedDto =
     {
       id: submissionId.value,
       remark: modalRemark,

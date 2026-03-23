@@ -2,7 +2,7 @@
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   Button,
@@ -13,6 +13,11 @@ import {
   Table,
   Checkbox,
   message,
+  DropdownButton,
+  MenuItem,
+  Menu,
+  Modal,
+  Textarea,
 } from 'ant-design-vue';
 
 import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
@@ -34,9 +39,11 @@ import {
 
 import {
   submitOrderFee,
+  modifyOrderFee,
+  deleteOrderFee,
   submitOrderFeeWithdrawAsync,
+  OrderFeeTaskWithdraw,
 } from '#/api/audit-approval/expense-admin';
-
 const dataSource = defineModel<OrderFeeAdminApi.OrderFeeEditDto[]>({
   default: () => [],
 });
@@ -99,7 +106,34 @@ const getTableDate = () => {
     PageSize: 999,
   };
   getOrderFeePagedList(params).then((res) => {
-    console.log('res', res);
+    res.items.forEach((item) => {
+      item.taskStatus = $t('auditApproval.task.noTasking');
+      if (
+        item.submitOrderFeeTasks &&
+        item.submitOrderFeeTasks[0]?.taskStatus === 0
+      ) {
+        item.taskStatus =
+          $t('auditApproval.task.typeOptions.SubmitOrderFee') +
+          $t('auditApproval.task.statusOptions.Auditing');
+      } else if (
+        item.modifyOrderFeeTasks &&
+        item.modifyOrderFeeTasks[0]?.taskStatus === 0
+      ) {
+        item.taskStatus =
+          $t('auditApproval.task.typeOptions.ModifyOrderFee') +
+          $t('auditApproval.task.statusOptions.Auditing');
+      } else if (
+        item.deleteOrderFeeTasks &&
+        item.deleteOrderFeeTasks[0]?.taskStatus === 0
+      ) {
+        item.taskStatus =
+          $t('auditApproval.task.typeOptions.DeleteOrderFee') +
+          $t('auditApproval.task.statusOptions.Auditing');
+      } else {
+        item.taskStatus = $t('auditApproval.task.noTasking');
+      }
+    });
+    console.log('res', res.items);
     dataSource.value = normalizeOrderFeeWithRowKey(res.items);
   });
 };
@@ -116,6 +150,88 @@ const addRow = () => {
     dataEntryMethod: 0,
   } as any);
   dataSource.value = list;
+};
+
+const showModifyWithRemark = () => {
+  let modalRemark = '';
+  // 创建弹窗实例
+  const modal = Modal.confirm({
+    title: $t('auditApproval.task.okModify'),
+    content: () =>
+      h('div', {}, [
+        h(Textarea, {
+          modelValue: modalRemark,
+          onChange: (val: any) => {
+            modalRemark = val.target?.value || val;
+            console.log('Textarea changed:', modalRemark);
+          },
+          rows: 3,
+          placeholder: $t('auditApproval.task.remarkModifyPlaceholder'),
+          maxlength: 100,
+          style: 'margin-top: 8px;',
+        }),
+      ]),
+    icon: null,
+    width: 520,
+    centered: true,
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    async onOk() {
+      await nextTick(); // 等待 Vue 响应式更新完成
+      console.log('remark onOk:', modalRemark);
+      submitModify(modalRemark);
+    },
+    onCancel() {
+      modalRemark = '';
+    },
+  });
+};
+const showDeleteWithRemark = () => {
+  let modalRemark = '';
+  // 创建弹窗实例
+  const modal = Modal.confirm({
+    title: $t('auditApproval.task.okDelete'),
+    content: () =>
+      h('div', {}, [
+        h(Textarea, {
+          modelValue: modalRemark,
+          onChange: (val: any) => {
+            modalRemark = val.target?.value || val;
+            console.log('Textarea changed:', modalRemark);
+          },
+          rows: 3,
+          placeholder: $t('auditApproval.task.remarkDeletePlaceholder'),
+          maxlength: 100,
+          style: 'margin-top: 8px;',
+        }),
+      ]),
+    icon: null,
+    width: 520,
+    centered: true,
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    async onOk() {
+      await nextTick(); // 等待 Vue 响应式更新完成
+      console.log('remark onOk:', modalRemark);
+      submitDelete(modalRemark);
+    },
+    onCancel() {
+      modalRemark = '';
+    },
+  });
+};
+const SubmittedOther = async (e: any) => {
+  console.log('SubmittedOther', e);
+  switch (e.key) {
+    case 'modify': {
+      showModifyWithRemark();
+      break;
+    }
+    case 'delete': {
+      showDeleteWithRemark();
+      break;
+    }
+  }
 };
 const submitOrderFeeWithdraw = () => {
   if (!selectedRowKeys.value.length) return;
@@ -148,6 +264,36 @@ const submitOrderFeeWithdraw = () => {
     getTableDate();
   });
 };
+
+const orderFeeWithdraw = () => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+  // const okList = list.filter(
+  //   (item) => item?.submitOrderFeeTasks[0]?.taskStatus === 0,
+  // );
+  // if (okList.length === 0) {
+  //   console.log('no_task_status', list);
+  //   message.error({
+  //     content: $t('ui.actionMessage.operationFailed'),
+  //     key: 'action_process_msg',
+  //   });
+  //   return;
+  // }
+  // let taskBaseId = okList[0]?.submitOrderFeeTasks[0]?.taskBaseId;
+  let orderFeeWithdrawDto: ExpenseSubmissionAdminApi.OrderFeeTaskWithdrawDto = {
+    orderFeeIds: list.map((item) => item.id),
+  };
+  OrderFeeTaskWithdraw(orderFeeWithdrawDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
 const Submitted = () => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
@@ -168,11 +314,54 @@ const Submitted = () => {
     getTableDate();
   });
 };
+const submitModify = (remark: string) => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+  let ModifyOrderFeeDto = {
+    remark: remark,
+    TransportOrderId: editId.value ?? 0,
+    orderFees: sanitizeOrderFee([...(list ?? [])]),
+  };
+  console.log(ModifyOrderFeeDto);
+  modifyOrderFee(ModifyOrderFeeDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
+
+const submitDelete = (remark: string) => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+  let DeleteOrderFeeDto = {
+    remark: remark,
+    TransportOrderId: editId.value ?? 0,
+    orderFeeIds: list.map((item) => item.id),
+    //orderFees: sanitizeOrderFee([...(list ?? [])]),
+  };
+  console.log(DeleteOrderFeeDto);
+  deleteOrderFee(DeleteOrderFeeDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
 /** 为 orderCtns 每项添加 _rowKey，供 Table 使用 */
 const normalizeOrderFeeWithRowKey = (
   items: OrderFeeAdminApi.OrderFeeEditDto[] | undefined,
 ) => {
   if (!items?.length) return [];
+  console.log('rrr', items);
   return items.map((item, i) => ({
     ...item,
     _rowKey: `ofee_${i}_${Date.now()}`,
@@ -350,20 +539,37 @@ onMounted(() => {
         >
           {{ $t('common.delete') }}
         </Button>
+
+        <DropdownButton @click="Submitted" size="small" type="primary">
+          {{ $t('auditApproval.status.Submitted') }}
+          <template #overlay>
+            <Menu @click="SubmittedOther">
+              <MenuItem key="modify">
+                {{ $t('auditApproval.ApplyModification') }}
+              </MenuItem>
+              <MenuItem key="delete">
+                {{ $t('auditApproval.ApplyDeletion') }}
+              </MenuItem>
+            </Menu>
+          </template>
+        </DropdownButton>
+        <!-- <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="submitOrderFeeWithdraw">{{
+          $t('auditApproval.withdraw') }}</Button> -->
         <Button
           type="primary"
           size="small"
           :disabled="!selectedRowKeys.length"
-          @click="Submitted"
-          >{{ $t('auditApproval.status.Submitted') }}</Button
-        >
-        <Button
-          type="primary"
-          size="small"
-          :disabled="!selectedRowKeys.length"
-          @click="submitOrderFeeWithdraw"
+          @click="orderFeeWithdraw"
           >{{ $t('auditApproval.withdraw') }}</Button
         >
+        <!-- <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="Submitted">{{
+          $t('auditApproval.status.Submitted') }}</Button>
+        <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="submitOrderFeeWithdraw">{{
+          $t('auditApproval.withdraw') }}</Button>
+        <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="submitOrderFeeWithdraw">{{
+          $t('auditApproval.ApplyModification') }}</Button>
+        <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="submitOrderFeeWithdraw">{{
+          $t('auditApproval.ApplyDeletion') }}</Button> -->
       </Space>
     </div>
     <Table
@@ -372,7 +578,7 @@ onMounted(() => {
       :pagination="false"
       size="small"
       bordered
-      :scroll="{ x: 2600 }"
+      :scroll="{ x: 2800 }"
       row-key="_rowKey"
     >
       <template #bodyCell="{ column, record, index }">
@@ -391,6 +597,11 @@ onMounted(() => {
               .getFeeStatusOptions()
               .find((o) => o.value === record.feeStatus)?.label
           }}</span>
+          <!-- <Select v-model:value="record.feeStatus" :options="getFeeStatusOptions()" class="w-full min-w-[100px]"
+            :placeholder="$t('ui.placeholder.select')" @change="(v) => updateRow(index, 'feeStatus', v)" /> -->
+        </template>
+        <template v-if="column.key === 'taskStatus'">
+          <span>{{ record.taskStatus }}</span>
           <!-- <Select v-model:value="record.feeStatus" :options="getFeeStatusOptions()" class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')" @change="(v) => updateRow(index, 'feeStatus', v)" /> -->
         </template>
@@ -542,10 +753,16 @@ onMounted(() => {
         fixed="left"
       />
       <Table.Column
+        key="taskStatus"
+        :title="$t('auditApproval.task.status')"
+        :min-width="120"
+      />
+      <Table.Column
         key="feeCodeId"
         :title="$t('seaExport.export.orderFee.feecodeName')"
         :min-width="120"
       />
+
       <Table.Column
         key="industryCategory"
         :title="$t('seaExport.client.industryCategories')"

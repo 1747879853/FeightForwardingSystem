@@ -91,6 +91,9 @@ export namespace OrderFeeAdminApi {
   /** 修改账单期参数 */
   export interface OrderFeeEditDto extends OrderFeeAddDto {
     id: number;
+    /** 任务状态 */
+    taskStatus?: string;
+
     submitOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
     modifyOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
     deleteOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
@@ -106,6 +109,13 @@ export namespace OrderFeeAdminApi {
 
     /** 费用状态 */
     feeStatus: number;
+
+    /** 任务状态 */
+    taskStatus?: string;
+
+    submitOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
+    modifyOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
+    deleteOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
 
     /** 开票状态 */
     invoiceStatus: number;

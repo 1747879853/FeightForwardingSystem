@@ -24,8 +24,8 @@ import * as feeConstants from '../data';
 import * as submissionConstants from '#/views/audit-approval/data';
 import {
   OrderFeeTaskDetailAsync,
-  submitOrderFeeAuditAsync,
-  submitOrderFeeRejectedAsync,
+  OrderFeeAuditAsync,
+  OrderFeeRejectedAsync,
 } from '#/api/audit-approval/expense-admin';
 
 const dataSource = defineModel<ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[]>({
@@ -62,13 +62,40 @@ const transportOrderId = computed(() => {
   const id = route.params.id;
   return id ? Number(id) : 0;
 });
-
+const handleModifyTask = (
+  orderFeeTasks: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
+) => {
+  let tasks = orderFeeTasks?.filter(
+    (item) => item.task?.taskType !== feeConstants.taskTypeMap.feeModify,
+  );
+  let modifyData = orderFeeTasks?.filter(
+    (item) => item.task?.taskType === feeConstants.taskTypeMap.feeModify,
+  );
+  console.log('modifyData', modifyData);
+  modifyData.map((item: any) => {
+    console.log('item', item);
+    let modifyItem = item.task as ExpenseSubmissionAdminApi.TaskItemDto;
+    let info = JSON.parse(modifyItem.info as string);
+    Object.keys(info).forEach((key) => {
+      console.log(key, info[key], item[key]);
+      if (item[key] !== info[key]) {
+        item[key] = `${item[key]} => [${info[key]}]`;
+      }
+    });
+    return {
+      ...item,
+    };
+  });
+  tasks = tasks.concat(modifyData);
+  return tasks;
+};
 const getTableDate = async () => {
   const detail = await OrderFeeTaskDetailAsync({ id: transportOrderId.value });
   const orderFeeTasks =
     detail.orderFeeTasks?.filter((item) => item.paySide === props.type) || [];
+  const modifyData = handleModifyTask(orderFeeTasks);
+  dataSource.value = normalizeOrderFeeWithRowKey(modifyData);
   console.log('detail', detail);
-  dataSource.value = normalizeOrderFeeWithRowKey(orderFeeTasks);
   console.log('dataSource', dataSource.value);
 };
 
@@ -99,7 +126,7 @@ const showConfirmWithRemark = (approve: boolean) => {
     okText: $t('common.confirm'),
     cancelText: $t('common.cancel'),
     async onOk() {
-      submitOrderFeeAudit(approve, modalRemark);
+      OrderFeeAudit(approve, modalRemark);
     },
     onCancel() {
       modalRemark = '';
@@ -148,13 +175,12 @@ const Rejected = (modalRemark: string) => {
   const list = (dataSource.value ?? []).filter((row) =>
     keysSet.has((row as any)._rowKey),
   );
-  let submitOrderFeeRejectedAsyncDto: ExpenseSubmissionAdminApi.SubmitOrderFeeRejectedAsync =
+  let OrderFeeRejectedAsyncDto: ExpenseSubmissionAdminApi.OrderFeeTaskRejectedDto =
     {
-      id: submissionId.value,
       remark: modalRemark,
       orderFeeIds: list.map((item) => item.id),
     };
-  submitOrderFeeRejectedAsync(submitOrderFeeRejectedAsyncDto).then(() => {
+  OrderFeeRejectedAsync(OrderFeeRejectedAsyncDto).then(() => {
     message.success({
       content: $t('ui.actionMessage.operationSuccess'),
       key: 'action_process_msg',
@@ -162,21 +188,19 @@ const Rejected = (modalRemark: string) => {
     getTableDate();
   });
 };
-const submitOrderFeeAudit = (approve: boolean, modalRemark: string) => {
+const OrderFeeAudit = (approve: boolean, modalRemark: string) => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
   const list = (dataSource.value ?? []).filter((row) =>
     keysSet.has((row as any)._rowKey),
   );
-  let submitOrderFeeAuditDto: ExpenseSubmissionAdminApi.SubmitOrderFeeAuditDto =
-    {
-      id: submissionId.value,
-      success: approve,
-      remark: modalRemark,
-      orderFeeIds: list.map((item) => item.id),
-    };
-  console.log(submitOrderFeeAuditDto);
-  submitOrderFeeAuditAsync(submitOrderFeeAuditDto).then(() => {
+  let OrderFeeAuditDto: ExpenseSubmissionAdminApi.OrderFeeTaskAuditDto = {
+    success: approve,
+    remark: modalRemark,
+    orderFeeIds: list.map((item) => item.id),
+  };
+  console.log(OrderFeeAuditDto);
+  OrderFeeAuditAsync(OrderFeeAuditDto).then(() => {
     message.success({
       content: $t('ui.actionMessage.operationSuccess'),
       key: 'action_process_msg',

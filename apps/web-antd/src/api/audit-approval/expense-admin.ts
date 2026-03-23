@@ -14,6 +14,28 @@ export namespace ExpenseSubmissionAdminApi {
     orderFees?: OrderFeeAdminApi.OrderFeeEditDto[];
   }
 
+  export interface ModifyOrderFeeDto {
+    /** 业务表id  */
+    transportOrderId?: number;
+
+    /** 备注 */
+    remark?: string;
+
+    /** 费用列表 */
+    orderFees?: OrderFeeAdminApi.OrderFeeEditDto[];
+  }
+
+  export interface DeleteOrderFeeDto {
+    /** 业务表id  */
+    transportOrderId?: number;
+
+    /** 备注 */
+    remark?: string;
+
+    /** 费用列表 */
+    orderFeeIds?: number[];
+  }
+
   export interface TransportOrderSimpleDto {
     id?: number;
     /** 业务类型 */
@@ -126,7 +148,7 @@ export namespace ExpenseSubmissionAdminApi {
     task?: TaskItemDto;
   }
 
-  export interface SubmitOrderFeeRejectedAsync {
+  export interface SubmitOrderFeeRejectedDto {
     /** taskbase 的 id */
     id: number;
 
@@ -140,6 +162,9 @@ export namespace ExpenseSubmissionAdminApi {
     /** taskbase 的 id */
     id: number;
 
+    orderFeeIds: number[];
+  }
+  export interface OrderFeeTaskWithdrawDto {
     orderFeeIds: number[];
   }
 
@@ -163,6 +188,24 @@ export namespace ExpenseSubmissionAdminApi {
     deleteOrderFeeItemCount?: number;
     orderFeeTasks?: OrderFeeAndTaskDto[];
   }
+
+  export interface OrderFeeTaskAuditDto {
+    /** 审核意见 是否通过 */
+    success: boolean;
+
+    /** 备注 */
+    remark?: string | null;
+
+    /** 费用列表 所有费用都只能是待审核状态 */
+    orderFeeIds?: number[] | null;
+  }
+
+  export interface OrderFeeTaskRejectedDto {
+    /** 驳回意见 */
+    remark?: string | null;
+
+    orderFeeIds: number[];
+  }
 }
 
 const API_PREFIX = '/services/app/OrderFeeAdmin';
@@ -172,6 +215,20 @@ export const submitOrderFee = (
   data: ExpenseSubmissionAdminApi.SubmitOrderFeeDto,
 ) => {
   return requestClient.post<number>(`${API_PREFIX}/SubmitOrderFeeAsync`, data);
+};
+
+/** 费用申请修改任务 提交 */
+export const modifyOrderFee = (
+  data: ExpenseSubmissionAdminApi.ModifyOrderFeeDto,
+) => {
+  return requestClient.post<number>(`${API_PREFIX}/ModifyOrderFeeAsync`, data);
+};
+
+/** 费用申请删除任务 提交 */
+export const deleteOrderFee = (
+  data: ExpenseSubmissionAdminApi.DeleteOrderFeeDto,
+) => {
+  return requestClient.post<number>(`${API_PREFIX}/DeleteOrderFeeAsync`, data);
 };
 
 /** 获取费用提交审核列表 */
@@ -203,10 +260,10 @@ export const submitOrderFeeAuditAsync = (
 
 /** 费用提交任务 审核后驳回 */
 export const submitOrderFeeRejectedAsync = (
-  data: ExpenseSubmissionAdminApi.SubmitOrderFeeRejectedAsync,
+  data: ExpenseSubmissionAdminApi.SubmitOrderFeeRejectedDto,
 ) => {
   return requestClient.post<number>(
-    `${API_PREFIX}/SubmitOrderFeeRejectedAsync`,
+    `${API_PREFIX}/SubmitOrderFeeRejectedDto`,
     data,
   );
 };
@@ -236,5 +293,35 @@ export const OrderFeeTaskDetailAsync = (params: { id: number }) => {
   return requestClient.get<ExpenseSubmissionAdminApi.OrderFeeTaskListDto>(
     `${API_PREFIX}/OrderFeeTaskDetailAsync`,
     { params },
+  );
+};
+
+/** 全部费用任务 审核 */
+export const OrderFeeAuditAsync = (
+  data: ExpenseSubmissionAdminApi.OrderFeeTaskAuditDto,
+) => {
+  return requestClient.post<number>(
+    `${API_PREFIX}/OrderFeeTaskAuditAsync`,
+    data,
+  );
+};
+
+/** 全部费用任务 审核后驳回 */
+export const OrderFeeRejectedAsync = (
+  data: ExpenseSubmissionAdminApi.OrderFeeTaskRejectedDto,
+) => {
+  return requestClient.post<number>(
+    `${API_PREFIX}/OrderFeeTaskRejectedAsync`,
+    data,
+  );
+};
+
+/**费用全部任务 撤销提交 */
+export const OrderFeeTaskWithdraw = (
+  data: ExpenseSubmissionAdminApi.OrderFeeTaskWithdrawDto,
+) => {
+  return requestClient.post<number>(
+    `${API_PREFIX}/OrderFeeTaskWithdrawAsync`,
+    data,
   );
 };

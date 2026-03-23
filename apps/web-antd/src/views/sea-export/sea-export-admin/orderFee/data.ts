@@ -19,6 +19,12 @@ export const getTaskStatusOptions = () => [
 // --------------------------------------------------------
 export const getTaskTypeOptions = () => [{ value: 0, label: '费用审核' }];
 
+export const taskTypeMap = {
+  feeSubmit: 0,
+  feeModify: 1,
+  feeDelete: 2,
+};
+
 // --------------------------------------------------------
 // 单位
 // --------------------------------------------------------
