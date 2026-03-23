@@ -540,7 +540,12 @@ onMounted(() => {
           {{ $t('common.delete') }}
         </Button>
 
-        <DropdownButton @click="Submitted" size="small" type="primary">
+        <DropdownButton
+          @click="Submitted"
+          size="small"
+          type="primary"
+          :disabled="!selectedRowKeys.length"
+        >
           {{ $t('auditApproval.status.Submitted') }}
           <template #overlay>
             <Menu @click="SubmittedOther">

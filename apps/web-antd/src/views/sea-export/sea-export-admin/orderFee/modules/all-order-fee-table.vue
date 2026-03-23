@@ -71,13 +71,11 @@ const handleModifyTask = (
   let modifyData = orderFeeTasks?.filter(
     (item) => item.task?.taskType === feeConstants.taskTypeMap.feeModify,
   );
-  console.log('modifyData', modifyData);
+
   modifyData.map((item: any) => {
-    console.log('item', item);
     let modifyItem = item.task as ExpenseSubmissionAdminApi.TaskItemDto;
     let info = JSON.parse(modifyItem.info as string);
     Object.keys(info).forEach((key) => {
-      console.log(key, info[key], item[key]);
       if (item[key] !== info[key]) {
         item[key] = `${item[key]} => [${info[key]}]`;
       }
@@ -95,8 +93,6 @@ const getTableDate = async () => {
     detail.orderFeeTasks?.filter((item) => item.paySide === props.type) || [];
   const modifyData = handleModifyTask(orderFeeTasks);
   dataSource.value = normalizeOrderFeeWithRowKey(modifyData);
-  console.log('detail', detail);
-  console.log('dataSource', dataSource.value);
 };
 
 const showConfirmWithRemark = (approve: boolean) => {
@@ -160,7 +156,7 @@ const showRejectWithRemark = () => {
     cancelText: $t('common.cancel'),
     async onOk() {
       await nextTick(); // 等待 Vue 响应式更新完成
-      console.log('remark onOk:', modalRemark);
+
       Rejected(modalRemark);
     },
     onCancel() {
@@ -199,7 +195,7 @@ const OrderFeeAudit = (approve: boolean, modalRemark: string) => {
     remark: modalRemark,
     orderFeeIds: list.map((item) => item.id),
   };
-  console.log(OrderFeeAuditDto);
+  // console.log(OrderFeeAuditDto);
   OrderFeeAuditAsync(OrderFeeAuditDto).then(() => {
     message.success({
       content: $t('ui.actionMessage.operationSuccess'),
@@ -508,6 +504,14 @@ onMounted(() => {
             submissionConstants
               .getTaskStatusOptions()
               .find((o) => o.value === record.task?.taskStatus)?.label || '--'
+          }}</span>
+        </template>
+
+        <template v-else-if="column.key === 'dataEntryMethod'">
+          <span>{{
+            feeConstants
+              .getDataEntryMethodOptions()
+              .find((o) => o.value === record.dataEntryMethod)?.label
           }}</span>
         </template>
       </template>
