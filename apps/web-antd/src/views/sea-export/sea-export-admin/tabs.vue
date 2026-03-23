@@ -82,7 +82,7 @@ const displayList = [
         <span class="text-lg font-semibold">{{ pageTitle }}</span>
       </div>
     </template>
-    <div class="mx-4 flex items-stretch gap-3">
+    <div class="mr-4 flex items-stretch gap-3">
       <defaultInfo />
       <div class="flex min-w-0 flex-1 flex-col gap-2">
         <Tabs type="card" v-model:activeKey="activeKey">

@@ -724,7 +724,7 @@ onMounted(() => {
       </Space>
     </template>
     <Spin :spinning="pageLoading">
-      <div class="mx-4 flex items-stretch gap-6">
+      <div class="mr-4 flex items-stretch gap-6">
         <!-- 左侧：相关方信息，垂直方向撑满 -->
         <Card class="flex w-[280px] shrink-0 flex-col">
           <template #title>

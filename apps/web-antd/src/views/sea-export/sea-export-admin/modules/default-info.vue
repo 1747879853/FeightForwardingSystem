@@ -97,22 +97,24 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="default-info">
-    <Card class="flex w-[240px] shrink-0 flex-col">
-      <div class="flex flex-1 px-1 py-1" v-for="item in displayList">
-        <span class="flex pr-1">
-          <IconifyIcon :icon="item.icon || ''" class="size-5" />
-        </span>
-        <span class="flex w-[70px]"> {{ `${item.name} : ` }}</span>
-        <span class="flex text-left">{{ item.value || '--' }}</span>
-      </div>
+  <Page auto-content-height>
+    <div class="default-info h-[100%]">
+      <Card class="flex h-[100%] w-[240px] shrink-0 flex-col">
+        <div class="flex flex-1 px-1 py-1" v-for="item in displayList">
+          <span class="flex pr-1">
+            <IconifyIcon :icon="item.icon || ''" class="size-5" />
+          </span>
+          <span class="flex w-[70px]"> {{ `${item.name} : ` }}</span>
+          <span class="flex text-left">{{ item.value || '--' }}</span>
+        </div>
 
-      <div class="flex flex-1 px-1 py-1">
-        <div class="mr-2 bg-gray-600 p-1 text-sm">{{ feeLocking }}</div>
-        <div class="bg-gray-600 p-1 text-sm">{{ businessLocking }}</div>
-      </div>
-    </Card>
-  </div>
+        <div class="flex flex-1 px-1 py-1">
+          <div class="mr-2 bg-gray-300 p-1 text-sm">{{ feeLocking }}</div>
+          <div class="bg-gray-300 p-1 text-sm">{{ businessLocking }}</div>
+        </div>
+      </Card>
+    </div>
+  </Page>
 </template>
 
 <style lang="scss">
