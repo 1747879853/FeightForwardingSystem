@@ -560,9 +560,11 @@ const getOrderUserRoleLabel = (userAttribute?: number) => {
   }
 };
 const getOrderUserDisplayName = (row: OrderUserEditorRow) => {
-  return (
-    row.userName || (row.userId ? orderUserNameMap.value[row.userId] || '' : '')
-  );
+  if (!row.userId) return row.userName || '';
+  const mappedName = orderUserNameMap.value[row.userId];
+  if (mappedName) return mappedName;
+  if (row.userName && row.userName !== String(row.userId)) return row.userName;
+  return '';
 };
 const getOrderUserAvatarText = (row: OrderUserEditorRow) => {
   const role = getOrderUserRoleLabel(row.userAttribute);
@@ -683,18 +685,12 @@ const syncOrderUsersToForm = () => {
   });
 };
 const fillOrderUserNames = async (rows: OrderUserEditorRow[]) => {
-  const toLoad = rows
-    .map((row) => row.userId)
-    .filter(
-      (id): id is number => id != null && id > 0 && !orderUserNameMap.value[id],
-    );
+  const toLoadRows = rows.filter(
+    (row): row is OrderUserEditorRow & { userId: number } =>
+      row.userId != null && row.userId > 0,
+  );
   await Promise.all(
-    toLoad.map(async (id) => {
-      try {
-        const detail = await getUser(id);
-        syncOrderUserDetail(detail);
-      } catch {}
-    }),
+    toLoadRows.map((row) => loadOrderUserDetail(row.userId, row._rowKey)),
   );
 };
 const initializeOrderUsersPanel = (
@@ -2133,6 +2129,7 @@ defineExpose({
                     @update:value="(v) => updateOrderUserRole(row._rowKey, v)"
                   />
                   <UserSelect
+                    :key="`${row._rowKey}_${row.userId ?? 'empty'}_${getOrderUserDisplayName(row)}`"
                     :model-value="row.userId"
                     :user-attribute="row.userAttribute"
                     :selected-items="
