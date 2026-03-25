@@ -39,7 +39,10 @@ import {
   editSeaExport,
   getSeaExportDetail,
 } from '#/api/sea-export/sea-export-admin';
-import { getDeptList } from '#/api/system/dept';
+import {
+  getOrganizationUnitTree,
+  type SystemOrganizationUnitApi,
+} from '#/api/system/organization-unit';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { getUser, UserAttribute } from '#/api/system/user-admin';
@@ -57,6 +60,26 @@ import {
 
 const route = useRoute();
 const router = useRouter();
+const props = withDefaults(
+  defineProps<{
+    embedded?: boolean;
+  }>(),
+  {
+    embedded: false,
+  },
+);
+const pageWrapperTag = computed(() => (props.embedded ? 'div' : Page));
+const pageWrapperProps = computed(() =>
+  props.embedded
+    ? {}
+    : {
+        autoContentHeight: true,
+        contentClass: '!p-0',
+      },
+);
+const emit = defineEmits<{
+  sectionChange: [key: SectionKey];
+}>();
 
 const editId = computed(() => {
   const id = route.params.id;
@@ -291,9 +314,9 @@ const serviceItemSelectedItems = ref<
   Partial<Record<ServiceItemFieldName, any[]>>
 >({});
 const collectionPaymentEnabled = ref(false);
-const collectionPaymentDeptId = ref<string | undefined>();
+const collectionPaymentDeptId = ref<number | undefined>();
 const collectionPaymentDeptOptions = ref<
-  Array<{ label: string; value: string }>
+  Array<{ label: string; value: number }>
 >([]);
 const getServiceItemCheckFieldName = (field: ServiceItemFieldName) =>
   SERVICE_ITEM_CHECK_FIELD_NAMES[field] as ServiceItemCheckFieldName;
@@ -353,25 +376,27 @@ const getServiceItemFormValues = () => {
 };
 const hasServiceItemValue = (value: any) =>
   value !== undefined && value !== null && value !== '';
-const flattenDeptOptions = (
-  nodes: Array<{ children?: any[]; id: string; name: string }>,
+const flattenOrganizationUnitOptions = (
+  nodes: SystemOrganizationUnitApi.OrganizationUnitTreeDto[],
   parentLabel = '',
-): Array<{ label: string; value: string }> => {
+): Array<{ label: string; value: number }> => {
   return nodes.flatMap((node) => {
+    if (typeof node.id !== 'number') return [];
+    const displayName = node.displayName || `${node.id}`;
     const currentLabel = parentLabel
-      ? `${parentLabel} / ${node.name}`
-      : node.name;
+      ? `${parentLabel} / ${displayName}`
+      : displayName;
     const currentOption = [{ label: currentLabel, value: node.id }];
     const childOptions = Array.isArray(node.children)
-      ? flattenDeptOptions(node.children as any[], currentLabel)
+      ? flattenOrganizationUnitOptions(node.children, currentLabel)
       : [];
     return [...currentOption, ...childOptions];
   });
 };
 const loadCollectionPaymentDeptOptions = async () => {
   try {
-    const list = await getDeptList();
-    collectionPaymentDeptOptions.value = flattenDeptOptions(list as any[]);
+    const list = await getOrganizationUnitTree();
+    collectionPaymentDeptOptions.value = flattenOrganizationUnitOptions(list);
   } catch {
     collectionPaymentDeptOptions.value = [];
   }
@@ -383,7 +408,7 @@ const handleCollectionPaymentEnabledChange = (event: any) => {
     collectionPaymentDeptId.value = undefined;
   }
 };
-const handleCollectionPaymentDeptChange = (value: string | undefined) => {
+const handleCollectionPaymentDeptChange = (value: number | undefined) => {
   collectionPaymentDeptId.value = value;
 };
 
@@ -468,7 +493,6 @@ const refreshEntrustReadonlyInfo = (values: Record<string, any>) => {
   };
 };
 
-const activeTab = ref('basic');
 const transitPortTab = ref<'poT1' | 'poT2'>('poT1');
 const transitPortLabelTarget = ref<HTMLElement | null>(null);
 const podPortLabelTarget = ref<HTMLElement | null>(null);
@@ -488,6 +512,7 @@ const orderUserDetailLoadingMap = ref<Record<number, boolean>>({});
 let orderUserRowKeyCounter = 0;
 const makeOrderUserRowKey = () =>
   `order_user_${++orderUserRowKeyCounter}_${Date.now()}`;
+type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
 const sectionRefs = {
   basic: ref<HTMLElement | null>(null),
   shipment: ref<HTMLElement | null>(null),
@@ -495,6 +520,7 @@ const sectionRefs = {
   cargo: ref<HTMLElement | null>(null),
   party: ref<HTMLElement | null>(null),
 } as const;
+const currentSection = ref<SectionKey>('basic');
 const orderUserRoleOptions = computed(() => [
   {
     label: $t('system.user.userAttributeOptions.sales'),
@@ -838,24 +864,21 @@ const copyConsigneeToNotifier = async () => {
   message.success('已复制收货人到通知人');
 };
 
-const scrollToSection = (key: keyof typeof sectionRefs) => {
+const scrollToSection = (key: SectionKey) => {
   const el = sectionRefs[key].value;
   if (!el) return;
-  activeTab.value = key;
   const top = el.getBoundingClientRect().top + window.scrollY - 150;
   window.scrollTo({ top, behavior: 'smooth' });
+  if (currentSection.value !== key) {
+    currentSection.value = key;
+    emit('sectionChange', key);
+  }
 };
 
-const updateActiveTabByScroll = () => {
-  const order: Array<keyof typeof sectionRefs> = [
-    'basic',
-    'party',
-    'shipment',
-    'port',
-    'cargo',
-  ];
+const updateActiveSectionByScroll = () => {
+  const order: SectionKey[] = ['basic', 'party', 'shipment', 'port', 'cargo'];
   const offset = 190;
-  let current: keyof typeof sectionRefs = 'basic';
+  let current: SectionKey = 'basic';
   for (const key of order) {
     const el = sectionRefs[key].value;
     if (!el) continue;
@@ -863,7 +886,10 @@ const updateActiveTabByScroll = () => {
       current = key;
     }
   }
-  activeTab.value = current;
+  if (currentSection.value !== current) {
+    currentSection.value = current;
+    emit('sectionChange', current);
+  }
 };
 
 /** DatePicker 需要的 dayjs 对象，API 返回的是字符串 */
@@ -1330,6 +1356,13 @@ const loadEditData = async () => {
         selectedServiceTypes.has(SERVICE_TYPE_VALUES.insuranceId) ||
         hasServiceItemValue(formValues.insuranceId),
     };
+    const selectedOrganizationId = detail.organizationUnits?.[0]?.id;
+    collectionPaymentDeptId.value =
+      typeof selectedOrganizationId === 'number'
+        ? selectedOrganizationId
+        : undefined;
+    collectionPaymentEnabled.value =
+      typeof collectionPaymentDeptId.value === 'number';
     refreshEntrustReadonlyInfo(formValues);
 
     orderCtns.value = normalizeOrderCtnsWithRowKey(
@@ -1428,6 +1461,19 @@ const buildDto = (values: Record<string, any>) => {
 
   return {
     ...seaExportFields,
+    organizationUnits:
+      collectionPaymentEnabled.value &&
+      typeof collectionPaymentDeptId.value === 'number'
+        ? [
+            {
+              id: collectionPaymentDeptId.value,
+              name:
+                collectionPaymentDeptOptions.value.find(
+                  (option) => option.value === collectionPaymentDeptId.value,
+                )?.label ?? undefined,
+            },
+          ]
+        : [],
     ...(isEdit.value && editId.value ? { id: editId.value } : {}),
     transportOrder: transportOrderFields,
   };
@@ -1538,61 +1584,26 @@ onMounted(() => {
   applyNotifierPartyTabSchema();
   loadEditData();
   nextTick(() => {
-    updateActiveTabByScroll();
+    updateActiveSectionByScroll();
   });
-  window.addEventListener('scroll', updateActiveTabByScroll, { passive: true });
+  window.addEventListener('scroll', updateActiveSectionByScroll, {
+    passive: true,
+  });
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('scroll', updateActiveTabByScroll);
+  window.removeEventListener('scroll', updateActiveSectionByScroll);
+});
+
+defineExpose({
+  scrollToSection,
 });
 </script>
 
 <template>
-  <Page auto-content-height content-class="!p-0">
+  <component :is="pageWrapperTag" v-bind="pageWrapperProps">
     <Spin :spinning="pageLoading">
       <div class="sea-export-form-page">
-        <div class="content-tabs">
-          <span
-            class="content-tab"
-            :class="{ 'content-tab--active': activeTab === 'basic' }"
-            @click="scrollToSection('basic')"
-          >
-            基础信息
-          </span>
-          <span
-            class="content-tab"
-            :class="{ 'content-tab--active': activeTab === 'party' }"
-            @click="scrollToSection('party')"
-          >
-            更改单
-          </span>
-          <span
-            class="content-tab"
-            :class="{ 'content-tab--active': activeTab === 'shipment' }"
-            @click="scrollToSection('shipment')"
-          >
-            服务详情
-          </span>
-          <span
-            class="content-tab"
-            :class="{ 'content-tab--active': activeTab === 'port' }"
-            @click="scrollToSection('port')"
-          >
-            单证信息
-          </span>
-          <span
-            class="content-tab"
-            :class="{ 'content-tab--active': activeTab === 'cargo' }"
-            @click="scrollToSection('cargo')"
-          >
-            应收应付
-          </span>
-          <span class="content-tab"> 单据信息 </span>
-          <span class="content-tab">问题记录</span>
-          <span class="content-tab">修改历史</span>
-        </div>
-
         <div class="main-layout">
           <!-- 左侧信息区 -->
           <div class="left-column">
@@ -2143,7 +2154,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </Spin>
-  </Page>
+  </component>
 </template>
 
 <style scoped>
@@ -2162,29 +2173,6 @@ onBeforeUnmount(() => {
   color: #fff;
   background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
   border-radius: 10px;
-}
-
-.content-tabs {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 8px;
-  background: #fff;
-  border: 1px solid #e8e8e8;
-}
-
-.content-tab {
-  padding: 6px 10px;
-  font-size: 12px;
-  color: #595959;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-}
-
-.content-tab--active {
-  font-weight: 600;
-  color: #1677ff;
-  border-bottom-color: #1677ff;
 }
 
 .layout-banner__left {
@@ -2218,6 +2206,7 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 14px;
   padding: 0 12px;
+  padding-top: 12px;
 }
 
 .left-column {
@@ -2501,11 +2490,6 @@ onBeforeUnmount(() => {
 :deep(.shipment-time-pos--6) {
   grid-row: 2;
   grid-column: 6;
-}
-
-:deep(.shipment-time-pos--7) {
-  grid-row: 2;
-  grid-column: 7;
 }
 
 :deep(.shipment-time-item) {
@@ -3114,10 +3098,6 @@ onBeforeUnmount(() => {
 
   .layout-banner__tabs {
     display: none;
-  }
-
-  .content-tabs {
-    flex-wrap: wrap;
   }
 
   :deep(.port-flow-item::after) {
