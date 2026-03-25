@@ -30,7 +30,11 @@ import * as feeConstants from '../data';
 import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
 import ExchangeRateSelect from '#/adapter/component/biz-select/exchange-rate-select.vue';
-
+import {
+  getFeeCodeDetail,
+  getFeeCodePagedList,
+} from '#/api/system/base-data/fee-code-admin';
+import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 import {
   batchEditOrderFee,
   getOrderFeePagedList,
@@ -386,10 +390,8 @@ const sanitizeOrderFee = (
   });
 };
 const saveRow = () => {
-  if (!selectedRowKeys.value.length) return;
-  const keysSet = new Set(selectedRowKeys.value);
-  const list = (dataSource.value ?? []).filter((row) =>
-    keysSet.has((row as any)._rowKey),
+  const list = (dataSource.value ?? []).filter(
+    (row) => row.feeStatus === feeConstants.getFeeStatusValue.Entering,
   );
 
   console.log(list);
@@ -489,6 +491,15 @@ const updateRow = (
       };
     }
   }
+  if (field === 'feeCodeId' && value !== '') {
+    let feecodeItem = feeCodeList.value.find((item) => item.id === value);
+    if (feecodeItem) {
+      list[index] = {
+        ...list[index],
+        currencyId: feecodeItem.currencyId || 0,
+      };
+    }
+  }
   dataSource.value = list;
 };
 
@@ -511,8 +522,15 @@ watch(
   },
   { immediate: true },
 );
+const feeCodeList = ref<FeeCodeAdminApi.FeeCodeDto[]>([]);
+const getFeeCodeList = async () => {
+  let res = (await getFeeCodePagedList({ PageIndex: 1, PageSize: 1000 })) || {};
+  feeCodeList.value = res.items || [];
+  console.log('feeCodeList', feeCodeList.value);
+};
 onMounted(() => {
   getTableDate();
+  getFeeCodeList();
 });
 </script>
 
@@ -523,12 +541,7 @@ onMounted(() => {
         <Button type="primary" size="small" @click="addRow">
           {{ $t('common.create') }}
         </Button>
-        <Button
-          type="primary"
-          size="small"
-          :disabled="!selectedRowKeys.length"
-          @click="saveRow"
-        >
+        <Button type="primary" size="small" @click="saveRow">
           {{ $t('common.save') }}
         </Button>
         <Button

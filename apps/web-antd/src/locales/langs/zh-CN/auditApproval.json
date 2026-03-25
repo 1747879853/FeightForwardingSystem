@@ -25,7 +25,13 @@
     "remark": "备注",
     "creatorUserName": "创建人",
     "okPass": "确认审核通过",
-    "noPass": "确认审核不通过",
+    "allPass": "审核全部",
+    "selectPass": "审核选中",
+    "okReject": "确认审核驳回",
+    "recPass": "应收审核",
+    "payPass": "应付审核",
+    "passReject": "审核后驳回",
+    "noPass": "费用驳回",
     "okReject": "确认驳回",
     "okModify": "确认修改",
     "okDelete": "确认删除",
@@ -48,7 +54,7 @@
   "Rejected": "驳回",
   "expenseReview": {
     "all": "全部费用审核",
-    "title": "费用审核",
+    "title": "业务台账",
     "detail": "费用审核详情"
   },
   "expenseSubmission": {
@@ -66,5 +72,9 @@
     "no": "已处理"
   },
   "ApplyModification": "申请修改",
-  "ApplyDeletion": "申请删除"
+  "ApplyDeletion": "申请删除",
+  "tableType": {
+    "horizontal": "左右",
+    "vertical": "上下"
+  }
 }

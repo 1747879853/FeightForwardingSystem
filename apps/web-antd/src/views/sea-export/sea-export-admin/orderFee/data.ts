@@ -67,6 +67,17 @@ export const getFeeStatusOptions = () => [
   { value: 7, label: '结算完毕' },
 ];
 
+export const getFeeStatusValue = {
+  Entering: 0,
+  Submit: 1,
+  Approved: 2,
+  Rejected: 3,
+  ApplyModify: 4,
+  ApplyDelete: 5,
+  PartialSettlement: 6,
+  Settled: 7,
+};
+
 // --------------------------------------------------------
 // 结算方式
 // --------------------------------------------------------

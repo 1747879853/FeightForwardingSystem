@@ -128,6 +128,7 @@
     "goodsHsCode": "HS编码",
     "addGoods": "添加品名",
     "orderFee": {
+      "feeDetail": "费用明细",
       "receivableCharges": "应收费用",
       "receivableTax": "应收税费",
       "payableCharges": "应付费用",

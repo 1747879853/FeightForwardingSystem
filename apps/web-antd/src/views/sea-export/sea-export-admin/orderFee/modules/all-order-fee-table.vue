@@ -38,30 +38,17 @@ const rowSelection = computed(() => ({
   selectedRowKeys: selectedRowKeys.value,
   onChange: (keys: (string | number)[]) => {
     selectedRowKeys.value = keys;
+
+    emit('updateSelectData', selectedRowKeys.value);
   },
 }));
 
 const props = defineProps<{
   type?: number; // 收付类型 0 应收 1 应付
+  transportOrderId: number;
+  entityId: number;
 }>();
 
-const route = useRoute();
-const router = useRouter();
-
-const entityId = computed(() => {
-  const id = route.params.entityId;
-  return id ? Number(id) : 0;
-});
-
-const submissionId = computed(() => {
-  const id = route.params.id;
-  return id ? Number(id) : 0;
-});
-
-const transportOrderId = computed(() => {
-  const id = route.params.id;
-  return id ? Number(id) : 0;
-});
 const handleModifyTask = (
   orderFeeTasks: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
 ) => {
@@ -87,12 +74,24 @@ const handleModifyTask = (
   tasks = tasks.concat(modifyData);
   return tasks;
 };
+
+/** 为 orderCtns 每项添加 _rowKey，供 Table 使用 */
+const normalizeOrderFeeWithRowKey = (
+  items: OrderFeeAdminApi.OrderFeeEditDto[] | undefined,
+) => {
+  if (!items?.length) return [];
+  return items.map((item, i) => ({
+    ...item,
+    _rowKey: `ofee_${i}_${Date.now()}`,
+  })) as any[];
+};
 const getTableDate = async () => {
-  const detail = await OrderFeeTaskDetailAsync({ id: transportOrderId.value });
+  const detail = await OrderFeeTaskDetailAsync({ id: props.transportOrderId });
   const orderFeeTasks =
     detail.orderFeeTasks?.filter((item) => item.paySide === props.type) || [];
   const modifyData = handleModifyTask(orderFeeTasks);
   dataSource.value = normalizeOrderFeeWithRowKey(modifyData);
+  emit('updateTableData', dataSource.value);
 };
 
 const showConfirmWithRemark = (approve: boolean) => {
@@ -204,16 +203,8 @@ const OrderFeeAudit = (approve: boolean, modalRemark: string) => {
     getTableDate();
   });
 };
-/** 为 orderCtns 每项添加 _rowKey，供 Table 使用 */
-const normalizeOrderFeeWithRowKey = (
-  items: OrderFeeAdminApi.OrderFeeEditDto[] | undefined,
-) => {
-  if (!items?.length) return [];
-  return items.map((item, i) => ({
-    ...item,
-    _rowKey: `ofee_${i}_${Date.now()}`,
-  })) as any[];
-};
+
+const emit = defineEmits(['updateTableData', 'updateSelectData']);
 
 watch(
   () => dataSource.value,
@@ -226,7 +217,16 @@ watch(
   },
   { immediate: true },
 );
-
+watch(
+  [() => props.transportOrderId, () => props.entityId],
+  ([newSubmissionId, newEntityId]) => {
+    if (newSubmissionId && newEntityId) {
+      console.log('newSubmissionId', newSubmissionId);
+      getTableDate();
+    }
+  },
+  { immediate: true },
+);
 const columns = [
   {
     title: $t('auditApproval.taskName'),
@@ -414,42 +414,41 @@ const columns = [
   },
 ];
 onMounted(() => {
-  getTableDate();
-  console.log(
-    ' feeConstants.getIndustryCategoryOptions()',
-    feeConstants.getIndustryCategoryOptions(),
-  );
+  //getTableDate();
+});
+
+// 必须显式暴露
+defineExpose({
+  getTableDate,
 });
 </script>
 
 <template>
-  <div class="order-ctn-table">
-    <div class="mb-2 flex items-center justify-between">
+  <div
+    class="order-ctn-table rounded-md border"
+    :class="[type === 0 ? 'rec-table' : 'pay-table']"
+  >
+    <!-- <div class="mb-2 flex items-center justify-between">
       <Space>
-        <Button
-          type="primary"
-          size="small"
-          :disabled="!selectedRowKeys.length"
-          @click="showConfirmWithRemark(true)"
-        >
+        <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="showConfirmWithRemark(true)">
           {{ $t('auditApproval.Passed') }}
         </Button>
-        <Button
-          type="primary"
-          size="small"
-          :disabled="!selectedRowKeys.length"
-          @click="showConfirmWithRemark(false)"
-          >{{ $t('auditApproval.NoPassed') }}</Button
-        >
-        <Button
-          danger
-          size="small"
-          :disabled="!selectedRowKeys.length"
-          @click="showRejectWithRemark"
-        >
+        <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="showConfirmWithRemark(false)">{{
+          $t('auditApproval.NoPassed') }}</Button>
+        <Button danger size="small" :disabled="!selectedRowKeys.length" @click="showRejectWithRemark">
           {{ $t('auditApproval.Rejected') }}
         </Button>
       </Space>
+    </div> -->
+    <div
+      class="m-2 flex items-center justify-between font-semibold"
+      :class="[type === 0 ? 'blue' : 'yellow']"
+    >
+      {{
+        type === 0
+          ? $t('seaExport.export.orderFee.receivableCharges')
+          : $t('seaExport.export.orderFee.payableCharges')
+      }}
     </div>
     <Table
       :data-source="dataSource"
@@ -518,3 +517,25 @@ onMounted(() => {
     </Table>
   </div>
 </template>
+
+<style scoped lang="scss">
+.rec-table {
+  border-left: 2px solid rgb(6 100 224);
+}
+
+.pay-table {
+  border-left: 2px solid rgb(255 153 0);
+}
+
+.green {
+  color: green;
+}
+
+.blue {
+  color: rgb(6 100 224);
+}
+
+.yellow {
+  color: rgb(255 153 0);
+}
+</style>

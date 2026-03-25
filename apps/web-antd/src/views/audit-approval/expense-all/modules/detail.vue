@@ -2,11 +2,28 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import dayjs from 'dayjs';
-import { computed, onMounted, ref } from 'vue';
+import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
+
+import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import {
+  Button,
+  Space,
+  Textarea,
+  message,
+  DropdownButton,
+  MenuItem,
+  Menu,
+  Modal,
+  Card,
+} from 'ant-design-vue';
 
-import { Page } from '@vben/common-ui';
-
+import * as feeConstants from '#/views/sea-export/sea-export-admin/data';
+import * as submissionConstants from '#/views/audit-approval/data';
+import {
+  OrderFeeAuditAsync,
+  OrderFeeRejectedAsync,
+} from '#/api/audit-approval/expense-admin';
 import {
   ArrowLeft,
   FileText,
@@ -17,348 +34,504 @@ import {
   Users,
 } from '@vben/icons';
 
-import { Button, Card, message, Space, Spin } from 'ant-design-vue';
+const dataSourceRec = ref<ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[]>([]);
+const dataSourcePay = ref<ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[]>([]);
 
-import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
+const dataSource = computed(() => [
+  ...dataSourceRec.value,
+  ...dataSourcePay.value,
+]);
+
+const totalFeeRec = computed(() => {
+  console.log(dataSourceRec.value);
+  return dataSourceRec.value.reduce((acc, cur) => acc + cur.amount, 0);
+});
+
+const selectedRecKeys = ref<(string | number)[]>([]);
+const selectedPayKeys = ref<(string | number)[]>([]);
+
+const selectedRowKeys = computed(() => [
+  ...selectedRecKeys.value,
+  ...selectedPayKeys.value,
+]);
+
+const childRecRef = ref<any>(null);
+const childPayRef = ref<any>(null);
+
 import { $t } from '#/locales';
 
 import OrderFeeTable from '#/views/sea-export/sea-export-admin/orderFee/modules/all-order-fee-table.vue';
 
-const route = useRoute();
-const router = useRouter();
+const props = defineProps<{
+  orderName: string;
+  transportOrderId: number;
+  entityId: number;
+  feeTableType: string;
+}>();
 
-const submissionId = computed(() => {
-  const id = route.params.id;
-  return id ? Number(id) : undefined;
-});
-
-const entityId = computed(() => {
-  const id = route.params.entityId;
-  return id ? Number(id) : undefined;
-});
-
-const isEdit = computed(() => !!submissionId.value);
-
-const pageLoading = ref(false);
-const submitting = ref(false);
-const transportOrderId = ref<number | undefined>();
-
-/** 左侧表单：相关方信息（发货人、收货人、通知人等） */
-// const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
-//   layout: 'vertical',
-//   compact: true,
-//   schema: usePartyInfoFormSchema(),
-//   showDefaultActions: false,
-//   wrapperClass: 'flex flex-col',
-// });
-
-/** DatePicker 需要的 dayjs 对象，API 返回的是字符串 */
-const toDayjs = (val: string | null | undefined) =>
-  val && dayjs(val).isValid() ? dayjs(val) : undefined;
-
-/** 提交时 dayjs/日期 转回 ISO 字符串 */
-const toDateString = (val: unknown) => {
-  if (val == null) return undefined;
-  const d = dayjs(val as string | Date);
-  return d.isValid() ? d.toISOString() : undefined;
-};
-/** ISO 字符串转正常日期格式 */
-const formatNormalDate = (
-  val: string | null | undefined,
-  format = 'YYYY-MM-DD HH:mm:ss',
+const totalFee = (
+  dataSource: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
 ) => {
-  if (!val) return '--';
-  const d = dayjs(val);
-  return d.isValid() ? d.format(format) : '--';
+  console.log('totalFee', dataSource);
 };
 
-const flattenDetail = (
-  detail: SeaExportAdminApi.SeaExportDto,
-): Record<string, any> => {
-  const to = detail.transportOrder;
-  return {
-    countryName: (detail as any).countryName,
-    laneName: (detail as any).laneName,
-    blType: detail.blType,
-    billType: detail.billType,
-    issueType: detail.issueType,
-    vessel: detail.vessel,
-    innerVoyno: detail.innerVoyno,
-    carrierId: detail.carrierId,
-    secondNotifierId: detail.secondNotifierId,
-    secondNotifierContent: detail.secondNotifierContent,
-    podAgentId: detail.podAgentId,
-    podAgentContent: detail.podAgentContent,
-    bookingAgentId: detail.bookingAgentId,
-    shipAgentId: detail.shipAgentId,
-    yardId: detail.yardId,
-    noBillEnum: detail.noBillEnum,
-    copyNoBillEnum: detail.copyNoBillEnum,
-    goodsCompleteTime: toDayjs(detail.goodsCompleteTime),
-    etd: toDayjs(detail.etd),
-    eta: toDayjs(detail.eta),
-    closingTime: toDayjs(detail.closingTime),
-    closeVgmTime: toDayjs(detail.closeVgmTime),
-    closeDocTime: toDayjs(detail.closeDocTime),
-    closeManifestTime: toDayjs(detail.closeManifestTime),
-    signingTime: toDayjs(detail.signingTime),
-    sortId: detail.sortId,
-    remark: detail.remark,
-    commissionNum: to?.commissionNum,
-    mblNum: to?.mblNum,
-    bookingNum: to?.bookingNum,
-    accountDate: toDayjs(to?.accountDate),
-    settlementDate: toDayjs(to?.settlementDate),
-    codeSourceId: to?.codeSourceId,
-    isBusinessLocking: to?.isBusinessLocking,
-    isFeeLocking: to?.isFeeLocking,
-    codeFrtId: to?.codeFrtId,
-    codeServiceId: to?.codeServiceId,
-    tradeTermsType: to?.tradeTermsType,
-    polId: detail.polId,
-    polRemark: detail.polRemark,
-    podId: detail.podId,
-    podRemark: detail.podRemark,
-    poT1Id: detail.poT1Id,
-    poT1Remark: detail.poT1Remark,
-    poT2Id: detail.poT2Id,
-    poT2Remark: detail.poT2Remark,
-    receivePortId: detail.receivePortId,
-    receivePortRemark: detail.receivePortRemark,
-    deliverPortId: detail.deliverPortId,
-    deliverPortRemark: detail.deliverPortRemark,
-    signingPortId: detail.signingPortId,
-    clientId: to?.clientId,
-    teamId: to?.teamId,
-    custBrokerId: to?.custBrokerId,
-    warehouseId: to?.warehouseId,
-    insuranceId: to?.insuranceId,
-    consigneeId: to?.consigneeId,
-    consigneeContent: to?.consigneeContent,
-    shipperId: to?.shipperId,
-    shipperContent: to?.shipperContent,
-    notifierId: to?.notifierId,
-    notifierContent: to?.notifierContent,
-    marks: to?.marks,
-    noPkgs: to?.noPkgs,
-    goodsDes: to?.goodsDes,
-    kgs: to?.kgs,
-    cbm: to?.cbm,
-    internalRemark: to?.internalRemark,
-    orderCodeGoodss: to?.orderCodeGoodss ?? [],
-    orderUsers: to?.orderUsers ?? [],
-  };
+const SubmittedOther = async (e: any) => {
+  console.log('SubmittedOther', e);
+  showConfirmWithRemark(true, e.key);
+};
+const showConfirmWithRemark = (approve: boolean = true, type: string = '') => {
+  let modalRemark = '';
+  // 创建弹窗实例
+  const modal = Modal.confirm({
+    title: approve
+      ? $t('auditApproval.task.okPass')
+      : $t('auditApproval.task.noPass'),
+    content: () =>
+      h('div', {}, [
+        h(Textarea, {
+          modelValue: modalRemark,
+          onChange: (val: any) => {
+            modalRemark = val.target?.value || val;
+            console.log('Textarea changed:', modalRemark);
+          },
+          rows: 3,
+          placeholder: $t('auditApproval.task.remarkPlaceholder'),
+          maxlength: 100,
+          style: 'margin-top: 8px;',
+        }),
+      ]),
+    icon: null,
+    width: 520,
+    centered: true,
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    async onOk() {
+      switch (type) {
+        case 'all': {
+          allPass(approve, modalRemark);
+          break;
+        }
+        case 'selectPass': {
+          selectPass(approve, modalRemark);
+          break;
+        }
+        case 'recPass': {
+          recPass(approve, modalRemark);
+          break;
+        }
+        case 'payPass': {
+          payPass(approve, modalRemark);
+          break;
+        }
+      }
+    },
+    onCancel() {
+      modalRemark = '';
+    },
+  });
 };
 
-const formValues = ref<Record<string, any>>();
-const to = ref<Record<string, any>>();
+const showRejectWithRemark = () => {
+  let modalRemark = '';
+  // 创建弹窗实例
+  const modal = Modal.confirm({
+    title: $t('auditApproval.task.okReject'),
+    content: () =>
+      h('div', {}, [
+        h(Textarea, {
+          modelValue: modalRemark,
+          onChange: (val: any) => {
+            modalRemark = val.target?.value || val;
+            console.log('Textarea changed:', modalRemark);
+          },
+          rows: 3,
+          placeholder: $t('auditApproval.task.remarkPlaceholder'),
+          maxlength: 100,
+          style: 'margin-top: 8px;',
+        }),
+      ]),
+    icon: null,
+    width: 520,
+    centered: true,
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    async onOk() {
+      await nextTick(); // 等待 Vue 响应式更新完成
 
-const displayList = ref<any[]>([]);
-
-const setDisplayList = () => {
-  let mbl = {
-    name: $t('seaExport.export.mblNum'),
-    value: to.value?.mblNum || '--',
-  };
-  displayList.value.push(mbl);
-  let bookingNum = {
-    name: $t('seaExport.export.bookingNum'),
-    value: to.value?.bookingNum || '--',
-  };
-  displayList.value.push(bookingNum);
-  let pol = {
-    name: $t('seaExport.export.polName'),
-    value: formValues.value?.polName || '--',
-  };
-  displayList.value.push(pol);
-  let pod = {
-    name: $t('seaExport.export.podName'),
-    value: formValues.value?.podName || '--',
-  };
-  displayList.value.push(pod);
-  let receivePort = {
-    name: $t('seaExport.export.receivePortId'),
-    value: formValues.value?.receivePortName || '--',
-  };
-  displayList.value.push(receivePort);
-  let deliverPort = {
-    name: $t('seaExport.export.deliverPortId'),
-    value: formValues.value?.deliverPortName || '--',
-  };
-  displayList.value.push(deliverPort);
-  let codeSource = {
-    name: $t('seaExport.export.codeSourceId'),
-    value: to.value?.codeSourceName || '--',
-  };
-  displayList.value.push(codeSource);
-  let commissionNum = {
-    name: $t('seaExport.export.commissionNum'),
-    value: to.value?.commissionNum || '--',
-  };
-  displayList.value.push(commissionNum);
-  let clientName = {
-    name: $t('seaExport.export.clientId'),
-    value: to.value?.clientName || '--',
-  };
-  displayList.value.push(clientName);
-  let teamName = {
-    name: $t('seaExport.export.teamId'),
-    value: to.value?.teamName || '--',
-  };
-  displayList.value.push(teamName);
-  let vessel = {
-    name: $t('seaExport.export.vessel'),
-    value: formValues.value?.vessel || '--',
-  };
-  displayList.value.push(vessel);
-  let innerVoyno = {
-    name: $t('seaExport.export.innerVoyno'),
-    value: formValues.value?.innerVoyno || '--',
-  };
-  displayList.value.push(innerVoyno);
-  let carrier = {
-    name: $t('seaExport.export.carrierId'),
-    value: formValues.value?.carrierName || '--',
-  };
-  displayList.value.push(carrier);
-  let etd = {
-    name: $t('seaExport.export.etd'),
-    value: formatNormalDate(formValues.value?.etd) || '--',
-  };
-  displayList.value.push(etd);
-  let eta = {
-    name: $t('seaExport.export.eta'),
-    value: formatNormalDate(formValues.value?.eta) || '--',
-  };
-  displayList.value.push(eta);
-  let closingTime = {
-    name: $t('seaExport.export.closingTime'),
-    value: formatNormalDate(formValues.value?.closingTime) || '--',
-  };
-  displayList.value.push(closingTime);
-  let closeVgmTime = {
-    name: $t('seaExport.export.closeVgmTime'),
-    value: formatNormalDate(formValues.value?.closeVgmTime) || '--',
-  };
-  displayList.value.push(closeVgmTime);
-  let closeDocTime = {
-    name: $t('seaExport.export.closeDocTime'),
-    value: formatNormalDate(formValues.value?.closeDocTime) || '--',
-  };
-  displayList.value.push(closeDocTime);
-  let closeManifestTime = {
-    name: $t('seaExport.export.closeManifestTime'),
-    value: formatNormalDate(formValues.value?.closeManifestTime) || '--',
-  };
-  displayList.value.push(closeManifestTime);
-  let signingTime = {
-    name: $t('seaExport.export.signingTime'),
-    value: formatNormalDate(formValues.value?.signingTime) || '--',
-  };
-  displayList.value.push(signingTime);
-  let codeServiceName = {
-    name: $t('seaExport.export.codeServiceId'),
-    value: formValues.value?.codeServiceName || '--',
-  };
-  displayList.value.push(codeServiceName);
-  let codeFrtName = {
-    name: $t('seaExport.export.codeFrtId'),
-    value: formValues.value?.codeFrtName || '--',
-  };
-  displayList.value.push(codeFrtName);
-  let noPkgs = {
-    name: $t('seaExport.export.noPkgs'),
-    value: to.value?.noPkgs || '--',
-  };
-  displayList.value.push(noPkgs);
-  let kgs = {
-    name: $t('seaExport.export.kgs'),
-    value: to.value?.kgs || '--',
-  };
-  displayList.value.push(kgs);
-  let cbm = {
-    name: $t('seaExport.export.cbm'),
-    value: to.value?.cbm || '--',
-  };
-  displayList.value.push(cbm);
-  let goodsDes = {
-    name: $t('seaExport.export.goodsDes'),
-    value: to.value?.goodsDes || '--',
-  };
-  displayList.value.push(goodsDes);
+      Rejected(modalRemark);
+    },
+    onCancel() {
+      modalRemark = '';
+    },
+  });
 };
-const loadSeaExportData = async () => {
-  if (!submissionId.value) return;
+// ... existing code ...
+const Rejected = (modalRemark: string) => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+  let OrderFeeRejectedAsyncDto: ExpenseSubmissionAdminApi.OrderFeeTaskRejectedDto =
+    {
+      remark: modalRemark,
+      orderFeeIds: list.map((item) => item.id),
+    };
+  OrderFeeRejectedAsync(OrderFeeRejectedAsyncDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
+const OrderFeeAudit = (
+  approve: boolean,
+  modalRemark: string,
+  ids: number[],
+) => {
+  let OrderFeeAuditDto: ExpenseSubmissionAdminApi.OrderFeeTaskAuditDto = {
+    success: approve,
+    remark: modalRemark,
+    orderFeeIds: ids,
+  };
+  // console.log(OrderFeeAuditDto);
+  OrderFeeAuditAsync(OrderFeeAuditDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
+const selectPass = (approve: boolean, modalRemark: string) => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+  const ids = list.map((item) => item.id);
+  OrderFeeAudit(approve, modalRemark, ids);
+};
 
-  //pageLoading.value = true;
-  try {
-    const seaExportDetail = await getSeaExportDetail(entityId.value as number);
-    transportOrderId.value = seaExportDetail.transportOrder?.id;
-    formValues.value = seaExportDetail;
-    to.value = seaExportDetail.transportOrder;
-    // transportOrderId.value = detail.transportOrder?.id;
-    // formValues.value = detail;
-    // to.value = detail.transportOrder;
-    // console.log('detail', formValues.value);
-    setDisplayList();
-  } finally {
-    pageLoading.value = false;
+const allPass = (approve: boolean, modalRemark: string) => {
+  const ids = (dataSource.value ?? []).map((item) => item.id);
+  OrderFeeAudit(approve, modalRemark, ids);
+};
+
+const recPass = (approve: boolean, modalRemark: string) => {
+  const ids = (dataSourceRec.value ?? []).map((item) => item.id);
+  OrderFeeAudit(approve, modalRemark, ids);
+};
+
+const payPass = (approve: boolean, modalRemark: string) => {
+  const ids = (dataSourcePay.value ?? []).map((item) => item.id);
+  OrderFeeAudit(approve, modalRemark, ids);
+};
+
+const layout = computed(() => {
+  return props.feeTableType;
+});
+
+const getTableDate = () => {
+  if (childRecRef.value) {
+    childRecRef.value.getTableDate();
+  }
+  if (childPayRef.value) {
+    childPayRef.value.getTableDate();
   }
 };
+let recAmountMap: any = ref({} as any);
+let payAmountMap: any = ref({} as any);
+const totalAmount = computed(() => {
+  const allKeys = new Set([
+    ...Object.keys(recAmountMap.value),
+    ...Object.keys(payAmountMap.value),
+  ]);
+  const total: any = {};
 
-onMounted(() => {
-  loadSeaExportData();
+  allKeys.forEach((key) => {
+    total[key] = {
+      totalPayAmount: payAmountMap.value[key]?.totalPayAmount || 0,
+      totalRecAmount: recAmountMap.value[key]?.totalRecAmount || 0,
+      exchangeRate:
+        (payAmountMap.value[key] || recAmountMap.value[key])?.exchangeRate || 1,
+      currencyName:
+        (payAmountMap.value[key] || recAmountMap.value[key])?.currencyName ||
+        '人民币',
+    };
+  });
+  // 转换为对象数组
+  const totalList = Object.keys(total).map((key) => ({
+    id: key,
+    ...total[key],
+  }));
+  let list = [];
+  console.log(totalList);
+  let totalPay = 0;
+  let totalRec = 0;
+
+  totalList.forEach((item) => {
+    let recName = `应收${item.currencyName}:`;
+    let recColor = 'green';
+    let recAmount = (item.totalRecAmount || 0).toFixed(2);
+    list.push({
+      name: recName,
+      color: recColor,
+      value: recAmount,
+    });
+    totalRec += recAmount * item.exchangeRate;
+
+    let payName = `应付${item.currencyName}:`;
+    let payColor = 'yellow';
+    let payAmount = (item.totalPayAmount || 0).toFixed(2);
+    list.push({
+      name: payName,
+      color: payColor,
+      value: payAmount,
+    });
+    totalPay += payAmount * item.exchangeRate;
+
+    let profitName = `${item.currencyName}利润:`;
+    let profitColor = 'blue';
+    let profitAmount = (recAmount - payAmount).toFixed(2);
+    list.push({
+      name: profitName,
+      color: profitColor,
+      value: profitAmount,
+    });
+  });
+  list.push({
+    name: '合计利润:',
+    color: 'blue',
+    value: (totalRec - totalPay).toFixed(2),
+  });
+  list.push({
+    name: '利润率:',
+    color: 'blue',
+    value: totalRec
+      ? (((totalRec - totalPay) / totalRec) * 100).toFixed(1) + '%'
+      : '--',
+  });
+  console.log(list);
+  return list;
 });
+const handleReceivableTableUpdate = (
+  data: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
+) => {
+  dataSourceRec.value = data;
+
+  recAmountMap.value = {};
+  const currencyIdList = dataSourceRec.value.map((item) => item.currencyId);
+  currencyIdList.forEach((item) => {
+    let list = dataSourceRec.value.filter((item2) => item2.currencyId === item);
+    let totalRecAmount = list.reduce((acc, cur) => {
+      return acc + cur.amount;
+    }, 0);
+    let exchangeRate = list[0]?.exchangeRate;
+    let currencyName = list[0]?.currencyName;
+    recAmountMap.value[item] = {
+      totalRecAmount,
+      exchangeRate,
+      currencyName,
+    };
+    console.log('recAmountMap', recAmountMap);
+  });
+};
+
+const handlePayableTableUpdate = (
+  data: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
+) => {
+  dataSourcePay.value = data;
+
+  payAmountMap.value = {};
+  const currencyIdList = dataSourcePay.value.map((item) => item.currencyId);
+  currencyIdList.forEach((item) => {
+    let list = dataSourcePay.value.filter((item2) => item2.currencyId === item);
+    let totalPayAmount = list.reduce((acc, cur) => {
+      return acc + cur.amount;
+    }, 0);
+    let exchangeRate = list[0]?.exchangeRate;
+    let currencyName = list[0]?.currencyName;
+    payAmountMap.value[item] = {
+      totalPayAmount,
+      exchangeRate,
+      currencyName,
+    };
+    console.log('payAmountMap', payAmountMap);
+  });
+};
+
+const handleReceivableTableSelect = (arr: (string | number)[]) => {
+  selectedRecKeys.value = arr;
+};
+const handlePayableTableSelect = (arr: (string | number)[]) => {
+  selectedPayKeys.value = arr;
+};
 </script>
 
 <template>
-  <Page auto-content-height>
-    <Spin :spinning="pageLoading">
-      <div class="mx-2 flex items-stretch gap-6">
-        <!--  -->
-        <div class="flex min-w-0 flex-1 flex-col gap-2">
-          <Card>
-            <template #title>
-              <span class="flex items-center gap-2">
-                <Package class="size-4" />
-                {{ $t('seaExport.export.orderFee.receivableCharges') }}
-              </span>
-            </template>
-            <div class="px-1">
-              <div class="mt-4">
-                <OrderFeeTable :type="0" />
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <template #title>
-              <span class="flex items-center gap-2">
-                <Package class="size-4" />
-                {{ $t('seaExport.export.orderFee.payableCharges') }}
-              </span>
-            </template>
-            <div class="px-1">
-              <div class="mt-4">
-                <OrderFeeTable :type="1" />
-              </div>
-            </div>
-          </Card>
-        </div>
-        <!-- 垂直方向撑满 -->
-        <Card class="flex w-[280px] shrink-0 flex-col">
-          <template #title>
-            <span class="flex items-center gap-2">
-              <Users class="size-4" />
-              {{ $t('seaExport.export.formCardInfo') }}
+  <div class="flex items-stretch">
+    <!--  -->
+    <div class="flex min-w-0 flex-1 flex-col gap-2">
+      <Card>
+        <template #title>
+          <div class="flex">
+            <span class="mr-2 flex items-center gap-2">
+              <Package class="size-4" />
+              {{ $t('seaExport.export.orderFee.feeDetail') }}
             </span>
-          </template>
-          <div class="flex flex-1 px-1 py-1" v-for="item in displayList">
-            <span class="flex w-[85px]"> {{ `${item.name} : ` }}</span>
-            <span class="flex w-[145px]">{{ item.value || '--' }}</span>
+            <div class="my-1 flex items-center justify-between">
+              <Space>
+                <!-- <Button type="primary" size="small" :disabled="!selectedRowKeys.length"
+                  @click="showConfirmWithRemark(true)">
+                  {{ $t('auditApproval.Passed') }}
+                </Button> -->
+                <DropdownButton
+                  @click="showConfirmWithRemark(true, 'all')"
+                  size="small"
+                  type="primary"
+                >
+                  {{ $t('auditApproval.task.allPass') }}
+                  <template #overlay>
+                    <Menu @click="SubmittedOther">
+                      <MenuItem key="selectPass">
+                        {{ $t('auditApproval.task.selectPass') }}
+                      </MenuItem>
+                      <MenuItem key="recPass">
+                        {{ $t('auditApproval.task.recPass') }}
+                      </MenuItem>
+                      <MenuItem key="payPass">
+                        {{ $t('auditApproval.task.payPass') }}
+                      </MenuItem>
+                    </Menu>
+                  </template>
+                </DropdownButton>
+                <Button
+                  type="primary"
+                  size="small"
+                  :disabled="!selectedRowKeys.length"
+                  @click="showConfirmWithRemark(false, 'selectPass')"
+                  >{{ $t('auditApproval.task.noPass') }}</Button
+                >
+                <Button
+                  danger
+                  size="small"
+                  :disabled="!selectedRowKeys.length"
+                  @click="showRejectWithRemark"
+                >
+                  {{ $t('auditApproval.task.passReject') }}
+                </Button>
+              </Space>
+            </div>
+            <div class="select-name flex flex-1 text-sm font-normal">
+              {{ props.orderName }}
+            </div>
           </div>
-        </Card>
+        </template>
+        <div class="flex" :class="[layout === 'horizontal' ? '' : 'flex-col']">
+          <div
+            class="mt-1"
+            :class="[layout === 'horizontal' ? 'mr-2 w-[49%]' : '']"
+          >
+            <OrderFeeTable
+              @update-table-data="handleReceivableTableUpdate"
+              @update-select-data="handleReceivableTableSelect"
+              :transportOrderId="props.transportOrderId"
+              :entityId="props.entityId"
+              :type="0"
+              ref="childRecRef"
+            />
+          </div>
+
+          <div class="mt-1" :class="[layout === 'horizontal' ? 'w-[49%]' : '']">
+            <OrderFeeTable
+              @update-table-data="handlePayableTableUpdate"
+              @update-select-data="handlePayableTableSelect"
+              :transportOrderId="props.transportOrderId"
+              :entityId="props.entityId"
+              :type="1"
+              ref="childpayRef"
+            />
+          </div>
+        </div>
+      </Card>
+      <div class="total-amount flex rounded-md px-4 py-1 shadow">
+        <div
+          v-for="(item, index) in totalAmount"
+          class="mr-4 flex"
+          :key="item.name"
+        >
+          <span class="flex">{{ item.name }}</span>
+          <span class="ml-2 flex font-medium" :class="item.color">{{
+            item.value
+          }}</span>
+          <span class="split mx-4 flex" v-show="(index + 1) % 3 === 0">| </span>
+        </div>
       </div>
-    </Spin>
-  </Page>
+    </div>
+  </div>
 </template>
+<style scoped lang="scss">
+.select-name {
+  flex-direction: row-reverse;
+}
+
+.total-amount {
+  background: #fff;
+
+  .split {
+    color: #33333345;
+  }
+}
+
+.green {
+  color: #00b96b;
+}
+
+.yellow {
+  color: #ffc107;
+}
+
+.blue {
+  color: #007bff;
+}
+
+:deep(.green-btn) {
+  color: #fff;
+  background-color: #00b96b !important;
+  border-color: #00b96b !important;
+}
+
+/* 如果需要处理悬停状态 */
+:deep(.green-btn:hover),
+:deep(.green-btn:focus) {
+  color: #fff;
+  background-color: #009a55 !important;
+  border-color: #009a55 !important;
+}
+
+/* 绿色按钮样式 - 基础状态 */
+.green-dropdown-btn.ant-btn {
+  color: #fff;
+  background-color: #52c41a;
+
+  /* Ant Design 成功/绿色 */
+  border-color: #52c41a;
+}
+
+/* 悬停状态 */
+.green-dropdown-btn.ant-btn:hover,
+.green-dropdown-btn.ant-btn:focus {
+  color: #fff;
+  background-color: #73d13d;
+  border-color: #73d13d;
+}
+
+/* 激活/按下状态 */
+.green-dropdown-btn.ant-btn:active {
+  color: #fff;
+  background-color: #389e0d;
+  border-color: #389e0d;
+}
+</style>

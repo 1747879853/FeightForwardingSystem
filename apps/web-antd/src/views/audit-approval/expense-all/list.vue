@@ -41,7 +41,7 @@ const [Grid, gridApi] =
         trigger: 'row',
       },
       rowConfig: {
-        keyField: 'id',
+        keyField: 'entityId',
       },
       pagerConfig: {
         enabled: true,
