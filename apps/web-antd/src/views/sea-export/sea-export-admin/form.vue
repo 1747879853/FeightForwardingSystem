@@ -648,6 +648,17 @@ const withOrderUserSortId = (rows: OrderUserEditorRow[]) => {
     sortId: total - index,
   }));
 };
+const toOptionalNumber = (value: unknown) => {
+  if (value === null || value === undefined || value === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+const normalizeOrderUserItem = (item: SeaExportAdminApi.OrderUserAddDto) => ({
+  ...item,
+  userId: toOptionalNumber(item.userId),
+  userAttribute: toOptionalNumber(item.userAttribute),
+  sortId: toOptionalNumber(item.sortId),
+});
 const cloneOrderUsersForForm = (rows: OrderUserEditorRow[]) =>
   withOrderUserSortId(rows).map(({ _rowKey: _k, userName: _n, ...rest }) => ({
     ...rest,
@@ -657,12 +668,12 @@ const createOrderUserRows = (
 ) => {
   if (!items?.length) {
     return defaultOrderUsers.map((item) => ({
-      ...item,
+      ...normalizeOrderUserItem(item),
       _rowKey: makeOrderUserRowKey(),
     }));
   }
   return items.map((item) => ({
-    ...item,
+    ...normalizeOrderUserItem(item),
     _rowKey: makeOrderUserRowKey(),
   }));
 };
