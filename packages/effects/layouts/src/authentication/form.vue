@@ -28,11 +28,5 @@ defineProps<{
     </RouterView>
 
     <!-- Footer Copyright -->
-
-    <div
-      class="text-muted-foreground absolute bottom-3 flex text-center text-xs"
-    >
-      <slot name="copyright"> </slot>
-    </div>
   </div>
 </template>

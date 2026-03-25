@@ -65,14 +65,17 @@ export namespace SeaExportAdminApi {
     mblNum?: string;
     bookingNum?: string;
     codeFrtId?: number;
+    prepareAtId?: number;
     codeServiceId?: number;
+    cargoId?: number;
     tradeTermsType?: number;
     internalRemark?: string;
     marks?: string;
-    noPkgs?: string;
+    pkgs?: number;
+    codePackageId?: number;
     goodsDes?: string;
-    kgs?: string;
-    cbm?: string;
+    kgs?: number;
+    cbm?: number;
     clientId: number;
     teamId?: number;
     custBrokerId?: number;
@@ -86,6 +89,9 @@ export namespace SeaExportAdminApi {
     notifierContent?: string;
     sortId?: number;
     remark?: string;
+    goodsCompleteTime?: string;
+    etd?: string;
+    eta?: string;
     /** 品名列表 */
     orderCodeGoodss?: OrderCodeGoodsAddDto[];
     /** 箱型箱量列表 */
@@ -110,6 +116,11 @@ export namespace SeaExportAdminApi {
     creatorUserId?: number;
   }
 
+  export interface OrganizationUnitSimpleDto {
+    id: number;
+    name?: string;
+  }
+
   export interface SeaExportAddDto {
     blType?: number;
     billType?: number;
@@ -120,15 +131,15 @@ export namespace SeaExportAdminApi {
     bookingAgentId?: number;
     shipAgentId?: number;
     yardId?: number;
+    /** 签单方式id（新版字段） */
+    codeIssueTypeId?: number;
+    /** 签单方式id（旧字段，兼容） */
     issueType?: number;
     vessel?: string;
     innerVoyno?: string;
     carrierId?: number;
     noBillEnum?: number;
     copyNoBillEnum?: number;
-    goodsCompleteTime?: string;
-    etd?: string;
-    eta?: string;
     closingTime?: string;
     closeVgmTime?: string;
     closeDocTime?: string;
@@ -149,6 +160,8 @@ export namespace SeaExportAdminApi {
     deliverPortRemark?: string;
     sortId?: number;
     remark?: string;
+    serviceTypes?: number[];
+    organizationUnits?: OrganizationUnitSimpleDto[];
     transportOrder?: TransportOrderAddDto;
   }
 
@@ -163,15 +176,15 @@ export namespace SeaExportAdminApi {
     bookingAgentId?: number;
     shipAgentId?: number;
     yardId?: number;
+    /** 签单方式id（新版字段） */
+    codeIssueTypeId?: number;
+    /** 签单方式id（旧字段，兼容） */
     issueType?: number;
     vessel?: string;
     innerVoyno?: string;
     carrierId?: number;
     noBillEnum?: number;
     copyNoBillEnum?: number;
-    goodsCompleteTime?: string;
-    etd?: string;
-    eta?: string;
     closingTime?: string;
     closeVgmTime?: string;
     closeDocTime?: string;
@@ -192,6 +205,8 @@ export namespace SeaExportAdminApi {
     deliverPortRemark?: string;
     sortId?: number;
     remark?: string;
+    serviceTypes?: number[];
+    organizationUnits?: OrganizationUnitSimpleDto[];
     transportOrder?: TransportOrderEditDto;
   }
 
@@ -216,6 +231,11 @@ export namespace SeaExportAdminApi {
     yardId?: number;
     yard?: ClientAdminApi.ClientDto;
     yardName?: string;
+    /** 签单方式id（新版字段） */
+    codeIssueTypeId?: number;
+    /** 签单方式名称（新版字段） */
+    codeIssueTypeName?: string;
+    /** 签单方式id（旧字段，兼容） */
     issueType?: number;
     vessel?: string;
     innerVoyno?: string;
@@ -224,9 +244,6 @@ export namespace SeaExportAdminApi {
     carrierName?: string;
     noBillEnum?: number;
     copyNoBillEnum?: number;
-    goodsCompleteTime?: string;
-    etd?: string;
-    eta?: string;
     closingTime?: string;
     closeVgmTime?: string;
     closeDocTime?: string;
@@ -254,6 +271,8 @@ export namespace SeaExportAdminApi {
     deliverPortRemark?: string;
     sortId?: number;
     remark?: string;
+    serviceTypes?: number[];
+    organizationUnits?: OrganizationUnitSimpleDto[];
     transportOrder?: TransportOrderDto;
     isDeleted?: boolean;
     deleterUserId?: number;

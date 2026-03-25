@@ -158,12 +158,12 @@ function clearPreferencesAndLogout() {
           />
         </template>
 
-        <template v-else-if="slot.name === 'preferences'">
+        <!-- <template v-else-if="slot.name === 'preferences'">
           <PreferencesButton
             class="mr-1"
             @clear-preferences-and-logout="clearPreferencesAndLogout"
           />
-        </template>
+        </template> -->
         <template v-else-if="slot.name === 'theme-toggle'">
           <ThemeToggle class="mr-1 mt-[2px]" />
         </template>
