@@ -19,7 +19,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: $t('seaExport.export.title'),
         },
-        component: () => import('#/views/sea-export/sea-export-admin/list.vue'),
+        component: () => import('#/views/sea-export-admin/list.vue'),
       },
       {
         path: 'create',
@@ -29,7 +29,7 @@ const routes: RouteRecordRaw[] = [
           hideInMenu: true,
           activePath: '/sea-exports',
         },
-        component: () => import('#/views/sea-export/sea-export-admin/form.vue'),
+        component: () => import('#/views/sea-export-admin/form.vue'),
       },
       {
         path: ':id/edit',
@@ -39,8 +39,7 @@ const routes: RouteRecordRaw[] = [
           hideInMenu: true,
           activePath: '/sea-exports',
         },
-        component: () =>
-          import('#/views/sea-export/sea-export-admin/editor.vue'),
+        component: () => import('#/views/sea-export-admin/editor.vue'),
       },
     ],
   },

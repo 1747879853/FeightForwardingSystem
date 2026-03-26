@@ -2,7 +2,7 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
-import { getFeeStatusOptions } from '#/views/sea-export/sea-export-admin/orderFee/data';
+import { getFeeStatusOptions } from '#/views/sea-export-admin/orderFee/data';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import { BusinessTypeOptions } from '#/views/client/paymentTermsData';
 import { $t } from '#/locales';
