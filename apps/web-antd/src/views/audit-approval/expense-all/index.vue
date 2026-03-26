@@ -6,7 +6,7 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getOrderFeeTaskList } from '#/api/audit-approval/expense-admin';
 import { $t } from '#/locales';
 import { useExpenseAllColumns, useGridFormSchema } from '../data';
-import { Plus, ArrowDown, ArrowRightLeft } from '@vben/icons';
+import { Plus, ArrowDown, ArrowLeft } from '@vben/icons';
 import { computed, onMounted, ref } from 'vue';
 import { Button, message, Modal } from 'ant-design-vue';
 
@@ -110,7 +110,7 @@ const changeTableType = (type: string) => {
           @click="changeTableType('horizontal')"
           :class="[feeTableType === 'horizontal' ? 'green-btn' : '']"
         >
-          <ArrowRightLeft class="size-5" />
+          <ArrowLeft class="size-5" />
           {{ $t('auditApproval.tableType.horizontal') }}
         </Button>
       </template>

@@ -13,10 +13,26 @@ const getProcessedOptions = () => [
 ];
 
 export const getTaskStatusOptions = () => [
-  { value: 0, label: $t('auditApproval.task.statusOptions.Auditing') },
-  { value: 1, label: $t('auditApproval.task.statusOptions.Rejected') },
-  { value: 2, label: $t('auditApproval.task.statusOptions.Passed') },
-  { value: 3, label: $t('auditApproval.task.statusOptions.PartialPassed') },
+  {
+    value: 0,
+    label: $t('auditApproval.task.statusOptions.Auditing'),
+    color: '#ff9900',
+  },
+  {
+    value: 1,
+    label: $t('auditApproval.task.statusOptions.Rejected'),
+    color: '#f56c6c',
+  },
+  {
+    value: 2,
+    label: $t('auditApproval.task.statusOptions.Passed'),
+    color: '#67c23a',
+  },
+  {
+    value: 3,
+    label: $t('auditApproval.task.statusOptions.PartialPassed'),
+    color: '#909399',
+  },
 ];
 
 export const getTaskTypeOptions = () => [

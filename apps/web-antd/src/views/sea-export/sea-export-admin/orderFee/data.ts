@@ -57,14 +57,14 @@ export const getInvoiceStatusOptions = () => [
 // 费用状态
 // --------------------------------------------------------
 export const getFeeStatusOptions = () => [
-  { value: 0, label: '录入状态' },
-  { value: 1, label: '提交审核' },
-  { value: 2, label: '审核通过' },
-  { value: 3, label: '驳回' },
-  { value: 4, label: '申请修改' },
-  { value: 5, label: '申请删除' },
-  { value: 6, label: '部分结算' },
-  { value: 7, label: '结算完毕' },
+  { value: 0, label: '录入状态', color: '#b8cdd7' },
+  { value: 1, label: '提交审核', color: '#409eff' },
+  { value: 2, label: '审核通过', color: '#67c23a' },
+  { value: 3, label: '驳回', color: '#f56c6c' },
+  { value: 4, label: '申请修改', color: '#ff9900' },
+  { value: 5, label: '申请删除', color: '#ff9900' },
+  { value: 6, label: '部分结算', color: '#909399' },
+  { value: 7, label: '结算完毕', color: '#67c23a' },
 ];
 
 export const getFeeStatusValue = {
@@ -135,10 +135,14 @@ export const getClientTypeOptions = () => [
 // 币别
 // --------------------------------------------------------
 export const getCurrencyEnumOptions = () => [
-  { value: 1, label: 'RMB' },
+  { value: 4, label: 'RMB' },
   { value: 2, label: 'USD' },
 ];
 
+export const getCurrencyEnumSymbolOptions = () => [
+  { value: 4, label: '￥' },
+  { value: 2, label: '$' },
+];
 // --------------------------------------------------------
 // 费用类别
 // --------------------------------------------------------

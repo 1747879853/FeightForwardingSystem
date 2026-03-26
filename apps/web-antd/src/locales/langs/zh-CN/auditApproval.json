@@ -22,8 +22,10 @@
     "info": "任务信息",
     "auditUserName": "审核人",
     "auditTime": "审核时间",
+    "createTime": "录入时间",
     "remark": "备注",
-    "creatorUserName": "创建人",
+    "AuditRemark": "审核意见",
+    "creatorUserName": "录入人",
     "okPass": "确认审核通过",
     "allPass": "审核全部",
     "selectPass": "审核选中",
@@ -53,7 +55,7 @@
   "NoPassed": "审核不通过",
   "Rejected": "驳回",
   "expenseReview": {
-    "all": "全部费用审核",
+    "all": "费用审核",
     "title": "业务台账",
     "detail": "费用审核详情"
   },
@@ -76,5 +78,6 @@
   "tableType": {
     "horizontal": "左右",
     "vertical": "上下"
-  }
+  },
+  "totalNum": "共 {0} 条费用"
 }

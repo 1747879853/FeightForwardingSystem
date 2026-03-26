@@ -408,7 +408,7 @@ const handlePayableTableSelect = (arr: (string | number)[]) => {
                   </template>
                 </DropdownButton>
                 <Button
-                  type="primary"
+                  class="yellow-btn"
                   size="small"
                   :disabled="!selectedRowKeys.length"
                   @click="showConfirmWithRemark(false, 'selectPass')"
@@ -511,13 +511,18 @@ const handlePayableTableSelect = (arr: (string | number)[]) => {
   border-color: #009a55 !important;
 }
 
-/* 绿色按钮样式 - 基础状态 */
-.green-dropdown-btn.ant-btn {
+:deep(.yellow-btn) {
   color: #fff;
-  background-color: #52c41a;
+  background-color: #ffc107 !important;
+  border-color: #ffc107 !important;
+}
 
-  /* Ant Design 成功/绿色 */
-  border-color: #52c41a;
+/* 如果需要处理悬停状态 */
+:deep(.yellow-btn:hover),
+:deep(.yellow-btn:focus) {
+  color: #fff;
+  background-color: #ffc107 !important;
+  border-color: #ffc107 !important;
 }
 
 /* 悬停状态 */

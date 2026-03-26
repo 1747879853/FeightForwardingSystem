@@ -15,6 +15,7 @@ import {
   Textarea,
   message,
   Modal,
+  Tag,
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
@@ -85,6 +86,7 @@ const normalizeOrderFeeWithRowKey = (
     _rowKey: `ofee_${i}_${Date.now()}`,
   })) as any[];
 };
+
 const getTableDate = async () => {
   const detail = await OrderFeeTaskDetailAsync({ id: props.transportOrderId });
   const orderFeeTasks =
@@ -229,188 +231,178 @@ watch(
 );
 const columns = [
   {
-    title: $t('auditApproval.taskName'),
-
-    children: [
-      {
-        title: $t('auditApproval.task.status'),
-        dataIndex: ['task', 'taskStatus'],
-        key: 'taskStatus',
-
-        width: 90,
-      },
-      {
-        title: $t('auditApproval.task.type'),
-        dataIndex: ['task', 'taskType'],
-        key: 'taskType',
-        width: 90,
-      },
-      {
-        title: $t('auditApproval.task.creatorUserName'),
-        dataIndex: ['task', 'creatorUserName'],
-        key: 'creatorUserName',
-        width: 110,
-      },
-      {
-        title: $t('auditApproval.task.auditUserName'),
-        dataIndex: ['task', 'auditUserName'],
-        key: 'auditUserName',
-        width: 110,
-      },
-      {
-        title: $t('auditApproval.task.auditTime'),
-        dataIndex: ['task', 'auditTime'],
-        key: 'auditTime',
-        customRender: ({ text }) => {
-          // 基本格式化
-          return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
-        },
-        width: 180,
-      },
-      {
-        title: $t('auditApproval.task.remark'),
-        dataIndex: ['task', 'remark'],
-        key: 'remark',
-        width: 150,
-      },
-    ],
+    title: $t('seaExport.export.orderFee.invoiceStatus'),
+    dataIndex: 'invoiceStatus',
+    key: 'invoiceStatus',
+    width: 80,
   },
   {
-    title: $t('auditApproval.expenseName'),
-    children: [
-      {
-        title: $t('seaExport.export.orderFee.invoiceStatus'),
-        dataIndex: 'invoiceStatus',
-        key: 'invoiceStatus',
-        width: 80,
-      },
-      {
-        title: $t('seaExport.export.orderFee.feeStatus'),
-        dataIndex: 'feeStatus',
-        key: 'feeStatus',
-        width: 90,
-      },
-      {
-        title: $t('seaExport.export.orderFee.feecodeName'),
-        dataIndex: 'feeCodeName',
-        key: 'feeCodeName',
-        minWidth: 120,
-      },
-      {
-        title: $t('seaExport.client.industryCategories'),
-        dataIndex: 'industryCategory',
-        key: 'industryCategory',
-        minWidth: 110,
-      },
-      {
-        title: $t('seaExport.export.orderFee.settlement'),
-        dataIndex: 'settlementName',
-        key: 'settlementName',
-        minWidth: 110,
-      },
-      {
-        title: $t('seaExport.export.orderFee.currency'),
-        dataIndex: 'currencyName',
-        key: 'currencyName',
-        minWidth: 80,
-      },
-      {
-        title: $t('seaExport.export.orderFee.ExchangeRate'),
-        dataIndex: 'exchangeRate',
-        key: 'exchangeRate',
-        width: 85,
-      },
-      {
-        title: $t('seaExport.export.orderFee.unitPrice'),
-        dataIndex: 'unitPrice',
-        key: 'unitPrice',
-        minWidth: 50,
-      },
-      {
-        title: $t('seaExport.export.orderFee.amount'),
-        dataIndex: 'amount',
-        key: 'amount',
-        minWidth: 80,
-      },
-      {
-        title: $t('seaExport.export.orderFee.unitEmum'),
-        dataIndex: 'unitEmum',
-        key: 'unitEmum',
-        minWidth: 90,
-      },
-      {
-        title: $t('seaExport.export.orderFee.quantity'),
-        dataIndex: 'quantity',
-        key: 'quantity',
-        minWidth: 50,
-      },
-      {
-        title: $t('seaExport.export.orderFee.taxRate'),
-        dataIndex: 'taxRate',
-        key: 'taxRate',
-        minWidth: 50,
-      },
-      {
-        title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
-        dataIndex: 'noTaxUnitPrice',
-        key: 'noTaxUnitPrice',
-        minWidth: 50,
-      },
-      {
-        title: $t('seaExport.export.orderFee.noTaxAmount'),
-        dataIndex: 'noTaxAmount',
-        key: 'noTaxAmount',
-        minWidth: 80,
-      },
-      {
-        title: $t('seaExport.export.orderFee.rqstPaymentAmount'),
-        dataIndex: 'rqstPaymentAmount',
-        key: 'rqstPaymentAmount',
-        minWidth: 80,
-      },
-      {
-        title: $t('seaExport.export.orderFee.invoicedAmount'),
-        dataIndex: 'invoicedAmount',
-        key: 'invoicedAmount',
-        minWidth: 80,
-      },
-      {
-        title: $t('seaExport.export.orderFee.orderInvoiceAmount'),
-        dataIndex: 'orderInvoiceAmount',
-        key: 'orderInvoiceAmount',
-        minWidth: 80,
-      },
-      {
-        title: $t('seaExport.export.orderFee.settledAmount'),
-        dataIndex: 'settledAmount',
-        key: 'settledAmount',
-        minWidth: 80,
-      },
-      {
-        title: $t('seaExport.export.orderFee.canInvoice'),
-        dataIndex: 'canInvoice',
-        key: 'canInvoice',
-        minWidth: 80,
-      },
-      {
-        title: $t('seaExport.export.orderFee.isConfidential'),
-        dataIndex: 'isConfidential',
-        key: 'isConfidential',
-        minWidth: 80,
-      },
-      {
-        title: $t('seaExport.export.orderFee.dataEntryMethod'),
-        dataIndex: 'dataEntryMethod',
-        key: 'dataEntryMethod',
-        minWidth: 80,
-      },
-      {
-        title: $t('seaExport.export.orderFee.remark'),
-        dataIndex: 'remark',
-        key: 'feeRemark',
-        minWidth: 150,
-      },
-    ],
+    title: $t('seaExport.export.orderFee.feeStatus'),
+    dataIndex: 'feeStatus',
+    align: 'center',
+    key: 'feeStatus',
+    width: 90,
+  },
+  {
+    title: $t('seaExport.export.orderFee.feecodeName'),
+    dataIndex: 'feeCodeName',
+    key: 'feeCodeName',
+    minWidth: 120,
+  },
+  {
+    title: $t('seaExport.client.industryCategories'),
+    dataIndex: 'industryCategory',
+    key: 'industryCategory',
+    minWidth: 110,
+  },
+  {
+    title: $t('seaExport.export.orderFee.settlement'),
+    dataIndex: 'settlementName',
+    key: 'settlementName',
+    minWidth: 110,
+  },
+  {
+    title: $t('seaExport.export.orderFee.currency'),
+    dataIndex: 'currencyName',
+    key: 'currencyName',
+    align: 'center',
+    minWidth: 80,
+  },
+  {
+    title: $t('seaExport.export.orderFee.ExchangeRate'),
+    dataIndex: 'exchangeRate',
+    key: 'exchangeRate',
+    align: 'center',
+    width: 50,
+  },
+  {
+    title: $t('seaExport.export.orderFee.unitPrice'),
+    dataIndex: 'unitPrice',
+    key: 'unitPrice',
+    minWidth: 50,
+  },
+  {
+    title: $t('seaExport.export.orderFee.amount'),
+    dataIndex: 'amount',
+    key: 'amount',
+    minWidth: 80,
+  },
+  {
+    title: $t('seaExport.export.orderFee.unitEmum'),
+    dataIndex: 'unitEmum',
+    key: 'unitEmum',
+    minWidth: 90,
+  },
+  {
+    title: $t('seaExport.export.orderFee.quantity'),
+    dataIndex: 'quantity',
+    key: 'quantity',
+    minWidth: 50,
+  },
+  {
+    title: $t('seaExport.export.orderFee.taxRate'),
+    dataIndex: 'taxRate',
+    key: 'taxRate',
+    minWidth: 50,
+  },
+  {
+    title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
+    dataIndex: 'noTaxUnitPrice',
+    key: 'noTaxUnitPrice',
+    minWidth: 50,
+  },
+  {
+    title: $t('seaExport.export.orderFee.noTaxAmount'),
+    dataIndex: 'noTaxAmount',
+    key: 'noTaxAmount',
+    minWidth: 80,
+  },
+  {
+    title: $t('seaExport.export.orderFee.rqstPaymentAmount'),
+    dataIndex: 'rqstPaymentAmount',
+    key: 'rqstPaymentAmount',
+    minWidth: 80,
+  },
+  {
+    title: $t('seaExport.export.orderFee.invoicedAmount'),
+    dataIndex: 'invoicedAmount',
+    key: 'invoicedAmount',
+    minWidth: 80,
+  },
+  {
+    title: $t('seaExport.export.orderFee.orderInvoiceAmount'),
+    dataIndex: 'orderInvoiceAmount',
+    key: 'orderInvoiceAmount',
+    minWidth: 80,
+  },
+  {
+    title: $t('seaExport.export.orderFee.settledAmount'),
+    dataIndex: 'settledAmount',
+    key: 'settledAmount',
+    minWidth: 80,
+  },
+  {
+    title: $t('seaExport.export.orderFee.canInvoice'),
+    dataIndex: 'canInvoice',
+    key: 'canInvoice',
+    minWidth: 80,
+  },
+  {
+    title: $t('seaExport.export.orderFee.isConfidential'),
+    dataIndex: 'isConfidential',
+    key: 'isConfidential',
+    minWidth: 80,
+  },
+  {
+    title: $t('seaExport.export.orderFee.remark'),
+    dataIndex: 'remark',
+    key: 'feeRemark',
+    minWidth: 150,
+  },
+  {
+    title: $t('seaExport.export.orderFee.dataEntryMethod'),
+    dataIndex: 'dataEntryMethod',
+    key: 'dataEntryMethod',
+    minWidth: 80,
+  },
+
+  {
+    title: $t('auditApproval.task.creatorUserName'),
+    dataIndex: ['task', 'creatorUserName'],
+    key: 'creatorUserName',
+    width: 110,
+  },
+  {
+    title: $t('auditApproval.task.createTime'),
+    dataIndex: ['creationTime'],
+    key: 'creationTime',
+    customRender: ({ text }) => {
+      // 基本格式化
+      return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
+    },
+    width: 180,
+  },
+  {
+    title: $t('auditApproval.task.auditUserName'),
+    dataIndex: ['task', 'auditUserName'],
+    key: 'auditUserName',
+    width: 110,
+  },
+  {
+    title: $t('auditApproval.task.auditTime'),
+    dataIndex: ['task', 'auditTime'],
+    key: 'auditTime',
+    customRender: ({ text }) => {
+      // 基本格式化
+      return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
+    },
+    width: 180,
+  },
+  {
+    title: $t('auditApproval.task.AuditRemark'),
+    dataIndex: ['task', 'remark'],
+    key: 'remark',
+    width: 150,
   },
 ];
 onMounted(() => {
@@ -425,31 +417,22 @@ defineExpose({
 
 <template>
   <div
-    class="order-ctn-table rounded-md border"
+    class="order-ctn-table justify-between rounded-md border"
     :class="[type === 0 ? 'rec-table' : 'pay-table']"
   >
-    <!-- <div class="mb-2 flex items-center justify-between">
-      <Space>
-        <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="showConfirmWithRemark(true)">
-          {{ $t('auditApproval.Passed') }}
-        </Button>
-        <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="showConfirmWithRemark(false)">{{
-          $t('auditApproval.NoPassed') }}</Button>
-        <Button danger size="small" :disabled="!selectedRowKeys.length" @click="showRejectWithRemark">
-          {{ $t('auditApproval.Rejected') }}
-        </Button>
-      </Space>
-    </div> -->
-    <div
-      class="m-2 flex items-center justify-between font-semibold"
-      :class="[type === 0 ? 'blue' : 'yellow']"
-    >
-      {{
-        type === 0
-          ? $t('seaExport.export.orderFee.receivableCharges')
-          : $t('seaExport.export.orderFee.payableCharges')
-      }}
+    <div class="m-2 flex items-center justify-between font-semibold">
+      <div :class="[type === 0 ? 'blue' : 'yellow']">
+        {{
+          type === 0
+            ? $t('seaExport.export.orderFee.receivableCharges')
+            : $t('seaExport.export.orderFee.payableCharges')
+        }}
+      </div>
+      <div class="text-small font-normal">
+        {{ $t('auditApproval.totalNum', [dataSource.length]) }}
+      </div>
     </div>
+
     <Table
       :data-source="dataSource"
       :columns="columns"
@@ -459,6 +442,7 @@ defineExpose({
       bordered
       :scroll="{ x: 2600 }"
       row-key="_rowKey"
+      :class="['my-custom-table']"
     >
       <template #bodyCell="{ column, record, index }">
         <template v-if="column.key === 'invoiceStatus'">
@@ -469,11 +453,19 @@ defineExpose({
           }}</span>
         </template>
         <template v-if="column.key === 'feeStatus'">
-          <span>{{
-            feeConstants
-              .getFeeStatusOptions()
-              .find((o) => o.value === record.feeStatus)?.label
-          }}</span>
+          <Tag
+            :color="
+              feeConstants
+                .getFeeStatusOptions()
+                .find((o) => o.value === record.feeStatus)?.color || ''
+            "
+          >
+            {{
+              feeConstants
+                .getFeeStatusOptions()
+                .find((o) => o.value === record.feeStatus)?.label
+            }}</Tag
+          >
         </template>
 
         <template v-if="column.key === 'industryCategory'">
@@ -484,9 +476,95 @@ defineExpose({
           }}</span>
         </template>
 
+        <template v-if="column.key === 'unitPrice'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.unitPrice.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'amount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.amount.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'noTaxUnitPrice'">
+          <span class="money">
+            {{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.noTaxUnitPrice.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'noTaxAmount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.noTaxAmount.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'rqstPaymentAmount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.rqstPaymentAmount.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'invoicedAmount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.invoicedAmount.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'settledAmount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.settledAmount.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'orderInvoiceAmount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.orderInvoiceAmount.toLocaleString() }}</span
+          >
+        </template>
+
         <template v-if="column.key === 'canInvoice'">
           <span>{{
-            record.industryCategory ? $t('common.yes') : $t('common.no')
+            record.canInvoice ? $t('common.yes') : $t('common.no')
+          }}</span>
+        </template>
+
+        <template v-if="column.key === 'isConfidential'">
+          <span>{{
+            record.isConfidential ? $t('common.yes') : $t('common.no')
           }}</span>
         </template>
 
@@ -499,11 +577,19 @@ defineExpose({
         </template>
 
         <template v-if="column.key === 'taskStatus'">
-          <span>{{
-            submissionConstants
-              .getTaskStatusOptions()
-              .find((o) => o.value === record.task?.taskStatus)?.label || '--'
-          }}</span>
+          <Tag
+            :color="
+              submissionConstants
+                .getTaskStatusOptions()
+                .find((o) => o.value === record.task?.taskStatus)?.color || ''
+            "
+          >
+            {{
+              submissionConstants
+                .getTaskStatusOptions()
+                .find((o) => o.value === record.task?.taskStatus)?.label || '--'
+            }}</Tag
+          >
         </template>
 
         <template v-else-if="column.key === 'dataEntryMethod'">
@@ -537,5 +623,23 @@ defineExpose({
 
 .yellow {
   color: rgb(255 153 0);
+}
+
+.my-custom-table {
+  // min-height: 400px;
+}
+
+/* 或者如果需要更精确地控制内部容器 */
+.my-custom-table:deep(.ant-table-tbody) {
+  min-height: 300px;
+}
+
+.money {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+  font-variant-numeric: tabular-nums;
+
+  /* 增强对齐 */
 }
 </style>
