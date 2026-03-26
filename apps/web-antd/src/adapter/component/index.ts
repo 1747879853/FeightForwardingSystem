@@ -538,6 +538,9 @@ export type ComponentType =
   | 'FeeCodeSelect'
   | 'ExchangeRateSelect'
   | 'VesselVoyageInput'
+  | 'SigningInfoInput'
+  | 'ServiceItemInput'
+  | 'BillCountsInput'
   | 'OrderGoodsButton'
   | 'OrderUsersButton'
   | BaseFormComponentType;
@@ -674,6 +677,15 @@ async function initComponentAdapter() {
     ),
     VesselVoyageInput: defineAsyncComponent(
       () => import('./vessel-voyage-input.vue'),
+    ),
+    SigningInfoInput: defineAsyncComponent(
+      () => import('./signing-info-input.vue'),
+    ),
+    ServiceItemInput: defineAsyncComponent(
+      () => import('./service-item-input.vue'),
+    ),
+    BillCountsInput: defineAsyncComponent(
+      () => import('./bill-counts-input.vue'),
     ),
   };
 

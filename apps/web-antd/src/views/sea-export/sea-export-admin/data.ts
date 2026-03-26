@@ -44,6 +44,26 @@ const getIssueTypeOptions = () => [
   { value: 5, label: $t('seaExport.export.issueTypeOptions.agency') },
 ];
 
+/** 货物类型枚举 */
+const getCargoTypeOptions = () => [
+  { value: 0, label: $t('seaExport.export.cargoTypeOptions.normal') },
+  { value: 1, label: $t('seaExport.export.cargoTypeOptions.refrigerated') },
+  { value: 2, label: $t('seaExport.export.cargoTypeOptions.dangerous') },
+  { value: 3, label: $t('seaExport.export.cargoTypeOptions.outOfGauge') },
+];
+
+/** 贸易条款枚举 */
+const getTradeTermsTypeOptions = () => [
+  { value: 0, label: $t('seaExport.export.tradeTermsTypeOptions.cif') },
+  { value: 1, label: $t('seaExport.export.tradeTermsTypeOptions.fob') },
+  { value: 2, label: $t('seaExport.export.tradeTermsTypeOptions.exw') },
+  { value: 3, label: $t('seaExport.export.tradeTermsTypeOptions.fca') },
+  { value: 4, label: $t('seaExport.export.tradeTermsTypeOptions.ddp') },
+  { value: 5, label: $t('seaExport.export.tradeTermsTypeOptions.ddu') },
+  { value: 6, label: $t('seaExport.export.tradeTermsTypeOptions.dap') },
+  { value: 7, label: $t('seaExport.export.tradeTermsTypeOptions.cAndF') },
+];
+
 /**
  * 列表搜索表单 schema
  */
@@ -111,13 +131,13 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       minWidth: 100,
     },
     {
-      field: 'etd',
+      field: 'transportOrder.etd',
       title: $t('seaExport.export.etd'),
       minWidth: 140,
       formatter: 'formatDateTime',
     },
     {
-      field: 'eta',
+      field: 'transportOrder.eta',
       title: $t('seaExport.export.eta'),
       minWidth: 140,
       formatter: 'formatDateTime',
@@ -190,20 +210,7 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
           : $t('seaExport.export.commissionNumAutoGenerate'),
       },
     },
-    {
-      component: 'Switch',
-      fieldName: 'isBusinessLocking',
-      label: $t('seaExport.export.isBusinessLocking'),
-      defaultValue: false,
-      componentProps: { disabled: true },
-    },
-    {
-      component: 'Switch',
-      fieldName: 'isFeeLocking',
-      label: $t('seaExport.export.isFeeLocking'),
-      defaultValue: false,
-      componentProps: { disabled: true },
-    },
+
     {
       component: 'Select',
       fieldName: 'blType',
@@ -229,15 +236,15 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       },
     },
     {
-      component: 'Select',
+      component: 'BillCountsInput',
       fieldName: 'noBillEnum',
-      label: $t('seaExport.export.noBillEnum'),
-      componentProps: {
-        allowClear: true,
+      label: '提单/副本份数',
+      componentProps: (values: Record<string, any>, formApi: any) => ({
         options: getBillCountOptions(),
-        placeholder: $t('ui.placeholder.select'),
-        class: 'w-full',
-      },
+        formContext: formApi,
+        secondFieldName: 'copyNoBillEnum',
+        secondFieldValue: values?.copyNoBillEnum ?? undefined,
+      }),
     },
     {
       component: 'Select',
@@ -249,6 +256,7 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
       },
+      formItemClass: 'hidden',
     },
     {
       component: 'CodeSourceSelect',
@@ -269,6 +277,15 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       },
     },
     {
+      component: 'PortSelect',
+      fieldName: 'prepareAtId',
+      label: $t('seaExport.export.prepareAtId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
       component: 'CodeServiceSelect',
       fieldName: 'codeServiceId',
       label: $t('seaExport.export.codeServiceId'),
@@ -278,8 +295,30 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       },
     },
     {
+      component: 'Select',
+      fieldName: 'tradeTermsType',
+      label: $t('seaExport.export.tradeTermsType'),
+      componentProps: {
+        allowClear: true,
+        options: getTradeTermsTypeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'cargoId',
+      label: $t('seaExport.export.cargoId'),
+      componentProps: {
+        allowClear: true,
+        options: getCargoTypeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
       component: 'CodeIssueTypeSelect',
-      fieldName: 'issueType',
+      fieldName: 'codeIssueTypeId',
       label: $t('seaExport.export.issueType'),
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
@@ -336,11 +375,13 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
       component: 'OrderUsersButton',
       fieldName: 'orderUsers',
       label: $t('seaExport.export.orderUsers'),
+      formItemClass: 'party-flow-order-users',
     },
     createClientSelectSchema({
       fieldName: 'shipperId',
       industryCategory: 'b',
       label: $t('seaExport.export.shipperId'),
+      formItemClass: 'party-flow-item party-flow-pos--1',
     }),
     {
       component: 'Textarea',
@@ -351,11 +392,13 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
         rows: 2,
         style: { minHeight: '110px' },
       },
+      formItemClass: 'party-flow-content party-flow-content-pos--1',
     },
     createClientSelectSchema({
       fieldName: 'consigneeId',
       industryCategory: 'e',
       label: $t('seaExport.export.consigneeId'),
+      formItemClass: 'party-flow-item party-flow-pos--2',
     }),
     {
       component: 'Textarea',
@@ -366,11 +409,14 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
         rows: 2,
         style: { minHeight: '110px' },
       },
+      formItemClass: 'party-flow-content party-flow-content-pos--2',
     },
     createClientSelectSchema({
       fieldName: 'notifierId',
       industryCategory: 'h',
       label: $t('seaExport.export.notifierId'),
+      formItemClass:
+        'party-flow-item party-flow-item--notifier party-flow-pos--3',
     }),
     {
       component: 'Textarea',
@@ -381,11 +427,15 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
         rows: 2,
         style: { minHeight: '110px' },
       },
+      formItemClass:
+        'party-flow-content party-flow-content--notifier party-flow-content-pos--3',
     },
     createClientSelectSchema({
       fieldName: 'secondNotifierId',
       industryCategory: 'h',
       label: $t('seaExport.export.secondNotifierId'),
+      formItemClass:
+        'party-flow-item party-flow-item--notifier party-flow-item--notifier-secondary party-flow-pos--3 party-flow-item--hidden',
     }),
     {
       component: 'Textarea',
@@ -396,11 +446,15 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
         rows: 2,
         style: { minHeight: '110px' },
       },
+      formItemClass:
+        'party-flow-content party-flow-content--notifier party-flow-content--notifier-secondary party-flow-content-pos--3 party-flow-item--hidden',
     },
     createClientSelectSchema({
       fieldName: 'podAgentId',
       industryCategory: 's',
-      label: $t('seaExport.export.podAgentId'),
+      label: $t('seaExport.export.overseasAgent'),
+      formItemClass:
+        'party-flow-item party-flow-item--notifier party-flow-item--notifier-pod-agent party-flow-pos--3 party-flow-item--hidden',
     }),
     {
       component: 'Textarea',
@@ -411,6 +465,8 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
         rows: 2,
         style: { minHeight: '110px' },
       },
+      formItemClass:
+        'party-flow-content party-flow-content--notifier party-flow-content--notifier-pod-agent party-flow-content-pos--3 party-flow-item--hidden',
     },
   ];
 }
@@ -474,147 +530,50 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
       fieldName: 'goodsCompleteTime',
       label: $t('seaExport.export.goodsCompleteTime'),
       componentProps: { class: 'w-full' },
+      formItemClass: 'shipment-time-item shipment-time-pos--1',
     },
     {
       component: 'DatePicker',
       fieldName: 'etd',
       label: $t('seaExport.export.etd'),
       componentProps: { class: 'w-full' },
+      formItemClass: 'shipment-time-item shipment-time-pos--2',
     },
     {
       component: 'DatePicker',
       fieldName: 'eta',
       label: $t('seaExport.export.eta'),
       componentProps: { class: 'w-full' },
+      formItemClass: 'shipment-time-item shipment-time-pos--3',
     },
     {
       component: 'DatePicker',
       fieldName: 'closingTime',
       label: $t('seaExport.export.closingTime'),
       componentProps: { class: 'w-full', showTime: true },
+      formItemClass: 'shipment-time-item shipment-time-pos--4 hidden',
     },
     {
       component: 'DatePicker',
       fieldName: 'closeVgmTime',
       label: $t('seaExport.export.closeVgmTime'),
       componentProps: { class: 'w-full', showTime: true },
+      formItemClass: 'shipment-time-item shipment-time-pos--4',
     },
     {
       component: 'DatePicker',
       fieldName: 'closeDocTime',
       label: $t('seaExport.export.closeDocTime'),
       componentProps: { class: 'w-full', showTime: true },
+      formItemClass: 'shipment-time-item shipment-time-pos--5',
     },
     {
       component: 'DatePicker',
       fieldName: 'closeManifestTime',
       label: $t('seaExport.export.closeManifestTime'),
       componentProps: { class: 'w-full', showTime: true },
-    },
-    {
-      component: 'DatePicker',
-      fieldName: 'signingTime',
-      label: $t('seaExport.export.signingTime'),
-      componentProps: { class: 'w-full' },
-    },
-  ];
-}
-
-/**
- * 港口信息表单 schema
- * 每个港口下方紧跟备注字段（无 label），3 列布局
- */
-export function usePortFormSchema(): VbenFormSchema[] {
-  return [
-    {
-      component: 'PortSelect',
-      fieldName: 'polId',
-      label: $t('seaExport.export.polId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'PortSelect',
-      fieldName: 'podId',
-      label: $t('seaExport.export.podId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'PortSelect',
-      fieldName: 'poT1Id',
-      label: $t('seaExport.export.poT1Id'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'Textarea',
-      fieldName: 'polRemark',
-      label: '',
-      componentProps: { allowClear: true, rows: 2 },
-    },
-    {
-      component: 'Textarea',
-      fieldName: 'podRemark',
-      label: '',
-      componentProps: { allowClear: true, rows: 2 },
-    },
-    {
-      component: 'Textarea',
-      fieldName: 'poT1Remark',
-      label: '',
-      componentProps: { allowClear: true, rows: 2 },
-    },
-    {
-      component: 'PortSelect',
-      fieldName: 'poT2Id',
-      label: $t('seaExport.export.poT2Id'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'PortSelect',
-      fieldName: 'receivePortId',
-      label: $t('seaExport.export.receivePortId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'PortSelect',
-      fieldName: 'deliverPortId',
-      label: $t('seaExport.export.deliverPortId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'Textarea',
-      fieldName: 'poT2Remark',
-      label: '',
-      componentProps: { allowClear: true, rows: 2 },
-    },
-    {
-      component: 'Textarea',
-      fieldName: 'receivePortRemark',
-      label: '',
-      componentProps: { allowClear: true, rows: 2 },
-    },
-    {
-      component: 'Textarea',
-      fieldName: 'deliverPortRemark',
-      label: '',
-      componentProps: { allowClear: true, rows: 2 },
+      formItemClass:
+        'shipment-time-item shipment-time-item--last shipment-time-pos--6',
     },
     {
       component: 'PortSelect',
@@ -624,6 +583,205 @@ export function usePortFormSchema(): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
       },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'signingTime',
+      label: $t('seaExport.export.signingTime'),
+      componentProps: {
+        class: 'w-full',
+      },
+    },
+  ];
+}
+
+/**
+ * 服务项目表单 schema（从基础信息/船期中抽离）
+ */
+export function useServiceItemFormSchema(): VbenFormSchema[] {
+  const serviceItems = [
+    {
+      fieldName: 'bookingAgentId',
+      enableFieldName: 'bookingAgentIdEnabled',
+      industryCategory: 'o',
+      label: '订舱代理',
+    },
+    {
+      fieldName: 'teamId',
+      enableFieldName: 'teamIdEnabled',
+      industryCategory: 'i',
+      label: '车队',
+    },
+    {
+      fieldName: 'custBrokerId',
+      enableFieldName: 'custBrokerIdEnabled',
+      industryCategory: 'f',
+      label: '报关行',
+    },
+    {
+      fieldName: 'warehouseId',
+      enableFieldName: 'warehouseIdEnabled',
+      industryCategory: 'q',
+      label: '仓库',
+    },
+    {
+      fieldName: 'insuranceId',
+      enableFieldName: 'insuranceIdEnabled',
+      industryCategory: 'r',
+      label: '保险公司',
+    },
+  ] as const;
+
+  return serviceItems.flatMap((item, index) => {
+    const colClass = `service-item-col--${index + 1}`;
+    return [
+      {
+        component: 'Input',
+        fieldName: item.enableFieldName,
+        hideLabel: true,
+        defaultValue: false,
+        formItemClass: 'hidden',
+      },
+      {
+        component: 'ServiceItemInput',
+        fieldName: item.fieldName,
+        hideLabel: true,
+        defaultValue: undefined,
+        componentProps: (values: Record<string, any>, formApi: any) => ({
+          title: item.label,
+          industryCategory: item.industryCategory,
+          formContext: formApi,
+          secondFieldName: item.enableFieldName,
+          secondFieldValue: values?.[item.enableFieldName] ?? false,
+        }),
+        formItemClass: `service-item-card ${colClass}`,
+      },
+    ];
+  });
+}
+
+/**
+ * 港口信息表单 schema
+ * 货物流转节点按顺序展示：收货地 -> 起运港 -> 中转港（Tab切换1/2） -> 目的港 -> 交货地
+ */
+export function usePortFormSchema(): VbenFormSchema[] {
+  return [
+    {
+      component: 'PortSelect',
+      fieldName: 'receivePortId',
+      label: $t('seaExport.export.receivePortId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+      formItemClass: 'port-flow-item port-flow-pos--receive',
+    },
+    {
+      component: 'PortSelect',
+      fieldName: 'polId',
+      label: $t('seaExport.export.polId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+      formItemClass: 'port-flow-item port-flow-pos--pol',
+    },
+    {
+      component: 'PortSelect',
+      fieldName: 'poT1Id',
+      label: $t('seaExport.export.poT1Id'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+      formItemClass:
+        'port-flow-item port-flow-item--transit port-flow-pos--transit',
+    },
+    {
+      component: 'PortSelect',
+      fieldName: 'poT2Id',
+      label: $t('seaExport.export.poT2Id'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+      formItemClass:
+        'port-flow-item port-flow-item--transit port-flow-item--transit-secondary port-flow-pos--transit',
+    },
+    {
+      component: 'PortSelect',
+      fieldName: 'podId',
+      label: $t('seaExport.export.podId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+      formItemClass: 'port-flow-item port-flow-pos--pod',
+    },
+    {
+      component: 'PortSelect',
+      fieldName: 'deliverPortId',
+      label: $t('seaExport.export.deliverPortId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+      formItemClass:
+        'port-flow-item port-flow-item--last port-flow-pos--deliver',
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'receivePortRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 1 },
+      formItemClass: 'port-flow-remark port-flow-pos--receive-remark',
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'polRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 1 },
+      formItemClass: 'port-flow-remark port-flow-pos--pol-remark',
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'poT1Remark',
+      label: '',
+      componentProps: { allowClear: true, rows: 1 },
+      formItemClass:
+        'port-flow-remark port-flow-remark--transit port-flow-pos--transit-remark',
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'poT2Remark',
+      label: '',
+      componentProps: { allowClear: true, rows: 1 },
+      formItemClass:
+        'port-flow-remark port-flow-remark--transit port-flow-remark--transit-secondary port-flow-pos--transit-remark',
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'podRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 1 },
+      formItemClass: 'port-flow-remark port-flow-pos--pod-remark',
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'deliverPortRemark',
+      label: '',
+      componentProps: { allowClear: true, rows: 1 },
+      formItemClass: 'port-flow-remark port-flow-pos--deliver-remark',
+    },
+    {
+      component: 'PortSelect',
+      fieldName: 'signingPortId',
+      label: $t('seaExport.export.signingPortId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+      formItemClass: 'hidden',
     },
   ];
 }
@@ -637,25 +795,49 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       component: 'OrderGoodsButton',
       fieldName: 'orderCodeGoodss',
       label: $t('seaExport.export.orderCodeGoodss'),
-      formItemClass: 'col-span-3',
+      formItemClass: 'col-span-2',
     },
     {
-      component: 'Input',
-      fieldName: 'noPkgs',
-      label: $t('seaExport.export.noPkgs'),
-      componentProps: { allowClear: true },
+      component: 'InputNumber',
+      fieldName: 'pkgs',
+      label: $t('seaExport.export.pkgs'),
+      componentProps: {
+        class: 'w-full',
+        min: 0,
+        controls: false,
+        precision: 0,
+      },
     },
     {
-      component: 'Input',
+      component: 'CodePackageSelect',
+      fieldName: 'codePackageId',
+      label: $t('seaExport.export.codePackageId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'InputNumber',
       fieldName: 'kgs',
       label: $t('seaExport.export.kgs'),
-      componentProps: { allowClear: true },
+      componentProps: {
+        class: 'w-full',
+        min: 0,
+        controls: false,
+        precision: 2,
+      },
     },
     {
-      component: 'Input',
+      component: 'InputNumber',
       fieldName: 'cbm',
       label: $t('seaExport.export.cbm'),
-      componentProps: { allowClear: true },
+      componentProps: {
+        class: 'w-full',
+        min: 0,
+        controls: false,
+        precision: 2,
+      },
     },
     {
       component: 'Textarea',
@@ -682,7 +864,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
     {
       component: 'Textarea',
       fieldName: 'remark',
-      label: $t('seaExport.export.remark'),
+      label: '内部备注(仅内部可见)',
       componentProps: {
         allowClear: true,
         rows: 3,

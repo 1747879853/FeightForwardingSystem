@@ -39,7 +39,8 @@ const routes: RouteRecordRaw[] = [
           hideInMenu: true,
           activePath: '/sea-exports',
         },
-        component: () => import('#/views/sea-export/sea-export-admin/tabs.vue'),
+        component: () =>
+          import('#/views/sea-export/sea-export-admin/editor.vue'),
       },
     ],
   },
