@@ -141,7 +141,28 @@
     "goodsCode": "Goods Code",
     "goodsEnName": "English Name",
     "goodsHsCode": "HS Code",
-    "addGoods": "Add Goods"
+    "addGoods": "Add Goods",
+    "deadline": "To",
+    "feeManagement": "Fee Management",
+    "feeLock": {
+      "list": "Fee Lock",
+      "rowType": "Type",
+      "rowTypeOrder": "Order",
+      "rowTypeChangeOrder": "Change Order",
+      "accountDateStart": "Account Period From",
+      "accountDateEnd": "Account Period To",
+      "feeLockedTime": "Locked Time",
+      "feeUnLockedTime": "Unlocked Time",
+      "changeOrderReason": "Change Reason",
+      "batchLock": "Batch Lock",
+      "batchUnlock": "Batch Unlock",
+      "pleaseSelectRecords": "Please select records first",
+      "batchActionConfirm": "Confirm operation for {0} selected records?",
+      "locking": "Locking selected records...",
+      "unlocking": "Unlocking selected records...",
+      "lockSuccess": "Batch lock succeeded",
+      "unlockSuccess": "Batch unlock succeeded"
+    }
   },
   "client": {
     "title": "Client Management",

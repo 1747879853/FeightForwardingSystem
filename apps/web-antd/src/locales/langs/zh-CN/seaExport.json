@@ -178,7 +178,27 @@
       "dataEntryMethod": "数据录入方式",
       "remark": "备注"
     },
-    "deadline": "到"
+    "deadline": "到",
+    "feeManagement": "费用管理",
+    "feeLock": {
+      "list": "费用锁定",
+      "rowType": "类型",
+      "rowTypeOrder": "业务",
+      "rowTypeChangeOrder": "更改单",
+      "accountDateStart": "会计期间起",
+      "accountDateEnd": "会计期间止",
+      "feeLockedTime": "锁定时间",
+      "feeUnLockedTime": "解锁时间",
+      "changeOrderReason": "更改原因",
+      "batchLock": "批量锁定",
+      "batchUnlock": "批量解锁",
+      "pleaseSelectRecords": "请先勾选记录",
+      "batchActionConfirm": "确定对已选 {0} 条记录执行操作吗？",
+      "locking": "正在批量锁定...",
+      "unlocking": "正在批量解锁...",
+      "lockSuccess": "批量锁定成功",
+      "unlockSuccess": "批量解锁成功"
+    }
   },
   "client": {
     "title": "客户管理",

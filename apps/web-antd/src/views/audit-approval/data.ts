@@ -4,7 +4,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { getFeeStatusOptions } from '#/views/sea-export/sea-export-admin/orderFee/data';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
-import { BusinessTypeOptions } from '#/views/sea-export/client/paymentTermsData';
+import { BusinessTypeOptions } from '#/views/client/paymentTermsData';
 import { $t } from '#/locales';
 
 /** 进展状态 */
