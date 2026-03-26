@@ -29,6 +29,7 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { UserSelect } from '#/adapter/component';
@@ -543,6 +544,17 @@ const orderUserRoleOptions = computed(() => [
     value: UserAttribute.Documentation,
   },
 ]);
+const hasOtherSalesRole = (rowKey: string) =>
+  orderUserRows.value.some(
+    (row) =>
+      row._rowKey !== rowKey && row.userAttribute === UserAttribute.Sales,
+  );
+const getOrderUserRoleOptions = (rowKey: string) =>
+  orderUserRoleOptions.value.map((option) => ({
+    ...option,
+    disabled:
+      option.value === UserAttribute.Sales ? hasOtherSalesRole(rowKey) : false,
+  }));
 const getOrderUserRoleLabel = (userAttribute?: number) => {
   switch (userAttribute) {
     case UserAttribute.Sales:
@@ -704,6 +716,10 @@ const updateOrderUserRole = (
   rowKey: string,
   userAttribute: number | undefined,
 ) => {
+  if (userAttribute === UserAttribute.Sales && hasOtherSalesRole(rowKey)) {
+    message.warning('已存在销售角色，其他角色不可再选销售');
+    return;
+  }
   orderUserRows.value = orderUserRows.value.map((row) => {
     if (row._rowKey !== rowKey) return row;
     return {
@@ -716,11 +732,14 @@ const updateOrderUserRole = (
   syncOrderUsersToForm();
 };
 const addOrderUserRole = () => {
+  const hasSales = orderUserRows.value.some(
+    (row) => row.userAttribute === UserAttribute.Sales,
+  );
   orderUserRows.value = [
     ...orderUserRows.value,
     {
       _rowKey: makeOrderUserRowKey(),
-      userAttribute: UserAttribute.Sales,
+      userAttribute: hasSales ? undefined : UserAttribute.Sales,
       sortId: 0,
     },
   ];
@@ -744,6 +763,16 @@ const updateOrderUser = (rowKey: string, userId: number | undefined) => {
   syncOrderUsersToForm();
   if (!userId) return;
   void loadOrderUserDetail(userId, rowKey);
+};
+const validateSalesRoleCount = () => {
+  const salesCount = orderUserRows.value.filter(
+    (row) => row.userAttribute === UserAttribute.Sales,
+  ).length;
+  if (salesCount !== 1) {
+    message.warning('角色配置中必须且只能有一个销售角色');
+    return false;
+  }
+  return true;
 };
 const refreshPortLabelTargets = () => {
   nextTick(() => {
@@ -1516,6 +1545,9 @@ const handleSubmit = async () => {
     message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
     return;
   }
+  if (!validateSalesRoleCount()) {
+    return;
+  }
 
   submitting.value = true;
   const [
@@ -1962,12 +1994,20 @@ defineExpose({
                 </Teleport>
                 <Teleport v-if="podPortLabelTarget" :to="podPortLabelTarget">
                   <span class="pod-port-inline-tags">
-                    <Tag class="pod-port-inline-tags__item" color="blue">
-                      国家: {{ entrustReadonlyInfo.countryName || '-' }}
-                    </Tag>
-                    <Tag class="pod-port-inline-tags__item" color="cyan">
-                      航线: {{ entrustReadonlyInfo.laneName || '-' }}
-                    </Tag>
+                    <Tooltip :title="entrustReadonlyInfo.countryName || '-'">
+                      <Tag class="pod-port-inline-tags__item" color="blue">
+                        <span class="pod-port-inline-tags__item-text">
+                          {{ entrustReadonlyInfo.countryName || '-' }}
+                        </span>
+                      </Tag>
+                    </Tooltip>
+                    <Tooltip :title="entrustReadonlyInfo.laneName || '-'">
+                      <Tag class="pod-port-inline-tags__item" color="cyan">
+                        <span class="pod-port-inline-tags__item-text">
+                          {{ entrustReadonlyInfo.laneName || '-' }}
+                        </span>
+                      </Tag>
+                    </Tooltip>
                   </span>
                 </Teleport>
               </div>
@@ -2119,7 +2159,7 @@ defineExpose({
                 <div class="order-user-panel__content">
                   <Select
                     :value="row.userAttribute"
-                    :options="orderUserRoleOptions"
+                    :options="getOrderUserRoleOptions(row._rowKey)"
                     :placeholder="
                       $t('seaExport.export.pleaseSelectUserAttribute')
                     "
@@ -2633,7 +2673,9 @@ defineExpose({
 
 :deep(.port-flow-pos--pod > label) {
   display: flex;
+  gap: 6px;
   align-items: center;
+  white-space: nowrap;
 }
 
 .transit-port-inline-switch {
@@ -2668,13 +2710,39 @@ defineExpose({
 
 .pod-port-inline-tags {
   display: inline-flex;
+  flex: 1;
   gap: 6px;
   align-items: center;
+  align-self: center;
+  justify-content: flex-end;
+  min-width: 0;
+  max-width: calc(100% - 52px);
   margin-left: auto;
+  overflow: hidden;
 }
 
 .pod-port-inline-tags__item {
+  flex: 0 1 auto;
   margin-inline-end: 0;
+  vertical-align: middle;
+}
+
+.pod-port-inline-tags__item-text {
+  display: inline-block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pod-port-inline-tags > * {
+  display: inline-flex;
+  align-items: center;
+}
+
+.pod-port-inline-tags :deep(.ant-tag) {
+  display: inline-flex;
+  align-items: center;
 }
 
 .transit-port-tabs__item {
