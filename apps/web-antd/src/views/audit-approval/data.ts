@@ -2,8 +2,9 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import { getFeeStatusOptions } from '#/views/sea-export/sea-export-admin/orderFee/data';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
-
+import { BusinessTypeOptions } from '#/views/sea-export/client/paymentTermsData';
 import { $t } from '#/locales';
 
 /** 进展状态 */
@@ -93,6 +94,74 @@ export function useGridFormSchema(): VbenFormSchema[] {
         class: 'w-full',
       },
     },
+    {
+      component: 'Select',
+      fieldName: 'BizType',
+      label: $t('seaExport.client.paymentTerms.BizType'),
+      componentProps: {
+        allowClear: true,
+        options: BusinessTypeOptions,
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'Keyword',
+      label: $t('seaExport.export.number'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'ClientSelect',
+      fieldName: 'ClientId',
+      label: $t('seaExport.export.clientId'),
+      componentProps: {
+        allowClear: true,
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'ETDStart',
+      label: $t('seaExport.export.etd'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'ETDEnd',
+      label: $t('seaExport.export.deadline'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'UserSelect',
+      fieldName: 'SaleId',
+      label: $t('system.user.userAttributeOptions.sales'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+        userAttribute: 16,
+      },
+    },
+    {
+      component: 'UserSelect',
+      fieldName: 'OperatorId',
+      label: $t('system.user.userAttributeOptions.operation'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+        userAttribute: 1,
+      },
+    },
   ];
 }
 
@@ -101,38 +170,104 @@ export function useGridFormSchema(): VbenFormSchema[] {
  */
 export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdminApi.OrderFeeTaskListDto>['columns'] {
   return [
-    { type: 'radio', width: 48, fixed: 'left' },
+    { type: 'checkbox', width: 48, fixed: 'left' },
+    {
+      field: 'transportOrder.bizType',
+      title: $t('seaExport.client.paymentTerms.BizType'),
+      minWidth: 100,
+      cellRender: {
+        name: 'CellTag',
+        options: BusinessTypeOptions,
+      },
+    },
     {
       field: 'transportOrder.commissionNum',
       title: $t('seaExport.export.commissionNum'),
-      minWidth: 140,
+      minWidth: 100,
+    },
+    {
+      field: 'feeStatusReceive',
+      title: $t('seaExport.export.orderFee.receivableCharges'),
+      minWidth: 100,
+      cellRender: {
+        name: 'CellTag',
+        options: getFeeStatusOptions(),
+      },
+    },
+    {
+      field: 'feeStatusPay',
+      title: $t('seaExport.export.orderFee.payableCharges'),
+      minWidth: 100,
+      cellRender: {
+        name: 'CellTag',
+        options: getFeeStatusOptions(),
+      },
     },
     {
       field: 'transportOrder.mblNum',
       title: $t('seaExport.export.mblNum'),
-      minWidth: 140,
+      minWidth: 100,
     },
     {
-      field: 'transportOrder.bookingNum',
-      title: $t('seaExport.export.bookingNum'),
-      minWidth: 130,
+      field: 'transportOrder.clientName',
+      title: $t('seaExport.client.industryCategoryOptions.entrustingUnit'),
+      minWidth: 100,
+    },
+    {
+      field: 'transportOrder.etd',
+      title: $t('seaExport.export.etd'),
+      minWidth: 100,
+      formatter: 'formatDate',
+    },
+    {
+      field: 'transportOrder.accountDate',
+      title: $t('seaExport.export.accountDate'),
+      minWidth: 100,
+      formatter: 'formatDate',
     },
 
     {
-      field: 'submitOrderFeeItemCount',
-      title: $t('auditApproval.submitOrderFeeItemCount'),
-      minWidth: 120,
+      field: 'transportOrder.saleNames',
+      title: $t('system.user.userAttributeOptions.sales'),
+      minWidth: 90,
+    },
+
+    {
+      field: 'transportOrder.operatorNames',
+      title: $t('system.user.userAttributeOptions.operation'),
+      minWidth: 90,
     },
     {
-      field: 'modifyOrderFeeItemCount',
-      title: $t('auditApproval.modifyOrderFeeItemCount'),
-      minWidth: 120,
+      field: 'transportOrder.seaExportPOLCnName',
+      title: $t('seaExport.export.polId'),
+      minWidth: 100,
     },
     {
-      field: 'deleteOrderFeeItemCount',
-      title: $t('auditApproval.deleteOrderFeeItemCount'),
-      minWidth: 120,
+      field: 'transportOrder.seaExportPODCnName',
+      title: $t('seaExport.export.podId'),
+      minWidth: 100,
     },
+    {
+      field: 'transportOrder.seaExportVessel',
+      title: $t('seaExport.export.vessel'),
+      minWidth: 100,
+    },
+    {
+      field: 'transportOrder.pkgs',
+      title: $t('seaExport.export.pkgs'),
+      minWidth: 100,
+    },
+    {
+      field: 'transportOrder.grossWeight',
+      title: $t('seaExport.export.grossWeight'),
+      minWidth: 100,
+    },
+    {
+      field: 'transportOrder.codePackageName',
+      title: $t('seaExport.export.orderCodeGoodss'),
+      minWidth: 100,
+    },
+
     // {
     //   field: 'remark',
     //   title: $t('seaExport.export.remark'),

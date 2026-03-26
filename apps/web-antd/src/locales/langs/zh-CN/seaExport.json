@@ -5,6 +5,7 @@
     "list": "海运出口列表",
     "name": "海运出口",
     "keyword": "关键字",
+    "number": "单号",
     "formCardInfo": "订单信息",
     "formCardBasicInfo": "基础信息",
     "formCardPartyInfo": "相关方信息",
@@ -176,7 +177,8 @@
       "isConfidential": "是否机密",
       "dataEntryMethod": "数据录入方式",
       "remark": "备注"
-    }
+    },
+    "deadline": "到"
   },
   "client": {
     "title": "客户管理",

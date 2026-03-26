@@ -206,6 +206,17 @@ export namespace ExpenseSubmissionAdminApi {
 
     orderFeeIds: number[];
   }
+
+  export interface OrderFeeTaskBatchAuditDto {
+    /** 审核意见 是否通过 */
+    success: boolean;
+
+    /** 备注 */
+    remark?: string | null;
+
+    /** 业务id列表*/
+    transportOrderIds?: number[] | null;
+  }
 }
 
 const API_PREFIX = '/services/app/OrderFeeAdmin';
@@ -322,6 +333,16 @@ export const OrderFeeTaskWithdraw = (
 ) => {
   return requestClient.post<number>(
     `${API_PREFIX}/OrderFeeTaskWithdrawAsync`,
+    data,
+  );
+};
+
+/**费用所有任务 批量审核 只审核待审核的 不能进行审核后驳回操作 */
+export const OrderFeeTaskBatchAudit = (
+  data: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditDto,
+) => {
+  return requestClient.post<number>(
+    `${API_PREFIX}/OrderFeeTaskBatchAuditAsync`,
     data,
   );
 };
