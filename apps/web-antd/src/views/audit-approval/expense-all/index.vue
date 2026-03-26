@@ -8,6 +8,7 @@ import { getOrderFeeTaskList } from '#/api/audit-approval/expense-admin';
 import { $t } from '#/locales';
 import { useExpenseAllColumns, useGridFormSchema } from '../data';
 import { Plus, ArrowDown, ArrowLeft } from '@vben/icons';
+import { IconifyIcon } from '@vben/icons';
 import { computed, onMounted, ref, h } from 'vue';
 import {
   Button,
@@ -210,14 +211,15 @@ const changeTableType = (type: string) => {
           @click="changeTableType('vertical')"
           :class="[feeTableType === 'vertical' ? 'green-btn' : '']"
         >
-          <ArrowDown class="size-5" />
+          <IconifyIcon icon="boxicons:arrow-down-up" class="size-4" />
+
           {{ $t('auditApproval.tableType.vertical') }}
         </Button>
         <Button
           @click="changeTableType('horizontal')"
           :class="[feeTableType === 'horizontal' ? 'green-btn' : '']"
         >
-          <ArrowLeft class="size-5" />
+          <IconifyIcon icon="boxicons:arrow-left-right" class="size-4" />
           {{ $t('auditApproval.tableType.horizontal') }}
         </Button>
       </template>
