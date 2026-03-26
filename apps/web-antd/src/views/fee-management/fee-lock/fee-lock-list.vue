@@ -30,13 +30,28 @@ const toIsoString = (value: unknown): string | undefined => {
   return parsed.isValid() ? parsed.toISOString() : undefined;
 };
 
+const getRangeValue = (
+  value: unknown,
+): [unknown | undefined, unknown | undefined] => {
+  return Array.isArray(value)
+    ? [value[0] as unknown, value[1] as unknown]
+    : [undefined, undefined];
+};
+
 const normalizeQuery = (formValues: Record<string, unknown>) => {
+  const [accountDateStart, accountDateEnd] = getRangeValue(
+    formValues.AccountDateRange,
+  );
+  const [etdStart, etdEnd] = getRangeValue(formValues.BizDateRange);
+
   return {
     ...formValues,
-    AccountDateStart: toIsoString(formValues.AccountDateStart),
-    AccountDateEnd: toIsoString(formValues.AccountDateEnd),
-    ETDStart: toIsoString(formValues.ETDStart),
-    ETDEnd: toIsoString(formValues.ETDEnd),
+    AccountDateStart: toIsoString(accountDateStart),
+    AccountDateEnd: toIsoString(accountDateEnd),
+    ETDStart: toIsoString(etdStart),
+    ETDEnd: toIsoString(etdEnd),
+    AccountDateRange: undefined,
+    BizDateRange: undefined,
   };
 };
 

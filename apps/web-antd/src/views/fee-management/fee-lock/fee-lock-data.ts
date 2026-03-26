@@ -3,6 +3,7 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 
 import { $t } from '#/locales';
+import { createClientSelectSchema } from '#/views/client/data';
 import { BusinessTypeOptions } from '#/views/client/paymentTermsData';
 
 const getFeeLockedOptions = () => [
@@ -87,52 +88,36 @@ export function useFeeLockGridFormSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
-    {
-      component: 'ClientSelect',
+    createClientSelectSchema({
       fieldName: 'ClientId',
+      industryCategory: 'p',
       label: $t('seaExport.export.clientId'),
+    }),
+    {
+      component: 'RangePicker',
+      fieldName: 'AccountDateRange',
+      label: $t('seaExport.export.accountDate'),
       componentProps: {
+        placeholder: [
+          $t('seaExport.export.feeLock.accountDateStart'),
+          $t('seaExport.export.feeLock.accountDateEnd'),
+        ],
         allowClear: true,
-        placeholder: $t('ui.placeholder.select'),
+        picker: 'month',
         class: 'w-full',
       },
     },
     {
-      component: 'DatePicker',
-      fieldName: 'AccountDateStart',
-      label: $t('seaExport.export.feeLock.accountDateStart'),
+      component: 'RangePicker',
+      fieldName: 'BizDateRange',
+      label: $t('seaExport.export.bizDate'),
       componentProps: {
-        placeholder: $t('ui.placeholder.input'),
+        placeholder: [
+          $t('seaExport.export.feeLock.bizDateStart'),
+          $t('seaExport.export.feeLock.bizDateEnd'),
+        ],
         allowClear: true,
-        picker: 'month',
-      },
-    },
-    {
-      component: 'DatePicker',
-      fieldName: 'AccountDateEnd',
-      label: $t('seaExport.export.feeLock.accountDateEnd'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.input'),
-        allowClear: true,
-        picker: 'month',
-      },
-    },
-    {
-      component: 'DatePicker',
-      fieldName: 'ETDStart',
-      label: $t('seaExport.export.etd'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.input'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'DatePicker',
-      fieldName: 'ETDEnd',
-      label: $t('seaExport.export.deadline'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.input'),
-        allowClear: true,
+        class: 'w-full',
       },
     },
   ];
