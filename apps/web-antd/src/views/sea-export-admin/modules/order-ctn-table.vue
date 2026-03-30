@@ -3,8 +3,11 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { computed, ref, watch } from 'vue';
 
-import { Button, Input, InputNumber, Space, Table } from 'ant-design-vue';
+import { Button, Input, InputNumber, Table, Tooltip } from 'ant-design-vue';
 
+import { IconifyIcon } from '@vben/icons';
+
+import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import CtnSelect from '#/adapter/component/biz-select/ctn-select.vue';
 import CodeGoodsSelect from '#/adapter/component/biz-select/code-goods-select.vue';
 import CodePackageSelect from '#/adapter/component/biz-select/code-package-select.vue';
@@ -21,6 +24,83 @@ const dataSource = computed({
   set: (val) => {
     modelValue.value = val;
   },
+});
+
+const formatSummaryNumber = (value: number) => {
+  if (!Number.isFinite(value)) return '0';
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(2).replace(/\.?0+$/, '');
+};
+
+const ctnNameById = ref<Record<string, string>>({});
+const loadingCtnNameIds = new Set<string>();
+
+const syncCtnNameMap = async (
+  rows: SeaExportAdminApi.OrderCtnAddDto[] = [],
+) => {
+  for (const row of rows) {
+    const anyRow = row as any;
+    const ctnId = row.ctnCodeId;
+    if (ctnId === undefined || ctnId === null || ctnId === '') continue;
+
+    const idStr = String(ctnId);
+    const localName = anyRow.ctnCodeName;
+    if (localName) {
+      ctnNameById.value = { ...ctnNameById.value, [idStr]: String(localName) };
+      continue;
+    }
+
+    if (ctnNameById.value[idStr] || loadingCtnNameIds.has(idStr)) continue;
+    loadingCtnNameIds.add(idStr);
+    try {
+      const detail = await getCtnCodeDetail(idStr);
+      const detailName = (detail as any)?.ctnName;
+      if (detailName) {
+        ctnNameById.value = {
+          ...ctnNameById.value,
+          [idStr]: String(detailName),
+        };
+      }
+    } finally {
+      loadingCtnNameIds.delete(idStr);
+    }
+  }
+};
+
+const ctnSummary = computed(() => {
+  const list = dataSource.value ?? [];
+  const ctnTypeCounter = new Map<string, number>();
+  let totalPkgs = 0;
+  let totalGrossWeight = 0;
+
+  for (const row of list) {
+    const anyRow = row as any;
+    const ctnLabel =
+      anyRow.ctnCodeName ||
+      (row.ctnCodeId !== undefined && row.ctnCodeId !== null
+        ? ctnNameById.value[String(row.ctnCodeId)]
+        : '');
+    if (ctnLabel !== undefined && ctnLabel !== null && ctnLabel !== '') {
+      const key = String(ctnLabel);
+      ctnTypeCounter.set(key, (ctnTypeCounter.get(key) ?? 0) + 1);
+    }
+
+    const pkgsValue = Number(row.pkgs ?? 0);
+    const grossWeightValue = Number(row.grossWeight ?? 0);
+    if (Number.isFinite(pkgsValue)) totalPkgs += pkgsValue;
+    if (Number.isFinite(grossWeightValue)) totalGrossWeight += grossWeightValue;
+  }
+
+  const ctnTypeText =
+    [...ctnTypeCounter.entries()]
+      .map(([ctnType, count]) => `${ctnType}*${count}`)
+      .join('，') || '-';
+
+  return {
+    ctnTypeText,
+    totalPkgs: formatSummaryNumber(totalPkgs),
+    totalGrossWeight: formatSummaryNumber(totalGrossWeight),
+  };
 });
 
 const rowSelection = computed(() => ({
@@ -75,27 +155,54 @@ watch(
   },
   { immediate: true },
 );
+
+watch(
+  () => dataSource.value,
+  (rows) => {
+    void syncCtnNameMap(rows ?? []);
+  },
+  { immediate: true, deep: true },
+);
 </script>
 
 <template>
   <div class="order-ctn-table">
-    <div class="mb-2 flex items-center justify-between">
+    <div class="mb-2 flex items-center gap-2">
       <span class="text-sm font-medium text-gray-600">
         {{ $t('seaExport.export.orderCtns') }}
       </span>
-      <Space>
-        <Button type="primary" size="small" @click="addRow">
-          {{ $t('seaExport.export.addCtn') }}
-        </Button>
+      <Tooltip :title="$t('seaExport.export.addCtn')">
         <Button
-          danger
+          type="text"
           size="small"
+          class="!flex !h-7 !w-7 !items-center !justify-center !rounded-md !bg-[#e6f4ff] !p-0 transition-all hover:scale-105 hover:!bg-[#bae0ff]"
+          @click="addRow"
+        >
+          <IconifyIcon icon="mdi:add-box" class="text-[18px] text-[#1677ff]" />
+        </Button>
+      </Tooltip>
+      <Tooltip :title="$t('common.delete')">
+        <Button
+          type="text"
+          size="small"
+          :class="[
+            '!flex !h-7 !w-7 !items-center !justify-center !rounded-md !p-0 transition-all',
+            selectedRowKeys.length
+              ? '!bg-[#fff1f0] hover:scale-105 hover:!bg-[#ffccc7]'
+              : '!bg-[#f5f5f5]',
+          ]"
           :disabled="!selectedRowKeys.length"
           @click="removeSelectedRows"
         >
-          {{ $t('common.delete') }}
+          <IconifyIcon
+            icon="mdi:close-box"
+            :class="[
+              'text-[18px]',
+              selectedRowKeys.length ? 'text-[#ff4d4f]' : 'text-[#bfbfbf]',
+            ]"
+          />
         </Button>
-      </Space>
+      </Tooltip>
     </div>
     <Table
       :data-source="dataSource"
@@ -258,5 +365,22 @@ watch(
         min-width="100"
       />
     </Table>
+    <div
+      class="mt-2 flex items-center gap-6 rounded border border-[#f0f0f0] bg-[#fafafa] px-3 py-2 text-sm text-[#595959]"
+    >
+      <span class="font-medium text-[#262626]">
+        {{ $t('seaExport.export.orderCtnSummaryLabel') }}
+      </span>
+      <span>
+        {{ ctnSummary.ctnTypeText }}
+      </span>
+      <span>
+        {{ $t('seaExport.export.pkgs') }} {{ ctnSummary.totalPkgs }}
+      </span>
+      <span>
+        {{ $t('seaExport.export.grossWeight') }}
+        {{ ctnSummary.totalGrossWeight }}
+      </span>
+    </div>
   </div>
 </template>

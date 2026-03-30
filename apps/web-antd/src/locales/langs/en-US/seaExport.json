@@ -118,6 +118,7 @@
     },
     "pleaseSelectOne": "Please select a record first",
     "orderCtns": "Container Types & Qty",
+    "orderCtnSummaryLabel": "Total:",
     "addCtn": "Add Container",
     "ctnCodeId": "Container Type",
     "ctnNo": "Container No.",
