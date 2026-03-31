@@ -25,7 +25,7 @@ import { submitOrderFeeDetailAsync } from '#/api/audit-approval/expense-admin';
 import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
-import OrderFeeTable from '#/views/sea-export/sea-export-admin/orderFee/modules/submission-order-fee-table.vue';
+import OrderFeeTable from '#/views/sea-export-admin/orderFee/modules/submission-order-fee-table.vue';
 
 const route = useRoute();
 const router = useRouter();

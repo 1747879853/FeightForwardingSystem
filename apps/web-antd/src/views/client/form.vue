@@ -92,7 +92,8 @@ const mapDetailToFormValues = async (detail: Record<string, any>) => {
     clientType: detail.clientType,
     industryCategories: detail.industryCategories
       ? detail.industryCategories
-          .split(',')
+          .replaceAll(',', '')
+          .split('')
           .map((v) => v.trim())
           .filter(Boolean)
       : [],
@@ -122,9 +123,9 @@ const handleSubmit = async () => {
   submitting.value = true;
   const values = await formApi.getValues();
 
-  // industryCategories 数组拼接为逗号字符串
+  // industryCategories 数组拼接为无分隔字符串（如：bcdef）
   const industryCategories = Array.isArray(values.industryCategories)
-    ? values.industryCategories.join(',')
+    ? values.industryCategories.join('')
     : (values.industryCategories ?? '');
 
   // areaId: 表单中是路径数组，提交时只取最后一级 code 给后端

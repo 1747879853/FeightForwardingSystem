@@ -54,7 +54,7 @@
   "NoPassed": "审核不通过",
   "Rejected": "驳回",
   "expenseReview": {
-    "all": "费用审核",
+    "all": "应收应付审核",
     "title": "业务台账",
     "detail": "费用审核详情"
   },

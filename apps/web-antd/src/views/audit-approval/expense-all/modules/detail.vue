@@ -18,7 +18,7 @@ import {
   Card,
 } from 'ant-design-vue';
 
-import * as feeConstants from '#/views/sea-export/sea-export-admin/data';
+import * as feeConstants from '#/views/sea-export-admin/data';
 import * as submissionConstants from '#/views/audit-approval/data';
 import {
   OrderFeeAuditAsync,
@@ -60,7 +60,7 @@ const childPayRef = ref<any>(null);
 
 import { $t } from '#/locales';
 
-import OrderFeeTable from '#/views/sea-export/sea-export-admin/orderFee/modules/all-order-fee-table.vue';
+import OrderFeeTable from '#/views/sea-export-admin/orderFee/modules/all-order-fee-table.vue';
 
 const props = defineProps<{
   orderName: string;

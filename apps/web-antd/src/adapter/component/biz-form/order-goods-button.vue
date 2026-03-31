@@ -4,6 +4,7 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { computed, ref, watch } from 'vue';
 
 import { Button, Modal, Space, Table } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 
 import { getCodeGoodsDetail } from '#/api/system/base-data/code-goods-admin';
 import { $t } from '@vben/locales';
@@ -26,9 +27,13 @@ const toSafeText = (val: unknown) => {
   return String(val).trim();
 };
 
+const placeholderText = computed(() =>
+  $t('seaExport.export.pleaseSelectGoods'),
+);
+
 const displayText = computed(() => {
   const items = modelValue.value || [];
-  if (!items.length) return $t('seaExport.export.pleaseSelectGoods');
+  if (!items.length) return placeholderText.value;
   const names = items
     .map((item) => {
       const localName = toSafeText((item as any).codeGoodsName);
@@ -41,10 +46,12 @@ const displayText = computed(() => {
       return nameMap.value[item.codeGoodsId] ?? String(item.codeGoodsId);
     })
     .filter(Boolean);
-  return names.length
-    ? names.join(' / ')
-    : $t('seaExport.export.pleaseSelectGoods');
+  return names.length ? names.join(' / ') : placeholderText.value;
 });
+
+const isPlaceholderText = computed(
+  () => displayText.value === placeholderText.value,
+);
 
 const modalVisible = ref(false);
 const pendingRows = ref<OrderRow[]>([]);
@@ -152,25 +159,22 @@ watch(
 
 <template>
   <div class="w-full">
-    <Button class="w-full text-left" @click="openModal">
+    <Button class="w-full text-left" :title="displayText" @click="openModal">
       <div class="flex w-full items-center">
-        <span class="min-w-0 flex-1 truncate">{{ displayText }}</span>
+        <span
+          class="min-w-0 flex-1 truncate"
+          :class="{ 'text-gray-400': isPlaceholderText }"
+        >
+          {{ displayText }}
+        </span>
         <span
           class="ml-auto inline-flex h-full flex-shrink-0 items-center justify-center text-primary"
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+          <IconifyIcon
+            icon="mdi:square-edit-outline"
             class="size-4"
             aria-hidden="true"
-          >
-            <path d="M12 20h9" />
-            <path d="m16.5 3.5 4 4L7 21l-4 1 1-4 12.5-14.5z" />
-          </svg>
+          />
         </span>
       </div>
     </Button>

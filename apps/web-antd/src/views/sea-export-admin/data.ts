@@ -308,11 +308,13 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
     {
       component: 'Select',
       fieldName: 'cargoId',
-      label: $t('seaExport.export.cargoId'),
+      label: '',
+      hideLabel: true,
+      formItemClass: 'cargo-type-inline-item',
       componentProps: {
         allowClear: true,
         options: getCargoTypeOptions(),
-        placeholder: $t('ui.placeholder.select'),
+        placeholder: '请选择货物类型',
         class: 'w-full',
       },
     },
@@ -798,6 +800,28 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       formItemClass: 'col-span-2',
     },
     {
+      component: 'Textarea',
+      fieldName: 'marks',
+      label: $t('seaExport.export.marks'),
+      componentProps: {
+        allowClear: true,
+        rows: 2,
+        style: { minHeight: '110px' },
+      },
+      formItemClass: 'col-span-3',
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'goodsDes',
+      label: $t('seaExport.export.goodsDes'),
+      componentProps: {
+        allowClear: true,
+        rows: 3,
+        style: { minHeight: '110px' },
+      },
+      formItemClass: 'col-span-3',
+    },
+    {
       component: 'InputNumber',
       fieldName: 'pkgs',
       label: $t('seaExport.export.pkgs'),
@@ -841,30 +865,8 @@ export function useCargoFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Textarea',
-      fieldName: 'marks',
-      label: $t('seaExport.export.marks'),
-      componentProps: {
-        allowClear: true,
-        rows: 2,
-        style: { minHeight: '110px' },
-      },
-      formItemClass: 'col-span-3',
-    },
-    {
-      component: 'Textarea',
-      fieldName: 'goodsDes',
-      label: $t('seaExport.export.goodsDes'),
-      componentProps: {
-        allowClear: true,
-        rows: 3,
-        style: { minHeight: '110px' },
-      },
-      formItemClass: 'col-span-3',
-    },
-    {
-      component: 'Textarea',
       fieldName: 'remark',
-      label: '内部备注(仅内部可见)',
+      label: '备注',
       componentProps: {
         allowClear: true,
         rows: 3,
@@ -875,7 +877,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
     {
       component: 'Textarea',
       fieldName: 'internalRemark',
-      label: $t('seaExport.export.internalRemark'),
+      label: `${$t('seaExport.export.internalRemark')}(仅内部可见)`,
       componentProps: {
         allowClear: true,
         rows: 3,

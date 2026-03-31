@@ -29,11 +29,14 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
+import { useUserStore } from '@vben/stores';
 
 import { UserSelect } from '#/adapter/component';
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import { useVbenForm } from '#/adapter/form';
+import { runVisionOcrPdf } from '#/api/common';
 import {
   addSeaExport,
   editSeaExport,
@@ -60,6 +63,7 @@ import {
 
 const route = useRoute();
 const router = useRouter();
+const userStore = useUserStore();
 const props = withDefaults(
   defineProps<{
     embedded?: boolean;
@@ -96,6 +100,8 @@ const pageTitle = computed(() => {
 
 const pageLoading = ref(false);
 const submitting = ref(false);
+const aiRecognizing = ref(false);
+const aiOcrPdfInputRef = ref<HTMLInputElement | null>(null);
 const transportOrderId = ref<number | undefined>();
 const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
   { userAttribute: UserAttribute.Sales, sortId: 5 },
@@ -104,6 +110,19 @@ const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
   { userAttribute: UserAttribute.CustomerService, sortId: 2 },
   { userAttribute: UserAttribute.Documentation, sortId: 1 },
 ];
+const defaultCurrentUserRoleSet = new Set([
+  UserAttribute.Operation,
+  UserAttribute.CustomerService,
+  UserAttribute.Documentation,
+]);
+const currentUserId = computed(() => {
+  const rawUserId = userStore.userInfo?.userId;
+  if (!rawUserId) return undefined;
+  const parsedUserId = Number(rawUserId);
+  return Number.isFinite(parsedUserId) && parsedUserId > 0
+    ? parsedUserId
+    : undefined;
+});
 
 /** 左侧表单：相关方信息（发货人、收货人、通知人等） */
 const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
@@ -131,7 +150,6 @@ const ENTRUST_FORM_FIELD_NAMES = [
   'prepareAtId',
   'codeServiceId',
   'tradeTermsType',
-  'cargoId',
   'blType',
   'billType',
 ];
@@ -222,6 +240,41 @@ const getServiceTypesFromEnabledValues = (values: Record<string, any>) => {
     const checkFieldName = getServiceItemCheckFieldName(field);
     return !!values[checkFieldName];
   }).map((field) => SERVICE_TYPE_VALUES[field]);
+};
+const extractServiceTypesFromDetail = (
+  detail: SeaExportAdminApi.SeaExportDto,
+): number[] => {
+  const parsedServiceTypes = new Set<number>();
+  const collectServiceTypes = (value: unknown) => {
+    if (value == null) return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => collectServiceTypes(item));
+      return;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      parsedServiceTypes.add(value);
+      return;
+    }
+    if (typeof value === 'string' && value.trim() !== '') {
+      const numericValue = Number(value);
+      if (Number.isFinite(numericValue)) {
+        parsedServiceTypes.add(numericValue);
+      }
+      return;
+    }
+    if (typeof value === 'object') {
+      const serviceTypeValue = (value as { serviceType?: unknown }).serviceType;
+      if (serviceTypeValue !== undefined) {
+        collectServiceTypes(serviceTypeValue);
+      }
+    }
+  };
+
+  collectServiceTypes((detail as any).serviceTypes);
+  collectServiceTypes((detail as any).seaExportServices);
+  collectServiceTypes((detail as any).serviceItems);
+
+  return [...parsedServiceTypes];
 };
 
 /** 右侧表单：基础信息 */
@@ -424,8 +477,28 @@ const [PortForm, portFormApi] = useVbenForm({
 });
 
 const cargoSchema = useCargoFormSchema();
+const cargoInlineFieldNames = new Set(['cargoId', 'orderCodeGoodss']);
+const cargoTypeSchema = [
+  ...useBasicInfoFormSchema(isEdit.value),
+  ...cargoSchema,
+]
+  .filter((item) => cargoInlineFieldNames.has(item.fieldName))
+  .map((item) => ({
+    ...item,
+    hideLabel: true,
+    formItemClass: 'cargo-type-inline-item',
+  }));
+const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
+  layout: 'horizontal',
+  compact: true,
+  schema: cargoTypeSchema,
+  showDefaultActions: false,
+  commonConfig: {
+    labelWidth: 0,
+  },
+  wrapperClass: 'grid-cols-2 gap-x-3',
+});
 const cargoMainFieldNames = new Set([
-  'orderCodeGoodss',
   'pkgs',
   'codePackageId',
   'kgs',
@@ -543,6 +616,17 @@ const orderUserRoleOptions = computed(() => [
     value: UserAttribute.Documentation,
   },
 ]);
+const hasOtherSalesRole = (rowKey: string) =>
+  orderUserRows.value.some(
+    (row) =>
+      row._rowKey !== rowKey && row.userAttribute === UserAttribute.Sales,
+  );
+const getOrderUserRoleOptions = (rowKey: string) =>
+  orderUserRoleOptions.value.map((option) => ({
+    ...option,
+    disabled:
+      option.value === UserAttribute.Sales ? hasOtherSalesRole(rowKey) : false,
+  }));
 const getOrderUserRoleLabel = (userAttribute?: number) => {
   switch (userAttribute) {
     case UserAttribute.Sales:
@@ -669,10 +753,20 @@ const createOrderUserRows = (
   items: SeaExportAdminApi.OrderUserAddDto[] | undefined,
 ) => {
   if (!items?.length) {
-    return defaultOrderUsers.map((item) => ({
-      ...normalizeOrderUserItem(item),
-      _rowKey: makeOrderUserRowKey(),
-    }));
+    return defaultOrderUsers.map((item) => {
+      const normalizedItem = normalizeOrderUserItem(item);
+      const shouldDefaultCurrentUser =
+        normalizedItem.userAttribute != null &&
+        defaultCurrentUserRoleSet.has(normalizedItem.userAttribute) &&
+        currentUserId.value != null;
+      return {
+        ...normalizedItem,
+        userId: shouldDefaultCurrentUser
+          ? currentUserId.value
+          : normalizedItem.userId,
+        _rowKey: makeOrderUserRowKey(),
+      };
+    });
   }
   return items.map((item) => ({
     ...normalizeOrderUserItem(item),
@@ -704,6 +798,10 @@ const updateOrderUserRole = (
   rowKey: string,
   userAttribute: number | undefined,
 ) => {
+  if (userAttribute === UserAttribute.Sales && hasOtherSalesRole(rowKey)) {
+    message.warning('已存在销售角色，其他角色不可再选销售');
+    return;
+  }
   orderUserRows.value = orderUserRows.value.map((row) => {
     if (row._rowKey !== rowKey) return row;
     return {
@@ -716,11 +814,14 @@ const updateOrderUserRole = (
   syncOrderUsersToForm();
 };
 const addOrderUserRole = () => {
+  const hasSales = orderUserRows.value.some(
+    (row) => row.userAttribute === UserAttribute.Sales,
+  );
   orderUserRows.value = [
     ...orderUserRows.value,
     {
       _rowKey: makeOrderUserRowKey(),
-      userAttribute: UserAttribute.Sales,
+      userAttribute: hasSales ? undefined : UserAttribute.Sales,
       sortId: 0,
     },
   ];
@@ -744,6 +845,16 @@ const updateOrderUser = (rowKey: string, userId: number | undefined) => {
   syncOrderUsersToForm();
   if (!userId) return;
   void loadOrderUserDetail(userId, rowKey);
+};
+const validateSalesRoleCount = () => {
+  const salesCount = orderUserRows.value.filter(
+    (row) => row.userAttribute === UserAttribute.Sales,
+  ).length;
+  if (salesCount !== 1) {
+    message.warning('角色配置中必须且只能有一个销售角色');
+    return false;
+  }
+  return true;
 };
 const refreshPortLabelTargets = () => {
   nextTick(() => {
@@ -903,6 +1014,284 @@ const updateActiveSectionByScroll = () => {
 const toDayjs = (val: string | null | undefined) =>
   val && dayjs(val).isValid() ? dayjs(val) : undefined;
 
+const AI_RECOGNIZE_ALLOWED_FIELDS = new Set([
+  'blType',
+  'billType',
+  'codeIssueTypeId',
+  'issueType',
+  'vessel',
+  'innerVoyno',
+  'carrierId',
+  'secondNotifierId',
+  'secondNotifierContent',
+  'podAgentId',
+  'podAgentContent',
+  'bookingAgentId',
+  'shipAgentId',
+  'yardId',
+  'noBillEnum',
+  'copyNoBillEnum',
+  'prepareAtId',
+  'closingTime',
+  'closeVgmTime',
+  'closeDocTime',
+  'closeManifestTime',
+  'signingTime',
+  'signingPortId',
+  'podId',
+  'podRemark',
+  'polId',
+  'polRemark',
+  'poT1Id',
+  'poT1Remark',
+  'poT2Id',
+  'poT2Remark',
+  'receivePortId',
+  'receivePortRemark',
+  'deliverPortId',
+  'deliverPortRemark',
+  'remark',
+  'commissionNum',
+  'mblNum',
+  'bookingNum',
+  'accountDate',
+  'settlementDate',
+  'codeSourceId',
+  'codeFrtId',
+  'codeServiceId',
+  'cargoId',
+  'tradeTermsType',
+  'goodsCompleteTime',
+  'etd',
+  'eta',
+  'clientId',
+  'teamId',
+  'custBrokerId',
+  'warehouseId',
+  'insuranceId',
+  'consigneeId',
+  'consigneeContent',
+  'shipperId',
+  'shipperContent',
+  'notifierId',
+  'notifierContent',
+  'marks',
+  'pkgs',
+  'codePackageId',
+  'goodsDes',
+  'kgs',
+  'cbm',
+  'internalRemark',
+  'serviceTypes',
+]);
+const AI_RECOGNIZE_DATE_FIELDS = new Set([
+  'goodsCompleteTime',
+  'etd',
+  'eta',
+  'closingTime',
+  'closeVgmTime',
+  'closeDocTime',
+  'closeManifestTime',
+  'signingTime',
+  'accountDate',
+  'settlementDate',
+]);
+const isPlainObject = (value: unknown): value is Record<string, any> =>
+  Object.prototype.toString.call(value) === '[object Object]';
+const normalizeOcrFieldName = (field: string) =>
+  field ? `${field.charAt(0).toLowerCase()}${field.slice(1)}` : field;
+const normalizeOcrLookupKey = (field: string) =>
+  (field || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_:/\\.\-()]+/g, '');
+const AI_RECOGNIZE_FIELD_ALIASES: Record<string, string> = {
+  bookingno: 'bookingNum',
+  blno: 'mblNum',
+  vessel: 'vessel',
+  voyage: 'innerVoyno',
+  marks: 'marks',
+  noofpackages: 'pkgs',
+  numberofcontainersorpackages: 'pkgs',
+  grossweight: 'kgs',
+  measurement: 'cbm',
+  descriptionofgoods: 'goodsDes',
+  shipper: 'shipperContent',
+  consignee: 'consigneeContent',
+  notifyparty: 'notifierContent',
+  portofloading: 'polRemark',
+  portofdischarge: 'podRemark',
+  placeofreceipt: 'receivePortRemark',
+  placeofdelivery: 'deliverPortRemark',
+  发货人: 'shipperContent',
+  收货人: 'consigneeContent',
+  通知人: 'notifierContent',
+  船名: 'vessel',
+  航次: 'innerVoyno',
+  起运港: 'polRemark',
+  卸货港: 'podRemark',
+  收货地: 'receivePortRemark',
+  交货地: 'deliverPortRemark',
+  船期: 'etd',
+};
+const parseNumberFromText = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'string') return undefined;
+  const matched = value.replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+  if (!matched) return undefined;
+  const parsed = Number(matched[0]);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+const normalizeAiFieldValue = (field: string, value: unknown) => {
+  if (AI_RECOGNIZE_DATE_FIELDS.has(field)) {
+    return toDayjs(value as string | undefined);
+  }
+  if (field === 'pkgs' || field === 'kgs' || field === 'cbm') {
+    return parseNumberFromText(value);
+  }
+  if (field === 'mblNum' || field === 'bookingNum' || field === 'innerVoyno') {
+    return typeof value === 'string' ? value.trim() : value;
+  }
+  return value;
+};
+const extractOcrFieldPayload = (payload: unknown): Record<string, any> => {
+  let parsedPayload = payload;
+  if (typeof parsedPayload === 'string') {
+    try {
+      parsedPayload = JSON.parse(parsedPayload);
+    } catch {
+      return {};
+    }
+  }
+  if (Array.isArray(parsedPayload)) {
+    parsedPayload = parsedPayload[0];
+  }
+  if (!isPlainObject(parsedPayload)) return {};
+
+  const rawObject = parsedPayload as Record<string, any>;
+  for (const key of ['fields', 'fieldMap', 'ocrFields', 'data', 'result']) {
+    if (isPlainObject(rawObject[key])) {
+      return rawObject[key];
+    }
+  }
+  return rawObject;
+};
+const buildAiRecognizedFormValues = (payload: unknown) => {
+  const basePayload = extractOcrFieldPayload(payload);
+  const mergedPayload: Record<string, any> = {};
+  const mergePayloadObject = (source: unknown) => {
+    if (!isPlainObject(source)) return;
+    Object.entries(source).forEach(([rawKey, value]) => {
+      const normalizedKey = normalizeOcrFieldName(rawKey);
+      mergedPayload[normalizedKey] = value;
+    });
+  };
+
+  mergePayloadObject(basePayload);
+  mergePayloadObject(basePayload.transportOrder);
+  mergePayloadObject(basePayload.seaExport);
+  mergePayloadObject(basePayload.transportOrderDto);
+  mergePayloadObject(basePayload.seaExportDto);
+
+  const formValues: Record<string, any> = {};
+  const applyRecognizedValue = (field: string, value: unknown) => {
+    if (!AI_RECOGNIZE_ALLOWED_FIELDS.has(field)) return;
+    if (value === undefined) return;
+    const normalizedValue = normalizeAiFieldValue(field, value);
+    if (normalizedValue === undefined) return;
+    formValues[field] = normalizedValue;
+  };
+  Object.entries(mergedPayload).forEach(([rawField, value]) => {
+    const field = normalizeOcrFieldName(rawField);
+    applyRecognizedValue(field, value);
+    const aliasField =
+      AI_RECOGNIZE_FIELD_ALIASES[normalizeOcrLookupKey(rawField)];
+    if (aliasField) {
+      applyRecognizedValue(aliasField, value);
+    }
+  });
+  if (!Array.isArray(formValues.serviceTypes)) {
+    delete formValues.serviceTypes;
+  } else {
+    formValues.serviceTypes = formValues.serviceTypes
+      .map((item: unknown) => Number(item))
+      .filter((item: number) => Number.isFinite(item));
+  }
+  if (
+    formValues.codeIssueTypeId == null &&
+    formValues.issueType != null &&
+    Number.isFinite(Number(formValues.issueType))
+  ) {
+    formValues.codeIssueTypeId = Number(formValues.issueType);
+  }
+  return formValues;
+};
+const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
+  await Promise.all([
+    partyInfoFormApi.setValues(values),
+    entrustInfoFormApi.setValues(values),
+    basicInfoFormApi.setValues(values),
+    shipmentFormApi.setValues(values),
+    portFormApi.setValues(values),
+    cargoTypeInlineFormApi.setValues(values),
+    cargoMainFormApi.setValues(values),
+    cargoRemarkFormApi.setValues(values),
+  ]);
+
+  let touchedServiceItems = false;
+  const nextServiceItemValues = { ...serviceItemValues.value };
+  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
+    if (!Object.prototype.hasOwnProperty.call(values, field)) return;
+    touchedServiceItems = true;
+    nextServiceItemValues[field] = values[field];
+  });
+  if (touchedServiceItems) {
+    serviceItemValues.value = nextServiceItemValues;
+  }
+
+  if (Array.isArray(values.serviceTypes)) {
+    const selectedServiceTypes = new Set<number>(
+      values.serviceTypes.map((type: unknown) => Number(type)),
+    );
+    serviceItemEnabledValues.value = {
+      bookingAgentIdEnabled:
+        selectedServiceTypes.has(SERVICE_TYPE_VALUES.bookingAgentId) ||
+        hasServiceItemValue(nextServiceItemValues.bookingAgentId),
+      teamIdEnabled:
+        selectedServiceTypes.has(SERVICE_TYPE_VALUES.teamId) ||
+        hasServiceItemValue(nextServiceItemValues.teamId),
+      custBrokerIdEnabled:
+        selectedServiceTypes.has(SERVICE_TYPE_VALUES.custBrokerId) ||
+        hasServiceItemValue(nextServiceItemValues.custBrokerId),
+      warehouseIdEnabled:
+        selectedServiceTypes.has(SERVICE_TYPE_VALUES.warehouseId) ||
+        hasServiceItemValue(nextServiceItemValues.warehouseId),
+      insuranceIdEnabled:
+        selectedServiceTypes.has(SERVICE_TYPE_VALUES.insuranceId) ||
+        hasServiceItemValue(nextServiceItemValues.insuranceId),
+    };
+  } else if (touchedServiceItems) {
+    const nextServiceEnabledValues = { ...serviceItemEnabledValues.value };
+    SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
+      if (!Object.prototype.hasOwnProperty.call(values, field)) return;
+      const checkFieldName = getServiceItemCheckFieldName(field);
+      nextServiceEnabledValues[checkFieldName] = hasServiceItemValue(
+        nextServiceItemValues[field],
+      );
+    });
+    serviceItemEnabledValues.value = nextServiceEnabledValues;
+  }
+
+  refreshEntrustReadonlyInfo({
+    ...entrustReadonlyInfo.value,
+    commissionNum:
+      values.commissionNum ?? entrustReadonlyInfo.value.commissionNum,
+    accountDate: values.accountDate ?? entrustReadonlyInfo.value.accountDate,
+    settlementDate:
+      values.settlementDate ?? entrustReadonlyInfo.value.settlementDate,
+  });
+};
+
 /** 提交时 dayjs/日期 转回 ISO 字符串 */
 const toDateString = (val: unknown) => {
   if (val == null) return undefined;
@@ -963,7 +1352,7 @@ const flattenDetail = (
     codeServiceId: to?.codeServiceId,
     cargoId: to?.cargoId,
     tradeTermsType: to?.tradeTermsType,
-    serviceTypes: detail.serviceTypes ?? [],
+    serviceTypes: extractServiceTypesFromDetail(detail),
     polId: detail.polId,
     polRemark: detail.polRemark,
     podId: detail.podId,
@@ -1330,6 +1719,7 @@ const loadEditData = async () => {
       basicInfoFormApi.setValues(formValues),
       shipmentFormApi.setValues(formValues),
       portFormApi.setValues(formValues),
+      cargoTypeInlineFormApi.setValues(formValues),
       cargoMainFormApi.setValues(formValues),
       cargoRemarkFormApi.setValues(formValues),
     ]);
@@ -1493,6 +1883,7 @@ const handleSubmit = async () => {
     basicResult,
     shipmentResult,
     portResult,
+    cargoTypeResult,
     cargoMainResult,
     cargoRemarkResult,
   ] = await Promise.all([
@@ -1501,6 +1892,7 @@ const handleSubmit = async () => {
     basicInfoFormApi.validate(),
     shipmentFormApi.validate(),
     portFormApi.validate(),
+    cargoTypeInlineFormApi.validate(),
     cargoMainFormApi.validate(),
     cargoRemarkFormApi.validate(),
   ]);
@@ -1510,10 +1902,14 @@ const handleSubmit = async () => {
     basicResult.valid &&
     shipmentResult.valid &&
     portResult.valid &&
+    cargoTypeResult.valid &&
     cargoMainResult.valid &&
     cargoRemarkResult.valid;
   if (!allValid) {
     message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
+    return;
+  }
+  if (!validateSalesRoleCount()) {
     return;
   }
 
@@ -1524,6 +1920,7 @@ const handleSubmit = async () => {
     basicValues,
     shipmentValues,
     portValues,
+    cargoTypeValues,
     cargoMainValues,
     cargoRemarkValues,
   ] = await Promise.all([
@@ -1532,6 +1929,7 @@ const handleSubmit = async () => {
     basicInfoFormApi.getValues(),
     shipmentFormApi.getValues(),
     portFormApi.getValues(),
+    cargoTypeInlineFormApi.getValues(),
     cargoMainFormApi.getValues(),
     cargoRemarkFormApi.getValues(),
   ]);
@@ -1546,6 +1944,7 @@ const handleSubmit = async () => {
     ...serviceItemsValues,
     ...shipmentValues,
     ...portValues,
+    ...cargoTypeValues,
     ...cargoMainValues,
     ...cargoRemarkValues,
   };
@@ -1554,12 +1953,18 @@ const handleSubmit = async () => {
   try {
     if (isEdit.value) {
       await editSeaExport(dto as SeaExportAdminApi.SeaExportEditDto);
+      message.success($t('ui.actionMessage.operationSuccess'));
     } else {
-      await addSeaExport(dto as SeaExportAdminApi.SeaExportAddDto);
+      const createdId = await addSeaExport(
+        dto as SeaExportAdminApi.SeaExportAddDto,
+      );
+      message.success($t('ui.actionMessage.operationSuccess'));
+      if (typeof createdId === 'number' && createdId > 0) {
+        router.push(`/sea-exports/${createdId}/edit`);
+      } else {
+        router.push('/sea-exports');
+      }
     }
-
-    message.success($t('ui.actionMessage.operationSuccess'));
-    router.push('/sea-exports');
   } finally {
     submitting.value = false;
   }
@@ -1569,8 +1974,43 @@ const handleCancel = () => {
   router.push('/sea-exports');
 };
 
+const handleAiPdfFileChange = async (event: Event) => {
+  const target = event.target as HTMLInputElement | null;
+  const file = target?.files?.[0];
+  if (!file) return;
+
+  const isPdfFile =
+    file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+  if (!isPdfFile) {
+    message.warning('请上传 PDF 文件');
+    if (target) target.value = '';
+    return;
+  }
+
+  aiRecognizing.value = true;
+  const hideLoading = message.loading('AI识别中，请稍候...', 0);
+  try {
+    const ocrPayload = await runVisionOcrPdf(file);
+    const formValues = buildAiRecognizedFormValues(ocrPayload);
+    const recognizedFieldCount = Object.keys(formValues).length;
+    if (recognizedFieldCount === 0) {
+      message.warning('识别成功，但没有可回填的字段');
+      return;
+    }
+    await applyAiRecognizedFormValues(formValues);
+    message.success(`AI识别完成，已回填 ${recognizedFieldCount} 个字段`);
+  } catch {
+    message.error('AI识别失败，请稍后重试');
+  } finally {
+    hideLoading();
+    aiRecognizing.value = false;
+    if (target) target.value = '';
+  }
+};
+
 const handleAiRecognize = () => {
-  // TODO: 后续接入 AI 识别逻辑
+  if (aiRecognizing.value) return;
+  aiOcrPdfInputRef.value?.click();
 };
 
 const handlePrint = () => {
@@ -1710,284 +2150,322 @@ defineExpose({
           </div>
 
           <!-- 中间主表单 -->
-          <div class="content-column">
-            <section :ref="sectionRefs.basic" class="content-section">
-              <div class="content-section__actions">
-                <Space>
-                  <Button
-                    class="flex items-center justify-center"
-                    @click="handleAiRecognize"
-                  >
-                    <IconifyIcon
-                      icon="mdi:robot-outline"
-                      class="mr-1 inline-block size-4 align-middle"
-                    />
-                    <span class="align-middle">AI识别</span>
-                  </Button>
-                  <Button
-                    class="flex items-center justify-center"
-                    @click="handlePrint"
-                  >
-                    <IconifyIcon
-                      icon="mdi:printer-outline"
-                      class="mr-1 inline-block size-4 align-middle"
-                    />
-                    <span class="align-middle">打印</span>
-                  </Button>
-                  <Button @click="handleCancel">
-                    {{ $t('common.cancel') }}
-                  </Button>
-                  <Button
-                    type="primary"
-                    :loading="submitting"
-                    class="flex items-center justify-center"
-                    @click="handleSubmit"
-                  >
-                    <Save class="mr-1 inline-block size-4 align-middle" />
-                    <span class="align-middle">{{ $t('common.save') }}</span>
-                  </Button>
-                </Space>
-              </div>
-              <div class="biz-block biz-block--service">
-                <div class="biz-block__title">服务项目</div>
-                <div class="service-item-grid">
-                  <div
-                    v-for="field in SERVICE_ITEM_FIELD_NAMES"
-                    :key="field"
-                    class="service-item-custom-card"
-                    :class="{
-                      'service-item-custom-card--active':
-                        getServiceItemChecked(field),
-                    }"
-                  >
-                    <div class="service-item-custom-card__header">
-                      <div class="service-item-custom-card__title-wrap">
-                        <span class="service-item-custom-card__icon">
-                          <IconifyIcon
-                            :icon="SERVICE_ITEM_META[field].icon"
-                            class="service-item-custom-card__icon-inner"
-                          />
-                        </span>
-                        <span class="service-item-custom-card__title">
-                          {{ SERVICE_ITEM_META[field].label }}
-                        </span>
+          <div class="center-column">
+            <div class="content-column">
+              <section :ref="sectionRefs.basic" class="content-section">
+                <div class="content-section__actions">
+                  <Space>
+                    <Button
+                      class="flex items-center justify-center"
+                      :loading="aiRecognizing"
+                      @click="handleAiRecognize"
+                    >
+                      <IconifyIcon
+                        icon="mdi:robot-outline"
+                        class="mr-1 inline-block size-4 align-middle"
+                      />
+                      <span class="align-middle">AI识别</span>
+                    </Button>
+                    <Button
+                      class="flex items-center justify-center"
+                      @click="handlePrint"
+                    >
+                      <IconifyIcon
+                        icon="mdi:printer-outline"
+                        class="mr-1 inline-block size-4 align-middle"
+                      />
+                      <span class="align-middle">打印</span>
+                    </Button>
+                    <Button @click="handleCancel">
+                      {{ $t('common.cancel') }}
+                    </Button>
+                    <Button
+                      type="primary"
+                      :loading="submitting"
+                      class="flex items-center justify-center"
+                      @click="handleSubmit"
+                    >
+                      <Save class="mr-1 inline-block size-4 align-middle" />
+                      <span class="align-middle">{{ $t('common.save') }}</span>
+                    </Button>
+                  </Space>
+                  <input
+                    ref="aiOcrPdfInputRef"
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    class="hidden"
+                    @change="handleAiPdfFileChange"
+                  />
+                </div>
+                <div class="biz-block biz-block--service">
+                  <div class="biz-block__title">服务项目</div>
+                  <div class="service-item-grid">
+                    <div
+                      v-for="field in SERVICE_ITEM_FIELD_NAMES"
+                      :key="field"
+                      class="service-item-custom-card"
+                      :class="{
+                        'service-item-custom-card--active':
+                          getServiceItemChecked(field),
+                      }"
+                    >
+                      <div class="service-item-custom-card__header">
+                        <div class="service-item-custom-card__title-wrap">
+                          <span class="service-item-custom-card__icon">
+                            <IconifyIcon
+                              :icon="SERVICE_ITEM_META[field].icon"
+                              class="service-item-custom-card__icon-inner"
+                            />
+                          </span>
+                          <span class="service-item-custom-card__title">
+                            {{ SERVICE_ITEM_META[field].label }}
+                          </span>
+                        </div>
+                        <Checkbox
+                          :checked="getServiceItemChecked(field)"
+                          @change="
+                            handleServiceItemCheckboxChange(field, $event)
+                          "
+                        />
                       </div>
-                      <Checkbox
-                        :checked="getServiceItemChecked(field)"
-                        @change="handleServiceItemCheckboxChange(field, $event)"
-                      />
+                      <div class="service-item-custom-card__body">
+                        <ClientSelect
+                          :model-value="serviceItemValues[field]"
+                          :industry-category="
+                            SERVICE_ITEM_META[field].industryCategory
+                          "
+                          :selected-items="getServiceItemSelectedItems(field)"
+                          :disabled="!getServiceItemChecked(field)"
+                          :placeholder="$t('ui.placeholder.select')"
+                          allow-clear
+                          class="w-full"
+                          @update:model-value="
+                            handleServiceItemValueChange(field, $event)
+                          "
+                        />
+                      </div>
                     </div>
-                    <div class="service-item-custom-card__body">
-                      <ClientSelect
-                        :model-value="serviceItemValues[field]"
-                        :industry-category="
-                          SERVICE_ITEM_META[field].industryCategory
-                        "
-                        :selected-items="getServiceItemSelectedItems(field)"
-                        :disabled="!getServiceItemChecked(field)"
-                        :placeholder="$t('ui.placeholder.select')"
-                        allow-clear
-                        class="w-full"
-                        @update:model-value="
-                          handleServiceItemValueChange(field, $event)
-                        "
-                      />
+                    <div
+                      class="service-item-custom-card"
+                      :class="{
+                        'service-item-custom-card--active':
+                          collectionPaymentEnabled,
+                      }"
+                    >
+                      <div class="service-item-custom-card__header">
+                        <div class="service-item-custom-card__title-wrap">
+                          <span class="service-item-custom-card__icon">
+                            <IconifyIcon
+                              :icon="COLLECTION_PAYMENT_ICON"
+                              class="service-item-custom-card__icon-inner"
+                            />
+                          </span>
+                          <span class="service-item-custom-card__title"
+                            >代收支</span
+                          >
+                        </div>
+                        <Checkbox
+                          :checked="collectionPaymentEnabled"
+                          @change="handleCollectionPaymentEnabledChange"
+                        />
+                      </div>
+                      <div class="service-item-custom-card__body">
+                        <Select
+                          :value="collectionPaymentDeptId"
+                          :options="collectionPaymentDeptOptions"
+                          :disabled="!collectionPaymentEnabled"
+                          :placeholder="$t('ui.placeholder.select')"
+                          allow-clear
+                          class="w-full"
+                          show-search
+                          option-filter-prop="label"
+                          @change="handleCollectionPaymentDeptChange"
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div
-                    class="service-item-custom-card"
-                    :class="{
-                      'service-item-custom-card--active':
-                        collectionPaymentEnabled,
-                    }"
+                </div>
+                <div class="content-section__header">
+                  <span class="card-title">
+                    <FileText class="size-4" />
+                    {{ $t('seaExport.export.formCardBasicInfo') }}
+                  </span>
+                </div>
+                <div class="content-section__body">
+                  <BasicInfoForm />
+                </div>
+              </section>
+
+              <section :ref="sectionRefs.party" class="content-section">
+                <div class="content-section__body">
+                  <PartyInfoForm />
+                  <Teleport
+                    v-if="consigneePartyLabelTarget"
+                    :to="consigneePartyLabelTarget"
                   >
-                    <div class="service-item-custom-card__header">
-                      <div class="service-item-custom-card__title-wrap">
-                        <span class="service-item-custom-card__icon">
-                          <IconifyIcon
-                            :icon="COLLECTION_PAYMENT_ICON"
-                            class="service-item-custom-card__icon-inner"
-                          />
-                        </span>
-                        <span class="service-item-custom-card__title"
-                          >代收支</span
-                        >
-                      </div>
-                      <Checkbox
-                        :checked="collectionPaymentEnabled"
-                        @change="handleCollectionPaymentEnabledChange"
-                      />
-                    </div>
-                    <div class="service-item-custom-card__body">
-                      <Select
-                        :value="collectionPaymentDeptId"
-                        :options="collectionPaymentDeptOptions"
-                        :disabled="!collectionPaymentEnabled"
-                        :placeholder="$t('ui.placeholder.select')"
-                        allow-clear
-                        class="w-full"
-                        show-search
-                        option-filter-prop="label"
-                        @change="handleCollectionPaymentDeptChange"
-                      />
-                    </div>
+                    <button
+                      type="button"
+                      class="party-copy-btn"
+                      @click.stop="copyConsigneeToNotifier"
+                    >
+                      复制到通知人
+                    </button>
+                  </Teleport>
+                  <Teleport
+                    v-if="notifierPartyLabelTarget"
+                    :to="notifierPartyLabelTarget"
+                  >
+                    <span
+                      class="transit-port-inline-switch transit-port-inline-switch--in-label"
+                    >
+                      <button
+                        type="button"
+                        class="transit-port-tabs__item"
+                        :class="{
+                          'transit-port-tabs__item--active':
+                            notifierPartyTab === 'notifier',
+                        }"
+                        @click.stop="switchNotifierPartyTab('notifier')"
+                      >
+                        {{ $t('seaExport.export.notifierId') }}
+                      </button>
+                      <button
+                        type="button"
+                        class="transit-port-tabs__item"
+                        :class="{
+                          'transit-port-tabs__item--active':
+                            notifierPartyTab === 'secondNotifier',
+                        }"
+                        @click.stop="switchNotifierPartyTab('secondNotifier')"
+                      >
+                        {{ $t('seaExport.export.secondNotifierId') }}
+                      </button>
+                      <button
+                        type="button"
+                        class="transit-port-tabs__item"
+                        :class="{
+                          'transit-port-tabs__item--active':
+                            notifierPartyTab === 'podAgent',
+                        }"
+                        @click.stop="switchNotifierPartyTab('podAgent')"
+                      >
+                        {{ $t('seaExport.export.overseasAgent') }}
+                      </button>
+                    </span>
+                  </Teleport>
+                </div>
+              </section>
+
+              <section :ref="sectionRefs.shipment" class="content-section">
+                <div class="content-section__header">
+                  <span class="card-title">
+                    <Ship class="size-4" />
+                    {{ $t('seaExport.export.formCardShipment') }}
+                  </span>
+                </div>
+                <div class="content-section__body">
+                  <div class="shipment-flow-container">
+                    <ShipmentForm />
+                    <span
+                      aria-hidden="true"
+                      class="shipment-flow-divider"
+                    ></span>
                   </div>
                 </div>
-              </div>
-              <div class="content-section__header">
-                <span class="card-title">
-                  <FileText class="size-4" />
-                  {{ $t('seaExport.export.formCardBasicInfo') }}
-                </span>
-              </div>
-              <div class="content-section__body">
-                <BasicInfoForm />
-              </div>
-            </section>
+              </section>
 
-            <section :ref="sectionRefs.party" class="content-section">
-              <div class="content-section__body">
-                <PartyInfoForm />
-                <Teleport
-                  v-if="consigneePartyLabelTarget"
-                  :to="consigneePartyLabelTarget"
-                >
-                  <button
-                    type="button"
-                    class="party-copy-btn"
-                    @click.stop="copyConsigneeToNotifier"
-                  >
-                    复制到通知人
-                  </button>
-                </Teleport>
-                <Teleport
-                  v-if="notifierPartyLabelTarget"
-                  :to="notifierPartyLabelTarget"
-                >
-                  <span
-                    class="transit-port-inline-switch transit-port-inline-switch--in-label"
-                  >
-                    <button
-                      type="button"
-                      class="transit-port-tabs__item"
-                      :class="{
-                        'transit-port-tabs__item--active':
-                          notifierPartyTab === 'notifier',
-                      }"
-                      @click.stop="switchNotifierPartyTab('notifier')"
-                    >
-                      {{ $t('seaExport.export.notifierId') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="transit-port-tabs__item"
-                      :class="{
-                        'transit-port-tabs__item--active':
-                          notifierPartyTab === 'secondNotifier',
-                      }"
-                      @click.stop="switchNotifierPartyTab('secondNotifier')"
-                    >
-                      {{ $t('seaExport.export.secondNotifierId') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="transit-port-tabs__item"
-                      :class="{
-                        'transit-port-tabs__item--active':
-                          notifierPartyTab === 'podAgent',
-                      }"
-                      @click.stop="switchNotifierPartyTab('podAgent')"
-                    >
-                      {{ $t('seaExport.export.overseasAgent') }}
-                    </button>
+              <section :ref="sectionRefs.port" class="content-section">
+                <div class="content-section__header">
+                  <span class="card-title">
+                    <MapPin class="size-4" />
+                    {{ $t('seaExport.export.formCardPort') }}
                   </span>
-                </Teleport>
-              </div>
-            </section>
-
-            <section :ref="sectionRefs.shipment" class="content-section">
-              <div class="content-section__header">
-                <span class="card-title">
-                  <Ship class="size-4" />
-                  {{ $t('seaExport.export.formCardShipment') }}
-                </span>
-              </div>
-              <div class="content-section__body">
-                <div class="shipment-flow-container">
-                  <ShipmentForm />
-                  <span aria-hidden="true" class="shipment-flow-divider"></span>
                 </div>
-              </div>
-            </section>
-
-            <section :ref="sectionRefs.port" class="content-section">
-              <div class="content-section__header">
-                <span class="card-title">
-                  <MapPin class="size-4" />
-                  {{ $t('seaExport.export.formCardPort') }}
-                </span>
-              </div>
-              <div class="content-section__body">
-                <PortForm />
-                <Teleport
-                  v-if="transitPortLabelTarget"
-                  :to="transitPortLabelTarget"
-                >
-                  <span
-                    class="transit-port-inline-switch transit-port-inline-switch--in-label"
+                <div class="content-section__body">
+                  <PortForm />
+                  <Teleport
+                    v-if="transitPortLabelTarget"
+                    :to="transitPortLabelTarget"
                   >
-                    <button
-                      type="button"
-                      class="transit-port-tabs__item"
-                      :class="{
-                        'transit-port-tabs__item--active':
-                          transitPortTab === 'poT1',
-                      }"
-                      @click.stop="switchTransitPortTab('poT1')"
+                    <span
+                      class="transit-port-inline-switch transit-port-inline-switch--in-label"
                     >
-                      中转港1
-                    </button>
-                    <button
-                      type="button"
-                      class="transit-port-tabs__item"
-                      :class="{
-                        'transit-port-tabs__item--active':
-                          transitPortTab === 'poT2',
-                      }"
-                      @click.stop="switchTransitPortTab('poT2')"
+                      <button
+                        type="button"
+                        class="transit-port-tabs__item"
+                        :class="{
+                          'transit-port-tabs__item--active':
+                            transitPortTab === 'poT1',
+                        }"
+                        @click.stop="switchTransitPortTab('poT1')"
+                      >
+                        中转港1
+                      </button>
+                      <button
+                        type="button"
+                        class="transit-port-tabs__item"
+                        :class="{
+                          'transit-port-tabs__item--active':
+                            transitPortTab === 'poT2',
+                        }"
+                        @click.stop="switchTransitPortTab('poT2')"
+                      >
+                        中转港2
+                      </button>
+                    </span>
+                  </Teleport>
+                  <Teleport v-if="podPortLabelTarget" :to="podPortLabelTarget">
+                    <span
+                      v-if="
+                        entrustReadonlyInfo.countryName?.trim() ||
+                        entrustReadonlyInfo.laneName?.trim()
+                      "
+                      class="pod-port-inline-tags"
                     >
-                      中转港2
-                    </button>
-                  </span>
-                </Teleport>
-                <Teleport v-if="podPortLabelTarget" :to="podPortLabelTarget">
-                  <span class="pod-port-inline-tags">
-                    <Tag class="pod-port-inline-tags__item" color="blue">
-                      国家: {{ entrustReadonlyInfo.countryName || '-' }}
-                    </Tag>
-                    <Tag class="pod-port-inline-tags__item" color="cyan">
-                      航线: {{ entrustReadonlyInfo.laneName || '-' }}
-                    </Tag>
-                  </span>
-                </Teleport>
-              </div>
-            </section>
-
-            <section :ref="sectionRefs.cargo" class="content-section">
-              <div class="content-section__header">
-                <span class="card-title">
-                  <Package class="size-4" />
-                  {{ $t('seaExport.export.formCardCtnCargo') }}
-                </span>
-              </div>
-              <div class="content-section__body">
-                <div class="biz-block">
-                  <CargoMainForm />
+                      <Tooltip
+                        v-if="entrustReadonlyInfo.countryName?.trim()"
+                        :title="entrustReadonlyInfo.countryName"
+                      >
+                        <Tag class="pod-port-inline-tags__item" color="blue">
+                          <span class="pod-port-inline-tags__item-text">
+                            {{ entrustReadonlyInfo.countryName }}
+                          </span>
+                        </Tag>
+                      </Tooltip>
+                      <Tooltip
+                        v-if="entrustReadonlyInfo.laneName?.trim()"
+                        :title="entrustReadonlyInfo.laneName"
+                      >
+                        <Tag class="pod-port-inline-tags__item" color="cyan">
+                          <span class="pod-port-inline-tags__item-text">
+                            {{ entrustReadonlyInfo.laneName }}
+                          </span>
+                        </Tag>
+                      </Tooltip>
+                    </span>
+                  </Teleport>
                 </div>
-                <div class="biz-block biz-block--container">
+              </section>
+            </div>
+
+            <section :ref="sectionRefs.cargo">
+              <Card class="cargo-container-card">
+                <template #title>
+                  <div class="cargo-container-card__title">
+                    <span class="card-title">
+                      <Package class="size-4" />
+                      {{ $t('seaExport.export.formCardCargo') }}
+                    </span>
+                    <div class="cargo-type-inline-wrap">
+                      <CargoTypeInlineForm />
+                    </div>
+                  </div>
+                </template>
+                <CargoMainForm />
+                <div class="cargo-ctn-section">
                   <OrderCtnTable v-model="orderCtns" />
                 </div>
-              </div>
+              </Card>
             </section>
           </div>
 
@@ -2119,7 +2597,7 @@ defineExpose({
                 <div class="order-user-panel__content">
                   <Select
                     :value="row.userAttribute"
-                    :options="orderUserRoleOptions"
+                    :options="getOrderUserRoleOptions(row._rowKey)"
                     :placeholder="
                       $t('seaExport.export.pleaseSelectUserAttribute')
                     "
@@ -2213,8 +2691,7 @@ defineExpose({
 .main-layout {
   display: flex;
   gap: 14px;
-  padding: 0 12px;
-  padding-top: 12px;
+  padding: 12px;
 }
 
 .left-column {
@@ -2228,12 +2705,18 @@ defineExpose({
   width: 100%;
 }
 
-.content-column {
+.center-column {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 0;
+  gap: 14px;
   min-width: 0;
+}
+
+.content-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   overflow: hidden;
   background: #fff;
   border: 1px solid #e8e8e8;
@@ -2241,8 +2724,24 @@ defineExpose({
 }
 
 .side-card,
-.right-column {
+.right-column,
+.cargo-container-card {
   border-radius: 10px;
+}
+
+.cargo-container-card__title {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.cargo-ctn-section {
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.cargo-ctn-section__header {
+  margin-bottom: 12px;
 }
 
 .content-section {
@@ -2252,6 +2751,48 @@ defineExpose({
 .content-section__header {
   padding: 12px 18px 8px;
   padding-bottom: 24px;
+}
+
+.content-section__header--cargo {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.cargo-type-inline-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 440px;
+  max-width: 560px;
+}
+
+.cargo-type-inline-wrap :deep(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.cargo-type-inline-wrap :deep(.ant-form) {
+  width: 100%;
+}
+
+.cargo-type-inline-wrap :deep(.grid.grid-cols-2) {
+  grid-template-columns: 160px 240px;
+}
+
+.cargo-type-inline-wrap :deep(.cargo-type-inline-item) {
+  padding-bottom: 0 !important;
+}
+
+.cargo-type-inline-wrap :deep(.cargo-type-inline-item > label) {
+  display: none;
+}
+
+.cargo-type-inline-wrap :deep(.cargo-type-inline-item > .flex-auto) {
+  width: 100%;
+}
+
+.cargo-type-inline-wrap :deep(.ant-select),
+.cargo-type-inline-wrap :deep(.ant-btn) {
+  width: 100%;
 }
 
 .content-section__body {
@@ -2633,7 +3174,9 @@ defineExpose({
 
 :deep(.port-flow-pos--pod > label) {
   display: flex;
+  gap: 6px;
   align-items: center;
+  white-space: nowrap;
 }
 
 .transit-port-inline-switch {
@@ -2668,13 +3211,39 @@ defineExpose({
 
 .pod-port-inline-tags {
   display: inline-flex;
+  flex: 1;
   gap: 6px;
   align-items: center;
+  align-self: center;
+  justify-content: flex-end;
+  min-width: 0;
+  max-width: calc(100% - 52px);
   margin-left: auto;
+  overflow: hidden;
 }
 
 .pod-port-inline-tags__item {
+  flex: 0 1 auto;
   margin-inline-end: 0;
+  vertical-align: middle;
+}
+
+.pod-port-inline-tags__item-text {
+  display: inline-block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pod-port-inline-tags > * {
+  display: inline-flex;
+  align-items: center;
+}
+
+.pod-port-inline-tags :deep(.ant-tag) {
+  display: inline-flex;
+  align-items: center;
 }
 
 .transit-port-tabs__item {
@@ -3096,6 +3665,7 @@ defineExpose({
 
   .left-column,
   .side-card,
+  .center-column,
   .right-column {
     width: 100%;
   }

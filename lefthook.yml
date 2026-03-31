@@ -79,4 +79,4 @@ post-merge:
 commit-msg:
   commands:
     commitlint:
-      run: pnpm exec commitlint --edit $1
+      run: pnpm --filter @vben/commitlint-config exec commitlint --edit {1}

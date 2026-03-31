@@ -149,7 +149,8 @@ const formatIndustryCategories = (value?: string): string => {
     getIndustryCategoryOptions().map((o) => [o.value, o.label]),
   );
   return value
-    .split(',')
+    .replaceAll(',', '')
+    .split('')
     .map((v) => optionsMap.get(v.trim()) || v.trim())
     .filter(Boolean)
     .join(', ');
