@@ -18,6 +18,7 @@ import {
   Menu,
   Modal,
   Textarea,
+  Tag,
 } from 'ant-design-vue';
 
 import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
@@ -48,6 +49,8 @@ import {
   submitOrderFeeWithdrawAsync,
   OrderFeeTaskWithdraw,
 } from '#/api/audit-approval/expense-admin';
+
+import { GetDetail } from '#/api/sea-export/change-order-admin';
 const dataSource = defineModel<OrderFeeAdminApi.OrderFeeEditDto[]>({
   default: () => [],
 });
@@ -63,7 +66,11 @@ const rowSelection = computed(() => ({
 
 const props = defineProps<{
   type?: number; // 收付类型 0 应收 1 应付
+  mode?: string; // changeOrder 更改单
+  parentChangeOrderId?: number; //更改单Id
 }>();
+
+const emit = defineEmits(['sync-fee']);
 
 const route = useRoute();
 const router = useRouter();
@@ -102,15 +109,15 @@ const ORDER_CTN_API_KEYS: Array<
 ];
 let rowKeyCounter = 0;
 
-const getTableDate = () => {
-  let params = {
-    TransportOrderId: editId.value ?? 0,
-    PaySide: props.type ?? 0,
-    PageIndex: 1,
-    PageSize: 999,
-  };
-  getOrderFeePagedList(params).then((res) => {
-    res.items.forEach((item) => {
+const setChangeOrderFee = async (id: number) => {
+  if (id) {
+    let res = await GetDetail(id);
+    console.log(
+      'res',
+      res.orderFees.filter((item) => item.paySide === props.type),
+    );
+    let orderFees = res.orderFees.filter((item) => item.paySide === props.type);
+    orderFees.forEach((item) => {
       item.taskStatus = $t('auditApproval.task.noTasking');
       if (
         item.submitOrderFeeTasks &&
@@ -137,9 +144,59 @@ const getTableDate = () => {
         item.taskStatus = $t('auditApproval.task.noTasking');
       }
     });
-    console.log('res', res.items);
-    dataSource.value = normalizeOrderFeeWithRowKey(res.items);
+    dataSource.value = normalizeOrderFeeWithRowKey(orderFees);
+    //更改单使用
+    syncFee();
+  } else {
+    dataSource.value = [];
+  }
+};
+const changeOrderId = ref(0);
+const getTableDate = async (id = 0) => {
+  if (props.mode === 'changeOrder') {
+    if (id) {
+      changeOrderId.value = id;
+    }
+    setChangeOrderFee(changeOrderId.value);
+
+    return;
+  }
+  let params = {
+    TransportOrderId: editId.value ?? 0,
+    PaySide: props.type ?? 0,
+    PageIndex: 1,
+    PageSize: 999,
+  };
+  const res = await getOrderFeePagedList(params);
+  res.items.forEach((item) => {
+    item.taskStatus = $t('auditApproval.task.noTasking');
+    if (
+      item.submitOrderFeeTasks &&
+      item.submitOrderFeeTasks[0]?.taskStatus === 0
+    ) {
+      item.taskStatus =
+        $t('auditApproval.task.typeOptions.SubmitOrderFee') +
+        $t('auditApproval.task.statusOptions.Auditing');
+    } else if (
+      item.modifyOrderFeeTasks &&
+      item.modifyOrderFeeTasks[0]?.taskStatus === 0
+    ) {
+      item.taskStatus =
+        $t('auditApproval.task.typeOptions.ModifyOrderFee') +
+        $t('auditApproval.task.statusOptions.Auditing');
+    } else if (
+      item.deleteOrderFeeTasks &&
+      item.deleteOrderFeeTasks[0]?.taskStatus === 0
+    ) {
+      item.taskStatus =
+        $t('auditApproval.task.typeOptions.DeleteOrderFee') +
+        $t('auditApproval.task.statusOptions.Auditing');
+    } else {
+      item.taskStatus = $t('auditApproval.task.noTasking');
+    }
   });
+  console.log('res', res.items);
+  dataSource.value = normalizeOrderFeeWithRowKey(res.items);
 };
 const addRow = () => {
   const list = [...(dataSource.value ?? [])];
@@ -416,13 +473,27 @@ const removeSelectedRows = () => {
   console.log(needDelIds);
   dataSource.value = list;
   selectedRowKeys.value = [];
-
-  batchDeleteOrderFee(needDelIds).then(() => {
-    message.success({
-      content: $t('ui.actionMessage.operationSuccess'),
-      key: 'action_process_msg',
+  if (props.mode !== 'changeOrder') {
+    batchDeleteOrderFee(needDelIds).then(() => {
+      message.success({
+        content: $t('ui.actionMessage.operationSuccess'),
+        key: 'action_process_msg',
+      });
     });
-  });
+  }
+};
+
+const syncFee = () => {
+  // const list = (dataSource.value ?? []).filter(
+  //   (row) => row.feeStatus === feeConstants.getFeeStatusValue.Entering,
+  // );
+  const list = dataSource.value ?? [];
+  const syncFeeDto = {
+    type: props.type ?? 0,
+    orderFees: list,
+  };
+  console.log('费用同步', syncFeeDto);
+  emit('sync-fee', syncFeeDto);
 };
 
 const updateRow = (
@@ -501,6 +572,8 @@ const updateRow = (
     }
   }
   dataSource.value = list;
+  //更改单使用
+  syncFee();
 };
 
 const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
@@ -532,6 +605,9 @@ onMounted(() => {
   getTableDate();
   getFeeCodeList();
 });
+defineExpose({
+  getTableDate,
+});
 </script>
 
 <template>
@@ -541,7 +617,12 @@ onMounted(() => {
         <Button type="primary" size="small" @click="addRow">
           {{ $t('common.create') }}
         </Button>
-        <Button type="primary" size="small" @click="saveRow">
+        <Button
+          type="primary"
+          size="small"
+          @click="saveRow"
+          v-show="props.mode !== 'changeOrder'"
+        >
           {{ $t('common.save') }}
         </Button>
         <Button
@@ -610,11 +691,18 @@ onMounted(() => {
             :placeholder="$t('ui.placeholder.select')" @change="(v) => updateRow(index, 'feeStatus', v)" /> -->
         </template>
         <template v-if="column.key === 'feeStatus'">
-          <span>{{
-            feeConstants
-              .getFeeStatusOptions()
-              .find((o) => o.value === record.feeStatus)?.label
-          }}</span>
+          <Tag
+            :color="
+              feeConstants
+                .getFeeStatusOptions()
+                .find((o) => o.value === record.feeStatus)?.color
+            "
+            >{{
+              feeConstants
+                .getFeeStatusOptions()
+                .find((o) => o.value === record.feeStatus)?.label
+            }}</Tag
+          >
           <!-- <Select v-model:value="record.feeStatus" :options="getFeeStatusOptions()" class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')" @change="(v) => updateRow(index, 'feeStatus', v)" /> -->
         </template>
@@ -799,7 +887,7 @@ onMounted(() => {
       <Table.Column
         key="exchangeRate"
         :title="$t('seaExport.export.orderFee.ExchangeRate')"
-        :width="85"
+        :width="110"
       />
       <Table.Column
         key="unitPrice"

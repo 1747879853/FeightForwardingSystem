@@ -180,6 +180,17 @@
       "dataEntryMethod": "数据录入方式",
       "remark": "备注"
     },
+    "changeOrder": {
+      "title": "更改单",
+      "orderId": "订单编号",
+      "reason": "更改原因",
+      "feeLocked": "费用锁定",
+      "feeLockedUserName": "费用锁定人",
+      "feeLockedTime": "费用锁定时间",
+      "feeUnLockedUserName": "费用解锁人",
+      "lastModificationTime": "最后修改时间",
+      "creationTime": "创建时间"
+    },
     "deadline": "到",
     "feeManagement": "财务管理",
     "feeLock": {

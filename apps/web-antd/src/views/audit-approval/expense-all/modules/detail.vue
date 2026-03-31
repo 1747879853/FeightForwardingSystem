@@ -81,8 +81,30 @@ const SubmittedOther = async (e: any) => {
 };
 const showConfirmWithRemark = (approve: boolean = true, type: string = '') => {
   let modalRemark = '';
+  if (approve) {
+    switch (type) {
+      case 'all': {
+        allPass(approve, modalRemark);
+        break;
+      }
+      case 'selectPass': {
+        selectPass(approve, modalRemark);
+        break;
+      }
+      case 'recPass': {
+        recPass(approve, modalRemark);
+        break;
+      }
+      case 'payPass': {
+        payPass(approve, modalRemark);
+        break;
+      }
+    }
+
+    return;
+  }
   // 创建弹窗实例
-  const modal = Modal.confirm({
+  Modal.confirm({
     title: approve
       ? $t('auditApproval.task.okPass')
       : $t('auditApproval.task.noPass'),

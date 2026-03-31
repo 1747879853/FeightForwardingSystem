@@ -58,7 +58,7 @@ export const getInvoiceStatusOptions = () => [
 // --------------------------------------------------------
 export const getFeeStatusOptions = () => [
   { value: 0, label: '录入状态', color: '#b8cdd7' },
-  { value: 1, label: '提交审核', color: '#409eff' },
+  { value: 1, label: '提交审核', color: '#ffc107' },
   { value: 2, label: '审核通过', color: '#67c23a' },
   { value: 3, label: '驳回', color: '#f56c6c' },
   { value: 4, label: '申请修改', color: '#ff9900' },
