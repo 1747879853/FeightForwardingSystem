@@ -93,6 +93,8 @@ export namespace OrderFeeAdminApi {
     id: number;
     /** 任务状态 */
     taskStatus?: string;
+    /** 更改单 id */
+    changeOrderId?: number;
 
     submitOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
     modifyOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
@@ -103,6 +105,9 @@ export namespace OrderFeeAdminApi {
   export interface OrderFeeDto {
     /** 业务 id */
     transportOrderId: number;
+
+    /** 更改单 id */
+    changeOrderId?: number;
 
     /**收付类型 */
     paySide: number;
