@@ -76,7 +76,7 @@ const getData = async () => {
     };
     displayList.value.push(settlementDate);
 
-    if (detail.transportOrder?.isFeeLocking) {
+    if (detail.transportOrder?.feeLocked) {
       feeLocking.value = $t('seaExport.export.isFeeLocking');
     } else {
       feeLocking.value = $t('seaExport.export.noFeeLocking');

@@ -108,7 +108,7 @@ const flattenDetail = (
     settlementDate: toDayjs(to?.settlementDate),
     codeSourceId: to?.codeSourceId,
     isBusinessLocking: to?.isBusinessLocking,
-    isFeeLocking: to?.isFeeLocking,
+    feeLocked: to?.feeLocked,
     codeFrtId: to?.codeFrtId,
     codeServiceId: to?.codeServiceId,
     tradeTermsType: to?.tradeTermsType,

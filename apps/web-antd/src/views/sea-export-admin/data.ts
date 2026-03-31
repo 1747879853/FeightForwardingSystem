@@ -805,10 +805,10 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.marks'),
       componentProps: {
         allowClear: true,
-        rows: 2,
-        style: { minHeight: '110px' },
+        rows: 8,
+        style: { minHeight: '248px' },
       },
-      formItemClass: 'col-span-3',
+      formItemClass: 'col-span-3 cargo-main-item cargo-main-item--marks',
     },
     {
       component: 'Textarea',
@@ -816,10 +816,10 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.goodsDes'),
       componentProps: {
         allowClear: true,
-        rows: 3,
-        style: { minHeight: '110px' },
+        rows: 8,
+        style: { minHeight: '248px' },
       },
-      formItemClass: 'col-span-3',
+      formItemClass: 'col-span-3 cargo-main-item cargo-main-item--goods-des',
     },
     {
       component: 'InputNumber',
@@ -831,6 +831,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
         controls: false,
         precision: 0,
       },
+      formItemClass: 'cargo-main-item cargo-main-item--pkgs',
     },
     {
       component: 'CodePackageSelect',
@@ -840,6 +841,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
       },
+      formItemClass: 'cargo-main-item cargo-main-item--code-package',
     },
     {
       component: 'InputNumber',
@@ -851,6 +853,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
         controls: false,
         precision: 2,
       },
+      formItemClass: 'cargo-main-item cargo-main-item--kgs',
     },
     {
       component: 'InputNumber',
@@ -862,6 +865,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
         controls: false,
         precision: 2,
       },
+      formItemClass: 'cargo-main-item cargo-main-item--cbm',
     },
     {
       component: 'Textarea',

@@ -160,18 +160,16 @@ const rowSelection = computed(() => ({
 }));
 
 const loadUserNames = async (items: SeaExportAdminApi.OrderUserAddDto[]) => {
-  const toLoad = items
-    .map((item) => item.userId)
-    .filter((id): id is number => !!id && !userNameMap.value[id]);
-  await Promise.all(
-    toLoad.map(async (id) => {
-      try {
-        const detail = await getUser(id);
-        const userName = detail.userName || detail.nickName || String(id);
-        userNameMap.value = { ...userNameMap.value, [id]: userName };
-      } catch {}
-    }),
-  );
+  for (const item of items) {
+    if (!item.userId) continue;
+    const nickName = (item as any).userNickName as string | undefined;
+    if (nickName && !userNameMap.value[item.userId]) {
+      userNameMap.value = {
+        ...userNameMap.value,
+        [item.userId]: nickName,
+      };
+    }
+  }
 };
 
 watch(

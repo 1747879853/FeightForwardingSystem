@@ -129,23 +129,17 @@ const rowSelection = computed(() => ({
 }));
 
 const loadNames = async (items: SeaExportAdminApi.OrderCodeGoodsAddDto[]) => {
-  const toLoad = items
-    .map((item) => item.codeGoodsId)
-    .filter((id): id is number => !!id && !nameMap.value[id]);
-  await Promise.all(
-    toLoad.map(async (id) => {
-      try {
-        const detail = await getCodeGoodsDetail(id);
-        const hsCode = toSafeText(
-          (detail as any).codeGoodsHSCode ?? (detail as any).hsCode,
-        );
-        const fullName = detail.name
-          ? `${detail.name}${hsCode ? `-${hsCode}` : ''}`
-          : String(id);
-        nameMap.value = { ...nameMap.value, [id]: fullName };
-      } catch {}
-    }),
-  );
+  for (const item of items) {
+    if (!item.codeGoodsId) continue;
+    const localName = toSafeText((item as any).codeGoodsName);
+    const localHSCode = toSafeText(
+      (item as any).codeGoodsHSCode ?? (item as any).hsCode,
+    );
+    if (localName && !nameMap.value[item.codeGoodsId]) {
+      const fullName = localHSCode ? `${localName}-${localHSCode}` : localName;
+      nameMap.value = { ...nameMap.value, [item.codeGoodsId]: fullName };
+    }
+  }
 };
 
 watch(

@@ -61,7 +61,7 @@ export namespace SeaExportAdminApi {
     settlementDate?: string;
     codeSourceId?: number;
     isBusinessLocking?: boolean;
-    isFeeLocking?: boolean;
+    feeLocked?: boolean;
     mblNum?: string;
     bookingNum?: string;
     codeFrtId?: number;

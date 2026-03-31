@@ -288,6 +288,7 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
           ...ENTRUST_STATIC_FIELD_NAMES,
           ...ENTRUST_FORM_FIELD_NAMES,
           ...SERVICE_ITEM_FIELD_NAMES,
+          'cargoId',
         ].includes(item.fieldName),
     ),
     ...useShipmentFormSchema().filter((item) =>
@@ -542,7 +543,7 @@ const entrustReadonlyInfo = ref({
   accountDateText: '',
   settlementDateText: '',
   isBusinessLocking: false,
-  isFeeLocking: false,
+  feeLocked: false,
   accountDate: undefined as unknown,
   settlementDate: undefined as unknown,
 });
@@ -560,7 +561,7 @@ const refreshEntrustReadonlyInfo = (values: Record<string, any>) => {
       ? dayjs(values.settlementDate).format('YYYY-MM-DD')
       : '-',
     isBusinessLocking: !!values.isBusinessLocking,
-    isFeeLocking: !!values.isFeeLocking,
+    feeLocked: !!values.feeLocked,
     accountDate: values.accountDate,
     settlementDate: values.settlementDate,
   };
@@ -679,8 +680,8 @@ const syncOrderUserDetail = (detail: SystemUserAdminApi.UserDto) => {
     ...orderUserDetailMap.value,
     [detail.id]: detail,
   };
-  const userName = detail.userName || detail.nickName || String(detail.id);
-  syncOrderUserName(detail.id, userName);
+  const displayName = detail.nickName || detail.userName || String(detail.id);
+  syncOrderUserName(detail.id, displayName);
 };
 const setOrderUserNameForRow = (
   rowKey: string | undefined,
@@ -704,7 +705,7 @@ const loadOrderUserDetail = async (
     setOrderUserNameForRow(
       rowKey,
       userId,
-      cachedDetail.userName || cachedDetail.nickName || String(userId),
+      cachedDetail.nickName || cachedDetail.userName || String(userId),
     );
     return;
   }
@@ -716,8 +717,8 @@ const loadOrderUserDetail = async (
   try {
     const detail = await getUser(userId);
     syncOrderUserDetail(detail);
-    const userName = detail.userName || detail.nickName || String(userId);
-    setOrderUserNameForRow(rowKey, userId, userName);
+    const displayName = detail.nickName || detail.userName || String(userId);
+    setOrderUserNameForRow(rowKey, userId, displayName);
   } catch {
     // ignore user detail fetch error for hover card
   } finally {
@@ -768,10 +769,14 @@ const createOrderUserRows = (
       };
     });
   }
-  return items.map((item) => ({
-    ...normalizeOrderUserItem(item),
-    _rowKey: makeOrderUserRowKey(),
-  }));
+  return items.map((item) => {
+    const nickName = (item as any).userNickName as string | undefined;
+    return {
+      ...normalizeOrderUserItem(item),
+      userName: nickName || undefined,
+      _rowKey: makeOrderUserRowKey(),
+    };
+  });
 };
 const syncOrderUsersToForm = () => {
   partyInfoFormApi.setValues({
@@ -791,8 +796,15 @@ const initializeOrderUsersPanel = (
   items: SeaExportAdminApi.OrderUserAddDto[] | undefined,
 ) => {
   orderUserRows.value = createOrderUserRows(items);
+  for (const row of orderUserRows.value) {
+    if (row.userId && row.userName) {
+      orderUserNameMap.value = {
+        ...orderUserNameMap.value,
+        [row.userId]: row.userName,
+      };
+    }
+  }
   syncOrderUsersToForm();
-  void fillOrderUserNames(orderUserRows.value);
 };
 const updateOrderUserRole = (
   rowKey: string,
@@ -1346,7 +1358,7 @@ const flattenDetail = (
         .join('、') || '-',
     codeSourceId: to?.codeSourceId,
     isBusinessLocking: to?.isBusinessLocking,
-    isFeeLocking: to?.isFeeLocking,
+    feeLocked: to?.feeLocked,
     codeFrtId: to?.codeFrtId,
     prepareAtId,
     codeServiceId: to?.codeServiceId,
@@ -1820,7 +1832,7 @@ const buildDto = (values: Record<string, any>) => {
     settlementDate: toDateString(values.settlementDate),
     codeSourceId: values.codeSourceId ?? undefined,
     isBusinessLocking: entrustReadonlyInfo.value.isBusinessLocking,
-    isFeeLocking: entrustReadonlyInfo.value.isFeeLocking,
+    feeLocked: entrustReadonlyInfo.value.feeLocked,
     codeFrtId: values.codeFrtId ?? undefined,
     prepareAtId: values.prepareAtId ?? undefined,
     codeServiceId: values.codeServiceId ?? undefined,
@@ -2112,20 +2124,20 @@ defineExpose({
                   <div class="entrust-lock-tag">
                     <Tag
                       :color="
-                        entrustReadonlyInfo.isFeeLocking ? 'orange' : 'green'
+                        entrustReadonlyInfo.feeLocked ? 'orange' : 'green'
                       "
                     >
                       <span class="entrust-lock-tag__content">
                         <IconifyIcon
                           :icon="
-                            entrustReadonlyInfo.isFeeLocking
+                            entrustReadonlyInfo.feeLocked
                               ? 'mdi:lock-outline'
                               : 'mdi:lock-open-variant-outline'
                           "
                           class="entrust-lock-tag__icon"
                         />
                         {{
-                          entrustReadonlyInfo.isFeeLocking
+                          entrustReadonlyInfo.feeLocked
                             ? '费用已锁定'
                             : '费用未锁定'
                         }}
@@ -2517,10 +2529,9 @@ defineExpose({
                               {{ getOrderUserDisplayName(row) || '-' }}
                             </div>
                             <div class="order-user-detail-card__sub-title">
-                              {{
+                              账号：{{
                                 getOrderUserDetailText(
-                                  getOrderUserDetail(row.userId)?.nickName ||
-                                    getOrderUserDetail(row.userId)?.userName,
+                                  getOrderUserDetail(row.userId)?.userName,
                                 )
                               }}
                             </div>
@@ -2610,12 +2621,13 @@ defineExpose({
                     :key="`${row._rowKey}_${row.userId ?? 'empty'}_${getOrderUserDisplayName(row)}`"
                     :model-value="row.userId"
                     :user-attribute="row.userAttribute"
+                    label-key="nickName"
                     :selected-items="
                       row.userId
                         ? [
                             {
                               id: row.userId,
-                              userName: getOrderUserDisplayName(row),
+                              nickName: getOrderUserDisplayName(row),
                             },
                           ]
                         : []
@@ -2793,6 +2805,36 @@ defineExpose({
 .cargo-type-inline-wrap :deep(.ant-select),
 .cargo-type-inline-wrap :deep(.ant-btn) {
   width: 100%;
+}
+
+.cargo-container-card :deep(.cargo-main-item--marks) {
+  grid-row: 2 / span 4;
+  grid-column: 1 / span 2;
+}
+
+.cargo-container-card :deep(.cargo-main-item--goods-des) {
+  grid-row: 2 / span 4;
+  grid-column: 3 / span 3;
+}
+
+.cargo-container-card :deep(.cargo-main-item--pkgs) {
+  grid-row: 2;
+  grid-column: 6;
+}
+
+.cargo-container-card :deep(.cargo-main-item--code-package) {
+  grid-row: 3;
+  grid-column: 6;
+}
+
+.cargo-container-card :deep(.cargo-main-item--kgs) {
+  grid-row: 4;
+  grid-column: 6;
+}
+
+.cargo-container-card :deep(.cargo-main-item--cbm) {
+  grid-row: 5;
+  grid-column: 6;
 }
 
 .content-section__body {
