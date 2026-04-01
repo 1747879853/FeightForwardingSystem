@@ -27,6 +27,7 @@ import CodePackageSelect from '#/adapter/component/biz-select/code-package-selec
 import { $t } from '#/locales';
 
 import * as feeConstants from '../data';
+import * as clientConstants from '#/views/client/data';
 
 import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
@@ -722,7 +723,7 @@ defineExpose({
         <template v-else-if="column.key === 'industryCategory'">
           <Select
             v-model:value="record.industryCategory"
-            :options="feeConstants.getIndustryCategoryOptions()"
+            :options="clientConstants.getIndustryCategoryOptions()"
             class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')"
             @change="(v) => updateRow(index, 'industryCategory', v)"
@@ -733,7 +734,7 @@ defineExpose({
             :industryCategory="
               getSettlementIndustryCategory(record.industryCategory)
             "
-            v-if="record.industryCategory > -1"
+            v-if="record.industryCategory"
             :model-value="record.settlementId"
             class="w-full min-w-[90px]"
             :selected-items="
@@ -742,12 +743,18 @@ defineExpose({
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'settlementId', v)"
           />
-          <span v-else>--</span>
+          <span v-else>
+            <!-- <ClientSelect v-if="!record.industryCategory" :model-value="record.settlementId" class="w-full min-w-[90px]"
+              :selected-items="toSelectedItems(record.settlementId, record.settlementName)
+                " :placeholder="$t('ui.placeholder.select')"
+              @update:model-value="(v) => updateRow(index, 'settlementId', v)" /> -->
+          </span>
         </template>
 
         <template v-else-if="column.key === 'currencyId'">
           <CurrencySelect
             :model-value="record.currencyId"
+            labelKey="code"
             class="w-full min-w-[80px]"
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'currencyId', v)"

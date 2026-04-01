@@ -30,6 +30,7 @@ const getIndustryCategoryOptions = () => [
   {
     value: 'a',
     label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
+    module: [],
   },
   { value: 'b', label: $t('seaExport.client.industryCategoryOptions.shipper') },
   {
