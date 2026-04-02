@@ -1,5 +1,6 @@
 import { requestClient } from '#/api/request';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
+import type { SeaExportAdminApi } from './sea-export-admin';
 const API_PREFIX = '/services/app/OrderFeeAdmin';
 
 export namespace OrderFeeAdminApi {
@@ -16,7 +17,7 @@ export namespace OrderFeeAdminApi {
   /** 新增业务费用参数 */
   export interface OrderFeeAddDto {
     /** 业务 id */
-    transportOrderId: number;
+    transportOrderId: string;
 
     /**收付类型 */
     paySide: number;
@@ -34,7 +35,7 @@ export namespace OrderFeeAdminApi {
     industryCategory: number;
 
     /** 结算对象 id - 船公司是船公司表 其余是客户表 */
-    settlementId: number;
+    settlementId: string;
 
     /** 币别 id */
     currencyId: number;
@@ -90,11 +91,11 @@ export namespace OrderFeeAdminApi {
 
   /** 修改账单期参数 */
   export interface OrderFeeEditDto extends OrderFeeAddDto {
-    id: number;
+    id: string;
     /** 任务状态 */
     taskStatus?: string;
     /** 更改单 id */
-    changeOrderId?: number;
+    changeOrderId?: string;
 
     submitOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
     modifyOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
@@ -104,10 +105,10 @@ export namespace OrderFeeAdminApi {
   /** 业务费用列表和详情输出 Dto */
   export interface OrderFeeDto {
     /** 业务 id */
-    transportOrderId: number;
+    transportOrderId: string;
 
     /** 更改单 id */
-    changeOrderId?: number;
+    changeOrderId?: string;
 
     /**收付类型 */
     paySide: number;
@@ -118,12 +119,21 @@ export namespace OrderFeeAdminApi {
     /** 任务状态 */
     taskStatus?: string;
 
+    /** 开票状态 */
+    invoiceStatus: number;
+
+    /** 结算状态 */
+    settlementStatus: number;
+
     submitOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
     modifyOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
     deleteOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
 
-    /** 开票状态 */
-    invoiceStatus: number;
+    /** 所属用户权限id 不要用CreatorUserId 创建是创建 所属人是所属人 */
+    userId?: number;
+
+    /** 所属组织id(通过用户id算的) */
+    organizationUnits?: SeaExportAdminApi.OrganizationUnitSimpleDto[];
 
     /** 费用代码 id - 费用名称从这里来 */
     feeCodeId: number;
@@ -178,6 +188,9 @@ export namespace OrderFeeAdminApi {
 
     /** 备注 */
     remark?: string;
+
+    /** 本位币code */
+    localCurrencyCode: string;
 
     /** 费用代码名称 */
     feeCodeName?: string;

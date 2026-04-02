@@ -20,7 +20,7 @@ export type IndustryCategory = string;
 
 interface Props {
   /** 行业类别，如 'a' 船公司、'b' 发货人，决定下拉数据来源 */
-  industryCategory: IndustryCategory;
+  industryCategory?: IndustryCategory;
   /** label 字段名，默认 'name'，可用值：'name' | 'code' | 'fullName' */
   labelKey?: string;
   /** 每页数量，默认 20 */

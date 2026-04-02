@@ -119,6 +119,7 @@ export namespace SeaExportAdminApi {
   export interface OrganizationUnitSimpleDto {
     id: number;
     name?: string;
+    localCurrencyId?: number;
   }
 
   export interface SeaExportAddDto {
