@@ -550,8 +550,8 @@
             "in": "query",
             "description": "结算对象id 仓库合同是仓库 贸易商合同是贸易商",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -3700,22 +3700,22 @@
           "content": {
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             }
           }
@@ -3782,20 +3782,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -3816,8 +3816,8 @@
             "in": "query",
             "description": "业务id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -3899,8 +3899,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -3910,8 +3910,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -4204,8 +4204,8 @@
             "in": "query",
             "description": "结算对象id 不加外键 如果是收就是贸易商id 付就是仓库id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -4280,8 +4280,8 @@
             "in": "query",
             "description": "结算对象id 不加外键 如果是收就是贸易商 付就是仓库",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -4747,8 +4747,8 @@
             "name": "clientId",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -4802,20 +4802,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -4833,22 +4833,22 @@
           "content": {
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             }
           }
@@ -5017,8 +5017,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -5028,8 +5028,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -5279,8 +5279,8 @@
             "in": "query",
             "description": "客户ID 不能为空",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           }
         ],
@@ -5338,8 +5338,8 @@
             "in": "query",
             "description": "客户ID",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -5631,8 +5631,8 @@
             "in": "query",
             "description": "合作客户id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -10249,8 +10249,8 @@
             "in": "query",
             "description": "仓库id 一条入库有俩结算对象 这是其中一个仓库",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -10293,8 +10293,8 @@
             "in": "query",
             "description": "贸易商 一条入库有俩结算对象 这是另外一个",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -10302,8 +10302,8 @@
             "in": "query",
             "description": "供应商",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -11189,8 +11189,8 @@
             "in": "query",
             "description": "结算对象id 不加外键 如果是收就是贸易商 付就是仓库",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -12174,8 +12174,8 @@
             "in": "query",
             "description": "仓库id 一条入库有俩结算对象 这是其中一个仓库",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -12218,8 +12218,8 @@
             "in": "query",
             "description": "贸易商 一条入库有俩结算对象 这是另外一个",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -12227,8 +12227,8 @@
             "in": "query",
             "description": "供应商",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -12327,8 +12327,8 @@
             "in": "query",
             "description": "仓库id 一条入库有俩结算对象 这是其中一个仓库",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -12371,8 +12371,8 @@
             "in": "query",
             "description": "贸易商 一条入库有俩结算对象 这是另外一个",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -12380,8 +12380,8 @@
             "in": "query",
             "description": "供应商",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -13370,20 +13370,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -13431,8 +13431,8 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "integer",
-                    "format": "int64"
+                    "type": "string",
+                    "format": "uuid"
                   }
                 }
               },
@@ -13440,8 +13440,8 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "integer",
-                    "format": "int64"
+                    "type": "string",
+                    "format": "uuid"
                   }
                 }
               },
@@ -13449,8 +13449,8 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "type": "integer",
-                    "format": "int64"
+                    "type": "string",
+                    "format": "uuid"
                   }
                 }
               }
@@ -13527,22 +13527,22 @@
           "content": {
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             }
           }
@@ -13640,8 +13640,8 @@
             "in": "query",
             "description": "业务id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -13698,8 +13698,8 @@
             "in": "query",
             "description": "结算对象id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -13790,8 +13790,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -13801,8 +13801,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -13869,20 +13869,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -13977,8 +13977,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -13988,8 +13988,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -14173,20 +14173,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -14281,8 +14281,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -14292,8 +14292,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -14477,20 +14477,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -14585,8 +14585,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -14596,8 +14596,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -14772,8 +14772,8 @@
             "in": "query",
             "description": "委托单位id(客户)",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -14907,8 +14907,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -14918,8 +14918,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -17282,12 +17282,21 @@
         "operationId": "ApiServicesAppPaymentapplicationadminGetorderfeegroupasyncGet",
         "parameters": [
           {
+            "name": "Id",
+            "in": "query",
+            "description": "当前付费申请id 结果会排除这个付费申请已经选过的费用 因为每次选都会设置汇率 如果他选了第二遍 就会有不同的汇率 不能这么操作",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
             "name": "SettlementId",
             "in": "query",
             "description": "结算对象(客户id) 必填",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -17382,8 +17391,8 @@
             "in": "query",
             "description": "委托单位id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -17537,8 +17546,8 @@
             "in": "query",
             "description": "结算对象id  客户表",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -17622,8 +17631,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -17633,8 +17642,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -17663,13 +17672,72 @@
         }
       }
     },
-    "/api/services/app/PaymentApplicationAdmin/CreateOrUpdateAsync": {
+    "/api/services/app/PaymentApplicationAdmin/AddAsync": {
       "put": {
         "tags": [
           "PaymentApplicationAdmin"
         ],
-        "summary": "新增或修改付费申请",
-        "operationId": "ApiServicesAppPaymentapplicationadminCreateorupdateasyncPut",
+        "summary": "新增付费申请",
+        "operationId": "ApiServicesAppPaymentapplicationadminAddasyncPut",
+        "requestBody": {
+          "description": "查询参数",
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentApplicationAddDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentApplicationAddDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentApplicationAddDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentApplicationAddDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/PaymentApplicationAdmin/EditAsync": {
+      "put": {
+        "tags": [
+          "PaymentApplicationAdmin"
+        ],
+        "summary": "修改付费申请 只修改主表 不管子表 子表费用关联不在这里 要修改一条子表 只能先删除再添加 因为GetOrderFeeGroupAsync返回",
+        "operationId": "ApiServicesAppPaymentapplicationadminEditasyncPut",
         "requestBody": {
           "description": "查询参数",
           "content": {
@@ -17701,20 +17769,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -17734,22 +17802,22 @@
           "content": {
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             }
           }
@@ -20235,20 +20303,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -20268,22 +20336,22 @@
           "content": {
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             }
           }
@@ -20405,8 +20473,8 @@
             "in": "query",
             "description": "第二通知人id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20422,8 +20490,8 @@
             "in": "query",
             "description": "目的港代理id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20439,8 +20507,8 @@
             "in": "query",
             "description": "订舱代理id(国内代理)",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20448,8 +20516,8 @@
             "in": "query",
             "description": "船代id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20457,8 +20525,8 @@
             "in": "query",
             "description": "场站id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20894,8 +20962,8 @@
             "in": "query",
             "description": "委托单位id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20903,8 +20971,8 @@
             "in": "query",
             "description": "车队id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20912,8 +20980,8 @@
             "in": "query",
             "description": "报关行id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20921,8 +20989,8 @@
             "in": "query",
             "description": "仓库id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20930,8 +20998,8 @@
             "in": "query",
             "description": "保险公司id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20939,8 +21007,8 @@
             "in": "query",
             "description": "收货人id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20956,8 +21024,8 @@
             "in": "query",
             "description": "发货人id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -20973,8 +21041,8 @@
             "in": "query",
             "description": "通知人id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -21128,8 +21196,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -21139,8 +21207,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -21713,20 +21781,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -21765,8 +21833,8 @@
             "in": "query",
             "description": "结算对象(客户id) 必填",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -21827,8 +21895,8 @@
             "in": "query",
             "description": "委托单位id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -21965,22 +22033,22 @@
           "content": {
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             }
           }
@@ -22172,8 +22240,8 @@
             "in": "query",
             "description": "客户id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -22292,8 +22360,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -22303,8 +22371,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -23006,20 +23074,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -23039,22 +23107,22 @@
           "content": {
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             }
           }
@@ -23251,8 +23319,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -23262,8 +23330,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -25020,20 +25088,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -25053,22 +25121,22 @@
           "content": {
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             }
           }
@@ -25174,8 +25242,8 @@
             "in": "query",
             "description": "委托单位id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -25249,8 +25317,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -25260,8 +25328,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -25355,8 +25423,8 @@
             "in": "query",
             "description": "委托单位id",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -28789,20 +28857,20 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "integer",
-                  "format": "int64"
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
             }
@@ -28820,22 +28888,22 @@
           "content": {
             "application/json-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/IdDto"
+                "$ref": "#/components/schemas/GuidIdDto"
               }
             }
           }
@@ -28995,8 +29063,8 @@
             "name": "Id",
             "in": "query",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -29006,8 +29074,8 @@
             "schema": {
               "type": "array",
               "items": {
-                "type": "integer",
-                "format": "int64"
+                "type": "string",
+                "format": "uuid"
               }
             }
           }
@@ -29433,9 +29501,9 @@
             "nullable": true
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id 仓库合同是仓库 贸易商合同是贸易商",
-            "format": "int64"
+            "format": "uuid"
           },
           "agreementType": {
             "type": "integer",
@@ -29557,9 +29625,9 @@
             "nullable": true
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id 仓库合同是仓库 贸易商合同是贸易商",
-            "format": "int64"
+            "format": "uuid"
           },
           "director": {
             "type": "string",
@@ -29762,9 +29830,9 @@
             "nullable": true
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id 仓库合同是仓库 贸易商合同是贸易商",
-            "format": "int64"
+            "format": "uuid"
           },
           "agreementType": {
             "type": "integer",
@@ -30325,9 +30393,9 @@
             "nullable": true
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id 仓库合同是仓库 贸易商合同是贸易商",
-            "format": "int64"
+            "format": "uuid"
           },
           "agreementType": {
             "type": "integer",
@@ -31897,6 +31965,26 @@
         "additionalProperties": false,
         "description": "用于提交数据的Dto"
       },
+      "GuidIdDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "批量删除用这个",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Guid类型的Id Dto"
+      },
       "PaySide": {
         "enum": [
           0,
@@ -31953,38 +32041,59 @@
         "enum": [
           0,
           1,
-          2
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
         ],
         "type": "integer",
         "description": "单位",
         "format": "int32",
         "x-enumNames": [
-          "NotIssued",
-          "PartiallyIssued",
-          "Issued"
+          "箱",
+          "件",
+          "台",
+          "托盘",
+          "集装箱",
+          "吨",
+          "立方米",
+          "千克",
+          "升",
+          "捆",
+          "袋",
+          "卷",
+          "套"
         ]
       },
       "OrderFeeEditDto": {
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "description": "主键id",
-            "format": "int64"
+            "type": "string",
+            "description": "主键id 空就是新增",
+            "format": "uuid",
+            "nullable": true
           },
           "paySide": {
             "$ref": "#/components/schemas/PaySide"
           },
           "changeOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "更改单id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务id",
-            "format": "int64"
+            "format": "uuid"
           },
           "feeCodeId": {
             "type": "integer",
@@ -31995,9 +32104,9 @@
             "$ref": "#/components/schemas/IndustryCategory"
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id  - 全是客户表",
-            "format": "int64"
+            "format": "uuid"
           },
           "currencyId": {
             "type": "integer",
@@ -32058,14 +32167,15 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "主键id",
-            "format": "int64"
+            "format": "uuid",
+            "nullable": true
           },
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务id",
-            "format": "int64"
+            "format": "uuid"
           },
           "accountDate": {
             "type": "string",
@@ -32208,14 +32318,14 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "主键id（新增时为0，编辑时必填）",
-            "format": "int64"
+            "format": "uuid"
           },
           "taskBaseId": {
-            "type": "integer",
+            "type": "string",
             "description": "任务id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "taskType": {
@@ -32228,9 +32338,9 @@
             "$ref": "#/components/schemas/FrightModule"
           },
           "entityId": {
-            "type": "integer",
+            "type": "string",
             "description": "模块对应id",
-            "format": "int64"
+            "format": "uuid"
           },
           "originalInfo": {
             "type": "string",
@@ -32299,14 +32409,14 @@
         "type": "object",
         "properties": {
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务id",
-            "format": "int64"
+            "format": "uuid"
           },
           "changeOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "更改单id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "paySide": {
@@ -32330,9 +32440,9 @@
             "$ref": "#/components/schemas/IndustryCategory"
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id  - 全是客户表",
-            "format": "int64"
+            "format": "uuid"
           },
           "currencyId": {
             "type": "integer",
@@ -32513,8 +32623,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -32524,9 +32634,9 @@
         "type": "object",
         "properties": {
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务id",
-            "format": "int64"
+            "format": "uuid"
           },
           "accountDate": {
             "type": "string",
@@ -32627,8 +32737,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -32675,6 +32785,10 @@
         },
         "additionalProperties": false,
         "description": "分页数据封装"
+      },
+      "#/definitions/Guid": {
+        "type": "string",
+        "format": "uuid"
       },
       "ChatSide": {
         "enum": [
@@ -32786,9 +32900,9 @@
             "$ref": "#/components/schemas/PaySide"
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id 不加外键 如果是收就是贸易商id 付就是仓库id",
-            "format": "int64"
+            "format": "uuid"
           },
           "remark": {
             "type": "string",
@@ -33005,20 +33119,20 @@
             "format": "date-time"
           },
           "traderId": {
-            "type": "integer",
+            "type": "string",
             "description": "贸易商id",
-            "format": "int64"
+            "format": "uuid"
           },
           "supplierId": {
-            "type": "integer",
+            "type": "string",
             "description": "供应商id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "warehouseId": {
-            "type": "integer",
+            "type": "string",
             "description": "仓库id",
-            "format": "int64"
+            "format": "uuid"
           },
           "poNum": {
             "type": "string",
@@ -33216,9 +33330,9 @@
             "nullable": true
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id 不加外键 如果是收就是贸易商 付就是仓库",
-            "format": "int64"
+            "format": "uuid"
           },
           "settlementName": {
             "type": "string",
@@ -33376,9 +33490,9 @@
             "$ref": "#/components/schemas/PaySide"
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id 不加外键 如果是收就是贸易商id 付就是仓库id",
-            "format": "int64"
+            "format": "uuid"
           },
           "settlementName": {
             "type": "string",
@@ -33826,8 +33940,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           },
           "name": {
             "type": "string",
@@ -34011,8 +34125,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -34090,9 +34204,9 @@
         "type": "object",
         "properties": {
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "客户id",
-            "format": "int64"
+            "format": "uuid"
           },
           "permanent": {
             "type": "boolean",
@@ -34190,9 +34304,9 @@
             "format": "int64"
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "客户id",
-            "format": "int64"
+            "format": "uuid"
           },
           "permanent": {
             "type": "boolean",
@@ -34344,9 +34458,9 @@
         "type": "object",
         "properties": {
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "客户id",
-            "format": "int64"
+            "format": "uuid"
           },
           "clientName": {
             "type": "string",
@@ -34518,9 +34632,9 @@
         "type": "object",
         "properties": {
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "合作客户id",
-            "format": "int64"
+            "format": "uuid"
           },
           "name": {
             "type": "string",
@@ -34608,9 +34722,9 @@
             "format": "int64"
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "合作客户id",
-            "format": "int64"
+            "format": "uuid"
           },
           "name": {
             "type": "string",
@@ -34658,9 +34772,9 @@
         "type": "object",
         "properties": {
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "合作客户id",
-            "format": "int64"
+            "format": "uuid"
           },
           "name": {
             "type": "string",
@@ -38050,20 +38164,20 @@
             "nullable": true
           },
           "traderId": {
-            "type": "integer",
+            "type": "string",
             "description": "贸易商id",
-            "format": "int64"
+            "format": "uuid"
           },
           "supplierId": {
-            "type": "integer",
+            "type": "string",
             "description": "供应商id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "warehouseId": {
-            "type": "integer",
+            "type": "string",
             "description": "仓库id",
-            "format": "int64"
+            "format": "uuid"
           },
           "poNum": {
             "type": "string",
@@ -38156,20 +38270,20 @@
             "nullable": true
           },
           "traderId": {
-            "type": "integer",
+            "type": "string",
             "description": "贸易商id",
-            "format": "int64"
+            "format": "uuid"
           },
           "supplierId": {
-            "type": "integer",
+            "type": "string",
             "description": "供应商id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "warehouseId": {
-            "type": "integer",
+            "type": "string",
             "description": "仓库id",
-            "format": "int64"
+            "format": "uuid"
           },
           "poNum": {
             "type": "string",
@@ -39390,9 +39504,9 @@
             "nullable": true
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id 不加外键 如果是收就是贸易商 付就是仓库",
-            "format": "int64"
+            "format": "uuid"
           },
           "packingUnitId": {
             "type": "integer",
@@ -39506,9 +39620,9 @@
             "nullable": true
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id 不加外键 如果是收就是贸易商 付就是仓库",
-            "format": "int64"
+            "format": "uuid"
           },
           "packingUnitId": {
             "type": "integer",
@@ -41260,9 +41374,9 @@
         "type": "object",
         "properties": {
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务id",
-            "format": "int64"
+            "format": "uuid"
           },
           "paySide": {
             "$ref": "#/components/schemas/PaySide"
@@ -41282,9 +41396,9 @@
             "$ref": "#/components/schemas/IndustryCategory"
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id  - 全是客户表",
-            "format": "int64"
+            "format": "uuid"
           },
           "currencyId": {
             "type": "integer",
@@ -41393,8 +41507,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int32"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -41476,9 +41590,9 @@
         "type": "object",
         "properties": {
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务表id 就是TransportOrder.Id",
-            "format": "int64"
+            "format": "uuid"
           },
           "remark": {
             "type": "string",
@@ -41610,9 +41724,9 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "委托单位id",
-            "format": "int64"
+            "format": "uuid"
           },
           "pkgs": {
             "type": "integer",
@@ -41686,8 +41800,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -41700,14 +41814,14 @@
             "$ref": "#/components/schemas/TaskItemDto"
           },
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务id",
-            "format": "int64"
+            "format": "uuid"
           },
           "changeOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "更改单id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "paySide": {
@@ -41731,9 +41845,9 @@
             "$ref": "#/components/schemas/IndustryCategory"
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id  - 全是客户表",
-            "format": "int64"
+            "format": "uuid"
           },
           "currencyId": {
             "type": "integer",
@@ -41914,8 +42028,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -41925,9 +42039,9 @@
         "type": "object",
         "properties": {
           "entityId": {
-            "type": "integer",
+            "type": "string",
             "description": "关联业务id 就是TransportOrder.Id",
-            "format": "int64"
+            "format": "uuid"
           },
           "remark": {
             "type": "string",
@@ -41988,8 +42102,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -42041,9 +42155,9 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "taskbase的id",
-            "format": "int64"
+            "format": "uuid"
           },
           "success": {
             "type": "boolean",
@@ -42057,8 +42171,8 @@
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是待审核状态",
             "nullable": true
@@ -42071,15 +42185,15 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "taskbase的id",
-            "format": "int64"
+            "format": "uuid"
           },
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是待审核状态 否则不能撤回",
             "nullable": true
@@ -42092,9 +42206,9 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "taskbase的id",
-            "format": "int64"
+            "format": "uuid"
           },
           "remark": {
             "type": "string",
@@ -42104,8 +42218,8 @@
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是已审核状态 否则不能驳回",
             "nullable": true
@@ -42118,9 +42232,9 @@
         "type": "object",
         "properties": {
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务表id 就是TransportOrder.Id",
-            "format": "int64"
+            "format": "uuid"
           },
           "remark": {
             "type": "string",
@@ -42143,9 +42257,9 @@
         "type": "object",
         "properties": {
           "entityId": {
-            "type": "integer",
+            "type": "string",
             "description": "关联业务id 就是TransportOrder.Id",
-            "format": "int64"
+            "format": "uuid"
           },
           "remark": {
             "type": "string",
@@ -42206,8 +42320,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -42259,9 +42373,9 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "taskbase的id",
-            "format": "int64"
+            "format": "uuid"
           },
           "success": {
             "type": "boolean",
@@ -42275,8 +42389,8 @@
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是待审核状态",
             "nullable": true
@@ -42289,15 +42403,15 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "taskbase的id",
-            "format": "int64"
+            "format": "uuid"
           },
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是待审核状态 否则不能撤回",
             "nullable": true
@@ -42310,9 +42424,9 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "taskbase的id",
-            "format": "int64"
+            "format": "uuid"
           },
           "remark": {
             "type": "string",
@@ -42322,8 +42436,8 @@
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是已审核状态 否则不能驳回",
             "nullable": true
@@ -42336,9 +42450,9 @@
         "type": "object",
         "properties": {
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务表id 就是TransportOrder.Id",
-            "format": "int64"
+            "format": "uuid"
           },
           "remark": {
             "type": "string",
@@ -42348,8 +42462,8 @@
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用id列表",
             "nullable": true
@@ -42362,9 +42476,9 @@
         "type": "object",
         "properties": {
           "entityId": {
-            "type": "integer",
+            "type": "string",
             "description": "关联业务id 就是TransportOrder.Id",
-            "format": "int64"
+            "format": "uuid"
           },
           "remark": {
             "type": "string",
@@ -42425,8 +42539,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -42478,9 +42592,9 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "taskbase的id",
-            "format": "int64"
+            "format": "uuid"
           },
           "success": {
             "type": "boolean",
@@ -42494,8 +42608,8 @@
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是待审核状态",
             "nullable": true
@@ -42508,15 +42622,15 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "taskbase的id",
-            "format": "int64"
+            "format": "uuid"
           },
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是待审核状态 否则不能撤回",
             "nullable": true
@@ -42529,9 +42643,9 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "taskbase的id",
-            "format": "int64"
+            "format": "uuid"
           },
           "remark": {
             "type": "string",
@@ -42541,8 +42655,8 @@
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是已审核状态 否则不能驳回",
             "nullable": true
@@ -42555,9 +42669,9 @@
         "type": "object",
         "properties": {
           "entityId": {
-            "type": "integer",
+            "type": "string",
             "description": "关联业务id 就是TransportOrder.Id",
-            "format": "int64"
+            "format": "uuid"
           },
           "transportOrder": {
             "$ref": "#/components/schemas/TransportOrderSimpleDto"
@@ -42630,8 +42744,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -42694,8 +42808,8 @@
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是待审核状态",
             "nullable": true
@@ -42719,8 +42833,8 @@
           "transportOrderIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "业务id列表 就是TransportOrder.Id列表",
             "nullable": true
@@ -42735,8 +42849,8 @@
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是待审核状态 否则不能撤回",
             "nullable": true
@@ -42756,8 +42870,8 @@
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表 所有费用都只能是已审核状态 否则不能驳回",
             "nullable": true
@@ -43402,9 +43516,9 @@
             "nullable": true
           },
           "warehouseId": {
-            "type": "integer",
+            "type": "string",
             "description": "仓库id 出库的仓库 没出库的时候是空",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "outerTime": {
@@ -43564,9 +43678,9 @@
             "nullable": true
           },
           "warehouseId": {
-            "type": "integer",
+            "type": "string",
             "description": "仓库id 出库的仓库 没出库的时候是空",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "outerTime": {
@@ -44143,9 +44257,9 @@
             "format": "int64"
           },
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务id",
-            "format": "int64"
+            "format": "uuid"
           },
           "codeGoodsId": {
             "type": "integer",
@@ -44175,9 +44289,9 @@
             "format": "int64"
           },
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务id",
-            "format": "int64"
+            "format": "uuid"
           },
           "ctnCodeId": {
             "type": "integer",
@@ -44313,9 +44427,9 @@
         "type": "object",
         "properties": {
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务id",
-            "format": "int64"
+            "format": "uuid"
           },
           "userId": {
             "type": "integer",
@@ -44452,38 +44566,38 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "委托单位id",
-            "format": "int64"
+            "format": "uuid"
           },
           "teamId": {
-            "type": "integer",
+            "type": "string",
             "description": "车队id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "custBrokerId": {
-            "type": "integer",
+            "type": "string",
             "description": "报关行id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "warehouseId": {
-            "type": "integer",
+            "type": "string",
             "description": "仓库id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "insuranceId": {
-            "type": "integer",
+            "type": "string",
             "description": "保险公司id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "consigneeId": {
-            "type": "integer",
+            "type": "string",
             "description": "收货人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "consigneeContent": {
@@ -44492,9 +44606,9 @@
             "nullable": true
           },
           "shipperId": {
-            "type": "integer",
+            "type": "string",
             "description": "发货人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "shipperContent": {
@@ -44503,9 +44617,9 @@
             "nullable": true
           },
           "notifierId": {
-            "type": "integer",
+            "type": "string",
             "description": "通知人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "notifierContent": {
@@ -44689,8 +44803,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -44700,35 +44814,31 @@
         "enum": [
           0,
           1,
-          2,
-          3,
-          4,
-          5
+          1,
+          2
         ],
         "type": "integer",
         "description": "付费申请状态",
         "format": "int32",
         "x-enumNames": [
-          "Draft",
-          "Pending",
-          "Approved",
+          "Entering",
+          "Auditing",
           "Rejected",
-          "Paid",
-          "Cancelled"
+          "Passed"
         ]
       },
       "PaymentApplicationItemDto": {
         "type": "object",
         "properties": {
           "paymentApplicationId": {
-            "type": "integer",
+            "type": "string",
             "description": "付费申请ID",
-            "format": "int64"
+            "format": "uuid"
           },
           "orderFeeId": {
-            "type": "integer",
+            "type": "string",
             "description": "费用ID",
-            "format": "int64"
+            "format": "uuid"
           },
           "rate": {
             "type": "number",
@@ -44830,9 +44940,9 @@
             "nullable": true
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id  客户表",
-            "format": "int64"
+            "format": "uuid"
           },
           "currencyId": {
             "type": "integer",
@@ -44970,19 +45080,131 @@
         "additionalProperties": false,
         "description": "分页数据封装"
       },
+      "PaymentApplicationItemAddDto": {
+        "type": "object",
+        "properties": {
+          "orderFeeId": {
+            "type": "string",
+            "description": "费用ID",
+            "format": "uuid"
+          },
+          "rate": {
+            "type": "number",
+            "description": "这个币别对申请币别的汇率 如果是原币申请 为空",
+            "format": "double",
+            "nullable": true
+          },
+          "appliedAmount": {
+            "type": "number",
+            "description": "本次申请金额",
+            "format": "double"
+          },
+          "remark": {
+            "type": "string",
+            "description": "备注",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "付费申请明细新增Dto"
+      },
+      "PaymentApplicationAddDto": {
+        "type": "object",
+        "properties": {
+          "applicationTime": {
+            "type": "string",
+            "description": "申请时间",
+            "format": "date-time",
+            "nullable": true
+          },
+          "endTime": {
+            "type": "string",
+            "description": "最晚付款时间",
+            "format": "date-time",
+            "nullable": true
+          },
+          "settlementId": {
+            "type": "string",
+            "description": "结算对象id  客户表",
+            "format": "uuid"
+          },
+          "currencyId": {
+            "type": "integer",
+            "description": "币别ID 如果没有 就是原币申请",
+            "format": "int64",
+            "nullable": true
+          },
+          "require": {
+            "type": "string",
+            "description": "支付要求",
+            "nullable": true
+          },
+          "remark": {
+            "type": "string",
+            "description": "备注",
+            "nullable": true
+          },
+          "paymentApplicationItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentApplicationItemAddDto"
+            },
+            "description": "付费申请明细列表 不能为空",
+            "nullable": true
+          },
+          "isDeleted": {
+            "type": "boolean"
+          },
+          "deleterUserId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "deletionTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastModificationTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastModifierUserId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "creationTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "creatorUserId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "付费申请新增Dto"
+      },
       "PaymentApplicationItemEditDto": {
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "主键（编辑时需要，用于区分是新增还是更新）",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "orderFeeId": {
-            "type": "integer",
+            "type": "string",
             "description": "费用ID",
-            "format": "int64"
+            "format": "uuid"
           },
           "rate": {
             "type": "number",
@@ -45008,13 +45230,9 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "description": "主键id",
-            "format": "int64"
-          },
-          "applicationNo": {
             "type": "string",
-            "description": "申请单号 自动生成",
+            "description": "主键id",
+            "format": "uuid",
             "nullable": true
           },
           "status": {
@@ -45033,9 +45251,9 @@
             "nullable": true
           },
           "settlementId": {
-            "type": "integer",
+            "type": "string",
             "description": "结算对象id  客户表",
-            "format": "int64"
+            "format": "uuid"
           },
           "currencyId": {
             "type": "integer",
@@ -45705,9 +45923,9 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "船公司id",
-            "format": "int64"
+            "format": "uuid"
           },
           "shippingSchedule": {
             "type": "string",
@@ -45813,9 +46031,9 @@
             "format": "int64"
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "客户id",
-            "format": "int64"
+            "format": "uuid"
           },
           "clientContactId": {
             "type": "integer",
@@ -45978,9 +46196,9 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "船公司id",
-            "format": "int64"
+            "format": "uuid"
           },
           "shippingSchedule": {
             "type": "string",
@@ -46086,9 +46304,9 @@
             "format": "int64"
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "客户id",
-            "format": "int64"
+            "format": "uuid"
           },
           "clientContactId": {
             "type": "integer",
@@ -46263,9 +46481,9 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "船公司id",
-            "format": "int64"
+            "format": "uuid"
           },
           "shippingSchedule": {
             "type": "string",
@@ -46406,9 +46624,9 @@
             "format": "int64"
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "客户id",
-            "format": "int64"
+            "format": "uuid"
           },
           "clientContactId": {
             "type": "integer",
@@ -47307,38 +47525,38 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "委托单位id",
-            "format": "int64"
+            "format": "uuid"
           },
           "teamId": {
-            "type": "integer",
+            "type": "string",
             "description": "车队id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "custBrokerId": {
-            "type": "integer",
+            "type": "string",
             "description": "报关行id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "warehouseId": {
-            "type": "integer",
+            "type": "string",
             "description": "仓库id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "insuranceId": {
-            "type": "integer",
+            "type": "string",
             "description": "保险公司id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "consigneeId": {
-            "type": "integer",
+            "type": "string",
             "description": "收货人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "consigneeContent": {
@@ -47347,9 +47565,9 @@
             "nullable": true
           },
           "shipperId": {
-            "type": "integer",
+            "type": "string",
             "description": "发货人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "shipperContent": {
@@ -47358,9 +47576,9 @@
             "nullable": true
           },
           "notifierId": {
-            "type": "integer",
+            "type": "string",
             "description": "通知人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "notifierContent": {
@@ -47491,9 +47709,9 @@
             "$ref": "#/components/schemas/BillType"
           },
           "secondNotifierId": {
-            "type": "integer",
+            "type": "string",
             "description": "第二通知人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "secondNotifierContent": {
@@ -47502,9 +47720,9 @@
             "nullable": true
           },
           "podAgentId": {
-            "type": "integer",
+            "type": "string",
             "description": "目的港代理id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "podAgentContent": {
@@ -47513,21 +47731,21 @@
             "nullable": true
           },
           "bookingAgentId": {
-            "type": "integer",
+            "type": "string",
             "description": "订舱代理id(国内代理)",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "shipAgentId": {
-            "type": "integer",
+            "type": "string",
             "description": "船代id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "yardId": {
-            "type": "integer",
+            "type": "string",
             "description": "场站id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "codeIssueTypeId": {
@@ -47876,8 +48094,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           },
           "bizType": {
             "$ref": "#/components/schemas/BizType"
@@ -47975,38 +48193,38 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "委托单位id",
-            "format": "int64"
+            "format": "uuid"
           },
           "teamId": {
-            "type": "integer",
+            "type": "string",
             "description": "车队id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "custBrokerId": {
-            "type": "integer",
+            "type": "string",
             "description": "报关行id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "warehouseId": {
-            "type": "integer",
+            "type": "string",
             "description": "仓库id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "insuranceId": {
-            "type": "integer",
+            "type": "string",
             "description": "保险公司id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "consigneeId": {
-            "type": "integer",
+            "type": "string",
             "description": "收货人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "consigneeContent": {
@@ -48015,9 +48233,9 @@
             "nullable": true
           },
           "shipperId": {
-            "type": "integer",
+            "type": "string",
             "description": "发货人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "shipperContent": {
@@ -48026,9 +48244,9 @@
             "nullable": true
           },
           "notifierId": {
-            "type": "integer",
+            "type": "string",
             "description": "通知人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "notifierContent": {
@@ -48096,8 +48314,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           },
           "blType": {
             "$ref": "#/components/schemas/BLType"
@@ -48106,9 +48324,9 @@
             "$ref": "#/components/schemas/BillType"
           },
           "secondNotifierId": {
-            "type": "integer",
+            "type": "string",
             "description": "第二通知人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "secondNotifierContent": {
@@ -48117,9 +48335,9 @@
             "nullable": true
           },
           "podAgentId": {
-            "type": "integer",
+            "type": "string",
             "description": "目的港代理id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "podAgentContent": {
@@ -48128,21 +48346,21 @@
             "nullable": true
           },
           "bookingAgentId": {
-            "type": "integer",
+            "type": "string",
             "description": "订舱代理id(国内代理)",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "shipAgentId": {
-            "type": "integer",
+            "type": "string",
             "description": "船代id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "yardId": {
-            "type": "integer",
+            "type": "string",
             "description": "场站id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "codeIssueTypeId": {
@@ -48410,38 +48628,38 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "委托单位id",
-            "format": "int64"
+            "format": "uuid"
           },
           "teamId": {
-            "type": "integer",
+            "type": "string",
             "description": "车队id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "custBrokerId": {
-            "type": "integer",
+            "type": "string",
             "description": "报关行id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "warehouseId": {
-            "type": "integer",
+            "type": "string",
             "description": "仓库id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "insuranceId": {
-            "type": "integer",
+            "type": "string",
             "description": "保险公司id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "consigneeId": {
-            "type": "integer",
+            "type": "string",
             "description": "收货人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "consigneeContent": {
@@ -48450,9 +48668,9 @@
             "nullable": true
           },
           "shipperId": {
-            "type": "integer",
+            "type": "string",
             "description": "发货人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "shipperContent": {
@@ -48461,9 +48679,9 @@
             "nullable": true
           },
           "notifierId": {
-            "type": "integer",
+            "type": "string",
             "description": "通知人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "notifierContent": {
@@ -48647,8 +48865,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -48663,9 +48881,9 @@
             "format": "int64"
           },
           "seaExportId": {
-            "type": "integer",
+            "type": "string",
             "description": "海出id",
-            "format": "int64"
+            "format": "uuid"
           },
           "serviceType": {
             "$ref": "#/components/schemas/ServiceType"
@@ -48684,9 +48902,9 @@
             "$ref": "#/components/schemas/BillType"
           },
           "secondNotifierId": {
-            "type": "integer",
+            "type": "string",
             "description": "第二通知人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "secondNotifierContent": {
@@ -48695,9 +48913,9 @@
             "nullable": true
           },
           "podAgentId": {
-            "type": "integer",
+            "type": "string",
             "description": "目的港代理id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "podAgentContent": {
@@ -48706,21 +48924,21 @@
             "nullable": true
           },
           "bookingAgentId": {
-            "type": "integer",
+            "type": "string",
             "description": "订舱代理id(国内代理)",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "shipAgentId": {
-            "type": "integer",
+            "type": "string",
             "description": "船代id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "yardId": {
-            "type": "integer",
+            "type": "string",
             "description": "场站id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "codeIssueTypeId": {
@@ -49023,8 +49241,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -50254,9 +50472,9 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "客户id",
-            "format": "int64"
+            "format": "uuid"
           },
           "sortId": {
             "type": "integer",
@@ -50271,8 +50489,8 @@
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表",
             "nullable": true
@@ -50321,9 +50539,9 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "主键id",
-            "format": "int64"
+            "format": "uuid"
           },
           "statementNum": {
             "type": "string",
@@ -50331,9 +50549,9 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "客户id 不可编辑",
-            "format": "int64"
+            "format": "uuid"
           },
           "sortId": {
             "type": "integer",
@@ -50353,15 +50571,15 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "主键id",
-            "format": "int64"
+            "format": "uuid"
           },
           "orderFeeIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
             },
             "description": "费用列表",
             "nullable": true
@@ -50447,9 +50665,9 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "客户id",
-            "format": "int64"
+            "format": "uuid"
           },
           "sortId": {
             "type": "integer",
@@ -50564,8 +50782,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -50875,9 +51093,9 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
+            "type": "string",
             "description": "主键id",
-            "format": "int64"
+            "format": "uuid"
           },
           "taskType": {
             "$ref": "#/components/schemas/TaskType"
@@ -50905,9 +51123,9 @@
         "type": "object",
         "properties": {
           "taskBaseId": {
-            "type": "integer",
+            "type": "string",
             "description": "任务id",
-            "format": "int64"
+            "format": "uuid"
           },
           "taskStatus": {
             "$ref": "#/components/schemas/TaskStatus"
@@ -50916,9 +51134,9 @@
             "$ref": "#/components/schemas/FrightModule"
           },
           "entityId": {
-            "type": "integer",
+            "type": "string",
             "description": "模块对应id",
-            "format": "int64"
+            "format": "uuid"
           },
           "auditUserId": {
             "type": "integer",
@@ -50975,8 +51193,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -51044,8 +51262,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -52473,38 +52691,38 @@
             "nullable": true
           },
           "clientId": {
-            "type": "integer",
+            "type": "string",
             "description": "委托单位id",
-            "format": "int64"
+            "format": "uuid"
           },
           "teamId": {
-            "type": "integer",
+            "type": "string",
             "description": "车队id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "custBrokerId": {
-            "type": "integer",
+            "type": "string",
             "description": "报关行id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "warehouseId": {
-            "type": "integer",
+            "type": "string",
             "description": "仓库id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "insuranceId": {
-            "type": "integer",
+            "type": "string",
             "description": "保险公司id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "consigneeId": {
-            "type": "integer",
+            "type": "string",
             "description": "收货人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "consigneeContent": {
@@ -52513,9 +52731,9 @@
             "nullable": true
           },
           "shipperId": {
-            "type": "integer",
+            "type": "string",
             "description": "发货人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "shipperContent": {
@@ -52524,9 +52742,9 @@
             "nullable": true
           },
           "notifierId": {
-            "type": "integer",
+            "type": "string",
             "description": "通知人id",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           },
           "notifierContent": {
@@ -52710,8 +52928,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,
@@ -52763,14 +52981,14 @@
         "type": "object",
         "properties": {
           "transportOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "业务id 必填",
-            "format": "int64"
+            "format": "uuid"
           },
           "changeOrderId": {
-            "type": "integer",
+            "type": "string",
             "description": "更改单id 不传就代表只锁定/解锁业务 传了就代表锁定/解锁主单下的这条更改单",
-            "format": "int64",
+            "format": "uuid",
             "nullable": true
           }
         },
@@ -54950,8 +55168,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           },
           "name": {
             "type": "string",
@@ -55074,8 +55292,8 @@
             "nullable": true
           },
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,

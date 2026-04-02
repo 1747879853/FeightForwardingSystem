@@ -7,9 +7,9 @@ const API_PREFIX = '/services/app/ChangeOrderAdmin';
 export namespace ChangeOrderAdminApi {
   export interface ChangeOrderEditDto {
     // 主键id
-    id?: number;
+    id?: string;
     // 业务id
-    transportOrderId: number;
+    transportOrderId: string;
     //会计期间
     accountDate: string;
     //reason
@@ -49,7 +49,7 @@ export namespace ChangeOrderAdminApi {
 
   export interface ChangeOrderDto {
     /** 业务id */
-    transportOrderId: number;
+    transportOrderId: string;
     /** 会计期间 只取月的部分 根据开船日期生成 若没有开船日期 则根据创建日期生成 */
     accountDate: string; // 或 Date，根据前后端序列化约定
     /** 更改原因 */
@@ -89,7 +89,7 @@ export namespace ChangeOrderAdminApi {
     /** 创建人Id */
     creatorUserId?: number | null;
     /** 主键Id */
-    id: number;
+    id: string;
   }
 }
 
@@ -113,7 +113,7 @@ export const GetPagedList = (
 };
 
 //更改单详情 带着费用
-export const GetDetail = (id: number) => {
+export const GetDetail = (id: string) => {
   return requestClient.get<ChangeOrderAdminApi.ChangeOrderDto>(
     `${API_PREFIX}/DetailAsync`,
     {
@@ -125,7 +125,7 @@ export const GetDetail = (id: number) => {
 };
 
 //删除更改单
-export const DeleteAsync = (ids: number[]) => {
+export const DeleteAsync = (ids: string[]) => {
   return requestClient.delete(`${API_PREFIX}/DeleteAsync`, {
     data: {
       ids,
