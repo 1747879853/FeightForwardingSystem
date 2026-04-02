@@ -581,9 +581,8 @@ const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
   if (id == null) return [];
   return [{ id, [labelKey]: name || '' }] as any[];
 };
-const getSettlementIndustryCategory = (industryCategory?: number) => {
-  if (industryCategory == null || industryCategory < 0) return 'b';
-  return feeConstants.industryCategoryMap[industryCategory] || 'b';
+const getSettlementIndustryCategory = (industryCategory?: string) => {
+  return industryCategory;
 };
 watch(
   () => dataSource.value,
@@ -724,6 +723,7 @@ defineExpose({
           <Select
             v-model:value="record.industryCategory"
             :options="clientConstants.getIndustryCategoryOptions()"
+            allowClear
             class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')"
             @change="(v) => updateRow(index, 'industryCategory', v)"
@@ -734,7 +734,6 @@ defineExpose({
             :industryCategory="
               getSettlementIndustryCategory(record.industryCategory)
             "
-            v-if="record.industryCategory"
             :model-value="record.settlementId"
             class="w-full min-w-[90px]"
             :selected-items="
@@ -743,12 +742,12 @@ defineExpose({
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'settlementId', v)"
           />
-          <span v-else>
-            <!-- <ClientSelect v-if="!record.industryCategory" :model-value="record.settlementId" class="w-full min-w-[90px]"
+          <!--<span v-else>
+            <ClientSelect v-if="!record.industryCategory" :model-value="record.settlementId" class="w-full min-w-[90px]"
               :selected-items="toSelectedItems(record.settlementId, record.settlementName)
                 " :placeholder="$t('ui.placeholder.select')"
-              @update:model-value="(v) => updateRow(index, 'settlementId', v)" /> -->
-          </span>
+              @update:model-value="(v) => updateRow(index, 'settlementId', v)" />
+          </span>-->
         </template>
 
         <template v-else-if="column.key === 'currencyId'">
