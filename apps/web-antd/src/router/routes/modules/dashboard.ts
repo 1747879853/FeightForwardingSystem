@@ -4,36 +4,38 @@ import { $t } from '#/locales';
 
 const routes: RouteRecordRaw[] = [
   {
+    name: 'Analytics',
+    path: '/analytics',
+    component: () => import('#/views/dashboard/analytics/index.vue'),
+    meta: {
+      affixTab: true,
+      icon: 'lucide:area-chart',
+      order: 0,
+      title: $t('page.dashboard.analytics'),
+    },
+  },
+  {
+    name: 'Workspace',
+    path: '/workspace',
+    component: () => import('#/views/dashboard/workspace/index.vue'),
+    meta: {
+      icon: 'carbon:workspace',
+      order: 1,
+      title: $t('page.dashboard.workspace'),
+    },
+  },
+  {
+    name: 'Dashboard',
+    path: '/dashboard',
     meta: {
       icon: 'lucide:layout-dashboard',
       order: -1,
       title: $t('page.dashboard.title'),
     },
-    name: 'Dashboard',
-    path: '/dashboard',
     children: [
       {
-        name: 'Analytics',
-        path: '/analytics',
-        component: () => import('#/views/dashboard/analytics/index.vue'),
-        meta: {
-          affixTab: true,
-          icon: 'lucide:area-chart',
-          title: $t('page.dashboard.analytics'),
-        },
-      },
-      {
-        name: 'Workspace',
-        path: '/workspace',
-        component: () => import('#/views/dashboard/workspace/index.vue'),
-        meta: {
-          icon: 'carbon:workspace',
-          title: $t('page.dashboard.workspace'),
-        },
-      },
-      {
         name: 'SeaFreightGlobe',
-        path: '/sea-freight-globe',
+        path: 'sea-freight-globe',
         component: () =>
           import('#/views/dashboard/sea-freight-globe/index.vue'),
         meta: {

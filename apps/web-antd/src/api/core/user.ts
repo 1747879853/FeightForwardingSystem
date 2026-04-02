@@ -39,7 +39,7 @@ function adaptUserInfo(backendData: BackendUserResponse): UserInfo {
 
     // 扩展信息
     desc: '暂无描述', // 使用组织单位作为描述
-    homePath: '/dashboard', // 默认首页路径，可根据需要调整
+    homePath: '/dashboard/sea-freight-globe', // 默认首页路径，可根据需要调整
     token: '', // token 通常从登录接口获取，这里返回空字符串
   };
 }
