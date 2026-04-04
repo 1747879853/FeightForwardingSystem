@@ -29,9 +29,10 @@ import OrderFeeTable from './modules/order-fee-table.vue';
 const route = useRoute();
 const router = useRouter();
 
-const editId = computed(() => {
+const editId = computed<string | undefined>(() => {
   const id = route.params.id;
-  return id ? Number(id) : undefined;
+  if (Array.isArray(id)) return id[0];
+  return id ? String(id) : undefined;
 });
 
 const isEdit = computed(() => !!editId.value);

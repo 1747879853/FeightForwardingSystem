@@ -347,7 +347,7 @@ export const getOrderFeeDropdownData = () => {
 };
 
 /** 获取业务费用相关的统计数据 */
-export const getOrderFeeStatistics = (transportOrderId: number) => {
+export const getOrderFeeStatistics = (transportOrderId: string | number) => {
   return requestClient.get(`${API_PREFIX}/GetStatisticsAsync`, {
     params: { transportOrderId }, // 传递运输订单 ID 作为查询参数
     responseType: 'json',

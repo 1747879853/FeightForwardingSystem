@@ -32,7 +32,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/sea-export-admin/form.vue'),
       },
       {
-        path: ':id/edit',
+        path: ':id([0-9a-fA-F-]{36})/edit',
         name: 'SeaExportEdit',
         meta: {
           title: $t('seaExport.export.title'),

@@ -6,7 +6,7 @@ export namespace BillingPeriodAdminApi {
   /** 新增账单期参数 */
   export interface BillingPeriodAddDto {
     /** 客户id */
-    clientId: number;
+    clientId: number | string;
     /**长期有效  */
     permanent: boolean;
     /** 生效时间 */
@@ -34,15 +34,15 @@ export namespace BillingPeriodAdminApi {
   }
   /** 修改账单期参数 */
   export interface BillingPeriodEditDto extends BillingPeriodAddDto {
-    id: number;
+    id: number | string;
   }
 
   /** 账单详情 */
   export interface BillingPeriodDetailDto {
     /** id */
-    id: number;
+    id: number | string;
     /** 客户id */
-    clientId: number;
+    clientId: number | string;
     /**长期有效  */
     permanent: boolean;
     /** 生效时间 */
@@ -74,7 +74,7 @@ export namespace BillingPeriodAdminApi {
     /** 关键字 模糊匹配 */
     Keyword?: string;
     /** 客户id */
-    ClientId?: number;
+    ClientId?: number | string;
     /** 排序 默认是Id */
     Sorting?: string;
     /** 当前页码 */
@@ -116,7 +116,7 @@ export const editBillingPeriod = (
 /**
  * 删除账单期
  */
-export const deleteBillingPeriod = (id: number) => {
+export const deleteBillingPeriod = (id: number | string) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data: { id },
   });

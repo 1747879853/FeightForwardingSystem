@@ -20,9 +20,10 @@ import {
 const route = useRoute();
 const router = useRouter();
 
-const clientId = computed(() => {
+const clientId = computed<string | undefined>(() => {
   const id = route.params.id;
-  return id ? Number(id) : 0;
+  if (Array.isArray(id)) return id[0];
+  return id ? String(id) : undefined;
 });
 
 const page = ref({

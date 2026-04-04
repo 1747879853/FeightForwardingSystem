@@ -35,7 +35,7 @@ export namespace ClientAdminApi {
 
   /** 编辑客户参数 */
   export interface ClientEditDto {
-    id: number;
+    id: number | string;
     /** 客户简称 */
     name?: string;
     /** 客户代码 */
@@ -103,7 +103,7 @@ export namespace ClientAdminApi {
     lastModifierUserId?: number;
     creationTime?: string;
     creatorUserId?: number;
-    id: number;
+    id: number | string;
   }
 
   /** 分页列表响应 */
@@ -174,7 +174,7 @@ export const editClient = (data: ClientAdminApi.ClientEditDto) => {
 /**
  * 删除客户
  */
-export const deleteClient = (id: number) => {
+export const deleteClient = (id: number | string) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data: { id },
   });

@@ -32,7 +32,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/client/form.vue'),
       },
       {
-        path: ':id/edit',
+        path: ':id([0-9a-fA-F-]{36})/edit',
         name: 'ClientEdit',
         meta: {
           title: $t('seaExport.client.title'),

@@ -167,7 +167,7 @@ export namespace SeaExportAdminApi {
   }
 
   export interface SeaExportEditDto {
-    id: number;
+    id: number | string;
     blType?: number;
     billType?: number;
     secondNotifierId?: number;
@@ -212,7 +212,7 @@ export namespace SeaExportAdminApi {
   }
 
   export interface SeaExportDto {
-    id: number;
+    id: number | string;
     blType?: number;
     billType?: number;
     secondNotifierId?: number;
@@ -312,7 +312,7 @@ export const getSeaExportPagedList = (
   );
 };
 
-export const getSeaExportDetail = (id: number) => {
+export const getSeaExportDetail = (id: number | string) => {
   return requestClient.get<SeaExportAdminApi.SeaExportDto>(
     `${API_PREFIX}/DetailAsync`,
     { params: { Id: id } },
