@@ -5,7 +5,7 @@ import { Page } from '@vben/common-ui';
 import Form from './form.vue';
 import orderFee from './orderFee/index.vue';
 import defaultInfo from './modules/default-info.vue';
-import changeOrder from '#/views/sea-export/sea-export-admin/changeOrder/index.vue';
+import changeOrder from '#/views/sea-export-admin/changeOrder/index.vue';
 
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
 type FormSectionTabKey = 'basic' | 'party' | 'shipment' | 'port';

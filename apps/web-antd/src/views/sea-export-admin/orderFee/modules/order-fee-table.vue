@@ -76,9 +76,10 @@ const emit = defineEmits(['sync-fee']);
 const route = useRoute();
 const router = useRouter();
 
-const editId = computed(() => {
+const editId = computed<string | undefined>(() => {
   const id = route.params.id;
-  return id ? Number(id) : undefined;
+  if (Array.isArray(id)) return id[0];
+  return id ? String(id) : undefined;
 });
 
 const ORDER_CTN_API_KEYS: Array<
@@ -163,7 +164,7 @@ const getTableDate = async (id = 0) => {
     return;
   }
   let params = {
-    TransportOrderId: editId.value ?? 0,
+    TransportOrderId: editId.value,
     PaySide: props.type ?? 0,
     PageIndex: 1,
     PageSize: 999,
@@ -363,7 +364,7 @@ const Submitted = () => {
     keysSet.has((row as any)._rowKey),
   );
   let SubmitOrderFeeDto = {
-    TransportOrderId: editId.value ?? 0,
+    TransportOrderId: editId.value,
     PaySide: props.type ?? 0,
     orderFees: sanitizeOrderFee([...(list ?? [])]),
   };
@@ -384,7 +385,7 @@ const submitModify = (remark: string) => {
   );
   let ModifyOrderFeeDto = {
     remark: remark,
-    TransportOrderId: editId.value ?? 0,
+    TransportOrderId: editId.value,
     orderFees: sanitizeOrderFee([...(list ?? [])]),
   };
   console.log(ModifyOrderFeeDto);
@@ -405,7 +406,7 @@ const submitDelete = (remark: string) => {
   );
   let DeleteOrderFeeDto = {
     remark: remark,
-    TransportOrderId: editId.value ?? 0,
+    TransportOrderId: editId.value,
     orderFeeIds: list.map((item) => item.id),
     //orderFees: sanitizeOrderFee([...(list ?? [])]),
   };
