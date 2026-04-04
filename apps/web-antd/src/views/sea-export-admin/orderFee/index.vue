@@ -309,36 +309,6 @@ onMounted(() => {
   <Page auto-content-height>
     <Spin :spinning="pageLoading">
       <div class="mx-2 flex items-stretch gap-6">
-        <!--  -->
-        <div class="flex min-w-0 flex-1 flex-col gap-2">
-          <Card>
-            <template #title>
-              <span class="flex items-center gap-2">
-                <Package class="size-4" />
-                {{ $t('seaExport.export.orderFee.receivableCharges') }}
-              </span>
-            </template>
-            <div class="px-1">
-              <div class="mt-4">
-                <OrderFeeTable :type="0" />
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <template #title>
-              <span class="flex items-center gap-2">
-                <Package class="size-4" />
-                {{ $t('seaExport.export.orderFee.payableCharges') }}
-              </span>
-            </template>
-            <div class="px-1">
-              <div class="mt-4">
-                <OrderFeeTable :type="1" />
-              </div>
-            </div>
-          </Card>
-        </div>
         <!-- 垂直方向撑满 -->
         <Card class="flex w-[280px] shrink-0 flex-col">
           <template #title>
@@ -352,6 +322,11 @@ onMounted(() => {
             <span class="flex w-[145px]">{{ item.value || '--' }}</span>
           </div>
         </Card>
+        <div class="flex min-w-0 flex-1 flex-col gap-2">
+          <OrderFeeTable :type="0" />
+
+          <OrderFeeTable :type="1" />
+        </div>
       </div>
     </Spin>
   </Page>

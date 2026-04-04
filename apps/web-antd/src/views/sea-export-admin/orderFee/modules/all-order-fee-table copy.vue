@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { useExpenseAllColumns } from '../data';
+
 import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -47,8 +46,8 @@ const rowSelection = computed(() => ({
 
 const props = defineProps<{
   type?: number; // 收付类型 0 应收 1 应付
-  transportOrderId: string;
-  entityId: string;
+  transportOrderId: number;
+  entityId: number;
 }>();
 
 const handleModifyTask = (
@@ -88,51 +87,12 @@ const normalizeOrderFeeWithRowKey = (
   })) as any[];
 };
 
-const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
-  gridOptions: {
-    columns: useExpenseAllColumns(),
-    height: '300px',
-    keepSource: true,
-    radioConfig: {
-      highlight: true,
-      trigger: 'row',
-    },
-    rowConfig: {
-      keyField: 'id',
-    },
-    pagerConfig: {
-      enabled: false,
-    },
-    proxyConfig: {
-      ajax: {
-        query: async () => {
-          const detail = await OrderFeeTaskDetailAsync({
-            id: props.transportOrderId,
-          });
-          const orderFeeTasks =
-            detail.orderFeeTasks?.filter(
-              (item) => item.paySide === props.type,
-            ) || [];
-          const modifyData = handleModifyTask(orderFeeTasks);
-          return normalizeOrderFeeWithRowKey(modifyData);
-        },
-      },
-    },
-    toolbarConfig: {
-      custom: true,
-      export: false,
-      refresh: { code: 'query' },
-      zoom: true,
-    },
-  },
-});
 const getTableDate = async () => {
   const detail = await OrderFeeTaskDetailAsync({ id: props.transportOrderId });
   const orderFeeTasks =
     detail.orderFeeTasks?.filter((item) => item.paySide === props.type) || [];
   const modifyData = handleModifyTask(orderFeeTasks);
   dataSource.value = normalizeOrderFeeWithRowKey(modifyData);
-  gridApi.query();
   emit('updateTableData', dataSource.value);
 };
 
@@ -460,7 +420,7 @@ defineExpose({
     class="order-ctn-table justify-between rounded-md border"
     :class="[type === 0 ? 'rec-table' : 'pay-table']"
   >
-    <!-- <div class="m-2 flex items-center justify-between font-semibold">
+    <div class="m-2 flex items-center justify-between font-semibold">
       <div :class="[type === 0 ? 'blue' : 'yellow']">
         {{
           type === 0
@@ -471,21 +431,176 @@ defineExpose({
       <div class="text-small font-normal">
         {{ $t('auditApproval.totalNum', [dataSource.length]) }}
       </div>
-    </div> -->
+    </div>
 
-    <Grid
-      :table-title="
-        type === 0
-          ? $t('seaExport.export.orderFee.receivableCharges')
-          : $t('seaExport.export.orderFee.payableCharges')
-      "
+    <Table
+      :data-source="dataSource"
+      :columns="columns"
+      :row-selection="rowSelection"
+      :pagination="false"
+      size="small"
+      bordered
+      :scroll="{ x: 2600 }"
+      row-key="_rowKey"
+      :class="['my-custom-table']"
     >
-      <template #toolbar-tools>
-        <div class="text-small font-normal">
-          {{ $t('auditApproval.totalNum', [dataSource.length]) }}
-        </div>
+      <template #bodyCell="{ column, record, index }">
+        <template v-if="column.key === 'invoiceStatus'">
+          <span>{{
+            feeConstants
+              .getInvoiceStatusOptions()
+              .find((o) => o.value === record.invoiceStatus)?.label
+          }}</span>
+        </template>
+        <template v-if="column.key === 'feeStatus'">
+          <Tag
+            :color="
+              feeConstants
+                .getFeeStatusOptions()
+                .find((o) => o.value === record.feeStatus)?.color || ''
+            "
+          >
+            {{
+              feeConstants
+                .getFeeStatusOptions()
+                .find((o) => o.value === record.feeStatus)?.label
+            }}</Tag
+          >
+        </template>
+
+        <template v-if="column.key === 'industryCategory'">
+          <span>{{
+            feeConstants
+              .getIndustryCategoryOptions()
+              .find((o) => o.value === record.industryCategory)?.label
+          }}</span>
+        </template>
+
+        <template v-if="column.key === 'unitPrice'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.unitPrice.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'amount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.amount.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'noTaxUnitPrice'">
+          <span class="money">
+            {{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.noTaxUnitPrice.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'noTaxAmount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.noTaxAmount.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'rqstPaymentAmount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.rqstPaymentAmount.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'invoicedAmount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.invoicedAmount.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'settledAmount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.settledAmount.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'orderInvoiceAmount'">
+          <span class="money"
+            >{{
+              feeConstants
+                .getCurrencyEnumSymbolOptions()
+                .find((o) => o.value === record.currencyId)?.label
+            }}{{ record.orderInvoiceAmount.toLocaleString() }}</span
+          >
+        </template>
+
+        <template v-if="column.key === 'canInvoice'">
+          <span>{{
+            record.canInvoice ? $t('common.yes') : $t('common.no')
+          }}</span>
+        </template>
+
+        <template v-if="column.key === 'isConfidential'">
+          <span>{{
+            record.isConfidential ? $t('common.yes') : $t('common.no')
+          }}</span>
+        </template>
+
+        <template v-if="column.key === 'taskType'">
+          <span>{{
+            submissionConstants
+              .getTaskTypeOptions()
+              .find((o) => o.value === record.task?.taskType)?.label || '--'
+          }}</span>
+        </template>
+
+        <template v-if="column.key === 'taskStatus'">
+          <Tag
+            :color="
+              submissionConstants
+                .getTaskStatusOptions()
+                .find((o) => o.value === record.task?.taskStatus)?.color || ''
+            "
+          >
+            {{
+              submissionConstants
+                .getTaskStatusOptions()
+                .find((o) => o.value === record.task?.taskStatus)?.label || '--'
+            }}</Tag
+          >
+        </template>
+
+        <template v-else-if="column.key === 'dataEntryMethod'">
+          <span>{{
+            feeConstants
+              .getDataEntryMethodOptions()
+              .find((o) => o.value === record.dataEntryMethod)?.label
+          }}</span>
+        </template>
       </template>
-    </Grid>
+    </Table>
   </div>
 </template>
 

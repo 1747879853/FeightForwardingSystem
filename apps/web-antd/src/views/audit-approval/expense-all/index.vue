@@ -23,17 +23,17 @@ import {
 import Detail from './modules/detail.vue';
 const router = useRouter();
 
-const transportOrderId = ref<number>(0);
+const transportOrderId = ref<string>('');
 const orderName = ref<string>('');
-const entityId = ref<number>(0);
+const entityId = ref<string>('');
 const handleRowDblclick = ({
   row,
 }: {
   row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
 }) => {
   console.log('row', row);
-  transportOrderId.value = row.transportOrder.id || 0;
-  entityId.value = row.entityId || 0;
+  transportOrderId.value = row.transportOrder.id || '';
+  entityId.value = row.entityId || '';
   orderName.value = `当前选中: ${row.transportOrder.mblNum}(${row.transportOrder.clientName})`;
 };
 

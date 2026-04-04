@@ -19,6 +19,7 @@ import {
   Modal,
   Textarea,
   Tag,
+  Card,
 } from 'ant-design-vue';
 
 import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
@@ -68,7 +69,7 @@ const rowSelection = computed(() => ({
 const props = defineProps<{
   type?: number; // 收付类型 0 应收 1 应付
   mode?: string; // changeOrder 更改单
-  parentChangeOrderId?: number; //更改单Id
+  parentChangeOrderId?: string; //更改单Id
 }>();
 
 const emit = defineEmits(['sync-fee']);
@@ -78,7 +79,7 @@ const router = useRouter();
 
 const editId = computed(() => {
   const id = route.params.id;
-  return id ? Number(id) : undefined;
+  return id ? id.toString() : '';
 });
 
 const ORDER_CTN_API_KEYS: Array<
@@ -110,7 +111,7 @@ const ORDER_CTN_API_KEYS: Array<
 ];
 let rowKeyCounter = 0;
 
-const setChangeOrderFee = async (id: number) => {
+const setChangeOrderFee = async (id: string) => {
   if (id) {
     let res = await GetDetail(id);
     console.log(
@@ -152,8 +153,8 @@ const setChangeOrderFee = async (id: number) => {
     dataSource.value = [];
   }
 };
-const changeOrderId = ref(0);
-const getTableDate = async (id = 0) => {
+const changeOrderId = ref('');
+const getTableDate = async (id = '') => {
   if (props.mode === 'changeOrder') {
     if (id) {
       changeOrderId.value = id;
@@ -163,7 +164,7 @@ const getTableDate = async (id = 0) => {
     return;
   }
   let params = {
-    TransportOrderId: editId.value ?? 0,
+    TransportOrderId: editId.value ?? '',
     PaySide: props.type ?? 0,
     PageIndex: 1,
     PageSize: 999,
@@ -203,7 +204,7 @@ const addRow = () => {
   const list = [...(dataSource.value ?? [])];
   list.push({
     _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
-    id: 0,
+    id: '',
     transportOrderId: editId.value,
     paySide: props.type,
     feeStatus: 0,
@@ -315,7 +316,7 @@ const submitOrderFeeWithdraw = () => {
   let taskBaseId = okList[0]?.submitOrderFeeTasks[0]?.taskBaseId;
   let submitOrderFeeWithdrawDto: ExpenseSubmissionAdminApi.SubmitOrderFeeWithdrawDto =
     {
-      id: taskBaseId ?? 0,
+      id: taskBaseId ?? '',
       orderFeeIds: list.map((item) => item.id),
     };
   submitOrderFeeWithdrawAsync(submitOrderFeeWithdrawDto).then(() => {
@@ -363,7 +364,7 @@ const Submitted = () => {
     keysSet.has((row as any)._rowKey),
   );
   let SubmitOrderFeeDto = {
-    TransportOrderId: editId.value ?? 0,
+    TransportOrderId: editId.value ?? '',
     PaySide: props.type ?? 0,
     orderFees: sanitizeOrderFee([...(list ?? [])]),
   };
@@ -384,7 +385,7 @@ const submitModify = (remark: string) => {
   );
   let ModifyOrderFeeDto = {
     remark: remark,
-    TransportOrderId: editId.value ?? 0,
+    TransportOrderId: editId.value ?? '',
     orderFees: sanitizeOrderFee([...(list ?? [])]),
   };
   console.log(ModifyOrderFeeDto);
@@ -405,7 +406,7 @@ const submitDelete = (remark: string) => {
   );
   let DeleteOrderFeeDto = {
     remark: remark,
-    TransportOrderId: editId.value ?? 0,
+    TransportOrderId: editId.value ?? '',
     orderFeeIds: list.map((item) => item.id),
     //orderFees: sanitizeOrderFee([...(list ?? [])]),
   };
@@ -572,6 +573,15 @@ const updateRow = (
       };
     }
   }
+  if (field === 'feeCodeId' && value !== '') {
+    let feecodeItem = feeCodeList.value.find((item) => item.id === value);
+    if (feecodeItem) {
+      list[index] = {
+        ...list[index],
+        currencyId: feecodeItem.currencyId || 0,
+      };
+    }
+  }
   dataSource.value = list;
   //更改单使用
   syncFee();
@@ -581,8 +591,17 @@ const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
   if (id == null) return [];
   return [{ id, [labelKey]: name || '' }] as any[];
 };
-const getSettlementIndustryCategory = (industryCategory?: string) => {
-  return industryCategory;
+
+const getIndustryCategoryOptions = () => {
+  return clientConstants.getIndustryCategoryOptions().map((o) => ({
+    label: o.label,
+    value: o.key,
+  }));
+};
+const getSettlementIndustryCategory = (industryCategory?: number) => {
+  return clientConstants
+    .getIndustryCategoryOptions()
+    .find((o) => o.key === industryCategory)?.value;
 };
 watch(
   () => dataSource.value,
@@ -611,365 +630,395 @@ defineExpose({
 </script>
 
 <template>
-  <div class="order-ctn-table">
-    <div class="mb-2 flex items-center justify-between">
-      <Space>
-        <Button type="primary" size="small" @click="addRow">
-          {{ $t('common.create') }}
-        </Button>
-        <Button
-          type="primary"
-          size="small"
-          @click="saveRow"
-          v-show="props.mode !== 'changeOrder'"
-        >
-          {{ $t('common.save') }}
-        </Button>
-        <Button
-          danger
-          size="small"
-          :disabled="!selectedRowKeys.length"
-          @click="removeSelectedRows"
-        >
-          {{ $t('common.delete') }}
-        </Button>
+  <Card class="order-fee-card">
+    <template #title>
+      <div class="flex">
+        <div class="flex items-center gap-2">
+          <Package class="size-4" />
+          {{ $t('seaExport.export.orderFee.receivableCharges') }}
+        </div>
+        <div class="ml-4 flex items-center justify-between">
+          <Space>
+            <Button type="primary" size="small" @click="addRow">
+              {{ $t('common.create') }}
+            </Button>
+            <Button
+              type="primary"
+              size="small"
+              @click="saveRow"
+              v-show="props.mode !== 'changeOrder'"
+            >
+              {{ $t('common.save') }}
+            </Button>
+            <Button
+              danger
+              size="small"
+              :disabled="!selectedRowKeys.length"
+              @click="removeSelectedRows"
+            >
+              {{ $t('common.delete') }}
+            </Button>
 
-        <DropdownButton
-          @click="Submitted"
-          size="small"
-          type="primary"
-          :disabled="!selectedRowKeys.length"
-        >
-          {{ $t('auditApproval.status.Submitted') }}
-          <template #overlay>
-            <Menu @click="SubmittedOther">
-              <MenuItem key="modify">
-                {{ $t('auditApproval.ApplyModification') }}
-              </MenuItem>
-              <MenuItem key="delete">
-                {{ $t('auditApproval.ApplyDeletion') }}
-              </MenuItem>
-            </Menu>
-          </template>
-        </DropdownButton>
-        <!-- <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="submitOrderFeeWithdraw">{{
-          $t('auditApproval.withdraw') }}</Button> -->
-        <Button
-          type="primary"
-          size="small"
-          :disabled="!selectedRowKeys.length"
-          @click="orderFeeWithdraw"
-          >{{ $t('auditApproval.withdraw') }}</Button
-        >
-        <!-- <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="Submitted">{{
-          $t('auditApproval.status.Submitted') }}</Button>
-        <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="submitOrderFeeWithdraw">{{
-          $t('auditApproval.withdraw') }}</Button>
-        <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="submitOrderFeeWithdraw">{{
-          $t('auditApproval.ApplyModification') }}</Button>
-        <Button type="primary" size="small" :disabled="!selectedRowKeys.length" @click="submitOrderFeeWithdraw">{{
-          $t('auditApproval.ApplyDeletion') }}</Button> -->
-      </Space>
-    </div>
-    <Table
-      :data-source="dataSource"
-      :row-selection="rowSelection"
-      :pagination="false"
-      size="small"
-      bordered
-      :scroll="{ x: 2800 }"
-      row-key="_rowKey"
-    >
-      <template #bodyCell="{ column, record, index }">
-        <template v-if="column.key === 'invoiceStatus'">
-          <span>{{
-            feeConstants
-              .getInvoiceStatusOptions()
-              .find((o) => o.value === record.invoiceStatus)?.label
-          }}</span>
-          <!-- <Select v-model:value="record.feeStatus" :options="getFeeStatusOptions()" class="w-full min-w-[100px]"
-            :placeholder="$t('ui.placeholder.select')" @change="(v) => updateRow(index, 'feeStatus', v)" /> -->
-        </template>
-        <template v-if="column.key === 'feeStatus'">
-          <Tag
-            :color="
-              feeConstants
-                .getFeeStatusOptions()
-                .find((o) => o.value === record.feeStatus)?.color
-            "
-            >{{
-              feeConstants
-                .getFeeStatusOptions()
-                .find((o) => o.value === record.feeStatus)?.label
-            }}</Tag
+            <DropdownButton
+              @click="Submitted"
+              size="small"
+              type="primary"
+              :disabled="!selectedRowKeys.length"
+            >
+              {{ $t('auditApproval.status.Submitted') }}
+              <template #overlay>
+                <Menu @click="SubmittedOther">
+                  <MenuItem key="modify">
+                    {{ $t('auditApproval.ApplyModification') }}
+                  </MenuItem>
+                  <MenuItem key="delete">
+                    {{ $t('auditApproval.ApplyDeletion') }}
+                  </MenuItem>
+                </Menu>
+              </template>
+            </DropdownButton>
+
+            <Button
+              type="primary"
+              size="small"
+              :disabled="!selectedRowKeys.length"
+              @click="orderFeeWithdraw"
+              >{{ $t('auditApproval.withdraw') }}</Button
+            >
+          </Space>
+        </div>
+      </div>
+    </template>
+    <div class="px-1">
+      <div class="mt-4">
+        <div class="order-ctn-table">
+          <Table
+            class="custom-table"
+            :data-source="dataSource"
+            :row-selection="rowSelection"
+            :pagination="false"
+            size="small"
+            bordered
+            :scroll="{ x: 2800 }"
+            row-key="_rowKey"
           >
-          <!-- <Select v-model:value="record.feeStatus" :options="getFeeStatusOptions()" class="w-full min-w-[100px]"
+            <template #bodyCell="{ column, record, index }">
+              <template v-if="column.key === 'invoiceStatus'">
+                <span>{{
+                  feeConstants
+                    .getInvoiceStatusOptions()
+                    .find((o) => o.value === record.invoiceStatus)?.label
+                }}</span>
+                <!-- <Select v-model:value="record.feeStatus" :options="getFeeStatusOptions()" class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')" @change="(v) => updateRow(index, 'feeStatus', v)" /> -->
-        </template>
-        <template v-if="column.key === 'taskStatus'">
-          <span>{{ record.taskStatus }}</span>
-          <!-- <Select v-model:value="record.feeStatus" :options="getFeeStatusOptions()" class="w-full min-w-[100px]"
+              </template>
+              <template v-else-if="column.key === 'feeStatus'">
+                <Tag
+                  :color="
+                    feeConstants
+                      .getFeeStatusOptions()
+                      .find((o) => o.value === record.feeStatus)?.color
+                  "
+                  >{{
+                    feeConstants
+                      .getFeeStatusOptions()
+                      .find((o) => o.value === record.feeStatus)?.label
+                  }}</Tag
+                >
+                <!-- <Select v-model:value="record.feeStatus" :options="getFeeStatusOptions()" class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')" @change="(v) => updateRow(index, 'feeStatus', v)" /> -->
-        </template>
-        <template v-else-if="column.key === 'feeCodeId'">
-          <FeeCodeSelect
-            :model-value="record.feeCodeId"
-            class="w-full min-w-[90px]"
-            :placeholder="$t('ui.placeholder.select')"
-            @update:model-value="(v) => updateRow(index, 'feeCodeId', v)"
-          />
-        </template>
-        <template v-else-if="column.key === 'industryCategory'">
-          <Select
-            v-model:value="record.industryCategory"
-            :options="clientConstants.getIndustryCategoryOptions()"
-            allowClear
-            class="w-full min-w-[100px]"
-            :placeholder="$t('ui.placeholder.select')"
-            @change="(v) => updateRow(index, 'industryCategory', v)"
-          />
-        </template>
-        <template v-else-if="column.key === 'settlementId'">
-          <ClientSelect
-            :industryCategory="
-              getSettlementIndustryCategory(record.industryCategory)
-            "
-            :model-value="record.settlementId"
-            class="w-full min-w-[90px]"
-            :selected-items="
-              toSelectedItems(record.settlementId, record.settlementName)
-            "
-            :placeholder="$t('ui.placeholder.select')"
-            @update:model-value="(v) => updateRow(index, 'settlementId', v)"
-          />
-          <!--<span v-else>
+              </template>
+              <template v-if="column.key === 'taskStatus'">
+                <span>{{ record.taskStatus }}</span>
+                <!-- <Select v-model:value="record.feeStatus" :options="getFeeStatusOptions()" class="w-full min-w-[100px]"
+            :placeholder="$t('ui.placeholder.select')" @change="(v) => updateRow(index, 'feeStatus', v)" /> -->
+              </template>
+              <template v-else-if="column.key === 'feeCodeId'">
+                <FeeCodeSelect
+                  :model-value="record.feeCodeId"
+                  class="w-full min-w-[90px]"
+                  :placeholder="$t('ui.placeholder.select')"
+                  @update:model-value="(v) => updateRow(index, 'feeCodeId', v)"
+                />
+              </template>
+              <template v-else-if="column.key === 'industryCategory'">
+                <Select
+                  v-model:value="record.industryCategory"
+                  :options="getIndustryCategoryOptions()"
+                  allowClear
+                  class="w-full min-w-[100px]"
+                  :placeholder="$t('ui.placeholder.select')"
+                  @change="(v) => updateRow(index, 'industryCategory', v)"
+                />
+              </template>
+              <template v-else-if="column.key === 'settlementId'">
+                <ClientSelect
+                  :industryCategory="
+                    getSettlementIndustryCategory(record.industryCategory)
+                  "
+                  :model-value="record.settlementId"
+                  class="w-full min-w-[90px]"
+                  :selected-items="
+                    toSelectedItems(record.settlementId, record.settlementName)
+                  "
+                  :placeholder="$t('ui.placeholder.select')"
+                  @update:model-value="
+                    (v) => updateRow(index, 'settlementId', v)
+                  "
+                />
+                <!--<span v-else>
             <ClientSelect v-if="!record.industryCategory" :model-value="record.settlementId" class="w-full min-w-[90px]"
               :selected-items="toSelectedItems(record.settlementId, record.settlementName)
                 " :placeholder="$t('ui.placeholder.select')"
               @update:model-value="(v) => updateRow(index, 'settlementId', v)" />
           </span>-->
-        </template>
+              </template>
 
-        <template v-else-if="column.key === 'currencyId'">
-          <CurrencySelect
-            :model-value="record.currencyId"
-            labelKey="code"
-            class="w-full min-w-[80px]"
-            :placeholder="$t('ui.placeholder.select')"
-            @update:model-value="(v) => updateRow(index, 'currencyId', v)"
-          />
-        </template>
-        <template v-else-if="column.key === 'exchangeRate'">
-          <ExchangeRateSelect
-            :model-value="record.exchangeRate"
-            class="w-full min-w-[70px]"
-            :placeholder="$t('ui.placeholder.select')"
-            @update:model-value="(v) => updateRow(index, 'exchangeRate', v)"
-          />
-        </template>
-        <template v-else-if="column.key === 'unitPrice'">
-          <InputNumber
-            :value="record.unitPrice"
-            :placeholder="$t('seaExport.export.orderFee.unitPrice')"
-            class="w-full"
-            :min="0"
-            :precision="4"
-            :controls="false"
-            @update:value="(v) => updateRow(index, 'unitPrice', v)"
-          />
-        </template>
-        <template v-else-if="column.key === 'amount'">
-          <InputNumber
-            :value="record.amount"
-            :placeholder="$t('seaExport.export.orderFee.amount')"
-            class="w-full"
-            :min="0"
-            :controls="false"
-            :precision="2"
-            @update:value="(v) => updateRow(index, 'amount', v)"
-          />
-        </template>
-        <template v-else-if="column.key === 'unitEmum'">
-          <Select
-            v-model:value="record.unitEmum"
-            :options="feeConstants.getUnitEmumOptions()"
-            class="w-full min-w-[100px]"
-            :placeholder="$t('ui.placeholder.select')"
-            @change="(v) => updateRow(index, 'unitEmum', v)"
-          />
-        </template>
-        <template v-else-if="column.key === 'quantity'">
-          <InputNumber
-            :value="record.quantity"
-            :placeholder="$t('seaExport.export.orderFee.quantity')"
-            class="w-full"
-            :min="0"
-            :controls="false"
-            :precision="2"
-            @update:value="(v) => updateRow(index, 'quantity', v)"
-          />
-        </template>
-        <template v-else-if="column.key === 'taxRate'">
-          <InputNumber
-            :value="record.taxRate"
-            :placeholder="$t('seaExport.export.orderFee.taxRate')"
-            class="w-full"
-            :min="0"
-            :controls="false"
-            :precision="4"
-            @update:value="(v) => updateRow(index, 'taxRate', v)"
-          />
-        </template>
-        <template v-else-if="column.key === 'noTaxUnitPrice'">
-          <span>{{
-            record.noTaxUnitPrice ? record.noTaxUnitPrice.toFixed(2) : '--'
-          }}</span>
-        </template>
-        <template v-else-if="column.key === 'noTaxAmount'">
-          <span>{{
-            record.noTaxAmount ? record.noTaxAmount.toFixed(4) : '--'
-          }}</span>
-        </template>
-        <template v-else-if="column.key === 'canInvoice'">
-          <Checkbox v-model:checked="record.canInvoice"> </Checkbox>
-        </template>
-        <template v-else-if="column.key === 'isConfidential'">
-          <Checkbox v-model:checked="record.isConfidential"> </Checkbox>
-        </template>
-        <template v-else-if="column.key === 'dataEntryMethod'">
-          <span>{{
-            feeConstants
-              .getDataEntryMethodOptions()
-              .find((o) => o.value === record.dataEntryMethod)?.label
-          }}</span>
-        </template>
-        <template v-else-if="column.key === 'remark'">
-          <Input
-            :value="record.remark"
-            :placeholder="$t('seaExport.export.remark')"
-            allow-clear
-            @update:value="(v) => updateRow(index, 'remark', v)"
-          />
-        </template>
-      </template>
-      <Table.Column
-        key="invoiceStatus"
-        :title="$t('seaExport.export.orderFee.invoiceStatus')"
-        :width="80"
-        fixed="left"
-      />
-      <Table.Column
-        key="feeStatus"
-        :title="$t('seaExport.export.orderFee.feeStatus')"
-        :width="90"
-        fixed="left"
-      />
-      <Table.Column
-        key="taskStatus"
-        :title="$t('auditApproval.task.status')"
-        :min-width="120"
-      />
-      <Table.Column
-        key="feeCodeId"
-        :title="$t('seaExport.export.orderFee.feecodeName')"
-        :min-width="120"
-      />
+              <template v-else-if="column.key === 'currencyId'">
+                <CurrencySelect
+                  :model-value="record.currencyId"
+                  labelKey="code"
+                  class="w-full min-w-[80px]"
+                  :placeholder="$t('ui.placeholder.select')"
+                  @update:model-value="(v) => updateRow(index, 'currencyId', v)"
+                />
+              </template>
+              <template v-else-if="column.key === 'exchangeRate'">
+                <ExchangeRateSelect
+                  :model-value="record.exchangeRate"
+                  class="w-full min-w-[70px]"
+                  :placeholder="$t('ui.placeholder.select')"
+                  @update:model-value="
+                    (v) => updateRow(index, 'exchangeRate', v)
+                  "
+                />
+              </template>
+              <template v-else-if="column.key === 'unitPrice'">
+                <InputNumber
+                  :value="record.unitPrice"
+                  :placeholder="$t('seaExport.export.orderFee.unitPrice')"
+                  class="w-full"
+                  :min="0"
+                  :precision="4"
+                  :controls="false"
+                  @update:value="(v) => updateRow(index, 'unitPrice', v)"
+                />
+              </template>
+              <template v-else-if="column.key === 'amount'">
+                <InputNumber
+                  :value="record.amount"
+                  :placeholder="$t('seaExport.export.orderFee.amount')"
+                  class="w-full"
+                  :min="0"
+                  :controls="false"
+                  :precision="2"
+                  @update:value="(v) => updateRow(index, 'amount', v)"
+                />
+              </template>
+              <template v-else-if="column.key === 'unitEmum'">
+                <Select
+                  v-model:value="record.unitEmum"
+                  :options="feeConstants.getUnitEmumOptions()"
+                  class="w-full min-w-[100px]"
+                  :placeholder="$t('ui.placeholder.select')"
+                  @change="(v) => updateRow(index, 'unitEmum', v)"
+                />
+              </template>
+              <template v-else-if="column.key === 'quantity'">
+                <InputNumber
+                  :value="record.quantity"
+                  :placeholder="$t('seaExport.export.orderFee.quantity')"
+                  class="w-full"
+                  :min="0"
+                  :controls="false"
+                  :precision="2"
+                  @update:value="(v) => updateRow(index, 'quantity', v)"
+                />
+              </template>
+              <template v-else-if="column.key === 'taxRate'">
+                <InputNumber
+                  :value="record.taxRate"
+                  :placeholder="$t('seaExport.export.orderFee.taxRate')"
+                  class="w-full"
+                  :min="0"
+                  :controls="false"
+                  :precision="4"
+                  @update:value="(v) => updateRow(index, 'taxRate', v)"
+                />
+              </template>
+              <template v-else-if="column.key === 'noTaxUnitPrice'">
+                <span>{{
+                  record.noTaxUnitPrice
+                    ? record.noTaxUnitPrice.toFixed(2)
+                    : '--'
+                }}</span>
+              </template>
+              <template v-else-if="column.key === 'noTaxAmount'">
+                <span>{{
+                  record.noTaxAmount ? record.noTaxAmount.toFixed(4) : '--'
+                }}</span>
+              </template>
+              <template v-else-if="column.key === 'canInvoice'">
+                <Checkbox v-model:checked="record.canInvoice"> </Checkbox>
+              </template>
+              <template v-else-if="column.key === 'isConfidential'">
+                <Checkbox v-model:checked="record.isConfidential"> </Checkbox>
+              </template>
+              <template v-else-if="column.key === 'dataEntryMethod'">
+                <span>{{
+                  feeConstants
+                    .getDataEntryMethodOptions()
+                    .find((o) => o.value === record.dataEntryMethod)?.label
+                }}</span>
+              </template>
+              <template v-else-if="column.key === 'remark'">
+                <Input
+                  :value="record.remark"
+                  :placeholder="$t('seaExport.export.remark')"
+                  allow-clear
+                  @update:value="(v) => updateRow(index, 'remark', v)"
+                />
+              </template>
+            </template>
+            <Table.Column
+              key="invoiceStatus"
+              :title="$t('seaExport.export.orderFee.invoiceStatus')"
+              :width="80"
+              fixed="left"
+            />
+            <Table.Column
+              key="feeStatus"
+              :title="$t('seaExport.export.orderFee.feeStatus')"
+              :width="90"
+              fixed="left"
+            />
+            <Table.Column
+              key="taskStatus"
+              :title="$t('auditApproval.task.status')"
+              :min-width="120"
+            />
+            <Table.Column
+              key="feeCodeId"
+              :title="$t('seaExport.export.orderFee.feecodeName')"
+              :min-width="120"
+            />
 
-      <Table.Column
-        key="industryCategory"
-        :title="$t('seaExport.client.industryCategories')"
-        :min-width="110"
-      />
-      <Table.Column
-        key="settlementId"
-        :title="$t('seaExport.export.orderFee.settlement')"
-        :min-width="110"
-      />
-      <Table.Column
-        key="currencyId"
-        :title="$t('seaExport.export.orderFee.currency')"
-        :min-width="80"
-      />
-      <Table.Column
-        key="exchangeRate"
-        :title="$t('seaExport.export.orderFee.ExchangeRate')"
-        :width="110"
-      />
-      <Table.Column
-        key="unitPrice"
-        :title="$t('seaExport.export.orderFee.unitPrice')"
-        :min-width="50"
-      />
-      <Table.Column
-        key="amount"
-        :title="$t('seaExport.export.orderFee.amount')"
-        :min-width="80"
-      />
-      <Table.Column
-        key="unitEmum"
-        :title="$t('seaExport.export.orderFee.unitEmum')"
-        :min-width="90"
-      />
-      <Table.Column
-        key="quantity"
-        :title="$t('seaExport.export.orderFee.quantity')"
-        :min-width="50"
-      />
-      <Table.Column
-        key="taxRate"
-        :title="$t('seaExport.export.orderFee.taxRate')"
-        :min-width="50"
-      />
-      <Table.Column
-        key="noTaxUnitPrice"
-        :title="$t('seaExport.export.orderFee.noTaxUnitPrice')"
-        :min-width="50"
-      />
-      <Table.Column
-        key="noTaxAmount"
-        :title="$t('seaExport.export.orderFee.noTaxAmount')"
-        :min-width="80"
-      />
-      <Table.Column
-        key="rqstPaymentAmount"
-        :title="$t('seaExport.export.orderFee.rqstPaymentAmount')"
-        :min-width="80"
-      />
-      <Table.Column
-        key="invoicedAmount"
-        :title="$t('seaExport.export.orderFee.invoicedAmount')"
-        :min-width="80"
-      />
-      <Table.Column
-        key="orderInvoiceAmount"
-        :title="$t('seaExport.export.orderFee.orderInvoiceAmount')"
-        :min-width="80"
-      />
-      <Table.Column
-        key="settledAmount"
-        :title="$t('seaExport.export.orderFee.settledAmount')"
-        :min-width="80"
-      />
-      <Table.Column
-        key="canInvoice"
-        :title="$t('seaExport.export.orderFee.canInvoice')"
-        :min-width="80"
-      />
-      <Table.Column
-        key="isConfidential"
-        :title="$t('seaExport.export.orderFee.isConfidential')"
-        :min-width="80"
-      />
-      <Table.Column
-        key="dataEntryMethod"
-        :title="$t('seaExport.export.orderFee.dataEntryMethod')"
-        :min-width="80"
-      />
-      <Table.Column
-        key="remark"
-        :title="$t('seaExport.export.orderFee.remark')"
-        :min-width="80"
-      />
-    </Table>
-  </div>
+            <Table.Column
+              key="industryCategory"
+              :title="$t('seaExport.client.industryCategories')"
+              :min-width="110"
+            />
+            <Table.Column
+              key="settlementId"
+              :title="$t('seaExport.export.orderFee.settlement')"
+              :min-width="110"
+            />
+            <Table.Column
+              key="currencyId"
+              :title="$t('seaExport.export.orderFee.currency')"
+              :min-width="80"
+            />
+            <Table.Column
+              key="exchangeRate"
+              :title="$t('seaExport.export.orderFee.ExchangeRate')"
+              :width="110"
+            />
+            <Table.Column
+              key="unitPrice"
+              :title="$t('seaExport.export.orderFee.unitPrice')"
+              :min-width="50"
+            />
+            <Table.Column
+              key="amount"
+              :title="$t('seaExport.export.orderFee.amount')"
+              :min-width="80"
+            />
+            <Table.Column
+              key="unitEmum"
+              :title="$t('seaExport.export.orderFee.unitEmum')"
+              :min-width="90"
+            />
+            <Table.Column
+              key="quantity"
+              :title="$t('seaExport.export.orderFee.quantity')"
+              :min-width="50"
+            />
+            <Table.Column
+              key="taxRate"
+              :title="$t('seaExport.export.orderFee.taxRate')"
+              :min-width="50"
+            />
+            <Table.Column
+              key="noTaxUnitPrice"
+              :title="$t('seaExport.export.orderFee.noTaxUnitPrice')"
+              :min-width="50"
+            />
+            <Table.Column
+              key="noTaxAmount"
+              :title="$t('seaExport.export.orderFee.noTaxAmount')"
+              :min-width="80"
+            />
+            <Table.Column
+              key="rqstPaymentAmount"
+              :title="$t('seaExport.export.orderFee.rqstPaymentAmount')"
+              :min-width="80"
+            />
+            <Table.Column
+              key="invoicedAmount"
+              :title="$t('seaExport.export.orderFee.invoicedAmount')"
+              :min-width="80"
+            />
+            <Table.Column
+              key="orderInvoiceAmount"
+              :title="$t('seaExport.export.orderFee.orderInvoiceAmount')"
+              :min-width="80"
+            />
+            <Table.Column
+              key="settledAmount"
+              :title="$t('seaExport.export.orderFee.settledAmount')"
+              :min-width="80"
+            />
+            <Table.Column
+              key="canInvoice"
+              :title="$t('seaExport.export.orderFee.canInvoice')"
+              :min-width="80"
+            />
+            <Table.Column
+              key="isConfidential"
+              :title="$t('seaExport.export.orderFee.isConfidential')"
+              :min-width="80"
+            />
+            <Table.Column
+              key="dataEntryMethod"
+              :title="$t('seaExport.export.orderFee.dataEntryMethod')"
+              :min-width="80"
+            />
+            <Table.Column
+              key="remark"
+              :title="$t('seaExport.export.orderFee.remark')"
+              :min-width="80"
+            />
+          </Table>
+        </div>
+      </div>
+    </div>
+  </Card>
 </template>
+
+<style scoped lang="scss">
+.order-fee-card {
+  :deep(.ant-card-body) {
+    padding: 0 20px 20px !important;
+  }
+
+  :deep(.ant-table-content) {
+    min-height: 270px;
+    // max-height: 500px;
+    // overflow-y: auto;
+  }
+}
+
+// .custom-table {
+//   min-height: 300px;
+// }
+</style>

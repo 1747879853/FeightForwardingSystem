@@ -31,8 +31,10 @@ export namespace OrderFeeAdminApi {
     /** 费用代码 id - 费用名称从这里来 */
     feeCodeId: number;
 
-    /** 行业类别 */
-    industryCategory: number;
+    /** 行业类别  数值*/
+    IndustryCategory?: number;
+    /** 行业类别 字母 */
+    IndustryCategories?: string;
 
     /** 结算对象 id - 船公司是船公司表 其余是客户表 */
     settlementId: string;
@@ -138,11 +140,13 @@ export namespace OrderFeeAdminApi {
     /** 费用代码 id - 费用名称从这里来 */
     feeCodeId: number;
 
-    /** 行业类别 */
-    industryCategory: number;
+    /** 行业类别  数值*/
+    IndustryCategory?: number;
+    /** 行业类别 字母 */
+    IndustryCategories?: string;
 
     /** 结算对象 id - 船公司是船公司表 其余是客户表 */
-    settlementId: number;
+    settlementId: string;
 
     /** 币别 id */
     currencyId: number;
@@ -232,7 +236,7 @@ export namespace OrderFeeAdminApi {
     creatorUserId?: number;
 
     /** 主键 ID */
-    id: number;
+    id: string;
   }
 
   /** 分页查询参数 */
@@ -240,7 +244,7 @@ export namespace OrderFeeAdminApi {
     /** 关键字 模糊匹配 */
     Keyword?: string;
     /** 业务 id */
-    TransportOrderId?: number;
+    TransportOrderId?: string;
 
     /**收付类型 */
     PaySide: number;
@@ -251,10 +255,12 @@ export namespace OrderFeeAdminApi {
     InvoiceStatus?: number;
     /** 费用代码 id - 费用名称从这里来 */
     FeeCodeId?: number;
-    /** 行业类别 */
+    /** 行业类别  数值*/
     IndustryCategory?: number;
+    /** 行业类别 字母 */
+    IndustryCategories?: string;
     /** 结算对象 id - 船公司是船公司表 其余是客户表 */
-    SettlementId?: number;
+    SettlementId?: string;
     /** 币别 id */
     CurrencyId?: number;
     /** 是否机密 配合机密权限控制读写 */

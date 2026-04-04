@@ -64,8 +64,8 @@ import OrderFeeTable from '#/views/sea-export-admin/orderFee/modules/all-order-f
 
 const props = defineProps<{
   orderName: string;
-  transportOrderId: number;
-  entityId: number;
+  transportOrderId: string;
+  entityId: string;
   feeTableType: string;
 }>();
 
@@ -210,7 +210,7 @@ const Rejected = (modalRemark: string) => {
 const OrderFeeAudit = (
   approve: boolean,
   modalRemark: string,
-  ids: number[],
+  ids: string[],
 ) => {
   let OrderFeeAuditDto: ExpenseSubmissionAdminApi.OrderFeeTaskAuditDto = {
     success: approve,

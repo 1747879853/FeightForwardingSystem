@@ -5,7 +5,7 @@ import { Page } from '@vben/common-ui';
 import Form from './form.vue';
 import orderFee from './orderFee/index.vue';
 import defaultInfo from './modules/default-info.vue';
-import changeOrder from '#/views/sea-export/sea-export-admin/changeOrder/index.vue';
+import changeOrder from '#/views/sea-export-admin/changeOrder/index.vue';
 
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
 type FormSectionTabKey = 'basic' | 'party' | 'shipment' | 'port';
@@ -92,7 +92,6 @@ const getContentTabStyle = (isActive: boolean) =>
         </span>
       </div>
       <div class="flex items-stretch gap-3">
-        <defaultInfo v-if="activeTab === 'fee'" />
         <changeOrder v-if="activeTab === 'party'" />
         <div class="flex min-w-0 flex-1 flex-col">
           <orderFee v-if="activeTab === 'fee'" />
