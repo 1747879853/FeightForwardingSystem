@@ -15,6 +15,7 @@ export { default as ExchangeRateSelect } from './exchange-rate-select.vue';
 export { default as FeeCodeSelect } from './fee-code-select.vue';
 export { default as FeeNameSelect } from './fee-name-select.vue';
 export { default as LaneSelect } from './lane-select.vue';
+export { default as OrganizationSelect } from './organization-select.vue';
 export { default as PortSelect } from './port-select.vue';
 export { default as RoleSelect } from './role-select.vue';
 export { default as UserSelect } from './user-select.vue';

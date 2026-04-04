@@ -522,6 +522,7 @@ export type ComponentType =
   | 'UserSelect'
   | 'CurrencySelect'
   | 'LaneSelect'
+  | 'OrganizationSelect'
   | 'PortSelect'
   | 'CarrierSelect'
   | 'ClientSelect'
@@ -624,6 +625,9 @@ async function initComponentAdapter() {
     LaneSelect: defineAsyncComponent(
       () => import('./biz-select/lane-select.vue'),
     ),
+    OrganizationSelect: defineAsyncComponent(
+      () => import('./biz-select/organization-select.vue'),
+    ),
     PortSelect: defineAsyncComponent(
       () => import('./biz-select/port-select.vue'),
     ),
@@ -708,4 +712,4 @@ async function initComponentAdapter() {
 export { initComponentAdapter };
 
 // 导出业务选择组件
-export { RoleSelect, UserSelect } from './biz-select';
+export { OrganizationSelect, RoleSelect, UserSelect } from './biz-select';

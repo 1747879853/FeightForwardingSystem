@@ -82,14 +82,27 @@ function listToTree<
 }
 
 /**
+ * 获取组织单元列表
+ * @param isCompany 是否是公司。true=公司，false=部门，undefined=全部
+ */
+async function getOrganizationUnits(
+  isCompany?: boolean,
+): Promise<SystemOrganizationUnitApi.OrganizationUnitDto[]> {
+  return requestClient.get(
+    '/services/app/OrganizationUnit/GetOrganizationUnitsAsync',
+    {
+      params: { IsCompany: isCompany },
+    },
+  );
+}
+
+/**
  * 获取组织单元树
  */
 async function getOrganizationUnitTree(): Promise<
   SystemOrganizationUnitApi.OrganizationUnitTreeDto[]
 > {
-  const list = await requestClient.get<
-    SystemOrganizationUnitApi.OrganizationUnitTreeDto[]
-  >('/services/app/OrganizationUnit/GetOrganizationUnitsAsync');
+  const list = await getOrganizationUnits();
   return listToTree(list);
 }
 
@@ -166,6 +179,7 @@ export {
   createOrganizationUnit,
   deleteOrganizationUnit,
   getOrganizationUnit,
+  getOrganizationUnits,
   getOrganizationUnitTree,
   getOrganizationUnitsWithLevel,
   moveOrganizationUnit,
