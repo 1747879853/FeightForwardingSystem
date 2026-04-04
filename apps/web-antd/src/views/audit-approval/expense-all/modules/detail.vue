@@ -390,6 +390,10 @@ const handleReceivableTableSelect = (arr: (string | number)[]) => {
 const handlePayableTableSelect = (arr: (string | number)[]) => {
   selectedPayKeys.value = arr;
 };
+// 必须显式暴露
+defineExpose({
+  getTableDate,
+});
 </script>
 
 <template>

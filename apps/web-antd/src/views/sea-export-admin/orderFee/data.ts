@@ -2,6 +2,7 @@ import { $t } from '#/locales';
 import dayjs from 'dayjs';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
+import { h } from 'vue';
 // --------------------------------------------------------
 // 数据录入方式
 // --------------------------------------------------------
@@ -135,16 +136,21 @@ export const getClientTypeOptions = () => [
   { value: 2, label: '供应商' },
 ];
 
+export const getTrueOfFlaseOptions = () => [
+  { value: true, label: '是' },
+  { value: false, label: '否' },
+];
+
 // --------------------------------------------------------
 // 币别
 // --------------------------------------------------------
 export const getCurrencyEnumOptions = () => [
-  { value: 4, label: 'RMB' },
+  { value: 1, label: 'RMB' },
   { value: 2, label: 'USD' },
 ];
 
 export const getCurrencyEnumSymbolOptions = () => [
-  { value: 4, label: '￥' },
+  { value: 1, label: '￥' },
   { value: 2, label: '$' },
 ];
 // --------------------------------------------------------
@@ -322,6 +328,10 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
       title: $t('seaExport.export.orderFee.invoiceStatus'),
       field: 'invoiceStatus',
       width: 80,
+      cellRender: {
+        name: 'CellTag',
+        options: getInvoiceStatusOptions(),
+      },
     },
     {
       title: $t('seaExport.export.orderFee.feeStatus'),
@@ -329,6 +339,10 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
       align: 'center',
       field: 'feeStatus',
       width: 90,
+      cellRender: {
+        name: 'CellTag',
+        options: getFeeStatusOptions(),
+      },
     },
     {
       title: $t('seaExport.export.orderFee.feecodeName'),
@@ -341,6 +355,10 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
 
       field: 'industryCategory',
       minWidth: 110,
+      cellRender: {
+        name: 'CellTag',
+        options: getIndustryCategoryOptions(),
+      },
     },
     {
       title: $t('seaExport.export.orderFee.settlement'),
@@ -357,7 +375,6 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     },
     {
       title: $t('seaExport.export.orderFee.ExchangeRate'),
-      dataIndex: 'exchangeRate',
       field: 'exchangeRate',
       align: 'center',
       width: 50,
@@ -365,26 +382,30 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('seaExport.export.orderFee.unitPrice'),
 
-      field: 'unitPrice',
+      field: 'unitPriceStr',
       width: 100,
     },
     {
       title: $t('seaExport.export.orderFee.amount'),
 
-      field: 'amount',
+      field: 'amountStr',
       minWidth: 80,
     },
     {
       title: $t('seaExport.export.orderFee.unitEmum'),
 
       field: 'unitEmum',
-      minWidth: 90,
+      minWidth: 60,
+      cellRender: {
+        name: 'CellTag',
+        options: getUnitEmumOptions(),
+      },
     },
     {
       title: $t('seaExport.export.orderFee.quantity'),
 
       field: 'quantity',
-      minWidth: 50,
+      minWidth: 80,
     },
     {
       title: $t('seaExport.export.orderFee.taxRate'),
@@ -395,37 +416,37 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
 
-      field: 'noTaxUnitPrice',
+      field: 'noTaxUnitPriceStr',
       minWidth: 110,
     },
     {
       title: $t('seaExport.export.orderFee.noTaxAmount'),
 
-      field: 'noTaxAmount',
+      field: 'noTaxAmountStr',
       minWidth: 80,
     },
     {
       title: $t('seaExport.export.orderFee.rqstPaymentAmount'),
 
-      field: 'rqstPaymentAmount',
+      field: 'rqstPaymentAmountStr',
       minWidth: 110,
     },
     {
       title: $t('seaExport.export.orderFee.invoicedAmount'),
 
-      field: 'invoicedAmount',
+      field: 'invoicedAmountStr',
       minWidth: 80,
     },
     {
       title: $t('seaExport.export.orderFee.orderInvoiceAmount'),
 
-      field: 'orderInvoiceAmount',
+      field: 'orderInvoiceAmountStr',
       minWidth: 120,
     },
     {
       title: $t('seaExport.export.orderFee.settledAmount'),
 
-      field: 'settledAmount',
+      field: 'settledAmountStr',
       minWidth: 80,
     },
     {
@@ -433,12 +454,26 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
 
       field: 'canInvoice',
       minWidth: 90,
+      cellRender: {
+        name: 'CellTag',
+        options: [
+          { color: 'success', label: '是', value: true },
+          { color: 'default', label: '否', value: false },
+        ],
+      },
     },
     {
       title: $t('seaExport.export.orderFee.isConfidential'),
 
       field: 'isConfidential',
       minWidth: 80,
+      cellRender: {
+        name: 'CellTag',
+        options: [
+          { color: 'success', label: '是', value: true },
+          { color: 'default', label: '否', value: false },
+        ],
+      },
     },
     {
       title: $t('seaExport.export.orderFee.remark'),
@@ -450,6 +485,10 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
 
       field: 'dataEntryMethod',
       minWidth: 110,
+      cellRender: {
+        name: 'CellTag',
+        options: getDataEntryMethodOptions(),
+      },
     },
 
     {
@@ -460,19 +499,21 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     },
     {
       title: $t('auditApproval.task.createTime'),
-      dataIndex: ['creationTime'],
       field: 'creationTime',
+      width: 150,
       // cellRender: ({ text }) => {
       //   // 基本格式化
       //   return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
       // },
+      // cellRender: {
+      //   name: 'span',
+      //   content: ({ text }) => {
+      //     return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
+      //   },
+      // },
       cellRender: {
-        name: 'span',
-        content: ({ text }) => {
-          return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
-        },
+        name: 'CellCustom',
       },
-      width: 180,
     },
     {
       title: $t('auditApproval.task.auditUserName'),
@@ -484,10 +525,10 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
       title: $t('auditApproval.task.auditTime'),
       field: 'task.auditTime',
 
-      renderCell: ({ text }) => {
-        // 基本格式化
-        return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
-      },
+      //renderCell: ({ text }) => {
+      // 基本格式化
+      //  return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
+      //  },
       width: 180,
     },
     {

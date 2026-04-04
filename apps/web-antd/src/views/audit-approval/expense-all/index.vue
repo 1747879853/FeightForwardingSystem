@@ -91,10 +91,11 @@ const SubmittedOther = async (e: any) => {
   showConfirmWithRemark(true, e.key);
 };
 
+const detailRef = ref<any>(null);
 const OrderFeeAudit = (
   approve: boolean,
   modalRemark: string,
-  ids: number[],
+  ids: string[],
 ) => {
   let OrderFeeTaskBatchAuditDto: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditDto =
     {
@@ -109,6 +110,9 @@ const OrderFeeAudit = (
       key: 'action_process_msg',
     });
     gridApi.reload();
+    if (detailRef.value) {
+      detailRef.value.getTableDate();
+    }
   });
 };
 
@@ -228,6 +232,7 @@ const changeTableType = (type: string) => {
       :orderName="orderName"
       :transportOrderId="transportOrderId"
       :entityId="entityId"
+      ref="detailRef"
       :feeTableType="feeTableType"
     />
   </Page>
