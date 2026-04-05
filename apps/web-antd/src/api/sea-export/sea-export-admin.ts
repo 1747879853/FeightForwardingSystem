@@ -101,11 +101,11 @@ export namespace SeaExportAdminApi {
   }
 
   export interface TransportOrderEditDto extends TransportOrderAddDto {
-    id: number;
+    id: string;
   }
 
   export interface TransportOrderDto extends TransportOrderAddDto {
-    id: number;
+    id: string;
     bizType?: number;
     isDeleted?: boolean;
     deleterUserId?: number;
@@ -312,7 +312,7 @@ export const getSeaExportPagedList = (
   );
 };
 
-export const getSeaExportDetail = (id: number | string) => {
+export const getSeaExportDetail = (id: string | string) => {
   return requestClient.get<SeaExportAdminApi.SeaExportDto>(
     `${API_PREFIX}/DetailAsync`,
     { params: { Id: id } },
