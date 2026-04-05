@@ -401,8 +401,8 @@ onMounted(() => {
           </div>
         </template>
         <div class="flex gap-2">
-          <div class="mx-2 flex flex-col gap-2">
-            <div class="flex w-[1300px] min-w-0 flex-1 flex-col gap-2">
+          <div class="w-change-order-auto mx-2 flex flex-col gap-2">
+            <div class="flex min-w-0 flex-1 flex-col gap-2">
               <Card>
                 <ChangeOrderTable
                   ref="changeOrderTableRef"
@@ -412,43 +412,26 @@ onMounted(() => {
             </div>
             <!--  -->
             <div class="w-change-order flex min-w-0 flex-1 flex-col gap-2">
-              <Card>
-                <template #title>
-                  <span class="flex items-center gap-2">
-                    <Package class="size-4" />
-                    {{ $t('seaExport.export.orderFee.receivableCharges') }}
-                  </span>
-                </template>
-                <div class="px-1">
-                  <div class="mt-4">
-                    <OrderFeeTable
-                      :type="0"
-                      :mode="'changeOrder'"
-                      ref="RecOrderFeeRef"
-                      @sync-fee="syncFee"
-                    />
-                  </div>
+              <div class="px-1">
+                <div class="mt-4">
+                  <OrderFeeTable
+                    :type="0"
+                    :mode="'changeOrder'"
+                    ref="RecOrderFeeRef"
+                    @sync-fee="syncFee"
+                  />
                 </div>
-              </Card>
-
-              <Card>
-                <template #title>
-                  <span class="flex items-center gap-2">
-                    <Package class="size-4" />
-                    {{ $t('seaExport.export.orderFee.payableCharges') }}
-                  </span>
-                </template>
-                <div class="px-1">
-                  <div class="mt-4">
-                    <OrderFeeTable
-                      :type="1"
-                      :mode="'changeOrder'"
-                      ref="PayOrderFeeRef"
-                      @sync-fee="syncFee"
-                    />
-                  </div>
+              </div>
+              <div class="px-1">
+                <div class="mt-4">
+                  <OrderFeeTable
+                    :type="1"
+                    :mode="'changeOrder'"
+                    ref="PayOrderFeeRef"
+                    @sync-fee="syncFee"
+                  />
                 </div>
-              </Card>
+              </div>
             </div>
           </div>
 
@@ -472,7 +455,7 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-.w-change-order {
-  width: 1300px;
+.w-change-order-auto {
+  width: 1100px;
 }
 </style>

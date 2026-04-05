@@ -64,8 +64,8 @@ import OrderFeeTable from '#/views/sea-export-admin/orderFee/modules/all-order-f
 
 const props = defineProps<{
   orderName: string;
-  transportOrderId: number;
-  entityId: number;
+  transportOrderId: string;
+  entityId: string;
   feeTableType: string;
 }>();
 
@@ -210,7 +210,7 @@ const Rejected = (modalRemark: string) => {
 const OrderFeeAudit = (
   approve: boolean,
   modalRemark: string,
-  ids: number[],
+  ids: string[],
 ) => {
   let OrderFeeAuditDto: ExpenseSubmissionAdminApi.OrderFeeTaskAuditDto = {
     success: approve,
@@ -390,6 +390,10 @@ const handleReceivableTableSelect = (arr: (string | number)[]) => {
 const handlePayableTableSelect = (arr: (string | number)[]) => {
   selectedPayKeys.value = arr;
 };
+// 必须显式暴露
+defineExpose({
+  getTableDate,
+});
 </script>
 
 <template>

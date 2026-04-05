@@ -1,3 +1,8 @@
+import { $t } from '#/locales';
+import dayjs from 'dayjs';
+import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
+import { h } from 'vue';
 // --------------------------------------------------------
 // 数据录入方式
 // --------------------------------------------------------
@@ -131,16 +136,21 @@ export const getClientTypeOptions = () => [
   { value: 2, label: '供应商' },
 ];
 
+export const getTrueOfFlaseOptions = () => [
+  { value: true, label: '是' },
+  { value: false, label: '否' },
+];
+
 // --------------------------------------------------------
 // 币别
 // --------------------------------------------------------
 export const getCurrencyEnumOptions = () => [
-  { value: 4, label: 'RMB' },
+  { value: 1, label: 'RMB' },
   { value: 2, label: 'USD' },
 ];
 
 export const getCurrencyEnumSymbolOptions = () => [
-  { value: 4, label: '￥' },
+  { value: 1, label: '￥' },
   { value: 2, label: '$' },
 ];
 // --------------------------------------------------------
@@ -307,3 +317,224 @@ export const industryCategoryMap: Record<number, string> = {
   16: 'q',
   17: 'r',
 };
+
+/**
+ * 列表列配置（无操作列，第一列为 radio 单选列）
+ */
+export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.OrderFeeEditDto>['columns'] {
+  return [
+    { type: 'checkbox', width: 48, fixed: 'left' },
+    {
+      title: $t('seaExport.export.orderFee.invoiceStatus'),
+      field: 'invoiceStatus',
+      width: 80,
+      cellRender: {
+        name: 'CellTag',
+        options: getInvoiceStatusOptions(),
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.feeStatus'),
+
+      align: 'center',
+      field: 'feeStatus',
+      width: 90,
+      cellRender: {
+        name: 'CellTag',
+        options: getFeeStatusOptions(),
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.feecodeName'),
+
+      field: 'feeCodeName',
+      minWidth: 120,
+    },
+    {
+      title: $t('seaExport.client.industryCategories'),
+
+      field: 'industryCategory',
+      minWidth: 110,
+      cellRender: {
+        name: 'CellTag',
+        options: getIndustryCategoryOptions(),
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.settlement'),
+
+      field: 'settlementName',
+      minWidth: 110,
+    },
+    {
+      title: $t('seaExport.export.orderFee.currency'),
+
+      field: 'currencyName',
+      align: 'center',
+      minWidth: 80,
+    },
+    {
+      title: $t('seaExport.export.orderFee.ExchangeRate'),
+      field: 'exchangeRate',
+      align: 'center',
+      width: 50,
+    },
+    {
+      title: $t('seaExport.export.orderFee.unitPrice'),
+
+      field: 'unitPriceStr',
+      width: 100,
+    },
+    {
+      title: $t('seaExport.export.orderFee.amount'),
+
+      field: 'amountStr',
+      minWidth: 80,
+    },
+    {
+      title: $t('seaExport.export.orderFee.unitEmum'),
+
+      field: 'unitEmum',
+      minWidth: 60,
+      cellRender: {
+        name: 'CellTag',
+        options: getUnitEmumOptions(),
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.quantity'),
+
+      field: 'quantity',
+      minWidth: 80,
+    },
+    {
+      title: $t('seaExport.export.orderFee.taxRate'),
+
+      field: 'taxRate',
+      minWidth: 50,
+    },
+    {
+      title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
+
+      field: 'noTaxUnitPriceStr',
+      minWidth: 110,
+    },
+    {
+      title: $t('seaExport.export.orderFee.noTaxAmount'),
+
+      field: 'noTaxAmountStr',
+      minWidth: 80,
+    },
+    {
+      title: $t('seaExport.export.orderFee.rqstPaymentAmount'),
+
+      field: 'rqstPaymentAmountStr',
+      minWidth: 110,
+    },
+    {
+      title: $t('seaExport.export.orderFee.invoicedAmount'),
+
+      field: 'invoicedAmountStr',
+      minWidth: 80,
+    },
+    {
+      title: $t('seaExport.export.orderFee.orderInvoiceAmount'),
+
+      field: 'orderInvoiceAmountStr',
+      minWidth: 120,
+    },
+    {
+      title: $t('seaExport.export.orderFee.settledAmount'),
+
+      field: 'settledAmountStr',
+      minWidth: 80,
+    },
+    {
+      title: $t('seaExport.export.orderFee.canInvoice'),
+
+      field: 'canInvoice',
+      minWidth: 90,
+      cellRender: {
+        name: 'CellTag',
+        options: [
+          { color: 'success', label: '是', value: true },
+          { color: 'default', label: '否', value: false },
+        ],
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.isConfidential'),
+
+      field: 'isConfidential',
+      minWidth: 80,
+      cellRender: {
+        name: 'CellTag',
+        options: [
+          { color: 'success', label: '是', value: true },
+          { color: 'default', label: '否', value: false },
+        ],
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.remark'),
+      field: 'remark',
+      minWidth: 150,
+    },
+    {
+      title: $t('seaExport.export.orderFee.dataEntryMethod'),
+
+      field: 'dataEntryMethod',
+      minWidth: 110,
+      cellRender: {
+        name: 'CellTag',
+        options: getDataEntryMethodOptions(),
+      },
+    },
+
+    {
+      title: $t('auditApproval.task.creatorUserName'),
+
+      field: 'task.creatorUserName',
+      width: 110,
+    },
+    {
+      title: $t('auditApproval.task.createTime'),
+      field: 'creationTime',
+      width: 150,
+      // cellRender: ({ text }) => {
+      //   // 基本格式化
+      //   return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
+      // },
+      // cellRender: {
+      //   name: 'span',
+      //   content: ({ text }) => {
+      //     return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
+      //   },
+      // },
+      cellRender: {
+        name: 'CellCustom',
+      },
+    },
+    {
+      title: $t('auditApproval.task.auditUserName'),
+      field: 'task.auditUserName',
+
+      width: 110,
+    },
+    {
+      title: $t('auditApproval.task.auditTime'),
+      field: 'task.auditTime',
+
+      //renderCell: ({ text }) => {
+      // 基本格式化
+      //  return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
+      //  },
+      width: 180,
+    },
+    {
+      title: $t('auditApproval.task.AuditRemark'),
+      field: 'task.remark',
+      width: 150,
+    },
+  ];
+}

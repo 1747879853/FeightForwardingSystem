@@ -23,17 +23,17 @@ import {
 import Detail from './modules/detail.vue';
 const router = useRouter();
 
-const transportOrderId = ref<number>(0);
+const transportOrderId = ref<string>('');
 const orderName = ref<string>('');
-const entityId = ref<number>(0);
+const entityId = ref<string>('');
 const handleRowDblclick = ({
   row,
 }: {
   row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
 }) => {
   console.log('row', row);
-  transportOrderId.value = row.transportOrder.id || 0;
-  entityId.value = row.entityId || 0;
+  transportOrderId.value = row.transportOrder.id || '';
+  entityId.value = row.entityId || '';
   orderName.value = `当前选中: ${row.transportOrder.mblNum}(${row.transportOrder.clientName})`;
 };
 
@@ -91,10 +91,11 @@ const SubmittedOther = async (e: any) => {
   showConfirmWithRemark(true, e.key);
 };
 
+const detailRef = ref<any>(null);
 const OrderFeeAudit = (
   approve: boolean,
   modalRemark: string,
-  ids: number[],
+  ids: string[],
 ) => {
   let OrderFeeTaskBatchAuditDto: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditDto =
     {
@@ -109,6 +110,9 @@ const OrderFeeAudit = (
       key: 'action_process_msg',
     });
     gridApi.reload();
+    if (detailRef.value) {
+      detailRef.value.getTableDate();
+    }
   });
 };
 
@@ -228,6 +232,7 @@ const changeTableType = (type: string) => {
       :orderName="orderName"
       :transportOrderId="transportOrderId"
       :entityId="entityId"
+      ref="detailRef"
       :feeTableType="feeTableType"
     />
   </Page>

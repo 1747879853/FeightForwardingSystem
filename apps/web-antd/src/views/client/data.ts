@@ -28,61 +28,98 @@ const getClientTypeOptions = () => [
 /** 行业类别枚举选项（value 取字母，与 IndustryCategory 注释对应：a 船公司、b 发货人、c 场站…） */
 const getIndustryCategoryOptions = () => [
   {
+    key: 1,
     value: 'a',
     label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
     module: [],
   },
-  { value: 'b', label: $t('seaExport.client.industryCategoryOptions.shipper') },
   {
+    key: 2,
+    value: 'b',
+    label: $t('seaExport.client.industryCategoryOptions.shipper'),
+  },
+  {
+    key: 3,
     value: 'c',
     label: $t('seaExport.client.industryCategoryOptions.terminal'),
   },
-  { value: 'd', label: $t('seaExport.client.industryCategoryOptions.airline') },
   {
+    key: 4,
+    value: 'd',
+    label: $t('seaExport.client.industryCategoryOptions.airline'),
+  },
+  {
+    key: 5,
     value: 'e',
     label: $t('seaExport.client.industryCategoryOptions.consignee'),
   },
   {
+    key: 6,
     value: 'f',
     label: $t('seaExport.client.industryCategoryOptions.customsBroker'),
   },
   {
+    key: 7,
     value: 'g',
     label: $t('seaExport.client.industryCategoryOptions.expressCompany'),
   },
   {
+    key: 8,
     value: 'h',
     label: $t('seaExport.client.industryCategoryOptions.notifyParty'),
   },
-  { value: 'i', label: $t('seaExport.client.industryCategoryOptions.fleet') },
-  { value: 'j', label: $t('seaExport.client.industryCategoryOptions.trader') },
-  { value: 'k', label: $t('seaExport.client.industryCategoryOptions.agent') },
-  { value: 'l', label: $t('seaExport.client.industryCategoryOptions.other') },
   {
+    key: 9,
+    value: 'i',
+    label: $t('seaExport.client.industryCategoryOptions.fleet'),
+  },
+  {
+    key: 10,
+    value: 'j',
+    label: $t('seaExport.client.industryCategoryOptions.trader'),
+  },
+  {
+    key: 11,
+    value: 'k',
+    label: $t('seaExport.client.industryCategoryOptions.agent'),
+  },
+  {
+    key: 12,
+    value: 'l',
+    label: $t('seaExport.client.industryCategoryOptions.other'),
+  },
+  {
+    key: 13,
     value: 'm',
     label: $t('seaExport.client.industryCategoryOptions.supplier'),
   },
   {
+    key: 14,
     value: 'n',
     label: $t('seaExport.client.industryCategoryOptions.shippingAgent'),
   },
   {
+    key: 15,
     value: 'o',
     label: $t('seaExport.client.industryCategoryOptions.bookingAgent'),
   },
   {
+    key: 16,
     value: 'p',
     label: $t('seaExport.client.industryCategoryOptions.entrustingUnit'),
   },
   {
+    key: 17,
     value: 'q',
     label: $t('seaExport.client.industryCategoryOptions.warehouse'),
   },
   {
+    key: 18,
     value: 'r',
     label: $t('seaExport.client.industryCategoryOptions.insuranceCompany'),
   },
   {
+    key: 19,
     value: 's',
     label: $t('seaExport.client.industryCategoryOptions.destinationAgent'),
   },

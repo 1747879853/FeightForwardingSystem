@@ -92,7 +92,6 @@ const getContentTabStyle = (isActive: boolean) =>
         </span>
       </div>
       <div class="flex items-stretch gap-3">
-        <defaultInfo v-if="activeTab === 'fee'" />
         <changeOrder v-if="activeTab === 'party'" />
         <div class="flex min-w-0 flex-1 flex-col">
           <orderFee v-if="activeTab === 'fee'" />
