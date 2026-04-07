@@ -1,6 +1,7 @@
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 import type { UserAttribute } from '#/api/system/user-admin';
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 
 import { requestClient } from '#/api/request';
 
@@ -98,6 +99,8 @@ export namespace SeaExportAdminApi {
     orderCtns?: OrderCtnAddDto[];
     /** 业务相关用户列表 */
     orderUsers?: OrderUserAddDto[];
+    /** 费用列表 */
+    orderFees?: OrderFeeAdminApi.OrderFeeDto[];
   }
 
   export interface TransportOrderEditDto extends TransportOrderAddDto {

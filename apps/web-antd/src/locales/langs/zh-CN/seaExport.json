@@ -213,6 +213,27 @@
       "unlocking": "正在批量解锁...",
       "lockSuccess": "批量锁定成功",
       "unlockSuccess": "批量解锁成功"
+    },
+    "statement": {
+      "title": "对账单",
+      "list": "对账单列表",
+      "number": "对账单号",
+      "clientName": "客户名称",
+      "localCurrencyCode": "本位币",
+      "statementDate": "对账单日期",
+      "localCurrencyReceiveAmount": "应收合计",
+      "localCurrencyPayAmount": "应付合计",
+      "balance": "差额",
+      "settlementStatus": "结算状态",
+      "settlementStatusUnsettled": "未结算",
+      "settlementStatusPartiallySettled": "部分结算",
+      "settlementStatusSettled": "已结算",
+      "deleteConfirm": "确定删除 {0} 的对账单吗？",
+      "deleting": "正在删除 {0} 的对账单...",
+      "deleteSuccess": "{0} 的对账单删除成功",
+      "view": "查看对账单",
+      "create": "生成对账单",
+      "remark": "备注"
     }
   },
   "client": {

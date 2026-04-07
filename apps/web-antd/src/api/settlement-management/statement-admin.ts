@@ -4,8 +4,10 @@ import { requestClient } from '#/api/request';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
+import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
+
 export namespace StatementAdminApi {
-  /** 币别分组输出 */
+  /** 费用币别分组输出 */
   export interface StatementCurrencyDto {
     currencyId: number;
     currencySortId: number;
@@ -16,57 +18,17 @@ export namespace StatementAdminApi {
     payAmount: number;
   }
 
-  /** 简易运输订单输出 */
-  export interface TransportOrderSimpleDto {
-    goodsCompleteTime?: string;
-    etd?: string;
-    eta?: string;
-    saleNames?: string[];
-    operatorNames?: string[];
-    seaExportPOLId?: number;
-    seaExportPOLCnName?: string;
-    seaExportPODId?: number;
-    seaExportPODCnName?: string;
-    seaExportVessel?: string;
-    seaExportInnerVoyno?: string;
-    bizType: number;
-    commissionNum?: string;
-    accountDate: string;
-    settlementDate: string;
-    codeSourceId?: number;
-    isBusinessLocking: boolean;
-    mblNum?: string;
-    bookingNum?: string;
-    internalRemark?: string;
-    clientId: number;
-    pkgs?: number;
-    codePackageId?: number;
-    codePackageName?: string;
-    grossWeight?: number;
-    tareWeight?: number;
-    remark?: string;
-    clientName?: string;
-    isDeleted: boolean;
-    deleterUserId?: number;
-    deletionTime?: string;
-    lastModificationTime?: string;
-    lastModifierUserId?: number;
-    creationTime: string;
-    creatorUserId?: number;
-    id: number;
-  }
-
-  /** 费用和海出 DTO */
+  /** 费用和海出 */
   export interface OrderFeeAndSeaExportDto {
     statementCurrencyGroup?: StatementCurrencyDto[];
     orderFees?: OrderFeeAdminApi.OrderFeeDto[];
-    transportOrder: TransportOrderSimpleDto;
+    transportOrder: ExpenseSubmissionAdminApi.TransportOrderSimpleDto;
   }
 
   /** 客户对账列表和详情输出 */
   export interface StatementDto {
     statementNum?: string;
-    clientId: number;
+    clientId: string;
     sortId: number;
     remark?: string;
     userId: number;
@@ -88,16 +50,16 @@ export namespace StatementAdminApi {
     lastModifierUserId?: number;
     creationTime: string;
     creatorUserId?: number;
-    id: number;
+    id: string;
   }
 
-  /** 客户对账新增 DTO */
+  /** 客户对账新增Dto */
   export interface StatementAddDto {
     statementNum?: string;
-    clientId: number;
+    clientId: string;
     sortId: number;
     remark?: string;
-    orderFeeIds?: number[];
+    orderFeeIds?: string[];
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -105,22 +67,22 @@ export namespace StatementAdminApi {
     lastModifierUserId?: number;
     creationTime?: string;
     creatorUserId?: number;
-    id?: number;
+    id?: string;
   }
 
-  /** 客户对账编辑 DTO */
+  /** 客户对账编辑Dto */
   export interface StatementEditDto {
-    id: number;
+    id: string;
     statementNum?: string;
-    clientId: number;
+    clientId: string;
     sortId: number;
     remark?: string;
   }
 
-  /** 客户对账编辑费用 DTO */
+  /** 客户对账编辑费用Dto */
   export interface StatementEditFeesDto {
-    id: number;
-    orderFeeIds?: number[];
+    id: string;
+    orderFeeIds?: string[];
   }
 
   /** 分页数据封装 */
@@ -132,12 +94,19 @@ export namespace StatementAdminApi {
     currentPage: number;
     totalPages: number;
   }
-
+  export interface PagedListOfTransportOrderDto {
+    skipCount: number;
+    maxResultCount: number;
+    items?: SeaExportAdminApi.TransportOrderDto[];
+    totalCount: number;
+    currentPage: number;
+    totalPages: number;
+  }
   /** 查询参数 */
   export interface StatementQueryParams {
     Keyword?: string;
     StatementNum?: string;
-    ClientId?: number;
+    ClientId?: string;
     CreationStartTime?: string;
     CreationEndTime?: string;
     CreatorUserId?: number;
@@ -153,14 +122,14 @@ export namespace StatementAdminApi {
   export interface OrderFeeGroupQueryParams {
     AccountDateStart?: string;
     AccountDateEnd?: string;
-    SettlementId: number;
+    SettlementId: string;
     FeeCodeIds?: number[];
     PaySide?: number;
     FeeStatus?: number;
     SettlementStatus?: number;
     InvoiceStatus?: number;
     CurrencyId?: number;
-    ClientId?: number;
+    ClientId?: string;
     Keyword?: string;
     BizType?: number;
     ETDStart?: string;
@@ -171,13 +140,96 @@ export namespace StatementAdminApi {
     SaleId?: number;
     OperatorId?: number;
     CustomerServiceId?: number;
+    Sorting?: string;
+    PageIndex?: number;
+    PageSize?: number;
   }
 }
 
 /**
+ * 新增客户对账
+ */
+export const createStatement = (data: StatementAdminApi.StatementAddDto) => {
+  return requestClient.post<string>(
+    '/services/app/StatementAdmin/AddAsync',
+    data,
+  );
+};
+
+/**
+ * 未对账费用按业务分组列表 不分页 给对账单加费用时用
+ */
+export const getOrderFeeGroup = (
+  params: StatementAdminApi.OrderFeeGroupQueryParams,
+) => {
+  return requestClient.get<StatementAdminApi.PagedListOfTransportOrderDto>(
+    '/services/app/StatementAdmin/GetOrderFeeGroupAsync',
+    { params },
+  );
+};
+
+/**
+ * 删除客户对账
+ */
+export const deleteStatement = (id: string) => {
+  return requestClient.delete<boolean>(
+    '/services/app/StatementAdmin/DeleteAsync',
+    {
+      data: { Id: id },
+    },
+  );
+};
+
+/**
+ * 批量删除客户对账
+ */
+export const batchDeleteStatements = (ids: string[]) => {
+  return requestClient.delete<boolean>(
+    '/services/app/StatementAdmin/DeleteAsync',
+    {
+      data: { Ids: ids },
+    },
+  );
+};
+
+/**
+ * 编辑客户对账-只编辑主表信息，不编辑关联费用 关联费用只能通过加费用接口来编辑
+ */
+export const updateStatement = (data: StatementAdminApi.StatementEditDto) => {
+  return requestClient.put<boolean>(
+    '/services/app/StatementAdmin/EditAsync',
+    data,
+  );
+};
+
+/**
+ * 添加费用关联
+ */
+export const addStatementFees = (
+  data: StatementAdminApi.StatementEditFeesDto,
+) => {
+  return requestClient.put<void>(
+    '/services/app/StatementAdmin/AddFeesAsync',
+    data,
+  );
+};
+
+/**
+ * 移除费用关联
+ */
+export const removeStatementFees = (
+  data: StatementAdminApi.StatementEditFeesDto,
+) => {
+  return requestClient.put<void>(
+    '/services/app/StatementAdmin/RemoveFeesAsync',
+    data,
+  );
+};
+
+/**
  * 获取客户对账列表分页数据
  */
-async function getStatementPagedList(params: Recordable<any>) {
+export const getStatementPagedList = async (params: Recordable<any>) => {
   const queryParams: StatementAdminApi.StatementQueryParams = {
     Keyword: params.Keyword || params.keyword,
     StatementNum: params.StatementNum || params.statementNum,
@@ -193,114 +245,18 @@ async function getStatementPagedList(params: Recordable<any>) {
     PageSize: params.PageSize || params.pageSize || 10,
   };
 
-  const response =
-    await requestClient.get<StatementAdminApi.PagedListOfStatementDto>(
-      '/services/app/StatementAdmin/GetPagedListAsync',
-      { params: queryParams },
-    );
-
-  return {
-    items: response.items || [],
-    totalCount: response.totalCount || 0,
-  };
-}
+  return requestClient.get<StatementAdminApi.PagedListOfStatementDto>(
+    '/services/app/StatementAdmin/GetPagedListAsync',
+    { params: queryParams },
+  );
+};
 
 /**
  * 获取客户对账详情
  */
-async function getStatementDetail(id: number) {
+export const getStatementDetail = (id: string) => {
   return requestClient.get<StatementAdminApi.StatementDto>(
     '/services/app/StatementAdmin/DetailAsync',
     { params: { Id: id } },
   );
-}
-
-/**
- * 新增客户对账
- */
-async function createStatement(data: StatementAdminApi.StatementAddDto) {
-  return requestClient.post<number>(
-    '/services/app/StatementAdmin/AddAsync',
-    data,
-  );
-}
-
-/**
- * 编辑客户对账-只编辑主表信息
- */
-async function updateStatement(data: StatementAdminApi.StatementEditDto) {
-  return requestClient.put<boolean>(
-    '/services/app/StatementAdmin/EditAsync',
-    data,
-  );
-}
-
-/**
- * 删除客户对账
- */
-async function deleteStatement(id: number) {
-  return requestClient.delete<boolean>(
-    '/services/app/StatementAdmin/DeleteAsync',
-    {
-      params: { Id: id },
-    },
-  );
-}
-
-/**
- * 批量删除客户对账
- */
-async function batchDeleteStatements(ids: number[]) {
-  return requestClient.delete<boolean>(
-    '/services/app/StatementAdmin/DeleteAsync',
-    {
-      params: { Ids: ids },
-    },
-  );
-}
-
-/**
- * 添加费用关联
- */
-async function addStatementFees(data: StatementAdminApi.StatementEditFeesDto) {
-  return requestClient.put<void>(
-    '/services/app/StatementAdmin/AddFeesAsync',
-    data,
-  );
-}
-
-/**
- * 移除费用关联
- */
-async function removeStatementFees(
-  data: StatementAdminApi.StatementEditFeesDto,
-) {
-  return requestClient.put<void>(
-    '/services/app/StatementAdmin/RemoveFeesAsync',
-    data,
-  );
-}
-
-/**
- * 获取未对账费用按业务分组列表
- */
-async function getOrderFeeGroup(
-  params: StatementAdminApi.OrderFeeGroupQueryParams,
-) {
-  return requestClient.get<SeaExportAdminApi.TransportOrderDto[]>(
-    '/services/app/StatementAdmin/GetOrderFeeGroupAsync',
-    { params },
-  );
-}
-
-export {
-  addStatementFees,
-  batchDeleteStatements,
-  createStatement,
-  deleteStatement,
-  getOrderFeeGroup,
-  getStatementDetail,
-  getStatementPagedList,
-  removeStatementFees,
-  updateStatement,
 };

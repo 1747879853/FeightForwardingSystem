@@ -26,6 +26,36 @@ const routes: RouteRecordRaw[] = [
         component: () =>
           import('#/views/fee-management/fee-lock/fee-lock-list.vue'),
       },
+      {
+        path: 'statement',
+        name: 'SeaExportStatementList',
+        meta: {
+          icon: 'mdi:cash-multiple',
+          title: $t('seaExport.export.statement.title'),
+          authority: abpPageAuthority('Admin.OrderFee.Lock'),
+        },
+        component: () => import('#/views/fee-management/statement/index.vue'),
+      },
+      {
+        path: 'statement/create',
+        name: 'SeaExportStatementCreate',
+        meta: {
+          title: $t('seaExport.export.statement.title'),
+          hideInMenu: true,
+          // activePath: '/fee-management/statement',
+        },
+        component: () => import('#/views/fee-management/statement/editor.vue'),
+      },
+      // {
+      //   path: ':id([0-9a-fA-F-]{36})/edit',
+      //   name: 'SeaExportStatementEdit',
+      //   meta: {
+      //     title: $t('seaExport.export.statement.title'),
+      //     hideInMenu: true,
+      //     activePath: '/fee-management/statement',
+      //   },
+      //   component: () => import('#/views/fee-management/statement/editor.vue'),
+      // },
     ],
   },
 ];
