@@ -27,7 +27,7 @@ export namespace ChangeOrderAdminApi {
     /** 关键字 模糊匹配 */
     Keyword?: string;
     /** 业务 id */
-    TransportOrderId?: number;
+    TransportOrderId?: string;
     /** 是否费用锁定 */
     FeeLocked?: boolean;
     /** 排序 默认是Id */
