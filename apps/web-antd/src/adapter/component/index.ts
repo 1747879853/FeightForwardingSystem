@@ -712,4 +712,10 @@ async function initComponentAdapter() {
 export { initComponentAdapter };
 
 // 导出业务选择组件
-export { OrganizationSelect, RoleSelect, UserSelect } from './biz-select';
+export {
+  ClientSelect,
+  CurrencySelect,
+  OrganizationSelect,
+  RoleSelect,
+  UserSelect,
+} from './biz-select';

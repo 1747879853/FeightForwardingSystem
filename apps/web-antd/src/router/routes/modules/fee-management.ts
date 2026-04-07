@@ -10,7 +10,10 @@ const routes: RouteRecordRaw[] = [
       order: 201,
       title: $t('seaExport.export.feeManagement'),
       hideChildrenInMenu: false,
-      authority: abpPageAuthority(['Admin.OrderFee.Lock']),
+      authority: abpPageAuthority([
+        'Admin.OrderFee.Lock',
+        'Admin.PaymentApplication',
+      ]),
     },
     name: 'FeeManagement',
     path: '/fee-management',
@@ -25,6 +28,43 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/fee-management/fee-lock/fee-lock-list.vue'),
+      },
+      {
+        path: 'payment-application',
+        name: 'PaymentApplicationList',
+        meta: {
+          icon: 'mdi:file-document-outline',
+          title: $t('seaExport.export.paymentApplication.list'),
+          authority: abpPageAuthority('Admin.PaymentApplication'),
+        },
+        component: () =>
+          import('#/views/fee-management/payment-application/list.vue'),
+      },
+      {
+        path: 'payment-application/add',
+        name: 'PaymentApplicationAdd',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: $t('seaExport.export.paymentApplication.addTitle'),
+          authority: abpPageAuthority('Admin.PaymentApplication'),
+          hideInMenu: true,
+          activePath: '/fee-management/payment-application',
+        },
+        component: () =>
+          import('#/views/fee-management/payment-application/form.vue'),
+      },
+      {
+        path: 'payment-application/:id/edit',
+        name: 'PaymentApplicationEdit',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: $t('seaExport.export.paymentApplication.editTitle'),
+          authority: abpPageAuthority('Admin.PaymentApplication'),
+          hideInMenu: true,
+          activePath: '/fee-management/payment-application',
+        },
+        component: () =>
+          import('#/views/fee-management/payment-application/form.vue'),
       },
     ],
   },

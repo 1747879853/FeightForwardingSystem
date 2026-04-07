@@ -26,6 +26,12 @@ interface Props {
   selectedItems?: CurrencyAdminApi.CurrencyDto[];
   /** value 字段名，默认 'id' */
   valueKey?: string;
+  /** 额外选项，常用于追加“全部/原币”等固定项 */
+  extraOptions?: Array<{
+    disabled?: boolean;
+    label: string;
+    value: any;
+  }>;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -34,6 +40,7 @@ const props = withDefaults(defineProps<Props>(), {
   placeholder: undefined,
   selectedItems: () => [],
   valueKey: 'id',
+  extraOptions: () => [],
 });
 
 const emit = defineEmits<{
@@ -92,6 +99,14 @@ const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
     selectedItemsRef,
     valueKey: props.valueKey,
   });
+
+const mergedApi = async () => {
+  const options = await api();
+  if (!props.extraOptions || props.extraOptions.length === 0) {
+    return options;
+  }
+  return [...props.extraOptions, ...options];
+};
 
 // 计算 placeholder
 const computedPlaceholder = computed(
@@ -178,7 +193,7 @@ defineExpose({
   <ApiComponent
     ref="apiComponentRef"
     :component="Select"
-    :api="api"
+    :api="mergedApi"
     :params="params"
     :model-value="modelValue"
     :placeholder="computedPlaceholder"
