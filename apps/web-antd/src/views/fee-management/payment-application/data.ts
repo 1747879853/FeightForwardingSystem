@@ -124,6 +124,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
 
 export function useColumns(): VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns'] {
   return [
+    { type: 'checkbox', width: 50, fixed: 'left' },
     { type: 'seq', width: 50, fixed: 'left' },
     {
       field: 'applicationNo',

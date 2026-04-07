@@ -1,20 +1,27 @@
 <script lang="ts" setup>
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
+import { ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
-import { Button } from 'ant-design-vue';
+import { Button, message, Modal, Space } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { getPaymentApplicationPagedList } from '#/api/settlement-management/payment-application-admin';
+import {
+  deletePaymentApplication,
+  getPaymentApplicationPagedList,
+} from '#/api/settlement-management/payment-application-admin';
 import { $t } from '#/locales';
 
 import { useColumns, useGridFormSchema } from './data';
 
+const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
+
 const router = useRouter();
+const actionLoading = ref(false);
 
 function handleCreate() {
   router.push('/fee-management/payment-application/add');
@@ -59,8 +66,8 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
   };
 };
 
-const [Grid] = useVbenVxeGrid<PaymentApplicationAdminApi.PaymentApplicationDto>(
-  {
+const [Grid, gridApi] =
+  useVbenVxeGrid<PaymentApplicationAdminApi.PaymentApplicationDto>({
     formOptions: {
       schema: useGridFormSchema(),
       submitOnChange: true,
@@ -76,6 +83,9 @@ const [Grid] = useVbenVxeGrid<PaymentApplicationAdminApi.PaymentApplicationDto>(
       columns: useColumns(),
       height: 'auto',
       keepSource: true,
+      checkboxConfig: {
+        highlight: true,
+      },
       rowConfig: {
         keyField: 'id',
       },
@@ -103,17 +113,51 @@ const [Grid] = useVbenVxeGrid<PaymentApplicationAdminApi.PaymentApplicationDto>(
         zoom: true,
       },
     },
-  },
-);
+  });
+
+function getSelectedRows(): PaymentApplicationAdminApi.PaymentApplicationDto[] {
+  return (gridApi.grid?.getCheckboxRecords?.() ??
+    []) as PaymentApplicationAdminApi.PaymentApplicationDto[];
+}
+
+function handleBatchDelete() {
+  const rows = getSelectedRows();
+  if (rows.length === 0) {
+    message.warning('请先选择要删除的记录');
+    return;
+  }
+  Modal.confirm({
+    title: '确认删除',
+    content: `确定要删除选中的 ${rows.length} 条付费申请吗？`,
+    okType: 'danger',
+    onOk: async () => {
+      actionLoading.value = true;
+      try {
+        await deletePaymentApplication({
+          ids: rows.map((r) => r.id),
+        });
+        message.success('删除成功');
+        gridApi.query();
+      } finally {
+        actionLoading.value = false;
+      }
+    },
+  });
+}
 </script>
 
 <template>
   <Page auto-content-height>
-    <Grid :table-title="$t('seaExport.export.paymentApplication.list')">
+    <Grid :table-title="t('list')">
       <template #toolbar-tools>
-        <Button type="primary" @click="handleCreate">
-          {{ $t('seaExport.export.paymentApplication.addTitle') }}
-        </Button>
+        <Space>
+          <Button type="primary" @click="handleCreate">
+            {{ t('addTitle') }}
+          </Button>
+          <Button danger :loading="actionLoading" @click="handleBatchDelete">
+            删除
+          </Button>
+        </Space>
       </template>
     </Grid>
   </Page>

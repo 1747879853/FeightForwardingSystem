@@ -341,6 +341,29 @@ export namespace PaymentApplicationAdminApi {
     paymentApplicationItems?: PaymentApplicationItemAddDto[];
     attachments?: AttachmentItemForItemInputDto[];
   }
+
+  /** 付费申请编辑 DTO（仅主表） */
+  export interface PaymentApplicationEditDto {
+    id: string;
+    status?: PaymentApplicationStatus;
+    submitTime?: string | null;
+    endTime?: string | null;
+    require?: string;
+    remark?: string;
+    attachments?: AttachmentItemForItemInputDto[];
+  }
+
+  /** 添加费用关联 DTO */
+  export interface PaymentApplicationAddFeesDto {
+    id: string;
+    paymentApplicationItems?: PaymentApplicationItemAddDto[];
+  }
+
+  /** 删除费用关联 DTO */
+  export interface PaymentApplicationDelFeesDto {
+    id: string;
+    orderFeeIds?: string[];
+  }
 }
 
 /** 获取付费申请列表 */
@@ -398,4 +421,45 @@ export async function addPaymentApplication(
   data: PaymentApplicationAdminApi.PaymentApplicationAddDto,
 ) {
   return requestClient.post<string>(`${API_PREFIX}/AddAsync`, data);
+}
+
+/** 删除付费申请（支持批量） */
+export async function deletePaymentApplication(params: {
+  id?: string;
+  ids?: string[];
+}) {
+  return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
+    data: params,
+  });
+}
+
+/** 修改付费申请（仅主表） */
+export async function editPaymentApplication(
+  data: PaymentApplicationAdminApi.PaymentApplicationEditDto,
+) {
+  return requestClient.put(`${API_PREFIX}/EditAsync`, data);
+}
+
+/** 添加费用关联 */
+export async function payAppItemAdd(
+  data: PaymentApplicationAdminApi.PaymentApplicationAddFeesDto,
+) {
+  return requestClient.put(`${API_PREFIX}/PayAppItemAddAsync`, data);
+}
+
+/** 删除费用关联 */
+export async function payAppItemDel(
+  data: PaymentApplicationAdminApi.PaymentApplicationDelFeesDto,
+) {
+  return requestClient.put(`${API_PREFIX}/PayAppItemDelAsync`, data);
+}
+
+/** 提交付费申请 */
+export async function submitPaymentApplication(id: string) {
+  return requestClient.post(`${API_PREFIX}/SubmitAsync`, { id });
+}
+
+/** 撤销提交付费申请 */
+export async function unsubmitPaymentApplication(id: string) {
+  return requestClient.post(`${API_PREFIX}/UnSubmitAsync`, { id });
 }

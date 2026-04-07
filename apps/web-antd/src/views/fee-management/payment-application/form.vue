@@ -37,8 +37,13 @@ import { $t } from '#/locales';
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
 import {
   addPaymentApplication,
+  editPaymentApplication,
   getPaymentApplicationDetail,
+  payAppItemAdd,
+  payAppItemDel,
   PaymentApplicationStatus,
+  submitPaymentApplication,
+  unsubmitPaymentApplication,
 } from '#/api/settlement-management/payment-application-admin';
 import FileUploadInput from '../../../adapter/component/file-upload/file-upload-input.vue';
 
@@ -67,6 +72,13 @@ const editId = computed<string | undefined>(() => {
   return id ? String(id) : undefined;
 });
 const isEdit = computed(() => !!editId.value);
+const currentStatus = ref<number>(PaymentApplicationStatus.Entering);
+const isEntering = computed(
+  () => currentStatus.value === PaymentApplicationStatus.Entering,
+);
+const isAuditing = computed(
+  () => currentStatus.value === PaymentApplicationStatus.Auditing,
+);
 const pageLoading = ref(false);
 const pageTitle = computed(() =>
   isEdit.value ? t('editTitle') : t('addTitle'),
@@ -99,6 +111,8 @@ const remark = ref('');
 const attachments = ref<Attachment[]>([]);
 
 const feeDetailRows = ref<FeeDetailRow[]>([]);
+const originalFeeDetailRows = ref<FeeDetailRow[]>([]);
+const initialLoadFeeIds = ref<Set<string>>(new Set());
 const selectedRowKeys = ref<string[]>([]);
 
 const orderGroupColumns = useOrderGroupColumns();
@@ -222,7 +236,7 @@ function handleOpenAddFee() {
   });
 }
 
-function handleFeeConfirm(fees: SelectedFeeItem[]) {
+async function handleFeeConfirm(fees: SelectedFeeItem[]) {
   const existingIds = new Set(feeDetailRows.value.map((r) => r.feeId));
   const newRows: FeeDetailRow[] = fees
     .filter((fee) => !existingIds.has(fee.feeId))
@@ -231,21 +245,68 @@ function handleFeeConfirm(fees: SelectedFeeItem[]) {
       itemRemark: '',
       rate: fee.exchangeRate ?? 1,
     }));
+
+  if (isEdit.value && editId.value && newRows.length > 0) {
+    try {
+      await payAppItemAdd({
+        id: editId.value,
+        paymentApplicationItems: newRows.map((row) => ({
+          orderFeeId: row.feeId,
+          rate:
+            settlementCurrencyId.value === null
+              ? undefined
+              : (row.rate ?? undefined),
+          appliedAmount: row.appliedAmount,
+          remark: row.itemRemark || undefined,
+        })),
+      });
+    } catch {
+      message.error('添加费用关联失败');
+      return;
+    }
+  }
+
   feeDetailRows.value = [...feeDetailRows.value, ...newRows];
+  originalFeeDetailRows.value = [
+    ...originalFeeDetailRows.value,
+    ...newRows.map((r) => ({ ...r })),
+  ];
   nextTick(() => {
     expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
   });
 }
 
-function handleDeleteSelected() {
+async function handleDeleteSelected() {
   const toRemove = new Set(selectedRowKeys.value);
+  if (toRemove.size === 0) return;
+
+  if (isEdit.value && editId.value) {
+    try {
+      await payAppItemDel({
+        id: editId.value,
+        orderFeeIds: [...toRemove],
+      });
+      message.success('删除费用关联成功');
+    } catch {
+      message.error('删除费用关联失败');
+      return;
+    }
+  }
+
   feeDetailRows.value = feeDetailRows.value.filter(
+    (r) => !toRemove.has(r.feeId),
+  );
+  originalFeeDetailRows.value = originalFeeDetailRows.value.filter(
     (r) => !toRemove.has(r.feeId),
   );
   selectedRowKeys.value = [];
 }
 
 // --- Editable cells ---
+
+function isOriginalFee(feeId: string): boolean {
+  return isEdit.value && initialLoadFeeIds.value.has(feeId);
+}
 
 function onAppliedAmountChange(feeId: string, val: number | null) {
   const row = feeDetailRows.value.find((r) => r.feeId === feeId);
@@ -349,6 +410,7 @@ async function loadEditData() {
   try {
     const detail = await getPaymentApplicationDetail(editId.value);
 
+    currentStatus.value = detail.status ?? PaymentApplicationStatus.Entering;
     applicationNo.value = detail.applicationNo ?? '';
     settlementId.value = detail.settlementId ?? '';
     settlementName.value = detail.clientName ?? '';
@@ -368,6 +430,8 @@ async function loadEditData() {
     }
 
     feeDetailRows.value = mapDetailToFeeRows(detail);
+    originalFeeDetailRows.value = feeDetailRows.value.map((r) => ({ ...r }));
+    initialLoadFeeIds.value = new Set(feeDetailRows.value.map((r) => r.feeId));
 
     attachments.value = (detail.attachments ?? []).map((a) => ({
       attachmentId: a.attachmentId ?? a.id,
@@ -421,6 +485,67 @@ function buildSubmitData(
   };
 }
 
+async function saveEditMode() {
+  const id = editId.value!;
+
+  const attachmentItems: PaymentApplicationAdminApi.AttachmentItemForItemInputDto[] =
+    attachments.value.map((a, idx) => ({
+      attachmentId: Number(a.attachmentId),
+      displayOrder: idx,
+      url: a.url,
+    }));
+
+  await editPaymentApplication({
+    id,
+    status: PaymentApplicationStatus.Entering,
+    submitTime: dayjs().toISOString(),
+    endTime: endTime.value ? dayjs(endTime.value).toISOString() : null,
+    require: paymentRequire.value || undefined,
+    remark: remark.value || undefined,
+    attachments: attachmentItems.length > 0 ? attachmentItems : undefined,
+  });
+
+  const originalMap = new Map(
+    originalFeeDetailRows.value.map((r) => [r.feeId, r]),
+  );
+  const modifiedDeleteIds: string[] = [];
+  const modifiedAddFees: FeeDetailRow[] = [];
+
+  for (const curr of feeDetailRows.value) {
+    if (initialLoadFeeIds.value.has(curr.feeId)) continue;
+    const orig = originalMap.get(curr.feeId);
+    if (!orig) continue;
+    if (
+      orig.appliedAmount !== curr.appliedAmount ||
+      orig.rate !== curr.rate ||
+      (orig.itemRemark ?? '') !== (curr.itemRemark ?? '')
+    ) {
+      modifiedDeleteIds.push(curr.feeId);
+      modifiedAddFees.push(curr);
+    }
+  }
+
+  if (modifiedDeleteIds.length > 0) {
+    await payAppItemDel({ id, orderFeeIds: modifiedDeleteIds });
+  }
+  if (modifiedAddFees.length > 0) {
+    await payAppItemAdd({
+      id,
+      paymentApplicationItems: modifiedAddFees.map((row) => ({
+        orderFeeId: row.feeId,
+        rate:
+          settlementCurrencyId.value === null
+            ? undefined
+            : (row.rate ?? undefined),
+        appliedAmount: row.appliedAmount,
+        remark: row.itemRemark || undefined,
+      })),
+    });
+  }
+
+  originalFeeDetailRows.value = feeDetailRows.value.map((r) => ({ ...r }));
+}
+
 async function handleSave() {
   if (!ensureSettlementSelected()) {
     return;
@@ -431,11 +556,17 @@ async function handleSave() {
   }
   submitting.value = true;
   try {
-    await addPaymentApplication(
-      buildSubmitData(PaymentApplicationStatus.Entering),
-    );
-    message.success(t('addSuccess'));
-    router.push('/fee-management/payment-application');
+    if (isEdit.value && editId.value) {
+      await saveEditMode();
+      message.success('保存成功');
+      await loadEditData();
+    } else {
+      const newId = await addPaymentApplication(
+        buildSubmitData(PaymentApplicationStatus.Entering),
+      );
+      message.success(t('addSuccess'));
+      router.replace(`/fee-management/payment-application/${newId}/edit`);
+    }
   } finally {
     submitting.value = false;
   }
@@ -476,6 +607,37 @@ async function handleSubmitAndNew() {
     );
     message.success(t('submitSuccess'));
     resetForm();
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function handleSubmitApplication() {
+  if (!editId.value) return;
+  if (!ensureSettlementSelected()) return;
+  if (feeDetailRows.value.length === 0) {
+    message.warning(t('noFeeWarning'));
+    return;
+  }
+  submitting.value = true;
+  try {
+    await saveEditMode();
+    await submitPaymentApplication(editId.value);
+    message.success(t('submitSuccess'));
+    await loadEditData();
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function handleUnsubmitApplication() {
+  if (!editId.value) return;
+  submitting.value = true;
+  try {
+    await unsubmitPaymentApplication(editId.value);
+    message.success('撤销提交成功');
+    currentStatus.value = PaymentApplicationStatus.Entering;
+    await loadEditData();
   } finally {
     submitting.value = false;
   }
@@ -526,18 +688,32 @@ function formatMonth(val: string | undefined | null): string {
           </div>
           <div class="action-bar__right">
             <Space>
-              <Button :loading="submitting" @click="handleSave">
-                {{ t('save') }}
-              </Button>
+              <!-- 新建模式：仅保存 -->
+              <template v-if="!isEdit">
+                <Button :loading="submitting" @click="handleSave">
+                  {{ t('save') }}
+                </Button>
+              </template>
+              <!-- 编辑模式 且 录入中：保存 + 提交（SubmitAsync） -->
+              <template v-if="isEdit && isEntering">
+                <Button :loading="submitting" @click="handleSave">
+                  {{ t('save') }}
+                </Button>
+                <Button
+                  type="primary"
+                  :loading="submitting"
+                  @click="handleSubmitApplication"
+                >
+                  提交
+                </Button>
+              </template>
+              <!-- 审核中：显示撤销提交 -->
               <Button
-                type="primary"
+                v-if="isEdit && isAuditing"
                 :loading="submitting"
-                @click="handleSubmit"
+                @click="handleUnsubmitApplication"
               >
-                {{ t('submit') }}
-              </Button>
-              <Button :loading="submitting" @click="handleSubmitAndNew">
-                {{ t('submitAndNew') }}
+                撤销提交
               </Button>
               <Dropdown>
                 <Button>
@@ -883,6 +1059,7 @@ function formatMonth(val: string | undefined | null): string {
                       </template>
                       <template v-else-if="column.key === 'appliedAmount'">
                         <InputNumber
+                          v-if="!isOriginalFee(record.feeId)"
                           :value="record.appliedAmount"
                           :precision="2"
                           size="small"
@@ -891,9 +1068,13 @@ function formatMonth(val: string | undefined | null): string {
                             (val) => onAppliedAmountChange(record.feeId, val)
                           "
                         />
+                        <span v-else>{{
+                          formatAmount(record.appliedAmount)
+                        }}</span>
                       </template>
                       <template v-else-if="column.key === 'rate'">
                         <InputNumber
+                          v-if="!isOriginalFee(record.feeId)"
                           :value="record.rate"
                           :precision="6"
                           :step="0.01"
@@ -902,6 +1083,7 @@ function formatMonth(val: string | undefined | null): string {
                           class="w-full"
                           @change="(val) => onRateChange(record.feeId, val)"
                         />
+                        <span v-else>{{ record.rate }}</span>
                       </template>
                       <template v-else>
                         {{ column.dataIndex ? record[column.dataIndex] : '' }}
