@@ -27,7 +27,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
  */
 export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto>['columns'] {
   return [
-    { type: 'radio', width: 48, fixed: 'left' },
+    { type: 'checkbox', width: 48, fixed: 'left' },
     {
       field: 'statementNum',
       title: $t('seaExport.export.statement.number'),
@@ -37,6 +37,18 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'clientName',
       title: $t('seaExport.export.statement.clientName'),
       minWidth: 140,
+    },
+    {
+      field: 'startTime',
+      title: $t('seaExport.export.statement.startTime'),
+      minWidth: 140,
+      formatter: 'formatDate',
+    },
+    {
+      field: 'endTime',
+      title: $t('seaExport.export.statement.endTime'),
+      minWidth: 140,
+      formatter: 'formatDate',
     },
     {
       field: 'localCurrencyCode',
@@ -54,8 +66,8 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       minWidth: 80,
     },
     {
-      field: 'remark',
-      title: $t('seaExport.export.remark'),
+      field: 'description',
+      title: $t('seaExport.export.statement.notes'),
       minWidth: 160,
       showOverflow: true,
     },

@@ -175,6 +175,12 @@ export namespace OrderFeeAdminApi {
     /** 已开票金额 */
     invoicedAmount: number;
 
+    /** 未付费金额 */
+    unRqstPaymentAmount: number;
+
+    /** 未结算金额 */
+    unSettledAmount: number;
+
     /** 发票申请金额 */
     orderInvoiceAmount: number;
 

@@ -181,6 +181,12 @@ export namespace OrderFeeAdminApi {
     /** 已结算金额 */
     settledAmount: number;
 
+    /** 未申请金额 */
+    unRqstPaymentAmount: number;
+
+    /** 未结算金额 */
+    unSettledAmount: number;
+
     /** 是否允许开票 */
     canInvoice: boolean;
 

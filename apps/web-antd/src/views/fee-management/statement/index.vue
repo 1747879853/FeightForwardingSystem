@@ -24,14 +24,17 @@ const handleRowDblclick = ({
 }: {
   row: StatementAdminApi.StatementDto;
 }) => {
-  router.push(`/sea-exports/${row.id}/edit`);
+  router.push(`/fee-management/statement/${row.id}/edit`);
 };
 
 const [Grid, gridApi] = useVbenVxeGrid<StatementAdminApi.StatementDto>({
   formOptions: {
     schema: useGridFormSchema(),
     submitOnChange: true,
-    showCollapseButton: false,
+    showCollapseButton: true,
+    collapsed: true,
+    compact: true,
+    wrapperClass: 'grid-cols-4',
   },
   gridEvents: {
     cellDblclick: handleRowDblclick,
@@ -40,9 +43,8 @@ const [Grid, gridApi] = useVbenVxeGrid<StatementAdminApi.StatementDto>({
     columns: useColumns(),
     height: 'auto',
     keepSource: true,
-    radioConfig: {
+    checkboxConfig: {
       highlight: true,
-      trigger: 'row',
     },
     rowConfig: {
       keyField: 'id',
@@ -73,32 +75,23 @@ const [Grid, gridApi] = useVbenVxeGrid<StatementAdminApi.StatementDto>({
   },
 });
 
-const getSelectedRow = (): StatementAdminApi.StatementDto | undefined => {
+const getSelectedRows = (): StatementAdminApi.StatementDto[] | undefined => {
   const grid = gridApi.grid as any;
-  return grid?.getRadioRecord?.() ?? undefined;
+  return grid?.getCheckboxRecords?.() ?? undefined;
 };
 
 const handleCreate = () => {
-  router.push('/fee-management/statement/create');
-};
-
-const handleEdit = () => {
-  const row = getSelectedRow();
-  if (!row) {
-    message.warning($t('seaExport.export.pleaseSelectOne'));
-    return;
-  }
-  router.push(`/fee-management/statement/${row.id}/edit`);
+  router.push('/fee-management/statement/add');
 };
 
 const handleDelete = () => {
-  const row = getSelectedRow();
-  if (!row) {
+  const rows = getSelectedRows();
+  if (!rows || rows.length === 0) {
     message.warning($t('seaExport.export.pleaseSelectOne'));
     return;
   }
 
-  const name = row.clientName ?? `${row.id}`;
+  const name = rows[0]?.clientName ?? `${rows[0]?.id}`;
 
   Modal.confirm({
     title: $t('ui.actionTitle.delete', [
@@ -113,7 +106,9 @@ const handleDelete = () => {
         key: 'action_process_msg',
       });
       try {
-        await deleteStatement(row.id);
+        await deleteStatement({
+          ids: rows.map((r) => r.id),
+        });
         message.success({
           content: $t('seaExport.export.statement.deleteSuccess', [name]),
           key: 'action_process_msg',
@@ -135,19 +130,17 @@ const handleRefresh = () => {
   <Page auto-content-height>
     <Grid :table-title="$t('seaExport.export.statement.list')">
       <template #toolbar-tools>
-        <Button class="mr-2" danger @click="handleDelete">
-          {{ $t('common.delete') }}
-        </Button>
-        <Button class="mr-2" @click="handleEdit">
-          {{ $t('common.edit') }}
-        </Button>
-        <Button type="primary" @click="handleCreate">
+        <Button class="mr-2" type="primary" @click="handleCreate">
           <Plus class="size-5" />
           {{
             $t('ui.actionTitle.create', [
               $t('seaExport.export.statement.title'),
             ])
           }}
+        </Button>
+
+        <Button danger @click="handleDelete">
+          {{ $t('common.delete') }}
         </Button>
       </template>
     </Grid>
