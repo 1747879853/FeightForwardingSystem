@@ -225,21 +225,23 @@ export function buildDynamicCurrencyColumns(currencies: CurrencyInfo[]) {
   for (const c of currencies) {
     columns.push({
       field: `currency_${c.currencyId}_receive`,
+      dataIndex: `currency_${c.currencyId}_receive`,
       title: `${c.currencyName}未收`,
       width: 120,
       align: 'right',
     });
     columns.push({
       field: `currency_${c.currencyId}_pay`,
+      dataIndex: `currency_${c.currencyId}_pay`,
       title: `${c.currencyName}未付`,
       width: 120,
       align: 'right',
     });
   }
+  console.log('buildDynamicCurrencyColumns', columns);
   return columns;
 }
 
-/** 计算某个订单的某币别的应收/应付合计 */
 export function calcCurrencySummary(
   orderFees: OrderFeeAdminApi.OrderFeeDto[],
   currencyId: number,

@@ -361,8 +361,6 @@ function getSelectedFees(): SelectedFeeItem[] {
           amount: fee.amount,
           settledAmount: fee.settledAmount,
           unSettledAmount: fee.unSettledAmount,
-          appliedAmount:
-            appliedAmountMap.get(fee.id) ?? fee.unSettledAmount ?? 0,
         });
       }
     }

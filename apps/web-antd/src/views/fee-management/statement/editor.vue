@@ -1,7 +1,15 @@
 <script lang="ts" setup>
-import type { StatementAdminApi } from '#/api/Client-management/statement-admin';
+import type { StatementAdminApi } from '#/api/settlement-management/statement-admin';
 import type { Attachment } from '#/api/common/upload';
-import type { SelectedFeeItem } from '../add-fee-statement-modal/data';
+import {
+  type SelectedFeeItem,
+  type CurrencyInfo,
+  buildDynamicCurrencyColumns,
+} from '../add-fee-statement-modal/data';
+import {
+  getCurrencyEnumOptions,
+  getCurrencyEnumSymbolOptions,
+} from '#/views/sea-export-admin/orderFee/data';
 import type {
   CurrencyConversionSummary,
   CurrencySummary,
@@ -87,19 +95,13 @@ const applicantName = computed(
 const creationTime = ref(dayjs().format('YYYY-MM-DD HH:mm'));
 const endTime = ref<string | undefined>(undefined);
 const startTime = ref<string | undefined>(undefined);
-const companyName = ref('-');
 const statementNum = ref('');
 const displayApplicationNo = computed(() =>
   isEdit.value ? statementNum.value : t('autoGenerate'),
 );
 
-const currencySelectRef = ref<InstanceType<typeof CurrencySelect> | null>(null);
 const clientId = ref<string>('');
 const clientName = ref('');
-
-/** null = 按原票币, number = 指定币别 */
-const ClientCurrencyId = ref<null | number>(null);
-const ClientCurrencyName = ref('');
 
 const statementDescription = ref('');
 const remark = ref('');
@@ -109,33 +111,27 @@ const feeDetailRows = ref<FeeDetailRow[]>([]);
 const originalFeeDetailRows = ref<FeeDetailRow[]>([]);
 const initialLoadFeeIds = ref<Set<string>>(new Set());
 const selectedRowKeys = ref<string[]>([]);
-
+const currencies = ref<CurrencyInfo[]>([]);
 const orderGroupColumns = useOrderGroupColumns();
+const dynamicColumns = computed(() =>
+  buildDynamicCurrencyColumns(currencies.value),
+);
+const allColumns = computed(() => [
+  ...orderGroupColumns,
+  ...dynamicColumns.value,
+]);
 const feeInnerColumns = useFeeInnerColumns();
 
-const orderGroups = computed(() => groupFeesByOrder(feeDetailRows.value));
+const orderGroups = computed(() =>
+  groupFeesByOrder(feeDetailRows.value, currencies.value),
+);
 const expandedGroupKeys = ref<string[]>([]);
 
 const currencySummaries = computed<CurrencySummary[]>(() =>
   summarizeByCurrency(feeDetailRows.value),
 );
 
-const convertedTotal = computed(() => calcConvertedTotal(feeDetailRows.value));
-
-const currencyConversionSummaries = computed<CurrencyConversionSummary[]>(() =>
-  summarizeByCurrencyWithConversion(feeDetailRows.value),
-);
-
-const grandConvertedTotal = computed(() =>
-  currencyConversionSummaries.value.reduce(
-    (sum, cs) => sum + cs.convertedTotal,
-    0,
-  ),
-);
-
 const isClientLocked = computed(() => feeDetailRows.value.length > 0);
-
-const isClientCurrencyLocked = computed(() => feeDetailRows.value.length > 0);
 
 // --- Fee detail selection ---
 
@@ -218,6 +214,18 @@ function handleOpenAddFee() {
     statementNum: editId.value,
   });
 }
+function collectCurrenciesByFeeConfirm(fees: FeeDetailRow[]): CurrencyInfo[] {
+  const map = new Map<number, string>();
+  for (const fee of fees) {
+    if (fee.currencyId && fee.currencyName && !map.has(fee.currencyId)) {
+      map.set(fee.currencyId, fee.currencyName);
+    }
+  }
+  return [...map.entries()].map(([currencyId, currencyName]) => ({
+    currencyId,
+    currencyName,
+  }));
+}
 
 async function handleFeeConfirm(fees: SelectedFeeItem[]) {
   const existingIds = new Set(feeDetailRows.value.map((r) => r.feeId));
@@ -242,6 +250,7 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
     ...originalFeeDetailRows.value,
     ...newRows.map((r) => ({ ...r })),
   ];
+  currencies.value = collectCurrenciesByFeeConfirm(feeDetailRows.value ?? []);
   nextTick(() => {
     expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
   });
@@ -300,13 +309,31 @@ function ensureClientSelected() {
 }
 
 // --- Load detail for edit mode ---
-
+function collectCurrenciesByInit(
+  items: StatementAdminApi.OrderFeeAndSeaExportDto[],
+): CurrencyInfo[] {
+  const map = new Map<number, string>();
+  for (const order of items) {
+    for (const fee of order.orderFees ?? []) {
+      if (fee.currencyId && fee.currencyName && !map.has(fee.currencyId)) {
+        map.set(fee.currencyId, fee.currencyName);
+      }
+    }
+  }
+  return [...map.entries()].map(([currencyId, currencyName]) => ({
+    currencyId,
+    currencyName,
+  }));
+}
 function mapDetailToFeeRows(
   detail: StatementAdminApi.StatementDto,
 ): FeeDetailRow[] {
   const rows: FeeDetailRow[] = [];
+  currencies.value = collectCurrenciesByInit(detail.orderFeeGroups ?? []);
+  console.log('mapDetailToFeeRows currencies', currencies.value);
   for (const group of detail.orderFeeGroups ?? []) {
     const order = group.transportOrder;
+
     for (const item of group.orderFees ?? []) {
       const fee = item;
       console.log('mapDetailToFeeRows fee', fee);
@@ -351,8 +378,7 @@ async function loadEditData() {
     statementNum.value = detail.statementNum ?? '';
     clientId.value = detail.clientId ?? '';
     clientName.value = detail.clientName ?? '';
-    ClientCurrencyId.value = detail.currencyId ?? null;
-    ClientCurrencyName.value = detail.currencyCode ?? '';
+
     creationTime.value = detail.creationTime
       ? dayjs(detail.creationTime).format('YYYY-MM-DD HH:mm')
       : dayjs().format('YYYY-MM-DD HH:mm');
@@ -362,12 +388,8 @@ async function loadEditData() {
     endTime.value = detail.endTime
       ? dayjs(detail.endTime).format('YYYY-MM-DD')
       : undefined;
-    statementDescription.value = detail.require ?? '';
+    statementDescription.value = detail.description ?? '';
     remark.value = detail.remark ?? '';
-
-    if (detail.companys && detail.companys.length > 0) {
-      companyName.value = detail.companys[0]!.name ?? '-';
-    }
 
     feeDetailRows.value = mapDetailToFeeRows(detail);
     originalFeeDetailRows.value = feeDetailRows.value.map((r) => ({ ...r }));
@@ -655,9 +677,67 @@ function formatMonth(val: string | undefined | null): string {
                   class="currency-card"
                 >
                   <div class="currency-card__header">
-                    <Tag color="blue">{{ cs.currencyName }}</Tag>
-                    <span class="currency-card__amount">
-                      {{ formatAmount(cs.totalAmount) }}
+                    <Tag color="orange">
+                      {{
+                        getCurrencyEnumOptions().find(
+                          (o) => o.value === cs.currencyId,
+                        )?.label
+                      }}{{ t('payAmount') }}</Tag
+                    >
+                    <span class="currency-card__payamount">
+                      {{
+                        getCurrencyEnumSymbolOptions().find(
+                          (o) => o.value === cs.currencyId,
+                        )?.label
+                      }}{{ formatAmount(cs.payAmount) }}
+                    </span>
+                  </div>
+                  <div class="currency-card__header mt-1">
+                    <Tag color="orange"
+                      >{{
+                        getCurrencyEnumOptions().find(
+                          (o) => o.value === cs.currencyId,
+                        )?.label
+                      }}{{ t('payUnSettledAmount') }}</Tag
+                    >
+                    <span class="currency-card__payamount">
+                      {{
+                        getCurrencyEnumSymbolOptions().find(
+                          (o) => o.value === cs.currencyId,
+                        )?.label
+                      }}{{ formatAmount(cs.payUnSettledAmount) }}
+                    </span>
+                  </div>
+                  <div class="currency-card__header mt-1">
+                    <Tag color="blue"
+                      >{{
+                        getCurrencyEnumOptions().find(
+                          (o) => o.value === cs.currencyId,
+                        )?.label
+                      }}{{ t('receivableAmount') }}</Tag
+                    >
+                    <span class="currency-card__recamount">
+                      {{
+                        getCurrencyEnumSymbolOptions().find(
+                          (o) => o.value === cs.currencyId,
+                        )?.label
+                      }}{{ formatAmount(cs.receivableAmount) }}
+                    </span>
+                  </div>
+                  <div class="currency-card__header mt-1">
+                    <Tag color="blue"
+                      >{{
+                        getCurrencyEnumOptions().find(
+                          (o) => o.value === cs.currencyId,
+                        )?.label
+                      }}{{ t('receivableUnSettledAmount') }}</Tag
+                    >
+                    <span class="currency-card__recamount">
+                      {{
+                        getCurrencyEnumSymbolOptions().find(
+                          (o) => o.value === cs.currencyId,
+                        )?.label
+                      }}{{ formatAmount(cs.receivableUnSettledAmount) }}
                     </span>
                   </div>
                 </div>
@@ -701,7 +781,7 @@ function formatMonth(val: string | undefined | null): string {
 
           <div class="fee-group-table">
             <Table
-              :columns="orderGroupColumns"
+              :columns="allColumns"
               :data-source="orderGroups"
               :pagination="false"
               :scroll="{ x: 'max-content', y: 500 }"
@@ -938,10 +1018,20 @@ function formatMonth(val: string | undefined | null): string {
   align-items: center;
 }
 
-.currency-card__amount {
+.currency-card__recamount {
+  font-family: Monaco, Consolas, 'Courier New';
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: #1890ff;
+  letter-spacing: 0.02em;
+}
+
+.currency-card__payamount {
+  font-family: Monaco, Consolas, 'Courier New';
+  font-size: 18px;
+  font-weight: 600;
+  color: #d46b08;
+  letter-spacing: 0.02em;
 }
 
 .conversion-cards {

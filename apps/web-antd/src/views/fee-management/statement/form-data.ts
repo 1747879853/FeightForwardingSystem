@@ -1,4 +1,8 @@
-import type { SelectedFeeItem } from '../add-fee-statement-modal/data';
+import {
+  type SelectedFeeItem,
+  type CurrencyInfo,
+} from '../add-fee-statement-modal/data';
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 
 import { $t } from '#/locales';
 
@@ -32,7 +36,10 @@ export interface FeeDetailRow extends SelectedFeeItem {
 export interface CurrencySummary {
   currencyId: number;
   currencyName: string;
-  totalAmount: number;
+  payAmount: number;
+  payUnSettledAmount: number;
+  receivableAmount: number;
+  receivableUnSettledAmount: number;
 }
 
 /** 订单内单个币别的汇总 */
@@ -58,9 +65,22 @@ export interface OrderGroupRow {
   children: FeeDetailRow[];
   currencySummaries: OrderCurrencyAmount[];
 }
-
+/** 计算某个订单的某币别的应收/应付合计 */
+export function calcCurrencySummary(
+  orderFees: FeeDetailRow[],
+  currencyId: number,
+  paySide: number,
+): number {
+  console.log('MainTable-calcCurrencySummary', orderFees, currencyId, paySide);
+  return orderFees
+    .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
+    .reduce((sum, f) => sum + (f.unSettledAmount ?? 0), 0);
+}
 /** 按订单分组费用，计算各币别汇总 */
-export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
+export function groupFeesByOrder(
+  fees: FeeDetailRow[],
+  currencies: CurrencyInfo[],
+): OrderGroupRow[] {
   const map = new Map<string, FeeDetailRow[]>();
   for (const fee of fees) {
     const id = fee.transportOrderId;
@@ -78,15 +98,15 @@ export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
     for (const f of items) {
       const existing = cMap.get(f.currencyId);
       if (existing) {
-        existing.amount += f.appliedAmount ?? 0;
+        existing.amount += 0;
       } else {
         cMap.set(f.currencyId, {
           currencyName: f.currencyName ?? '',
-          amount: f.appliedAmount ?? 0,
+          amount: 0,
         });
       }
     }
-    return {
+    let row = {
       key: `order_${transportOrderId}`,
       transportOrderId,
       commissionNum: first.commissionNum ?? '',
@@ -102,6 +122,21 @@ export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
       children: items,
       currencySummaries: [...cMap.values()],
     };
+
+    for (const c of currencies) {
+      row[`currency_${c.currencyId}_receive`] = calcCurrencySummary(
+        items ?? [],
+        c.currencyId,
+        0,
+      );
+      row[`currency_${c.currencyId}_pay`] = calcCurrencySummary(
+        items ?? [],
+        c.currencyId,
+        1,
+      );
+    }
+    console.log('groupFeesByOrder row', row);
+    return row;
   });
 }
 
@@ -298,16 +333,43 @@ export function summarizeByCurrencyWithConversion(
 /** 按币别分组汇总费用 */
 export function summarizeByCurrency(fees: FeeDetailRow[]): CurrencySummary[] {
   const map = new Map<number, CurrencySummary>();
+  console.log('summarizeByCurrency', fees);
+  map.set(9999, {
+    currencyId: 9999,
+    currencyName: '合计',
+    payAmount: 0,
+    payUnSettledAmount: 0,
+    receivableAmount: 0,
+    receivableUnSettledAmount: 0,
+  });
   for (const fee of fees) {
     const existing = map.get(fee.currencyId);
-    if (existing) {
-      existing.totalAmount += fee.appliedAmount ?? 0;
+    if (existing && fee.paySide === 1) {
+      existing.payAmount += fee.amount ?? 0;
+      existing.payUnSettledAmount += fee.unSettledAmount ?? 0;
+    } else if (existing && fee.paySide === 0) {
+      existing.receivableAmount += fee.amount ?? 0;
+      existing.receivableUnSettledAmount += fee.unSettledAmount ?? 0;
     } else {
       map.set(fee.currencyId, {
         currencyId: fee.currencyId,
         currencyName: fee.currencyName ?? '',
-        totalAmount: fee.appliedAmount ?? 0,
+        payAmount: fee.paySide === 1 ? (fee.amount ?? 0) : 0,
+        payUnSettledAmount: fee.paySide === 1 ? (fee.unSettledAmount ?? 0) : 0,
+        receivableAmount: fee.paySide === 0 ? (fee.amount ?? 0) : 0,
+        receivableUnSettledAmount:
+          fee.paySide === 0 ? (fee.unSettledAmount ?? 0) : 0,
       });
+    }
+    const total = map.get(9999);
+    if (total && fee.paySide === 1) {
+      total.payAmount += fee.amount * (fee.exchangeRate ?? 0);
+      total.payUnSettledAmount +=
+        (fee.unSettledAmount ?? 0) * (fee.exchangeRate ?? 1);
+    } else if (total && fee.paySide === 0) {
+      total.receivableAmount += fee.amount * (fee.exchangeRate ?? 0);
+      total.receivableUnSettledAmount +=
+        (fee.unSettledAmount ?? 0) * (fee.exchangeRate ?? 1);
     }
   }
   return [...map.values()];

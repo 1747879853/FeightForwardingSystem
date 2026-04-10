@@ -145,13 +145,17 @@ export const getTrueOfFlaseOptions = () => [
 // 币别
 // --------------------------------------------------------
 export const getCurrencyEnumOptions = () => [
+  { value: 9999, label: '合计' },
   { value: 1, label: 'RMB' },
   { value: 2, label: 'USD' },
+  { value: 3, label: 'EUR' },
 ];
 
 export const getCurrencyEnumSymbolOptions = () => [
+  { value: 9999, label: '￥' },
   { value: 1, label: '￥' },
   { value: 2, label: '$' },
+  { value: 3, label: '€' },
 ];
 // --------------------------------------------------------
 // 费用类别

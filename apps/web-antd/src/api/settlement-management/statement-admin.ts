@@ -29,6 +29,9 @@ export namespace StatementAdminApi {
   export interface StatementDto {
     statementNum?: string;
     clientId: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    description?: string;
     sortId: number;
     remark?: string;
     userId: number;
@@ -50,7 +53,21 @@ export namespace StatementAdminApi {
     lastModifierUserId?: number;
     creationTime: string;
     creatorUserId?: number;
+    attachments?: AttachmentItemDto[];
     id: string;
+  }
+
+  /** 附件项 DTO（详情输出） */
+  export interface AttachmentItemDto {
+    attachmentId: number;
+    itemId?: string;
+    moduleTypeId?: string;
+    isFirstShow: boolean;
+    displayOrder: number;
+    url?: string;
+    mediaType?: number;
+    friendlyFileName?: string;
+    id: number;
   }
   /** 附件项 DTO（输入） */
   export interface AttachmentItemForItemInputDto {

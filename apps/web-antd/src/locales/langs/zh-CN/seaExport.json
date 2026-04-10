@@ -383,7 +383,11 @@
       "unSettledAmountLabel": "未结金额",
       "applicationRate": "申请汇率",
       "convertedTotal": "折算合计",
-      "serialNumber": "序号"
+      "serialNumber": "序号",
+      "payAmount": "应付",
+      "receivableAmount": "应收",
+      "payUnSettledAmount": "未付",
+      "receivableUnSettledAmount": "未收"
     }
   },
   "client": {
