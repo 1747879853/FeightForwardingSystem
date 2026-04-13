@@ -904,7 +904,7 @@ function formatMonth(val: string | undefined | null): string {
             </Table>
           </div>
 
-          <div class="fee-footer">
+          <!-- <div class="fee-footer">
             <span>
               {{ t('orderCount', [orderGroups.length]) }}
             </span>
@@ -918,7 +918,7 @@ function formatMonth(val: string | undefined | null): string {
                 <strong>{{ formatAmount(cs.totalAmount) }}</strong>
               </span>
             </div>
-          </div>
+          </div> -->
         </Card>
       </div>
 

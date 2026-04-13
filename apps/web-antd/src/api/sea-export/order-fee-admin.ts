@@ -253,7 +253,7 @@ export namespace OrderFeeAdminApi {
     TransportOrderId?: string;
 
     /**收付类型 */
-    PaySide: number;
+    PaySide?: number;
 
     /** 费用状态 */
     FeeStatus?: number;

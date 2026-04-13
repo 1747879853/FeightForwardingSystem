@@ -19,6 +19,33 @@ export function useGridFormSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
+    {
+      component: 'Input',
+      fieldName: 'StatementNum',
+      label: $t('seaExport.export.statement.number'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'CreationStartTime',
+      label: $t('seaExport.export.statement.startTime'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'CreationEndTime',
+      label: $t('seaExport.export.statement.endTime'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
   ];
 }
 

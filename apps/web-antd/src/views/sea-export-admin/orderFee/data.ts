@@ -373,6 +373,18 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('seaExport.export.orderFee.currency'),
 
+      field: 'currencyNamezh',
+      align: 'center',
+
+      minWidth: 80,
+      cellRender: {
+        name: 'CellClientSelect',
+      },
+    },
+
+    {
+      title: $t('seaExport.export.orderFee.currency'),
+
       field: 'currencyName',
       align: 'center',
       minWidth: 80,
@@ -539,6 +551,212 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
       title: $t('auditApproval.task.AuditRemark'),
       field: 'task.remark',
       width: 150,
+    },
+  ];
+}
+
+/**
+ * 列表列配置（无操作列，第一列为 radio 单选列）
+ */
+
+export function useOrderFeeColumns(
+  type: number,
+): VxeTableGridOptions<OrderFeeAdminApi.OrderFeeEditDto>['columns'] {
+  return [
+    { type: 'checkbox', width: 48, fixed: 'left' },
+    {
+      title: $t('seaExport.export.orderFee.invoiceStatus'),
+      field: 'invoiceStatus',
+      width: 80,
+      cellRender: {
+        name: 'CellTag',
+        options: getInvoiceStatusOptions(),
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.feeStatus'),
+
+      align: 'center',
+      field: 'feeStatus',
+      minWidth: 160,
+      cellRender: {
+        name: 'CellFeeStatusTag',
+        options: getFeeStatusOptions(),
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.feecodeName'),
+
+      field: 'feeCodeId',
+      minWidth: 150,
+      cellRender: {
+        name: 'CellFeeCodeSelect',
+      },
+    },
+    {
+      title: $t('seaExport.client.industryCategories'),
+
+      field: 'industryCategory',
+      minWidth: 110,
+      cellRender: {
+        name: 'Select',
+        options: getIndustryCategoryOptions(),
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.settlement'),
+
+      field: 'settlementId',
+      minWidth: 150,
+      cellRender: {
+        name: 'CellClientSelect',
+      },
+    },
+
+    {
+      title: $t('seaExport.export.orderFee.currency'),
+
+      field: 'currencyId',
+      align: 'center',
+      minWidth: 100,
+      cellRender: {
+        name: 'CurrencySelect',
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.ExchangeRate'),
+      field: 'exchangeRate',
+      align: 'center',
+      width: 90,
+      cellRender: {
+        name: 'ExchangeRateSelect',
+        props: {
+          valueKey: type === 0 ? 'drValue' : 'crValue',
+        },
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.unitPrice'),
+      field: 'unitPrice',
+      width: 100,
+      cellRender: {
+        name: 'CellInput',
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.amount'),
+      field: 'amount',
+      minWidth: 120,
+      cellRender: {
+        name: 'CellInput',
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.unitEmum'),
+      field: 'unitEmum',
+      minWidth: 100,
+      cellRender: {
+        name: 'Select',
+        options: getUnitEmumOptions(),
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.quantity'),
+
+      field: 'quantity',
+      minWidth: 100,
+      cellRender: {
+        name: 'CellInput',
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.taxRate'),
+
+      field: 'taxRate',
+      minWidth: 80,
+      cellRender: {
+        name: 'CellInput',
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
+      field: 'noTaxUnitPrice',
+      minWidth: 100,
+    },
+    {
+      title: $t('seaExport.export.orderFee.noTaxAmount'),
+
+      field: 'noTaxAmount',
+      minWidth: 120,
+    },
+    {
+      title: $t('seaExport.export.orderFee.rqstPaymentAmount'),
+      field: 'rqstPaymentAmount',
+      minWidth: 120,
+    },
+    {
+      title: $t('seaExport.export.orderFee.invoicedAmount'),
+      field: 'invoicedAmount',
+      minWidth: 120,
+    },
+    {
+      title: $t('seaExport.export.orderFee.orderInvoiceAmount'),
+      field: 'orderInvoiceAmount',
+      minWidth: 120,
+    },
+    {
+      title: $t('seaExport.export.orderFee.settledAmount'),
+      field: 'settledAmount',
+      minWidth: 120,
+    },
+    {
+      title: $t('seaExport.export.orderFee.canInvoice'),
+
+      field: 'canInvoice',
+      minWidth: 100,
+      cellRender: {
+        //attrs: { beforeChange: onStatusChange },
+        name: 'CellSwitch',
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.isConfidential'),
+
+      field: 'isConfidential',
+      minWidth: 100,
+      cellRender: {
+        //attrs: { beforeChange: onStatusChange },
+        name: 'CellSwitch',
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.remark'),
+      field: 'remark',
+      minWidth: 150,
+      cellRender: {
+        name: 'CellInput',
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.dataEntryMethod'),
+      field: 'dataEntryMethod',
+      minWidth: 110,
+      cellRender: {
+        name: 'CellTag',
+        options: getDataEntryMethodOptions(),
+      },
+    },
+
+    {
+      title: $t('auditApproval.task.creatorUserName'),
+      field: 'task.creatorUserName',
+      width: 110,
+    },
+    {
+      title: $t('auditApproval.task.createTime'),
+      field: 'creationTime',
+      width: 150,
+      formatter: 'formatDateTime',
     },
   ];
 }

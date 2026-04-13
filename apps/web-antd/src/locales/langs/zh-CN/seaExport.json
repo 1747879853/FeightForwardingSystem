@@ -330,6 +330,7 @@
       "keywordPlaceholder": "提单号/订舱号/委托编号",
       "submitTimeStart": "提交时间起",
       "submitTimeEnd": "提交时间止",
+      "time": "对账时间",
       "startTime": "对账开始时间",
       "endTime": "对账结束时间",
       "creationTime": "创建时间",

@@ -46,12 +46,13 @@ const currencyIdRef = toRef(props, 'currencyId');
 
 const mapItemToOption = (item: ExchangeRateAdminApi.ExchangeRateDto) => {
   const itemAny = item as any;
-  const label =
-    item.localCurrency && item.calculateValue != null
-      ? `${item.localCurrency} / ${item.calculateValue}`
-      : item.id?.toString() || '';
-
+  // const label =
+  //   item.localCurrency && item.calculateValue != null
+  //     ? `${item.calculateValue}`
+  //     : item.id?.toString() || '';
+  // console.log('props.valueKey', props.valueKey);
   const rawValue = itemAny?.[props.valueKey];
+  const label = itemAny?.[props.valueKey];
   return {
     disabled: !item.enable,
     label: label || `#${item.id}`,
@@ -79,6 +80,7 @@ const fetchPageAdapter = async (params: {
     PageSize: params.PageSize,
     CurrencyId: params.CurrencyId,
   });
+  console.log('fetchPageAdapter res', res);
   return {
     items: res.items || [],
     total: res.totalCount || 0,
@@ -131,12 +133,12 @@ const ensureSelectedLoaded = async (rawValue: any) => {
     if (loadedSelectedIds.value.has(idStr)) continue;
 
     loadedSelectedIds.value.add(idStr);
-    try {
-      const detail = await getExchangeRateDetail(idStr);
-      mergeSelectedItems([detail]);
-    } catch {
-      loadedSelectedIds.value.delete(idStr);
-    }
+    // try {
+    //   const detail = await getExchangeRateDetail(idStr);
+    //   mergeSelectedItems([detail]);
+    // } catch {
+    //   loadedSelectedIds.value.delete(idStr);
+    // }
   }
 };
 

@@ -34,7 +34,7 @@ const [Grid, gridApi] = useVbenVxeGrid<StatementAdminApi.StatementDto>({
     showCollapseButton: true,
     collapsed: true,
     compact: true,
-    wrapperClass: 'grid-cols-4',
+    wrapperClass: 'grid-cols-5',
   },
   gridEvents: {
     cellDblclick: handleRowDblclick,

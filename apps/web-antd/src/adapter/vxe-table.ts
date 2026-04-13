@@ -3,7 +3,7 @@ import type { Recordable } from '@vben/types';
 
 import type { ComponentType } from './component';
 
-import { h } from 'vue';
+import { h, Fragment } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 import { $te } from '@vben/locales';
@@ -14,11 +14,25 @@ import {
 import { get, isFunction, isString } from '@vben/utils';
 
 import { objectOmit } from '@vueuse/core';
-import { Button, Image, Popconfirm, Switch, Tag } from 'ant-design-vue';
+import {
+  Button,
+  Image,
+  Popconfirm,
+  Switch,
+  Tag,
+  Select,
+  Input,
+} from 'ant-design-vue';
 
 import { $t } from '#/locales';
 
+import { ref, onUnmounted } from 'vue';
+
 import { useVbenForm } from './form';
+import ClientSelect from './component/biz-select/client-select.vue';
+import FeeCodeSelect from './component/biz-select/fee-code-select.vue';
+import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
+import ExchangeRateSelect from '#/adapter/component/biz-select/exchange-rate-select.vue';
 
 setupVbenVxeTable({
   configVxeTable: (vxeUI) => {
@@ -90,6 +104,7 @@ setupVbenVxeTable({
           { color: 'error', label: $t('common.disabled'), value: 0 },
         ];
         const tagItem = tagOptions.find((item) => item.value === value);
+
         return h(
           Tag,
           {
@@ -98,6 +113,41 @@ setupVbenVxeTable({
           },
           { default: () => tagItem?.label ?? value },
         );
+      },
+    });
+
+    vxeUI.renderer.add('CellFeeStatusTag', {
+      renderTableDefault({ options, props }, { column, row }) {
+        const value = get(row, column.field);
+        const tagOptions = options ?? [
+          { color: 'success', label: $t('common.enabled'), value: 1 },
+          { color: 'error', label: $t('common.disabled'), value: 0 },
+        ];
+        const tagItem = tagOptions.find((item) => item.value === value);
+        let ele = [
+          h(
+            Tag,
+            {
+              ...props,
+              ...objectOmit(tagItem ?? {}, ['label']),
+            },
+            { default: () => tagItem?.label ?? value },
+          ),
+        ];
+        if (row['taskStatus'] !== '') {
+          ele.push(
+            h(
+              Tag,
+              {
+                ...props,
+                color: '#ffc107',
+              },
+              { default: () => row['taskStatus'] },
+            ),
+          );
+        }
+
+        return h(Fragment, ele);
       },
     });
 
@@ -126,6 +176,207 @@ setupVbenVxeTable({
           }
         }
         return h(Switch, finallyProps);
+      },
+    });
+    vxeUI.renderer.add('CellFeeCodeSelect', {
+      renderTableDefault({ attrs, props }, { column, row }) {
+        const finallyProps = {
+          ...attrs,
+          ...props,
+          modelValue: row[column.field],
+          'onUpdate:modelValue': onChange,
+        };
+        function onChange(newVal: any) {
+          if (newVal) {
+            row[column.field] = newVal;
+          }
+        }
+        return h(FeeCodeSelect, finallyProps);
+      },
+    });
+    vxeUI.renderer.add('CellClientSelect', {
+      renderTableDefault({ attrs, props }, { column, row }) {
+        const finallyProps = {
+          ...attrs,
+          ...props,
+          modelValue: row[column.field],
+          'onUpdate:modelValue': onChange,
+        };
+
+        function onChange(newVal: any) {
+          if (newVal) {
+            row[column.field] = newVal;
+          }
+        }
+        return h(ClientSelect, finallyProps);
+      },
+    });
+    vxeUI.renderer.add('CurrencySelect', {
+      renderTableDefault({ attrs, props }, { column, row }) {
+        const finallyProps = {
+          ...attrs,
+          ...props,
+          modelValue: row[column.field],
+          'onUpdate:modelValue': onChange,
+        };
+        function onChange(newVal: any) {
+          if (newVal) {
+            row[column.field] = newVal;
+          }
+        }
+        return h(CurrencySelect, finallyProps);
+      },
+    });
+    vxeUI.renderer.add('ExchangeRateSelect', {
+      renderTableDefault({ attrs, props }, { column, row }) {
+        const finallyProps = {
+          ...attrs,
+          ...props,
+          modelValue: row[column.field],
+          'onUpdate:modelValue': onChange,
+        };
+        function onChange(newVal: any) {
+          if (newVal) {
+            row[column.field] = newVal;
+          }
+        }
+        return h(ExchangeRateSelect, finallyProps);
+      },
+    });
+    vxeUI.renderer.add('Select', {
+      renderTableDefault({ options, attrs, props }, { column, row }) {
+        const finallyProps = {
+          ...attrs,
+          ...props,
+          value: row[column.field],
+          options,
+          style: { width: '100%' },
+          'onUpdate:value': onChange,
+        };
+
+        function onChange(newVal: any) {
+          if (newVal) {
+            row[column.field] = newVal;
+          }
+        }
+        return h(Select, finallyProps);
+      },
+    });
+    //注册输入框渲染器
+    vxeUI.renderer.add('CellInput', {
+      // 表格默认模式渲染
+      renderTableDefault(
+        { attrs, props },
+        { column, row, _columnIndex, _rowIndex },
+      ) {
+        const {
+          disabled,
+          readOnly,
+          placeholder,
+          maxLength,
+          autoSize,
+          ...otherProps
+        } = props || {};
+        // 处理loading状态
+        const loadingKey = `__loading_${column.field}`;
+        const inputValue = ref(row[column.field]);
+
+        const finalProps = {
+          ...otherProps,
+          disabled:
+            typeof disabled === 'function' ? disabled(row, column) : disabled,
+          readOnly:
+            typeof readOnly === 'function' ? readOnly(row, column) : readOnly,
+          placeholder: placeholder,
+          maxLength: maxLength || 100,
+          autoSize: autoSize || {
+            minRows: 1,
+            maxRows: 4,
+          },
+          value: inputValue.value,
+          loading: row[loadingKey] ?? false,
+          allowClear: true,
+          bordered: false,
+          onChange: (e: any) => {
+            const newVal = e.target.value;
+            inputValue.value = newVal;
+            console.log('inputValue', newVal);
+            row[loadingKey] = true;
+            Promise.resolve(
+              attrs?.onChange?.(newVal, row, column, _rowIndex, _columnIndex),
+            )
+              .then((result) => {
+                if (result !== false) {
+                  row[column.field] = newVal;
+                }
+                // 含税单价 变化 同时更新 含税金额 不含税单价 不含税金额
+                if (column.field === 'unitPrice' && newVal !== '') {
+                  if (row['quantity']) {
+                    // 同时更新 含税金额 字段
+                    let amount = newVal * row['quantity'];
+                    row[column.field.replace('unitPrice', 'amount')] = amount;
+                  }
+                  // 税率变化 或者 税率已存在 都需要更新 不含税单价 和 不含税金额
+                  if (row['taxRate']) {
+                    // 同时更新 不含税单价 字段
+                    row[column.field.replace('unitPrice', 'noTaxUnitPrice')] = (
+                      newVal /
+                      (1 + row['taxRate'] / 100)
+                    ).toFixed(4);
+                    if (row['quantity']) {
+                      // 同时更新 不含税金额 字段
+                      row[column.field.replace('unitPrice', 'noTaxAmount')] = (
+                        (newVal / (1 + row['taxRate'] / 100)) *
+                        row['quantity']
+                      ).toFixed(4);
+                    }
+                  }
+                }
+
+                if (column.field === 'quantity' && newVal !== '') {
+                  if (row['unitPrice']) {
+                    // 同时更新 含税金额 字段
+                    row[column.field.replace('quantity', 'amount')] = (
+                      newVal * row['unitPrice']
+                    ).toFixed(4);
+                  }
+                  if (row['unitPrice'] && row['taxRate'] !== undefined) {
+                    // 同时更新 不含税金额 字段
+                    const noTaxUnitPrice =
+                      row['unitPrice'] / (1 + (row['taxRate'] || 0) / 100);
+                    row[column.field.replace('quantity', 'noTaxAmount')] = (
+                      noTaxUnitPrice * newVal
+                    ).toFixed(4);
+                  }
+                }
+                if (column.field === 'taxRate' && newVal !== '') {
+                  if (row['unitPrice']) {
+                    // 同时更新 不含税单价 字段
+                    row[column.field.replace('taxRate', 'noTaxUnitPrice')] = (
+                      row['unitPrice'] /
+                      (1 + newVal / 100)
+                    ).toFixed(4);
+
+                    // 同时更新 不含税金额 字段
+                    row[column.field.replace('taxRate', 'noTaxAmount')] = (
+                      row['noTaxUnitPrice'] * newVal
+                    ).toFixed(4);
+                  }
+                }
+              })
+              .finally(() => {
+                row[loadingKey] = false;
+              });
+          },
+        };
+        return h(Input, {
+          ...finalProps,
+          style: {
+            width: '100%',
+            border: '1px solid #e4e4e7',
+            borderRadius: '6px',
+          },
+        });
       },
     });
 
