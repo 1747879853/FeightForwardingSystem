@@ -46,7 +46,7 @@
     "@vueuse/core": "catalog:",
     "ant-design-vue": "catalog:",
     "dayjs": "catalog:",
-    "globe.gl": "^2.45.1",
+    "globe.gl": "^2.45.3",
     "json-bigint": "catalog:",
     "pinia": "catalog:",
     "vue": "catalog:",
