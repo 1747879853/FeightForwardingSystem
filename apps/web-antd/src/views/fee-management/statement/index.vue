@@ -132,11 +132,7 @@ const handleRefresh = () => {
       <template #toolbar-tools>
         <Button class="mr-2" type="primary" @click="handleCreate">
           <Plus class="size-5" />
-          {{
-            $t('ui.actionTitle.create', [
-              $t('seaExport.export.statement.title'),
-            ])
-          }}
+          {{ $t('ui.actionTitle.create') }}
         </Button>
 
         <Button danger @click="handleDelete">

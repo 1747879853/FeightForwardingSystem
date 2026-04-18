@@ -20,7 +20,7 @@ import {
 import { $t } from '#/locales';
 
 import * as feeConstants from '../data';
-import * as clientConstants from '#/views/client/data';
+import * as clientConstants from '#/views/client/base/data';
 
 import { getFeeCodePagedList } from '#/api/system/base-data/fee-code-admin';
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
@@ -234,6 +234,7 @@ const addRowData = () => {
     transportOrderId: editId.value,
     paySide: props.type,
     feeStatus: 0,
+    taxRate: 0,
     taskStatus: '',
     invoiceStatus: 0,
     canInvoice: false,

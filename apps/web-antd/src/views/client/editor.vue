@@ -2,20 +2,20 @@
 import { nextTick, ref, computed } from 'vue';
 import { Page } from '@vben/common-ui';
 import { useRoute, useRouter } from 'vue-router';
-import Form from './form.vue';
-import orderFee from './orderFee/index.vue';
-import defaultInfo from './modules/default-info.vue';
-import changeOrder from '#/views/sea-export-admin/changeOrder/index.vue';
-import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
+import Form from './base/form.vue';
+import ContactList from './contact/list.vue';
+import PaymentList from './payment-terms/list.vue';
+import InvoiceList from './invoice/list.vue';
+import Attachments from './attachments/list.vue';
 
-type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
-type FormSectionTabKey = 'basic' | 'party' | 'shipment' | 'port';
-type TabKey =
-  | FormSectionTabKey
-  | 'fee'
-  | 'billInfo'
-  | 'issueRecord'
-  | 'changeHistory';
+type SectionKey = 'basic' | 'contact' | 'payment' | 'invoice' | 'attachments';
+type FormSectionTabKey =
+  | 'basic'
+  | 'contact'
+  | 'payment'
+  | 'invoice'
+  | 'attachments';
+type TabKey = FormSectionTabKey;
 type FormExpose = { scrollToSection: (key: SectionKey) => void };
 const formRef = ref<FormExpose | null>(null);
 const activeTab = ref<TabKey>('basic');
@@ -26,43 +26,15 @@ const editId = computed<string | undefined>(() => {
   if (Array.isArray(id)) return id[0];
   return id ? String(id) : undefined;
 });
-const feeName = computed(() => `应收应付 ${feeNumber.value}`);
-const feeNumber = ref<string>('');
-const getOrderFeeNumber = async () => {
-  let params = {
-    TransportOrderId: editId.value,
-    PageIndex: 1,
-    PageSize: 999,
-  };
-  const res = await getOrderFeePagedList(params);
-  feeNumber.value = `${res.items.filter((item) => item.paySide === 0).length} - ${res.items.filter((item) => item.paySide === 1).length}`;
-  tabs.value = tabs.value.map((tab) => {
-    if (tab.key === 'fee') {
-      return { ...tab, label: feeName.value };
-    }
-    return tab;
-  });
-  return;
-};
-getOrderFeeNumber();
 
 const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'basic', label: '基础信息', sectionKey: 'basic' },
-  { key: 'party', label: '更改单', sectionKey: 'party' },
-  { key: 'shipment', label: '服务详情', sectionKey: 'shipment' },
-  { key: 'port', label: '单证信息', sectionKey: 'port' },
-  { key: 'fee', label: feeName.value },
-  { key: 'billInfo', label: '单据信息' },
-  { key: 'issueRecord', label: '问题记录' },
-  { key: 'changeHistory', label: '修改历史' },
+  { key: 'contact', label: '联系人' },
+  { key: 'payment', label: '账期' },
+  { key: 'invoice', label: '开票信息' },
+  { key: 'attachments', label: '附件' },
 ]);
 
-setInterval(() => {
-  console.log('editId.value', editId.value);
-  if (editId.value) {
-    getOrderFeeNumber();
-  }
-}, 2000);
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
   if (!tab.sectionKey) return;
@@ -127,14 +99,16 @@ const getContentTabStyle = (isActive: boolean) =>
       </div>
       <div class="flex items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
-          <changeOrder v-if="activeTab === 'party'" />
-          <orderFee v-if="activeTab === 'fee'" />
           <Form
             v-if="activeTab === 'basic'"
             ref="formRef"
             embedded
             @section-change="onSectionChange"
           />
+          <ContactList v-if="activeTab === 'contact'" />
+          <PaymentList v-if="activeTab === 'payment'" />
+          <InvoiceList v-if="activeTab === 'invoice'" />
+          <Attachments v-if="activeTab === 'attachments'" />
         </div>
       </div>
     </div>

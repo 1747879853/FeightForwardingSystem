@@ -11,7 +11,7 @@ import {
   CollapsePanel,
 } from 'ant-design-vue';
 import { $t } from '#/locales';
-import paymentTermsForm from './paymentTermsForm.vue';
+import paymentTermsForm from './form.vue';
 import {
   getBillingPeriodPagedList,
   getBillingPeriodList,

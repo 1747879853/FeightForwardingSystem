@@ -578,7 +578,7 @@ export function useOrderFeeColumns(
 
       align: 'center',
       field: 'feeStatus',
-      minWidth: 160,
+      minWidth: 100,
       cellRender: {
         name: 'CellFeeStatusTag',
         options: getFeeStatusOptions(),
@@ -749,7 +749,7 @@ export function useOrderFeeColumns(
 
     {
       title: $t('auditApproval.task.creatorUserName'),
-      field: 'task.creatorUserName',
+      field: 'creatorUserName',
       width: 110,
     },
     {

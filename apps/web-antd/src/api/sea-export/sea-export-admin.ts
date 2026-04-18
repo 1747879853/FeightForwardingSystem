@@ -54,6 +54,8 @@ export namespace SeaExportAdminApi {
     sortId?: number;
     /** 备注 */
     remark?: string;
+    /** 用户Ids */
+    userIdList?: number[];
   }
 
   export interface OrderUserDto {

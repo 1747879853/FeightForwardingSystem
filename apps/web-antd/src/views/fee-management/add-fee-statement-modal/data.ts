@@ -226,13 +226,27 @@ export function buildDynamicCurrencyColumns(currencies: CurrencyInfo[]) {
     columns.push({
       field: `currency_${c.currencyId}_receive`,
       dataIndex: `currency_${c.currencyId}_receive`,
-      title: `${c.currencyName}未收`,
+      title: `${c.currencyName}应收`,
       width: 120,
       align: 'right',
     });
     columns.push({
       field: `currency_${c.currencyId}_pay`,
       dataIndex: `currency_${c.currencyId}_pay`,
+      title: `${c.currencyName}应付`,
+      width: 120,
+      align: 'right',
+    });
+    columns.push({
+      field: `currency_${c.currencyId}_un_receive`,
+      dataIndex: `currency_${c.currencyId}_un_receive`,
+      title: `${c.currencyName}未收`,
+      width: 120,
+      align: 'right',
+    });
+    columns.push({
+      field: `currency_${c.currencyId}_un_pay`,
+      dataIndex: `currency_${c.currencyId}_un_pay`,
       title: `${c.currencyName}未付`,
       width: 120,
       align: 'right',

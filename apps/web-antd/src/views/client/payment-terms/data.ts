@@ -10,7 +10,7 @@ import form from 'ant-design-vue/es/form';
 import { useVbenForm } from '#/adapter/form';
 import { getOrganizationUnitTree } from '#/api/system/organization-unit';
 import { UserAttribute } from '#/api/system/user-admin';
-
+import type { BillingPeriodAdminApi } from '#/api/sea-export/billing-period-admin';
 /**
  * 业务类型枚举
  */
@@ -267,6 +267,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
         allowClear: true,
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
+        'label-key': 'nickName',
       },
     },
     {
@@ -340,6 +341,104 @@ export function useBillFormSchema(): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.input'),
         class: 'w-full',
       },
+    },
+  ];
+}
+
+/**
+ * 列表列配置（无操作列，第一列为 radio 单选列）
+ */
+
+export function useColumns(
+  onActionClick?: OnActionClickFn<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>,
+): VxeTableGridOptions<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>['columns'] {
+  return [
+    {
+      title: $t('seaExport.client.paymentTerms.orgs'),
+      field: 'organizationUnitName',
+      width: 200,
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.BizType'),
+      field: 'bizTypes',
+      minWidth: 150,
+      formatter: (row) => {
+        console.log('row', row);
+        return row.row.bizTypes
+          ?.map((item) => {
+            return BusinessTypeOptions.find((option) => option.value === item)
+              ?.label;
+          })
+          .join(',');
+      },
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.user'),
+      field: 'userName',
+      minWidth: 150,
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.settlementType'),
+      field: 'settlementType',
+      width: 150,
+      cellRender: {
+        name: 'CellTag',
+        options: SettlementTypeOptions,
+      },
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.effectiveTime'),
+      field: 'effectiveTime',
+      formatter: 'formatDateTime',
+      width: 150,
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.expirationTime'),
+      field: 'expiringTime',
+      formatter: 'formatDateTime',
+      width: 150,
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.period'),
+      field: 'period',
+      width: 150,
+    },
+    // {
+    //   title: $t('seaExport.client.paymentTerms.invoiceEnable'),
+    //   field: 'invoiceEnable',
+    //   width: 150,
+    //   cellRender: {
+    //     name: 'CellTag',
+    //     options: [
+    //       { color: 'success', label: $t('common.yes'), value: true },
+    //       { color: 'default', label: $t('common.no'), value: false },
+    //     ],
+    //   },
+    // },
+
+    {
+      title: $t('auditApproval.task.createTime'),
+      field: 'creationTime',
+      width: 150,
+      formatter: 'formatDateTime',
+    },
+    {
+      align: 'right',
+      cellRender: {
+        attrs: {
+          nameField: 'name',
+          nameTitle: $t('seaExport.client.name'),
+          onClick: onActionClick,
+        },
+        name: 'CellOperation',
+        options: ['edit', 'delete'],
+      },
+      field: 'operation',
+      fixed: 'right',
+      headerAlign: 'center',
+      showOverflow: false,
+      title: $t('seaExport.client.operation'),
+      width: 150,
     },
   ];
 }

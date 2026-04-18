@@ -28,7 +28,7 @@ import CodePackageSelect from '#/adapter/component/biz-select/code-package-selec
 import { $t } from '#/locales';
 
 import * as feeConstants from '../data';
-import * as clientConstants from '#/views/client/data';
+import * as clientConstants from '#/views/client/base/data';
 
 import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';

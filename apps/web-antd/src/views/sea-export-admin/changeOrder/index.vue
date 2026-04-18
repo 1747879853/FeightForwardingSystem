@@ -502,10 +502,6 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-.w-change-order-auto {
-  width: 1300px;
-}
-
 .select-name {
   flex-direction: row-reverse;
 }

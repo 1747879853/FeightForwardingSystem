@@ -5,7 +5,7 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { $t } from '#/locales';
 
-import { createClientSelectSchema } from '../client/data';
+import { createClientSelectSchema } from '../client/base/data';
 
 /** 装运方式枚举：整柜=0、拼箱分票=1、拼箱主票=2 */
 const getBlTypeOptions = () => [
@@ -45,7 +45,7 @@ const getIssueTypeOptions = () => [
 ];
 
 /** 货物类型枚举 */
-const getCargoTypeOptions = () => [
+export const getCargoTypeOptions = () => [
   { value: 0, label: $t('seaExport.export.cargoTypeOptions.normal') },
   { value: 1, label: $t('seaExport.export.cargoTypeOptions.refrigerated') },
   { value: 2, label: $t('seaExport.export.cargoTypeOptions.dangerous') },

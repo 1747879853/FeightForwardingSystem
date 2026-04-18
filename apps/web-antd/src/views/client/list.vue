@@ -16,7 +16,7 @@ import {
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
 
-import { useColumns, useGridFormSchema } from './data';
+import { useColumns, useGridFormSchema } from './base/data';
 
 const router = useRouter();
 
@@ -114,7 +114,7 @@ const handleRefresh = () => {
       <template #toolbar-tools>
         <Button type="primary" @click="handleCreate">
           <Plus class="size-5" />
-          {{ $t('ui.actionTitle.create', [$t('seaExport.client.name')]) }}
+          {{ $t('ui.actionTitle.create') }}
         </Button>
       </template>
     </Grid>

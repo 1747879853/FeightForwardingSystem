@@ -74,6 +74,17 @@ export function calcCurrencySummary(
   console.log('MainTable-calcCurrencySummary', orderFees, currencyId, paySide);
   return orderFees
     .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
+    .reduce((sum, f) => sum + (f.amount ?? 0), 0);
+}
+/** 计算某个订单的某币别的未收/未付合计 */
+export function calcCurrencyUnSummary(
+  orderFees: FeeDetailRow[],
+  currencyId: number,
+  paySide: number,
+): number {
+  console.log('MainTable-calcCurrencySummary', orderFees, currencyId, paySide);
+  return orderFees
+    .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
     .reduce((sum, f) => sum + (f.unSettledAmount ?? 0), 0);
 }
 /** 按订单分组费用，计算各币别汇总 */
@@ -81,6 +92,7 @@ export function groupFeesByOrder(
   fees: FeeDetailRow[],
   currencies: CurrencyInfo[],
 ): OrderGroupRow[] {
+  console.log('MainTable-groupFeesByOrder', fees, currencies);
   const map = new Map<string, FeeDetailRow[]>();
   for (const fee of fees) {
     const id = fee.transportOrderId;
@@ -130,6 +142,16 @@ export function groupFeesByOrder(
         0,
       );
       row[`currency_${c.currencyId}_pay`] = calcCurrencySummary(
+        items ?? [],
+        c.currencyId,
+        1,
+      );
+      row[`currency_${c.currencyId}_un_receive`] = calcCurrencyUnSummary(
+        items ?? [],
+        c.currencyId,
+        0,
+      );
+      row[`currency_${c.currencyId}_un_pay`] = calcCurrencyUnSummary(
         items ?? [],
         c.currencyId,
         1,

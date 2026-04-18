@@ -29,7 +29,7 @@ const routes: RouteRecordRaw[] = [
           hideInMenu: true,
           activePath: '/clients',
         },
-        component: () => import('#/views/client/form.vue'),
+        component: () => import('#/views/client/base/form.vue'),
       },
       {
         path: ':id([0-9a-fA-F-]{36})/edit',
@@ -39,7 +39,7 @@ const routes: RouteRecordRaw[] = [
           hideInMenu: true,
           activePath: '/clients',
         },
-        component: () => import('#/views/client/form.vue'),
+        component: () => import('#/views/client/editor.vue'),
       },
     ],
   },

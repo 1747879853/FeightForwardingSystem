@@ -182,6 +182,7 @@ defineExpose({
     :placeholder="computedPlaceholder"
     :filter-option="false"
     :show-search="true"
+    mode="SECRET_COMBOBOX_MODE_DO_NOT_USE"
     :allow-clear="true"
     loading-slot="suffixIcon"
     model-prop-name="value"

@@ -112,6 +112,7 @@
       "dangerous": "危险品",
       "outOfGauge": "超限箱"
     },
+
     "tradeTermsTypeOptions": {
       "cif": "CIF",
       "fob": "FOB",
@@ -347,8 +348,6 @@
       "submitAndNew": "提交并新建",
       "export": "导出",
       "print": "打印",
-      "exportFeeDetail": "费用明细",
-      "exportBySummary": "按票汇总",
       "addFee": "添加费用",
       "deleteFee": "删除",
       "bankName": "开户行",
@@ -392,6 +391,7 @@
     }
   },
   "client": {
+    "base": "基础信息",
     "title": "客户管理",
     "list": "客户列表",
     "name": "客户",
@@ -399,8 +399,16 @@
     "clientName": "客户简称",
     "code": "客户代码",
     "phone": "公司电话",
+    "taxNo": "纳税人识别号",
     "fullName": "客户全称",
-    "enName": "客户英文名",
+    "enName": "英文全称",
+    "email": "邮箱",
+    "url": "网址",
+
+    "legalPerson": "法人",
+    "registeredCapital": "注册资本(万)",
+    "establishmentDate": "成立时间",
+    "businessTerm": "营业期限",
     "country": "国家",
     "areaId": "所在省市",
     "address": "地址",
@@ -408,6 +416,45 @@
     "mainProduct": "主营产品",
     "enable": "是否有效",
     "clientType": "客户性质",
+    "clientLevel": "客户等级",
+    "clientLevelOptions": {
+      "vip1": "VIP1 - 极其重要",
+      "A": "重要",
+      "B": "普通",
+      "C": "基础"
+    },
+    "source": "客户来源",
+    "sourceOptions": {
+      "oldCustomerReferral": "老客户介绍",
+      "onlineMarketing": "网络推广",
+      "exhibition": "展会",
+      "socialMedia": "社交媒体",
+      "searchEngine": "搜索引擎",
+      "phoneInquiry": "来电咨询",
+      "emailContact": "邮件联系",
+      "industryRecommendation": "行业推荐",
+      "other": "其他"
+    },
+    "cargoType": "主要货类",
+    "clientCoopSince": "首次合作",
+    "clientLastTxnTime": "最近交易",
+    "supplierLevel": "资质等级",
+    "supplierLevelOptions": {
+      "level1": "一级代理",
+      "level2": "二级代理",
+      "level3": "三级代理"
+    },
+    "yearTeu": "年TEU",
+    "yearTicketCount": "年票数",
+    "laneId": "优质航线",
+    "laneOptions": {
+      "asia": "亚洲线",
+      "africa": "非洲线",
+      "america": "美洲线",
+      "europe": "欧洲线",
+      "oceania": "大洋洲线",
+      "mideast": "中东线"
+    },
     "industryCategories": "行业类别",
     "remark": "备注",
     "creationTime": "创建时间",
@@ -417,10 +464,47 @@
       "enabled": "有效",
       "disabled": "无效"
     },
+    "addAddress": "添加地址",
+    "addressOptions": {
+      "name": "地址名称",
+      "address": "详细地址",
+      "contactPerson": "联系人",
+      "mobile": "联系电话",
+      "remark": "备注",
+      "isDefault": "是否默认",
+      "isDefaultOptions": {
+        "yes": "默认",
+        "no": "非默认"
+      }
+    },
+    "stakeholders": "干系人信息",
+    "stakeholdersOptions": {
+      "salesPerson": "销售人员",
+      "customerSupport": "客服人员",
+      "operationPersonnel": "操作人员",
+      "documentClerk": "单证人员"
+    },
+    "smallTitle": {
+      "type": "类型",
+      "Business": "工商信息",
+      "info": "客户信息",
+      "coopStatus": "合作状态",
+      "customerType": "客户类型",
+      "supplier": "供应商信息",
+      "address": "地址信息",
+      "supplierType": "供应商类型"
+    },
     "clientTypeOptions": {
       "direct": "直客",
       "peer": "同行",
-      "supplier": "供应商"
+      "supplier": "供应商",
+      "customer": "客户"
+    },
+    "coopStatus": {
+      "potential": "潜在{0}",
+      "formal": "正式{0}",
+      "suspendCooperation": "暂停合作",
+      "blacklist": "黑名单"
     },
     "industryCategoryOptions": {
       "shipCompany": "船公司",
@@ -443,12 +527,27 @@
       "insuranceCompany": "保险公司",
       "destinationAgent": "目的港代理"
     },
+    "contactPerson": {
+      "title": "联系人",
+      "clientId": "合作客户",
+      "name": "姓名",
+      "mobile": "手机",
+      "email": "邮箱",
+      "tel": "电话",
+      "position": "职位",
+      "weChat": "微信",
+      "qq": "QQ",
+      "isDefault": "订单",
+      "invoiceEnable": "发票",
+      "statementEnable": "对账"
+    },
     "paymentTerms": {
       "title": "账期",
       "asyncTitle": "账期-{0}",
       "effectiveTime": "生效日期",
-      "expirationTime": "失效日期(选填)",
+      "expirationTime": "失效日期",
       "longTermValid": "长期有效",
+      "period": "周期",
       "BizType": "业务类型",
       "BizTypeOptions": {
         "seaExport": "海运出口",
@@ -512,9 +611,9 @@
       "agreedDays": "约定天数",
       "remark": "备注",
       "days": "约定天数",
-      "codeSource": "指定业务来源",
-      "user": "指定销售",
-      "orgs": "指定分公司"
+      "codeSource": "业务来源",
+      "user": "销售人员",
+      "orgs": "分公司"
     }
   }
 }

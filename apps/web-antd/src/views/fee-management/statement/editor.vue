@@ -479,7 +479,173 @@ async function saveEditMode() {
 
   originalFeeDetailRows.value = feeDetailRows.value.map((r) => ({ ...r }));
 }
+let recAmountMap: any = ref({} as any);
+let payAmountMap: any = ref({} as any);
 
+let unRecAmountMap: any = ref({} as any);
+let unPayAmountMap: any = ref({} as any);
+
+const totalAmount = computed(() => {
+  // 从 orderGroups 中提取应收和应付金额，按币种分组
+  const recMap: Record<string, any> = {};
+  const payMap: Record<string, any> = {};
+  const unRecMap: Record<string, any> = {};
+  const unPayMap: Record<string, any> = {};
+
+  console.log('orderGroups', orderGroups.value);
+  orderGroups.value.forEach((orderGroup) => {
+    orderGroup.children?.forEach((fee) => {
+      const currencyKey = String(fee.currencyId);
+
+      if (fee.paySide === 0) {
+        // 应收
+        if (!recMap[currencyKey]) {
+          recMap[currencyKey] = {
+            totalRecAmount: 0,
+            exchangeRate: fee.exchangeRate || 1,
+            currencyName: fee.currencyName || '人民币',
+          };
+        }
+        recMap[currencyKey].totalRecAmount += fee.amount || 0;
+
+        // 未收
+        if (!unRecMap[currencyKey]) {
+          unRecMap[currencyKey] = {
+            totalRecAmount: 0,
+            exchangeRate: fee.exchangeRate || 1,
+            currencyName: fee.currencyName || '人民币',
+          };
+        }
+        unRecMap[currencyKey].totalRecAmount += fee.unSettledAmount || 0;
+      } else if (fee.paySide === 1) {
+        // 应付
+        if (!payMap[currencyKey]) {
+          payMap[currencyKey] = {
+            totalPayAmount: 0,
+            exchangeRate: fee.exchangeRate || 1,
+            currencyName: fee.currencyName || '人民币',
+          };
+        }
+        payMap[currencyKey].totalPayAmount += fee.amount || 0;
+
+        // 未付
+        if (!unPayMap[currencyKey]) {
+          unPayMap[currencyKey] = {
+            totalPayAmount: 0,
+            exchangeRate: fee.exchangeRate || 1,
+            currencyName: fee.currencyName || '人民币',
+          };
+        }
+        unPayMap[currencyKey].totalPayAmount += fee.unSettledAmount || 0;
+      }
+    });
+  });
+
+  recAmountMap.value = recMap;
+  payAmountMap.value = payMap;
+
+  unRecAmountMap.value = unRecMap;
+  unPayAmountMap.value = unPayMap;
+
+  console.log('recAmountMap', recAmountMap.value);
+  console.log('payAmountMap', payAmountMap.value);
+
+  const allKeys = new Set([
+    ...Object.keys(recAmountMap.value),
+    ...Object.keys(payAmountMap.value),
+  ]);
+  console.log('allKeys', allKeys);
+  const total: any = {};
+
+  allKeys.forEach((key) => {
+    total[key] = {
+      totalPayAmount: payAmountMap.value[key]?.totalPayAmount || 0,
+      totalRecAmount: recAmountMap.value[key]?.totalRecAmount || 0,
+      totalUnPayAmount: unPayAmountMap.value[key]?.totalPayAmount || 0,
+      totalUnRecAmount: unRecAmountMap.value[key]?.totalRecAmount || 0,
+      exchangeRate:
+        (payAmountMap.value[key] || recAmountMap.value[key])?.exchangeRate || 1,
+      currencyName:
+        (payAmountMap.value[key] || recAmountMap.value[key])?.currencyName ||
+        '人民币',
+    };
+  });
+  // 转换为对象数组
+  const totalList = Object.keys(total).map((key) => ({
+    id: key,
+    ...total[key],
+  }));
+  let list = [];
+  console.log(totalList);
+  let totalPay = 0;
+  let totalRec = 0;
+
+  totalList.forEach((item) => {
+    let recName = `应收${item.currencyName}:`;
+    let recColor = 'green';
+    let recAmount = (item.totalRecAmount || 0).toFixed(2);
+    list.push({
+      name: recName,
+      color: recColor,
+      value: recAmount,
+    });
+
+    // totalRec += recAmount * item.exchangeRate;
+
+    let payName = `应付${item.currencyName}:`;
+    let payColor = 'yellow';
+    let payAmount = (item.totalPayAmount || 0).toFixed(2);
+    list.push({
+      name: payName,
+      color: payColor,
+      value: payAmount,
+    });
+    totalPay += payAmount * item.exchangeRate;
+
+    let unRecName = `未收${item.currencyName}:`;
+    let unRecColor = 'green';
+    let unRecAmount = (item.totalUnRecAmount || 0).toFixed(2);
+    list.push({
+      name: unRecName,
+      color: unRecColor,
+      value: unRecAmount,
+    });
+    totalRec += recAmount * item.exchangeRate;
+
+    let unPayName = `未付${item.currencyName}:`;
+    let unPayColor = 'yellow';
+    let unPayAmount = (item.totalUnPayAmount || 0).toFixed(2);
+    list.push({
+      name: unPayName,
+      color: unPayColor,
+      value: unPayAmount,
+    });
+    //totalPay += payAmount * item.exchangeRate;
+
+    let profitName = `${item.currencyName}利润:`;
+    let profitColor = 'blue';
+    let profitAmount = (recAmount - payAmount).toFixed(2);
+    list.push({
+      name: profitName,
+      color: profitColor,
+      value: profitAmount,
+    });
+  });
+  list.push({
+    name: '合计利润:',
+    color: 'blue',
+    value: (totalRec - totalPay).toFixed(2),
+  });
+  list.push({
+    name: '利润率:',
+    color: 'blue',
+    value: totalRec
+      ? (((totalRec - totalPay) / totalRec) * 100).toFixed(1) + '%'
+      : '--',
+  });
+  console.log(list);
+  return list;
+});
 async function handleSave() {
   if (!ensureClientSelected()) {
     return;
@@ -564,11 +730,11 @@ function formatMonth(val: string | undefined | null): string {
                 <template #overlay>
                   <Menu @click="handleExportMenuClick">
                     <MenuItem key="feeDetail">
-                      {{ t('exportFeeDetail') }}
+                      {{ t('title') }}
                     </MenuItem>
-                    <MenuItem key="summary">
+                    <!-- <MenuItem key="summary">
                       {{ t('exportBySummary') }}
-                    </MenuItem>
+                    </MenuItem> -->
                   </Menu>
                 </template>
               </Dropdown>
@@ -902,6 +1068,21 @@ function formatMonth(val: string | undefined | null): string {
                 </div>
               </template>
             </Table>
+            <div class="total-amount flex rounded-md px-4 py-1 shadow">
+              <div
+                v-for="(item, index) in totalAmount"
+                class="mr-4 flex"
+                :key="item.name"
+              >
+                <span class="flex">{{ item.name }}</span>
+                <span class="ml-2 flex font-medium" :class="item.color">{{
+                  item.value
+                }}</span>
+                <span class="split mx-4 flex" v-show="(index + 1) % 5 === 0"
+                  >|
+                </span>
+              </div>
+            </div>
           </div>
 
           <!-- <div class="fee-footer">
@@ -932,7 +1113,27 @@ function formatMonth(val: string | undefined | null): string {
   </Page>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+.total-amount {
+  background: #fff;
+
+  .split {
+    color: #33333345;
+  }
+}
+
+.green {
+  color: #00b96b;
+}
+
+.yellow {
+  color: #ffc107;
+}
+
+.blue {
+  color: #007bff;
+}
+
 .payment-app-form {
   display: flex;
   flex-direction: column;

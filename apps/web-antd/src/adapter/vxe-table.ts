@@ -135,6 +135,7 @@ setupVbenVxeTable({
           ),
         ];
         if (row['taskStatus'] !== '') {
+          ele = [];
           ele.push(
             h(
               Tag,
