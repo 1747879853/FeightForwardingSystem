@@ -464,7 +464,22 @@
     "title": "部门管理",
     "code": "部门编码",
     "level": "层级",
-    "addChild": "新增下级"
+    "addChild": "新增下级",
+    "orgTree": "组织架构",
+    "memberList": "成员列表",
+    "addMember": "添加成员",
+    "removeMember": "移除",
+    "confirmRemoveMember": "确定将用户 {name} 从该组织中移除吗？",
+    "userName": "用户名",
+    "nickName": "昵称",
+    "phoneNumber": "手机号",
+    "isBoss": "负责人",
+    "addedTime": "加入时间",
+    "selectOrgFirst": "请先选择左侧组织",
+    "searchUser": "搜索用户",
+    "selectedUsers": "已选用户",
+    "addSuccess": "添加成功",
+    "removeSuccess": "移除成功"
   },
   "menu": {
     "list": "菜单列表",

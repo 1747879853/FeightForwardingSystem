@@ -34,6 +34,7 @@ import {
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
+import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
 import {
   addPaymentApplication,
@@ -86,6 +87,12 @@ const pageTitle = computed(() =>
 
 const submitting = ref(false);
 const addFeeDrawerRef = ref<InstanceType<typeof AddFeeDrawer> | null>(null);
+const { open: openWorkflowTimeline } = useWorkflowTimeline();
+
+function handleViewWorkflow() {
+  if (!editId.value) return;
+  openWorkflowTimeline({ entityId: editId.value });
+}
 
 const applicantName = computed(
   () => userStore.userInfo?.realName ?? userStore.userInfo?.username ?? '',
@@ -707,13 +714,16 @@ function formatMonth(val: string | undefined | null): string {
                   提交
                 </Button>
               </template>
-              <!-- 审核中：显示撤销提交 -->
+              <!-- 审核中：显示撤销提交 + 查看审批流 -->
               <Button
                 v-if="isEdit && isAuditing"
                 :loading="submitting"
                 @click="handleUnsubmitApplication"
               >
                 撤销提交
+              </Button>
+              <Button v-if="isEdit && !isEntering" @click="handleViewWorkflow">
+                审批流程
               </Button>
               <Dropdown>
                 <Button>
