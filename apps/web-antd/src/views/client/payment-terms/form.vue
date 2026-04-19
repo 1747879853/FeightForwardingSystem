@@ -7,7 +7,7 @@ import dayjs from 'dayjs';
 import { useVbenForm } from '#/adapter/form';
 import { getAreaAndParents } from '#/api/common/area';
 import { $t } from '#/locales';
-import { useBillFormSchema } from './paymentTermsData';
+import { useBillFormSchema } from './data';
 
 import {
   addBillingPeriod,

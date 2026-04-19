@@ -14,7 +14,8 @@ import {
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import { $t } from '#/locales';
-
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import { useColumns } from './data';
 const modelValue = defineModel<ChangeOrderAdminApi.ChangeOrderEditDto[]>({
   default: () => [],
 });
@@ -28,51 +29,148 @@ const dataSource = computed({
   },
 });
 
-const rowSelection = computed(() => ({
-  type: 'radio',
-  selectedRowKeys: selectedRowKeys.value,
-  onChange: (keys: (string | number)[]) => {
-    selectedRowKeys.value = keys;
-    let select = (dataSource.value ?? []).find(
-      (item) => item._rowKey === selectedRowKeys.value[0],
-    );
-    console.log('select', select);
-    emit('sync-table', select);
+const emit = defineEmits(['sync-table', 'save-change-order']);
+
+const handleRowDblclick = ({
+  row,
+}: {
+  row: ChangeOrderAdminApi.ChangeOrderEditDto;
+}) => {
+  console.log('select', row);
+  emit('sync-table', row);
+};
+
+// const rowSelection = computed(() => ({
+//   type: 'radio',
+//   selectedRowKeys: selectedRowKeys.value,
+//   onChange: (keys: (string | number)[]) => {
+//     selectedRowKeys.value = keys;
+//     let select = (dataSource.value ?? []).find(
+//       (item) => item._rowKey === selectedRowKeys.value[0],
+//     );
+//     console.log('select', select);
+//     emit('sync-table', select);
+//   },
+// }));
+const tmpAdd = ref(false);
+const tmpDel = ref(false);
+
+const [Grid, gridApi] = useVbenVxeGrid<ChangeOrderAdminApi.ChangeOrderEditDto>({
+  gridOptions: {
+    columns: useColumns(),
+    height: '300px',
+    keepSource: true,
+    radioConfig: {
+      highlight: true,
+      trigger: 'row',
+    },
+    rowConfig: {
+      keyField: '_rowKey',
+    },
+    pagerConfig: {
+      enabled: false,
+    },
+    proxyConfig: {
+      ajax: {
+        query: async () => {
+          console.log('addRowData', tmpAdd.value);
+          if (tmpAdd.value) {
+            tmpAdd.value = false;
+            console.log('addRowDataing');
+            addRowData();
+            return dataSource.value;
+          }
+          if (tmpDel.value) {
+            tmpDel.value = false;
+            return dataSource.value;
+          }
+          await getTableData();
+          return dataSource.value;
+        },
+      },
+    },
+    toolbarConfig: {
+      custom: true,
+      export: false,
+      refresh: { code: 'query' },
+      zoom: true,
+    },
   },
-}));
+  gridEvents: {
+    cellDblclick: handleRowDblclick,
+    // 单行选择变化事件
+    checkboxChange: ({ row, checked }) => {
+      const records = (gridApi.grid?.getCheckboxRecords?.() ?? []) as any;
+
+      selectedRowKeys.value = records.map((r: any) => r._rowKey);
+
+      // 可以在这里处理业务逻辑
+    },
+
+    // 全选/取消全选事件
+    checkboxAll: ({ checked }) => {
+      const records = (gridApi.grid?.getCheckboxRecords?.() ?? []) as any;
+
+      selectedRowKeys.value = records.map((r: any) => r._rowKey);
+    },
+
+    // 单选模式下的选择事件（如果使用 radio 类型）
+    radioChange: ({ row }) => {
+      console.log('单选选中:', row);
+    },
+  },
+});
 // 方法4：一行代码版本
 const getCurrentYearMonth4 = () => {
   return new Date().toISOString().slice(0, 7);
 };
 
 let rowKeyCounter = 0;
-const addRow = () => {
-  const list = [...(modelValue.value ?? [])];
-  let id = `co_${++rowKeyCounter}_${Date.now()}`;
-  list.push({ _rowKey: id, accountDate: dayjs().format('YYYY-MM') } as any);
-  console.log(list);
-  modelValue.value = list;
-  console.log(modelValue.value);
-  console.log(dataSource.value);
-  selectedRowKeys.value = [id];
-};
 
+const addRowData = () => {
+  const list = [...(dataSource.value ?? [])];
+  let id = `co_${++rowKeyCounter}_${Date.now()}`;
+  list.push({
+    _rowKey: id,
+    accountDate: dayjs().format('YYYY-MM'),
+    feeLockedTime: '',
+    lastModificationTime: '',
+    creationTime: '',
+  } as any);
+  modelValue.value = list;
+  //selectedRowKeys.value = [id];
+};
+const addRow = () => {
+  tmpAdd.value = true;
+  gridApi.query();
+};
+const delRow = () => {
+  tmpDel.value = true;
+  gridApi.query();
+};
+const saveRow = () => {
+  console.log('saveRow', dataSource.value);
+  emit('save-change-order');
+};
 const removeSelectedRows = async () => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
   const needDelIds = (dataSource.value ?? [])
     .filter((row) => keysSet.has((row as any)._rowKey))
-    .filter((row) => (row as any).id !== 0)
+    .filter((row) => (row as any).id !== undefined)
     .map((row) => (row as any).id);
   console.log(needDelIds);
-  await DeleteAsync(needDelIds);
+  if (needDelIds.length > 0) {
+    await DeleteAsync(needDelIds);
+  }
+
   const list = (modelValue.value ?? []).filter(
     (row) => !keysSet.has((row as any)._rowKey),
   );
   modelValue.value = list;
   selectedRowKeys.value = [];
+  delRow();
 };
-const emit = defineEmits(['sync-table']);
 
 /**  每项添加 _rowKey，供 Table 使用 */
 const normalizeChangeOrderWithRowKey = (
@@ -96,23 +194,18 @@ const getTableData = async () => {
   // if (dataSource.value.length > 0)
   //   selectedRowKeys.value = [dataSource?.value[0]?._rowKey];
 };
-const updateRow = (
-  index: number,
-  field: keyof ChangeOrderAdminApi.ChangeOrderEditDto,
-  value: any,
-) => {
-  const list = [...(modelValue.value ?? [])];
-  list[index] = { ...list[index], [field]: value };
-  modelValue.value = list;
+// const updateRow = (
+//   index: number,
+//   field: keyof ChangeOrderAdminApi.ChangeOrderEditDto,
+//   value: any,
+// ) => {
+//   const list = [...(modelValue.value ?? [])];
+//   list[index] = { ...list[index], [field]: value };
+//   modelValue.value = list;
 
-  console.log('updateRow', list[index]);
-  emit('sync-table', list[index]);
-};
-
-const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
-  if (id == null) return [];
-  return [{ id, [labelKey]: name || '' }] as any[];
-};
+//   console.log('updateRow', list[index]);
+//   emit('sync-table', list[index]);
+// };
 
 watch(
   () => modelValue.value,
@@ -126,100 +219,46 @@ watch(
   { immediate: true },
 );
 
-defineExpose({
-  addRow,
-  removeSelectedRows,
-});
-
 onMounted(() => {
-  getTableData();
+  // getTableData();
 });
 </script>
 
 <template>
-  <Table
-    :data-source="dataSource"
-    :row-selection="rowSelection"
-    :pagination="false"
-    size="small"
-    bordered
-    :scroll="{ x: 1700 }"
-    row-key="_rowKey"
-  >
-    <template #bodyCell="{ column, record, index }">
-      <template v-if="column.key === 'accountDate'">
-        <span>{{ record.accountDate }}</span>
-      </template>
-
-      <template v-if="column.key === 'reason'">
-        <Input
-          :value="record.reason"
-          :placeholder="$t('seaExport.export.changeOrder.reason')"
-          allow-clear
-          @update:value="(v) => updateRow(index, 'reason', v)"
-        />
-      </template>
-      <template v-if="column.key === 'remark'">
-        <Input
-          :value="record.remark"
-          :placeholder="$t('seaExport.export.remark')"
-          allow-clear
-          @update:value="(v) => updateRow(index, 'remark', v)"
-        />
-      </template>
-      <template v-if="column.key === 'lastModificationTime'">
-        <span>{{
-          dayjs(record.lastModificationTime).format('YYYY-MM-DD HH:mm')
-        }}</span>
-      </template>
-      <template v-if="column.key === 'creationTime'">
-        <span>{{ dayjs(record.creationTime).format('YYYY-MM-DD HH:mm') }}</span>
-      </template>
-    </template>
-    <Table.Column
-      key="accountDate"
-      :title="$t('seaExport.export.accountDate')"
-      width="100"
-    />
-    <Table.Column
-      key="reason"
-      :title="$t('seaExport.export.changeOrder.reason')"
-      width="500"
-    />
-    <Table.Column
-      key="remark"
-      :title="$t('seaExport.export.remark')"
-      width="130"
-    />
-    <Table.Column
-      key="feeLocked"
-      :title="$t('seaExport.export.changeOrder.feeLocked')"
-      width="80"
-    />
-    <Table.Column
-      key="feeLockedUserName"
-      :title="$t('seaExport.export.changeOrder.feeLockedUserName')"
-      width="100"
-    />
-    <Table.Column
-      key="feeLockedTime"
-      :title="$t('seaExport.export.changeOrder.feeLockedTime')"
-      width="90"
-    />
-    <Table.Column
-      key="feeUnLockedUserName"
-      :title="$t('seaExport.export.changeOrder.feeUnLockedUserName')"
-      width="90"
-    />
-    <Table.Column
-      key="lastModificationTime"
-      :title="$t('seaExport.export.changeOrder.lastModificationTime')"
-      width="90"
-    />
-    <Table.Column
-      key="creationTime"
-      :title="$t('seaExport.export.changeOrder.creationTime')"
-      width="100"
-    />
-  </Table>
+  <Card class="change-order-fee-card">
+    <div class="px-1">
+      <Grid :table-title="$t('seaExport.export.changeOrder.title')">
+        <template #toolbar-tools>
+          <Space>
+            <Button type="primary" @click="addRow">
+              {{ $t('common.create') }}
+            </Button>
+            <Button type="primary" @click="saveRow">
+              {{ $t('common.save') }}
+            </Button>
+            <Button danger @click="removeSelectedRows">
+              {{ $t('common.delete') }}
+            </Button>
+          </Space>
+        </template>
+      </Grid>
+    </div>
+  </Card>
 </template>
+<style scoped lang="scss">
+.change-order-fee-card {
+  :deep(.ant-card-body) {
+    padding: 0 20px 20px !important;
+  }
+
+  :deep(.ant-table-content) {
+    min-height: 270px;
+    // max-height: 500px;
+    // overflow-y: auto;
+  }
+}
+
+// .custom-table {
+//   min-height: 300px;
+// }
+</style>

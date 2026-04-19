@@ -5,7 +5,7 @@ import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
 import { $t } from '#/locales';
 
-import { createClientSelectSchema } from '../client/data';
+import { createClientSelectSchema } from '../client/base/data';
 
 /** 装运方式枚举：整柜=0、拼箱分票=1、拼箱主票=2 */
 const getBlTypeOptions = () => [

@@ -21,6 +21,7 @@ import { Button, Card, message, Space, Spin } from 'ant-design-vue';
 
 import * as feeConstants from '#/views/sea-export-admin/orderFee/data';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
+import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 
 import { $t } from '#/locales';
 
@@ -29,8 +30,11 @@ import ChangeOrderTable from './table.vue';
 
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ChangeOrderAdminApi } from '#/api/sea-export/change-order-admin';
-
-import { EditAsync } from '#/api/sea-export/change-order-admin';
+import {
+  getCurrencyEnumOptions,
+  getCurrencyEnumSymbolOptions,
+} from '#/views/sea-export-admin/orderFee/data';
+import { EditAsync, GetDetail } from '#/api/sea-export/change-order-admin';
 
 const route = useRoute();
 const router = useRouter();
@@ -223,6 +227,7 @@ const setCurrentChangeOrder = (curChangeOrder: any) => {
   if (curChangeOrder) {
     changeOrder.value = curChangeOrder;
   }
+  getOrderFeeNumber();
   console.log('curChangeOrder', changeOrder.value);
   PayOrderFeeRef.value.getTableDate(changeOrder.value.id);
   RecOrderFeeRef.value.getTableDate(changeOrder.value.id);
@@ -275,24 +280,144 @@ const saveRow = async () => {
   });
   setCurrentChangeOrder(null);
 };
-const addRow = () => {
-  if (changeOrderTableRef.value) {
-    changeOrderTableRef.value.addRow();
-  }
-};
+
 let RecFeeList = ref<OrderFeeAdminApi.OrderFeeEditDto[]>([]);
 let PayFeeList = ref<OrderFeeAdminApi.OrderFeeEditDto[]>([]);
 
+let recAmountMap: any = ref({} as any);
+let payAmountMap: any = ref({} as any);
+
+const transCurrency = (currencyId: number) => {
+  const option = getCurrencyEnumOptions().find((o) => o.value === currencyId);
+  return option ? option.label : currencyId;
+};
+const transCurrencySymbol = (currencyId: number) => {
+  const option = getCurrencyEnumSymbolOptions().find(
+    (o) => o.value === currencyId,
+  );
+  return option ? option.label : currencyId;
+};
+const getOrderFeeNumber = async () => {
+  const res = await GetDetail(changeOrder.value.id);
+  let dataSourceRec = res.orderFees.filter((item) => item.paySide === 0);
+  recAmountMap.value = {};
+  const currencyIdList = dataSourceRec.map((item) => item.currencyId);
+  currencyIdList.forEach((item) => {
+    let list = dataSourceRec.filter((item2) => item2.currencyId === item);
+    let totalRecAmount = list.reduce((acc, cur) => {
+      return acc + cur.amount;
+    }, 0);
+    let exchangeRate = list[0]?.exchangeRate;
+    let currencyName = list[0]?.currencyName;
+    let currencyId = list[0]?.currencyId;
+    recAmountMap.value[item] = {
+      totalRecAmount,
+      exchangeRate,
+      currencyName,
+      currencyId,
+    };
+    console.log('recAmountMap', recAmountMap);
+  });
+  let dataSourcePay = res.orderFees.filter((item) => item.paySide === 1);
+  payAmountMap.value = {};
+  const currencyIdListPay = dataSourcePay.map((item) => item.currencyId);
+  currencyIdListPay.forEach((item) => {
+    let list = dataSourcePay.filter((item2) => item2.currencyId === item);
+    let totalPayAmount = list.reduce((acc, cur) => {
+      return acc + cur.amount;
+    }, 0);
+    let exchangeRate = list[0]?.exchangeRate;
+    let currencyName = list[0]?.currencyName;
+    let currencyId = list[0]?.currencyId;
+    payAmountMap.value[item] = {
+      totalPayAmount,
+      exchangeRate,
+      currencyName,
+      currencyId,
+    };
+    console.log('payAmountMap', payAmountMap);
+  });
+};
+const totalAmount = computed(() => {
+  const allKeys = new Set([
+    ...Object.keys(recAmountMap.value),
+    ...Object.keys(payAmountMap.value),
+  ]);
+  const total: any = {};
+
+  allKeys.forEach((key) => {
+    total[key] = {
+      totalPayAmount: payAmountMap.value[key]?.totalPayAmount || 0,
+      totalRecAmount: recAmountMap.value[key]?.totalRecAmount || 0,
+      exchangeRate:
+        (payAmountMap.value[key] || recAmountMap.value[key])?.exchangeRate || 1,
+      currencyId:
+        (payAmountMap.value[key] || recAmountMap.value[key])?.currencyId || 1,
+      currencyName:
+        (payAmountMap.value[key] || recAmountMap.value[key])?.currencyName ||
+        '人民币',
+    };
+  });
+  // 转换为对象数组
+  const totalList = Object.keys(total).map((key) => ({
+    id: key,
+    ...total[key],
+  }));
+  let list = [];
+  console.log('totalList', totalList);
+  let totalPay = 0;
+  let totalRec = 0;
+
+  totalList.forEach((item) => {
+    let recName = `应收${transCurrency(item.currencyId)}:`;
+    let recColor = 'green';
+    let recAmount = (item.totalRecAmount || 0).toFixed(2);
+    list.push({
+      name: recName,
+      color: recColor,
+      value: transCurrencySymbol(item.currencyId) + recAmount,
+    });
+    totalRec += recAmount * item.exchangeRate;
+
+    let payName = `应付${transCurrency(item.currencyId)}:`;
+    let payColor = 'yellow';
+    let payAmount = (item.totalPayAmount || 0).toFixed(2);
+    list.push({
+      name: payName,
+      color: payColor,
+      value: transCurrencySymbol(item.currencyId) + payAmount,
+    });
+    totalPay += payAmount * item.exchangeRate;
+
+    let profitName = `${transCurrency(item.currencyId)}利润:`;
+    let profitColor = 'blue';
+    let profitAmount = (recAmount - payAmount).toFixed(2);
+    list.push({
+      name: profitName,
+      color: profitColor,
+      value: transCurrencySymbol(item.currencyId) + profitAmount,
+    });
+  });
+  list.push({
+    name: '合计利润:',
+    color: 'blue',
+    value: transCurrencySymbol(1) + (totalRec - totalPay).toFixed(2),
+  });
+  list.push({
+    name: '利润率:',
+    color: 'blue',
+    value: totalRec
+      ? (((totalRec - totalPay) / totalRec) * 100).toFixed(1) + '%'
+      : '--',
+  });
+  console.log(list);
+  return list;
+});
 const syncFee = (obj: any) => {
   if (obj.type === 0) {
     RecFeeList.value = obj.orderFees;
   } else {
     PayFeeList.value = obj.orderFees;
-  }
-};
-const removeSelectedRows = () => {
-  if (changeOrderTableRef.value) {
-    changeOrderTableRef.value.removeSelectedRows();
   }
 };
 onMounted(() => {
@@ -303,81 +428,101 @@ onMounted(() => {
 <template>
   <Page auto-content-height>
     <Spin :spinning="pageLoading">
-      <Card>
-        <template #title>
-          <div class="flex">
-            <span class="mr-2 flex items-center">
-              {{ $t('seaExport.export.changeOrder.title') }}
+      <div class="mx-2 flex items-stretch gap-6">
+        <!-- 垂直方向撑满 -->
+        <Card class="flex w-[280px] shrink-0 flex-col">
+          <template #title>
+            <span class="flex items-center gap-2">
+              <Users class="size-4" />
+              {{ $t('seaExport.export.formCardInfo') }}
             </span>
-            <Space>
-              <Button type="primary" size="small" @click="addRow">
-                {{ $t('common.create') }}
-              </Button>
-              <Button type="primary" size="small" @click="saveRow">
-                {{ $t('common.save') }}
-              </Button>
-              <Button danger size="small" @click="removeSelectedRows">
-                {{ $t('common.delete') }}
-              </Button>
-            </Space>
+          </template>
+          <div class="flex flex-1 px-1 py-1" v-for="item in displayList">
+            <span class="flex w-[85px] font-semibold">
+              {{ `${item.name} : ` }}</span
+            >
+            <span class="flex w-[145px]">{{ item.value || '--' }}</span>
           </div>
-        </template>
-        <div class="flex gap-2">
-          <div class="w-change-order-auto mx-2 flex flex-col gap-2">
-            <div class="flex min-w-0 flex-1 flex-col gap-2">
-              <Card>
-                <ChangeOrderTable
-                  ref="changeOrderTableRef"
-                  @sync-table="setCurrentChangeOrder"
-                />
-              </Card>
-            </div>
-            <!--  -->
-            <div class="w-change-order flex min-w-0 flex-1 flex-col gap-2">
-              <div class="px-1">
-                <div class="mt-4">
-                  <OrderFeeTable
-                    :type="0"
-                    :mode="'changeOrder'"
-                    ref="RecOrderFeeRef"
-                    @sync-fee="syncFee"
-                  />
-                </div>
-              </div>
-              <div class="px-1">
-                <div class="mt-4">
-                  <OrderFeeTable
-                    :type="1"
-                    :mode="'changeOrder'"
-                    ref="PayOrderFeeRef"
-                    @sync-fee="syncFee"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+        </Card>
+        <div class="w-change-order-auto flex min-w-0 flex-1 flex-col gap-2">
+          <ChangeOrderTable
+            ref="changeOrderTableRef"
+            @sync-table="setCurrentChangeOrder"
+            @save-change-order="saveRow"
+          />
 
-          <!-- 垂直方向撑满 -->
-          <Card class="flex w-[280px] shrink-0 flex-col">
+          <Card>
             <template #title>
-              <span class="flex items-center gap-2">
-                <Users class="size-4" />
-                {{ $t('seaExport.export.formCardInfo') }}
-              </span>
+              <div class="flex">
+                <span class="mr-2 flex items-center gap-2">
+                  <Package class="size-4" />
+                  {{ $t('seaExport.export.orderFee.feeDetail') }}
+                </span>
+                <div class="select-name flex flex-1 text-sm font-normal">
+                  {{
+                    changeOrder ? '当前选中：' + changeOrder.accountDate : ''
+                  }}
+                </div>
+              </div>
             </template>
-            <div class="flex flex-1 px-1 py-1" v-for="item in displayList">
-              <span class="flex w-[85px]"> {{ `${item.name} : ` }}</span>
-              <span class="flex w-[145px]">{{ item.value || '--' }}</span>
+            <OrderFeeTable
+              :type="0"
+              :mode="'changeOrder'"
+              ref="RecOrderFeeRef"
+              @sync-fee="syncFee"
+            />
+            <OrderFeeTable
+              :type="1"
+              :mode="'changeOrder'"
+              ref="PayOrderFeeRef"
+              @sync-fee="syncFee"
+            />
+            <div
+              class="total-amount flex flex-wrap rounded-md px-4 py-1 shadow"
+            >
+              <div
+                v-for="(item, index) in totalAmount"
+                class="mr-4 flex"
+                :key="item.name"
+              >
+                <span class="flex">{{ item.name }}</span>
+                <span class="ml-2 flex font-medium" :class="item.color">{{
+                  item.value
+                }}</span>
+                <span class="split mx-4 flex" v-show="(index + 1) % 3 === 0"
+                  >|
+                </span>
+              </div>
             </div>
           </Card>
         </div>
-      </Card>
+      </div>
     </Spin>
   </Page>
 </template>
 
 <style scoped lang="scss">
-.w-change-order-auto {
-  width: 1100px;
+.select-name {
+  flex-direction: row-reverse;
+}
+
+.total-amount {
+  background: #fff;
+
+  .split {
+    color: #33333345;
+  }
+}
+
+.green {
+  color: #00b96b;
+}
+
+.yellow {
+  color: #ffc107;
+}
+
+.blue {
+  color: #007bff;
 }
 </style>

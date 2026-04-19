@@ -1,0 +1,35 @@
+{
+  "title": "客户管理",
+  "invoice": {
+    "title": "开票信息",
+    "basicInfo": "基本信息",
+    "bankInfoTitle": "银行信息",
+    "bankInfo": "银行信息",
+    "addBank": "添加银行",
+    "header": "发票抬头",
+    "taxNum": "纳税人识别号",
+    "address": "开票地址",
+    "tel": "开票电话",
+    "mobile": "手机",
+    "isDefault": "是否默认",
+    "sortId": "排序ID",
+    "bankName": "开户银行",
+    "bankAccount": "银行账号",
+    "accountName": "账户名称",
+    "currency": "币种",
+    "swiftCode": "Swift Code",
+    "newInvoice": "新开票信息"
+  },
+  "attachment": {
+    "title": "附件",
+    "uploadTitle": "上传附件",
+    "downloadTitle": "下载",
+    "preview": "预览",
+    "uploadTip": "支持: PDF, Word, Excel, 图片等格式，单文件不超过10MB",
+    "fileName": "文件名",
+    "fileType": "文件类型",
+    "fileSize": "大小",
+    "uploadTime": "上传时间",
+    "uploader": "上传人"
+  }
+}

@@ -4,7 +4,23 @@ import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-adm
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { useExpenseAllColumns } from '../data';
 import { computed, onMounted, ref, watch, h } from 'vue';
-
+import {
+  Button,
+  Input,
+  Select,
+  InputNumber,
+  Space,
+  Table,
+  Checkbox,
+  message,
+  DropdownButton,
+  MenuItem,
+  Menu,
+  Modal,
+  Textarea,
+  Tag,
+  Card,
+} from 'ant-design-vue';
 import { $t } from '#/locales';
 import dayjs from 'dayjs';
 

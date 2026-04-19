@@ -11,6 +11,7 @@ import { Select } from 'ant-design-vue';
 import { getUserPagedList } from '#/api/system/user-admin';
 
 import { usePagedSelect } from './use-paged-select';
+import type { st } from 'vue-router/dist/router-CWoNjPRp.mjs';
 
 interface Props {
   /** label 字段名，默认 'userName'，可用值：'userName' | 'nickName' */
@@ -44,7 +45,6 @@ const modelValue = defineModel<any>();
 // 响应式引用 selectedItems
 const selectedItemsRef = toRef(props, 'selectedItems');
 const userAttributeRef = toRef(props, 'userAttribute');
-
 // 将用户数据转换为 Option
 const mapUserToOption = (user: SystemUserAdminApi.UserListDto) => {
   // 优先使用指定的 labelKey，fallback 到 userName

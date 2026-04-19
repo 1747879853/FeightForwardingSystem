@@ -54,6 +54,18 @@ export namespace SeaExportAdminApi {
     sortId?: number;
     /** 备注 */
     remark?: string;
+    /** 用户Ids */
+    userIdList?: number[];
+  }
+
+  export interface OrderUserDto {
+    transportOrderId: string;
+    userId: number;
+    userNickName?: string;
+    userAttribute: UserAttribute;
+    sortId: number;
+    remark?: string;
+    id: number;
   }
 
   export interface TransportOrderAddDto {
@@ -101,6 +113,22 @@ export namespace SeaExportAdminApi {
     orderUsers?: OrderUserAddDto[];
     /** 费用列表 */
     orderFees?: OrderFeeAdminApi.OrderFeeDto[];
+
+    feeLockedUserId?: number;
+    feeLockedTime?: string;
+    feeUnLockedUserId?: number;
+    feeUnLockedTime?: string;
+    codeSourceName?: string;
+    codeFrtName?: string;
+    codeServiceName?: string;
+    clientName?: string;
+    teamName?: string;
+    custBrokerName?: string;
+    warehouseName?: string;
+    insuranceName?: string;
+    consigneeName?: string;
+    shipperName?: string;
+    notifierName?: string;
   }
 
   export interface TransportOrderEditDto extends TransportOrderAddDto {
@@ -109,6 +137,7 @@ export namespace SeaExportAdminApi {
 
   export interface TransportOrderDto extends TransportOrderAddDto {
     id: string;
+    orderUsers?: OrderUserDto[];
     bizType?: number;
     isDeleted?: boolean;
     deleterUserId?: number;

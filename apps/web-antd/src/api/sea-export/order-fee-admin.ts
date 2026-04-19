@@ -107,25 +107,25 @@ export namespace OrderFeeAdminApi {
   /** 业务费用列表和详情输出 Dto */
   export interface OrderFeeDto {
     /** 业务 id */
-    transportOrderId: string;
+    transportOrderId?: string;
 
     /** 更改单 id */
     changeOrderId?: string;
 
     /**收付类型 */
-    paySide: number;
+    paySide?: number;
 
     /** 费用状态 */
-    feeStatus: number;
+    feeStatus?: number;
 
     /** 任务状态 */
     taskStatus?: string;
 
     /** 开票状态 */
-    invoiceStatus: number;
+    invoiceStatus?: number;
 
     /** 结算状态 */
-    settlementStatus: number;
+    settlementStatus?: number;
 
     submitOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
     modifyOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
@@ -138,7 +138,7 @@ export namespace OrderFeeAdminApi {
     organizationUnits?: SeaExportAdminApi.OrganizationUnitSimpleDto[];
 
     /** 费用代码 id - 费用名称从这里来 */
-    feeCodeId: number;
+    feeCodeId?: number;
 
     /** 行业类别  数值*/
     IndustryCategory?: number;
@@ -146,31 +146,31 @@ export namespace OrderFeeAdminApi {
     IndustryCategories?: string;
 
     /** 结算对象 id - 船公司是船公司表 其余是客户表 */
-    settlementId: string;
+    settlementId?: string;
 
     /** 币别 id */
-    currencyId: number;
+    currencyId?: number;
 
     /** 汇率 - 从币别拉出默认汇率 可以修改 */
-    exchangeRate: number;
+    exchangeRate?: number;
 
     /** 含税单价 */
-    unitPrice: number;
+    unitPrice?: number;
 
     /** 金额 最多 28 位 */
-    amount: number;
+    amount?: number;
 
     /** 单位 */
-    unitEmum: number;
+    unitEmum?: number;
 
     /** 数量 */
-    quantity: number;
+    quantity?: number;
 
     /** 税率 */
-    taxRate: number;
+    taxRate?: number;
 
     /** 付费申请金额 */
-    rqstPaymentAmount: number;
+    rqstPaymentAmount?: number;
 
     /** 已开票金额 */
     invoicedAmount: number;
@@ -180,6 +180,12 @@ export namespace OrderFeeAdminApi {
 
     /** 已结算金额 */
     settledAmount: number;
+
+    /** 未申请金额 */
+    unRqstPaymentAmount: number;
+
+    /** 未结算金额 */
+    unSettledAmount: number;
 
     /** 是否允许开票 */
     canInvoice: boolean;
@@ -247,7 +253,7 @@ export namespace OrderFeeAdminApi {
     TransportOrderId?: string;
 
     /**收付类型 */
-    PaySide: number;
+    PaySide?: number;
 
     /** 费用状态 */
     FeeStatus?: number;

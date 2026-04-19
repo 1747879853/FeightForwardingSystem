@@ -3,8 +3,8 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 
 import { $t } from '#/locales';
-import { createClientSelectSchema } from '#/views/client/data';
-import { BusinessTypeOptions } from '#/views/client/paymentTermsData';
+import { createClientSelectSchema } from '#/views/client/base/data';
+import { BusinessTypeOptions } from '#/views/client/payment-terms/data/';
 
 const getFeeLockedOptions = () => [
   {

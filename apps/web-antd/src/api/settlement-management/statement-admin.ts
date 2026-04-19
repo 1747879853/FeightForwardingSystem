@@ -29,6 +29,9 @@ export namespace StatementAdminApi {
   export interface StatementDto {
     statementNum?: string;
     clientId: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    description?: string;
     sortId: number;
     remark?: string;
     userId: number;
@@ -50,14 +53,39 @@ export namespace StatementAdminApi {
     lastModifierUserId?: number;
     creationTime: string;
     creatorUserId?: number;
+    attachments?: AttachmentItemDto[];
     id: string;
+  }
+
+  /** 附件项 DTO（详情输出） */
+  export interface AttachmentItemDto {
+    attachmentId: number;
+    itemId?: string;
+    moduleTypeId?: string;
+    isFirstShow: boolean;
+    displayOrder: number;
+    url?: string;
+    mediaType?: number;
+    friendlyFileName?: string;
+    id: number;
+  }
+  /** 附件项 DTO（输入） */
+  export interface AttachmentItemForItemInputDto {
+    attachmentId?: number;
+    displayOrder?: number;
+    itemId?: string;
+    url?: string;
+    id?: number;
   }
 
   /** 客户对账新增Dto */
   export interface StatementAddDto {
     statementNum?: string;
     clientId: string;
-    sortId: number;
+    sortId?: number;
+    startTime?: string | null;
+    endTime?: string | null;
+    description?: string;
     remark?: string;
     orderFeeIds?: string[];
     isDeleted?: boolean;
@@ -68,15 +96,20 @@ export namespace StatementAdminApi {
     creationTime?: string;
     creatorUserId?: number;
     id?: string;
+    attachments?: AttachmentItemForItemInputDto[];
   }
 
   /** 客户对账编辑Dto */
   export interface StatementEditDto {
     id: string;
     statementNum?: string;
-    clientId: string;
-    sortId: number;
+    clientId?: string;
+    startTime?: string | null;
+    endTime?: string | null;
+    sortId?: number;
+    description?: string;
     remark?: string;
+    attachments?: AttachmentItemForItemInputDto[];
   }
 
   /** 客户对账编辑费用Dto */
@@ -124,6 +157,7 @@ export namespace StatementAdminApi {
     AccountDateEnd?: string;
     SettlementId: string;
     FeeCodeIds?: number[];
+    ExceptFeeCodeIds?: number[];
     PaySide?: number;
     FeeStatus?: number;
     SettlementStatus?: number;
@@ -149,7 +183,7 @@ export namespace StatementAdminApi {
 /**
  * 新增客户对账
  */
-export const createStatement = (data: StatementAdminApi.StatementAddDto) => {
+export const addStatement = (data: StatementAdminApi.StatementAddDto) => {
   return requestClient.post<string>(
     '/services/app/StatementAdmin/AddAsync',
     data,
@@ -171,11 +205,11 @@ export const getOrderFeeGroup = (
 /**
  * 删除客户对账
  */
-export const deleteStatement = (id: string) => {
+export const deleteStatement = (params: { id?: string; ids?: string[] }) => {
   return requestClient.delete<boolean>(
     '/services/app/StatementAdmin/DeleteAsync',
     {
-      data: { Id: id },
+      data: params,
     },
   );
 };
@@ -195,7 +229,7 @@ export const batchDeleteStatements = (ids: string[]) => {
 /**
  * 编辑客户对账-只编辑主表信息，不编辑关联费用 关联费用只能通过加费用接口来编辑
  */
-export const updateStatement = (data: StatementAdminApi.StatementEditDto) => {
+export const editStatement = (data: StatementAdminApi.StatementEditDto) => {
   return requestClient.put<boolean>(
     '/services/app/StatementAdmin/EditAsync',
     data,

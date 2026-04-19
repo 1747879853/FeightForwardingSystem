@@ -1,10 +1,13 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
-
+import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 import dayjs from 'dayjs';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-
+import {
+  getCurrencyEnumOptions,
+  getCurrencyEnumSymbolOptions,
+} from '#/views/sea-export-admin/orderFee/data';
 import { Page } from '@vben/common-ui';
 
 import {
@@ -153,6 +156,16 @@ const to = ref<Record<string, any>>();
 
 const displayList = ref<any[]>([]);
 
+const transCurrency = (currencyId: number) => {
+  const option = getCurrencyEnumOptions().find((o) => o.value === currencyId);
+  return option ? option.label : currencyId;
+};
+const transCurrencySymbol = (currencyId: number) => {
+  const option = getCurrencyEnumSymbolOptions().find(
+    (o) => o.value === currencyId,
+  );
+  return option ? option.label : currencyId;
+};
 const setDisplayList = () => {
   let mbl = {
     name: $t('seaExport.export.mblNum'),
@@ -285,6 +298,83 @@ const setDisplayList = () => {
   };
   displayList.value.push(goodsDes);
 };
+let recAmountMap: any = ref({} as any);
+let payAmountMap: any = ref({} as any);
+const totalAmount = computed(() => {
+  const allKeys = new Set([
+    ...Object.keys(recAmountMap.value),
+    ...Object.keys(payAmountMap.value),
+  ]);
+  const total: any = {};
+
+  allKeys.forEach((key) => {
+    total[key] = {
+      totalPayAmount: payAmountMap.value[key]?.totalPayAmount || 0,
+      totalRecAmount: recAmountMap.value[key]?.totalRecAmount || 0,
+      exchangeRate:
+        (payAmountMap.value[key] || recAmountMap.value[key])?.exchangeRate || 1,
+      currencyId:
+        (payAmountMap.value[key] || recAmountMap.value[key])?.currencyId || 1,
+      currencyName:
+        (payAmountMap.value[key] || recAmountMap.value[key])?.currencyName ||
+        '人民币',
+    };
+  });
+  // 转换为对象数组
+  const totalList = Object.keys(total).map((key) => ({
+    id: key,
+    ...total[key],
+  }));
+  let list = [];
+  console.log('totalList', totalList);
+  let totalPay = 0;
+  let totalRec = 0;
+
+  totalList.forEach((item) => {
+    let recName = `应收${transCurrency(item.currencyId)}:`;
+    let recColor = 'green';
+    let recAmount = (item.totalRecAmount || 0).toFixed(2);
+    list.push({
+      name: recName,
+      color: recColor,
+      value: transCurrencySymbol(item.currencyId) + recAmount,
+    });
+    totalRec += recAmount * item.exchangeRate;
+
+    let payName = `应付${transCurrency(item.currencyId)}:`;
+    let payColor = 'yellow';
+    let payAmount = (item.totalPayAmount || 0).toFixed(2);
+    list.push({
+      name: payName,
+      color: payColor,
+      value: transCurrencySymbol(item.currencyId) + payAmount,
+    });
+    totalPay += payAmount * item.exchangeRate;
+
+    let profitName = `${transCurrency(item.currencyId)}利润:`;
+    let profitColor = 'blue';
+    let profitAmount = (recAmount - payAmount).toFixed(2);
+    list.push({
+      name: profitName,
+      color: profitColor,
+      value: transCurrencySymbol(item.currencyId) + profitAmount,
+    });
+  });
+  list.push({
+    name: '合计利润:',
+    color: 'blue',
+    value: transCurrencySymbol(1) + (totalRec - totalPay).toFixed(2),
+  });
+  list.push({
+    name: '利润率:',
+    color: 'blue',
+    value: totalRec
+      ? (((totalRec - totalPay) / totalRec) * 100).toFixed(1) + '%'
+      : '--',
+  });
+  console.log(list);
+  return list;
+});
 const loadSeaExportData = async () => {
   if (!editId.value) return;
 
@@ -300,9 +390,55 @@ const loadSeaExportData = async () => {
     pageLoading.value = false;
   }
 };
-
+const getOrderFeeNumber = async () => {
+  let params = {
+    TransportOrderId: editId.value,
+    PageIndex: 1,
+    PageSize: 999,
+  };
+  const res = await getOrderFeePagedList(params);
+  let dataSourceRec = res.items.filter((item) => item.paySide === 0);
+  recAmountMap.value = {};
+  const currencyIdList = dataSourceRec.map((item) => item.currencyId);
+  currencyIdList.forEach((item) => {
+    let list = dataSourceRec.filter((item2) => item2.currencyId === item);
+    let totalRecAmount = list.reduce((acc, cur) => {
+      return acc + cur.amount;
+    }, 0);
+    let exchangeRate = list[0]?.exchangeRate;
+    let currencyName = list[0]?.currencyName;
+    let currencyId = list[0]?.currencyId;
+    recAmountMap.value[item] = {
+      totalRecAmount,
+      exchangeRate,
+      currencyName,
+      currencyId,
+    };
+    console.log('recAmountMap', recAmountMap);
+  });
+  let dataSourcePay = res.items.filter((item) => item.paySide === 1);
+  payAmountMap.value = {};
+  const currencyIdListPay = dataSourcePay.map((item) => item.currencyId);
+  currencyIdListPay.forEach((item) => {
+    let list = dataSourcePay.filter((item2) => item2.currencyId === item);
+    let totalPayAmount = list.reduce((acc, cur) => {
+      return acc + cur.amount;
+    }, 0);
+    let exchangeRate = list[0]?.exchangeRate;
+    let currencyName = list[0]?.currencyName;
+    let currencyId = list[0]?.currencyId;
+    payAmountMap.value[item] = {
+      totalPayAmount,
+      exchangeRate,
+      currencyName,
+      currencyId,
+    };
+    console.log('payAmountMap', payAmountMap);
+  });
+};
 onMounted(() => {
   loadSeaExportData();
+  getOrderFeeNumber();
 });
 </script>
 
@@ -319,16 +455,54 @@ onMounted(() => {
             </span>
           </template>
           <div class="flex flex-1 px-1 py-1" v-for="item in displayList">
-            <span class="flex w-[85px]"> {{ `${item.name} : ` }}</span>
+            <span class="flex w-[85px] font-semibold">
+              {{ `${item.name} : ` }}</span
+            >
             <span class="flex w-[145px]">{{ item.value || '--' }}</span>
           </div>
         </Card>
         <div class="flex min-w-0 flex-1 flex-col gap-2">
           <OrderFeeTable :type="0" />
-
           <OrderFeeTable :type="1" />
+          <div class="total-amount flex flex-wrap rounded-md px-4 py-1 shadow">
+            <div
+              v-for="(item, index) in totalAmount"
+              class="mr-4 flex"
+              :key="item.name"
+            >
+              <span class="flex">{{ item.name }}</span>
+              <span class="ml-2 flex font-medium" :class="item.color">{{
+                item.value
+              }}</span>
+              <span class="split mx-4 flex" v-show="(index + 1) % 3 === 0"
+                >|
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </Spin>
   </Page>
 </template>
+
+<style scoped lang="scss">
+.total-amount {
+  background: #fff;
+
+  .split {
+    color: #33333345;
+  }
+}
+
+.green {
+  color: #00b96b;
+}
+
+.yellow {
+  color: #ffc107;
+}
+
+.blue {
+  color: #007bff;
+}
+</style>
