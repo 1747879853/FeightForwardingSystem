@@ -58,6 +58,25 @@
     "title": "业务台账",
     "detail": "费用审核详情"
   },
+  "paymentReview": {
+    "title": "付费审核",
+    "applicationNo": "申请单号",
+    "settlementName": "结算对象",
+    "currencyCode": "结算币别",
+    "totalPayPrice": "应付总金额",
+    "totalReceivePrice": "应收总金额",
+    "submitTime": "提交时间",
+    "endTime": "最晚付款时间",
+    "creatorUserName": "申请人",
+    "auditUserName": "审核人",
+    "auditTime": "审核时间",
+    "remark": "备注",
+    "myStatus": "我的审核状态",
+    "keywordPlaceholder": "提单号/订舱号/委托编号",
+    "batchReject": "批量驳回",
+    "selectReject": "驳回选中",
+    "rejectConfirmTitle": "确认驳回"
+  },
   "expenseSubmission": {
     "title": "费用提交审核",
     "detail": "费用提交审核详情"
