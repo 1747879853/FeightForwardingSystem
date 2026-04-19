@@ -179,7 +179,14 @@
       "canInvoice": "是否允许开票",
       "isConfidential": "是否机密",
       "dataEntryMethod": "数据录入方式",
-      "remark": "备注"
+      "remark": "备注",
+      "editFee": "编辑费用",
+      "originalFeeData": "原费用数据",
+      "editFeeInfo": "费用编辑",
+      "profitChange": "利润变化",
+      "originalProfit": "更改前利润",
+      "updatedProfit": "更改后利润",
+      "profitDifference": "利润差额"
     },
     "changeOrder": {
       "title": "更改单",

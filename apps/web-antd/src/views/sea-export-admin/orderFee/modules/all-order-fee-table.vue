@@ -61,6 +61,17 @@ const handleModifyTask = (
     };
   });
   tasks = tasks.concat(modifyData);
+  console.log('tasks', tasks);
+  tasks.forEach((item) => {
+    item.taskStatus = '';
+    if (item.task && item.task?.taskType === 1) {
+      item.taskStatus = $t('auditApproval.ApplyModification');
+    } else if (item.task && item.task?.taskType === 2) {
+      item.taskStatus = $t('auditApproval.ApplyDeletion');
+    } else {
+      item.taskStatus = '';
+    }
+  });
   return tasks;
 };
 
@@ -118,6 +129,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
           const modifyData = handleModifyTask(orderFeeTasks);
           dataSource.value = normalizeOrderFeeWithRowKey(modifyData);
           emit('updateTableData', dataSource.value);
+          console.log('dataSource.value', dataSource.value);
           return dataSource.value;
         },
       },

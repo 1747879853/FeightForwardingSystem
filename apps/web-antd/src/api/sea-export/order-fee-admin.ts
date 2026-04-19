@@ -141,9 +141,9 @@ export namespace OrderFeeAdminApi {
     feeCodeId?: number;
 
     /** 行业类别  数值*/
-    IndustryCategory?: number;
+    industryCategory?: number;
     /** 行业类别 字母 */
-    IndustryCategories?: string;
+    industryCategories?: string;
 
     /** 结算对象 id - 船公司是船公司表 其余是客户表 */
     settlementId?: string;
@@ -243,6 +243,9 @@ export namespace OrderFeeAdminApi {
 
     /** 主键 ID */
     id: string;
+
+    /** 修改次数 前端自用*/
+    ModificationCount?: number;
   }
 
   /** 分页查询参数 */

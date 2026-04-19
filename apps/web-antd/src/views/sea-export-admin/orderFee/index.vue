@@ -462,8 +462,16 @@ onMounted(() => {
           </div>
         </Card>
         <div class="flex min-w-0 flex-1 flex-col gap-2">
-          <OrderFeeTable :type="0" />
-          <OrderFeeTable :type="1" />
+          <OrderFeeTable
+            :type="0"
+            :rec-amount-map="recAmountMap"
+            :pay-amount-map="payAmountMap"
+          />
+          <OrderFeeTable
+            :type="1"
+            :rec-amount-map="recAmountMap"
+            :pay-amount-map="payAmountMap"
+          />
           <div class="total-amount flex flex-wrap rounded-md px-4 py-1 shadow">
             <div
               v-for="(item, index) in totalAmount"

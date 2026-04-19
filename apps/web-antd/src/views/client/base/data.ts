@@ -436,7 +436,7 @@ export function createClientSelectSchema(options: {
 /**
  * 将行业类别逗号字符串映射为可读 label
  */
-const formatIndustryCategories = (value?: string): string => {
+export const formatIndustryCategories = (value?: string): string => {
   if (!value) return '';
   const optionsMap = new Map(
     getIndustryCategoryOptions().map((o) => [o.value, o.label]),
