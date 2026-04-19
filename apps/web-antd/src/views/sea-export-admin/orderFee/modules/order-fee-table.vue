@@ -41,6 +41,7 @@ import {
 import { GetDetail } from '#/api/sea-export/change-order-admin';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { useOrderFeeColumns } from '../data';
+import OrderFeeEditorModal from './order-fee-editor-modal.vue';
 
 const dataSource = defineModel<OrderFeeAdminApi.OrderFeeDto[]>({
   default: () => [],
@@ -52,6 +53,8 @@ const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
   mode?: string; // changeOrder 更改单
   parentChangeOrderId?: string; //更改单Id
+  recAmountMap?: Record<string, any>; // 应收金额汇总
+  payAmountMap?: Record<string, any>; // 应付金额汇总
 }>();
 
 const emit = defineEmits(['sync-fee']);
@@ -71,7 +74,7 @@ const ORDER_CTN_API_KEYS: Array<
   'transportOrderId',
   'paySide',
   'feeCodeId',
-  'industryCategory',
+  'IndustryCategory',
   'settlementId',
   'currencyId',
   'exchangeRate',
@@ -158,6 +161,12 @@ const queryTableData = async () => {
     ) {
       item.taskStatus = $t('auditApproval.task.typeOptions.DeleteOrderFee');
     } else {
+      let modifyOrderFeeTasksLength =
+        item.modifyOrderFeeTasks?.filter((item) => item.taskStatus === 2)
+          .length || 0;
+      if (modifyOrderFeeTasksLength > 0) {
+        item.ModificationCount = modifyOrderFeeTasksLength || 0;
+      }
       item.taskStatus = '';
     }
   });
@@ -318,7 +327,7 @@ const SubmittedOther = async (e: any) => {
   console.log('SubmittedOther', e);
   switch (e.key) {
     case 'modify': {
-      showModifyWithRemark();
+      openModifyModal();
       break;
     }
     case 'delete': {
@@ -408,6 +417,55 @@ const Submitted = () => {
     getTableDate();
   });
 };
+
+// 模态框引用
+const modifyModalRef = ref<InstanceType<typeof OrderFeeEditorModal>>();
+
+const openModifyModal = () => {
+  if (!selectedRowKeys.value.length) return;
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+  if (list.length > 1) {
+    message.error({
+      content: $t('ui.actionMessage.lengthLimit1'),
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
+  // 打开模态框，传递选中的费用数据和合计数据
+  const selectedFee = list[0];
+  console.log('selectedFee', selectedFee);
+
+  modifyModalRef.value?.modalApi.setData(selectedFee);
+  modifyModalRef.value?.modalApi.open();
+};
+
+// 处理模态框确认事件
+const handleModalConfirm = (data: {
+  originalData: OrderFeeAdminApi.OrderFeeDto | null;
+  updatedData: OrderFeeAdminApi.OrderFeeDto | null;
+}) => {
+  console.log('模态框确认:', data);
+  let list = [data.updatedData];
+  // TODO: 这里可以添加保存逻辑，调用API更新费用
+  let ModifyOrderFeeDto = {
+    remark: data.updatedData?.remark || '',
+    TransportOrderId: editId.value,
+    orderFees: sanitizeOrderFee([...(list ?? [])]),
+  };
+  console.log(ModifyOrderFeeDto);
+  modifyOrderFee(ModifyOrderFeeDto).then(() => {
+    message.success({
+      content: $t('ui.actionMessage.operationSuccess'),
+      key: 'action_process_msg',
+    });
+    getTableDate();
+  });
+};
+
 const submitModify = (remark: string) => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
@@ -485,7 +543,9 @@ const saveRow = () => {
   );
 
   console.log(list);
-  batchEditOrderFee(list).then(() => {
+  // 转换为OrderFeeEditDto类型
+  const editList = sanitizeOrderFee(list);
+  batchEditOrderFee(editList).then(() => {
     message.success({
       content: $t('ui.actionMessage.operationSuccess'),
       key: 'action_process_msg',
@@ -618,6 +678,15 @@ defineExpose({
         </div>
       </div>
     </div>
+
+    <!-- 费用编辑模态框 -->
+    <OrderFeeEditorModal
+      ref="modifyModalRef"
+      :rec-amount-map="recAmountMap || {}"
+      :pay-amount-map="payAmountMap || {}"
+      :fee-code-list="feeCodeList"
+      @confirm="handleModalConfirm"
+    />
   </Card>
 </template>
 

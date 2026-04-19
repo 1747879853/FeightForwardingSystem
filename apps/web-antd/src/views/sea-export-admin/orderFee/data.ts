@@ -339,12 +339,11 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     },
     {
       title: $t('seaExport.export.orderFee.feeStatus'),
-
       align: 'center',
       field: 'feeStatus',
       width: 90,
       cellRender: {
-        name: 'CellTag',
+        name: 'CellFeeStatusTag',
         options: getFeeStatusOptions(),
       },
     },
@@ -369,17 +368,6 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
 
       field: 'settlementName',
       minWidth: 110,
-    },
-    {
-      title: $t('seaExport.export.orderFee.currency'),
-
-      field: 'currencyNamezh',
-      align: 'center',
-
-      minWidth: 80,
-      cellRender: {
-        name: 'CellClientSelect',
-      },
     },
 
     {
@@ -575,7 +563,6 @@ export function useOrderFeeColumns(
     },
     {
       title: $t('seaExport.export.orderFee.feeStatus'),
-
       align: 'center',
       field: 'feeStatus',
       minWidth: 100,

@@ -123,7 +123,12 @@ setupVbenVxeTable({
           { color: 'success', label: $t('common.enabled'), value: 1 },
           { color: 'error', label: $t('common.disabled'), value: 0 },
         ];
-        const tagItem = tagOptions.find((item) => item.value === value);
+        let ModificationCount = '';
+        if (row['ModificationCount'] && row['ModificationCount'] > 0) {
+          ModificationCount = `+${row['ModificationCount']}`;
+        }
+        let tagItem = tagOptions.find((item) => item.value === value);
+
         let ele = [
           h(
             Tag,
@@ -131,7 +136,10 @@ setupVbenVxeTable({
               ...props,
               ...objectOmit(tagItem ?? {}, ['label']),
             },
-            { default: () => tagItem?.label ?? value },
+            {
+              default: () =>
+                tagItem ? tagItem?.label + ModificationCount : value,
+            },
           ),
         ];
         if (row['taskStatus'] !== '') {
