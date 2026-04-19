@@ -10,7 +10,10 @@ const routes: RouteRecordRaw[] = [
       order: 202,
       title: $t('auditApproval.title'),
       hideChildrenInMenu: false,
-      authority: abpPageAuthority('Admin.OrderFee.Audit'),
+      authority: abpPageAuthority([
+        'Admin.OrderFee.Audit',
+        'Admin.PaymentApplication.Audit',
+      ]),
     },
     name: 'AuditApproval',
     path: '/audit-approval',
@@ -25,6 +28,18 @@ const routes: RouteRecordRaw[] = [
           authority: abpPageAuthority('Admin.OrderFee.Audit'),
         },
         component: () => import('#/views/audit-approval/expense-all/index.vue'),
+      },
+      {
+        path: 'payment-review',
+        name: 'PaymentReview',
+        meta: {
+          icon: 'mdi:cash-check',
+          title: $t('auditApproval.paymentReview.title'),
+          activePath: '/audit-approval/payment-review',
+          authority: abpPageAuthority('Admin.PaymentApplication.Audit'),
+        },
+        component: () =>
+          import('#/views/audit-approval/payment-review/index.vue'),
       },
       {
         path: 'expense-review/:id/expense-detail/:entityId',
