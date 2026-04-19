@@ -13,7 +13,9 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deletePaymentApplication,
   getPaymentApplicationPagedList,
+  PaymentApplicationStatus,
 } from '#/api/settlement-management/payment-application-admin';
+import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { $t } from '#/locales';
 
 import { useColumns, useGridFormSchema } from './data';
@@ -22,6 +24,13 @@ const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
 
 const router = useRouter();
 const actionLoading = ref(false);
+const { open: openWorkflowTimeline } = useWorkflowTimeline();
+
+function handleViewWorkflow(
+  row: PaymentApplicationAdminApi.PaymentApplicationDto,
+) {
+  openWorkflowTimeline({ entityId: row.id });
+}
 
 function handleCreate() {
   router.push('/fee-management/payment-application/add');
@@ -158,6 +167,16 @@ function handleBatchDelete() {
             删除
           </Button>
         </Space>
+      </template>
+      <template #action="{ row }">
+        <Button
+          v-if="row.status !== PaymentApplicationStatus.Entering"
+          type="link"
+          size="small"
+          @click.stop="handleViewWorkflow(row)"
+        >
+          审批流程
+        </Button>
       </template>
     </Grid>
   </Page>

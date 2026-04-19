@@ -464,7 +464,22 @@
     "list": "Department List",
     "code": "Department Code",
     "level": "Level",
-    "addChild": "Add Child"
+    "addChild": "Add Child",
+    "orgTree": "Organization",
+    "memberList": "Members",
+    "addMember": "Add Member",
+    "removeMember": "Remove",
+    "confirmRemoveMember": "Remove user {name} from this organization?",
+    "userName": "Username",
+    "nickName": "Nickname",
+    "phoneNumber": "Phone",
+    "isBoss": "Leader",
+    "addedTime": "Joined At",
+    "selectOrgFirst": "Please select an organization first",
+    "searchUser": "Search user",
+    "selectedUsers": "Selected users",
+    "addSuccess": "Added successfully",
+    "removeSuccess": "Removed successfully"
   },
   "menu": {
     "title": "Menu Management",

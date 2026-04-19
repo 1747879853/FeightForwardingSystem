@@ -112,7 +112,49 @@ export namespace PaymentReviewAdminApi {
   }
 }
 
+/** 任务类型 */
+export enum TaskType {
+  SubmitOrderFee = 0,
+  ModifyOrderFee = 1,
+  DeleteOrderFee = 2,
+  PaymentApplication = 3,
+}
+
+/** 工作流实例状态 */
+export enum WorkFlowInstanceStatus {
+  Active = 0,
+  Pass = 1,
+  Reject = 2,
+}
+
+/** 工作流通过方式 */
+export enum WorkFlowPassMethod {
+  Pass = 0,
+  Or = 1,
+  And = 2,
+}
+
+/** 任务状态 */
+export enum TaskStatus {
+  Auditing = 0,
+  Rejected = 1,
+  Passed = 2,
+  PartialPassed = 3,
+}
+
 const API_PREFIX = '/services/app/PaymentApplicationAdmin';
+const WORKFLOW_INSTANCE_PREFIX = '/services/app/WorkFlowInstanceAdmin';
+
+/** 获取一个任务的审核流程详情 */
+export async function getWorkFlowInstanceDetail(params: {
+  TaskType?: TaskType;
+  EntityId?: string;
+}) {
+  return requestClient.get<PaymentReviewAdminApi.WorkFlowInstanceDetailDto>(
+    `${WORKFLOW_INSTANCE_PREFIX}/GetAsync`,
+    { params },
+  );
+}
 
 /** 付费审核任务 分页列表 */
 export async function getPayAppTaskList(

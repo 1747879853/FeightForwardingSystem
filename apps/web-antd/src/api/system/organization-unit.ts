@@ -175,13 +175,96 @@ async function deleteOrganizationUnit(id: number): Promise<void> {
   );
 }
 
+/** 组织单元用户列表项DTO */
+export interface OrganizationUnitUserListDto {
+  id: number;
+  userName: string;
+  nickName?: string;
+  phoneNumber?: string;
+  isActive: boolean;
+  isBoss: boolean;
+  addedTime: string;
+}
+
+/** 组织单元用户分页响应 */
+export interface PagingListOfOrganizationUnitUserListDto {
+  items: OrganizationUnitUserListDto[];
+  pageIndex: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+/** 组织成员搜索DTO */
+export interface OrganizationUnitMemberDto {
+  id: number;
+  userName: string;
+  nickName?: string;
+  isActive: boolean;
+  roleNames?: string;
+}
+
+/** 获取组织下的用户分页列表 */
+async function getOrganizationUnitUsers(params: {
+  OrganizationUnitId: number;
+  PageIndex?: number;
+  PageSize?: number;
+}): Promise<PagingListOfOrganizationUnitUserListDto> {
+  return requestClient.get(
+    '/services/app/OrganizationUnit/GetOrganizationUnitUserPagingListAsync',
+    { params },
+  );
+}
+
+/** 搜索可添加到组织的用户 */
+async function findUsersForOrganizationUnit(data: {
+  keyWords?: string;
+  organizationUnitId?: number;
+  skipCount?: number;
+  maxResultCount?: number;
+}): Promise<{
+  items: OrganizationUnitMemberDto[];
+  totalCount: number;
+}> {
+  return requestClient.post(
+    '/services/app/OrganizationUnit/FindUserPagedListForOuAsync',
+    data,
+  );
+}
+
+/** 批量添加用户到组织 */
+async function addUsersToOrganizationUnit(data: {
+  userIds: number[];
+  organizationUnitId: number;
+}): Promise<void> {
+  return requestClient.post(
+    '/services/app/OrganizationUnit/AddUsersToOrganizationUnitAsync',
+    data,
+  );
+}
+
+/** 从组织移除用户 */
+async function removeUserFromOrganizationUnit(params: {
+  UserId: number;
+  OrganizationUnitId: number;
+}): Promise<void> {
+  return requestClient.delete(
+    '/services/app/OrganizationUnit/RemoveUserFromOrganizationUnitAsync',
+    { params },
+  );
+}
+
 export {
+  addUsersToOrganizationUnit,
   createOrganizationUnit,
   deleteOrganizationUnit,
+  findUsersForOrganizationUnit,
   getOrganizationUnit,
   getOrganizationUnits,
   getOrganizationUnitTree,
   getOrganizationUnitsWithLevel,
+  getOrganizationUnitUsers,
   moveOrganizationUnit,
+  removeUserFromOrganizationUnit,
   updateOrganizationUnit,
 };
