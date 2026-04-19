@@ -70,6 +70,40 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/system/dept/list.vue'),
       },
       {
+        path: '/system/workflow',
+        name: 'SystemWorkflow',
+        meta: {
+          icon: 'mdi:source-branch',
+          title: $t('system.workflow.title'),
+          authority: abpPageAuthority('Admin'),
+        },
+        component: () => import('#/views/system/workflow/list.vue'),
+      },
+      {
+        path: '/system/workflow/create',
+        name: 'SystemWorkflowCreate',
+        meta: {
+          icon: 'mdi:source-branch',
+          title: $t('system.workflow.createTitle'),
+          authority: abpPageAuthority('Admin'),
+          hideInMenu: true,
+          activePath: '/system/workflow',
+        },
+        component: () => import('#/views/system/workflow/form.vue'),
+      },
+      {
+        path: '/system/workflow/edit/:id',
+        name: 'SystemWorkflowEdit',
+        meta: {
+          icon: 'mdi:source-branch',
+          title: $t('system.workflow.editTitle'),
+          authority: abpPageAuthority('Admin'),
+          hideInMenu: true,
+          activePath: '/system/workflow',
+        },
+        component: () => import('#/views/system/workflow/form.vue'),
+      },
+      {
         path: '/system/basic-data',
         name: 'SystemBasicData',
         meta: {

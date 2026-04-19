@@ -1,0 +1,52 @@
+.person_body {
+  display: flex;
+  height: 500px;
+  border: 1px solid #f5f5f5;
+}
+
+.tree_nav span {
+  display: inline-block;
+  max-width: 6em;
+  padding-right: 10px;
+  margin-right: 5px;
+  font-size: 12px;
+  color: #38adff;
+  cursor: pointer;
+}
+
+.tree_nav span:last-of-type {
+  font-weight: bold;
+}
+
+.person_tree {
+  width: 280px;
+  height: 100%;
+  padding: 10px 12px 0 8px;
+  border-right: 1px solid #f5f5f5;
+}
+
+.person_tree input {
+  width: 210px;
+  height: 30px;
+  padding-left: 10px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  border: 1px solid #d5dadf;
+  border-radius: 2px;
+}
+
+.l {
+  float: left;
+}
+
+.clear::after {
+  clear: both;
+  display: table;
+  content: '';
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
