@@ -233,7 +233,7 @@ onMounted(() => {
                     size="small"
                     @click.stop="handleDeleteInvoice(invoice.id)"
                   >
-                    <IconifyIcon icon="mdi:delete" class="size-4" />
+                    {{ $t('common.delete') }}
                   </Button>
                 </Space>
               </div>
