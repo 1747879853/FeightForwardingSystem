@@ -13,6 +13,8 @@ import { Plus } from '@vben/icons';
 import {
   Button,
   Card,
+  Descriptions,
+  DescriptionsItem,
   Dropdown,
   Empty,
   Input,
@@ -21,12 +23,17 @@ import {
   message,
   Popconfirm,
   Table,
+  Tabs,
+  TabPane,
   Tag,
   Tree,
 } from 'ant-design-vue';
 
 import {
+  deleteOrgBankAccount,
   deleteOrganizationUnit,
+  getOrganizationUnit,
+  getOrgBankAccountList,
   getOrganizationUnitTree,
   getOrganizationUnitUsers,
   removeUserFromOrganizationUnit,
@@ -35,6 +42,7 @@ import { $t } from '#/locales';
 
 import Form from './modules/form.vue';
 import AddMemberModal from './modules/add-member-modal.vue';
+import BankAccountModal from './modules/bank-account-modal.vue';
 
 // ========== 组织树相关 ==========
 const treeData = ref<SystemOrganizationUnitApi.OrganizationUnitTreeDto[]>([]);
@@ -42,10 +50,17 @@ const treeLoading = ref(false);
 const selectedKeys = ref<number[]>([]);
 const expandedKeys = ref<number[]>([]);
 const searchValue = ref('');
+const activeTab = ref('orgInfo');
+
+const selectedOrgDetail = ref<SystemOrganizationUnitApi.OrganizationUnitDto>();
 
 const selectedOrg = computed(() => {
   if (selectedKeys.value.length === 0) return null;
   return findNodeById(treeData.value, selectedKeys.value[0]!);
+});
+
+const isSelectedOrgCompany = computed(() => {
+  return selectedOrgDetail.value?.isCompany === true;
 });
 
 function findNodeById(
@@ -91,6 +106,19 @@ function onTreeSelect(keys: number[]) {
   selectedKeys.value = keys;
 }
 
+async function loadOrgDetail() {
+  const orgId = selectedKeys.value[0];
+  if (!orgId) {
+    selectedOrgDetail.value = undefined;
+    return;
+  }
+  try {
+    selectedOrgDetail.value = await getOrganizationUnit(orgId);
+  } catch {
+    selectedOrgDetail.value = undefined;
+  }
+}
+
 // ========== 组织表单弹窗 ==========
 const [FormModal, formModalApi] = useVbenModal({
   connectedComponent: Form,
@@ -134,6 +162,7 @@ async function onDeleteOrg(
 
 function onFormSuccess() {
   loadTree();
+  loadOrgDetail();
 }
 
 // ========== 右侧用户列表 ==========
@@ -226,10 +255,6 @@ async function onRemoveUser(record: OrganizationUnitUserListDto) {
   }
 }
 
-watch(selectedKeys, () => {
-  loadUsers();
-});
-
 // ========== 添加成员弹窗 ==========
 const [AddMemberModalComponent, addMemberModalApi] = useVbenModal({
   connectedComponent: AddMemberModal,
@@ -250,7 +275,133 @@ function onAddMemberSuccess() {
   loadTree();
 }
 
-// 初始化
+// ========== 银行账户列表 ==========
+const bankAccountLoading = ref(false);
+const bankAccountList = ref<SystemOrganizationUnitApi.OrgBankAccountDto[]>([]);
+
+const bankAccountColumns = computed(() => [
+  {
+    dataIndex: 'bankShortName',
+    title: $t('system.dept.bankAccount.bankShortName'),
+    width: 100,
+  },
+  {
+    dataIndex: 'bankName',
+    title: $t('system.dept.bankAccount.bankName'),
+    width: 180,
+  },
+  {
+    dataIndex: 'bankAccount',
+    title: $t('system.dept.bankAccount.bankAccount'),
+    width: 200,
+  },
+  {
+    dataIndex: 'accountName',
+    title: $t('system.dept.bankAccount.accountName'),
+    width: 150,
+  },
+  {
+    dataIndex: 'currencyCode',
+    title: $t('system.dept.bankAccount.currencyId'),
+    width: 80,
+  },
+  {
+    dataIndex: 'cnapsCode',
+    title: $t('system.dept.bankAccount.cnapsCode'),
+    width: 120,
+  },
+  {
+    dataIndex: 'swiftCode',
+    title: $t('system.dept.bankAccount.swiftCode'),
+    width: 120,
+  },
+  {
+    dataIndex: 'default',
+    title: $t('system.dept.bankAccount.default'),
+    width: 100,
+    key: 'default',
+  },
+  {
+    dataIndex: 'enable',
+    title: $t('system.dept.bankAccount.enable'),
+    width: 100,
+    key: 'enable',
+  },
+  {
+    title: $t('system.dept.operation'),
+    key: 'bankAction',
+    width: 140,
+    fixed: 'right' as const,
+  },
+]);
+
+async function loadBankAccounts() {
+  const orgId = selectedKeys.value[0];
+  if (!orgId) {
+    bankAccountList.value = [];
+    return;
+  }
+  bankAccountLoading.value = true;
+  try {
+    bankAccountList.value = await getOrgBankAccountList(orgId);
+  } finally {
+    bankAccountLoading.value = false;
+  }
+}
+
+async function onDeleteBankAccount(
+  record: SystemOrganizationUnitApi.OrgBankAccountDto,
+) {
+  try {
+    await deleteOrgBankAccount(record.id);
+    message.success($t('system.dept.bankAccount.deleteSuccess'));
+    loadBankAccounts();
+  } catch {
+    // error handled by request interceptor
+  }
+}
+
+// ========== 银行账户弹窗 ==========
+const [BankAccountModalComponent, bankAccountModalApi] = useVbenModal({
+  connectedComponent: BankAccountModal,
+  destroyOnClose: true,
+});
+
+function onAddBankAccount() {
+  const orgId = selectedKeys.value[0];
+  if (!orgId) return;
+  bankAccountModalApi.setData({ organizationUnitId: orgId }).open();
+}
+
+function onEditBankAccount(
+  record: SystemOrganizationUnitApi.OrgBankAccountDto,
+) {
+  bankAccountModalApi
+    .setData({
+      organizationUnitId: record.organizationUnitId,
+      id: record.id,
+    })
+    .open();
+}
+
+function onBankAccountSuccess() {
+  loadBankAccounts();
+}
+
+// ========== Watch & Init ==========
+watch(selectedKeys, async () => {
+  await loadOrgDetail();
+  loadUsers();
+  if (isSelectedOrgCompany.value) {
+    loadBankAccounts();
+  } else {
+    bankAccountList.value = [];
+    if (activeTab.value === 'bankAccounts') {
+      activeTab.value = 'orgInfo';
+    }
+  }
+});
+
 loadTree();
 </script>
 
@@ -258,6 +409,7 @@ loadTree();
   <Page auto-content-height>
     <FormModal @success="onFormSuccess" />
     <AddMemberModalComponent @success="onAddMemberSuccess" />
+    <BankAccountModalComponent @success="onBankAccountSuccess" />
 
     <div class="flex h-full gap-4">
       <!-- 左侧组织树 -->
@@ -329,67 +481,248 @@ loadTree();
         <Empty v-else :description="$t('system.dept.list')" />
       </Card>
 
-      <!-- 右侧用户列表 -->
-      <Card
-        class="min-w-0 flex-1"
-        size="small"
-        :title="
-          selectedOrg
-            ? `${selectedOrg.displayName} - ${$t('system.dept.memberList')}`
-            : $t('system.dept.memberList')
-        "
-      >
-        <template #extra>
-          <Button
-            type="primary"
-            size="small"
-            :disabled="!selectedOrg"
-            @click="onAddMember"
-          >
-            <Plus class="size-4" />
-            {{ $t('system.dept.addMember') }}
-          </Button>
-        </template>
-
+      <!-- 右侧内容区 -->
+      <Card class="min-w-0 flex-1" size="small">
         <template v-if="selectedOrg">
-          <Table
-            :columns="userColumns"
-            :data-source="userList"
-            :loading="userLoading"
-            :pagination="{
-              current: userPagination.current,
-              pageSize: userPagination.pageSize,
-              total: userPagination.total,
-              showSizeChanger: true,
-              showTotal: (total) => `${total} 条`,
-            }"
-            row-key="id"
-            size="small"
-            :scroll="{ x: 700 }"
-            @change="onTableChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'isBoss'">
-                <Tag v-if="record.isBoss" color="blue">
-                  {{ $t('system.dept.isBoss') }}
-                </Tag>
-              </template>
-              <template v-if="column.key === 'action'">
-                <Popconfirm
-                  :title="
-                    $t('system.dept.confirmRemoveMember', {
-                      name: record.nickName || record.userName,
-                    })
-                  "
-                  @confirm="onRemoveUser(record)"
-                >
-                  <Button type="link" danger size="small">
-                    {{ $t('system.dept.removeMember') }}
+          <Tabs v-model:activeKey="activeTab">
+            <!-- 组织信息 Tab -->
+            <TabPane key="orgInfo" :tab="$t('system.dept.orgInfo')">
+              <div class="mb-3 flex items-center justify-between">
+                <span class="text-base font-medium">
+                  {{ selectedOrg.displayName }}
+                </span>
+                <div class="flex gap-2">
+                  <Button
+                    type="primary"
+                    size="small"
+                    @click="onEditOrg(selectedOrg)"
+                  >
+                    {{ $t('common.edit') }}
                   </Button>
-                </Popconfirm>
-              </template>
-            </template>
-          </Table>
+                  <Popconfirm
+                    :title="
+                      $t('system.dept.confirmDeleteOrg', {
+                        name: selectedOrg.displayName,
+                      })
+                    "
+                    :disabled="
+                      !!(
+                        selectedOrg.children && selectedOrg.children.length > 0
+                      )
+                    "
+                    @confirm="onDeleteOrg(selectedOrg)"
+                  >
+                    <Button
+                      type="primary"
+                      danger
+                      size="small"
+                      :disabled="
+                        !!(
+                          selectedOrg.children &&
+                          selectedOrg.children.length > 0
+                        )
+                      "
+                    >
+                      {{ $t('common.delete') }}
+                    </Button>
+                  </Popconfirm>
+                </div>
+              </div>
+
+              <Descriptions
+                v-if="selectedOrgDetail"
+                bordered
+                size="small"
+                :column="2"
+              >
+                <DescriptionsItem :label="$t('system.dept.deptName')">
+                  {{ selectedOrgDetail.displayName }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.orgCode')">
+                  {{ selectedOrgDetail.code }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.orgType')">
+                  <Tag :color="selectedOrgDetail.isCompany ? 'blue' : 'green'">
+                    {{
+                      selectedOrgDetail.isCompany
+                        ? $t('system.dept.isCompanyYes')
+                        : $t('system.dept.isCompanyNo')
+                    }}
+                  </Tag>
+                </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.enable')">
+                  <Tag :color="selectedOrgDetail.enable ? 'green' : 'default'">
+                    {{
+                      selectedOrgDetail.enable
+                        ? $t('common.enabled')
+                        : $t('common.disabled')
+                    }}
+                  </Tag>
+                </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.shortName')">
+                  {{ selectedOrgDetail.shortName || '-' }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.enName')">
+                  {{ selectedOrgDetail.enName || '-' }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.chargeUser')">
+                  {{ selectedOrgDetail.chargeUserNickName || '-' }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.contactPhone')">
+                  {{ selectedOrgDetail.contactPhone || '-' }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.email')">
+                  {{ selectedOrgDetail.email || '-' }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.address')">
+                  {{ selectedOrgDetail.address || '-' }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.webUrl')">
+                  {{ selectedOrgDetail.webUrl || '-' }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="$t('system.dept.memberCount')">
+                  {{ selectedOrgDetail.memberCount ?? 0 }}
+                </DescriptionsItem>
+                <template v-if="selectedOrgDetail.isCompany">
+                  <DescriptionsItem
+                    :label="$t('system.dept.unifiedSocialCreditCode')"
+                    :span="2"
+                  >
+                    {{ selectedOrgDetail.unifiedSocialCreditCode || '-' }}
+                  </DescriptionsItem>
+                  <DescriptionsItem :label="$t('system.dept.localCurrency')">
+                    {{ selectedOrgDetail.localCurrencyCode || '-' }}
+                  </DescriptionsItem>
+                  <DescriptionsItem :label="$t('system.dept.invoiceTel')">
+                    {{ selectedOrgDetail.invoiceTel || '-' }}
+                  </DescriptionsItem>
+                  <DescriptionsItem
+                    :label="$t('system.dept.invoiceAddress')"
+                    :span="2"
+                  >
+                    {{ selectedOrgDetail.invoiceAddress || '-' }}
+                  </DescriptionsItem>
+                </template>
+              </Descriptions>
+            </TabPane>
+
+            <!-- 成员列表 Tab -->
+            <TabPane key="members" :tab="$t('system.dept.memberList')">
+              <div class="mb-3 flex items-center justify-between">
+                <span class="text-base font-medium">
+                  {{ selectedOrg.displayName }} -
+                  {{ $t('system.dept.memberList') }}
+                </span>
+                <Button type="primary" size="small" @click="onAddMember">
+                  <Plus class="size-4" />
+                  {{ $t('system.dept.addMember') }}
+                </Button>
+              </div>
+
+              <Table
+                :columns="userColumns"
+                :data-source="userList"
+                :loading="userLoading"
+                :pagination="{
+                  current: userPagination.current,
+                  pageSize: userPagination.pageSize,
+                  total: userPagination.total,
+                  showSizeChanger: true,
+                  showTotal: (total) => `${total} 条`,
+                }"
+                row-key="id"
+                size="small"
+                :scroll="{ x: 700 }"
+                @change="onTableChange"
+              >
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'isBoss'">
+                    <Tag v-if="record.isBoss" color="blue">
+                      {{ $t('system.dept.isBoss') }}
+                    </Tag>
+                  </template>
+                  <template v-if="column.key === 'action'">
+                    <Popconfirm
+                      :title="
+                        $t('system.dept.confirmRemoveMember', {
+                          name: record.nickName || record.userName,
+                        })
+                      "
+                      @confirm="onRemoveUser(record)"
+                    >
+                      <Button type="link" danger size="small">
+                        {{ $t('system.dept.removeMember') }}
+                      </Button>
+                    </Popconfirm>
+                  </template>
+                </template>
+              </Table>
+            </TabPane>
+
+            <!-- 银行账户 Tab（仅公司类型显示） -->
+            <TabPane
+              v-if="isSelectedOrgCompany"
+              key="bankAccounts"
+              :tab="$t('system.dept.bankAccountList')"
+            >
+              <div class="mb-3 flex items-center justify-between">
+                <span class="text-base font-medium">
+                  {{ selectedOrg.displayName }} -
+                  {{ $t('system.dept.bankAccountList') }}
+                </span>
+                <Button type="primary" size="small" @click="onAddBankAccount">
+                  <Plus class="size-4" />
+                  {{ $t('system.dept.addBankAccount') }}
+                </Button>
+              </div>
+
+              <Table
+                :columns="bankAccountColumns"
+                :data-source="bankAccountList"
+                :loading="bankAccountLoading"
+                :pagination="false"
+                row-key="id"
+                size="small"
+                :scroll="{ x: 1200 }"
+              >
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'default'">
+                    <Tag v-if="record.default" color="blue">
+                      {{ $t('common.yes') }}
+                    </Tag>
+                    <span v-else class="text-gray-400">
+                      {{ $t('common.no') }}
+                    </span>
+                  </template>
+                  <template v-if="column.key === 'enable'">
+                    <Tag v-if="record.enable" color="green">
+                      {{ $t('common.enabled') }}
+                    </Tag>
+                    <Tag v-else color="default">
+                      {{ $t('common.disabled') }}
+                    </Tag>
+                  </template>
+                  <template v-if="column.key === 'bankAction'">
+                    <Button
+                      type="link"
+                      size="small"
+                      @click="onEditBankAccount(record)"
+                    >
+                      {{ $t('common.edit') }}
+                    </Button>
+                    <Popconfirm
+                      :title="$t('system.dept.bankAccount.confirmDelete')"
+                      @confirm="onDeleteBankAccount(record)"
+                    >
+                      <Button type="link" danger size="small">
+                        {{ $t('common.delete') }}
+                      </Button>
+                    </Popconfirm>
+                  </template>
+                </template>
+              </Table>
+            </TabPane>
+          </Tabs>
         </template>
 
         <template v-else>

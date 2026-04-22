@@ -9,6 +9,7 @@ export namespace SystemOrganizationUnitApi {
     displayName?: string | null;
     memberCount?: number;
     memberCountTotal?: number;
+    isCompany?: boolean;
     children?: OrganizationUnitTreeDto[];
   }
 
@@ -20,6 +21,24 @@ export namespace SystemOrganizationUnitApi {
     displayName?: string | null;
     memberCount: number;
     memberCountTotal: number;
+    isCompany: boolean;
+    localCurrencyId?: number | null;
+    /** 本位币代码（只读） */
+    localCurrencyCode?: string | null;
+    shortName?: string | null;
+    enName?: string | null;
+    chargeUserId?: number | null;
+    /** 负责人名称（只读） */
+    chargeUserNickName?: string | null;
+    contactPhone?: string | null;
+    email?: string | null;
+    address?: string | null;
+    webUrl?: string | null;
+    enable: boolean;
+    unifiedSocialCreditCode?: string | null;
+    invoiceAddress?: string | null;
+    invoiceTel?: string | null;
+    orgBankAccounts?: OrgBankAccountDto[] | null;
   }
 
   /** 组织单元列表项DTO（带层级） */
@@ -35,18 +54,99 @@ export namespace SystemOrganizationUnitApi {
   export interface CreateOrganizationUnitInputDto {
     parentId?: number | null;
     displayName: string;
+    isCompany?: boolean;
+    localCurrencyId?: number | null;
+    shortName?: string | null;
+    enName?: string | null;
+    chargeUserId?: number | null;
+    contactPhone?: string | null;
+    email?: string | null;
+    address?: string | null;
+    webUrl?: string | null;
+    enable?: boolean;
+    unifiedSocialCreditCode?: string | null;
+    invoiceAddress?: string | null;
+    invoiceTel?: string | null;
   }
 
   /** 更新组织单元输入DTO */
   export interface UpdateOrganizationUnitInputDto {
     id: number;
     displayName: string;
+    isCompany?: boolean;
+    localCurrencyId?: number | null;
+    shortName?: string | null;
+    enName?: string | null;
+    chargeUserId?: number | null;
+    contactPhone?: string | null;
+    email?: string | null;
+    address?: string | null;
+    webUrl?: string | null;
+    enable?: boolean;
+    unifiedSocialCreditCode?: string | null;
+    invoiceAddress?: string | null;
+    invoiceTel?: string | null;
   }
 
   /** 移动组织单元输入DTO */
   export interface MoveOrganizationUnitInputDto {
     id: number;
     newParentId?: number | null;
+  }
+
+  /** 银行账户DTO */
+  export interface OrgBankAccountDto {
+    id: string;
+    organizationUnitId: number;
+    currencyId: number;
+    /** 币种代码（只读） */
+    currencyCode?: string | null;
+    accountName?: string | null;
+    bankShortName?: string | null;
+    bankName?: string | null;
+    bankAddress?: string | null;
+    bankAccount?: string | null;
+    cnapsCode?: string | null;
+    swiftCode?: string | null;
+    default: boolean;
+    enable: boolean;
+    sortId: number;
+    remark?: string | null;
+  }
+
+  /** 创建银行账户输入DTO */
+  export interface CreateOrgBankAccountInputDto {
+    organizationUnitId: number;
+    currencyId: number;
+    accountName?: string | null;
+    bankShortName: string;
+    bankName: string;
+    bankAddress?: string | null;
+    bankAccount: string;
+    cnapsCode?: string | null;
+    swiftCode?: string | null;
+    default?: boolean;
+    enable?: boolean;
+    sortId?: number;
+    remark?: string | null;
+  }
+
+  /** 更新银行账户输入DTO */
+  export interface UpdateOrgBankAccountInputDto {
+    id: string;
+    organizationUnitId: number;
+    currencyId: number;
+    accountName?: string | null;
+    bankShortName: string;
+    bankName: string;
+    bankAddress?: string | null;
+    bankAccount: string;
+    cnapsCode?: string | null;
+    swiftCode?: string | null;
+    default?: boolean;
+    enable?: boolean;
+    sortId?: number;
+    remark?: string | null;
   }
 }
 
@@ -254,11 +354,63 @@ async function removeUserFromOrganizationUnit(params: {
   );
 }
 
+/** 获取组织的银行账户列表 */
+async function getOrgBankAccountList(
+  organizationUnitId: number,
+): Promise<SystemOrganizationUnitApi.OrgBankAccountDto[]> {
+  return requestClient.get(
+    '/services/app/OrganizationUnit/GetOrgBankAccountListAsync',
+    { params: { Id: organizationUnitId } },
+  );
+}
+
+/** 获取单个银行账户 */
+async function getOrgBankAccount(
+  id: string,
+): Promise<SystemOrganizationUnitApi.OrgBankAccountDto> {
+  return requestClient.get(
+    '/services/app/OrganizationUnit/GetOrgBankAccountAsync',
+    { params: { Id: id } },
+  );
+}
+
+/** 创建银行账户 */
+async function createOrgBankAccount(
+  data: SystemOrganizationUnitApi.CreateOrgBankAccountInputDto,
+): Promise<SystemOrganizationUnitApi.OrgBankAccountDto> {
+  return requestClient.post(
+    '/services/app/OrganizationUnit/CreateOrgBankAccountAsync',
+    data,
+  );
+}
+
+/** 更新银行账户 */
+async function updateOrgBankAccount(
+  data: SystemOrganizationUnitApi.UpdateOrgBankAccountInputDto,
+): Promise<SystemOrganizationUnitApi.OrgBankAccountDto> {
+  return requestClient.put(
+    '/services/app/OrganizationUnit/UpdateOrgBankAccountAsync',
+    data,
+  );
+}
+
+/** 删除银行账户 */
+async function deleteOrgBankAccount(id: string): Promise<void> {
+  return requestClient.delete(
+    '/services/app/OrganizationUnit/DeleteOrgBankAccountAsync',
+    { params: { Id: id } },
+  );
+}
+
 export {
   addUsersToOrganizationUnit,
+  createOrgBankAccount,
   createOrganizationUnit,
+  deleteOrgBankAccount,
   deleteOrganizationUnit,
   findUsersForOrganizationUnit,
+  getOrgBankAccount,
+  getOrgBankAccountList,
   getOrganizationUnit,
   getOrganizationUnits,
   getOrganizationUnitTree,
@@ -266,5 +418,6 @@ export {
   getOrganizationUnitUsers,
   moveOrganizationUnit,
   removeUserFromOrganizationUnit,
+  updateOrgBankAccount,
   updateOrganizationUnit,
 };

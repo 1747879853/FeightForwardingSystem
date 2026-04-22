@@ -9,7 +9,7 @@ import { getOrganizationUnitTree } from '#/api/system/organization-unit';
 import { $t } from '#/locales';
 
 /**
- * 获取编辑表单的字段配置。如果没有使用多语言，可以直接export一个数组常量
+ * 组织编辑表单 schema
  */
 export function useSchema(): VbenFormSchema[] {
   return [
@@ -41,13 +41,240 @@ export function useSchema(): VbenFormSchema[] {
       fieldName: 'parentId',
       label: $t('system.dept.parentDept'),
     },
+    {
+      component: 'RadioGroup',
+      componentProps: {
+        buttonStyle: 'solid',
+        options: [
+          { label: $t('system.dept.isCompanyYes'), value: true },
+          { label: $t('system.dept.isCompanyNo'), value: false },
+        ],
+        optionType: 'button',
+      },
+      defaultValue: false,
+      fieldName: 'isCompany',
+      label: $t('system.dept.orgType'),
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 64 },
+      fieldName: 'shortName',
+      label: $t('system.dept.shortName'),
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 64 },
+      fieldName: 'enName',
+      label: $t('system.dept.enName'),
+    },
+    {
+      component: 'UserSelect',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+      },
+      fieldName: 'chargeUserId',
+      label: $t('system.dept.chargeUser'),
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 64 },
+      fieldName: 'contactPhone',
+      label: $t('system.dept.contactPhone'),
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 64 },
+      fieldName: 'email',
+      label: $t('system.dept.email'),
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 64 },
+      fieldName: 'address',
+      label: $t('system.dept.address'),
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 128 },
+      fieldName: 'webUrl',
+      label: $t('system.dept.webUrl'),
+    },
+    {
+      component: 'Switch',
+      defaultValue: true,
+      fieldName: 'enable',
+      label: $t('system.dept.enable'),
+    },
+    // === 以下为公司专属字段，仅 isCompany=true 时显示 ===
+    {
+      component: 'Input',
+      componentProps: { maxLength: 128 },
+      fieldName: 'unifiedSocialCreditCode',
+      label: $t('system.dept.unifiedSocialCreditCode'),
+      dependencies: {
+        triggerFields: ['isCompany'],
+        show: (values) => values.isCompany === true,
+        rules: (values) => {
+          if (values.isCompany === true) {
+            return z
+              .string()
+              .min(
+                1,
+                $t('ui.formRules.required', [
+                  $t('system.dept.unifiedSocialCreditCode'),
+                ]),
+              );
+          }
+          return z.string().optional();
+        },
+      },
+    },
+    {
+      component: 'CurrencySelect',
+      componentProps: {
+        class: 'w-full',
+      },
+      fieldName: 'localCurrencyId',
+      label: $t('system.dept.localCurrency'),
+      dependencies: {
+        triggerFields: ['isCompany'],
+        show: (values) => values.isCompany === true,
+        rules: (values) => {
+          if (values.isCompany === true) {
+            return 'selectRequired';
+          }
+          return z.any().optional();
+        },
+      },
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 256 },
+      fieldName: 'invoiceAddress',
+      label: $t('system.dept.invoiceAddress'),
+      dependencies: {
+        triggerFields: ['isCompany'],
+        show: (values) => values.isCompany === true,
+      },
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 64 },
+      fieldName: 'invoiceTel',
+      label: $t('system.dept.invoiceTel'),
+      dependencies: {
+        triggerFields: ['isCompany'],
+        show: (values) => values.isCompany === true,
+      },
+    },
+  ];
+}
+
+/**
+ * 银行账户编辑表单 schema
+ */
+export function useBankAccountSchema(): VbenFormSchema[] {
+  return [
+    {
+      component: 'CurrencySelect',
+      componentProps: {
+        class: 'w-full',
+      },
+      fieldName: 'currencyId',
+      label: $t('system.dept.bankAccount.currencyId'),
+      rules: 'selectRequired',
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 256 },
+      fieldName: 'accountName',
+      label: $t('system.dept.bankAccount.accountName'),
+      help: $t('system.dept.bankAccount.accountNameHelp'),
+      rules: 'required',
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 32 },
+      fieldName: 'bankShortName',
+      label: $t('system.dept.bankAccount.bankShortName'),
+      rules: 'required',
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 128 },
+      fieldName: 'bankName',
+      label: $t('system.dept.bankAccount.bankName'),
+      rules: 'required',
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 128 },
+      fieldName: 'bankAddress',
+      label: $t('system.dept.bankAccount.bankAddress'),
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 128 },
+      fieldName: 'bankAccount',
+      label: $t('system.dept.bankAccount.bankAccount'),
+      rules: 'required',
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 128 },
+      fieldName: 'cnapsCode',
+      label: $t('system.dept.bankAccount.cnapsCode'),
+      help: $t('system.dept.bankAccount.cnapsCodeHelp'),
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 128 },
+      fieldName: 'swiftCode',
+      label: $t('system.dept.bankAccount.swiftCode'),
+      help: $t('system.dept.bankAccount.swiftCodeHelp'),
+    },
+    {
+      component: 'RadioGroup',
+      componentProps: {
+        buttonStyle: 'solid',
+        options: [
+          { label: $t('common.yes'), value: true },
+          { label: $t('common.no'), value: false },
+        ],
+        optionType: 'button',
+      },
+      defaultValue: false,
+      fieldName: 'default',
+      label: $t('system.dept.bankAccount.default'),
+      rules: 'selectRequired',
+    },
+    {
+      component: 'RadioGroup',
+      componentProps: {
+        buttonStyle: 'solid',
+        options: [
+          { label: $t('common.enabled'), value: true },
+          { label: $t('common.disabled'), value: false },
+        ],
+        optionType: 'button',
+      },
+      defaultValue: true,
+      fieldName: 'enable',
+      label: $t('system.dept.bankAccount.enable'),
+      rules: 'selectRequired',
+    },
+    {
+      component: 'Textarea',
+      componentProps: { maxLength: 1024, rows: 3 },
+      fieldName: 'remark',
+      label: $t('system.dept.bankAccount.remark'),
+    },
   ];
 }
 
 /**
  * 获取表格列配置
- * @description 使用函数的形式返回列数据而不是直接export一个Array常量，是为了响应语言切换时重新翻译表头
- * @param onActionClick 表格操作按钮点击事件
  */
 export function useColumns(
   onActionClick?: OnActionClickFn<SystemOrganizationUnitApi.OrganizationUnitTreeDto>,
@@ -79,9 +306,9 @@ export function useColumns(
             code: 'append',
             text: $t('system.dept.addChild'),
           },
-          'edit', // 默认的编辑按钮
+          'edit',
           {
-            code: 'delete', // 默认的删除按钮
+            code: 'delete',
             disabled: (
               row: SystemOrganizationUnitApi.OrganizationUnitTreeDto,
             ) => {
