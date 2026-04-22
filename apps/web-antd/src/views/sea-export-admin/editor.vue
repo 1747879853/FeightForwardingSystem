@@ -58,11 +58,11 @@ const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
 ]);
 
 setInterval(() => {
-  console.log('editId.value', editId.value);
+  // console.log('editId.value', editId.value);
   if (editId.value) {
     getOrderFeeNumber();
   }
-}, 2000);
+}, 60 * 1000);
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
   if (!tab.sectionKey) return;
@@ -127,14 +127,20 @@ const getContentTabStyle = (isActive: boolean) =>
       </div>
       <div class="flex items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
-          <changeOrder v-if="activeTab === 'party'" />
-          <orderFee v-if="activeTab === 'fee'" />
-          <Form
-            v-if="activeTab === 'basic'"
-            ref="formRef"
-            embedded
-            @section-change="onSectionChange"
-          />
+          <KeepAlive include="ChangeOrder">
+            <changeOrder v-if="activeTab === 'party'" />
+          </KeepAlive>
+          <KeepAlive include="OrderFee">
+            <orderFee v-if="activeTab === 'fee'" />
+          </KeepAlive>
+          <KeepAlive include="SeaExportAdminForm">
+            <Form
+              v-if="activeTab === 'basic'"
+              ref="formRef"
+              embedded
+              @section-change="onSectionChange"
+            />
+          </KeepAlive>
         </div>
       </div>
     </div>

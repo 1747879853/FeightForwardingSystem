@@ -35,8 +35,6 @@ import {
   Menu,
   MenuItem,
   message,
-  Select,
-  SelectOption,
   Space,
   Spin,
   Table,
@@ -118,10 +116,6 @@ const currencies = ref<CurrencyInfo[]>([]);
 // --- 过滤条件 ---
 const filterAccountDate = ref<string>('');
 const filterFeeName = ref<string>('');
-const filterCommissionNum = ref<string>(''); // 委托编号
-const filterEtdStart = ref<string>(''); // 开船日期起始
-const filterEtdEnd = ref<string>(''); // 开船日期截止
-const filterPaySide = ref<number | undefined>(undefined); // 收付类型：0-收，1-付，undefined-全部
 
 const orderGroupColumns = useOrderGroupColumns();
 const dynamicColumns = computed(() =>
@@ -135,15 +129,7 @@ const feeInnerColumns = useFeeInnerColumns();
 
 // --- 过滤后的费用明细 ---
 const filteredFeeDetailRows = computed(() => {
-  // 如果所有过滤条件都为空，返回原始数据
-  if (
-    !filterAccountDate.value &&
-    !filterFeeName.value &&
-    !filterCommissionNum.value &&
-    !filterEtdStart.value &&
-    !filterEtdEnd.value &&
-    filterPaySide.value === undefined
-  ) {
+  if (!filterAccountDate.value && !filterFeeName.value) {
     return feeDetailRows.value;
   }
 
@@ -160,36 +146,6 @@ const filteredFeeDetailRows = computed(() => {
     if (filterFeeName.value) {
       const feeName = row.feeCodeName || '';
       if (!feeName.toLowerCase().includes(filterFeeName.value.toLowerCase())) {
-        return false;
-      }
-    }
-
-    // 委托编号过滤（模糊匹配，不区分大小写）
-    if (filterCommissionNum.value) {
-      const commissionNum = row.commissionNum || '';
-      if (
-        !commissionNum
-          .toLowerCase()
-          .includes(filterCommissionNum.value.toLowerCase())
-      ) {
-        return false;
-      }
-    }
-
-    // 开船日期范围过滤
-    if (filterEtdStart.value || filterEtdEnd.value) {
-      const rowEtd = row.etd || '';
-      if (filterEtdStart.value && rowEtd < filterEtdStart.value) {
-        return false;
-      }
-      if (filterEtdEnd.value && rowEtd > filterEtdEnd.value) {
-        return false;
-      }
-    }
-
-    // 收付类型过滤
-    if (filterPaySide.value !== undefined) {
-      if (row.paySide !== filterPaySide.value) {
         return false;
       }
     }
@@ -759,19 +715,11 @@ function resetForm() {
   // 重置过滤条件
   filterAccountDate.value = '';
   filterFeeName.value = '';
-  filterCommissionNum.value = '';
-  filterEtdStart.value = '';
-  filterEtdEnd.value = '';
-  filterPaySide.value = undefined;
 }
 
 function clearFilters() {
   filterAccountDate.value = '';
   filterFeeName.value = '';
-  filterCommissionNum.value = '';
-  filterEtdStart.value = '';
-  filterEtdEnd.value = '';
-  filterPaySide.value = undefined;
 }
 
 function handleExportMenuClick({ key }: { key: string }) {
@@ -1039,9 +987,9 @@ function formatMonth(val: string | undefined | null): string {
 
           <!-- 过滤条件 -->
           <div
-            class="filter-bar mb-3 flex flex-wrap items-center gap-3 rounded bg-gray-50 p-3"
+            class="filter-bar mb-3 flex items-center gap-3 rounded bg-gray-50 p-3"
           >
-            <Space wrap>
+            <Space>
               <span class="text-sm text-gray-600"
                 >{{ t('accountDate') }}：</span
               >
@@ -1062,51 +1010,6 @@ function formatMonth(val: string | undefined | null): string {
                 style="width: 200px"
                 allow-clear
               />
-              <span class="text-sm text-gray-600"
-                >{{ t('commissionNum') }}：</span
-              >
-              <Input
-                v-model:value="filterCommissionNum"
-                :placeholder="$t('ui.placeholder.input')"
-                size="small"
-                style="width: 180px"
-                allow-clear
-              />
-              <span class="text-sm text-gray-600">{{ t('etd') }}：</span>
-              <DatePicker
-                v-model:value="filterEtdStart"
-                :placeholder="$t('ui.placeholder.select')"
-                size="small"
-                style="width: 150px"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                allow-clear
-              />
-              <span class="text-sm text-gray-600">-</span>
-              <DatePicker
-                v-model:value="filterEtdEnd"
-                :placeholder="$t('ui.placeholder.select')"
-                size="small"
-                style="width: 150px"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                allow-clear
-              />
-              <span class="text-sm text-gray-600">{{ t('paySide') }}：</span>
-              <Select
-                v-model:value="filterPaySide"
-                :placeholder="$t('ui.placeholder.select')"
-                size="small"
-                style="width: 120px"
-                allow-clear
-              >
-                <SelectOption :value="0">{{
-                  $t('seaExport.export.statement.receivableAmount') || '收'
-                }}</SelectOption>
-                <SelectOption :value="1">{{
-                  $t('seaExport.export.statement.payAmount') || '付'
-                }}</SelectOption>
-              </Select>
               <Button size="small" @click="clearFilters">
                 {{ $t('common.reset') || '重置' }}
               </Button>

@@ -33,6 +33,9 @@ import {
 } from 'ant-design-vue';
 import { useUserStore } from '@vben/stores';
 
+defineOptions({
+  name: 'SeaExportAdminForm',
+});
 import { UserSelect } from '#/adapter/component';
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import { useVbenForm } from '#/adapter/form';

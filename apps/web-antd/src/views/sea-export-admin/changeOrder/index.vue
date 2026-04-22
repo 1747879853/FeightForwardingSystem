@@ -22,19 +22,20 @@ import { Button, Card, message, Space, Spin } from 'ant-design-vue';
 import * as feeConstants from '#/views/sea-export-admin/orderFee/data';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
-
+import {
+  getCurrencyEnumOptions,
+  getCurrencyEnumSymbolOptions,
+} from '#/views/sea-export-admin/orderFee/data';
 import { $t } from '#/locales';
 
 import OrderFeeTable from '#/views/sea-export-admin/orderFee/modules/order-fee-table.vue';
 import ChangeOrderTable from './table.vue';
 
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import type { ChangeOrderAdminApi } from '#/api/sea-export/change-order-admin';
-import {
-  getCurrencyEnumOptions,
-  getCurrencyEnumSymbolOptions,
-} from '#/views/sea-export-admin/orderFee/data';
-import { EditAsync, GetDetail } from '#/api/sea-export/change-order-admin';
+
+defineOptions({
+  name: 'ChangeOrder',
+});
 
 const route = useRoute();
 const router = useRouter();

@@ -78,7 +78,7 @@ export namespace ClientAdminApi {
     userId: number;
     /** 是否默认 */
     isDefault: boolean;
-
+    /** 用户属性 */
     userAttribute: number;
   }
 
@@ -214,7 +214,9 @@ export namespace ClientAdminApi {
   export interface ClientAddressEditDto {
     id?: number;
     /** 合作客户id */
-    name: string;
+    clientId?: string;
+    /** 名字 例如 **分公司 */
+    name?: string;
     /** 是否默认 */
     isDefault?: boolean;
     /** 地址 */
@@ -346,10 +348,10 @@ export namespace ClientAdminApi {
     userId: number;
     /** 是否默认 */
     isDefault: boolean;
-    /** 干系人昵称 */
-    userNickName?: string;
     /** 用户属性 */
     userAttribute?: UserAttribute;
+    /** 干系人昵称 */
+    userNickName?: string;
     isDeleted: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -519,7 +521,7 @@ export namespace ClientAdminApi {
     clientAllowAmount?: number;
     /** 客户首次合作时间 */
     clientCoopSince?: string;
-    /** 客户最近交易时间 */
+    /** 客户最近交易时间 Txn 是 Transaction 的标准缩写 */
     clientLastTxnTime?: string;
     /** 是否供应商 */
     isSupplier: boolean;
@@ -541,18 +543,17 @@ export namespace ClientAdminApi {
     supplierAllowAmount?: number;
     /** 供应商首次合作时间 */
     supplierCoopSince?: string;
-    /** 供应商最近交易时间 */
+    /** 供应商最近交易时间 Txn 是 Transaction 的标准缩写 */
     supplierLastTxnTime?: string;
     /** 多个附件 详情有 列表没有 */
     attachments?: AttachmentItemDto[];
-
-    /** 干系人列表 */
+    /** 干系人列表 销售 */
     sales?: ClientStakeholderDto[];
-    /** 干系人列表 */
+    /** 干系人列表 客服 */
     customerServices?: ClientStakeholderDto[];
-    /** 干系人列表 */
+    /** 干系人列表 操作 */
     operations?: ClientStakeholderDto[];
-    /** 干系人列表 */
+    /** 干系人列表 单证 */
     documentations?: ClientStakeholderDto[];
     /** 地址列表 详情有 列表没有 */
     addresses?: ClientAddressDto[];
