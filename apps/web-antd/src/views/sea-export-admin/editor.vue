@@ -58,11 +58,11 @@ const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
 ]);
 
 setInterval(() => {
-  console.log('editId.value', editId.value);
+  // console.log('editId.value', editId.value);
   if (editId.value) {
     getOrderFeeNumber();
   }
-}, 2000);
+}, 60 * 1000);
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
   if (!tab.sectionKey) return;
