@@ -16,18 +16,11 @@ import dayjs from 'dayjs';
 import { $t } from '#/locales';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { useColumns } from './data';
-const modelValue = defineModel<ChangeOrderAdminApi.ChangeOrderEditDto[]>({
+const dataSource = defineModel<ChangeOrderAdminApi.ChangeOrderEditDto[]>({
   default: () => [],
 });
 
 const selectedRowKeys = ref<(string | number)[]>([]);
-
-const dataSource = computed({
-  get: () => modelValue.value ?? [],
-  set: (val) => {
-    modelValue.value = val;
-  },
-});
 
 const emit = defineEmits(['sync-table', 'save-change-order']);
 
@@ -137,7 +130,7 @@ const addRowData = () => {
     lastModificationTime: '',
     creationTime: '',
   } as any);
-  modelValue.value = list;
+  dataSource.value = list;
   //selectedRowKeys.value = [id];
 };
 const addRow = () => {
@@ -164,10 +157,10 @@ const removeSelectedRows = async () => {
     await DeleteAsync(needDelIds);
   }
 
-  const list = (modelValue.value ?? []).filter(
+  const list = (dataSource.value ?? []).filter(
     (row) => !keysSet.has((row as any)._rowKey),
   );
-  modelValue.value = list;
+  dataSource.value = list;
   selectedRowKeys.value = [];
   delRow();
 };
@@ -199,19 +192,19 @@ const getTableData = async () => {
 //   field: keyof ChangeOrderAdminApi.ChangeOrderEditDto,
 //   value: any,
 // ) => {
-//   const list = [...(modelValue.value ?? [])];
+//   const list = [...(dataSource.value ?? [])];
 //   list[index] = { ...list[index], [field]: value };
-//   modelValue.value = list;
+//   dataSource.value = list;
 
 //   console.log('updateRow', list[index]);
 //   emit('sync-table', list[index]);
 // };
 
 watch(
-  () => modelValue.value,
+  () => dataSource.value,
   (val) => {
     if (val === undefined || val === null) {
-      modelValue.value = [];
+      dataSource.value = [];
     }
     const keys = new Set((val ?? []).map((r) => (r as any)._rowKey));
     selectedRowKeys.value = selectedRowKeys.value.filter((k) => keys.has(k));

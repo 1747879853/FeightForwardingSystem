@@ -46,7 +46,7 @@ const isEdit = computed(() => !!editId.value);
 
 const pageLoading = ref(false);
 const submitting = ref(false);
-const transportOrderId = ref<number | undefined>();
+const transportOrderId = ref<string>();
 
 /** 左侧表单：相关方信息（发货人、收货人、通知人等） */
 // const [PartyInfoForm, partyInfoFormApi] = useVbenForm({

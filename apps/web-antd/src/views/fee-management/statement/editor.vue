@@ -512,6 +512,12 @@ function buildSubmitData(): StatementAdminApi.StatementAddDto {
   };
 }
 
+const transCurrencySymbol = (currencyId: number) => {
+  const option = getCurrencyEnumSymbolOptions().find(
+    (o) => o.value === currencyId,
+  );
+  return option ? option.label : currencyId;
+};
 async function saveEditMode() {
   const id = editId.value!;
 
@@ -568,7 +574,7 @@ const totalAmount = computed(() => {
   const unRecMap: Record<string, any> = {};
   const unPayMap: Record<string, any> = {};
 
-  console.log('orderGroups (filtered)', orderGroups.value);
+  // console.log('orderGroups (filtered)', orderGroups.value);
   orderGroups.value.forEach((orderGroup) => {
     orderGroup.children?.forEach((fee) => {
       const currencyKey = String(fee.currencyId);
@@ -577,12 +583,16 @@ const totalAmount = computed(() => {
         // 应收
         if (!recMap[currencyKey]) {
           recMap[currencyKey] = {
+            totalRMBRecAmount: 0,
             totalRecAmount: 0,
             exchangeRate: fee.exchangeRate || 1,
             currencyName: fee.currencyName || '人民币',
+            currencyId: fee.currencyId,
           };
         }
         recMap[currencyKey].totalRecAmount += fee.amount || 0;
+        recMap[currencyKey].totalRMBRecAmount +=
+          fee.amount * (fee.exchangeRate || 1) || 0;
 
         // 未收
         if (!unRecMap[currencyKey]) {
@@ -590,19 +600,25 @@ const totalAmount = computed(() => {
             totalRecAmount: 0,
             exchangeRate: fee.exchangeRate || 1,
             currencyName: fee.currencyName || '人民币',
+            currencyId: fee.currencyId,
           };
         }
-        unRecMap[currencyKey].totalRecAmount += fee.unSettledAmount || 0;
+        // unRecMap[currencyKey].totalRecAmount += fee.unSettledAmount || 0;
+        // unRecMap[currencyKey].totalRMBRecAmount += fee.unSettledAmount * (fee.exchangeRate || 1) || 0;
       } else if (fee.paySide === 1) {
         // 应付
         if (!payMap[currencyKey]) {
           payMap[currencyKey] = {
             totalPayAmount: 0,
+            totalRMBPayAmount: 0,
             exchangeRate: fee.exchangeRate || 1,
             currencyName: fee.currencyName || '人民币',
+            currencyId: fee.currencyId,
           };
         }
         payMap[currencyKey].totalPayAmount += fee.amount || 0;
+        payMap[currencyKey].totalRMBPayAmount +=
+          fee.amount * (fee.exchangeRate || 1) || 0;
 
         // 未付
         if (!unPayMap[currencyKey]) {
@@ -610,9 +626,11 @@ const totalAmount = computed(() => {
             totalPayAmount: 0,
             exchangeRate: fee.exchangeRate || 1,
             currencyName: fee.currencyName || '人民币',
+            currencyId: fee.currencyId,
           };
         }
-        unPayMap[currencyKey].totalPayAmount += fee.unSettledAmount || 0;
+        // unPayMap[currencyKey].totalPayAmount += fee.unSettledAmount || 0;
+        // unPayMap[currencyKey].totalRMBPayAmount += fee.unSettledAmount * (fee.exchangeRate || 1) || 0;
       }
     });
   });
@@ -623,20 +641,22 @@ const totalAmount = computed(() => {
   unRecAmountMap.value = unRecMap;
   unPayAmountMap.value = unPayMap;
 
-  console.log('recAmountMap', recAmountMap.value);
-  console.log('payAmountMap', payAmountMap.value);
+  //console.log('recAmountMap', recAmountMap.value);
+  //console.log('payAmountMap', payAmountMap.value);
 
   const allKeys = new Set([
     ...Object.keys(recAmountMap.value),
     ...Object.keys(payAmountMap.value),
   ]);
-  console.log('allKeys', allKeys);
+  //console.log('allKeys', allKeys);
   const total: any = {};
 
   allKeys.forEach((key) => {
     total[key] = {
       totalPayAmount: payAmountMap.value[key]?.totalPayAmount || 0,
+      totalRMBPayAmount: payAmountMap.value[key]?.totalRMBPayAmount || 0,
       totalRecAmount: recAmountMap.value[key]?.totalRecAmount || 0,
+      totalRMBRecAmount: recAmountMap.value[key]?.totalRMBRecAmount || 0,
       totalUnPayAmount: unPayAmountMap.value[key]?.totalPayAmount || 0,
       totalUnRecAmount: unRecAmountMap.value[key]?.totalRecAmount || 0,
       exchangeRate:
@@ -644,7 +664,10 @@ const totalAmount = computed(() => {
       currencyName:
         (payAmountMap.value[key] || recAmountMap.value[key])?.currencyName ||
         '人民币',
+      currencyId: (payAmountMap.value[key] || recAmountMap.value[key])
+        ?.currencyId,
     };
+    //  console.log('total', total);
   });
   // 转换为对象数组
   const totalList = Object.keys(total).map((key) => ({
@@ -652,7 +675,7 @@ const totalAmount = computed(() => {
     ...total[key],
   }));
   let list = [];
-  console.log(totalList);
+  // console.log("totalList", totalList);
   let totalPay = 0;
   let totalRec = 0;
 
@@ -663,7 +686,7 @@ const totalAmount = computed(() => {
     list.push({
       name: recName,
       color: recColor,
-      value: recAmount,
+      value: transCurrencySymbol(item.currencyId) + recAmount,
     });
 
     // totalRec += recAmount * item.exchangeRate;
@@ -674,9 +697,9 @@ const totalAmount = computed(() => {
     list.push({
       name: payName,
       color: payColor,
-      value: payAmount,
+      value: transCurrencySymbol(item.currencyId) + payAmount,
     });
-    totalPay += payAmount * item.exchangeRate;
+    totalPay += item.totalRMBPayAmount;
 
     let unRecName = `未收${item.currencyName}:`;
     let unRecColor = 'green';
@@ -684,9 +707,9 @@ const totalAmount = computed(() => {
     list.push({
       name: unRecName,
       color: unRecColor,
-      value: unRecAmount,
+      value: transCurrencySymbol(item.currencyId) + unRecAmount,
     });
-    totalRec += recAmount * item.exchangeRate;
+    totalRec += item.totalRMBRecAmount;
 
     let unPayName = `未付${item.currencyName}:`;
     let unPayColor = 'yellow';
@@ -694,13 +717,14 @@ const totalAmount = computed(() => {
     list.push({
       name: unPayName,
       color: unPayColor,
-      value: unPayAmount,
+      value: transCurrencySymbol(item.currencyId) + unPayAmount,
     });
     //totalPay += payAmount * item.exchangeRate;
 
     let profitName = `${item.currencyName}利润:`;
     let profitColor = 'blue';
-    let profitAmount = (recAmount - payAmount).toFixed(2);
+    let profitAmount =
+      transCurrencySymbol(item.currencyId) + (recAmount - payAmount).toFixed(2);
     list.push({
       name: profitName,
       color: profitColor,
@@ -710,7 +734,7 @@ const totalAmount = computed(() => {
   list.push({
     name: '合计利润:',
     color: 'blue',
-    value: (totalRec - totalPay).toFixed(2),
+    value: transCurrencySymbol(1) + (totalRec - totalPay).toFixed(2),
   });
   list.push({
     name: '利润率:',
@@ -1236,14 +1260,14 @@ function formatMonth(val: string | undefined | null): string {
                 </div>
               </template>
             </Table>
-            <div class="total-amount flex rounded-md px-4 py-1 shadow">
+            <div class="total-amount flex rounded-md px-1 py-1 shadow">
               <div
                 v-for="(item, index) in totalAmount"
-                class="mr-4 flex"
+                class="mr-2 flex"
                 :key="item.name"
               >
                 <span class="flex">{{ item.name }}</span>
-                <span class="ml-2 flex font-medium" :class="item.color">{{
+                <span class="ml-1 flex font-medium" :class="item.color">{{
                   item.value
                 }}</span>
                 <span class="split mx-2 flex" v-show="(index + 1) % 5 === 0"

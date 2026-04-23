@@ -174,7 +174,7 @@ const queryTableData = async () => {
   dataSource.value = normalizeOrderFeeWithRowKey(res.items);
 };
 const tmpAdd = ref(false);
-
+const tmpDel = ref(false);
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
   gridOptions: {
     columns: useOrderFeeColumns(props.type),
@@ -198,6 +198,10 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
             tmpAdd.value = false;
             console.log('addRowDataing');
             addRowData();
+            return dataSource.value;
+          }
+          if (tmpDel.value) {
+            tmpDel.value = false;
             return dataSource.value;
           }
           await queryTableData();
@@ -253,6 +257,10 @@ const addRowData = () => {
 };
 const addRow = () => {
   tmpAdd.value = true;
+  gridApi.query();
+};
+const delRow = () => {
+  tmpDel.value = true;
   gridApi.query();
 };
 const showModifyWithRemark = () => {
@@ -335,37 +343,6 @@ const SubmittedOther = async (e: any) => {
       break;
     }
   }
-};
-const submitOrderFeeWithdraw = () => {
-  if (!selectedRowKeys.value.length) return;
-  const keysSet = new Set(selectedRowKeys.value);
-  const list = (dataSource.value ?? []).filter((row) =>
-    keysSet.has((row as any)._rowKey),
-  );
-  const okList = list.filter(
-    (item) => item?.submitOrderFeeTasks[0]?.taskStatus === 0,
-  );
-  if (okList.length === 0) {
-    console.log('no_task_status', list);
-    message.error({
-      content: $t('ui.actionMessage.operationFailed'),
-      key: 'action_process_msg',
-    });
-    return;
-  }
-  let taskBaseId = okList[0]?.submitOrderFeeTasks[0]?.taskBaseId;
-  let submitOrderFeeWithdrawDto: ExpenseSubmissionAdminApi.SubmitOrderFeeWithdrawDto =
-    {
-      id: taskBaseId ?? '',
-      orderFeeIds: list.map((item) => item.id),
-    };
-  submitOrderFeeWithdrawAsync(submitOrderFeeWithdrawDto).then(() => {
-    message.success({
-      content: $t('ui.actionMessage.operationSuccess'),
-      key: 'action_process_msg',
-    });
-    getTableDate();
-  });
 };
 
 const orderFeeWithdraw = () => {
@@ -561,12 +538,13 @@ const removeSelectedRows = () => {
   );
   const needDelIds = (dataSource.value ?? [])
     .filter((row) => keysSet.has((row as any)._rowKey))
-    .filter((row) => (row as any).id !== 0)
+    .filter((row) => (row as any).id !== '')
     .map((row) => (row as any).id);
-  console.log(needDelIds);
+  console.log('needDelIds', needDelIds);
   dataSource.value = list;
+  delRow();
   selectedRowKeys.value = [];
-  if (props.mode !== 'changeOrder') {
+  if (props.mode !== 'changeOrder' && needDelIds.length > 0) {
     batchDeleteOrderFee(needDelIds).then(() => {
       message.success({
         content: $t('ui.actionMessage.operationSuccess'),
