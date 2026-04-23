@@ -331,8 +331,8 @@ export function summarizeByCurrencyWithConversion(
 ): CurrencyConversionSummary[] {
   const map = new Map<string, CurrencyConversionSummary>();
   for (const fee of fees) {
-    const applied = fee.appliedAmount ?? 0;
-    const rate = fee.rate ?? 1;
+    const applied = fee.amount ?? 0;
+    const rate = fee.exchangeRate ?? 1;
     const converted = Math.round(applied * rate * 100) / 100;
     const key = `${fee.currencyId}_${rate}`;
     const existing = map.get(key);
@@ -381,6 +381,7 @@ export function summarizeByCurrency(fees: FeeDetailRow[]): CurrencySummary[] {
         receivableAmount: fee.paySide === 0 ? (fee.amount ?? 0) : 0,
         receivableUnSettledAmount:
           fee.paySide === 0 ? (fee.unSettledAmount ?? 0) : 0,
+        //exchangeRate: fee.exchangeRate,
       });
     }
     const total = map.get(9999);
@@ -393,7 +394,9 @@ export function summarizeByCurrency(fees: FeeDetailRow[]): CurrencySummary[] {
       total.receivableUnSettledAmount +=
         (fee.unSettledAmount ?? 0) * (fee.exchangeRate ?? 1);
     }
+    // console.log('total', fee.paySide, fee.amount, fee.exchangeRate);
   }
+
   return [...map.values()];
 }
 
@@ -401,7 +404,7 @@ export function summarizeByCurrency(fees: FeeDetailRow[]): CurrencySummary[] {
 export function calcConvertedTotal(fees: FeeDetailRow[]): number {
   let total = 0;
   for (const fee of fees) {
-    const r = fee.rate ?? 1;
+    const r = fee.exchangeRate ?? 1;
     total += (fee.amount ?? 0) * r;
   }
   return total;

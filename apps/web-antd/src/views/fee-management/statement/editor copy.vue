@@ -35,8 +35,6 @@ import {
   Menu,
   MenuItem,
   message,
-  Select,
-  SelectOption,
   Space,
   Spin,
   Table,
@@ -118,10 +116,6 @@ const currencies = ref<CurrencyInfo[]>([]);
 // --- 过滤条件 ---
 const filterAccountDate = ref<string>('');
 const filterFeeName = ref<string>('');
-const filterCommissionNum = ref<string>(''); // 委托编号
-const filterEtdStart = ref<string>(''); // 开船日期起始
-const filterEtdEnd = ref<string>(''); // 开船日期截止
-const filterPaySide = ref<number | undefined>(undefined); // 收付类型：0-收，1-付，undefined-全部
 
 const orderGroupColumns = useOrderGroupColumns();
 const dynamicColumns = computed(() =>
@@ -135,15 +129,7 @@ const feeInnerColumns = useFeeInnerColumns();
 
 // --- 过滤后的费用明细 ---
 const filteredFeeDetailRows = computed(() => {
-  // 如果所有过滤条件都为空，返回原始数据
-  if (
-    !filterAccountDate.value &&
-    !filterFeeName.value &&
-    !filterCommissionNum.value &&
-    !filterEtdStart.value &&
-    !filterEtdEnd.value &&
-    filterPaySide.value === undefined
-  ) {
+  if (!filterAccountDate.value && !filterFeeName.value) {
     return feeDetailRows.value;
   }
 
@@ -160,36 +146,6 @@ const filteredFeeDetailRows = computed(() => {
     if (filterFeeName.value) {
       const feeName = row.feeCodeName || '';
       if (!feeName.toLowerCase().includes(filterFeeName.value.toLowerCase())) {
-        return false;
-      }
-    }
-
-    // 委托编号过滤（模糊匹配，不区分大小写）
-    if (filterCommissionNum.value) {
-      const commissionNum = row.commissionNum || '';
-      if (
-        !commissionNum
-          .toLowerCase()
-          .includes(filterCommissionNum.value.toLowerCase())
-      ) {
-        return false;
-      }
-    }
-
-    // 开船日期范围过滤
-    if (filterEtdStart.value || filterEtdEnd.value) {
-      const rowEtd = row.etd || '';
-      if (filterEtdStart.value && rowEtd < filterEtdStart.value) {
-        return false;
-      }
-      if (filterEtdEnd.value && rowEtd > filterEtdEnd.value) {
-        return false;
-      }
-    }
-
-    // 收付类型过滤
-    if (filterPaySide.value !== undefined) {
-      if (row.paySide !== filterPaySide.value) {
         return false;
       }
     }
@@ -512,12 +468,6 @@ function buildSubmitData(): StatementAdminApi.StatementAddDto {
   };
 }
 
-const transCurrencySymbol = (currencyId: number) => {
-  const option = getCurrencyEnumSymbolOptions().find(
-    (o) => o.value === currencyId,
-  );
-  return option ? option.label : currencyId;
-};
 async function saveEditMode() {
   const id = editId.value!;
 
@@ -574,7 +524,7 @@ const totalAmount = computed(() => {
   const unRecMap: Record<string, any> = {};
   const unPayMap: Record<string, any> = {};
 
-  // console.log('orderGroups (filtered)', orderGroups.value);
+  console.log('orderGroups (filtered)', orderGroups.value);
   orderGroups.value.forEach((orderGroup) => {
     orderGroup.children?.forEach((fee) => {
       const currencyKey = String(fee.currencyId);
@@ -583,16 +533,12 @@ const totalAmount = computed(() => {
         // 应收
         if (!recMap[currencyKey]) {
           recMap[currencyKey] = {
-            totalRMBRecAmount: 0,
             totalRecAmount: 0,
             exchangeRate: fee.exchangeRate || 1,
             currencyName: fee.currencyName || '人民币',
-            currencyId: fee.currencyId,
           };
         }
         recMap[currencyKey].totalRecAmount += fee.amount || 0;
-        recMap[currencyKey].totalRMBRecAmount +=
-          fee.amount * (fee.exchangeRate || 1) || 0;
 
         // 未收
         if (!unRecMap[currencyKey]) {
@@ -600,25 +546,19 @@ const totalAmount = computed(() => {
             totalRecAmount: 0,
             exchangeRate: fee.exchangeRate || 1,
             currencyName: fee.currencyName || '人民币',
-            currencyId: fee.currencyId,
           };
         }
-        // unRecMap[currencyKey].totalRecAmount += fee.unSettledAmount || 0;
-        // unRecMap[currencyKey].totalRMBRecAmount += fee.unSettledAmount * (fee.exchangeRate || 1) || 0;
+        unRecMap[currencyKey].totalRecAmount += fee.unSettledAmount || 0;
       } else if (fee.paySide === 1) {
         // 应付
         if (!payMap[currencyKey]) {
           payMap[currencyKey] = {
             totalPayAmount: 0,
-            totalRMBPayAmount: 0,
             exchangeRate: fee.exchangeRate || 1,
             currencyName: fee.currencyName || '人民币',
-            currencyId: fee.currencyId,
           };
         }
         payMap[currencyKey].totalPayAmount += fee.amount || 0;
-        payMap[currencyKey].totalRMBPayAmount +=
-          fee.amount * (fee.exchangeRate || 1) || 0;
 
         // 未付
         if (!unPayMap[currencyKey]) {
@@ -626,11 +566,9 @@ const totalAmount = computed(() => {
             totalPayAmount: 0,
             exchangeRate: fee.exchangeRate || 1,
             currencyName: fee.currencyName || '人民币',
-            currencyId: fee.currencyId,
           };
         }
-        // unPayMap[currencyKey].totalPayAmount += fee.unSettledAmount || 0;
-        // unPayMap[currencyKey].totalRMBPayAmount += fee.unSettledAmount * (fee.exchangeRate || 1) || 0;
+        unPayMap[currencyKey].totalPayAmount += fee.unSettledAmount || 0;
       }
     });
   });
@@ -641,22 +579,20 @@ const totalAmount = computed(() => {
   unRecAmountMap.value = unRecMap;
   unPayAmountMap.value = unPayMap;
 
-  //console.log('recAmountMap', recAmountMap.value);
-  //console.log('payAmountMap', payAmountMap.value);
+  console.log('recAmountMap', recAmountMap.value);
+  console.log('payAmountMap', payAmountMap.value);
 
   const allKeys = new Set([
     ...Object.keys(recAmountMap.value),
     ...Object.keys(payAmountMap.value),
   ]);
-  //console.log('allKeys', allKeys);
+  console.log('allKeys', allKeys);
   const total: any = {};
 
   allKeys.forEach((key) => {
     total[key] = {
       totalPayAmount: payAmountMap.value[key]?.totalPayAmount || 0,
-      totalRMBPayAmount: payAmountMap.value[key]?.totalRMBPayAmount || 0,
       totalRecAmount: recAmountMap.value[key]?.totalRecAmount || 0,
-      totalRMBRecAmount: recAmountMap.value[key]?.totalRMBRecAmount || 0,
       totalUnPayAmount: unPayAmountMap.value[key]?.totalPayAmount || 0,
       totalUnRecAmount: unRecAmountMap.value[key]?.totalRecAmount || 0,
       exchangeRate:
@@ -664,10 +600,7 @@ const totalAmount = computed(() => {
       currencyName:
         (payAmountMap.value[key] || recAmountMap.value[key])?.currencyName ||
         '人民币',
-      currencyId: (payAmountMap.value[key] || recAmountMap.value[key])
-        ?.currencyId,
     };
-    //  console.log('total', total);
   });
   // 转换为对象数组
   const totalList = Object.keys(total).map((key) => ({
@@ -675,7 +608,7 @@ const totalAmount = computed(() => {
     ...total[key],
   }));
   let list = [];
-  // console.log("totalList", totalList);
+  console.log(totalList);
   let totalPay = 0;
   let totalRec = 0;
 
@@ -686,7 +619,7 @@ const totalAmount = computed(() => {
     list.push({
       name: recName,
       color: recColor,
-      value: transCurrencySymbol(item.currencyId) + recAmount,
+      value: recAmount,
     });
 
     // totalRec += recAmount * item.exchangeRate;
@@ -697,9 +630,9 @@ const totalAmount = computed(() => {
     list.push({
       name: payName,
       color: payColor,
-      value: transCurrencySymbol(item.currencyId) + payAmount,
+      value: payAmount,
     });
-    totalPay += item.totalRMBPayAmount;
+    totalPay += payAmount * item.exchangeRate;
 
     let unRecName = `未收${item.currencyName}:`;
     let unRecColor = 'green';
@@ -707,9 +640,9 @@ const totalAmount = computed(() => {
     list.push({
       name: unRecName,
       color: unRecColor,
-      value: transCurrencySymbol(item.currencyId) + unRecAmount,
+      value: unRecAmount,
     });
-    totalRec += item.totalRMBRecAmount;
+    totalRec += recAmount * item.exchangeRate;
 
     let unPayName = `未付${item.currencyName}:`;
     let unPayColor = 'yellow';
@@ -717,14 +650,13 @@ const totalAmount = computed(() => {
     list.push({
       name: unPayName,
       color: unPayColor,
-      value: transCurrencySymbol(item.currencyId) + unPayAmount,
+      value: unPayAmount,
     });
     //totalPay += payAmount * item.exchangeRate;
 
     let profitName = `${item.currencyName}利润:`;
     let profitColor = 'blue';
-    let profitAmount =
-      transCurrencySymbol(item.currencyId) + (recAmount - payAmount).toFixed(2);
+    let profitAmount = (recAmount - payAmount).toFixed(2);
     list.push({
       name: profitName,
       color: profitColor,
@@ -734,7 +666,7 @@ const totalAmount = computed(() => {
   list.push({
     name: '合计利润:',
     color: 'blue',
-    value: transCurrencySymbol(1) + (totalRec - totalPay).toFixed(2),
+    value: (totalRec - totalPay).toFixed(2),
   });
   list.push({
     name: '利润率:',
@@ -783,19 +715,11 @@ function resetForm() {
   // 重置过滤条件
   filterAccountDate.value = '';
   filterFeeName.value = '';
-  filterCommissionNum.value = '';
-  filterEtdStart.value = '';
-  filterEtdEnd.value = '';
-  filterPaySide.value = undefined;
 }
 
 function clearFilters() {
   filterAccountDate.value = '';
   filterFeeName.value = '';
-  filterCommissionNum.value = '';
-  filterEtdStart.value = '';
-  filterEtdEnd.value = '';
-  filterPaySide.value = undefined;
 }
 
 function handleExportMenuClick({ key }: { key: string }) {
@@ -1063,9 +987,9 @@ function formatMonth(val: string | undefined | null): string {
 
           <!-- 过滤条件 -->
           <div
-            class="filter-bar mb-3 flex flex-wrap items-center gap-3 rounded bg-gray-50 p-3"
+            class="filter-bar mb-3 flex items-center gap-3 rounded bg-gray-50 p-3"
           >
-            <Space wrap>
+            <Space>
               <span class="text-sm text-gray-600"
                 >{{ t('accountDate') }}：</span
               >
@@ -1086,51 +1010,6 @@ function formatMonth(val: string | undefined | null): string {
                 style="width: 200px"
                 allow-clear
               />
-              <span class="text-sm text-gray-600"
-                >{{ t('commissionNum') }}：</span
-              >
-              <Input
-                v-model:value="filterCommissionNum"
-                :placeholder="$t('ui.placeholder.input')"
-                size="small"
-                style="width: 180px"
-                allow-clear
-              />
-              <span class="text-sm text-gray-600">{{ t('etd') }}：</span>
-              <DatePicker
-                v-model:value="filterEtdStart"
-                :placeholder="$t('ui.placeholder.select')"
-                size="small"
-                style="width: 150px"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                allow-clear
-              />
-              <span class="text-sm text-gray-600">-</span>
-              <DatePicker
-                v-model:value="filterEtdEnd"
-                :placeholder="$t('ui.placeholder.select')"
-                size="small"
-                style="width: 150px"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                allow-clear
-              />
-              <span class="text-sm text-gray-600">{{ t('paySide') }}：</span>
-              <Select
-                v-model:value="filterPaySide"
-                :placeholder="$t('ui.placeholder.select')"
-                size="small"
-                style="width: 120px"
-                allow-clear
-              >
-                <SelectOption :value="0">{{
-                  $t('seaExport.export.statement.receivableAmount') || '收'
-                }}</SelectOption>
-                <SelectOption :value="1">{{
-                  $t('seaExport.export.statement.payAmount') || '付'
-                }}</SelectOption>
-              </Select>
               <Button size="small" @click="clearFilters">
                 {{ $t('common.reset') || '重置' }}
               </Button>
@@ -1260,14 +1139,14 @@ function formatMonth(val: string | undefined | null): string {
                 </div>
               </template>
             </Table>
-            <div class="total-amount flex rounded-md px-1 py-1 shadow">
+            <div class="total-amount flex rounded-md px-4 py-1 shadow">
               <div
                 v-for="(item, index) in totalAmount"
-                class="mr-2 flex"
+                class="mr-4 flex"
                 :key="item.name"
               >
                 <span class="flex">{{ item.name }}</span>
-                <span class="ml-1 flex font-medium" :class="item.color">{{
+                <span class="ml-2 flex font-medium" :class="item.color">{{
                   item.value
                 }}</span>
                 <span class="split mx-2 flex" v-show="(index + 1) % 5 === 0"

@@ -691,6 +691,7 @@ async function initComponentAdapter() {
     BillCountsInput: defineAsyncComponent(
       () => import('./bill-counts-input.vue'),
     ),
+    nameInput: defineAsyncComponent(() => import('./biz-input/name-input.vue')),
   };
 
   // 将组件注册到全局共享状态中

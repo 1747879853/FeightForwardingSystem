@@ -326,7 +326,7 @@ setupVbenVxeTable({
                     row[column.field.replace('unitPrice', 'amount')] = amount;
                   }
                   // 税率变化 或者 税率已存在 都需要更新 不含税单价 和 不含税金额
-                  if (row['taxRate']) {
+                  if (row['taxRate'] !== undefined) {
                     // 同时更新 不含税单价 字段
                     row[column.field.replace('unitPrice', 'noTaxUnitPrice')] = (
                       newVal /

@@ -29,6 +29,10 @@ import { $t } from '#/locales';
 
 import OrderFeeTable from './modules/order-fee-table.vue';
 
+defineOptions({
+  name: 'OrderFee',
+});
+
 const route = useRoute();
 const router = useRouter();
 
@@ -42,7 +46,7 @@ const isEdit = computed(() => !!editId.value);
 
 const pageLoading = ref(false);
 const submitting = ref(false);
-const transportOrderId = ref<number | undefined>();
+const transportOrderId = ref<string>();
 
 /** 左侧表单：相关方信息（发货人、收货人、通知人等） */
 // const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
@@ -311,6 +315,8 @@ const totalAmount = computed(() => {
     total[key] = {
       totalPayAmount: payAmountMap.value[key]?.totalPayAmount || 0,
       totalRecAmount: recAmountMap.value[key]?.totalRecAmount || 0,
+      totalRMBPayAmount: payAmountMap.value[key]?.totalRMBPayAmount || 0,
+      totalRMBRecAmount: recAmountMap.value[key]?.totalRMBRecAmount || 0,
       exchangeRate:
         (payAmountMap.value[key] || recAmountMap.value[key])?.exchangeRate || 1,
       currencyId:
@@ -339,7 +345,8 @@ const totalAmount = computed(() => {
       color: recColor,
       value: transCurrencySymbol(item.currencyId) + recAmount,
     });
-    totalRec += recAmount * item.exchangeRate;
+    console.log('应收recAmount', item.totalRMBRecAmount);
+    totalRec += item.totalRMBRecAmount;
 
     let payName = `应付${transCurrency(item.currencyId)}:`;
     let payColor = 'yellow';
@@ -349,7 +356,7 @@ const totalAmount = computed(() => {
       color: payColor,
       value: transCurrencySymbol(item.currencyId) + payAmount,
     });
-    totalPay += payAmount * item.exchangeRate;
+    totalPay += item.totalRMBPayAmount;
 
     let profitName = `${transCurrency(item.currencyId)}利润:`;
     let profitColor = 'blue';
@@ -405,10 +412,14 @@ const getOrderFeeNumber = async () => {
     let totalRecAmount = list.reduce((acc, cur) => {
       return acc + cur.amount;
     }, 0);
+    let totalRMBRecAmount = list.reduce((acc, cur) => {
+      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
+    }, 0);
     let exchangeRate = list[0]?.exchangeRate;
     let currencyName = list[0]?.currencyName;
     let currencyId = list[0]?.currencyId;
     recAmountMap.value[item] = {
+      totalRMBRecAmount,
       totalRecAmount,
       exchangeRate,
       currencyName,
@@ -422,12 +433,16 @@ const getOrderFeeNumber = async () => {
   currencyIdListPay.forEach((item) => {
     let list = dataSourcePay.filter((item2) => item2.currencyId === item);
     let totalPayAmount = list.reduce((acc, cur) => {
-      return acc + cur.amount;
+      return acc + (cur.amount || 0);
+    }, 0);
+    let totalRMBPayAmount = list.reduce((acc, cur) => {
+      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
     }, 0);
     let exchangeRate = list[0]?.exchangeRate;
     let currencyName = list[0]?.currencyName;
     let currencyId = list[0]?.currencyId;
     payAmountMap.value[item] = {
+      totalRMBPayAmount,
       totalPayAmount,
       exchangeRate,
       currencyName,

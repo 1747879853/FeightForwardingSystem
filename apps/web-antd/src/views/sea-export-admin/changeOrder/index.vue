@@ -22,19 +22,22 @@ import { Button, Card, message, Space, Spin } from 'ant-design-vue';
 import * as feeConstants from '#/views/sea-export-admin/orderFee/data';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
-
+import {
+  getCurrencyEnumOptions,
+  getCurrencyEnumSymbolOptions,
+} from '#/views/sea-export-admin/orderFee/data';
 import { $t } from '#/locales';
 
 import OrderFeeTable from '#/views/sea-export-admin/orderFee/modules/order-fee-table.vue';
 import ChangeOrderTable from './table.vue';
 
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import type { ChangeOrderAdminApi } from '#/api/sea-export/change-order-admin';
-import {
-  getCurrencyEnumOptions,
-  getCurrencyEnumSymbolOptions,
-} from '#/views/sea-export-admin/orderFee/data';
+
 import { EditAsync, GetDetail } from '#/api/sea-export/change-order-admin';
+
+defineOptions({
+  name: 'ChangeOrder',
+});
 
 const route = useRoute();
 const router = useRouter();
@@ -301,17 +304,21 @@ const getOrderFeeNumber = async () => {
   const res = await GetDetail(changeOrder.value.id);
   let dataSourceRec = res.orderFees.filter((item) => item.paySide === 0);
   recAmountMap.value = {};
-  const currencyIdList = dataSourceRec.map((item) => item.currencyId);
+  const currencyIdList = dataSourceRec.map((item) => item.currencyId) || [];
   currencyIdList.forEach((item) => {
     let list = dataSourceRec.filter((item2) => item2.currencyId === item);
     let totalRecAmount = list.reduce((acc, cur) => {
-      return acc + cur.amount;
+      return acc + (cur.amount || 0);
+    }, 0);
+    let totalRMBRecAmount = list.reduce((acc, cur) => {
+      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
     }, 0);
     let exchangeRate = list[0]?.exchangeRate;
     let currencyName = list[0]?.currencyName;
     let currencyId = list[0]?.currencyId;
     recAmountMap.value[item] = {
       totalRecAmount,
+      totalRMBRecAmount,
       exchangeRate,
       currencyName,
       currencyId,
@@ -324,13 +331,17 @@ const getOrderFeeNumber = async () => {
   currencyIdListPay.forEach((item) => {
     let list = dataSourcePay.filter((item2) => item2.currencyId === item);
     let totalPayAmount = list.reduce((acc, cur) => {
-      return acc + cur.amount;
+      return acc + (cur.amount || 0);
+    }, 0);
+    let totalRMBPayAmount = list.reduce((acc, cur) => {
+      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
     }, 0);
     let exchangeRate = list[0]?.exchangeRate;
     let currencyName = list[0]?.currencyName;
     let currencyId = list[0]?.currencyId;
     payAmountMap.value[item] = {
       totalPayAmount,
+      totalRMBPayAmount,
       exchangeRate,
       currencyName,
       currencyId,
@@ -349,6 +360,8 @@ const totalAmount = computed(() => {
     total[key] = {
       totalPayAmount: payAmountMap.value[key]?.totalPayAmount || 0,
       totalRecAmount: recAmountMap.value[key]?.totalRecAmount || 0,
+      totalRMBPayAmount: payAmountMap.value[key]?.totalRMBPayAmount || 0,
+      totalRMBRecAmount: recAmountMap.value[key]?.totalRMBRecAmount || 0,
       exchangeRate:
         (payAmountMap.value[key] || recAmountMap.value[key])?.exchangeRate || 1,
       currencyId:
@@ -377,7 +390,8 @@ const totalAmount = computed(() => {
       color: recColor,
       value: transCurrencySymbol(item.currencyId) + recAmount,
     });
-    totalRec += recAmount * item.exchangeRate;
+    console.log('应收recAmount', item.totalRMBRecAmount);
+    totalRec += item.totalRMBRecAmount;
 
     let payName = `应付${transCurrency(item.currencyId)}:`;
     let payColor = 'yellow';
@@ -387,7 +401,7 @@ const totalAmount = computed(() => {
       color: payColor,
       value: transCurrencySymbol(item.currencyId) + payAmount,
     });
-    totalPay += payAmount * item.exchangeRate;
+    totalPay += item.totalRMBPayAmount;
 
     let profitName = `${transCurrency(item.currencyId)}利润:`;
     let profitColor = 'blue';

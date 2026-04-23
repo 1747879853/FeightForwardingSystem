@@ -7,6 +7,10 @@ import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-adm
 import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
+  getCurrencyEnumOptions,
+  getCurrencyEnumSymbolOptions,
+} from '#/views/sea-export-admin/orderFee/data';
+import {
   Button,
   Space,
   Textarea,
@@ -263,6 +267,12 @@ const getTableDate = () => {
     childPayRef.value.getTableDate();
   }
 };
+const transCurrencySymbol = (currencyId: number) => {
+  const option = getCurrencyEnumSymbolOptions().find(
+    (o) => o.value === currencyId,
+  );
+  return option ? option.label : currencyId;
+};
 let recAmountMap: any = ref({} as any);
 let payAmountMap: any = ref({} as any);
 const totalAmount = computed(() => {
@@ -276,8 +286,12 @@ const totalAmount = computed(() => {
     total[key] = {
       totalPayAmount: payAmountMap.value[key]?.totalPayAmount || 0,
       totalRecAmount: recAmountMap.value[key]?.totalRecAmount || 0,
+      totalRMBPayAmount: payAmountMap.value[key]?.totalRMBPayAmount || 0,
+      totalRMBRecAmount: recAmountMap.value[key]?.totalRMBRecAmount || 0,
       exchangeRate:
         (payAmountMap.value[key] || recAmountMap.value[key])?.exchangeRate || 1,
+      currencyId:
+        (payAmountMap.value[key] || recAmountMap.value[key])?.currencyId || 1,
       currencyName:
         (payAmountMap.value[key] || recAmountMap.value[key])?.currencyName ||
         '人民币',
@@ -300,9 +314,9 @@ const totalAmount = computed(() => {
     list.push({
       name: recName,
       color: recColor,
-      value: recAmount,
+      value: transCurrencySymbol(item.currencyId) + recAmount,
     });
-    totalRec += recAmount * item.exchangeRate;
+    totalRec += item.totalRMBRecAmount;
 
     let payName = `应付${item.currencyName}:`;
     let payColor = 'yellow';
@@ -310,9 +324,9 @@ const totalAmount = computed(() => {
     list.push({
       name: payName,
       color: payColor,
-      value: payAmount,
+      value: transCurrencySymbol(item.currencyId) + payAmount,
     });
-    totalPay += payAmount * item.exchangeRate;
+    totalPay += item.totalRMBPayAmount;
 
     let profitName = `${item.currencyName}利润:`;
     let profitColor = 'blue';
@@ -320,13 +334,13 @@ const totalAmount = computed(() => {
     list.push({
       name: profitName,
       color: profitColor,
-      value: profitAmount,
+      value: transCurrencySymbol(item.currencyId) + profitAmount,
     });
   });
   list.push({
     name: '合计利润:',
     color: 'blue',
-    value: (totalRec - totalPay).toFixed(2),
+    value: transCurrencySymbol(1) + (totalRec - totalPay).toFixed(2),
   });
   list.push({
     name: '利润率:',
@@ -350,12 +364,18 @@ const handleReceivableTableUpdate = (
     let totalRecAmount = list.reduce((acc, cur) => {
       return acc + cur.amount;
     }, 0);
+    let totalRMBRecAmount = list.reduce((acc, cur) => {
+      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
+    }, 0);
     let exchangeRate = list[0]?.exchangeRate;
     let currencyName = list[0]?.currencyName;
+    let currencyId = list[0]?.currencyId;
     recAmountMap.value[item] = {
       totalRecAmount,
+      totalRMBRecAmount,
       exchangeRate,
       currencyName,
+      currencyId,
     };
     console.log('recAmountMap', recAmountMap);
   });
@@ -373,10 +393,14 @@ const handlePayableTableUpdate = (
     let totalPayAmount = list.reduce((acc, cur) => {
       return acc + cur.amount;
     }, 0);
+    let totalRMBPayAmount = list.reduce((acc, cur) => {
+      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
+    }, 0);
     let exchangeRate = list[0]?.exchangeRate;
     let currencyName = list[0]?.currencyName;
     payAmountMap.value[item] = {
       totalPayAmount,
+      totalRMBPayAmount,
       exchangeRate,
       currencyName,
     };
