@@ -35,7 +35,6 @@ export namespace SystemUserAdminApi {
     emailAddress?: string;
     phoneNumber?: string;
     isActive: boolean;
-
     isPhoneNumberConfirmed: boolean;
     status: UserStatus;
     avatar?: string;
@@ -43,6 +42,16 @@ export namespace SystemUserAdminApi {
     creationTime: string;
     lastLoginTime?: string;
     roles?: string[];
+    enName?: string;
+    qq?: string;
+    employeeID?: string;
+    gender?: number | null;
+    enable?: boolean;
+    idNumber?: string;
+    remark?: string;
+    emailPwd?: string;
+    receiveAddrPort?: string;
+    sendAddrPort?: string;
   }
 
   /** 分页列表响应 */
@@ -80,7 +89,6 @@ export namespace SystemUserAdminApi {
     emailAddress?: string;
     phoneNumber?: string;
     isActive: boolean;
-
     isPhoneNumberConfirmed: boolean;
     status: UserStatus;
     avatar?: string;
@@ -89,6 +97,17 @@ export namespace SystemUserAdminApi {
     lastLoginTime?: string;
     roleIds?: number[];
     roles?: string[];
+    enName?: string;
+    qq?: string;
+    employeeID?: string;
+    gender?: number | null;
+    enable?: boolean;
+    idNumber?: string;
+    remark?: string;
+    emailPwd?: string;
+    receiveAddrPort?: string;
+    sendAddrPort?: string;
+    userBankAccounts?: UserBankAccountDto[];
   }
 
   /** 用户编辑数据DTO（含数据权限） */
@@ -110,6 +129,16 @@ export namespace SystemUserAdminApi {
     roleIds?: number[];
     organizationId?: number;
     userAttribute?: UserAttribute;
+    enName?: string;
+    qq?: string;
+    employeeID?: string;
+    gender?: number | null;
+    enable?: boolean;
+    idNumber?: string;
+    remark?: string;
+    emailPwd?: string;
+    receiveAddrPort?: string;
+    sendAddrPort?: string;
   }
 
   /** 用户输入DTO（含数据权限） */
@@ -145,6 +174,35 @@ export namespace SystemUserAdminApi {
   export interface IdentityResult {
     succeeded: boolean;
     errors?: Array<{ code: string; description: string }>;
+  }
+
+  /** 用户银行账户DTO */
+  export interface UserBankAccountDto {
+    id: number;
+    userId: number;
+    currencyId: number;
+    currencyCode?: string;
+    accountName?: string;
+    bankShortName: string;
+    bankName: string;
+    bankAddress?: string;
+    bankAccount: string;
+  }
+
+  /** 创建用户银行账户输入DTO */
+  export interface CreateUserBankAccountInputDto {
+    userId: number;
+    currencyId: number;
+    accountName?: string;
+    bankShortName: string;
+    bankName: string;
+    bankAddress?: string;
+    bankAccount: string;
+  }
+
+  /** 更新用户银行账户输入DTO */
+  export interface UpdateUserBankAccountInputDto extends CreateUserBankAccountInputDto {
+    id: number;
   }
 
   // 兼容旧代码的类型定义
@@ -325,12 +383,73 @@ async function importUsers(formData: FormData) {
   );
 }
 
+/**
+ * 获取用户银行账户列表
+ */
+async function getUserBankAccountList(
+  userId: number,
+): Promise<SystemUserAdminApi.UserBankAccountDto[]> {
+  return requestClient.get(
+    '/services/app/UserAdmin/GetUserBankAccountListAsync',
+    { params: { Id: userId } },
+  );
+}
+
+/**
+ * 获取单个银行账户
+ */
+async function getUserBankAccount(
+  id: number,
+): Promise<SystemUserAdminApi.UserBankAccountDto> {
+  return requestClient.get('/services/app/UserAdmin/GetUserBankAccountAsync', {
+    params: { Id: id },
+  });
+}
+
+/**
+ * 创建用户银行账户
+ */
+async function createUserBankAccount(
+  data: SystemUserAdminApi.CreateUserBankAccountInputDto,
+): Promise<SystemUserAdminApi.UserBankAccountDto> {
+  return requestClient.post(
+    '/services/app/UserAdmin/CreateUserBankAccountAsync',
+    data,
+  );
+}
+
+/**
+ * 更新用户银行账户
+ */
+async function updateUserBankAccount(
+  data: SystemUserAdminApi.UpdateUserBankAccountInputDto,
+): Promise<SystemUserAdminApi.UserBankAccountDto> {
+  return requestClient.put(
+    '/services/app/UserAdmin/UpdateUserBankAccountAsync',
+    data,
+  );
+}
+
+/**
+ * 删除用户银行账户
+ */
+async function deleteUserBankAccount(id: number): Promise<void> {
+  return requestClient.delete(
+    '/services/app/UserAdmin/DeleteUserBankAccountAsync',
+    { params: { Id: id } },
+  );
+}
+
 export {
   changePassword,
   createOrUpdateUser,
   createOrUpdateUserWithDataPermission,
+  createUserBankAccount,
   deleteUser,
+  deleteUserBankAccount,
   getUser,
+  getUserBankAccount,
+  getUserBankAccountList,
   getUserForEdit,
   getUserPagedList,
   getUserPermissions,
@@ -338,5 +457,6 @@ export {
   importUsers,
   resetUserAllPermissions,
   setUserRoles,
+  updateUserBankAccount,
   updateUserPermissions,
 };

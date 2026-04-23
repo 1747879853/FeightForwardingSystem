@@ -22,6 +22,7 @@ import Form from './modules/user-form.vue';
 import PasswordModal from './modules/password-modal.vue';
 import ImportModal from './modules/import-modal.vue';
 import RoleAssignModal from './modules/role-assign-modal.vue';
+import BankAccountListModal from './modules/bank-account-list-modal.vue';
 
 const router = useRouter();
 
@@ -46,6 +47,12 @@ const [ImportModalComponent, importModalApi] = useVbenModal({
 // 角色分配弹窗
 const [RoleAssignModalComponent, roleAssignModalApi] = useVbenModal({
   connectedComponent: RoleAssignModal,
+  destroyOnClose: true,
+});
+
+// 银行账户列表弹窗
+const [BankAccountListModalComponent, bankAccountListModalApi] = useVbenModal({
+  connectedComponent: BankAccountListModal,
   destroyOnClose: true,
 });
 
@@ -76,6 +83,10 @@ function onActionClick(e: OnActionClickParams<SystemUserAdminApi.SystemUser>) {
     }
     case 'changePassword': {
       onChangePassword(e.row);
+      break;
+    }
+    case 'bankAccount': {
+      onBankAccount(e.row);
       break;
     }
   }
@@ -315,6 +326,18 @@ function onImport() {
 }
 
 /**
+ * 银行账户管理
+ */
+function onBankAccount(row: SystemUserAdminApi.SystemUser) {
+  bankAccountListModalApi
+    .setData({
+      userId: row.id,
+      userName: row.nickName || row.userName,
+    })
+    .open();
+}
+
+/**
  * 刷新列表
  */
 function onRefresh() {
@@ -328,6 +351,7 @@ function onRefresh() {
     <PasswordModalComponent @success="onRefresh" />
     <ImportModalComponent @success="onRefresh" />
     <RoleAssignModalComponent @success="onRefresh" />
+    <BankAccountListModalComponent />
     <Grid :table-title="$t('system.user.list')">
       <template #toolbar-tools>
         <!-- <Button class="mr-2" danger @click="onBatchDelete">
