@@ -1,6 +1,7 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SystemUserAdminApi } from '#/api';
+
 import { getOrganizationUnitTree } from '#/api/system/organization-unit';
 import { UserAttribute, UserStatus } from '#/api';
 import { $t } from '#/locales';
@@ -85,6 +86,7 @@ export function formatUserAttribute(value: number | undefined): string {
     .filter(Boolean)
     .join(', ');
 }
+
 /** 用户状态选项 */
 export const userStatusOptions = [
   {
@@ -104,6 +106,14 @@ export const userStatusOptions = [
   },
 ];
 
+/** 性别选项 */
+export function getGenderOptions() {
+  return [
+    { label: $t('system.user.genderMale'), value: 1 },
+    { label: $t('system.user.genderFemale'), value: 2 },
+  ];
+}
+
 /** 是否选项 */
 export const booleanOptions = [
   { label: () => $t('common.yes'), value: true },
@@ -111,20 +121,21 @@ export const booleanOptions = [
 ];
 
 /**
- * 用户表单 Schema
+ * 用户表单 Schema（分区布局）
  */
 export function useFormSchema(): VbenFormSchema[] {
   return [
+    // ===== 隐藏字段 =====
     {
       component: 'Input',
       fieldName: 'id',
       label: 'ID',
-      // 隐藏字段，用于判断是新增还是编辑模式
       dependencies: {
         show: false,
         triggerFields: ['id'],
       },
     },
+
     {
       component: 'Input',
       componentProps: {
@@ -154,31 +165,43 @@ export function useFormSchema(): VbenFormSchema[] {
     {
       component: 'Input',
       componentProps: {
-        maxlength: 128,
+        maxlength: 64,
         showCount: true,
-        autocomplete: 'off',
+      },
+      fieldName: 'enName',
+      label: $t('system.user.enName'),
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 32,
+        showCount: true,
+        type: 'password',
+        autocomplete: 'new-password',
       },
       dependencies: {
-        triggerFields: ['emailAddress'],
-        rules: (values) => {
-          // 如果邮箱有值，则校验邮箱格式
-          if (values.emailAddress && values.emailAddress.length > 0) {
-            return z
-              .string()
-              .email({
-                message: $t('common.invalidEmail', [$t('system.user.email')]),
-              })
-              .max(128, {
-                message: $t('common.maxLength', [$t('system.user.email'), 128]),
-              });
-          }
-
-          // 邮箱为空：不校验，字段可选
-          return z.string().optional();
-        },
+        triggerFields: ['id'],
+        show: (values) => !values.id,
       },
-      fieldName: 'emailAddress',
-      label: $t('system.user.email'),
+      fieldName: 'password',
+      label: $t('system.user.password'),
+      help: $t('system.user.passwordHelp'),
+      rules: z
+        .string()
+        .min(6, {
+          message: $t('common.lengthBetween', [
+            $t('system.user.password'),
+            6,
+            32,
+          ]),
+        })
+        .max(32, {
+          message: $t('common.lengthBetween', [
+            $t('system.user.password'),
+            6,
+            32,
+          ]),
+        }),
     },
     {
       component: 'Input',
@@ -202,38 +225,127 @@ export function useFormSchema(): VbenFormSchema[] {
       component: 'Input',
       componentProps: {
         maxlength: 32,
+        disabled: true,
+        placeholder: '待后端接口支持',
+      },
+      fieldName: 'officeTel',
+      label: $t('system.user.officeTel'),
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 128,
         showCount: true,
-        type: 'password',
-        autocomplete: 'new-password',
+        autocomplete: 'off',
       },
       dependencies: {
-        triggerFields: ['id'],
-        // 只在新增模式(id 不存在)时显示密码字段
-        show: (values) => {
-          return !values.id;
+        triggerFields: ['emailAddress'],
+        rules: (values) => {
+          if (values.emailAddress && values.emailAddress.length > 0) {
+            return z
+              .string()
+              .email({
+                message: $t('common.invalidEmail', [$t('system.user.email')]),
+              })
+              .max(128, {
+                message: $t('common.maxLength', [$t('system.user.email'), 128]),
+              });
+          }
+          return z.string().optional();
         },
       },
-      fieldName: 'password',
-      label: $t('system.user.password'),
-      help: $t('system.user.passwordHelp'),
-      // 新增模式时密码必填，长度 6-32 位
-      rules: z
-        .string()
-        .min(6, {
-          message: $t('common.lengthBetween', [
-            $t('system.user.password'),
-            6,
-            32,
-          ]),
-        })
-        .max(32, {
-          message: $t('common.lengthBetween', [
-            $t('system.user.password'),
-            6,
-            32,
-          ]),
-        }),
+      fieldName: 'emailAddress',
+      label: $t('system.user.email'),
     },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 32,
+        showCount: true,
+      },
+      fieldName: 'qq',
+      label: $t('system.user.qq'),
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 32,
+        showCount: true,
+      },
+      fieldName: 'employeeID',
+      label: $t('system.user.employeeID'),
+    },
+    {
+      fieldName: 'avatar',
+      label: $t('system.user.avatar'),
+      component: 'FileUploadInput',
+      componentProps: {
+        maxSizeMB: 20,
+        allowedTypes: ['png', 'jpg'],
+        maxCount: 1,
+      },
+    },
+    {
+      component: 'Select',
+      componentProps: {
+        allowClear: true,
+        options: getGenderOptions(),
+        placeholder: $t('system.user.gender'),
+      },
+      fieldName: 'gender',
+      label: $t('system.user.gender'),
+    },
+    {
+      component: 'RadioGroup',
+      componentProps: {
+        buttonStyle: 'solid',
+        options: [
+          { label: $t('system.user.isActiveOn'), value: true },
+          { label: $t('system.user.isActiveOff'), value: false },
+        ],
+        optionType: 'button',
+      },
+      defaultValue: true,
+      fieldName: 'isActive',
+      label: $t('system.user.isActiveLabel'),
+      dependencies: {
+        triggerFields: ['isActive'],
+        componentProps: (values, _formApi) => {
+          return {
+            onChange: (e: any) => {
+              const newVal = e?.target?.value ?? e;
+              if (newVal === false) {
+                _formApi.setValues({ enable: false });
+              }
+            },
+          };
+        },
+      },
+    },
+    {
+      component: 'RadioGroup',
+      componentProps: {
+        buttonStyle: 'solid',
+        options: [
+          { label: $t('system.user.enableOn'), value: true },
+          { label: $t('system.user.enableOff'), value: false },
+        ],
+        optionType: 'button',
+      },
+      defaultValue: true,
+      fieldName: 'enable',
+      label: $t('system.user.enable'),
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 20,
+        showCount: true,
+      },
+      fieldName: 'idNumber',
+      label: $t('system.user.idNumber'),
+    },
+
     {
       component: 'ApiTreeSelect',
       componentProps: {
@@ -248,22 +360,6 @@ export function useFormSchema(): VbenFormSchema[] {
       label: $t('system.user.department'),
     },
     {
-      component: 'RadioGroup',
-      componentProps: {
-        buttonStyle: 'solid',
-        options: [
-          { label: $t('system.user.statusNormal'), value: true },
-          { label: $t('system.user.statusDisabled'), value: false },
-        ],
-        optionType: 'button',
-      },
-      defaultValue: true,
-      fieldName: 'isActive',
-      label: $t('system.user.isActive'),
-      // 隐藏此字段，但保留配置和默认值
-      hide: true,
-    },
-    {
       component: 'Select',
       componentProps: {
         options: userStatusOptions.map((opt) => ({
@@ -276,15 +372,6 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'status',
       label: $t('system.user.status'),
     },
-    // {
-    //   component: 'RoleSelect',
-    //   componentProps: {
-    //     mode: 'multiple',
-    //     placeholder: $t('system.user.selectRoles'),
-    //   },
-    //   fieldName: 'roleIds',
-    //   label: $t('system.user.roles'),
-    // },
     {
       component: 'CheckboxGroup',
       componentProps: {
@@ -293,15 +380,58 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'userAttributeFlags',
       label: $t('system.user.userAttribute'),
     },
+
     {
-      fieldName: 'avatar',
-      label: $t('system.user.avatar'),
-      component: 'FileUploadInput',
+      component: 'Input',
       componentProps: {
-        maxSizeMB: 20,
-        allowedTypes: ['png', 'jpg'],
-        maxCount: 1,
+        maxlength: 64,
+        disabled: true,
+        placeholder: '待后端接口支持',
       },
+      fieldName: 'senderDisplayName',
+      label: $t('system.user.senderDisplayName'),
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 64,
+        showCount: true,
+        type: 'password',
+        autocomplete: 'off',
+      },
+      fieldName: 'emailPwd',
+      label: $t('system.user.emailPwd'),
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 64,
+        showCount: true,
+        placeholder: 'imap.example.com:993',
+      },
+      fieldName: 'receiveAddrPort',
+      label: $t('system.user.receiveAddrPort'),
+    },
+    {
+      component: 'Input',
+      componentProps: {
+        maxlength: 64,
+        showCount: true,
+        placeholder: 'smtp.example.com:465',
+      },
+      fieldName: 'sendAddrPort',
+      label: $t('system.user.sendAddrPort'),
+    },
+
+    {
+      component: 'Textarea',
+      componentProps: {
+        maxlength: 1024,
+        showCount: true,
+        rows: 3,
+      },
+      fieldName: 'remark',
+      label: $t('system.user.remark'),
     },
   ];
 }
@@ -316,19 +446,6 @@ export function useGridFormSchema(): VbenFormSchema[] {
       fieldName: 'KeyWords',
       label: $t('system.user.keyword'),
     },
-    // {
-    //   component: 'Select',
-    //   componentProps: {
-    //     allowClear: true,
-    //     options: [
-    //       { label: $t('common.yes'), value: true },
-    //       { label: $t('common.no'), value: false },
-    //     ],
-    //     placeholder: $t('system.user.isActive'),
-    //   },
-    //   fieldName: 'IsActive',
-    //   label: $t('system.user.isActive'),
-    // },
     {
       component: 'Select',
       componentProps: {
@@ -393,14 +510,24 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       minWidth: 120,
     },
     {
-      field: 'emailAddress',
-      title: $t('system.user.email'),
-      minWidth: 180,
+      field: 'enName',
+      title: $t('system.user.enName'),
+      minWidth: 120,
+    },
+    {
+      field: 'employeeID',
+      title: $t('system.user.employeeID'),
+      minWidth: 100,
     },
     {
       field: 'phoneNumber',
       title: $t('system.user.phoneNumber'),
       minWidth: 130,
+    },
+    {
+      field: 'emailAddress',
+      title: $t('system.user.email'),
+      minWidth: 180,
     },
     {
       field: 'roles',
@@ -419,17 +546,24 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       minWidth: 140,
       formatter: ({ cellValue }) => formatUserAttribute(cellValue),
     },
-    // {
-    //   cellRender: {
-    //     name: 'CellSwitch',
-    //     events: {
-    //       change: onStatusChange,
-    //     },
-    //   },
-    //   field: 'isActive',
-    //   title: $t('system.user.isActive'),
-    //   width: 100,
-    // },
+    {
+      field: 'isActive',
+      title: $t('system.user.isActiveLabel'),
+      width: 100,
+      formatter: ({ cellValue }) =>
+        cellValue
+          ? $t('system.user.isActiveOn')
+          : $t('system.user.isActiveOff'),
+    },
+    {
+      field: 'enable',
+      title: $t('system.user.enable'),
+      width: 100,
+      formatter: ({ cellValue }) =>
+        cellValue === false
+          ? $t('system.user.enableOff')
+          : $t('system.user.enableOn'),
+    },
     {
       cellRender: {
         name: 'CellTag',
@@ -466,9 +600,12 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
         name: 'CellOperation',
         options: [
           { code: 'edit', text: $t('common.edit') },
+          {
+            code: 'bankAccount',
+            text: $t('system.user.bankAccountAction'),
+          },
           { code: 'setRoles', text: $t('system.user.setRoles') },
           { code: 'permission', text: $t('system.user.permission') },
-          // { code: 'resetPermission', text: $t('system.user.resetPermission') },
           { code: 'changePassword', text: $t('system.user.changePassword') },
           { code: 'delete', text: $t('common.delete'), danger: true },
         ],
@@ -476,7 +613,96 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       field: 'operation',
       fixed: 'right',
       title: $t('system.user.operation'),
-      width: 420,
+      width: 480,
+    },
+  ];
+}
+
+/**
+ * 用户银行账户表单 Schema
+ */
+export function useUserBankAccountSchema(): VbenFormSchema[] {
+  return [
+    {
+      component: 'CurrencySelect',
+      componentProps: {
+        class: 'w-full',
+      },
+      fieldName: 'currencyId',
+      label: $t('system.user.bankAccount.currencyId'),
+      rules: 'selectRequired',
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 256 },
+      fieldName: 'accountName',
+      label: $t('system.user.bankAccount.accountName'),
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 32 },
+      fieldName: 'bankShortName',
+      label: $t('system.user.bankAccount.bankShortName'),
+      rules: 'required',
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 128 },
+      fieldName: 'bankName',
+      label: $t('system.user.bankAccount.bankName'),
+      rules: 'required',
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 128 },
+      fieldName: 'bankAddress',
+      label: $t('system.user.bankAccount.bankAddress'),
+    },
+    {
+      component: 'Input',
+      componentProps: { maxLength: 128 },
+      fieldName: 'bankAccount',
+      label: $t('system.user.bankAccount.bankAccount'),
+      rules: 'required',
+    },
+  ];
+}
+
+/**
+ * 用户银行账户列表列定义（Ant Design Table 用）
+ */
+export function useUserBankAccountColumns() {
+  return [
+    {
+      dataIndex: 'currencyCode',
+      title: $t('system.user.bankAccount.currencyId'),
+      width: 80,
+    },
+    {
+      dataIndex: 'accountName',
+      title: $t('system.user.bankAccount.accountName'),
+      width: 120,
+    },
+    {
+      dataIndex: 'bankShortName',
+      title: $t('system.user.bankAccount.bankShortName'),
+      width: 120,
+    },
+    {
+      dataIndex: 'bankName',
+      title: $t('system.user.bankAccount.bankName'),
+      width: 180,
+    },
+    {
+      dataIndex: 'bankAccount',
+      title: $t('system.user.bankAccount.bankAccount'),
+      width: 200,
+    },
+    {
+      title: $t('system.user.operation'),
+      key: 'action',
+      width: 140,
+      fixed: 'right' as const,
     },
   ];
 }

@@ -22,7 +22,6 @@ const formData = ref<SystemUserAdminApi.SystemUser>();
 
 const [Form, formApi] = useVbenForm({
   commonConfig: {
-    // 所有表单项
     componentProps: {
       class: 'w-full',
     },
@@ -30,6 +29,7 @@ const [Form, formApi] = useVbenForm({
   layout: 'vertical',
   schema: useFormSchema(),
   showDefaultActions: false,
+  wrapperClass: 'grid-cols-2',
 });
 
 const id = ref<number>();
@@ -40,7 +40,6 @@ const [Modal, modalApi] = useVbenModal({
     if (!valid) return;
     const values = await formApi.getValues();
 
-    // 构建符合API要求的数据结构
     const submitData: SystemUserAdminApi.UserInAdminInputDto = {
       userName: values.userName,
       nickName: values.nickName,
@@ -52,9 +51,18 @@ const [Modal, modalApi] = useVbenModal({
       avatar: values.avatar,
       organizationId: values.organizationId,
       userAttribute: combineUserAttribute(values.userAttributeFlags ?? []),
+      enName: values.enName || undefined,
+      qq: values.qq || undefined,
+      employeeID: values.employeeID || undefined,
+      gender: values.gender ?? null,
+      enable: values.enable,
+      idNumber: values.idNumber || undefined,
+      remark: values.remark || undefined,
+      emailPwd: values.emailPwd || undefined,
+      receiveAddrPort: values.receiveAddrPort || undefined,
+      sendAddrPort: values.sendAddrPort || undefined,
     };
 
-    // 新增时需要密码
     if (!id.value && values.password) {
       submitData.password = values.password;
     }
@@ -83,7 +91,6 @@ const [Modal, modalApi] = useVbenModal({
       formApi.resetForm();
 
       if (data?.id) {
-        // 编辑模式：从接口获取完整数据
         id.value = data.id;
         try {
           const userDetail = await getUserForEdit(data.id);
@@ -101,15 +108,23 @@ const [Modal, modalApi] = useVbenModal({
             avatar: userDetail.avatar,
             organizationId: (userDetail as any).organizationId,
             userAttributeFlags: parseUserAttribute(userDetail.userAttribute),
+            enName: userDetail.enName,
+            qq: userDetail.qq,
+            employeeID: userDetail.employeeID,
+            gender: userDetail.gender,
+            enable: userDetail.enable ?? true,
+            idNumber: userDetail.idNumber,
+            remark: userDetail.remark,
+            emailPwd: userDetail.emailPwd,
+            receiveAddrPort: userDetail.receiveAddrPort,
+            sendAddrPort: userDetail.sendAddrPort,
           });
 
-          // 如果是从"分配角色"进入，聚焦到角色字段
           if (data.focusRoles) {
             // 可以通过 formApi 实现聚焦逻辑
           }
         } catch (error) {
           console.error('获取用户详情失败:', error);
-          // 如果接口失败，使用列表数据作为降级方案
           formData.value = data;
           await nextTick();
           formApi.setValues({
@@ -123,10 +138,19 @@ const [Modal, modalApi] = useVbenModal({
             avatar: data.avatar,
             organizationId: (data as any).organizationId,
             userAttributeFlags: parseUserAttribute(data.userAttribute),
+            enName: data.enName,
+            qq: data.qq,
+            employeeID: data.employeeID,
+            gender: data.gender,
+            enable: data.enable ?? true,
+            idNumber: data.idNumber,
+            remark: data.remark,
+            emailPwd: data.emailPwd,
+            receiveAddrPort: data.receiveAddrPort,
+            sendAddrPort: data.sendAddrPort,
           });
         }
       } else {
-        // 新增模式
         id.value = undefined;
         formData.value = undefined;
       }
@@ -142,7 +166,7 @@ const getModalTitle = computed(() => {
 </script>
 
 <template>
-  <Modal :title="getModalTitle">
+  <Modal :title="getModalTitle" class="w-[800px]">
     <Form class="mx-4" />
   </Modal>
 </template>
