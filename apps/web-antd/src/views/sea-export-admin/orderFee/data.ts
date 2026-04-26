@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { h } from 'vue';
+import { getEnumItems } from '#/utils/init-enum';
 // --------------------------------------------------------
 // 数据录入方式
 // --------------------------------------------------------
@@ -52,25 +53,10 @@ export const getUnitEmumOptions = () => [
 // --------------------------------------------------------
 // 开票状态
 // --------------------------------------------------------
-export const getInvoiceStatusOptions = () => [
-  { value: 0, label: '未开票' },
-  { value: 1, label: '部分开票' },
-  { value: 2, label: '已开票' },
-];
 
 // --------------------------------------------------------
 // 费用状态
 // --------------------------------------------------------
-export const getFeeStatusOptions = () => [
-  { value: 0, label: '录入状态', color: '#b8cdd7' },
-  { value: 1, label: '提交审核', color: '#ffc107' },
-  { value: 2, label: '审核通过', color: '#67c23a' },
-  { value: 3, label: '驳回', color: '#f56c6c' },
-  { value: 4, label: '申请修改', color: '#ff9900' },
-  { value: 5, label: '申请删除', color: '#ff9900' },
-  { value: 6, label: '部分结算', color: '#909399' },
-  { value: 7, label: '结算完毕', color: '#67c23a' },
-];
 
 export const getFeeStatusValue = {
   Entering: 0,
@@ -747,3 +733,79 @@ export function useOrderFeeColumns(
     },
   ];
 }
+
+// --------------------------------------------------------
+// 枚举数据缓存（用于表格列配置等需要同步访问的场景）
+// --------------------------------------------------------
+let invoiceStatusCache: Array<{ value: number; label: string }> = [];
+let feeStatusCache: Array<{ value: number; label: string; color?: string }> =
+  [];
+
+/**
+ * 初始化枚举数据缓存（在应用启动或组件挂载时调用）
+ */
+export async function initOrderFeeEnumCache() {
+  try {
+    const [invoiceItems, feeItems] = await Promise.all([
+      getEnumItems('InvoiceStatus'),
+      getEnumItems('FeeStatus'),
+    ]);
+
+    invoiceStatusCache = invoiceItems.map((item) => ({
+      value: item.value,
+      label: item.displayName || '',
+    }));
+
+    feeStatusCache = feeItems.map((item) => ({
+      value: item.value,
+      label: item.displayName || '',
+      color: item.remark || undefined,
+    }));
+
+    console.log('[OrderFee Enum Cache] 枚举数据缓存已更新');
+  } catch (error) {
+    console.error('[OrderFee Enum Cache] 枚举数据缓存更新失败:', error);
+  }
+}
+
+/**
+ * 获取开票状态选项（同步方法，用于表格列配置）
+ */
+export const getInvoiceStatusOptions = () => {
+  return invoiceStatusCache.length > 0
+    ? invoiceStatusCache
+    : [
+        { value: 0, label: '未开票' },
+        { value: 1, label: '部分开票' },
+        { value: 2, label: '已开票' },
+      ];
+};
+
+/**
+ * 获取费用状态选项（同步方法，用于表格列配置）
+ */
+export const getFeeStatusOptions = () => {
+  return [
+    { value: 0, label: '录入状态', color: '#b8cdd7' },
+    { value: 1, label: '提交审核', color: '#ffc107' },
+    { value: 2, label: '审核通过', color: '#67c23a' },
+    { value: 3, label: '驳回', color: '#f56c6c' },
+    { value: 4, label: '申请修改', color: '#ff9900' },
+    { value: 5, label: '申请删除', color: '#ff9900' },
+    { value: 6, label: '部分结算', color: '#909399' },
+    { value: 7, label: '结算完毕', color: '#67c23a' },
+  ];
+
+  //     return feeStatusCache.length > 0
+  // ? feeStatusCache
+  // : [
+  //     { value: 0, label: '录入状态', color: '#b8cdd7' },
+  //     { value: 1, label: '提交审核', color: '#ffc107' },
+  //     { value: 2, label: '审核通过', color: '#67c23a' },
+  //     { value: 3, label: '驳回', color: '#f56c6c' },
+  //     { value: 4, label: '申请修改', color: '#ff9900' },
+  //     { value: 5, label: '申请删除', color: '#ff9900' },
+  //     { value: 6, label: '部分结算', color: '#909399' },
+  //     { value: 7, label: '结算完毕', color: '#67c23a' },
+  //   ];
+};

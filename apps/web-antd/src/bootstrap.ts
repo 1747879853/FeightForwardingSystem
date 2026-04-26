@@ -18,6 +18,8 @@ import { initSetupVbenForm } from './adapter/form';
 import App from './app.vue';
 import { router } from './router';
 
+import { initEnumCache } from '#/utils/init-enum';
+
 async function bootstrap(namespace: string) {
   // 初始化组件适配器
   await initComponentAdapter();
@@ -47,6 +49,9 @@ async function bootstrap(namespace: string) {
 
   // 配置 pinia-tore
   await initStores(app, { namespace });
+
+  // 初始化枚举缓存（使用缓存，不强制刷新）
+  await initEnumCache();
 
   // 安装权限指令
   registerAccessDirective(app);

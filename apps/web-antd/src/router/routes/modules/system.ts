@@ -103,6 +103,16 @@ const routes: RouteRecordRaw[] = [
         },
         component: () => import('#/views/system/workflow/form.vue'),
       },
+      {
+        path: '/system/enumeration',
+        name: 'SystemEnumeration',
+        meta: {
+          icon: 'mdi:format-list-bulleted',
+          title: $t('system.enumeration.title'),
+          authority: abpPageAuthority('Admin'),
+        },
+        component: () => import('#/views/system/enumeration/list.vue'),
+      },
     ],
   },
 ];
