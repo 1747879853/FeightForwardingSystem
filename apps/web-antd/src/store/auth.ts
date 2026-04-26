@@ -113,13 +113,21 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout(redirect: boolean = true) {
+    let isLogoutTokenExpired = false;
     try {
       await logoutApi();
-    } catch {
-      // 不做任何处理
+    } catch (error: any) {
+      if (error?.response?.status === 401) {
+        isLogoutTokenExpired = true;
+      }
     }
     resetAllStores();
     accessStore.setLoginExpired(false);
+
+    if (isLogoutTokenExpired) {
+      await router.replace(preferences.app.defaultHomePath);
+      return;
+    }
 
     // 回登录页带上当前路由地址
     await router.replace({

@@ -115,6 +115,11 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
         throw error;
       }
 
+      // 登出接口 401 交给 authStore.logout 处理，避免 doReAuthenticate 再次调用 logout 造成递归
+      if (String(config?.url ?? '').includes('TokenAuth/LogOut')) {
+        throw error;
+      }
+
       // 判断是否启用了 refreshToken 功能
       if (!preferences.app.enableRefreshToken || config.__isRetryRequest) {
         await doReAuthenticate();
