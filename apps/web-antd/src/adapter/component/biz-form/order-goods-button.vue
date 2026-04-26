@@ -61,10 +61,12 @@ let rowKeyCounter = 0;
 const makeRowKey = () => `goods_${++rowKeyCounter}_${Date.now()}`;
 
 const openModal = () => {
-  pendingRows.value = (modelValue.value || []).map((item) => ({
+  const rows = (modelValue.value || []).map((item) => ({
     ...item,
     _rowKey: makeRowKey(),
   }));
+  // 打开弹窗时如果没有品名，默认补一行，避免再手动点击“添加品名”
+  pendingRows.value = rows.length ? rows : [{ _rowKey: makeRowKey() }];
   selectedRowKeys.value = [];
   modalVisible.value = true;
 };

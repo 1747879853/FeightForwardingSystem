@@ -41,7 +41,8 @@
       "supplier": "Supplier",
       "terminal": "Terminal",
       "trader": "Trader",
-      "warehouse": "Warehouse"
+      "warehouse": "Warehouse",
+      "factory": "Factory"
     },
     "keyword": "Keyword",
     "list": "Client List",
@@ -168,6 +169,44 @@
     "orderCodeGoodss": "Goods",
     "orderCtnSummaryLabel": "Total:",
     "orderCtns": "Container Types & Qty",
+    "dispatch": {
+      "title": "Dispatch",
+      "list": "Dispatch List",
+      "name": "Dispatch Record",
+      "add": "Add Dispatch",
+      "edit": "Edit Dispatch",
+      "teamId": "Fleet",
+      "requiredTime": "Required Time",
+      "dispatchTime": "Dispatch Date",
+      "factoryContact": "Factory Contact",
+      "factoryTel": "Factory Tel",
+      "yardId": "Yard",
+      "closingTime": "Closing Time",
+      "factoryId": "Factory",
+      "areaId": "Province/City",
+      "address": "Address",
+      "precautions": "Precautions",
+      "sortId": "Sort",
+      "remark": "Remark",
+      "ctnTable": "Container Types & Qty",
+      "addCtn": "Add Container",
+      "ctnCodeId": "Container Type",
+      "ctnNo": "Container No.",
+      "sealNo": "Seal No.",
+      "pkgs": "Pkgs",
+      "codePackageId": "Package",
+      "grossWeight": "Gross Weight",
+      "tareWeight": "Tare Weight",
+      "overLength": "Over Length",
+      "overWidth": "Over Width",
+      "overHeight": "Over Height",
+      "volume": "Volume",
+      "codeGoodsId": "Goods",
+      "bookingNo": "Booking No.",
+      "ctnRemark": "Remark",
+      "creationTime": "Creation Time",
+      "keyword": "Address/Remark/Precautions"
+    },
     "orderFee": {
       "ExchangeRate": "Exchange Rate",
       "amount": "Amount (incl. tax)",
@@ -342,14 +381,5 @@
     "warehouseId": "Warehouse",
     "yardId": "Yard"
   },
-  "title": "Sea Export"
-}
-Id": "Yard"
-  },
-  "title": "Sea Export"
-}
-xport"
-}
-},
   "title": "Sea Export"
 }

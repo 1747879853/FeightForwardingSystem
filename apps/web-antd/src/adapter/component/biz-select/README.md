@@ -7,6 +7,7 @@
 | 组件 | 用途 | 数据来源 |
 | --- | --- | --- |
 | `AreaCascader` | 行政区划级联选择（省/市/区） | `#/api/common/area` |
+| `AreaLeafCascader` | 行政区划级联选择（省/市/区），对外只存最后一级 `areaId` | `#/api/common/area` |
 | `CarrierSelect` | 承运人选择 | `#/api/system/base-data/carrier-admin` |
 | `ClientSelect` | 客户选择 | `#/api/sea-export/client-admin` |
 | `CodeFrtSelect` | 运费条款（FRT）编码选择 | `#/api/system/base-data/code-frt-admin` |
@@ -61,6 +62,23 @@
 | `q` | 仓库       |
 | `r` | 保险公司   |
 | `s` | 目的港代理 |
+| `u` | 工厂       |
+
+## AreaLeafCascader（推荐用于只存末级 areaId 场景）
+
+`AreaLeafCascader` 内部使用 `AreaCascader`，但对外 `v-model` 为**最后一级地区 code**（`string`）。  
+适合后端仅存 `areaId` 的业务：新增/编辑提交直接传 `areaId`，详情回显时组件会自动调用 `GetAreaAndParents` 还原路径。
+
+示例：
+
+```vue
+<AreaLeafCascader
+  v-model="formData.areaId"
+  :placeholder="$t('ui.placeholder.select')"
+/>
+```
+
+如果你需要完整路径数组（如 `['省code', '市code', '区code']`），请继续使用 `AreaCascader`。
 
 ## OrganizationSelect 扩展参数
 

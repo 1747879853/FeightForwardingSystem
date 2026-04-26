@@ -233,6 +233,11 @@ const getIndustryCategoryOptions = () => [
     value: 's',
     label: $t('seaExport.client.industryCategoryOptions.destinationAgent'),
   },
+  {
+    key: 20,
+    value: 'u',
+    label: $t('seaExport.client.industryCategoryOptions.factory'),
+  },
 ];
 
 const getCustomerIndustryCategoryOptions = () => [
@@ -317,6 +322,11 @@ const getSupplierIndustryCategoryOptions = () => [
     key: 19,
     value: 's',
     label: $t('seaExport.client.industryCategoryOptions.destinationAgent'),
+  },
+  {
+    key: 20,
+    value: 'u',
+    label: $t('seaExport.client.industryCategoryOptions.factory'),
   },
 ];
 

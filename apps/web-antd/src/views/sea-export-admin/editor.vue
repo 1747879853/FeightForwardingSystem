@@ -6,6 +6,7 @@ import Form from './form.vue';
 import orderFee from './orderFee/index.vue';
 import defaultInfo from './modules/default-info.vue';
 import changeOrder from '#/views/sea-export-admin/changeOrder/index.vue';
+import dispatch from '#/views/sea-export-admin/dispatch/index.vue';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
@@ -13,6 +14,7 @@ type FormSectionTabKey = 'basic' | 'party' | 'shipment' | 'port';
 type TabKey =
   | FormSectionTabKey
   | 'fee'
+  | 'dispatch'
   | 'billInfo'
   | 'issueRecord'
   | 'changeHistory';
@@ -52,6 +54,7 @@ const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'shipment', label: '服务详情', sectionKey: 'shipment' },
   { key: 'port', label: '单证信息', sectionKey: 'port' },
   { key: 'fee', label: feeName.value },
+  { key: 'dispatch', label: '派车' },
   { key: 'billInfo', label: '单据信息' },
   { key: 'issueRecord', label: '问题记录' },
   { key: 'changeHistory', label: '修改历史' },
@@ -132,6 +135,9 @@ const getContentTabStyle = (isActive: boolean) =>
           </KeepAlive>
           <KeepAlive include="OrderFee">
             <orderFee v-if="activeTab === 'fee'" />
+          </KeepAlive>
+          <KeepAlive include="SeaExportDispatch">
+            <dispatch v-if="activeTab === 'dispatch'" />
           </KeepAlive>
           <KeepAlive include="SeaExportAdminForm">
             <Form

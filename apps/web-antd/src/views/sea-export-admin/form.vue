@@ -744,6 +744,10 @@ const toOptionalNumber = (value: unknown) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
 };
+const hasValidUserId = (value: unknown) => {
+  const parsed = toOptionalNumber(value);
+  return parsed != null && parsed > 0;
+};
 const normalizeOrderUserItem = (item: SeaExportAdminApi.OrderUserAddDto) => ({
   ...item,
   userId: toOptionalNumber(item.userId),
@@ -1474,7 +1478,7 @@ const sanitizeOrderUsers = (
       }
       return dto as SeaExportAdminApi.OrderUserAddDto;
     })
-    .filter((item) => item.userAttribute != null || item.userId != null);
+    .filter((item) => hasValidUserId(item.userId));
 };
 
 /**
@@ -1975,8 +1979,14 @@ const handleSubmit = async () => {
         dto as SeaExportAdminApi.SeaExportAddDto,
       );
       message.success($t('ui.actionMessage.operationSuccess'));
-      if (typeof createdId === 'number' && createdId > 0) {
-        router.push(`/sea-exports/${createdId}/edit`);
+      const resolvedCreatedId =
+        (createdId as any)?.id ?? (createdId as any)?.result ?? createdId;
+      const createdIdStr =
+        resolvedCreatedId === null || resolvedCreatedId === undefined
+          ? ''
+          : String(resolvedCreatedId).trim();
+      if (createdIdStr) {
+        router.push(`/sea-exports/${createdIdStr}/edit`);
       } else {
         router.push('/sea-exports');
       }

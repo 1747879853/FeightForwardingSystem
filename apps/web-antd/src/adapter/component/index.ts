@@ -493,6 +493,7 @@ export type ComponentType =
   | 'ApiSelect'
   | 'ApiTreeSelect'
   | 'AreaCascader'
+  | 'AreaLeafCascader'
   | 'AutoComplete'
   | 'Cascader'
   | 'Checkbox'
@@ -575,6 +576,9 @@ async function initComponentAdapter() {
     }),
     AreaCascader: defineAsyncComponent(
       () => import('./biz-select/area-cascader.vue'),
+    ),
+    AreaLeafCascader: defineAsyncComponent(
+      () => import('./biz-select/area-leaf-cascader.vue'),
     ),
     AutoComplete,
     Cascader,

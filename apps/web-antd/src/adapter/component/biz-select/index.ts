@@ -1,4 +1,5 @@
 export { default as AreaCascader } from './area-cascader.vue';
+export { default as AreaLeafCascader } from './area-leaf-cascader.vue';
 export { default as CarrierSelect } from './carrier-select.vue';
 export { default as ClientSelect } from './client-select.vue';
 export { default as CodeFrtSelect } from './code-frt-select.vue';
