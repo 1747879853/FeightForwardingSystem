@@ -692,5 +692,29 @@
     "enable": "Enabled",
     "enumItems": "Enum Items",
     "detail": "Enumeration Detail"
+  },
+  "cache": {
+    "title": "Cache Management",
+    "totalCount": "Total Count",
+    "totalSize": "Total Size",
+    "clearAll": "Clear All Cache",
+    "viewDetail": "View Details",
+    "searchPlaceholder": "Search cache key or type...",
+    "noCache": "No cache data",
+    "noSearchResult": "No matching cache found",
+    "loadSuccess": "Cache data loaded successfully",
+    "loadFailed": "Failed to load cache data",
+    "clearSuccess": "Cache cleared successfully",
+    "clearFailed": "Failed to clear cache",
+    "clearAllSuccess": "All cache cleared",
+    "clearAllFailed": "Failed to clear all cache",
+    "confirmClearTitle": "Confirm Clear Cache",
+    "confirmClearContent": "Are you sure you want to clear cache \"{key}\"?",
+    "confirmClearAllTitle": "Confirm Clear All Cache",
+    "confirmClearAllContent": "This operation will clear all local cache data, including user configurations, enumeration data, etc. This action cannot be undone!",
+    "refreshPageTitle": "Notice",
+    "refreshPageContent": "Cache has been cleared. It is recommended to refresh the page to apply changes.",
+    "refreshPageTip": "Please refresh the page to apply configuration",
+    "detailTitle": "Cache Details"
   }
 }

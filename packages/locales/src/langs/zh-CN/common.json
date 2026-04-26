@@ -54,5 +54,6 @@
   "deselectAll": "取消全选",
   "show": "显示",
   "hide": "隐藏",
-  "saveSuccess": "保存成功"
+  "saveSuccess": "保存成功",
+  "close": "关闭"
 }
