@@ -662,40 +662,55 @@ export function useServiceItemFormSchema(): VbenFormSchema[] {
   });
 }
 
+/** 与 sea-export 一致：PortSelect 的 `portName` 由 `onPortName` 传出 */
+export type PortFormSchemaOptions = {
+  onPortName?: (fieldName: string, portName: string | undefined) => void;
+};
+
+function buildPortSelectProps(
+  fieldName: string,
+  onPortName?: PortFormSchemaOptions['onPortName'],
+) {
+  return {
+    allowClear: true,
+    placeholder: $t('ui.placeholder.select'),
+    ...(onPortName
+      ? {
+          onPortName: (portName: string | undefined) =>
+            onPortName(fieldName, portName),
+        }
+      : {}),
+  };
+}
+
 /**
  * 港口信息表单 schema
  * 货物流转节点按顺序展示：收货地 -> 起运港 -> 中转港（Tab切换1/2） -> 目的港 -> 交货地
  */
-export function usePortFormSchema(): VbenFormSchema[] {
+export function usePortFormSchema(
+  options?: PortFormSchemaOptions,
+): VbenFormSchema[] {
+  const { onPortName } = options ?? {};
   return [
     {
       component: 'PortSelect',
       fieldName: 'receivePortId',
       label: $t('seaImport.import.receivePortId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('receivePortId', onPortName),
       formItemClass: 'port-flow-item port-flow-pos--receive',
     },
     {
       component: 'PortSelect',
       fieldName: 'polId',
       label: $t('seaImport.import.polId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('polId', onPortName),
       formItemClass: 'port-flow-item port-flow-pos--pol',
     },
     {
       component: 'PortSelect',
       fieldName: 'poT1Id',
       label: $t('seaImport.import.poT1Id'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('poT1Id', onPortName),
       formItemClass:
         'port-flow-item port-flow-item--transit port-flow-pos--transit',
     },
@@ -703,10 +718,7 @@ export function usePortFormSchema(): VbenFormSchema[] {
       component: 'PortSelect',
       fieldName: 'poT2Id',
       label: $t('seaImport.import.poT2Id'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('poT2Id', onPortName),
       formItemClass:
         'port-flow-item port-flow-item--transit port-flow-item--transit-secondary port-flow-pos--transit',
     },
@@ -714,20 +726,14 @@ export function usePortFormSchema(): VbenFormSchema[] {
       component: 'PortSelect',
       fieldName: 'podId',
       label: $t('seaImport.import.podId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('podId', onPortName),
       formItemClass: 'port-flow-item port-flow-pos--pod',
     },
     {
       component: 'PortSelect',
       fieldName: 'deliverPortId',
       label: $t('seaImport.import.deliverPortId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('deliverPortId', onPortName),
       formItemClass:
         'port-flow-item port-flow-item--last port-flow-pos--deliver',
     },
@@ -779,10 +785,7 @@ export function usePortFormSchema(): VbenFormSchema[] {
       component: 'PortSelect',
       fieldName: 'signingPortId',
       label: $t('seaImport.import.signingPortId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('signingPortId', onPortName),
       formItemClass: 'hidden',
     },
   ];

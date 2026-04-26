@@ -467,16 +467,49 @@ const handleCollectionPaymentDeptChange = (value: number | undefined) => {
   collectionPaymentDeptId.value = value;
 };
 
+/** 港口选择字段与备注字段的对应；备注为空时自动填入选中港口的 portName */
+const PORT_ID_FIELD_TO_REMARK_FIELD: Record<string, string> = {
+  receivePortId: 'receivePortRemark',
+  polId: 'polRemark',
+  poT1Id: 'poT1Remark',
+  poT2Id: 'poT2Remark',
+  podId: 'podRemark',
+  deliverPortId: 'deliverPortRemark',
+};
+
+const isPortRemarkEmpty = (val: unknown) => {
+  if (val === undefined || val === null) return true;
+  return typeof val === 'string' && val.trim() === '';
+};
+
+const portFormApiRef = { current: null as any };
+
+const handlePortSelectPortName = (
+  fieldName: string,
+  portName: string | undefined,
+) => {
+  const remarkField = PORT_ID_FIELD_TO_REMARK_FIELD[fieldName];
+  if (!remarkField || !portName) return;
+  const api = portFormApiRef.current;
+  if (!api) return;
+  void api.getValues().then((v) => {
+    if (isPortRemarkEmpty(v[remarkField])) {
+      void api.setFieldValue(remarkField, portName);
+    }
+  });
+};
+
 /** 右侧表单：港口信息 */
 const [PortForm, portFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: usePortFormSchema().filter(
+  schema: usePortFormSchema({ onPortName: handlePortSelectPortName }).filter(
     (item) => !PORT_MOVED_TO_BASIC_FIELD_NAMES.has(item.fieldName),
   ),
   showDefaultActions: false,
   wrapperClass: 'port-flow-wrap grid-cols-5 gap-x-8',
 });
+portFormApiRef.current = portFormApi;
 
 const cargoSchema = useCargoFormSchema();
 const cargoInlineFieldNames = new Set(['cargoId', 'orderCodeGoodss']);

@@ -211,8 +211,6 @@ defineExpose({
 </template>
 
 <style scoped>
-
-
 @media (max-width: 900px) {
   .auth-login-card :deep(h2) {
     font-size: 30px;
@@ -294,12 +292,12 @@ defineExpose({
 
 .auth-login-form :deep(input[data-filled='true']) {
   color: rgb(255 255 255 / 96%) !important;
-  background: transparent !important;
+  background: rgb(255 255 255 / 10%);
   border-color: transparent !important;
 }
 
 .auth-login-form :deep(input.bg-background) {
-  background: transparent !important;
+  background: rgb(255 255 255 / 10%);
 }
 
 .auth-login-form :deep(.text-foreground\/60) {
@@ -350,7 +348,6 @@ defineExpose({
     用 inset 阴影盖住 Chrome 的 :-internal-autofill-selected 背景。
     注意这里会占用 box-shadow，所以外层 wrapper 的阴影要放在 .ant-input-affix-wrapper 上。
   */
-  box-shadow: 0 0 0 1000px rgb(255 255 255 / 1%) inset !important;
   box-shadow: 0 0 0 1000px rgb(255 255 255 / 1%) inset !important;
   transition: background-color 99999s ease-in-out 0s !important;
   -webkit-text-fill-color: rgb(255 255 255) !important;
