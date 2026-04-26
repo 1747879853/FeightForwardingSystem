@@ -1,5 +1,6 @@
 export * from './base-data';
 export * from './dept';
+export * from './enum-admin';
 export * from './menu';
 export * from './organization-unit';
 export * from './permission';

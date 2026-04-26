@@ -17,7 +17,8 @@
     "edit": "修改{0}",
     "create": "新增{0}",
     "delete": "删除{0}",
-    "view": "查看{0}"
+    "view": "查看{0}",
+    "batchDelete": "批量删除{0}"
   },
   "actionMessage": {
     "deleteConfirm": "确定删除 {0} 吗？",
@@ -25,7 +26,14 @@
     "deleteSuccess": "{0} 删除成功",
     "operationSuccess": "操作成功",
     "operationFailed": "操作失败",
-    "lengthLimit1": "选择数量只能为1个"
+    "lengthLimit1": "选择数量只能为1个",
+    "editSuccess": "修改成功",
+    "createSuccess": "新增成功",
+    "fetchFailed": "数据获取失败",
+    "uploadFailed": "上传失败",
+    "uploadSuccess": "上传成功",
+    "pleaseSelectData": "请选择数据",
+    "confirmDeleteSelected": "确认删除所选数据吗？"
   },
   "placeholder": {
     "input": "请输入",

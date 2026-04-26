@@ -675,5 +675,22 @@
     "deleteSuccess": "Delete Success",
     "confirmDelete": "Are you sure to delete this permission config?",
     "permissionSaved": "Permission Saved"
+  },
+  "enumeration": {
+    "title": "Enumeration Management",
+    "list": "Enumeration List",
+    "name": "Enumeration",
+    "enumName": "Enumeration Name",
+    "description": "Description",
+    "remark": "Remark",
+    "keyword": "Keyword",
+    "creationTime": "Creation Time",
+    "operation": "Operation",
+    "addEnumItem": "Add Enum Item",
+    "enumValue": "Enum Value",
+    "displayName": "Display Name",
+    "enable": "Enabled",
+    "enumItems": "Enum Items",
+    "detail": "Enumeration Detail"
   }
 }

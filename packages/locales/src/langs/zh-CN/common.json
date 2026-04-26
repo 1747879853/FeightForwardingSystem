@@ -16,6 +16,7 @@
   "disabled": "已禁用",
   "edit": "修改",
   "delete": "删除",
+  "view": "查看",
   "optionsSuccess": "操作成功",
   "optionsFailed": "操作失败",
   "deleteSuccess": "删除成功",
@@ -41,5 +42,12 @@
   "invalidFormat": "{0} 格式不正确",
   "sizeLimit": "文件大小不能超过 {0}MB",
   "previewWarning": "无法打开文件，没有可用的URL或预览地址",
-  "lengthBetween": "{0} 长度必须为 {1} 和 {2} 之间"
+  "lengthBetween": "{0} 长度必须为 {1} 和 {2} 之间",
+  "createTime": "创建时间",
+  "updateTime": "更新时间",
+  "upload": "上传",
+  "download": "下载",
+  "preview": "预览",
+  "index": "序号",
+  "tips": "提示"
 }
