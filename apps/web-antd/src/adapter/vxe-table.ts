@@ -13,6 +13,8 @@ import {
 } from '@vben/plugins/vxe-table';
 import { get, isFunction, isString } from '@vben/utils';
 
+import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
+
 import { objectOmit } from '@vueuse/core';
 import {
   Button,
@@ -230,7 +232,11 @@ setupVbenVxeTable({
         };
         function onChange(newVal: any) {
           if (newVal) {
-            row[column.field] = newVal;
+            // VXE Table 会自动更新 row[column.field]，无需手动赋值
+            console.log('currendIds change', newVal, props?.type);
+            getExchangeRateDetail(newVal).then((data) => {
+              row['exchangeRate'] = props?.type ? data.drValue : data.crValue;
+            });
           }
         }
         return h(CurrencySelect, finallyProps);
@@ -246,7 +252,7 @@ setupVbenVxeTable({
         };
         function onChange(newVal: any) {
           if (newVal) {
-            row[column.field] = newVal;
+            // row[column.field] = newVal;
           }
         }
         return h(ExchangeRateSelect, finallyProps);

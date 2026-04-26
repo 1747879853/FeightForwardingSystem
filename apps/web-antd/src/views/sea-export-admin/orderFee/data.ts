@@ -594,6 +594,9 @@ export function useOrderFeeColumns(
       minWidth: 100,
       cellRender: {
         name: 'CurrencySelect',
+        props: {
+          type: type,
+        },
       },
     },
     {
