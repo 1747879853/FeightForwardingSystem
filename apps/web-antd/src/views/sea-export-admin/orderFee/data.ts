@@ -785,16 +785,27 @@ export const getInvoiceStatusOptions = () => {
  * 获取费用状态选项（同步方法，用于表格列配置）
  */
 export const getFeeStatusOptions = () => {
-  return feeStatusCache.length > 0
-    ? feeStatusCache
-    : [
-        { value: 0, label: '录入状态', color: '#b8cdd7' },
-        { value: 1, label: '提交审核', color: '#ffc107' },
-        { value: 2, label: '审核通过', color: '#67c23a' },
-        { value: 3, label: '驳回', color: '#f56c6c' },
-        { value: 4, label: '申请修改', color: '#ff9900' },
-        { value: 5, label: '申请删除', color: '#ff9900' },
-        { value: 6, label: '部分结算', color: '#909399' },
-        { value: 7, label: '结算完毕', color: '#67c23a' },
-      ];
+  return [
+    { value: 0, label: '录入状态', color: '#b8cdd7' },
+    { value: 1, label: '提交审核', color: '#ffc107' },
+    { value: 2, label: '审核通过', color: '#67c23a' },
+    { value: 3, label: '驳回', color: '#f56c6c' },
+    { value: 4, label: '申请修改', color: '#ff9900' },
+    { value: 5, label: '申请删除', color: '#ff9900' },
+    { value: 6, label: '部分结算', color: '#909399' },
+    { value: 7, label: '结算完毕', color: '#67c23a' },
+  ];
+
+  //     return feeStatusCache.length > 0
+  // ? feeStatusCache
+  // : [
+  //     { value: 0, label: '录入状态', color: '#b8cdd7' },
+  //     { value: 1, label: '提交审核', color: '#ffc107' },
+  //     { value: 2, label: '审核通过', color: '#67c23a' },
+  //     { value: 3, label: '驳回', color: '#f56c6c' },
+  //     { value: 4, label: '申请修改', color: '#ff9900' },
+  //     { value: 5, label: '申请删除', color: '#ff9900' },
+  //     { value: 6, label: '部分结算', color: '#909399' },
+  //     { value: 7, label: '结算完毕', color: '#67c23a' },
+  //   ];
 };

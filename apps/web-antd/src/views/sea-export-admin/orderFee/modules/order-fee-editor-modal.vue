@@ -76,12 +76,27 @@ const handleFieldChange = async (fieldName: string) => {
   const values = await orderFeeFormApi.getValues();
   if (!values) return;
 
-  const unitPrice = Number(values.unitPrice) || 0;
+  let unitPrice = Number(values.unitPrice) || 0;
   const quantity = Number(values.quantity) || 0;
   const taxRate = Number(values.taxRate) || 0;
+  let amount = Number(values.amount) || 0;
 
-  // 计算含税金额
-  const amount = unitPrice * quantity;
+  // 根据变化的字段进行不同的计算逻辑
+  if (fieldName === 'amount') {
+    // 当金额变化时，根据数量和金额反推单价
+    if (quantity > 0) {
+      unitPrice = amount / quantity;
+      // 更新单价字段
+      orderFeeFormApi.setFieldValue(
+        'unitPrice',
+        parseFloat(unitPrice.toFixed(2)),
+      );
+    }
+  } else if (['unitPrice', 'quantity'].includes(fieldName)) {
+    // 当单价或数量变化时，重新计算金额
+    amount = unitPrice * quantity;
+    orderFeeFormApi.setFieldValue('amount', parseFloat(amount.toFixed(2)));
+  }
 
   // 计算不含税单价
   const noTaxUnitPrice =
@@ -90,46 +105,34 @@ const handleFieldChange = async (fieldName: string) => {
   // 计算不含税金额
   const noTaxAmount = noTaxUnitPrice * quantity;
 
-  // 根据变化的字段更新相关字段
-  if (['unitPrice', 'quantity'].includes(fieldName)) {
-    orderFeeFormApi.setFieldValue('amount', parseFloat(amount.toFixed(2)));
-    orderFeeFormApi.setFieldValue(
-      'noTaxUnitPrice',
-      parseFloat(noTaxUnitPrice.toFixed(4)),
-    );
-    orderFeeFormApi.setFieldValue(
-      'noTaxAmount',
-      parseFloat(noTaxAmount.toFixed(2)),
-    );
+  // 更新不含税相关字段
+  orderFeeFormApi.setFieldValue(
+    'noTaxUnitPrice',
+    parseFloat(noTaxUnitPrice.toFixed(4)),
+  );
+  orderFeeFormApi.setFieldValue(
+    'noTaxAmount',
+    parseFloat(noTaxAmount.toFixed(2)),
+  );
 
-    // 同步更新 currentFeeData，触发计算属性重新计算
-    if (currentFeeData.value) {
-      currentFeeData.value = {
-        ...currentFeeData.value,
-        unitPrice,
-        quantity,
-        amount: parseFloat(amount.toFixed(2)),
-        noTaxUnitPrice: parseFloat(noTaxUnitPrice.toFixed(4)),
-        noTaxAmount: parseFloat(noTaxAmount.toFixed(2)),
-      };
-    }
-  } else if (fieldName === 'taxRate') {
-    orderFeeFormApi.setFieldValue(
-      'noTaxUnitPrice',
-      parseFloat(noTaxUnitPrice.toFixed(4)),
-    );
-    orderFeeFormApi.setFieldValue(
-      'noTaxAmount',
-      parseFloat(noTaxAmount.toFixed(2)),
-    );
+  // 同步更新 currentFeeData，触发计算属性重新计算
+  if (currentFeeData.value) {
+    currentFeeData.value = {
+      ...currentFeeData.value,
+      unitPrice,
+      quantity,
+      amount: parseFloat(amount.toFixed(2)),
+      noTaxUnitPrice: parseFloat(noTaxUnitPrice.toFixed(4)),
+      noTaxAmount: parseFloat(noTaxAmount.toFixed(2)),
+    };
+  }
 
-    // 同步更新 currentFeeData，触发计算属性重新计算
+  // 如果变化的是税率，单独处理
+  if (fieldName === 'taxRate') {
     if (currentFeeData.value) {
       currentFeeData.value = {
         ...currentFeeData.value,
         taxRate,
-        noTaxUnitPrice: parseFloat(noTaxUnitPrice.toFixed(4)),
-        noTaxAmount: parseFloat(noTaxAmount.toFixed(2)),
       };
     }
   }
@@ -179,7 +182,7 @@ function useOrderFeeFormSchema() {
       fieldName: 'exchangeRate',
       label: $t('seaExport.export.orderFee.ExchangeRate'),
       componentProps: {
-        valueKey: originalFeeData?.paySide === 0 ? 'drValue' : 'crValue',
+        valueKey: originalFeeData.value?.paySide === 0 ? 'drValue' : 'crValue',
       },
     },
     {
@@ -212,6 +215,7 @@ function useOrderFeeFormSchema() {
         min: 0,
         precision: 2,
         style: { width: '100%' },
+        onChange: () => handleFieldChange('amount'),
       },
     },
     {

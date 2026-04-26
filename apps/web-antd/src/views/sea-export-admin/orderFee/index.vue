@@ -48,25 +48,6 @@ const pageLoading = ref(false);
 const submitting = ref(false);
 const transportOrderId = ref<string>();
 
-/** 左侧表单：相关方信息（发货人、收货人、通知人等） */
-// const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
-//   layout: 'vertical',
-//   compact: true,
-//   schema: usePartyInfoFormSchema(),
-//   showDefaultActions: false,
-//   wrapperClass: 'flex flex-col',
-// });
-
-/** DatePicker 需要的 dayjs 对象，API 返回的是字符串 */
-const toDayjs = (val: string | null | undefined) =>
-  val && dayjs(val).isValid() ? dayjs(val) : undefined;
-
-/** 提交时 dayjs/日期 转回 ISO 字符串 */
-const toDateString = (val: unknown) => {
-  if (val == null) return undefined;
-  const d = dayjs(val as string | Date);
-  return d.isValid() ? d.toISOString() : undefined;
-};
 /** ISO 字符串转正常日期格式 */
 const formatNormalDate = (
   val: string | null | undefined,
@@ -75,84 +56,6 @@ const formatNormalDate = (
   if (!val) return '--';
   const d = dayjs(val);
   return d.isValid() ? d.format(format) : '--';
-};
-
-const flattenDetail = (
-  detail: SeaExportAdminApi.SeaExportDto,
-): Record<string, any> => {
-  const to = detail.transportOrder;
-  return {
-    countryName: (detail as any).countryName,
-    laneName: (detail as any).laneName,
-    blType: detail.blType,
-    billType: detail.billType,
-    issueType: detail.issueType,
-    vessel: detail.vessel,
-    innerVoyno: detail.innerVoyno,
-    carrierId: detail.carrierId,
-    secondNotifierId: detail.secondNotifierId,
-    secondNotifierContent: detail.secondNotifierContent,
-    podAgentId: detail.podAgentId,
-    podAgentContent: detail.podAgentContent,
-    bookingAgentId: detail.bookingAgentId,
-    shipAgentId: detail.shipAgentId,
-    yardId: detail.yardId,
-    noBillEnum: detail.noBillEnum,
-    copyNoBillEnum: detail.copyNoBillEnum,
-    goodsCompleteTime: toDayjs(detail.goodsCompleteTime),
-    etd: toDayjs(detail.etd),
-    eta: toDayjs(detail.eta),
-    closingTime: toDayjs(detail.closingTime),
-    closeVgmTime: toDayjs(detail.closeVgmTime),
-    closeDocTime: toDayjs(detail.closeDocTime),
-    closeManifestTime: toDayjs(detail.closeManifestTime),
-    signingTime: toDayjs(detail.signingTime),
-    sortId: detail.sortId,
-    remark: detail.remark,
-    commissionNum: to?.commissionNum,
-    mblNum: to?.mblNum,
-    bookingNum: to?.bookingNum,
-    accountDate: toDayjs(to?.accountDate),
-    settlementDate: toDayjs(to?.settlementDate),
-    codeSourceId: to?.codeSourceId,
-    isBusinessLocking: to?.isBusinessLocking,
-    feeLocked: to?.feeLocked,
-    codeFrtId: to?.codeFrtId,
-    codeServiceId: to?.codeServiceId,
-    tradeTermsType: to?.tradeTermsType,
-    polId: detail.polId,
-    polRemark: detail.polRemark,
-    podId: detail.podId,
-    podRemark: detail.podRemark,
-    poT1Id: detail.poT1Id,
-    poT1Remark: detail.poT1Remark,
-    poT2Id: detail.poT2Id,
-    poT2Remark: detail.poT2Remark,
-    receivePortId: detail.receivePortId,
-    receivePortRemark: detail.receivePortRemark,
-    deliverPortId: detail.deliverPortId,
-    deliverPortRemark: detail.deliverPortRemark,
-    signingPortId: detail.signingPortId,
-    clientId: to?.clientId,
-    teamId: to?.teamId,
-    custBrokerId: to?.custBrokerId,
-    warehouseId: to?.warehouseId,
-    insuranceId: to?.insuranceId,
-    consigneeId: to?.consigneeId,
-    consigneeContent: to?.consigneeContent,
-    shipperId: to?.shipperId,
-    shipperContent: to?.shipperContent,
-    notifierId: to?.notifierId,
-    notifierContent: to?.notifierContent,
-    marks: to?.marks,
-    noPkgs: to?.noPkgs,
-    goodsDes: to?.goodsDes,
-    kgs: to?.kgs,
-    cbm: to?.cbm,
-    internalRemark: to?.internalRemark,
-    orderCodeGoodss: to?.orderCodeGoodss ?? [],
-    orderUsers: to?.orderUsers ?? [],
-  };
 };
 
 const formValues = ref<Record<string, any>>();
