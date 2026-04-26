@@ -391,7 +391,7 @@ const loadSeaExportData = async () => {
     transportOrderId.value = detail.transportOrder?.id;
     formValues.value = detail;
     to.value = detail.transportOrder;
-    console.log('detail', formValues.value);
+    // console.log('detail', formValues.value);
     setDisplayList();
   } finally {
     pageLoading.value = false;
@@ -425,7 +425,7 @@ const getOrderFeeNumber = async () => {
       currencyName,
       currencyId,
     };
-    console.log('recAmountMap', recAmountMap);
+    //console.log('recAmountMap', recAmountMap);
   });
   let dataSourcePay = res.items.filter((item) => item.paySide === 1);
   payAmountMap.value = {};
@@ -448,7 +448,7 @@ const getOrderFeeNumber = async () => {
       currencyName,
       currencyId,
     };
-    console.log('payAmountMap', payAmountMap);
+    // console.log('payAmountMap', payAmountMap);
   });
 };
 onMounted(() => {

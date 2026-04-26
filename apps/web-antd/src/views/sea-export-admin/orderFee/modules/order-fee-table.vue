@@ -40,7 +40,7 @@ import {
 
 import { GetDetail } from '#/api/sea-export/change-order-admin';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { useOrderFeeColumns } from '../data';
+import { useOrderFeeColumns, initOrderFeeEnumCache } from '../data';
 import OrderFeeEditorModal from './order-fee-editor-modal.vue';
 
 const dataSource = defineModel<OrderFeeAdminApi.OrderFeeDto[]>({
@@ -170,7 +170,7 @@ const queryTableData = async () => {
       item.taskStatus = '';
     }
   });
-  console.log('res', res.items);
+  //  console.log('res', res.items);
   dataSource.value = normalizeOrderFeeWithRowKey(res.items);
 };
 const tmpAdd = ref(false);
@@ -193,7 +193,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
     proxyConfig: {
       ajax: {
         query: async () => {
-          console.log('addRowData', tmpAdd.value);
+          //      console.log('addRowData', tmpAdd.value);
           if (tmpAdd.value) {
             tmpAdd.value = false;
             console.log('addRowDataing');
@@ -235,7 +235,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
 
     // 单选模式下的选择事件（如果使用 radio 类型）
     radioChange: ({ row }) => {
-      console.log('单选选中:', row);
+      //    console.log('单选选中:', row);
     },
   },
 });
@@ -289,7 +289,7 @@ const showModifyWithRemark = () => {
     cancelText: $t('common.cancel'),
     async onOk() {
       await nextTick(); // 等待 Vue 响应式更新完成
-      console.log('remark onOk:', modalRemark);
+      //    console.log('remark onOk:', modalRemark);
       submitModify(modalRemark);
     },
     onCancel() {
@@ -308,7 +308,7 @@ const showDeleteWithRemark = () => {
           modelValue: modalRemark,
           onChange: (val: any) => {
             modalRemark = val.target?.value || val;
-            console.log('Textarea changed:', modalRemark);
+            //     console.log('Textarea changed:', modalRemark);
           },
           rows: 3,
           placeholder: $t('auditApproval.task.remarkDeletePlaceholder'),
@@ -323,7 +323,7 @@ const showDeleteWithRemark = () => {
     cancelText: $t('common.cancel'),
     async onOk() {
       await nextTick(); // 等待 Vue 响应式更新完成
-      console.log('remark onOk:', modalRemark);
+      //  console.log('remark onOk:', modalRemark);
       submitDelete(modalRemark);
     },
     onCancel() {
@@ -332,7 +332,7 @@ const showDeleteWithRemark = () => {
   });
 };
 const SubmittedOther = async (e: any) => {
-  console.log('SubmittedOther', e);
+  //console.log('SubmittedOther', e);
   switch (e.key) {
     case 'modify': {
       openModifyModal();
@@ -414,7 +414,7 @@ const openModifyModal = () => {
 
   // 打开模态框，传递选中的费用数据和合计数据
   const selectedFee = list[0];
-  console.log('selectedFee', selectedFee);
+  // console.log('selectedFee', selectedFee);
 
   modifyModalRef.value?.modalApi.setData(selectedFee);
   modifyModalRef.value?.modalApi.open();
@@ -425,7 +425,7 @@ const handleModalConfirm = (data: {
   originalData: OrderFeeAdminApi.OrderFeeDto | null;
   updatedData: OrderFeeAdminApi.OrderFeeDto | null;
 }) => {
-  console.log('模态框确认:', data);
+  //console.log('模态框确认:', data);
   let list = [data.updatedData];
   // TODO: 这里可以添加保存逻辑，调用API更新费用
   let ModifyOrderFeeDto = {
@@ -540,7 +540,7 @@ const removeSelectedRows = () => {
     .filter((row) => keysSet.has((row as any)._rowKey))
     .filter((row) => (row as any).id !== '')
     .map((row) => (row as any).id);
-  console.log('needDelIds', needDelIds);
+  //console.log('needDelIds', needDelIds);
   dataSource.value = list;
   delRow();
   selectedRowKeys.value = [];
@@ -583,9 +583,11 @@ const feeCodeList = ref<FeeCodeAdminApi.FeeCodeDto[]>([]);
 const getFeeCodeList = async () => {
   let res = (await getFeeCodePagedList({ PageIndex: 1, PageSize: 1000 })) || {};
   feeCodeList.value = res.items || [];
-  console.log('feeCodeList', feeCodeList.value);
+  //console.log('feeCodeList', feeCodeList.value);
 };
 onMounted(() => {
+  // 初始化枚举数据缓存
+  initOrderFeeEnumCache();
   getTableDate();
   getFeeCodeList();
 });

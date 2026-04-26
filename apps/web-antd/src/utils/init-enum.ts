@@ -250,6 +250,8 @@ async function getAllEnumNames(): Promise<string[]> {
   // 示例：这里返回一些常见的枚举名称
   // 请根据实际业务需求修改此列表
   return [
+    'InvoiceStatus',
+    'FeeStatus',
     // 'OrderStatus',
     // 'PaymentMethod',
     // 'ShippingType',
