@@ -113,6 +113,16 @@ const routes: RouteRecordRaw[] = [
         },
         component: () => import('#/views/system/enumeration/list.vue'),
       },
+      {
+        path: '/system/cache',
+        name: 'SystemCache',
+        meta: {
+          icon: 'mdi:database-outline',
+          title: $t('system.cache.title'),
+          authority: abpPageAuthority('Admin'),
+        },
+        component: () => import('#/views/system/cache/index.vue'),
+      },
     ],
   },
 ];

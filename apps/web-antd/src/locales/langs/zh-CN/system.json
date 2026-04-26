@@ -693,5 +693,29 @@
     "enable": "是否启用",
     "enumItems": "枚举值列表",
     "detail": "枚举详情"
+  },
+  "cache": {
+    "title": "缓存管理",
+    "totalCount": "缓存总数",
+    "totalSize": "总大小",
+    "clearAll": "清空所有缓存",
+    "viewDetail": "查看详情",
+    "searchPlaceholder": "搜索缓存键名或类型...",
+    "noCache": "暂无缓存数据",
+    "noSearchResult": "未找到匹配的缓存",
+    "loadSuccess": "缓存数据加载成功",
+    "loadFailed": "缓存数据加载失败",
+    "clearSuccess": "缓存清除成功",
+    "clearFailed": "缓存清除失败",
+    "clearAllSuccess": "所有缓存已清空",
+    "clearAllFailed": "清空缓存失败",
+    "confirmClearTitle": "确认清除缓存",
+    "confirmClearContent": "确定要清除缓存 \"{key}\" 吗？",
+    "confirmClearAllTitle": "确认清空所有缓存",
+    "confirmClearAllContent": "此操作将清空所有本地缓存数据，包括用户配置、枚举数据等。此操作不可恢复！",
+    "refreshPageTitle": "提示",
+    "refreshPageContent": "缓存已清空，建议刷新页面以应用更改。",
+    "refreshPageTip": "请刷新页面以使配置生效",
+    "detailTitle": "缓存详情"
   }
 }

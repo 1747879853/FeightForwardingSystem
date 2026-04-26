@@ -96,7 +96,7 @@ export function useDisplayFieldConfig(
   const handleConfigConfirm = async (newConfig: DisplayFieldConfig[]) => {
     displayFieldConfig.value = newConfig;
     saveUserConfig(newConfig);
-    message.success($t('seaExport.export.saveSuccess'));
+    message.success($t('common.saveSuccess'));
   };
 
   return {
