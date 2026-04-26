@@ -47,6 +47,8 @@ const formSchema = computed((): VbenFormSchema[] => {
   <AuthenticationLogin
     :form-schema="formSchema"
     :loading="authStore.loginLoading"
+    sub-title="Freight Forwarding System"
+    title="货代管理系统"
     @submit="authStore.authLogin"
   />
 </template>
