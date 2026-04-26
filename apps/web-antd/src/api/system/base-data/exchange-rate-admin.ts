@@ -37,7 +37,7 @@ export namespace ExchangeRateAdminApi {
   /** 汇率详情 */
   export interface ExchangeRateDto {
     id: number;
-    currencyId?: number;
+    currencyId?: number | string;
     drValue?: number;
     crValue?: number;
     customValue?: number;
