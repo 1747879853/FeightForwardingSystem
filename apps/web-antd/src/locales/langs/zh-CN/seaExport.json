@@ -433,7 +433,12 @@
       "receivableAmount": "应收",
       "payUnSettledAmount": "未付",
       "receivableUnSettledAmount": "未收"
-    }
+    },
+    "configureDisplayFields": "配置显示字段",
+    "dragToReorder": "使用箭头调整显示顺序",
+
+    "useSwitchToShowHide": "使用开关控制字段的显示/隐藏",
+    "useArrowsToReorder": "使用上下箭头调整字段顺序"
   },
   "client": {
     "base": "基础信息",
@@ -660,6 +665,17 @@
       "codeSource": "业务来源",
       "user": "销售人员",
       "orgs": "分公司"
-    }
+    },
+    "configureDisplayFields": "配置显示字段",
+    "dragToReorder": "拖拽或使用箭头调整显示顺序",
+    "useSwitchToShowHide": "使用开关控制字段的显示/隐藏",
+    "useArrowsToReorder": "使用上下箭头调整字段顺序",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "atLeastOneField": "请至少选择一个字段",
+    "show": "显示",
+    "hide": "隐藏",
+    "tips": "提示",
+    "saveSuccess": "保存成功"
   }
 }

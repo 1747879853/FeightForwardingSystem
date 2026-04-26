@@ -49,5 +49,10 @@
   "download": "下载",
   "preview": "预览",
   "index": "序号",
-  "tips": "提示"
+  "tips": "提示",
+  "selectAll": "全选",
+  "deselectAll": "取消全选",
+  "show": "显示",
+  "hide": "隐藏",
+  "saveSuccess": "保存成功"
 }

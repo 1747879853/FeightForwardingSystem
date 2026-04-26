@@ -379,7 +379,18 @@
     "vesselVoyage": "Vessel/Voyage",
     "volume": "Volume",
     "warehouseId": "Warehouse",
-    "yardId": "Yard"
+    "yardId": "Yard",
+    "configureDisplayFields": "Configure Display Fields",
+    "dragToReorder": "Drag or use arrows to reorder",
+    "useSwitchToShowHide": "Use switches to show/hide fields",
+    "useArrowsToReorder": "Use up/down arrows to adjust field order",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "atLeastOneField": "Please select at least one field",
+    "show": "Show",
+    "hide": "Hide",
+    "tips": "Tips",
+    "saveSuccess": "Save Successful"
   },
   "title": "Sea Export"
 }
