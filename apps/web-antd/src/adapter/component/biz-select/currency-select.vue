@@ -35,7 +35,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  labelKey: 'cnName',
+  labelKey: 'code',
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],

@@ -597,38 +597,52 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
   ];
 }
 
+export type PortFormSchemaOptions = {
+  onPortName?: (fieldName: string, portName: string | undefined) => void;
+};
+
+function buildPortSelectProps(
+  fieldName: string,
+  onPortName?: PortFormSchemaOptions['onPortName'],
+) {
+  return {
+    allowClear: true,
+    placeholder: $t('ui.placeholder.select'),
+    ...(onPortName
+      ? {
+          onPortName: (portName: string | undefined) =>
+            onPortName(fieldName, portName),
+        }
+      : {}),
+  };
+}
+
 /**
  * 港口信息表单 schema
  * 每个港口下方紧跟备注字段（无 label），3 列布局
  */
-export function usePortFormSchema(): VbenFormSchema[] {
+export function usePortFormSchema(
+  options?: PortFormSchemaOptions,
+): VbenFormSchema[] {
+  const { onPortName } = options ?? {};
   return [
     {
       component: 'PortSelect',
       fieldName: 'polId',
       label: $t('seaExport.export.polId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('polId', onPortName),
     },
     {
       component: 'PortSelect',
       fieldName: 'podId',
       label: $t('seaExport.export.podId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('podId', onPortName),
     },
     {
       component: 'PortSelect',
       fieldName: 'poT1Id',
       label: $t('seaExport.export.poT1Id'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('poT1Id', onPortName),
     },
     {
       component: 'Textarea',
@@ -652,28 +666,19 @@ export function usePortFormSchema(): VbenFormSchema[] {
       component: 'PortSelect',
       fieldName: 'poT2Id',
       label: $t('seaExport.export.poT2Id'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('poT2Id', onPortName),
     },
     {
       component: 'PortSelect',
       fieldName: 'receivePortId',
       label: $t('seaExport.export.receivePortId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('receivePortId', onPortName),
     },
     {
       component: 'PortSelect',
       fieldName: 'deliverPortId',
       label: $t('seaExport.export.deliverPortId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('deliverPortId', onPortName),
     },
     {
       component: 'Textarea',
@@ -697,10 +702,7 @@ export function usePortFormSchema(): VbenFormSchema[] {
       component: 'PortSelect',
       fieldName: 'signingPortId',
       label: $t('seaExport.export.signingPortId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      componentProps: buildPortSelectProps('signingPortId', onPortName),
     },
   ];
 }
