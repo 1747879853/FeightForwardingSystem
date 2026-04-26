@@ -64,10 +64,21 @@ const logoSrc = computed(() => {
     <!-- 左侧认证面板 -->
 
     <!-- 中心认证面板 -->
-    <div class="flex-center relative w-full justify-end pr-32">
-      <div class="login-background absolute left-0 top-0 size-full"></div>
+    <div class="auth-page-content flex-center relative w-full justify-end">
+      <div class="login-background absolute left-0 top-0 size-full">
+        <video
+          class="login-background-video"
+          src="../../../common-ui/src/ui/authentication/background.mp4"
+          autoplay
+          loop
+          muted
+          playsinline
+          preload="auto"
+        ></video>
+        <div class="login-background-mask"></div>
+      </div>
       <AuthenticationFormView
-        class="auth-form-bg shadow-primary/5 shadow-float w-full rounded-3xl md:w-2/3 lg:w-1/2 xl:w-[24%]"
+        class="auth-form-bg shadow-primary/5 shadow-float w-full max-w-[430px] rounded-[18px]"
         data-side="bottom"
       >
         <template v-if="copyright" #copyright>
@@ -84,12 +95,75 @@ const logoSrc = computed(() => {
 </template>
 
 <style scoped>
+.auth-page-content {
+  min-height: 100vh;
+  padding: 0 96px;
+  padding-left: 24px;
+}
+
 .login-background {
-  background: url('./assets/img/login-background.jpg') no-repeat center center;
-  background-size: cover;
+  overflow: hidden;
+  background: #071427;
+}
+
+.login-background-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.login-background-mask {
+  position: absolute;
+  inset: 0;
+
+  /* background:
+    radial-gradient(
+      circle at 72% 48%,
+      rgb(65 110 190 / 18%),
+      transparent 34%
+    ),
+    linear-gradient(
+      90deg,
+      rgb(5 12 28 / 55%),
+      rgb(5 12 28 / 30%) 42%,
+      rgb(5 12 28 / 70%)
+    ),
+    rgb(3 10 24 / 28%);
+  backdrop-filter: blur(1px); */
 }
 
 .auth-form-bg {
-  background-color: rgb(255 255 255 / 95%) !important;
+  z-index: 1;
+  padding: 48px 48px 40px !important;
+  color: rgb(255 255 255 / 96%);
+  background: transparent;
+  border: 1px solid rgb(255 255 255 / 22%);
+  backdrop-filter: blur(4px);
+}
+
+.auth-form-bg :deep(input:-webkit-autofill),
+.auth-form-bg :deep(input:-webkit-autofill:hover),
+.auth-form-bg :deep(input:-webkit-autofill:focus),
+.auth-form-bg :deep(input:-webkit-autofill:active) {
+  -webkit-text-fill-color: rgb(255 255 255 / 96%) !important;
+  caret-color: #fff !important;
+  background-color: transparent !important;
+  box-shadow: 0 0 0 1000px rgb(255 255 255 / 10%) inset !important;
+  box-shadow: 0 0 0 1000px rgb(255 255 255 / 10%) inset !important;
+  transition: background-color 99999s ease-in-out 0s !important;
+}
+
+@media (max-width: 900px) {
+  .auth-page-content {
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .auth-form-bg {
+    max-width: 420px;
+    padding: 42px 32px 36px !important;
+  }
 }
 </style>

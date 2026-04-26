@@ -122,7 +122,7 @@ function handleDragMoving(e: MouseEvent | TouchEvent) {
       barEl.setWidth(`${moveX + actionWidth / 2}px`);
     } else if (moveX > offset) {
       actionEl.setLeft(`${wrapperWidth - actionWidth}px`);
-      barEl.setWidth(`${wrapperWidth - actionWidth / 2}px`);
+      barEl.setWidth(`${wrapperWidth}px`);
       if (!props.isSlot) {
         checkPass();
       }
@@ -156,7 +156,7 @@ function handleDragOver(e: MouseEvent | TouchEvent) {
       }
     } else {
       actionEl.setLeft(`${wrapperWidth - actionWidth}px`);
-      barEl.setWidth(`${wrapperWidth - actionWidth / 2}px`);
+      barEl.setWidth(`${wrapperWidth}px`);
       checkPass();
     }
     state.isMoving = false;

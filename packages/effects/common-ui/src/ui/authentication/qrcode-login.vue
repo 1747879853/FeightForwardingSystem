@@ -70,7 +70,7 @@ function goToLogin() {
 </script>
 
 <template>
-  <div>
+  <div class="auth-qrcode-login-card">
     <Title>
       <slot name="title">
         {{ title || $t('authentication.welcomeBack') }} 📱
@@ -84,7 +84,7 @@ function goToLogin() {
       </template>
     </Title>
 
-    <div class="flex-col-center mt-6">
+    <div class="auth-qrcode-panel flex-col-center mt-6">
       <img :src="qrcode" alt="qrcode" class="w-1/2" />
       <p class="text-muted-foreground mt-4 text-sm">
         <slot name="description">
@@ -95,7 +95,7 @@ function goToLogin() {
 
     <VbenButton
       v-if="showBack"
-      class="mt-4 w-full"
+      class="auth-qrcode-login-back mt-4 w-full"
       variant="outline"
       @click="goToLogin()"
     >
@@ -103,3 +103,63 @@ function goToLogin() {
     </VbenButton>
   </div>
 </template>
+
+<style scoped>
+.auth-qrcode-login-card {
+  width: 100%;
+  color: rgb(255 255 255 / 96%);
+}
+
+.auth-qrcode-login-card :deep(h2) {
+  color: rgb(255 255 255 / 96%);
+  text-shadow: 0 4px 20px rgb(0 0 0 / 25%);
+}
+
+.auth-qrcode-login-card :deep(.text-muted-foreground) {
+  color: rgb(255 255 255 / 58%);
+}
+
+.auth-qrcode-panel {
+  padding: 24px 0 18px;
+  background: rgb(255 255 255 / 9%);
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 12%),
+    0 10px 28px rgb(0 0 0 / 8%);
+  backdrop-filter: blur(10px);
+}
+
+.auth-qrcode-panel img {
+  padding: 10px;
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 10px;
+  box-shadow: 0 10px 26px rgb(0 0 0 / 12%);
+}
+
+.auth-qrcode-login-back {
+  height: 48px;
+  color: rgb(255 255 255 / 96%);
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 18%),
+    0 10px 28px rgb(0 0 0 / 10%);
+  backdrop-filter: blur(12px);
+}
+
+.auth-qrcode-login-back:hover {
+  background: rgb(255 255 255 / 16%);
+  border-color: rgb(255 255 255 / 24%);
+}
+
+.auth-qrcode-login-back:focus-visible {
+  border-color: rgb(255 255 255 / 26%);
+  box-shadow:
+    0 0 0 2px rgb(255 255 255 / 14%),
+    inset 0 1px 0 rgb(255 255 255 / 18%),
+    0 10px 28px rgb(0 0 0 / 12%);
+}
+</style>

@@ -55,17 +55,17 @@ export function useFormSchema(): VbenFormSchema[] {
     {
       component: 'CurrencySelect',
       fieldName: 'currencyId',
-      label: $t('system.basicData.feeCode.currencyId'),
+      label: $t('system.basicData.feeCode.defaultCurrency'),
       defaultValue: undefined,
     },
-    {
-      component: 'Input',
-      fieldName: 'defaultCurrency',
-      label: $t('system.basicData.feeCode.defaultCurrency'),
-      componentProps: {
-        maxLength: 50,
-      },
-    },
+    // {
+    //   component: 'Input',
+    //   fieldName: 'defaultCurrency',
+    //   label: $t('system.basicData.feeCode.defaultCurrency'),
+    //   componentProps: {
+    //     maxLength: 50,
+    //   },
+    // },
     {
       component: 'Input',
       fieldName: 'defaultUnit',
