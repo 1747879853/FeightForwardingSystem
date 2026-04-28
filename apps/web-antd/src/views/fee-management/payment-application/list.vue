@@ -41,6 +41,11 @@ const handleRowDblclick = ({
 }: {
   row: PaymentApplicationAdminApi.PaymentApplicationDto;
 }) => {
+  // 设置当前行为选中状态，显示选中色
+  const grid = gridApi.grid as any;
+  if (grid && grid.setRadioRow) {
+    grid.setRadioRow(row);
+  }
   router.push(`/fee-management/payment-application/${row.id}/edit`);
 };
 

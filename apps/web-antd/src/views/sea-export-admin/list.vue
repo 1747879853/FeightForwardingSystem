@@ -24,6 +24,11 @@ const handleRowDblclick = ({
 }: {
   row: SeaExportAdminApi.SeaExportDto;
 }) => {
+  // 设置当前行为选中状态，显示选中色
+  const grid = gridApi.grid as any;
+  if (grid && grid.setRadioRow) {
+    grid.setRadioRow(row);
+  }
   router.push(`/sea-exports/${row.id}/edit`);
 };
 
