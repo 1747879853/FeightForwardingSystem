@@ -560,3 +560,73 @@ onMounted(() => {
     />
   </Page>
 </template>
+<style scoped lang="scss">
+.select-name {
+  flex-direction: row-reverse;
+}
+
+.total-amount {
+  display: flex;
+  flex-wrap: wrap;
+  background: #fff;
+
+  .split {
+    color: #33333345;
+  }
+}
+
+.green {
+  color: #00b96b;
+}
+
+.yellow {
+  color: #ffc107;
+}
+
+.blue {
+  color: #007bff;
+}
+
+:deep(.green-btn) {
+  color: #fff;
+  background-color: #00b96b !important;
+  border-color: #00b96b !important;
+}
+
+/* 如果需要处理悬停状态 */
+:deep(.green-btn:hover),
+:deep(.green-btn:focus) {
+  color: #fff;
+  background-color: #009a55 !important;
+  border-color: #009a55 !important;
+}
+
+:deep(.yellow-btn) {
+  color: #fff;
+  background-color: #ffc107 !important;
+  border-color: #ffc107 !important;
+}
+
+/* 如果需要处理悬停状态 */
+:deep(.yellow-btn:hover),
+:deep(.yellow-btn:focus) {
+  color: #fff;
+  background-color: #ffc107 !important;
+  border-color: #ffc107 !important;
+}
+
+/* 悬停状态 */
+.green-dropdown-btn.ant-btn:hover,
+.green-dropdown-btn.ant-btn:focus {
+  color: #fff;
+  background-color: #73d13d;
+  border-color: #73d13d;
+}
+
+/* 激活/按下状态 */
+.green-dropdown-btn.ant-btn:active {
+  color: #fff;
+  background-color: #389e0d;
+  border-color: #389e0d;
+}
+</style>

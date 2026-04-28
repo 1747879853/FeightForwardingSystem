@@ -1267,10 +1267,10 @@ function formatMonth(val: string | undefined | null): string {
                 :key="item.name"
               >
                 <span class="flex">{{ item.name }}</span>
-                <span class="ml-1 flex font-medium" :class="item.color">{{
+                <span class="ml-2 flex font-medium" :class="item.color">{{
                   item.value
                 }}</span>
-                <span class="split mx-2 flex" v-show="(index + 1) % 5 === 0"
+                <span class="split mx-3 flex" v-show="(index + 1) % 5 === 0"
                   >|
                 </span>
               </div>
@@ -1306,7 +1306,21 @@ function formatMonth(val: string | undefined | null): string {
 </template>
 
 <style scoped lang="scss">
+@media (max-width: 1200px) {
+  .main-layout {
+    flex-direction: column;
+  }
+
+  .left-column,
+  .center-column,
+  .right-column {
+    width: 100%;
+  }
+}
+
 .total-amount {
+  display: flex;
+  flex-wrap: wrap;
   background: #fff;
 
   .split {
@@ -1324,6 +1338,49 @@ function formatMonth(val: string | undefined | null): string {
 
 .blue {
   color: #007bff;
+}
+
+:deep(.green-btn) {
+  color: #fff;
+  background-color: #00b96b !important;
+  border-color: #00b96b !important;
+}
+
+/* 如果需要处理悬停状态 */
+:deep(.green-btn:hover),
+:deep(.green-btn:focus) {
+  color: #fff;
+  background-color: #009a55 !important;
+  border-color: #009a55 !important;
+}
+
+:deep(.yellow-btn) {
+  color: #fff;
+  background-color: #ffc107 !important;
+  border-color: #ffc107 !important;
+}
+
+/* 如果需要处理悬停状态 */
+:deep(.yellow-btn:hover),
+:deep(.yellow-btn:focus) {
+  color: #fff;
+  background-color: #ffc107 !important;
+  border-color: #ffc107 !important;
+}
+
+/* 悬停状态 */
+.green-dropdown-btn.ant-btn:hover,
+.green-dropdown-btn.ant-btn:focus {
+  color: #fff;
+  background-color: #73d13d;
+  border-color: #73d13d;
+}
+
+/* 激活/按下状态 */
+.green-dropdown-btn.ant-btn:active {
+  color: #fff;
+  background-color: #389e0d;
+  border-color: #389e0d;
 }
 
 .payment-app-form {
@@ -1537,17 +1594,5 @@ function formatMonth(val: string | undefined | null): string {
   font-size: 13px;
   color: #8c8c8c;
   border-top: 1px solid #f0f0f0;
-}
-
-@media (max-width: 1200px) {
-  .main-layout {
-    flex-direction: column;
-  }
-
-  .left-column,
-  .center-column,
-  .right-column {
-    width: 100%;
-  }
 }
 </style>
