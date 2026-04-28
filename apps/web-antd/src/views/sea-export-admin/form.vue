@@ -470,7 +470,7 @@ const handleCollectionPaymentDeptChange = (value: number | undefined) => {
   collectionPaymentDeptId.value = value;
 };
 
-/** 港口选择字段与备注字段的对应；备注为空时自动填入选中港口的 portName */
+/** 港口选择字段与备注字段的对应；选中港口后自动填入对应备注字段 */
 const PORT_ID_FIELD_TO_REMARK_FIELD: Record<string, string> = {
   receivePortId: 'receivePortRemark',
   polId: 'polRemark',
@@ -478,11 +478,6 @@ const PORT_ID_FIELD_TO_REMARK_FIELD: Record<string, string> = {
   poT2Id: 'poT2Remark',
   podId: 'podRemark',
   deliverPortId: 'deliverPortRemark',
-};
-
-const isPortRemarkEmpty = (val: unknown) => {
-  if (val === undefined || val === null) return true;
-  return typeof val === 'string' && val.trim() === '';
 };
 
 const portFormApiRef = { current: null as any };
@@ -496,11 +491,7 @@ const handlePortSelectPortName = (
   if (!remarkField || !portName) return;
   const api = portFormApiRef.current;
   if (!api) return;
-  void api.getValues().then((v) => {
-    if (isPortRemarkEmpty(v[remarkField])) {
-      void api.setFieldValue(remarkField, portName);
-    }
-  });
+  void api.setFieldValue(remarkField, portName);
 };
 
 /** 右侧表单：港口信息 */
