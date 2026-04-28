@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import { nextTick, ref, computed } from 'vue';
 import { Page } from '@vben/common-ui';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import Form from './form.vue';
 import orderFee from './orderFee/index.vue';
-import defaultInfo from './modules/default-info.vue';
+import SeparateBill from './modules/separate-bill.vue';
 import changeOrder from '#/views/sea-export-admin/changeOrder/index.vue';
 import dispatch from '#/views/sea-export-admin/dispatch/index.vue';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
@@ -55,7 +55,7 @@ const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'port', label: '单证信息', sectionKey: 'port' },
   { key: 'fee', label: feeName.value },
   { key: 'dispatch', label: '派车' },
-  { key: 'billInfo', label: '单据信息' },
+  { key: 'billInfo', label: '分单' },
   { key: 'issueRecord', label: '问题记录' },
   { key: 'changeHistory', label: '修改历史' },
 ]);
@@ -70,7 +70,7 @@ const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
   if (!tab.sectionKey) return;
   nextTick(() => {
-    formRef.value?.scrollToSection(tab.sectionKey);
+    formRef.value?.scrollToSection(tab.sectionKey as SectionKey);
   });
 };
 
@@ -138,6 +138,9 @@ const getContentTabStyle = (isActive: boolean) =>
           </KeepAlive>
           <KeepAlive include="SeaExportDispatch">
             <dispatch v-if="activeTab === 'dispatch'" />
+          </KeepAlive>
+          <KeepAlive include="SeaExportSeparateBill">
+            <SeparateBill v-if="activeTab === 'billInfo'" />
           </KeepAlive>
           <KeepAlive include="SeaExportAdminForm">
             <Form
