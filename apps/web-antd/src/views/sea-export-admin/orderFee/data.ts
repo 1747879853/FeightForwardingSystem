@@ -757,6 +757,7 @@ export async function initOrderFeeEnumCache() {
     invoiceStatusCache = invoiceItems.map((item) => ({
       value: item.value,
       label: item.displayName || '',
+      color: item.remark || undefined,
     }));
 
     feeStatusCache = feeItems.map((item) => ({
