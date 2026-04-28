@@ -40,6 +40,18 @@ const toDataString = (val: any) => {
 const getModalTitle = computed(() => {
   return $t('system.enumeration.detail');
 });
+
+/**
+ * 判断字符串是否为有效的十六进制颜色值
+ * @param value - 要检查的字符串
+ * @returns 是否为颜色值
+ */
+function isColorValue(value: string): boolean {
+  // 匹配 #RGB, #RRGGBB, #RGBA, #RRGGBBAA 格式
+  const colorRegex =
+    /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{8})$/;
+  return colorRegex.test(value);
+}
 </script>
 
 <template>
@@ -109,7 +121,17 @@ const getModalTitle = computed(() => {
                 <span class="text-gray-500"
                   >{{ $t('system.enumeration.remark') }}:</span
                 >
-                <span class="ml-1">{{ item.remark || '-' }}</span>
+                <span v-if="item.remark" class="ml-1 flex items-center gap-2">
+                  <!-- 如果是颜色值（十六进制格式），显示颜色预览 -->
+                  <span
+                    v-if="isColorValue(item.remark)"
+                    class="inline-block h-6 w-12 rounded border"
+                    :style="{ backgroundColor: item.remark }"
+                    :title="item.remark"
+                  ></span>
+                  <span>{{ item.remark }}</span>
+                </span>
+                <span v-else class="ml-1">-</span>
               </div>
             </div>
           </div>

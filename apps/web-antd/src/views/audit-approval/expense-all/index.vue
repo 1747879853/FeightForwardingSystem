@@ -32,6 +32,11 @@ const handleRowDblclick = ({
   row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
 }) => {
   console.log('row', row);
+  // 设置当前行为选中状态，显示选中色
+  const grid = gridApi.grid as any;
+  if (grid && grid.setRadioRow) {
+    grid.setRadioRow(row);
+  }
   transportOrderId.value = row.transportOrder.id || '';
   entityId.value = row.entityId || '';
   orderName.value = `当前选中: ${row.transportOrder.mblNum}(${row.transportOrder.clientName})`;

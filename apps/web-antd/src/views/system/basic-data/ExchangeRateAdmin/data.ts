@@ -3,9 +3,57 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn } from '#/adapter/vxe-table';
 import type { ExchangeRateAdminApi } from '#/api/system/base-data/exchange-rate-admin';
+import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
 
 import { z } from '#/adapter/form';
 import { $t } from '#/locales';
+import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
+
+// 币种数据缓存（模块级别）
+let currencyCache: Map<number, string> | null = null;
+
+/**
+ * 初始化币种缓存（在组件 onMounted 时调用）
+ */
+export async function initCurrencyCache() {
+  if (currencyCache) return; // 已加载，避免重复请求
+
+  try {
+    const res = await getCurrencyPagedList({
+      PageIndex: 1,
+      PageSize: 1000, // 获取所有币种
+    });
+
+    currencyCache = new Map();
+    res.items.forEach((currency: CurrencyAdminApi.CurrencyDto) => {
+      // 使用 code 作为显示名称
+      currencyCache!.set(
+        currency.id,
+        currency.code || currency.cnName || String(currency.id),
+      );
+    });
+  } catch (error) {
+    console.error('加载币种缓存失败:', error);
+    currencyCache = new Map(); // 失败时也初始化为空 Map，避免重复请求
+  }
+}
+
+/**
+ * 根据 currencyId 获取币种名称（同步访问）
+ * @param currencyId 币种ID
+ * @returns 币种名称，如果未找到则返回 ID 本身
+ */
+export function formatCurrencyName(currencyId: number | undefined): string {
+  if (!currencyId) return '-';
+
+  // 优先从缓存获取
+  if (currencyCache && currencyCache.has(currencyId)) {
+    return currencyCache.get(currencyId)!;
+  }
+
+  // 缓存未加载时返回 ID
+  return String(currencyId);
+}
 
 /**
  * 获取表格搜索表单的字段配置

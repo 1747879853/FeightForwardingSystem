@@ -17,6 +17,11 @@ const handleRowDblclick = ({
   row: ExpenseSubmissionAdminApi.OrderFeeTaskListDto;
 }) => {
   console.log('row', row);
+  // 设置当前行为选中状态，显示选中色
+  const grid = gridApi.grid as any;
+  if (grid && grid.setRadioRow) {
+    grid.setRadioRow(row);
+  }
   router.push(
     `/audit-approval/expense-review/${row.transportOrder.id}/expense-detail/${row.entityId}`,
   );

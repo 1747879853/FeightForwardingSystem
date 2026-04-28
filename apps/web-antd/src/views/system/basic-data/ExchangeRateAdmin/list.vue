@@ -2,6 +2,7 @@
 import type { OnActionClickParams } from '#/adapter/vxe-table';
 import type { ExchangeRateAdminApi } from '#/api/system/base-data/exchange-rate-admin';
 
+import { onMounted } from 'vue';
 import { Page, useVbenDrawer } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
@@ -14,8 +15,18 @@ import {
 } from '#/api/system/base-data/exchange-rate-admin';
 import { $t } from '#/locales';
 
-import { useColumns, useGridFormSchema } from './data';
+import {
+  initCurrencyCache,
+  useColumns,
+  useGridFormSchema,
+  formatCurrencyName,
+} from './data';
 import Form from './modules/form.vue';
+
+// 初始化币种缓存
+onMounted(() => {
+  initCurrencyCache();
+});
 
 const [FormDrawer, formDrawerApi] = useVbenDrawer({
   connectedComponent: Form,
@@ -84,11 +95,20 @@ const [Grid, gridApi] = useVbenVxeGrid<ExchangeRateAdminApi.ExchangeRateDto>({
           { page }: { page: { currentPage: number; pageSize: number } },
           formValues: Record<string, any>,
         ) => {
-          return await getExchangeRatePagedList({
+          let tmp = await getExchangeRatePagedList({
             PageIndex: page.currentPage,
             PageSize: page.pageSize,
             ...formValues,
           });
+          tmp.items = tmp.items.map((item) => {
+            return {
+              ...item,
+              _rowKey: `exchangeRate_${item.id}_${Date.now()}`,
+              currencyId: formatCurrencyName(item.currencyId),
+            };
+          });
+
+          return tmp;
         },
       },
     },

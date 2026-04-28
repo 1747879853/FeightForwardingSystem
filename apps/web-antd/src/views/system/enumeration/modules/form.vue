@@ -143,6 +143,27 @@ function addEnumItem() {
 function removeEnumItem(index: number) {
   enumerationItems.value.splice(index, 1);
 }
+
+/**
+ * 根据背景色计算对比色（黑色或白色）
+ * @param hexColor - 十六进制颜色值
+ * @returns 黑色(#000000)或白色(#ffffff)
+ */
+function getContrastColor(hexColor: string): string {
+  // 移除 # 号
+  const hex = hexColor.replace('#', '');
+
+  // 解析 RGB 值
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  // 计算亮度 (使用 YIQ 公式)
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+  // 如果亮度大于 128，返回黑色，否则返回白色
+  return brightness > 128 ? '#000000' : '#ffffff';
+}
 </script>
 
 <template>
@@ -213,12 +234,24 @@ function removeEnumItem(index: number) {
                 <label class="text-xs text-gray-500">{{
                   $t('system.enumeration.remark')
                 }}</label>
-                <input
-                  v-model="item.remark"
-                  type="text"
-                  class="w-full rounded border px-2 py-1 text-sm"
-                  placeholder="备注"
-                />
+                <div class="flex items-center gap-2">
+                  <input
+                    v-model="item.remark"
+                    type="color"
+                    class="h-8 w-16 cursor-pointer rounded border p-1"
+                    title="选择颜色"
+                  />
+                  <span
+                    v-if="item.remark"
+                    class="rounded px-2 py-1 text-xs font-medium"
+                    :style="{
+                      backgroundColor: item.remark,
+                      color: getContrastColor(item.remark),
+                    }"
+                  >
+                    {{ item.remark }}
+                  </span>
+                </div>
               </div>
             </div>
             <div class="flex flex-col gap-16">

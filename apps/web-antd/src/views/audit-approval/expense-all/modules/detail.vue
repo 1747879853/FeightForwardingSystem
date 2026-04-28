@@ -191,7 +191,7 @@ const showRejectWithRemark = () => {
     },
   });
 };
-// ... existing code ...
+
 const Rejected = (modalRemark: string) => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
@@ -528,6 +528,8 @@ defineExpose({
 }
 
 .total-amount {
+  display: flex;
+  flex-wrap: wrap;
   background: #fff;
 
   .split {
