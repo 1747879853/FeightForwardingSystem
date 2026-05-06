@@ -15,31 +15,30 @@ interface ConditionComparisonTypeOption {
   label: string;
   value: number | string;
 }
-
 // 订单状态下拉框
 let freightConditionItemOptions: FreightConditionItemOption[] = [];
 let conditionComparisonTypeOptions: ConditionComparisonTypeOption[] = [];
+(async () => {
+  // 从缓存获取枚举项（如果缓存不存在会自动加载）
+  const freightConditionItems = await getEnumItems('freightConditionItem');
+  freightConditionItemOptions = freightConditionItems.map((item) => {
+    return {
+      label: item.displayName || '',
+      value: item.value,
+      description: item.description, // 可选：如果需要在选项中显示描述信息
+    };
+  });
 
-// 从缓存获取枚举项（如果缓存不存在会自动加载）
-const freightConditionItems = await getEnumItems('freightConditionItem');
-freightConditionItemOptions = freightConditionItems.map((item) => {
-  return {
-    label: item.displayName || '',
-    value: item.value,
-    description: item.description, // 可选：如果需要在选项中显示描述信息
-  };
-});
-
-const conditionComparisonTypeItems = await getEnumItems(
-  'ConditionComparisonType',
-);
-conditionComparisonTypeOptions = conditionComparisonTypeItems.map((item) => {
-  return {
-    label: item.displayName || '',
-    value: item.value,
-  };
-});
-
+  const conditionComparisonTypeItems = await getEnumItems(
+    'ConditionComparisonType',
+  );
+  conditionComparisonTypeOptions = conditionComparisonTypeItems.map((item) => {
+    return {
+      label: item.displayName || '',
+      value: item.value,
+    };
+  });
+})();
 /**
  * 从数据中提取所有唯一的箱型名称
  */
