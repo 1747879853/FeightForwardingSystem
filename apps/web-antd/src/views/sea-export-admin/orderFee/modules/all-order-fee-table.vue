@@ -3,7 +3,7 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { useExpenseAllColumns } from '../data';
-import { computed, onMounted, ref, watch, h } from 'vue';
+import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
 import {
   Button,
   Input,
@@ -101,7 +101,8 @@ const normalizeOrderFeeWithRowKey = (
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
   gridOptions: {
     columns: useExpenseAllColumns(),
-    height: '300px',
+    height: '100%',
+    minHeight: 200,
     keepSource: true,
     radioConfig: {
       highlight: true,
@@ -225,6 +226,28 @@ defineExpose({
 </template>
 
 <style scoped lang="scss">
+.order-ctn-table {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+
+  :deep(.vben-vxe-grid) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  :deep(.vxe-table) {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+  }
+}
+
 .rec-table {
   border-left: 2px solid rgb(6 100 224);
 }

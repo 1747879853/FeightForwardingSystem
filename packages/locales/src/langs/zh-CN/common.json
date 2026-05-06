@@ -55,5 +55,8 @@
   "show": "显示",
   "hide": "隐藏",
   "saveSuccess": "保存成功",
-  "close": "关闭"
+  "close": "关闭",
+  "pleaseSelect": "请选择",
+  "invalid": "无效",
+  "valid": "有效"
 }

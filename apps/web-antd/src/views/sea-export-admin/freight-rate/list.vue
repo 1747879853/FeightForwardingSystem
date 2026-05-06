@@ -1,0 +1,430 @@
+<script lang="ts" setup>
+import type {
+  OnActionClickParams,
+  VxeTableGridOptions,
+} from '#/adapter/vxe-table';
+import type {
+  SeFreiPriceOutDto,
+  LaneCodeDto,
+} from '#/api/sea-export/freight-rate-admin';
+
+import { nextTick, ref, watch, onMounted, computed } from 'vue';
+
+import { Page, useVbenModal } from '@vben/common-ui';
+import { Copy, Plus, ChevronDown } from '@vben/icons';
+
+import { Button, message, Modal, Space, Dropdown, Menu } from 'ant-design-vue';
+
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import {
+  changeRecommendStatus,
+  deleteSeFreiPrice,
+  getSeFreiPriceDetail,
+  getSeFreiPriceList,
+  getAllLaneCodes,
+} from '#/api/sea-export/freight-rate-admin';
+import { $t } from '#/locales';
+import { createAbpPermission } from '#/utils/abp-permission';
+
+import { useColumns, useGridFormSchema, formatSurchargeFees } from './data';
+import AddCtnModal from './modules/add-ctn-modal.vue';
+import Form from './modules/form.vue';
+
+// 创建运价管理的 ABP 权限对象
+const perm = createAbpPermission('Admin.SeFreiPrice');
+
+// 存储表格数据用于生成动态列
+const tableData = ref<SeFreiPriceOutDto[]>([]);
+
+// 当前选中的航线ID
+const selectedLineId = ref<number | undefined>(undefined);
+
+const [FormModal, formModalApi] = useVbenModal({
+  connectedComponent: Form,
+  destroyOnClose: true,
+});
+
+const [AddCtnModalComponent, addCtnModalApi] = useVbenModal({
+  connectedComponent: AddCtnModal,
+  destroyOnClose: true,
+});
+
+/**
+ * 操作按钮点击事件
+ */
+function onActionClick(e: OnActionClickParams<SeFreiPriceOutDto>) {
+  switch (e.code) {
+    case 'edit': {
+      onEdit(e.row);
+      break;
+    }
+    case 'addCtn': {
+      onAddCtn(e.row);
+      break;
+    }
+  }
+}
+
+const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
+  formOptions: {
+    schema: useGridFormSchema(),
+    showCollapseButton: false,
+    submitOnChange: true,
+  },
+  gridOptions: {
+    columns: useColumns(onActionClick, []), // 初始化为空数组
+    height: 'auto',
+    keepSource: true,
+    pagerConfig: {
+      enabled: true,
+    },
+    proxyConfig: {
+      ajax: {
+        query: async (
+          { page }: { page: { currentPage: number; pageSize: number } },
+          formValues: Record<string, any>,
+        ) => {
+          const result = await getSeFreiPriceList({
+            pageIndex: page.currentPage,
+            pageSize: page.pageSize,
+            ...formValues,
+            laneId: selectedLineId.value, // 添加航线ID作为查询参数
+          });
+          // 适配新的返回结构
+          const items = result.items || [];
+          // 更新表格数据用于生成动态列
+          tableData.value = items;
+          return {
+            items,
+            total: result.totalCount || 0,
+          };
+        },
+      },
+    },
+    rowConfig: {
+      keyField: 'id',
+      isHover: true,
+    },
+    checkboxConfig: {
+      highlight: true,
+      reserve: true,
+    },
+    toolbarConfig: {
+      custom: true,
+      export: false,
+      refresh: true,
+      search: true,
+      zoom: true,
+    },
+  },
+});
+
+// 监听表格数据变化，动态更新列配置
+watch(
+  tableData,
+  async (newData) => {
+    if (newData && newData.length > 0) {
+      await nextTick();
+      const newColumns = useColumns(onActionClick, newData);
+      // 使用gridApi更新列配置
+      gridApi.setGridOptions({
+        columns: newColumns,
+      });
+    }
+  },
+  { deep: true },
+);
+
+/**
+ * 获取选中的行
+ */
+function getCheckboxRecords() {
+  const grid = gridApi.grid;
+  if (!grid) return [];
+  return grid.getCheckboxRecords() as SeFreiPriceOutDto[];
+}
+
+/**
+ * 编辑运价
+ */
+function onEdit(row: SeFreiPriceOutDto) {
+  formModalApi.setData({ id: row.id }).open();
+}
+
+/**
+ * 添加箱型
+ */
+function onAddCtn(row: SeFreiPriceOutDto) {
+  addCtnModalApi.setData({ row }).open();
+}
+
+/**
+ * 复制运价（基于选中的第一条记录）
+ */
+async function onCopy() {
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning('请先选择一条要复制的运价记录');
+    return;
+  }
+
+  // 取第一条记录进行复制
+  const row = records[0];
+  if (!row) {
+    message.warning('未找到有效的运价记录');
+    return;
+  }
+
+  try {
+    const hideLoading = message.loading({
+      content: '正在加载运价详情...',
+      duration: 0,
+      key: 'action_process_msg',
+    });
+
+    // 获取完整详情
+    const detail = await getSeFreiPriceDetail(row.id);
+    hideLoading();
+
+    // 清除ID和时间戳字段，作为新记录打开
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const {
+      id,
+      creationTime,
+      creatorUserId,
+      lastModificationTime,
+      lastModifierUserId,
+      ...newData
+    } = detail;
+
+    console.log('c-detail:', newData);
+    formModalApi.setData(newData).open();
+  } catch (error) {
+    message.error('加载运价详情失败');
+    console.error(error);
+  }
+}
+
+/**
+ * 批量编辑运价
+ */
+function onBatchEdit() {
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning('请先选择要批量编辑的运价记录');
+    return;
+  }
+  formModalApi
+    .setData({
+      isBatch: true,
+      ids: records.map((r) => r.id),
+    })
+    .open();
+}
+
+/**
+ * 批量改变推荐状态
+ */
+async function onBatchRecommend(recommend: boolean) {
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning('请先选择要操作的运价记录');
+    return;
+  }
+
+  const hideLoading = message.loading({
+    content: `正在批量${recommend ? '推荐' : '取消推荐'}...`,
+    duration: 0,
+    key: 'action_process_msg',
+  });
+
+  try {
+    // 批量调用接口
+    await Promise.all(
+      records.map((row) => changeRecommendStatus({ id: row.id, recommend })),
+    );
+    message.success({
+      content: `批量${recommend ? '推荐' : '取消推荐'}成功`,
+      key: 'action_process_msg',
+    });
+    onRefresh();
+  } catch {
+    hideLoading();
+  }
+}
+
+/**
+ * 批量删除运价
+ */
+function onBatchDelete() {
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning('请先选择要删除的运价记录');
+    return;
+  }
+
+  Modal.confirm({
+    title: '确认批量删除',
+    content: `确定要删除选中的 ${records.length} 条运价记录吗？`,
+    onOk() {
+      const hideLoading = message.loading({
+        content: '正在批量删除...',
+        duration: 0,
+        key: 'action_process_msg',
+      });
+      deleteSeFreiPrice({ ids: records.map((r) => r.id) })
+        .then(() => {
+          message.success({
+            content: '批量删除成功',
+            key: 'action_process_msg',
+          });
+          onRefresh();
+        })
+        .catch(() => {
+          hideLoading();
+        });
+    },
+  });
+}
+
+/**
+ * 刷新列表
+ */
+function onRefresh() {
+  gridApi.query();
+  getLines();
+}
+
+/**
+ * 新增运价
+ */
+function onCreate() {
+  formModalApi.setData({}).open();
+}
+const lines = ref<LaneCodeDto[]>([]);
+const getLines = async function () {
+  const res = await getAllLaneCodes();
+  if (res) {
+    lines.value = res.laneCodes || [];
+  }
+  console.log('getLines', res);
+};
+
+/**
+ * 点击航线标签
+ */
+function handleLineClick(lineId?: number) {
+  selectedLineId.value = lineId;
+  // 重新查询列表
+  gridApi.query();
+}
+
+onMounted(() => {
+  getLines();
+});
+</script>
+
+<template>
+  <Page auto-content-height>
+    <FormModal @success="onRefresh" />
+    <AddCtnModalComponent @success="onRefresh" />
+
+    <Grid :table-title="$t('seaExport.freightRate.title')">
+      <!-- 附加费自定义渲染插槽 -->
+      <template #surchargeFees="{ row }">
+        <div v-html="formatSurchargeFees(row)" />
+      </template>
+
+      <template #toolbar-tools>
+        <div class="flex justify-between">
+          <!-- 航线选择标签页 -->
+          <div class="mb-4 mr-5 border-b border-gray-200 bg-white px-4 pt-3">
+            <div class="flex items-center space-x-1 overflow-x-auto">
+              <!-- 全部选项 -->
+              <div
+                class="cursor-pointer whitespace-nowrap border-b-2 px-4 py-2 text-base font-medium transition-all duration-200"
+                :class="
+                  selectedLineId === undefined
+                    ? 'border-blue-500 text-blue-500'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                "
+                @click="handleLineClick(undefined)"
+              >
+                全部
+              </div>
+
+              <!-- 航线选项 -->
+              <div
+                v-for="line in lines"
+                :key="line.id"
+                class="cursor-pointer whitespace-nowrap border-b-2 px-4 py-2 text-base transition-all duration-200"
+                :class="
+                  selectedLineId === line.id
+                    ? 'border-blue-500 text-blue-500'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                "
+                @click="handleLineClick(line.id)"
+              >
+                {{ line.laneName || line.code || '-' }}
+              </div>
+            </div>
+          </div>
+          <Space>
+            <!-- 新增按钮 -->
+            <Button v-access:code="perm.add" type="primary" @click="onCreate">
+              <Plus class="size-5" />
+              {{
+                $t('ui.actionTitle.create', [$t('seaExport.freightRate.name')])
+              }}
+            </Button>
+
+            <!-- 复制按钮 -->
+            <Button v-access:code="perm.add" @click="onCopy">
+              <Copy class="size-5" />
+              {{ $t('seaExport.freightRate.copy') }}
+            </Button>
+
+            <!-- 批量操作下拉菜单 -->
+            <Dropdown v-access:code="perm.edit">
+              <Button>
+                {{ $t('seaExport.freightRate.batchEdit') }}
+                <ChevronDown class="ml-1 size-4" />
+              </Button>
+              <template #overlay>
+                <Menu>
+                  <Menu.Item key="edit" @click="onBatchEdit">
+                    {{ $t('seaExport.freightRate.batchEdit') }}
+                  </Menu.Item>
+                  <Menu.Item key="recommend" @click="onBatchRecommend(true)">
+                    {{ $t('seaExport.freightRate.batchRecommend') }}
+                  </Menu.Item>
+                  <Menu.Item
+                    key="cancelRecommend"
+                    @click="onBatchRecommend(false)"
+                  >
+                    {{ $t('seaExport.freightRate.batchCancelRecommend') }}
+                  </Menu.Item>
+                  <Menu.Divider />
+                  <Menu.Item
+                    key="delete"
+                    class="text-red-600"
+                    @click="onBatchDelete"
+                  >
+                    <span class="text-red-600">{{
+                      $t('seaExport.freightRate.batchDelete')
+                    }}</span>
+                  </Menu.Item>
+                </Menu>
+              </template>
+            </Dropdown>
+
+            <!-- 批量删除按钮 -->
+            <!-- <Button v-access:code="perm.delete" danger @click="onBatchDelete">
+              {{ $t('seaExport.freightRate.batchDelete') }}
+            </Button> -->
+          </Space>
+        </div>
+      </template>
+    </Grid>
+  </Page>
+</template>

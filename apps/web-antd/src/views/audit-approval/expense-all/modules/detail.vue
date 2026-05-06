@@ -62,6 +62,108 @@ const selectedRowKeys = computed(() => [
 const childRecRef = ref<any>(null);
 const childPayRef = ref<any>(null);
 
+// 拖动相关状态
+const topHeight = ref<number>(50); // 上半部分高度百分比（垂直布局）
+const leftWidth = ref<number>(50); // 左半部分宽度百分比（水平布局）
+const isDragging = ref<boolean>(false);
+const dragDirection = ref<'vertical' | 'horizontal'>('vertical'); // 拖动方向
+
+// 开始垂直拖动（上下）
+const startVerticalDrag = (e: MouseEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  isDragging.value = true;
+  dragDirection.value = 'vertical';
+
+  const container = document.querySelector('.split-container') as HTMLElement;
+  if (!container) return;
+
+  const startY = e.clientY;
+  const startHeight = topHeight.value;
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    if (!isDragging.value) return;
+
+    moveEvent.preventDefault();
+
+    // 每次移动时重新获取容器高度，确保准确性
+    const containerRect = container.getBoundingClientRect();
+    const deltaY = moveEvent.clientY - startY;
+    const containerHeight = containerRect.height;
+
+    if (containerHeight === 0) return;
+
+    const deltaPercent = (deltaY / containerHeight) * 100;
+
+    // 限制拖动范围，最小10%，最大90%
+    let newHeight = startHeight + deltaPercent;
+    newHeight = Math.max(10, Math.min(90, newHeight));
+
+    topHeight.value = newHeight;
+  };
+
+  const onMouseUp = () => {
+    isDragging.value = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+  document.body.style.cursor = 'row-resize';
+  document.body.style.userSelect = 'none';
+};
+
+// 开始水平拖动（左右）
+const startHorizontalDrag = (e: MouseEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+  isDragging.value = true;
+  dragDirection.value = 'horizontal';
+
+  const container = document.querySelector('.split-container') as HTMLElement;
+  if (!container) return;
+
+  const startX = e.clientX;
+  const startWidth = leftWidth.value;
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    if (!isDragging.value) return;
+
+    moveEvent.preventDefault();
+
+    // 每次移动时重新获取容器宽度，确保准确性
+    const containerRect = container.getBoundingClientRect();
+    const deltaX = moveEvent.clientX - startX;
+    const containerWidth = containerRect.width;
+
+    if (containerWidth === 0) return;
+
+    const deltaPercent = (deltaX / containerWidth) * 100;
+
+    // 限制拖动范围，最小10%，最大90%
+    let newWidth = startWidth + deltaPercent;
+    newWidth = Math.max(10, Math.min(90, newWidth));
+
+    leftWidth.value = newWidth;
+  };
+
+  const onMouseUp = () => {
+    isDragging.value = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+};
+
 import { $t } from '#/locales';
 
 import OrderFeeTable from '#/views/sea-export-admin/orderFee/modules/all-order-fee-table.vue';
@@ -479,10 +581,19 @@ defineExpose({
             </div>
           </div>
         </template>
-        <div class="flex" :class="[layout === 'horizontal' ? '' : 'flex-col']">
+        <div
+          class="split-container"
+          :class="[layout === 'horizontal' ? 'flex-row' : 'flex-col']"
+        >
+          <!-- 左侧/上侧区域 -->
           <div
-            class="mt-1"
-            :class="[layout === 'horizontal' ? 'mr-2 w-[49%]' : '']"
+            class="left-top-section mt-1"
+            :style="{
+              height: layout === 'horizontal' ? 'auto' : `${topHeight}%`,
+              width: layout === 'horizontal' ? `${leftWidth}%` : 'auto',
+              flex: layout === 'horizontal' ? 'none' : 'none',
+            }"
+            :class="[layout === 'horizontal' ? '' : '']"
           >
             <OrderFeeTable
               @update-table-data="handleReceivableTableUpdate"
@@ -494,7 +605,36 @@ defineExpose({
             />
           </div>
 
-          <div class="mt-1" :class="[layout === 'horizontal' ? 'w-[49%]' : '']">
+          <!-- 垂直拖动分隔条（上下布局） -->
+          <div
+            v-if="layout !== 'horizontal'"
+            class="drag-handle drag-handle-vertical"
+            :class="{ dragging: isDragging && dragDirection === 'vertical' }"
+            @mousedown="startVerticalDrag"
+          >
+            <div class="drag-line"></div>
+          </div>
+
+          <!-- 水平拖动分隔条（左右布局） -->
+          <div
+            v-if="layout === 'horizontal'"
+            class="drag-handle drag-handle-horizontal"
+            :class="{ dragging: isDragging && dragDirection === 'horizontal' }"
+            @mousedown="startHorizontalDrag"
+          >
+            <div class="drag-line"></div>
+          </div>
+
+          <!-- 右侧/下侧区域 -->
+          <div
+            class="right-bottom-section mt-1"
+            :style="{
+              height: layout === 'horizontal' ? 'auto' : `${100 - topHeight}%`,
+              width: layout === 'horizontal' ? `${100 - leftWidth}%` : 'auto',
+              flex: layout === 'horizontal' ? 'none' : 'none',
+            }"
+            :class="[layout === 'horizontal' ? '' : '']"
+          >
             <OrderFeeTable
               @update-table-data="handlePayableTableUpdate"
               @update-select-data="handlePayableTableSelect"
@@ -590,5 +730,98 @@ defineExpose({
   color: #fff;
   background-color: #389e0d;
   border-color: #389e0d;
+}
+
+// 分隔容器
+.split-container {
+  position: relative;
+  display: flex;
+
+  &.flex-col {
+    flex-direction: column;
+    height: calc(100vh - 300px);
+    min-height: 400px;
+    max-height: calc(100vh - 200px);
+  }
+
+  &.flex-row {
+    flex-direction: row;
+    width: 100%;
+  }
+
+  .left-top-section,
+  .right-bottom-section {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.1s ease-out;
+
+    // 确保子组件能够填满父容器
+    > * {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+    }
+  }
+}
+
+// 拖动分隔条通用样式
+.drag-handle {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+
+  &.dragging {
+    .drag-line {
+      background-color: #1890ff;
+      box-shadow: 0 0 8px rgb(24 144 255 / 40%);
+    }
+  }
+
+  &:hover .drag-line {
+    background-color: #1890ff;
+    box-shadow: 0 0 6px rgb(24 144 255 / 30%);
+  }
+
+  .drag-line {
+    background-color: #d9d9d9;
+    border-radius: 2px;
+    transition: all 0.2s ease;
+  }
+}
+
+// 垂直拖动分隔条（上下布局）
+.drag-handle-vertical {
+  height: 12px;
+  margin: 4px 0;
+  cursor: row-resize;
+
+  &.dragging {
+    cursor: row-resize;
+  }
+
+  .drag-line {
+    width: 60px;
+    height: 4px;
+  }
+}
+
+// 水平拖动分隔条（左右布局）
+.drag-handle-horizontal {
+  width: 12px;
+  margin: 0 4px;
+  cursor: col-resize;
+
+  &.dragging {
+    cursor: col-resize;
+  }
+
+  .drag-line {
+    width: 4px;
+    height: 60px;
+  }
 }
 </style>

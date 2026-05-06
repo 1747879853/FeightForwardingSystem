@@ -1,0 +1,1480 @@
+<script lang="ts" setup>
+import type {
+  AddSeFreiPriceInput,
+  BatchEditSeFreiPriceInput,
+  EditSeFreiPriceInput,
+  SeFreiPriceCtnAddDto,
+  SeFreiPriceCtnEditDto,
+  SeFreiPriceFeeAddDto,
+  SeFreiPriceFeeEditDto,
+  SeFreiPriceCtnFeeEditDto,
+  SeFreiPriceOutDto,
+} from '#/api/sea-export/freight-rate-admin';
+
+import { FreiPricePropType } from '#/api/sea-export/freight-rate-admin';
+
+import { computed, nextTick, ref, onMounted } from 'vue';
+import { getEnumItems } from '#/utils/init-enum';
+import { useVbenModal } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
+import { useVbenForm } from '#/adapter/form';
+import {
+  addSeFreiPrice,
+  batchEditSeFreiPrice,
+  editSeFreiPrice,
+  getSeFreiPriceDetail,
+} from '#/api/sea-export/freight-rate-admin';
+import { $t } from '#/locales';
+import { Button, Select, Input } from 'ant-design-vue';
+import { selectRanges } from '#/views/system/workflow/utils/const';
+
+const emits = defineEmits(['success']);
+
+const formData = ref<SeFreiPriceOutDto>();
+const id = ref<string>();
+const isBatchMode = ref(false);
+const batchIds = ref<string[]>([]);
+
+// 中转港禁用状态（响应式）
+const transshipmentPortsDisabled = ref(false);
+
+// 动态箱型列表（从行数据的 seFreiPriceCtns 中获取）
+const dynamicCtnTypes = computed(() => {
+  if (
+    !formData.value?.seFreiPriceCtns ||
+    formData.value.seFreiPriceCtns.length === 0
+  ) {
+    return [];
+  }
+  console.log('c-dynamicCtnTypes', formData.value.seFreiPriceCtns);
+  return formData.value.seFreiPriceCtns.map((ctn) => ({
+    ctnCodeId: String(ctn.ctnCodeId), // 转换为字符串，与条件配置的key保持一致
+    name: ctn.ctnCode?.ctnName || `箱型${ctn.ctnCodeId}`,
+    cost: ctn.cost,
+  }));
+});
+
+// 箱型费率数据 - 按费用类型组织
+interface FeeDataItem {
+  feeCodeId?: number;
+  currencyId?: number;
+  prices: Record<string, number | undefined>; // key: ctnCodeId, value: price
+}
+
+const feeData = ref<Record<string, FeeDataItem>>({});
+
+// 附加费价格数据结构
+interface SurchargePriceItem {
+  price?: number; // 普通价格
+  conditionType?: number; // 条件类型
+  operatorType?: number; // 算符类型
+  value?: number; // 条件阈值
+  otherPrice?: number; // 否则价格
+}
+
+// 附加费数据结构
+interface SurchargeFeeItem {
+  id?: string; // 编辑时的ID
+  feeCodeId?: number; // 费用代码ID
+  currencyId?: number; // 币别ID
+  prices: Record<string, SurchargePriceItem>; // key: ctnCodeId, value: 价格对象
+  seFreiPriceCtnFees?: SeFreiPriceCtnFeeEditDto[];
+}
+
+// 附加费列表
+const surchargeFees = ref<SurchargeFeeItem[]>([]);
+
+// 币别列表（用于下拉选择）
+const currencyList = ref<any[]>([]);
+
+// 费用代码列表（用于下拉选择）
+const feeCodeList = ref<any[]>([]);
+
+// 加载币别和费用代码列表
+async function loadSelectData() {
+  try {
+    // 加载币别列表
+    const { getCurrencyPagedList } =
+      await import('#/api/system/base-data/currency-admin');
+    const currencyRes = await getCurrencyPagedList({ PageSize: 1000 });
+    currencyList.value = (currencyRes.items || []).map((item: any) => ({
+      label: item.cnName || item.enName,
+      value: item.id,
+    }));
+
+    // 加载费用代码列表
+    const { getFeeCodePagedList } =
+      await import('#/api/system/base-data/fee-code-admin');
+    const feeRes = await getFeeCodePagedList({ PageSize: 1000 });
+    feeCodeList.value = (feeRes.items || []).map((item: any) => ({
+      label: item.cnName || item.enName,
+      value: item.id,
+    }));
+  } catch (error) {
+    console.error('加载下拉数据失败:', error);
+  }
+}
+
+/**
+ * 更新中转港字段的禁用状态
+ * @param disabled 是否禁用
+ */
+function updateTransshipmentPortsDisabled(disabled: boolean) {
+  console.log('updateTransshipmentPortsDisabled', disabled);
+  transshipmentPortsDisabled.value = disabled;
+  // 手动更新表单字段的禁用状态，确保响应式生效
+  formApi.updateSchema([
+    {
+      fieldName: 'poT1Id',
+      componentProps: {
+        disabled,
+      },
+    },
+    {
+      fieldName: 'poT2Id',
+      componentProps: {
+        disabled,
+      },
+    },
+  ]);
+}
+
+// 添加附加费
+function addSurchargeFee() {
+  surchargeFees.value.push({
+    prices: {},
+  });
+}
+
+// 删除附加费
+function removeSurchargeFee(index: number) {
+  surchargeFees.value.splice(index, 1);
+}
+
+// 更新附加费的价格值（支持 price、value、otherPrice）
+function updateSurchargePriceValue(
+  feeIndex: number,
+  ctnCodeId: string,
+  field: 'price' | 'value' | 'otherPrice' | 'conditionType' | 'operatorType',
+  value: string,
+) {
+  const numValue = value ? Number(value) : undefined;
+
+  // 确保该索引的附加费存在
+  if (!surchargeFees.value[feeIndex]) {
+    surchargeFees.value[feeIndex] = { prices: {} };
+  }
+
+  // 确保 prices 对象中存在该箱型的配置
+  if (!surchargeFees.value[feeIndex].prices[ctnCodeId]) {
+    surchargeFees.value[feeIndex].prices[ctnCodeId] = {};
+  }
+
+  // 更新对应字段的值
+  surchargeFees.value[feeIndex].prices[ctnCodeId][field] = numValue;
+}
+
+// 条件费用配置数据结构
+interface ConditionalFeeConfig {
+  enabled: boolean;
+  threshold?: number; // 阈值
+  valueIfGreater?: number; // 大于阈值的值
+  valueOtherwise?: number; // 否则的值
+}
+
+// 条件费用配置状态 - 按费用类型和箱型组织
+const conditionalFeeConfigs = ref<
+  Record<string, Record<string, ConditionalFeeConfig>>
+>({});
+
+// 条件选择弹窗状态
+const conditionPopupVisible = ref(false);
+const conditionPopupPosition = ref({ top: 0, left: 0 });
+const currentConditionCell = ref<{ feeType: string; ctnCodeId: string } | null>(
+  null,
+);
+
+// 初始化条件配置
+function initConditionalConfig(feeType: string, ctnCodeId: string) {
+  if (!conditionalFeeConfigs.value[feeType]) {
+    conditionalFeeConfigs.value[feeType] = {};
+  }
+  if (!conditionalFeeConfigs.value[feeType][ctnCodeId]) {
+    conditionalFeeConfigs.value[feeType][ctnCodeId] = {
+      enabled: false,
+      threshold: undefined,
+      valueIfGreater: undefined,
+      valueOtherwise: undefined,
+    };
+  }
+}
+
+// 获取条件配置
+function getConditionalConfig(
+  feeType: string,
+  ctnCodeId: string,
+): ConditionalFeeConfig {
+  initConditionalConfig(feeType, ctnCodeId);
+  return conditionalFeeConfigs.value[feeType]?.[
+    ctnCodeId
+  ] as ConditionalFeeConfig;
+}
+
+// 显示条件选择弹窗
+function showConditionPopup(
+  event: MouseEvent,
+  feeType: string,
+  ctnCodeId: string,
+) {
+  console.log('c-showConditionPopup', feeType, ctnCodeId);
+  event.stopPropagation();
+  const target = event.target as HTMLElement;
+  const rect = target.getBoundingClientRect();
+
+  currentConditionCell.value = { feeType, ctnCodeId };
+  conditionPopupPosition.value = {
+    top: rect.top + window.scrollY - 2,
+    left: rect.right + window.scrollX + 3,
+  };
+  conditionPopupVisible.value = true;
+
+  setTimeout(() => {
+    document.addEventListener('click', hideConditionPopup);
+  }, 0);
+}
+
+// 隐藏条件选择弹窗
+function hideConditionPopup() {
+  conditionPopupVisible.value = false;
+  currentConditionCell.value = null;
+  document.removeEventListener('click', hideConditionPopup);
+}
+
+// 切换条件启用状态
+function toggleConditionEnabled(enabled: boolean) {
+  console.log('c-toggleConditionEnabled', enabled, currentConditionCell.value);
+  if (currentConditionCell.value) {
+    const config = getConditionalConfig(
+      currentConditionCell.value.feeType,
+      currentConditionCell.value.ctnCodeId,
+    );
+    config.enabled = enabled;
+
+    if (!enabled) {
+      config.threshold = undefined;
+      config.valueIfGreater = undefined;
+      config.valueOtherwise = undefined;
+
+      const feeType = currentConditionCell.value.feeType;
+      const ctnCodeId = currentConditionCell.value.ctnCodeId;
+      if (feeData.value[feeType]) {
+        feeData.value[feeType].prices[ctnCodeId] = undefined;
+      }
+    }
+  }
+  hideConditionPopup();
+}
+
+// 更新条件费用值
+function updateConditionalValue(
+  feeType: string,
+  ctnCodeId: string,
+  field: 'threshold' | 'valueIfGreater' | 'valueOtherwise',
+  value: string,
+) {
+  const config = getConditionalConfig(feeType, ctnCodeId);
+  const numValue = value ? Number(value) : undefined;
+  config[field] = numValue;
+
+  if (!feeData.value[feeType]) {
+    feeData.value[feeType] = { prices: {} };
+  }
+  if (config.enabled && config.threshold !== undefined) {
+    feeData.value[feeType].prices[ctnCodeId] = undefined;
+  }
+}
+
+// 更新普通费用值
+function updateNormalFeeValue(
+  feeType: string,
+  ctnCodeId: string,
+  value: string,
+) {
+  const config = getConditionalConfig(feeType, ctnCodeId);
+
+  if (config.enabled) {
+    return;
+  }
+
+  const numValue = value ? Number(value) : undefined;
+
+  if (!feeData.value[feeType]) {
+    feeData.value[feeType] = { prices: {} };
+  }
+  feeData.value[feeType].prices[ctnCodeId] = numValue;
+}
+
+// 主表表单配置
+const [Form, formApi] = useVbenForm({
+  schema: [
+    {
+      component: 'ApiSelect',
+      fieldName: 'carrierId',
+      label: '船公司',
+      componentProps: {
+        api: async () => {
+          const { getCarrierPagedList } =
+            await import('#/api/system/base-data/carrier-admin');
+          const res = await getCarrierPagedList({ PageSize: 1000 });
+          return (res.items || []).map((item: any) => ({
+            label: item.cnName || item.enName,
+            value: item.id,
+          }));
+        },
+        showSearch: true,
+        filterOption: true,
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择船公司',
+        allowClear: true,
+      },
+      rules: isBatchMode.value ? '' : 'required',
+    },
+    {
+      component: 'ApiSelect',
+      fieldName: 'currencyId',
+      label: '币别',
+      componentProps: {
+        api: async () => {
+          const { getCurrencyPagedList } =
+            await import('#/api/system/base-data/currency-admin');
+          const res = await getCurrencyPagedList({ PageSize: 1000 });
+          return (res.items || []).map((item: any) => ({
+            label: item.cnName || item.enName,
+            value: item.id,
+          }));
+        },
+        showSearch: true,
+        filterOption: true,
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择币别',
+        allowClear: true,
+      },
+      rules: isBatchMode.value ? '' : 'required',
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'freeDays',
+      label: '免用箱',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改' : '请输入免用箱天数',
+        min: 0,
+        maxlength: 160,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'voyage',
+      label: '航程(天)',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改' : '请输入航程',
+        maxlength: 100,
+      },
+      formItemClass: 'w-full',
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'etd',
+      label: '开船日期',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择开船日期',
+        format: 'YYYY-MM-DD',
+        valueFormat: 'YYYY-MM-DD',
+      },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'closeDocTime',
+      label: '截单时间',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择截单时间',
+        format: 'YYYY-MM-DD HH:mm',
+        valueFormat: 'YYYY-MM-DD HH:mm',
+        showTime: true,
+        timePicker: { format: 'HH:mm' },
+      },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'closingTime',
+      label: '截关时间',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择截关时间',
+        format: 'YYYY-MM-DD HH:mm',
+        valueFormat: 'YYYY-MM-DD HH:mm',
+        showTime: true,
+        timePicker: { format: 'HH:mm' },
+      },
+    },
+    {
+      component: 'ApiSelect',
+      fieldName: 'polId',
+      label: '起运港',
+      componentProps: {
+        api: async () => {
+          const { getPortCodePagedList } =
+            await import('#/api/system/base-data/port-code-admin');
+          const res = await getPortCodePagedList({ PageSize: 1000 });
+          return (res.items || []).map((item: any) => ({
+            label: `${item.cnName}(${item.portName})`,
+            value: item.id,
+          }));
+        },
+        showSearch: true,
+        filterOption: true,
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择起运港',
+        allowClear: true,
+      },
+      formItemClass: 'w-full',
+      rules: isBatchMode.value ? '' : 'required',
+    },
+
+    {
+      component: 'ApiSelect',
+      fieldName: 'podId',
+      label: '目的港',
+      componentProps: {
+        api: async () => {
+          const { getPortCodePagedList } =
+            await import('#/api/system/base-data/port-code-admin');
+          const res = await getPortCodePagedList({ PageSize: 1000 });
+          return (res.items || []).map((item: any) => ({
+            label: `${item.cnName}(${item.portName})`,
+            value: item.id,
+          }));
+        },
+        showSearch: true,
+        filterOption: true,
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择目的港',
+        allowClear: true,
+      },
+      rules: isBatchMode.value ? '' : 'required',
+    },
+    {
+      component: 'RadioGroup',
+      fieldName: 'isDirect',
+      label: '是否直达',
+      defaultValue: true,
+      componentProps: {
+        options: isBatchMode.value
+          ? [
+              { label: '不改', value: undefined },
+              { label: '是', value: true },
+              { label: '否', value: false },
+            ]
+          : [
+              { label: '是', value: true },
+              { label: '否', value: false },
+            ],
+        optionType: 'button',
+        onChange: (value: any) => {
+          // 如果选择直达（true），则清空并禁用中转港
+          console.log('value', value.target.value, value.target.value === true);
+          if (value.target.value === true) {
+            formApi.setValues({
+              poT1Id: null,
+              poT2Id: null,
+            });
+          }
+          // 更新中转港字段的禁用状态：选择"是"(直达)时禁用，选择"否"(非直达)或"不改"时启用
+          updateTransshipmentPortsDisabled(value.target.value === true);
+        },
+      },
+    },
+    {
+      component: 'ApiSelect',
+      fieldName: 'poT1Id',
+      label: '中转港1',
+      componentProps: () => ({
+        api: async () => {
+          const { getPortCodePagedList } =
+            await import('#/api/system/base-data/port-code-admin');
+          const res = await getPortCodePagedList({ PageSize: 1000 });
+          return (res.items || []).map((item: any) => ({
+            label: `${item.cnName}(${item.portName})`,
+            value: item.id,
+          }));
+        },
+        showSearch: true,
+        filterOption: true,
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择中转港1',
+        allowClear: true,
+        disabled: transshipmentPortsDisabled.value,
+      }),
+    },
+    {
+      component: 'ApiSelect',
+      fieldName: 'poT2Id',
+      label: '中转港2',
+      componentProps: () => ({
+        api: async () => {
+          const { getPortCodePagedList } =
+            await import('#/api/system/base-data/port-code-admin');
+          const res = await getPortCodePagedList({ PageSize: 1000 });
+          return (res.items || []).map((item: any) => ({
+            label: `${item.cnName}(${item.portName})`,
+            value: item.id,
+          }));
+        },
+        showSearch: true,
+        filterOption: true,
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择中转港2',
+        allowClear: true,
+        disabled: transshipmentPortsDisabled.value,
+      }),
+    },
+    {
+      component: 'Textarea',
+      fieldName: 'remark',
+      label: '备注',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改...' : '请输入备注',
+        rows: 1,
+        maxlength: 500,
+        showCount: true,
+      },
+    },
+  ],
+  showDefaultActions: false,
+  layout: 'horizontal',
+  wrapperClass: 'grid-cols-4',
+});
+
+// 其他设置表单
+const [OtherForm, otherFormApi] = useVbenForm({
+  schema: [
+    {
+      component: 'DatePicker',
+      fieldName: 'validTimeStart',
+      label: '有效起始日期',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择起始日期',
+        format: 'YYYY-MM-DD',
+        valueFormat: 'YYYY-MM-DD',
+      },
+      rules: isBatchMode.value ? '' : 'required',
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'validTimeEnd',
+      label: '有效截止日期',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择截止日期',
+        format: 'YYYY-MM-DD',
+        valueFormat: 'YYYY-MM-DD',
+      },
+      rules: isBatchMode.value ? '' : 'required',
+    },
+    {
+      component: 'RadioGroup',
+      fieldName: 'recommend',
+      label: '是否推荐',
+      defaultValue: undefined,
+      componentProps: {
+        options: isBatchMode.value
+          ? [
+              { label: '不改', value: undefined },
+              { label: '是', value: true },
+              { label: '否', value: false },
+            ]
+          : [
+              { label: '是', value: true },
+              { label: '否', value: false },
+            ],
+        optionType: 'button',
+      },
+    },
+  ],
+  showDefaultActions: false,
+  layout: 'horizontal',
+  wrapperClass: 'grid-cols-4',
+});
+
+const [Modal, modalApi] = useVbenModal({
+  async onConfirm() {
+    const { valid: mainValid } = await formApi.validate();
+    if (!mainValid && !isBatchMode.value) return;
+
+    const { valid: otherValid } = await otherFormApi.validate();
+    if (!otherValid && !isBatchMode.value) return;
+
+    const values = await formApi.getValues();
+    const otherValues = await otherFormApi.getValues();
+
+    // 构建箱型列表（seFreiPriceCtns）- 箱型费率（海运费）
+    const seFreiPriceCtns: SeFreiPriceCtnEditDto[] = [];
+    console.log('dynamicCtnTypes:', dynamicCtnTypes.value);
+    console.log('seFreiPriceCtns:', formData);
+    // 从 formData.seFreiPriceCtns 获取原始箱型数据，并更新成本值
+    if (formData.value?.seFreiPriceCtns) {
+      formData.value.seFreiPriceCtns.forEach((ctn) => {
+        const dyCtnItem = dynamicCtnTypes.value.find(
+          (item) => String(ctn.ctnCodeId) === item.ctnCodeId,
+        );
+
+        const newCost = Number(dyCtnItem?.cost) || ctn.cost;
+
+        seFreiPriceCtns.push({
+          id: ctn.id,
+          ctnCodeId: ctn.ctnCodeId,
+          cost: newCost || 0,
+        });
+      });
+    }
+
+    // 构建费用列表（seFreiPriceFees）- 附加费明细
+    const seFreiPriceFees: SeFreiPriceFeeEditDto[] = [];
+    console.log('c-sub-surchargeFees:', surchargeFees.value);
+    // 处理附加费
+    surchargeFees.value.forEach((surcharge) => {
+      if (surcharge.feeCodeId && surcharge.currencyId) {
+        const fee: SeFreiPriceFeeEditDto = {
+          id: surcharge.id,
+          feeCodeId: surcharge.feeCodeId,
+          currencyId: surcharge.currencyId,
+          seFreiPriceCtnFees: [],
+        };
+
+        // 处理 seFreiPriceCtnFees：如果存在则更新，否则从 prices 创建
+        if (
+          surcharge.seFreiPriceCtnFees &&
+          surcharge.seFreiPriceCtnFees.length > 0
+        ) {
+          // 编辑模式：更新已有的 seFreiPriceCtnFees
+          surcharge.seFreiPriceCtnFees.forEach((ctnFee) => {
+            const ctnCodeIdStr = String(ctnFee.ctnCodeId);
+            const priceItem = surcharge.prices[ctnCodeIdStr];
+
+            if (priceItem && priceItem.price !== undefined) {
+              // 更新价格和相关字段
+              ctnFee.price = priceItem.price;
+              ctnFee.conditionType =
+                priceItem.value !== undefined
+                  ? priceItem.conditionType
+                  : undefined;
+              ctnFee.operatorType = priceItem.operatorType;
+              ctnFee.value = priceItem.value;
+              ctnFee.otherPrice = priceItem.otherPrice;
+            }
+          });
+
+          fee.seFreiPriceCtnFees = surcharge.seFreiPriceCtnFees;
+        } else {
+          // 新增模式：从 prices 对象创建新的 seFreiPriceCtnFees
+          Object.keys(surcharge.prices).forEach((ctnCodeIdStr) => {
+            const priceItem = surcharge.prices[ctnCodeIdStr];
+            if (priceItem && priceItem.price !== undefined) {
+              // 从 formData 中查找原始的 ctnCodeId（number 类型），避免精度丢失
+              const originalCtn = formData.value?.seFreiPriceCtns?.find(
+                (ctn) => String(ctn.ctnCodeId) === ctnCodeIdStr,
+              );
+
+              fee.seFreiPriceCtnFees?.push({
+                ctnCodeId: originalCtn?.ctnCodeId ?? Number(ctnCodeIdStr), // 优先使用原始 number 类型
+                price: priceItem.price,
+                conditionType:
+                  priceItem.value !== undefined
+                    ? priceItem.conditionType
+                    : undefined,
+                operatorType: priceItem.operatorType,
+                value: priceItem.value,
+                otherPrice: priceItem.otherPrice,
+              });
+            }
+          });
+        }
+
+        if (fee.seFreiPriceCtnFees && fee.seFreiPriceCtnFees.length > 0) {
+          seFreiPriceFees.push(fee);
+        }
+      }
+    });
+
+    // 构建提交数据
+    const submitData: any = {
+      carrierId: values.carrierId,
+      currencyId: values.currencyId,
+      polId: values.polId,
+      podId: values.podId,
+      isDirect: values.isDirect,
+      recommend: otherValues.recommend,
+      validTimeStart: otherValues.validTimeStart,
+      validTimeEnd: otherValues.validTimeEnd,
+      poT1Id: values.poT1Id,
+      poT2Id: values.poT2Id,
+      freeDays: values.freeDays,
+      voyage: values.voyage,
+      etd: values.etd,
+      closeDocTime: values.closeDocTime,
+      closingTime: values.closingTime,
+      remark: values.remark,
+      seFreiPriceCtns,
+      seFreiPriceFees,
+    };
+    console.log('c-submitData', submitData);
+    // 批量模式
+    if (isBatchMode.value) {
+      const batchData: BatchEditSeFreiPriceInput = {
+        ids: batchIds.value,
+        ...submitData,
+      };
+      if (batchData.seFreiPriceCtns && batchData.seFreiPriceCtns.length === 0) {
+        delete batchData.seFreiPriceCtns;
+      }
+      if (batchData.seFreiPriceFees && batchData.seFreiPriceFees.length === 0) {
+        delete batchData.seFreiPriceFees;
+      }
+      modalApi.lock();
+      batchEditSeFreiPrice(batchData)
+        .then(() => {
+          emits('success');
+          modalApi.close();
+        })
+        .catch(() => {
+          modalApi.unlock();
+        });
+    } else {
+      // 单条新增/编辑
+      if (id.value) {
+        (submitData as EditSeFreiPriceInput).id = id.value;
+      }
+
+      modalApi.lock();
+      const apiCall = id.value
+        ? editSeFreiPrice(submitData as EditSeFreiPriceInput)
+        : addSeFreiPrice(submitData as AddSeFreiPriceInput);
+
+      apiCall
+        .then(() => {
+          emits('success');
+          modalApi.close();
+        })
+        .catch(() => {
+          modalApi.unlock();
+        });
+    }
+  },
+
+  async onOpenChange(isOpen) {
+    console.log('c-onOpenChange', isOpen);
+    if (isOpen) {
+      const data = modalApi.getData<any>();
+      formApi.resetForm();
+      otherFormApi.resetForm();
+      feeData.value = {};
+      conditionalFeeConfigs.value = {};
+      surchargeFees.value = []; // 重置附加费列表
+
+      // 加载币别和费用代码列表
+      await loadSelectData();
+
+      if (data?.isBatch && data?.ids) {
+        // 批量编辑模式
+        isBatchMode.value = true;
+        batchIds.value = data.ids;
+        id.value = undefined;
+        formData.value = undefined;
+      } else if (data?.id) {
+        // 编辑模式 - 从后端获取详情
+        isBatchMode.value = false;
+        id.value = data.id;
+        try {
+          const detail = await getSeFreiPriceDetail(data.id);
+          formData.value = detail;
+
+          await nextTick();
+          formApi.setValues({
+            carrierId: detail.carrierId,
+            currencyId: detail.currencyId,
+            polId: detail.polId,
+            podId: detail.podId,
+            isDirect: detail.isDirect,
+
+            poT1Id: detail.poT1Id,
+            poT2Id: detail.poT2Id,
+            freeDays: detail.freeDays,
+            voyage: detail.voyage,
+            etd: detail.etd,
+            closeDocTime: detail.closeDocTime,
+            closingTime: detail.closingTime,
+            remark: detail.remark,
+          });
+
+          // 根据isDirect初始化中转港禁用状态
+          if (detail.isDirect === true) {
+            transshipmentPortsDisabled.value = true;
+          } else {
+            transshipmentPortsDisabled.value = false;
+          }
+
+          otherFormApi.setValues({
+            recommend: detail.recommend,
+            validTimeStart: detail.validTimeStart,
+            validTimeEnd: detail.validTimeEnd,
+          });
+
+          // 设置 formData 用于箱型列表
+          formData.value = detail;
+
+          // 加载附加费数据 - 从 seFreiPriceFees 加载
+          if (detail.seFreiPriceFees) {
+            detail.seFreiPriceFees.forEach((fee, feeIndex) => {
+              // 附加费 - 使用surchargeFees结构
+              const surchargeItem: SurchargeFeeItem = {
+                id: fee.id,
+                feeCodeId: fee.feeCodeId,
+                currencyId: fee.currencyId,
+                prices: {},
+                seFreiPriceCtnFees: [],
+              };
+
+              if (fee.seFreiPriceCtnFees) {
+                fee.seFreiPriceCtnFees.forEach((ctnFee) => {
+                  const ctnInfo = detail.seFreiPriceCtns?.find(
+                    (ctn) => ctn.id === ctnFee.seFreiPriceCtnId,
+                  );
+
+                  if (ctnInfo) {
+                    const ctnCodeId = String(ctnInfo.ctnCodeId);
+                    console.log('c-ctnCodeId', ctnCodeId, ctnInfo);
+                    // 判断是否需要启用条件模式：operatorType、value、otherPrice 任一不为空
+                    const hasConditionData =
+                      (ctnFee.operatorType !== undefined &&
+                        ctnFee.operatorType !== null) ||
+                      (ctnFee.value !== undefined && ctnFee.value !== null) ||
+                      (ctnFee.otherPrice !== undefined &&
+                        ctnFee.otherPrice !== null);
+
+                    // 如果存在条件数据，初始化并启用条件配置（使用索引作为feeType）
+                    if (hasConditionData) {
+                      const feeTypeStr = String(feeIndex);
+                      initConditionalConfig(feeTypeStr, ctnCodeId);
+                      if (
+                        conditionalFeeConfigs.value[feeTypeStr] &&
+                        conditionalFeeConfigs.value[feeTypeStr][ctnCodeId]
+                      ) {
+                        conditionalFeeConfigs.value[feeTypeStr][
+                          ctnCodeId
+                        ].enabled = true;
+                      }
+                    }
+
+                    // 将后端数据转换为 SurchargePriceItem 格式
+                    surchargeItem.prices[ctnCodeId] = {
+                      price: ctnFee.price,
+                      value: ctnFee.value,
+                      conditionType: ctnFee.conditionType || 0,
+                      operatorType: ctnFee.operatorType,
+                      otherPrice: ctnFee.otherPrice,
+                    };
+
+                    // 直接使用原始的 ctnCodeId（number 类型）避免精度丢失
+                    surchargeItem.seFreiPriceCtnFees?.push({
+                      id: ctnFee.id,
+                      ctnCodeId: ctnInfo.ctnCodeId,
+                      price: ctnFee.price,
+                      conditionType: ctnFee.conditionType,
+                      operatorType: ctnFee.operatorType,
+                      value: ctnFee.value,
+                      otherPrice: ctnFee.otherPrice,
+                    });
+                  }
+                });
+              }
+
+              surchargeFees.value.push(surchargeItem);
+            });
+          }
+        } catch (error) {
+          console.error('获取运价详情失败:', error);
+        }
+      } else if (data?.carrierId) {
+        // 复制模式 - 直接使用传入的数据
+        isBatchMode.value = false;
+        id.value = undefined;
+        formData.value = data as SeFreiPriceOutDto;
+
+        await nextTick();
+        formApi.setValues({
+          carrierId: data.carrierId,
+          currencyId: data.currencyId,
+          polId: data.polId,
+          podId: data.podId,
+          isDirect: data.isDirect,
+          poT1Id: data.poT1Id,
+          poT2Id: data.poT2Id,
+          freeDays: data.freeDays,
+          voyage: data.voyage,
+          etd: data.etd,
+          closeDocTime: data.closeDocTime,
+          closingTime: data.closingTime,
+          remark: data.remark,
+        });
+
+        // 根据isDirect初始化中转港禁用状态
+        if (data.isDirect === true) {
+          transshipmentPortsDisabled.value = true;
+        } else {
+          transshipmentPortsDisabled.value = false;
+        }
+
+        otherFormApi.setValues({
+          recommend: data.recommend,
+          validTimeStart: data.validTimeStart,
+          validTimeEnd: data.validTimeEnd,
+        });
+
+        // 加载附加费数据
+        if (data.seFreiPriceFees) {
+          data.seFreiPriceFees.forEach((fee: any, feeIndex: number) => {
+            const surchargeItem: SurchargeFeeItem = {
+              id: fee.id,
+              feeCodeId: fee.feeCodeId,
+              currencyId: fee.currencyId,
+              prices: {},
+              seFreiPriceCtnFees: [],
+            };
+
+            if (fee.seFreiPriceCtnFees) {
+              fee.seFreiPriceCtnFees.forEach((ctnFee: any) => {
+                const ctnInfo = data.seFreiPriceCtns?.find(
+                  (ctn: any) => ctn.id === ctnFee.seFreiPriceCtnId,
+                );
+
+                if (ctnInfo) {
+                  // 直接使用原始的 ctnCodeId（number 类型）避免精度丢失
+                  const ctnCodeId = ctnInfo.ctnCodeId;
+                  const ctnCodeIdStr = String(ctnCodeId);
+
+                  // 判断是否需要启用条件模式：operatorType、value、otherPrice 任一不为空
+                  const hasConditionData =
+                    (ctnFee.operatorType !== undefined &&
+                      ctnFee.operatorType !== null) ||
+                    (ctnFee.value !== undefined && ctnFee.value !== null) ||
+                    (ctnFee.otherPrice !== undefined &&
+                      ctnFee.otherPrice !== null);
+
+                  // 如果存在条件数据，初始化并启用条件配置（使用索引作为feeType）
+                  if (hasConditionData) {
+                    const feeTypeStr = String(feeIndex);
+                    initConditionalConfig(feeTypeStr, ctnCodeIdStr);
+                    if (
+                      conditionalFeeConfigs.value[feeTypeStr] &&
+                      conditionalFeeConfigs.value[feeTypeStr][ctnCodeIdStr]
+                    ) {
+                      conditionalFeeConfigs.value[feeTypeStr][
+                        ctnCodeIdStr
+                      ].enabled = true;
+                    }
+                  }
+
+                  surchargeItem.prices[ctnCodeIdStr] = {
+                    price: ctnFee.price,
+                    value: ctnFee.value,
+                    conditionType: ctnFee.conditionType || 0,
+                    operatorType: ctnFee.operatorType,
+                    otherPrice: ctnFee.otherPrice,
+                  };
+
+                  surchargeItem.seFreiPriceCtnFees?.push({
+                    id: ctnFee.id,
+                    ctnCodeId: ctnCodeId,
+                    price: ctnFee.price,
+                    conditionType: ctnFee.conditionType,
+                    operatorType: ctnFee.operatorType,
+                    value: ctnFee.value,
+                    otherPrice: ctnFee.otherPrice,
+                  });
+                }
+              });
+            }
+            surchargeFees.value.push(surchargeItem);
+          });
+        }
+      } else {
+        // 新增模式
+        isBatchMode.value = false;
+        id.value = undefined;
+        formData.value = undefined;
+        // 新增模式下，默认中转港可编辑（非直达）
+        transshipmentPortsDisabled.value = true;
+        // 新增模式下，清空箱型费率和附加费数据
+        surchargeFees.value = [];
+      }
+    }
+  },
+});
+
+const getModalTitle = computed(() => {
+  if (isBatchMode.value) {
+    return `批量更改 (已选中 ${batchIds.value.length} 条)`;
+  }
+  return formData.value?.id
+    ? $t('common.edit', '运价')
+    : $t('common.create', '运价');
+});
+
+// 订单状态下拉框
+const freightConditionItemOptions = ref<any[]>([]);
+const conditionComparisonTypeOptions = ref<any[]>([]);
+
+onMounted(async () => {
+  // 从缓存获取枚举项（如果缓存不存在会自动加载）
+  freightConditionItemOptions.value = await getEnumItems(
+    'freightConditionItem',
+  );
+  freightConditionItemOptions.value = freightConditionItemOptions.value.map(
+    (item) => {
+      return {
+        label: item.displayName,
+        value: item.value,
+        description: item.description, // 可选：如果需要在选项中显示描述信息
+      };
+    },
+  );
+
+  conditionComparisonTypeOptions.value = await getEnumItems(
+    'ConditionComparisonType',
+  );
+  conditionComparisonTypeOptions.value =
+    conditionComparisonTypeOptions.value.map((item) => {
+      return {
+        label: item.displayName,
+        value: item.value,
+      };
+    });
+});
+</script>
+
+<template>
+  <Modal :title="getModalTitle" class="w-[1500px]">
+    <div class="px-4">
+      <!-- 批量模式提示 -->
+      <div
+        v-if="isBatchMode"
+        class="mb-4 rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800"
+      >
+        💡 填写的字段将统一更新到所有选中的航线记录中，留空的字段不会修改。
+      </div>
+
+      <!-- 基础信息 -->
+      <div class="mb-6">
+        <div class="mb-3 border-b border-gray-200 pb-2">
+          <span class="text-base font-semibold text-gray-700"> 基础信息 </span>
+        </div>
+        <Form />
+      </div>
+
+      <!-- 其他设置 -->
+      <div class="mb-6">
+        <div class="mb-3 border-b border-gray-200 pb-2">
+          <span class="text-base font-semibold text-gray-700"> 其他设置 </span>
+        </div>
+        <OtherForm />
+      </div>
+
+      <!-- 箱型费率 -->
+      <div class="mb-6" v-if="dynamicCtnTypes.length > 0">
+        <div class="mb-3 border-b border-gray-200 pb-2">
+          <span class="text-base font-semibold text-gray-700">
+            箱型费率 {{ isBatchMode ? ' —留空则不修改' : '' }}
+          </span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr class="bg-gray-100">
+                <th class="border border-gray-300 px-3 py-2 text-left">
+                  费用类型
+                </th>
+                <th
+                  v-for="ctn in dynamicCtnTypes"
+                  :key="ctn.ctnCodeId"
+                  class="border border-gray-300 px-3 py-2 text-center"
+                >
+                  {{ ctn.name }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="border border-gray-300 px-3 py-2">海运费</td>
+
+                <!-- 箱型价格输入 -->
+                <td
+                  v-for="ctn in dynamicCtnTypes"
+                  :key="ctn.ctnCodeId"
+                  class="border border-gray-300 px-2 py-2"
+                >
+                  <input
+                    v-model.number="ctn.cost"
+                    type="number"
+                    class="w-full rounded border border-gray-300 px-2 py-1 text-center text-sm"
+                    placeholder="-"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 附加费明细 -->
+      <div
+        class="mb-6"
+        v-if="!isBatchMode && (formData?.id || surchargeFees.length > 0)"
+      >
+        <div
+          class="mb-3 flex items-center justify-between border-b border-gray-200 pb-2"
+        >
+          <span class="text-base font-semibold text-gray-700">
+            附加费明细
+          </span>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="rounded border border-green-500 px-3 py-1 text-sm text-green-600 hover:bg-green-50"
+              @click="addSurchargeFee"
+            >
+              + 添加
+            </button>
+            <button
+              type="button"
+              class="rounded border border-red-500 px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+              @click="surchargeFees.length > 0 && surchargeFees.pop()"
+              :disabled="surchargeFees.length === 0"
+            >
+              - 删除
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto" v-if="surchargeFees.length > 0">
+          <table class="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr class="bg-gray-100">
+                <th
+                  class="border border-gray-300 px-3 py-2 text-center"
+                  style="width: 200px"
+                >
+                  费用名称
+                </th>
+                <th
+                  class="border border-gray-300 px-3 py-2 text-center"
+                  style="width: 120px"
+                >
+                  币别
+                </th>
+                <th
+                  v-for="ctn in dynamicCtnTypes"
+                  :key="ctn.ctnCodeId"
+                  class="border border-gray-300 px-3 py-2 text-center"
+                >
+                  {{ ctn.name }}
+                </th>
+                <th
+                  class="border border-gray-300 px-3 py-2 text-center"
+                  style="width: 80px"
+                >
+                  操作
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(surcharge, index) in surchargeFees" :key="index">
+                <!-- 费用名称选择 -->
+                <td class="border border-gray-300 px-2 py-2">
+                  <select
+                    v-model="surcharge.feeCodeId"
+                    class="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                  >
+                    <option :value="undefined">请选择</option>
+                    <option
+                      v-for="fee in feeCodeList"
+                      :key="fee.value"
+                      :value="fee.value"
+                    >
+                      {{ fee.label }}
+                    </option>
+                  </select>
+                </td>
+
+                <!-- 币别选择 -->
+                <td class="border border-gray-300 px-2 py-2">
+                  <select
+                    v-model="surcharge.currencyId"
+                    class="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                  >
+                    <option :value="undefined">请选择</option>
+                    <option
+                      v-for="currency in currencyList"
+                      :key="currency.value"
+                      :value="currency.value"
+                    >
+                      {{ currency.label }}
+                    </option>
+                  </select>
+                </td>
+
+                <td
+                  v-for="ctn in dynamicCtnTypes"
+                  :key="`fee${ctn.ctnCodeId}`"
+                  class="border border-gray-300 py-2 pl-4 pr-3"
+                >
+                  <div class="filter-icon">
+                    <button
+                      type="button"
+                      class="absolute left-0.5 top-0.5 z-20 flex h-4 w-4 items-center justify-center rounded-sm bg-white text-gray-400 hover:text-gray-600"
+                      @click="
+                        showConditionPopup(
+                          $event,
+                          index.toString(),
+                          ctn.ctnCodeId,
+                        )
+                      "
+                      title="设置条件费用"
+                    >
+                      <IconifyIcon icon="mdi:filter-outline" class="h-4 w-3" />
+                    </button>
+
+                    <div
+                      v-if="
+                        conditionPopupVisible &&
+                        currentConditionCell?.feeType === index.toString() &&
+                        currentConditionCell?.ctnCodeId === ctn.ctnCodeId
+                      "
+                      class="absolute left-1 top-0.5 z-50 rounded border border-gray-300 bg-white p-2 shadow-lg"
+                      @click.stop
+                    >
+                      <label
+                        class="flex cursor-pointer items-center space-x-1 whitespace-nowrap"
+                      >
+                        <input
+                          type="checkbox"
+                          :checked="
+                            getConditionalConfig(
+                              index.toString(),
+                              ctn.ctnCodeId,
+                            ).enabled
+                          "
+                          @change="
+                            toggleConditionEnabled(
+                              ($event.target as HTMLInputElement).checked,
+                            )
+                          "
+                          class="h-3 w-3"
+                        />
+                        <span class="text-xs text-gray-700">条件</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="relative">
+                    <div
+                      v-if="
+                        getConditionalConfig(index.toString(), ctn.ctnCodeId)
+                          .enabled
+                      "
+                      class="flex flex-col gap-2"
+                    >
+                      <!-- 条件行 -->
+                      <div class="flex items-center gap-1">
+                        <Select
+                          size="small"
+                          :value="
+                            surcharge.prices[ctn.ctnCodeId]?.conditionType
+                          "
+                          :options="freightConditionItemOptions"
+                          class="min-w-[50px] flex-1"
+                          @change="
+                            (val) =>
+                              updateSurchargePriceValue(
+                                index,
+                                ctn.ctnCodeId,
+                                'conditionType',
+                                String(val),
+                              )
+                          "
+                        />
+                        <Select
+                          size="small"
+                          :value="surcharge.prices[ctn.ctnCodeId]?.operatorType"
+                          @change="
+                            (val) =>
+                              updateSurchargePriceValue(
+                                index,
+                                ctn.ctnCodeId,
+                                'operatorType',
+                                String(val),
+                              )
+                          "
+                          :options="conditionComparisonTypeOptions"
+                          class="min-w-[50px] flex-1"
+                        />
+                        <Input
+                          size="small"
+                          :value="surcharge.prices[ctn.ctnCodeId]?.value"
+                          @input="
+                            updateSurchargePriceValue(
+                              index,
+                              ctn.ctnCodeId,
+                              'value',
+                              ($event.target as HTMLInputElement).value,
+                            )
+                          "
+                          type="number"
+                          class="min-w-[50px] flex-1"
+                          placeholder="阈值"
+                        />
+                        <span>{{
+                          freightConditionItemOptions.find(
+                            (o) =>
+                              o.value ===
+                              surcharge.prices[ctn.ctnCodeId]?.conditionType,
+                          )?.description
+                        }}</span>
+                      </div>
+
+                      <!-- 值输入行 -->
+                      <div
+                        class="flex items-stretch overflow-hidden rounded border border-gray-200"
+                      >
+                        <!-- 左侧输入框 -->
+                        <div class="relative min-w-[120px] flex-1">
+                          <Input
+                            size="small"
+                            :value="surcharge.prices[ctn.ctnCodeId]?.price"
+                            @input="
+                              updateSurchargePriceValue(
+                                index,
+                                ctn.ctnCodeId,
+                                'price',
+                                ($event.target as HTMLInputElement).value,
+                              )
+                            "
+                            type="number"
+                            class="h-full w-full rounded-none border-0"
+                            placeholder="-"
+                          />
+                        </div>
+
+                        <!-- 右侧 ELSE 区域 -->
+                        <div
+                          class="flex flex-col border-l border-gray-200 bg-gray-50"
+                        >
+                          <div
+                            class="border-b border-gray-200 px-2 py-0.5 text-center text-xs font-medium text-gray-500"
+                          >
+                            ELSE
+                          </div>
+
+                          <Input
+                            size="small"
+                            :value="surcharge.prices[ctn.ctnCodeId]?.otherPrice"
+                            @input="
+                              updateSurchargePriceValue(
+                                index,
+                                ctn.ctnCodeId,
+                                'otherPrice',
+                                ($event.target as HTMLInputElement).value,
+                              )
+                            "
+                            type="number"
+                            class="h-full w-full rounded-none border-0"
+                            placeholder="-"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div v-else class="relative">
+                      <Input
+                        :value="surcharge.prices[ctn.ctnCodeId]?.price"
+                        @input="
+                          updateSurchargePriceValue(
+                            index,
+                            ctn.ctnCodeId,
+                            'price',
+                            ($event.target as HTMLInputElement).value,
+                          )
+                        "
+                        type="number"
+                        class="ml-0.5 w-full rounded border border-gray-300 py-1 pl-5 pr-2"
+                        :placeholder="isBatchMode ? '-' : '0'"
+                      />
+                    </div>
+                  </div>
+                </td>
+
+                <!-- 删除按钮 -->
+                <td class="border border-gray-300 px-2 py-2 text-center">
+                  <button
+                    type="button"
+                    class="rounded border border-red-500 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                    @click="removeSurchargeFee(index)"
+                  >
+                    删除
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div
+          v-else
+          class="rounded border border-dashed border-gray-300 py-8 text-center text-gray-400"
+        >
+          暂无附加费，点击"添加"按钮添加附加费
+        </div>
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="flex justify-end space-x-2">
+        <Button @click="modalApi.close()"> 取消 </Button>
+        <Button
+          type="primary"
+          class="rounded text-white"
+          @click="modalApi.onConfirm()"
+        >
+          {{ isBatchMode ? '确认修改' : '确认' }}
+        </Button>
+      </div>
+    </template>
+  </Modal>
+</template>
+
+<style lang="scss" scoped>
+.filter-icon {
+  position: relative;
+  top: -0.6rem;
+  left: -1.1rem;
+}
+
+:deep(.ant-input-sm) {
+  padding: 2px 8px;
+}
+
+:deep(.ant-select-sm) {
+  .ant-select-selector {
+    padding: 2px 8px !important;
+  }
+}
+
+.conditional-input {
+  transition: all 0.2s;
+
+  &:focus {
+    border-color: #52c41a;
+    box-shadow: 0 0 0 2px rgb(82 196 26 / 20%);
+  }
+}
+</style>
