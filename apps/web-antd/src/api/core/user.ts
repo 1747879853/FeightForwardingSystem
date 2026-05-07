@@ -13,7 +13,7 @@ interface BackendUserResponse {
     name: string;
     tenancyName: string;
   };
-  user: {
+  user: null | {
     avatar: null | string;
 
     id: number;
@@ -27,7 +27,12 @@ interface BackendUserResponse {
  * 适配器函数：将后端返回的数据转换为前端 UserInfo 类型
  */
 function adaptUserInfo(backendData: BackendUserResponse): UserInfo {
-  const { user } = backendData;
+  const user = backendData?.user ?? {
+    avatar: '',
+    id: 0,
+    nickName: '',
+    tenantId: 0,
+  };
 
   return {
     // 基础用户信息

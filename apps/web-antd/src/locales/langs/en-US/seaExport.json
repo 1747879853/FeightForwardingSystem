@@ -325,6 +325,7 @@
       "originalCurrencyLabel": "Original Currency",
       "originalExchangeRate": "Original Rate",
       "passed": "Passed",
+      "partial": "Partially Settled",
       "paySide": "Pay Side",
       "payableSummary": "Payable Summary",
       "podName": "POD",
@@ -347,6 +348,7 @@
       "submitTimeStart": "Submit Time From",
       "summaryAmount": "Summary",
       "swiftCode": "SWIFT",
+      "settlemented": "Settled",
       "totalPayPrice": "Total Payable",
       "totalReceivePrice": "Total Receivable",
       "unSettledAmountLabel": "Unsettled Amount"

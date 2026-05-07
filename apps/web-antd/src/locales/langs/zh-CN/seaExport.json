@@ -296,6 +296,8 @@
       "auditing": "审核中",
       "rejected": "已驳回",
       "passed": "已通过",
+      "partial": "部分结算",
+      "settlemented": "结算完毕",
       "clientName": "结算对象",
       "currencyCode": "币别",
       "submitTime": "提交时间",
