@@ -292,7 +292,12 @@ export function useColumns<T = SeFreiPriceOutDto>(
       width: 60,
       fixed: 'left',
     },
-
+    {
+      field: 'recommend',
+      title: $t('seaExport.freightRate.recommend'),
+      width: 80,
+      slots: { default: 'recommend' },
+    },
     {
       field: 'carrier.cnShortName',
       title: $t('seaExport.freightRate.carrierId'),
@@ -326,14 +331,30 @@ export function useColumns<T = SeFreiPriceOutDto>(
       },
     },
     {
+      field: 'poT1.cnName',
+      title: $t('seaExport.freightRate.pot1Id'),
+      width: 120,
+      formatter: ({ row }) => {
+        return row.poT1?.cnName || row.poT1?.portName || '-';
+      },
+    },
+    {
+      field: 'poT2.cnName',
+      title: $t('seaExport.freightRate.pot2Id'),
+      width: 120,
+      formatter: ({ row }) => {
+        return row.poT2?.cnName || row.poT2?.portName || '-';
+      },
+    },
+    {
       field: 'isDirect',
       title: $t('seaExport.freightRate.isDirect'),
       width: 80,
       cellRender: {
         name: 'CellTag',
         options: [
-          { color: 'success', label: $t('common.yes'), value: true },
-          { color: 'default', label: $t('common.no'), value: false },
+          { color: '#52c41a', label: $t('common.yes'), value: true },
+          { color: '#8c8c8c', label: $t('common.no'), value: false },
         ],
       },
     },
@@ -383,8 +404,8 @@ export function useColumns<T = SeFreiPriceOutDto>(
       cellRender: {
         name: 'CellTag',
         options: [
-          { color: 'success', label: $t('common.valid'), value: true },
-          { color: 'error', label: $t('common.invalid'), value: false },
+          { color: '#389e0d', label: $t('common.valid'), value: true },
+          { color: '#cf1322', label: $t('common.invalid'), value: false },
         ],
       },
     },
@@ -395,8 +416,8 @@ export function useColumns<T = SeFreiPriceOutDto>(
       cellRender: {
         name: 'CellTag',
         options: [
-          { color: 'warning', label: $t('common.yes'), value: true },
-          { color: 'default', label: $t('common.no'), value: false },
+          { color: '#d46b08', label: $t('common.yes'), value: true },
+          { color: '#8c8c8c', label: $t('common.no'), value: false },
         ],
       },
     },

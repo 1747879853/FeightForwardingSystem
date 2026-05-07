@@ -11,7 +11,7 @@ import type {
 import { nextTick, ref, watch, onMounted, computed } from 'vue';
 
 import { Page, useVbenModal } from '@vben/common-ui';
-import { Copy, Plus, ChevronDown } from '@vben/icons';
+import { Copy, Plus, ChevronDown, IconifyIcon } from '@vben/icons';
 
 import { Button, message, Modal, Space, Dropdown, Menu } from 'ant-design-vue';
 
@@ -356,6 +356,21 @@ function handleLineClick(lineId?: number) {
   gridApi.query();
 }
 
+/**
+ * 点击推荐星星切换推荐状态
+ */
+async function handleRecommendClick(row: SeFreiPriceOutDto) {
+  const newRecommend = !row.recommend;
+  try {
+    await changeRecommendStatus({ id: row.id, recommend: newRecommend });
+    message.success(newRecommend ? '推荐成功' : '取消推荐成功');
+    onRefresh();
+  } catch (error) {
+    message.error('操作失败');
+    console.error(error);
+  }
+}
+
 onMounted(() => {
   getLines();
 });
@@ -369,6 +384,18 @@ onMounted(() => {
     <BatchEditModalComponent @success="onRefresh" />
 
     <Grid :table-title="$t('seaExport.freightRate.title')">
+      <!-- 推荐状态自定义渲染插槽 -->
+      <template #recommend="{ row }">
+        <div class="flex items-center justify-center">
+          <IconifyIcon
+            icon="lucide:star"
+            class="size-5 cursor-pointer transition-all duration-200 hover:scale-110"
+            :class="row.recommend ? 'text-yellow-500' : 'text-gray-300'"
+            @click="handleRecommendClick(row)"
+          />
+        </div>
+      </template>
+
       <!-- 附加费自定义渲染插槽 -->
       <template #surchargeFees="{ row }">
         <div
@@ -414,17 +441,17 @@ onMounted(() => {
           </div>
           <Space>
             <!-- 新增按钮 -->
-            <Button v-access:code="perm.add" type="primary" @click="onCreate">
+            <!-- <Button v-access:code="perm.add" type="primary" @click="onCreate">
               <Plus class="size-5" />
               {{
                 $t('ui.actionTitle.create', [$t('seaExport.freightRate.name')])
               }}
-            </Button>
+            </Button> -->
 
             <!-- 批量新增按钮 -->
             <Button v-access:code="perm.add" @click="onBatchAdd">
               <Plus class="size-5" />
-              {{ $t('seaExport.freightRate.batchAdd') }}
+              {{ $t('ui.actionTitle.create') }}
             </Button>
 
             <!-- 复制按钮 -->
@@ -436,16 +463,16 @@ onMounted(() => {
             <!-- 批量操作下拉菜单 -->
             <Dropdown v-access:code="perm.edit">
               <Button>
-                {{ $t('seaExport.freightRate.batchEdit') }}
+                {{ $t('seaExport.freightRate.batchOperation') }}
                 <ChevronDown class="ml-1 size-4" />
               </Button>
               <template #overlay>
                 <Menu>
                   <Menu.Item key="editModal" @click="onBatchEditModal">
-                    {{ $t('seaExport.freightRate.batchEdit') }}（弹窗）
+                    {{ $t('seaExport.freightRate.batchUpdate') }}
                   </Menu.Item>
                   <Menu.Item key="edit" @click="onBatchEdit">
-                    {{ $t('seaExport.freightRate.batchEdit') }}（表单）
+                    {{ $t('seaExport.freightRate.batchEdit') }}
                   </Menu.Item>
                   <Menu.Item key="recommend" @click="onBatchRecommend(true)">
                     {{ $t('seaExport.freightRate.batchRecommend') }}

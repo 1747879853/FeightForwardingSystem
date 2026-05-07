@@ -316,6 +316,39 @@ function updateNormalFeeValue(
   feeData.value[feeType].prices[ctnCodeId] = numValue;
 }
 
+// 切换算符（循环切换：>、>=、<、<=、=）
+function toggleOperator(index: number, ctnCodeId: string) {
+  const currentOperator =
+    surchargeFees.value[index]?.prices[ctnCodeId]?.operatorType;
+
+  // 定义算符顺序：1: >, 2: >=, 3: <, 4: <=, 5: =
+  const operatorSequence = [1, 2, 3, 4, 5];
+
+  // 找到当前算符的索引，然后切换到下一个
+  const currentIndex = operatorSequence.indexOf(currentOperator ?? 0);
+  const nextIndex = (currentIndex + 1) % operatorSequence.length;
+  const nextOperator = operatorSequence[nextIndex];
+
+  updateSurchargePriceValue(
+    index,
+    ctnCodeId,
+    'operatorType',
+    String(nextOperator),
+  );
+}
+
+// 获取算符显示符号
+function getOperatorSymbol(operatorType?: number): string {
+  const symbolMap: Record<number, string> = {
+    1: '>',
+    2: '≥',
+    3: '<',
+    4: '≤',
+    5: '=',
+  };
+  return symbolMap[operatorType ?? 1] || '>';
+}
+
 // 主表表单配置
 const [Form, formApi] = useVbenForm({
   schema: [
@@ -1324,22 +1357,21 @@ onMounted(async () => {
                         "
                         placeholder="条件类型"
                       />
-                      <Select
-                        size="small"
-                        :value="surcharge.prices[ctn.ctnCodeId]?.operatorType"
-                        @change="
-                          (val) =>
-                            updateSurchargePriceValue(
-                              index,
-                              ctn.ctnCodeId,
-                              'operatorType',
-                              String(val),
-                            )
-                        "
-                        :options="conditionComparisonTypeOptions"
-                        class="flex-1"
-                        placeholder="算符"
-                      />
+
+                      <!-- 算符切换按钮 -->
+                      <button
+                        type="button"
+                        class="flex h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white text-sm font-semibold text-blue-600 transition-all hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
+                        @click="toggleOperator(index, ctn.ctnCodeId)"
+                        :title="'点击切换算符'"
+                      >
+                        {{
+                          getOperatorSymbol(
+                            surcharge.prices[ctn.ctnCodeId]?.operatorType,
+                          )
+                        }}
+                      </button>
+
                       <Input
                         size="small"
                         :value="surcharge.prices[ctn.ctnCodeId]?.value"
@@ -1355,22 +1387,21 @@ onMounted(async () => {
                         class="flex-1"
                         placeholder="阈值"
                       />
-                    </div>
 
-                    <!-- 条件说明 -->
-                    <div
-                      v-if="surcharge.prices[ctn.ctnCodeId]?.conditionType"
-                      class="rounded bg-blue-50 px-2 py-1 text-xs text-blue-700"
-                    >
-                      {{
-                        freightConditionItemOptions.find(
-                          (o) =>
-                            o.value ===
-                            surcharge.prices[ctn.ctnCodeId]?.conditionType,
-                        )?.description
-                      }}
+                      <!-- 条件说明（单位） -->
+                      <span
+                        v-if="surcharge.prices[ctn.ctnCodeId]?.conditionType"
+                        class="whitespace-nowrap text-xs text-gray-500"
+                      >
+                        {{
+                          freightConditionItemOptions.find(
+                            (o) =>
+                              o.value ===
+                              surcharge.prices[ctn.ctnCodeId]?.conditionType,
+                          )?.description
+                        }}
+                      </span>
                     </div>
-
                     <!-- 价格输入区域 -->
                     <div
                       class="flex overflow-hidden rounded-lg border border-gray-300 bg-white transition-colors"
