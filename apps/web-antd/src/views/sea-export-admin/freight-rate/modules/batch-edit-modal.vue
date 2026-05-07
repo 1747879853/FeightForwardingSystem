@@ -59,7 +59,7 @@ const originalData = ref<SeFreiPriceOutDto[]>([]);
 // [Modal, modalApi] 由父组件通过 connectedComponent 注入
 const [Modal, modalApi] = useVbenModal({
   onCancel() {
-    resetForm();
+    modalApi.close();
   },
   onConfirm() {
     handleSubmit();

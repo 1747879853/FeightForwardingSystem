@@ -100,7 +100,7 @@ async function loadSelectData() {
       await import('#/api/system/base-data/currency-admin');
     const currencyRes = await getCurrencyPagedList({ PageSize: 1000 });
     currencyList.value = (currencyRes.items || []).map((item: any) => ({
-      label: item.cnName || item.enName,
+      label: item.code || item.enName,
       value: item.id,
     }));
 
@@ -319,10 +319,12 @@ function updateNormalFeeValue(
 // 切换算符（循环切换：>、>=、<、<=、=）
 function toggleOperator(index: number, ctnCodeId: string) {
   const currentOperator =
-    surchargeFees.value[index]?.prices[ctnCodeId]?.operatorType;
-
+    surchargeFees.value[index]?.prices[ctnCodeId]?.operatorType || 1;
+  console.log('c-toggleOperator', index, ctnCodeId, currentOperator);
   // 定义算符顺序：1: >, 2: >=, 3: <, 4: <=, 5: =
-  const operatorSequence = [1, 2, 3, 4, 5];
+  const operatorSequence = conditionComparisonTypeOptions.value.map(
+    (opt) => opt.value,
+  );
 
   // 找到当前算符的索引，然后切换到下一个
   const currentIndex = operatorSequence.indexOf(currentOperator ?? 0);
@@ -339,14 +341,11 @@ function toggleOperator(index: number, ctnCodeId: string) {
 
 // 获取算符显示符号
 function getOperatorSymbol(operatorType?: number): string {
-  const symbolMap: Record<number, string> = {
-    1: '>',
-    2: '≥',
-    3: '<',
-    4: '≤',
-    5: '=',
-  };
-  return symbolMap[operatorType ?? 1] || '>';
+  return (
+    conditionComparisonTypeOptions.value.find(
+      (opt) => opt.value === operatorType,
+    )?.label || '≥'
+  );
 }
 
 // 主表表单配置
@@ -1096,7 +1095,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Modal :title="getModalTitle" class="w-[1200px]">
+  <Modal :title="getModalTitle" class="w-[1400px]">
     <div class="px-4">
       <!-- 批量模式提示 -->
       <div
@@ -1210,13 +1209,13 @@ onMounted(async () => {
               <tr class="bg-gray-100">
                 <th
                   class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 200px"
+                  style="width: 150px"
                 >
                   费用名称
                 </th>
                 <th
                   class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 120px"
+                  style="width: 80px"
                 >
                   币别
                 </th>
@@ -1411,7 +1410,7 @@ onMounted(async () => {
                         <div
                           class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-2 py-1 text-center text-xs font-semibold text-blue-700"
                         >
-                          IF TRUE
+                          是
                         </div>
                         <div class="px-2 py-1">
                           <Input
@@ -1439,7 +1438,7 @@ onMounted(async () => {
                         <div
                           class="border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 px-2 py-1 text-center text-xs font-semibold text-gray-600"
                         >
-                          ELSE
+                          否则
                         </div>
                         <div class="px-2 py-1">
                           <Input

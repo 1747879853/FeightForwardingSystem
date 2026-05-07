@@ -56,8 +56,15 @@ const loading = ref(false);
 
 // [Modal, modalApi] 由父组件通过 connectedComponent 注入
 const [Modal, modalApi] = useVbenModal({
+  onOpened() {
+    // 弹窗打开时，如果表格为空则添加一行
+    const currentData = gridApi.grid?.getTableData()?.fullData || [];
+    if (currentData.length === 0) {
+      handleAddRow();
+    }
+  },
   onCancel() {
-    resetForm();
+    modalApi.close();
   },
   onConfirm() {
     handleSubmit();

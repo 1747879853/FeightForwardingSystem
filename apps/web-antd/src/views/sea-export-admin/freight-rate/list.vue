@@ -383,7 +383,7 @@ onMounted(() => {
     <BatchAddModalComponent @success="onRefresh" />
     <BatchEditModalComponent @success="onRefresh" />
 
-    <Grid :table-title="$t('seaExport.freightRate.title')">
+    <Grid>
       <!-- 推荐状态自定义渲染插槽 -->
       <template #recommend="{ row }">
         <div class="flex items-center justify-center">

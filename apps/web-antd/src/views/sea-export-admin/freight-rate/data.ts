@@ -209,6 +209,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
         showSearch: true,
         filterOption: true,
         placeholder: $t('common.pleaseSelect'),
+        allowClear: true,
       },
     },
     {
@@ -250,29 +251,31 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'RadioGroup',
+      component: 'Select',
       fieldName: 'recommend',
       label: $t('seaExport.freightRate.recommend'),
       componentProps: {
         options: [
+          { label: $t('common.all'), value: null },
           { label: $t('common.yes'), value: true },
           { label: $t('common.no'), value: false },
         ],
-        buttonStyle: 'solid',
-        optionType: 'button',
+        placeholder: $t('common.pleaseSelect'),
+        allowClear: true,
       },
     },
     {
-      component: 'RadioGroup',
+      component: 'Select',
       fieldName: 'isValid',
       label: $t('seaExport.freightRate.isValid'),
       componentProps: {
         options: [
+          { label: $t('common.all'), value: null },
           { label: $t('common.valid'), value: true },
           { label: $t('common.invalid'), value: false },
         ],
-        buttonStyle: 'solid',
-        optionType: 'button',
+        placeholder: $t('common.pleaseSelect'),
+        allowClear: true,
       },
     },
   ];
@@ -299,51 +302,51 @@ export function useColumns<T = SeFreiPriceOutDto>(
       slots: { default: 'recommend' },
     },
     {
-      field: 'carrier.cnShortName',
+      field: 'carrier.enName',
       title: $t('seaExport.freightRate.carrierId'),
       width: 100,
       formatter: ({ row }) => {
-        return row.carrier?.cnShortName || row.carrier?.code || '-';
+        return row.carrier?.code || '-';
       },
     },
     {
-      field: 'currency.cnName',
+      field: 'currency.code',
       title: $t('seaExport.freightRate.currencyId'),
       width: 80,
       formatter: ({ row }) => {
-        return row.currency?.cnName || row.currency?.code || '-';
+        return row.currency?.code || '-';
       },
     },
     {
-      field: 'pol.cnName',
+      field: 'pol.portName',
       title: $t('seaExport.freightRate.polId'),
       width: 120,
       formatter: ({ row }) => {
-        return row.pol?.cnName || row.pol?.portName || '-';
+        return row.pol?.portName || '-';
       },
     },
     {
-      field: 'pod.cnName',
+      field: 'pod.portName',
       title: $t('seaExport.freightRate.podId'),
       width: 120,
       formatter: ({ row }) => {
-        return row.pod?.cnName || row.pod?.portName || '-';
+        return row.pod?.portName || '-';
       },
     },
     {
-      field: 'poT1.cnName',
+      field: 'poT1.portName',
       title: $t('seaExport.freightRate.pot1Id'),
       width: 120,
       formatter: ({ row }) => {
-        return row.poT1?.cnName || row.poT1?.portName || '-';
+        return row.poT1?.portName || '-';
       },
     },
     {
-      field: 'poT2.cnName',
+      field: 'poT2.portName',
       title: $t('seaExport.freightRate.pot2Id'),
       width: 120,
       formatter: ({ row }) => {
-        return row.poT2?.cnName || row.poT2?.portName || '-';
+        return row.poT2?.portName || '-';
       },
     },
     {
@@ -406,18 +409,6 @@ export function useColumns<T = SeFreiPriceOutDto>(
         options: [
           { color: '#389e0d', label: $t('common.valid'), value: true },
           { color: '#cf1322', label: $t('common.invalid'), value: false },
-        ],
-      },
-    },
-    {
-      field: 'recommend',
-      title: $t('seaExport.freightRate.recommend'),
-      width: 80,
-      cellRender: {
-        name: 'CellTag',
-        options: [
-          { color: '#d46b08', label: $t('common.yes'), value: true },
-          { color: '#8c8c8c', label: $t('common.no'), value: false },
         ],
       },
     },
