@@ -109,7 +109,9 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
           tableData.value = items;
           return {
             items,
-            total: result.totalCount || 0,
+            totalCount: result.totalCount || 0,
+            pageIndex: result.currentPage || 1,
+            pageSize: result.totalPages || 10,
           };
         },
       },
@@ -406,7 +408,7 @@ onMounted(() => {
       </template>
 
       <template #toolbar-tools>
-        <div class="flex justify-between">
+        <div class="flex w-[72vw] justify-between">
           <!-- 航线选择标签页 -->
           <div class="mb-4 mr-5 border-b border-gray-200 bg-white px-4 pt-3">
             <div class="flex items-center space-x-1 overflow-x-auto">
