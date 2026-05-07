@@ -876,7 +876,7 @@ const [Modal, modalApi] = useVbenModal({
                     surchargeItem.prices[ctnCodeId] = {
                       price: ctnFee.price,
                       value: ctnFee.value,
-                      conditionType: ctnFee.conditionType || 0,
+                      conditionType: ctnFee.conditionType || 1,
                       operatorType: ctnFee.operatorType,
                       otherPrice: ctnFee.otherPrice,
                     };
@@ -1241,12 +1241,13 @@ onMounted(async () => {
                 <td
                   v-for="ctn in dynamicCtnTypes"
                   :key="`fee${ctn.ctnCodeId}`"
-                  class="border border-gray-300 py-2 pl-4 pr-3"
+                  class="relative border border-gray-300 py-2 pl-4 pr-3"
                 >
-                  <div class="filter-icon">
+                  <!-- 条件模式图标 -->
+                  <div class="absolute left-1 top-1 z-10">
                     <button
                       type="button"
-                      class="absolute left-0.5 top-0.5 z-20 flex h-4 w-4 items-center justify-center rounded-sm bg-white text-gray-400 hover:text-gray-600"
+                      class="flex h-5 w-5 items-center justify-center rounded bg-white text-gray-400 shadow-sm transition-all hover:text-blue-600 hover:shadow-md"
                       @click="
                         showConditionPopup(
                           $event,
@@ -1256,20 +1257,24 @@ onMounted(async () => {
                       "
                       title="设置条件费用"
                     >
-                      <IconifyIcon icon="mdi:filter-outline" class="h-4 w-3" />
+                      <IconifyIcon
+                        icon="mdi:filter-outline"
+                        class="h-3.5 w-3.5"
+                      />
                     </button>
 
+                    <!-- 条件配置弹窗 -->
                     <div
                       v-if="
                         conditionPopupVisible &&
                         currentConditionCell?.feeType === index.toString() &&
                         currentConditionCell?.ctnCodeId === ctn.ctnCodeId
                       "
-                      class="absolute left-1 top-0.5 z-50 rounded border border-gray-300 bg-white p-2 shadow-lg"
+                      class="absolute left-0 top-7 z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white p-3 shadow-xl"
                       @click.stop
                     >
                       <label
-                        class="flex cursor-pointer items-center space-x-1 whitespace-nowrap"
+                        class="flex cursor-pointer items-center space-x-2 rounded px-2 py-1.5 transition-colors hover:bg-gray-50"
                       >
                         <input
                           type="checkbox"
@@ -1284,85 +1289,100 @@ onMounted(async () => {
                               ($event.target as HTMLInputElement).checked,
                             )
                           "
-                          class="h-3 w-3"
+                          class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
-                        <span class="text-xs text-gray-700">条件</span>
+                        <span class="text-sm font-medium text-gray-700"
+                          >启用条件模式</span
+                        >
                       </label>
                     </div>
                   </div>
 
-                  <div class="relative">
-                    <div
-                      v-if="
-                        getConditionalConfig(index.toString(), ctn.ctnCodeId)
-                          .enabled
-                      "
-                      class="flex flex-col gap-2"
-                    >
-                      <!-- 条件行 -->
-                      <div class="flex items-center gap-1">
-                        <Select
-                          size="small"
-                          :value="
-                            surcharge.prices[ctn.ctnCodeId]?.conditionType
-                          "
-                          :options="freightConditionItemOptions"
-                          class="min-w-[50px] flex-1"
-                          @change="
-                            (val) =>
-                              updateSurchargePriceValue(
-                                index,
-                                ctn.ctnCodeId,
-                                'conditionType',
-                                String(val),
-                              )
-                          "
-                        />
-                        <Select
-                          size="small"
-                          :value="surcharge.prices[ctn.ctnCodeId]?.operatorType"
-                          @change="
-                            (val) =>
-                              updateSurchargePriceValue(
-                                index,
-                                ctn.ctnCodeId,
-                                'operatorType',
-                                String(val),
-                              )
-                          "
-                          :options="conditionComparisonTypeOptions"
-                          class="min-w-[50px] flex-1"
-                        />
-                        <Input
-                          size="small"
-                          :value="surcharge.prices[ctn.ctnCodeId]?.value"
-                          @input="
+                  <!-- 条件模式内容 -->
+                  <div
+                    v-if="
+                      getConditionalConfig(index.toString(), ctn.ctnCodeId)
+                        .enabled
+                    "
+                    class="mt-6 space-y-2"
+                  >
+                    <!-- 条件配置行 -->
+                    <div class="flex items-center gap-1.5">
+                      <Select
+                        size="small"
+                        :value="surcharge.prices[ctn.ctnCodeId]?.conditionType"
+                        :options="freightConditionItemOptions"
+                        class="flex-1"
+                        @change="
+                          (val) =>
                             updateSurchargePriceValue(
                               index,
                               ctn.ctnCodeId,
-                              'value',
-                              ($event.target as HTMLInputElement).value,
+                              'conditionType',
+                              String(val),
                             )
-                          "
-                          type="number"
-                          class="min-w-[50px] flex-1"
-                          placeholder="阈值"
-                        />
-                        <span>{{
-                          freightConditionItemOptions.find(
-                            (o) =>
-                              o.value ===
-                              surcharge.prices[ctn.ctnCodeId]?.conditionType,
-                          )?.description
-                        }}</span>
-                      </div>
+                        "
+                        placeholder="条件类型"
+                      />
+                      <Select
+                        size="small"
+                        :value="surcharge.prices[ctn.ctnCodeId]?.operatorType"
+                        @change="
+                          (val) =>
+                            updateSurchargePriceValue(
+                              index,
+                              ctn.ctnCodeId,
+                              'operatorType',
+                              String(val),
+                            )
+                        "
+                        :options="conditionComparisonTypeOptions"
+                        class="flex-1"
+                        placeholder="算符"
+                      />
+                      <Input
+                        size="small"
+                        :value="surcharge.prices[ctn.ctnCodeId]?.value"
+                        @input="
+                          updateSurchargePriceValue(
+                            index,
+                            ctn.ctnCodeId,
+                            'value',
+                            ($event.target as HTMLInputElement).value,
+                          )
+                        "
+                        type="number"
+                        class="flex-1"
+                        placeholder="阈值"
+                      />
+                    </div>
 
-                      <!-- 值输入行 -->
-                      <div
-                        class="flex items-stretch overflow-hidden rounded border border-gray-200"
-                      >
-                        <!-- 左侧输入框 -->
-                        <div class="relative min-w-[120px] flex-1">
+                    <!-- 条件说明 -->
+                    <div
+                      v-if="surcharge.prices[ctn.ctnCodeId]?.conditionType"
+                      class="rounded bg-blue-50 px-2 py-1 text-xs text-blue-700"
+                    >
+                      {{
+                        freightConditionItemOptions.find(
+                          (o) =>
+                            o.value ===
+                            surcharge.prices[ctn.ctnCodeId]?.conditionType,
+                        )?.description
+                      }}
+                    </div>
+
+                    <!-- 价格输入区域 -->
+                    <div
+                      class="flex overflow-hidden rounded-lg border border-gray-300 bg-white transition-colors"
+                    >
+                      <!-- 满足条件的价格 (70%) -->
+                      <div class="w-[70%]">
+                        <div
+                          class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-2 py-1 text-center text-xs font-semibold text-blue-700"
+                        >
+                          IF TRUE
+                        </div>
+                        <div class="px-2 py-1">
                           <Input
                             size="small"
                             :value="surcharge.prices[ctn.ctnCodeId]?.price"
@@ -1375,21 +1395,22 @@ onMounted(async () => {
                               )
                             "
                             type="number"
-                            class="h-full w-full rounded-none border-0"
-                            placeholder="-"
+                            class="h-9 w-full rounded-none text-center"
+                            placeholder="0"
                           />
                         </div>
+                      </div>
 
-                        <!-- 右侧 ELSE 区域 -->
+                      <!-- ELSE 分隔线 (30%) -->
+                      <div
+                        class="flex w-[30%] flex-col border-l border-gray-300 bg-gray-50"
+                      >
                         <div
-                          class="flex flex-col border-l border-gray-200 bg-gray-50"
+                          class="border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 px-2 py-1 text-center text-xs font-semibold text-gray-600"
                         >
-                          <div
-                            class="border-b border-gray-200 px-2 py-0.5 text-center text-xs font-medium text-gray-500"
-                          >
-                            ELSE
-                          </div>
-
+                          ELSE
+                        </div>
+                        <div class="px-2 py-1">
                           <Input
                             size="small"
                             :value="surcharge.prices[ctn.ctnCodeId]?.otherPrice"
@@ -1402,29 +1423,30 @@ onMounted(async () => {
                               )
                             "
                             type="number"
-                            class="h-full w-full rounded-none border-0"
-                            placeholder="-"
+                            class="h-9 w-full rounded-none text-center"
+                            placeholder="0"
                           />
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    <div v-else class="relative">
-                      <Input
-                        :value="surcharge.prices[ctn.ctnCodeId]?.price"
-                        @input="
-                          updateSurchargePriceValue(
-                            index,
-                            ctn.ctnCodeId,
-                            'price',
-                            ($event.target as HTMLInputElement).value,
-                          )
-                        "
-                        type="number"
-                        class="ml-0.5 w-full rounded border border-gray-300 py-1 pl-5 pr-2"
-                        :placeholder="isBatchMode ? '-' : '0'"
-                      />
-                    </div>
+                  <!-- 普通模式（无条件） -->
+                  <div v-else class="relative mt-6">
+                    <Input
+                      :value="surcharge.prices[ctn.ctnCodeId]?.price"
+                      @input="
+                        updateSurchargePriceValue(
+                          index,
+                          ctn.ctnCodeId,
+                          'price',
+                          ($event.target as HTMLInputElement).value,
+                        )
+                      "
+                      type="number"
+                      class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none [&_.ant-input]:focus:border-transparent [&_.ant-input]:focus:shadow-none"
+                      :placeholder="isBatchMode ? '-' : '0'"
+                    />
                   </div>
                 </td>
 
@@ -1468,10 +1490,16 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" scoped>
-.filter-icon {
-  position: relative;
-  top: -0.6rem;
-  left: -1.1rem;
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 :deep(.ant-input-sm) {
@@ -1484,12 +1512,38 @@ onMounted(async () => {
   }
 }
 
-.conditional-input {
-  transition: all 0.2s;
+// 条件模式图标按钮样式
+button[title='设置条件费用'] {
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: scale(1.1);
+  }
+}
+
+// 输入框焦点效果
+input[type='number'] {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:focus {
-    border-color: #52c41a;
-    box-shadow: 0 0 0 2px rgb(82 196 26 / 20%);
+    outline: none;
+  }
+}
+
+// 条件配置区域动画
+.space-y-2 {
+  animation: fade-in 0.3s ease-in-out;
+}
+
+// 价格输入区域渐变背景增强
+.bg-gradient-to-r {
+  background-size: 200% 100%;
+  transition: background-position 0.3s ease;
+
+  &:hover {
+    background-position: right center;
   }
 }
 </style>
