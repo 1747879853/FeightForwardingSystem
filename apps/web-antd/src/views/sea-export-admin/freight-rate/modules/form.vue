@@ -34,6 +34,8 @@ const formData = ref<SeFreiPriceOutDto>();
 const id = ref<string>();
 const isBatchMode = ref(false);
 const batchIds = ref<string[]>([]);
+// 是否仅编辑附加费（双击附加费列时传入）
+const onlySurchargeFees = ref(false);
 
 // 中转港禁用状态（响应式）
 const transshipmentPortsDisabled = ref(false);
@@ -697,7 +699,7 @@ const [Modal, modalApi] = useVbenModal({
       }
     });
 
-    // 构建提交数据
+    // 构建提交数据 - 始终提交完整数据（包括隐藏的字段）
     const submitData: any = {
       carrierId: values.carrierId,
       currencyId: values.currencyId,
@@ -766,11 +768,15 @@ const [Modal, modalApi] = useVbenModal({
     console.log('c-onOpenChange', isOpen);
     if (isOpen) {
       const data = modalApi.getData<any>();
+      console.log('c-data:', data);
       formApi.resetForm();
       otherFormApi.resetForm();
       feeData.value = {};
       conditionalFeeConfigs.value = {};
       surchargeFees.value = []; // 重置附加费列表
+
+      // 设置是否仅编辑附加费
+      onlySurchargeFees.value = data?.onlySurchargeFees === true;
 
       // 加载币别和费用代码列表
       await loadSelectData();
@@ -1016,6 +1022,9 @@ const getModalTitle = computed(() => {
   if (isBatchMode.value) {
     return `批量更改 (已选中 ${batchIds.value.length} 条)`;
   }
+  if (onlySurchargeFees.value) {
+    return '编辑附加费';
+  }
   return formData.value?.id
     ? $t('common.edit', '运价')
     : $t('common.create', '运价');
@@ -1054,7 +1063,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Modal :title="getModalTitle" class="w-[1500px]">
+  <Modal :title="getModalTitle" class="w-[1200px]">
     <div class="px-4">
       <!-- 批量模式提示 -->
       <div
@@ -1065,7 +1074,7 @@ onMounted(async () => {
       </div>
 
       <!-- 基础信息 -->
-      <div class="mb-6">
+      <div v-show="!onlySurchargeFees" class="mb-6">
         <div class="mb-3 border-b border-gray-200 pb-2">
           <span class="text-base font-semibold text-gray-700"> 基础信息 </span>
         </div>
@@ -1073,7 +1082,7 @@ onMounted(async () => {
       </div>
 
       <!-- 其他设置 -->
-      <div class="mb-6">
+      <div v-show="!onlySurchargeFees" class="mb-6">
         <div class="mb-3 border-b border-gray-200 pb-2">
           <span class="text-base font-semibold text-gray-700"> 其他设置 </span>
         </div>
@@ -1081,7 +1090,10 @@ onMounted(async () => {
       </div>
 
       <!-- 箱型费率 -->
-      <div class="mb-6" v-if="dynamicCtnTypes.length > 0">
+      <div
+        v-show="!onlySurchargeFees && dynamicCtnTypes.length > 0"
+        class="mb-6"
+      >
         <div class="mb-3 border-b border-gray-200 pb-2">
           <span class="text-base font-semibold text-gray-700">
             箱型费率 {{ isBatchMode ? ' —留空则不修改' : '' }}
@@ -1129,7 +1141,10 @@ onMounted(async () => {
       <!-- 附加费明细 -->
       <div
         class="mb-6"
-        v-if="!isBatchMode && (formData?.id || surchargeFees.length > 0)"
+        v-if="
+          !isBatchMode &&
+          (onlySurchargeFees || formData?.id || surchargeFees.length > 0)
+        "
       >
         <div
           class="mb-3 flex items-center justify-between border-b border-gray-200 pb-2"

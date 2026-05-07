@@ -29,6 +29,8 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { useColumns, useGridFormSchema, formatSurchargeFees } from './data';
 import AddCtnModal from './modules/add-ctn-modal.vue';
 import Form from './modules/form.vue';
+import BatchAddModal from './modules/batch-add-modal.vue';
+import BatchEditModal from './modules/batch-edit-modal.vue';
 
 // 创建运价管理的 ABP 权限对象
 const perm = createAbpPermission('Admin.SeFreiPrice');
@@ -46,6 +48,16 @@ const [FormModal, formModalApi] = useVbenModal({
 
 const [AddCtnModalComponent, addCtnModalApi] = useVbenModal({
   connectedComponent: AddCtnModal,
+  destroyOnClose: true,
+});
+
+const [BatchAddModalComponent, batchAddModalApi] = useVbenModal({
+  connectedComponent: BatchAddModal,
+  destroyOnClose: true,
+});
+
+const [BatchEditModalComponent, batchEditModalApi] = useVbenModal({
+  connectedComponent: BatchEditModal,
   destroyOnClose: true,
 });
 
@@ -147,8 +159,8 @@ function getCheckboxRecords() {
 /**
  * 编辑运价
  */
-function onEdit(row: SeFreiPriceOutDto) {
-  formModalApi.setData({ id: row.id }).open();
+function onEdit(row: SeFreiPriceOutDto, onlySurchargeFees = true) {
+  formModalApi.setData({ id: row.id, onlySurchargeFees }).open();
 }
 
 /**
@@ -301,6 +313,26 @@ function onRefresh() {
 function onCreate() {
   formModalApi.setData({}).open();
 }
+
+/**
+ * 批量新增运价
+ */
+function onBatchAdd() {
+  batchAddModalApi.open();
+}
+
+/**
+ * 批量编辑运价（弹窗方式）
+ */
+function onBatchEditModal() {
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning('请先选择要批量编辑的运价记录');
+    return;
+  }
+  batchEditModalApi.setData({ rows: records }).open();
+}
+
 const lines = ref<LaneCodeDto[]>([]);
 const getLines = async function () {
   const res = await getAllLaneCodes();
@@ -328,11 +360,13 @@ onMounted(() => {
   <Page auto-content-height>
     <FormModal @success="onRefresh" />
     <AddCtnModalComponent @success="onRefresh" />
+    <BatchAddModalComponent @success="onRefresh" />
+    <BatchEditModalComponent @success="onRefresh" />
 
     <Grid :table-title="$t('seaExport.freightRate.title')">
       <!-- 附加费自定义渲染插槽 -->
       <template #surchargeFees="{ row }">
-        <div v-html="formatSurchargeFees(row)" />
+        <div v-html="formatSurchargeFees(row)" @dblclick="onEdit(row)" />
       </template>
 
       <template #toolbar-tools>
@@ -378,6 +412,12 @@ onMounted(() => {
               }}
             </Button>
 
+            <!-- 批量新增按钮 -->
+            <Button v-access:code="perm.add" @click="onBatchAdd">
+              <Plus class="size-5" />
+              {{ $t('seaExport.freightRate.batchAdd') }}
+            </Button>
+
             <!-- 复制按钮 -->
             <Button v-access:code="perm.add" @click="onCopy">
               <Copy class="size-5" />
@@ -392,8 +432,11 @@ onMounted(() => {
               </Button>
               <template #overlay>
                 <Menu>
+                  <Menu.Item key="editModal" @click="onBatchEditModal">
+                    {{ $t('seaExport.freightRate.batchEdit') }}（弹窗）
+                  </Menu.Item>
                   <Menu.Item key="edit" @click="onBatchEdit">
-                    {{ $t('seaExport.freightRate.batchEdit') }}
+                    {{ $t('seaExport.freightRate.batchEdit') }}（表单）
                   </Menu.Item>
                   <Menu.Item key="recommend" @click="onBatchRecommend(true)">
                     {{ $t('seaExport.freightRate.batchRecommend') }}

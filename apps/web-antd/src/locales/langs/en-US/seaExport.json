@@ -455,6 +455,7 @@
     "otherPrice": "Other Price",
     "delete": "Delete",
     "copy": "Copy",
+    "batchAdd": "Batch Add",
     "batchEdit": "Batch Edit",
     "batchRecommend": "Batch Recommend",
     "batchCancelRecommend": "Batch Cancel Recommend",

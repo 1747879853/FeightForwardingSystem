@@ -659,3 +659,12 @@ export function batchEditSeFreiPrice(data: BatchEditSeFreiPriceInput) {
 export function changeRecommendStatus(data: ChangeRecommendInput) {
   return requestClient.put<boolean>(`${BASE_URL}/ChangeRecommendAsync`, data);
 }
+
+/**
+ * 批量新增运价（简化版，仅包含箱型成本）
+ * @param data 批量新增运价数据列表
+ * @returns 返回批量新增结果
+ */
+export function batchAddSimpleSeFreiPrice(data: AddSeFreiPriceInput[]) {
+  return requestClient.post<boolean>(`${BASE_URL}/BatchAddSimpleAsync`, data);
+}

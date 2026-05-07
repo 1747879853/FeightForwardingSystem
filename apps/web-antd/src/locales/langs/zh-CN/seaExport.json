@@ -504,6 +504,7 @@
     "delete": "删除",
     "copy": "复制",
     "batchOperation": "批量操作",
+    "batchAdd": "批量新增",
     "batchEdit": "批量修改",
     "batchRecommend": "批量推荐",
     "batchCancelRecommend": "批量取消推荐",

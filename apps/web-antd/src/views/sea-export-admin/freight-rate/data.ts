@@ -421,32 +421,8 @@ export function useColumns<T = SeFreiPriceOutDto>(
     }));
   }
 
-  // 操作列
-  const operationColumn: VxeTableGridOptions['columns'] = [
-    {
-      align: 'center',
-      cellRender: {
-        attrs: {
-          nameField: 'id',
-          nameTitle: $t('seaExport.freightRate.name'),
-          onClick: onActionClick,
-        },
-        name: 'CellOperation',
-        options: [
-          { code: 'addCtn', text: '添加箱型' },
-          { code: 'edit', text: $t('common.edit') },
-          { code: 'delete', danger: true, text: $t('common.delete') },
-        ],
-      },
-      field: 'operation',
-      fixed: 'right',
-      title: $t('seaExport.freightRate.operation'),
-      width: 200,
-    },
-  ];
-
-  // 合并所有列：基础列 + 动态箱型列 + 操作列
-  return [...baseColumns, ...dynamicCtnColumns, ...operationColumn];
+  // 合并所有列：基础列 + 动态箱型列
+  return [...baseColumns, ...dynamicCtnColumns];
 }
 
 /**
