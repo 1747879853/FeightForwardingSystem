@@ -75,7 +75,7 @@ export function formatSurchargeFees(row: SeFreiPriceOutDto): string {
     return '-';
   }
 
-  const feeLines: string[] = [];
+  const feeItems: string[] = [];
 
   row.seFreiPriceFees.forEach((fee) => {
     if (!fee.seFreiPriceCtnFees || fee.seFreiPriceCtnFees.length === 0) {
@@ -92,6 +92,8 @@ export function formatSurchargeFees(row: SeFreiPriceOutDto): string {
     const hasCondition = fee.seFreiPriceCtnFees.some(
       (ctnFee) => ctnFee.value !== undefined && ctnFee.value !== null,
     );
+
+    let contentHtml = '';
 
     if (hasCondition) {
       // 条件模式：按条件分组显示
@@ -133,7 +135,7 @@ export function formatSurchargeFees(row: SeFreiPriceOutDto): string {
         });
       });
 
-      // 构建条件模式的显示文本
+      // 构建条件模式的显示文本12
       const conditionParts: string[] = [];
       conditionGroups.forEach((items, condition) => {
         const ctnPrices = items
@@ -142,19 +144,23 @@ export function formatSurchargeFees(row: SeFreiPriceOutDto): string {
               item.otherPrice !== null
                 ? `${item.price}/${item.otherPrice}`
                 : `${item.price}`;
-            return `${item.ctnName}:${priceStr}`;
+            return `<span class="inline-block px-1 py-0.5 mx-0.5 bg-blue-50 text-blue-700 rounded text-xs leading-none">${item.ctnName}: ${priceStr}</span>`;
           })
-          .join('   ');
+          .join('');
+
         if (condition === '') {
           conditionParts.push(ctnPrices);
         } else {
-          conditionParts.push(`【${condition}】${ctnPrices}`);
+          conditionParts.push(
+            `<div class="mb-0.5 leading-none"><span class="inline-block px-1 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium mr-1 leading-none">【${condition}】</span>${ctnPrices}</div>`,
+          );
         }
       });
 
-      feeLines.push(
-        `${feeName} ${currencyName.toLowerCase()}：${conditionParts.join('   ')}\n`,
-      );
+      contentHtml = `<div class="px-1.5 py-0.5 mb-0.5 bg-gray-50 rounded border-l-2 border-blue-400 leading-none">
+        <div class="text-xs font-semibold text-gray-700 leading-none">${feeName} <span class="text-xs text-gray-500 ml-1">${currencyName.toLowerCase()}</span></div>
+        <div class="leading-none">${conditionParts.join('')}</div>
+      </div>`;
     } else {
       // 简单模式：直接显示所有箱型的价格
       const ctnPrices = fee.seFreiPriceCtnFees
@@ -165,15 +171,20 @@ export function formatSurchargeFees(row: SeFreiPriceOutDto): string {
           );
           const ctnName =
             ctnInfo?.ctnCode?.ctnName || `箱型${ctnInfo?.ctnCodeId || '?'}`;
-          return `${ctnName}:${ctnFee.price}`;
+          return `<span class="inline-block px-1 py-0.5 mx-0.5 bg-green-50 text-green-700 rounded text-xs leading-none">${ctnName}: ${ctnFee.price}</span>`;
         })
-        .join('   ');
+        .join('');
 
-      feeLines.push(`${feeName} ${currencyName.toLowerCase()}：${ctnPrices}`);
+      contentHtml = `<div class="px-1.5 py-0.5 mb-0.5 bg-gray-50 rounded border-l-2 border-green-400 leading-none">
+        <div class="text-xs font-semibold text-gray-700 leading-none">${feeName} <span class="text-xs text-gray-500 ml-1">${currencyName.toLowerCase()}</span></div>
+        <div class="leading-none">${ctnPrices}</div>
+      </div>`;
     }
+
+    feeItems.push(contentHtml);
   });
 
-  return feeLines.length > 0 ? feeLines.join('<br/>') : '-';
+  return feeItems.length > 0 ? feeItems.join('') : '-';
 }
 
 /**
@@ -398,9 +409,9 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'surchargeFees',
       title: $t('seaExport.freightRate.surchargeFees'),
-      minWidth: 300,
+      minWidth: 400,
       align: 'left',
-      showOverflow: true,
+      showOverflow: false,
       slots: { default: 'surchargeFees' },
     },
   ];

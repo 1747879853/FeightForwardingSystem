@@ -87,6 +87,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     columns: useColumns(onActionClick, []), // 初始化为空数组
     height: 'auto',
     keepSource: true,
+    showOverflow: false, // 覆盖全局配置，允许内容完整显示
     pagerConfig: {
       enabled: true,
     },
@@ -120,6 +121,10 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     checkboxConfig: {
       highlight: true,
       reserve: true,
+      checkMethod: ({ row }: { row: SeFreiPriceOutDto }) => {
+        // 确保复选框可以正常选中
+        return true;
+      },
     },
     toolbarConfig: {
       custom: true,
@@ -366,7 +371,11 @@ onMounted(() => {
     <Grid :table-title="$t('seaExport.freightRate.title')">
       <!-- 附加费自定义渲染插槽 -->
       <template #surchargeFees="{ row }">
-        <div v-html="formatSurchargeFees(row)" @dblclick="onEdit(row)" />
+        <div
+          v-html="formatSurchargeFees(row)"
+          @dblclick="onEdit(row)"
+          class="p-2"
+        />
       </template>
 
       <template #toolbar-tools>
@@ -471,3 +480,15 @@ onMounted(() => {
     </Grid>
   </Page>
 </template>
+
+<style scoped>
+/* 确保附加费列的行高可以自适应内容 */
+:deep(.vxe-table .vxe-body--column[col-field='surchargeFees']) {
+  height: auto !important;
+  min-height: 60px !important;
+}
+
+:deep(.vxe-table .vxe-body--row) {
+  height: auto !important;
+}
+</style>
