@@ -473,6 +473,7 @@
     "currencyId": "币别",
     "polId": "起运港",
     "podId": "目的港",
+    "countryId": "国家",
     "isDirect": "是否直达",
     "pot1Id": "中转港1",
     "pot2Id": "中转港2",

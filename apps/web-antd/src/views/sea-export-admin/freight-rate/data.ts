@@ -336,6 +336,14 @@ export function useColumns<T = SeFreiPriceOutDto>(
       },
     },
     {
+      field: 'country.countryName',
+      title: $t('seaExport.freightRate.countryId'),
+      width: 120,
+      formatter: ({ row }) => {
+        return row.country.countryName || '-';
+      },
+    },
+    {
       field: 'poT1.portName',
       title: $t('seaExport.freightRate.pot1Id'),
       width: 120,
