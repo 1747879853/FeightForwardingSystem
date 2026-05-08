@@ -7,8 +7,10 @@ const API_PREFIX = '/services/app/PaymentApplicationAdmin';
 export enum PaymentApplicationStatus {
   Entering = 0,
   Auditing = 1,
-  Rejected = 1,
-  Passed = 2,
+  Rejected = 2,
+  Passed = 3,
+  Partial = 4,
+  Settlemented = 5,
 }
 
 export namespace PaymentApplicationAdminApi {

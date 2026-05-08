@@ -2,28 +2,39 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
+import { PaymentApplicationStatus } from '#/api/settlement-management/payment-application-admin';
 
 import { $t } from '#/locales';
 
 const getPaymentApplicationStatusOptions = () => [
   {
-    value: 0,
+    value: PaymentApplicationStatus.Entering,
     label: $t('seaExport.export.paymentApplication.entering'),
     color: 'default',
   },
   {
-    value: 1,
+    value: PaymentApplicationStatus.Auditing,
     label: $t('seaExport.export.paymentApplication.auditing'),
     color: 'processing',
   },
   {
-    value: -1,
+    value: PaymentApplicationStatus.Rejected,
     label: $t('seaExport.export.paymentApplication.rejected'),
     color: 'error',
   },
   {
-    value: 2,
+    value: PaymentApplicationStatus.Passed,
     label: $t('seaExport.export.paymentApplication.passed'),
+    color: 'success',
+  },
+  {
+    value: PaymentApplicationStatus.Partial,
+    label: $t('seaExport.export.paymentApplication.partial'),
+    color: 'warning',
+  },
+  {
+    value: PaymentApplicationStatus.Settlemented,
+    label: $t('seaExport.export.paymentApplication.settlemented'),
     color: 'success',
   },
 ];
