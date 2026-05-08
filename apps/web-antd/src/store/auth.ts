@@ -20,6 +20,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   const loginLoading = ref(false);
 
+  async function getAppRouter() {
+    if (router) {
+      return router;
+    }
+    const { router: appRouter } = await import('#/router');
+    return appRouter;
+  }
+
   /**
    * 异步处理登录操作
    * Asynchronously handle the login process
@@ -89,9 +97,10 @@ export const useAuthStore = defineStore('auth', () => {
       if (accessStore.loginExpired) {
         accessStore.setLoginExpired(false);
       } else {
+        const appRouter = await getAppRouter();
         onSuccess
           ? await onSuccess?.()
-          : await router.push(
+          : await appRouter.push(
               userInfo.homePath || preferences.app.defaultHomePath,
             );
       }
@@ -113,6 +122,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout(redirect: boolean = true) {
+    const appRouter = await getAppRouter();
     let isLogoutTokenExpired = false;
     try {
       await logoutApi();
@@ -125,16 +135,16 @@ export const useAuthStore = defineStore('auth', () => {
     accessStore.setLoginExpired(false);
 
     if (isLogoutTokenExpired) {
-      await router.replace(preferences.app.defaultHomePath);
+      await appRouter.replace(preferences.app.defaultHomePath);
       return;
     }
 
     // 回登录页带上当前路由地址
-    await router.replace({
+    await appRouter.replace({
       path: LOGIN_PATH,
       query: redirect
         ? {
-            redirect: encodeURIComponent(router.currentRoute.value.fullPath),
+            redirect: encodeURIComponent(appRouter.currentRoute.value.fullPath),
           }
         : {},
     });
