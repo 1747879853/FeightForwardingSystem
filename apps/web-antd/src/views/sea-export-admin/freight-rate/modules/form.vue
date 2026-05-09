@@ -176,6 +176,30 @@ function updateSurchargePriceValue(
   surchargeFees.value[feeIndex].prices[ctnCodeId][field] = numValue;
 }
 
+// 监听附加费的费用代码变化，自动填充默认币别
+async function handleFeeCodeChange(feeIndex: number, feeCodeId?: number) {
+  if (!feeCodeId) {
+    // 如果清空了费用代码，也清空币别
+    if (surchargeFees.value[feeIndex]) {
+      surchargeFees.value[feeIndex].currencyId = undefined;
+    }
+    return;
+  }
+
+  try {
+    const { getFeeCodeDetail } =
+      await import('#/api/system/base-data/fee-code-admin');
+    const detail = await getFeeCodeDetail(feeCodeId);
+
+    // 如果费用代码有默认币别，则自动填充
+    if (detail.currencyId && surchargeFees.value[feeIndex]) {
+      surchargeFees.value[feeIndex].currencyId = detail.currencyId;
+    }
+  } catch (error) {
+    console.error('获取费用代码详情失败:', error);
+  }
+}
+
 // 条件费用配置数据结构
 interface ConditionalFeeConfig {
   enabled: boolean;
@@ -424,6 +448,34 @@ const [Form, formApi] = useVbenForm({
       },
     },
     {
+      component: 'Select',
+      fieldName: 'etdDayOfWeek',
+      label: '开船星期',
+      componentProps: {
+        options: [
+          { label: '周日', value: 0 },
+          { label: '周一', value: 1 },
+          { label: '周二', value: 2 },
+          { label: '周三', value: 3 },
+          { label: '周四', value: 4 },
+          { label: '周五', value: 5 },
+          { label: '周六', value: 6 },
+        ],
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择开船星期',
+        allowClear: true,
+      },
+    },
+    {
+      component: 'TimePicker',
+      fieldName: 'etdDayTime',
+      label: '开船时间点',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择时间点',
+        format: 'HH:mm',
+        valueFormat: 'HH:mm',
+      },
+    },
+    {
       component: 'DatePicker',
       fieldName: 'closeDocTime',
       label: '截单时间',
@@ -433,6 +485,34 @@ const [Form, formApi] = useVbenForm({
         valueFormat: 'YYYY-MM-DD HH:mm',
         showTime: true,
         timePicker: { format: 'HH:mm' },
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'closeDocDayOfWeek',
+      label: '截单星期',
+      componentProps: {
+        options: [
+          { label: '周日', value: 0 },
+          { label: '周一', value: 1 },
+          { label: '周二', value: 2 },
+          { label: '周三', value: 3 },
+          { label: '周四', value: 4 },
+          { label: '周五', value: 5 },
+          { label: '周六', value: 6 },
+        ],
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择截单星期',
+        allowClear: true,
+      },
+    },
+    {
+      component: 'TimePicker',
+      fieldName: 'closeDocDayTime',
+      label: '截单时间点',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择时间点',
+        format: 'HH:mm',
+        valueFormat: 'HH:mm',
       },
     },
     {
@@ -563,6 +643,50 @@ const [Form, formApi] = useVbenForm({
         allowClear: true,
         disabled: transshipmentPortsDisabled.value,
       }),
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'polFreeDays',
+      label: '起运港免用箱',
+      componentProps: {
+        placeholder: isBatchMode.value
+          ? '留空不修改'
+          : '请输入起运港免用箱天数',
+        min: 0,
+      },
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'podFreeDays',
+      label: '目的港免用箱',
+      componentProps: {
+        placeholder: isBatchMode.value
+          ? '留空不修改'
+          : '请输入目的港免用箱天数',
+        min: 0,
+      },
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'poddem',
+      label: '目的港免堆期',
+      componentProps: {
+        placeholder: isBatchMode.value
+          ? '留空不修改'
+          : '请输入目的港免堆期天数',
+        min: 0,
+      },
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'poddet',
+      label: '目的港免箱期',
+      componentProps: {
+        placeholder: isBatchMode.value
+          ? '留空不修改'
+          : '请输入目的港免箱期天数',
+        min: 0,
+      },
     },
     {
       component: 'Textarea',
@@ -743,10 +867,17 @@ const [Modal, modalApi] = useVbenModal({
       validTimeEnd: otherValues.validTimeEnd,
       poT1Id: values.poT1Id,
       poT2Id: values.poT2Id,
-      freeDays: values.freeDays,
+      polFreeDays: values.polFreeDays,
+      podFreeDays: values.podFreeDays,
+      poddem: values.poddem,
+      poddet: values.poddet,
       voyage: values.voyage,
       etd: values.etd,
+      etdDayOfWeek: values.etdDayOfWeek,
+      etdDayTime: values.etdDayTime,
       closeDocTime: values.closeDocTime,
+      closeDocDayOfWeek: values.closeDocDayOfWeek,
+      closeDocDayTime: values.closeDocDayTime,
       closingTime: values.closingTime,
       remark: values.remark,
       seFreiPriceCtns,
@@ -837,10 +968,17 @@ const [Modal, modalApi] = useVbenModal({
 
             poT1Id: detail.poT1Id,
             poT2Id: detail.poT2Id,
-            freeDays: detail.freeDays,
+            polFreeDays: detail.polFreeDays,
+            podFreeDays: detail.podFreeDays,
+            poddem: detail.poddem,
+            poddet: detail.poddet,
             voyage: detail.voyage,
             etd: detail.etd,
+            etdDayOfWeek: detail.etdDayOfWeek,
+            etdDayTime: detail.etdDayTime,
             closeDocTime: detail.closeDocTime,
+            closeDocDayOfWeek: detail.closeDocDayOfWeek,
+            closeDocDayTime: detail.closeDocDayTime,
             closingTime: detail.closingTime,
             remark: detail.remark,
           });
@@ -948,10 +1086,18 @@ const [Modal, modalApi] = useVbenModal({
           isDirect: data.isDirect,
           poT1Id: data.poT1Id,
           poT2Id: data.poT2Id,
+          polFreeDays: data.polFreeDays,
+          podFreeDays: data.podFreeDays,
+          poddem: data.poddem,
+          poddet: data.poddet,
           freeDays: data.freeDays,
           voyage: data.voyage,
           etd: data.etd,
+          etdDayOfWeek: data.etdDayOfWeek,
+          etdDayTime: data.etdDayTime,
           closeDocTime: data.closeDocTime,
+          closeDocDayOfWeek: data.closeDocDayOfWeek,
+          closeDocDayTime: data.closeDocDayTime,
           closingTime: data.closingTime,
           remark: data.remark,
         });
@@ -1241,6 +1387,7 @@ onMounted(async () => {
                   <select
                     v-model="surcharge.feeCodeId"
                     class="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    @change="handleFeeCodeChange(index, surcharge.feeCodeId)"
                   >
                     <option :value="undefined">请选择</option>
                     <option

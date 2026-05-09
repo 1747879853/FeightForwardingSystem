@@ -372,6 +372,26 @@ export function useColumns<T = SeFreiPriceOutDto>(
       },
     },
     {
+      field: 'polFreeDays',
+      title: '起运港免用箱',
+      width: 110,
+    },
+    {
+      field: 'podFreeDays',
+      title: '目的港免用箱',
+      width: 110,
+    },
+    {
+      field: 'poddem',
+      title: '目的港免堆期',
+      width: 110,
+    },
+    {
+      field: 'poddet',
+      title: '目的港免箱期',
+      width: 110,
+    },
+    {
       field: 'voyage',
       title: $t('seaExport.freightRate.voyage'),
       width: 100,
@@ -380,12 +400,52 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'etd',
       title: $t('seaExport.freightRate.etd'),
       width: 120,
-      formatter: 'formatDate',
+      formatter: ({ row }) => {
+        if (row.etd) {
+          return formatDateStr(row.etd);
+        }
+        if (row.etdDayOfWeek !== undefined && row.etdDayOfWeek !== null) {
+          const weekDays = [
+            '周日',
+            '周一',
+            '周二',
+            '周三',
+            '周四',
+            '周五',
+            '周六',
+          ];
+          const dayTime = row.etdDayTime ? ` ${row.etdDayTime}` : '';
+          return `${weekDays[row.etdDayOfWeek]}${dayTime}`;
+        }
+        return '-';
+      },
     },
     {
-      field: 'freeDays',
-      title: $t('seaExport.freightRate.freeDays'),
-      width: 110,
+      field: 'closeDocTime',
+      title: '截单时间',
+      width: 150,
+      formatter: ({ row }) => {
+        if (row.closeDocTime) {
+          return row.closeDocTime;
+        }
+        if (
+          row.closeDocDayOfWeek !== undefined &&
+          row.closeDocDayOfWeek !== null
+        ) {
+          const weekDays = [
+            '周日',
+            '周一',
+            '周二',
+            '周三',
+            '周四',
+            '周五',
+            '周六',
+          ];
+          const dayTime = row.closeDocDayTime ? ` ${row.closeDocDayTime}` : '';
+          return `${weekDays[row.closeDocDayOfWeek]}${dayTime}`;
+        }
+        return '-';
+      },
     },
     {
       field: 'validTimeRange',

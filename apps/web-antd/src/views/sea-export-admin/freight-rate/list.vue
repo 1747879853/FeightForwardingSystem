@@ -118,7 +118,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     },
     rowConfig: {
       keyField: 'id',
-      isHover: true,
+      // isHover: true,
     },
     checkboxConfig: {
       highlight: true,
@@ -519,5 +519,25 @@ onMounted(() => {
 
 :deep(.vxe-table .vxe-body--row) {
   height: auto !important;
+}
+
+/* 淡化表格悬浮后的行背景色，确保复选框可见 */
+:deep(.vxe-table .vxe-body--row.is--hover) {
+  background-color: rgb(245 247 250 / 30%) !important;
+}
+
+/* 确保复选框在悬浮时仍然清晰可见 */
+:deep(.vxe-table .vxe-body--row.is--hover .vxe-checkbox) {
+  opacity: 1 !important;
+}
+
+/* 选中行的背景色保持不变或稍微调整 */
+:deep(.vxe-table .vxe-body--row.row--checkbox) {
+  background-color: rgb(230 240 255 / 50%) !important;
+}
+
+/* 选中且悬浮时的背景色 */
+:deep(.vxe-table .vxe-body--row.row--checkbox.is--hover) {
+  background-color: rgb(220 235 255 / 60%) !important;
 }
 </style>

@@ -45,6 +45,9 @@ const addedCtnTypes = ref<CtnTypeOption[]>([]);
 // 下拉选项数据
 const allCtnOptions = ref<CtnTypeOption[]>([]);
 
+// 当前选中的箱型ID（用于Select组件）
+const selectedCtnId = ref<number | undefined>(undefined);
+
 // 表格数据 - 由 Grid 直接管理
 let rowKeyCounter = 0;
 
@@ -56,11 +59,28 @@ const loading = ref(false);
 
 // [Modal, modalApi] 由父组件通过 connectedComponent 注入
 const [Modal, modalApi] = useVbenModal({
-  onOpened() {
+  async onOpened() {
+    console.log('弹窗已打开');
+
+    // 确保默认箱型已加载
+    if (allCtnOptions.value.length === 0) {
+      await loadSelectOptions();
+      console.log(
+        '默认箱型加载完成，当前箱型数量:',
+        addedCtnTypes.value.length,
+      );
+
+      // 等待 watch 触发并完成列配置更新
+      await nextTick();
+      await nextTick(); // 多等待一个 tick 确保列配置完全应用
+    }
+
     // 弹窗打开时，如果表格为空则添加一行
-    const currentData = gridApi.grid?.getTableData()?.fullData || [];
+    const currentData = gridApi.grid?.getFullData() || [];
+    console.log('准备添加行，当前数据行数:', currentData.length);
     if (currentData.length === 0) {
       handleAddRow();
+      console.log('已添加第一行');
     }
   },
   onCancel() {
@@ -80,6 +100,19 @@ async function loadSelectOptions() {
         ctnCodeId: item.id,
         ctnName: item.ctnName || '',
       })) || [];
+
+    // 自动添加默认箱型（status为0且isDefault为true）
+    const defaultCtns = ctns?.items?.filter(
+      (item) => item.status === 0 && item.isDefault === true,
+    );
+
+    if (defaultCtns && defaultCtns.length > 0) {
+      addedCtnTypes.value = defaultCtns.map((item) => ({
+        ctnCodeId: item.id,
+        ctnName: item.ctnName || '',
+      }));
+      console.log('已加载默认箱型:', addedCtnTypes.value);
+    }
   } catch (error) {
     console.error('加载箱型选项失败:', error);
     message.error('加载箱型选项失败');
@@ -102,10 +135,17 @@ function createDefaultRow() {
     isDirect: true,
     poT1Id: undefined,
     poT2Id: undefined,
-    freeDays: undefined,
+    polFreeDays: undefined,
+    podFreeDays: undefined,
+    poddem: undefined,
+    poddet: undefined,
     voyage: '',
     etd: '',
+    etdDayOfWeek: undefined,
+    etdDayTime: '',
     closeDocTime: '',
+    closeDocDayOfWeek: undefined,
+    closeDocDayTime: '',
     closingTime: '',
     validTimeStart: '',
     validTimeEnd: '',
@@ -169,10 +209,17 @@ function handleCopyRows() {
         isDirect: row.isDirect,
         poT1Id: row.poT1Id,
         poT2Id: row.poT2Id,
-        freeDays: row.freeDays,
+        polFreeDays: row.polFreeDays,
+        podFreeDays: row.podFreeDays,
+        poddem: row.poddem,
+        poddet: row.poddet,
         voyage: row.voyage,
         etd: row.etd,
+        etdDayOfWeek: row.etdDayOfWeek,
+        etdDayTime: row.etdDayTime,
         closeDocTime: row.closeDocTime,
+        closeDocDayOfWeek: row.closeDocDayOfWeek,
+        closeDocDayTime: row.closeDocDayTime,
         closingTime: row.closingTime,
         validTimeStart: row.validTimeStart,
         validTimeEnd: row.validTimeEnd,
@@ -227,13 +274,16 @@ function handleAddCtnType(value: any) {
   addedCtnTypes.value.push({ ...ctn });
 
   // 为所有行添加该箱型的空值 - 直接操作 Grid 中的数据
-  const records = gridApi.grid?.getTableData()?.fullData || [];
+  const records = gridApi.grid?.getFullData() || [];
   records.forEach((row: any) => {
     row.seFreiPriceCtns.push({
       ctnCodeId: ctn.ctnCodeId,
       cost: undefined, // 初始值为 undefined，由用户输入
     });
   });
+
+  // 清空选中的箱型ID，方便下次选择
+  selectedCtnId.value = undefined;
 
   message.success('添加箱型成功');
 }
@@ -243,6 +293,13 @@ const availableCtnOptions = computed(() => {
   const addedIds = new Set(addedCtnTypes.value.map((c) => String(c.ctnCodeId)));
   return allCtnOptions.value.filter((c) => !addedIds.has(String(c.ctnCodeId)));
 });
+
+// 箱型选项模糊搜索过滤函数
+function filterCtnOption(input: string, option: any) {
+  if (!input) return true;
+  const ctnName = option?.ctnName || '';
+  return ctnName.toLowerCase().includes(input.toLowerCase());
+}
 
 // 更新某行的箱型成本
 function updateCtnCost(row: any, ctnCodeId: any, cost: number | undefined) {
@@ -347,10 +404,28 @@ function buildColumns(): VxeTableGridOptions['columns'] {
       slots: { default: 'poT2Id' },
     },
     {
-      field: 'freeDays',
-      title: '免用箱天数',
-      width: 120,
-      slots: { default: 'freeDays' },
+      field: 'polFreeDays',
+      title: '起运港免用箱',
+      width: 110,
+      slots: { default: 'polFreeDays' },
+    },
+    {
+      field: 'podFreeDays',
+      title: '目的港免用箱',
+      width: 110,
+      slots: { default: 'podFreeDays' },
+    },
+    {
+      field: 'poddem',
+      title: '目的港免堆期',
+      width: 110,
+      slots: { default: 'poddem' },
+    },
+    {
+      field: 'poddet',
+      title: '目的港免箱期',
+      width: 110,
+      slots: { default: 'poddet' },
     },
     {
       field: 'voyage',
@@ -361,14 +436,26 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'etd',
       title: '开船日期',
-      width: 150,
+      width: 130,
       slots: { default: 'etd' },
+    },
+    {
+      field: 'etdDayOfWeek',
+      title: '开船星期',
+      width: 100,
+      slots: { default: 'etdDayOfWeek' },
     },
     {
       field: 'closeDocTime',
       title: '截单时间',
-      width: 150,
+      width: 130,
       slots: { default: 'closeDocTime' },
+    },
+    {
+      field: 'closeDocDayOfWeek',
+      title: '截单星期',
+      width: 100,
+      slots: { default: 'closeDocDayOfWeek' },
     },
     {
       field: 'closingTime',
@@ -450,14 +537,17 @@ const [Grid, gridApi] = useVbenVxeGrid<any>({
 // 监听箱型变化，更新列配置
 watch(
   addedCtnTypes,
-  async () => {
+  async (newVal) => {
+    console.log('箱型列表变化:', newVal);
     await nextTick();
     // 获取当前 Grid 中的数据，避免丢失
-    const currentData = gridApi.grid?.getTableData()?.fullData || [];
+    const currentData = gridApi.grid?.getFullData() || [];
+    console.log('更新列配置，当前数据行数:', currentData.length);
     gridApi.setGridOptions({
       columns: buildColumns(),
       data: currentData, // 保留当前数据
     });
+    console.log('列配置已更新');
   },
   { deep: true },
 );
@@ -465,7 +555,7 @@ watch(
 // 验证表单
 function validateForm(): boolean {
   // 从 Grid 获取最新数据
-  const gridRecords = (gridApi.grid?.getTableData()?.fullData || []) as any[];
+  const gridRecords = (gridApi.grid?.getFullData() || []) as any[];
 
   if (gridRecords.length === 0) {
     message.warning('请至少添加一行数据');
@@ -516,7 +606,7 @@ async function handleSubmit() {
   loading.value = true;
   try {
     // 从 Grid 获取最新数据
-    const gridRecords = (gridApi.grid?.getTableData()?.fullData || []) as any[];
+    const gridRecords = (gridApi.grid?.getFullData() || []) as any[];
 
     console.log('Grid 中的数据:', gridRecords);
 
@@ -538,10 +628,17 @@ async function handleSubmit() {
         isDirect: row.isDirect,
         poT1Id: row.poT1Id,
         poT2Id: row.poT2Id,
-        freeDays: row.freeDays,
+        polFreeDays: row.polFreeDays,
+        podFreeDays: row.podFreeDays,
+        poddem: row.poddem,
+        poddet: row.poddet,
         voyage: row.voyage,
         etd: row.etd,
+        etdDayOfWeek: row.etdDayOfWeek,
+        etdDayTime: row.etdDayTime,
         closeDocTime: row.closeDocTime,
+        closeDocDayOfWeek: row.closeDocDayOfWeek,
+        closeDocDayTime: row.closeDocDayTime,
         closingTime: row.closingTime,
         validTimeStart: row.validTimeStart,
         validTimeEnd: row.validTimeEnd,
@@ -576,10 +673,6 @@ function resetForm() {
   selectedRowKeys.value = [];
   rowKeyCounter = 0;
 }
-
-onMounted(() => {
-  loadSelectOptions();
-});
 </script>
 
 <template>
@@ -615,8 +708,11 @@ onMounted(() => {
         <Space>
           <span class="text-gray-600">添加箱型：</span>
           <Select
+            v-model:value="selectedCtnId"
             style="width: 200px"
             placeholder="选择箱型"
+            show-search
+            :filter-option="filterCtnOption"
             :options="availableCtnOptions"
             :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
             @change="handleAddCtnType"
@@ -676,10 +772,40 @@ onMounted(() => {
           />
         </template>
 
-        <!-- 免用箱天数 -->
-        <template #freeDays="{ row }">
+        <!-- 起运港免用箱天数 -->
+        <template #polFreeDays="{ row }">
           <InputNumber
-            v-model:value="row.freeDays"
+            v-model:value="row.polFreeDays"
+            style="width: 100%"
+            :min="0"
+            placeholder="请输入"
+          />
+        </template>
+
+        <!-- 目的港免用箱天数 -->
+        <template #podFreeDays="{ row }">
+          <InputNumber
+            v-model:value="row.podFreeDays"
+            style="width: 100%"
+            :min="0"
+            placeholder="请输入"
+          />
+        </template>
+
+        <!-- 目的港免堆期天数 -->
+        <template #poddem="{ row }">
+          <InputNumber
+            v-model:value="row.poddem"
+            style="width: 100%"
+            :min="0"
+            placeholder="请输入"
+          />
+        </template>
+
+        <!-- 目的港免箱期天数 -->
+        <template #poddet="{ row }">
+          <InputNumber
+            v-model:value="row.poddet"
             style="width: 100%"
             :min="0"
             placeholder="请输入"
@@ -698,7 +824,27 @@ onMounted(() => {
             style="width: 100%"
             placeholder="选择日期"
             value-format="YYYY-MM-DD"
+            :disabled="!!row.etdDayOfWeek"
           />
+        </template>
+
+        <!-- 开船星期 -->
+        <template #etdDayOfWeek="{ row }">
+          <Select
+            v-model:value="row.etdDayOfWeek"
+            style="width: 100%"
+            placeholder="选择星期"
+            :disabled="!!row.etd"
+            allow-clear
+          >
+            <Select.Option :value="0">周日</Select.Option>
+            <Select.Option :value="1">周一</Select.Option>
+            <Select.Option :value="2">周二</Select.Option>
+            <Select.Option :value="3">周三</Select.Option>
+            <Select.Option :value="4">周四</Select.Option>
+            <Select.Option :value="5">周五</Select.Option>
+            <Select.Option :value="6">周六</Select.Option>
+          </Select>
         </template>
 
         <!-- 截单时间 -->
@@ -709,7 +855,27 @@ onMounted(() => {
             show-time
             placeholder="选择时间"
             value-format="YYYY-MM-DD HH:mm:ss"
+            :disabled="!!row.closeDocDayOfWeek"
           />
+        </template>
+
+        <!-- 截单星期 -->
+        <template #closeDocDayOfWeek="{ row }">
+          <Select
+            v-model:value="row.closeDocDayOfWeek"
+            style="width: 100%"
+            placeholder="选择星期"
+            :disabled="!!row.closeDocTime"
+            allow-clear
+          >
+            <Select.Option :value="0">周日</Select.Option>
+            <Select.Option :value="1">周一</Select.Option>
+            <Select.Option :value="2">周二</Select.Option>
+            <Select.Option :value="3">周三</Select.Option>
+            <Select.Option :value="4">周四</Select.Option>
+            <Select.Option :value="5">周五</Select.Option>
+            <Select.Option :value="6">周六</Select.Option>
+          </Select>
         </template>
 
         <!-- 截港时间 -->
