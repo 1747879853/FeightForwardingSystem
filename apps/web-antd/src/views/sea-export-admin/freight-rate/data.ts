@@ -3,6 +3,8 @@ import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SeFreiPriceOutDto } from '#/api/sea-export/freight-rate-admin';
 import { getEnumItems } from '#/utils/init-enum';
 import { $t } from '#/locales';
+import { editSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
+import { message } from 'ant-design-vue';
 
 // 定义明确的接口类型
 interface FreightConditionItemOption {
@@ -505,8 +507,80 @@ export function useColumns<T = SeFreiPriceOutDto>(
     dynamicCtnColumns = ctnNames.map((ctnName) => ({
       field: `ctn_${ctnName}`,
       title: ctnName,
-      width: 100,
+      width: 140,
       align: 'right',
+      showOverflow: false,
+      slots: { default: 'ctnEditableCell' },
+      params: {
+        ctnName,
+        onConfirm: async (newValue: number, row: any) => {
+          // 找到对应的箱型信息
+          const ctnInfo = row.seFreiPriceCtns?.find(
+            (ctn: any) => ctn.ctnCode?.ctnName === ctnName,
+          );
+
+          if (!ctnInfo) {
+            message.error('未找到对应的箱型信息');
+            return false;
+          }
+
+          try {
+            // 构建完整的箱型列表，只更新当前修改的箱型
+            const updatedCtns = row.seFreiPriceCtns?.map((ctn: any) => {
+              if (ctn.id === ctnInfo.id) {
+                return {
+                  id: ctn.id,
+                  ctnCodeId: ctn.ctnCodeId,
+                  cost: newValue,
+                  remark: ctn.remark,
+                };
+              }
+              return {
+                id: ctn.id,
+                ctnCodeId: ctn.ctnCodeId,
+                cost: ctn.cost,
+                remark: ctn.remark,
+              };
+            });
+
+            // 调用编辑接口更新运价
+            await editSeFreiPrice({
+              id: row.id,
+              recommend: row.recommend,
+              carrierId: row.carrierId,
+              polId: row.polId,
+              podId: row.podId,
+              isDirect: row.isDirect,
+              poT1Id: row.poT1Id,
+              poT2Id: row.poT2Id,
+              polFreeDays: row.polFreeDays,
+              podFreeDays: row.podFreeDays,
+              poddem: row.poddem,
+              poddet: row.poddet,
+              voyage: row.voyage,
+              etd: row.etd,
+              etdDayOfWeek: row.etdDayOfWeek,
+              etdDayTime: row.etdDayTime,
+              closeDocTime: row.closeDocTime,
+              closeDocDayOfWeek: row.closeDocDayOfWeek,
+              closeDocDayTime: row.closeDocDayTime,
+              validTimeStart: row.validTimeStart,
+              validTimeEnd: row.validTimeEnd,
+              remark: row.remark,
+              currencyId: row.currencyId,
+              seFreiPriceCtns: updatedCtns,
+              seFreiPriceFees: row.seFreiPriceFees,
+            });
+
+            message.success('修改成功');
+            return true;
+          } catch (error) {
+            console.error('保存失败:', error);
+            message.error('保存失败');
+            return false;
+          }
+        },
+      },
       formatter: ({ row }) => {
         const cost = getCtnCost(row as SeFreiPriceOutDto, ctnName);
         return cost === '-' ? '-' : Number(cost).toFixed(2);

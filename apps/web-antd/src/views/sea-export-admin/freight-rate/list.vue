@@ -31,6 +31,7 @@ import AddCtnModal from './modules/add-ctn-modal.vue';
 import Form from './modules/form.vue';
 import BatchAddModal from './modules/batch-add-modal.vue';
 import BatchEditModal from './modules/batch-edit-modal.vue';
+import CtnEditableCell from './modules/ctn-editable-cell.vue';
 
 // 创建运价管理的 ABP 权限对象
 const perm = createAbpPermission('Admin.SeFreiPrice');
@@ -407,6 +408,11 @@ onMounted(() => {
         />
       </template>
 
+      <!-- 箱型费用可编辑单元格插槽 -->
+      <template #ctnEditableCell="{ row, column }">
+        <CtnEditableCell :row="row" :column="column" @success="onRefresh" />
+      </template>
+
       <template #toolbar-tools>
         <div class="flex w-[72vw] justify-between">
           <!-- 航线选择标签页 -->
@@ -539,5 +545,18 @@ onMounted(() => {
 /* 选中且悬浮时的背景色 */
 :deep(.vxe-table .vxe-body--row.row--checkbox.is--hover) {
   background-color: rgb(220 235 255 / 60%) !important;
+}
+
+/* 可编辑单元格的样式 */
+:deep(.cell-editable-number) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 28px;
+}
+
+:deep(.cell-editable-number:hover) {
+  outline: 1px dashed #4096ff;
+  background-color: rgb(239 246 255) !important;
 }
 </style>

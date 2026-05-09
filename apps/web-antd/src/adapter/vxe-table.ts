@@ -24,6 +24,7 @@ import {
   Tag,
   Select,
   Input,
+  message,
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
@@ -392,6 +393,139 @@ setupVbenVxeTable({
             borderRadius: '6px',
           },
         });
+      },
+    });
+
+    /**
+     * 可编辑数字单元格渲染器 - 支持双击编辑，带确认按钮
+     */
+    vxeUI.renderer.add('CellEditableNumber', {
+      renderTableDefault(
+        { attrs, props },
+        { column, row, _columnIndex, _rowIndex },
+      ) {
+        // 使用row上的属性来存储编辑状态
+        const editingKey = `__editing_${column.field}`;
+        const editingValueKey = `__editingValue_${column.field}`;
+        const loadingKey = `__loading_${column.field}`;
+
+        // 初始化编辑状态
+        if (row[editingKey] === undefined) {
+          row[editingKey] = false;
+        }
+        if (row[editingValueKey] === undefined) {
+          row[editingValueKey] = row[column.field];
+        }
+
+        function handleDoubleClick(e: MouseEvent) {
+          e.stopPropagation();
+          row[editingKey] = true;
+          row[editingValueKey] = row[column.field];
+        }
+
+        function handleConfirm() {
+          const newValue = Number(row[editingValueKey]);
+          if (isNaN(newValue)) {
+            message.warning('请输入有效的数字');
+            return;
+          }
+
+          row[loadingKey] = true;
+          Promise.resolve(
+            attrs?.onConfirm?.(newValue, row, column, _rowIndex, _columnIndex),
+          )
+            .then((result) => {
+              if (result !== false) {
+                row[column.field] = newValue;
+                row[editingKey] = false;
+              }
+            })
+            .catch(() => {
+              message.error('保存失败');
+            })
+            .finally(() => {
+              row[loadingKey] = false;
+            });
+        }
+
+        function handleCancel() {
+          row[editingKey] = false;
+          row[editingValueKey] = row[column.field];
+        }
+
+        function handleKeyPress(e: KeyboardEvent) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleConfirm();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            handleCancel();
+          }
+        }
+
+        // 检查是否处于编辑模式
+        const isEditing = row[editingKey];
+
+        if (isEditing) {
+          return h('div', { class: 'flex items-center gap-1' }, [
+            h(Input, {
+              value: row[editingValueKey],
+              size: 'small',
+              placeholder: '请输入',
+              onPressEnter: handleConfirm,
+              onKeydown: handleKeyPress,
+              onChange: (e: any) => {
+                row[editingValueKey] = e.target.value;
+              },
+              style: { flex: 1 },
+              autofocus: true,
+            }),
+            h(
+              Button,
+              {
+                type: 'primary',
+                size: 'small',
+                onClick: handleConfirm,
+                loading: row[loadingKey],
+              },
+              {
+                default: () => '确认',
+              },
+            ),
+            h(
+              Button,
+              {
+                size: 'small',
+                onClick: handleCancel,
+              },
+              {
+                default: () => '取消',
+              },
+            ),
+          ]);
+        }
+
+        // 非编辑模式：显示可双击的值
+        const displayValue =
+          row[column.field] !== undefined && row[column.field] !== null
+            ? Number(row[column.field]).toFixed(2)
+            : '-';
+
+        // 关键修复：使用原生DOM事件绑定并阻止冒泡
+        return h(
+          'div',
+          {
+            class:
+              'cell-editable-number cursor-pointer hover:bg-blue-50 px-2 py-1 rounded transition-colors',
+            onDblclick: handleDoubleClick,
+            title: '双击编辑',
+            style: {
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+            },
+          },
+          displayValue,
+        );
       },
     });
 
