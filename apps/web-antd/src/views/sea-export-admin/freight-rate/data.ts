@@ -255,7 +255,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'Select',
+      component: 'RadioGroup',
       fieldName: 'recommend',
       label: $t('seaExport.freightRate.recommend'),
       componentProps: {
@@ -264,12 +264,11 @@ export function useGridFormSchema(): VbenFormSchema[] {
           { label: $t('common.yes'), value: true },
           { label: $t('common.no'), value: false },
         ],
-        placeholder: $t('common.pleaseSelect'),
-        allowClear: true,
+        buttonStyle: 'solid',
       },
     },
     {
-      component: 'Select',
+      component: 'RadioGroup',
       fieldName: 'isValid',
       label: $t('seaExport.freightRate.isValid'),
       componentProps: {
@@ -278,8 +277,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
           { label: $t('common.valid'), value: true },
           { label: $t('common.invalid'), value: false },
         ],
-        placeholder: $t('common.pleaseSelect'),
-        allowClear: true,
+        buttonStyle: 'solid',
       },
     },
   ];

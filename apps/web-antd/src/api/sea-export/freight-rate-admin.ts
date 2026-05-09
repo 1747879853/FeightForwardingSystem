@@ -877,6 +877,6 @@ export function batchEditSimpleSeFreiPrice(data: SeFreiPriceSimpleEditDto[]) {
 export function GetCtnCodesByPriceIdsAsync(ids: string[]) {
   return requestClient.post<CtnCodeDto[]>(
     `${BASE_URL}/GetCtnCodesByPriceIdsAsync`,
-    ids,
+    { ids },
   );
 }
