@@ -36,6 +36,26 @@ export interface SeparatorOptions {
   backgroundColor?: string;
 }
 
+export interface SettingPersistOptions {
+  enabled?: boolean;
+  tableId?: string;
+  load?: (params: {
+    keyword: string;
+  }) => Promise<null | { id: number; setting: string }>;
+  add?: (params: { name: string; setting: string }) => Promise<number>;
+  edit?: (params: {
+    id: number;
+    name: string;
+    setting: string;
+  }) => Promise<unknown>;
+  remove?: (params: { id: number }) => Promise<unknown>;
+  onError?: (error: unknown) => void;
+}
+
+export interface ColumnPersistOptions extends SettingPersistOptions {}
+
+export interface SearchPersistOptions extends SettingPersistOptions {}
+
 export interface VxeGridProps<
   T extends Record<string, any> = any,
   D extends BaseFormComponentType = BaseFormComponentType,
@@ -76,6 +96,14 @@ export interface VxeGridProps<
    * 搜索表单与表格主体之间的分隔条
    */
   separator?: boolean | SeparatorOptions;
+  /**
+   * 列设置持久化配置
+   */
+  columnPersist?: ColumnPersistOptions;
+  /**
+   * 搜索字段显示设置持久化配置
+   */
+  searchPersist?: SearchPersistOptions;
 }
 
 export type ExtendedVxeGridApi<

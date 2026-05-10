@@ -2128,7 +2128,7 @@ defineExpose({
                   />
                 </div>
                 <ReadonlyFormItem
-                  label="所属分部"
+                  label="所属公司"
                   :value="entrustReadonlyInfo.organizationUnitsText"
                 />
                 <div class="entrust-form-wrap">
