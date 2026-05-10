@@ -4,6 +4,7 @@ import type { Recordable } from '@vben/types';
 import type { ComponentType } from './component';
 
 import { h, Fragment } from 'vue';
+import { useRoute } from 'vue-router';
 
 import { IconifyIcon } from '@vben/icons';
 import { $te } from '@vben/locales';
@@ -14,6 +15,12 @@ import {
 import { get, isFunction, isString } from '@vben/utils';
 
 import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
+import {
+  addUserSetting,
+  deleteUserSetting,
+  editUserSetting,
+  getUserSettingPagedList,
+} from '#/api/system/user-setting-admin';
 
 import { objectOmit } from '@vueuse/core';
 import {
@@ -27,8 +34,9 @@ import {
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
+import { useUserStore } from '@vben/stores';
 
-import { ref, onUnmounted } from 'vue';
+import { ref } from 'vue';
 
 import { useVbenForm } from './form';
 import ClientSelect from './component/biz-select/client-select.vue';
@@ -552,7 +560,101 @@ setupVbenVxeTable({
 
 export const useVbenVxeGrid = <T extends Record<string, any>>(
   ...rest: Parameters<typeof useGrid<T, ComponentType>>
-) => useGrid<T, ComponentType>(...rest);
+) => {
+  const route = useRoute();
+  const userStore = useUserStore();
+  const [options, ...otherArgs] = rest;
+  const fallbackTableId = String(route.name ?? route.path ?? '').trim();
+  const gridTableId = String(options?.gridOptions?.id ?? '').trim();
+  const preferredTableId =
+    options?.columnPersist?.tableId || gridTableId || fallbackTableId;
+  const debugPrefix = '[vxe-column-persist-adapter]';
+  const debugStorageKey = '__debug_vxe_persist';
+  const isDebugEnabled = () => {
+    try {
+      return (
+        typeof window !== 'undefined' &&
+        ['1', 'true'].includes(
+          String(
+            window.localStorage?.getItem(debugStorageKey) ?? '',
+          ).toLowerCase(),
+        )
+      );
+    } catch {
+      return false;
+    }
+  };
+  const debugLog = (message: string, payload?: Record<string, any>) => {
+    if (!isDebugEnabled()) {
+      return;
+    }
+    if (payload) {
+      console.log(`${debugPrefix} ${message}`, payload);
+      return;
+    }
+    console.log(`${debugPrefix} ${message}`);
+  };
+
+  const finalOptions = options
+    ? {
+        ...options,
+        columnPersist: {
+          ...options.columnPersist,
+          tableId: preferredTableId,
+          load:
+            options.columnPersist?.load ??
+            (async ({ keyword }) => {
+              const creatorUserId = userStore.userInfo?.userId;
+              debugLog('load start', {
+                creatorUserId,
+                keyword,
+                preferredTableId,
+              });
+              const result = await getUserSettingPagedList({
+                CreatorUserId: creatorUserId,
+                Keyword: keyword,
+                PageIndex: 1,
+                PageSize: 1,
+              });
+              const hit = result.items?.find((item) => item.name === keyword);
+              debugLog('load result', {
+                totalCount: result.totalCount,
+                hit,
+              });
+              if (!hit) {
+                return null;
+              }
+              return { id: hit.id, setting: hit.setting };
+            }),
+          add:
+            options.columnPersist?.add ??
+            (async ({ name, setting }) =>
+              await addUserSetting({
+                name,
+                setting,
+              })),
+          edit:
+            options.columnPersist?.edit ??
+            (async ({ id, name, setting }) =>
+              await editUserSetting({
+                id,
+                name,
+                setting,
+              })),
+          remove:
+            options.columnPersist?.remove ??
+            (async ({ id }) => await deleteUserSetting(id)),
+        },
+      }
+    : options;
+  debugLog('init', {
+    fallbackTableId,
+    gridTableId,
+    preferredTableId,
+    finalTableId: finalOptions?.columnPersist?.tableId,
+  });
+  return useGrid<T, ComponentType>(finalOptions as any, ...otherArgs);
+};
 
 export type OnActionClickParams<T = Recordable<any>> = {
   code: string;

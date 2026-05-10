@@ -20,16 +20,14 @@ type Format =
   | (string & {});
 
 export function formatDate(time?: FormatDate, format: Format = 'YYYY-MM-DD') {
-  try {
-    const date = dayjs.isDayjs(time) ? time : dayjs(time);
-    if (!date.isValid()) {
-      throw new Error('Invalid date');
-    }
-    return date.tz().format(format);
-  } catch (error) {
-    console.error(`Error formatting date: ${error}`);
-    return String(time ?? '');
+  if (time === '' || time === null || time === undefined) {
+    return '';
   }
+  const date = dayjs.isDayjs(time) ? time : dayjs(time);
+  if (!date.isValid()) {
+    return '';
+  }
+  return date.tz().format(format);
 }
 
 export function formatDateTime(time?: FormatDate) {
