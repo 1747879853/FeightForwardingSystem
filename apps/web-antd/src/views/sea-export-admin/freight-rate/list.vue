@@ -421,15 +421,15 @@ onMounted(() => {
       <template #toolbar-tools>
         <div class="flex w-[74vw] justify-between">
           <!-- 航线选择标签页 -->
-          <div class="mb-4 mr-5 border-b border-gray-200 bg-white px-4 pt-3">
+          <div class="mb-4 mr-5 pt-3">
             <div class="flex items-center space-x-1 overflow-x-auto">
               <!-- 全部选项 -->
               <div
-                class="cursor-pointer whitespace-nowrap border-b-2 px-4 py-2 text-base font-medium transition-all duration-200"
+                class="cursor-pointer whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-all duration-200"
                 :class="
                   selectedLineId === undefined
                     ? 'border-blue-500 text-blue-500'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                    : 'border-none text-gray-600 hover:text-gray-900'
                 "
                 @click="handleLineClick(undefined)"
               >
@@ -440,11 +440,11 @@ onMounted(() => {
               <div
                 v-for="line in lines"
                 :key="line.id"
-                class="cursor-pointer whitespace-nowrap border-b-2 px-4 py-2 text-base transition-all duration-200"
+                class="cursor-pointer whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-all duration-200"
                 :class="
                   selectedLineId === line.id
                     ? 'border-blue-500 text-blue-500'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                    : 'border-none text-gray-600 hover:text-gray-900'
                 "
                 @click="handleLineClick(line.id)"
               >
