@@ -13,6 +13,9 @@
 
 ## 2026-05
 
+- [2026-05-10] [将搜索字段顺序调整交互改为拖动排序](./change-log-2026-05-10-search-form-field-drag-order.md)
+- [2026-05-10] [补充搜索字段顺序调整持久化与回放](./change-log-2026-05-10-search-form-field-order-persist.md)
+- [2026-05-10] [新增 useVbenVxeGrid 搜索字段显示/隐藏持久化与工具栏配置入口](./change-log-2026-05-10-search-form-field-persist.md)
 - [2026-05-10] [将 sea-exports 列持久化临时调试日志改为开关式（默认关闭）](./change-log-2026-05-10-sea-exports-column-persist-debug-switch.md)
 - [2026-05-10] [对齐 sea-exports 恢复默认规则：全显示、初始顺序、取消固定](./change-log-2026-05-10-sea-exports-reset-default-rule-align.md)
 - [2026-05-10] [修复 sea-exports 冻结列持久化与恢复默认配置回放](./change-log-2026-05-10-sea-exports-column-persist-fixed-and-reset-default.md)

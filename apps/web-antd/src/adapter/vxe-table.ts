@@ -779,6 +779,53 @@ export const useVbenVxeGrid = <T extends Record<string, any>>(
             options.columnPersist?.remove ??
             (async ({ id }) => await deleteUserSetting(id)),
         },
+        searchPersist: {
+          ...options.searchPersist,
+          tableId: preferredTableId,
+          load:
+            options.searchPersist?.load ??
+            (async ({ keyword }) => {
+              const creatorUserId = userStore.userInfo?.userId;
+              debugLog('search persist load start', {
+                creatorUserId,
+                keyword,
+                preferredTableId,
+              });
+              const result = await getUserSettingPagedList({
+                CreatorUserId: creatorUserId,
+                Keyword: keyword,
+                PageIndex: 1,
+                PageSize: 1,
+              });
+              const hit = result.items?.find((item) => item.name === keyword);
+              debugLog('search persist load result', {
+                totalCount: result.totalCount,
+                hit,
+              });
+              if (!hit) {
+                return null;
+              }
+              return { id: hit.id, setting: hit.setting };
+            }),
+          add:
+            options.searchPersist?.add ??
+            (async ({ name, setting }) =>
+              await addUserSetting({
+                name,
+                setting,
+              })),
+          edit:
+            options.searchPersist?.edit ??
+            (async ({ id, name, setting }) =>
+              await editUserSetting({
+                id,
+                name,
+                setting,
+              })),
+          remove:
+            options.searchPersist?.remove ??
+            (async ({ id }) => await deleteUserSetting(id)),
+        },
       }
     : options;
   debugLog('init', {

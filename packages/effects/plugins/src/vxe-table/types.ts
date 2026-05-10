@@ -36,7 +36,7 @@ export interface SeparatorOptions {
   backgroundColor?: string;
 }
 
-export interface ColumnPersistOptions {
+export interface SettingPersistOptions {
   enabled?: boolean;
   tableId?: string;
   load?: (params: {
@@ -51,6 +51,10 @@ export interface ColumnPersistOptions {
   remove?: (params: { id: number }) => Promise<unknown>;
   onError?: (error: unknown) => void;
 }
+
+export interface ColumnPersistOptions extends SettingPersistOptions {}
+
+export interface SearchPersistOptions extends SettingPersistOptions {}
 
 export interface VxeGridProps<
   T extends Record<string, any> = any,
@@ -96,6 +100,10 @@ export interface VxeGridProps<
    * 列设置持久化配置
    */
   columnPersist?: ColumnPersistOptions;
+  /**
+   * 搜索字段显示设置持久化配置
+   */
+  searchPersist?: SearchPersistOptions;
 }
 
 export type ExtendedVxeGridApi<
