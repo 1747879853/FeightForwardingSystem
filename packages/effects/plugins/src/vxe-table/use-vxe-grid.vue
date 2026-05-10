@@ -19,6 +19,7 @@ import {
   nextTick,
   onMounted,
   onUnmounted,
+  ref,
   toRaw,
   useSlots,
   useTemplateRef,
@@ -71,6 +72,8 @@ const {
   gridClass,
   gridEvents,
   formOptions,
+  columnPersist,
+  searchPersist,
   tableTitle,
   tableTitleHelp,
   showSearchForm,
@@ -99,6 +102,1109 @@ const separatorBg = computed(() => {
     : separator.value.backgroundColor;
 });
 const slots: SetupContext['slots'] = useSlots();
+
+const userSettingId = ref<number>();
+const initializedColumns = ref(false);
+const isApplyingColumnConfig = ref(false);
+const persistTimer = ref<number>();
+const searchPersistTimer = ref<number>();
+const columnUniqueKeyField = '_columnUniqueKey';
+const columnDefaultVisibleField = '_columnDefaultVisible';
+const columnDefaultFixedField = '_columnDefaultFixed';
+const originalColumns = ref<any[]>([]);
+const searchFieldOptions = ref<SearchFieldOption[]>([]);
+const initializedSearchFields = ref(false);
+const isApplyingSearchFieldConfig = ref(false);
+const showSearchFieldPopover = ref(false);
+const draggingSearchFieldName = ref('');
+const searchFieldPopoverContainerRef = useTemplateRef<HTMLElement>(
+  'searchFieldPopoverContainerRef',
+);
+const debugPrefix = '[vxe-column-persist]';
+const debugStorageKey = '__debug_vxe_persist';
+
+type ColumnPersistConfig = {
+  visibleColumnKeys: string[];
+  columnVisibility: Record<string, boolean>;
+  columnFixed?: Record<string, '' | 'left' | 'right'>;
+};
+
+type SearchFieldPersistConfig = {
+  fieldVisibility: Record<string, boolean>;
+  fieldOrder: string[];
+  visibleFieldNames: string[];
+};
+
+type SearchFieldOption = {
+  defaultVisible: boolean;
+  fieldName: string;
+  label: string;
+  visible: boolean;
+};
+
+const resolvedTableId = computed(() => {
+  const idFromColumnPersist = String(columnPersist.value?.tableId ?? '').trim();
+  if (idFromColumnPersist) {
+    return idFromColumnPersist;
+  }
+  const idFromSearchPersist = String(searchPersist.value?.tableId ?? '').trim();
+  if (idFromSearchPersist) {
+    return idFromSearchPersist;
+  }
+  const idFromGrid = String(gridOptions.value?.id ?? '').trim();
+  if (idFromGrid) {
+    return idFromGrid;
+  }
+  return '';
+});
+
+const userSettingKey = computed(() => `table_config_${resolvedTableId.value}`);
+const searchUserSettingKey = computed(
+  () => `search_form_config_${resolvedTableId.value}`,
+);
+const legacyStorageKey = computed(
+  () => `draggable_table_config_${resolvedTableId.value}`,
+);
+const fallbackStorageKey = computed(
+  () => `fallback_table_config_${resolvedTableId.value}`,
+);
+const searchFallbackStorageKey = computed(
+  () => `fallback_${searchUserSettingKey.value}`,
+);
+const searchUserSettingId = ref<number>();
+
+function debugLog(message: string, payload?: Record<string, any>) {
+  let enabled = false;
+  try {
+    enabled =
+      typeof window !== 'undefined' &&
+      ['1', 'true'].includes(
+        String(
+          window.localStorage?.getItem(debugStorageKey) ?? '',
+        ).toLowerCase(),
+      );
+  } catch {
+    enabled = false;
+  }
+  if (!enabled) {
+    return;
+  }
+  if (payload) {
+    console.log(`${debugPrefix} ${message}`, payload);
+    return;
+  }
+  console.log(`${debugPrefix} ${message}`);
+}
+
+function summarizeColumns(columns: any[]) {
+  return getLeafColumns(columns).map((column, index) => {
+    const uniqueKey = column?.[columnUniqueKeyField] ?? column?.id ?? '';
+    return {
+      field: column?.field,
+      fixed: normalizeFixedValue(column?.fixed),
+      index,
+      title: column?.title,
+      uniqueKey,
+      visible: column?.visible !== false,
+    };
+  });
+}
+
+function getColumnSignature(column: any) {
+  const field = String(column?.field ?? '');
+  const title = String(column?.title ?? '');
+  const type = String(column?.type ?? '');
+  return `${field}__${title}__${type}`;
+}
+
+function createStableKeyLookup(columns: any[]) {
+  const lookup = new Map<string, string>();
+  getLeafColumns(columns).forEach((column) => {
+    const key = String(
+      column?.[columnUniqueKeyField] ?? column?.id ?? '',
+    ).trim();
+    if (!key) {
+      return;
+    }
+    lookup.set(getColumnSignature(column), key);
+  });
+  return lookup;
+}
+
+function normalizeFixedValue(value: unknown): '' | 'left' | 'right' {
+  if (value === 'left' || value === 'right') {
+    return value;
+  }
+  return '';
+}
+
+function buildColumnConfigFromColumns(columns: any[]): ColumnPersistConfig {
+  const visibleColumnKeys: string[] = [];
+  const columnVisibility: Record<string, boolean> = {};
+  const columnFixed: Record<string, '' | 'left' | 'right'> = {};
+  getLeafColumns(columns).forEach((column, index) => {
+    const uniqueKey =
+      column?.[columnUniqueKeyField] ??
+      column?.id ??
+      `col_${index}_${String(column?.field ?? column?.title ?? column?.type ?? 'column')}`;
+    columnVisibility[uniqueKey] = column?.visible !== false;
+    columnFixed[uniqueKey] = normalizeFixedValue(column?.fixed);
+    if (column?.visible !== false) {
+      visibleColumnKeys.push(uniqueKey);
+    }
+  });
+  return { visibleColumnKeys, columnVisibility, columnFixed };
+}
+
+function isColumnPersistEnabled() {
+  const enabled = columnPersist.value?.enabled;
+  if (enabled === false) {
+    return false;
+  }
+  if (enabled === true) {
+    return true;
+  }
+  return !!gridOptions.value?.toolbarConfig?.custom;
+}
+
+function getLeafColumns(columns: any[] = [], result: any[] = []): any[] {
+  for (const column of columns) {
+    if (Array.isArray(column?.children) && column.children.length > 0) {
+      getLeafColumns(column.children, result);
+      continue;
+    }
+    result.push(column);
+  }
+  return result;
+}
+
+function normalizeColumns(columns: any[]) {
+  const leafColumns = getLeafColumns(columns);
+  leafColumns.forEach((column, index) => {
+    const keyBase = column.field ?? column.title ?? column.type ?? 'column';
+    const uniqueKey = `col_${index}_${String(keyBase)}`;
+    column[columnUniqueKeyField] = uniqueKey;
+    // 强制使用稳定 id，避免运行时随机 id 导致配置保存/加载 key 不一致
+    column.id = uniqueKey;
+    column[columnDefaultVisibleField] = column.visible !== false;
+    column[columnDefaultFixedField] = normalizeFixedValue(column.fixed);
+    if (column.visible === undefined) {
+      column.visible = true;
+    }
+  });
+}
+
+function normalizeParsedConfig(config: any): ColumnPersistConfig | null {
+  if (!config || typeof config !== 'object') {
+    return null;
+  }
+  const visibleColumnKeys = Array.isArray(config.visibleColumnKeys)
+    ? config.visibleColumnKeys.filter((key: unknown) => typeof key === 'string')
+    : [];
+  const columnVisibility: Record<string, boolean> = {};
+  const columnFixed: Record<string, '' | 'left' | 'right'> = {};
+  if (config.columnVisibility && typeof config.columnVisibility === 'object') {
+    Object.entries(config.columnVisibility).forEach(([key, value]) => {
+      if (typeof key === 'string') {
+        columnVisibility[key] = value !== false;
+      }
+    });
+  }
+  if (config.columnFixed && typeof config.columnFixed === 'object') {
+    Object.entries(config.columnFixed).forEach(([key, value]) => {
+      if (typeof key === 'string') {
+        columnFixed[key] = normalizeFixedValue(value);
+      }
+    });
+  }
+  return { visibleColumnKeys, columnVisibility, columnFixed };
+}
+
+function parseColumnConfig(rawSetting: string): ColumnPersistConfig | null {
+  if (!rawSetting) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(rawSetting);
+    return normalizeParsedConfig(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function applyColumnConfig(config: ColumnPersistConfig, columns: any[]) {
+  debugLog('开始应用列配置', {
+    config,
+    columnsBeforeApply: summarizeColumns(columns),
+  });
+  const leafColumns = getLeafColumns(columns);
+  const columnMap = new Map<string, any>();
+  const visibleKeySet = new Set(config.visibleColumnKeys);
+  const visibilityValues = Object.values(config.columnVisibility);
+  const useVisibleKeysAsCompactVisibility =
+    visibilityValues.length > 0 &&
+    visibilityValues.every((val) => val === true);
+  let matchedVisibilityCount = 0;
+  let matchedOrderCount = 0;
+  for (const column of leafColumns) {
+    const key = column[columnUniqueKeyField] ?? column.id;
+    if (!key) {
+      continue;
+    }
+    columnMap.set(key, column);
+  }
+
+  for (const column of leafColumns) {
+    const key = column[columnUniqueKeyField] ?? column.id;
+    if (!key) {
+      continue;
+    }
+    if (Object.prototype.hasOwnProperty.call(config.columnVisibility, key)) {
+      column.visible = config.columnVisibility[key];
+      matchedVisibilityCount++;
+    } else if (useVisibleKeysAsCompactVisibility) {
+      column.visible = visibleKeySet.has(String(key));
+    } else {
+      column.visible = column[columnDefaultVisibleField] !== false;
+    }
+    if (
+      config.columnFixed &&
+      Object.prototype.hasOwnProperty.call(config.columnFixed, key)
+    ) {
+      const fixed = normalizeFixedValue(config.columnFixed[key]);
+      column.fixed = fixed || undefined;
+    } else {
+      const defaultFixed = normalizeFixedValue(column[columnDefaultFixedField]);
+      column.fixed = defaultFixed || undefined;
+    }
+  }
+
+  const orderedVisibleColumns: any[] = [];
+  const orderedKeys = new Set<string>();
+  for (const key of config.visibleColumnKeys) {
+    const column = columnMap.get(key);
+    if (column && column.visible !== false) {
+      orderedVisibleColumns.push(column);
+      orderedKeys.add(key);
+      matchedOrderCount++;
+    }
+  }
+
+  const appendedVisibleColumns = leafColumns.filter((column) => {
+    const key = column[columnUniqueKeyField] ?? column.id;
+    return column.visible !== false && key && !orderedKeys.has(key);
+  });
+  const hiddenColumns = leafColumns.filter(
+    (column) => column.visible === false,
+  );
+
+  const finalColumns = [
+    ...orderedVisibleColumns,
+    ...appendedVisibleColumns,
+    ...hiddenColumns,
+  ];
+  const topLevelColumns = columns.filter(
+    (column) =>
+      !Array.isArray(column?.children) || column.children.length === 0,
+  );
+  if (topLevelColumns.length === columns.length) {
+    columns.splice(0, columns.length, ...finalColumns);
+  }
+  debugLog('列配置应用完成', {
+    columnsAfterApply: summarizeColumns(columns),
+    matchedOrderCount,
+    matchedVisibilityCount,
+  });
+  return { matchedOrderCount, matchedVisibilityCount };
+}
+
+function collectColumnConfigFromGrid(): null | ColumnPersistConfig {
+  const runtimeColumns = props.api.grid?.getColumns?.();
+  if (!Array.isArray(runtimeColumns) || runtimeColumns.length === 0) {
+    return null;
+  }
+  const stableSourceColumns =
+    originalColumns.value.length > 0
+      ? originalColumns.value
+      : toRaw(gridOptions.value?.columns ?? []);
+  const stableKeyLookup = createStableKeyLookup(stableSourceColumns);
+  const runtimeVisibleKeys: string[] = [];
+  const runtimeFixedMap = new Map<string, '' | 'left' | 'right'>();
+  runtimeColumns.forEach((column: any, index: number) => {
+    const uniqueKey =
+      stableKeyLookup.get(getColumnSignature(column)) ??
+      column?.[columnUniqueKeyField] ??
+      column?.id ??
+      `col_${index}_${String(column?.field ?? column?.title ?? column?.type ?? 'column')}`;
+    runtimeFixedMap.set(uniqueKey, normalizeFixedValue(column?.fixed));
+    if (column?.visible !== false) {
+      runtimeVisibleKeys.push(uniqueKey);
+    }
+  });
+  const visibleKeySet = new Set(runtimeVisibleKeys);
+  const allColumns = getLeafColumns(stableSourceColumns);
+  const columnVisibility: Record<string, boolean> = {};
+  const columnFixed: Record<string, '' | 'left' | 'right'> = {};
+  allColumns.forEach((column, index) => {
+    const uniqueKey =
+      column?.[columnUniqueKeyField] ??
+      column?.id ??
+      `col_${index}_${String(column?.field ?? column?.title ?? column?.type ?? 'column')}`;
+    columnVisibility[uniqueKey] = visibleKeySet.has(uniqueKey);
+    const fallbackFixed = normalizeFixedValue(column?.fixed);
+    columnFixed[uniqueKey] = runtimeFixedMap.get(uniqueKey) ?? fallbackFixed;
+  });
+  return {
+    visibleColumnKeys: runtimeVisibleKeys,
+    columnVisibility,
+    columnFixed,
+  };
+}
+
+function buildResetDefaultColumns(columns: any[]) {
+  const resetColumns = cloneDeep(columns);
+  const leafColumns = getLeafColumns(resetColumns);
+  leafColumns.forEach((column) => {
+    column.visible = true;
+    column.fixed = undefined;
+  });
+  return resetColumns;
+}
+
+function clearLocalStorageCache() {
+  if (!resolvedTableId.value) {
+    return;
+  }
+  localStorage.removeItem(legacyStorageKey.value);
+  localStorage.removeItem(fallbackStorageKey.value);
+  localStorage.removeItem(`fallback_${userSettingKey.value}`);
+}
+
+function saveFallbackConfig(rawSetting: string) {
+  localStorage.setItem(fallbackStorageKey.value, rawSetting);
+  localStorage.setItem(`fallback_${userSettingKey.value}`, rawSetting);
+}
+
+async function saveColumnConfig(config: ColumnPersistConfig) {
+  if (!isColumnPersistEnabled() || !resolvedTableId.value) {
+    debugLog('跳过保存：未启用或 tableId 为空', {
+      enabled: isColumnPersistEnabled(),
+      resolvedTableId: resolvedTableId.value,
+    });
+    return;
+  }
+  const rawSetting = JSON.stringify(config);
+  const addApi = columnPersist.value?.add;
+  const editApi = columnPersist.value?.edit;
+  if (!addApi || !editApi) {
+    debugLog('缺少远端保存接口，写入本地兜底', {
+      userSettingKey: userSettingKey.value,
+      rawSetting,
+    });
+    saveFallbackConfig(rawSetting);
+    return;
+  }
+  try {
+    debugLog('准备保存列配置', {
+      hasUserSettingId: !!userSettingId.value,
+      rawSetting,
+      userSettingId: userSettingId.value,
+      userSettingKey: userSettingKey.value,
+    });
+    if (userSettingId.value) {
+      await editApi({
+        id: userSettingId.value,
+        name: userSettingKey.value,
+        setting: rawSetting,
+      });
+    } else {
+      userSettingId.value = await addApi({
+        name: userSettingKey.value,
+        setting: rawSetting,
+      });
+    }
+    clearLocalStorageCache();
+    debugLog('列配置保存成功', {
+      userSettingId: userSettingId.value,
+      userSettingKey: userSettingKey.value,
+    });
+  } catch (error) {
+    debugLog('列配置保存失败，转本地兜底', {
+      error,
+      userSettingId: userSettingId.value,
+      userSettingKey: userSettingKey.value,
+    });
+    columnPersist.value?.onError?.(error);
+    saveFallbackConfig(rawSetting);
+  }
+}
+
+function scheduleSaveColumnConfig() {
+  if (!isColumnPersistEnabled() || isApplyingColumnConfig.value) {
+    return;
+  }
+  if (persistTimer.value) {
+    window.clearTimeout(persistTimer.value);
+  }
+  persistTimer.value = window.setTimeout(async () => {
+    const config = collectColumnConfigFromGrid();
+    if (!config) {
+      debugLog('采集运行时列配置为空，跳过保存');
+      return;
+    }
+    debugLog('采集运行时列配置', {
+      config,
+      runtimeColumns: summarizeColumns(props.api.grid?.getColumns?.() ?? []),
+    });
+    await saveColumnConfig(config);
+  }, 120);
+}
+
+async function resetColumnConfig() {
+  if (!isColumnPersistEnabled()) {
+    return;
+  }
+  const removeApi = columnPersist.value?.remove;
+  if (userSettingId.value && removeApi) {
+    try {
+      await removeApi({ id: userSettingId.value });
+    } catch (error) {
+      columnPersist.value?.onError?.(error);
+    }
+  }
+  userSettingId.value = undefined;
+  clearLocalStorageCache();
+  if (originalColumns.value.length > 0) {
+    const resetColumns = buildResetDefaultColumns(originalColumns.value);
+    isApplyingColumnConfig.value = true;
+    props.api.setGridOptions({
+      columns: resetColumns,
+    } as any);
+    await nextTick();
+    props.api.grid?.refreshColumn?.();
+    isApplyingColumnConfig.value = false;
+    debugLog('恢复默认列配置完成', {
+      columnsAfterReset: summarizeColumns(resetColumns),
+    });
+  }
+}
+
+async function loadColumnConfig() {
+  if (
+    !isColumnPersistEnabled() ||
+    !resolvedTableId.value ||
+    initializedColumns.value
+  ) {
+    debugLog('跳过加载列配置', {
+      enabled: isColumnPersistEnabled(),
+      initializedColumns: initializedColumns.value,
+      resolvedTableId: resolvedTableId.value,
+    });
+    return;
+  }
+  const rawColumns = toRaw(gridOptions.value?.columns ?? []);
+  if (!Array.isArray(rawColumns) || rawColumns.length === 0) {
+    debugLog('加载列配置失败：初始 columns 为空');
+    return;
+  }
+  debugLog('准备加载列配置', {
+    resolvedTableId: resolvedTableId.value,
+    userSettingKey: userSettingKey.value,
+    legacyStorageKey: legacyStorageKey.value,
+    fallbackStorageKey: fallbackStorageKey.value,
+    rawColumns: summarizeColumns(rawColumns),
+  });
+  normalizeColumns(rawColumns);
+  debugLog('初始列归一化完成', {
+    normalizedColumns: summarizeColumns(rawColumns),
+  });
+  originalColumns.value = cloneDeep(rawColumns);
+  let hasApplied = false;
+  const loadApi = columnPersist.value?.load;
+  if (loadApi) {
+    try {
+      const remoteSetting = await loadApi({
+        keyword: userSettingKey.value,
+      });
+      if (remoteSetting?.id) {
+        userSettingId.value = remoteSetting.id;
+      }
+      debugLog('远端配置加载返回', {
+        remoteSetting,
+        userSettingId: userSettingId.value,
+      });
+      const remoteConfig = parseColumnConfig(remoteSetting?.setting ?? '');
+      if (remoteConfig) {
+        const applyResult = applyColumnConfig(remoteConfig, rawColumns);
+        const hasRemoteKeys =
+          remoteConfig.visibleColumnKeys.length > 0 ||
+          Object.keys(remoteConfig.columnVisibility).length > 0;
+        const isInvalidRemoteConfig =
+          hasRemoteKeys &&
+          applyResult.matchedOrderCount === 0 &&
+          applyResult.matchedVisibilityCount === 0;
+        if (isInvalidRemoteConfig) {
+          debugLog('远端配置键与当前列全部不匹配，判定为历史脏配置，触发自愈', {
+            remoteConfig,
+            normalizedColumns: summarizeColumns(rawColumns),
+          });
+          const healedConfig = buildColumnConfigFromColumns(rawColumns);
+          await saveColumnConfig(healedConfig);
+          debugLog('已自愈覆盖远端配置', {
+            healedConfig,
+            userSettingId: userSettingId.value,
+          });
+        } else {
+          hasApplied = true;
+        }
+      } else {
+        debugLog('远端配置解析失败或为空', {
+          remoteSetting: remoteSetting?.setting,
+        });
+      }
+    } catch (error) {
+      debugLog('远端配置加载异常', {
+        error,
+        userSettingKey: userSettingKey.value,
+      });
+      columnPersist.value?.onError?.(error);
+    }
+  }
+
+  if (!hasApplied) {
+    const localRaw =
+      localStorage.getItem(legacyStorageKey.value) ??
+      localStorage.getItem(fallbackStorageKey.value) ??
+      localStorage.getItem(`fallback_${userSettingKey.value}`);
+    const localConfig = parseColumnConfig(localRaw ?? '');
+    if (localConfig) {
+      debugLog('命中本地兜底配置', { localRaw, localConfig });
+      applyColumnConfig(localConfig, rawColumns);
+      hasApplied = true;
+      if (columnPersist.value?.add) {
+        try {
+          userSettingId.value = await columnPersist.value.add({
+            name: userSettingKey.value,
+            setting: JSON.stringify(localConfig),
+          });
+          localStorage.removeItem(legacyStorageKey.value);
+        } catch (error) {
+          debugLog('本地配置回写远端失败', { error });
+          columnPersist.value?.onError?.(error);
+        }
+      }
+    } else {
+      debugLog('未命中本地兜底配置', { localRaw });
+    }
+  }
+
+  isApplyingColumnConfig.value = true;
+  props.api.setGridOptions({
+    columns: cloneDeep(rawColumns),
+  } as any);
+  await nextTick();
+  props.api.grid?.refreshColumn?.();
+  isApplyingColumnConfig.value = false;
+  initializedColumns.value = true;
+  debugLog('列配置加载流程结束', {
+    hasApplied,
+    userSettingId: userSettingId.value,
+    finalColumns: summarizeColumns(rawColumns),
+  });
+}
+
+function isSearchPersistEnabled() {
+  if (!formOptions.value) {
+    return false;
+  }
+  const enabled = searchPersist.value?.enabled;
+  if (enabled === false) {
+    return false;
+  }
+  if (enabled === true) {
+    return true;
+  }
+  return true;
+}
+
+function resolveSearchFieldLabel(schema: any) {
+  if (typeof schema?.label === 'string') {
+    const label = schema.label.trim();
+    if (label) {
+      return label;
+    }
+  }
+  return String(schema?.fieldName ?? '');
+}
+
+function isSearchFieldConfigurable(schema: any) {
+  if (!schema || typeof schema !== 'object') {
+    return false;
+  }
+  const fieldName = String(schema.fieldName ?? '').trim();
+  if (!fieldName) {
+    return false;
+  }
+  if (schema.hide === true) {
+    return false;
+  }
+  const formItemClass = String(schema.formItemClass ?? '');
+  if (formItemClass.split(/\s+/).includes('hidden')) {
+    return false;
+  }
+  return true;
+}
+
+function buildSearchFieldOptions(schemas: any[] = []): SearchFieldOption[] {
+  const options: SearchFieldOption[] = [];
+  const fieldNameSet = new Set<string>();
+  schemas.forEach((schema) => {
+    if (!isSearchFieldConfigurable(schema)) {
+      return;
+    }
+    const fieldName = String(schema.fieldName ?? '').trim();
+    if (!fieldName || fieldNameSet.has(fieldName)) {
+      return;
+    }
+    fieldNameSet.add(fieldName);
+    const visible = schema.hide !== true;
+    options.push({
+      defaultVisible: visible,
+      fieldName,
+      label: resolveSearchFieldLabel(schema),
+      visible,
+    });
+  });
+  return options;
+}
+
+function buildSearchFieldConfigFromOptions(
+  options: SearchFieldOption[],
+): SearchFieldPersistConfig {
+  const fieldVisibility: Record<string, boolean> = {};
+  const fieldOrder: string[] = [];
+  const visibleFieldNames: string[] = [];
+  options.forEach((option) => {
+    fieldOrder.push(option.fieldName);
+    fieldVisibility[option.fieldName] = option.visible;
+    if (option.visible) {
+      visibleFieldNames.push(option.fieldName);
+    }
+  });
+  return {
+    fieldVisibility,
+    fieldOrder,
+    visibleFieldNames,
+  };
+}
+
+function normalizeParsedSearchConfig(
+  config: any,
+): SearchFieldPersistConfig | null {
+  if (!config || typeof config !== 'object') {
+    return null;
+  }
+  const visibleFieldNames = Array.isArray(config.visibleFieldNames)
+    ? config.visibleFieldNames.filter(
+        (fieldName: unknown) => typeof fieldName === 'string',
+      )
+    : [];
+  const fieldOrder = Array.isArray(config.fieldOrder)
+    ? config.fieldOrder.filter(
+        (fieldName: unknown) => typeof fieldName === 'string',
+      )
+    : [];
+  const fieldVisibility: Record<string, boolean> = {};
+  if (config.fieldVisibility && typeof config.fieldVisibility === 'object') {
+    Object.entries(config.fieldVisibility).forEach(([fieldName, visible]) => {
+      if (typeof fieldName === 'string') {
+        fieldVisibility[fieldName] = visible !== false;
+      }
+    });
+  }
+  return {
+    fieldVisibility,
+    fieldOrder,
+    visibleFieldNames,
+  };
+}
+
+function buildOrderedSearchFieldOptions(
+  options: SearchFieldOption[],
+  fieldOrder: string[],
+) {
+  if (fieldOrder.length === 0 || options.length === 0) {
+    return options;
+  }
+  const optionMap = new Map(options.map((item) => [item.fieldName, item]));
+  const ordered: SearchFieldOption[] = [];
+  const used = new Set<string>();
+  fieldOrder.forEach((fieldName) => {
+    const option = optionMap.get(fieldName);
+    if (!option || used.has(fieldName)) {
+      return;
+    }
+    used.add(fieldName);
+    ordered.push(option);
+  });
+  options.forEach((option) => {
+    if (!used.has(option.fieldName)) {
+      ordered.push(option);
+    }
+  });
+  return ordered;
+}
+
+function applySearchFieldOrderToSchema(options: SearchFieldOption[]) {
+  const schema = formApi.getState()?.schema ?? [];
+  if (!Array.isArray(schema) || schema.length === 0) {
+    return;
+  }
+  const order = options.map((item) => item.fieldName);
+  if (order.length === 0) {
+    return;
+  }
+  const orderSet = new Set(order);
+  const schemaMap = new Map<string, any>();
+  schema.forEach((item) => {
+    const fieldName = String(item?.fieldName ?? '').trim();
+    if (fieldName && orderSet.has(fieldName)) {
+      schemaMap.set(fieldName, item);
+    }
+  });
+  const orderedSchemaItems = order
+    .map((fieldName) => schemaMap.get(fieldName))
+    .filter(Boolean);
+  if (orderedSchemaItems.length === 0) {
+    return;
+  }
+  let index = 0;
+  const nextSchema = schema.map((item) => {
+    const fieldName = String(item?.fieldName ?? '').trim();
+    if (!fieldName || !orderSet.has(fieldName)) {
+      return item;
+    }
+    const nextItem = orderedSchemaItems[index];
+    index += 1;
+    return nextItem ?? item;
+  });
+  formApi.setState({
+    schema: nextSchema,
+  });
+}
+
+function parseSearchFieldConfig(
+  rawSetting: string,
+): SearchFieldPersistConfig | null {
+  if (!rawSetting) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(rawSetting);
+    return normalizeParsedSearchConfig(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function applySearchFieldConfig(config: SearchFieldPersistConfig) {
+  const orderedOptions = buildOrderedSearchFieldOptions(
+    searchFieldOptions.value,
+    config.fieldOrder,
+  );
+  const visibleFieldSet = new Set(config.visibleFieldNames);
+  const useVisibleNamesAsCompactVisibility =
+    Object.keys(config.fieldVisibility).length === 0 &&
+    visibleFieldSet.size > 0;
+  const updates = orderedOptions.map((option) => {
+    const hasVisibility = Object.prototype.hasOwnProperty.call(
+      config.fieldVisibility,
+      option.fieldName,
+    );
+    const visible = hasVisibility
+      ? config.fieldVisibility[option.fieldName]
+      : useVisibleNamesAsCompactVisibility
+        ? visibleFieldSet.has(option.fieldName)
+        : option.defaultVisible;
+    return {
+      ...option,
+      visible,
+    };
+  });
+  searchFieldOptions.value = updates;
+  if (updates.length === 0) {
+    return;
+  }
+  applySearchFieldOrderToSchema(updates);
+  isApplyingSearchFieldConfig.value = true;
+  formApi.updateSchema(
+    updates.map((option) => ({
+      fieldName: option.fieldName,
+      hide: !option.visible,
+    })),
+  );
+  isApplyingSearchFieldConfig.value = false;
+}
+
+function clearSearchLocalStorageCache() {
+  if (!resolvedTableId.value) {
+    return;
+  }
+  localStorage.removeItem(searchFallbackStorageKey.value);
+}
+
+function saveFallbackSearchFieldConfig(rawSetting: string) {
+  localStorage.setItem(searchFallbackStorageKey.value, rawSetting);
+}
+
+async function saveSearchFieldConfig(config: SearchFieldPersistConfig) {
+  if (!isSearchPersistEnabled() || !resolvedTableId.value) {
+    return;
+  }
+  const rawSetting = JSON.stringify(config);
+  const addApi = searchPersist.value?.add;
+  const editApi = searchPersist.value?.edit;
+  if (!addApi || !editApi) {
+    saveFallbackSearchFieldConfig(rawSetting);
+    return;
+  }
+  try {
+    if (searchUserSettingId.value) {
+      await editApi({
+        id: searchUserSettingId.value,
+        name: searchUserSettingKey.value,
+        setting: rawSetting,
+      });
+    } else {
+      searchUserSettingId.value = await addApi({
+        name: searchUserSettingKey.value,
+        setting: rawSetting,
+      });
+    }
+    clearSearchLocalStorageCache();
+  } catch (error) {
+    searchPersist.value?.onError?.(error);
+    saveFallbackSearchFieldConfig(rawSetting);
+  }
+}
+
+function scheduleSaveSearchFieldConfig() {
+  if (!isSearchPersistEnabled() || isApplyingSearchFieldConfig.value) {
+    return;
+  }
+  if (searchPersistTimer.value) {
+    window.clearTimeout(searchPersistTimer.value);
+  }
+  searchPersistTimer.value = window.setTimeout(async () => {
+    const config = buildSearchFieldConfigFromOptions(searchFieldOptions.value);
+    await saveSearchFieldConfig(config);
+  }, 120);
+}
+
+async function loadSearchFieldConfig() {
+  if (
+    !formOptions.value ||
+    !resolvedTableId.value ||
+    initializedSearchFields.value
+  ) {
+    return;
+  }
+  const runtimeSchema =
+    formApi.getState()?.schema ?? formOptions.value?.schema ?? [];
+  const options = buildSearchFieldOptions(runtimeSchema as any[]);
+  searchFieldOptions.value = options;
+  initializedSearchFields.value = true;
+  if (!isSearchPersistEnabled() || options.length === 0) {
+    return;
+  }
+
+  let hasApplied = false;
+  const loadApi = searchPersist.value?.load;
+  if (loadApi) {
+    try {
+      const remoteSetting = await loadApi({
+        keyword: searchUserSettingKey.value,
+      });
+      if (remoteSetting?.id) {
+        searchUserSettingId.value = remoteSetting.id;
+      }
+      const remoteConfig = parseSearchFieldConfig(remoteSetting?.setting ?? '');
+      if (remoteConfig) {
+        applySearchFieldConfig(remoteConfig);
+        hasApplied = true;
+      }
+    } catch (error) {
+      searchPersist.value?.onError?.(error);
+    }
+  }
+
+  if (!hasApplied) {
+    const localRaw = localStorage.getItem(searchFallbackStorageKey.value);
+    const localConfig = parseSearchFieldConfig(localRaw ?? '');
+    if (localConfig) {
+      applySearchFieldConfig(localConfig);
+      hasApplied = true;
+      if (searchPersist.value?.add) {
+        try {
+          searchUserSettingId.value = await searchPersist.value.add({
+            name: searchUserSettingKey.value,
+            setting: JSON.stringify(localConfig),
+          });
+          clearSearchLocalStorageCache();
+        } catch (error) {
+          searchPersist.value?.onError?.(error);
+        }
+      }
+    }
+  }
+
+  if (!hasApplied) {
+    applySearchFieldConfig(buildSearchFieldConfigFromOptions(options));
+  }
+}
+
+function setSearchFieldVisibility(fieldName: string, visible: boolean) {
+  const updates = searchFieldOptions.value.map((option) => {
+    if (option.fieldName === fieldName) {
+      return {
+        ...option,
+        visible,
+      };
+    }
+    return option;
+  });
+  searchFieldOptions.value = updates;
+  isApplyingSearchFieldConfig.value = true;
+  formApi.updateSchema([{ fieldName, hide: !visible }]);
+  isApplyingSearchFieldConfig.value = false;
+  scheduleSaveSearchFieldConfig();
+}
+
+function setAllSearchFieldsVisible(visible: boolean) {
+  if (searchFieldOptions.value.length === 0) {
+    return;
+  }
+  searchFieldOptions.value = searchFieldOptions.value.map((option) => ({
+    ...option,
+    visible,
+  }));
+  applySearchFieldOrderToSchema(searchFieldOptions.value);
+  isApplyingSearchFieldConfig.value = true;
+  formApi.updateSchema(
+    searchFieldOptions.value.map((option) => ({
+      fieldName: option.fieldName,
+      hide: !option.visible,
+    })),
+  );
+  isApplyingSearchFieldConfig.value = false;
+  scheduleSaveSearchFieldConfig();
+}
+
+function resetSearchFieldVisibility() {
+  searchFieldOptions.value = searchFieldOptions.value.map((option) => ({
+    ...option,
+    visible: option.defaultVisible,
+  }));
+  applySearchFieldOrderToSchema(searchFieldOptions.value);
+  isApplyingSearchFieldConfig.value = true;
+  formApi.updateSchema(
+    searchFieldOptions.value.map((option) => ({
+      fieldName: option.fieldName,
+      hide: !option.visible,
+    })),
+  );
+  isApplyingSearchFieldConfig.value = false;
+  scheduleSaveSearchFieldConfig();
+}
+
+function onSearchFieldInputChange(fieldName: string, event: Event) {
+  const target = event.target as HTMLInputElement | null;
+  setSearchFieldVisibility(fieldName, target?.checked === true);
+}
+
+function reorderSearchField(sourceFieldName: string, targetFieldName: string) {
+  if (
+    !sourceFieldName ||
+    !targetFieldName ||
+    sourceFieldName === targetFieldName
+  ) {
+    return;
+  }
+  const sourceIndex = searchFieldOptions.value.findIndex(
+    (item) => item.fieldName === sourceFieldName,
+  );
+  const targetIndex = searchFieldOptions.value.findIndex(
+    (item) => item.fieldName === targetFieldName,
+  );
+  if (sourceIndex < 0 || targetIndex < 0) {
+    return;
+  }
+  const next = [...searchFieldOptions.value];
+  const [current] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, current);
+  searchFieldOptions.value = next;
+  applySearchFieldOrderToSchema(next);
+  scheduleSaveSearchFieldConfig();
+}
+
+function onSearchFieldDragStart(fieldName: string, event: DragEvent) {
+  draggingSearchFieldName.value = fieldName;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.dropEffect = 'move';
+    event.dataTransfer.setData('text/plain', fieldName);
+  }
+}
+
+function onSearchFieldDragOver(event: DragEvent) {
+  event.preventDefault();
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move';
+  }
+}
+
+function onSearchFieldDrop(targetFieldName: string, event: DragEvent) {
+  event.preventDefault();
+  const sourceFieldName =
+    draggingSearchFieldName.value ||
+    event.dataTransfer?.getData('text/plain') ||
+    '';
+  reorderSearchField(sourceFieldName, targetFieldName);
+  draggingSearchFieldName.value = '';
+}
+
+function onSearchFieldDragEnd() {
+  draggingSearchFieldName.value = '';
+}
+
+function toggleSearchFieldPopover() {
+  showSearchFieldPopover.value = !showSearchFieldPopover.value;
+}
+
+function closeSearchFieldPopover() {
+  showSearchFieldPopover.value = false;
+}
+
+function onDocumentClick(event: MouseEvent) {
+  if (!showSearchFieldPopover.value) {
+    return;
+  }
+  const target = event.target as Node | null;
+  const container = searchFieldPopoverContainerRef.value;
+  if (!target || !container?.contains(target)) {
+    closeSearchFieldPopover();
+  }
+}
+
+const hasSearchFieldOptions = computed(
+  () => searchFieldOptions.value.length > 0,
+);
+const allSearchFieldsVisible = computed(() => {
+  if (!hasSearchFieldOptions.value) {
+    return false;
+  }
+  return searchFieldOptions.value.every((item) => item.visible);
+});
 
 const [Form, formApi] = useTableForm({
   compact: true,
@@ -245,10 +1351,34 @@ function onSearchBtnClick() {
   props.api?.toggleSearchForm?.();
 }
 
+function onCustom(event: any) {
+  scheduleSaveColumnConfig();
+  (gridEvents.value as any)?.custom?.(event);
+}
+
+function onCustomChange(event: any) {
+  scheduleSaveColumnConfig();
+  (gridEvents.value as any)?.customChange?.(event);
+}
+
+async function onCustomReset(event: any) {
+  await resetColumnConfig();
+  (gridEvents.value as any)?.customReset?.(event);
+}
+
+function onColumnDropEnd(event: any) {
+  scheduleSaveColumnConfig();
+  (gridEvents.value as any)?.columnDropEnd?.(event);
+}
+
 const events = computed(() => {
   return {
     ...gridEvents.value,
     toolbarToolClick: onToolbarToolClick,
+    custom: onCustom,
+    customChange: onCustomChange,
+    customReset: onCustomReset,
+    columnDropEnd: onColumnDropEnd,
   };
 });
 
@@ -288,6 +1418,8 @@ const showDefaultEmpty = computed(() => {
 });
 
 async function init() {
+  await loadColumnConfig();
+  await loadSearchFieldConfig();
   await nextTick();
   const globalGridConfig = VxeUI?.getConfig()?.grid ?? {};
   const defaultGridOptions: VxeTableGridProps = mergeWithArrayOverride(
@@ -315,7 +1447,7 @@ async function init() {
       '[Vben Vxe Table]: The formConfig in the grid is not supported, please use the `formOptions` props',
     );
   }
-  props.api?.setState?.({ gridOptions: defaultGridOptions });
+  props.api?.setState?.({ gridOptions: defaultGridOptions as any });
   // form 由 vben-form 代替，所以需要保证query相关事件可以拿到参数
   extendProxyOptions(props.api, defaultGridOptions, () =>
     formApi.getLatestSubmissionValues(),
@@ -349,10 +1481,20 @@ const isCompactForm = computed(() => {
 
 onMounted(() => {
   props.api?.mount?.(gridRef.value, formApi);
-  init();
+  window.addEventListener('click', onDocumentClick);
+  void init();
 });
 
 onUnmounted(() => {
+  if (persistTimer.value) {
+    window.clearTimeout(persistTimer.value);
+    persistTimer.value = undefined;
+  }
+  if (searchPersistTimer.value) {
+    window.clearTimeout(searchPersistTimer.value);
+    searchPersistTimer.value = undefined;
+  }
+  window.removeEventListener('click', onDocumentClick);
   formApi?.unmount?.();
   props.api?.unmount?.();
 });
@@ -397,6 +1539,73 @@ onUnmounted(() => {
       </template>
       <template #toolbar-tools="slotProps">
         <slot name="toolbar-tools" v-bind="slotProps"></slot>
+        <div
+          v-if="formOptions"
+          ref="searchFieldPopoverContainerRef"
+          class="relative ml-2 inline-flex items-center"
+        >
+          <VxeButton
+            icon="vxe-icon-menu"
+            circle
+            :status="showSearchFieldPopover ? 'primary' : undefined"
+            title="搜索项设置"
+            @click.stop="toggleSearchFieldPopover"
+          />
+          <div
+            v-if="showSearchFieldPopover"
+            class="bg-card absolute right-0 top-[calc(100%+8px)] z-30 w-64 rounded-md border p-3 shadow-lg"
+            @click.stop
+          >
+            <div class="mb-2 flex items-center justify-between text-xs">
+              <button
+                class="text-primary disabled:text-muted-foreground"
+                type="button"
+                :disabled="!hasSearchFieldOptions || allSearchFieldsVisible"
+                @click="setAllSearchFieldsVisible(true)"
+              >
+                全选
+              </button>
+              <button
+                class="text-primary disabled:text-muted-foreground"
+                type="button"
+                :disabled="!hasSearchFieldOptions"
+                @click="resetSearchFieldVisibility"
+              >
+                恢复默认
+              </button>
+            </div>
+            <div
+              v-if="hasSearchFieldOptions"
+              class="max-h-60 space-y-2 overflow-y-auto pr-1 text-xs"
+            >
+              <div
+                v-for="item in searchFieldOptions"
+                :key="item.fieldName"
+                class="hover:bg-accent flex cursor-move items-center justify-between rounded px-2 py-1"
+                draggable="true"
+                @dragstart="onSearchFieldDragStart(item.fieldName, $event)"
+                @dragover="onSearchFieldDragOver($event)"
+                @drop="onSearchFieldDrop(item.fieldName, $event)"
+                @dragend="onSearchFieldDragEnd"
+              >
+                <span class="truncate pr-2">
+                  <span class="text-muted-foreground mr-1">::</span>
+                  {{ item.label }}
+                </span>
+                <div class="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    :checked="item.visible"
+                    @change="onSearchFieldInputChange(item.fieldName, $event)"
+                  />
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-muted-foreground py-2 text-center text-xs">
+              暂无可配置搜索项
+            </div>
+          </div>
+        </div>
         <VxeButton
           icon="vxe-icon-search"
           circle
