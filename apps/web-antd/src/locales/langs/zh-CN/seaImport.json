@@ -47,7 +47,7 @@
     "commissionNumAutoGenerate": "自动生成",
     "accountDate": "会计期间",
     "settlementDate": "应结日期",
-    "organizationUnits": "所属分部",
+    "organizationUnits": "所属公司",
     "codeSourceId": "业务来源",
     "isBusinessLocking": "业务锁定",
     "noBusinessLocking": "业务未锁定",
