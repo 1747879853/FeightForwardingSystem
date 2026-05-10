@@ -3,6 +3,8 @@ import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SeFreiPriceOutDto } from '#/api/sea-export/freight-rate-admin';
 import { getEnumItems } from '#/utils/init-enum';
 import { $t } from '#/locales';
+import { editSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
+import { message } from 'ant-design-vue';
 
 // 定义明确的接口类型
 interface FreightConditionItemOption {
@@ -253,7 +255,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'Select',
+      component: 'RadioGroup',
       fieldName: 'recommend',
       label: $t('seaExport.freightRate.recommend'),
       componentProps: {
@@ -262,12 +264,11 @@ export function useGridFormSchema(): VbenFormSchema[] {
           { label: $t('common.yes'), value: true },
           { label: $t('common.no'), value: false },
         ],
-        placeholder: $t('common.pleaseSelect'),
-        allowClear: true,
+        buttonStyle: 'solid',
       },
     },
     {
-      component: 'Select',
+      component: 'RadioGroup',
       fieldName: 'isValid',
       label: $t('seaExport.freightRate.isValid'),
       componentProps: {
@@ -276,8 +277,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
           { label: $t('common.valid'), value: true },
           { label: $t('common.invalid'), value: false },
         ],
-        placeholder: $t('common.pleaseSelect'),
-        allowClear: true,
+        buttonStyle: 'solid',
       },
     },
   ];
@@ -372,6 +372,26 @@ export function useColumns<T = SeFreiPriceOutDto>(
       },
     },
     {
+      field: 'polFreeDays',
+      title: '起运港免用箱',
+      width: 110,
+    },
+    {
+      field: 'podFreeDays',
+      title: '目的港免用箱',
+      width: 110,
+    },
+    {
+      field: 'poddem',
+      title: '目的港免堆期',
+      width: 110,
+    },
+    {
+      field: 'poddet',
+      title: '目的港免箱期',
+      width: 110,
+    },
+    {
       field: 'voyage',
       title: $t('seaExport.freightRate.voyage'),
       width: 100,
@@ -380,12 +400,52 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'etd',
       title: $t('seaExport.freightRate.etd'),
       width: 120,
-      formatter: 'formatDate',
+      formatter: ({ row }) => {
+        if (row.etd) {
+          return formatDateStr(row.etd);
+        }
+        if (row.etdDayOfWeek !== undefined && row.etdDayOfWeek !== null) {
+          const weekDays = [
+            '周日',
+            '周一',
+            '周二',
+            '周三',
+            '周四',
+            '周五',
+            '周六',
+          ];
+          const dayTime = row.etdDayTime ? ` ${row.etdDayTime}` : '';
+          return `${weekDays[row.etdDayOfWeek]}${dayTime}`;
+        }
+        return '-';
+      },
     },
     {
-      field: 'freeDays',
-      title: $t('seaExport.freightRate.freeDays'),
-      width: 110,
+      field: 'closeDocTime',
+      title: '截单时间',
+      width: 150,
+      formatter: ({ row }) => {
+        if (row.closeDocTime) {
+          return row.closeDocTime;
+        }
+        if (
+          row.closeDocDayOfWeek !== undefined &&
+          row.closeDocDayOfWeek !== null
+        ) {
+          const weekDays = [
+            '周日',
+            '周一',
+            '周二',
+            '周三',
+            '周四',
+            '周五',
+            '周六',
+          ];
+          const dayTime = row.closeDocDayTime ? ` ${row.closeDocDayTime}` : '';
+          return `${weekDays[row.closeDocDayOfWeek]}${dayTime}`;
+        }
+        return '-';
+      },
     },
     {
       field: 'validTimeRange',
@@ -445,8 +505,80 @@ export function useColumns<T = SeFreiPriceOutDto>(
     dynamicCtnColumns = ctnNames.map((ctnName) => ({
       field: `ctn_${ctnName}`,
       title: ctnName,
-      width: 100,
+      width: 140,
       align: 'right',
+      showOverflow: false,
+      slots: { default: 'ctnEditableCell' },
+      params: {
+        ctnName,
+        onConfirm: async (newValue: number, row: any) => {
+          // 找到对应的箱型信息
+          const ctnInfo = row.seFreiPriceCtns?.find(
+            (ctn: any) => ctn.ctnCode?.ctnName === ctnName,
+          );
+
+          if (!ctnInfo) {
+            message.error('未找到对应的箱型信息');
+            return false;
+          }
+
+          try {
+            // 构建完整的箱型列表，只更新当前修改的箱型
+            const updatedCtns = row.seFreiPriceCtns?.map((ctn: any) => {
+              if (ctn.id === ctnInfo.id) {
+                return {
+                  id: ctn.id,
+                  ctnCodeId: ctn.ctnCodeId,
+                  cost: newValue,
+                  remark: ctn.remark,
+                };
+              }
+              return {
+                id: ctn.id,
+                ctnCodeId: ctn.ctnCodeId,
+                cost: ctn.cost,
+                remark: ctn.remark,
+              };
+            });
+
+            // 调用编辑接口更新运价
+            await editSeFreiPrice({
+              id: row.id,
+              recommend: row.recommend,
+              carrierId: row.carrierId,
+              polId: row.polId,
+              podId: row.podId,
+              isDirect: row.isDirect,
+              poT1Id: row.poT1Id,
+              poT2Id: row.poT2Id,
+              polFreeDays: row.polFreeDays,
+              podFreeDays: row.podFreeDays,
+              poddem: row.poddem,
+              poddet: row.poddet,
+              voyage: row.voyage,
+              etd: row.etd,
+              etdDayOfWeek: row.etdDayOfWeek,
+              etdDayTime: row.etdDayTime,
+              closeDocTime: row.closeDocTime,
+              closeDocDayOfWeek: row.closeDocDayOfWeek,
+              closeDocDayTime: row.closeDocDayTime,
+              validTimeStart: row.validTimeStart,
+              validTimeEnd: row.validTimeEnd,
+              remark: row.remark,
+              currencyId: row.currencyId,
+              seFreiPriceCtns: updatedCtns,
+              seFreiPriceFees: row.seFreiPriceFees,
+            });
+
+            message.success('修改成功');
+            return true;
+          } catch (error) {
+            console.error('保存失败:', error);
+            message.error('保存失败');
+            return false;
+          }
+        },
+      },
       formatter: ({ row }) => {
         const cost = getCtnCost(row as SeFreiPriceOutDto, ctnName);
         return cost === '-' ? '-' : Number(cost).toFixed(2);

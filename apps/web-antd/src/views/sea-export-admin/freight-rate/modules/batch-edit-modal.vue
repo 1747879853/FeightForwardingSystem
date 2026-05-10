@@ -18,6 +18,7 @@ import {
   InputNumber,
   Input,
   DatePicker,
+  Radio,
   Switch,
 } from 'ant-design-vue';
 
@@ -46,9 +47,6 @@ const allCtnOptions = ref<CtnTypeOption[]>([]);
 
 // 表格数据 - 由 Grid 直接管理
 let rowKeyCounter = 0;
-
-// 选中的行 keys
-const selectedRowKeys = ref<(string | number)[]>([]);
 
 // 加载状态
 const loading = ref(false);
@@ -138,10 +136,17 @@ async function initializeTableData(rows: SeFreiPriceOutDto[]) {
       isDirect: row.isDirect,
       poT1Id: row.poT1Id,
       poT2Id: row.poT2Id,
-      freeDays: row.freeDays,
+      polFreeDays: row.polFreeDays,
+      podFreeDays: row.podFreeDays,
+      poddem: row.poddem,
+      poddet: row.poddet,
       voyage: row.voyage,
       etd: row.etd,
+      etdDayOfWeek: row.etdDayOfWeek,
+      etdDayTime: row.etdDayTime,
       closeDocTime: row.closeDocTime,
+      closeDocDayOfWeek: row.closeDocDayOfWeek,
+      closeDocDayTime: row.closeDocDayTime,
       closingTime: row.closingTime,
       validTimeStart: row.validTimeStart,
       validTimeEnd: row.validTimeEnd,
@@ -233,6 +238,22 @@ function setCtnCost(row: any, ctnCodeId: any, cost: number | undefined) {
   }
 }
 
+// 处理是否直达字段变化
+function handleIsDirectChange(row: any, value: boolean) {
+  // 如果设置为直达（true），则清空中转港的值
+  if (value) {
+    row.poT1Id = undefined;
+    row.poT2Id = undefined;
+  }
+}
+
+// 箱型选项模糊搜索过滤函数
+function filterCtnOption(input: string, option: any) {
+  if (!input) return true;
+  const ctnName = option?.ctnName || '';
+  return ctnName.toLowerCase().includes(input.toLowerCase());
+}
+
 // 构建动态列配置
 function buildColumns(): VxeTableGridOptions['columns'] {
   const columns: any[] = [
@@ -279,10 +300,28 @@ function buildColumns(): VxeTableGridOptions['columns'] {
       slots: { default: 'poT2Id' },
     },
     {
-      field: 'freeDays',
-      title: '免用箱天数',
-      width: 120,
-      slots: { default: 'freeDays' },
+      field: 'polFreeDays',
+      title: '起运港免用箱',
+      width: 110,
+      slots: { default: 'polFreeDays' },
+    },
+    {
+      field: 'podFreeDays',
+      title: '目的港免用箱',
+      width: 110,
+      slots: { default: 'podFreeDays' },
+    },
+    {
+      field: 'poddem',
+      title: '目的港免堆期',
+      width: 110,
+      slots: { default: 'poddem' },
+    },
+    {
+      field: 'poddet',
+      title: '目的港免箱期',
+      width: 110,
+      slots: { default: 'poddet' },
     },
     {
       field: 'voyage',
@@ -293,14 +332,26 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'etd',
       title: '开船日期',
-      width: 150,
+      width: 130,
       slots: { default: 'etd' },
+    },
+    {
+      field: 'etdDayOfWeek',
+      title: '开船星期',
+      width: 100,
+      slots: { default: 'etdDayOfWeek' },
     },
     {
       field: 'closeDocTime',
       title: '截单时间',
-      width: 150,
+      width: 130,
       slots: { default: 'closeDocTime' },
+    },
+    {
+      field: 'closeDocDayOfWeek',
+      title: '截单星期',
+      width: 100,
+      slots: { default: 'closeDocDayOfWeek' },
     },
     {
       field: 'closingTime',
@@ -334,7 +385,7 @@ function buildColumns(): VxeTableGridOptions['columns'] {
       field: `ctn_${String(ctn.ctnCodeId)}`,
       title: ctn.ctnName,
       width: 120,
-      align: 'right',
+
       slots: { default: 'ctnCost', header: 'ctnHeader' },
     });
   });
@@ -393,6 +444,8 @@ function validateForm(): boolean {
   for (let i = 0; i < gridRecords.length; i++) {
     const row = gridRecords[i];
     const rowNum = i + 1;
+
+    console.log(`第 ${rowNum} 行数据:`, row);
 
     if (!row.carrierId) {
       message.warning(`第 ${rowNum} 行：请选择船公司`);
@@ -461,14 +514,6 @@ async function handleSubmit() {
 
     console.log('Grid 中的数据:', gridRecords);
 
-    // 提取所有 ID
-    const ids = gridRecords.map((row: any) => row.id).filter(Boolean);
-
-    if (ids.length === 0) {
-      message.warning('没有有效的运价记录');
-      return;
-    }
-
     // 逐条处理每一行的修改
     const promises = gridRecords.map(async (row, index) => {
       const originalRow = originalData.value[index];
@@ -487,11 +532,24 @@ async function handleSubmit() {
       if (row.isDirect !== originalRow.isDirect) modifiedFields.add('isDirect');
       if (row.poT1Id !== originalRow.poT1Id) modifiedFields.add('poT1Id');
       if (row.poT2Id !== originalRow.poT2Id) modifiedFields.add('poT2Id');
-      if (row.freeDays !== originalRow.freeDays) modifiedFields.add('freeDays');
+      if (row.polFreeDays !== originalRow.polFreeDays)
+        modifiedFields.add('polFreeDays');
+      if (row.podFreeDays !== originalRow.podFreeDays)
+        modifiedFields.add('podFreeDays');
+      if (row.poddem !== originalRow.poddem) modifiedFields.add('poddem');
+      if (row.poddet !== originalRow.poddet) modifiedFields.add('poddet');
       if (row.voyage !== originalRow.voyage) modifiedFields.add('voyage');
       if (row.etd !== originalRow.etd) modifiedFields.add('etd');
+      if (row.etdDayOfWeek !== originalRow.etdDayOfWeek)
+        modifiedFields.add('etdDayOfWeek');
+      if (row.etdDayTime !== originalRow.etdDayTime)
+        modifiedFields.add('etdDayTime');
       if (row.closeDocTime !== originalRow.closeDocTime)
         modifiedFields.add('closeDocTime');
+      if (row.closeDocDayOfWeek !== originalRow.closeDocDayOfWeek)
+        modifiedFields.add('closeDocDayOfWeek');
+      if (row.closeDocDayTime !== originalRow.closeDocDayTime)
+        modifiedFields.add('closeDocDayTime');
       if (row.closingTime !== originalRow.closingTime)
         modifiedFields.add('closingTime');
       if (row.validTimeStart !== originalRow.validTimeStart)
@@ -520,11 +578,24 @@ async function handleSubmit() {
       if (modifiedFields.has('isDirect')) submitData.isDirect = row.isDirect;
       if (modifiedFields.has('poT1Id')) submitData.poT1Id = row.poT1Id;
       if (modifiedFields.has('poT2Id')) submitData.poT2Id = row.poT2Id;
-      if (modifiedFields.has('freeDays')) submitData.freeDays = row.freeDays;
+      if (modifiedFields.has('polFreeDays'))
+        submitData.polFreeDays = row.polFreeDays;
+      if (modifiedFields.has('podFreeDays'))
+        submitData.podFreeDays = row.podFreeDays;
+      if (modifiedFields.has('poddem')) submitData.poddem = row.poddem;
+      if (modifiedFields.has('poddet')) submitData.poddet = row.poddet;
       if (modifiedFields.has('voyage')) submitData.voyage = row.voyage;
       if (modifiedFields.has('etd')) submitData.etd = row.etd;
+      if (modifiedFields.has('etdDayOfWeek'))
+        submitData.etdDayOfWeek = row.etdDayOfWeek;
+      if (modifiedFields.has('etdDayTime'))
+        submitData.etdDayTime = row.etdDayTime;
       if (modifiedFields.has('closeDocTime'))
         submitData.closeDocTime = row.closeDocTime;
+      if (modifiedFields.has('closeDocDayOfWeek'))
+        submitData.closeDocDayOfWeek = row.closeDocDayOfWeek;
+      if (modifiedFields.has('closeDocDayTime'))
+        submitData.closeDocDayTime = row.closeDocDayTime;
       if (modifiedFields.has('closingTime'))
         submitData.closingTime = row.closingTime;
       if (modifiedFields.has('validTimeStart'))
@@ -572,7 +643,6 @@ function resetForm() {
   // 清空 Grid 数据
   gridApi.grid?.loadData([]);
   addedCtnTypes.value = [];
-  selectedRowKeys.value = [];
   rowKeyCounter = 0;
   originalData.value = [];
 }
@@ -590,18 +660,14 @@ onMounted(() => {
   >
     <div class="batch-edit-container">
       <!-- 工具栏 -->
-      <div class="mb-4 flex items-center justify-between">
-        <Space>
-          <span class="text-sm text-gray-600">
-            已选择 {{ originalData.length }} 条记录进行批量编辑
-          </span>
-        </Space>
-
+      <div class="mb-4 flex items-center justify-end">
         <Space>
           <span class="text-gray-600">添加箱型：</span>
           <Select
             style="width: 200px"
             placeholder="选择箱型"
+            show-search
+            :filter-option="filterCtnOption"
             :options="availableCtnOptions"
             :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
             @change="handleAddCtnType"
@@ -613,6 +679,7 @@ onMounted(() => {
       <div class="mb-4 rounded bg-blue-50 p-3 text-sm text-blue-700">
         <p><strong>提示：</strong></p>
         <ul class="list-inside list-disc">
+          <li>已选择 {{ originalData.length }} 条记录进行批量编辑</li>
           <li>每一行都可以独立修改，系统会分别提交每行的修改</li>
           <li>只有被修改的字段才会提交到后端</li>
           <li>使用"添加箱型"下拉框可以添加新的箱型成本列</li>
@@ -648,23 +715,64 @@ onMounted(() => {
             v-model:checked="row.isDirect"
             checked-children="是"
             un-checked-children="否"
+            @change="(val: any) => handleIsDirectChange(row, val)"
           />
         </template>
 
         <!-- 中转港1 -->
         <template #poT1Id="{ row }">
-          <PortSelect v-model="row.poT1Id" style="width: 100%" allow-clear />
+          <PortSelect
+            v-model="row.poT1Id"
+            style="width: 100%"
+            allow-clear
+            :disabled="row.isDirect"
+          />
         </template>
 
         <!-- 中转港2 -->
         <template #poT2Id="{ row }">
-          <PortSelect v-model="row.poT2Id" style="width: 100%" allow-clear />
+          <PortSelect
+            v-model="row.poT2Id"
+            style="width: 100%"
+            allow-clear
+            :disabled="row.isDirect"
+          />
         </template>
 
-        <!-- 免用箱天数 -->
-        <template #freeDays="{ row }">
+        <!-- 起运港免用箱天数 -->
+        <template #polFreeDays="{ row }">
           <InputNumber
-            v-model:value="row.freeDays"
+            v-model:value="row.polFreeDays"
+            style="width: 100%"
+            :min="0"
+            placeholder="请输入"
+          />
+        </template>
+
+        <!-- 目的港免用箱天数 -->
+        <template #podFreeDays="{ row }">
+          <InputNumber
+            v-model:value="row.podFreeDays"
+            style="width: 100%"
+            :min="0"
+            placeholder="请输入"
+          />
+        </template>
+
+        <!-- 目的港免堆期天数 -->
+        <template #poddem="{ row }">
+          <InputNumber
+            v-model:value="row.poddem"
+            style="width: 100%"
+            :min="0"
+            placeholder="请输入"
+          />
+        </template>
+
+        <!-- 目的港免箱期天数 -->
+        <template #poddet="{ row }">
+          <InputNumber
+            v-model:value="row.poddet"
             style="width: 100%"
             :min="0"
             placeholder="请输入"
@@ -683,7 +791,27 @@ onMounted(() => {
             style="width: 100%"
             placeholder="选择日期"
             value-format="YYYY-MM-DD"
+            :disabled="!!row.etdDayOfWeek"
           />
+        </template>
+
+        <!-- 开船星期 -->
+        <template #etdDayOfWeek="{ row }">
+          <Select
+            v-model:value="row.etdDayOfWeek"
+            style="width: 100%"
+            placeholder="选择星期"
+            :disabled="!!row.etd"
+            allow-clear
+          >
+            <Select.Option :value="0">周日</Select.Option>
+            <Select.Option :value="1">周一</Select.Option>
+            <Select.Option :value="2">周二</Select.Option>
+            <Select.Option :value="3">周三</Select.Option>
+            <Select.Option :value="4">周四</Select.Option>
+            <Select.Option :value="5">周五</Select.Option>
+            <Select.Option :value="6">周六</Select.Option>
+          </Select>
         </template>
 
         <!-- 截单时间 -->
@@ -694,7 +822,27 @@ onMounted(() => {
             show-time
             placeholder="选择时间"
             value-format="YYYY-MM-DD HH:mm:ss"
+            :disabled="!!row.closeDocDayOfWeek"
           />
+        </template>
+
+        <!-- 截单星期 -->
+        <template #closeDocDayOfWeek="{ row }">
+          <Select
+            v-model:value="row.closeDocDayOfWeek"
+            style="width: 100%"
+            placeholder="选择星期"
+            :disabled="!!row.closeDocTime"
+            allow-clear
+          >
+            <Select.Option :value="0">周日</Select.Option>
+            <Select.Option :value="1">周一</Select.Option>
+            <Select.Option :value="2">周二</Select.Option>
+            <Select.Option :value="3">周三</Select.Option>
+            <Select.Option :value="4">周四</Select.Option>
+            <Select.Option :value="5">周五</Select.Option>
+            <Select.Option :value="6">周六</Select.Option>
+          </Select>
         </template>
 
         <!-- 截港时间 -->

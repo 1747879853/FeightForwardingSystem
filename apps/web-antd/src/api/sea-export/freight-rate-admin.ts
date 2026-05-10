@@ -186,22 +186,22 @@ export interface FeeCodeDto {
  * 运价要比较字段类型
  */
 export enum FreiPricePropType {
-  /** 未定义 */
-  XXX = 0,
+  /** 毛重 */
+  GrossWeight = 1,
 }
 
 /**
  * 运价算符类型
  */
 export enum FreiPriceOperatorType {
-  /** 大于 */
-  GreaterThan = 0,
   /** 大于等于 */
   GreaterThanOrEqual = 1,
-  /** 小于 */
-  LessThan = 2,
+  /** 大于 */
+  GreaterThan = 2,
   /** 小于等于 */
   LessThanOrEqual = 3,
+  /** 小于 */
+  LessThan = 4,
 }
 
 /**
@@ -374,16 +374,34 @@ export interface SeFreiPriceOutDto {
   poT1Id?: number;
   /** 中转港2 ID */
   poT2Id?: number;
-  /** 免用箱天数 */
-  freeDays?: number;
+  /** 起运港免用箱天数 */
+  polFreeDays?: number;
+  /** 目的港免用箱天数 */
+  podFreeDays?: number;
+  /** 目的港免堆期天数 */
+  poddem?: number;
+  /** 目的港免箱期天数 */
+  poddet?: number;
   /** 航程 */
   voyage?: string;
   /** 开船日期 */
   etd?: string;
+  /** 开船日星期几 */
+  etdDayOfWeek?: DayOfWeek;
+  /** 开船日一天中的时间点 */
+  etdDayTime?: string;
   /** 截单时间 */
   closeDocTime?: string;
+  /** 截单日星期几 */
+  closeDocDayOfWeek?: DayOfWeek;
+  /** 截单时间一天中的时间点 */
+  closeDocDayTime?: string;
   /** 截港时间/截关时间 */
   closingTime?: string;
+  /** 截港日星期几 */
+  closingDayOfWeek?: DayOfWeek;
+  /** 截港时间一天中的时间点 */
+  closingDayTime?: string;
   /** 有效时间起始 */
   validTimeStart: string;
   /** 有效时间截止 */
@@ -424,6 +442,26 @@ export interface SeFreiPriceOutDto {
   seFreiPriceFees?: SeFreiPriceFeeOutDto[];
 }
 
+/**
+ * 星期几枚举
+ */
+export enum DayOfWeek {
+  /** 星期日 */
+  Sunday = 0,
+  /** 星期一 */
+  Monday = 1,
+  /** 星期二 */
+  Tuesday = 2,
+  /** 星期三 */
+  Wednesday = 3,
+  /** 星期四 */
+  Thursday = 4,
+  /** 星期五 */
+  Friday = 5,
+  /** 星期六 */
+  Saturday = 6,
+}
+
 // ==================== 请求参数定义 ====================
 
 /**
@@ -444,16 +482,34 @@ export interface AddSeFreiPriceInput {
   poT1Id?: number;
   /** 中转港2 ID */
   poT2Id?: number;
-  /** 免用箱天数 */
-  freeDays?: number;
+  /** 起运港免用箱天数 */
+  polFreeDays?: number;
+  /** 目的港免用箱天数 */
+  podFreeDays?: number;
+  /** 目的港免堆期天数 */
+  poddem?: number;
+  /** 目的港免箱期天数 */
+  poddet?: number;
   /** 航程 */
   voyage?: string;
   /** 开船日期 */
   etd?: string;
+  /** 开船日星期几 */
+  etdDayOfWeek?: DayOfWeek;
+  /** 开船日一天中的时间点 */
+  etdDayTime?: string;
   /** 截单时间 */
   closeDocTime?: string;
+  /** 截单日星期几 */
+  closeDocDayOfWeek?: DayOfWeek;
+  /** 截单时间一天中的时间点 */
+  closeDocDayTime?: string;
   /** 截港时间/截关时间 */
   closingTime?: string;
+  /** 截港日星期几 */
+  closingDayOfWeek?: DayOfWeek;
+  /** 截港时间一天中的时间点 */
+  closingDayTime?: string;
   /** 有效时间起始 */
   validTimeStart: string;
   /** 有效时间截止 */
@@ -506,16 +562,34 @@ export interface BatchEditSeFreiPriceInput {
   poT1Id?: number | null;
   /** 中转港2 ID（为null不修改） */
   poT2Id?: number | null;
-  /** 免用箱天数（为null不修改） */
-  freeDays?: number | null;
+  /** 起运港免用箱天数（为null不修改） */
+  polFreeDays?: number | null;
+  /** 目的港免用箱天数（为null不修改） */
+  podFreeDays?: number | null;
+  /** 目的港免堆期天数（为null不修改） */
+  poddem?: number | null;
+  /** 目的港免箱期天数（为null不修改） */
+  poddet?: number | null;
   /** 航程（为null不修改） */
   voyage?: string | null;
   /** 开船日期（为null不修改） */
   etd?: string | null;
+  /** 开船日星期几（为null不修改） */
+  etdDayOfWeek?: DayOfWeek | null;
+  /** 开船日一天中的时间点（为null不修改） */
+  etdDayTime?: string | null;
   /** 截单时间（为null不修改） */
   closeDocTime?: string | null;
+  /** 截单日星期几（为null不修改） */
+  closeDocDayOfWeek?: DayOfWeek | null;
+  /** 截单时间一天中的时间点（为null不修改） */
+  closeDocDayTime?: string | null;
   /** 截港时间/截关时间（为null不修改） */
   closingTime?: string | null;
+  /** 截港日星期几（为null不修改） */
+  closingDayOfWeek?: DayOfWeek | null;
+  /** 截港时间一天中的时间点（为null不修改） */
+  closingDayTime?: string | null;
   /** 有效时间起始（为null不修改） */
   validTimeStart?: string | null;
   /** 有效时间截止（为null不修改） */
@@ -527,7 +601,7 @@ export interface BatchEditSeFreiPriceInput {
   /** 箱型报价列表（不为空则删除原有子表重新添加） */
   seFreiPriceCtns?: SeFreiPriceCtnAddDto[];
   /** 费用列表（不为空则删除原有子表重新添加，含箱型费用） */
-  seFreiPriceFees?: SeFreiPriceFeeEditDto[];
+  seFreiPriceFees?: SeFreiPriceFeeAddDto[];
 }
 
 /**
@@ -663,8 +737,146 @@ export function changeRecommendStatus(data: ChangeRecommendInput) {
 /**
  * 批量新增运价（简化版，仅包含箱型成本）
  * @param data 批量新增运价数据列表
- * @returns 返回批量新增结果
+ * @returns 返回新增运价的ID列表（UUID字符串数组）
  */
-export function batchAddSimpleSeFreiPrice(data: AddSeFreiPriceInput[]) {
-  return requestClient.post<boolean>(`${BASE_URL}/BatchAddSimpleAsync`, data);
+export function batchAddSimpleSeFreiPrice(data: SeFreiPriceSimpleAddDto[]) {
+  return requestClient.post<string[]>(`${BASE_URL}/BatchAddSimpleAsync`, data);
+}
+
+/**
+ * 运价简单新增DTO（仅主表+箱型，不含费用）
+ */
+export interface SeFreiPriceSimpleAddDto {
+  /** 是否推荐 */
+  recommend: boolean;
+  /** 船公司ID */
+  carrierId: number;
+  /** 起运港ID */
+  polId: number;
+  /** 目的港ID */
+  podId: number;
+  /** 是否直达 */
+  isDirect: boolean;
+  /** 中转港1 ID */
+  poT1Id?: number;
+  /** 中转港2 ID */
+  poT2Id?: number;
+  /** 起运港免用箱天数 */
+  polFreeDays?: number;
+  /** 目的港免用箱天数 */
+  podFreeDays?: number;
+  /** 目的港免堆期天数 */
+  poddem?: number;
+  /** 目的港免箱期天数 */
+  poddet?: number;
+  /** 航程 */
+  voyage?: string;
+  /** 开船日期 */
+  etd?: string;
+  /** 开船日星期几 */
+  etdDayOfWeek?: DayOfWeek;
+  /** 开船日一天中的时间点 */
+  etdDayTime?: string;
+  /** 截单时间 */
+  closeDocTime?: string;
+  /** 截单日星期几 */
+  closeDocDayOfWeek?: DayOfWeek;
+  /** 截单时间一天中的时间点 */
+  closeDocDayTime?: string;
+  /** 截港时间/截关时间 */
+  closingTime?: string;
+  /** 截港日星期几 */
+  closingDayOfWeek?: DayOfWeek;
+  /** 截港时间一天中的时间点 */
+  closingDayTime?: string;
+  /** 有效时间起始 */
+  validTimeStart: string;
+  /** 有效时间截止 */
+  validTimeEnd: string;
+  /** 备注 */
+  remark?: string;
+  /** 币别ID */
+  currencyId: number;
+  /** 箱型报价列表 */
+  seFreiPriceCtns?: SeFreiPriceCtnAddDto[];
+}
+
+/**
+ * 运价简单编辑DTO（仅主表+箱型，不含费用）
+ */
+export interface SeFreiPriceSimpleEditDto {
+  /** 运价主键ID */
+  id: string;
+  /** 是否推荐 */
+  recommend: boolean;
+  /** 船公司ID */
+  carrierId: number;
+  /** 起运港ID */
+  polId: number;
+  /** 目的港ID */
+  podId: number;
+  /** 是否直达 */
+  isDirect: boolean;
+  /** 中转港1 ID */
+  poT1Id?: number;
+  /** 中转港2 ID */
+  poT2Id?: number;
+  /** 起运港免用箱天数 */
+  polFreeDays?: number;
+  /** 目的港免用箱天数 */
+  podFreeDays?: number;
+  /** 目的港免堆期天数 */
+  poddem?: number;
+  /** 目的港免箱期天数 */
+  poddet?: number;
+  /** 航程 */
+  voyage?: string;
+  /** 开船日期 */
+  etd?: string;
+  /** 开船日星期几 */
+  etdDayOfWeek?: DayOfWeek;
+  /** 开船日一天中的时间点 */
+  etdDayTime?: string;
+  /** 截单时间 */
+  closeDocTime?: string;
+  /** 截单日星期几 */
+  closeDocDayOfWeek?: DayOfWeek;
+  /** 截单时间一天中的时间点 */
+  closeDocDayTime?: string;
+  /** 截港时间/截关时间 */
+  closingTime?: string;
+  /** 截港日星期几 */
+  closingDayOfWeek?: DayOfWeek;
+  /** 截港时间一天中的时间点 */
+  closingDayTime?: string;
+  /** 有效时间起始 */
+  validTimeStart: string;
+  /** 有效时间截止 */
+  validTimeEnd: string;
+  /** 备注 */
+  remark?: string;
+  /** 币别ID */
+  currencyId: number;
+  /** 箱型报价列表 */
+  seFreiPriceCtns?: SeFreiPriceCtnEditDto[];
+}
+
+/**
+ * 批量简单编辑运价
+ * @param data 批量简单编辑运价数据列表（仅主表+箱型，不含费用）
+ * @returns 返回批量编辑结果
+ */
+export function batchEditSimpleSeFreiPrice(data: SeFreiPriceSimpleEditDto[]) {
+  return requestClient.put<boolean>(`${BASE_URL}/BatchEditSimpleAsync`, data);
+}
+
+/**
+ * 获取批量运价的箱型列表（去重）
+ * @param ids 运价ID列表
+ */
+export function GetCtnCodesByPriceIdsAsync(ids: string[]) {
+  return requestClient.post<CtnCodeDto[]>(
+    `${BASE_URL}/GetCtnCodesByPriceIdsAsync`,
+    { ids },
+  );
 }

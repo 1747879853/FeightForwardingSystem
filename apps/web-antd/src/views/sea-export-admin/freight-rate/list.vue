@@ -31,6 +31,8 @@ import AddCtnModal from './modules/add-ctn-modal.vue';
 import Form from './modules/form.vue';
 import BatchAddModal from './modules/batch-add-modal.vue';
 import BatchEditModal from './modules/batch-edit-modal.vue';
+import SyncUpdateForm from './modules/sync-update-form.vue';
+import CtnEditableCell from './modules/ctn-editable-cell.vue';
 
 // 创建运价管理的 ABP 权限对象
 const perm = createAbpPermission('Admin.SeFreiPrice');
@@ -43,6 +45,11 @@ const selectedLineId = ref<number | undefined>(undefined);
 
 const [FormModal, formModalApi] = useVbenModal({
   connectedComponent: Form,
+  destroyOnClose: true,
+});
+
+const [SyncUpdateModal, syncUpdateModalApi] = useVbenModal({
+  connectedComponent: SyncUpdateForm,
   destroyOnClose: true,
 });
 
@@ -118,7 +125,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     },
     rowConfig: {
       keyField: 'id',
-      isHover: true,
+      // isHover: true,
     },
     checkboxConfig: {
       highlight: true,
@@ -233,9 +240,8 @@ function onBatchEdit() {
     message.warning('请先选择要批量编辑的运价记录');
     return;
   }
-  formModalApi
+  syncUpdateModalApi
     .setData({
-      isBatch: true,
       ids: records.map((r) => r.id),
     })
     .open();
@@ -384,13 +390,13 @@ onMounted(() => {
     <AddCtnModalComponent @success="onRefresh" />
     <BatchAddModalComponent @success="onRefresh" />
     <BatchEditModalComponent @success="onRefresh" />
-
+    <SyncUpdateModal @success="onRefresh" />
     <Grid>
       <!-- 推荐状态自定义渲染插槽 -->
       <template #recommend="{ row }">
         <div class="flex items-center justify-center">
           <IconifyIcon
-            icon="lucide:star"
+            :icon="row.recommend ? 'mdi:star' : 'mdi:star-outline'"
             class="size-5 cursor-pointer transition-all duration-200 hover:scale-110"
             :class="row.recommend ? 'text-yellow-500' : 'text-gray-300'"
             @click="handleRecommendClick(row)"
@@ -407,8 +413,13 @@ onMounted(() => {
         />
       </template>
 
+      <!-- 箱型费用可编辑单元格插槽 -->
+      <template #ctnEditableCell="{ row, column }">
+        <CtnEditableCell :row="row" :column="column" @success="onRefresh" />
+      </template>
+
       <template #toolbar-tools>
-        <div class="flex w-[72vw] justify-between">
+        <div class="flex w-[74vw] justify-between">
           <!-- 航线选择标签页 -->
           <div class="mb-4 mr-5 border-b border-gray-200 bg-white px-4 pt-3">
             <div class="flex items-center space-x-1 overflow-x-auto">
@@ -453,7 +464,13 @@ onMounted(() => {
             <!-- 批量新增按钮 -->
             <Button v-access:code="perm.add" @click="onBatchAdd">
               <Plus class="size-5" />
-              {{ $t('ui.actionTitle.create') }}
+              {{ $t('seaExport.freightRate.create') }}
+            </Button>
+
+            <!-- 复制按钮 -->
+            <Button v-access:code="perm.add" @click="onBatchEditModal">
+              <IconifyIcon icon="mdi:square-edit-outline" class="size-5" />
+              {{ $t('seaExport.freightRate.update') }}
             </Button>
 
             <!-- 复制按钮 -->
@@ -470,9 +487,6 @@ onMounted(() => {
               </Button>
               <template #overlay>
                 <Menu>
-                  <Menu.Item key="editModal" @click="onBatchEditModal">
-                    {{ $t('seaExport.freightRate.batchUpdate') }}
-                  </Menu.Item>
                   <Menu.Item key="edit" @click="onBatchEdit">
                     {{ $t('seaExport.freightRate.batchEdit') }}
                   </Menu.Item>
@@ -519,5 +533,38 @@ onMounted(() => {
 
 :deep(.vxe-table .vxe-body--row) {
   height: auto !important;
+}
+
+/* 淡化表格悬浮后的行背景色，确保复选框可见 */
+:deep(.vxe-table .vxe-body--row.is--hover) {
+  background-color: rgb(245 247 250 / 30%) !important;
+}
+
+/* 确保复选框在悬浮时仍然清晰可见 */
+:deep(.vxe-table .vxe-body--row.is--hover .vxe-checkbox) {
+  opacity: 1 !important;
+}
+
+/* 选中行的背景色保持不变或稍微调整 */
+:deep(.vxe-table .vxe-body--row.row--checkbox) {
+  background-color: rgb(230 240 255 / 50%) !important;
+}
+
+/* 选中且悬浮时的背景色 */
+:deep(.vxe-table .vxe-body--row.row--checkbox.is--hover) {
+  background-color: rgb(220 235 255 / 60%) !important;
+}
+
+/* 可编辑单元格的样式 */
+:deep(.cell-editable-number) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 28px;
+}
+
+:deep(.cell-editable-number:hover) {
+  outline: 1px dashed #4096ff;
+  background-color: rgb(239 246 255) !important;
 }
 </style>
