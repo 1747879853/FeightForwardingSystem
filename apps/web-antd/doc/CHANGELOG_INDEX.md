@@ -13,6 +13,8 @@
 
 ## 2026-05
 
+- [2026-05-10] [海运出口列表查询区调整为一行4个条件](./change-log-2026-05-10-sea-export-list-query-four-columns.md)
+- [2026-05-10] [海运出口列表查询与显示字段映射对齐](./change-log-2026-05-10-sea-export-list-query-table-mapping.md)
 - [2026-05-10] [将搜索字段顺序调整交互改为拖动排序](./change-log-2026-05-10-search-form-field-drag-order.md)
 - [2026-05-10] [补充搜索字段顺序调整持久化与回放](./change-log-2026-05-10-search-form-field-order-persist.md)
 - [2026-05-10] [新增 useVbenVxeGrid 搜索字段显示/隐藏持久化与工具栏配置入口](./change-log-2026-05-10-search-form-field-persist.md)

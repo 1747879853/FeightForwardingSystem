@@ -129,6 +129,9 @@ export namespace SeaExportAdminApi {
     consigneeName?: string;
     shipperName?: string;
     notifierName?: string;
+    totalCtn?: string;
+    teu?: number;
+    codePackageName?: string;
   }
 
   export interface TransportOrderEditDto extends TransportOrderAddDto {
@@ -302,10 +305,13 @@ export namespace SeaExportAdminApi {
     deliverPortId?: number;
     deliverPortName?: string;
     deliverPortRemark?: string;
+    laneName?: string;
+    creatorUserNickName?: string;
     sortId?: number;
     remark?: string;
     serviceTypes?: number[];
     organizationUnits?: OrganizationUnitSimpleDto[];
+    companys?: OrganizationUnitSimpleDto[];
     transportOrder?: TransportOrderDto;
     isDeleted?: boolean;
     deleterUserId?: number;
@@ -327,6 +333,36 @@ export namespace SeaExportAdminApi {
 
   export interface GetPagedListParams {
     Keyword?: string;
+    ETDStart?: string;
+    ETDEnd?: string;
+    ClientId?: string | number;
+    POLId?: number;
+    PODId?: number;
+    Vessel?: string;
+    InnerVoyno?: string;
+    CarrierId?: number;
+    BookingAgentId?: string | number;
+    SaleId?: number;
+    OperationId?: number;
+    BusinessId?: number;
+    CustomerServiceId?: number;
+    DocumentationId?: number;
+    OrgId?: number;
+    TeamId?: string | number;
+    CustBrokerId?: string | number;
+    CtnNo?: string;
+    CloseDocTimeStart?: string;
+    CloseDocTimeEnd?: string;
+    Remark?: string;
+    CargoId?: number;
+    GoodsDes?: string;
+    CodeSourceId?: number;
+    CodeIssueTypeId?: number;
+    BLType?: number;
+    TradeTermsType?: number;
+    BillType?: number;
+    FeeLocked?: boolean;
+    IsBusinessLocking?: boolean;
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;

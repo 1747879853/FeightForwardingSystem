@@ -7,6 +7,14 @@ import { $t } from '#/locales';
 
 import { createClientSelectSchema } from '../client/base/data';
 
+const USER_ATTRIBUTE = {
+  operation: 1,
+  customerService: 2,
+  documentation: 4,
+  business: 8,
+  sale: 16,
+} as const;
+
 /** 装运方式枚举：整柜=0、拼箱分票=1、拼箱主票=2 */
 const getBlTypeOptions = () => [
   { value: 0, label: $t('seaExport.export.blTypeOptions.fullContainer') },
@@ -64,6 +72,42 @@ const getTradeTermsTypeOptions = () => [
   { value: 7, label: $t('seaExport.export.tradeTermsTypeOptions.cAndF') },
 ];
 
+const getBooleanTagOptions = (trueLabel: string, falseLabel: string) => [
+  { value: true, label: trueLabel, color: 'warning' },
+  { value: false, label: falseLabel, color: 'success' },
+];
+
+const getRoleName = (
+  orderUsers: SeaExportAdminApi.OrderUserDto[] | undefined,
+  userAttribute: number,
+) => {
+  if (!orderUsers?.length) {
+    return '';
+  }
+  return orderUsers
+    .filter((item) => Number(item.userAttribute) === userAttribute)
+    .map((item) => item.userNickName)
+    .filter(Boolean)
+    .join('、');
+};
+
+const getPartyName = (
+  name: string | undefined,
+  fallbackContent: string | undefined,
+) => name || fallbackContent || '';
+
+const formatMonth = (value: string | undefined) => {
+  if (!value) {
+    return '';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}`;
+};
+
 /**
  * 列表搜索表单 schema
  */
@@ -76,6 +120,280 @@ export function useGridFormSchema(): VbenFormSchema[] {
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
         allowClear: true,
+      },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'ETDStart',
+      label: '开船日期从',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'ETDEnd',
+      label: '开船日期到',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+      },
+    },
+    createClientSelectSchema({
+      fieldName: 'ClientId',
+      industryCategory: 'p',
+      label: $t('seaExport.export.clientId'),
+    }),
+    {
+      component: 'PortSelect',
+      fieldName: 'POLId',
+      label: $t('seaExport.export.polId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'PortSelect',
+      fieldName: 'PODId',
+      label: $t('seaExport.export.podId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'Vessel',
+      label: $t('seaExport.export.vessel'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'InnerVoyno',
+      label: $t('seaExport.export.innerVoyno'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'CarrierSelect',
+      fieldName: 'CarrierId',
+      label: $t('seaExport.export.carrierId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    createClientSelectSchema({
+      fieldName: 'BookingAgentId',
+      industryCategory: 'o',
+      label: $t('seaExport.export.bookingAgentId'),
+    }),
+    {
+      component: 'UserSelect',
+      fieldName: 'SaleId',
+      label: $t('system.user.userAttributeOptions.sales'),
+      componentProps: {
+        allowClear: true,
+        userAttribute: USER_ATTRIBUTE.sale,
+      },
+    },
+    {
+      component: 'UserSelect',
+      fieldName: 'OperationId',
+      label: $t('system.user.userAttributeOptions.operation'),
+      componentProps: {
+        allowClear: true,
+        userAttribute: USER_ATTRIBUTE.operation,
+      },
+    },
+    {
+      component: 'UserSelect',
+      fieldName: 'BusinessId',
+      label: $t('system.user.userAttributeOptions.business'),
+      componentProps: {
+        allowClear: true,
+        userAttribute: USER_ATTRIBUTE.business,
+      },
+    },
+    {
+      component: 'UserSelect',
+      fieldName: 'CustomerServiceId',
+      label: $t('system.user.userAttributeOptions.customerService'),
+      componentProps: {
+        allowClear: true,
+        userAttribute: USER_ATTRIBUTE.customerService,
+      },
+    },
+    {
+      component: 'UserSelect',
+      fieldName: 'DocumentationId',
+      label: $t('system.user.userAttributeOptions.documentation'),
+      componentProps: {
+        allowClear: true,
+        userAttribute: USER_ATTRIBUTE.documentation,
+      },
+    },
+    {
+      component: 'OrganizationSelect',
+      fieldName: 'OrgId',
+      label: $t('seaExport.export.organizationUnits'),
+      componentProps: {
+        allowClear: true,
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    createClientSelectSchema({
+      fieldName: 'TeamId',
+      industryCategory: 'i',
+      label: $t('seaExport.export.teamId'),
+    }),
+    createClientSelectSchema({
+      fieldName: 'CustBrokerId',
+      industryCategory: 'f',
+      label: $t('seaExport.export.custBrokerId'),
+    }),
+    {
+      component: 'Input',
+      fieldName: 'CtnNo',
+      label: $t('seaExport.export.ctnNo'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'CloseDocTimeStart',
+      label: '截单时间从',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        showTime: true,
+      },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'CloseDocTimeEnd',
+      label: '截单时间到',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        showTime: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'Remark',
+      label: $t('seaExport.export.remark'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'CargoId',
+      label: $t('seaExport.export.cargoId'),
+      componentProps: {
+        allowClear: true,
+        options: getCargoTypeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'GoodsDes',
+      label: $t('seaExport.export.goodsDes'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'CodeSourceSelect',
+      fieldName: 'CodeSourceId',
+      label: $t('seaExport.export.codeSourceId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'CodeIssueTypeSelect',
+      fieldName: 'CodeIssueTypeId',
+      label: $t('seaExport.export.issueType'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'BLType',
+      label: $t('seaExport.export.blType'),
+      componentProps: {
+        allowClear: true,
+        options: getBlTypeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'TradeTermsType',
+      label: $t('seaExport.export.tradeTermsType'),
+      componentProps: {
+        allowClear: true,
+        options: getTradeTermsTypeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'BillType',
+      label: $t('seaExport.export.billType'),
+      componentProps: {
+        allowClear: true,
+        options: getBillTypeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'FeeLocked',
+      label: $t('seaExport.export.isFeeLocking'),
+      componentProps: {
+        allowClear: true,
+        options: [
+          { value: true, label: $t('common.yes') },
+          { value: false, label: $t('common.no') },
+        ],
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'IsBusinessLocking',
+      label: $t('seaExport.export.isBusinessLocking'),
+      componentProps: {
+        allowClear: true,
+        options: [
+          { value: true, label: $t('common.yes') },
+          { value: false, label: $t('common.no') },
+        ],
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
       },
     },
   ];
@@ -98,54 +416,276 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       minWidth: 140,
     },
     {
-      field: 'transportOrder.bookingNum',
-      title: $t('seaExport.export.bookingNum'),
-      minWidth: 130,
-    },
-    {
-      field: 'billType',
-      title: $t('seaExport.export.billType'),
-      minWidth: 80,
-      cellRender: {
-        name: 'CellTag',
-        options: getBillTypeOptions(),
-      },
-    },
-    {
-      field: 'blType',
-      title: $t('seaExport.export.blType'),
-      minWidth: 80,
-      cellRender: {
-        name: 'CellTag',
-        options: getBlTypeOptions(),
-      },
-    },
-    {
-      field: 'vessel',
-      title: $t('seaExport.export.vessel'),
-      minWidth: 120,
-    },
-    {
-      field: 'innerVoyno',
-      title: $t('seaExport.export.innerVoyno'),
-      minWidth: 100,
-    },
-    {
       field: 'transportOrder.etd',
       title: $t('seaExport.export.etd'),
       minWidth: 140,
       formatter: 'formatDateTime',
     },
     {
-      field: 'transportOrder.eta',
-      title: $t('seaExport.export.eta'),
+      field: 'transportOrder.clientName',
+      title: $t('seaExport.export.clientId'),
+      minWidth: 150,
+      showOverflow: true,
+    },
+    {
+      field: 'carrierName',
+      title: $t('seaExport.export.carrierId'),
+      minWidth: 100,
+    },
+    {
+      field: 'bookingAgentName',
+      title: $t('seaExport.export.bookingAgentId'),
+      minWidth: 120,
+      showOverflow: true,
+    },
+    {
+      field: 'polName',
+      title: $t('seaExport.export.polName'),
+      minWidth: 120,
+      showOverflow: true,
+    },
+    {
+      field: 'podName',
+      title: $t('seaExport.export.podName'),
+      minWidth: 120,
+      showOverflow: true,
+    },
+    {
+      field: 'deliverPortName',
+      title: $t('seaExport.export.deliverPortId'),
+      minWidth: 120,
+      showOverflow: true,
+    },
+    {
+      field: 'vessel',
+      title: $t('seaExport.export.vessel'),
+      minWidth: 120,
+      showOverflow: true,
+    },
+    {
+      field: 'innerVoyno',
+      title: $t('seaExport.export.innerVoyno'),
+      minWidth: 100,
+      showOverflow: true,
+    },
+    {
+      field: 'laneName',
+      title: $t('seaExport.export.laneName'),
+      minWidth: 120,
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.codeSourceName',
+      title: $t('seaExport.export.codeSourceId'),
+      minWidth: 110,
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.codeFrtName',
+      title: $t('seaExport.export.codeFrtId'),
+      minWidth: 110,
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.totalCtn',
+      title: $t('seaExport.export.orderCtns'),
+      minWidth: 120,
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.teu',
+      title: 'TEU',
+      minWidth: 90,
+    },
+    {
+      field: 'operationUserName',
+      title: $t('system.user.userAttributeOptions.operation'),
+      minWidth: 100,
+      formatter: ({ row }) =>
+        getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.operation),
+      showOverflow: true,
+    },
+    {
+      field: 'saleUserName',
+      title: $t('system.user.userAttributeOptions.sales'),
+      minWidth: 100,
+      formatter: ({ row }) =>
+        getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.sale),
+      showOverflow: true,
+    },
+    {
+      field: 'customerServiceUserName',
+      title: $t('system.user.userAttributeOptions.customerService'),
+      minWidth: 120,
+      formatter: ({ row }) =>
+        getRoleName(
+          row.transportOrder?.orderUsers,
+          USER_ATTRIBUTE.customerService,
+        ),
+      showOverflow: true,
+    },
+    {
+      field: 'documentationUserName',
+      title: $t('system.user.userAttributeOptions.documentation'),
+      minWidth: 100,
+      formatter: ({ row }) =>
+        getRoleName(
+          row.transportOrder?.orderUsers,
+          USER_ATTRIBUTE.documentation,
+        ),
+      showOverflow: true,
+    },
+    {
+      field: 'businessUserName',
+      title: $t('system.user.userAttributeOptions.business'),
+      minWidth: 100,
+      formatter: ({ row }) =>
+        getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.business),
+      showOverflow: true,
+    },
+    {
+      field: 'companys',
+      title: $t('seaExport.export.organizationUnits'),
       minWidth: 140,
+      formatter: ({ row }) => row.companys?.[0]?.name || '',
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.accountDate',
+      title: $t('seaExport.export.accountDate'),
+      minWidth: 110,
+      formatter: ({ row }) => formatMonth(row.transportOrder?.accountDate),
+    },
+    {
+      field: 'transportOrder.shipperName',
+      title: $t('seaExport.export.shipperId'),
+      minWidth: 140,
+      formatter: ({ row }) =>
+        getPartyName(
+          row.transportOrder?.shipperName,
+          row.transportOrder?.shipperContent,
+        ),
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.consigneeName',
+      title: $t('seaExport.export.consigneeId'),
+      minWidth: 140,
+      formatter: ({ row }) =>
+        getPartyName(
+          row.transportOrder?.consigneeName,
+          row.transportOrder?.consigneeContent,
+        ),
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.notifierName',
+      title: $t('seaExport.export.notifierId'),
+      minWidth: 140,
+      formatter: ({ row }) =>
+        getPartyName(
+          row.transportOrder?.notifierName,
+          row.transportOrder?.notifierContent,
+        ),
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.pkgs',
+      title: $t('seaExport.export.pkgs'),
+      minWidth: 90,
+    },
+    {
+      field: 'transportOrder.codePackageName',
+      title: $t('seaExport.export.codePackageId'),
+      minWidth: 100,
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.kgs',
+      title: $t('seaExport.export.kgs'),
+      minWidth: 100,
+    },
+    {
+      field: 'transportOrder.cbm',
+      title: $t('seaExport.export.cbm'),
+      minWidth: 100,
+    },
+    {
+      field: 'transportOrder.marks',
+      title: $t('seaExport.export.marks'),
+      minWidth: 160,
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.goodsDes',
+      title: $t('seaExport.export.goodsDes'),
+      minWidth: 180,
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.internalRemark',
+      title: $t('seaExport.export.internalRemark'),
+      minWidth: 160,
+      showOverflow: true,
+    },
+    {
+      field: 'codeIssueTypeName',
+      title: $t('seaExport.export.issueType'),
+      minWidth: 110,
+      showOverflow: true,
+    },
+    {
+      field: 'closeDocTime',
+      title: $t('seaExport.export.closeDocTime'),
+      minWidth: 160,
       formatter: 'formatDateTime',
     },
     {
-      field: 'remark',
-      title: $t('seaExport.export.remark'),
-      minWidth: 160,
+      field: 'blType',
+      title: $t('seaExport.export.blType'),
+      minWidth: 100,
+      cellRender: {
+        name: 'CellTag',
+        options: getBlTypeOptions(),
+      },
+    },
+    {
+      field: 'billType',
+      title: $t('seaExport.export.billType'),
+      minWidth: 90,
+      cellRender: {
+        name: 'CellTag',
+        options: getBillTypeOptions(),
+      },
+    },
+    {
+      field: 'transportOrder.feeLocked',
+      title: $t('seaExport.export.isFeeLocking'),
+      minWidth: 110,
+      cellRender: {
+        name: 'CellTag',
+        options: getBooleanTagOptions(
+          $t('seaExport.export.isFeeLocking'),
+          $t('seaExport.export.noFeeLocking'),
+        ),
+      },
+    },
+    {
+      field: 'transportOrder.isBusinessLocking',
+      title: $t('seaExport.export.isBusinessLocking'),
+      minWidth: 110,
+      cellRender: {
+        name: 'CellTag',
+        options: getBooleanTagOptions(
+          $t('seaExport.export.isBusinessLocking'),
+          $t('seaExport.export.noBusinessLocking'),
+        ),
+      },
+    },
+    {
+      field: 'creatorUserNickName',
+      title: '录入人',
+      minWidth: 120,
       showOverflow: true,
     },
     {
