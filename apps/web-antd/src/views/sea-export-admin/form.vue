@@ -2110,11 +2110,6 @@ defineExpose({
                 <span class="card-title">
                   <FileText class="size-4" />
                   委托信息
-                  <iconify-icon
-                    icon="lucide:align-vertical-justify-end"
-                    width="24"
-                    height="24"
-                  ></iconify-icon>
                 </span>
               </template>
               <div class="card-body">

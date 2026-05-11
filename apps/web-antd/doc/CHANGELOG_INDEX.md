@@ -13,6 +13,9 @@
 
 ## 2026-05
 
+- [2026-05-11] [客户列表支持双击行进入编辑页](./changelogs/change-log-2026-05-11-client-list-double-click-edit.md)
+- [2026-05-11] [客户列表改为顶部统一操作并强化选择安全](./changelogs/change-log-2026-05-11-client-list-top-actions-selection-safety.md)
+- [2026-05-11] [海运出口委托信息只读项新增超出省略与悬浮显示](./changelogs/change-log-2026-05-11-sea-export-readonly-ellipsis-tooltip.md)
 - [2026-05-10] [海运出口列表查询区调整为一行4个条件](./changelogs/change-log-2026-05-10-sea-export-list-query-four-columns.md)
 - [2026-05-10] [海运出口列表查询与显示字段映射对齐](./changelogs/change-log-2026-05-10-sea-export-list-query-table-mapping.md)
 - [2026-05-10] [将搜索字段顺序调整交互改为拖动排序](./changelogs/change-log-2026-05-10-search-form-field-drag-order.md)
