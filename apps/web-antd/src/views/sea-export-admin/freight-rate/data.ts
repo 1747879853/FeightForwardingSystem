@@ -386,16 +386,6 @@ export function useColumns<T = SeFreiPriceOutDto>(
       },
     },
     {
-      field: 'poddem',
-      title: '目的港免堆期',
-      width: 110,
-    },
-    {
-      field: 'poddet',
-      title: '目的港免箱期',
-      width: 110,
-    },
-    {
       field: 'voyage',
       title: $t('seaExport.freightRate.voyage'),
       width: 100,
@@ -460,7 +450,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
     },
     {
       field: 'closingTime',
-      title: '截港时间',
+      title: '截关时间',
       width: 150,
       formatter: ({ row }) => {
         // 优先检查完整日期时间模式

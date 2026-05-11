@@ -8,7 +8,7 @@ import type {
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
-import { Plus, Copy } from '@vben/icons';
+import { Plus, Copy, IconifyIcon } from '@vben/icons';
 
 import {
   Button,
@@ -21,6 +21,7 @@ import {
   Radio,
   Switch,
   TimePicker,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
@@ -415,22 +416,13 @@ function buildColumns(): VxeTableGridOptions['columns'] {
       slots: { default: 'polFreeDays' },
     },
     {
-      field: 'podFreeDays',
-      title: '目的港免用箱',
-      width: 110,
-      slots: { default: 'podFreeDays' },
-    },
-    {
-      field: 'poddem',
-      title: '目的港免堆期',
-      width: 110,
-      slots: { default: 'poddem' },
-    },
-    {
-      field: 'poddet',
-      title: '目的港免箱期',
-      width: 110,
-      slots: { default: 'poddet' },
+      field: 'podFreeDaysCombined',
+      title: '目的港免箱使天数',
+      width: 320,
+      slots: {
+        default: 'podFreeDaysCombined',
+        header: 'podFreeDaysCombinedHeader',
+      },
     },
     {
       field: 'voyage',
@@ -452,7 +444,7 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     },
     {
       field: 'closingTime',
-      title: '截港时间',
+      title: '截关时间',
       width: 280,
       slots: { default: 'closingTimeCombined' },
     },
@@ -777,34 +769,51 @@ function resetForm() {
           />
         </template>
 
-        <!-- 目的港免用箱天数 -->
-        <template #podFreeDays="{ row }">
-          <InputNumber
-            v-model:value="row.podFreeDays"
-            style="width: 100%"
-            :min="0"
-            placeholder="请输入"
-          />
+        <!-- 目的港免箱使天数合并编辑 -->
+        <template #podFreeDaysCombined="{ row }">
+          <div class="flex items-center justify-center gap-2 p-1">
+            <!-- 免堆期 (DEM) -->
+            <InputNumber
+              v-model:value="row.poddem"
+              style="width: 60px"
+              :min="0"
+              placeholder="DEM"
+            />
+
+            <span class="text-sm text-gray-400">+</span>
+
+            <!-- 免用箱期 (DET) -->
+            <InputNumber
+              v-model:value="row.podFreeDays"
+              style="width: 60px"
+              :min="0"
+              placeholder="DET"
+            />
+
+            <span class="text-sm text-gray-400">=</span>
+
+            <!-- 免箱使期（自动计算或手动输入） -->
+            <InputNumber
+              v-model:value="row.poddet"
+              style="width: 60px"
+              :min="0"
+              placeholder="-"
+              class="font-medium"
+            />
+          </div>
         </template>
 
-        <!-- 目的港免堆期天数 -->
-        <template #poddem="{ row }">
-          <InputNumber
-            v-model:value="row.poddem"
-            style="width: 100%"
-            :min="0"
-            placeholder="请输入"
-          />
-        </template>
-
-        <!-- 目的港免箱期天数 -->
-        <template #poddet="{ row }">
-          <InputNumber
-            v-model:value="row.poddet"
-            style="width: 100%"
-            :min="0"
-            placeholder="请输入"
-          />
+        <!-- 目的港免箱使天数列头 -->
+        <template #podFreeDaysCombinedHeader>
+          <div class="flex items-center gap-1">
+            <span>目的港免箱使天数</span>
+            <Tooltip title="免堆期 (DEM) + 免用箱期 (DET) = 免箱使期">
+              <IconifyIcon
+                icon="mdi:information-outline"
+                class="size-4 cursor-help text-gray-500"
+              />
+            </Tooltip>
+          </div>
         </template>
 
         <!-- 航程 -->
@@ -888,7 +897,7 @@ function resetForm() {
           </div>
         </template>
 
-        <!-- 合并的截港时间与星期 -->
+        <!-- 合并的截关时间与星期 -->
         <template #closingTimeCombined="{ row }">
           <div class="flex w-full items-center gap-2">
             <!-- 完整日期时间选择器 -->
