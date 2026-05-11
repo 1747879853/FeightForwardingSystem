@@ -377,9 +377,13 @@ export function useColumns<T = SeFreiPriceOutDto>(
       width: 110,
     },
     {
-      field: 'podFreeDays',
-      title: '目的港免用箱',
-      width: 110,
+      field: 'podFreeDaysCombined',
+      title: '目的港免箱使天数',
+      width: 280,
+      slots: {
+        default: 'podFreeDaysCombined',
+        header: 'podFreeDaysCombinedHeader',
+      },
     },
     {
       field: 'poddem',
@@ -514,14 +518,8 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'isValid',
       title: $t('seaExport.freightRate.isValid'),
-      width: 80,
-      cellRender: {
-        name: 'CellTag',
-        options: [
-          { color: '#389e0d', label: $t('common.valid'), value: true },
-          { color: '#cf1322', label: $t('common.invalid'), value: false },
-        ],
-      },
+      width: 100,
+      slots: { default: 'isValid' },
     },
     {
       field: 'remark',

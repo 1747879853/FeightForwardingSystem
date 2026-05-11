@@ -13,7 +13,16 @@ import { nextTick, ref, watch, onMounted, computed } from 'vue';
 import { Page, useVbenModal } from '@vben/common-ui';
 import { Copy, Plus, ChevronDown, IconifyIcon } from '@vben/icons';
 
-import { Button, message, Modal, Space, Dropdown, Menu } from 'ant-design-vue';
+import {
+  Button,
+  message,
+  Modal,
+  Space,
+  Dropdown,
+  Menu,
+  Tooltip,
+  Tag,
+} from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -379,6 +388,77 @@ async function handleRecommendClick(row: SeFreiPriceOutDto) {
   }
 }
 
+/**
+ * 获取有效状态文本
+ */
+function getIsValidText(row: SeFreiPriceOutDto): string {
+  // 如果isValid为false，直接返回无效
+
+  //console.log('row.validTimeStart', new Date(row.validTimeStart));
+  //console.log('row.validTimeEnd', new Date(row.validTimeEnd));
+
+  // 如果isValid为true，检查有效期
+  const now = new Date();
+  // 获取当前日期的零点时间，用于日期比较
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // 检查有效起始日期 - 如果还没开始，显示未生效
+  if (row.validTimeStart) {
+    // ISO 8601格式的日期字符串，直接解析即可
+    const startDate = new Date(row.validTimeStart);
+    // 将起始日期转换为零点时间进行比较（使用本地时间）
+    const startDay = new Date(
+      startDate.getFullYear(),
+      startDate.getMonth(),
+      startDate.getDate(),
+    );
+    console.log('startDay:', startDay);
+    console.log('today:', today);
+    if (startDay > today) {
+      return '未生效';
+    }
+  }
+
+  // 检查有效截止日期 - 如果已过期，显示已过期
+  if (row.validTimeEnd) {
+    // ISO 8601格式的日期字符串，直接解析即可
+    const endDate = new Date(row.validTimeEnd);
+    // 将截止日期转换为零点时间进行比较（使用本地时间）
+    const endDay = new Date(
+      endDate.getFullYear(),
+      endDate.getMonth(),
+      endDate.getDate(),
+    );
+    if (endDay < today) {
+      return '已过期';
+    }
+  }
+
+  if (!row.isValid) {
+    return '无效';
+  }
+
+  return '有效';
+}
+
+/**
+ * 获取有效状态颜色
+ */
+function getIsValidColor(row: SeFreiPriceOutDto): string {
+  const text = getIsValidText(row);
+  console.log('isValidText:', text);
+  switch (text) {
+    case '有效':
+      return '#389e0d'; // 绿色
+    case '未生效':
+      return '#faad14'; // 橙色
+    case '已过期':
+      return '#cf1322'; // 红色
+    default:
+      return '#cf1322'; // 红色（无效）
+  }
+}
+
 onMounted(() => {
   getLines();
 });
@@ -413,13 +493,86 @@ onMounted(() => {
         />
       </template>
 
+      <!-- 目的港免箱使天数自定义渲染插槽 -->
+      <template #podFreeDaysCombined="{ row }">
+        <div class="flex items-center justify-center gap-2 p-2">
+          <!-- 免堆期 (DEM) -->
+          <div
+            v-if="row.poddem !== null && row.poddem !== undefined"
+            class="inline-flex min-w-[40px] items-center justify-center rounded border border-gray-300 px-2 py-1 text-sm"
+          >
+            {{ row.poddem }}
+          </div>
+          <div
+            v-else
+            class="inline-flex h-[28px] w-[40px] items-center justify-center rounded border border-gray-200 bg-gray-50"
+          >
+            <span class="text-xs font-medium text-gray-300">DEM</span>
+          </div>
+
+          <span class="text-gray-400">+</span>
+
+          <!-- 免用箱期 (DET) -->
+          <div
+            v-if="row.podFreeDays !== null && row.podFreeDays !== undefined"
+            class="inline-flex min-w-[40px] items-center justify-center rounded border border-gray-300 px-2 py-1 text-sm"
+          >
+            {{ row.podFreeDays }}
+          </div>
+          <div
+            v-else
+            class="inline-flex h-[28px] w-[40px] items-center justify-center rounded border border-gray-200 bg-gray-50"
+          >
+            <span class="text-xs font-medium text-gray-300">DET</span>
+          </div>
+
+          <span class="text-gray-400">=</span>
+
+          <!-- 免箱使期 -->
+          <div
+            v-if="row.poddet !== null && row.poddet !== undefined"
+            class="inline-flex min-w-[40px] items-center justify-center rounded border border-blue-300 bg-blue-50 px-2 py-1 text-sm font-medium text-blue-700"
+          >
+            {{ row.poddet }}
+          </div>
+          <div
+            v-else
+            class="inline-flex h-[28px] w-[40px] items-center justify-center rounded border border-gray-200 bg-gray-50"
+          >
+            <span class="text-xs font-medium text-gray-300">-</span>
+          </div>
+        </div>
+      </template>
+
+      <!-- 目的港免箱使天数列头插槽 -->
+      <template #podFreeDaysCombinedHeader>
+        <div class="flex items-center gap-1">
+          <span>目的港免箱使天数</span>
+          <Tooltip title="免堆期 (DEM) + 免用箱期 (DET) = 免箱使期">
+            <IconifyIcon
+              icon="mdi:information-outline"
+              class="size-4 cursor-help text-gray-500"
+            />
+          </Tooltip>
+        </div>
+      </template>
+
+      <!-- 是否有效自定义渲染插槽 -->
+      <template #isValid="{ row }">
+        <div class="flex items-center justify-center">
+          <Tag :color="getIsValidColor(row)">
+            {{ getIsValidText(row) }}
+          </Tag>
+        </div>
+      </template>
+
       <!-- 箱型费用可编辑单元格插槽 -->
       <template #ctnEditableCell="{ row, column }">
         <CtnEditableCell :row="row" :column="column" @success="onRefresh" />
       </template>
 
       <template #toolbar-tools>
-        <div class="flex w-[70vw] justify-between">
+        <div class="flex w-[71vw] justify-between">
           <!-- 航线选择标签页 -->
           <div class="mb-4 mr-5 pt-3">
             <div class="flex items-center space-x-1 overflow-x-auto">
