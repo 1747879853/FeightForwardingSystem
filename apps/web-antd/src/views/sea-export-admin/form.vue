@@ -896,7 +896,7 @@ const validateSalesRoleCount = () => {
     (row) => row.userAttribute === UserAttribute.Sales,
   ).length;
   if (salesCount !== 1) {
-    message.warning('角色配置中必须且只能有一个销售角色');
+    message.warning('干系人中必须且只能有一个销售角色');
     return false;
   }
   return true;
@@ -2110,6 +2110,11 @@ defineExpose({
                 <span class="card-title">
                   <FileText class="size-4" />
                   委托信息
+                  <iconify-icon
+                    icon="lucide:align-vertical-justify-end"
+                    width="24"
+                    height="24"
+                  ></iconify-icon>
                 </span>
               </template>
               <div class="card-body">

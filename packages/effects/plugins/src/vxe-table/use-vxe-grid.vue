@@ -1335,6 +1335,10 @@ const options = computed(() => {
   if (mergedOptions.formConfig) {
     mergedOptions.formConfig.enabled = false;
   }
+  if (mergedOptions.toolbarConfig) {
+    mergedOptions.toolbarConfig.refresh = false;
+    mergedOptions.toolbarConfig.zoom = false;
+  }
   return mergedOptions;
 });
 

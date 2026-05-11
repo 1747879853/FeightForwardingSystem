@@ -123,21 +123,14 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'DatePicker',
-      fieldName: 'ETDStart',
-      label: '开船日期从',
+      component: 'RangePicker',
+      fieldName: 'ETDRange',
+      label: '开船日期',
+      formItemClass: 'col-span-2',
       componentProps: {
         allowClear: true,
         class: 'w-full',
-      },
-    },
-    {
-      component: 'DatePicker',
-      fieldName: 'ETDEnd',
-      label: '开船日期到',
-      componentProps: {
-        allowClear: true,
-        class: 'w-full',
+        placeholder: ['开始日期', '结束日期'],
       },
     },
     createClientSelectSchema({
@@ -269,23 +262,15 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'DatePicker',
-      fieldName: 'CloseDocTimeStart',
-      label: '截单时间从',
+      component: 'RangePicker',
+      fieldName: 'CloseDocTimeRange',
+      label: '截单时间',
+      formItemClass: 'col-span-2',
       componentProps: {
         allowClear: true,
         class: 'w-full',
         showTime: true,
-      },
-    },
-    {
-      component: 'DatePicker',
-      fieldName: 'CloseDocTimeEnd',
-      label: '截单时间到',
-      componentProps: {
-        allowClear: true,
-        class: 'w-full',
-        showTime: true,
+        placeholder: ['开始时间', '结束时间'],
       },
     },
     {

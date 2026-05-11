@@ -137,7 +137,7 @@
     "volume": "体积",
     "codeGoodsId": "品名",
     "orderCodeGoodss": "品名",
-    "orderUsers": "角色配置",
+    "orderUsers": "干系人",
     "orderUserId": "用户",
     "userAttribute": "角色",
     "selectOrderUsers": "选择业务相关用户",
@@ -286,7 +286,7 @@
       "unlockSuccess": "批量解锁成功"
     },
     "paymentApplication": {
-      "list": "费用申请",
+      "list": "付费申请",
       "addTitle": "新增付费申请",
       "editTitle": "编辑付费申请",
       "applicationNo": "申请单号",
