@@ -615,7 +615,11 @@ onMounted(() => {
             </Button> -->
 
             <!-- 批量新增按钮 -->
-            <Button v-access:code="perm.add" @click="onBatchAdd">
+            <Button
+              v-access:code="perm.add"
+              @click="onBatchAdd"
+              class="gradient-primary-btn"
+            >
               <Plus class="size-5" />
               {{ $t('seaExport.freightRate.create') }}
             </Button>
@@ -719,5 +723,33 @@ onMounted(() => {
 :deep(.cell-editable-number:hover) {
   outline: 1px dashed #4096ff;
   background-color: rgb(239 246 255) !important;
+}
+
+/* 新增按钮渐变背景样式 */
+.gradient-primary-btn {
+  color: white !important;
+  background: linear-gradient(
+    109.04deg,
+    #4e83fe 9.09%,
+    #0f66fd 100%
+  ) !important;
+  border: none !important;
+}
+
+.gradient-primary-btn:hover {
+  background: linear-gradient(
+    109.04deg,
+    #5d8ffe 9.09%,
+    #1e72fd 100%
+  ) !important;
+  opacity: 0.9;
+}
+
+.gradient-primary-btn:active {
+  background: linear-gradient(
+    109.04deg,
+    #3d77fe 9.09%,
+    #005aed 100%
+  ) !important;
 }
 </style>
