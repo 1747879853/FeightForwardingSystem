@@ -377,19 +377,13 @@ export function useColumns<T = SeFreiPriceOutDto>(
       width: 110,
     },
     {
-      field: 'podFreeDays',
-      title: '目的港免用箱',
-      width: 110,
-    },
-    {
-      field: 'poddem',
-      title: '目的港免堆期',
-      width: 110,
-    },
-    {
-      field: 'poddet',
-      title: '目的港免箱期',
-      width: 110,
+      field: 'podFreeDaysCombined',
+      title: '目的港免箱使天数',
+      width: 280,
+      slots: {
+        default: 'podFreeDaysCombined',
+        header: 'podFreeDaysCombinedHeader',
+      },
     },
     {
       field: 'voyage',
@@ -425,9 +419,13 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: '截单时间',
       width: 150,
       formatter: ({ row }) => {
-        if (row.closeDocTime) {
-          return row.closeDocTime;
+        // 优先检查完整日期时间模式
+        if (row.closeDocTime && row.closeDocTime.trim() !== '') {
+          // 将 ISO 格式转换为 YYYY-MM-DD HH:mm 格式
+          const timeStr = row.closeDocTime.substring(0, 16);
+          return timeStr.replace('T', ' ');
         }
+        // 检查星期模式
         if (
           row.closeDocDayOfWeek !== undefined &&
           row.closeDocDayOfWeek !== null
@@ -441,8 +439,45 @@ export function useColumns<T = SeFreiPriceOutDto>(
             '周五',
             '周六',
           ];
-          const dayTime = row.closeDocDayTime ? ` ${row.closeDocDayTime}` : '';
+          // 截取时间的前5个字符（HH:mm），去掉秒
+          const dayTime = row.closeDocDayTime
+            ? ` ${row.closeDocDayTime.substring(0, 5)}`
+            : '';
           return `${weekDays[row.closeDocDayOfWeek]}${dayTime}`;
+        }
+        return '-';
+      },
+    },
+    {
+      field: 'closingTime',
+      title: '截关时间',
+      width: 150,
+      formatter: ({ row }) => {
+        // 优先检查完整日期时间模式
+        if (row.closingTime && row.closingTime.trim() !== '') {
+          // 将 ISO 格式转换为 YYYY-MM-DD HH:mm 格式
+          const timeStr = row.closingTime.substring(0, 16);
+          return timeStr.replace('T', ' ');
+        }
+        // 检查星期模式
+        if (
+          row.closingDayOfWeek !== undefined &&
+          row.closingDayOfWeek !== null
+        ) {
+          const weekDays = [
+            '周日',
+            '周一',
+            '周二',
+            '周三',
+            '周四',
+            '周五',
+            '周六',
+          ];
+          // 截取时间的前5个字符（HH:mm），去掉秒
+          const dayTime = row.closingDayTime
+            ? ` ${row.closingDayTime.substring(0, 5)}`
+            : '';
+          return `${weekDays[row.closingDayOfWeek]}${dayTime}`;
         }
         return '-';
       },
@@ -473,14 +508,8 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'isValid',
       title: $t('seaExport.freightRate.isValid'),
-      width: 80,
-      cellRender: {
-        name: 'CellTag',
-        options: [
-          { color: '#389e0d', label: $t('common.valid'), value: true },
-          { color: '#cf1322', label: $t('common.invalid'), value: false },
-        ],
-      },
+      width: 100,
+      slots: { default: 'isValid' },
     },
     {
       field: 'remark',

@@ -9,6 +9,7 @@ import type {
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
 
 import {
   Button,
@@ -20,6 +21,8 @@ import {
   DatePicker,
   Radio,
   Switch,
+  TimePicker,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
@@ -77,7 +80,11 @@ const [Modal, modalApi] = useVbenModal({
 // 初始化下拉选项
 async function loadSelectOptions() {
   try {
-    const ctns = await getBaseCtnCodes({ PageIndex: 1, PageSize: 1000 });
+    const ctns = await getBaseCtnCodes({
+      PageIndex: 1,
+      PageSize: 1000,
+      Sorting: 'OrderNo',
+    });
     allCtnOptions.value =
       ctns?.items?.map((item) => ({
         ctnCodeId: item.id,
@@ -306,10 +313,13 @@ function buildColumns(): VxeTableGridOptions['columns'] {
       slots: { default: 'polFreeDays' },
     },
     {
-      field: 'podFreeDays',
-      title: '目的港免用箱',
-      width: 110,
-      slots: { default: 'podFreeDays' },
+      field: 'podFreeDaysCombined',
+      title: '目的港免箱使天数',
+      width: 320,
+      slots: {
+        default: 'podFreeDaysCombined',
+        header: 'podFreeDaysCombinedHeader',
+      },
     },
     {
       field: 'poddem',
@@ -332,32 +342,20 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'etd',
       title: '开船日期',
-      width: 130,
-      slots: { default: 'etd' },
-    },
-    {
-      field: 'etdDayOfWeek',
-      title: '开船星期',
-      width: 100,
-      slots: { default: 'etdDayOfWeek' },
+      width: 230,
+      slots: { default: 'etdCombined' },
     },
     {
       field: 'closeDocTime',
       title: '截单时间',
-      width: 130,
-      slots: { default: 'closeDocTime' },
-    },
-    {
-      field: 'closeDocDayOfWeek',
-      title: '截单星期',
-      width: 100,
-      slots: { default: 'closeDocDayOfWeek' },
+      width: 280,
+      slots: { default: 'closeDocTimeCombined' },
     },
     {
       field: 'closingTime',
-      title: '截港时间',
-      width: 150,
-      slots: { default: 'closingTime' },
+      title: '截关时间',
+      width: 280,
+      slots: { default: 'closingTimeCombined' },
     },
     {
       field: 'validTimeStart',
@@ -749,34 +747,54 @@ onMounted(() => {
           />
         </template>
 
-        <!-- 目的港免用箱天数 -->
-        <template #podFreeDays="{ row }">
-          <InputNumber
-            v-model:value="row.podFreeDays"
-            style="width: 100%"
-            :min="0"
-            placeholder="请输入"
-          />
+        <!-- 目的港免箱使天数合并编辑 -->
+        <template #podFreeDaysCombined="{ row }">
+          <div class="flex items-center justify-center gap-2 p-1">
+            <!-- 免堆期 (DEM) -->
+            <InputNumber
+              v-model:value="row.poddem"
+              style="width: 60px"
+              :min="0"
+              placeholder="DEM"
+              size="small"
+            />
+
+            <span class="text-sm text-gray-400">+</span>
+
+            <!-- 免用箱期 (DET) -->
+            <InputNumber
+              v-model:value="row.podFreeDays"
+              style="width: 60px"
+              :min="0"
+              placeholder="DET"
+              size="small"
+            />
+
+            <span class="text-sm text-gray-400">=</span>
+
+            <!-- 免箱使期（自动计算或手动输入） -->
+            <InputNumber
+              v-model:value="row.poddet"
+              style="width: 60px"
+              :min="0"
+              placeholder="-"
+              size="small"
+              class="font-medium"
+            />
+          </div>
         </template>
 
-        <!-- 目的港免堆期天数 -->
-        <template #poddem="{ row }">
-          <InputNumber
-            v-model:value="row.poddem"
-            style="width: 100%"
-            :min="0"
-            placeholder="请输入"
-          />
-        </template>
-
-        <!-- 目的港免箱期天数 -->
-        <template #poddet="{ row }">
-          <InputNumber
-            v-model:value="row.poddet"
-            style="width: 100%"
-            :min="0"
-            placeholder="请输入"
-          />
+        <!-- 目的港免箱使天数列头 -->
+        <template #podFreeDaysCombinedHeader>
+          <div class="flex items-center gap-1">
+            <span>目的港免箱使天数</span>
+            <Tooltip title="免堆期 (DEM) + 免用箱期 (DET) = 免箱使期">
+              <IconifyIcon
+                icon="mdi:information-outline"
+                class="size-4 cursor-help text-gray-500"
+              />
+            </Tooltip>
+          </div>
         </template>
 
         <!-- 航程 -->
@@ -784,76 +802,124 @@ onMounted(() => {
           <Input v-model:value="row.voyage" placeholder="请输入" />
         </template>
 
-        <!-- 开船日期 -->
-        <template #etd="{ row }">
-          <DatePicker
-            v-model:value="row.etd"
-            style="width: 100%"
-            placeholder="选择日期"
-            value-format="YYYY-MM-DD"
-            :disabled="!!row.etdDayOfWeek"
-          />
+        <!-- 合并的开船日期与星期 -->
+        <template #etdCombined="{ row }">
+          <div class="flex w-full items-center gap-2">
+            <DatePicker
+              v-model:value="row.etd"
+              style="width: 140px"
+              placeholder="选择日期"
+              value-format="YYYY-MM-DD"
+              :disabled="!!row.etdDayOfWeek"
+              allow-clear
+            />
+            <span class="shrink-0 text-xs text-gray-400">或</span>
+            <Select
+              v-model:value="row.etdDayOfWeek"
+              style="width: 90px"
+              placeholder="星期"
+              :disabled="!!row.etd"
+              allow-clear
+            >
+              <Select.Option :value="0">周日</Select.Option>
+              <Select.Option :value="1">周一</Select.Option>
+              <Select.Option :value="2">周二</Select.Option>
+              <Select.Option :value="3">周三</Select.Option>
+              <Select.Option :value="4">周四</Select.Option>
+              <Select.Option :value="5">周五</Select.Option>
+              <Select.Option :value="6">周六</Select.Option>
+            </Select>
+          </div>
         </template>
 
-        <!-- 开船星期 -->
-        <template #etdDayOfWeek="{ row }">
-          <Select
-            v-model:value="row.etdDayOfWeek"
-            style="width: 100%"
-            placeholder="选择星期"
-            :disabled="!!row.etd"
-            allow-clear
-          >
-            <Select.Option :value="0">周日</Select.Option>
-            <Select.Option :value="1">周一</Select.Option>
-            <Select.Option :value="2">周二</Select.Option>
-            <Select.Option :value="3">周三</Select.Option>
-            <Select.Option :value="4">周四</Select.Option>
-            <Select.Option :value="5">周五</Select.Option>
-            <Select.Option :value="6">周六</Select.Option>
-          </Select>
+        <!-- 合并的截单时间与星期 -->
+        <template #closeDocTimeCombined="{ row }">
+          <div class="flex w-full items-center gap-2">
+            <!-- 完整日期时间选择器 -->
+            <DatePicker
+              v-model:value="row.closeDocTime"
+              style="width: 180px"
+              show-time
+              placeholder="选择时间"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              :disabled="!!row.closeDocDayOfWeek"
+              allow-clear
+            />
+            <span class="shrink-0 text-xs text-gray-400">或</span>
+            <!-- 星期 + 时间选择器组合 -->
+            <div class="flex flex-1 items-center gap-1">
+              <Select
+                v-model:value="row.closeDocDayOfWeek"
+                style="width: 70px"
+                placeholder="星期"
+                :disabled="!!row.closeDocTime"
+                allow-clear
+              >
+                <Select.Option :value="0">日</Select.Option>
+                <Select.Option :value="1">一</Select.Option>
+                <Select.Option :value="2">二</Select.Option>
+                <Select.Option :value="3">三</Select.Option>
+                <Select.Option :value="4">四</Select.Option>
+                <Select.Option :value="5">五</Select.Option>
+                <Select.Option :value="6">六</Select.Option>
+              </Select>
+              <TimePicker
+                v-model:value="row.closeDocDayTime"
+                style="width: 90px"
+                placeholder="时间"
+                format="HH:mm"
+                value-format="HH:mm"
+                :disabled="
+                  !row.closeDocDayOfWeek && row.closeDocDayOfWeek !== 0
+                "
+                allow-clear
+              />
+            </div>
+          </div>
         </template>
 
-        <!-- 截单时间 -->
-        <template #closeDocTime="{ row }">
-          <DatePicker
-            v-model:value="row.closeDocTime"
-            style="width: 100%"
-            show-time
-            placeholder="选择时间"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            :disabled="!!row.closeDocDayOfWeek"
-          />
-        </template>
-
-        <!-- 截单星期 -->
-        <template #closeDocDayOfWeek="{ row }">
-          <Select
-            v-model:value="row.closeDocDayOfWeek"
-            style="width: 100%"
-            placeholder="选择星期"
-            :disabled="!!row.closeDocTime"
-            allow-clear
-          >
-            <Select.Option :value="0">周日</Select.Option>
-            <Select.Option :value="1">周一</Select.Option>
-            <Select.Option :value="2">周二</Select.Option>
-            <Select.Option :value="3">周三</Select.Option>
-            <Select.Option :value="4">周四</Select.Option>
-            <Select.Option :value="5">周五</Select.Option>
-            <Select.Option :value="6">周六</Select.Option>
-          </Select>
-        </template>
-
-        <!-- 截港时间 -->
-        <template #closingTime="{ row }">
-          <DatePicker
-            v-model:value="row.closingTime"
-            style="width: 100%"
-            show-time
-            placeholder="选择时间"
-            value-format="YYYY-MM-DD HH:mm:ss"
-          />
+        <!-- 合并的截关时间与星期 -->
+        <template #closingTimeCombined="{ row }">
+          <div class="flex w-full items-center gap-2">
+            <!-- 完整日期时间选择器 -->
+            <DatePicker
+              v-model:value="row.closingTime"
+              style="width: 180px"
+              show-time
+              placeholder="选择时间"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              :disabled="!!row.closingDayOfWeek"
+              allow-clear
+            />
+            <span class="shrink-0 text-xs text-gray-400">或</span>
+            <!-- 星期 + 时间选择器组合 -->
+            <div class="flex flex-1 items-center gap-1">
+              <Select
+                v-model:value="row.closingDayOfWeek"
+                style="width: 70px"
+                placeholder="星期"
+                :disabled="!!row.closingTime"
+                allow-clear
+              >
+                <Select.Option :value="0">日</Select.Option>
+                <Select.Option :value="1">一</Select.Option>
+                <Select.Option :value="2">二</Select.Option>
+                <Select.Option :value="3">三</Select.Option>
+                <Select.Option :value="4">四</Select.Option>
+                <Select.Option :value="5">五</Select.Option>
+                <Select.Option :value="6">六</Select.Option>
+              </Select>
+              <TimePicker
+                v-model:value="row.closingDayTime"
+                style="width: 90px"
+                placeholder="时间"
+                format="HH:mm"
+                value-format="HH:mm"
+                :disabled="!row.closingDayOfWeek && row.closingDayOfWeek !== 0"
+                allow-clear
+              />
+            </div>
+          </div>
         </template>
 
         <!-- 有效起始日期 -->

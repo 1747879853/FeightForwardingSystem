@@ -192,6 +192,34 @@ function getOperatorSymbol(operatorType?: number): string {
   );
 }
 
+// 费用代码选项模糊搜索过滤函数
+function filterFeeOption(input: string, option: any) {
+  if (!input) return true;
+
+  // 通过 option.value 在 feeCodeList 中查找对应的 label
+  const feeItem = feeCodeList.value.find((item) => item.value === option.value);
+  const label = feeItem?.label || '';
+
+  console.log('c-filterFeeOption', input, label, option);
+  // 确保label是字符串类型后再进行匹配
+  return String(label).toLowerCase().includes(input.toLowerCase());
+}
+
+// 币别选项模糊搜索过滤函数
+function filterCurrencyOption(input: string, option: any) {
+  if (!input) return true;
+
+  // 通过 option.value 在 currencyList 中查找对应的 label
+  const currencyItem = currencyList.value.find(
+    (item) => item.value === option.value,
+  );
+  const label = currencyItem?.label || '';
+
+  console.log('c-filterCurrencyOption', input, label, option);
+  // 确保label是字符串类型后再进行匹配
+  return String(label).toLowerCase().includes(input.toLowerCase());
+}
+
 // 币别列表
 const currencyList = ref<any[]>([]);
 
@@ -892,37 +920,43 @@ const [Modal, modalApi] = useVbenModal({
               <tr v-for="(surcharge, index) in surchargeFees" :key="index">
                 <!-- 费用名称选择 -->
                 <td class="border border-gray-300 px-2 py-2">
-                  <select
-                    v-model="surcharge.feeCodeId"
-                    class="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                  <Select
+                    v-model:value="surcharge.feeCodeId"
+                    class="w-full"
+                    show-search
+                    :filter-option="filterFeeOption"
+                    placeholder="请选择费用名称"
+                    allow-clear
                     @change="handleFeeCodeChange(index, surcharge.feeCodeId)"
                   >
-                    <option :value="undefined">请选择</option>
-                    <option
+                    <Select.Option
                       v-for="fee in feeCodeList"
                       :key="fee.value"
                       :value="fee.value"
                     >
                       {{ fee.label }}
-                    </option>
-                  </select>
+                    </Select.Option>
+                  </Select>
                 </td>
 
                 <!-- 币别选择 -->
                 <td class="border border-gray-300 px-2 py-2">
-                  <select
-                    v-model="surcharge.currencyId"
-                    class="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                  <Select
+                    v-model:value="surcharge.currencyId"
+                    class="w-full"
+                    show-search
+                    :filter-option="filterCurrencyOption"
+                    placeholder="请选择币别"
+                    allow-clear
                   >
-                    <option :value="undefined">请选择</option>
-                    <option
+                    <Select.Option
                       v-for="currency in currencyList"
                       :key="currency.value"
                       :value="currency.value"
                     >
                       {{ currency.label }}
-                    </option>
-                  </select>
+                    </Select.Option>
+                  </Select>
                 </td>
 
                 <!-- 箱型价格输入 -->
