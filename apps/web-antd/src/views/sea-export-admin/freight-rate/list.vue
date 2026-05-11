@@ -419,7 +419,7 @@ onMounted(() => {
       </template>
 
       <template #toolbar-tools>
-        <div class="flex w-[74vw] justify-between">
+        <div class="flex w-[70vw] justify-between">
           <!-- 航线选择标签页 -->
           <div class="mb-4 mr-5 pt-3">
             <div class="flex items-center space-x-1 overflow-x-auto">
