@@ -36,7 +36,8 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
   formOptions: {
     schema: useGridFormSchema(),
     submitOnChange: true,
-    showCollapseButton: false,
+    showCollapseButton: true,
+    wrapperClass: 'grid-cols-6',
   },
   gridEvents: {
     cellDblclick: handleRowDblclick,
