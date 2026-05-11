@@ -80,7 +80,11 @@ const [Modal, modalApi] = useVbenModal({
 // 初始化下拉选项
 async function loadSelectOptions() {
   try {
-    const ctns = await getBaseCtnCodes({ PageIndex: 1, PageSize: 1000 });
+    const ctns = await getBaseCtnCodes({
+      PageIndex: 1,
+      PageSize: 1000,
+      Sorting: 'OrderNo',
+    });
     allCtnOptions.value =
       ctns?.items?.map((item) => ({
         ctnCodeId: item.id,
