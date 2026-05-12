@@ -9,6 +9,7 @@ export namespace GenerateNumAdminApi {
     generateEnum?: GenerateEnum;
     text?: string;
     length?: number;
+    reset?: boolean;
     sortId?: number;
   }
 
@@ -19,6 +20,7 @@ export namespace GenerateNumAdminApi {
     generateEnum?: GenerateEnum;
     text?: string;
     length?: number;
+    reset?: boolean;
     sortId?: number;
   }
 
@@ -29,15 +31,30 @@ export namespace GenerateNumAdminApi {
     generateEnum?: GenerateEnum;
     text?: string;
     length?: number;
+    reset?: boolean;
     sortId?: number;
+  }
+
+  /** 规则适用用户 - 新增 */
+  export interface GenerateNumUserAddDto {
+    userId: number;
+  }
+
+  /** 规则适用用户 - 编辑 */
+  export interface GenerateNumUserEditDto {
+    id?: number;
+    generateNumId?: number;
+    userId: number;
+    nickName?: string;
   }
 
   /** 新增编号生成参数 */
   export interface GenerateNumAddDto {
     name?: string;
     tableName?: string;
-    userId?: number;
+    orgId?: number | null;
     generateNumRules?: GenerateNumRuleAddDto[];
+    generateNumUsers?: GenerateNumUserAddDto[];
   }
 
   /** 编辑编号生成参数 */
@@ -45,8 +62,9 @@ export namespace GenerateNumAdminApi {
     id: number;
     name?: string;
     tableName?: string;
-    userId?: number;
+    orgId?: number | null;
     generateNumRules?: GenerateNumRuleEditDto[];
+    generateNumUsers?: GenerateNumUserEditDto[];
   }
 
   /** 编号生成详情 */
@@ -54,11 +72,15 @@ export namespace GenerateNumAdminApi {
     id: number;
     name?: string;
     tableName?: string;
-    userId?: number;
+    orgId?: number | null;
+    orgName?: string;
     tenantId?: number;
     generateNumRules?: GenerateNumRuleDto[];
+    generateNumUsers?: GenerateNumUserEditDto[];
     creationTime?: string;
+    creatorUserId?: number;
     lastModificationTime?: string;
+    lastModifierUserId?: number;
   }
 
   /** 分页列表响应 */
@@ -71,12 +93,12 @@ export namespace GenerateNumAdminApi {
 
   /** 分页查询参数 */
   export interface GetPagedListParams {
-    Name?: string;
-    TableName?: string;
-    UserId?: number;
-    Sorting?: string;
-    PageIndex?: number;
-    PageSize?: number;
+    name?: string;
+    tableName?: string;
+    orgId?: number;
+    sorting?: string;
+    skipCount?: number;
+    maxResultCount?: number;
   }
 }
 
@@ -102,7 +124,7 @@ export const getGenerateNumDetail = (id: number | string) => {
   const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<GenerateNumAdminApi.GenerateNumDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: idStr } },
+    { params: { id: idStr } },
   );
 };
 

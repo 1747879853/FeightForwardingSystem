@@ -140,7 +140,7 @@ const logoSrc = computed(() => {
   color: rgb(255 255 255 / 96%);
   background: transparent;
   border: 1px solid rgb(255 255 255 / 22%);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8.5px);
 }
 
 .auth-form-bg :deep(input:-webkit-autofill),
@@ -150,7 +150,6 @@ const logoSrc = computed(() => {
   -webkit-text-fill-color: rgb(255 255 255 / 96%) !important;
   caret-color: #fff !important;
   background-color: transparent !important;
-  box-shadow: 0 0 0 1000px rgb(255 255 255 / 10%) inset !important;
   box-shadow: 0 0 0 1000px rgb(255 255 255 / 10%) inset !important;
   transition: background-color 99999s ease-in-out 0s !important;
 }

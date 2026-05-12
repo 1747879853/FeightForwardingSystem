@@ -1,4 +1,12 @@
 | 模块名称 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
 | --- | --- | --- | --- | --- |
-| SeaExport | 海运出口 | 海运出口列表与委托详情的业务录入、展示与只读信息交互模块。 | [sea-export.md](./modules/sea-export.md) | 2026-05-11 |
+| FreightBusinessOverview | 业务总览 | 货代系统主流程总览，串联海运出口、费用、付费申请与结算测试路径。 | [freight-business-overview.md](./modules/freight-business-overview.md) | 2026-05-12 |
+| SeaExport | 海运出口 | 海运出口委托从列表、新建到编辑子模块的业务入口与流程说明。 | [sea-export.md](./modules/sea-export.md) | 2026-05-12 |
+| OrderFee | 费用管理 | 订单应收应付费用录入、状态流转与关键金额口径说明。 | [order-fee.md](./modules/order-fee.md) | 2026-05-12 |
+| FeeLock | 费用管理 | 运输单与更改单费用锁定/解锁流程与影响范围说明。 | [fee-lock.md](./modules/fee-lock.md) | 2026-05-12 |
+| ExpenseAudit | 审核审批 | 费用提交、修改、删除任务的审核流程与联动说明。 | [expense-audit.md](./modules/expense-audit.md) | 2026-05-12 |
+| PaymentApplication | 付费管理 | 付费申请单创建、费用选择、金额汇总与提交流程说明。 | [payment-application.md](./modules/payment-application.md) | 2026-05-12 |
+| PaymentReview | 审核审批 | 付费申请审核任务的批量通过/驳回与工作流关系说明。 | [payment-review.md](./modules/payment-review.md) | 2026-05-12 |
+| StatementSettlement | 对账结算 | 客户对账单与费用结算、付费申请状态口径的边界说明。 | [statement-settlement.md](./modules/statement-settlement.md) | 2026-05-12 |
+| GenerateNum | 基础资料 | 编号规则配置模块，支持按组织、按用户及全局默认的编号策略。 | [generate-num.md](./modules/generate-num.md) | 2026-05-12 |
 | Client | 客户管理 | 客户列表与客户资料维护的统一选择、编辑、删除操作模块。 | [client.md](./modules/client.md) | 2026-05-11 |

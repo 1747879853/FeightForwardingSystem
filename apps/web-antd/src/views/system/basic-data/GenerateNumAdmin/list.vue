@@ -86,9 +86,10 @@ const [Grid, gridApi] = useVbenVxeGrid<GenerateNumAdminApi.GenerateNumDto>({
           { page }: { page: { currentPage: number; pageSize: number } },
           formValues: Record<string, any>,
         ) => {
+          const skipCount = (page.currentPage - 1) * page.pageSize;
           return await getGenerateNumPagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
+            skipCount,
+            maxResultCount: page.pageSize,
             ...formValues,
           });
         },
