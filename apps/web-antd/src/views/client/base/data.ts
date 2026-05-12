@@ -1,7 +1,6 @@
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
-import type { OnActionClickFn } from '#/adapter/vxe-table';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { getCargoTypeOptions } from '#/views/sea-export-admin/data';
 import { $t } from '#/locales';
@@ -853,10 +852,14 @@ export function useFormSchema(): VbenFormSchema[] {
 /**
  * 表格列配置
  */
-export function useColumns(
-  onActionClick?: OnActionClickFn<ClientAdminApi.ClientDto>,
-): VxeTableGridOptions<ClientAdminApi.ClientDto>['columns'] {
+export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['columns'] {
   return [
+    {
+      type: 'checkbox',
+      width: 56,
+      fixed: 'left',
+      align: 'center',
+    },
     {
       field: 'name',
       title: $t('seaExport.client.clientName'),
@@ -919,24 +922,6 @@ export function useColumns(
       title: $t('seaExport.client.creationTime'),
       minWidth: 160,
       formatter: 'formatDateTime',
-    },
-    {
-      align: 'right',
-      cellRender: {
-        attrs: {
-          nameField: 'name',
-          nameTitle: $t('seaExport.client.name'),
-          onClick: onActionClick,
-        },
-        name: 'CellOperation',
-        options: ['edit', 'delete'],
-      },
-      field: 'operation',
-      fixed: 'right',
-      headerAlign: 'center',
-      showOverflow: false,
-      title: $t('seaExport.client.operation'),
-      width: 150,
     },
   ];
 }

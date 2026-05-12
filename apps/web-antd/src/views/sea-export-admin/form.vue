@@ -896,7 +896,7 @@ const validateSalesRoleCount = () => {
     (row) => row.userAttribute === UserAttribute.Sales,
   ).length;
   if (salesCount !== 1) {
-    message.warning('角色配置中必须且只能有一个销售角色');
+    message.warning('干系人中必须且只能有一个销售角色');
     return false;
   }
   return true;

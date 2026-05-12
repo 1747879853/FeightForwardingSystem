@@ -13,21 +13,24 @@
 
 ## 2026-05
 
-- [2026-05-10] [海运出口列表查询区调整为一行4个条件](./change-log-2026-05-10-sea-export-list-query-four-columns.md)
-- [2026-05-10] [海运出口列表查询与显示字段映射对齐](./change-log-2026-05-10-sea-export-list-query-table-mapping.md)
-- [2026-05-10] [将搜索字段顺序调整交互改为拖动排序](./change-log-2026-05-10-search-form-field-drag-order.md)
-- [2026-05-10] [补充搜索字段顺序调整持久化与回放](./change-log-2026-05-10-search-form-field-order-persist.md)
-- [2026-05-10] [新增 useVbenVxeGrid 搜索字段显示/隐藏持久化与工具栏配置入口](./change-log-2026-05-10-search-form-field-persist.md)
-- [2026-05-10] [将 sea-exports 列持久化临时调试日志改为开关式（默认关闭）](./change-log-2026-05-10-sea-exports-column-persist-debug-switch.md)
-- [2026-05-10] [对齐 sea-exports 恢复默认规则：全显示、初始顺序、取消固定](./change-log-2026-05-10-sea-exports-reset-default-rule-align.md)
-- [2026-05-10] [修复 sea-exports 冻结列持久化与恢复默认配置回放](./change-log-2026-05-10-sea-exports-column-persist-fixed-and-reset-default.md)
-- [2026-05-10] [修复 sea-exports 列配置保存结构不完整（补齐全量显隐映射）](./change-log-2026-05-10-sea-exports-column-persist-save-structure-fix.md)
-- [2026-05-10] [修复 sea-exports 列配置历史脏 key 导致加载后不生效（自动自愈）](./change-log-2026-05-10-sea-exports-column-persist-dirty-config-self-heal.md)
-- [2026-05-10] [增强 sea-exports 列配置持久化全链路调试日志](./change-log-2026-05-10-sea-exports-column-persist-debug-log.md)
+- [2026-05-11] [客户列表支持双击行进入编辑页](./changelogs/change-log-2026-05-11-client-list-double-click-edit.md)
+- [2026-05-11] [客户列表改为顶部统一操作并强化选择安全](./changelogs/change-log-2026-05-11-client-list-top-actions-selection-safety.md)
+- [2026-05-11] [海运出口委托信息只读项新增超出省略与悬浮显示](./changelogs/change-log-2026-05-11-sea-export-readonly-ellipsis-tooltip.md)
+- [2026-05-10] [海运出口列表查询区调整为一行4个条件](./changelogs/change-log-2026-05-10-sea-export-list-query-four-columns.md)
+- [2026-05-10] [海运出口列表查询与显示字段映射对齐](./changelogs/change-log-2026-05-10-sea-export-list-query-table-mapping.md)
+- [2026-05-10] [将搜索字段顺序调整交互改为拖动排序](./changelogs/change-log-2026-05-10-search-form-field-drag-order.md)
+- [2026-05-10] [补充搜索字段顺序调整持久化与回放](./changelogs/change-log-2026-05-10-search-form-field-order-persist.md)
+- [2026-05-10] [新增 useVbenVxeGrid 搜索字段显示/隐藏持久化与工具栏配置入口](./changelogs/change-log-2026-05-10-search-form-field-persist.md)
+- [2026-05-10] [将 sea-exports 列持久化临时调试日志改为开关式（默认关闭）](./changelogs/change-log-2026-05-10-sea-exports-column-persist-debug-switch.md)
+- [2026-05-10] [对齐 sea-exports 恢复默认规则：全显示、初始顺序、取消固定](./changelogs/change-log-2026-05-10-sea-exports-reset-default-rule-align.md)
+- [2026-05-10] [修复 sea-exports 冻结列持久化与恢复默认配置回放](./changelogs/change-log-2026-05-10-sea-exports-column-persist-fixed-and-reset-default.md)
+- [2026-05-10] [修复 sea-exports 列配置保存结构不完整（补齐全量显隐映射）](./changelogs/change-log-2026-05-10-sea-exports-column-persist-save-structure-fix.md)
+- [2026-05-10] [修复 sea-exports 列配置历史脏 key 导致加载后不生效（自动自愈）](./changelogs/change-log-2026-05-10-sea-exports-column-persist-dirty-config-self-heal.md)
+- [2026-05-10] [增强 sea-exports 列配置持久化全链路调试日志](./changelogs/change-log-2026-05-10-sea-exports-column-persist-debug-log.md)
 - [2026-05-10] [修复 sea-exports 列配置拉取后未应用（稳定列 key）并增加日期格式化兜底](./change-log-2026-05-10-sea-exports-column-persist-apply-fix-and-date-guard.md)
-- [2026-05-10] [修复 sea-exports 列配置保存后刷新失效（tableId 稳定性）](./change-log-2026-05-10-sea-exports-column-persist-tableid-fix.md)
-- [2026-05-10] [修复列配置持久化未触发接口请求](./change-log-2026-05-10-vxe-column-persist-api-save-fix.md)
-- [2026-05-10 useVbenVxeGrid 列设置持久化改造归档](./change-log-2026-05-10-vxe-column-persist.md)
+- [2026-05-10] [修复 sea-exports 列配置保存后刷新失效（tableId 稳定性）](./changelogs/change-log-2026-05-10-sea-exports-column-persist-tableid-fix.md)
+- [2026-05-10] [修复列配置持久化未触发接口请求](./changelogs/change-log-2026-05-10-vxe-column-persist-api-save-fix.md)
+- [2026-05-10 useVbenVxeGrid 列设置持久化改造归档](./changelogs/change-log-2026-05-10-vxe-column-persist.md)
 
 ## 2026-04
 

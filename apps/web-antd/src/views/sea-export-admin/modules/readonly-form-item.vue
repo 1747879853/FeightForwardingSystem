@@ -30,7 +30,9 @@ const displayValue = computed(() => {
     >
       {{ label }}
     </span>
-    <span class="readonly-form-item__value">{{ displayValue }}</span>
+    <span class="readonly-form-item__value" :title="displayValue">
+      {{ displayValue }}
+    </span>
   </div>
 </template>
 
@@ -55,9 +57,12 @@ const displayValue = computed(() => {
 .readonly-form-item__value {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 12px;
   font-weight: 500;
   line-height: 22px;
   color: #262626;
+  white-space: nowrap;
 }
 </style>

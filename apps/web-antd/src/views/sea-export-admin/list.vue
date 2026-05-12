@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
+import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -18,6 +19,38 @@ import { $t } from '#/locales';
 import { useColumns, useGridFormSchema } from './data';
 
 const router = useRouter();
+
+const toIsoString = (value: unknown): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = dayjs(value as string | Date);
+  return parsed.isValid() ? parsed.toISOString() : undefined;
+};
+
+const getRangeValue = (
+  value: unknown,
+): [unknown | undefined, unknown | undefined] => {
+  return Array.isArray(value)
+    ? [value[0] as unknown, value[1] as unknown]
+    : [undefined, undefined];
+};
+
+const normalizeQuery = (
+  formValues: Record<string, unknown>,
+): SeaExportAdminApi.GetPagedListParams => {
+  const { ETDRange, CloseDocTimeRange, ...rest } = formValues;
+  const [etdStart, etdEnd] = getRangeValue(ETDRange);
+  const [closeDocTimeStart, closeDocTimeEnd] = getRangeValue(CloseDocTimeRange);
+
+  return {
+    ...rest,
+    ETDStart: toIsoString(etdStart),
+    ETDEnd: toIsoString(etdEnd),
+    CloseDocTimeStart: toIsoString(closeDocTimeStart),
+    CloseDocTimeEnd: toIsoString(closeDocTimeEnd),
+  };
+};
 
 const handleRowDblclick = ({
   row,
@@ -37,6 +70,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
     schema: useGridFormSchema(),
     submitOnChange: true,
     showCollapseButton: true,
+    collapsed: true,
     wrapperClass: 'grid-cols-6',
   },
   gridEvents: {
@@ -62,10 +96,11 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
           { page }: { page: { currentPage: number; pageSize: number } },
           formValues: Record<string, any>,
         ) => {
+          const query = normalizeQuery(formValues);
           return await getSeaExportPagedList({
             PageIndex: page.currentPage,
             PageSize: page.pageSize,
-            ...formValues,
+            ...query,
           });
         },
       },
