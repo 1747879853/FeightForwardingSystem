@@ -9,6 +9,7 @@ import type {
 } from '#/api/sea-export/freight-rate-admin';
 
 import { nextTick, ref, watch, onMounted, computed } from 'vue';
+import { getEnumItems } from '#/utils/init-enum';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 import { Copy, Plus, ChevronDown, IconifyIcon } from '@vben/icons';
@@ -22,6 +23,7 @@ import {
   Menu,
   Tooltip,
   Tag,
+  Collapse,
 } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
@@ -51,6 +53,75 @@ const tableData = ref<SeFreiPriceOutDto[]>([]);
 
 // 当前选中的航线ID
 const selectedLineId = ref<number | undefined>(undefined);
+
+// 控制每行附加费的展开/收起状态
+const expandedRows = ref<Record<string, boolean>>({});
+
+// 订单状态下拉框
+const freightConditionItemOptions = ref<any[]>([]);
+const conditionComparisonTypeOptions = ref<any[]>([]);
+
+// 切换行的展开状态
+function toggleExpand(row: SeFreiPriceOutDto) {
+  const rowId = String(row.id);
+  expandedRows.value[rowId] = !expandedRows.value[rowId];
+}
+
+// 获取费用名称
+function getFeeName(fee: any): string {
+  return fee.feeCode?.cnName || fee.feeCode?.enName || `费用${fee.feeCodeId}`;
+}
+
+// 获取币别名称
+function getCurrencyName(fee: any): string {
+  return fee.currency?.name || fee.currency?.code || `币种${fee.currencyId}`;
+}
+
+// 获取费用详情（箱型和价格）
+function getFeeDetails(fee: any, row: SeFreiPriceOutDto): string[] {
+  if (!fee.seFreiPriceCtnFees || fee.seFreiPriceCtnFees.length === 0) {
+    return [];
+  }
+
+  const details: string[] = [];
+
+  fee.seFreiPriceCtnFees.forEach((ctnFee: any) => {
+    // 通过 seFreiPriceCtnId 查找对应的箱型信息
+    const ctnInfo = row.seFreiPriceCtns?.find(
+      (ctn) => ctn.id === ctnFee.seFreiPriceCtnId,
+    );
+    const ctnName =
+      ctnInfo?.ctnCode?.ctnName || `箱型${ctnInfo?.ctnCodeId || '?'}`;
+
+    // 检查是否有条件费用
+    if (ctnFee.value !== undefined && ctnFee.value !== null) {
+      // 有条件费用
+      const matchedOperator = conditionComparisonTypeOptions.value.find(
+        (o: any) => o.value === ctnFee.operatorType,
+      );
+      const matchedCondition = freightConditionItemOptions.value.find(
+        (o: any) => o.value === ctnFee.conditionType,
+      );
+      const operator = matchedOperator ? matchedOperator.label : '';
+      const condition = matchedCondition ? matchedCondition.label : '';
+
+      if (ctnFee.otherPrice !== null) {
+        details.push(
+          `${ctnName}:(毛重>=${ctnFee.value}${condition}) ${ctnFee.price}/${ctnFee.otherPrice}`,
+        );
+      } else {
+        details.push(
+          `${ctnName}:(毛重>=${ctnFee.value}${condition}) ${ctnFee.price}`,
+        );
+      }
+    } else {
+      // 简单模式
+      details.push(`${ctnName}: ${ctnFee.price}`);
+    }
+  });
+
+  return details;
+}
 
 const [FormModal, formModalApi] = useVbenModal({
   connectedComponent: Form,
@@ -459,8 +530,29 @@ function getIsValidColor(row: SeFreiPriceOutDto): string {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   getLines();
+
+  // 加载枚举项用于条件费用显示
+  freightConditionItemOptions.value = await getEnumItems(
+    'freightConditionItem',
+  );
+  freightConditionItemOptions.value = freightConditionItemOptions.value.map(
+    (item: any) => ({
+      label: item.displayName,
+      value: item.value,
+      description: item.description,
+    }),
+  );
+
+  conditionComparisonTypeOptions.value = await getEnumItems(
+    'ConditionComparisonType',
+  );
+  conditionComparisonTypeOptions.value =
+    conditionComparisonTypeOptions.value.map((item: any) => ({
+      label: item.displayName,
+      value: item.value,
+    }));
 });
 </script>
 
@@ -486,11 +578,85 @@ onMounted(() => {
 
       <!-- 附加费自定义渲染插槽 -->
       <template #surchargeFees="{ row }">
-        <div
-          v-html="formatSurchargeFees(row)"
-          @dblclick="onEdit(row)"
-          class="p-2"
-        />
+        <div class="surcharge-fees-container" @dblclick="onEdit(row)">
+          <!-- 无附加费时显示占位符 -->
+          <div
+            v-if="!row.seFreiPriceFees || row.seFreiPriceFees.length === 0"
+            class="py-2 text-center text-gray-300"
+          >
+            -
+          </div>
+
+          <!-- 有附加费时显示折叠面板 -->
+          <div v-else class="space-y-2">
+            <!-- 第一个附加费卡片始终显示 -->
+            <div class="surcharge-fee-card">
+              <div class="fee-card-content">
+                <div class="fee-header">
+                  <span class="fee-name">{{
+                    getFeeName(row.seFreiPriceFees[0])
+                  }}</span>
+                  <span class="fee-currency">{{
+                    getCurrencyName(row.seFreiPriceFees[0])
+                  }}</span>
+                </div>
+                <div class="fee-details">
+                  <span
+                    v-for="(detail, idx) in getFeeDetails(
+                      row.seFreiPriceFees[0],
+                      row,
+                    )"
+                    :key="idx"
+                    class="fee-detail-item"
+                  >
+                    {{ detail }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 如果有多个附加费，显示展开按钮 -->
+            <div
+              v-if="row.seFreiPriceFees.length > 1"
+              class="flex items-center justify-end"
+            >
+              <button class="expand-button" @click.stop="toggleExpand(row)">
+                <span>{{ expandedRows[row.id] ? '收起' : '展开' }}</span>
+                <IconifyIcon
+                  :icon="
+                    expandedRows[row.id] ? 'mdi:chevron-up' : 'mdi:chevron-down'
+                  "
+                  class="ml-1 size-4"
+                />
+              </button>
+            </div>
+
+            <!-- 展开后显示所有附加费（从第二个开始） -->
+            <div v-show="expandedRows[row.id]" class="mt-2 space-y-2">
+              <div
+                v-for="(fee, index) in row.seFreiPriceFees.slice(1)"
+                :key="fee.id || index"
+                class="surcharge-fee-card"
+              >
+                <div class="fee-card-content">
+                  <div class="fee-header">
+                    <span class="fee-name">{{ getFeeName(fee) }}</span>
+                    <span class="fee-currency">{{ getCurrencyName(fee) }}</span>
+                  </div>
+                  <div class="fee-details">
+                    <span
+                      v-for="(detail, idx) in getFeeDetails(fee, row)"
+                      :key="idx"
+                      class="fee-detail-item"
+                    >
+                      {{ detail }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </template>
 
       <!-- 目的港免箱使天数自定义渲染插槽 -->
@@ -615,7 +781,11 @@ onMounted(() => {
             </Button> -->
 
             <!-- 批量新增按钮 -->
-            <Button v-access:code="perm.add" @click="onBatchAdd">
+            <Button
+              v-access:code="perm.add"
+              @click="onBatchAdd"
+              class="gradient-primary-btn"
+            >
               <Plus class="size-5" />
               {{ $t('seaExport.freightRate.create') }}
             </Button>
@@ -719,5 +889,113 @@ onMounted(() => {
 :deep(.cell-editable-number:hover) {
   outline: 1px dashed #4096ff;
   background-color: rgb(239 246 255) !important;
+}
+
+/* 新增按钮渐变背景样式 */
+.gradient-primary-btn {
+  color: white !important;
+  background: linear-gradient(
+    109.04deg,
+    #4e83fe 9.09%,
+    #0f66fd 100%
+  ) !important;
+  border: none !important;
+}
+
+.gradient-primary-btn:hover {
+  background: linear-gradient(
+    109.04deg,
+    #5d8ffe 9.09%,
+    #1e72fd 100%
+  ) !important;
+  opacity: 0.9;
+}
+
+.gradient-primary-btn:active {
+  background: linear-gradient(
+    109.04deg,
+    #3d77fe 9.09%,
+    #005aed 100%
+  ) !important;
+}
+
+/* 附加费容器样式 */
+.surcharge-fees-container {
+  position: relative;
+  min-height: 60px;
+}
+
+/* 附加费卡片样式 */
+.surcharge-fee-card {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.surcharge-fee-card:hover {
+  border-color: #d0d5dd;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+}
+
+.fee-card-content {
+  padding: 12px;
+}
+
+.fee-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.fee-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.fee-currency {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: lowercase;
+}
+
+.fee-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fee-detail-item {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #2563eb;
+}
+
+/* 展开按钮样式 */
+.expand-button {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #6b7280;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.expand-button:hover {
+  color: #2563eb;
+  background: #f0f7ff;
+  border-color: #2563eb;
+}
+
+.expand-button:active {
+  transform: scale(0.98);
 }
 </style>
