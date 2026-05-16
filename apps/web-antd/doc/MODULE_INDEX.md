@@ -1,13 +1,51 @@
-| 模块名称 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
-| --- | --- | --- | --- | --- |
-| Auth | 系统权限 | 后台权限键与多语言文案映射（含打印JSON、枚举管理、海运运价），保障菜单与按钮权限文案可读性。 | [auth.md](./modules/auth.md) | 2026-05-16 |
-| FreightBusinessOverview | 业务总览 | 货代系统主流程总览，串联海运出口、费用、付费申请与结算测试路径。 | [freight-business-overview.md](./modules/freight-business-overview.md) | 2026-05-12 |
-| SeaExport | 海运出口 | 海运出口委托从列表、新建到编辑子模块的业务入口与流程说明。 | [sea-export.md](./modules/sea-export.md) | 2026-05-12 |
-| OrderFee | 费用管理 | 订单应收应付费用录入、状态流转与关键金额口径说明。 | [order-fee.md](./modules/order-fee.md) | 2026-05-12 |
-| FeeLock | 费用管理 | 运输单与更改单费用锁定/解锁流程与影响范围说明。 | [fee-lock.md](./modules/fee-lock.md) | 2026-05-12 |
-| ExpenseAudit | 审核审批 | 费用提交、修改、删除任务的审核流程与联动说明。 | [expense-audit.md](./modules/expense-audit.md) | 2026-05-12 |
-| PaymentApplication | 付费管理 | 付费申请单创建、费用选择、金额汇总与提交流程说明。 | [payment-application.md](./modules/payment-application.md) | 2026-05-12 |
-| PaymentReview | 审核审批 | 付费申请审核任务的批量通过/驳回与工作流关系说明。 | [payment-review.md](./modules/payment-review.md) | 2026-05-12 |
-| StatementSettlement | 对账结算 | 客户对账单与费用结算、付费申请状态口径的边界说明。 | [statement-settlement.md](./modules/statement-settlement.md) | 2026-05-12 |
-| GenerateNum | 基础资料 | 编号规则配置模块，支持按组织、按用户及全局默认的编号策略。 | [generate-num.md](./modules/generate-num.md) | 2026-05-12 |
-| Client | 客户管理 | 客户列表与客户资料维护的统一选择、编辑、删除操作模块。 | [client.md](./modules/client.md) | 2026-05-16 |
+| 模块名称 | 页面/路由 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
+| --- | --- | --- | --- | --- | --- |
+| dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |
+| dashboard | `/workspace` | 驾驶舱 | 用于承载用户工作台信息，提供日常任务、快捷入口或个人维度概览。 | [工作台](./modules/dashboard/workspace.md) | 2026-05-16 |
+| dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 用于以地球可视化方式展示海运相关数据，是 dashboard 分组下的专题看板。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-05-16 |
+| clients | `/clients` | 客户管理 | 维护客户主数据列表，是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-05-16 |
+| clients | `/clients/create` | 客户管理 | 创建客户基础资料，为后续联系人、账期、发票、附件等客户子资料提供主记录。 | [客户新建](./modules/clients/create.md) | 2026-05-16 |
+| clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面。 | [客户编辑](./modules/clients/id-edit.md) | 2026-05-16 |
+| sea-exports | `/sea-exports` | 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-05-16 |
+| sea-exports | `/sea-exports/create` | 海运出口 | 创建新的海运出口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-05-16 |
+| sea-exports | `/sea-exports/:id/edit` | 海运出口 | 编辑页是海运出口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-05-16 |
+| sea-imports | `/sea-imports` | 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-05-16 |
+| sea-imports | `/sea-imports/create` | 海运进口 | 创建新的海运进口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-05-16 |
+| sea-imports | `/sea-imports/:id/edit` | 海运进口 | 编辑页是海运进口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运进口编辑工作台](./modules/sea-imports/id-edit.md) | 2026-05-16 |
+| freight-rate | `/freight-rate` | 运价管理 | 维护海运运价信息，为委托费用测算和报价提供基础数据入口。 | [运价管理](./modules/freight-rate/index.md) | 2026-05-16 |
+| fee-management | `/fee-management/fee-lock` | 费用管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/fee-management/fee-lock.md) | 2026-05-16 |
+| fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建和进入付款申请单编辑，是应付费用付款流程入口。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-05-16 |
+| fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请单，选择可申请的应付费用并形成待审核付款申请。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-05-16 |
+| fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑已有付款申请单，在状态允许时调整明细并提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-05-16 |
+| fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-05-16 |
+| fee-management | `/fee-management/statement/add` | 费用管理 | 创建对账单，选择费用并形成可结算的对账记录。 | [对账单新增](./modules/fee-management/statement-add.md) | 2026-05-16 |
+| fee-management | `/fee-management/statement/:id/edit` | 费用管理 | 编辑已有对账单，在状态允许时调整主信息和费用明细。 | [对账单编辑](./modules/fee-management/statement-id-edit.md) | 2026-05-16 |
+| audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-05-16 |
+| audit-approval | `/audit-approval/payment-review` | 审核审批 | 处理付款申请单的审核任务，支持批量或单条通过、驳回。 | [付款申请审核](./modules/audit-approval/payment-review.md) | 2026-05-16 |
+| audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 展示单个费用审核任务的详细信息和对应费用实体。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-05-16 |
+| basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-05-16 |
+| basic-data | `/basic-data/code-invoice` | 基础资料 | 维护发票相关代码，支撑客户发票资料和结算开票口径。 | [发票代码](./modules/basic-data/code-invoice.md) | 2026-05-16 |
+| basic-data | `/basic-data/code-service` | 基础资料 | 维护服务项目代码，支撑委托服务项与费用识别。 | [服务代码](./modules/basic-data/code-service.md) | 2026-05-16 |
+| basic-data | `/basic-data/code-goods` | 基础资料 | 维护货物类型代码，支撑委托货物信息录入。 | [货物代码](./modules/basic-data/code-goods.md) | 2026-05-16 |
+| basic-data | `/basic-data/code-package` | 基础资料 | 维护包装类型代码，支撑件数、包装等货物字段。 | [包装代码](./modules/basic-data/code-package.md) | 2026-05-16 |
+| basic-data | `/basic-data/code-issue-type` | 基础资料 | 维护问题或异常类型，支撑业务问题记录分类。 | [问题类型代码](./modules/basic-data/code-issue-type.md) | 2026-05-16 |
+| basic-data | `/basic-data/code-source` | 基础资料 | 维护业务来源代码，支撑客户或委托来源识别。 | [来源代码](./modules/basic-data/code-source.md) | 2026-05-16 |
+| basic-data | `/basic-data/code-frt` | 基础资料 | 维护运费相关代码，支撑费用录入和运价映射。 | [运费代码](./modules/basic-data/code-frt.md) | 2026-05-16 |
+| basic-data | `/basic-data/currency` | 基础资料 | 维护币种资料，支撑费用、运价、付款和结算金额。 | [币种资料](./modules/basic-data/currency.md) | 2026-05-16 |
+| basic-data | `/basic-data/fee-name` | 基础资料 | 维护费用名称字典，是费用录入和费用代码的基础。 | [费用名称](./modules/basic-data/fee-name.md) | 2026-05-16 |
+| basic-data | `/basic-data/fee-code` | 基础资料 | 维护费用代码及费用属性，支撑应收应付费用明细。 | [费用代码](./modules/basic-data/fee-code.md) | 2026-05-16 |
+| basic-data | `/basic-data/exchange-rate` | 基础资料 | 维护币种汇率，为跨币种费用、付款和结算提供换算基础。 | [汇率资料](./modules/basic-data/exchange-rate.md) | 2026-05-16 |
+| basic-data | `/basic-data/lane-code` | 基础资料 | 维护航线代码，支撑运价、港口和委托航线字段。 | [航线代码](./modules/basic-data/lane-code.md) | 2026-05-16 |
+| basic-data | `/basic-data/port-code` | 基础资料 | 维护港口资料，支撑起运港、目的港、卸货港等字段。 | [港口代码](./modules/basic-data/port-code.md) | 2026-05-16 |
+| basic-data | `/basic-data/ctn-code` | 基础资料 | 维护箱型箱量代码，支撑运价和委托箱型信息。 | [箱型代码](./modules/basic-data/ctn-code.md) | 2026-05-16 |
+| basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-05-16 |
+| basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-05-16 |
+| system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息。 | [用户管理](./modules/system/user.md) | 2026-05-16 |
+| system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-16 |
+| system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-05-16 |
+| system | `/system/dept` | 系统管理 | 维护组织/部门树，为用户归属、数据权限和业务组织范围提供基础。 | [部门管理](./modules/system/dept.md) | 2026-05-16 |
+| system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-05-16 |
+| system | `/system/workflow/create` | 系统管理 | 创建审批工作流，配置任务类型、条件和审批节点。 | [工作流新建](./modules/system/workflow-create.md) | 2026-05-16 |
+| system | `/system/workflow/edit/:id` | 系统管理 | 编辑已有审批工作流，维护节点、条件和适用任务类型。 | [工作流编辑](./modules/system/workflow-edit-id.md) | 2026-05-16 |
+| system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源。 | [枚举管理](./modules/system/enumeration.md) | 2026-05-16 |
+| system | `/system/cache` | 系统管理 | 查看或清理系统缓存，辅助排查字典、权限或配置刷新问题。 | [缓存管理](./modules/system/cache.md) | 2026-05-16 |

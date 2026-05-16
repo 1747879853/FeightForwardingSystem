@@ -1,0 +1,50 @@
+---
+title: 客户编辑
+module: 客户管理
+author: auto-doc-sync
+last_updated: 2026-05-16
+---
+
+# 1. 业务背景说明 (Background)
+
+**白话解释：** 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面。
+
+**路由与源码定位：**
+
+| 项目 | 内容 |
+| :-- | :-- |
+| 页面路由 | `/clients/:id/edit` |
+| 路由名称 | `ClientEdit` |
+| 页面组件 | `src/views/client/editor.vue` |
+| 权限口径 | 未在路由中声明独立权限 |
+| 关键源码 | `src/router/routes/modules/client.ts`<br/>`src/views/client/list.vue`<br/>`src/views/client/base/form.vue`<br/>`src/views/client/editor.vue`<br/>`src/views/client/base/data.ts`<br/>`src/views/client/contact/data.ts`<br/>`src/views/client/payment-terms/data.ts`<br/>`src/views/client/invoice/data.ts`<br/>`src/api/sea-export/client-admin.ts`<br/>`src/api/sea-export/client-contact-admin.ts` |
+
+# 2. 功能与操作说明 (Features & Operations)
+
+- **基础信息维护：** 编辑客户主数据。
+- **子资料维护：** 在编辑容器内维护联系人、付款条件、发票和附件。
+- **业务引用：** 客户资料会被海运委托、费用、对账等业务模块引用。
+
+# 3. 状态流转说明 (Status Transitions)
+
+| 当前状态 | 触发人/动作  | 目标状态 | 状态说明                           |
+| :------- | :----------- | :------- | :--------------------------------- |
+| 页面初始 | 用户进入路由 | 页面可用 | 由动态路由与权限守卫完成组件挂载。 |
+
+# 4. 核心字段说明 (Field Definitions)
+
+| 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
+| :-- | :-- | :-- | :-- | :-- |
+| **客户 ID** | 编辑上下文的主键。 | 路由动态段 `:id` | **触发/依赖：** 用于加载客户及其子资料。 | 必须是有效 GUID。 |
+| **联系人** | 客户沟通对象。 | `src/views/client/contact/data.ts` / `client-contact-admin.ts` | **触发/依赖：** 依赖当前客户 ID。 | 删除和编辑需保持父客户上下文。 |
+| **付款条件** | 客户账期与结算约定。 | `src/views/client/payment-terms/data.ts` | **触发/依赖：** 影响费用、付款和结算口径。 | 需与后端账期规则保持一致。 |
+
+# 5. 核心业务卡点 (Business Blockers)
+
+> [!IMPORTANT] **[卡点 1：客户编辑一致性]** 客户子资料依赖父级客户 ID，刷新或切换 Tab 时要避免丢失编辑上下文。
+
+# 6. 变更与解析日志 (Changelog & Insights)
+
+| 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
+| :-- | :-- | :-- | :-- |
+| 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/clients/:id/edit` 对应组件 `src/views/client/editor.vue`，权限口径为 未在路由中声明独立权限。 |
