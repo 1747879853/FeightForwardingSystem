@@ -1,5 +1,6 @@
 | 模块名称 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
 | --- | --- | --- | --- | --- |
+| Auth | 系统权限 | 后台权限键与多语言文案映射（含打印JSON、枚举管理、海运运价），保障菜单与按钮权限文案可读性。 | [auth.md](./modules/auth.md) | 2026-05-16 |
 | FreightBusinessOverview | 业务总览 | 货代系统主流程总览，串联海运出口、费用、付费申请与结算测试路径。 | [freight-business-overview.md](./modules/freight-business-overview.md) | 2026-05-12 |
 | SeaExport | 海运出口 | 海运出口委托从列表、新建到编辑子模块的业务入口与流程说明。 | [sea-export.md](./modules/sea-export.md) | 2026-05-12 |
 | OrderFee | 费用管理 | 订单应收应付费用录入、状态流转与关键金额口径说明。 | [order-fee.md](./modules/order-fee.md) | 2026-05-12 |

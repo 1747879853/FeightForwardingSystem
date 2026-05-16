@@ -13,6 +13,8 @@
 
 ## 2026-05
 
+- [2026-05-16] [权限新增键 i18n 补齐（二批）](./changelogs/change-log-2026-05-16-auth-permission-i18n-keys-second-batch.md)
+- [2026-05-16] [权限新增键 i18n 补齐](./changelogs/change-log-2026-05-16-auth-permission-i18n-keys.md)
 - [2026-05-16] [修复 ClientCreate 路由切换时非元素根节点导致页面空白](./changelogs/change-log-2026-05-16-client-create-transition-root-fix.md)
 - [2026-05-12] [分页下拉组件兼容 totalCount 防止重复加载](./changelogs/change-log-2026-05-12-paged-select-totalcount-compat.md)
 - [2026-05-12] [编号生成适用范围改为二选一独立录入](./changelogs/change-log-2026-05-12-generate-num-scope-exclusive-input.md)
