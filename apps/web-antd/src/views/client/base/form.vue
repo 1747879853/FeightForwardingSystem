@@ -828,9 +828,8 @@ onMounted(() => {
         </div>
       </div>
     </Card>
+    <Modal @add="addAddressData" @edit="editAddressData" />
   </div>
-
-  <Modal @add="addAddressData" @edit="editAddressData" />
 </template>
 
 <style scoped lang="scss">

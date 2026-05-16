@@ -9,4 +9,4 @@
 | PaymentReview | 审核审批 | 付费申请审核任务的批量通过/驳回与工作流关系说明。 | [payment-review.md](./modules/payment-review.md) | 2026-05-12 |
 | StatementSettlement | 对账结算 | 客户对账单与费用结算、付费申请状态口径的边界说明。 | [statement-settlement.md](./modules/statement-settlement.md) | 2026-05-12 |
 | GenerateNum | 基础资料 | 编号规则配置模块，支持按组织、按用户及全局默认的编号策略。 | [generate-num.md](./modules/generate-num.md) | 2026-05-12 |
-| Client | 客户管理 | 客户列表与客户资料维护的统一选择、编辑、删除操作模块。 | [client.md](./modules/client.md) | 2026-05-11 |
+| Client | 客户管理 | 客户列表与客户资料维护的统一选择、编辑、删除操作模块。 | [client.md](./modules/client.md) | 2026-05-16 |
