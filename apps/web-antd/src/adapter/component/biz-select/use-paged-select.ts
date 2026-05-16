@@ -22,7 +22,7 @@ export interface PagedSelectOptions<T = any> {
   /** 获取分页数据的函数 */
   fetchPage: (
     params: FetchPageParams,
-  ) => Promise<{ items: T[]; total: number }>;
+  ) => Promise<{ items?: T[]; total?: number; totalCount?: number }>;
   /** 将数据项转换为 Option 的函数 */
   mapItemToOption: (item: T) => OptionItem;
   /** 额外参数 ref，变化时触发重新请求（如 IndustryCategory） */
@@ -145,10 +145,17 @@ export function usePagedSelect<T = any>(
           })
         : await fetchPage(fetchParams);
 
-      state.total = res.total;
+      // 兼容不同接口返回：total / totalCount
+      const total =
+        typeof res.total === 'number'
+          ? res.total
+          : typeof res.totalCount === 'number'
+            ? res.totalCount
+            : 0;
+      state.total = total;
 
       // 将新数据合并到缓存
-      for (const item of res.items) {
+      for (const item of res.items ?? []) {
         const option = mapItemToOption(item);
         if (option.value !== undefined && option.value !== null) {
           state.cache.set(option.value, option);

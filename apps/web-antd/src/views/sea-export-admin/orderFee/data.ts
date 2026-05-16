@@ -85,7 +85,7 @@ export const getUserAttributeEnumOptions = () => [
   { value: 0, label: '操作' },
   { value: 1, label: '客服' },
   { value: 2, label: '单证' },
-  { value: 3, label: '商务' },
+  { value: 3, label: '商务(航线)' },
   { value: 4, label: '销售' },
   { value: 5, label: '财务' },
   { value: 6, label: '海外客服' },

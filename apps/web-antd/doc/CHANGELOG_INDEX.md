@@ -13,6 +13,13 @@
 
 ## 2026-05
 
+- [2026-05-16] [权限新增键 i18n 补齐（二批）](./changelogs/change-log-2026-05-16-auth-permission-i18n-keys-second-batch.md)
+- [2026-05-16] [权限新增键 i18n 补齐](./changelogs/change-log-2026-05-16-auth-permission-i18n-keys.md)
+- [2026-05-16] [修复 ClientCreate 路由切换时非元素根节点导致页面空白](./changelogs/change-log-2026-05-16-client-create-transition-root-fix.md)
+- [2026-05-12] [分页下拉组件兼容 totalCount 防止重复加载](./changelogs/change-log-2026-05-12-paged-select-totalcount-compat.md)
+- [2026-05-12] [编号生成适用范围改为二选一独立录入](./changelogs/change-log-2026-05-12-generate-num-scope-exclusive-input.md)
+- [2026-05-12] [编号生成模块前端接口对接与规则校验](./changelogs/change-log-2026-05-12-generate-num-admin-frontend-integration.md)
+- [2026-05-12] [新增货代主流程模块化业务文档与统一索引](./changelogs/change-log-2026-05-12-freight-business-workflow-docs.md)
 - [2026-05-11] [客户列表支持双击行进入编辑页](./changelogs/change-log-2026-05-11-client-list-double-click-edit.md)
 - [2026-05-11] [客户列表改为顶部统一操作并强化选择安全](./changelogs/change-log-2026-05-11-client-list-top-actions-selection-safety.md)
 - [2026-05-11] [海运出口委托信息只读项新增超出省略与悬浮显示](./changelogs/change-log-2026-05-11-sea-export-readonly-ellipsis-tooltip.md)

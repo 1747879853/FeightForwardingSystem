@@ -377,29 +377,15 @@ defineExpose({
 
 .auth-login-submit {
   height: 50px;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
-  color: rgb(255 255 255 / 96%);
-  letter-spacing: 8px;
-  background: linear-gradient(
-    135deg,
-    rgb(97 150 255 / 48%),
-    rgb(63 111 220 / 34%)
-  );
-  border: 1px solid rgb(255 255 255 / 26%);
+  color: rgb(255 255 255 / 50%);
+  background: rgb(255 255 255 / 14%);
   border-radius: 8px;
-  box-shadow:
-    0 10px 28px rgb(63 111 220 / 20%),
-    inset 0 1px 0 rgb(255 255 255 / 26%);
-  backdrop-filter: blur(12px);
-  transition:
-    transform 0.25s ease,
-    background 0.25s ease,
-    box-shadow 0.25s ease;
 }
 
 .auth-login-submit:hover {
-  background: linear-gradient(
+  /* background: linear-gradient(
     135deg,
     rgb(113 165 255 / 58%),
     rgb(71 120 232 / 42%)
@@ -408,15 +394,15 @@ defineExpose({
   box-shadow:
     0 14px 36px rgb(63 111 220 / 28%),
     inset 0 1px 0 rgb(255 255 255 / 30%);
-  transform: translateY(-1px);
+  transform: translateY(-1px); */
 }
 
 .auth-login-submit:focus-visible {
-  border-color: rgb(255 255 255 / 28%);
+  /* border-color: rgb(255 255 255 / 28%);
   box-shadow:
     0 0 0 2px rgb(255 255 255 / 18%),
     0 14px 36px rgb(63 111 220 / 24%),
-    inset 0 1px 0 rgb(255 255 255 / 30%);
+    inset 0 1px 0 rgb(255 255 255 / 30%); */
 }
 
 .auth-login-ghost {
