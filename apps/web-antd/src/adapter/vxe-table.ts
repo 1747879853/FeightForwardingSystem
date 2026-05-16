@@ -240,12 +240,19 @@ setupVbenVxeTable({
           'onUpdate:modelValue': onChange,
         };
         function onChange(newVal: any) {
+          // 更新当前字段的值
+          row[column.field] = newVal;
+
+          console.log('currendIds change', newVal, props?.type);
+
+          // 如果选择了币别，自动获取对应的汇率；如果清空币别，则清空汇率
           if (newVal) {
-            // VXE Table 会自动更新 row[column.field]，无需手动赋值
-            console.log('currendIds change', newVal, props?.type);
             getExchangeRateDetail(newVal).then((data) => {
               row['exchangeRate'] = props?.type ? data.drValue : data.crValue;
             });
+          } else {
+            // 清空币别时，同时清空汇率
+            row['exchangeRate'] = undefined;
           }
         }
         return h(CurrencySelect, finallyProps);
@@ -260,9 +267,8 @@ setupVbenVxeTable({
           'onUpdate:modelValue': onChange,
         };
         function onChange(newVal: any) {
-          if (newVal) {
-            // row[column.field] = newVal;
-          }
+          // 允许清空汇率字段
+          row[column.field] = newVal;
         }
         return h(ExchangeRateSelect, finallyProps);
       },

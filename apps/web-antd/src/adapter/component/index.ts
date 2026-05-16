@@ -677,6 +677,12 @@ async function initComponentAdapter() {
     ExchangeRateSelect: defineAsyncComponent(
       () => import('./biz-select/exchange-rate-select.vue'),
     ),
+    OrgBankAccountSelect: defineAsyncComponent(
+      () => import('./biz-select/org-bank-account-select.vue'),
+    ),
+    ClientBankAccountSelect: defineAsyncComponent(
+      () => import('./biz-select/client-bank-account-select.vue'),
+    ),
     OrderGoodsButton: defineAsyncComponent(
       () => import('./biz-form/order-goods-button.vue'),
     ),
@@ -719,8 +725,10 @@ export { initComponentAdapter };
 // 导出业务选择组件
 export {
   ClientSelect,
+  ClientBankAccountSelect,
   CurrencySelect,
   OrganizationSelect,
+  OrgBankAccountSelect,
   RoleSelect,
   UserSelect,
 } from './biz-select';
