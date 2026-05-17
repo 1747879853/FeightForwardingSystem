@@ -89,15 +89,64 @@ jobs:
             Write-Warning ("HEAD request failed: {0}" -f $_.Exception.Message)
           }
 
-      - name: Deploy to IIS via Web Deploy
-        uses: ChristopheLav/iis-deploy@v1
-        with:
-          website-name: ${{ secrets.IIS_SITE_NAME }}
-          msdeploy-service-url: https://${{ secrets.IIS_SERVER_IP }}:8172/msdeploy.axd
-          msdeploy-username: ${{ secrets.IIS_USER }}
-          msdeploy-password: ${{ secrets.IIS_PWD }}
-          source-path: ./apps/web-antd/dist
-          skip-extra-files: false
+      - name: Deploy preview (whatif)
+        shell: pwsh
+        env:
+          IIS_SERVER_IP: ${{ secrets.IIS_SERVER_IP }}
+          IIS_SITE_NAME: ${{ secrets.IIS_SITE_NAME }}
+          IIS_USER: ${{ secrets.IIS_USER }}
+          IIS_PWD: ${{ secrets.IIS_PWD }}
+        run: |
+          $msdeploy = "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          if (-not (Test-Path $msdeploy)) {
+            Write-Error "msdeploy.exe not found at: $msdeploy"
+            exit 1
+          }
+          Write-Host "=== Deploy Preview (WhatIf) ==="
+          & $msdeploy `
+            -verb:sync `
+            -source:contentPath="apps/web-antd/dist" `
+            -dest:contentPath="${env:IIS_SITE_NAME}",ComputerName="https://${env:IIS_SERVER_IP}:8172/msdeploy.axd?site=${env:IIS_SITE_NAME}",UserName="${env:IIS_USER}",Password="${env:IIS_PWD}",AuthType="Basic",IncludeAcls="False" `
+            -enableRule:AppOffline `
+            -disableRule:BackupRule `
+            -retryAttempts:20 `
+            -skip:objectName=filePath,absolutePath='.*google.*\.html' `
+            -skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml' `
+            -skip:objectName=filePath,absolutePath='logs\\.*' `
+            -skip:objectName=dirPath,absolutePath='logs' `
+            -skip:objectName=filePath,absolutePath='data\\.*' `
+            -skip:objectName=dirPath,absolutePath='data' `
+            -whatif `
+            -verbose
+
+      - name: Deploy to IIS via MSDeploy
+        shell: pwsh
+        env:
+          IIS_SERVER_IP: ${{ secrets.IIS_SERVER_IP }}
+          IIS_SITE_NAME: ${{ secrets.IIS_SITE_NAME }}
+          IIS_USER: ${{ secrets.IIS_USER }}
+          IIS_PWD: ${{ secrets.IIS_PWD }}
+        run: |
+          $msdeploy = "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          if (-not (Test-Path $msdeploy)) {
+            Write-Error "msdeploy.exe not found at: $msdeploy"
+            exit 1
+          }
+          Write-Host "=== Deploy Execute ==="
+          & $msdeploy `
+            -verb:sync `
+            -source:contentPath="apps/web-antd/dist" `
+            -dest:contentPath="${env:IIS_SITE_NAME}",ComputerName="https://${env:IIS_SERVER_IP}:8172/msdeploy.axd?site=${env:IIS_SITE_NAME}",UserName="${env:IIS_USER}",Password="${env:IIS_PWD}",AuthType="Basic",IncludeAcls="False" `
+            -enableRule:AppOffline `
+            -disableRule:BackupRule `
+            -retryAttempts:20 `
+            -skip:objectName=filePath,absolutePath='.*google.*\.html' `
+            -skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml' `
+            -skip:objectName=filePath,absolutePath='logs\\.*' `
+            -skip:objectName=dirPath,absolutePath='logs' `
+            -skip:objectName=filePath,absolutePath='data\\.*' `
+            -skip:objectName=dirPath,absolutePath='data' `
+            -verbose
 
       - name: Post-deploy summary
         if: ${{ always() }}
