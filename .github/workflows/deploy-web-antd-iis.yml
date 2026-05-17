@@ -26,11 +26,11 @@ jobs:
         run: pnpm run build:antd
 
       - name: Deploy to IIS via Web Deploy
-        uses: QianMo/publish-iis-webapp@v1.0.0
+        uses: ChristopheLav/iis-deploy@v1
         with:
-          server: https://${{ secrets.IIS_SERVER_IP }}:8172/msdeploy.axd
-          username: ${{ secrets.IIS_USER }}
-          password: ${{ secrets.IIS_PWD }}
-          siteName: ${{ secrets.IIS_SITE_NAME }}
-          localPath: ./apps/web-antd/dist
-          authType: Basic
+          website-name: ${{ secrets.IIS_SITE_NAME }}
+          msdeploy-service-url: https://${{ secrets.IIS_SERVER_IP }}:8172/msdeploy.axd
+          msdeploy-username: ${{ secrets.IIS_USER }}
+          msdeploy-password: ${{ secrets.IIS_PWD }}
+          source-path: ./apps/web-antd/dist
+          skip-extra-files: false
