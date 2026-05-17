@@ -1,0 +1,36 @@
+name: 生产环境前端自动发布 (8172 端口)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: web-antd-iis-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    if: github.actor != 'dependabot[bot]' && (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]'))
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node and pnpm
+        uses: ./.github/actions/setup-node
+
+      - name: Build web-antd
+        run: pnpm run build:antd
+
+      - name: Deploy to IIS via Web Deploy
+        uses: QianMo/publish-iis-webapp@v1.0.0
+        with:
+          server: https://${{ secrets.IIS_SERVER_IP }}:8172/msdeploy.axd
+          username: ${{ secrets.IIS_USER }}
+          password: ${{ secrets.IIS_PWD }}
+          siteName: ${{ secrets.IIS_SITE_NAME }}
+          localPath: ./apps/web-antd/dist
+          authType: Basic
