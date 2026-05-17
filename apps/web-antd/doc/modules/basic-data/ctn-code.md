@@ -2,7 +2,7 @@
 title: 箱型代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-05-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,6 +24,7 @@ last_updated: 2026-05-16
 - **列表维护：** 在 `箱型代码` 页面查询、创建、编辑和删除基础资料。
 - **弹窗表单：** 多数基础资料通过 `CtnCodeAdmin/modules/form.vue` 维护明细。
 - **业务复用：** 基础资料作为业务下拉、字典或校验来源被其他模块引用。
+- **下拉搜索稳定性：** 依赖 `CtnSelect`（`usePagedSelect`）的搜索已增加过期回包丢弃，避免关键词切换后混入历史分页结果。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -47,4 +48,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-17 | `Fix` | `CtnSelect` 搜索切词时新增请求版本校验，旧关键词晚回包会被丢弃，避免下拉混入历史数据。 | 该修复在 `usePagedSelect` 公共层实现，所有复用该 Hook 的分页选择器同步生效。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/ctn-code` 对应组件 `src/views/system/basic-data/CtnCodeAdmin/list.vue`，权限口径为 未声明独立 authority。 |

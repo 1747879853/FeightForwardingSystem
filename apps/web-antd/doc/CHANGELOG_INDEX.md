@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-17] [分页选择器增加搜索过期回包防护，避免历史数据回灌](./changelogs/change-log-2026-05-17-paged-select-stale-response-guard.md)
 - [2026-05-16] [权限新增键 i18n 补齐（二批）](./changelogs/change-log-2026-05-16-auth-permission-i18n-keys-second-batch.md)
 - [2026-05-16] [权限新增键 i18n 补齐](./changelogs/change-log-2026-05-16-auth-permission-i18n-keys.md)
 - [2026-05-16] [修复 ClientCreate 路由切换时非元素根节点导致页面空白](./changelogs/change-log-2026-05-16-client-create-transition-root-fix.md)

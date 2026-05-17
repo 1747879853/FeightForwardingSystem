@@ -81,7 +81,6 @@ export function usePagedSelect<T = any>(
     selectedItemsRef,
     queryKey,
     staleTime = 5 * 60 * 1000,
-    valueKey = 'id',
     extraParamsRef,
   } = options;
 
@@ -95,6 +94,7 @@ export function usePagedSelect<T = any>(
     openedOnce: false,
     pageIndex: 1,
     pageSize,
+    queryVersion: 0,
     total: 0,
   });
 
@@ -107,6 +107,7 @@ export function usePagedSelect<T = any>(
     state.pageIndex = 1;
     state.total = 0;
     state.cache.clear();
+    state.queryVersion += 1;
   };
 
   /**
@@ -129,6 +130,7 @@ export function usePagedSelect<T = any>(
    * 提供给 ApiComponent 的 api 函数
    */
   const api = async (): Promise<OptionItem[]> => {
+    const queryVersion = state.queryVersion;
     try {
       const fetchParams: FetchPageParams = {
         KeyWords: state.keyword || undefined,
@@ -144,6 +146,11 @@ export function usePagedSelect<T = any>(
             staleTime,
           })
         : await fetchPage(fetchParams);
+
+      // 搜索词或筛选项已变化时，丢弃旧请求结果，避免历史数据回灌
+      if (queryVersion !== state.queryVersion) {
+        return Array.from(state.cache.values());
+      }
 
       // 兼容不同接口返回：total / totalCount
       const total =

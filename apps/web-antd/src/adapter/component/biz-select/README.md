@@ -97,3 +97,35 @@
 ## 工具函数
 
 - `usePagedSelect`：分页选择逻辑封装，提供远程搜索、滚动加载、选中项合并等通用能力。
+
+## usePagedSelect 搜索竞态防护（2026-05-17）
+
+为避免“先请求旧关键词、后请求新关键词”时旧请求晚回包导致历史数据回灌，`usePagedSelect` 新增了查询版本控制机制：
+
+- 每次搜索词变化（`handleSearch`）或扩展筛选参数变化（`extraParamsRef`）触发 `reset` 时，都会递增内部 `queryVersion`。
+- 每次 `api` 请求发起时记录当前版本，响应返回后先校验版本一致性。
+- 若版本不一致，说明该响应属于过期请求，会被直接丢弃，不会合并到当前下拉缓存。
+
+### 生效范围
+
+凡是通过 `usePagedSelect` 封装的选择器，均自动具备该防护能力，包括但不限于：
+
+- `CtnSelect`
+- `ClientSelect`
+- `CarrierSelect`
+- `CurrencySelect`
+- `FeeCodeSelect`
+- `FeeNameSelect`
+- `PortSelect`
+- `CountrySelect`
+- `LaneSelect`
+- `ExchangeRateSelect`
+- `RoleSelect`
+- `UserSelect`
+- `CodeFrtSelect`
+- `CodeGoodsSelect`
+- `CodeInvoiceSelect`
+- `CodeIssueTypeSelect`
+- `CodePackageSelect`
+- `CodeServiceSelect`
+- `CodeSourceSelect`
