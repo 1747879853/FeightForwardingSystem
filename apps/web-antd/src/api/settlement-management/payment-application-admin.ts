@@ -37,7 +37,7 @@ export namespace PaymentApplicationAdminApi {
     id: number;
   }
 
-  /** 付费申请列表查询参数 */
+  /** 付费申请列表查询参数（通用） */
   export interface PaymentApplicationQueryParams {
     Keyword?: string;
     ApplicationNo?: string;
@@ -55,7 +55,133 @@ export namespace PaymentApplicationAdminApi {
     PageSize?: number;
   }
 
-  /** 币别分组 */
+  /** 付费结算 - 选择付费申请列表查询参数 */
+  export interface PaymentApplicationSettlementQueryParams {
+    /** 付费结算ID，传入后会排除该结算单已关联的付费申请 */
+    paymentSettlementId?: string;
+    /** 关键字，模糊匹配费用关联的业务 CommissionNum / MblNum / BookingNum */
+    keyword?: string;
+    /** 申请单号（模糊匹配） */
+    applicationNo?: string;
+    /** 结算对象ID（客户） */
+    settlementId?: string;
+    /** 币别ID。不传=搜全部；传 `0`=搜原币申请；传具体值=搜指定币别 */
+    currencyId?: number;
+    /** 提交时间起 */
+    submitTimeStart?: string;
+    /** 提交时间止 */
+    submitTimeEnd?: string;
+    /** 最晚付款时间起 */
+    endTimeStart?: string;
+    /** 最晚付款时间止 */
+    endTimeEnd?: string;
+    /** 申请人ID */
+    creatorUserId?: number;
+    /** 组织ID（数据权限过滤） */
+    orgId?: number;
+    /** 跳过条数（分页） */
+    skipCount: number;
+    /** 每页条数（分页） */
+    maxResultCount: number;
+    /** 排序字段 */
+    sorting?: string;
+  }
+
+  /** 运输单简要信息（用于费用列表） */
+  export interface TransportOrderSimpleForFeeDto {
+    /** 业务ID */
+    id: string;
+    /** 委托编号 */
+    commissionNum?: string;
+    /** 主提单号 */
+    mblNum?: string;
+    /** 订舱号 */
+    bookingNum?: string;
+    /** 结算对象名称 */
+    clientName?: string;
+  }
+
+  /** 费用 DTO（用于付费结算选择列表） */
+  export interface OrderFeeForSettlementDto {
+    /** 费用ID */
+    id: string;
+    /** 业务ID */
+    transportOrderId: string;
+    /** 收付类型：收/付 */
+    paySide: number;
+    /** 费用状态 */
+    feeStatus: number;
+    /** 结算状态：0=未结算，1=部分结算，2=已结算 */
+    settlementStatus: number;
+    /** 费用代码ID */
+    feeCodeId: number;
+    /** 费用代码名称 */
+    feeCodeName?: string;
+    /** 结算对象ID */
+    settlementId: string;
+    /** 结算对象名称 */
+    settlementName?: string;
+    /** 币别ID */
+    currencyId: number;
+    /** 币别代码 */
+    currencyCode?: string;
+    /** 汇率 */
+    exchangeRate: number;
+    /** 含税单价 */
+    unitPrice: number;
+    /** 金额 */
+    amount: number;
+    /** 数量 */
+    quantity: number;
+    /** 税率(%) */
+    taxRate: number;
+    /** 是否含税 */
+    taxIncluded: boolean;
+    /** 不含税单价（计算得出） */
+    noTaxUnitPrice: number;
+    /** 不含税金额（计算得出） */
+    noTaxAmount: number;
+    /** 已开票金额 */
+    invoicedAmount: number;
+    /** 未开票金额（计算得出） */
+    unInvoicedAmount: number;
+    /** 已结算金额 */
+    settledAmount: number;
+    /** 未结算金额（计算得出） */
+    unSettledAmount: number;
+    /** 已付费申请金额 */
+    rqstPaymentAmount: number;
+    /** 未付费申请金额 */
+    unRqstPaymentAmount: number;
+    /** 关联业务信息 */
+    transportOrder?: TransportOrderSimpleForFeeDto;
+  }
+
+  /** 币别分组（用于付费结算选择列表） */
+  export interface CurrencyGroupForSettlementDto {
+    /** 币别ID */
+    id: number;
+    /** 币别代码，如 USD、CNY */
+    code?: string;
+    /** 申请量（收）原币 */
+    receiveAmount: number;
+    /** 申请金额（收）转成结算币别，原币申请为 null */
+    receivePrice?: number;
+    /** 申请量（付）原币 */
+    payAmount: number;
+    /** 申请金额（付）转成结算币别，原币申请为 null */
+    payPrice?: number;
+    /** 该币别未结算量 = 应收未结算总和 - 应付未结算总和（原币，不乘汇率） */
+    totalUnSettledAmount: number;
+    /** 可结算上限 = 正数有效金额之和（收取UnSettledAmount，付取-UnSettledAmount，结果>0的累加） */
+    settleableUpperLimit: number;
+    /** 可结算下限 = 负数有效金额之和（收取UnSettledAmount，付取-UnSettledAmount，结果<0的累加） */
+    settleableLowerLimit: number;
+    /** 该币别下的费用列表 */
+    orderFees: OrderFeeForSettlementDto[];
+  }
+
+  /** 币别分组（通用） */
   export interface CurrencyGroupDto {
     id: number;
     code?: string;
@@ -72,7 +198,7 @@ export namespace PaymentApplicationAdminApi {
     localCurrencyId?: number;
   }
 
-  /** 付费申请列表 DTO */
+  /** 付费申请列表 DTO（通用） */
   export interface PaymentApplicationDto {
     id: string;
     applicationNo?: string;
@@ -98,7 +224,53 @@ export namespace PaymentApplicationAdminApi {
     creatorUserId?: number;
   }
 
+  /** 付费申请列表 DTO（用于付费结算选择列表） */
+  export interface PaymentApplicationForSettlementDto {
+    /** 付费申请ID */
+    id: string;
+    /** 申请单号 */
+    applicationNo?: string;
+    /** 申请状态：`3`=审核通过（未结算过），`4`=部分结算 */
+    status: number;
+    /** 提交时间 */
+    submitTime?: string;
+    /** 最晚付款时间 */
+    endTime?: string;
+    /** 结算对象ID */
+    settlementId: string;
+    /** 币别ID（null=原币申请） */
+    currencyId?: number;
+    /** 支付要求 */
+    require?: string;
+    /** 备注 */
+    remark?: string;
+    /** 结算对象名称 */
+    clientName?: string;
+    /** 币别代码 */
+    currencyCode?: string;
+    /** 创建人名称 */
+    creatorUserName?: string;
+    /** 审核人ID */
+    auditUserId?: number;
+    /** 审核人昵称 */
+    auditUserNickName?: string;
+    /** 审核时间 */
+    auditTime?: string;
+    /** 应付总金额（结算币别，原币申请为 null） */
+    totalPayPrice?: number;
+    /** 应收总金额（结算币别，原币申请为 null） */
+    totalReceivePrice?: number;
+    /** 按币别分组的金额汇总 */
+    currencyGroup?: CurrencyGroupForSettlementDto[];
+  }
+
   /** 分页数据封装 */
+  export interface PagedList<T> {
+    totalCount: number;
+    items: T[];
+  }
+
+  /** 分页数据封装（旧版兼容） */
   export interface PagedListOfPaymentApplicationDto {
     skipCount: number;
     maxResultCount: number;
@@ -368,7 +540,7 @@ export namespace PaymentApplicationAdminApi {
   }
 }
 
-/** 获取付费申请列表 */
+/** 获取付费申请列表（通用） */
 export async function getPaymentApplicationPagedList(params: Recordable<any>) {
   const queryParams: PaymentApplicationAdminApi.PaymentApplicationQueryParams =
     {
@@ -398,6 +570,15 @@ export async function getPaymentApplicationPagedList(params: Recordable<any>) {
     items: response.items || [],
     totalCount: response.totalCount || 0,
   };
+}
+
+/** 获取付费结算 - 选择付费申请列表（只返回已审核通过且有未结算余额的付费申请） */
+export async function getPaymentApplicationPagedListForSettlement(
+  params: PaymentApplicationAdminApi.PaymentApplicationSettlementQueryParams,
+) {
+  return requestClient.get<
+    PaymentApplicationAdminApi.PagedList<PaymentApplicationAdminApi.PaymentApplicationForSettlementDto>
+  >(`${API_PREFIX}/GetPagedListForSettlementAsync`, { params });
 }
 
 /** 获取可进行付费申请的费用按业务分组列表 */

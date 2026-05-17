@@ -290,8 +290,8 @@ export function useColumns<T = SeFreiPriceOutDto>(
   onActionClick: OnActionClickFn<T>,
   data?: SeFreiPriceOutDto[], // 添加数据参数用于生成动态列
 ): VxeTableGridOptions['columns'] {
-  // 基础固定列
-  const baseColumns: VxeTableGridOptions['columns'] = [
+  // 基础固定列（不包含动态箱型列）
+  const baseColumnsBeforeCtn: VxeTableGridOptions['columns'] = [
     {
       type: 'checkbox',
       width: 60,
@@ -312,14 +312,6 @@ export function useColumns<T = SeFreiPriceOutDto>(
       },
     },
     {
-      field: 'currency.code',
-      title: $t('seaExport.freightRate.currencyId'),
-      width: 80,
-      formatter: ({ row }) => {
-        return row.currency?.code || '-';
-      },
-    },
-    {
       field: 'pol.portName',
       title: $t('seaExport.freightRate.polId'),
       width: 120,
@@ -336,194 +328,12 @@ export function useColumns<T = SeFreiPriceOutDto>(
       },
     },
     {
-      field: 'country.countryName',
-      title: $t('seaExport.freightRate.countryId'),
-      width: 120,
-      formatter: ({ row }) => {
-        return row.country.countryName || '-';
-      },
-    },
-    {
-      field: 'poT1.portName',
-      title: $t('seaExport.freightRate.pot1Id'),
-      width: 120,
-      formatter: ({ row }) => {
-        return row.poT1?.portName || '-';
-      },
-    },
-    {
-      field: 'poT2.portName',
-      title: $t('seaExport.freightRate.pot2Id'),
-      width: 120,
-      formatter: ({ row }) => {
-        return row.poT2?.portName || '-';
-      },
-    },
-    {
-      field: 'isDirect',
-      title: $t('seaExport.freightRate.isDirect'),
+      field: 'currency.code',
+      title: $t('seaExport.freightRate.currencyId'),
       width: 80,
-      cellRender: {
-        name: 'CellTag',
-        options: [
-          { color: '#52c41a', label: $t('common.yes'), value: true },
-          { color: '#8c8c8c', label: $t('common.no'), value: false },
-        ],
-      },
-    },
-    {
-      field: 'polFreeDays',
-      title: '起运港免用箱',
-      width: 110,
-    },
-    {
-      field: 'podFreeDaysCombined',
-      title: '目的港免箱使天数',
-      width: 280,
-      slots: {
-        default: 'podFreeDaysCombined',
-        header: 'podFreeDaysCombinedHeader',
-      },
-    },
-    {
-      field: 'voyage',
-      title: $t('seaExport.freightRate.voyage'),
-      width: 100,
-    },
-    {
-      field: 'etd',
-      title: $t('seaExport.freightRate.etd'),
-      width: 120,
       formatter: ({ row }) => {
-        if (row.etd) {
-          return formatDateStr(row.etd);
-        }
-        if (row.etdDayOfWeek !== undefined && row.etdDayOfWeek !== null) {
-          const weekDays = [
-            '周日',
-            '周一',
-            '周二',
-            '周三',
-            '周四',
-            '周五',
-            '周六',
-          ];
-          const dayTime = row.etdDayTime ? ` ${row.etdDayTime}` : '';
-          return `${weekDays[row.etdDayOfWeek]}${dayTime}`;
-        }
-        return '-';
+        return row.currency?.code || '-';
       },
-    },
-    {
-      field: 'closeDocTime',
-      title: '截单时间',
-      width: 150,
-      formatter: ({ row }) => {
-        // 优先检查完整日期时间模式
-        if (row.closeDocTime && row.closeDocTime.trim() !== '') {
-          // 将 ISO 格式转换为 YYYY-MM-DD HH:mm 格式
-          const timeStr = row.closeDocTime.substring(0, 16);
-          return timeStr.replace('T', ' ');
-        }
-        // 检查星期模式
-        if (
-          row.closeDocDayOfWeek !== undefined &&
-          row.closeDocDayOfWeek !== null
-        ) {
-          const weekDays = [
-            '周日',
-            '周一',
-            '周二',
-            '周三',
-            '周四',
-            '周五',
-            '周六',
-          ];
-          // 截取时间的前5个字符（HH:mm），去掉秒
-          const dayTime = row.closeDocDayTime
-            ? ` ${row.closeDocDayTime.substring(0, 5)}`
-            : '';
-          return `${weekDays[row.closeDocDayOfWeek]}${dayTime}`;
-        }
-        return '-';
-      },
-    },
-    {
-      field: 'closingTime',
-      title: '截关时间',
-      width: 150,
-      formatter: ({ row }) => {
-        // 优先检查完整日期时间模式
-        if (row.closingTime && row.closingTime.trim() !== '') {
-          // 将 ISO 格式转换为 YYYY-MM-DD HH:mm 格式
-          const timeStr = row.closingTime.substring(0, 16);
-          return timeStr.replace('T', ' ');
-        }
-        // 检查星期模式
-        if (
-          row.closingDayOfWeek !== undefined &&
-          row.closingDayOfWeek !== null
-        ) {
-          const weekDays = [
-            '周日',
-            '周一',
-            '周二',
-            '周三',
-            '周四',
-            '周五',
-            '周六',
-          ];
-          // 截取时间的前5个字符（HH:mm），去掉秒
-          const dayTime = row.closingDayTime
-            ? ` ${row.closingDayTime.substring(0, 5)}`
-            : '';
-          return `${weekDays[row.closingDayOfWeek]}${dayTime}`;
-        }
-        return '-';
-      },
-    },
-    {
-      field: 'validTimeRange',
-      title: $t('seaExport.freightRate.validTimeStart'),
-      width: 220,
-      formatter: ({ row }) => {
-        const startDate = row.validTimeStart;
-        const endDate = row.validTimeEnd;
-
-        // 格式化日期
-        const formatStartDate = startDate ? formatDateStr(startDate) : '';
-        const formatEndDate = endDate ? formatDateStr(endDate) : '';
-
-        if (formatStartDate && formatEndDate) {
-          return `${formatStartDate}~${formatEndDate}`;
-        } else if (formatStartDate) {
-          return `${formatStartDate}~`;
-        } else if (formatEndDate) {
-          return `~${formatEndDate}`;
-        } else {
-          return '-';
-        }
-      },
-    },
-    {
-      field: 'isValid',
-      title: $t('seaExport.freightRate.isValid'),
-      width: 100,
-      slots: { default: 'isValid' },
-    },
-    {
-      field: 'remark',
-      title: $t('seaExport.freightRate.remark'),
-      minWidth: 150,
-      showOverflow: true,
-    },
-    {
-      field: 'surchargeFees',
-      title: $t('seaExport.freightRate.surchargeFees'),
-      minWidth: 400,
-      align: 'left',
-      showOverflow: false,
-      slots: { default: 'surchargeFees' },
     },
   ];
 
@@ -615,8 +425,198 @@ export function useColumns<T = SeFreiPriceOutDto>(
     }));
   }
 
-  // 合并所有列：基础列 + 动态箱型列
-  return [...baseColumns, ...dynamicCtnColumns];
+  // 币别之后的其他列
+  const baseColumnsAfterCtn: VxeTableGridOptions['columns'] = [
+    {
+      field: 'surchargeFees',
+      title: $t('seaExport.freightRate.surchargeFees'),
+      minWidth: 400,
+      align: 'left',
+      showOverflow: false,
+      slots: { default: 'surchargeFees' },
+    },
+    {
+      field: 'isDirect',
+      title: $t('seaExport.freightRate.isDirect'),
+      width: 80,
+      cellRender: {
+        name: 'CellTag',
+        options: [
+          { color: '#52c41a', label: $t('common.yes'), value: true },
+          { color: '#8c8c8c', label: $t('common.no'), value: false },
+        ],
+      },
+    },
+    {
+      field: 'poT1.portName',
+      title: $t('seaExport.freightRate.pot1Id'),
+      width: 120,
+      formatter: ({ row }) => {
+        return row.poT1?.portName || '-';
+      },
+    },
+    {
+      field: 'poT2.portName',
+      title: $t('seaExport.freightRate.pot2Id'),
+      width: 120,
+      formatter: ({ row }) => {
+        return row.poT2?.portName || '-';
+      },
+    },
+    {
+      field: 'voyage',
+      title: $t('seaExport.freightRate.voyage'),
+      width: 100,
+    },
+    {
+      field: 'closeDocTime',
+      title: '截单时间',
+      width: 150,
+      formatter: ({ row }) => {
+        // 优先检查完整日期时间模式
+        if (row.closeDocTime && row.closeDocTime.trim() !== '') {
+          // 将 ISO 格式转换为 YYYY-MM-DD HH:mm 格式
+          const timeStr = row.closeDocTime.substring(0, 16);
+          return timeStr.replace('T', ' ');
+        }
+        // 检查星期模式
+        if (
+          row.closeDocDayOfWeek !== undefined &&
+          row.closeDocDayOfWeek !== null
+        ) {
+          const weekDays = [
+            '周日',
+            '周一',
+            '周二',
+            '周三',
+            '周四',
+            '周五',
+            '周六',
+          ];
+          // 截取时间的前5个字符（HH:mm），去掉秒
+          const dayTime = row.closeDocDayTime
+            ? ` ${row.closeDocDayTime.substring(0, 5)}`
+            : '';
+          return `${weekDays[row.closeDocDayOfWeek]}${dayTime}`;
+        }
+        return '-';
+      },
+    },
+    {
+      field: 'closingTime',
+      title: '截关时间',
+      width: 150,
+      formatter: ({ row }) => {
+        // 优先检查完整日期时间模式
+        if (row.closingTime && row.closingTime.trim() !== '') {
+          // 将 ISO 格式转换为 YYYY-MM-DD HH:mm 格式
+          const timeStr = row.closingTime.substring(0, 16);
+          return timeStr.replace('T', ' ');
+        }
+        // 检查星期模式
+        if (
+          row.closingDayOfWeek !== undefined &&
+          row.closingDayOfWeek !== null
+        ) {
+          const weekDays = [
+            '周日',
+            '周一',
+            '周二',
+            '周三',
+            '周四',
+            '周五',
+            '周六',
+          ];
+          // 截取时间的前5个字符（HH:mm），去掉秒
+          const dayTime = row.closingDayTime
+            ? ` ${row.closingDayTime.substring(0, 5)}`
+            : '';
+          return `${weekDays[row.closingDayOfWeek]}${dayTime}`;
+        }
+        return '-';
+      },
+    },
+    {
+      field: 'etd',
+      title: $t('seaExport.freightRate.etd'),
+      width: 120,
+      formatter: ({ row }) => {
+        if (row.etd) {
+          return formatDateStr(row.etd);
+        }
+        if (row.etdDayOfWeek !== undefined && row.etdDayOfWeek !== null) {
+          const weekDays = [
+            '周日',
+            '周一',
+            '周二',
+            '周三',
+            '周四',
+            '周五',
+            '周六',
+          ];
+          const dayTime = row.etdDayTime ? ` ${row.etdDayTime}` : '';
+          return `${weekDays[row.etdDayOfWeek]}${dayTime}`;
+        }
+        return '-';
+      },
+    },
+    {
+      field: 'validTimeRange',
+      title: $t('seaExport.freightRate.validTimeStart'),
+      width: 220,
+      formatter: ({ row }) => {
+        const startDate = row.validTimeStart;
+        const endDate = row.validTimeEnd;
+
+        // 格式化日期
+        const formatStartDate = startDate ? formatDateStr(startDate) : '';
+        const formatEndDate = endDate ? formatDateStr(endDate) : '';
+
+        if (formatStartDate && formatEndDate) {
+          return `${formatStartDate}~${formatEndDate}`;
+        } else if (formatStartDate) {
+          return `${formatStartDate}~`;
+        } else if (formatEndDate) {
+          return `~${formatEndDate}`;
+        } else {
+          return '-';
+        }
+      },
+    },
+    {
+      field: 'isValid',
+      title: $t('seaExport.freightRate.isValid'),
+      width: 100,
+      slots: { default: 'isValid' },
+    },
+    {
+      field: 'polFreeDays',
+      title: '起运港免用箱',
+      width: 110,
+    },
+    {
+      field: 'podFreeDaysCombined',
+      title: '目的港免箱使天数',
+      width: 280,
+      slots: {
+        default: 'podFreeDaysCombined',
+        header: 'podFreeDaysCombinedHeader',
+      },
+    },
+    {
+      field: 'remark',
+      title: $t('seaExport.freightRate.remark'),
+      minWidth: 150,
+      showOverflow: true,
+    },
+  ];
+
+  // 合并所有列：基础列（前） + 动态箱型列 + 基础列（后）
+  return [
+    ...baseColumnsBeforeCtn,
+    ...dynamicCtnColumns,
+    ...baseColumnsAfterCtn,
+  ];
 }
 
 /**

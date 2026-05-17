@@ -74,7 +74,7 @@ const ORDER_CTN_API_KEYS: Array<
   'transportOrderId',
   'paySide',
   'feeCodeId',
-  'IndustryCategory',
+  'industryCategory',
   'settlementId',
   'currencyId',
   'exchangeRate',
@@ -246,6 +246,7 @@ const addRowData = () => {
     id: '',
     transportOrderId: editId.value,
     paySide: props.type,
+    currencyId: '',
     feeStatus: 0,
     taxRate: 0,
     taskStatus: '',
@@ -502,14 +503,37 @@ const sanitizeOrderFee = (
   items: any[] | undefined,
 ): OrderFeeAdminApi.OrderFeeEditDto[] => {
   if (!items?.length) return [];
+
+  // 定义必须保留的数字类型字段（即使值为0也要保留）
+  const numericFields = new Set([
+    'currencyId',
+    'feeCodeId',
+    'paySide',
+    'feeStatus',
+    'invoiceStatus',
+    'industryCategory',
+    'unitEmum',
+    'dataEntryMethod',
+  ]);
+
   return items.map((item) => {
     const dto: Record<string, any> = {};
     for (const key of ORDER_CTN_API_KEYS) {
       const val = item[key];
-      if (val !== undefined && val !== null) {
-        if (typeof val === 'string' && val === '') continue;
-        dto[key] = val;
+
+      // 跳过 undefined 和 null
+      if (val === undefined || val === null) continue;
+
+      // 对于字符串类型，跳过空字符串
+      if (typeof val === 'string' && val === '') continue;
+
+      // 对于数字类型字段，即使是0也要保留
+      if (numericFields.has(key)) {
+        dto[key] = typeof val === 'number' ? val : Number(val);
+        continue;
       }
+
+      dto[key] = val;
     }
     return dto as OrderFeeAdminApi.OrderFeeEditDto;
   });
