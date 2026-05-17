@@ -111,6 +111,15 @@ const defaultOrderUsers: SeaImportAdminApi.OrderUserAddDto[] = [
   { userAttribute: UserAttribute.CustomerService, sortId: 2 },
   { userAttribute: UserAttribute.Documentation, sortId: 1 },
 ];
+const fixedOrderUserRoles = new Set<number>(
+  defaultOrderUsers
+    .map((item) => item.userAttribute)
+    .filter((item): item is number => item != null),
+);
+const requiredOrderUserRoles: number[] = [
+  UserAttribute.Sales,
+  UserAttribute.Operation,
+];
 const defaultCurrentUserRoleSet = new Set([
   UserAttribute.Operation,
   UserAttribute.CustomerService,
@@ -651,16 +660,19 @@ const orderUserRoleOptions = computed(() => [
     value: UserAttribute.Documentation,
   },
 ]);
-const hasOtherSalesRole = (rowKey: string) =>
-  orderUserRows.value.some(
+const isFixedOrderUserRole = (userAttribute?: number) =>
+  userAttribute != null && fixedOrderUserRoles.has(userAttribute);
+const hasOtherSameRole = (rowKey: string, userAttribute?: number) => {
+  if (userAttribute == null) return false;
+  return orderUserRows.value.some(
     (row) =>
-      row._rowKey !== rowKey && row.userAttribute === UserAttribute.Sales,
+      row._rowKey !== rowKey && row.userAttribute === Number(userAttribute),
   );
+};
 const getOrderUserRoleOptions = (rowKey: string) =>
   orderUserRoleOptions.value.map((option) => ({
     ...option,
-    disabled:
-      option.value === UserAttribute.Sales ? hasOtherSalesRole(rowKey) : false,
+    disabled: hasOtherSameRole(rowKey, option.value),
   }));
 const getOrderUserRoleLabel = (userAttribute?: number) => {
   switch (userAttribute) {
@@ -844,8 +856,19 @@ const updateOrderUserRole = (
   rowKey: string,
   userAttribute: number | undefined,
 ) => {
-  if (userAttribute === UserAttribute.Sales && hasOtherSalesRole(rowKey)) {
-    message.warning('已存在销售角色，其他角色不可再选销售');
+  const currentRow = orderUserRows.value.find((row) => row._rowKey === rowKey);
+  if (
+    currentRow &&
+    isFixedOrderUserRole(currentRow.userAttribute) &&
+    userAttribute !== currentRow.userAttribute
+  ) {
+    message.warning(
+      `${getOrderUserRoleLabel(currentRow.userAttribute)}角色不可修改`,
+    );
+    return;
+  }
+  if (hasOtherSameRole(rowKey, userAttribute)) {
+    message.warning(`${getOrderUserRoleLabel(userAttribute)}角色不可重复添加`);
     return;
   }
   orderUserRows.value = orderUserRows.value.map((row) => {
@@ -860,20 +883,34 @@ const updateOrderUserRole = (
   syncOrderUsersToForm();
 };
 const addOrderUserRole = () => {
-  const hasSales = orderUserRows.value.some(
-    (row) => row.userAttribute === UserAttribute.Sales,
+  const selectedRoleSet = new Set(
+    orderUserRows.value
+      .map((row) => row.userAttribute)
+      .filter((item): item is number => item != null),
   );
+  const hasAvailableRole = orderUserRoleOptions.value.some(
+    (option) => !selectedRoleSet.has(option.value),
+  );
+  if (!hasAvailableRole) {
+    message.warning('销售/商务/操作/客服/单证角色已存在，不可重复添加');
+    return;
+  }
   orderUserRows.value = [
     ...orderUserRows.value,
     {
       _rowKey: makeOrderUserRowKey(),
-      userAttribute: hasSales ? undefined : UserAttribute.Sales,
+      userAttribute: undefined,
       sortId: 0,
     },
   ];
   syncOrderUsersToForm();
 };
 const removeOrderUserRole = (rowKey: string) => {
+  const row = orderUserRows.value.find((item) => item._rowKey === rowKey);
+  if (row && isFixedOrderUserRole(row.userAttribute)) {
+    message.warning(`${getOrderUserRoleLabel(row.userAttribute)}角色不可删除`);
+    return;
+  }
   orderUserRows.value = orderUserRows.value.filter(
     (row) => row._rowKey !== rowKey,
   );
@@ -899,6 +936,16 @@ const validateSalesRoleCount = () => {
   if (salesCount !== 1) {
     message.warning('干系人中必须且只能有一个销售角色');
     return false;
+  }
+  return true;
+};
+const validateOrderUserRequiredAssignee = () => {
+  for (const role of requiredOrderUserRoles) {
+    const row = orderUserRows.value.find((item) => item.userAttribute === role);
+    if (!row?.userId) {
+      message.warning(`${getOrderUserRoleLabel(role)}必须选择人员`);
+      return false;
+    }
   }
   return true;
 };
@@ -1958,6 +2005,9 @@ const handleSubmit = async () => {
   if (!validateSalesRoleCount()) {
     return;
   }
+  if (!validateOrderUserRequiredAssignee()) {
+    return;
+  }
 
   submitting.value = true;
   const [
@@ -2535,6 +2585,7 @@ defineExpose({
                   size="small"
                   class="order-user-panel__delete-btn"
                   title="删除"
+                  :disabled="isFixedOrderUserRole(row.userAttribute)"
                   @click="removeOrderUserRole(row._rowKey)"
                 >
                   <IconifyIcon icon="mdi:trash-can-outline" />
@@ -2647,7 +2698,7 @@ defineExpose({
                       $t('seaImport.import.pleaseSelectUserAttribute')
                     "
                     size="small"
-                    allow-clear
+                    :allow-clear="!isFixedOrderUserRole(row.userAttribute)"
                     class="order-user-panel__role-select"
                     @update:value="(v) => updateOrderUserRole(row._rowKey, v)"
                   />
