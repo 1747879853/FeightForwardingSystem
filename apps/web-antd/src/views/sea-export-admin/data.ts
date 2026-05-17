@@ -1322,9 +1322,15 @@ export function usePortFormSchema(
 export function useCargoFormSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'OrderGoodsButton',
+      component: 'CodeGoodsSelect',
       fieldName: 'orderCodeGoodss',
       label: $t('seaExport.export.orderCodeGoodss'),
+      componentProps: {
+        mode: 'multiple',
+        showNameWithHsCode: true,
+        placeholder: $t('seaExport.export.pleaseSelectGoods'),
+        allowClear: true,
+      },
       formItemClass: 'col-span-2',
     },
     {

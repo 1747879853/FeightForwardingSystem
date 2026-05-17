@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-05-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,6 +22,7 @@ last_updated: 2026-05-16
 # 2. 功能与操作说明 (Features & Operations)
 
 - **AI 识别辅助：** 页面提供“AI识别”按钮，只接受 PDF 文件，调用 `runVisionOcrPdf` 后把识别结果映射回表单字段。
+- **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
 - **创建后跳转：** 新增成功后优先解析接口返回的记录 ID 并跳转 `/sea-exports/{id}/edit`；若返回值无法解析，则回到 `/sea-exports` 列表。
 
@@ -64,5 +65,6 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-17 | `Fix` | 海运出口新建页“品名”由弹窗维护改为可搜索多选下拉，并统一展示为“品名-海关代码”；输入区宽度按内容自适应扩展，同时保留 `orderCodeGoodss` 提交结构。 | 无 |
 | 2026-05-16 | `Parsing` | 无 | 结合 `form.vue`、`data.ts` 与 `SeaExportAddDto` 补全新建页多表单分区、服务项目、港口备注联动、AI PDF 识别、DTO 双层映射和创建后跳转逻辑。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/sea-exports/create` 对应组件 `src/views/sea-export-admin/form.vue`，权限口径为 未在路由中声明独立权限。 |

@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-17] [海运出口新建页品名改为可搜索多选下拉](./changelogs/change-log-2026-05-17-sea-export-create-goods-multiselect.md)
 - [2026-05-17] [分页选择器增加搜索过期回包防护，避免历史数据回灌](./changelogs/change-log-2026-05-17-paged-select-stale-response-guard.md)
 - [2026-05-16] [权限新增键 i18n 补齐（二批）](./changelogs/change-log-2026-05-16-auth-permission-i18n-keys-second-batch.md)
 - [2026-05-16] [权限新增键 i18n 补齐](./changelogs/change-log-2026-05-16-auth-permission-i18n-keys.md)

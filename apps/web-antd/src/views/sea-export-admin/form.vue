@@ -516,7 +516,10 @@ const cargoTypeSchema = [
   .map((item) => ({
     ...item,
     hideLabel: true,
-    formItemClass: 'cargo-type-inline-item',
+    formItemClass:
+      item.fieldName === 'orderCodeGoodss'
+        ? 'cargo-type-inline-item cargo-type-inline-item--goods'
+        : 'cargo-type-inline-item cargo-type-inline-item--cargo',
   }));
 const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
   layout: 'horizontal',
@@ -1429,7 +1432,9 @@ const flattenDetail = (
     kgs: to?.kgs,
     cbm: to?.cbm,
     internalRemark: to?.internalRemark,
-    orderCodeGoodss: to?.orderCodeGoodss ?? [],
+    orderCodeGoodss: (to?.orderCodeGoodss ?? [])
+      .map((item: any) => item?.codeGoodsId)
+      .filter((id: any) => id !== undefined && id !== null),
     orderUsers: to?.orderUsers ?? [],
   };
 };
@@ -1892,7 +1897,11 @@ const buildDto = (values: Record<string, any>) => {
     kgs: values.kgs,
     cbm: values.cbm,
     internalRemark: values.internalRemark,
-    orderCodeGoodss: values.orderCodeGoodss ?? [],
+    orderCodeGoodss: (values.orderCodeGoodss ?? [])
+      .filter(
+        (codeGoodsId: any) => codeGoodsId !== undefined && codeGoodsId !== null,
+      )
+      .map((codeGoodsId: number) => ({ codeGoodsId })),
     orderCtns: sanitizeOrderCtns(orderCtns.value),
     orderUsers: sanitizeOrderUsers(values.orderUsers),
   };
@@ -2812,9 +2821,10 @@ defineExpose({
 
 .cargo-type-inline-wrap {
   display: flex;
+  flex: 1;
   align-items: center;
   min-width: 440px;
-  max-width: 560px;
+  max-width: 100%;
 }
 
 .cargo-type-inline-wrap :deep(.ant-form-item) {
@@ -2826,7 +2836,7 @@ defineExpose({
 }
 
 .cargo-type-inline-wrap :deep(.grid.grid-cols-2) {
-  grid-template-columns: 160px 240px;
+  grid-template-columns: 160px minmax(240px, 1fr);
 }
 
 .cargo-type-inline-wrap :deep(.cargo-type-inline-item) {
@@ -2841,7 +2851,22 @@ defineExpose({
   width: 100%;
 }
 
-.cargo-type-inline-wrap :deep(.ant-select),
+.cargo-type-inline-wrap :deep(.cargo-type-inline-item--goods > .flex-auto) {
+  width: fit-content;
+  min-width: 240px;
+  max-width: 100%;
+}
+
+.cargo-type-inline-wrap :deep(.cargo-type-inline-item--cargo .ant-select) {
+  width: 160px;
+}
+
+.cargo-type-inline-wrap :deep(.cargo-type-inline-item--goods .ant-select) {
+  width: fit-content;
+  min-width: 240px;
+  max-width: 100%;
+}
+
 .cargo-type-inline-wrap :deep(.ant-btn) {
   width: 100%;
 }

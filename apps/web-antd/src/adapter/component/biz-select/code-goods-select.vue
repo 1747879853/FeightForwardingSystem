@@ -18,6 +18,8 @@ import { usePagedSelect } from './use-paged-select';
 interface Props {
   /** label 字段名，默认 'name'，可用值：'name' | 'code' | 'enName' */
   labelKey?: string;
+  /** 是否展示“品名-海关代码” */
+  showNameWithHsCode?: boolean;
   /** 每页数量，默认 20 */
   pageSize?: number;
   /** placeholder */
@@ -30,6 +32,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   labelKey: 'name',
+  showNameWithHsCode: false,
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],
@@ -43,6 +46,26 @@ const emit = defineEmits<{
 const modelValue = defineModel<any>();
 const selectedItemsRef = toRef(props, 'selectedItems');
 
+const toSafeText = (value: unknown) => {
+  if (value === undefined || value === null) return '';
+  return String(value).trim();
+};
+
+const formatLabel = (
+  item: CodeGoodsAdminApi.CodeGoodsDto,
+  fallback: string,
+) => {
+  if (!props.showNameWithHsCode) {
+    return fallback;
+  }
+  const name = toSafeText(item.name);
+  const hsCode = toSafeText(item.hsCode);
+  if (name && hsCode) {
+    return `${name}-${hsCode}`;
+  }
+  return name || hsCode || fallback;
+};
+
 const mapItemToOption = (item: CodeGoodsAdminApi.CodeGoodsDto) => {
   const itemAny = item as any;
   let label = itemAny?.[props.labelKey];
@@ -53,6 +76,7 @@ const mapItemToOption = (item: CodeGoodsAdminApi.CodeGoodsDto) => {
     label = item.name || item.enName;
   }
   label = label || item.name || item.code || item.enName || '';
+  label = formatLabel(item, label);
 
   const rawValue = itemAny?.[props.valueKey];
   return {
