@@ -1403,8 +1403,8 @@ export function useCargoFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Textarea',
-      fieldName: 'remark',
-      label: '备注',
+      fieldName: 'internalRemark',
+      label: `${$t('seaExport.export.internalRemark')}(仅内部可见)`,
       componentProps: {
         allowClear: true,
         rows: 3,
@@ -1414,8 +1414,8 @@ export function useCargoFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Textarea',
-      fieldName: 'internalRemark',
-      label: `${$t('seaExport.export.internalRemark')}(仅内部可见)`,
+      fieldName: 'remark',
+      label: '外部备注',
       componentProps: {
         allowClear: true,
         rows: 3,
