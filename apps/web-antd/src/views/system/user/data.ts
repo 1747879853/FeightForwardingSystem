@@ -87,25 +87,6 @@ export function formatUserAttribute(value: number | undefined): string {
     .join(', ');
 }
 
-/** 用户状态选项 */
-export const userStatusOptions = [
-  {
-    label: () => $t('system.user.statusNormal'),
-    value: UserStatus.Passed,
-    color: 'success',
-  },
-  {
-    label: () => $t('system.user.statusPending'),
-    value: UserStatus.Pending,
-    color: 'warning',
-  },
-  {
-    label: () => $t('system.user.statusDisabled'),
-    value: UserStatus.Unpassed,
-    color: 'error',
-  },
-];
-
 /** 性别选项 */
 export function getGenderOptions() {
   return [
@@ -310,7 +291,7 @@ export function useFormSchema(): VbenFormSchema[] {
       label: $t('system.user.isActiveLabel'),
       dependencies: {
         triggerFields: ['isActive'],
-        componentProps: (values, _formApi) => {
+        componentProps: (_values, _formApi) => {
           return {
             onChange: (e: any) => {
               const newVal = e?.target?.value ?? e;
@@ -360,17 +341,14 @@ export function useFormSchema(): VbenFormSchema[] {
       label: $t('system.user.department'),
     },
     {
-      component: 'Select',
-      componentProps: {
-        options: userStatusOptions.map((opt) => ({
-          label: opt.label(),
-          value: opt.value,
-        })),
-        placeholder: $t('system.user.status'),
-      },
+      component: 'Input',
       defaultValue: UserStatus.Passed,
       fieldName: 'status',
       label: $t('system.user.status'),
+      dependencies: {
+        show: false,
+        triggerFields: ['status'],
+      },
     },
     {
       component: 'CheckboxGroup',
@@ -458,19 +436,6 @@ export function useGridFormSchema(): VbenFormSchema[] {
       label: $t('system.user.userAttribute'),
     },
     {
-      component: 'Select',
-      componentProps: {
-        allowClear: true,
-        options: userStatusOptions.map((opt) => ({
-          label: opt.label(),
-          value: opt.value,
-        })),
-        placeholder: $t('system.user.status'),
-      },
-      fieldName: 'Status',
-      label: $t('system.user.status'),
-    },
-    {
       component: 'RoleSelect',
       componentProps: {
         allowClear: true,
@@ -487,7 +452,10 @@ export function useGridFormSchema(): VbenFormSchema[] {
  */
 export function useColumns<T = SystemUserAdminApi.SystemUser>(
   onActionClick: OnActionClickFn<T>,
-  onStatusChange?: (newStatus: any, row: T) => PromiseLike<boolean | undefined>,
+  _onStatusChange?: (
+    newStatus: any,
+    row: T,
+  ) => PromiseLike<boolean | undefined>,
 ): VxeTableGridOptions['columns'] {
   return [
     {
@@ -563,19 +531,6 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
         cellValue === false
           ? $t('system.user.enableOff')
           : $t('system.user.enableOn'),
-    },
-    {
-      cellRender: {
-        name: 'CellTag',
-        options: userStatusOptions.map((opt) => ({
-          color: opt.color,
-          label: opt.label(),
-          value: opt.value,
-        })),
-      },
-      field: 'status',
-      title: $t('system.user.status'),
-      width: 100,
     },
     {
       field: 'creationTime',

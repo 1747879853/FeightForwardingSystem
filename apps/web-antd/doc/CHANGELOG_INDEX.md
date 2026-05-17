@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-17] [人员管理移除账号状态展示，仅保留账号启用判断](./changelogs/change-log-2026-05-17-system-user-account-status-removed.md)
 - [2026-05-17] [Carrier 分页查询参数按 Swagger 对齐](./changelogs/change-log-2026-05-17-carrier-paging-query-params-align.md)
 - [2026-05-17] [CarrierAdmin 接口恢复 Async 后缀](./changelogs/change-log-2026-05-17-carrier-admin-async-suffix-align.md)
 - [2026-05-17] [船公司新增 Logo 字段前端对接](./changelogs/change-log-2026-05-17-carrier-logo-field-integration.md)
