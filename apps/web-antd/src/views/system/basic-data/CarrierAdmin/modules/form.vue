@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
+import type { Attachment } from '#/api/common/upload';
 
 import { computed, ref } from 'vue';
 
@@ -31,6 +32,33 @@ const [Form, formApi] = useVbenForm({
   showDefaultActions: false,
 });
 
+const mapLogoFormValue = (
+  logo?: null | CarrierAdminApi.AttachmentItemDto,
+): Attachment[] => {
+  if (!logo?.attachmentId) {
+    return [];
+  }
+  return [
+    {
+      attachmentId: logo.attachmentId,
+      fileName: logo.friendlyFileName || 'logo',
+      filePath: undefined,
+      url: logo.url || '',
+    },
+  ];
+};
+
+const buildLogoPayload = (logoValue?: Attachment[]) => {
+  const firstAttachment = logoValue?.[0];
+  if (!firstAttachment?.attachmentId) {
+    return null;
+  }
+  return {
+    attachmentId: Number(firstAttachment.attachmentId),
+    displayOrder: 0,
+  };
+};
+
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     const { valid } = await formApi.validate();
@@ -51,9 +79,9 @@ const [Modal, modalApi] = useVbenModal({
           enName: values.enName,
           code: values.code,
           otherCode: values.otherCode,
-          countryId: values.countryId,
           ediCode: values.ediCode,
           remark: values.remark,
+          logo: buildLogoPayload(values.logo),
         });
       } else {
         // 新增模式
@@ -63,9 +91,9 @@ const [Modal, modalApi] = useVbenModal({
           enName: values.enName,
           code: values.code,
           otherCode: values.otherCode,
-          countryId: values.countryId,
           ediCode: values.ediCode,
           remark: values.remark,
+          logo: buildLogoPayload(values.logo),
         });
       }
       message.success($t('ui.actionMessage.operationSuccess'));
@@ -93,9 +121,9 @@ const [Modal, modalApi] = useVbenModal({
           enName: detail.enName,
           code: detail.code,
           otherCode: detail.otherCode,
-          countryId: detail.countryId,
           ediCode: detail.ediCode,
           remark: detail.remark,
+          logo: mapLogoFormValue(detail.logo),
         });
       } finally {
         modalApi.lock(false);

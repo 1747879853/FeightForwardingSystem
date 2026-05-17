@@ -2,7 +2,7 @@
 title: 船公司资料
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-05-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -35,9 +35,9 @@ last_updated: 2026-05-16
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **编码** | 基础资料唯一或半唯一识别字段。 | `src/views/system/basic-data/CarrierAdmin/data.ts` | **触发/依赖：** 被业务单据或下拉组件引用。 | 唯一性和格式以后端为准。 |
-| **名称** | 给业务用户识别的显示值。 | `src/views/system/basic-data/CarrierAdmin/data.ts` | **触发/依赖：** 列表、表单、下拉组件共同展示。 | 通常不能为空。 |
-| **启用状态** | 控制资料是否可被业务选择。 | `src/api/system/base-data/*.ts` | **触发/依赖：** 禁用后不应继续作为新业务选择项。 | 历史单据展示需兼容旧值。 |
+| **cnName / cnShortName / enName / code** | 船公司中英文名称与代码标识。 | `src/views/system/basic-data/CarrierAdmin/data.ts` | **触发/依赖：** 被运价、委托等下游选择器复用。 | 由表单长度限制与后端必填规则共同约束。 |
+| **logo** | 船公司 Logo 附件（单文件）。 | `src/views/system/basic-data/CarrierAdmin/modules/form.vue`<br/>`src/api/system/base-data/carrier-admin.ts` | **触发/依赖：** 上传后取 `attachmentId`，提交为 `logo.attachmentId`。无值时传 `null` 可清空。 | 限制为图片类型、单文件上传。 |
+| **remark / otherCode / ediCode** | 业务补充说明与扩展编码信息。 | `src/views/system/basic-data/CarrierAdmin/data.ts` | **触发/依赖：** 用于检索和业务识别补充。 | 文本长度受前端与后端共同限制。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -47,4 +47,6 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-17 | `Feature/Fix` | 将 `CarrierAdmin` 所有前端 API 路径统一恢复为 `Async` 后缀（GetPagedList/Detail/Add/Edit/Delete），避免路由不匹配。 | 字段协议（logo、分页参数）与接口命名后缀是独立维度，本次仅修正路由命名，不回退 DTO 对接。 |
+| 2026-05-17 | `Feature/Fix` | `/basic-data/carrier` 对接新版 `CarrierAdmin` 协议：移除 `countryId`，新增 `logo` 上传与提交；列表增加 Logo 文件名展示。 | 船公司 API 分页参数按 Swagger 对齐为 `Keyword/.../PageIndex/PageSize`，并同步影响 `carrier-select` 与海运出口运价模块对船公司下拉的分页调用。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/carrier` 对应组件 `src/views/system/basic-data/CarrierAdmin/list.vue`，权限口径为 Admin.Carrier / Admin.Carrier.Get。 |

@@ -13,6 +13,7 @@
       "code": "英文简称",
       "otherCode": "代码别名",
       "countryId": "国家",
+      "logo": "Logo",
       "ediCode": "EDI代码",
       "remark": "备注",
       "keyword": "关键字",

@@ -23,7 +23,7 @@
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-05-16 |
 | audit-approval | `/audit-approval/payment-review` | 审核审批 | 处理付款申请单的审核任务，支持批量或单条通过、驳回。 | [付款申请审核](./modules/audit-approval/payment-review.md) | 2026-05-16 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 展示单个费用审核任务的详细信息和对应费用实体。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-05-16 |
-| basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-05-16 |
+| basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-05-17 |
 | basic-data | `/basic-data/code-invoice` | 基础资料 | 维护发票相关代码，支撑客户发票资料和结算开票口径。 | [发票代码](./modules/basic-data/code-invoice.md) | 2026-05-16 |
 | basic-data | `/basic-data/code-service` | 基础资料 | 维护服务项目代码，支撑委托服务项与费用识别。 | [服务代码](./modules/basic-data/code-service.md) | 2026-05-16 |
 | basic-data | `/basic-data/code-goods` | 基础资料 | 维护货物类型代码，支撑委托货物信息录入。 | [货物代码](./modules/basic-data/code-goods.md) | 2026-05-16 |

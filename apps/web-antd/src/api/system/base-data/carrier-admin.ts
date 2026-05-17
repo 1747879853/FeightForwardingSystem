@@ -1,6 +1,27 @@
 import { requestClient } from '#/api/request';
 
 export namespace CarrierAdminApi {
+  export interface AttachmentItemForItemInputDto {
+    attachmentId: number;
+    displayOrder?: number;
+  }
+
+  export interface AttachmentItemDto {
+    id: number;
+    attachmentId: number;
+    itemId?: string;
+    moduleTypeId?: string;
+    isFirstShow?: boolean;
+    displayOrder?: number;
+    url?: string;
+    mediaType?: number;
+    friendlyFileName?: string;
+    fileLength?: null | number;
+    creationTime?: null | string;
+    creatorUserId?: null | number;
+    creatorUserNickName?: null | string;
+  }
+
   /** 新增船公司参数 */
   export interface CarrierAddDto {
     cnName?: string;
@@ -8,9 +29,9 @@ export namespace CarrierAdminApi {
     enName?: string;
     code?: string;
     otherCode?: string;
-    countryId?: number;
     ediCode?: string;
     remark?: string;
+    logo?: AttachmentItemForItemInputDto | null;
   }
 
   /** 编辑船公司参数 */
@@ -21,9 +42,9 @@ export namespace CarrierAdminApi {
     enName?: string;
     code?: string;
     otherCode?: string;
-    countryId?: number;
     ediCode?: string;
     remark?: string;
+    logo?: AttachmentItemForItemInputDto | null;
   }
 
   /** 船公司详情 */
@@ -34,15 +55,9 @@ export namespace CarrierAdminApi {
     enName?: string;
     code?: string;
     otherCode?: string;
-    countryId?: number;
     ediCode?: string;
     remark?: string;
-    country?: {
-      id: number;
-      cnName?: string;
-      enName?: string;
-      code?: string;
-    };
+    logo?: null | AttachmentItemDto;
     creationTime?: string;
     lastModificationTime?: string;
   }
@@ -63,7 +78,6 @@ export namespace CarrierAdminApi {
     EnName?: string;
     Code?: string;
     OtherCode?: string;
-    CountryId?: number;
     EdiCode?: string;
     Remark?: string;
     Sorting?: string;
@@ -94,7 +108,7 @@ export const getCarrierDetail = (id: number | string) => {
   const idStr = id === undefined || id === null || id === '' ? '' : String(id);
   return requestClient.get<CarrierAdminApi.CarrierDto>(
     `${API_PREFIX}/DetailAsync`,
-    { params: { Id: idStr } },
+    { params: { id: idStr } },
   );
 };
 

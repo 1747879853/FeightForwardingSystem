@@ -120,13 +120,6 @@ export function useFormSchema(): VbenFormSchema[] {
         .optional(),
     },
     {
-      component: 'CountrySelect',
-      fieldName: 'countryId',
-      label: $t('system.basicData.carrier.countryId'),
-      defaultValue: undefined,
-      rules: z.number().optional(),
-    },
-    {
       component: 'Input',
       fieldName: 'ediCode',
       label: $t('system.basicData.carrier.ediCode'),
@@ -143,6 +136,16 @@ export function useFormSchema(): VbenFormSchema[] {
           ]),
         )
         .optional(),
+    },
+    {
+      component: 'FileUploadInput',
+      fieldName: 'logo',
+      label: $t('system.basicData.carrier.logo'),
+      componentProps: {
+        allowedTypes: ['png', 'jpg', 'jpeg', 'webp', 'svg'],
+        maxCount: 1,
+        maxSizeMB: 5,
+      },
     },
     {
       component: 'Textarea',
@@ -197,6 +200,13 @@ export function useColumns(
       field: 'otherCode',
       title: $t('system.basicData.carrier.otherCode'),
       minWidth: 120,
+    },
+    {
+      field: 'logo',
+      title: $t('system.basicData.carrier.logo'),
+      minWidth: 140,
+      formatter: ({ row }) => row.logo?.friendlyFileName || '-',
+      showOverflow: true,
     },
     {
       field: 'ediCode',
