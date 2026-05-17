@@ -21,11 +21,73 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
+      - name: Print workflow context
+        shell: pwsh
+        run: |
+          Write-Host "=== Workflow Context ==="
+          Write-Host "Run ID: $env:GITHUB_RUN_ID"
+          Write-Host "Run Number: $env:GITHUB_RUN_NUMBER"
+          Write-Host "Run Attempt: $env:GITHUB_RUN_ATTEMPT"
+          Write-Host "Repository: $env:GITHUB_REPOSITORY"
+          Write-Host "Ref: $env:GITHUB_REF"
+          Write-Host "SHA: $env:GITHUB_SHA"
+          Write-Host "Actor: $env:GITHUB_ACTOR"
+          Write-Host "Runner OS: $env:RUNNER_OS"
+          Write-Host "Runner Name: $env:RUNNER_NAME"
+
       - name: Setup Node and pnpm
         uses: ./.github/actions/setup-node
 
+      - name: Print toolchain versions
+        shell: pwsh
+        run: |
+          Write-Host "=== Toolchain ==="
+          node --version
+          pnpm --version
+          git --version
+
       - name: Build web-antd
         run: pnpm run build:antd
+
+      - name: Verify build artifacts and hash
+        shell: pwsh
+        run: |
+          Write-Host "=== Build Artifact Check ==="
+          if (-not (Test-Path "./apps/web-antd/dist")) {
+            Write-Error "dist directory not found"
+            exit 1
+          }
+          $files = Get-ChildItem "./apps/web-antd/dist" -Recurse -File
+          Write-Host ("dist file count: {0}" -f $files.Count)
+          $indexFile = "./apps/web-antd/dist/index.html"
+          if (Test-Path $indexFile) {
+            $hash = (Get-FileHash $indexFile -Algorithm SHA256).Hash
+            Write-Host ("dist/index.html sha256: {0}" -f $hash)
+          } else {
+            Write-Warning "dist/index.html not found"
+          }
+          Get-ChildItem "./apps/web-antd/dist" | Select-Object -First 20 | Format-Table -AutoSize
+
+      - name: Pre-deploy connectivity check
+        shell: pwsh
+        env:
+          IIS_SERVER_IP: ${{ secrets.IIS_SERVER_IP }}
+          IIS_SITE_NAME: ${{ secrets.IIS_SITE_NAME }}
+        run: |
+          Write-Host "=== Pre-deploy Connectivity Check ==="
+          Write-Host ("Target site path: {0}" -f $env:IIS_SITE_NAME)
+          $tcp = Test-NetConnection -ComputerName $env:IIS_SERVER_IP -Port 8172 -WarningAction SilentlyContinue
+          Write-Host ("TCP 8172 reachable: {0}" -f $tcp.TcpTestSucceeded)
+          if (-not $tcp.TcpTestSucceeded) {
+            Write-Warning "Port 8172 is not reachable from runner. Deploy may fail."
+          }
+          try {
+            $uri = "https://$($env:IIS_SERVER_IP):8172/msdeploy.axd"
+            $resp = Invoke-WebRequest -Uri $uri -Method Head -TimeoutSec 20 -UseBasicParsing
+            Write-Host ("msdeploy endpoint status: {0}" -f $resp.StatusCode)
+          } catch {
+            Write-Warning ("HEAD request failed: {0}" -f $_.Exception.Message)
+          }
 
       - name: Deploy to IIS via Web Deploy
         uses: ChristopheLav/iis-deploy@v1
@@ -36,3 +98,14 @@ jobs:
           msdeploy-password: ${{ secrets.IIS_PWD }}
           source-path: ./apps/web-antd/dist
           skip-extra-files: false
+
+      - name: Post-deploy summary
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          Write-Host "=== Post Deploy Summary ==="
+          Write-Host ("Job status: {0}" -f "${{ job.status }}")
+          Write-Host "If deployment succeeds but server files look unchanged:"
+          Write-Host "1) Confirm IIS_SITE_NAME points to correct site/app (e.g. feight-web/dist)."
+          Write-Host "2) Confirm that app physical path maps to D:\\web\\feight-web\\dist."
+          Write-Host "3) Compare dist/index.html hash from this run with server file hash."
