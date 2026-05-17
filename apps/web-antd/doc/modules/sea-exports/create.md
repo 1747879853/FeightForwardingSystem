@@ -33,23 +33,22 @@ last_updated: 2026-05-16
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **委托单位** | 委托客户，是运输单必填主体。 | 客户表中客户属性是【委托单位】的客户 | **触发/依赖：** 选择委托单位后，自动带出干系人 | 必填 |
-| **委托编号** | 业务委托号，需要配置编号生成规则 | 自动生成 |  | 前端禁用，不手工录入。 |
-| **会计期间** | 财务期间 | `transportOrder.accountDate`、`transportOrder.settlementDate` | **触发/依赖：** 新建、编辑后，后端根据 开船日期 的时间精度到月，没有开船日期，则使用当前时间，精度到月。 | 禁止手动修改。 |
-| **应结日期** | 结算日期。 | `transportOrder.accountDate`、`transportOrder.settlementDate` | **触发/依赖：** 新建态由后端/业务规则生成；更改单也依赖会计期间。 | 前端禁用。 |
-| **业务来源 / 运费条款 / 服务代码 / 贸易条款** | 委托业务属性。 | `CodeSourceSelect`、`CodeFrtSelect`、`CodeServiceSelect`、贸易条款枚举 | **触发/依赖：** 写入 `transportOrder`，影响列表展示和后续业务判断。 | 选择项需来自有效基础资料或枚举。 |
-| **装运方式** | 整柜、拼箱分票、拼箱主票。 | `blType` 枚举 `0/1/2` | **触发/依赖：** 默认整柜；影响箱型、分单和提单业务理解。 | 需选择枚举值。 |
-| **订单类型** | 直单或分单。 | `billType` 枚举 `0/1` | **触发/依赖：** 默认直单；分单场景会继续使用编辑工作台的分单模块。 | 需选择枚举值。 |
-| **提单/副本份数** | 正本和副本份数。 | `BillCountsInput` -> `noBillEnum`、`copyNoBillEnum` | **触发/依赖：** 一个组件同时维护两个字段。 | 选项为 One 到 Ten。 |
-| **签单方式** | 签单业务分类。 | `CodeIssueTypeSelect` -> `codeIssueTypeId`，兼容旧字段 `issueType` | **触发/依赖：** DTO 同时保留新版和旧版字段兼容。 | 需选择有效代码资料。 |
-| **船名航次** | 船名和内航次。 | `VesselVoyageInput` -> `vessel`、`innerVoyno` | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 |
-| **服务项目** | 订舱、拖车、报关、仓库、保险等是否启用及对应服务商。 | 服务项卡片、客户选择组件；`serviceTypes` 枚举 `0-4` | **触发/依赖：** 勾选后允许选择服务主体；取消勾选会清空主体值。 | 只提交已启用的服务类型。 |
-| **相关方** | 发货人、收货人、通知人、第二通知人、目的港代理及文本内容。 | 客户选择组件，行业类别分别为 `b/e/h/s` 等 | **触发/依赖：** 文本内容可作为名称资料补充；支持复制收货人到通知人。 | 需选择有效客户或填写内容，具体以后端校验为准。 |
-| **订单人员** | 销售、商务、操作、客服、单证等角色用户。 | `UserSelect`、`UserAttribute` 枚举 -> `transportOrder.orderUsers` | **触发/依赖：** 提交前按 `sortId` 排序并清洗无效行；当前用户可自动进入部分角色。 | 销售角色最多一行；无用户 ID 的行不提交。 |
-| **港口链路** | 收货地、起运港、中转港 1/2、目的港、交货地。 | `PortSelect` -> `receivePortId/polId/poT1Id/poT2Id/podId/deliverPortId` | **触发/依赖：** 选择港口后自动写入对应备注字段。 | 港口需来自港口基础资料。 |
-| **船期时间** | 货好、开船、到港、截 VGM、截单、截舱单、签单时间。 | 日期组件 -> `goodsCompleteTime/etd/eta/closeVgmTime/closeDocTime/closeManifestTime/signingTime` | **触发/依赖：** 提交时统一转 ISO 字符串。 | 日期组件控制格式；可为空。 |
-| **货物与箱型箱量** | 品名、唛头、件数、包装、毛重、体积和箱明细。 | `OrderGoodsButton`、`OrderCtnTable`、包装/货物/箱型基础资料 | **触发/依赖：** 提交时移除 `_rowKey` 等前端字段，只保留 API 字段。 | 数量类字段限制最小值和精度；箱明细至少需有有效箱型才有业务意义。 |
-| **收付款部门** | 委托归属的组织单位。 | `getOrganizationUnitTree` -> `organizationUnits` | **触发/依赖：** 勾选代收支/收付款部门后提交组织数组。 | 需选择组织树中的有效节点。 |
+| **委托单位** | 委托客户，是运输单必填主体。 | `transportOrder.clientId`；`ClientSelect`（客户属性为委托单位） | **触发/依赖：** 选择委托单位后，自动带出干系人。 | 必填。 |
+| **委托编号** | 业务委托号。 | `transportOrder.commissionNum`；按编号生成规则自动生成 |  | 前端禁用，不手工录入。 |
+| **会计期间** | 财务期间。 | `transportOrder.accountDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到月计算；无开船日期则取当前时间（到月）。 | 禁止手动修改。 |
+| **应结日期** | 结算日期。 | `transportOrder.settlementDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到天计算；无开船日期则取当前时间（到天），并结合委托单位账期规则。 | 禁止手动修改。 |
+| **所属公司** | 业务单所属公司。 | `organizationUnits` | **触发/依赖：** 新建、编辑保存后，后端根据干系人中销售所属公司自动生成。 | 禁止手动修改。 |
+| **业务来源** | 订单业务来源分类。 | `transportOrder.codeSourceId`；`CodeSourceSelect`（基础数据） | - | - |
+| **付费方式** | 运费付费方式。 | `transportOrder.codeFrtId`；`CodeFrtSelect`（基础数据） | - | - |
+| **付费地点** | 运费支付地点港口。 | `transportOrder.prepareAtId`；`PortSelect`（基础数据） | **触发/依赖：** 付费方式为预付时显示起运港（`polId`）；为到付时显示交货地（`deliverPortId`）。 | - |
+| **运输条款** | 运输服务条款。 | `transportOrder.codeServiceId`；`CodeServiceSelect`（基础数据） | - | - |
+| **贸易条款** | 贸易术语类型。 | `transportOrder.tradeTermsType`；枚举（CIF / FOB / EXW 等） | - | - |
+| **业务锁定** | 业务资料是否锁定。 | `transportOrder.isBusinessLocking`；后端默认未锁定 | - | 禁止手动修改。 |
+| **费用锁定** | 费用是否锁定。 | `transportOrder.feeLocked`；后端默认未锁定 | - | 禁止手动修改。 |
+| **装运方式** | 整柜、拼箱分票、拼箱主票。 | `blType`；枚举 `0` 整柜 / `1` 拼箱分票 / `2` 拼箱主票 | **触发/依赖：** 默认整柜。 | - |
+| **订单类型** | 直单或分单。 | `billType`；枚举 `0` 直单 / `1` 分单 | **触发/依赖：** 默认直单。 | - |
+
+| **提单/副本份数** | 正本和副本份数。 | `BillCountsInput` -> `noBillEnum`、`copyNoBillEnum` | **触发/依赖：** 一个组件同时维护两个字段。 | 选项为 One 到 Ten。 | | **签单方式** | 签单业务分类。 | `CodeIssueTypeSelect` -> `codeIssueTypeId`，兼容旧字段 `issueType` | **触发/依赖：** DTO 同时保留新版和旧版字段兼容。 | 需选择有效代码资料。 | | **船名航次** | 船名和内航次。 | `VesselVoyageInput` -> `vessel`、`innerVoyno` | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 | | **服务项目** | 订舱、拖车、报关、仓库、保险等是否启用及对应服务商。 | 服务项卡片、客户选择组件；`serviceTypes` 枚举 `0-4` | **触发/依赖：** 勾选后允许选择服务主体；取消勾选会清空主体值。 | 只提交已启用的服务类型。 | | **相关方** | 发货人、收货人、通知人、第二通知人、目的港代理及文本内容。 | 客户选择组件，行业类别分别为 `b/e/h/s` 等 | **触发/依赖：** 文本内容可作为名称资料补充；支持复制收货人到通知人。 | 需选择有效客户或填写内容，具体以后端校验为准。 | | **订单人员** | 销售、商务、操作、客服、单证等角色用户。 | `UserSelect`、`UserAttribute` 枚举 -> `transportOrder.orderUsers` | **触发/依赖：** 提交前按 `sortId` 排序并清洗无效行；当前用户可自动进入部分角色。 | 销售角色最多一行；无用户 ID 的行不提交。 | | **港口链路** | 收货地、起运港、中转港 1/2、目的港、交货地。 | `PortSelect` -> `receivePortId/polId/poT1Id/poT2Id/podId/deliverPortId` | **触发/依赖：** 选择港口后自动写入对应备注字段。 | 港口需来自港口基础资料。 | | **船期时间** | 货好、开船、到港、截 VGM、截单、截舱单、签单时间。 | 日期组件 -> `goodsCompleteTime/etd/eta/closeVgmTime/closeDocTime/closeManifestTime/signingTime` | **触发/依赖：** 提交时统一转 ISO 字符串。 | 日期组件控制格式；可为空。 | | **货物与箱型箱量** | 品名、唛头、件数、包装、毛重、体积和箱明细。 | `OrderGoodsButton`、`OrderCtnTable`、包装/货物/箱型基础资料 | **触发/依赖：** 提交时移除 `_rowKey` 等前端字段，只保留 API 字段。 | 数量类字段限制最小值和精度；箱明细至少需有有效箱型才有业务意义。 | | **收付款部门** | 委托归属的组织单位。 | `getOrganizationUnitTree` -> `organizationUnits` | **触发/依赖：** 勾选代收支/收付款部门后提交组织数组。 | 需选择组织树中的有效节点。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
