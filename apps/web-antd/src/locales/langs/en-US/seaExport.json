@@ -105,6 +105,7 @@
     "deliverPortId": "Place of Delivery",
     "eta": "ETA",
     "etd": "ETD",
+    "atd": "ATD",
     "feeLock": {
       "accountDateEnd": "Account Period To",
       "accountDateStart": "Account Period From",

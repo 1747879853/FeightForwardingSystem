@@ -137,6 +137,7 @@ const allDisplayFields: DisplayFieldConfig[] = [
     visible: true,
   },
   { key: 'etd', label: $t('seaExport.export.etd'), visible: true },
+  { key: 'atd', label: $t('seaExport.export.atd'), visible: true },
   { key: 'eta', label: $t('seaExport.export.eta'), visible: true },
   {
     key: 'closingTime',
@@ -238,6 +239,9 @@ const displayList = computed(() => {
         break;
       case 'etd':
         value = formatNormalDate(formValues.value?.etd);
+        break;
+      case 'atd':
+        value = formatNormalDate(formValues.value?.atd);
         break;
       case 'eta':
         value = formatNormalDate(formValues.value?.eta);

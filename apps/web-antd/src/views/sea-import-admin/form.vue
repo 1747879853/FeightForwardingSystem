@@ -3095,7 +3095,7 @@ defineExpose({
 
 .shipment-flow-divider {
   position: absolute;
-  inset: 0 auto 0 50%;
+  inset: 0 auto 0 42.65%;
   z-index: 2;
   width: 2px;
   pointer-events: none;

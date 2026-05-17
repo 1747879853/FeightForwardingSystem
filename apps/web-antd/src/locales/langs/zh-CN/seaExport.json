@@ -34,6 +34,7 @@
     "copyNoBillEnum": "副本份数",
     "goodsCompleteTime": "货好时间",
     "etd": "开船日期",
+    "atd": "实际开船",
     "bizDate": "业务日期",
     "eta": "预抵日期",
     "closingTime": "截关日期",

@@ -104,6 +104,7 @@ export namespace SeaExportAdminApi {
     remark?: string;
     goodsCompleteTime?: string;
     etd?: string;
+    atd?: string;
     eta?: string;
     /** 品名列表 */
     orderCodeGoodss?: OrderCodeGoodsAddDto[];

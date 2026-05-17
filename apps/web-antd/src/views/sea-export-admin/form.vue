@@ -360,7 +360,7 @@ const [ShipmentForm, shipmentFormApi] = useVbenForm({
     (item) => !SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES.has(item.fieldName),
   ),
   showDefaultActions: false,
-  wrapperClass: 'shipment-flow-wrap grid-cols-6 gap-x-8',
+  wrapperClass: 'shipment-flow-wrap grid-cols-7 gap-x-8',
 });
 
 /** 右侧表单：服务项目（订舱代理、车队、报关行、仓库、保险公司） */
@@ -1111,6 +1111,7 @@ const AI_RECOGNIZE_ALLOWED_FIELDS = new Set([
   'tradeTermsType',
   'goodsCompleteTime',
   'etd',
+  'atd',
   'eta',
   'clientId',
   'teamId',
@@ -1135,6 +1136,7 @@ const AI_RECOGNIZE_ALLOWED_FIELDS = new Set([
 const AI_RECOGNIZE_DATE_FIELDS = new Set([
   'goodsCompleteTime',
   'etd',
+  'atd',
   'eta',
   'closingTime',
   'closeVgmTime',
@@ -1374,6 +1376,7 @@ const flattenDetail = (
       to?.goodsCompleteTime ?? detail.goodsCompleteTime,
     ),
     etd: toDayjs(to?.etd ?? detail.etd),
+    atd: toDayjs(to?.atd ?? detail.atd),
     eta: toDayjs(to?.eta ?? detail.eta),
     closingTime: toDayjs(detail.closingTime),
     closeVgmTime: toDayjs(detail.closeVgmTime),
@@ -1878,6 +1881,7 @@ const buildDto = (values: Record<string, any>) => {
     tradeTermsType: values.tradeTermsType ?? undefined,
     goodsCompleteTime: toDateString(values.goodsCompleteTime),
     etd: toDateString(values.etd),
+    atd: toDateString(values.atd),
     eta: toDateString(values.eta),
     clientId: values.clientId,
     teamId: values.teamId ?? undefined,
@@ -3125,7 +3129,7 @@ defineExpose({
 
 .shipment-flow-divider {
   position: absolute;
-  inset: 0 auto 0 50%;
+  inset: 0 auto 0 42.65%;
   z-index: 2;
   width: 2px;
   pointer-events: none;
@@ -3145,6 +3149,11 @@ defineExpose({
 :deep(.shipment-time-pos--6) {
   grid-row: 2;
   grid-column: 6;
+}
+
+:deep(.shipment-time-pos--7) {
+  grid-row: 2;
+  grid-column: 7;
 }
 
 :deep(.shipment-time-item) {

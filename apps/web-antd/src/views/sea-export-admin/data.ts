@@ -1068,31 +1068,38 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'DatePicker',
+      fieldName: 'atd',
+      label: $t('seaExport.export.atd'),
+      componentProps: { class: 'w-full' },
+      formItemClass: 'shipment-time-item shipment-time-pos--3',
+    },
+    {
+      component: 'DatePicker',
       fieldName: 'eta',
       label: $t('seaExport.export.eta'),
       componentProps: { class: 'w-full' },
-      formItemClass: 'shipment-time-item shipment-time-pos--3',
+      formItemClass: 'shipment-time-item shipment-time-pos--4',
     },
     {
       component: 'DatePicker',
       fieldName: 'closingTime',
       label: $t('seaExport.export.closingTime'),
       componentProps: { class: 'w-full', showTime: true },
-      formItemClass: 'shipment-time-item shipment-time-pos--4 hidden',
+      formItemClass: 'shipment-time-item shipment-time-pos--5 hidden',
     },
     {
       component: 'DatePicker',
       fieldName: 'closeVgmTime',
       label: $t('seaExport.export.closeVgmTime'),
       componentProps: { class: 'w-full', showTime: true },
-      formItemClass: 'shipment-time-item shipment-time-pos--4',
+      formItemClass: 'shipment-time-item shipment-time-pos--5',
     },
     {
       component: 'DatePicker',
       fieldName: 'closeDocTime',
       label: $t('seaExport.export.closeDocTime'),
       componentProps: { class: 'w-full', showTime: true },
-      formItemClass: 'shipment-time-item shipment-time-pos--5',
+      formItemClass: 'shipment-time-item shipment-time-pos--6',
     },
     {
       component: 'DatePicker',
@@ -1100,7 +1107,7 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.closeManifestTime'),
       componentProps: { class: 'w-full', showTime: true },
       formItemClass:
-        'shipment-time-item shipment-time-item--last shipment-time-pos--6',
+        'shipment-time-item shipment-time-item--last shipment-time-pos--7',
     },
     {
       component: 'PortSelect',
