@@ -127,6 +127,7 @@ export function useFormSchema(): VbenFormSchema[] {
       label: $t('system.basicData.generateNum.orgId'),
       componentProps: {
         allowClear: true,
+        appendCodeOnDisplayName: false,
         placeholder: $t('ui.placeholder.select'),
       },
       dependencies: {

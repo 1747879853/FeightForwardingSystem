@@ -20,6 +20,8 @@ interface Props {
   selectedItems?: SystemOrganizationUnitApi.OrganizationUnitDto[];
   /** value 字段名，默认 'id' */
   valueKey?: string;
+  /** 使用 displayName 作为 label 时，是否追加显示 code */
+  appendCodeOnDisplayName?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -28,6 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
   placeholder: undefined,
   selectedItems: () => [],
   valueKey: 'id',
+  appendCodeOnDisplayName: true,
 });
 
 const emit = defineEmits<{
@@ -57,7 +60,11 @@ const pickLabel = (item: SystemOrganizationUnitApi.OrganizationUnitDto) => {
   label = label || item.displayName || item.code || '';
 
   // 默认展示“名称（编码）”，提升同名组织的区分度
-  if (props.labelKey === 'displayName' && item.code) {
+  if (
+    props.appendCodeOnDisplayName &&
+    props.labelKey === 'displayName' &&
+    item.code
+  ) {
     return `${label} (${item.code})`;
   }
   return label;
