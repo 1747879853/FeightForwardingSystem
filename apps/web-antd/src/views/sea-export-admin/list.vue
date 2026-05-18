@@ -15,6 +15,7 @@ import {
   getSeaExportPagedList,
 } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
+import { buildAttachmentUrl } from '#/utils';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -192,7 +193,7 @@ const handleRefresh = () => {
         <span class="inline-flex items-center gap-1">
           <img
             v-if="row?.carrierLogo?.url"
-            :src="row.carrierLogo.url"
+            :src="buildAttachmentUrl(row.carrierLogo.url)"
             :alt="row?.carrierName || 'carrier-logo'"
             class="h-8 w-8 rounded object-contain"
           />

@@ -1,5 +1,8 @@
 # 枚举缓存管理使用指南
 
+> **项目文档（中文，推荐）：** [`apps/web-antd/doc/guides/enumeration-usage-in-pages.md`](../doc/guides/enumeration-usage-in-pages.md)  
+> 枚举管理活文档：[`doc/modules/system/enumeration.md`](../doc/modules/system/enumeration.md)
+
 ## 📚 API 说明
 
 ### 1. initEnumCache(forceRefresh?) - 初始化枚举缓存

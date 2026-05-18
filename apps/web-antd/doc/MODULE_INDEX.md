@@ -6,7 +6,7 @@
 | clients | `/clients` | 客户管理 | 维护客户主数据列表，是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-05-16 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料，为后续联系人、账期、发票、附件等客户子资料提供主记录。 | [客户新建](./modules/clients/create.md) | 2026-05-16 |
 | clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面。 | [客户编辑](./modules/clients/id-edit.md) | 2026-05-16 |
-| sea-exports | `/sea-exports` | 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-05-18 |
+| sea-exports | `/sea-exports` | 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-05-19 |
 | sea-exports | `/sea-exports/create` | 海运出口 | 创建新的海运出口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-05-17 |
 | sea-exports | `/sea-exports/:id/edit` | 海运出口 | 编辑页是海运出口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-05-18 |
 | sea-imports | `/sea-imports` | 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-05-16 |
@@ -23,7 +23,7 @@
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-05-16 |
 | audit-approval | `/audit-approval/payment-review` | 审核审批 | 处理付款申请单的审核任务，支持批量或单条通过、驳回。 | [付款申请审核](./modules/audit-approval/payment-review.md) | 2026-05-16 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 展示单个费用审核任务的详细信息和对应费用实体。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-05-16 |
-| basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-05-17 |
+| basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-05-19 |
 | basic-data | `/basic-data/code-invoice` | 基础资料 | 维护发票相关代码，支撑客户发票资料和结算开票口径。 | [发票代码](./modules/basic-data/code-invoice.md) | 2026-05-16 |
 | basic-data | `/basic-data/code-service` | 基础资料 | 维护服务项目代码，支撑委托服务项与费用识别。 | [服务代码](./modules/basic-data/code-service.md) | 2026-05-16 |
 | basic-data | `/basic-data/code-goods` | 基础资料 | 维护货物类型代码，支撑委托货物信息录入。 | [货物代码](./modules/basic-data/code-goods.md) | 2026-05-16 |
@@ -47,5 +47,5 @@
 | system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-05-16 |
 | system | `/system/workflow/create` | 系统管理 | 创建审批工作流，配置任务类型、条件和审批节点。 | [工作流新建](./modules/system/workflow-create.md) | 2026-05-16 |
 | system | `/system/workflow/edit/:id` | 系统管理 | 编辑已有审批工作流，维护节点、条件和适用任务类型。 | [工作流编辑](./modules/system/workflow-edit-id.md) | 2026-05-16 |
-| system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源。 | [枚举管理](./modules/system/enumeration.md) | 2026-05-16 |
+| system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源；接入说明见 [枚举使用指南](./guides/enumeration-usage-in-pages.md)。 | [枚举管理](./modules/system/enumeration.md) | 2026-05-18 |
 | system | `/system/cache` | 系统管理 | 查看或清理系统缓存，辅助排查字典、权限或配置刷新问题。 | [缓存管理](./modules/system/cache.md) | 2026-05-16 |

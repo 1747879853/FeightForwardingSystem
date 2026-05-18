@@ -12,6 +12,7 @@ import {
   getCarrierDetail,
   getCarrierPagedList,
 } from '#/api/system/base-data/carrier-admin';
+import { buildAttachmentUrl } from '#/utils';
 
 import { usePagedSelect } from './use-paged-select';
 
@@ -57,7 +58,7 @@ const mapCarrierToOption = (carrier: CarrierAdminApi.CarrierDto) => {
     label = carrier.code;
   }
   label = label || carrier.cnName || carrier.enName || carrier.code || '';
-  const logoUrl = carrier.logo?.url || '';
+  const logoUrl = buildAttachmentUrl(carrier.logo?.url);
   const selectedLabelVNode = h(
     'span',
     { class: 'inline-flex items-center gap-1 pl-px' },

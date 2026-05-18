@@ -13,6 +13,7 @@ import {
   getCarrierPagedList,
 } from '#/api/system/base-data/carrier-admin';
 import { $t } from '#/locales';
+import { buildAttachmentUrl } from '#/utils';
 
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
@@ -63,13 +64,6 @@ const handleActionClick = ({
       break;
     }
   }
-};
-
-const resolveLogoUrl = (url?: string) => {
-  if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  if (url.startsWith('/')) return `${window.location.origin}${url}`;
-  return `${window.location.origin}/${url}`;
 };
 
 const [Grid, gridApi] = useVbenVxeGrid<CarrierAdminApi.CarrierDto>({
@@ -129,7 +123,7 @@ const handleRefresh = () => {
         <span class="flex w-full justify-center">
           <img
             v-if="row?.logo?.url"
-            :src="resolveLogoUrl(row.logo.url)"
+            :src="buildAttachmentUrl(row.logo.url)"
             :alt="row?.cnName || row?.enName || 'carrier-logo'"
             class="h-8 w-8 rounded object-contain"
           />

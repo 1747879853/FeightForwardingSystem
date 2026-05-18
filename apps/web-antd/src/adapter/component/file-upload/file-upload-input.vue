@@ -23,6 +23,7 @@ import {
 } from 'ant-design-vue';
 
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
+import { buildAttachmentUrl } from '#/utils';
 
 /** 图片文件扩展名集合 */
 const IMAGE_EXTENSIONS = new Set([
@@ -228,10 +229,7 @@ const handlePreview = (file: UploadFile) => {
   );
 
   if (attachment?.url) {
-    // 构建完整 URL
-    const fullUrl = attachment.url.startsWith('http')
-      ? attachment.url
-      : `${window.location.origin}${attachment.url}`;
+    const fullUrl = buildAttachmentUrl(attachment.url);
 
     // 如果是图片类型，使用弹窗预览
     if (isImageFile(attachment.fileName)) {
