@@ -102,22 +102,26 @@ jobs:
             Write-Error "msdeploy.exe not found at: $msdeploy"
             exit 1
           }
+          $sourcePath = Join-Path $env:GITHUB_WORKSPACE 'apps/web-antd/dist'
+          $dest = "contentPath=$($env:IIS_SITE_NAME),ComputerName=https://$($env:IIS_SERVER_IP):8172/msdeploy.axd?site=$($env:IIS_SITE_NAME),UserName=$($env:IIS_USER),Password=$($env:IIS_PWD),AuthType=Basic,IncludeAcls=False"
+          $arguments = @(
+            '-verb:sync'
+            "-source:contentPath=$sourcePath"
+            "-dest:$dest"
+            '-enableRule:AppOffline'
+            '-disableRule:BackupRule'
+            '-retryAttempts:20'
+            "-skip:objectName=filePath,absolutePath='.*google.*\.html'"
+            "-skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml'"
+            "-skip:objectName=filePath,absolutePath='logs\\.*'"
+            "-skip:objectName=dirPath,absolutePath='logs'"
+            "-skip:objectName=filePath,absolutePath='data\\.*'"
+            "-skip:objectName=dirPath,absolutePath='data'"
+            '-whatif'
+            '-verbose'
+          )
           Write-Host "=== Deploy Preview (WhatIf) ==="
-          & $msdeploy `
-            -verb:sync `
-            -source:contentPath="apps/web-antd/dist" `
-            -dest:contentPath="${env:IIS_SITE_NAME}",ComputerName="https://${env:IIS_SERVER_IP}:8172/msdeploy.axd?site=${env:IIS_SITE_NAME}",UserName="${env:IIS_USER}",Password="${env:IIS_PWD}",AuthType="Basic",IncludeAcls="False" `
-            -enableRule:AppOffline `
-            -disableRule:BackupRule `
-            -retryAttempts:20 `
-            -skip:objectName=filePath,absolutePath='.*google.*\.html' `
-            -skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml' `
-            -skip:objectName=filePath,absolutePath='logs\\.*' `
-            -skip:objectName=dirPath,absolutePath='logs' `
-            -skip:objectName=filePath,absolutePath='data\\.*' `
-            -skip:objectName=dirPath,absolutePath='data' `
-            -whatif `
-            -verbose
+          & $msdeploy @arguments
 
       - name: Deploy to IIS via MSDeploy
         shell: pwsh
@@ -132,21 +136,25 @@ jobs:
             Write-Error "msdeploy.exe not found at: $msdeploy"
             exit 1
           }
+          $sourcePath = Join-Path $env:GITHUB_WORKSPACE 'apps/web-antd/dist'
+          $dest = "contentPath=$($env:IIS_SITE_NAME),ComputerName=https://$($env:IIS_SERVER_IP):8172/msdeploy.axd?site=$($env:IIS_SITE_NAME),UserName=$($env:IIS_USER),Password=$($env:IIS_PWD),AuthType=Basic,IncludeAcls=False"
+          $arguments = @(
+            '-verb:sync'
+            "-source:contentPath=$sourcePath"
+            "-dest:$dest"
+            '-enableRule:AppOffline'
+            '-disableRule:BackupRule'
+            '-retryAttempts:20'
+            "-skip:objectName=filePath,absolutePath='.*google.*\.html'"
+            "-skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml'"
+            "-skip:objectName=filePath,absolutePath='logs\\.*'"
+            "-skip:objectName=dirPath,absolutePath='logs'"
+            "-skip:objectName=filePath,absolutePath='data\\.*'"
+            "-skip:objectName=dirPath,absolutePath='data'"
+            '-verbose'
+          )
           Write-Host "=== Deploy Execute ==="
-          & $msdeploy `
-            -verb:sync `
-            -source:contentPath="apps/web-antd/dist" `
-            -dest:contentPath="${env:IIS_SITE_NAME}",ComputerName="https://${env:IIS_SERVER_IP}:8172/msdeploy.axd?site=${env:IIS_SITE_NAME}",UserName="${env:IIS_USER}",Password="${env:IIS_PWD}",AuthType="Basic",IncludeAcls="False" `
-            -enableRule:AppOffline `
-            -disableRule:BackupRule `
-            -retryAttempts:20 `
-            -skip:objectName=filePath,absolutePath='.*google.*\.html' `
-            -skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml' `
-            -skip:objectName=filePath,absolutePath='logs\\.*' `
-            -skip:objectName=dirPath,absolutePath='logs' `
-            -skip:objectName=filePath,absolutePath='data\\.*' `
-            -skip:objectName=dirPath,absolutePath='data' `
-            -verbose
+          & $msdeploy @arguments
 
       - name: Post-deploy summary
         if: ${{ always() }}
