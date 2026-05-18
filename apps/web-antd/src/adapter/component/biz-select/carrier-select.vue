@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 
-import { computed, ref, toRef, watch } from 'vue';
+import { computed, h, ref, toRef, useSlots, watch } from 'vue';
 
 import { ApiComponent } from '@vben/common-ui';
 import { $t } from '@vben/locales';
@@ -42,6 +42,10 @@ const emit = defineEmits<{
 
 const modelValue = defineModel<any>();
 const selectedItemsRef = toRef(props, 'selectedItems');
+const slots = useSlots();
+const forwardSlotNames = computed(() =>
+  Object.keys(slots).filter((n) => n !== 'option'),
+);
 
 const mapCarrierToOption = (carrier: CarrierAdminApi.CarrierDto) => {
   const carrierAny = carrier as any;
@@ -53,11 +57,29 @@ const mapCarrierToOption = (carrier: CarrierAdminApi.CarrierDto) => {
     label = carrier.code;
   }
   label = label || carrier.cnName || carrier.enName || carrier.code || '';
+  const logoUrl = carrier.logo?.url || '';
+  const selectedLabelVNode = h(
+    'span',
+    { class: 'inline-flex items-center gap-1 pl-px' },
+    [
+      logoUrl
+        ? h('img', {
+            src: logoUrl,
+            alt: label || 'carrier-logo',
+            class: 'h-5 w-5 shrink-0 rounded object-contain',
+          })
+        : null,
+      h('span', null, label),
+    ],
+  );
 
   const rawValue = carrierAny?.[props.valueKey];
   return {
     disabled: false,
-    label,
+    dropdownLabel: label,
+    label: selectedLabelVNode,
+    logoUrl,
+    rawLabel: label,
     value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
@@ -180,10 +202,34 @@ defineExpose({
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"
-    class="w-full"
+    class="carrier-select-with-logo w-full"
   >
-    <template v-for="(_, name) in $slots" :key="name" #[name]="slotData">
+    <template v-for="name in forwardSlotNames" #[name]="slotData">
       <slot :name="name" v-bind="slotData || {}"></slot>
+    </template>
+    <template #option="opt">
+      <span class="carrier-option inline-flex items-center gap-1 pl-px">
+        <img
+          v-if="opt?.logoUrl"
+          :src="opt.logoUrl"
+          :alt="String(opt?.rawLabel || opt?.label || 'carrier-logo')"
+          class="h-5 w-5 shrink-0 rounded object-contain"
+        />
+        <span class="carrier-option-text">{{
+          opt?.dropdownLabel ?? opt?.rawLabel ?? opt?.label ?? ''
+        }}</span>
+      </span>
     </template>
   </ApiComponent>
 </template>
+
+<style scoped>
+.carrier-option {
+  min-height: 24px;
+  line-height: 24px;
+}
+
+.carrier-option-text {
+  line-height: 20px;
+}
+</style>

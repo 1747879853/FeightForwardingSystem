@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/vue-query';
 
 export interface OptionItem {
   disabled?: boolean;
-  label: string;
+  label: any;
   value: number | string;
   [key: string]: any;
 }

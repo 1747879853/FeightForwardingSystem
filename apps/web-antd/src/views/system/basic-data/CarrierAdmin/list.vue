@@ -65,6 +65,13 @@ const handleActionClick = ({
   }
 };
 
+const resolveLogoUrl = (url?: string) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/')) return `${window.location.origin}${url}`;
+  return `${window.location.origin}/${url}`;
+};
+
 const [Grid, gridApi] = useVbenVxeGrid<CarrierAdminApi.CarrierDto>({
   formOptions: {
     schema: useGridFormSchema(),
@@ -117,6 +124,17 @@ const handleRefresh = () => {
             $t('ui.actionTitle.create', [$t('system.basicData.carrier.name')])
           }}
         </Button>
+      </template>
+      <template #logo="{ row }">
+        <span class="flex w-full justify-center">
+          <img
+            v-if="row?.logo?.url"
+            :src="resolveLogoUrl(row.logo.url)"
+            :alt="row?.cnName || row?.enName || 'carrier-logo'"
+            class="h-8 w-8 rounded object-contain"
+          />
+          <span v-else>-</span>
+        </span>
       </template>
     </Grid>
   </Page>

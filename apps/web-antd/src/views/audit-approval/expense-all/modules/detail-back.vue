@@ -363,7 +363,7 @@ onMounted(() => {
             <span class="flex w-[145px]">
               <span
                 v-if="item.key === 'carrierName'"
-                class="inline-flex items-center gap-2"
+                class="inline-flex items-center gap-1"
               >
                 <img
                   v-if="
@@ -375,7 +375,7 @@ onMounted(() => {
                     formValues?.carrier?.logo?.url
                   "
                   :alt="formValues?.carrierName || 'carrier-logo'"
-                  class="h-5 w-5 rounded object-contain"
+                  class="h-8 w-8 rounded object-contain"
                 />
                 <span>{{ item.value || '--' }}</span>
               </span>

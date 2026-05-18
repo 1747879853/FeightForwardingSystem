@@ -1566,9 +1566,14 @@ const sanitizeOrderUsers = (
  * 避免每个 select 组件单独调详情接口回显。
  * @param labelKey 对应 select 组件的 labelKey，如 ClientSelect 用 'name'，CarrierSelect/PortSelect 用 'cnName'
  */
-const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
+const toSelectedItems = (
+  id: any,
+  name: any,
+  labelKey = 'name',
+  extra: Record<string, any> = {},
+) => {
   if (id == null) return [];
-  return [{ id, [labelKey]: name || '' }] as any[];
+  return [{ id, [labelKey]: name || '', ...extra }] as any[];
 };
 
 const loadEditData = async () => {
@@ -1696,6 +1701,7 @@ const loadEditData = async () => {
             detail.carrierId,
             detail.carrierName,
             'cnName',
+            detail.carrierLogo ? { logo: detail.carrierLogo } : {},
           ),
         },
       },

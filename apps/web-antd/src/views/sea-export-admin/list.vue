@@ -189,12 +189,12 @@ const handleRefresh = () => {
         </Button>
       </template>
       <template #carrierWithLogo="{ row }">
-        <span class="inline-flex items-center gap-2">
+        <span class="inline-flex items-center gap-1">
           <img
             v-if="row?.carrierLogo?.url"
             :src="row.carrierLogo.url"
             :alt="row?.carrierName || 'carrier-logo'"
-            class="h-5 w-5 rounded object-contain"
+            class="h-8 w-8 rounded object-contain"
           />
           <span>{{ row?.carrierName || '--' }}</span>
         </span>
