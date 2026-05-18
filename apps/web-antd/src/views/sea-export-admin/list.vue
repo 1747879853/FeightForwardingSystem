@@ -188,6 +188,17 @@ const handleRefresh = () => {
           {{ $t('ui.actionTitle.create', [$t('seaExport.export.name')]) }}
         </Button>
       </template>
+      <template #carrierWithLogo="{ row }">
+        <span class="inline-flex items-center gap-2">
+          <img
+            v-if="row?.carrierLogo?.url"
+            :src="row.carrierLogo.url"
+            :alt="row?.carrierName || 'carrier-logo'"
+            class="h-5 w-5 rounded object-contain"
+          />
+          <span>{{ row?.carrierName || '--' }}</span>
+        </span>
+      </template>
     </Grid>
   </Page>
 </template>

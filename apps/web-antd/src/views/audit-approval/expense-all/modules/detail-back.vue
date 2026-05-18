@@ -217,6 +217,7 @@ const setDisplayList = () => {
   };
   displayList.value.push(innerVoyno);
   let carrier = {
+    key: 'carrierName',
     name: $t('seaExport.export.carrierId'),
     value: formValues.value?.carrierName || '--',
   };
@@ -353,9 +354,33 @@ onMounted(() => {
               {{ $t('seaExport.export.formCardInfo') }}
             </span>
           </template>
-          <div class="flex flex-1 px-1 py-1" v-for="item in displayList">
+          <div
+            class="flex flex-1 px-1 py-1"
+            v-for="item in displayList"
+            :key="item.key || item.name"
+          >
             <span class="flex w-[85px]"> {{ `${item.name} : ` }}</span>
-            <span class="flex w-[145px]">{{ item.value || '--' }}</span>
+            <span class="flex w-[145px]">
+              <span
+                v-if="item.key === 'carrierName'"
+                class="inline-flex items-center gap-2"
+              >
+                <img
+                  v-if="
+                    formValues?.carrierLogo?.url ||
+                    formValues?.carrier?.logo?.url
+                  "
+                  :src="
+                    formValues?.carrierLogo?.url ||
+                    formValues?.carrier?.logo?.url
+                  "
+                  :alt="formValues?.carrierName || 'carrier-logo'"
+                  class="h-5 w-5 rounded object-contain"
+                />
+                <span>{{ item.value || '--' }}</span>
+              </span>
+              <span v-else>{{ item.value || '--' }}</span>
+            </span>
           </div>
         </Card>
       </div>
