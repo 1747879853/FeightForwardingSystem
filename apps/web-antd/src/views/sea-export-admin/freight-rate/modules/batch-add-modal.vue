@@ -376,14 +376,14 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'polId',
       title: '起运港',
-      width: 120,
+      width: 240,
 
       slots: { default: 'polId' },
     },
     {
       field: 'podId',
       title: '目的港',
-      width: 120,
+      width: 240,
 
       slots: { default: 'podId' },
     },
@@ -878,13 +878,13 @@ function resetForm() {
                 :disabled="!!row.closeDocTime"
                 allow-clear
               >
-                <Select.Option :value="0">日</Select.Option>
-                <Select.Option :value="1">一</Select.Option>
-                <Select.Option :value="2">二</Select.Option>
-                <Select.Option :value="3">三</Select.Option>
-                <Select.Option :value="4">四</Select.Option>
-                <Select.Option :value="5">五</Select.Option>
-                <Select.Option :value="6">六</Select.Option>
+                <Select.Option :value="0">周日</Select.Option>
+                <Select.Option :value="1">周一</Select.Option>
+                <Select.Option :value="2">周二</Select.Option>
+                <Select.Option :value="3">周三</Select.Option>
+                <Select.Option :value="4">周四</Select.Option>
+                <Select.Option :value="5">周五</Select.Option>
+                <Select.Option :value="6">周六</Select.Option>
               </Select>
               <TimePicker
                 v-model:value="row.closeDocDayTime"
@@ -924,13 +924,13 @@ function resetForm() {
                 :disabled="!!row.closingTime"
                 allow-clear
               >
-                <Select.Option :value="0">日</Select.Option>
-                <Select.Option :value="1">一</Select.Option>
-                <Select.Option :value="2">二</Select.Option>
-                <Select.Option :value="3">三</Select.Option>
-                <Select.Option :value="4">四</Select.Option>
-                <Select.Option :value="5">五</Select.Option>
-                <Select.Option :value="6">六</Select.Option>
+                <Select.Option :value="0">周日</Select.Option>
+                <Select.Option :value="1">周一</Select.Option>
+                <Select.Option :value="2">周二</Select.Option>
+                <Select.Option :value="3">周三</Select.Option>
+                <Select.Option :value="4">周四</Select.Option>
+                <Select.Option :value="5">周五</Select.Option>
+                <Select.Option :value="6">周六</Select.Option>
               </Select>
               <TimePicker
                 v-model:value="row.closingDayTime"

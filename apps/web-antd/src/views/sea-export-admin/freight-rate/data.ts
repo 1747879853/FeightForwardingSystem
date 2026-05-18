@@ -215,43 +215,21 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'ApiSelect',
-      fieldName: 'polId',
-      label: $t('seaExport.freightRate.polId'),
+      component: 'PortSelect',
+      fieldName: 'POLId',
+      label: $t('seaExport.export.polId'),
       componentProps: {
-        api: async () => {
-          const { getPortCodePagedList } =
-            await import('#/api/system/base-data/port-code-admin');
-          const res = await getPortCodePagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: `${item.cnName}(${item.portName})`,
-            value: item.id,
-          }));
-        },
-        showSearch: true,
-        filterOption: true,
+        placeholder: $t('ui.placeholder.select'),
         allowClear: true,
-        placeholder: $t('common.pleaseSelect'),
       },
     },
     {
-      component: 'ApiSelect',
-      fieldName: 'podId',
-      label: $t('seaExport.freightRate.podId'),
+      component: 'PortSelect',
+      fieldName: 'PODId',
+      label: $t('seaExport.export.podId'),
       componentProps: {
-        api: async () => {
-          const { getPortCodePagedList } =
-            await import('#/api/system/base-data/port-code-admin');
-          const res = await getPortCodePagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: `${item.cnName}(${item.portName})`,
-            value: item.id,
-          }));
-        },
-        showSearch: true,
-        filterOption: true,
+        placeholder: $t('ui.placeholder.select'),
         allowClear: true,
-        placeholder: $t('common.pleaseSelect'),
       },
     },
     {
@@ -317,6 +295,14 @@ export function useColumns<T = SeFreiPriceOutDto>(
       width: 120,
       formatter: ({ row }) => {
         return row.pol?.portName || '-';
+      },
+    },
+    {
+      field: 'country.countryName',
+      title: $t('seaExport.freightRate.countryId'),
+      width: 120,
+      formatter: ({ row }) => {
+        return row.country?.countryName || '-';
       },
     },
     {
@@ -606,8 +592,37 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'remark',
       title: $t('seaExport.freightRate.remark'),
-      minWidth: 150,
-      showOverflow: true,
+      minWidth: 300,
+      showOverflow: false,
+      cellRender: {
+        name: 'VxeCellTextarea',
+        props: {
+          autosize: {
+            minRows: 1,
+            maxRows: 5,
+          },
+        },
+      },
+    },
+    {
+      field: 'creationTime',
+      title: '录入时间',
+      width: 160,
+      formatter: ({ row }) => {
+        if (!row.creationTime) return '-';
+
+        const date = new Date(row.creationTime);
+        if (isNaN(date.getTime())) return '-';
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      },
     },
   ];
 

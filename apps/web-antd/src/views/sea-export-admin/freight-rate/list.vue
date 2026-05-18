@@ -578,13 +578,22 @@ onMounted(async () => {
 
       <!-- 附加费自定义渲染插槽 -->
       <template #surchargeFees="{ row }">
-        <div class="surcharge-fees-container" @dblclick="onEdit(row)">
-          <!-- 无附加费时显示占位符 -->
+        <div class="surcharge-fees-container">
+          <!-- 无附加费时显示占位符和编辑按钮 -->
           <div
             v-if="!row.seFreiPriceFees || row.seFreiPriceFees.length === 0"
-            class="py-2 text-center text-gray-300"
+            class="flex items-center justify-between py-2"
           >
-            -
+            <span class="text-gray-300">-</span>
+            <Button
+              type="link"
+              size="small"
+              @click.stop="onEdit(row)"
+              class="edit-surcharge-btn"
+            >
+              <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
+              {{ $t('common.edit') }}
+            </Button>
           </div>
 
           <!-- 有附加费时显示折叠面板 -->
@@ -615,10 +624,10 @@ onMounted(async () => {
               </div>
             </div>
 
-            <!-- 如果有多个附加费，显示展开按钮 -->
+            <!-- 如果有多个附加费，显示展开按钮和编辑按钮 -->
             <div
               v-if="row.seFreiPriceFees.length > 1"
-              class="flex items-center justify-end"
+              class="flex items-center justify-end gap-2"
             >
               <button class="expand-button" @click.stop="toggleExpand(row)">
                 <span>{{ expandedRows[row.id] ? '收起' : '展开' }}</span>
@@ -629,6 +638,28 @@ onMounted(async () => {
                   class="ml-1 size-4"
                 />
               </button>
+              <Button
+                type="link"
+                size="small"
+                @click.stop="onEdit(row)"
+                class="edit-surcharge-btn"
+              >
+                <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
+                {{ $t('common.edit') }}
+              </Button>
+            </div>
+
+            <!-- 如果只有一个附加费，只显示编辑按钮 -->
+            <div v-else class="flex items-center justify-end">
+              <Button
+                type="link"
+                size="small"
+                @click.stop="onEdit(row)"
+                class="edit-surcharge-btn"
+              >
+                <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
+                {{ $t('common.edit') }}
+              </Button>
             </div>
 
             <!-- 展开后显示所有附加费（从第二个开始） -->
@@ -740,7 +771,7 @@ onMounted(async () => {
       <template #toolbar-tools>
         <div class="flex w-[71vw] justify-between">
           <!-- 航线选择标签页 -->
-          <div class="mb-4 mr-5 pt-3">
+          <div class="mb-4 mr-5 w-[47vw] pt-3">
             <div class="flex items-center space-x-1 overflow-x-auto">
               <!-- 全部选项 -->
               <div
@@ -780,17 +811,7 @@ onMounted(async () => {
               }}
             </Button> -->
 
-            <!-- 批量新增按钮 -->
-            <Button
-              v-access:code="perm.add"
-              @click="onBatchAdd"
-              class="gradient-primary-btn"
-            >
-              <Plus class="size-5" />
-              {{ $t('seaExport.freightRate.create') }}
-            </Button>
-
-            <!-- 复制按钮 -->
+            <!-- 批量编辑按钮 -->
             <Button v-access:code="perm.add" @click="onBatchEditModal">
               <IconifyIcon icon="mdi:square-edit-outline" class="size-5" />
               {{ $t('seaExport.freightRate.update') }}
@@ -810,6 +831,10 @@ onMounted(async () => {
               </Button>
               <template #overlay>
                 <Menu>
+                  <Menu.Item key="batchAdd" @click="onBatchAdd">
+                    {{ $t('seaExport.freightRate.batchAdd') }}
+                  </Menu.Item>
+                  <Menu.Divider />
                   <Menu.Item key="edit" @click="onBatchEdit">
                     {{ $t('seaExport.freightRate.batchEdit') }}
                   </Menu.Item>
@@ -997,5 +1022,11 @@ onMounted(async () => {
 
 .expand-button:active {
   transform: scale(0.98);
+}
+
+/* 编辑附加费按钮样式 */
+.edit-surcharge-btn {
+  height: auto;
+  padding: 0;
 }
 </style>

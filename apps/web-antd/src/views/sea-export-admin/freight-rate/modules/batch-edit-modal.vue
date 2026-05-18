@@ -5,6 +5,9 @@ import type {
   SeFreiPriceCtnEditDto,
   SeFreiPriceOutDto,
 } from '#/api/sea-export/freight-rate-admin';
+import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
+import type { PortCodeAdminApi } from '#/api/system/base-data/port-code-admin';
+import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
 
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
@@ -30,6 +33,9 @@ import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
 import { getCtnCodePagedList as getBaseCtnCodes } from '#/api/system/base-data/ctn-code-admin';
+import { getCarrierDetail } from '#/api/system/base-data/carrier-admin';
+import { getPortCodeDetail } from '#/api/system/base-data/port-code-admin';
+import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { batchEditSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
 import { $t } from '#/locales';
 
@@ -56,6 +62,15 @@ const loading = ref(false);
 
 // 原始选中的数据
 const originalData = ref<SeFreiPriceOutDto[]>([]);
+
+// 船公司缓存（用于回显）
+const carrierCache = ref<Map<number, CarrierAdminApi.CarrierDto>>(new Map());
+
+// 港口缓存（用于回显）
+const portCache = ref<Map<number, PortCodeAdminApi.PortCodeDto>>(new Map());
+
+// 币别缓存（用于回显）
+const currencyCache = ref<Map<number, CurrencyAdminApi.CurrencyDto>>(new Map());
 
 // [Modal, modalApi] 由父组件通过 connectedComponent 注入
 const [Modal, modalApi] = useVbenModal({
@@ -127,6 +142,67 @@ async function initializeTableData(rows: SeFreiPriceOutDto[]) {
   existingCtnTypes.forEach((ctnName, ctnCodeId) => {
     addedCtnTypes.value.push({ ctnCodeId, ctnName });
   });
+
+  // 收集所有需要加载的船公司 ID
+  const carrierIds = Array.from(
+    new Set(rows.map((row) => row.carrierId).filter(Boolean)),
+  );
+
+  // 批量加载船公司详情（用于回显）
+  if (carrierIds.length > 0) {
+    await Promise.all(
+      carrierIds.map(async (carrierId) => {
+        try {
+          const detail = await getCarrierDetail(carrierId);
+          carrierCache.value.set(carrierId, detail);
+        } catch (error) {
+          console.error(`加载船公司 ${carrierId} 详情失败:`, error);
+        }
+      }),
+    );
+  }
+
+  // 收集所有需要加载的港口 ID
+  const portIds = Array.from(
+    new Set(
+      rows
+        .flatMap((row) => [row.polId, row.podId, row.poT1Id, row.poT2Id])
+        .filter((id): id is number => Boolean(id)),
+    ),
+  );
+
+  // 批量加载港口详情（用于回显）
+  if (portIds.length > 0) {
+    await Promise.all(
+      portIds.map(async (portId) => {
+        try {
+          const detail = await getPortCodeDetail(portId);
+          portCache.value.set(portId, detail);
+        } catch (error) {
+          console.error(`加载港口 ${portId} 详情失败:`, error);
+        }
+      }),
+    );
+  }
+
+  // 收集所有需要加载的币别 ID
+  const currencyIds = Array.from(
+    new Set(rows.map((row) => row.currencyId).filter(Boolean)),
+  );
+
+  // 批量加载币别详情（用于回显）
+  if (currencyIds.length > 0) {
+    await Promise.all(
+      currencyIds.map(async (currencyId) => {
+        try {
+          const detail = await getCurrencyDetail(currencyId);
+          currencyCache.value.set(currencyId, detail);
+        } catch (error) {
+          console.error(`加载币别 ${currencyId} 详情失败:`, error);
+        }
+      }),
+    );
+  }
 
   // 等待列配置更新完成
   await nextTick();
@@ -273,13 +349,13 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'polId',
       title: '起运港',
-      width: 120,
+      width: 240,
       slots: { default: 'polId' },
     },
     {
       field: 'podId',
       title: '目的港',
-      width: 120,
+      width: 240,
       slots: { default: 'podId' },
     },
     {
@@ -321,18 +397,18 @@ function buildColumns(): VxeTableGridOptions['columns'] {
         header: 'podFreeDaysCombinedHeader',
       },
     },
-    {
-      field: 'poddem',
-      title: '目的港免堆期',
-      width: 110,
-      slots: { default: 'poddem' },
-    },
-    {
-      field: 'poddet',
-      title: '目的港免箱期',
-      width: 110,
-      slots: { default: 'poddet' },
-    },
+    // {
+    //   field: 'poddem',
+    //   title: '目的港免堆期',
+    //   width: 110,
+    //   slots: { default: 'poddem' },
+    // },
+    // {
+    //   field: 'poddet',
+    //   title: '目的港免箱期',
+    //   width: 110,
+    //   slots: { default: 'poddet' },
+    // },
     {
       field: 'voyage',
       title: '航程',
@@ -372,7 +448,7 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'remark',
       title: '备注',
-      width: 200,
+      width: 280,
       slots: { default: 'remark' },
     },
   ];
@@ -679,9 +755,7 @@ onMounted(() => {
         <ul class="list-inside list-disc">
           <li>已选择 {{ originalData.length }} 条记录进行批量编辑</li>
           <li>每一行都可以独立修改，系统会分别提交每行的修改</li>
-          <li>只有被修改的字段才会提交到后端</li>
           <li>使用"添加箱型"下拉框可以添加新的箱型成本列</li>
-          <li>箱型成本列中填写的值会覆盖原有箱型成本</li>
         </ul>
       </div>
 
@@ -689,22 +763,54 @@ onMounted(() => {
       <Grid>
         <!-- 船公司 -->
         <template #carrierId="{ row }">
-          <CarrierSelect v-model="row.carrierId" style="width: 100%" />
+          <CarrierSelect
+            v-model="row.carrierId"
+            style="width: 100%"
+            :selected-items="
+              row.carrierId && carrierCache.has(row.carrierId)
+                ? [carrierCache.get(row.carrierId)!]
+                : []
+            "
+          />
         </template>
 
         <!-- 起运港 -->
         <template #polId="{ row }">
-          <PortSelect v-model="row.polId" style="width: 100%" />
+          <PortSelect
+            v-model="row.polId"
+            style="width: 100%"
+            :selected-items="
+              row.polId && portCache.has(row.polId)
+                ? [portCache.get(row.polId)!]
+                : []
+            "
+          />
         </template>
 
         <!-- 目的港 -->
         <template #podId="{ row }">
-          <PortSelect v-model="row.podId" style="width: 100%" />
+          <PortSelect
+            v-model="row.podId"
+            style="width: 100%"
+            :selected-items="
+              row.podId && portCache.has(row.podId)
+                ? [portCache.get(row.podId)!]
+                : []
+            "
+          />
         </template>
 
         <!-- 币别 -->
         <template #currencyId="{ row }">
-          <CurrencySelect v-model="row.currencyId" style="width: 100%" />
+          <CurrencySelect
+            v-model="row.currencyId"
+            style="width: 100%"
+            :selected-items="
+              row.currencyId && currencyCache.has(row.currencyId)
+                ? [currencyCache.get(row.currencyId)!]
+                : []
+            "
+          />
         </template>
 
         <!-- 是否直达 -->
@@ -724,6 +830,11 @@ onMounted(() => {
             style="width: 100%"
             allow-clear
             :disabled="row.isDirect"
+            :selected-items="
+              row.poT1Id && portCache.has(row.poT1Id)
+                ? [portCache.get(row.poT1Id)!]
+                : []
+            "
           />
         </template>
 
@@ -734,6 +845,11 @@ onMounted(() => {
             style="width: 100%"
             allow-clear
             :disabled="row.isDirect"
+            :selected-items="
+              row.poT2Id && portCache.has(row.poT2Id)
+                ? [portCache.get(row.poT2Id)!]
+                : []
+            "
           />
         </template>
 
