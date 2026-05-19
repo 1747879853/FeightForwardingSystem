@@ -285,6 +285,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'carrier.enName',
       title: $t('seaExport.freightRate.carrierId'),
       width: 100,
+      slots: { default: 'carrierId' },
       formatter: ({ row }) => {
         return row.carrier?.code || '-';
       },
@@ -293,6 +294,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'pol.portName',
       title: $t('seaExport.freightRate.polId'),
       width: 120,
+      slots: { default: 'polId' },
       formatter: ({ row }) => {
         return row.pol?.portName || '-';
       },
@@ -309,6 +311,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'pod.portName',
       title: $t('seaExport.freightRate.podId'),
       width: 120,
+      slots: { default: 'podId' },
       formatter: ({ row }) => {
         return row.pod?.portName || '-';
       },
@@ -317,6 +320,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'currency.code',
       title: $t('seaExport.freightRate.currencyId'),
       width: 80,
+      slots: { default: 'currencyId' },
       formatter: ({ row }) => {
         return row.currency?.code || '-';
       },
@@ -325,6 +329,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'contractNo',
       title: '约号',
       width: 120,
+      slots: { default: 'contractNo' },
       formatter: ({ row }) => {
         return row.contractNo || '-';
       },

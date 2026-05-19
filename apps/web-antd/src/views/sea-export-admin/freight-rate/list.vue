@@ -40,6 +40,7 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { useColumns, useGridFormSchema, formatSurchargeFees } from './data';
 import AddCtnModal from './modules/add-ctn-modal.vue';
 import Form from './modules/form.vue';
+import EditForm from './modules/editForm.vue';
 import BatchAddModal from './modules/batch-add-modal.vue';
 import BatchEditModal from './modules/batch-edit-modal.vue';
 import SyncUpdateForm from './modules/sync-update-form.vue';
@@ -128,6 +129,11 @@ const [FormModal, formModalApi] = useVbenModal({
   destroyOnClose: true,
 });
 
+const [EditFormModal, editFormModalApi] = useVbenModal({
+  connectedComponent: EditForm,
+  destroyOnClose: true,
+});
+
 const [SyncUpdateModal, syncUpdateModalApi] = useVbenModal({
   connectedComponent: SyncUpdateForm,
   destroyOnClose: true,
@@ -205,7 +211,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     },
     rowConfig: {
       keyField: 'id',
-      // isHover: true,
+      isHover: true,
     },
     checkboxConfig: {
       highlight: true,
@@ -220,7 +226,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
       export: false,
       refresh: true,
       search: true,
-      zoom: true,
+      zoom: false,
     },
   },
 });
@@ -404,7 +410,14 @@ function onRefresh() {
  * 新增运价
  */
 function onCreate() {
-  formModalApi.setData({}).open();
+  editFormModalApi.setData({}).open();
+}
+
+/**
+ * 编辑运价（双击单元格触发）
+ */
+function onEditByDblClick(row: SeFreiPriceOutDto) {
+  editFormModalApi.setData({ id: row.id }).open();
 }
 
 /**
@@ -559,6 +572,56 @@ onMounted(async () => {
 <template>
   <Page auto-content-height>
     <Grid>
+      <!-- 船公司自定义渲染插槽 -->
+      <template #carrierId="{ row }">
+        <div
+          class="cursor-pointer px-2 py-1 hover:bg-blue-50"
+          @dblclick="onEditByDblClick(row)"
+        >
+          {{ row.carrier?.code || '-' }}
+        </div>
+      </template>
+
+      <!-- 起运港自定义渲染插槽 -->
+      <template #polId="{ row }">
+        <div
+          class="cursor-pointer px-2 py-1 hover:bg-blue-50"
+          @dblclick="onEditByDblClick(row)"
+        >
+          {{ row.pol?.portName || '-' }}
+        </div>
+      </template>
+
+      <!-- 目的港自定义渲染插槽 -->
+      <template #podId="{ row }">
+        <div
+          class="cursor-pointer px-2 py-1 hover:bg-blue-50"
+          @dblclick="onEditByDblClick(row)"
+        >
+          {{ row.pod?.portName || '-' }}
+        </div>
+      </template>
+
+      <!-- 币别自定义渲染插槽 -->
+      <template #currencyId="{ row }">
+        <div
+          class="cursor-pointer px-2 py-1 hover:bg-blue-50"
+          @dblclick="onEditByDblClick(row)"
+        >
+          {{ row.currency?.code || '-' }}
+        </div>
+      </template>
+
+      <!-- 约号自定义渲染插槽 -->
+      <template #contractNo="{ row }">
+        <div
+          class="cursor-pointer px-2 py-1 text-blue-600 hover:bg-blue-50"
+          @dblclick="onEditByDblClick(row)"
+        >
+          {{ row.contractNo || '-' }}
+        </div>
+      </template>
+
       <!-- 推荐状态自定义渲染插槽 -->
       <template #recommend="{ row }">
         <div class="flex items-center justify-center">
@@ -801,9 +864,7 @@ onMounted(async () => {
             <!-- 新增按钮 -->
             <Button v-access:code="perm.add" type="primary" @click="onCreate">
               <Plus class="size-5" />
-              {{
-                $t('ui.actionTitle.create', [$t('seaExport.freightRate.name')])
-              }}
+              {{ $t('ui.actionTitle.create') }}
             </Button>
 
             <!-- 批量编辑按钮 -->
@@ -869,8 +930,11 @@ onMounted(async () => {
       </template>
     </Grid>
 
-    <!-- 运价表单弹窗 -->
+    <!-- 运价表单弹窗（旧版，保留用于批量编辑附加费） -->
     <FormModal @success="onRefresh" />
+
+    <!-- 运价新增/编辑弹窗（新版） -->
+    <EditFormModal @success="onRefresh" />
 
     <!-- 同步更新弹窗 -->
     <SyncUpdateModal @success="onRefresh" />
