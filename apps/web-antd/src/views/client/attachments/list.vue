@@ -17,6 +17,7 @@ import {
 } from '#/api/sea-export/client-admin';
 import PdfPreview from '#/adapter/component/file-preview/pdf-preview-modal.vue';
 import WordPreview from '#/adapter/component/file-preview/word-preview-modal.vue';
+import { buildAttachmentUrl } from '#/utils';
 const route = useRoute();
 
 // 客户ID（从路由参数或query中获取）
@@ -56,7 +57,11 @@ const loadClientDetail = async () => {
 
     attachmentList.value =
       detail.attachments?.map((item) => {
-        return { ...item, fileLength: formatFileSize(item.fileLength) };
+        return {
+          ...item,
+          url: buildAttachmentUrl(item.url),
+          fileLength: formatFileSize(item.fileLength),
+        };
       }) ?? [];
   } catch (error) {
     console.error('加载客户详情失败:', error);
@@ -317,8 +322,9 @@ const currentFileName = ref('');
 const currentFileTitle = ref('');
 // 显示Word预览
 const showWordPreview = () => {
-  currentFileUrl.value =
-    '/Uploads/document/20260417/6391204290217497459137.doc';
+  currentFileUrl.value = buildAttachmentUrl(
+    '/Uploads/document/20260417/6391204290217497459137.doc',
+  );
   currentFileName.value = '示例文档.docx';
   currentFileTitle.value = 'Word文档预览';
   officeVisible.value = true;

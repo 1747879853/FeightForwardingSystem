@@ -279,6 +279,7 @@ export namespace SeaExportAdminApi {
     carrierId?: number;
     carrier?: CarrierAdminApi.CarrierDto;
     carrierName?: string;
+    carrierLogo?: CarrierAdminApi.AttachmentItemDto | null;
     noBillEnum?: number;
     copyNoBillEnum?: number;
     closingTime?: string;

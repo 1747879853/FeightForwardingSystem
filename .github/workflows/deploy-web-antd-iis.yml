@@ -72,18 +72,38 @@ jobs:
         shell: pwsh
         env:
           IIS_SERVER_IP: ${{ secrets.IIS_SERVER_IP }}
+          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_MSDEPLOY_ENDPOINT }}
           IIS_SITE_NAME: ${{ secrets.IIS_SITE_NAME }}
         run: |
           Write-Host "=== Pre-deploy Connectivity Check ==="
           Write-Host ("Target site path: {0}" -f $env:IIS_SITE_NAME)
-          $tcp = Test-NetConnection -ComputerName $env:IIS_SERVER_IP -Port 8172 -WarningAction SilentlyContinue
-          Write-Host ("TCP 8172 reachable: {0}" -f $tcp.TcpTestSucceeded)
+          $endpoint = $env:IIS_MSDEPLOY_ENDPOINT
+          if ([string]::IsNullOrWhiteSpace($endpoint)) {
+            $endpoint = "https://$($env:IIS_SERVER_IP):8172/msdeploy.axd?site=$($env:IIS_SITE_NAME)"
+          }
+          try {
+            $endpointUri = [Uri]$endpoint
+          } catch {
+            Write-Error ("IIS_MSDEPLOY_ENDPOINT is invalid: {0}" -f $endpoint)
+            exit 1
+          }
+          $targetHost = $endpointUri.Host
+          $targetPort = if ($endpointUri.Port -gt 0) { $endpointUri.Port } else { 8172 }
+          Write-Host ("msdeploy endpoint: {0}" -f $endpoint)
+          try {
+            $resolved = [System.Net.Dns]::GetHostAddresses($targetHost)
+            Write-Host ("DNS resolved host '{0}' to {1}" -f $targetHost, ($resolved.IPAddressToString -join ', '))
+          } catch {
+            Write-Error ("Host '{0}' cannot be resolved. Check IIS_MSDEPLOY_ENDPOINT / IIS_SERVER_IP secret." -f $targetHost)
+            exit 1
+          }
+          $tcp = Test-NetConnection -ComputerName $targetHost -Port $targetPort -WarningAction SilentlyContinue
+          Write-Host ("TCP {0} reachable: {1}" -f $targetPort, $tcp.TcpTestSucceeded)
           if (-not $tcp.TcpTestSucceeded) {
             Write-Warning "Port 8172 is not reachable from runner. Deploy may fail."
           }
           try {
-            $uri = "https://$($env:IIS_SERVER_IP):8172/msdeploy.axd"
-            $resp = Invoke-WebRequest -Uri $uri -Method Head -TimeoutSec 20 -UseBasicParsing
+            $resp = Invoke-WebRequest -Uri $endpoint -Method Head -TimeoutSec 20 -UseBasicParsing
             Write-Host ("msdeploy endpoint status: {0}" -f $resp.StatusCode)
           } catch {
             Write-Warning ("HEAD request failed: {0}" -f $_.Exception.Message)
@@ -93,6 +113,7 @@ jobs:
         shell: pwsh
         env:
           IIS_SERVER_IP: ${{ secrets.IIS_SERVER_IP }}
+          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_MSDEPLOY_ENDPOINT }}
           IIS_SITE_NAME: ${{ secrets.IIS_SITE_NAME }}
           IIS_USER: ${{ secrets.IIS_USER }}
           IIS_PWD: ${{ secrets.IIS_PWD }}
@@ -102,27 +123,44 @@ jobs:
             Write-Error "msdeploy.exe not found at: $msdeploy"
             exit 1
           }
+          $sourcePath = Join-Path $env:GITHUB_WORKSPACE 'apps/web-antd/dist'
+          $endpoint = $env:IIS_MSDEPLOY_ENDPOINT
+          if ([string]::IsNullOrWhiteSpace($endpoint)) {
+            $endpoint = "https://$($env:IIS_SERVER_IP):8172/msdeploy.axd?site=$($env:IIS_SITE_NAME)"
+          }
+          try {
+            $endpointUri = [Uri]$endpoint
+          } catch {
+            Write-Error ("Invalid msdeploy endpoint: {0}" -f $endpoint)
+            exit 1
+          }
+          $dest = "contentPath=$($env:IIS_SITE_NAME),ComputerName=$endpoint,UserName=$($env:IIS_USER),Password=$($env:IIS_PWD),AuthType=Basic,IncludeAcls=False"
+          $arguments = @(
+            '-verb:sync'
+            "-source:contentPath=$sourcePath"
+            "-dest:$dest"
+            '-enableRule:AppOffline'
+            '-disableRule:BackupRule'
+            '-retryAttempts:20'
+            "-skip:objectName=filePath,absolutePath='.*google.*\.html'"
+            "-skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml'"
+            "-skip:objectName=filePath,absolutePath='logs\\.*'"
+            "-skip:objectName=dirPath,absolutePath='logs'"
+            "-skip:objectName=filePath,absolutePath='data\\.*'"
+            "-skip:objectName=dirPath,absolutePath='data'"
+            '-allowUntrusted'
+            '-whatif'
+            '-verbose'
+          )
           Write-Host "=== Deploy Preview (WhatIf) ==="
-          & $msdeploy `
-            -verb:sync `
-            -source:contentPath="apps/web-antd/dist" `
-            -dest:contentPath="${env:IIS_SITE_NAME}",ComputerName="https://${env:IIS_SERVER_IP}:8172/msdeploy.axd?site=${env:IIS_SITE_NAME}",UserName="${env:IIS_USER}",Password="${env:IIS_PWD}",AuthType="Basic",IncludeAcls="False" `
-            -enableRule:AppOffline `
-            -disableRule:BackupRule `
-            -retryAttempts:20 `
-            -skip:objectName=filePath,absolutePath='.*google.*\.html' `
-            -skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml' `
-            -skip:objectName=filePath,absolutePath='logs\\.*' `
-            -skip:objectName=dirPath,absolutePath='logs' `
-            -skip:objectName=filePath,absolutePath='data\\.*' `
-            -skip:objectName=dirPath,absolutePath='data' `
-            -whatif `
-            -verbose
+          Write-Host ("Deploy target host: {0}" -f $endpointUri.Host)
+          & $msdeploy @arguments
 
       - name: Deploy to IIS via MSDeploy
         shell: pwsh
         env:
           IIS_SERVER_IP: ${{ secrets.IIS_SERVER_IP }}
+          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_MSDEPLOY_ENDPOINT }}
           IIS_SITE_NAME: ${{ secrets.IIS_SITE_NAME }}
           IIS_USER: ${{ secrets.IIS_USER }}
           IIS_PWD: ${{ secrets.IIS_PWD }}
@@ -132,21 +170,37 @@ jobs:
             Write-Error "msdeploy.exe not found at: $msdeploy"
             exit 1
           }
+          $sourcePath = Join-Path $env:GITHUB_WORKSPACE 'apps/web-antd/dist'
+          $endpoint = $env:IIS_MSDEPLOY_ENDPOINT
+          if ([string]::IsNullOrWhiteSpace($endpoint)) {
+            $endpoint = "https://$($env:IIS_SERVER_IP):8172/msdeploy.axd?site=$($env:IIS_SITE_NAME)"
+          }
+          try {
+            $endpointUri = [Uri]$endpoint
+          } catch {
+            Write-Error ("Invalid msdeploy endpoint: {0}" -f $endpoint)
+            exit 1
+          }
+          $dest = "contentPath=$($env:IIS_SITE_NAME),ComputerName=$endpoint,UserName=$($env:IIS_USER),Password=$($env:IIS_PWD),AuthType=Basic,IncludeAcls=False"
+          $arguments = @(
+            '-verb:sync'
+            "-source:contentPath=$sourcePath"
+            "-dest:$dest"
+            '-enableRule:AppOffline'
+            '-disableRule:BackupRule'
+            '-retryAttempts:20'
+            "-skip:objectName=filePath,absolutePath='.*google.*\.html'"
+            "-skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml'"
+            "-skip:objectName=filePath,absolutePath='logs\\.*'"
+            "-skip:objectName=dirPath,absolutePath='logs'"
+            "-skip:objectName=filePath,absolutePath='data\\.*'"
+            "-skip:objectName=dirPath,absolutePath='data'"
+            '-allowUntrusted'
+            '-verbose'
+          )
           Write-Host "=== Deploy Execute ==="
-          & $msdeploy `
-            -verb:sync `
-            -source:contentPath="apps/web-antd/dist" `
-            -dest:contentPath="${env:IIS_SITE_NAME}",ComputerName="https://${env:IIS_SERVER_IP}:8172/msdeploy.axd?site=${env:IIS_SITE_NAME}",UserName="${env:IIS_USER}",Password="${env:IIS_PWD}",AuthType="Basic",IncludeAcls="False" `
-            -enableRule:AppOffline `
-            -disableRule:BackupRule `
-            -retryAttempts:20 `
-            -skip:objectName=filePath,absolutePath='.*google.*\.html' `
-            -skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml' `
-            -skip:objectName=filePath,absolutePath='logs\\.*' `
-            -skip:objectName=dirPath,absolutePath='logs' `
-            -skip:objectName=filePath,absolutePath='data\\.*' `
-            -skip:objectName=dirPath,absolutePath='data' `
-            -verbose
+          Write-Host ("Deploy target host: {0}" -f $endpointUri.Host)
+          & $msdeploy @arguments
 
       - name: Post-deploy summary
         if: ${{ always() }}

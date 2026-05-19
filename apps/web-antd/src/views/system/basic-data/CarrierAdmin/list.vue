@@ -13,6 +13,7 @@ import {
   getCarrierPagedList,
 } from '#/api/system/base-data/carrier-admin';
 import { $t } from '#/locales';
+import { buildAttachmentUrl } from '#/utils';
 
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
@@ -117,6 +118,17 @@ const handleRefresh = () => {
             $t('ui.actionTitle.create', [$t('system.basicData.carrier.name')])
           }}
         </Button>
+      </template>
+      <template #logo="{ row }">
+        <span class="flex w-full justify-center">
+          <img
+            v-if="row?.logo?.url"
+            :src="buildAttachmentUrl(row.logo.url)"
+            :alt="row?.cnName || row?.enName || 'carrier-logo'"
+            class="h-8 w-8 rounded object-contain"
+          />
+          <span v-else>-</span>
+        </span>
       </template>
     </Grid>
   </Page>

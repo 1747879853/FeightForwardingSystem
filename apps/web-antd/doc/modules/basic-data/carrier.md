@@ -2,7 +2,7 @@
 title: 船公司资料
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-17
+last_updated: 2026-05-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -47,6 +47,7 @@ last_updated: 2026-05-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-19 | `Feature/Fix` | 船公司列表与船公司下拉的 Logo 地址统一改为全局附件拼接方法，按 `VITE_GLOB_API_URL` 去掉 `/api` 后拼接，避免不同域名场景下图片回显失败。 | 将附件/Logo 地址拼接规则集中到 `attachment-url` 工具，减少业务页散落拼接逻辑。 |
 | 2026-05-17 | `Feature/Fix` | 将 `CarrierAdmin` 所有前端 API 路径统一恢复为 `Async` 后缀（GetPagedList/Detail/Add/Edit/Delete），避免路由不匹配。 | 字段协议（logo、分页参数）与接口命名后缀是独立维度，本次仅修正路由命名，不回退 DTO 对接。 |
 | 2026-05-17 | `Feature/Fix` | `/basic-data/carrier` 对接新版 `CarrierAdmin` 协议：移除 `countryId`，新增 `logo` 上传与提交；列表增加 Logo 文件名展示。 | 船公司 API 分页参数按 Swagger 对齐为 `Keyword/.../PageIndex/PageSize`，并同步影响 `carrier-select` 与海运出口运价模块对船公司下拉的分页调用。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/carrier` 对应组件 `src/views/system/basic-data/CarrierAdmin/list.vue`，权限口径为 Admin.Carrier / Admin.Carrier.Get。 |

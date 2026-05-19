@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-17
+last_updated: 2026-05-18
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,6 +25,7 @@ last_updated: 2026-05-17
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
 - **干系人角色约束：** 基础信息表单中的销售、商务、操作、客服、单证角色固定展示且不可删除、不可重复；销售与操作必须指定人员。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
+- **船公司选中回显：** 详情接口返回 `carrierLogo` 后，编辑页在 `carrierId` 的 `selectedItems` 中同步拼接 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + 名称”。
 - **锁定状态展示：** 左侧委托信息显示委托编号、会计期间、应结日期、所属公司，并以标签展示“业务已/未锁定”和“费用已/未锁定”。保存时会把只读锁定状态带回 `transportOrder`。
 - **费用数量提示：** 工作台进入后调用 `getOrderFeePagedList({ TransportOrderId })`，统计应收 `paySide === 0` 与应付 `paySide === 1` 数量，将费用标签显示为“应收应付 x - y”，并每 60 秒刷新一次。
 - **订单费用处理：** 费用页基于运输单 ID 加载应收应付费用，字段覆盖费用代码、结算对象、币种、汇率、单价、金额、税率、开票/结算金额、可开票、机密、费用状态等；费用状态包括录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。
@@ -60,6 +61,7 @@ last_updated: 2026-05-17
 | **费用锁定** | 费用是否允许继续变动。 | `transportOrder.feeLocked`、更改单 `feeLocked` | **触发/依赖：** 影响订单费用与更改单业务判断；费用锁定/解锁入口在费用管理模块。 | 当前页展示并随 DTO 带回，不直接切换。 |
 | **费用标签数量** | 应收与应付费用数量摘要。 | `getOrderFeePagedList` / `paySide` | **触发/依赖：** 每 60 秒按运输单 ID 统计一次，应收为 `paySide=0`，应付为 `paySide=1`。 | 仅作为提示，不代表金额汇总。 |
 | **船期时间（ETD/ATD/ETA）** | 预计开船、实际开船、预计到港时间。 | `transportOrder.etd/atd/eta` | **触发/依赖：** 编辑页详情回填到基础信息表单，费用页与更改单顶部摘要按同一字段显示。 | 允许为空，提交时统一转 ISO 字符串。 |
+| **carrierLogo / carrierId** | 船公司主数据与 Logo 回显。 | `SeaExportAdmin.DetailAsync` 返回 `carrierLogo`，`CarrierSelect` 读取 `selectedItems.logo.url` | **触发/依赖：** 编辑页回填 `carrierId` 时附带 `carrierLogo`，下拉候选项与选中态统一显示图文。 | Logo 缺失时回退为纯文本显示，不阻断保存。 |
 | **订单费用** | 应收应付明细。 | `OrderFeeAdminApi.OrderFeeDto` / `/services/app/OrderFeeAdmin` | **触发/依赖：** 费用状态进入审核、开票、付款、对账、结算链路。 | 费目、结算对象、币种、金额、税率等以后端校验为准。 |
 | **费用状态** | 费用生命周期状态。 | `getFeeStatusOptions` | **触发/依赖：** 录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。 | 不同状态下可编辑范围不同，需以后端和费用表格逻辑为准。 |
 | **更改单** | 业务变更记录及其关联费用。 | `ChangeOrderAdminApi.ChangeOrderDto` / `/services/app/ChangeOrderAdmin` | **触发/依赖：** 更改单携带 `accountDate`、`reason`、`orderFees` 和锁费信息。 | 必须保持同一 `transportOrderId`。 |
@@ -83,6 +85,7 @@ last_updated: 2026-05-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-18 | `Feature/Fix` | `CarrierSelect` 选中态支持显示船公司 Logo；编辑页 `carrierId` 回填时拼接 `carrierLogo` 到 `selectedItems`，首屏回显稳定。 | 为兼容选中态图文展示，分页下拉选项类型由字符串标签扩展为可承载富渲染内容。 |
 | 2026-05-17 | `Fix` | 修复干系人补录场景：新增角色后角色下拉保持可用，仅禁用重复角色选项，支持在缺失角色中手动选择。 | 无 |
 | 2026-05-17 | `Fix` | 海运出口干系人固定角色（销售/商务/操作/客服/单证）改为不可删除、不可重复添加；销售与操作新增必填人员校验。 | 无 |
 | 2026-05-17 | `Fix` | 编辑工作台基础信息、费用页与更改单摘要新增 `atd`（实际开船）显示，并保持在 `etd` 与 `eta` 之间。 | 无 |

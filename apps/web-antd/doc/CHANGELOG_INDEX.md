@@ -13,6 +13,9 @@
 
 ## 2026-05
 
+- [2026-05-19] [海运出口列表船公司 Logo 统一附件地址拼接](./changelogs/change-log-2026-05-19-sea-exports-carrier-logo-unified-url.md)
+- [2026-05-19] [全局附件地址拼接统一封装](./changelogs/change-log-2026-05-19-global-attachment-url-builder.md)
+- [2026-05-18] [船公司下拉与海运出口编辑页统一回显 Logo](./changelogs/change-log-2026-05-18-carrier-select-logo-render-and-sea-export-selecteditems.md)
 - [2026-05-17] [海运出口干系人固定角色禁止删除与重复，销售/操作改为必填](./changelogs/change-log-2026-05-17-sea-export-order-user-role-constraints.md)
 - [2026-05-17] [海运进口干系人固定角色禁止删除与重复，销售/操作改为必填](./changelogs/change-log-2026-05-17-sea-import-order-user-role-constraints.md)
 - [2026-05-17] [人员管理移除账号状态展示，仅保留账号启用判断](./changelogs/change-log-2026-05-17-system-user-account-status-removed.md)

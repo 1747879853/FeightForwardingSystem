@@ -15,6 +15,7 @@ import {
   getSeaExportPagedList,
 } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
+import { buildAttachmentUrl } from '#/utils';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -187,6 +188,17 @@ const handleRefresh = () => {
           <Plus class="size-5" />
           {{ $t('ui.actionTitle.create', [$t('seaExport.export.name')]) }}
         </Button>
+      </template>
+      <template #carrierWithLogo="{ row }">
+        <span class="inline-flex items-center gap-1">
+          <img
+            v-if="row?.carrierLogo?.url"
+            :src="buildAttachmentUrl(row.carrierLogo.url)"
+            :alt="row?.carrierName || 'carrier-logo'"
+            class="h-8 w-8 rounded object-contain"
+          />
+          <span>{{ row?.carrierName || '--' }}</span>
+        </span>
       </template>
     </Grid>
   </Page>

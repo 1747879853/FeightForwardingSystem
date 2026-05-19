@@ -1,6 +1,5 @@
 import { requestClient } from '#/api/request';
-import { useAppConfig } from '@vben/hooks';
-const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
+import { buildAttachmentUrl, getApiRootUrl } from '#/utils';
 /** 附件信息接口（统一格式，用于组件内部和表单绑定） */
 export interface Attachment {
   /** 附件 ID */
@@ -33,8 +32,7 @@ export interface UploadResultItem {
 export async function uploadFile(
   formData: FormData,
 ): Promise<UploadResultItem[]> {
-  // 生产环境使用生产的 apiURL（去掉 /api 后缀），开发环境使用空字符串
-  const baseURL = import.meta.env.PROD ? apiURL.replace(/\/api$/, '') : '';
+  const baseURL = getApiRootUrl();
   return requestClient.post<UploadResultItem[]>(
     '/upload/UploadFile',
     formData,
@@ -57,6 +55,6 @@ export function mapResultToAttachment(item: UploadResultItem): Attachment {
     attachmentId: item.attachmentId,
     fileName: item.fileName,
     filePath: item.filePath,
-    url: item.fileUrl,
+    url: buildAttachmentUrl(item.fileUrl || item.filePath),
   };
 }

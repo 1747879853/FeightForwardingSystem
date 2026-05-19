@@ -202,10 +202,12 @@ export function useColumns(
       minWidth: 120,
     },
     {
+      align: 'center',
       field: 'logo',
+      headerAlign: 'center',
       title: $t('system.basicData.carrier.logo'),
       minWidth: 140,
-      formatter: ({ row }) => row.logo?.friendlyFileName || '-',
+      slots: { default: 'logo' },
       showOverflow: true,
     },
     {

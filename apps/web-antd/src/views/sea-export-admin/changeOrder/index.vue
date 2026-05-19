@@ -549,7 +549,27 @@ onMounted(() => {
             <span class="flex w-[85px] font-semibold">
               {{ `${item.name} : ` }}</span
             >
-            <span class="flex w-[145px]">{{ item.value || '--' }}</span>
+            <span class="flex w-[145px]">
+              <span
+                v-if="item.key === 'carrierName'"
+                class="inline-flex items-center gap-1"
+              >
+                <img
+                  v-if="
+                    formValues?.carrierLogo?.url ||
+                    formValues?.carrier?.logo?.url
+                  "
+                  :src="
+                    formValues?.carrierLogo?.url ||
+                    formValues?.carrier?.logo?.url
+                  "
+                  :alt="formValues?.carrierName || 'carrier-logo'"
+                  class="h-8 w-8 rounded object-contain"
+                />
+                <span>{{ item.value || '--' }}</span>
+              </span>
+              <span v-else>{{ item.value || '--' }}</span>
+            </span>
           </div>
         </Card>
         <div class="w-change-order-auto flex min-w-0 flex-1 flex-col gap-2">
