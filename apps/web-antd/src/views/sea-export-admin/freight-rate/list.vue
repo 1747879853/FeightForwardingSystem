@@ -558,11 +558,6 @@ onMounted(async () => {
 
 <template>
   <Page auto-content-height>
-    <FormModal @success="onRefresh" />
-    <AddCtnModalComponent @success="onRefresh" />
-    <BatchAddModalComponent @success="onRefresh" />
-    <BatchEditModalComponent @success="onRefresh" />
-    <SyncUpdateModal @success="onRefresh" />
     <Grid>
       <!-- 推荐状态自定义渲染插槽 -->
       <template #recommend="{ row }">
@@ -804,12 +799,12 @@ onMounted(async () => {
           </div>
           <Space>
             <!-- 新增按钮 -->
-            <!-- <Button v-access:code="perm.add" type="primary" @click="onCreate">
+            <Button v-access:code="perm.add" type="primary" @click="onCreate">
               <Plus class="size-5" />
               {{
                 $t('ui.actionTitle.create', [$t('seaExport.freightRate.name')])
               }}
-            </Button> -->
+            </Button>
 
             <!-- 批量编辑按钮 -->
             <Button v-access:code="perm.add" @click="onBatchEditModal">
@@ -831,6 +826,10 @@ onMounted(async () => {
               </Button>
               <template #overlay>
                 <Menu>
+                  <!-- <Menu.Item key="create" @click="onCreate">
+                    {{ $t('seaExport.freightRate.create') }}
+                  </Menu.Item>
+                  <Menu.Divider /> -->
                   <Menu.Item key="batchAdd" @click="onBatchAdd">
                     {{ $t('seaExport.freightRate.batchAdd') }}
                   </Menu.Item>
@@ -869,6 +868,21 @@ onMounted(async () => {
         </div>
       </template>
     </Grid>
+
+    <!-- 运价表单弹窗 -->
+    <FormModal @success="onRefresh" />
+
+    <!-- 同步更新弹窗 -->
+    <SyncUpdateModal @success="onRefresh" />
+
+    <!-- 添加箱型弹窗 -->
+    <AddCtnModalComponent @success="onRefresh" />
+
+    <!-- 批量新增弹窗 -->
+    <BatchAddModalComponent @success="onRefresh" />
+
+    <!-- 批量编辑弹窗 -->
+    <BatchEditModalComponent @success="onRefresh" />
   </Page>
 </template>
 
