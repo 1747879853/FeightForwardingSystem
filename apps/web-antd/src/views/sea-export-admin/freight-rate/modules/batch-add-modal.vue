@@ -146,6 +146,7 @@ function createDefaultRow() {
     poddem: undefined,
     poddet: undefined,
     voyage: '',
+    contractNo: '',
     etd: '',
     etdDayOfWeek: undefined,
     etdDayTime: '',
@@ -435,6 +436,12 @@ function buildColumns(): VxeTableGridOptions['columns'] {
       slots: { default: 'voyage' },
     },
     {
+      field: 'contractNo',
+      title: '约号',
+      width: 150,
+      slots: { default: 'contractNo' },
+    },
+    {
       field: 'etd',
       title: '开船日期',
       width: 230,
@@ -622,6 +629,7 @@ async function handleSubmit() {
         poddem: row.poddem,
         poddet: row.poddet,
         voyage: row.voyage,
+        contractNo: row.contractNo,
         etd: row.etd,
         etdDayOfWeek: row.etdDayOfWeek,
         etdDayTime: row.etdDayTime,
@@ -823,6 +831,15 @@ function resetForm() {
         <!-- 航程 -->
         <template #voyage="{ row }">
           <Input v-model:value="row.voyage" placeholder="请输入" />
+        </template>
+
+        <!-- 约号 -->
+        <template #contractNo="{ row }">
+          <Input
+            v-model:value="row.contractNo"
+            placeholder="请输入约号"
+            :maxlength="128"
+          />
         </template>
 
         <!-- 合并的开船日期与星期 -->

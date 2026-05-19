@@ -192,6 +192,46 @@ async function loadSelectData() {
   }
 }
 
+/**
+ * 加载默认箱型（status为0且isDefault为true）
+ */
+async function loadDefaultCtns() {
+  try {
+    const { getCtnCodePagedList } =
+      await import('#/api/system/base-data/ctn-code-admin');
+    const ctnRes = await getCtnCodePagedList({
+      PageIndex: 1,
+      PageSize: 1000,
+      Sorting: 'OrderNo',
+    });
+
+    // 筛选出默认箱型
+    const defaultCtns = (ctnRes.items || []).filter(
+      (item: any) => item.status === 0 && item.isDefault === true,
+    );
+
+    if (defaultCtns && defaultCtns.length > 0) {
+      console.log('加载到默认箱型:', defaultCtns);
+      return defaultCtns.map((item: any) => ({
+        id: '',
+        seFreiPriceId: '',
+        ctnCodeId: item.id,
+        cost: 0,
+        remark: undefined,
+        ctnCode: {
+          id: item.id,
+          ctnName: item.ctnName || '',
+        } as any,
+      }));
+    }
+
+    return [];
+  } catch (error) {
+    console.error('加载默认箱型失败:', error);
+    return [];
+  }
+}
+
 // ==================== 表单配置 ====================
 
 const [Form, formApi] = useVbenForm({
@@ -544,7 +584,9 @@ const [Modal, modalApi] = useVbenModal({
       id.value = data.id;
       await loadDetail(data.id);
     } else {
-      // 新增模式 - 初始化空数组
+      // 新增模式 - 初始化并加载默认箱型
+      const defaultCtns = await loadDefaultCtns();
+
       formData.value = {
         id: '',
         recommend: false,
@@ -557,7 +599,7 @@ const [Modal, modalApi] = useVbenModal({
         currencyId: 0,
         creationTime: '',
         isValid: true,
-        seFreiPriceCtns: [],
+        seFreiPriceCtns: defaultCtns,
         seFreiPriceFees: [],
       } as SeFreiPriceOutDto;
       surchargeFees.value = [];
@@ -1765,8 +1807,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-
-
 @keyframes fade-in {
   from {
     opacity: 0;
