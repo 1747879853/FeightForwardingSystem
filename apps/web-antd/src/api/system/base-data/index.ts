@@ -9,3 +9,4 @@ export * from './code-source-admin';
 export * from './currency-admin';
 export * from './exchange-rate-admin';
 export * from './fee-name-admin';
+export * from './se-service-config-admin';

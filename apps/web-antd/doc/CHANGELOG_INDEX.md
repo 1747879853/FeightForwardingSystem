@@ -13,6 +13,18 @@
 
 ## 2026-05
 
+- [2026-05-20] [海运出口港口服务项配置起运港与枚举回显修复](./changelogs/change-log-2026-05-20-se-service-config-portname-and-enum-echo.md)
+- [2026-05-20] [海运出口港口服务项明细移除内层滚动条](./changelogs/change-log-2026-05-20-se-service-config-remove-inner-scroll.md)
+- [2026-05-20] [海运出口港口服务项标题改蓝色竖线并继续收窄弹窗](./changelogs/change-log-2026-05-20-se-service-config-title-blue-bar-and-narrower-modal.md)
+- [2026-05-20] [海运出口港口服务项弹窗宽度与标题强调优化](./changelogs/change-log-2026-05-20-se-service-config-modal-width-and-title-emphasis.md)
+- [2026-05-20] [海运出口港口服务项标题显示服务项名称](./changelogs/change-log-2026-05-20-se-service-config-item-title-with-service-type.md)
+- [2026-05-20] [海运出口港口服务项配置开关布局优化](./changelogs/change-log-2026-05-20-se-service-config-switch-layout.md)
+- [2026-05-20] [全局字体别名统一为 PingFang SC](./changelogs/change-log-2026-05-20-font-family-alias-rename-to-pingfang-sc.md)
+- [2026-05-20] [登录页字体跟随全局变量修复](./changelogs/change-log-2026-05-20-login-font-follow-global-variable.md)
+- [2026-05-20] [全局字体接入本地 WebFont（PingFangSC-Regular）](./changelogs/change-log-2026-05-20-global-font-face-webfont.md)
+- [2026-05-20] [全局字体统一配置（Web AntD）](./changelogs/change-log-2026-05-20-global-font-family-config.md)
+- [2026-05-20] [海运出口港口服务项配置枚举来源拆分](./changelogs/change-log-2026-05-20-se-service-config-enum-source-split.md)
+- [2026-05-20] [海运出口港口服务项配置前端对接](./changelogs/change-log-2026-05-20-se-service-config-admin-frontend-integration.md)
 - [2026-05-19] [海运出口列表船公司 Logo 统一附件地址拼接](./changelogs/change-log-2026-05-19-sea-exports-carrier-logo-unified-url.md)
 - [2026-05-19] [全局附件地址拼接统一封装](./changelogs/change-log-2026-05-19-global-attachment-url-builder.md)
 - [2026-05-18] [船公司下拉与海运出口编辑页统一回显 Logo](./changelogs/change-log-2026-05-18-carrier-select-logo-render-and-sea-export-selecteditems.md)

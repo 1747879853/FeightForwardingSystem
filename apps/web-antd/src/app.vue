@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, unref } from 'vue';
 
 import { useAntdDesignTokens } from '@vben/hooks';
 import { preferences, usePreferences } from '@vben/preferences';
@@ -13,6 +13,8 @@ defineOptions({ name: 'App' });
 
 const { isDark } = usePreferences();
 const { tokens } = useAntdDesignTokens();
+const globalFontFamily =
+  '"PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif';
 
 const tokenTheme = computed(() => {
   const algorithm = isDark.value
@@ -26,7 +28,10 @@ const tokenTheme = computed(() => {
 
   return {
     algorithm,
-    token: tokens,
+    token: {
+      ...unref(tokens),
+      fontFamily: globalFontFamily,
+    },
   };
 });
 </script>

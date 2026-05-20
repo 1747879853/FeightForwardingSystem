@@ -335,6 +335,27 @@
       "remark": "Remark",
       "keyword": "Keyword",
       "creationTime": "Creation Time"
+    },
+    "seServiceConfig": {
+      "title": "Sea Export Port Service Configuration",
+      "list": "Sea Export Port Service Configuration List",
+      "name": "Sea Export Port Service Configuration",
+      "item": "Service Item",
+      "items": "Service Item Details",
+      "addItem": "Add Service Item",
+      "polId": "Port Of Loading",
+      "serviceType": "Service Type",
+      "userAttribute": "User Attribute",
+      "autoComplete": "Auto Complete",
+      "manualAllowed": "Manual Completion Allowed",
+      "reminder": "Completion Reminder",
+      "sortId": "Sort",
+      "remark": "Remark",
+      "seServiceShows": "Visible Fields",
+      "seServiceLocks": "Locked Fields After Complete",
+      "seServiceRequires": "Required Fields On Complete",
+      "creationTime": "Creation Time",
+      "sortTip": "In edit mode, item sortId is auto assigned by order (starting from 0)."
     }
   },
   "user": {
