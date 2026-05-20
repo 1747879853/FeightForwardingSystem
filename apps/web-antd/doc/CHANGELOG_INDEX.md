@@ -13,6 +13,9 @@
 
 ## 2026-05
 
+- [2026-05-21] [海运出口港口服务项详情港口名称回显补齐](./changelogs/change-log-2026-05-21-se-service-config-detail-portname-echo.md)
+- [2026-05-21] [海运出口港口服务项顺序调整动画反馈优化](./changelogs/change-log-2026-05-21-se-service-config-item-reorder-motion.md)
+- [2026-05-20] [海运出口港口服务项配置明细支持手动调整顺序](./changelogs/change-log-2026-05-20-se-service-config-item-manual-order.md)
 - [2026-05-20] [海运出口港口服务项配置起运港与枚举回显修复](./changelogs/change-log-2026-05-20-se-service-config-portname-and-enum-echo.md)
 - [2026-05-20] [海运出口港口服务项明细移除内层滚动条](./changelogs/change-log-2026-05-20-se-service-config-remove-inner-scroll.md)
 - [2026-05-20] [海运出口港口服务项标题改蓝色竖线并继续收窄弹窗](./changelogs/change-log-2026-05-20-se-service-config-title-blue-bar-and-narrower-modal.md)

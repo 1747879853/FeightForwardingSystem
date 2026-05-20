@@ -42,6 +42,9 @@ const handleEdit = (
     .setData({
       id: row.seServiceConfigId,
       serviceTypeOptions: serviceTypeOptions.value,
+      polId: row.polId,
+      polPortName: row.portName || row.pol?.portName,
+      polCnName: row.pol?.cnName,
     })
     .open();
 };

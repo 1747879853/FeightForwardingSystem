@@ -26,6 +26,7 @@ export namespace SeServiceConfigAdminApi {
     autoComplete?: boolean;
     manualAllowed?: boolean;
     reminder?: boolean;
+    sortId?: number;
     remark?: string;
     seServiceShows?: SeaExportPropRefDto[];
     seServiceLocks?: SeaExportPropRefDto[];

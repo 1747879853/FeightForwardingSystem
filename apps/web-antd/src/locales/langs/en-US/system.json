@@ -343,6 +343,8 @@
       "item": "Service Item",
       "items": "Service Item Details",
       "addItem": "Add Service Item",
+      "moveUp": "Move Up",
+      "moveDown": "Move Down",
       "polId": "Port Of Loading",
       "serviceType": "Service Type",
       "userAttribute": "User Attribute",
@@ -355,7 +357,7 @@
       "seServiceLocks": "Locked Fields After Complete",
       "seServiceRequires": "Required Fields On Complete",
       "creationTime": "Creation Time",
-      "sortTip": "In edit mode, item sortId is auto assigned by order (starting from 0)."
+      "sortTip": "Use Move Up/Move Down to reorder items manually. On save, sortId is auto assigned by current order (starting from 0)."
     }
   },
   "user": {

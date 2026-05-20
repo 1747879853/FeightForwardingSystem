@@ -343,6 +343,8 @@
       "item": "服务项",
       "items": "服务项配置明细",
       "addItem": "新增服务项",
+      "moveUp": "上移",
+      "moveDown": "下移",
       "polId": "起运港",
       "serviceType": "服务项类型",
       "userAttribute": "用户属性",
@@ -355,7 +357,7 @@
       "seServiceLocks": "完成后锁定字段",
       "seServiceRequires": "完成时必填字段",
       "creationTime": "创建时间",
-      "sortTip": "编辑时服务项排序由列表顺序自动计算（从0开始）。"
+      "sortTip": "可通过“上移/下移”手动调整服务项顺序，保存时按当前列表顺序自动写入排序值（从0开始）。"
     }
   },
   "user": {

@@ -34,6 +34,13 @@ import {
 } from '#/views/system/user/data';
 
 type SelectOption = { label: string; value: number };
+type PortSelectItem = {
+  id: number | string;
+  portName?: string;
+  cnName?: string;
+  ediCode?: string;
+  status?: number;
+};
 
 type PropRefRow = {
   id?: string;
@@ -41,6 +48,7 @@ type PropRefRow = {
 };
 
 type ItemRow = {
+  rowKey: string;
   id?: string;
   serviceType?: number;
   userAttributeFlags: number[];
@@ -62,8 +70,10 @@ const formState = ref<{
   remark?: string;
 }>({});
 const itemRows = ref<ItemRow[]>([]);
+const selectedPortItems = ref<PortSelectItem[]>([]);
 const serviceTypeOptions = ref<SelectOption[]>([]);
 const seaExportPropOptions = ref<SelectOption[]>([]);
+let rowKeySeed = 0;
 
 const userAttributeOptions = computed(() => getUserAttributeOptions());
 
@@ -105,6 +115,13 @@ const normalizeEnumNumber = (value: number | string | undefined | null) => {
   return Number.isNaN(parsed) ? undefined : parsed;
 };
 
+const normalizeIdAsString = (value: number | string | undefined | null) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  return String(value);
+};
+
 const updatePropRefs = (
   row: ItemRow,
   field: 'seServiceShows' | 'seServiceLocks' | 'seServiceRequires',
@@ -118,8 +135,11 @@ const updatePropRefs = (
   }));
 };
 
+const createRowKey = () => `se-service-item-${Date.now()}-${rowKeySeed++}`;
+
 const addItem = () => {
   itemRows.value.push({
+    rowKey: createRowKey(),
     serviceType: undefined,
     userAttributeFlags: [],
     autoComplete: false,
@@ -134,6 +154,28 @@ const addItem = () => {
 
 const removeItem = (index: number) => {
   itemRows.value.splice(index, 1);
+};
+
+const moveItem = (from: number, to: number) => {
+  if (
+    from === to ||
+    from < 0 ||
+    to < 0 ||
+    from >= itemRows.value.length ||
+    to >= itemRows.value.length
+  ) {
+    return;
+  }
+  const [moved] = itemRows.value.splice(from, 1);
+  itemRows.value.splice(to, 0, moved);
+};
+
+const moveUp = (index: number) => {
+  moveItem(index, index - 1);
+};
+
+const moveDown = (index: number) => {
+  moveItem(index, index + 1);
 };
 
 const validateForm = () => {
@@ -194,13 +236,14 @@ const toPayloadItemsForAdd =
 
 const toPayloadItemsForEdit =
   (): SeServiceConfigAdminApi.SeServiceConfigItemEditDto[] => {
-    return itemRows.value.map((row) => ({
+    return itemRows.value.map((row, index) => ({
       id: row.id,
       serviceType: Number(row.serviceType),
       userAttribute: combineUserAttribute(row.userAttributeFlags),
       autoComplete: row.autoComplete,
       manualAllowed: row.manualAllowed,
       reminder: row.reminder,
+      sortId: index,
       remark: row.remark,
       seServiceShows: row.seServiceShows.map((item) => ({
         id: item.id,
@@ -225,6 +268,7 @@ const resetState = () => {
     remark: '',
   };
   itemRows.value = [];
+  selectedPortItems.value = [];
 };
 
 const buildSelectOptions = (
@@ -302,6 +346,9 @@ const [Modal, modalApi] = useVbenModal({
     const modalData = modalApi.getData<{
       id?: string;
       serviceTypeOptions?: SelectOption[];
+      polId?: number | string;
+      polPortName?: string;
+      polCnName?: string;
     }>();
     await Promise.all([loadServiceTypeOptions(), loadSeaExportPropOptions()]);
     if (
@@ -319,33 +366,57 @@ const [Modal, modalApi] = useVbenModal({
     modalApi.lock();
     try {
       const detail = await getSeServiceConfigDetail(modalData.id);
+      const normalizedPolId = normalizeIdAsString(
+        detail.polId ?? modalData?.polId,
+      );
       formState.value = {
         id: detail.id,
-        polId: detail.polId,
+        polId: normalizedPolId,
         sortId: detail.sortId,
         remark: detail.remark,
       };
-      itemRows.value = (detail.seServiceConfigItems || []).map((item) => ({
-        id: item.id,
-        serviceType: normalizeEnumNumber(item.serviceType),
-        userAttributeFlags: parseUserAttribute(Number(item.userAttribute || 0)),
-        autoComplete: Boolean(item.autoComplete),
-        manualAllowed: Boolean(item.manualAllowed),
-        reminder: Boolean(item.reminder),
-        remark: item.remark,
-        seServiceShows: (item.seServiceShows || []).map((sub) => ({
-          id: sub.id,
-          seaExportPropEnum: Number(sub.seaExportPropEnum),
-        })),
-        seServiceLocks: (item.seServiceLocks || []).map((sub) => ({
-          id: sub.id,
-          seaExportPropEnum: Number(sub.seaExportPropEnum),
-        })),
-        seServiceRequires: (item.seServiceRequires || []).map((sub) => ({
-          id: sub.id,
-          seaExportPropEnum: Number(sub.seaExportPropEnum),
-        })),
-      }));
+      selectedPortItems.value =
+        normalizedPolId === undefined
+          ? []
+          : [
+              {
+                id: normalizedPolId,
+                portName: detail.pol?.portName || modalData?.polPortName,
+                cnName: detail.pol?.cnName || modalData?.polCnName,
+                status: 0,
+              },
+            ];
+      itemRows.value = (detail.seServiceConfigItems || [])
+        .slice()
+        .sort(
+          (a, b) =>
+            Number(a.sortId ?? Number.MAX_SAFE_INTEGER) -
+            Number(b.sortId ?? Number.MAX_SAFE_INTEGER),
+        )
+        .map((item) => ({
+          rowKey: item.id || createRowKey(),
+          id: item.id,
+          serviceType: normalizeEnumNumber(item.serviceType),
+          userAttributeFlags: parseUserAttribute(
+            Number(item.userAttribute || 0),
+          ),
+          autoComplete: Boolean(item.autoComplete),
+          manualAllowed: Boolean(item.manualAllowed),
+          reminder: Boolean(item.reminder),
+          remark: item.remark,
+          seServiceShows: (item.seServiceShows || []).map((sub) => ({
+            id: sub.id,
+            seaExportPropEnum: Number(sub.seaExportPropEnum),
+          })),
+          seServiceLocks: (item.seServiceLocks || []).map((sub) => ({
+            id: sub.id,
+            seaExportPropEnum: Number(sub.seaExportPropEnum),
+          })),
+          seServiceRequires: (item.seServiceRequires || []).map((sub) => ({
+            id: sub.id,
+            seaExportPropEnum: Number(sub.seaExportPropEnum),
+          })),
+        }));
       if (itemRows.value.length === 0) {
         addItem();
       }
@@ -367,6 +438,7 @@ const [Modal, modalApi] = useVbenModal({
           >
             <PortSelect
               v-model="formState.polId"
+              :selected-items="selectedPortItems"
               :allow-clear="true"
               :placeholder="$t('ui.placeholder.select')"
             />
@@ -399,10 +471,10 @@ const [Modal, modalApi] = useVbenModal({
         </Button>
       </div>
 
-      <div class="space-y-3 pr-1">
+      <TransitionGroup name="service-item" tag="div" class="space-y-3 pr-1">
         <div
           v-for="(row, index) in itemRows"
-          :key="row.id || `new-${index}`"
+          :key="row.rowKey"
           class="rounded border border-gray-200 p-3"
         >
           <div class="mb-3 flex items-center justify-between">
@@ -411,14 +483,30 @@ const [Modal, modalApi] = useVbenModal({
             >
               {{ getItemTitle(row, index) }}
             </div>
-            <Button
-              type="text"
-              danger
-              :disabled="itemRows.length <= 1"
-              @click="removeItem(index)"
-            >
-              {{ $t('common.delete') }}
-            </Button>
+            <Space :size="4">
+              <Button
+                type="text"
+                :disabled="index === 0"
+                @click="moveUp(index)"
+              >
+                {{ $t('system.basicData.seServiceConfig.moveUp') }}
+              </Button>
+              <Button
+                type="text"
+                :disabled="index === itemRows.length - 1"
+                @click="moveDown(index)"
+              >
+                {{ $t('system.basicData.seServiceConfig.moveDown') }}
+              </Button>
+              <Button
+                type="text"
+                danger
+                :disabled="itemRows.length <= 1"
+                @click="removeItem(index)"
+              >
+                {{ $t('common.delete') }}
+              </Button>
+            </Space>
           </div>
 
           <div class="grid grid-cols-4 gap-3">
@@ -527,7 +615,7 @@ const [Modal, modalApi] = useVbenModal({
             />
           </FormItem>
         </div>
-      </div>
+      </TransitionGroup>
 
       <Space class="mt-2 text-xs text-gray-500">
         <span>{{ $t('system.basicData.seServiceConfig.sortTip') }}</span>
@@ -535,3 +623,33 @@ const [Modal, modalApi] = useVbenModal({
     </div>
   </Modal>
 </template>
+
+<style scoped>
+.service-item-move,
+.service-item-enter-active,
+.service-item-leave-active {
+  transition:
+    transform 260ms cubic-bezier(0.25, 1, 0.5, 1),
+    opacity 220ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.service-item-enter-from,
+.service-item-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .service-item-move,
+  .service-item-enter-active,
+  .service-item-leave-active {
+    transition: none;
+  }
+
+  .service-item-enter-from,
+  .service-item-leave-to {
+    opacity: 1;
+    transform: none;
+  }
+}
+</style>
