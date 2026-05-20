@@ -103,9 +103,39 @@ const currencyList = ref<any[]>([]);
 // 费用代码列表（用于下拉选择）
 const feeCodeList = ref<any[]>([]);
 
+// 港口数据缓存
+const portCache = ref<any[]>([]);
+const carrierCache = ref<any[]>([]);
+
+// 标记是否已加载基础数据
+const baseDataLoaded = ref(false);
+
 // 加载币别和费用代码列表
 async function loadSelectData() {
   try {
+    // 如果已经加载过基础数据，直接返回
+    if (baseDataLoaded.value) {
+      return;
+    }
+
+    // 加载港口数据（所有端口共用）
+    const { getPortCodePagedList } =
+      await import('#/api/system/base-data/port-code-admin');
+    const portRes = await getPortCodePagedList({ PageSize: 1000 });
+    portCache.value = (portRes.items || []).map((item: any) => ({
+      label: `${item.cnName}(${item.portName})`,
+      value: item.id,
+    }));
+
+    // 加载船公司数据
+    const { getCarrierPagedList } =
+      await import('#/api/system/base-data/carrier-admin');
+    const carrierRes = await getCarrierPagedList({ PageSize: 1000 });
+    carrierCache.value = (carrierRes.items || []).map((item: any) => ({
+      label: item.cnName || item.enName,
+      value: item.id,
+    }));
+
     // 加载币别列表
     const { getCurrencyPagedList } =
       await import('#/api/system/base-data/currency-admin');
@@ -123,6 +153,8 @@ async function loadSelectData() {
       label: item.cnName || item.enName,
       value: item.id,
     }));
+
+    baseDataLoaded.value = true;
   } catch (error) {
     console.error('加载下拉数据失败:', error);
   }
@@ -551,45 +583,43 @@ function filterCurrencyOption(input: string, option: any) {
 const [Form, formApi] = useVbenForm({
   schema: [
     {
-      component: 'ApiSelect',
+      component: 'Select',
       fieldName: 'carrierId',
       label: '船公司',
-      componentProps: {
-        api: async () => {
-          const { getCarrierPagedList } =
-            await import('#/api/system/base-data/carrier-admin');
-          const res = await getCarrierPagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: item.cnName || item.enName,
-            value: item.id,
-          }));
-        },
+      componentProps: () => ({
+        options: carrierCache.value,
         showSearch: true,
-        filterOption: true,
+        filterOption: (input: string, option: any) => {
+          if (!input) return true;
+          const item = carrierCache.value.find(
+            (item) => item.value === option.value,
+          );
+          const label = item?.label || '';
+          return String(label).toLowerCase().includes(input.toLowerCase());
+        },
         placeholder: isBatchMode.value ? '留空不修改' : '请选择船公司',
         allowClear: true,
-      },
+      }),
       rules: isBatchMode.value ? '' : 'required',
     },
     {
-      component: 'ApiSelect',
+      component: 'Select',
       fieldName: 'currencyId',
       label: '币别',
-      componentProps: {
-        api: async () => {
-          const { getCurrencyPagedList } =
-            await import('#/api/system/base-data/currency-admin');
-          const res = await getCurrencyPagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: item.cnName || item.enName,
-            value: item.id,
-          }));
-        },
+      componentProps: () => ({
+        options: currencyList.value,
         showSearch: true,
-        filterOption: true,
+        filterOption: (input: string, option: any) => {
+          if (!input) return true;
+          const item = currencyList.value.find(
+            (item) => item.value === option.value,
+          );
+          const label = item?.label || '';
+          return String(label).toLowerCase().includes(input.toLowerCase());
+        },
         placeholder: isBatchMode.value ? '留空不修改' : '请选择币别',
         allowClear: true,
-      },
+      }),
       rules: isBatchMode.value ? '' : 'required',
     },
     {
@@ -734,47 +764,45 @@ const [Form, formApi] = useVbenForm({
       }),
     },
     {
-      component: 'ApiSelect',
+      component: 'Select',
       fieldName: 'polId',
       label: '起运港',
-      componentProps: {
-        api: async () => {
-          const { getPortCodePagedList } =
-            await import('#/api/system/base-data/port-code-admin');
-          const res = await getPortCodePagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: `${item.cnName}(${item.portName})`,
-            value: item.id,
-          }));
-        },
+      componentProps: () => ({
+        options: portCache.value,
         showSearch: true,
-        filterOption: true,
+        filterOption: (input: string, option: any) => {
+          if (!input) return true;
+          const item = portCache.value.find(
+            (item) => item.value === option.value,
+          );
+          const label = item?.label || '';
+          return String(label).toLowerCase().includes(input.toLowerCase());
+        },
         placeholder: isBatchMode.value ? '留空不修改' : '请选择起运港',
         allowClear: true,
-      },
+      }),
       formItemClass: 'w-full',
       rules: isBatchMode.value ? '' : 'required',
     },
 
     {
-      component: 'ApiSelect',
+      component: 'Select',
       fieldName: 'podId',
       label: '目的港',
-      componentProps: {
-        api: async () => {
-          const { getPortCodePagedList } =
-            await import('#/api/system/base-data/port-code-admin');
-          const res = await getPortCodePagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: `${item.cnName}(${item.portName})`,
-            value: item.id,
-          }));
-        },
+      componentProps: () => ({
+        options: portCache.value,
         showSearch: true,
-        filterOption: true,
+        filterOption: (input: string, option: any) => {
+          if (!input) return true;
+          const item = portCache.value.find(
+            (item) => item.value === option.value,
+          );
+          const label = item?.label || '';
+          return String(label).toLowerCase().includes(input.toLowerCase());
+        },
         placeholder: isBatchMode.value ? '留空不修改' : '请选择目的港',
         allowClear: true,
-      },
+      }),
       rules: isBatchMode.value ? '' : 'required',
     },
     {
@@ -809,42 +837,40 @@ const [Form, formApi] = useVbenForm({
       },
     },
     {
-      component: 'ApiSelect',
+      component: 'Select',
       fieldName: 'poT1Id',
       label: '中转港1',
       componentProps: () => ({
-        api: async () => {
-          const { getPortCodePagedList } =
-            await import('#/api/system/base-data/port-code-admin');
-          const res = await getPortCodePagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: `${item.cnName}(${item.portName})`,
-            value: item.id,
-          }));
-        },
+        options: portCache.value,
         showSearch: true,
-        filterOption: true,
+        filterOption: (input: string, option: any) => {
+          if (!input) return true;
+          const item = portCache.value.find(
+            (item) => item.value === option.value,
+          );
+          const label = item?.label || '';
+          return String(label).toLowerCase().includes(input.toLowerCase());
+        },
         placeholder: isBatchMode.value ? '留空不修改' : '请选择中转港1',
         allowClear: true,
         disabled: transshipmentPortsDisabled.value,
       }),
     },
     {
-      component: 'ApiSelect',
+      component: 'Select',
       fieldName: 'poT2Id',
       label: '中转港2',
       componentProps: () => ({
-        api: async () => {
-          const { getPortCodePagedList } =
-            await import('#/api/system/base-data/port-code-admin');
-          const res = await getPortCodePagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: `${item.cnName}(${item.portName})`,
-            value: item.id,
-          }));
-        },
+        options: portCache.value,
         showSearch: true,
-        filterOption: true,
+        filterOption: (input: string, option: any) => {
+          if (!input) return true;
+          const item = portCache.value.find(
+            (item) => item.value === option.value,
+          );
+          const label = item?.label || '';
+          return String(label).toLowerCase().includes(input.toLowerCase());
+        },
         placeholder: isBatchMode.value ? '留空不修改' : '请选择中转港2',
         allowClear: true,
         disabled: transshipmentPortsDisabled.value,

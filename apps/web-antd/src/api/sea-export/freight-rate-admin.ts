@@ -7,6 +7,25 @@ import { requestClient } from '#/api/request';
 // ==================== DTO 定义 ====================
 
 /**
+ * 附件项信息
+ */
+export interface AttachmentItemDto {
+  id: number;
+  attachmentId: number;
+  itemId?: string;
+  moduleTypeId?: string;
+  isFirstShow?: boolean;
+  displayOrder?: number;
+  url?: string;
+  mediaType?: number;
+  friendlyFileName?: string;
+  fileLength?: null | number;
+  creationTime?: null | string;
+  creatorUserId?: null | number;
+  creatorUserNickName?: null | string;
+}
+
+/**
  * 船公司信息
  */
 export interface CarrierDto {
@@ -28,6 +47,8 @@ export interface CarrierDto {
   ediCode: string;
   /** 备注 */
   remark: string;
+  /** Logo */
+  logo?: null | AttachmentItemDto;
   /** 国家信息（关联对象） */
   country?: CountryCodeDto;
 }
