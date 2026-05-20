@@ -502,8 +502,8 @@ function getIsValidText(row: SeFreiPriceOutDto): string {
       startDate.getMonth(),
       startDate.getDate(),
     );
-    console.log('startDay:', startDay);
-    console.log('today:', today);
+    // console.log('startDay:', startDay);
+    // console.log('today:', today);
     if (startDay > today) {
       return '未生效';
     }

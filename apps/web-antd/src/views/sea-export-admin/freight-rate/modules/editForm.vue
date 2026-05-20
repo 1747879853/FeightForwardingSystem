@@ -92,7 +92,7 @@ interface SurchargePriceItem {
 interface SurchargeFeeItem {
   id?: string;
   feeCodeId?: number;
-  currencyId?: number;
+  currencyId?: number | null;
   priceFeeType: PriceFeeType;
   prices: Record<string, SurchargePriceItem>; // key: ctnCodeId (string), value: 价格对象
   seFreiPriceCtnFees?: Array<{
@@ -236,7 +236,7 @@ async function loadDefaultCtns() {
 
 const [Form, formApi] = useVbenForm({
   schema: [
-    // 第一行：船公司
+    // 第一行：船公司、起运港、目的港
     {
       component: 'ApiSelect',
       fieldName: 'carrierId',
@@ -259,7 +259,6 @@ const [Form, formApi] = useVbenForm({
       },
       rules: 'required',
     },
-    // 第二行：起运港、目的港
     {
       component: 'PortSelect',
       fieldName: 'polId',
@@ -282,7 +281,7 @@ const [Form, formApi] = useVbenForm({
       },
       rules: 'required',
     },
-    // 第三行：是否直达、中转港1、中转港2
+    // 第二行：是否直达、中转港1、中转港2
     {
       component: 'RadioGroup',
       fieldName: 'isDirect',
@@ -331,7 +330,6 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
-    // 第四行：航程、约号
     {
       component: 'Input',
       fieldName: 'voyage',
@@ -342,6 +340,7 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
+    // 第三行：约号、免用箱天数等
     {
       component: 'Input',
       fieldName: 'contractNo',
@@ -352,7 +351,6 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
-    // 第五行：免用箱天数、免堆期、免箱期
     {
       component: 'InputNumber',
       fieldName: 'polFreeDays',
@@ -383,6 +381,7 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
+    // 第四行：目的港免箱期、截单时间相关
     {
       component: 'InputNumber',
       fieldName: 'poddet',
@@ -393,7 +392,6 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
-    // 第六行：截单时间（互斥）
     {
       component: 'DatePicker',
       fieldName: 'closeDocTime',
@@ -458,7 +456,7 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
-    // 第七行：截关时间（互斥）
+    // 第五行：截关时间相关
     {
       component: 'DatePicker',
       fieldName: 'closingTime',
@@ -523,7 +521,7 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
-    // 第八行：备注（独占一行）
+    // 第六行：备注（独占一行，占据剩余空间或全宽）
     {
       component: 'Textarea',
       fieldName: 'remark',
@@ -534,6 +532,7 @@ const [Form, formApi] = useVbenForm({
         showCount: true,
         autoSize: { minRows: 3, maxRows: 6 },
       },
+      wrapperClass: 'col-span-4',
     },
   ],
   layout: 'horizontal',
@@ -547,13 +546,23 @@ const [Modal, modalApi] = useVbenModal({
   async onOpenChange(isOpen: boolean) {
     if (!isOpen) {
       // 关闭时重置状态
+      // 先清理条件配置弹窗的事件监听器
+      hideConditionPopup();
+      document.removeEventListener('click', hideConditionPopup);
+
       id.value = undefined;
       formData.value = undefined;
       surchargeFees.value = [];
       etdList.value = [];
       etdDayList.value = [];
       conditionalFeeConfigs.value = {};
-      await formApi.resetForm();
+
+      // 延迟重置表单，确保 DOM 更新完成
+      setTimeout(() => {
+        formApi.resetForm().catch(() => {
+          // 忽略重置错误（可能在 DOM 销毁时发生）
+        });
+      }, 0);
       return;
     }
 
@@ -578,7 +587,7 @@ const [Modal, modalApi] = useVbenModal({
         isDirect: true,
         validTimeStart: '',
         validTimeEnd: '',
-        currencyId: 0,
+        currencyId: null,
         creationTime: '',
         isValid: true,
         seFreiPriceCtns: defaultCtns,
@@ -787,7 +796,7 @@ async function addCtn() {
       isDirect: true,
       validTimeStart: '',
       validTimeEnd: '',
-      currencyId: 0,
+      currencyId: null,
       creationTime: '',
       isValid: true,
       seFreiPriceCtns: [],
@@ -950,7 +959,12 @@ function showConditionPopup(
 function hideConditionPopup() {
   conditionPopupVisible.value = false;
   currentConditionCell.value = null;
-  document.removeEventListener('click', hideConditionPopup);
+  // 使用 try-catch 避免在 DOM 销毁时出错
+  try {
+    document.removeEventListener('click', hideConditionPopup);
+  } catch (error) {
+    // 忽略移除事件监听器时的错误
+  }
 }
 
 function toggleConditionEnabled(enabled: boolean) {
@@ -1257,7 +1271,8 @@ onMounted(() => {
               >有效起始 <span class="required">*</span></label
             >
             <DatePicker
-              v-model:value="formData!.validTimeStart"
+              v-if="formData"
+              v-model:value="formData.validTimeStart"
               placeholder="请选择有效起始时间"
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
@@ -1270,7 +1285,8 @@ onMounted(() => {
               >有效截止 <span class="required">*</span></label
             >
             <DatePicker
-              v-model:value="formData!.validTimeEnd"
+              v-if="formData"
+              v-model:value="formData.validTimeEnd"
               placeholder="请选择有效截止时间"
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
@@ -1385,9 +1401,13 @@ onMounted(() => {
       <div class="form-section">
         <h3 class="section-title">
           <span>箱型费率</span>
-          <div class="flex items-center gap-2">
+          <div v-if="formData" class="flex items-center gap-2">
+            <span class="required-label"
+              >币别 <span class="required-star">*</span></span
+            >
             <Select
-              v-model:value="formData!.currencyId"
+              class="currency-select"
+              v-model:value="formData.currencyId"
               style="width: 150px"
               show-search
               :filter-option="
@@ -2076,5 +2096,33 @@ input[type='text']:focus {
 /* 条件配置区域动画 */
 .space-y-2 {
   animation: fade-in 0.3s ease-in-out;
+}
+
+.currency-select :deep(.ant-select-selector) {
+  border-color: #f59e0b;
+  border-width: 2px;
+}
+
+.currency-select :deep(.ant-select-selector:hover),
+.currency-select :deep(.ant-select-focused .ant-select-selector) {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgb(245 158 11 / 20%) !important;
+}
+
+/* 必填标签样式 */
+.required-label {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: #262626;
+}
+
+.required-star {
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+  color: #ff4d4f;
 }
 </style>
