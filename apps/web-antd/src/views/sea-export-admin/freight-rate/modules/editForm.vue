@@ -279,25 +279,51 @@ const [Form, formApi] = useVbenForm({
       },
       rules: 'required',
     },
-    // 第三行：中转港1、中转港2
+    // 第三行：是否直达、中转港1、中转港2
+    {
+      component: 'RadioGroup',
+      fieldName: 'isDirect',
+      label: '是否直达',
+      defaultValue: true,
+      componentProps: {
+        options: [
+          { label: '是', value: true },
+          { label: '否', value: false },
+        ],
+        onChange: (e: any) => {
+          const isDirect = e.target?.value ?? e;
+          isDirectValue.value = isDirect;
+          if (isDirect === true) {
+            // 选择"是"时，清空并禁用中转港
+            formApi.setValues({ poT1Id: undefined, poT2Id: undefined });
+          }
+        },
+      },
+    },
     {
       component: 'PortSelect',
       fieldName: 'poT1Id',
       label: '中转港1',
+      dependencies: {
+        show: (values) => values.isDirect === false,
+        triggerFields: ['isDirect'],
+      },
       componentProps: {
         placeholder: '请选择中转港1',
         allowClear: true,
-        disabled: computed(() => isDirectValue.value === true),
       },
     },
     {
       component: 'PortSelect',
       fieldName: 'poT2Id',
       label: '中转港2',
+      dependencies: {
+        show: (values) => values.isDirect === false,
+        triggerFields: ['isDirect'],
+      },
       componentProps: {
         placeholder: '请选择中转港2',
         allowClear: true,
-        disabled: computed(() => isDirectValue.value === true),
       },
     },
     // 第四行：航程、约号
@@ -480,50 +506,7 @@ const [Form, formApi] = useVbenForm({
         disabled: computed(() => closingMode.value !== 'week'),
       },
     },
-    // 第八行：有效时间
-    {
-      component: 'DatePicker',
-      fieldName: 'validTimeStart',
-      label: '有效起始',
-      componentProps: {
-        placeholder: '请选择有效起始时间',
-        format: 'YYYY-MM-DD',
-        valueFormat: 'YYYY-MM-DD',
-      },
-      rules: 'required',
-    },
-    {
-      component: 'DatePicker',
-      fieldName: 'validTimeEnd',
-      label: '有效截止',
-      componentProps: {
-        placeholder: '请选择有效截止时间',
-        format: 'YYYY-MM-DD',
-        valueFormat: 'YYYY-MM-DD',
-      },
-      rules: 'required',
-    },
-    // 第九行：是否直达、备注
-    {
-      component: 'RadioGroup',
-      fieldName: 'isDirect',
-      label: '是否直达',
-      defaultValue: true,
-      componentProps: {
-        options: [
-          { label: '是', value: true },
-          { label: '否', value: false },
-        ],
-        onChange: (e: any) => {
-          const isDirect = e.target?.value ?? e;
-          isDirectValue.value = isDirect;
-          if (isDirect === true) {
-            // 选择"是"时，清空并禁用中转港
-            formApi.setValues({ poT1Id: undefined, poT2Id: undefined });
-          }
-        },
-      },
-    },
+    // 第八行：备注
     {
       component: 'Input',
       fieldName: 'remark',
@@ -590,7 +573,7 @@ const [Modal, modalApi] = useVbenModal({
   closeOnClickModal: false,
 });
 
-// ==================== 加载详情数据 ====================
+// ==================== 加载详情数据啊 ====================
 
 async function loadDetail(priceId: string) {
   try {
@@ -1217,6 +1200,46 @@ onMounted(() => {
 <template>
   <Modal title="运价信息" class="w-[1400px]" :footer="false">
     <div class="edit-form-container">
+      <!-- 有效期醒目提示区域 -->
+      <div class="validity-period-banner">
+        <div class="banner-icon">
+          <IconifyIcon icon="mdi:calendar-clock" class="size-8" />
+        </div>
+        <div class="banner-content">
+          <div class="banner-title">请设置运价有效期</div>
+          <div class="banner-subtitle">
+            有效起始日期和截止日期为必填项，请务必准确填写
+          </div>
+        </div>
+        <div class="banner-fields">
+          <div class="field-item">
+            <label class="field-label"
+              >有效起始 <span class="required">*</span></label
+            >
+            <DatePicker
+              v-model:value="formData!.validTimeStart"
+              placeholder="请选择有效起始时间"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              class="field-input"
+            />
+          </div>
+          <div class="field-divider">至</div>
+          <div class="field-item">
+            <label class="field-label"
+              >有效截止 <span class="required">*</span></label
+            >
+            <DatePicker
+              v-model:value="formData!.validTimeEnd"
+              placeholder="请选择有效截止时间"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              class="field-input"
+            />
+          </div>
+        </div>
+      </div>
+
       <!-- 基础信息 -->
       <div class="form-section">
         <h3 class="section-title">基础信息</h3>
@@ -1851,6 +1874,93 @@ onMounted(() => {
   max-height: 70vh;
   padding: 16px;
   overflow-y: auto;
+}
+
+/* 有效期醒目提示横幅样式 */
+.validity-period-banner {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgb(102 126 234 / 30%);
+  animation: fade-in 0.4s ease-in-out;
+}
+
+.banner-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  color: white;
+  background: rgb(255 255 255 / 20%);
+  border-radius: 50%;
+}
+
+.banner-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.banner-title {
+  margin-bottom: 4px;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+}
+
+.banner-subtitle {
+  font-size: 13px;
+  color: rgb(255 255 255 / 85%);
+}
+
+.banner-fields {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.field-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: white;
+}
+
+.required {
+  color: #ffd700;
+}
+
+.field-input {
+  width: 180px;
+}
+
+.field-input :deep(.ant-picker) {
+  background: rgb(255 255 255 / 95%);
+  border: none;
+  border-radius: 6px;
+}
+
+.field-input :deep(.ant-picker:hover),
+.field-input :deep(.ant-picker-focused) {
+  border-color: #ffd700;
+  box-shadow: 0 0 0 2px rgb(255 215 0 / 30%);
+}
+
+.field-divider {
+  padding-bottom: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
 }
 
 .form-section {
