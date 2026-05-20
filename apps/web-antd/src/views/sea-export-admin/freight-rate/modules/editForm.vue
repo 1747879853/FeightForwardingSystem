@@ -236,7 +236,7 @@ async function loadDefaultCtns() {
 
 const [Form, formApi] = useVbenForm({
   schema: [
-    // 第一行：船公司、币别
+    // 第一行：船公司
     {
       component: 'ApiSelect',
       fieldName: 'carrierId',
@@ -254,26 +254,6 @@ const [Form, formApi] = useVbenForm({
         showSearch: true,
         filterOption: true,
         placeholder: '请选择船公司',
-        allowClear: true,
-      },
-      rules: 'required',
-    },
-    {
-      component: 'Select',
-      fieldName: 'currencyId',
-      label: '币别',
-      componentProps: {
-        options: computed(() => currencyList.value),
-        showSearch: true,
-        filterOption: (input: string, option: any) => {
-          if (!input) return true;
-          const currencyItem = currencyList.value.find(
-            (item) => item.value === option.value,
-          );
-          const label = currencyItem?.label || '';
-          return String(label).toLowerCase().includes(input.toLowerCase());
-        },
-        placeholder: '请选择币别',
         allowClear: true,
       },
       rules: 'required',
@@ -1096,6 +1076,26 @@ async function handleSubmit() {
 
     const values = await formApi.getValues();
 
+    console.log('=== 提交前调试信息 ===');
+    console.log('formData.value:', formData.value);
+    console.log('formData.value?.currencyId:', formData.value?.currencyId);
+    console.log('values.currencyId:', values.currencyId);
+
+    // 优先使用 formData 中的 currencyId，如果不存在则使用 values 中的
+    const finalCurrencyId =
+      formData.value?.currencyId !== undefined &&
+      formData.value?.currencyId !== null
+        ? formData.value.currencyId
+        : values.currencyId;
+
+    console.log('最终使用的 currencyId:', finalCurrencyId);
+
+    // 验证币别是否存在
+    if (!finalCurrencyId) {
+      message.error('请选择币别');
+      return;
+    }
+
     // 构建箱型数据
     const seFreiPriceCtns =
       formData.value?.seFreiPriceCtns?.map((ctn) => ({
@@ -1148,7 +1148,7 @@ async function handleSubmit() {
       carrierId: values.carrierId,
       polId: values.polId,
       podId: values.podId,
-      currencyId: values.currencyId,
+      currencyId: finalCurrencyId,
       isDirect: values.isDirect ?? true,
       poT1Id: values.poT1Id,
       poT2Id: values.poT2Id,
@@ -1323,6 +1323,33 @@ onMounted(() => {
         <h3 class="section-title">
           <span>箱型费率</span>
           <div class="flex items-center gap-2">
+            <Select
+              v-model:value="formData!.currencyId"
+              style="width: 150px"
+              show-search
+              :filter-option="
+                (input: string, option: any) => {
+                  if (!input) return true;
+                  const currencyItem = currencyList.find(
+                    (item) => item.value === option.value,
+                  );
+                  const label = currencyItem?.label || '';
+                  return String(label)
+                    .toLowerCase()
+                    .includes(input.toLowerCase());
+                }
+              "
+              placeholder="请选择币别"
+              allow-clear
+            >
+              <Select.Option
+                v-for="currency in currencyList"
+                :key="currency.value"
+                :value="currency.value"
+              >
+                {{ currency.label }}
+              </Select.Option>
+            </Select>
             <Select
               v-model:value="selectedCtnId"
               style="width: 200px"
