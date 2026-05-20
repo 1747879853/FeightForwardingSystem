@@ -91,6 +91,7 @@ const [Modal, modalApi] = useVbenModal({
   onConfirm() {
     handleSubmit();
   },
+  closeOnClickModal: false,
 });
 
 // 初始化下拉选项

@@ -963,7 +963,7 @@ onMounted(async () => {
 
 /* 淡化表格悬浮后的行背景色，确保复选框可见 */
 :deep(.vxe-table .vxe-body--row.is--hover) {
-  background-color: rgb(245 247 250 / 30%) !important;
+  background-color: rgb(245 247 250 / 15%) !important;
 }
 
 /* 确保复选框在悬浮时仍然清晰可见 */

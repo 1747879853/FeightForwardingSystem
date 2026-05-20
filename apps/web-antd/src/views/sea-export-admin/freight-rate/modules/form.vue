@@ -1373,6 +1373,8 @@ const [Modal, modalApi] = useVbenModal({
       }
     }
   },
+
+  closeOnClickModal: false,
 });
 
 const getModalTitle = computed(() => {

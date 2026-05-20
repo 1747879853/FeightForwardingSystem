@@ -90,6 +90,7 @@ const [Modal, modalApi] = useVbenModal({
       }
     }
   },
+  closeOnClickModal: false,
 });
 
 // 初始化下拉选项

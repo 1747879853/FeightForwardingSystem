@@ -607,6 +607,7 @@ const [Modal, modalApi] = useVbenModal({
       etdDayList.value = [];
     }
   },
+  closeOnClickModal: false,
 });
 
 // ==================== 加载详情数据 ====================
