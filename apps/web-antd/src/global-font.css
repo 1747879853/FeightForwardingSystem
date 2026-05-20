@@ -1,0 +1,19 @@
+@font-face {
+  font-family: 'PingFang SC';
+  font-style: normal;
+  font-weight: 400;
+  src: url('./assets/fonts/PingFangSC-Regular.woff2') format('woff2');
+  font-display: swap;
+}
+
+:root {
+  --font-family:
+    'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', arial, sans-serif;
+}
+
+:root,
+body,
+#app {
+  font-family:
+    'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+}

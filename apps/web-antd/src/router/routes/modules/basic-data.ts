@@ -27,6 +27,7 @@ const routes: RouteRecordRaw[] = [
         'Admin.CtnCode',
         'Admin.CountryCode',
         'Admin.GenerateNum',
+        'Admin.ServiceConfig.SeServiceConfig',
       ]),
     },
     name: 'BasicData',
@@ -214,6 +215,17 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/system/basic-data/GenerateNumAdmin/list.vue'),
+      },
+      {
+        path: '/basic-data/se-service-config',
+        name: 'BasicDataSeServiceConfig',
+        meta: {
+          icon: 'mdi:ship-wheel',
+          title: $t('system.basicData.seServiceConfig.title'),
+          authority: abpPageAuthority('Admin.ServiceConfig.SeServiceConfig'),
+        },
+        component: () =>
+          import('#/views/system/basic-data/SeServiceConfigAdmin/list.vue'),
       },
     ],
   },
