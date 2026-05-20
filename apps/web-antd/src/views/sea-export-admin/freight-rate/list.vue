@@ -580,8 +580,16 @@ onMounted(async () => {
     <Grid>
       <!-- 船公司自定义渲染插槽 -->
       <template #carrierId="{ row }">
-        <div class="px-2 py-1">
-          {{ row.carrier?.code || '-' }}
+        <div class="flex items-center gap-2 px-2 py-1">
+          <!-- 船公司 Logo -->
+          <img
+            v-if="row.carrier?.logo?.url"
+            :src="row.carrier.logo.url"
+            :alt="row.carrier.enName || row.carrier.code"
+            class="carrier-logo"
+          />
+          <!-- 船公司名称 -->
+          <span>{{ row.carrier?.cnName || row.carrier?.code || '-' }}</span>
         </div>
       </template>
 
@@ -1089,9 +1097,11 @@ onMounted(async () => {
   align-items: center;
 }
 
-/* 编辑附加费按钮样式 */
-.edit-surcharge-btn {
-  height: auto;
-  padding: 0;
+/* 船公司 Logo 样式 */
+.carrier-logo {
+  width: auto;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 2px;
 }
 </style>
