@@ -40,13 +40,6 @@ const onlySurchargeFees = ref(false);
 // 中转港禁用状态（响应式）
 const transshipmentPortsDisabled = ref(false);
 
-// 截单时间模式：'datetime' - 完整日期时间, 'week' - 星期+时间点
-const closeDocMode = ref<'datetime' | 'week' | null>(null);
-// 截关时间模式：'datetime' - 完整日期时间, 'week' - 星期+时间点
-const closingMode = ref<'datetime' | 'week' | null>(null);
-// 开船时间模式：'date' - 完整日期, 'week' - 星期
-const etdMode = ref<'date' | 'week' | null>(null);
-
 // 动态箱型列表（从行数据的 seFreiPriceCtns 中获取）
 const dynamicCtnTypes = computed(() => {
   if (
@@ -148,144 +141,64 @@ function updateTransshipmentPortsDisabled(disabled: boolean) {
   ]);
 }
 
-// ==================== 开船时间互斥逻辑 ====================
+// 添加附加费
+function addSurchargeFee() {
+  surchargeFees.value.push({
+    prices: {},
+  });
+}
 
-/**
- * 处理开船日期变化 - 选择完整日期时清空星期
- */
-function handleEtdChange(value: any) {
-  if (value) {
-    etdMode.value = 'date';
-    // 清空星期
-    formApi.setValues({
-      etdDayOfWeek: undefined,
-    });
-  } else {
-    etdMode.value = null;
+// 删除附加费
+function removeSurchargeFee(index: number) {
+  surchargeFees.value.splice(index, 1);
+}
+
+// 更新附加费的价格值（支持 price、value、otherPrice）
+function updateSurchargePriceValue(
+  feeIndex: number,
+  ctnCodeId: string,
+  field: 'price' | 'value' | 'otherPrice' | 'conditionType' | 'operatorType',
+  value: string,
+) {
+  const numValue = value ? Number(value) : undefined;
+
+  // 确保该索引的附加费存在
+  if (!surchargeFees.value[feeIndex]) {
+    surchargeFees.value[feeIndex] = { prices: {} };
+  }
+
+  // 确保 prices 对象中存在该箱型的配置
+  if (!surchargeFees.value[feeIndex].prices[ctnCodeId]) {
+    surchargeFees.value[feeIndex].prices[ctnCodeId] = {};
+  }
+
+  // 更新对应字段的值
+  surchargeFees.value[feeIndex].prices[ctnCodeId][field] = numValue;
+}
+
+// 监听附加费的费用代码变化，自动填充默认币别
+async function handleFeeCodeChange(feeIndex: number, feeCodeId?: number) {
+  if (!feeCodeId) {
+    // 如果清空了费用代码，也清空币别
+    if (surchargeFees.value[feeIndex]) {
+      surchargeFees.value[feeIndex].currencyId = undefined;
+    }
+    return;
+  }
+
+  try {
+    const { getFeeCodeDetail } =
+      await import('#/api/system/base-data/fee-code-admin');
+    const detail = await getFeeCodeDetail(feeCodeId);
+
+    // 如果费用代码有默认币别，则自动填充
+    if (detail.currencyId && surchargeFees.value[feeIndex]) {
+      surchargeFees.value[feeIndex].currencyId = detail.currencyId;
+    }
+  } catch (error) {
+    console.error('获取费用代码详情失败:', error);
   }
 }
-
-/**
- * 处理开船星期变化 - 选择星期时清空完整日期
- */
-function handleEtdDayOfWeekChange(value: any) {
-  if (value !== undefined && value !== null) {
-    etdMode.value = 'week';
-    // 清空完整日期
-    formApi.setValues({
-      etd: undefined,
-    });
-  } else {
-    etdMode.value = null;
-  }
-}
-
-// ==================== 截单时间互斥逻辑 ====================
-
-/**
- * 处理截单时间变化 - 选择完整日期时间时清空星期和时间点
- */
-function handleCloseDocTimeChange(value: any) {
-  if (value) {
-    closeDocMode.value = 'datetime';
-    // 清空星期和时间点
-    formApi.setValues({
-      closeDocDayOfWeek: undefined,
-      closeDocDayTime: undefined,
-    });
-  } else {
-    closeDocMode.value = null;
-  }
-}
-
-/**
- * 处理截单星期变化 - 选择星期时清空完整日期时间
- */
-function handleCloseDocDayOfWeekChange(value: any) {
-  if (value !== undefined && value !== null) {
-    closeDocMode.value = 'week';
-    // 清空完整日期时间
-    formApi.setValues({
-      closeDocTime: undefined,
-    });
-  } else {
-    closeDocMode.value = null;
-  }
-}
-
-/**
- * 处理截单时间点变化 - 仅在选择星期时有效
- */
-function handleCloseDocDayTimeChange(value: any) {
-  // 时间点只在星期模式下使用，不需要特殊处理
-}
-
-// ==================== 截关时间互斥逻辑 ====================
-
-/**
- * 处理截关时间变化 - 选择完整日期时间时清空星期和时间点
- */
-function handleClosingTimeChange(value: any) {
-  if (value) {
-    closingMode.value = 'datetime';
-    // 清空星期和时间点
-    formApi.setValues({
-      closingDayOfWeek: undefined,
-      closingDayTime: undefined,
-    });
-  } else {
-    closingMode.value = null;
-  }
-}
-
-/**
- * 处理截关星期变化 - 选择星期时清空完整日期时间
- */
-function handleClosingDayOfWeekChange(value: any) {
-  if (value !== undefined && value !== null) {
-    closingMode.value = 'week';
-    // 清空完整日期时间
-    formApi.setValues({
-      closingTime: undefined,
-    });
-  } else {
-    closingMode.value = null;
-  }
-}
-
-/**
- * 处理截关时间点变化 - 仅在选择星期时有效
- */
-function handleClosingDayTimeChange(value: any) {
-  // 时间点只在星期模式下使用，不需要特殊处理
-}
-
-// ==================== 禁用状态计算属性 ====================
-
-// 开船星期是否禁用：选择了完整日期时禁用
-const isEtdDayOfWeekDisabled = computed(() => {
-  return !isBatchMode.value && etdMode.value === 'date';
-});
-
-// 截单星期是否禁用：选择了完整日期时间时禁用
-const isCloseDocDayOfWeekDisabled = computed(() => {
-  return !isBatchMode.value && closeDocMode.value === 'datetime';
-});
-
-// 截单时间点是否禁用：未选择星期时禁用
-const isCloseDocDayTimeDisabled = computed(() => {
-  return !isBatchMode.value && closeDocMode.value !== 'week';
-});
-
-// 截关星期是否禁用：选择了完整日期时间时禁用
-const isClosingDayOfWeekDisabled = computed(() => {
-  return !isBatchMode.value && closingMode.value === 'datetime';
-});
-
-// 截关时间点是否禁用：未选择星期时禁用
-const isClosingDayTimeDisabled = computed(() => {
-  return !isBatchMode.value && closingMode.value !== 'week';
-});
 
 // 条件费用配置数据结构
 interface ConditionalFeeConfig {
@@ -557,18 +470,17 @@ const [Form, formApi] = useVbenForm({
       component: 'DatePicker',
       fieldName: 'etd',
       label: '开船日期',
-      componentProps: () => ({
+      componentProps: {
         placeholder: isBatchMode.value ? '留空不修改' : '请选择开船日期',
         format: 'YYYY-MM-DD',
         valueFormat: 'YYYY-MM-DD',
-        onChange: handleEtdChange,
-      }),
+      },
     },
     {
       component: 'Select',
       fieldName: 'etdDayOfWeek',
       label: '开船星期',
-      componentProps: () => ({
+      componentProps: {
         options: [
           { label: '周日', value: 0 },
           { label: '周一', value: 1 },
@@ -580,28 +492,35 @@ const [Form, formApi] = useVbenForm({
         ],
         placeholder: isBatchMode.value ? '留空不修改' : '请选择开船星期',
         allowClear: true,
-        disabled: isEtdDayOfWeekDisabled.value,
-        onChange: handleEtdDayOfWeekChange,
-      }),
+      },
+    },
+    {
+      component: 'TimePicker',
+      fieldName: 'etdDayTime',
+      label: '开船时间点',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改' : '请选择时间点',
+        format: 'HH:mm',
+        valueFormat: 'HH:mm',
+      },
     },
     {
       component: 'DatePicker',
       fieldName: 'closeDocTime',
       label: '截单时间',
-      componentProps: () => ({
+      componentProps: {
         placeholder: isBatchMode.value ? '留空不修改' : '请选择截单时间',
         format: 'YYYY-MM-DD HH:mm',
         valueFormat: 'YYYY-MM-DD HH:mm',
         showTime: true,
         timePicker: { format: 'HH:mm' },
-        onChange: handleCloseDocTimeChange,
-      }),
+      },
     },
     {
       component: 'Select',
       fieldName: 'closeDocDayOfWeek',
       label: '截单星期',
-      componentProps: () => ({
+      componentProps: {
         options: [
           { label: '周日', value: 0 },
           { label: '周一', value: 1 },
@@ -613,66 +532,29 @@ const [Form, formApi] = useVbenForm({
         ],
         placeholder: isBatchMode.value ? '留空不修改' : '请选择截单星期',
         allowClear: true,
-        disabled: isCloseDocDayOfWeekDisabled.value,
-        onChange: handleCloseDocDayOfWeekChange,
-      }),
+      },
     },
     {
       component: 'TimePicker',
       fieldName: 'closeDocDayTime',
       label: '截单时间点',
-      componentProps: () => ({
+      componentProps: {
         placeholder: isBatchMode.value ? '留空不修改' : '请选择时间点',
         format: 'HH:mm',
         valueFormat: 'HH:mm',
-        disabled: isCloseDocDayTimeDisabled.value,
-        onChange: handleCloseDocDayTimeChange,
-      }),
+      },
     },
     {
       component: 'DatePicker',
       fieldName: 'closingTime',
       label: '截关时间',
-      componentProps: () => ({
+      componentProps: {
         placeholder: isBatchMode.value ? '留空不修改' : '请选择截关时间',
         format: 'YYYY-MM-DD HH:mm',
         valueFormat: 'YYYY-MM-DD HH:mm',
         showTime: true,
         timePicker: { format: 'HH:mm' },
-        onChange: handleClosingTimeChange,
-      }),
-    },
-    {
-      component: 'Select',
-      fieldName: 'closingDayOfWeek',
-      label: '截关星期',
-      componentProps: () => ({
-        options: [
-          { label: '周日', value: 0 },
-          { label: '周一', value: 1 },
-          { label: '周二', value: 2 },
-          { label: '周三', value: 3 },
-          { label: '周四', value: 4 },
-          { label: '周五', value: 5 },
-          { label: '周六', value: 6 },
-        ],
-        placeholder: isBatchMode.value ? '留空不修改' : '请选择截关星期',
-        allowClear: true,
-        disabled: isClosingDayOfWeekDisabled.value,
-        onChange: handleClosingDayOfWeekChange,
-      }),
-    },
-    {
-      component: 'TimePicker',
-      fieldName: 'closingDayTime',
-      label: '截关时间点',
-      componentProps: () => ({
-        placeholder: isBatchMode.value ? '留空不修改' : '请选择时间点',
-        format: 'HH:mm',
-        valueFormat: 'HH:mm',
-        disabled: isClosingDayTimeDisabled.value,
-        onChange: handleClosingDayTimeChange,
-      }),
+      },
     },
     {
       component: 'ApiSelect',
@@ -836,6 +718,26 @@ const [Form, formApi] = useVbenForm({
       },
     },
     {
+      component: 'Textarea',
+      fieldName: 'remark',
+      label: '备注',
+      componentProps: {
+        placeholder: isBatchMode.value ? '留空不修改...' : '请输入备注',
+        rows: 1,
+        maxlength: 500,
+        showCount: true,
+      },
+    },
+  ],
+  showDefaultActions: false,
+  layout: 'horizontal',
+  wrapperClass: 'grid-cols-4',
+});
+
+// 其他设置表单
+const [OtherForm, otherFormApi] = useVbenForm({
+  schema: [
+    {
       component: 'DatePicker',
       fieldName: 'validTimeStart',
       label: '有效起始日期',
@@ -876,26 +778,7 @@ const [Form, formApi] = useVbenForm({
         optionType: 'button',
       },
     },
-    {
-      component: 'Textarea',
-      fieldName: 'remark',
-      label: '备注',
-      componentProps: {
-        placeholder: isBatchMode.value ? '留空不修改...' : '请输入备注',
-        rows: 1,
-        maxlength: 500,
-        showCount: true,
-      },
-    },
   ],
-  showDefaultActions: false,
-  layout: 'horizontal',
-  wrapperClass: 'grid-cols-4',
-});
-
-// 其他设置表单（已移至主表表单）
-const [OtherForm, otherFormApi] = useVbenForm({
-  schema: [],
   showDefaultActions: false,
   layout: 'horizontal',
   wrapperClass: 'grid-cols-4',
@@ -906,7 +789,11 @@ const [Modal, modalApi] = useVbenModal({
     const { valid: mainValid } = await formApi.validate();
     if (!mainValid && !isBatchMode.value) return;
 
+    const { valid: otherValid } = await otherFormApi.validate();
+    if (!otherValid && !isBatchMode.value) return;
+
     const values = await formApi.getValues();
+    const otherValues = await otherFormApi.getValues();
 
     // 构建箱型列表（seFreiPriceCtns）- 箱型费率（海运费）
     const seFreiPriceCtns: SeFreiPriceCtnEditDto[] = [];
@@ -1004,9 +891,9 @@ const [Modal, modalApi] = useVbenModal({
       polId: values.polId,
       podId: values.podId,
       isDirect: values.isDirect,
-      recommend: values.recommend,
-      validTimeStart: values.validTimeStart,
-      validTimeEnd: values.validTimeEnd,
+      recommend: otherValues.recommend,
+      validTimeStart: otherValues.validTimeStart,
+      validTimeEnd: otherValues.validTimeEnd,
       poT1Id: values.poT1Id,
       poT2Id: values.poT2Id,
       polFreeDays: values.polFreeDays,
@@ -1016,6 +903,7 @@ const [Modal, modalApi] = useVbenModal({
       voyage: values.voyage,
       etd: values.etd,
       etdDayOfWeek: values.etdDayOfWeek,
+      etdDayTime: values.etdDayTime,
       closeDocTime: values.closeDocTime,
       closeDocDayOfWeek: values.closeDocDayOfWeek,
       closeDocDayTime: values.closeDocDayTime,
@@ -1074,6 +962,7 @@ const [Modal, modalApi] = useVbenModal({
       const data = modalApi.getData<any>();
       console.log('c-data:', data);
       formApi.resetForm();
+      otherFormApi.resetForm();
       feeData.value = {};
       conditionalFeeConfigs.value = {};
       surchargeFees.value = []; // 重置附加费列表
@@ -1105,9 +994,7 @@ const [Modal, modalApi] = useVbenModal({
             polId: detail.polId,
             podId: detail.podId,
             isDirect: detail.isDirect,
-            recommend: detail.recommend,
-            validTimeStart: detail.validTimeStart,
-            validTimeEnd: detail.validTimeEnd,
+
             poT1Id: detail.poT1Id,
             poT2Id: detail.poT2Id,
             polFreeDays: detail.polFreeDays,
@@ -1117,6 +1004,7 @@ const [Modal, modalApi] = useVbenModal({
             voyage: detail.voyage,
             etd: detail.etd,
             etdDayOfWeek: detail.etdDayOfWeek,
+            etdDayTime: detail.etdDayTime,
             closeDocTime: detail.closeDocTime,
             closeDocDayOfWeek: detail.closeDocDayOfWeek,
             closeDocDayTime: detail.closeDocDayTime,
@@ -1131,44 +1019,19 @@ const [Modal, modalApi] = useVbenModal({
             transshipmentPortsDisabled.value = false;
           }
 
-          // 初始化截单/截关时间模式
-          if (detail.closeDocTime) {
-            closeDocMode.value = 'datetime';
-          } else if (
-            detail.closeDocDayOfWeek !== undefined &&
-            detail.closeDocDayOfWeek !== null
-          ) {
-            closeDocMode.value = 'week';
-          } else {
-            closeDocMode.value = null;
-          }
+          otherFormApi.setValues({
+            recommend: detail.recommend,
+            validTimeStart: detail.validTimeStart,
+            validTimeEnd: detail.validTimeEnd,
+          });
 
-          if (detail.closingTime) {
-            closingMode.value = 'datetime';
-          } else if (
-            detail.closingDayOfWeek !== undefined &&
-            detail.closingDayOfWeek !== null
-          ) {
-            closingMode.value = 'week';
-          } else {
-            closingMode.value = null;
-          }
+          // 设置 formData 用于箱型列表
+          formData.value = detail;
 
-          // 初始化开船时间模式
-          if (detail.etd) {
-            etdMode.value = 'date';
-          } else if (
-            detail.etdDayOfWeek !== undefined &&
-            detail.etdDayOfWeek !== null
-          ) {
-            etdMode.value = 'week';
-          } else {
-            etdMode.value = null;
-          }
-
-          // 加载附加费数据
+          // 加载附加费数据 - 从 seFreiPriceFees 加载
           if (detail.seFreiPriceFees) {
-            detail.seFreiPriceFees.forEach((fee: any, feeIndex: number) => {
+            detail.seFreiPriceFees.forEach((fee, feeIndex) => {
+              // 附加费 - 使用surchargeFees结构
               const surchargeItem: SurchargeFeeItem = {
                 id: fee.id,
                 feeCodeId: fee.feeCodeId,
@@ -1178,7 +1041,7 @@ const [Modal, modalApi] = useVbenModal({
               };
 
               if (fee.seFreiPriceCtnFees) {
-                fee.seFreiPriceCtnFees.forEach((ctnFee: any) => {
+                fee.seFreiPriceCtnFees.forEach((ctnFee) => {
                   const ctnInfo = detail.seFreiPriceCtns?.find(
                     (ctn) => ctn.id === ctnFee.seFreiPriceCtnId,
                   );
@@ -1260,6 +1123,7 @@ const [Modal, modalApi] = useVbenModal({
           voyage: data.voyage,
           etd: data.etd,
           etdDayOfWeek: data.etdDayOfWeek,
+          etdDayTime: data.etdDayTime,
           closeDocTime: data.closeDocTime,
           closeDocDayOfWeek: data.closeDocDayOfWeek,
           closeDocDayTime: data.closeDocDayTime,
@@ -1274,7 +1138,7 @@ const [Modal, modalApi] = useVbenModal({
           transshipmentPortsDisabled.value = false;
         }
 
-        formApi.setValues({
+        otherFormApi.setValues({
           recommend: data.recommend,
           validTimeStart: data.validTimeStart,
           validTimeEnd: data.validTimeEnd,
@@ -1324,19 +1188,17 @@ const [Modal, modalApi] = useVbenModal({
                     }
                   }
 
-                  // 将后端数据转换为 SurchargePriceItem 格式
                   surchargeItem.prices[ctnCodeIdStr] = {
                     price: ctnFee.price,
                     value: ctnFee.value,
-                    conditionType: ctnFee.conditionType || 1,
+                    conditionType: ctnFee.conditionType || 0,
                     operatorType: ctnFee.operatorType,
                     otherPrice: ctnFee.otherPrice,
                   };
 
-                  // 直接使用原始的 ctnCodeId（number 类型）避免精度丢失
                   surchargeItem.seFreiPriceCtnFees?.push({
                     id: ctnFee.id,
-                    ctnCodeId: ctnInfo.ctnCodeId,
+                    ctnCodeId: ctnCodeId,
                     price: ctnFee.price,
                     conditionType: ctnFee.conditionType,
                     operatorType: ctnFee.operatorType,
@@ -1346,35 +1208,21 @@ const [Modal, modalApi] = useVbenModal({
                 }
               });
             }
-
             surchargeFees.value.push(surchargeItem);
           });
         }
       } else {
-        // 新增模式 - 初始化空数据
+        // 新增模式
         isBatchMode.value = false;
         id.value = undefined;
-        // 创建空的formData结构，包含空的箱型数组
-        formData.value = {
-          id: '',
-          recommend: false,
-          carrierId: 0,
-          polId: 0,
-          podId: 0,
-          isDirect: true,
-          validTimeStart: '',
-          validTimeEnd: '',
-          currencyId: 0,
-          creationTime: '',
-          isValid: true,
-          seFreiPriceCtns: [], // 初始化为空数组
-          seFreiPriceFees: [],
-        } as SeFreiPriceOutDto;
+        formData.value = undefined;
+        // 新增模式下，默认中转港可编辑（非直达）
+        transshipmentPortsDisabled.value = true;
+        // 新增模式下，清空箱型费率和附加费数据
+        surchargeFees.value = [];
       }
     }
   },
-
-  closeOnClickModal: false,
 });
 
 const getModalTitle = computed(() => {
@@ -1440,35 +1288,25 @@ onMounted(async () => {
         <Form />
       </div>
 
-      <!-- 箱型费率 -->
+      <!-- 其他设置 -->
       <div v-show="!onlySurchargeFees" class="mb-6">
-        <div
-          class="mb-3 flex items-center justify-between border-b border-gray-200 pb-2"
-        >
+        <div class="mb-3 border-b border-gray-200 pb-2">
+          <span class="text-base font-semibold text-gray-700"> 其他设置 </span>
+        </div>
+        <OtherForm />
+      </div>
+
+      <!-- 箱型费率 -->
+      <div
+        v-show="!onlySurchargeFees && dynamicCtnTypes.length > 0"
+        class="mb-6"
+      >
+        <div class="mb-3 border-b border-gray-200 pb-2">
           <span class="text-base font-semibold text-gray-700">
             箱型费率 {{ isBatchMode ? ' —留空则不修改' : '' }}
           </span>
-          <Button
-            v-if="!isBatchMode && formData?.id === undefined"
-            type="primary"
-            size="small"
-            @click="showAddCtnModal = true"
-          >
-            <Plus class="size-4" />
-            添加箱型
-          </Button>
         </div>
-
-        <!-- 无箱型时的提示 -->
-        <div
-          v-if="dynamicCtnTypes.length === 0"
-          class="rounded border border-dashed border-gray-300 py-8 text-center text-gray-400"
-        >
-          暂无箱型，请点击"添加箱型"按钮添加
-        </div>
-
-        <!-- 箱型费率表格 -->
-        <div v-else class="overflow-x-auto">
+        <div class="overflow-x-auto">
           <table class="w-full border-collapse border border-gray-300">
             <thead>
               <tr class="bg-gray-100">
@@ -1480,17 +1318,7 @@ onMounted(async () => {
                   :key="ctn.ctnCodeId"
                   class="border border-gray-300 px-3 py-2 text-center"
                 >
-                  <div class="flex items-center justify-between">
-                    <span>{{ ctn.name }}</span>
-                    <button
-                      v-if="!isBatchMode && formData?.id === undefined"
-                      class="ml-2 text-red-500 hover:text-red-700"
-                      @click="removeCtnType(ctn.ctnCodeId)"
-                      title="删除箱型"
-                    >
-                      ×
-                    </button>
-                  </div>
+                  {{ ctn.name }}
                 </th>
               </tr>
             </thead>

@@ -40,6 +40,7 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { useColumns, useGridFormSchema, formatSurchargeFees } from './data';
 import AddCtnModal from './modules/add-ctn-modal.vue';
 import Form from './modules/form.vue';
+import EditForm from './modules/editForm.vue';
 import BatchAddModal from './modules/batch-add-modal.vue';
 import BatchEditModal from './modules/batch-edit-modal.vue';
 import SyncUpdateForm from './modules/sync-update-form.vue';
@@ -128,6 +129,11 @@ const [FormModal, formModalApi] = useVbenModal({
   destroyOnClose: true,
 });
 
+const [EditFormModal, editFormModalApi] = useVbenModal({
+  connectedComponent: EditForm,
+  destroyOnClose: true,
+});
+
 const [SyncUpdateModal, syncUpdateModalApi] = useVbenModal({
   connectedComponent: SyncUpdateForm,
   destroyOnClose: true,
@@ -205,7 +211,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     },
     rowConfig: {
       keyField: 'id',
-      // isHover: true,
+      isHover: true,
     },
     checkboxConfig: {
       highlight: true,
@@ -220,7 +226,13 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
       export: false,
       refresh: true,
       search: true,
-      zoom: true,
+      zoom: false,
+    },
+  },
+  gridEvents: {
+    cellDblclick: ({ row }: any) => {
+      // 双击任意单元格时打开编辑弹窗
+      onEditByDblClick(row);
     },
   },
 });
@@ -404,7 +416,14 @@ function onRefresh() {
  * 新增运价
  */
 function onCreate() {
-  formModalApi.setData({}).open();
+  editFormModalApi.setData({}).open();
+}
+
+/**
+ * 编辑运价（双击单元格触发）
+ */
+function onEditByDblClick(row: SeFreiPriceOutDto) {
+  editFormModalApi.setData({ id: row.id }).open();
 }
 
 /**
@@ -483,8 +502,8 @@ function getIsValidText(row: SeFreiPriceOutDto): string {
       startDate.getMonth(),
       startDate.getDate(),
     );
-    console.log('startDay:', startDay);
-    console.log('today:', today);
+    // console.log('startDay:', startDay);
+    // console.log('today:', today);
     if (startDay > today) {
       return '未生效';
     }
@@ -558,12 +577,42 @@ onMounted(async () => {
 
 <template>
   <Page auto-content-height>
-    <FormModal @success="onRefresh" />
-    <AddCtnModalComponent @success="onRefresh" />
-    <BatchAddModalComponent @success="onRefresh" />
-    <BatchEditModalComponent @success="onRefresh" />
-    <SyncUpdateModal @success="onRefresh" />
     <Grid>
+      <!-- 船公司自定义渲染插槽 -->
+      <template #carrierId="{ row }">
+        <div class="px-2 py-1">
+          {{ row.carrier?.code || '-' }}
+        </div>
+      </template>
+
+      <!-- 起运港自定义渲染插槽 -->
+      <template #polId="{ row }">
+        <div class="px-2 py-1">
+          {{ row.pol?.portName || '-' }}
+        </div>
+      </template>
+
+      <!-- 目的港自定义渲染插槽 -->
+      <template #podId="{ row }">
+        <div class="px-2 py-1">
+          {{ row.pod?.portName || '-' }}
+        </div>
+      </template>
+
+      <!-- 币别自定义渲染插槽 -->
+      <template #currencyId="{ row }">
+        <div class="px-2 py-1">
+          {{ row.currency?.code || '-' }}
+        </div>
+      </template>
+
+      <!-- 约号自定义渲染插槽 -->
+      <template #contractNo="{ row }">
+        <div class="px-2 py-1 text-blue-600">
+          {{ row.contractNo || '-' }}
+        </div>
+      </template>
+
       <!-- 推荐状态自定义渲染插槽 -->
       <template #recommend="{ row }">
         <div class="flex items-center justify-center">
@@ -597,69 +646,66 @@ onMounted(async () => {
           </div>
 
           <!-- 有附加费时显示折叠面板 -->
-          <div v-else class="space-y-2">
-            <!-- 第一个附加费卡片始终显示 -->
-            <div class="surcharge-fee-card">
-              <div class="fee-card-content">
-                <div class="fee-header">
-                  <span class="fee-name">{{
-                    getFeeName(row.seFreiPriceFees[0])
-                  }}</span>
-                  <span class="fee-currency">{{
-                    getCurrencyName(row.seFreiPriceFees[0])
-                  }}</span>
-                </div>
-                <div class="fee-details">
-                  <span
-                    v-for="(detail, idx) in getFeeDetails(
-                      row.seFreiPriceFees[0],
-                      row,
-                    )"
-                    :key="idx"
-                    class="fee-detail-item"
-                  >
-                    {{ detail }}
-                  </span>
+          <div v-else class="surcharge-fees-wrapper">
+            <!-- 第一个附加费卡片始终显示，右侧带操作按钮 -->
+            <div class="surcharge-fee-card-with-actions">
+              <div class="surcharge-fee-card">
+                <div class="fee-card-content">
+                  <div class="fee-header">
+                    <span class="fee-name">{{
+                      getFeeName(row.seFreiPriceFees[0])
+                    }}</span>
+                    <span class="fee-currency">{{
+                      getCurrencyName(row.seFreiPriceFees[0])
+                    }}</span>
+                  </div>
+                  <div class="fee-details">
+                    <span
+                      v-for="(detail, idx) in getFeeDetails(
+                        row.seFreiPriceFees[0],
+                        row,
+                      )"
+                      :key="idx"
+                      class="fee-detail-item"
+                    >
+                      {{ detail }}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- 如果有多个附加费，显示展开按钮和编辑按钮 -->
-            <div
-              v-if="row.seFreiPriceFees.length > 1"
-              class="flex items-center justify-end gap-2"
-            >
-              <button class="expand-button" @click.stop="toggleExpand(row)">
-                <span>{{ expandedRows[row.id] ? '收起' : '展开' }}</span>
-                <IconifyIcon
-                  :icon="
-                    expandedRows[row.id] ? 'mdi:chevron-up' : 'mdi:chevron-down'
-                  "
-                  class="ml-1 size-4"
-                />
-              </button>
-              <Button
-                type="link"
-                size="small"
-                @click.stop="onEdit(row)"
-                class="edit-surcharge-btn"
-              >
-                <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
-                {{ $t('common.edit') }}
-              </Button>
-            </div>
+              <!-- 右侧操作按钮区域 -->
+              <div class="card-actions">
+                <!-- 如果有多个附加费，显示展开按钮 -->
+                <Button
+                  v-if="row.seFreiPriceFees.length > 1"
+                  type="link"
+                  size="small"
+                  @click.stop="toggleExpand(row)"
+                  class="expand-button"
+                >
+                  <span>{{ expandedRows[row.id] ? '收起' : '展开' }}</span>
+                  <IconifyIcon
+                    :icon="
+                      expandedRows[row.id]
+                        ? 'mdi:chevron-up'
+                        : 'mdi:chevron-down'
+                    "
+                    class="ml-1 size-4"
+                  />
+                </Button>
 
-            <!-- 如果只有一个附加费，只显示编辑按钮 -->
-            <div v-else class="flex items-center justify-end">
-              <Button
-                type="link"
-                size="small"
-                @click.stop="onEdit(row)"
-                class="edit-surcharge-btn"
-              >
-                <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
-                {{ $t('common.edit') }}
-              </Button>
+                <!-- 编辑按钮 -->
+                <Button
+                  type="link"
+                  size="small"
+                  @click.stop="onEdit(row)"
+                  class="edit-surcharge-btn"
+                >
+                  <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
+                  {{ $t('common.edit') }}
+                </Button>
+              </div>
             </div>
 
             <!-- 展开后显示所有附加费（从第二个开始） -->
@@ -804,12 +850,10 @@ onMounted(async () => {
           </div>
           <Space>
             <!-- 新增按钮 -->
-            <!-- <Button v-access:code="perm.add" type="primary" @click="onCreate">
+            <Button v-access:code="perm.add" type="primary" @click="onCreate">
               <Plus class="size-5" />
-              {{
-                $t('ui.actionTitle.create', [$t('seaExport.freightRate.name')])
-              }}
-            </Button> -->
+              {{ $t('ui.actionTitle.create') }}
+            </Button>
 
             <!-- 批量编辑按钮 -->
             <Button v-access:code="perm.add" @click="onBatchEditModal">
@@ -831,6 +875,10 @@ onMounted(async () => {
               </Button>
               <template #overlay>
                 <Menu>
+                  <!-- <Menu.Item key="create" @click="onCreate">
+                    {{ $t('seaExport.freightRate.create') }}
+                  </Menu.Item>
+                  <Menu.Divider /> -->
                   <Menu.Item key="batchAdd" @click="onBatchAdd">
                     {{ $t('seaExport.freightRate.batchAdd') }}
                   </Menu.Item>
@@ -869,6 +917,24 @@ onMounted(async () => {
         </div>
       </template>
     </Grid>
+
+    <!-- 运价表单弹窗（旧版，保留用于批量编辑附加费） -->
+    <FormModal @success="onRefresh" />
+
+    <!-- 运价新增/编辑弹窗（新版） -->
+    <EditFormModal @success="onRefresh" />
+
+    <!-- 同步更新弹窗 -->
+    <SyncUpdateModal @success="onRefresh" />
+
+    <!-- 添加箱型弹窗 -->
+    <AddCtnModalComponent @success="onRefresh" />
+
+    <!-- 批量新增弹窗 -->
+    <BatchAddModalComponent @success="onRefresh" />
+
+    <!-- 批量编辑弹窗 -->
+    <BatchEditModalComponent @success="onRefresh" />
   </Page>
 </template>
 
@@ -885,7 +951,7 @@ onMounted(async () => {
 
 /* 淡化表格悬浮后的行背景色，确保复选框可见 */
 :deep(.vxe-table .vxe-body--row.is--hover) {
-  background-color: rgb(245 247 250 / 30%) !important;
+  background-color: rgb(245 247 250 / 15%) !important;
 }
 
 /* 确保复选框在悬浮时仍然清晰可见 */
@@ -950,8 +1016,24 @@ onMounted(async () => {
   min-height: 60px;
 }
 
+/* 附加费包装器（包含卡片和操作按钮） */
+.surcharge-fees-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 带操作按钮的卡片容器 */
+.surcharge-fee-card-with-actions {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
 /* 附加费卡片样式 */
 .surcharge-fee-card {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -999,29 +1081,12 @@ onMounted(async () => {
   color: #2563eb;
 }
 
-/* 展开按钮样式 */
-.expand-button {
+/* 卡片右侧操作按钮区域 */
+.card-actions {
   display: flex;
-  gap: 4px;
+  flex-shrink: 0;
+  gap: 8px;
   align-items: center;
-  padding: 6px 12px;
-  font-size: 13px;
-  color: #6b7280;
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.expand-button:hover {
-  color: #2563eb;
-  background: #f0f7ff;
-  border-color: #2563eb;
-}
-
-.expand-button:active {
-  transform: scale(0.98);
 }
 
 /* 编辑附加费按钮样式 */

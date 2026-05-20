@@ -90,6 +90,7 @@ const [Modal, modalApi] = useVbenModal({
       }
     }
   },
+  closeOnClickModal: false,
 });
 
 // 初始化下拉选项
@@ -224,9 +225,7 @@ async function initializeTableData(rows: SeFreiPriceOutDto[]) {
       poddem: row.poddem,
       poddet: row.poddet,
       voyage: row.voyage,
-      etd: row.etd,
-      etdDayOfWeek: row.etdDayOfWeek,
-      etdDayTime: row.etdDayTime,
+      contractNo: row.contractNo,
       closeDocTime: row.closeDocTime,
       closeDocDayOfWeek: row.closeDocDayOfWeek,
       closeDocDayTime: row.closeDocDayTime,
@@ -414,6 +413,12 @@ function buildColumns(): VxeTableGridOptions['columns'] {
       title: '航程',
       width: 120,
       slots: { default: 'voyage' },
+    },
+    {
+      field: 'contractNo',
+      title: '约号',
+      width: 150,
+      slots: { default: 'contractNo' },
     },
     {
       field: 'etd',
@@ -613,11 +618,8 @@ async function handleSubmit() {
       if (row.poddem !== originalRow.poddem) modifiedFields.add('poddem');
       if (row.poddet !== originalRow.poddet) modifiedFields.add('poddet');
       if (row.voyage !== originalRow.voyage) modifiedFields.add('voyage');
-      if (row.etd !== originalRow.etd) modifiedFields.add('etd');
-      if (row.etdDayOfWeek !== originalRow.etdDayOfWeek)
-        modifiedFields.add('etdDayOfWeek');
-      if (row.etdDayTime !== originalRow.etdDayTime)
-        modifiedFields.add('etdDayTime');
+      if (row.contractNo !== originalRow.contractNo)
+        modifiedFields.add('contractNo');
       if (row.closeDocTime !== originalRow.closeDocTime)
         modifiedFields.add('closeDocTime');
       if (row.closeDocDayOfWeek !== originalRow.closeDocDayOfWeek)
@@ -659,11 +661,8 @@ async function handleSubmit() {
       if (modifiedFields.has('poddem')) submitData.poddem = row.poddem;
       if (modifiedFields.has('poddet')) submitData.poddet = row.poddet;
       if (modifiedFields.has('voyage')) submitData.voyage = row.voyage;
-      if (modifiedFields.has('etd')) submitData.etd = row.etd;
-      if (modifiedFields.has('etdDayOfWeek'))
-        submitData.etdDayOfWeek = row.etdDayOfWeek;
-      if (modifiedFields.has('etdDayTime'))
-        submitData.etdDayTime = row.etdDayTime;
+      if (modifiedFields.has('contractNo'))
+        submitData.contractNo = row.contractNo;
       if (modifiedFields.has('closeDocTime'))
         submitData.closeDocTime = row.closeDocTime;
       if (modifiedFields.has('closeDocDayOfWeek'))
@@ -916,6 +915,15 @@ onMounted(() => {
         <!-- 航程 -->
         <template #voyage="{ row }">
           <Input v-model:value="row.voyage" placeholder="请输入" />
+        </template>
+
+        <!-- 约号 -->
+        <template #contractNo="{ row }">
+          <Input
+            v-model:value="row.contractNo"
+            placeholder="请输入约号"
+            :maxlength="128"
+          />
         </template>
 
         <!-- 合并的开船日期与星期 -->

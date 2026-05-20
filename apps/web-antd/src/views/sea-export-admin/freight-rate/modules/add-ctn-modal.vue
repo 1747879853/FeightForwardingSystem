@@ -160,6 +160,7 @@ const [Modal, modalApi] = useVbenModal({
       formApi.resetForm();
     }
   },
+  closeOnClickModal: false,
 });
 </script>
 
