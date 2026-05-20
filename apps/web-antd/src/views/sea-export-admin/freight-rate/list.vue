@@ -229,6 +229,12 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
       zoom: false,
     },
   },
+  gridEvents: {
+    cellDblclick: ({ row }: any) => {
+      // 双击任意单元格时打开编辑弹窗
+      onEditByDblClick(row);
+    },
+  },
 });
 
 // 监听表格数据变化，动态更新列配置
@@ -574,50 +580,35 @@ onMounted(async () => {
     <Grid>
       <!-- 船公司自定义渲染插槽 -->
       <template #carrierId="{ row }">
-        <div
-          class="cursor-pointer px-2 py-1 hover:bg-blue-50"
-          @dblclick="onEditByDblClick(row)"
-        >
+        <div class="px-2 py-1">
           {{ row.carrier?.code || '-' }}
         </div>
       </template>
 
       <!-- 起运港自定义渲染插槽 -->
       <template #polId="{ row }">
-        <div
-          class="cursor-pointer px-2 py-1 hover:bg-blue-50"
-          @dblclick="onEditByDblClick(row)"
-        >
+        <div class="px-2 py-1">
           {{ row.pol?.portName || '-' }}
         </div>
       </template>
 
       <!-- 目的港自定义渲染插槽 -->
       <template #podId="{ row }">
-        <div
-          class="cursor-pointer px-2 py-1 hover:bg-blue-50"
-          @dblclick="onEditByDblClick(row)"
-        >
+        <div class="px-2 py-1">
           {{ row.pod?.portName || '-' }}
         </div>
       </template>
 
       <!-- 币别自定义渲染插槽 -->
       <template #currencyId="{ row }">
-        <div
-          class="cursor-pointer px-2 py-1 hover:bg-blue-50"
-          @dblclick="onEditByDblClick(row)"
-        >
+        <div class="px-2 py-1">
           {{ row.currency?.code || '-' }}
         </div>
       </template>
 
       <!-- 约号自定义渲染插槽 -->
       <template #contractNo="{ row }">
-        <div
-          class="cursor-pointer px-2 py-1 text-blue-600 hover:bg-blue-50"
-          @dblclick="onEditByDblClick(row)"
-        >
+        <div class="px-2 py-1 text-blue-600">
           {{ row.contractNo || '-' }}
         </div>
       </template>

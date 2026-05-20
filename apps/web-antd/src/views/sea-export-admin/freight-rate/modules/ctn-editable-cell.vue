@@ -19,9 +19,8 @@ const loading = ref(false);
 // 获取箱型名称
 const ctnName = props.column.params?.ctnName || '';
 
-// 双击进入编辑模式
-function handleDoubleClick() {
-  console.log('双击触发', ctnName, '当前值:', props.row[props.column.field]);
+// 进入编辑模式
+function handleEdit() {
   isEditing.value = true;
 
   // 从 seFreiPriceCtns 中获取当前箱型的成本值
@@ -98,15 +97,6 @@ const displayValue = computed(() => {
 
 <template>
   <div v-if="isEditing" class="flex items-center gap-1">
-    <Input
-      v-model:value="editingValue"
-      size="small"
-      placeholder="请输入"
-      @press-enter="handleConfirm"
-      @keydown="handleKeyPress"
-      :style="{ flex: 1 }"
-      autofocus
-    />
     <Button
       type="primary"
       size="small"
@@ -119,23 +109,45 @@ const displayValue = computed(() => {
     <Button size="small" @click="handleCancel" title="取消">
       <IconifyIcon icon="mdi:close" class="size-4" />
     </Button>
+    <Input
+      v-model:value="editingValue"
+      size="small"
+      placeholder="请输入"
+      @press-enter="handleConfirm"
+      @keydown="handleKeyPress"
+      :style="{ flex: 1 }"
+      autofocus
+    />
   </div>
   <div
     v-else
-    class="cell-editable-number cursor-pointer rounded px-2 py-1 transition-colors hover:bg-blue-50"
-    @dblclick="handleDoubleClick"
-    title="双击编辑"
+    class="cell-editable-number flex items-center justify-between rounded px-2 py-1 transition-colors hover:bg-blue-50"
   >
-    {{ displayValue }}
+    <span>{{ displayValue }}</span>
+    <Button
+      type="text"
+      size="small"
+      @click.stop="handleEdit"
+      class="edit-icon-btn"
+      title="编辑"
+    >
+      <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
+    </Button>
   </div>
 </template>
 
 <style scoped>
 .cell-editable-number {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
   min-height: 28px;
   user-select: none;
+}
+
+.edit-icon-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.cell-editable-number:hover .edit-icon-btn {
+  opacity: 1;
 }
 </style>
