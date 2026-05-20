@@ -255,6 +255,7 @@ const [Form, formApi] = useVbenForm({
         filterOption: true,
         placeholder: '请选择船公司',
         allowClear: true,
+        style: { width: '100%' },
       },
       rules: 'required',
     },
@@ -266,6 +267,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请选择起运港',
         allowClear: true,
+        style: { width: '100%' },
       },
       rules: 'required',
     },
@@ -276,6 +278,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请选择目的港',
         allowClear: true,
+        style: { width: '100%' },
       },
       rules: 'required',
     },
@@ -311,6 +314,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请选择中转港1',
         allowClear: true,
+        style: { width: '100%' },
       },
     },
     {
@@ -324,6 +328,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请选择中转港2',
         allowClear: true,
+        style: { width: '100%' },
       },
     },
     // 第四行：航程、约号
@@ -334,6 +339,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请输入航程',
         maxlength: 100,
+        style: { width: '100%' },
       },
     },
     {
@@ -343,6 +349,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请输入约号',
         maxlength: 128,
+        style: { width: '100%' },
       },
     },
     // 第五行：免用箱天数、免堆期、免箱期
@@ -353,6 +360,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请输入免用箱天数',
         min: 0,
+        style: { width: '100%' },
       },
     },
     {
@@ -362,6 +370,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请输入免用箱天数',
         min: 0,
+        style: { width: '100%' },
       },
     },
     {
@@ -371,6 +380,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请输入免堆期天数',
         min: 0,
+        style: { width: '100%' },
       },
     },
     {
@@ -380,6 +390,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请输入免箱期天数',
         min: 0,
+        style: { width: '100%' },
       },
     },
     // 第六行：截单时间（互斥）
@@ -393,6 +404,7 @@ const [Form, formApi] = useVbenForm({
         valueFormat: 'YYYY-MM-DD HH:mm',
         showTime: true,
         timePicker: { format: 'HH:mm' },
+        style: { width: '100%' },
         onChange: (value: any) => {
           if (value) {
             closeDocMode.value = 'datetime';
@@ -423,6 +435,7 @@ const [Form, formApi] = useVbenForm({
         placeholder: '请选择截单星期',
         allowClear: true,
         disabled: computed(() => closeDocMode.value === 'datetime'),
+        style: { width: '100%' },
         onChange: (value: any) => {
           if (value !== undefined && value !== null) {
             closeDocMode.value = 'week';
@@ -442,6 +455,7 @@ const [Form, formApi] = useVbenForm({
         format: 'HH:mm',
         valueFormat: 'HH:mm:ss',
         disabled: computed(() => closeDocMode.value !== 'week'),
+        style: { width: '100%' },
       },
     },
     // 第七行：截关时间（互斥）
@@ -455,6 +469,7 @@ const [Form, formApi] = useVbenForm({
         valueFormat: 'YYYY-MM-DD HH:mm',
         showTime: true,
         timePicker: { format: 'HH:mm' },
+        style: { width: '100%' },
         onChange: (value: any) => {
           if (value) {
             closingMode.value = 'datetime';
@@ -485,6 +500,7 @@ const [Form, formApi] = useVbenForm({
         placeholder: '请选择截关星期',
         allowClear: true,
         disabled: computed(() => closingMode.value === 'datetime'),
+        style: { width: '100%' },
         onChange: (value: any) => {
           if (value !== undefined && value !== null) {
             closingMode.value = 'week';
@@ -504,16 +520,19 @@ const [Form, formApi] = useVbenForm({
         format: 'HH:mm',
         valueFormat: 'HH:mm:ss',
         disabled: computed(() => closingMode.value !== 'week'),
+        style: { width: '100%' },
       },
     },
-    // 第八行：备注
+    // 第八行：备注（独占一行）
     {
-      component: 'Input',
+      component: 'Textarea',
       fieldName: 'remark',
       label: '备注',
       componentProps: {
         placeholder: '请输入备注',
         maxlength: 500,
+        showCount: true,
+        autoSize: { minRows: 3, maxRows: 6 },
       },
     },
   ],
