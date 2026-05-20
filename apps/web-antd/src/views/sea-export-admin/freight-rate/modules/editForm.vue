@@ -819,7 +819,7 @@ async function addCtn() {
 }
 
 /**
- * 删除箱型
+ * 删除箱型 (通过索引)
  */
 function removeCtn(index: number) {
   if (!formData.value?.seFreiPriceCtns) return;
@@ -830,12 +830,33 @@ function removeCtn(index: number) {
   formData.value.seFreiPriceCtns.splice(index, 1);
 
   // 同时移除该箱型在所有附加费中的价格配置
-  const ctnCodeIdStr = String(removedCtn.ctnCodeId);
+  cleanupCtnFees(removedCtn.ctnCodeId);
+}
+
+/**
+ * 删除箱型 (通过CTN Code ID) - 用于表头删除按钮
+ */
+function removeCtnByCtnCodeId(ctnCodeId: number) {
+  if (!formData.value?.seFreiPriceCtns) return;
+
+  const index = formData.value.seFreiPriceCtns.findIndex(
+    (c) => c.ctnCodeId === ctnCodeId,
+  );
+  if (index !== -1) {
+    removeCtn(index);
+  }
+}
+
+/**
+ * 清理指定箱型在附加费中的数据
+ */
+function cleanupCtnFees(ctnCodeId: number) {
+  const ctnCodeIdStr = String(ctnCodeId);
   surchargeFees.value.forEach((fee) => {
     delete fee.prices[ctnCodeIdStr];
     if (fee.seFreiPriceCtnFees) {
       fee.seFreiPriceCtnFees = fee.seFreiPriceCtnFees.filter(
-        (ctnFee) => ctnFee.ctnCodeId !== removedCtn!.ctnCodeId,
+        (ctnFee) => ctnFee.ctnCodeId !== ctnCodeId,
       );
     }
   });
@@ -1404,6 +1425,8 @@ onMounted(() => {
             />
           </div>
         </h3>
+
+        <!-- 无箱型时的提示 -->
         <div
           v-if="
             !formData?.seFreiPriceCtns || formData.seFreiPriceCtns.length === 0
@@ -1412,79 +1435,52 @@ onMounted(() => {
         >
           暂无箱型，请从上方下拉框选择箱型添加
         </div>
+
+        <!-- 箱型费率表格 - 参考 form.vue 的布局 -->
         <div v-else class="overflow-x-auto">
           <table class="w-full border-collapse border border-gray-300">
             <thead>
               <tr class="bg-gray-100">
-                <!-- <th class="border border-gray-300 px-3 py-2 text-center" style="width: 120px">
-                  箱型
-                </th> -->
-                <th
-                  class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 150px"
-                >
-                  箱型名称
+                <th class="border border-gray-300 px-3 py-2 text-left">
+                  费用类型
                 </th>
                 <th
+                  v-for="ctn in formData?.seFreiPriceCtns || []"
+                  :key="ctn.ctnCodeId"
                   class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 120px"
                 >
-                  成本
-                </th>
-                <th
-                  class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 150px"
-                >
-                  备注
-                </th>
-                <th
-                  class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 80px"
-                >
-                  操作
+                  <div class="flex items-center justify-between">
+                    <span>{{
+                      ctn.ctnCode?.ctnName || `箱型${ctn.ctnCodeId}`
+                    }}</span>
+                    <button
+                      class="ml-2 text-red-500 hover:text-red-700"
+                      @click="removeCtnByCtnCodeId(ctn.ctnCodeId)"
+                      title="删除箱型"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="(ctn, index) in formData?.seFreiPriceCtns || []"
-                :key="ctn.ctnCodeId"
-              >
-                <!-- <td class="border border-gray-300 px-2 py-2 text-center">
-                  {{ ctn.ctnCodeId }}
-                </td> -->
-                <td
-                  class="border border-gray-300 px-2 py-2 text-center font-medium"
-                >
-                  {{ ctn.ctnCode?.ctnName || `箱型${ctn.ctnCodeId}` }}
+              <tr>
+                <td class="border border-gray-300 px-3 py-2 font-medium">
+                  海运费
                 </td>
-                <td class="border border-gray-300 px-2 py-2">
+                <!-- 箱型成本输入 -->
+                <td
+                  v-for="(ctn, index) in formData?.seFreiPriceCtns || []"
+                  :key="ctn.ctnCodeId"
+                  class="border border-gray-300 px-2 py-2"
+                >
                   <input
-                    v-model.number="
-                      (formData?.seFreiPriceCtns[index] as any).cost
-                    "
+                    v-model.number="ctn.cost"
                     type="number"
                     class="w-full rounded border border-gray-300 px-2 py-1 text-center text-sm"
                     placeholder="-"
                   />
-                </td>
-                <td class="border border-gray-300 px-2 py-2">
-                  <input
-                    v-model="(formData?.seFreiPriceCtns[index] as any).remark"
-                    type="text"
-                    class="w-full rounded border border-gray-300 px-2 py-1 text-sm"
-                    placeholder="请输入备注"
-                  />
-                </td>
-                <td class="border border-gray-300 px-2 py-2 text-center">
-                  <Button
-                    type="link"
-                    danger
-                    size="small"
-                    @click="removeCtn(index)"
-                  >
-                    <IconifyIcon icon="mdi:delete-outline" class="size-4" />
-                  </Button>
                 </td>
               </tr>
             </tbody>
