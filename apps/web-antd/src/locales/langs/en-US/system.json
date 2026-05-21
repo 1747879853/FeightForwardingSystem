@@ -42,6 +42,8 @@
       "chau": "Continent",
       "explain": "Description",
       "portType": "Port Type",
+      "portTypePort": "Port",
+      "portTypeInland": "Inland Point",
       "laneId": "Lane",
       "laneCode": "Lane Code",
       "laneName": "Lane (CN)",

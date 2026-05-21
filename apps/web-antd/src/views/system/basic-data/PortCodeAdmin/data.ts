@@ -11,6 +11,11 @@ const getStatusOptions = () => [
   { color: 'default', label: $t('common.disabled'), value: 1 },
 ];
 
+const getPortTypeOptions = () => [
+  { label: $t('system.basicData.portCode.portTypePort'), value: 'port' },
+  { label: $t('system.basicData.portCode.portTypeInland'), value: 'inland' },
+];
+
 /**
  * 获取表格搜索表单的字段配置
  */
@@ -32,6 +37,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       defaultValue: undefined,
       componentProps: {
         allowClear: true,
+        class: 'w-full',
         options: getStatusOptions().map(({ label, value }) => ({
           label,
           value,
@@ -72,10 +78,16 @@ export function useFormSchema(): VbenFormSchema[] {
       componentProps: { allowClear: true, rows: 3 },
     },
     {
-      component: 'Input',
+      component: 'Select',
       fieldName: 'portType',
       label: $t('system.basicData.portCode.portType'),
-      componentProps: { allowClear: true },
+      defaultValue: undefined,
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        options: getPortTypeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+      },
     },
     {
       component: 'CountrySelect',
@@ -111,6 +123,7 @@ export function useFormSchema(): VbenFormSchema[] {
       defaultValue: 0,
       componentProps: {
         allowClear: true,
+        class: 'w-full',
         options: getStatusOptions().map(({ label, value }) => ({
           label,
           value,
@@ -152,6 +165,10 @@ export function useColumns(
       field: 'portType',
       title: $t('system.basicData.portCode.portType'),
       minWidth: 120,
+      cellRender: {
+        name: 'CellTag',
+        options: getPortTypeOptions(),
+      },
     },
     {
       field: 'laneCode',

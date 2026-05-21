@@ -42,6 +42,8 @@
       "chau": "所在大洲",
       "explain": "说明",
       "portType": "港口类型",
+      "portTypePort": "港口",
+      "portTypeInland": "内陆点",
       "laneId": "航线",
       "laneCode": "航线代码",
       "laneName": "航线中文名称",
