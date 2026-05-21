@@ -45,6 +45,7 @@ import BatchAddModal from './modules/batch-add-modal.vue';
 import BatchEditModal from './modules/batch-edit-modal.vue';
 import SyncUpdateForm from './modules/sync-update-form.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
+import { buildAttachmentUrl } from '#/utils';
 
 // 创建运价管理的 ABP 权限对象
 const perm = createAbpPermission('Admin.SeFreiPrice');
@@ -584,7 +585,7 @@ onMounted(async () => {
           <!-- 船公司 Logo -->
           <img
             v-if="row.carrier?.logo?.url"
-            :src="row.carrier.logo.url"
+            :src="buildAttachmentUrl(row.carrier.logo.url)"
             :alt="row.carrier.enName || row.carrier.code"
             class="carrier-logo"
           />
