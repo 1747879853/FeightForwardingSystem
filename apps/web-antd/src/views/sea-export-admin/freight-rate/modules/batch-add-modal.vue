@@ -371,7 +371,7 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'carrierId',
       title: '船公司',
-      width: 150,
+      width: 260,
 
       slots: { default: 'carrierId' },
     },
@@ -406,13 +406,13 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'poT1Id',
       title: '中转港1',
-      width: 120,
+      width: 200,
       slots: { default: 'poT1Id' },
     },
     {
       field: 'poT2Id',
       title: '中转港2',
-      width: 120,
+      width: 200,
       slots: { default: 'poT2Id' },
     },
     {
@@ -439,25 +439,25 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'contractNo',
       title: '约号',
-      width: 150,
+      width: 280,
       slots: { default: 'contractNo' },
     },
     {
       field: 'etd',
       title: '开船日期',
-      width: 230,
+      width: 280,
       slots: { default: 'etdCombined' },
     },
     {
       field: 'closeDocTime',
       title: '截单时间',
-      width: 280,
+      width: 380,
       slots: { default: 'closeDocTimeCombined' },
     },
     {
       field: 'closingTime',
       title: '截关时间',
-      width: 280,
+      width: 380,
       slots: { default: 'closingTimeCombined' },
     },
     {
@@ -475,7 +475,7 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'remark',
       title: '备注',
-      width: 200,
+      width: 400,
       slots: { default: 'remark' },
     },
   ];
