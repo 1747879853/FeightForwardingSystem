@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-21] [分页下拉已选详情合并后刷新选项](./changelogs/change-log-2026-05-21-paged-select-selected-option-refresh.md)
 - [2026-05-21] [海运出口港口服务项详情港口名称回显补齐](./changelogs/change-log-2026-05-21-se-service-config-detail-portname-echo.md)
 - [2026-05-21] [海运出口港口服务项顺序调整动画反馈优化](./changelogs/change-log-2026-05-21-se-service-config-item-reorder-motion.md)
 - [2026-05-20] [海运出口港口服务项配置明细支持手动调整顺序](./changelogs/change-log-2026-05-20-se-service-config-item-manual-order.md)

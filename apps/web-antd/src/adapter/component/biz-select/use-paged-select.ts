@@ -92,6 +92,7 @@ export function usePagedSelect<T = any>(
     keyword: '',
     loadingMore: false,
     openedOnce: false,
+    optionsVersion: 0,
     pageIndex: 1,
     pageSize,
     queryVersion: 0,
@@ -117,12 +118,20 @@ export function usePagedSelect<T = any>(
   const mergeSelectedItems = (items: any[]) => {
     if (!items || items.length === 0) return;
 
+    let hasNewOption = false;
     for (const item of items) {
       if (!item) continue;
       const option = mapItemToOption(item);
       if (option.value !== undefined && option.value !== null) {
+        if (!state.cache.has(option.value)) {
+          hasNewOption = true;
+        }
         state.cache.set(option.value, option);
       }
+    }
+
+    if (hasNewOption) {
+      state.optionsVersion += 1;
     }
   };
 
@@ -236,6 +245,7 @@ export function usePagedSelect<T = any>(
    */
   const params = computed(() => ({
     keyword: state.keyword,
+    optionsVersion: state.optionsVersion,
     pageIndex: state.pageIndex,
     pageSize: state.pageSize,
     ...(extraParamsRef?.value ?? {}),
