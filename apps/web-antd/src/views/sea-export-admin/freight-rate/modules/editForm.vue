@@ -238,21 +238,10 @@ const [Form, formApi] = useVbenForm({
   schema: [
     // 第一行：船公司、起运港、目的港
     {
-      component: 'ApiSelect',
+      component: 'CarrierSelect',
       fieldName: 'carrierId',
       label: '船公司',
       componentProps: {
-        api: async () => {
-          const { getCarrierPagedList } =
-            await import('#/api/system/base-data/carrier-admin');
-          const res = await getCarrierPagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: item.cnName || item.enName,
-            value: item.id,
-          }));
-        },
-        showSearch: true,
-        filterOption: true,
         placeholder: '请选择船公司',
         allowClear: true,
         style: { width: '100%' },
