@@ -15,10 +15,8 @@ import {
   getSeServiceConfigPagedList,
 } from '#/api/system/base-data/se-service-config-admin';
 import { $t } from '#/locales';
-import { getEnumItems } from '#/utils/init-enum';
-
 import {
-  buildServiceTypeOptionsFromEnum,
+  loadSeServiceTypeOptions,
   type SelectOption,
   useColumns,
   useGridFormSchema,
@@ -132,11 +130,7 @@ const [Grid, gridApi] =
   });
 
 const loadServiceTypeOptions = async () => {
-  let items = await getEnumItems('serviceType');
-  if (!items?.length) {
-    items = await getEnumItems('ServiceType');
-  }
-  const options = buildServiceTypeOptionsFromEnum(items);
+  const options = await loadSeServiceTypeOptions();
   serviceTypeOptions.value.splice(
     0,
     serviceTypeOptions.value.length,

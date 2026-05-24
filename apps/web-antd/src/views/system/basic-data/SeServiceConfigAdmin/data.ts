@@ -5,8 +5,17 @@ import type { OnActionClickFn } from '#/adapter/vxe-table';
 import type { SeServiceConfigAdminApi } from '#/api/system/base-data/se-service-config-admin';
 
 import { $t } from '#/locales';
+import { getEnumItems } from '#/utils/init-enum';
 
 export type SelectOption = { label: string; value: number };
+
+export type ServiceTypeItemLike = {
+  serviceType?: number;
+  serviceTypeText?: string;
+  serviceTypeName?: string;
+  serviceTypeDisplayName?: string;
+  sortId?: number;
+};
 
 /** ServiceType 枚举兜底文案（与后端 ServiceType 枚举一致） */
 export const DEFAULT_SERVICE_TYPE_OPTIONS: SelectOption[] = [
@@ -39,7 +48,20 @@ export function buildServiceTypeOptionsFromEnum(
   return options.length > 0 ? options : [...DEFAULT_SERVICE_TYPE_OPTIONS];
 }
 
-function buildServiceTypeMap(serviceTypeOptions: SelectOption[]) {
+export async function loadSeServiceTypeEnumItems() {
+  let items = await getEnumItems('ServiceType');
+  if (!items?.length) {
+    items = await getEnumItems('serviceType');
+  }
+  return items || [];
+}
+
+export async function loadSeServiceTypeOptions() {
+  const items = await loadSeServiceTypeEnumItems();
+  return buildServiceTypeOptionsFromEnum(items);
+}
+
+export function buildServiceTypeMap(serviceTypeOptions: SelectOption[]) {
   const map = new Map(
     DEFAULT_SERVICE_TYPE_OPTIONS.map((item) => [item.value, item.label]),
   );
@@ -49,7 +71,7 @@ function buildServiceTypeMap(serviceTypeOptions: SelectOption[]) {
   return map;
 }
 
-function normalizeServiceTypes(value: unknown): number[] {
+export function normalizeServiceTypes(value: unknown): number[] {
   if (Array.isArray(value)) {
     return value
       .map((item) => Number(item))
@@ -62,6 +84,77 @@ function normalizeServiceTypes(value: unknown): number[] {
       .filter((item) => !Number.isNaN(item));
   }
   return [];
+}
+
+export function resolveServiceTypeLabel(
+  serviceType: number | undefined | null,
+  serviceTypeOptions: SelectOption[],
+  backendText?: Pick<
+    ServiceTypeItemLike,
+    'serviceTypeText' | 'serviceTypeName' | 'serviceTypeDisplayName'
+  >,
+) {
+  if (serviceType !== undefined && serviceType !== null) {
+    const normalized = Number(serviceType);
+    if (!Number.isNaN(normalized)) {
+      const map = buildServiceTypeMap(serviceTypeOptions);
+      const mappedLabel = map.get(normalized);
+      if (mappedLabel) {
+        return mappedLabel;
+      }
+      return `${normalized}`;
+    }
+  }
+
+  const text =
+    backendText?.serviceTypeDisplayName ||
+    backendText?.serviceTypeName ||
+    backendText?.serviceTypeText;
+  if (text?.trim()) {
+    return text.trim();
+  }
+  return '';
+}
+
+export function formatRowServiceTypes(
+  row: {
+    serviceTypes?: unknown;
+    seServiceConfigItems?: ServiceTypeItemLike[];
+  },
+  serviceTypeOptions: SelectOption[],
+) {
+  const items = (row.seServiceConfigItems || []).filter(
+    (item) => item.serviceType !== undefined && item.serviceType !== null,
+  );
+
+  if (items.length > 0) {
+    const labels = [...items]
+      .sort(
+        (a, b) =>
+          Number(a.sortId ?? Number.MAX_SAFE_INTEGER) -
+          Number(b.sortId ?? Number.MAX_SAFE_INTEGER),
+      )
+      .map((item) =>
+        resolveServiceTypeLabel(
+          Number(item.serviceType),
+          serviceTypeOptions,
+          item,
+        ),
+      )
+      .filter(Boolean);
+
+    if (labels.length > 0) {
+      return labels.join('、');
+    }
+  }
+
+  const types = normalizeServiceTypes(row.serviceTypes);
+  if (types.length === 0) {
+    return '-';
+  }
+
+  const map = buildServiceTypeMap(serviceTypeOptions);
+  return types.map((type) => map.get(type) || String(type)).join('、');
 }
 
 export function useGridFormSchema(
@@ -94,8 +187,6 @@ export function useColumns(
   serviceTypeOptions: SelectOption[],
   onActionClick?: OnActionClickFn<SeServiceConfigAdminApi.SeServiceConfigListDto>,
 ): VxeTableGridOptions<SeServiceConfigAdminApi.SeServiceConfigListDto>['columns'] {
-  const serviceTypeMap = buildServiceTypeMap(serviceTypeOptions);
-
   return [
     {
       field: 'pol',
@@ -108,13 +199,7 @@ export function useColumns(
       field: 'serviceTypes',
       title: $t('system.basicData.seServiceConfig.serviceType'),
       minWidth: 200,
-      formatter: ({ row }) => {
-        const types = normalizeServiceTypes(row.serviceTypes);
-        if (types.length === 0) return '-';
-        return types
-          .map((type) => serviceTypeMap.get(type) || String(type))
-          .join('、');
-      },
+      formatter: ({ row }) => formatRowServiceTypes(row, serviceTypeOptions),
     },
     {
       field: 'serviceItemCount',

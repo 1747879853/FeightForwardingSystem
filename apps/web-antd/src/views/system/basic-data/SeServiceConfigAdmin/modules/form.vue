@@ -28,10 +28,7 @@ import { UserAttribute } from '#/api/system/user-admin';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import { $t } from '#/locales';
 import { getEnumItems } from '#/utils/init-enum';
-import {
-  DEFAULT_SERVICE_TYPE_OPTIONS,
-  buildServiceTypeOptionsFromEnum,
-} from '../data';
+import { loadSeServiceTypeOptions, resolveServiceTypeLabel } from '../data';
 import {
   combineUserAttribute,
   getSeaExportOrderUserRoleOptions,
@@ -300,21 +297,8 @@ const buildSelectOptions = (
     .sort((a, b) => a.value - b.value);
 };
 
-const getServiceTypeLabel = (serviceType?: number) => {
-  if (serviceType === undefined || serviceType === null) {
-    return '';
-  }
-  const option = serviceTypeOptions.value.find(
-    (item) => Number(item.value) === Number(serviceType),
-  );
-  if (option?.label) {
-    return option.label;
-  }
-  const fallback = DEFAULT_SERVICE_TYPE_OPTIONS.find(
-    (item) => item.value === Number(serviceType),
-  );
-  return fallback?.label || `${serviceType}`;
-};
+const getServiceTypeLabel = (serviceType?: number) =>
+  resolveServiceTypeLabel(serviceType, serviceTypeOptions.value);
 
 const userAttributeServiceSummary = computed<AttributeServiceSummaryRow[]>(
   () => {
@@ -366,11 +350,7 @@ const getItemTitle = (row: ItemRow, index: number) => {
 };
 
 const loadServiceTypeOptions = async () => {
-  let items = await getEnumItems('serviceType');
-  if (!items?.length) {
-    items = await getEnumItems('ServiceType');
-  }
-  serviceTypeOptions.value = buildServiceTypeOptionsFromEnum(items);
+  serviceTypeOptions.value = await loadSeServiceTypeOptions();
 };
 
 const loadSeaExportPropOptions = async () => {
