@@ -395,12 +395,6 @@ export function useColumns<T = SeFreiPriceOutDto>(
               poddet: row.poddet,
               voyage: row.voyage,
               contractNo: row.contractNo,
-              closeDocTime: row.closeDocTime,
-              closeDocDayOfWeek: row.closeDocDayOfWeek,
-              closeDocDayTime: row.closeDocDayTime,
-              closingTime: row.closingTime,
-              closingDayOfWeek: row.closingDayOfWeek,
-              closingDayTime: row.closingDayTime,
               validTimeStart: row.validTimeStart,
               validTimeEnd: row.validTimeEnd,
               remark: row.remark,
@@ -471,96 +465,18 @@ export function useColumns<T = SeFreiPriceOutDto>(
       width: 100,
     },
     {
-      field: 'closeDocTime',
-      title: '截单时间',
-      width: 150,
-      formatter: ({ row }) => {
-        // 优先检查完整日期时间模式
-        if (row.closeDocTime && row.closeDocTime.trim() !== '') {
-          // 将 ISO 格式转换为 YYYY-MM-DD HH:mm 格式
-          const timeStr = row.closeDocTime.substring(0, 16);
-          return timeStr.replace('T', ' ');
-        }
-        // 检查星期模式
-        if (
-          row.closeDocDayOfWeek !== undefined &&
-          row.closeDocDayOfWeek !== null
-        ) {
-          const weekDays = [
-            '周日',
-            '周一',
-            '周二',
-            '周三',
-            '周四',
-            '周五',
-            '周六',
-          ];
-          // 截取时间的前5个字符（HH:mm），去掉秒
-          const dayTime = row.closeDocDayTime
-            ? ` ${row.closeDocDayTime.substring(0, 5)}`
-            : '';
-          return `${weekDays[row.closeDocDayOfWeek]}${dayTime}`;
-        }
-        return '-';
-      },
-    },
-    {
-      field: 'closingTime',
-      title: '截关时间',
-      width: 150,
-      formatter: ({ row }) => {
-        // 优先检查完整日期时间模式
-        if (row.closingTime && row.closingTime.trim() !== '') {
-          // 将 ISO 格式转换为 YYYY-MM-DD HH:mm 格式
-          const timeStr = row.closingTime.substring(0, 16);
-          return timeStr.replace('T', ' ');
-        }
-        // 检查星期模式
-        if (
-          row.closingDayOfWeek !== undefined &&
-          row.closingDayOfWeek !== null
-        ) {
-          const weekDays = [
-            '周日',
-            '周一',
-            '周二',
-            '周三',
-            '周四',
-            '周五',
-            '周六',
-          ];
-          // 截取时间的前5个字符（HH:mm），去掉秒
-          const dayTime = row.closingDayTime
-            ? ` ${row.closingDayTime.substring(0, 5)}`
-            : '';
-          return `${weekDays[row.closingDayOfWeek]}${dayTime}`;
-        }
-        return '-';
-      },
-    },
-    {
       field: 'etd',
-      title: $t('seaExport.freightRate.etd'),
+      title: '开船日期',
       width: 150,
       formatter: ({ row }) => {
-        // 优先显示关联日子表数据（包含开船日、截单时间、截港时间）
+        // 优先显示日期模式数据
         if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
-          const dates = row.seFreiPriceDays.map((day) => {
-            const parts = [];
-            if (day.etd) {
-              parts.push(day.etd.substring(0, 10));
-            }
-            if (day.closeDocTime) {
-              parts.push(`截单:${day.closeDocTime.substring(0, 16)}`);
-            }
-            if (day.closingTime) {
-              parts.push(`截港:${day.closingTime.substring(0, 16)}`);
-            }
-            return parts.join(' ');
-          });
-          return dates.join(', ');
+          const dates = row.seFreiPriceDays
+            .map((day: any) => day.etd?.substring(0, 10))
+            .filter(Boolean);
+          return dates.length > 0 ? dates.join(', ') : '-';
         }
-        // 兼容旧数据：如果还有seFreiPriceWeekDays子表
+        // 显示星期模式数据
         if (row.seFreiPriceWeekDays && row.seFreiPriceWeekDays.length > 0) {
           const weekDays = [
             '周日',
@@ -571,42 +487,105 @@ export function useColumns<T = SeFreiPriceOutDto>(
             '周五',
             '周六',
           ];
-          const days = row.seFreiPriceWeekDays.map((weekDay) => {
-            const parts = [];
-            if (
-              weekDay.etdDayOfWeek !== undefined &&
-              weekDay.etdDayOfWeek !== null
-            ) {
-              const dayTime = weekDay.etdDayTime
-                ? ` ${weekDay.etdDayTime.substring(0, 5)}`
-                : '';
-              parts.push(`${weekDays[weekDay.etdDayOfWeek]}${dayTime}`);
-            }
-            if (
-              weekDay.closeDocDayOfWeek !== undefined &&
-              weekDay.closeDocDayOfWeek !== null
-            ) {
-              const dayTime = weekDay.closeDocDayTime
-                ? ` ${weekDay.closeDocDayTime.substring(0, 5)}`
-                : '';
-              parts.push(
-                `截单:${weekDays[weekDay.closeDocDayOfWeek]}${dayTime}`,
-              );
-            }
-            if (
-              weekDay.closingDayOfWeek !== undefined &&
-              weekDay.closingDayOfWeek !== null
-            ) {
-              const dayTime = weekDay.closingDayTime
-                ? ` ${weekDay.closingDayTime.substring(0, 5)}`
-                : '';
-              parts.push(
-                `截港:${weekDays[weekDay.closingDayOfWeek]}${dayTime}`,
-              );
-            }
-            return parts.join(' ');
-          });
-          return days.join(', ');
+          const days = row.seFreiPriceWeekDays
+            .map((weekDay: any) => {
+              if (
+                weekDay.etdDayOfWeek !== undefined &&
+                weekDay.etdDayOfWeek !== null
+              ) {
+                const dayTime = weekDay.etdDayTime
+                  ? ` ${weekDay.etdDayTime.substring(0, 5)}`
+                  : '';
+                return `${weekDays[weekDay.etdDayOfWeek]}${dayTime}`;
+              }
+              return null;
+            })
+            .filter(Boolean);
+          return days.length > 0 ? days.join(', ') : '-';
+        }
+        return '-';
+      },
+    },
+    {
+      field: 'closeDocTime',
+      title: '截单时间',
+      width: 150,
+      formatter: ({ row }) => {
+        // 优先显示日期模式数据
+        if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
+          const times = row.seFreiPriceDays
+            .map((day: any) => day.closeDocTime?.substring(0, 10))
+            .filter(Boolean);
+          return times.length > 0 ? times.join(', ') : '-';
+        }
+        // 显示星期模式数据
+        if (row.seFreiPriceWeekDays && row.seFreiPriceWeekDays.length > 0) {
+          const weekDays = [
+            '周日',
+            '周一',
+            '周二',
+            '周三',
+            '周四',
+            '周五',
+            '周六',
+          ];
+          const times = row.seFreiPriceWeekDays
+            .map((weekDay: any) => {
+              if (
+                weekDay.closeDocDayOfWeek !== undefined &&
+                weekDay.closeDocDayOfWeek !== null
+              ) {
+                const dayTime = weekDay.closeDocDayTime
+                  ? ` ${weekDay.closeDocDayTime.substring(0, 5)}`
+                  : '';
+                return `${weekDays[weekDay.closeDocDayOfWeek]}${dayTime}`;
+              }
+              return null;
+            })
+            .filter(Boolean);
+          return times.length > 0 ? times.join(', ') : '-';
+        }
+        return '-';
+      },
+    },
+    {
+      field: 'closingTime',
+      title: '截关时间',
+      width: 150,
+      formatter: ({ row }) => {
+        // 优先显示日期模式数据
+        if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
+          const times = row.seFreiPriceDays
+            .map((day: any) => day.closingTime?.substring(0, 10))
+            .filter(Boolean);
+          return times.length > 0 ? times.join(', ') : '-';
+        }
+        // 显示星期模式数据
+        if (row.seFreiPriceWeekDays && row.seFreiPriceWeekDays.length > 0) {
+          const weekDays = [
+            '周日',
+            '周一',
+            '周二',
+            '周三',
+            '周四',
+            '周五',
+            '周六',
+          ];
+          const times = row.seFreiPriceWeekDays
+            .map((weekDay: any) => {
+              if (
+                weekDay.closingDayOfWeek !== undefined &&
+                weekDay.closingDayOfWeek !== null
+              ) {
+                const dayTime = weekDay.closingDayTime
+                  ? ` ${weekDay.closingDayTime.substring(0, 5)}`
+                  : '';
+                return `${weekDays[weekDay.closingDayOfWeek]}${dayTime}`;
+              }
+              return null;
+            })
+            .filter(Boolean);
+          return times.length > 0 ? times.join(', ') : '-';
         }
         return '-';
       },

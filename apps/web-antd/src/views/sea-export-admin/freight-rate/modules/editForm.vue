@@ -36,9 +36,8 @@ const formData = ref<SeFreiPriceOutDto>();
 const id = ref<string>();
 const isEditMode = computed(() => !!id.value);
 
-// 时间模式控制
-const closeDocMode = ref<'datetime' | 'week' | null>(null);
-const closingMode = ref<'datetime' | 'week' | null>(null);
+// 时间模式控制（用于独立日期模块）
+const dateEditMode = ref<'date' | 'week'>('date'); // 默认日期模式
 
 // 开船日子表输入模式控制（用于互斥）
 const etdInputMode = ref<'date' | 'weekday' | null>(null);
@@ -108,25 +107,26 @@ interface SurchargeFeeItem {
 // 附加费列表
 const surchargeFees = ref<SurchargeFeeItem[]>([]);
 
-// 开船日子表
+// 开船日子表（日期模式）- 一组包含三个日期
 const etdList = ref<
   Array<{
     id?: string;
-    etd?: string;
-    closeDocTime?: string;
-    closingTime?: string;
+    etd?: string; // 开船日期
+    closeDocTime?: string; // 截单时间（日期格式）
+    closingTime?: string; // 截关时间（日期格式）
   }>
 >([]);
 
+// 开船日周几子表（星期模式）- 一组包含三个星期+时间点
 const etdDayList = ref<
   Array<{
     id?: string;
-    etdDayOfWeek?: number;
-    etdDayTime?: string;
-    closeDocDayOfWeek?: number;
-    closeDocDayTime?: string;
-    closingDayOfWeek?: number;
-    closingDayTime?: string;
+    etdDayOfWeek?: number; // 开船星期
+    etdDayTime?: string; // 开船时间点
+    closeDocDayOfWeek?: number; // 截单星期
+    closeDocDayTime?: string; // 截单时间点
+    closingDayOfWeek?: number; // 截关星期
+    closingDayTime?: string; // 截关时间点
   }>
 >([]);
 
@@ -376,7 +376,7 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
-    // 第四行：目的港免箱期、截单时间相关
+    // 第四行：目的港免箱期
     {
       component: 'InputNumber',
       fieldName: 'poddet',
@@ -387,136 +387,138 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
+    // {
+    //   component: 'DatePicker',
+    //   fieldName: 'closeDocTime',
+    //   label: '截单时间',
+    //   componentProps: {
+    //     placeholder: '请选择截单时间',
+    //     format: 'YYYY-MM-DD HH:mm',
+    //     valueFormat: 'YYYY-MM-DD HH:mm',
+    //     showTime: true,
+    //     timePicker: { format: 'HH:mm' },
+    //     style: { width: '100%' },
+    //     onChange: (value: any) => {
+    //       if (value) {
+    //         dateEditMode.value = 'date';
+    //         formApi.setValues({
+    //           closeDocDayOfWeek: undefined,
+    //           closeDocDayTime: undefined,
+    //         });
+    //       }
+    //     },
+    //   },
+    // },
+    // {
+    //   component: 'Select',
+    //   fieldName: 'closeDocDayOfWeek',
+    //   label: '截单星期',
+    //   componentProps: {
+    //     options: [
+    //       { label: '周日', value: 0 },
+    //       { label: '周一', value: 1 },
+    //       { label: '周二', value: 2 },
+    //       { label: '周三', value: 3 },
+    //       { label: '周四', value: 4 },
+    //       { label: '周五', value: 5 },
+    //       { label: '周六', value: 6 },
+    //     ],
+    //     placeholder: '请选择截单星期',
+    //     allowClear: true,
+    //     disabled: computed(() => dateEditMode.value === 'date'),
+    //     style: { width: '100%' },
+    //     onChange: (value: any) => {
+    //       if (value !== undefined && value !== null) {
+    //         dateEditMode.value = 'week';
+    //         formApi.setValues({ closeDocTime: undefined });
+    //       }
+    //     },
+    //   },
+    // },
+    // {
+    //   component: 'TimePicker',
+    //   fieldName: 'closeDocDayTime',
+    //   label: '截单时间点',
+    //   componentProps: {
+    //     placeholder: '请选择时间点',
+    //     format: 'HH:mm',
+    //     valueFormat: 'HH:mm:ss',
+    //     disabled: computed(() => dateEditMode.value !== 'week'),
+    //     style: { width: '100%' },
+    //   },
+    // },
+    // // 第五行：截关时间相关
+    // {
+    //   component: 'DatePicker',
+    //   fieldName: 'closingTime',
+    //   label: '截关时间',
+    //   componentProps: {
+    //     placeholder: '请选择截关时间',
+    //     format: 'YYYY-MM-DD HH:mm',
+    //     valueFormat: 'YYYY-MM-DD HH:mm',
+    //     showTime: true,
+    //     timePicker: { format: 'HH:mm' },
+    //     style: { width: '100%' },
+    //     onChange: (value: any) => {
+    //       if (value) {
+    //         dateEditMode.value = 'date';
+    //         formApi.setValues({
+    //           closingDayOfWeek: undefined,
+    //           closingDayTime: undefined,
+    //         });
+    //       }
+    //     },
+    //   },
+    // },
+    // {
+    //   component: 'Select',
+    //   fieldName: 'closingDayOfWeek',
+    //   label: '截关星期',
+    //   componentProps: {
+    //     options: [
+    //       { label: '周日', value: 0 },
+    //       { label: '周一', value: 1 },
+    //       { label: '周二', value: 2 },
+    //       { label: '周三', value: 3 },
+    //       { label: '周四', value: 4 },
+    //       { label: '周五', value: 5 },
+    //       { label: '周六', value: 6 },
+    //     ],
+    //     placeholder: '请选择截关星期',
+    //     allowClear: true,
+    //     disabled: computed(() => dateEditMode.value === 'date'),
+    //     style: { width: '100%' },
+    //     onChange: (value: any) => {
+    //       if (value !== undefined && value !== null) {
+    //         dateEditMode.value = 'week';
+    //         formApi.setValues({ closingTime: undefined });
+    //       }
+    //     },
+    //   },
+    // },
+    // {
+    //   component: 'TimePicker',
+    //   fieldName: 'closingDayTime',
+    //   label: '截关时间点',
+    //   componentProps: {
+    //     placeholder: '请选择时间点',
+    //     format: 'HH:mm',
+    //     valueFormat: 'HH:mm:ss',
+    //     disabled: computed(() => dateEditMode.value !== 'week'),
+    //     style: { width: '100%' },
+    //   },
+    // },
+    // 第四行：目的港免箱期、备注
     {
-      component: 'DatePicker',
-      fieldName: 'closeDocTime',
-      label: '截单时间',
+      component: 'InputNumber',
+      fieldName: 'poddet',
+      label: '目的港免箱期',
       componentProps: {
-        placeholder: '请选择截单时间',
-        format: 'YYYY-MM-DD HH:mm',
-        valueFormat: 'YYYY-MM-DD HH:mm',
-        showTime: true,
-        timePicker: { format: 'HH:mm' },
+        placeholder: '请输入免箱期天数',
+        min: 0,
         style: { width: '100%' },
-        onChange: (value: any) => {
-          if (value) {
-            closeDocMode.value = 'datetime';
-            formApi.setValues({
-              closeDocDayOfWeek: undefined,
-              closeDocDayTime: undefined,
-            });
-          } else {
-            closeDocMode.value = null;
-          }
-        },
       },
     },
-    {
-      component: 'Select',
-      fieldName: 'closeDocDayOfWeek',
-      label: '截单星期',
-      componentProps: {
-        options: [
-          { label: '周日', value: 0 },
-          { label: '周一', value: 1 },
-          { label: '周二', value: 2 },
-          { label: '周三', value: 3 },
-          { label: '周四', value: 4 },
-          { label: '周五', value: 5 },
-          { label: '周六', value: 6 },
-        ],
-        placeholder: '请选择截单星期',
-        allowClear: true,
-        disabled: computed(() => closeDocMode.value === 'datetime'),
-        style: { width: '100%' },
-        onChange: (value: any) => {
-          if (value !== undefined && value !== null) {
-            closeDocMode.value = 'week';
-            formApi.setValues({ closeDocTime: undefined });
-          } else {
-            closeDocMode.value = null;
-          }
-        },
-      },
-    },
-    {
-      component: 'TimePicker',
-      fieldName: 'closeDocDayTime',
-      label: '截单时间点',
-      componentProps: {
-        placeholder: '请选择时间点',
-        format: 'HH:mm',
-        valueFormat: 'HH:mm:ss',
-        disabled: computed(() => closeDocMode.value !== 'week'),
-        style: { width: '100%' },
-      },
-    },
-    // 第五行：截关时间相关
-    {
-      component: 'DatePicker',
-      fieldName: 'closingTime',
-      label: '截关时间',
-      componentProps: {
-        placeholder: '请选择截关时间',
-        format: 'YYYY-MM-DD HH:mm',
-        valueFormat: 'YYYY-MM-DD HH:mm',
-        showTime: true,
-        timePicker: { format: 'HH:mm' },
-        style: { width: '100%' },
-        onChange: (value: any) => {
-          if (value) {
-            closingMode.value = 'datetime';
-            formApi.setValues({
-              closingDayOfWeek: undefined,
-              closingDayTime: undefined,
-            });
-          } else {
-            closingMode.value = null;
-          }
-        },
-      },
-    },
-    {
-      component: 'Select',
-      fieldName: 'closingDayOfWeek',
-      label: '截关星期',
-      componentProps: {
-        options: [
-          { label: '周日', value: 0 },
-          { label: '周一', value: 1 },
-          { label: '周二', value: 2 },
-          { label: '周三', value: 3 },
-          { label: '周四', value: 4 },
-          { label: '周五', value: 5 },
-          { label: '周六', value: 6 },
-        ],
-        placeholder: '请选择截关星期',
-        allowClear: true,
-        disabled: computed(() => closingMode.value === 'datetime'),
-        style: { width: '100%' },
-        onChange: (value: any) => {
-          if (value !== undefined && value !== null) {
-            closingMode.value = 'week';
-            formApi.setValues({ closingTime: undefined });
-          } else {
-            closingMode.value = null;
-          }
-        },
-      },
-    },
-    {
-      component: 'TimePicker',
-      fieldName: 'closingDayTime',
-      label: '截关时间点',
-      componentProps: {
-        placeholder: '请选择时间点',
-        format: 'HH:mm',
-        valueFormat: 'HH:mm:ss',
-        disabled: computed(() => closingMode.value !== 'week'),
-        style: { width: '100%' },
-      },
-    },
-    // 第六行：备注（独占一行，占据剩余空间或全宽）
     {
       component: 'Textarea',
       fieldName: 'remark',
@@ -626,6 +628,15 @@ async function loadDetail(priceId: string) {
       remark: detail.remark,
     });
 
+    // 设置日期编辑模式（从子表中判断）
+    if (detail.seFreiPriceWeekDays && detail.seFreiPriceWeekDays.length > 0) {
+      dateEditMode.value = 'week';
+    } else if (detail.seFreiPriceDays && detail.seFreiPriceDays.length > 0) {
+      dateEditMode.value = 'date';
+    } else {
+      dateEditMode.value = 'date'; // 默认日期模式
+    }
+
     // 初始化是否直达状态
     isDirectValue.value = detail.isDirect ?? true;
 
@@ -706,7 +717,7 @@ async function loadDetail(priceId: string) {
       });
     }
 
-    // 填充关联日子表（包含开船日、截单时间、截港时间）
+    // 填充关联日子表（日期模式）
     if (detail.seFreiPriceDays && detail.seFreiPriceDays.length > 0) {
       etdList.value = detail.seFreiPriceDays.map((day) => ({
         id: day.id,
@@ -714,10 +725,9 @@ async function loadDetail(priceId: string) {
         closeDocTime: day.closeDocTime,
         closingTime: day.closingTime,
       }));
-      // 如果有开船日期，设置为日期模式
-      etdInputMode.value = 'date';
     }
 
+    // 填充关联周几子表（星期模式）
     if (detail.seFreiPriceWeekDays && detail.seFreiPriceWeekDays.length > 0) {
       etdDayList.value = detail.seFreiPriceWeekDays.map((weekDay) => ({
         id: weekDay.id,
@@ -728,33 +738,26 @@ async function loadDetail(priceId: string) {
         closingDayOfWeek: weekDay.closingDayOfWeek,
         closingDayTime: weekDay.closingDayTime,
       }));
-      // 如果有开船星期，设置为星期模式
-      etdInputMode.value = 'weekday';
     }
 
-    // 设置时间模式（从子表中读取）
-    if (detail.seFreiPriceDays && detail.seFreiPriceDays.length > 0) {
-      const firstDay = detail.seFreiPriceDays[0];
-      if (firstDay) {
-        if (firstDay.closeDocTime) closeDocMode.value = 'datetime';
-        if (firstDay.closingTime) closingMode.value = 'datetime';
-      }
-    }
-
+    // 设置开船日子表输入模式（用于互斥）
+    // 优先判断是否有星期数据，如果有则设为 weekday，否则如果有日期数据则设为 date
     if (detail.seFreiPriceWeekDays && detail.seFreiPriceWeekDays.length > 0) {
-      const firstWeekDay = detail.seFreiPriceWeekDays[0];
-      if (firstWeekDay) {
-        if (
-          firstWeekDay.closeDocDayOfWeek !== undefined &&
-          firstWeekDay.closeDocDayOfWeek !== null
-        )
-          closeDocMode.value = 'week';
-        if (
-          firstWeekDay.closingDayOfWeek !== undefined &&
-          firstWeekDay.closingDayOfWeek !== null
-        )
-          closingMode.value = 'week';
-      }
+      etdInputMode.value = 'weekday';
+    } else if (detail.seFreiPriceDays && detail.seFreiPriceDays.length > 0) {
+      etdInputMode.value = 'date';
+    } else {
+      etdInputMode.value = null; // 默认无数据时不锁定模式
+    }
+
+    // 设置截单/截关时间编辑模式（用于独立日期模块）
+    // 优先判断是否有星期数据，如果有则设为 week，否则如果有日期数据则设为 date
+    if (detail.seFreiPriceWeekDays && detail.seFreiPriceWeekDays.length > 0) {
+      dateEditMode.value = 'week';
+    } else if (detail.seFreiPriceDays && detail.seFreiPriceDays.length > 0) {
+      dateEditMode.value = 'date';
+    } else {
+      dateEditMode.value = 'date'; // 默认
     }
   } catch (error) {
     message.error('加载详情失败');
@@ -1076,77 +1079,64 @@ function getOperatorSymbol(operatorType?: number): string {
   );
 }
 
-// ==================== 开船日管理 ====================
+// ==================== 日期时间管理 ====================
 
-function addEtd() {
-  // 如果当前是星期模式，清空星期列表
-  if (etdInputMode.value === 'weekday') {
+/**
+ * 切换到日期模式
+ */
+function switchToDateMode() {
+  if (dateEditMode.value === 'week') {
+    // 清空星期模式数据
     etdDayList.value = [];
   }
-  etdInputMode.value = 'date';
-  etdList.value.push({ etd: undefined });
+  dateEditMode.value = 'date';
 }
 
-function removeEtd(index: number) {
-  etdList.value.splice(index, 1);
-  // 如果删除后为空，重置模式
-  if (etdList.value.length === 0) {
-    etdInputMode.value = null;
-  }
-}
-
-function addEtdDay() {
-  // 如果当前是日期模式，清空日期列表
-  if (etdInputMode.value === 'date') {
+/**
+ * 切换到星期模式
+ */
+function switchToWeekMode() {
+  if (dateEditMode.value === 'date') {
+    // 清空日期模式数据
     etdList.value = [];
   }
-  etdInputMode.value = 'weekday';
-  etdDayList.value.push({ etdDayOfWeek: undefined, etdDayTime: undefined });
+  dateEditMode.value = 'week';
 }
 
-function removeEtdDay(index: number) {
+/**
+ * 添加一组日期/星期数据
+ */
+function addDateGroup() {
+  if (dateEditMode.value === 'date') {
+    etdList.value.push({
+      etd: undefined,
+      closeDocTime: undefined,
+      closingTime: undefined,
+    });
+  } else {
+    etdDayList.value.push({
+      etdDayOfWeek: undefined,
+      etdDayTime: undefined,
+      closeDocDayOfWeek: undefined,
+      closeDocDayTime: undefined,
+      closingDayOfWeek: undefined,
+      closingDayTime: undefined,
+    });
+  }
+}
+
+/**
+ * 删除一组日期数据
+ */
+function removeDateGroup(index: number) {
+  etdList.value.splice(index, 1);
+}
+
+/**
+ * 删除一组星期数据
+ */
+function removeWeekGroup(index: number) {
   etdDayList.value.splice(index, 1);
-  // 如果删除后为空，重置模式
-  if (etdDayList.value.length === 0) {
-    etdInputMode.value = null;
-  }
-}
-
-function handleEtdDateChange(value: any) {
-  if (value) {
-    etdInputMode.value = 'date';
-    // 清空开船星期列表
-    if (etdDayList.value.length > 0) {
-      etdDayList.value = [];
-      message.info('已切换为开船日期模式，开船星期数据已清空');
-    }
-  } else {
-    // 如果所有日期都被清空，重置模式
-    const hasValidDate = etdList.value.some((etd) => etd.etd);
-    if (!hasValidDate) {
-      etdInputMode.value = null;
-    }
-  }
-}
-
-function handleEtdWeekdayChange(value: any) {
-  if (value !== undefined && value !== null) {
-    etdInputMode.value = 'weekday';
-    // 清空开船日期列表
-    if (etdList.value.length > 0) {
-      etdList.value = [];
-      message.info('已切换为开船星期模式，开船日期数据已清空');
-    }
-  } else {
-    // 如果所有星期都被清空，重置模式
-    const hasValidWeekday = etdDayList.value.some(
-      (etdDay) =>
-        etdDay.etdDayOfWeek !== undefined && etdDay.etdDayOfWeek !== null,
-    );
-    if (!hasValidWeekday) {
-      etdInputMode.value = null;
-    }
-  }
 }
 
 // ==================== 提交表单 ====================
@@ -1278,32 +1268,38 @@ async function handleSubmit() {
       remark: values.remark,
       seFreiPriceCtns,
       seFreiPriceFees,
-      // 构建关联日列表（seFreiPriceDays）
-      seFreiPriceDays: etdList.value
-        .filter((day) => day.etd || day.closeDocTime || day.closingTime)
-        .map((day) => ({
-          ...(day.id ? { id: day.id } : {}),
-          etd: day.etd,
-          closeDocTime: day.closeDocTime,
-          closingTime: day.closingTime,
-        })),
-      // 构建关联周几列表（seFreiPriceWeekDays）
-      seFreiPriceWeekDays: etdDayList.value
-        .filter(
-          (weekDay) =>
-            weekDay.etdDayOfWeek !== undefined ||
-            weekDay.closeDocDayOfWeek !== undefined ||
-            weekDay.closingDayOfWeek !== undefined,
-        )
-        .map((weekDay) => ({
-          ...(weekDay.id ? { id: weekDay.id } : {}),
-          etdDayOfWeek: weekDay.etdDayOfWeek,
-          etdDayTime: weekDay.etdDayTime,
-          closeDocDayOfWeek: weekDay.closeDocDayOfWeek,
-          closeDocDayTime: weekDay.closeDocDayTime,
-          closingDayOfWeek: weekDay.closingDayOfWeek,
-          closingDayTime: weekDay.closingDayTime,
-        })),
+      // 构建关联日列表（seFreiPriceDays）- 日期模式
+      seFreiPriceDays:
+        dateEditMode.value === 'date'
+          ? etdList.value
+              .filter((day) => day.etd || day.closeDocTime || day.closingTime)
+              .map((day) => ({
+                ...(day.id ? { id: day.id } : {}),
+                etd: day.etd,
+                closeDocTime: day.closeDocTime,
+                closingTime: day.closingTime,
+              }))
+          : [],
+      // 构建关联周几列表（seFreiPriceWeekDays）- 星期模式
+      seFreiPriceWeekDays:
+        dateEditMode.value === 'week'
+          ? etdDayList.value
+              .filter(
+                (weekDay) =>
+                  weekDay.etdDayOfWeek !== undefined ||
+                  weekDay.closeDocDayOfWeek !== undefined ||
+                  weekDay.closingDayOfWeek !== undefined,
+              )
+              .map((weekDay) => ({
+                ...(weekDay.id ? { id: weekDay.id } : {}),
+                etdDayOfWeek: weekDay.etdDayOfWeek,
+                etdDayTime: weekDay.etdDayTime,
+                closeDocDayOfWeek: weekDay.closeDocDayOfWeek,
+                closeDocDayTime: weekDay.closeDocDayTime,
+                closingDayOfWeek: weekDay.closingDayOfWeek,
+                closingDayTime: weekDay.closingDayTime,
+              }))
+          : [],
     };
 
     const hideLoading = message.loading({
@@ -1389,97 +1385,256 @@ onMounted(() => {
         <Form />
       </div>
 
-      <!-- 开船日子表 -->
+      <!-- 日期时间设置（独立模块） -->
       <div class="form-section">
         <h3 class="section-title">
-          <span>开船日期</span>
-          <Button
-            type="link"
-            size="small"
-            @click="addEtd"
-            :disabled="etdInputMode === 'weekday'"
-          >
-            <IconifyIcon icon="mdi:plus" class="size-4" />
-            添加
-          </Button>
-        </h3>
-        <div v-if="etdList.length === 0" class="empty-tip">
-          暂无开船日期，请点击添加（与开船星期互斥）
-        </div>
-        <div v-else class="sub-table">
-          <div
-            v-for="(etd, index) in etdList"
-            :key="index"
-            class="sub-table-row"
-          >
-            <DatePicker
-              v-model:value="etd.etd"
-              placeholder="请选择开船日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
-              style="width: 200px"
-              @change="handleEtdDateChange"
-            />
-            <Button type="link" danger size="small" @click="removeEtd(index)">
-              <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+          <span>日期时间设置</span>
+          <div class="flex items-center gap-2">
+            <!-- 模式切换按钮 -->
+            <Button
+              :type="dateEditMode === 'date' ? 'primary' : 'default'"
+              size="small"
+              @click="switchToDateMode"
+            >
+              日期模式
+            </Button>
+            <Button
+              :type="dateEditMode === 'week' ? 'primary' : 'default'"
+              size="small"
+              @click="switchToWeekMode"
+            >
+              星期模式
+            </Button>
+            <!-- 添加按钮 -->
+            <Button type="link" size="small" @click="addDateGroup">
+              <IconifyIcon icon="mdi:plus" class="size-4" />
+              添加一组
             </Button>
           </div>
-        </div>
-      </div>
-
-      <!-- 开船日周几子表 -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <span>开船星期</span>
-          <Button
-            type="link"
-            size="small"
-            @click="addEtdDay"
-            :disabled="etdInputMode === 'date'"
-          >
-            <IconifyIcon icon="mdi:plus" class="size-4" />
-            添加
-          </Button>
         </h3>
-        <div v-if="etdDayList.length === 0" class="empty-tip">
-          暂无开船星期，请点击添加（与开船日期互斥）
-        </div>
-        <div v-else class="sub-table">
-          <div
-            v-for="(etdDay, index) in etdDayList"
-            :key="index"
-            class="sub-table-row"
-          >
-            <Select
-              v-model:value="etdDay.etdDayOfWeek"
-              placeholder="请选择星期"
-              style="width: 120px"
-              :options="[
-                { label: '周日', value: 0 },
-                { label: '周一', value: 1 },
-                { label: '周二', value: 2 },
-                { label: '周三', value: 3 },
-                { label: '周四', value: 4 },
-                { label: '周五', value: 5 },
-                { label: '周六', value: 6 },
-              ]"
-              @change="handleEtdWeekdayChange"
-            />
-            <TimePicker
-              v-model:value="etdDay.etdDayTime"
-              placeholder="请选择时间点"
-              format="HH:mm"
-              value-format="HH:mm:ss"
-              style="width: 120px"
-            />
-            <Button
-              type="link"
-              danger
-              size="small"
-              @click="removeEtdDay(index)"
+
+        <!-- 日期模式 -->
+        <div v-if="dateEditMode === 'date'">
+          <div v-if="etdList.length === 0" class="empty-tip">
+            暂无日期数据，请点击"添加一组"按钮添加
+          </div>
+          <div v-else class="sub-table">
+            <div
+              v-for="(dateGroup, index) in etdList"
+              :key="index"
+              class="sub-table-row date-group-row"
             >
-              <IconifyIcon icon="mdi:delete-outline" class="size-4" />
-            </Button>
+              <div class="date-group-content">
+                <!-- 开船日期 -->
+                <div class="date-field">
+                  <label class="field-label">
+                    <IconifyIcon icon="mdi:ship-wheel" class="mr-1 size-4" />
+                    开船日期
+                  </label>
+                  <DatePicker
+                    v-model:value="dateGroup.etd"
+                    placeholder="请选择开船日期"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    style="width: 100%"
+                  />
+                </div>
+                <!-- 截单时间 -->
+                <div class="date-field">
+                  <label class="field-label">
+                    <IconifyIcon
+                      icon="mdi:file-document-check"
+                      class="mr-1 size-4"
+                    />
+                    截单时间
+                  </label>
+                  <DatePicker
+                    v-model:value="dateGroup.closeDocTime"
+                    placeholder="请选择截单时间"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    style="width: 100%"
+                  />
+                </div>
+                <!-- 截关时间 -->
+                <div class="date-field">
+                  <label class="field-label">
+                    <IconifyIcon
+                      icon="mdi:container-lock"
+                      class="mr-1 size-4"
+                    />
+                    截关时间
+                  </label>
+                  <DatePicker
+                    v-model:value="dateGroup.closingTime"
+                    placeholder="请选择截关时间"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    style="width: 100%"
+                  />
+                </div>
+              </div>
+              <Button
+                type="link"
+                danger
+                size="small"
+                @click="removeDateGroup(index)"
+                class="delete-btn"
+              >
+                <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 星期模式 -->
+        <div v-if="dateEditMode === 'week'">
+          <div v-if="etdDayList.length === 0" class="empty-tip">
+            暂无星期数据，请点击"添加一组"按钮添加
+          </div>
+          <div v-else class="sub-table">
+            <div
+              v-for="(weekGroup, index) in etdDayList"
+              :key="index"
+              class="sub-table-row week-group-row"
+            >
+              <div class="week-group-content">
+                <!-- 开船星期组 -->
+                <div class="week-pair">
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon icon="mdi:ship-wheel" class="mr-1 size-4" />
+                      开船星期
+                    </label>
+                    <Select
+                      v-model:value="weekGroup.etdDayOfWeek"
+                      placeholder="请选择"
+                      style="width: 100%"
+                      :options="[
+                        { label: '周日', value: 0 },
+                        { label: '周一', value: 1 },
+                        { label: '周二', value: 2 },
+                        { label: '周三', value: 3 },
+                        { label: '周四', value: 4 },
+                        { label: '周五', value: 5 },
+                        { label: '周六', value: 6 },
+                      ]"
+                    />
+                  </div>
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:clock-outline"
+                        class="mr-1 size-4"
+                      />
+                      时间点
+                    </label>
+                    <TimePicker
+                      v-model:value="weekGroup.etdDayTime"
+                      placeholder="请选择"
+                      format="HH:mm"
+                      value-format="HH:mm:ss"
+                      style="width: 100%"
+                    />
+                  </div>
+                </div>
+
+                <!-- 截单星期组 -->
+                <div class="week-pair">
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:file-document-check"
+                        class="mr-1 size-4"
+                      />
+                      截单星期
+                    </label>
+                    <Select
+                      v-model:value="weekGroup.closeDocDayOfWeek"
+                      placeholder="请选择"
+                      style="width: 100%"
+                      :options="[
+                        { label: '周日', value: 0 },
+                        { label: '周一', value: 1 },
+                        { label: '周二', value: 2 },
+                        { label: '周三', value: 3 },
+                        { label: '周四', value: 4 },
+                        { label: '周五', value: 5 },
+                        { label: '周六', value: 6 },
+                      ]"
+                    />
+                  </div>
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:clock-outline"
+                        class="mr-1 size-4"
+                      />
+                      时间点
+                    </label>
+                    <TimePicker
+                      v-model:value="weekGroup.closeDocDayTime"
+                      placeholder="请选择"
+                      format="HH:mm"
+                      value-format="HH:mm:ss"
+                      style="width: 100%"
+                    />
+                  </div>
+                </div>
+
+                <!-- 截关星期组 -->
+                <div class="week-pair">
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:container-lock"
+                        class="mr-1 size-4"
+                      />
+                      截关星期
+                    </label>
+                    <Select
+                      v-model:value="weekGroup.closingDayOfWeek"
+                      placeholder="请选择"
+                      style="width: 100%"
+                      :options="[
+                        { label: '周日', value: 0 },
+                        { label: '周一', value: 1 },
+                        { label: '周二', value: 2 },
+                        { label: '周三', value: 3 },
+                        { label: '周四', value: 4 },
+                        { label: '周五', value: 5 },
+                        { label: '周六', value: 6 },
+                      ]"
+                    />
+                  </div>
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:clock-outline"
+                        class="mr-1 size-4"
+                      />
+                      时间点
+                    </label>
+                    <TimePicker
+                      v-model:value="weekGroup.closingDayTime"
+                      placeholder="请选择"
+                      format="HH:mm"
+                      value-format="HH:mm:ss"
+                      style="width: 100%"
+                    />
+                  </div>
+                </div>
+              </div>
+              <Button
+                type="link"
+                danger
+                size="small"
+                @click="removeWeekGroup(index)"
+                class="delete-btn"
+              >
+                <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -2043,6 +2198,16 @@ onMounted(() => {
   }
 }
 
+@media (max-width: 1200px) {
+  .date-group-content {
+    grid-template-columns: 1fr;
+  }
+
+  .week-group-content {
+    grid-template-columns: 1fr;
+  }
+}
+
 .edit-form-container {
   max-height: 70vh;
   padding: 16px;
@@ -2170,13 +2335,19 @@ onMounted(() => {
 }
 
 .empty-tip {
-  padding: 16px;
+  padding: 32px 16px;
   font-size: 14px;
-  color: #999;
+  color: #94a3b8;
   text-align: center;
-  background: #fff;
-  border: 1px dashed #d9d9d9;
-  border-radius: 4px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.empty-tip:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-color: #94a3b8;
 }
 
 .form-footer {
@@ -2185,6 +2356,16 @@ onMounted(() => {
   justify-content: flex-end;
   padding-top: 16px;
   border-top: 1px solid #e8e8e8;
+}
+
+/* 模式切换按钮样式增强 */
+.mode-toggle {
+  padding: 10px 20px;
+  color: #fff;
+  cursor: pointer;
+  background-color: #333;
+  border: none;
+  border-radius: 5px;
 }
 
 /* 表格样式 */
@@ -2262,5 +2443,129 @@ input[type='text']:focus {
   font-weight: bold;
   line-height: 1;
   color: #ff4d4f;
+}
+
+/* 日期时间设置模块样式 */
+.date-group-row,
+.week-group-row {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.date-group-row::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  content: '';
+  background: linear-gradient(to bottom, #3b82f6, #60a5fa);
+  border-radius: 8px 0 0 8px;
+}
+
+/* .date-group-row:hover,
+.week-group-row:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgb(59 130 246 / 15%);
+  transform: translateY(-2px);
+} */
+
+.date-group-content {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.week-group-content {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.date-field,
+.week-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date-field .field-label,
+.week-field .field-label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.week-pair {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.week-pair .week-field:first-child {
+  flex: 1;
+}
+
+.week-pair .week-field:last-child {
+  flex: 0 0 100px;
+}
+
+.delete-btn {
+  flex-shrink: 0;
+  margin-top: 24px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.delete-btn:hover {
+  opacity: 1;
+}
+
+/* 模式切换按钮样式增强 */
+.section-title .ant-btn {
+  color: #333;
+  background-color: #f0f0f0;
+  border-color: #d9d9d9;
+}
+
+.section-title .ant-btn:hover {
+  background-color: #e0e0e0;
+  border-color: #c1c1c1;
+}
+
+.section-title .ant-btn-primary {
+  box-shadow: 0 2px 4px rgb(59 130 246 / 30%);
+}
+
+.section-title .ant-btn-primary:hover {
+  box-shadow: 0 4px 8px rgb(59 130 246 / 40%);
+  transform: translateY(-1px);
+}
+
+/* 添加一组按钮样式 */
+.section-title .ant-btn-link {
+  font-weight: 500;
+  color: #10b981;
+}
+
+.section-title .ant-btn-link:hover {
+  color: #059669;
+  background: rgb(16 185 129 / 5%);
 }
 </style>
