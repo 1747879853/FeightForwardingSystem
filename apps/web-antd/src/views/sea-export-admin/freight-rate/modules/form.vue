@@ -1087,6 +1087,33 @@ const [Modal, modalApi] = useVbenModal({
       }
     });
 
+    // 构建关联日列表（seFreiPriceDays）- 原 seFreiPriceETDs
+    const seFreiPriceDays: any[] = [];
+    if (values.etd || values.closeDocTime || values.closingTime) {
+      seFreiPriceDays.push({
+        etd: values.etd,
+        closeDocTime: values.closeDocTime,
+        closingTime: values.closingTime,
+      });
+    }
+
+    // 构建关联周几列表（seFreiPriceWeekDays）- 原 seFreiPriceETDDays
+    const seFreiPriceWeekDays: any[] = [];
+    if (
+      values.etdDayOfWeek !== undefined ||
+      values.closeDocDayOfWeek !== undefined ||
+      values.closingDayOfWeek !== undefined
+    ) {
+      seFreiPriceWeekDays.push({
+        etdDayOfWeek: values.etdDayOfWeek,
+        etdDayTime: undefined, // 表单中未使用此字段
+        closeDocDayOfWeek: values.closeDocDayOfWeek,
+        closeDocDayTime: values.closeDocDayTime,
+        closingDayOfWeek: values.closingDayOfWeek,
+        closingDayTime: values.closingDayTime,
+      });
+    }
+
     // 构建提交数据 - 始终提交完整数据（包括隐藏的字段）
     const submitData: any = {
       carrierId: values.carrierId,
@@ -1104,15 +1131,12 @@ const [Modal, modalApi] = useVbenModal({
       poddem: values.poddem,
       poddet: values.poddet,
       voyage: values.voyage,
-      etd: values.etd,
-      etdDayOfWeek: values.etdDayOfWeek,
-      closeDocTime: values.closeDocTime,
-      closeDocDayOfWeek: values.closeDocDayOfWeek,
-      closeDocDayTime: values.closeDocDayTime,
-      closingTime: values.closingTime,
+      contractNo: values.contractNo,
       remark: values.remark,
       seFreiPriceCtns,
       seFreiPriceFees,
+      seFreiPriceDays,
+      seFreiPriceWeekDays,
     };
     console.log('c-submitData', submitData);
     // 批量模式
@@ -1126,6 +1150,15 @@ const [Modal, modalApi] = useVbenModal({
       }
       if (batchData.seFreiPriceFees && batchData.seFreiPriceFees.length === 0) {
         delete batchData.seFreiPriceFees;
+      }
+      if (batchData.seFreiPriceDays && batchData.seFreiPriceDays.length === 0) {
+        delete batchData.seFreiPriceDays;
+      }
+      if (
+        batchData.seFreiPriceWeekDays &&
+        batchData.seFreiPriceWeekDays.length === 0
+      ) {
+        delete batchData.seFreiPriceWeekDays;
       }
       modalApi.lock();
       batchEditSeFreiPrice(batchData)
@@ -1188,6 +1221,44 @@ const [Modal, modalApi] = useVbenModal({
           const detail = await getSeFreiPriceDetail(data.id);
           formData.value = detail;
 
+          // 初始化截单/截关时间模式 - 从子表获取数据
+          const firstDay = detail.seFreiPriceDays?.[0];
+          const firstWeekDay = detail.seFreiPriceWeekDays?.[0];
+
+          if (firstDay?.closeDocTime) {
+            closeDocMode.value = 'datetime';
+          } else if (
+            firstWeekDay?.closeDocDayOfWeek !== undefined &&
+            firstWeekDay?.closeDocDayOfWeek !== null
+          ) {
+            closeDocMode.value = 'week';
+          } else {
+            closeDocMode.value = null;
+          }
+
+          if (firstDay?.closingTime) {
+            closingMode.value = 'datetime';
+          } else if (
+            firstWeekDay?.closingDayOfWeek !== undefined &&
+            firstWeekDay?.closingDayOfWeek !== null
+          ) {
+            closingMode.value = 'week';
+          } else {
+            closingMode.value = null;
+          }
+
+          // 初始化开船时间模式 - 从子表获取数据
+          if (firstDay?.etd) {
+            etdMode.value = 'date';
+          } else if (
+            firstWeekDay?.etdDayOfWeek !== undefined &&
+            firstWeekDay?.etdDayOfWeek !== null
+          ) {
+            etdMode.value = 'week';
+          } else {
+            etdMode.value = null;
+          }
+
           await nextTick();
           formApi.setValues({
             carrierId: detail.carrierId,
@@ -1205,12 +1276,16 @@ const [Modal, modalApi] = useVbenModal({
             poddem: detail.poddem,
             poddet: detail.poddet,
             voyage: detail.voyage,
-            etd: detail.etd,
-            etdDayOfWeek: detail.etdDayOfWeek,
-            closeDocTime: detail.closeDocTime,
-            closeDocDayOfWeek: detail.closeDocDayOfWeek,
-            closeDocDayTime: detail.closeDocDayTime,
-            closingTime: detail.closingTime,
+            contractNo: detail.contractNo,
+            // 从子表第一个记录中获取日期数据
+            etd: firstDay?.etd,
+            etdDayOfWeek: firstWeekDay?.etdDayOfWeek,
+            closeDocTime: firstDay?.closeDocTime,
+            closeDocDayOfWeek: firstWeekDay?.closeDocDayOfWeek,
+            closeDocDayTime: firstWeekDay?.closeDocDayTime,
+            closingTime: firstDay?.closingTime,
+            closingDayOfWeek: firstWeekDay?.closingDayOfWeek,
+            closingDayTime: firstWeekDay?.closingDayTime,
             remark: detail.remark,
           });
 
@@ -1219,41 +1294,6 @@ const [Modal, modalApi] = useVbenModal({
             transshipmentPortsDisabled.value = true;
           } else {
             transshipmentPortsDisabled.value = false;
-          }
-
-          // 初始化截单/截关时间模式
-          if (detail.closeDocTime) {
-            closeDocMode.value = 'datetime';
-          } else if (
-            detail.closeDocDayOfWeek !== undefined &&
-            detail.closeDocDayOfWeek !== null
-          ) {
-            closeDocMode.value = 'week';
-          } else {
-            closeDocMode.value = null;
-          }
-
-          if (detail.closingTime) {
-            closingMode.value = 'datetime';
-          } else if (
-            detail.closingDayOfWeek !== undefined &&
-            detail.closingDayOfWeek !== null
-          ) {
-            closingMode.value = 'week';
-          } else {
-            closingMode.value = null;
-          }
-
-          // 初始化开船时间模式
-          if (detail.etd) {
-            etdMode.value = 'date';
-          } else if (
-            detail.etdDayOfWeek !== undefined &&
-            detail.etdDayOfWeek !== null
-          ) {
-            etdMode.value = 'week';
-          } else {
-            etdMode.value = null;
           }
 
           // 加载附加费数据
@@ -1334,6 +1374,10 @@ const [Modal, modalApi] = useVbenModal({
         id.value = undefined;
         formData.value = data as SeFreiPriceOutDto;
 
+        // 从子表第一个记录中获取日期数据
+        const firstDay = data.seFreiPriceDays?.[0];
+        const firstWeekDay = data.seFreiPriceWeekDays?.[0];
+
         await nextTick();
         formApi.setValues({
           carrierId: data.carrierId,
@@ -1349,12 +1393,16 @@ const [Modal, modalApi] = useVbenModal({
           poddet: data.poddet,
           freeDays: data.freeDays,
           voyage: data.voyage,
-          etd: data.etd,
-          etdDayOfWeek: data.etdDayOfWeek,
-          closeDocTime: data.closeDocTime,
-          closeDocDayOfWeek: data.closeDocDayOfWeek,
-          closeDocDayTime: data.closeDocDayTime,
-          closingTime: data.closingTime,
+          contractNo: data.contractNo,
+          // 从子表第一个记录中获取日期数据
+          etd: firstDay?.etd,
+          etdDayOfWeek: firstWeekDay?.etdDayOfWeek,
+          closeDocTime: firstDay?.closeDocTime,
+          closeDocDayOfWeek: firstWeekDay?.closeDocDayOfWeek,
+          closeDocDayTime: firstWeekDay?.closeDocDayTime,
+          closingTime: firstDay?.closingTime,
+          closingDayOfWeek: firstWeekDay?.closingDayOfWeek,
+          closingDayTime: firstWeekDay?.closingDayTime,
           remark: data.remark,
         });
 

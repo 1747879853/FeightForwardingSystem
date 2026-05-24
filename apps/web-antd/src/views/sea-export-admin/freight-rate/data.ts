@@ -407,8 +407,8 @@ export function useColumns<T = SeFreiPriceOutDto>(
               currencyId: row.currencyId,
               seFreiPriceCtns: updatedCtns,
               seFreiPriceFees: row.seFreiPriceFees,
-              seFreiPriceETDs: row.seFreiPriceETDs,
-              seFreiPriceETDDays: row.seFreiPriceETDDays,
+              seFreiPriceDays: row.seFreiPriceDays,
+              seFreiPriceWeekDays: row.seFreiPriceWeekDays,
             });
 
             message.success('修改成功');
@@ -543,16 +543,25 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.etd'),
       width: 150,
       formatter: ({ row }) => {
-        // 优先显示开船日子表数据
-        if (row.seFreiPriceETDs && row.seFreiPriceETDs.length > 0) {
-          const dates = row.seFreiPriceETDs.map((etd) => {
-            const dateStr = etd.etd.substring(0, 10);
-            return dateStr;
+        // 优先显示关联日子表数据（包含开船日、截单时间、截港时间）
+        if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
+          const dates = row.seFreiPriceDays.map((day) => {
+            const parts = [];
+            if (day.etd) {
+              parts.push(day.etd.substring(0, 10));
+            }
+            if (day.closeDocTime) {
+              parts.push(`截单:${day.closeDocTime.substring(0, 16)}`);
+            }
+            if (day.closingTime) {
+              parts.push(`截港:${day.closingTime.substring(0, 16)}`);
+            }
+            return parts.join(' ');
           });
           return dates.join(', ');
         }
-        // 兼容旧数据：如果还有etdDayOfWeek子表
-        if (row.seFreiPriceETDDays && row.seFreiPriceETDDays.length > 0) {
+        // 兼容旧数据：如果还有seFreiPriceWeekDays子表
+        if (row.seFreiPriceWeekDays && row.seFreiPriceWeekDays.length > 0) {
           const weekDays = [
             '周日',
             '周一',
@@ -562,11 +571,40 @@ export function useColumns<T = SeFreiPriceOutDto>(
             '周五',
             '周六',
           ];
-          const days = row.seFreiPriceETDDays.map((etdDay) => {
-            const dayTime = etdDay.etdDayTime
-              ? ` ${etdDay.etdDayTime.substring(0, 5)}`
-              : '';
-            return `${weekDays[etdDay.etdDayOfWeek]}${dayTime}`;
+          const days = row.seFreiPriceWeekDays.map((weekDay) => {
+            const parts = [];
+            if (
+              weekDay.etdDayOfWeek !== undefined &&
+              weekDay.etdDayOfWeek !== null
+            ) {
+              const dayTime = weekDay.etdDayTime
+                ? ` ${weekDay.etdDayTime.substring(0, 5)}`
+                : '';
+              parts.push(`${weekDays[weekDay.etdDayOfWeek]}${dayTime}`);
+            }
+            if (
+              weekDay.closeDocDayOfWeek !== undefined &&
+              weekDay.closeDocDayOfWeek !== null
+            ) {
+              const dayTime = weekDay.closeDocDayTime
+                ? ` ${weekDay.closeDocDayTime.substring(0, 5)}`
+                : '';
+              parts.push(
+                `截单:${weekDays[weekDay.closeDocDayOfWeek]}${dayTime}`,
+              );
+            }
+            if (
+              weekDay.closingDayOfWeek !== undefined &&
+              weekDay.closingDayOfWeek !== null
+            ) {
+              const dayTime = weekDay.closingDayTime
+                ? ` ${weekDay.closingDayTime.substring(0, 5)}`
+                : '';
+              parts.push(
+                `截港:${weekDays[weekDay.closingDayOfWeek]}${dayTime}`,
+              );
+            }
+            return parts.join(' ');
           });
           return days.join(', ');
         }

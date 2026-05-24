@@ -81,6 +81,12 @@ function getCurrencyName(fee: any): string {
 
 // 获取费用详情（箱型和价格）
 function getFeeDetails(fee: any, row: SeFreiPriceOutDto): string[] {
+  // 如果是按票计费，直接显示统一价格
+  if (fee.priceFeeType === 1 && fee.price !== undefined && fee.price !== null) {
+    return [`按票: ${fee.price}`];
+  }
+
+  // 按集装箱计费，显示每个箱型的价格
   if (!fee.seFreiPriceCtnFees || fee.seFreiPriceCtnFees.length === 0) {
     return [];
   }
