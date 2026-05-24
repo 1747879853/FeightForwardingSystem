@@ -510,16 +510,6 @@ const [Form, formApi] = useVbenForm({
     // },
     // 第四行：目的港免箱期、备注
     {
-      component: 'InputNumber',
-      fieldName: 'poddet',
-      label: '目的港免箱期',
-      componentProps: {
-        placeholder: '请输入免箱期天数',
-        min: 0,
-        style: { width: '100%' },
-      },
-    },
-    {
       component: 'Textarea',
       fieldName: 'remark',
       label: '备注',
@@ -1263,8 +1253,8 @@ async function handleSubmit() {
       podFreeDays: values.podFreeDays,
       poddem: values.poddem,
       poddet: values.poddet,
-      validTimeStart: values.validTimeStart,
-      validTimeEnd: values.validTimeEnd,
+      validTimeStart: formData.value?.validTimeStart,
+      validTimeEnd: formData.value?.validTimeEnd,
       remark: values.remark,
       seFreiPriceCtns,
       seFreiPriceFees,
