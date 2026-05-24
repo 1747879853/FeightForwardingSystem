@@ -29,8 +29,8 @@ import { $t } from '#/locales';
 import { getEnumItems } from '#/utils/init-enum';
 import {
   combineUserAttribute,
-  getUserAttributeOptions,
-  parseUserAttribute,
+  getSeaExportOrderUserRoleOptions,
+  parseSeaExportUserAttribute,
 } from '#/views/system/user/data';
 
 type SelectOption = { label: string; value: number };
@@ -75,7 +75,14 @@ const serviceTypeOptions = ref<SelectOption[]>([]);
 const seaExportPropOptions = ref<SelectOption[]>([]);
 let rowKeySeed = 0;
 
-const userAttributeOptions = computed(() => getUserAttributeOptions());
+const userAttributeOptions = computed(() => getSeaExportOrderUserRoleOptions());
+
+/** 服务项各行首个 label 统一宽度，便于纵向对齐 */
+const itemLeadingLabelCol = { flex: '0 0 120px' };
+const itemLeadingWrapperCol = { flex: '1 1 0' };
+const itemPropLabelCol = { flex: '0 0 128px' };
+const itemInlineLabelCol = { flex: '0 0 auto' };
+const itemInlineWrapperCol = { flex: '0 0 auto' };
 
 const getTitle = computed(() =>
   formState.value.id
@@ -397,7 +404,7 @@ const [Modal, modalApi] = useVbenModal({
           rowKey: item.id || createRowKey(),
           id: item.id,
           serviceType: normalizeEnumNumber(item.serviceType),
-          userAttributeFlags: parseUserAttribute(
+          userAttributeFlags: parseSeaExportUserAttribute(
             Number(item.userAttribute || 0),
           ),
           autoComplete: Boolean(item.autoComplete),
@@ -509,111 +516,144 @@ const [Modal, modalApi] = useVbenModal({
             </Space>
           </div>
 
-          <div class="grid grid-cols-4 gap-3">
-            <FormItem
-              :label="$t('system.basicData.seServiceConfig.serviceType')"
-              required
-            >
-              <Select
-                v-model:value="row.serviceType"
-                :allow-clear="true"
-                :placeholder="$t('ui.placeholder.select')"
-                :options="serviceTypeOptions"
-              />
-            </FormItem>
-            <FormItem
-              :label="$t('system.basicData.seServiceConfig.autoComplete')"
-            >
-              <Switch v-model:checked="row.autoComplete" />
-            </FormItem>
-            <FormItem
-              :label="$t('system.basicData.seServiceConfig.manualAllowed')"
-            >
-              <Switch v-model:checked="row.manualAllowed" />
-            </FormItem>
-            <FormItem :label="$t('system.basicData.seServiceConfig.reminder')">
-              <Switch v-model:checked="row.reminder" />
-            </FormItem>
-          </div>
+          <Form layout="horizontal" class="service-item-form">
+            <div class="mb-3 flex flex-wrap items-start gap-x-4 gap-y-2">
+              <FormItem
+                class="service-item-leading-field min-w-0 flex-[2]"
+                :label="$t('system.basicData.seServiceConfig.serviceType')"
+                :label-col="itemLeadingLabelCol"
+                :wrapper-col="itemLeadingWrapperCol"
+                required
+              >
+                <Select
+                  v-model:value="row.serviceType"
+                  :allow-clear="true"
+                  :placeholder="$t('ui.placeholder.select')"
+                  :options="serviceTypeOptions"
+                />
+              </FormItem>
+              <FormItem
+                class="service-item-inline-field shrink-0"
+                :label="$t('system.basicData.seServiceConfig.autoComplete')"
+                :label-col="itemInlineLabelCol"
+                :wrapper-col="itemInlineWrapperCol"
+              >
+                <Switch v-model:checked="row.autoComplete" />
+              </FormItem>
+              <FormItem
+                class="service-item-inline-field shrink-0"
+                :label="$t('system.basicData.seServiceConfig.manualAllowed')"
+                :label-col="itemInlineLabelCol"
+                :wrapper-col="itemInlineWrapperCol"
+              >
+                <Switch v-model:checked="row.manualAllowed" />
+              </FormItem>
+              <FormItem
+                class="service-item-inline-field shrink-0"
+                :label="$t('system.basicData.seServiceConfig.reminder')"
+                :label-col="itemInlineLabelCol"
+                :wrapper-col="itemInlineWrapperCol"
+              >
+                <Switch v-model:checked="row.reminder" />
+              </FormItem>
+            </div>
 
-          <div class="grid grid-cols-1 gap-3">
             <FormItem
+              class="service-item-leading-field mb-3"
               :label="$t('system.basicData.seServiceConfig.userAttribute')"
+              :label-col="itemLeadingLabelCol"
+              :wrapper-col="itemLeadingWrapperCol"
             >
               <Checkbox.Group
                 v-model:value="row.userAttributeFlags"
                 :options="userAttributeOptions"
               />
             </FormItem>
-          </div>
 
-          <div class="grid grid-cols-3 gap-3">
-            <FormItem
-              :label="$t('system.basicData.seServiceConfig.seServiceShows')"
-            >
-              <Select
-                mode="tags"
-                :value="getPropValues(row.seServiceShows)"
-                :allow-clear="true"
-                :options="seaExportPropOptions"
-                :placeholder="$t('ui.placeholder.select')"
-                @change="
-                  (values) =>
-                    updatePropRefs(
-                      row,
-                      'seServiceShows',
-                      (values || []) as (number | string)[],
-                    )
+            <div class="mb-3 grid grid-cols-3 gap-x-4 gap-y-2">
+              <FormItem
+                class="service-item-leading-field min-w-0"
+                :label="$t('system.basicData.seServiceConfig.seServiceShows')"
+                :label-col="itemLeadingLabelCol"
+                :wrapper-col="itemLeadingWrapperCol"
+              >
+                <Select
+                  mode="tags"
+                  :value="getPropValues(row.seServiceShows)"
+                  :allow-clear="true"
+                  :options="seaExportPropOptions"
+                  :placeholder="$t('ui.placeholder.select')"
+                  @change="
+                    (values) =>
+                      updatePropRefs(
+                        row,
+                        'seServiceShows',
+                        (values || []) as (number | string)[],
+                      )
+                  "
+                />
+              </FormItem>
+              <FormItem
+                class="service-item-prop-field min-w-0"
+                :label="$t('system.basicData.seServiceConfig.seServiceLocks')"
+                :label-col="itemPropLabelCol"
+                :wrapper-col="itemLeadingWrapperCol"
+              >
+                <Select
+                  mode="tags"
+                  :value="getPropValues(row.seServiceLocks)"
+                  :allow-clear="true"
+                  :options="seaExportPropOptions"
+                  :placeholder="$t('ui.placeholder.select')"
+                  @change="
+                    (values) =>
+                      updatePropRefs(
+                        row,
+                        'seServiceLocks',
+                        (values || []) as (number | string)[],
+                      )
+                  "
+                />
+              </FormItem>
+              <FormItem
+                class="service-item-prop-field min-w-0"
+                :label="
+                  $t('system.basicData.seServiceConfig.seServiceRequires')
                 "
-              />
-            </FormItem>
-            <FormItem
-              :label="$t('system.basicData.seServiceConfig.seServiceLocks')"
-            >
-              <Select
-                mode="tags"
-                :value="getPropValues(row.seServiceLocks)"
-                :allow-clear="true"
-                :options="seaExportPropOptions"
-                :placeholder="$t('ui.placeholder.select')"
-                @change="
-                  (values) =>
-                    updatePropRefs(
-                      row,
-                      'seServiceLocks',
-                      (values || []) as (number | string)[],
-                    )
-                "
-              />
-            </FormItem>
-            <FormItem
-              :label="$t('system.basicData.seServiceConfig.seServiceRequires')"
-            >
-              <Select
-                mode="tags"
-                :value="getPropValues(row.seServiceRequires)"
-                :allow-clear="true"
-                :options="seaExportPropOptions"
-                :placeholder="$t('ui.placeholder.select')"
-                @change="
-                  (values) =>
-                    updatePropRefs(
-                      row,
-                      'seServiceRequires',
-                      (values || []) as (number | string)[],
-                    )
-                "
-              />
-            </FormItem>
-          </div>
+                :label-col="itemPropLabelCol"
+                :wrapper-col="itemLeadingWrapperCol"
+              >
+                <Select
+                  mode="tags"
+                  :value="getPropValues(row.seServiceRequires)"
+                  :allow-clear="true"
+                  :options="seaExportPropOptions"
+                  :placeholder="$t('ui.placeholder.select')"
+                  @change="
+                    (values) =>
+                      updatePropRefs(
+                        row,
+                        'seServiceRequires',
+                        (values || []) as (number | string)[],
+                      )
+                  "
+                />
+              </FormItem>
+            </div>
 
-          <FormItem :label="$t('system.basicData.seServiceConfig.remark')">
-            <Input.TextArea
-              v-model:value="row.remark"
-              :rows="2"
-              :allow-clear="true"
-            />
-          </FormItem>
+            <FormItem
+              class="service-item-leading-field mb-0"
+              :label="$t('system.basicData.seServiceConfig.remark')"
+              :label-col="itemLeadingLabelCol"
+              :wrapper-col="itemLeadingWrapperCol"
+            >
+              <Input.TextArea
+                v-model:value="row.remark"
+                :rows="2"
+                :allow-clear="true"
+              />
+            </FormItem>
+          </Form>
         </div>
       </TransitionGroup>
 
@@ -625,6 +665,28 @@ const [Modal, modalApi] = useVbenModal({
 </template>
 
 <style scoped>
+.service-item-form :deep(.service-item-leading-field .ant-form-item-label) {
+  flex: 0 0 120px !important;
+  max-width: 120px;
+}
+
+.service-item-form
+  :deep(.service-item-leading-field .ant-form-item-label > label) {
+  white-space: nowrap;
+}
+
+.service-item-form :deep(.service-item-inline-field) {
+  margin-bottom: 0;
+}
+
+.service-item-form :deep(.service-item-inline-field .ant-form-item-row) {
+  flex-wrap: nowrap;
+}
+
+.service-item-form :deep(.ant-form-item) {
+  margin-bottom: 0;
+}
+
 .service-item-move,
 .service-item-enter-active,
 .service-item-leave-active {

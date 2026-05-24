@@ -35,28 +35,24 @@ const handleCreate = () => {
     .open();
 };
 
-const handleEdit = (
-  row: SeServiceConfigAdminApi.SeServiceConfigItemListDto,
-) => {
+const handleEdit = (row: SeServiceConfigAdminApi.SeServiceConfigListDto) => {
   formModalApi
     .setData({
-      id: row.seServiceConfigId,
+      id: row.id,
       serviceTypeOptions: serviceTypeOptions.value,
       polId: row.polId,
-      polPortName: row.portName || row.pol?.portName,
+      polPortName: row.pol?.portName,
       polCnName: row.pol?.cnName,
     })
     .open();
 };
 
-const getRowName = (
-  row: SeServiceConfigAdminApi.SeServiceConfigItemListDto,
-) => {
-  return row.pol?.cnName || row.pol?.portName || row.seServiceConfigId;
+const getRowName = (row: SeServiceConfigAdminApi.SeServiceConfigListDto) => {
+  return row.pol?.cnName || row.pol?.portName || row.id;
 };
 
 const handleDelete = async (
-  row: SeServiceConfigAdminApi.SeServiceConfigItemListDto,
+  row: SeServiceConfigAdminApi.SeServiceConfigListDto,
 ) => {
   const hideLoading = message.loading({
     content: $t('ui.actionMessage.deleting', [getRowName(row)]),
@@ -65,7 +61,7 @@ const handleDelete = async (
   });
 
   try {
-    await deleteSeServiceConfig({ ids: [row.seServiceConfigId] });
+    await deleteSeServiceConfig({ ids: [row.id] });
     message.success({
       content: $t('ui.actionMessage.deleteSuccess', [getRowName(row)]),
       key: 'action_process_msg',
@@ -79,7 +75,7 @@ const handleDelete = async (
 const handleActionClick = ({
   code,
   row,
-}: OnActionClickParams<SeServiceConfigAdminApi.SeServiceConfigItemListDto>) => {
+}: OnActionClickParams<SeServiceConfigAdminApi.SeServiceConfigListDto>) => {
   switch (code) {
     case 'delete': {
       handleDelete(row);
@@ -93,7 +89,7 @@ const handleActionClick = ({
 };
 
 const [Grid, gridApi] =
-  useVbenVxeGrid<SeServiceConfigAdminApi.SeServiceConfigItemListDto>({
+  useVbenVxeGrid<SeServiceConfigAdminApi.SeServiceConfigListDto>({
     formOptions: {
       schema: useGridFormSchema(serviceTypeOptions.value),
       submitOnChange: true,
@@ -112,29 +108,12 @@ const [Grid, gridApi] =
             { page }: { page: { currentPage: number; pageSize: number } },
             formValues: Record<string, any>,
           ) => {
-            const optionMap = new Map(
-              serviceTypeOptions.value.map((item) => [
-                Number(item.value),
-                item.label,
-              ]),
-            );
             const result = await getSeServiceConfigPagedList({
               pageIndex: page.currentPage,
               pageSize: page.pageSize,
               ...formValues,
             });
-            const items = (result.items || []).map((row) => ({
-              ...row,
-              serviceTypeText:
-                row.serviceTypeName ||
-                row.serviceTypeDisplayName ||
-                optionMap.get(Number(row.serviceType)) ||
-                `${row.serviceType}`,
-            }));
-            return {
-              ...result,
-              items,
-            };
+            return result;
           },
         },
       },

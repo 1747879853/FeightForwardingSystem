@@ -67,9 +67,17 @@ export namespace SeServiceConfigAdminApi {
     reminder?: boolean;
     sortId?: number;
     remark?: string;
+  }
+
+  export interface SeServiceConfigListDto {
+    id: string;
     polId: number | string;
-    portName?: string;
     pol?: PortSimpleDto;
+    sortId?: number;
+    remark?: string;
+    serviceItemCount: number;
+    serviceTypes?: number[];
+    seServiceConfigItems?: SeServiceConfigItemListDto[];
     creationTime?: string;
     creatorUserId?: number;
     lastModificationTime?: string | null;
@@ -110,8 +118,8 @@ export namespace SeServiceConfigAdminApi {
     userAttributeServiceTypes?: UserAttributeServiceTypesDto[];
   }
 
-  export interface PagedListOfSeServiceConfigItemListDto {
-    items: SeServiceConfigItemListDto[];
+  export interface PagedListOfSeServiceConfigListDto {
+    items: SeServiceConfigListDto[];
     totalCount: number;
     currentPage?: number;
     totalPages?: number;
@@ -136,7 +144,7 @@ const API_PREFIX = '/services/app/SeServiceConfigAdmin';
 export const getSeServiceConfigPagedList = (
   params: SeServiceConfigAdminApi.GetPagedListParams,
 ) => {
-  return requestClient.get<SeServiceConfigAdminApi.PagedListOfSeServiceConfigItemListDto>(
+  return requestClient.get<SeServiceConfigAdminApi.PagedListOfSeServiceConfigListDto>(
     `${API_PREFIX}/GetPagedListAsync`,
     { params },
   );

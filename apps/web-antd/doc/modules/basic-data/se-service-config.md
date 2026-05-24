@@ -2,7 +2,7 @@
 title: 海运出口港口服务项配置
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-21
+last_updated: 2026-05-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -12,7 +12,7 @@ last_updated: 2026-05-21
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **列表检索：** 在 `/basic-data/se-service-config` 按起运港和服务项类型筛选配置明细。
+- **列表检索：** 在 `/basic-data/se-service-config` 按起运港和服务项类型筛选主配置，每行代表一个主配置（含服务项数量和类型汇总）。
 - **配置维护：** 在弹窗中一次性维护主配置与多条服务项明细，支持新增、编辑、删除。
 - **开关紧凑布局：** 服务项内“自动完成 / 允许手动完成 / 完成提醒”使用开关并同排展示，减少纵向滚动。
 - **明细标题增强：** 每条服务项标题显示“序号 + 已选服务项类型名称”，便于快速定位当前编辑块。
@@ -41,7 +41,7 @@ last_updated: 2026-05-21
 | :-- | :-- | :-- | :-- | :-- |
 | **polId** | 配置所属起运港。 | `PortCode` 基础数据<br/>`PortSelect` | 决定配置作用范围；同租户内唯一。 | 必填；后端校验港口存在且不能重复配置。 |
 | **serviceType** | 服务项类型。 | 系统枚举<br/>`serviceType` | 同一配置下服务项展示顺序由数组顺序确定。 | 同一配置下不可重复。 |
-| **userAttribute** | 服务项责任角色（Flags）。 | 用户属性枚举 | 一个服务项可绑定多个角色。 | 位标志可组合，提交为整型掩码。 |
+| **userAttribute** | 服务项责任角色（Flags）。 | 用户属性枚举（海运出口订单 5 项：销售、商务、操作、客服、单证） | 一个服务项可绑定多个角色；选项与海运出口单据订单用户角色一致。 | 位标志可组合，提交为整型掩码；不含财务/海外客服/人事。 |
 | **seServiceShows / Locks / Requires** | 字段展示、锁定、必填规则。 | 系统枚举<br/>`SeaExportPropEnum` | 与服务项绑定，随服务项一起差异更新。 | 枚举值应为有效海运出口字段。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -52,6 +52,8 @@ last_updated: 2026-05-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-24 | `Fix` | 服务项「用户属性」选项从系统全量 8 项收敛为与海运出口单据一致的 5 项（销售、商务、操作、客服、单证），避免配置与业务单据角色口径不一致。 | 新增 `getSeaExportOrderUserRoleOptions` / `parseSeaExportUserAttribute` 供海运出口相关页面复用；系统用户管理仍保留全量 8 项。 |
+| 2026-05-24 | `Fix` | 适配后端列表接口 DTO 重构：列表从"每行=服务项"变为"每行=主配置"，新增 `serviceItemCount`（服务项数量）和 `serviceTypes`（类型数组）展示列；`totalCount` 语义变为主配置总数；软删除子项不再出现于列表与详情。 | `SeServiceConfigListDto` 替换 `SeServiceConfigItemListDto` 成为列表主 DTO；移除子项级 `polId/pol`；列表行 ID 从 `seServiceConfigId` 改为 `id`；枚举映射从 `query handler` 下沉至列 `formatter`；页面采用"每行=一个主配置"模式，编辑操作通过 `row.id` 打开配置弹窗。 |
 | 2026-05-21 | `Fix` | 修复港口服务项配置编辑态起运港回显：详情返回 `pol.portName` 时，手动注入 `PortSelect` 的 `selected-items`，并统一 `polId` 字符串口径，确保下拉稳定显示已选港口。 | 分页下拉在编辑场景需同时具备 `value + selected item object`；同时超大整型 ID 需规避 `number/string` 混用，否则会出现“有值不显示”的匹配失败。 |
 | 2026-05-21 | `Feature` | 服务项“上移/下移”增加重排位移动画，用户可直观看到服务项从原位置移动到目标位置。 | 使用 `TransitionGroup + stable key` 实现 FLIP 过渡，并补充 `prefers-reduced-motion` 兼容分支。 |
 | 2026-05-20 | `Feature` | 服务项配置明细新增“上移/下移”手动排序能力，保存时按当前顺序写入 `sortId`，编辑回显按 `sortId` 排序。 | 排序口径从“仅依赖数组顺序”升级为“数组顺序 + sortId 双一致”，降低前后端排序歧义。 |

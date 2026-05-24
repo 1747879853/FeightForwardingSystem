@@ -13,6 +13,8 @@
 
 ## 2026-05
 
+- [2026-05-24] [海运出口服务项配置用户属性与海运出口单据对齐](./changelogs/change-log-2026-05-24-se-service-config-user-attribute-align-se-export.md)
+- [2026-05-24] [海运出口港口服务项配置前端适配后端列表DTO重构](./changelogs/change-log-2026-05-24-se-service-config-list-dto-backend-fix-adapt.md)
 - [2026-05-21] [分页下拉已选详情合并后刷新选项](./changelogs/change-log-2026-05-21-paged-select-selected-option-refresh.md)
 - [2026-05-21] [海运出口港口服务项详情港口名称回显补齐](./changelogs/change-log-2026-05-21-se-service-config-detail-portname-echo.md)
 - [2026-05-21] [海运出口港口服务项顺序调整动画反馈优化](./changelogs/change-log-2026-05-21-se-service-config-item-reorder-motion.md)

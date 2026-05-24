@@ -5,7 +5,6 @@ import type { OnActionClickFn } from '#/adapter/vxe-table';
 import type { SeServiceConfigAdminApi } from '#/api/system/base-data/se-service-config-admin';
 
 import { $t } from '#/locales';
-import { formatUserAttribute } from '#/views/system/user/data';
 
 export type SelectOption = { label: string; value: number };
 
@@ -35,22 +34,10 @@ export function useGridFormSchema(
   ];
 }
 
-const getPortName = (row: SeServiceConfigAdminApi.SeServiceConfigItemListDto) =>
-  row.portName || row.pol?.portName || row.pol?.cnName || '-';
-
-const getServiceTypeText = (
-  value: number | string | undefined,
-  optionMap: Map<number, string>,
-) => {
-  if (value === undefined || value === null) return '-';
-  const enumLabel = optionMap.get(Number(value));
-  return enumLabel || String(value);
-};
-
 export function useColumns(
   serviceTypeOptions: SelectOption[],
-  onActionClick?: OnActionClickFn<SeServiceConfigAdminApi.SeServiceConfigItemListDto>,
-): VxeTableGridOptions<SeServiceConfigAdminApi.SeServiceConfigItemListDto>['columns'] {
+  onActionClick?: OnActionClickFn<SeServiceConfigAdminApi.SeServiceConfigListDto>,
+): VxeTableGridOptions<SeServiceConfigAdminApi.SeServiceConfigListDto>['columns'] {
   const serviceTypeMap = new Map(
     serviceTypeOptions.map((item) => [Number(item.value), item.label]),
   );
@@ -60,63 +47,26 @@ export function useColumns(
       field: 'pol',
       title: $t('system.basicData.seServiceConfig.polId'),
       minWidth: 180,
-      formatter: ({ row }) => getPortName(row),
+      formatter: ({ row }) =>
+        row.pol?.portName || row.pol?.cnName || String(row.polId || '-'),
     },
     {
-      field: 'serviceType',
+      field: 'serviceTypes',
       title: $t('system.basicData.seServiceConfig.serviceType'),
-      minWidth: 160,
-      formatter: ({ cellValue, row }) =>
-        row.serviceTypeText ||
-        row.serviceTypeName ||
-        row.serviceTypeDisplayName ||
-        getServiceTypeText(
-          cellValue as number | string | undefined,
-          serviceTypeMap,
-        ),
-    },
-    {
-      field: 'userAttribute',
-      title: $t('system.basicData.seServiceConfig.userAttribute'),
-      minWidth: 180,
-      formatter: ({ cellValue }) =>
-        formatUserAttribute(cellValue as number | undefined),
-    },
-    {
-      field: 'autoComplete',
-      title: $t('system.basicData.seServiceConfig.autoComplete'),
-      minWidth: 120,
-      cellRender: {
-        name: 'CellTag',
-        options: [
-          { value: true, label: $t('common.yes'), color: 'success' },
-          { value: false, label: $t('common.no'), color: 'default' },
-        ],
+      minWidth: 200,
+      formatter: ({ row }) => {
+        const types = row.serviceTypes;
+        if (!types || types.length === 0) return '-';
+        return types
+          .map((t) => serviceTypeMap.get(Number(t)) || String(t))
+          .join('、');
       },
     },
     {
-      field: 'manualAllowed',
-      title: $t('system.basicData.seServiceConfig.manualAllowed'),
-      minWidth: 140,
-      cellRender: {
-        name: 'CellTag',
-        options: [
-          { value: true, label: $t('common.yes'), color: 'success' },
-          { value: false, label: $t('common.no'), color: 'default' },
-        ],
-      },
-    },
-    {
-      field: 'reminder',
-      title: $t('system.basicData.seServiceConfig.reminder'),
-      minWidth: 120,
-      cellRender: {
-        name: 'CellTag',
-        options: [
-          { value: true, label: $t('common.yes'), color: 'success' },
-          { value: false, label: $t('common.no'), color: 'default' },
-        ],
-      },
+      field: 'serviceItemCount',
+      title: $t('system.basicData.seServiceConfig.serviceItemCount'),
+      minWidth: 100,
+      align: 'center',
     },
     {
       field: 'sortId',

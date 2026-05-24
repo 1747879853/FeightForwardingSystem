@@ -18,6 +18,51 @@ const userAttributeValues = [
   UserAttribute.HR,
 ];
 
+/** 海运出口订单用户角色（与海运出口/进口单据一致，共 5 项） */
+export const seaExportOrderUserAttributeValues = [
+  UserAttribute.Sales,
+  UserAttribute.Business,
+  UserAttribute.Operation,
+  UserAttribute.CustomerService,
+  UserAttribute.Documentation,
+] as const;
+
+/** 海运出口订单用户角色选项 */
+export function getSeaExportOrderUserRoleOptions() {
+  return [
+    {
+      label: $t('system.user.userAttributeOptions.sales'),
+      value: UserAttribute.Sales,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.business'),
+      value: UserAttribute.Business,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.operation'),
+      value: UserAttribute.Operation,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.customerService'),
+      value: UserAttribute.CustomerService,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.documentation'),
+      value: UserAttribute.Documentation,
+    },
+  ];
+}
+
+/** 解析海运出口订单用户角色位标志（仅保留 5 项有效角色） */
+export function parseSeaExportUserAttribute(
+  value: number | undefined,
+): number[] {
+  if (!value) return [];
+  return seaExportOrderUserAttributeValues.filter(
+    (bit) => (value & bit) === bit,
+  );
+}
+
 /** 用户属性选项（位标志枚举） */
 export function getUserAttributeOptions() {
   return [
