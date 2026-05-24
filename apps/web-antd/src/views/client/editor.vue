@@ -7,6 +7,7 @@ import ContactList from './contact/list.vue';
 import PaymentList from './payment-terms/list.vue';
 import InvoiceList from './invoice/list.vue';
 import Attachments from './attachments/list.vue';
+import ExceptService from './except-service/index.vue';
 
 type SectionKey = 'basic' | 'contact' | 'payment' | 'invoice' | 'attachments';
 type FormSectionTabKey =
@@ -14,7 +15,8 @@ type FormSectionTabKey =
   | 'contact'
   | 'payment'
   | 'invoice'
-  | 'attachments';
+  | 'attachments'
+  | 'exceptService';
 type TabKey = FormSectionTabKey;
 type FormExpose = { scrollToSection: (key: SectionKey) => void };
 const formRef = ref<FormExpose | null>(null);
@@ -33,6 +35,7 @@ const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'payment', label: '账期' },
   { key: 'invoice', label: '开票信息' },
   { key: 'attachments', label: '附件' },
+  { key: 'exceptService', label: '海运出口服务项目' },
 ]);
 
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
@@ -109,6 +112,7 @@ const getContentTabStyle = (isActive: boolean) =>
           <PaymentList v-if="activeTab === 'payment'" />
           <InvoiceList v-if="activeTab === 'invoice'" />
           <Attachments v-if="activeTab === 'attachments'" />
+          <ExceptService v-if="activeTab === 'exceptService'" />
         </div>
       </div>
     </div>

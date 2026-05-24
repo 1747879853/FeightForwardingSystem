@@ -754,6 +754,20 @@
       "user": "销售人员",
       "orgs": "分公司"
     },
+    "exceptService": {
+      "title": "海运出口服务项目",
+      "hint": "关闭开关表示排除该服务项",
+      "notEntrustingUnit": "非委托单位无服务项目设置",
+      "missingClientId": "缺少客户ID",
+      "emptyConfig": "暂无海运出口港口服务项配置",
+      "serviceType": "服务项",
+      "userAttribute": "用户属性",
+      "autoComplete": "自动完成",
+      "manualAllowed": "允许手动完成",
+      "reminder": "完成提醒",
+      "remark": "备注",
+      "enabled": "启用"
+    },
     "configureDisplayFields": "配置显示字段",
     "dragToReorder": "拖拽或使用箭头调整显示顺序",
     "useSwitchToShowHide": "使用开关控制字段的显示/隐藏",

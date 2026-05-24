@@ -51,7 +51,21 @@
     "operation": "Operation",
     "phone": "Phone",
     "remark": "Remark",
-    "title": "Client Management"
+    "title": "Client Management",
+    "exceptService": {
+      "title": "Sea Export Service Items",
+      "hint": "Turn off to exclude a service item. Only excluded items are submitted on save.",
+      "notEntrustingUnit": "Service item settings are only available for entrusting units",
+      "missingClientId": "Client ID is required",
+      "emptyConfig": "No sea export port service configuration",
+      "serviceType": "Service Item",
+      "userAttribute": "User Attribute",
+      "autoComplete": "Auto Complete",
+      "manualAllowed": "Manual Allowed",
+      "reminder": "Reminder",
+      "remark": "Remark",
+      "enabled": "Enabled"
+    }
   },
   "export": {
     "accountDate": "Account Date",

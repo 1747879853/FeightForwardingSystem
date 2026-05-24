@@ -2,7 +2,7 @@
 title: 客户编辑
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-05-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -17,12 +17,13 @@ last_updated: 2026-05-16
 | 路由名称 | `ClientEdit` |
 | 页面组件 | `src/views/client/editor.vue` |
 | 权限口径 | 未在路由中声明独立权限 |
-| 关键源码 | `src/router/routes/modules/client.ts`<br/>`src/views/client/list.vue`<br/>`src/views/client/base/form.vue`<br/>`src/views/client/editor.vue`<br/>`src/views/client/base/data.ts`<br/>`src/views/client/contact/data.ts`<br/>`src/views/client/payment-terms/data.ts`<br/>`src/views/client/invoice/data.ts`<br/>`src/api/sea-export/client-admin.ts`<br/>`src/api/sea-export/client-contact-admin.ts` |
+| 关键源码 | `src/router/routes/modules/client.ts`<br/>`src/views/client/list.vue`<br/>`src/views/client/base/form.vue`<br/>`src/views/client/editor.vue`<br/>`src/views/client/except-service/index.vue`<br/>`src/views/client/base/data.ts`<br/>`src/views/client/contact/data.ts`<br/>`src/views/client/payment-terms/data.ts`<br/>`src/views/client/invoice/data.ts`<br/>`src/api/sea-export/client-admin.ts`<br/>`src/api/sea-export/client-contact-admin.ts`<br/>`src/api/sea-export/client-except-service-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
 - **基础信息维护：** 编辑客户主数据。
 - **子资料维护：** 在编辑容器内维护联系人、付款条件、发票和附件。
+- **海运出口服务项目：** 仅委托单位（`industryCategories` 含 `p`）可配置按起运港排除的服务项；开关关闭表示排除，保存后写入 `ClientExceptService`。
 - **业务引用：** 客户资料会被海运委托、费用、对账等业务模块引用。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -38,6 +39,7 @@ last_updated: 2026-05-16
 | **客户 ID** | 编辑上下文的主键。 | 路由动态段 `:id` | **触发/依赖：** 用于加载客户及其子资料。 | 必须是有效 GUID。 |
 | **联系人** | 客户沟通对象。 | `src/views/client/contact/data.ts` / `client-contact-admin.ts` | **触发/依赖：** 依赖当前客户 ID。 | 删除和编辑需保持父客户上下文。 |
 | **付款条件** | 客户账期与结算约定。 | `src/views/client/payment-terms/data.ts` | **触发/依赖：** 影响费用、付款和结算口径。 | 需与后端账期规则保持一致。 |
+| **排除服务项** | 委托单位在各起运港禁用的海运出口服务项。 | `ClientExceptServiceAdmin` | **触发/依赖：** 依赖客户为委托单位；展示数据来自全局 `SeServiceConfig` 与 `ClientExceptService` 合并计算 `isChecked`。 | 非委托单位不可查看/修改。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -47,4 +49,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-24 | `Feature` | 新增「海运出口服务项目」Tab，对接委托单位按港口排除服务项。 | API：`GetClientExceptServicesAsync` / `EditClientExceptServicesAsync`；保存仅提交 `isChecked=false` 的 `serviceTypes`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/clients/:id/edit` 对应组件 `src/views/client/editor.vue`，权限口径为 未在路由中声明独立权限。 |
