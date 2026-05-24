@@ -17,7 +17,12 @@ import {
 import { $t } from '#/locales';
 import { getEnumItems } from '#/utils/init-enum';
 
-import { type SelectOption, useColumns, useGridFormSchema } from './data';
+import {
+  buildServiceTypeOptionsFromEnum,
+  type SelectOption,
+  useColumns,
+  useGridFormSchema,
+} from './data';
 import Form from './modules/form.vue';
 
 const serviceTypeOptions = ref<SelectOption[]>([]);
@@ -127,14 +132,11 @@ const [Grid, gridApi] =
   });
 
 const loadServiceTypeOptions = async () => {
-  const items = await getEnumItems('serviceType');
-  const options = (items || [])
-    .filter((item) => item.enable !== false)
-    .map((item) => ({
-      label: item.displayName || `${item.value}`,
-      value: Number(item.value),
-    }))
-    .sort((a, b) => a.value - b.value);
+  let items = await getEnumItems('serviceType');
+  if (!items?.length) {
+    items = await getEnumItems('ServiceType');
+  }
+  const options = buildServiceTypeOptionsFromEnum(items);
   serviceTypeOptions.value.splice(
     0,
     serviceTypeOptions.value.length,

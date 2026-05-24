@@ -360,7 +360,9 @@
       "seServiceRequires": "Required Fields On Complete",
       "creationTime": "Creation Time",
       "sortTip": "Use Move Up/Move Down to reorder items manually. On save, sortId is auto assigned by current order (starting from 0).",
-      "serviceItemCount": "Service Item Count"
+      "serviceItemCount": "Service Item Count",
+      "userAttributeServiceOverview": "Overview",
+      "noServiceConfigured": "Not configured"
     }
   },
   "user": {

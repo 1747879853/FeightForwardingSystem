@@ -24,9 +24,14 @@ import {
   editSeServiceConfig,
   getSeServiceConfigDetail,
 } from '#/api/system/base-data/se-service-config-admin';
+import { UserAttribute } from '#/api/system/user-admin';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import { $t } from '#/locales';
 import { getEnumItems } from '#/utils/init-enum';
+import {
+  DEFAULT_SERVICE_TYPE_OPTIONS,
+  buildServiceTypeOptionsFromEnum,
+} from '../data';
 import {
   combineUserAttribute,
   getSeaExportOrderUserRoleOptions,
@@ -34,6 +39,11 @@ import {
 } from '#/views/system/user/data';
 
 type SelectOption = { label: string; value: number };
+type AttributeServiceSummaryRow = {
+  attributeLabel: string;
+  attributeValue: number;
+  serviceLabels: string[];
+};
 type PortSelectItem = {
   id: number | string;
   portName?: string;
@@ -297,8 +307,57 @@ const getServiceTypeLabel = (serviceType?: number) => {
   const option = serviceTypeOptions.value.find(
     (item) => Number(item.value) === Number(serviceType),
   );
-  return option?.label || `${serviceType}`;
+  if (option?.label) {
+    return option.label;
+  }
+  const fallback = DEFAULT_SERVICE_TYPE_OPTIONS.find(
+    (item) => item.value === Number(serviceType),
+  );
+  return fallback?.label || `${serviceType}`;
 };
+
+const userAttributeServiceSummary = computed<AttributeServiceSummaryRow[]>(
+  () => {
+    const attributeServiceMap = new Map<number, Set<number>>();
+
+    for (const row of itemRows.value) {
+      if (row.serviceType === undefined || row.serviceType === null) {
+        continue;
+      }
+      const serviceType = Number(row.serviceType);
+      for (const flag of row.userAttributeFlags) {
+        const current = attributeServiceMap.get(flag) ?? new Set<number>();
+        current.add(serviceType);
+        attributeServiceMap.set(flag, current);
+      }
+    }
+
+    return userAttributeOptions.value.map((option) => ({
+      attributeValue: option.value,
+      attributeLabel: option.label,
+      serviceLabels: [...(attributeServiceMap.get(option.value) ?? [])]
+        .sort((a, b) => a - b)
+        .map((type) => getServiceTypeLabel(type)),
+    }));
+  },
+);
+
+const configuredUserAttributeServiceSummary = computed(() =>
+  userAttributeServiceSummary.value.filter(
+    (row) => row.serviceLabels.length > 0,
+  ),
+);
+
+const attributeOverviewRoleClassMap: Record<number, string> = {
+  [UserAttribute.Sales]: 'role-sales',
+  [UserAttribute.Business]: 'role-business',
+  [UserAttribute.Operation]: 'role-operation',
+  [UserAttribute.CustomerService]: 'role-customer-service',
+  [UserAttribute.Documentation]: 'role-documentation',
+};
+
+const getAttributeOverviewRoleClass = (attributeValue: number) =>
+  attributeOverviewRoleClassMap[attributeValue] ?? 'role-default';
 
 const getItemTitle = (row: ItemRow, index: number) => {
   const baseTitle = `${$t('system.basicData.seServiceConfig.item')} #${index + 1}`;
@@ -307,8 +366,11 @@ const getItemTitle = (row: ItemRow, index: number) => {
 };
 
 const loadServiceTypeOptions = async () => {
-  const items = await getEnumItems('serviceType');
-  serviceTypeOptions.value = buildSelectOptions(items || []);
+  let items = await getEnumItems('serviceType');
+  if (!items?.length) {
+    items = await getEnumItems('ServiceType');
+  }
+  serviceTypeOptions.value = buildServiceTypeOptionsFromEnum(items);
 };
 
 const loadSeaExportPropOptions = async () => {
@@ -468,11 +530,46 @@ const [Modal, modalApi] = useVbenModal({
         </FormItem>
       </Form>
 
-      <div class="mb-3 mt-4 flex items-center justify-between">
-        <div class="text-sm font-medium">
-          {{ $t('system.basicData.seServiceConfig.items') }}
+      <div class="mb-3 mt-4 flex items-start justify-between gap-3">
+        <div class="min-w-0 flex-1">
+          <div class="text-sm font-medium">
+            {{ $t('system.basicData.seServiceConfig.items') }}
+          </div>
+          <div
+            v-if="configuredUserAttributeServiceSummary.length > 0"
+            class="attribute-overview mt-1.5"
+          >
+            <span class="attribute-overview__label">
+              {{
+                $t(
+                  'system.basicData.seServiceConfig.userAttributeServiceOverview',
+                )
+              }}
+            </span>
+            <div class="attribute-overview__groups">
+              <span
+                v-for="row in configuredUserAttributeServiceSummary"
+                :key="row.attributeValue"
+                class="attribute-overview__group"
+              >
+                <span
+                  class="attribute-overview__role"
+                  :class="getAttributeOverviewRoleClass(row.attributeValue)"
+                >
+                  {{ row.attributeLabel }}
+                </span>
+                <span
+                  v-for="label in row.serviceLabels"
+                  :key="`${row.attributeValue}-${label}`"
+                  class="attribute-overview__service"
+                >
+                  {{ label }}
+                </span>
+              </span>
+            </div>
+          </div>
         </div>
-        <Button type="dashed" @click="addItem">
+        <Button type="dashed" class="shrink-0" @click="addItem">
           <Plus class="size-4" />
           {{ $t('system.basicData.seServiceConfig.addItem') }}
         </Button>
@@ -665,6 +762,113 @@ const [Modal, modalApi] = useVbenModal({
 </template>
 
 <style scoped>
+.attribute-overview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+}
+
+.attribute-overview__label {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 20px;
+  color: #94a3b8;
+}
+
+.attribute-overview__label::after {
+  content: '：';
+}
+
+.attribute-overview__groups {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.attribute-overview__group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px 4px 2px 2px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.attribute-overview__role,
+.attribute-overview__service {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+  border-radius: 4px;
+}
+
+.attribute-overview__role {
+  padding: 0 6px;
+  font-weight: 600;
+}
+
+.attribute-overview__service {
+  padding: 0 6px;
+  font-weight: 500;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.attribute-overview__role.role-sales {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.attribute-overview__role.role-business {
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+}
+
+.attribute-overview__role.role-operation {
+  color: #6d28d9;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+}
+
+.attribute-overview__role.role-customer-service {
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.attribute-overview__role.role-documentation {
+  color: #be123c;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+}
+
+.attribute-overview__role.role-default {
+  color: #334155;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+}
+
+.service-item-form :deep(.ant-form-item-label) {
+  text-align: left;
+}
+
+.service-item-form :deep(.ant-form-item-label > label) {
+  justify-content: flex-start;
+}
+
 .service-item-form :deep(.service-item-leading-field .ant-form-item-label) {
   flex: 0 0 120px !important;
   max-width: 120px;

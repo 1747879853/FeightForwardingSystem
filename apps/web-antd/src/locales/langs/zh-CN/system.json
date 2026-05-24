@@ -360,7 +360,9 @@
       "seServiceRequires": "完成时必填字段",
       "creationTime": "创建时间",
       "sortTip": "可通过“上移/下移”手动调整服务项顺序，保存时按当前列表顺序自动写入排序值（从0开始）。",
-      "serviceItemCount": "服务项数量"
+      "serviceItemCount": "服务项数量",
+      "userAttributeServiceOverview": "概览",
+      "noServiceConfigured": "未配置"
     }
   },
   "user": {

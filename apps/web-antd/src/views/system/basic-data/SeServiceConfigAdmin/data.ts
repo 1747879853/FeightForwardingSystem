@@ -8,6 +8,62 @@ import { $t } from '#/locales';
 
 export type SelectOption = { label: string; value: number };
 
+/** ServiceType 枚举兜底文案（与后端 ServiceType 枚举一致） */
+export const DEFAULT_SERVICE_TYPE_OPTIONS: SelectOption[] = [
+  { value: 0, label: '订舱' },
+  { value: 1, label: '拖车' },
+  { value: 2, label: '报关' },
+  { value: 3, label: '仓库' },
+  { value: 4, label: '保险' },
+  { value: 5, label: '代收支' },
+];
+
+export function buildServiceTypeOptionsFromEnum(
+  items:
+    | {
+        displayName?: string;
+        enable?: boolean;
+        value: number;
+      }[]
+    | undefined,
+): SelectOption[] {
+  const options = (items || [])
+    .filter((item) => item.enable !== false)
+    .map((item) => ({
+      label: item.displayName || `${item.value}`,
+      value: Number(item.value),
+    }))
+    .filter((item) => !Number.isNaN(item.value))
+    .sort((a, b) => a.value - b.value);
+
+  return options.length > 0 ? options : [...DEFAULT_SERVICE_TYPE_OPTIONS];
+}
+
+function buildServiceTypeMap(serviceTypeOptions: SelectOption[]) {
+  const map = new Map(
+    DEFAULT_SERVICE_TYPE_OPTIONS.map((item) => [item.value, item.label]),
+  );
+  for (const item of serviceTypeOptions) {
+    map.set(Number(item.value), item.label);
+  }
+  return map;
+}
+
+function normalizeServiceTypes(value: unknown): number[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => Number(item))
+      .filter((item) => !Number.isNaN(item));
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return value
+      .split(/[,、]/)
+      .map((item) => Number(item.trim()))
+      .filter((item) => !Number.isNaN(item));
+  }
+  return [];
+}
+
 export function useGridFormSchema(
   serviceTypeOptions: SelectOption[],
 ): VbenFormSchema[] {
@@ -38,9 +94,7 @@ export function useColumns(
   serviceTypeOptions: SelectOption[],
   onActionClick?: OnActionClickFn<SeServiceConfigAdminApi.SeServiceConfigListDto>,
 ): VxeTableGridOptions<SeServiceConfigAdminApi.SeServiceConfigListDto>['columns'] {
-  const serviceTypeMap = new Map(
-    serviceTypeOptions.map((item) => [Number(item.value), item.label]),
-  );
+  const serviceTypeMap = buildServiceTypeMap(serviceTypeOptions);
 
   return [
     {
@@ -55,10 +109,10 @@ export function useColumns(
       title: $t('system.basicData.seServiceConfig.serviceType'),
       minWidth: 200,
       formatter: ({ row }) => {
-        const types = row.serviceTypes;
-        if (!types || types.length === 0) return '-';
+        const types = normalizeServiceTypes(row.serviceTypes);
+        if (types.length === 0) return '-';
         return types
-          .map((t) => serviceTypeMap.get(Number(t)) || String(t))
+          .map((type) => serviceTypeMap.get(type) || String(type))
           .join('、');
       },
     },
