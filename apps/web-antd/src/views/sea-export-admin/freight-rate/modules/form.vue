@@ -504,16 +504,15 @@ function handlePriceFeeTypeChange(index: number, value: PriceFeeType) {
 
   // 切换计费方式时清空相关数据
   if (value === PriceFeeType.Ctn) {
-    // 按集装箱：清空固定价格
+    // 按集装箱：清空按票价格
+    delete fee.prices['order'];
+  } else {
+    // 按票：清空箱型费用，保留order价格
     Object.keys(fee.prices).forEach((key) => {
-      const priceItem = fee.prices[key];
-      if (priceItem) {
-        priceItem.price = undefined;
+      if (key !== 'order') {
+        delete fee.prices[key];
       }
     });
-  } else {
-    // 按票：清空箱型费用
-    fee.prices = {};
     fee.seFreiPriceCtnFees = [];
   }
 }
@@ -528,6 +527,17 @@ function updateSurchargePriceValue(
   const fee = surchargeFees.value[index];
   if (!fee) return;
 
+  // 如果是按票计费且ctnCodeId是'order'，特殊处理
+  if (fee.priceFeeType === PriceFeeType.Order && ctnCodeId === 'order') {
+    if (!fee.prices['order']) {
+      fee.prices['order'] = {};
+    }
+    const numValue = value ? Number(value) : undefined;
+    fee.prices['order'][field] = numValue;
+    return;
+  }
+
+  // 按集装箱计费的情况
   if (!fee.prices[ctnCodeId]) {
     fee.prices[ctnCodeId] = {};
   }
@@ -1024,66 +1034,68 @@ const [Modal, modalApi] = useVbenModal({
         surcharge.currencyId !== undefined &&
         surcharge.currencyId !== null
       ) {
-        const fee: SeFreiPriceFeeEditDto = {
-          id: surcharge.id,
-          feeCodeId: surcharge.feeCodeId,
-          currencyId: surcharge.currencyId,
-          priceFeeType: surcharge.priceFeeType ?? PriceFeeType.Ctn, // 默认按集装箱
-          seFreiPriceCtnFees: [],
-        };
+        // 判断是否为按票计费
+        const isOrderFee = surcharge.priceFeeType === PriceFeeType.Order;
 
-        // 处理 seFreiPriceCtnFees：如果存在则更新，否则从 prices 创建
-        if (
-          surcharge.seFreiPriceCtnFees &&
-          surcharge.seFreiPriceCtnFees.length > 0
-        ) {
-          // 编辑模式：更新已有的 seFreiPriceCtnFees
-          surcharge.seFreiPriceCtnFees.forEach((ctnFee) => {
-            const ctnCodeIdStr = String(ctnFee.ctnCodeId);
-            const priceItem = surcharge.prices[ctnCodeIdStr];
+        let ctnFees: SeFreiPriceCtnFeeEditDto[] | undefined;
 
-            if (priceItem && priceItem.price !== undefined) {
-              // 更新价格和相关字段
-              ctnFee.price = priceItem.price;
-              ctnFee.conditionType =
-                priceItem.value !== undefined
-                  ? priceItem.conditionType
-                  : undefined;
-              ctnFee.operatorType = priceItem.operatorType;
-              ctnFee.value = priceItem.value;
-              ctnFee.otherPrice = priceItem.otherPrice;
-            }
-          });
-
-          fee.seFreiPriceCtnFees = surcharge.seFreiPriceCtnFees;
+        if (isOrderFee) {
+          // 按票计费：不需要箱型费用列表，价格存储在 fee.price 中
+          ctnFees = undefined;
         } else {
-          // 新增模式：从 prices 对象创建新的 seFreiPriceCtnFees
-          Object.keys(surcharge.prices).forEach((ctnCodeIdStr) => {
-            const priceItem = surcharge.prices[ctnCodeIdStr];
-            if (priceItem && priceItem.price !== undefined) {
+          // 按集装箱计费：构建箱型费用列表
+          ctnFees = Object.entries(surcharge.prices)
+            .map(([ctnCodeIdStr, priceItem]) => {
+              // 跳过'order' key（按票计费的价格）
+              if (ctnCodeIdStr === 'order') {
+                return null;
+              }
+
               // 从 formData 中查找原始的 ctnCodeId（number 类型），避免精度丢失
               const originalCtn = formData.value?.seFreiPriceCtns?.find(
                 (ctn) => String(ctn.ctnCodeId) === ctnCodeIdStr,
               );
 
-              fee.seFreiPriceCtnFees?.push({
-                ctnCodeId: originalCtn?.ctnCodeId ?? Number(ctnCodeIdStr), // 优先使用原始 number 类型
+              if (!originalCtn || priceItem.price === undefined) {
+                return null;
+              }
+
+              return {
+                id: surcharge.seFreiPriceCtnFees?.find(
+                  (f) => String(f.ctnCodeId) === ctnCodeIdStr,
+                )?.id,
+                ctnCodeId: originalCtn.ctnCodeId, // 使用原始的number类型
                 price: priceItem.price,
-                conditionType:
-                  priceItem.value !== undefined
-                    ? priceItem.conditionType
-                    : undefined,
+                conditionType: priceItem.conditionType,
                 operatorType: priceItem.operatorType,
                 value: priceItem.value,
                 otherPrice: priceItem.otherPrice,
-              });
-            }
-          });
+              };
+            })
+            .filter(
+              (ctnFee): ctnFee is NonNullable<typeof ctnFee> =>
+                ctnFee !== null && ctnFee.price !== undefined,
+            );
         }
 
-        if (fee.seFreiPriceCtnFees && fee.seFreiPriceCtnFees.length > 0) {
-          seFreiPriceFees.push(fee);
-        }
+        // 获取按票计费的价格
+        const orderPrice = isOrderFee
+          ? (surcharge.prices['order']?.price ?? 0)
+          : undefined;
+
+        const fee: SeFreiPriceFeeEditDto = {
+          id: surcharge.id,
+          feeCodeId: surcharge.feeCodeId,
+          currencyId: surcharge.currencyId,
+          priceFeeType: surcharge.priceFeeType,
+          // 按票计费时，price 有值，seFreiPriceCtnFees 为 undefined
+          // 按集装箱计费时，price 为 undefined，seFreiPriceCtnFees 有值
+          price: orderPrice,
+          seFreiPriceCtnFees:
+            ctnFees && ctnFees.length > 0 ? ctnFees : undefined,
+        };
+
+        seFreiPriceFees.push(fee);
       }
     });
 
@@ -1431,7 +1443,19 @@ const [Modal, modalApi] = useVbenModal({
               seFreiPriceCtnFees: [],
             };
 
-            if (fee.seFreiPriceCtnFees) {
+            // 判断是否为按票计费
+            const isOrderFee =
+              surchargeItem.priceFeeType === PriceFeeType.Order;
+
+            if (isOrderFee) {
+              // 按票计费：从 fee.price 字段读取价格
+              if (fee.price !== undefined && fee.price !== null) {
+                surchargeItem.prices['order'] = {
+                  price: fee.price,
+                };
+              }
+            } else if (fee.seFreiPriceCtnFees) {
+              // 按集装箱计费：从 seFreiPriceCtnFees 读取
               fee.seFreiPriceCtnFees.forEach((ctnFee: any) => {
                 const ctnInfo = data.seFreiPriceCtns?.find(
                   (ctn: any) => ctn.id === ctnFee.seFreiPriceCtnId,
@@ -1769,213 +1793,249 @@ onMounted(async () => {
 
                 <!-- 箱型价格列 -->
                 <td
-                  v-for="ctn in dynamicCtnTypes"
+                  v-for="(ctn, ctnIndex) in dynamicCtnTypes"
                   :key="`fee${ctn.ctnCodeId}`"
                   class="relative border border-gray-300 py-2 pl-4 pr-3"
                 >
-                  <!-- 条件模式图标 -->
-                  <div class="absolute left-1 top-1 z-10">
-                    <button
-                      type="button"
-                      class="flex h-5 w-5 items-center justify-center rounded bg-white text-gray-400 shadow-sm transition-all hover:text-blue-600 hover:shadow-md"
-                      @click="
-                        showConditionPopup(
-                          $event,
-                          index.toString(),
-                          ctn.ctnCodeId,
-                        )
-                      "
-                      title="设置条件费用"
-                    >
-                      <IconifyIcon
-                        icon="mdi:filter-outline"
-                        class="h-3.5 w-3.5"
-                      />
-                    </button>
-
-                    <!-- 条件配置弹窗 -->
-                    <div
-                      v-if="
-                        conditionPopupVisible &&
-                        currentConditionCell?.feeType === index.toString() &&
-                        currentConditionCell?.ctnCodeId === ctn.ctnCodeId
-                      "
-                      class="absolute left-0 top-7 z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white p-3 shadow-xl"
-                      @click.stop
-                    >
-                      <label
-                        class="flex cursor-pointer items-center space-x-2 rounded px-2 py-1.5 transition-colors hover:bg-gray-50"
-                      >
-                        <input
-                          type="checkbox"
-                          :checked="
-                            getConditionalConfig(
-                              index.toString(),
-                              ctn.ctnCodeId,
-                            ).enabled
-                          "
-                          @change="
-                            toggleConditionEnabled(
-                              ($event.target as HTMLInputElement).checked,
-                            )
-                          "
-                          class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span class="text-sm font-medium text-gray-700"
-                          >启用条件模式</span
-                        >
-                      </label>
-                    </div>
-                  </div>
-
-                  <!-- 条件模式内容 -->
+                  <!-- 按票计费特殊处理：只在第一列显示输入框 -->
                   <div
-                    v-if="
-                      getConditionalConfig(index.toString(), ctn.ctnCodeId)
-                        .enabled
-                    "
-                    class="mt-6 space-y-2"
+                    v-if="surcharge.priceFeeType === PriceFeeType.Order"
+                    class="mt-6"
                   >
-                    <!-- 条件配置行 -->
-                    <div class="flex items-center gap-1.5">
-                      <Select
-                        size="small"
-                        :value="surcharge.prices[ctn.ctnCodeId]?.conditionType"
-                        :options="freightConditionItemOptions"
-                        class="flex-1"
-                        @change="
-                          (val) =>
-                            updateSurchargePriceValue(
-                              index,
-                              ctn.ctnCodeId,
-                              'conditionType',
-                              String(val),
-                            )
-                        "
-                        placeholder="条件类型"
-                      />
-
-                      <!-- 算符切换按钮 -->
-                      <button
-                        type="button"
-                        class="flex h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white text-sm font-semibold text-blue-600 transition-all hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
-                        @click="toggleOperator(index, ctn.ctnCodeId)"
-                        :title="'点击切换算符'"
-                      >
-                        {{
-                          getOperatorSymbol(
-                            surcharge.prices[ctn.ctnCodeId]?.operatorType,
-                          )
-                        }}
-                      </button>
-
+                    <template v-if="ctnIndex === 0">
+                      <div class="mb-1 text-center text-xs text-blue-600">
+                        按票计费（所有箱型统一价格）
+                      </div>
                       <Input
-                        size="small"
-                        :value="surcharge.prices[ctn.ctnCodeId]?.value"
+                        :value="surcharge.prices['order']?.price"
                         @input="
                           updateSurchargePriceValue(
                             index,
-                            ctn.ctnCodeId,
-                            'value',
+                            'order',
+                            'price',
                             ($event.target as HTMLInputElement).value,
                           )
                         "
                         type="number"
-                        class="flex-1"
-                        placeholder="阈值"
+                        class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
+                        placeholder="0"
                       />
+                    </template>
+                    <template v-else>
+                      <div class="text-center text-gray-400">-</div>
+                    </template>
+                  </div>
 
-                      <!-- 条件说明（单位） -->
-                      <span
-                        v-if="surcharge.prices[ctn.ctnCodeId]?.conditionType"
-                        class="whitespace-nowrap text-xs text-gray-500"
+                  <!-- 按集装箱计费：正常显示 -->
+                  <template v-else>
+                    <!-- 条件模式图标 -->
+                    <div class="absolute left-1 top-1 z-10">
+                      <button
+                        type="button"
+                        class="flex h-5 w-5 items-center justify-center rounded bg-white text-gray-400 shadow-sm transition-all hover:text-blue-600 hover:shadow-md"
+                        @click="
+                          showConditionPopup(
+                            $event,
+                            index.toString(),
+                            ctn.ctnCodeId,
+                          )
+                        "
+                        title="设置条件费用"
                       >
-                        {{
-                          freightConditionItemOptions.find(
-                            (o) =>
-                              o.value ===
-                              surcharge.prices[ctn.ctnCodeId]?.conditionType,
-                          )?.description
-                        }}
-                      </span>
-                    </div>
-                    <!-- 价格输入区域 -->
-                    <div
-                      class="flex overflow-hidden rounded-lg border border-gray-300 bg-white transition-colors"
-                    >
-                      <!-- 满足条件的价格 (70%) -->
-                      <div class="w-[70%]">
-                        <div
-                          class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-2 py-1 text-center text-xs font-semibold text-blue-700"
-                        >
-                          是
-                        </div>
-                        <div class="px-2 py-1">
-                          <Input
-                            size="small"
-                            :value="surcharge.prices[ctn.ctnCodeId]?.price"
-                            @input="
-                              updateSurchargePriceValue(
-                                index,
-                                ctn.ctnCodeId,
-                                'price',
-                                ($event.target as HTMLInputElement).value,
-                              )
-                            "
-                            type="number"
-                            class="h-9 w-full rounded-none text-center"
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
+                        <IconifyIcon
+                          icon="mdi:filter-outline"
+                          class="h-3.5 w-3.5"
+                        />
+                      </button>
 
-                      <!-- ELSE 分隔线 (30%) -->
+                      <!-- 条件配置弹窗 -->
                       <div
-                        class="flex w-[30%] flex-col border-l border-gray-300 bg-gray-50"
+                        v-if="
+                          conditionPopupVisible &&
+                          currentConditionCell?.feeType === index.toString() &&
+                          currentConditionCell?.ctnCodeId === ctn.ctnCodeId
+                        "
+                        class="absolute left-0 top-7 z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white p-3 shadow-xl"
+                        @click.stop
                       >
-                        <div
-                          class="border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 px-2 py-1 text-center text-xs font-semibold text-gray-600"
+                        <label
+                          class="flex cursor-pointer items-center space-x-2 rounded px-2 py-1.5 transition-colors hover:bg-gray-50"
                         >
-                          否则
-                        </div>
-                        <div class="px-2 py-1">
-                          <Input
-                            size="small"
-                            :value="surcharge.prices[ctn.ctnCodeId]?.otherPrice"
-                            @input="
+                          <input
+                            type="checkbox"
+                            :checked="
+                              getConditionalConfig(
+                                index.toString(),
+                                ctn.ctnCodeId,
+                              ).enabled
+                            "
+                            @change="
+                              toggleConditionEnabled(
+                                ($event.target as HTMLInputElement).checked,
+                              )
+                            "
+                            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span class="text-sm font-medium text-gray-700"
+                            >启用条件模式</span
+                          >
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- 条件模式内容 -->
+                    <div
+                      v-if="
+                        getConditionalConfig(index.toString(), ctn.ctnCodeId)
+                          .enabled
+                      "
+                      class="mt-6 space-y-2"
+                    >
+                      <!-- 条件配置行 -->
+                      <div class="flex items-center gap-1.5">
+                        <Select
+                          size="small"
+                          :value="
+                            surcharge.prices[ctn.ctnCodeId]?.conditionType
+                          "
+                          :options="freightConditionItemOptions"
+                          class="flex-1"
+                          @change="
+                            (val) =>
                               updateSurchargePriceValue(
                                 index,
                                 ctn.ctnCodeId,
-                                'otherPrice',
-                                ($event.target as HTMLInputElement).value,
+                                'conditionType',
+                                String(val),
                               )
-                            "
-                            type="number"
-                            class="h-9 w-full rounded-none text-center"
-                            placeholder="0"
-                          />
+                          "
+                          placeholder="条件类型"
+                        />
+
+                        <!-- 算符切换按钮 -->
+                        <button
+                          type="button"
+                          class="flex h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white text-sm font-semibold text-blue-600 transition-all hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
+                          @click="toggleOperator(index, ctn.ctnCodeId)"
+                          :title="'点击切换算符'"
+                        >
+                          {{
+                            getOperatorSymbol(
+                              surcharge.prices[ctn.ctnCodeId]?.operatorType,
+                            )
+                          }}
+                        </button>
+
+                        <Input
+                          size="small"
+                          :value="surcharge.prices[ctn.ctnCodeId]?.value"
+                          @input="
+                            updateSurchargePriceValue(
+                              index,
+                              ctn.ctnCodeId,
+                              'value',
+                              ($event.target as HTMLInputElement).value,
+                            )
+                          "
+                          type="number"
+                          class="flex-1"
+                          placeholder="阈值"
+                        />
+
+                        <!-- 条件说明（单位） -->
+                        <span
+                          v-if="surcharge.prices[ctn.ctnCodeId]?.conditionType"
+                          class="whitespace-nowrap text-xs text-gray-500"
+                        >
+                          {{
+                            freightConditionItemOptions.find(
+                              (o) =>
+                                o.value ===
+                                surcharge.prices[ctn.ctnCodeId]?.conditionType,
+                            )?.description
+                          }}
+                        </span>
+                      </div>
+                      <!-- 价格输入区域 -->
+                      <div
+                        class="flex overflow-hidden rounded-lg border border-gray-300 bg-white transition-colors"
+                      >
+                        <!-- 满足条件的价格 (70%) -->
+                        <div class="w-[70%]">
+                          <div
+                            class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-2 py-1 text-center text-xs font-semibold text-blue-700"
+                          >
+                            是
+                          </div>
+                          <div class="px-2 py-1">
+                            <Input
+                              size="small"
+                              :value="surcharge.prices[ctn.ctnCodeId]?.price"
+                              @input="
+                                updateSurchargePriceValue(
+                                  index,
+                                  ctn.ctnCodeId,
+                                  'price',
+                                  ($event.target as HTMLInputElement).value,
+                                )
+                              "
+                              type="number"
+                              class="h-9 w-full rounded-none text-center"
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+
+                        <!-- ELSE 分隔线 (30%) -->
+                        <div
+                          class="flex w-[30%] flex-col border-l border-gray-300 bg-gray-50"
+                        >
+                          <div
+                            class="border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 px-2 py-1 text-center text-xs font-semibold text-gray-600"
+                          >
+                            否则
+                          </div>
+                          <div class="px-2 py-1">
+                            <Input
+                              size="small"
+                              :value="
+                                surcharge.prices[ctn.ctnCodeId]?.otherPrice
+                              "
+                              @input="
+                                updateSurchargePriceValue(
+                                  index,
+                                  ctn.ctnCodeId,
+                                  'otherPrice',
+                                  ($event.target as HTMLInputElement).value,
+                                )
+                              "
+                              type="number"
+                              class="h-9 w-full rounded-none text-center"
+                              placeholder="0"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <!-- 普通模式（无条件） -->
-                  <div v-else class="relative mt-6">
-                    <Input
-                      :value="surcharge.prices[ctn.ctnCodeId]?.price"
-                      @input="
-                        updateSurchargePriceValue(
-                          index,
-                          ctn.ctnCodeId,
-                          'price',
-                          ($event.target as HTMLInputElement).value,
-                        )
-                      "
-                      type="number"
-                      class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
-                      placeholder="0"
-                    />
-                  </div>
+                    <!-- 普通模式（无条件） -->
+                    <div v-else class="relative mt-6">
+                      <Input
+                        :value="surcharge.prices[ctn.ctnCodeId]?.price"
+                        @input="
+                          updateSurchargePriceValue(
+                            index,
+                            ctn.ctnCodeId,
+                            'price',
+                            ($event.target as HTMLInputElement).value,
+                          )
+                        "
+                        type="number"
+                        class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
+                        placeholder="0"
+                      />
+                    </div>
+                  </template>
                 </td>
 
                 <!-- 删除按钮 -->
