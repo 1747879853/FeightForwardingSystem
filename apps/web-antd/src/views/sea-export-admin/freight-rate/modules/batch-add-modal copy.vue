@@ -29,7 +29,6 @@ import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
 import { getCtnCodePagedList as getBaseCtnCodes } from '#/api/system/base-data/ctn-code-admin';
-import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import { batchAddSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
 import { $t } from '#/locales';
 
@@ -48,9 +47,6 @@ const addedCtnTypes = ref<CtnTypeOption[]>([]);
 // 下拉选项数据
 const allCtnOptions = ref<CtnTypeOption[]>([]);
 
-// USD 币别 ID（默认值）
-const defaultCurrencyId = ref<number | undefined>(undefined);
-
 // 当前选中的箱型ID（用于Select组件）
 const selectedCtnId = ref<number | undefined>(undefined);
 
@@ -62,6 +58,35 @@ const selectedRowKeys = ref<(string | number)[]>([]);
 
 // 加载状态
 const loading = ref(false);
+
+// 时间模式控制（用于独立日期模块）
+const dateEditMode = ref<'date' | 'week'>('date'); // 默认日期模式
+
+// 开船日子表输入模式控制（用于互斥）
+const etdInputMode = ref<'date' | 'weekday' | null>(null);
+
+// 开船日子表（日期模式）- 一组包含三个日期
+const etdList = ref<
+  Array<{
+    id?: string;
+    etd?: string; // 开船日期
+    closeDocTime?: string; // 截单时间（日期格式）
+    closingTime?: string; // 截关时间（日期格式）
+  }>
+>([]);
+
+// 开船日周几子表（星期模式）- 一组包含三个星期+时间点
+const etdDayList = ref<
+  Array<{
+    id?: string;
+    etdDayOfWeek?: number; // 开船星期
+    etdDayTime?: string; // 开船时间点
+    closeDocDayOfWeek?: number; // 截单星期
+    closeDocDayTime?: string; // 截单时间点
+    closingDayOfWeek?: number; // 截关星期
+    closingDayTime?: string; // 截关时间点
+  }>
+>([]);
 
 // [Modal, modalApi] 由父组件通过 connectedComponent 注入
 const [Modal, modalApi] = useVbenModal({
@@ -124,23 +149,6 @@ async function loadSelectOptions() {
       }));
       console.log('已加载默认箱型:', addedCtnTypes.value);
     }
-
-    // 加载币别列表，查找 USD 的 ID
-    try {
-      const currencies = await getCurrencyPagedList({
-        PageIndex: 1,
-        PageSize: 100,
-      });
-      const usdCurrency = currencies?.items?.find(
-        (item) => item.code?.toUpperCase() === 'USD',
-      );
-      if (usdCurrency) {
-        defaultCurrencyId.value = usdCurrency.id;
-        console.log('USD 币别 ID:', defaultCurrencyId.value);
-      }
-    } catch (error) {
-      console.error('加载币别列表失败:', error);
-    }
   } catch (error) {
     console.error('加载箱型选项失败:', error);
     message.error('加载箱型选项失败');
@@ -150,6 +158,66 @@ async function loadSelectOptions() {
 // 生成唯一行 key
 function generateRowKey() {
   return `freight_${Date.now()}_${++rowKeyCounter}`;
+}
+
+// ==================== 日期时间管理 ====================
+
+/**
+ * 切换到日期模式
+ */
+function switchToDateMode() {
+  if (dateEditMode.value === 'week') {
+    // 清空星期模式数据
+    etdDayList.value = [];
+  }
+  dateEditMode.value = 'date';
+}
+
+/**
+ * 切换到星期模式
+ */
+function switchToWeekMode() {
+  if (dateEditMode.value === 'date') {
+    // 清空日期模式数据
+    etdList.value = [];
+  }
+  dateEditMode.value = 'week';
+}
+
+/**
+ * 添加一组日期/星期数据
+ */
+function addDateGroup() {
+  if (dateEditMode.value === 'date') {
+    etdList.value.push({
+      etd: undefined,
+      closeDocTime: undefined,
+      closingTime: undefined,
+    });
+  } else {
+    etdDayList.value.push({
+      etdDayOfWeek: undefined,
+      etdDayTime: undefined,
+      closeDocDayOfWeek: undefined,
+      closeDocDayTime: undefined,
+      closingDayOfWeek: undefined,
+      closingDayTime: undefined,
+    });
+  }
+}
+
+/**
+ * 删除一组日期数据
+ */
+function removeDateGroup(index: number) {
+  etdList.value.splice(index, 1);
+}
+
+/**
+ * 删除一组星期数据
+ */
+function removeWeekGroup(index: number) {
+  etdDayList.value.splice(index, 1);
 }
 
 // 创建默认行数据
@@ -169,21 +237,10 @@ function createDefaultRow() {
     poddet: undefined,
     voyage: '',
     contractNo: '',
-    // 日期时间模式字段
-    etd: '',
-    closeDocTime: '',
-    closingTime: '',
-    // 星期模式字段
-    etdDayOfWeek: undefined,
-    etdDayTime: '',
-    closeDocDayOfWeek: undefined,
-    closeDocDayTime: '',
-    closingDayOfWeek: undefined,
-    closingDayTime: '',
     validTimeStart: '',
     validTimeEnd: '',
     remark: '',
-    currencyId: defaultCurrencyId.value, // 默认设置为 USD
+    currencyId: undefined,
     seFreiPriceCtns: [] as Array<{ ctnCodeId: number; cost?: number }>,
   };
 }
@@ -247,15 +304,6 @@ function handleCopyRows() {
         poddem: row.poddem,
         poddet: row.poddet,
         voyage: row.voyage,
-        etd: row.etd,
-        etdDayOfWeek: row.etdDayOfWeek,
-        etdDayTime: row.etdDayTime,
-        closeDocTime: row.closeDocTime,
-        closeDocDayOfWeek: row.closeDocDayOfWeek,
-        closeDocDayTime: row.closeDocDayTime,
-        closingTime: row.closingTime,
-        closingDayOfWeek: row.closingDayOfWeek,
-        closingDayTime: row.closingDayTime,
         validTimeStart: row.validTimeStart,
         validTimeEnd: row.validTimeEnd,
         remark: row.remark,
@@ -466,18 +514,6 @@ function buildColumns(): VxeTableGridOptions['columns'] {
       slots: { default: 'contractNo' },
     },
     {
-      field: 'dateTimeMode',
-      title: '日期时间',
-      width: 720,
-      slots: { default: 'dateTimeMode' },
-    },
-    {
-      field: 'weekMode',
-      title: '星期模式',
-      width: 680,
-      slots: { default: 'weekMode' },
-    },
-    {
       field: 'validTimeStart',
       title: '有效起始日期',
       width: 150,
@@ -611,23 +647,6 @@ function validateForm(): boolean {
   return true;
 }
 
-// 处理日期时间模式切换 - 切换到日期模式时清空星期模式
-function handleSwitchToDateTimeMode(row: any) {
-  row.etdDayOfWeek = undefined;
-  row.etdDayTime = '';
-  row.closeDocDayOfWeek = undefined;
-  row.closeDocDayTime = '';
-  row.closingDayOfWeek = undefined;
-  row.closingDayTime = '';
-}
-
-// 处理星期模式切换 - 切换到星期模式时清空日期模式
-function handleSwitchToWeekMode(row: any) {
-  row.etd = '';
-  row.closeDocTime = '';
-  row.closingTime = '';
-}
-
 // 提交表单
 async function handleSubmit() {
   if (!validateForm()) {
@@ -641,6 +660,40 @@ async function handleSubmit() {
 
     console.log('Grid 中的数据:', gridRecords);
 
+    // 构建关联日列表（seFreiPriceDays）- 日期模式
+    const seFreiPriceDays =
+      dateEditMode.value === 'date'
+        ? etdList.value
+            .filter((day) => day.etd || day.closeDocTime || day.closingTime)
+            .map((day) => ({
+              ...(day.id ? { id: day.id } : {}),
+              etd: day.etd,
+              closeDocTime: day.closeDocTime,
+              closingTime: day.closingTime,
+            }))
+        : [];
+
+    // 构建关联周几列表（seFreiPriceWeekDays）- 星期模式
+    const seFreiPriceWeekDays =
+      dateEditMode.value === 'week'
+        ? etdDayList.value
+            .filter(
+              (weekDay) =>
+                weekDay.etdDayOfWeek !== undefined ||
+                weekDay.closeDocDayOfWeek !== undefined ||
+                weekDay.closingDayOfWeek !== undefined,
+            )
+            .map((weekDay) => ({
+              ...(weekDay.id ? { id: weekDay.id } : {}),
+              etdDayOfWeek: weekDay.etdDayOfWeek,
+              etdDayTime: weekDay.etdDayTime,
+              closeDocDayOfWeek: weekDay.closeDocDayOfWeek,
+              closeDocDayTime: weekDay.closeDocDayTime,
+              closingDayOfWeek: weekDay.closingDayOfWeek,
+              closingDayTime: weekDay.closingDayTime,
+            }))
+        : [];
+
     // 转换数据格式
     const submitData: AddSeFreiPriceInput[] = gridRecords.map((row) => {
       // 构建箱型报价列表 - 只包含已录入运费的箱型
@@ -650,35 +703,6 @@ async function handleSubmit() {
           ctnCodeId: ctn.ctnCodeId,
           cost: ctn.cost,
         }));
-
-      // 构建日期时间模式数据（如果填写了任意一个日期字段）
-      const seFreiPriceDays =
-        row.etd || row.closeDocTime || row.closingTime
-          ? [
-              {
-                etd: row.etd || undefined,
-                closeDocTime: row.closeDocTime || undefined,
-                closingTime: row.closingTime || undefined,
-              },
-            ]
-          : [];
-
-      // 构建星期模式数据（如果填写了任意一个星期字段）
-      const seFreiPriceWeekDays =
-        row.etdDayOfWeek !== undefined ||
-        row.closeDocDayOfWeek !== undefined ||
-        row.closingDayOfWeek !== undefined
-          ? [
-              {
-                etdDayOfWeek: row.etdDayOfWeek,
-                etdDayTime: row.etdDayTime || undefined,
-                closeDocDayOfWeek: row.closeDocDayOfWeek,
-                closeDocDayTime: row.closeDocDayTime || undefined,
-                closingDayOfWeek: row.closingDayOfWeek,
-                closingDayTime: row.closingDayTime || undefined,
-              },
-            ]
-          : [];
 
       return {
         recommend: row.recommend || false,
@@ -899,163 +923,6 @@ function resetForm() {
           />
         </template>
 
-        <!-- 日期时间模式（开船日期、截单时间、截关时间） -->
-        <template #dateTimeMode="{ row }">
-          <div class="flex gap-2">
-            <!-- 开船日期 -->
-            <div class="flex items-center gap-2">
-              <span class="shrink-0 text-xs text-gray-500">开船:</span>
-              <DatePicker
-                v-model:value="row.etd"
-                style="width: 180px"
-                show-time
-                :time-picker-props="{ format: 'HH:mm' }"
-                placeholder="选择日期和时间"
-                value-format="YYYY-MM-DD HH:mm"
-                format="YYYY-MM-DD HH:mm"
-                :disabled="!!row.etdDayOfWeek"
-                allow-clear
-                @change="handleSwitchToDateTimeMode(row)"
-              />
-            </div>
-            <!-- 截单时间 -->
-            <div class="flex items-center gap-2">
-              <span class="shrink-0 text-xs text-gray-500">截单:</span>
-              <DatePicker
-                v-model:value="row.closeDocTime"
-                style="width: 180px"
-                show-time
-                :time-picker-props="{ format: 'HH:mm' }"
-                placeholder="选择日期和时间"
-                value-format="YYYY-MM-DD HH:mm"
-                format="YYYY-MM-DD HH:mm"
-                :disabled="!!row.closeDocDayOfWeek"
-                allow-clear
-                @change="handleSwitchToDateTimeMode(row)"
-              />
-            </div>
-            <!-- 截关时间 -->
-            <div class="flex items-center gap-2">
-              <span class="shrink-0 text-xs text-gray-500">截关:</span>
-              <DatePicker
-                v-model:value="row.closingTime"
-                style="width: 180px"
-                show-time
-                :time-picker-props="{ format: 'HH:mm' }"
-                placeholder="选择日期和时间"
-                value-format="YYYY-MM-DD HH:mm"
-                format="YYYY-MM-DD HH:mm"
-                :disabled="!!row.closingDayOfWeek"
-                allow-clear
-                @change="handleSwitchToDateTimeMode(row)"
-              />
-            </div>
-          </div>
-        </template>
-
-        <!-- 星期模式（开船日期、截单时间、截关时间） -->
-        <template #weekMode="{ row }">
-          <div class="flex gap-2">
-            <!-- 开船日期 -->
-            <div class="flex items-center gap-2">
-              <span class="shrink-0 text-xs text-gray-500">开船:</span>
-              <div class="flex flex-1 items-center gap-1">
-                <Select
-                  v-model:value="row.etdDayOfWeek"
-                  style="width: 70px"
-                  placeholder="星期"
-                  :disabled="!!row.etd"
-                  allow-clear
-                  @change="handleSwitchToWeekMode(row)"
-                >
-                  <Select.Option :value="0">周日</Select.Option>
-                  <Select.Option :value="1">周一</Select.Option>
-                  <Select.Option :value="2">周二</Select.Option>
-                  <Select.Option :value="3">周三</Select.Option>
-                  <Select.Option :value="4">周四</Select.Option>
-                  <Select.Option :value="5">周五</Select.Option>
-                  <Select.Option :value="6">周六</Select.Option>
-                </Select>
-                <TimePicker
-                  v-model:value="row.etdDayTime"
-                  style="width: 90px"
-                  placeholder="时间"
-                  format="HH:mm"
-                  value-format="HH:mm"
-                  :disabled="!row.etdDayOfWeek && row.etdDayOfWeek !== 0"
-                  allow-clear
-                />
-              </div>
-            </div>
-            <!-- 截单时间 -->
-            <div class="flex items-center gap-2">
-              <span class="shrink-0 text-xs text-gray-500">截单:</span>
-              <div class="flex flex-1 items-center gap-1">
-                <Select
-                  v-model:value="row.closeDocDayOfWeek"
-                  style="width: 70px"
-                  placeholder="星期"
-                  :disabled="!!row.closeDocTime"
-                  allow-clear
-                  @change="handleSwitchToWeekMode(row)"
-                >
-                  <Select.Option :value="0">周日</Select.Option>
-                  <Select.Option :value="1">周一</Select.Option>
-                  <Select.Option :value="2">周二</Select.Option>
-                  <Select.Option :value="3">周三</Select.Option>
-                  <Select.Option :value="4">周四</Select.Option>
-                  <Select.Option :value="5">周五</Select.Option>
-                  <Select.Option :value="6">周六</Select.Option>
-                </Select>
-                <TimePicker
-                  v-model:value="row.closeDocDayTime"
-                  style="width: 90px"
-                  placeholder="时间"
-                  format="HH:mm"
-                  value-format="HH:mm"
-                  :disabled="
-                    !row.closeDocDayOfWeek && row.closeDocDayOfWeek !== 0
-                  "
-                  allow-clear
-                />
-              </div>
-            </div>
-            <!-- 截关时间 -->
-            <div class="flex items-center gap-2">
-              <span class="shrink-0 text-xs text-gray-500">截关:</span>
-              <div class="flex flex-1 items-center gap-1">
-                <Select
-                  v-model:value="row.closingDayOfWeek"
-                  style="width: 70px"
-                  placeholder="星期"
-                  :disabled="!!row.closingTime"
-                  allow-clear
-                  @change="handleSwitchToWeekMode(row)"
-                >
-                  <Select.Option :value="0">周日</Select.Option>
-                  <Select.Option :value="1">周一</Select.Option>
-                  <Select.Option :value="2">周二</Select.Option>
-                  <Select.Option :value="3">周三</Select.Option>
-                  <Select.Option :value="4">周四</Select.Option>
-                  <Select.Option :value="5">周五</Select.Option>
-                  <Select.Option :value="6">周六</Select.Option>
-                </Select>
-                <TimePicker
-                  v-model:value="row.closingDayTime"
-                  style="width: 90px"
-                  placeholder="时间"
-                  format="HH:mm"
-                  value-format="HH:mm"
-                  :disabled="
-                    !row.closingDayOfWeek && row.closingDayOfWeek !== 0
-                  "
-                  allow-clear
-                />
-              </div>
-            </div>
-          </div>
-        </template>
-
         <!-- 有效起始日期 -->
         <template #validTimeStart="{ row }">
           <DatePicker
@@ -1106,6 +973,278 @@ function resetForm() {
         </template>
       </Grid>
 
+      <!-- 日期时间设置模块 -->
+      <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <h3
+          class="mb-4 flex items-center justify-between text-base font-semibold text-gray-800"
+        >
+          <span>日期时间设置</span>
+          <div class="flex items-center gap-2">
+            <!-- 模式切换按钮 -->
+            <Button
+              :type="dateEditMode === 'date' ? 'primary' : 'default'"
+              size="small"
+              @click="switchToDateMode"
+              :class="{
+                'mode-btn-active': dateEditMode === 'date',
+                'mode-btn-inactive': dateEditMode !== 'date',
+              }"
+            >
+              <IconifyIcon icon="mdi:calendar-range" class="mr-1 size-4" />
+              日期模式
+            </Button>
+            <Button
+              :type="dateEditMode === 'week' ? 'primary' : 'default'"
+              size="small"
+              @click="switchToWeekMode"
+              :class="{
+                'mode-btn-active': dateEditMode === 'week',
+                'mode-btn-inactive': dateEditMode !== 'week',
+              }"
+            >
+              <IconifyIcon icon="mdi:calendar-weekend" class="mr-1 size-4" />
+              星期模式
+            </Button>
+            <!-- 添加按钮 -->
+            <Button type="link" size="small" @click="addDateGroup">
+              <IconifyIcon icon="mdi:plus" class="size-4" />
+              添加一组
+            </Button>
+          </div>
+        </h3>
+
+        <!-- 日期模式 -->
+        <div v-if="dateEditMode === 'date'">
+          <div v-if="etdList.length === 0" class="empty-tip">
+            暂无日期数据，请点击"添加一组"按钮添加
+          </div>
+          <div v-else class="sub-table">
+            <div
+              v-for="(dateGroup, index) in etdList"
+              :key="index"
+              class="sub-table-row date-group-row"
+            >
+              <div class="date-group-content">
+                <!-- 开船日期 -->
+                <div class="date-field">
+                  <label class="field-label">
+                    <IconifyIcon icon="mdi:ship-wheel" class="mr-1 size-4" />
+                    开船日期
+                  </label>
+                  <DatePicker
+                    v-model:value="dateGroup.etd"
+                    placeholder="请选择开船日期"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm"
+                    show-time
+                    :time-picker-props="{ format: 'HH:mm' }"
+                    style="width: 100%"
+                  />
+                </div>
+                <!-- 截单时间 -->
+                <div class="date-field">
+                  <label class="field-label">
+                    <IconifyIcon
+                      icon="mdi:file-document-check"
+                      class="mr-1 size-4"
+                    />
+                    截单时间
+                  </label>
+                  <DatePicker
+                    v-model:value="dateGroup.closeDocTime"
+                    placeholder="请选择截单时间"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm"
+                    show-time
+                    :time-picker-props="{ format: 'HH:mm' }"
+                    style="width: 100%"
+                  />
+                </div>
+                <!-- 截关时间 -->
+                <div class="date-field">
+                  <label class="field-label">
+                    <IconifyIcon
+                      icon="mdi:container-lock"
+                      class="mr-1 size-4"
+                    />
+                    截关时间
+                  </label>
+                  <DatePicker
+                    v-model:value="dateGroup.closingTime"
+                    placeholder="请选择截关时间"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm"
+                    show-time
+                    :time-picker-props="{ format: 'HH:mm' }"
+                    style="width: 100%"
+                  />
+                </div>
+              </div>
+              <Button
+                type="link"
+                danger
+                size="small"
+                @click="removeDateGroup(index)"
+                class="delete-btn"
+              >
+                <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 星期模式 -->
+        <div v-if="dateEditMode === 'week'">
+          <div v-if="etdDayList.length === 0" class="empty-tip">
+            暂无星期数据，请点击"添加一组"按钮添加
+          </div>
+          <div v-else class="sub-table">
+            <div
+              v-for="(weekGroup, index) in etdDayList"
+              :key="index"
+              class="sub-table-row week-group-row"
+            >
+              <div class="week-group-content">
+                <!-- 开船星期组 -->
+                <div class="week-pair">
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon icon="mdi:ship-wheel" class="mr-1 size-4" />
+                      开船星期
+                    </label>
+                    <Select
+                      v-model:value="weekGroup.etdDayOfWeek"
+                      placeholder="请选择"
+                      style="width: 100%"
+                      :options="[
+                        { label: '周日', value: 0 },
+                        { label: '周一', value: 1 },
+                        { label: '周二', value: 2 },
+                        { label: '周三', value: 3 },
+                        { label: '周四', value: 4 },
+                        { label: '周五', value: 5 },
+                        { label: '周六', value: 6 },
+                      ]"
+                    />
+                  </div>
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:clock-outline"
+                        class="mr-1 size-4"
+                      />
+                      时间点
+                    </label>
+                    <TimePicker
+                      v-model:value="weekGroup.etdDayTime"
+                      placeholder="请选择"
+                      format="HH:mm"
+                      value-format="HH:mm:ss"
+                      style="width: 100%"
+                    />
+                  </div>
+                </div>
+
+                <!-- 截单星期组 -->
+                <div class="week-pair">
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:file-document-check"
+                        class="mr-1 size-4"
+                      />
+                      截单星期
+                    </label>
+                    <Select
+                      v-model:value="weekGroup.closeDocDayOfWeek"
+                      placeholder="请选择"
+                      style="width: 100%"
+                      :options="[
+                        { label: '周日', value: 0 },
+                        { label: '周一', value: 1 },
+                        { label: '周二', value: 2 },
+                        { label: '周三', value: 3 },
+                        { label: '周四', value: 4 },
+                        { label: '周五', value: 5 },
+                        { label: '周六', value: 6 },
+                      ]"
+                    />
+                  </div>
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:clock-outline"
+                        class="mr-1 size-4"
+                      />
+                      时间点
+                    </label>
+                    <TimePicker
+                      v-model:value="weekGroup.closeDocDayTime"
+                      placeholder="请选择"
+                      format="HH:mm"
+                      value-format="HH:mm:ss"
+                      style="width: 100%"
+                    />
+                  </div>
+                </div>
+
+                <!-- 截关星期组 -->
+                <div class="week-pair">
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:container-lock"
+                        class="mr-1 size-4"
+                      />
+                      截关星期
+                    </label>
+                    <Select
+                      v-model:value="weekGroup.closingDayOfWeek"
+                      placeholder="请选择"
+                      style="width: 100%"
+                      :options="[
+                        { label: '周日', value: 0 },
+                        { label: '周一', value: 1 },
+                        { label: '周二', value: 2 },
+                        { label: '周三', value: 3 },
+                        { label: '周四', value: 4 },
+                        { label: '周五', value: 5 },
+                        { label: '周六', value: 6 },
+                      ]"
+                    />
+                  </div>
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:clock-outline"
+                        class="mr-1 size-4"
+                      />
+                      时间点
+                    </label>
+                    <TimePicker
+                      v-model:value="weekGroup.closingDayTime"
+                      placeholder="请选择"
+                      format="HH:mm"
+                      value-format="HH:mm:ss"
+                      style="width: 100%"
+                    />
+                  </div>
+                </div>
+              </div>
+              <Button
+                type="link"
+                danger
+                size="small"
+                @click="removeWeekGroup(index)"
+                class="delete-btn"
+              >
+                <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 提示信息 -->
       <div class="mt-4 text-sm text-gray-500">
         <p>提示：</p>
@@ -1122,6 +1261,16 @@ function resetForm() {
 </template>
 
 <style scoped lang="scss">
+@media (max-width: 1200px) {
+  .date-group-content {
+    grid-template-columns: 1fr;
+  }
+
+  .week-group-content {
+    grid-template-columns: 1fr;
+  }
+}
+
 .batch-add-container {
   :deep(.vxe-table) {
     .vxe-body--column {
@@ -1134,5 +1283,157 @@ function resetForm() {
       width: 100%;
     }
   }
+}
+
+/* 模式切换按钮样式增强 */
+.mode-btn-active {
+  font-weight: 600 !important;
+  color: white !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 4px 12px rgb(59 130 246 / 50%) !important;
+  transform: scale(1.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mode-btn-active:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 6px 16px rgb(59 130 246 / 60%) !important;
+  transform: scale(1.1);
+}
+
+.mode-btn-active:active {
+  transform: scale(1.05);
+}
+
+.mode-btn-inactive {
+  color: #9ca3af !important;
+  background-color: #fafafa !important;
+  border-color: #e5e7eb !important;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.mode-btn-inactive:hover {
+  color: #6b7280 !important;
+  background-color: #f3f4f6 !important;
+  border-color: #d1d5db !important;
+  opacity: 0.85;
+}
+
+.empty-tip {
+  padding: 32px 16px;
+  font-size: 14px;
+  color: #94a3b8;
+  text-align: center;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.empty-tip:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-color: #94a3b8;
+}
+
+.sub-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sub-table-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+}
+
+.date-group-row,
+.week-group-row {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.date-group-row::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  content: '';
+  background: linear-gradient(to bottom, #3b82f6, #60a5fa);
+  border-radius: 8px 0 0 8px;
+}
+
+.date-group-content {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.week-group-content {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.date-field,
+.week-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date-field .field-label,
+.week-field .field-label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.week-pair {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.week-pair .week-field:first-child {
+  flex: 1;
+}
+
+.week-pair .week-field:last-child {
+  flex: 0 0 100px;
+}
+
+.delete-btn {
+  flex-shrink: 0;
+  margin-top: 24px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.delete-btn:hover {
+  opacity: 1;
 }
 </style>

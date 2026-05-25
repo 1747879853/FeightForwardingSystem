@@ -36,9 +36,8 @@ const formData = ref<SeFreiPriceOutDto>();
 const id = ref<string>();
 const isEditMode = computed(() => !!id.value);
 
-// 时间模式控制
-const closeDocMode = ref<'datetime' | 'week' | null>(null);
-const closingMode = ref<'datetime' | 'week' | null>(null);
+// 时间模式控制（用于独立日期模块）
+const dateEditMode = ref<'date' | 'week'>('date'); // 默认日期模式
 
 // 开船日子表输入模式控制（用于互斥）
 const etdInputMode = ref<'date' | 'weekday' | null>(null);
@@ -47,6 +46,9 @@ const etdInputMode = ref<'date' | 'weekday' | null>(null);
 const currencyList = ref<any[]>([]);
 const feeCodeList = ref<any[]>([]);
 const allCtnOptions = ref<Array<{ ctnCodeId: number; ctnName: string }>>([]);
+
+// USD 币别 ID（默认值）
+const defaultCurrencyId = ref<number | undefined>(undefined);
 
 // 当前选中的箱型ID（用于Select组件）
 const selectedCtnId = ref<number | undefined>(undefined);
@@ -92,7 +94,7 @@ interface SurchargePriceItem {
 interface SurchargeFeeItem {
   id?: string;
   feeCodeId?: number;
-  currencyId?: number | null;
+  currencyId?: number;
   priceFeeType: PriceFeeType;
   prices: Record<string, SurchargePriceItem>; // key: ctnCodeId (string), value: 价格对象
   seFreiPriceCtnFees?: Array<{
@@ -108,19 +110,26 @@ interface SurchargeFeeItem {
 // 附加费列表
 const surchargeFees = ref<SurchargeFeeItem[]>([]);
 
-// 开船日子表
+// 开船日子表（日期模式）- 一组包含三个日期
 const etdList = ref<
   Array<{
     id?: string;
-    etd?: string;
+    etd?: string; // 开船日期
+    closeDocTime?: string; // 截单时间（日期格式）
+    closingTime?: string; // 截关时间（日期格式）
   }>
 >([]);
 
+// 开船日周几子表（星期模式）- 一组包含三个星期+时间点
 const etdDayList = ref<
   Array<{
     id?: string;
-    etdDayOfWeek?: number;
-    etdDayTime?: string;
+    etdDayOfWeek?: number; // 开船星期
+    etdDayTime?: string; // 开船时间点
+    closeDocDayOfWeek?: number; // 截单星期
+    closeDocDayTime?: string; // 截单时间点
+    closingDayOfWeek?: number; // 截关星期
+    closingDayTime?: string; // 截关时间点
   }>
 >([]);
 
@@ -149,6 +158,9 @@ const isDirectValue = ref<boolean>(true);
 
 // ==================== 加载基础数据 ====================
 
+/**
+ * 加载基础数据
+ */
 async function loadSelectData() {
   try {
     const { getCurrencyPagedList } =
@@ -158,6 +170,15 @@ async function loadSelectData() {
       label: item.code || item.enName,
       value: item.id,
     }));
+
+    // 查找 USD 币别的 ID
+    const usdCurrency = currencyRes.items?.find(
+      (item: any) => item.code?.toUpperCase() === 'USD',
+    );
+    if (usdCurrency) {
+      defaultCurrencyId.value = usdCurrency.id;
+      console.log('USD 币别 ID:', defaultCurrencyId.value);
+    }
 
     const { getFeeCodePagedList } =
       await import('#/api/system/base-data/fee-code-admin');
@@ -370,7 +391,7 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
-    // 第四行：目的港免箱期、截单时间相关
+    // 第四行：目的港免箱期
     {
       component: 'InputNumber',
       fieldName: 'poddet',
@@ -381,136 +402,128 @@ const [Form, formApi] = useVbenForm({
         style: { width: '100%' },
       },
     },
-    {
-      component: 'DatePicker',
-      fieldName: 'closeDocTime',
-      label: '截单时间',
-      componentProps: {
-        placeholder: '请选择截单时间',
-        format: 'YYYY-MM-DD HH:mm',
-        valueFormat: 'YYYY-MM-DD HH:mm',
-        showTime: true,
-        timePicker: { format: 'HH:mm' },
-        style: { width: '100%' },
-        onChange: (value: any) => {
-          if (value) {
-            closeDocMode.value = 'datetime';
-            formApi.setValues({
-              closeDocDayOfWeek: undefined,
-              closeDocDayTime: undefined,
-            });
-          } else {
-            closeDocMode.value = null;
-          }
-        },
-      },
-    },
-    {
-      component: 'Select',
-      fieldName: 'closeDocDayOfWeek',
-      label: '截单星期',
-      componentProps: {
-        options: [
-          { label: '周日', value: 0 },
-          { label: '周一', value: 1 },
-          { label: '周二', value: 2 },
-          { label: '周三', value: 3 },
-          { label: '周四', value: 4 },
-          { label: '周五', value: 5 },
-          { label: '周六', value: 6 },
-        ],
-        placeholder: '请选择截单星期',
-        allowClear: true,
-        disabled: computed(() => closeDocMode.value === 'datetime'),
-        style: { width: '100%' },
-        onChange: (value: any) => {
-          if (value !== undefined && value !== null) {
-            closeDocMode.value = 'week';
-            formApi.setValues({ closeDocTime: undefined });
-          } else {
-            closeDocMode.value = null;
-          }
-        },
-      },
-    },
-    {
-      component: 'TimePicker',
-      fieldName: 'closeDocDayTime',
-      label: '截单时间点',
-      componentProps: {
-        placeholder: '请选择时间点',
-        format: 'HH:mm',
-        valueFormat: 'HH:mm:ss',
-        disabled: computed(() => closeDocMode.value !== 'week'),
-        style: { width: '100%' },
-      },
-    },
-    // 第五行：截关时间相关
-    {
-      component: 'DatePicker',
-      fieldName: 'closingTime',
-      label: '截关时间',
-      componentProps: {
-        placeholder: '请选择截关时间',
-        format: 'YYYY-MM-DD HH:mm',
-        valueFormat: 'YYYY-MM-DD HH:mm',
-        showTime: true,
-        timePicker: { format: 'HH:mm' },
-        style: { width: '100%' },
-        onChange: (value: any) => {
-          if (value) {
-            closingMode.value = 'datetime';
-            formApi.setValues({
-              closingDayOfWeek: undefined,
-              closingDayTime: undefined,
-            });
-          } else {
-            closingMode.value = null;
-          }
-        },
-      },
-    },
-    {
-      component: 'Select',
-      fieldName: 'closingDayOfWeek',
-      label: '截关星期',
-      componentProps: {
-        options: [
-          { label: '周日', value: 0 },
-          { label: '周一', value: 1 },
-          { label: '周二', value: 2 },
-          { label: '周三', value: 3 },
-          { label: '周四', value: 4 },
-          { label: '周五', value: 5 },
-          { label: '周六', value: 6 },
-        ],
-        placeholder: '请选择截关星期',
-        allowClear: true,
-        disabled: computed(() => closingMode.value === 'datetime'),
-        style: { width: '100%' },
-        onChange: (value: any) => {
-          if (value !== undefined && value !== null) {
-            closingMode.value = 'week';
-            formApi.setValues({ closingTime: undefined });
-          } else {
-            closingMode.value = null;
-          }
-        },
-      },
-    },
-    {
-      component: 'TimePicker',
-      fieldName: 'closingDayTime',
-      label: '截关时间点',
-      componentProps: {
-        placeholder: '请选择时间点',
-        format: 'HH:mm',
-        valueFormat: 'HH:mm:ss',
-        disabled: computed(() => closingMode.value !== 'week'),
-        style: { width: '100%' },
-      },
-    },
-    // 第六行：备注（独占一行，占据剩余空间或全宽）
+    // {
+    //   component: 'DatePicker',
+    //   fieldName: 'closeDocTime',
+    //   label: '截单时间',
+    //   componentProps: {
+    //     placeholder: '请选择截单时间',
+    //     format: 'YYYY-MM-DD HH:mm',
+    //     valueFormat: 'YYYY-MM-DD HH:mm',
+    //     showTime: true,
+    //     timePicker: { format: 'HH:mm' },
+    //     style: { width: '100%' },
+    //     onChange: (value: any) => {
+    //       if (value) {
+    //         dateEditMode.value = 'date';
+    //         formApi.setValues({
+    //           closeDocDayOfWeek: undefined,
+    //           closeDocDayTime: undefined,
+    //         });
+    //       }
+    //     },
+    //   },
+    // },
+    // {
+    //   component: 'Select',
+    //   fieldName: 'closeDocDayOfWeek',
+    //   label: '截单星期',
+    //   componentProps: {
+    //     options: [
+    //       { label: '周日', value: 0 },
+    //       { label: '周一', value: 1 },
+    //       { label: '周二', value: 2 },
+    //       { label: '周三', value: 3 },
+    //       { label: '周四', value: 4 },
+    //       { label: '周五', value: 5 },
+    //       { label: '周六', value: 6 },
+    //     ],
+    //     placeholder: '请选择截单星期',
+    //     allowClear: true,
+    //     disabled: computed(() => dateEditMode.value === 'date'),
+    //     style: { width: '100%' },
+    //     onChange: (value: any) => {
+    //       if (value !== undefined && value !== null) {
+    //         dateEditMode.value = 'week';
+    //         formApi.setValues({ closeDocTime: undefined });
+    //       }
+    //     },
+    //   },
+    // },
+    // {
+    //   component: 'TimePicker',
+    //   fieldName: 'closeDocDayTime',
+    //   label: '截单时间点',
+    //   componentProps: {
+    //     placeholder: '请选择时间点',
+    //     format: 'HH:mm',
+    //     valueFormat: 'HH:mm:ss',
+    //     disabled: computed(() => dateEditMode.value !== 'week'),
+    //     style: { width: '100%' },
+    //   },
+    // },
+    // // 第五行：截关时间相关
+    // {
+    //   component: 'DatePicker',
+    //   fieldName: 'closingTime',
+    //   label: '截关时间',
+    //   componentProps: {
+    //     placeholder: '请选择截关时间',
+    //     format: 'YYYY-MM-DD HH:mm',
+    //     valueFormat: 'YYYY-MM-DD HH:mm',
+    //     showTime: true,
+    //     timePicker: { format: 'HH:mm' },
+    //     style: { width: '100%' },
+    //     onChange: (value: any) => {
+    //       if (value) {
+    //         dateEditMode.value = 'date';
+    //         formApi.setValues({
+    //           closingDayOfWeek: undefined,
+    //           closingDayTime: undefined,
+    //         });
+    //       }
+    //     },
+    //   },
+    // },
+    // {
+    //   component: 'Select',
+    //   fieldName: 'closingDayOfWeek',
+    //   label: '截关星期',
+    //   componentProps: {
+    //     options: [
+    //       { label: '周日', value: 0 },
+    //       { label: '周一', value: 1 },
+    //       { label: '周二', value: 2 },
+    //       { label: '周三', value: 3 },
+    //       { label: '周四', value: 4 },
+    //       { label: '周五', value: 5 },
+    //       { label: '周六', value: 6 },
+    //     ],
+    //     placeholder: '请选择截关星期',
+    //     allowClear: true,
+    //     disabled: computed(() => dateEditMode.value === 'date'),
+    //     style: { width: '100%' },
+    //     onChange: (value: any) => {
+    //       if (value !== undefined && value !== null) {
+    //         dateEditMode.value = 'week';
+    //         formApi.setValues({ closingTime: undefined });
+    //       }
+    //     },
+    //   },
+    // },
+    // {
+    //   component: 'TimePicker',
+    //   fieldName: 'closingDayTime',
+    //   label: '截关时间点',
+    //   componentProps: {
+    //     placeholder: '请选择时间点',
+    //     format: 'HH:mm',
+    //     valueFormat: 'HH:mm:ss',
+    //     disabled: computed(() => dateEditMode.value !== 'week'),
+    //     style: { width: '100%' },
+    //   },
+    // },
+    // 第四行：目的港免箱期、备注
     {
       component: 'Textarea',
       fieldName: 'remark',
@@ -576,7 +589,7 @@ const [Modal, modalApi] = useVbenModal({
         isDirect: true,
         validTimeStart: '',
         validTimeEnd: '',
-        currencyId: null,
+        currencyId: defaultCurrencyId.value || 0, // 默认设置为 USD，如果未找到则为 0
         creationTime: '',
         isValid: true,
         seFreiPriceCtns: defaultCtns,
@@ -614,25 +627,20 @@ async function loadDetail(priceId: string) {
       podFreeDays: detail.podFreeDays,
       poddem: detail.poddem,
       poddet: detail.poddet,
-      closeDocTime: detail.closeDocTime,
-      closeDocDayOfWeek: detail.closeDocDayOfWeek,
-      closeDocDayTime: detail.closeDocDayTime,
-      closingTime: detail.closingTime,
-      closingDayOfWeek: detail.closingDayOfWeek,
-      closingDayTime: detail.closingDayTime,
       validTimeStart: detail.validTimeStart,
       validTimeEnd: detail.validTimeEnd,
       isDirect: detail.isDirect,
       remark: detail.remark,
     });
 
-    // 设置时间模式
-    if (detail.closeDocTime) closeDocMode.value = 'datetime';
-    else if (detail.closeDocDayOfWeek !== undefined)
-      closeDocMode.value = 'week';
-
-    if (detail.closingTime) closingMode.value = 'datetime';
-    else if (detail.closingDayOfWeek !== undefined) closingMode.value = 'week';
+    // 设置日期编辑模式（从子表中判断）
+    if (detail.seFreiPriceWeekDays && detail.seFreiPriceWeekDays.length > 0) {
+      dateEditMode.value = 'week';
+    } else if (detail.seFreiPriceDays && detail.seFreiPriceDays.length > 0) {
+      dateEditMode.value = 'date';
+    } else {
+      dateEditMode.value = 'date'; // 默认日期模式
+    }
 
     // 初始化是否直达状态
     isDirectValue.value = detail.isDirect ?? true;
@@ -649,73 +657,112 @@ async function loadDetail(priceId: string) {
           seFreiPriceCtnFees: [],
         };
 
-        if (fee.seFreiPriceCtnFees) {
-          fee.seFreiPriceCtnFees.forEach((ctnFee) => {
-            const ctnInfo = detail.seFreiPriceCtns?.find(
-              (ctn) => ctn.id === ctnFee.seFreiPriceCtnId,
-            );
+        // 判断是否为按票计费
+        const isOrderFee = fee.priceFeeType === 1;
 
-            if (ctnInfo) {
-              const ctnCodeIdStr = String(ctnInfo.ctnCodeId);
+        if (isOrderFee) {
+          // 按票计费：将价格存储到特殊的 'order' key 中
+          if (fee.price !== undefined && fee.price !== null) {
+            surchargeItem.prices['order'] = {
+              price: fee.price,
+            };
+          }
+        } else {
+          // 按集装箱计费：处理每个箱型的费用
+          if (fee.seFreiPriceCtnFees) {
+            fee.seFreiPriceCtnFees.forEach((ctnFee) => {
+              const ctnInfo = detail.seFreiPriceCtns?.find(
+                (ctn) => ctn.id === ctnFee.seFreiPriceCtnId,
+              );
 
-              // 判断是否需要启用条件模式
-              const hasConditionData =
-                (ctnFee.operatorType !== undefined &&
-                  ctnFee.operatorType !== null) ||
-                (ctnFee.value !== undefined && ctnFee.value !== null) ||
-                (ctnFee.otherPrice !== undefined && ctnFee.otherPrice !== null);
+              if (ctnInfo) {
+                const ctnCodeIdStr = String(ctnInfo.ctnCodeId);
 
-              if (hasConditionData) {
-                initConditionalConfig(String(feeIndex), ctnCodeIdStr);
-                const config =
-                  conditionalFeeConfigs.value[String(feeIndex)]?.[ctnCodeIdStr];
-                if (config) {
-                  config.enabled = true;
+                // 判断是否需要启用条件模式
+                const hasConditionData =
+                  (ctnFee.operatorType !== undefined &&
+                    ctnFee.operatorType !== null) ||
+                  (ctnFee.value !== undefined && ctnFee.value !== null) ||
+                  (ctnFee.otherPrice !== undefined &&
+                    ctnFee.otherPrice !== null);
+
+                if (hasConditionData) {
+                  initConditionalConfig(String(feeIndex), ctnCodeIdStr);
+                  const config =
+                    conditionalFeeConfigs.value[String(feeIndex)]?.[
+                      ctnCodeIdStr
+                    ];
+                  if (config) {
+                    config.enabled = true;
+                  }
                 }
+
+                surchargeItem.prices[ctnCodeIdStr] = {
+                  price: ctnFee.price,
+                  value: ctnFee.value,
+                  conditionType: ctnFee.conditionType || 1,
+                  operatorType: ctnFee.operatorType,
+                  otherPrice: ctnFee.otherPrice,
+                };
+
+                surchargeItem.seFreiPriceCtnFees?.push({
+                  ctnCodeId: ctnInfo.ctnCodeId,
+                  price: ctnFee.price,
+                  conditionType: ctnFee.conditionType,
+                  operatorType: ctnFee.operatorType,
+                  value: ctnFee.value,
+                  otherPrice: ctnFee.otherPrice,
+                });
               }
-
-              surchargeItem.prices[ctnCodeIdStr] = {
-                price: ctnFee.price,
-                value: ctnFee.value,
-                conditionType: ctnFee.conditionType || 1,
-                operatorType: ctnFee.operatorType,
-                otherPrice: ctnFee.otherPrice,
-              };
-
-              surchargeItem.seFreiPriceCtnFees?.push({
-                ctnCodeId: ctnInfo.ctnCodeId,
-                price: ctnFee.price,
-                conditionType: ctnFee.conditionType,
-                operatorType: ctnFee.operatorType,
-                value: ctnFee.value,
-                otherPrice: ctnFee.otherPrice,
-              });
-            }
-          });
+            });
+          }
         }
 
         return surchargeItem;
       });
     }
 
-    // 填充开船日子表
-    if (detail.seFreiPriceETDs && detail.seFreiPriceETDs.length > 0) {
-      etdList.value = detail.seFreiPriceETDs.map((etd) => ({
-        id: etd.id,
-        etd: etd.etd,
+    // 填充关联日子表（日期模式）
+    if (detail.seFreiPriceDays && detail.seFreiPriceDays.length > 0) {
+      etdList.value = detail.seFreiPriceDays.map((day) => ({
+        id: day.id,
+        etd: day.etd,
+        closeDocTime: day.closeDocTime,
+        closingTime: day.closingTime,
       }));
-      // 如果有开船日期，设置为日期模式
-      etdInputMode.value = 'date';
     }
 
-    if (detail.seFreiPriceETDDays && detail.seFreiPriceETDDays.length > 0) {
-      etdDayList.value = detail.seFreiPriceETDDays.map((etdDay) => ({
-        id: etdDay.id,
-        etdDayOfWeek: etdDay.etdDayOfWeek,
-        etdDayTime: etdDay.etdDayTime,
+    // 填充关联周几子表（星期模式）
+    if (detail.seFreiPriceWeekDays && detail.seFreiPriceWeekDays.length > 0) {
+      etdDayList.value = detail.seFreiPriceWeekDays.map((weekDay) => ({
+        id: weekDay.id,
+        etdDayOfWeek: weekDay.etdDayOfWeek,
+        etdDayTime: weekDay.etdDayTime,
+        closeDocDayOfWeek: weekDay.closeDocDayOfWeek,
+        closeDocDayTime: weekDay.closeDocDayTime,
+        closingDayOfWeek: weekDay.closingDayOfWeek,
+        closingDayTime: weekDay.closingDayTime,
       }));
-      // 如果有开船星期，设置为星期模式
+    }
+
+    // 设置开船日子表输入模式（用于互斥）
+    // 优先判断是否有星期数据，如果有则设为 weekday，否则如果有日期数据则设为 date
+    if (detail.seFreiPriceWeekDays && detail.seFreiPriceWeekDays.length > 0) {
       etdInputMode.value = 'weekday';
+    } else if (detail.seFreiPriceDays && detail.seFreiPriceDays.length > 0) {
+      etdInputMode.value = 'date';
+    } else {
+      etdInputMode.value = null; // 默认无数据时不锁定模式
+    }
+
+    // 设置截单/截关时间编辑模式（用于独立日期模块）
+    // 优先判断是否有星期数据，如果有则设为 week，否则如果有日期数据则设为 date
+    if (detail.seFreiPriceWeekDays && detail.seFreiPriceWeekDays.length > 0) {
+      dateEditMode.value = 'week';
+    } else if (detail.seFreiPriceDays && detail.seFreiPriceDays.length > 0) {
+      dateEditMode.value = 'date';
+    } else {
+      dateEditMode.value = 'date'; // 默认
     }
   } catch (error) {
     message.error('加载详情失败');
@@ -785,7 +832,7 @@ async function addCtn() {
       isDirect: true,
       validTimeStart: '',
       validTimeEnd: '',
-      currencyId: null,
+      currencyId: 0, // 初始化为0，用户必须选择
       creationTime: '',
       isValid: true,
       seFreiPriceCtns: [],
@@ -878,20 +925,41 @@ function handlePriceFeeTypeChange(index: number, value: PriceFeeType) {
   const fee = surchargeFees.value[index];
   if (!fee) return;
 
+  const oldPriceFeeType = fee.priceFeeType;
   fee.priceFeeType = value;
+
   // 切换计费方式时清空相关数据
   if (value === 0) {
-    // 按集装箱：清空固定价格
-    Object.keys(fee.prices).forEach((key) => {
-      const priceItem = fee.prices[key];
-      if (priceItem) {
-        priceItem.price = undefined;
+    // 切换到按集装箱：清空按票的价格，保留箱型费用结构
+    delete fee.prices['order'];
+    // 如果之前是按票且有价格，尝试将价格应用到第一个箱型（如果有箱型的话）
+    if (oldPriceFeeType === 1 && dynamicCtnTypes.value.length > 0) {
+      const firstCtn = dynamicCtnTypes.value[0];
+      if (firstCtn) {
+        const firstCtnCodeId = String(firstCtn.ctnCodeId);
+        const orderPrice = fee.prices['order']?.price;
+        if (orderPrice !== undefined) {
+          fee.prices[firstCtnCodeId] = { price: orderPrice };
+        }
+      }
+    }
+  } else {
+    // 切换到按票：清空所有箱型费用，只保留一个统一价格结构（如果需要）
+    const allPrices = Object.keys(fee.prices);
+    allPrices.forEach((key) => {
+      if (key !== 'order') {
+        delete fee.prices[key];
       }
     });
-  } else {
-    // 按票：清空箱型费用
-    fee.prices = {};
     fee.seFreiPriceCtnFees = [];
+    // 清除条件配置
+    const feeIndexStr = String(index);
+    const feeConfig = conditionalFeeConfigs.value[feeIndexStr];
+    if (feeConfig) {
+      Object.keys(feeConfig).forEach((ctnCodeId) => {
+        delete feeConfig[ctnCodeId];
+      });
+    }
   }
 }
 
@@ -1016,77 +1084,64 @@ function getOperatorSymbol(operatorType?: number): string {
   );
 }
 
-// ==================== 开船日管理 ====================
+// ==================== 日期时间管理 ====================
 
-function addEtd() {
-  // 如果当前是星期模式，清空星期列表
-  if (etdInputMode.value === 'weekday') {
+/**
+ * 切换到日期模式
+ */
+function switchToDateMode() {
+  if (dateEditMode.value === 'week') {
+    // 清空星期模式数据
     etdDayList.value = [];
   }
-  etdInputMode.value = 'date';
-  etdList.value.push({ etd: undefined });
+  dateEditMode.value = 'date';
 }
 
-function removeEtd(index: number) {
-  etdList.value.splice(index, 1);
-  // 如果删除后为空，重置模式
-  if (etdList.value.length === 0) {
-    etdInputMode.value = null;
-  }
-}
-
-function addEtdDay() {
-  // 如果当前是日期模式，清空日期列表
-  if (etdInputMode.value === 'date') {
+/**
+ * 切换到星期模式
+ */
+function switchToWeekMode() {
+  if (dateEditMode.value === 'date') {
+    // 清空日期模式数据
     etdList.value = [];
   }
-  etdInputMode.value = 'weekday';
-  etdDayList.value.push({ etdDayOfWeek: undefined, etdDayTime: undefined });
+  dateEditMode.value = 'week';
 }
 
-function removeEtdDay(index: number) {
+/**
+ * 添加一组日期/星期数据
+ */
+function addDateGroup() {
+  if (dateEditMode.value === 'date') {
+    etdList.value.push({
+      etd: undefined,
+      closeDocTime: undefined,
+      closingTime: undefined,
+    });
+  } else {
+    etdDayList.value.push({
+      etdDayOfWeek: undefined,
+      etdDayTime: undefined,
+      closeDocDayOfWeek: undefined,
+      closeDocDayTime: undefined,
+      closingDayOfWeek: undefined,
+      closingDayTime: undefined,
+    });
+  }
+}
+
+/**
+ * 删除一组日期数据
+ */
+function removeDateGroup(index: number) {
+  etdList.value.splice(index, 1);
+}
+
+/**
+ * 删除一组星期数据
+ */
+function removeWeekGroup(index: number) {
   etdDayList.value.splice(index, 1);
-  // 如果删除后为空，重置模式
-  if (etdDayList.value.length === 0) {
-    etdInputMode.value = null;
-  }
-}
-
-function handleEtdDateChange(value: any) {
-  if (value) {
-    etdInputMode.value = 'date';
-    // 清空开船星期列表
-    if (etdDayList.value.length > 0) {
-      etdDayList.value = [];
-      message.info('已切换为开船日期模式，开船星期数据已清空');
-    }
-  } else {
-    // 如果所有日期都被清空，重置模式
-    const hasValidDate = etdList.value.some((etd) => etd.etd);
-    if (!hasValidDate) {
-      etdInputMode.value = null;
-    }
-  }
-}
-
-function handleEtdWeekdayChange(value: any) {
-  if (value !== undefined && value !== null) {
-    etdInputMode.value = 'weekday';
-    // 清空开船日期列表
-    if (etdList.value.length > 0) {
-      etdList.value = [];
-      message.info('已切换为开船星期模式，开船日期数据已清空');
-    }
-  } else {
-    // 如果所有星期都被清空，重置模式
-    const hasValidWeekday = etdDayList.value.some(
-      (etdDay) =>
-        etdDay.etdDayOfWeek !== undefined && etdDay.etdDayOfWeek !== null,
-    );
-    if (!hasValidWeekday) {
-      etdInputMode.value = null;
-    }
-  }
 }
 
 // ==================== 提交表单 ====================
@@ -1133,38 +1188,67 @@ async function handleSubmit() {
 
     // 构建附加费数据
     const seFreiPriceFees = surchargeFees.value.map((fee, feeIndex) => {
-      const ctnFees = Object.entries(fee.prices)
-        .map(([ctnCodeIdStr, priceItem]) => {
-          // 从formData的箱型列表中查找原始的ctnCodeId（number类型），避免精度丢失
-          const ctnInfo = formData.value?.seFreiPriceCtns?.find(
-            (ctn) => String(ctn.ctnCodeId) === ctnCodeIdStr,
+      // 判断是否为按票计费
+      const isOrderFee = fee.priceFeeType === 1;
+
+      let ctnFees:
+        | Array<{
+            ctnCodeId: number;
+            price: number;
+            conditionType?: number;
+            operatorType?: number;
+            value?: number;
+            otherPrice?: number;
+          }>
+        | undefined;
+
+      if (isOrderFee) {
+        // 按票计费：不需要箱型费用列表，价格存储在 fee.price 中
+        ctnFees = undefined;
+      } else {
+        // 按集装箱计费：构建箱型费用列表
+        ctnFees = Object.entries(fee.prices)
+          .map(([ctnCodeIdStr, priceItem]) => {
+            // 从formData的箱型列表中查找原始的ctnCodeId（number类型），避免精度丢失
+            const ctnInfo = formData.value?.seFreiPriceCtns?.find(
+              (ctn) => String(ctn.ctnCodeId) === ctnCodeIdStr,
+            );
+
+            if (!ctnInfo) {
+              console.warn(`未找到箱型ID为 ${ctnCodeIdStr} 的箱型信息`);
+              return null;
+            }
+
+            return {
+              ctnCodeId: ctnInfo.ctnCodeId, // 使用原始的number类型ctnCodeId
+              price: priceItem.price ?? 0,
+              conditionType: priceItem.conditionType,
+              operatorType: priceItem.operatorType,
+              value: priceItem.value,
+              otherPrice: priceItem.otherPrice,
+            };
+          })
+          .filter(
+            (ctnFee): ctnFee is NonNullable<typeof ctnFee> =>
+              ctnFee !== null && ctnFee.price !== undefined,
           );
+      }
 
-          if (!ctnInfo) {
-            console.warn(`未找到箱型ID为 ${ctnCodeIdStr} 的箱型信息`);
-            return null;
-          }
+      // 获取按票计费的价格
+      const orderPrice = isOrderFee
+        ? (fee.prices['order']?.price ?? 0)
+        : undefined;
 
-          return {
-            ctnCodeId: ctnInfo.ctnCodeId, // 使用原始的number类型ctnCodeId
-            price: priceItem.price ?? 0,
-            conditionType: priceItem.conditionType,
-            operatorType: priceItem.operatorType,
-            value: priceItem.value,
-            otherPrice: priceItem.otherPrice,
-          };
-        })
-        .filter(
-          (ctnFee): ctnFee is NonNullable<typeof ctnFee> =>
-            ctnFee !== null && ctnFee.price !== undefined,
-        );
-
+      // 确保 price 和 seFreiPriceCtnFees 互斥
       return {
         ...(fee.id ? { id: fee.id } : {}),
         feeCodeId: fee.feeCodeId!,
         currencyId: fee.currencyId!,
         priceFeeType: fee.priceFeeType,
-        seFreiPriceCtnFees: ctnFees.length > 0 ? ctnFees : undefined,
+        // 按票计费时，price 有值，seFreiPriceCtnFees 为 undefined
+        // 按集装箱计费时，price 为 undefined，seFreiPriceCtnFees 有值
+        price: orderPrice,
+        seFreiPriceCtnFees: ctnFees && ctnFees.length > 0 ? ctnFees : undefined,
       };
     });
 
@@ -1184,28 +1268,43 @@ async function handleSubmit() {
       podFreeDays: values.podFreeDays,
       poddem: values.poddem,
       poddet: values.poddet,
-      closeDocTime: values.closeDocTime,
-      closeDocDayOfWeek: values.closeDocDayOfWeek,
-      closeDocDayTime: values.closeDocDayTime,
-      closingTime: values.closingTime,
-      closingDayOfWeek: values.closingDayOfWeek,
-      closingDayTime: values.closingDayTime,
-      validTimeStart: values.validTimeStart,
-      validTimeEnd: values.validTimeEnd,
+      validTimeStart: formData.value?.validTimeStart,
+      validTimeEnd: formData.value?.validTimeEnd,
       remark: values.remark,
       seFreiPriceCtns,
       seFreiPriceFees,
-      seFreiPriceETDs: etdList.value
-        .filter((etd) => etd.etd)
-        .map((etd) => ({
-          etd: etd.etd!,
-        })),
-      seFreiPriceETDDays: etdDayList.value
-        .filter((etdDay) => etdDay.etdDayOfWeek !== undefined)
-        .map((etdDay) => ({
-          etdDayOfWeek: etdDay.etdDayOfWeek!,
-          etdDayTime: etdDay.etdDayTime || '00:00:00',
-        })),
+      // 构建关联日列表（seFreiPriceDays）- 日期模式
+      seFreiPriceDays:
+        dateEditMode.value === 'date'
+          ? etdList.value
+              .filter((day) => day.etd || day.closeDocTime || day.closingTime)
+              .map((day) => ({
+                ...(day.id ? { id: day.id } : {}),
+                etd: day.etd,
+                closeDocTime: day.closeDocTime,
+                closingTime: day.closingTime,
+              }))
+          : [],
+      // 构建关联周几列表（seFreiPriceWeekDays）- 星期模式
+      seFreiPriceWeekDays:
+        dateEditMode.value === 'week'
+          ? etdDayList.value
+              .filter(
+                (weekDay) =>
+                  weekDay.etdDayOfWeek !== undefined ||
+                  weekDay.closeDocDayOfWeek !== undefined ||
+                  weekDay.closingDayOfWeek !== undefined,
+              )
+              .map((weekDay) => ({
+                ...(weekDay.id ? { id: weekDay.id } : {}),
+                etdDayOfWeek: weekDay.etdDayOfWeek,
+                etdDayTime: weekDay.etdDayTime,
+                closeDocDayOfWeek: weekDay.closeDocDayOfWeek,
+                closeDocDayTime: weekDay.closeDocDayTime,
+                closingDayOfWeek: weekDay.closingDayOfWeek,
+                closingDayTime: weekDay.closingDayTime,
+              }))
+          : [],
     };
 
     const hideLoading = message.loading({
@@ -1291,97 +1390,272 @@ onMounted(() => {
         <Form />
       </div>
 
-      <!-- 开船日子表 -->
+      <!-- 日期时间设置（独立模块） -->
       <div class="form-section">
         <h3 class="section-title">
-          <span>开船日期</span>
-          <Button
-            type="link"
-            size="small"
-            @click="addEtd"
-            :disabled="etdInputMode === 'weekday'"
-          >
-            <IconifyIcon icon="mdi:plus" class="size-4" />
-            添加
-          </Button>
-        </h3>
-        <div v-if="etdList.length === 0" class="empty-tip">
-          暂无开船日期，请点击添加（与开船星期互斥）
-        </div>
-        <div v-else class="sub-table">
-          <div
-            v-for="(etd, index) in etdList"
-            :key="index"
-            class="sub-table-row"
-          >
-            <DatePicker
-              v-model:value="etd.etd"
-              placeholder="请选择开船日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
-              style="width: 200px"
-              @change="handleEtdDateChange"
-            />
-            <Button type="link" danger size="small" @click="removeEtd(index)">
-              <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+          <span>日期时间设置</span>
+          <div class="flex items-center gap-2">
+            <!-- 模式切换按钮 -->
+            <Button
+              :type="dateEditMode === 'date' ? 'primary' : 'default'"
+              size="small"
+              @click="switchToDateMode"
+              :class="{
+                'mode-btn-active': dateEditMode === 'date',
+                'mode-btn-inactive': dateEditMode !== 'date',
+              }"
+            >
+              <IconifyIcon icon="mdi:calendar-range" class="mr-1 size-4" />
+              日期模式
+            </Button>
+            <Button
+              :type="dateEditMode === 'week' ? 'primary' : 'default'"
+              size="small"
+              @click="switchToWeekMode"
+              :class="{
+                'mode-btn-active': dateEditMode === 'week',
+                'mode-btn-inactive': dateEditMode !== 'week',
+              }"
+            >
+              <IconifyIcon icon="mdi:calendar-weekend" class="mr-1 size-4" />
+              星期模式
+            </Button>
+            <!-- 添加按钮 -->
+            <Button type="link" size="small" @click="addDateGroup">
+              <IconifyIcon icon="mdi:plus" class="size-4" />
+              添加一组
             </Button>
           </div>
-        </div>
-      </div>
-
-      <!-- 开船日周几子表 -->
-      <div class="form-section">
-        <h3 class="section-title">
-          <span>开船星期</span>
-          <Button
-            type="link"
-            size="small"
-            @click="addEtdDay"
-            :disabled="etdInputMode === 'date'"
-          >
-            <IconifyIcon icon="mdi:plus" class="size-4" />
-            添加
-          </Button>
         </h3>
-        <div v-if="etdDayList.length === 0" class="empty-tip">
-          暂无开船星期，请点击添加（与开船日期互斥）
-        </div>
-        <div v-else class="sub-table">
-          <div
-            v-for="(etdDay, index) in etdDayList"
-            :key="index"
-            class="sub-table-row"
-          >
-            <Select
-              v-model:value="etdDay.etdDayOfWeek"
-              placeholder="请选择星期"
-              style="width: 120px"
-              :options="[
-                { label: '周日', value: 0 },
-                { label: '周一', value: 1 },
-                { label: '周二', value: 2 },
-                { label: '周三', value: 3 },
-                { label: '周四', value: 4 },
-                { label: '周五', value: 5 },
-                { label: '周六', value: 6 },
-              ]"
-              @change="handleEtdWeekdayChange"
-            />
-            <TimePicker
-              v-model:value="etdDay.etdDayTime"
-              placeholder="请选择时间点"
-              format="HH:mm"
-              value-format="HH:mm:ss"
-              style="width: 120px"
-            />
-            <Button
-              type="link"
-              danger
-              size="small"
-              @click="removeEtdDay(index)"
+
+        <!-- 日期模式 -->
+        <div v-if="dateEditMode === 'date'">
+          <div v-if="etdList.length === 0" class="empty-tip">
+            暂无日期数据，请点击"添加一组"按钮添加
+          </div>
+          <div v-else class="sub-table">
+            <div
+              v-for="(dateGroup, index) in etdList"
+              :key="index"
+              class="sub-table-row date-group-row"
             >
-              <IconifyIcon icon="mdi:delete-outline" class="size-4" />
-            </Button>
+              <div class="date-group-content">
+                <!-- 开船日期 -->
+                <div class="date-field">
+                  <label class="field-label">
+                    <IconifyIcon icon="mdi:ship-wheel" class="mr-1 size-4" />
+                    开船日期
+                  </label>
+                  <DatePicker
+                    v-model:value="dateGroup.etd"
+                    placeholder="请选择开船日期"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm"
+                    show-time
+                    :time-picker-props="{ format: 'HH:mm' }"
+                    style="width: 100%"
+                  />
+                </div>
+                <!-- 截单时间 -->
+                <div class="date-field">
+                  <label class="field-label">
+                    <IconifyIcon
+                      icon="mdi:file-document-check"
+                      class="mr-1 size-4"
+                    />
+                    截单时间
+                  </label>
+                  <DatePicker
+                    v-model:value="dateGroup.closeDocTime"
+                    placeholder="请选择截单时间"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm"
+                    show-time
+                    :time-picker-props="{ format: 'HH:mm' }"
+                    style="width: 100%"
+                  />
+                </div>
+                <!-- 截关时间 -->
+                <div class="date-field">
+                  <label class="field-label">
+                    <IconifyIcon
+                      icon="mdi:container-lock"
+                      class="mr-1 size-4"
+                    />
+                    截关时间
+                  </label>
+                  <DatePicker
+                    v-model:value="dateGroup.closingTime"
+                    placeholder="请选择截关时间"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm"
+                    show-time
+                    :time-picker-props="{ format: 'HH:mm' }"
+                    style="width: 100%"
+                  />
+                </div>
+              </div>
+              <Button
+                type="link"
+                danger
+                size="small"
+                @click="removeDateGroup(index)"
+                class="delete-btn"
+              >
+                <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 星期模式 -->
+        <div v-if="dateEditMode === 'week'">
+          <div v-if="etdDayList.length === 0" class="empty-tip">
+            暂无星期数据，请点击"添加一组"按钮添加
+          </div>
+          <div v-else class="sub-table">
+            <div
+              v-for="(weekGroup, index) in etdDayList"
+              :key="index"
+              class="sub-table-row week-group-row"
+            >
+              <div class="week-group-content">
+                <!-- 开船星期组 -->
+                <div class="week-pair">
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon icon="mdi:ship-wheel" class="mr-1 size-4" />
+                      开船星期
+                    </label>
+                    <Select
+                      v-model:value="weekGroup.etdDayOfWeek"
+                      placeholder="请选择"
+                      style="width: 100%"
+                      :options="[
+                        { label: '周日', value: 0 },
+                        { label: '周一', value: 1 },
+                        { label: '周二', value: 2 },
+                        { label: '周三', value: 3 },
+                        { label: '周四', value: 4 },
+                        { label: '周五', value: 5 },
+                        { label: '周六', value: 6 },
+                      ]"
+                    />
+                  </div>
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:clock-outline"
+                        class="mr-1 size-4"
+                      />
+                      时间点
+                    </label>
+                    <TimePicker
+                      v-model:value="weekGroup.etdDayTime"
+                      placeholder="请选择"
+                      format="HH:mm"
+                      value-format="HH:mm:ss"
+                      style="width: 100%"
+                    />
+                  </div>
+                </div>
+
+                <!-- 截单星期组 -->
+                <div class="week-pair">
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:file-document-check"
+                        class="mr-1 size-4"
+                      />
+                      截单星期
+                    </label>
+                    <Select
+                      v-model:value="weekGroup.closeDocDayOfWeek"
+                      placeholder="请选择"
+                      style="width: 100%"
+                      :options="[
+                        { label: '周日', value: 0 },
+                        { label: '周一', value: 1 },
+                        { label: '周二', value: 2 },
+                        { label: '周三', value: 3 },
+                        { label: '周四', value: 4 },
+                        { label: '周五', value: 5 },
+                        { label: '周六', value: 6 },
+                      ]"
+                    />
+                  </div>
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:clock-outline"
+                        class="mr-1 size-4"
+                      />
+                      时间点
+                    </label>
+                    <TimePicker
+                      v-model:value="weekGroup.closeDocDayTime"
+                      placeholder="请选择"
+                      format="HH:mm"
+                      value-format="HH:mm:ss"
+                      style="width: 100%"
+                    />
+                  </div>
+                </div>
+
+                <!-- 截关星期组 -->
+                <div class="week-pair">
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:container-lock"
+                        class="mr-1 size-4"
+                      />
+                      截关星期
+                    </label>
+                    <Select
+                      v-model:value="weekGroup.closingDayOfWeek"
+                      placeholder="请选择"
+                      style="width: 100%"
+                      :options="[
+                        { label: '周日', value: 0 },
+                        { label: '周一', value: 1 },
+                        { label: '周二', value: 2 },
+                        { label: '周三', value: 3 },
+                        { label: '周四', value: 4 },
+                        { label: '周五', value: 5 },
+                        { label: '周六', value: 6 },
+                      ]"
+                    />
+                  </div>
+                  <div class="week-field">
+                    <label class="field-label">
+                      <IconifyIcon
+                        icon="mdi:clock-outline"
+                        class="mr-1 size-4"
+                      />
+                      时间点
+                    </label>
+                    <TimePicker
+                      v-model:value="weekGroup.closingDayTime"
+                      placeholder="请选择"
+                      format="HH:mm"
+                      value-format="HH:mm:ss"
+                      style="width: 100%"
+                    />
+                  </div>
+                </div>
+              </div>
+              <Button
+                type="link"
+                danger
+                size="small"
+                @click="removeWeekGroup(index)"
+                class="delete-btn"
+              >
+                <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -1644,214 +1918,265 @@ onMounted(() => {
                   :key="`fee${ctn.ctnCodeId}`"
                   class="relative border border-gray-300 py-2 pl-4 pr-3"
                 >
-                  <!-- 条件模式图标 -->
-                  <div class="absolute left-1 top-1 z-10">
-                    <button
-                      type="button"
-                      class="flex h-5 w-5 items-center justify-center rounded bg-white text-gray-400 shadow-sm transition-all hover:text-blue-600 hover:shadow-md"
-                      @click="showConditionPopup($event, index, ctn.ctnCodeId)"
-                      title="设置条件费用"
-                    >
-                      <IconifyIcon
-                        icon="mdi:filter-outline"
-                        class="h-3.5 w-3.5"
-                      />
-                    </button>
-
-                    <!-- 条件配置弹窗 -->
-                    <div
-                      v-if="
-                        conditionPopupVisible &&
-                        currentConditionCell?.feeIndex === index &&
-                        currentConditionCell?.ctnCodeId === ctn.ctnCodeId
-                      "
-                      class="absolute left-0 top-7 z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white p-3 shadow-xl"
-                      @click.stop
-                    >
-                      <label
-                        class="flex cursor-pointer items-center space-x-2 rounded px-2 py-1.5 transition-colors hover:bg-gray-50"
-                      >
-                        <input
-                          type="checkbox"
-                          :checked="
-                            getConditionalConfig(
-                              String(index),
-                              String(ctn.ctnCodeId),
-                            ).enabled
-                          "
-                          @change="
-                            toggleConditionEnabled(
-                              ($event.target as HTMLInputElement).checked,
-                            )
-                          "
-                          class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span class="text-sm font-medium text-gray-700"
-                          >启用条件模式</span
-                        >
-                      </label>
-                    </div>
-                  </div>
-
-                  <!-- 条件模式内容 -->
+                  <!-- 按票计费模式：只显示第一个箱型列的输入框 -->
                   <div
-                    v-if="
-                      getConditionalConfig(String(index), String(ctn.ctnCodeId))
-                        .enabled
-                    "
-                    class="mt-6 space-y-2"
+                    v-if="surcharge.priceFeeType === 1"
+                    class="relative mt-6"
                   >
-                    <!-- 条件配置行 -->
-                    <div class="flex items-center gap-1.5">
-                      <Select
-                        size="small"
-                        :value="
-                          surcharge.prices[String(ctn.ctnCodeId)]?.conditionType
-                        "
-                        :options="freightConditionItemOptions"
-                        class="flex-1"
-                        @change="
-                          (val) =>
-                            updateSurchargePriceValue(
-                              index,
-                              String(ctn.ctnCodeId),
-                              'conditionType',
-                              String(val),
-                            )
-                        "
-                        placeholder="条件类型"
-                      />
-
-                      <!-- 算符切换按钮 -->
-                      <button
-                        type="button"
-                        class="flex h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white text-sm font-semibold text-blue-600 transition-all hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
-                        @click="toggleOperator(index, String(ctn.ctnCodeId))"
-                        :title="'点击切换算符'"
-                      >
-                        {{
-                          getOperatorSymbol(
-                            surcharge.prices[String(ctn.ctnCodeId)]
-                              ?.operatorType,
-                          )
-                        }}
-                      </button>
-
+                    <!-- 只在第一个箱型列显示价格输入框 -->
+                    <template
+                      v-if="
+                        index === 0 ||
+                        ctn.ctnCodeId === dynamicCtnTypes[0]?.ctnCodeId
+                      "
+                    >
                       <Input
-                        size="small"
-                        :value="surcharge.prices[String(ctn.ctnCodeId)]?.value"
+                        :value="surcharge.prices['order']?.price"
                         @input="
                           updateSurchargePriceValue(
                             index,
-                            String(ctn.ctnCodeId),
-                            'value',
+                            'order',
+                            'price',
                             ($event.target as HTMLInputElement).value,
                           )
                         "
                         type="number"
-                        class="flex-1"
-                        placeholder="阈值"
+                        class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
+                        placeholder="请输入按票价格"
                       />
-
-                      <!-- 条件说明（单位） -->
-                      <span
-                        v-if="
-                          surcharge.prices[String(ctn.ctnCodeId)]?.conditionType
-                        "
-                        class="whitespace-nowrap text-xs text-gray-500"
-                      >
-                        {{
-                          freightConditionItemOptions.find(
-                            (o) =>
-                              o.value ===
-                              surcharge.prices[String(ctn.ctnCodeId)]
-                                ?.conditionType,
-                          )?.description
-                        }}
-                      </span>
-                    </div>
-
-                    <!-- 价格输入区域 -->
-                    <div
-                      class="flex overflow-hidden rounded-lg border border-gray-300 bg-white transition-colors"
-                    >
-                      <!-- 满足条件的价格 (70%) -->
-                      <div class="w-[70%]">
-                        <div
-                          class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-2 py-1 text-center text-xs font-semibold text-blue-700"
-                        >
-                          是
-                        </div>
-                        <div class="px-2 py-1">
-                          <Input
-                            size="small"
-                            :value="
-                              surcharge.prices[String(ctn.ctnCodeId)]?.price
-                            "
-                            @input="
-                              updateSurchargePriceValue(
-                                index,
-                                String(ctn.ctnCodeId),
-                                'price',
-                                ($event.target as HTMLInputElement).value,
-                              )
-                            "
-                            type="number"
-                            class="h-9 w-full rounded-none text-center"
-                            placeholder="0"
-                          />
-                        </div>
+                      <div class="mt-1 text-center text-xs text-gray-500">
+                        按票计费（所有箱型统一价格）
                       </div>
-
-                      <!-- ELSE 分隔线 (30%) -->
+                    </template>
+                    <!-- 其他箱型列显示提示 -->
+                    <template v-else>
                       <div
-                        class="flex w-[30%] flex-col border-l border-gray-300 bg-gray-50"
+                        class="flex h-full items-center justify-center text-gray-400"
                       >
-                        <div
-                          class="border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 px-2 py-1 text-center text-xs font-semibold text-gray-600"
-                        >
-                          否则
-                        </div>
-                        <div class="px-2 py-1">
-                          <Input
-                            size="small"
-                            :value="
-                              surcharge.prices[String(ctn.ctnCodeId)]
-                                ?.otherPrice
-                            "
-                            @input="
-                              updateSurchargePriceValue(
-                                index,
-                                String(ctn.ctnCodeId),
-                                'otherPrice',
-                                ($event.target as HTMLInputElement).value,
-                              )
-                            "
-                            type="number"
-                            class="h-9 w-full rounded-none text-center"
-                            placeholder="0"
-                          />
-                        </div>
+                        <span class="text-sm">-</span>
                       </div>
-                    </div>
+                    </template>
                   </div>
 
-                  <!-- 普通模式（无条件） -->
+                  <!-- 按集装箱计费模式：每个箱型独立输入 -->
                   <div v-else class="relative mt-6">
-                    <Input
-                      :value="surcharge.prices[String(ctn.ctnCodeId)]?.price"
-                      @input="
-                        updateSurchargePriceValue(
-                          index,
+                    <!-- 条件模式图标 -->
+                    <div class="absolute left-1 top-1 z-10">
+                      <button
+                        type="button"
+                        class="flex h-5 w-5 items-center justify-center rounded bg-white text-gray-400 shadow-sm transition-all hover:text-blue-600 hover:shadow-md"
+                        @click="
+                          showConditionPopup($event, index, ctn.ctnCodeId)
+                        "
+                        title="设置条件费用"
+                      >
+                        <IconifyIcon
+                          icon="mdi:filter-outline"
+                          class="h-3.5 w-3.5"
+                        />
+                      </button>
+
+                      <!-- 条件配置弹窗 -->
+                      <div
+                        v-if="
+                          conditionPopupVisible &&
+                          currentConditionCell?.feeIndex === index &&
+                          currentConditionCell?.ctnCodeId === ctn.ctnCodeId
+                        "
+                        class="absolute left-0 top-7 z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white p-3 shadow-xl"
+                        @click.stop
+                      >
+                        <label
+                          class="flex cursor-pointer items-center space-x-2 rounded px-2 py-1.5 transition-colors hover:bg-gray-50"
+                        >
+                          <input
+                            type="checkbox"
+                            :checked="
+                              getConditionalConfig(
+                                String(index),
+                                String(ctn.ctnCodeId),
+                              ).enabled
+                            "
+                            @change="
+                              toggleConditionEnabled(
+                                ($event.target as HTMLInputElement).checked,
+                              )
+                            "
+                            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span class="text-sm font-medium text-gray-700"
+                            >启用条件模式</span
+                          >
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- 条件模式内容 -->
+                    <div
+                      v-if="
+                        getConditionalConfig(
+                          String(index),
                           String(ctn.ctnCodeId),
-                          'price',
-                          ($event.target as HTMLInputElement).value,
-                        )
+                        ).enabled
                       "
-                      type="number"
-                      class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
-                      placeholder="0"
-                    />
+                      class="mt-6 space-y-2"
+                    >
+                      <!-- 条件配置行 -->
+                      <div class="flex items-center gap-1.5">
+                        <Select
+                          size="small"
+                          :value="
+                            surcharge.prices[String(ctn.ctnCodeId)]
+                              ?.conditionType
+                          "
+                          :options="freightConditionItemOptions"
+                          class="flex-1"
+                          @change="
+                            (val) =>
+                              updateSurchargePriceValue(
+                                index,
+                                String(ctn.ctnCodeId),
+                                'conditionType',
+                                String(val),
+                              )
+                          "
+                          placeholder="条件类型"
+                        />
+
+                        <!-- 算符切换按钮 -->
+                        <button
+                          type="button"
+                          class="flex h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white text-sm font-semibold text-blue-600 transition-all hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
+                          @click="toggleOperator(index, String(ctn.ctnCodeId))"
+                          :title="'点击切换算符'"
+                        >
+                          {{
+                            getOperatorSymbol(
+                              surcharge.prices[String(ctn.ctnCodeId)]
+                                ?.operatorType,
+                            )
+                          }}
+                        </button>
+
+                        <Input
+                          size="small"
+                          :value="
+                            surcharge.prices[String(ctn.ctnCodeId)]?.value
+                          "
+                          @input="
+                            updateSurchargePriceValue(
+                              index,
+                              String(ctn.ctnCodeId),
+                              'value',
+                              ($event.target as HTMLInputElement).value,
+                            )
+                          "
+                          type="number"
+                          class="flex-1"
+                          placeholder="阈值"
+                        />
+
+                        <!-- 条件说明（单位） -->
+                        <span
+                          v-if="
+                            surcharge.prices[String(ctn.ctnCodeId)]
+                              ?.conditionType
+                          "
+                          class="whitespace-nowrap text-xs text-gray-500"
+                        >
+                          {{
+                            freightConditionItemOptions.find(
+                              (o) =>
+                                o.value ===
+                                surcharge.prices[String(ctn.ctnCodeId)]
+                                  ?.conditionType,
+                            )?.description
+                          }}
+                        </span>
+                      </div>
+
+                      <!-- 价格输入区域 -->
+                      <div
+                        class="flex overflow-hidden rounded-lg border border-gray-300 bg-white transition-colors"
+                      >
+                        <!-- 满足条件的价格 (70%) -->
+                        <div class="w-[70%]">
+                          <div
+                            class="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-2 py-1 text-center text-xs font-semibold text-blue-700"
+                          >
+                            是
+                          </div>
+                          <div class="px-2 py-1">
+                            <Input
+                              size="small"
+                              :value="
+                                surcharge.prices[String(ctn.ctnCodeId)]?.price
+                              "
+                              @input="
+                                updateSurchargePriceValue(
+                                  index,
+                                  String(ctn.ctnCodeId),
+                                  'price',
+                                  ($event.target as HTMLInputElement).value,
+                                )
+                              "
+                              type="number"
+                              class="h-9 w-full rounded-none text-center"
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+
+                        <!-- ELSE 分隔线 (30%) -->
+                        <div
+                          class="flex w-[30%] flex-col border-l border-gray-300 bg-gray-50"
+                        >
+                          <div
+                            class="border-b border-gray-200 bg-gradient-to-r from-gray-100 to-gray-200 px-2 py-1 text-center text-xs font-semibold text-gray-600"
+                          >
+                            否则
+                          </div>
+                          <div class="px-2 py-1">
+                            <Input
+                              size="small"
+                              :value="
+                                surcharge.prices[String(ctn.ctnCodeId)]
+                                  ?.otherPrice
+                              "
+                              @input="
+                                updateSurchargePriceValue(
+                                  index,
+                                  String(ctn.ctnCodeId),
+                                  'otherPrice',
+                                  ($event.target as HTMLInputElement).value,
+                                )
+                              "
+                              type="number"
+                              class="h-9 w-full rounded-none text-center"
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 普通模式（无条件） -->
+                    <div v-else class="relative mt-6">
+                      <Input
+                        :value="surcharge.prices[String(ctn.ctnCodeId)]?.price"
+                        @input="
+                          updateSurchargePriceValue(
+                            index,
+                            String(ctn.ctnCodeId),
+                            'price',
+                            ($event.target as HTMLInputElement).value,
+                          )
+                        "
+                        type="number"
+                        class="w-full rounded-lg border border-gray-300 py-2 pl-2 pr-2 text-center transition-colors hover:border-blue-400 focus:outline-none"
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
                 </td>
 
@@ -1891,6 +2216,16 @@ onMounted(() => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (max-width: 1200px) {
+  .date-group-content {
+    grid-template-columns: 1fr;
+  }
+
+  .week-group-content {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2021,13 +2356,19 @@ onMounted(() => {
 }
 
 .empty-tip {
-  padding: 16px;
+  padding: 32px 16px;
   font-size: 14px;
-  color: #999;
+  color: #94a3b8;
   text-align: center;
-  background: #fff;
-  border: 1px dashed #d9d9d9;
-  border-radius: 4px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.empty-tip:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-color: #94a3b8;
 }
 
 .form-footer {
@@ -2036,6 +2377,16 @@ onMounted(() => {
   justify-content: flex-end;
   padding-top: 16px;
   border-top: 1px solid #e8e8e8;
+}
+
+/* 模式切换按钮样式增强 */
+.mode-toggle {
+  padding: 10px 20px;
+  color: #fff;
+  cursor: pointer;
+  background-color: #333;
+  border: none;
+  border-radius: 5px;
 }
 
 /* 表格样式 */
@@ -2113,5 +2464,164 @@ input[type='text']:focus {
   font-weight: bold;
   line-height: 1;
   color: #ff4d4f;
+}
+
+/* 日期时间设置模块样式 */
+.date-group-row,
+.week-group-row {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.date-group-row::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  content: '';
+  background: linear-gradient(to bottom, #3b82f6, #60a5fa);
+  border-radius: 8px 0 0 8px;
+}
+
+/* .date-group-row:hover,
+.week-group-row:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgb(59 130 246 / 15%);
+  transform: translateY(-2px);
+} */
+
+.date-group-content {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.week-group-content {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.date-field,
+.week-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date-field .field-label,
+.week-field .field-label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.week-pair {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.week-pair .week-field:first-child {
+  flex: 1;
+}
+
+.week-pair .week-field:last-child {
+  flex: 0 0 100px;
+}
+
+.delete-btn {
+  flex-shrink: 0;
+  margin-top: 24px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.delete-btn:hover {
+  opacity: 1;
+}
+
+/* 模式切换按钮样式增强 */
+.mode-btn-active {
+  font-weight: 600 !important;
+  color: white !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 4px 12px rgb(59 130 246 / 50%) !important;
+  transform: scale(1.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mode-btn-active:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 6px 16px rgb(59 130 246 / 60%) !important;
+  transform: scale(1.1);
+}
+
+.mode-btn-active:active {
+  transform: scale(1.05);
+}
+
+.mode-btn-inactive {
+  color: #9ca3af !important;
+  background-color: #fafafa !important;
+  border-color: #e5e7eb !important;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.mode-btn-inactive:hover {
+  color: #6b7280 !important;
+  background-color: #f3f4f6 !important;
+  border-color: #d1d5db !important;
+  opacity: 0.85;
+}
+
+.section-title .ant-btn {
+  color: #333;
+  background-color: #f0f0f0;
+  border-color: #d9d9d9;
+}
+
+.section-title .ant-btn:hover {
+  background-color: #e0e0e0;
+  border-color: #c1c1c1;
+}
+
+.section-title .ant-btn-primary {
+  box-shadow: 0 2px 4px rgb(59 130 246 / 30%);
+}
+
+.section-title .ant-btn-primary:hover {
+  box-shadow: 0 4px 8px rgb(59 130 246 / 40%);
+  transform: translateY(-1px);
+}
+
+/* 添加一组按钮样式 */
+.section-title .ant-btn-link {
+  font-weight: 500;
+  color: #10b981;
+}
+
+.section-title .ant-btn-link:hover {
+  color: #059669;
+  background: rgb(16 185 129 / 5%);
 }
 </style>

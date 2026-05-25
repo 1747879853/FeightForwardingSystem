@@ -81,6 +81,12 @@ function getCurrencyName(fee: any): string {
 
 // 获取费用详情（箱型和价格）
 function getFeeDetails(fee: any, row: SeFreiPriceOutDto): string[] {
+  // 如果是按票计费，直接显示统一价格
+  if (fee.priceFeeType === 1 && fee.price !== undefined && fee.price !== null) {
+    return [`按票: ${fee.price}`];
+  }
+
+  // 按集装箱计费，显示每个箱型的价格
   if (!fee.seFreiPriceCtnFees || fee.seFreiPriceCtnFees.length === 0) {
     return [];
   }
@@ -824,9 +830,9 @@ onMounted(async () => {
       </template>
 
       <template #toolbar-tools>
-        <div class="flex w-[71vw] justify-between">
+        <div class="flex w-[76vw] justify-between">
           <!-- 航线选择标签页 -->
-          <div class="mb-4 mr-5 w-[47vw] pt-3">
+          <div class="mb-4 mr-5 w-[52vw] pt-3">
             <div class="flex items-center space-x-1 overflow-x-auto">
               <!-- 全部选项 -->
               <div
