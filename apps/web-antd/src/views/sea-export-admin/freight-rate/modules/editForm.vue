@@ -47,6 +47,9 @@ const currencyList = ref<any[]>([]);
 const feeCodeList = ref<any[]>([]);
 const allCtnOptions = ref<Array<{ ctnCodeId: number; ctnName: string }>>([]);
 
+// USD 币别 ID（默认值）
+const defaultCurrencyId = ref<number | undefined>(undefined);
+
 // 当前选中的箱型ID（用于Select组件）
 const selectedCtnId = ref<number | undefined>(undefined);
 
@@ -155,6 +158,9 @@ const isDirectValue = ref<boolean>(true);
 
 // ==================== 加载基础数据 ====================
 
+/**
+ * 加载基础数据
+ */
 async function loadSelectData() {
   try {
     const { getCurrencyPagedList } =
@@ -164,6 +170,15 @@ async function loadSelectData() {
       label: item.code || item.enName,
       value: item.id,
     }));
+
+    // 查找 USD 币别的 ID
+    const usdCurrency = currencyRes.items?.find(
+      (item: any) => item.code?.toUpperCase() === 'USD',
+    );
+    if (usdCurrency) {
+      defaultCurrencyId.value = usdCurrency.id;
+      console.log('USD 币别 ID:', defaultCurrencyId.value);
+    }
 
     const { getFeeCodePagedList } =
       await import('#/api/system/base-data/fee-code-admin');
@@ -574,7 +589,7 @@ const [Modal, modalApi] = useVbenModal({
         isDirect: true,
         validTimeStart: '',
         validTimeEnd: '',
-        currencyId: 0, // 初始化为0，用户必须选择
+        currencyId: defaultCurrencyId.value || 0, // 默认设置为 USD，如果未找到则为 0
         creationTime: '',
         isValid: true,
         seFreiPriceCtns: defaultCtns,
