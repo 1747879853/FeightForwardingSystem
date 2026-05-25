@@ -830,9 +830,9 @@ onMounted(async () => {
       </template>
 
       <template #toolbar-tools>
-        <div class="flex w-[71vw] justify-between">
+        <div class="flex w-[76vw] justify-between">
           <!-- 航线选择标签页 -->
-          <div class="mb-4 mr-5 w-[47vw] pt-3">
+          <div class="mb-4 mr-5 w-[52vw] pt-3">
             <div class="flex items-center space-x-1 overflow-x-auto">
               <!-- 全部选项 -->
               <div
