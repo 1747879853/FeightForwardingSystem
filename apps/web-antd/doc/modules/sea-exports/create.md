@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-17
+last_updated: 2026-05-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,6 +24,7 @@ last_updated: 2026-05-17
 - **AI 识别辅助：** 页面提供“AI识别”按钮，只接受 PDF 文件，调用 `runVisionOcrPdf` 后把识别结果映射回表单字段。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
 - **干系人角色约束：** 销售、商务、操作、客服、单证为固定角色，不允许删除和重复添加；销售与操作必须选择具体人员后才能保存。
+- **服务项目联动：** 选择「委托单位」（`clientId`）或「起运港」（`polId`）后，调用 `GetServiceTypesByPOLAsync`（参数 `polId`、`clientId`），按返回项 `checked=true` 自动勾选对应服务卡片（含代收支 `serviceType=5`）；未选起运港时清空服务项勾选。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
 - **创建后跳转：** 新增成功后优先解析接口返回的记录 ID 并跳转 `/sea-exports/{id}/edit`；若返回值无法解析，则回到 `/sea-exports` 列表。
 
@@ -35,7 +36,7 @@ last_updated: 2026-05-17
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **委托单位** | 委托客户，是运输单必填主体。 | `transportOrder.clientId`；`ClientSelect`（客户属性为委托单位） | **触发/依赖：** 选择委托单位后，自动带出干系人。 | 必填。 |
+| **委托单位** | 委托客户，是运输单必填主体。 | `transportOrder.clientId`；`ClientSelect`（客户属性为委托单位） | **触发/依赖：** 选择后参与服务项目联动查询（`clientId`）；并自动带出干系人。 | 必填。 |
 | **委托编号** | 业务委托号。 | `transportOrder.commissionNum`；按编号生成规则自动生成 |  | 前端禁用，不手工录入。 |
 | **会计期间** | 财务期间。 | `transportOrder.accountDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到月计算；无开船日期则取当前时间（到月）。 | 禁止手动修改。 |
 | **应结日期** | 结算日期。 | `transportOrder.settlementDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到天计算；无开船日期则取当前时间（到天），并结合委托单位账期规则。 | 禁止手动修改。 |
@@ -50,7 +51,7 @@ last_updated: 2026-05-17
 | **装运方式** | 整柜、拼箱分票、拼箱主票。 | `blType`；枚举 `0` 整柜 / `1` 拼箱分票 / `2` 拼箱主票 | **触发/依赖：** 默认整柜。 | - |
 | **订单类型** | 直单或分单。 | `billType`；枚举 `0` 直单 / `1` 分单 | **触发/依赖：** 默认直单。 | - |
 
-| **提单/副本份数** | 正本和副本份数。 | `BillCountsInput` -> `noBillEnum`、`copyNoBillEnum` | **触发/依赖：** 一个组件同时维护两个字段。 | 选项为 One 到 Ten。 | | **签单方式** | 签单业务分类。 | `CodeIssueTypeSelect` -> `codeIssueTypeId`，兼容旧字段 `issueType` | **触发/依赖：** DTO 同时保留新版和旧版字段兼容。 | 需选择有效代码资料。 | | **船名航次** | 船名和内航次。 | `VesselVoyageInput` -> `vessel`、`innerVoyno` | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 | | **服务项目** | 订舱、拖车、报关、仓库、保险等是否启用及对应服务商。 | 服务项卡片、客户选择组件；`serviceTypes` 枚举 `0-4` | **触发/依赖：** 勾选后允许选择服务主体；取消勾选会清空主体值。 | 只提交已启用的服务类型。 | | **相关方** | 发货人、收货人、通知人、第二通知人、目的港代理及文本内容。 | 客户选择组件，行业类别分别为 `b/e/h/s` 等 | **触发/依赖：** 文本内容可作为名称资料补充；支持复制收货人到通知人。 | 需选择有效客户或填写内容，具体以后端校验为准。 | | **订单人员** | 销售、商务、操作、客服、单证等角色用户。 | `UserSelect`、`UserAttribute` 枚举 -> `transportOrder.orderUsers` | **触发/依赖：** 固定角色不可删除且不可重复，新增仅补齐缺失角色，提交前按 `sortId` 排序并清洗无效行。 | 销售必须且仅一人；销售与操作必须选择人员。 | | **港口链路** | 收货地、起运港、中转港 1/2、目的港、交货地。 | `PortSelect` -> `receivePortId/polId/poT1Id/poT2Id/podId/deliverPortId` | **触发/依赖：** 选择港口后自动写入对应备注字段。 | 港口需来自港口基础资料。 | | **船期时间** | 货好、开船、实际开船、到港、截 VGM、截单、截舱单、签单时间。 | 日期组件 -> `goodsCompleteTime/etd/atd/eta/closeVgmTime/closeDocTime/closeManifestTime/signingTime` | **触发/依赖：** 提交时统一转 ISO 字符串。 | 日期组件控制格式；可为空。 | | **货物与箱型箱量** | 品名、唛头、件数、包装、毛重、体积和箱明细。 | `OrderGoodsButton`、`OrderCtnTable`、包装/货物/箱型基础资料 | **触发/依赖：** 提交时移除 `_rowKey` 等前端字段，只保留 API 字段。 | 数量类字段限制最小值和精度；箱明细至少需有有效箱型才有业务意义。 | | **收付款部门** | 委托归属的组织单位。 | `getOrganizationUnitTree` -> `organizationUnits` | **触发/依赖：** 勾选代收支/收付款部门后提交组织数组。 | 需选择组织树中的有效节点。 |
+| **提单/副本份数** | 正本和副本份数。 | `BillCountsInput` -> `noBillEnum`、`copyNoBillEnum` | **触发/依赖：** 一个组件同时维护两个字段。 | 选项为 One 到 Ten。 | | **签单方式** | 签单业务分类。 | `CodeIssueTypeSelect` -> `codeIssueTypeId`，兼容旧字段 `issueType` | **触发/依赖：** DTO 同时保留新版和旧版字段兼容。 | 需选择有效代码资料。 | | **船名航次** | 船名和内航次。 | `VesselVoyageInput` -> `vessel`、`innerVoyno` | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 | | **起运港** | 装货港。 | `polId`；`PortSelect` | **触发/依赖：** 变更时触发 `GetServiceTypesByPOLAsync`；选择港口可联动 `polRemark`。 | 联动查询依赖起运港有值。 | | **服务项目** | 订舱、拖车、报关、仓库、保险、代收支是否启用及对应服务商。 | 服务项卡片；`getServiceTypesByPOL`；提交字段 `serviceTypes`（`0-5`） | **触发/依赖：** `clientId`/`polId` 变化后按接口 `checked` 自动勾选/取消；`checked=true` 才可选手动服务商；取消勾选清空主体。代收支勾选时 `serviceTypes` 含 `5` 且可选组织部门。 | 只提交已勾选对应类型。 | | **相关方** | 发货人、收货人、通知人、第二通知人、目的港代理及文本内容。 | 客户选择组件，行业类别分别为 `b/e/h/s` 等 | **触发/依赖：** 文本内容可作为名称资料补充；支持复制收货人到通知人。 | 需选择有效客户或填写内容，具体以后端校验为准。 | | **订单人员** | 销售、商务、操作、客服、单证等角色用户。 | `UserSelect`、`UserAttribute` 枚举 -> `transportOrder.orderUsers` | **触发/依赖：** 固定角色不可删除且不可重复，新增仅补齐缺失角色，提交前按 `sortId` 排序并清洗无效行。 | 销售必须且仅一人；销售与操作必须选择人员。 | | **港口链路** | 收货地、起运港、中转港 1/2、目的港、交货地。 | `PortSelect` -> `receivePortId/polId/poT1Id/poT2Id/podId/deliverPortId` | **触发/依赖：** 选择港口后自动写入对应备注字段。 | 港口需来自港口基础资料。 | | **船期时间** | 货好、开船、实际开船、到港、截 VGM、截单、截舱单、签单时间。 | 日期组件 -> `goodsCompleteTime/etd/atd/eta/closeVgmTime/closeDocTime/closeManifestTime/signingTime` | **触发/依赖：** 提交时统一转 ISO 字符串。 | 日期组件控制格式；可为空。 | | **货物与箱型箱量** | 品名、唛头、件数、包装、毛重、体积和箱明细。 | `OrderGoodsButton`、`OrderCtnTable`、包装/货物/箱型基础资料 | **触发/依赖：** 提交时移除 `_rowKey` 等前端字段，只保留 API 字段。 | 数量类字段限制最小值和精度；箱明细至少需有有效箱型才有业务意义。 | | **收付款部门** | 委托归属的组织单位。 | `getOrganizationUnitTree` -> `organizationUnits` | **触发/依赖：** 勾选代收支/收付款部门后提交组织数组。 | 需选择组织树中的有效节点。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -61,11 +62,15 @@ last_updated: 2026-05-17
 > **[卡点 3：前端临时字段必须清洗]** 箱型箱量行使用 `_rowKey` 支撑表格渲染，订单人员行带 `userName` 等展示字段；提交时必须经过 `sanitizeOrderCtns`、`sanitizeOrderUsers` 清洗。
 >
 > **[卡点 4：新增成功跳转依赖后端返回 ID]** 前端兼容 `createdId.id`、`createdId.result` 和直接返回值三种形式。若接口不返回可解析 ID，页面只能回列表，无法自动进入编辑工作台。
+>
+> **[卡点 5：服务项目与起运港/委托单位强绑定]** 未选起运港不会请求联动接口，并会清空服务项勾选。`clientId` 建议先选再选起运港，以便排除项生效；接口 `checked` 表示「未排除」而非客户排除 Tab 的「启用」语义。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-25 | `Fix` | 修复委托单位已选仍提示「请选择委托单位」：服务项目联动改为 `onChange`，避免 `onUpdate:modelValue` 覆盖表单 `clientId`。 | `ClientSelect` 经 Vben Form 绑定 `value`；联动勿抢占 `update:modelValue`。 |
+| 2026-05-25 | `Feature` | 委托单位与起运港联动 `GetServiceTypesByPOLAsync`：按 `checked` 自动勾选服务项（含代收支 `5`）；请求合并与 `queryKey` 去重。 | 联动状态独立于多表单实例，通过 `linkedClientId`/`linkedPolId` 与 `queueSyncServiceTypesByPol` 汇总；响应兼容 ABP `result` 数组包装。 |
 | 2026-05-17 | `Fix` | 修复干系人补录场景：新增角色后角色下拉保持可用，仅禁用重复角色选项，支持在缺失角色中手动选择。 | 无 |
 | 2026-05-17 | `Fix` | 海运出口干系人固定角色（销售/商务/操作/客服/单证）改为不可删除、不可重复添加；销售与操作新增必填人员校验。 | 无 |
 | 2026-05-17 | `Fix` | 海运出口表单与相关接口 DTO 新增 `atd`（实际开船）字段，并按“开船日期（etd）→ 实际开船（atd）→ 预抵日期（eta）”顺序展示与提交。 | 无 |

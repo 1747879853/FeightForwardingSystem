@@ -43,6 +43,7 @@ import { runVisionOcrPdf } from '#/api/common';
 import {
   addSeaExport,
   editSeaExport,
+  getServiceTypesByPOL,
   getSeaExportDetail,
 } from '#/api/sea-export/sea-export-admin';
 import {
@@ -246,13 +247,24 @@ const SERVICE_TYPE_VALUES: Record<ServiceItemFieldName, number> = {
   warehouseId: 3,
   insuranceId: 4,
 };
+const COLLECTION_PAYMENT_SERVICE_TYPE = 5;
+const SERVICE_TYPE_TO_FIELD = new Map<number, ServiceItemFieldName>(
+  SERVICE_ITEM_FIELD_NAMES.map((field) => [SERVICE_TYPE_VALUES[field], field]),
+);
 type ServiceItemCheckFieldName =
   (typeof SERVICE_ITEM_CHECK_FIELD_NAMES)[ServiceItemFieldName];
-const getServiceTypesFromEnabledValues = (values: Record<string, any>) => {
-  return SERVICE_ITEM_FIELD_NAMES.filter((field) => {
+const getServiceTypesFromEnabledValues = (
+  values: Record<string, any>,
+  withCollectionPayment = false,
+) => {
+  const types = SERVICE_ITEM_FIELD_NAMES.filter((field) => {
     const checkFieldName = getServiceItemCheckFieldName(field);
     return !!values[checkFieldName];
   }).map((field) => SERVICE_TYPE_VALUES[field]);
+  if (withCollectionPayment) {
+    types.push(COLLECTION_PAYMENT_SERVICE_TYPE);
+  }
+  return types;
 };
 const extractServiceTypesFromDetail = (
   detail: SeaExportAdminApi.SeaExportDto,
@@ -443,6 +455,168 @@ const getServiceItemFormValues = () => {
 };
 const hasServiceItemValue = (value: any) =>
   value !== undefined && value !== null && value !== '';
+const toOptionalQueryValue = (value: unknown) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  return value;
+};
+let serviceTypeLinkageRequestId = 0;
+const linkedClientId = ref<unknown>(undefined);
+const linkedPolId = ref<unknown>(undefined);
+let serviceTypeSyncTimer: ReturnType<typeof setTimeout> | undefined;
+let latestServiceTypeQueryKey = '';
+const applyServiceTypeChecksFromPol = (
+  serviceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+) => {
+  const normalizedServiceTypes = Array.isArray(serviceTypes)
+    ? serviceTypes
+    : [];
+  const checkedServiceFields = new Set<ServiceItemFieldName>();
+  let collectionPaymentChecked = false;
+  normalizedServiceTypes.forEach((item) => {
+    if (!item?.checked) return;
+    if (Number(item.serviceType) === COLLECTION_PAYMENT_SERVICE_TYPE) {
+      collectionPaymentChecked = true;
+      return;
+    }
+    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(item.serviceType));
+    if (mappedField) {
+      checkedServiceFields.add(mappedField);
+    }
+  });
+
+  const nextServiceItemValues = { ...serviceItemValues.value };
+  const nextServiceItemSelectedItems = { ...serviceItemSelectedItems.value };
+  const nextServiceEnabledValues: Partial<
+    Record<ServiceItemCheckFieldName, boolean>
+  > = {};
+
+  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
+    const checkFieldName = getServiceItemCheckFieldName(field);
+    const checked = checkedServiceFields.has(field);
+    nextServiceEnabledValues[checkFieldName] = checked;
+    if (!checked) {
+      nextServiceItemValues[field] = undefined;
+      nextServiceItemSelectedItems[field] = [];
+    }
+  });
+
+  serviceItemValues.value = nextServiceItemValues;
+  serviceItemSelectedItems.value = nextServiceItemSelectedItems;
+  serviceItemEnabledValues.value = nextServiceEnabledValues;
+  collectionPaymentEnabled.value = collectionPaymentChecked;
+  if (!collectionPaymentChecked) {
+    collectionPaymentDeptId.value = undefined;
+  }
+};
+const extractServiceTypesByPolResult = (
+  payload: unknown,
+): null | SeaExportAdminApi.ServiceTypeByPolDto[] => {
+  if (payload == null) return null;
+  if (Array.isArray(payload)) {
+    return payload as SeaExportAdminApi.ServiceTypeByPolDto[];
+  }
+  const wrappedPayload = payload as { result?: unknown };
+  if (Array.isArray(wrappedPayload?.result)) {
+    return wrappedPayload.result as SeaExportAdminApi.ServiceTypeByPolDto[];
+  }
+  return null;
+};
+const syncServiceTypesByPol = async (
+  args: {
+    clientId?: unknown;
+    polId?: unknown;
+    force?: boolean;
+  } = {},
+) => {
+  const requestId = ++serviceTypeLinkageRequestId;
+  let polId = toOptionalQueryValue(args.polId ?? linkedPolId.value);
+  let clientId = toOptionalQueryValue(args.clientId ?? linkedClientId.value);
+
+  if (polId === undefined) {
+    const portValues = await portFormApi.getValues();
+    if (requestId !== serviceTypeLinkageRequestId) return;
+    polId = toOptionalQueryValue(portValues.polId);
+  }
+  if (clientId === undefined) {
+    const basicValues = await basicInfoFormApi.getValues();
+    if (requestId !== serviceTypeLinkageRequestId) return;
+    clientId = toOptionalQueryValue(basicValues.clientId);
+  }
+  linkedPolId.value = polId;
+  linkedClientId.value = clientId;
+
+  if (polId === undefined) {
+    latestServiceTypeQueryKey = '';
+    if (requestId !== serviceTypeLinkageRequestId) return;
+    applyServiceTypeChecksFromPol(null);
+    return;
+  }
+  const queryKey = `${String(polId)}::${clientId == null ? '' : String(clientId)}`;
+  if (!args.force && queryKey === latestServiceTypeQueryKey) {
+    return;
+  }
+  latestServiceTypeQueryKey = queryKey;
+  try {
+    const response = await getServiceTypesByPOL({
+      polId: polId as number | string,
+      clientId: clientId as number | string | undefined,
+    });
+    if (requestId !== serviceTypeLinkageRequestId) return;
+    applyServiceTypeChecksFromPol(extractServiceTypesByPolResult(response));
+  } catch {
+    if (requestId !== serviceTypeLinkageRequestId) return;
+    message.warning('根据起运港查询服务项目失败');
+  }
+};
+const queueSyncServiceTypesByPol = (args: {
+  clientId?: unknown;
+  polId?: unknown;
+}) => {
+  if (Object.prototype.hasOwnProperty.call(args, 'clientId')) {
+    linkedClientId.value = toOptionalQueryValue(args.clientId);
+  }
+  if (Object.prototype.hasOwnProperty.call(args, 'polId')) {
+    linkedPolId.value = toOptionalQueryValue(args.polId);
+  }
+  if (serviceTypeSyncTimer) {
+    clearTimeout(serviceTypeSyncTimer);
+  }
+  serviceTypeSyncTimer = setTimeout(() => {
+    serviceTypeSyncTimer = undefined;
+    void syncServiceTypesByPol({
+      clientId: linkedClientId.value,
+      polId: linkedPolId.value,
+    });
+  }, 0);
+};
+const bindServiceTypeLinkageEvents = () => {
+  const handleClientIdChanged = (value: unknown) => {
+    queueSyncServiceTypesByPol({ clientId: value });
+  };
+  const handlePolIdChanged = (value: unknown) => {
+    queueSyncServiceTypesByPol({ polId: value });
+  };
+  basicInfoFormApi.updateSchema([
+    {
+      fieldName: 'clientId',
+      componentProps: {
+        onChange: (value: unknown) => {
+          handleClientIdChanged(value);
+        },
+      },
+    },
+  ]);
+  portFormApi.updateSchema([
+    {
+      fieldName: 'polId',
+      componentProps: {
+        onChange: (value: unknown) => {
+          handlePolIdChanged(value);
+        },
+      },
+    },
+  ]);
+};
 const flattenOrganizationUnitOptions = (
   nodes: SystemOrganizationUnitApi.OrganizationUnitTreeDto[],
   parentLabel = '',
@@ -514,6 +688,7 @@ const [PortForm, portFormApi] = useVbenForm({
   wrapperClass: 'port-flow-wrap grid-cols-5 gap-x-8',
 });
 portFormApiRef.current = portFormApi;
+bindServiceTypeLinkageEvents();
 
 const cargoSchema = useCargoFormSchema();
 const cargoInlineFieldNames = new Set(['cargoId', 'orderCodeGoodss']);
@@ -1859,6 +2034,11 @@ const loadEditData = async () => {
         selectedServiceTypes.has(SERVICE_TYPE_VALUES.insuranceId) ||
         hasServiceItemValue(formValues.insuranceId),
     };
+    await syncServiceTypesByPol({
+      polId: formValues.polId,
+      clientId: to?.clientId,
+      force: true,
+    });
     const selectedOrganizationId = detail.organizationUnits?.[0]?.id;
     collectionPaymentDeptId.value =
       typeof selectedOrganizationId === 'number'
@@ -1915,7 +2095,10 @@ const buildDto = (values: Record<string, any>) => {
     deliverPortRemark: values.deliverPortRemark,
     sortId: values.sortId,
     remark: values.remark,
-    serviceTypes: getServiceTypesFromEnabledValues(values),
+    serviceTypes: getServiceTypesFromEnabledValues(
+      values,
+      collectionPaymentEnabled.value,
+    ),
   };
 
   const transportOrderFields: Record<string, any> = {
@@ -2150,6 +2333,9 @@ onMounted(() => {
   applyTransitPortTabSchema();
   applyNotifierPartyTabSchema();
   loadEditData();
+  if (!isEdit.value) {
+    void syncServiceTypesByPol();
+  }
   nextTick(() => {
     updateActiveSectionByScroll();
   });
@@ -2160,8 +2346,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', updateActiveSectionByScroll);
+  if (serviceTypeSyncTimer) {
+    clearTimeout(serviceTypeSyncTimer);
+    serviceTypeSyncTimer = undefined;
+  }
 });
-
 defineExpose({
   scrollToSection,
 });
