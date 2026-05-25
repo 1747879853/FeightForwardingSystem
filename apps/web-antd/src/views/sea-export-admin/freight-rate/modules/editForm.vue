@@ -1385,14 +1385,24 @@ onMounted(() => {
               :type="dateEditMode === 'date' ? 'primary' : 'default'"
               size="small"
               @click="switchToDateMode"
+              :class="{
+                'mode-btn-active': dateEditMode === 'date',
+                'mode-btn-inactive': dateEditMode !== 'date',
+              }"
             >
+              <IconifyIcon icon="mdi:calendar-range" class="mr-1 size-4" />
               日期模式
             </Button>
             <Button
               :type="dateEditMode === 'week' ? 'primary' : 'default'"
               size="small"
               @click="switchToWeekMode"
+              :class="{
+                'mode-btn-active': dateEditMode === 'week',
+                'mode-btn-inactive': dateEditMode !== 'week',
+              }"
             >
+              <IconifyIcon icon="mdi:calendar-weekend" class="mr-1 size-4" />
               星期模式
             </Button>
             <!-- 添加按钮 -->
@@ -1424,8 +1434,10 @@ onMounted(() => {
                   <DatePicker
                     v-model:value="dateGroup.etd"
                     placeholder="请选择开船日期"
-                    format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm"
+                    show-time
+                    :time-picker-props="{ format: 'HH:mm' }"
                     style="width: 100%"
                   />
                 </div>
@@ -1441,8 +1453,10 @@ onMounted(() => {
                   <DatePicker
                     v-model:value="dateGroup.closeDocTime"
                     placeholder="请选择截单时间"
-                    format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm"
+                    show-time
+                    :time-picker-props="{ format: 'HH:mm' }"
                     style="width: 100%"
                   />
                 </div>
@@ -1458,8 +1472,10 @@ onMounted(() => {
                   <DatePicker
                     v-model:value="dateGroup.closingTime"
                     placeholder="请选择截关时间"
-                    format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm"
+                    show-time
+                    :time-picker-props="{ format: 'HH:mm' }"
                     style="width: 100%"
                   />
                 </div>
@@ -2528,6 +2544,41 @@ input[type='text']:focus {
 }
 
 /* 模式切换按钮样式增强 */
+.mode-btn-active {
+  font-weight: 600 !important;
+  color: white !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 4px 12px rgb(59 130 246 / 50%) !important;
+  transform: scale(1.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mode-btn-active:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 6px 16px rgb(59 130 246 / 60%) !important;
+  transform: scale(1.1);
+}
+
+.mode-btn-active:active {
+  transform: scale(1.05);
+}
+
+.mode-btn-inactive {
+  color: #9ca3af !important;
+  background-color: #fafafa !important;
+  border-color: #e5e7eb !important;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.mode-btn-inactive:hover {
+  color: #6b7280 !important;
+  background-color: #f3f4f6 !important;
+  border-color: #d1d5db !important;
+  opacity: 0.85;
+}
+
 .section-title .ant-btn {
   color: #333;
   background-color: #f0f0f0;
