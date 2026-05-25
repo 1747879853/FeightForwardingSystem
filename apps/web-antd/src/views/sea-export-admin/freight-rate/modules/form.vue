@@ -1782,8 +1782,8 @@ onMounted(async () => {
                     class="w-full"
                     placeholder="计费方式"
                     :options="[
-                      { label: '按集装箱', value: PriceFeeType.Ctn },
-                      { label: '按票', value: PriceFeeType.Order },
+                      { label: '按集装箱', value: 0 },
+                      { label: '按票', value: 1 },
                     ]"
                     @change="
                       (value: any) => handlePriceFeeTypeChange(index, value)
