@@ -2,7 +2,7 @@
 title: 全局字体配置
 module: 系统管理
 author: AI助手
-last_updated: 2026-05-20
+last_updated: 2026-05-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -13,7 +13,7 @@ last_updated: 2026-05-20
 
 - **全局字体统一：** 通过 `src/global-font.css` 统一根节点字体，覆盖业务页面常规文本。
 - **组件字体统一：** 通过 `ConfigProvider` 主题 token 注入 `fontFamily`，保证 AntD 组件使用同一字体栈。
-- **本地字体加载：** 通过 `@font-face` 注册 `PingFang SC`，默认从 `src/assets/fonts/PingFangSC-Regular.woff2` 加载。
+- **本地字体加载：** 通过 `@font-face` 注册 `Alibaba PuHuiTi`，默认从 `src/assets/fonts/Alibaba_PuHuiTi_2.0_55_Regular_55_Regular.ttf` 加载。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -35,6 +35,7 @@ last_updated: 2026-05-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-24 | `Feature` | 全局字体由 PingFang SC 切换为阿里巴巴普惠体 2.0（`Alibaba PuHuiTi`），同步 `@font-face`、CSS 变量与 AntD 主题。 | 无 |
 | 2026-05-20 | `Fix` | 将字体别名由 `PingFangSCWeb` 统一改为 `PingFang SC`，并同步全局变量与 AntD 主题。 | 无 |
 | 2026-05-20 | `Fix` | 新增 `:root --font-family` 覆盖，修复登录页未跟随全局字体的问题。 | 无 |
 | 2026-05-20 | `Feature` | 新增 `@font-face` 并将字体文件路径固定为 `src/assets/fonts/PingFangSC-Regular.woff2`。 | 无 |

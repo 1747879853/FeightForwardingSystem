@@ -1,19 +1,65 @@
 @font-face {
-  font-family: 'PingFang SC';
+  font-family: 'Alibaba PuHuiTi';
+  font-style: normal;
+  font-weight: 100;
+  src: url('./assets/fonts/Alibaba_PuHuiTi_2.0_35_Thin_35_Thin.ttf')
+    format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Alibaba PuHuiTi';
+  font-style: normal;
+  font-weight: 300;
+  src: url('./assets/fonts/Alibaba_PuHuiTi_2.0_45_Light_45_Light.ttf')
+    format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Alibaba PuHuiTi';
   font-style: normal;
   font-weight: 400;
-  src: url('./assets/fonts/PingFangSC-Regular.woff2') format('woff2');
+  src: url('./assets/fonts/Alibaba_PuHuiTi_2.0_55_Regular_55_Regular.ttf')
+    format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Alibaba PuHuiTi';
+  font-style: normal;
+  font-weight: 500;
+  src: url('./assets/fonts/Alibaba_PuHuiTi_2.0_65_Medium_65_Medium.ttf')
+    format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Alibaba PuHuiTi';
+  font-style: normal;
+  font-weight: 600;
+  src: url('./assets/fonts/Alibaba_PuHuiTi_2.0_75_SemiBold_75_SemiBold.ttf')
+    format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Alibaba PuHuiTi';
+  font-style: normal;
+  font-weight: 700;
+  src: url('./assets/fonts/Alibaba_PuHuiTi_2.0_55_Regular_85_Bold.ttf')
+    format('truetype');
   font-display: swap;
 }
 
 :root {
   --font-family:
-    'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', arial, sans-serif;
+    'Alibaba PuHuiTi', 'Microsoft YaHei', 'Helvetica Neue', arial, sans-serif;
 }
 
 :root,
 body,
 #app {
   font-family:
-    'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+    'Alibaba PuHuiTi', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
 }

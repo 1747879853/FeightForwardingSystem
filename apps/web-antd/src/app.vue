@@ -14,7 +14,7 @@ defineOptions({ name: 'App' });
 const { isDark } = usePreferences();
 const { tokens } = useAntdDesignTokens();
 const globalFontFamily =
-  '"PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif';
+  '"Alibaba PuHuiTi", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif';
 
 const tokenTheme = computed(() => {
   const algorithm = isDark.value
