@@ -1,3 +1,7 @@
+import type { Dayjs } from 'dayjs';
+
+import type { SeServiceTaskAdminApi } from '#/api/sea-export/se-service-task-admin';
+
 export interface ServiceTab {
   key: string;
   label: string;
@@ -16,10 +20,11 @@ export interface ProcessingTab {
 }
 
 export interface FilterModel {
-  etd: string;
-  customer: string;
-  shippingCompany: string;
-  blNo: string;
+  etdRange: [string, string] | [Dayjs, Dayjs] | null;
+  clientId?: string;
+  carrierId?: number;
+  mblNum: string;
+  podId?: number;
 }
 
 export interface EmergencyTask {
@@ -41,12 +46,17 @@ export interface StageStep {
 
 export interface BusinessRow {
   id: string;
+  seaExportId: string;
   bookingNo: string;
   vesselVoyage: string;
   route: string;
   containerInfo: string;
   etd: string;
   status: 'pending' | 'urgent' | 'supplement';
+  assigneeUserId?: number | null;
+  assigneeUserName?: string;
+  taskUsersText: string;
+  serviceTaskStatus: number;
 }
 
 export interface ExceptionSummary {
@@ -65,14 +75,11 @@ export interface ExceptionSummary {
 
 export const serviceTabs: ServiceTab[] = [
   { key: 'sea-export', label: '海运出口服务' },
-  { key: 'other', label: '其他业务' },
+  { key: 'ar-ap-review', label: '应收应付审核' },
+  { key: 'payment-review', label: '付费申请审核' },
 ];
 
-export const portTabs: PortTab[] = [
-  { key: 'shanghai', label: '上海港', count: 12 },
-  { key: 'ningbo', label: '宁波港', count: 3 },
-  { key: 'shenzhen', label: '深圳港', count: 0 },
-];
+export const portTabs: PortTab[] = [];
 
 export const processingTabs: ProcessingTab[] = [
   { key: 'processing', label: '处理中', icon: 'processing' },
@@ -80,10 +87,11 @@ export const processingTabs: ProcessingTab[] = [
 ];
 
 export const filterModelDefaults: FilterModel = {
-  blNo: '',
-  customer: '',
-  etd: '',
-  shippingCompany: '',
+  carrierId: undefined,
+  clientId: undefined,
+  etdRange: null,
+  mblNum: '',
+  podId: undefined,
 };
 
 export const emergencyTasks: EmergencyTask[] = [
@@ -110,61 +118,38 @@ export const emergencyTasks: EmergencyTask[] = [
   },
 ];
 
-export const stageSteps: StageStep[] = [
-  { count: 15, key: 'booking', label: '订舱' },
-  { active: true, count: 8, key: 'release', label: '放舱' },
-  { count: 22, key: 'dispatch', label: '派车' },
-  { count: 5, key: 'close', label: '结单' },
-  { count: 3, key: 'manifest', label: '舱单' },
-];
+export const stageSteps: StageStep[] = [];
 
-export const businessRows: BusinessRow[] = [
-  {
-    bookingNo: 'SHEXP20231001',
-    containerInfo: '2*40HQ',
-    etd: '2023-10-25',
-    id: 'row-1',
-    route: 'CNSHA / USLAX',
-    status: 'pending',
-    vesselVoyage: 'COSCO PEGASUS / 012E',
-  },
-  {
-    bookingNo: 'SHEXP20231002',
-    containerInfo: '1*20GP',
-    etd: '2023-10-26',
-    id: 'row-2',
-    route: 'CNSHA / DEHAM',
-    status: 'pending',
-    vesselVoyage: 'MAERSK ALABAMA / 902N',
-  },
-  {
-    bookingNo: 'SHEXP20231003',
-    containerInfo: '5*40HQ',
-    etd: '2023-10-27',
-    id: 'row-3',
-    route: 'CNSHA / SGSIN',
-    status: 'supplement',
-    vesselVoyage: 'MSC OSCAR / 881W',
-  },
-  {
-    bookingNo: 'SHEXP20231004',
-    containerInfo: '3*40HQ',
-    etd: '2023-10-28',
-    id: 'row-4',
-    route: 'CNSHA / NLRTM',
-    status: 'pending',
-    vesselVoyage: 'ONE MINATO / 009E',
-  },
-  {
-    bookingNo: 'SHEXP20231005',
-    containerInfo: '2*20GP',
-    etd: '2023-10-29',
-    id: 'row-5',
-    route: 'CNSHA / FRLEH',
-    status: 'urgent',
-    vesselVoyage: 'HMM ROTTERDAM / 001S',
-  },
-];
+export const businessRows: BusinessRow[] = [];
+
+export const SERVICE_TYPE_TEXT_MAP: Record<number, string> = {
+  0: '订舱',
+  1: '拖车',
+  2: '报关',
+  3: '仓库',
+  4: '保险',
+  5: '代收支',
+};
+
+export function serviceTypeLabel(serviceType?: number | null): string {
+  if (serviceType == null) {
+    return '指派任务';
+  }
+  return SERVICE_TYPE_TEXT_MAP[serviceType] ?? `服务项${serviceType}`;
+}
+
+export function toPortTab(
+  group: SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto,
+): PortTab {
+  return {
+    count: group.taskCount ?? 0,
+    key: String(group.polId ?? group.seServiceConfigId),
+    label:
+      group.pol?.cnName ||
+      group.pol?.portName ||
+      `POL:${String(group.polId ?? '-')}`,
+  };
+}
 
 export const exceptionSummary: ExceptionSummary = {
   actionText: '一键通知客户经理',

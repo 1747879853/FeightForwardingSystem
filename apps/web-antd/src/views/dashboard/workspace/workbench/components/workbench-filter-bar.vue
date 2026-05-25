@@ -7,6 +7,12 @@ export default {
 <script lang="ts" setup>
 import type { FilterModel } from '../../workbench-data';
 
+import { DatePicker, Input } from 'ant-design-vue';
+
+import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
+import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
+import PortSelect from '#/adapter/component/biz-select/port-select.vue';
+
 interface Props {
   modelValue: FilterModel;
 }
@@ -18,13 +24,32 @@ const emit = defineEmits<{
   'update:modelValue': [FilterModel];
 }>();
 
-function patchField(field: keyof FilterModel, value: string) {
+function patchField<K extends keyof FilterModel>(
+  field: K,
+  value: FilterModel[K],
+) {
   emit('update:modelValue', { ...props.modelValue, [field]: value });
 }
 
 function onInput(field: keyof FilterModel, event: Event) {
   const target = event.target as HTMLInputElement | null;
   patchField(field, target?.value ?? '');
+}
+
+function onClientChange(value: unknown) {
+  patchField('clientId', value as string | undefined);
+}
+
+function onCarrierChange(value: unknown) {
+  patchField('carrierId', value as number | undefined);
+}
+
+function onPodChange(value: unknown) {
+  patchField('podId', value as number | undefined);
+}
+
+function onEtdChange(value: [string, string] | [any, any] | null) {
+  patchField('etdRange', value as FilterModel['etdRange']);
 }
 </script>
 
@@ -33,41 +58,50 @@ function onInput(field: keyof FilterModel, event: Event) {
     <div class="filter-grid">
       <label class="field">
         <span class="field__label">ETD:</span>
-        <input
+        <DatePicker.RangePicker
           class="field__input"
-          :value="modelValue.etd"
-          type="text"
-          @input="onInput('etd', $event)"
+          :value="modelValue.etdRange ?? undefined"
+          @update:value="onEtdChange($event ?? null)"
         />
       </label>
       <label class="field">
-        <span class="field__label">客户:</span>
-        <input
+        <span class="field__label">客户名称:</span>
+        <ClientSelect
           class="field__input"
-          :value="modelValue.customer"
-          placeholder="输入关键字..."
-          type="text"
-          @input="onInput('customer', $event)"
+          :model-value="modelValue.clientId"
+          :selected-items="[]"
+          placeholder="请选择客户"
+          @update:model-value="onClientChange"
         />
       </label>
       <label class="field">
         <span class="field__label">船公司:</span>
-        <input
+        <CarrierSelect
           class="field__input"
-          :value="modelValue.shippingCompany"
-          placeholder="MSK/MSC/COSCO..."
-          type="text"
-          @input="onInput('shippingCompany', $event)"
+          :model-value="modelValue.carrierId"
+          :selected-items="[]"
+          placeholder="请选择船公司"
+          @update:model-value="onCarrierChange"
         />
       </label>
       <label class="field">
-        <span class="field__label">提单号:</span>
-        <input
+        <span class="field__label">MBL:</span>
+        <Input
           class="field__input"
-          :value="modelValue.blNo"
-          placeholder="HBL/MBL No."
-          type="text"
-          @input="onInput('blNo', $event)"
+          :value="modelValue.mblNum"
+          placeholder="输入主提单号"
+          allow-clear
+          @input="onInput('mblNum', $event)"
+        />
+      </label>
+      <label class="field">
+        <span class="field__label">POD:</span>
+        <PortSelect
+          class="field__input"
+          :model-value="modelValue.podId"
+          :selected-items="[]"
+          placeholder="请选择目的港"
+          @update:model-value="onPodChange"
         />
       </label>
     </div>
@@ -99,7 +133,7 @@ function onInput(field: keyof FilterModel, event: Event) {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  grid-template-columns: repeat(5, minmax(180px, 1fr));
   gap: 12px;
 }
 
@@ -118,23 +152,6 @@ function onInput(field: keyof FilterModel, event: Event) {
 
 .field__input {
   width: 100%;
-  height: 35px;
-  padding: 0 11px;
-  font-size: 14px;
-  color: #181b20;
-  outline: none;
-  background: #fff;
-  border: 1px solid #dee1e6;
-  border-radius: 6px;
-}
-
-.field__input::placeholder {
-  color: #555d6d;
-}
-
-.field__input:focus {
-  border-color: #258cf4;
-  box-shadow: 0 0 0 1px rgb(37 140 244 / 25%);
 }
 
 .filter-actions {
@@ -164,5 +181,17 @@ function onInput(field: keyof FilterModel, event: Event) {
   color: #fff;
   background: #258cf4;
   box-shadow: 0 2px 4px rgb(37 140 244 / 20%);
+}
+
+.filter-panel :deep(.ant-picker),
+.filter-panel :deep(.ant-input),
+.filter-panel :deep(.ant-select-selector) {
+  height: 35px !important;
+  border-radius: 6px !important;
+}
+
+.filter-panel :deep(.ant-picker-input > input),
+.filter-panel :deep(.ant-input) {
+  font-size: 14px;
 }
 </style>

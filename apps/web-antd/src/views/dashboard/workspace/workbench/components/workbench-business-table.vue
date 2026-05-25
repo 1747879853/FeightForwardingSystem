@@ -8,10 +8,12 @@ export default {
 import { computed, ref, watch } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
+import { Spin } from 'ant-design-vue';
 
 import type { BusinessRow, StageStep } from '../../workbench-data';
 
 interface Props {
+  loading?: boolean;
   rows: BusinessRow[];
   selectedRowKeys: string[];
   stageSteps: StageStep[];
@@ -21,6 +23,9 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   'update:selectedRowKeys': [string[]];
   'update:activeStageKey': [string];
+  transfer: [string[]];
+  complete: [string[]];
+  refresh: [];
 }>();
 
 function resolveInitialStageKey(steps: StageStep[]) {
@@ -64,6 +69,10 @@ const allSelected = computed(
     props.rows.length > 0 && props.selectedRowKeys.length === props.rows.length,
 );
 
+const selectedRows = computed(() =>
+  props.rows.filter((item) => props.selectedRowKeys.includes(item.id)),
+);
+
 function toggleAll(checked: boolean) {
   emit(
     'update:selectedRowKeys',
@@ -78,14 +87,6 @@ function toggleOne(id: string, checked: boolean) {
   emit('update:selectedRowKeys', next);
 }
 
-function statusText(status: BusinessRow['status']) {
-  return status === 'urgent'
-    ? '紧急待审'
-    : status === 'supplement'
-      ? '补充资料'
-      : '待审';
-}
-
 function onToggleAll(event: Event) {
   const target = event.target as HTMLInputElement | null;
   toggleAll(Boolean(target?.checked));
@@ -94,6 +95,26 @@ function onToggleAll(event: Event) {
 function onToggleOne(id: string, event: Event) {
   const target = event.target as HTMLInputElement | null;
   toggleOne(id, Boolean(target?.checked));
+}
+
+function handleBatchTransfer() {
+  if (!selectedRows.value.length) return;
+  emit(
+    'transfer',
+    selectedRows.value
+      .filter((item) => item.serviceTaskStatus === 0)
+      .map((item) => item.id),
+  );
+}
+
+function handleBatchComplete() {
+  if (!selectedRows.value.length) return;
+  emit(
+    'complete',
+    selectedRows.value
+      .filter((item) => item.serviceTaskStatus === 0)
+      .map((item) => item.id),
+  );
 }
 </script>
 
@@ -107,7 +128,11 @@ function onToggleOne(id: string, event: Event) {
         </div>
         <span class="table-card__divider" aria-hidden="true" />
         <div class="stage-steps">
-          <template v-for="(step, index) in stageStepsView" :key="step.key">
+          <span
+            v-for="(step, index) in stageStepsView"
+            :key="step.key"
+            class="stage-steps__item"
+          >
             <button
               type="button"
               :class="['stage-step', { 'is-active': step.active }]"
@@ -123,63 +148,98 @@ function onToggleOne(id: string, event: Event) {
               icon="formkit:right"
               aria-hidden="true"
             />
-          </template>
+          </span>
         </div>
       </div>
       <div class="table-card__actions">
-        <button class="btn btn-light" type="button">导出</button>
-        <button class="btn btn-primary" type="button">批量放舱处理</button>
+        <button class="btn btn-light" type="button" @click="emit('refresh')">
+          刷新
+        </button>
+        <button
+          class="btn btn-light"
+          type="button"
+          :disabled="!selectedRows.length"
+          @click="handleBatchTransfer"
+        >
+          批量转交
+        </button>
+        <button
+          class="btn btn-primary"
+          type="button"
+          :disabled="!selectedRows.length"
+          @click="handleBatchComplete"
+        >
+          批量完成
+        </button>
       </div>
     </header>
 
-    <div class="table-wrap">
-      <table class="business-table">
-        <thead>
-          <tr>
-            <th class="checkbox-col">
-              <input
-                :checked="allSelected"
-                type="checkbox"
-                @change="onToggleAll"
-              />
-            </th>
-            <th>委托单号</th>
-            <th>船名/航次</th>
-            <th>起运/目的港</th>
-            <th>箱量/箱型</th>
-            <th>ETD</th>
-            <th>状态</th>
-            <th class="action-col">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in rows" :key="row.id">
-            <td class="checkbox-col">
-              <input
-                :checked="selectedRowKeys.includes(row.id)"
-                type="checkbox"
-                @change="onToggleOne(row.id, $event)"
-              />
-            </td>
-            <td>
-              <a class="booking-link" href="#">{{ row.bookingNo }}</a>
-            </td>
-            <td>{{ row.vesselVoyage }}</td>
-            <td>{{ row.route }}</td>
-            <td>{{ row.containerInfo }}</td>
-            <td>{{ row.etd }}</td>
-            <td>
-              <span :class="['status-tag', `is-${row.status}`]">
-                {{ statusText(row.status) }}
-              </span>
-            </td>
-            <td class="action-col">
-              <button class="detail-btn" type="button">详情</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <Spin :spinning="Boolean(loading)">
+      <div class="table-wrap">
+        <table class="business-table">
+          <thead>
+            <tr>
+              <th class="checkbox-col">
+                <input
+                  :checked="allSelected"
+                  type="checkbox"
+                  @change="onToggleAll"
+                />
+              </th>
+              <th>委托单号</th>
+              <th>船名/航次</th>
+              <th>起运/目的港</th>
+              <th>箱量/箱型</th>
+              <th>ETD</th>
+              <th>处理人</th>
+              <th>被转交人</th>
+              <th class="action-col">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="!rows.length">
+              <td class="table-empty" colspan="9">暂无任务</td>
+            </tr>
+            <tr v-for="row in rows" :key="row.id">
+              <td class="checkbox-col">
+                <input
+                  :checked="selectedRowKeys.includes(row.id)"
+                  type="checkbox"
+                  @change="onToggleOne(row.id, $event)"
+                />
+              </td>
+              <td>
+                <a class="booking-link" href="#">{{ row.bookingNo }}</a>
+              </td>
+              <td>{{ row.vesselVoyage }}</td>
+              <td>{{ row.route }}</td>
+              <td>{{ row.containerInfo }}</td>
+              <td>{{ row.etd }}</td>
+              <td>{{ row.taskUsersText || '--' }}</td>
+              <td>{{ row.assigneeUserName || '--' }}</td>
+              <td class="action-col">
+                <button
+                  class="detail-btn"
+                  type="button"
+                  :disabled="row.serviceTaskStatus !== 0"
+                  @click="emit('complete', [row.id])"
+                >
+                  完成
+                </button>
+                <button
+                  class="detail-btn ml-8"
+                  type="button"
+                  :disabled="row.serviceTaskStatus !== 0"
+                  @click="emit('transfer', [row.id])"
+                >
+                  转交
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </Spin>
   </section>
 </template>
 
@@ -240,6 +300,12 @@ function onToggleOne(id: string, event: Event) {
 
 .stage-steps {
   display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.stage-steps__item {
+  display: inline-flex;
   gap: 4px;
   align-items: center;
 }
@@ -306,6 +372,11 @@ function onToggleOne(id: string, event: Event) {
   cursor: pointer;
   border: 1px solid transparent;
   border-radius: 6px;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .btn-light {
@@ -378,30 +449,6 @@ function onToggleOne(id: string, event: Event) {
   text-decoration: none;
 }
 
-.status-tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 34px;
-  height: 22px;
-  padding: 0 8px;
-  font-size: 10px;
-  color: #fff;
-  border-radius: 11px;
-}
-
-.status-tag.is-pending {
-  background: #bfc8d4;
-}
-
-.status-tag.is-supplement {
-  background: #f59f00;
-}
-
-.status-tag.is-urgent {
-  background: #eb4747;
-}
-
 .action-col {
   padding-right: 16px;
   text-align: right;
@@ -414,5 +461,16 @@ function onToggleOne(id: string, event: Event) {
   cursor: pointer;
   background: transparent;
   border: 0;
+}
+
+.detail-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.table-empty {
+  height: 72px;
+  color: #8b93a5;
+  text-align: center;
 }
 </style>

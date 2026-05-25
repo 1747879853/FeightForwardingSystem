@@ -1,14 +1,34 @@
 <script lang="ts" setup>
-import { computed, defineAsyncComponent, reactive, ref } from 'vue';
+import type { SeServiceTaskAdminApi } from '#/api/sea-export/se-service-task-admin';
+import type { PortTab, StageStep } from './workbench-data';
+
+import dayjs from 'dayjs';
 import {
-  businessRows,
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue';
+
+import { message, Modal } from 'ant-design-vue';
+
+import UserSelect from '#/adapter/component/biz-select/user-select.vue';
+import {
+  completeSeServiceTask,
+  getSeServiceTaskPagedList,
+  transferSeServiceTask,
+} from '#/api/sea-export/se-service-task-admin';
+
+import {
   emergencyTasks,
   exceptionSummary,
   filterModelDefaults,
-  portTabs,
   processingTabs,
   serviceTabs,
-  stageSteps,
+  serviceTypeLabel,
+  toPortTab,
 } from './workbench-data';
 
 const WorkbenchTopNav = defineAsyncComponent(
@@ -31,59 +51,371 @@ const WorkbenchExceptionPanel = defineAsyncComponent(
 );
 
 const activeServiceTab = ref('sea-export');
-const activePort = ref('shanghai');
+const activePort = ref('');
 const activeProcessingTab = ref('processing');
+const activeStageKey = ref('');
+const loading = ref(false);
 
 const filterModel = reactive({ ...filterModelDefaults });
+const appliedFilterModel = reactive({ ...filterModelDefaults });
 const selectedRowKeys = ref<string[]>([]);
+const rawGroups = ref<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>([]);
 
-const activePortMeta = computed(
-  () => portTabs.find((item) => item.key === activePort.value) ?? portTabs[0],
+const transferVisible = ref(false);
+const transferSubmitting = ref(false);
+const transferTaskIds = ref<string[]>([]);
+const transferUserId = ref<number>();
+
+function matchEtdRange(
+  etd: string | undefined,
+  etdRange: typeof appliedFilterModel.etdRange,
+) {
+  if (!etdRange || !etdRange[0] || !etdRange[1]) return true;
+  if (!etd) return false;
+  const etdDate = dayjs(etd);
+  if (!etdDate.isValid()) return false;
+  const [start, end] = etdRange;
+  return (
+    !etdDate.isBefore(dayjs(start), 'day') &&
+    !etdDate.isAfter(dayjs(end), 'day')
+  );
+}
+
+function matchTask(task: SeServiceTaskAdminApi.SeServiceTaskDto) {
+  const status = activeProcessingTab.value === 'processed' ? 1 : 0;
+  if (task.serviceTaskStatus !== status) return false;
+
+  const seaExport = task.seaExport;
+  const transportOrder = seaExport?.transportOrder;
+  if (
+    appliedFilterModel.clientId &&
+    String(transportOrder?.clientId ?? '') !==
+      String(appliedFilterModel.clientId)
+  ) {
+    return false;
+  }
+  if (
+    appliedFilterModel.carrierId != null &&
+    seaExport?.carrierId !== appliedFilterModel.carrierId
+  ) {
+    return false;
+  }
+  if (
+    appliedFilterModel.podId != null &&
+    seaExport?.podId !== appliedFilterModel.podId
+  ) {
+    return false;
+  }
+  const mblKeyword = appliedFilterModel.mblNum.trim().toLowerCase();
+  if (
+    mblKeyword &&
+    !String(transportOrder?.mblNum ?? '')
+      .toLowerCase()
+      .includes(mblKeyword)
+  ) {
+    return false;
+  }
+  if (!matchEtdRange(transportOrder?.etd, appliedFilterModel.etdRange)) {
+    return false;
+  }
+
+  return true;
+}
+
+function filterGroups(
+  source: SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[],
+) {
+  return source.reduce<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>(
+    (result, group) => {
+      const configItems: SeServiceTaskAdminApi.SeServiceConfigItemTaskGroupDto[] =
+        [];
+      for (const item of group.seServiceConfigItems ?? []) {
+        const tasks = (item.seServiceTasks ?? []).filter(matchTask);
+        if (!tasks.length) continue;
+        configItems.push({
+          ...item,
+          seServiceTasks: tasks,
+        });
+      }
+
+      if (!configItems.length) return result;
+
+      const taskCount = configItems.reduce(
+        (count, item) => count + (item.seServiceTasks?.length ?? 0),
+        0,
+      );
+      result.push({
+        ...group,
+        seServiceConfigItems: configItems,
+        taskCount,
+      });
+      return result;
+    },
+    [],
+  );
+}
+
+const groups = computed<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>(
+  () => filterGroups(rawGroups.value),
 );
 
-function handleSearch() {
-  // 预留接口调用：基于 filterModel + activePort + activeProcessingTab 查询
-  console.log('search payload', {
-    ...filterModel,
-    activePort: activePort.value,
-    processingTab: activeProcessingTab.value,
+const allPortTabs = computed<PortTab[]>(() => groups.value.map(toPortTab));
+
+const activePortMeta = computed(
+  () =>
+    allPortTabs.value.find((item) => item.key === activePort.value) ?? {
+      count: 0,
+      key: '',
+      label: '暂无港口',
+    },
+);
+
+const activePortGroup = computed(() => {
+  if (!activePort.value) return groups.value[0];
+  return groups.value.find((item) => {
+    const key = String(item.polId ?? item.seServiceConfigId);
+    return key === activePort.value;
   });
+});
+
+const currentConfigItems = computed(
+  () => activePortGroup.value?.seServiceConfigItems ?? [],
+);
+
+function configItemKey(
+  item: SeServiceTaskAdminApi.SeServiceConfigItemTaskGroupDto,
+  index: number,
+) {
+  return item.id ? String(item.id) : `assigned-${index}`;
+}
+
+const stageSteps = computed<StageStep[]>(() =>
+  currentConfigItems.value.map((item, index) => ({
+    count: item.seServiceTasks?.length ?? 0,
+    key: configItemKey(item, index),
+    label: serviceTypeLabel(item.serviceType),
+  })),
+);
+
+const activeConfigItem = computed(() => {
+  const found = currentConfigItems.value.find(
+    (item, index) => configItemKey(item, index) === activeStageKey.value,
+  );
+  return found ?? currentConfigItems.value[0];
+});
+
+const businessRows = computed(() => {
+  const tasks = activeConfigItem.value?.seServiceTasks ?? [];
+  return tasks.map((task) => {
+    const seaExport = task.seaExport;
+    const users = task.seServiceTaskUsers ?? [];
+    const assignee =
+      users.find((item) => item.userId === task.assigneeUserId)?.userNickName ??
+      (task.assigneeUserId ? `用户${task.assigneeUserId}` : '');
+    return {
+      assigneeUserId: task.assigneeUserId,
+      assigneeUserName: assignee,
+      bookingNo:
+        seaExport?.transportOrder?.commissionNum || String(task.seaExportId),
+      containerInfo: seaExport?.transportOrder?.totalCtn || '--',
+      etd: seaExport?.transportOrder?.etd
+        ? dayjs(seaExport.transportOrder.etd).format('YYYY-MM-DD')
+        : '--',
+      id: task.id,
+      route: `${seaExport?.polName || '--'} / ${seaExport?.podName || '--'}`,
+      seaExportId: String(task.seaExportId),
+      serviceTaskStatus: task.serviceTaskStatus,
+      status: 'pending' as const,
+      taskUsersText:
+        users
+          .map((item) => item.userNickName)
+          .filter(Boolean)
+          .join('、') || '--',
+      vesselVoyage:
+        [seaExport?.vessel, seaExport?.innerVoyno]
+          .filter(Boolean)
+          .join(' / ') || '--',
+    };
+  });
+});
+
+function ensureActiveStage() {
+  if (!stageSteps.value.length) {
+    activeStageKey.value = '';
+    return;
+  }
+  if (!stageSteps.value.some((item) => item.key === activeStageKey.value)) {
+    const firstStage = stageSteps.value[0];
+    activeStageKey.value = firstStage ? firstStage.key : '';
+  }
+}
+
+watch([groups, activePort], () => {
+  ensureActiveStage();
+});
+
+watch(activeStageKey, () => {
+  selectedRowKeys.value = [];
+});
+
+watch(activeProcessingTab, () => {
+  selectedRowKeys.value = [];
+});
+
+watch(activeServiceTab, (tab) => {
+  if (tab === 'sea-export') {
+    void loadWorkbench();
+  }
+});
+
+watch(allPortTabs, (tabs) => {
+  if (!tabs.length) {
+    activePort.value = '';
+    selectedRowKeys.value = [];
+    return;
+  }
+  if (!tabs.some((item) => item.key === activePort.value)) {
+    activePort.value = tabs[0]?.key ?? '';
+    selectedRowKeys.value = [];
+  }
+});
+
+async function loadWorkbench() {
+  if (activeServiceTab.value !== 'sea-export') return;
+  loading.value = true;
+  try {
+    const result = await getSeServiceTaskPagedList();
+    rawGroups.value = result.items ?? [];
+    selectedRowKeys.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleSearch() {
+  Object.assign(appliedFilterModel, filterModel);
+  selectedRowKeys.value = [];
 }
 
 function handleReset() {
   Object.assign(filterModel, filterModelDefaults);
+  Object.assign(appliedFilterModel, filterModelDefaults);
+  selectedRowKeys.value = [];
 }
+
+function handleTransfer(ids: string[]) {
+  if (!ids.length) {
+    message.warning('请先选择要转交的任务');
+    return;
+  }
+  transferTaskIds.value = ids;
+  transferUserId.value = undefined;
+  transferVisible.value = true;
+}
+
+async function submitTransfer() {
+  if (!transferTaskIds.value.length) return;
+  if (!transferUserId.value) {
+    message.warning('请选择被转交人');
+    return;
+  }
+  transferSubmitting.value = true;
+  try {
+    await transferSeServiceTask({
+      assigneeUserId: transferUserId.value,
+      ids: transferTaskIds.value,
+    });
+    message.success('转交成功');
+    transferVisible.value = false;
+    await loadWorkbench();
+  } finally {
+    transferSubmitting.value = false;
+  }
+}
+
+function handleComplete(ids: string[]) {
+  if (!ids.length) {
+    message.warning('请先选择要完成的任务');
+    return;
+  }
+  Modal.confirm({
+    title: '确认完成',
+    content: `确定完成选中的 ${ids.length} 条任务吗？`,
+    async onOk() {
+      await Promise.all(ids.map((id) => completeSeServiceTask({ id })));
+      message.success('任务已完成');
+      await loadWorkbench();
+    },
+  });
+}
+
+onMounted(() => {
+  void loadWorkbench();
+});
 </script>
 
 <template>
   <div class="workbench-page">
     <WorkbenchTopNav v-model="activeServiceTab" :tabs="serviceTabs" />
-    <WorkbenchPortHeader
-      :active-port="activePort"
-      :active-port-meta="activePortMeta"
-      :active-processing-tab="activeProcessingTab"
-      :ports="portTabs"
-      :processing-tabs="processingTabs"
-      @update:active-port="activePort = $event"
-      @update:active-processing-tab="activeProcessingTab = $event"
-    />
+    <template v-if="activeServiceTab === 'sea-export'">
+      <WorkbenchPortHeader
+        :active-port="activePort"
+        :active-port-meta="activePortMeta"
+        :active-processing-tab="activeProcessingTab"
+        :ports="allPortTabs"
+        :processing-tabs="processingTabs"
+        @update:active-port="activePort = $event"
+        @update:active-processing-tab="activeProcessingTab = $event"
+      />
+    </template>
     <div class="workbench-layout">
-      <main class="workbench-main">
-        <WorkbenchFilterBar
-          v-model="filterModel"
-          @reset="handleReset"
-          @search="handleSearch"
-        />
-        <WorkbenchEmergencyQueue :tasks="emergencyTasks" />
-        <WorkbenchBusinessTable
-          :rows="businessRows"
-          :selected-row-keys="selectedRowKeys"
-          :stage-steps="stageSteps"
-          @update:selected-row-keys="selectedRowKeys = $event"
-        />
-      </main>
-      <WorkbenchExceptionPanel :summary="exceptionSummary" />
+      <template v-if="activeServiceTab === 'sea-export'">
+        <main class="workbench-main">
+          <WorkbenchFilterBar
+            v-model="filterModel"
+            @reset="handleReset"
+            @search="handleSearch"
+          />
+          <WorkbenchEmergencyQueue :tasks="emergencyTasks" />
+          <WorkbenchBusinessTable
+            :loading="loading"
+            :rows="businessRows"
+            :selected-row-keys="selectedRowKeys"
+            :stage-steps="stageSteps"
+            @update:selected-row-keys="selectedRowKeys = $event"
+            @update:active-stage-key="activeStageKey = $event"
+            @refresh="loadWorkbench"
+            @transfer="handleTransfer"
+            @complete="handleComplete"
+          />
+        </main>
+        <WorkbenchExceptionPanel :summary="exceptionSummary" />
+      </template>
+      <div v-else class="workbench-coming-soon">该工作台模块暂未对接</div>
     </div>
+
+    <Modal
+      :open="transferVisible"
+      title="批量转交任务"
+      :confirm-loading="transferSubmitting"
+      @update:open="transferVisible = $event"
+      @ok="submitTransfer"
+    >
+      <div class="transfer-modal">
+        <div class="transfer-modal__desc">
+          共选择 <strong>{{ transferTaskIds.length }}</strong> 条任务
+        </div>
+        <div class="transfer-modal__field">
+          <label class="transfer-modal__label">被转交人</label>
+          <UserSelect
+            v-model="transferUserId"
+            :selected-items="[]"
+            label-key="nickName"
+            placeholder="请选择用户"
+          />
+        </div>
+      </div>
+    </Modal>
   </div>
 </template>
 
@@ -105,6 +437,35 @@ function handleReset() {
   flex: 1;
   min-width: 760px;
   margin-left: 20px;
+}
+
+.workbench-coming-soon {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 280px;
+  margin: 0 20px;
+  font-size: 16px;
+  color: #8b93a5;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.transfer-modal__desc {
+  margin-bottom: 12px;
+  color: #555d6d;
+}
+
+.transfer-modal__field {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.transfer-modal__label {
+  flex: none;
+  width: 68px;
+  color: #181b20;
 }
 
 @media (max-width: 1400px) {
