@@ -68,7 +68,7 @@ const logoSrc = computed(() => {
       <div class="login-background absolute left-0 top-0 size-full">
         <video
           class="login-background-video"
-          src="../../../common-ui/src/ui/authentication/background.mp4"
+          src="../../../common-ui/src/ui/authentication/hhyy.mp4"
           autoplay
           loop
           muted

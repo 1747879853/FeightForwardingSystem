@@ -220,6 +220,7 @@ defineExpose({
 
 .auth-login-card {
   width: 100%;
+  margin-top: 0 !important;
   color: rgb(255 255 255 / 96%);
 }
 
@@ -240,7 +241,7 @@ defineExpose({
 }
 
 .auth-login-form {
-  margin-top: 34px;
+  margin-top: 0;
 }
 
 .auth-login-form :deep(.relative.flex) {
