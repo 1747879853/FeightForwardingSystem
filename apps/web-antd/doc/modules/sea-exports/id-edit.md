@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-18
+last_updated: 2026-05-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,6 +23,7 @@ last_updated: 2026-05-18
 
 - **工作台标签导航：** `editor.vue` 维护顶部标签，包含基础信息、更改单、服务详情、单证信息、应收应付、派车、分单、问题记录、修改历史。当前实现中基础信息、费用、更改单、派车、分单已经挂载组件；服务详情、单证信息、问题记录、修改历史目前主要作为标签预留。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
+- **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时调用 `GetServiceTypesByPOLAsync`，按 `checked` 回显服务项勾选；详情加载后以 `force` 再同步一次与港口配置一致。
 - **干系人角色约束：** 基础信息表单中的销售、商务、操作、客服、单证角色固定展示且不可删除、不可重复；销售与操作必须指定人员。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
 - **船公司选中回显：** 详情接口返回 `carrierLogo` 后，编辑页在 `carrierId` 的 `selectedItems` 中同步拼接 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + 名称”。
@@ -68,6 +69,8 @@ last_updated: 2026-05-18
 | **派车记录** | 出口拖车/派车执行信息。 | `dispatch/index.vue` / `dispatch-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；包含车队、堆场、工厂、地址和派车箱明细。 | 子记录需绑定当前海出 ID。 |
 | **分单记录** | 分票提单及其货物/箱明细。 | `modules/separate-bill.vue` / `sea-export-separate-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；维护分单相关方、提单、签单、货物、箱明细。 | 子记录需绑定当前海出 ID。 |
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
+| **委托单位 / 起运港** | 服务项目联动查询入参。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync` | **触发/依赖：** 任一变更触发联动；`polId` 为空清空勾选。 | 与新建页同一套 `form.vue` 逻辑。 |
+| **服务项目 / serviceTypes** | 订舱～保险及代收支勾选结果。 | 服务项卡片；`serviceTypes` 数组（0–5） | **触发/依赖：** 接口 `checked` 驱动 UI；保存由勾选汇总。 | 编辑详情回填后可能被联动接口覆盖。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -85,6 +88,8 @@ last_updated: 2026-05-18
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-25 | `Fix` | 修复委托单位已选仍提示必选：联动监听改为 `onChange`，与新建页同源修复。 | 嵌入模式共用 `bindServiceTypeLinkageEvents`，勿在 `updateSchema` 中绑定 `onUpdate:modelValue`。 |
+| 2026-05-25 | `Feature` | 嵌入表单支持委托单位 + 起运港联动服务项目查询与 `checked` 自动勾选（含代收支）。 | 与 `/sea-exports/create` 共用 `form.vue`；编辑加载后 `force` 同步避免与详情 `serviceTypes` 长期不一致。 |
 | 2026-05-18 | `Feature/Fix` | `CarrierSelect` 选中态支持显示船公司 Logo；编辑页 `carrierId` 回填时拼接 `carrierLogo` 到 `selectedItems`，首屏回显稳定。 | 为兼容选中态图文展示，分页下拉选项类型由字符串标签扩展为可承载富渲染内容。 |
 | 2026-05-17 | `Fix` | 修复干系人补录场景：新增角色后角色下拉保持可用，仅禁用重复角色选项，支持在缺失角色中手动选择。 | 无 |
 | 2026-05-17 | `Fix` | 海运出口干系人固定角色（销售/商务/操作/客服/单证）改为不可删除、不可重复添加；销售与操作新增必填人员校验。 | 无 |

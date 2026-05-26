@@ -6,6 +6,22 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { requestClient } from '#/api/request';
 
 export namespace SeaExportAdminApi {
+  export interface ServiceTypeByPolDto {
+    serviceType: number;
+    sortId: number;
+    checked: boolean;
+    seServiceShows?: number[];
+    seServiceLocks?: number[];
+    seServiceRequires?: number[];
+  }
+
+  export interface GetServiceTypesByPolParams {
+    /** 起运港 id */
+    polId?: number | string;
+    /** 委托单位 id（用于排除客户排除的服务项） */
+    clientId?: number | string;
+  }
+
   /** 业务箱型新增输入 */
   export interface OrderCtnAddDto {
     /** 箱型id */
@@ -386,6 +402,15 @@ export const getSeaExportDetail = (id: string | string) => {
   return requestClient.get<SeaExportAdminApi.SeaExportDto>(
     `${API_PREFIX}/DetailAsync`,
     { params: { Id: id } },
+  );
+};
+
+export const getServiceTypesByPOL = (
+  params: SeaExportAdminApi.GetServiceTypesByPolParams,
+) => {
+  return requestClient.get<SeaExportAdminApi.ServiceTypeByPolDto[] | null>(
+    `${API_PREFIX}/GetServiceTypesByPOLAsync`,
+    { params },
   );
 };
 

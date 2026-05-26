@@ -1,14 +1,14 @@
 | 模块名称 | 页面/路由 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
 | --- | --- | --- | --- | --- | --- |
 | dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |
-| dashboard | `/workspace` | 驾驶舱 | 用于承载用户工作台信息，提供日常任务、快捷入口或个人维度概览。 | [工作台](./modules/dashboard/workspace.md) | 2026-05-16 |
+| dashboard | `/workspace` | 驾驶舱 | 用于承载用户工作台信息，提供日常任务、快捷入口或个人维度概览。 | [工作台](./modules/dashboard/workspace.md) | 2026-05-25 |
 | dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 用于以地球可视化方式展示海运相关数据，是 dashboard 分组下的专题看板。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-05-16 |
 | clients | `/clients` | 客户管理 | 维护客户主数据列表，是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-05-16 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料，为后续联系人、账期、发票、附件等客户子资料提供主记录。 | [客户新建](./modules/clients/create.md) | 2026-05-16 |
 | clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面。 | [客户编辑](./modules/clients/id-edit.md) | 2026-05-16 |
 | sea-exports | `/sea-exports` | 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-05-19 |
-| sea-exports | `/sea-exports/create` | 海运出口 | 创建新的海运出口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-05-17 |
-| sea-exports | `/sea-exports/:id/edit` | 海运出口 | 编辑页是海运出口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-05-18 |
+| sea-exports | `/sea-exports/create` | 海运出口 | 创建新的海运出口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-05-25 |
+| sea-exports | `/sea-exports/:id/edit` | 海运出口 | 编辑页是海运出口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-05-25 |
 | sea-imports | `/sea-imports` | 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-05-16 |
 | sea-imports | `/sea-imports/create` | 海运进口 | 创建新的海运进口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-05-17 |
 | sea-imports | `/sea-imports/:id/edit` | 海运进口 | 编辑页是海运进口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运进口编辑工作台](./modules/sea-imports/id-edit.md) | 2026-05-17 |

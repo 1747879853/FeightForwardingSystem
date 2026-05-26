@@ -13,6 +13,10 @@
 
 ## 2026-05
 
+- [2026-05-25] [海运出口新建委托单位已选仍提示必选](./changelogs/change-log-2026-05-25-sea-export-clientid-select-validation-fix.md)
+- [2026-05-25] [海运出口表单委托客户与起运港联动服务项目](./changelogs/change-log-2026-05-25-sea-export-service-types-by-pol-linkage.md)
+- [2026-05-25] [工作台海运出口服务任务对接 SeServiceTaskAdmin](./changelogs/change-log-2026-05-25-workspace-se-service-task-admin-integration.md)
+- [2026-05-24] [全局字体切换为阿里巴巴普惠体](./changelogs/change-log-2026-05-24-global-font-alibaba-puhuiti.md)
 - [2026-05-24] [海运出口港口服务项配置列表与编辑弹窗服务项类型对齐](./changelogs/change-log-2026-05-24-se-service-config-list-form-service-type-align.md)
 - [2026-05-24] [客户编辑页对接委托单位排除海运出口服务项](./changelogs/change-log-2026-05-24-client-except-service-tab.md)
 - [2026-05-24] [海运出口港口服务项配置弹窗用户属性服务概览](./changelogs/change-log-2026-05-24-se-service-config-user-attribute-service-overview.md)

@@ -1,266 +1,481 @@
 <script lang="ts" setup>
-import type {
-  WorkbenchProjectItem,
-  WorkbenchQuickNavItem,
-  WorkbenchTodoItem,
-  WorkbenchTrendItem,
-} from '@vben/common-ui';
+import type { SeServiceTaskAdminApi } from '#/api/sea-export/se-service-task-admin';
+import type { PortTab, StageStep } from './workbench-data';
 
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import dayjs from 'dayjs';
+import {
+  computed,
+  defineAsyncComponent,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue';
+
+import { message, Modal } from 'ant-design-vue';
+
+import UserSelect from '#/adapter/component/biz-select/user-select.vue';
+import {
+  completeSeServiceTask,
+  getSeServiceTaskPagedList,
+  transferSeServiceTask,
+} from '#/api/sea-export/se-service-task-admin';
 
 import {
-  AnalysisChartCard,
-  WorkbenchHeader,
-  WorkbenchProject,
-  WorkbenchQuickNav,
-  WorkbenchTodo,
-  WorkbenchTrends,
-} from '@vben/common-ui';
-import { preferences } from '@vben/preferences';
-import { useUserStore } from '@vben/stores';
-import { openWindow } from '@vben/utils';
+  emergencyTasks,
+  exceptionSummary,
+  filterModelDefaults,
+  processingTabs,
+  serviceTabs,
+  serviceTypeLabel,
+  toPortTab,
+} from './workbench-data';
 
-import AnalyticsVisitsSource from '../analytics/analytics-visits-source.vue';
+const WorkbenchTopNav = defineAsyncComponent(
+  () => import('./workbench/components/workbench-top-nav.vue'),
+);
+const WorkbenchPortHeader = defineAsyncComponent(
+  () => import('./workbench/components/workbench-port-header.vue'),
+);
+const WorkbenchFilterBar = defineAsyncComponent(
+  () => import('./workbench/components/workbench-filter-bar.vue'),
+);
+const WorkbenchEmergencyQueue = defineAsyncComponent(
+  () => import('./workbench/components/workbench-emergency-queue.vue'),
+);
+const WorkbenchBusinessTable = defineAsyncComponent(
+  () => import('./workbench/components/workbench-business-table.vue'),
+);
+const WorkbenchExceptionPanel = defineAsyncComponent(
+  () => import('./workbench/components/workbench-exception-panel.vue'),
+);
 
-const userStore = useUserStore();
+const activeServiceTab = ref('sea-export');
+const activePort = ref('');
+const activeProcessingTab = ref('processing');
+const activeStageKey = ref('');
+const loading = ref(false);
 
-// 这是一个示例数据，实际项目中需要根据实际情况进行调整
-// url 也可以是内部路由，在 navTo 方法中识别处理，进行内部跳转
-// 例如：url: /dashboard/workspace
-const projectItems: WorkbenchProjectItem[] = [
-  {
-    color: '',
-    content: '不要等待机会，而要创造机会。',
-    date: '2021-04-01',
-    group: '开源组',
-    icon: 'carbon:logo-github',
-    title: 'Github',
-    url: 'https://github.com',
-  },
-  {
-    color: '#3fb27f',
-    content: '现在的你决定将来的你。',
-    date: '2021-04-01',
-    group: '算法组',
-    icon: 'ion:logo-vue',
-    title: 'Vue',
-    url: 'https://vuejs.org',
-  },
-  {
-    color: '#e18525',
-    content: '没有什么才能比努力更重要。',
-    date: '2021-04-01',
-    group: '上班摸鱼',
-    icon: 'ion:logo-html5',
-    title: 'Html5',
-    url: 'https://developer.mozilla.org/zh-CN/docs/Web/HTML',
-  },
-  {
-    color: '#bf0c2c',
-    content: '热情和欲望可以突破一切难关。',
-    date: '2021-04-01',
-    group: 'UI',
-    icon: 'ion:logo-angular',
-    title: 'Angular',
-    url: 'https://angular.io',
-  },
-  {
-    color: '#00d8ff',
-    content: '健康的身体是实现目标的基石。',
-    date: '2021-04-01',
-    group: '技术牛',
-    icon: 'bx:bxl-react',
-    title: 'React',
-    url: 'https://reactjs.org',
-  },
-  {
-    color: '#EBD94E',
-    content: '路是走出来的，而不是空想出来的。',
-    date: '2021-04-01',
-    group: '架构组',
-    icon: 'ion:logo-javascript',
-    title: 'Js',
-    url: 'https://developer.mozilla.org/zh-CN/docs/Web/JavaScript',
-  },
-];
+const filterModel = reactive({ ...filterModelDefaults });
+const appliedFilterModel = reactive({ ...filterModelDefaults });
+const selectedRowKeys = ref<string[]>([]);
+const rawGroups = ref<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>([]);
 
-// 同样，这里的 url 也可以使用以 http 开头的外部链接
-const quickNavItems: WorkbenchQuickNavItem[] = [
-  {
-    color: '#1fdaca',
-    icon: 'ion:home-outline',
-    title: '首页',
-    url: '/',
-  },
-  {
-    color: '#bf0c2c',
-    icon: 'ion:grid-outline',
-    title: '仪表盘',
-    url: '/dashboard/sea-freight-globe',
-  },
-  {
-    color: '#e18525',
-    icon: 'ion:layers-outline',
-    title: '组件',
-    url: '/demos/features/icons',
-  },
-  {
-    color: '#3fb27f',
-    icon: 'ion:settings-outline',
-    title: '系统管理',
-    url: '/demos/features/login-expired', // 这里的 URL 是示例，实际项目中需要根据实际情况进行调整
-  },
-  {
-    color: '#4daf1bc9',
-    icon: 'ion:key-outline',
-    title: '权限管理',
-    url: '/demos/access/page-control',
-  },
-  {
-    color: '#00d8ff',
-    icon: 'ion:bar-chart-outline',
-    title: '图表',
-    url: '/analytics',
-  },
-];
+const transferVisible = ref(false);
+const transferSubmitting = ref(false);
+const transferTaskIds = ref<string[]>([]);
+const transferUserId = ref<number>();
 
-const todoItems = ref<WorkbenchTodoItem[]>([
-  {
-    completed: false,
-    content: `审查最近提交到Git仓库的前端代码，确保代码质量和规范。`,
-    date: '2024-07-30 11:00:00',
-    title: '审查前端代码提交',
-  },
-  {
-    completed: true,
-    content: `检查并优化系统性能，降低CPU使用率。`,
-    date: '2024-07-30 11:00:00',
-    title: '系统性能优化',
-  },
-  {
-    completed: false,
-    content: `进行系统安全检查，确保没有安全漏洞或未授权的访问。 `,
-    date: '2024-07-30 11:00:00',
-    title: '安全检查',
-  },
-  {
-    completed: false,
-    content: `更新项目中的所有npm依赖包，确保使用最新版本。`,
-    date: '2024-07-30 11:00:00',
-    title: '更新项目依赖',
-  },
-  {
-    completed: false,
-    content: `修复用户报告的页面UI显示问题，确保在不同浏览器中显示一致。 `,
-    date: '2024-07-30 11:00:00',
-    title: '修复UI显示问题',
-  },
-]);
-const trendItems: WorkbenchTrendItem[] = [
-  {
-    avatar: 'svg:avatar-1',
-    content: `在 <a>开源组</a> 创建了项目 <a>Vue</a>`,
-    date: '刚刚',
-    title: '威廉',
-  },
-  {
-    avatar: 'svg:avatar-2',
-    content: `关注了 <a>威廉</a> `,
-    date: '1个小时前',
-    title: '艾文',
-  },
-  {
-    avatar: 'svg:avatar-3',
-    content: `发布了 <a>个人动态</a> `,
-    date: '1天前',
-    title: '克里斯',
-  },
-  {
-    avatar: 'svg:avatar-4',
-    content: `发表文章 <a>如何编写一个Vite插件</a> `,
-    date: '2天前',
-    title: 'Vben',
-  },
-  {
-    avatar: 'svg:avatar-1',
-    content: `回复了 <a>杰克</a> 的问题 <a>如何进行项目优化？</a>`,
-    date: '3天前',
-    title: '皮特',
-  },
-  {
-    avatar: 'svg:avatar-2',
-    content: `关闭了问题 <a>如何运行项目</a> `,
-    date: '1周前',
-    title: '杰克',
-  },
-  {
-    avatar: 'svg:avatar-3',
-    content: `发布了 <a>个人动态</a> `,
-    date: '1周前',
-    title: '威廉',
-  },
-  {
-    avatar: 'svg:avatar-4',
-    content: `推送了代码到 <a>Github</a>`,
-    date: '2021-04-01 20:00',
-    title: '威廉',
-  },
-  {
-    avatar: 'svg:avatar-4',
-    content: `发表文章 <a>如何编写使用 Admin Vben</a> `,
-    date: '2021-03-01 20:00',
-    title: 'Vben',
-  },
-];
+function matchEtdRange(
+  etd: string | undefined,
+  etdRange: typeof appliedFilterModel.etdRange,
+) {
+  if (!etdRange || !etdRange[0] || !etdRange[1]) return true;
+  if (!etd) return false;
+  const etdDate = dayjs(etd);
+  if (!etdDate.isValid()) return false;
+  const [start, end] = etdRange;
+  return (
+    !etdDate.isBefore(dayjs(start), 'day') &&
+    !etdDate.isAfter(dayjs(end), 'day')
+  );
+}
 
-const router = useRouter();
+function matchTask(task: SeServiceTaskAdminApi.SeServiceTaskDto) {
+  const status = activeProcessingTab.value === 'processed' ? 1 : 0;
+  if (task.serviceTaskStatus !== status) return false;
 
-// 这是一个示例方法，实际项目中需要根据实际情况进行调整
-// This is a sample method, adjust according to the actual project requirements
-function navTo(nav: WorkbenchProjectItem | WorkbenchQuickNavItem) {
-  if (nav.url?.startsWith('http')) {
-    openWindow(nav.url);
+  const seaExport = task.seaExport;
+  const transportOrder = seaExport?.transportOrder;
+  if (
+    appliedFilterModel.clientId &&
+    String(transportOrder?.clientId ?? '') !==
+      String(appliedFilterModel.clientId)
+  ) {
+    return false;
+  }
+  if (
+    appliedFilterModel.carrierId != null &&
+    seaExport?.carrierId !== appliedFilterModel.carrierId
+  ) {
+    return false;
+  }
+  if (
+    appliedFilterModel.podId != null &&
+    seaExport?.podId !== appliedFilterModel.podId
+  ) {
+    return false;
+  }
+  const mblKeyword = appliedFilterModel.mblNum.trim().toLowerCase();
+  if (
+    mblKeyword &&
+    !String(transportOrder?.mblNum ?? '')
+      .toLowerCase()
+      .includes(mblKeyword)
+  ) {
+    return false;
+  }
+  if (!matchEtdRange(transportOrder?.etd, appliedFilterModel.etdRange)) {
+    return false;
+  }
+
+  return true;
+}
+
+function filterGroups(
+  source: SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[],
+) {
+  return source.reduce<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>(
+    (result, group) => {
+      const configItems: SeServiceTaskAdminApi.SeServiceConfigItemTaskGroupDto[] =
+        [];
+      for (const item of group.seServiceConfigItems ?? []) {
+        const tasks = (item.seServiceTasks ?? []).filter(matchTask);
+        if (!tasks.length) continue;
+        configItems.push({
+          ...item,
+          seServiceTasks: tasks,
+        });
+      }
+
+      if (!configItems.length) return result;
+
+      const taskCount = configItems.reduce(
+        (count, item) => count + (item.seServiceTasks?.length ?? 0),
+        0,
+      );
+      result.push({
+        ...group,
+        seServiceConfigItems: configItems,
+        taskCount,
+      });
+      return result;
+    },
+    [],
+  );
+}
+
+const groups = computed<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>(
+  () => filterGroups(rawGroups.value),
+);
+
+const allPortTabs = computed<PortTab[]>(() => groups.value.map(toPortTab));
+
+const activePortMeta = computed(
+  () =>
+    allPortTabs.value.find((item) => item.key === activePort.value) ?? {
+      count: 0,
+      key: '',
+      label: '暂无港口',
+    },
+);
+
+const activePortGroup = computed(() => {
+  if (!activePort.value) return groups.value[0];
+  return groups.value.find((item) => {
+    const key = String(item.polId ?? item.seServiceConfigId);
+    return key === activePort.value;
+  });
+});
+
+const currentConfigItems = computed(
+  () => activePortGroup.value?.seServiceConfigItems ?? [],
+);
+
+function configItemKey(
+  item: SeServiceTaskAdminApi.SeServiceConfigItemTaskGroupDto,
+  index: number,
+) {
+  return item.id ? String(item.id) : `assigned-${index}`;
+}
+
+const stageSteps = computed<StageStep[]>(() =>
+  currentConfigItems.value.map((item, index) => ({
+    count: item.seServiceTasks?.length ?? 0,
+    key: configItemKey(item, index),
+    label: serviceTypeLabel(item.serviceType),
+  })),
+);
+
+const activeConfigItem = computed(() => {
+  const found = currentConfigItems.value.find(
+    (item, index) => configItemKey(item, index) === activeStageKey.value,
+  );
+  return found ?? currentConfigItems.value[0];
+});
+
+const businessRows = computed(() => {
+  const tasks = activeConfigItem.value?.seServiceTasks ?? [];
+  return tasks.map((task) => {
+    const seaExport = task.seaExport;
+    const users = task.seServiceTaskUsers ?? [];
+    const assignee =
+      users.find((item) => item.userId === task.assigneeUserId)?.userNickName ??
+      (task.assigneeUserId ? `用户${task.assigneeUserId}` : '');
+    return {
+      assigneeUserId: task.assigneeUserId,
+      assigneeUserName: assignee,
+      bookingNo:
+        seaExport?.transportOrder?.commissionNum || String(task.seaExportId),
+      containerInfo: seaExport?.transportOrder?.totalCtn || '--',
+      etd: seaExport?.transportOrder?.etd
+        ? dayjs(seaExport.transportOrder.etd).format('YYYY-MM-DD')
+        : '--',
+      id: task.id,
+      route: `${seaExport?.polName || '--'} / ${seaExport?.podName || '--'}`,
+      seaExportId: String(task.seaExportId),
+      serviceTaskStatus: task.serviceTaskStatus,
+      status: 'pending' as const,
+      taskUsersText:
+        users
+          .map((item) => item.userNickName)
+          .filter(Boolean)
+          .join('、') || '--',
+      vesselVoyage:
+        [seaExport?.vessel, seaExport?.innerVoyno]
+          .filter(Boolean)
+          .join(' / ') || '--',
+    };
+  });
+});
+
+function ensureActiveStage() {
+  if (!stageSteps.value.length) {
+    activeStageKey.value = '';
     return;
   }
-  if (nav.url?.startsWith('/')) {
-    router.push(nav.url).catch((error) => {
-      console.error('Navigation failed:', error);
-    });
-  } else {
-    console.warn(`Unknown URL for navigation item: ${nav.title} -> ${nav.url}`);
+  if (!stageSteps.value.some((item) => item.key === activeStageKey.value)) {
+    const firstStage = stageSteps.value[0];
+    activeStageKey.value = firstStage ? firstStage.key : '';
   }
 }
+
+watch([groups, activePort], () => {
+  ensureActiveStage();
+});
+
+watch(activeStageKey, () => {
+  selectedRowKeys.value = [];
+});
+
+watch(activeProcessingTab, () => {
+  selectedRowKeys.value = [];
+});
+
+watch(activeServiceTab, (tab) => {
+  if (tab === 'sea-export') {
+    void loadWorkbench();
+  }
+});
+
+watch(allPortTabs, (tabs) => {
+  if (!tabs.length) {
+    activePort.value = '';
+    selectedRowKeys.value = [];
+    return;
+  }
+  if (!tabs.some((item) => item.key === activePort.value)) {
+    activePort.value = tabs[0]?.key ?? '';
+    selectedRowKeys.value = [];
+  }
+});
+
+async function loadWorkbench() {
+  if (activeServiceTab.value !== 'sea-export') return;
+  loading.value = true;
+  try {
+    const result = await getSeServiceTaskPagedList();
+    rawGroups.value = result.items ?? [];
+    selectedRowKeys.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleSearch() {
+  Object.assign(appliedFilterModel, filterModel);
+  selectedRowKeys.value = [];
+}
+
+function handleReset() {
+  Object.assign(filterModel, filterModelDefaults);
+  Object.assign(appliedFilterModel, filterModelDefaults);
+  selectedRowKeys.value = [];
+}
+
+function handleTransfer(ids: string[]) {
+  if (!ids.length) {
+    message.warning('请先选择要转交的任务');
+    return;
+  }
+  transferTaskIds.value = ids;
+  transferUserId.value = undefined;
+  transferVisible.value = true;
+}
+
+async function submitTransfer() {
+  if (!transferTaskIds.value.length) return;
+  if (!transferUserId.value) {
+    message.warning('请选择被转交人');
+    return;
+  }
+  transferSubmitting.value = true;
+  try {
+    await transferSeServiceTask({
+      assigneeUserId: transferUserId.value,
+      ids: transferTaskIds.value,
+    });
+    message.success('转交成功');
+    transferVisible.value = false;
+    await loadWorkbench();
+  } finally {
+    transferSubmitting.value = false;
+  }
+}
+
+function handleComplete(ids: string[]) {
+  if (!ids.length) {
+    message.warning('请先选择要完成的任务');
+    return;
+  }
+  Modal.confirm({
+    title: '确认完成',
+    content: `确定完成选中的 ${ids.length} 条任务吗？`,
+    async onOk() {
+      await Promise.all(ids.map((id) => completeSeServiceTask({ id })));
+      message.success('任务已完成');
+      await loadWorkbench();
+    },
+  });
+}
+
+onMounted(() => {
+  void loadWorkbench();
+});
 </script>
 
 <template>
-  <div class="p-5">
-    <WorkbenchHeader
-      :avatar="userStore.userInfo?.avatar || preferences.app.defaultAvatar"
-    >
-      <template #title>
-        早安, {{ userStore.userInfo?.realName }}, 开始您一天的工作吧！
+  <div class="workbench-page">
+    <WorkbenchTopNav v-model="activeServiceTab" :tabs="serviceTabs" />
+    <template v-if="activeServiceTab === 'sea-export'">
+      <WorkbenchPortHeader
+        :active-port="activePort"
+        :active-port-meta="activePortMeta"
+        :active-processing-tab="activeProcessingTab"
+        :ports="allPortTabs"
+        :processing-tabs="processingTabs"
+        @update:active-port="activePort = $event"
+        @update:active-processing-tab="activeProcessingTab = $event"
+      />
+    </template>
+    <div class="workbench-layout">
+      <template v-if="activeServiceTab === 'sea-export'">
+        <main class="workbench-main">
+          <WorkbenchFilterBar
+            v-model="filterModel"
+            @reset="handleReset"
+            @search="handleSearch"
+          />
+          <WorkbenchEmergencyQueue :tasks="emergencyTasks" />
+          <WorkbenchBusinessTable
+            :loading="loading"
+            :rows="businessRows"
+            :selected-row-keys="selectedRowKeys"
+            :stage-steps="stageSteps"
+            @update:selected-row-keys="selectedRowKeys = $event"
+            @update:active-stage-key="activeStageKey = $event"
+            @refresh="loadWorkbench"
+            @transfer="handleTransfer"
+            @complete="handleComplete"
+          />
+        </main>
+        <WorkbenchExceptionPanel :summary="exceptionSummary" />
       </template>
-      <template #description> 今日晴，20℃ - 32℃！ </template>
-    </WorkbenchHeader>
-
-    <div class="mt-5 flex flex-col lg:flex-row">
-      <div class="mr-4 w-full lg:w-3/5">
-        <WorkbenchProject :items="projectItems" title="项目" @click="navTo" />
-        <WorkbenchTrends :items="trendItems" class="mt-5" title="最新动态" />
-      </div>
-      <div class="w-full lg:w-2/5">
-        <WorkbenchQuickNav
-          :items="quickNavItems"
-          class="mt-5 lg:mt-0"
-          title="快捷导航"
-          @click="navTo"
-        />
-        <WorkbenchTodo :items="todoItems" class="mt-5" title="待办事项" />
-        <AnalysisChartCard class="mt-5" title="访问来源">
-          <AnalyticsVisitsSource />
-        </AnalysisChartCard>
-      </div>
+      <div v-else class="workbench-coming-soon">该工作台模块暂未对接</div>
     </div>
+
+    <Modal
+      :open="transferVisible"
+      title="批量转交任务"
+      :confirm-loading="transferSubmitting"
+      @update:open="transferVisible = $event"
+      @ok="submitTransfer"
+    >
+      <div class="transfer-modal">
+        <div class="transfer-modal__desc">
+          共选择 <strong>{{ transferTaskIds.length }}</strong> 条任务
+        </div>
+        <div class="transfer-modal__field">
+          <label class="transfer-modal__label">被转交人</label>
+          <UserSelect
+            v-model="transferUserId"
+            :selected-items="[]"
+            label-key="nickName"
+            placeholder="请选择用户"
+          />
+        </div>
+      </div>
+    </Modal>
   </div>
 </template>
+
+<style scoped>
+.workbench-page {
+  min-height: calc(100vh - 104px);
+  background: #f7f8fa;
+}
+
+.workbench-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  padding-top: 20px;
+  margin-right: 20px;
+}
+
+.workbench-main {
+  flex: 1;
+  min-width: 760px;
+  margin-left: 20px;
+}
+
+.workbench-coming-soon {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 280px;
+  margin: 0 20px;
+  font-size: 16px;
+  color: #8b93a5;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.transfer-modal__desc {
+  margin-bottom: 12px;
+  color: #555d6d;
+}
+
+.transfer-modal__field {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.transfer-modal__label {
+  flex: none;
+  width: 68px;
+  color: #181b20;
+}
+
+@media (max-width: 1400px) {
+  .workbench-layout {
+    flex-direction: column;
+  }
+
+  .workbench-main {
+    min-width: 100%;
+    max-width: 100%;
+  }
+}
+</style>
