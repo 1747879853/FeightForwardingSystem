@@ -335,8 +335,8 @@ export interface SeFreiPriceCtnOutDto {
 export interface SeFreiPriceFeeAddDto {
   /** 费用代码ID */
   feeCodeId: number;
-  /** 币别ID */
-  currencyId: number;
+  /** 币别ID（批量编辑时为null表示不修改） */
+  currencyId?: number | null;
   /** 附加费计费方式（0=Ctn按集装箱, 1=Order按票） */
   priceFeeType: PriceFeeType;
   /** 价格，PriceFeeType!=Ctn时必填 */

@@ -58,6 +58,11 @@ const mapCarrierToOption = (carrier: CarrierAdminApi.CarrierDto) => {
     label = carrier.code;
   }
   label = label || carrier.cnName || carrier.enName || carrier.code || '';
+  //xfk edit
+  if (props.labelKey !== 'code') {
+    label = `${carrier.code || ''}(${label})`;
+  }
+
   const logoUrl = buildAttachmentUrl(carrier.logo?.url);
   const selectedLabelVNode = h(
     'span',

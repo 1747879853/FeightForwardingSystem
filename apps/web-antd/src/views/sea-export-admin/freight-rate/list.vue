@@ -43,7 +43,7 @@ import Form from './modules/form.vue';
 import EditForm from './modules/editForm.vue';
 import BatchAddModal from './modules/batch-add-modal.vue';
 import BatchEditModal from './modules/batch-edit-modal.vue';
-import SyncUpdateForm from './modules/sync-update-form.vue';
+import SyncUpdateForm from './modules/form.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
 import { buildAttachmentUrl } from '#/utils';
 
@@ -543,7 +543,7 @@ function getIsValidText(row: SeFreiPriceOutDto): string {
  */
 function getIsValidColor(row: SeFreiPriceOutDto): string {
   const text = getIsValidText(row);
-  console.log('isValidText:', text);
+  //console.log('isValidText:', text);
   switch (text) {
     case '有效':
       return '#389e0d'; // 绿色
@@ -592,25 +592,25 @@ onMounted(async () => {
           <img
             v-if="row.carrier?.logo?.url"
             :src="buildAttachmentUrl(row.carrier.logo.url)"
-            :alt="row.carrier.enName || row.carrier.code"
+            :alt="row.carrier.code || row.carrier.enName"
             class="carrier-logo"
           />
           <!-- 船公司名称 -->
-          <span>{{ row.carrier?.cnName || row.carrier?.code || '-' }}</span>
+          <span>{{ row.carrier?.code || row.carrier?.enName || '-' }}</span>
         </div>
       </template>
 
       <!-- 起运港自定义渲染插槽 -->
       <template #polId="{ row }">
         <div class="px-2 py-1">
-          {{ row.pol?.portName || '-' }}
+          {{ `${row.pol?.portName},${row.pol?.country.countryEnName}` || '-' }}
         </div>
       </template>
 
       <!-- 目的港自定义渲染插槽 -->
       <template #podId="{ row }">
         <div class="px-2 py-1">
-          {{ row.pod?.portName || '-' }}
+          {{ `${row.pod?.portName},${row.pod?.country.countryEnName}` || '-' }}
         </div>
       </template>
 
@@ -649,15 +649,10 @@ onMounted(async () => {
             class="flex items-center justify-between py-2"
           >
             <span class="text-gray-300">-</span>
-            <Button
-              type="link"
-              size="small"
-              @click.stop="onEdit(row)"
-              class="edit-surcharge-btn"
-            >
+            <!-- <Button type="link" size="small" @click.stop="onEdit(row)" class="edit-surcharge-btn">
               <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
               {{ $t('common.edit') }}
-            </Button>
+            </Button> -->
           </div>
 
           <!-- 有附加费时显示折叠面板 -->
@@ -711,15 +706,10 @@ onMounted(async () => {
                 </Button>
 
                 <!-- 编辑按钮 -->
-                <Button
-                  type="link"
-                  size="small"
-                  @click.stop="onEdit(row)"
-                  class="edit-surcharge-btn"
-                >
+                <!-- <Button type="link" size="small" @click.stop="onEdit(row)" class="edit-surcharge-btn">
                   <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
                   {{ $t('common.edit') }}
-                </Button>
+                </Button> -->
               </div>
             </div>
 

@@ -195,22 +195,11 @@ export function formatSurchargeFees(row: SeFreiPriceOutDto): string {
 export function useGridFormSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'ApiSelect',
+      component: 'CarrierSelect',
       fieldName: 'carrierId',
       label: $t('seaExport.freightRate.carrierId'),
       componentProps: {
-        api: async () => {
-          const { getCarrierPagedList } =
-            await import('#/api/system/base-data/carrier-admin');
-          const res = await getCarrierPagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: item.cnName || item.enName,
-            value: item.id,
-          }));
-        },
-        showSearch: true,
-        filterOption: true,
-        placeholder: $t('common.pleaseSelect'),
+        placeholder: $t('ui.placeholder.select'),
         allowClear: true,
       },
     },
@@ -282,7 +271,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       slots: { default: 'recommend' },
     },
     {
-      field: 'carrier.cnName',
+      field: 'carrier.enName',
       title: $t('seaExport.freightRate.carrierId'),
       width: 260,
       slots: { default: 'carrierId' },
@@ -448,7 +437,9 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.pot1Id'),
       width: 120,
       formatter: ({ row }) => {
-        return row.poT1?.portName || '-';
+        return (
+          `${row.poT1?.portName},${row.poT1?.country.countryEnName}` || '-'
+        );
       },
     },
     {
@@ -456,7 +447,9 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.pot2Id'),
       width: 120,
       formatter: ({ row }) => {
-        return row.poT2?.portName || '-';
+        return (
+          `${row.poT2?.portName},${row.poT2?.country.countryEnName}` || '-'
+        );
       },
     },
     {
