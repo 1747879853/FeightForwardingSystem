@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-27] [用户管理办公电话与发件显示名对接](./changelogs/change-log-2026-05-27-system-user-office-sender-fields.md)
 - [2026-05-25] [海运出口新建委托单位已选仍提示必选](./changelogs/change-log-2026-05-25-sea-export-clientid-select-validation-fix.md)
 - [2026-05-25] [海运出口表单委托客户与起运港联动服务项目](./changelogs/change-log-2026-05-25-sea-export-service-types-by-pol-linkage.md)
 - [2026-05-25] [工作台海运出口服务任务对接 SeServiceTaskAdmin](./changelogs/change-log-2026-05-25-workspace-se-service-task-admin-integration.md)

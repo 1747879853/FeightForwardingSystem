@@ -52,6 +52,8 @@ export namespace SystemUserAdminApi {
     emailPwd?: string;
     receiveAddrPort?: string;
     sendAddrPort?: string;
+    officeTel?: string;
+    senderDisplayName?: string;
   }
 
   /** 分页列表响应 */
@@ -107,6 +109,8 @@ export namespace SystemUserAdminApi {
     emailPwd?: string;
     receiveAddrPort?: string;
     sendAddrPort?: string;
+    officeTel?: string;
+    senderDisplayName?: string;
     userBankAccounts?: UserBankAccountDto[];
   }
 
@@ -139,6 +143,8 @@ export namespace SystemUserAdminApi {
     emailPwd?: string;
     receiveAddrPort?: string;
     sendAddrPort?: string;
+    officeTel?: string;
+    senderDisplayName?: string;
   }
 
   /** 用户输入DTO（含数据权限） */

@@ -251,8 +251,7 @@ export function useFormSchema(): VbenFormSchema[] {
       component: 'Input',
       componentProps: {
         maxlength: 32,
-        disabled: true,
-        placeholder: '待后端接口支持',
+        showCount: true,
       },
       fieldName: 'officeTel',
       label: $t('system.user.officeTel'),
@@ -408,8 +407,7 @@ export function useFormSchema(): VbenFormSchema[] {
       component: 'Input',
       componentProps: {
         maxlength: 64,
-        disabled: true,
-        placeholder: '待后端接口支持',
+        showCount: true,
       },
       fieldName: 'senderDisplayName',
       label: $t('system.user.senderDisplayName'),

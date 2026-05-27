@@ -61,6 +61,8 @@ const [Modal, modalApi] = useVbenModal({
       emailPwd: values.emailPwd || undefined,
       receiveAddrPort: values.receiveAddrPort || undefined,
       sendAddrPort: values.sendAddrPort || undefined,
+      officeTel: values.officeTel || undefined,
+      senderDisplayName: values.senderDisplayName || undefined,
     };
 
     if (!id.value && values.password) {
@@ -118,6 +120,8 @@ const [Modal, modalApi] = useVbenModal({
             emailPwd: userDetail.emailPwd,
             receiveAddrPort: userDetail.receiveAddrPort,
             sendAddrPort: userDetail.sendAddrPort,
+            officeTel: userDetail.officeTel,
+            senderDisplayName: userDetail.senderDisplayName,
           });
 
           if (data.focusRoles) {
@@ -148,6 +152,8 @@ const [Modal, modalApi] = useVbenModal({
             emailPwd: data.emailPwd,
             receiveAddrPort: data.receiveAddrPort,
             sendAddrPort: data.sendAddrPort,
+            officeTel: data.officeTel,
+            senderDisplayName: data.senderDisplayName,
           });
         }
       } else {
