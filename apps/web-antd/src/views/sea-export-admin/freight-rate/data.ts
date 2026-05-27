@@ -437,9 +437,9 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.pot1Id'),
       width: 120,
       formatter: ({ row }) => {
-        return (
-          `${row.poT1?.portName},${row.poT1?.country.countryEnName}` || '-'
-        );
+        return row.poT1
+          ? `${row.poT1?.portName},${row.poT1?.country.countryEnName}`
+          : '-';
       },
     },
     {
@@ -447,9 +447,9 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.pot2Id'),
       width: 120,
       formatter: ({ row }) => {
-        return (
-          `${row.poT2?.portName},${row.poT2?.country.countryEnName}` || '-'
-        );
+        return row.poT2
+          ? `${row.poT2?.portName},${row.poT2?.country.countryEnName}`
+          : '-';
       },
     },
     {
