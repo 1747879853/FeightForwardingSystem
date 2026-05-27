@@ -455,8 +455,15 @@ function handleFeeCodeChange(index: number, feeCodeId: number | undefined) {
   if (!feeCodeId) return;
 
   const feeItem = feeCodeList.value.find((item) => item.value === feeCodeId);
-  if (feeItem && feeItem.currencyId && surchargeFees.value[index]) {
-    // 自动填充默认币别
+  // 只有当币别为空或null时，才自动填充默认币别
+  // 如果用户已经选择了币别，则不覆盖
+  if (
+    feeItem &&
+    feeItem.currencyId &&
+    surchargeFees.value[index] &&
+    (surchargeFees.value[index].currencyId === undefined ||
+      surchargeFees.value[index].currencyId === null)
+  ) {
     surchargeFees.value[index].currencyId = feeItem.currencyId;
   }
 }
@@ -1192,7 +1199,8 @@ onMounted(async () => {
                 <!-- 币别选择 -->
                 <td class="border border-gray-300 px-2 py-2">
                   <CurrencySelect
-                    v-model:value="surcharge.currencyId"
+                    :key="`currency_${index}_${surcharge.feeCodeId || 'empty'}`"
+                    :model-value="surcharge.currencyId"
                     class="w-full"
                     placeholder="请选择币别"
                     allow-clear
