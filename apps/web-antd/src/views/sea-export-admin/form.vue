@@ -109,11 +109,12 @@ const aiRecognizing = ref(false);
 const aiOcrPdfInputRef = ref<HTMLInputElement | null>(null);
 const transportOrderId = ref<number | undefined>();
 const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
-  { userAttribute: UserAttribute.Sales, sortId: 5 },
-  { userAttribute: UserAttribute.Business, sortId: 4 },
-  { userAttribute: UserAttribute.Operation, sortId: 3 },
-  { userAttribute: UserAttribute.CustomerService, sortId: 2 },
-  { userAttribute: UserAttribute.Documentation, sortId: 1 },
+  { userAttribute: UserAttribute.Sales, sortId: 6 },
+  { userAttribute: UserAttribute.Business, sortId: 5 },
+  { userAttribute: UserAttribute.Operation, sortId: 4 },
+  { userAttribute: UserAttribute.CustomerService, sortId: 3 },
+  { userAttribute: UserAttribute.Documentation, sortId: 2 },
+  { userAttribute: UserAttribute.OverseasCustomerService, sortId: 1 },
 ];
 const fixedOrderUserRoles = new Set<number>(
   defaultOrderUsers
@@ -832,6 +833,10 @@ const orderUserRoleOptions = computed(() => [
     label: $t('system.user.userAttributeOptions.documentation'),
     value: UserAttribute.Documentation,
   },
+  {
+    label: $t('system.user.userAttributeOptions.overseasCustomerService'),
+    value: UserAttribute.OverseasCustomerService,
+  },
 ]);
 const isFixedOrderUserRole = (userAttribute?: number) =>
   userAttribute != null && fixedOrderUserRoles.has(userAttribute);
@@ -859,6 +864,8 @@ const getOrderUserRoleLabel = (userAttribute?: number) => {
       return $t('system.user.userAttributeOptions.customerService');
     case UserAttribute.Documentation:
       return $t('system.user.userAttributeOptions.documentation');
+    case UserAttribute.OverseasCustomerService:
+      return $t('system.user.userAttributeOptions.overseasCustomerService');
     default:
       return '-';
   }

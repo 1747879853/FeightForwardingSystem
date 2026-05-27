@@ -18,13 +18,14 @@ const userAttributeValues = [
   UserAttribute.HR,
 ];
 
-/** 海运出口订单用户角色（与海运出口/进口单据一致，共 5 项） */
+/** 海运出口订单用户角色（与海运出口单据一致，共 6 项） */
 export const seaExportOrderUserAttributeValues = [
   UserAttribute.Sales,
   UserAttribute.Business,
   UserAttribute.Operation,
   UserAttribute.CustomerService,
   UserAttribute.Documentation,
+  UserAttribute.OverseasCustomerService,
 ] as const;
 
 /** 海运出口订单用户角色选项 */
@@ -50,10 +51,14 @@ export function getSeaExportOrderUserRoleOptions() {
       label: $t('system.user.userAttributeOptions.documentation'),
       value: UserAttribute.Documentation,
     },
+    {
+      label: $t('system.user.userAttributeOptions.overseasCustomerService'),
+      value: UserAttribute.OverseasCustomerService,
+    },
   ];
 }
 
-/** 解析海运出口订单用户角色位标志（仅保留 5 项有效角色） */
+/** 解析海运出口订单用户角色位标志（仅保留 6 项有效角色） */
 export function parseSeaExportUserAttribute(
   value: number | undefined,
 ): number[] {

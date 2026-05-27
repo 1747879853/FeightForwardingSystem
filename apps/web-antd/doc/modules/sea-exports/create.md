@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-25
+last_updated: 2026-05-27
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-05-25
 
 - **AI 识别辅助：** 页面提供“AI识别”按钮，只接受 PDF 文件，调用 `runVisionOcrPdf` 后把识别结果映射回表单字段。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
-- **干系人角色约束：** 销售、商务、操作、客服、单证为固定角色，不允许删除和重复添加；销售与操作必须选择具体人员后才能保存。
+- **干系人角色约束：** 销售、商务、操作、客服、单证、海外客服为固定角色，不允许删除和重复添加；销售与操作必须选择具体人员后才能保存。
 - **服务项目联动：** 选择「委托单位」（`clientId`）或「起运港」（`polId`）后，调用 `GetServiceTypesByPOLAsync`（参数 `polId`、`clientId`），按返回项 `checked=true` 自动勾选对应服务卡片（含代收支 `serviceType=5`）；未选起运港时清空服务项勾选。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
 - **创建后跳转：** 新增成功后优先解析接口返回的记录 ID 并跳转 `/sea-exports/{id}/edit`；若返回值无法解析，则回到 `/sea-exports` 列表。
@@ -69,6 +69,7 @@ last_updated: 2026-05-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-27 | `Feature` | 干系人固定角色新增「海外客服」，与港口服务项配置用户属性口径一致；海外客服人员非必填。 | 复用 `UserAttribute.OverseasCustomerService`；选项来自 `getSeaExportOrderUserRoleOptions()`。 |
 | 2026-05-25 | `Fix` | 修复委托单位已选仍提示「请选择委托单位」：服务项目联动改为 `onChange`，避免 `onUpdate:modelValue` 覆盖表单 `clientId`。 | `ClientSelect` 经 Vben Form 绑定 `value`；联动勿抢占 `update:modelValue`。 |
 | 2026-05-25 | `Feature` | 委托单位与起运港联动 `GetServiceTypesByPOLAsync`：按 `checked` 自动勾选服务项（含代收支 `5`）；请求合并与 `queryKey` 去重。 | 联动状态独立于多表单实例，通过 `linkedClientId`/`linkedPolId` 与 `queueSyncServiceTypesByPol` 汇总；响应兼容 ABP `result` 数组包装。 |
 | 2026-05-17 | `Fix` | 修复干系人补录场景：新增角色后角色下拉保持可用，仅禁用重复角色选项，支持在缺失角色中手动选择。 | 无 |

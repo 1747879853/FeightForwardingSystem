@@ -2,7 +2,7 @@
 title: 海运出口港口服务项配置
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-24
+last_updated: 2026-05-27
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,7 +26,7 @@ last_updated: 2026-05-24
 - **服务项类型枚举稳态回显：** 列表与编辑弹窗共用 `resolveServiceTypeLabel`；列表优先从 `seServiceConfigItems` 明细（按 `sortId`）推导展示，并优先使用后端枚举文案字段，避免与编辑弹窗明细不一致。
 - **子表差异更新：** 明细中的展示字段、锁定字段、必填字段均按“有 id 更新、无 id 新增、缺失删除”规则提交。
 - **枚举驱动：** 弹窗会同时拉取 `serviceType` 与 `SeaExportPropEnum` 两类枚举，分别用于服务项类型下拉和字段规则下拉。
-- **用户属性服务概览：** 在「服务项配置明细」上方展示各用户属性（销售/商务/操作/客服/单证）当前已配置的服务项类型，随明细编辑实时更新。
+- **用户属性服务概览：** 在「服务项配置明细」上方展示各用户属性（销售/商务/操作/客服/单证/海外客服）当前已配置的服务项类型，随明细编辑实时更新。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -42,7 +42,7 @@ last_updated: 2026-05-24
 | :-- | :-- | :-- | :-- | :-- |
 | **polId** | 配置所属起运港。 | `PortCode` 基础数据<br/>`PortSelect` | 决定配置作用范围；同租户内唯一。 | 必填；后端校验港口存在且不能重复配置。 |
 | **serviceType** | 服务项类型。 | 系统枚举<br/>`serviceType` | 同一配置下服务项展示顺序由数组顺序确定。 | 同一配置下不可重复。 |
-| **userAttribute** | 服务项责任角色（Flags）。 | 用户属性枚举（海运出口订单 5 项：销售、商务、操作、客服、单证） | 一个服务项可绑定多个角色；选项与海运出口单据订单用户角色一致。 | 位标志可组合，提交为整型掩码；不含财务/海外客服/人事。 |
+| **userAttribute** | 服务项责任角色（Flags）。 | 用户属性枚举（海运出口订单 6 项：销售、商务、操作、客服、单证、海外客服） | 一个服务项可绑定多个角色；选项与海运出口单据订单用户角色一致。 | 位标志可组合，提交为整型掩码；不含财务/人事。 |
 | **seServiceShows / Locks / Requires** | 字段展示、锁定、必填规则。 | 系统枚举<br/>`SeaExportPropEnum` | 与服务项绑定，随服务项一起差异更新。 | 枚举值应为有效海运出口字段。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -56,6 +56,7 @@ last_updated: 2026-05-24
 | 2026-05-24 | `Fix` | 修复列表「服务项类型」与编辑弹窗明细不一致：列表优先从 `seServiceConfigItems` 按 `sortId` 推导展示，并与弹窗共用 `resolveServiceTypeLabel` 文案解析；枚举加载优先 `ServiceType`。 | `formatRowServiceTypes` 在子项存在时忽略可能滞后的 `serviceTypes` 汇总字段；`loadSeServiceTypeOptions` 供 list/form 共用，消除双端枚举加载分叉。 |
 | 2026-05-24 | `Feature` | 配置弹窗在「服务项配置明细」上方新增「用户属性服务配置概览」，按销售/商务/操作/客服/单证汇总当前已配置的服务项类型，编辑时实时更新。 | 概览由 `itemRows` 派生，不依赖后端 `userAttributeServiceTypes` 字段；服务项类型文案复用枚举与默认兜底映射。 |
 | 2026-05-24 | `Fix` | 修复列表「服务项类型」列显示数字（如 `2、3`）而非文案的问题：增加 ServiceType 枚举兜底映射，并兼容 `serviceType` / `ServiceType` 两种枚举注册名。 | 列 formatter 采用「默认文案 + 动态枚举」合并 Map，避免枚举异步加载失败时回退为原始数值；`normalizeServiceTypes` 同时兼容数组与分隔字符串。 |
+| 2026-05-27 | `Feature` | 服务项「用户属性」与海运出口干系人同步新增「海外客服」（`UserAttribute.OverseasCustomerService`）。 | 扩展 `seaExportOrderUserAttributeValues` 为 6 项；概览区增加对应角色样式。 |
 | 2026-05-24 | `Fix` | 服务项「用户属性」选项从系统全量 8 项收敛为与海运出口单据一致的 5 项（销售、商务、操作、客服、单证），避免配置与业务单据角色口径不一致。 | 新增 `getSeaExportOrderUserRoleOptions` / `parseSeaExportUserAttribute` 供海运出口相关页面复用；系统用户管理仍保留全量 8 项。 |
 | 2026-05-24 | `Fix` | 适配后端列表接口 DTO 重构：列表从"每行=服务项"变为"每行=主配置"，新增 `serviceItemCount`（服务项数量）和 `serviceTypes`（类型数组）展示列；`totalCount` 语义变为主配置总数；软删除子项不再出现于列表与详情。 | `SeServiceConfigListDto` 替换 `SeServiceConfigItemListDto` 成为列表主 DTO；移除子项级 `polId/pol`；列表行 ID 从 `seServiceConfigId` 改为 `id`；枚举映射从 `query handler` 下沉至列 `formatter`；页面采用"每行=一个主配置"模式，编辑操作通过 `row.id` 打开配置弹窗。 |
 | 2026-05-21 | `Fix` | 修复港口服务项配置编辑态起运港回显：详情返回 `pol.portName` 时，手动注入 `PortSelect` 的 `selected-items`，并统一 `polId` 字符串口径，确保下拉稳定显示已选港口。 | 分页下拉在编辑场景需同时具备 `value + selected item object`；同时超大整型 ID 需规避 `number/string` 混用，否则会出现“有值不显示”的匹配失败。 |

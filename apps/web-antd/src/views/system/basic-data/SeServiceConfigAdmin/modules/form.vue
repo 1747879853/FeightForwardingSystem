@@ -338,6 +338,7 @@ const attributeOverviewRoleClassMap: Record<number, string> = {
   [UserAttribute.Operation]: 'role-operation',
   [UserAttribute.CustomerService]: 'role-customer-service',
   [UserAttribute.Documentation]: 'role-documentation',
+  [UserAttribute.OverseasCustomerService]: 'role-overseas-customer-service',
 };
 
 const getAttributeOverviewRoleClass = (attributeValue: number) =>
@@ -833,6 +834,12 @@ const [Modal, modalApi] = useVbenModal({
   color: #be123c;
   background: #fff1f2;
   border: 1px solid #fecdd3;
+}
+
+.attribute-overview__role.role-overseas-customer-service {
+  color: #0e7490;
+  background: #ecfeff;
+  border: 1px solid #a5f3fc;
 }
 
 .attribute-overview__role.role-default {
