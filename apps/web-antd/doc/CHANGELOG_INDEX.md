@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-27] [海运出口干系人下拉选中后先显示 ID 修复](./changelogs/change-log-2026-05-27-sea-export-order-user-select-label-flash.md)
 - [2026-05-27] [海运出口新增海外客服用户角色](./changelogs/change-log-2026-05-27-sea-export-overseas-customer-service-role.md)
 - [2026-05-27] [用户管理办公电话与发件显示名对接](./changelogs/change-log-2026-05-27-system-user-office-sender-fields.md)
 - [2026-05-25] [海运出口新建委托单位已选仍提示必选](./changelogs/change-log-2026-05-25-sea-export-clientid-select-validation-fix.md)

@@ -69,6 +69,7 @@ last_updated: 2026-05-27
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-27 | `Fix` | 修复右侧干系人 `UserSelect` 选中人员后先闪数字 ID 再显示名称：`:key` 改为仅 `row._rowKey`，避免选中/异步回显时组件重建。 | 动态 `key` 含 `userId` 与显示名会在 `loadOrderUserDetail` 前后各触发一次 remount；Remote Select 无 options 时只能回显 value。 |
 | 2026-05-27 | `Feature` | 干系人固定角色新增「海外客服」，与港口服务项配置用户属性口径一致；海外客服人员非必填。 | 复用 `UserAttribute.OverseasCustomerService`；选项来自 `getSeaExportOrderUserRoleOptions()`。 |
 | 2026-05-25 | `Fix` | 修复委托单位已选仍提示「请选择委托单位」：服务项目联动改为 `onChange`，避免 `onUpdate:modelValue` 覆盖表单 `clientId`。 | `ClientSelect` 经 Vben Form 绑定 `value`；联动勿抢占 `update:modelValue`。 |
 | 2026-05-25 | `Feature` | 委托单位与起运港联动 `GetServiceTypesByPOLAsync`：按 `checked` 自动勾选服务项（含代收支 `5`）；请求合并与 `queryKey` 去重。 | 联动状态独立于多表单实例，通过 `linkedClientId`/`linkedPolId` 与 `queueSyncServiceTypesByPol` 汇总；响应兼容 ABP `result` 数组包装。 |

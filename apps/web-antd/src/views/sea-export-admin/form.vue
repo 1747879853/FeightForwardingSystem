@@ -2923,7 +2923,7 @@ defineExpose({
                     @update:value="(v) => updateOrderUserRole(row._rowKey, v)"
                   />
                   <UserSelect
-                    :key="`${row._rowKey}_${row.userId ?? 'empty'}_${getOrderUserDisplayName(row)}`"
+                    :key="row._rowKey"
                     :model-value="row.userId"
                     :user-attribute="row.userAttribute"
                     label-key="nickName"
