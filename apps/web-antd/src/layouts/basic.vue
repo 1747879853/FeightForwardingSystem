@@ -22,6 +22,8 @@ import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 import LoginForm from '#/views/_core/authentication/login.vue';
 
+import RouteContentSpinner from './route-content-spinner.vue';
+
 const notifications = ref<NotificationItem[]>([
   {
     id: 1,
@@ -201,6 +203,9 @@ watch(
     </template>
     <template #lock-screen>
       <LockScreen :avatar @to-login="handleLogout" />
+    </template>
+    <template #content-overlay>
+      <RouteContentSpinner />
     </template>
   </BasicLayout>
 </template>

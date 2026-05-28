@@ -1,0 +1,99 @@
+<style data-app-loading="inject-css">
+  html {
+    /* same as ant-design-vue/dist/reset.css setting, avoid the title line-height changed */
+    line-height: 1.15;
+  }
+
+  .loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    background-color: #f4f7f9;
+  }
+
+  .dark .loading {
+    background-color: #0d0d10;
+  }
+
+  .loading.hidden {
+    visibility: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.6s ease-out;
+  }
+
+  .loading .loader-fill-panel {
+    padding: 20px 28px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgb(15 23 42 / 12%);
+  }
+
+  .dark .loading .loader-fill-panel {
+    background: #1a1a22;
+    box-shadow: 0 8px 32px rgb(0 0 0 / 35%);
+  }
+
+  .loading .loader-fill {
+    position: relative;
+    display: block;
+    width: 235px;
+    height: 54px;
+    line-height: 0;
+  }
+
+  .loading .loader-fill img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: left center;
+  }
+
+  .loading .loader-fill .logo-bg {
+    opacity: 0.28;
+    filter: grayscale(100%) brightness(0.75);
+  }
+
+  .dark .loading .loader-fill .logo-bg {
+    opacity: 0.4;
+    filter: grayscale(100%) brightness(1.1);
+  }
+
+  .loading .loader-fill .logo-color {
+    position: absolute;
+    top: 0;
+    left: 0;
+    clip-path: inset(0 100% 0 0);
+    animation: fill-progress 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    will-change: clip-path;
+  }
+
+  @keyframes fill-progress {
+    0% {
+      clip-path: inset(0 100% 0 0);
+    }
+
+    50%,
+    100% {
+      clip-path: inset(0 0 0 0);
+    }
+  }
+</style>
+<div class="loading" id="__app-loading__">
+  <div class="loader-fill-panel">
+    <div class="loader-fill">
+      <img src="/logo-text.png" alt="" class="logo-bg" />
+      <img src="/logo-text.png" alt="" class="logo-color" />
+    </div>
+  </div>
+</div>

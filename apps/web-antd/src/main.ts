@@ -3,6 +3,23 @@ import { unmountGlobalLoading } from '@vben/utils';
 
 import { overridesPreferences } from './preferences';
 
+const MIN_APP_LOADING_MS = 800;
+
+async function ensureMinAppLoadingVisible() {
+  const startedAt =
+    (window as Window & { __APP_LOADING_START__?: number })
+      .__APP_LOADING_START__ ?? performance.now();
+  const elapsed = performance.now() - startedAt;
+  if (elapsed < MIN_APP_LOADING_MS) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, MIN_APP_LOADING_MS - elapsed);
+    });
+  }
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
 /**
  * 应用初始化完成之后再进行页面加载渲染
  */
@@ -23,6 +40,8 @@ async function initApplication() {
   // vue应用主要逻辑及视图
   const { bootstrap } = await import('./bootstrap');
   await bootstrap(namespace);
+
+  await ensureMinAppLoadingVisible();
 
   // 移除并销毁loading
   unmountGlobalLoading();
