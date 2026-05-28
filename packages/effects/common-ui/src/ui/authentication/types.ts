@@ -63,7 +63,7 @@ interface AuthenticationProps {
   title?: string;
 
   /**
-   * @zh_CN 登录页标题区横版 Logo（auth-title-logo），未传则用默认 login-logo.png
+   * @zh_CN 登录页标题区横版 Logo（auth-title-logo），未传则不展示 Logo 图
    */
   titleLogo?: string;
 

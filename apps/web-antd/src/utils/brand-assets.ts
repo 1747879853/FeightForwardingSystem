@@ -1,5 +1,3 @@
-import defaultLogo from '#/assets/img/logo.png';
-import defaultLogoText from '#/assets/img/logo-text.png';
 import hhyyLogo from '#/assets/img/hhyy/logo.png';
 import hhyyLogoText from '#/assets/img/hhyy/logo-text.png';
 import hhyyLoginLogo from '#/assets/img/hhyy/logo-login.png';
@@ -36,7 +34,7 @@ export const brandLogo = pickBrandAsset(
   jhtLogo,
   hhyyLogo,
   jiayueLogo,
-  defaultLogo,
+  jiayueLogo,
 );
 
 /** 首屏与路由 Loading 使用的横版文字 Logo */
@@ -44,7 +42,7 @@ export const brandLogoText = pickBrandAsset(
   jhtLogoText,
   hhyyLogoText,
   jiayueLogoText,
-  defaultLogoText,
+  jiayueLogoText,
 );
 
 /** 登录页背景视频 */
