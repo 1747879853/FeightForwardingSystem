@@ -14,6 +14,8 @@ interface Props {
   appName?: string;
   logo?: string;
   logoDark?: string;
+  /** 登录页背景视频（各品牌 img 目录下的 login-back.mp4） */
+  loginBackgroundVideo?: string;
   pageTitle?: string;
   pageDescription?: string;
   sloganImage?: string;
@@ -28,6 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
   copyright: true,
   logo: '',
   logoDark: '',
+  loginBackgroundVideo: '',
   pageDescription: '',
   pageTitle: '',
   sloganImage: '',
@@ -67,8 +70,9 @@ const logoSrc = computed(() => {
     <div class="auth-page-content flex-center relative w-full justify-end">
       <div class="login-background absolute left-0 top-0 size-full">
         <video
+          v-if="loginBackgroundVideo"
           class="login-background-video"
-          src="../../../common-ui/src/ui/authentication/hhyy.mp4"
+          :src="loginBackgroundVideo"
           autoplay
           loop
           muted

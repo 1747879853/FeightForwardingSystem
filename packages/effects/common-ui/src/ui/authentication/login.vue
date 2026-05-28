@@ -58,9 +58,12 @@ const [Form, formApi] = useVbenForm(
 );
 const router = useRouter();
 
-const REMEMBER_ME_KEY = `REMEMBER_ME_USERNAME_${location.hostname}`;
+const rememberMeStorageKey = computed(
+  () =>
+    props.rememberMeStorageKey ?? `REMEMBER_ME_USERNAME_${location.hostname}`,
+);
 
-const localUsername = localStorage.getItem(REMEMBER_ME_KEY) || '';
+const localUsername = localStorage.getItem(rememberMeStorageKey.value) || '';
 
 const rememberMe = ref(!!localUsername);
 const loginCardRef = ref<HTMLElement>();
@@ -93,7 +96,7 @@ async function handleSubmit() {
   const values = await formApi.getValues();
   if (valid) {
     localStorage.setItem(
-      REMEMBER_ME_KEY,
+      rememberMeStorageKey.value,
       rememberMe.value ? values?.username : '',
     );
     emit('submit', values);
@@ -127,7 +130,7 @@ defineExpose({
     @keydown.enter.prevent="handleSubmit"
   >
     <slot name="title">
-      <Title>
+      <Title :logo-class="titleLogoClass" :logo-src="titleLogo">
         <slot name="title">
           {{ title || `${$t('authentication.welcomeBack')} 👋🏻` }}
         </slot>

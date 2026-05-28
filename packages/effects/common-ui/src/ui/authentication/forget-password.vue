@@ -83,7 +83,7 @@ defineExpose({
 
 <template>
   <div class="auth-forget-password-card">
-    <Title>
+    <Title :logo-class="titleLogoClass" :logo-src="titleLogo">
       <slot name="title">
         {{ title || $t('authentication.forgetPassword') }} 🤦🏻‍♂️
       </slot>

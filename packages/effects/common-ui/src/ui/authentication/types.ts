@@ -61,6 +61,21 @@ interface AuthenticationProps {
    * @zh_CN 登录框标题
    */
   title?: string;
+
+  /**
+   * @zh_CN 登录页标题区横版 Logo（auth-title-logo），未传则用默认 login-logo.png
+   */
+  titleLogo?: string;
+
+  /**
+   * @zh_CN 登录页标题 Logo 附加 class（如品牌宽度）
+   */
+  titleLogoClass?: string;
+
+  /**
+   * @zh_CN 「记住账号」localStorage 键名（需按品牌隔离）
+   */
+  rememberMeStorageKey?: string;
   /**
    * @zh_CN 提交按钮文本
    */

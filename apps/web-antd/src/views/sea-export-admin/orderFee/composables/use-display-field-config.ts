@@ -3,6 +3,8 @@ import { computed, ref, watch } from 'vue';
 import { $t } from '#/locales';
 import { message } from 'ant-design-vue';
 
+import { buildBrandStorageKey } from '#/utils/brand-storage';
+
 // 定义字段配置接口
 export interface DisplayFieldConfig {
   key: string;
@@ -19,10 +21,12 @@ export function useDisplayFieldConfig(
   allDisplayFields: DisplayFieldConfig[],
   storageKey = 'order_fee_display_config',
 ) {
+  const brandStorageKey = buildBrandStorageKey(storageKey);
+
   // 从 localStorage 加载用户配置
   const loadUserConfig = (): DisplayFieldConfig[] => {
     try {
-      const saved = localStorage.getItem(storageKey);
+      const saved = localStorage.getItem(brandStorageKey);
 
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -70,7 +74,7 @@ export function useDisplayFieldConfig(
   // 保存用户配置到 localStorage
   const saveUserConfig = (config: DisplayFieldConfig[]) => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify(config));
+      localStorage.setItem(brandStorageKey, JSON.stringify(config));
     } catch (error) {
       console.error('保存用户配置失败:', error);
     }

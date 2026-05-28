@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-28] [金海通 jht 独立打包与品牌环境](./changelogs/change-log-2026-05-28-build-jht-brand-pack.md)
 - [2026-05-28] [全局与路由切换 Loading 改为 Logo 进度条填充](./changelogs/change-log-2026-05-28-global-loading-logo-progress-fill.md)
 - [2026-05-27] [海运出口干系人下拉选中后先显示 ID 修复](./changelogs/change-log-2026-05-27-sea-export-order-user-select-label-flash.md)
 - [2026-05-27] [海运出口新增海外客服用户角色](./changelogs/change-log-2026-05-27-sea-export-overseas-customer-service-role.md)

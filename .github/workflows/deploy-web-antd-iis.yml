@@ -1,3 +1,4 @@
+# 默认打包浩瀚远洋（hhyy）。津海通（jht）请本地执行：pnpm build:antd:jht
 name: 生产环境前端自动发布 (8172 端口)
 
 on:
@@ -46,8 +47,14 @@ jobs:
           pnpm --version
           git --version
 
-      - name: Build web-antd
-        run: pnpm run build:antd
+      - name: Print web-antd brand env (hhyy)
+        shell: pwsh
+        run: |
+          Write-Host "=== web-antd build brand: hhyy (浩瀚远洋) ==="
+          Get-Content ./apps/web-antd/.env.hhyy | Select-String 'VITE_APP_'
+
+      - name: Build web-antd (hhyy)
+        run: pnpm run build:antd:hhyy
 
       - name: Verify build artifacts and hash
         shell: pwsh

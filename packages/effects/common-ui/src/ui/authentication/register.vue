@@ -86,7 +86,7 @@ defineExpose({
 
 <template>
   <div>
-    <Title>
+    <Title :logo-class="titleLogoClass" :logo-src="titleLogo">
       <slot name="title">
         {{ title || $t('authentication.createAnAccount') }} 🚀
       </slot>

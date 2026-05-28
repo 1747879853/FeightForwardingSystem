@@ -7,6 +7,11 @@ import { computed, h, ref } from 'vue';
 import { AuthenticationRegister, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
+import {
+  brandLoginTitleLogo,
+  brandLoginTitleLogoClass,
+} from '#/utils/brand-assets';
+
 defineOptions({ name: 'Register' });
 
 const loading = ref(false);
@@ -91,6 +96,8 @@ function handleSubmit(value: Recordable<any>) {
   <AuthenticationRegister
     :form-schema="formSchema"
     :loading="loading"
+    :title-logo="brandLoginTitleLogo"
+    :title-logo-class="brandLoginTitleLogoClass"
     @submit="handleSubmit"
   />
 </template>

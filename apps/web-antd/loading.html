@@ -1,4 +1,15 @@
 <style data-app-loading="inject-css">
+  @keyframes fill-progress {
+    0% {
+      clip-path: inset(0 100% 0 0);
+    }
+
+    50%,
+    100% {
+      clip-path: inset(0 0 0 0);
+    }
+  }
+
   html {
     /* same as ant-design-vue/dist/reset.css setting, avoid the title line-height changed */
     line-height: 1.15;
@@ -46,17 +57,19 @@
   .loading .loader-fill {
     position: relative;
     display: block;
-    width: 235px;
+    width: fit-content;
+    max-width: min(90vw, 320px);
     height: 54px;
     line-height: 0;
   }
 
   .loading .loader-fill img {
     display: block;
-    width: 100%;
-    height: 100%;
+    width: auto;
+    max-width: 100%;
+    height: 54px;
     object-fit: contain;
-    object-position: left center;
+    object-position: center center;
   }
 
   .loading .loader-fill .logo-bg {
@@ -64,9 +77,20 @@
     filter: grayscale(100%) brightness(0.75);
   }
 
+  /* 津海通等为彩色/深蓝 Logo，默认蒙层会过深 */
+  .loading .loader-fill--brand-jht .logo-bg {
+    opacity: 0.2;
+    filter: grayscale(100%) brightness(1.15) contrast(0.92);
+  }
+
   .dark .loading .loader-fill .logo-bg {
     opacity: 0.4;
     filter: grayscale(100%) brightness(1.1);
+  }
+
+  .dark .loading .loader-fill--brand-jht .logo-bg {
+    opacity: 0.32;
+    filter: grayscale(100%) brightness(1.2) contrast(0.9);
   }
 
   .loading .loader-fill .logo-color {
@@ -77,21 +101,10 @@
     animation: fill-progress 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     will-change: clip-path;
   }
-
-  @keyframes fill-progress {
-    0% {
-      clip-path: inset(0 100% 0 0);
-    }
-
-    50%,
-    100% {
-      clip-path: inset(0 0 0 0);
-    }
-  }
 </style>
 <div class="loading" id="__app-loading__">
   <div class="loader-fill-panel">
-    <div class="loader-fill">
+    <div class="loader-fill{{BRAND_LOADING_CLASS}}">
       <img src="/logo-text.png" alt="" class="logo-bg" />
       <img src="/logo-text.png" alt="" class="logo-color" />
     </div>

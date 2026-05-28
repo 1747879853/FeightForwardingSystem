@@ -7,6 +7,11 @@ import { computed, ref } from 'vue';
 import { AuthenticationForgetPassword, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
+import {
+  brandLoginTitleLogo,
+  brandLoginTitleLogoClass,
+} from '#/utils/brand-assets';
+
 defineOptions({ name: 'ForgetPassword' });
 
 const loading = ref(false);
@@ -38,6 +43,8 @@ function handleSubmit(value: Recordable<any>) {
   <AuthenticationForgetPassword
     :form-schema="formSchema"
     :loading="loading"
+    :title-logo="brandLoginTitleLogo"
+    :title-logo-class="brandLoginTitleLogoClass"
     @submit="handleSubmit"
   />
 </template>

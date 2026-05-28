@@ -1,11 +1,12 @@
 import type { EnumerationAdminApi } from '#/api/system/enum-admin';
 
 import { getItemsByName } from '#/api/system/enum-admin';
+import { buildBrandStorageKey } from '#/utils/brand-storage';
 
 /**
- * 枚举缓存的 Storage Key
+ * 枚举缓存的 Storage Key（按公司品牌隔离）
  */
-const ENUM_CACHE_KEY = 'enum_cache_v1';
+const ENUM_CACHE_KEY = buildBrandStorageKey('enum_cache_v1');
 
 /**
  * 枚举缓存数据结构

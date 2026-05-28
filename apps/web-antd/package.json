@@ -16,9 +16,14 @@
   },
   "type": "module",
   "scripts": {
-    "build": "pnpm vite build --mode production",
+    "build": "pnpm vite build --mode hhyy",
     "build:analyze": "pnpm vite build --mode analyze",
+    "build:hhyy": "pnpm vite build --mode hhyy",
+    "build:jht": "pnpm vite build --mode jht",
     "dev": "pnpm vite --mode development",
+    "dev:jiayue": "pnpm vite --mode development",
+    "dev:hhyy": "pnpm vite --mode hhyy",
+    "dev:jht": "pnpm vite --mode jht",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit --skipLibCheck"
   },

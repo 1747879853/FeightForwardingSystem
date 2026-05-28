@@ -7,6 +7,11 @@ import { computed, ref } from 'vue';
 import { AuthenticationCodeLogin, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
+import {
+  brandLoginTitleLogo,
+  brandLoginTitleLogoClass,
+} from '#/utils/brand-assets';
+
 defineOptions({ name: 'CodeLogin' });
 
 const loading = ref(false);
@@ -64,6 +69,8 @@ async function handleLogin(values: Recordable<any>) {
   <AuthenticationCodeLogin
     :form-schema="formSchema"
     :loading="loading"
+    :title-logo="brandLoginTitleLogo"
+    :title-logo-class="brandLoginTitleLogoClass"
     @submit="handleLogin"
   />
 </template>

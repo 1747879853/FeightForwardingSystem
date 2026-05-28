@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
 
-import logoText from '#/assets/img/logo-text.png';
+import { brandLoadingMaskClass, brandLogoText } from '#/utils/brand-assets';
 
 interface Props {
   class?: string;
@@ -65,10 +65,10 @@ function onTransitionEnd() {
     @transitionend="onTransitionEnd"
   >
     <div v-if="renderSpinner" class="loader-fill-panel">
-      <div class="loader-fill">
-        <img :src="logoText" alt="" class="logo-bg" />
+      <div class="loader-fill" :class="brandLoadingMaskClass">
+        <img :src="brandLogoText" alt="" class="logo-bg" />
         <img
-          :src="logoText"
+          :src="brandLogoText"
           alt=""
           class="logo-color"
           :class="{ paused: !showSpinner }"
@@ -94,17 +94,19 @@ function onTransitionEnd() {
 .loader-fill {
   position: relative;
   display: block;
-  width: 235px;
+  width: fit-content;
+  max-width: min(90vw, 320px);
   height: 54px;
   line-height: 0;
 }
 
 .loader-fill img {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: auto;
+  max-width: 100%;
+  height: 54px;
   object-fit: contain;
-  object-position: left center;
+  object-position: center center;
 }
 
 .logo-bg {
@@ -112,9 +114,19 @@ function onTransitionEnd() {
   filter: grayscale(100%) brightness(0.75);
 }
 
+.loader-fill--brand-jht .logo-bg {
+  opacity: 0.2;
+  filter: grayscale(100%) brightness(1.15) contrast(0.92);
+}
+
 :global(.dark) .logo-bg {
   opacity: 0.4;
   filter: grayscale(100%) brightness(1.1);
+}
+
+:global(.dark) .loader-fill--brand-jht .logo-bg {
+  opacity: 0.32;
+  filter: grayscale(100%) brightness(1.2) contrast(0.9);
 }
 
 .logo-color {

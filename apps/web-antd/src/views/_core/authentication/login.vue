@@ -7,6 +7,11 @@ import { AuthenticationLogin, SliderCaptcha, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
 import { useAuthStore } from '#/store';
+import {
+  brandLoginTitleLogo,
+  brandLoginTitleLogoClass,
+} from '#/utils/brand-assets';
+import { getBrandRememberMeStorageKey } from '#/utils/brand-storage';
 
 defineOptions({ name: 'Login' });
 
@@ -47,6 +52,9 @@ const formSchema = computed((): VbenFormSchema[] => {
   <AuthenticationLogin
     :form-schema="formSchema"
     :loading="authStore.loginLoading"
+    :title-logo="brandLoginTitleLogo"
+    :title-logo-class="brandLoginTitleLogoClass"
+    :remember-me-storage-key="getBrandRememberMeStorageKey()"
     sub-title="Freight Forwarding System"
     title="货代管理系统"
     @submit="authStore.authLogin"

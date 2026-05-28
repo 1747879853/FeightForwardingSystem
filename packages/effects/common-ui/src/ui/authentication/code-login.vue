@@ -90,7 +90,7 @@ defineExpose({
 
 <template>
   <div class="auth-code-login-card">
-    <Title>
+    <Title :logo-class="titleLogoClass" :logo-src="titleLogo">
       <slot name="title">
         {{ title || $t('authentication.welcomeBack') }} 📲
       </slot>
