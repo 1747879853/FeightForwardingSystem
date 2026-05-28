@@ -54,6 +54,7 @@ export function useDataPermissionFormSchema(): VbenFormSchema[] {
     {
       component: 'Select',
       componentProps: {
+        class: 'w-full',
         options: ManageTypeOptions,
         placeholder: '请选择功能类型',
       },
@@ -64,6 +65,7 @@ export function useDataPermissionFormSchema(): VbenFormSchema[] {
     {
       component: 'Select',
       componentProps: {
+        class: 'w-full',
         options: DataPermissionTypeOptions,
         placeholder: '请选择数据范围',
       },

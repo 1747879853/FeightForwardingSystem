@@ -6,7 +6,7 @@ import type { SystemPermissionApi } from '#/api/system/permission';
 
 import { computed, nextTick, ref, watch } from 'vue';
 
-import { useVbenDrawer } from '@vben/common-ui';
+import { useVbenModal } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
 import { Button, message, Modal } from 'ant-design-vue';
@@ -100,13 +100,14 @@ const [Grid, gridApi] =
 // ==================== 表单配置 ====================
 
 const [Form, formApi] = useVbenForm({
+  layout: 'vertical',
   schema: useDataPermissionFormSchema(),
   showDefaultActions: false,
 });
 
-// ==================== Drawer配置 ====================
+// ==================== Modal 配置 ====================
 
-const [Drawer, drawerApi] = useVbenDrawer({
+const [FormModal, modalApi] = useVbenModal({
   async onConfirm() {
     const { valid } = await formApi.validate();
     if (!valid) return;
@@ -118,7 +119,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
       dataPermissionType: values.dataPermissionType,
     };
 
-    drawerApi.lock();
+    modalApi.lock();
     try {
       await (editingId.value
         ? editDataPermission({
@@ -127,17 +128,17 @@ const [Drawer, drawerApi] = useVbenDrawer({
           } as SystemPermissionApi.UserDataPermissionEditDto)
         : addDataPermission(submitData));
       message.success($t('system.permission.saveSuccess'));
-      drawerApi.close();
+      modalApi.close();
       gridApi.query();
     } finally {
-      drawerApi.unlock();
+      modalApi.unlock();
     }
   },
   async onOpenChange(isOpen) {
     if (isOpen) {
       await nextTick();
       const data =
-        drawerApi.getData<SystemPermissionApi.UserDataPermissionDto>();
+        modalApi.getData<SystemPermissionApi.UserDataPermissionDto>();
       formApi.resetForm();
 
       if (data && data.id) {
@@ -153,7 +154,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
   },
 });
 
-const drawerTitle = computed(() => {
+const modalTitle = computed(() => {
   return editingId.value
     ? $t('system.permission.editDataPermission')
     : $t('system.permission.addDataPermission');
@@ -162,11 +163,11 @@ const drawerTitle = computed(() => {
 // ==================== 事件处理方法 ====================
 
 function handleCreate() {
-  drawerApi.setData({}).open();
+  modalApi.setData({}).open();
 }
 
 function handleEdit(row: SystemPermissionApi.UserDataPermissionDto) {
-  drawerApi.setData(row).open();
+  modalApi.setData(row).open();
 }
 
 function handleDelete(row: SystemPermissionApi.UserDataPermissionDto) {
@@ -194,9 +195,9 @@ watch(
 
 <template>
   <div class="h-full">
-    <Drawer :title="drawerTitle">
-      <Form />
-    </Drawer>
+    <FormModal :title="modalTitle">
+      <Form class="mx-4" />
+    </FormModal>
 
     <Grid>
       <template #toolbar-tools>
