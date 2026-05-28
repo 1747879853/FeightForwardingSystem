@@ -3,7 +3,7 @@ import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlem
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { Attachment } from '#/api/common/upload';
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
@@ -75,7 +75,22 @@ const rateList = ref<PaymentSettlementAdminApi.PaymentSettlementRateAddDto[]>(
 );
 
 // 结算明细列表
-const settlementItems = ref<any[]>([]);
+interface SettlementItem {
+  id: string;
+  applicationNo: string;
+  settlementName: string;
+  currencyCode: string;
+  originalAmount: number;
+  rate: number;
+  settledPrice: number;
+  feeCount: number;
+  application: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
+}
+
+const settlementItems = ref<SettlementItem[]>([]);
+
+// 计算是否已有费用
+const hasExistingFees = computed(() => settlementItems.value.length > 0);
 
 // 抽屉引用
 const addApplicationDrawerRef = ref<InstanceType<
@@ -98,23 +113,55 @@ const totalSettlementAmount = computed(() => {
 
 /** 打开选择付费申请抽屉 */
 function handleAddApplication() {
-  if (!settlementId.value) {
-    message.warning('请先选择结算对象');
-    return;
-  }
-  if (!currencyId.value) {
-    message.warning('请先选择结算币别');
-    return;
-  }
-  addApplicationDrawerRef.value?.openDrawer();
+  // 新建时不需要前置条件，编辑时如果有费用则锁定筛选条件
+  nextTick(() => {
+    addApplicationDrawerRef.value?.openDrawer();
+  });
 }
 
 /** 确认选择付费申请 */
 function handleConfirmApplications(
-  applications: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto[],
+  applications: Array<{
+    application: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
+    settledAmount: number;
+  }>,
 ) {
+  // 转换为结算明细
+  const newItems: SettlementItem[] = applications.map((app, index) => {
+    // 计算汇率（这里需要根据实际业务逻辑获取汇率）
+    const rate = 1; // TODO: 从API获取汇率
+
+    return {
+      id: `${Date.now()}-${index}`,
+      applicationNo: app.application.applicationNo || '',
+      settlementName: app.application.clientName || '',
+      currencyCode: app.application.currencyCode || '',
+      originalAmount: app.settledAmount,
+      rate: rate,
+      settledPrice: app.settledAmount * rate,
+      feeCount:
+        app.application.currencyGroup?.reduce(
+          (sum, g) => sum + (g.orderFees?.length || 0),
+          0,
+        ) || 0,
+      application: app.application,
+    };
+  });
+
+  // 添加到列表
+  settlementItems.value.push(...newItems);
+
+  // 如果是新建且第一次添加，自动填充结算信息
+  if (!isEdit.value && settlementItems.value.length === newItems.length) {
+    // 取第一个申请的结算对象和币别
+    const firstApp = applications[0].application;
+    if (firstApp) {
+      settlementId.value = firstApp.settlementId;
+      // 注意：currencyId 使用用户在抽屉中选择的值，不从申请单中取
+    }
+  }
+
   message.success(`已添加 ${applications.length} 个付费申请`);
-  // TODO: 处理选择的付费申请，转换为结算明细
 }
 
 /** 删除结算明细 */
@@ -168,8 +215,31 @@ async function handleSave() {
 
 /** 构建付费申请分组数据 */
 function buildPaymentApplicationGroups(): PaymentSettlementAdminApi.PaymentSettlementAddItemGroupDto[] {
-  // TODO: 根据实际业务逻辑构建
-  return [];
+  // 根据 settlementItems 构建分组数据
+  const groups: PaymentSettlementAdminApi.PaymentSettlementAddItemGroupDto[] =
+    [];
+
+  settlementItems.value.forEach((item) => {
+    const app = item.application;
+    if (!app.currencyGroup) return;
+
+    const currencyItems: PaymentSettlementAdminApi.PaymentSettlementAddItemCurrencyDto[] =
+      [];
+
+    app.currencyGroup.forEach((group) => {
+      currencyItems.push({
+        originalCurrencyId: group.id,
+        settledAmount: item.originalAmount, // TODO: 需要根据实际业务逻辑分配金额到各个币别
+      });
+    });
+
+    groups.push({
+      paymentApplicationId: app.id,
+      currencyItems,
+    });
+  });
+
+  return groups;
 }
 
 /** 表单验证 */
@@ -180,6 +250,10 @@ function validateForm(): boolean {
   }
   if (!currencyId.value) {
     message.warning('请选择结算币别');
+    return false;
+  }
+  if (settlementItems.value.length === 0) {
+    message.warning('请至少添加一个付费申请');
     return false;
   }
   return true;
@@ -209,7 +283,20 @@ async function loadEditData() {
       rate: r.rate,
     }));
 
-    settlementItems.value = detail.paymentSettlementItems;
+    // 转换结算明细
+    settlementItems.value = detail.paymentSettlementItems.map(
+      (item, index) => ({
+        id: item.id,
+        applicationNo: item.applicationNo,
+        settlementName: detail.settlementName,
+        currencyCode: item.originalCurrencyCode,
+        originalAmount: item.settledAmount,
+        rate: item.rate,
+        settledPrice: item.settledPrice,
+        feeCount: 1, // TODO: 需要获取实际的费用笔数
+        application: {} as any, // TODO: 需要从API获取完整的申请信息
+      }),
+    );
 
     attachments.value = (detail.attachments ?? []).map((a) => ({
       attachmentId: a.attachmentId,
@@ -258,6 +345,11 @@ watch(currencyId, async (newVal) => {
 onMounted(() => {
   if (isEdit.value) {
     loadEditData();
+  } else {
+    // 新建时自动打开抽屉
+    nextTick(() => {
+      handleAddApplication();
+    });
   }
 });
 </script>
@@ -287,13 +379,13 @@ onMounted(() => {
         <Card title="结算信息" :bordered="true" size="small">
           <div style="display: flex; flex-direction: column; gap: 12px">
             <div>
-              <div style=" margin-bottom: 4px; font-size: 12px;color: #666">
+              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
                 结算人
               </div>
               <Input :value="currentUserName" disabled />
             </div>
             <div>
-              <div style=" margin-bottom: 4px; font-size: 12px;color: #666">
+              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
                 结算时间
               </div>
               <DatePicker
@@ -304,7 +396,7 @@ onMounted(() => {
               />
             </div>
             <div>
-              <div style=" margin-bottom: 4px; font-size: 12px;color: #666">
+              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
                 付款方式
               </div>
               <Select
@@ -316,29 +408,31 @@ onMounted(() => {
               />
             </div>
             <div>
-              <div style=" margin-bottom: 4px; font-size: 12px;color: #666">
+              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
                 结算对象
               </div>
               <ClientSelect
                 v-model="settlementId"
                 placeholder="请选择结算对象"
                 allow-clear
+                :disabled="hasExistingFees"
                 style="width: 100%"
               />
             </div>
             <div>
-              <div style=" margin-bottom: 4px; font-size: 12px;color: #666">
+              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
                 结算币别
               </div>
               <CurrencySelect
                 v-model="currencyId"
                 placeholder="请选择"
                 allow-clear
+                :disabled="hasExistingFees"
                 style="width: 100%"
               />
             </div>
             <div style="margin-top: 8px">
-              <div style=" margin-bottom: 4px; font-size: 12px;color: #666">
+              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
                 备注
               </div>
               <Input.TextArea
@@ -362,13 +456,13 @@ onMounted(() => {
                 border-radius: 4px;
               "
             >
-              <div style=" margin-bottom: 8px; font-size: 12px;color: #999">
+              <div style="margin-bottom: 8px; font-size: 12px; color: #999">
                 结算总金额
               </div>
-              <div style=" font-size: 24px; font-weight: bold;color: #1890ff">
+              <div style="font-size: 24px; font-weight: bold; color: #1890ff">
                 ¥{{ formatAmount(totalSettlementAmount) }}
               </div>
-              <div style=" margin-top: 4px; font-size: 12px;color: #999">
+              <div style="margin-top: 4px; font-size: 12px; color: #999">
                 {{ currencyCode || 'RMB' }}
               </div>
             </div>
@@ -436,8 +530,8 @@ onMounted(() => {
                 :precision="2"
                 style="width: 120px"
               />
-              <span style=" font-size: 12px;color: #999">RMB</span>
-              <span style=" margin-left: auto; font-size: 12px;color: #999"
+              <span style="font-size: 12px; color: #999">RMB</span>
+              <span style="margin-left: auto; font-size: 12px; color: #999"
                 >手续费将计入结算总金额</span
               >
             </div>
@@ -536,7 +630,7 @@ onMounted(() => {
               <Tag color="red">{{ record.currencyCode }}</Tag>
             </template>
             <template v-else-if="column.dataIndex === 'settledPrice'">
-              <span style=" font-weight: bold;color: #fa8c16">
+              <span style="font-weight: bold; color: #fa8c16">
                 ¥{{ formatAmount(record.settledPrice) }}
               </span>
             </template>
@@ -564,6 +658,7 @@ onMounted(() => {
       :payment-settlement-id="editId"
       :settlement-id="settlementId"
       :currency-id="currencyId"
+      :has-existing-fees="hasExistingFees"
       @confirm="handleConfirmApplications"
     />
   </Page>
