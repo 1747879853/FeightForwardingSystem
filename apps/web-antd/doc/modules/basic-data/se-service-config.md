@@ -2,7 +2,7 @@
 title: 海运出口港口服务项配置
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-27
+last_updated: 2026-05-29
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,7 +25,8 @@ last_updated: 2026-05-27
 - **编辑态港口回显补齐：** 详情接口返回 `pol.portName` 时，编辑弹窗会手动拼装 `selected-items`，并统一 `polId` 为字符串口径，避免分页下拉未命中或超大整型 ID 类型不一致导致起运港不显示。
 - **服务项类型枚举稳态回显：** 列表与编辑弹窗共用 `resolveServiceTypeLabel`；列表优先从 `seServiceConfigItems` 明细（按 `sortId`）推导展示，并优先使用后端枚举文案字段，避免与编辑弹窗明细不一致。
 - **子表差异更新：** 明细中的展示字段、锁定字段、必填字段均按“有 id 更新、无 id 新增、缺失删除”规则提交。
-- **枚举驱动：** 弹窗会同时拉取 `serviceType` 与 `SeaExportPropEnum` 两类枚举，分别用于服务项类型下拉和字段规则下拉。
+- **枚举驱动：** 弹窗会同时拉取 `serviceType` 与 `SeaExportPropEnum` 两类枚举，分别用于服务项类型下拉和字段规则下拉；`SeaExportPropEnum` 采用「兜底清单 + 本地缓存 + 实时接口」三路合并，避免后端新增枚举项后前端下拉滞后。
+- **SeaExportPropEnum 千位分流：** 展示字段、锁定字段、完成时必填字段使用不同候选集——展示字段优先名称类额外枚举（`>1000`），锁定/必填仅允许基础字段（`≤1000`）。详见下文「SeaExportPropEnum 千位分流规则」。
 - **用户属性服务概览：** 在「服务项配置明细」上方展示各用户属性（销售/商务/操作/客服/单证/海外客服）当前已配置的服务项类型，随明细编辑实时更新。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -43,7 +44,28 @@ last_updated: 2026-05-27
 | **polId** | 配置所属起运港。 | `PortCode` 基础数据<br/>`PortSelect` | 决定配置作用范围；同租户内唯一。 | 必填；后端校验港口存在且不能重复配置。 |
 | **serviceType** | 服务项类型。 | 系统枚举<br/>`serviceType` | 同一配置下服务项展示顺序由数组顺序确定。 | 同一配置下不可重复。 |
 | **userAttribute** | 服务项责任角色（Flags）。 | 用户属性枚举（海运出口订单 6 项：销售、商务、操作、客服、单证、海外客服） | 一个服务项可绑定多个角色；选项与海运出口单据订单用户角色一致。 | 位标志可组合，提交为整型掩码；不含财务/人事。 |
-| **seServiceShows / Locks / Requires** | 字段展示、锁定、必填规则。 | 系统枚举<br/>`SeaExportPropEnum` | 与服务项绑定，随服务项一起差异更新。 | 枚举值应为有效海运出口字段。 |
+| **seServiceShows** | 服务完成前向用户展示的字段。 | 系统枚举<br/>`SeaExportPropEnum` | 候选集经千位去重：存在 `1000+x` 时隐藏基础项 `x`；无对应额外项的基础字段（如 `Vessel`、`ETD`）仍可选。 | 可选 `>1000` 的名称类枚举（如 `1017 ClientName`）；不可选手工录入的非法值。 |
+| **seServiceLocks** | 服务完成后锁定的字段。 | 系统枚举<br/>`SeaExportPropEnum` | 仅基础字段（`value ≤ 1000`），与服务项绑定差异更新。 | 不可选 `>1000` 的额外名称字段。 |
+| **seServiceRequires** | 服务完成时的必填字段。 | 系统枚举<br/>`SeaExportPropEnum` | 规则同 `seServiceLocks`，仅 `≤1000`。 | 不可选 `>1000` 的额外名称字段。 |
+
+### SeaExportPropEnum 千位分流规则
+
+后端枚举分两段：
+
+- **基础字段（1~17）：** 如 `CarrierId`、`ClientId`、`ETD` 等 ID/值/日期类字段；
+- **额外字段（1001+）：** 如 `CarrierName`、`ClientName` 等名称展示字段，数值设计上为 `1000 + 基础 value`（如 `ClientName = 1017` 对应 `ClientId = 17`）。
+
+前端常量 `SEA_EXPORT_EXTRA_PROP_BASE = 1000`，三套下拉分流如下：
+
+| 子表 | 条件 | 说明 |
+| :-- | :-- | :-- |
+| 展示字段 | `value > 1000` | 始终进入候选 |
+| 展示字段 | `value ≤ 1000` 且不存在 `value + 1000` | 进入候选（如 `4 Vessel`） |
+| 展示字段 | `value ≤ 1000` 且存在 `value + 1000` | **排除**（如存在 `1017` 则不显示 `17`） |
+| 锁定 / 必填 | `value ≤ 1000` | 进入候选 |
+| 锁定 / 必填 | `value > 1000` | **排除** |
+
+编辑回显时，锁定/必填子表中 `>1000` 的历史值会被过滤；用户新选值亦经白名单校验，防止 `tags` 模式写入非法枚举。
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -53,6 +75,7 @@ last_updated: 2026-05-27
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-29 | `Feature` | 同步后端 `SeaExportPropEnum` 额外字段（`1001+`），并按千位规则拆分三套下拉：展示字段优先名称类额外枚举且隐藏被替代的基础项；锁定/必填仅允许 `≤1000` 基础字段。 | `buildSeaExportPropOptions` 以「是否存在 value+1000」做展示去重；枚举加载合并兜底清单、缓存与 `GetItemsByNameAsync` 三路数据源；`updatePropRefs` 按白名单过滤非法选项。 |
 | 2026-05-24 | `Fix` | 修复列表「服务项类型」与编辑弹窗明细不一致：列表优先从 `seServiceConfigItems` 按 `sortId` 推导展示，并与弹窗共用 `resolveServiceTypeLabel` 文案解析；枚举加载优先 `ServiceType`。 | `formatRowServiceTypes` 在子项存在时忽略可能滞后的 `serviceTypes` 汇总字段；`loadSeServiceTypeOptions` 供 list/form 共用，消除双端枚举加载分叉。 |
 | 2026-05-24 | `Feature` | 配置弹窗在「服务项配置明细」上方新增「用户属性服务配置概览」，按销售/商务/操作/客服/单证汇总当前已配置的服务项类型，编辑时实时更新。 | 概览由 `itemRows` 派生，不依赖后端 `userAttributeServiceTypes` 字段；服务项类型文案复用枚举与默认兜底映射。 |
 | 2026-05-24 | `Fix` | 修复列表「服务项类型」列显示数字（如 `2、3`）而非文案的问题：增加 ServiceType 枚举兜底映射，并兼容 `serviceType` / `ServiceType` 两种枚举注册名。 | 列 formatter 采用「默认文案 + 动态枚举」合并 Map，避免枚举异步加载失败时回退为原始数值；`normalizeServiceTypes` 同时兼容数组与分隔字符串。 |
