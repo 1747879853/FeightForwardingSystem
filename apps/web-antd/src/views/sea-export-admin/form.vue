@@ -37,7 +37,6 @@ defineOptions({
   name: 'SeaExportAdminForm',
 });
 import { UserSelect } from '#/adapter/component';
-import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import { useVbenForm } from '#/adapter/form';
 import { runVisionOcrPdf } from '#/api/common';
 import {
@@ -46,6 +45,7 @@ import {
   getServiceTypesByPOL,
   getSeaExportDetail,
 } from '#/api/sea-export/sea-export-admin';
+import { completeSeServiceTask } from '#/api/sea-export/se-service-task-admin';
 import {
   getOrganizationUnitTree,
   type SystemOrganizationUnitApi,
@@ -64,6 +64,7 @@ import {
   usePortFormSchema,
   useShipmentFormSchema,
 } from './data';
+import { SERVICE_TYPE_VALUE } from './service-type';
 
 const route = useRoute();
 const router = useRouter();
@@ -173,6 +174,11 @@ const BASIC_INFO_FIELD_ORDER = [
   'carrierId',
   'vessel',
   'shipAgentId',
+  'bookingAgentId',
+  'teamId',
+  'custBrokerId',
+  'warehouseId',
+  'insuranceId',
   'bookingNum',
   'mblNum',
   'yardId',
@@ -242,13 +248,13 @@ const SERVICE_ITEM_CHECK_FIELD_NAMES: Record<ServiceItemFieldName, string> = {
   insuranceId: 'insuranceIdEnabled',
 };
 const SERVICE_TYPE_VALUES: Record<ServiceItemFieldName, number> = {
-  bookingAgentId: 0,
-  teamId: 1,
-  custBrokerId: 2,
-  warehouseId: 3,
-  insuranceId: 4,
+  bookingAgentId: SERVICE_TYPE_VALUE.booking,
+  teamId: SERVICE_TYPE_VALUE.truck,
+  custBrokerId: SERVICE_TYPE_VALUE.customs,
+  warehouseId: SERVICE_TYPE_VALUE.warehouse,
+  insuranceId: SERVICE_TYPE_VALUE.insurance,
 };
-const COLLECTION_PAYMENT_SERVICE_TYPE = 5;
+const COLLECTION_PAYMENT_SERVICE_TYPE = SERVICE_TYPE_VALUE.collectionPayment;
 /** 暂时隐藏代收支服务项，恢复时改为 true */
 const SHOW_COLLECTION_PAYMENT_FIELD = false;
 const SERVICE_TYPE_TO_FIELD = new Map<number, ServiceItemFieldName>(
@@ -265,6 +271,44 @@ const SERVICE_TASK_STATUS_META: Record<
 > = {
   [SERVICE_TASK_STATUS_PENDING]: { label: '待处理', color: 'gold' },
   [SERVICE_TASK_STATUS_PROCESSED]: { label: '已处理', color: 'green' },
+};
+const SERVICE_REQUIRE_PROP_TO_FIELD_NAME: Record<number, string> = {
+  1: 'carrierId',
+  2: 'polId',
+  3: 'podId',
+  4: 'vessel',
+  5: 'innerVoyno',
+  6: 'closingTime',
+  7: 'closeDocTime',
+  8: 'closeVgmTime',
+  9: 'closeManifestTime',
+  10: 'bookingAgentId',
+  11: 'shipAgentId',
+  12: 'yardId',
+  13: 'codeIssueTypeId',
+  14: 'mblNum',
+  15: 'bookingNum',
+  16: 'etd',
+  17: 'clientId',
+};
+const SERVICE_REQUIRE_FIELD_LABEL_KEY: Record<string, string> = {
+  carrierId: 'seaExport.export.carrierId',
+  polId: 'seaExport.export.polId',
+  podId: 'seaExport.export.podId',
+  vessel: 'seaExport.export.vessel',
+  innerVoyno: 'seaExport.export.innerVoyno',
+  closingTime: 'seaExport.export.closingTime',
+  closeDocTime: 'seaExport.export.closeDocTime',
+  closeVgmTime: 'seaExport.export.closeVgmTime',
+  closeManifestTime: 'seaExport.export.closeManifestTime',
+  bookingAgentId: 'seaExport.export.bookingAgentId',
+  shipAgentId: 'seaExport.export.shipAgentId',
+  yardId: 'seaExport.export.yardId',
+  codeIssueTypeId: 'seaExport.export.codeIssueTypeId',
+  mblNum: 'seaExport.export.mblNum',
+  bookingNum: 'seaExport.export.bookingNum',
+  etd: 'seaExport.export.etd',
+  clientId: 'seaExport.export.clientId',
 };
 type ServiceItemCheckFieldName =
   (typeof SERVICE_ITEM_CHECK_FIELD_NAMES)[ServiceItemFieldName];
@@ -327,7 +371,6 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
         ![
           ...ENTRUST_STATIC_FIELD_NAMES,
           ...ENTRUST_FORM_FIELD_NAMES,
-          ...SERVICE_ITEM_FIELD_NAMES,
           'cargoId',
         ].includes(item.fieldName),
     ),
@@ -429,18 +472,35 @@ const getServiceItemChecked = (field: ServiceItemFieldName) => {
   const checkFieldName = getServiceItemCheckFieldName(field);
   return !!serviceItemEnabledValues.value[checkFieldName];
 };
+const getServiceItemNodeState = (
+  field: ServiceItemFieldName,
+): 'active' | 'done' | 'pending' => {
+  if (!getServiceItemChecked(field)) return 'pending';
+  const status = serviceItemTaskStatusValues.value[field];
+  if (status === SERVICE_TASK_STATUS_PROCESSED) return 'done';
+  return 'active';
+};
+const isServiceItemNodeDone = (field: ServiceItemFieldName) =>
+  getServiceItemNodeState(field) === 'done';
+const canToggleServiceItemNode = (field: ServiceItemFieldName) => {
+  if (!isEdit.value) return true;
+  const checked = getServiceItemChecked(field);
+  if (!checked) return true;
+  return !isServiceItemNodeDone(field);
+};
+const handleServiceItemNodeToggle = (field: ServiceItemFieldName) => {
+  if (!canToggleServiceItemNode(field)) {
+    message.warning('已完成服务不可关闭');
+    return;
+  }
+  handleServiceItemEnabledChange(field, !getServiceItemChecked(field));
+};
 const getServiceItemVisible = (field: ServiceItemFieldName) => {
   return serviceItemVisibleValues.value[field] !== false;
 };
 const visibleServiceItemFields = computed(() =>
   SERVICE_ITEM_FIELD_NAMES.filter((field) => getServiceItemVisible(field)),
 );
-const serviceItemColumnCount = computed(() => {
-  const visibleServiceCardCount = visibleServiceItemFields.value.length;
-  const collectionPaymentCardCount =
-    SHOW_COLLECTION_PAYMENT_FIELD && collectionPaymentEnabled.value ? 1 : 0;
-  return Math.max(visibleServiceCardCount + collectionPaymentCardCount, 1);
-});
 const handleServiceItemEnabledChange = (
   field: ServiceItemFieldName,
   enabled: boolean,
@@ -461,12 +521,6 @@ const handleServiceItemEnabledChange = (
     };
   }
 };
-const handleServiceItemCheckboxChange = (
-  field: ServiceItemFieldName,
-  event: any,
-) => {
-  handleServiceItemEnabledChange(field, !!event?.target?.checked);
-};
 const handleServiceItemValueChange = (
   field: ServiceItemFieldName,
   value: any,
@@ -482,12 +536,19 @@ const handleServiceItemValueChange = (
 const getServiceItemSelectedItems = (field: ServiceItemFieldName) => {
   return serviceItemSelectedItems.value[field] || [];
 };
-const getServiceItemFormValues = () => {
+const getServiceItemFormValues = (
+  fallbackValues: Partial<Record<string, any>> = {},
+) => {
   const values: Partial<Record<string, any>> = {};
   SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
     const checkFieldName = getServiceItemCheckFieldName(field);
-    values[field] = serviceItemValues.value[field];
-    values[checkFieldName] = !!serviceItemEnabledValues.value[checkFieldName];
+    const fieldValue =
+      serviceItemValues.value[field] ??
+      (fallbackValues as Record<string, any>)[field];
+    values[field] = fieldValue;
+    values[checkFieldName] =
+      !!serviceItemEnabledValues.value[checkFieldName] ||
+      hasServiceItemValue(fieldValue);
   });
   return values;
 };
@@ -496,6 +557,13 @@ const hasServiceItemValue = (value: any) =>
 const serviceItemTaskStatusValues = ref<
   Partial<Record<ServiceItemFieldName, ServiceTaskStatusValue>>
 >({});
+const serviceItemTaskIdValues = ref<
+  Partial<Record<ServiceItemFieldName, string>>
+>({});
+const serviceItemRequiredPropValues = ref<
+  Partial<Record<ServiceItemFieldName, number[]>>
+>({});
+const completingServiceField = ref<ServiceItemFieldName>();
 const toServiceTaskStatusValue = (
   value: unknown,
 ): ServiceTaskStatusValue | undefined => {
@@ -526,10 +594,181 @@ const extractServiceTaskStatusFromDetail = (
 
   return result;
 };
+const extractServiceTaskIdFromDetail = (
+  detail: SeaExportAdminApi.SeaExportDto,
+): Partial<Record<ServiceItemFieldName, string>> => {
+  const result: Partial<Record<ServiceItemFieldName, string>> = {};
+  const services = (detail as any)?.seaExportServices;
+  if (!Array.isArray(services)) return result;
+
+  services.forEach((service: any) => {
+    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(service?.serviceType));
+    if (!mappedField) return;
+    const rawTaskId =
+      service?.seServiceTask?.id ??
+      service?.seServiceTaskId ??
+      service?.serviceTaskId;
+    if (rawTaskId == null) return;
+    const taskId = String(rawTaskId).trim();
+    if (!taskId) return;
+    result[mappedField] = taskId;
+  });
+
+  return result;
+};
+const normalizeRequiredProps = (value: unknown): number[] => {
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value
+        .map((item) => Number(item))
+        .filter((item) => Number.isFinite(item) && item > 0),
+    ),
+  ];
+};
+const buildServiceRequiredPropsByField = (
+  availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+  checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+) => {
+  const result: Partial<Record<ServiceItemFieldName, number[]>> = {};
+  const sourceMap = new Map<number, SeaExportAdminApi.ServiceTypeByPolDto>();
+  (Array.isArray(availableServiceTypes) ? availableServiceTypes : []).forEach(
+    (item) => {
+      const serviceType = Number(item?.serviceType);
+      if (!Number.isFinite(serviceType)) return;
+      sourceMap.set(serviceType, item);
+    },
+  );
+  (Array.isArray(checkedServiceTypes) ? checkedServiceTypes : []).forEach(
+    (item) => {
+      const serviceType = Number(item?.serviceType);
+      if (!Number.isFinite(serviceType)) return;
+      sourceMap.set(serviceType, item);
+    },
+  );
+
+  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
+    const serviceType = SERVICE_TYPE_VALUES[field];
+    const matched = sourceMap.get(serviceType);
+    if (!matched) return;
+    result[field] = normalizeRequiredProps(matched.seServiceRequires);
+  });
+  return result;
+};
 const getServiceItemTaskStatusMeta = (field: ServiceItemFieldName) => {
   const status = serviceItemTaskStatusValues.value[field];
   if (status === undefined) return undefined;
   return SERVICE_TASK_STATUS_META[status];
+};
+const canCompleteServiceItem = (field: ServiceItemFieldName) => {
+  const taskId = serviceItemTaskIdValues.value[field];
+  const status = serviceItemTaskStatusValues.value[field];
+  return (
+    !!taskId &&
+    status === SERVICE_TASK_STATUS_PENDING &&
+    getServiceItemChecked(field)
+  );
+};
+const isRequiredFieldFilled = (value: unknown) => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') {
+    if (typeof (value as { isValid?: () => boolean }).isValid === 'function') {
+      return !!(value as { isValid: () => boolean }).isValid();
+    }
+    return true;
+  }
+  return true;
+};
+const getRequiredFieldLabelByProp = (propEnum: number) => {
+  const fieldName = SERVICE_REQUIRE_PROP_TO_FIELD_NAME[propEnum];
+  if (!fieldName) return `字段(${propEnum})`;
+  const labelKey = SERVICE_REQUIRE_FIELD_LABEL_KEY[fieldName];
+  return labelKey ? $t(labelKey) : fieldName;
+};
+const collectCurrentFormValues = async () => {
+  const [
+    partyValues,
+    entrustValues,
+    basicValues,
+    shipmentValues,
+    portValues,
+    cargoTypeValues,
+    cargoMainValues,
+    cargoRemarkValues,
+  ] = await Promise.all([
+    partyInfoFormApi.getValues(),
+    entrustInfoFormApi.getValues(),
+    basicInfoFormApi.getValues(),
+    shipmentFormApi.getValues(),
+    portFormApi.getValues(),
+    cargoTypeInlineFormApi.getValues(),
+    cargoMainFormApi.getValues(),
+    cargoRemarkFormApi.getValues(),
+  ]);
+  return {
+    commissionNum: entrustReadonlyInfo.value.commissionNum,
+    accountDate: entrustReadonlyInfo.value.accountDate,
+    settlementDate: entrustReadonlyInfo.value.settlementDate,
+    ...partyValues,
+    ...entrustValues,
+    ...basicValues,
+    ...getServiceItemFormValues(basicValues),
+    ...shipmentValues,
+    ...portValues,
+    ...cargoTypeValues,
+    ...cargoMainValues,
+    ...cargoRemarkValues,
+  } as Record<string, any>;
+};
+const getMissingRequiredLabelsForService = async (
+  field: ServiceItemFieldName,
+) => {
+  const requiredProps = serviceItemRequiredPropValues.value[field] ?? [];
+  if (!requiredProps.length) return [];
+  const currentValues = await collectCurrentFormValues();
+  const missingLabels: string[] = [];
+  requiredProps.forEach((propEnum) => {
+    const mappedField = SERVICE_REQUIRE_PROP_TO_FIELD_NAME[propEnum];
+    if (!mappedField) return;
+    if (isRequiredFieldFilled(currentValues[mappedField])) return;
+    missingLabels.push(getRequiredFieldLabelByProp(propEnum));
+  });
+  return missingLabels;
+};
+const handleCompleteService = async (field: ServiceItemFieldName) => {
+  if (!isEdit.value) return;
+  if (completingServiceField.value) return;
+  const taskId = serviceItemTaskIdValues.value[field];
+  if (!taskId) {
+    message.warning('当前服务暂无可完成任务');
+    return;
+  }
+  if (
+    serviceItemTaskStatusValues.value[field] === SERVICE_TASK_STATUS_PROCESSED
+  ) {
+    message.info('当前服务已完成');
+    return;
+  }
+  const missingLabels = await getMissingRequiredLabelsForService(field);
+  if (missingLabels.length > 0) {
+    message.warning(`请先填写：${missingLabels.join('、')}，再完成服务`);
+    return;
+  }
+  completingServiceField.value = field;
+  try {
+    await completeSeServiceTask({ id: taskId });
+    serviceItemTaskStatusValues.value = {
+      ...serviceItemTaskStatusValues.value,
+      [field]: SERVICE_TASK_STATUS_PROCESSED,
+    };
+    message.success(`${SERVICE_ITEM_META[field].label}已完成`);
+  } catch {
+    message.error('完成服务失败，请稍后重试');
+  } finally {
+    completingServiceField.value = undefined;
+  }
 };
 const toOptionalQueryValue = (value: unknown) => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -583,6 +822,7 @@ const resetServiceTypeStateWhenPolEmpty = () => {
   serviceItemSelectedItems.value = nextServiceItemSelectedItems;
   collectionPaymentEnabled.value = false;
   collectionPaymentDeptId.value = undefined;
+  serviceItemRequiredPropValues.value = {};
 };
 const applyServiceTypeStateByPol = (
   availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
@@ -627,6 +867,10 @@ const applyServiceTypeStateByPol = (
   if (!collectionPaymentEnabled.value) {
     collectionPaymentDeptId.value = undefined;
   }
+  serviceItemRequiredPropValues.value = buildServiceRequiredPropsByField(
+    availableServiceTypes,
+    checkedServiceTypes,
+  );
 };
 const extractServiceTypesByPolResult = (
   payload: unknown,
@@ -2058,6 +2302,7 @@ const loadEditData = async () => {
     };
     serviceItemTaskStatusValues.value =
       extractServiceTaskStatusFromDetail(detail);
+    serviceItemTaskIdValues.value = extractServiceTaskIdFromDetail(detail);
 
     portFormApi.updateSchema([
       {
@@ -2377,7 +2622,7 @@ const handleSubmit = async () => {
     cargoMainFormApi.getValues(),
     cargoRemarkFormApi.getValues(),
   ]);
-  const serviceItemsValues = getServiceItemFormValues();
+  const serviceItemsValues = getServiceItemFormValues(basicValues);
   const values = {
     commissionNum: entrustReadonlyInfo.value.commissionNum,
     accountDate: entrustReadonlyInfo.value.accountDate,
@@ -2476,6 +2721,8 @@ onMounted(() => {
     initializeOrderUsersPanel(defaultOrderUsers);
     refreshEntrustReadonlyInfo({});
     serviceItemTaskStatusValues.value = {};
+    serviceItemTaskIdValues.value = {};
+    serviceItemRequiredPropValues.value = {};
   }
   loadCollectionPaymentDeptOptions();
   applyTransitPortTabSchema();
@@ -2656,81 +2903,93 @@ defineExpose({
                 </div>
                 <div class="biz-block biz-block--service">
                   <div class="biz-block__title">服务项目</div>
-                  <div
-                    class="service-item-grid"
-                    :style="{
-                      '--service-item-columns': serviceItemColumnCount,
-                    }"
-                  >
-                    <div
-                      v-for="field in visibleServiceItemFields"
-                      :key="field"
-                      class="service-item-custom-card"
-                      :class="{
-                        'service-item-custom-card--active':
-                          getServiceItemChecked(field),
-                      }"
-                    >
-                      <div class="service-item-custom-card__header">
-                        <div class="service-item-custom-card__title-wrap">
-                          <span class="service-item-custom-card__icon">
-                            <IconifyIcon
-                              :icon="SERVICE_ITEM_META[field].icon"
-                              class="service-item-custom-card__icon-inner"
-                            />
-                          </span>
-                          <span class="service-item-custom-card__title">
-                            {{ SERVICE_ITEM_META[field].label }}
-                          </span>
-                          <Tag
-                            v-if="isEdit && getServiceItemTaskStatusMeta(field)"
-                            :color="getServiceItemTaskStatusMeta(field)?.color"
-                            class="service-item-custom-card__status-tag"
+                  <div class="service-pipeline">
+                    <div class="service-pipeline__track">
+                      <div
+                        v-for="(field, index) in visibleServiceItemFields"
+                        :key="field"
+                        class="service-item-node-wrap"
+                      >
+                        <div
+                          class="service-item-node"
+                          :class="`service-item-node--${getServiceItemNodeState(field)}`"
+                        >
+                          <div
+                            class="service-item-node__content"
+                            @click="handleServiceItemNodeToggle(field)"
                           >
-                            {{ getServiceItemTaskStatusMeta(field)?.label }}
-                          </Tag>
+                            <span
+                              v-if="isEdit && getServiceItemChecked(field)"
+                              class="service-item-node__check"
+                            >
+                              <IconifyIcon
+                                icon="mdi:check"
+                                class="service-item-node__check-icon"
+                              />
+                            </span>
+                            <span class="service-item-node__icon">
+                              <IconifyIcon
+                                :icon="SERVICE_ITEM_META[field].icon"
+                                class="service-item-node__icon-inner"
+                              />
+                            </span>
+                            <span class="service-item-node__title">
+                              {{ SERVICE_ITEM_META[field].label }}
+                            </span>
+                            <span
+                              v-if="
+                                isEdit &&
+                                getServiceItemTaskStatusMeta(field) &&
+                                !isServiceItemNodeDone(field)
+                              "
+                              class="service-item-node__status"
+                            >
+                              {{ getServiceItemTaskStatusMeta(field)?.label }}
+                            </span>
+                            <Button
+                              v-if="isEdit && canCompleteServiceItem(field)"
+                              type="link"
+                              size="small"
+                              class="service-item-node__action-btn"
+                              :loading="completingServiceField === field"
+                              @click.stop="handleCompleteService(field)"
+                            >
+                              完成服务
+                            </Button>
+                          </div>
                         </div>
-                        <Checkbox
-                          :checked="getServiceItemChecked(field)"
-                          @change="
-                            handleServiceItemCheckboxChange(field, $event)
-                          "
-                        />
-                      </div>
-                      <div class="service-item-custom-card__body">
-                        <ClientSelect
-                          :model-value="serviceItemValues[field]"
-                          :industry-category="
-                            SERVICE_ITEM_META[field].industryCategory
-                          "
-                          :selected-items="getServiceItemSelectedItems(field)"
-                          :disabled="!getServiceItemChecked(field)"
-                          :placeholder="$t('ui.placeholder.select')"
-                          allow-clear
-                          class="w-full"
-                          @update:model-value="
-                            handleServiceItemValueChange(field, $event)
-                          "
+                        <div
+                          v-if="index < visibleServiceItemFields.length - 1"
+                          class="service-item-divider"
+                          :class="{
+                            'service-item-divider--done':
+                              isServiceItemNodeDone(field),
+                          }"
                         />
                       </div>
                     </div>
+                    <div class="service-item-pipeline__hint">
+                      点击节点可启用/关闭服务
+                    </div>
+                  </div>
+                  <div class="service-item-grid">
                     <div
                       v-if="SHOW_COLLECTION_PAYMENT_FIELD"
-                      class="service-item-custom-card"
+                      class="service-item-extra-card"
                       :class="{
-                        'service-item-custom-card--active':
+                        'service-item-extra-card--active':
                           collectionPaymentEnabled,
                       }"
                     >
-                      <div class="service-item-custom-card__header">
-                        <div class="service-item-custom-card__title-wrap">
-                          <span class="service-item-custom-card__icon">
+                      <div class="service-item-extra-card__header">
+                        <div class="service-item-extra-card__title-wrap">
+                          <span class="service-item-extra-card__icon">
                             <IconifyIcon
                               :icon="COLLECTION_PAYMENT_ICON"
-                              class="service-item-custom-card__icon-inner"
+                              class="service-item-extra-card__icon-inner"
                             />
                           </span>
-                          <span class="service-item-custom-card__title"
+                          <span class="service-item-extra-card__title"
                             >代收支</span
                           >
                         </div>
@@ -2739,7 +2998,7 @@ defineExpose({
                           @change="handleCollectionPaymentEnabledChange"
                         />
                       </div>
-                      <div class="service-item-custom-card__body">
+                      <div class="service-item-extra-card__body">
                         <Select
                           :value="collectionPaymentDeptId"
                           :options="collectionPaymentDeptOptions"
@@ -3426,15 +3685,181 @@ defineExpose({
   margin-top: 12px;
 }
 
-.service-item-grid {
-  --service-item-columns: 6;
-
-  display: grid;
-  grid-template-columns: repeat(var(--service-item-columns), minmax(0, 1fr));
-  gap: 12px;
+.service-pipeline {
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid rgb(226 232 240 / 60%);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 5%),
+    0 4px 6px -2px rgb(0 0 0 / 2%);
 }
 
-.service-item-custom-card {
+.service-pipeline__track {
+  display: flex;
+  gap: 0;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 64px;
+}
+
+.service-item-node-wrap {
+  display: contents;
+}
+
+.service-item-node {
+  display: flex;
+  align-items: center;
+}
+
+.service-item-node__content {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.service-item-node__content:hover {
+  background: #f8fafc;
+}
+
+.service-item-node__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: transparent;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 999px;
+  transition: all 0.2s ease;
+}
+
+.service-item-node__check-icon {
+  font-size: 12px;
+}
+
+.service-item-node__icon {
+  display: inline-flex;
+  align-items: center;
+  color: #64748b;
+}
+
+.service-item-node__icon-inner {
+  font-size: 16px;
+}
+
+.service-item-node__title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.service-item-node__status {
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #f59e0b;
+  white-space: nowrap;
+  background: #fffbeb;
+  border: 1px solid rgb(245 158 11 / 20%);
+  border-radius: 999px;
+}
+
+.service-item-node__action-btn {
+  margin-left: 2px;
+  font-size: 12px;
+  color: #2563eb;
+  pointer-events: none;
+  background: #eff6ff;
+  border-radius: 6px;
+  opacity: 0;
+  transform: translateX(-5px);
+  transition: all 0.2s ease;
+}
+
+.service-item-node:hover .service-item-node__action-btn,
+.service-item-node--active .service-item-node__action-btn {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.service-item-node__action-btn:hover {
+  color: #fff;
+  background: #2563eb;
+  box-shadow: 0 2px 4px rgb(37 99 235 / 20%);
+}
+
+.service-item-divider {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 1.5px;
+  margin: 0 8px;
+  background: #f1f5f9;
+}
+
+.service-item-divider--done {
+  background: rgb(16 185 129 / 30%);
+}
+
+.service-item-node--done .service-item-node__check {
+  color: #fff;
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.service-item-node--done .service-item-node__title {
+  color: #64748b;
+}
+
+.service-item-node--active .service-item-node__check {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px #eff6ff;
+}
+
+.service-item-node--active .service-item-node__icon,
+.service-item-node--active .service-item-node__title {
+  color: #2563eb;
+}
+
+.service-item-node--active .service-item-node__title {
+  font-weight: 600;
+}
+
+.service-item-node--pending .service-item-node__check {
+  border-style: dashed;
+}
+
+.service-item-node--pending .service-item-node__icon,
+.service-item-node--pending .service-item-node__title {
+  color: #cbd5e1;
+}
+
+.service-item-pipeline__hint {
+  margin-top: 8px;
+  margin-left: 12px;
+  font-size: 12px;
+  line-height: 20px;
+  color: rgb(0 0 0 / 45%);
+}
+
+.service-item-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.service-item-extra-card {
+  flex: 0 1 232px;
+  max-width: 232px;
   padding: 10px 12px;
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -3445,26 +3870,26 @@ defineExpose({
     background-color 0.2s ease;
 }
 
-.service-item-custom-card--active {
+.service-item-extra-card--active {
   background: #f7fbff;
   border-color: #bfdbfe;
   box-shadow: 0 2px 8px rgb(22 119 255 / 6%);
 }
 
-.service-item-custom-card__header {
+.service-item-extra-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
 }
 
-.service-item-custom-card__title-wrap {
+.service-item-extra-card__title-wrap {
   display: inline-flex;
   gap: 8px;
   align-items: center;
 }
 
-.service-item-custom-card__icon {
+.service-item-extra-card__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3475,40 +3900,23 @@ defineExpose({
   border-radius: 9999px;
 }
 
-.service-item-custom-card__icon-inner {
+.service-item-extra-card__icon-inner {
   font-size: 13px;
 }
 
-.service-item-custom-card__title {
+.service-item-extra-card__title {
   font-size: 14px;
   font-weight: 500;
   color: rgb(0 0 0 / 65%);
 }
 
-.service-item-custom-card__status-tag {
-  margin-left: 4px;
-  border-radius: 999px;
-}
-
-.service-item-custom-card__body {
+.service-item-extra-card__body {
   min-height: 32px;
 }
 
-.service-item-custom-card--active .service-item-custom-card__title {
+.service-item-extra-card--active .service-item-extra-card__title {
   font-weight: 600;
   color: #1677ff;
-}
-
-@media (max-width: 1600px) {
-  .service-item-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 1200px) {
-  .service-item-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 :deep(.shipment-flow-wrap) {

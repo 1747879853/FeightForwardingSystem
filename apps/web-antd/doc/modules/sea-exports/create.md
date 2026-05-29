@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-29
+last_updated: 2026-05-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -69,6 +69,7 @@ last_updated: 2026-05-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-30 | `Refactor` | 服务项类型值映射改为复用统一常量 `SERVICE_TYPE_VALUE`，与工作台/港口服务项配置/客户排除服务项保持同源。 | `form.vue` 继续承载“服务项值 -> 业务字段”映射语义，枚举数值来源收敛到 `service-type.ts`，降低 0~5 硬编码漂移风险。 |
 | 2026-05-29 | `Fix` | 服务项目联动改为双查询语义：`polId` 决定可见卡片，`polId+clientId` 决定默认勾选；起运港未配置卡片隐藏。 | `form.vue` 新增可见态集合并动态渲染卡片列表，避免把默认勾选逻辑误用于可见范围。 |
 | 2026-05-27 | `Fix` | 修复右侧干系人 `UserSelect` 选中人员后先闪数字 ID 再显示名称：`:key` 改为仅 `row._rowKey`，避免选中/异步回显时组件重建。 | 动态 `key` 含 `userId` 与显示名会在 `loadOrderUserDetail` 前后各触发一次 remount；Remote Select 无 options 时只能回显 value。 |
 | 2026-05-27 | `Feature` | 干系人固定角色新增「海外客服」，与港口服务项配置用户属性口径一致；海外客服人员非必填。 | 复用 `UserAttribute.OverseasCustomerService`；选项来自 `getSeaExportOrderUserRoleOptions()`。 |

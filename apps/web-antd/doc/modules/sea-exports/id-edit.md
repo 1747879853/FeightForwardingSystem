@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-29
+last_updated: 2026-05-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -88,6 +88,7 @@ last_updated: 2026-05-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-30 | `Refactor` | 嵌入式基础信息中的服务项类型值映射改为复用统一常量 `SERVICE_TYPE_VALUE`，与新建页和其他服务项页面统一。 | 编辑工作台复用 `form.vue`，因此服务项枚举值口径与新建页天然同源；本次把数值源头进一步收敛到 `service-type.ts`。 |
 | 2026-05-29 | `Fix` | 服务项目联动拆分为双查询：起运港决定卡片是否展示，客户维度决定默认勾选；未配置服务卡片隐藏。 | 编辑页在 `loadEditData` 后强制执行 `syncServiceTypesByPol({ force: true })`，确保详情旧值不会覆盖当前配置。 |
 | 2026-05-25 | `Fix` | 修复委托单位已选仍提示必选：联动监听改为 `onChange`，与新建页同源修复。 | 嵌入模式共用 `bindServiceTypeLinkageEvents`，勿在 `updateSchema` 中绑定 `onUpdate:modelValue`。 |
 | 2026-05-29 | `Fix` | 编辑页打开时代收支不再被 `organizationUnits` 单独误勾选；代收支是否默认勾选由服务项联动结果控制。 | 代收支勾选判定统一收敛到服务项联动流程，避免跨来源状态冲突。 |

@@ -23,7 +23,7 @@ import {
   getClientExceptServices,
 } from '#/api/sea-export/client-except-service-admin';
 import { $t } from '#/locales';
-import { getEnumItems } from '#/utils/init-enum';
+import { loadSeServiceTypeOptions } from '#/views/sea-export-admin/service-type';
 import {
   getSeaExportOrderUserRoleOptions,
   parseSeaExportUserAttribute,
@@ -32,7 +32,6 @@ import {
 import {
   buildEditPayload,
   buildServiceTypeLabelMap,
-  buildServiceTypeOptionsFromEnum,
   formatPolLabel,
   isNotEntrustingUnitApiError,
   normalizePortGroups,
@@ -78,11 +77,7 @@ function getServiceTypeLabel(serviceType?: number) {
 }
 
 async function loadServiceTypeOptions() {
-  let items = await getEnumItems('serviceType');
-  if (!items?.length) {
-    items = await getEnumItems('ServiceType');
-  }
-  serviceTypeOptions.value = buildServiceTypeOptionsFromEnum(items);
+  serviceTypeOptions.value = await loadSeServiceTypeOptions();
 }
 
 async function loadData() {

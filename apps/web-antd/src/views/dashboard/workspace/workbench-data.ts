@@ -1,6 +1,7 @@
 import type { Dayjs } from 'dayjs';
 
 import type { SeServiceTaskAdminApi } from '#/api/sea-export/se-service-task-admin';
+import { DEFAULT_SERVICE_TYPE_OPTIONS } from '#/views/sea-export-admin/service-type';
 
 export interface ServiceTab {
   key: string;
@@ -122,20 +123,18 @@ export const stageSteps: StageStep[] = [];
 
 export const businessRows: BusinessRow[] = [];
 
-export const SERVICE_TYPE_TEXT_MAP: Record<number, string> = {
-  0: '订舱',
-  1: '拖车',
-  2: '报关',
-  3: '仓库',
-  4: '保险',
-  5: '代收支',
-};
+export const DEFAULT_SERVICE_TYPE_TEXT_MAP = new Map<number, string>(
+  DEFAULT_SERVICE_TYPE_OPTIONS.map((item) => [item.value, item.label]),
+);
 
-export function serviceTypeLabel(serviceType?: number | null): string {
+export function serviceTypeLabel(
+  serviceType?: number | null,
+  serviceTypeTextMap = DEFAULT_SERVICE_TYPE_TEXT_MAP,
+): string {
   if (serviceType == null) {
     return '指派任务';
   }
-  return SERVICE_TYPE_TEXT_MAP[serviceType] ?? `服务项${serviceType}`;
+  return serviceTypeTextMap.get(Number(serviceType)) ?? `服务项${serviceType}`;
 }
 
 export function toPortTab(

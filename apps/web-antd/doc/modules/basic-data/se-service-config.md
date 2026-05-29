@@ -2,7 +2,7 @@
 title: 海运出口港口服务项配置
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-29
+last_updated: 2026-05-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,7 +25,7 @@ last_updated: 2026-05-29
 - **编辑态港口回显补齐：** 详情接口返回 `pol.portName` 时，编辑弹窗会手动拼装 `selected-items`，并统一 `polId` 为字符串口径，避免分页下拉未命中或超大整型 ID 类型不一致导致起运港不显示。
 - **服务项类型枚举稳态回显：** 列表与编辑弹窗共用 `resolveServiceTypeLabel`；列表优先从 `seServiceConfigItems` 明细（按 `sortId`）推导展示，并优先使用后端枚举文案字段，避免与编辑弹窗明细不一致。
 - **子表差异更新：** 明细中的展示字段、锁定字段、必填字段均按“有 id 更新、无 id 新增、缺失删除”规则提交。
-- **枚举驱动：** 弹窗会同时拉取 `serviceType` 与 `SeaExportPropEnum` 两类枚举，分别用于服务项类型下拉和字段规则下拉；`SeaExportPropEnum` 采用「兜底清单 + 本地缓存 + 实时接口」三路合并，避免后端新增枚举项后前端下拉滞后。
+- **枚举驱动：** 弹窗会同时拉取 `ServiceType` 与 `SeaExportPropEnum` 两类枚举，分别用于服务项类型下拉和字段规则下拉；`SeaExportPropEnum` 采用「兜底清单 + 本地缓存 + 实时接口」三路合并，避免后端新增枚举项后前端下拉滞后。
 - **SeaExportPropEnum 千位分流：** 展示字段、锁定字段、完成时必填字段使用不同候选集——展示字段优先名称类额外枚举（`>1000`），锁定/必填仅允许基础字段（`≤1000`）。详见下文「SeaExportPropEnum 千位分流规则」。
 - **用户属性服务概览：** 在「服务项配置明细」上方展示各用户属性（销售/商务/操作/客服/单证/海外客服）当前已配置的服务项类型，随明细编辑实时更新。
 
@@ -42,7 +42,7 @@ last_updated: 2026-05-29
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **polId** | 配置所属起运港。 | `PortCode` 基础数据<br/>`PortSelect` | 决定配置作用范围；同租户内唯一。 | 必填；后端校验港口存在且不能重复配置。 |
-| **serviceType** | 服务项类型。 | 系统枚举<br/>`serviceType` | 同一配置下服务项展示顺序由数组顺序确定。 | 同一配置下不可重复。 |
+| **serviceType** | 服务项类型。 | 系统枚举<br/>`ServiceType` | 同一配置下服务项展示顺序由数组顺序确定。 | 同一配置下不可重复。 |
 | **userAttribute** | 服务项责任角色（Flags）。 | 用户属性枚举（海运出口订单 6 项：销售、商务、操作、客服、单证、海外客服） | 一个服务项可绑定多个角色；选项与海运出口单据订单用户角色一致。 | 位标志可组合，提交为整型掩码；不含财务/人事。 |
 | **seServiceShows** | 服务完成前向用户展示的字段。 | 系统枚举<br/>`SeaExportPropEnum` | 候选集经千位去重：存在 `1000+x` 时隐藏基础项 `x`；无对应额外项的基础字段（如 `Vessel`、`ETD`）仍可选。 | 可选 `>1000` 的名称类枚举（如 `1017 ClientName`）；不可选手工录入的非法值。 |
 | **seServiceLocks** | 服务完成后锁定的字段。 | 系统枚举<br/>`SeaExportPropEnum` | 仅基础字段（`value ≤ 1000`），与服务项绑定差异更新。 | 不可选 `>1000` 的额外名称字段。 |
@@ -75,6 +75,7 @@ last_updated: 2026-05-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-30 | `Refactor` | 服务项类型枚举加载统一为 `getEnumItems('ServiceType')`，并抽离到共享模块，列表与弹窗不再各自维护独立实现。 | `SeServiceConfigAdmin/data.ts` 改为复用 `sea-export-admin/service-type.ts` 的加载与映射能力，移除 `serviceType` 小写回退分支，确保枚举口径唯一。 |
 | 2026-05-29 | `Feature` | 同步后端 `SeaExportPropEnum` 额外字段（`1001+`），并按千位规则拆分三套下拉：展示字段优先名称类额外枚举且隐藏被替代的基础项；锁定/必填仅允许 `≤1000` 基础字段。 | `buildSeaExportPropOptions` 以「是否存在 value+1000」做展示去重；枚举加载合并兜底清单、缓存与 `GetItemsByNameAsync` 三路数据源；`updatePropRefs` 按白名单过滤非法选项。 |
 | 2026-05-24 | `Fix` | 修复列表「服务项类型」与编辑弹窗明细不一致：列表优先从 `seServiceConfigItems` 按 `sortId` 推导展示，并与弹窗共用 `resolveServiceTypeLabel` 文案解析；枚举加载优先 `ServiceType`。 | `formatRowServiceTypes` 在子项存在时忽略可能滞后的 `serviceTypes` 汇总字段；`loadSeServiceTypeOptions` 供 list/form 共用，消除双端枚举加载分叉。 |
 | 2026-05-24 | `Feature` | 配置弹窗在「服务项配置明细」上方新增「用户属性服务配置概览」，按销售/商务/操作/客服/单证汇总当前已配置的服务项类型，编辑时实时更新。 | 概览由 `itemRows` 派生，不依赖后端 `userAttributeServiceTypes` 字段；服务项类型文案复用枚举与默认兜底映射。 |

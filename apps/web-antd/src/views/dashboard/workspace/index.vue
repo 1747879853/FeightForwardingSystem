@@ -21,6 +21,11 @@ import {
   getSeServiceTaskPagedList,
   transferSeServiceTask,
 } from '#/api/sea-export/se-service-task-admin';
+import {
+  buildServiceTypeLabelMap,
+  DEFAULT_SERVICE_TYPE_OPTIONS,
+  loadSeServiceTypeOptions,
+} from '#/views/sea-export-admin/service-type';
 
 import {
   emergencyTasks,
@@ -62,6 +67,9 @@ const filterModel = reactive({ ...filterModelDefaults });
 const appliedFilterModel = reactive({ ...filterModelDefaults });
 const selectedRowKeys = ref<string[]>([]);
 const rawGroups = ref<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>([]);
+const serviceTypeTextMap = ref<Map<number, string>>(
+  buildServiceTypeLabelMap(DEFAULT_SERVICE_TYPE_OPTIONS),
+);
 
 const transferVisible = ref(false);
 const transferSubmitting = ref(false);
@@ -195,7 +203,7 @@ const stageSteps = computed<StageStep[]>(() =>
   currentConfigItems.value.map((item, index) => ({
     count: item.seServiceTasks?.length ?? 0,
     key: configItemKey(item, index),
-    label: serviceTypeLabel(item.serviceType),
+    label: serviceTypeLabel(item.serviceType, serviceTypeTextMap.value),
   })),
 );
 
@@ -314,6 +322,11 @@ async function loadWorkbench() {
   }
 }
 
+async function loadServiceTypeEnumMap() {
+  const options = await loadSeServiceTypeOptions();
+  serviceTypeTextMap.value = buildServiceTypeLabelMap(options);
+}
+
 async function handleSearch() {
   Object.assign(appliedFilterModel, filterModel);
   selectedRowKeys.value = [];
@@ -381,7 +394,7 @@ function handleOpenSeaExport(seaExportId: string) {
 }
 
 onMounted(() => {
-  void loadWorkbench();
+  void Promise.all([loadServiceTypeEnumMap(), loadWorkbench()]);
 });
 </script>
 

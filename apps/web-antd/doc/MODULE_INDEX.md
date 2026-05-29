@@ -1,14 +1,14 @@
 | 模块名称 | 页面/路由 | 业务域/分类 | 一句话描述 | 文档链接 | 最近更新时间 |
 | --- | --- | --- | --- | --- | --- |
 | dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |
-| dashboard | `/workspace` | 驾驶舱 | 用于承载用户工作台信息，提供日常任务、快捷入口或个人维度概览。 | [工作台](./modules/dashboard/workspace.md) | 2026-05-25 |
+| dashboard | `/workspace` | 驾驶舱 | 用于承载用户工作台信息，提供日常任务、快捷入口或个人维度概览。 | [工作台](./modules/dashboard/workspace.md) | 2026-05-30 |
 | dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 用于以地球可视化方式展示海运相关数据，是 dashboard 分组下的专题看板。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-05-16 |
 | clients | `/clients` | 客户管理 | 维护客户主数据列表，是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-05-16 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料，为后续联系人、账期、发票、附件等客户子资料提供主记录。 | [客户新建](./modules/clients/create.md) | 2026-05-16 |
-| clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面。 | [客户编辑](./modules/clients/id-edit.md) | 2026-05-16 |
+| clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面。 | [客户编辑](./modules/clients/id-edit.md) | 2026-05-30 |
 | sea-exports | `/sea-exports` | 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-05-29 |
-| sea-exports | `/sea-exports/create` | 海运出口 | 创建新的海运出口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-05-29 |
-| sea-exports | `/sea-exports/:id/edit` | 海运出口 | 编辑页是海运出口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-05-29 |
+| sea-exports | `/sea-exports/create` | 海运出口 | 创建新的海运出口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-05-30 |
+| sea-exports | `/sea-exports/:id/edit` | 海运出口 | 编辑页是海运出口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-05-30 |
 | sea-imports | `/sea-imports` | 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-05-16 |
 | sea-imports | `/sea-imports/create` | 海运进口 | 创建新的海运进口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-05-17 |
 | sea-imports | `/sea-imports/:id/edit` | 海运进口 | 编辑页是海运进口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运进口编辑工作台](./modules/sea-imports/id-edit.md) | 2026-05-17 |
@@ -40,7 +40,7 @@
 | basic-data | `/basic-data/ctn-code` | 基础资料 | 维护箱型箱量代码，支撑运价和委托箱型信息。 | [箱型代码](./modules/basic-data/ctn-code.md) | 2026-05-17 |
 | basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-05-16 |
 | basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-05-16 |
-| basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板，列表按主配置维度分页（每行=一个主配置），支持明细顺序手动调整与重排动画反馈，并定义责任角色与字段展示/锁定/必填规则；SeaExportPropEnum 按千位分流（展示字段可含 1000+，锁定/必填仅 ≤1000）。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-05-29 |
+| basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板，列表按主配置维度分页（每行=一个主配置），支持明细顺序手动调整与重排动画反馈，并定义责任角色与字段展示/锁定/必填规则；SeaExportPropEnum 按千位分流（展示字段可含 1000+，锁定/必填仅 ≤1000）。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-05-30 |
 | system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息。 | [用户管理](./modules/system/user.md) | 2026-05-27 |
 | system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-16 |
 | system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-05-16 |
