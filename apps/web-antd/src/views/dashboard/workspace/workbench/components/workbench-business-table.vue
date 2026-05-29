@@ -13,6 +13,7 @@ import { Spin } from 'ant-design-vue';
 import type { BusinessRow, StageStep } from '../../workbench-data';
 
 interface Props {
+  enableTaskActions?: boolean;
   loading?: boolean;
   rows: BusinessRow[];
   selectedRowKeys: string[];
@@ -65,13 +66,19 @@ function selectStage(key: string) {
   emit('update:activeStageKey', key);
 }
 
+const showSelection = computed(() => props.enableTaskActions !== false);
+
 const allSelected = computed(
   () =>
-    props.rows.length > 0 && props.selectedRowKeys.length === props.rows.length,
+    showSelection.value &&
+    props.rows.length > 0 &&
+    props.selectedRowKeys.length === props.rows.length,
 );
 
 const selectedRows = computed(() =>
-  props.rows.filter((item) => props.selectedRowKeys.includes(item.id)),
+  !showSelection.value
+    ? []
+    : props.rows.filter((item) => props.selectedRowKeys.includes(item.id)),
 );
 
 function toggleAll(checked: boolean) {
@@ -163,6 +170,7 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
           刷新
         </button>
         <button
+          v-if="showSelection"
           class="btn btn-light"
           type="button"
           :disabled="!selectedRows.length"
@@ -171,6 +179,7 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
           批量转交
         </button>
         <button
+          v-if="showSelection"
           class="btn btn-primary"
           type="button"
           :disabled="!selectedRows.length"
@@ -186,7 +195,7 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
         <table class="business-table">
           <thead>
             <tr>
-              <th class="checkbox-col">
+              <th v-if="showSelection" class="checkbox-col">
                 <input
                   :checked="allSelected"
                   type="checkbox"
@@ -204,10 +213,12 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
           </thead>
           <tbody>
             <tr v-if="!rows.length">
-              <td class="table-empty" colspan="8">暂无任务</td>
+              <td class="table-empty" :colspan="showSelection ? 8 : 7">
+                暂无任务
+              </td>
             </tr>
             <tr v-for="row in rows" :key="row.id">
-              <td class="checkbox-col">
+              <td v-if="showSelection" class="checkbox-col">
                 <input
                   :checked="selectedRowKeys.includes(row.id)"
                   type="checkbox"

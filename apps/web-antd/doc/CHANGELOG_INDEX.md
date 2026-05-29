@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-30] [工作台审核 Tab 复用搜索表单并接入业务列表](./changelogs/change-log-2026-05-30-workspace-review-tabs-search-and-list.md)
 - [2026-05-30] [海运出口服务项顺序与编辑勾选口径对齐](./changelogs/change-log-2026-05-30-sea-export-service-item-order-and-edit-check-sync.md)
 - [2026-05-30] [海运服务项 ServiceType 枚举口径统一](./changelogs/change-log-2026-05-30-service-type-enum-unification.md)
 - [2026-05-29] [海运出口服务项目按起运港隐藏并分离默认勾选查询](./changelogs/change-log-2026-05-29-sea-export-pol-service-visibility-and-default-check.md)
