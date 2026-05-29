@@ -24,7 +24,7 @@ const routes: RouteRecordRaw[] = [
       icon: 'carbon:workspace',
       order: 1,
       title: $t('page.dashboard.workspace'),
-      authority: abpPageAuthority('Page.Home'),
+      authority: abpPageAuthority('Admin.Workbench'),
     },
   },
   {
@@ -34,7 +34,6 @@ const routes: RouteRecordRaw[] = [
       icon: 'lucide:layout-dashboard',
       order: -1,
       title: $t('page.dashboard.title'),
-      authority: abpPageAuthority('Page.Home'),
     },
     children: [
       {
@@ -45,7 +44,6 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'carbon:earth-filled',
           title: '海运 3D 地球看板',
-          authority: abpPageAuthority('Page.Home'),
         },
       },
     ],
