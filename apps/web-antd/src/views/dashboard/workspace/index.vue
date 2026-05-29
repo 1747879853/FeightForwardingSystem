@@ -11,6 +11,7 @@ import {
   ref,
   watch,
 } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { message, Modal } from 'ant-design-vue';
 
@@ -55,6 +56,7 @@ const activePort = ref('');
 const activeProcessingTab = ref('processing');
 const activeStageKey = ref('');
 const loading = ref(false);
+const router = useRouter();
 
 const filterModel = reactive({ ...filterModelDefaults });
 const appliedFilterModel = reactive({ ...filterModelDefaults });
@@ -260,6 +262,7 @@ watch(activeStageKey, () => {
 
 watch(activeProcessingTab, () => {
   selectedRowKeys.value = [];
+  void loadWorkbench();
 });
 
 watch(activeServiceTab, (tab) => {
@@ -282,9 +285,28 @@ watch(allPortTabs, (tabs) => {
 
 async function loadWorkbench() {
   if (activeServiceTab.value !== 'sea-export') return;
+  const [etdStartRaw, etdEndRaw] = appliedFilterModel.etdRange ?? [];
+  const etdStartDate = etdStartRaw ? dayjs(etdStartRaw) : null;
+  const etdEndDate = etdEndRaw ? dayjs(etdEndRaw) : null;
+  const etdStart = etdStartDate?.isValid()
+    ? etdStartDate.format('YYYY-MM-DD')
+    : undefined;
+  const etdEnd = etdEndDate?.isValid()
+    ? etdEndDate.format('YYYY-MM-DD')
+    : undefined;
+  const mblNum = appliedFilterModel.mblNum.trim();
   loading.value = true;
   try {
-    const result = await getSeServiceTaskPagedList();
+    const result = await getSeServiceTaskPagedList({
+      carrierId: appliedFilterModel.carrierId,
+      clientId: appliedFilterModel.clientId,
+      etdEnd,
+      etdStart,
+      isAssigned: false,
+      mblNum: mblNum || undefined,
+      podId: appliedFilterModel.podId,
+      serviceTaskStatus: activeProcessingTab.value === 'processed' ? 1 : 0,
+    });
     rawGroups.value = result.items ?? [];
     selectedRowKeys.value = [];
   } finally {
@@ -295,6 +317,7 @@ async function loadWorkbench() {
 async function handleSearch() {
   Object.assign(appliedFilterModel, filterModel);
   selectedRowKeys.value = [];
+  await loadWorkbench();
 }
 
 function handleReset() {
@@ -349,6 +372,14 @@ function handleComplete(ids: string[]) {
   });
 }
 
+function handleOpenSeaExport(seaExportId: string) {
+  if (!seaExportId) return;
+  void router.push({
+    name: 'SeaExportEdit',
+    params: { id: seaExportId },
+  });
+}
+
 onMounted(() => {
   void loadWorkbench();
 });
@@ -358,24 +389,27 @@ onMounted(() => {
   <div class="workbench-page">
     <WorkbenchTopNav v-model="activeServiceTab" :tabs="serviceTabs" />
     <template v-if="activeServiceTab === 'sea-export'">
-      <WorkbenchPortHeader
-        :active-port="activePort"
-        :active-port-meta="activePortMeta"
+      <WorkbenchFilterBar
+        :model-value="filterModel"
         :active-processing-tab="activeProcessingTab"
-        :ports="allPortTabs"
         :processing-tabs="processingTabs"
-        @update:active-port="activePort = $event"
+        @update:model-value="Object.assign(filterModel, $event)"
         @update:active-processing-tab="activeProcessingTab = $event"
+        @reset="handleReset"
+        @search="handleSearch"
       />
+      <div class="workbench-port-wrap">
+        <WorkbenchPortHeader
+          :active-port="activePort"
+          :active-port-meta="activePortMeta"
+          :ports="allPortTabs"
+          @update:active-port="activePort = $event"
+        />
+      </div>
     </template>
     <div class="workbench-layout">
       <template v-if="activeServiceTab === 'sea-export'">
         <main class="workbench-main">
-          <WorkbenchFilterBar
-            v-model="filterModel"
-            @reset="handleReset"
-            @search="handleSearch"
-          />
           <WorkbenchEmergencyQueue :tasks="emergencyTasks" />
           <WorkbenchBusinessTable
             :loading="loading"
@@ -387,6 +421,7 @@ onMounted(() => {
             @refresh="loadWorkbench"
             @transfer="handleTransfer"
             @complete="handleComplete"
+            @open-sea-export="handleOpenSeaExport"
           />
         </main>
         <WorkbenchExceptionPanel :summary="exceptionSummary" />
@@ -429,8 +464,12 @@ onMounted(() => {
   display: flex;
   gap: 24px;
   align-items: flex-start;
-  padding-top: 20px;
+  padding-top: 16px;
   margin-right: 20px;
+}
+
+.workbench-port-wrap {
+  padding: 16px 20px 0;
 }
 
 .workbench-main {

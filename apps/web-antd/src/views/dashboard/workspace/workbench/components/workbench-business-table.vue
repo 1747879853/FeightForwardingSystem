@@ -26,6 +26,7 @@ const emit = defineEmits<{
   transfer: [string[]];
   complete: [string[]];
   refresh: [];
+  'open-sea-export': [string];
 }>();
 
 function resolveInitialStageKey(steps: StageStep[]) {
@@ -116,6 +117,12 @@ function handleBatchComplete() {
       .map((item) => item.id),
   );
 }
+
+function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
+  event.preventDefault();
+  if (!seaExportId) return;
+  emit('open-sea-export', seaExportId);
+}
 </script>
 
 <template>
@@ -193,12 +200,11 @@ function handleBatchComplete() {
               <th>ETD</th>
               <th>处理人</th>
               <th>被转交人</th>
-              <th class="action-col">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="!rows.length">
-              <td class="table-empty" colspan="9">暂无任务</td>
+              <td class="table-empty" colspan="8">暂无任务</td>
             </tr>
             <tr v-for="row in rows" :key="row.id">
               <td class="checkbox-col">
@@ -209,7 +215,13 @@ function handleBatchComplete() {
                 />
               </td>
               <td>
-                <a class="booking-link" href="#">{{ row.bookingNo }}</a>
+                <a
+                  class="booking-link"
+                  href="#"
+                  @click="handleOpenSeaExport(row.seaExportId, $event)"
+                >
+                  {{ row.bookingNo }}
+                </a>
               </td>
               <td>{{ row.vesselVoyage }}</td>
               <td>{{ row.route }}</td>
@@ -217,24 +229,6 @@ function handleBatchComplete() {
               <td>{{ row.etd }}</td>
               <td>{{ row.taskUsersText || '--' }}</td>
               <td>{{ row.assigneeUserName || '--' }}</td>
-              <td class="action-col">
-                <button
-                  class="detail-btn"
-                  type="button"
-                  :disabled="row.serviceTaskStatus !== 0"
-                  @click="emit('complete', [row.id])"
-                >
-                  完成
-                </button>
-                <button
-                  class="detail-btn ml-8"
-                  type="button"
-                  :disabled="row.serviceTaskStatus !== 0"
-                  @click="emit('transfer', [row.id])"
-                >
-                  转交
-                </button>
-              </td>
             </tr>
           </tbody>
         </table>
@@ -364,11 +358,19 @@ function handleBatchComplete() {
 .table-card__actions {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   height: 32px;
+  padding: 0 14px;
   font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -447,25 +449,6 @@ function handleBatchComplete() {
   font-weight: 500;
   color: #258cf4;
   text-decoration: none;
-}
-
-.action-col {
-  padding-right: 16px;
-  text-align: right;
-}
-
-.detail-btn {
-  font-size: 12px;
-  font-weight: 700;
-  color: #258cf4;
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-}
-
-.detail-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
 }
 
 .table-empty {

@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-29] [海运出口服务项目按起运港隐藏并分离默认勾选查询](./changelogs/change-log-2026-05-29-sea-export-pol-service-visibility-and-default-check.md)
 - [2026-05-29] [海运出口编辑页代收支误勾选修复](./changelogs/change-log-2026-05-29-sea-export-edit-collection-payment-no-pol-overwrite.md)
 - [2026-05-29] [海运出口服务项配置 SeaExportPropEnum 千位分流规则](./changelogs/change-log-2026-05-29-se-service-config-sea-export-prop-enum-threshold.md)
 - [2026-05-29] [搜索表单配置改为登录后全局拉取并缓存](./changelogs/change-log-2026-05-29-search-form-config-global-store-cache.md)

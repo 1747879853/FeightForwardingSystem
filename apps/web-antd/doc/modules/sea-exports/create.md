@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-27
+last_updated: 2026-05-29
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-05-27
 - **AI 识别辅助：** 页面提供“AI识别”按钮，只接受 PDF 文件，调用 `runVisionOcrPdf` 后把识别结果映射回表单字段。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
 - **干系人角色约束：** 销售、商务、操作、客服、单证、海外客服为固定角色，不允许删除和重复添加；销售与操作必须选择具体人员后才能保存。
-- **服务项目联动：** 选择「委托单位」（`clientId`）或「起运港」（`polId`）后，调用 `GetServiceTypesByPOLAsync`（参数 `polId`、`clientId`），按返回项 `checked=true` 自动勾选对应服务卡片（含代收支 `serviceType=5`）；未选起运港时清空服务项勾选。
+- **服务项目联动：** 选择「起运港」（`polId`）后会先调用 `GetServiceTypesByPOLAsync`（仅传 `polId`）确定可见服务卡片；再按 `polId + clientId` 查询默认勾选。起运港未配置的服务卡片直接隐藏；未选起运港时清空服务项勾选与服务商。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
 - **创建后跳转：** 新增成功后优先解析接口返回的记录 ID 并跳转 `/sea-exports/{id}/edit`；若返回值无法解析，则回到 `/sea-exports` 列表。
 
@@ -63,12 +63,13 @@ last_updated: 2026-05-27
 >
 > **[卡点 4：新增成功跳转依赖后端返回 ID]** 前端兼容 `createdId.id`、`createdId.result` 和直接返回值三种形式。若接口不返回可解析 ID，页面只能回列表，无法自动进入编辑工作台。
 >
-> **[卡点 5：服务项目与起运港/委托单位强绑定]** 未选起运港不会请求联动接口，并会清空服务项勾选。`clientId` 建议先选再选起运港，以便排除项生效；接口 `checked` 表示「未排除」而非客户排除 Tab 的「启用」语义。
+> **[卡点 5：服务项目联动是“双语义”查询]** `polId` 查询用于“显示哪些卡片”，`polId+clientId` 查询用于“默认勾选哪些卡片”；两者不可混用。若仅按 `checked` 控制展示，会把“未默认勾选”误判成“未配置服务”。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-29 | `Fix` | 服务项目联动改为双查询语义：`polId` 决定可见卡片，`polId+clientId` 决定默认勾选；起运港未配置卡片隐藏。 | `form.vue` 新增可见态集合并动态渲染卡片列表，避免把默认勾选逻辑误用于可见范围。 |
 | 2026-05-27 | `Fix` | 修复右侧干系人 `UserSelect` 选中人员后先闪数字 ID 再显示名称：`:key` 改为仅 `row._rowKey`，避免选中/异步回显时组件重建。 | 动态 `key` 含 `userId` 与显示名会在 `loadOrderUserDetail` 前后各触发一次 remount；Remote Select 无 options 时只能回显 value。 |
 | 2026-05-27 | `Feature` | 干系人固定角色新增「海外客服」，与港口服务项配置用户属性口径一致；海外客服人员非必填。 | 复用 `UserAttribute.OverseasCustomerService`；选项来自 `getSeaExportOrderUserRoleOptions()`。 |
 | 2026-05-25 | `Fix` | 修复委托单位已选仍提示「请选择委托单位」：服务项目联动改为 `onChange`，避免 `onUpdate:modelValue` 覆盖表单 `clientId`。 | `ClientSelect` 经 Vben Form 绑定 `value`；联动勿抢占 `update:modelValue`。 |

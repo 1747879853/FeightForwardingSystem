@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-25
+last_updated: 2026-05-29
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-05-25
 
 - **工作台标签导航：** `editor.vue` 维护顶部标签，包含基础信息、更改单、服务详情、单证信息、应收应付、派车、分单、问题记录、修改历史。当前实现中基础信息、费用、更改单、派车、分单已经挂载组件；服务详情、单证信息、问题记录、修改历史目前主要作为标签预留。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
-- **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时调用 `GetServiceTypesByPOLAsync`，按 `checked` 回显服务项勾选；详情加载后以 `force` 再同步一次与港口配置一致。
+- **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 用于确定服务卡片可见范围，`polId+clientId` 用于默认勾选；详情加载后 `force` 同步一次，确保编辑态与当前起运港配置一致。
 - **干系人角色约束：** 基础信息表单中的销售、商务、操作、客服、单证角色固定展示且不可删除、不可重复；销售与操作必须指定人员。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
 - **船公司选中回显：** 详情接口返回 `carrierLogo` 后，编辑页在 `carrierId` 的 `selectedItems` 中同步拼接 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + 名称”。
@@ -69,8 +69,8 @@ last_updated: 2026-05-25
 | **派车记录** | 出口拖车/派车执行信息。 | `dispatch/index.vue` / `dispatch-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；包含车队、堆场、工厂、地址和派车箱明细。 | 子记录需绑定当前海出 ID。 |
 | **分单记录** | 分票提单及其货物/箱明细。 | `modules/separate-bill.vue` / `sea-export-separate-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；维护分单相关方、提单、签单、货物、箱明细。 | 子记录需绑定当前海出 ID。 |
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
-| **委托单位 / 起运港** | 服务项目联动查询入参。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync` | **触发/依赖：** 任一变更触发联动；`polId` 为空清空勾选。 | 与新建页同一套 `form.vue` 逻辑。 |
-| **服务项目 / serviceTypes** | 订舱～保险及代收支勾选结果。 | 服务项卡片；`serviceTypes` 数组（0–5） | **触发/依赖：** 编辑初始回显以 `DetailAsync` 解析的 `serviceTypes` 为准；用户修改委托单位/起运港后由 `GetServiceTypesByPOLAsync` 的 `checked` 联动。 | 代收支勿仅凭 `organizationUnits` 推断勾选。 |
+| **委托单位 / 起运港** | 服务项目联动查询入参。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync` | **触发/依赖：** 任一变更触发联动；`polId` 为空清空勾选。`polId` 查询用于可见范围，`polId+clientId` 查询用于默认勾选。 | 与新建页同一套 `form.vue` 逻辑。 |
+| **服务项目 / serviceTypes** | 订舱～保险及代收支勾选结果。 | 服务项卡片；`serviceTypes` 数组（0–5） | **触发/依赖：** 编辑页进入后会按当前 `polId/clientId` 强制重算；起运港未配置的服务卡片直接隐藏并清空值。 | 代收支勿仅凭 `organizationUnits` 推断勾选。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -88,8 +88,9 @@ last_updated: 2026-05-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-29 | `Fix` | 服务项目联动拆分为双查询：起运港决定卡片是否展示，客户维度决定默认勾选；未配置服务卡片隐藏。 | 编辑页在 `loadEditData` 后强制执行 `syncServiceTypesByPol({ force: true })`，确保详情旧值不会覆盖当前配置。 |
 | 2026-05-25 | `Fix` | 修复委托单位已选仍提示必选：联动监听改为 `onChange`，与新建页同源修复。 | 嵌入模式共用 `bindServiceTypeLinkageEvents`，勿在 `updateSchema` 中绑定 `onUpdate:modelValue`。 |
-| 2026-05-29 | `Fix` | 编辑页打开时代收支不再被起运港联动或单独的 `organizationUnits` 误勾选；仅以详情 `serviceTypes` 含 `5` 为准。 | `loadEditData` 移除 `syncServiceTypesByPol({ force: true })`；新建页仍保留挂载时联动。 |
+| 2026-05-29 | `Fix` | 编辑页打开时代收支不再被 `organizationUnits` 单独误勾选；代收支是否默认勾选由服务项联动结果控制。 | 代收支勾选判定统一收敛到服务项联动流程，避免跨来源状态冲突。 |
 | 2026-05-25 | `Feature` | 嵌入表单支持委托单位 + 起运港联动服务项目查询与 `checked` 自动勾选（含代收支）。 | 与 `/sea-exports/create` 共用 `form.vue`；编辑页仅在用户变更委托单位/起运港时联动。 |
 | 2026-05-18 | `Feature/Fix` | `CarrierSelect` 选中态支持显示船公司 Logo；编辑页 `carrierId` 回填时拼接 `carrierLogo` 到 `selectedItems`，首屏回显稳定。 | 为兼容选中态图文展示，分页下拉选项类型由字符串标签扩展为可承载富渲染内容。 |
 | 2026-05-17 | `Fix` | 修复干系人补录场景：新增角色后角色下拉保持可用，仅禁用重复角色选项，支持在缺失角色中手动选择。 | 无 |
