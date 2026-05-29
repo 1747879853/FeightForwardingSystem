@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-29] [海运出口编辑页代收支误勾选修复](./changelogs/change-log-2026-05-29-sea-export-edit-collection-payment-no-pol-overwrite.md)
 - [2026-05-29] [海运出口服务项配置 SeaExportPropEnum 千位分流规则](./changelogs/change-log-2026-05-29-se-service-config-sea-export-prop-enum-threshold.md)
 - [2026-05-29] [搜索表单配置改为登录后全局拉取并缓存](./changelogs/change-log-2026-05-29-search-form-config-global-store-cache.md)
 - [2026-05-29] [vxe 表格配置改为登录后全局拉取并缓存](./changelogs/change-log-2026-05-29-vxe-table-config-global-store-cache.md)

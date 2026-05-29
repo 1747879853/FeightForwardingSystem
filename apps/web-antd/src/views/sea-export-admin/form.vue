@@ -249,6 +249,8 @@ const SERVICE_TYPE_VALUES: Record<ServiceItemFieldName, number> = {
   insuranceId: 4,
 };
 const COLLECTION_PAYMENT_SERVICE_TYPE = 5;
+/** 暂时隐藏代收支服务项，恢复时改为 true */
+const SHOW_COLLECTION_PAYMENT_FIELD = false;
 const SERVICE_TYPE_TO_FIELD = new Map<number, ServiceItemFieldName>(
   SERVICE_ITEM_FIELD_NAMES.map((field) => [SERVICE_TYPE_VALUES[field], field]),
 );
@@ -504,8 +506,9 @@ const applyServiceTypeChecksFromPol = (
   serviceItemValues.value = nextServiceItemValues;
   serviceItemSelectedItems.value = nextServiceItemSelectedItems;
   serviceItemEnabledValues.value = nextServiceEnabledValues;
-  collectionPaymentEnabled.value = collectionPaymentChecked;
-  if (!collectionPaymentChecked) {
+  collectionPaymentEnabled.value =
+    SHOW_COLLECTION_PAYMENT_FIELD && collectionPaymentChecked;
+  if (!collectionPaymentEnabled.value) {
     collectionPaymentDeptId.value = undefined;
   }
 };
@@ -2041,18 +2044,20 @@ const loadEditData = async () => {
         selectedServiceTypes.has(SERVICE_TYPE_VALUES.insuranceId) ||
         hasServiceItemValue(formValues.insuranceId),
     };
-    await syncServiceTypesByPol({
-      polId: formValues.polId,
-      clientId: to?.clientId,
-      force: true,
-    });
-    const selectedOrganizationId = detail.organizationUnits?.[0]?.id;
-    collectionPaymentDeptId.value =
-      typeof selectedOrganizationId === 'number'
-        ? selectedOrganizationId
-        : undefined;
-    collectionPaymentEnabled.value =
-      typeof collectionPaymentDeptId.value === 'number';
+    if (SHOW_COLLECTION_PAYMENT_FIELD) {
+      const collectionPaymentSelected = selectedServiceTypes.has(
+        COLLECTION_PAYMENT_SERVICE_TYPE,
+      );
+      collectionPaymentEnabled.value = collectionPaymentSelected;
+      const selectedOrganizationId = detail.organizationUnits?.[0]?.id;
+      collectionPaymentDeptId.value =
+        collectionPaymentSelected && typeof selectedOrganizationId === 'number'
+          ? selectedOrganizationId
+          : undefined;
+    } else {
+      collectionPaymentEnabled.value = false;
+      collectionPaymentDeptId.value = undefined;
+    }
     refreshEntrustReadonlyInfo(formValues);
 
     orderCtns.value = normalizeOrderCtnsWithRowKey(
@@ -2104,7 +2109,7 @@ const buildDto = (values: Record<string, any>) => {
     remark: values.remark,
     serviceTypes: getServiceTypesFromEnabledValues(
       values,
-      collectionPaymentEnabled.value,
+      SHOW_COLLECTION_PAYMENT_FIELD && collectionPaymentEnabled.value,
     ),
   };
 
@@ -2160,6 +2165,7 @@ const buildDto = (values: Record<string, any>) => {
   return {
     ...seaExportFields,
     organizationUnits:
+      SHOW_COLLECTION_PAYMENT_FIELD &&
       collectionPaymentEnabled.value &&
       typeof collectionPaymentDeptId.value === 'number'
         ? [
@@ -2562,6 +2568,7 @@ defineExpose({
                       </div>
                     </div>
                     <div
+                      v-if="SHOW_COLLECTION_PAYMENT_FIELD"
                       class="service-item-custom-card"
                       :class="{
                         'service-item-custom-card--active':
