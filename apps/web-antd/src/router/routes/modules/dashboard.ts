@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { $t } from '#/locales';
+import { abpPageAuthority } from '#/router/abp-authority';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -12,6 +13,7 @@ const routes: RouteRecordRaw[] = [
       icon: 'lucide:area-chart',
       order: 0,
       title: $t('page.dashboard.analytics'),
+      authority: abpPageAuthority('Page.Home'),
     },
   },
   {
@@ -22,6 +24,7 @@ const routes: RouteRecordRaw[] = [
       icon: 'carbon:workspace',
       order: 1,
       title: $t('page.dashboard.workspace'),
+      authority: abpPageAuthority('Page.Home'),
     },
   },
   {
@@ -31,6 +34,7 @@ const routes: RouteRecordRaw[] = [
       icon: 'lucide:layout-dashboard',
       order: -1,
       title: $t('page.dashboard.title'),
+      authority: abpPageAuthority('Page.Home'),
     },
     children: [
       {
@@ -41,6 +45,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'carbon:earth-filled',
           title: '海运 3D 地球看板',
+          authority: abpPageAuthority('Page.Home'),
         },
       },
     ],

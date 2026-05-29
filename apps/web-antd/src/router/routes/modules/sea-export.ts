@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { $t } from '#/locales';
+import { abpPageAuthority } from '#/router/abp-authority';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -9,6 +10,7 @@ const routes: RouteRecordRaw[] = [
       order: 200,
       title: $t('seaExport.export.title'),
       hideChildrenInMenu: true,
+      authority: abpPageAuthority('Admin.SeaExport'),
     },
     name: 'SeaExport',
     path: '/sea-exports',
@@ -18,6 +20,7 @@ const routes: RouteRecordRaw[] = [
         name: 'SeaExportList',
         meta: {
           title: $t('seaExport.export.title'),
+          authority: abpPageAuthority('Admin.SeaExport'),
         },
         component: () => import('#/views/sea-export-admin/list.vue'),
       },
@@ -28,6 +31,7 @@ const routes: RouteRecordRaw[] = [
           title: $t('seaExport.export.title'),
           hideInMenu: true,
           activePath: '/sea-exports',
+          authority: abpPageAuthority('Admin.SeaExport'),
         },
         component: () => import('#/views/sea-export-admin/form.vue'),
       },
@@ -38,6 +42,7 @@ const routes: RouteRecordRaw[] = [
           title: $t('seaExport.export.title'),
           hideInMenu: true,
           activePath: '/sea-exports',
+          authority: abpPageAuthority('Admin.SeaExport'),
         },
         component: () => import('#/views/sea-export-admin/editor.vue'),
       },
