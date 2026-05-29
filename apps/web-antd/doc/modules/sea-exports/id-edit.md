@@ -23,7 +23,7 @@ last_updated: 2026-05-30
 
 - **工作台标签导航：** `editor.vue` 维护顶部标签，包含基础信息、更改单、服务详情、单证信息、应收应付、派车、分单、问题记录、修改历史。当前实现中基础信息、费用、更改单、派车、分单已经挂载组件；服务详情、单证信息、问题记录、修改历史目前主要作为标签预留。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
-- **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 用于确定服务卡片可见范围，`polId+clientId` 用于默认勾选；详情加载后 `force` 同步一次，确保编辑态与当前起运港配置一致。
+- **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 用于确定服务卡片可见范围，`polId+clientId` 用于默认勾选。编辑态在详情回填后会把详情中的服务勾选结果作为覆盖源，确保“本单是否勾选”不被默认勾选覆盖。
 - **干系人角色约束：** 基础信息表单中的销售、商务、操作、客服、单证角色固定展示且不可删除、不可重复；销售与操作必须指定人员。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
 - **船公司选中回显：** 详情接口返回 `carrierLogo` 后，编辑页在 `carrierId` 的 `selectedItems` 中同步拼接 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + 名称”。
@@ -70,7 +70,7 @@ last_updated: 2026-05-30
 | **分单记录** | 分票提单及其货物/箱明细。 | `modules/separate-bill.vue` / `sea-export-separate-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；维护分单相关方、提单、签单、货物、箱明细。 | 子记录需绑定当前海出 ID。 |
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
 | **委托单位 / 起运港** | 服务项目联动查询入参。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync` | **触发/依赖：** 任一变更触发联动；`polId` 为空清空勾选。`polId` 查询用于可见范围，`polId+clientId` 查询用于默认勾选。 | 与新建页同一套 `form.vue` 逻辑。 |
-| **服务项目 / serviceTypes** | 订舱～保险及代收支勾选结果。 | 服务项卡片；`serviceTypes` 数组（0–5） | **触发/依赖：** 编辑页进入后会按当前 `polId/clientId` 强制重算；起运港未配置的服务卡片直接隐藏并清空值。 | 代收支勿仅凭 `organizationUnits` 推断勾选。 |
+| **服务项目 / serviceTypes** | 订舱～保险及代收支勾选结果。 | 服务项卡片；`serviceTypes` 数组（0–5） | **触发/依赖：** 服务卡片显示顺序按接口 `sortId` 渲染；编辑页进入后会按当前 `polId/clientId` 同步可见范围，但勾选状态优先采用详情返回。起运港未配置的服务卡片直接隐藏并清空值。 | 代收支勿仅凭 `organizationUnits` 推断勾选。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -88,6 +88,7 @@ last_updated: 2026-05-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-30 | `Fix` | 服务项节点与保存 `serviceTypes` 顺序统一按接口 `sortId`；编辑页若详情未返回 `seaExportServices/serviceTypes`，服务项保持灰态未勾选，不再被起运港默认勾选覆盖。 | 服务项联动拆分为“可见范围（按 `polId`）”与“勾选来源（编辑态优先详情）”两层语义，避免历史单据状态被联动默认值污染。 |
 | 2026-05-30 | `Refactor` | 嵌入式基础信息中的服务项类型值映射改为复用统一常量 `SERVICE_TYPE_VALUE`，与新建页和其他服务项页面统一。 | 编辑工作台复用 `form.vue`，因此服务项枚举值口径与新建页天然同源；本次把数值源头进一步收敛到 `service-type.ts`。 |
 | 2026-05-29 | `Fix` | 服务项目联动拆分为双查询：起运港决定卡片是否展示，客户维度决定默认勾选；未配置服务卡片隐藏。 | 编辑页在 `loadEditData` 后强制执行 `syncServiceTypesByPol({ force: true })`，确保详情旧值不会覆盖当前配置。 |
 | 2026-05-25 | `Fix` | 修复委托单位已选仍提示必选：联动监听改为 `onChange`，与新建页同源修复。 | 嵌入模式共用 `bindServiceTypeLinkageEvents`，勿在 `updateSchema` 中绑定 `onUpdate:modelValue`。 |

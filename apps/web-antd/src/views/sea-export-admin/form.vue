@@ -64,7 +64,11 @@ import {
   usePortFormSchema,
   useShipmentFormSchema,
 } from './data';
-import { SERVICE_TYPE_VALUE } from './service-type';
+import {
+  buildServiceTypeLabelMap,
+  loadSeServiceTypeOptions,
+  SERVICE_TYPE_VALUE,
+} from './service-type';
 
 const route = useRoute();
 const router = useRouter();
@@ -260,6 +264,21 @@ const SHOW_COLLECTION_PAYMENT_FIELD = false;
 const SERVICE_TYPE_TO_FIELD = new Map<number, ServiceItemFieldName>(
   SERVICE_ITEM_FIELD_NAMES.map((field) => [SERVICE_TYPE_VALUES[field], field]),
 );
+const SERVICE_ITEM_DEFAULT_ORDER_MAP = new Map(
+  SERVICE_ITEM_FIELD_NAMES.map((field, index) => [field, index]),
+);
+const serviceItemLabelMap = ref(new Map<number, string>());
+const serviceItemSortOrderMap = ref(new Map<ServiceItemFieldName, number>());
+const getServiceItemLabel = (field: ServiceItemFieldName) => {
+  const serviceType = SERVICE_TYPE_VALUES[field];
+  return (
+    serviceItemLabelMap.value.get(serviceType) ?? SERVICE_ITEM_META[field].label
+  );
+};
+const loadServiceItemLabelMap = async () => {
+  const options = await loadSeServiceTypeOptions();
+  serviceItemLabelMap.value = buildServiceTypeLabelMap(options);
+};
 const SERVICE_TASK_STATUS_PENDING = 0;
 const SERVICE_TASK_STATUS_PROCESSED = 1;
 type ServiceTaskStatusValue =
@@ -312,14 +331,30 @@ const SERVICE_REQUIRE_FIELD_LABEL_KEY: Record<string, string> = {
 };
 type ServiceItemCheckFieldName =
   (typeof SERVICE_ITEM_CHECK_FIELD_NAMES)[ServiceItemFieldName];
+const getOrderedServiceItemFields = (fields: readonly ServiceItemFieldName[]) =>
+  [...fields].sort((a, b) => {
+    const orderA = serviceItemSortOrderMap.value.get(a);
+    const orderB = serviceItemSortOrderMap.value.get(b);
+    if (orderA != null && orderB != null) {
+      return orderA - orderB;
+    }
+    if (orderA != null) return -1;
+    if (orderB != null) return 1;
+    return (
+      (SERVICE_ITEM_DEFAULT_ORDER_MAP.get(a) ?? Number.MAX_SAFE_INTEGER) -
+      (SERVICE_ITEM_DEFAULT_ORDER_MAP.get(b) ?? Number.MAX_SAFE_INTEGER)
+    );
+  });
 const getServiceTypesFromEnabledValues = (
   values: Record<string, any>,
   withCollectionPayment = false,
 ) => {
-  const types = SERVICE_ITEM_FIELD_NAMES.filter((field) => {
-    const checkFieldName = getServiceItemCheckFieldName(field);
-    return !!values[checkFieldName];
-  }).map((field) => SERVICE_TYPE_VALUES[field]);
+  const types = getOrderedServiceItemFields(SERVICE_ITEM_FIELD_NAMES)
+    .filter((field) => {
+      const checkFieldName = getServiceItemCheckFieldName(field);
+      return !!values[checkFieldName];
+    })
+    .map((field) => SERVICE_TYPE_VALUES[field]);
   if (withCollectionPayment) {
     types.push(COLLECTION_PAYMENT_SERVICE_TYPE);
   }
@@ -499,7 +534,9 @@ const getServiceItemVisible = (field: ServiceItemFieldName) => {
   return serviceItemVisibleValues.value[field] !== false;
 };
 const visibleServiceItemFields = computed(() =>
-  SERVICE_ITEM_FIELD_NAMES.filter((field) => getServiceItemVisible(field)),
+  getOrderedServiceItemFields(SERVICE_ITEM_FIELD_NAMES).filter((field) =>
+    getServiceItemVisible(field),
+  ),
 );
 const handleServiceItemEnabledChange = (
   field: ServiceItemFieldName,
@@ -763,7 +800,7 @@ const handleCompleteService = async (field: ServiceItemFieldName) => {
       ...serviceItemTaskStatusValues.value,
       [field]: SERVICE_TASK_STATUS_PROCESSED,
     };
-    message.success(`${SERVICE_ITEM_META[field].label}已完成`);
+    message.success(`${getServiceItemLabel(field)}已完成`);
   } catch {
     message.error('完成服务失败，请稍后重试');
   } finally {
@@ -801,6 +838,24 @@ const extractServiceFieldSet = (
     collectionPaymentMatched,
   };
 };
+const buildServiceItemSortOrderMap = (
+  serviceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+) => {
+  const orderMap = new Map<ServiceItemFieldName, number>();
+  (Array.isArray(serviceTypes) ? serviceTypes : [])
+    .slice()
+    .sort(
+      (a, b) =>
+        Number(a?.sortId ?? Number.MAX_SAFE_INTEGER) -
+        Number(b?.sortId ?? Number.MAX_SAFE_INTEGER),
+    )
+    .forEach((item, index) => {
+      const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(item?.serviceType));
+      if (!mappedField || orderMap.has(mappedField)) return;
+      orderMap.set(mappedField, index);
+    });
+  return orderMap;
+};
 const resetServiceTypeStateWhenPolEmpty = () => {
   const nextVisibleValues: Partial<Record<ServiceItemFieldName, boolean>> = {};
   const nextEnabledValues: Partial<Record<ServiceItemCheckFieldName, boolean>> =
@@ -823,10 +878,15 @@ const resetServiceTypeStateWhenPolEmpty = () => {
   collectionPaymentEnabled.value = false;
   collectionPaymentDeptId.value = undefined;
   serviceItemRequiredPropValues.value = {};
+  serviceItemSortOrderMap.value = new Map();
 };
 const applyServiceTypeStateByPol = (
   availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
   checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+  overrides?: {
+    checkedServiceFields?: Set<ServiceItemFieldName>;
+    checkedCollectionPayment?: boolean;
+  },
 ) => {
   const { matchedFields: availableServiceFields, collectionPaymentMatched } =
     extractServiceFieldSet(availableServiceTypes, false);
@@ -834,6 +894,10 @@ const applyServiceTypeStateByPol = (
     matchedFields: checkedServiceFields,
     collectionPaymentMatched: checkedCollectionPayment,
   } = extractServiceFieldSet(checkedServiceTypes, true);
+  const effectiveCheckedServiceFields =
+    overrides?.checkedServiceFields ?? checkedServiceFields;
+  const effectiveCheckedCollectionPayment =
+    overrides?.checkedCollectionPayment ?? checkedCollectionPayment;
 
   const nextServiceItemValues = { ...serviceItemValues.value };
   const nextServiceItemSelectedItems = { ...serviceItemSelectedItems.value };
@@ -847,7 +911,7 @@ const applyServiceTypeStateByPol = (
   SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
     const checkFieldName = getServiceItemCheckFieldName(field);
     const visible = availableServiceFields.has(field);
-    const checked = visible && checkedServiceFields.has(field);
+    const checked = visible && effectiveCheckedServiceFields.has(field);
     nextServiceVisibleValues[field] = visible;
     nextServiceEnabledValues[checkFieldName] = checked;
     if (!checked || !visible) {
@@ -863,13 +927,16 @@ const applyServiceTypeStateByPol = (
   collectionPaymentEnabled.value =
     SHOW_COLLECTION_PAYMENT_FIELD &&
     collectionPaymentMatched &&
-    checkedCollectionPayment;
+    effectiveCheckedCollectionPayment;
   if (!collectionPaymentEnabled.value) {
     collectionPaymentDeptId.value = undefined;
   }
   serviceItemRequiredPropValues.value = buildServiceRequiredPropsByField(
     availableServiceTypes,
     checkedServiceTypes,
+  );
+  serviceItemSortOrderMap.value = buildServiceItemSortOrderMap(
+    availableServiceTypes,
   );
 };
 const extractServiceTypesByPolResult = (
@@ -890,6 +957,8 @@ const syncServiceTypesByPol = async (
     clientId?: unknown;
     polId?: unknown;
     force?: boolean;
+    checkedServiceFields?: Set<ServiceItemFieldName>;
+    checkedCollectionPayment?: boolean;
   } = {},
 ) => {
   const requestId = ++serviceTypeLinkageRequestId;
@@ -937,6 +1006,10 @@ const syncServiceTypesByPol = async (
     applyServiceTypeStateByPol(
       extractServiceTypesByPolResult(serviceTypesByPolResponse),
       extractServiceTypesByPolResult(checkedServiceTypesResponse),
+      {
+        checkedServiceFields: args.checkedServiceFields,
+        checkedCollectionPayment: args.checkedCollectionPayment,
+      },
     );
   } catch {
     if (requestId !== serviceTypeLinkageRequestId) return;
@@ -2432,6 +2505,12 @@ const loadEditData = async () => {
       collectionPaymentEnabled.value = false;
       collectionPaymentDeptId.value = undefined;
     }
+    const checkedServiceFields = new Set<ServiceItemFieldName>();
+    SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
+      if (selectedServiceTypes.has(SERVICE_TYPE_VALUES[field])) {
+        checkedServiceFields.add(field);
+      }
+    });
     refreshEntrustReadonlyInfo(formValues);
 
     orderCtns.value = normalizeOrderCtnsWithRowKey(
@@ -2441,6 +2520,10 @@ const loadEditData = async () => {
       polId: formValues.polId,
       clientId: formValues.clientId,
       force: true,
+      checkedServiceFields,
+      checkedCollectionPayment: selectedServiceTypes.has(
+        COLLECTION_PAYMENT_SERVICE_TYPE,
+      ),
     });
   } finally {
     pageLoading.value = false;
@@ -2717,6 +2800,7 @@ const handleBack = () => {
 };
 
 onMounted(() => {
+  void loadServiceItemLabelMap();
   if (!isEdit.value) {
     initializeOrderUsersPanel(defaultOrderUsers);
     refreshEntrustReadonlyInfo({});
@@ -2934,7 +3018,7 @@ defineExpose({
                               />
                             </span>
                             <span class="service-item-node__title">
-                              {{ SERVICE_ITEM_META[field].label }}
+                              {{ getServiceItemLabel(field) }}
                             </span>
                             <span
                               v-if="
