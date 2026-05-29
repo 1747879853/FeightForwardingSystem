@@ -21,6 +21,7 @@ import {
   editUserSetting,
   getUserSettingPagedList,
 } from '#/api/system/user-setting-admin';
+import { useTableConfigStore } from '#/store/table-config';
 
 import { objectOmit } from '@vueuse/core';
 import {
@@ -702,6 +703,7 @@ export const useVbenVxeGrid = <T extends Record<string, any>>(
   ...rest: Parameters<typeof useGrid<T, ComponentType>>
 ) => {
   const route = useRoute();
+  const tableConfigStore = useTableConfigStore();
   const userStore = useUserStore();
   const [options, ...otherArgs] = rest;
   const fallbackTableId = String(route.name ?? route.path ?? '').trim();
@@ -744,21 +746,15 @@ export const useVbenVxeGrid = <T extends Record<string, any>>(
           load:
             options.columnPersist?.load ??
             (async ({ keyword }) => {
-              const creatorUserId = userStore.userInfo?.userId;
+              await tableConfigStore.loadTableConfigsOnce();
+              const hit = tableConfigStore.getTableConfigByName(keyword);
               debugLog('load start', {
-                creatorUserId,
+                fromGlobalStore: true,
+                hasLoaded: tableConfigStore.hasLoaded,
                 keyword,
                 preferredTableId,
               });
-              const result = await getUserSettingPagedList({
-                CreatorUserId: creatorUserId,
-                Keyword: keyword,
-                PageIndex: 1,
-                PageSize: 1,
-              });
-              const hit = result.items?.find((item) => item.name === keyword);
               debugLog('load result', {
-                totalCount: result.totalCount,
                 hit,
               });
               if (!hit) {
@@ -769,21 +765,21 @@ export const useVbenVxeGrid = <T extends Record<string, any>>(
           add:
             options.columnPersist?.add ??
             (async ({ name, setting }) =>
-              await addUserSetting({
+              await tableConfigStore.addTableConfig({
                 name,
                 setting,
               })),
           edit:
             options.columnPersist?.edit ??
             (async ({ id, name, setting }) =>
-              await editUserSetting({
+              await tableConfigStore.editTableConfig({
                 id,
                 name,
                 setting,
               })),
           remove:
             options.columnPersist?.remove ??
-            (async ({ id }) => await deleteUserSetting(id)),
+            (async ({ id }) => await tableConfigStore.removeTableConfig(id)),
         },
         searchPersist: {
           ...options.searchPersist,

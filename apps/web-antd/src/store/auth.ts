@@ -12,9 +12,11 @@ import { defineStore } from 'pinia';
 
 import { getAccessCodesApi, getUserInfoApi, loginApi, logoutApi } from '#/api';
 import { $t } from '#/locales';
+import { useTableConfigStore } from '#/store/table-config';
 
 export const useAuthStore = defineStore('auth', () => {
   const accessStore = useAccessStore();
+  const tableConfigStore = useTableConfigStore();
   const userStore = useUserStore();
   const router = useRouter();
 
@@ -93,6 +95,12 @@ export const useAuthStore = defineStore('auth', () => {
 
       userStore.setUserInfo(userInfo);
       accessStore.setAccessCodes(accessCodes);
+      tableConfigStore.$reset();
+      try {
+        await tableConfigStore.loadTableConfigsOnce();
+      } catch {
+        // 不阻塞登录主流程，表格配置在实际使用时可继续回退到本地/远端兜底
+      }
 
       if (accessStore.loginExpired) {
         accessStore.setLoginExpired(false);
@@ -132,6 +140,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
     }
     resetAllStores();
+    tableConfigStore.$reset();
     accessStore.setLoginExpired(false);
 
     if (isLogoutTokenExpired) {
