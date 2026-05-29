@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-29] [搜索表单配置改为登录后全局拉取并缓存](./changelogs/change-log-2026-05-29-search-form-config-global-store-cache.md)
 - [2026-05-29] [vxe 表格配置改为登录后全局拉取并缓存](./changelogs/change-log-2026-05-29-vxe-table-config-global-store-cache.md)
 - [2026-05-28] [金海通 jht 独立打包与品牌环境](./changelogs/change-log-2026-05-28-build-jht-brand-pack.md)
 - [2026-05-28] [全局与路由切换 Loading 改为 Logo 进度条填充](./changelogs/change-log-2026-05-28-global-loading-logo-progress-fill.md)

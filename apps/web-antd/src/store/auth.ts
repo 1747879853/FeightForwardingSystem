@@ -97,7 +97,10 @@ export const useAuthStore = defineStore('auth', () => {
       accessStore.setAccessCodes(accessCodes);
       tableConfigStore.$reset();
       try {
-        await tableConfigStore.loadTableConfigsOnce();
+        await Promise.all([
+          tableConfigStore.loadTableConfigsOnce(),
+          tableConfigStore.loadSearchFormConfigsOnce(),
+        ]);
       } catch {
         // 不阻塞登录主流程，表格配置在实际使用时可继续回退到本地/远端兜底
       }

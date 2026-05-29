@@ -21,5 +21,5 @@
 ## 避坑指南（Gotchas & Constraints）
 
 - 当前全局缓存是运行时内存级缓存：同一次会话内复用，浏览器刷新后会重建并重新预拉取。
-- 该次改造仅覆盖列配置键 `table_config_`；搜索表单配置 `search_form_config_` 仍沿用原路径，后续如需统一策略可按同模式扩展。
+- 搜索表单配置 `search_form_config_` 已按同模式扩展，见 [搜索表单配置全局缓存](./change-log-2026-05-29-search-form-config-global-store-cache.md)。
 - 分页补拉按需求只执行到第 2 页；若未来用户配置量可能远超 1998 条，需改为循环分页拉取直至取完。

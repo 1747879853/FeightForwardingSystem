@@ -15,12 +15,6 @@ import {
 import { get, isFunction, isString } from '@vben/utils';
 
 import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
-import {
-  addUserSetting,
-  deleteUserSetting,
-  editUserSetting,
-  getUserSettingPagedList,
-} from '#/api/system/user-setting-admin';
 import { useTableConfigStore } from '#/store/table-config';
 
 import { objectOmit } from '@vueuse/core';
@@ -36,7 +30,6 @@ import {
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
-import { useUserStore } from '@vben/stores';
 
 import { ref } from 'vue';
 
@@ -704,7 +697,6 @@ export const useVbenVxeGrid = <T extends Record<string, any>>(
 ) => {
   const route = useRoute();
   const tableConfigStore = useTableConfigStore();
-  const userStore = useUserStore();
   const [options, ...otherArgs] = rest;
   const fallbackTableId = String(route.name ?? route.path ?? '').trim();
   const gridTableId = String(options?.gridOptions?.id ?? '').trim();
@@ -787,21 +779,15 @@ export const useVbenVxeGrid = <T extends Record<string, any>>(
           load:
             options.searchPersist?.load ??
             (async ({ keyword }) => {
-              const creatorUserId = userStore.userInfo?.userId;
+              await tableConfigStore.loadSearchFormConfigsOnce();
+              const hit = tableConfigStore.getSearchFormConfigByName(keyword);
               debugLog('search persist load start', {
-                creatorUserId,
+                fromGlobalStore: true,
+                hasLoaded: tableConfigStore.searchFormHasLoaded,
                 keyword,
                 preferredTableId,
               });
-              const result = await getUserSettingPagedList({
-                CreatorUserId: creatorUserId,
-                Keyword: keyword,
-                PageIndex: 1,
-                PageSize: 1,
-              });
-              const hit = result.items?.find((item) => item.name === keyword);
               debugLog('search persist load result', {
-                totalCount: result.totalCount,
                 hit,
               });
               if (!hit) {
@@ -812,21 +798,22 @@ export const useVbenVxeGrid = <T extends Record<string, any>>(
           add:
             options.searchPersist?.add ??
             (async ({ name, setting }) =>
-              await addUserSetting({
+              await tableConfigStore.addSearchFormConfig({
                 name,
                 setting,
               })),
           edit:
             options.searchPersist?.edit ??
             (async ({ id, name, setting }) =>
-              await editUserSetting({
+              await tableConfigStore.editSearchFormConfig({
                 id,
                 name,
                 setting,
               })),
           remove:
             options.searchPersist?.remove ??
-            (async ({ id }) => await deleteUserSetting(id)),
+            (async ({ id }) =>
+              await tableConfigStore.removeSearchFormConfig(id)),
         },
       }
     : options;
