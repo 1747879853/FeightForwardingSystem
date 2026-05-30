@@ -2,7 +2,7 @@
 title: 国家代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-05-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -16,7 +16,7 @@ last_updated: 2026-05-16
 | 页面路由 | `/basic-data/country-code` |
 | 路由名称 | `BasicDataCountryCode` |
 | 页面组件 | `src/views/system/basic-data/CountryCodeAdmin/list.vue` |
-| 权限口径 | 未声明独立 authority |
+| 权限口径 | Admin.CountryCode / Admin.CountryCode.Get |
 | 关键源码 | `src/router/routes/modules/basic-data.ts`<br/>`src/views/system/basic-data/CountryCodeAdmin/list.vue`<br/>`src/views/system/basic-data/CountryCodeAdmin/data.ts`<br/>`src/views/system/basic-data/CountryCodeAdmin/modules/form.vue`<br/>`src/api/system/base-data/country-code-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
@@ -47,4 +47,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-30 | `Feature` | 路由补充 `abpPageAuthority('Admin.CountryCode')`，按模块权限控制页面访问。 | 与其他基础资料子路由一致，拥有模块或 `.Get` 权限即可进入。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/country-code` 对应组件 `src/views/system/basic-data/CountryCodeAdmin/list.vue`，权限口径为 未声明独立 authority。 |

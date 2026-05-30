@@ -2,7 +2,7 @@
 title: 权限管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-05-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -46,3 +46,4 @@ last_updated: 2026-05-16
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/system/permission` 对应组件 `src/views/system/permission/list.vue`，权限口径为 Admin.UserDataPermission / Admin.UserDataPermission.Get。 |
+| 2026-05-30 | `Feature` | 补齐 `Admin.PortCode`、`Admin.LaneCode`、`Admin.CtnCode`、`Admin.CountryCode` 共 20 个权限 i18n 键，权限树可正确显示港口/航线/集装箱/国家模块文案。 | 权限树通过 `getAllPermissionsTreeApi($t)` 将权限码 `.` 转 `_` 后查找 `auth.json`；新增后端权限需同步双语语言包。 |

@@ -185,6 +185,7 @@ const routes: RouteRecordRaw[] = [
           icon: 'mdi:highway',
           keepAlive: true,
           title: $t('system.basicData.laneCode.title'),
+          authority: abpPageAuthority('Admin.LaneCode'),
         },
         component: () =>
           import('#/views/system/basic-data/LaneCodeAdmin/list.vue'),
@@ -196,6 +197,7 @@ const routes: RouteRecordRaw[] = [
           icon: 'mdi:anchor',
           keepAlive: true,
           title: $t('system.basicData.portCode.title'),
+          authority: abpPageAuthority('Admin.PortCode'),
         },
         component: () =>
           import('#/views/system/basic-data/PortCodeAdmin/list.vue'),
@@ -207,6 +209,7 @@ const routes: RouteRecordRaw[] = [
           icon: 'mdi:train-car-container',
           keepAlive: true,
           title: $t('system.basicData.ctnCode.title'),
+          authority: abpPageAuthority('Admin.CtnCode'),
         },
         component: () =>
           import('#/views/system/basic-data/CtnCodeAdmin/list.vue'),
@@ -218,6 +221,7 @@ const routes: RouteRecordRaw[] = [
           icon: 'mdi:earth',
           keepAlive: true,
           title: $t('system.basicData.countryCode.title'),
+          authority: abpPageAuthority('Admin.CountryCode'),
         },
         component: () =>
           import('#/views/system/basic-data/CountryCodeAdmin/list.vue'),
