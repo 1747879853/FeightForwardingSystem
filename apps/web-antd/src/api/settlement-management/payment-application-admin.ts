@@ -105,18 +105,36 @@ export namespace PaymentApplicationAdminApi {
   export interface OrderFeeForSettlementDto {
     /** 费用ID */
     id: string;
+    /** 创建时间 */
+    creationTime?: string;
+    /** 创建人ID */
+    creatorUserId?: number;
+    /** 最后修改时间 */
+    lastModificationTime?: string;
+    /** 最后修改人ID */
+    lastModifierUserId?: number;
+    /** 所属用户权限ID */
+    userId?: number;
+    /** 所属组织列表 */
+    organizationUnits?: OrganizationUnitSimpleDto[];
+    /** 所属公司列表 */
+    companys?: OrganizationUnitSimpleDto[];
     /** 业务ID */
     transportOrderId: string;
+    /** 更改单ID */
+    changeOrderId?: string;
     /** 收付类型：收/付 */
     paySide: number;
     /** 费用状态 */
     feeStatus: number;
     /** 结算状态：0=未结算，1=部分结算，2=已结算 */
     settlementStatus: number;
+    /** 开票状态 */
+    invoiceStatus?: number;
     /** 费用代码ID */
     feeCodeId: number;
-    /** 费用代码名称 */
-    feeCodeName?: string;
+    /** 行业类别/结算对象类别 */
+    industryCategory?: number;
     /** 结算对象ID */
     settlementId: string;
     /** 结算对象名称 */
@@ -125,34 +143,54 @@ export namespace PaymentApplicationAdminApi {
     currencyId: number;
     /** 币别代码 */
     currencyCode?: string;
+    /** 币别名称 */
+    currencyName?: string;
     /** 汇率 */
     exchangeRate: number;
     /** 含税单价 */
     unitPrice: number;
     /** 金额 */
     amount: number;
+    /** 单位 */
+    unitEmum?: number;
     /** 数量 */
     quantity: number;
+    /** 是否含税 */
+    taxIncluded?: boolean;
     /** 税率(%) */
     taxRate: number;
-    /** 是否含税 */
-    taxIncluded: boolean;
     /** 不含税单价（计算得出） */
     noTaxUnitPrice: number;
     /** 不含税金额（计算得出） */
     noTaxAmount: number;
     /** 已开票金额 */
     invoicedAmount: number;
+    /** 发票申请金额 */
+    orderInvoiceAmount?: number;
     /** 未开票金额（计算得出） */
     unInvoicedAmount: number;
     /** 已结算金额 */
     settledAmount: number;
     /** 未结算金额（计算得出） */
     unSettledAmount: number;
+    /** 是否允许开票 */
+    canInvoice?: boolean;
+    /** 是否机密 */
+    isConfidential?: boolean;
+    /** 数据录入方式 */
+    dataEntryMethod?: number;
+    /** 备注 */
+    remark?: string;
+    /** 本位币代码 */
+    localCurrencyCode?: string;
+    /** 费用录入人昵称 */
+    creatorUserName?: string;
     /** 已付费申请金额 */
     rqstPaymentAmount: number;
-    /** 未付费申请金额 */
+    /** 未付费申请金额（原币） */
     unRqstPaymentAmount: number;
+    /** 本次结算量（该费用在本次结算中的结算量，仅详情接口返回） */
+    thisSettledAmount?: number;
     /** 关联业务信息 */
     transportOrder?: TransportOrderSimpleForFeeDto;
   }
@@ -171,14 +209,20 @@ export namespace PaymentApplicationAdminApi {
     payAmount: number;
     /** 申请金额（付）转成结算币别，原币申请为 null */
     payPrice?: number;
-    /** 该币别未结算量 = 应收未结算总和 - 应付未结算总和（原币，不乘汇率） */
+    /** 该币别未结算量（原币，不乘汇率）= 收的有效金额 + 付的有效金额 */
     totalUnSettledAmount: number;
-    /** 可结算上限 = 正数有效金额之和（收取UnSettledAmount，付取-UnSettledAmount，结果>0的累加） */
+    /** 可结算上限（原币）= 正数有效金额之和（收取 UnSettledAmount，付取 -UnSettledAmount，结果>0 的累加） */
     settleableUpperLimit: number;
-    /** 可结算下限 = 负数有效金额之和（收取UnSettledAmount，付取-UnSettledAmount，结果<0的累加） */
+    /** 可结算上限（结算币别）= settleableUpperLimit × 汇率，原币申请为 null */
+    settleablePriceUpperLimit?: number;
+    /** 可结算下限（原币）= 负数有效金额之和（收取 UnSettledAmount，付取 -UnSettledAmount，结果<0 的累加） */
     settleableLowerLimit: number;
+    /** 可结算下限（结算币别）= settleableLowerLimit × 汇率，原币申请为 null */
+    settleablePriceLowerLimit?: number;
     /** 该币别下的费用列表 */
     orderFees: OrderFeeForSettlementDto[];
+    /** 该币别的付费申请银行（本接口不填充） */
+    paymentApplicationBank?: any;
   }
 
   /** 币别分组（通用） */
@@ -228,9 +272,23 @@ export namespace PaymentApplicationAdminApi {
   export interface PaymentApplicationForSettlementDto {
     /** 付费申请ID */
     id: string;
+    /** 创建时间 */
+    creationTime?: string;
+    /** 创建人ID */
+    creatorUserId?: number;
+    /** 最后修改时间 */
+    lastModificationTime?: string;
+    /** 最后修改人ID */
+    lastModifierUserId?: number;
+    /** 所属用户权限ID */
+    userId?: number;
+    /** 所属组织列表（最后一级，可能是部门或公司） */
+    organizationUnits?: OrganizationUnitSimpleDto[];
+    /** 所属公司列表（取第一个，兼容多公司） */
+    companys?: OrganizationUnitSimpleDto[];
     /** 申请单号 */
     applicationNo?: string;
-    /** 申请状态：`3`=审核通过（未结算过），`4`=部分结算 */
+    /** 申请状态：`3`=审核通过，`4`=部分结算 */
     status: number;
     /** 提交时间 */
     submitTime?: string;
@@ -244,6 +302,8 @@ export namespace PaymentApplicationAdminApi {
     require?: string;
     /** 备注 */
     remark?: string;
+    /** 租户ID */
+    tenantId?: number;
     /** 结算对象名称 */
     clientName?: string;
     /** 币别代码 */
@@ -256,12 +316,18 @@ export namespace PaymentApplicationAdminApi {
     auditUserNickName?: string;
     /** 审核时间 */
     auditTime?: string;
-    /** 应付总金额（结算币别，原币申请为 null） */
+    /** 应付总金额（结算币别）= 各币别 PayPrice 之和，原币申请为 null */
     totalPayPrice?: number;
-    /** 应收总金额（结算币别，原币申请为 null） */
+    /** 应收总金额（结算币别）= 各币别 ReceivePrice 之和，原币申请为 null */
     totalReceivePrice?: number;
+    /** 可结算上限合计（结算币别）= 各币别 SettleablePriceUpperLimit 之和，原币申请为 null */
+    totalSettleablePriceUpperLimit?: number;
+    /** 可结算下限合计（结算币别）= 各币别 SettleablePriceLowerLimit 之和，原币申请为 null */
+    totalSettleablePriceLowerLimit?: number;
     /** 按币别分组的金额汇总 */
     currencyGroup?: CurrencyGroupForSettlementDto[];
+    /** 用户输入的本次结算金额（固定币别申请时使用，前端临时字段） */
+    settledPrice?: number;
   }
 
   /** 分页数据封装 */
