@@ -102,6 +102,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
           return await getSeaExportPagedList({
             PageIndex: page.currentPage,
             PageSize: page.pageSize,
+            Sorting: 'CreationTime DESC',
             ...query,
           });
         },

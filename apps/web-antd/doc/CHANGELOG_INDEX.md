@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-30] [海运出口列表默认按创建时间倒序](./changelogs/change-log-2026-05-30-sea-export-list-creation-time-sort.md)
 - [2026-05-30] [海运出口编辑页服务项流水线交互优化](./changelogs/change-log-2026-05-30-sea-export-edit-service-check-task-status.md)
 - [2026-05-30] [津海通 jht GitHub Actions IIS 自动发布](./changelogs/change-log-2026-05-30-jht-github-iis-deploy.md)
 - [2026-05-30] [海运出口起运港未配置服务项目空态提示](./changelogs/change-log-2026-05-30-sea-export-pol-no-service-empty-hint.md)
