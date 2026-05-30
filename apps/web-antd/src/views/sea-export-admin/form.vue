@@ -506,32 +506,40 @@ const collectionPaymentDeptOptions = ref<
 >([]);
 const getServiceItemCheckFieldName = (field: ServiceItemFieldName) =>
   SERVICE_ITEM_CHECK_FIELD_NAMES[field] as ServiceItemCheckFieldName;
-const getServiceItemChecked = (field: ServiceItemFieldName) => {
+const isServiceItemEnabled = (field: ServiceItemFieldName) => {
   const checkFieldName = getServiceItemCheckFieldName(field);
   return !!serviceItemEnabledValues.value[checkFieldName];
+};
+/** 编辑态：勾选表示服务任务已完成；新建态：勾选表示已启用服务 */
+const getServiceItemCheckmarkShown = (field: ServiceItemFieldName) => {
+  if (isEdit.value) return isServiceItemNodeDone(field);
+  return isServiceItemEnabled(field);
 };
 const getServiceItemNodeState = (
   field: ServiceItemFieldName,
 ): 'active' | 'done' | 'pending' => {
-  if (!getServiceItemChecked(field)) return 'pending';
+  if (!isServiceItemEnabled(field)) return 'pending';
   const status = serviceItemTaskStatusValues.value[field];
   if (status === SERVICE_TASK_STATUS_PROCESSED) return 'done';
   return 'active';
 };
 const isServiceItemNodeDone = (field: ServiceItemFieldName) =>
   getServiceItemNodeState(field) === 'done';
+const hasServiceItemTask = (field: ServiceItemFieldName) => {
+  const taskId = serviceItemTaskIdValues.value[field];
+  return taskId != null && String(taskId).trim() !== '';
+};
 const canToggleServiceItemNode = (field: ServiceItemFieldName) => {
   if (!isEdit.value) return true;
-  const checked = getServiceItemChecked(field);
-  if (!checked) return true;
-  return !isServiceItemNodeDone(field);
+  if (!isServiceItemEnabled(field)) return true;
+  return !hasServiceItemTask(field);
 };
 const handleServiceItemNodeToggle = (field: ServiceItemFieldName) => {
   if (!canToggleServiceItemNode(field)) {
-    message.warning('已完成服务不可关闭');
+    message.warning('已生成服务任务，不可关闭服务');
     return;
   }
-  handleServiceItemEnabledChange(field, !getServiceItemChecked(field));
+  handleServiceItemEnabledChange(field, !isServiceItemEnabled(field));
 };
 const getServiceItemVisible = (field: ServiceItemFieldName) => {
   return serviceItemVisibleValues.value[field] === true;
@@ -706,7 +714,7 @@ const canCompleteServiceItem = (field: ServiceItemFieldName) => {
   return (
     !!taskId &&
     status === SERVICE_TASK_STATUS_PENDING &&
-    getServiceItemChecked(field)
+    isServiceItemEnabled(field)
   );
 };
 const isRequiredFieldFilled = (value: unknown) => {
@@ -3035,7 +3043,11 @@ defineExpose({
                             v-if="showServiceItemContent"
                             class="service-pipeline__hint"
                           >
-                            点击节点可启用/关闭服务
+                            {{
+                              isEdit
+                                ? '勾选表示服务任务已完成，点击节点可启用/关闭服务'
+                                : '点击节点可启用/关闭服务'
+                            }}
                           </span>
                         </div>
                         <template v-if="showServiceItemContent">
@@ -3047,7 +3059,10 @@ defineExpose({
                             >
                               <div
                                 class="service-item-node"
-                                :class="`service-item-node--${getServiceItemNodeState(field)}`"
+                                :class="[
+                                  `service-item-node--${getServiceItemNodeState(field)}`,
+                                  { 'service-item-node--edit': isEdit },
+                                ]"
                               >
                                 <div
                                   class="service-item-node__content"
@@ -3057,11 +3072,11 @@ defineExpose({
                                     class="service-item-node__check"
                                     :class="{
                                       'service-item-node__check--checked':
-                                        getServiceItemChecked(field),
+                                        getServiceItemCheckmarkShown(field),
                                     }"
                                   >
                                     <IconifyIcon
-                                      v-if="getServiceItemChecked(field)"
+                                      v-if="getServiceItemCheckmarkShown(field)"
                                       icon="mdi:check"
                                       class="service-item-node__check-icon"
                                     />
@@ -3076,32 +3091,27 @@ defineExpose({
                                     {{ getServiceItemLabel(field) }}
                                   </span>
                                   <span
-                                    v-if="isEdit"
-                                    class="service-item-node__status-slot"
+                                    v-if="
+                                      isEdit &&
+                                      isServiceItemEnabled(field) &&
+                                      getServiceItemTaskStatusMeta(field) &&
+                                      !isServiceItemNodeDone(field)
+                                    "
+                                    class="service-item-node__status"
                                   >
-                                    <span
-                                      v-if="
-                                        getServiceItemChecked(field) &&
-                                        getServiceItemTaskStatusMeta(field) &&
-                                        !isServiceItemNodeDone(field)
-                                      "
-                                      class="service-item-node__status"
-                                    >
-                                      {{
-                                        getServiceItemTaskStatusMeta(field)
-                                          ?.label
-                                      }}
-                                    </span>
+                                    {{
+                                      getServiceItemTaskStatusMeta(field)?.label
+                                    }}
                                   </span>
                                   <span
-                                    v-if="isEdit"
+                                    v-if="
+                                      isEdit &&
+                                      isServiceItemEnabled(field) &&
+                                      canCompleteServiceItem(field)
+                                    "
                                     class="service-item-node__action-slot"
                                   >
                                     <Button
-                                      v-if="
-                                        getServiceItemChecked(field) &&
-                                        canCompleteServiceItem(field)
-                                      "
                                       type="link"
                                       size="small"
                                       class="service-item-node__action-btn"
@@ -4001,25 +4011,10 @@ defineExpose({
   white-space: nowrap;
 }
 
-.service-item-node__status-slot {
-  display: inline-flex;
-  flex: 0 0 44px;
-  align-items: center;
-  justify-content: flex-start;
-  min-width: 44px;
-}
-
-.service-item-node__action-slot {
-  display: inline-flex;
-  flex: 0 0 56px;
-  align-items: center;
-  justify-content: flex-start;
-  min-width: 56px;
-}
-
 .service-item-node__status {
   flex-shrink: 0;
   padding: 2px 8px;
+  margin-left: 6px;
   font-size: 12px;
   font-weight: 500;
   line-height: 1.3;
@@ -4030,16 +4025,38 @@ defineExpose({
   border-radius: 999px;
 }
 
+.service-item-node__action-slot {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  margin-left: 12px;
+  overflow: hidden;
+  transition:
+    width 0.2s ease,
+    margin 0.2s ease,
+    opacity 0.2s ease;
+}
+
 .service-item-node:not(.service-item-node--active):not(:hover)
-  .service-item-node__action-btn {
+  .service-item-node__action-slot {
+  width: 0;
+  min-width: 0;
+  margin-left: 0;
   pointer-events: none;
   opacity: 0;
 }
 
-.service-item-node:hover .service-item-node__action-btn,
-.service-item-node--active .service-item-node__action-btn {
+.service-item-node:hover .service-item-node__action-slot,
+.service-item-node--active .service-item-node__action-slot {
+  width: auto;
+  min-width: 0;
   pointer-events: auto;
   opacity: 1;
+}
+
+.service-item-node:not(.service-item-node--active):not(:hover)
+  .service-item-node__action-btn {
+  pointer-events: none;
 }
 
 .service-item-node__action-btn:hover {
@@ -4095,8 +4112,19 @@ defineExpose({
   box-shadow: 0 0 0 3px #eff6ff;
 }
 
+.service-item-node--edit.service-item-node--active
+  .service-item-node__check:not(.service-item-node__check--checked) {
+  border-color: #e2e8f0;
+  box-shadow: none;
+}
+
 .service-item-node--active .service-item-node__icon,
 .service-item-node--active .service-item-node__title {
+  color: #2563eb;
+}
+
+.service-item-node--edit.service-item-node--active .service-item-node__icon,
+.service-item-node--edit.service-item-node--active .service-item-node__title {
   color: #2563eb;
 }
 
