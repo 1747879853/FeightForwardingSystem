@@ -15,6 +15,8 @@
     "formCardOrderShipment": "订单与船期",
     "formCardPortCargo": "港口与货物",
     "formCardCtnCargo": "货物信息",
+    "selectPolForServiceItems": "请先选择起运港",
+    "polNoServiceConfig": "当前起运港未配置服务项目，请先在「基础数据 → 港口服务项配置」中维护",
     "blType": "装运方式",
     "billType": "订单类型",
     "secondNotifierId": "第二通知人",

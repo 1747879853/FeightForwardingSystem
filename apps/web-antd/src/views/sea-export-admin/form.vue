@@ -23,6 +23,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Empty,
   message,
   Popover,
   Select,
@@ -36,6 +37,7 @@ import { useUserStore } from '@vben/stores';
 defineOptions({
   name: 'SeaExportAdminForm',
 });
+const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 import { UserSelect } from '#/adapter/component';
 import { useVbenForm } from '#/adapter/form';
 import { runVisionOcrPdf } from '#/api/common';
@@ -488,7 +490,7 @@ const serviceItemVisibleValues = ref<
 >(
   SERVICE_ITEM_FIELD_NAMES.reduce(
     (acc, field) => {
-      acc[field] = true;
+      acc[field] = false;
       return acc;
     },
     {} as Partial<Record<ServiceItemFieldName, boolean>>,
@@ -532,7 +534,7 @@ const handleServiceItemNodeToggle = (field: ServiceItemFieldName) => {
   handleServiceItemEnabledChange(field, !getServiceItemChecked(field));
 };
 const getServiceItemVisible = (field: ServiceItemFieldName) => {
-  return serviceItemVisibleValues.value[field] !== false;
+  return serviceItemVisibleValues.value[field] === true;
 };
 const visibleServiceItemFields = computed(() =>
   getOrderedServiceItemFields(SERVICE_ITEM_FIELD_NAMES).filter((field) =>
@@ -815,6 +817,28 @@ const toOptionalQueryValue = (value: unknown) => {
 let serviceTypeLinkageRequestId = 0;
 const linkedClientId = ref<unknown>(undefined);
 const linkedPolId = ref<unknown>(undefined);
+const serviceTypeSyncLoading = ref(false);
+const polServiceConfigLoaded = ref(false);
+const collectionPaymentConfigured = ref(false);
+const polHasNoServiceConfig = computed(() => {
+  if (toOptionalQueryValue(linkedPolId.value) === undefined) return false;
+  if (serviceTypeSyncLoading.value || !polServiceConfigLoaded.value)
+    return false;
+  const hasStandardServices = visibleServiceItemFields.value.length > 0;
+  const hasCollectionPayment =
+    SHOW_COLLECTION_PAYMENT_FIELD && collectionPaymentConfigured.value;
+  return !hasStandardServices && !hasCollectionPayment;
+});
+const hasPolSelected = computed(
+  () => toOptionalQueryValue(linkedPolId.value) !== undefined,
+);
+const showServiceItemContent = computed(
+  () =>
+    hasPolSelected.value &&
+    !serviceTypeSyncLoading.value &&
+    polServiceConfigLoaded.value &&
+    !polHasNoServiceConfig.value,
+);
 let serviceTypeSyncTimer: ReturnType<typeof setTimeout> | undefined;
 let latestServiceTypeQueryKey = '';
 const extractServiceFieldSet = (
@@ -866,7 +890,7 @@ const resetServiceTypeStateWhenPolEmpty = () => {
 
   SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
     const checkFieldName = getServiceItemCheckFieldName(field);
-    nextVisibleValues[field] = true;
+    nextVisibleValues[field] = false;
     nextEnabledValues[checkFieldName] = false;
     nextServiceItemValues[field] = undefined;
     nextServiceItemSelectedItems[field] = [];
@@ -880,6 +904,8 @@ const resetServiceTypeStateWhenPolEmpty = () => {
   collectionPaymentDeptId.value = undefined;
   serviceItemRequiredPropValues.value = {};
   serviceItemSortOrderMap.value = new Map();
+  polServiceConfigLoaded.value = false;
+  collectionPaymentConfigured.value = false;
 };
 const applyServiceTypeStateByPol = (
   availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
@@ -939,6 +965,8 @@ const applyServiceTypeStateByPol = (
   serviceItemSortOrderMap.value = buildServiceItemSortOrderMap(
     availableServiceTypes,
   );
+  collectionPaymentConfigured.value = collectionPaymentMatched;
+  polServiceConfigLoaded.value = true;
 };
 const extractServiceTypesByPolResult = (
   payload: unknown,
@@ -990,6 +1018,7 @@ const syncServiceTypesByPol = async (
     return;
   }
   latestServiceTypeQueryKey = queryKey;
+  serviceTypeSyncLoading.value = true;
   try {
     const [serviceTypesByPolResponse, checkedServiceTypesResponse] =
       await Promise.all([
@@ -1014,7 +1043,12 @@ const syncServiceTypesByPol = async (
     );
   } catch {
     if (requestId !== serviceTypeLinkageRequestId) return;
+    polServiceConfigLoaded.value = false;
     message.warning('根据起运港查询服务项目失败');
+  } finally {
+    if (requestId === serviceTypeLinkageRequestId) {
+      serviceTypeSyncLoading.value = false;
+    }
   }
 };
 const queueSyncServiceTypesByPol = (args: {
@@ -2989,117 +3023,178 @@ defineExpose({
                   />
                 </div>
                 <div class="biz-block biz-block--service">
-                  <div class="biz-block__title">服务项目</div>
-                  <div class="service-pipeline">
-                    <div class="service-pipeline__track">
-                      <div
-                        v-for="(field, index) in visibleServiceItemFields"
-                        :key="field"
-                        class="service-item-node-wrap"
-                      >
-                        <div
-                          class="service-item-node"
-                          :class="`service-item-node--${getServiceItemNodeState(field)}`"
-                        >
-                          <div
-                            class="service-item-node__content"
-                            @click="handleServiceItemNodeToggle(field)"
+                  <Spin
+                    :spinning="serviceTypeSyncLoading"
+                    class="service-pipeline-spin"
+                  >
+                    <div class="service-pipeline-body">
+                      <div class="service-pipeline">
+                        <div class="service-pipeline__header">
+                          <span class="service-pipeline__title">服务项目</span>
+                          <span
+                            v-if="showServiceItemContent"
+                            class="service-pipeline__hint"
                           >
-                            <span
-                              v-if="isEdit && getServiceItemChecked(field)"
-                              class="service-item-node__check"
+                            点击节点可启用/关闭服务
+                          </span>
+                        </div>
+                        <template v-if="showServiceItemContent">
+                          <div class="service-pipeline__track">
+                            <div
+                              v-for="(field, index) in visibleServiceItemFields"
+                              :key="field"
+                              class="service-item-node-wrap"
                             >
-                              <IconifyIcon
-                                icon="mdi:check"
-                                class="service-item-node__check-icon"
+                              <div
+                                class="service-item-node"
+                                :class="`service-item-node--${getServiceItemNodeState(field)}`"
+                              >
+                                <div
+                                  class="service-item-node__content"
+                                  @click="handleServiceItemNodeToggle(field)"
+                                >
+                                  <span
+                                    class="service-item-node__check"
+                                    :class="{
+                                      'service-item-node__check--checked':
+                                        getServiceItemChecked(field),
+                                    }"
+                                  >
+                                    <IconifyIcon
+                                      v-if="getServiceItemChecked(field)"
+                                      icon="mdi:check"
+                                      class="service-item-node__check-icon"
+                                    />
+                                  </span>
+                                  <span class="service-item-node__icon">
+                                    <IconifyIcon
+                                      :icon="SERVICE_ITEM_META[field].icon"
+                                      class="service-item-node__icon-inner"
+                                    />
+                                  </span>
+                                  <span class="service-item-node__title">
+                                    {{ getServiceItemLabel(field) }}
+                                  </span>
+                                  <span
+                                    v-if="isEdit"
+                                    class="service-item-node__status-slot"
+                                  >
+                                    <span
+                                      v-if="
+                                        getServiceItemChecked(field) &&
+                                        getServiceItemTaskStatusMeta(field) &&
+                                        !isServiceItemNodeDone(field)
+                                      "
+                                      class="service-item-node__status"
+                                    >
+                                      {{
+                                        getServiceItemTaskStatusMeta(field)
+                                          ?.label
+                                      }}
+                                    </span>
+                                  </span>
+                                  <span
+                                    v-if="isEdit"
+                                    class="service-item-node__action-slot"
+                                  >
+                                    <Button
+                                      v-if="
+                                        getServiceItemChecked(field) &&
+                                        canCompleteServiceItem(field)
+                                      "
+                                      type="link"
+                                      size="small"
+                                      class="service-item-node__action-btn"
+                                      :loading="
+                                        completingServiceField === field
+                                      "
+                                      @click.stop="handleCompleteService(field)"
+                                    >
+                                      完成服务
+                                    </Button>
+                                  </span>
+                                </div>
+                              </div>
+                              <div
+                                v-if="
+                                  index < visibleServiceItemFields.length - 1
+                                "
+                                class="service-item-divider"
+                                :class="{
+                                  'service-item-divider--done':
+                                    isServiceItemNodeDone(field),
+                                }"
                               />
-                            </span>
-                            <span class="service-item-node__icon">
-                              <IconifyIcon
-                                :icon="SERVICE_ITEM_META[field].icon"
-                                class="service-item-node__icon-inner"
-                              />
-                            </span>
-                            <span class="service-item-node__title">
-                              {{ getServiceItemLabel(field) }}
-                            </span>
-                            <span
-                              v-if="
-                                isEdit &&
-                                getServiceItemTaskStatusMeta(field) &&
-                                !isServiceItemNodeDone(field)
-                              "
-                              class="service-item-node__status"
-                            >
-                              {{ getServiceItemTaskStatusMeta(field)?.label }}
-                            </span>
-                            <Button
-                              v-if="isEdit && canCompleteServiceItem(field)"
-                              type="link"
-                              size="small"
-                              class="service-item-node__action-btn"
-                              :loading="completingServiceField === field"
-                              @click.stop="handleCompleteService(field)"
-                            >
-                              完成服务
-                            </Button>
+                            </div>
+                          </div>
+                        </template>
+                        <div v-else class="service-pipeline__state">
+                          <Empty
+                            v-if="!serviceTypeSyncLoading && !hasPolSelected"
+                            :image="emptySimpleImage"
+                            class="service-pipeline-empty service-pipeline-empty--compact"
+                            :description="
+                              $t('seaExport.export.selectPolForServiceItems')
+                            "
+                          />
+                          <Empty
+                            v-else-if="
+                              !serviceTypeSyncLoading && polHasNoServiceConfig
+                            "
+                            :image="emptySimpleImage"
+                            class="service-pipeline-empty service-pipeline-empty--compact"
+                            :description="
+                              $t('seaExport.export.polNoServiceConfig')
+                            "
+                          />
+                        </div>
+                      </div>
+                      <div class="service-item-grid">
+                        <div
+                          v-if="
+                            SHOW_COLLECTION_PAYMENT_FIELD &&
+                            showServiceItemContent
+                          "
+                          class="service-item-extra-card"
+                          :class="{
+                            'service-item-extra-card--active':
+                              collectionPaymentEnabled,
+                          }"
+                        >
+                          <div class="service-item-extra-card__header">
+                            <div class="service-item-extra-card__title-wrap">
+                              <span class="service-item-extra-card__icon">
+                                <IconifyIcon
+                                  :icon="COLLECTION_PAYMENT_ICON"
+                                  class="service-item-extra-card__icon-inner"
+                                />
+                              </span>
+                              <span class="service-item-extra-card__title"
+                                >代收支</span
+                              >
+                            </div>
+                            <Checkbox
+                              :checked="collectionPaymentEnabled"
+                              @change="handleCollectionPaymentEnabledChange"
+                            />
+                          </div>
+                          <div class="service-item-extra-card__body">
+                            <Select
+                              :value="collectionPaymentDeptId"
+                              :options="collectionPaymentDeptOptions"
+                              :disabled="!collectionPaymentEnabled"
+                              :placeholder="$t('ui.placeholder.select')"
+                              allow-clear
+                              class="w-full"
+                              show-search
+                              option-filter-prop="label"
+                              @change="handleCollectionPaymentDeptChange"
+                            />
                           </div>
                         </div>
-                        <div
-                          v-if="index < visibleServiceItemFields.length - 1"
-                          class="service-item-divider"
-                          :class="{
-                            'service-item-divider--done':
-                              isServiceItemNodeDone(field),
-                          }"
-                        />
                       </div>
                     </div>
-                    <div class="service-item-pipeline__hint">
-                      点击节点可启用/关闭服务
-                    </div>
-                  </div>
-                  <div class="service-item-grid">
-                    <div
-                      v-if="SHOW_COLLECTION_PAYMENT_FIELD"
-                      class="service-item-extra-card"
-                      :class="{
-                        'service-item-extra-card--active':
-                          collectionPaymentEnabled,
-                      }"
-                    >
-                      <div class="service-item-extra-card__header">
-                        <div class="service-item-extra-card__title-wrap">
-                          <span class="service-item-extra-card__icon">
-                            <IconifyIcon
-                              :icon="COLLECTION_PAYMENT_ICON"
-                              class="service-item-extra-card__icon-inner"
-                            />
-                          </span>
-                          <span class="service-item-extra-card__title"
-                            >代收支</span
-                          >
-                        </div>
-                        <Checkbox
-                          :checked="collectionPaymentEnabled"
-                          @change="handleCollectionPaymentEnabledChange"
-                        />
-                      </div>
-                      <div class="service-item-extra-card__body">
-                        <Select
-                          :value="collectionPaymentDeptId"
-                          :options="collectionPaymentDeptOptions"
-                          :disabled="!collectionPaymentEnabled"
-                          :placeholder="$t('ui.placeholder.select')"
-                          allow-clear
-                          class="w-full"
-                          show-search
-                          option-filter-prop="label"
-                          @change="handleCollectionPaymentDeptChange"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  </Spin>
                 </div>
                 <div class="content-section__header">
                   <span class="card-title">
@@ -3769,11 +3864,55 @@ defineExpose({
 }
 
 .biz-block--service {
-  margin-top: 12px;
+  padding: 12px 18px 8px;
+  margin-top: 0;
+  background: transparent;
+}
+
+.service-pipeline-spin :deep(.ant-spin-nested-loading) {
+  position: relative;
+}
+
+.service-pipeline-spin :deep(.ant-spin) {
+  max-height: none;
+}
+
+.service-pipeline-body {
+  box-sizing: border-box;
+}
+
+.service-pipeline__header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.service-pipeline__title {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1677ff;
+  white-space: nowrap;
+}
+
+.service-pipeline__hint {
+  font-size: 12px;
+  line-height: 20px;
+  color: rgb(0 0 0 / 45%);
+  white-space: nowrap;
+}
+
+.service-pipeline__state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
 }
 
 .service-pipeline {
-  padding: 10px 12px;
+  padding: 8px 12px 10px;
   background: #fff;
   border: 1px solid rgb(226 232 240 / 60%);
   border-radius: 12px;
@@ -3784,6 +3923,7 @@ defineExpose({
 
 .service-pipeline__track {
   display: flex;
+  flex-wrap: nowrap;
   gap: 0;
   align-items: center;
   justify-content: flex-start;
@@ -3796,15 +3936,18 @@ defineExpose({
 }
 
 .service-item-node {
-  display: flex;
+  display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
 }
 
 .service-item-node__content {
+  box-sizing: border-box;
   display: inline-flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  padding: 6px 10px;
+  justify-content: flex-start;
+  padding: 4px 6px;
   cursor: pointer;
   border-radius: 8px;
   transition: background-color 0.2s ease;
@@ -3816,6 +3959,7 @@ defineExpose({
 
 .service-item-node__check {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 18px;
@@ -3823,7 +3967,16 @@ defineExpose({
   color: transparent;
   border: 1.5px solid #e2e8f0;
   border-radius: 999px;
-  transition: all 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.service-item-node__check--checked {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
 }
 
 .service-item-node__check-icon {
@@ -3841,13 +3994,31 @@ defineExpose({
 }
 
 .service-item-node__title {
+  flex: 0 0 auto;
   font-size: 14px;
   font-weight: 500;
   color: #0f172a;
   white-space: nowrap;
 }
 
+.service-item-node__status-slot {
+  display: inline-flex;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 44px;
+}
+
+.service-item-node__action-slot {
+  display: inline-flex;
+  flex: 0 0 56px;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 56px;
+}
+
 .service-item-node__status {
+  flex-shrink: 0;
   padding: 2px 8px;
   font-size: 12px;
   font-weight: 500;
@@ -3859,23 +4030,16 @@ defineExpose({
   border-radius: 999px;
 }
 
-.service-item-node__action-btn {
-  margin-left: 2px;
-  font-size: 12px;
-  color: #2563eb;
+.service-item-node:not(.service-item-node--active):not(:hover)
+  .service-item-node__action-btn {
   pointer-events: none;
-  background: #eff6ff;
-  border-radius: 6px;
   opacity: 0;
-  transform: translateX(-5px);
-  transition: all 0.2s ease;
 }
 
 .service-item-node:hover .service-item-node__action-btn,
 .service-item-node--active .service-item-node__action-btn {
   pointer-events: auto;
   opacity: 1;
-  transform: translateX(0);
 }
 
 .service-item-node__action-btn:hover {
@@ -3884,19 +4048,38 @@ defineExpose({
   box-shadow: 0 2px 4px rgb(37 99 235 / 20%);
 }
 
+.service-item-node__action-btn {
+  flex-shrink: 0;
+  margin-left: 0;
+  font-size: 12px;
+  color: #2563eb;
+  background: #eff6ff;
+  border-radius: 6px;
+  transition: opacity 0.2s ease;
+}
+
 .service-item-divider {
-  flex: 0 0 28px;
-  width: 28px;
+  display: flex;
+  flex: 0 0 12px;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 64px;
+}
+
+.service-item-divider::after {
+  display: block;
+  width: 12px;
   height: 1.5px;
-  margin: 0 8px;
+  content: '';
   background: #f1f5f9;
 }
 
-.service-item-divider--done {
+.service-item-divider--done::after {
   background: rgb(16 185 129 / 30%);
 }
 
-.service-item-node--done .service-item-node__check {
+.service-item-node--done .service-item-node__check--checked {
   color: #fff;
   background: #10b981;
   border-color: #10b981;
@@ -3906,7 +4089,8 @@ defineExpose({
   color: #64748b;
 }
 
-.service-item-node--active .service-item-node__check {
+.service-item-node--active
+  .service-item-node__check:not(.service-item-node__check--checked) {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px #eff6ff;
 }
@@ -3914,10 +4098,6 @@ defineExpose({
 .service-item-node--active .service-item-node__icon,
 .service-item-node--active .service-item-node__title {
   color: #2563eb;
-}
-
-.service-item-node--active .service-item-node__title {
-  font-weight: 600;
 }
 
 .service-item-node--pending .service-item-node__check {
@@ -3929,12 +4109,31 @@ defineExpose({
   color: #cbd5e1;
 }
 
-.service-item-pipeline__hint {
-  margin-top: 8px;
-  margin-left: 12px;
+.service-pipeline-empty--compact {
+  padding: 0;
+  margin: 0;
+}
+
+.service-pipeline-empty--compact :deep(.ant-empty-image) {
+  height: 40px;
+  margin-bottom: 6px;
+}
+
+.service-pipeline-empty--compact :deep(.ant-empty-description) {
+  max-width: 420px;
+  margin: 0 auto;
   font-size: 12px;
   line-height: 20px;
   color: rgb(0 0 0 / 45%);
+}
+
+.service-pipeline__state
+  .service-pipeline-empty--compact
+  :deep(.ant-empty-description) {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .service-item-grid {

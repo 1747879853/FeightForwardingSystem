@@ -145,6 +145,8 @@
     "formCardBasicInfo": "Basic Info",
     "formCardCargo": "Cargo Info",
     "formCardCtnCargo": "Container & Cargo",
+    "selectPolForServiceItems": "Please select a port of loading first",
+    "polNoServiceConfig": "No service items configured for this port of loading. Please maintain them under Basic Data → Port Service Configuration.",
     "formCardOrderShipment": "Order & Shipment",
     "formCardPartyInfo": "Party Info",
     "formCardPort": "Port Info",
