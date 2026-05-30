@@ -807,11 +807,8 @@ const handleCompleteService = async (field: ServiceItemFieldName) => {
   completingServiceField.value = field;
   try {
     await completeSeServiceTask({ id: taskId });
-    serviceItemTaskStatusValues.value = {
-      ...serviceItemTaskStatusValues.value,
-      [field]: SERVICE_TASK_STATUS_PROCESSED,
-    };
     message.success(`${getServiceItemLabel(field)}已完成`);
+    await loadEditData();
   } catch {
     message.error('完成服务失败，请稍后重试');
   } finally {
@@ -2770,6 +2767,7 @@ const handleSubmit = async () => {
       await editSeaExport(dto as SeaExportAdminApi.SeaExportEditDto);
       message.success($t('ui.actionMessage.operationSuccess'));
       markListShouldRefresh('SeaExportList');
+      await loadEditData();
     } else {
       const createdId = await addSeaExport(
         dto as SeaExportAdminApi.SeaExportAddDto,
