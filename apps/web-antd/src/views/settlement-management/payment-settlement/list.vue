@@ -166,7 +166,7 @@ function handleRowDblClick({
     message.warning('该结算单已锁定，无法编辑');
     return;
   }
-  router.push(`/settlement-management/payment-settlement/${row.id}/edit`);
+  router.push(`/settlement-management/payment-settlement/edit/${row.id}`);
 }
 
 /** 删除 */
