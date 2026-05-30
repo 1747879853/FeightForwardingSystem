@@ -13,6 +13,7 @@
 
 ## 2026-05
 
+- [2026-05-30] [津海通 jht GitHub Actions IIS 自动发布](./changelogs/change-log-2026-05-30-jht-github-iis-deploy.md)
 - [2026-05-30] [海运出口起运港未配置服务项目空态提示](./changelogs/change-log-2026-05-30-sea-export-pol-no-service-empty-hint.md)
 - [2026-05-30] [基础资料港口/航线/集装箱/国家权限 i18n 与路由控制补齐](./changelogs/change-log-2026-05-30-basic-data-port-lane-ctn-country-permission.md)
 - [2026-05-30] [列表路由 keepAlive 缓存与刷新策略统一](./changelogs/change-log-2026-05-30-list-route-keepalive-and-refresh.md)

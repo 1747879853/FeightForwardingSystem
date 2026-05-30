@@ -1,5 +1,5 @@
-# 浩瀚远洋（hhyy）。津海通见 deploy-web-antd-iis-jht.yml
-name: 生产环境前端自动发布 - 浩瀚远洋 (hhyy)
+# 津海通（jht）生产前端：pnpm build:antd:jht → MSDeploy 发布 IIS
+name: 生产环境前端自动发布 - 津海通 (jht)
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: web-antd-iis-deploy-${{ github.ref }}
+  group: web-antd-iis-deploy-jht-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
       - name: Print workflow context
         shell: pwsh
         run: |
-          Write-Host "=== Workflow Context ==="
+          Write-Host "=== Workflow Context (jht) ==="
           Write-Host "Run ID: $env:GITHUB_RUN_ID"
           Write-Host "Run Number: $env:GITHUB_RUN_NUMBER"
           Write-Host "Run Attempt: $env:GITHUB_RUN_ATTEMPT"
@@ -47,19 +47,19 @@ jobs:
           pnpm --version
           git --version
 
-      - name: Print web-antd brand env (hhyy)
+      - name: Print web-antd brand env (jht)
         shell: pwsh
         run: |
-          Write-Host "=== web-antd build brand: hhyy (浩瀚远洋) ==="
-          Get-Content ./apps/web-antd/.env.hhyy | Select-String 'VITE_APP_'
+          Write-Host "=== web-antd build brand: jht (津海通) ==="
+          Get-Content ./apps/web-antd/.env.jht | Select-String 'VITE_APP_'
 
-      - name: Build web-antd (hhyy)
-        run: pnpm run build:antd:hhyy
+      - name: Build web-antd (jht)
+        run: pnpm run build:antd:jht
 
       - name: Verify build artifacts and hash
         shell: pwsh
         run: |
-          Write-Host "=== Build Artifact Check ==="
+          Write-Host "=== Build Artifact Check (jht) ==="
           if (-not (Test-Path "./apps/web-antd/dist")) {
             Write-Error "dist directory not found"
             exit 1
@@ -78,11 +78,11 @@ jobs:
       - name: Pre-deploy connectivity check
         shell: pwsh
         env:
-          IIS_SERVER_IP: ${{ secrets.IIS_SERVER_IP }}
-          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_MSDEPLOY_ENDPOINT }}
-          IIS_SITE_NAME: ${{ secrets.IIS_SITE_NAME }}
+          IIS_SERVER_IP: ${{ secrets.IIS_JHT_SERVER_IP }}
+          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_JHT_MSDEPLOY_ENDPOINT }}
+          IIS_SITE_NAME: ${{ secrets.IIS_JHT_SITE_NAME }}
         run: |
-          Write-Host "=== Pre-deploy Connectivity Check ==="
+          Write-Host "=== Pre-deploy Connectivity Check (jht) ==="
           Write-Host ("Target site path: {0}" -f $env:IIS_SITE_NAME)
           $endpoint = $env:IIS_MSDEPLOY_ENDPOINT
           if ([string]::IsNullOrWhiteSpace($endpoint)) {
@@ -91,7 +91,7 @@ jobs:
           try {
             $endpointUri = [Uri]$endpoint
           } catch {
-            Write-Error ("IIS_MSDEPLOY_ENDPOINT is invalid: {0}" -f $endpoint)
+            Write-Error ("IIS_JHT_MSDEPLOY_ENDPOINT is invalid: {0}" -f $endpoint)
             exit 1
           }
           $targetHost = $endpointUri.Host
@@ -101,7 +101,7 @@ jobs:
             $resolved = [System.Net.Dns]::GetHostAddresses($targetHost)
             Write-Host ("DNS resolved host '{0}' to {1}" -f $targetHost, ($resolved.IPAddressToString -join ', '))
           } catch {
-            Write-Error ("Host '{0}' cannot be resolved. Check IIS_MSDEPLOY_ENDPOINT / IIS_SERVER_IP secret." -f $targetHost)
+            Write-Error ("Host '{0}' cannot be resolved. Check IIS_JHT_MSDEPLOY_ENDPOINT / IIS_JHT_SERVER_IP secret." -f $targetHost)
             exit 1
           }
           $tcp = Test-NetConnection -ComputerName $targetHost -Port $targetPort -WarningAction SilentlyContinue
@@ -119,11 +119,11 @@ jobs:
       - name: Deploy preview (whatif)
         shell: pwsh
         env:
-          IIS_SERVER_IP: ${{ secrets.IIS_SERVER_IP }}
-          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_MSDEPLOY_ENDPOINT }}
-          IIS_SITE_NAME: ${{ secrets.IIS_SITE_NAME }}
-          IIS_USER: ${{ secrets.IIS_USER }}
-          IIS_PWD: ${{ secrets.IIS_PWD }}
+          IIS_SERVER_IP: ${{ secrets.IIS_JHT_SERVER_IP }}
+          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_JHT_MSDEPLOY_ENDPOINT }}
+          IIS_SITE_NAME: ${{ secrets.IIS_JHT_SITE_NAME }}
+          IIS_USER: ${{ secrets.IIS_JHT_USER }}
+          IIS_PWD: ${{ secrets.IIS_JHT_PWD }}
         run: |
           $msdeploy = "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe"
           if (-not (Test-Path $msdeploy)) {
@@ -159,18 +159,18 @@ jobs:
             '-whatif'
             '-verbose'
           )
-          Write-Host "=== Deploy Preview (WhatIf) ==="
+          Write-Host "=== Deploy Preview (WhatIf, jht) ==="
           Write-Host ("Deploy target host: {0}" -f $endpointUri.Host)
           & $msdeploy @arguments
 
       - name: Deploy to IIS via MSDeploy
         shell: pwsh
         env:
-          IIS_SERVER_IP: ${{ secrets.IIS_SERVER_IP }}
-          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_MSDEPLOY_ENDPOINT }}
-          IIS_SITE_NAME: ${{ secrets.IIS_SITE_NAME }}
-          IIS_USER: ${{ secrets.IIS_USER }}
-          IIS_PWD: ${{ secrets.IIS_PWD }}
+          IIS_SERVER_IP: ${{ secrets.IIS_JHT_SERVER_IP }}
+          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_JHT_MSDEPLOY_ENDPOINT }}
+          IIS_SITE_NAME: ${{ secrets.IIS_JHT_SITE_NAME }}
+          IIS_USER: ${{ secrets.IIS_JHT_USER }}
+          IIS_PWD: ${{ secrets.IIS_JHT_PWD }}
         run: |
           $msdeploy = "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe"
           if (-not (Test-Path $msdeploy)) {
@@ -205,7 +205,7 @@ jobs:
             '-allowUntrusted'
             '-verbose'
           )
-          Write-Host "=== Deploy Execute ==="
+          Write-Host "=== Deploy Execute (jht) ==="
           Write-Host ("Deploy target host: {0}" -f $endpointUri.Host)
           & $msdeploy @arguments
 
@@ -213,9 +213,10 @@ jobs:
         if: ${{ always() }}
         shell: pwsh
         run: |
-          Write-Host "=== Post Deploy Summary ==="
+          Write-Host "=== Post Deploy Summary (jht) ==="
           Write-Host ("Job status: {0}" -f "${{ job.status }}")
+          Write-Host "Brand: jht (津海通). Secrets prefix: IIS_JHT_*"
           Write-Host "If deployment succeeds but server files look unchanged:"
-          Write-Host "1) Confirm IIS_SITE_NAME points to correct site/app (e.g. feight-web/dist)."
-          Write-Host "2) Confirm that app physical path maps to D:\\web\\feight-web\\dist."
+          Write-Host "1) Confirm IIS_JHT_SITE_NAME points to correct site/app."
+          Write-Host "2) Confirm IIS site physical path matches the jht deployment directory."
           Write-Host "3) Compare dist/index.html hash from this run with server file hash."

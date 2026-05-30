@@ -14,8 +14,27 @@
 
 ## CI / GitHub Actions
 
-- `.github/workflows/deploy-web-antd-iis.yml`：默认 `pnpm build:antd:hhyy` 构建并发布 IIS。
-- 津海通（jht）**不在 CI 中打包**，本地执行：`pnpm build:antd:jht`。
+| 品牌 | Workflow | 构建命令 | 触发 |
+| --- | --- | --- | --- |
+| 浩瀚远洋 (hhyy) | `.github/workflows/deploy-web-antd-iis.yml` | `pnpm build:antd:hhyy` | `main` push / 手动 |
+| 津海通 (jht) | `.github/workflows/deploy-web-antd-iis-jht.yml` | `pnpm build:antd:jht` | `main` push / 手动 |
+
+两路 workflow 使用**独立**的 GitHub Secrets（`IIS_*` 与 `IIS_JHT_*`），可指向同一台服务器、不同 IIS 站点。
+
+### GitHub Secrets（津海通 jht）
+
+在仓库 **Settings → Secrets and variables → Actions** 配置：
+
+| Secret | 说明 |
+| --- | --- |
+| `IIS_JHT_SERVER_IP` | 目标服务器 IP（未填 `IIS_JHT_MSDEPLOY_ENDPOINT` 时用于拼默认端点） |
+| `IIS_JHT_MSDEPLOY_ENDPOINT` | 可选；完整 MSDeploy URL，如 `https://host:8172/msdeploy.axd?site=站点名` |
+| `IIS_JHT_SITE_NAME` | IIS 站点/应用路径（与 hhyy 的 `IIS_SITE_NAME` 通常不同） |
+| `IIS_JHT_USER` / `IIS_JHT_PWD` | Web Deploy 基本认证账号 |
+
+浩瀚远洋沿用：`IIS_SERVER_IP`、`IIS_MSDEPLOY_ENDPOINT`、`IIS_SITE_NAME`、`IIS_USER`、`IIS_PWD`。
+
+提交信息含 `[skip ci]` 时，两路部署均跳过。
 
 ## 环境文件
 
