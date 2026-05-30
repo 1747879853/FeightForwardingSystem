@@ -65,6 +65,7 @@ async function onStatusChange(
   try {
     await confirm(confirmMessage, $t('system.role.changeDefaultTitle'));
     await updateRole(row.id, { isDefault: newStatus });
+    onRefresh();
     return true;
   } catch {
     return false;

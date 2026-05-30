@@ -2,6 +2,7 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import dayjs from 'dayjs';
+import { onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -172,6 +173,10 @@ const handleDelete = () => {
 const handleRefresh = () => {
   gridApi.query();
 };
+
+onActivated(() => {
+  handleRefresh();
+});
 </script>
 
 <template>

@@ -23,6 +23,7 @@ const routes: RouteRecordRaw[] = [
         name: 'SeaExportFeeLockList',
         meta: {
           icon: 'mdi:lock-outline',
+          keepAlive: true,
           title: $t('seaExport.export.feeLock.list'),
           authority: abpPageAuthority('Admin.OrderFee.Lock'),
         },
@@ -34,6 +35,7 @@ const routes: RouteRecordRaw[] = [
         name: 'PaymentApplicationList',
         meta: {
           icon: 'mdi:file-document-outline',
+          keepAlive: true,
           title: $t('seaExport.export.paymentApplication.list'),
           authority: abpPageAuthority('Admin.PaymentApplication'),
         },
@@ -71,6 +73,7 @@ const routes: RouteRecordRaw[] = [
         name: 'StatementList',
         meta: {
           icon: 'mdi:cash-multiple',
+          keepAlive: true,
           title: $t('seaExport.export.statement.title'),
           authority: abpPageAuthority('Admin.Statement'),
         },

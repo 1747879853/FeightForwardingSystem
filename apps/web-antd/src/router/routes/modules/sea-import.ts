@@ -19,6 +19,7 @@ const routes: RouteRecordRaw[] = [
         path: '',
         name: 'SeaImportList',
         meta: {
+          keepAlive: true,
           title: $t('seaImport.import.title'),
           authority: abpPageAuthority('Admin.SeaExport'),
         },

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 
-import { computed, ref } from 'vue';
+import { computed, onActivated, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -159,6 +159,10 @@ const handleRefresh = () => {
   clearSelection();
   gridApi.query();
 };
+
+onActivated(() => {
+  handleRefresh();
+});
 </script>
 
 <template>

@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-29
+last_updated: 2026-05-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,7 +26,7 @@ last_updated: 2026-05-29
 - **单选行维护：** 列表第一列为 radio 单选，不设置行内操作列；编辑和删除都依赖当前选中行，未选中时提示“请选择一条”。
 - **双击进入编辑：** 双击单元格会先设置当前行为选中态，再跳转 `/sea-exports/{id}/edit`。
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录。
-- **删除委托：** 顶部删除按钮基于选中行弹出二次确认，确认后调用 `deleteSeaExport(row.id)`，成功后刷新列表。确认文案优先展示委托编号，其次主单号，最后回退为记录 ID。
+- **页面缓存：** 路由 `SeaExportList` 已开启 `keepAlive`；从新建/编辑工作台返回时 `onActivated` 自动刷新；当前页删除成功后立即刷新。
 - **船公司展示升级：** 列表中的船公司列改为“Logo + 名称”展示，视觉上与编辑页和费用侧边摘要保持一致。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -70,6 +70,7 @@ last_updated: 2026-05-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-30 | `Feature` | 海运出口列表开启 `keepAlive`；从 create/edit 返回时 `onActivated` 刷新，避免缓存旧委托数据。 | 与弹窗型基础资料列表不同，跳转独立表单页的列表必须补 `onActivated`；见 [列表页 keepAlive 与刷新约定](../../guides/list-page-keepalive-refresh.md)。 |
 | 2026-05-29 | `Feature/Fix` | 搜索区字段配置（`search_form_config_`）与列配置一并改为登录后全局预拉取，列表页不再按表格实例单独请求 `GetPagedListAsync`。 | `searchPersist` 走 `loadSearchFormConfigsOnce` + `getSearchFormConfigByName`；与 `table_config_` 并行预热。 |
 | 2026-05-29 | `Feature/Fix` | 列配置读取由“每个表格单独拉取”改为“登录后全局预拉取 + 运行时复用缓存”，减少 `/sea-exports` 页面初始化阶段的重复配置请求。 | `useVbenVxeGrid` 的 `columnPersist.load/add/edit/remove` 切换到全局 store；新增与修改会同步回写缓存，保证同会话跨页面一致性。 |
 | 2026-05-19 | `Feature/Fix` | `/sea-exports` 列表船公司 Logo 地址统一改为全局附件拼接方法，避免相对路径在独立 API 网关下显示失败。 | 列表页展示层与上传/下拉组件复用同一附件地址规则，减少页面级 URL 处理分叉。 |

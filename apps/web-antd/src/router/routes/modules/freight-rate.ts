@@ -18,6 +18,7 @@ const routes: RouteRecordRaw[] = [
         path: '',
         name: 'FreightRateList',
         meta: {
+          keepAlive: true,
           title: '运价管理',
           authority: abpPageAuthority('Admin.SeFreiPrice'),
         },

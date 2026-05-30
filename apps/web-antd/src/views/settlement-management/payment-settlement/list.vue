@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlement-admin';
 
-import { ref } from 'vue';
+import { onActivated, ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -159,8 +159,7 @@ function handleEdit(row: PaymentSettlementAdminApi.PaymentSettlementListDto) {
     message.warning('该结算单已锁定，无法编辑');
     return;
   }
-  // TODO: 实现编辑功能
-  message.info(`编辑结算单：${row.settlementNo}`);
+  router.push(`/settlement-management/payment-settlement/${row.id}/edit`);
 }
 
 /** 删除 */
@@ -284,6 +283,14 @@ async function handleUnlock(
 function handleCreate() {
   router.push('/settlement-management/payment-settlement/add');
 }
+
+function handleRefresh() {
+  gridApi.query();
+}
+
+onActivated(() => {
+  handleRefresh();
+});
 
 /** 导出 */
 function handleExport() {

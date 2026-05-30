@@ -23,6 +23,7 @@ const routes: RouteRecordRaw[] = [
         name: 'ExpenseAll',
         meta: {
           icon: 'mdi:file-upload-outline',
+          keepAlive: true,
           title: $t('auditApproval.expenseReview.all'),
           activePath: '/audit-approval/expense-review',
           authority: abpPageAuthority('Admin.OrderFee.Audit'),
@@ -34,6 +35,7 @@ const routes: RouteRecordRaw[] = [
         name: 'PaymentReview',
         meta: {
           icon: 'mdi:cash-check',
+          keepAlive: true,
           title: $t('auditApproval.paymentReview.title'),
           activePath: '/audit-approval/payment-review',
           authority: abpPageAuthority('Admin.PaymentApplication.Audit'),

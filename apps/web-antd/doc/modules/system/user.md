@@ -2,7 +2,7 @@
 title: 用户管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-05-27
+last_updated: 2026-05-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -49,6 +49,7 @@ last_updated: 2026-05-27
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-30 | `Feature/Fix` | 用户列表路由开启 `keepAlive`；启用/禁用、还原权限成功后刷新列表。 | 弹窗型列表依赖 `@success` 与操作回调刷新；详见 [列表页 keepAlive 与刷新约定](../../guides/list-page-keepalive-refresh.md)。 |
 | 2026-05-27 | `Feature` | 用户编辑弹窗「办公电话」「发件显示名」已对接 `GetUserForEditAsync` 回显与 `CreateOrUpdateUserAsync` 保存。 | 表单字段此前为禁用占位；DTO 与 `user-form.vue` 提交/回显链路已补齐。 |
 | 2026-05-17 | `Fix` | 人员管理列表移除「账号状态」筛选与列展示，统一改为仅基于「账号启用」判断账号是否可使用系统；表单中 `status` 改为隐藏默认值以保持接口兼容。 | 无 |
 | 2026-05-17 | `Parsing` | 无 | 识别用户管理页存在 `officeTel`、`senderDisplayName` 两个待后端支持字段；已形成后端 Agent 可执行对接说明，明确需补齐 `GetUserForEditAsync` 与 `CreateOrUpdateUserAsync`/`CreateOrUpdateUserInAdminAsync` 的 DTO 与持久化链路。 |

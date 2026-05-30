@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
-import { ref } from 'vue';
+import { onActivated, ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -151,13 +151,21 @@ function handleBatchDelete() {
           ids: rows.map((r) => r.id),
         });
         message.success('删除成功');
-        gridApi.query();
+        handleRefresh();
       } finally {
         actionLoading.value = false;
       }
     },
   });
 }
+
+function handleRefresh() {
+  gridApi.query();
+}
+
+onActivated(() => {
+  handleRefresh();
+});
 </script>
 
 <template>

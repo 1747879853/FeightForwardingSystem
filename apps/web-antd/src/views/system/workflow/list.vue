@@ -5,6 +5,7 @@ import type {
 } from '#/adapter/vxe-table';
 import type { WorkFlowAdminApi } from '#/api/system/workflow-admin';
 
+import { onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -117,6 +118,10 @@ async function onDelete(row: WorkFlowAdminApi.WorkFlowDto) {
       hideLoading();
     });
 }
+
+onActivated(() => {
+  gridApi.query();
+});
 </script>
 
 <template>

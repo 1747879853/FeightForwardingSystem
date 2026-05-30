@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
+import { onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -135,6 +136,10 @@ const handleDelete = () => {
 const handleRefresh = () => {
   gridApi.query();
 };
+
+onActivated(() => {
+  handleRefresh();
+});
 </script>
 
 <template>
