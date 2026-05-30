@@ -5,7 +5,6 @@ import type {
 } from '#/adapter/vxe-table';
 import type { WorkFlowAdminApi } from '#/api/system/workflow-admin';
 
-import { onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -16,6 +15,7 @@ import { Button, message, Modal } from 'ant-design-vue';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { deleteWorkFlow, getWorkFlowList } from '#/api/system/workflow-admin';
 import { $t } from '#/locales';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -119,7 +119,7 @@ async function onDelete(row: WorkFlowAdminApi.WorkFlowDto) {
     });
 }
 
-onActivated(() => {
+useRefreshListOnFormReturn('SystemWorkflow', () => {
   gridApi.query();
 });
 </script>

@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import type { StatementAdminApi } from '#/api/settlement-management/statement-admin';
 
-import { onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -15,6 +14,7 @@ import {
   getStatementPagedList,
 } from '#/api/settlement-management/statement-admin';
 import { $t } from '#/locales';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -131,9 +131,7 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
-onActivated(() => {
-  handleRefresh();
-});
+useRefreshListOnFormReturn('StatementList', handleRefresh);
 </script>
 
 <template>

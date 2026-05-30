@@ -41,6 +41,7 @@ import {
   getClientDetail,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
+import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import {
   useBaseFormSchema,
@@ -498,6 +499,7 @@ const handleSubmit = async () => {
 
     if (result) {
       message.success($t('ui.actionMessage.operationSuccess'));
+      markListShouldRefresh('ClientList');
       //router.push('/clients');
     } else {
       message.success($t('ui.actionMessage.operationFailed'));

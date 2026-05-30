@@ -2,7 +2,6 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import dayjs from 'dayjs';
-import { onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -17,6 +16,7 @@ import {
 } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
 import { buildAttachmentUrl } from '#/utils';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -174,9 +174,7 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
-onActivated(() => {
-  handleRefresh();
-});
+useRefreshListOnFormReturn('SeaExportList', handleRefresh);
 </script>
 
 <template>

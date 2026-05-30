@@ -54,6 +54,7 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { getUser, UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
+import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
 import ReadonlyFormItem from './modules/readonly-form-item.vue';
@@ -2726,11 +2727,13 @@ const handleSubmit = async () => {
     if (isEdit.value) {
       await editSeaExport(dto as SeaExportAdminApi.SeaExportEditDto);
       message.success($t('ui.actionMessage.operationSuccess'));
+      markListShouldRefresh('SeaExportList');
     } else {
       const createdId = await addSeaExport(
         dto as SeaExportAdminApi.SeaExportAddDto,
       );
       message.success($t('ui.actionMessage.operationSuccess'));
+      markListShouldRefresh('SeaExportList');
       const resolvedCreatedId =
         (createdId as any)?.id ?? (createdId as any)?.result ?? createdId;
       const createdIdStr =

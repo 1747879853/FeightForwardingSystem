@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
-import { onActivated, ref } from 'vue';
+import { ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -17,6 +17,7 @@ import {
 } from '#/api/settlement-management/payment-application-admin';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { $t } from '#/locales';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -163,9 +164,7 @@ function handleRefresh() {
   gridApi.query();
 }
 
-onActivated(() => {
-  handleRefresh();
-});
+useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
 </script>
 
 <template>

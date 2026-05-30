@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 
-import { computed, onActivated, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -15,6 +15,7 @@ import {
   getClientPagedList,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './base/data';
 
@@ -160,9 +161,7 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
-onActivated(() => {
-  handleRefresh();
-});
+useRefreshListOnFormReturn('ClientList', handleRefresh);
 </script>
 
 <template>

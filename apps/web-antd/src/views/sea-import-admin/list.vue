@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
-import { onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -15,6 +14,7 @@ import {
   getSeaImportPagedList,
 } from '#/api/sea-import/sea-import-admin';
 import { $t } from '#/locales';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -137,9 +137,7 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
-onActivated(() => {
-  handleRefresh();
-});
+useRefreshListOnFormReturn('SeaImportList', handleRefresh);
 </script>
 
 <template>

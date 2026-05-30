@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlement-admin';
 
-import { onActivated, ref } from 'vue';
+import { ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -18,6 +18,7 @@ import {
 } from '#/api/sea-export/payment-settlement-admin';
 
 import { useColumns, useGridFormSchema } from './data';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 const router = useRouter();
 const actionLoading = ref(false);
@@ -288,9 +289,7 @@ function handleRefresh() {
   gridApi.query();
 }
 
-onActivated(() => {
-  handleRefresh();
-});
+useRefreshListOnFormReturn('PaymentSettlementList', handleRefresh);
 
 /** 导出 */
 function handleExport() {

@@ -34,6 +34,10 @@ import {
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
+import {
+  markListShouldRefresh,
+  returnToListWithRefresh,
+} from '#/utils/list-refresh-flag';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
 import {
@@ -566,12 +570,14 @@ async function handleSave() {
     if (isEdit.value && editId.value) {
       await saveEditMode();
       message.success('保存成功');
+      markListShouldRefresh('PaymentApplicationList');
       await loadEditData();
     } else {
       const newId = await addPaymentApplication(
         buildSubmitData(PaymentApplicationStatus.Entering),
       );
       message.success(t('addSuccess'));
+      markListShouldRefresh('PaymentApplicationList');
       router.replace(`/fee-management/payment-application/${newId}/edit`);
     }
   } finally {
@@ -593,7 +599,9 @@ async function handleSubmit() {
       buildSubmitData(PaymentApplicationStatus.Auditing),
     );
     message.success(t('submitSuccess'));
-    router.push('/fee-management/payment-application');
+    returnToListWithRefresh('PaymentApplicationList', () => {
+      router.push('/fee-management/payment-application');
+    });
   } finally {
     submitting.value = false;
   }
@@ -613,6 +621,7 @@ async function handleSubmitAndNew() {
       buildSubmitData(PaymentApplicationStatus.Auditing),
     );
     message.success(t('submitSuccess'));
+    markListShouldRefresh('PaymentApplicationList');
     resetForm();
   } finally {
     submitting.value = false;
@@ -631,6 +640,7 @@ async function handleSubmitApplication() {
     await saveEditMode();
     await submitPaymentApplication(editId.value);
     message.success(t('submitSuccess'));
+    markListShouldRefresh('PaymentApplicationList');
     await loadEditData();
   } finally {
     submitting.value = false;
