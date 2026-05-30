@@ -2,7 +2,7 @@
 title: 箱型代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-17
+last_updated: 2026-05-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -16,7 +16,7 @@ last_updated: 2026-05-17
 | 页面路由 | `/basic-data/ctn-code` |
 | 路由名称 | `BasicDataCtnCode` |
 | 页面组件 | `src/views/system/basic-data/CtnCodeAdmin/list.vue` |
-| 权限口径 | 未声明独立 authority |
+| 权限口径 | Admin.CtnCode / Admin.CtnCode.Get |
 | 关键源码 | `src/router/routes/modules/basic-data.ts`<br/>`src/views/system/basic-data/CtnCodeAdmin/list.vue`<br/>`src/views/system/basic-data/CtnCodeAdmin/data.ts`<br/>`src/views/system/basic-data/CtnCodeAdmin/modules/form.vue`<br/>`src/api/system/base-data/ctn-code-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
@@ -48,5 +48,6 @@ last_updated: 2026-05-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-30 | `Feature` | 路由补充 `abpPageAuthority('Admin.CtnCode')`，按模块权限控制页面访问。 | 与其他基础资料子路由一致，拥有模块或 `.Get` 权限即可进入。 |
 | 2026-05-17 | `Fix` | `CtnSelect` 搜索切词时新增请求版本校验，旧关键词晚回包会被丢弃，避免下拉混入历史数据。 | 该修复在 `usePagedSelect` 公共层实现，所有复用该 Hook 的分页选择器同步生效。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/ctn-code` 对应组件 `src/views/system/basic-data/CtnCodeAdmin/list.vue`，权限口径为 未声明独立 authority。 |

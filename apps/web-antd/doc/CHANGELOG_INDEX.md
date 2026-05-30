@@ -13,6 +13,21 @@
 
 ## 2026-05
 
+- [2026-05-30] [海运出口编辑页保存与完成服务后重新拉取详情](./changelogs/change-log-2026-05-30-sea-export-edit-refetch-after-save-complete.md)
+- [2026-05-30] [海运出口列表默认按创建时间倒序](./changelogs/change-log-2026-05-30-sea-export-list-creation-time-sort.md)
+- [2026-05-30] [海运出口编辑页服务项流水线交互优化](./changelogs/change-log-2026-05-30-sea-export-edit-service-check-task-status.md)
+- [2026-05-30] [津海通 jht GitHub Actions IIS 自动发布](./changelogs/change-log-2026-05-30-jht-github-iis-deploy.md)
+- [2026-05-30] [海运出口起运港未配置服务项目空态提示](./changelogs/change-log-2026-05-30-sea-export-pol-no-service-empty-hint.md)
+- [2026-05-30] [基础资料港口/航线/集装箱/国家权限 i18n 与路由控制补齐](./changelogs/change-log-2026-05-30-basic-data-port-lane-ctn-country-permission.md)
+- [2026-05-30] [列表路由 keepAlive 缓存与刷新策略统一](./changelogs/change-log-2026-05-30-list-route-keepalive-and-refresh.md)
+- [2026-05-30] [工作台审核 Tab 复用搜索表单并接入业务列表](./changelogs/change-log-2026-05-30-workspace-review-tabs-search-and-list.md)
+- [2026-05-30] [海运出口服务项顺序与编辑勾选口径对齐](./changelogs/change-log-2026-05-30-sea-export-service-item-order-and-edit-check-sync.md)
+- [2026-05-30] [海运服务项 ServiceType 枚举口径统一](./changelogs/change-log-2026-05-30-service-type-enum-unification.md)
+- [2026-05-29] [海运出口服务项目按起运港隐藏并分离默认勾选查询](./changelogs/change-log-2026-05-29-sea-export-pol-service-visibility-and-default-check.md)
+- [2026-05-29] [海运出口编辑页代收支误勾选修复](./changelogs/change-log-2026-05-29-sea-export-edit-collection-payment-no-pol-overwrite.md)
+- [2026-05-29] [海运出口服务项配置 SeaExportPropEnum 千位分流规则](./changelogs/change-log-2026-05-29-se-service-config-sea-export-prop-enum-threshold.md)
+- [2026-05-29] [搜索表单配置改为登录后全局拉取并缓存](./changelogs/change-log-2026-05-29-search-form-config-global-store-cache.md)
+- [2026-05-29] [vxe 表格配置改为登录后全局拉取并缓存](./changelogs/change-log-2026-05-29-vxe-table-config-global-store-cache.md)
 - [2026-05-28] [金海通 jht 独立打包与品牌环境](./changelogs/change-log-2026-05-28-build-jht-brand-pack.md)
 - [2026-05-28] [全局与路由切换 Loading 改为 Logo 进度条填充](./changelogs/change-log-2026-05-28-global-loading-logo-progress-fill.md)
 - [2026-05-27] [海运出口干系人下拉选中后先显示 ID 修复](./changelogs/change-log-2026-05-27-sea-export-order-user-select-label-flash.md)

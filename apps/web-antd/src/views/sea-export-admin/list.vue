@@ -16,6 +16,7 @@ import {
 } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
 import { buildAttachmentUrl } from '#/utils';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -101,6 +102,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
           return await getSeaExportPagedList({
             PageIndex: page.currentPage,
             PageSize: page.pageSize,
+            Sorting: 'CreationTime DESC',
             ...query,
           });
         },
@@ -172,6 +174,8 @@ const handleDelete = () => {
 const handleRefresh = () => {
   gridApi.query();
 };
+
+useRefreshListOnFormReturn('SeaExportList', handleRefresh);
 </script>
 
 <template>

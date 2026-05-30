@@ -44,6 +44,7 @@ import {
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
+import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
 import {
   addStatement,
@@ -759,10 +760,12 @@ async function handleSave() {
     if (isEdit.value && editId.value) {
       await saveEditMode();
       message.success('保存成功');
+      markListShouldRefresh('StatementList');
       await loadEditData();
     } else {
       const newId = await addStatement(buildSubmitData());
       message.success(t('addSuccess'));
+      markListShouldRefresh('StatementList');
       router.replace(`/fee-management/statement/${newId}/edit`);
     }
   } finally {

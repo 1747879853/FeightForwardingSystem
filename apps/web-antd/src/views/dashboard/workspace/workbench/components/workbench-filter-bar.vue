@@ -5,35 +5,41 @@ export default {
 </script>
 
 <script lang="ts" setup>
-import type { FilterModel } from '../../workbench-data';
+import type { FilterModel, ProcessingTab } from '../../workbench-data';
 
-import { DatePicker, Input } from 'ant-design-vue';
+import { DatePicker, Input, Select } from 'ant-design-vue';
+import { computed } from 'vue';
 
 import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 
 interface Props {
+  activeProcessingTab: string;
   modelValue: FilterModel;
+  processingTabs: ProcessingTab[];
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
   reset: [];
   search: [];
+  'update:activeProcessingTab': [string];
   'update:modelValue': [FilterModel];
 }>();
+
+const processingOptions = computed(() =>
+  props.processingTabs.map((item) => ({
+    label: item.label,
+    value: item.key,
+  })),
+);
 
 function patchField<K extends keyof FilterModel>(
   field: K,
   value: FilterModel[K],
 ) {
   emit('update:modelValue', { ...props.modelValue, [field]: value });
-}
-
-function onInput(field: keyof FilterModel, event: Event) {
-  const target = event.target as HTMLInputElement | null;
-  patchField(field, target?.value ?? '');
 }
 
 function onClientChange(value: unknown) {
@@ -51,11 +57,25 @@ function onPodChange(value: unknown) {
 function onEtdChange(value: [string, string] | [any, any] | null) {
   patchField('etdRange', value as FilterModel['etdRange']);
 }
+
+function onProcessingTabChange(value: unknown) {
+  emit('update:activeProcessingTab', String(value ?? 'processing'));
+}
 </script>
 
 <template>
   <section class="filter-panel">
     <div class="filter-grid">
+      <label class="field">
+        <span class="field__label">处理状态:</span>
+        <Select
+          class="field__input"
+          :value="props.activeProcessingTab"
+          :options="processingOptions"
+          placeholder="请选择状态"
+          @update:value="onProcessingTabChange"
+        />
+      </label>
       <label class="field">
         <span class="field__label">ETD:</span>
         <DatePicker.RangePicker
@@ -91,7 +111,7 @@ function onEtdChange(value: [string, string] | [any, any] | null) {
           :value="modelValue.mblNum"
           placeholder="输入主提单号"
           allow-clear
-          @input="onInput('mblNum', $event)"
+          @update:value="patchField('mblNum', $event ?? '')"
         />
       </label>
       <label class="field">
@@ -120,20 +140,20 @@ function onEtdChange(value: [string, string] | [any, any] | null) {
 <style scoped>
 .filter-panel {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
-  justify-content: flex-start;
-  min-height: 72px;
-  padding: 12px 16px;
+  justify-content: space-between;
+  min-height: 83px;
+  padding: 13px 40px 16px;
   background: #fff;
-  border: 0.5px solid #eff0f2;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px 0 rgb(150 199 217 / 6%);
+  border-bottom: 1px solid #f3f4f6;
+  box-shadow: 0 2px 6px rgb(24 27 32 / 4%);
 }
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  flex: 1;
+  grid-template-columns: repeat(6, minmax(160px, 1fr));
   gap: 12px;
 }
 
@@ -141,6 +161,7 @@ function onEtdChange(value: [string, string] | [any, any] | null) {
   display: flex;
   gap: 8px;
   align-items: center;
+  min-width: 0;
 }
 
 .field__label {
@@ -152,13 +173,13 @@ function onEtdChange(value: [string, string] | [any, any] | null) {
 
 .field__input {
   width: 100%;
+  min-width: 0;
 }
 
 .filter-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  margin-left: auto;
 }
 
 .btn {
@@ -184,14 +205,64 @@ function onEtdChange(value: [string, string] | [any, any] | null) {
 }
 
 .filter-panel :deep(.ant-picker),
-.filter-panel :deep(.ant-input),
-.filter-panel :deep(.ant-select-selector) {
+.filter-panel :deep(.ant-select-selector),
+.filter-panel :deep(.ant-input-affix-wrapper) {
   height: 35px !important;
   border-radius: 6px !important;
+}
+
+.field :deep(.ant-select) {
+  width: 170px !important;
+  min-width: 170px;
+  max-width: 170px;
 }
 
 .filter-panel :deep(.ant-picker-input > input),
 .filter-panel :deep(.ant-input) {
   font-size: 14px;
+}
+
+.filter-panel
+  :deep(.ant-select-single .ant-select-selector .ant-select-selection-item),
+.filter-panel
+  :deep(
+    .ant-select-single .ant-select-selector .ant-select-selection-placeholder
+  ) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 33px !important;
+  white-space: nowrap;
+}
+
+.filter-panel :deep(.ant-input-affix-wrapper) {
+  display: flex;
+  align-items: center;
+}
+
+.filter-panel :deep(.ant-input-affix-wrapper .ant-input) {
+  height: auto !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 1680px) {
+  .filter-panel {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 20px;
+  }
+
+  .filter-actions {
+    justify-content: flex-start;
+  }
+
+  .filter-grid {
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 1200px) {
+  .filter-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
 }
 </style>

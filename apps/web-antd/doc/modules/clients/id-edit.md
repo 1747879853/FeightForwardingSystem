@@ -2,7 +2,7 @@
 title: 客户编辑
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-05-24
+last_updated: 2026-05-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -49,5 +49,6 @@ last_updated: 2026-05-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-30 | `Refactor` | “海运出口服务项目”Tab 的服务项枚举加载统一改为 `ServiceType` 大写口径，并复用海运出口共享模块。 | `except-service/index.vue` 改为调用统一 `loadSeServiceTypeOptions()`，移除 `serviceType` 小写回退，确保客户页与海运出口主流程枚举源一致。 |
 | 2026-05-24 | `Feature` | 新增「海运出口服务项目」Tab，对接委托单位按港口排除服务项。 | API：`GetClientExceptServicesAsync` / `EditClientExceptServicesAsync`；保存仅提交 `isChecked=false` 的 `serviceTypes`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/clients/:id/edit` 对应组件 `src/views/client/editor.vue`，权限口径为 未在路由中声明独立权限。 |

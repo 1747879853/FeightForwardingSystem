@@ -20,6 +20,7 @@ const routes: RouteRecordRaw[] = [
         name: 'PaymentSettlementList',
         meta: {
           icon: 'mdi:file-document-multiple-outline',
+          keepAlive: true,
           title: '付费结算',
           authority: abpPageAuthority('Admin.PaymentSettlement.Get'),
         },

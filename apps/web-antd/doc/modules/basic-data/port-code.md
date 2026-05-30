@@ -2,7 +2,7 @@
 title: 港口代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-21
+last_updated: 2026-05-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -16,7 +16,7 @@ last_updated: 2026-05-21
 | 页面路由 | `/basic-data/port-code` |
 | 路由名称 | `BasicDataPortCode` |
 | 页面组件 | `src/views/system/basic-data/PortCodeAdmin/list.vue` |
-| 权限口径 | 未声明独立 authority |
+| 权限口径 | Admin.PortCode / Admin.PortCode.Get |
 | 关键源码 | `src/router/routes/modules/basic-data.ts`<br/>`src/views/system/basic-data/PortCodeAdmin/list.vue`<br/>`src/views/system/basic-data/PortCodeAdmin/data.ts`<br/>`src/views/system/basic-data/PortCodeAdmin/modules/form.vue`<br/>`src/api/system/base-data/port-code-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
@@ -47,5 +47,6 @@ last_updated: 2026-05-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-05-30 | `Feature` | 路由补充 `abpPageAuthority('Admin.PortCode')`，按模块权限控制页面访问。 | 与其他基础资料子路由一致，拥有模块或 `.Get` 权限即可进入。 |
 | 2026-05-21 | `Fix` | 修复港口分页下拉在 `modelValue` 对应数据不在第一页时，详情已返回但最终 options 未包含该港口的问题。 | `port-select.vue` 通过详情接口合并已选港口，公共 `usePagedSelect` 需同步触发 `ApiComponent` 刷新其内部 options。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/port-code` 对应组件 `src/views/system/basic-data/PortCodeAdmin/list.vue`，权限口径为 未声明独立 authority。 |

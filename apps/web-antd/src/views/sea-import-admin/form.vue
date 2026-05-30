@@ -50,6 +50,7 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { getUser, UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
+import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
 import ReadonlyFormItem from './modules/readonly-form-item.vue';
@@ -2050,11 +2051,13 @@ const handleSubmit = async () => {
     if (isEdit.value) {
       await editSeaImport(dto as SeaImportAdminApi.SeaImportEditDto);
       message.success($t('ui.actionMessage.operationSuccess'));
+      markListShouldRefresh('SeaImportList');
     } else {
       const createdId = await addSeaImport(
         dto as SeaImportAdminApi.SeaImportAddDto,
       );
       message.success($t('ui.actionMessage.operationSuccess'));
+      markListShouldRefresh('SeaImportList');
       if (typeof createdId === 'number' && createdId > 0) {
         router.push(`/sea-imports/${createdId}/edit`);
       } else {

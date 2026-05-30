@@ -15,6 +15,7 @@ import { Button, message, Modal } from 'ant-design-vue';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { deleteWorkFlow, getWorkFlowList } from '#/api/system/workflow-admin';
 import { $t } from '#/locales';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -117,6 +118,10 @@ async function onDelete(row: WorkFlowAdminApi.WorkFlowDto) {
       hideLoading();
     });
 }
+
+useRefreshListOnFormReturn('SystemWorkflow', () => {
+  gridApi.query();
+});
 </script>
 
 <template>

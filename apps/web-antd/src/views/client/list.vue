@@ -15,6 +15,7 @@ import {
   getClientPagedList,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './base/data';
 
@@ -159,6 +160,8 @@ const handleRefresh = () => {
   clearSelection();
   gridApi.query();
 };
+
+useRefreshListOnFormReturn('ClientList', handleRefresh);
 </script>
 
 <template>

@@ -20,6 +20,7 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemUser',
         meta: {
           icon: 'mdi:account',
+          keepAlive: true,
           title: $t('system.user.title'),
           // 用户管理：拥有 Admin.Team.User 或 Admin.Team.User.Get 权限
           authority: abpPageAuthority('Admin.Team.User'),
@@ -31,6 +32,7 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemRole',
         meta: {
           icon: 'mdi:account-group',
+          keepAlive: true,
           title: $t('system.role.title'),
           // 角色管理：拥有 Admin.Team.Role 或 Admin.Team.Role.Get 权限
           authority: abpPageAuthority('Admin.Team.Role'),
@@ -42,6 +44,7 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemPermission',
         meta: {
           icon: 'mdi:shield-key',
+          keepAlive: true,
           title: $t('system.permission.title'),
           // 权限管理：拥有 Admin.Permission 或 Admin.Permission.Get 权限
           // TODO后台还没有分出来权限菜单，暂时用用户权限范围字段代替
@@ -63,6 +66,7 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemDept',
         meta: {
           icon: 'charm:organisation',
+          keepAlive: true,
           title: $t('system.dept.title'),
           // 部门管理：拥有 Admin.Team.Organization 或 Admin.Team.Organization.Get 权限
           authority: abpPageAuthority('Admin.Team.Organization'),
@@ -74,6 +78,7 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemWorkflow',
         meta: {
           icon: 'mdi:source-branch',
+          keepAlive: true,
           title: $t('system.workflow.title'),
           authority: abpPageAuthority('Admin'),
         },
@@ -108,6 +113,7 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemEnumeration',
         meta: {
           icon: 'mdi:format-list-bulleted',
+          keepAlive: true,
           title: $t('system.enumeration.title'),
           authority: abpPageAuthority('Admin'),
         },

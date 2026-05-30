@@ -39,6 +39,7 @@ import { getPaymentApplicationDetail } from '#/api/settlement-management/payment
 
 import AddApplicationDrawer from './add-application-drawer/index.vue';
 import { formatAmount, payTypeOptions } from './form-data';
+import { returnToListWithRefresh } from '#/utils/list-refresh-flag';
 
 const route = useRoute();
 const router = useRouter();
@@ -354,11 +355,15 @@ async function handleSave() {
         ...data,
       } as any);
       message.success('保存成功');
-      router.push('/settlement-management/payment-settlement');
+      returnToListWithRefresh('PaymentSettlementList', () => {
+        router.push('/settlement-management/payment-settlement');
+      });
     } else {
       await addPaymentSettlement(data);
       message.success('新建成功');
-      router.push('/settlement-management/payment-settlement');
+      returnToListWithRefresh('PaymentSettlementList', () => {
+        router.push('/settlement-management/payment-settlement');
+      });
     }
   } catch (error: any) {
     message.error(error.message || '操作失败');

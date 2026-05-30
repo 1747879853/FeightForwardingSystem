@@ -1,5 +1,5 @@
-# 默认打包浩瀚远洋（hhyy）。津海通（jht）请本地执行：pnpm build:antd:jht
-name: 生产环境前端自动发布 (8172 端口)
+# 浩瀚远洋（hhyy）。津海通见 deploy-web-antd-iis-jht.yml
+name: 生产环境前端自动发布 - 浩瀚远洋 (hhyy)
 
 on:
   push:

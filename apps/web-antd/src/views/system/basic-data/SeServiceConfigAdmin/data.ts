@@ -3,11 +3,17 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn } from '#/adapter/vxe-table';
 import type { SeServiceConfigAdminApi } from '#/api/system/base-data/se-service-config-admin';
+import type { ServiceTypeOption } from '#/views/sea-export-admin/service-type';
 
 import { $t } from '#/locales';
-import { getEnumItems } from '#/utils/init-enum';
+import {
+  buildServiceTypeLabelMap,
+  loadSeServiceTypeOptions,
+} from '#/views/sea-export-admin/service-type';
 
-export type SelectOption = { label: string; value: number };
+export { loadSeServiceTypeOptions };
+
+export type SelectOption = ServiceTypeOption;
 
 export type ServiceTypeItemLike = {
   serviceType?: number;
@@ -16,60 +22,6 @@ export type ServiceTypeItemLike = {
   serviceTypeDisplayName?: string;
   sortId?: number;
 };
-
-/** ServiceType 枚举兜底文案（与后端 ServiceType 枚举一致） */
-export const DEFAULT_SERVICE_TYPE_OPTIONS: SelectOption[] = [
-  { value: 0, label: '订舱' },
-  { value: 1, label: '拖车' },
-  { value: 2, label: '报关' },
-  { value: 3, label: '仓库' },
-  { value: 4, label: '保险' },
-  { value: 5, label: '代收支' },
-];
-
-export function buildServiceTypeOptionsFromEnum(
-  items:
-    | {
-        displayName?: string;
-        enable?: boolean;
-        value: number;
-      }[]
-    | undefined,
-): SelectOption[] {
-  const options = (items || [])
-    .filter((item) => item.enable !== false)
-    .map((item) => ({
-      label: item.displayName || `${item.value}`,
-      value: Number(item.value),
-    }))
-    .filter((item) => !Number.isNaN(item.value))
-    .sort((a, b) => a.value - b.value);
-
-  return options.length > 0 ? options : [...DEFAULT_SERVICE_TYPE_OPTIONS];
-}
-
-export async function loadSeServiceTypeEnumItems() {
-  let items = await getEnumItems('ServiceType');
-  if (!items?.length) {
-    items = await getEnumItems('serviceType');
-  }
-  return items || [];
-}
-
-export async function loadSeServiceTypeOptions() {
-  const items = await loadSeServiceTypeEnumItems();
-  return buildServiceTypeOptionsFromEnum(items);
-}
-
-export function buildServiceTypeMap(serviceTypeOptions: SelectOption[]) {
-  const map = new Map(
-    DEFAULT_SERVICE_TYPE_OPTIONS.map((item) => [item.value, item.label]),
-  );
-  for (const item of serviceTypeOptions) {
-    map.set(Number(item.value), item.label);
-  }
-  return map;
-}
 
 export function normalizeServiceTypes(value: unknown): number[] {
   if (Array.isArray(value)) {
@@ -97,7 +49,7 @@ export function resolveServiceTypeLabel(
   if (serviceType !== undefined && serviceType !== null) {
     const normalized = Number(serviceType);
     if (!Number.isNaN(normalized)) {
-      const map = buildServiceTypeMap(serviceTypeOptions);
+      const map = buildServiceTypeLabelMap(serviceTypeOptions);
       const mappedLabel = map.get(normalized);
       if (mappedLabel) {
         return mappedLabel;
@@ -153,7 +105,7 @@ export function formatRowServiceTypes(
     return '-';
   }
 
-  const map = buildServiceTypeMap(serviceTypeOptions);
+  const map = buildServiceTypeLabelMap(serviceTypeOptions);
   return types.map((type) => map.get(type) || String(type)).join('、');
 }
 

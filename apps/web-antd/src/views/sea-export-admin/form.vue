@@ -23,6 +23,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Empty,
   message,
   Popover,
   Select,
@@ -36,8 +37,8 @@ import { useUserStore } from '@vben/stores';
 defineOptions({
   name: 'SeaExportAdminForm',
 });
+const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 import { UserSelect } from '#/adapter/component';
-import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import { useVbenForm } from '#/adapter/form';
 import { runVisionOcrPdf } from '#/api/common';
 import {
@@ -46,6 +47,7 @@ import {
   getServiceTypesByPOL,
   getSeaExportDetail,
 } from '#/api/sea-export/sea-export-admin';
+import { completeSeServiceTask } from '#/api/sea-export/se-service-task-admin';
 import {
   getOrganizationUnitTree,
   type SystemOrganizationUnitApi,
@@ -54,6 +56,7 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { getUser, UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
+import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
 import ReadonlyFormItem from './modules/readonly-form-item.vue';
@@ -64,6 +67,11 @@ import {
   usePortFormSchema,
   useShipmentFormSchema,
 } from './data';
+import {
+  buildServiceTypeLabelMap,
+  loadSeServiceTypeOptions,
+  SERVICE_TYPE_VALUE,
+} from './service-type';
 
 const route = useRoute();
 const router = useRouter();
@@ -173,6 +181,11 @@ const BASIC_INFO_FIELD_ORDER = [
   'carrierId',
   'vessel',
   'shipAgentId',
+  'bookingAgentId',
+  'teamId',
+  'custBrokerId',
+  'warehouseId',
+  'insuranceId',
   'bookingNum',
   'mblNum',
   'yardId',
@@ -242,26 +255,109 @@ const SERVICE_ITEM_CHECK_FIELD_NAMES: Record<ServiceItemFieldName, string> = {
   insuranceId: 'insuranceIdEnabled',
 };
 const SERVICE_TYPE_VALUES: Record<ServiceItemFieldName, number> = {
-  bookingAgentId: 0,
-  teamId: 1,
-  custBrokerId: 2,
-  warehouseId: 3,
-  insuranceId: 4,
+  bookingAgentId: SERVICE_TYPE_VALUE.booking,
+  teamId: SERVICE_TYPE_VALUE.truck,
+  custBrokerId: SERVICE_TYPE_VALUE.customs,
+  warehouseId: SERVICE_TYPE_VALUE.warehouse,
+  insuranceId: SERVICE_TYPE_VALUE.insurance,
 };
-const COLLECTION_PAYMENT_SERVICE_TYPE = 5;
+const COLLECTION_PAYMENT_SERVICE_TYPE = SERVICE_TYPE_VALUE.collectionPayment;
+/** 暂时隐藏代收支服务项，恢复时改为 true */
+const SHOW_COLLECTION_PAYMENT_FIELD = false;
 const SERVICE_TYPE_TO_FIELD = new Map<number, ServiceItemFieldName>(
   SERVICE_ITEM_FIELD_NAMES.map((field) => [SERVICE_TYPE_VALUES[field], field]),
 );
+const SERVICE_ITEM_DEFAULT_ORDER_MAP = new Map(
+  SERVICE_ITEM_FIELD_NAMES.map((field, index) => [field, index]),
+);
+const serviceItemLabelMap = ref(new Map<number, string>());
+const serviceItemSortOrderMap = ref(new Map<ServiceItemFieldName, number>());
+const getServiceItemLabel = (field: ServiceItemFieldName) => {
+  const serviceType = SERVICE_TYPE_VALUES[field];
+  return (
+    serviceItemLabelMap.value.get(serviceType) ?? SERVICE_ITEM_META[field].label
+  );
+};
+const loadServiceItemLabelMap = async () => {
+  const options = await loadSeServiceTypeOptions();
+  serviceItemLabelMap.value = buildServiceTypeLabelMap(options);
+};
+const SERVICE_TASK_STATUS_PENDING = 0;
+const SERVICE_TASK_STATUS_PROCESSED = 1;
+type ServiceTaskStatusValue =
+  | typeof SERVICE_TASK_STATUS_PENDING
+  | typeof SERVICE_TASK_STATUS_PROCESSED;
+const SERVICE_TASK_STATUS_META: Record<
+  ServiceTaskStatusValue,
+  { label: string; color: string }
+> = {
+  [SERVICE_TASK_STATUS_PENDING]: { label: '待处理', color: 'gold' },
+  [SERVICE_TASK_STATUS_PROCESSED]: { label: '已处理', color: 'green' },
+};
+const SERVICE_REQUIRE_PROP_TO_FIELD_NAME: Record<number, string> = {
+  1: 'carrierId',
+  2: 'polId',
+  3: 'podId',
+  4: 'vessel',
+  5: 'innerVoyno',
+  6: 'closingTime',
+  7: 'closeDocTime',
+  8: 'closeVgmTime',
+  9: 'closeManifestTime',
+  10: 'bookingAgentId',
+  11: 'shipAgentId',
+  12: 'yardId',
+  13: 'codeIssueTypeId',
+  14: 'mblNum',
+  15: 'bookingNum',
+  16: 'etd',
+  17: 'clientId',
+};
+const SERVICE_REQUIRE_FIELD_LABEL_KEY: Record<string, string> = {
+  carrierId: 'seaExport.export.carrierId',
+  polId: 'seaExport.export.polId',
+  podId: 'seaExport.export.podId',
+  vessel: 'seaExport.export.vessel',
+  innerVoyno: 'seaExport.export.innerVoyno',
+  closingTime: 'seaExport.export.closingTime',
+  closeDocTime: 'seaExport.export.closeDocTime',
+  closeVgmTime: 'seaExport.export.closeVgmTime',
+  closeManifestTime: 'seaExport.export.closeManifestTime',
+  bookingAgentId: 'seaExport.export.bookingAgentId',
+  shipAgentId: 'seaExport.export.shipAgentId',
+  yardId: 'seaExport.export.yardId',
+  codeIssueTypeId: 'seaExport.export.codeIssueTypeId',
+  mblNum: 'seaExport.export.mblNum',
+  bookingNum: 'seaExport.export.bookingNum',
+  etd: 'seaExport.export.etd',
+  clientId: 'seaExport.export.clientId',
+};
 type ServiceItemCheckFieldName =
   (typeof SERVICE_ITEM_CHECK_FIELD_NAMES)[ServiceItemFieldName];
+const getOrderedServiceItemFields = (fields: readonly ServiceItemFieldName[]) =>
+  [...fields].sort((a, b) => {
+    const orderA = serviceItemSortOrderMap.value.get(a);
+    const orderB = serviceItemSortOrderMap.value.get(b);
+    if (orderA != null && orderB != null) {
+      return orderA - orderB;
+    }
+    if (orderA != null) return -1;
+    if (orderB != null) return 1;
+    return (
+      (SERVICE_ITEM_DEFAULT_ORDER_MAP.get(a) ?? Number.MAX_SAFE_INTEGER) -
+      (SERVICE_ITEM_DEFAULT_ORDER_MAP.get(b) ?? Number.MAX_SAFE_INTEGER)
+    );
+  });
 const getServiceTypesFromEnabledValues = (
   values: Record<string, any>,
   withCollectionPayment = false,
 ) => {
-  const types = SERVICE_ITEM_FIELD_NAMES.filter((field) => {
-    const checkFieldName = getServiceItemCheckFieldName(field);
-    return !!values[checkFieldName];
-  }).map((field) => SERVICE_TYPE_VALUES[field]);
+  const types = getOrderedServiceItemFields(SERVICE_ITEM_FIELD_NAMES)
+    .filter((field) => {
+      const checkFieldName = getServiceItemCheckFieldName(field);
+      return !!values[checkFieldName];
+    })
+    .map((field) => SERVICE_TYPE_VALUES[field]);
   if (withCollectionPayment) {
     types.push(COLLECTION_PAYMENT_SERVICE_TYPE);
   }
@@ -313,7 +409,6 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
         ![
           ...ENTRUST_STATIC_FIELD_NAMES,
           ...ENTRUST_FORM_FIELD_NAMES,
-          ...SERVICE_ITEM_FIELD_NAMES,
           'cargoId',
         ].includes(item.fieldName),
     ),
@@ -390,6 +485,17 @@ const serviceItemValues = ref<Partial<Record<ServiceItemFieldName, any>>>({});
 const serviceItemEnabledValues = ref<
   Partial<Record<ServiceItemCheckFieldName, boolean>>
 >({});
+const serviceItemVisibleValues = ref<
+  Partial<Record<ServiceItemFieldName, boolean>>
+>(
+  SERVICE_ITEM_FIELD_NAMES.reduce(
+    (acc, field) => {
+      acc[field] = false;
+      return acc;
+    },
+    {} as Partial<Record<ServiceItemFieldName, boolean>>,
+  ),
+);
 const serviceItemSelectedItems = ref<
   Partial<Record<ServiceItemFieldName, any[]>>
 >({});
@@ -400,10 +506,49 @@ const collectionPaymentDeptOptions = ref<
 >([]);
 const getServiceItemCheckFieldName = (field: ServiceItemFieldName) =>
   SERVICE_ITEM_CHECK_FIELD_NAMES[field] as ServiceItemCheckFieldName;
-const getServiceItemChecked = (field: ServiceItemFieldName) => {
+const isServiceItemEnabled = (field: ServiceItemFieldName) => {
   const checkFieldName = getServiceItemCheckFieldName(field);
   return !!serviceItemEnabledValues.value[checkFieldName];
 };
+/** 编辑态：勾选表示服务任务已完成；新建态：勾选表示已启用服务 */
+const getServiceItemCheckmarkShown = (field: ServiceItemFieldName) => {
+  if (isEdit.value) return isServiceItemNodeDone(field);
+  return isServiceItemEnabled(field);
+};
+const getServiceItemNodeState = (
+  field: ServiceItemFieldName,
+): 'active' | 'done' | 'pending' => {
+  if (!isServiceItemEnabled(field)) return 'pending';
+  const status = serviceItemTaskStatusValues.value[field];
+  if (status === SERVICE_TASK_STATUS_PROCESSED) return 'done';
+  return 'active';
+};
+const isServiceItemNodeDone = (field: ServiceItemFieldName) =>
+  getServiceItemNodeState(field) === 'done';
+const hasServiceItemTask = (field: ServiceItemFieldName) => {
+  const taskId = serviceItemTaskIdValues.value[field];
+  return taskId != null && String(taskId).trim() !== '';
+};
+const canToggleServiceItemNode = (field: ServiceItemFieldName) => {
+  if (!isEdit.value) return true;
+  if (!isServiceItemEnabled(field)) return true;
+  return !hasServiceItemTask(field);
+};
+const handleServiceItemNodeToggle = (field: ServiceItemFieldName) => {
+  if (!canToggleServiceItemNode(field)) {
+    message.warning('已生成服务任务，不可关闭服务');
+    return;
+  }
+  handleServiceItemEnabledChange(field, !isServiceItemEnabled(field));
+};
+const getServiceItemVisible = (field: ServiceItemFieldName) => {
+  return serviceItemVisibleValues.value[field] === true;
+};
+const visibleServiceItemFields = computed(() =>
+  getOrderedServiceItemFields(SERVICE_ITEM_FIELD_NAMES).filter((field) =>
+    getServiceItemVisible(field),
+  ),
+);
 const handleServiceItemEnabledChange = (
   field: ServiceItemFieldName,
   enabled: boolean,
@@ -424,12 +569,6 @@ const handleServiceItemEnabledChange = (
     };
   }
 };
-const handleServiceItemCheckboxChange = (
-  field: ServiceItemFieldName,
-  event: any,
-) => {
-  handleServiceItemEnabledChange(field, !!event?.target?.checked);
-};
 const handleServiceItemValueChange = (
   field: ServiceItemFieldName,
   value: any,
@@ -445,17 +584,237 @@ const handleServiceItemValueChange = (
 const getServiceItemSelectedItems = (field: ServiceItemFieldName) => {
   return serviceItemSelectedItems.value[field] || [];
 };
-const getServiceItemFormValues = () => {
+const getServiceItemFormValues = (
+  fallbackValues: Partial<Record<string, any>> = {},
+) => {
   const values: Partial<Record<string, any>> = {};
   SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
     const checkFieldName = getServiceItemCheckFieldName(field);
-    values[field] = serviceItemValues.value[field];
-    values[checkFieldName] = !!serviceItemEnabledValues.value[checkFieldName];
+    const fieldValue =
+      serviceItemValues.value[field] ??
+      (fallbackValues as Record<string, any>)[field];
+    values[field] = fieldValue;
+    values[checkFieldName] =
+      !!serviceItemEnabledValues.value[checkFieldName] ||
+      hasServiceItemValue(fieldValue);
   });
   return values;
 };
 const hasServiceItemValue = (value: any) =>
   value !== undefined && value !== null && value !== '';
+const serviceItemTaskStatusValues = ref<
+  Partial<Record<ServiceItemFieldName, ServiceTaskStatusValue>>
+>({});
+const serviceItemTaskIdValues = ref<
+  Partial<Record<ServiceItemFieldName, string>>
+>({});
+const serviceItemRequiredPropValues = ref<
+  Partial<Record<ServiceItemFieldName, number[]>>
+>({});
+const completingServiceField = ref<ServiceItemFieldName>();
+const toServiceTaskStatusValue = (
+  value: unknown,
+): ServiceTaskStatusValue | undefined => {
+  const status = Number(value);
+  if (status === SERVICE_TASK_STATUS_PENDING)
+    return SERVICE_TASK_STATUS_PENDING;
+  if (status === SERVICE_TASK_STATUS_PROCESSED)
+    return SERVICE_TASK_STATUS_PROCESSED;
+  return undefined;
+};
+const extractServiceTaskStatusFromDetail = (
+  detail: SeaExportAdminApi.SeaExportDto,
+): Partial<Record<ServiceItemFieldName, ServiceTaskStatusValue>> => {
+  const result: Partial<Record<ServiceItemFieldName, ServiceTaskStatusValue>> =
+    {};
+  const services = (detail as any)?.seaExportServices;
+  if (!Array.isArray(services)) return result;
+
+  services.forEach((service: any) => {
+    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(service?.serviceType));
+    if (!mappedField) return;
+    const status = toServiceTaskStatusValue(
+      service?.seServiceTask?.serviceTaskStatus ?? service?.serviceTaskStatus,
+    );
+    if (status === undefined) return;
+    result[mappedField] = status;
+  });
+
+  return result;
+};
+const extractServiceTaskIdFromDetail = (
+  detail: SeaExportAdminApi.SeaExportDto,
+): Partial<Record<ServiceItemFieldName, string>> => {
+  const result: Partial<Record<ServiceItemFieldName, string>> = {};
+  const services = (detail as any)?.seaExportServices;
+  if (!Array.isArray(services)) return result;
+
+  services.forEach((service: any) => {
+    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(service?.serviceType));
+    if (!mappedField) return;
+    const rawTaskId =
+      service?.seServiceTask?.id ??
+      service?.seServiceTaskId ??
+      service?.serviceTaskId;
+    if (rawTaskId == null) return;
+    const taskId = String(rawTaskId).trim();
+    if (!taskId) return;
+    result[mappedField] = taskId;
+  });
+
+  return result;
+};
+const normalizeRequiredProps = (value: unknown): number[] => {
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value
+        .map((item) => Number(item))
+        .filter((item) => Number.isFinite(item) && item > 0),
+    ),
+  ];
+};
+const buildServiceRequiredPropsByField = (
+  availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+  checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+) => {
+  const result: Partial<Record<ServiceItemFieldName, number[]>> = {};
+  const sourceMap = new Map<number, SeaExportAdminApi.ServiceTypeByPolDto>();
+  (Array.isArray(availableServiceTypes) ? availableServiceTypes : []).forEach(
+    (item) => {
+      const serviceType = Number(item?.serviceType);
+      if (!Number.isFinite(serviceType)) return;
+      sourceMap.set(serviceType, item);
+    },
+  );
+  (Array.isArray(checkedServiceTypes) ? checkedServiceTypes : []).forEach(
+    (item) => {
+      const serviceType = Number(item?.serviceType);
+      if (!Number.isFinite(serviceType)) return;
+      sourceMap.set(serviceType, item);
+    },
+  );
+
+  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
+    const serviceType = SERVICE_TYPE_VALUES[field];
+    const matched = sourceMap.get(serviceType);
+    if (!matched) return;
+    result[field] = normalizeRequiredProps(matched.seServiceRequires);
+  });
+  return result;
+};
+const getServiceItemTaskStatusMeta = (field: ServiceItemFieldName) => {
+  const status = serviceItemTaskStatusValues.value[field];
+  if (status === undefined) return undefined;
+  return SERVICE_TASK_STATUS_META[status];
+};
+const canCompleteServiceItem = (field: ServiceItemFieldName) => {
+  const taskId = serviceItemTaskIdValues.value[field];
+  const status = serviceItemTaskStatusValues.value[field];
+  return (
+    !!taskId &&
+    status === SERVICE_TASK_STATUS_PENDING &&
+    isServiceItemEnabled(field)
+  );
+};
+const isRequiredFieldFilled = (value: unknown) => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') {
+    if (typeof (value as { isValid?: () => boolean }).isValid === 'function') {
+      return !!(value as { isValid: () => boolean }).isValid();
+    }
+    return true;
+  }
+  return true;
+};
+const getRequiredFieldLabelByProp = (propEnum: number) => {
+  const fieldName = SERVICE_REQUIRE_PROP_TO_FIELD_NAME[propEnum];
+  if (!fieldName) return `字段(${propEnum})`;
+  const labelKey = SERVICE_REQUIRE_FIELD_LABEL_KEY[fieldName];
+  return labelKey ? $t(labelKey) : fieldName;
+};
+const collectCurrentFormValues = async () => {
+  const [
+    partyValues,
+    entrustValues,
+    basicValues,
+    shipmentValues,
+    portValues,
+    cargoTypeValues,
+    cargoMainValues,
+    cargoRemarkValues,
+  ] = await Promise.all([
+    partyInfoFormApi.getValues(),
+    entrustInfoFormApi.getValues(),
+    basicInfoFormApi.getValues(),
+    shipmentFormApi.getValues(),
+    portFormApi.getValues(),
+    cargoTypeInlineFormApi.getValues(),
+    cargoMainFormApi.getValues(),
+    cargoRemarkFormApi.getValues(),
+  ]);
+  return {
+    commissionNum: entrustReadonlyInfo.value.commissionNum,
+    accountDate: entrustReadonlyInfo.value.accountDate,
+    settlementDate: entrustReadonlyInfo.value.settlementDate,
+    ...partyValues,
+    ...entrustValues,
+    ...basicValues,
+    ...getServiceItemFormValues(basicValues),
+    ...shipmentValues,
+    ...portValues,
+    ...cargoTypeValues,
+    ...cargoMainValues,
+    ...cargoRemarkValues,
+  } as Record<string, any>;
+};
+const getMissingRequiredLabelsForService = async (
+  field: ServiceItemFieldName,
+) => {
+  const requiredProps = serviceItemRequiredPropValues.value[field] ?? [];
+  if (!requiredProps.length) return [];
+  const currentValues = await collectCurrentFormValues();
+  const missingLabels: string[] = [];
+  requiredProps.forEach((propEnum) => {
+    const mappedField = SERVICE_REQUIRE_PROP_TO_FIELD_NAME[propEnum];
+    if (!mappedField) return;
+    if (isRequiredFieldFilled(currentValues[mappedField])) return;
+    missingLabels.push(getRequiredFieldLabelByProp(propEnum));
+  });
+  return missingLabels;
+};
+const handleCompleteService = async (field: ServiceItemFieldName) => {
+  if (!isEdit.value) return;
+  if (completingServiceField.value) return;
+  const taskId = serviceItemTaskIdValues.value[field];
+  if (!taskId) {
+    message.warning('当前服务暂无可完成任务');
+    return;
+  }
+  if (
+    serviceItemTaskStatusValues.value[field] === SERVICE_TASK_STATUS_PROCESSED
+  ) {
+    message.info('当前服务已完成');
+    return;
+  }
+  const missingLabels = await getMissingRequiredLabelsForService(field);
+  if (missingLabels.length > 0) {
+    message.warning(`请先填写：${missingLabels.join('、')}，再完成服务`);
+    return;
+  }
+  completingServiceField.value = field;
+  try {
+    await completeSeServiceTask({ id: taskId });
+    message.success(`${getServiceItemLabel(field)}已完成`);
+    await loadEditData();
+  } catch {
+    message.error('完成服务失败，请稍后重试');
+  } finally {
+    completingServiceField.value = undefined;
+  }
+};
 const toOptionalQueryValue = (value: unknown) => {
   if (value === undefined || value === null || value === '') return undefined;
   return value;
@@ -463,51 +822,156 @@ const toOptionalQueryValue = (value: unknown) => {
 let serviceTypeLinkageRequestId = 0;
 const linkedClientId = ref<unknown>(undefined);
 const linkedPolId = ref<unknown>(undefined);
+const serviceTypeSyncLoading = ref(false);
+const polServiceConfigLoaded = ref(false);
+const collectionPaymentConfigured = ref(false);
+const polHasNoServiceConfig = computed(() => {
+  if (toOptionalQueryValue(linkedPolId.value) === undefined) return false;
+  if (serviceTypeSyncLoading.value || !polServiceConfigLoaded.value)
+    return false;
+  const hasStandardServices = visibleServiceItemFields.value.length > 0;
+  const hasCollectionPayment =
+    SHOW_COLLECTION_PAYMENT_FIELD && collectionPaymentConfigured.value;
+  return !hasStandardServices && !hasCollectionPayment;
+});
+const hasPolSelected = computed(
+  () => toOptionalQueryValue(linkedPolId.value) !== undefined,
+);
+const showServiceItemContent = computed(
+  () =>
+    hasPolSelected.value &&
+    !serviceTypeSyncLoading.value &&
+    polServiceConfigLoaded.value &&
+    !polHasNoServiceConfig.value,
+);
 let serviceTypeSyncTimer: ReturnType<typeof setTimeout> | undefined;
 let latestServiceTypeQueryKey = '';
-const applyServiceTypeChecksFromPol = (
+const extractServiceFieldSet = (
   serviceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+  onlyChecked: boolean,
 ) => {
-  const normalizedServiceTypes = Array.isArray(serviceTypes)
-    ? serviceTypes
-    : [];
-  const checkedServiceFields = new Set<ServiceItemFieldName>();
-  let collectionPaymentChecked = false;
-  normalizedServiceTypes.forEach((item) => {
-    if (!item?.checked) return;
-    if (Number(item.serviceType) === COLLECTION_PAYMENT_SERVICE_TYPE) {
-      collectionPaymentChecked = true;
+  const matchedFields = new Set<ServiceItemFieldName>();
+  let collectionPaymentMatched = false;
+  (Array.isArray(serviceTypes) ? serviceTypes : []).forEach((item) => {
+    if (onlyChecked && !item?.checked) return;
+    if (Number(item?.serviceType) === COLLECTION_PAYMENT_SERVICE_TYPE) {
+      collectionPaymentMatched = true;
       return;
     }
-    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(item.serviceType));
+    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(item?.serviceType));
     if (mappedField) {
-      checkedServiceFields.add(mappedField);
+      matchedFields.add(mappedField);
     }
   });
+  return {
+    matchedFields,
+    collectionPaymentMatched,
+  };
+};
+const buildServiceItemSortOrderMap = (
+  serviceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+) => {
+  const orderMap = new Map<ServiceItemFieldName, number>();
+  (Array.isArray(serviceTypes) ? serviceTypes : [])
+    .slice()
+    .sort(
+      (a, b) =>
+        Number(a?.sortId ?? Number.MAX_SAFE_INTEGER) -
+        Number(b?.sortId ?? Number.MAX_SAFE_INTEGER),
+    )
+    .forEach((item, index) => {
+      const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(item?.serviceType));
+      if (!mappedField || orderMap.has(mappedField)) return;
+      orderMap.set(mappedField, index);
+    });
+  return orderMap;
+};
+const resetServiceTypeStateWhenPolEmpty = () => {
+  const nextVisibleValues: Partial<Record<ServiceItemFieldName, boolean>> = {};
+  const nextEnabledValues: Partial<Record<ServiceItemCheckFieldName, boolean>> =
+    {};
+  const nextServiceItemValues = { ...serviceItemValues.value };
+  const nextServiceItemSelectedItems = { ...serviceItemSelectedItems.value };
+
+  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
+    const checkFieldName = getServiceItemCheckFieldName(field);
+    nextVisibleValues[field] = false;
+    nextEnabledValues[checkFieldName] = false;
+    nextServiceItemValues[field] = undefined;
+    nextServiceItemSelectedItems[field] = [];
+  });
+
+  serviceItemVisibleValues.value = nextVisibleValues;
+  serviceItemEnabledValues.value = nextEnabledValues;
+  serviceItemValues.value = nextServiceItemValues;
+  serviceItemSelectedItems.value = nextServiceItemSelectedItems;
+  collectionPaymentEnabled.value = false;
+  collectionPaymentDeptId.value = undefined;
+  serviceItemRequiredPropValues.value = {};
+  serviceItemSortOrderMap.value = new Map();
+  polServiceConfigLoaded.value = false;
+  collectionPaymentConfigured.value = false;
+};
+const applyServiceTypeStateByPol = (
+  availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+  checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+  overrides?: {
+    checkedServiceFields?: Set<ServiceItemFieldName>;
+    checkedCollectionPayment?: boolean;
+  },
+) => {
+  const { matchedFields: availableServiceFields, collectionPaymentMatched } =
+    extractServiceFieldSet(availableServiceTypes, false);
+  const {
+    matchedFields: checkedServiceFields,
+    collectionPaymentMatched: checkedCollectionPayment,
+  } = extractServiceFieldSet(checkedServiceTypes, true);
+  const effectiveCheckedServiceFields =
+    overrides?.checkedServiceFields ?? checkedServiceFields;
+  const effectiveCheckedCollectionPayment =
+    overrides?.checkedCollectionPayment ?? checkedCollectionPayment;
 
   const nextServiceItemValues = { ...serviceItemValues.value };
   const nextServiceItemSelectedItems = { ...serviceItemSelectedItems.value };
   const nextServiceEnabledValues: Partial<
     Record<ServiceItemCheckFieldName, boolean>
   > = {};
+  const nextServiceVisibleValues: Partial<
+    Record<ServiceItemFieldName, boolean>
+  > = {};
 
   SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
     const checkFieldName = getServiceItemCheckFieldName(field);
-    const checked = checkedServiceFields.has(field);
+    const visible = availableServiceFields.has(field);
+    const checked = visible && effectiveCheckedServiceFields.has(field);
+    nextServiceVisibleValues[field] = visible;
     nextServiceEnabledValues[checkFieldName] = checked;
-    if (!checked) {
+    if (!checked || !visible) {
       nextServiceItemValues[field] = undefined;
       nextServiceItemSelectedItems[field] = [];
     }
   });
 
+  serviceItemVisibleValues.value = nextServiceVisibleValues;
   serviceItemValues.value = nextServiceItemValues;
   serviceItemSelectedItems.value = nextServiceItemSelectedItems;
   serviceItemEnabledValues.value = nextServiceEnabledValues;
-  collectionPaymentEnabled.value = collectionPaymentChecked;
-  if (!collectionPaymentChecked) {
+  collectionPaymentEnabled.value =
+    SHOW_COLLECTION_PAYMENT_FIELD &&
+    collectionPaymentMatched &&
+    effectiveCheckedCollectionPayment;
+  if (!collectionPaymentEnabled.value) {
     collectionPaymentDeptId.value = undefined;
   }
+  serviceItemRequiredPropValues.value = buildServiceRequiredPropsByField(
+    availableServiceTypes,
+    checkedServiceTypes,
+  );
+  serviceItemSortOrderMap.value = buildServiceItemSortOrderMap(
+    availableServiceTypes,
+  );
+  collectionPaymentConfigured.value = collectionPaymentMatched;
+  polServiceConfigLoaded.value = true;
 };
 const extractServiceTypesByPolResult = (
   payload: unknown,
@@ -527,6 +991,8 @@ const syncServiceTypesByPol = async (
     clientId?: unknown;
     polId?: unknown;
     force?: boolean;
+    checkedServiceFields?: Set<ServiceItemFieldName>;
+    checkedCollectionPayment?: boolean;
   } = {},
 ) => {
   const requestId = ++serviceTypeLinkageRequestId;
@@ -549,7 +1015,7 @@ const syncServiceTypesByPol = async (
   if (polId === undefined) {
     latestServiceTypeQueryKey = '';
     if (requestId !== serviceTypeLinkageRequestId) return;
-    applyServiceTypeChecksFromPol(null);
+    resetServiceTypeStateWhenPolEmpty();
     return;
   }
   const queryKey = `${String(polId)}::${clientId == null ? '' : String(clientId)}`;
@@ -557,16 +1023,37 @@ const syncServiceTypesByPol = async (
     return;
   }
   latestServiceTypeQueryKey = queryKey;
+  serviceTypeSyncLoading.value = true;
   try {
-    const response = await getServiceTypesByPOL({
-      polId: polId as number | string,
-      clientId: clientId as number | string | undefined,
-    });
+    const [serviceTypesByPolResponse, checkedServiceTypesResponse] =
+      await Promise.all([
+        getServiceTypesByPOL({
+          polId: polId as number | string,
+        }),
+        clientId === undefined
+          ? Promise.resolve(null)
+          : getServiceTypesByPOL({
+              polId: polId as number | string,
+              clientId: clientId as number | string,
+            }),
+      ]);
     if (requestId !== serviceTypeLinkageRequestId) return;
-    applyServiceTypeChecksFromPol(extractServiceTypesByPolResult(response));
+    applyServiceTypeStateByPol(
+      extractServiceTypesByPolResult(serviceTypesByPolResponse),
+      extractServiceTypesByPolResult(checkedServiceTypesResponse),
+      {
+        checkedServiceFields: args.checkedServiceFields,
+        checkedCollectionPayment: args.checkedCollectionPayment,
+      },
+    );
   } catch {
     if (requestId !== serviceTypeLinkageRequestId) return;
+    polServiceConfigLoaded.value = false;
     message.warning('根据起运港查询服务项目失败');
+  } finally {
+    if (requestId === serviceTypeLinkageRequestId) {
+      serviceTypeSyncLoading.value = false;
+    }
   }
 };
 const queueSyncServiceTypesByPol = (args: {
@@ -1926,6 +2413,9 @@ const loadEditData = async () => {
       warehouseId: toSelectedItems(to?.warehouseId, (to as any)?.warehouseName),
       insuranceId: toSelectedItems(to?.insuranceId, (to as any)?.insuranceName),
     };
+    serviceItemTaskStatusValues.value =
+      extractServiceTaskStatusFromDetail(detail);
+    serviceItemTaskIdValues.value = extractServiceTaskIdFromDetail(detail);
 
     portFormApi.updateSchema([
       {
@@ -2041,23 +2531,40 @@ const loadEditData = async () => {
         selectedServiceTypes.has(SERVICE_TYPE_VALUES.insuranceId) ||
         hasServiceItemValue(formValues.insuranceId),
     };
-    await syncServiceTypesByPol({
-      polId: formValues.polId,
-      clientId: to?.clientId,
-      force: true,
+    if (SHOW_COLLECTION_PAYMENT_FIELD) {
+      const collectionPaymentSelected = selectedServiceTypes.has(
+        COLLECTION_PAYMENT_SERVICE_TYPE,
+      );
+      collectionPaymentEnabled.value = collectionPaymentSelected;
+      const selectedOrganizationId = detail.organizationUnits?.[0]?.id;
+      collectionPaymentDeptId.value =
+        collectionPaymentSelected && typeof selectedOrganizationId === 'number'
+          ? selectedOrganizationId
+          : undefined;
+    } else {
+      collectionPaymentEnabled.value = false;
+      collectionPaymentDeptId.value = undefined;
+    }
+    const checkedServiceFields = new Set<ServiceItemFieldName>();
+    SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
+      if (selectedServiceTypes.has(SERVICE_TYPE_VALUES[field])) {
+        checkedServiceFields.add(field);
+      }
     });
-    const selectedOrganizationId = detail.organizationUnits?.[0]?.id;
-    collectionPaymentDeptId.value =
-      typeof selectedOrganizationId === 'number'
-        ? selectedOrganizationId
-        : undefined;
-    collectionPaymentEnabled.value =
-      typeof collectionPaymentDeptId.value === 'number';
     refreshEntrustReadonlyInfo(formValues);
 
     orderCtns.value = normalizeOrderCtnsWithRowKey(
       detail.transportOrder?.orderCtns as any,
     );
+    await syncServiceTypesByPol({
+      polId: formValues.polId,
+      clientId: formValues.clientId,
+      force: true,
+      checkedServiceFields,
+      checkedCollectionPayment: selectedServiceTypes.has(
+        COLLECTION_PAYMENT_SERVICE_TYPE,
+      ),
+    });
   } finally {
     pageLoading.value = false;
   }
@@ -2104,7 +2611,7 @@ const buildDto = (values: Record<string, any>) => {
     remark: values.remark,
     serviceTypes: getServiceTypesFromEnabledValues(
       values,
-      collectionPaymentEnabled.value,
+      SHOW_COLLECTION_PAYMENT_FIELD && collectionPaymentEnabled.value,
     ),
   };
 
@@ -2160,6 +2667,7 @@ const buildDto = (values: Record<string, any>) => {
   return {
     ...seaExportFields,
     organizationUnits:
+      SHOW_COLLECTION_PAYMENT_FIELD &&
       collectionPaymentEnabled.value &&
       typeof collectionPaymentDeptId.value === 'number'
         ? [
@@ -2237,7 +2745,7 @@ const handleSubmit = async () => {
     cargoMainFormApi.getValues(),
     cargoRemarkFormApi.getValues(),
   ]);
-  const serviceItemsValues = getServiceItemFormValues();
+  const serviceItemsValues = getServiceItemFormValues(basicValues);
   const values = {
     commissionNum: entrustReadonlyInfo.value.commissionNum,
     accountDate: entrustReadonlyInfo.value.accountDate,
@@ -2258,11 +2766,14 @@ const handleSubmit = async () => {
     if (isEdit.value) {
       await editSeaExport(dto as SeaExportAdminApi.SeaExportEditDto);
       message.success($t('ui.actionMessage.operationSuccess'));
+      markListShouldRefresh('SeaExportList');
+      await loadEditData();
     } else {
       const createdId = await addSeaExport(
         dto as SeaExportAdminApi.SeaExportAddDto,
       );
       message.success($t('ui.actionMessage.operationSuccess'));
+      markListShouldRefresh('SeaExportList');
       const resolvedCreatedId =
         (createdId as any)?.id ?? (createdId as any)?.result ?? createdId;
       const createdIdStr =
@@ -2332,9 +2843,13 @@ const handleBack = () => {
 };
 
 onMounted(() => {
+  void loadServiceItemLabelMap();
   if (!isEdit.value) {
     initializeOrderUsersPanel(defaultOrderUsers);
     refreshEntrustReadonlyInfo({});
+    serviceItemTaskStatusValues.value = {};
+    serviceItemTaskIdValues.value = {};
+    serviceItemRequiredPropValues.value = {};
   }
   loadCollectionPaymentDeptOptions();
   applyTransitPortTabSchema();
@@ -2514,92 +3029,180 @@ defineExpose({
                   />
                 </div>
                 <div class="biz-block biz-block--service">
-                  <div class="biz-block__title">服务项目</div>
-                  <div class="service-item-grid">
-                    <div
-                      v-for="field in SERVICE_ITEM_FIELD_NAMES"
-                      :key="field"
-                      class="service-item-custom-card"
-                      :class="{
-                        'service-item-custom-card--active':
-                          getServiceItemChecked(field),
-                      }"
-                    >
-                      <div class="service-item-custom-card__header">
-                        <div class="service-item-custom-card__title-wrap">
-                          <span class="service-item-custom-card__icon">
-                            <IconifyIcon
-                              :icon="SERVICE_ITEM_META[field].icon"
-                              class="service-item-custom-card__icon-inner"
-                            />
-                          </span>
-                          <span class="service-item-custom-card__title">
-                            {{ SERVICE_ITEM_META[field].label }}
-                          </span>
-                        </div>
-                        <Checkbox
-                          :checked="getServiceItemChecked(field)"
-                          @change="
-                            handleServiceItemCheckboxChange(field, $event)
-                          "
-                        />
-                      </div>
-                      <div class="service-item-custom-card__body">
-                        <ClientSelect
-                          :model-value="serviceItemValues[field]"
-                          :industry-category="
-                            SERVICE_ITEM_META[field].industryCategory
-                          "
-                          :selected-items="getServiceItemSelectedItems(field)"
-                          :disabled="!getServiceItemChecked(field)"
-                          :placeholder="$t('ui.placeholder.select')"
-                          allow-clear
-                          class="w-full"
-                          @update:model-value="
-                            handleServiceItemValueChange(field, $event)
-                          "
-                        />
-                      </div>
-                    </div>
-                    <div
-                      class="service-item-custom-card"
-                      :class="{
-                        'service-item-custom-card--active':
-                          collectionPaymentEnabled,
-                      }"
-                    >
-                      <div class="service-item-custom-card__header">
-                        <div class="service-item-custom-card__title-wrap">
-                          <span class="service-item-custom-card__icon">
-                            <IconifyIcon
-                              :icon="COLLECTION_PAYMENT_ICON"
-                              class="service-item-custom-card__icon-inner"
-                            />
-                          </span>
-                          <span class="service-item-custom-card__title"
-                            >代收支</span
+                  <Spin
+                    :spinning="serviceTypeSyncLoading"
+                    class="service-pipeline-spin"
+                  >
+                    <div class="service-pipeline-body">
+                      <div class="service-pipeline">
+                        <div class="service-pipeline__header">
+                          <span class="service-pipeline__title">服务项目</span>
+                          <span
+                            v-if="showServiceItemContent"
+                            class="service-pipeline__hint"
                           >
+                            {{
+                              isEdit
+                                ? '勾选表示服务任务已完成，点击节点可启用/关闭服务'
+                                : '点击节点可启用/关闭服务'
+                            }}
+                          </span>
                         </div>
-                        <Checkbox
-                          :checked="collectionPaymentEnabled"
-                          @change="handleCollectionPaymentEnabledChange"
-                        />
+                        <template v-if="showServiceItemContent">
+                          <div class="service-pipeline__track">
+                            <div
+                              v-for="(field, index) in visibleServiceItemFields"
+                              :key="field"
+                              class="service-item-node-wrap"
+                            >
+                              <div
+                                class="service-item-node"
+                                :class="[
+                                  `service-item-node--${getServiceItemNodeState(field)}`,
+                                  { 'service-item-node--edit': isEdit },
+                                ]"
+                              >
+                                <div
+                                  class="service-item-node__content"
+                                  @click="handleServiceItemNodeToggle(field)"
+                                >
+                                  <span
+                                    class="service-item-node__check"
+                                    :class="{
+                                      'service-item-node__check--checked':
+                                        getServiceItemCheckmarkShown(field),
+                                    }"
+                                  >
+                                    <IconifyIcon
+                                      v-if="getServiceItemCheckmarkShown(field)"
+                                      icon="mdi:check"
+                                      class="service-item-node__check-icon"
+                                    />
+                                  </span>
+                                  <span class="service-item-node__icon">
+                                    <IconifyIcon
+                                      :icon="SERVICE_ITEM_META[field].icon"
+                                      class="service-item-node__icon-inner"
+                                    />
+                                  </span>
+                                  <span class="service-item-node__title">
+                                    {{ getServiceItemLabel(field) }}
+                                  </span>
+                                  <span
+                                    v-if="
+                                      isEdit &&
+                                      isServiceItemEnabled(field) &&
+                                      getServiceItemTaskStatusMeta(field) &&
+                                      !isServiceItemNodeDone(field)
+                                    "
+                                    class="service-item-node__status"
+                                  >
+                                    {{
+                                      getServiceItemTaskStatusMeta(field)?.label
+                                    }}
+                                  </span>
+                                  <span
+                                    v-if="
+                                      isEdit &&
+                                      isServiceItemEnabled(field) &&
+                                      canCompleteServiceItem(field)
+                                    "
+                                    class="service-item-node__action-slot"
+                                  >
+                                    <Button
+                                      type="link"
+                                      size="small"
+                                      class="service-item-node__action-btn"
+                                      :loading="
+                                        completingServiceField === field
+                                      "
+                                      @click.stop="handleCompleteService(field)"
+                                    >
+                                      完成服务
+                                    </Button>
+                                  </span>
+                                </div>
+                              </div>
+                              <div
+                                v-if="
+                                  index < visibleServiceItemFields.length - 1
+                                "
+                                class="service-item-divider"
+                                :class="{
+                                  'service-item-divider--done':
+                                    isServiceItemNodeDone(field),
+                                }"
+                              />
+                            </div>
+                          </div>
+                        </template>
+                        <div v-else class="service-pipeline__state">
+                          <Empty
+                            v-if="!serviceTypeSyncLoading && !hasPolSelected"
+                            :image="emptySimpleImage"
+                            class="service-pipeline-empty service-pipeline-empty--compact"
+                            :description="
+                              $t('seaExport.export.selectPolForServiceItems')
+                            "
+                          />
+                          <Empty
+                            v-else-if="
+                              !serviceTypeSyncLoading && polHasNoServiceConfig
+                            "
+                            :image="emptySimpleImage"
+                            class="service-pipeline-empty service-pipeline-empty--compact"
+                            :description="
+                              $t('seaExport.export.polNoServiceConfig')
+                            "
+                          />
+                        </div>
                       </div>
-                      <div class="service-item-custom-card__body">
-                        <Select
-                          :value="collectionPaymentDeptId"
-                          :options="collectionPaymentDeptOptions"
-                          :disabled="!collectionPaymentEnabled"
-                          :placeholder="$t('ui.placeholder.select')"
-                          allow-clear
-                          class="w-full"
-                          show-search
-                          option-filter-prop="label"
-                          @change="handleCollectionPaymentDeptChange"
-                        />
+                      <div class="service-item-grid">
+                        <div
+                          v-if="
+                            SHOW_COLLECTION_PAYMENT_FIELD &&
+                            showServiceItemContent
+                          "
+                          class="service-item-extra-card"
+                          :class="{
+                            'service-item-extra-card--active':
+                              collectionPaymentEnabled,
+                          }"
+                        >
+                          <div class="service-item-extra-card__header">
+                            <div class="service-item-extra-card__title-wrap">
+                              <span class="service-item-extra-card__icon">
+                                <IconifyIcon
+                                  :icon="COLLECTION_PAYMENT_ICON"
+                                  class="service-item-extra-card__icon-inner"
+                                />
+                              </span>
+                              <span class="service-item-extra-card__title"
+                                >代收支</span
+                              >
+                            </div>
+                            <Checkbox
+                              :checked="collectionPaymentEnabled"
+                              @change="handleCollectionPaymentEnabledChange"
+                            />
+                          </div>
+                          <div class="service-item-extra-card__body">
+                            <Select
+                              :value="collectionPaymentDeptId"
+                              :options="collectionPaymentDeptOptions"
+                              :disabled="!collectionPaymentEnabled"
+                              :placeholder="$t('ui.placeholder.select')"
+                              allow-clear
+                              class="w-full"
+                              show-search
+                              option-filter-prop="label"
+                              @change="handleCollectionPaymentDeptChange"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </Spin>
                 </div>
                 <div class="content-section__header">
                   <span class="card-title">
@@ -3269,16 +3872,306 @@ defineExpose({
 }
 
 .biz-block--service {
-  margin-top: 12px;
+  padding: 12px 18px 8px;
+  margin-top: 0;
+  background: transparent;
+}
+
+.service-pipeline-spin :deep(.ant-spin-nested-loading) {
+  position: relative;
+}
+
+.service-pipeline-spin :deep(.ant-spin) {
+  max-height: none;
+}
+
+.service-pipeline-body {
+  box-sizing: border-box;
+}
+
+.service-pipeline__header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.service-pipeline__title {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1677ff;
+  white-space: nowrap;
+}
+
+.service-pipeline__hint {
+  font-size: 12px;
+  line-height: 20px;
+  color: rgb(0 0 0 / 45%);
+  white-space: nowrap;
+}
+
+.service-pipeline__state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+}
+
+.service-pipeline {
+  padding: 8px 12px 10px;
+  background: #fff;
+  border: 1px solid rgb(226 232 240 / 60%);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 5%),
+    0 4px 6px -2px rgb(0 0 0 / 2%);
+}
+
+.service-pipeline__track {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 64px;
+}
+
+.service-item-node-wrap {
+  display: contents;
+}
+
+.service-item-node {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.service-item-node__content {
+  box-sizing: border-box;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.service-item-node__content:hover {
+  background: #f8fafc;
+}
+
+.service-item-node__check {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: transparent;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 999px;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.service-item-node__check--checked {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.service-item-node__check-icon {
+  font-size: 12px;
+}
+
+.service-item-node__icon {
+  display: inline-flex;
+  align-items: center;
+  color: #64748b;
+}
+
+.service-item-node__icon-inner {
+  font-size: 16px;
+}
+
+.service-item-node__title {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.service-item-node__status {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #f59e0b;
+  white-space: nowrap;
+  background: #fffbeb;
+  border: 1px solid rgb(245 158 11 / 20%);
+  border-radius: 999px;
+}
+
+.service-item-node__action-slot {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  margin-left: 12px;
+  overflow: hidden;
+  transition:
+    width 0.2s ease,
+    margin 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.service-item-node:not(.service-item-node--active):not(:hover)
+  .service-item-node__action-slot {
+  width: 0;
+  min-width: 0;
+  margin-left: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.service-item-node:hover .service-item-node__action-slot,
+.service-item-node--active .service-item-node__action-slot {
+  width: auto;
+  min-width: 0;
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.service-item-node:not(.service-item-node--active):not(:hover)
+  .service-item-node__action-btn {
+  pointer-events: none;
+}
+
+.service-item-node__action-btn:hover {
+  color: #fff;
+  background: #2563eb;
+  box-shadow: 0 2px 4px rgb(37 99 235 / 20%);
+}
+
+.service-item-node__action-btn {
+  flex-shrink: 0;
+  margin-left: 0;
+  font-size: 12px;
+  color: #2563eb;
+  background: #eff6ff;
+  border-radius: 6px;
+  transition: opacity 0.2s ease;
+}
+
+.service-item-divider {
+  display: flex;
+  flex: 0 0 12px;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 64px;
+}
+
+.service-item-divider::after {
+  display: block;
+  width: 12px;
+  height: 1.5px;
+  content: '';
+  background: #f1f5f9;
+}
+
+.service-item-divider--done::after {
+  background: rgb(16 185 129 / 30%);
+}
+
+.service-item-node--done .service-item-node__check--checked {
+  color: #fff;
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.service-item-node--done .service-item-node__title {
+  color: #64748b;
+}
+
+.service-item-node--active
+  .service-item-node__check:not(.service-item-node__check--checked) {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px #eff6ff;
+}
+
+.service-item-node--edit.service-item-node--active
+  .service-item-node__check:not(.service-item-node__check--checked) {
+  border-color: #e2e8f0;
+  box-shadow: none;
+}
+
+.service-item-node--active .service-item-node__icon,
+.service-item-node--active .service-item-node__title {
+  color: #2563eb;
+}
+
+.service-item-node--edit.service-item-node--active .service-item-node__icon,
+.service-item-node--edit.service-item-node--active .service-item-node__title {
+  color: #2563eb;
+}
+
+.service-item-node--pending .service-item-node__check {
+  border-style: dashed;
+}
+
+.service-item-node--pending .service-item-node__icon,
+.service-item-node--pending .service-item-node__title {
+  color: #cbd5e1;
+}
+
+.service-pipeline-empty--compact {
+  padding: 0;
+  margin: 0;
+}
+
+.service-pipeline-empty--compact :deep(.ant-empty-image) {
+  height: 40px;
+  margin-bottom: 6px;
+}
+
+.service-pipeline-empty--compact :deep(.ant-empty-description) {
+  max-width: 420px;
+  margin: 0 auto;
+  font-size: 12px;
+  line-height: 20px;
+  color: rgb(0 0 0 / 45%);
+}
+
+.service-pipeline__state
+  .service-pipeline-empty--compact
+  :deep(.ant-empty-description) {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .service-item-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+  margin-top: 10px;
 }
 
-.service-item-custom-card {
+.service-item-extra-card {
+  flex: 0 1 232px;
+  max-width: 232px;
   padding: 10px 12px;
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -3289,26 +4182,26 @@ defineExpose({
     background-color 0.2s ease;
 }
 
-.service-item-custom-card--active {
+.service-item-extra-card--active {
   background: #f7fbff;
   border-color: #bfdbfe;
   box-shadow: 0 2px 8px rgb(22 119 255 / 6%);
 }
 
-.service-item-custom-card__header {
+.service-item-extra-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
 }
 
-.service-item-custom-card__title-wrap {
+.service-item-extra-card__title-wrap {
   display: inline-flex;
   gap: 8px;
   align-items: center;
 }
 
-.service-item-custom-card__icon {
+.service-item-extra-card__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3319,35 +4212,23 @@ defineExpose({
   border-radius: 9999px;
 }
 
-.service-item-custom-card__icon-inner {
+.service-item-extra-card__icon-inner {
   font-size: 13px;
 }
 
-.service-item-custom-card__title {
+.service-item-extra-card__title {
   font-size: 14px;
   font-weight: 500;
   color: rgb(0 0 0 / 65%);
 }
 
-.service-item-custom-card__body {
+.service-item-extra-card__body {
   min-height: 32px;
 }
 
-.service-item-custom-card--active .service-item-custom-card__title {
+.service-item-extra-card--active .service-item-extra-card__title {
   font-weight: 600;
   color: #1677ff;
-}
-
-@media (max-width: 1600px) {
-  .service-item-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 1200px) {
-  .service-item-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 :deep(.shipment-flow-wrap) {

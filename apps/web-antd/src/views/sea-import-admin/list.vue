@@ -14,6 +14,7 @@ import {
   getSeaImportPagedList,
 } from '#/api/sea-import/sea-import-admin';
 import { $t } from '#/locales';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -135,6 +136,8 @@ const handleDelete = () => {
 const handleRefresh = () => {
   gridApi.query();
 };
+
+useRefreshListOnFormReturn('SeaImportList', handleRefresh);
 </script>
 
 <template>

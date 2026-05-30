@@ -18,6 +18,7 @@ import {
 } from '#/api/sea-export/payment-settlement-admin';
 
 import { useColumns, useGridFormSchema } from './data';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 const router = useRouter();
 const actionLoading = ref(false);
@@ -165,7 +166,35 @@ function handleRowDblClick({
     message.warning('该结算单已锁定，无法编辑');
     return;
   }
-  router.push(`/settlement-management/payment-settlement/edit/${row.id}`);
+  router.push(`/settlement-management/payment-settlement/${row.id}/edit`);
+}
+
+/** 删除 */
+async function handleDelete(
+  row: PaymentSettlementAdminApi.PaymentSettlementListDto,
+) {
+  if (row.locked) {
+    message.warning('该结算单已锁定，无法删除');
+    return;
+  }
+
+  Modal.confirm({
+    title: '确认删除',
+    content: `确定要删除结算单"${row.settlementNo}"吗？`,
+    okType: 'danger',
+    onOk: async () => {
+      actionLoading.value = true;
+      try {
+        await deletePaymentSettlement({ id: row.id });
+        message.success('删除成功');
+        gridApi.query();
+      } catch (error: any) {
+        message.error(error.message || '删除失败');
+      } finally {
+        actionLoading.value = false;
+      }
+    },
+  });
 }
 
 /** 批量删除 */
@@ -261,6 +290,12 @@ async function handleUnlock(
 function handleCreate() {
   router.push('/settlement-management/payment-settlement/add');
 }
+
+function handleRefresh() {
+  gridApi.query();
+}
+
+useRefreshListOnFormReturn('PaymentSettlementList', handleRefresh);
 
 /** 导出 */
 function handleExport() {

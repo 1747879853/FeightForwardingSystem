@@ -1,11 +1,9 @@
 import type { ClientExceptServiceAdminApi } from '#/api/sea-export/client-except-service-admin';
+import type { ServiceTypeOption } from '#/views/sea-export-admin/service-type';
 
-import {
-  buildServiceTypeOptionsFromEnum,
-  type SelectOption,
-} from '#/views/system/basic-data/SeServiceConfigAdmin/data';
+import { buildServiceTypeOptionsFromEnum } from '#/views/sea-export-admin/service-type';
 
-export type { SelectOption };
+export type SelectOption = ServiceTypeOption;
 
 export { buildServiceTypeOptionsFromEnum };
 

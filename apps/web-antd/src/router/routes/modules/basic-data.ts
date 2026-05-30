@@ -7,6 +7,7 @@ const routes: RouteRecordRaw[] = [
   {
     meta: {
       icon: 'mdi:database-cog-outline',
+      keepAlive: true,
       order: 9996,
       title: $t('system.basicData.title'),
       authority: abpPageAuthority([
@@ -38,6 +39,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataCarrier',
         meta: {
           icon: 'mdi:ferry',
+          keepAlive: true,
           title: $t('system.basicData.carrier.title'),
           authority: abpPageAuthority('Admin.Carrier'),
         },
@@ -49,6 +51,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataCodeInvoice',
         meta: {
           icon: 'mdi:file-document-outline',
+          keepAlive: true,
           title: $t('system.basicData.codeInvoice.title'),
           authority: abpPageAuthority('Admin.CodeInvoice'),
         },
@@ -60,6 +63,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataCodeService',
         meta: {
           icon: 'mdi:truck-delivery-outline',
+          keepAlive: true,
           title: $t('system.basicData.codeService.title'),
           authority: abpPageAuthority('Admin.CodeService'),
         },
@@ -71,6 +75,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataCodeGoods',
         meta: {
           icon: 'mdi:package-variant',
+          keepAlive: true,
           title: $t('system.basicData.codeGoods.title'),
           authority: abpPageAuthority('Admin.CodeGoods'),
         },
@@ -82,6 +87,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataCodePackage',
         meta: {
           icon: 'mdi:cube-outline',
+          keepAlive: true,
           title: $t('system.basicData.codePackage.title'),
           authority: abpPageAuthority('Admin.CodePackage'),
         },
@@ -93,6 +99,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataCodeIssueType',
         meta: {
           icon: 'mdi:file-sign',
+          keepAlive: true,
           title: $t('system.basicData.codeIssueType.title'),
           authority: abpPageAuthority('Admin.CodeIssueType'),
         },
@@ -104,6 +111,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataCodeSource',
         meta: {
           icon: 'mdi:source-branch',
+          keepAlive: true,
           title: $t('system.basicData.codeSource.title'),
           authority: abpPageAuthority('Admin.CodeSource'),
         },
@@ -115,6 +123,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataCodeFrt',
         meta: {
           icon: 'mdi:cash-multiple',
+          keepAlive: true,
           title: $t('system.basicData.codeFrt.title'),
           authority: abpPageAuthority('Admin.CodeFrt'),
         },
@@ -126,6 +135,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataCurrency',
         meta: {
           icon: 'mdi:currency-usd',
+          keepAlive: true,
           title: $t('system.basicData.currency.title'),
           authority: abpPageAuthority('Admin.Currency'),
         },
@@ -137,6 +147,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataFeeName',
         meta: {
           icon: 'mdi:receipt-text-outline',
+          keepAlive: true,
           title: $t('system.basicData.feeName.title'),
           authority: abpPageAuthority('Admin.FeeName'),
         },
@@ -148,6 +159,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataFeeCode',
         meta: {
           icon: 'mdi:code-tags',
+          keepAlive: true,
           title: $t('system.basicData.feeCode.title'),
           authority: abpPageAuthority('Admin.FeeCode'),
         },
@@ -159,6 +171,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataExchangeRate',
         meta: {
           icon: 'mdi:chart-line',
+          keepAlive: true,
           title: $t('system.basicData.exchangeRate.title'),
           authority: abpPageAuthority('Admin.ExchangeRate'),
         },
@@ -170,7 +183,9 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataLaneCode',
         meta: {
           icon: 'mdi:highway',
+          keepAlive: true,
           title: $t('system.basicData.laneCode.title'),
+          authority: abpPageAuthority('Admin.LaneCode'),
         },
         component: () =>
           import('#/views/system/basic-data/LaneCodeAdmin/list.vue'),
@@ -180,7 +195,9 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataPortCode',
         meta: {
           icon: 'mdi:anchor',
+          keepAlive: true,
           title: $t('system.basicData.portCode.title'),
+          authority: abpPageAuthority('Admin.PortCode'),
         },
         component: () =>
           import('#/views/system/basic-data/PortCodeAdmin/list.vue'),
@@ -190,7 +207,9 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataCtnCode',
         meta: {
           icon: 'mdi:train-car-container',
+          keepAlive: true,
           title: $t('system.basicData.ctnCode.title'),
+          authority: abpPageAuthority('Admin.CtnCode'),
         },
         component: () =>
           import('#/views/system/basic-data/CtnCodeAdmin/list.vue'),
@@ -200,7 +219,9 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataCountryCode',
         meta: {
           icon: 'mdi:earth',
+          keepAlive: true,
           title: $t('system.basicData.countryCode.title'),
+          authority: abpPageAuthority('Admin.CountryCode'),
         },
         component: () =>
           import('#/views/system/basic-data/CountryCodeAdmin/list.vue'),
@@ -210,6 +231,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataGenerateNum',
         meta: {
           icon: 'mdi:format-list-numbered',
+          keepAlive: true,
           title: $t('system.basicData.generateNum.title'),
           authority: abpPageAuthority('Admin.GenerateNum'),
         },
@@ -221,6 +243,7 @@ const routes: RouteRecordRaw[] = [
         name: 'BasicDataSeServiceConfig',
         meta: {
           icon: 'mdi:ship-wheel',
+          keepAlive: true,
           title: $t('system.basicData.seServiceConfig.title'),
           authority: abpPageAuthority('Admin.ServiceConfig.SeServiceConfig'),
         },

@@ -46,6 +46,17 @@ function resolveLoadingLogoSrc(brandImgDir: string) {
   );
 }
 
+function resolveFaviconSrc(brandImgDir: string) {
+  const candidates = ['favicon.png', 'logo.png'];
+  for (const file of candidates) {
+    const filePath = join(brandImgDir, file);
+    if (existsSync(filePath)) {
+      return filePath;
+    }
+  }
+  return null;
+}
+
 function resolveApiTarget(mode: string) {
   if (resolveAppBrand(mode) === 'jht') {
     return 'http://43.138.14.122:82';
@@ -66,8 +77,8 @@ function createSyncLoadingLogoPlugin(mode: string) {
     name: 'sync-loading-logo',
     buildStart() {
       copyFileSync(loadingLogoSrc, loadingLogoDest);
-      const brandFavicon = join(brandImgDir, 'favicon.png');
-      if (existsSync(brandFavicon)) {
+      const brandFavicon = resolveFaviconSrc(brandImgDir);
+      if (brandFavicon) {
         copyFileSync(brandFavicon, join(appRoot, 'public/favicon.png'));
       }
     },

@@ -14,6 +14,7 @@ import {
   getStatementPagedList,
 } from '#/api/settlement-management/statement-admin';
 import { $t } from '#/locales';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -129,6 +130,8 @@ const handleDelete = () => {
 const handleRefresh = () => {
   gridApi.query();
 };
+
+useRefreshListOnFormReturn('StatementList', handleRefresh);
 </script>
 
 <template>

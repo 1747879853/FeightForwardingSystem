@@ -17,6 +17,7 @@ import {
 } from '#/api/settlement-management/payment-application-admin';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { $t } from '#/locales';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -151,13 +152,19 @@ function handleBatchDelete() {
           ids: rows.map((r) => r.id),
         });
         message.success('删除成功');
-        gridApi.query();
+        handleRefresh();
       } finally {
         actionLoading.value = false;
       }
     },
   });
 }
+
+function handleRefresh() {
+  gridApi.query();
+}
+
+useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
 </script>
 
 <template>

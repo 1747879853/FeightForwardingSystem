@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { $t } from '#/locales';
+import { abpPageAuthority } from '#/router/abp-authority';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -9,6 +10,7 @@ const routes: RouteRecordRaw[] = [
       order: 201,
       title: $t('seaImport.import.title'),
       hideChildrenInMenu: true,
+      authority: abpPageAuthority('Admin.SeaExport'),
     },
     name: 'SeaImport',
     path: '/sea-imports',
@@ -17,7 +19,9 @@ const routes: RouteRecordRaw[] = [
         path: '',
         name: 'SeaImportList',
         meta: {
+          keepAlive: true,
           title: $t('seaImport.import.title'),
+          authority: abpPageAuthority('Admin.SeaExport'),
         },
         component: () => import('#/views/sea-import-admin/list.vue'),
       },
@@ -28,6 +32,7 @@ const routes: RouteRecordRaw[] = [
           title: $t('seaImport.import.title'),
           hideInMenu: true,
           activePath: '/sea-imports',
+          authority: abpPageAuthority('Admin.SeaExport'),
         },
         component: () => import('#/views/sea-import-admin/form.vue'),
       },
@@ -38,6 +43,7 @@ const routes: RouteRecordRaw[] = [
           title: $t('seaImport.import.title'),
           hideInMenu: true,
           activePath: '/sea-imports',
+          authority: abpPageAuthority('Admin.SeaExport'),
         },
         component: () => import('#/views/sea-import-admin/editor.vue'),
       },

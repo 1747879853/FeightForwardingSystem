@@ -29,6 +29,7 @@ import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import { $t } from '#/locales';
 import { getEnumItems } from '#/utils/init-enum';
 import { loadSeServiceTypeOptions, resolveServiceTypeLabel } from '../data';
+import { getItemsByName } from '#/api/system/enum-admin';
 import {
   combineUserAttribute,
   getSeaExportOrderUserRoleOptions,
@@ -36,6 +37,7 @@ import {
 } from '#/views/system/user/data';
 
 type SelectOption = { label: string; value: number };
+type EnumItem = { enable: boolean; displayName?: string; value: number };
 type AttributeServiceSummaryRow = {
   attributeLabel: string;
   attributeValue: number;
@@ -79,8 +81,38 @@ const formState = ref<{
 const itemRows = ref<ItemRow[]>([]);
 const selectedPortItems = ref<PortSelectItem[]>([]);
 const serviceTypeOptions = ref<SelectOption[]>([]);
-const seaExportPropOptions = ref<SelectOption[]>([]);
+const seaExportShowPropOptions = ref<SelectOption[]>([]);
+const seaExportLockRequirePropOptions = ref<SelectOption[]>([]);
 let rowKeySeed = 0;
+const SEA_EXPORT_EXTRA_PROP_BASE = 1000;
+const SEA_EXPORT_PROP_ENUM_NAME = 'SeaExportPropEnum';
+const SEA_EXPORT_PROP_FALLBACK_ITEMS: EnumItem[] = [
+  { value: 1, displayName: 'CarrierId', enable: true },
+  { value: 2, displayName: 'POLId', enable: true },
+  { value: 3, displayName: 'PODId', enable: true },
+  { value: 4, displayName: 'Vessel', enable: true },
+  { value: 5, displayName: 'InnerVoyno', enable: true },
+  { value: 6, displayName: 'ClosingTime', enable: true },
+  { value: 7, displayName: 'CloseDocTime', enable: true },
+  { value: 8, displayName: 'CloseVgmTime', enable: true },
+  { value: 9, displayName: 'CloseManifestTime', enable: true },
+  { value: 10, displayName: 'BookingAgentId', enable: true },
+  { value: 11, displayName: 'ShipAgentId', enable: true },
+  { value: 12, displayName: 'YardId', enable: true },
+  { value: 13, displayName: 'CodeIssueTypeId', enable: true },
+  { value: 14, displayName: 'MblNum', enable: true },
+  { value: 15, displayName: 'BookingNum', enable: true },
+  { value: 16, displayName: 'ETD', enable: true },
+  { value: 17, displayName: 'ClientId', enable: true },
+  { value: 1001, displayName: 'CarrierName', enable: true },
+  { value: 1002, displayName: 'POLName', enable: true },
+  { value: 1003, displayName: 'PODName', enable: true },
+  { value: 1010, displayName: 'BookingAgentName', enable: true },
+  { value: 1011, displayName: 'ShipAgentName', enable: true },
+  { value: 1012, displayName: 'YardName', enable: true },
+  { value: 1013, displayName: 'CodeIssueTypeName', enable: true },
+  { value: 1017, displayName: 'ClientName', enable: true },
+];
 
 const userAttributeOptions = computed(() => getSeaExportOrderUserRoleOptions());
 
@@ -121,6 +153,16 @@ const normalizeValues = (values: (number | string)[]) => {
   ];
 };
 
+const toOptionValueSet = (options: SelectOption[]) =>
+  new Set(options.map((option) => Number(option.value)));
+
+const seaExportShowOptionValueSet = computed(() =>
+  toOptionValueSet(seaExportShowPropOptions.value),
+);
+const seaExportLockRequireOptionValueSet = computed(() =>
+  toOptionValueSet(seaExportLockRequirePropOptions.value),
+);
+
 const normalizeEnumNumber = (value: number | string | undefined | null) => {
   if (value === undefined || value === null || value === '') {
     return undefined;
@@ -141,7 +183,12 @@ const updatePropRefs = (
   field: 'seServiceShows' | 'seServiceLocks' | 'seServiceRequires',
   values: (number | string)[],
 ) => {
-  const normalized = normalizeValues(values);
+  const normalized = normalizeValues(values).filter((value) => {
+    if (field === 'seServiceShows') {
+      return seaExportShowOptionValueSet.value.has(value);
+    }
+    return seaExportLockRequireOptionValueSet.value.has(value);
+  });
   const existed = getPropMap(row[field]);
   row[field] = normalized.map((value) => ({
     id: existed.get(value)?.id,
@@ -285,9 +332,7 @@ const resetState = () => {
   selectedPortItems.value = [];
 };
 
-const buildSelectOptions = (
-  items: { enable: boolean; displayName?: string; value: number }[],
-) => {
+const buildSelectOptions = (items: EnumItem[]) => {
   return (items || [])
     .filter((item) => item.enable !== false)
     .map((item) => ({
@@ -295,6 +340,57 @@ const buildSelectOptions = (
       value: Number(item.value),
     }))
     .sort((a, b) => a.value - b.value);
+};
+
+const buildSeaExportPropOptions = (items: EnumItem[]) => {
+  const availableItems = (items || []).filter((item) => item.enable !== false);
+  const values = new Set(
+    availableItems
+      .map((item) => Number(item.value))
+      .filter((value) => !Number.isNaN(value)),
+  );
+
+  const showOptions = buildSelectOptions(
+    availableItems.filter((item) => {
+      const value = Number(item.value);
+      if (Number.isNaN(value)) {
+        return false;
+      }
+      if (value > SEA_EXPORT_EXTRA_PROP_BASE) {
+        return true;
+      }
+      return !values.has(value + SEA_EXPORT_EXTRA_PROP_BASE);
+    }),
+  );
+
+  const lockRequireOptions = buildSelectOptions(
+    availableItems.filter((item) => {
+      const value = Number(item.value);
+      return !Number.isNaN(value) && value <= SEA_EXPORT_EXTRA_PROP_BASE;
+    }),
+  );
+
+  return { showOptions, lockRequireOptions };
+};
+
+const mergeSeaExportPropItems = (...groups: EnumItem[][]): EnumItem[] => {
+  const map = new Map<number, EnumItem>();
+  for (const group of groups) {
+    for (const item of group || []) {
+      const value = Number(item.value);
+      if (Number.isNaN(value)) {
+        continue;
+      }
+      const previous = map.get(value);
+      map.set(value, {
+        value,
+        enable: item.enable !== false,
+        displayName:
+          item.displayName?.trim() || previous?.displayName || String(value),
+      });
+    }
+  }
+  return [...map.values()].sort((a, b) => a.value - b.value);
 };
 
 const getServiceTypeLabel = (serviceType?: number) =>
@@ -355,8 +451,18 @@ const loadServiceTypeOptions = async () => {
 };
 
 const loadSeaExportPropOptions = async () => {
-  const items = await getEnumItems('SeaExportPropEnum');
-  seaExportPropOptions.value = buildSelectOptions(items || []);
+  const [cachedItems, latestItems] = await Promise.all([
+    getEnumItems(SEA_EXPORT_PROP_ENUM_NAME),
+    getItemsByName(SEA_EXPORT_PROP_ENUM_NAME).catch(() => []),
+  ]);
+  const items = mergeSeaExportPropItems(
+    SEA_EXPORT_PROP_FALLBACK_ITEMS,
+    (cachedItems || []) as EnumItem[],
+    (latestItems || []) as EnumItem[],
+  );
+  const { showOptions, lockRequireOptions } = buildSeaExportPropOptions(items);
+  seaExportShowPropOptions.value = showOptions;
+  seaExportLockRequirePropOptions.value = lockRequireOptions;
 };
 
 const [Modal, modalApi] = useVbenModal({
@@ -458,14 +564,22 @@ const [Modal, modalApi] = useVbenModal({
             id: sub.id,
             seaExportPropEnum: Number(sub.seaExportPropEnum),
           })),
-          seServiceLocks: (item.seServiceLocks || []).map((sub) => ({
-            id: sub.id,
-            seaExportPropEnum: Number(sub.seaExportPropEnum),
-          })),
-          seServiceRequires: (item.seServiceRequires || []).map((sub) => ({
-            id: sub.id,
-            seaExportPropEnum: Number(sub.seaExportPropEnum),
-          })),
+          seServiceLocks: (item.seServiceLocks || [])
+            .map((sub) => ({
+              id: sub.id,
+              seaExportPropEnum: Number(sub.seaExportPropEnum),
+            }))
+            .filter(
+              (sub) => sub.seaExportPropEnum <= SEA_EXPORT_EXTRA_PROP_BASE,
+            ),
+          seServiceRequires: (item.seServiceRequires || [])
+            .map((sub) => ({
+              id: sub.id,
+              seaExportPropEnum: Number(sub.seaExportPropEnum),
+            }))
+            .filter(
+              (sub) => sub.seaExportPropEnum <= SEA_EXPORT_EXTRA_PROP_BASE,
+            ),
         }));
       if (itemRows.value.length === 0) {
         addItem();
@@ -659,7 +773,7 @@ const [Modal, modalApi] = useVbenModal({
                   mode="tags"
                   :value="getPropValues(row.seServiceShows)"
                   :allow-clear="true"
-                  :options="seaExportPropOptions"
+                  :options="seaExportShowPropOptions"
                   :placeholder="$t('ui.placeholder.select')"
                   @change="
                     (values) =>
@@ -681,7 +795,7 @@ const [Modal, modalApi] = useVbenModal({
                   mode="tags"
                   :value="getPropValues(row.seServiceLocks)"
                   :allow-clear="true"
-                  :options="seaExportPropOptions"
+                  :options="seaExportLockRequirePropOptions"
                   :placeholder="$t('ui.placeholder.select')"
                   @change="
                     (values) =>
@@ -705,7 +819,7 @@ const [Modal, modalApi] = useVbenModal({
                   mode="tags"
                   :value="getPropValues(row.seServiceRequires)"
                   :allow-clear="true"
-                  :options="seaExportPropOptions"
+                  :options="seaExportLockRequirePropOptions"
                   :placeholder="$t('ui.placeholder.select')"
                   @change="
                     (values) =>

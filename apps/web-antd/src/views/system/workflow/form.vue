@@ -11,6 +11,7 @@ import {
   TaskType,
 } from '#/api/system/workflow-admin';
 import { $t } from '#/locales';
+import { returnToListWithRefresh } from '#/utils/list-refresh-flag';
 
 import {
   flatToTree,
@@ -164,7 +165,9 @@ async function save() {
     });
     await editWorkFlow(editDto);
     message.success($t('common.save'));
-    router.push({ name: 'SystemWorkflow' });
+    returnToListWithRefresh('SystemWorkflow', () => {
+      router.push({ name: 'SystemWorkflow' });
+    });
   } catch {
     // request interceptor shows error
   } finally {

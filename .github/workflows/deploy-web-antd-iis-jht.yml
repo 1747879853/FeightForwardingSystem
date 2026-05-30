@@ -1,0 +1,222 @@
+# 津海通（jht）生产前端：pnpm build:antd:jht → MSDeploy 发布 IIS
+name: 生产环境前端自动发布 - 津海通 (jht)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: web-antd-iis-deploy-jht-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-2025-vs2026
+    if: github.actor != 'dependabot[bot]' && (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]'))
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Print workflow context
+        shell: pwsh
+        run: |
+          Write-Host "=== Workflow Context (jht) ==="
+          Write-Host "Run ID: $env:GITHUB_RUN_ID"
+          Write-Host "Run Number: $env:GITHUB_RUN_NUMBER"
+          Write-Host "Run Attempt: $env:GITHUB_RUN_ATTEMPT"
+          Write-Host "Repository: $env:GITHUB_REPOSITORY"
+          Write-Host "Ref: $env:GITHUB_REF"
+          Write-Host "SHA: $env:GITHUB_SHA"
+          Write-Host "Actor: $env:GITHUB_ACTOR"
+          Write-Host "Runner OS: $env:RUNNER_OS"
+          Write-Host "Runner Name: $env:RUNNER_NAME"
+
+      - name: Setup Node and pnpm
+        uses: ./.github/actions/setup-node
+
+      - name: Print toolchain versions
+        shell: pwsh
+        run: |
+          Write-Host "=== Toolchain ==="
+          node --version
+          pnpm --version
+          git --version
+
+      - name: Print web-antd brand env (jht)
+        shell: pwsh
+        run: |
+          Write-Host "=== web-antd build brand: jht (津海通) ==="
+          Get-Content ./apps/web-antd/.env.jht | Select-String 'VITE_APP_'
+
+      - name: Build web-antd (jht)
+        run: pnpm run build:antd:jht
+
+      - name: Verify build artifacts and hash
+        shell: pwsh
+        run: |
+          Write-Host "=== Build Artifact Check (jht) ==="
+          if (-not (Test-Path "./apps/web-antd/dist")) {
+            Write-Error "dist directory not found"
+            exit 1
+          }
+          $files = Get-ChildItem "./apps/web-antd/dist" -Recurse -File
+          Write-Host ("dist file count: {0}" -f $files.Count)
+          $indexFile = "./apps/web-antd/dist/index.html"
+          if (Test-Path $indexFile) {
+            $hash = (Get-FileHash $indexFile -Algorithm SHA256).Hash
+            Write-Host ("dist/index.html sha256: {0}" -f $hash)
+          } else {
+            Write-Warning "dist/index.html not found"
+          }
+          Get-ChildItem "./apps/web-antd/dist" | Select-Object -First 20 | Format-Table -AutoSize
+
+      - name: Pre-deploy connectivity check
+        shell: pwsh
+        env:
+          IIS_SERVER_IP: ${{ secrets.IIS_JHT_SERVER_IP }}
+          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_JHT_MSDEPLOY_ENDPOINT }}
+          IIS_SITE_NAME: ${{ secrets.IIS_JHT_SITE_NAME }}
+        run: |
+          Write-Host "=== Pre-deploy Connectivity Check (jht) ==="
+          Write-Host ("Target site path: {0}" -f $env:IIS_SITE_NAME)
+          $endpoint = $env:IIS_MSDEPLOY_ENDPOINT
+          if ([string]::IsNullOrWhiteSpace($endpoint)) {
+            $endpoint = "https://$($env:IIS_SERVER_IP):8172/msdeploy.axd?site=$($env:IIS_SITE_NAME)"
+          }
+          try {
+            $endpointUri = [Uri]$endpoint
+          } catch {
+            Write-Error ("IIS_JHT_MSDEPLOY_ENDPOINT is invalid: {0}" -f $endpoint)
+            exit 1
+          }
+          $targetHost = $endpointUri.Host
+          $targetPort = if ($endpointUri.Port -gt 0) { $endpointUri.Port } else { 8172 }
+          Write-Host ("msdeploy endpoint: {0}" -f $endpoint)
+          try {
+            $resolved = [System.Net.Dns]::GetHostAddresses($targetHost)
+            Write-Host ("DNS resolved host '{0}' to {1}" -f $targetHost, ($resolved.IPAddressToString -join ', '))
+          } catch {
+            Write-Error ("Host '{0}' cannot be resolved. Check IIS_JHT_MSDEPLOY_ENDPOINT / IIS_JHT_SERVER_IP secret." -f $targetHost)
+            exit 1
+          }
+          $tcp = Test-NetConnection -ComputerName $targetHost -Port $targetPort -WarningAction SilentlyContinue
+          Write-Host ("TCP {0} reachable: {1}" -f $targetPort, $tcp.TcpTestSucceeded)
+          if (-not $tcp.TcpTestSucceeded) {
+            Write-Warning "Port 8172 is not reachable from runner. Deploy may fail."
+          }
+          try {
+            $resp = Invoke-WebRequest -Uri $endpoint -Method Head -TimeoutSec 20 -UseBasicParsing
+            Write-Host ("msdeploy endpoint status: {0}" -f $resp.StatusCode)
+          } catch {
+            Write-Warning ("HEAD request failed: {0}" -f $_.Exception.Message)
+          }
+
+      - name: Deploy preview (whatif)
+        shell: pwsh
+        env:
+          IIS_SERVER_IP: ${{ secrets.IIS_JHT_SERVER_IP }}
+          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_JHT_MSDEPLOY_ENDPOINT }}
+          IIS_SITE_NAME: ${{ secrets.IIS_JHT_SITE_NAME }}
+          IIS_USER: ${{ secrets.IIS_JHT_USER }}
+          IIS_PWD: ${{ secrets.IIS_JHT_PWD }}
+        run: |
+          $msdeploy = "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          if (-not (Test-Path $msdeploy)) {
+            Write-Error "msdeploy.exe not found at: $msdeploy"
+            exit 1
+          }
+          $sourcePath = Join-Path $env:GITHUB_WORKSPACE 'apps/web-antd/dist'
+          $endpoint = $env:IIS_MSDEPLOY_ENDPOINT
+          if ([string]::IsNullOrWhiteSpace($endpoint)) {
+            $endpoint = "https://$($env:IIS_SERVER_IP):8172/msdeploy.axd?site=$($env:IIS_SITE_NAME)"
+          }
+          try {
+            $endpointUri = [Uri]$endpoint
+          } catch {
+            Write-Error ("Invalid msdeploy endpoint: {0}" -f $endpoint)
+            exit 1
+          }
+          $dest = "contentPath=$($env:IIS_SITE_NAME),ComputerName=$endpoint,UserName=$($env:IIS_USER),Password=$($env:IIS_PWD),AuthType=Basic,IncludeAcls=False"
+          $arguments = @(
+            '-verb:sync'
+            "-source:contentPath=$sourcePath"
+            "-dest:$dest"
+            '-enableRule:AppOffline'
+            '-disableRule:BackupRule'
+            '-retryAttempts:20'
+            "-skip:objectName=filePath,absolutePath='.*google.*\.html'"
+            "-skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml'"
+            "-skip:objectName=filePath,absolutePath='logs\\.*'"
+            "-skip:objectName=dirPath,absolutePath='logs'"
+            "-skip:objectName=filePath,absolutePath='data\\.*'"
+            "-skip:objectName=dirPath,absolutePath='data'"
+            '-allowUntrusted'
+            '-whatif'
+            '-verbose'
+          )
+          Write-Host "=== Deploy Preview (WhatIf, jht) ==="
+          Write-Host ("Deploy target host: {0}" -f $endpointUri.Host)
+          & $msdeploy @arguments
+
+      - name: Deploy to IIS via MSDeploy
+        shell: pwsh
+        env:
+          IIS_SERVER_IP: ${{ secrets.IIS_JHT_SERVER_IP }}
+          IIS_MSDEPLOY_ENDPOINT: ${{ secrets.IIS_JHT_MSDEPLOY_ENDPOINT }}
+          IIS_SITE_NAME: ${{ secrets.IIS_JHT_SITE_NAME }}
+          IIS_USER: ${{ secrets.IIS_JHT_USER }}
+          IIS_PWD: ${{ secrets.IIS_JHT_PWD }}
+        run: |
+          $msdeploy = "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+          if (-not (Test-Path $msdeploy)) {
+            Write-Error "msdeploy.exe not found at: $msdeploy"
+            exit 1
+          }
+          $sourcePath = Join-Path $env:GITHUB_WORKSPACE 'apps/web-antd/dist'
+          $endpoint = $env:IIS_MSDEPLOY_ENDPOINT
+          if ([string]::IsNullOrWhiteSpace($endpoint)) {
+            $endpoint = "https://$($env:IIS_SERVER_IP):8172/msdeploy.axd?site=$($env:IIS_SITE_NAME)"
+          }
+          try {
+            $endpointUri = [Uri]$endpoint
+          } catch {
+            Write-Error ("Invalid msdeploy endpoint: {0}" -f $endpoint)
+            exit 1
+          }
+          $dest = "contentPath=$($env:IIS_SITE_NAME),ComputerName=$endpoint,UserName=$($env:IIS_USER),Password=$($env:IIS_PWD),AuthType=Basic,IncludeAcls=False"
+          $arguments = @(
+            '-verb:sync'
+            "-source:contentPath=$sourcePath"
+            "-dest:$dest"
+            '-enableRule:AppOffline'
+            '-disableRule:BackupRule'
+            '-retryAttempts:20'
+            "-skip:objectName=filePath,absolutePath='.*google.*\.html'"
+            "-skip:objectName=filePath,absolutePath='.*BingSiteAuth\.xml'"
+            "-skip:objectName=filePath,absolutePath='logs\\.*'"
+            "-skip:objectName=dirPath,absolutePath='logs'"
+            "-skip:objectName=filePath,absolutePath='data\\.*'"
+            "-skip:objectName=dirPath,absolutePath='data'"
+            '-allowUntrusted'
+            '-verbose'
+          )
+          Write-Host "=== Deploy Execute (jht) ==="
+          Write-Host ("Deploy target host: {0}" -f $endpointUri.Host)
+          & $msdeploy @arguments
+
+      - name: Post-deploy summary
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          Write-Host "=== Post Deploy Summary (jht) ==="
+          Write-Host ("Job status: {0}" -f "${{ job.status }}")
+          Write-Host "Brand: jht (津海通). Secrets prefix: IIS_JHT_*"
+          Write-Host "If deployment succeeds but server files look unchanged:"
+          Write-Host "1) Confirm IIS_JHT_SITE_NAME points to correct site/app."
+          Write-Host "2) Confirm IIS site physical path matches the jht deployment directory."
+          Write-Host "3) Compare dist/index.html hash from this run with server file hash."

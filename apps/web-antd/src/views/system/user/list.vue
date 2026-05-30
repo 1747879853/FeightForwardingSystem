@@ -111,6 +111,7 @@ async function onStatusChange(
       isActive: newStatus,
     });
     message.success($t('ui.actionMessage.operationSuccess'));
+    onRefresh();
     return true;
   } catch {
     return false;
@@ -303,6 +304,7 @@ async function onResetPermission(row: SystemUserAdminApi.SystemUser) {
         content: $t('system.user.resetPermissionSuccess'),
         key: 'action_process_msg',
       });
+      onRefresh();
     } catch {
       hideLoading();
     }
