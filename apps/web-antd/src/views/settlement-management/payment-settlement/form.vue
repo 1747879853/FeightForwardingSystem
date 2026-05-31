@@ -1296,8 +1296,6 @@ onMounted(() => {
         </template>
         <template #extra>
           <Space>
-            <Button size="small"> 全选 </Button>
-            <Button size="small" danger> − 移除选中 </Button>
             <Button type="primary" size="small" @click="handleAddApplication">
               + 添加申请
             </Button>

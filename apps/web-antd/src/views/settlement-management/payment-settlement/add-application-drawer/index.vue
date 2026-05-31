@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, nextTick, onUnmounted } from 'vue';
 import dayjs from 'dayjs';
 
 import {
@@ -64,6 +64,9 @@ const pageSize = ref(20);
 // 结算币别选择（独立于搜索表单）
 const selectedCurrencyId = ref<number | undefined>(undefined);
 
+// MutationObserver 实例
+let tableObserver: MutationObserver | null = null;
+
 // 查询表单
 const [SearchForm, searchFormApi] = useVbenForm({
   commonConfig: {
@@ -115,11 +118,19 @@ async function openDrawer() {
   }
 
   await fetchData();
+
+  // 初始化 MutationObserver
+  await nextTick();
+  setTimeout(() => {
+    initTableObserver();
+  }, 200);
 }
 
 /** 关闭抽屉 */
 function closeDrawer() {
   visible.value = false;
+  // 销毁 Observer
+  destroyTableObserver();
 }
 
 /** 获取数据 */
@@ -172,6 +183,13 @@ async function fetchData() {
     });
 
     total.value = result.totalCount || 0;
+
+    // 数据加载完成后，启用列宽拖拽
+    await nextTick();
+    const tables = document.querySelectorAll('.ant-table-wrapper');
+    tables.forEach((table) => {
+      enableColumnResize(table as HTMLElement);
+    });
   } catch (error: any) {
     message.error(error.message || '获取数据失败');
   } finally {
@@ -552,6 +570,181 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
       align: 'right',
     },
   ];
+
+/** 为表格添加列宽拖拽功能 */
+function enableColumnResize(tableElement: HTMLElement | null) {
+  if (!tableElement) return;
+
+  // 查找该表格容器内的所有表头（包括嵌套的表格）
+  const headers = tableElement.querySelectorAll('th');
+
+  headers.forEach((header) => {
+    // 跳过选择框列和展开图标列
+    if (
+      header.classList.contains('ant-table-selection-column') ||
+      header.classList.contains('ant-table-expand-icon-th')
+    ) {
+      return;
+    }
+
+    // 如果已经有拖拽手柄，跳过
+    if (header.querySelector('.column-resizer')) {
+      return;
+    }
+
+    // 创建拖拽手柄
+    const resizer = document.createElement('div');
+    resizer.className = 'column-resizer';
+    resizer.style.cssText = `
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      cursor: col-resize;
+      background-color: transparent;
+      transition: background-color 0.2s;
+      z-index: 10;
+    `;
+
+    resizer.addEventListener('mouseenter', () => {
+      resizer.style.backgroundColor = '#d9d9d9';
+    });
+
+    resizer.addEventListener('mouseleave', () => {
+      resizer.style.backgroundColor = 'transparent';
+    });
+
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = header.offsetWidth;
+      resizer.style.backgroundColor = '#1890ff';
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      e.preventDefault();
+    });
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const diff = e.clientX - startX;
+      const newWidth = Math.max(80, startWidth + diff);
+      header.style.width = `${newWidth}px`;
+      header.style.minWidth = `${newWidth}px`;
+      header.style.maxWidth = `${newWidth}px`;
+    };
+
+    const handleMouseUp = () => {
+      isResizing = false;
+      resizer.style.backgroundColor = 'transparent';
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    header.style.position = 'relative';
+    header.appendChild(resizer);
+  });
+}
+
+/** 为所有可见的表格启用列宽拖拽 */
+function enableResizeForAllTables() {
+  const tables = document.querySelectorAll('.ant-table-wrapper');
+  tables.forEach((table) => {
+    enableColumnResize(table as HTMLElement);
+  });
+}
+
+/** 初始化 MutationObserver 监听表格变化 */
+function initTableObserver() {
+  if (tableObserver) return;
+
+  tableObserver = new MutationObserver((mutations) => {
+    let hasNewTable = false;
+
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node instanceof HTMLElement) {
+          // 检查是否新增了表格元素
+          if (
+            node.classList?.contains('ant-table-wrapper') ||
+            node.querySelector?.('.ant-table-wrapper')
+          ) {
+            hasNewTable = true;
+          }
+        }
+      });
+    });
+
+    // 如果有新表格，启用拖拽
+    if (hasNewTable) {
+      setTimeout(() => {
+        enableResizeForAllTables();
+      }, 50);
+    }
+  });
+
+  // 开始观察 drawer 内容区域的变化
+  const drawerContent = document.querySelector('.ant-drawer-body');
+  if (drawerContent) {
+    tableObserver.observe(drawerContent, {
+      childList: true,
+      subtree: true,
+    });
+  }
+}
+
+/** 销毁 MutationObserver */
+function destroyTableObserver() {
+  if (tableObserver) {
+    tableObserver.disconnect();
+    tableObserver = null;
+  }
+}
+
+/** 行展开事件处理 - 为展开的表格启用列宽拖拽 */
+async function handleExpand(expanded: boolean, record: any) {
+  if (expanded) {
+    await nextTick();
+
+    // 多次尝试确保 DOM 渲染完成
+    setTimeout(() => {
+      enableResizeForAllTables();
+    }, 50);
+
+    setTimeout(() => {
+      enableResizeForAllTables();
+    }, 150);
+
+    setTimeout(() => {
+      enableResizeForAllTables();
+    }, 300);
+  }
+}
+
+/** 第二层表格展开事件处理 - 为第三层表格启用列宽拖拽 */
+async function handleSecondLevelExpand(expanded: boolean, record: any) {
+  if (expanded) {
+    await nextTick();
+
+    // 多次尝试确保 DOM 渲染完成
+    setTimeout(() => {
+      enableResizeForAllTables();
+    }, 50);
+
+    setTimeout(() => {
+      enableResizeForAllTables();
+    }, 150);
+
+    setTimeout(() => {
+      enableResizeForAllTables();
+    }, 300);
+  }
+}
 </script>
 
 <template>
@@ -621,6 +814,7 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
       :expandable="{
         defaultExpandAllRows: false,
         expandIconColumnIndex: 0,
+        onExpand: handleExpand,
       }"
     >
       <!-- 第一层：付费申请 -->
@@ -774,6 +968,7 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
           :expandable="{
             defaultExpandAllRows: false,
             expandIconColumnIndex: 0,
+            onExpand: handleSecondLevelExpand,
           }"
         >
           <template #bodyCell="{ column, record: currencyRecord }">
@@ -865,3 +1060,27 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
     </template>
   </Drawer>
 </template>
+
+<style scoped>
+/* 列宽拖拽手柄样式 */
+:deep(.column-resizer) {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  width: 5px;
+  cursor: col-resize;
+  background-color: transparent;
+  transition: background-color 0.2s;
+}
+
+:deep(.column-resizer:hover) {
+  background-color: #d9d9d9;
+}
+
+:deep(th) {
+  position: relative;
+  user-select: none;
+}
+</style>
