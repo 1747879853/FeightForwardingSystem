@@ -436,8 +436,6 @@ async function loadEditData() {
     settlementName.value = detail.settlementName;
     currencyId.value = detail.currencyId;
     currencyCode.value = detail.currencyCode || '';
-    orgBankAccountId.value = detail.orgBankAccountId;
-    clientInvoiceBankId.value = detail.clientInvoiceBankId;
     transactionFee.value = detail.transactionFee;
     remark.value = detail.remark || '';
 
@@ -560,9 +558,13 @@ async function loadEditData() {
       fileName: a.attachmentName || '',
     }));
 
-    // 加载银行选项
+    // 先加载银行选项，再赋值选中值（确保选项存在后才能正确回显）
     await loadOrgBankOptions();
     await loadClientBankOptions();
+
+    // 在银行选项加载完成后，再设置选中值
+    orgBankAccountId.value = detail.orgBankAccountId;
+    clientInvoiceBankId.value = detail.clientInvoiceBankId;
   } finally {
     pageLoading.value = false;
   }
@@ -571,6 +573,7 @@ async function loadEditData() {
 /** 加载我司银行选项（根据申请明细中的费用所属公司） */
 async function loadOrgBankOptions() {
   if (settlementItems.value.length === 0) {
+    console.warn('settlementItems为空，无法加载我司银行选项');
     orgBankOptions.value = [];
     return;
   }
@@ -585,10 +588,15 @@ async function loadOrgBankOptions() {
         item.application.companys.forEach((company) => {
           companyIds.add(company.id);
         });
+      } else {
+        console.warn(`申请 ${item.application.applicationNo} 没有公司信息`);
       }
     });
 
+    console.log('收集到的公司IDs:', Array.from(companyIds));
+
     if (companyIds.size === 0) {
+      console.warn('未找到任何公司信息，无法加载我司银行选项');
       orgBankOptions.value = [];
       return;
     }
