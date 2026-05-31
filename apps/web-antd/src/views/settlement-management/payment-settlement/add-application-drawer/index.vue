@@ -316,10 +316,25 @@ function getBizTypeName(bizType: number): string {
   return bizTypeMap[bizType] || '未知';
 }
 
+// 格式化收付类型
+function getPaySideName(paySide: number): string {
+  const paySideMap: Record<number, string> = {
+    1: '应收',
+    2: '应付',
+  };
+  return paySideMap[paySide] || '-';
+}
+
 // 格式化金额
 function formatAmount(value: number | undefined | null): string {
   if (value === undefined || value === null) return '-';
   return value.toFixed(2);
+}
+
+// 格式化时间
+function formatDateTime(dateTime: string | undefined | null): string {
+  if (!dateTime) return '-';
+  return dayjs(dateTime).format('YYYY-MM-DD HH:mm:ss');
 }
 
 // 格式化未结算费用范围
@@ -451,15 +466,21 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
       key: 'commissionNum',
       width: 150,
     },
-    {
-      title: '业务类型',
-      key: 'bizType',
-      width: 100,
-    },
+    // {
+    //   title: '业务类型',
+    //   key: 'bizType',
+    //   width: 100,
+    // },
     {
       title: '主提单号',
       key: 'mblNum',
       width: 150,
+    },
+    {
+      title: '收付类型',
+      dataIndex: 'paySide',
+      key: 'paySide',
+      width: 100,
     },
     {
       title: '费用名称',
@@ -472,6 +493,13 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
       dataIndex: 'currencyCode',
       key: 'currencyCode',
       width: 80,
+    },
+    {
+      title: '原始金额',
+      dataIndex: 'amount',
+      key: 'amount',
+      width: 120,
+      align: 'right',
     },
     {
       title: '结算对象',
@@ -610,6 +638,34 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
           </Tag>
         </template>
 
+        <template v-else-if="column.key === 'submitTime'">
+          {{
+            formatDateTime(
+              (
+                record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+              ).submitTime,
+            )
+          }}
+        </template>
+
+        <template v-else-if="column.key === 'endTime'">
+          {{
+            formatDateTime(
+              (
+                record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+              ).endTime,
+            )
+          }}
+        </template>
+
+        <template v-else-if="column.key === 'currencyCode'">
+          {{
+            (
+              record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+            ).currencyCode || '原币'
+          }}
+        </template>
+
         <template v-else-if="column.key === 'unsettledRange'">
           {{
             formatUnsettledRange(
@@ -745,6 +801,14 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
 
                 <template v-else-if="column.key === 'mblNum'">
                   {{ feeItem.transportOrder?.mblNum || '-' }}
+                </template>
+
+                <template v-else-if="column.key === 'paySide'">
+                  {{ getPaySideName(feeItem.paySide) }}
+                </template>
+
+                <template v-else-if="column.key === 'amount'">
+                  {{ formatAmount(feeItem.amount) }}
                 </template>
               </template>
             </Table>
