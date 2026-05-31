@@ -31,6 +31,8 @@ interface Props {
   currencyId?: number;
   /** 是否已有费用（用于控制筛选条件是否可修改） */
   hasExistingFees?: boolean;
+  /** 已存在的申请ID列表（用于禁用这些申请的输入框） */
+  existingApplicationIds?: string[];
 }
 
 const props = defineProps<Props>();
@@ -565,7 +567,30 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
     >
       <!-- 第一层：付费申请 -->
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'status'">
+        <template v-if="column.key === 'applicationNo'">
+          <div style="display: flex; gap: 4px; align-items: center">
+            <a>{{
+              (
+                record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+              ).applicationNo
+            }}</a>
+            <Tag
+              v-if="
+                props.existingApplicationIds?.includes(
+                  (
+                    record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+                  ).id,
+                )
+              "
+              color="orange"
+              size="small"
+            >
+              已有费用
+            </Tag>
+          </div>
+        </template>
+
+        <template v-else-if="column.key === 'status'">
           <Tag
             :color="
               getStatusColor(
@@ -630,7 +655,13 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
               ).totalSettleablePriceUpperLimit === 0 &&
                 (
                   record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
-                ).totalSettleablePriceLowerLimit === 0)
+                ).totalSettleablePriceLowerLimit === 0) ||
+              (props.existingApplicationIds?.includes(
+                (
+                  record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+                ).id,
+              ) ??
+                false)
             "
           />
           <span v-else style="color: #999">原币申请</span>
@@ -681,7 +712,8 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
                 :disabled="
                   !selectedRowKeys.includes(record.id) ||
                   (currencyRecord.settleableUpperLimit === 0 &&
-                    currencyRecord.settleableLowerLimit === 0)
+                    currencyRecord.settleableLowerLimit === 0) ||
+                  (props.existingApplicationIds?.includes(record.id) ?? false)
                 "
               />
               <span v-else style="color: #999">-</span>

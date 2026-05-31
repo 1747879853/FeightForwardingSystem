@@ -115,6 +115,11 @@ const settlementItems = ref<SettlementItem[]>([]);
 // 计算是否已有费用
 const hasExistingFees = computed(() => settlementItems.value.length > 0);
 
+// 计算已存在的申请ID列表（用于在抽屉中禁用这些申请的输入）
+const existingApplicationIds = computed(() => {
+  return settlementItems.value.map((item) => item.application.id);
+});
+
 // 抽屉引用
 const addApplicationDrawerRef = ref<InstanceType<
   typeof AddApplicationDrawer
@@ -1408,6 +1413,7 @@ onMounted(() => {
       :settlement-id="settlementId"
       :currency-id="currencyId"
       :has-existing-fees="hasExistingFees"
+      :existing-application-ids="existingApplicationIds"
       @confirm="handleConfirmApplications"
     />
   </Page>
