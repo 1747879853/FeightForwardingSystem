@@ -44,6 +44,8 @@ interface Props {
   disabled?: boolean;
   /** FormData 文件字段名 */
   fieldName?: string;
+  /** 友好文件名（仅供 UI 显示使用） */
+  friendlyFileName?: string;
   /** 最大文件数量 */
   maxCount?: number;
   /** 最大文件大小（MB） */
@@ -56,6 +58,7 @@ const props = withDefaults(defineProps<Props>(), {
   allowedTypes: () => [],
   disabled: false,
   fieldName: 'file',
+  friendlyFileName: '',
   maxCount: Number.POSITIVE_INFINITY,
   maxSizeMB: 20,
   modelValue: undefined,
@@ -85,13 +88,15 @@ const isUploading = computed(() => uploadingUids.value.size > 0);
 const isMaxCount = computed(() => innerValue.value.length >= props.maxCount);
 
 /** 用于 Upload 组件展示的 fileList */
-const fileList = computed<UploadProps['fileList']>(() =>
-  innerValue.value.map((attachment) => ({
-    uid: String(attachment.attachmentId),
-    name: attachment.fileName,
-    status: 'done' as const,
-    url: attachment.url,
-  })),
+const fileList = computed<UploadProps['fileList']>(
+  () =>
+    console.log('innerValue', innerValue.value) ||
+    innerValue.value.map((attachment) => ({
+      uid: String(attachment.attachmentId),
+      name: attachment.fileName || attachment.friendlyFileName,
+      status: 'done' as const,
+      url: attachment.url,
+    })),
 );
 
 /** 初始化/同步 modelValue */

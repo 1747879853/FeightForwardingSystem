@@ -21,7 +21,6 @@ import {
   Space,
   Table,
   Tag,
-  Upload,
 } from 'ant-design-vue';
 
 import {
@@ -30,6 +29,7 @@ import {
   CurrencySelect,
   ClientBankAccountSelect,
 } from '#/adapter/component';
+import FileUploadInput from '#/adapter/component/file-upload/file-upload-input.vue';
 import {
   addPaymentSettlement,
   editPaymentSettlement,
@@ -251,7 +251,12 @@ async function handleAddToExistingSettlement(
             if (result.items && result.items.length > 0) {
               const rateData = result.items[0];
               // 使用 calculateValue（计算汇率）
-              const rate = rateData?.calculateValue ?? 1;
+              let rate = rateData?.calculateValue ?? 1;
+
+              // 如果是同种币别，强制汇率为1
+              if (originalCurrencyId === selectedCurrencyId) {
+                rate = 1;
+              }
 
               rateList.value.push({
                 originalCurrencyId,
@@ -260,9 +265,16 @@ async function handleAddToExistingSettlement(
               });
             } else {
               // 如果没有找到汇率，使用默认值1
+              let rate = 1;
+
+              // 如果是同种币别，强制汇率为1
+              if (originalCurrencyId === selectedCurrencyId) {
+                rate = 1;
+              }
+
               rateList.value.push({
                 originalCurrencyId,
-                rate: 1,
+                rate,
                 currencyCode,
               });
               console.warn(
@@ -271,7 +283,6 @@ async function handleAddToExistingSettlement(
             }
           } catch (error) {
             console.error(`获取原币 ${originalCurrencyId} 的汇率失败:`, error);
-            // 失败时使用默认值1
 
             // 尝试获取原币代码
             let currencyCode = '';
@@ -286,9 +297,15 @@ async function handleAddToExistingSettlement(
               // 忽略错误
             }
 
+            // 失败时使用默认值1，如果是同种币别，强制汇率为1
+            let rate = 1;
+            if (originalCurrencyId === selectedCurrencyId) {
+              rate = 1;
+            }
+
             rateList.value.push({
               originalCurrencyId,
-              rate: 1,
+              rate,
               currencyCode,
             });
           }
@@ -477,9 +494,16 @@ async function loadEditData() {
         } catch (error) {
           console.error(`获取原币 ${r.originalCurrencyId} 代码失败:`, error);
         }
+
+        // 如果是同种币别，强制汇率为1
+        let rate = r.rate;
+        if (r.originalCurrencyId === detail.currencyId) {
+          rate = 1;
+        }
+
         return {
           originalCurrencyId: r.originalCurrencyId,
-          rate: r.rate,
+          rate,
           currencyCode,
         };
       }),
@@ -582,7 +606,7 @@ async function loadEditData() {
     attachments.value = (detail.attachments ?? []).map((a) => ({
       attachmentId: a.attachmentId,
       url: a.attachmentPath || '',
-      fileName: a.attachmentName || '',
+      fileName: a.friendlyFileName || '',
     }));
 
     // 先加载银行选项，再赋值选中值（确保选项存在后才能正确回显）
@@ -1235,6 +1259,7 @@ onMounted(() => {
                     :precision="6"
                     :step="0.000001"
                     placeholder="请输入汇率"
+                    :disabled="rate.originalCurrencyId === currencyId"
                     style="flex: 1"
                   />
                 </div>
@@ -1245,20 +1270,11 @@ onMounted(() => {
 
         <!-- 右侧：附件 -->
         <Card title="附件" :bordered="true" size="small">
-          <Upload
-            :file-list="attachments as any"
-            :before-upload="() => false"
+          <FileUploadInput
+            v-model="attachments"
+            module-type-id="160011"
             :max-count="10"
-            list-type="picture-card"
-          >
-            <div>
-              <div style="font-size: 24px">↑</div>
-              <div style="margin-top: 8px; font-size: 12px; color: #999">
-                点击或拖拽上传<br />
-                支持 PDF、图片等格式
-              </div>
-            </div>
-          </Upload>
+          />
         </Card>
       </div>
 

@@ -480,6 +480,7 @@ export namespace PaymentApplicationAdminApi {
     displayOrder?: number;
     itemId?: string;
     url?: string;
+    friendlyFileName?: string;
     id?: number;
   }
 

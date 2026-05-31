@@ -6,6 +6,8 @@ export interface Attachment {
   attachmentId: number | string;
   /** 文件名 */
   fileName: string;
+  /** 友好文件名 */
+  friendlyFileName?: string; // 可选的友好文件名，供 UI 显示使用
   /** 文件路径 */
   filePath?: string;
   /** 文件访问 URL */
@@ -18,6 +20,8 @@ export interface UploadResultItem {
   attachmentId: number;
   /** 文件名 */
   fileName: string;
+  /** 友好文件名 */
+  friendlyFileName?: string;
   /** 文件路径 */
   filePath: string;
   /** 文件访问 URL */
@@ -54,6 +58,7 @@ export function mapResultToAttachment(item: UploadResultItem): Attachment {
   return {
     attachmentId: item.attachmentId,
     fileName: item.fileName,
+    friendlyFileName: item.friendlyFileName,
     filePath: item.filePath,
     url: buildAttachmentUrl(item.fileUrl || item.filePath),
   };

@@ -58,6 +58,7 @@ export namespace PaymentSettlementAdminApi {
 
   /** 附件项DTO */
   export interface AttachmentItemDto extends AttachmentItemForItemInputDto {
+    friendlyFileName: string;
     /** 附件名称 */
     attachmentName?: string;
     /** 附件路径 */
