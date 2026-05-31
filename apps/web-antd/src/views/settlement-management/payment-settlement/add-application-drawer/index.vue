@@ -337,6 +337,34 @@ function formatDateTime(dateTime: string | undefined | null): string {
   return dayjs(dateTime).format('YYYY-MM-DD HH:mm:ss');
 }
 
+// 从费用明细中聚合委托编号（去重后用逗号分隔）
+function getCommissionNums(
+  orderFees: PaymentApplicationAdminApi.OrderFeeForSettlementDto[] | undefined,
+): string {
+  if (!orderFees || orderFees.length === 0) return '-';
+
+  const commissionNums = orderFees
+    .map((fee) => fee.transportOrder?.commissionNum)
+    .filter((num) => num && num.trim() !== '')
+    .filter((num, index, self) => self.indexOf(num) === index); // 去重
+
+  return commissionNums.length > 0 ? commissionNums.join(', ') : '-';
+}
+
+// 从费用明细中聚合主提单号（去重后用逗号分隔）
+function getMblNums(
+  orderFees: PaymentApplicationAdminApi.OrderFeeForSettlementDto[] | undefined,
+): string {
+  if (!orderFees || orderFees.length === 0) return '-';
+
+  const mblNums = orderFees
+    .map((fee) => fee.transportOrder?.mblNum)
+    .filter((num) => num && num.trim() !== '')
+    .filter((num, index, self) => self.indexOf(num) === index); // 去重
+
+  return mblNums.length > 0 ? mblNums.join(', ') : '-';
+}
+
 // 格式化未结算费用范围
 function formatUnsettledRange(upperLimit: number, lowerLimit: number): string {
   if (upperLimit === 0 && lowerLimit === 0) return '-';
@@ -429,6 +457,16 @@ const currencyGroupColumns: ColumnsType<PaymentApplicationAdminApi.CurrencyGroup
       dataIndex: 'code',
       key: 'code',
       width: 80,
+    },
+    {
+      title: '委托编号',
+      key: 'commissionNums',
+      width: 150,
+    },
+    {
+      title: '主提单号',
+      key: 'mblNums',
+      width: 150,
     },
     {
       title: '应收金额',
@@ -747,7 +785,15 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
           }"
         >
           <template #bodyCell="{ column, record: currencyRecord }">
-            <template v-if="column.key === 'unsettledRange'">
+            <template v-if="column.key === 'commissionNums'">
+              {{ getCommissionNums(currencyRecord.orderFees) }}
+            </template>
+
+            <template v-else-if="column.key === 'mblNums'">
+              {{ getMblNums(currencyRecord.orderFees) }}
+            </template>
+
+            <template v-else-if="column.key === 'unsettledRange'">
               {{
                 formatUnsettledRange(
                   currencyRecord.settleableUpperLimit || 0,
