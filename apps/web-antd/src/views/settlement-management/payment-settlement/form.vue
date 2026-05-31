@@ -176,7 +176,7 @@ async function handleConfirmApplications(
   await handleAddToExistingSettlement(applications, selectedCurrencyId);
 }
 
-/** 编辑结算单：添加到现有列表 */
+/** 编辑结算单：添加到现有列表了 */
 async function handleAddToExistingSettlement(
   applications: Array<{
     application: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
@@ -201,16 +201,16 @@ async function handleAddToExistingSettlement(
   }
 
   try {
-    // 收集所有涉及的原币币别ID
+    // 收集所有涉及的原币币别ID（只收集实际有结算金额的币别）
     const originalCurrencyIds = new Set<number>();
     applications.forEach((app) => {
       if (app.application.currencyId) {
         // 固定币别申请：添加申请的币别ID作为原币
         originalCurrencyIds.add(app.application.currencyId);
-      } else if (app.application.currencyGroup) {
-        // 原币申请：从currencyGroup中收集原币ID
-        app.application.currencyGroup.forEach((group) => {
-          originalCurrencyIds.add(group.id);
+      } else if (app.currencyItems && app.currencyItems.length > 0) {
+        // 原币申请：只从实际有结算金额的currencyItems中收集原币ID
+        app.currencyItems.forEach((item) => {
+          originalCurrencyIds.add(item.originalCurrencyId);
         });
       }
     });
@@ -296,18 +296,42 @@ async function handleAddToExistingSettlement(
       }
     }
 
-    // 转换为结算明细 (保持层级结构)
-    const newItems: SettlementItem[] = applications.map((app, index) => {
-      const isFixedCurrency = !!app.application.currencyId;
+    // 转换为结算明细 (保持层级结构)，并过滤掉结算金额为0或空的申请
+    const newItems: SettlementItem[] = applications
+      .filter((app) => {
+        const isFixedCurrency = !!app.application.currencyId;
 
-      return {
-        id: `${Date.now()}-${index}`,
-        application: app.application,
-        // 保存用户输入的结算数据
-        userSettledPrice: isFixedCurrency ? app.settledPrice : undefined,
-        userCurrencyItems: !isFixedCurrency ? app.currencyItems : undefined,
-      };
-    });
+        if (isFixedCurrency) {
+          // 固定币别申请：检查settledPrice是否有有效值（非0、非空）
+          return (
+            app.settledPrice !== undefined &&
+            app.settledPrice !== null &&
+            app.settledPrice !== 0
+          );
+        } else {
+          // 原币申请：检查currencyItems是否有有效数据（至少有一个币别填写了有效的结算金额）
+          return app.currencyItems && app.currencyItems.length > 0;
+        }
+      })
+      .map((app, index) => {
+        const isFixedCurrency = !!app.application.currencyId;
+
+        return {
+          id: `${Date.now()}-${index}`,
+          application: app.application,
+          // 保存用户输入的结算数据
+          userSettledPrice: isFixedCurrency ? app.settledPrice : undefined,
+          userCurrencyItems: !isFixedCurrency ? app.currencyItems : undefined,
+        };
+      });
+
+    // 如果过滤后没有有效数据，提示用户
+    if (newItems.length === 0) {
+      message.warning(
+        '所有申请的结算金额都为0或未填写，请至少填写一个非零的结算金额',
+      );
+      return;
+    }
 
     // 添加到列表
     settlementItems.value.push(...newItems);
@@ -318,7 +342,7 @@ async function handleAddToExistingSettlement(
       currencyId.value = selectedCurrencyId;
     }
 
-    message.success(`已添加 ${applications.length} 个付费申请`);
+    message.success(`已添加 ${newItems.length} 个付费申请`);
   } catch (error: any) {
     message.error(error.message || '操作失败');
   }
@@ -486,17 +510,13 @@ async function loadEditData() {
             // 固定币别申请：使用 totalSettledPrice
             userSettledPrice = app.totalSettledPrice;
           } else {
-            // 原币申请：从 currencyGroup 中提取各币别的 settledAmount
+            // 原币申请：从 currencyGroup 中提取各币别的 settledAmount（保留所有有 settledAmount 字段的币别，包括值为0的）
             if (app.currencyGroup && app.currencyGroup.length > 0) {
               userCurrencyItems = app.currencyGroup
-                .filter(
-                  (currency) =>
-                    currency.settledAmount !== undefined &&
-                    currency.settledAmount !== 0,
-                )
+                .filter((currency) => currency.settledAmount !== undefined)
                 .map((currency) => ({
                   originalCurrencyId: currency.id,
-                  settledAmount: currency.settledAmount || 0,
+                  settledAmount: currency.settledAmount ?? 0,
                 }));
             }
           }
@@ -515,10 +535,17 @@ async function loadEditData() {
             }
           }
 
-          // 从第一个费用的 orderFees 中获取公司信息
-          const firstFeeWithCompanys = app.currencyGroup?.find(
-            (currency) => currency.orderFees && currency.orderFees.length > 0,
-          )?.orderFees?.[0];
+          // 从 paymentSettlementItems 中获取公司信息（根据 paymentApplicationId 匹配）
+          const relatedItems = detail.paymentSettlementItems?.filter(
+            (item) => item.paymentApplicationId === app.id,
+          );
+          console.log(
+            `应用 ${app.applicationNo} 相关的结算明细:`,
+            relatedItems,
+          );
+          // 从第一个相关的结算明细中获取公司信息
+
+          const companys = detail?.companys || [];
 
           // 构造完整的 application 对象
           const mockApplication: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto =
@@ -532,8 +559,8 @@ async function loadEditData() {
               creatorUserName: detail.creatorUserName,
               totalSettleablePriceUpperLimit: 0,
               totalSettleablePriceLowerLimit: 0,
-              // 从第一个费用中获取公司信息
-              companys: firstFeeWithCompanys?.companys || [],
+              // 从 paymentSettlementItems 中获取公司信息
+              companys: companys,
               // 关键：使用转换后的 currencyGroup，包含完整的费用明细
               currencyGroup: convertedCurrencyGroup,
             };
@@ -704,6 +731,37 @@ function getSettledAmountForCurrency(
   return item ? item.settledAmount : 0;
 }
 
+/** 过滤出有有效结算金额的币别分组（用于表格显示） */
+function filterCurrencyGroupWithSettlement(
+  record: SettlementItem,
+): PaymentApplicationAdminApi.CurrencyGroupForSettlementDto[] {
+  if (!record.application.currencyGroup) return [];
+
+  // 固定币别申请：不显示第二层
+  if (record.application.currencyId) return [];
+
+  // 原币申请：
+  // - 编辑模式：显示所有币别（包括结算金额为0的），方便用户查看完整信息
+  // - 新增模式：只显示用户填写了有效结算金额的币别
+  if (isEdit.value) {
+    // 编辑模式：返回所有币别
+    return record.application.currencyGroup;
+  } else {
+    // 新增模式：只显示有有效结算金额的币别
+    return record.application.currencyGroup.filter((currency) => {
+      const settledAmount = getSettledAmountForCurrency(
+        record.userCurrencyItems,
+        currency.id,
+      );
+      return (
+        settledAmount !== undefined &&
+        settledAmount !== null &&
+        settledAmount !== 0
+      );
+    });
+  }
+}
+
 /** 格式化业务类型 */
 function getBizTypeName(bizType: number): string {
   const bizTypeMap: Record<number, string> = {
@@ -802,8 +860,9 @@ function convertCurrencyGroupForDetailToSettlement(
     settleablePriceUpperLimit: undefined, // 原币申请为 null
     settleableLowerLimit,
     settleablePriceLowerLimit: undefined, // 原币申请为 null
+    settledAmount: detailCurrency.settledAmount, // 保留本次结算金额字段
     orderFees: convertedOrderFees,
-  };
+  } as any; // 使用类型断言，允许添加 settledAmount 字段到返回对象中
 }
 
 /** 将详情接口的费用转换为选择列表格式 */
@@ -1322,7 +1381,7 @@ onMounted(() => {
                   align: 'right',
                 },
               ]"
-              :data-source="record.application.currencyGroup || []"
+              :data-source="filterCurrencyGroupWithSettlement(record)"
               :pagination="false"
               row-key="id"
               bordered
@@ -1348,14 +1407,7 @@ onMounted(() => {
                     v-if="!record.application.currencyId"
                     style="font-weight: bold; color: #1890ff"
                   >
-                    {{
-                      formatAmount(
-                        getSettledAmountForCurrency(
-                          record.userCurrencyItems,
-                          currencyRecord.id,
-                        ),
-                      )
-                    }}
+                    {{ formatAmount(currencyRecord.settledAmount ?? 0) }}
                   </span>
                   <span v-else style="color: #999">-</span>
                 </template>

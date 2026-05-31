@@ -226,27 +226,7 @@ async function handleConfirm() {
     return;
   }
 
-  // 验证每个选中的申请是否有结算金额
-  for (const app of selectedApps) {
-    // 固定币别申请：检查 settledPrice
-    if (app.currencyId) {
-      // 需要从用户输入获取settledPrice，暂时跳过验证
-      continue;
-    }
-
-    // 原币申请：检查每个币别的settledAmount
-    if (!app.currencyId && app.currencyGroup) {
-      const hasSettledAmount = app.currencyGroup.some(
-        (g: any) => g.settleableUpperLimit > 0 || g.settleableLowerLimit < 0,
-      );
-      if (!hasSettledAmount) {
-        message.warning(`申请单 ${app.applicationNo} 没有可结算的金额`);
-        return;
-      }
-    }
-  }
-
-  // 构造返回数据，并过滤掉结算金额为0的申请
+  // 构造返回数据，并过滤掉结算金额为0的申请和币别
   const result = selectedApps
     .map((app) => {
       const item: any = {
@@ -258,39 +238,51 @@ async function handleConfirm() {
         // 从用户输入获取 settledPrice
         item.settledPrice = app.settledPrice || 0;
       } else {
-        // 原币申请：只收集用户填写了结算金额的币别（过滤掉settledAmount为0的）
+        // 原币申请：只收集用户填写了结算金额的币别（过滤掉settledAmount为0或未填写的）
         item.currencyItems = (app.currencyGroup || [])
           .filter((g: any) => {
-            // 首先检查是否有可结算金额
+            // 首先检查是否有可结算金额范围
             const hasSettleableAmount =
               g.settleableUpperLimit > 0 || g.settleableLowerLimit < 0;
             // 然后检查用户是否填写了非零的结算金额
-            const hasUserInput = g.settledAmount && g.settledAmount !== 0;
-            // 只有同时满足两个条件才保留
+            const hasUserInput =
+              g.settledAmount && g.settledAmount !== 0 ? true : false;
+            console.log(
+              hasSettleableAmount,
+              hasUserInput,
+              g.settleableUpperLimit,
+              g.settleableLowerLimit,
+              g.settledAmount,
+            );
+            // 只有同时满足两个条件才保留该币别
             return hasSettleableAmount && hasUserInput;
           })
           .map((g: any) => ({
             originalCurrencyId: g.id,
             settledAmount: g.settledAmount, // 使用用户输入的settledAmount
           }));
+
+        console.log('item.currencyItems', item.currencyItems);
       }
 
       return item;
     })
     .filter((item) => {
-      // 过滤掉结算金额为0的申请
+      // 过滤掉没有有效结算数据的申请
       if (item.application.currencyId) {
         // 固定币别申请：检查settledPrice是否为0
         return item.settledPrice !== 0;
       } else {
-        // 原币申请：检查currencyItems是否为空（如果为空说明没有填写任何结算金额）
+        // 原币申请：检查currencyItems是否为空（如果为空说明没有填写任何有效的结算金额）
         return item.currencyItems && item.currencyItems.length > 0;
       }
     });
 
   // 如果过滤后没有数据，提示用户
   if (result.length === 0) {
-    message.warning('所有申请的结算金额都为0，请至少填写一个非零的结算金额');
+    message.warning(
+      '所有申请的结算金额都为0或未填写，请至少填写一个非零的结算金额',
+    );
     return;
   }
 

@@ -280,6 +280,8 @@ export namespace PaymentSettlementAdminApi {
     paymentApplications: PaymentApplicationForDetailDto[];
     /** 附件列表 */
     attachments: AttachmentItemDto[];
+    /** 公司 */
+    companys?: import('#/api/settlement-management/payment-application-admin').PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
   }
 
   /** 分页查询参数DTO */
