@@ -146,13 +146,6 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       minWidth: 200,
       showOverflow: true,
     },
-    {
-      field: 'action',
-      title: '操作',
-      width: 200,
-      fixed: 'right',
-      slots: { default: 'action' },
-    },
   ];
 }
 

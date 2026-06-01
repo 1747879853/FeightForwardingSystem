@@ -41,7 +41,7 @@ const routes: RouteRecordRaw[] = [
           import('#/views/settlement-management/payment-settlement/form.vue'),
       },
       {
-        path: 'payment-settlement/:id/edit',
+        path: 'payment-settlement/edit/:id',
         name: 'PaymentSettlementEdit',
         meta: {
           icon: 'mdi:file-document-edit-outline',

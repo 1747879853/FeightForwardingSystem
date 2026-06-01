@@ -114,7 +114,9 @@ const [Grid, gridApi] =
       },
       rowConfig: {
         keyField: 'id',
+        isHover: true, // 启用行悬停效果
       },
+
       pagerConfig: {
         enabled: true,
       },
@@ -125,8 +127,8 @@ const [Grid, gridApi] =
             formValues: Record<string, unknown>,
           ) => {
             return await getPaymentSettlementPagedList({
-              skipCount: (page.currentPage - 1) * page.pageSize,
-              maxResultCount: page.pageSize,
+              pageIndex: page.currentPage,
+              pageSize: page.pageSize,
               ...normalizeQuery(formValues),
             });
           },
@@ -139,6 +141,9 @@ const [Grid, gridApi] =
         zoom: true,
       },
     },
+    gridEvents: {
+      cellDblclick: handleRowDblClick,
+    },
   });
 
 function getSelectedRows(): PaymentSettlementAdminApi.PaymentSettlementListDto[] {
@@ -146,21 +151,22 @@ function getSelectedRows(): PaymentSettlementAdminApi.PaymentSettlementListDto[]
     []) as PaymentSettlementAdminApi.PaymentSettlementListDto[];
 }
 
-/** 查看详情 */
-function handleViewDetail(
-  row: PaymentSettlementAdminApi.PaymentSettlementListDto,
-) {
-  // TODO: 实现详情查看功能
-  message.info(`查看结算单：${row.settlementNo}`);
-}
+/** 双击行进入编辑页面 */
+function handleRowDblClick({
+  row,
+}: {
+  row: PaymentSettlementAdminApi.PaymentSettlementListDto;
+}) {
+  if (!row) {
+    console.warn('双击事件未获取到行数据');
+    return;
+  }
 
-/** 编辑 */
-function handleEdit(row: PaymentSettlementAdminApi.PaymentSettlementListDto) {
   if (row.locked) {
     message.warning('该结算单已锁定，无法编辑');
     return;
   }
-  router.push(`/settlement-management/payment-settlement/${row.id}/edit`);
+  router.push(`/settlement-management/payment-settlement/edit/${row.id}`);
 }
 
 /** 删除 */
@@ -303,7 +309,7 @@ function handleExport() {
     <Grid table-title="付费结算列表">
       <template #toolbar-tools>
         <Space>
-          <Button type="primary" @click="handleCreate"> 新建结算 </Button>
+          <Button type="primary" @click="handleCreate"> 新建 </Button>
           <Button @click="handleBatchDelete" :loading="actionLoading">
             批量删除
           </Button>
@@ -325,42 +331,6 @@ function handleExport() {
         <Tag :color="row.locked ? 'red' : 'green'">
           {{ row.locked ? '已锁定' : '未锁定' }}
         </Tag>
-      </template>
-
-      <template #action="{ row }">
-        <Space>
-          <Button type="link" size="small" @click="handleViewDetail(row)">
-            查看
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            @click="handleEdit(row)"
-            :disabled="row.locked"
-          >
-            编辑
-          </Button>
-          <Button
-            v-if="!row.locked"
-            type="link"
-            size="small"
-            @click="handleLock(row)"
-          >
-            锁定
-          </Button>
-          <Button v-else type="link" size="small" @click="handleUnlock(row)">
-            解锁
-          </Button>
-          <Button
-            type="link"
-            size="small"
-            danger
-            @click="handleDelete(row)"
-            :disabled="row.locked"
-          >
-            删除
-          </Button>
-        </Space>
       </template>
     </Grid>
   </Page>

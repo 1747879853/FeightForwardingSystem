@@ -59,7 +59,7 @@ function resolveFaviconSrc(brandImgDir: string) {
 
 function resolveApiTarget(mode: string) {
   if (resolveAppBrand(mode) === 'jht') {
-    return 'http://192.144.212.84:150';
+    return 'http://43.138.14.122:82';
   }
   return 'http://118.190.1.4:82';
 }

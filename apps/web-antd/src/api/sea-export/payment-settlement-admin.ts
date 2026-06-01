@@ -1,4 +1,5 @@
 import { requestClient } from '#/api/request';
+import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
 const API_PREFIX = '/services/app/PaymentSettlementAdmin';
 
@@ -41,8 +42,10 @@ export namespace PaymentSettlementAdminApi {
   export interface PaymentSettlementAddItemGroupDto {
     /** 付费申请ID */
     paymentApplicationId: string;
-    /** 币别结算列表 */
-    currencyItems: PaymentSettlementAddItemCurrencyDto[];
+    /** 结算总金额（结算币别）。固定币别的付费申请使用此字段，后端自动分配到各原币币别；原币申请不需要此字段 */
+    settledPrice?: number;
+    /** 币别结算列表。原币申请必填；固定币别申请如果传了 `settledPrice` 则由后端自动计算，不需要传此字段 */
+    currencyItems?: PaymentSettlementAddItemCurrencyDto[];
   }
 
   /** 附件项输入DTO */
@@ -55,6 +58,7 @@ export namespace PaymentSettlementAdminApi {
 
   /** 附件项DTO */
   export interface AttachmentItemDto extends AttachmentItemForItemInputDto {
+    friendlyFileName: string;
     /** 附件名称 */
     attachmentName?: string;
     /** 附件路径 */
@@ -123,8 +127,8 @@ export namespace PaymentSettlementAdminApi {
   export interface PaymentSettlementDeleteItemsDto {
     /** 付费结算ID */
     id: string;
-    /** 要删除的结算明细ID列表 */
-    paymentSettlementItemIds: string[];
+    /** 要删除的付费申请ID列表（删除该结算单中属于这些付费申请的所有结算明细） */
+    paymentApplicationIds: string[];
     /** 汇率列表（全量替换，需包含删除后剩余的所有币别） */
     paymentSettlementRates: PaymentSettlementRateAddDto[];
   }
@@ -167,6 +171,38 @@ export namespace PaymentSettlementAdminApi {
     feeStatus?: number;
     /** 备注 */
     remark?: string;
+    /** 本次结算量（该费用在本次结算中的结算量） */
+    thisSettledAmount?: number;
+    /** 未开票金额 */
+    unInvoicedAmount?: number;
+    /** 所属公司列表 */
+    companys?: import('#/api/settlement-management/payment-application-admin').PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
+  }
+
+  /** 币别分组DTO（用于详情中的分组展示，包含结算信息） */
+  export interface CurrencyGroupForDetailDto {
+    /** 币别ID */
+    id: number;
+    /** 币别代码 */
+    code?: string;
+    /** 本次该币别的结算量（原币）= 该币别下所有费用的结算量之和 */
+    settledAmount?: number;
+    /** 本次该币别的结算金额（结算币别）= settledAmount × 汇率 */
+    settledPrice?: number;
+    /** 该币别下的费用列表（含本次结算量） */
+    orderFees: OrderFeeDto[];
+  }
+
+  /** 付费申请分组DTO（用于详情中的分组展示，包含结算信息） */
+  export interface PaymentApplicationForDetailDto {
+    /** 付费申请ID */
+    id: string;
+    /** 付费申请单号 */
+    applicationNo: string;
+    /** 本条付费申请的总结算金额（结算币别）= 各币别 SettledPrice 之和 */
+    totalSettledPrice?: number;
+    /** 按币别分组的结算明细 */
+    currencyGroup: CurrencyGroupForDetailDto[];
   }
 
   /** 结算明细详情DTO */
@@ -239,10 +275,14 @@ export namespace PaymentSettlementAdminApi {
     creatorUserName: string;
     /** 汇率明细 */
     paymentSettlementRates: PaymentSettlementRateDto[];
-    /** 结算明细 */
+    /** 结算明细（扁平列表） */
     paymentSettlementItems: PaymentSettlementItemDetailDto[];
+    /** 按付费申请分组的结算明细 */
+    paymentApplications: PaymentApplicationForDetailDto[];
     /** 附件列表 */
     attachments: AttachmentItemDto[];
+    /** 公司 */
+    companys?: import('#/api/settlement-management/payment-application-admin').PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
   }
 
   /** 分页查询参数DTO */
@@ -265,10 +305,10 @@ export namespace PaymentSettlementAdminApi {
     mblNum?: string;
     /** 组织ID */
     orgId?: number;
-    /** 跳过条数 */
-    skipCount: number;
+    /** 当前页码（从1开始） */
+    pageIndex: number;
     /** 每页条数 */
-    maxResultCount: number;
+    pageSize: number;
     /** 排序字段 */
     sorting?: string;
   }
