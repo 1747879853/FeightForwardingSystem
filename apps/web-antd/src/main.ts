@@ -2,6 +2,7 @@ import { initPreferences } from '@vben/preferences';
 import { unmountGlobalLoading } from '@vben/utils';
 
 import { getAppStorageNamespace } from '#/utils/brand-storage';
+import { registerOssCacheServiceWorker } from '#/utils/register-oss-cache-sw';
 
 import { overridesPreferences } from './preferences';
 
@@ -47,4 +48,5 @@ async function initApplication() {
   unmountGlobalLoading();
 }
 
+registerOssCacheServiceWorker();
 initApplication();

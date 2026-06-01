@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-01] [OSS 静态资源 Service Worker 缓存](./changelogs/change-log-2026-06-01-oss-service-worker-cache.md)
 - [2026-06-01] [字体与登录背景视频接入 OSS 私有签名 URL](./changelogs/change-log-2026-06-01-oss-private-font-login-video.md)
 
 ## 2026-05

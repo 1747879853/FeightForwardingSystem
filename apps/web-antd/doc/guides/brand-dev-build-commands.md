@@ -62,3 +62,10 @@
 全局字体 6 个字重同理，Key 为根路径文件名（如 `Alibaba_PuHuiTi_2.0_55_Regular_55_Regular.ttf`）。上传时请保持与代码中 `objectNames` 一致。
 
 初始化入口：`bootstrap` → `initBrandPrivateAssets()` + `initGlobalFonts()`。详见 [变更日志](../changelogs/change-log-2026-06-01-oss-private-font-login-video.md)。
+
+### Service Worker 缓存（仅生产包）
+
+- `pnpm build:hhyy`、`pnpm build:jht` 产物会注册 `public/service-worker.js`；`dev:hhyy` / `dev:jht` **不注册**。
+- 仅缓存 `aliyuncs.com` 的 `GET` 资源；缓存 Key = `origin + pathname`（去掉签名参数）。
+- 更新 OSS 文件后：改 SW 内 `CACHE_VERSION` 并重新部署，或更换 objectName。
+- 详见 [OSS Service Worker 缓存变更日志](../changelogs/change-log-2026-06-01-oss-service-worker-cache.md)。

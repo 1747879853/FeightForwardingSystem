@@ -17,7 +17,7 @@
 ## 避坑指南
 
 - **objectName 必须与 OSS Key 完全一致**（含大小写）；字体优先根路径文件名，再尝试 `assets/fonts/...` 兜底。
-- 签名 URL 有效期约 **10 分钟**，仅用于首屏加载；字体注入后由浏览器缓存，一般无需刷新前重复请求。
+- 签名 URL 有效期约 **10 分钟**，仅用于首屏加载；生产环境另由 Service Worker 按路径缓存 OSS 响应（见 [OSS Service Worker 缓存](./change-log-2026-06-01-oss-service-worker-cache.md)）。
 - 后端对单 IP **24 小时累计 1GB** 限流；首启会并发请求 6 个字体 + 1 个视频，开发环境注意勿频繁硬刷新。
 - 接口匿名可访问，但仍走 ABP `requestClient` 与统一错误提示；限流文案：`24小时内请求流量超限(1GB),请稍后再试`。
 - `auth.vue` 在 `bootstrap` 之后挂载，可拿到已解析的 `brandLoginBackVideo`；若后续做路由内懒加载登录页，需确认视频变量在布局渲染前已初始化。
