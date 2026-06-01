@@ -4,7 +4,7 @@
 
 - OSS 私有资源通过 `GetOssUrlAsync` 返回的 URL 带 `OSSAccessKeyId`、`Expires`、`Signature` 等查询参数，约 10 分钟失效。
 - 同一文件路径每次签名不同会导致浏览器无法复用 HTTP 缓存，重复下载字体等大文件。
-- 需在**仅生产部署**（`pnpm build:hhyy` / `pnpm build:jht`）下，对 `aliyuncs.com` 请求做 Cache Storage 缓存，Key 使用 `origin + pathname`。
+- 需对 `aliyuncs.com` 请求做 Cache Storage 缓存，Key 使用 `origin + pathname`；开发与生产均注册 SW。
 
 ## 核心逻辑变更
 
@@ -14,17 +14,17 @@
   - 策略：Cache First（命中直接返回，未命中拉网络后 `cache.put`）。
   - `activate` 时清理旧版本 `oss-static-resources-*` 桶。
   - 带 `Range` 头的请求不缓存（避免 206 分片响应写入缓存）。
-- 新增 `src/utils/register-oss-cache-sw.ts`：`import.meta.env.PROD` 时在 `window.load` 后注册 `/service-worker.js`。
+- 新增 `src/utils/register-oss-cache-sw.ts`：在 `window.load` 后注册 `/service-worker.js`（开发/生产均启用）。
 - `src/main.ts`：应用启动前调用 `registerOssCacheServiceWorker()`。
 
 ## 部署与环境
 
-| 场景                                       | SW 是否注册          |
-| ------------------------------------------ | -------------------- |
-| `pnpm build:hhyy` / `build:jht` 部署后访问 | 是（`PROD=true`）    |
-| `pnpm dev:hhyy` / `dev:jht`                | 否（开发模式不注册） |
+| 场景                                       | SW 是否注册 |
+| ------------------------------------------ | ----------- |
+| `pnpm build:hhyy` / `build:jht` 部署后访问 | 是          |
+| `pnpm dev:hhyy` / `dev:jht` / `dev:jiayue` | 是          |
 
-两套品牌共用同一 SW 脚本；Cache Storage 按**站点 origin** 隔离，与 `VITE_APP_NAMESPACE` 无关。
+两套品牌共用同一 SW 脚本；Cache Storage 按**站点 origin**（含 `localhost:5010` 等）隔离，与 `VITE_APP_NAMESPACE` 无关。
 
 ## 缓存命中表现与排查
 

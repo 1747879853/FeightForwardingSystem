@@ -1,8 +1,4 @@
 export function registerOssCacheServiceWorker() {
-  if (!import.meta.env.PROD) {
-    return;
-  }
-
   if (!('serviceWorker' in navigator)) {
     return;
   }
