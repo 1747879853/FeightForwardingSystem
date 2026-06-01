@@ -11,4 +11,4 @@
 | `Alibaba_PuHuiTi_2.0_75_SemiBold_75_SemiBold.ttf` | 600               |
 | `Alibaba_PuHuiTi_2.0_55_Regular_85_Bold.ttf`      | 700               |
 
-样式在 `src/global-font.css` 中通过 `@font-face` 注册字体族 `Alibaba PuHuiTi`；页面使用 `font-weight` 即可自动匹配对应文件。
+运行时通过 `src/utils/global-font-loader.ts` 调用 OSS 私有签名接口并动态注入 `@font-face`，请求失败时自动回退到本地资源。

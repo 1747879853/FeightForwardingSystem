@@ -48,3 +48,17 @@
 ## 缓存隔离
 
 各品牌 `VITE_APP_NAMESPACE` 不同（如 `vben-web-antd-hhyy`），Pinia、偏好设置及业务 localStorage 均不会串库。切换品牌后若界面异常，可清空当前站点 localStorage。
+
+## OSS 私有品牌素材（字体 / 登录视频）
+
+大体积资源已迁移阿里云 OSS 私有桶，前端通过匿名接口 `GET /services/app/Test/GetOssUrlAsync?objectName=<Key>` 获取 **10 分钟** 有效签名 URL。
+
+| 品牌 | 登录背景视频 OSS Key（优先） | 本地兜底文件 |
+| --- | --- | --- |
+| jht | `jht-login-back.mp4` | `src/assets/img/jht/jht-login-back.mp4` |
+| hhyy | `hhyy-login-back.mp4` | `src/assets/img/hhyy/hhyy-login-back.mp4` |
+| jiayue | `login-back.mp4` | `src/assets/img/jiayue/login-back.mp4` |
+
+全局字体 6 个字重同理，Key 为根路径文件名（如 `Alibaba_PuHuiTi_2.0_55_Regular_55_Regular.ttf`）。上传时请保持与代码中 `objectNames` 一致。
+
+初始化入口：`bootstrap` → `initBrandPrivateAssets()` + `initGlobalFonts()`。详见 [变更日志](../changelogs/change-log-2026-06-01-oss-private-font-login-video.md)。

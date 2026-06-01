@@ -11,6 +11,10 @@
 - 同一天多条可在标题后加简短后缀区分
 - 无对应月份时先新增月份分组，再添加条目
 
+## 2026-06
+
+- [2026-06-01] [字体与登录背景视频接入 OSS 私有签名 URL](./changelogs/change-log-2026-06-01-oss-private-font-login-video.md)
+
 ## 2026-05
 
 - [2026-05-30] [海运出口编辑页保存与完成服务后重新拉取详情](./changelogs/change-log-2026-05-30-sea-export-edit-refetch-after-save-complete.md)

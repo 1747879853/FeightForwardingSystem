@@ -13,6 +13,8 @@ import './global-font.css';
 import { useTitle } from '@vueuse/core';
 
 import { $t, setupI18n } from '#/locales';
+import { initBrandPrivateAssets } from '#/utils/brand-assets';
+import { initGlobalFonts } from '#/utils/global-font-loader';
 
 import { initComponentAdapter } from './adapter/component';
 import { initSetupVbenForm } from './adapter/form';
@@ -50,6 +52,9 @@ async function bootstrap(namespace: string) {
 
   // 配置 pinia-tore
   await initStores(app, { namespace });
+
+  // 登录视频/字体优先走 OSS 私有签名地址，失败时回退本地资源
+  await Promise.all([initBrandPrivateAssets(), initGlobalFonts()]);
 
   // 初始化枚举缓存（使用缓存，不强制刷新）
   await initEnumCache();

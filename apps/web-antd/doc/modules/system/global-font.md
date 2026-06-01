@@ -2,7 +2,7 @@
 title: 全局字体配置
 module: 系统管理
 author: AI助手
-last_updated: 2026-05-24
+last_updated: 2026-06-01
 ---
 
 # 1. 业务背景说明 (Background)
@@ -13,7 +13,8 @@ last_updated: 2026-05-24
 
 - **全局字体统一：** 通过 `src/global-font.css` 统一根节点字体，覆盖业务页面常规文本。
 - **组件字体统一：** 通过 `ConfigProvider` 主题 token 注入 `fontFamily`，保证 AntD 组件使用同一字体栈。
-- **本地字体加载：** 通过 `@font-face` 注册 `Alibaba PuHuiTi`，默认从 `src/assets/fonts/Alibaba_PuHuiTi_2.0_55_Regular_55_Regular.ttf` 加载。
+- **OSS 私有字体加载：** 应用启动时 `initGlobalFonts()` 调用 `GetOssUrlAsync` 获取签名 URL，动态注入 6 个字重的 `@font-face`；objectName 优先 bucket 根路径文件名（如 `Alibaba_PuHuiTi_2.0_35_Thin_35_Thin.ttf`）。
+- **本地兜底：** OSS 或接口失败时回退 `src/assets/fonts/Alibaba_PuHuiTi_2.0_*.ttf` 打包资源。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -26,6 +27,7 @@ last_updated: 2026-05-24
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **fontFamily** | 全局字体回退链，定义优先字体与降级策略。 | 前端静态配置 | **触发/依赖：** 应用启动时加载样式与 `ConfigProvider`。 | 需保证字体名合法，至少包含一个通用回退字体。 |
+| **objectName** | OSS 私有桶内字体文件 Key。 | `GET /services/app/Test/GetOssUrlAsync` | **触发/依赖：** `bootstrap` → `initGlobalFonts()`；候选 Key 根路径优先。 | 须与 OSS 实际上传 Key 一致；单 IP 24h 累计 1GB 限流。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -35,6 +37,7 @@ last_updated: 2026-05-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-01 | `Feature` | 字体改为启动时经 OSS 私有签名 URL 动态注入 `@font-face`，失败回退本地 TTF；移除 `global-font.css` 静态 `@font-face`。 | `global-font-loader` + `getOssPrivateFileUrlByCandidates`；与登录视频共用 Test 控制器匿名接口。 |
 | 2026-05-24 | `Feature` | 全局字体由 PingFang SC 切换为阿里巴巴普惠体 2.0（`Alibaba PuHuiTi`），同步 `@font-face`、CSS 变量与 AntD 主题。 | 无 |
 | 2026-05-20 | `Fix` | 将字体别名由 `PingFangSCWeb` 统一改为 `PingFang SC`，并同步全局变量与 AntD 主题。 | 无 |
 | 2026-05-20 | `Fix` | 新增 `:root --font-family` 覆盖，修复登录页未跟随全局字体的问题。 | 无 |
