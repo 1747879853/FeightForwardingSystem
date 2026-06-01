@@ -127,8 +127,8 @@ const [Grid, gridApi] =
             formValues: Record<string, unknown>,
           ) => {
             return await getPaymentSettlementPagedList({
-              skipCount: (page.currentPage - 1) * page.pageSize,
-              maxResultCount: page.pageSize,
+              pageIndex: page.currentPage,
+              pageSize: page.pageSize,
               ...normalizeQuery(formValues),
             });
           },
