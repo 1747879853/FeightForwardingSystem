@@ -127,8 +127,8 @@ export namespace PaymentSettlementAdminApi {
   export interface PaymentSettlementDeleteItemsDto {
     /** 付费结算ID */
     id: string;
-    /** 要删除的结算明细ID列表 */
-    paymentSettlementItemIds: string[];
+    /** 要删除的付费申请ID列表（删除该结算单中属于这些付费申请的所有结算明细） */
+    paymentApplicationIds: string[];
     /** 汇率列表（全量替换，需包含删除后剩余的所有币别） */
     paymentSettlementRates: PaymentSettlementRateAddDto[];
   }
@@ -305,10 +305,10 @@ export namespace PaymentSettlementAdminApi {
     mblNum?: string;
     /** 组织ID */
     orgId?: number;
-    /** 跳过条数 */
-    skipCount: number;
+    /** 当前页码（从1开始） */
+    pageIndex: number;
     /** 每页条数 */
-    maxResultCount: number;
+    pageSize: number;
     /** 排序字段 */
     sorting?: string;
   }

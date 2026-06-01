@@ -34,6 +34,8 @@ import {
   addPaymentSettlement,
   editPaymentSettlement,
   getPaymentSettlementDetail,
+  addItemsToSettlement,
+  deleteItemsFromSettlement,
 } from '#/api/sea-export/payment-settlement-admin';
 import { getPaymentApplicationDetail } from '#/api/settlement-management/payment-application-admin';
 
@@ -172,8 +174,210 @@ async function handleConfirmApplications(
   }>,
   selectedCurrencyId?: number, // 用户在抽屉中选择的结算币别ID
 ) {
-  // 统一处理：添加到列表，等待用户点击保存
-  await handleAddToExistingSettlement(applications, selectedCurrencyId);
+  if (isEdit.value) {
+    // 编辑模式：直接调用后端接口保存新增的费用项
+    await handleAddAndSaveToSettlement(applications, selectedCurrencyId);
+  } else {
+    // 新建模式：添加到列表，等待用户点击保存
+    await handleAddToExistingSettlement(applications, selectedCurrencyId);
+  }
+}
+
+/** 编辑模式下：添加并立即保存到结算单 */
+async function handleAddAndSaveToSettlement(
+  applications: Array<{
+    application: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
+    settledPrice?: number;
+    currencyItems?: Array<{
+      originalCurrencyId: number;
+      settledAmount: number;
+    }>;
+  }>,
+  selectedCurrencyId?: number,
+) {
+  if (!selectedCurrencyId) {
+    message.warning('请选择结算币别');
+    return;
+  }
+
+  if (!editId.value) {
+    message.error('结算单ID不存在');
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    // 收集所有涉及的原币币别ID（只收集实际有结算金额的币别）
+    const originalCurrencyIds = new Set<number>();
+    applications.forEach((app) => {
+      if (app.application.currencyId) {
+        // 固定币别申请：添加申请的币别ID作为原币
+        originalCurrencyIds.add(app.application.currencyId);
+      } else if (app.currencyItems && app.currencyItems.length > 0) {
+        // 原币申请：只从实际有结算金额的currencyItems中收集原币ID
+        app.currencyItems.forEach((item) => {
+          originalCurrencyIds.add(item.originalCurrencyId);
+        });
+      }
+    });
+
+    // 构建完整的汇率列表（包含所有已有的币别 + 新增的币别）
+    const allRates: PaymentSettlementAdminApi.PaymentSettlementRateAddDto[] =
+      [];
+
+    // 首先添加所有已有的汇率
+    rateList.value.forEach((existingRate) => {
+      allRates.push({
+        originalCurrencyId: existingRate.originalCurrencyId,
+        rate: existingRate.rate,
+      });
+    });
+
+    // 然后处理新增的币别
+    for (const originalCurrencyId of originalCurrencyIds) {
+      // 检查是否已存在该原币的汇率
+      const existingRateIndex = allRates.findIndex(
+        (r) => r.originalCurrencyId === originalCurrencyId,
+      );
+
+      if (existingRateIndex === -1) {
+        // 新增币别：需要从汇率管理中查询
+        try {
+          const { getExchangeRatePagedList } =
+            await import('#/api/system/base-data/exchange-rate-admin');
+
+          const result = await getExchangeRatePagedList({
+            CurrencyId: originalCurrencyId,
+            PageIndex: 1,
+            PageSize: 1,
+          });
+
+          let rate = 1; // 默认值
+
+          if (result.items && result.items.length > 0) {
+            const rateData = result.items[0];
+            // 使用 calculateValue（核算汇率）
+            rate = rateData?.calculateValue ?? 1;
+
+            // 如果是同种币别，强制汇率为1
+            if (originalCurrencyId === selectedCurrencyId) {
+              rate = 1;
+            }
+          } else {
+            console.warn(
+              `未找到原币 ${originalCurrencyId} 到结算币别 ${selectedCurrencyId} 的汇率，使用默认值1`,
+            );
+          }
+
+          // 添加到汇率列表
+          allRates.push({
+            originalCurrencyId,
+            rate,
+          });
+
+          // 同时更新本地的rateList（用于界面显示）
+          let currencyCode = '';
+          try {
+            const { getCurrencyDetail } =
+              await import('#/api/system/base-data/currency-admin');
+            const currencyDetail = await getCurrencyDetail(
+              String(originalCurrencyId),
+            );
+            currencyCode = currencyDetail.code || '';
+          } catch (error) {
+            console.error(`获取原币 ${originalCurrencyId} 代码失败:`, error);
+          }
+
+          rateList.value.push({
+            originalCurrencyId,
+            rate,
+            currencyCode,
+          });
+        } catch (error) {
+          console.error(`获取原币 ${originalCurrencyId} 的汇率失败:`, error);
+
+          // 失败时使用默认值1
+          let rate = 1;
+          if (originalCurrencyId === selectedCurrencyId) {
+            rate = 1;
+          }
+
+          allRates.push({
+            originalCurrencyId,
+            rate,
+          });
+
+          rateList.value.push({
+            originalCurrencyId,
+            rate,
+            currencyCode: '',
+          });
+        }
+      }
+    }
+
+    // 转换为付费申请分组数据
+    const paymentApplicationGroups: PaymentSettlementAdminApi.PaymentSettlementAddItemGroupDto[] =
+      applications
+        .filter((app) => {
+          const isFixedCurrency = !!app.application.currencyId;
+
+          if (isFixedCurrency) {
+            // 固定币别申请：检查settledPrice是否有有效值（非0、非空）
+            return (
+              app.settledPrice !== undefined &&
+              app.settledPrice !== null &&
+              app.settledPrice !== 0
+            );
+          } else {
+            // 原币申请：检查currencyItems是否有有效数据
+            return app.currencyItems && app.currencyItems.length > 0;
+          }
+        })
+        .map((app) => {
+          const isFixedCurrency = !!app.application.currencyId;
+
+          if (isFixedCurrency) {
+            // 固定币别申请：只传settledPrice
+            return {
+              paymentApplicationId: app.application.id,
+              settledPrice: app.settledPrice || 0,
+            };
+          } else {
+            // 原币申请：传currencyItems指定各币别结算量
+            return {
+              paymentApplicationId: app.application.id,
+              currencyItems: app.currencyItems || [],
+            };
+          }
+        });
+
+    // 如果过滤后没有有效数据，提示用户
+    if (paymentApplicationGroups.length === 0) {
+      message.warning(
+        '所有申请的结算金额都为0或未填写，请至少填写一个非零的结算金额',
+      );
+      return;
+    }
+
+    // 调用后端接口保存（使用包含所有币别的完整汇率列表）
+    await addItemsToSettlement({
+      id: editId.value,
+      paymentApplicationGroups,
+      paymentSettlementRates: allRates,
+    });
+
+    message.success(
+      `已添加并保存 ${paymentApplicationGroups.length} 个付费申请`,
+    );
+
+    // 重新加载详情数据以刷新列表
+    await loadEditData();
+  } catch (error: any) {
+    message.error(error.message || '保存失败');
+  } finally {
+    submitting.value = false;
+  }
 }
 
 /** 编辑结算单：添加到现有列表了 */
@@ -366,8 +570,86 @@ async function handleAddToExistingSettlement(
 }
 
 /** 删除结算明细 */
-function handleDeleteItem(index: number) {
-  settlementItems.value.splice(index, 1);
+async function handleDeleteItem(index: number) {
+  if (!isEdit.value || !editId.value) {
+    // 新建模式：直接从列表中移除
+    settlementItems.value.splice(index, 1);
+    return;
+  }
+
+  // 编辑模式：调用后端接口删除
+  const itemToDelete = settlementItems.value[index];
+  if (!itemToDelete) {
+    message.error('未找到要删除的申请');
+    return;
+  }
+
+  try {
+    // 确认删除
+    await new Promise((resolve, reject) => {
+      window.confirm(
+        `确定要删除申请 ${itemToDelete.application.applicationNo} 吗？`,
+      )
+        ? resolve(true)
+        : reject(new Error('取消删除'));
+    });
+
+    submitting.value = true;
+
+    // 1. 收集要删除的付费申请ID
+    const paymentApplicationIds = [itemToDelete.application.id];
+
+    // 2. 构建删除后剩余的汇率列表（从当前汇率列表中过滤）
+    // 先获取删除后剩余的申请列表
+    const remainingItems = settlementItems.value.filter((_, i) => i !== index);
+
+    // 收集剩余申请涉及的所有原币币别ID
+    const remainingOriginalCurrencyIds = new Set<number>();
+    console.log('remainingItems:', remainingItems);
+    remainingItems.forEach((item) => {
+      if (item.application.currencyId) {
+        // 固定币别申请：添加申请的币别ID作为原币
+        remainingOriginalCurrencyIds.add(item.application.currencyId);
+      } else if (
+        item.application?.currencyGroup &&
+        item.application?.currencyGroup.length > 0
+      ) {
+        // 原币申请：从currencyItems中收集原币ID
+        item.application?.currencyGroup?.forEach((app) => {
+          remainingOriginalCurrencyIds.add(app.id);
+        });
+      }
+    });
+
+    // 从当前汇率列表中过滤出剩余申请涉及的币别
+    const remainingRates: PaymentSettlementAdminApi.PaymentSettlementRateAddDto[] =
+      rateList.value
+        .filter((rate) =>
+          remainingOriginalCurrencyIds.has(rate.originalCurrencyId),
+        )
+        .map((rate) => ({
+          originalCurrencyId: rate.originalCurrencyId,
+          rate: rate.rate,
+        }));
+
+    // 3. 调用后端接口删除
+    await deleteItemsFromSettlement({
+      id: editId.value,
+      paymentApplicationIds,
+      paymentSettlementRates: remainingRates,
+    });
+
+    message.success('删除成功');
+
+    // 4. 重新加载详情数据以刷新列表和汇率
+    await loadEditData();
+  } catch (error: any) {
+    if (error.message !== '取消删除') {
+      message.error(error.message || '删除失败');
+    }
+  } finally {
+    submitting.value = false;
+  }
 }
 
 /** 保存 */
@@ -423,7 +705,7 @@ function buildPaymentApplicationGroups(): PaymentSettlementAdminApi.PaymentSettl
   // 根据 settlementItems 构建分组数据
   const groups: PaymentSettlementAdminApi.PaymentSettlementAddItemGroupDto[] =
     [];
-
+  console.log('settlementItems:', settlementItems.value);
   settlementItems.value.forEach((item) => {
     const app = item.application;
     const isFixedCurrency = !!app.currencyId;
@@ -580,6 +862,7 @@ async function loadEditData() {
               settlementId: detail.settlementId,
               clientName: detail.settlementName,
               currencyCode: app.currencyGroup?.[0]?.code || '',
+              currencyId: app.currencyId,
               creatorUserName: detail.creatorUserName,
               totalSettleablePriceUpperLimit: 0,
               totalSettleablePriceLowerLimit: 0,

@@ -309,7 +309,7 @@ function handleExport() {
     <Grid table-title="付费结算列表">
       <template #toolbar-tools>
         <Space>
-          <Button type="primary" @click="handleCreate"> 新建结算 </Button>
+          <Button type="primary" @click="handleCreate"> 新建 </Button>
           <Button @click="handleBatchDelete" :loading="actionLoading">
             批量删除
           </Button>
