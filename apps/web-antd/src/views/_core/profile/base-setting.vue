@@ -136,7 +136,7 @@ const formSchema = computed((): VbenFormSchema[] => {
     },
     {
       fieldName: 'emailPwd',
-      component: 'VbenInputPassword',
+      component: 'InputPassword',
       label: '个人邮箱密码',
       componentProps: {
         placeholder: '请输入个人邮箱密码',
