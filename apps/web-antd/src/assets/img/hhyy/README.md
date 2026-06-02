@@ -8,7 +8,8 @@
 | `logo.png`       | 侧栏 / 系统偏好 Logo                                      |
 | `logo-text.png`  | 首屏 Loading、路由切换 Loading                            |
 | `logo-login.png` | 登录页 `auth-title-logo`                                  |
-| `login-back.mp4` | 登录页背景视频                                            |
 | `favicon.png`    | 浏览器标签页图标（可选，缺省则回退 `public/favicon.png`） |
+
+登录页背景视频改为固定 OSS 地址加载，不再使用本地 `login-back.mp4` 文件。
 
 津海通素材见 `../jht/README.md`。

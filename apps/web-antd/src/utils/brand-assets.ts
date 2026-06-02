@@ -1,16 +1,12 @@
 import hhyyLogo from '#/assets/img/hhyy/logo.png';
 import hhyyLogoText from '#/assets/img/hhyy/logo-text.png';
 import hhyyLoginLogo from '#/assets/img/hhyy/logo-login.png';
-import hhyyLoginBackVideo from '#/assets/img/hhyy/hhyy-login-back.mp4';
 import jiayueLogo from '#/assets/img/jiayue/logo.webp';
 import jiayueLogoText from '#/assets/img/jiayue/logo-text.webp';
 import jiayueLoginLogo from '#/assets/img/jiayue/logo-login.webp';
-import jiayueLoginBackVideo from '#/assets/img/jiayue/login-back.mp4';
 import jhtLogo from '#/assets/img/jht/logo.png';
 import jhtLogoText from '#/assets/img/jht/logo-text.png';
 import jhtLoginLogo from '#/assets/img/jht/logo-login.png';
-import jhtLoginBackVideo from '#/assets/img/jht/jht-login-back.mp4';
-import { getOssPrivateFileUrlByCandidates } from '#/api/common/oss-private-file';
 
 const appBrand = import.meta.env.VITE_APP_BRAND;
 
@@ -47,22 +43,15 @@ export const brandLogoText = pickBrandAsset(
 );
 
 /** 登录页背景视频 */
-const localBrandLoginBackVideo = pickBrandAsset(
-  jhtLoginBackVideo,
-  hhyyLoginBackVideo,
-  jiayueLoginBackVideo,
-  hhyyLoginBackVideo,
+const defaultBrandLoginBackVideoOssUrl = pickBrandAsset(
+  'https://oss.jiayuebetter.com/jht-login-back.mp4',
+  'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
+  'https://oss.jiayuebetter.com/login-back.mp4',
+  'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
 );
 
-/** 登录页背景视频（运行时可切换为 OSS 私有签名链接） */
-export let brandLoginBackVideo = localBrandLoginBackVideo;
-
-const brandLoginBackVideoObjectNames = pickBrandAsset(
-  ['jht-login-back.mp4', 'assets/img/jht/jht-login-back.mp4'],
-  ['hhyy-login-back.mp4', 'assets/img/hhyy/hhyy-login-back.mp4'],
-  ['login-back.mp4', 'assets/img/jiayue/login-back.mp4'],
-  ['hhyy-login-back.mp4', 'assets/img/hhyy/hhyy-login-back.mp4'],
-);
+/** 登录页背景视频（固定 OSS 地址） */
+export let brandLoginBackVideo = defaultBrandLoginBackVideoOssUrl;
 
 /** 登录页 auth-title-logo 横版 Logo */
 export const brandLoginTitleLogo = pickBrandAsset(
@@ -86,15 +75,9 @@ export const brandLoginTitleLogoClass = isJhtBrand
 export const brandLoadingMaskClass = isJhtBrand ? 'loader-fill--brand-jht' : '';
 
 /**
- * 初始化品牌私有素材
- * 目前仅将登录页背景视频切换为 OSS 签名 URL，失败时自动回退本地静态资源
+ * 初始化品牌素材
+ * 登录页背景视频统一使用固定 OSS 地址
  */
 export async function initBrandPrivateAssets() {
-  try {
-    brandLoginBackVideo = await getOssPrivateFileUrlByCandidates(
-      brandLoginBackVideoObjectNames,
-    );
-  } catch {
-    brandLoginBackVideo = localBrandLoginBackVideo;
-  }
+  brandLoginBackVideo = defaultBrandLoginBackVideoOssUrl;
 }
