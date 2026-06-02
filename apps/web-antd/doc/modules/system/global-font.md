@@ -2,7 +2,7 @@
 title: 全局字体配置
 module: 系统管理
 author: AI助手
-last_updated: 2026-06-02
+last_updated: 2026-06-03
 ---
 
 # 1. 业务背景说明 (Background)
@@ -13,8 +13,7 @@ last_updated: 2026-06-02
 
 - **全局字体统一：** 通过 `src/global-font.css` 统一根节点字体，覆盖业务页面常规文本。
 - **组件字体统一：** 通过 `ConfigProvider` 主题 token 注入 `fontFamily`，保证 AntD 组件使用同一字体栈。
-- **固定 OSS 字体加载：** `hhyy` / `jiayue` 启动时直接使用固定 OSS 地址，动态注入 6 个字重的 `@font-face`。
-- **jht 品牌兼容：** `jht` 继续优先调用 `GetOssUrlAsync` 获取签名 URL；接口失败时回退固定 OSS 地址，不再依赖本地 TTF。
+- **固定 OSS 字体加载：** `hhyy` / `jiayue` / `jht` 启动时统一使用固定 OSS 地址，动态注入 6 个字重的 `@font-face`。
 - **本地资源瘦身：** `src/assets/fonts/*.ttf` 已移除，不再参与前端构建打包。
 - **SW 停用：** 入口不再注册 SW，并在加载时主动注销历史 registration 与 `oss-static-resources*` 缓存，避免字体跨域链路被拦截。
 
@@ -29,8 +28,7 @@ last_updated: 2026-06-02
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **fontFamily** | 全局字体回退链，定义优先字体与降级策略。 | 前端静态配置 | **触发/依赖：** 应用启动时加载样式与 `ConfigProvider`。 | 需保证字体名合法，至少包含一个通用回退字体。 |
-| **objectName** | OSS 私有桶内字体文件 Key（jht 品牌）。 | `GET /services/app/Test/GetOssUrlAsync` | **触发/依赖：** `bootstrap` → `initGlobalFonts()`；仅 `jht` 尝试候选 Key。 | 须与 OSS 实际上传 Key 一致；单 IP 24h 累计 1GB 限流。 |
-| **fixedFontOssUrl** | 固定 OSS 字体直链（hhyy/jiayue 直连，jht 失败兜底）。 | `https://oss.jiayuebetter.com/<fileName>` | **触发/依赖：** `bootstrap` → `initGlobalFonts()`。 | URL 必须与 OSS 实际对象路径完全一致。 |
+| **fixedFontOssUrl** | 固定 OSS 字体直链（全品牌统一直连）。 | `https://oss.jiayuebetter.com/<fileName>` | **触发/依赖：** `bootstrap` → `initGlobalFonts()`。 | URL 必须与 OSS 实际对象路径完全一致。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -40,6 +38,7 @@ last_updated: 2026-06-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-03 | `Fix` | jht 品牌字体链路改为固定 OSS 直连，不再请求 `GetOssUrlAsync` 签名接口。 | `global-font-loader.ts` 移除 `getOssPrivateFileUrlByCandidates` 与候选 Key，统一由 `fileName` 拼接固定 OSS 地址。 |
 | 2026-06-02 | `Fix` | 字体改为固定 OSS 地址（hhyy/jiayue），jht 失败回退固定 OSS；移除本地 TTF 并停用 SW，清理历史缓存。 | `register-oss-cache-sw.ts` 改为注销 SW；`global-font-loader.ts` 去除本地字体依赖。 |
 | 2026-06-01 | `Fix` | `GetOssUrlAsync` 命中 24h 流量上限时静默回退本地字体，不弹全局错误提示。 | `baseRequestClient` + `isOssTrafficLimitError`；停止 OSS 候选 Key 重试。 |
 | 2026-06-01 | `Feature` | 注册 Service Worker，对 `aliyuncs.com` 字体请求做 Cache Storage 缓存（Key 不含签名参数）。 | `public/service-worker.js` + `register-oss-cache-sw.ts`；开发与生产均注册。 |
