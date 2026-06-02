@@ -15,14 +15,6 @@ const submitting = ref(false);
 const formSchema = computed((): VbenFormSchema[] => {
   return [
     {
-      fieldName: 'oldPassword',
-      label: '旧密码',
-      component: 'VbenInputPassword',
-      componentProps: {
-        placeholder: '请输入旧密码',
-      },
-    },
-    {
       fieldName: 'newPassword',
       label: '新密码',
       component: 'VbenInputPassword',

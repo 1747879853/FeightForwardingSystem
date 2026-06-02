@@ -95,7 +95,7 @@ async function handleAvatarFileChange(event: Event) {
         <div
           class="absolute inset-0 flex items-center justify-center bg-black/45 px-1 text-center text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
         >
-          {{ avatarUploading ? '上传中...' : '点击上传新头像' }}
+          {{ avatarUploading ? '上传中...' : '上传头像' }}
         </div>
       </button>
       <input

@@ -23,9 +23,9 @@ last_updated: 2026-06-03
 # 2. 功能与操作说明 (Features & Operations)
 
 - **进入个人中心：** 右上角用户头像下拉 →「个人中心」→ 路由 `/profile`。
-- **个人信息：** 左侧竖向 Tab「个人信息」；两栏表单展示/编辑字段；底部「更新基本信息」提交 `UpdateMyInfoAsync`。
-- **修改密码：** Tab「修改密码」；旧密码、新密码、确认密码；提交 `User/ChangeMyPasswordAsync`。
-- **更换头像：** 左侧大头像悬浮显示「点击上传新头像」；选择图片后先走通用上传接口，再 `UpdateMyAvatarAsync`，成功后刷新全局 `userStore` 头像（右上角同步更新）。
+- **个人信息：** 左侧竖向 Tab「个人信息」；两栏表单、标签在上输入框在下（vertical）；底部「更新基本信息」提交 `UpdateMyInfoAsync`。
+- **修改密码：** Tab「修改密码」；新密码、确认密码（无旧密码）；标签在上、vertical 布局；提交 `User/ChangeMyPasswordAsync`（`password` + `confirmPassword`）。
+- **更换头像：** 左侧大头像悬浮显示「上传头像」；选择图片后先走通用上传接口，再 `UpdateMyAvatarAsync`，成功后刷新全局 `userStore` 头像（右上角同步更新）。
 - **登录后展示：** `getUserInfoApi` 合并 `GetMyAsync`，右上角邮箱不再使用写死占位邮箱。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -55,7 +55,7 @@ last_updated: 2026-06-03
 | **gender** | 性别 | 同上 | 可编辑；下拉：0 未知 / 1 男 / 2 女 | 可清空为 `null` |
 | **emailPwd** | 个人邮箱密码 | 同上 | 可编辑；密码框展示 | 空串 → `null` |
 | **avatar** | 头像 URL | `GetMyAsync`；上传走 `UpdateMyAvatarAsync` | **不在基本信息表单展示**；保存基本信息时隐式提交：`GetMyAsync.avatar` 为空则用 `userStore.userInfo.avatar` | 避免全量更新清空 |
-| **oldPassword / newPassword / confirmPassword** | 修改密码 | `ChangeMyPasswordAsync` | 仅在「修改密码」页签 | 见 `password-setting.vue` 校验规则 |
+| **newPassword / confirmPassword** | 修改密码 | `ChangeMyPasswordAsync` 映射为 `password`、`confirmPassword` | 仅在「修改密码」页签 | 新密码最长 32 位；确认密码须一致 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -69,4 +69,5 @@ last_updated: 2026-06-03
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-03 | `Feature` | 表单 vertical 布局（个人信息、修改密码）；修改密码移除旧密码字段；头像悬浮文案改为「上传头像」。 | `ProfileBaseSetting` / `ProfilePasswordSetting` 在 `@vben/common-ui` 统一 `layout: vertical`。 |
 | 2026-06-03 | `Feature` | 对接 `UserAdmin` 个人中心：两栏基本信息、独立改密、左侧头像上传；登录合并 `GetMyAsync` 填充右上角邮箱/头像；修复 `#/profile` 刷新菜单丢失与守卫重定向循环；保存时隐式携带 `avatar`。 | `getUserInfoApi` 使用 `Promise.allSettled`；`useAuthStore` 仅 `#/store` 导出；`Profile` 组件 `#avatar` 插槽。详见 [变更日志](../../changelogs/change-log-2026-06-03-profile-useradmin-integration.md)。 |

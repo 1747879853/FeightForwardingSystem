@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-03] [个人中心表单垂直布局并移除修改密码旧密码](./changelogs/change-log-2026-06-03-profile-form-layout-password.md)
 - [2026-06-03] [个人中心对接 UserAdmin 与登录态展示修复](./changelogs/change-log-2026-06-03-profile-useradmin-integration.md)
 - [2026-06-02] [登录背景视频与全局字体改为固定 OSS 地址并禁用 SW](./changelogs/change-log-2026-06-02-oss-fixed-assets-and-disable-sw.md)
 - [2026-06-01] [双品牌 IIS 发布改为 dist.zip 包上传（hhyy/jht）](./changelogs/change-log-2026-06-01-brand-iis-deploy-dist-zip-package.md)
