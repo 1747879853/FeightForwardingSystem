@@ -549,16 +549,19 @@ const [Modal, modalApi] = useVbenModal({
     // 构建费用列表（seFreiPriceFees）
     const seFreiPriceFees: SeFreiPriceFeeAddDto[] = [];
 
-    console.log('=== 附加费数据调试 ===');
-    console.log('surchargeFees.value:', surchargeFees.value);
+    console.log('=== 附加费数据调试 (提交前) ===');
+    console.log(
+      'surchargeFees.value:',
+      JSON.parse(JSON.stringify(surchargeFees.value)),
+    );
 
     surchargeFees.value.forEach((surcharge, index) => {
-      console.log(`附加费[${index}]:`, {
-        feeCodeId: surcharge.feeCodeId,
-        currencyId: surcharge.currencyId,
-        priceFeeType: surcharge.priceFeeType,
-        prices: surcharge.prices,
-      });
+      console.log(`--- 处理附加费索引 [${index}] ---`);
+      console.log(`  费用代码ID (feeCodeId): ${surcharge.feeCodeId}`);
+      console.log(
+        `  当前币别ID (currencyId): ${surcharge.currencyId} (类型: ${typeof surcharge.currencyId})`,
+      );
+      console.log(`  计费方式 (priceFeeType): ${surcharge.priceFeeType}`);
 
       // 批量编辑：只要费用代码有值就提交，其他字段留空传null
       if (surcharge.feeCodeId) {
@@ -604,18 +607,25 @@ const [Modal, modalApi] = useVbenModal({
           ? (surcharge.prices['order']?.price ?? 0)
           : undefined;
 
+        const finalCurrencyId = surcharge.currencyId ?? null;
+        console.log(`  最终提交币别ID (finalCurrencyId): ${finalCurrencyId}`);
+
         const fee: SeFreiPriceFeeAddDto = {
           feeCodeId: surcharge.feeCodeId,
-          currencyId: surcharge.currencyId ?? null, // 留空传null
+          currencyId: finalCurrencyId, // 留空传null
           priceFeeType: surcharge.priceFeeType,
           price: orderPrice,
           seFreiPriceCtnFees:
             ctnFees && ctnFees.length > 0 ? ctnFees : undefined,
         };
 
+        console.log(`  生成的费用对象:`, fee);
         seFreiPriceFees.push(fee);
       }
     });
+
+    console.log('=== 所有附加费处理完毕 ===');
+    console.log('seFreiPriceFees:', seFreiPriceFees);
 
     // 构建关联日列表（seFreiPriceDays）
     const seFreiPriceDays: SeFreiPriceDayAddDto[] = [];
@@ -1200,7 +1210,7 @@ onMounted(async () => {
                 <td class="border border-gray-300 px-2 py-2">
                   <CurrencySelect
                     :key="`currency_${index}_${surcharge.feeCodeId || 'empty'}`"
-                    :model-value="surcharge.currencyId"
+                    v-model="surcharge.currencyId"
                     class="w-full"
                     placeholder="请选择币别"
                     allow-clear
