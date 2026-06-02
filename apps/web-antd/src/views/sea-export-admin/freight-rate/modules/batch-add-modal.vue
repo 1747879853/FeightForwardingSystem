@@ -22,6 +22,10 @@ import {
   Switch,
   TimePicker,
   Tooltip,
+  DropdownButton,
+  Menu,
+  MenuItem,
+  Modal as AntModal,
 } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
@@ -153,9 +157,10 @@ function generateRowKey() {
 }
 
 // 创建默认行数据
-function createDefaultRow() {
+function createDefaultRow(isCopied: boolean = false) {
   return {
     _rowKey: generateRowKey(),
+    _isCopied: isCopied, // 标识是否为复制的行
     recommend: false,
     carrierId: undefined,
     polId: undefined,
@@ -188,20 +193,53 @@ function createDefaultRow() {
   };
 }
 
-// 新增行
+// 新增行 - 默认新增1行
 function handleAddRow() {
-  const newRow = createDefaultRow();
+  addRows(1);
+}
 
-  // 如果已经有添加的箱型，为新行初始化这些箱型的空数据
-  if (addedCtnTypes.value.length > 0) {
-    newRow.seFreiPriceCtns = addedCtnTypes.value.map((ctn) => ({
-      ctnCodeId: ctn.ctnCodeId,
-      cost: undefined,
-    }));
+// 新增多行
+function addRows(count: number) {
+  for (let i = 0; i < count; i++) {
+    const newRow = createDefaultRow();
+
+    // 如果已经有添加的箱型，为新行初始化这些箱型的空数据
+    if (addedCtnTypes.value.length > 0) {
+      newRow.seFreiPriceCtns = addedCtnTypes.value.map((ctn) => ({
+        ctnCodeId: ctn.ctnCodeId,
+        cost: undefined,
+      }));
+    }
+
+    // 直接插入到 Grid 中
+    gridApi.grid?.insertAt(newRow, -1); // -1 表示插入到末尾
   }
 
-  // 直接插入到 Grid 中
-  gridApi.grid?.insertAt(newRow, -1); // -1 表示插入到末尾
+  message.success(`已新增 ${count} 行`);
+}
+
+// 自定义行数弹窗
+const customRowCountVisible = ref(false);
+const customRowCount = ref<number>(1);
+
+function showCustomRowCountModal() {
+  customRowCount.value = 1;
+  customRowCountVisible.value = true;
+}
+
+async function handleConfirmCustomRowCount() {
+  if (!customRowCount.value || customRowCount.value <= 0) {
+    message.warning('请输入有效的行数');
+    return;
+  }
+
+  if (customRowCount.value > 100) {
+    message.warning('单次最多新增100行');
+    return;
+  }
+
+  customRowCountVisible.value = false;
+  addRows(customRowCount.value);
 }
 
 // 删除选中行
@@ -235,6 +273,7 @@ function handleCopyRows() {
     const newRow = JSON.parse(
       JSON.stringify({
         _rowKey: generateRowKey(),
+        _isCopied: true, // 标记为复制的行
         recommend: row.recommend,
         carrierId: row.carrierId,
         polId: row.polId,
@@ -388,6 +427,11 @@ function setCtnCost(row: any, ctnCodeId: any, cost: number | undefined) {
 function buildColumns(): VxeTableGridOptions['columns'] {
   const columns: any[] = [
     {
+      type: 'seq',
+      title: '序号',
+      width: 60,
+    },
+    {
       type: 'checkbox',
       width: 60,
     },
@@ -520,6 +564,14 @@ const [Grid, gridApi] = useVbenVxeGrid<any>({
     rowConfig: {
       keyField: '_rowKey',
       isHover: true,
+    },
+    rowStyle: ({ row }: any) => {
+      if (row._isCopied) {
+        return {
+          backgroundColor: '#fff7e6',
+        };
+      }
+      return {};
     },
     checkboxConfig: {
       highlight: true,
@@ -741,10 +793,21 @@ function resetForm() {
       <!-- 工具栏 -->
       <div class="mb-4 flex items-center justify-between">
         <Space>
-          <Button type="primary" @click="handleAddRow">
-            <Plus class="size-4" />
+          <DropdownButton type="primary" @click="handleAddRow">
+            <template #icon>
+              <Plus class="size-4" />
+            </template>
             新增行
-          </Button>
+            <template #overlay>
+              <Menu>
+                <MenuItem @click="addRows(5)"> 新增 5 行 </MenuItem>
+                <MenuItem @click="addRows(10)"> 新增 10 行 </MenuItem>
+                <MenuItem @click="showCustomRowCountModal">
+                  新增自定义行数
+                </MenuItem>
+              </Menu>
+            </template>
+          </DropdownButton>
           <Button
             :disabled="selectedRowKeys.length === 0"
             @click="handleCopyRows"
@@ -1118,6 +1181,26 @@ function resetForm() {
         </ul>
       </div>
     </div>
+
+    <!-- 自定义行数弹窗 -->
+    <AntModal
+      v-model:open="customRowCountVisible"
+      title="设置新增行数"
+      @ok="handleConfirmCustomRowCount"
+    >
+      <div class="py-4">
+        <label class="mb-2 block text-sm font-medium text-gray-700">
+          请输入要新增的行数：
+        </label>
+        <InputNumber
+          v-model:value="customRowCount"
+          :min="1"
+          :max="100"
+          style="width: 100%"
+          placeholder="请输入行数（1-100）"
+        />
+      </div>
+    </AntModal>
   </Modal>
 </template>
 
