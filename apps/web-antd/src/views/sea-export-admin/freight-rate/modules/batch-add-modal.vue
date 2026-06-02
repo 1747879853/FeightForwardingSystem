@@ -250,12 +250,21 @@ function handleDeleteRows() {
   }
 
   const records = gridApi.grid?.getCheckboxRecords?.() || [];
-  records.forEach((row: any) => {
-    gridApi.grid?.remove(row);
-  });
 
-  selectedRowKeys.value = [];
-  message.success('删除成功');
+  AntModal.confirm({
+    title: '确认删除',
+    content: `确定要删除选中的 ${records.length} 行数据吗？`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: () => {
+      records.forEach((row: any) => {
+        gridApi.grid?.remove(row);
+      });
+
+      selectedRowKeys.value = [];
+      message.success('删除成功');
+    },
+  });
 }
 
 // 复制选中行

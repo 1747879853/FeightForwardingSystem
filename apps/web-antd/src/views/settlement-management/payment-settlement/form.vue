@@ -9,6 +9,7 @@ import dayjs from 'dayjs';
 
 import { Page } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
+import { $t } from '#/locales';
 
 import {
   Button,
@@ -17,6 +18,7 @@ import {
   Input,
   InputNumber,
   message,
+  Modal,
   Select,
   Space,
   Table,
@@ -585,13 +587,20 @@ async function handleDeleteItem(index: number) {
   }
 
   try {
-    // 确认删除
-    await new Promise((resolve, reject) => {
-      window.confirm(
-        `确定要删除申请 ${itemToDelete.application.applicationNo} 吗？`,
-      )
-        ? resolve(true)
-        : reject(new Error('取消删除'));
+    // 使用 Modal.confirm 进行二次确认
+    await new Promise<void>((resolve, reject) => {
+      Modal.confirm({
+        title: '确认删除',
+        content: `确定要删除申请 ${itemToDelete.application.applicationNo} 吗？`,
+        okText: '确定',
+        cancelText: '取消',
+        onOk: () => {
+          resolve();
+        },
+        onCancel: () => {
+          reject(new Error('取消删除'));
+        },
+      });
     });
 
     submitting.value = true;
@@ -1632,17 +1641,17 @@ onMounted(() => {
               >
                 ¥{{ formatAmount(record.userSettledPrice || 0) }}
               </span>
-              <span v-else style="color: #999">原币申请 (见下方明细)</span>
+              <span v-else style="color: #999">原币申请</span>
             </template>
             <template v-else-if="column.key === 'action'">
               <Space>
                 <Button
-                  type="link"
+                  type="primary"
                   size="small"
                   danger
                   @click="handleDeleteItem(index)"
                 >
-                  ✕
+                  {{ $t('common.delete') }}
                 </Button>
               </Space>
             </template>
