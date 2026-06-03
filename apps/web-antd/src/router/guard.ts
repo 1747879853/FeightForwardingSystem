@@ -11,6 +11,39 @@ import { useAuthStore } from '#/store';
 
 import { generateAccess } from './access';
 
+async function ensureAccessInitialized(params: {
+  authStore: ReturnType<typeof useAuthStore>;
+  accessStore: ReturnType<typeof useAccessStore>;
+  router: Router;
+  userStore: ReturnType<typeof useUserStore>;
+}) {
+  const { accessStore, authStore, router, userStore } = params;
+
+  if (accessStore.isAccessChecked) {
+    return userStore.userInfo;
+  }
+
+  const userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
+
+  let accessCodes = accessStore.accessCodes;
+  if (!accessCodes || accessCodes.length === 0) {
+    accessCodes = await getAccessCodesApi();
+    accessStore.setAccessCodes(accessCodes);
+  }
+
+  const { accessibleMenus, accessibleRoutes } = await generateAccess({
+    roles: accessCodes,
+    router,
+    routes: accessRoutes,
+  });
+
+  accessStore.setAccessMenus(accessibleMenus);
+  accessStore.setAccessRoutes(accessibleRoutes);
+  accessStore.setIsAccessChecked(true);
+
+  return userInfo;
+}
+
 /**
  * 通用守卫配置
  * @param router
@@ -60,6 +93,16 @@ function setupAccessGuard(router: Router) {
             preferences.app.defaultHomePath,
         );
       }
+
+      // 刷新进入 /profile 等核心页时，也需要初始化用户信息和菜单权限
+      if (to.path !== LOGIN_PATH && accessStore.accessToken) {
+        await ensureAccessInitialized({
+          accessStore,
+          authStore,
+          router,
+          userStore,
+        });
+      }
       return true;
     }
 
@@ -86,36 +129,16 @@ function setupAccessGuard(router: Router) {
       return to;
     }
 
-    // 是否已经生成过动态路由
     if (accessStore.isAccessChecked) {
       return true;
     }
 
-    // 生成路由表
-    // 获取用户信息
-    const userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
-
-    // 使用 ABP 权限码作为路由权限判断依据
-    // 若 accessCodes 为空（如页面刷新后），则重新拉取
-    let accessCodes = accessStore.accessCodes;
-    if (!accessCodes || accessCodes.length === 0) {
-      accessCodes = await getAccessCodesApi();
-      accessStore.setAccessCodes(accessCodes);
-    }
-
-    // 生成菜单和路由
-    // 这里把 roles 参数复用为 ABP 权限码列表，用于 meta.authority 匹配
-    const { accessibleMenus, accessibleRoutes } = await generateAccess({
-      roles: accessCodes,
+    const userInfo = await ensureAccessInitialized({
+      accessStore,
+      authStore,
       router,
-      // 则会在菜单中显示，但是访问会被重定向到403
-      routes: accessRoutes,
+      userStore,
     });
-
-    // 保存菜单信息和路由信息
-    accessStore.setAccessMenus(accessibleMenus);
-    accessStore.setAccessRoutes(accessibleRoutes);
-    accessStore.setIsAccessChecked(true);
     const redirectPath = (from.query.redirect ??
       (to.path === preferences.app.defaultHomePath
         ? userInfo.homePath || preferences.app.defaultHomePath

@@ -28,7 +28,7 @@ const [Form, formApi] = useVbenForm(
         class: 'w-full',
       },
     },
-    layout: 'horizontal',
+    layout: 'vertical',
     schema: computed(() => props.formSchema),
     showDefaultActions: false,
   }),

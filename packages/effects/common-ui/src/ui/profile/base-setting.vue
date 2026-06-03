@@ -10,10 +10,12 @@ import { VbenButton } from '@vben-core/shadcn-ui';
 
 interface Props {
   formSchema?: VbenFormSchema[];
+  wrapperClass?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   formSchema: () => [],
+  wrapperClass: 'grid-cols-1 md:grid-cols-2 gap-4',
 });
 
 const emit = defineEmits<{
@@ -28,9 +30,10 @@ const [Form, formApi] = useVbenForm(
         class: 'w-full',
       },
     },
-    layout: 'horizontal',
+    layout: 'vertical',
     schema: computed(() => props.formSchema),
     showDefaultActions: false,
+    wrapperClass: props.wrapperClass,
   }),
 );
 

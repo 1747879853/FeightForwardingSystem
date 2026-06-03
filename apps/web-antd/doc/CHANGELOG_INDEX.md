@@ -13,6 +13,12 @@
 
 ## 2026-06
 
+- [2026-06-03] [个人中心个人邮箱密码输入框高度对齐](./changelogs/change-log-2026-06-03-profile-email-password-input-height.md)
+- [2026-06-03] [jht 字体改为固定 OSS 直连](./changelogs/change-log-2026-06-03-jht-font-direct-oss.md)
+- [2026-06-03] [个人中心表单垂直布局并移除修改密码旧密码](./changelogs/change-log-2026-06-03-profile-form-layout-password.md)
+- [2026-06-03] [个人中心对接 UserAdmin 与登录态展示修复](./changelogs/change-log-2026-06-03-profile-useradmin-integration.md)
+- [2026-06-02] [登录背景视频与全局字体改为固定 OSS 地址并禁用 SW](./changelogs/change-log-2026-06-02-oss-fixed-assets-and-disable-sw.md)
+- [2026-06-01] [双品牌 IIS 发布改为 dist.zip 包上传（hhyy/jht）](./changelogs/change-log-2026-06-01-brand-iis-deploy-dist-zip-package.md)
 - [2026-06-01] [OSS 签名接口限流静默降级本地资源](./changelogs/change-log-2026-06-01-oss-traffic-limit-local-fallback.md)
 - [2026-06-01] [OSS 静态资源 Service Worker 缓存](./changelogs/change-log-2026-06-01-oss-service-worker-cache.md)
 - [2026-06-01] [字体与登录背景视频接入 OSS 私有签名 URL](./changelogs/change-log-2026-06-01-oss-private-font-login-video.md)

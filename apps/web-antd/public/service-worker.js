@@ -3,7 +3,7 @@ const CACHE_VERSION = 'v1';
 const CACHE_NAME = `${CACHE_PREFIX}-${CACHE_VERSION}`;
 
 // 自定义 CDN 域名可在这里补充
-const OSS_HOST_KEYWORDS = ['aliyuncs.com', 'your-cdn.com'];
+const OSS_HOST_KEYWORDS = ['aliyuncs.com', 'oss.jiayuebetter.com', 'your-cdn.com'];
 
 function isOssResourceRequest(requestUrl) {
   try {
@@ -50,6 +50,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (!isOssResourceRequest(request.url)) {
+    return;
+  }
+
+  // 字体资源不走 SW 缓存，避免跨域校验与缓存响应类型不一致导致 CORS 异常
+  if (request.destination === 'font') {
     return;
   }
 

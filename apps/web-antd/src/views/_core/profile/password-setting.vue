@@ -7,18 +7,13 @@ import { ProfilePasswordSetting, z } from '@vben/common-ui';
 
 import { message } from 'ant-design-vue';
 
+import { changeMyPasswordApi } from '#/api';
+
 const profilePasswordSettingRef = ref();
+const submitting = ref(false);
 
 const formSchema = computed((): VbenFormSchema[] => {
   return [
-    {
-      fieldName: 'oldPassword',
-      label: '旧密码',
-      component: 'VbenInputPassword',
-      componentProps: {
-        placeholder: '请输入旧密码',
-      },
-    },
     {
       fieldName: 'newPassword',
       label: '新密码',
@@ -27,6 +22,10 @@ const formSchema = computed((): VbenFormSchema[] => {
         passwordStrength: true,
         placeholder: '请输入新密码',
       },
+      rules: z
+        .string({ required_error: '请输入新密码' })
+        .min(1, { message: '请输入新密码' })
+        .max(32, { message: '密码长度不能超过32位' }),
     },
     {
       fieldName: 'confirmPassword',
@@ -52,14 +51,25 @@ const formSchema = computed((): VbenFormSchema[] => {
   ];
 });
 
-function handleSubmit() {
-  message.success('密码修改成功');
+async function handleSubmit(value: Recordable<any>) {
+  submitting.value = true;
+  try {
+    await changeMyPasswordApi({
+      password: value.newPassword,
+      confirmPassword: value.confirmPassword,
+    });
+    message.success('密码修改成功');
+    profilePasswordSettingRef.value?.getFormApi?.()?.resetForm();
+  } finally {
+    submitting.value = false;
+  }
 }
 </script>
 <template>
   <ProfilePasswordSetting
     ref="profilePasswordSettingRef"
     class="w-1/3"
+    :loading="submitting"
     :form-schema="formSchema"
     @submit="handleSubmit"
   />

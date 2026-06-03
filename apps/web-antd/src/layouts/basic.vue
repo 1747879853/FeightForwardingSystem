@@ -127,6 +127,14 @@ const avatar = computed(() => {
   return userStore.userInfo?.avatar ?? preferences.app.defaultAvatar;
 });
 
+const userEmail = computed(() => {
+  return (
+    userStore.userInfo?.emailAddress ||
+    userStore.userInfo?.username ||
+    '未设置邮箱'
+  );
+});
+
 async function handleLogout() {
   await authStore.logout(false);
 }
@@ -178,7 +186,7 @@ watch(
         :avatar
         :menus
         :text="userStore.userInfo?.realName"
-        description="ann.vben@gmail.com"
+        :description="userEmail"
         tag-text="Pro"
         @logout="handleLogout"
       />
