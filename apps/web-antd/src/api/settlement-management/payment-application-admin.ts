@@ -159,9 +159,9 @@ export namespace PaymentApplicationAdminApi {
     taxIncluded?: boolean;
     /** 税率(%) */
     taxRate: number;
-    /** 不含税单价（计算得出） */
+    /** 不含税单价（前端传入，后端直接存储） */
     noTaxUnitPrice: number;
-    /** 不含税金额（计算得出） */
+    /** 不含税金额（前端传入，后端直接存储） */
     noTaxAmount: number;
     /** 已开票金额 */
     invoicedAmount: number;

@@ -73,68 +73,54 @@ defineExpose({
 
 // 处理表单值变化
 const handleFieldChange = async (fieldName: string) => {
+  console.log('表单字段变化:', fieldName);
   const values = await orderFeeFormApi.getValues();
   if (!values) return;
 
-  let unitPrice = Number(values.unitPrice) || 0;
+  let noTaxUnitPrice = Number(values.noTaxUnitPrice) || 0;
   const quantity = Number(values.quantity) || 0;
   const taxRate = Number(values.taxRate) || 0;
+  let unitPrice = Number(values.unitPrice) || 0;
   let amount = Number(values.amount) || 0;
 
-  // 根据变化的字段进行不同的计算逻辑
-  if (fieldName === 'amount') {
-    // 当金额变化时，根据数量和金额反推单价
-    if (quantity > 0) {
-      unitPrice = amount / quantity;
-      // 更新单价字段
-      orderFeeFormApi.setFieldValue(
-        'unitPrice',
-        parseFloat(unitPrice.toFixed(2)),
-      );
-    }
-  } else if (['unitPrice', 'quantity'].includes(fieldName)) {
-    // 当单价或数量变化时，重新计算金额
-    amount = unitPrice * quantity;
-    orderFeeFormApi.setFieldValue('amount', parseFloat(amount.toFixed(2)));
-  }
-
-  // 计算不含税单价
-  const noTaxUnitPrice =
-    taxRate > 0 ? unitPrice / (1 + taxRate / 100) : unitPrice;
-
-  // 计算不含税金额
+  // 核心计算公式：不含税金额 = 不含税单价 × 数量
   const noTaxAmount = noTaxUnitPrice * quantity;
 
-  // 更新不含税相关字段
-  orderFeeFormApi.setFieldValue(
-    'noTaxUnitPrice',
-    parseFloat(noTaxUnitPrice.toFixed(4)),
-  );
+  console.log('计算过程:', {
+    noTaxUnitPrice,
+    quantity,
+    taxRate,
+    noTaxAmount,
+  });
+
+  // 更新不含税金额字段（始终自动计算）
   orderFeeFormApi.setFieldValue(
     'noTaxAmount',
     parseFloat(noTaxAmount.toFixed(2)),
   );
 
+  // 根据不含税单价和税率计算含税单价
+  unitPrice =
+    taxRate > 0 ? noTaxUnitPrice * (1 + taxRate / 100) : noTaxUnitPrice;
+
+  // 根据不含税金额和税率计算含税金额
+  amount = noTaxAmount * (1 + taxRate / 100);
+
+  // 更新含税相关字段
+  orderFeeFormApi.setFieldValue('unitPrice', parseFloat(unitPrice.toFixed(4)));
+  orderFeeFormApi.setFieldValue('amount', parseFloat(amount.toFixed(2)));
+
   // 同步更新 currentFeeData，触发计算属性重新计算
   if (currentFeeData.value) {
     currentFeeData.value = {
       ...currentFeeData.value,
-      unitPrice,
-      quantity,
-      amount: parseFloat(amount.toFixed(2)),
       noTaxUnitPrice: parseFloat(noTaxUnitPrice.toFixed(4)),
       noTaxAmount: parseFloat(noTaxAmount.toFixed(2)),
+      unitPrice: parseFloat(unitPrice.toFixed(4)),
+      amount: parseFloat(amount.toFixed(2)),
+      quantity,
+      taxRate,
     };
-  }
-
-  // 如果变化的是税率，单独处理
-  if (fieldName === 'taxRate') {
-    if (currentFeeData.value) {
-      currentFeeData.value = {
-        ...currentFeeData.value,
-        taxRate,
-      };
-    }
   }
 };
 
@@ -187,13 +173,13 @@ function useOrderFeeFormSchema() {
     },
     {
       component: 'InputNumber',
-      fieldName: 'unitPrice',
-      label: $t('seaExport.export.orderFee.unitPrice'),
+      fieldName: 'noTaxUnitPrice',
+      label: $t('seaExport.export.orderFee.noTaxUnitPrice'),
       componentProps: {
         min: 0,
-        precision: 2,
+        precision: 4,
         style: { width: '100%' },
-        onChange: () => handleFieldChange('unitPrice'),
+        //onChange: () => handleFieldChange('noTaxUnitPrice'),
       },
     },
     {
@@ -204,18 +190,18 @@ function useOrderFeeFormSchema() {
         min: 0,
         precision: 2,
         style: { width: '100%' },
-        onChange: () => handleFieldChange('quantity'),
+        // onChange: () => handleFieldChange('quantity'),
       },
     },
     {
       component: 'InputNumber',
-      fieldName: 'amount',
-      label: $t('seaExport.export.orderFee.amount'),
+      fieldName: 'noTaxAmount',
+      label: $t('seaExport.export.orderFee.noTaxAmount'),
       componentProps: {
         min: 0,
         precision: 2,
+        disabled: true,
         style: { width: '100%' },
-        onChange: () => handleFieldChange('amount'),
       },
     },
     {
@@ -236,13 +222,13 @@ function useOrderFeeFormSchema() {
         max: 100,
         precision: 2,
         style: { width: '100%' },
-        onChange: () => handleFieldChange('taxRate'),
+        //  onChange: () => handleFieldChange('taxRate'),
       },
     },
     {
       component: 'InputNumber',
-      fieldName: 'noTaxUnitPrice',
-      label: $t('seaExport.export.orderFee.noTaxUnitPrice'),
+      fieldName: 'unitPrice',
+      label: $t('seaExport.export.orderFee.unitPrice'),
       componentProps: {
         min: 0,
         precision: 4,
@@ -252,8 +238,8 @@ function useOrderFeeFormSchema() {
     },
     {
       component: 'InputNumber',
-      fieldName: 'noTaxAmount',
-      label: $t('seaExport.export.orderFee.noTaxAmount'),
+      fieldName: 'amount',
+      label: $t('seaExport.export.orderFee.amount'),
       componentProps: {
         min: 0,
         precision: 2,

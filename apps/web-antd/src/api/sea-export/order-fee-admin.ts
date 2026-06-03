@@ -5,13 +5,16 @@ const API_PREFIX = '/services/app/OrderFeeAdmin';
 
 export namespace OrderFeeAdminApi {
   /**
-   * 新增字段说明：
-  分类 字段  说明
-  展示字段  feeCodeName、currencyName、settlementName         关联表的名称展示
-  计算字段  unInvoicedAmount、noTaxUnitPrice、noTaxAmount     服务端计算返回
-  审计字段  isDeleted、creationTime、lastModificationTime 等   ABP 框架标准审计属性
-
-  主键  id  记录唯一标识
+   * 字段说明（2026-06-02更新）：
+   * - noTaxUnitPrice/noTaxAmount: 前端传入，后端直接存储并返回（不再后端计算）
+   * - taxIncluded: 已删除，不再使用
+   *
+   * 分类 字段  说明
+   * 展示字段  feeCodeName、currencyName、settlementName         关联表的名称展示
+   * 输入字段  noTaxUnitPrice、noTaxAmount     前端计算后传入
+   * 审计字段  isDeleted、creationTime、lastModificationTime 等   ABP 框架标准审计属性
+   *
+   * 主键  id  记录唯一标识
    */
 
   /** 新增业务费用参数 */
@@ -60,10 +63,10 @@ export namespace OrderFeeAdminApi {
     /** 税率 */
     taxRate: number;
 
-    /** 不含税单价 */
+    /** 不含税单价（前端传入，后端直接存储） */
     noTaxUnitPrice: number;
 
-    /** 不含税金额 */
+    /** 不含税金额（前端传入，后端直接存储） */
     noTaxAmount: number;
 
     /** 付费申请金额 */
@@ -214,10 +217,10 @@ export namespace OrderFeeAdminApi {
     /** 未开票金额 (计算字段) */
     unInvoicedAmount: number;
 
-    /** 不含税单价 (计算字段) */
+    /** 不含税单价（后端直接返回数据库存储值） */
     noTaxUnitPrice: number;
 
-    /** 不含税金额 (计算字段) */
+    /** 不含税金额（后端直接返回数据库存储值） */
     noTaxAmount: number;
 
     /** 是否已删除 */

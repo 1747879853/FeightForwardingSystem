@@ -175,6 +175,10 @@ export namespace PaymentSettlementAdminApi {
     thisSettledAmount?: number;
     /** 未开票金额 */
     unInvoicedAmount?: number;
+    /** 不含税单价（后端直接返回数据库存储值） */
+    noTaxUnitPrice?: number;
+    /** 不含税金额（后端直接返回数据库存储值） */
+    noTaxAmount?: number;
     /** 所属公司列表 */
     companys?: import('#/api/settlement-management/payment-application-admin').PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
   }

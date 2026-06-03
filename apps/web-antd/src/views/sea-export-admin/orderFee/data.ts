@@ -135,6 +135,9 @@ export const getCurrencyEnumOptions = () => [
   { value: 1, label: 'RMB' },
   { value: 2, label: 'USD' },
   { value: 3, label: 'EUR' },
+  { value: 4, label: 'INR' },
+  { value: 5, label: 'JPY' },
+  { value: 6, label: 'KRW' },
 ];
 
 export const getCurrencyEnumSymbolOptions = () => [
@@ -142,6 +145,9 @@ export const getCurrencyEnumSymbolOptions = () => [
   { value: 1, label: '￥' },
   { value: 2, label: '$' },
   { value: 3, label: '€' },
+  { value: 4, label: '₹' },
+  { value: 5, label: '¥' },
+  { value: 6, label: '₩' },
 ];
 // --------------------------------------------------------
 // 费用类别
@@ -359,7 +365,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('seaExport.export.orderFee.currency'),
 
-      field: 'currencyName',
+      field: 'currencyCode',
       align: 'center',
       minWidth: 80,
     },

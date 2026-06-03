@@ -383,7 +383,7 @@ setupVbenVxeTable({
 
                     // 同时更新 不含税金额 字段
                     row[column.field.replace('taxRate', 'noTaxAmount')] = (
-                      row['noTaxUnitPrice'] * newVal
+                      row['noTaxUnitPrice'] * row['quantity']
                     ).toFixed(4);
                   }
                 }
