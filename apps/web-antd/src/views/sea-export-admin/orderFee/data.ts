@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { h } from 'vue';
+import { Tag } from 'ant-design-vue';
 import { getEnumItems } from '#/utils/init-enum';
 // --------------------------------------------------------
 // 数据录入方式
@@ -321,6 +322,21 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
   return [
     { type: 'checkbox', width: 48, fixed: 'left' },
     {
+      title: '保存状态',
+      field: '_saveStatus',
+      width: 80,
+      align: 'center',
+      slots: {
+        default: ({ row }: any) => {
+          // 如果 id 为空，显示未保存标识
+          if (!row.id) {
+            return h(Tag, { color: 'warning' }, () => '未保存');
+          }
+          return h(Tag, { color: 'success' }, () => '已保存');
+        },
+      },
+    },
+    {
       title: $t('seaExport.export.orderFee.invoiceStatus'),
       field: 'invoiceStatus',
       width: 80,
@@ -333,7 +349,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
       title: $t('seaExport.export.orderFee.feeStatus'),
       align: 'center',
       field: 'feeStatus',
-      width: 90,
+      minWidth: 100,
       cellRender: {
         name: 'CellFeeStatusTag',
         options: getFeeStatusOptions(),
@@ -544,6 +560,21 @@ export function useOrderFeeColumns(
 ): VxeTableGridOptions<OrderFeeAdminApi.OrderFeeEditDto>['columns'] {
   return [
     { type: 'checkbox', width: 48, fixed: 'left' },
+    {
+      title: '保存状态',
+      field: '_saveStatus',
+      width: 80,
+      align: 'center',
+      slots: {
+        default: ({ row }: any) => {
+          // 如果 id 为空，显示未保存标识
+          if (!row.id) {
+            return h(Tag, { color: 'warning' }, () => '未保存');
+          }
+          return h(Tag, { color: 'success' }, () => '已保存');
+        },
+      },
+    },
     {
       title: $t('seaExport.export.orderFee.invoiceStatus'),
       field: 'invoiceStatus',

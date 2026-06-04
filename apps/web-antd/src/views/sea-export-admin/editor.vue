@@ -50,10 +50,10 @@ getOrderFeeNumber();
 
 const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'basic', label: '基础信息', sectionKey: 'basic' },
+  { key: 'fee', label: feeName.value },
   { key: 'party', label: '更改单', sectionKey: 'party' },
   { key: 'shipment', label: '服务详情', sectionKey: 'shipment' },
   { key: 'port', label: '单证信息', sectionKey: 'port' },
-  { key: 'fee', label: feeName.value },
   { key: 'dispatch', label: '派车' },
   { key: 'billInfo', label: '分单' },
   { key: 'issueRecord', label: '问题记录' },

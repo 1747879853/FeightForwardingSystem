@@ -378,9 +378,9 @@ const orderFeeWithdraw = () => {
 const Submitted = () => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
-  const list = (dataSource.value ?? []).filter((row) =>
-    keysSet.has((row as any)._rowKey),
-  );
+  const list = (dataSource.value ?? [])
+    .filter((row) => keysSet.has((row as any)._rowKey))
+    .filter((row) => row.feeStatus === feeConstants.getFeeStatusValue.Entering);
   let SubmitOrderFeeDto = {
     TransportOrderId: editId.value,
     PaySide: props.type ?? 0,
@@ -565,16 +565,20 @@ const removeSelectedRows = () => {
     .filter((row) => (row as any).id !== '')
     .map((row) => (row as any).id);
   //console.log('needDelIds', needDelIds);
-  dataSource.value = list;
-  delRow();
+
   selectedRowKeys.value = [];
   if (props.mode !== 'changeOrder' && needDelIds.length > 0) {
     batchDeleteOrderFee(needDelIds).then(() => {
+      dataSource.value = list;
+      delRow();
       message.success({
         content: $t('ui.actionMessage.operationSuccess'),
         key: 'action_process_msg',
       });
     });
+  } else {
+    dataSource.value = list;
+    delRow();
   }
 };
 
