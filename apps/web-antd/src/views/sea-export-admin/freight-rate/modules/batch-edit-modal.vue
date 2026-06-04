@@ -376,13 +376,13 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'polId',
       title: '起运港',
-      width: 240,
+      width: 340,
       slots: { default: 'polId' },
     },
     {
       field: 'podId',
       title: '目的港',
-      width: 240,
+      width: 340,
       slots: { default: 'podId' },
     },
     {
@@ -1014,11 +1014,9 @@ onMounted(() => {
               <DatePicker
                 v-model:value="row.etd"
                 style="width: 180px"
-                show-time
-                :time-picker-props="{ format: 'HH:mm' }"
                 placeholder="选择日期和时间"
-                value-format="YYYY-MM-DD HH:mm"
-                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DD"
+                format="YYYY-MM-DD"
                 :disabled="!!row.etdDayOfWeek"
                 allow-clear
                 @change="handleSwitchToDateTimeMode(row)"

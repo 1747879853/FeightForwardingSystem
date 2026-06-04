@@ -863,10 +863,8 @@ onMounted(async () => {
                   <DatePicker
                     v-model:value="dateGroup.etd"
                     placeholder="请选择开船日期"
-                    format="YYYY-MM-DD HH:mm"
-                    value-format="YYYY-MM-DD HH:mm"
-                    show-time
-                    :time-picker-props="{ format: 'HH:mm' }"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
                     style="width: 100%"
                   />
                 </div>

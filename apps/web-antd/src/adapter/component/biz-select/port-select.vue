@@ -54,24 +54,17 @@ const forwardSlotNames = computed(() =>
 );
 
 const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
+  console.log('mapPortToOption', port);
   const portAny = port as any;
   const ediCode = (port.ediCode ?? '').toString().trim();
-
+  const countryEnName = (port.country.countryEnName ?? '').toString().trim();
+  const cnName = (port.cnName ?? '').toString().trim();
   let nameForPath = (port.portName ?? '').toString().trim();
-  if (!nameForPath) {
-    nameForPath = (port.cnName ?? '').toString().trim();
-  }
-  if (!nameForPath) {
-    const fromKey = portAny?.[props.labelKey];
-    nameForPath = fromKey ? String(fromKey).trim() : '';
-  }
 
   /** 下拉里展示 ediCode/portName；选中后仅展示 ediCode，故 option.label 用 ediCode */
-  const dropdownLabel =
-    ediCode && nameForPath
-      ? `${ediCode}/${nameForPath}`
-      : ediCode || nameForPath;
-  const label = ediCode || nameForPath;
+  const dropdownLabel = `${ediCode}/${nameForPath} , ${countryEnName} / ${cnName}`;
+
+  const label = `${nameForPath} , ${countryEnName}`;
 
   const rawPortName = (port.portName ?? '').toString().trim();
   const rawValue = portAny?.[props.valueKey];
