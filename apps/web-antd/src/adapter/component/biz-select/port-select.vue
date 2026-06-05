@@ -57,7 +57,7 @@ const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
   console.log('mapPortToOption', port);
   const portAny = port as any;
   const ediCode = (port.ediCode ?? '').toString().trim();
-  const countryEnName = (port.country.countryEnName ?? '').toString().trim();
+  const countryEnName = (port?.country?.countryEnName ?? '').toString().trim();
   const cnName = (port.cnName ?? '').toString().trim();
   let nameForPath = (port.portName ?? '').toString().trim();
 

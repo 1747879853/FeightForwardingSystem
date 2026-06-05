@@ -168,7 +168,8 @@ setupVbenVxeTable({
     vxeUI.renderer.add('CellSwitch', {
       renderTableDefault({ attrs, props }, { column, row }) {
         const loadingKey = `__loading_${column.field}`;
-        const finallyProps = {
+        // 处理动态 disabled 属性
+        const finallyProps: any = {
           checkedChildren: $t('common.enabled'),
           checkedValue: 1,
           unCheckedChildren: $t('common.disabled'),
@@ -178,6 +179,12 @@ setupVbenVxeTable({
           loading: row[loadingKey] ?? false,
           'onUpdate:checked': onChange,
         };
+
+        // 如果 disabled 是函数，则调用它并传入 row
+        if (typeof finallyProps.disabled === 'function') {
+          finallyProps.disabled = finallyProps.disabled(row);
+        }
+
         async function onChange(newVal: any) {
           row[loadingKey] = true;
           try {
@@ -194,45 +201,65 @@ setupVbenVxeTable({
     });
     vxeUI.renderer.add('CellFeeCodeSelect', {
       renderTableDefault({ attrs, props }, { column, row }) {
-        const finallyProps = {
-          ...attrs,
-          ...props,
-          modelValue: row[column.field],
-          'onUpdate:modelValue': onChange,
-        };
-        function onChange(newVal: any) {
-          if (newVal) {
-            row[column.field] = newVal;
-          }
-        }
-        return h(FeeCodeSelect, finallyProps);
-      },
-    });
-    vxeUI.renderer.add('CellClientSelect', {
-      renderTableDefault({ attrs, props }, { column, row }) {
-        const finallyProps = {
+        // 处理动态 disabled 属性
+        const finalProps: any = {
           ...attrs,
           ...props,
           modelValue: row[column.field],
           'onUpdate:modelValue': onChange,
         };
 
+        // 如果 disabled 是函数，则调用它并传入 row
+        if (typeof finalProps.disabled === 'function') {
+          finalProps.disabled = finalProps.disabled(row);
+        }
+
         function onChange(newVal: any) {
           if (newVal) {
             row[column.field] = newVal;
           }
         }
-        return h(ClientSelect, finallyProps);
+        return h(FeeCodeSelect, finalProps);
       },
     });
-    vxeUI.renderer.add('CurrencySelect', {
+    vxeUI.renderer.add('CellClientSelect', {
       renderTableDefault({ attrs, props }, { column, row }) {
-        const finallyProps = {
+        // 处理动态 disabled 属性
+        const finalProps: any = {
           ...attrs,
           ...props,
           modelValue: row[column.field],
           'onUpdate:modelValue': onChange,
         };
+
+        // 如果 disabled 是函数，则调用它并传入 row
+        if (typeof finalProps.disabled === 'function') {
+          finalProps.disabled = finalProps.disabled(row);
+        }
+
+        function onChange(newVal: any) {
+          if (newVal) {
+            row[column.field] = newVal;
+          }
+        }
+        return h(ClientSelect, finalProps);
+      },
+    });
+    vxeUI.renderer.add('CurrencySelect', {
+      renderTableDefault({ attrs, props }, { column, row }) {
+        // 处理动态 disabled 属性
+        const finalProps: any = {
+          ...attrs,
+          ...props,
+          modelValue: row[column.field],
+          'onUpdate:modelValue': onChange,
+        };
+
+        // 如果 disabled 是函数，则调用它并传入 row
+        if (typeof finalProps.disabled === 'function') {
+          finalProps.disabled = finalProps.disabled(row);
+        }
+
         function onChange(newVal: any) {
           // 更新当前字段的值
           row[column.field] = newVal;
@@ -249,27 +276,34 @@ setupVbenVxeTable({
             row['exchangeRate'] = undefined;
           }
         }
-        return h(CurrencySelect, finallyProps);
+        return h(CurrencySelect, finalProps);
       },
     });
     vxeUI.renderer.add('ExchangeRateSelect', {
       renderTableDefault({ attrs, props }, { column, row }) {
-        const finallyProps = {
+        // 处理动态 disabled 属性
+        const finalProps: any = {
           ...attrs,
           ...props,
           modelValue: row[column.field],
           'onUpdate:modelValue': onChange,
         };
+
+        // 如果 disabled 是函数，则调用它并传入 row
+        if (typeof finalProps.disabled === 'function') {
+          finalProps.disabled = finalProps.disabled(row);
+        }
+
         function onChange(newVal: any) {
           // 允许清空汇率字段
           row[column.field] = newVal;
         }
-        return h(ExchangeRateSelect, finallyProps);
+        return h(ExchangeRateSelect, finalProps);
       },
     });
     vxeUI.renderer.add('Select', {
       renderTableDefault({ options, attrs, props }, { column, row }) {
-        const finallyProps = {
+        const finallyProps: any = {
           ...attrs,
           ...props,
           value: row[column.field],
@@ -277,6 +311,11 @@ setupVbenVxeTable({
           style: { width: '100%' },
           'onUpdate:value': onChange,
         };
+
+        // 如果 disabled 是函数，则调用它并传入 row
+        if (typeof finallyProps.disabled === 'function') {
+          finallyProps.disabled = finallyProps.disabled(row);
+        }
 
         function onChange(newVal: any) {
           if (newVal) {
@@ -629,7 +668,7 @@ setupVbenVxeTable({
             {
               /**
                * 当popconfirm用在固定列中时，将固定列作为弹窗的容器时可能会因为固定列较窄而无法容纳弹窗
-               * 将表格主体区域作为弹窗容器时又会因为固定列的层级较高而遮挡弹窗
+               * 将表格主体区域作为弹窗的容器时又会因为固定列的层级较高而遮挡弹窗
                * 将body或者表格视口区域作为弹窗容器时又会导致弹窗无法跟随表格滚动。
                * 鉴于以上各种情况，一种折中的解决方案是弹出层展示时，禁止操作表格的滚动条。
                * 这样既解决了弹窗的遮挡问题，又不至于让弹窗随着表格的滚动而跑出视口区域。

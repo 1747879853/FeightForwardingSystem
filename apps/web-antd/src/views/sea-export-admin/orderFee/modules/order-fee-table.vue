@@ -540,7 +540,10 @@ const sanitizeOrderFee = (
 };
 const saveRow = () => {
   const list = (dataSource.value ?? []).filter(
-    (row) => row.feeStatus === feeConstants.getFeeStatusValue.Entering,
+    (row) =>
+      row.feeStatus === feeConstants.getFeeStatusValue.Entering ||
+      row.feeStatus === feeConstants.getFeeStatusValue.Rejected ||
+      row.feeStatus === feeConstants.getFeeStatusValue.ApplyModify,
   );
 
   console.log(list);

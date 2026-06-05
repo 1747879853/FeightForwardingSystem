@@ -5,6 +5,26 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { h } from 'vue';
 import { Tag } from 'ant-design-vue';
 import { getEnumItems } from '#/utils/init-enum';
+
+// --------------------------------------------------------
+// 费用编辑权限判断
+// --------------------------------------------------------
+/**
+ * 判断费用是否可编辑
+ * @param feeStatus 费用状态
+ * @returns true 表示可编辑，false 表示不可编辑
+ */
+export const canEditFee = (feeStatus: number): boolean => {
+  // 可编辑的状态：录入中(0)、审核驳回(3)、申请修改(4)、申请删除(5)
+  const editableStatuses = [
+    getFeeStatusValue.Entering, // 0 - 录入中
+    getFeeStatusValue.Rejected, // 3 - 审核驳回
+    getFeeStatusValue.ApplyModify, // 4 - 申请修改
+    getFeeStatusValue.ApplyDelete, // 5 - 申请删除
+  ];
+  return editableStatuses.includes(feeStatus);
+};
+
 // --------------------------------------------------------
 // 数据录入方式
 // --------------------------------------------------------
@@ -601,6 +621,9 @@ export function useOrderFeeColumns(
       minWidth: 150,
       cellRender: {
         name: 'CellFeeCodeSelect',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
       },
     },
     {
@@ -611,6 +634,9 @@ export function useOrderFeeColumns(
       cellRender: {
         name: 'Select',
         options: getIndustryCategoryOptions(),
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
       },
     },
     {
@@ -620,6 +646,9 @@ export function useOrderFeeColumns(
       minWidth: 150,
       cellRender: {
         name: 'CellClientSelect',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
       },
     },
 
@@ -633,6 +662,7 @@ export function useOrderFeeColumns(
         name: 'CurrencySelect',
         props: {
           type: type,
+          disabled: (row: any) => !canEditFee(row.feeStatus),
         },
       },
     },
@@ -645,6 +675,7 @@ export function useOrderFeeColumns(
         name: 'ExchangeRateSelect',
         props: {
           valueKey: type === 0 ? 'drValue' : 'crValue',
+          disabled: (row: any) => !canEditFee(row.feeStatus),
         },
       },
     },
@@ -654,6 +685,9 @@ export function useOrderFeeColumns(
       width: 100,
       cellRender: {
         name: 'CellInput',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
       },
     },
     {
@@ -662,6 +696,9 @@ export function useOrderFeeColumns(
       minWidth: 120,
       cellRender: {
         name: 'CellInput',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
       },
     },
     {
@@ -671,6 +708,9 @@ export function useOrderFeeColumns(
       cellRender: {
         name: 'Select',
         options: getUnitEmumOptions(),
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
       },
     },
     {
@@ -680,6 +720,9 @@ export function useOrderFeeColumns(
       minWidth: 100,
       cellRender: {
         name: 'CellInput',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
       },
     },
     {
@@ -689,23 +732,44 @@ export function useOrderFeeColumns(
       minWidth: 80,
       cellRender: {
         name: 'CellInput',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
       },
     },
     {
       title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
       field: 'noTaxUnitPrice',
       minWidth: 100,
+      cellRender: {
+        name: 'CellInput',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
+      },
     },
     {
       title: $t('seaExport.export.orderFee.noTaxAmount'),
 
       field: 'noTaxAmount',
       minWidth: 120,
+      cellRender: {
+        name: 'CellInput',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
+      },
     },
     {
       title: $t('seaExport.export.orderFee.rqstPaymentAmount'),
       field: 'rqstPaymentAmount',
       minWidth: 120,
+      cellRender: {
+        name: 'CellInput',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
+      },
     },
     {
       title: $t('seaExport.export.orderFee.invoicedAmount'),
@@ -730,6 +794,9 @@ export function useOrderFeeColumns(
       cellRender: {
         //attrs: { beforeChange: onStatusChange },
         name: 'CellSwitch',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
       },
     },
     {
@@ -740,6 +807,9 @@ export function useOrderFeeColumns(
       cellRender: {
         //attrs: { beforeChange: onStatusChange },
         name: 'CellSwitch',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
       },
     },
     {
@@ -748,6 +818,9 @@ export function useOrderFeeColumns(
       minWidth: 150,
       cellRender: {
         name: 'CellInput',
+        props: {
+          disabled: (row: any) => !canEditFee(row.feeStatus),
+        },
       },
     },
     {
