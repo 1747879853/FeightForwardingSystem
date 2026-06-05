@@ -590,7 +590,7 @@ const [Grid, gridApi] = useVbenVxeGrid<any>({
       enabled: false,
     },
     toolbarConfig: {
-      custom: false,
+      custom: true,
       export: false,
       refresh: false,
       search: false,
