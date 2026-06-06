@@ -108,7 +108,7 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
         custom: true,
         export: false,
         refresh: { code: 'query' },
-        zoom: true,
+        zoom: false,
       },
     },
   },

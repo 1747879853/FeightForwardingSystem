@@ -23,6 +23,7 @@ import { Button, Select, Input, DatePicker, TimePicker } from 'ant-design-vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
+import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import { getEnumItems } from '#/utils/init-enum';
 
 const emits = defineEmits(['success']);
@@ -131,6 +132,16 @@ const [Form, formApi] = useVbenForm({
       componentProps: () => ({
         placeholder: '留空不修改',
         allowClear: true,
+      }),
+    },
+    {
+      component: ClientSelect,
+      fieldName: 'bookingAgentId',
+      label: '订舱代理',
+      componentProps: () => ({
+        placeholder: '留空不修改',
+        allowClear: true,
+        industryCategory: 'o', // 只展示行业类别包含"o"（订舱代理）的客户
       }),
     },
     {
@@ -667,6 +678,7 @@ const [Modal, modalApi] = useVbenModal({
       ids: batchIds.value,
       carrierId: values.carrierId ?? null,
       currencyId: values.currencyId ?? null,
+      bookingAgentId: values.bookingAgentId ?? null,
       polId: values.polId ?? null,
       podId: values.podId ?? null,
       isDirect: values.isDirect ?? null,

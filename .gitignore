@@ -51,3 +51,4 @@ vite.config.ts.*
 .history
 .cursor
 .agents
+skills-lock.json

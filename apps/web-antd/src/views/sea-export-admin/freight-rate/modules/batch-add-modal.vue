@@ -32,6 +32,7 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
+import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import { getCtnCodePagedList as getBaseCtnCodes } from '#/api/system/base-data/ctn-code-admin';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import { batchAddSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
@@ -189,6 +190,7 @@ function createDefaultRow(isCopied: boolean = false) {
     validTimeEnd: '',
     remark: '',
     currencyId: defaultCurrencyId.value, // 默认设置为 USD
+    bookingAgentId: undefined, // 订舱代理ID
     seFreiPriceCtns: [] as Array<{ ctnCodeId: number; cost?: number }>,
   };
 }
@@ -308,6 +310,7 @@ function handleCopyRows() {
         validTimeEnd: row.validTimeEnd,
         remark: row.remark,
         currencyId: row.currencyId,
+        bookingAgentId: row.bookingAgentId,
         seFreiPriceCtns: row.seFreiPriceCtns ? [...row.seFreiPriceCtns] : [],
       }),
     );
@@ -471,6 +474,12 @@ function buildColumns(): VxeTableGridOptions['columns'] {
       width: 100,
 
       slots: { default: 'currencyId' },
+    },
+    {
+      field: 'bookingAgentId',
+      title: '订舱代理',
+      width: 200,
+      slots: { default: 'bookingAgentId' },
     },
     {
       field: 'isDirect',
@@ -759,6 +768,7 @@ async function handleSubmit() {
         validTimeEnd: row.validTimeEnd,
         remark: row.remark,
         currencyId: row.currencyId,
+        bookingAgentId: row.bookingAgentId || null,
         seFreiPriceCtns,
         seFreiPriceFees: [], // 批量新增不包含附加费
         seFreiPriceDays,
@@ -868,6 +878,17 @@ function resetForm() {
         <!-- 币别 -->
         <template #currencyId="{ row }">
           <CurrencySelect v-model="row.currencyId" style="width: 100%" />
+        </template>
+
+        <!-- 订舱代理 -->
+        <template #bookingAgentId="{ row }">
+          <ClientSelect
+            v-model="row.bookingAgentId"
+            style="width: 100%"
+            placeholder="请选择订舱代理"
+            allow-clear
+            industry-category="o"
+          />
         </template>
 
         <!-- 是否直达 -->

@@ -31,8 +31,14 @@ export const DataPermissionTypeLabels: Record<DataPermissionType, string> = {
 };
 
 export const FrightModuleLabels: Record<FrightModule, string> = {
-  [FrightModule.WarehouseManagement]: '仓库管理',
-  [FrightModule.TraderManagement]: '贸易商管理',
+  [FrightModule.SeaExport]: '海运出口',
+  [FrightModule.OrderFee]: '业务费用',
+  [FrightModule.TransportOrder]: '业务表',
+  [FrightModule.PaymentApplication]: '付费申请',
+  [FrightModule.SeaImport]: '海运进口',
+  [FrightModule.AirExport]: '空运出口',
+  [FrightModule.AirImport]: '空运进口',
+  [FrightModule.SeFreiPrice]: '运价',
 };
 
 export const OperatorLabels: Record<UserTablePermissionOperator, string> = {

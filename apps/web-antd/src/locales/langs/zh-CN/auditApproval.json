@@ -5,6 +5,7 @@
   "taskName": "任务",
   "task": {
     "status": "任务状态",
+    "noPassSelect": "没有需要审核通过的费用",
     "statusOptions": {
       "Auditing": "审核中",
       "Passed": "审核通过",

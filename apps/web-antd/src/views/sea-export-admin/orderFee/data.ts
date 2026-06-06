@@ -900,14 +900,24 @@ export const getInvoiceStatusOptions = () => {
  */
 export const getFeeStatusOptions = () => {
   return [
-    { value: 0, label: '录入状态', color: '#b8cdd7' },
-    { value: 1, label: '提交审核', color: '#ffc107' },
-    { value: 2, label: '审核通过', color: '#67c23a' },
-    { value: 3, label: '驳回', color: '#f56c6c' },
-    { value: 4, label: '申请修改', color: '#ff9900' },
-    { value: 5, label: '申请删除', color: '#ff9900' },
-    { value: 6, label: '部分结算', color: '#909399' },
-    { value: 7, label: '结算完毕', color: '#67c23a' },
+    { value: 0, label: '录入状态', color: '#b8cdd7', code: 'Entering' },
+    { value: 1, label: '提交审核', color: '#ffc107', code: 'Submit' },
+    { value: 2, label: '审核通过', color: '#67c23a', code: 'Approved' },
+    { value: 3, label: '驳回', color: '#f56c6c', code: 'Rejected' },
+    {
+      value: 4,
+      label: '申请修改',
+      color: '#ff9900',
+      code: 'RequestModification',
+    },
+    { value: 5, label: '申请删除', color: '#ff9900', code: 'RequestDeletion' },
+    {
+      value: 6,
+      label: '部分结算',
+      color: '#909399',
+      code: 'PartialSettlement',
+    },
+    { value: 7, label: '结算完毕', color: '#67c23a', code: 'Settled' },
   ];
 
   //     return feeStatusCache.length > 0
@@ -922,4 +932,9 @@ export const getFeeStatusOptions = () => {
   //     { value: 6, label: '部分结算', color: '#909399' },
   //     { value: 7, label: '结算完毕', color: '#67c23a' },
   //   ];
+};
+
+export const getFeeStatusValueByLabel = (code: string): number | undefined => {
+  const status = getFeeStatusOptions().find((item) => item.code === code);
+  return status ? status.value : undefined;
 };

@@ -362,6 +362,17 @@ const [Form, formApi] = useVbenForm({
       },
     },
     {
+      component: 'ClientSelect',
+      fieldName: 'bookingAgentId',
+      label: '订舱代理',
+      componentProps: {
+        placeholder: '请选择订舱代理',
+        allowClear: true,
+        industryCategory: 'o', // 只展示行业类别包含"o"（订舱代理）的客户
+        style: { width: '100%' },
+      },
+    },
+    {
       component: 'InputNumber',
       fieldName: 'polFreeDays',
       label: '起运港免用箱',
@@ -617,6 +628,7 @@ async function loadDetail(priceId: string) {
     await formApi.setValues({
       carrierId: detail.carrierId,
       currencyId: detail.currencyId,
+      bookingAgentId: detail.bookingAgentId,
       polId: detail.polId,
       podId: detail.podId,
       poT1Id: detail.poT1Id,
@@ -1259,6 +1271,7 @@ async function handleSubmit() {
       polId: values.polId,
       podId: values.podId,
       currencyId: finalCurrencyId,
+      bookingAgentId: values.bookingAgentId || null,
       isDirect: values.isDirect ?? true,
       poT1Id: values.poT1Id,
       poT2Id: values.poT2Id,

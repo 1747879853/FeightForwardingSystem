@@ -25,9 +25,9 @@ import { getAllPermissionsTreeApi } from '#/api/core/auth';
 import {
   getRolePermissions,
   getUserPermissions,
-  updateRolePermissions,
-  updateUserPermissions,
 } from '#/api/system/permission';
+import { updateRolePermissions } from '#/api/system/role';
+import { updateUserPermissions } from '#/api/system/user-admin';
 import { getRoleList } from '#/api/system/role';
 import { getUserPagedList } from '#/api/system/user-admin';
 import { $t } from '#/locales';

@@ -32,6 +32,7 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import CarrierSelect from '#/adapter/component/biz-select/carrier-select.vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
+import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import { getCtnCodePagedList as getBaseCtnCodes } from '#/api/system/base-data/ctn-code-admin';
 import { getCarrierDetail } from '#/api/system/base-data/carrier-admin';
 import { getPortCodeDetail } from '#/api/system/base-data/port-code-admin';
@@ -230,6 +231,7 @@ async function initializeTableData(rows: SeFreiPriceOutDto[]) {
       poddet: row.poddet,
       voyage: row.voyage,
       contractNo: row.contractNo,
+      bookingAgentId: row.bookingAgentId,
       // 日期时间模式字段
       etd: dayData?.etd || '',
       closeDocTime: dayData?.closeDocTime || '',
@@ -390,6 +392,12 @@ function buildColumns(): VxeTableGridOptions['columns'] {
       title: '币别',
       width: 100,
       slots: { default: 'currencyId' },
+    },
+    {
+      field: 'bookingAgentId',
+      title: '订舱代理',
+      width: 200,
+      slots: { default: 'bookingAgentId' },
     },
     {
       field: 'isDirect',
@@ -679,6 +687,8 @@ async function handleSubmit() {
       if (row.remark !== originalRow.remark) modifiedFields.add('remark');
       if (row.currencyId !== originalRow.currencyId)
         modifiedFields.add('currencyId');
+      if (row.bookingAgentId !== originalRow.bookingAgentId)
+        modifiedFields.add('bookingAgentId');
 
       // 如果没有字段被修改，且箱型也没有修改，跳过这一行
       if (modifiedFields.size === 0 && !hasCtnModified(row, originalRow)) {
@@ -757,6 +767,8 @@ async function handleSubmit() {
       if (modifiedFields.has('remark')) submitData.remark = row.remark;
       if (modifiedFields.has('currencyId'))
         submitData.currencyId = row.currencyId;
+      if (modifiedFields.has('bookingAgentId'))
+        submitData.bookingAgentId = row.bookingAgentId || null;
 
       // 处理箱型成本
       if (
@@ -888,6 +900,17 @@ onMounted(() => {
                 ? [currencyCache.get(row.currencyId)!]
                 : []
             "
+          />
+        </template>
+
+        <!-- 订舱代理 -->
+        <template #bookingAgentId="{ row }">
+          <ClientSelect
+            v-model="row.bookingAgentId"
+            style="width: 100%"
+            placeholder="请选择订舱代理"
+            allow-clear
+            industry-category="o"
           />
         </template>
 

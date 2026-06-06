@@ -172,6 +172,22 @@ export interface CtnCodeDto {
 }
 
 /**
+ * 客户信息（简化版，用于订舱代理）
+ */
+export interface ClientDto {
+  /** 主键ID */
+  id: string;
+  /** 客户简称 */
+  name?: string;
+  /** 客户代码 */
+  code?: string;
+  /** 客户全称 */
+  fullName?: string;
+  /** 行业类别 */
+  industryCategories?: string;
+}
+
+/**
  * 费用代码信息
  */
 export interface FeeCodeDto {
@@ -505,6 +521,8 @@ export interface SeFreiPriceOutDto {
   remark?: string;
   /** 币别ID */
   currencyId: number;
+  /** 订舱代理ID */
+  bookingAgentId?: string;
   /** 创建时间 */
   creationTime: string;
   /** 创建人ID */
@@ -531,6 +549,8 @@ export interface SeFreiPriceOutDto {
   lane?: LaneCodeDto;
   /** 国家信息（关联对象） */
   country?: CountryCodeDto;
+  /** 订舱代理信息（关联对象） */
+  bookingAgent?: ClientDto;
   /** 箱型报价列表 */
   seFreiPriceCtns?: SeFreiPriceCtnOutDto[];
   /** 费用列表（含每个费用下的箱型费用） */
@@ -601,6 +621,8 @@ export interface AddSeFreiPriceInput {
   remark?: string;
   /** 币别ID */
   currencyId: number;
+  /** 订舱代理ID（可空） */
+  bookingAgentId?: string | null;
   /** 箱型报价列表 */
   seFreiPriceCtns?: SeFreiPriceCtnEditDto[];
   /** 费用列表 */
@@ -669,6 +691,8 @@ export interface BatchEditSeFreiPriceInput {
   remark?: string | null;
   /** 币别ID（为null不修改） */
   currencyId?: number | null;
+  /** 订舱代理ID（为null不修改） */
+  bookingAgentId?: string | null;
   /** 箱型报价列表（不为空则删除原有子表重新添加） */
   seFreiPriceCtns?: SeFreiPriceCtnAddDto[];
   /** 费用列表（不为空则删除原有子表重新添加，含箱型费用） */
@@ -707,6 +731,8 @@ export interface GetSeFreiPriceListInput {
   laneId?: number;
   /** 约号（模糊搜索） */
   contractNo?: string;
+  /** 订舱代理ID筛选 */
+  bookingAgentId?: string;
   /** 是否有效筛选（根据有效时间截止与当前时间比较） */
   isValid?: boolean;
   /** 当前页码，默认1 */
@@ -858,6 +884,8 @@ export interface SeFreiPriceSimpleAddDto {
   remark?: string;
   /** 币别ID */
   currencyId: number;
+  /** 订舱代理ID（可空） */
+  bookingAgentId?: string | null;
   /** 箱型报价列表 */
   seFreiPriceCtns?: SeFreiPriceCtnAddDto[];
   /** 关联日列表 */
@@ -906,6 +934,8 @@ export interface SeFreiPriceSimpleEditDto {
   remark?: string;
   /** 币别ID */
   currencyId: number;
+  /** 订舱代理ID（可空） */
+  bookingAgentId?: string | null;
   /** 箱型报价列表 */
   seFreiPriceCtns?: SeFreiPriceCtnEditDto[];
   /** 关联日列表 - 原 seFreiPriceETDs */

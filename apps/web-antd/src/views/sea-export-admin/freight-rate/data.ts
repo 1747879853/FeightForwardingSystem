@@ -222,6 +222,17 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'ClientSelect',
+      fieldName: 'bookingAgentId',
+      label: '订舱代理',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        // 只展示行业类别包含"o"（订舱代理）的客户
+        industryCategory: 'o',
+      },
+    },
+    {
       component: 'RadioGroup',
       fieldName: 'recommend',
       label: $t('seaExport.freightRate.recommend'),
@@ -312,6 +323,14 @@ export function useColumns<T = SeFreiPriceOutDto>(
       slots: { default: 'currencyId' },
       formatter: ({ row }) => {
         return row.currency?.code || '-';
+      },
+    },
+    {
+      field: 'bookingAgentName',
+      title: '订舱代理',
+      width: 150,
+      formatter: ({ row }) => {
+        return row.bookingAgentName || '-';
       },
     },
     {

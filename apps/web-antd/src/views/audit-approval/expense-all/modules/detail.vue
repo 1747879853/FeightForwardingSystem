@@ -9,6 +9,7 @@ import { useRoute, useRouter } from 'vue-router';
 import {
   getCurrencyEnumOptions,
   getCurrencyEnumSymbolOptions,
+  getFeeStatusValueByLabel,
 } from '#/views/sea-export-admin/orderFee/data';
 import {
   Button,
@@ -343,7 +344,22 @@ const selectPass = (approve: boolean, modalRemark: string) => {
 };
 
 const allPass = (approve: boolean, modalRemark: string) => {
-  const ids = (dataSource.value ?? []).map((item) => item.id);
+  console.log('dataSource.value', dataSource.value);
+  const ids = (dataSource.value ?? [])
+    .filter(
+      (item) =>
+        item.feeStatus === getFeeStatusValueByLabel('Submit') ||
+        item.feeStatus === getFeeStatusValueByLabel('RequestModification') ||
+        item.feeStatus === getFeeStatusValueByLabel('RequestDeletion'),
+    )
+    .map((item) => item.id);
+  if (!ids.length) {
+    message.warning({
+      content: $t('auditApproval.task.noPassSelect'),
+      key: 'action_process_msg',
+    });
+    return;
+  }
   OrderFeeAudit(approve, modalRemark, ids);
 };
 
@@ -641,7 +657,7 @@ defineExpose({
               :transportOrderId="props.transportOrderId"
               :entityId="props.entityId"
               :type="1"
-              ref="childpayRef"
+              ref="childPayRef"
             />
           </div>
         </div>

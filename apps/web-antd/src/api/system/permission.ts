@@ -30,10 +30,22 @@ export enum DataPermissionType {
 
 /** 模块枚举 */
 export enum FrightModule {
-  /** 仓库管理 */
-  WarehouseManagement = 0,
-  /** 贸易商管理 */
-  TraderManagement = 1,
+  /** 海运出口 */
+  SeaExport = 0,
+  /** 业务费用 */
+  OrderFee = 1,
+  /** 业务表 */
+  TransportOrder = 2,
+  /** 付费申请 */
+  PaymentApplication = 3,
+  /** 海运进口 */
+  SeaImport = 4,
+  /** 空运出口 */
+  AirExport = 5,
+  /** 空运进口 */
+  AirImport = 6,
+  /** 运价 */
+  SeFreiPrice = 7,
 }
 
 /** 权限条件的比较操作符 */
@@ -78,8 +90,14 @@ export const DataPermissionTypeOptions = [
 
 /** 模块选项 */
 export const FrightModuleOptions = [
-  { label: '仓库管理', value: FrightModule.WarehouseManagement },
-  { label: '贸易商管理', value: FrightModule.TraderManagement },
+  { label: '海运出口', value: FrightModule.SeaExport },
+  { label: '业务费用', value: FrightModule.OrderFee },
+  { label: '业务表', value: FrightModule.TransportOrder },
+  { label: '付费申请', value: FrightModule.PaymentApplication },
+  { label: '海运进口', value: FrightModule.SeaImport },
+  { label: '空运出口', value: FrightModule.AirExport },
+  { label: '空运进口', value: FrightModule.AirImport },
+  { label: '运价', value: FrightModule.SeFreiPrice },
 ];
 
 /** 操作符选项 */
@@ -240,12 +258,12 @@ export namespace SystemPermissionApi {
 
   /** 分页查询参数 */
   export interface PagedQueryParams {
-    Keyword?: string;
-    UserId?: number;
-    RoleId?: number;
-    Sorting?: string;
-    PageIndex?: number;
-    PageSize?: number;
+    keyword?: string;
+    userId?: number;
+    roleId?: number;
+    sorting?: string;
+    skipCount?: number;
+    maxResultCount?: number;
   }
 }
 
@@ -272,19 +290,6 @@ async function getRolePermissions(roleId: number) {
 }
 
 /**
- * 更新角色的权限
- * @param data 角色权限数据
- */
-async function updateRolePermissions(
-  data: SystemPermissionApi.RolePermissionDto,
-) {
-  return requestClient.put(
-    '/services/app/Role/UpdateRolePermissionsAsync',
-    data,
-  );
-}
-
-/**
  * 获取用户的权限名称集合
  * @param userId 用户ID
  */
@@ -295,19 +300,6 @@ async function getUserPermissions(userId: number) {
   );
 }
 
-/**
- * 更新用户的权限
- * @param data 用户权限数据
- */
-async function updateUserPermissions(
-  data: SystemPermissionApi.UserPermissionDto,
-) {
-  return requestClient.put(
-    '/services/app/UserAdmin/UpdateUserPermissionsAsync',
-    data,
-  );
-}
-
 // ==================== 数据权限API ====================
 
 /**
@@ -315,16 +307,17 @@ async function updateUserPermissions(
  */
 async function getDataPermissionList(params: Recordable<any>) {
   const queryParams: SystemPermissionApi.PagedQueryParams = {
-    Keyword: params.keyword,
-    UserId: params.userId,
-    RoleId: params.roleId,
-    PageIndex: params.page || params.pageIndex || 1,
-    PageSize: params.pageSize || 10,
-    Sorting: params.sorting || 'Id',
+    keyword: params.keyword,
+    userId: params.userId,
+    roleId: params.roleId,
+    skipCount:
+      ((params.page || params.pageIndex || 1) - 1) * (params.pageSize || 10),
+    maxResultCount: params.pageSize || 10,
+    sorting: params.sorting || 'Id',
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserDataPermissionDto>
-  >('/services/app/UserDataPermissionAdmin/GetPagedListAsync', {
+  >('/services/app/UserDataPermissionAdmin/GetPagedList', {
     params: queryParams,
   });
   return {
@@ -340,7 +333,7 @@ async function addDataPermission(
   data: SystemPermissionApi.UserDataPermissionAddDto,
 ) {
   return requestClient.post<number>(
-    '/services/app/UserDataPermissionAdmin/AddAsync',
+    '/services/app/UserDataPermissionAdmin/Add',
     data,
   );
 }
@@ -352,7 +345,7 @@ async function editDataPermission(
   data: SystemPermissionApi.UserDataPermissionEditDto,
 ) {
   return requestClient.put<boolean>(
-    '/services/app/UserDataPermissionAdmin/EditAsync',
+    '/services/app/UserDataPermissionAdmin/Edit',
     data,
   );
 }
@@ -362,7 +355,7 @@ async function editDataPermission(
  */
 async function deleteDataPermission(id: number) {
   return requestClient.delete<boolean>(
-    '/services/app/UserDataPermissionAdmin/DeleteAsync',
+    '/services/app/UserDataPermissionAdmin/Delete',
     { data: { id } },
   );
 }
@@ -372,13 +365,14 @@ async function deleteDataPermission(id: number) {
  */
 async function getDataPermissionItemList(params: Recordable<any>) {
   const queryParams = {
-    UserDataPermissionId: params.userDataPermissionId,
-    PageIndex: params.page || params.pageIndex || 1,
-    PageSize: params.pageSize || 100,
+    userDataPermissionId: params.userDataPermissionId,
+    skipCount:
+      ((params.page || params.pageIndex || 1) - 1) * (params.pageSize || 100),
+    maxResultCount: params.pageSize || 100,
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserDataPermissionItemDto>
-  >('/services/app/UserDataPermissionItemAdmin/GetPagedListAsync', {
+  >('/services/app/UserDataPermissionItemAdmin/GetPagedList', {
     params: queryParams,
   });
   return {
@@ -394,7 +388,7 @@ async function addDataPermissionItem(
   data: SystemPermissionApi.UserDataPermissionItemAddDto,
 ) {
   return requestClient.post<number>(
-    '/services/app/UserDataPermissionItemAdmin/AddAsync',
+    '/services/app/UserDataPermissionItemAdmin/Add',
     data,
   );
 }
@@ -404,7 +398,7 @@ async function addDataPermissionItem(
  */
 async function deleteDataPermissionItem(id: number) {
   return requestClient.delete<boolean>(
-    '/services/app/UserDataPermissionItemAdmin/DeleteAsync',
+    '/services/app/UserDataPermissionItemAdmin/Delete',
     { data: { id } },
   );
 }
@@ -416,16 +410,17 @@ async function deleteDataPermissionItem(id: number) {
  */
 async function getTablePermissionList(params: Recordable<any>) {
   const queryParams: SystemPermissionApi.PagedQueryParams = {
-    Keyword: params.keyword,
-    UserId: params.userId,
-    RoleId: params.roleId,
-    PageIndex: params.page || params.pageIndex || 1,
-    PageSize: params.pageSize || 10,
-    Sorting: params.sorting || 'Id',
+    keyword: params.keyword,
+    userId: params.userId,
+    roleId: params.roleId,
+    skipCount:
+      ((params.page || params.pageIndex || 1) - 1) * (params.pageSize || 10),
+    maxResultCount: params.pageSize || 10,
+    sorting: params.sorting || 'Id',
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserTablePermissionDto>
-  >('/services/app/UserTablePermissionAdmin/GetPagedListAsync', {
+  >('/services/app/UserTablePermissionAdmin/GetPagedList', {
     params: queryParams,
   });
   return {
@@ -441,7 +436,7 @@ async function addTablePermission(
   data: SystemPermissionApi.UserTablePermissionAddDto,
 ) {
   return requestClient.post<number>(
-    '/services/app/UserTablePermissionAdmin/AddAsync',
+    '/services/app/UserTablePermissionAdmin/Add',
     data,
   );
 }
@@ -453,7 +448,7 @@ async function editTablePermission(
   data: SystemPermissionApi.UserTablePermissionEditDto,
 ) {
   return requestClient.put<boolean>(
-    '/services/app/UserTablePermissionAdmin/EditAsync',
+    '/services/app/UserTablePermissionAdmin/Edit',
     data,
   );
 }
@@ -463,7 +458,7 @@ async function editTablePermission(
  */
 async function deleteTablePermission(id: number) {
   return requestClient.delete<boolean>(
-    '/services/app/UserTablePermissionAdmin/DeleteAsync',
+    '/services/app/UserTablePermissionAdmin/Delete',
     { data: { id } },
   );
 }
@@ -473,13 +468,14 @@ async function deleteTablePermission(id: number) {
  */
 async function getTablePermissionConditionList(params: Recordable<any>) {
   const queryParams = {
-    UserTablePermissionId: params.userTablePermissionId,
-    PageIndex: params.page || params.pageIndex || 1,
-    PageSize: params.pageSize || 100,
+    userTablePermissionId: params.userTablePermissionId,
+    skipCount:
+      ((params.page || params.pageIndex || 1) - 1) * (params.pageSize || 100),
+    maxResultCount: params.pageSize || 100,
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserTablePermissionConditionDto>
-  >('/services/app/UserTablePermissionConditionAdmin/GetPagedListAsync', {
+  >('/services/app/UserTablePermissionConditionAdmin/GetPagedList', {
     params: queryParams,
   });
   return {
@@ -495,7 +491,7 @@ async function addTablePermissionCondition(
   data: SystemPermissionApi.UserTablePermissionConditionAddDto,
 ) {
   return requestClient.post<number>(
-    '/services/app/UserTablePermissionConditionAdmin/AddAsync',
+    '/services/app/UserTablePermissionConditionAdmin/Add',
     data,
   );
 }
@@ -505,7 +501,7 @@ async function addTablePermissionCondition(
  */
 async function deleteTablePermissionCondition(id: number) {
   return requestClient.delete<boolean>(
-    '/services/app/UserTablePermissionConditionAdmin/DeleteAsync',
+    '/services/app/UserTablePermissionConditionAdmin/Delete',
     { data: { id } },
   );
 }
@@ -517,12 +513,13 @@ async function deleteTablePermissionCondition(id: number) {
  */
 async function getPropPermissionList(params: Recordable<any>) {
   const queryParams: SystemPermissionApi.PagedQueryParams = {
-    Keyword: params.keyword,
-    UserId: params.userId,
-    RoleId: params.roleId,
-    PageIndex: params.page || params.pageIndex || 1,
-    PageSize: params.pageSize || 10,
-    Sorting: params.sorting || 'Id',
+    keyword: params.keyword,
+    userId: params.userId,
+    roleId: params.roleId,
+    skipCount:
+      ((params.page || params.pageIndex || 1) - 1) * (params.pageSize || 10),
+    maxResultCount: params.pageSize || 10,
+    sorting: params.sorting || 'Id',
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserPropPermissionDto>
@@ -569,13 +566,40 @@ async function deletePropPermission(id: number) {
   );
 }
 
+/**
+ * 获取当前用户不可见字段列表
+ */
+async function getCurrentUserMaskedFields() {
+  return requestClient.get<
+    Array<{
+      frightModule: number;
+      frightModuleName: string;
+      fields: Array<{ propName: string; description: string }>;
+    }>
+  >('/services/app/UserPropPermissionAdmin/GetCurrentUserMaskedFields');
+}
+
+/**
+ * 获取指定用户不可见字段列表
+ * @param userId 用户ID
+ */
+async function getUserMaskedFields(userId: number) {
+  return requestClient.get<
+    Array<{
+      frightModule: number;
+      frightModuleName: string;
+      fields: Array<{ propName: string; description: string }>;
+    }>
+  >('/services/app/UserPropPermissionAdmin/GetUserMaskedFields', {
+    params: { userId },
+  });
+}
+
 export {
   // 模块权限
   getAllPermissions,
   getRolePermissions,
   getUserPermissions,
-  updateRolePermissions,
-  updateUserPermissions,
   // 数据权限
   addDataPermission,
   addDataPermissionItem,
@@ -596,5 +620,7 @@ export {
   addPropPermission,
   deletePropPermission,
   editPropPermission,
+  getCurrentUserMaskedFields,
   getPropPermissionList,
+  getUserMaskedFields,
 };

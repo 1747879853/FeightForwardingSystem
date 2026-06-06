@@ -56,6 +56,7 @@ const [Grid, gridApi] =
       cellClick: handleRowDblclick,
     },
     gridOptions: {
+      id: 'orderFeeTaskList',
       columns: useExpenseAllColumns(),
       height: 'auto',
       keepSource: true,
@@ -86,8 +87,8 @@ const [Grid, gridApi] =
       toolbarConfig: {
         custom: true,
         export: false,
-        refresh: { code: 'query' },
-        zoom: true,
+        //refresh: { code: 'query' },
+        zoom: false,
       },
     },
   });
