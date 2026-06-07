@@ -1592,7 +1592,7 @@ const sanitizeOrderUsers = (
 /**
  * 从 id + name 构建 select 组件的 selectedItems，
  * 避免每个 select 组件单独调详情接口回显。
- * @param labelKey 对应 select 组件的 labelKey，如 ClientSelect 用 'name'，CarrierSelect/PortSelect 用 'cnName'
+ * @param labelKey 对应 select 组件的 labelKey，如 ClientSelect 用 'name'，CarrierSelect 用 'cnShortName'，PortSelect 用 'portName'
  */
 const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
   if (id == null) return [];
@@ -1684,7 +1684,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.prepareAtId,
             (to as any)?.prepareAtName ?? (detail as any)?.prepareAtName,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -1722,8 +1722,8 @@ const loadEditData = async () => {
         componentProps: {
           selectedItems: toSelectedItems(
             detail.carrierId,
-            detail.carrierName,
-            'cnName',
+            detail.carrierCnShortName || detail.carrierName,
+            'cnShortName',
           ),
         },
       },
@@ -1748,7 +1748,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.signingPortId,
             detail.signingPortName,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -1774,7 +1774,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.polId,
             detail.polName,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -1784,7 +1784,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.podId,
             detail.podName,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -1794,7 +1794,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.poT1Id,
             detail.poT1Name,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -1804,7 +1804,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.poT2Id,
             detail.poT2Name,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -1814,7 +1814,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.receivePortId,
             detail.receivePortName,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -1824,7 +1824,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.deliverPortId,
             detail.deliverPortName,
-            'cnName',
+            'portName',
           ),
         },
       },

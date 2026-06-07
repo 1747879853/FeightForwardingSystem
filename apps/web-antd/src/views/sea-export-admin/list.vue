@@ -73,6 +73,9 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
     submitOnChange: true,
     showCollapseButton: true,
     collapsed: true,
+    commonConfig: {
+      labelWidth: 72,
+    },
     wrapperClass: 'grid-cols-6',
   },
   gridEvents: {
@@ -198,10 +201,10 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           <img
             v-if="row?.carrierLogo?.url"
             :src="buildAttachmentUrl(row.carrierLogo.url)"
-            :alt="row?.carrierName || 'carrier-logo'"
+            :alt="row?.carrierCnShortName || row?.carrierName || 'carrier-logo'"
             class="h-8 w-8 rounded object-contain"
           />
-          <span>{{ row?.carrierName || '--' }}</span>
+          <span>{{ row?.carrierCnShortName || row?.carrierName || '--' }}</span>
         </span>
       </template>
     </Grid>

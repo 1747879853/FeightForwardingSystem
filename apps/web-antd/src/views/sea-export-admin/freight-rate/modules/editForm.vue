@@ -625,6 +625,17 @@ async function loadDetail(priceId: string) {
     formData.value = detail;
 
     // 填充表单数据
+    if (detail.carrier) {
+      formApi.updateSchema([
+        {
+          fieldName: 'carrierId',
+          componentProps: {
+            selectedItems: [detail.carrier],
+          },
+        },
+      ]);
+    }
+
     await formApi.setValues({
       carrierId: detail.carrierId,
       currencyId: detail.currencyId,

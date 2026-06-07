@@ -23,7 +23,7 @@ last_updated: 2026-06-07
 
 - **AI 识别辅助：** 页面提供“AI识别”按钮，只接受 PDF 文件，调用 `runVisionOcrPdf` 后把识别结果映射回表单字段。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
-- **干系人角色约束：** 销售、商务、操作、客服、单证、海外客服为固定角色，不允许删除和重复添加；销售与操作必须选择具体人员后才能保存。
+- **干系人角色约束：** 销售、操作不可删除且必须已选人（销售必须且只能有一人）；其他角色通过「+ 添加角色」弹窗按需添加。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。
 - **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
 - **创建后跳转：** 新增成功后优先解析接口返回的记录 ID 并跳转 `/sea-exports/{id}/edit`；若返回值无法解析，则回到 `/sea-exports` 列表。
@@ -69,8 +69,11 @@ last_updated: 2026-06-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-07 | `Feature` | 保存时按勾选服务项的 `userAttribute` 动态校验干系人：每服务至少一个绑定角色已选人；销售、操作始终静态必填。 | `validateRequiredOrderUserAssignee` + `validateServiceBoundOrderUsers`；读 `latestAvailableServiceTypes` 缓存。 |
+| 2026-06-07 | `Style` | 服务项目 Chevron 节点尺寸紧凑化（40px 高、12px 字号），单节点最大宽度 140px。 | 对齐工作台 `workbench-business-table` Chevron 规格。 |
 | 2026-06-07 | `Feature` | 服务流水线三态展示，节点勾选改弹窗维护（新建页无取消完成接口）。 | 与编辑页共用 `form.vue`。 |
 | 2026-06-07 | `Style` | 服务项目 UI 改为 Chevron 箭头流水线（三态配色 + 悬浮 Tooltip）。 | 与编辑页共用 `form.vue`；`clip-path` 箭头衔接，Tooltip 避免 `overflow-hidden` 裁切。 |
+| 2026-06-07 | `Style` | 干系人角色图标按货代岗位职责语义映射（销售握手、商务运价表、操作集卡、客服沟通、单证签发、海外协同）。 | `getOrderUserRoleIcon` 仅影响展示，校验与提交逻辑不变。 |
 | 2026-06-07 | `Refactor` | 服务流水线改为 `ServiceTypeNode` 枚举驱动，与执行方五字段完全解耦；删除代收支与 `organizationUnits` 提交。 | 新建/编辑共用 `form.vue`；节点来自 POL 配置 + `ServiceType` displayName，提交 `serviceTypes` 由勾选节点 value 集合生成。 |
 | 2026-06-07 | `Refactor` | 服务项目枚举值与节点文案不再使用前端硬编码 `0~5`，统一在运行时从 `getEnumItems('ServiceType')` 读取并映射。 | 新建页与编辑页共用 `form.vue`，服务项勾选、提交 `serviceTypes` 与节点名称均收敛到同一枚举源，降低枚举中心变更带来的前端漂移风险。 |
 | 2026-05-30 | `Fix` | 服务项目空态改为紧凑一行提示；未选/清空起运港时不渲染服务节点并提示先选起运港；可见服务项与顺序完全由起运港配置回显。 | 初始可见态改为全隐藏，`getServiceItemVisible` 仅 `=== true` 时展示。 |

@@ -592,11 +592,23 @@ onMounted(async () => {
           <img
             v-if="row.carrier?.logo?.url"
             :src="buildAttachmentUrl(row.carrier.logo.url)"
-            :alt="row.carrier.code || row.carrier.enName"
+            :alt="
+              row.carrier.cnShortName ||
+              row.carrier.cnName ||
+              row.carrier.code ||
+              'carrier-logo'
+            "
             class="carrier-logo"
           />
           <!-- 船公司名称 -->
-          <span>{{ row.carrier?.code || row.carrier?.enName || '-' }}</span>
+          <span>{{
+            row.carrier?.code
+              ? `${row.carrier.code}(${row.carrier.cnShortName || row.carrier.cnName || row.carrier.enName || ''})`
+              : row.carrier?.cnShortName ||
+                row.carrier?.cnName ||
+                row.carrier?.enName ||
+                '-'
+          }}</span>
         </div>
       </template>
 

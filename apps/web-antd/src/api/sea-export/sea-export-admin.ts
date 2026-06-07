@@ -10,6 +10,8 @@ export namespace SeaExportAdminApi {
     serviceType: number;
     sortId: number;
     checked: boolean;
+    /** 服务项责任角色（位标志，与港口服务项配置 userAttribute 一致） */
+    userAttribute?: number;
     seServiceShows?: number[];
     seServiceLocks?: number[];
     seServiceRequires?: number[];
@@ -176,12 +178,21 @@ export namespace SeaExportAdminApi {
     localCurrencyId?: number;
   }
 
+  export interface SeaExportServiceTaskUserDto {
+    id?: string;
+    seServiceTaskId?: string;
+    userId: number;
+    userNickName?: string;
+    completionTime?: string | null;
+  }
+
   export interface SeaExportServiceTaskDto {
     id: string;
     serviceTaskStatus: 0 | 1;
     completionUserId?: number | null;
     completionUserNickName?: string | null;
     completionTime?: string | null;
+    seServiceTaskUsers?: SeaExportServiceTaskUserDto[];
   }
 
   export interface SeaExportServiceDto {
@@ -313,6 +324,8 @@ export namespace SeaExportAdminApi {
     carrierId?: number;
     carrier?: CarrierAdminApi.CarrierDto;
     carrierName?: string;
+    /** 船公司中文简称 */
+    carrierCnShortName?: string;
     carrierLogo?: CarrierAdminApi.AttachmentItemDto | null;
     noBillEnum?: number;
     copyNoBillEnum?: number;

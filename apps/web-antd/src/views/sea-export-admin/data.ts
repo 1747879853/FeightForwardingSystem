@@ -413,9 +413,11 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       showOverflow: true,
     },
     {
-      field: 'carrierName',
+      field: 'carrierCnShortName',
       title: $t('seaExport.export.carrierId'),
       minWidth: 100,
+      align: 'left',
+      headerAlign: 'center',
       slots: { default: 'carrierWithLogo' },
     },
     {
@@ -869,7 +871,6 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       fieldName: 'clientId',
       industryCategory: 'p',
       label: $t('seaExport.export.clientId'),
-      rules: 'selectRequired',
     }),
     createClientSelectSchema({
       fieldName: 'teamId',

@@ -42,6 +42,10 @@ import {
   serviceTypeLabel,
   toPortTab,
 } from './workbench-data';
+import {
+  buildDynamicColumns,
+  loadSeaExportPropLabelMap,
+} from './workbench/se-service-show-columns';
 
 const WorkbenchTopNav = defineAsyncComponent(
   () => import('./workbench/components/workbench-top-nav.vue'),
@@ -95,6 +99,7 @@ const appliedPaymentReviewFilterModel = reactive({
 const selectedRowKeys = ref<string[]>([]);
 const rawGroups = ref<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>([]);
 const serviceTypeTextMap = ref<Map<number, string>>(new Map());
+const seaExportPropLabelMap = ref<Map<number, string>>(new Map());
 
 const transferVisible = ref(false);
 const transferSubmitting = ref(false);
@@ -254,6 +259,13 @@ const activeConfigItem = computed(() => {
   return found ?? currentConfigItems.value[0];
 });
 
+const seaExportDynamicColumns = computed(() =>
+  buildDynamicColumns(
+    activeConfigItem.value?.seServiceShows,
+    seaExportPropLabelMap.value,
+  ),
+);
+
 const businessRows = computed(() => {
   const tasks = activeConfigItem.value?.seServiceTasks ?? [];
   return tasks.map((task) => {
@@ -273,6 +285,7 @@ const businessRows = computed(() => {
         : '--',
       id: task.id,
       route: `${seaExport?.polName || '--'} / ${seaExport?.podName || '--'}`,
+      seaExport,
       seaExportId: String(task.seaExportId),
       serviceTaskStatus: task.serviceTaskStatus,
       status: 'pending' as const,
@@ -509,8 +522,12 @@ async function loadWorkbench() {
 }
 
 async function loadServiceTypeEnumMap() {
-  const options = await loadSeServiceTypeOptions();
+  const [options, propLabelMap] = await Promise.all([
+    loadSeServiceTypeOptions(),
+    loadSeaExportPropLabelMap(),
+  ]);
   serviceTypeTextMap.value = buildServiceTypeLabelMap(options);
+  seaExportPropLabelMap.value = propLabelMap;
 }
 
 async function handleSearch() {
@@ -606,6 +623,18 @@ function handleOpenSeaExport(seaExportId: string) {
   });
 }
 
+function handleOpenBusinessList() {
+  if (activeServiceTab.value === 'ar-ap-review') {
+    void router.push({ name: 'ExpenseAll' });
+    return;
+  }
+  if (activeServiceTab.value === 'payment-review') {
+    void router.push({ name: 'PaymentReview' });
+    return;
+  }
+  void router.push({ name: 'SeaExportList' });
+}
+
 onMounted(() => {
   void Promise.all([loadServiceTypeEnumMap(), loadWorkbench()]);
 });
@@ -659,6 +688,7 @@ onMounted(() => {
           <WorkbenchEmergencyQueue :tasks="emergencyTasks" />
           <WorkbenchBusinessTable
             :enable-task-actions="true"
+            :dynamic-columns="seaExportDynamicColumns"
             :loading="loading"
             :rows="displayBusinessRows"
             :selected-row-keys="selectedRowKeys"
@@ -669,6 +699,7 @@ onMounted(() => {
             @transfer="handleTransfer"
             @complete="handleComplete"
             @open-sea-export="handleOpenSeaExport"
+            @open-business-list="handleOpenBusinessList"
           />
         </main>
         <WorkbenchExceptionPanel :summary="exceptionSummary" />
@@ -687,6 +718,7 @@ onMounted(() => {
             @transfer="handleTransfer"
             @complete="handleComplete"
             @open-sea-export="handleOpenSeaExport"
+            @open-business-list="handleOpenBusinessList"
           />
         </main>
       </template>

@@ -27,12 +27,13 @@ import {
   message,
   Modal,
   Popover,
-  Select,
+  Radio,
   Space,
   Spin,
   Tag,
   Tooltip,
 } from 'ant-design-vue';
+import { preferences } from '@vben/preferences';
 import { useUserStore } from '@vben/stores';
 
 defineOptions({
@@ -55,7 +56,9 @@ import {
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { getUser, UserAttribute } from '#/api/system/user-admin';
+import { parseSeaExportUserAttribute } from '#/views/system/user/data';
 import { $t } from '#/locales';
+import { buildAttachmentUrl } from '#/utils';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
@@ -123,11 +126,7 @@ const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
   { userAttribute: UserAttribute.Documentation, sortId: 2 },
   { userAttribute: UserAttribute.OverseasCustomerService, sortId: 1 },
 ];
-const fixedOrderUserRoles = new Set<number>(
-  defaultOrderUsers
-    .map((item) => item.userAttribute)
-    .filter((item): item is number => item != null),
-);
+/** 不可删除的必填干系人角色（销售、操作始终必填；其余由服务项目动态校验） */
 const requiredOrderUserRoles: number[] = [
   UserAttribute.Sales,
   UserAttribute.Operation,
@@ -213,11 +212,17 @@ const SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES = new Set([
 const PORT_MOVED_TO_BASIC_FIELD_NAMES = new Set(['signingPortId']);
 const SERVICE_TASK_STATUS_PENDING = 0;
 const SERVICE_TASK_STATUS_PROCESSED = 1;
+type ServiceTypeTaskUser = {
+  userId: number;
+  userNickName?: string;
+};
 type ServiceTypeTaskInfo = {
   taskId?: string;
   taskStatus?: 0 | 1 | null;
+  completionUserId?: number | null;
   completionTime?: string | null;
   completionUserNickName?: string | null;
+  taskUsers?: ServiceTypeTaskUser[];
 };
 type ServiceTypeNode = {
   serviceType: number;
@@ -226,8 +231,10 @@ type ServiceTypeNode = {
   checked: boolean;
   taskStatus?: 0 | 1 | null;
   taskId?: string;
+  completionUserId?: number | null;
   completionTime?: string | null;
   completionUserNickName?: string | null;
+  taskUsers?: ServiceTypeTaskUser[];
 };
 const serviceTypeNodes = ref<ServiceTypeNode[]>([]);
 const serviceTypeLabelMap = ref(new Map<number, string>());
@@ -271,8 +278,10 @@ const buildServiceTypeNodes = (
         checked,
         taskStatus: taskInfo?.taskStatus,
         taskId: taskInfo?.taskId,
+        completionUserId: taskInfo?.completionUserId,
         completionTime: taskInfo?.completionTime,
         completionUserNickName: taskInfo?.completionUserNickName,
+        taskUsers: taskInfo?.taskUsers,
       };
     });
 };
@@ -290,9 +299,14 @@ const parseDetailServiceTypes = (detail: SeaExportAdminApi.SeaExportDto) => {
         item.seServiceTask == null
           ? null
           : toServiceTaskStatusValue(item.seServiceTask.serviceTaskStatus),
+      completionUserId: item.seServiceTask?.completionUserId ?? null,
       completionTime: item.seServiceTask?.completionTime ?? null,
       completionUserNickName:
         item.seServiceTask?.completionUserNickName ?? null,
+      taskUsers: (item.seServiceTask?.seServiceTaskUsers ?? []).map((user) => ({
+        userId: user.userId,
+        userNickName: user.userNickName,
+      })),
     });
   });
   return { savedSet, taskMap };
@@ -535,7 +549,16 @@ const handleServiceTypeModalDraftChange = (
 const handleServiceTypeModalCancel = () => {
   serviceTypeModalOpen.value = false;
 };
-const handleServiceTypeModalConfirm = () => {
+const getRemovedCompletedServiceLabels = () =>
+  serviceTypeNodes.value
+    .filter(
+      (node) =>
+        node.checked &&
+        !serviceTypeModalDraft.value.get(node.serviceType) &&
+        node.taskStatus === SERVICE_TASK_STATUS_PROCESSED,
+    )
+    .map((node) => node.label);
+const applyServiceTypeModalDraft = () => {
   const draftToApply = new Map(serviceTypeModalDraft.value);
   serviceTypeNodes.value.forEach((node) => {
     node.checked = draftToApply.get(node.serviceType) ?? false;
@@ -543,16 +566,83 @@ const handleServiceTypeModalConfirm = () => {
   updateServiceTypeRequiredProps();
   serviceTypeModalOpen.value = false;
 };
+const handleServiceTypeModalConfirm = () => {
+  const removedCompletedLabels = getRemovedCompletedServiceLabels();
+  if (removedCompletedLabels.length === 0) {
+    applyServiceTypeModalDraft();
+    return;
+  }
+  return new Promise<void>((resolve, reject) => {
+    Modal.confirm({
+      title: '确认取消服务',
+      content: `取消勾选「${removedCompletedLabels.join('、')}」后，已完成的对应任务将被清除。是否继续？`,
+      okText: '继续',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk: () => {
+        applyServiceTypeModalDraft();
+        resolve();
+      },
+      onCancel: () => {
+        reject(new Error('cancel'));
+      },
+    });
+  });
+};
+const isServiceTypeNodeInProgress = (node: ServiceTypeNode) =>
+  getServicePipelineState(node) === 'active';
+const isCurrentUserServiceTaskHandler = (node: ServiceTypeNode) => {
+  const userId = currentUserId.value;
+  if (userId == null) return false;
+  const users = node.taskUsers ?? [];
+  if (!users.length) return true;
+  return users.some((item) => item.userId === userId);
+};
+const formatServiceTaskUsersText = (node: ServiceTypeNode) => {
+  const names = (node.taskUsers ?? [])
+    .map((item) => item.userNickName || `用户${item.userId}`)
+    .filter(Boolean);
+  return names.length ? names.join('、') : '-';
+};
+const hasServiceTaskHandlerRestriction = (node: ServiceTypeNode) =>
+  (node.taskUsers?.length ?? 0) > 0;
+const canOperateServiceTaskByHandler = (node: ServiceTypeNode) =>
+  !hasServiceTaskHandlerRestriction(node) ||
+  isCurrentUserServiceTaskHandler(node);
+const isCurrentUserServiceCompleter = (node: ServiceTypeNode) => {
+  const userId = currentUserId.value;
+  if (userId == null) return false;
+  const completionUserId = node.completionUserId;
+  if (completionUserId == null) return true;
+  return completionUserId === userId;
+};
+const showServiceCompletePermissionHint = (node: ServiceTypeNode) =>
+  isEdit.value &&
+  !!node.taskId &&
+  node.checked &&
+  isServiceTypeNodeInProgress(node) &&
+  node.taskStatus === SERVICE_TASK_STATUS_PENDING &&
+  hasServiceTaskHandlerRestriction(node) &&
+  !isCurrentUserServiceTaskHandler(node);
+const showServiceCancelPermissionHint = (node: ServiceTypeNode) =>
+  isEdit.value &&
+  !!node.taskId &&
+  node.checked &&
+  node.taskStatus === SERVICE_TASK_STATUS_PROCESSED &&
+  node.completionUserId != null &&
+  !isCurrentUserServiceCompleter(node);
 const canCompleteServiceTypeNode = (node: ServiceTypeNode) =>
   isEdit.value &&
   !!node.taskId &&
   node.taskStatus === SERVICE_TASK_STATUS_PENDING &&
-  node.checked;
+  node.checked &&
+  (!isServiceTypeNodeInProgress(node) || canOperateServiceTaskByHandler(node));
 const canCancelCompleteServiceTypeNode = (node: ServiceTypeNode) =>
   isEdit.value &&
   !!node.taskId &&
   node.taskStatus === SERVICE_TASK_STATUS_PROCESSED &&
-  node.checked;
+  node.checked &&
+  isCurrentUserServiceCompleter(node);
 const formatServiceTaskCompletionTime = (value?: string | null) => {
   if (!value) return '-';
   const parsed = dayjs(value);
@@ -636,6 +726,12 @@ const handleCompleteServiceType = async (node: ServiceTypeNode) => {
     message.info('当前服务已完成');
     return;
   }
+  if (showServiceCompletePermissionHint(node)) {
+    message.warning(
+      `您不是当前处理人（${formatServiceTaskUsersText(node)}），无法完成此服务`,
+    );
+    return;
+  }
   const missingLabels = await getMissingRequiredLabelsForServiceType(
     node.serviceType,
   );
@@ -664,6 +760,12 @@ const handleCancelCompleteServiceType = async (node: ServiceTypeNode) => {
   }
   if (node.taskStatus !== SERVICE_TASK_STATUS_PROCESSED) {
     message.info('当前服务未完成');
+    return;
+  }
+  if (showServiceCancelPermissionHint(node)) {
+    message.warning(
+      `仅完成人（${node.completionUserNickName || '-'}）可取消完成`,
+    );
     return;
   }
   cancellingServiceType.value = node.serviceType;
@@ -1067,20 +1169,21 @@ const orderUserRoleOptions = computed(() => [
     value: UserAttribute.OverseasCustomerService,
   },
 ]);
-const isFixedOrderUserRole = (userAttribute?: number) =>
-  userAttribute != null && fixedOrderUserRoles.has(userAttribute);
-const hasOtherSameRole = (rowKey: string, userAttribute?: number) => {
-  if (userAttribute == null) return false;
-  return orderUserRows.value.some(
-    (row) =>
-      row._rowKey !== rowKey && row.userAttribute === Number(userAttribute),
-  );
-};
-const getOrderUserRoleOptions = (rowKey: string) =>
-  orderUserRoleOptions.value.map((option) => ({
-    ...option,
-    disabled: hasOtherSameRole(rowKey, option.value),
-  }));
+const orderUserRoleModalOpen = ref(false);
+const orderUserRoleModalSelected = ref<number | undefined>();
+const selectedOrderUserRoleSet = computed(
+  () =>
+    new Set(
+      orderUserRows.value
+        .map((row) => row.userAttribute)
+        .filter((item): item is number => item != null),
+    ),
+);
+const availableOrderUserRoleOptions = computed(() =>
+  orderUserRoleOptions.value.filter(
+    (option) => !selectedOrderUserRoleSet.value.has(option.value),
+  ),
+);
 const getOrderUserRoleLabel = (userAttribute?: number) => {
   switch (userAttribute) {
     case UserAttribute.Sales:
@@ -1099,6 +1202,24 @@ const getOrderUserRoleLabel = (userAttribute?: number) => {
       return '-';
   }
 };
+const getOrderUserRoleIcon = (userAttribute?: number) => {
+  switch (userAttribute) {
+    case UserAttribute.Sales:
+      return 'mdi:handshake-outline';
+    case UserAttribute.Business:
+      return 'mdi:tag-multiple-outline';
+    case UserAttribute.Operation:
+      return 'mdi:truck-cargo-container';
+    case UserAttribute.CustomerService:
+      return 'mdi:forum-outline';
+    case UserAttribute.Documentation:
+      return 'mdi:file-sign';
+    case UserAttribute.OverseasCustomerService:
+      return 'mdi:earth-arrow-right';
+    default:
+      return 'mdi:account-outline';
+  }
+};
 const getOrderUserDisplayName = (row: OrderUserEditorRow) => {
   if (!row.userId) return row.userName || '';
   const mappedName = orderUserNameMap.value[row.userId];
@@ -1106,9 +1227,19 @@ const getOrderUserDisplayName = (row: OrderUserEditorRow) => {
   if (row.userName && row.userName !== String(row.userId)) return row.userName;
   return '';
 };
+const getOrderUserAvatarSrc = (userId?: number) => {
+  const avatar = getOrderUserDetail(userId)?.avatar?.trim();
+  if (avatar) return buildAttachmentUrl(avatar);
+  return preferences.app.defaultAvatar;
+};
 const getOrderUserAvatarText = (row: OrderUserEditorRow) => {
-  const role = getOrderUserRoleLabel(row.userAttribute);
-  return role && role !== '-' ? role.slice(0, 1) : '?';
+  const displayName =
+    getOrderUserDisplayName(row) ||
+    getOrderUserDetail(row.userId)?.nickName ||
+    getOrderUserDetail(row.userId)?.userName;
+  const normalized = displayName?.trim();
+  if (normalized) return normalized.slice(0, 1);
+  return '?';
 };
 const getOrderUserDetail = (userId?: number) =>
   userId ? orderUserDetailMap.value[userId] : undefined;
@@ -1122,10 +1253,6 @@ const getOrderUserStatusText = (detail?: SystemUserAdminApi.UserDto) => {
 const getOrderUserStatusClass = (detail?: SystemUserAdminApi.UserDto) => {
   if (!detail?.isActive) return 'order-user-detail-card__status--inactive';
   return 'order-user-detail-card__status--active';
-};
-const formatOrderUserLastLogin = (lastLoginTime?: string) => {
-  if (!lastLoginTime) return '-';
-  return dayjs(lastLoginTime).format('YYYY-MM-DD HH:mm');
 };
 const syncOrderUserName = (userId: number, userName: string) => {
   orderUserNameMap.value = { ...orderUserNameMap.value, [userId]: userName };
@@ -1265,62 +1392,46 @@ const initializeOrderUsersPanel = (
   }
   syncOrderUsersToForm();
 };
-const updateOrderUserRole = (
-  rowKey: string,
-  userAttribute: number | undefined,
-) => {
-  const currentRow = orderUserRows.value.find((row) => row._rowKey === rowKey);
-  if (
-    currentRow &&
-    isFixedOrderUserRole(currentRow.userAttribute) &&
-    userAttribute !== currentRow.userAttribute
-  ) {
-    message.warning(
-      `${getOrderUserRoleLabel(currentRow.userAttribute)}角色不可修改`,
-    );
+const openOrderUserRoleModal = () => {
+  if (!availableOrderUserRoleOptions.value.length) {
+    message.warning('所有角色已添加，不可重复添加');
     return;
   }
-  if (hasOtherSameRole(rowKey, userAttribute)) {
-    message.warning(`${getOrderUserRoleLabel(userAttribute)}角色不可重复添加`);
-    return;
-  }
-  orderUserRows.value = orderUserRows.value.map((row) => {
-    if (row._rowKey !== rowKey) return row;
-    return {
-      ...row,
-      userAttribute,
-      userId: undefined,
-      userName: undefined,
-    };
-  });
-  syncOrderUsersToForm();
+  orderUserRoleModalSelected.value =
+    availableOrderUserRoleOptions.value[0]?.value;
+  orderUserRoleModalOpen.value = true;
 };
-const addOrderUserRole = () => {
-  const selectedRoleSet = new Set(
-    orderUserRows.value
-      .map((row) => row.userAttribute)
-      .filter((item): item is number => item != null),
-  );
-  const hasAvailableRole = orderUserRoleOptions.value.some(
-    (option) => !selectedRoleSet.has(option.value),
-  );
-  if (!hasAvailableRole) {
-    message.warning('销售/商务/操作/客服/单证角色已存在，不可重复添加');
+const handleOrderUserRoleModalCancel = () => {
+  orderUserRoleModalSelected.value = undefined;
+  orderUserRoleModalOpen.value = false;
+};
+const handleOrderUserRoleModalConfirm = () => {
+  const userAttribute = orderUserRoleModalSelected.value;
+  if (userAttribute == null) {
+    message.warning('请选择角色');
+    return;
+  }
+  if (selectedOrderUserRoleSet.value.has(userAttribute)) {
+    message.warning(`${getOrderUserRoleLabel(userAttribute)}角色已存在`);
     return;
   }
   orderUserRows.value = [
     ...orderUserRows.value,
     {
       _rowKey: makeOrderUserRowKey(),
-      userAttribute: undefined,
+      userAttribute,
       sortId: 0,
     },
   ];
   syncOrderUsersToForm();
+  handleOrderUserRoleModalCancel();
 };
 const removeOrderUserRole = (rowKey: string) => {
   const row = orderUserRows.value.find((item) => item._rowKey === rowKey);
-  if (row && isFixedOrderUserRole(row.userAttribute)) {
+  if (
+    row?.userAttribute != null &&
+    requiredOrderUserRoles.includes(row.userAttribute)
+  ) {
     message.warning(`${getOrderUserRoleLabel(row.userAttribute)}角色不可删除`);
     return;
   }
@@ -1352,13 +1463,71 @@ const validateSalesRoleCount = () => {
   }
   return true;
 };
-const validateOrderUserRequiredAssignee = () => {
+const validateRequiredOrderUserAssignee = () => {
   for (const role of requiredOrderUserRoles) {
     const row = orderUserRows.value.find((item) => item.userAttribute === role);
-    if (!row?.userId) {
+    if (!row) {
+      message.warning(`请添加${getOrderUserRoleLabel(role)}角色`);
+      return false;
+    }
+    if (!hasValidUserId(row.userId)) {
       message.warning(`${getOrderUserRoleLabel(role)}必须选择人员`);
       return false;
     }
+  }
+  return true;
+};
+const formatBoundRoleOptionsLabel = (roles: number[]) =>
+  roles.map((role) => getOrderUserRoleLabel(role)).join('或');
+const validateServiceBoundOrderUsers = () => {
+  const checkedNodes = serviceTypeNodes.value.filter((node) => node.checked);
+  if (!checkedNodes.length) {
+    return true;
+  }
+  if (serviceTypeSyncLoading.value || !polServiceConfigLoaded.value) {
+    message.warning('服务项目配置加载中，请稍后保存');
+    return false;
+  }
+  const polConfigMap = new Map<number, SeaExportAdminApi.ServiceTypeByPolDto>();
+  latestAvailableServiceTypes.value.forEach((item) => {
+    const serviceType = Number(item.serviceType);
+    if (!Number.isFinite(serviceType)) return;
+    polConfigMap.set(serviceType, item);
+  });
+  for (const node of checkedNodes) {
+    const boundRoles = parseSeaExportUserAttribute(
+      polConfigMap.get(node.serviceType)?.userAttribute,
+    );
+    if (!boundRoles.length) continue;
+    const isServiceSatisfied = boundRoles.some((role) => {
+      const row = orderUserRows.value.find(
+        (item) => item.userAttribute === role,
+      );
+      return hasValidUserId(row?.userId);
+    });
+    if (isServiceSatisfied) continue;
+    const rolesWithRowNoUser = boundRoles.filter((role) => {
+      const row = orderUserRows.value.find(
+        (item) => item.userAttribute === role,
+      );
+      return row != null && !hasValidUserId(row.userId);
+    });
+    if (rolesWithRowNoUser.length > 0) {
+      message.warning(
+        `${getOrderUserRoleLabel(rolesWithRowNoUser[0])}必须选择人员（${node.label}）`,
+      );
+      return false;
+    }
+    if (boundRoles.length === 1) {
+      message.warning(
+        `请添加${getOrderUserRoleLabel(boundRoles[0])}角色（${node.label}）`,
+      );
+      return false;
+    }
+    message.warning(
+      `${node.label}服务缺少责任人员，请添加${formatBoundRoleOptionsLabel(boundRoles)}角色`,
+    );
+    return false;
   }
   return true;
 };
@@ -1923,7 +2092,7 @@ const sanitizeOrderUsers = (
 /**
  * 从 id + name 构建 select 组件的 selectedItems，
  * 避免每个 select 组件单独调详情接口回显。
- * @param labelKey 对应 select 组件的 labelKey，如 ClientSelect 用 'name'，CarrierSelect/PortSelect 用 'cnName'
+ * @param labelKey 对应 select 组件的 labelKey，如 ClientSelect 用 'name'，CarrierSelect 用 'cnShortName'，PortSelect 用 'portName'
  */
 const toSelectedItems = (
   id: any,
@@ -2020,7 +2189,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.prepareAtId,
             (to as any)?.prepareAtName ?? (detail as any)?.prepareAtName,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -2058,9 +2227,12 @@ const loadEditData = async () => {
         componentProps: {
           selectedItems: toSelectedItems(
             detail.carrierId,
-            detail.carrierName,
-            'cnName',
-            detail.carrierLogo ? { logo: detail.carrierLogo } : {},
+            detail.carrierCnShortName || detail.carrierName,
+            'cnShortName',
+            {
+              ...(detail.carrierLogo ? { logo: detail.carrierLogo } : {}),
+              ...(detail.carrier?.code ? { code: detail.carrier.code } : {}),
+            },
           ),
         },
       },
@@ -2085,7 +2257,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.signingPortId,
             detail.signingPortName,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -2144,7 +2316,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.polId,
             detail.polName,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -2154,7 +2326,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.podId,
             detail.podName,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -2164,7 +2336,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.poT1Id,
             detail.poT1Name,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -2174,7 +2346,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.poT2Id,
             detail.poT2Name,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -2184,7 +2356,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.receivePortId,
             detail.receivePortName,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -2194,7 +2366,7 @@ const loadEditData = async () => {
           selectedItems: toSelectedItems(
             formValues.deliverPortId,
             detail.deliverPortName,
-            'cnName',
+            'portName',
           ),
         },
       },
@@ -2374,7 +2546,10 @@ const handleSubmit = async () => {
   if (!validateSalesRoleCount()) {
     return;
   }
-  if (!validateOrderUserRequiredAssignee()) {
+  if (!validateRequiredOrderUserAssignee()) {
+    return;
+  }
+  if (!validateServiceBoundOrderUsers()) {
     return;
   }
 
@@ -2740,44 +2915,91 @@ defineExpose({
                                     <div
                                       v-if="
                                         node.taskStatus ===
-                                        SERVICE_TASK_STATUS_PROCESSED
+                                          SERVICE_TASK_STATUS_PROCESSED ||
+                                        (isServiceTypeNodeInProgress(node) &&
+                                          node.taskStatus ===
+                                            SERVICE_TASK_STATUS_PENDING &&
+                                          (node.taskUsers?.length ?? 0) > 0)
                                       "
                                       class="chevron-step-tooltip__info"
                                     >
+                                      <template
+                                        v-if="
+                                          node.taskStatus ===
+                                          SERVICE_TASK_STATUS_PROCESSED
+                                        "
+                                      >
+                                        <div
+                                          class="chevron-step-tooltip__info-row"
+                                        >
+                                          <span
+                                            class="chevron-step-tooltip__info-label"
+                                          >
+                                            完成时间
+                                          </span>
+                                          <span
+                                            class="chevron-step-tooltip__info-value"
+                                          >
+                                            {{
+                                              formatServiceTaskCompletionTime(
+                                                node.completionTime,
+                                              )
+                                            }}
+                                          </span>
+                                        </div>
+                                        <div
+                                          class="chevron-step-tooltip__info-row"
+                                        >
+                                          <span
+                                            class="chevron-step-tooltip__info-label"
+                                          >
+                                            完成人
+                                          </span>
+                                          <span
+                                            class="chevron-step-tooltip__info-value"
+                                          >
+                                            {{
+                                              node.completionUserNickName || '-'
+                                            }}
+                                          </span>
+                                        </div>
+                                      </template>
                                       <div
+                                        v-else
                                         class="chevron-step-tooltip__info-row"
                                       >
                                         <span
                                           class="chevron-step-tooltip__info-label"
                                         >
-                                          完成时间
+                                          处理人
                                         </span>
                                         <span
                                           class="chevron-step-tooltip__info-value"
                                         >
-                                          {{
-                                            formatServiceTaskCompletionTime(
-                                              node.completionTime,
-                                            )
-                                          }}
+                                          {{ formatServiceTaskUsersText(node) }}
                                         </span>
                                       </div>
-                                      <div
-                                        class="chevron-step-tooltip__info-row"
-                                      >
-                                        <span
-                                          class="chevron-step-tooltip__info-label"
-                                        >
-                                          完成人
-                                        </span>
-                                        <span
-                                          class="chevron-step-tooltip__info-value"
-                                        >
-                                          {{
-                                            node.completionUserNickName || '-'
-                                          }}
-                                        </span>
-                                      </div>
+                                    </div>
+                                    <div
+                                      v-if="
+                                        showServiceCompletePermissionHint(
+                                          node,
+                                        ) ||
+                                        showServiceCancelPermissionHint(node)
+                                      "
+                                      class="chevron-step-tooltip__permission-hint"
+                                    >
+                                      <IconifyIcon
+                                        icon="mdi:lock-outline"
+                                        class="chevron-step-tooltip__permission-hint-icon"
+                                      />
+                                      <span>
+                                        {{
+                                          showServiceCancelPermissionHint(node)
+                                            ? '您不是完成人，暂无操作权限'
+                                            : '您不是当前处理人，暂无操作权限'
+                                        }}
+                                      </span>
                                     </div>
                                     <div
                                       v-if="
@@ -3109,129 +3331,106 @@ defineExpose({
                 :key="row._rowKey"
                 class="order-user-panel__row"
               >
-                <Button
-                  v-if="!isFixedOrderUserRole(row.userAttribute)"
-                  type="link"
-                  danger
-                  size="small"
-                  class="order-user-panel__delete-btn"
-                  title="删除"
-                  @click="removeOrderUserRole(row._rowKey)"
-                >
-                  <IconifyIcon icon="mdi:trash-can-outline" />
-                </Button>
-                <div
-                  class="order-user-panel__avatar-wrap"
-                  @mouseenter="loadOrderUserDetail(row.userId, row._rowKey)"
-                >
-                  <Popover
-                    v-if="row.userId"
-                    placement="leftTop"
-                    trigger="hover"
-                    overlay-class-name="order-user-detail-popover"
-                  >
-                    <template #content>
-                      <div class="order-user-detail-card">
-                        <div class="order-user-detail-card__header">
-                          <Avatar
-                            :size="38"
-                            class="order-user-detail-card__avatar"
-                          >
-                            {{ getOrderUserAvatarText(row) }}
-                          </Avatar>
-                          <div class="order-user-detail-card__title-wrap">
-                            <div class="order-user-detail-card__name">
-                              {{ getOrderUserDisplayName(row) || '-' }}
+                <div class="order-user-panel__body">
+                  <div class="order-user-panel__header">
+                    <div class="order-user-panel__role-label">
+                      {{ getOrderUserRoleLabel(row.userAttribute) }}
+                    </div>
+                    <Popover
+                      v-if="row.userId"
+                      placement="leftTop"
+                      trigger="hover"
+                      overlay-class-name="order-user-detail-popover"
+                    >
+                      <template #content>
+                        <div class="order-user-detail-card">
+                          <div class="order-user-detail-card__header">
+                            <Avatar
+                              :size="38"
+                              :src="getOrderUserAvatarSrc(row.userId)"
+                              class="order-user-detail-card__avatar"
+                            >
+                              {{ getOrderUserAvatarText(row) }}
+                            </Avatar>
+                            <div class="order-user-detail-card__title-wrap">
+                              <div class="order-user-detail-card__name">
+                                {{ getOrderUserDisplayName(row) || '-' }}
+                              </div>
+                              <div class="order-user-detail-card__sub-title">
+                                账号：{{
+                                  getOrderUserDetailText(
+                                    getOrderUserDetail(row.userId)?.userName,
+                                  )
+                                }}
+                              </div>
                             </div>
-                            <div class="order-user-detail-card__sub-title">
-                              账号：{{
-                                getOrderUserDetailText(
-                                  getOrderUserDetail(row.userId)?.userName,
+                            <span
+                              class="order-user-detail-card__status"
+                              :class="
+                                getOrderUserStatusClass(
+                                  getOrderUserDetail(row.userId),
+                                )
+                              "
+                            >
+                              {{
+                                getOrderUserStatusText(
+                                  getOrderUserDetail(row.userId),
                                 )
                               }}
+                            </span>
+                          </div>
+                          <div
+                            v-if="
+                              isOrderUserDetailLoading(row.userId) &&
+                              !getOrderUserDetail(row.userId)
+                            "
+                            class="order-user-detail-card__loading"
+                          >
+                            加载中...
+                          </div>
+                          <div v-else class="order-user-detail-card__info">
+                            <div class="order-user-detail-card__info-item">
+                              <span>角色</span>
+                              <span>{{
+                                getOrderUserRoleLabel(row.userAttribute)
+                              }}</span>
+                            </div>
+                            <div class="order-user-detail-card__info-item">
+                              <span>手机</span>
+                              <span>{{
+                                getOrderUserDetailText(
+                                  getOrderUserDetail(row.userId)?.phoneNumber,
+                                )
+                              }}</span>
+                            </div>
+                            <div class="order-user-detail-card__info-item">
+                              <span>邮箱</span>
+                              <span>{{
+                                getOrderUserDetailText(
+                                  getOrderUserDetail(row.userId)?.emailAddress,
+                                )
+                              }}</span>
                             </div>
                           </div>
-                          <span
-                            class="order-user-detail-card__status"
-                            :class="
-                              getOrderUserStatusClass(
-                                getOrderUserDetail(row.userId),
-                              )
-                            "
-                          >
-                            {{
-                              getOrderUserStatusText(
-                                getOrderUserDetail(row.userId),
-                              )
-                            }}
-                          </span>
                         </div>
-                        <div
-                          v-if="
-                            isOrderUserDetailLoading(row.userId) &&
-                            !getOrderUserDetail(row.userId)
-                          "
-                          class="order-user-detail-card__loading"
-                        >
-                          加载中...
-                        </div>
-                        <div v-else class="order-user-detail-card__info">
-                          <div class="order-user-detail-card__info-item">
-                            <span>角色</span>
-                            <span>{{
-                              getOrderUserRoleLabel(row.userAttribute)
-                            }}</span>
-                          </div>
-                          <div class="order-user-detail-card__info-item">
-                            <span>手机</span>
-                            <span>{{
-                              getOrderUserDetailText(
-                                getOrderUserDetail(row.userId)?.phoneNumber,
-                              )
-                            }}</span>
-                          </div>
-                          <div class="order-user-detail-card__info-item">
-                            <span>邮箱</span>
-                            <span>{{
-                              getOrderUserDetailText(
-                                getOrderUserDetail(row.userId)?.emailAddress,
-                              )
-                            }}</span>
-                          </div>
-                          <div class="order-user-detail-card__info-item">
-                            <span>最近登录</span>
-                            <span>{{
-                              formatOrderUserLastLogin(
-                                getOrderUserDetail(row.userId)?.lastLoginTime,
-                              )
-                            }}</span>
-                          </div>
-                        </div>
+                      </template>
+                      <div
+                        class="order-user-panel__role-icon order-user-panel__role-icon--link"
+                        @mouseenter="
+                          loadOrderUserDetail(row.userId, row._rowKey)
+                        "
+                      >
+                        <IconifyIcon
+                          :icon="getOrderUserRoleIcon(row.userAttribute)"
+                        />
                       </div>
-                    </template>
-                    <Avatar
-                      :size="34"
-                      class="order-user-panel__avatar order-user-panel__avatar--link"
-                    >
-                      {{ getOrderUserAvatarText(row) }}
-                    </Avatar>
-                  </Popover>
-                  <Avatar v-else :size="34" class="order-user-panel__avatar">
-                    {{ getOrderUserAvatarText(row) }}
-                  </Avatar>
-                </div>
-                <div class="order-user-panel__content">
-                  <Select
-                    :value="row.userAttribute"
-                    :options="getOrderUserRoleOptions(row._rowKey)"
-                    :placeholder="
-                      $t('seaExport.export.pleaseSelectUserAttribute')
-                    "
-                    size="small"
-                    :allow-clear="!isFixedOrderUserRole(row.userAttribute)"
-                    class="order-user-panel__role-select"
-                    @update:value="(v) => updateOrderUserRole(row._rowKey, v)"
-                  />
+                    </Popover>
+                    <div v-else class="order-user-panel__role-icon">
+                      <IconifyIcon
+                        :icon="getOrderUserRoleIcon(row.userAttribute)"
+                      />
+                    </div>
+                  </div>
                   <UserSelect
                     :key="row._rowKey"
                     :model-value="row.userId"
@@ -3251,14 +3450,28 @@ defineExpose({
                     size="small"
                     allow-clear
                     class="order-user-panel__select"
-                    :disabled="!row.userAttribute"
                     @update:model-value="(v) => updateOrderUser(row._rowKey, v)"
                   />
                 </div>
+                <Button
+                  v-if="
+                    row.userAttribute != null &&
+                    !requiredOrderUserRoles.includes(row.userAttribute)
+                  "
+                  type="text"
+                  danger
+                  size="small"
+                  class="order-user-panel__delete-btn"
+                  title="删除角色"
+                  @click.stop="removeOrderUserRole(row._rowKey)"
+                >
+                  <IconifyIcon icon="mdi:close-circle" />
+                </Button>
               </div>
               <Button
                 class="order-user-panel__add-btn"
-                @click="addOrderUserRole"
+                :disabled="!availableOrderUserRoleOptions.length"
+                @click="openOrderUserRoleModal"
               >
                 + 添加角色
               </Button>
@@ -3267,6 +3480,31 @@ defineExpose({
         </div>
       </div>
     </Spin>
+    <Modal
+      v-model:open="orderUserRoleModalOpen"
+      title="添加角色"
+      ok-text="确定"
+      cancel-text="取消"
+      width="400px"
+      destroy-on-close
+      :ok-button-props="{ disabled: orderUserRoleModalSelected == null }"
+      @ok="handleOrderUserRoleModalConfirm"
+      @cancel="handleOrderUserRoleModalCancel"
+    >
+      <Radio.Group
+        v-model:value="orderUserRoleModalSelected"
+        class="order-user-role-modal__group"
+      >
+        <Radio
+          v-for="option in availableOrderUserRoleOptions"
+          :key="option.value"
+          :value="option.value"
+          class="order-user-role-modal__item"
+        >
+          {{ option.label }}
+        </Radio>
+      </Radio.Group>
+    </Modal>
     <Modal
       v-model:open="serviceTypeModalOpen"
       title="配置服务项目"
@@ -3512,6 +3750,10 @@ defineExpose({
   width: 180px;
 }
 
+.right-column :deep(.ant-card-body) {
+  overflow: visible;
+}
+
 .card-title {
   display: flex;
   gap: 8px;
@@ -3665,7 +3907,7 @@ defineExpose({
   gap: 8px;
   align-items: center;
   justify-content: center;
-  min-height: 64px;
+  min-height: 40px;
 }
 
 .service-pipeline__empty-checked-text {
@@ -3677,7 +3919,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 64px;
+  min-height: 40px;
 }
 
 .service-pipeline {
@@ -3694,15 +3936,15 @@ defineExpose({
   display: flex;
   width: 100%;
   overflow: auto hidden;
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 .service-chevron-flow > :deep(span),
 .service-chevron-flow__item {
   display: flex;
   flex: 1 1 0;
-  min-width: 0;
-  max-width: 220px;
+  min-width: 72px;
+  max-width: 140px;
 }
 
 .service-chevron-flow > :deep(span) {
@@ -3720,20 +3962,20 @@ defineExpose({
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 220px;
-  height: 64px;
-  padding-right: 12px;
-  padding-left: 28px;
-  margin-left: -12px;
+  max-width: 140px;
+  height: 40px;
+  padding-right: 8px;
+  padding-left: 16px;
+  margin-left: -8px;
   cursor: pointer;
   border: 1px solid rgb(255 255 255 / 20%);
   clip-path: polygon(
     0% 0%,
-    calc(100% - 20px) 0%,
+    calc(100% - 12px) 0%,
     100% 50%,
-    calc(100% - 20px) 100%,
+    calc(100% - 12px) 100%,
     0% 100%,
-    20px 50%
+    12px 50%
   );
   transition:
     box-shadow 0.2s ease,
@@ -3741,24 +3983,24 @@ defineExpose({
 }
 
 .chevron-step--first {
-  padding-left: 20px;
+  padding-left: 12px;
   margin-left: 0;
-  border-top-left-radius: 16px;
-  border-bottom-left-radius: 16px;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
   clip-path: polygon(
     0% 0%,
-    calc(100% - 20px) 0%,
+    calc(100% - 12px) 0%,
     100% 50%,
-    calc(100% - 20px) 100%,
+    calc(100% - 12px) 100%,
     0% 100%
   );
 }
 
 .chevron-step--last {
-  padding-right: 20px;
-  border-top-right-radius: 16px;
-  border-bottom-right-radius: 16px;
-  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 20px 50%);
+  padding-right: 12px;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 12px 50%);
 }
 
 .chevron-step:hover {
@@ -3786,7 +4028,7 @@ defineExpose({
 
 .chevron-step__inner {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
   min-width: 0;
   max-width: 100%;
@@ -3794,15 +4036,16 @@ defineExpose({
 
 .chevron-step__icon {
   flex-shrink: 0;
-  font-size: 20px;
+  font-size: 14px;
 }
 
 .chevron-step__label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 700;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -3881,6 +4124,26 @@ defineExpose({
   color: #334155;
   text-align: right;
   word-break: break-all;
+}
+
+.chevron-step-tooltip__permission-hint {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+}
+
+.chevron-step-tooltip__permission-hint-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
 }
 
 .chevron-step-tooltip__actions {
@@ -4467,13 +4730,6 @@ defineExpose({
   color: #1f2937;
 }
 
-.order-user-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
 .order-user-panel__add-btn {
   width: 100%;
   height: 32px;
@@ -4490,12 +4746,15 @@ defineExpose({
   border-color: #1677ff;
 }
 
+.order-user-panel {
+  padding: 6px 6px 0 0;
+  overflow: visible;
+}
+
 .order-user-panel__row {
   position: relative;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 8px;
+  padding: 10px 12px;
+  overflow: visible;
   background: #fff;
   border: 1px solid #f0f0f0;
   border-radius: 8px;
@@ -4505,25 +4764,39 @@ defineExpose({
   margin-top: 8px;
 }
 
-.order-user-panel__avatar-wrap {
+.order-user-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.order-user-panel__header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.order-user-panel__role-icon {
   display: flex;
   flex: none;
   align-items: center;
-}
-
-.order-user-panel__avatar {
-  font-size: 13px;
-  font-weight: 600;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
   color: #1677ff;
   background: #e6f4ff;
+  border-radius: 6px;
 }
 
-.order-user-panel__avatar--link {
+.order-user-panel__role-icon--link {
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.order-user-panel__avatar--link:hover {
+.order-user-panel__role-icon--link:hover {
   box-shadow: 0 4px 12px rgb(22 119 255 / 22%);
   transform: translateY(-1px);
 }
@@ -4638,17 +4911,43 @@ defineExpose({
   white-space: nowrap;
 }
 
-.order-user-panel__content {
-  display: flex;
+.order-user-panel__role-label {
   flex: 1;
-  flex-direction: column;
-  gap: 6px;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #1f2937;
+  white-space: nowrap;
 }
 
-.order-user-panel__role-select,
 .order-user-panel__select {
   width: 100%;
+}
+
+.order-user-role-modal__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.order-user-role-modal__item {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 12px;
+  margin: 0;
+  line-height: 36px;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.order-user-role-modal__item:hover {
+  border-color: #91caff;
 }
 
 .order-user-panel__meta {
@@ -4665,14 +4964,31 @@ defineExpose({
 
 .order-user-panel__delete-btn {
   position: absolute;
-  top: -13px;
-  right: -7px;
-  z-index: 1;
-  height: 20px;
+  top: -8px;
+  right: -8px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
   padding: 0;
+  font-size: 22px;
+  line-height: 1;
+  color: #ff4d4f;
   pointer-events: none;
+  background: #fff;
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 12%);
   opacity: 0;
   transition: opacity 0.2s ease;
+}
+
+.order-user-panel__delete-btn:hover {
+  color: #ff7875;
+  background: #fff;
 }
 
 .order-user-panel__row:hover .order-user-panel__delete-btn,
