@@ -33,6 +33,7 @@ import {
   Tag,
   Tooltip,
 } from 'ant-design-vue';
+import { preferences } from '@vben/preferences';
 import { useUserStore } from '@vben/stores';
 
 defineOptions({
@@ -56,6 +57,7 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { getUser, UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
+import { buildAttachmentUrl } from '#/utils';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
@@ -1152,9 +1154,19 @@ const getOrderUserDisplayName = (row: OrderUserEditorRow) => {
   if (row.userName && row.userName !== String(row.userId)) return row.userName;
   return '';
 };
+const getOrderUserAvatarSrc = (userId?: number) => {
+  const avatar = getOrderUserDetail(userId)?.avatar?.trim();
+  if (avatar) return buildAttachmentUrl(avatar);
+  return preferences.app.defaultAvatar;
+};
 const getOrderUserAvatarText = (row: OrderUserEditorRow) => {
-  const role = getOrderUserRoleLabel(row.userAttribute);
-  return role && role !== '-' ? role.slice(0, 1) : '?';
+  const displayName =
+    getOrderUserDisplayName(row) ||
+    getOrderUserDetail(row.userId)?.nickName ||
+    getOrderUserDetail(row.userId)?.userName;
+  const normalized = displayName?.trim();
+  if (normalized) return normalized.slice(0, 1);
+  return '?';
 };
 const getOrderUserDetail = (userId?: number) =>
   userId ? orderUserDetailMap.value[userId] : undefined;
@@ -1168,10 +1180,6 @@ const getOrderUserStatusText = (detail?: SystemUserAdminApi.UserDto) => {
 const getOrderUserStatusClass = (detail?: SystemUserAdminApi.UserDto) => {
   if (!detail?.isActive) return 'order-user-detail-card__status--inactive';
   return 'order-user-detail-card__status--active';
-};
-const formatOrderUserLastLogin = (lastLoginTime?: string) => {
-  if (!lastLoginTime) return '-';
-  return dayjs(lastLoginTime).format('YYYY-MM-DD HH:mm');
 };
 const syncOrderUserName = (userId: number, userName: string) => {
   orderUserNameMap.value = { ...orderUserNameMap.value, [userId]: userName };
@@ -3155,6 +3163,7 @@ defineExpose({
                           <div class="order-user-detail-card__header">
                             <Avatar
                               :size="38"
+                              :src="getOrderUserAvatarSrc(row.userId)"
                               class="order-user-detail-card__avatar"
                             >
                               {{ getOrderUserAvatarText(row) }}
@@ -3215,14 +3224,6 @@ defineExpose({
                               <span>{{
                                 getOrderUserDetailText(
                                   getOrderUserDetail(row.userId)?.emailAddress,
-                                )
-                              }}</span>
-                            </div>
-                            <div class="order-user-detail-card__info-item">
-                              <span>最近登录</span>
-                              <span>{{
-                                formatOrderUserLastLogin(
-                                  getOrderUserDetail(row.userId)?.lastLoginTime,
                                 )
                               }}</span>
                             </div>
