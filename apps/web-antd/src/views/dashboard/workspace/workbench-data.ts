@@ -141,8 +141,8 @@ export function toPortTab(
     count: group.taskCount ?? 0,
     key: String(group.polId ?? group.seServiceConfigId),
     label:
-      group.pol?.cnName ||
       group.pol?.portName ||
+      group.pol?.cnName ||
       `POL:${String(group.polId ?? '-')}`,
   };
 }
