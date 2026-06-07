@@ -141,7 +141,12 @@ function useOrderFeeFormSchema() {
       fieldName: 'industryCategory',
       label: $t('seaExport.client.industryCategories'),
       componentProps: {
-        options: feeConstants.getIndustryCategoryOptions(),
+        options: feeConstants
+          .getIndustryCategoryOptions()
+          .map(({ label, value }) => ({
+            label,
+            value,
+          })),
         style: { width: '100%' },
       },
     },

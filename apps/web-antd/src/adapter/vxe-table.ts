@@ -38,6 +38,7 @@ import ClientSelect from './component/biz-select/client-select.vue';
 import FeeCodeSelect from './component/biz-select/fee-code-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
 import ExchangeRateSelect from '#/adapter/component/biz-select/exchange-rate-select.vue';
+import UnitSelect from '#/adapter/component/biz-select/unit-select.vue';
 
 setupVbenVxeTable({
   configVxeTable: (vxeUI) => {
@@ -299,6 +300,28 @@ setupVbenVxeTable({
           row[column.field] = newVal;
         }
         return h(ExchangeRateSelect, finalProps);
+      },
+    });
+    vxeUI.renderer.add('UnitSelect', {
+      renderTableDefault({ attrs, props }, { column, row }) {
+        // 处理动态 disabled 属性
+        const finalProps: any = {
+          ...attrs,
+          ...props,
+          modelValue: row[column.field],
+          'onUpdate:modelValue': onChange,
+        };
+
+        // 如果 disabled 是函数，则调用它并传入 row
+        if (typeof finalProps.disabled === 'function') {
+          finalProps.disabled = finalProps.disabled(row);
+        }
+
+        function onChange(newVal: any) {
+          // 允许清空汇率字段
+          row[column.field] = newVal;
+        }
+        return h(UnitSelect, finalProps);
       },
     });
     vxeUI.renderer.add('Select', {

@@ -54,7 +54,6 @@ const forwardSlotNames = computed(() =>
 );
 
 const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
-  console.log('mapPortToOption', port);
   const portAny = port as any;
   const ediCode = (port.ediCode ?? '').toString().trim();
   const countryEnName = (port?.country?.countryEnName ?? '').toString().trim();

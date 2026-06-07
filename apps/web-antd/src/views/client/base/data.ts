@@ -136,12 +136,12 @@ const getLaneIdOptions = () => [
 
 /** 行业类别枚举选项（value 取字母，与 IndustryCategory 注释对应：a 船公司、b 发货人、c 场站…） */
 const getIndustryCategoryOptions = () => [
-  {
-    key: 1,
-    value: 'a',
-    label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
-    module: [],
-  },
+  // {
+  //   key: 1,
+  //   value: 'a',
+  //   label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
+  //   module: [],
+  // },
   {
     key: 2,
     value: 'b',
@@ -187,11 +187,7 @@ const getIndustryCategoryOptions = () => [
     value: 'j',
     label: $t('seaExport.client.industryCategoryOptions.trader'),
   },
-  {
-    key: 11,
-    value: 'k',
-    label: $t('seaExport.client.industryCategoryOptions.agent'),
-  },
+
   {
     key: 12,
     value: 'l',
@@ -241,29 +237,23 @@ const getIndustryCategoryOptions = () => [
 
 const getCustomerIndustryCategoryOptions = () => [
   {
-    key: 1,
-    value: 'a',
-    label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
-    module: [],
+    key: 16,
+    value: 'p',
+    label: $t('seaExport.client.industryCategoryOptions.entrustingUnit'),
   },
   {
     key: 2,
     value: 'b',
     label: $t('seaExport.client.industryCategoryOptions.shipper'),
   },
-  {
-    key: 16,
-    value: 'p',
-    label: $t('seaExport.client.industryCategoryOptions.entrustingUnit'),
-  },
-  {
-    key: 11,
-    value: 'k',
-    label: $t('seaExport.client.industryCategoryOptions.agent'),
-  },
 ];
 
 const getSupplierIndustryCategoryOptions = () => [
+  {
+    key: 15,
+    value: 'o',
+    label: $t('seaExport.client.industryCategoryOptions.bookingAgent'),
+  },
   {
     key: 3,
     value: 'c',
@@ -300,11 +290,6 @@ const getSupplierIndustryCategoryOptions = () => [
     key: 14,
     value: 'n',
     label: $t('seaExport.client.industryCategoryOptions.shippingAgent'),
-  },
-  {
-    key: 15,
-    value: 'o',
-    label: $t('seaExport.client.industryCategoryOptions.bookingAgent'),
   },
 
   {
