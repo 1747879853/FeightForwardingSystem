@@ -530,6 +530,10 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
   transition: background-color 0.15s ease;
 }
 
+.business-table tbody tr:nth-child(even) td {
+  background: rgb(243 244 246 / 50%);
+}
+
 .business-table tbody tr:hover td {
   background: rgb(37 140 244 / 5%);
 }
