@@ -751,10 +751,10 @@ export function useOrderFeeColumns(
       align: 'center',
       width: 90,
       cellRender: {
-        name: 'ExchangeRateSelect',
+        name: 'CellInput',
         props: {
-          valueKey: type === 0 ? 'drValue' : 'crValue',
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) =>
+            !canEditFee(row.feeStatus) || row['__isLocalCurrency'] === true,
         },
       },
     },

@@ -272,15 +272,67 @@ setupVbenVxeTable({
             if (feeCodeDetail.currencyId) {
               row['currencyId'] = feeCodeDetail.currencyId;
 
+              //判断本位币逻辑
+
               // 同时获取汇率
               if (row['currencyId']) {
-                const exchangeRateData = await getExchangeRateDetail(
-                  row['currencyId'],
-                );
-                if (exchangeRateData) {
-                  row['exchangeRate'] = props?.type
-                    ? exchangeRateData.drValue
-                    : exchangeRateData.crValue;
+                try {
+                  // 先获取汇率详情
+                  const exchangeRateData = await getExchangeRateDetail(
+                    row['currencyId'],
+                  );
+
+                  // 判断是否为本位币：需要查询订单所属公司的本位币
+                  let isLocalCurrency = false;
+
+                  // 从row中获取运输订单ID
+                  const transportOrderId = row['transportOrderId'];
+
+                  if (transportOrderId) {
+                    try {
+                      // 获取订单详情
+                      const orderDetail =
+                        await getSeaExportDetail(transportOrderId);
+
+                      if (
+                        orderDetail &&
+                        orderDetail.companys &&
+                        orderDetail.companys.length > 0
+                      ) {
+                        // 获取第一个所属公司（通常只有一个）
+                        const company = orderDetail.companys[0];
+
+                        // 检查该公司的本位币是否与当前选择的币别一致
+                        if (company?.localCurrencyId === newVal) {
+                          isLocalCurrency = true;
+                        }
+                      }
+                    } catch (error) {
+                      console.error('获取订单详情失败:', error);
+                    }
+                  }
+
+                  // 如果是本位币，汇率固定为1且禁用编辑
+                  if (isLocalCurrency) {
+                    row['exchangeRate'] = 1;
+
+                    // 设置汇率字段为禁用状态
+                    const exchangeRateEditingKey = `__editing_exchangeRate`;
+                    row[exchangeRateEditingKey] = false;
+
+                    // 标记该行为本位币，用于在CellEditableNumber渲染器中禁用
+                    row['__isLocalCurrency'] = true;
+
+                    console.log('检测到本位币，汇率固定为1且不可修改');
+                  } else {
+                    // 非本位币，使用正常汇率
+                    row['exchangeRate'] = props?.type
+                      ? exchangeRateData.drValue
+                      : exchangeRateData.crValue;
+                    row['__isLocalCurrency'] = false;
+                  }
+                } catch (error) {
+                  console.error('获取汇率详情失败:', error);
                 }
               }
             }
@@ -372,7 +424,7 @@ setupVbenVxeTable({
             }
 
             // 填充单位为"箱"（中文字符串）
-            row['unit'] = ctns[0].ctnCodeName;
+            row['unit'] = ctns[0]?.ctnCodeName || '';
 
             // 计算箱型数量（有多少条箱型数据）
             row['quantity'] = ctns.length;
@@ -549,7 +601,7 @@ setupVbenVxeTable({
           finalProps.disabled = finalProps.disabled(row);
         }
 
-        function onChange(newVal: any) {
+        async function onChange(newVal: any) {
           // 更新当前字段的值
           row[column.field] = newVal;
 
@@ -557,12 +609,66 @@ setupVbenVxeTable({
 
           // 如果选择了币别，自动获取对应的汇率；如果清空币别，则清空汇率
           if (newVal) {
-            getExchangeRateDetail(newVal).then((data) => {
-              row['exchangeRate'] = props?.type ? data.drValue : data.crValue;
-            });
+            try {
+              // 先获取汇率详情
+              const exchangeRateData = await getExchangeRateDetail(newVal);
+
+              // 判断是否为本位币：需要查询订单所属公司的本位币
+              let isLocalCurrency = false;
+
+              // 从row中获取运输订单ID
+              const transportOrderId = row['transportOrderId'];
+
+              if (transportOrderId) {
+                try {
+                  // 获取订单详情
+                  const orderDetail =
+                    await getSeaExportDetail(transportOrderId);
+
+                  if (
+                    orderDetail &&
+                    orderDetail.companys &&
+                    orderDetail.companys.length > 0
+                  ) {
+                    // 获取第一个所属公司（通常只有一个）
+                    const company = orderDetail.companys[0];
+
+                    // 检查该公司的本位币是否与当前选择的币别一致
+                    if (company?.localCurrencyId === newVal) {
+                      isLocalCurrency = true;
+                    }
+                  }
+                } catch (error) {
+                  console.error('获取订单详情失败:', error);
+                }
+              }
+
+              // 如果是本位币，汇率固定为1且禁用编辑
+              if (isLocalCurrency) {
+                row['exchangeRate'] = 1;
+
+                // 设置汇率字段为禁用状态
+                const exchangeRateEditingKey = `__editing_exchangeRate`;
+                row[exchangeRateEditingKey] = false;
+
+                // 标记该行为本位币，用于在CellEditableNumber渲染器中禁用
+                row['__isLocalCurrency'] = true;
+
+                console.log('检测到本位币，汇率固定为1且不可修改');
+              } else {
+                // 非本位币，使用正常汇率
+                row['exchangeRate'] = props?.type
+                  ? exchangeRateData.drValue
+                  : exchangeRateData.crValue;
+                row['__isLocalCurrency'] = false;
+              }
+            } catch (error) {
+              console.error('获取汇率详情失败:', error);
+            }
           } else {
             // 清空币别时，同时清空汇率
             row['exchangeRate'] = undefined;
+            row['__isLocalCurrency'] = false;
           }
         }
         return h(CurrencySelect, finalProps);
@@ -775,7 +881,18 @@ setupVbenVxeTable({
           row[editingValueKey] = row[column.field];
         }
 
+        // 检查是否为汇率字段且为本位币，如果是则禁止编辑
+        const isExchangeRateField = column.field === 'exchangeRate';
+        const isLocalCurrency = row['__isLocalCurrency'] === true;
+        const isDisabled = isExchangeRateField && isLocalCurrency;
+
         function handleDoubleClick(e: MouseEvent) {
+          // 如果字段被禁用，不允许进入编辑模式
+          if (isDisabled) {
+            e.stopPropagation();
+            return;
+          }
+
           e.stopPropagation();
           row[editingKey] = true;
           row[editingValueKey] = row[column.field];
@@ -868,6 +985,23 @@ setupVbenVxeTable({
           row[column.field] !== undefined && row[column.field] !== null
             ? Number(row[column.field]).toFixed(2)
             : '-';
+
+        // 如果是本位币的汇率字段，显示特殊样式和提示
+        if (isDisabled) {
+          return h(
+            'div',
+            {
+              class:
+                'cell-editable-number px-2 py-1 bg-gray-50 text-gray-500 cursor-not-allowed',
+              title: '本位币汇率固定为1，不可修改',
+              style: {
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+              },
+            },
+            displayValue,
+          );
+        }
 
         // 关键修复：使用原生DOM事件绑定并阻止冒泡
         return h(

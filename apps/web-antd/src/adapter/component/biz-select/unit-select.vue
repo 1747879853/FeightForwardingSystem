@@ -62,7 +62,7 @@ const mapCtnToOption = (ctn: CtnCodeAdminApi.CtnCodeDto) => {
     label = ctn.ctnName;
   }
   label = label || ctn.ctnName || ctn.ctnSize || ctn.ctnType || '';
-  console.log('mapCtnToOption', { ctn, label });
+  //console.log('mapCtnToOption', { ctn, label });
   const rawValue = ctnAny?.[props.valueKey];
   return {
     disabled: ctn.status === 1,
