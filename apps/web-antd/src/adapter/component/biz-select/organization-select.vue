@@ -1,13 +1,17 @@
 <script lang="ts" setup>
 import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
-import { computed, ref, toRef, watch } from 'vue';
+import { computed, ref, toRef, useAttrs, watch } from 'vue';
 
 import { $t } from '@vben/locales';
+
+import { objectOmit } from '@vueuse/core';
 
 import { Select } from 'ant-design-vue';
 
 import { getOrganizationUnits } from '#/api/system/organization-unit';
+
+defineOptions({ inheritAttrs: false });
 
 interface Props {
   /** 是否是公司。true=公司，false=部门，不传=全部 */
@@ -38,6 +42,7 @@ const emit = defineEmits<{
 }>();
 
 const modelValue = defineModel<any>();
+const attrs = useAttrs();
 const isCompanyRef = toRef(props, 'isCompany');
 const selectedItemsRef = toRef(props, 'selectedItems');
 
@@ -108,6 +113,11 @@ const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
 );
 
+/** 避免 v-bind attrs 与 @update:value 重复绑定导致 onUpdate:value 变为数组 */
+const bindProps = computed(() =>
+  objectOmit(attrs, ['value', 'onUpdate:value']),
+);
+
 const loadData = async () => {
   loading.value = true;
   try {
@@ -146,6 +156,7 @@ defineExpose({
 <template>
   <Select
     ref="apiComponentRef"
+    v-bind="bindProps"
     :value="modelValue"
     :options="options"
     :loading="loading"
@@ -154,7 +165,6 @@ defineExpose({
     :show-search="true"
     :allow-clear="true"
     class="w-full"
-    v-bind="$attrs"
     @update:value="handleChange"
     @search="handleSearch"
   >
