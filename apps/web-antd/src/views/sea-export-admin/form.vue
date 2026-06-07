@@ -22,8 +22,10 @@ import {
   Avatar,
   Button,
   Card,
+  Checkbox,
   Empty,
   message,
+  Modal,
   Popover,
   Select,
   Space,
@@ -46,7 +48,10 @@ import {
   getServiceTypesByPOL,
   getSeaExportDetail,
 } from '#/api/sea-export/sea-export-admin';
-import { completeSeServiceTask } from '#/api/sea-export/se-service-task-admin';
+import {
+  cancelCompleteSeServiceTask,
+  completeSeServiceTask,
+} from '#/api/sea-export/se-service-task-admin';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { getUser, UserAttribute } from '#/api/system/user-admin';
@@ -208,9 +213,12 @@ const SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES = new Set([
 const PORT_MOVED_TO_BASIC_FIELD_NAMES = new Set(['signingPortId']);
 const SERVICE_TASK_STATUS_PENDING = 0;
 const SERVICE_TASK_STATUS_PROCESSED = 1;
-type ServiceTaskStatusValue =
-  | typeof SERVICE_TASK_STATUS_PENDING
-  | typeof SERVICE_TASK_STATUS_PROCESSED;
+type ServiceTypeTaskInfo = {
+  taskId?: string;
+  taskStatus?: 0 | 1 | null;
+  completionTime?: string | null;
+  completionUserNickName?: string | null;
+};
 type ServiceTypeNode = {
   serviceType: number;
   label: string;
@@ -218,6 +226,8 @@ type ServiceTypeNode = {
   checked: boolean;
   taskStatus?: 0 | 1 | null;
   taskId?: string;
+  completionTime?: string | null;
+  completionUserNickName?: string | null;
 };
 const serviceTypeNodes = ref<ServiceTypeNode[]>([]);
 const serviceTypeLabelMap = ref(new Map<number, string>());
@@ -240,13 +250,7 @@ const buildServiceTypeNodes = (
   enumLabelMap: Map<number, string>,
   savedServiceTypeSet?: Set<number>,
   clientCheckedMap?: Map<number, boolean>,
-  taskMap?: Map<
-    number,
-    {
-      taskId?: string;
-      taskStatus?: ServiceTypeNode['taskStatus'];
-    }
-  >,
+  taskMap?: Map<number, ServiceTypeTaskInfo>,
 ): ServiceTypeNode[] => {
   return polNodes
     .slice()
@@ -267,19 +271,15 @@ const buildServiceTypeNodes = (
         checked,
         taskStatus: taskInfo?.taskStatus,
         taskId: taskInfo?.taskId,
+        completionTime: taskInfo?.completionTime,
+        completionUserNickName: taskInfo?.completionUserNickName,
       };
     });
 };
 const parseDetailServiceTypes = (detail: SeaExportAdminApi.SeaExportDto) => {
   const services = detail.seaExportServices ?? [];
   const savedSet = new Set<number>(services.map((item) => item.serviceType));
-  const taskMap = new Map<
-    number,
-    {
-      taskId?: string;
-      taskStatus?: ServiceTypeNode['taskStatus'];
-    }
-  >();
+  const taskMap = new Map<number, ServiceTypeTaskInfo>();
   services.forEach((item) => {
     const rawTaskId = item.seServiceTask?.id;
     const taskId =
@@ -290,6 +290,9 @@ const parseDetailServiceTypes = (detail: SeaExportAdminApi.SeaExportDto) => {
         item.seServiceTask == null
           ? null
           : toServiceTaskStatusValue(item.seServiceTask.serviceTaskStatus),
+      completionTime: item.seServiceTask?.completionTime ?? null,
+      completionUserNickName:
+        item.seServiceTask?.completionUserNickName ?? null,
     });
   });
   return { savedSet, taskMap };
@@ -298,13 +301,6 @@ const getCheckedServiceTypes = () =>
   serviceTypeNodes.value
     .filter((node) => node.checked)
     .map((node) => node.serviceType);
-const SERVICE_TASK_STATUS_META: Record<
-  ServiceTaskStatusValue,
-  { label: string; color: string }
-> = {
-  [SERVICE_TASK_STATUS_PENDING]: { label: '待处理', color: 'gold' },
-  [SERVICE_TASK_STATUS_PROCESSED]: { label: '已处理', color: 'green' },
-};
 const SERVICE_REQUIRE_PROP_TO_FIELD_NAME: Record<number, string> = {
   1: 'carrierId',
   2: 'polId',
@@ -430,6 +426,7 @@ const latestAvailableServiceTypes = ref<
   SeaExportAdminApi.ServiceTypeByPolDto[]
 >([]);
 const completingServiceType = ref<number>();
+const cancellingServiceType = ref<number>();
 const normalizeRequiredProps = (value: unknown): number[] => {
   if (!Array.isArray(value)) return [];
   return [
@@ -467,45 +464,100 @@ const updateServiceTypeRequiredProps = () => {
     checkedSet,
   );
 };
-const getServiceTypeNodeState = (
+type ServicePipelineState = 'active' | 'done' | 'upcoming';
+const checkedServiceTypeNodes = computed(() =>
+  serviceTypeNodes.value.filter((node) => node.checked),
+);
+const getServicePipelineActiveIndex = (nodes: ServiceTypeNode[]) =>
+  nodes.findIndex((node) => node.taskStatus !== SERVICE_TASK_STATUS_PROCESSED);
+const getServicePipelineState = (
   node: ServiceTypeNode,
-): 'active' | 'done' | 'pending' => {
-  if (!node.checked) return 'pending';
-  if (node.taskStatus === SERVICE_TASK_STATUS_PROCESSED) return 'done';
-  return 'active';
+  nodes: ServiceTypeNode[] = checkedServiceTypeNodes.value,
+): ServicePipelineState => {
+  const index = nodes.findIndex(
+    (item) => item.serviceType === node.serviceType,
+  );
+  if (index < 0) return 'upcoming';
+  const activeIndex = getServicePipelineActiveIndex(nodes);
+  if (activeIndex === -1) return 'done';
+  if (index < activeIndex) return 'done';
+  if (index === activeIndex) return 'active';
+  return 'upcoming';
 };
 const isServiceTypeNodeDone = (node: ServiceTypeNode) =>
-  getServiceTypeNodeState(node) === 'done';
-const getServiceTypeCheckmarkShown = (node: ServiceTypeNode) => node.checked;
-const hasServiceTypeTask = (node: ServiceTypeNode) =>
-  !!node.taskId && node.taskId.trim() !== '';
-const canToggleServiceTypeNode = (node: ServiceTypeNode) => {
-  if (!isEdit.value) return true;
-  if (!node.checked) return true;
-  return !hasServiceTypeTask(node);
+  getServicePipelineState(node) === 'done';
+const getServiceTypeNodeIcon = (node: ServiceTypeNode) => {
+  const state = getServicePipelineState(node);
+  if (state === 'done') return 'mdi:check-circle';
+  if (state === 'active') return 'mdi:progress-clock';
+  return 'mdi:schedule';
 };
-const handleServiceTypeNodeToggle = (node: ServiceTypeNode) => {
-  if (!canToggleServiceTypeNode(node)) {
-    message.warning('已生成服务任务，不可关闭服务');
-    return;
+const shouldShowServiceNodeTooltip = (node: ServiceTypeNode) =>
+  getServicePipelineState(node) !== 'upcoming';
+const isServiceChevronStepLast = (index: number, total: number) =>
+  total > 1 && index === total - 1;
+const getServiceNodeTooltipStatusMeta = (node: ServiceTypeNode) => {
+  if (node.taskStatus === SERVICE_TASK_STATUS_PROCESSED) {
+    return { label: '已完成', color: 'success' as const };
   }
-  node.checked = !node.checked;
+  if (node.taskStatus === SERVICE_TASK_STATUS_PENDING) {
+    return { label: '待处理', color: 'processing' as const };
+  }
+  const state = getServicePipelineState(node);
+  if (state === 'done') {
+    return { label: '已完成', color: 'success' as const };
+  }
+  if (state === 'active') {
+    return { label: '处理中', color: 'processing' as const };
+  }
+  return { label: '还未到', color: 'default' as const };
+};
+const serviceTypeModalOpen = ref(false);
+const serviceTypeModalDraft = ref<Map<number, boolean>>(new Map());
+const isServiceTypeModalChecked = (serviceType: number) =>
+  serviceTypeModalDraft.value.get(serviceType) ?? false;
+const openServiceTypeModal = () => {
+  const draft = new Map<number, boolean>();
+  serviceTypeNodes.value.forEach((node) => {
+    draft.set(node.serviceType, node.checked);
+  });
+  serviceTypeModalDraft.value = draft;
+  serviceTypeModalOpen.value = true;
+};
+const handleServiceTypeModalDraftChange = (
+  node: ServiceTypeNode,
+  event: { target?: { checked?: boolean } },
+) => {
+  const checked = !!event?.target?.checked;
+  serviceTypeModalDraft.value.set(node.serviceType, checked);
+  serviceTypeModalDraft.value = new Map(serviceTypeModalDraft.value);
+};
+const handleServiceTypeModalCancel = () => {
+  serviceTypeModalOpen.value = false;
+};
+const handleServiceTypeModalConfirm = () => {
+  const draftToApply = new Map(serviceTypeModalDraft.value);
+  serviceTypeNodes.value.forEach((node) => {
+    node.checked = draftToApply.get(node.serviceType) ?? false;
+  });
   updateServiceTypeRequiredProps();
-};
-const getServiceTypeTaskStatusMeta = (node: ServiceTypeNode) => {
-  const status = node.taskStatus;
-  if (
-    status !== SERVICE_TASK_STATUS_PENDING &&
-    status !== SERVICE_TASK_STATUS_PROCESSED
-  ) {
-    return undefined;
-  }
-  return SERVICE_TASK_STATUS_META[status];
+  serviceTypeModalOpen.value = false;
 };
 const canCompleteServiceTypeNode = (node: ServiceTypeNode) =>
+  isEdit.value &&
   !!node.taskId &&
   node.taskStatus === SERVICE_TASK_STATUS_PENDING &&
   node.checked;
+const canCancelCompleteServiceTypeNode = (node: ServiceTypeNode) =>
+  isEdit.value &&
+  !!node.taskId &&
+  node.taskStatus === SERVICE_TASK_STATUS_PROCESSED &&
+  node.checked;
+const formatServiceTaskCompletionTime = (value?: string | null) => {
+  if (!value) return '-';
+  const parsed = dayjs(value);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm') : value;
+};
 const isRequiredFieldFilled = (value: unknown) => {
   if (value === null || value === undefined) return false;
   if (typeof value === 'string') return value.trim() !== '';
@@ -602,6 +654,29 @@ const handleCompleteServiceType = async (node: ServiceTypeNode) => {
     completingServiceType.value = undefined;
   }
 };
+const handleCancelCompleteServiceType = async (node: ServiceTypeNode) => {
+  if (!isEdit.value) return;
+  if (cancellingServiceType.value != null) return;
+  const taskId = node.taskId;
+  if (!taskId) {
+    message.warning('当前服务暂无可取消任务');
+    return;
+  }
+  if (node.taskStatus !== SERVICE_TASK_STATUS_PROCESSED) {
+    message.info('当前服务未完成');
+    return;
+  }
+  cancellingServiceType.value = node.serviceType;
+  try {
+    await cancelCompleteSeServiceTask({ id: taskId });
+    message.success(`${node.label}已取消完成`);
+    await loadEditData();
+  } catch {
+    message.error('取消完成失败，请稍后重试');
+  } finally {
+    cancellingServiceType.value = undefined;
+  }
+};
 const toOptionalQueryValue = (value: unknown) => {
   if (value === undefined || value === null || value === '') return undefined;
   return value;
@@ -653,13 +728,7 @@ const applyServiceTypeStateByPol = (
   checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
   overrides?: {
     savedServiceTypeSet?: Set<number>;
-    taskMap?: Map<
-      number,
-      {
-        taskId?: string;
-        taskStatus?: ServiceTypeNode['taskStatus'];
-      }
-    >;
+    taskMap?: Map<number, ServiceTypeTaskInfo>;
   },
 ) => {
   const polNodes = Array.isArray(availableServiceTypes)
@@ -701,13 +770,7 @@ const syncServiceTypesByPol = async (
     polId?: unknown;
     force?: boolean;
     savedServiceTypeSet?: Set<number>;
-    taskMap?: Map<
-      number,
-      {
-        taskId?: string;
-        taskStatus?: ServiceTypeNode['taskStatus'];
-      }
-    >;
+    taskMap?: Map<number, ServiceTypeTaskInfo>;
   } = {},
 ) => {
   const requestId = ++serviceTypeLinkageRequestId;
@@ -2625,100 +2688,206 @@ defineExpose({
                       <div class="service-pipeline">
                         <div class="service-pipeline__header">
                           <span class="service-pipeline__title">服务项目</span>
-                          <span
+                          <div
                             v-if="showServiceItemContent"
-                            class="service-pipeline__hint"
+                            class="service-pipeline__header-actions"
                           >
-                            点击节点可启用/关闭服务
-                          </span>
+                            <span class="service-pipeline__hint">
+                              按顺序展示：已完成 / 处理中 / 还未到
+                            </span>
+                            <Button
+                              type="link"
+                              size="small"
+                              class="service-pipeline__config-btn"
+                              @click="openServiceTypeModal"
+                            >
+                              配置服务
+                            </Button>
+                          </div>
                         </div>
                         <template v-if="showServiceItemContent">
-                          <div class="service-pipeline__track">
-                            <div
-                              v-for="(node, index) in serviceTypeNodes"
+                          <div
+                            v-if="checkedServiceTypeNodes.length > 0"
+                            class="service-chevron-flow"
+                          >
+                            <template
+                              v-for="(node, index) in checkedServiceTypeNodes"
                               :key="node.serviceType"
-                              class="service-item-node-wrap"
                             >
-                              <div
-                                class="service-item-node"
-                                :class="[
-                                  `service-item-node--${getServiceTypeNodeState(node)}`,
-                                  { 'service-item-node--edit': isEdit },
-                                ]"
+                              <Tooltip
+                                v-if="shouldShowServiceNodeTooltip(node)"
+                                placement="top"
+                                :overlay-class-name="'chevron-step-tooltip'"
                               >
-                                <div
-                                  class="service-item-node__content"
-                                  @click="handleServiceTypeNodeToggle(node)"
-                                >
-                                  <span
-                                    class="service-item-node__check"
-                                    :class="{
-                                      'service-item-node__check--checked':
-                                        getServiceTypeCheckmarkShown(node),
-                                    }"
-                                  >
-                                    <IconifyIcon
-                                      v-if="getServiceTypeCheckmarkShown(node)"
-                                      icon="mdi:check"
-                                      class="service-item-node__check-icon"
-                                    />
-                                  </span>
-                                  <span class="service-item-node__icon">
-                                    <IconifyIcon
-                                      icon="mdi:circle-outline"
-                                      class="service-item-node__icon-inner"
-                                    />
-                                  </span>
-                                  <span class="service-item-node__title">
-                                    {{ node.label }}
-                                  </span>
-                                  <span
-                                    v-if="
-                                      isEdit &&
-                                      node.checked &&
-                                      getServiceTypeTaskStatusMeta(node) &&
-                                      !isServiceTypeNodeDone(node)
-                                    "
-                                    class="service-item-node__status"
-                                  >
-                                    {{
-                                      getServiceTypeTaskStatusMeta(node)?.label
-                                    }}
-                                  </span>
-                                  <span
-                                    v-if="
-                                      isEdit &&
-                                      node.checked &&
-                                      canCompleteServiceTypeNode(node)
-                                    "
-                                    class="service-item-node__action-slot"
-                                  >
-                                    <Button
-                                      type="link"
-                                      size="small"
-                                      class="service-item-node__action-btn"
-                                      :loading="
-                                        completingServiceType ===
-                                        node.serviceType
+                                <template #title>
+                                  <div class="chevron-step-tooltip__content">
+                                    <div class="chevron-step-tooltip__header">
+                                      <span
+                                        class="chevron-step-tooltip__node-name"
+                                      >
+                                        {{ node.label }}
+                                      </span>
+                                      <Tag
+                                        :color="
+                                          getServiceNodeTooltipStatusMeta(node)
+                                            .color
+                                        "
+                                        class="chevron-step-tooltip__status-tag"
+                                      >
+                                        {{
+                                          getServiceNodeTooltipStatusMeta(node)
+                                            .label
+                                        }}
+                                      </Tag>
+                                    </div>
+                                    <div
+                                      v-if="
+                                        node.taskStatus ===
+                                        SERVICE_TASK_STATUS_PROCESSED
                                       "
-                                      @click.stop="
-                                        handleCompleteServiceType(node)
-                                      "
+                                      class="chevron-step-tooltip__info"
                                     >
-                                      完成服务
-                                    </Button>
-                                  </span>
+                                      <div
+                                        class="chevron-step-tooltip__info-row"
+                                      >
+                                        <span
+                                          class="chevron-step-tooltip__info-label"
+                                        >
+                                          完成时间
+                                        </span>
+                                        <span
+                                          class="chevron-step-tooltip__info-value"
+                                        >
+                                          {{
+                                            formatServiceTaskCompletionTime(
+                                              node.completionTime,
+                                            )
+                                          }}
+                                        </span>
+                                      </div>
+                                      <div
+                                        class="chevron-step-tooltip__info-row"
+                                      >
+                                        <span
+                                          class="chevron-step-tooltip__info-label"
+                                        >
+                                          完成人
+                                        </span>
+                                        <span
+                                          class="chevron-step-tooltip__info-value"
+                                        >
+                                          {{
+                                            node.completionUserNickName || '-'
+                                          }}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div
+                                      v-if="
+                                        canCancelCompleteServiceTypeNode(
+                                          node,
+                                        ) || canCompleteServiceTypeNode(node)
+                                      "
+                                      class="chevron-step-tooltip__actions"
+                                    >
+                                      <Button
+                                        v-if="canCompleteServiceTypeNode(node)"
+                                        type="primary"
+                                        size="small"
+                                        block
+                                        class="chevron-step-tooltip__action-btn"
+                                        :loading="
+                                          completingServiceType ===
+                                          node.serviceType
+                                        "
+                                        @click.stop="
+                                          handleCompleteServiceType(node)
+                                        "
+                                      >
+                                        完成
+                                      </Button>
+                                      <Button
+                                        v-if="
+                                          canCancelCompleteServiceTypeNode(node)
+                                        "
+                                        danger
+                                        size="small"
+                                        block
+                                        class="chevron-step-tooltip__action-btn"
+                                        :loading="
+                                          cancellingServiceType ===
+                                          node.serviceType
+                                        "
+                                        @click.stop="
+                                          handleCancelCompleteServiceType(node)
+                                        "
+                                      >
+                                        取消完成
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </template>
+                                <div
+                                  class="chevron-step"
+                                  :class="[
+                                    `chevron-step--${getServicePipelineState(node)}`,
+                                    {
+                                      'chevron-step--first': index === 0,
+                                      'chevron-step--last':
+                                        isServiceChevronStepLast(
+                                          index,
+                                          checkedServiceTypeNodes.length,
+                                        ),
+                                    },
+                                  ]"
+                                >
+                                  <div class="chevron-step__inner">
+                                    <IconifyIcon
+                                      :icon="getServiceTypeNodeIcon(node)"
+                                      class="chevron-step__icon"
+                                    />
+                                    <span class="chevron-step__label">
+                                      {{ node.label }}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                              <div
-                                v-if="index < serviceTypeNodes.length - 1"
-                                class="service-item-divider"
-                                :class="{
-                                  'service-item-divider--done':
-                                    isServiceTypeNodeDone(node),
-                                }"
-                              />
-                            </div>
+                              </Tooltip>
+                              <span v-else class="service-chevron-flow__item">
+                                <div
+                                  class="chevron-step chevron-step--upcoming"
+                                  :class="{
+                                    'chevron-step--first': index === 0,
+                                    'chevron-step--last':
+                                      isServiceChevronStepLast(
+                                        index,
+                                        checkedServiceTypeNodes.length,
+                                      ),
+                                  }"
+                                >
+                                  <div class="chevron-step__inner">
+                                    <IconifyIcon
+                                      :icon="getServiceTypeNodeIcon(node)"
+                                      class="chevron-step__icon"
+                                    />
+                                    <span class="chevron-step__label">
+                                      {{ node.label }}
+                                    </span>
+                                  </div>
+                                </div>
+                              </span>
+                            </template>
+                          </div>
+                          <div v-else class="service-pipeline__empty-checked">
+                            <span class="service-pipeline__empty-checked-text">
+                              暂未配置服务节点
+                            </span>
+                            <Button
+                              type="link"
+                              size="small"
+                              @click="openServiceTypeModal"
+                            >
+                              去配置
+                            </Button>
                           </div>
                         </template>
                         <div v-else class="service-pipeline__state">
@@ -3101,6 +3270,34 @@ defineExpose({
         </div>
       </div>
     </Spin>
+    <Modal
+      v-model:open="serviceTypeModalOpen"
+      title="配置服务项目"
+      ok-text="确定"
+      cancel-text="取消"
+      width="520px"
+      destroy-on-close
+      @ok="handleServiceTypeModalConfirm"
+      @cancel="handleServiceTypeModalCancel"
+    >
+      <p class="service-type-modal__tip service-type-modal__tip--emphasis">
+        修改后请保存表单生效。
+      </p>
+      <div class="service-type-modal__list">
+        <div
+          v-for="node in serviceTypeNodes"
+          :key="node.serviceType"
+          class="service-type-modal__item"
+        >
+          <Checkbox
+            :checked="isServiceTypeModalChecked(node.serviceType)"
+            @change="handleServiceTypeModalDraftChange(node, $event)"
+          >
+            <span class="service-type-modal__label">{{ node.label }}</span>
+          </Checkbox>
+        </div>
+      </div>
+    </Modal>
   </component>
 </template>
 
@@ -3446,11 +3643,37 @@ defineExpose({
   white-space: nowrap;
 }
 
+.service-pipeline__header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .service-pipeline__hint {
   font-size: 12px;
   line-height: 20px;
   color: rgb(0 0 0 / 45%);
   white-space: nowrap;
+}
+
+.service-pipeline__config-btn {
+  flex-shrink: 0;
+  height: auto;
+  padding: 0;
+  font-size: 12px;
+}
+
+.service-pipeline__empty-checked {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+}
+
+.service-pipeline__empty-checked-text {
+  font-size: 13px;
+  color: rgb(0 0 0 / 45%);
 }
 
 .service-pipeline__state {
@@ -3470,210 +3693,238 @@ defineExpose({
     0 4px 6px -2px rgb(0 0 0 / 2%);
 }
 
-.service-pipeline__track {
+.service-chevron-flow {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 0;
-  align-items: center;
-  justify-content: flex-start;
   width: 100%;
-  min-height: 64px;
+  overflow: auto hidden;
+  border-radius: 12px;
 }
 
-.service-item-node-wrap {
-  display: contents;
+.service-chevron-flow > :deep(span),
+.service-chevron-flow__item {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 220px;
 }
 
-.service-item-node {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-}
-
-.service-item-node__content {
-  box-sizing: border-box;
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 4px 6px;
+.service-chevron-flow > :deep(span) {
   cursor: pointer;
-  border-radius: 8px;
-  transition: background-color 0.2s ease;
 }
 
-.service-item-node__content:hover {
-  background: #f8fafc;
+.service-chevron-flow__item {
+  cursor: default;
 }
 
-.service-item-node__check {
-  display: inline-flex;
-  flex-shrink: 0;
+.chevron-step {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  color: transparent;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 999px;
+  width: 100%;
+  max-width: 220px;
+  height: 64px;
+  padding-right: 12px;
+  padding-left: 28px;
+  margin-left: -12px;
+  cursor: pointer;
+  border: 1px solid rgb(255 255 255 / 20%);
+  clip-path: polygon(
+    0% 0%,
+    calc(100% - 20px) 0%,
+    100% 50%,
+    calc(100% - 20px) 100%,
+    0% 100%,
+    20px 50%
+  );
   transition:
-    color 0.2s ease,
-    background-color 0.2s ease,
-    border-color 0.2s ease;
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
 }
 
-.service-item-node__check--checked {
-  color: #fff;
-  background: #2563eb;
-  border-color: #2563eb;
+.chevron-step--first {
+  padding-left: 20px;
+  margin-left: 0;
+  border-top-left-radius: 16px;
+  border-bottom-left-radius: 16px;
+  clip-path: polygon(
+    0% 0%,
+    calc(100% - 20px) 0%,
+    100% 50%,
+    calc(100% - 20px) 100%,
+    0% 100%
+  );
 }
 
-.service-item-node__check-icon {
-  font-size: 12px;
+.chevron-step--last {
+  padding-right: 20px;
+  border-top-right-radius: 16px;
+  border-bottom-right-radius: 16px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 20px 50%);
 }
 
-.service-item-node__icon {
-  display: inline-flex;
+.chevron-step:hover {
+  z-index: 30;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+  filter: brightness(1.03);
+}
+
+.chevron-step--done {
+  color: #005313;
+  background: #a8e6cf;
+}
+
+.chevron-step--active {
+  color: #00325b;
+  background: #d1e9ff;
+}
+
+.chevron-step--upcoming {
+  color: #414752;
+  cursor: default;
+  background: #f2f2f2;
+  opacity: 0.8;
+}
+
+.chevron-step__inner {
+  display: flex;
+  gap: 8px;
   align-items: center;
-  color: #64748b;
+  min-width: 0;
+  max-width: 100%;
 }
 
-.service-item-node__icon-inner {
+.chevron-step__icon {
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+.chevron-step__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.service-item-node__title {
-  flex: 0 0 auto;
+:global(.chevron-step-tooltip .ant-tooltip-inner) {
+  min-width: 220px;
+  padding: 0;
+  color: #1b1c1c;
+  background: #fff;
+  border: 1px solid #e8edf5;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 10%);
+}
+
+:global(.chevron-step-tooltip .ant-tooltip-arrow::before) {
+  background: #fff;
+}
+
+.chevron-step-tooltip__content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.chevron-step-tooltip__header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chevron-step-tooltip__node-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: #0f172a;
   white-space: nowrap;
 }
 
-.service-item-node__status {
+.chevron-step-tooltip__status-tag {
   flex-shrink: 0;
-  padding: 2px 8px;
-  margin-left: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.3;
-  color: #f59e0b;
-  white-space: nowrap;
-  background: #fffbeb;
-  border: 1px solid rgb(245 158 11 / 20%);
-  border-radius: 999px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 18px;
 }
 
-.service-item-node__action-slot {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  margin-left: 12px;
-  overflow: hidden;
-  transition:
-    width 0.2s ease,
-    margin 0.2s ease,
-    opacity 0.2s ease;
-}
-
-.service-item-node:not(.service-item-node--active):not(:hover)
-  .service-item-node__action-slot {
-  width: 0;
-  min-width: 0;
-  margin-left: 0;
-  pointer-events: none;
-  opacity: 0;
-}
-
-.service-item-node:hover .service-item-node__action-slot,
-.service-item-node--active .service-item-node__action-slot {
-  width: auto;
-  min-width: 0;
-  pointer-events: auto;
-  opacity: 1;
-}
-
-.service-item-node:not(.service-item-node--active):not(:hover)
-  .service-item-node__action-btn {
-  pointer-events: none;
-}
-
-.service-item-node__action-btn:hover {
-  color: #fff;
-  background: #2563eb;
-  box-shadow: 0 2px 4px rgb(37 99 235 / 20%);
-}
-
-.service-item-node__action-btn {
-  flex-shrink: 0;
-  margin-left: 0;
-  font-size: 12px;
-  color: #2563eb;
-  background: #eff6ff;
-  border-radius: 6px;
-  transition: opacity 0.2s ease;
-}
-
-.service-item-divider {
+.chevron-step-tooltip__info {
   display: flex;
-  flex: 0 0 12px;
-  align-items: center;
-  justify-content: center;
-  width: 12px;
-  height: 64px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 8px;
 }
 
-.service-item-divider::after {
-  display: block;
-  width: 12px;
-  height: 1.5px;
-  content: '';
-  background: #f1f5f9;
+.chevron-step-tooltip__info-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  font-size: 12px;
+  line-height: 18px;
 }
 
-.service-item-divider--done::after {
-  background: rgb(16 185 129 / 30%);
+.chevron-step-tooltip__info-label {
+  flex-shrink: 0;
+  color: rgb(0 0 0 / 45%);
 }
 
-.service-item-node--done .service-item-node__check--checked {
-  color: #fff;
-  background: #10b981;
-  border-color: #10b981;
+.chevron-step-tooltip__info-value {
+  min-width: 0;
+  font-weight: 500;
+  color: #334155;
+  text-align: right;
+  word-break: break-all;
 }
 
-.service-item-node--done .service-item-node__title {
-  color: #64748b;
+.chevron-step-tooltip__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.service-item-node--active
-  .service-item-node__check:not(.service-item-node__check--checked) {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px #eff6ff;
+.chevron-step-tooltip__action-btn {
+  height: 28px;
+  font-size: 12px;
 }
 
-.service-item-node--edit.service-item-node--active
-  .service-item-node__check:not(.service-item-node__check--checked) {
-  border-color: #e2e8f0;
-  box-shadow: none;
+.service-type-modal__tip {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 20px;
+  color: rgb(0 0 0 / 65%);
 }
 
-.service-item-node--active .service-item-node__icon,
-.service-item-node--active .service-item-node__title {
-  color: #2563eb;
+.service-type-modal__tip--emphasis {
+  margin-bottom: 12px;
+  color: #1677ff;
 }
 
-.service-item-node--edit.service-item-node--active .service-item-node__icon,
-.service-item-node--edit.service-item-node--active .service-item-node__title {
-  color: #2563eb;
+.service-type-modal__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
 }
 
-.service-item-node--pending .service-item-node__check {
-  border-style: dashed;
+.service-type-modal__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.service-item-node--pending .service-item-node__icon,
-.service-item-node--pending .service-item-node__title {
-  color: #cbd5e1;
+.service-type-modal__label {
+  margin-right: 6px;
 }
 
 .service-pipeline-empty--compact {
