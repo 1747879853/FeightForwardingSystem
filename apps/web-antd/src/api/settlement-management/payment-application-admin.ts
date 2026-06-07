@@ -416,7 +416,8 @@ export namespace PaymentApplicationAdminApi {
     exchangeRate: number;
     unitPrice: number;
     amount: number;
-    unitEmum: number;
+    /** 单位（中文字符串，最大16字符） */
+    unit: string;
     quantity: number;
     taxRate: number;
     invoicedAmount: number;

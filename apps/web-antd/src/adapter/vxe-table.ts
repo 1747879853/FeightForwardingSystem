@@ -15,7 +15,10 @@ import {
 import { get, isFunction, isString } from '@vben/utils';
 
 import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
+import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
+import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { useTableConfigStore } from '#/store/table-config';
+import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
 
 import { objectOmit } from '@vueuse/core';
 import {
@@ -215,11 +218,295 @@ setupVbenVxeTable({
           finalProps.disabled = finalProps.disabled(row);
         }
 
-        function onChange(newVal: any) {
-          if (newVal) {
+        async function onChange(newVal: any) {
+          if (!newVal) {
             row[column.field] = newVal;
+            return;
+          }
+
+          // 更新当前字段的值
+          row[column.field] = newVal;
+
+          try {
+            // 获取费用代码详情
+            const feeCodeDetail = await getFeeCodeDetail(newVal);
+            if (!feeCodeDetail) {
+              console.warn('未找到费用代码详情');
+              return;
+            }
+
+            console.log('费用代码详情:', feeCodeDetail);
+
+            // 1. 自动填充行业类别和结算对象
+            const paySide = row['paySide']; // 0=应收, 1=应付
+
+            if (paySide === 0) {
+              // 应收费用：使用收费客户类型（defaultDebitName）
+              const debitCategory = feeCodeDetail.defaultDebitName;
+              if (debitCategory) {
+                console.log(
+                  '自动填充行业类别:',
+                  debitCategory,
+                  getCategoryNumber(debitCategory),
+                );
+                row['industryCategory'] = getCategoryNumber(debitCategory);
+                row['industryCategories'] = debitCategory;
+
+                // 根据行业类别从订单详情中获取对应的结算对象
+                await fillSettlementIdByIndustryCategory(row, debitCategory);
+              }
+            } else if (paySide === 1) {
+              // 应付费用：使用付费客户类型（defaultCreditName）
+              const creditCategory = feeCodeDetail.defaultCreditName;
+              if (creditCategory) {
+                row['industryCategory'] = getCategoryNumber(creditCategory);
+                row['industryCategories'] = creditCategory;
+
+                // 根据行业类别从订单详情中获取对应的结算对象
+                await fillSettlementIdByIndustryCategory(row, creditCategory);
+              }
+            }
+
+            // 2. 自动填充币别
+            if (feeCodeDetail.currencyId) {
+              row['currencyId'] = feeCodeDetail.currencyId;
+
+              // 同时获取汇率
+              if (row['currencyId']) {
+                const exchangeRateData = await getExchangeRateDetail(
+                  row['currencyId'],
+                );
+                if (exchangeRateData) {
+                  row['exchangeRate'] = props?.type
+                    ? exchangeRateData.drValue
+                    : exchangeRateData.crValue;
+                }
+              }
+            }
+
+            // 3. 自动填充税率
+            if (
+              feeCodeDetail.taxRate !== undefined &&
+              feeCodeDetail.taxRate !== null
+            ) {
+              row['taxRate'] = feeCodeDetail.taxRate;
+            }
+
+            // 4. 自动填充单位和数量
+            const defaultUnitName = feeCodeDetail.defaultUnitName;
+            if (defaultUnitName) {
+              // 直接将单位名称填充到unit字段（中文字符串）
+              row['unit'] = defaultUnitName;
+
+              // 根据单位类型自动填充数量
+              if (defaultUnitName) {
+                // 如果是箱型，需要查询订单的箱型信息
+                if (defaultUnitName === '箱型' || defaultUnitName === 'CTN') {
+                  await fillCtnQuantity(row);
+                }
+                // 如果是票，数量为1
+                else if (
+                  defaultUnitName === '票' ||
+                  defaultUnitName === 'ORDER'
+                ) {
+                  row['quantity'] = 1;
+                }
+                // 如果是重量、尺码、件数、TEU，从订单详情中获取
+                else if (
+                  [
+                    '毛重',
+                    'KGS',
+                    '尺码',
+                    'CBM',
+                    '件数',
+                    'PKGS',
+                    'TEU',
+                  ].includes(defaultUnitName.toLowerCase())
+                ) {
+                  await fillOrderQuantity(row, defaultUnitName);
+                }
+              }
+            }
+
+            // 触发相关字段的重算（如含税单价、金额等）
+            if (attrs?.onFeeCodeChange) {
+              await attrs.onFeeCodeChange(feeCodeDetail, row);
+            }
+          } catch (error) {
+            console.error('自动填充费用信息失败:', error);
           }
         }
+
+        /**
+         * 将行业类别字母转换为数字
+         */
+        function getCategoryNumber(category: string): number | undefined {
+          return getIndustryCategoryOptions().find(
+            (item) => item.value === category,
+          )?.key;
+        }
+
+        /**
+         * 填充箱型数量和单位
+         */
+        async function fillCtnQuantity(row: any) {
+          try {
+            const transportOrderId = row['transportOrderId'];
+            if (!transportOrderId) {
+              console.warn('缺少运输订单ID');
+              return;
+            }
+
+            // 获取订单详情
+            const orderDetail = await getSeaExportDetail(transportOrderId);
+            if (!orderDetail || !orderDetail.transportOrder?.orderCtns) {
+              console.warn('未找到订单箱型信息');
+              return;
+            }
+
+            const ctns = orderDetail.transportOrder.orderCtns;
+            if (ctns.length === 0) {
+              row['quantity'] = 0;
+              return;
+            }
+
+            // 填充单位为"箱"（中文字符串）
+            row['unit'] = '箱';
+
+            // 计算箱型数量（有多少条箱型数据）
+            row['quantity'] = ctns.length;
+          } catch (error) {
+            console.error('填充箱型数量失败:', error);
+          }
+        }
+
+        /**
+         * 填充订单数量（重量、尺码、件数、TEU等）
+         */
+        async function fillOrderQuantity(row: any, unitName: string) {
+          try {
+            const transportOrderId = row['transportOrderId'];
+            if (!transportOrderId) {
+              console.warn('缺少运输订单ID');
+              return;
+            }
+
+            // 获取订单详情
+            const orderDetail = await getSeaExportDetail(transportOrderId);
+            if (!orderDetail || !orderDetail.transportOrder) {
+              console.warn('未找到订单详情');
+              return;
+            }
+
+            const transportOrder = orderDetail.transportOrder;
+
+            // 根据单位类型填充数量
+            switch (unitName.toLowerCase()) {
+              case '重量':
+              case 'weight':
+                row['quantity'] = transportOrder.kgs || 0;
+                break;
+              case '尺码':
+              case 'measurement':
+                row['quantity'] = transportOrder.cbm || 0;
+                break;
+              case '件数':
+              case 'packages':
+                row['quantity'] = transportOrder.pkgs || 0;
+                break;
+              case 'teu':
+                row['quantity'] = transportOrder.teu || 0;
+                break;
+              default:
+                row['quantity'] = 1;
+            }
+          } catch (error) {
+            console.error('填充订单数量失败:', error);
+          }
+        }
+
+        /**
+         * 根据行业类别从订单详情中获取对应的结算对象
+         */
+        async function fillSettlementIdByIndustryCategory(
+          row: any,
+          industryCategory: string,
+        ) {
+          try {
+            const transportOrderId = row['transportOrderId'];
+            if (!transportOrderId) {
+              console.warn('缺少运输订单ID，无法填充结算对象');
+              return;
+            }
+
+            // 获取订单详情
+            const orderDetail = await getSeaExportDetail(transportOrderId);
+            if (!orderDetail) {
+              console.warn('未找到订单详情');
+              return;
+            }
+
+            let settlementId: string | number | undefined;
+
+            // 根据行业类别映射到对应的字段
+            switch (industryCategory.toLowerCase()) {
+              case 'b': // 发货人
+                settlementId = orderDetail.transportOrder?.shipperId;
+                break;
+              case 'c': // 场站
+                settlementId = orderDetail.yardId;
+                break;
+              case 'e': // 收货人
+                settlementId = orderDetail.transportOrder?.consigneeId;
+                break;
+              case 'f': // 报关行
+                settlementId = orderDetail.transportOrder?.custBrokerId;
+                break;
+              case 'h': // 通知人
+                settlementId = orderDetail.transportOrder?.notifierId;
+                break;
+              case 'i': // 车队
+                settlementId = orderDetail.transportOrder?.teamId;
+                break;
+              case 'n': // 船代
+                settlementId = orderDetail.shipAgentId;
+                break;
+              case 'o': // 订舱代理
+                settlementId = orderDetail.bookingAgentId;
+                break;
+              case 'p': // 委托单位
+                settlementId = orderDetail.transportOrder?.clientId;
+                break;
+              case 'q': // 仓库
+                settlementId = orderDetail.transportOrder?.warehouseId;
+                break;
+              case 'r': // 保险公司
+                settlementId = orderDetail.transportOrder?.insuranceId;
+                break;
+              case 's': // 国外代理
+                settlementId = orderDetail.podAgentId;
+                break;
+              default:
+                console.warn(`未识别的行业类别: ${industryCategory}`);
+                return;
+            }
+
+            // 如果找到了对应的结算对象ID，则填充
+            if (settlementId !== undefined && settlementId !== null) {
+              row['settlementId'] = String(settlementId);
+              console.log(
+                `自动填充结算对象: ${settlementId} (行业类别: ${industryCategory})`,
+              );
+            } else {
+              console.warn(
+                `订单中未找到行业类别 ${industryCategory} 对应的结算对象`,
+              );
+            }
+          } catch (error) {
+            console.error('填充结算对象失败:', error);
+          }
+        }
+
         return h(FeeCodeSelect, finalProps);
       },
     });

@@ -471,7 +471,10 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
       minWidth: 110,
       cellRender: {
         name: 'CellTag',
-        options: getIndustryCategoryOptions(),
+        options: getIndustryCategoryOptions().map(({ label, key }) => ({
+          label,
+          value: key,
+        })),
       },
     },
     {
@@ -718,9 +721,9 @@ export function useOrderFeeColumns(
       minWidth: 110,
       cellRender: {
         name: 'Select',
-        options: getIndustryCategoryOptions().map(({ label, value }) => ({
+        options: getIndustryCategoryOptions().map(({ label, key }) => ({
           label,
-          value,
+          value: key,
         })),
         props: {
           disabled: (row: any) => !canEditFee(row.feeStatus),
