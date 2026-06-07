@@ -28,7 +28,7 @@ const cacheDisplayNameMap: Record<string, string> = {
 };
 
 // 需要过滤掉的缓存键前缀
-const excludedPrefixes = ['REMEMB', '_vben', 'vben', '__vue', '__VUE'];
+const excludedPrefixes = ['REMEMB', '__vue', '__VUE'];
 
 // 所有缓存数据
 const cacheList = ref<CacheItem[]>([]);
