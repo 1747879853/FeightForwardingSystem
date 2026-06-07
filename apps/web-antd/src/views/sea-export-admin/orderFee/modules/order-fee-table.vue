@@ -80,7 +80,7 @@ const ORDER_CTN_API_KEYS: Array<
   'exchangeRate',
   'unitPrice',
   'amount',
-  'unitEmum',
+  'unit',
   'quantity',
   'taxRate',
   'noTaxUnitPrice',
@@ -247,6 +247,7 @@ const addRowData = () => {
     transportOrderId: editId.value,
     paySide: props.type,
     currencyId: '',
+    unit: '',
     feeStatus: 0,
     taxRate: 0,
     taskStatus: '',
@@ -491,7 +492,6 @@ const normalizeOrderFeeWithRowKey = (
   items: OrderFeeAdminApi.OrderFeeDto[] | undefined,
 ) => {
   if (!items?.length) return [];
-  console.log('rrr', items);
   return items.map((item, i) => ({
     ...item,
     _rowKey: `ofee_${i}_${Date.now()}`,
@@ -512,7 +512,6 @@ const sanitizeOrderFee = (
     'feeStatus',
     'invoiceStatus',
     'industryCategory',
-    'unitEmum',
     'dataEntryMethod',
   ]);
 

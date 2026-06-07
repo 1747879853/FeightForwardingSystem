@@ -161,7 +161,7 @@ export namespace OrderFeeAdminApi {
     amount: number;
 
     /** 单位 */
-    unitEmum: number;
+    unit: number;
 
     /** 数量 */
     quantity: number;

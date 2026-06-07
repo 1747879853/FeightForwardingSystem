@@ -1213,7 +1213,7 @@ function convertOrderFeeForDetailToSettlement(
     exchangeRate: 0,
     unitPrice: detailFee.unitPrice || 0,
     amount: detailFee.amount || 0,
-    unitEmum: 0,
+    unit: detailFee.unit || '',
     quantity: detailFee.quantity || 0,
     taxIncluded: false,
     taxRate: 0,

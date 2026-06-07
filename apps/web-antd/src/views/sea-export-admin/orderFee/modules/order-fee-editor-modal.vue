@@ -210,11 +210,10 @@ function useOrderFeeFormSchema() {
       },
     },
     {
-      component: 'Select',
-      fieldName: 'unitEmum',
+      component: 'UnitSelect',
+      fieldName: 'unit',
       label: $t('seaExport.export.orderFee.unitEmum'),
       componentProps: {
-        options: feeConstants.getUnitEmumOptions(),
         style: { width: '100%' },
       },
     },
@@ -376,7 +375,7 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
                 feeConstants
                   .getIndustryCategoryOptions()
                   .find(
-                    (item) => item.value === originalFeeData?.industryCategory,
+                    (item) => item.key === originalFeeData?.industryCategory,
                   )?.label || '--'
               }}</span>
             </div>
@@ -433,10 +432,7 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
                 >{{ $t('seaExport.export.orderFee.unitEmum') }}:</span
               >
               <span class="font-medium">{{
-                feeConstants
-                  .getUnitEmumOptions()
-                  .find((item) => item.value === originalFeeData?.unitEmum)
-                  ?.label || '--'
+                originalFeeData?.unit || '--'
               }}</span>
             </div>
             <div class="flex">

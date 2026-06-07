@@ -96,7 +96,7 @@ const ORDER_CTN_API_KEYS: Array<
   'exchangeRate',
   'unitPrice',
   'amount',
-  'unitEmum',
+  'unit',
   'quantity',
   'taxRate',
   'noTaxUnitPrice',
@@ -816,13 +816,13 @@ defineExpose({
                   @update:value="(v) => updateRow(index, 'amount', v)"
                 />
               </template>
-              <template v-else-if="column.key === 'unitEmum'">
+              <template v-else-if="column.key === 'unit'">
                 <Select
-                  v-model:value="record.unitEmum"
+                  v-model:value="record.unit"
                   :options="feeConstants.getUnitEmumOptions()"
                   class="w-full min-w-[100px]"
                   :placeholder="$t('ui.placeholder.select')"
-                  @change="(v) => updateRow(index, 'unitEmum', v)"
+                  @change="(v) => updateRow(index, 'unit', v)"
                 />
               </template>
               <template v-else-if="column.key === 'quantity'">
@@ -935,7 +935,7 @@ defineExpose({
               :min-width="80"
             />
             <Table.Column
-              key="unitEmum"
+              key="unit"
               :title="$t('seaImport.import.orderFee.unitEmum')"
               :min-width="90"
             />

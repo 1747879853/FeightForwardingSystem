@@ -309,8 +309,8 @@ const columns = [
       },
       {
         title: $t('seaExport.export.orderFee.unitEmum'),
-        dataIndex: 'unitEmum',
-        key: 'unitEmum',
+        dataIndex: 'unit',
+        key: 'unit',
         minWidth: 90,
       },
       {

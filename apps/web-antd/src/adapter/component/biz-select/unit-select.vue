@@ -62,12 +62,12 @@ const mapCtnToOption = (ctn: CtnCodeAdminApi.CtnCodeDto) => {
     label = ctn.ctnName;
   }
   label = label || ctn.ctnName || ctn.ctnSize || ctn.ctnType || '';
-
+  console.log('mapCtnToOption', { ctn, label });
   const rawValue = ctnAny?.[props.valueKey];
   return {
     disabled: ctn.status === 1,
     label,
-    value: rawValue === undefined || rawValue === null ? '' : rawValue,
+    value: label,
   };
 };
 
@@ -140,12 +140,12 @@ const ensureSelectedLoaded = async (rawValue: any) => {
     if (loadedSelectedIds.value.has(idStr)) continue;
 
     loadedSelectedIds.value.add(idStr);
-    try {
-      const detail = await getCtnCodeDetail(idStr);
-      mergeSelectedItems([detail]);
-    } catch {
-      loadedSelectedIds.value.delete(idStr);
-    }
+    // try {
+    //   const detail = await getCtnCodeDetail(idStr);
+    //   mergeSelectedItems([detail]);
+    // } catch {
+    //   loadedSelectedIds.value.delete(idStr);
+    // }
   }
 };
 
