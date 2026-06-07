@@ -22,11 +22,9 @@ import {
   Avatar,
   Button,
   Card,
-  Checkbox,
   Empty,
   message,
   Popover,
-  Select,
   Space,
   Spin,
   Tag,
@@ -48,10 +46,6 @@ import {
   getSeaExportDetail,
 } from '#/api/sea-export/sea-export-admin';
 import { completeSeServiceTask } from '#/api/sea-export/se-service-task-admin';
-import {
-  getOrganizationUnitTree,
-  type SystemOrganizationUnitApi,
-} from '#/api/system/organization-unit';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { getUser, UserAttribute } from '#/api/system/user-admin';
@@ -70,7 +64,6 @@ import {
 import {
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
-  resolveServiceTypeValueByLabels,
 } from './service-type';
 
 const route = useRoute();
@@ -212,131 +205,98 @@ const SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES = new Set([
   ...BASIC_MODULE_EXTRA_FIELD_NAMES,
 ]);
 const PORT_MOVED_TO_BASIC_FIELD_NAMES = new Set(['signingPortId']);
-const SERVICE_ITEM_FIELD_NAMES = [
-  'bookingAgentId',
-  'teamId',
-  'custBrokerId',
-  'warehouseId',
-  'insuranceId',
-] as const;
-type ServiceItemFieldName = (typeof SERVICE_ITEM_FIELD_NAMES)[number];
-const SERVICE_ITEM_META: Record<
-  ServiceItemFieldName,
-  { industryCategory: string; label: string; icon: string }
-> = {
-  bookingAgentId: {
-    industryCategory: 'o',
-    label: '订舱代理',
-    icon: 'mdi:ferry',
-  },
-  teamId: {
-    industryCategory: 'i',
-    label: '车队',
-    icon: 'mdi:truck-fast-outline',
-  },
-  custBrokerId: {
-    industryCategory: 'f',
-    label: '报关行',
-    icon: 'mdi:file-document-check-outline',
-  },
-  warehouseId: { industryCategory: 'q', label: '仓库', icon: 'mdi:warehouse' },
-  insuranceId: {
-    industryCategory: 'r',
-    label: '保险公司',
-    icon: 'mdi:shield-check-outline',
-  },
-};
-const COLLECTION_PAYMENT_ICON = 'mdi:cash-multiple';
-const SERVICE_ITEM_CHECK_FIELD_NAMES: Record<ServiceItemFieldName, string> = {
-  bookingAgentId: 'bookingAgentIdEnabled',
-  teamId: 'teamIdEnabled',
-  custBrokerId: 'custBrokerIdEnabled',
-  warehouseId: 'warehouseIdEnabled',
-  insuranceId: 'insuranceIdEnabled',
-};
-const SERVICE_TYPE_LABEL_ALIASES: Record<
-  ServiceItemFieldName | 'collectionPayment',
-  string[]
-> = {
-  bookingAgentId: ['订舱'],
-  teamId: ['拖车'],
-  custBrokerId: ['报关'],
-  warehouseId: ['仓库'],
-  insuranceId: ['保险'],
-  collectionPayment: ['代收支'],
-};
-const serviceTypeValueByField = ref<
-  Partial<Record<ServiceItemFieldName, number>>
->({});
-const collectionPaymentServiceTypeValue = ref<number>();
-/** 暂时隐藏代收支服务项，恢复时改为 true */
-const SHOW_COLLECTION_PAYMENT_FIELD = false;
-const serviceTypeToFieldMap = ref(new Map<number, ServiceItemFieldName>());
-const SERVICE_ITEM_DEFAULT_ORDER_MAP = new Map(
-  SERVICE_ITEM_FIELD_NAMES.map((field, index) => [field, index]),
-);
-const serviceItemLabelMap = ref(new Map<number, string>());
-const serviceItemSortOrderMap = ref(new Map<ServiceItemFieldName, number>());
-const getServiceTypeValue = (field: ServiceItemFieldName) =>
-  serviceTypeValueByField.value[field];
-const getCollectionPaymentServiceTypeValue = () =>
-  collectionPaymentServiceTypeValue.value;
-const hasServiceTypeSelected = (
-  selectedServiceTypes: Set<number>,
-  field: ServiceItemFieldName,
-) => {
-  const serviceTypeValue = getServiceTypeValue(field);
-  return serviceTypeValue != null && selectedServiceTypes.has(serviceTypeValue);
-};
-const hasCollectionPaymentTypeSelected = (
-  selectedServiceTypes: Set<number>,
-) => {
-  const collectionPaymentServiceType = getCollectionPaymentServiceTypeValue();
-  return (
-    collectionPaymentServiceType != null &&
-    selectedServiceTypes.has(collectionPaymentServiceType)
-  );
-};
-const getServiceItemLabel = (field: ServiceItemFieldName) => {
-  const serviceType = getServiceTypeValue(field);
-  return (
-    (serviceType != null
-      ? serviceItemLabelMap.value.get(serviceType)
-      : undefined) ?? SERVICE_ITEM_META[field].label
-  );
-};
-const loadServiceItemLabelMap = async () => {
-  const options = await loadSeServiceTypeOptions();
-  serviceItemLabelMap.value = buildServiceTypeLabelMap(options);
-  const nextServiceTypeValueByField: Partial<
-    Record<ServiceItemFieldName, number>
-  > = {};
-  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    const serviceTypeValue = resolveServiceTypeValueByLabels(
-      options,
-      SERVICE_TYPE_LABEL_ALIASES[field],
-    );
-    if (serviceTypeValue != null) {
-      nextServiceTypeValueByField[field] = serviceTypeValue;
-    }
-  });
-  serviceTypeValueByField.value = nextServiceTypeValueByField;
-  collectionPaymentServiceTypeValue.value = resolveServiceTypeValueByLabels(
-    options,
-    SERVICE_TYPE_LABEL_ALIASES.collectionPayment,
-  );
-  serviceTypeToFieldMap.value = new Map<number, ServiceItemFieldName>(
-    SERVICE_ITEM_FIELD_NAMES.map((field) => {
-      const serviceTypeValue = nextServiceTypeValueByField[field];
-      return [Number(serviceTypeValue), field] as const;
-    }).filter(([serviceTypeValue]) => Number.isFinite(serviceTypeValue)),
-  );
-};
 const SERVICE_TASK_STATUS_PENDING = 0;
 const SERVICE_TASK_STATUS_PROCESSED = 1;
 type ServiceTaskStatusValue =
   | typeof SERVICE_TASK_STATUS_PENDING
   | typeof SERVICE_TASK_STATUS_PROCESSED;
+type ServiceTypeNode = {
+  serviceType: number;
+  label: string;
+  sortId: number;
+  checked: boolean;
+  taskStatus?: 0 | 1 | null;
+  taskId?: string;
+};
+const serviceTypeNodes = ref<ServiceTypeNode[]>([]);
+const serviceTypeLabelMap = ref(new Map<number, string>());
+const loadServiceTypeLabelMap = async () => {
+  const options = await loadSeServiceTypeOptions();
+  serviceTypeLabelMap.value = buildServiceTypeLabelMap(options);
+};
+const toServiceTaskStatusValue = (
+  value: unknown,
+): ServiceTypeNode['taskStatus'] => {
+  const status = Number(value);
+  if (status === SERVICE_TASK_STATUS_PENDING)
+    return SERVICE_TASK_STATUS_PENDING;
+  if (status === SERVICE_TASK_STATUS_PROCESSED)
+    return SERVICE_TASK_STATUS_PROCESSED;
+  return undefined;
+};
+const buildServiceTypeNodes = (
+  polNodes: SeaExportAdminApi.ServiceTypeByPolDto[],
+  enumLabelMap: Map<number, string>,
+  savedServiceTypeSet?: Set<number>,
+  clientCheckedMap?: Map<number, boolean>,
+  taskMap?: Map<
+    number,
+    {
+      taskId?: string;
+      taskStatus?: ServiceTypeNode['taskStatus'];
+    }
+  >,
+): ServiceTypeNode[] => {
+  return polNodes
+    .slice()
+    .sort((a, b) => a.sortId - b.sortId)
+    .map((node) => {
+      const serviceType = Number(node.serviceType);
+      const taskInfo = taskMap?.get(serviceType);
+      let checked = !!node.checked;
+      if (savedServiceTypeSet) {
+        checked = savedServiceTypeSet.has(serviceType);
+      } else if (clientCheckedMap?.has(serviceType)) {
+        checked = clientCheckedMap.get(serviceType) ?? false;
+      }
+      return {
+        serviceType,
+        label: enumLabelMap.get(serviceType) ?? `${serviceType}`,
+        sortId: node.sortId,
+        checked,
+        taskStatus: taskInfo?.taskStatus,
+        taskId: taskInfo?.taskId,
+      };
+    });
+};
+const parseDetailServiceTypes = (detail: SeaExportAdminApi.SeaExportDto) => {
+  const services = detail.seaExportServices ?? [];
+  const savedSet = new Set<number>(services.map((item) => item.serviceType));
+  const taskMap = new Map<
+    number,
+    {
+      taskId?: string;
+      taskStatus?: ServiceTypeNode['taskStatus'];
+    }
+  >();
+  services.forEach((item) => {
+    const rawTaskId = item.seServiceTask?.id;
+    const taskId =
+      rawTaskId == null ? undefined : String(rawTaskId).trim() || undefined;
+    taskMap.set(item.serviceType, {
+      taskId,
+      taskStatus:
+        item.seServiceTask == null
+          ? null
+          : toServiceTaskStatusValue(item.seServiceTask.serviceTaskStatus),
+    });
+  });
+  return { savedSet, taskMap };
+};
+const getCheckedServiceTypes = () =>
+  serviceTypeNodes.value
+    .filter((node) => node.checked)
+    .map((node) => node.serviceType);
 const SERVICE_TASK_STATUS_META: Record<
   ServiceTaskStatusValue,
   { label: string; color: string }
@@ -381,76 +341,6 @@ const SERVICE_REQUIRE_FIELD_LABEL_KEY: Record<string, string> = {
   bookingNum: 'seaExport.export.bookingNum',
   etd: 'seaExport.export.etd',
   clientId: 'seaExport.export.clientId',
-};
-type ServiceItemCheckFieldName =
-  (typeof SERVICE_ITEM_CHECK_FIELD_NAMES)[ServiceItemFieldName];
-const getOrderedServiceItemFields = (fields: readonly ServiceItemFieldName[]) =>
-  [...fields].sort((a, b) => {
-    const orderA = serviceItemSortOrderMap.value.get(a);
-    const orderB = serviceItemSortOrderMap.value.get(b);
-    if (orderA != null && orderB != null) {
-      return orderA - orderB;
-    }
-    if (orderA != null) return -1;
-    if (orderB != null) return 1;
-    return (
-      (SERVICE_ITEM_DEFAULT_ORDER_MAP.get(a) ?? Number.MAX_SAFE_INTEGER) -
-      (SERVICE_ITEM_DEFAULT_ORDER_MAP.get(b) ?? Number.MAX_SAFE_INTEGER)
-    );
-  });
-const getServiceTypesFromEnabledValues = (
-  values: Record<string, any>,
-  withCollectionPayment = false,
-) => {
-  const types = getOrderedServiceItemFields(SERVICE_ITEM_FIELD_NAMES)
-    .filter((field) => {
-      const checkFieldName = getServiceItemCheckFieldName(field);
-      return !!values[checkFieldName];
-    })
-    .map((field) => getServiceTypeValue(field))
-    .filter((item): item is number => typeof item === 'number');
-  const collectionPaymentServiceType = getCollectionPaymentServiceTypeValue();
-  if (withCollectionPayment) {
-    if (collectionPaymentServiceType != null) {
-      types.push(collectionPaymentServiceType);
-    }
-  }
-  return types;
-};
-const extractServiceTypesFromDetail = (
-  detail: SeaExportAdminApi.SeaExportDto,
-): number[] => {
-  const parsedServiceTypes = new Set<number>();
-  const collectServiceTypes = (value: unknown) => {
-    if (value == null) return;
-    if (Array.isArray(value)) {
-      value.forEach((item) => collectServiceTypes(item));
-      return;
-    }
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      parsedServiceTypes.add(value);
-      return;
-    }
-    if (typeof value === 'string' && value.trim() !== '') {
-      const numericValue = Number(value);
-      if (Number.isFinite(numericValue)) {
-        parsedServiceTypes.add(numericValue);
-      }
-      return;
-    }
-    if (typeof value === 'object') {
-      const serviceTypeValue = (value as { serviceType?: unknown }).serviceType;
-      if (serviceTypeValue !== undefined) {
-        collectServiceTypes(serviceTypeValue);
-      }
-    }
-  };
-
-  collectServiceTypes((detail as any).serviceTypes);
-  collectServiceTypes((detail as any).seaExportServices);
-  collectServiceTypes((detail as any).serviceItems);
-
-  return [...parsedServiceTypes];
 };
 
 /** 右侧表单：基础信息 */
@@ -534,194 +424,11 @@ const [ShipmentForm, shipmentFormApi] = useVbenForm({
   wrapperClass: 'shipment-flow-wrap grid-cols-7 gap-x-8',
 });
 
-/** 右侧表单：服务项目（订舱代理、车队、报关行、仓库、保险公司） */
-const serviceItemValues = ref<Partial<Record<ServiceItemFieldName, any>>>({});
-const serviceItemEnabledValues = ref<
-  Partial<Record<ServiceItemCheckFieldName, boolean>>
->({});
-const serviceItemVisibleValues = ref<
-  Partial<Record<ServiceItemFieldName, boolean>>
->(
-  SERVICE_ITEM_FIELD_NAMES.reduce(
-    (acc, field) => {
-      acc[field] = false;
-      return acc;
-    },
-    {} as Partial<Record<ServiceItemFieldName, boolean>>,
-  ),
-);
-const serviceItemSelectedItems = ref<
-  Partial<Record<ServiceItemFieldName, any[]>>
->({});
-const collectionPaymentEnabled = ref(false);
-const collectionPaymentDeptId = ref<number | undefined>();
-const collectionPaymentDeptOptions = ref<
-  Array<{ label: string; value: number }>
+const serviceTypeRequiredPropValues = ref<Map<number, number[]>>(new Map());
+const latestAvailableServiceTypes = ref<
+  SeaExportAdminApi.ServiceTypeByPolDto[]
 >([]);
-const getServiceItemCheckFieldName = (field: ServiceItemFieldName) =>
-  SERVICE_ITEM_CHECK_FIELD_NAMES[field] as ServiceItemCheckFieldName;
-const isServiceItemEnabled = (field: ServiceItemFieldName) => {
-  const checkFieldName = getServiceItemCheckFieldName(field);
-  return !!serviceItemEnabledValues.value[checkFieldName];
-};
-/** 编辑态：勾选表示服务任务已完成；新建态：勾选表示已启用服务 */
-const getServiceItemCheckmarkShown = (field: ServiceItemFieldName) => {
-  if (isEdit.value) return isServiceItemNodeDone(field);
-  return isServiceItemEnabled(field);
-};
-const getServiceItemNodeState = (
-  field: ServiceItemFieldName,
-): 'active' | 'done' | 'pending' => {
-  if (!isServiceItemEnabled(field)) return 'pending';
-  const status = serviceItemTaskStatusValues.value[field];
-  if (status === SERVICE_TASK_STATUS_PROCESSED) return 'done';
-  return 'active';
-};
-const isServiceItemNodeDone = (field: ServiceItemFieldName) =>
-  getServiceItemNodeState(field) === 'done';
-const hasServiceItemTask = (field: ServiceItemFieldName) => {
-  const taskId = serviceItemTaskIdValues.value[field];
-  return taskId != null && String(taskId).trim() !== '';
-};
-const canToggleServiceItemNode = (field: ServiceItemFieldName) => {
-  if (!isEdit.value) return true;
-  if (!isServiceItemEnabled(field)) return true;
-  return !hasServiceItemTask(field);
-};
-const handleServiceItemNodeToggle = (field: ServiceItemFieldName) => {
-  if (!canToggleServiceItemNode(field)) {
-    message.warning('已生成服务任务，不可关闭服务');
-    return;
-  }
-  handleServiceItemEnabledChange(field, !isServiceItemEnabled(field));
-};
-const getServiceItemVisible = (field: ServiceItemFieldName) => {
-  return serviceItemVisibleValues.value[field] === true;
-};
-const visibleServiceItemFields = computed(() =>
-  getOrderedServiceItemFields(SERVICE_ITEM_FIELD_NAMES).filter((field) =>
-    getServiceItemVisible(field),
-  ),
-);
-const handleServiceItemEnabledChange = (
-  field: ServiceItemFieldName,
-  enabled: boolean,
-) => {
-  const checkFieldName = getServiceItemCheckFieldName(field);
-  serviceItemEnabledValues.value = {
-    ...serviceItemEnabledValues.value,
-    [checkFieldName]: enabled,
-  };
-  if (!enabled) {
-    serviceItemValues.value = {
-      ...serviceItemValues.value,
-      [field]: undefined,
-    };
-    serviceItemSelectedItems.value = {
-      ...serviceItemSelectedItems.value,
-      [field]: [],
-    };
-  }
-};
-const handleServiceItemValueChange = (
-  field: ServiceItemFieldName,
-  value: any,
-) => {
-  serviceItemValues.value = {
-    ...serviceItemValues.value,
-    [field]: value,
-  };
-  if (value !== undefined && value !== null && value !== '') {
-    handleServiceItemEnabledChange(field, true);
-  }
-};
-const getServiceItemSelectedItems = (field: ServiceItemFieldName) => {
-  return serviceItemSelectedItems.value[field] || [];
-};
-const getServiceItemFormValues = (
-  fallbackValues: Partial<Record<string, any>> = {},
-) => {
-  const values: Partial<Record<string, any>> = {};
-  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    const checkFieldName = getServiceItemCheckFieldName(field);
-    const fieldValue =
-      serviceItemValues.value[field] ??
-      (fallbackValues as Record<string, any>)[field];
-    values[field] = fieldValue;
-    values[checkFieldName] =
-      !!serviceItemEnabledValues.value[checkFieldName] ||
-      hasServiceItemValue(fieldValue);
-  });
-  return values;
-};
-const hasServiceItemValue = (value: any) =>
-  value !== undefined && value !== null && value !== '';
-const serviceItemTaskStatusValues = ref<
-  Partial<Record<ServiceItemFieldName, ServiceTaskStatusValue>>
->({});
-const serviceItemTaskIdValues = ref<
-  Partial<Record<ServiceItemFieldName, string>>
->({});
-const serviceItemRequiredPropValues = ref<
-  Partial<Record<ServiceItemFieldName, number[]>>
->({});
-const completingServiceField = ref<ServiceItemFieldName>();
-const toServiceTaskStatusValue = (
-  value: unknown,
-): ServiceTaskStatusValue | undefined => {
-  const status = Number(value);
-  if (status === SERVICE_TASK_STATUS_PENDING)
-    return SERVICE_TASK_STATUS_PENDING;
-  if (status === SERVICE_TASK_STATUS_PROCESSED)
-    return SERVICE_TASK_STATUS_PROCESSED;
-  return undefined;
-};
-const extractServiceTaskStatusFromDetail = (
-  detail: SeaExportAdminApi.SeaExportDto,
-): Partial<Record<ServiceItemFieldName, ServiceTaskStatusValue>> => {
-  const result: Partial<Record<ServiceItemFieldName, ServiceTaskStatusValue>> =
-    {};
-  const services = (detail as any)?.seaExportServices;
-  if (!Array.isArray(services)) return result;
-
-  services.forEach((service: any) => {
-    const mappedField = serviceTypeToFieldMap.value.get(
-      Number(service?.serviceType),
-    );
-    if (!mappedField) return;
-    const status = toServiceTaskStatusValue(
-      service?.seServiceTask?.serviceTaskStatus ?? service?.serviceTaskStatus,
-    );
-    if (status === undefined) return;
-    result[mappedField] = status;
-  });
-
-  return result;
-};
-const extractServiceTaskIdFromDetail = (
-  detail: SeaExportAdminApi.SeaExportDto,
-): Partial<Record<ServiceItemFieldName, string>> => {
-  const result: Partial<Record<ServiceItemFieldName, string>> = {};
-  const services = (detail as any)?.seaExportServices;
-  if (!Array.isArray(services)) return result;
-
-  services.forEach((service: any) => {
-    const mappedField = serviceTypeToFieldMap.value.get(
-      Number(service?.serviceType),
-    );
-    if (!mappedField) return;
-    const rawTaskId =
-      service?.seServiceTask?.id ??
-      service?.seServiceTaskId ??
-      service?.serviceTaskId;
-    if (rawTaskId == null) return;
-    const taskId = String(rawTaskId).trim();
-    if (!taskId) return;
-    result[mappedField] = taskId;
-  });
-
-  return result;
-};
+const completingServiceType = ref<number>();
 const normalizeRequiredProps = (value: unknown): number[] => {
   if (!Array.isArray(value)) return [];
   return [
@@ -732,11 +439,10 @@ const normalizeRequiredProps = (value: unknown): number[] => {
     ),
   ];
 };
-const buildServiceRequiredPropsByField = (
+const buildServiceRequiredPropsByType = (
   availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
-  checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+  checkedServiceTypeSet: Set<number>,
 ) => {
-  const result: Partial<Record<ServiceItemFieldName, number[]>> = {};
   const sourceMap = new Map<number, SeaExportAdminApi.ServiceTypeByPolDto>();
   (Array.isArray(availableServiceTypes) ? availableServiceTypes : []).forEach(
     (item) => {
@@ -745,37 +451,60 @@ const buildServiceRequiredPropsByField = (
       sourceMap.set(serviceType, item);
     },
   );
-  (Array.isArray(checkedServiceTypes) ? checkedServiceTypes : []).forEach(
-    (item) => {
-      const serviceType = Number(item?.serviceType);
-      if (!Number.isFinite(serviceType)) return;
-      sourceMap.set(serviceType, item);
-    },
-  );
-
-  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    const serviceType = getServiceTypeValue(field);
-    if (serviceType == null) return;
+  const result = new Map<number, number[]>();
+  checkedServiceTypeSet.forEach((serviceType) => {
     const matched = sourceMap.get(serviceType);
     if (!matched) return;
-    result[field] = normalizeRequiredProps(matched.seServiceRequires);
+    result.set(serviceType, normalizeRequiredProps(matched.seServiceRequires));
   });
   return result;
 };
-const getServiceItemTaskStatusMeta = (field: ServiceItemFieldName) => {
-  const status = serviceItemTaskStatusValues.value[field];
-  if (status === undefined) return undefined;
-  return SERVICE_TASK_STATUS_META[status];
-};
-const canCompleteServiceItem = (field: ServiceItemFieldName) => {
-  const taskId = serviceItemTaskIdValues.value[field];
-  const status = serviceItemTaskStatusValues.value[field];
-  return (
-    !!taskId &&
-    status === SERVICE_TASK_STATUS_PENDING &&
-    isServiceItemEnabled(field)
+const updateServiceTypeRequiredProps = () => {
+  const checkedSet = new Set(getCheckedServiceTypes());
+  serviceTypeRequiredPropValues.value = buildServiceRequiredPropsByType(
+    latestAvailableServiceTypes.value,
+    checkedSet,
   );
 };
+const getServiceTypeNodeState = (
+  node: ServiceTypeNode,
+): 'active' | 'done' | 'pending' => {
+  if (!node.checked) return 'pending';
+  if (node.taskStatus === SERVICE_TASK_STATUS_PROCESSED) return 'done';
+  return 'active';
+};
+const isServiceTypeNodeDone = (node: ServiceTypeNode) =>
+  getServiceTypeNodeState(node) === 'done';
+const getServiceTypeCheckmarkShown = (node: ServiceTypeNode) => node.checked;
+const hasServiceTypeTask = (node: ServiceTypeNode) =>
+  !!node.taskId && node.taskId.trim() !== '';
+const canToggleServiceTypeNode = (node: ServiceTypeNode) => {
+  if (!isEdit.value) return true;
+  if (!node.checked) return true;
+  return !hasServiceTypeTask(node);
+};
+const handleServiceTypeNodeToggle = (node: ServiceTypeNode) => {
+  if (!canToggleServiceTypeNode(node)) {
+    message.warning('已生成服务任务，不可关闭服务');
+    return;
+  }
+  node.checked = !node.checked;
+  updateServiceTypeRequiredProps();
+};
+const getServiceTypeTaskStatusMeta = (node: ServiceTypeNode) => {
+  const status = node.taskStatus;
+  if (
+    status !== SERVICE_TASK_STATUS_PENDING &&
+    status !== SERVICE_TASK_STATUS_PROCESSED
+  ) {
+    return undefined;
+  }
+  return SERVICE_TASK_STATUS_META[status];
+};
+const canCompleteServiceTypeNode = (node: ServiceTypeNode) =>
+  !!node.taskId &&
+  node.taskStatus === SERVICE_TASK_STATUS_PENDING &&
+  node.checked;
 const isRequiredFieldFilled = (value: unknown) => {
   if (value === null || value === undefined) return false;
   if (typeof value === 'string') return value.trim() !== '';
@@ -821,7 +550,6 @@ const collectCurrentFormValues = async () => {
     ...partyValues,
     ...entrustValues,
     ...basicValues,
-    ...getServiceItemFormValues(basicValues),
     ...shipmentValues,
     ...portValues,
     ...cargoTypeValues,
@@ -829,10 +557,9 @@ const collectCurrentFormValues = async () => {
     ...cargoRemarkValues,
   } as Record<string, any>;
 };
-const getMissingRequiredLabelsForService = async (
-  field: ServiceItemFieldName,
-) => {
-  const requiredProps = serviceItemRequiredPropValues.value[field] ?? [];
+const getMissingRequiredLabelsForServiceType = async (serviceType: number) => {
+  const requiredProps =
+    serviceTypeRequiredPropValues.value.get(serviceType) ?? [];
   if (!requiredProps.length) return [];
   const currentValues = await collectCurrentFormValues();
   const missingLabels: string[] = [];
@@ -844,34 +571,34 @@ const getMissingRequiredLabelsForService = async (
   });
   return missingLabels;
 };
-const handleCompleteService = async (field: ServiceItemFieldName) => {
+const handleCompleteServiceType = async (node: ServiceTypeNode) => {
   if (!isEdit.value) return;
-  if (completingServiceField.value) return;
-  const taskId = serviceItemTaskIdValues.value[field];
+  if (completingServiceType.value != null) return;
+  const taskId = node.taskId;
   if (!taskId) {
     message.warning('当前服务暂无可完成任务');
     return;
   }
-  if (
-    serviceItemTaskStatusValues.value[field] === SERVICE_TASK_STATUS_PROCESSED
-  ) {
+  if (node.taskStatus === SERVICE_TASK_STATUS_PROCESSED) {
     message.info('当前服务已完成');
     return;
   }
-  const missingLabels = await getMissingRequiredLabelsForService(field);
+  const missingLabels = await getMissingRequiredLabelsForServiceType(
+    node.serviceType,
+  );
   if (missingLabels.length > 0) {
     message.warning(`请先填写：${missingLabels.join('、')}，再完成服务`);
     return;
   }
-  completingServiceField.value = field;
+  completingServiceType.value = node.serviceType;
   try {
     await completeSeServiceTask({ id: taskId });
-    message.success(`${getServiceItemLabel(field)}已完成`);
+    message.success(`${node.label}已完成`);
     await loadEditData();
   } catch {
     message.error('完成服务失败，请稍后重试');
   } finally {
-    completingServiceField.value = undefined;
+    completingServiceType.value = undefined;
   }
 };
 const toOptionalQueryValue = (value: unknown) => {
@@ -883,15 +610,11 @@ const linkedClientId = ref<unknown>(undefined);
 const linkedPolId = ref<unknown>(undefined);
 const serviceTypeSyncLoading = ref(false);
 const polServiceConfigLoaded = ref(false);
-const collectionPaymentConfigured = ref(false);
 const polHasNoServiceConfig = computed(() => {
   if (toOptionalQueryValue(linkedPolId.value) === undefined) return false;
   if (serviceTypeSyncLoading.value || !polServiceConfigLoaded.value)
     return false;
-  const hasStandardServices = visibleServiceItemFields.value.length > 0;
-  const hasCollectionPayment =
-    SHOW_COLLECTION_PAYMENT_FIELD && collectionPaymentConfigured.value;
-  return !hasStandardServices && !hasCollectionPayment;
+  return serviceTypeNodes.value.length === 0;
 });
 const hasPolSelected = computed(
   () => toOptionalQueryValue(linkedPolId.value) !== undefined,
@@ -905,139 +628,57 @@ const showServiceItemContent = computed(
 );
 let serviceTypeSyncTimer: ReturnType<typeof setTimeout> | undefined;
 let latestServiceTypeQueryKey = '';
-const extractServiceFieldSet = (
-  serviceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
-  onlyChecked: boolean,
+const buildClientCheckedMap = (
+  checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
 ) => {
-  const matchedFields = new Set<ServiceItemFieldName>();
-  let collectionPaymentMatched = false;
-  const collectionPaymentServiceType = getCollectionPaymentServiceTypeValue();
-  (Array.isArray(serviceTypes) ? serviceTypes : []).forEach((item) => {
-    if (onlyChecked && !item?.checked) return;
-    if (
-      collectionPaymentServiceType != null &&
-      Number(item?.serviceType) === collectionPaymentServiceType
-    ) {
-      collectionPaymentMatched = true;
-      return;
-    }
-    const mappedField = serviceTypeToFieldMap.value.get(
-      Number(item?.serviceType),
-    );
-    if (mappedField) {
-      matchedFields.add(mappedField);
-    }
-  });
-  return {
-    matchedFields,
-    collectionPaymentMatched,
-  };
-};
-const buildServiceItemSortOrderMap = (
-  serviceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
-) => {
-  const orderMap = new Map<ServiceItemFieldName, number>();
-  (Array.isArray(serviceTypes) ? serviceTypes : [])
-    .slice()
-    .sort(
-      (a, b) =>
-        Number(a?.sortId ?? Number.MAX_SAFE_INTEGER) -
-        Number(b?.sortId ?? Number.MAX_SAFE_INTEGER),
-    )
-    .forEach((item, index) => {
-      const mappedField = serviceTypeToFieldMap.value.get(
-        Number(item?.serviceType),
-      );
-      if (!mappedField || orderMap.has(mappedField)) return;
-      orderMap.set(mappedField, index);
-    });
-  return orderMap;
+  const map = new Map<number, boolean>();
+  (Array.isArray(checkedServiceTypes) ? checkedServiceTypes : []).forEach(
+    (item) => {
+      const serviceType = Number(item?.serviceType);
+      if (!Number.isFinite(serviceType)) return;
+      map.set(serviceType, !!item.checked);
+    },
+  );
+  return map;
 };
 const resetServiceTypeStateWhenPolEmpty = () => {
-  const nextVisibleValues: Partial<Record<ServiceItemFieldName, boolean>> = {};
-  const nextEnabledValues: Partial<Record<ServiceItemCheckFieldName, boolean>> =
-    {};
-  const nextServiceItemValues = { ...serviceItemValues.value };
-  const nextServiceItemSelectedItems = { ...serviceItemSelectedItems.value };
-
-  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    const checkFieldName = getServiceItemCheckFieldName(field);
-    nextVisibleValues[field] = false;
-    nextEnabledValues[checkFieldName] = false;
-    nextServiceItemValues[field] = undefined;
-    nextServiceItemSelectedItems[field] = [];
-  });
-
-  serviceItemVisibleValues.value = nextVisibleValues;
-  serviceItemEnabledValues.value = nextEnabledValues;
-  serviceItemValues.value = nextServiceItemValues;
-  serviceItemSelectedItems.value = nextServiceItemSelectedItems;
-  collectionPaymentEnabled.value = false;
-  collectionPaymentDeptId.value = undefined;
-  serviceItemRequiredPropValues.value = {};
-  serviceItemSortOrderMap.value = new Map();
+  serviceTypeNodes.value = [];
+  latestAvailableServiceTypes.value = [];
+  serviceTypeRequiredPropValues.value = new Map();
   polServiceConfigLoaded.value = false;
-  collectionPaymentConfigured.value = false;
 };
 const applyServiceTypeStateByPol = (
   availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
   checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
   overrides?: {
-    checkedServiceFields?: Set<ServiceItemFieldName>;
-    checkedCollectionPayment?: boolean;
+    savedServiceTypeSet?: Set<number>;
+    taskMap?: Map<
+      number,
+      {
+        taskId?: string;
+        taskStatus?: ServiceTypeNode['taskStatus'];
+      }
+    >;
   },
 ) => {
-  const { matchedFields: availableServiceFields, collectionPaymentMatched } =
-    extractServiceFieldSet(availableServiceTypes, false);
-  const {
-    matchedFields: checkedServiceFields,
-    collectionPaymentMatched: checkedCollectionPayment,
-  } = extractServiceFieldSet(checkedServiceTypes, true);
-  const effectiveCheckedServiceFields =
-    overrides?.checkedServiceFields ?? checkedServiceFields;
-  const effectiveCheckedCollectionPayment =
-    overrides?.checkedCollectionPayment ?? checkedCollectionPayment;
-
-  const nextServiceItemValues = { ...serviceItemValues.value };
-  const nextServiceItemSelectedItems = { ...serviceItemSelectedItems.value };
-  const nextServiceEnabledValues: Partial<
-    Record<ServiceItemCheckFieldName, boolean>
-  > = {};
-  const nextServiceVisibleValues: Partial<
-    Record<ServiceItemFieldName, boolean>
-  > = {};
-
-  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    const checkFieldName = getServiceItemCheckFieldName(field);
-    const visible = availableServiceFields.has(field);
-    const checked = visible && effectiveCheckedServiceFields.has(field);
-    nextServiceVisibleValues[field] = visible;
-    nextServiceEnabledValues[checkFieldName] = checked;
-    if (!checked || !visible) {
-      nextServiceItemValues[field] = undefined;
-      nextServiceItemSelectedItems[field] = [];
-    }
-  });
-
-  serviceItemVisibleValues.value = nextServiceVisibleValues;
-  serviceItemValues.value = nextServiceItemValues;
-  serviceItemSelectedItems.value = nextServiceItemSelectedItems;
-  serviceItemEnabledValues.value = nextServiceEnabledValues;
-  collectionPaymentEnabled.value =
-    SHOW_COLLECTION_PAYMENT_FIELD &&
-    collectionPaymentMatched &&
-    effectiveCheckedCollectionPayment;
-  if (!collectionPaymentEnabled.value) {
-    collectionPaymentDeptId.value = undefined;
-  }
-  serviceItemRequiredPropValues.value = buildServiceRequiredPropsByField(
-    availableServiceTypes,
-    checkedServiceTypes,
+  const polNodes = Array.isArray(availableServiceTypes)
+    ? availableServiceTypes
+    : [];
+  latestAvailableServiceTypes.value = polNodes;
+  const clientCheckedMap = overrides?.savedServiceTypeSet
+    ? undefined
+    : buildClientCheckedMap(checkedServiceTypes);
+  serviceTypeNodes.value = buildServiceTypeNodes(
+    polNodes,
+    serviceTypeLabelMap.value,
+    overrides?.savedServiceTypeSet,
+    clientCheckedMap,
+    overrides?.taskMap,
   );
-  serviceItemSortOrderMap.value = buildServiceItemSortOrderMap(
+  serviceTypeRequiredPropValues.value = buildServiceRequiredPropsByType(
     availableServiceTypes,
+    new Set(getCheckedServiceTypes()),
   );
-  collectionPaymentConfigured.value = collectionPaymentMatched;
   polServiceConfigLoaded.value = true;
 };
 const extractServiceTypesByPolResult = (
@@ -1058,8 +699,14 @@ const syncServiceTypesByPol = async (
     clientId?: unknown;
     polId?: unknown;
     force?: boolean;
-    checkedServiceFields?: Set<ServiceItemFieldName>;
-    checkedCollectionPayment?: boolean;
+    savedServiceTypeSet?: Set<number>;
+    taskMap?: Map<
+      number,
+      {
+        taskId?: string;
+        taskStatus?: ServiceTypeNode['taskStatus'];
+      }
+    >;
   } = {},
 ) => {
   const requestId = ++serviceTypeLinkageRequestId;
@@ -1109,8 +756,8 @@ const syncServiceTypesByPol = async (
       extractServiceTypesByPolResult(serviceTypesByPolResponse),
       extractServiceTypesByPolResult(checkedServiceTypesResponse),
       {
-        checkedServiceFields: args.checkedServiceFields,
-        checkedCollectionPayment: args.checkedCollectionPayment,
+        savedServiceTypeSet: args.savedServiceTypeSet,
+        taskMap: args.taskMap,
       },
     );
   } catch {
@@ -1172,42 +819,6 @@ const bindServiceTypeLinkageEvents = () => {
     },
   ]);
 };
-const flattenOrganizationUnitOptions = (
-  nodes: SystemOrganizationUnitApi.OrganizationUnitTreeDto[],
-  parentLabel = '',
-): Array<{ label: string; value: number }> => {
-  return nodes.flatMap((node) => {
-    if (typeof node.id !== 'number') return [];
-    const displayName = node.displayName || `${node.id}`;
-    const currentLabel = parentLabel
-      ? `${parentLabel} / ${displayName}`
-      : displayName;
-    const currentOption = [{ label: currentLabel, value: node.id }];
-    const childOptions = Array.isArray(node.children)
-      ? flattenOrganizationUnitOptions(node.children, currentLabel)
-      : [];
-    return [...currentOption, ...childOptions];
-  });
-};
-const loadCollectionPaymentDeptOptions = async () => {
-  try {
-    const list = await getOrganizationUnitTree();
-    collectionPaymentDeptOptions.value = flattenOrganizationUnitOptions(list);
-  } catch {
-    collectionPaymentDeptOptions.value = [];
-  }
-};
-const handleCollectionPaymentEnabledChange = (event: any) => {
-  const checked = !!event?.target?.checked;
-  collectionPaymentEnabled.value = checked;
-  if (!checked) {
-    collectionPaymentDeptId.value = undefined;
-  }
-};
-const handleCollectionPaymentDeptChange = (value: number | undefined) => {
-  collectionPaymentDeptId.value = value;
-};
-
 /** 港口选择字段与备注字段的对应；选中港口后自动填入对应备注字段 */
 const PORT_ID_FIELD_TO_REMARK_FIELD: Record<string, string> = {
   receivePortId: 'receivePortRemark',
@@ -1914,7 +1525,6 @@ const AI_RECOGNIZE_ALLOWED_FIELDS = new Set([
   'kgs',
   'cbm',
   'internalRemark',
-  'serviceTypes',
 ]);
 const AI_RECOGNIZE_DATE_FIELDS = new Set([
   'goodsCompleteTime',
@@ -2043,13 +1653,7 @@ const buildAiRecognizedFormValues = (payload: unknown) => {
       applyRecognizedValue(aliasField, value);
     }
   });
-  if (!Array.isArray(formValues.serviceTypes)) {
-    delete formValues.serviceTypes;
-  } else {
-    formValues.serviceTypes = formValues.serviceTypes
-      .map((item: unknown) => Number(item))
-      .filter((item: number) => Number.isFinite(item));
-  }
+  delete formValues.serviceTypes;
   if (
     formValues.codeIssueTypeId == null &&
     formValues.issueType != null &&
@@ -2070,50 +1674,6 @@ const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
     cargoMainFormApi.setValues(values),
     cargoRemarkFormApi.setValues(values),
   ]);
-
-  let touchedServiceItems = false;
-  const nextServiceItemValues = { ...serviceItemValues.value };
-  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    if (!Object.prototype.hasOwnProperty.call(values, field)) return;
-    touchedServiceItems = true;
-    nextServiceItemValues[field] = values[field];
-  });
-  if (touchedServiceItems) {
-    serviceItemValues.value = nextServiceItemValues;
-  }
-
-  if (Array.isArray(values.serviceTypes)) {
-    const selectedServiceTypes = new Set<number>(
-      values.serviceTypes.map((type: unknown) => Number(type)),
-    );
-    serviceItemEnabledValues.value = {
-      bookingAgentIdEnabled:
-        hasServiceTypeSelected(selectedServiceTypes, 'bookingAgentId') ||
-        hasServiceItemValue(nextServiceItemValues.bookingAgentId),
-      teamIdEnabled:
-        hasServiceTypeSelected(selectedServiceTypes, 'teamId') ||
-        hasServiceItemValue(nextServiceItemValues.teamId),
-      custBrokerIdEnabled:
-        hasServiceTypeSelected(selectedServiceTypes, 'custBrokerId') ||
-        hasServiceItemValue(nextServiceItemValues.custBrokerId),
-      warehouseIdEnabled:
-        hasServiceTypeSelected(selectedServiceTypes, 'warehouseId') ||
-        hasServiceItemValue(nextServiceItemValues.warehouseId),
-      insuranceIdEnabled:
-        hasServiceTypeSelected(selectedServiceTypes, 'insuranceId') ||
-        hasServiceItemValue(nextServiceItemValues.insuranceId),
-    };
-  } else if (touchedServiceItems) {
-    const nextServiceEnabledValues = { ...serviceItemEnabledValues.value };
-    SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-      if (!Object.prototype.hasOwnProperty.call(values, field)) return;
-      const checkFieldName = getServiceItemCheckFieldName(field);
-      nextServiceEnabledValues[checkFieldName] = hasServiceItemValue(
-        nextServiceItemValues[field],
-      );
-    });
-    serviceItemEnabledValues.value = nextServiceEnabledValues;
-  }
 
   refreshEntrustReadonlyInfo({
     ...entrustReadonlyInfo.value,
@@ -2186,7 +1746,6 @@ const flattenDetail = (
     codeServiceId: to?.codeServiceId,
     cargoId: to?.cargoId,
     tradeTermsType: to?.tradeTermsType,
-    serviceTypes: extractServiceTypesFromDetail(detail),
     polId: detail.polId,
     polRemark: detail.polRemark,
     podId: detail.podId,
@@ -2467,22 +2026,52 @@ const loadEditData = async () => {
         },
       },
     ]);
-    serviceItemSelectedItems.value = {
-      bookingAgentId: toSelectedItems(
-        detail.bookingAgentId,
-        detail.bookingAgentName,
-      ),
-      teamId: toSelectedItems(to?.teamId, (to as any)?.teamName),
-      custBrokerId: toSelectedItems(
-        to?.custBrokerId,
-        (to as any)?.custBrokerName,
-      ),
-      warehouseId: toSelectedItems(to?.warehouseId, (to as any)?.warehouseName),
-      insuranceId: toSelectedItems(to?.insuranceId, (to as any)?.insuranceName),
-    };
-    serviceItemTaskStatusValues.value =
-      extractServiceTaskStatusFromDetail(detail);
-    serviceItemTaskIdValues.value = extractServiceTaskIdFromDetail(detail);
+    basicInfoFormApi.updateSchema([
+      {
+        fieldName: 'teamId',
+        componentProps: {
+          selectedItems: toSelectedItems(to?.teamId, (to as any)?.teamName),
+        },
+      },
+      {
+        fieldName: 'custBrokerId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.custBrokerId,
+            (to as any)?.custBrokerName,
+          ),
+        },
+      },
+      {
+        fieldName: 'warehouseId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.warehouseId,
+            (to as any)?.warehouseName,
+          ),
+        },
+      },
+      {
+        fieldName: 'insuranceId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.insuranceId,
+            (to as any)?.insuranceName,
+          ),
+        },
+      },
+    ]);
+    shipmentFormApi.updateSchema([
+      {
+        fieldName: 'bookingAgentId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.bookingAgentId,
+            detail.bookingAgentName,
+          ),
+        },
+      },
+    ]);
 
     portFormApi.updateSchema([
       {
@@ -2569,54 +2158,7 @@ const loadEditData = async () => {
       cargoRemarkFormApi.setValues(formValues),
     ]);
     initializeOrderUsersPanel(to?.orderUsers ?? []);
-    serviceItemValues.value = {
-      bookingAgentId: formValues.bookingAgentId,
-      teamId: formValues.teamId,
-      custBrokerId: formValues.custBrokerId,
-      warehouseId: formValues.warehouseId,
-      insuranceId: formValues.insuranceId,
-    };
-    const selectedServiceTypes = new Set<number>(
-      Array.isArray(formValues.serviceTypes)
-        ? formValues.serviceTypes.map((type: number) => Number(type))
-        : [],
-    );
-    serviceItemEnabledValues.value = {
-      bookingAgentIdEnabled:
-        hasServiceTypeSelected(selectedServiceTypes, 'bookingAgentId') ||
-        hasServiceItemValue(formValues.bookingAgentId),
-      teamIdEnabled:
-        hasServiceTypeSelected(selectedServiceTypes, 'teamId') ||
-        hasServiceItemValue(formValues.teamId),
-      custBrokerIdEnabled:
-        hasServiceTypeSelected(selectedServiceTypes, 'custBrokerId') ||
-        hasServiceItemValue(formValues.custBrokerId),
-      warehouseIdEnabled:
-        hasServiceTypeSelected(selectedServiceTypes, 'warehouseId') ||
-        hasServiceItemValue(formValues.warehouseId),
-      insuranceIdEnabled:
-        hasServiceTypeSelected(selectedServiceTypes, 'insuranceId') ||
-        hasServiceItemValue(formValues.insuranceId),
-    };
-    if (SHOW_COLLECTION_PAYMENT_FIELD) {
-      const collectionPaymentSelected =
-        hasCollectionPaymentTypeSelected(selectedServiceTypes);
-      collectionPaymentEnabled.value = collectionPaymentSelected;
-      const selectedOrganizationId = detail.organizationUnits?.[0]?.id;
-      collectionPaymentDeptId.value =
-        collectionPaymentSelected && typeof selectedOrganizationId === 'number'
-          ? selectedOrganizationId
-          : undefined;
-    } else {
-      collectionPaymentEnabled.value = false;
-      collectionPaymentDeptId.value = undefined;
-    }
-    const checkedServiceFields = new Set<ServiceItemFieldName>();
-    SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-      if (hasServiceTypeSelected(selectedServiceTypes, field)) {
-        checkedServiceFields.add(field);
-      }
-    });
+    const { savedSet, taskMap } = parseDetailServiceTypes(detail);
     refreshEntrustReadonlyInfo(formValues);
 
     orderCtns.value = normalizeOrderCtnsWithRowKey(
@@ -2626,9 +2168,8 @@ const loadEditData = async () => {
       polId: formValues.polId,
       clientId: formValues.clientId,
       force: true,
-      checkedServiceFields,
-      checkedCollectionPayment:
-        hasCollectionPaymentTypeSelected(selectedServiceTypes),
+      savedServiceTypeSet: savedSet,
+      taskMap,
     });
   } finally {
     pageLoading.value = false;
@@ -2674,10 +2215,7 @@ const buildDto = (values: Record<string, any>) => {
     deliverPortRemark: values.deliverPortRemark,
     sortId: values.sortId,
     remark: values.remark,
-    serviceTypes: getServiceTypesFromEnabledValues(
-      values,
-      SHOW_COLLECTION_PAYMENT_FIELD && collectionPaymentEnabled.value,
-    ),
+    serviceTypes: getCheckedServiceTypes(),
   };
 
   const transportOrderFields: Record<string, any> = {
@@ -2731,20 +2269,6 @@ const buildDto = (values: Record<string, any>) => {
 
   return {
     ...seaExportFields,
-    organizationUnits:
-      SHOW_COLLECTION_PAYMENT_FIELD &&
-      collectionPaymentEnabled.value &&
-      typeof collectionPaymentDeptId.value === 'number'
-        ? [
-            {
-              id: collectionPaymentDeptId.value,
-              name:
-                collectionPaymentDeptOptions.value.find(
-                  (option) => option.value === collectionPaymentDeptId.value,
-                )?.label ?? undefined,
-            },
-          ]
-        : [],
     ...(isEdit.value && editId.value ? { id: editId.value } : {}),
     transportOrder: transportOrderFields,
   };
@@ -2810,7 +2334,6 @@ const handleSubmit = async () => {
     cargoMainFormApi.getValues(),
     cargoRemarkFormApi.getValues(),
   ]);
-  const serviceItemsValues = getServiceItemFormValues(basicValues);
   const values = {
     commissionNum: entrustReadonlyInfo.value.commissionNum,
     accountDate: entrustReadonlyInfo.value.accountDate,
@@ -2818,7 +2341,6 @@ const handleSubmit = async () => {
     ...partyValues,
     ...entrustValues,
     ...basicValues,
-    ...serviceItemsValues,
     ...shipmentValues,
     ...portValues,
     ...cargoTypeValues,
@@ -2909,7 +2431,7 @@ const handleBack = () => {
 
 onMounted(() => {
   const initialize = async () => {
-    await loadServiceItemLabelMap();
+    await loadServiceTypeLabelMap();
     loadEditData();
     if (!isEdit.value) {
       void syncServiceTypesByPol();
@@ -2918,11 +2440,8 @@ onMounted(() => {
   if (!isEdit.value) {
     initializeOrderUsersPanel(defaultOrderUsers);
     refreshEntrustReadonlyInfo({});
-    serviceItemTaskStatusValues.value = {};
-    serviceItemTaskIdValues.value = {};
-    serviceItemRequiredPropValues.value = {};
+    serviceTypeRequiredPropValues.value = new Map();
   }
-  loadCollectionPaymentDeptOptions();
   applyTransitPortTabSchema();
   applyNotifierPartyTabSchema();
   void initialize();
@@ -3109,71 +2628,67 @@ defineExpose({
                             v-if="showServiceItemContent"
                             class="service-pipeline__hint"
                           >
-                            {{
-                              isEdit
-                                ? '勾选表示服务任务已完成，点击节点可启用/关闭服务'
-                                : '点击节点可启用/关闭服务'
-                            }}
+                            点击节点可启用/关闭服务
                           </span>
                         </div>
                         <template v-if="showServiceItemContent">
                           <div class="service-pipeline__track">
                             <div
-                              v-for="(field, index) in visibleServiceItemFields"
-                              :key="field"
+                              v-for="(node, index) in serviceTypeNodes"
+                              :key="node.serviceType"
                               class="service-item-node-wrap"
                             >
                               <div
                                 class="service-item-node"
                                 :class="[
-                                  `service-item-node--${getServiceItemNodeState(field)}`,
+                                  `service-item-node--${getServiceTypeNodeState(node)}`,
                                   { 'service-item-node--edit': isEdit },
                                 ]"
                               >
                                 <div
                                   class="service-item-node__content"
-                                  @click="handleServiceItemNodeToggle(field)"
+                                  @click="handleServiceTypeNodeToggle(node)"
                                 >
                                   <span
                                     class="service-item-node__check"
                                     :class="{
                                       'service-item-node__check--checked':
-                                        getServiceItemCheckmarkShown(field),
+                                        getServiceTypeCheckmarkShown(node),
                                     }"
                                   >
                                     <IconifyIcon
-                                      v-if="getServiceItemCheckmarkShown(field)"
+                                      v-if="getServiceTypeCheckmarkShown(node)"
                                       icon="mdi:check"
                                       class="service-item-node__check-icon"
                                     />
                                   </span>
                                   <span class="service-item-node__icon">
                                     <IconifyIcon
-                                      :icon="SERVICE_ITEM_META[field].icon"
+                                      icon="mdi:circle-outline"
                                       class="service-item-node__icon-inner"
                                     />
                                   </span>
                                   <span class="service-item-node__title">
-                                    {{ getServiceItemLabel(field) }}
+                                    {{ node.label }}
                                   </span>
                                   <span
                                     v-if="
                                       isEdit &&
-                                      isServiceItemEnabled(field) &&
-                                      getServiceItemTaskStatusMeta(field) &&
-                                      !isServiceItemNodeDone(field)
+                                      node.checked &&
+                                      getServiceTypeTaskStatusMeta(node) &&
+                                      !isServiceTypeNodeDone(node)
                                     "
                                     class="service-item-node__status"
                                   >
                                     {{
-                                      getServiceItemTaskStatusMeta(field)?.label
+                                      getServiceTypeTaskStatusMeta(node)?.label
                                     }}
                                   </span>
                                   <span
                                     v-if="
                                       isEdit &&
-                                      isServiceItemEnabled(field) &&
-                                      canCompleteServiceItem(field)
+                                      node.checked &&
+                                      canCompleteServiceTypeNode(node)
                                     "
                                     class="service-item-node__action-slot"
                                   >
@@ -3182,9 +2697,12 @@ defineExpose({
                                       size="small"
                                       class="service-item-node__action-btn"
                                       :loading="
-                                        completingServiceField === field
+                                        completingServiceType ===
+                                        node.serviceType
                                       "
-                                      @click.stop="handleCompleteService(field)"
+                                      @click.stop="
+                                        handleCompleteServiceType(node)
+                                      "
                                     >
                                       完成服务
                                     </Button>
@@ -3192,13 +2710,11 @@ defineExpose({
                                 </div>
                               </div>
                               <div
-                                v-if="
-                                  index < visibleServiceItemFields.length - 1
-                                "
+                                v-if="index < serviceTypeNodes.length - 1"
                                 class="service-item-divider"
                                 :class="{
                                   'service-item-divider--done':
-                                    isServiceItemNodeDone(field),
+                                    isServiceTypeNodeDone(node),
                                 }"
                               />
                             </div>
@@ -3223,50 +2739,6 @@ defineExpose({
                               $t('seaExport.export.polNoServiceConfig')
                             "
                           />
-                        </div>
-                      </div>
-                      <div class="service-item-grid">
-                        <div
-                          v-if="
-                            SHOW_COLLECTION_PAYMENT_FIELD &&
-                            showServiceItemContent
-                          "
-                          class="service-item-extra-card"
-                          :class="{
-                            'service-item-extra-card--active':
-                              collectionPaymentEnabled,
-                          }"
-                        >
-                          <div class="service-item-extra-card__header">
-                            <div class="service-item-extra-card__title-wrap">
-                              <span class="service-item-extra-card__icon">
-                                <IconifyIcon
-                                  :icon="COLLECTION_PAYMENT_ICON"
-                                  class="service-item-extra-card__icon-inner"
-                                />
-                              </span>
-                              <span class="service-item-extra-card__title"
-                                >代收支</span
-                              >
-                            </div>
-                            <Checkbox
-                              :checked="collectionPaymentEnabled"
-                              @change="handleCollectionPaymentEnabledChange"
-                            />
-                          </div>
-                          <div class="service-item-extra-card__body">
-                            <Select
-                              :value="collectionPaymentDeptId"
-                              :options="collectionPaymentDeptOptions"
-                              :disabled="!collectionPaymentEnabled"
-                              :placeholder="$t('ui.placeholder.select')"
-                              allow-clear
-                              class="w-full"
-                              show-search
-                              option-filter-prop="label"
-                              @change="handleCollectionPaymentDeptChange"
-                            />
-                          </div>
                         </div>
                       </div>
                     </div>

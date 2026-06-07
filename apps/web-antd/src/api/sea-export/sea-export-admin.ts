@@ -174,6 +174,22 @@ export namespace SeaExportAdminApi {
     localCurrencyId?: number;
   }
 
+  export interface SeaExportServiceTaskDto {
+    id: string;
+    serviceTaskStatus: 0 | 1;
+    completionUserId?: number | null;
+    completionUserNickName?: string | null;
+    completionTime?: string | null;
+  }
+
+  export interface SeaExportServiceDto {
+    id: number;
+    seaExportId: string;
+    serviceType: number;
+    sortId: number;
+    seServiceTask?: SeaExportServiceTaskDto | null;
+  }
+
   export interface SeaExportAddDto {
     blType?: number;
     billType?: number;
@@ -327,7 +343,7 @@ export namespace SeaExportAdminApi {
     creatorUserNickName?: string;
     sortId?: number;
     remark?: string;
-    serviceTypes?: number[];
+    seaExportServices?: SeaExportServiceDto[];
     organizationUnits?: OrganizationUnitSimpleDto[];
     companys?: OrganizationUnitSimpleDto[];
     transportOrder?: TransportOrderDto;

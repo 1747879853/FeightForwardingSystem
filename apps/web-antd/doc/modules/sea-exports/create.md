@@ -69,6 +69,7 @@ last_updated: 2026-06-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-07 | `Refactor` | 服务流水线改为 `ServiceTypeNode` 枚举驱动，与执行方五字段完全解耦；删除代收支与 `organizationUnits` 提交。 | 新建/编辑共用 `form.vue`；节点来自 POL 配置 + `ServiceType` displayName，提交 `serviceTypes` 由勾选节点 value 集合生成。 |
 | 2026-06-07 | `Refactor` | 服务项目枚举值与节点文案不再使用前端硬编码 `0~5`，统一在运行时从 `getEnumItems('ServiceType')` 读取并映射。 | 新建页与编辑页共用 `form.vue`，服务项勾选、提交 `serviceTypes` 与节点名称均收敛到同一枚举源，降低枚举中心变更带来的前端漂移风险。 |
 | 2026-05-30 | `Fix` | 服务项目空态改为紧凑一行提示；未选/清空起运港时不渲染服务节点并提示先选起运港；可见服务项与顺序完全由起运港配置回显。 | 初始可见态改为全隐藏，`getServiceItemVisible` 仅 `=== true` 时展示。 |
 | 2026-05-30 | `Fix` | 起运港已选但未配置任何服务项时，服务项目区域展示空态提示，不再渲染空白。 | 新增 `polHasNoServiceConfig` 与联动 loading 态，仅在 `GetServiceTypesByPOLAsync` 成功返回且可见卡片为空时提示。 |

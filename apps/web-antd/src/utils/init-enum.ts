@@ -253,6 +253,7 @@ async function getAllEnumNames(): Promise<string[]> {
   return [
     'InvoiceStatus',
     'FeeStatus',
+    'ServiceType',
     // 'OrderStatus',
     // 'PaymentMethod',
     // 'ShippingType',
