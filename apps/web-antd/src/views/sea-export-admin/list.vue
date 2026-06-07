@@ -73,6 +73,9 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
     submitOnChange: true,
     showCollapseButton: true,
     collapsed: true,
+    commonConfig: {
+      labelWidth: 64,
+    },
     wrapperClass: 'grid-cols-6',
   },
   gridEvents: {
