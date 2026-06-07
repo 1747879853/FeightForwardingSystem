@@ -1,5 +1,6 @@
 import type { Dayjs } from 'dayjs';
 
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { SeServiceTaskAdminApi } from '#/api/sea-export/se-service-task-admin';
 
 export interface ServiceTab {
@@ -57,6 +58,8 @@ export interface BusinessRow {
   assigneeUserName?: string;
   taskUsersText: string;
   serviceTaskStatus: number;
+  /** 海运出口原始数据，供 seServiceShows 动态列取值 */
+  seaExport?: SeaExportAdminApi.SeaExportDto;
 }
 
 export interface ExceptionSummary {

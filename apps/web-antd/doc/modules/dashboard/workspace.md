@@ -35,6 +35,10 @@ last_updated: 2026-06-07
 - **任务分组展示：**
   - 头部按起运港（POL）切换，并展示该港口任务数 Badge
   - 内容区按服务项（ServiceType）分组展示任务，支持“指派任务”汇总组
+- **海运出口业务列表动态列：**
+  - 列由当前 chevron 服务项的 `seServiceShows`（`SeaExportPropEnum`）驱动，严格 1 枚举 1 列，顺序与配置数组一致
+  - 固定列始终显示：委托单号、处理人、被转交人；`seServiceShows` 为空时不展示业务列
+  - 表头文案取自 `SeaExportPropEnum` 枚举 `displayName`；审核 Tab 仍使用固定列，不受 `seServiceShows` 影响
 - **任务处理动作：**
   - 批量转交：`TransferAsync`（被转交人来自 `UserSelect` 全量用户）
   - 单条/批量完成：`CompleteAsync`（批量为逐条调用）
@@ -61,6 +65,7 @@ last_updated: 2026-06-07
 | **assigneeUserId** | 被转交人 ID。 | `SeServiceTaskDto.assigneeUserId` | **触发/依赖：** 转交后在任务行展示被转交人。 | 转交时由 `TransferAsync` 校验权限与状态。 |
 | **ids + assigneeUserId** | 批量转交入参。 | `TransferAsync` | **触发/依赖：** 由表格勾选行 + 转交弹窗用户选择组装。 | 被转交人不能为空，任务需可转交。 |
 | **id** | 完成任务入参。 | `CompleteAsync` | **触发/依赖：** 行内完成或批量完成逐条提交。 | 任务需处于待处理且当前用户有处理权限。 |
+| **seServiceShows** | 当前服务项向用户展示的海运出口字段（枚举数组）。 | `GetPagedListAsync.items[].seServiceConfigItems[].seServiceShows` | **触发/依赖：** 切换 chevron 服务项节点时重建业务列表动态列；表头取 `SeaExportPropEnum.displayName`。 | 为空时不展示业务列；未映射枚举静默跳过。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -72,6 +77,7 @@ last_updated: 2026-06-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-07 | `Feature` | 工作台海运出口业务列表列改为按当前服务项 `seServiceShows` 动态展示，1 枚举 1 列，固定保留委托单号/处理人/被转交人。 | 新增 `se-service-show-columns.ts` 注册表；`WorkbenchBusinessTable.dynamicColumns` 仅海运出口 Tab 传入；`BusinessRow.seaExport` 供列取值。 |
 | 2026-06-07 | `Refactor` | 工作台服务项文案完全改为枚举中心实时口径，移除本地 ServiceType 默认文案表。 | 初始化映射仅依赖 `getEnumItems('ServiceType')`，服务节点名称不再从前端硬编码兜底。 |
 | 2026-05-30 | `Feature` | 工作台“应收应付审核 / 付费申请审核”两个 Tab 由占位改为可用视图：新增审核专用搜索表单（样式对齐海运出口，字段改为各自接口支持条件）并展示审核业务列表，同时接入对应审核 API 与页面跳转。 | `workspace/index.vue` 对三类 Tab 进行分支化数据加载、独立筛选模型与查询参数映射；`WorkbenchReviewFilterBar` 承载审核查询字段；`WorkbenchBusinessTable` 增加 `enableTaskActions` 开关，审核场景关闭海运任务专属批量动作以避免接口误调用。 |
 | 2026-05-30 | `Refactor` | 工作台服务项节点文案改为复用统一 `ServiceType` 枚举映射，移除本地硬编码文案表。 | `workspace/index.vue` 初始化时动态加载统一枚举并构建映射；`workbench-data.ts` 仅保留可注入的兜底 map，避免展示口径与其他页面分叉。 |

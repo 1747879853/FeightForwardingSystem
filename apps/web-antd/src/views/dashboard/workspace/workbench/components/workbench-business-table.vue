@@ -10,8 +10,10 @@ import { computed, ref, watch } from 'vue';
 import { Spin } from 'ant-design-vue';
 
 import type { BusinessRow, StageStep } from '../../workbench-data';
+import type { SeServiceShowColumn } from '../se-service-show-columns';
 
 interface Props {
+  dynamicColumns?: SeServiceShowColumn[];
   enableTaskActions?: boolean;
   loading?: boolean;
   rows: BusinessRow[];
@@ -76,6 +78,22 @@ function isChevronStepLast(index: number, total: number) {
 }
 
 const showSelection = computed(() => props.enableTaskActions !== false);
+
+const useDynamicColumns = computed(() => props.dynamicColumns !== undefined);
+
+const tableDynamicColumns = computed(() => props.dynamicColumns ?? []);
+
+const tableColspan = computed(() => {
+  const fixedCount = 3;
+  if (useDynamicColumns.value) {
+    return (
+      (showSelection.value ? 1 : 0) +
+      fixedCount +
+      tableDynamicColumns.value.length
+    );
+  }
+  return showSelection.value ? 8 : 7;
+});
 
 const allSelected = computed(
   () =>
@@ -216,19 +234,24 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
                 />
               </th>
               <th>委托单号</th>
-              <th>船名/航次</th>
-              <th>起运/目的港</th>
-              <th>箱量/箱型</th>
-              <th>ETD</th>
+              <template v-if="useDynamicColumns">
+                <th v-for="column in tableDynamicColumns" :key="column.key">
+                  {{ column.label }}
+                </th>
+              </template>
+              <template v-else>
+                <th>船名/航次</th>
+                <th>起运/目的港</th>
+                <th>箱量/箱型</th>
+                <th>ETD</th>
+              </template>
               <th>处理人</th>
               <th>被转交人</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="!rows.length">
-              <td class="table-empty" :colspan="showSelection ? 8 : 7">
-                暂无任务
-              </td>
+              <td class="table-empty" :colspan="tableColspan">暂无任务</td>
             </tr>
             <tr v-for="row in rows" :key="row.id">
               <td v-if="showSelection" class="checkbox-col">
@@ -247,10 +270,17 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
                   {{ row.bookingNo }}
                 </a>
               </td>
-              <td>{{ row.vesselVoyage }}</td>
-              <td>{{ row.route }}</td>
-              <td>{{ row.containerInfo }}</td>
-              <td>{{ row.etd }}</td>
+              <template v-if="useDynamicColumns">
+                <td v-for="column in tableDynamicColumns" :key="column.key">
+                  {{ column.getValue(row) }}
+                </td>
+              </template>
+              <template v-else>
+                <td>{{ row.vesselVoyage }}</td>
+                <td>{{ row.route }}</td>
+                <td>{{ row.containerInfo }}</td>
+                <td>{{ row.etd }}</td>
+              </template>
               <td>{{ row.taskUsersText || '--' }}</td>
               <td>{{ row.assigneeUserName || '--' }}</td>
             </tr>

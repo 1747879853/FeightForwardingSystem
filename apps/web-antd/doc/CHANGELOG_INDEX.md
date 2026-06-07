@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-07] [工作台海运出口业务列表按 seServiceShows 动态列](./changelogs/change-log-2026-06-07-workbench-se-service-shows-dynamic-columns.md)
 - [2026-06-07] [海运出口保存时按服务项目校验干系人角色](./changelogs/change-log-2026-06-07-sea-export-service-bound-order-user-validation.md)
 - [2026-06-07] [海运出口进行中服务完成权限校验](./changelogs/change-log-2026-06-07-sea-export-service-complete-permission.md)
 - [2026-06-07] [海运出口干系人角色图标货代语义化](./changelogs/change-log-2026-06-07-sea-export-order-user-role-icons.md)
