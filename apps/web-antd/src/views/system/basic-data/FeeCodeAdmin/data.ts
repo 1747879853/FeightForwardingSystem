@@ -4,15 +4,19 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn } from '#/adapter/vxe-table';
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 
+import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
 import { $t } from '#/locales';
 
 /**
  * 计费标准名称选项
  */
 const getBillingUnitOptions = () => [
-  { label: '箱型', value: 'ctn' },
-  { label: '票', value: 'order' },
-  { label: 'TEU', value: 'teu' },
+  { label: '箱型', value: 'CTN' },
+  { label: '票', value: 'ORDER' },
+  { label: 'TEU', value: 'TEU' },
+  { label: '尺码', value: 'CBM' },
+  { label: '毛重', value: 'KGS' },
+  { label: '件数', value: 'PKGS' },
 ];
 
 /**
@@ -83,16 +87,7 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'defaultDebitName',
       label: $t('system.basicData.feeCode.defaultDebitName'),
       componentProps: {
-        options: [
-          { label: '委托单位', value: 'p' },
-          { label: '订舱代理', value: 'o' },
-          { label: '发货人', value: 'b' },
-          { label: '收货人', value: 'e' },
-          { label: '通知人', value: 'h' },
-          { label: '代理', value: 'k' },
-          { label: '船代', value: 'n' },
-          { label: '目的港代理', value: 's' },
-        ],
+        options: getIndustryCategoryOptions(),
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
         class: 'w-full',
@@ -103,17 +98,7 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'defaultCreditName',
       label: $t('system.basicData.feeCode.defaultCreditName'),
       componentProps: {
-        options: [
-          { label: '船公司', value: 'a' },
-          { label: '场站', value: 'c' },
-          { label: '航空公司', value: 'd' },
-          { label: '报关行', value: 'f' },
-          { label: '快递公司', value: 'g' },
-          { label: '车队', value: 'i' },
-          { label: '仓库', value: 'q' },
-          { label: '保险公司', value: 'r' },
-          { label: '工厂', value: 'u' },
-        ],
+        options: getIndustryCategoryOptions(),
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
         class: 'w-full',

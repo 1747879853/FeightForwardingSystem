@@ -51,8 +51,8 @@ export namespace OrderFeeAdminApi {
     /** 金额 最多 28 位 */
     amount: number;
 
-    /** 单位 */
-    unitEmum: number;
+    /** 单位（中文字符串，最大16字符） */
+    unit: string;
 
     /** 数量 */
     quantity: number;
