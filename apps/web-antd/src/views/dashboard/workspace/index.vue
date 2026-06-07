@@ -442,7 +442,7 @@ function mapPaymentTaskToBusinessRow(
         .join(' / ') ||
       item.settlementName ||
       '--',
-    seaExportId: item.id,
+    seaExportId: item.paymentApplicationId,
     serviceTaskStatus: item.taskStatus === PaymentTaskStatus.Auditing ? 0 : 1,
     status: 'pending',
     taskUsersText: item.creatorUserName || '--',
@@ -614,25 +614,16 @@ function handleOpenSeaExport(seaExportId: string) {
     return;
   }
   if (activeServiceTab.value === 'payment-review') {
-    void router.push('/audit-approval/payment-review');
+    void router.push({
+      name: 'PaymentApplicationEdit',
+      params: { id: seaExportId },
+    });
     return;
   }
   void router.push({
     name: 'SeaExportEdit',
     params: { id: seaExportId },
   });
-}
-
-function handleOpenBusinessList() {
-  if (activeServiceTab.value === 'ar-ap-review') {
-    void router.push({ name: 'ExpenseAll' });
-    return;
-  }
-  if (activeServiceTab.value === 'payment-review') {
-    void router.push({ name: 'PaymentReview' });
-    return;
-  }
-  void router.push({ name: 'SeaExportList' });
 }
 
 onMounted(() => {
@@ -699,7 +690,6 @@ onMounted(() => {
             @transfer="handleTransfer"
             @complete="handleComplete"
             @open-sea-export="handleOpenSeaExport"
-            @open-business-list="handleOpenBusinessList"
           />
         </main>
         <WorkbenchExceptionPanel :summary="exceptionSummary" />
@@ -718,7 +708,6 @@ onMounted(() => {
             @transfer="handleTransfer"
             @complete="handleComplete"
             @open-sea-export="handleOpenSeaExport"
-            @open-business-list="handleOpenBusinessList"
           />
         </main>
       </template>
