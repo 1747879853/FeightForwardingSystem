@@ -69,6 +69,7 @@ last_updated: 2026-06-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-07 | `Style` | 服务项目 Chevron 节点尺寸紧凑化（40px 高、12px 字号），单节点最大宽度 140px。 | 对齐工作台 `workbench-business-table` Chevron 规格。 |
 | 2026-06-07 | `Feature` | 服务流水线三态展示，节点勾选改弹窗维护（新建页无取消完成接口）。 | 与编辑页共用 `form.vue`。 |
 | 2026-06-07 | `Style` | 服务项目 UI 改为 Chevron 箭头流水线（三态配色 + 悬浮 Tooltip）。 | 与编辑页共用 `form.vue`；`clip-path` 箭头衔接，Tooltip 避免 `overflow-hidden` 裁切。 |
 | 2026-06-07 | `Refactor` | 服务流水线改为 `ServiceTypeNode` 枚举驱动，与执行方五字段完全解耦；删除代收支与 `organizationUnits` 提交。 | 新建/编辑共用 `form.vue`；节点来自 POL 配置 + `ServiceType` displayName，提交 `serviceTypes` 由勾选节点 value 集合生成。 |

@@ -3722,7 +3722,7 @@ defineExpose({
   gap: 8px;
   align-items: center;
   justify-content: center;
-  min-height: 64px;
+  min-height: 40px;
 }
 
 .service-pipeline__empty-checked-text {
@@ -3734,7 +3734,7 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 64px;
+  min-height: 40px;
 }
 
 .service-pipeline {
@@ -3751,15 +3751,15 @@ defineExpose({
   display: flex;
   width: 100%;
   overflow: auto hidden;
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 .service-chevron-flow > :deep(span),
 .service-chevron-flow__item {
   display: flex;
   flex: 1 1 0;
-  min-width: 0;
-  max-width: 220px;
+  min-width: 72px;
+  max-width: 140px;
 }
 
 .service-chevron-flow > :deep(span) {
@@ -3777,20 +3777,20 @@ defineExpose({
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 220px;
-  height: 64px;
-  padding-right: 12px;
-  padding-left: 28px;
-  margin-left: -12px;
+  max-width: 140px;
+  height: 40px;
+  padding-right: 8px;
+  padding-left: 16px;
+  margin-left: -8px;
   cursor: pointer;
   border: 1px solid rgb(255 255 255 / 20%);
   clip-path: polygon(
     0% 0%,
-    calc(100% - 20px) 0%,
+    calc(100% - 12px) 0%,
     100% 50%,
-    calc(100% - 20px) 100%,
+    calc(100% - 12px) 100%,
     0% 100%,
-    20px 50%
+    12px 50%
   );
   transition:
     box-shadow 0.2s ease,
@@ -3798,24 +3798,24 @@ defineExpose({
 }
 
 .chevron-step--first {
-  padding-left: 20px;
+  padding-left: 12px;
   margin-left: 0;
-  border-top-left-radius: 16px;
-  border-bottom-left-radius: 16px;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
   clip-path: polygon(
     0% 0%,
-    calc(100% - 20px) 0%,
+    calc(100% - 12px) 0%,
     100% 50%,
-    calc(100% - 20px) 100%,
+    calc(100% - 12px) 100%,
     0% 100%
   );
 }
 
 .chevron-step--last {
-  padding-right: 20px;
-  border-top-right-radius: 16px;
-  border-bottom-right-radius: 16px;
-  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 20px 50%);
+  padding-right: 12px;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 12px 50%);
 }
 
 .chevron-step:hover {
@@ -3843,7 +3843,7 @@ defineExpose({
 
 .chevron-step__inner {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
   min-width: 0;
   max-width: 100%;
@@ -3851,15 +3851,16 @@ defineExpose({
 
 .chevron-step__icon {
   flex-shrink: 0;
-  font-size: 20px;
+  font-size: 14px;
 }
 
 .chevron-step__label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 700;
+  line-height: 1;
   white-space: nowrap;
 }
 
