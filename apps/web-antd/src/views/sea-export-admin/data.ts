@@ -416,6 +416,8 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'carrierName',
       title: $t('seaExport.export.carrierId'),
       minWidth: 100,
+      align: 'left',
+      headerAlign: 'center',
       slots: { default: 'carrierWithLogo' },
     },
     {

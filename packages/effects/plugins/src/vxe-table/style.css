@@ -115,3 +115,10 @@
 .vxe-grid--layout-body-content-wrapper {
   overflow: hidden;
 }
+
+/* 统一去掉表体行底部分隔线，保留表头底部分隔 */
+.vxe-table--render-default.border--default .vxe-body--column,
+.vxe-table--render-default.border--inner .vxe-body--column,
+.vxe-table--render-default.border--full .vxe-body--column {
+  background-image: none;
+}
