@@ -22,6 +22,7 @@ export { default as OrgBankAccountSelect } from './org-bank-account-select.vue';
 export { default as PortSelect } from './port-select.vue';
 export { default as RoleSelect } from './role-select.vue';
 export { default as UserSelect } from './user-select.vue';
+export { default as UnitSelect } from './unit-select.vue';
 export { usePagedSelect } from './use-paged-select';
 export type {
   FetchPageParams,
