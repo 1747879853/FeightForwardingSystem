@@ -530,13 +530,45 @@ const handleServiceTypeModalDraftChange = (
 const handleServiceTypeModalCancel = () => {
   serviceTypeModalOpen.value = false;
 };
-const handleServiceTypeModalConfirm = () => {
+const getRemovedCompletedServiceLabels = () =>
+  serviceTypeNodes.value
+    .filter(
+      (node) =>
+        node.checked &&
+        !serviceTypeModalDraft.value.get(node.serviceType) &&
+        node.taskStatus === SERVICE_TASK_STATUS_PROCESSED,
+    )
+    .map((node) => node.label);
+const applyServiceTypeModalDraft = () => {
   const draftToApply = new Map(serviceTypeModalDraft.value);
   serviceTypeNodes.value.forEach((node) => {
     node.checked = draftToApply.get(node.serviceType) ?? false;
   });
   updateServiceTypeRequiredProps();
   serviceTypeModalOpen.value = false;
+};
+const handleServiceTypeModalConfirm = () => {
+  const removedCompletedLabels = getRemovedCompletedServiceLabels();
+  if (removedCompletedLabels.length === 0) {
+    applyServiceTypeModalDraft();
+    return;
+  }
+  return new Promise<void>((resolve, reject) => {
+    Modal.confirm({
+      title: '确认取消服务',
+      content: `取消勾选「${removedCompletedLabels.join('、')}」后，已完成的对应任务将被清除。是否继续？`,
+      okText: '继续',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk: () => {
+        applyServiceTypeModalDraft();
+        resolve();
+      },
+      onCancel: () => {
+        reject(new Error('cancel'));
+      },
+    });
+  });
 };
 const canCompleteServiceTypeNode = (node: ServiceTypeNode) =>
   isEdit.value &&

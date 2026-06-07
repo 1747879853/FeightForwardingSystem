@@ -24,7 +24,7 @@ last_updated: 2026-06-07
 - **工作台标签导航：** `editor.vue` 维护顶部标签，包含基础信息、更改单、服务详情、单证信息、应收应付、派车、分单、问题记录、修改历史。当前实现中基础信息、费用、更改单、派车、分单已经挂载组件；服务详情、单证信息、问题记录、修改历史目前主要作为标签预留。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
 - **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 决定节点可见范围，`polId+clientId` 决定默认勾选。编辑态在详情回填后以 `detail.seaExportServices[].serviceType` 作为勾选覆盖源，确保本单历史勾选不被联动默认值覆盖。
-- **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，按 `sortId` 顺序以 Chevron 步骤条呈现三态：已完成（绿）/ 处理中（蓝）/ 还未到（灰）。节点增删在「配置服务」弹窗维护（展示 POL 全部节点 Checkbox）。已完成节点取消勾选前须调用 `SeServiceTaskAdmin/CancelCompleteAsync`；待处理且已生成任务的节点不可直接取消。悬浮 Tooltip 可「完成服务」。保存提交 `serviceTypes: number[]`。
+- **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，按 `sortId` 顺序以 Chevron 步骤条呈现三态：已完成（绿）/ 处理中（蓝）/ 还未到（灰）。节点增删在「配置服务」弹窗维护（展示 POL 全部节点 Checkbox）。取消勾选**已完成**节点时，弹窗「确定」会二次确认，提示对应已完成任务将被清除；保存后 `serviceTypes` 不再包含该节点。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
 - **干系人角色约束：** 基础信息表单中的销售、商务、操作、客服、单证角色固定展示且不可删除、不可重复；销售与操作必须指定人员。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
@@ -87,12 +87,13 @@ last_updated: 2026-06-07
 >
 > **[卡点 5：费用与更改单共享展示配置]** 两个页面共用 `order_fee_display_config` 作为显示字段配置缓存。调整字段 key 或默认显示项时，会同时影响费用和更改单顶部摘要。
 >
-> **[卡点 6：节点勾选与任务状态分离]** 节点 ✓ 表示服务已启用（`checked`）；`taskStatus` 0/1 仅展示待处理/已处理。已有 `seServiceTask`（`taskId` 存在）时不允许关闭节点，与是否已处理无关。
+> **[卡点 6：取消已完成服务会清除任务]** 配置弹窗中取消勾选 `taskStatus === 已处理` 的节点时，须通过二次确认；保存后该服务及已完成任务将从本单移除。待处理任务节点取消勾选暂无前端拦截，以后端保存结果为准。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-07 | `Fix` | 配置服务弹窗取消勾选已完成节点时增加二次确认，提示对应已完成任务将被清除。 | `handleServiceTypeModalConfirm` 对比草稿与 `taskStatus === 已处理` 节点；确认前返回 Promise 阻止弹窗提前关闭。 |
 | 2026-06-07 | `Feature` | 服务流水线按进度三态展示，节点勾选改弹窗维护；已完成节点取消勾选对接 `CancelCompleteAsync`。 | `loadEditData` 后须再应用弹窗草稿，避免勾选态被详情覆盖。 |
 | 2026-06-07 | `Style` | 服务项目 UI 改为 Chevron 箭头流水线（三态配色 + 悬浮 Tooltip），新建/编辑共用 `form.vue`。 | `clip-path` 箭头衔接；`Tooltip` 承载完成服务按钮，避免 `overflow-hidden` 裁切。 |
 | 2026-06-07 | `Refactor` | 服务流水线改为 `ServiceTypeNode` 枚举驱动；执行方五字段与节点完全解耦、始终全量显示；删除代收支与 `organizationUnits` 提交；勾选回填改读 `seaExportServices`。 | 移除 field↔value 双向桥接层；`serviceTypes` 提交改由 `serviceTypeNodes.filter(checked)` 生成；`SeaExportDto` 对齐 OpenAPI 新增 `seaExportServices`。 |
