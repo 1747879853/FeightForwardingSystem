@@ -27,7 +27,7 @@ import {
   message,
   Modal,
   Popover,
-  Select,
+  Radio,
   Space,
   Spin,
   Tag,
@@ -123,11 +123,6 @@ const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
   { userAttribute: UserAttribute.Documentation, sortId: 2 },
   { userAttribute: UserAttribute.OverseasCustomerService, sortId: 1 },
 ];
-const fixedOrderUserRoles = new Set<number>(
-  defaultOrderUsers
-    .map((item) => item.userAttribute)
-    .filter((item): item is number => item != null),
-);
 const requiredOrderUserRoles: number[] = [
   UserAttribute.Sales,
   UserAttribute.Operation,
@@ -1067,20 +1062,21 @@ const orderUserRoleOptions = computed(() => [
     value: UserAttribute.OverseasCustomerService,
   },
 ]);
-const isFixedOrderUserRole = (userAttribute?: number) =>
-  userAttribute != null && fixedOrderUserRoles.has(userAttribute);
-const hasOtherSameRole = (rowKey: string, userAttribute?: number) => {
-  if (userAttribute == null) return false;
-  return orderUserRows.value.some(
-    (row) =>
-      row._rowKey !== rowKey && row.userAttribute === Number(userAttribute),
-  );
-};
-const getOrderUserRoleOptions = (rowKey: string) =>
-  orderUserRoleOptions.value.map((option) => ({
-    ...option,
-    disabled: hasOtherSameRole(rowKey, option.value),
-  }));
+const orderUserRoleModalOpen = ref(false);
+const orderUserRoleModalSelected = ref<number | undefined>();
+const selectedOrderUserRoleSet = computed(
+  () =>
+    new Set(
+      orderUserRows.value
+        .map((row) => row.userAttribute)
+        .filter((item): item is number => item != null),
+    ),
+);
+const availableOrderUserRoleOptions = computed(() =>
+  orderUserRoleOptions.value.filter(
+    (option) => !selectedOrderUserRoleSet.value.has(option.value),
+  ),
+);
 const getOrderUserRoleLabel = (userAttribute?: number) => {
   switch (userAttribute) {
     case UserAttribute.Sales:
@@ -1097,6 +1093,24 @@ const getOrderUserRoleLabel = (userAttribute?: number) => {
       return $t('system.user.userAttributeOptions.overseasCustomerService');
     default:
       return '-';
+  }
+};
+const getOrderUserRoleIcon = (userAttribute?: number) => {
+  switch (userAttribute) {
+    case UserAttribute.Sales:
+      return 'mdi:account-tie-outline';
+    case UserAttribute.Business:
+      return 'mdi:briefcase-outline';
+    case UserAttribute.Operation:
+      return 'mdi:anchor';
+    case UserAttribute.CustomerService:
+      return 'mdi:headset';
+    case UserAttribute.Documentation:
+      return 'mdi:file-document-outline';
+    case UserAttribute.OverseasCustomerService:
+      return 'mdi:earth';
+    default:
+      return 'mdi:account-outline';
   }
 };
 const getOrderUserDisplayName = (row: OrderUserEditorRow) => {
@@ -1265,62 +1279,46 @@ const initializeOrderUsersPanel = (
   }
   syncOrderUsersToForm();
 };
-const updateOrderUserRole = (
-  rowKey: string,
-  userAttribute: number | undefined,
-) => {
-  const currentRow = orderUserRows.value.find((row) => row._rowKey === rowKey);
-  if (
-    currentRow &&
-    isFixedOrderUserRole(currentRow.userAttribute) &&
-    userAttribute !== currentRow.userAttribute
-  ) {
-    message.warning(
-      `${getOrderUserRoleLabel(currentRow.userAttribute)}角色不可修改`,
-    );
+const openOrderUserRoleModal = () => {
+  if (!availableOrderUserRoleOptions.value.length) {
+    message.warning('所有角色已添加，不可重复添加');
     return;
   }
-  if (hasOtherSameRole(rowKey, userAttribute)) {
-    message.warning(`${getOrderUserRoleLabel(userAttribute)}角色不可重复添加`);
-    return;
-  }
-  orderUserRows.value = orderUserRows.value.map((row) => {
-    if (row._rowKey !== rowKey) return row;
-    return {
-      ...row,
-      userAttribute,
-      userId: undefined,
-      userName: undefined,
-    };
-  });
-  syncOrderUsersToForm();
+  orderUserRoleModalSelected.value =
+    availableOrderUserRoleOptions.value[0]?.value;
+  orderUserRoleModalOpen.value = true;
 };
-const addOrderUserRole = () => {
-  const selectedRoleSet = new Set(
-    orderUserRows.value
-      .map((row) => row.userAttribute)
-      .filter((item): item is number => item != null),
-  );
-  const hasAvailableRole = orderUserRoleOptions.value.some(
-    (option) => !selectedRoleSet.has(option.value),
-  );
-  if (!hasAvailableRole) {
-    message.warning('销售/商务/操作/客服/单证角色已存在，不可重复添加');
+const handleOrderUserRoleModalCancel = () => {
+  orderUserRoleModalSelected.value = undefined;
+  orderUserRoleModalOpen.value = false;
+};
+const handleOrderUserRoleModalConfirm = () => {
+  const userAttribute = orderUserRoleModalSelected.value;
+  if (userAttribute == null) {
+    message.warning('请选择角色');
+    return;
+  }
+  if (selectedOrderUserRoleSet.value.has(userAttribute)) {
+    message.warning(`${getOrderUserRoleLabel(userAttribute)}角色已存在`);
     return;
   }
   orderUserRows.value = [
     ...orderUserRows.value,
     {
       _rowKey: makeOrderUserRowKey(),
-      userAttribute: undefined,
+      userAttribute,
       sortId: 0,
     },
   ];
   syncOrderUsersToForm();
+  handleOrderUserRoleModalCancel();
 };
 const removeOrderUserRole = (rowKey: string) => {
   const row = orderUserRows.value.find((item) => item._rowKey === rowKey);
-  if (row && isFixedOrderUserRole(row.userAttribute)) {
+  if (
+    row?.userAttribute != null &&
+    requiredOrderUserRoles.includes(row.userAttribute)
+  ) {
     message.warning(`${getOrderUserRoleLabel(row.userAttribute)}角色不可删除`);
     return;
   }
@@ -3109,129 +3107,113 @@ defineExpose({
                 :key="row._rowKey"
                 class="order-user-panel__row"
               >
-                <Button
-                  v-if="!isFixedOrderUserRole(row.userAttribute)"
-                  type="link"
-                  danger
-                  size="small"
-                  class="order-user-panel__delete-btn"
-                  title="删除"
-                  @click="removeOrderUserRole(row._rowKey)"
-                >
-                  <IconifyIcon icon="mdi:trash-can-outline" />
-                </Button>
-                <div
-                  class="order-user-panel__avatar-wrap"
-                  @mouseenter="loadOrderUserDetail(row.userId, row._rowKey)"
-                >
-                  <Popover
-                    v-if="row.userId"
-                    placement="leftTop"
-                    trigger="hover"
-                    overlay-class-name="order-user-detail-popover"
-                  >
-                    <template #content>
-                      <div class="order-user-detail-card">
-                        <div class="order-user-detail-card__header">
-                          <Avatar
-                            :size="38"
-                            class="order-user-detail-card__avatar"
-                          >
-                            {{ getOrderUserAvatarText(row) }}
-                          </Avatar>
-                          <div class="order-user-detail-card__title-wrap">
-                            <div class="order-user-detail-card__name">
-                              {{ getOrderUserDisplayName(row) || '-' }}
+                <div class="order-user-panel__body">
+                  <div class="order-user-panel__header">
+                    <div class="order-user-panel__role-label">
+                      {{ getOrderUserRoleLabel(row.userAttribute) }}
+                    </div>
+                    <Popover
+                      v-if="row.userId"
+                      placement="leftTop"
+                      trigger="hover"
+                      overlay-class-name="order-user-detail-popover"
+                    >
+                      <template #content>
+                        <div class="order-user-detail-card">
+                          <div class="order-user-detail-card__header">
+                            <Avatar
+                              :size="38"
+                              class="order-user-detail-card__avatar"
+                            >
+                              {{ getOrderUserAvatarText(row) }}
+                            </Avatar>
+                            <div class="order-user-detail-card__title-wrap">
+                              <div class="order-user-detail-card__name">
+                                {{ getOrderUserDisplayName(row) || '-' }}
+                              </div>
+                              <div class="order-user-detail-card__sub-title">
+                                账号：{{
+                                  getOrderUserDetailText(
+                                    getOrderUserDetail(row.userId)?.userName,
+                                  )
+                                }}
+                              </div>
                             </div>
-                            <div class="order-user-detail-card__sub-title">
-                              账号：{{
-                                getOrderUserDetailText(
-                                  getOrderUserDetail(row.userId)?.userName,
+                            <span
+                              class="order-user-detail-card__status"
+                              :class="
+                                getOrderUserStatusClass(
+                                  getOrderUserDetail(row.userId),
+                                )
+                              "
+                            >
+                              {{
+                                getOrderUserStatusText(
+                                  getOrderUserDetail(row.userId),
                                 )
                               }}
+                            </span>
+                          </div>
+                          <div
+                            v-if="
+                              isOrderUserDetailLoading(row.userId) &&
+                              !getOrderUserDetail(row.userId)
+                            "
+                            class="order-user-detail-card__loading"
+                          >
+                            加载中...
+                          </div>
+                          <div v-else class="order-user-detail-card__info">
+                            <div class="order-user-detail-card__info-item">
+                              <span>角色</span>
+                              <span>{{
+                                getOrderUserRoleLabel(row.userAttribute)
+                              }}</span>
+                            </div>
+                            <div class="order-user-detail-card__info-item">
+                              <span>手机</span>
+                              <span>{{
+                                getOrderUserDetailText(
+                                  getOrderUserDetail(row.userId)?.phoneNumber,
+                                )
+                              }}</span>
+                            </div>
+                            <div class="order-user-detail-card__info-item">
+                              <span>邮箱</span>
+                              <span>{{
+                                getOrderUserDetailText(
+                                  getOrderUserDetail(row.userId)?.emailAddress,
+                                )
+                              }}</span>
+                            </div>
+                            <div class="order-user-detail-card__info-item">
+                              <span>最近登录</span>
+                              <span>{{
+                                formatOrderUserLastLogin(
+                                  getOrderUserDetail(row.userId)?.lastLoginTime,
+                                )
+                              }}</span>
                             </div>
                           </div>
-                          <span
-                            class="order-user-detail-card__status"
-                            :class="
-                              getOrderUserStatusClass(
-                                getOrderUserDetail(row.userId),
-                              )
-                            "
-                          >
-                            {{
-                              getOrderUserStatusText(
-                                getOrderUserDetail(row.userId),
-                              )
-                            }}
-                          </span>
                         </div>
-                        <div
-                          v-if="
-                            isOrderUserDetailLoading(row.userId) &&
-                            !getOrderUserDetail(row.userId)
-                          "
-                          class="order-user-detail-card__loading"
-                        >
-                          加载中...
-                        </div>
-                        <div v-else class="order-user-detail-card__info">
-                          <div class="order-user-detail-card__info-item">
-                            <span>角色</span>
-                            <span>{{
-                              getOrderUserRoleLabel(row.userAttribute)
-                            }}</span>
-                          </div>
-                          <div class="order-user-detail-card__info-item">
-                            <span>手机</span>
-                            <span>{{
-                              getOrderUserDetailText(
-                                getOrderUserDetail(row.userId)?.phoneNumber,
-                              )
-                            }}</span>
-                          </div>
-                          <div class="order-user-detail-card__info-item">
-                            <span>邮箱</span>
-                            <span>{{
-                              getOrderUserDetailText(
-                                getOrderUserDetail(row.userId)?.emailAddress,
-                              )
-                            }}</span>
-                          </div>
-                          <div class="order-user-detail-card__info-item">
-                            <span>最近登录</span>
-                            <span>{{
-                              formatOrderUserLastLogin(
-                                getOrderUserDetail(row.userId)?.lastLoginTime,
-                              )
-                            }}</span>
-                          </div>
-                        </div>
+                      </template>
+                      <div
+                        class="order-user-panel__role-icon order-user-panel__role-icon--link"
+                        @mouseenter="
+                          loadOrderUserDetail(row.userId, row._rowKey)
+                        "
+                      >
+                        <IconifyIcon
+                          :icon="getOrderUserRoleIcon(row.userAttribute)"
+                        />
                       </div>
-                    </template>
-                    <Avatar
-                      :size="34"
-                      class="order-user-panel__avatar order-user-panel__avatar--link"
-                    >
-                      {{ getOrderUserAvatarText(row) }}
-                    </Avatar>
-                  </Popover>
-                  <Avatar v-else :size="34" class="order-user-panel__avatar">
-                    {{ getOrderUserAvatarText(row) }}
-                  </Avatar>
-                </div>
-                <div class="order-user-panel__content">
-                  <Select
-                    :value="row.userAttribute"
-                    :options="getOrderUserRoleOptions(row._rowKey)"
-                    :placeholder="
-                      $t('seaExport.export.pleaseSelectUserAttribute')
-                    "
-                    size="small"
-                    :allow-clear="!isFixedOrderUserRole(row.userAttribute)"
-                    class="order-user-panel__role-select"
-                    @update:value="(v) => updateOrderUserRole(row._rowKey, v)"
-                  />
+                    </Popover>
+                    <div v-else class="order-user-panel__role-icon">
+                      <IconifyIcon
+                        :icon="getOrderUserRoleIcon(row.userAttribute)"
+                      />
+                    </div>
+                  </div>
                   <UserSelect
                     :key="row._rowKey"
                     :model-value="row.userId"
@@ -3251,14 +3233,28 @@ defineExpose({
                     size="small"
                     allow-clear
                     class="order-user-panel__select"
-                    :disabled="!row.userAttribute"
                     @update:model-value="(v) => updateOrderUser(row._rowKey, v)"
                   />
                 </div>
+                <Button
+                  v-if="
+                    row.userAttribute != null &&
+                    !requiredOrderUserRoles.includes(row.userAttribute)
+                  "
+                  type="text"
+                  danger
+                  size="small"
+                  class="order-user-panel__delete-btn"
+                  title="删除角色"
+                  @click.stop="removeOrderUserRole(row._rowKey)"
+                >
+                  <IconifyIcon icon="mdi:close-circle" />
+                </Button>
               </div>
               <Button
                 class="order-user-panel__add-btn"
-                @click="addOrderUserRole"
+                :disabled="!availableOrderUserRoleOptions.length"
+                @click="openOrderUserRoleModal"
               >
                 + 添加角色
               </Button>
@@ -3267,6 +3263,31 @@ defineExpose({
         </div>
       </div>
     </Spin>
+    <Modal
+      v-model:open="orderUserRoleModalOpen"
+      title="添加角色"
+      ok-text="确定"
+      cancel-text="取消"
+      width="400px"
+      destroy-on-close
+      :ok-button-props="{ disabled: orderUserRoleModalSelected == null }"
+      @ok="handleOrderUserRoleModalConfirm"
+      @cancel="handleOrderUserRoleModalCancel"
+    >
+      <Radio.Group
+        v-model:value="orderUserRoleModalSelected"
+        class="order-user-role-modal__group"
+      >
+        <Radio
+          v-for="option in availableOrderUserRoleOptions"
+          :key="option.value"
+          :value="option.value"
+          class="order-user-role-modal__item"
+        >
+          {{ option.label }}
+        </Radio>
+      </Radio.Group>
+    </Modal>
     <Modal
       v-model:open="serviceTypeModalOpen"
       title="配置服务项目"
@@ -3510,6 +3531,10 @@ defineExpose({
 .right-column {
   flex-shrink: 0;
   width: 180px;
+}
+
+.right-column :deep(.ant-card-body) {
+  overflow: visible;
 }
 
 .card-title {
@@ -4467,13 +4492,6 @@ defineExpose({
   color: #1f2937;
 }
 
-.order-user-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
 .order-user-panel__add-btn {
   width: 100%;
   height: 32px;
@@ -4490,12 +4508,15 @@ defineExpose({
   border-color: #1677ff;
 }
 
+.order-user-panel {
+  padding: 6px 6px 0 0;
+  overflow: visible;
+}
+
 .order-user-panel__row {
   position: relative;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 8px;
+  padding: 10px 12px;
+  overflow: visible;
   background: #fff;
   border: 1px solid #f0f0f0;
   border-radius: 8px;
@@ -4505,25 +4526,39 @@ defineExpose({
   margin-top: 8px;
 }
 
-.order-user-panel__avatar-wrap {
+.order-user-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.order-user-panel__header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.order-user-panel__role-icon {
   display: flex;
   flex: none;
   align-items: center;
-}
-
-.order-user-panel__avatar {
-  font-size: 13px;
-  font-weight: 600;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
   color: #1677ff;
   background: #e6f4ff;
+  border-radius: 6px;
 }
 
-.order-user-panel__avatar--link {
+.order-user-panel__role-icon--link {
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.order-user-panel__avatar--link:hover {
+.order-user-panel__role-icon--link:hover {
   box-shadow: 0 4px 12px rgb(22 119 255 / 22%);
   transform: translateY(-1px);
 }
@@ -4638,17 +4673,43 @@ defineExpose({
   white-space: nowrap;
 }
 
-.order-user-panel__content {
-  display: flex;
+.order-user-panel__role-label {
   flex: 1;
-  flex-direction: column;
-  gap: 6px;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #1f2937;
+  white-space: nowrap;
 }
 
-.order-user-panel__role-select,
 .order-user-panel__select {
   width: 100%;
+}
+
+.order-user-role-modal__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.order-user-role-modal__item {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 12px;
+  margin: 0;
+  line-height: 36px;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.order-user-role-modal__item:hover {
+  border-color: #91caff;
 }
 
 .order-user-panel__meta {
@@ -4665,14 +4726,31 @@ defineExpose({
 
 .order-user-panel__delete-btn {
   position: absolute;
-  top: -13px;
-  right: -7px;
-  z-index: 1;
-  height: 20px;
+  top: -8px;
+  right: -8px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
   padding: 0;
+  font-size: 22px;
+  line-height: 1;
+  color: #ff4d4f;
   pointer-events: none;
+  background: #fff;
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 12%);
   opacity: 0;
   transition: opacity 0.2s ease;
+}
+
+.order-user-panel__delete-btn:hover {
+  color: #ff7875;
+  background: #fff;
 }
 
 .order-user-panel__row:hover .order-user-panel__delete-btn,

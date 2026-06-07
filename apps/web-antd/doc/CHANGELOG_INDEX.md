@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-07] [海运出口干系人面板交互与布局改造](./changelogs/change-log-2026-06-07-sea-export-order-users-panel.md)
 - [2026-06-07] [海运出口服务流水线三态与配置弹窗](./changelogs/change-log-2026-06-07-sea-export-service-pipeline-state-modal.md)
 - [2026-06-07] [海运出口服务项目 Chevron 流水线 UI](./changelogs/change-log-2026-06-07-sea-export-service-chevron-pipeline-ui.md)
 - [2026-06-07] [海运出口服务项目枚举驱动 + 执行方独立改造](./changelogs/change-log-2026-06-07-sea-export-service-type-enum-driven-decoupling.md)
