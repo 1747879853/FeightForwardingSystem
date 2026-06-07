@@ -1130,17 +1130,17 @@ const getOrderUserRoleLabel = (userAttribute?: number) => {
 const getOrderUserRoleIcon = (userAttribute?: number) => {
   switch (userAttribute) {
     case UserAttribute.Sales:
-      return 'mdi:account-tie-outline';
+      return 'mdi:handshake-outline';
     case UserAttribute.Business:
-      return 'mdi:briefcase-outline';
+      return 'mdi:tag-multiple-outline';
     case UserAttribute.Operation:
-      return 'mdi:anchor';
+      return 'mdi:truck-cargo-container';
     case UserAttribute.CustomerService:
-      return 'mdi:headset';
+      return 'mdi:forum-outline';
     case UserAttribute.Documentation:
-      return 'mdi:file-document-outline';
+      return 'mdi:file-sign';
     case UserAttribute.OverseasCustomerService:
-      return 'mdi:earth';
+      return 'mdi:earth-arrow-right';
     default:
       return 'mdi:account-outline';
   }

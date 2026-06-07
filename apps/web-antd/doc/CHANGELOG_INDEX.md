@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-07] [海运出口干系人角色图标货代语义化](./changelogs/change-log-2026-06-07-sea-export-order-user-role-icons.md)
 - [2026-06-07] [海运出口服务项目 Chevron 节点尺寸紧凑化](./changelogs/change-log-2026-06-07-sea-export-service-chevron-size-compact.md)
 - [2026-06-07] [海运出口配置服务取消已完成项二次确认](./changelogs/change-log-2026-06-07-sea-export-service-config-remove-completed-confirm.md)
 - [2026-06-07] [海运出口干系人面板交互与布局改造](./changelogs/change-log-2026-06-07-sea-export-order-users-panel.md)

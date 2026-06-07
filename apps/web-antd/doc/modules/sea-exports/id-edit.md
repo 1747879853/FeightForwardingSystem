@@ -102,6 +102,7 @@ last_updated: 2026-06-07
 | 2026-05-30 | `Fix` | 编辑态服务流水线：勾选表示任务已完成；状态/按钮按需渲染、宽度自适应；已有服务任务（任意状态）不可关闭服务。 | `getServiceItemCheckmarkShown`、`hasServiceItemTask`、`canToggleServiceItemNode`；保存仍用 `serviceItemEnabledValues`。 |
 | 2026-05-30 | `Fix` | 起运港已选但未配置任何服务项时，服务项目区域展示空态提示，不再渲染空白。 | 与新建页共用 `form.vue`；空态判定依赖联动查询完成后的可见服务集合。 |
 | 2026-05-30 | `Fix` | 服务项节点与保存 `serviceTypes` 顺序统一按接口 `sortId`；编辑页若详情未返回 `seaExportServices/serviceTypes`，服务项保持灰态未勾选，不再被起运港默认勾选覆盖。 | 服务项联动拆分为“可见范围（按 `polId`）”与“勾选来源（编辑态优先详情）”两层语义，避免历史单据状态被联动默认值污染。 |
+| 2026-06-07 | `Style` | 干系人角色图标按货代岗位职责语义映射（销售握手、商务运价表、操作集卡、客服沟通、单证签发、海外协同）。 | 嵌入模式共用 `form.vue` 的 `getOrderUserRoleIcon`，仅影响展示。 |
 | 2026-05-30 | `Refactor` | 嵌入式基础信息中的服务项类型值映射改为复用统一常量 `SERVICE_TYPE_VALUE`，与新建页和其他服务项页面统一。 | 编辑工作台复用 `form.vue`，因此服务项枚举值口径与新建页天然同源；本次把数值源头进一步收敛到 `service-type.ts`。 |
 | 2026-05-29 | `Fix` | 服务项目联动拆分为双查询：起运港决定卡片是否展示，客户维度决定默认勾选；未配置服务卡片隐藏。 | 编辑页在 `loadEditData` 后强制执行 `syncServiceTypesByPol({ force: true })`，确保详情旧值不会覆盖当前配置。 |
 | 2026-05-25 | `Fix` | 修复委托单位已选仍提示必选：联动监听改为 `onChange`，与新建页同源修复。 | 嵌入模式共用 `bindServiceTypeLinkageEvents`，勿在 `updateSchema` 中绑定 `onUpdate:modelValue`。 |
