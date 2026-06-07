@@ -210,11 +210,17 @@ const SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES = new Set([
 const PORT_MOVED_TO_BASIC_FIELD_NAMES = new Set(['signingPortId']);
 const SERVICE_TASK_STATUS_PENDING = 0;
 const SERVICE_TASK_STATUS_PROCESSED = 1;
+type ServiceTypeTaskUser = {
+  userId: number;
+  userNickName?: string;
+};
 type ServiceTypeTaskInfo = {
   taskId?: string;
   taskStatus?: 0 | 1 | null;
+  completionUserId?: number | null;
   completionTime?: string | null;
   completionUserNickName?: string | null;
+  taskUsers?: ServiceTypeTaskUser[];
 };
 type ServiceTypeNode = {
   serviceType: number;
@@ -223,8 +229,10 @@ type ServiceTypeNode = {
   checked: boolean;
   taskStatus?: 0 | 1 | null;
   taskId?: string;
+  completionUserId?: number | null;
   completionTime?: string | null;
   completionUserNickName?: string | null;
+  taskUsers?: ServiceTypeTaskUser[];
 };
 const serviceTypeNodes = ref<ServiceTypeNode[]>([]);
 const serviceTypeLabelMap = ref(new Map<number, string>());
@@ -268,8 +276,10 @@ const buildServiceTypeNodes = (
         checked,
         taskStatus: taskInfo?.taskStatus,
         taskId: taskInfo?.taskId,
+        completionUserId: taskInfo?.completionUserId,
         completionTime: taskInfo?.completionTime,
         completionUserNickName: taskInfo?.completionUserNickName,
+        taskUsers: taskInfo?.taskUsers,
       };
     });
 };
@@ -287,9 +297,14 @@ const parseDetailServiceTypes = (detail: SeaExportAdminApi.SeaExportDto) => {
         item.seServiceTask == null
           ? null
           : toServiceTaskStatusValue(item.seServiceTask.serviceTaskStatus),
+      completionUserId: item.seServiceTask?.completionUserId ?? null,
       completionTime: item.seServiceTask?.completionTime ?? null,
       completionUserNickName:
         item.seServiceTask?.completionUserNickName ?? null,
+      taskUsers: (item.seServiceTask?.seServiceTaskUsers ?? []).map((user) => ({
+        userId: user.userId,
+        userNickName: user.userNickName,
+      })),
     });
   });
   return { savedSet, taskMap };
@@ -572,16 +587,60 @@ const handleServiceTypeModalConfirm = () => {
     });
   });
 };
+const isServiceTypeNodeInProgress = (node: ServiceTypeNode) =>
+  getServicePipelineState(node) === 'active';
+const isCurrentUserServiceTaskHandler = (node: ServiceTypeNode) => {
+  const userId = currentUserId.value;
+  if (userId == null) return false;
+  const users = node.taskUsers ?? [];
+  if (!users.length) return true;
+  return users.some((item) => item.userId === userId);
+};
+const formatServiceTaskUsersText = (node: ServiceTypeNode) => {
+  const names = (node.taskUsers ?? [])
+    .map((item) => item.userNickName || `用户${item.userId}`)
+    .filter(Boolean);
+  return names.length ? names.join('、') : '-';
+};
+const hasServiceTaskHandlerRestriction = (node: ServiceTypeNode) =>
+  (node.taskUsers?.length ?? 0) > 0;
+const canOperateServiceTaskByHandler = (node: ServiceTypeNode) =>
+  !hasServiceTaskHandlerRestriction(node) ||
+  isCurrentUserServiceTaskHandler(node);
+const isCurrentUserServiceCompleter = (node: ServiceTypeNode) => {
+  const userId = currentUserId.value;
+  if (userId == null) return false;
+  const completionUserId = node.completionUserId;
+  if (completionUserId == null) return true;
+  return completionUserId === userId;
+};
+const showServiceCompletePermissionHint = (node: ServiceTypeNode) =>
+  isEdit.value &&
+  !!node.taskId &&
+  node.checked &&
+  isServiceTypeNodeInProgress(node) &&
+  node.taskStatus === SERVICE_TASK_STATUS_PENDING &&
+  hasServiceTaskHandlerRestriction(node) &&
+  !isCurrentUserServiceTaskHandler(node);
+const showServiceCancelPermissionHint = (node: ServiceTypeNode) =>
+  isEdit.value &&
+  !!node.taskId &&
+  node.checked &&
+  node.taskStatus === SERVICE_TASK_STATUS_PROCESSED &&
+  node.completionUserId != null &&
+  !isCurrentUserServiceCompleter(node);
 const canCompleteServiceTypeNode = (node: ServiceTypeNode) =>
   isEdit.value &&
   !!node.taskId &&
   node.taskStatus === SERVICE_TASK_STATUS_PENDING &&
-  node.checked;
+  node.checked &&
+  (!isServiceTypeNodeInProgress(node) || canOperateServiceTaskByHandler(node));
 const canCancelCompleteServiceTypeNode = (node: ServiceTypeNode) =>
   isEdit.value &&
   !!node.taskId &&
   node.taskStatus === SERVICE_TASK_STATUS_PROCESSED &&
-  node.checked;
+  node.checked &&
+  isCurrentUserServiceCompleter(node);
 const formatServiceTaskCompletionTime = (value?: string | null) => {
   if (!value) return '-';
   const parsed = dayjs(value);
@@ -665,6 +724,12 @@ const handleCompleteServiceType = async (node: ServiceTypeNode) => {
     message.info('当前服务已完成');
     return;
   }
+  if (showServiceCompletePermissionHint(node)) {
+    message.warning(
+      `您不是当前处理人（${formatServiceTaskUsersText(node)}），无法完成此服务`,
+    );
+    return;
+  }
   const missingLabels = await getMissingRequiredLabelsForServiceType(
     node.serviceType,
   );
@@ -693,6 +758,12 @@ const handleCancelCompleteServiceType = async (node: ServiceTypeNode) => {
   }
   if (node.taskStatus !== SERVICE_TASK_STATUS_PROCESSED) {
     message.info('当前服务未完成');
+    return;
+  }
+  if (showServiceCancelPermissionHint(node)) {
+    message.warning(
+      `仅完成人（${node.completionUserNickName || '-'}）可取消完成`,
+    );
     return;
   }
   cancellingServiceType.value = node.serviceType;
@@ -2778,44 +2849,91 @@ defineExpose({
                                     <div
                                       v-if="
                                         node.taskStatus ===
-                                        SERVICE_TASK_STATUS_PROCESSED
+                                          SERVICE_TASK_STATUS_PROCESSED ||
+                                        (isServiceTypeNodeInProgress(node) &&
+                                          node.taskStatus ===
+                                            SERVICE_TASK_STATUS_PENDING &&
+                                          (node.taskUsers?.length ?? 0) > 0)
                                       "
                                       class="chevron-step-tooltip__info"
                                     >
+                                      <template
+                                        v-if="
+                                          node.taskStatus ===
+                                          SERVICE_TASK_STATUS_PROCESSED
+                                        "
+                                      >
+                                        <div
+                                          class="chevron-step-tooltip__info-row"
+                                        >
+                                          <span
+                                            class="chevron-step-tooltip__info-label"
+                                          >
+                                            完成时间
+                                          </span>
+                                          <span
+                                            class="chevron-step-tooltip__info-value"
+                                          >
+                                            {{
+                                              formatServiceTaskCompletionTime(
+                                                node.completionTime,
+                                              )
+                                            }}
+                                          </span>
+                                        </div>
+                                        <div
+                                          class="chevron-step-tooltip__info-row"
+                                        >
+                                          <span
+                                            class="chevron-step-tooltip__info-label"
+                                          >
+                                            完成人
+                                          </span>
+                                          <span
+                                            class="chevron-step-tooltip__info-value"
+                                          >
+                                            {{
+                                              node.completionUserNickName || '-'
+                                            }}
+                                          </span>
+                                        </div>
+                                      </template>
                                       <div
+                                        v-else
                                         class="chevron-step-tooltip__info-row"
                                       >
                                         <span
                                           class="chevron-step-tooltip__info-label"
                                         >
-                                          完成时间
+                                          处理人
                                         </span>
                                         <span
                                           class="chevron-step-tooltip__info-value"
                                         >
-                                          {{
-                                            formatServiceTaskCompletionTime(
-                                              node.completionTime,
-                                            )
-                                          }}
+                                          {{ formatServiceTaskUsersText(node) }}
                                         </span>
                                       </div>
-                                      <div
-                                        class="chevron-step-tooltip__info-row"
-                                      >
-                                        <span
-                                          class="chevron-step-tooltip__info-label"
-                                        >
-                                          完成人
-                                        </span>
-                                        <span
-                                          class="chevron-step-tooltip__info-value"
-                                        >
-                                          {{
-                                            node.completionUserNickName || '-'
-                                          }}
-                                        </span>
-                                      </div>
+                                    </div>
+                                    <div
+                                      v-if="
+                                        showServiceCompletePermissionHint(
+                                          node,
+                                        ) ||
+                                        showServiceCancelPermissionHint(node)
+                                      "
+                                      class="chevron-step-tooltip__permission-hint"
+                                    >
+                                      <IconifyIcon
+                                        icon="mdi:lock-outline"
+                                        class="chevron-step-tooltip__permission-hint-icon"
+                                      />
+                                      <span>
+                                        {{
+                                          showServiceCancelPermissionHint(node)
+                                            ? '您不是完成人，暂无操作权限'
+                                            : '您不是当前处理人，暂无操作权限'
+                                        }}
+                                      </span>
                                     </div>
                                     <div
                                       v-if="
@@ -3940,6 +4058,26 @@ defineExpose({
   color: #334155;
   text-align: right;
   word-break: break-all;
+}
+
+.chevron-step-tooltip__permission-hint {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+}
+
+.chevron-step-tooltip__permission-hint-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
 }
 
 .chevron-step-tooltip__actions {

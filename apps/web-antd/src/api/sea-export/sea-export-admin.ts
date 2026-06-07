@@ -174,12 +174,21 @@ export namespace SeaExportAdminApi {
     localCurrencyId?: number;
   }
 
+  export interface SeaExportServiceTaskUserDto {
+    id?: string;
+    seServiceTaskId?: string;
+    userId: number;
+    userNickName?: string;
+    completionTime?: string | null;
+  }
+
   export interface SeaExportServiceTaskDto {
     id: string;
     serviceTaskStatus: 0 | 1;
     completionUserId?: number | null;
     completionUserNickName?: string | null;
     completionTime?: string | null;
+    seServiceTaskUsers?: SeaExportServiceTaskUserDto[];
   }
 
   export interface SeaExportServiceDto {
