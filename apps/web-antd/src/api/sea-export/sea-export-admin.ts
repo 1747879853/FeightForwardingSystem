@@ -10,6 +10,8 @@ export namespace SeaExportAdminApi {
     serviceType: number;
     sortId: number;
     checked: boolean;
+    /** 服务项责任角色（位标志，与港口服务项配置 userAttribute 一致） */
+    userAttribute?: number;
     seServiceShows?: number[];
     seServiceLocks?: number[];
     seServiceRequires?: number[];

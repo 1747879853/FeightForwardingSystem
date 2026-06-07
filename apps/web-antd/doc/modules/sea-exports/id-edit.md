@@ -26,7 +26,7 @@ last_updated: 2026-06-07
 - **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 决定节点可见范围，`polId+clientId` 决定默认勾选。编辑态在详情回填后以 `detail.seaExportServices[].serviceType` 作为勾选覆盖源，确保本单历史勾选不被联动默认值覆盖。
 - **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，按 `sortId` 顺序以 Chevron 步骤条呈现三态：已完成（绿）/ 处理中（蓝）/ 还未到（灰）。节点增删在「配置服务」弹窗维护（展示 POL 全部节点 Checkbox）。取消勾选**已完成**节点时，弹窗「确定」会二次确认，提示对应已完成任务将被清除；保存后 `serviceTypes` 不再包含该节点。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
-- **干系人角色约束：** 基础信息表单中的销售、商务、操作、客服、单证角色固定展示且不可删除、不可重复；销售与操作必须指定人员。
+- **干系人角色约束：** 销售、操作不可删除且必须已选人（销售必须且只能有一人）；其他角色按需添加。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
 - **船公司选中回显：** 详情接口返回 `carrierLogo` 后，编辑页在 `carrierId` 的 `selectedItems` 中同步拼接 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + 名称”。
 - **锁定状态展示：** 左侧委托信息显示委托编号、会计期间、应结日期、所属公司，并以标签展示“业务已/未锁定”和“费用已/未锁定”。保存时会把只读锁定状态带回 `transportOrder`。
@@ -97,6 +97,7 @@ last_updated: 2026-06-07
 | 2026-06-07 | `Fix` | 配置服务弹窗取消勾选已完成节点时增加二次确认，提示对应已完成任务将被清除。 | `handleServiceTypeModalConfirm` 对比草稿与 `taskStatus === 已处理` 节点；确认前返回 Promise 阻止弹窗提前关闭。 |
 | 2026-06-07 | `Feature` | 服务流水线按进度三态展示，节点勾选改弹窗维护；已完成节点取消勾选对接 `CancelCompleteAsync`。 | `loadEditData` 后须再应用弹窗草稿，避免勾选态被详情覆盖。 |
 | 2026-06-07 | `Style` | 服务项目 UI 改为 Chevron 箭头流水线（三态配色 + 悬浮 Tooltip），新建/编辑共用 `form.vue`。 | `clip-path` 箭头衔接；`Tooltip` 承载完成服务按钮，避免 `overflow-hidden` 裁切。 |
+| 2026-06-07 | `Feature` | 保存时按勾选服务项 `userAttribute` 动态校验干系人（每服务至少一个绑定角色已选人）；销售、操作始终静态必填。 | 与新建页共用 `validateRequiredOrderUserAssignee` + `validateServiceBoundOrderUsers`。 |
 | 2026-06-07 | `Refactor` | 服务流水线改为 `ServiceTypeNode` 枚举驱动；执行方五字段与节点完全解耦、始终全量显示；删除代收支与 `organizationUnits` 提交；勾选回填改读 `seaExportServices`。 | 移除 field↔value 双向桥接层；`serviceTypes` 提交改由 `serviceTypeNodes.filter(checked)` 生成；`SeaExportDto` 对齐 OpenAPI 新增 `seaExportServices`。 |
 | 2026-06-07 | `Refactor` | 编辑态 `DetailAsync` 返回的 `seaExportServices` 统一按 `serviceType` 与枚举中心 `ServiceType.value` 对齐，服务项标题使用 `ServiceType.displayName`。 | 通过运行时枚举映射替代本地常量值，服务项任务状态回填、勾选态识别与展示文案共用同一映射链路。 |
 | 2026-05-30 | `Fix` | 编辑页保存、完成服务成功后均调用 `loadEditData` 重新拉取详情，避免本地状态与后端不一致。 | `handleSubmit`（编辑态）、`handleCompleteService` 成功后复用既有 `loadEditData` 回填链路。 |

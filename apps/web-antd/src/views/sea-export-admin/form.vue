@@ -56,6 +56,7 @@ import {
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { getUser, UserAttribute } from '#/api/system/user-admin';
+import { parseSeaExportUserAttribute } from '#/views/system/user/data';
 import { $t } from '#/locales';
 import { buildAttachmentUrl } from '#/utils';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
@@ -125,6 +126,7 @@ const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
   { userAttribute: UserAttribute.Documentation, sortId: 2 },
   { userAttribute: UserAttribute.OverseasCustomerService, sortId: 1 },
 ];
+/** 不可删除的必填干系人角色（销售、操作始终必填；其余由服务项目动态校验） */
 const requiredOrderUserRoles: number[] = [
   UserAttribute.Sales,
   UserAttribute.Operation,
@@ -1461,13 +1463,71 @@ const validateSalesRoleCount = () => {
   }
   return true;
 };
-const validateOrderUserRequiredAssignee = () => {
+const validateRequiredOrderUserAssignee = () => {
   for (const role of requiredOrderUserRoles) {
     const row = orderUserRows.value.find((item) => item.userAttribute === role);
-    if (!row?.userId) {
+    if (!row) {
+      message.warning(`请添加${getOrderUserRoleLabel(role)}角色`);
+      return false;
+    }
+    if (!hasValidUserId(row.userId)) {
       message.warning(`${getOrderUserRoleLabel(role)}必须选择人员`);
       return false;
     }
+  }
+  return true;
+};
+const formatBoundRoleOptionsLabel = (roles: number[]) =>
+  roles.map((role) => getOrderUserRoleLabel(role)).join('或');
+const validateServiceBoundOrderUsers = () => {
+  const checkedNodes = serviceTypeNodes.value.filter((node) => node.checked);
+  if (!checkedNodes.length) {
+    return true;
+  }
+  if (serviceTypeSyncLoading.value || !polServiceConfigLoaded.value) {
+    message.warning('服务项目配置加载中，请稍后保存');
+    return false;
+  }
+  const polConfigMap = new Map<number, SeaExportAdminApi.ServiceTypeByPolDto>();
+  latestAvailableServiceTypes.value.forEach((item) => {
+    const serviceType = Number(item.serviceType);
+    if (!Number.isFinite(serviceType)) return;
+    polConfigMap.set(serviceType, item);
+  });
+  for (const node of checkedNodes) {
+    const boundRoles = parseSeaExportUserAttribute(
+      polConfigMap.get(node.serviceType)?.userAttribute,
+    );
+    if (!boundRoles.length) continue;
+    const isServiceSatisfied = boundRoles.some((role) => {
+      const row = orderUserRows.value.find(
+        (item) => item.userAttribute === role,
+      );
+      return hasValidUserId(row?.userId);
+    });
+    if (isServiceSatisfied) continue;
+    const rolesWithRowNoUser = boundRoles.filter((role) => {
+      const row = orderUserRows.value.find(
+        (item) => item.userAttribute === role,
+      );
+      return row != null && !hasValidUserId(row.userId);
+    });
+    if (rolesWithRowNoUser.length > 0) {
+      message.warning(
+        `${getOrderUserRoleLabel(rolesWithRowNoUser[0])}必须选择人员（${node.label}）`,
+      );
+      return false;
+    }
+    if (boundRoles.length === 1) {
+      message.warning(
+        `请添加${getOrderUserRoleLabel(boundRoles[0])}角色（${node.label}）`,
+      );
+      return false;
+    }
+    message.warning(
+      `${node.label}服务缺少责任人员，请添加${formatBoundRoleOptionsLabel(boundRoles)}角色`,
+    );
+    return false;
   }
   return true;
 };
@@ -2483,7 +2543,10 @@ const handleSubmit = async () => {
   if (!validateSalesRoleCount()) {
     return;
   }
-  if (!validateOrderUserRequiredAssignee()) {
+  if (!validateRequiredOrderUserAssignee()) {
+    return;
+  }
+  if (!validateServiceBoundOrderUsers()) {
     return;
   }
 
