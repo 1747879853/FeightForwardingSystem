@@ -28,7 +28,7 @@ last_updated: 2026-06-07
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
 - **干系人角色约束：** 销售、操作不可删除且必须已选人（销售必须且只能有一人）；其他角色按需添加。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
-- **船公司选中回显：** 详情接口返回 `carrierLogo` 后，编辑页在 `carrierId` 的 `selectedItems` 中同步拼接 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + 名称”。
+- **船公司选中回显：** 详情接口返回 `carrierLogo` 与 `carrierCnShortName` 后，编辑页在 `carrierId` 的 `selectedItems` 中拼接 `cnShortName`、`code`（若有）与 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + CODE(简称)”。
 - **锁定状态展示：** 左侧委托信息显示委托编号、会计期间、应结日期、所属公司，并以标签展示“业务已/未锁定”和“费用已/未锁定”。保存时会把只读锁定状态带回 `transportOrder`。
 - **费用数量提示：** 工作台进入后调用 `getOrderFeePagedList({ TransportOrderId })`，统计应收 `paySide === 0` 与应付 `paySide === 1` 数量，将费用标签显示为“应收应付 x - y”，并每 60 秒刷新一次。
 - **订单费用处理：** 费用页基于运输单 ID 加载应收应付费用，字段覆盖费用代码、结算对象、币种、汇率、单价、金额、税率、开票/结算金额、可开票、机密、费用状态等；费用状态包括录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。
@@ -65,7 +65,7 @@ last_updated: 2026-06-07
 | **费用锁定** | 费用是否允许继续变动。 | `transportOrder.feeLocked`、更改单 `feeLocked` | **触发/依赖：** 影响订单费用与更改单业务判断；费用锁定/解锁入口在费用管理模块。 | 当前页展示并随 DTO 带回，不直接切换。 |
 | **费用标签数量** | 应收与应付费用数量摘要。 | `getOrderFeePagedList` / `paySide` | **触发/依赖：** 每 60 秒按运输单 ID 统计一次，应收为 `paySide=0`，应付为 `paySide=1`。 | 仅作为提示，不代表金额汇总。 |
 | **船期时间（ETD/ATD/ETA）** | 预计开船、实际开船、预计到港时间。 | `transportOrder.etd/atd/eta` | **触发/依赖：** 编辑页详情回填到基础信息表单，费用页与更改单顶部摘要按同一字段显示。 | 允许为空，提交时统一转 ISO 字符串。 |
-| **carrierLogo / carrierId** | 船公司主数据与 Logo 回显。 | `SeaExportAdmin.DetailAsync` 返回 `carrierLogo`，`CarrierSelect` 读取 `selectedItems.logo.url` | **触发/依赖：** 编辑页回填 `carrierId` 时附带 `carrierLogo`，下拉候选项与选中态统一显示图文。 | Logo 缺失时回退为纯文本显示，不阻断保存。 |
+| **carrierLogo / carrierId / carrierCnShortName** | 船公司主数据、简称与 Logo 回显。 | `SeaExportAdmin` 返回 `carrierCnShortName`、`carrierLogo`；`CarrierSelect` 默认 `labelKey=cnShortName` | **触发/依赖：** 编辑页回填 `selectedItems` 时使用 `cnShortName`（回退 `carrierName`）并附带 `logo`、`code`；列表与工作台优先展示简称。 | Logo 或简称缺失时回退全称/纯文本，不阻断保存。 |
 | **订单费用** | 应收应付明细。 | `OrderFeeAdminApi.OrderFeeDto` / `/services/app/OrderFeeAdmin` | **触发/依赖：** 费用状态进入审核、开票、付款、对账、结算链路。 | 费目、结算对象、币种、金额、税率等以后端校验为准。 |
 | **费用状态** | 费用生命周期状态。 | `getFeeStatusOptions` | **触发/依赖：** 录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。 | 不同状态下可编辑范围不同，需以后端和费用表格逻辑为准。 |
 | **更改单** | 业务变更记录及其关联费用。 | `ChangeOrderAdminApi.ChangeOrderDto` / `/services/app/ChangeOrderAdmin` | **触发/依赖：** 更改单携带 `accountDate`、`reason`、`orderFees` 和锁费信息。 | 必须保持同一 `transportOrderId`。 |
@@ -97,6 +97,7 @@ last_updated: 2026-06-07
 | 2026-06-07 | `Fix` | 配置服务弹窗取消勾选已完成节点时增加二次确认，提示对应已完成任务将被清除。 | `handleServiceTypeModalConfirm` 对比草稿与 `taskStatus === 已处理` 节点；确认前返回 Promise 阻止弹窗提前关闭。 |
 | 2026-06-07 | `Feature` | 服务流水线按进度三态展示，节点勾选改弹窗维护；已完成节点取消勾选对接 `CancelCompleteAsync`。 | `loadEditData` 后须再应用弹窗草稿，避免勾选态被详情覆盖。 |
 | 2026-06-07 | `Style` | 服务项目 UI 改为 Chevron 箭头流水线（三态配色 + 悬浮 Tooltip），新建/编辑共用 `form.vue`。 | `clip-path` 箭头衔接；`Tooltip` 承载完成服务按钮，避免 `overflow-hidden` 裁切。 |
+| 2026-06-07 | `Feature` | 船公司回显与列表对接 `carrierCnShortName`：`CarrierSelect` selectedItems 改用 `cnShortName`，列表优先展示简称。 | 与 `carrier-select.vue` 默认 labelKey 对齐；简称缺失时回退 `carrierName`。 |
 | 2026-06-07 | `Feature` | 保存时按勾选服务项 `userAttribute` 动态校验干系人（每服务至少一个绑定角色已选人）；销售、操作始终静态必填。 | 与新建页共用 `validateRequiredOrderUserAssignee` + `validateServiceBoundOrderUsers`。 |
 | 2026-06-07 | `Refactor` | 服务流水线改为 `ServiceTypeNode` 枚举驱动；执行方五字段与节点完全解耦、始终全量显示；删除代收支与 `organizationUnits` 提交；勾选回填改读 `seaExportServices`。 | 移除 field↔value 双向桥接层；`serviceTypes` 提交改由 `serviceTypeNodes.filter(checked)` 生成；`SeaExportDto` 对齐 OpenAPI 新增 `seaExportServices`。 |
 | 2026-06-07 | `Refactor` | 编辑态 `DetailAsync` 返回的 `seaExportServices` 统一按 `serviceType` 与枚举中心 `ServiceType.value` 对齐，服务项标题使用 `ServiceType.displayName`。 | 通过运行时枚举映射替代本地常量值，服务项任务状态回填、勾选态识别与展示文案共用同一映射链路。 |

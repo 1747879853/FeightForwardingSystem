@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-07] [船公司中文简称字段对接与 CarrierSelect 回显同步](./changelogs/change-log-2026-06-07-carrier-cn-short-name-integration.md)
 - [2026-06-07] [工作台业务列表双击跳转对应业务列表](./changelogs/change-log-2026-06-07-workbench-business-list-dblclick-navigate.md)
 - [2026-06-07] [工作台海运出口业务列表按 seServiceShows 动态列](./changelogs/change-log-2026-06-07-workbench-se-service-shows-dynamic-columns.md)
 - [2026-06-07] [海运出口保存时按服务项目校验干系人角色](./changelogs/change-log-2026-06-07-sea-export-service-bound-order-user-validation.md)

@@ -413,7 +413,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       showOverflow: true,
     },
     {
-      field: 'carrierName',
+      field: 'carrierCnShortName',
       title: $t('seaExport.export.carrierId'),
       minWidth: 100,
       align: 'left',

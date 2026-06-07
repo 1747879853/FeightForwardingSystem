@@ -243,6 +243,8 @@ export namespace SeaImportAdminApi {
     carrierId?: number;
     carrier?: CarrierAdminApi.CarrierDto;
     carrierName?: string;
+    /** 船公司中文简称 */
+    carrierCnShortName?: string;
     noBillEnum?: number;
     copyNoBillEnum?: number;
     closingTime?: string;

@@ -17,7 +17,7 @@ import { buildAttachmentUrl } from '#/utils';
 import { usePagedSelect } from './use-paged-select';
 
 interface Props {
-  /** label 字段名，默认 'cnName'，可用值：'cnName' | 'enName' | 'code' */
+  /** label 字段名，默认 'cnShortName'，可用值：'cnShortName' | 'enName' | 'code' */
   labelKey?: string;
   /** 每页数量，默认 20 */
   pageSize?: number;
@@ -30,7 +30,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  labelKey: 'cnName',
+  labelKey: 'cnShortName',
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],
@@ -52,12 +52,12 @@ const mapCarrierToOption = (carrier: CarrierAdminApi.CarrierDto) => {
   const carrierAny = carrier as any;
   let label = carrierAny?.[props.labelKey];
   if (!label && props.labelKey === 'enName') {
-    label = carrier.cnName;
+    label = carrier.cnShortName;
   }
   if (!label && props.labelKey === 'code') {
     label = carrier.code;
   }
-  label = label || carrier.cnName || carrier.enName || carrier.code || '';
+  label = label || carrier.cnShortName || carrier.enName || carrier.code || '';
   //xfk edit
   if (props.labelKey !== 'code') {
     label = `${carrier.code || ''}(${label})`;

@@ -56,7 +56,8 @@ const PROP_VALUE_RESOLVERS: Record<number, PropValueResolver> = {
   15: (seaExport) => formatText(seaExport?.transportOrder?.bookingNum),
   16: (seaExport) => formatDate(seaExport?.transportOrder?.etd),
   17: (seaExport) => formatId(seaExport?.transportOrder?.clientId),
-  1001: (seaExport) => formatText(seaExport?.carrierName),
+  1001: (seaExport) =>
+    formatText(seaExport?.carrierCnShortName || seaExport?.carrierName),
   1002: (seaExport) => formatText(seaExport?.polName),
   1003: (seaExport) => formatText(seaExport?.podName),
   1010: (seaExport) => formatText(seaExport?.bookingAgentName),
