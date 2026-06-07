@@ -17,8 +17,8 @@ import { usePagedSelect } from './use-paged-select';
 
 interface Props {
   /**
-   * 港口名称的备用字段（仅当下拉中 ediCode 与 portName/cnName 都缺失时，用于补全 `ediCode/名称` 的右侧）
-   * 默认 'cnName'，可用值：'cnName' | 'portName' 等
+   * selectedItems 回显时注入的名称字段（与 `toSelectedItems` 的 labelKey 一致）
+   * 默认 'portName'，可用值：'portName' | 'cnName' 等
    */
   labelKey?: string;
   /** 每页数量，默认 20 */
@@ -32,7 +32,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  labelKey: 'cnName',
+  labelKey: 'portName',
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],
@@ -59,13 +59,16 @@ const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
   const countryEnName = (port?.country?.countryEnName ?? '').toString().trim();
   const cnName = (port.cnName ?? '').toString().trim();
   let nameForPath = (port.portName ?? '').toString().trim();
+  if (!nameForPath) {
+    nameForPath = (portAny?.[props.labelKey] ?? '').toString().trim();
+  }
 
   /** 下拉里展示 ediCode/portName；选中后仅展示 ediCode，故 option.label 用 ediCode */
   const dropdownLabel = `${ediCode}/${nameForPath} , ${countryEnName} / ${cnName}`;
 
   const label = `${nameForPath} , ${countryEnName}`;
 
-  const rawPortName = (port.portName ?? '').toString().trim();
+  const rawPortName = nameForPath;
   const rawValue = portAny?.[props.valueKey];
   return {
     disabled: port.status === 1,
@@ -136,7 +139,10 @@ const emitPortNameForValue = async (value: any) => {
 
   for (const item of selectedItemsRef.value) {
     if (String((item as any)[props.valueKey]) === idStr) {
-      const pn = (item as PortCodeAdminApi.PortCodeDto).portName;
+      let pn = (item as PortCodeAdminApi.PortCodeDto).portName;
+      if (pn == null || String(pn).trim() === '') {
+        pn = (item as any)[props.labelKey];
+      }
       if (pn != null && String(pn).trim() !== '') {
         emit('portName', String(pn).trim());
         return;
