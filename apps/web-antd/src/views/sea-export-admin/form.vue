@@ -549,15 +549,13 @@ const handleServiceTypeModalDraftChange = (
 const handleServiceTypeModalCancel = () => {
   serviceTypeModalOpen.value = false;
 };
-const getRemovedCompletedServiceLabels = () =>
-  serviceTypeNodes.value
-    .filter(
-      (node) =>
-        node.checked &&
-        !serviceTypeModalDraft.value.get(node.serviceType) &&
-        node.taskStatus === SERVICE_TASK_STATUS_PROCESSED,
-    )
-    .map((node) => node.label);
+const serviceTypeModalDraftChanged = computed(() =>
+  serviceTypeNodes.value.some(
+    (node) =>
+      (serviceTypeModalDraft.value.get(node.serviceType) ?? false) !==
+      node.checked,
+  ),
+);
 const applyServiceTypeModalDraft = () => {
   const draftToApply = new Map(serviceTypeModalDraft.value);
   serviceTypeNodes.value.forEach((node) => {
@@ -566,21 +564,33 @@ const applyServiceTypeModalDraft = () => {
   updateServiceTypeRequiredProps();
   serviceTypeModalOpen.value = false;
 };
+const SERVICE_TASK_REGENERATE_CONFIRM_SUFFIX =
+  '所有服务项目都会重新生成任务。是否继续？';
+const SERVICE_TYPE_CONFIG_CONFIRM_CONTENT = `编辑或取消任意服务项目后，${SERVICE_TASK_REGENERATE_CONFIRM_SUFFIX}`;
+const applyServiceTypeModalDraftAndSave = async () => {
+  applyServiceTypeModalDraft();
+  if (isEdit.value) {
+    await handleSubmit();
+  }
+};
 const handleServiceTypeModalConfirm = () => {
-  const removedCompletedLabels = getRemovedCompletedServiceLabels();
-  if (removedCompletedLabels.length === 0) {
+  if (!serviceTypeModalDraftChanged.value) {
+    serviceTypeModalOpen.value = false;
+    return;
+  }
+  if (!isEdit.value) {
     applyServiceTypeModalDraft();
     return;
   }
   return new Promise<void>((resolve, reject) => {
     Modal.confirm({
-      title: '确认取消服务',
-      content: `取消勾选「${removedCompletedLabels.join('、')}」后，已完成的对应任务将被清除。是否继续？`,
+      title: '确认编辑服务项目',
+      content: SERVICE_TYPE_CONFIG_CONFIRM_CONTENT,
       okText: '继续',
       cancelText: '取消',
       okType: 'danger',
-      onOk: () => {
-        applyServiceTypeModalDraft();
+      onOk: async () => {
+        await applyServiceTypeModalDraftAndSave();
         resolve();
       },
       onCancel: () => {
@@ -750,6 +760,18 @@ const handleCompleteServiceType = async (node: ServiceTypeNode) => {
     completingServiceType.value = undefined;
   }
 };
+const confirmCancelCompleteServiceType = (node: ServiceTypeNode) =>
+  new Promise<void>((resolve, reject) => {
+    Modal.confirm({
+      title: '确认取消完成',
+      content: `取消「${node.label}」服务完成后，${SERVICE_TASK_REGENERATE_CONFIRM_SUFFIX}`,
+      okText: '继续',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk: () => resolve(),
+      onCancel: () => reject(new Error('cancel')),
+    });
+  });
 const handleCancelCompleteServiceType = async (node: ServiceTypeNode) => {
   if (!isEdit.value) return;
   if (cancellingServiceType.value != null) return;
@@ -766,6 +788,11 @@ const handleCancelCompleteServiceType = async (node: ServiceTypeNode) => {
     message.warning(
       `仅完成人（${node.completionUserNickName || '-'}）可取消完成`,
     );
+    return;
+  }
+  try {
+    await confirmCancelCompleteServiceType(node);
+  } catch {
     return;
   }
   cancellingServiceType.value = node.serviceType;
@@ -3515,9 +3542,6 @@ defineExpose({
       @ok="handleServiceTypeModalConfirm"
       @cancel="handleServiceTypeModalCancel"
     >
-      <p class="service-type-modal__tip service-type-modal__tip--emphasis">
-        修改后请保存表单生效。
-      </p>
       <div class="service-type-modal__list">
         <div
           v-for="node in serviceTypeNodes"
@@ -4155,18 +4179,6 @@ defineExpose({
 .chevron-step-tooltip__action-btn {
   height: 28px;
   font-size: 12px;
-}
-
-.service-type-modal__tip {
-  margin: 0 0 8px;
-  font-size: 13px;
-  line-height: 20px;
-  color: rgb(0 0 0 / 65%);
-}
-
-.service-type-modal__tip--emphasis {
-  margin-bottom: 12px;
-  color: #1677ff;
 }
 
 .service-type-modal__list {
