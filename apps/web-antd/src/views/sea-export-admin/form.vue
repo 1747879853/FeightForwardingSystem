@@ -2692,9 +2692,6 @@ defineExpose({
                             v-if="showServiceItemContent"
                             class="service-pipeline__header-actions"
                           >
-                            <span class="service-pipeline__hint">
-                              按顺序展示：已完成 / 处理中 / 还未到
-                            </span>
                             <Button
                               type="link"
                               size="small"
