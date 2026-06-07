@@ -29,7 +29,6 @@ const emit = defineEmits<{
   complete: [string[]];
   refresh: [];
   'open-sea-export': [string];
-  'open-business-list': [];
 }>();
 
 function resolveInitialStageKey(steps: StageStep[]) {
@@ -171,9 +170,10 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
   }, 220);
 }
 
-function handleRowDblclick() {
+function handleRowDblclick(row: BusinessRow) {
   clearBookingLinkClickTimer();
-  emit('open-business-list');
+  if (!row.seaExportId) return;
+  emit('open-sea-export', row.seaExportId);
 }
 </script>
 

@@ -24,7 +24,7 @@ last_updated: 2026-06-07
 - **工作台标签导航：** `editor.vue` 维护顶部标签，包含基础信息、更改单、服务详情、单证信息、应收应付、派车、分单、问题记录、修改历史。当前实现中基础信息、费用、更改单、派车、分单已经挂载组件；服务详情、单证信息、问题记录、修改历史目前主要作为标签预留。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
 - **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 决定节点可见范围，`polId+clientId` 决定默认勾选。编辑态在详情回填后以 `detail.seaExportServices[].serviceType` 作为勾选覆盖源，确保本单历史勾选不被联动默认值覆盖。
-- **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，按 `sortId` 顺序以 Chevron 步骤条呈现三态：已完成（绿）/ 处理中（蓝）/ 还未到（灰）。节点增删在「配置服务」弹窗维护（展示 POL 全部节点 Checkbox）。取消勾选**已完成**节点时，弹窗「确定」会二次确认，提示对应已完成任务将被清除；保存后 `serviceTypes` 不再包含该节点。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
+- **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，按 `sortId` 顺序以 Chevron 步骤条呈现三态：已完成（绿）/ 处理中（蓝）/ 还未到（灰）。节点增删在「配置服务」弹窗维护（展示 POL 全部节点 Checkbox）；**任意勾选变化**时编辑态点「确定」弹出二次确认后自动保存（弹窗内无常驻提示）。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
 - **干系人角色约束：** 销售、操作不可删除且必须已选人（销售必须且只能有一人）；其他角色按需添加。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
@@ -87,14 +87,16 @@ last_updated: 2026-06-07
 >
 > **[卡点 5：费用与更改单共享展示配置]** 两个页面共用 `order_fee_display_config` 作为显示字段配置缓存。调整字段 key 或默认显示项时，会同时影响费用和更改单顶部摘要。
 >
-> **[卡点 6：取消已完成服务会清除任务]** 配置弹窗中取消勾选 `taskStatus === 已处理` 的节点时，须通过二次确认；保存后该服务及已完成任务将从本单移除。待处理任务节点取消勾选暂无前端拦截，以后端保存结果为准。
+> **[卡点 6：编辑服务项目会重新生成全部任务]** 配置弹窗任意勾选变化或取消完成均二次确认；操作后所有服务项目都会重新生成任务。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
 | 2026-06-07 | `Fix` | 「完成」校验 `seServiceTaskUsers`，「取消完成」校验 `completionUserId`，无权限时隐藏按钮并提示。 | `showServiceCompletePermissionHint` 与 `showServiceCancelPermissionHint` 分轨。 |
-| 2026-06-07 | `Fix` | 配置服务弹窗取消勾选已完成节点时增加二次确认，提示对应已完成任务将被清除。 | `handleServiceTypeModalConfirm` 对比草稿与 `taskStatus === 已处理` 节点；确认前返回 Promise 阻止弹窗提前关闭。 |
+| 2026-06-07 | `Fix` | 服务流水线「取消完成」增加二次确认，提示所有服务项目将重新生成任务。 | `confirmCancelCompleteServiceType` 复用 `SERVICE_TASK_REGENERATE_CONFIRM_SUFFIX` 文案。 |
+| 2026-06-07 | `Fix` | 配置服务弹窗任意勾选变化即展示提示并二次确认，不再仅限取消已完成节点。 | `serviceTypeModalDraftChanged` 对比草稿与当前勾选；无变化直接关弹窗。 |
+| 2026-06-07 | `Feature` | 编辑态配置服务弹窗点「确定」后自动保存；二次确认提示「编辑或取消任意服务项目后所有服务项目都会重新生成任务」。 | `applyServiceTypeModalDraftAndSave` 应用草稿后复用 `handleSubmit`；新建页仍仅应用草稿。 |
 | 2026-06-07 | `Feature` | 服务流水线按进度三态展示，节点勾选改弹窗维护；已完成节点取消勾选对接 `CancelCompleteAsync`。 | `loadEditData` 后须再应用弹窗草稿，避免勾选态被详情覆盖。 |
 | 2026-06-07 | `Style` | 服务项目 UI 改为 Chevron 箭头流水线（三态配色 + 悬浮 Tooltip），新建/编辑共用 `form.vue`。 | `clip-path` 箭头衔接；`Tooltip` 承载完成服务按钮，避免 `overflow-hidden` 裁切。 |
 | 2026-06-07 | `Feature` | 船公司回显与列表对接 `carrierCnShortName`：`CarrierSelect` selectedItems 改用 `cnShortName`，列表优先展示简称。 | 与 `carrier-select.vue` 默认 labelKey 对齐；简称缺失时回退 `carrierName`。 |
