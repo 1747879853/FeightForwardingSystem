@@ -26,6 +26,8 @@ export namespace SeaExportAdminApi {
   export interface OrderCtnAddDto {
     /** 箱型id */
     ctnCodeId?: number;
+
+    ctnCodeName?: string;
     /** 箱号 */
     ctnNo?: string;
     /** 封号 */

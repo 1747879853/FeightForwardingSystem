@@ -321,7 +321,7 @@ setupVbenVxeTable({
                     '件数',
                     'PKGS',
                     'TEU',
-                  ].includes(defaultUnitName.toLowerCase())
+                  ].includes(defaultUnitName)
                 ) {
                   await fillOrderQuantity(row, defaultUnitName);
                 }
@@ -371,7 +371,7 @@ setupVbenVxeTable({
             }
 
             // 填充单位为"箱"（中文字符串）
-            row['unit'] = '箱';
+            row['unit'] = ctns[0].ctnCodeName;
 
             // 计算箱型数量（有多少条箱型数据）
             row['quantity'] = ctns.length;

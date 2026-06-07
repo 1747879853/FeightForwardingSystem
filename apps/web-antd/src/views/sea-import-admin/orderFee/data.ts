@@ -33,21 +33,21 @@ export const taskTypeMap = {
 // --------------------------------------------------------
 // 单位
 // --------------------------------------------------------
-export const getUnitEmumOptions = () => [
-  { value: 0, label: '箱' },
-  { value: 1, label: '件' },
-  { value: 2, label: '台' },
-  { value: 3, label: '托盘' },
-  { value: 4, label: '集装箱' },
-  { value: 5, label: '吨' },
-  { value: 6, label: '立方米' },
-  { value: 7, label: '千克' },
-  { value: 8, label: '升' },
-  { value: 9, label: '捆' },
-  { value: 10, label: '袋' },
-  { value: 11, label: '卷' },
-  { value: 12, label: '套' },
-];
+// export const getUnitEmumOptions = () => [
+//   { value: 0, label: '箱' },
+//   { value: 1, label: '件' },
+//   { value: 2, label: '台' },
+//   { value: 3, label: '托盘' },
+//   { value: 4, label: '集装箱' },
+//   { value: 5, label: '吨' },
+//   { value: 6, label: '立方米' },
+//   { value: 7, label: '千克' },
+//   { value: 8, label: '升' },
+//   { value: 9, label: '捆' },
+//   { value: 10, label: '袋' },
+//   { value: 11, label: '卷' },
+//   { value: 12, label: '套' },
+// ];
 
 // --------------------------------------------------------
 // 开票状态
@@ -382,7 +382,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('seaImport.import.orderFee.unitEmum'),
 
-      field: 'unitEmum',
+      field: 'unit',
       minWidth: 60,
       cellRender: {
         name: 'CellTag',

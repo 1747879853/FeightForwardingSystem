@@ -159,6 +159,8 @@ export namespace PaymentSettlementAdminApi {
     unitPrice?: number;
     /** 金额 */
     amount?: number;
+    /** 单位 */
+    unit?: string;
     /** 数量 */
     quantity?: number;
     /** 已结算金额 */

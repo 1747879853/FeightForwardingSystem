@@ -55,21 +55,21 @@ export const taskTypeMap = {
 // --------------------------------------------------------
 // 单位
 // --------------------------------------------------------
-export const getUnitEmumOptions = () => [
-  { value: 0, label: '箱' },
-  { value: 1, label: '件' },
-  { value: 2, label: '台' },
-  { value: 3, label: '托盘' },
-  { value: 4, label: '集装箱' },
-  { value: 5, label: '吨' },
-  { value: 6, label: '立方米' },
-  { value: 7, label: '千克' },
-  { value: 8, label: '升' },
-  { value: 9, label: '捆' },
-  { value: 10, label: '袋' },
-  { value: 11, label: '卷' },
-  { value: 12, label: '套' },
-];
+// export const getUnitEmumOptions = () => [
+//   { value: 0, label: '箱' },
+//   { value: 1, label: '件' },
+//   { value: 2, label: '台' },
+//   { value: 3, label: '托盘' },
+//   { value: 4, label: '集装箱' },
+//   { value: 5, label: '吨' },
+//   { value: 6, label: '立方米' },
+//   { value: 7, label: '千克' },
+//   { value: 8, label: '升' },
+//   { value: 9, label: '捆' },
+//   { value: 10, label: '袋' },
+//   { value: 11, label: '卷' },
+//   { value: 12, label: '套' },
+// ];
 
 // --------------------------------------------------------
 // 开票状态
@@ -500,12 +500,12 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('seaExport.export.orderFee.unitEmum'),
 
-      field: 'unitEmum',
+      field: 'unit',
       minWidth: 60,
-      cellRender: {
-        name: 'CellTag',
-        options: getUnitEmumOptions(),
-      },
+      // cellRender: {
+      //   name: 'CellTag',
+      //   options: getUnitEmumOptions(),
+      // },
     },
     {
       title: $t('seaExport.export.orderFee.quantity'),
@@ -782,7 +782,7 @@ export function useOrderFeeColumns(
     },
     {
       title: $t('seaExport.export.orderFee.unitEmum'),
-      field: 'unitEmum',
+      field: 'unit',
       minWidth: 100,
       cellRender: {
         name: 'UnitSelect',
@@ -819,24 +819,24 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
       field: 'noTaxUnitPrice',
       minWidth: 100,
-      cellRender: {
-        name: 'CellInput',
-        props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
-        },
-      },
+      // cellRender: {
+      //   name: 'CellInput',
+      //   props: {
+      //     disabled: (row: any) => !canEditFee(row.feeStatus),
+      //   },
+      // },
     },
     {
       title: $t('seaExport.export.orderFee.noTaxAmount'),
 
       field: 'noTaxAmount',
       minWidth: 120,
-      cellRender: {
-        name: 'CellInput',
-        props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
-        },
-      },
+      // cellRender: {
+      //   name: 'CellInput',
+      //   props: {
+      //     disabled: (row: any) => !canEditFee(row.feeStatus),
+      //   },
+      // },
     },
     {
       title: $t('seaExport.export.orderFee.rqstPaymentAmount'),

@@ -55,7 +55,7 @@ export namespace OrderFeeAdminApi {
     amount: number;
 
     /** 单位 */
-    unitEmum: number;
+    unit: string;
 
     /** 数量 */
     quantity: number;

@@ -152,7 +152,7 @@ export namespace PaymentApplicationAdminApi {
     /** 金额 */
     amount: number;
     /** 单位 */
-    unitEmum?: number;
+    unit?: string;
     /** 数量 */
     quantity: number;
     /** 是否含税 */
