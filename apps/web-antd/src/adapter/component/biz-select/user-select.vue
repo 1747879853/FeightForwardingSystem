@@ -55,7 +55,8 @@ const mapUserToOption = (user: SystemUserAdminApi.UserListDto) => {
   label = label || user.userName;
 
   return {
-    disabled: !user.isActive,
+    // 回显用的 selectedItems 可能只有 id/nickName，缺 isActive 时不应禁用
+    disabled: user.isActive === false,
     label,
     value: (user as any)[props.valueKey],
   };
