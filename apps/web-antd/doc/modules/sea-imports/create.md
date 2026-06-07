@@ -2,7 +2,7 @@
 title: 海运进口新建
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-05-17
+last_updated: 2026-06-07
 ---
 
 # 1. 业务背景说明 (Background)
@@ -48,6 +48,7 @@ last_updated: 2026-05-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-07 | `Refactor` | 服务项目勾选与提交不再依赖写死 `0~4` 数值，统一从 `getEnumItems('ServiceType')` 解析后参与 `serviceTypes` 组装。 | 海运进口表单与海运出口共用 ServiceType 枚举加载能力，确保两端服务项值口径一致。 |
 | 2026-05-17 | `Fix` | 修复干系人补录场景：新增角色后角色下拉保持可用，仅禁用重复角色选项，支持在缺失角色中手动选择。 | 无 |
 | 2026-05-17 | `Fix` | 干系人固定角色（销售/商务/操作/客服/单证）改为不可删除、不可重复添加；提交前新增“销售与操作必须选择人员”校验。 | 无 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/sea-imports/create` 对应组件 `src/views/sea-import-admin/form.vue`，权限口径为 未在路由中声明独立权限。 |

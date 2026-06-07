@@ -30,7 +30,6 @@ import {
 } from '#/api/sea-export/se-service-task-admin';
 import {
   buildServiceTypeLabelMap,
-  DEFAULT_SERVICE_TYPE_OPTIONS,
   loadSeServiceTypeOptions,
 } from '#/views/sea-export-admin/service-type';
 
@@ -95,9 +94,7 @@ const appliedPaymentReviewFilterModel = reactive({
 });
 const selectedRowKeys = ref<string[]>([]);
 const rawGroups = ref<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>([]);
-const serviceTypeTextMap = ref<Map<number, string>>(
-  buildServiceTypeLabelMap(DEFAULT_SERVICE_TYPE_OPTIONS),
-);
+const serviceTypeTextMap = ref<Map<number, string>>(new Map());
 
 const transferVisible = ref(false);
 const transferSubmitting = ref(false);

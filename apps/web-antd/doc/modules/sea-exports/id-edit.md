@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-30
+last_updated: 2026-06-07
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,8 +23,9 @@ last_updated: 2026-05-30
 
 - **工作台标签导航：** `editor.vue` 维护顶部标签，包含基础信息、更改单、服务详情、单证信息、应收应付、派车、分单、问题记录、修改历史。当前实现中基础信息、费用、更改单、派车、分单已经挂载组件；服务详情、单证信息、问题记录、修改历史目前主要作为标签预留。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
-- **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 用于确定服务卡片可见范围，`polId+clientId` 用于默认勾选。编辑态在详情回填后会把详情中的服务勾选结果作为覆盖源，确保“本单是否勾选”不被默认勾选覆盖。
-- **服务项目流水线（编辑态）：** 流水线节点勾选表示**服务任务已完成**（非启用态）；「待处理」标签与「完成服务」按需渲染、宽度自适应。已生成服务任务（`seServiceTask`，任意任务状态）后不可再通过点击节点关闭该服务；保存仍按 `serviceTypes` / `*Enabled` 提交启用结果。
+- **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 决定节点可见范围，`polId+clientId` 决定默认勾选。编辑态在详情回填后以 `detail.seaExportServices[].serviceType` 作为勾选覆盖源，确保本单历史勾选不被联动默认值覆盖。
+- **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，按 `sortId` 顺序以 Chevron 步骤条呈现三态：已完成（绿）/ 处理中（蓝）/ 还未到（灰）。节点增删在「配置服务」弹窗维护（展示 POL 全部节点 Checkbox）。已完成节点取消勾选前须调用 `SeServiceTaskAdmin/CancelCompleteAsync`；待处理且已生成任务的节点不可直接取消。悬浮 Tooltip 可「完成服务」。保存提交 `serviceTypes: number[]`。
+- **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
 - **干系人角色约束：** 基础信息表单中的销售、商务、操作、客服、单证角色固定展示且不可删除、不可重复；销售与操作必须指定人员。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
 - **船公司选中回显：** 详情接口返回 `carrierLogo` 后，编辑页在 `carrierId` 的 `selectedItems` 中同步拼接 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + 名称”。
@@ -72,7 +73,7 @@ last_updated: 2026-05-30
 | **分单记录** | 分票提单及其货物/箱明细。 | `modules/separate-bill.vue` / `sea-export-separate-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；维护分单相关方、提单、签单、货物、箱明细。 | 子记录需绑定当前海出 ID。 |
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
 | **委托单位 / 起运港** | 服务项目联动查询入参。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync` | **触发/依赖：** 任一变更触发联动；`polId` 为空清空勾选。`polId` 查询用于可见范围，`polId+clientId` 查询用于默认勾选。 | 与新建页同一套 `form.vue` 逻辑。 |
-| **服务项目 / serviceTypes** | 订舱～保险及代收支勾选结果。 | 服务项卡片；`serviceTypes` 数组（0–5） | **触发/依赖：** 服务卡片显示顺序按接口 `sortId` 渲染；编辑页进入后会按当前 `polId/clientId` 同步可见范围，但勾选状态优先采用详情返回。起运港未配置的服务卡片直接隐藏并清空值。 | 代收支勿仅凭 `organizationUnits` 推断勾选。 |
+| **服务项目 / serviceTypes** | POL 配置下的服务节点勾选结果（与执行方字段解耦）。 | `serviceTypeNodes`；提交字段 `serviceTypes: number[]` | **触发/依赖：** 节点来自 `GetServiceTypesByPOLAsync`，label 来自 `ServiceType` 枚举；编辑态勾选优先 `seaExportServices[].serviceType`；`sortId` 始终取 POL 配置顺序。 | 勿再用执行方字段或 `organizationUnits` 推断节点勾选。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -86,12 +87,16 @@ last_updated: 2026-05-30
 >
 > **[卡点 5：费用与更改单共享展示配置]** 两个页面共用 `order_fee_display_config` 作为显示字段配置缓存。调整字段 key 或默认显示项时，会同时影响费用和更改单顶部摘要。
 >
-> **[卡点 6：编辑态服务流水线 ≠ 启用勾选]** 节点 ✓ 表示任务已处理；`serviceTypes` 启用与任务状态是两套状态。已有 `seServiceTask` 时不允许关闭服务，勿仅按「已处理」拦截。
+> **[卡点 6：节点勾选与任务状态分离]** 节点 ✓ 表示服务已启用（`checked`）；`taskStatus` 0/1 仅展示待处理/已处理。已有 `seServiceTask`（`taskId` 存在）时不允许关闭节点，与是否已处理无关。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-07 | `Feature` | 服务流水线按进度三态展示，节点勾选改弹窗维护；已完成节点取消勾选对接 `CancelCompleteAsync`。 | `loadEditData` 后须再应用弹窗草稿，避免勾选态被详情覆盖。 |
+| 2026-06-07 | `Style` | 服务项目 UI 改为 Chevron 箭头流水线（三态配色 + 悬浮 Tooltip），新建/编辑共用 `form.vue`。 | `clip-path` 箭头衔接；`Tooltip` 承载完成服务按钮，避免 `overflow-hidden` 裁切。 |
+| 2026-06-07 | `Refactor` | 服务流水线改为 `ServiceTypeNode` 枚举驱动；执行方五字段与节点完全解耦、始终全量显示；删除代收支与 `organizationUnits` 提交；勾选回填改读 `seaExportServices`。 | 移除 field↔value 双向桥接层；`serviceTypes` 提交改由 `serviceTypeNodes.filter(checked)` 生成；`SeaExportDto` 对齐 OpenAPI 新增 `seaExportServices`。 |
+| 2026-06-07 | `Refactor` | 编辑态 `DetailAsync` 返回的 `seaExportServices` 统一按 `serviceType` 与枚举中心 `ServiceType.value` 对齐，服务项标题使用 `ServiceType.displayName`。 | 通过运行时枚举映射替代本地常量值，服务项任务状态回填、勾选态识别与展示文案共用同一映射链路。 |
 | 2026-05-30 | `Fix` | 编辑页保存、完成服务成功后均调用 `loadEditData` 重新拉取详情，避免本地状态与后端不一致。 | `handleSubmit`（编辑态）、`handleCompleteService` 成功后复用既有 `loadEditData` 回填链路。 |
 | 2026-05-30 | `Fix` | 编辑态服务流水线：勾选表示任务已完成；状态/按钮按需渲染、宽度自适应；已有服务任务（任意状态）不可关闭服务。 | `getServiceItemCheckmarkShown`、`hasServiceItemTask`、`canToggleServiceItemNode`；保存仍用 `serviceItemEnabledValues`。 |
 | 2026-05-30 | `Fix` | 起运港已选但未配置任何服务项时，服务项目区域展示空态提示，不再渲染空白。 | 与新建页共用 `form.vue`；空态判定依赖联动查询完成后的可见服务集合。 |

@@ -7,7 +7,6 @@ export default {
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 
-import { IconifyIcon } from '@vben/icons';
 import { Spin } from 'ant-design-vue';
 
 import type { BusinessRow, StageStep } from '../../workbench-data';
@@ -57,13 +56,23 @@ const activeSubLabel = computed(() => {
     (item) => item.key === activeStageKey.value,
   );
   if (!step) return '';
-  return step.subLabel ?? `${step.label}控制节点`;
+  return step.subLabel ?? `${step.label}`;
 });
 
 function selectStage(key: string) {
   if (key === activeStageKey.value) return;
   activeStageKey.value = key;
   emit('update:activeStageKey', key);
+}
+
+type StageStepView = StageStep & { active: boolean };
+
+function getStageStepState(step: StageStepView) {
+  return step.active ? 'active' : 'upcoming';
+}
+
+function isChevronStepLast(index: number, total: number) {
+  return total > 1 && index === total - 1;
 }
 
 const showSelection = computed(() => props.enableTaskActions !== false);
@@ -141,28 +150,32 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
           <span class="table-card__sub">{{ activeSubLabel }}</span>
         </div>
         <span class="table-card__divider" aria-hidden="true" />
-        <div class="stage-steps">
-          <span
+        <div class="service-chevron-flow">
+          <button
             v-for="(step, index) in stageStepsView"
             :key="step.key"
-            class="stage-steps__item"
+            type="button"
+            class="chevron-step"
+            :class="[
+              `chevron-step--${getStageStepState(step)}`,
+              {
+                'chevron-step--first': index === 0,
+                'chevron-step--last': isChevronStepLast(
+                  index,
+                  stageStepsView.length,
+                ),
+              },
+            ]"
+            :aria-current="step.active ? 'step' : undefined"
+            @click="selectStage(step.key)"
           >
-            <button
-              type="button"
-              :class="['stage-step', { 'is-active': step.active }]"
-              :aria-current="step.active ? 'step' : undefined"
-              @click="selectStage(step.key)"
-            >
-              {{ step.label }}
-              <span class="stage-step__count">{{ step.count }}</span>
-            </button>
-            <IconifyIcon
-              v-if="index !== stageStepsView.length - 1"
-              class="stage-steps__arrow"
-              icon="formkit:right"
-              aria-hidden="true"
-            />
-          </span>
+            <div class="chevron-step__inner">
+              <span class="chevron-step__label">{{ step.label }}</span>
+              <span v-if="step.count > 0" class="chevron-step__count">
+                {{ step.count }}
+              </span>
+            </div>
+          </button>
         </div>
       </div>
       <div class="table-card__actions">
@@ -299,71 +312,127 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
 .table-card__divider {
   flex-shrink: 0;
   width: 1px;
-  height: 32px;
+  height: 28px;
   background: #f3f4f6;
 }
 
-.stage-steps {
+.service-chevron-flow {
   display: flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.stage-steps__item {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.stage-step {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  height: 30px;
-  padding: 0 12px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #555d6d;
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.stage-step:hover:not(.is-active) {
-  background: rgb(85 93 109 / 6%);
-}
-
-.stage-step.is-active {
-  color: #258cf4;
-  background: rgb(37 140 244 / 10%);
-  border: 1px solid rgb(37 140 244 / 20%);
-}
-
-.stage-step__count {
-  min-width: 20px;
-  height: 17px;
-  font-size: 10px;
-  line-height: 17px;
-  color: #555d6d;
-  text-align: center;
-  background: rgb(85 93 109 / 10%);
+  flex: 1;
+  min-width: 0;
+  overflow: auto hidden;
   border-radius: 8px;
 }
 
-.stage-step.is-active .stage-step__count {
-  color: #fff;
-  background: #258cf4;
+.chevron-step {
+  position: relative;
+  display: flex;
+  flex: 0 0 140px;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  min-width: 140px;
+  height: 36px;
+  padding: 0 8px 0 16px;
+  margin: 0 0 0 -8px;
+  font: inherit;
+  color: inherit;
+  appearance: none;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid rgb(255 255 255 / 20%);
+  clip-path: polygon(
+    0% 0%,
+    calc(100% - 12px) 0%,
+    100% 50%,
+    calc(100% - 12px) 100%,
+    0% 100%,
+    12px 50%
+  );
+  transition:
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
 }
 
-.stage-steps__arrow {
-  flex-shrink: 0;
+.chevron-step--first {
+  padding-left: 12px;
+  margin-left: 0;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  clip-path: polygon(
+    0% 0%,
+    calc(100% - 12px) 0%,
+    100% 50%,
+    calc(100% - 12px) 100%,
+    0% 100%
+  );
+}
+
+.chevron-step--last {
+  padding-right: 12px;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 12px 50%);
+}
+
+.chevron-step:hover {
+  z-index: 30;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+  filter: brightness(1.03);
+}
+
+.chevron-step--active {
+  color: #00325b;
+  background: #d1e9ff;
+}
+
+.chevron-step--upcoming {
+  color: #414752;
+  background: #f2f2f2;
+  opacity: 0.8;
+}
+
+.chevron-step__inner {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  height: 16px;
+}
+
+.chevron-step__label {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 12px;
-  color: rgb(85 93 109 / 30%);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.chevron-step__count {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  background: rgb(0 0 0 / 12%);
+  border-radius: 8px;
+}
+
+.chevron-step--active .chevron-step__count {
+  color: #00325b;
+  background: rgb(0 50 91 / 15%);
 }
 
 .table-card__actions {

@@ -61,6 +61,10 @@ import {
   usePortFormSchema,
   useShipmentFormSchema,
 } from './data';
+import {
+  loadSeServiceTypeOptions,
+  resolveServiceTypeValueByLabels,
+} from '../sea-export-admin/service-type';
 
 const route = useRoute();
 const router = useRouter();
@@ -237,20 +241,50 @@ const SERVICE_ITEM_CHECK_FIELD_NAMES: Record<ServiceItemFieldName, string> = {
   warehouseId: 'warehouseIdEnabled',
   insuranceId: 'insuranceIdEnabled',
 };
-const SERVICE_TYPE_VALUES: Record<ServiceItemFieldName, number> = {
-  bookingAgentId: 0,
-  teamId: 1,
-  custBrokerId: 2,
-  warehouseId: 3,
-  insuranceId: 4,
+const SERVICE_TYPE_LABEL_ALIASES: Record<ServiceItemFieldName, string[]> = {
+  bookingAgentId: ['订舱'],
+  teamId: ['拖车'],
+  custBrokerId: ['报关'],
+  warehouseId: ['仓库'],
+  insuranceId: ['保险'],
 };
+const serviceTypeValueByField = ref<
+  Partial<Record<ServiceItemFieldName, number>>
+>({});
 type ServiceItemCheckFieldName =
   (typeof SERVICE_ITEM_CHECK_FIELD_NAMES)[ServiceItemFieldName];
+const getServiceTypeValue = (field: ServiceItemFieldName) =>
+  serviceTypeValueByField.value[field];
+const hasServiceTypeSelected = (
+  selectedServiceTypes: Set<number>,
+  field: ServiceItemFieldName,
+) => {
+  const serviceTypeValue = getServiceTypeValue(field);
+  return serviceTypeValue != null && selectedServiceTypes.has(serviceTypeValue);
+};
+const loadServiceTypeValues = async () => {
+  const options = await loadSeServiceTypeOptions();
+  const nextServiceTypeValueByField: Partial<
+    Record<ServiceItemFieldName, number>
+  > = {};
+  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
+    const serviceTypeValue = resolveServiceTypeValueByLabels(
+      options,
+      SERVICE_TYPE_LABEL_ALIASES[field],
+    );
+    if (serviceTypeValue != null) {
+      nextServiceTypeValueByField[field] = serviceTypeValue;
+    }
+  });
+  serviceTypeValueByField.value = nextServiceTypeValueByField;
+};
 const getServiceTypesFromEnabledValues = (values: Record<string, any>) => {
   return SERVICE_ITEM_FIELD_NAMES.filter((field) => {
     const checkFieldName = getServiceItemCheckFieldName(field);
     return !!values[checkFieldName];
-  }).map((field) => SERVICE_TYPE_VALUES[field]);
+  })
+    .map((field) => getServiceTypeValue(field))
+    .filter((item): item is number => typeof item === 'number');
 };
 const extractServiceTypesFromDetail = (
   detail: SeaImportAdminApi.SeaImportDto,
@@ -1349,19 +1383,19 @@ const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
     );
     serviceItemEnabledValues.value = {
       bookingAgentIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.bookingAgentId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'bookingAgentId') ||
         hasServiceItemValue(nextServiceItemValues.bookingAgentId),
       teamIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.teamId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'teamId') ||
         hasServiceItemValue(nextServiceItemValues.teamId),
       custBrokerIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.custBrokerId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'custBrokerId') ||
         hasServiceItemValue(nextServiceItemValues.custBrokerId),
       warehouseIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.warehouseId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'warehouseId') ||
         hasServiceItemValue(nextServiceItemValues.warehouseId),
       insuranceIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.insuranceId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'insuranceId') ||
         hasServiceItemValue(nextServiceItemValues.insuranceId),
     };
   } else if (touchedServiceItems) {
@@ -1832,19 +1866,19 @@ const loadEditData = async () => {
     );
     serviceItemEnabledValues.value = {
       bookingAgentIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.bookingAgentId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'bookingAgentId') ||
         hasServiceItemValue(formValues.bookingAgentId),
       teamIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.teamId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'teamId') ||
         hasServiceItemValue(formValues.teamId),
       custBrokerIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.custBrokerId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'custBrokerId') ||
         hasServiceItemValue(formValues.custBrokerId),
       warehouseIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.warehouseId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'warehouseId') ||
         hasServiceItemValue(formValues.warehouseId),
       insuranceIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.insuranceId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'insuranceId') ||
         hasServiceItemValue(formValues.insuranceId),
     };
     const selectedOrganizationId = detail.organizationUnits?.[0]?.id;
@@ -2121,6 +2155,10 @@ const handleBack = () => {
 };
 
 onMounted(() => {
+  const initialize = async () => {
+    await loadServiceTypeValues();
+    loadEditData();
+  };
   if (!isEdit.value) {
     initializeOrderUsersPanel(defaultOrderUsers);
     refreshEntrustReadonlyInfo({});
@@ -2128,7 +2166,7 @@ onMounted(() => {
   loadCollectionPaymentDeptOptions();
   applyTransitPortTabSchema();
   applyNotifierPartyTabSchema();
-  loadEditData();
+  void initialize();
   nextTick(() => {
     updateActiveSectionByScroll();
   });

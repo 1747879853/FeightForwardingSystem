@@ -99,6 +99,10 @@ export namespace SeServiceTaskAdminApi {
   export interface CompleteInput {
     id: string;
   }
+
+  export interface CancelCompleteInput {
+    id: string;
+  }
 }
 
 const API_PREFIX = '/services/app/SeServiceTaskAdmin';
@@ -131,4 +135,10 @@ export const completeSeServiceTask = (
   data: SeServiceTaskAdminApi.CompleteInput,
 ) => {
   return requestClient.post<boolean>(`${API_PREFIX}/CompleteAsync`, data);
+};
+
+export const cancelCompleteSeServiceTask = (
+  data: SeServiceTaskAdminApi.CancelCompleteInput,
+) => {
+  return requestClient.post<boolean>(`${API_PREFIX}/CancelCompleteAsync`, data);
 };

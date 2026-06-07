@@ -25,6 +25,7 @@ import {
   Checkbox,
   Empty,
   message,
+  Modal,
   Popover,
   Select,
   Space,
@@ -47,11 +48,10 @@ import {
   getServiceTypesByPOL,
   getSeaExportDetail,
 } from '#/api/sea-export/sea-export-admin';
-import { completeSeServiceTask } from '#/api/sea-export/se-service-task-admin';
 import {
-  getOrganizationUnitTree,
-  type SystemOrganizationUnitApi,
-} from '#/api/system/organization-unit';
+  cancelCompleteSeServiceTask,
+  completeSeServiceTask,
+} from '#/api/sea-export/se-service-task-admin';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { getUser, UserAttribute } from '#/api/system/user-admin';
@@ -70,7 +70,6 @@ import {
 import {
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
-  SERVICE_TYPE_VALUE,
 } from './service-type';
 
 const route = useRoute();
@@ -212,88 +211,96 @@ const SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES = new Set([
   ...BASIC_MODULE_EXTRA_FIELD_NAMES,
 ]);
 const PORT_MOVED_TO_BASIC_FIELD_NAMES = new Set(['signingPortId']);
-const SERVICE_ITEM_FIELD_NAMES = [
-  'bookingAgentId',
-  'teamId',
-  'custBrokerId',
-  'warehouseId',
-  'insuranceId',
-] as const;
-type ServiceItemFieldName = (typeof SERVICE_ITEM_FIELD_NAMES)[number];
-const SERVICE_ITEM_META: Record<
-  ServiceItemFieldName,
-  { industryCategory: string; label: string; icon: string }
-> = {
-  bookingAgentId: {
-    industryCategory: 'o',
-    label: '订舱代理',
-    icon: 'mdi:ferry',
-  },
-  teamId: {
-    industryCategory: 'i',
-    label: '车队',
-    icon: 'mdi:truck-fast-outline',
-  },
-  custBrokerId: {
-    industryCategory: 'f',
-    label: '报关行',
-    icon: 'mdi:file-document-check-outline',
-  },
-  warehouseId: { industryCategory: 'q', label: '仓库', icon: 'mdi:warehouse' },
-  insuranceId: {
-    industryCategory: 'r',
-    label: '保险公司',
-    icon: 'mdi:shield-check-outline',
-  },
-};
-const COLLECTION_PAYMENT_ICON = 'mdi:cash-multiple';
-const SERVICE_ITEM_CHECK_FIELD_NAMES: Record<ServiceItemFieldName, string> = {
-  bookingAgentId: 'bookingAgentIdEnabled',
-  teamId: 'teamIdEnabled',
-  custBrokerId: 'custBrokerIdEnabled',
-  warehouseId: 'warehouseIdEnabled',
-  insuranceId: 'insuranceIdEnabled',
-};
-const SERVICE_TYPE_VALUES: Record<ServiceItemFieldName, number> = {
-  bookingAgentId: SERVICE_TYPE_VALUE.booking,
-  teamId: SERVICE_TYPE_VALUE.truck,
-  custBrokerId: SERVICE_TYPE_VALUE.customs,
-  warehouseId: SERVICE_TYPE_VALUE.warehouse,
-  insuranceId: SERVICE_TYPE_VALUE.insurance,
-};
-const COLLECTION_PAYMENT_SERVICE_TYPE = SERVICE_TYPE_VALUE.collectionPayment;
-/** 暂时隐藏代收支服务项，恢复时改为 true */
-const SHOW_COLLECTION_PAYMENT_FIELD = false;
-const SERVICE_TYPE_TO_FIELD = new Map<number, ServiceItemFieldName>(
-  SERVICE_ITEM_FIELD_NAMES.map((field) => [SERVICE_TYPE_VALUES[field], field]),
-);
-const SERVICE_ITEM_DEFAULT_ORDER_MAP = new Map(
-  SERVICE_ITEM_FIELD_NAMES.map((field, index) => [field, index]),
-);
-const serviceItemLabelMap = ref(new Map<number, string>());
-const serviceItemSortOrderMap = ref(new Map<ServiceItemFieldName, number>());
-const getServiceItemLabel = (field: ServiceItemFieldName) => {
-  const serviceType = SERVICE_TYPE_VALUES[field];
-  return (
-    serviceItemLabelMap.value.get(serviceType) ?? SERVICE_ITEM_META[field].label
-  );
-};
-const loadServiceItemLabelMap = async () => {
-  const options = await loadSeServiceTypeOptions();
-  serviceItemLabelMap.value = buildServiceTypeLabelMap(options);
-};
 const SERVICE_TASK_STATUS_PENDING = 0;
 const SERVICE_TASK_STATUS_PROCESSED = 1;
-type ServiceTaskStatusValue =
-  | typeof SERVICE_TASK_STATUS_PENDING
-  | typeof SERVICE_TASK_STATUS_PROCESSED;
-const SERVICE_TASK_STATUS_META: Record<
-  ServiceTaskStatusValue,
-  { label: string; color: string }
-> = {
-  [SERVICE_TASK_STATUS_PENDING]: { label: '待处理', color: 'gold' },
-  [SERVICE_TASK_STATUS_PROCESSED]: { label: '已处理', color: 'green' },
+type ServiceTypeTaskInfo = {
+  taskId?: string;
+  taskStatus?: 0 | 1 | null;
+  completionTime?: string | null;
+  completionUserNickName?: string | null;
 };
+type ServiceTypeNode = {
+  serviceType: number;
+  label: string;
+  sortId: number;
+  checked: boolean;
+  taskStatus?: 0 | 1 | null;
+  taskId?: string;
+  completionTime?: string | null;
+  completionUserNickName?: string | null;
+};
+const serviceTypeNodes = ref<ServiceTypeNode[]>([]);
+const serviceTypeLabelMap = ref(new Map<number, string>());
+const loadServiceTypeLabelMap = async () => {
+  const options = await loadSeServiceTypeOptions();
+  serviceTypeLabelMap.value = buildServiceTypeLabelMap(options);
+};
+const toServiceTaskStatusValue = (
+  value: unknown,
+): ServiceTypeNode['taskStatus'] => {
+  const status = Number(value);
+  if (status === SERVICE_TASK_STATUS_PENDING)
+    return SERVICE_TASK_STATUS_PENDING;
+  if (status === SERVICE_TASK_STATUS_PROCESSED)
+    return SERVICE_TASK_STATUS_PROCESSED;
+  return undefined;
+};
+const buildServiceTypeNodes = (
+  polNodes: SeaExportAdminApi.ServiceTypeByPolDto[],
+  enumLabelMap: Map<number, string>,
+  savedServiceTypeSet?: Set<number>,
+  clientCheckedMap?: Map<number, boolean>,
+  taskMap?: Map<number, ServiceTypeTaskInfo>,
+): ServiceTypeNode[] => {
+  return polNodes
+    .slice()
+    .sort((a, b) => a.sortId - b.sortId)
+    .map((node) => {
+      const serviceType = Number(node.serviceType);
+      const taskInfo = taskMap?.get(serviceType);
+      let checked = !!node.checked;
+      if (savedServiceTypeSet) {
+        checked = savedServiceTypeSet.has(serviceType);
+      } else if (clientCheckedMap?.has(serviceType)) {
+        checked = clientCheckedMap.get(serviceType) ?? false;
+      }
+      return {
+        serviceType,
+        label: enumLabelMap.get(serviceType) ?? `${serviceType}`,
+        sortId: node.sortId,
+        checked,
+        taskStatus: taskInfo?.taskStatus,
+        taskId: taskInfo?.taskId,
+        completionTime: taskInfo?.completionTime,
+        completionUserNickName: taskInfo?.completionUserNickName,
+      };
+    });
+};
+const parseDetailServiceTypes = (detail: SeaExportAdminApi.SeaExportDto) => {
+  const services = detail.seaExportServices ?? [];
+  const savedSet = new Set<number>(services.map((item) => item.serviceType));
+  const taskMap = new Map<number, ServiceTypeTaskInfo>();
+  services.forEach((item) => {
+    const rawTaskId = item.seServiceTask?.id;
+    const taskId =
+      rawTaskId == null ? undefined : String(rawTaskId).trim() || undefined;
+    taskMap.set(item.serviceType, {
+      taskId,
+      taskStatus:
+        item.seServiceTask == null
+          ? null
+          : toServiceTaskStatusValue(item.seServiceTask.serviceTaskStatus),
+      completionTime: item.seServiceTask?.completionTime ?? null,
+      completionUserNickName:
+        item.seServiceTask?.completionUserNickName ?? null,
+    });
+  });
+  return { savedSet, taskMap };
+};
+const getCheckedServiceTypes = () =>
+  serviceTypeNodes.value
+    .filter((node) => node.checked)
+    .map((node) => node.serviceType);
 const SERVICE_REQUIRE_PROP_TO_FIELD_NAME: Record<number, string> = {
   1: 'carrierId',
   2: 'polId',
@@ -331,72 +338,6 @@ const SERVICE_REQUIRE_FIELD_LABEL_KEY: Record<string, string> = {
   bookingNum: 'seaExport.export.bookingNum',
   etd: 'seaExport.export.etd',
   clientId: 'seaExport.export.clientId',
-};
-type ServiceItemCheckFieldName =
-  (typeof SERVICE_ITEM_CHECK_FIELD_NAMES)[ServiceItemFieldName];
-const getOrderedServiceItemFields = (fields: readonly ServiceItemFieldName[]) =>
-  [...fields].sort((a, b) => {
-    const orderA = serviceItemSortOrderMap.value.get(a);
-    const orderB = serviceItemSortOrderMap.value.get(b);
-    if (orderA != null && orderB != null) {
-      return orderA - orderB;
-    }
-    if (orderA != null) return -1;
-    if (orderB != null) return 1;
-    return (
-      (SERVICE_ITEM_DEFAULT_ORDER_MAP.get(a) ?? Number.MAX_SAFE_INTEGER) -
-      (SERVICE_ITEM_DEFAULT_ORDER_MAP.get(b) ?? Number.MAX_SAFE_INTEGER)
-    );
-  });
-const getServiceTypesFromEnabledValues = (
-  values: Record<string, any>,
-  withCollectionPayment = false,
-) => {
-  const types = getOrderedServiceItemFields(SERVICE_ITEM_FIELD_NAMES)
-    .filter((field) => {
-      const checkFieldName = getServiceItemCheckFieldName(field);
-      return !!values[checkFieldName];
-    })
-    .map((field) => SERVICE_TYPE_VALUES[field]);
-  if (withCollectionPayment) {
-    types.push(COLLECTION_PAYMENT_SERVICE_TYPE);
-  }
-  return types;
-};
-const extractServiceTypesFromDetail = (
-  detail: SeaExportAdminApi.SeaExportDto,
-): number[] => {
-  const parsedServiceTypes = new Set<number>();
-  const collectServiceTypes = (value: unknown) => {
-    if (value == null) return;
-    if (Array.isArray(value)) {
-      value.forEach((item) => collectServiceTypes(item));
-      return;
-    }
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      parsedServiceTypes.add(value);
-      return;
-    }
-    if (typeof value === 'string' && value.trim() !== '') {
-      const numericValue = Number(value);
-      if (Number.isFinite(numericValue)) {
-        parsedServiceTypes.add(numericValue);
-      }
-      return;
-    }
-    if (typeof value === 'object') {
-      const serviceTypeValue = (value as { serviceType?: unknown }).serviceType;
-      if (serviceTypeValue !== undefined) {
-        collectServiceTypes(serviceTypeValue);
-      }
-    }
-  };
-
-  collectServiceTypes((detail as any).serviceTypes);
-  collectServiceTypes((detail as any).seaExportServices);
-  collectServiceTypes((detail as any).serviceItems);
-
-  return [...parsedServiceTypes];
 };
 
 /** 右侧表单：基础信息 */
@@ -480,190 +421,12 @@ const [ShipmentForm, shipmentFormApi] = useVbenForm({
   wrapperClass: 'shipment-flow-wrap grid-cols-7 gap-x-8',
 });
 
-/** 右侧表单：服务项目（订舱代理、车队、报关行、仓库、保险公司） */
-const serviceItemValues = ref<Partial<Record<ServiceItemFieldName, any>>>({});
-const serviceItemEnabledValues = ref<
-  Partial<Record<ServiceItemCheckFieldName, boolean>>
->({});
-const serviceItemVisibleValues = ref<
-  Partial<Record<ServiceItemFieldName, boolean>>
->(
-  SERVICE_ITEM_FIELD_NAMES.reduce(
-    (acc, field) => {
-      acc[field] = false;
-      return acc;
-    },
-    {} as Partial<Record<ServiceItemFieldName, boolean>>,
-  ),
-);
-const serviceItemSelectedItems = ref<
-  Partial<Record<ServiceItemFieldName, any[]>>
->({});
-const collectionPaymentEnabled = ref(false);
-const collectionPaymentDeptId = ref<number | undefined>();
-const collectionPaymentDeptOptions = ref<
-  Array<{ label: string; value: number }>
+const serviceTypeRequiredPropValues = ref<Map<number, number[]>>(new Map());
+const latestAvailableServiceTypes = ref<
+  SeaExportAdminApi.ServiceTypeByPolDto[]
 >([]);
-const getServiceItemCheckFieldName = (field: ServiceItemFieldName) =>
-  SERVICE_ITEM_CHECK_FIELD_NAMES[field] as ServiceItemCheckFieldName;
-const isServiceItemEnabled = (field: ServiceItemFieldName) => {
-  const checkFieldName = getServiceItemCheckFieldName(field);
-  return !!serviceItemEnabledValues.value[checkFieldName];
-};
-/** 编辑态：勾选表示服务任务已完成；新建态：勾选表示已启用服务 */
-const getServiceItemCheckmarkShown = (field: ServiceItemFieldName) => {
-  if (isEdit.value) return isServiceItemNodeDone(field);
-  return isServiceItemEnabled(field);
-};
-const getServiceItemNodeState = (
-  field: ServiceItemFieldName,
-): 'active' | 'done' | 'pending' => {
-  if (!isServiceItemEnabled(field)) return 'pending';
-  const status = serviceItemTaskStatusValues.value[field];
-  if (status === SERVICE_TASK_STATUS_PROCESSED) return 'done';
-  return 'active';
-};
-const isServiceItemNodeDone = (field: ServiceItemFieldName) =>
-  getServiceItemNodeState(field) === 'done';
-const hasServiceItemTask = (field: ServiceItemFieldName) => {
-  const taskId = serviceItemTaskIdValues.value[field];
-  return taskId != null && String(taskId).trim() !== '';
-};
-const canToggleServiceItemNode = (field: ServiceItemFieldName) => {
-  if (!isEdit.value) return true;
-  if (!isServiceItemEnabled(field)) return true;
-  return !hasServiceItemTask(field);
-};
-const handleServiceItemNodeToggle = (field: ServiceItemFieldName) => {
-  if (!canToggleServiceItemNode(field)) {
-    message.warning('已生成服务任务，不可关闭服务');
-    return;
-  }
-  handleServiceItemEnabledChange(field, !isServiceItemEnabled(field));
-};
-const getServiceItemVisible = (field: ServiceItemFieldName) => {
-  return serviceItemVisibleValues.value[field] === true;
-};
-const visibleServiceItemFields = computed(() =>
-  getOrderedServiceItemFields(SERVICE_ITEM_FIELD_NAMES).filter((field) =>
-    getServiceItemVisible(field),
-  ),
-);
-const handleServiceItemEnabledChange = (
-  field: ServiceItemFieldName,
-  enabled: boolean,
-) => {
-  const checkFieldName = getServiceItemCheckFieldName(field);
-  serviceItemEnabledValues.value = {
-    ...serviceItemEnabledValues.value,
-    [checkFieldName]: enabled,
-  };
-  if (!enabled) {
-    serviceItemValues.value = {
-      ...serviceItemValues.value,
-      [field]: undefined,
-    };
-    serviceItemSelectedItems.value = {
-      ...serviceItemSelectedItems.value,
-      [field]: [],
-    };
-  }
-};
-const handleServiceItemValueChange = (
-  field: ServiceItemFieldName,
-  value: any,
-) => {
-  serviceItemValues.value = {
-    ...serviceItemValues.value,
-    [field]: value,
-  };
-  if (value !== undefined && value !== null && value !== '') {
-    handleServiceItemEnabledChange(field, true);
-  }
-};
-const getServiceItemSelectedItems = (field: ServiceItemFieldName) => {
-  return serviceItemSelectedItems.value[field] || [];
-};
-const getServiceItemFormValues = (
-  fallbackValues: Partial<Record<string, any>> = {},
-) => {
-  const values: Partial<Record<string, any>> = {};
-  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    const checkFieldName = getServiceItemCheckFieldName(field);
-    const fieldValue =
-      serviceItemValues.value[field] ??
-      (fallbackValues as Record<string, any>)[field];
-    values[field] = fieldValue;
-    values[checkFieldName] =
-      !!serviceItemEnabledValues.value[checkFieldName] ||
-      hasServiceItemValue(fieldValue);
-  });
-  return values;
-};
-const hasServiceItemValue = (value: any) =>
-  value !== undefined && value !== null && value !== '';
-const serviceItemTaskStatusValues = ref<
-  Partial<Record<ServiceItemFieldName, ServiceTaskStatusValue>>
->({});
-const serviceItemTaskIdValues = ref<
-  Partial<Record<ServiceItemFieldName, string>>
->({});
-const serviceItemRequiredPropValues = ref<
-  Partial<Record<ServiceItemFieldName, number[]>>
->({});
-const completingServiceField = ref<ServiceItemFieldName>();
-const toServiceTaskStatusValue = (
-  value: unknown,
-): ServiceTaskStatusValue | undefined => {
-  const status = Number(value);
-  if (status === SERVICE_TASK_STATUS_PENDING)
-    return SERVICE_TASK_STATUS_PENDING;
-  if (status === SERVICE_TASK_STATUS_PROCESSED)
-    return SERVICE_TASK_STATUS_PROCESSED;
-  return undefined;
-};
-const extractServiceTaskStatusFromDetail = (
-  detail: SeaExportAdminApi.SeaExportDto,
-): Partial<Record<ServiceItemFieldName, ServiceTaskStatusValue>> => {
-  const result: Partial<Record<ServiceItemFieldName, ServiceTaskStatusValue>> =
-    {};
-  const services = (detail as any)?.seaExportServices;
-  if (!Array.isArray(services)) return result;
-
-  services.forEach((service: any) => {
-    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(service?.serviceType));
-    if (!mappedField) return;
-    const status = toServiceTaskStatusValue(
-      service?.seServiceTask?.serviceTaskStatus ?? service?.serviceTaskStatus,
-    );
-    if (status === undefined) return;
-    result[mappedField] = status;
-  });
-
-  return result;
-};
-const extractServiceTaskIdFromDetail = (
-  detail: SeaExportAdminApi.SeaExportDto,
-): Partial<Record<ServiceItemFieldName, string>> => {
-  const result: Partial<Record<ServiceItemFieldName, string>> = {};
-  const services = (detail as any)?.seaExportServices;
-  if (!Array.isArray(services)) return result;
-
-  services.forEach((service: any) => {
-    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(service?.serviceType));
-    if (!mappedField) return;
-    const rawTaskId =
-      service?.seServiceTask?.id ??
-      service?.seServiceTaskId ??
-      service?.serviceTaskId;
-    if (rawTaskId == null) return;
-    const taskId = String(rawTaskId).trim();
-    if (!taskId) return;
-    result[mappedField] = taskId;
-  });
-
-  return result;
-};
+const completingServiceType = ref<number>();
+const cancellingServiceType = ref<number>();
 const normalizeRequiredProps = (value: unknown): number[] => {
   if (!Array.isArray(value)) return [];
   return [
@@ -674,11 +437,10 @@ const normalizeRequiredProps = (value: unknown): number[] => {
     ),
   ];
 };
-const buildServiceRequiredPropsByField = (
+const buildServiceRequiredPropsByType = (
   availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
-  checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+  checkedServiceTypeSet: Set<number>,
 ) => {
-  const result: Partial<Record<ServiceItemFieldName, number[]>> = {};
   const sourceMap = new Map<number, SeaExportAdminApi.ServiceTypeByPolDto>();
   (Array.isArray(availableServiceTypes) ? availableServiceTypes : []).forEach(
     (item) => {
@@ -687,35 +449,114 @@ const buildServiceRequiredPropsByField = (
       sourceMap.set(serviceType, item);
     },
   );
-  (Array.isArray(checkedServiceTypes) ? checkedServiceTypes : []).forEach(
-    (item) => {
-      const serviceType = Number(item?.serviceType);
-      if (!Number.isFinite(serviceType)) return;
-      sourceMap.set(serviceType, item);
-    },
-  );
-
-  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    const serviceType = SERVICE_TYPE_VALUES[field];
+  const result = new Map<number, number[]>();
+  checkedServiceTypeSet.forEach((serviceType) => {
     const matched = sourceMap.get(serviceType);
     if (!matched) return;
-    result[field] = normalizeRequiredProps(matched.seServiceRequires);
+    result.set(serviceType, normalizeRequiredProps(matched.seServiceRequires));
   });
   return result;
 };
-const getServiceItemTaskStatusMeta = (field: ServiceItemFieldName) => {
-  const status = serviceItemTaskStatusValues.value[field];
-  if (status === undefined) return undefined;
-  return SERVICE_TASK_STATUS_META[status];
-};
-const canCompleteServiceItem = (field: ServiceItemFieldName) => {
-  const taskId = serviceItemTaskIdValues.value[field];
-  const status = serviceItemTaskStatusValues.value[field];
-  return (
-    !!taskId &&
-    status === SERVICE_TASK_STATUS_PENDING &&
-    isServiceItemEnabled(field)
+const updateServiceTypeRequiredProps = () => {
+  const checkedSet = new Set(getCheckedServiceTypes());
+  serviceTypeRequiredPropValues.value = buildServiceRequiredPropsByType(
+    latestAvailableServiceTypes.value,
+    checkedSet,
   );
+};
+type ServicePipelineState = 'active' | 'done' | 'upcoming';
+const checkedServiceTypeNodes = computed(() =>
+  serviceTypeNodes.value.filter((node) => node.checked),
+);
+const getServicePipelineActiveIndex = (nodes: ServiceTypeNode[]) =>
+  nodes.findIndex((node) => node.taskStatus !== SERVICE_TASK_STATUS_PROCESSED);
+const getServicePipelineState = (
+  node: ServiceTypeNode,
+  nodes: ServiceTypeNode[] = checkedServiceTypeNodes.value,
+): ServicePipelineState => {
+  const index = nodes.findIndex(
+    (item) => item.serviceType === node.serviceType,
+  );
+  if (index < 0) return 'upcoming';
+  const activeIndex = getServicePipelineActiveIndex(nodes);
+  if (activeIndex === -1) return 'done';
+  if (index < activeIndex) return 'done';
+  if (index === activeIndex) return 'active';
+  return 'upcoming';
+};
+const isServiceTypeNodeDone = (node: ServiceTypeNode) =>
+  getServicePipelineState(node) === 'done';
+const getServiceTypeNodeIcon = (node: ServiceTypeNode) => {
+  const state = getServicePipelineState(node);
+  if (state === 'done') return 'mdi:check-circle';
+  if (state === 'active') return 'mdi:progress-clock';
+  return 'mdi:schedule';
+};
+const shouldShowServiceNodeTooltip = (node: ServiceTypeNode) =>
+  getServicePipelineState(node) !== 'upcoming';
+const isServiceChevronStepLast = (index: number, total: number) =>
+  total > 1 && index === total - 1;
+const getServiceNodeTooltipStatusMeta = (node: ServiceTypeNode) => {
+  if (node.taskStatus === SERVICE_TASK_STATUS_PROCESSED) {
+    return { label: '已完成', color: 'success' as const };
+  }
+  if (node.taskStatus === SERVICE_TASK_STATUS_PENDING) {
+    return { label: '待处理', color: 'processing' as const };
+  }
+  const state = getServicePipelineState(node);
+  if (state === 'done') {
+    return { label: '已完成', color: 'success' as const };
+  }
+  if (state === 'active') {
+    return { label: '处理中', color: 'processing' as const };
+  }
+  return { label: '还未到', color: 'default' as const };
+};
+const serviceTypeModalOpen = ref(false);
+const serviceTypeModalDraft = ref<Map<number, boolean>>(new Map());
+const isServiceTypeModalChecked = (serviceType: number) =>
+  serviceTypeModalDraft.value.get(serviceType) ?? false;
+const openServiceTypeModal = () => {
+  const draft = new Map<number, boolean>();
+  serviceTypeNodes.value.forEach((node) => {
+    draft.set(node.serviceType, node.checked);
+  });
+  serviceTypeModalDraft.value = draft;
+  serviceTypeModalOpen.value = true;
+};
+const handleServiceTypeModalDraftChange = (
+  node: ServiceTypeNode,
+  event: { target?: { checked?: boolean } },
+) => {
+  const checked = !!event?.target?.checked;
+  serviceTypeModalDraft.value.set(node.serviceType, checked);
+  serviceTypeModalDraft.value = new Map(serviceTypeModalDraft.value);
+};
+const handleServiceTypeModalCancel = () => {
+  serviceTypeModalOpen.value = false;
+};
+const handleServiceTypeModalConfirm = () => {
+  const draftToApply = new Map(serviceTypeModalDraft.value);
+  serviceTypeNodes.value.forEach((node) => {
+    node.checked = draftToApply.get(node.serviceType) ?? false;
+  });
+  updateServiceTypeRequiredProps();
+  serviceTypeModalOpen.value = false;
+};
+const canCompleteServiceTypeNode = (node: ServiceTypeNode) =>
+  isEdit.value &&
+  !!node.taskId &&
+  node.taskStatus === SERVICE_TASK_STATUS_PENDING &&
+  node.checked;
+const canCancelCompleteServiceTypeNode = (node: ServiceTypeNode) =>
+  isEdit.value &&
+  !!node.taskId &&
+  node.taskStatus === SERVICE_TASK_STATUS_PROCESSED &&
+  node.checked;
+const formatServiceTaskCompletionTime = (value?: string | null) => {
+  if (!value) return '-';
+  const parsed = dayjs(value);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm') : value;
 };
 const isRequiredFieldFilled = (value: unknown) => {
   if (value === null || value === undefined) return false;
@@ -762,7 +603,6 @@ const collectCurrentFormValues = async () => {
     ...partyValues,
     ...entrustValues,
     ...basicValues,
-    ...getServiceItemFormValues(basicValues),
     ...shipmentValues,
     ...portValues,
     ...cargoTypeValues,
@@ -770,10 +610,9 @@ const collectCurrentFormValues = async () => {
     ...cargoRemarkValues,
   } as Record<string, any>;
 };
-const getMissingRequiredLabelsForService = async (
-  field: ServiceItemFieldName,
-) => {
-  const requiredProps = serviceItemRequiredPropValues.value[field] ?? [];
+const getMissingRequiredLabelsForServiceType = async (serviceType: number) => {
+  const requiredProps =
+    serviceTypeRequiredPropValues.value.get(serviceType) ?? [];
   if (!requiredProps.length) return [];
   const currentValues = await collectCurrentFormValues();
   const missingLabels: string[] = [];
@@ -785,34 +624,57 @@ const getMissingRequiredLabelsForService = async (
   });
   return missingLabels;
 };
-const handleCompleteService = async (field: ServiceItemFieldName) => {
+const handleCompleteServiceType = async (node: ServiceTypeNode) => {
   if (!isEdit.value) return;
-  if (completingServiceField.value) return;
-  const taskId = serviceItemTaskIdValues.value[field];
+  if (completingServiceType.value != null) return;
+  const taskId = node.taskId;
   if (!taskId) {
     message.warning('当前服务暂无可完成任务');
     return;
   }
-  if (
-    serviceItemTaskStatusValues.value[field] === SERVICE_TASK_STATUS_PROCESSED
-  ) {
+  if (node.taskStatus === SERVICE_TASK_STATUS_PROCESSED) {
     message.info('当前服务已完成');
     return;
   }
-  const missingLabels = await getMissingRequiredLabelsForService(field);
+  const missingLabels = await getMissingRequiredLabelsForServiceType(
+    node.serviceType,
+  );
   if (missingLabels.length > 0) {
     message.warning(`请先填写：${missingLabels.join('、')}，再完成服务`);
     return;
   }
-  completingServiceField.value = field;
+  completingServiceType.value = node.serviceType;
   try {
     await completeSeServiceTask({ id: taskId });
-    message.success(`${getServiceItemLabel(field)}已完成`);
+    message.success(`${node.label}已完成`);
     await loadEditData();
   } catch {
     message.error('完成服务失败，请稍后重试');
   } finally {
-    completingServiceField.value = undefined;
+    completingServiceType.value = undefined;
+  }
+};
+const handleCancelCompleteServiceType = async (node: ServiceTypeNode) => {
+  if (!isEdit.value) return;
+  if (cancellingServiceType.value != null) return;
+  const taskId = node.taskId;
+  if (!taskId) {
+    message.warning('当前服务暂无可取消任务');
+    return;
+  }
+  if (node.taskStatus !== SERVICE_TASK_STATUS_PROCESSED) {
+    message.info('当前服务未完成');
+    return;
+  }
+  cancellingServiceType.value = node.serviceType;
+  try {
+    await cancelCompleteSeServiceTask({ id: taskId });
+    message.success(`${node.label}已取消完成`);
+    await loadEditData();
+  } catch {
+    message.error('取消完成失败，请稍后重试');
+  } finally {
+    cancellingServiceType.value = undefined;
   }
 };
 const toOptionalQueryValue = (value: unknown) => {
@@ -824,15 +686,11 @@ const linkedClientId = ref<unknown>(undefined);
 const linkedPolId = ref<unknown>(undefined);
 const serviceTypeSyncLoading = ref(false);
 const polServiceConfigLoaded = ref(false);
-const collectionPaymentConfigured = ref(false);
 const polHasNoServiceConfig = computed(() => {
   if (toOptionalQueryValue(linkedPolId.value) === undefined) return false;
   if (serviceTypeSyncLoading.value || !polServiceConfigLoaded.value)
     return false;
-  const hasStandardServices = visibleServiceItemFields.value.length > 0;
-  const hasCollectionPayment =
-    SHOW_COLLECTION_PAYMENT_FIELD && collectionPaymentConfigured.value;
-  return !hasStandardServices && !hasCollectionPayment;
+  return serviceTypeNodes.value.length === 0;
 });
 const hasPolSelected = computed(
   () => toOptionalQueryValue(linkedPolId.value) !== undefined,
@@ -846,131 +704,51 @@ const showServiceItemContent = computed(
 );
 let serviceTypeSyncTimer: ReturnType<typeof setTimeout> | undefined;
 let latestServiceTypeQueryKey = '';
-const extractServiceFieldSet = (
-  serviceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
-  onlyChecked: boolean,
+const buildClientCheckedMap = (
+  checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
 ) => {
-  const matchedFields = new Set<ServiceItemFieldName>();
-  let collectionPaymentMatched = false;
-  (Array.isArray(serviceTypes) ? serviceTypes : []).forEach((item) => {
-    if (onlyChecked && !item?.checked) return;
-    if (Number(item?.serviceType) === COLLECTION_PAYMENT_SERVICE_TYPE) {
-      collectionPaymentMatched = true;
-      return;
-    }
-    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(item?.serviceType));
-    if (mappedField) {
-      matchedFields.add(mappedField);
-    }
-  });
-  return {
-    matchedFields,
-    collectionPaymentMatched,
-  };
-};
-const buildServiceItemSortOrderMap = (
-  serviceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
-) => {
-  const orderMap = new Map<ServiceItemFieldName, number>();
-  (Array.isArray(serviceTypes) ? serviceTypes : [])
-    .slice()
-    .sort(
-      (a, b) =>
-        Number(a?.sortId ?? Number.MAX_SAFE_INTEGER) -
-        Number(b?.sortId ?? Number.MAX_SAFE_INTEGER),
-    )
-    .forEach((item, index) => {
-      const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(item?.serviceType));
-      if (!mappedField || orderMap.has(mappedField)) return;
-      orderMap.set(mappedField, index);
-    });
-  return orderMap;
+  const map = new Map<number, boolean>();
+  (Array.isArray(checkedServiceTypes) ? checkedServiceTypes : []).forEach(
+    (item) => {
+      const serviceType = Number(item?.serviceType);
+      if (!Number.isFinite(serviceType)) return;
+      map.set(serviceType, !!item.checked);
+    },
+  );
+  return map;
 };
 const resetServiceTypeStateWhenPolEmpty = () => {
-  const nextVisibleValues: Partial<Record<ServiceItemFieldName, boolean>> = {};
-  const nextEnabledValues: Partial<Record<ServiceItemCheckFieldName, boolean>> =
-    {};
-  const nextServiceItemValues = { ...serviceItemValues.value };
-  const nextServiceItemSelectedItems = { ...serviceItemSelectedItems.value };
-
-  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    const checkFieldName = getServiceItemCheckFieldName(field);
-    nextVisibleValues[field] = false;
-    nextEnabledValues[checkFieldName] = false;
-    nextServiceItemValues[field] = undefined;
-    nextServiceItemSelectedItems[field] = [];
-  });
-
-  serviceItemVisibleValues.value = nextVisibleValues;
-  serviceItemEnabledValues.value = nextEnabledValues;
-  serviceItemValues.value = nextServiceItemValues;
-  serviceItemSelectedItems.value = nextServiceItemSelectedItems;
-  collectionPaymentEnabled.value = false;
-  collectionPaymentDeptId.value = undefined;
-  serviceItemRequiredPropValues.value = {};
-  serviceItemSortOrderMap.value = new Map();
+  serviceTypeNodes.value = [];
+  latestAvailableServiceTypes.value = [];
+  serviceTypeRequiredPropValues.value = new Map();
   polServiceConfigLoaded.value = false;
-  collectionPaymentConfigured.value = false;
 };
 const applyServiceTypeStateByPol = (
   availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
   checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
   overrides?: {
-    checkedServiceFields?: Set<ServiceItemFieldName>;
-    checkedCollectionPayment?: boolean;
+    savedServiceTypeSet?: Set<number>;
+    taskMap?: Map<number, ServiceTypeTaskInfo>;
   },
 ) => {
-  const { matchedFields: availableServiceFields, collectionPaymentMatched } =
-    extractServiceFieldSet(availableServiceTypes, false);
-  const {
-    matchedFields: checkedServiceFields,
-    collectionPaymentMatched: checkedCollectionPayment,
-  } = extractServiceFieldSet(checkedServiceTypes, true);
-  const effectiveCheckedServiceFields =
-    overrides?.checkedServiceFields ?? checkedServiceFields;
-  const effectiveCheckedCollectionPayment =
-    overrides?.checkedCollectionPayment ?? checkedCollectionPayment;
-
-  const nextServiceItemValues = { ...serviceItemValues.value };
-  const nextServiceItemSelectedItems = { ...serviceItemSelectedItems.value };
-  const nextServiceEnabledValues: Partial<
-    Record<ServiceItemCheckFieldName, boolean>
-  > = {};
-  const nextServiceVisibleValues: Partial<
-    Record<ServiceItemFieldName, boolean>
-  > = {};
-
-  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    const checkFieldName = getServiceItemCheckFieldName(field);
-    const visible = availableServiceFields.has(field);
-    const checked = visible && effectiveCheckedServiceFields.has(field);
-    nextServiceVisibleValues[field] = visible;
-    nextServiceEnabledValues[checkFieldName] = checked;
-    if (!checked || !visible) {
-      nextServiceItemValues[field] = undefined;
-      nextServiceItemSelectedItems[field] = [];
-    }
-  });
-
-  serviceItemVisibleValues.value = nextServiceVisibleValues;
-  serviceItemValues.value = nextServiceItemValues;
-  serviceItemSelectedItems.value = nextServiceItemSelectedItems;
-  serviceItemEnabledValues.value = nextServiceEnabledValues;
-  collectionPaymentEnabled.value =
-    SHOW_COLLECTION_PAYMENT_FIELD &&
-    collectionPaymentMatched &&
-    effectiveCheckedCollectionPayment;
-  if (!collectionPaymentEnabled.value) {
-    collectionPaymentDeptId.value = undefined;
-  }
-  serviceItemRequiredPropValues.value = buildServiceRequiredPropsByField(
-    availableServiceTypes,
-    checkedServiceTypes,
+  const polNodes = Array.isArray(availableServiceTypes)
+    ? availableServiceTypes
+    : [];
+  latestAvailableServiceTypes.value = polNodes;
+  const clientCheckedMap = overrides?.savedServiceTypeSet
+    ? undefined
+    : buildClientCheckedMap(checkedServiceTypes);
+  serviceTypeNodes.value = buildServiceTypeNodes(
+    polNodes,
+    serviceTypeLabelMap.value,
+    overrides?.savedServiceTypeSet,
+    clientCheckedMap,
+    overrides?.taskMap,
   );
-  serviceItemSortOrderMap.value = buildServiceItemSortOrderMap(
+  serviceTypeRequiredPropValues.value = buildServiceRequiredPropsByType(
     availableServiceTypes,
+    new Set(getCheckedServiceTypes()),
   );
-  collectionPaymentConfigured.value = collectionPaymentMatched;
   polServiceConfigLoaded.value = true;
 };
 const extractServiceTypesByPolResult = (
@@ -991,8 +769,8 @@ const syncServiceTypesByPol = async (
     clientId?: unknown;
     polId?: unknown;
     force?: boolean;
-    checkedServiceFields?: Set<ServiceItemFieldName>;
-    checkedCollectionPayment?: boolean;
+    savedServiceTypeSet?: Set<number>;
+    taskMap?: Map<number, ServiceTypeTaskInfo>;
   } = {},
 ) => {
   const requestId = ++serviceTypeLinkageRequestId;
@@ -1042,8 +820,8 @@ const syncServiceTypesByPol = async (
       extractServiceTypesByPolResult(serviceTypesByPolResponse),
       extractServiceTypesByPolResult(checkedServiceTypesResponse),
       {
-        checkedServiceFields: args.checkedServiceFields,
-        checkedCollectionPayment: args.checkedCollectionPayment,
+        savedServiceTypeSet: args.savedServiceTypeSet,
+        taskMap: args.taskMap,
       },
     );
   } catch {
@@ -1105,42 +883,6 @@ const bindServiceTypeLinkageEvents = () => {
     },
   ]);
 };
-const flattenOrganizationUnitOptions = (
-  nodes: SystemOrganizationUnitApi.OrganizationUnitTreeDto[],
-  parentLabel = '',
-): Array<{ label: string; value: number }> => {
-  return nodes.flatMap((node) => {
-    if (typeof node.id !== 'number') return [];
-    const displayName = node.displayName || `${node.id}`;
-    const currentLabel = parentLabel
-      ? `${parentLabel} / ${displayName}`
-      : displayName;
-    const currentOption = [{ label: currentLabel, value: node.id }];
-    const childOptions = Array.isArray(node.children)
-      ? flattenOrganizationUnitOptions(node.children, currentLabel)
-      : [];
-    return [...currentOption, ...childOptions];
-  });
-};
-const loadCollectionPaymentDeptOptions = async () => {
-  try {
-    const list = await getOrganizationUnitTree();
-    collectionPaymentDeptOptions.value = flattenOrganizationUnitOptions(list);
-  } catch {
-    collectionPaymentDeptOptions.value = [];
-  }
-};
-const handleCollectionPaymentEnabledChange = (event: any) => {
-  const checked = !!event?.target?.checked;
-  collectionPaymentEnabled.value = checked;
-  if (!checked) {
-    collectionPaymentDeptId.value = undefined;
-  }
-};
-const handleCollectionPaymentDeptChange = (value: number | undefined) => {
-  collectionPaymentDeptId.value = value;
-};
-
 /** 港口选择字段与备注字段的对应；选中港口后自动填入对应备注字段 */
 const PORT_ID_FIELD_TO_REMARK_FIELD: Record<string, string> = {
   receivePortId: 'receivePortRemark',
@@ -1847,7 +1589,6 @@ const AI_RECOGNIZE_ALLOWED_FIELDS = new Set([
   'kgs',
   'cbm',
   'internalRemark',
-  'serviceTypes',
 ]);
 const AI_RECOGNIZE_DATE_FIELDS = new Set([
   'goodsCompleteTime',
@@ -1976,13 +1717,7 @@ const buildAiRecognizedFormValues = (payload: unknown) => {
       applyRecognizedValue(aliasField, value);
     }
   });
-  if (!Array.isArray(formValues.serviceTypes)) {
-    delete formValues.serviceTypes;
-  } else {
-    formValues.serviceTypes = formValues.serviceTypes
-      .map((item: unknown) => Number(item))
-      .filter((item: number) => Number.isFinite(item));
-  }
+  delete formValues.serviceTypes;
   if (
     formValues.codeIssueTypeId == null &&
     formValues.issueType != null &&
@@ -2003,50 +1738,6 @@ const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
     cargoMainFormApi.setValues(values),
     cargoRemarkFormApi.setValues(values),
   ]);
-
-  let touchedServiceItems = false;
-  const nextServiceItemValues = { ...serviceItemValues.value };
-  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    if (!Object.prototype.hasOwnProperty.call(values, field)) return;
-    touchedServiceItems = true;
-    nextServiceItemValues[field] = values[field];
-  });
-  if (touchedServiceItems) {
-    serviceItemValues.value = nextServiceItemValues;
-  }
-
-  if (Array.isArray(values.serviceTypes)) {
-    const selectedServiceTypes = new Set<number>(
-      values.serviceTypes.map((type: unknown) => Number(type)),
-    );
-    serviceItemEnabledValues.value = {
-      bookingAgentIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.bookingAgentId) ||
-        hasServiceItemValue(nextServiceItemValues.bookingAgentId),
-      teamIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.teamId) ||
-        hasServiceItemValue(nextServiceItemValues.teamId),
-      custBrokerIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.custBrokerId) ||
-        hasServiceItemValue(nextServiceItemValues.custBrokerId),
-      warehouseIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.warehouseId) ||
-        hasServiceItemValue(nextServiceItemValues.warehouseId),
-      insuranceIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.insuranceId) ||
-        hasServiceItemValue(nextServiceItemValues.insuranceId),
-    };
-  } else if (touchedServiceItems) {
-    const nextServiceEnabledValues = { ...serviceItemEnabledValues.value };
-    SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-      if (!Object.prototype.hasOwnProperty.call(values, field)) return;
-      const checkFieldName = getServiceItemCheckFieldName(field);
-      nextServiceEnabledValues[checkFieldName] = hasServiceItemValue(
-        nextServiceItemValues[field],
-      );
-    });
-    serviceItemEnabledValues.value = nextServiceEnabledValues;
-  }
 
   refreshEntrustReadonlyInfo({
     ...entrustReadonlyInfo.value,
@@ -2119,7 +1810,6 @@ const flattenDetail = (
     codeServiceId: to?.codeServiceId,
     cargoId: to?.cargoId,
     tradeTermsType: to?.tradeTermsType,
-    serviceTypes: extractServiceTypesFromDetail(detail),
     polId: detail.polId,
     polRemark: detail.polRemark,
     podId: detail.podId,
@@ -2400,22 +2090,52 @@ const loadEditData = async () => {
         },
       },
     ]);
-    serviceItemSelectedItems.value = {
-      bookingAgentId: toSelectedItems(
-        detail.bookingAgentId,
-        detail.bookingAgentName,
-      ),
-      teamId: toSelectedItems(to?.teamId, (to as any)?.teamName),
-      custBrokerId: toSelectedItems(
-        to?.custBrokerId,
-        (to as any)?.custBrokerName,
-      ),
-      warehouseId: toSelectedItems(to?.warehouseId, (to as any)?.warehouseName),
-      insuranceId: toSelectedItems(to?.insuranceId, (to as any)?.insuranceName),
-    };
-    serviceItemTaskStatusValues.value =
-      extractServiceTaskStatusFromDetail(detail);
-    serviceItemTaskIdValues.value = extractServiceTaskIdFromDetail(detail);
+    basicInfoFormApi.updateSchema([
+      {
+        fieldName: 'teamId',
+        componentProps: {
+          selectedItems: toSelectedItems(to?.teamId, (to as any)?.teamName),
+        },
+      },
+      {
+        fieldName: 'custBrokerId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.custBrokerId,
+            (to as any)?.custBrokerName,
+          ),
+        },
+      },
+      {
+        fieldName: 'warehouseId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.warehouseId,
+            (to as any)?.warehouseName,
+          ),
+        },
+      },
+      {
+        fieldName: 'insuranceId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.insuranceId,
+            (to as any)?.insuranceName,
+          ),
+        },
+      },
+    ]);
+    shipmentFormApi.updateSchema([
+      {
+        fieldName: 'bookingAgentId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.bookingAgentId,
+            detail.bookingAgentName,
+          ),
+        },
+      },
+    ]);
 
     portFormApi.updateSchema([
       {
@@ -2502,55 +2222,7 @@ const loadEditData = async () => {
       cargoRemarkFormApi.setValues(formValues),
     ]);
     initializeOrderUsersPanel(to?.orderUsers ?? []);
-    serviceItemValues.value = {
-      bookingAgentId: formValues.bookingAgentId,
-      teamId: formValues.teamId,
-      custBrokerId: formValues.custBrokerId,
-      warehouseId: formValues.warehouseId,
-      insuranceId: formValues.insuranceId,
-    };
-    const selectedServiceTypes = new Set<number>(
-      Array.isArray(formValues.serviceTypes)
-        ? formValues.serviceTypes.map((type: number) => Number(type))
-        : [],
-    );
-    serviceItemEnabledValues.value = {
-      bookingAgentIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.bookingAgentId) ||
-        hasServiceItemValue(formValues.bookingAgentId),
-      teamIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.teamId) ||
-        hasServiceItemValue(formValues.teamId),
-      custBrokerIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.custBrokerId) ||
-        hasServiceItemValue(formValues.custBrokerId),
-      warehouseIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.warehouseId) ||
-        hasServiceItemValue(formValues.warehouseId),
-      insuranceIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.insuranceId) ||
-        hasServiceItemValue(formValues.insuranceId),
-    };
-    if (SHOW_COLLECTION_PAYMENT_FIELD) {
-      const collectionPaymentSelected = selectedServiceTypes.has(
-        COLLECTION_PAYMENT_SERVICE_TYPE,
-      );
-      collectionPaymentEnabled.value = collectionPaymentSelected;
-      const selectedOrganizationId = detail.organizationUnits?.[0]?.id;
-      collectionPaymentDeptId.value =
-        collectionPaymentSelected && typeof selectedOrganizationId === 'number'
-          ? selectedOrganizationId
-          : undefined;
-    } else {
-      collectionPaymentEnabled.value = false;
-      collectionPaymentDeptId.value = undefined;
-    }
-    const checkedServiceFields = new Set<ServiceItemFieldName>();
-    SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-      if (selectedServiceTypes.has(SERVICE_TYPE_VALUES[field])) {
-        checkedServiceFields.add(field);
-      }
-    });
+    const { savedSet, taskMap } = parseDetailServiceTypes(detail);
     refreshEntrustReadonlyInfo(formValues);
 
     orderCtns.value = normalizeOrderCtnsWithRowKey(
@@ -2560,10 +2232,8 @@ const loadEditData = async () => {
       polId: formValues.polId,
       clientId: formValues.clientId,
       force: true,
-      checkedServiceFields,
-      checkedCollectionPayment: selectedServiceTypes.has(
-        COLLECTION_PAYMENT_SERVICE_TYPE,
-      ),
+      savedServiceTypeSet: savedSet,
+      taskMap,
     });
   } finally {
     pageLoading.value = false;
@@ -2609,10 +2279,7 @@ const buildDto = (values: Record<string, any>) => {
     deliverPortRemark: values.deliverPortRemark,
     sortId: values.sortId,
     remark: values.remark,
-    serviceTypes: getServiceTypesFromEnabledValues(
-      values,
-      SHOW_COLLECTION_PAYMENT_FIELD && collectionPaymentEnabled.value,
-    ),
+    serviceTypes: getCheckedServiceTypes(),
   };
 
   const transportOrderFields: Record<string, any> = {
@@ -2666,20 +2333,6 @@ const buildDto = (values: Record<string, any>) => {
 
   return {
     ...seaExportFields,
-    organizationUnits:
-      SHOW_COLLECTION_PAYMENT_FIELD &&
-      collectionPaymentEnabled.value &&
-      typeof collectionPaymentDeptId.value === 'number'
-        ? [
-            {
-              id: collectionPaymentDeptId.value,
-              name:
-                collectionPaymentDeptOptions.value.find(
-                  (option) => option.value === collectionPaymentDeptId.value,
-                )?.label ?? undefined,
-            },
-          ]
-        : [],
     ...(isEdit.value && editId.value ? { id: editId.value } : {}),
     transportOrder: transportOrderFields,
   };
@@ -2745,7 +2398,6 @@ const handleSubmit = async () => {
     cargoMainFormApi.getValues(),
     cargoRemarkFormApi.getValues(),
   ]);
-  const serviceItemsValues = getServiceItemFormValues(basicValues);
   const values = {
     commissionNum: entrustReadonlyInfo.value.commissionNum,
     accountDate: entrustReadonlyInfo.value.accountDate,
@@ -2753,7 +2405,6 @@ const handleSubmit = async () => {
     ...partyValues,
     ...entrustValues,
     ...basicValues,
-    ...serviceItemsValues,
     ...shipmentValues,
     ...portValues,
     ...cargoTypeValues,
@@ -2843,21 +2494,21 @@ const handleBack = () => {
 };
 
 onMounted(() => {
-  void loadServiceItemLabelMap();
+  const initialize = async () => {
+    await loadServiceTypeLabelMap();
+    loadEditData();
+    if (!isEdit.value) {
+      void syncServiceTypesByPol();
+    }
+  };
   if (!isEdit.value) {
     initializeOrderUsersPanel(defaultOrderUsers);
     refreshEntrustReadonlyInfo({});
-    serviceItemTaskStatusValues.value = {};
-    serviceItemTaskIdValues.value = {};
-    serviceItemRequiredPropValues.value = {};
+    serviceTypeRequiredPropValues.value = new Map();
   }
-  loadCollectionPaymentDeptOptions();
   applyTransitPortTabSchema();
   applyNotifierPartyTabSchema();
-  loadEditData();
-  if (!isEdit.value) {
-    void syncServiceTypesByPol();
-  }
+  void initialize();
   nextTick(() => {
     updateActiveSectionByScroll();
   });
@@ -3037,103 +2688,203 @@ defineExpose({
                       <div class="service-pipeline">
                         <div class="service-pipeline__header">
                           <span class="service-pipeline__title">服务项目</span>
-                          <span
+                          <div
                             v-if="showServiceItemContent"
-                            class="service-pipeline__hint"
+                            class="service-pipeline__header-actions"
                           >
-                            {{
-                              isEdit
-                                ? '勾选表示服务任务已完成，点击节点可启用/关闭服务'
-                                : '点击节点可启用/关闭服务'
-                            }}
-                          </span>
+                            <Button
+                              type="link"
+                              size="small"
+                              class="service-pipeline__config-btn"
+                              @click="openServiceTypeModal"
+                            >
+                              配置服务
+                            </Button>
+                          </div>
                         </div>
                         <template v-if="showServiceItemContent">
-                          <div class="service-pipeline__track">
-                            <div
-                              v-for="(field, index) in visibleServiceItemFields"
-                              :key="field"
-                              class="service-item-node-wrap"
+                          <div
+                            v-if="checkedServiceTypeNodes.length > 0"
+                            class="service-chevron-flow"
+                          >
+                            <template
+                              v-for="(node, index) in checkedServiceTypeNodes"
+                              :key="node.serviceType"
                             >
-                              <div
-                                class="service-item-node"
-                                :class="[
-                                  `service-item-node--${getServiceItemNodeState(field)}`,
-                                  { 'service-item-node--edit': isEdit },
-                                ]"
+                              <Tooltip
+                                v-if="shouldShowServiceNodeTooltip(node)"
+                                placement="top"
+                                :overlay-class-name="'chevron-step-tooltip'"
                               >
-                                <div
-                                  class="service-item-node__content"
-                                  @click="handleServiceItemNodeToggle(field)"
-                                >
-                                  <span
-                                    class="service-item-node__check"
-                                    :class="{
-                                      'service-item-node__check--checked':
-                                        getServiceItemCheckmarkShown(field),
-                                    }"
-                                  >
-                                    <IconifyIcon
-                                      v-if="getServiceItemCheckmarkShown(field)"
-                                      icon="mdi:check"
-                                      class="service-item-node__check-icon"
-                                    />
-                                  </span>
-                                  <span class="service-item-node__icon">
-                                    <IconifyIcon
-                                      :icon="SERVICE_ITEM_META[field].icon"
-                                      class="service-item-node__icon-inner"
-                                    />
-                                  </span>
-                                  <span class="service-item-node__title">
-                                    {{ getServiceItemLabel(field) }}
-                                  </span>
-                                  <span
-                                    v-if="
-                                      isEdit &&
-                                      isServiceItemEnabled(field) &&
-                                      getServiceItemTaskStatusMeta(field) &&
-                                      !isServiceItemNodeDone(field)
-                                    "
-                                    class="service-item-node__status"
-                                  >
-                                    {{
-                                      getServiceItemTaskStatusMeta(field)?.label
-                                    }}
-                                  </span>
-                                  <span
-                                    v-if="
-                                      isEdit &&
-                                      isServiceItemEnabled(field) &&
-                                      canCompleteServiceItem(field)
-                                    "
-                                    class="service-item-node__action-slot"
-                                  >
-                                    <Button
-                                      type="link"
-                                      size="small"
-                                      class="service-item-node__action-btn"
-                                      :loading="
-                                        completingServiceField === field
+                                <template #title>
+                                  <div class="chevron-step-tooltip__content">
+                                    <div class="chevron-step-tooltip__header">
+                                      <span
+                                        class="chevron-step-tooltip__node-name"
+                                      >
+                                        {{ node.label }}
+                                      </span>
+                                      <Tag
+                                        :color="
+                                          getServiceNodeTooltipStatusMeta(node)
+                                            .color
+                                        "
+                                        class="chevron-step-tooltip__status-tag"
+                                      >
+                                        {{
+                                          getServiceNodeTooltipStatusMeta(node)
+                                            .label
+                                        }}
+                                      </Tag>
+                                    </div>
+                                    <div
+                                      v-if="
+                                        node.taskStatus ===
+                                        SERVICE_TASK_STATUS_PROCESSED
                                       "
-                                      @click.stop="handleCompleteService(field)"
+                                      class="chevron-step-tooltip__info"
                                     >
-                                      完成服务
-                                    </Button>
-                                  </span>
+                                      <div
+                                        class="chevron-step-tooltip__info-row"
+                                      >
+                                        <span
+                                          class="chevron-step-tooltip__info-label"
+                                        >
+                                          完成时间
+                                        </span>
+                                        <span
+                                          class="chevron-step-tooltip__info-value"
+                                        >
+                                          {{
+                                            formatServiceTaskCompletionTime(
+                                              node.completionTime,
+                                            )
+                                          }}
+                                        </span>
+                                      </div>
+                                      <div
+                                        class="chevron-step-tooltip__info-row"
+                                      >
+                                        <span
+                                          class="chevron-step-tooltip__info-label"
+                                        >
+                                          完成人
+                                        </span>
+                                        <span
+                                          class="chevron-step-tooltip__info-value"
+                                        >
+                                          {{
+                                            node.completionUserNickName || '-'
+                                          }}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div
+                                      v-if="
+                                        canCancelCompleteServiceTypeNode(
+                                          node,
+                                        ) || canCompleteServiceTypeNode(node)
+                                      "
+                                      class="chevron-step-tooltip__actions"
+                                    >
+                                      <Button
+                                        v-if="canCompleteServiceTypeNode(node)"
+                                        type="primary"
+                                        size="small"
+                                        block
+                                        class="chevron-step-tooltip__action-btn"
+                                        :loading="
+                                          completingServiceType ===
+                                          node.serviceType
+                                        "
+                                        @click.stop="
+                                          handleCompleteServiceType(node)
+                                        "
+                                      >
+                                        完成
+                                      </Button>
+                                      <Button
+                                        v-if="
+                                          canCancelCompleteServiceTypeNode(node)
+                                        "
+                                        danger
+                                        size="small"
+                                        block
+                                        class="chevron-step-tooltip__action-btn"
+                                        :loading="
+                                          cancellingServiceType ===
+                                          node.serviceType
+                                        "
+                                        @click.stop="
+                                          handleCancelCompleteServiceType(node)
+                                        "
+                                      >
+                                        取消完成
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </template>
+                                <div
+                                  class="chevron-step"
+                                  :class="[
+                                    `chevron-step--${getServicePipelineState(node)}`,
+                                    {
+                                      'chevron-step--first': index === 0,
+                                      'chevron-step--last':
+                                        isServiceChevronStepLast(
+                                          index,
+                                          checkedServiceTypeNodes.length,
+                                        ),
+                                    },
+                                  ]"
+                                >
+                                  <div class="chevron-step__inner">
+                                    <IconifyIcon
+                                      :icon="getServiceTypeNodeIcon(node)"
+                                      class="chevron-step__icon"
+                                    />
+                                    <span class="chevron-step__label">
+                                      {{ node.label }}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                              <div
-                                v-if="
-                                  index < visibleServiceItemFields.length - 1
-                                "
-                                class="service-item-divider"
-                                :class="{
-                                  'service-item-divider--done':
-                                    isServiceItemNodeDone(field),
-                                }"
-                              />
-                            </div>
+                              </Tooltip>
+                              <span v-else class="service-chevron-flow__item">
+                                <div
+                                  class="chevron-step chevron-step--upcoming"
+                                  :class="{
+                                    'chevron-step--first': index === 0,
+                                    'chevron-step--last':
+                                      isServiceChevronStepLast(
+                                        index,
+                                        checkedServiceTypeNodes.length,
+                                      ),
+                                  }"
+                                >
+                                  <div class="chevron-step__inner">
+                                    <IconifyIcon
+                                      :icon="getServiceTypeNodeIcon(node)"
+                                      class="chevron-step__icon"
+                                    />
+                                    <span class="chevron-step__label">
+                                      {{ node.label }}
+                                    </span>
+                                  </div>
+                                </div>
+                              </span>
+                            </template>
+                          </div>
+                          <div v-else class="service-pipeline__empty-checked">
+                            <span class="service-pipeline__empty-checked-text">
+                              暂未配置服务节点
+                            </span>
+                            <Button
+                              type="link"
+                              size="small"
+                              @click="openServiceTypeModal"
+                            >
+                              去配置
+                            </Button>
                           </div>
                         </template>
                         <div v-else class="service-pipeline__state">
@@ -3155,50 +2906,6 @@ defineExpose({
                               $t('seaExport.export.polNoServiceConfig')
                             "
                           />
-                        </div>
-                      </div>
-                      <div class="service-item-grid">
-                        <div
-                          v-if="
-                            SHOW_COLLECTION_PAYMENT_FIELD &&
-                            showServiceItemContent
-                          "
-                          class="service-item-extra-card"
-                          :class="{
-                            'service-item-extra-card--active':
-                              collectionPaymentEnabled,
-                          }"
-                        >
-                          <div class="service-item-extra-card__header">
-                            <div class="service-item-extra-card__title-wrap">
-                              <span class="service-item-extra-card__icon">
-                                <IconifyIcon
-                                  :icon="COLLECTION_PAYMENT_ICON"
-                                  class="service-item-extra-card__icon-inner"
-                                />
-                              </span>
-                              <span class="service-item-extra-card__title"
-                                >代收支</span
-                              >
-                            </div>
-                            <Checkbox
-                              :checked="collectionPaymentEnabled"
-                              @change="handleCollectionPaymentEnabledChange"
-                            />
-                          </div>
-                          <div class="service-item-extra-card__body">
-                            <Select
-                              :value="collectionPaymentDeptId"
-                              :options="collectionPaymentDeptOptions"
-                              :disabled="!collectionPaymentEnabled"
-                              :placeholder="$t('ui.placeholder.select')"
-                              allow-clear
-                              class="w-full"
-                              show-search
-                              option-filter-prop="label"
-                              @change="handleCollectionPaymentDeptChange"
-                            />
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -3560,6 +3267,34 @@ defineExpose({
         </div>
       </div>
     </Spin>
+    <Modal
+      v-model:open="serviceTypeModalOpen"
+      title="配置服务项目"
+      ok-text="确定"
+      cancel-text="取消"
+      width="520px"
+      destroy-on-close
+      @ok="handleServiceTypeModalConfirm"
+      @cancel="handleServiceTypeModalCancel"
+    >
+      <p class="service-type-modal__tip service-type-modal__tip--emphasis">
+        修改后请保存表单生效。
+      </p>
+      <div class="service-type-modal__list">
+        <div
+          v-for="node in serviceTypeNodes"
+          :key="node.serviceType"
+          class="service-type-modal__item"
+        >
+          <Checkbox
+            :checked="isServiceTypeModalChecked(node.serviceType)"
+            @change="handleServiceTypeModalDraftChange(node, $event)"
+          >
+            <span class="service-type-modal__label">{{ node.label }}</span>
+          </Checkbox>
+        </div>
+      </div>
+    </Modal>
   </component>
 </template>
 
@@ -3905,11 +3640,37 @@ defineExpose({
   white-space: nowrap;
 }
 
+.service-pipeline__header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .service-pipeline__hint {
   font-size: 12px;
   line-height: 20px;
   color: rgb(0 0 0 / 45%);
   white-space: nowrap;
+}
+
+.service-pipeline__config-btn {
+  flex-shrink: 0;
+  height: auto;
+  padding: 0;
+  font-size: 12px;
+}
+
+.service-pipeline__empty-checked {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+}
+
+.service-pipeline__empty-checked-text {
+  font-size: 13px;
+  color: rgb(0 0 0 / 45%);
 }
 
 .service-pipeline__state {
@@ -3929,210 +3690,238 @@ defineExpose({
     0 4px 6px -2px rgb(0 0 0 / 2%);
 }
 
-.service-pipeline__track {
+.service-chevron-flow {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 0;
-  align-items: center;
-  justify-content: flex-start;
   width: 100%;
-  min-height: 64px;
+  overflow: auto hidden;
+  border-radius: 12px;
 }
 
-.service-item-node-wrap {
-  display: contents;
+.service-chevron-flow > :deep(span),
+.service-chevron-flow__item {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 220px;
 }
 
-.service-item-node {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-}
-
-.service-item-node__content {
-  box-sizing: border-box;
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 4px 6px;
+.service-chevron-flow > :deep(span) {
   cursor: pointer;
-  border-radius: 8px;
-  transition: background-color 0.2s ease;
 }
 
-.service-item-node__content:hover {
-  background: #f8fafc;
+.service-chevron-flow__item {
+  cursor: default;
 }
 
-.service-item-node__check {
-  display: inline-flex;
-  flex-shrink: 0;
+.chevron-step {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  color: transparent;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 999px;
+  width: 100%;
+  max-width: 220px;
+  height: 64px;
+  padding-right: 12px;
+  padding-left: 28px;
+  margin-left: -12px;
+  cursor: pointer;
+  border: 1px solid rgb(255 255 255 / 20%);
+  clip-path: polygon(
+    0% 0%,
+    calc(100% - 20px) 0%,
+    100% 50%,
+    calc(100% - 20px) 100%,
+    0% 100%,
+    20px 50%
+  );
   transition:
-    color 0.2s ease,
-    background-color 0.2s ease,
-    border-color 0.2s ease;
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
 }
 
-.service-item-node__check--checked {
-  color: #fff;
-  background: #2563eb;
-  border-color: #2563eb;
+.chevron-step--first {
+  padding-left: 20px;
+  margin-left: 0;
+  border-top-left-radius: 16px;
+  border-bottom-left-radius: 16px;
+  clip-path: polygon(
+    0% 0%,
+    calc(100% - 20px) 0%,
+    100% 50%,
+    calc(100% - 20px) 100%,
+    0% 100%
+  );
 }
 
-.service-item-node__check-icon {
-  font-size: 12px;
+.chevron-step--last {
+  padding-right: 20px;
+  border-top-right-radius: 16px;
+  border-bottom-right-radius: 16px;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 20px 50%);
 }
 
-.service-item-node__icon {
-  display: inline-flex;
+.chevron-step:hover {
+  z-index: 30;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+  filter: brightness(1.03);
+}
+
+.chevron-step--done {
+  color: #005313;
+  background: #a8e6cf;
+}
+
+.chevron-step--active {
+  color: #00325b;
+  background: #d1e9ff;
+}
+
+.chevron-step--upcoming {
+  color: #414752;
+  cursor: default;
+  background: #f2f2f2;
+  opacity: 0.8;
+}
+
+.chevron-step__inner {
+  display: flex;
+  gap: 8px;
   align-items: center;
-  color: #64748b;
+  min-width: 0;
+  max-width: 100%;
 }
 
-.service-item-node__icon-inner {
+.chevron-step__icon {
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+.chevron-step__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.service-item-node__title {
-  flex: 0 0 auto;
+:global(.chevron-step-tooltip .ant-tooltip-inner) {
+  min-width: 220px;
+  padding: 0;
+  color: #1b1c1c;
+  background: #fff;
+  border: 1px solid #e8edf5;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 10%);
+}
+
+:global(.chevron-step-tooltip .ant-tooltip-arrow::before) {
+  background: #fff;
+}
+
+.chevron-step-tooltip__content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.chevron-step-tooltip__header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chevron-step-tooltip__node-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: #0f172a;
   white-space: nowrap;
 }
 
-.service-item-node__status {
+.chevron-step-tooltip__status-tag {
   flex-shrink: 0;
-  padding: 2px 8px;
-  margin-left: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.3;
-  color: #f59e0b;
-  white-space: nowrap;
-  background: #fffbeb;
-  border: 1px solid rgb(245 158 11 / 20%);
-  border-radius: 999px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 18px;
 }
 
-.service-item-node__action-slot {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  margin-left: 12px;
-  overflow: hidden;
-  transition:
-    width 0.2s ease,
-    margin 0.2s ease,
-    opacity 0.2s ease;
-}
-
-.service-item-node:not(.service-item-node--active):not(:hover)
-  .service-item-node__action-slot {
-  width: 0;
-  min-width: 0;
-  margin-left: 0;
-  pointer-events: none;
-  opacity: 0;
-}
-
-.service-item-node:hover .service-item-node__action-slot,
-.service-item-node--active .service-item-node__action-slot {
-  width: auto;
-  min-width: 0;
-  pointer-events: auto;
-  opacity: 1;
-}
-
-.service-item-node:not(.service-item-node--active):not(:hover)
-  .service-item-node__action-btn {
-  pointer-events: none;
-}
-
-.service-item-node__action-btn:hover {
-  color: #fff;
-  background: #2563eb;
-  box-shadow: 0 2px 4px rgb(37 99 235 / 20%);
-}
-
-.service-item-node__action-btn {
-  flex-shrink: 0;
-  margin-left: 0;
-  font-size: 12px;
-  color: #2563eb;
-  background: #eff6ff;
-  border-radius: 6px;
-  transition: opacity 0.2s ease;
-}
-
-.service-item-divider {
+.chevron-step-tooltip__info {
   display: flex;
-  flex: 0 0 12px;
-  align-items: center;
-  justify-content: center;
-  width: 12px;
-  height: 64px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 8px;
 }
 
-.service-item-divider::after {
-  display: block;
-  width: 12px;
-  height: 1.5px;
-  content: '';
-  background: #f1f5f9;
+.chevron-step-tooltip__info-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  font-size: 12px;
+  line-height: 18px;
 }
 
-.service-item-divider--done::after {
-  background: rgb(16 185 129 / 30%);
+.chevron-step-tooltip__info-label {
+  flex-shrink: 0;
+  color: rgb(0 0 0 / 45%);
 }
 
-.service-item-node--done .service-item-node__check--checked {
-  color: #fff;
-  background: #10b981;
-  border-color: #10b981;
+.chevron-step-tooltip__info-value {
+  min-width: 0;
+  font-weight: 500;
+  color: #334155;
+  text-align: right;
+  word-break: break-all;
 }
 
-.service-item-node--done .service-item-node__title {
-  color: #64748b;
+.chevron-step-tooltip__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.service-item-node--active
-  .service-item-node__check:not(.service-item-node__check--checked) {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px #eff6ff;
+.chevron-step-tooltip__action-btn {
+  height: 28px;
+  font-size: 12px;
 }
 
-.service-item-node--edit.service-item-node--active
-  .service-item-node__check:not(.service-item-node__check--checked) {
-  border-color: #e2e8f0;
-  box-shadow: none;
+.service-type-modal__tip {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 20px;
+  color: rgb(0 0 0 / 65%);
 }
 
-.service-item-node--active .service-item-node__icon,
-.service-item-node--active .service-item-node__title {
-  color: #2563eb;
+.service-type-modal__tip--emphasis {
+  margin-bottom: 12px;
+  color: #1677ff;
 }
 
-.service-item-node--edit.service-item-node--active .service-item-node__icon,
-.service-item-node--edit.service-item-node--active .service-item-node__title {
-  color: #2563eb;
+.service-type-modal__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
 }
 
-.service-item-node--pending .service-item-node__check {
-  border-style: dashed;
+.service-type-modal__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.service-item-node--pending .service-item-node__icon,
-.service-item-node--pending .service-item-node__title {
-  color: #cbd5e1;
+.service-type-modal__label {
+  margin-right: 6px;
 }
 
 .service-pipeline-empty--compact {

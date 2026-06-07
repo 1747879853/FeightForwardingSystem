@@ -56,8 +56,8 @@ async function bootstrap(namespace: string) {
   // 登录视频/字体按品牌配置初始化（视频支持固定 OSS 地址，字体失败时回退本地资源）
   await Promise.all([initBrandPrivateAssets(), initGlobalFonts()]);
 
-  // 初始化枚举缓存（使用缓存，不强制刷新）
-  await initEnumCache();
+  // 初始化枚举缓存（强制刷新）
+  await initEnumCache(true);
 
   // 安装权限指令
   registerAccessDirective(app);

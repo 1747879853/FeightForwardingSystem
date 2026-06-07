@@ -2,7 +2,7 @@
 title: 工作台
 module: 驾驶舱
 author: auto-doc-sync
-last_updated: 2026-05-30
+last_updated: 2026-06-07
 ---
 
 # 1. 业务背景说明 (Background)
@@ -72,6 +72,7 @@ last_updated: 2026-05-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-07 | `Refactor` | 工作台服务项文案完全改为枚举中心实时口径，移除本地 ServiceType 默认文案表。 | 初始化映射仅依赖 `getEnumItems('ServiceType')`，服务节点名称不再从前端硬编码兜底。 |
 | 2026-05-30 | `Feature` | 工作台“应收应付审核 / 付费申请审核”两个 Tab 由占位改为可用视图：新增审核专用搜索表单（样式对齐海运出口，字段改为各自接口支持条件）并展示审核业务列表，同时接入对应审核 API 与页面跳转。 | `workspace/index.vue` 对三类 Tab 进行分支化数据加载、独立筛选模型与查询参数映射；`WorkbenchReviewFilterBar` 承载审核查询字段；`WorkbenchBusinessTable` 增加 `enableTaskActions` 开关，审核场景关闭海运任务专属批量动作以避免接口误调用。 |
 | 2026-05-30 | `Refactor` | 工作台服务项节点文案改为复用统一 `ServiceType` 枚举映射，移除本地硬编码文案表。 | `workspace/index.vue` 初始化时动态加载统一枚举并构建映射；`workbench-data.ts` 仅保留可注入的兜底 map，避免展示口径与其他页面分叉。 |
 | 2026-05-25 | `Feature` | 工作台海运出口服务页对接 `SeServiceTaskAdmin` 查询/转交/完成接口，支持按港口+服务项节点展示任务，完成批量转交与单条/批量完成链路，紧急与异常区块继续使用 mock。 | 新增服务项枚举映射与“指派任务汇总组”渲染分支；筛选模型与 API 参数对齐，页面由静态 mock 切换为后端驱动。 |
