@@ -7,6 +7,15 @@ import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 import { $t } from '#/locales';
 
 /**
+ * 计费标准名称选项
+ */
+const getBillingUnitOptions = () => [
+  { label: '箱型', value: 'ctn' },
+  { label: '票', value: 'order' },
+  { label: 'TEU', value: 'teu' },
+];
+
+/**
  * 获取表格搜索表单的字段配置
  */
 export function useGridFormSchema(): VbenFormSchema[] {
@@ -58,60 +67,56 @@ export function useFormSchema(): VbenFormSchema[] {
       label: $t('system.basicData.feeCode.defaultCurrency'),
       defaultValue: undefined,
     },
-    // {
-    //   component: 'Input',
-    //   fieldName: 'defaultCurrency',
-    //   label: $t('system.basicData.feeCode.defaultCurrency'),
-    //   componentProps: {
-    //     maxLength: 50,
-    //   },
-    // },
     {
-      component: 'Input',
-      fieldName: 'defaultUnit',
-      label: $t('system.basicData.feeCode.defaultUnit'),
-      componentProps: {
-        maxLength: 50,
-      },
-    },
-    {
-      component: 'Input',
+      component: 'Select',
       fieldName: 'defaultUnitName',
       label: $t('system.basicData.feeCode.defaultUnitName'),
       componentProps: {
-        maxLength: 100,
+        options: getBillingUnitOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        class: 'w-full',
       },
     },
     {
-      component: 'Input',
-      fieldName: 'defaultDebit',
-      label: $t('system.basicData.feeCode.defaultDebit'),
-      componentProps: {
-        maxLength: 50,
-      },
-    },
-    {
-      component: 'Input',
+      component: 'Select',
       fieldName: 'defaultDebitName',
       label: $t('system.basicData.feeCode.defaultDebitName'),
       componentProps: {
-        maxLength: 100,
+        options: [
+          { label: '委托单位', value: 'p' },
+          { label: '订舱代理', value: 'o' },
+          { label: '发货人', value: 'b' },
+          { label: '收货人', value: 'e' },
+          { label: '通知人', value: 'h' },
+          { label: '代理', value: 'k' },
+          { label: '船代', value: 'n' },
+          { label: '目的港代理', value: 's' },
+        ],
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        class: 'w-full',
       },
     },
     {
-      component: 'Input',
-      fieldName: 'defaultCredit',
-      label: $t('system.basicData.feeCode.defaultCredit'),
-      componentProps: {
-        maxLength: 50,
-      },
-    },
-    {
-      component: 'Input',
+      component: 'Select',
       fieldName: 'defaultCreditName',
       label: $t('system.basicData.feeCode.defaultCreditName'),
       componentProps: {
-        maxLength: 100,
+        options: [
+          { label: '船公司', value: 'a' },
+          { label: '场站', value: 'c' },
+          { label: '航空公司', value: 'd' },
+          { label: '报关行', value: 'f' },
+          { label: '快递公司', value: 'g' },
+          { label: '车队', value: 'i' },
+          { label: '仓库', value: 'q' },
+          { label: '保险公司', value: 'r' },
+          { label: '工厂', value: 'u' },
+        ],
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        class: 'w-full',
       },
     },
     {
@@ -123,22 +128,6 @@ export function useFormSchema(): VbenFormSchema[] {
         max: 100,
         precision: 2,
         class: 'w-full',
-      },
-    },
-    {
-      component: 'Input',
-      fieldName: 'feeGroup',
-      label: $t('system.basicData.feeCode.feeGroup'),
-      componentProps: {
-        maxLength: 50,
-      },
-    },
-    {
-      component: 'Input',
-      fieldName: 'feeFrt',
-      label: $t('system.basicData.feeCode.feeFrt'),
-      componentProps: {
-        maxLength: 50,
       },
     },
     {

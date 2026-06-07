@@ -7,11 +7,8 @@ export namespace FeeCodeAdminApi {
     cnName?: string;
     enName?: string;
     currencyId?: number;
-    defaultUnit?: string;
     defaultUnitName?: string;
-    defaultDebit?: string;
     defaultDebitName?: string;
-    defaultCredit?: string;
     defaultCreditName?: string;
     isSea?: boolean;
     isAir?: boolean;
@@ -22,8 +19,6 @@ export namespace FeeCodeAdminApi {
     isConfidential?: boolean;
     isInvoiceProhibit?: boolean;
     taxRate?: number;
-    feeGroup?: string;
-    feeFrt?: string;
     goodName?: string;
     checkingType?: string;
     defaultCurrency?: string;
@@ -39,11 +34,8 @@ export namespace FeeCodeAdminApi {
     cnName?: string;
     enName?: string;
     currencyId?: number;
-    defaultUnit?: string;
     defaultUnitName?: string;
-    defaultDebit?: string;
     defaultDebitName?: string;
-    defaultCredit?: string;
     defaultCreditName?: string;
     isSea?: boolean;
     isAir?: boolean;
@@ -54,8 +46,6 @@ export namespace FeeCodeAdminApi {
     isConfidential?: boolean;
     isInvoiceProhibit?: boolean;
     taxRate?: number;
-    feeGroup?: string;
-    feeFrt?: string;
     goodName?: string;
     checkingType?: string;
     defaultCurrency?: string;
@@ -71,11 +61,8 @@ export namespace FeeCodeAdminApi {
     cnName?: string;
     enName?: string;
     currencyId?: number;
-    defaultUnit?: string;
     defaultUnitName?: string;
-    defaultDebit?: string;
     defaultDebitName?: string;
-    defaultCredit?: string;
     defaultCreditName?: string;
     isSea?: boolean;
     isAir?: boolean;
@@ -86,8 +73,6 @@ export namespace FeeCodeAdminApi {
     isConfidential?: boolean;
     isInvoiceProhibit?: boolean;
     taxRate?: number;
-    feeGroup?: string;
-    feeFrt?: string;
     goodName?: string;
     checkingType?: string;
     defaultCurrency?: string;

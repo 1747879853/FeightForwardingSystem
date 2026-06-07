@@ -85,6 +85,7 @@ const normalizeOrderFeeWithRowKey = (
     ...item,
     _rowKey: `ofee_${i}_${Date.now()}`,
     creationTime: dayjs(item.creationTime).format('YYYY-MM-DD HH:mm:ss'),
+
     unitPriceStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.unitPrice}`,
     amountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.amount}`,
     noTaxUnitPriceStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.noTaxUnitPrice}`,

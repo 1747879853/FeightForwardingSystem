@@ -543,9 +543,9 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
       //     return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
       //   },
       // },
-      cellRender: {
-        name: 'CellCustom',
-      },
+      // cellRender: {
+      //   name: 'CellCustom',
+      // },
     },
     {
       title: $t('auditApproval.task.auditUserName'),
@@ -556,6 +556,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('auditApproval.task.auditTime'),
       field: 'task.auditTime',
+      formatter: 'formatDateTime',
 
       //renderCell: ({ text }) => {
       // 基本格式化
