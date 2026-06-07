@@ -1,7 +1,6 @@
 import type { Dayjs } from 'dayjs';
 
 import type { SeServiceTaskAdminApi } from '#/api/sea-export/se-service-task-admin';
-import { DEFAULT_SERVICE_TYPE_OPTIONS } from '#/views/sea-export-admin/service-type';
 
 export interface ServiceTab {
   key: string;
@@ -123,9 +122,7 @@ export const stageSteps: StageStep[] = [];
 
 export const businessRows: BusinessRow[] = [];
 
-export const DEFAULT_SERVICE_TYPE_TEXT_MAP = new Map<number, string>(
-  DEFAULT_SERVICE_TYPE_OPTIONS.map((item) => [item.value, item.label]),
-);
+export const DEFAULT_SERVICE_TYPE_TEXT_MAP = new Map<number, string>();
 
 export function serviceTypeLabel(
   serviceType?: number | null,

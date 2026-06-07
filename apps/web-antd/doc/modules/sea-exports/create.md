@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-30
+last_updated: 2026-06-07
 ---
 
 # 1. 业务背景说明 (Background)
@@ -69,6 +69,7 @@ last_updated: 2026-05-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-07 | `Refactor` | 服务项目枚举值与节点文案不再使用前端硬编码 `0~5`，统一在运行时从 `getEnumItems('ServiceType')` 读取并映射。 | 新建页与编辑页共用 `form.vue`，服务项勾选、提交 `serviceTypes` 与节点名称均收敛到同一枚举源，降低枚举中心变更带来的前端漂移风险。 |
 | 2026-05-30 | `Fix` | 服务项目空态改为紧凑一行提示；未选/清空起运港时不渲染服务节点并提示先选起运港；可见服务项与顺序完全由起运港配置回显。 | 初始可见态改为全隐藏，`getServiceItemVisible` 仅 `=== true` 时展示。 |
 | 2026-05-30 | `Fix` | 起运港已选但未配置任何服务项时，服务项目区域展示空态提示，不再渲染空白。 | 新增 `polHasNoServiceConfig` 与联动 loading 态，仅在 `GetServiceTypesByPOLAsync` 成功返回且可见卡片为空时提示。 |
 | 2026-05-30 | `Refactor` | 服务项类型值映射改为复用统一常量 `SERVICE_TYPE_VALUE`，与工作台/港口服务项配置/客户排除服务项保持同源。 | `form.vue` 继续承载“服务项值 -> 业务字段”映射语义，枚举数值来源收敛到 `service-type.ts`，降低 0~5 硬编码漂移风险。 |

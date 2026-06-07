@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-05-30
+last_updated: 2026-06-07
 ---
 
 # 1. 业务背景说明 (Background)
@@ -92,6 +92,7 @@ last_updated: 2026-05-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-07 | `Refactor` | 编辑态 `DetailAsync` 返回的 `seaExportServices` 统一按 `serviceType` 与枚举中心 `ServiceType.value` 对齐，服务项标题使用 `ServiceType.displayName`。 | 通过运行时枚举映射替代本地常量值，服务项任务状态回填、勾选态识别与展示文案共用同一映射链路。 |
 | 2026-05-30 | `Fix` | 编辑页保存、完成服务成功后均调用 `loadEditData` 重新拉取详情，避免本地状态与后端不一致。 | `handleSubmit`（编辑态）、`handleCompleteService` 成功后复用既有 `loadEditData` 回填链路。 |
 | 2026-05-30 | `Fix` | 编辑态服务流水线：勾选表示任务已完成；状态/按钮按需渲染、宽度自适应；已有服务任务（任意状态）不可关闭服务。 | `getServiceItemCheckmarkShown`、`hasServiceItemTask`、`canToggleServiceItemNode`；保存仍用 `serviceItemEnabledValues`。 |
 | 2026-05-30 | `Fix` | 起运港已选但未配置任何服务项时，服务项目区域展示空态提示，不再渲染空白。 | 与新建页共用 `form.vue`；空态判定依赖联动查询完成后的可见服务集合。 |

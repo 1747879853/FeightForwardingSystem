@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-07] [ServiceType 枚举改为运行时取值](./changelogs/change-log-2026-06-07-service-type-enum-runtime-mapping.md)
 - [2026-06-03] [个人中心个人邮箱密码输入框高度对齐](./changelogs/change-log-2026-06-03-profile-email-password-input-height.md)
 - [2026-06-03] [jht 字体改为固定 OSS 直连](./changelogs/change-log-2026-06-03-jht-font-direct-oss.md)
 - [2026-06-03] [个人中心表单垂直布局并移除修改密码旧密码](./changelogs/change-log-2026-06-03-profile-form-layout-password.md)

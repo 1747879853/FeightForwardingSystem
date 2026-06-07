@@ -1,25 +1,8 @@
 import { getEnumItems } from '#/utils/init-enum';
 
 export type ServiceTypeOption = { label: string; value: number };
-
-export const SERVICE_TYPE_VALUE = {
-  booking: 0,
-  truck: 1,
-  customs: 2,
-  warehouse: 3,
-  insurance: 4,
-  collectionPayment: 5,
-} as const;
-
-/** ServiceType 枚举兜底文案（与后端 ServiceType 枚举一致） */
-export const DEFAULT_SERVICE_TYPE_OPTIONS: ServiceTypeOption[] = [
-  { value: SERVICE_TYPE_VALUE.booking, label: '订舱' },
-  { value: SERVICE_TYPE_VALUE.truck, label: '拖车' },
-  { value: SERVICE_TYPE_VALUE.customs, label: '报关' },
-  { value: SERVICE_TYPE_VALUE.warehouse, label: '仓库' },
-  { value: SERVICE_TYPE_VALUE.insurance, label: '保险' },
-  { value: SERVICE_TYPE_VALUE.collectionPayment, label: '代收支' },
-];
+const normalizeServiceTypeLabel = (label?: string) =>
+  (label || '').replace(/\s+/g, '').toLowerCase();
 
 export function buildServiceTypeOptionsFromEnum(
   items:
@@ -38,8 +21,7 @@ export function buildServiceTypeOptionsFromEnum(
     }))
     .filter((item) => !Number.isNaN(item.value))
     .sort((a, b) => a.value - b.value);
-
-  return options.length > 0 ? options : [...DEFAULT_SERVICE_TYPE_OPTIONS];
+  return options;
 }
 
 export async function loadSeServiceTypeEnumItems() {
@@ -55,13 +37,33 @@ export async function loadSeServiceTypeOptions() {
 export function buildServiceTypeLabelMap(
   serviceTypeOptions: ServiceTypeOption[],
 ) {
-  const map = new Map(
-    DEFAULT_SERVICE_TYPE_OPTIONS.map((item) => [item.value, item.label]),
-  );
+  const map = new Map<number, string>();
   for (const item of serviceTypeOptions) {
     map.set(Number(item.value), item.label);
   }
   return map;
+}
+
+export function resolveServiceTypeValueByLabels(
+  serviceTypeOptions: ServiceTypeOption[],
+  labels: string[],
+) {
+  if (!Array.isArray(labels) || labels.length === 0) {
+    return undefined;
+  }
+  const normalizedCandidates = labels
+    .map((item) => normalizeServiceTypeLabel(item))
+    .filter(Boolean);
+  if (normalizedCandidates.length === 0) {
+    return undefined;
+  }
+  const matched = serviceTypeOptions.find((item) => {
+    const normalizedLabel = normalizeServiceTypeLabel(item.label);
+    return normalizedCandidates.some((candidate) =>
+      normalizedLabel.includes(candidate),
+    );
+  });
+  return matched ? Number(matched.value) : undefined;
 }
 
 export function resolveServiceTypeLabelByMap(

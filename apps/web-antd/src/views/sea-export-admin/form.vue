@@ -70,7 +70,7 @@ import {
 import {
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
-  SERVICE_TYPE_VALUE,
+  resolveServiceTypeValueByLabels,
 } from './service-type';
 
 const route = useRoute();
@@ -254,33 +254,83 @@ const SERVICE_ITEM_CHECK_FIELD_NAMES: Record<ServiceItemFieldName, string> = {
   warehouseId: 'warehouseIdEnabled',
   insuranceId: 'insuranceIdEnabled',
 };
-const SERVICE_TYPE_VALUES: Record<ServiceItemFieldName, number> = {
-  bookingAgentId: SERVICE_TYPE_VALUE.booking,
-  teamId: SERVICE_TYPE_VALUE.truck,
-  custBrokerId: SERVICE_TYPE_VALUE.customs,
-  warehouseId: SERVICE_TYPE_VALUE.warehouse,
-  insuranceId: SERVICE_TYPE_VALUE.insurance,
+const SERVICE_TYPE_LABEL_ALIASES: Record<
+  ServiceItemFieldName | 'collectionPayment',
+  string[]
+> = {
+  bookingAgentId: ['订舱'],
+  teamId: ['拖车'],
+  custBrokerId: ['报关'],
+  warehouseId: ['仓库'],
+  insuranceId: ['保险'],
+  collectionPayment: ['代收支'],
 };
-const COLLECTION_PAYMENT_SERVICE_TYPE = SERVICE_TYPE_VALUE.collectionPayment;
+const serviceTypeValueByField = ref<
+  Partial<Record<ServiceItemFieldName, number>>
+>({});
+const collectionPaymentServiceTypeValue = ref<number>();
 /** 暂时隐藏代收支服务项，恢复时改为 true */
 const SHOW_COLLECTION_PAYMENT_FIELD = false;
-const SERVICE_TYPE_TO_FIELD = new Map<number, ServiceItemFieldName>(
-  SERVICE_ITEM_FIELD_NAMES.map((field) => [SERVICE_TYPE_VALUES[field], field]),
-);
+const serviceTypeToFieldMap = ref(new Map<number, ServiceItemFieldName>());
 const SERVICE_ITEM_DEFAULT_ORDER_MAP = new Map(
   SERVICE_ITEM_FIELD_NAMES.map((field, index) => [field, index]),
 );
 const serviceItemLabelMap = ref(new Map<number, string>());
 const serviceItemSortOrderMap = ref(new Map<ServiceItemFieldName, number>());
-const getServiceItemLabel = (field: ServiceItemFieldName) => {
-  const serviceType = SERVICE_TYPE_VALUES[field];
+const getServiceTypeValue = (field: ServiceItemFieldName) =>
+  serviceTypeValueByField.value[field];
+const getCollectionPaymentServiceTypeValue = () =>
+  collectionPaymentServiceTypeValue.value;
+const hasServiceTypeSelected = (
+  selectedServiceTypes: Set<number>,
+  field: ServiceItemFieldName,
+) => {
+  const serviceTypeValue = getServiceTypeValue(field);
+  return serviceTypeValue != null && selectedServiceTypes.has(serviceTypeValue);
+};
+const hasCollectionPaymentTypeSelected = (
+  selectedServiceTypes: Set<number>,
+) => {
+  const collectionPaymentServiceType = getCollectionPaymentServiceTypeValue();
   return (
-    serviceItemLabelMap.value.get(serviceType) ?? SERVICE_ITEM_META[field].label
+    collectionPaymentServiceType != null &&
+    selectedServiceTypes.has(collectionPaymentServiceType)
+  );
+};
+const getServiceItemLabel = (field: ServiceItemFieldName) => {
+  const serviceType = getServiceTypeValue(field);
+  return (
+    (serviceType != null
+      ? serviceItemLabelMap.value.get(serviceType)
+      : undefined) ?? SERVICE_ITEM_META[field].label
   );
 };
 const loadServiceItemLabelMap = async () => {
   const options = await loadSeServiceTypeOptions();
   serviceItemLabelMap.value = buildServiceTypeLabelMap(options);
+  const nextServiceTypeValueByField: Partial<
+    Record<ServiceItemFieldName, number>
+  > = {};
+  SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
+    const serviceTypeValue = resolveServiceTypeValueByLabels(
+      options,
+      SERVICE_TYPE_LABEL_ALIASES[field],
+    );
+    if (serviceTypeValue != null) {
+      nextServiceTypeValueByField[field] = serviceTypeValue;
+    }
+  });
+  serviceTypeValueByField.value = nextServiceTypeValueByField;
+  collectionPaymentServiceTypeValue.value = resolveServiceTypeValueByLabels(
+    options,
+    SERVICE_TYPE_LABEL_ALIASES.collectionPayment,
+  );
+  serviceTypeToFieldMap.value = new Map<number, ServiceItemFieldName>(
+    SERVICE_ITEM_FIELD_NAMES.map((field) => {
+      const serviceTypeValue = nextServiceTypeValueByField[field];
+      return [Number(serviceTypeValue), field] as const;
+    }).filter(([serviceTypeValue]) => Number.isFinite(serviceTypeValue)),
+  );
 };
 const SERVICE_TASK_STATUS_PENDING = 0;
 const SERVICE_TASK_STATUS_PROCESSED = 1;
@@ -357,9 +407,13 @@ const getServiceTypesFromEnabledValues = (
       const checkFieldName = getServiceItemCheckFieldName(field);
       return !!values[checkFieldName];
     })
-    .map((field) => SERVICE_TYPE_VALUES[field]);
+    .map((field) => getServiceTypeValue(field))
+    .filter((item): item is number => typeof item === 'number');
+  const collectionPaymentServiceType = getCollectionPaymentServiceTypeValue();
   if (withCollectionPayment) {
-    types.push(COLLECTION_PAYMENT_SERVICE_TYPE);
+    if (collectionPaymentServiceType != null) {
+      types.push(collectionPaymentServiceType);
+    }
   }
   return types;
 };
@@ -631,7 +685,9 @@ const extractServiceTaskStatusFromDetail = (
   if (!Array.isArray(services)) return result;
 
   services.forEach((service: any) => {
-    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(service?.serviceType));
+    const mappedField = serviceTypeToFieldMap.value.get(
+      Number(service?.serviceType),
+    );
     if (!mappedField) return;
     const status = toServiceTaskStatusValue(
       service?.seServiceTask?.serviceTaskStatus ?? service?.serviceTaskStatus,
@@ -650,7 +706,9 @@ const extractServiceTaskIdFromDetail = (
   if (!Array.isArray(services)) return result;
 
   services.forEach((service: any) => {
-    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(service?.serviceType));
+    const mappedField = serviceTypeToFieldMap.value.get(
+      Number(service?.serviceType),
+    );
     if (!mappedField) return;
     const rawTaskId =
       service?.seServiceTask?.id ??
@@ -696,7 +754,8 @@ const buildServiceRequiredPropsByField = (
   );
 
   SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-    const serviceType = SERVICE_TYPE_VALUES[field];
+    const serviceType = getServiceTypeValue(field);
+    if (serviceType == null) return;
     const matched = sourceMap.get(serviceType);
     if (!matched) return;
     result[field] = normalizeRequiredProps(matched.seServiceRequires);
@@ -852,13 +911,19 @@ const extractServiceFieldSet = (
 ) => {
   const matchedFields = new Set<ServiceItemFieldName>();
   let collectionPaymentMatched = false;
+  const collectionPaymentServiceType = getCollectionPaymentServiceTypeValue();
   (Array.isArray(serviceTypes) ? serviceTypes : []).forEach((item) => {
     if (onlyChecked && !item?.checked) return;
-    if (Number(item?.serviceType) === COLLECTION_PAYMENT_SERVICE_TYPE) {
+    if (
+      collectionPaymentServiceType != null &&
+      Number(item?.serviceType) === collectionPaymentServiceType
+    ) {
       collectionPaymentMatched = true;
       return;
     }
-    const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(item?.serviceType));
+    const mappedField = serviceTypeToFieldMap.value.get(
+      Number(item?.serviceType),
+    );
     if (mappedField) {
       matchedFields.add(mappedField);
     }
@@ -880,7 +945,9 @@ const buildServiceItemSortOrderMap = (
         Number(b?.sortId ?? Number.MAX_SAFE_INTEGER),
     )
     .forEach((item, index) => {
-      const mappedField = SERVICE_TYPE_TO_FIELD.get(Number(item?.serviceType));
+      const mappedField = serviceTypeToFieldMap.value.get(
+        Number(item?.serviceType),
+      );
       if (!mappedField || orderMap.has(mappedField)) return;
       orderMap.set(mappedField, index);
     });
@@ -2021,19 +2088,19 @@ const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
     );
     serviceItemEnabledValues.value = {
       bookingAgentIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.bookingAgentId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'bookingAgentId') ||
         hasServiceItemValue(nextServiceItemValues.bookingAgentId),
       teamIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.teamId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'teamId') ||
         hasServiceItemValue(nextServiceItemValues.teamId),
       custBrokerIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.custBrokerId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'custBrokerId') ||
         hasServiceItemValue(nextServiceItemValues.custBrokerId),
       warehouseIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.warehouseId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'warehouseId') ||
         hasServiceItemValue(nextServiceItemValues.warehouseId),
       insuranceIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.insuranceId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'insuranceId') ||
         hasServiceItemValue(nextServiceItemValues.insuranceId),
     };
   } else if (touchedServiceItems) {
@@ -2516,25 +2583,24 @@ const loadEditData = async () => {
     );
     serviceItemEnabledValues.value = {
       bookingAgentIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.bookingAgentId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'bookingAgentId') ||
         hasServiceItemValue(formValues.bookingAgentId),
       teamIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.teamId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'teamId') ||
         hasServiceItemValue(formValues.teamId),
       custBrokerIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.custBrokerId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'custBrokerId') ||
         hasServiceItemValue(formValues.custBrokerId),
       warehouseIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.warehouseId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'warehouseId') ||
         hasServiceItemValue(formValues.warehouseId),
       insuranceIdEnabled:
-        selectedServiceTypes.has(SERVICE_TYPE_VALUES.insuranceId) ||
+        hasServiceTypeSelected(selectedServiceTypes, 'insuranceId') ||
         hasServiceItemValue(formValues.insuranceId),
     };
     if (SHOW_COLLECTION_PAYMENT_FIELD) {
-      const collectionPaymentSelected = selectedServiceTypes.has(
-        COLLECTION_PAYMENT_SERVICE_TYPE,
-      );
+      const collectionPaymentSelected =
+        hasCollectionPaymentTypeSelected(selectedServiceTypes);
       collectionPaymentEnabled.value = collectionPaymentSelected;
       const selectedOrganizationId = detail.organizationUnits?.[0]?.id;
       collectionPaymentDeptId.value =
@@ -2547,7 +2613,7 @@ const loadEditData = async () => {
     }
     const checkedServiceFields = new Set<ServiceItemFieldName>();
     SERVICE_ITEM_FIELD_NAMES.forEach((field) => {
-      if (selectedServiceTypes.has(SERVICE_TYPE_VALUES[field])) {
+      if (hasServiceTypeSelected(selectedServiceTypes, field)) {
         checkedServiceFields.add(field);
       }
     });
@@ -2561,9 +2627,8 @@ const loadEditData = async () => {
       clientId: formValues.clientId,
       force: true,
       checkedServiceFields,
-      checkedCollectionPayment: selectedServiceTypes.has(
-        COLLECTION_PAYMENT_SERVICE_TYPE,
-      ),
+      checkedCollectionPayment:
+        hasCollectionPaymentTypeSelected(selectedServiceTypes),
     });
   } finally {
     pageLoading.value = false;
@@ -2843,7 +2908,13 @@ const handleBack = () => {
 };
 
 onMounted(() => {
-  void loadServiceItemLabelMap();
+  const initialize = async () => {
+    await loadServiceItemLabelMap();
+    loadEditData();
+    if (!isEdit.value) {
+      void syncServiceTypesByPol();
+    }
+  };
   if (!isEdit.value) {
     initializeOrderUsersPanel(defaultOrderUsers);
     refreshEntrustReadonlyInfo({});
@@ -2854,10 +2925,7 @@ onMounted(() => {
   loadCollectionPaymentDeptOptions();
   applyTransitPortTabSchema();
   applyNotifierPartyTabSchema();
-  loadEditData();
-  if (!isEdit.value) {
-    void syncServiceTypesByPol();
-  }
+  void initialize();
   nextTick(() => {
     updateActiveSectionByScroll();
   });
