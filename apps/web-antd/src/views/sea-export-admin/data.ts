@@ -869,7 +869,6 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       fieldName: 'clientId',
       industryCategory: 'p',
       label: $t('seaExport.export.clientId'),
-      rules: 'selectRequired',
     }),
     createClientSelectSchema({
       fieldName: 'teamId',
