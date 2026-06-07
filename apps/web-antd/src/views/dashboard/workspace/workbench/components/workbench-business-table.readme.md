@@ -14,6 +14,8 @@
 
 - `update:selectedRowKeys` 勾选变化时触发
 - `update:activeStageKey` 点击流程节点时触发；左侧 `table-card__sub` 同步为 `{label}控制节点`（或 `StageStep.subLabel`）
+- `open-sea-export` 单击委托单号时触发，由页面层跳转编辑/详情
+- `open-business-list` 双击数据行时触发，由页面层跳转对应 Tab 的业务列表页
 
 ## 对接建议
 

@@ -29,6 +29,7 @@ const emit = defineEmits<{
   complete: [string[]];
   refresh: [];
   'open-sea-export': [string];
+  'open-business-list': [];
 }>();
 
 function resolveInitialStageKey(steps: StageStep[]) {
@@ -152,10 +153,27 @@ function handleBatchComplete() {
   );
 }
 
+let bookingLinkClickTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearBookingLinkClickTimer() {
+  if (!bookingLinkClickTimer) return;
+  clearTimeout(bookingLinkClickTimer);
+  bookingLinkClickTimer = null;
+}
+
 function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
   event.preventDefault();
   if (!seaExportId) return;
-  emit('open-sea-export', seaExportId);
+  clearBookingLinkClickTimer();
+  bookingLinkClickTimer = setTimeout(() => {
+    emit('open-sea-export', seaExportId);
+    bookingLinkClickTimer = null;
+  }, 220);
+}
+
+function handleRowDblclick() {
+  clearBookingLinkClickTimer();
+  emit('open-business-list');
 }
 </script>
 
@@ -253,7 +271,12 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
             <tr v-if="!rows.length">
               <td class="table-empty" :colspan="tableColspan">暂无任务</td>
             </tr>
-            <tr v-for="row in rows" :key="row.id">
+            <tr
+              v-for="row in rows"
+              :key="row.id"
+              class="business-table__row"
+              @dblclick="handleRowDblclick(row)"
+            >
               <td v-if="showSelection" class="checkbox-col">
                 <input
                   :checked="selectedRowKeys.includes(row.id)"
@@ -527,6 +550,7 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
 }
 
 .business-table tbody tr {
+  cursor: pointer;
   transition: background-color 0.15s ease;
 }
 

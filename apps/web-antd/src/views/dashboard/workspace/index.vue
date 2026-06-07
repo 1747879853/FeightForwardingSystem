@@ -623,6 +623,18 @@ function handleOpenSeaExport(seaExportId: string) {
   });
 }
 
+function handleOpenBusinessList() {
+  if (activeServiceTab.value === 'ar-ap-review') {
+    void router.push({ name: 'ExpenseAll' });
+    return;
+  }
+  if (activeServiceTab.value === 'payment-review') {
+    void router.push({ name: 'PaymentReview' });
+    return;
+  }
+  void router.push({ name: 'SeaExportList' });
+}
+
 onMounted(() => {
   void Promise.all([loadServiceTypeEnumMap(), loadWorkbench()]);
 });
@@ -687,6 +699,7 @@ onMounted(() => {
             @transfer="handleTransfer"
             @complete="handleComplete"
             @open-sea-export="handleOpenSeaExport"
+            @open-business-list="handleOpenBusinessList"
           />
         </main>
         <WorkbenchExceptionPanel :summary="exceptionSummary" />
@@ -705,6 +718,7 @@ onMounted(() => {
             @transfer="handleTransfer"
             @complete="handleComplete"
             @open-sea-export="handleOpenSeaExport"
+            @open-business-list="handleOpenBusinessList"
           />
         </main>
       </template>

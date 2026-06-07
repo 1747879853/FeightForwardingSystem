@@ -42,6 +42,9 @@ last_updated: 2026-06-07
 - **任务处理动作：**
   - 批量转交：`TransferAsync`（被转交人来自 `UserSelect` 全量用户）
   - 单条/批量完成：`CompleteAsync`（批量为逐条调用）
+- **业务列表行跳转：**
+  - 单击委托单号：进入对应业务编辑/详情（海运出口编辑页、应收应付费用详情、付费申请审核页）
+  - 双击整行：跳转当前 Tab 对应的业务列表页（`/sea-exports`、`/audit-approval/expense-review`、`/audit-approval/payment-review`）
 - **保留 mock 区域：**
   - 紧急处理任务区块：仍用 mock
   - 异常业务区块：仍用 mock
@@ -77,6 +80,7 @@ last_updated: 2026-06-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-07 | `Feature` | 工作台业务列表支持双击整行跳转当前 Tab 对应业务列表页；委托单号单击仍进入编辑/详情。 | `WorkbenchBusinessTable` 新增 `open-business-list` 事件与单击/双击互斥；`index.vue` 按 Tab 映射 `SeaExportList` / `ExpenseAll` / `PaymentReview`。 |
 | 2026-06-07 | `Feature` | 工作台海运出口业务列表列改为按当前服务项 `seServiceShows` 动态展示，1 枚举 1 列，固定保留委托单号/处理人/被转交人。 | 新增 `se-service-show-columns.ts` 注册表；`WorkbenchBusinessTable.dynamicColumns` 仅海运出口 Tab 传入；`BusinessRow.seaExport` 供列取值。 |
 | 2026-06-07 | `Refactor` | 工作台服务项文案完全改为枚举中心实时口径，移除本地 ServiceType 默认文案表。 | 初始化映射仅依赖 `getEnumItems('ServiceType')`，服务节点名称不再从前端硬编码兜底。 |
 | 2026-05-30 | `Feature` | 工作台“应收应付审核 / 付费申请审核”两个 Tab 由占位改为可用视图：新增审核专用搜索表单（样式对齐海运出口，字段改为各自接口支持条件）并展示审核业务列表，同时接入对应审核 API 与页面跳转。 | `workspace/index.vue` 对三类 Tab 进行分支化数据加载、独立筛选模型与查询参数映射；`WorkbenchReviewFilterBar` 承载审核查询字段；`WorkbenchBusinessTable` 增加 `enableTaskActions` 开关，审核场景关闭海运任务专属批量动作以避免接口误调用。 |
