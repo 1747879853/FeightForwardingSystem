@@ -19,10 +19,11 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const portTitleText = computed(
-  () =>
-    `${props.activePortMeta.label} (${props.activePortMeta.label.toUpperCase()} PORT)`,
-);
+const portTitleText = computed(() => {
+  const enName = props.activePortMeta.portName || props.activePortMeta.label;
+  const cnName = props.activePortMeta.cnName;
+  return cnName ? `${enName} (${cnName})` : enName;
+});
 
 const emit = defineEmits<{
   'update:activePort': [string];
@@ -42,7 +43,7 @@ const emit = defineEmits<{
               </h2>
             </Tooltip>
           </div>
-          <span class="port-header__total">{{ activePortMeta.count }}</span>
+          <span class="port-header__badge">{{ activePortMeta.count }}</span>
         </div>
       </div>
       <div class="port-header__ports">
@@ -53,7 +54,8 @@ const emit = defineEmits<{
           type="button"
           @click="emit('update:activePort', port.key)"
         >
-          {{ port.label }} [{{ port.count }}]
+          <span class="port-chip__label">{{ port.label }}</span>
+          <span class="port-header__badge">{{ port.count }}</span>
         </button>
       </div>
     </div>
@@ -126,7 +128,7 @@ const emit = defineEmits<{
   white-space: nowrap;
 }
 
-.port-header__total {
+.port-header__badge {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -150,18 +152,29 @@ const emit = defineEmits<{
 }
 
 .port-chip {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
   height: 36px;
   padding: 0 14px;
-  font-size: 14px;
-  color: #555d6d;
   cursor: pointer;
   background: transparent;
   border: 0;
   border-radius: 18px;
 }
 
+.port-chip__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555d6d;
+}
+
 .port-chip.is-active {
-  color: #1e2229;
   background: #f3f4f6;
+}
+
+.port-chip.is-active .port-chip__label {
+  font-weight: 700;
+  color: #1e2229;
 }
 </style>

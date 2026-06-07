@@ -11,6 +11,10 @@ export interface ServiceTab {
 export interface PortTab {
   key: string;
   label: string;
+  /** 港口英文名 */
+  portName?: string;
+  /** 港口中文名 */
+  cnName?: string;
   count: number;
 }
 
@@ -140,13 +144,14 @@ export function serviceTypeLabel(
 export function toPortTab(
   group: SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto,
 ): PortTab {
+  const portName = group.pol?.portName;
+  const cnName = group.pol?.cnName;
   return {
     count: group.taskCount ?? 0,
     key: String(group.polId ?? group.seServiceConfigId),
-    label:
-      group.pol?.portName ||
-      group.pol?.cnName ||
-      `POL:${String(group.polId ?? '-')}`,
+    label: portName || cnName || `POL:${String(group.polId ?? '-')}`,
+    portName,
+    cnName,
   };
 }
 
