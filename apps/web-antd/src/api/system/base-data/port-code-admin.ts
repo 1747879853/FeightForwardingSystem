@@ -1,5 +1,5 @@
 import { requestClient } from '#/api/request';
-
+import type { CountryCodeAdminApi } from '#/api/system/base-data/country-code-admin';
 export namespace PortCodeAdminApi {
   /** 新增港口信息参数 */
   export interface PortCodeAddDto {
@@ -64,6 +64,8 @@ export namespace PortCodeAdminApi {
     portName?: string;
     /** 港口中文名称 */
     cnName?: string;
+
+    country?: CountryCodeAdminApi.CountryCodeDto;
     /** 国家名称 */
     countryName?: string;
     /** 所在大洲 */

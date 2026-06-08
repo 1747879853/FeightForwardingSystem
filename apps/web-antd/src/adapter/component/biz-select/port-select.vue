@@ -54,9 +54,10 @@ const forwardSlotNames = computed(() =>
 );
 
 const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
+  console.log('port', port);
   const portAny = port as any;
   const ediCode = (port.ediCode ?? '').toString().trim();
-  const countryEnName = (port?.country?.countryEnName ?? '').toString().trim();
+  const countryEnName = (port.country?.countryEnName ?? '').toString().trim();
   const cnName = (port.cnName ?? '').toString().trim();
   let nameForPath = (port.portName ?? '').toString().trim();
   if (!nameForPath) {
@@ -73,6 +74,10 @@ const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
   return {
     disabled: port.status === 1,
     dropdownLabel: dropdownLabel || label,
+    /** 第一行：EDI代码/港口名称 */
+    line1: `${ediCode}/${nameForPath}`,
+    /** 第二行：国家英文名 / 中文名称 */
+    line2: `${countryEnName} / ${cnName}`,
     label,
     /** 供选中后 `portName` 事件使用，不依赖额外请求 */
     portName: rawPortName || undefined,
@@ -255,7 +260,10 @@ defineExpose({
       <slot :name="name" v-bind="slotData || {}"></slot>
     </template>
     <template #option="opt">
-      <span>{{ opt?.dropdownLabel ?? opt?.label }}</span>
+      <div class="flex flex-col gap-0.5 py-0.5">
+        <span class="text-sm font-medium text-gray-900">{{ opt?.line1 }}</span>
+        <span class="text-xs text-gray-500">{{ opt?.line2 }}</span>
+      </div>
     </template>
   </ApiComponent>
 </template>
