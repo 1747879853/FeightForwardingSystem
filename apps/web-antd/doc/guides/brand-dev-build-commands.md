@@ -17,7 +17,7 @@
 | 品牌 | Workflow | 构建命令 | 触发 |
 | --- | --- | --- | --- |
 | 浩瀚远洋 (hhyy) | `.github/workflows/deploy-web-antd-iis.yml` | `pnpm build:antd:hhyy` | `main` push / 手动 |
-| 津海通 (jht) | `.github/workflows/deploy-web-antd-iis-jht.yml` | `pnpm build:antd:jht` | `main` push / 手动 |
+| 津海通 (jht) | `.github/workflows/deploy-web-antd-iis-jht.yml` | `pnpm build:antd:jht` | 仅手动 `workflow_dispatch` |
 
 两路 workflow 使用**独立**的 GitHub Secrets（`IIS_*` 与 `IIS_JHT_*`），可指向同一台服务器、不同 IIS 站点。部署阶段会先把 `apps/web-antd/dist` 打成 `dist.zip`（MSDeploy package）再上传，目标 IIS 侧由 MSDeploy 自动解包同步，减少传输体积。
 

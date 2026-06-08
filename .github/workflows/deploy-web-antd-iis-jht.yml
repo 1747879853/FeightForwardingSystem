@@ -1,10 +1,7 @@
-# 津海通（jht）生产前端：pnpm build:antd:jht → MSDeploy 发布 IIS
+# 津海通（jht）生产前端：pnpm build:antd:jht → MSDeploy 发布 IIS（仅手动触发，push 不自动发布）
 name: 生产环境前端自动发布 - 津海通 (jht)
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 concurrency:

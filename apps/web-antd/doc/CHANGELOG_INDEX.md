@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-08] [jht 取消 main push 自动发布](./changelogs/change-log-2026-06-08-jht-disable-auto-deploy-on-push.md)
 - [2026-06-07] [海运出口服务取消完成二次确认](./changelogs/change-log-2026-06-07-sea-export-service-cancel-complete-confirm.md)
 - [2026-06-07] [海运出口配置服务确定后自动保存](./changelogs/change-log-2026-06-07-sea-export-service-config-auto-save.md)
 - [2026-06-07] [船公司中文简称字段对接与 CarrierSelect 回显同步](./changelogs/change-log-2026-06-07-carrier-cn-short-name-integration.md)
