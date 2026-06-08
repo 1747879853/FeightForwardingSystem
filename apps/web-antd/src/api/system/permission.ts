@@ -317,7 +317,7 @@ async function getDataPermissionList(params: Recordable<any>) {
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserDataPermissionDto>
-  >('/services/app/UserDataPermissionAdmin/GetPagedList', {
+  >('/services/app/UserDataPermissionAdmin/GetPagedListAsync', {
     params: queryParams,
   });
   return {
@@ -333,7 +333,7 @@ async function addDataPermission(
   data: SystemPermissionApi.UserDataPermissionAddDto,
 ) {
   return requestClient.post<number>(
-    '/services/app/UserDataPermissionAdmin/Add',
+    '/services/app/UserDataPermissionAdmin/AddAsync',
     data,
   );
 }
@@ -345,7 +345,7 @@ async function editDataPermission(
   data: SystemPermissionApi.UserDataPermissionEditDto,
 ) {
   return requestClient.put<boolean>(
-    '/services/app/UserDataPermissionAdmin/Edit',
+    '/services/app/UserDataPermissionAdmin/EditAsync',
     data,
   );
 }
@@ -355,7 +355,7 @@ async function editDataPermission(
  */
 async function deleteDataPermission(id: number) {
   return requestClient.delete<boolean>(
-    '/services/app/UserDataPermissionAdmin/Delete',
+    '/services/app/UserDataPermissionAdmin/DeleteAsync',
     { data: { id } },
   );
 }
@@ -372,7 +372,7 @@ async function getDataPermissionItemList(params: Recordable<any>) {
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserDataPermissionItemDto>
-  >('/services/app/UserDataPermissionItemAdmin/GetPagedList', {
+  >('/services/app/UserDataPermissionItemAdmin/GetPagedListAsync', {
     params: queryParams,
   });
   return {
@@ -388,7 +388,7 @@ async function addDataPermissionItem(
   data: SystemPermissionApi.UserDataPermissionItemAddDto,
 ) {
   return requestClient.post<number>(
-    '/services/app/UserDataPermissionItemAdmin/Add',
+    '/services/app/UserDataPermissionItemAdmin/AddAsync',
     data,
   );
 }
@@ -398,7 +398,7 @@ async function addDataPermissionItem(
  */
 async function deleteDataPermissionItem(id: number) {
   return requestClient.delete<boolean>(
-    '/services/app/UserDataPermissionItemAdmin/Delete',
+    '/services/app/UserDataPermissionItemAdmin/DeleteAsync',
     { data: { id } },
   );
 }
@@ -420,7 +420,7 @@ async function getTablePermissionList(params: Recordable<any>) {
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserTablePermissionDto>
-  >('/services/app/UserTablePermissionAdmin/GetPagedList', {
+  >('/services/app/UserTablePermissionAdmin/GetPagedListAsync', {
     params: queryParams,
   });
   return {
@@ -436,7 +436,7 @@ async function addTablePermission(
   data: SystemPermissionApi.UserTablePermissionAddDto,
 ) {
   return requestClient.post<number>(
-    '/services/app/UserTablePermissionAdmin/Add',
+    '/services/app/UserTablePermissionAdmin/AddAsync',
     data,
   );
 }
@@ -448,7 +448,7 @@ async function editTablePermission(
   data: SystemPermissionApi.UserTablePermissionEditDto,
 ) {
   return requestClient.put<boolean>(
-    '/services/app/UserTablePermissionAdmin/Edit',
+    '/services/app/UserTablePermissionAdmin/EditAsync',
     data,
   );
 }
@@ -458,7 +458,7 @@ async function editTablePermission(
  */
 async function deleteTablePermission(id: number) {
   return requestClient.delete<boolean>(
-    '/services/app/UserTablePermissionAdmin/Delete',
+    '/services/app/UserTablePermissionAdmin/DeleteAsync',
     { data: { id } },
   );
 }
@@ -475,7 +475,7 @@ async function getTablePermissionConditionList(params: Recordable<any>) {
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserTablePermissionConditionDto>
-  >('/services/app/UserTablePermissionConditionAdmin/GetPagedList', {
+  >('/services/app/UserTablePermissionConditionAdmin/GetPagedListAsync', {
     params: queryParams,
   });
   return {
@@ -491,7 +491,7 @@ async function addTablePermissionCondition(
   data: SystemPermissionApi.UserTablePermissionConditionAddDto,
 ) {
   return requestClient.post<number>(
-    '/services/app/UserTablePermissionConditionAdmin/Add',
+    '/services/app/UserTablePermissionConditionAdmin/AddAsync',
     data,
   );
 }
@@ -501,7 +501,7 @@ async function addTablePermissionCondition(
  */
 async function deleteTablePermissionCondition(id: number) {
   return requestClient.delete<boolean>(
-    '/services/app/UserTablePermissionConditionAdmin/Delete',
+    '/services/app/UserTablePermissionConditionAdmin/DeleteAsync',
     { data: { id } },
   );
 }
