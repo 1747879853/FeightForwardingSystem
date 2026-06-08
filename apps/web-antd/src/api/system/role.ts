@@ -146,6 +146,7 @@ async function updateRolePermissions(
     roleId,
     permissionNames,
   };
+  console.log('updateRolePermissions', data);
   return requestClient.put(
     '/services/app/Role/UpdateRolePermissionsAsync',
     data,

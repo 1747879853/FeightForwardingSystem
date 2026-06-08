@@ -175,10 +175,10 @@ async function handleSaveModulePermissions() {
   savingPermissions.value = true;
   try {
     if (targetType.value === 'role') {
-      await updateRolePermissions({
-        roleId: currentTargetId.value,
-        permissionNames: checkedPermissions.value,
-      });
+      await updateRolePermissions(
+        currentTargetId.value,
+        checkedPermissions.value,
+      );
     } else {
       await updateUserPermissions({
         userId: currentTargetId.value,
