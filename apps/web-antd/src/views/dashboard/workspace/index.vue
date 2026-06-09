@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
+import type { SeServiceConfigAdminApi } from '#/api/system/base-data/se-service-config-admin';
 import type { SeServiceTaskAdminApi } from '#/api/sea-export/se-service-task-admin';
 import type { BusinessRow, PortTab, StageStep } from './workbench-data';
 
@@ -25,9 +26,15 @@ import {
 } from '#/api/audit-approval/payment-review-admin';
 import {
   completeSeServiceTask,
-  getSeServiceTaskPagedList,
+  getSeServiceTaskWorkbenchCount,
+  getSeServiceTaskWorkbenchPagedList,
   transferSeServiceTask,
 } from '#/api/sea-export/se-service-task-admin';
+import {
+  getSeServiceConfigDetail,
+  getSeServiceConfigPagedList,
+} from '#/api/system/base-data/se-service-config-admin';
+import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import {
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
@@ -69,6 +76,9 @@ const WorkbenchExceptionPanel = defineAsyncComponent(
   () => import('./workbench/components/workbench-exception-panel.vue'),
 );
 
+const SEA_EXPORT_PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+const SEA_EXPORT_DEFAULT_PAGE_SIZE = 20;
+
 const activeServiceTab = ref('sea-export');
 const activePort = ref('');
 const activeProcessingTab = ref('processing');
@@ -97,7 +107,23 @@ const appliedPaymentReviewFilterModel = reactive({
   ...paymentReviewFilterDefaults,
 });
 const selectedRowKeys = ref<string[]>([]);
-const rawGroups = ref<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>([]);
+const countGroups = ref<
+  SeServiceTaskAdminApi.SeServiceTaskWorkbenchCountGroupDto[]
+>([]);
+const pagedTasks = ref<SeServiceTaskAdminApi.SeServiceTaskWorkbenchItemDto[]>(
+  [],
+);
+const activePortConfig =
+  ref<SeServiceConfigAdminApi.SeServiceConfigDetailDto | null>(null);
+const portConfigCache = new Map<
+  number,
+  SeServiceConfigAdminApi.SeServiceConfigDetailDto | null
+>();
+const seaExportPagination = reactive({
+  current: 1,
+  pageSize: SEA_EXPORT_DEFAULT_PAGE_SIZE,
+  total: 0,
+});
 const serviceTypeTextMap = ref<Map<number, string>>(new Map());
 const seaExportPropLabelMap = ref<Map<number, string>>(new Map());
 
@@ -121,100 +147,133 @@ function toDateText(value?: string | null) {
   return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '--';
 }
 
-function matchEtdRange(
-  etd: string | undefined,
-  etdRange: typeof appliedFilterModel.etdRange,
-) {
-  if (!etdRange || !etdRange[0] || !etdRange[1]) return true;
-  if (!etd) return false;
-  const etdDate = dayjs(etd);
-  if (!etdDate.isValid()) return false;
-  const [start, end] = etdRange;
-  return (
-    !etdDate.isBefore(dayjs(start), 'day') &&
-    !etdDate.isAfter(dayjs(end), 'day')
+function buildSeaExportFilterParams(): SeServiceTaskAdminApi.GetWorkbenchFilterParams {
+  const [etdStartRaw, etdEndRaw] = appliedFilterModel.etdRange ?? [];
+  const etdStartDate = etdStartRaw ? dayjs(etdStartRaw) : null;
+  const etdEndDate = etdEndRaw ? dayjs(etdEndRaw) : null;
+  const mblNum = appliedFilterModel.mblNum.trim();
+
+  return {
+    CarrierId: appliedFilterModel.carrierId,
+    ClientId: appliedFilterModel.clientId,
+    ETDEnd: etdEndDate?.isValid()
+      ? etdEndDate.endOf('day').toISOString()
+      : undefined,
+    ETDStart: etdStartDate?.isValid()
+      ? etdStartDate.startOf('day').toISOString()
+      : undefined,
+    MblNum: mblNum || undefined,
+    PODId: appliedFilterModel.podId,
+    ServiceTaskStatus: activeProcessingTab.value === 'processed' ? 1 : 0,
+  };
+}
+
+function getActivePortGroup() {
+  if (!activePort.value) return countGroups.value[0];
+  return countGroups.value.find(
+    (item) => String(item.polId) === activePort.value,
   );
 }
 
-function matchTask(task: SeServiceTaskAdminApi.SeServiceTaskDto) {
-  const status = activeProcessingTab.value === 'processed' ? 1 : 0;
-  if (task.serviceTaskStatus !== status) return false;
+function normalizeCountGroups(
+  raw:
+    | SeServiceTaskAdminApi.SeServiceTaskWorkbenchCountResultDto
+    | Record<string, unknown>,
+): SeServiceTaskAdminApi.SeServiceTaskWorkbenchCountGroupDto[] {
+  const items =
+    (raw as SeServiceTaskAdminApi.SeServiceTaskWorkbenchCountResultDto).items ??
+    (raw as { Items?: unknown[] }).Items ??
+    [];
 
-  const seaExport = task.seaExport;
-  const transportOrder = seaExport?.transportOrder;
-  if (
-    appliedFilterModel.clientId &&
-    String(transportOrder?.clientId ?? '') !==
-      String(appliedFilterModel.clientId)
-  ) {
-    return false;
-  }
-  if (
-    appliedFilterModel.carrierId != null &&
-    seaExport?.carrierId !== appliedFilterModel.carrierId
-  ) {
-    return false;
-  }
-  if (
-    appliedFilterModel.podId != null &&
-    seaExport?.podId !== appliedFilterModel.podId
-  ) {
-    return false;
-  }
-  const mblKeyword = appliedFilterModel.mblNum.trim().toLowerCase();
-  if (
-    mblKeyword &&
-    !String(transportOrder?.mblNum ?? '')
-      .toLowerCase()
-      .includes(mblKeyword)
-  ) {
-    return false;
-  }
-  if (!matchEtdRange(transportOrder?.etd, appliedFilterModel.etdRange)) {
-    return false;
-  }
+  return (items as Record<string, unknown>[]).map((group) => {
+    const serviceItemsRaw =
+      (group.serviceItems as Record<string, unknown>[] | undefined) ??
+      (group.ServiceItems as Record<string, unknown>[] | undefined) ??
+      [];
 
-  return true;
+    return {
+      polId: Number(group.polId ?? group.PolId ?? 0),
+      pol: (group.pol ?? group.Pol) as
+        | SeServiceTaskAdminApi.PortCodeDto
+        | null
+        | undefined,
+      totalCount: Number(group.totalCount ?? group.TotalCount ?? 0),
+      serviceItems: serviceItemsRaw.map((item) => ({
+        count: Number(item.count ?? item.Count ?? 0),
+        serviceType: item.serviceType ?? item.ServiceType ?? null,
+      })),
+    };
+  });
 }
 
-function filterGroups(
-  source: SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[],
+function buildServiceItemCountMap(
+  group?: SeServiceTaskAdminApi.SeServiceTaskWorkbenchCountGroupDto,
 ) {
-  return source.reduce<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>(
-    (result, group) => {
-      const configItems: SeServiceTaskAdminApi.SeServiceConfigItemTaskGroupDto[] =
-        [];
-      for (const item of group.seServiceConfigItems ?? []) {
-        const tasks = (item.seServiceTasks ?? []).filter(matchTask);
-        if (!tasks.length) continue;
-        configItems.push({
-          ...item,
-          seServiceTasks: tasks,
-        });
-      }
-
-      if (!configItems.length) return result;
-
-      const taskCount = configItems.reduce(
-        (count, item) => count + (item.seServiceTasks?.length ?? 0),
-        0,
-      );
-      result.push({
-        ...group,
-        seServiceConfigItems: configItems,
-        taskCount,
-      });
-      return result;
-    },
-    [],
-  );
+  const countMap = new Map<number | 'assigned', number>();
+  for (const item of group?.serviceItems ?? []) {
+    if (item.serviceType == null) {
+      countMap.set('assigned', item.count);
+      continue;
+    }
+    countMap.set(Number(item.serviceType), item.count);
+  }
+  return countMap;
 }
 
-const groups = computed<SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto[]>(
-  () => filterGroups(rawGroups.value),
-);
+function buildStageSteps(
+  group?: SeServiceTaskAdminApi.SeServiceTaskWorkbenchCountGroupDto,
+): StageStep[] {
+  if (!group) return [];
 
-const allPortTabs = computed<PortTab[]>(() => groups.value.map(toPortTab));
+  const countMap = buildServiceItemCountMap(group);
+  const configItems = [
+    ...(activePortConfig.value?.seServiceConfigItems ?? []),
+  ].sort((left, right) => (left.sortId ?? 0) - (right.sortId ?? 0));
+  const steps: StageStep[] = [];
+  const usedServiceTypes = new Set<number>();
+
+  for (const configItem of configItems) {
+    const serviceType = Number(configItem.serviceType);
+    const count = countMap.get(serviceType) ?? 0;
+    if (count <= 0) continue;
+    usedServiceTypes.add(serviceType);
+    steps.push({
+      count,
+      key: String(serviceType),
+      label: serviceTypeLabel(serviceType, serviceTypeTextMap.value),
+    });
+  }
+
+  const countServiceItems = [...(group.serviceItems ?? [])]
+    .filter((item) => item.serviceType != null && item.count > 0)
+    .sort(
+      (left, right) => Number(left.serviceType) - Number(right.serviceType),
+    );
+
+  for (const item of countServiceItems) {
+    const serviceType = Number(item.serviceType);
+    if (usedServiceTypes.has(serviceType)) continue;
+    usedServiceTypes.add(serviceType);
+    steps.push({
+      count: item.count,
+      key: String(serviceType),
+      label: serviceTypeLabel(serviceType, serviceTypeTextMap.value),
+    });
+  }
+
+  const assignedCount = countMap.get('assigned') ?? 0;
+  if (assignedCount > 0) {
+    steps.push({
+      count: assignedCount,
+      key: 'assigned',
+      label: serviceTypeLabel(null, serviceTypeTextMap.value),
+    });
+  }
+
+  return steps;
+}
+
+const allPortTabs = computed<PortTab[]>(() => countGroups.value.map(toPortTab));
 
 const activePortMeta = computed(
   () =>
@@ -225,82 +284,65 @@ const activePortMeta = computed(
     },
 );
 
-const activePortGroup = computed(() => {
-  if (!activePort.value) return groups.value[0];
-  return groups.value.find((item) => {
-    const key = String(item.polId ?? item.seServiceConfigId);
-    return key === activePort.value;
-  });
-});
-
-const currentConfigItems = computed(
-  () => activePortGroup.value?.seServiceConfigItems ?? [],
-);
-
-function configItemKey(
-  item: SeServiceTaskAdminApi.SeServiceConfigItemTaskGroupDto,
-  index: number,
-) {
-  return item.id ? String(item.id) : `assigned-${index}`;
-}
-
 const stageSteps = computed<StageStep[]>(() =>
-  currentConfigItems.value.map((item, index) => ({
-    count: item.seServiceTasks?.length ?? 0,
-    key: configItemKey(item, index),
-    label: serviceTypeLabel(item.serviceType, serviceTypeTextMap.value),
-  })),
+  buildStageSteps(getActivePortGroup()),
 );
 
 const activeConfigItem = computed(() => {
-  const found = currentConfigItems.value.find(
-    (item, index) => configItemKey(item, index) === activeStageKey.value,
+  if (activeStageKey.value === 'assigned') return undefined;
+  const serviceType = Number(activeStageKey.value);
+  if (Number.isNaN(serviceType)) return undefined;
+  return activePortConfig.value?.seServiceConfigItems?.find(
+    (item) => item.serviceType === serviceType,
   );
-  return found ?? currentConfigItems.value[0];
 });
 
-const seaExportDynamicColumns = computed(() =>
-  buildDynamicColumns(
-    activeConfigItem.value?.seServiceShows,
-    seaExportPropLabelMap.value,
-  ),
+const seaExportDynamicColumns = computed(() => {
+  if (activeStageKey.value === 'assigned') return undefined;
+  const shows = activeConfigItem.value?.seServiceShows?.map((item) => ({
+    seaExportPropEnum: item.seaExportPropEnum,
+  }));
+  return buildDynamicColumns(shows, seaExportPropLabelMap.value);
+});
+
+function mapWorkbenchItemToBusinessRow(
+  task: SeServiceTaskAdminApi.SeServiceTaskWorkbenchItemDto,
+): BusinessRow {
+  const seaExport = task.seaExport;
+  const users = task.seServiceTaskUsers ?? [];
+  const assignee =
+    users.find((item) => item.userId === task.assigneeUserId)?.userNickName ??
+    (task.assigneeUserId ? `用户${task.assigneeUserId}` : '');
+
+  return {
+    assigneeUserId: task.assigneeUserId,
+    assigneeUserName: assignee,
+    bookingNo:
+      seaExport?.transportOrder?.commissionNum || String(task.seaExportId),
+    containerInfo: seaExport?.transportOrder?.totalCtn || '--',
+    etd: seaExport?.transportOrder?.etd
+      ? dayjs(seaExport.transportOrder.etd).format('YYYY-MM-DD')
+      : '--',
+    id: task.id,
+    route: `${seaExport?.polName || '--'} / ${seaExport?.podName || '--'}`,
+    seaExport,
+    seaExportId: String(task.seaExportId),
+    serviceTaskStatus: task.serviceTaskStatus,
+    status: 'pending',
+    taskUsersText:
+      users
+        .map((item) => item.userNickName)
+        .filter(Boolean)
+        .join('、') || '--',
+    vesselVoyage:
+      [seaExport?.vessel, seaExport?.innerVoyno].filter(Boolean).join(' / ') ||
+      '--',
+  };
+}
+
+const businessRows = computed(() =>
+  pagedTasks.value.map(mapWorkbenchItemToBusinessRow),
 );
-
-const businessRows = computed(() => {
-  const tasks = activeConfigItem.value?.seServiceTasks ?? [];
-  return tasks.map((task) => {
-    const seaExport = task.seaExport;
-    const users = task.seServiceTaskUsers ?? [];
-    const assignee =
-      users.find((item) => item.userId === task.assigneeUserId)?.userNickName ??
-      (task.assigneeUserId ? `用户${task.assigneeUserId}` : '');
-    return {
-      assigneeUserId: task.assigneeUserId,
-      assigneeUserName: assignee,
-      bookingNo:
-        seaExport?.transportOrder?.commissionNum || String(task.seaExportId),
-      containerInfo: seaExport?.transportOrder?.totalCtn || '--',
-      etd: seaExport?.transportOrder?.etd
-        ? dayjs(seaExport.transportOrder.etd).format('YYYY-MM-DD')
-        : '--',
-      id: task.id,
-      route: `${seaExport?.polName || '--'} / ${seaExport?.podName || '--'}`,
-      seaExport,
-      seaExportId: String(task.seaExportId),
-      serviceTaskStatus: task.serviceTaskStatus,
-      status: 'pending' as const,
-      taskUsersText:
-        users
-          .map((item) => item.userNickName)
-          .filter(Boolean)
-          .join('、') || '--',
-      vesselVoyage:
-        [seaExport?.vessel, seaExport?.innerVoyno]
-          .filter(Boolean)
-          .join(' / ') || '--',
-    };
-  });
-});
 
 const reviewBusinessRows = computed(() => reviewRawRows.value);
 
@@ -327,18 +369,194 @@ function ensureActiveStage() {
     return;
   }
   if (!stageSteps.value.some((item) => item.key === activeStageKey.value)) {
-    const firstStage = stageSteps.value[0];
-    activeStageKey.value = firstStage ? firstStage.key : '';
+    activeStageKey.value = stageSteps.value[0]?.key ?? '';
   }
 }
 
-watch([groups, activePort], () => {
-  ensureActiveStage();
-});
+async function loadPortConfig(polId: number) {
+  if (portConfigCache.has(polId)) {
+    activePortConfig.value = portConfigCache.get(polId) ?? null;
+    return activePortConfig.value;
+  }
 
-watch(activeStageKey, () => {
+  const listResult = await getSeServiceConfigPagedList({
+    PageIndex: 1,
+    PageSize: 1,
+    polId,
+    PolId: polId,
+  });
+  const configId = listResult.items?.[0]?.id;
+  if (!configId) {
+    portConfigCache.set(polId, null);
+    activePortConfig.value = null;
+    return null;
+  }
+
+  const detail = await getSeServiceConfigDetail(configId);
+  portConfigCache.set(polId, detail);
+  activePortConfig.value = detail;
+  return detail;
+}
+
+async function loadSeaExportCount(resetSelection: boolean) {
+  const result = await getSeServiceTaskWorkbenchCount(
+    buildSeaExportFilterParams(),
+  );
+  countGroups.value = normalizeCountGroups(result);
+
+  if (resetSelection) {
+    activePort.value = countGroups.value[0]
+      ? String(countGroups.value[0].polId)
+      : '';
+    return;
+  }
+
+  if (
+    activePort.value &&
+    !countGroups.value.some((item) => String(item.polId) === activePort.value)
+  ) {
+    activePort.value = countGroups.value[0]
+      ? String(countGroups.value[0].polId)
+      : '';
+  }
+}
+
+async function loadSeaExportTaskList(options?: {
+  keepPage?: boolean;
+  resetPage?: boolean;
+}) {
+  const polId = Number(activePort.value);
+  if (!polId || !activeStageKey.value) {
+    pagedTasks.value = [];
+    seaExportPagination.total = 0;
+    return;
+  }
+
+  if (options?.resetPage) {
+    seaExportPagination.current = 1;
+  }
+
+  const requestParams: SeServiceTaskAdminApi.GetWorkbenchPagedListParams = {
+    ...buildSeaExportFilterParams(),
+    MaxResultCount: seaExportPagination.pageSize,
+    POLId: polId,
+    SkipCount: (seaExportPagination.current - 1) * seaExportPagination.pageSize,
+  };
+
+  if (activeStageKey.value !== 'assigned') {
+    const serviceType = Number(activeStageKey.value);
+    if (!Number.isNaN(serviceType)) {
+      requestParams.ServiceType = serviceType;
+    }
+  }
+
+  const result = await getSeServiceTaskWorkbenchPagedList(requestParams);
+
+  pagedTasks.value = result.items ?? [];
+  seaExportPagination.total = result.totalCount ?? 0;
+
+  if (!pagedTasks.value.length && seaExportPagination.current > 1) {
+    seaExportPagination.current -= 1;
+    await loadSeaExportTaskList({ keepPage: true });
+  }
+}
+
+async function loadSeaExportWorkbenchFull() {
+  loading.value = true;
   selectedRowKeys.value = [];
-});
+  try {
+    await loadSeaExportCount(true);
+    ensureActiveStage();
+    const polId = Number(activePort.value);
+    if (!polId) {
+      activePortConfig.value = null;
+      activeStageKey.value = '';
+      pagedTasks.value = [];
+      seaExportPagination.total = 0;
+      seaExportPagination.current = 1;
+      return;
+    }
+
+    await loadPortConfig(polId);
+    ensureActiveStage();
+    await loadSeaExportTaskList({ resetPage: true });
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function refreshSeaExportAfterAction() {
+  loading.value = true;
+  try {
+    await loadSeaExportCount(false);
+    ensureActiveStage();
+    const polId = Number(activePort.value);
+    if (!polId) {
+      activePortConfig.value = null;
+      activeStageKey.value = '';
+      pagedTasks.value = [];
+      seaExportPagination.total = 0;
+      return;
+    }
+
+    if (!portConfigCache.has(polId)) {
+      await loadPortConfig(polId);
+    } else {
+      activePortConfig.value = portConfigCache.get(polId) ?? null;
+    }
+    ensureActiveStage();
+    await loadSeaExportTaskList({ keepPage: true });
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handlePortChange(portKey: string) {
+  if (portKey === activePort.value) return;
+  activePort.value = portKey;
+  selectedRowKeys.value = [];
+  loading.value = true;
+  try {
+    const polId = Number(portKey);
+    if (!polId) {
+      activePortConfig.value = null;
+      activeStageKey.value = '';
+      pagedTasks.value = [];
+      seaExportPagination.total = 0;
+      seaExportPagination.current = 1;
+      return;
+    }
+    await loadPortConfig(polId);
+    ensureActiveStage();
+    await loadSeaExportTaskList({ resetPage: true });
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleStageChange(stageKey: string) {
+  if (stageKey === activeStageKey.value) return;
+  activeStageKey.value = stageKey;
+  selectedRowKeys.value = [];
+  loading.value = true;
+  try {
+    await loadSeaExportTaskList({ resetPage: true });
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleSeaExportPaginationChange(page: number, pageSize: number) {
+  seaExportPagination.current = page;
+  seaExportPagination.pageSize = pageSize;
+  selectedRowKeys.value = [];
+  loading.value = true;
+  try {
+    await loadSeaExportTaskList({ keepPage: true });
+  } finally {
+    loading.value = false;
+  }
+}
 
 watch(activeProcessingTab, () => {
   selectedRowKeys.value = [];
@@ -352,48 +570,6 @@ watch(activeServiceTab, (tab) => {
   }
   if (tab) void loadWorkbench();
 });
-
-watch(allPortTabs, (tabs) => {
-  if (!tabs.length) {
-    activePort.value = '';
-    selectedRowKeys.value = [];
-    return;
-  }
-  if (!tabs.some((item) => item.key === activePort.value)) {
-    activePort.value = tabs[0]?.key ?? '';
-    selectedRowKeys.value = [];
-  }
-});
-
-async function loadSeaExportWorkbench() {
-  const [etdStartRaw, etdEndRaw] = appliedFilterModel.etdRange ?? [];
-  const etdStartDate = etdStartRaw ? dayjs(etdStartRaw) : null;
-  const etdEndDate = etdEndRaw ? dayjs(etdEndRaw) : null;
-  const etdStart = etdStartDate?.isValid()
-    ? etdStartDate.format('YYYY-MM-DD')
-    : undefined;
-  const etdEnd = etdEndDate?.isValid()
-    ? etdEndDate.format('YYYY-MM-DD')
-    : undefined;
-  const mblNum = appliedFilterModel.mblNum.trim();
-  loading.value = true;
-  try {
-    const result = await getSeServiceTaskPagedList({
-      carrierId: appliedFilterModel.carrierId,
-      clientId: appliedFilterModel.clientId,
-      etdEnd,
-      etdStart,
-      isAssigned: false,
-      mblNum: mblNum || undefined,
-      podId: appliedFilterModel.podId,
-      serviceTaskStatus: activeProcessingTab.value === 'processed' ? 1 : 0,
-    });
-    rawGroups.value = result.items ?? [];
-    selectedRowKeys.value = [];
-  } finally {
-    loading.value = false;
-  }
-}
 
 function mapOrderFeeTaskToBusinessRow(
   item: ExpenseSubmissionAdminApi.OrderFeeTaskListDto,
@@ -515,7 +691,7 @@ async function loadReviewWorkbench() {
 
 async function loadWorkbench() {
   if (isSeaExportTab.value) {
-    await loadSeaExportWorkbench();
+    await loadSeaExportWorkbenchFull();
     return;
   }
   await loadReviewWorkbench();
@@ -581,7 +757,7 @@ async function submitTransfer() {
     });
     message.success('转交成功');
     transferVisible.value = false;
-    await loadWorkbench();
+    await refreshSeaExportAfterAction();
   } finally {
     transferSubmitting.value = false;
   }
@@ -598,6 +774,10 @@ function handleComplete(ids: string[]) {
     async onOk() {
       await Promise.all(ids.map((id) => completeSeServiceTask({ id })));
       message.success('任务已完成');
+      if (isSeaExportTab.value) {
+        await refreshSeaExportAfterAction();
+        return;
+      }
       await loadWorkbench();
     },
   });
@@ -625,6 +805,20 @@ function handleOpenSeaExport(seaExportId: string) {
     params: { id: seaExportId },
   });
 }
+
+async function handleSeaExportRefresh() {
+  if (isSeaExportTab.value) {
+    await refreshSeaExportAfterAction();
+    return;
+  }
+  await loadWorkbench();
+}
+
+useRefreshListOnFormReturn('Workspace', () => {
+  if (isSeaExportTab.value) {
+    void refreshSeaExportAfterAction();
+  }
+});
 
 onMounted(() => {
   void Promise.all([loadServiceTypeEnumMap(), loadWorkbench()]);
@@ -669,7 +863,7 @@ onMounted(() => {
           :active-port="activePort"
           :active-port-meta="activePortMeta"
           :ports="allPortTabs"
-          @update:active-port="activePort = $event"
+          @update:active-port="handlePortChange"
         />
       </div>
     </template>
@@ -681,12 +875,16 @@ onMounted(() => {
             :enable-task-actions="true"
             :dynamic-columns="seaExportDynamicColumns"
             :loading="loading"
+            :pagination="seaExportPagination"
+            :pagination-page-size-options="SEA_EXPORT_PAGE_SIZE_OPTIONS"
             :rows="displayBusinessRows"
             :selected-row-keys="selectedRowKeys"
             :stage-steps="displayStageSteps"
+            :active-stage-key="activeStageKey"
             @update:selected-row-keys="selectedRowKeys = $event"
-            @update:active-stage-key="activeStageKey = $event"
-            @refresh="loadWorkbench"
+            @update:active-stage-key="handleStageChange"
+            @pagination-change="handleSeaExportPaginationChange"
+            @refresh="handleSeaExportRefresh"
             @transfer="handleTransfer"
             @complete="handleComplete"
             @open-sea-export="handleOpenSeaExport"

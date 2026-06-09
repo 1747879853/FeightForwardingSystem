@@ -3,26 +3,43 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { requestClient } from '#/api/request';
 
 export namespace SeServiceTaskAdminApi {
-  export interface PortSimpleDto {
-    id: number | string;
-    portName?: string;
-    cnName?: string;
-  }
-
   export interface SeServiceShowDto {
     id?: string;
     seaExportPropEnum: number;
+  }
+
+  export interface PortCodeDto {
+    id?: number;
+    portName?: string | null;
+    cnName?: string | null;
+    countryName?: string | null;
   }
 
   export interface SeServiceTaskUserDto {
     id?: string;
     seServiceTaskId?: string;
     userId: number;
-    userNickName?: string;
+    userNickName?: string | null;
     completionTime?: string | null;
   }
 
-  export interface SeServiceTaskDto {
+  export interface SeServiceTaskWorkbenchCountItemDto {
+    serviceType?: number | null;
+    count: number;
+  }
+
+  export interface SeServiceTaskWorkbenchCountGroupDto {
+    polId: number;
+    pol?: PortCodeDto | null;
+    totalCount: number;
+    serviceItems?: SeServiceTaskWorkbenchCountItemDto[] | null;
+  }
+
+  export interface SeServiceTaskWorkbenchCountResultDto {
+    items?: SeServiceTaskWorkbenchCountGroupDto[] | null;
+  }
+
+  export interface SeServiceTaskWorkbenchItemDto {
     id: string;
     seaExportId: string;
     seServiceConfigItemId?: string;
@@ -32,63 +49,42 @@ export namespace SeServiceTaskAdminApi {
     assigneeTime?: string | null;
     assigneeUserId?: number | null;
     sortId?: number;
-    remark?: string;
+    remark?: string | null;
+    seaExport?: SeaExportAdminApi.SeaExportDto;
+    seServiceTaskUsers?: SeServiceTaskUserDto[] | null;
     creationTime?: string;
     creatorUserId?: number;
     lastModificationTime?: string | null;
     lastModifierUserId?: number | null;
-    seaExport?: SeaExportAdminApi.SeaExportDto;
-    seServiceTaskUsers?: SeServiceTaskUserDto[];
   }
 
-  export interface SeServiceConfigItemTaskGroupDto {
-    id?: string | null;
-    seServiceConfigId: string;
-    serviceType?: number | null;
-    userAttribute?: number | null;
-    autoComplete?: boolean | null;
-    manualAllowed?: boolean | null;
-    reminder?: boolean | null;
-    sortId?: number | null;
-    remark?: string | null;
-    seServiceShows?: SeServiceShowDto[];
-    seServiceTasks?: SeServiceTaskDto[];
-  }
-
-  export interface SeServiceTaskConfigGroupDto {
-    seServiceConfigId: string;
-    polId?: number | null;
-    pol?: PortSimpleDto;
-    taskCount: number;
-    seServiceConfigItems?: SeServiceConfigItemTaskGroupDto[];
-  }
-
-  export interface PagedListOfSeServiceTaskConfigGroupDto {
-    items: SeServiceTaskConfigGroupDto[];
+  export interface PagedListOfSeServiceTaskWorkbenchItemDto {
+    skipCount?: number;
+    maxResultCount?: number;
+    items?: SeServiceTaskWorkbenchItemDto[] | null;
     totalCount: number;
+    currentPage?: number;
+    totalPages?: number;
   }
 
-  export interface GetSeServiceTaskPagedListParams {
-    serviceTaskStatus?: number;
-    etdStart?: string;
-    etdEnd?: string;
-    clientId?: string;
-    carrierId?: number;
-    mblNum?: string;
-    podId?: number;
-    isAssigned: boolean;
-    sorting?: string;
+  export interface GetWorkbenchFilterParams {
+    ServiceTaskStatus?: number;
+    ETDStart?: string;
+    ETDEnd?: string;
+    ClientId?: string;
+    CarrierId?: number;
+    MblNum?: string;
+    PODId?: number;
+    Sorting?: string;
   }
 
-  export interface GetWorkbenchListParams {
-    serviceTaskStatus?: number;
-    etdStart?: string;
-    etdEnd?: string;
-    clientId?: string;
-    carrierId?: number;
-    mblNum?: string;
-    podId?: number;
-    sorting?: string;
+  export interface GetWorkbenchCountParams extends GetWorkbenchFilterParams {}
+
+  export interface GetWorkbenchPagedListParams extends GetWorkbenchFilterParams {
+    POLId: number;
+    ServiceType?: number;
+    SkipCount?: number;
+    MaxResultCount?: number;
   }
 
   export interface TransferInput {
@@ -107,20 +103,20 @@ export namespace SeServiceTaskAdminApi {
 
 const API_PREFIX = '/services/app/SeServiceTaskAdmin';
 
-export const getSeServiceTaskPagedList = (
-  params?: SeServiceTaskAdminApi.GetSeServiceTaskPagedListParams,
+export const getSeServiceTaskWorkbenchCount = (
+  params?: SeServiceTaskAdminApi.GetWorkbenchCountParams,
 ) => {
-  return requestClient.get<SeServiceTaskAdminApi.PagedListOfSeServiceTaskConfigGroupDto>(
-    `${API_PREFIX}/GetPagedListAsync`,
+  return requestClient.get<SeServiceTaskAdminApi.SeServiceTaskWorkbenchCountResultDto>(
+    `${API_PREFIX}/GetWorkbenchCountAsync`,
     params ? { params } : undefined,
   );
 };
 
-export const getSeServiceTaskWorkbenchList = (
-  params: SeServiceTaskAdminApi.GetWorkbenchListParams,
+export const getSeServiceTaskWorkbenchPagedList = (
+  params: SeServiceTaskAdminApi.GetWorkbenchPagedListParams,
 ) => {
-  return requestClient.get<SeServiceTaskAdminApi.PagedListOfSeServiceTaskConfigGroupDto>(
-    `${API_PREFIX}/GetWorkbenchListAsync`,
+  return requestClient.get<SeServiceTaskAdminApi.PagedListOfSeServiceTaskWorkbenchItemDto>(
+    `${API_PREFIX}/GetWorkbenchPagedListAsync`,
     { params },
   );
 };

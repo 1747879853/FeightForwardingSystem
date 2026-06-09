@@ -7,24 +7,34 @@ export default {
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 
-import { Spin } from 'ant-design-vue';
+import { Pagination, Spin } from 'ant-design-vue';
 
 import type { BusinessRow, StageStep } from '../../workbench-data';
 import type { SeServiceShowColumn } from '../se-service-show-columns';
+
+interface TablePagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
 
 interface Props {
   dynamicColumns?: SeServiceShowColumn[];
   enableTaskActions?: boolean;
   loading?: boolean;
+  pagination?: TablePagination;
+  paginationPageSizeOptions?: readonly number[];
   rows: BusinessRow[];
   selectedRowKeys: string[];
   stageSteps: StageStep[];
+  activeStageKey?: string;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
   'update:selectedRowKeys': [string[]];
   'update:activeStageKey': [string];
+  'pagination-change': [page: number, pageSize: number];
   transfer: [string[]];
   complete: [string[]];
   refresh: [];
@@ -42,6 +52,15 @@ watch(
   (steps) => {
     if (!steps.some((item) => item.key === activeStageKey.value)) {
       activeStageKey.value = resolveInitialStageKey(steps);
+    }
+  },
+);
+
+watch(
+  () => props.activeStageKey,
+  (key) => {
+    if (key && key !== activeStageKey.value) {
+      activeStageKey.value = key;
     }
   },
 );
@@ -174,6 +193,16 @@ function handleRowDblclick(row: BusinessRow) {
   clearBookingLinkClickTimer();
   if (!row.seaExportId) return;
   emit('open-sea-export', row.seaExportId);
+}
+
+const showPagination = computed(() => Boolean(props.pagination));
+
+const paginationPageSizeOptions = computed(() =>
+  (props.paginationPageSizeOptions ?? [10, 20, 50]).map(String),
+);
+
+function handlePaginationChange(page: number, pageSize: number) {
+  emit('pagination-change', page, pageSize);
 }
 </script>
 
@@ -309,6 +338,18 @@ function handleRowDblclick(row: BusinessRow) {
             </tr>
           </tbody>
         </table>
+      </div>
+      <div v-if="showPagination && pagination" class="table-pagination">
+        <Pagination
+          :current="pagination.current"
+          :page-size="pagination.pageSize"
+          :page-size-options="paginationPageSizeOptions"
+          :show-size-changer="true"
+          :total="pagination.total"
+          size="small"
+          @change="handlePaginationChange"
+          @show-size-change="handlePaginationChange"
+        />
       </div>
     </Spin>
   </section>
@@ -593,5 +634,12 @@ function handleRowDblclick(row: BusinessRow) {
   height: 72px;
   color: #8b93a5;
   text-align: center;
+}
+
+.table-pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 24px 16px;
+  border-top: 1px solid #f3f4f6;
 }
 </style>

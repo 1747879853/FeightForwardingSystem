@@ -142,16 +142,16 @@ export function serviceTypeLabel(
 }
 
 export function toPortTab(
-  group: SeServiceTaskAdminApi.SeServiceTaskConfigGroupDto,
+  group: SeServiceTaskAdminApi.SeServiceTaskWorkbenchCountGroupDto,
 ): PortTab {
-  const portName = group.pol?.portName;
-  const cnName = group.pol?.cnName;
+  const portName = group.pol?.portName ?? undefined;
+  const cnName = group.pol?.cnName ?? undefined;
   return {
-    count: group.taskCount ?? 0,
-    key: String(group.polId ?? group.seServiceConfigId),
-    label: portName || cnName || `POL:${String(group.polId ?? '-')}`,
-    portName,
-    cnName,
+    count: group.totalCount ?? 0,
+    key: String(group.polId),
+    label: portName || cnName || `POL:${String(group.polId)}`,
+    portName: portName ?? undefined,
+    cnName: cnName ?? undefined,
   };
 }
 
