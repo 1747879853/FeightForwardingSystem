@@ -2,7 +2,7 @@
 title: 海运出口港口服务项配置
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-30
+last_updated: 2026-06-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -13,6 +13,7 @@ last_updated: 2026-05-30
 # 2. 功能与操作说明 (Features & Operations)
 
 - **列表检索：** 在 `/basic-data/se-service-config` 按起运港和服务项类型筛选主配置，每行代表一个主配置（含服务项数量和类型汇总）。
+- **默认港口配置：** 起运港可不选；`polId` 为空时代表默认港口配置，列表显示「默认港口配置」，适用于所有未单独配置的起运港。
 - **配置维护：** 在弹窗中一次性维护主配置与多条服务项明细，支持新增、编辑、删除。
 - **开关紧凑布局：** 服务项内“自动完成 / 允许手动完成 / 完成提醒”使用开关并同排展示，减少纵向滚动。
 - **明细标题增强：** 每条服务项标题显示“序号 + 已选服务项类型名称”，便于快速定位当前编辑块。
@@ -41,7 +42,7 @@ last_updated: 2026-05-30
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **polId** | 配置所属起运港。 | `PortCode` 基础数据<br/>`PortSelect` | 决定配置作用范围；同租户内唯一。 | 必填；后端校验港口存在且不能重复配置。 |
+| **polId** | 配置所属起运港；为空表示默认港口配置。 | `PortCode` 基础数据<br/>`PortSelect` | 决定配置作用范围；同租户内具体港口唯一，默认配置仅允许一条。 | 可选；有值时后端校验港口存在且不能重复配置。 |
 | **serviceType** | 服务项类型。 | 系统枚举<br/>`ServiceType` | 同一配置下服务项展示顺序由数组顺序确定。 | 同一配置下不可重复。 |
 | **userAttribute** | 服务项责任角色（Flags）。 | 用户属性枚举（海运出口订单 6 项：销售、商务、操作、客服、单证、海外客服） | 一个服务项可绑定多个角色；选项与海运出口单据订单用户角色一致。 | 位标志可组合，提交为整型掩码；不含财务/人事。 |
 | **seServiceShows** | 服务完成前向用户展示的字段。 | 系统枚举<br/>`SeaExportPropEnum` | 候选集经千位去重：存在 `1000+x` 时隐藏基础项 `x`；无对应额外项的基础字段（如 `Vessel`、`ETD`）仍可选。 | 可选 `>1000` 的名称类枚举（如 `1017 ClientName`）；不可选手工录入的非法值。 |
@@ -75,6 +76,7 @@ last_updated: 2026-05-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-09 | `Feature` | 支持默认港口配置：起运港可不选，`polId` 为空时提交 `null`，列表与删除提示显示「默认港口配置」。 | `resolvePolIdForPayload` 统一空值口径；`formatPolLabel` / `isDefaultPolConfig` 供列表与弹窗复用。 |
 | 2026-05-30 | `Refactor` | 服务项类型枚举加载统一为 `getEnumItems('ServiceType')`，并抽离到共享模块，列表与弹窗不再各自维护独立实现。 | `SeServiceConfigAdmin/data.ts` 改为复用 `sea-export-admin/service-type.ts` 的加载与映射能力，移除 `serviceType` 小写回退分支，确保枚举口径唯一。 |
 | 2026-05-29 | `Feature` | 同步后端 `SeaExportPropEnum` 额外字段（`1001+`），并按千位规则拆分三套下拉：展示字段优先名称类额外枚举且隐藏被替代的基础项；锁定/必填仅允许 `≤1000` 基础字段。 | `buildSeaExportPropOptions` 以「是否存在 value+1000」做展示去重；枚举加载合并兜底清单、缓存与 `GetItemsByNameAsync` 三路数据源；`updatePropRefs` 按白名单过滤非法选项。 |
 | 2026-05-24 | `Fix` | 修复列表「服务项类型」与编辑弹窗明细不一致：列表优先从 `seServiceConfigItems` 按 `sortId` 推导展示，并与弹窗共用 `resolveServiceTypeLabel` 文案解析；枚举加载优先 `ServiceType`。 | `formatRowServiceTypes` 在子项存在时忽略可能滞后的 `serviceTypes` 汇总字段；`loadSeServiceTypeOptions` 供 list/form 共用，消除双端枚举加载分叉。 |

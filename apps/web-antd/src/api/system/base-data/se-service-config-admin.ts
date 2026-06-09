@@ -34,7 +34,8 @@ export namespace SeServiceConfigAdminApi {
   }
 
   export interface SeServiceConfigAddDto {
-    polId: number | string;
+    /** 起运港 ID；为空表示默认港口配置 */
+    polId?: number | string | null;
     sortId?: number;
     remark?: string;
     seServiceConfigItems?: SeServiceConfigItemAddDto[];
@@ -42,7 +43,8 @@ export namespace SeServiceConfigAdminApi {
 
   export interface SeServiceConfigEditDto {
     id: string;
-    polId: number | string;
+    /** 起运港 ID；为空表示默认港口配置 */
+    polId?: number | string | null;
     sortId?: number;
     remark?: string;
     seServiceConfigItems?: SeServiceConfigItemEditDto[];
@@ -71,7 +73,7 @@ export namespace SeServiceConfigAdminApi {
 
   export interface SeServiceConfigListDto {
     id: string;
-    polId: number | string;
+    polId?: number | string | null;
     pol?: PortSimpleDto;
     sortId?: number;
     remark?: string;
@@ -106,7 +108,7 @@ export namespace SeServiceConfigAdminApi {
 
   export interface SeServiceConfigDetailDto {
     id: string;
-    polId: number | string;
+    polId?: number | string | null;
     pol?: PortSimpleDto;
     sortId?: number;
     remark?: string;

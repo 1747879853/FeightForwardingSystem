@@ -68,6 +68,23 @@ export function resolveServiceTypeLabel(
   return '';
 }
 
+export function isDefaultPolConfig(polId?: number | string | null) {
+  return polId === undefined || polId === null || polId === '';
+}
+
+export function formatPolLabel(
+  row: {
+    polId?: number | string | null;
+    pol?: { portName?: string; cnName?: string };
+  },
+  defaultLabel = $t('system.basicData.seServiceConfig.defaultPolConfig'),
+) {
+  if (isDefaultPolConfig(row.polId)) {
+    return defaultLabel;
+  }
+  return row.pol?.portName || row.pol?.cnName || String(row.polId);
+}
+
 export function formatRowServiceTypes(
   row: {
     serviceTypes?: unknown;
@@ -144,8 +161,7 @@ export function useColumns(
       field: 'pol',
       title: $t('system.basicData.seServiceConfig.polId'),
       minWidth: 180,
-      formatter: ({ row }) =>
-        row.pol?.portName || row.pol?.cnName || String(row.polId || '-'),
+      formatter: ({ row }) => formatPolLabel(row),
     },
     {
       field: 'serviceTypes',
