@@ -178,6 +178,11 @@ const normalizeIdAsString = (value: number | string | undefined | null) => {
   return String(value);
 };
 
+const resolvePolIdForPayload = () => {
+  const normalized = normalizeIdAsString(formState.value.polId);
+  return normalized ?? null;
+};
+
 const updatePropRefs = (
   row: ItemRow,
   field: 'seServiceShows' | 'seServiceLocks' | 'seServiceRequires',
@@ -240,19 +245,6 @@ const moveDown = (index: number) => {
 };
 
 const validateForm = () => {
-  if (
-    formState.value.polId === undefined ||
-    formState.value.polId === null ||
-    formState.value.polId === ''
-  ) {
-    message.error(
-      $t('ui.formRules.selectRequired', [
-        $t('system.basicData.seServiceConfig.polId'),
-      ]),
-    );
-    return false;
-  }
-
   const serviceTypes: number[] = [];
   for (let i = 0; i < itemRows.value.length; i++) {
     const row = itemRows.value[i];
@@ -474,14 +466,14 @@ const [Modal, modalApi] = useVbenModal({
       if (formState.value.id) {
         await editSeServiceConfig({
           id: formState.value.id,
-          polId: formState.value.polId!,
+          polId: resolvePolIdForPayload(),
           sortId: formState.value.sortId,
           remark: formState.value.remark,
           seServiceConfigItems: toPayloadItemsForEdit(),
         });
       } else {
         await addSeServiceConfig({
-          polId: formState.value.polId!,
+          polId: resolvePolIdForPayload(),
           sortId: formState.value.sortId,
           remark: formState.value.remark,
           seServiceConfigItems: toPayloadItemsForAdd(),
@@ -596,16 +588,18 @@ const [Modal, modalApi] = useVbenModal({
     <div class="mx-4">
       <Form layout="vertical">
         <div class="grid grid-cols-2 gap-4">
-          <FormItem
-            :label="$t('system.basicData.seServiceConfig.polId')"
-            required
-          >
+          <FormItem :label="$t('system.basicData.seServiceConfig.polId')">
             <PortSelect
               v-model="formState.polId"
               :selected-items="selectedPortItems"
               :allow-clear="true"
-              :placeholder="$t('ui.placeholder.select')"
+              :placeholder="
+                $t('system.basicData.seServiceConfig.polIdPlaceholder')
+              "
             />
+            <div class="mt-1 text-xs text-gray-500">
+              {{ $t('system.basicData.seServiceConfig.polIdOptionalTip') }}
+            </div>
           </FormItem>
           <FormItem :label="$t('system.basicData.seServiceConfig.sortId')">
             <InputNumber

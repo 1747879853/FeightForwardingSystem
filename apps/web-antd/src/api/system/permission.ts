@@ -264,6 +264,8 @@ export namespace SystemPermissionApi {
     sorting?: string;
     skipCount?: number;
     maxResultCount?: number;
+    pageIndex?: number;
+    pageSize?: number;
   }
 }
 
@@ -516,9 +518,8 @@ async function getPropPermissionList(params: Recordable<any>) {
     keyword: params.keyword,
     userId: params.userId,
     roleId: params.roleId,
-    skipCount:
-      ((params.page || params.pageIndex || 1) - 1) * (params.pageSize || 10),
-    maxResultCount: params.pageSize || 10,
+    pageIndex: params.page || params.pageIndex || 1,
+    pageSize: params.pageSize || 10,
     sorting: params.sorting || 'Id',
   };
   const response = await requestClient.get<

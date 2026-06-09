@@ -21,14 +21,15 @@ export namespace ClientExceptServiceAdminApi {
   }
 
   export interface ClientExceptServicePolGroupDto {
-    /** 起运港 id，超出 JS 安全整数时需用 string */
-    polId: number | string;
+    /** 起运港 id；为空表示默认港口配置，超出 JS 安全整数时需用 string */
+    polId?: number | string | null;
     pol?: PortCodeDto;
     items: ClientExceptServiceItemDto[];
   }
 
   export interface ClientExceptServicePolEditDto {
-    polId: number | string;
+    /** 起运港 id；为空表示默认港口配置 */
+    polId?: number | string | null;
     serviceTypes?: number[];
   }
 

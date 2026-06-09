@@ -16,6 +16,7 @@ import {
 } from '#/api/system/base-data/se-service-config-admin';
 import { $t } from '#/locales';
 import {
+  formatPolLabel,
   loadSeServiceTypeOptions,
   type SelectOption,
   useColumns,
@@ -51,7 +52,7 @@ const handleEdit = (row: SeServiceConfigAdminApi.SeServiceConfigListDto) => {
 };
 
 const getRowName = (row: SeServiceConfigAdminApi.SeServiceConfigListDto) => {
-  return row.pol?.cnName || row.pol?.portName || row.id;
+  return formatPolLabel(row);
 };
 
 const handleDelete = async (

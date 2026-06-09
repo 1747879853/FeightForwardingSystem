@@ -1,6 +1,7 @@
 import type { ClientExceptServiceAdminApi } from '#/api/sea-export/client-except-service-admin';
 import type { ServiceTypeOption } from '#/views/sea-export-admin/service-type';
 
+import { $t } from '#/locales';
 import { buildServiceTypeOptionsFromEnum } from '#/views/sea-export-admin/service-type';
 
 export type SelectOption = ServiceTypeOption;
@@ -17,6 +18,14 @@ export function normalizePolId(
   return String(value);
 }
 
+export function isDefaultPolConfig(polId?: number | string | null) {
+  return polId === undefined || polId === null || polId === '';
+}
+
+export function getPortGroupKey(polId?: number | string | null) {
+  return isDefaultPolConfig(polId) ? '__default_pol__' : String(polId);
+}
+
 /** 后端非委托单位校验错误（Get/Edit ClientExceptServices） */
 export function isNotEntrustingUnitApiError(error: unknown): boolean {
   const responseData = (
@@ -31,8 +40,11 @@ export function isNotEntrustingUnitApiError(error: unknown): boolean {
 
 export function formatPolLabel(
   pol?: ClientExceptServiceAdminApi.PortCodeDto,
-  polId?: number | string,
+  polId?: number | string | null,
 ): string {
+  if (isDefaultPolConfig(polId)) {
+    return $t('system.basicData.seServiceConfig.defaultPolConfig');
+  }
   if (pol?.portName || pol?.cnName) {
     const en = pol.portName || '';
     const cn = pol.cnName || '';
@@ -47,7 +59,9 @@ export function normalizePortGroups(
   source: ClientExceptServiceAdminApi.ClientExceptServicePolGroupDto[],
 ): ClientExceptServiceAdminApi.ClientExceptServicePolGroupDto[] {
   return source.map((group) => {
-    const polId = normalizePolId(group.polId) ?? group.polId;
+    const polId = isDefaultPolConfig(group.polId)
+      ? null
+      : (normalizePolId(group.polId) ?? group.polId);
     return {
       ...group,
       polId,
@@ -72,8 +86,9 @@ export function buildEditPayload(
 ): ClientExceptServiceAdminApi.EditClientExceptServicesDto {
   const poLs = groups
     .map((group) => {
-      const polId = normalizePolId(group.polId);
-      if (!polId) return null;
+      const isDefault = isDefaultPolConfig(group.polId);
+      const polId = isDefault ? null : normalizePolId(group.polId);
+      if (!isDefault && !polId) return null;
       const serviceTypes = (group.items || [])
         .filter((item) => item.isChecked === false)
         .map((item) => Number(item.serviceType))

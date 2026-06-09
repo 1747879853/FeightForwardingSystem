@@ -2,7 +2,7 @@
 title: 工作台
 module: 驾驶舱
 author: auto-doc-sync
-last_updated: 2026-06-07
+last_updated: 2026-06-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,8 +26,11 @@ last_updated: 2026-06-07
   - Tab2：应收应付审核（已对接列表）
   - Tab3：付费申请审核（已对接列表）
 - **海运出口服务查询：**
-  - 接口：`SeServiceTaskAdmin/GetWorkbenchListAsync`
-  - 条件：ETD 区间、客户、船公司、MBL、POD、任务状态（待处理/已处理）
+  - 统计接口：`SeServiceTaskAdmin/GetWorkbenchCountAsync`（起运港 Tab + 服务项 Badge）
+  - 列表接口：`SeServiceTaskAdmin/GetWorkbenchPagedListAsync`（按 `POLId` + `ServiceType` 分页，指派任务不传 `ServiceType`；分页参数 `PageIndex`/`PageSize`，页码从 1 开始）
+  - 条件：ETD 区间（ISO 闭区间）、客户、船公司、MBL、POD、任务状态（待处理/已处理）
+  - 动态列：切换起运港时拉 `SeServiceConfigAdmin` 详情，按 `seServiceShows` 渲染
+  - 分页：默认 20 条，可选 10/20/50
 - **审核 Tab 查询与列表：**
   - 应收应付审核接口：`OrderFeeAdmin/OrderFeeTaskListAsync`
   - 付费申请审核接口：`PaymentApplicationAdmin/PayAppTaskListAsync`
@@ -61,13 +64,13 @@ last_updated: 2026-06-07
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **serviceTaskStatus** | 任务状态，0=待处理，1=已处理。 | `SeServiceTaskAdmin/GetWorkbenchListAsync` | **触发/依赖：** 顶部“处理中/已处理”切换改变查询参数。 | 只允许在枚举值 0/1 内切换。 |
-| **polId / pol** | 起运港与起运港名称。 | `GetWorkbenchListAsync.items[].pol` | **触发/依赖：** 构建港口切换头部与港口任务数 Badge。 | 若无返回则使用配置分组 key 兜底。 |
-| **serviceType** | 服务项类型（0-5）。 | `GetWorkbenchListAsync.items[].seServiceConfigItems[]` | **触发/依赖：** 映射为流程节点标题（订舱、拖车、报关、仓库、保险、代收支）。 | 为空时识别为“指派任务”汇总组。 |
+| **serviceTaskStatus** | 任务状态，0=待处理，1=已处理。 | `GetWorkbenchCountAsync` / `GetWorkbenchPagedListAsync` | **触发/依赖：** 顶部“处理中/已处理”切换改变查询参数。 | 只允许在枚举值 0/1 内切换。 |
+| **polId / pol** | 起运港与起运港名称。 | `GetWorkbenchCountAsync.items[]` | **触发/依赖：** 构建港口切换头部与港口任务数 Badge。 | 无数据时展示空态。 |
+| **serviceType** | 服务项类型（0-5）。 | Count `serviceItems[]`；PagedList 查询参数 | **触发/依赖：** 映射为流程节点标题；为空代表指派任务。 | 指派任务不传 `ServiceType`。 |
 | **assigneeUserId** | 被转交人 ID。 | `SeServiceTaskDto.assigneeUserId` | **触发/依赖：** 转交后在任务行展示被转交人。 | 转交时由 `TransferAsync` 校验权限与状态。 |
 | **ids + assigneeUserId** | 批量转交入参。 | `TransferAsync` | **触发/依赖：** 由表格勾选行 + 转交弹窗用户选择组装。 | 被转交人不能为空，任务需可转交。 |
 | **id** | 完成任务入参。 | `CompleteAsync` | **触发/依赖：** 行内完成或批量完成逐条提交。 | 任务需处于待处理且当前用户有处理权限。 |
-| **seServiceShows** | 当前服务项向用户展示的海运出口字段（枚举数组）。 | `GetPagedListAsync.items[].seServiceConfigItems[].seServiceShows` | **触发/依赖：** 切换 chevron 服务项节点时重建业务列表动态列；表头取 `SeaExportPropEnum.displayName`。 | 为空时不展示业务列；未映射枚举静默跳过。 |
+| **seServiceShows** | 当前服务项向用户展示的海运出口字段（枚举数组）。 | `SeServiceConfigAdmin/DetailAsync`（按起运港 `polId` 查配置） | **触发/依赖：** 切换 chevron 服务项节点时重建业务列表动态列；表头取 `SeaExportPropEnum.displayName`。 | 指派任务不展示动态列；为空时不展示业务列。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -79,6 +82,8 @@ last_updated: 2026-06-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-09 | `Fix` | 工作台 PagedList 分页参数对齐后端：`PageIndex`/`PageSize` 替代 `SkipCount`/`MaxResultCount`，分页器 current 直接传页码。 | 响应 `currentPage` 回写分页器；枚举/港口接口此前已用页码模式无需改动。 |
+| 2026-06-09 | `Refactor` | 工作台海运出口服务改为 Count + PagedList 两层接口；服务端分页（默认 20）；筛选全服务端化；指派任务独立节点；编辑页保存后返回工作台自动刷新。 | 删除旧 `GetPagedListAsync` 封装；`seServiceShows` 改从 `SeServiceConfigAdmin` 按 `polId` 缓存加载；`WorkbenchBusinessTable` 新增分页 props。 |
 | 2026-06-07 | `Fix` | 工作台业务列表双击整行改为跳转对应编辑/详情页（海运出口编辑、应收应付费用详情、付费申请编辑），与单击委托单号行为一致。 | 双击复用 `open-sea-export` 事件；付费申请审核 Tab 的 `seaExportId` 改为 `paymentApplicationId`；移除 `open-business-list` 列表跳转。 |
 | 2026-06-07 | `Feature` | 工作台海运出口业务列表列改为按当前服务项 `seServiceShows` 动态展示，1 枚举 1 列，固定保留委托单号/处理人/被转交人。 | 新增 `se-service-show-columns.ts` 注册表；`WorkbenchBusinessTable.dynamicColumns` 仅海运出口 Tab 传入；`BusinessRow.seaExport` 供列取值。 |
 | 2026-06-07 | `Refactor` | 工作台服务项文案完全改为枚举中心实时口径，移除本地 ServiceType 默认文案表。 | 初始化映射仅依赖 `getEnumItems('ServiceType')`，服务节点名称不再从前端硬编码兜底。 |

@@ -33,6 +33,7 @@ import {
   buildEditPayload,
   buildServiceTypeLabelMap,
   formatPolLabel,
+  getPortGroupKey,
   isNotEntrustingUnitApiError,
   normalizePortGroups,
   type SelectOption,
@@ -158,7 +159,7 @@ onMounted(async () => {
         <div v-else class="space-y-4">
           <Card
             v-for="group in portGroups"
-            :key="String(group.polId)"
+            :key="getPortGroupKey(group.polId)"
             size="small"
             :title="formatPolLabel(group.pol, group.polId)"
           >

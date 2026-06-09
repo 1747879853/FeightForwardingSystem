@@ -2620,6 +2620,7 @@ const handleSubmit = async () => {
       await editSeaExport(dto as SeaExportAdminApi.SeaExportEditDto);
       message.success($t('ui.actionMessage.operationSuccess'));
       markListShouldRefresh('SeaExportList');
+      markListShouldRefresh('Workspace');
       await loadEditData();
     } else {
       const createdId = await addSeaExport(
@@ -2627,6 +2628,7 @@ const handleSubmit = async () => {
       );
       message.success($t('ui.actionMessage.operationSuccess'));
       markListShouldRefresh('SeaExportList');
+      markListShouldRefresh('Workspace');
       const resolvedCreatedId =
         (createdId as any)?.id ?? (createdId as any)?.result ?? createdId;
       const createdIdStr =
