@@ -44,6 +44,7 @@ import {
   emergencyTasks,
   exceptionSummary,
   filterModelDefaults,
+  normalizePolId,
   processingTabs,
   serviceTabs,
   serviceTypeLabel,
@@ -116,7 +117,7 @@ const pagedTasks = ref<SeServiceTaskAdminApi.SeServiceTaskWorkbenchItemDto[]>(
 const activePortConfig =
   ref<SeServiceConfigAdminApi.SeServiceConfigDetailDto | null>(null);
 const portConfigCache = new Map<
-  number,
+  string,
   SeServiceConfigAdminApi.SeServiceConfigDetailDto | null
 >();
 const seaExportPagination = reactive({
@@ -170,9 +171,7 @@ function buildSeaExportFilterParams(): SeServiceTaskAdminApi.GetWorkbenchFilterP
 
 function getActivePortGroup() {
   if (!activePort.value) return countGroups.value[0];
-  return countGroups.value.find(
-    (item) => String(item.polId) === activePort.value,
-  );
+  return countGroups.value.find((item) => item.polId === activePort.value);
 }
 
 function normalizeCountGroups(
@@ -192,7 +191,10 @@ function normalizeCountGroups(
       [];
 
     return {
-      polId: Number(group.polId ?? group.PolId ?? 0),
+      polId:
+        normalizePolId(
+          (group.polId ?? group.PolId) as number | string | null | undefined,
+        ) ?? '',
       pol: (group.pol ?? group.Pol) as
         | SeServiceTaskAdminApi.PortCodeDto
         | null
@@ -373,7 +375,7 @@ function ensureActiveStage() {
   }
 }
 
-async function loadPortConfig(polId: number) {
+async function loadPortConfig(polId: string) {
   if (portConfigCache.has(polId)) {
     activePortConfig.value = portConfigCache.get(polId) ?? null;
     return activePortConfig.value;
@@ -405,19 +407,15 @@ async function loadSeaExportCount(resetSelection: boolean) {
   countGroups.value = normalizeCountGroups(result);
 
   if (resetSelection) {
-    activePort.value = countGroups.value[0]
-      ? String(countGroups.value[0].polId)
-      : '';
+    activePort.value = countGroups.value[0]?.polId ?? '';
     return;
   }
 
   if (
     activePort.value &&
-    !countGroups.value.some((item) => String(item.polId) === activePort.value)
+    !countGroups.value.some((item) => item.polId === activePort.value)
   ) {
-    activePort.value = countGroups.value[0]
-      ? String(countGroups.value[0].polId)
-      : '';
+    activePort.value = countGroups.value[0]?.polId ?? '';
   }
 }
 
@@ -425,7 +423,7 @@ async function loadSeaExportTaskList(options?: {
   keepPage?: boolean;
   resetPage?: boolean;
 }) {
-  const polId = Number(activePort.value);
+  const polId = activePort.value;
   if (!polId || !activeStageKey.value) {
     pagedTasks.value = [];
     seaExportPagination.total = 0;
@@ -467,7 +465,7 @@ async function loadSeaExportWorkbenchFull() {
   try {
     await loadSeaExportCount(true);
     ensureActiveStage();
-    const polId = Number(activePort.value);
+    const polId = activePort.value;
     if (!polId) {
       activePortConfig.value = null;
       activeStageKey.value = '';
@@ -490,7 +488,7 @@ async function refreshSeaExportAfterAction() {
   try {
     await loadSeaExportCount(false);
     ensureActiveStage();
-    const polId = Number(activePort.value);
+    const polId = activePort.value;
     if (!polId) {
       activePortConfig.value = null;
       activeStageKey.value = '';
@@ -517,7 +515,7 @@ async function handlePortChange(portKey: string) {
   selectedRowKeys.value = [];
   loading.value = true;
   try {
-    const polId = Number(portKey);
+    const polId = portKey;
     if (!polId) {
       activePortConfig.value = null;
       activeStageKey.value = '';

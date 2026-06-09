@@ -9,7 +9,7 @@ export namespace SeServiceTaskAdminApi {
   }
 
   export interface PortCodeDto {
-    id?: number;
+    id?: number | string;
     portName?: string | null;
     cnName?: string | null;
     countryName?: string | null;
@@ -29,7 +29,8 @@ export namespace SeServiceTaskAdminApi {
   }
 
   export interface SeServiceTaskWorkbenchCountGroupDto {
-    polId: number;
+    /** 起运港 ID，大整数以字符串存储避免精度丢失 */
+    polId: string;
     pol?: PortCodeDto | null;
     totalCount: number;
     serviceItems?: SeServiceTaskWorkbenchCountItemDto[] | null;
@@ -81,7 +82,7 @@ export namespace SeServiceTaskAdminApi {
   export interface GetWorkbenchCountParams extends GetWorkbenchFilterParams {}
 
   export interface GetWorkbenchPagedListParams extends GetWorkbenchFilterParams {
-    POLId: number;
+    POLId: number | string;
     ServiceType?: number;
     SkipCount?: number;
     MaxResultCount?: number;

@@ -131,6 +131,16 @@ export const businessRows: BusinessRow[] = [];
 
 export const DEFAULT_SERVICE_TYPE_TEXT_MAP = new Map<number, string>();
 
+/** 起运港 id 统一为字符串，避免大整数经 Number() 丢精度 */
+export function normalizePolId(
+  value: number | string | undefined | null,
+): string | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  return String(value);
+}
+
 export function serviceTypeLabel(
   serviceType?: number | null,
   serviceTypeTextMap = DEFAULT_SERVICE_TYPE_TEXT_MAP,
@@ -148,8 +158,8 @@ export function toPortTab(
   const cnName = group.pol?.cnName ?? undefined;
   return {
     count: group.totalCount ?? 0,
-    key: String(group.polId),
-    label: portName || cnName || `POL:${String(group.polId)}`,
+    key: group.polId,
+    label: portName || cnName || `POL:${group.polId}`,
     portName: portName ?? undefined,
     cnName: cnName ?? undefined,
   };
