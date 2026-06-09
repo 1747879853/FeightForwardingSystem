@@ -3,7 +3,7 @@ title: 客户海运出口服务项目（排除配置）PRD（测试版）
 module: 客户管理
 route: /clients/:id/edit（Tab：海运出口服务项目）
 version: v1.0
-last_updated: 2026-05-30
+last_updated: 2026-06-09
 audience: QA
 reference: apps/web-antd/doc/modules/clients/id-edit.md
 related: apps/web-antd/doc/prd/se-service-config-prd.md
@@ -145,7 +145,7 @@ stateDiagram-v2
 | 刷新     | 重新请求 `GetClientExceptServicesAsync`                       |
 | 保存     | 提交 `EditClientExceptServicesAsync`，成功后 toast + 自动刷新 |
 
-**内容区：** 每个起运港一张 `Card`，标题为港口名称（`portName / cnName` 或回退 `polId`）。
+**内容区：** 每个起运港（含默认港口配置）一张 `Card`。`polId` 为空时标题显示「默认港口配置」；有值时标题为港口名称（`portName / cnName` 或回退 `polId`）。
 
 **表格列（只读 + 最后一列可编辑）：**
 
@@ -180,20 +180,23 @@ stateDiagram-v2
 | R-02 | 保存时仅提交 `isChecked === false` 的 `serviceType` |
 | R-03 | 按港口分组：某港口若**没有任何**被排除项，则**不传**该港口对象 |
 | R-04 | 若所有港口均无排除项，可传 `poLs: []`，会**清空**该客户全部排除记录 |
-| R-05 | `polId` 统一为字符串提交，避免大整数精度丢失 |
+| R-05 | 具体港口的 `polId` 统一为字符串提交，避免大整数精度丢失 |
 | R-06 | 本 Tab **不能**编辑模板字段（用户属性、三个布尔、备注）；变更须改基础资料后刷新本页 |
+| R-07 | 默认港口配置分组 `polId` 为空，保存排除项时传 `polId: null` |
 
 ### 5.3 数据来源（后端合并逻辑，测试需知）
 
 展示列表 = **全局** `SeServiceConfig`（按起运港的服务项模板）+ **客户** `ClientExceptService`（已保存的排除记录）合并计算 `isChecked`。
 
-| 场景                        | 期望                                  |
-| --------------------------- | ------------------------------------- |
-| 基础资料某港口有 3 个服务项 | 本 Tab 该港口表格 3 行                |
-| 客户从未配置排除            | 默认全部 `isChecked=true`（开关全开） |
-| 客户曾排除「订舱」          | 订舱行 `isChecked=false`（开关关）    |
-| 基础资料删除某服务项        | 刷新后该行不再出现（以后端为准）      |
-| 基础资料无任何港口配置      | Empty「暂无海运出口港口服务项配置」   |
+| 场景 | 期望 |
+| --- | --- |
+| 基础资料某港口有 3 个服务项 | 本 Tab 该港口表格 3 行 |
+| 客户从未配置排除 | 默认全部 `isChecked=true`（开关全开） |
+| 客户曾排除「订舱」 | 订舱行 `isChecked=false`（开关关） |
+| 基础资料删除某服务项 | 刷新后该行不再出现（以后端为准） |
+| 基础资料无任何港口配置 | Empty「暂无海运出口港口服务项配置」 |
+| 基础资料有默认港口配置（`polId` 为空） | 出现标题为「默认港口配置」的 Card |
+| 客户排除默认配置中的「订舱」 | 默认 Card 中订舱行 `isChecked=false`；保存后 `poLs` 含 `{ polId: null, serviceTypes: [0] }` |
 
 ### 5.4 服务项类型枚举
 
@@ -234,6 +237,23 @@ GET .../GetClientExceptServicesAsync?id={clientId}
 ```json
 [
   {
+    "polId": null,
+    "pol": null,
+    "items": [
+      {
+        "id": "yyy",
+        "serviceType": 0,
+        "userAttribute": 3,
+        "autoComplete": false,
+        "manualAllowed": true,
+        "reminder": false,
+        "remark": "",
+        "sortId": 0,
+        "isChecked": true
+      }
+    ]
+  },
+  {
     "polId": "10001",
     "pol": { "id": "10001", "portName": "CNSHA", "cnName": "上海" },
     "items": [
@@ -260,6 +280,10 @@ GET .../GetClientExceptServicesAsync?id={clientId}
   "clientId": "guid",
   "poLs": [
     {
+      "polId": null,
+      "serviceTypes": [0]
+    },
+    {
       "polId": "10001",
       "serviceTypes": [1, 2]
     }
@@ -267,7 +291,7 @@ GET .../GetClientExceptServicesAsync?id={clientId}
 }
 ```
 
-说明：`serviceTypes` 为**被排除**的类型值；上例表示上海港排除拖车(1)、报关(2)。
+说明：`serviceTypes` 为**被排除**的类型值；上例表示默认配置排除订舱(0)，上海港排除拖车(1)、报关(2)。
 
 ---
 
@@ -297,21 +321,23 @@ GET .../GetClientExceptServicesAsync?id={clientId}
 | TC-201 | 基础资料未配置任何起运港 | Empty「暂无海运出口港口服务项配置」 |
 | TC-202 | 基础资料为港口 A 配置 3 项服务 | 本 Tab 出现 A 港 Card，3 行 |
 | TC-203 | 基础资料为 A、B 两港配置 | 两个 Card，各自行数与模板一致 |
+| TC-207 | 基础资料有默认港口配置 | 出现「默认港口配置」Card，行数与默认模板一致 |
 | TC-204 | 检查服务项列 | 显示中文枚举名，非裸数字 |
 | TC-205 | 检查用户属性/开关/备注列 | 与基础资料模板一致，**不可编辑** |
 | TC-206 | 基础资料修改某服务项「自动完成」后刷新本 Tab | 只读列同步更新 |
 
 ### 7.4 开关与保存
 
-| 用例 ID | 步骤                      | 期望结果                             |
-| ------- | ------------------------- | ------------------------------------ |
-| TC-301  | 首次进入委托单位客户      | 默认全部开关**开启**（启用）         |
-| TC-302  | 关闭「订舱」开关后保存    | 成功提示；再进入订舱仍为关           |
-| TC-303  | 关闭后重新打开并保存      | 订舱不再出现在排除列表               |
-| TC-304  | A 港排除 2 项、B 港不排除 | 保存后仅 A 出现在 `poLs`；B 不传     |
-| TC-305  | 全部开关打开后保存        | `poLs` 为空，清空历史排除            |
-| TC-306  | 保存后不关页刷新          | 状态与库一致                         |
-| TC-307  | 点击刷新                  | 丢弃未保存的开关改动，恢复服务端状态 |
+| 用例 ID | 步骤 | 期望结果 |
+| --- | --- | --- |
+| TC-301 | 首次进入委托单位客户 | 默认全部开关**开启**（启用） |
+| TC-302 | 关闭「订舱」开关后保存 | 成功提示；再进入订舱仍为关 |
+| TC-303 | 关闭后重新打开并保存 | 订舱不再出现在排除列表 |
+| TC-304 | A 港排除 2 项、B 港不排除 | 保存后仅 A 出现在 `poLs`；B 不传 |
+| TC-308 | 默认配置排除「订舱」后保存 | `poLs` 含 `{ polId: null, serviceTypes: [0] }` |
+| TC-305 | 全部开关打开后保存 | `poLs` 为空，清空历史排除 |
+| TC-306 | 保存后不关页刷新 | 状态与库一致 |
+| TC-307 | 点击刷新 | 丢弃未保存的开关改动，恢复服务端状态 |
 
 ### 7.5 边界与回归
 

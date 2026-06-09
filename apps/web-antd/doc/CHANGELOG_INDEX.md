@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-09] [客户海运出口服务项目支持默认港口配置展示](./changelogs/change-log-2026-06-09-client-except-service-default-pol.md)
 - [2026-06-09] [港口服务项配置支持默认港口配置](./changelogs/change-log-2026-06-09-se-service-config-default-pol.md)
 - [2026-06-09] [工作台海运出口服务切换 Count + PagedList 接口](./changelogs/change-log-2026-06-09-workbench-se-service-count-pagedlist.md)
 - [2026-06-08] [jht 取消 main push 自动发布](./changelogs/change-log-2026-06-08-jht-disable-auto-deploy-on-push.md)
