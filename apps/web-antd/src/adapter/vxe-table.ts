@@ -301,9 +301,13 @@ setupVbenVxeTable({
                       ) {
                         // 获取第一个所属公司（通常只有一个）
                         const company = orderDetail.companys[0];
+                        //  console.log('所属公司:', company);
+                        //  console.log('本位币:', company?.localCurrencyCode, newVal);
 
                         // 检查该公司的本位币是否与当前选择的币别一致
-                        if (company?.localCurrencyId === newVal) {
+                        if (
+                          company?.localCurrencyId === feeCodeDetail.currencyId
+                        ) {
                           isLocalCurrency = true;
                         }
                       }
