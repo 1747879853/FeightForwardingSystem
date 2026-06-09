@@ -84,8 +84,8 @@ export namespace SeServiceTaskAdminApi {
   export interface GetWorkbenchPagedListParams extends GetWorkbenchFilterParams {
     POLId: number | string;
     ServiceType?: number;
-    SkipCount?: number;
-    MaxResultCount?: number;
+    PageIndex?: number;
+    PageSize?: number;
   }
 
   export interface TransferInput {

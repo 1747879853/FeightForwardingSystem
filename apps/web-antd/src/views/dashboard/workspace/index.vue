@@ -436,9 +436,9 @@ async function loadSeaExportTaskList(options?: {
 
   const requestParams: SeServiceTaskAdminApi.GetWorkbenchPagedListParams = {
     ...buildSeaExportFilterParams(),
-    MaxResultCount: seaExportPagination.pageSize,
+    PageIndex: seaExportPagination.current,
+    PageSize: seaExportPagination.pageSize,
     POLId: polId,
-    SkipCount: (seaExportPagination.current - 1) * seaExportPagination.pageSize,
   };
 
   if (activeStageKey.value !== 'assigned') {
@@ -452,6 +452,9 @@ async function loadSeaExportTaskList(options?: {
 
   pagedTasks.value = result.items ?? [];
   seaExportPagination.total = result.totalCount ?? 0;
+  if (result.currentPage != null) {
+    seaExportPagination.current = result.currentPage;
+  }
 
   if (!pagedTasks.value.length && seaExportPagination.current > 1) {
     seaExportPagination.current -= 1;
