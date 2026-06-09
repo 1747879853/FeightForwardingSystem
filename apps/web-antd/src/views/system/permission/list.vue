@@ -8,8 +8,10 @@ import { Page, Tree } from '@vben/common-ui';
 
 import {
   Alert,
+  Button,
   Card,
   Col,
+  Input,
   message,
   Radio,
   RadioGroup,
@@ -18,7 +20,6 @@ import {
   Spin,
   TabPane,
   Tabs,
-  Button,
 } from 'ant-design-vue';
 
 import { getAllPermissionsTreeApi } from '#/api/core/auth';
@@ -68,6 +69,7 @@ const permissions = ref<DataNode[]>([]);
 const loadingPermissions = ref(false);
 const checkedPermissions = ref<string[]>([]);
 const savingPermissions = ref(false);
+const permissionSearchKeyword = ref('');
 
 // ==================== 计算属性 ====================
 
@@ -80,6 +82,63 @@ const currentTargetId = computed(() => {
 const hasTarget = computed(() => {
   return currentTargetId.value !== undefined;
 });
+
+const filteredPermissions = computed(() =>
+  filterPermissionTree(permissions.value, permissionSearchKeyword.value),
+);
+
+const moduleTreeKey = computed(() =>
+  permissionSearchKeyword.value.trim()
+    ? `search-${permissionSearchKeyword.value}`
+    : 'all',
+);
+
+const moduleTreeExpandedLevel = computed(() =>
+  permissionSearchKeyword.value.trim() ? 99 : 2,
+);
+
+const hasPermissionSearchKeyword = computed(() =>
+  Boolean(permissionSearchKeyword.value.trim()),
+);
+
+// ==================== 权限树搜索 ====================
+
+function matchesPermissionKeyword(node: DataNode, keyword: string): boolean {
+  const name = String(node.name ?? '').toLowerCase();
+  const authCode = String(node.authCode ?? node.id ?? '').toLowerCase();
+  return name.includes(keyword) || authCode.includes(keyword);
+}
+
+function filterPermissionTree(nodes: DataNode[], keyword: string): DataNode[] {
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  if (!normalizedKeyword) {
+    return nodes;
+  }
+
+  const result: DataNode[] = [];
+  for (const node of nodes) {
+    const children = node.children
+      ? filterPermissionTree(node.children as DataNode[], keyword)
+      : [];
+    const selfMatch = matchesPermissionKeyword(node, normalizedKeyword);
+
+    if (selfMatch || children.length > 0) {
+      result.push({
+        ...node,
+        children: selfMatch
+          ? (node.children as DataNode[] | undefined)
+          : children.length > 0
+            ? children
+            : undefined,
+      });
+    }
+  }
+  return result;
+}
+
+function clearPermissionSearch() {
+  permissionSearchKeyword.value = '';
+}
 
 // ==================== 数据加载方法 ====================
 
@@ -154,10 +213,12 @@ function handleTargetTypeChange() {
   selectedRoleId.value = undefined;
   selectedUserId.value = undefined;
   checkedPermissions.value = [];
+  clearPermissionSearch();
 }
 
 /** 角色/用户选择改变 */
 function handleTargetChange() {
+  clearPermissionSearch();
   if (activeTab.value === 'module') {
     loadCheckedPermissions();
   }
@@ -194,6 +255,7 @@ async function handleSaveModulePermissions() {
 /** Tab切换 */
 function handleTabChange(key: string | number) {
   activeTab.value = String(key);
+  clearPermissionSearch();
   if (key === 'module' && hasTarget.value) {
     loadCheckedPermissions();
   }
@@ -336,10 +398,14 @@ onMounted(() => {
               key="module"
               :tab="$t('system.permission.modulePermission')"
             >
-              <div class="mb-4 text-gray-500">
-                {{ $t('system.permission.modulePermissionDesc') }}
+              <div class="mb-4 flex items-center justify-between gap-4">
+                <Input
+                  v-model:value="permissionSearchKeyword"
+                  :placeholder="$t('system.permission.searchPlaceholder')"
+                  allow-clear
+                  class="w-80"
+                />
                 <Button
-                  class="float-right"
                   type="primary"
                   :loading="savingPermissions"
                   @click="handleSaveModulePermissions"
@@ -349,12 +415,23 @@ onMounted(() => {
               </div>
               <Spin :spinning="loadingPermissions">
                 <div class="permission-tree-container">
+                  <div
+                    v-if="
+                      hasPermissionSearchKeyword &&
+                      filteredPermissions.length === 0
+                    "
+                    class="flex h-32 items-center justify-center text-sm text-muted-foreground"
+                  >
+                    {{ $t('system.permission.searchNoResult') }}
+                  </div>
                   <Tree
-                    :tree-data="permissions"
+                    v-else
+                    :key="moduleTreeKey"
+                    :tree-data="filteredPermissions"
                     :model-value="checkedPermissions"
                     multiple
                     bordered
-                    :default-expanded-level="2"
+                    :default-expanded-level="moduleTreeExpandedLevel"
                     value-field="authCode"
                     label-field="name"
                     @update:model-value="handlePermissionsChange"

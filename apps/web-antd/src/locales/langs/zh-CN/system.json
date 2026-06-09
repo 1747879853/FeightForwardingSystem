@@ -713,6 +713,8 @@
     "selectEntity": "选择对象",
     "selectUserOrDept": "选择用户或部门",
     "noPermissionConfig": "暂无权限配置，请先选择角色或用户",
+    "searchPlaceholder": "搜索权限名称或权限码",
+    "searchNoResult": "未找到匹配的权限",
     "saveSuccess": "保存成功",
     "deleteSuccess": "删除成功",
     "confirmDelete": "确定要删除这条权限配置吗？",

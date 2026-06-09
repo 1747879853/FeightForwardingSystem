@@ -712,6 +712,8 @@
     "selectEntity": "Select Entity",
     "selectUserOrDept": "Select User or Department",
     "noPermissionConfig": "No permission config, please select a role or user first",
+    "searchPlaceholder": "Search by name or permission code",
+    "searchNoResult": "No matching permissions found",
     "saveSuccess": "Save Success",
     "deleteSuccess": "Delete Success",
     "confirmDelete": "Are you sure to delete this permission config?",
