@@ -252,6 +252,7 @@
     "orderFee": {
       "ExchangeRate": "Exchange Rate",
       "amount": "Amount (incl. tax)",
+      "auditHistory": "Audit History",
       "canInvoice": "Allow Invoice",
       "currency": "Currency",
       "dataEntryMethod": "Data Entry Method",
