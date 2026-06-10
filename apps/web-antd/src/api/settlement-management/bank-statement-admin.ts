@@ -1,0 +1,202 @@
+import { requestClient } from '#/api/request';
+
+const API_ADMIN_PREFIX = '/services/app/BankStatementAdmin';
+const API_PREFIX = '/services/app/BankStatement';
+
+export namespace BankStatementAdminApi {
+  // ==================== DTO 定义 ====================
+
+  /** 操作人添加 DTO */
+  export interface BankStatementUserAddDto {
+    operationId: number;
+    remark?: string;
+  }
+
+  /** 操作人 DTO */
+  export interface BankStatementUserDto {
+    id: string;
+    bankStatementId: string;
+    operationId: number;
+    remark?: string;
+    operationName?: string;
+  }
+
+  /** 新增银行流水 DTO */
+  export interface BankStatementAddDto {
+    amount: number;
+    currencyId: number;
+    statementTime: string;
+    transactionFee?: number;
+    statementRemark?: string;
+    remark?: string;
+    orgBankAccountId?: string;
+    settlementId: string;
+    clientInvoiceBankId?: string;
+    message?: string;
+    bankStatementUsers?: BankStatementUserAddDto[];
+  }
+
+  /** 修改银行流水 DTO */
+  export interface BankStatementEditDto {
+    id: string;
+    amount: number;
+    currencyId: number;
+    statementTime: string;
+    transactionFee?: number;
+    statementRemark?: string;
+    remark?: string;
+    orgBankAccountId?: string;
+    settlementId: string;
+    clientInvoiceBankId?: string;
+    message?: string;
+    bankStatementUsers?: BankStatementUserAddDto[];
+  }
+
+  /** 删除银行流水 DTO */
+  export interface BankStatementDeleteDto {
+    id: string;
+  }
+
+  /** 银行流水详情 DTO */
+  export interface BankStatementDetailDto {
+    id: string;
+    bankStatementNo?: string;
+    amount: number;
+    currencyId: number;
+    statementTime: string;
+    transactionFee?: number;
+    statementRemark?: string;
+    remark?: string;
+    orgBankAccountId?: string;
+    settlementId: string;
+    clientInvoiceBankId?: string;
+    message?: string;
+    settlementName?: string;
+    currencyCode?: string;
+    creatorUserName?: string;
+    orgBankAccountName?: string;
+    clientInvoiceBankName?: string;
+    bankStatementUsers?: BankStatementUserDto[];
+  }
+
+  /** 银行流水列表 DTO */
+  export interface BankStatementListDto {
+    id: string;
+    bankStatementNo?: string;
+    amount: number;
+    currencyId: number;
+    statementTime: string;
+    transactionFee?: number;
+    statementRemark?: string;
+    remark?: string;
+    orgBankAccountId?: string;
+    settlementId: string;
+    clientInvoiceBankId?: string;
+    message?: string;
+    settlementName?: string;
+    currencyCode?: string;
+    creatorUserName?: string;
+    orgBankAccountName?: string;
+    bankStatementUsers?: BankStatementUserDto[];
+    userId?: number;
+    companys?: { id: number; displayName?: string }[];
+    creationTime: string;
+  }
+
+  /** 收费结算列表 DTO */
+  export interface ReceiveSettlementListDto {
+    id: string;
+    bankStatementId: string;
+    settlementNo?: string;
+    status: number;
+    settlementTime: string;
+    locked: boolean;
+    lockeTime?: string;
+    remark?: string;
+    creatorUserName?: string;
+    bankStatementNo?: string;
+    totalSettledAmount: number;
+    itemCount: number;
+    creationTime: string;
+  }
+
+  /** 分页列表响应 */
+  export interface PagedList<T> {
+    totalCount: number;
+    items: T[];
+  }
+
+  /** 银行流水查询参数 */
+  export interface BankStatementQueryDto {
+    bankStatementNo?: string;
+    settlementId?: string;
+    currencyId?: number;
+    statementTimeStart?: string;
+    statementTimeEnd?: string;
+    creatorUserId?: number;
+    orgId?: number;
+    pageIndex: number;
+    pageSize: number;
+    sorting?: string;
+  }
+
+  /** 银行流水下收费结算查询参数 */
+  export interface BankStatementReceiveSettlementQueryDto {
+    bankStatementId: string;
+    settlementNo?: string;
+    pageIndex: number;
+    pageSize: number;
+    sorting?: string;
+  }
+}
+
+// ==================== Admin API 函数 ====================
+
+/** 新增银行流水 */
+export const addBankStatement = (
+  data: BankStatementAdminApi.BankStatementAddDto,
+) => {
+  return requestClient.post<string>(`${API_ADMIN_PREFIX}/AddAsync`, data);
+};
+
+/** 修改银行流水 */
+export const editBankStatement = (
+  data: BankStatementAdminApi.BankStatementEditDto,
+) => {
+  return requestClient.put<boolean>(`${API_ADMIN_PREFIX}/EditAsync`, data);
+};
+
+/** 删除银行流水 */
+export const deleteBankStatement = (
+  data: BankStatementAdminApi.BankStatementDeleteDto,
+) => {
+  return requestClient.delete<boolean>(`${API_ADMIN_PREFIX}/DeleteAsync`, {
+    data,
+  });
+};
+
+/** 获取银行流水详情（Admin） */
+export const getBankStatementDetail = (id: string) => {
+  return requestClient.get<BankStatementAdminApi.BankStatementDetailDto>(
+    `${API_ADMIN_PREFIX}/DetailAsync`,
+    { params: { id } },
+  );
+};
+
+/** 获取银行流水分页列表（Admin） */
+export const getBankStatementPagedList = (
+  params: BankStatementAdminApi.BankStatementQueryDto,
+) => {
+  return requestClient.get<
+    BankStatementAdminApi.PagedList<BankStatementAdminApi.BankStatementListDto>
+  >(`${API_ADMIN_PREFIX}/GetPagedListAsync`, { params });
+};
+
+/** 获取银行流水下的收费结算分页列表（Admin） */
+export const getBankStatementReceiveSettlementPagedList = (
+  params: BankStatementAdminApi.BankStatementReceiveSettlementQueryDto,
+) => {
+  return requestClient.get<
+    BankStatementAdminApi.PagedList<BankStatementAdminApi.ReceiveSettlementListDto>
+  >(`${API_ADMIN_PREFIX}/GetReceiveSettlementPagedListAsync`, { params });
+};

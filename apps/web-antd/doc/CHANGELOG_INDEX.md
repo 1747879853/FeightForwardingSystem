@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-10] [收费结算前端功能接入](./changelogs/change-log-2026-06-10-receive-settlement-frontend.md)
 - [2026-06-09] [模块权限树关键词搜索](./changelogs/change-log-2026-06-09-permission-module-search.md)
 - [2026-06-09] [分页请求参数改为 pageIndex / pageSize](./changelogs/change-log-2026-06-09-pagination-pageindex-pagesize.md)
 - [2026-06-09] [客户海运出口服务项目支持默认港口配置展示](./changelogs/change-log-2026-06-09-client-except-service-default-pol.md)

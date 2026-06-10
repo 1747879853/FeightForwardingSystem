@@ -1,6 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { $t } from '#/locales';
 import { abpPageAuthority } from '#/router/abp-authority';
 
 const routes: RouteRecordRaw[] = [
@@ -10,7 +9,10 @@ const routes: RouteRecordRaw[] = [
       order: 300,
       title: '结算管理',
       hideChildrenInMenu: false,
-      authority: abpPageAuthority(['Admin.PaymentSettlement']),
+      authority: abpPageAuthority([
+        'Admin.PaymentSettlement',
+        'Admin.ReceiveSettlement',
+      ]),
     },
     name: 'SettlementManagement',
     path: '/settlement-management',
@@ -52,6 +54,44 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/settlement-management/payment-settlement/form.vue'),
+      },
+      {
+        path: 'receive-settlement',
+        name: 'ReceiveSettlementList',
+        meta: {
+          icon: 'mdi:file-document-check-outline',
+          keepAlive: true,
+          title: '收费结算',
+          authority: abpPageAuthority('Admin.ReceiveSettlement.Get'),
+        },
+        component: () =>
+          import('#/views/settlement-management/receive-settlement/list.vue'),
+      },
+      {
+        path: 'receive-settlement/add',
+        name: 'ReceiveSettlementAdd',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '新建收费结算',
+          authority: abpPageAuthority('Admin.ReceiveSettlement.Add'),
+          hideInMenu: true,
+          activePath: '/settlement-management/receive-settlement',
+        },
+        component: () =>
+          import('#/views/settlement-management/receive-settlement/form.vue'),
+      },
+      {
+        path: 'receive-settlement/edit/:id',
+        name: 'ReceiveSettlementEdit',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '编辑收费结算',
+          authority: abpPageAuthority('Admin.ReceiveSettlement.Get'),
+          hideInMenu: true,
+          activePath: '/settlement-management/receive-settlement',
+        },
+        component: () =>
+          import('#/views/settlement-management/receive-settlement/form.vue'),
       },
     ],
   },
