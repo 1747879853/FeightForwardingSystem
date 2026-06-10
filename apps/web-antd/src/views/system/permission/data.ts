@@ -1,7 +1,7 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SystemPermissionApi } from '#/api/system/permission';
-
+import { FreightRateLabelOptions } from '#/api/sea-export/freight-rate-admin';
 import {
   DataPermissionType,
   DataPermissionTypeOptions,
@@ -305,9 +305,10 @@ export function usePropPermissionFormSchema(): VbenFormSchema[] {
       rules: 'required',
     },
     {
-      component: 'Input',
+      component: 'Select',
       componentProps: {
-        placeholder: '请输入需要屏蔽的字段名称',
+        options: FreightRateLabelOptions,
+        placeholder: '请选择需要屏蔽的字段名称',
       },
       fieldName: 'propName',
       label: $t('system.permission.propName'),

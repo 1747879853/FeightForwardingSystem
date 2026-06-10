@@ -535,6 +535,11 @@ const addressList = ref<ClientAdminApi.ClientAddressEditDto[]>([]);
 //   isDefault: true,
 // });
 const addAddressData = (data: ClientAdminApi.ClientAddressAddDto) => {
+  // 如果是第一个地址，自动设置为默认地址
+  if (addressList.value.length === 0) {
+    data.isDefault = true;
+  }
+
   if (data.isDefault) {
     addressList.value.forEach((item) => {
       item.isDefault = false;
