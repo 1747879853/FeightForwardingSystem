@@ -22,12 +22,10 @@ import {
   Switch,
   TimePicker,
   Tooltip,
-  Popover,
   DropdownButton,
   Menu,
   MenuItem,
   Modal as AntModal,
-  Spin,
 } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
@@ -69,7 +67,6 @@ const selectedRowKeys = ref<(string | number)[]>([]);
 
 // 加载状态
 const loading = ref(false);
-const addingRows = ref(false);
 
 // [Modal, modalApi] 由父组件通过 connectedComponent 注入
 const [Modal, modalApi] = useVbenModal({
@@ -198,10 +195,17 @@ function createDefaultRow(isCopied: boolean = false) {
   };
 }
 
-function buildDefaultRows(count: number) {
-  return Array.from({ length: count }, () => {
+// 新增行 - 默认新增1行
+function handleAddRow() {
+  addRows(1);
+}
+
+// 新增多行
+function addRows(count: number) {
+  for (let i = 0; i < count; i++) {
     const newRow = createDefaultRow();
 
+    // 如果已经有添加的箱型，为新行初始化这些箱型的空数据
     if (addedCtnTypes.value.length > 0) {
       newRow.seFreiPriceCtns = addedCtnTypes.value.map((ctn) => ({
         ctnCodeId: ctn.ctnCodeId,
@@ -209,36 +213,10 @@ function buildDefaultRows(count: number) {
       }));
     }
 
-    return newRow;
-  });
-}
-
-async function insertRowsBatch(newRows: ReturnType<typeof createDefaultRow>[]) {
-  if (newRows.length === 0) {
-    return;
+    // 直接插入到 Grid 中
+    gridApi.grid?.insertAt(newRow, -1); // -1 表示插入到末尾
   }
 
-  addingRows.value = true;
-  await nextTick();
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => resolve());
-  });
-
-  const currentData = gridApi.grid?.getFullData() || [];
-  gridApi.grid?.loadData([...currentData, ...newRows]);
-
-  await nextTick();
-  addingRows.value = false;
-}
-
-// 新增行 - 默认新增1行
-function handleAddRow() {
-  addRows(1);
-}
-
-// 新增多行
-async function addRows(count: number) {
-  await insertRowsBatch(buildDefaultRows(count));
   message.success(`已新增 ${count} 行`);
 }
 
@@ -292,7 +270,7 @@ function handleDeleteRows() {
 }
 
 // 复制选中行
-async function handleCopyRows() {
+function handleCopyRows() {
   const records = gridApi.grid?.getCheckboxRecords?.() || [];
 
   if (records.length === 0) {
@@ -300,11 +278,13 @@ async function handleCopyRows() {
     return;
   }
 
-  const newRows = records.map((row: any) =>
-    JSON.parse(
+  // 复制每一行并插入到表格末尾
+  records.forEach((row: any) => {
+    // 深拷贝行数据，避免引用问题
+    const newRow = JSON.parse(
       JSON.stringify({
         _rowKey: generateRowKey(),
-        _isCopied: true,
+        _isCopied: true, // 标记为复制的行
         recommend: row.recommend,
         carrierId: row.carrierId,
         polId: row.polId,
@@ -333,10 +313,12 @@ async function handleCopyRows() {
         bookingAgentId: row.bookingAgentId,
         seFreiPriceCtns: row.seFreiPriceCtns ? [...row.seFreiPriceCtns] : [],
       }),
-    ),
-  );
+    );
 
-  await insertRowsBatch(newRows);
+    // 插入到 Grid 中
+    gridApi.grid?.insertAt(newRow, -1);
+  });
+
   message.success(`已复制 ${records.length} 行`);
 }
 
@@ -827,419 +809,394 @@ function resetForm() {
     :confirm-loading="loading"
   >
     <div class="batch-add-container">
-      <Spin :spinning="addingRows" tip="正在新增行...">
-        <Grid>
-          <template #toolbar-actions>
-            <Space>
-              <DropdownButton
-                type="primary"
-                :loading="addingRows"
-                :disabled="addingRows"
-                @click="handleAddRow"
-              >
-                <template #icon>
-                  <Plus class="size-4" />
-                </template>
-                新增行
-                <template #overlay>
-                  <Menu>
-                    <MenuItem @click="addRows(5)"> 新增 5 行 </MenuItem>
-                    <MenuItem @click="addRows(10)"> 新增 10 行 </MenuItem>
-                    <MenuItem @click="showCustomRowCountModal">
-                      新增自定义行数
-                    </MenuItem>
-                  </Menu>
-                </template>
-              </DropdownButton>
-              <Button
-                :disabled="addingRows || selectedRowKeys.length === 0"
-                :loading="addingRows"
-                @click="handleCopyRows"
-              >
-                <Copy class="size-4" />
-                复制选中行
-              </Button>
-              <Button
-                danger
-                :disabled="selectedRowKeys.length === 0"
-                @click="handleDeleteRows"
-              >
-                删除选中行
-              </Button>
-              <Popover placement="bottomLeft">
-                <template #content>
-                  <ul
-                    class="m-0 max-w-xs list-inside list-disc text-sm text-gray-600"
-                  >
-                    <li>点击"新增行"添加运价记录</li>
-                    <li>选中行后"复制选中行"可快速复制</li>
-                    <li>勾选行后"删除选中行"可删除记录</li>
-                    <li>"添加箱型"可动态添加箱型成本列</li>
-                    <li>带 * 号的字段为必填项</li>
-                  </ul>
-                </template>
-                <Button type="text" size="small" class="text-gray-400">
-                  <IconifyIcon icon="lucide:help-circle" class="size-4" />
-                </Button>
-              </Popover>
-            </Space>
-          </template>
+      <!-- 工具栏 -->
+      <div class="mb-4 flex items-center justify-between">
+        <Space>
+          <DropdownButton type="primary" @click="handleAddRow">
+            <template #icon>
+              <Plus class="size-4" />
+            </template>
+            新增行
+            <template #overlay>
+              <Menu>
+                <MenuItem @click="addRows(5)"> 新增 5 行 </MenuItem>
+                <MenuItem @click="addRows(10)"> 新增 10 行 </MenuItem>
+                <MenuItem @click="showCustomRowCountModal">
+                  新增自定义行数
+                </MenuItem>
+              </Menu>
+            </template>
+          </DropdownButton>
+          <Button
+            :disabled="selectedRowKeys.length === 0"
+            @click="handleCopyRows"
+          >
+            <Copy class="size-4" />
+            复制选中行
+          </Button>
+          <Button
+            danger
+            :disabled="selectedRowKeys.length === 0"
+            @click="handleDeleteRows"
+          >
+            删除选中行
+          </Button>
+        </Space>
 
-          <template #toolbar-tools>
-            <Space>
-              <span class="shrink-0 whitespace-nowrap text-gray-600">
-                添加箱型
-              </span>
+        <Space>
+          <span class="text-gray-600">添加箱型：</span>
+          <Select
+            v-model:value="selectedCtnId"
+            style="width: 200px"
+            placeholder="选择箱型"
+            show-search
+            :filter-option="filterCtnOption"
+            :options="availableCtnOptions"
+            :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
+            @change="handleAddCtnType"
+          />
+        </Space>
+      </div>
+
+      <!-- 表格 -->
+      <Grid>
+        <!-- 船公司 -->
+        <template #carrierId="{ row }">
+          <CarrierSelect v-model="row.carrierId" style="width: 100%" />
+        </template>
+
+        <!-- 起运港 -->
+        <template #polId="{ row }">
+          <PortSelect v-model="row.polId" style="width: 100%" />
+        </template>
+
+        <!-- 目的港 -->
+        <template #podId="{ row }">
+          <PortSelect v-model="row.podId" style="width: 100%" />
+        </template>
+
+        <!-- 币别 -->
+        <template #currencyId="{ row }">
+          <CurrencySelect v-model="row.currencyId" style="width: 100%" />
+        </template>
+
+        <!-- 订舱代理 -->
+        <template #bookingAgentId="{ row }">
+          <ClientSelect
+            v-model="row.bookingAgentId"
+            style="width: 100%"
+            placeholder="请选择订舱代理"
+            allow-clear
+            industry-category="o"
+          />
+        </template>
+
+        <!-- 是否直达 -->
+        <template #isDirect="{ row }">
+          <Switch
+            v-model:checked="row.isDirect"
+            checked-children="是"
+            un-checked-children="否"
+            @change="(val: any) => handleIsDirectChange(row, val)"
+          />
+        </template>
+
+        <!-- 中转港1 -->
+        <template #poT1Id="{ row }">
+          <PortSelect
+            v-model="row.poT1Id"
+            style="width: 100%"
+            allow-clear
+            :disabled="row.isDirect"
+          />
+        </template>
+
+        <!-- 中转港2 -->
+        <template #poT2Id="{ row }">
+          <PortSelect
+            v-model="row.poT2Id"
+            style="width: 100%"
+            allow-clear
+            :disabled="row.isDirect"
+          />
+        </template>
+
+        <!-- 起运港免用箱天数 -->
+        <template #polFreeDays="{ row }">
+          <InputNumber
+            v-model:value="row.polFreeDays"
+            style="width: 100%"
+            :min="0"
+            placeholder="请输入"
+          />
+        </template>
+
+        <!-- 目的港免箱使天数合并编辑 -->
+        <template #podFreeDaysCombined="{ row }">
+          <div class="flex items-center justify-center gap-2 p-1">
+            <!-- 免堆期 (DEM) -->
+            <InputNumber
+              v-model:value="row.poddem"
+              style="width: 60px"
+              :min="0"
+              placeholder="DEM"
+            />
+
+            <span class="text-sm text-gray-400">+</span>
+
+            <!-- 免用箱期 (DET) -->
+            <InputNumber
+              v-model:value="row.podFreeDays"
+              style="width: 60px"
+              :min="0"
+              placeholder="DET"
+            />
+
+            <span class="text-sm text-gray-400">=</span>
+
+            <!-- 免箱使期（自动计算或手动输入） -->
+            <InputNumber
+              v-model:value="row.poddet"
+              style="width: 60px"
+              :min="0"
+              placeholder="-"
+              class="font-medium"
+            />
+          </div>
+        </template>
+
+        <!-- 目的港免箱使天数列头 -->
+        <template #podFreeDaysCombinedHeader>
+          <div class="flex items-center gap-1">
+            <span>目的港免箱使天数</span>
+            <Tooltip title="免堆期 (DEM) + 免用箱期 (DET) = 免箱使期">
+              <IconifyIcon
+                icon="mdi:information-outline"
+                class="size-4 cursor-help text-gray-500"
+              />
+            </Tooltip>
+          </div>
+        </template>
+
+        <!-- 航程 -->
+        <template #voyage="{ row }">
+          <Input v-model:value="row.voyage" placeholder="请输入" />
+        </template>
+
+        <!-- 约号 -->
+        <template #contractNo="{ row }">
+          <Input
+            v-model:value="row.contractNo"
+            placeholder="请输入约号"
+            :maxlength="128"
+          />
+        </template>
+
+        <!-- 日期时间模式（开船日期、截单时间、截关时间） -->
+        <template #dateTimeMode="{ row }">
+          <div class="flex gap-2">
+            <!-- 开船日期 -->
+            <div class="flex items-center gap-2">
+              <span class="shrink-0 text-xs text-gray-500">开船:</span>
+              <DatePicker
+                v-model:value="row.etd"
+                style="width: 180px"
+                placeholder="选择日期和时间"
+                value-format="YYYY-MM-DD"
+                format="YYYY-MM-DD"
+                :disabled="!!row.etdDayOfWeek"
+                allow-clear
+                @change="handleSwitchToDateTimeMode(row)"
+              />
+            </div>
+            <!-- 截单时间 -->
+            <div class="flex items-center gap-2">
+              <span class="shrink-0 text-xs text-gray-500">截单:</span>
+              <DatePicker
+                v-model:value="row.closeDocTime"
+                style="width: 180px"
+                show-time
+                :time-picker-props="{ format: 'HH:mm' }"
+                placeholder="选择日期和时间"
+                value-format="YYYY-MM-DD HH:mm"
+                format="YYYY-MM-DD HH:mm"
+                :disabled="!!row.closeDocDayOfWeek"
+                allow-clear
+                @change="handleSwitchToDateTimeMode(row)"
+              />
+            </div>
+            <!-- 截关时间 -->
+            <div class="flex items-center gap-2">
+              <span class="shrink-0 text-xs text-gray-500">截关:</span>
+              <DatePicker
+                v-model:value="row.closingTime"
+                style="width: 180px"
+                show-time
+                :time-picker-props="{ format: 'HH:mm' }"
+                placeholder="选择日期和时间"
+                value-format="YYYY-MM-DD HH:mm"
+                format="YYYY-MM-DD HH:mm"
+                :disabled="!!row.closingDayOfWeek"
+                allow-clear
+                @change="handleSwitchToDateTimeMode(row)"
+              />
+            </div>
+          </div>
+        </template>
+
+        <!-- 星期模式（开船日期、截单时间、截关时间） -->
+        <template #weekMode="{ row }">
+          <div class="flex gap-2">
+            <!-- 开船日期（仅星期） -->
+            <div class="flex items-center gap-2">
+              <span class="shrink-0 text-xs text-gray-500">开船:</span>
               <Select
-                v-model:value="selectedCtnId"
-                style="width: 200px"
-                placeholder="选择箱型"
-                show-search
-                :filter-option="filterCtnOption"
-                :options="availableCtnOptions"
-                :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
-                @change="handleAddCtnType"
-              />
-            </Space>
-          </template>
-
-          <!-- 船公司 -->
-          <template #carrierId="{ row }">
-            <CarrierSelect v-model="row.carrierId" style="width: 100%" />
-          </template>
-
-          <!-- 起运港 -->
-          <template #polId="{ row }">
-            <PortSelect v-model="row.polId" style="width: 100%" />
-          </template>
-
-          <!-- 目的港 -->
-          <template #podId="{ row }">
-            <PortSelect v-model="row.podId" style="width: 100%" />
-          </template>
-
-          <!-- 币别 -->
-          <template #currencyId="{ row }">
-            <CurrencySelect v-model="row.currencyId" style="width: 100%" />
-          </template>
-
-          <!-- 订舱代理 -->
-          <template #bookingAgentId="{ row }">
-            <ClientSelect
-              v-model="row.bookingAgentId"
-              style="width: 100%"
-              placeholder="请选择订舱代理"
-              allow-clear
-              industry-category="o"
-            />
-          </template>
-
-          <!-- 是否直达 -->
-          <template #isDirect="{ row }">
-            <Switch
-              v-model:checked="row.isDirect"
-              checked-children="是"
-              un-checked-children="否"
-              @change="(val: any) => handleIsDirectChange(row, val)"
-            />
-          </template>
-
-          <!-- 中转港1 -->
-          <template #poT1Id="{ row }">
-            <PortSelect
-              v-model="row.poT1Id"
-              style="width: 100%"
-              allow-clear
-              :disabled="row.isDirect"
-            />
-          </template>
-
-          <!-- 中转港2 -->
-          <template #poT2Id="{ row }">
-            <PortSelect
-              v-model="row.poT2Id"
-              style="width: 100%"
-              allow-clear
-              :disabled="row.isDirect"
-            />
-          </template>
-
-          <!-- 起运港免用箱天数 -->
-          <template #polFreeDays="{ row }">
-            <InputNumber
-              v-model:value="row.polFreeDays"
-              style="width: 100%"
-              :min="0"
-              placeholder="请输入"
-            />
-          </template>
-
-          <!-- 目的港免箱使天数合并编辑 -->
-          <template #podFreeDaysCombined="{ row }">
-            <div class="flex items-center justify-center gap-2 p-1">
-              <!-- 免堆期 (DEM) -->
-              <InputNumber
-                v-model:value="row.poddem"
-                style="width: 60px"
-                :min="0"
-                placeholder="DEM"
-              />
-
-              <span class="text-sm text-gray-400">+</span>
-
-              <!-- 免用箱期 (DET) -->
-              <InputNumber
-                v-model:value="row.podFreeDays"
-                style="width: 60px"
-                :min="0"
-                placeholder="DET"
-              />
-
-              <span class="text-sm text-gray-400">=</span>
-
-              <!-- 免箱使期（自动计算或手动输入） -->
-              <InputNumber
-                v-model:value="row.poddet"
-                style="width: 60px"
-                :min="0"
-                placeholder="-"
-                class="font-medium"
-              />
+                v-model:value="row.etdDayOfWeek"
+                style="width: 100px"
+                placeholder="星期"
+                :disabled="!!row.etd"
+                allow-clear
+                @change="handleSwitchToWeekMode(row)"
+              >
+                <Select.Option :value="0">周日</Select.Option>
+                <Select.Option :value="1">周一</Select.Option>
+                <Select.Option :value="2">周二</Select.Option>
+                <Select.Option :value="3">周三</Select.Option>
+                <Select.Option :value="4">周四</Select.Option>
+                <Select.Option :value="5">周五</Select.Option>
+                <Select.Option :value="6">周六</Select.Option>
+              </Select>
             </div>
-          </template>
-
-          <!-- 目的港免箱使天数列头 -->
-          <template #podFreeDaysCombinedHeader>
-            <div class="flex items-center gap-1">
-              <span>目的港免箱使天数</span>
-              <Tooltip title="免堆期 (DEM) + 免用箱期 (DET) = 免箱使期">
-                <IconifyIcon
-                  icon="mdi:information-outline"
-                  class="size-4 cursor-help text-gray-500"
-                />
-              </Tooltip>
-            </div>
-          </template>
-
-          <!-- 航程 -->
-          <template #voyage="{ row }">
-            <Input v-model:value="row.voyage" placeholder="请输入" />
-          </template>
-
-          <!-- 约号 -->
-          <template #contractNo="{ row }">
-            <Input
-              v-model:value="row.contractNo"
-              placeholder="请输入约号"
-              :maxlength="128"
-            />
-          </template>
-
-          <!-- 日期时间模式（开船日期、截单时间、截关时间） -->
-          <template #dateTimeMode="{ row }">
-            <div class="flex gap-2">
-              <!-- 开船日期 -->
-              <div class="flex items-center gap-2">
-                <span class="shrink-0 text-xs text-gray-500">开船:</span>
-                <DatePicker
-                  v-model:value="row.etd"
-                  style="width: 180px"
-                  placeholder="选择日期和时间"
-                  value-format="YYYY-MM-DD"
-                  format="YYYY-MM-DD"
-                  :disabled="!!row.etdDayOfWeek"
+            <!-- 截单时间（星期+时间） -->
+            <div class="flex items-center gap-2">
+              <span class="shrink-0 text-xs text-gray-500">截单:</span>
+              <div class="flex flex-1 items-center gap-1">
+                <Select
+                  v-model:value="row.closeDocDayOfWeek"
+                  style="width: 70px"
+                  placeholder="星期"
+                  :disabled="!!row.closeDocTime"
                   allow-clear
-                  @change="handleSwitchToDateTimeMode(row)"
-                />
-              </div>
-              <!-- 截单时间 -->
-              <div class="flex items-center gap-2">
-                <span class="shrink-0 text-xs text-gray-500">截单:</span>
-                <DatePicker
-                  v-model:value="row.closeDocTime"
-                  style="width: 180px"
-                  show-time
-                  :time-picker-props="{ format: 'HH:mm' }"
-                  placeholder="选择日期和时间"
-                  value-format="YYYY-MM-DD HH:mm"
-                  format="YYYY-MM-DD HH:mm"
-                  :disabled="!!row.closeDocDayOfWeek"
+                  @change="handleSwitchToWeekMode(row)"
+                >
+                  <Select.Option :value="0">周日</Select.Option>
+                  <Select.Option :value="1">周一</Select.Option>
+                  <Select.Option :value="2">周二</Select.Option>
+                  <Select.Option :value="3">周三</Select.Option>
+                  <Select.Option :value="4">周四</Select.Option>
+                  <Select.Option :value="5">周五</Select.Option>
+                  <Select.Option :value="6">周六</Select.Option>
+                </Select>
+                <TimePicker
+                  v-model:value="row.closeDocDayTime"
+                  style="width: 90px"
+                  placeholder="时间"
+                  format="HH:mm"
+                  value-format="HH:mm"
+                  :disabled="
+                    !row.closeDocDayOfWeek && row.closeDocDayOfWeek !== 0
+                  "
                   allow-clear
-                  @change="handleSwitchToDateTimeMode(row)"
-                />
-              </div>
-              <!-- 截关时间 -->
-              <div class="flex items-center gap-2">
-                <span class="shrink-0 text-xs text-gray-500">截关:</span>
-                <DatePicker
-                  v-model:value="row.closingTime"
-                  style="width: 180px"
-                  show-time
-                  :time-picker-props="{ format: 'HH:mm' }"
-                  placeholder="选择日期和时间"
-                  value-format="YYYY-MM-DD HH:mm"
-                  format="YYYY-MM-DD HH:mm"
-                  :disabled="!!row.closingDayOfWeek"
-                  allow-clear
-                  @change="handleSwitchToDateTimeMode(row)"
                 />
               </div>
             </div>
-          </template>
-
-          <!-- 星期模式（开船日期、截单时间、截关时间） -->
-          <template #weekMode="{ row }">
-            <div class="flex gap-2">
-              <!-- 开船日期 -->
-              <div class="flex items-center gap-2">
-                <span class="shrink-0 text-xs text-gray-500">开船:</span>
-                <div class="flex flex-1 items-center gap-1">
-                  <Select
-                    v-model:value="row.etdDayOfWeek"
-                    style="width: 70px"
-                    placeholder="星期"
-                    :disabled="!!row.etd"
-                    allow-clear
-                    @change="handleSwitchToWeekMode(row)"
-                  >
-                    <Select.Option :value="0">周日</Select.Option>
-                    <Select.Option :value="1">周一</Select.Option>
-                    <Select.Option :value="2">周二</Select.Option>
-                    <Select.Option :value="3">周三</Select.Option>
-                    <Select.Option :value="4">周四</Select.Option>
-                    <Select.Option :value="5">周五</Select.Option>
-                    <Select.Option :value="6">周六</Select.Option>
-                  </Select>
-                  <TimePicker
-                    v-model:value="row.etdDayTime"
-                    style="width: 90px"
-                    placeholder="时间"
-                    format="HH:mm"
-                    value-format="HH:mm"
-                    :disabled="!row.etdDayOfWeek && row.etdDayOfWeek !== 0"
-                    allow-clear
-                  />
-                </div>
-              </div>
-              <!-- 截单时间 -->
-              <div class="flex items-center gap-2">
-                <span class="shrink-0 text-xs text-gray-500">截单:</span>
-                <div class="flex flex-1 items-center gap-1">
-                  <Select
-                    v-model:value="row.closeDocDayOfWeek"
-                    style="width: 70px"
-                    placeholder="星期"
-                    :disabled="!!row.closeDocTime"
-                    allow-clear
-                    @change="handleSwitchToWeekMode(row)"
-                  >
-                    <Select.Option :value="0">周日</Select.Option>
-                    <Select.Option :value="1">周一</Select.Option>
-                    <Select.Option :value="2">周二</Select.Option>
-                    <Select.Option :value="3">周三</Select.Option>
-                    <Select.Option :value="4">周四</Select.Option>
-                    <Select.Option :value="5">周五</Select.Option>
-                    <Select.Option :value="6">周六</Select.Option>
-                  </Select>
-                  <TimePicker
-                    v-model:value="row.closeDocDayTime"
-                    style="width: 90px"
-                    placeholder="时间"
-                    format="HH:mm"
-                    value-format="HH:mm"
-                    :disabled="
-                      !row.closeDocDayOfWeek && row.closeDocDayOfWeek !== 0
-                    "
-                    allow-clear
-                  />
-                </div>
-              </div>
-              <!-- 截关时间 -->
-              <div class="flex items-center gap-2">
-                <span class="shrink-0 text-xs text-gray-500">截关:</span>
-                <div class="flex flex-1 items-center gap-1">
-                  <Select
-                    v-model:value="row.closingDayOfWeek"
-                    style="width: 70px"
-                    placeholder="星期"
-                    :disabled="!!row.closingTime"
-                    allow-clear
-                    @change="handleSwitchToWeekMode(row)"
-                  >
-                    <Select.Option :value="0">周日</Select.Option>
-                    <Select.Option :value="1">周一</Select.Option>
-                    <Select.Option :value="2">周二</Select.Option>
-                    <Select.Option :value="3">周三</Select.Option>
-                    <Select.Option :value="4">周四</Select.Option>
-                    <Select.Option :value="5">周五</Select.Option>
-                    <Select.Option :value="6">周六</Select.Option>
-                  </Select>
-                  <TimePicker
-                    v-model:value="row.closingDayTime"
-                    style="width: 90px"
-                    placeholder="时间"
-                    format="HH:mm"
-                    value-format="HH:mm"
-                    :disabled="
-                      !row.closingDayOfWeek && row.closingDayOfWeek !== 0
-                    "
-                    allow-clear
-                  />
-                </div>
+            <!-- 截关时间（星期+时间） -->
+            <div class="flex items-center gap-2">
+              <span class="shrink-0 text-xs text-gray-500">截关:</span>
+              <div class="flex flex-1 items-center gap-1">
+                <Select
+                  v-model:value="row.closingDayOfWeek"
+                  style="width: 70px"
+                  placeholder="星期"
+                  :disabled="!!row.closingTime"
+                  allow-clear
+                  @change="handleSwitchToWeekMode(row)"
+                >
+                  <Select.Option :value="0">周日</Select.Option>
+                  <Select.Option :value="1">周一</Select.Option>
+                  <Select.Option :value="2">周二</Select.Option>
+                  <Select.Option :value="3">周三</Select.Option>
+                  <Select.Option :value="4">周四</Select.Option>
+                  <Select.Option :value="5">周五</Select.Option>
+                  <Select.Option :value="6">周六</Select.Option>
+                </Select>
+                <TimePicker
+                  v-model:value="row.closingDayTime"
+                  style="width: 90px"
+                  placeholder="时间"
+                  format="HH:mm"
+                  value-format="HH:mm"
+                  :disabled="
+                    !row.closingDayOfWeek && row.closingDayOfWeek !== 0
+                  "
+                  allow-clear
+                />
               </div>
             </div>
-          </template>
+          </div>
+        </template>
 
-          <!-- 有效起始日期 -->
-          <template #validTimeStart="{ row }">
-            <DatePicker
-              v-model:value="row.validTimeStart"
-              style="width: 100%"
-              placeholder="选择日期"
-              value-format="YYYY-MM-DD"
-            />
-          </template>
+        <!-- 有效起始日期 -->
+        <template #validTimeStart="{ row }">
+          <DatePicker
+            v-model:value="row.validTimeStart"
+            style="width: 100%"
+            placeholder="选择日期"
+            value-format="YYYY-MM-DD"
+          />
+        </template>
 
-          <!-- 有效截止日期 -->
-          <template #validTimeEnd="{ row }">
-            <DatePicker
-              v-model:value="row.validTimeEnd"
-              style="width: 100%"
-              placeholder="选择日期"
-              value-format="YYYY-MM-DD"
-            />
-          </template>
+        <!-- 有效截止日期 -->
+        <template #validTimeEnd="{ row }">
+          <DatePicker
+            v-model:value="row.validTimeEnd"
+            style="width: 100%"
+            placeholder="选择日期"
+            value-format="YYYY-MM-DD"
+          />
+        </template>
 
-          <!-- 备注 -->
-          <template #remark="{ row }">
-            <Input v-model:value="row.remark" placeholder="请输入" />
-          </template>
+        <!-- 备注 -->
+        <template #remark="{ row }">
+          <Input v-model:value="row.remark" placeholder="请输入" />
+        </template>
 
-          <!-- 箱型列头 -->
-          <template #ctnHeader="{ column }">
-            <span>{{ column.title }}</span>
-          </template>
+        <!-- 箱型列头 -->
+        <template #ctnHeader="{ column }">
+          <span>{{ column.title }}</span>
+        </template>
 
-          <!-- 箱型成本 -->
-          <template #ctnCost="{ row, column }">
-            <InputNumber
-              :value="getCtnCost(row, column.field.replace('ctn_', ''))"
-              @change="
-                (val: any) =>
-                  setCtnCost(
-                    row,
-                    column.field.replace('ctn_', ''),
-                    typeof val === 'number' ? val : undefined,
-                  )
-              "
-              style="width: 100%"
-              :min="0"
-              :precision="2"
-              placeholder="0.00"
-            />
-          </template>
-        </Grid>
-      </Spin>
+        <!-- 箱型成本 -->
+        <template #ctnCost="{ row, column }">
+          <InputNumber
+            :value="getCtnCost(row, column.field.replace('ctn_', ''))"
+            @change="
+              (val: any) =>
+                setCtnCost(
+                  row,
+                  column.field.replace('ctn_', ''),
+                  typeof val === 'number' ? val : undefined,
+                )
+            "
+            style="width: 100%"
+            :min="0"
+            :precision="2"
+            placeholder="0.00"
+          />
+        </template>
+      </Grid>
+
+      <!-- 提示信息 -->
+      <div class="mt-4 text-sm text-gray-500">
+        <p>提示：</p>
+        <ul class="list-inside list-disc">
+          <li>点击"新增行"按钮添加新的运价记录</li>
+          <li>选中行后点击"复制选中行"可快速复制该行数据</li>
+          <li>勾选行后点击"删除选中行"可删除选中的记录</li>
+          <li>使用"添加箱型"下拉框动态添加箱型成本列</li>
+          <li>带 * 号的字段为必填项</li>
+        </ul>
+      </div>
     </div>
 
     <!-- 自定义行数弹窗 -->
