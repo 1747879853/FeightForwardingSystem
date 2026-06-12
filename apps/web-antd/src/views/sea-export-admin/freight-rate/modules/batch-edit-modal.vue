@@ -824,41 +824,46 @@ onMounted(() => {
     :confirm-loading="loading"
   >
     <div class="batch-edit-container">
-      <!-- 工具栏 -->
-      <div class="mb-4 flex items-center justify-between">
-        <span class="text-sm text-gray-500">
-          已选择 {{ originalData.length }} 条记录
-        </span>
-        <Space>
-          <span class="text-gray-600">添加箱型：</span>
-          <Select
-            style="width: 200px"
-            placeholder="选择箱型"
-            show-search
-            :filter-option="filterCtnOption"
-            :options="availableCtnOptions"
-            :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
-            @change="handleAddCtnType"
-          />
-          <Popover placement="bottomRight">
-            <template #content>
-              <ul
-                class="m-0 max-w-xs list-inside list-disc text-sm text-gray-600"
-              >
-                <li>每一行可独立修改，系统分别提交</li>
-                <li>"添加箱型"可动态添加箱型成本列</li>
-                <li>带 * 号的字段为必填项</li>
-              </ul>
-            </template>
-            <Button type="text" size="small" class="text-gray-400">
-              <IconifyIcon icon="lucide:help-circle" class="size-4" />
-            </Button>
-          </Popover>
-        </Space>
-      </div>
-
-      <!-- 表格 -->
       <Grid>
+        <template #toolbar-actions>
+          <Space>
+            <span class="whitespace-nowrap text-sm text-gray-500">
+              已选择 {{ originalData.length }} 条记录
+            </span>
+            <Popover placement="bottomLeft">
+              <template #content>
+                <ul
+                  class="m-0 max-w-xs list-inside list-disc text-sm text-gray-600"
+                >
+                  <li>每一行可独立修改，系统分别提交</li>
+                  <li>"添加箱型"可动态添加箱型成本列</li>
+                  <li>带 * 号的字段为必填项</li>
+                </ul>
+              </template>
+              <Button type="text" size="small" class="text-gray-400">
+                <IconifyIcon icon="lucide:help-circle" class="size-4" />
+              </Button>
+            </Popover>
+          </Space>
+        </template>
+
+        <template #toolbar-tools>
+          <Space>
+            <span class="shrink-0 whitespace-nowrap text-gray-600">
+              添加箱型
+            </span>
+            <Select
+              style="width: 200px"
+              placeholder="选择箱型"
+              show-search
+              :filter-option="filterCtnOption"
+              :options="availableCtnOptions"
+              :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
+              @change="handleAddCtnType"
+            />
+          </Space>
+        </template>
+
         <!-- 船公司 -->
         <template #carrierId="{ row }">
           <CarrierSelect

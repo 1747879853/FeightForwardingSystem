@@ -827,80 +827,82 @@ function resetForm() {
     :confirm-loading="loading"
   >
     <div class="batch-add-container">
-      <!-- 工具栏 -->
-      <div class="mb-4 flex items-center justify-between">
-        <Space>
-          <DropdownButton
-            type="primary"
-            :loading="addingRows"
-            :disabled="addingRows"
-            @click="handleAddRow"
-          >
-            <template #icon>
-              <Plus class="size-4" />
-            </template>
-            新增行
-            <template #overlay>
-              <Menu>
-                <MenuItem @click="addRows(5)"> 新增 5 行 </MenuItem>
-                <MenuItem @click="addRows(10)"> 新增 10 行 </MenuItem>
-                <MenuItem @click="showCustomRowCountModal">
-                  新增自定义行数
-                </MenuItem>
-              </Menu>
-            </template>
-          </DropdownButton>
-          <Button
-            :disabled="addingRows || selectedRowKeys.length === 0"
-            :loading="addingRows"
-            @click="handleCopyRows"
-          >
-            <Copy class="size-4" />
-            复制选中行
-          </Button>
-          <Button
-            danger
-            :disabled="selectedRowKeys.length === 0"
-            @click="handleDeleteRows"
-          >
-            删除选中行
-          </Button>
-          <Popover placement="bottomLeft">
-            <template #content>
-              <ul
-                class="m-0 max-w-xs list-inside list-disc text-sm text-gray-600"
-              >
-                <li>点击"新增行"添加运价记录</li>
-                <li>选中行后"复制选中行"可快速复制</li>
-                <li>勾选行后"删除选中行"可删除记录</li>
-                <li>"添加箱型"可动态添加箱型成本列</li>
-                <li>带 * 号的字段为必填项</li>
-              </ul>
-            </template>
-            <Button type="text" size="small" class="text-gray-400">
-              <IconifyIcon icon="lucide:help-circle" class="size-4" />
-            </Button>
-          </Popover>
-        </Space>
-
-        <Space>
-          <span class="text-gray-600">添加箱型：</span>
-          <Select
-            v-model:value="selectedCtnId"
-            style="width: 200px"
-            placeholder="选择箱型"
-            show-search
-            :filter-option="filterCtnOption"
-            :options="availableCtnOptions"
-            :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
-            @change="handleAddCtnType"
-          />
-        </Space>
-      </div>
-
-      <!-- 表格 -->
       <Spin :spinning="addingRows" tip="正在新增行...">
         <Grid>
+          <template #toolbar-actions>
+            <Space>
+              <DropdownButton
+                type="primary"
+                :loading="addingRows"
+                :disabled="addingRows"
+                @click="handleAddRow"
+              >
+                <template #icon>
+                  <Plus class="size-4" />
+                </template>
+                新增行
+                <template #overlay>
+                  <Menu>
+                    <MenuItem @click="addRows(5)"> 新增 5 行 </MenuItem>
+                    <MenuItem @click="addRows(10)"> 新增 10 行 </MenuItem>
+                    <MenuItem @click="showCustomRowCountModal">
+                      新增自定义行数
+                    </MenuItem>
+                  </Menu>
+                </template>
+              </DropdownButton>
+              <Button
+                :disabled="addingRows || selectedRowKeys.length === 0"
+                :loading="addingRows"
+                @click="handleCopyRows"
+              >
+                <Copy class="size-4" />
+                复制选中行
+              </Button>
+              <Button
+                danger
+                :disabled="selectedRowKeys.length === 0"
+                @click="handleDeleteRows"
+              >
+                删除选中行
+              </Button>
+              <Popover placement="bottomLeft">
+                <template #content>
+                  <ul
+                    class="m-0 max-w-xs list-inside list-disc text-sm text-gray-600"
+                  >
+                    <li>点击"新增行"添加运价记录</li>
+                    <li>选中行后"复制选中行"可快速复制</li>
+                    <li>勾选行后"删除选中行"可删除记录</li>
+                    <li>"添加箱型"可动态添加箱型成本列</li>
+                    <li>带 * 号的字段为必填项</li>
+                  </ul>
+                </template>
+                <Button type="text" size="small" class="text-gray-400">
+                  <IconifyIcon icon="lucide:help-circle" class="size-4" />
+                </Button>
+              </Popover>
+            </Space>
+          </template>
+
+          <template #toolbar-tools>
+            <Space>
+              <span class="shrink-0 whitespace-nowrap text-gray-600">
+                添加箱型
+              </span>
+              <Select
+                v-model:value="selectedCtnId"
+                style="width: 200px"
+                placeholder="选择箱型"
+                show-search
+                :filter-option="filterCtnOption"
+                :options="availableCtnOptions"
+                :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
+                @change="handleAddCtnType"
+              />
+            </Space>
+          </template>
+
           <!-- 船公司 -->
           <template #carrierId="{ row }">
             <CarrierSelect v-model="row.carrierId" style="width: 100%" />
