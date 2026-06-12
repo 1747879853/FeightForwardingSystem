@@ -2,7 +2,7 @@
 title: 运价管理
 module: 运价管理
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-06-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,6 +23,7 @@ last_updated: 2026-05-16
 
 - **运价查询：** 按航线、港口、船公司、箱型等维度检索运价。
 - **运价维护：** 通过运价表单或弹窗维护费率明细。
+- **批量新增：** 列表页打开批量新增弹窗，支持一次新增多行运价；新增/复制行采用批量 `loadData` 插入并显示 loading，减少多行插入卡顿。
 - **批量/同步：** 相关模块包含同步更新与箱型费用维护能力。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -47,4 +48,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-12 | `Fix` | 批量新增弹窗一次新增多行时改为批量插入并增加 loading 反馈，减轻 10 行级卡顿。 | `insertRowsBatch` 合并 `getFullData` + `loadData` 替代循环 `insertAt`；复制行同步走同一路径。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/freight-rate` 对应组件 `src/views/sea-export-admin/freight-rate/list.vue`，权限口径为 未在路由中声明独立权限。 |
