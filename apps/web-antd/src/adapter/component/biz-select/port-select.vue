@@ -54,7 +54,6 @@ const forwardSlotNames = computed(() =>
 );
 
 const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
-  console.log('port', port);
   const portAny = port as any;
   const ediCode = (port.ediCode ?? '').toString().trim();
   const countryEnName = (port.country?.countryEnName ?? '').toString().trim();
@@ -261,8 +260,18 @@ defineExpose({
     </template>
     <template #option="opt">
       <div class="flex flex-col gap-0.5 py-0.5">
-        <span class="text-sm font-medium text-gray-900">{{ opt?.line1 }}</span>
-        <span class="text-xs text-gray-500">{{ opt?.line2 }}</span>
+        <span
+          class="text-sm font-medium"
+          :class="opt?.disabled ? 'text-gray-400' : 'text-gray-900'"
+        >
+          {{ opt?.line1 }}
+        </span>
+        <span
+          class="text-xs"
+          :class="opt?.disabled ? 'text-gray-300' : 'text-gray-500'"
+        >
+          {{ opt?.line2 }}
+        </span>
       </div>
     </template>
   </ApiComponent>
