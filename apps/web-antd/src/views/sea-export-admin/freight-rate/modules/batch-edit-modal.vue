@@ -1083,38 +1083,27 @@ onMounted(() => {
         <!-- 星期模式（开船日期、截单时间、截关时间） -->
         <template #weekMode="{ row }">
           <div class="flex gap-2">
-            <!-- 开船日期 -->
+            <!-- 开船日期（仅星期） -->
             <div class="flex items-center gap-2">
               <span class="shrink-0 text-xs text-gray-500">开船:</span>
-              <div class="flex flex-1 items-center gap-1">
-                <Select
-                  v-model:value="row.etdDayOfWeek"
-                  style="width: 70px"
-                  placeholder="星期"
-                  :disabled="!!row.etd"
-                  allow-clear
-                  @change="handleSwitchToWeekMode(row)"
-                >
-                  <Select.Option :value="0">周日</Select.Option>
-                  <Select.Option :value="1">周一</Select.Option>
-                  <Select.Option :value="2">周二</Select.Option>
-                  <Select.Option :value="3">周三</Select.Option>
-                  <Select.Option :value="4">周四</Select.Option>
-                  <Select.Option :value="5">周五</Select.Option>
-                  <Select.Option :value="6">周六</Select.Option>
-                </Select>
-                <TimePicker
-                  v-model:value="row.etdDayTime"
-                  style="width: 90px"
-                  placeholder="时间"
-                  format="HH:mm"
-                  value-format="HH:mm"
-                  :disabled="!row.etdDayOfWeek && row.etdDayOfWeek !== 0"
-                  allow-clear
-                />
-              </div>
+              <Select
+                v-model:value="row.etdDayOfWeek"
+                style="width: 100px"
+                placeholder="星期"
+                :disabled="!!row.etd"
+                allow-clear
+                @change="handleSwitchToWeekMode(row)"
+              >
+                <Select.Option :value="0">周日</Select.Option>
+                <Select.Option :value="1">周一</Select.Option>
+                <Select.Option :value="2">周二</Select.Option>
+                <Select.Option :value="3">周三</Select.Option>
+                <Select.Option :value="4">周四</Select.Option>
+                <Select.Option :value="5">周五</Select.Option>
+                <Select.Option :value="6">周六</Select.Option>
+              </Select>
             </div>
-            <!-- 截单时间 -->
+            <!-- 截单时间（星期+时间） -->
             <div class="flex items-center gap-2">
               <span class="shrink-0 text-xs text-gray-500">截单:</span>
               <div class="flex flex-1 items-center gap-1">
@@ -1147,7 +1136,7 @@ onMounted(() => {
                 />
               </div>
             </div>
-            <!-- 截关时间 -->
+            <!-- 截关时间（星期+时间） -->
             <div class="flex items-center gap-2">
               <span class="shrink-0 text-xs text-gray-500">截关:</span>
               <div class="flex flex-1 items-center gap-1">
