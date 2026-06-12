@@ -123,7 +123,7 @@ const displayValue = computed(() => {
     v-else
     class="cell-editable-number flex items-center justify-between rounded px-2 py-1 transition-colors hover:bg-blue-50"
   >
-    <span>{{ displayValue }}</span>
+    <span class="cost-value">{{ displayValue }}</span>
     <Button
       type="text"
       size="small"
@@ -140,6 +140,11 @@ const displayValue = computed(() => {
 .cell-editable-number {
   min-height: 28px;
   user-select: none;
+}
+
+.cost-value {
+  font-weight: 600;
+  color: #fa8c16;
 }
 
 .edit-icon-btn {

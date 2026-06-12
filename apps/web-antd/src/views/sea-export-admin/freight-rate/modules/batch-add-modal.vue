@@ -142,6 +142,13 @@ async function loadSelectOptions() {
       if (usdCurrency) {
         defaultCurrencyId.value = usdCurrency.id;
         console.log('USD 币别 ID:', defaultCurrencyId.value);
+
+        // 将 USD 的 label 存入缓存，避免显示为"币别(ID)"
+        updateLabelCache(
+          'currencies',
+          usdCurrency.id,
+          usdCurrency.code || 'USD',
+        );
       }
     } catch (error) {
       console.error('加载币别列表失败:', error);
@@ -987,7 +994,7 @@ function resetForm() {
           </div>
           <div
             v-else
-            class="cursor-pointer px-2 py-1 hover:bg-gray-100"
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
             @click="startEditing(row._rowKey, 'carrierId')"
           >
             {{ getCarrierName(row.carrierId) }}
@@ -1013,7 +1020,7 @@ function resetForm() {
           </div>
           <div
             v-else
-            class="cursor-pointer px-2 py-1 hover:bg-gray-100"
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
             @click="startEditing(row._rowKey, 'polId')"
           >
             {{ getPortName(row.polId) }}
@@ -1039,7 +1046,7 @@ function resetForm() {
           </div>
           <div
             v-else
-            class="cursor-pointer px-2 py-1 hover:bg-gray-100"
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
             @click="startEditing(row._rowKey, 'podId')"
           >
             {{ getPortName(row.podId) }}
@@ -1065,7 +1072,7 @@ function resetForm() {
           </div>
           <div
             v-else
-            class="cursor-pointer px-2 py-1 hover:bg-gray-100"
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
             @click="startEditing(row._rowKey, 'currencyId')"
           >
             {{ getCurrencyName(row.currencyId) }}
@@ -1094,7 +1101,7 @@ function resetForm() {
           </div>
           <div
             v-else
-            class="cursor-pointer px-2 py-1 hover:bg-gray-100"
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
             @click="startEditing(row._rowKey, 'bookingAgentId')"
           >
             {{ getClientName(row.bookingAgentId) }}
@@ -1132,8 +1139,8 @@ function resetForm() {
           </div>
           <div
             v-else
-            class="cursor-pointer px-2 py-1 hover:bg-gray-100"
-            :class="{ 'text-gray-400': row.isDirect }"
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
+            :class="{ 'cursor-not-allowed opacity-50': row.isDirect }"
             @click="!row.isDirect && startEditing(row._rowKey, 'poT1Id')"
           >
             {{ row.isDirect ? '-' : getPortName(row.poT1Id) }}
@@ -1161,8 +1168,8 @@ function resetForm() {
           </div>
           <div
             v-else
-            class="cursor-pointer px-2 py-1 hover:bg-gray-100"
-            :class="{ 'text-gray-400': row.isDirect }"
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
+            :class="{ 'cursor-not-allowed opacity-50': row.isDirect }"
             @click="!row.isDirect && startEditing(row._rowKey, 'poT2Id')"
           >
             {{ row.isDirect ? '-' : getPortName(row.poT2Id) }}
@@ -1261,8 +1268,8 @@ function resetForm() {
               </div>
               <div
                 v-else
-                class="cursor-pointer px-2 py-1 hover:bg-gray-100"
-                :class="{ 'text-gray-400': !!row.etdDayOfWeek }"
+                class="min-w-[100px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                :class="{ 'cursor-not-allowed opacity-50': !!row.etdDayOfWeek }"
                 @click="!row.etdDayOfWeek && startEditing(row._rowKey, 'etd')"
               >
                 {{ formatDate(row.etd) }}
@@ -1291,8 +1298,10 @@ function resetForm() {
               </div>
               <div
                 v-else
-                class="cursor-pointer px-2 py-1 hover:bg-gray-100"
-                :class="{ 'text-gray-400': !!row.closeDocDayOfWeek }"
+                class="min-w-[100px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                :class="{
+                  'cursor-not-allowed opacity-50': !!row.closeDocDayOfWeek,
+                }"
                 @click="
                   !row.closeDocDayOfWeek &&
                   startEditing(row._rowKey, 'closeDocTime')
@@ -1324,8 +1333,10 @@ function resetForm() {
               </div>
               <div
                 v-else
-                class="cursor-pointer px-2 py-1 hover:bg-gray-100"
-                :class="{ 'text-gray-400': !!row.closingDayOfWeek }"
+                class="min-w-[100px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                :class="{
+                  'cursor-not-allowed opacity-50': !!row.closingDayOfWeek,
+                }"
                 @click="
                   !row.closingDayOfWeek &&
                   startEditing(row._rowKey, 'closingTime')
@@ -1367,8 +1378,8 @@ function resetForm() {
               </div>
               <div
                 v-else
-                class="cursor-pointer px-2 py-1 hover:bg-gray-100"
-                :class="{ 'text-gray-400': !!row.etd }"
+                class="min-w-[80px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                :class="{ 'cursor-not-allowed opacity-50': !!row.etd }"
                 @click="!row.etd && startEditing(row._rowKey, 'etdDayOfWeek')"
               >
                 {{ formatWeekDay(row.etdDayOfWeek) }}
@@ -1402,8 +1413,10 @@ function resetForm() {
                 </div>
                 <div
                   v-else
-                  class="w-[70px] cursor-pointer px-2 py-1 hover:bg-gray-100"
-                  :class="{ 'text-gray-400': !!row.closeDocTime }"
+                  class="w-[70px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                  :class="{
+                    'cursor-not-allowed opacity-50': !!row.closeDocTime,
+                  }"
                   @click="
                     !row.closeDocTime &&
                     startEditing(row._rowKey, 'closeDocDayOfWeek')
@@ -1430,7 +1443,7 @@ function resetForm() {
                 </div>
                 <div
                   v-else
-                  class="w-[90px] cursor-pointer px-2 py-1 hover:bg-gray-100"
+                  class="w-[90px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
                   @click="startEditing(row._rowKey, 'closeDocDayTime')"
                 >
                   {{ formatTime(row.closeDocDayTime) }}
@@ -1465,8 +1478,10 @@ function resetForm() {
                 </div>
                 <div
                   v-else
-                  class="w-[70px] cursor-pointer px-2 py-1 hover:bg-gray-100"
-                  :class="{ 'text-gray-400': !!row.closingTime }"
+                  class="w-[70px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                  :class="{
+                    'cursor-not-allowed opacity-50': !!row.closingTime,
+                  }"
                   @click="
                     !row.closingTime &&
                     startEditing(row._rowKey, 'closingDayOfWeek')
@@ -1493,7 +1508,7 @@ function resetForm() {
                 </div>
                 <div
                   v-else
-                  class="w-[90px] cursor-pointer px-2 py-1 hover:bg-gray-100"
+                  class="w-[90px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
                   @click="startEditing(row._rowKey, 'closingDayTime')"
                 >
                   {{ formatTime(row.closingDayTime) }}
@@ -1516,7 +1531,7 @@ function resetForm() {
           </div>
           <div
             v-else
-            class="cursor-pointer px-2 py-1 hover:bg-gray-100"
+            class="min-w-[100px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
             @click="startEditing(row._rowKey, 'validTimeStart')"
           >
             {{ formatDate(row.validTimeStart) }}
@@ -1536,7 +1551,7 @@ function resetForm() {
           </div>
           <div
             v-else
-            class="cursor-pointer px-2 py-1 hover:bg-gray-100"
+            class="min-w-[100px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
             @click="startEditing(row._rowKey, 'validTimeEnd')"
           >
             {{ formatDate(row.validTimeEnd) }}

@@ -296,7 +296,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'pol.portName',
       title: $t('seaExport.freightRate.polId'),
-      width: 180,
+      width: 240,
       align: 'left',
       slots: { default: 'polId' },
       formatter: ({ row }) => {
@@ -315,7 +315,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'pod.portName',
       title: $t('seaExport.freightRate.podId'),
-      width: 180,
+      width: 240,
       align: 'left',
       slots: { default: 'podId' },
       formatter: ({ row }) => {
@@ -344,7 +344,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'contractNo',
       title: '约号',
-      width: 120,
+      width: 200,
       align: 'left',
       slots: { default: 'contractNo' },
       formatter: ({ row }) => {
@@ -456,8 +456,8 @@ export function useColumns<T = SeFreiPriceOutDto>(
       cellRender: {
         name: 'CellTag',
         options: [
-          { color: '#52c41a', label: $t('common.yes'), value: true },
-          { color: '#8c8c8c', label: $t('common.no'), value: false },
+          { color: '#52c41a', label: '直达', value: true },
+          { color: '#8c8c8c', label: '中转', value: false },
         ],
       },
     },
