@@ -8,11 +8,18 @@ import type {
   LaneCodeDto,
 } from '#/api/sea-export/freight-rate-admin';
 
-import { nextTick, ref, watch, onMounted, computed } from 'vue';
+import { nextTick, ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import { getEnumItems } from '#/utils/init-enum';
 
 import { Page, useVbenModal } from '@vben/common-ui';
-import { Copy, Plus, ChevronDown, IconifyIcon } from '@vben/icons';
+import {
+  Copy,
+  Plus,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  IconifyIcon,
+} from '@vben/icons';
 
 import {
   Button,
@@ -470,6 +477,139 @@ function handleLineClick(lineId?: number) {
   gridApi.query();
 }
 
+const laneTabBarRef = ref<HTMLElement | null>(null);
+const laneTabTrackRef = ref<HTMLElement | null>(null);
+const canScrollLaneTabLeft = ref(false);
+const canScrollLaneTabRight = ref(false);
+const laneTabScrollable = ref(false);
+const LANE_TAB_SCROLL_STEP = 240;
+const LANE_TAB_SCROLL_DURATION = 280;
+let laneTabResizeObserver: ResizeObserver | null = null;
+let laneTabScrollAnimationId: number | null = null;
+let laneTabScrollIdleTimer: ReturnType<typeof setTimeout> | null = null;
+let isLaneTabAnimating = false;
+
+function updateLaneTabScrollState() {
+  const el = laneTabBarRef.value;
+  if (!el) {
+    canScrollLaneTabLeft.value = false;
+    canScrollLaneTabRight.value = false;
+    laneTabScrollable.value = false;
+    return;
+  }
+
+  const { scrollLeft, scrollWidth, clientWidth } = el;
+  laneTabScrollable.value = scrollWidth > clientWidth + 1;
+  canScrollLaneTabLeft.value = scrollLeft > 1;
+  canScrollLaneTabRight.value = scrollLeft + clientWidth < scrollWidth - 1;
+}
+
+function onLaneTabScroll() {
+  if (isLaneTabAnimating) return;
+
+  if (laneTabScrollIdleTimer) {
+    window.clearTimeout(laneTabScrollIdleTimer);
+  }
+
+  laneTabScrollIdleTimer = window.setTimeout(() => {
+    laneTabScrollIdleTimer = null;
+    updateLaneTabScrollState();
+  }, 120);
+}
+
+function stopLaneTabScrollAnimation() {
+  if (laneTabScrollAnimationId !== null) {
+    window.cancelAnimationFrame(laneTabScrollAnimationId);
+    laneTabScrollAnimationId = null;
+  }
+  isLaneTabAnimating = false;
+}
+
+function animateLaneTabScroll(targetLeft: number) {
+  const el = laneTabBarRef.value;
+  if (!el) return;
+
+  stopLaneTabScrollAnimation();
+  isLaneTabAnimating = true;
+
+  const startLeft = el.scrollLeft;
+  const distance = targetLeft - startLeft;
+  if (Math.abs(distance) < 1) {
+    stopLaneTabScrollAnimation();
+    updateLaneTabScrollState();
+    return;
+  }
+
+  const startTime = performance.now();
+
+  function step(currentTime: number) {
+    const progress = Math.min(
+      (currentTime - startTime) / LANE_TAB_SCROLL_DURATION,
+      1,
+    );
+    const eased = 1 - (1 - progress) ** 3;
+    el.scrollLeft = startLeft + distance * eased;
+
+    if (progress < 1) {
+      laneTabScrollAnimationId = window.requestAnimationFrame(step);
+      return;
+    }
+
+    laneTabScrollAnimationId = null;
+    isLaneTabAnimating = false;
+    updateLaneTabScrollState();
+  }
+
+  laneTabScrollAnimationId = window.requestAnimationFrame(step);
+}
+
+function scrollLaneTabs(direction: 'left' | 'right') {
+  const el = laneTabBarRef.value;
+  if (!el) return;
+
+  const step = Math.max(LANE_TAB_SCROLL_STEP, el.clientWidth * 0.6);
+  const maxScrollLeft = el.scrollWidth - el.clientWidth;
+  const targetLeft = Math.max(
+    0,
+    Math.min(
+      maxScrollLeft,
+      el.scrollLeft + (direction === 'left' ? -step : step),
+    ),
+  );
+
+  if (Math.abs(targetLeft - el.scrollLeft) < 1) return;
+
+  animateLaneTabScroll(targetLeft);
+}
+
+function bindLaneTabScrollObserver() {
+  laneTabResizeObserver?.disconnect();
+  laneTabResizeObserver = null;
+
+  const el = laneTabBarRef.value;
+  if (!el) return;
+
+  el.removeEventListener('scroll', onLaneTabScroll);
+  el.addEventListener('scroll', onLaneTabScroll, { passive: true });
+
+  laneTabResizeObserver = new ResizeObserver(() => {
+    updateLaneTabScrollState();
+  });
+  laneTabResizeObserver.observe(el);
+  if (laneTabTrackRef.value) {
+    laneTabResizeObserver.observe(laneTabTrackRef.value);
+  }
+  updateLaneTabScrollState();
+}
+
+watch(
+  () => lines.value.length,
+  async () => {
+    await nextTick();
+    bindLaneTabScrollObserver();
+  },
+);
+
 /**
  * 点击推荐星星切换推荐状态
  */
@@ -579,6 +719,18 @@ onMounted(async () => {
       label: item.displayName,
       value: item.value,
     }));
+
+  await nextTick();
+  bindLaneTabScrollObserver();
+});
+
+onUnmounted(() => {
+  laneTabBarRef.value?.removeEventListener('scroll', onLaneTabScroll);
+  if (laneTabScrollIdleTimer) {
+    window.clearTimeout(laneTabScrollIdleTimer);
+  }
+  stopLaneTabScrollAnimation();
+  laneTabResizeObserver?.disconnect();
 });
 </script>
 
@@ -831,14 +983,21 @@ onMounted(async () => {
         <CtnEditableCell :row="row" :column="column" @success="onRefresh" />
       </template>
 
-      <template #toolbar-tools>
-        <div class="flex w-[76vw] justify-between">
-          <!-- 航线选择标签页 -->
-          <div class="mb-4 mr-5 w-[52vw] pt-3">
-            <div class="flex items-center space-x-1 overflow-x-auto">
+      <template #toolbar-actions>
+        <div
+          class="lane-tab-wrapper flex min-w-0 flex-1 items-center overflow-hidden"
+        >
+          <div
+            ref="laneTabBarRef"
+            class="lane-tab-bar min-w-0 flex-1 overflow-x-auto"
+          >
+            <div
+              ref="laneTabTrackRef"
+              class="lane-tab-track inline-flex flex-nowrap items-center gap-1"
+            >
               <!-- 全部选项 -->
               <div
-                class="cursor-pointer whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-all duration-200"
+                class="lane-tab-item cursor-pointer whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-all duration-200"
                 :class="
                   selectedLineId === undefined
                     ? 'border-blue-500 text-blue-500'
@@ -853,7 +1012,7 @@ onMounted(async () => {
               <div
                 v-for="line in lines"
                 :key="line.id"
-                class="cursor-pointer whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-all duration-200"
+                class="lane-tab-item cursor-pointer whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-all duration-200"
                 :class="
                   selectedLineId === line.id
                     ? 'border-blue-500 text-blue-500'
@@ -865,73 +1024,102 @@ onMounted(async () => {
               </div>
             </div>
           </div>
-          <Space>
-            <!-- 新增按钮 -->
-            <Button v-access:code="perm.add" type="primary" @click="onCreate">
-              <Plus class="size-5" />
-              {{ $t('ui.actionTitle.create') }}
-            </Button>
 
-            <!-- 批量编辑按钮 -->
-            <Button v-access:code="perm.add" @click="onBatchEditModal">
-              <IconifyIcon icon="mdi:square-edit-outline" class="size-5" />
-              {{ $t('seaExport.freightRate.update') }}
-            </Button>
-
-            <!-- 复制按钮 -->
-            <Button v-access:code="perm.add" @click="onCopy">
-              <Copy class="size-5" />
-              {{ $t('seaExport.freightRate.copy') }}
-            </Button>
-
-            <!-- 批量操作下拉菜单 -->
-            <Dropdown v-access:code="perm.edit">
-              <Button>
-                {{ $t('seaExport.freightRate.batchOperation') }}
-                <ChevronDown class="ml-1 size-4" />
-              </Button>
-              <template #overlay>
-                <Menu>
-                  <!-- <Menu.Item key="create" @click="onCreate">
-                    {{ $t('seaExport.freightRate.create') }}
-                  </Menu.Item>
-                  <Menu.Divider /> -->
-                  <Menu.Item key="batchAdd" @click="onBatchAdd">
-                    {{ $t('seaExport.freightRate.batchAdd') }}
-                  </Menu.Item>
-                  <Menu.Divider />
-                  <Menu.Item key="edit" @click="onBatchEdit">
-                    {{ $t('seaExport.freightRate.batchEdit') }}
-                  </Menu.Item>
-                  <Menu.Item key="recommend" @click="onBatchRecommend(true)">
-                    {{ $t('seaExport.freightRate.batchRecommend') }}
-                  </Menu.Item>
-                  <Menu.Item
-                    key="cancelRecommend"
-                    @click="onBatchRecommend(false)"
-                  >
-                    {{ $t('seaExport.freightRate.batchCancelRecommend') }}
-                  </Menu.Item>
-                  <Menu.Divider />
-                  <Menu.Item
-                    key="delete"
-                    class="text-red-600"
-                    @click="onBatchDelete"
-                  >
-                    <span class="text-red-600">{{
-                      $t('seaExport.freightRate.batchDelete')
-                    }}</span>
-                  </Menu.Item>
-                </Menu>
-              </template>
-            </Dropdown>
-
-            <!-- 批量删除按钮 -->
-            <!-- <Button v-access:code="perm.delete" danger @click="onBatchDelete">
-              {{ $t('seaExport.freightRate.batchDelete') }}
-            </Button> -->
-          </Space>
+          <div
+            v-if="laneTabScrollable"
+            class="lane-tab-scroll-actions flex shrink-0 items-center"
+          >
+            <button
+              type="button"
+              class="lane-tab-scroll-btn"
+              :class="{ 'is-disabled': !canScrollLaneTabLeft }"
+              :aria-disabled="!canScrollLaneTabLeft"
+              title="向左滚动"
+              @click="scrollLaneTabs('left')"
+            >
+              <ChevronLeft class="size-4" />
+            </button>
+            <button
+              type="button"
+              class="lane-tab-scroll-btn"
+              :class="{ 'is-disabled': !canScrollLaneTabRight }"
+              :aria-disabled="!canScrollLaneTabRight"
+              title="向右滚动"
+              @click="scrollLaneTabs('right')"
+            >
+              <ChevronRight class="size-4" />
+            </button>
+          </div>
         </div>
+      </template>
+
+      <template #toolbar-tools>
+        <Space class="shrink-0">
+          <!-- 新增按钮 -->
+          <Button v-access:code="perm.add" type="primary" @click="onCreate">
+            <Plus class="size-5" />
+            {{ $t('ui.actionTitle.create') }}
+          </Button>
+
+          <!-- 批量编辑按钮 -->
+          <Button v-access:code="perm.add" @click="onBatchEditModal">
+            <IconifyIcon icon="mdi:square-edit-outline" class="size-5" />
+            {{ $t('seaExport.freightRate.update') }}
+          </Button>
+
+          <!-- 复制按钮 -->
+          <Button v-access:code="perm.add" @click="onCopy">
+            <Copy class="size-5" />
+            {{ $t('seaExport.freightRate.copy') }}
+          </Button>
+
+          <!-- 批量操作下拉菜单 -->
+          <Dropdown v-access:code="perm.edit">
+            <Button>
+              {{ $t('seaExport.freightRate.batchOperation') }}
+              <ChevronDown class="ml-1 size-4" />
+            </Button>
+            <template #overlay>
+              <Menu>
+                <!-- <Menu.Item key="create" @click="onCreate">
+                  {{ $t('seaExport.freightRate.create') }}
+                </Menu.Item>
+                <Menu.Divider /> -->
+                <Menu.Item key="batchAdd" @click="onBatchAdd">
+                  {{ $t('seaExport.freightRate.batchAdd') }}
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item key="edit" @click="onBatchEdit">
+                  {{ $t('seaExport.freightRate.batchEdit') }}
+                </Menu.Item>
+                <Menu.Item key="recommend" @click="onBatchRecommend(true)">
+                  {{ $t('seaExport.freightRate.batchRecommend') }}
+                </Menu.Item>
+                <Menu.Item
+                  key="cancelRecommend"
+                  @click="onBatchRecommend(false)"
+                >
+                  {{ $t('seaExport.freightRate.batchCancelRecommend') }}
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  key="delete"
+                  class="text-red-600"
+                  @click="onBatchDelete"
+                >
+                  <span class="text-red-600">{{
+                    $t('seaExport.freightRate.batchDelete')
+                  }}</span>
+                </Menu.Item>
+              </Menu>
+            </template>
+          </Dropdown>
+
+          <!-- 批量删除按钮 -->
+          <!-- <Button v-access:code="perm.delete" danger @click="onBatchDelete">
+            {{ $t('seaExport.freightRate.batchDelete') }}
+          </Button> -->
+        </Space>
       </template>
     </Grid>
 
@@ -956,6 +1144,84 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* 航线 tab 靠左展示，超出时横向滚动，不挤压右侧操作按钮 */
+:deep(.vxe-toolbar) {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+:deep(.vxe-buttons--wrapper:not(:empty)) {
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: 100%;
+  margin-right: 120px;
+  overflow: hidden;
+}
+
+:deep(.vxe-buttons--wrapper:not(:empty) > *) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+:deep(.vxe-tools--operate) {
+  flex: 0 0 auto;
+}
+
+:deep(.vxe-tools--wrapper:not(:empty)) {
+  flex: 0 0 auto;
+}
+
+.lane-tab-wrapper {
+  flex: 1 1 0%;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.lane-tab-bar {
+  flex: 1 1 0%;
+  width: 0;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.lane-tab-track {
+  width: max-content;
+}
+
+.lane-tab-item {
+  flex-shrink: 0;
+}
+
+.lane-tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.lane-tab-scroll-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  color: rgb(0 0 0 / 65%);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.lane-tab-scroll-btn:hover:not(.is-disabled) {
+  background: rgb(0 0 0 / 4%);
+}
+
+.lane-tab-scroll-btn.is-disabled {
+  color: rgb(0 0 0 / 25%);
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
 /* 确保附加费列的行高可以自适应内容 */
 :deep(.vxe-table .vxe-body--column[col-field='surchargeFees']) {
   height: auto !important;
