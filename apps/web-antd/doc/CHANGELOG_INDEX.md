@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-12] [运价列表航线 Tab 靠左展示与横向滚动](./changelogs/change-log-2026-06-12-freight-rate-list-lane-tab-scroll.md)
 - [2026-06-12] [运价批量新增弹窗多行插入性能优化](./changelogs/change-log-2026-06-12-freight-rate-batch-add-rows-perf.md)
 - [2026-06-10] [收费结算前端功能接入](./changelogs/change-log-2026-06-10-receive-settlement-frontend.md)
 - [2026-06-09] [模块权限树关键词搜索](./changelogs/change-log-2026-06-09-permission-module-search.md)
