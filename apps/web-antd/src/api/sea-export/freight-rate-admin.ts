@@ -1,5 +1,45 @@
 import { requestClient } from '#/api/request';
 
+export const FreightRateLabelOptions = [
+  { label: '运价主键ID', value: 'id' },
+  { label: '是否推荐', value: 'recommend' },
+  { label: '船公司ID', value: 'carrierId' },
+  { label: '起运港ID', value: 'polId' },
+  { label: '目的港ID', value: 'podId' },
+  { label: '是否直达', value: 'isDirect' },
+  { label: '中转港1 ID', value: 'poT1Id' },
+  { label: '中转港2 ID', value: 'poT2Id' },
+  { label: '起运港免用箱天数', value: 'polFreeDays' },
+  { label: '目的港免用箱天数', value: 'podFreeDays' },
+  { label: '目的港免堆期天数', value: 'poddem' },
+  { label: '目的港免箱期天数', value: 'poddet' },
+  { label: '航程', value: 'voyage' },
+  { label: '约号', value: 'contractNo' },
+  { label: '有效时间起始', value: 'validTimeStart' },
+  { label: '有效时间截止', value: 'validTimeEnd' },
+  { label: '备注', value: 'remark' },
+  { label: '币别ID', value: 'currencyId' },
+  { label: '订舱代理ID', value: 'bookingAgentId' },
+  { label: '创建时间', value: 'creationTime' },
+  { label: '创建人ID', value: 'creatorUserId' },
+  { label: '最后修改时间', value: 'lastModificationTime' },
+  { label: '最后修改人ID', value: 'lastModifierUserId' },
+  { label: '是否有效', value: 'isValid' },
+  { label: '船公司信息', value: 'carrier' },
+  { label: '起运港信息', value: 'pol' },
+  { label: '目的港信息', value: 'pod' },
+  { label: '中转港1信息', value: 'poT1' },
+  { label: '中转港2信息', value: 'poT2' },
+  { label: '币别信息', value: 'currency' },
+  { label: '航线信息', value: 'lane' },
+  { label: '国家信息', value: 'country' },
+  { label: '订舱代理信息', value: 'bookingAgent' },
+  { label: '箱型报价列表', value: 'seFreiPriceCtns' },
+  { label: '费用列表（含每个费用下的箱型费用）', value: 'seFreiPriceFees' },
+  { label: '关联日列表', value: 'seFreiPriceDays' },
+  { label: '关联周几列表', value: 'seFreiPriceWeekDays' },
+];
+
 /**
  * 海运出口运价相关类型定义
  */

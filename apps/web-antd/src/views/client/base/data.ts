@@ -489,12 +489,14 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       component: 'nameInput',
       fieldName: 'fullName',
       label: $t('seaExport.client.fullName'),
+      rules: 'required',
       componentProps: { allowClear: true },
     },
     {
       component: 'Input',
       fieldName: 'code',
       label: $t('seaExport.client.code'),
+      rules: 'required',
       componentProps: { allowClear: true },
     },
 
@@ -543,28 +545,24 @@ export function useBusinessFormSchema(): VbenFormSchema[] {
       component: 'Input',
       fieldName: 'legalPerson',
       label: $t('seaExport.client.legalPerson'),
-      rules: 'required',
       componentProps: { allowClear: true },
     },
     {
       component: 'Input',
       fieldName: 'registeredCapital',
       label: $t('seaExport.client.registeredCapital'),
-      rules: 'required',
       componentProps: { allowClear: true },
     },
     {
       component: 'DatePicker',
       fieldName: 'establishmentDate',
       label: $t('seaExport.client.establishmentDate'),
-      rules: 'required',
       componentProps: { allowClear: true },
     },
     {
       component: 'Input',
       fieldName: 'businessTerm',
       label: $t('seaExport.client.businessTerm'),
-      rules: 'required',
       componentProps: { allowClear: true },
     },
   ];
@@ -575,7 +573,6 @@ export function useClientFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'clientType',
       label: $t('seaExport.client.clientType'),
-      rules: 'required',
       componentProps: {
         allowClear: true,
         class: 'w-full',
@@ -590,7 +587,6 @@ export function useClientFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'clientLevel',
       label: $t('seaExport.client.clientLevel'),
-      rules: 'required',
       componentProps: {
         allowClear: true,
         options: getClientLevelOptions(),
@@ -602,7 +598,6 @@ export function useClientFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'source',
       label: $t('seaExport.client.source'),
-      rules: 'required',
       componentProps: {
         allowClear: true,
         options: getClientSourceOptions(),
@@ -614,7 +609,6 @@ export function useClientFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'cargoType',
       label: $t('seaExport.client.cargoType'),
-      rules: 'required',
       componentProps: {
         allowClear: true,
         options: getCargoTypeOptions(),
@@ -626,14 +620,12 @@ export function useClientFormSchema(): VbenFormSchema[] {
       component: 'DatePicker',
       fieldName: 'clientCoopSince',
       label: $t('seaExport.client.clientCoopSince'),
-      rules: 'required',
       componentProps: { allowClear: true, class: 'w-full' },
     },
     {
       component: 'DatePicker',
       fieldName: 'clientLastTxnTime',
       label: $t('seaExport.client.clientLastTxnTime'),
-      rules: 'required',
       componentProps: { allowClear: true, class: 'w-full' },
     },
   ];

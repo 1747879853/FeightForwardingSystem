@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch, markRaw } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -24,6 +24,7 @@ import { useVbenModal } from '@vben/common-ui';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { getUser, UserAttribute } from '#/api/system/user-admin';
 import dayjs from 'dayjs';
+import { pinyin } from 'pinyin-pro';
 import {
   ArrowLeft,
   FileText,
@@ -100,6 +101,42 @@ const defaultOrderUsers = ref<ClientAdminApi.ClientStakeholderListDto[]>([
   { userAttribute: UserAttribute.Documentation, stakeholderList: [] },
 ]);
 
+/**
+ * 从字符串中提取首字母（用于生成客户代码）
+ * 支持中文转拼音、英文和数字
+ * @param str 输入字符串
+ * @returns 提取的首字母字符串（大写）
+ */
+const getFirstLetters = (str: string): string => {
+  if (!str) return '';
+
+  // 移除空格和特殊字符，只保留中文、英文、数字
+  const cleanStr = str.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
+  let result = '';
+
+  for (let i = 0; i < cleanStr.length; i++) {
+    const char = cleanStr[i];
+    if (!char) continue;
+
+    // 如果是中文字符，使用pinyin-pro转换为拼音首字母
+    if (/[\u4e00-\u9fa5]/.test(char)) {
+      // 获取拼音（无声调），取第一个字母并转为大写
+      const py = pinyin(char, { toneType: 'none' });
+      if (py && py.length > 0) {
+        result += py.charAt(0).toUpperCase();
+      }
+    } else if (/[a-zA-Z0-9]/.test(char)) {
+      // 英文字母取大写，数字直接保留
+      result += char.toUpperCase();
+    }
+
+    // 限制长度，避免代码过长（最多8个字符）
+    if (result.length >= 8) break;
+  }
+
+  return result;
+};
+
 const [BaseForm, baseFormApi] = useVbenForm({
   layout: 'vertical',
   schema: useBaseFormSchema(),
@@ -133,6 +170,29 @@ const [Modal, modalApi] = useVbenModal({
   connectedComponent: AddressModal,
 });
 
+/** 用于存储当前的客户全称，用于 watch 监听 */
+const currentFullName = ref<string>('');
+
+/** 监听客户全称变化，自动生成客户代码 */
+watch(
+  () => currentFullName.value,
+  (newFullName) => {
+    console.log('watch-newFullName', newFullName);
+    // 只在新增模式下且客户代码为空时自动生成
+    if (!isEdit.value && newFullName) {
+      baseFormApi.getValues().then((values: any) => {
+        //  const currentCode = values.code;
+        //  if (!currentCode) {
+        const autoCode = getFirstLetters(newFullName);
+        if (autoCode) {
+          baseFormApi.setValues({ code: autoCode });
+        }
+        // }
+      });
+    }
+  },
+);
+
 /** DatePicker 需要的 dayjs 对象，API 返回的是字符串 */
 const toDayjs = (val: string | null | undefined) =>
   val && dayjs(val).isValid() ? dayjs(val) : undefined;
@@ -142,6 +202,7 @@ const toDateString = (val: unknown) => {
   const d = dayjs(val as string | Date);
   return d.isValid() ? d.toISOString() : undefined;
 };
+
 /**
  * 将后端的 areaId（最后一级 code）通过 GetAreaAndParents 接口转为路径数组
  */
@@ -168,6 +229,28 @@ const buildAreaPath = async (areaId?: string): Promise<string[]> => {
     return [];
   }
 };
+
+/**
+ * 监听客户全称变化，自动生成客户代码
+ * 使用 Vue 的 watch API，比直接监听表单实例更可靠且符合 Vue 规范
+ */
+watch(
+  () => currentFullName.value,
+  (newFullName) => {
+    // 只在新增模式下且客户代码为空时自动生成
+    if (!isEdit.value && newFullName) {
+      baseFormApi.getValues().then((values: any) => {
+        const currentCode = values.code;
+        if (!currentCode) {
+          const autoCode = getFirstLetters(newFullName);
+          if (autoCode) {
+            baseFormApi.setValues({ code: autoCode });
+          }
+        }
+      });
+    }
+  },
+);
 
 /** 将详情数据映射到表单值 */
 const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
@@ -284,7 +367,9 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   };
 };
 
-/** 加载编辑数据 */
+/**
+ * 加载编辑数据
+ */
 const loadEditData = async () => {
   if (!editId.value) return;
 
@@ -315,6 +400,9 @@ const loadEditData = async () => {
   }
 };
 
+/**
+ * 更新干系人列表
+ */
 const updateStakeholders = (
   userAttribute: number | undefined,
   values: number[],
@@ -324,7 +412,9 @@ const updateStakeholders = (
   });
 };
 
-/** 提交表单 */
+/**
+ * 提交表单
+ */
 const handleSubmit = async () => {
   try {
     submitting.value = true;
@@ -357,6 +447,8 @@ const handleSubmit = async () => {
       ? await supplierFormApi.getValues()
       : {};
 
+    let createdId: any;
+
     // 处理行业类别：将数组转换为字符串
     const industryCategories = [
       ...new Set([
@@ -365,47 +457,10 @@ const handleSubmit = async () => {
       ]),
     ].join('');
 
-    // 构建干系人列表
-    const sales = defaultOrderUsers.value
-      .find((item) => item.userAttribute === UserAttribute.Sales)
-      ?.userIds?.map((item) => ({
-        userId: item,
-        isDefault: false,
-        userAttribute: UserAttribute.Sales,
-        clientId: editId.value,
-      }));
-
-    console.log('sales', sales);
-    const customerServices = defaultOrderUsers.value
-      .find((item) => item.userAttribute === UserAttribute.CustomerService)
-      ?.userIds?.map((item) => ({
-        userId: item,
-        isDefault: false,
-        userAttribute: UserAttribute.CustomerService,
-        clientId: editId.value,
-      }));
-    const operations = defaultOrderUsers.value
-      .find((item) => item.userAttribute === UserAttribute.Operation)
-      ?.userIds?.map((item) => ({
-        userId: item,
-        isDefault: false,
-        userAttribute: UserAttribute.Operation,
-        clientId: editId.value,
-      }));
-    const documentations = defaultOrderUsers.value
-      .find((item) => item.userAttribute === UserAttribute.Documentation)
-      ?.userIds?.map((item) => ({
-        userId: item,
-        isDefault: false,
-        userAttribute: UserAttribute.Documentation,
-        clientId: editId.value,
-      }));
-
-    // 构建地址列表
+    // 构建地址列表（新增时不包含id）
     const addresses = addressList.value.map((item) => ({
-      id: item.id,
-      name: item.name,
-      isDefault: item.isDefault ? true : false,
+      name: item.name || '',
+      isDefault: item.isDefault ?? false,
       address: item.address,
       contactPerson: item.contactPerson,
       mobile: item.mobile,
@@ -420,86 +475,221 @@ const handleSubmit = async () => {
     const areaId =
       areaIdPath.length > 0 ? areaIdPath[areaIdPath.length - 1] : undefined;
 
-    // 构建提交数据
-    const submitData:
-      | ClientAdminApi.ClientAddDto
-      | ClientAdminApi.ClientEditDto = {
-      // 基本信息
-      name: baseValues.name,
-      code: baseValues.code,
-      phone: baseValues.phone,
-      fullName: baseValues.fullName,
-      enName: baseValues.enName,
-      countryId: baseValues.country,
-      areaId,
-      address: baseValues.address,
-      enAddress: baseValues.enAddress,
-      mainProduct: baseValues.mainProduct,
-      enable: baseValues.enable ?? true,
-      clientType: clientType.value.includes(1) ? 0 : 2, // 0-直客/同行，2-供应商
-      industryCategories,
-      remark: baseValues.remark,
-      enFullName: baseValues.enFullName,
-      taxNo: baseValues.taxNo,
-      email: baseValues.email,
-      url: baseValues.url,
-
-      // 业务信息
-      legalPerson: businessValues.legalPerson,
-      registeredCapital: businessValues.registeredCapital,
-      establishmentDate: businessValues.establishmentDate,
-      businessTerm: businessValues.businessTerm,
-
-      // 客户相关信息
-      isClient: clientType.value.includes(1),
-      clientCoopStatus: clientType.value.includes(1)
-        ? clientTypeCoopStatus.value
-        : undefined,
-      clientLevel: clientValues.clientLevel,
-      source: clientValues.source,
-      cargoType: clientValues.cargoType,
-      clientCurrencyId: clientValues.clientCurrencyId,
-      clientCoopSince: clientValues.clientCoopSince,
-      clientLastTxnTime: clientValues.clientLastTxnTime,
-
-      // 供应商相关信息
-      isSupplier: clientType.value.includes(2),
-      supplierCoopStatus: clientType.value.includes(2)
-        ? clientTypeCoopStatus.value
-        : undefined,
-      supplierLevel: supplierValues.supplierLevel,
-      supplierCurrencyId: supplierValues.supplierCurrencyId,
-      laneIds: supplierValues.laneIds,
-      supplierCoopSince: supplierValues.supplierCoopSince,
-      supplierLastTxnTime: supplierValues.supplierLastTxnTime,
-
-      // 附件 todo、干系人、地址
-      //stakeholders,
-
-      sales,
-      customerServices,
-      operations,
-      documentations,
-
-      addresses,
-    };
-
-    let result: boolean | string;
+    // 构建干系人列表（根据新增/编辑使用不同的DTO）
     if (isEdit.value && editId.value) {
-      // 编辑模式
+      const currentEditId = editId.value; // 创建局部变量确保类型安全
+
+      // 编辑模式：使用ClientStakeholderEditDto（需要id）
+      const salesEdit = defaultOrderUsers.value
+        .find((item) => item.userAttribute === UserAttribute.Sales)
+        ?.stakeholderList?.map((item) => ({
+          id: item.id,
+          userId: item.userId,
+          isDefault: item.isDefault,
+          userAttribute: item.userAttribute!,
+          clientId: currentEditId,
+        }));
+
+      const customerServicesEdit = defaultOrderUsers.value
+        .find((item) => item.userAttribute === UserAttribute.CustomerService)
+        ?.stakeholderList?.map((item) => ({
+          id: item.id,
+          userId: item.userId,
+          isDefault: item.isDefault,
+          userAttribute: item.userAttribute!,
+          clientId: currentEditId,
+        }));
+
+      const operationsEdit = defaultOrderUsers.value
+        .find((item) => item.userAttribute === UserAttribute.Operation)
+        ?.stakeholderList?.map((item) => ({
+          id: item.id,
+          userId: item.userId,
+          isDefault: item.isDefault,
+          userAttribute: item.userAttribute!,
+          clientId: currentEditId,
+        }));
+
+      const documentationsEdit = defaultOrderUsers.value
+        .find((item) => item.userAttribute === UserAttribute.Documentation)
+        ?.stakeholderList?.map((item) => ({
+          id: item.id,
+          userId: item.userId,
+          isDefault: item.isDefault,
+          userAttribute: item.userAttribute!,
+          clientId: currentEditId,
+        }));
+
+      // 编辑模式提交数据
       const editData: ClientAdminApi.ClientEditDto = {
-        ...submitData,
-        id: editId.value,
-      } as ClientAdminApi.ClientEditDto;
-      result = await editClient(editData);
+        id: currentEditId,
+        // 基本信息
+        name: baseValues.name,
+        code: baseValues.code,
+        phone: baseValues.phone,
+        fullName: baseValues.fullName,
+        enName: baseValues.enName,
+        countryId: baseValues.country,
+        areaId,
+        address: baseValues.address,
+        enAddress: baseValues.enAddress,
+        mainProduct: baseValues.mainProduct,
+        enable: baseValues.enable ?? true,
+        clientType: clientType.value.includes(1) ? 0 : 2,
+        industryCategories,
+        remark: baseValues.remark,
+        enFullName: baseValues.enFullName,
+        taxNo: baseValues.taxNo,
+        email: baseValues.email,
+        url: baseValues.url,
+
+        // 业务信息
+        legalPerson: businessValues.legalPerson,
+        registeredCapital: businessValues.registeredCapital,
+        establishmentDate: businessValues.establishmentDate,
+        businessTerm: businessValues.businessTerm,
+
+        // 客户相关信息
+        isClient: clientType.value.includes(1),
+        clientCoopStatus: clientType.value.includes(1)
+          ? clientTypeCoopStatus.value
+          : undefined,
+        clientLevel: clientValues.clientLevel,
+        source: clientValues.source,
+        cargoType: clientValues.cargoType,
+        clientCurrencyId: clientValues.clientCurrencyId,
+        clientCoopSince: clientValues.clientCoopSince,
+        clientLastTxnTime: clientValues.clientLastTxnTime,
+
+        // 供应商相关信息
+        isSupplier: clientType.value.includes(2),
+        supplierCoopStatus: clientType.value.includes(2)
+          ? clientTypeCoopStatus.value
+          : undefined,
+        supplierLevel: supplierValues.supplierLevel,
+        supplierCurrencyId: supplierValues.supplierCurrencyId,
+        laneIds: supplierValues.laneIds,
+        supplierCoopSince: supplierValues.supplierCoopSince,
+        supplierLastTxnTime: supplierValues.supplierLastTxnTime,
+
+        sales: salesEdit,
+        customerServices: customerServicesEdit,
+        operations: operationsEdit,
+        documentations: documentationsEdit,
+
+        addresses,
+      };
+      createdId = await editClient(editData);
     } else {
-      // 新增模式
-      result = await addClient(submitData as ClientAdminApi.ClientAddDto);
+      // 新增模式：使用ClientStakeholderAddDto（不需要id和clientId）
+      const salesAdd = defaultOrderUsers.value
+        .find((item) => item.userAttribute === UserAttribute.Sales)
+        ?.userIds?.map((userId) => ({
+          userId,
+          isDefault: false,
+          userAttribute: UserAttribute.Sales,
+        }));
+
+      const customerServicesAdd = defaultOrderUsers.value
+        .find((item) => item.userAttribute === UserAttribute.CustomerService)
+        ?.userIds?.map((userId) => ({
+          userId,
+          isDefault: false,
+          userAttribute: UserAttribute.CustomerService,
+        }));
+
+      const operationsAdd = defaultOrderUsers.value
+        .find((item) => item.userAttribute === UserAttribute.Operation)
+        ?.userIds?.map((userId) => ({
+          userId,
+          isDefault: false,
+          userAttribute: UserAttribute.Operation,
+        }));
+
+      const documentationsAdd = defaultOrderUsers.value
+        .find((item) => item.userAttribute === UserAttribute.Documentation)
+        ?.userIds?.map((userId) => ({
+          userId,
+          isDefault: false,
+          userAttribute: UserAttribute.Documentation,
+        }));
+
+      // 新增模式提交数据
+      const addData: ClientAdminApi.ClientAddDto = {
+        // 基本信息
+        name: baseValues.name,
+        code: baseValues.code,
+        phone: baseValues.phone,
+        fullName: baseValues.fullName,
+        enName: baseValues.enName,
+        countryId: baseValues.country,
+        areaId,
+        address: baseValues.address,
+        enAddress: baseValues.enAddress,
+        mainProduct: baseValues.mainProduct,
+        enable: baseValues.enable ?? true,
+        clientType: clientType.value.includes(1) ? 0 : 2,
+        industryCategories,
+        remark: baseValues.remark,
+        enFullName: baseValues.enFullName,
+        taxNo: baseValues.taxNo,
+        email: baseValues.email,
+        url: baseValues.url,
+
+        // 业务信息
+        legalPerson: businessValues.legalPerson,
+        registeredCapital: businessValues.registeredCapital,
+        establishmentDate: businessValues.establishmentDate,
+        businessTerm: businessValues.businessTerm,
+
+        // 客户相关信息
+        isClient: clientType.value.includes(1),
+        clientCoopStatus: clientType.value.includes(1)
+          ? clientTypeCoopStatus.value
+          : undefined,
+        clientLevel: clientValues.clientLevel,
+        source: clientValues.source,
+        cargoType: clientValues.cargoType,
+        clientCurrencyId: clientValues.clientCurrencyId,
+        clientCoopSince: clientValues.clientCoopSince,
+        clientLastTxnTime: clientValues.clientLastTxnTime,
+
+        // 供应商相关信息
+        isSupplier: clientType.value.includes(2),
+        supplierCoopStatus: clientType.value.includes(2)
+          ? clientTypeCoopStatus.value
+          : undefined,
+        supplierLevel: supplierValues.supplierLevel,
+        supplierCurrencyId: supplierValues.supplierCurrencyId,
+        laneIds: supplierValues.laneIds,
+        supplierCoopSince: supplierValues.supplierCoopSince,
+        supplierLastTxnTime: supplierValues.supplierLastTxnTime,
+
+        sales: salesAdd,
+        customerServices: customerServicesAdd,
+        operations: operationsAdd,
+        documentations: documentationsAdd,
+
+        addresses,
+      };
+      createdId = await addClient(addData);
+      const resolvedCreatedId =
+        (createdId as any)?.id ?? (createdId as any)?.result ?? createdId;
+      const createdIdStr =
+        resolvedCreatedId === null || resolvedCreatedId === undefined
+          ? ''
+          : String(resolvedCreatedId).trim();
+      if (createdIdStr) {
+        router.push(`/clients/${createdIdStr}/edit`);
+      } else {
+        router.push('/clients');
+      }
     }
 
-    if (result) {
+    if (createdId) {
       message.success($t('ui.actionMessage.operationSuccess'));
       markListShouldRefresh('ClientList');
+
       //router.push('/clients');
     } else {
       message.success($t('ui.actionMessage.operationFailed'));
@@ -512,29 +702,36 @@ const handleSubmit = async () => {
   }
 };
 
-// ... existing code ...
-
-/** 取消返回 */
+/**
+ * 取消返回
+ */
 const handleCancel = () => {
   router.push('/clients');
 };
 
+/**
+ * 添加地址
+ */
 const addAddress = () => {
   modalApi.open();
 };
+/**
+ * 编辑地址
+ */
 const editAddress = (data: ClientAdminApi.ClientAddressEditDto) => {
   modalApi.setData(data).open();
 };
 const addressList = ref<ClientAdminApi.ClientAddressEditDto[]>([]);
-// addressList.value.push({
-//   name: '测试1',
-//   address: '测试1地址',
-//   contactPerson: '测试1联系人',
-//   mobile: '12345678901',
-//   remark: '测试1备注',
-//   isDefault: true,
-// });
+
+/**
+ * 添加地址数据
+ */
 const addAddressData = (data: ClientAdminApi.ClientAddressAddDto) => {
+  // 如果是第一个地址，自动设置为默认地址
+  if (addressList.value.length === 0) {
+    data.isDefault = true;
+  }
+
   if (data.isDefault) {
     addressList.value.forEach((item) => {
       item.isDefault = false;
@@ -542,6 +739,9 @@ const addAddressData = (data: ClientAdminApi.ClientAddressAddDto) => {
   }
   addressList.value.push(data);
 };
+/**
+ * 编辑地址数据
+ */
 const editAddressData = (data: ClientAdminApi.ClientAddressEditDto) => {
   if (data.isDefault) {
     addressList.value.forEach((item) => {
@@ -558,11 +758,33 @@ const editAddressData = (data: ClientAdminApi.ClientAddressEditDto) => {
   console.log('edit-addressList.value', addressList.value);
 };
 
+/**
+ * 删除地址
+ */
 const delAddress = (index: number) => {
   addressList.value = addressList.value.filter((_, i) => i !== index);
 };
+
 onMounted(() => {
   loadEditData();
+
+  // 在表单初始化后，为fullName字段添加onChange监听
+  nextTick(() => {
+    if (!isEdit.value) {
+      baseFormApi.updateSchema([
+        {
+          fieldName: 'fullName',
+          componentProps: {
+            onChange: (e: any) => {
+              const newFullName = e.target?.value || '';
+              currentFullName.value = newFullName;
+              console.log('newFullName', newFullName);
+            },
+          },
+        },
+      ]);
+    }
+  });
 });
 </script>
 
@@ -823,7 +1045,7 @@ onMounted(() => {
             "
             :user-attribute="item.userAttribute"
             @update:model-value="
-              (v) => updateStakeholders(item.userAttribute, v)
+              (v) => updateStakeholders(item.userAttribute, v as number[])
             "
           >
           </UserSelect>

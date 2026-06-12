@@ -42,6 +42,7 @@ import { GetDetail } from '#/api/sea-export/change-order-admin';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { useOrderFeeColumns, initOrderFeeEnumCache } from '../data';
 import OrderFeeEditorModal from './order-fee-editor-modal.vue';
+import OrderFeeAuditHistoryModal from './order-fee-audit-history-modal.vue';
 
 const dataSource = defineModel<OrderFeeAdminApi.OrderFeeDto[]>({
   default: () => [],
@@ -175,6 +176,21 @@ const queryTableData = async () => {
 };
 const tmpAdd = ref(false);
 const tmpDel = ref(false);
+
+// 模态框引用
+const modifyModalRef = ref<InstanceType<typeof OrderFeeEditorModal>>();
+const auditHistoryModalRef =
+  ref<InstanceType<typeof OrderFeeAuditHistoryModal>>();
+
+// 打开审核历史弹窗
+const openAuditHistoryModal = (row: OrderFeeAdminApi.OrderFeeDto) => {
+  if (!row) return;
+  console.log('row', row);
+  // 设置数据并打开模态框
+  auditHistoryModalRef.value?.modalApi.setData(row);
+  auditHistoryModalRef.value?.modalApi.open();
+};
+
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
   gridOptions: {
     columns: useOrderFeeColumns(props.type),
@@ -217,6 +233,14 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
     },
   },
   gridEvents: {
+    // 双击单元格事件 - 当双击费用状态列时打开审核历史
+    cellDblclick: ({ column, row }: any) => {
+      // 检查是否是费用状态列
+      if (column?.field === 'feeStatus') {
+        openAuditHistoryModal(row);
+      }
+    },
+
     // 单行选择变化事件
     checkboxChange: ({ row, checked }) => {
       const records = (gridApi.grid?.getCheckboxRecords?.() ?? []) as any;
@@ -381,7 +405,12 @@ const Submitted = () => {
   const keysSet = new Set(selectedRowKeys.value);
   const list = (dataSource.value ?? [])
     .filter((row) => keysSet.has((row as any)._rowKey))
-    .filter((row) => row.feeStatus === feeConstants.getFeeStatusValue.Entering);
+    .filter(
+      (row) =>
+        row.feeStatus === feeConstants.getFeeStatusValue.Entering ||
+        row.feeStatus === feeConstants.getFeeStatusValue.Rejected ||
+        row.feeStatus === feeConstants.getFeeStatusValue.ApplyModify,
+    );
   let SubmitOrderFeeDto = {
     TransportOrderId: editId.value,
     PaySide: props.type ?? 0,
@@ -396,9 +425,6 @@ const Submitted = () => {
     getTableDate();
   });
 };
-
-// 模态框引用
-const modifyModalRef = ref<InstanceType<typeof OrderFeeEditorModal>>();
 
 const openModifyModal = () => {
   if (!selectedRowKeys.value.length) return;
@@ -697,6 +723,9 @@ defineExpose({
       :fee-code-list="feeCodeList"
       @confirm="handleModalConfirm"
     />
+
+    <!-- 审核历史模态框 -->
+    <OrderFeeAuditHistoryModal ref="auditHistoryModalRef" />
   </Card>
 </template>
 
