@@ -274,17 +274,20 @@ export function useColumns<T = SeFreiPriceOutDto>(
       type: 'checkbox',
       width: 60,
       fixed: 'left',
+      align: 'center',
     },
     {
       field: 'recommend',
       title: $t('seaExport.freightRate.recommend'),
       width: 80,
+      align: 'center',
       slots: { default: 'recommend' },
     },
     {
       field: 'carrier.enName',
       title: $t('seaExport.freightRate.carrierId'),
       width: 260,
+      align: 'left',
       slots: { default: 'carrierId' },
       formatter: ({ row }) => {
         return row.carrier?.code || '-';
@@ -294,6 +297,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'pol.portName',
       title: $t('seaExport.freightRate.polId'),
       width: 180,
+      align: 'left',
       slots: { default: 'polId' },
       formatter: ({ row }) => {
         return row.pol?.portName || '-';
@@ -303,6 +307,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'country.countryName',
       title: $t('seaExport.freightRate.countryId'),
       width: 120,
+      align: 'left',
       formatter: ({ row }) => {
         return row.country?.countryName || '-';
       },
@@ -311,6 +316,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'pod.portName',
       title: $t('seaExport.freightRate.podId'),
       width: 180,
+      align: 'left',
       slots: { default: 'podId' },
       formatter: ({ row }) => {
         return row.pod?.portName || '-';
@@ -320,6 +326,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'currency.code',
       title: $t('seaExport.freightRate.currencyId'),
       width: 80,
+      align: 'left',
       slots: { default: 'currencyId' },
       formatter: ({ row }) => {
         return row.currency?.code || '-';
@@ -329,6 +336,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'bookingAgentName',
       title: '订舱代理',
       width: 150,
+      align: 'left',
       formatter: ({ row }) => {
         return row.bookingAgentName || '-';
       },
@@ -337,6 +345,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'contractNo',
       title: '约号',
       width: 120,
+      align: 'left',
       slots: { default: 'contractNo' },
       formatter: ({ row }) => {
         return row.contractNo || '-';
@@ -352,7 +361,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: `ctn_${ctnName}`,
       title: ctnName,
       width: 140,
-      align: 'right',
+      align: 'left',
       showOverflow: false,
       slots: { default: 'ctnEditableCell' },
       params: {
@@ -443,6 +452,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'isDirect',
       title: $t('seaExport.freightRate.isDirect'),
       width: 80,
+      align: 'center',
       cellRender: {
         name: 'CellTag',
         options: [
@@ -455,6 +465,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'poT1.portName',
       title: $t('seaExport.freightRate.pot1Id'),
       width: 120,
+      align: 'left',
       formatter: ({ row }) => {
         return row.poT1
           ? `${row.poT1?.portName},${row.poT1?.country.countryEnName}`
@@ -465,6 +476,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'poT2.portName',
       title: $t('seaExport.freightRate.pot2Id'),
       width: 120,
+      align: 'left',
       formatter: ({ row }) => {
         return row.poT2
           ? `${row.poT2?.portName},${row.poT2?.country.countryEnName}`
@@ -475,11 +487,13 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'voyage',
       title: $t('seaExport.freightRate.voyage'),
       width: 100,
+      align: 'left',
     },
     {
       field: 'etd',
       title: '开船日期',
       width: 150,
+      align: 'left',
       formatter: ({ row }) => {
         // 优先显示日期模式数据
         if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
@@ -522,6 +536,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'closeDocTime',
       title: '截单时间',
       width: 150,
+      align: 'left',
       formatter: ({ row }) => {
         // 优先显示日期模式数据
         if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
@@ -564,6 +579,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'closingTime',
       title: '截关时间',
       width: 150,
+      align: 'left',
       formatter: ({ row }) => {
         // 优先显示日期模式数据
         if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
@@ -606,6 +622,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'validTimeRange',
       title: $t('seaExport.freightRate.validTimeStart'),
       width: 220,
+      align: 'left',
       formatter: ({ row }) => {
         const startDate = row.validTimeStart;
         const endDate = row.validTimeEnd;
@@ -629,17 +646,20 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'isValid',
       title: $t('seaExport.freightRate.isValid'),
       width: 100,
+      align: 'center',
       slots: { default: 'isValid' },
     },
     {
       field: 'polFreeDays',
       title: '起运港免用箱',
       width: 110,
+      align: 'left',
     },
     {
       field: 'podFreeDaysCombined',
       title: '目的港免箱使天数',
       width: 280,
+      align: 'center',
       slots: {
         default: 'podFreeDaysCombined',
         header: 'podFreeDaysCombinedHeader',
@@ -649,6 +669,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'remark',
       title: $t('seaExport.freightRate.remark'),
       minWidth: 300,
+      align: 'left',
       showOverflow: false,
       cellRender: {
         name: 'VxeCellTextarea',
@@ -664,6 +685,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'creationTime',
       title: '录入时间',
       width: 160,
+      align: 'left',
       formatter: ({ row }) => {
         if (!row.creationTime) return '-';
 

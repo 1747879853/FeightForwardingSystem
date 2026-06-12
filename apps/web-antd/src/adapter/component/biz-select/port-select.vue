@@ -43,6 +43,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: any];
   /** 当前选中港口的英文名称；清空选择时为 `undefined` */
   portName: [portName: string | undefined];
+  /** change事件，传递value和完整的option对象 */
+  change: [value: any, option: any | any[]];
 }>();
 
 const modelValue = defineModel<any>();
@@ -54,7 +56,6 @@ const forwardSlotNames = computed(() =>
 );
 
 const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
-  console.log('port', port);
   const portAny = port as any;
   const ediCode = (port.ediCode ?? '').toString().trim();
   const countryEnName = (port.country?.countryEnName ?? '').toString().trim();
@@ -66,6 +67,9 @@ const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
 
   /** 下拉里展示 ediCode/portName；选中后仅展示 ediCode，故 option.label 用 ediCode */
   const dropdownLabel = `${ediCode}/${nameForPath} , ${countryEnName} / ${cnName}`;
+
+  // 用于显示的简洁label（类似于船公司的格式：EDI代码(港口名称)）
+  const simpleLabel = ediCode ? `${ediCode}(${nameForPath})` : nameForPath;
 
   const label = `${nameForPath} , ${countryEnName}`;
 
@@ -81,6 +85,8 @@ const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
     label,
     /** 供选中后 `portName` 事件使用，不依赖额外请求 */
     portName: rawPortName || undefined,
+    /** 用于懒加载缓存的label值（简洁格式） */
+    rawLabel: simpleLabel,
     value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
@@ -164,6 +170,7 @@ const emitPortNameForValue = async (value: any) => {
   }
 };
 
+// 处理值变化
 const handleChange = (value: any) => {
   const values = Array.isArray(value) ? value : [value];
   for (const v of values) {
@@ -174,7 +181,14 @@ const handleChange = (value: any) => {
   }
   modelValue.value = value;
   emit('update:modelValue', value);
-  void emitPortNameForValue(value);
+};
+
+// 处理change事件（转发完整的option对象）
+const handleSelectChange = (value: any, option: any | any[]) => {
+  // 触发change事件，传递value和option
+  emit('change', value, option);
+  // 同时更新modelValue
+  handleChange(value);
 };
 
 const apiComponentRef = ref();
@@ -249,7 +263,7 @@ defineExpose({
     loading-slot="suffixIcon"
     model-prop-name="value"
     visible-event="onDropdownVisibleChange"
-    @update:model-value="handleChange"
+    @change="handleSelectChange"
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"

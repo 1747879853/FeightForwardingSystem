@@ -43,6 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: any];
+  change: [value: any, option: any | any[]];
 }>();
 
 const modelValue = defineModel<any>();
@@ -64,6 +65,8 @@ const mapClientToOption = (client: ClientAdminApi.ClientDto) => {
   return {
     disabled: false,
     label,
+    /** 用于懒加载缓存的label值 */
+    rawLabel: label,
     value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
@@ -114,6 +117,7 @@ const parseIdToSafeString = (value: unknown): string | null => {
   return String(value);
 };
 
+// 处理值变化
 const handleChange = (value: any) => {
   const values = Array.isArray(value) ? value : [value];
   for (const v of values) {
@@ -124,6 +128,14 @@ const handleChange = (value: any) => {
   }
   modelValue.value = value;
   emit('update:modelValue', value);
+};
+
+// 处理change事件（转发完整的option对象）
+const handleSelectChange = (value: any, option: any | any[]) => {
+  // 触发change事件，传递value和option
+  emit('change', value, option);
+  // 同时更新modelValue
+  handleChange(value);
 };
 
 const ensureSelectedLoaded = async (rawValue: any) => {
@@ -189,7 +201,7 @@ defineExpose({
     loading-slot="suffixIcon"
     model-prop-name="value"
     visible-event="onDropdownVisibleChange"
-    @update:model-value="handleChange"
+    @change="handleSelectChange"
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"

@@ -45,6 +45,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: any];
+  /** change事件，传递value和完整的option对象 */
+  change: [value: any, option: any | any[]];
 }>();
 
 const modelValue = defineModel<any>();
@@ -68,6 +70,8 @@ const mapCurrencyToOption = (currency: CurrencyAdminApi.CurrencyDto) => {
   return {
     disabled: !currency.enable,
     label,
+    /** 用于懒加载缓存的label值 */
+    rawLabel: label,
     value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
@@ -134,6 +138,14 @@ const handleChange = (value: any) => {
   }
   modelValue.value = value;
   emit('update:modelValue', value);
+};
+
+// 处理change事件（转发完整的option对象）
+const handleSelectChange = (value: any, option: any | any[]) => {
+  // 触发change事件，传递value和option
+  emit('change', value, option);
+  // 同时更新modelValue
+  handleChange(value);
 };
 
 const ensureSelectedLoaded = async (rawValue: any) => {
@@ -203,7 +215,7 @@ defineExpose({
     loading-slot="suffixIcon"
     model-prop-name="value"
     visible-event="onDropdownVisibleChange"
-    @update:model-value="handleChange"
+    @change="handleSelectChange"
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"
