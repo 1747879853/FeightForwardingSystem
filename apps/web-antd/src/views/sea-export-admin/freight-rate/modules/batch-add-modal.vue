@@ -22,6 +22,7 @@ import {
   Switch,
   TimePicker,
   Tooltip,
+  Popover,
   DropdownButton,
   Menu,
   MenuItem,
@@ -864,6 +865,22 @@ function resetForm() {
           >
             删除选中行
           </Button>
+          <Popover placement="bottomLeft">
+            <template #content>
+              <ul
+                class="m-0 max-w-xs list-inside list-disc text-sm text-gray-600"
+              >
+                <li>点击"新增行"添加运价记录</li>
+                <li>选中行后"复制选中行"可快速复制</li>
+                <li>勾选行后"删除选中行"可删除记录</li>
+                <li>"添加箱型"可动态添加箱型成本列</li>
+                <li>带 * 号的字段为必填项</li>
+              </ul>
+            </template>
+            <Button type="text" size="small" class="text-gray-400">
+              <IconifyIcon icon="lucide:help-circle" class="size-4" />
+            </Button>
+          </Popover>
         </Space>
 
         <Space>
@@ -1221,18 +1238,6 @@ function resetForm() {
           </template>
         </Grid>
       </Spin>
-
-      <!-- 提示信息 -->
-      <div class="mt-4 text-sm text-gray-500">
-        <p>提示：</p>
-        <ul class="list-inside list-disc">
-          <li>点击"新增行"按钮添加新的运价记录</li>
-          <li>选中行后点击"复制选中行"可快速复制该行数据</li>
-          <li>勾选行后点击"删除选中行"可删除选中的记录</li>
-          <li>使用"添加箱型"下拉框动态添加箱型成本列</li>
-          <li>带 * 号的字段为必填项</li>
-        </ul>
-      </div>
     </div>
 
     <!-- 自定义行数弹窗 -->
