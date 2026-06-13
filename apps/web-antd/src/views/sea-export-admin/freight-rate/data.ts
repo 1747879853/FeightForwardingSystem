@@ -5,6 +5,7 @@ import { getEnumItems } from '#/utils/init-enum';
 import { $t } from '#/locales';
 import { editSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
 import { message } from 'ant-design-vue';
+import { FrightModule } from '#/api/system/permission';
 
 // 定义明确的接口类型
 interface FreightConditionItemOption {
@@ -301,6 +302,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
 export function useColumns<T = SeFreiPriceOutDto>(
   onActionClick: OnActionClickFn<T>,
   data?: SeFreiPriceOutDto[], // 添加数据参数用于生成动态列
+  maskedFields?: string[], // 被屏蔽的字段列表（PascalCase 格式）
 ): VxeTableGridOptions['columns'] {
   // 基础固定列（不包含动态箱型列）
   const baseColumnsBeforeCtn: VxeTableGridOptions['columns'] = [
@@ -746,11 +748,94 @@ export function useColumns<T = SeFreiPriceOutDto>(
   ];
 
   // 合并所有列：基础列（前） + 动态箱型列 + 基础列（后）
-  return [
+  const allColumns = [
     ...baseColumnsBeforeCtn,
     ...dynamicCtnColumns,
     ...baseColumnsAfterCtn,
   ];
+
+  // 根据字段权限过滤列
+  return filterColumnsByPermission(allColumns, maskedFields || []);
+}
+
+/**
+ * 运价模块字段映射（前端 field -> 后端 PropName）
+ * 用于字段权限控制，将表格列的 field 映射到后端的 PascalCase 属性名
+ */
+export const FREIGHT_RATE_FIELD_MAP: Record<string, string> = {
+  // 基础字段
+  recommend: 'Recommend',
+  'carrier.enName': 'CarrierId',
+  'pol.portName': 'PolId',
+  'country.countryName': 'CountryId',
+  'pod.portName': 'PodId',
+  'currency.code': 'CurrencyId',
+  bookingAgentName: 'BookingAgentId',
+  contractNo: 'ContractNo',
+  surchargeFees: 'SeFreiPriceFees',
+  isDirect: 'IsDirect',
+  'poT1.portName': 'PoT1Id',
+  'poT2.portName': 'PoT2Id',
+  voyage: 'Voyage',
+  etd: 'SeFreiPriceDays',
+  closeDocTime: 'SeFreiPriceDays',
+  closingTime: 'SeFreiPriceDays',
+  validTimeRange: 'ValidTimeStart',
+  isValid: 'IsValid',
+  polFreeDays: 'PolFreeDays',
+  podFreeDaysCombined: 'PodFreeDays',
+  remark: 'Remark',
+  creationTime: 'CreationTime',
+};
+
+/**
+ * 根据字段权限过滤列配置
+ * @param columns 原始列配置
+ * @param maskedFields 被屏蔽的字段列表（PascalCase 格式）
+ * @returns 过滤后的列配置
+ */
+export function filterColumnsByPermission(
+  columns: VxeTableGridOptions['columns'],
+  maskedFields: string[],
+): VxeTableGridOptions['columns'] {
+  if (!maskedFields || maskedFields.length === 0) {
+    return columns;
+  }
+
+  // 如果 columns 为 undefined，返回空数组
+  if (!columns) {
+    return [];
+  }
+
+  // 将 PascalCase 转换为 camelCase 进行匹配
+  const maskedFieldsCamelCase = maskedFields.map((field) => {
+    return field.charAt(0).toLowerCase() + field.slice(1);
+  });
+
+  return columns.filter((col) => {
+    if (!col || !col.field) {
+      // 保留没有 field 的列（如 checkbox、操作列等）
+      return true;
+    }
+
+    // 获取对应的后端字段名
+    const backendFieldName = FREIGHT_RATE_FIELD_MAP[col.field];
+
+    // 如果找不到映射，使用原始 field
+    const fieldNameToCheck = backendFieldName || col.field;
+
+    // 检查是否在被屏蔽列表中（不区分大小写）
+    const isMasked = maskedFields.some(
+      (masked) => masked.toLowerCase() === fieldNameToCheck.toLowerCase(),
+    );
+
+    if (isMasked) {
+      console.log(`[字段权限] 隐藏列: ${col.field} (${fieldNameToCheck})`);
+      return false;
+    }
+
+    return true;
+  });
 }
 
 /**

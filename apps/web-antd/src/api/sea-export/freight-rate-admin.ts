@@ -127,6 +127,8 @@ export interface PortCodeDto {
   statisticalArea: string;
   /** 状态：0-启用，1-禁用 */
   status: number;
+  /** 国家信息（关联对象） */
+  country: CountryCodeDto;
 }
 
 /**

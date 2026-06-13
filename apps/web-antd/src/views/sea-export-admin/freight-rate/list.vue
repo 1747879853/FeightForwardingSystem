@@ -53,6 +53,8 @@ import BatchEditModal from './modules/batch-edit-modal.vue';
 import SyncUpdateForm from './modules/form.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
 import { buildAttachmentUrl } from '#/utils';
+import { getCurrentUserMaskedFields } from '#/api/system/permission';
+import { FrightModule } from '#/api/system/permission';
 
 // 创建运价管理的 ABP 权限对象
 const perm = createAbpPermission('Admin.SeFreiPrice');
@@ -66,6 +68,9 @@ const selectedLineId = ref<number | undefined>(undefined);
 // 订单状态下拉框
 const freightConditionItemOptions = ref<any[]>([]);
 const conditionComparisonTypeOptions = ref<any[]>([]);
+
+// 被屏蔽的字段列表（PascalCase 格式）
+const maskedFields = ref<string[]>([]);
 
 // 获取费用名称
 function getFeeName(fee: any): string {
@@ -155,13 +160,15 @@ function getSurchargeFeeTooltip(row: SeFreiPriceOutDto): string {
     // 构建该费用的完整描述
     let feeDesc = `${feeName} (${currency})`;
     if (feeDetails.length > 0) {
-      feeDesc += '\n' + feeDetails.join('\n');
+      // 所有箱型价格在同一行，用逗号分隔
+      feeDesc += ': ' + feeDetails.join(', ');
     }
 
     details.push(feeDesc);
   });
 
-  return details.join('\n\n');
+  // 每条费用之间用换行分隔
+  return details.join('\n');
 }
 
 const [FormModal, formModalApi] = useVbenModal({
@@ -282,13 +289,13 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
   },
 });
 
-// 监听表格数据变化，动态更新列配置
+// 监听表格数据和字段权限变化，动态更新列配置
 watch(
-  tableData,
-  async (newData) => {
+  [tableData, maskedFields],
+  async ([newData, newMaskedFields]) => {
     if (newData && newData.length > 0) {
       await nextTick();
-      const newColumns = useColumns(onActionClick, newData);
+      const newColumns = useColumns(onActionClick, newData, newMaskedFields);
       // 使用gridApi更新列配置
       gridApi.setGridOptions({
         columns: newColumns,
@@ -517,7 +524,10 @@ const LANE_TAB_SCROLL_STEP = 240;
 const LANE_TAB_SCROLL_DURATION = 280;
 let laneTabResizeObserver: ResizeObserver | null = null;
 let laneTabScrollAnimationId: number | null = null;
-let laneTabScrollIdleTimer: ReturnType<typeof setTimeout> | null = null;
+let laneTabScrollIdleTimer:
+  | ReturnType<typeof setTimeout>
+  | NodeJS.Timeout
+  | null = null;
 let isLaneTabAnimating = false;
 
 function updateLaneTabScrollState() {
@@ -545,7 +555,7 @@ function onLaneTabScroll() {
   laneTabScrollIdleTimer = window.setTimeout(() => {
     laneTabScrollIdleTimer = null;
     updateLaneTabScrollState();
-  }, 120);
+  }, 120) as any;
 }
 
 function stopLaneTabScrollAnimation() {
@@ -579,7 +589,9 @@ function animateLaneTabScroll(targetLeft: number) {
       1,
     );
     const eased = 1 - (1 - progress) ** 3;
-    el.scrollLeft = startLeft + distance * eased;
+    if (el) {
+      el.scrollLeft = startLeft + distance * eased;
+    }
 
     if (progress < 1) {
       laneTabScrollAnimationId = window.requestAnimationFrame(step);
@@ -730,6 +742,23 @@ function getIsValidColor(row: SeFreiPriceOutDto): string {
 onMounted(async () => {
   getLines();
 
+  // 获取当前用户的字段权限
+  try {
+    const maskedFieldsData = await getCurrentUserMaskedFields();
+    // 查找运价模块（SeFreiPrice = 7）的屏蔽字段
+    const freightRateModule = maskedFieldsData.find(
+      (module) => module.frightModule === FrightModule.SeFreiPrice,
+    );
+    if (freightRateModule && freightRateModule.fields) {
+      maskedFields.value = freightRateModule.fields.map((f) => f.propName);
+      console.log('[字段权限] 运价模块被屏蔽的字段:', maskedFields.value);
+    } else {
+      console.log('[字段权限] 运价模块没有屏蔽字段');
+    }
+  } catch (error) {
+    console.error('[字段权限] 获取字段权限失败:', error);
+  }
+
   // 加载枚举项用于条件费用显示
   freightConditionItemOptions.value = await getEnumItems(
     'freightConditionItem',
@@ -798,14 +827,20 @@ onUnmounted(() => {
       <!-- 起运港自定义渲染插槽 -->
       <template #polId="{ row }">
         <div class="px-2 py-1">
-          {{ `${row.pol?.portName},${row.pol?.country.countryEnName}` || '-' }}
+          {{
+            `${row.pol?.portName},${row.pol?.country.countryEnName || ''}` ||
+            '-'
+          }}
         </div>
       </template>
 
       <!-- 目的港自定义渲染插槽 -->
       <template #podId="{ row }">
         <div class="px-2 py-1">
-          {{ `${row.pod?.portName},${row.pod?.country.countryEnName}` || '-' }}
+          {{
+            `${row.pod?.portName},${row.pod?.country.countryEnName || ''}` ||
+            '-'
+          }}
         </div>
       </template>
 
@@ -850,9 +885,14 @@ onUnmounted(() => {
           <Tooltip
             v-else
             placement="topLeft"
-            :title="getSurchargeFeeTooltip(row)"
+            :overlay-style="{ maxWidth: 'none' }"
           >
-            <div class="cursor-help text-sm">
+            <template #title>
+              <div class="whitespace-pre text-sm leading-relaxed">
+                {{ getSurchargeFeeTooltip(row) }}
+              </div>
+            </template>
+            <div class="cursor-help truncate text-sm">
               {{ getSurchargeFeeNames(row) }}
             </div>
           </Tooltip>
