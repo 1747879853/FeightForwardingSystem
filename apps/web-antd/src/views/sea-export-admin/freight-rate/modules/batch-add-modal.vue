@@ -592,7 +592,7 @@ const [Grid, gridApi] = useVbenVxeGrid<any>({
     height: 400,
     rowConfig: {
       keyField: '_rowKey',
-      isHover: true,
+      //isHover: true,
     },
     rowStyle: ({ row }: any) => {
       if (row._isCopied) {

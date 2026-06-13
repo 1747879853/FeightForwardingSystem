@@ -215,6 +215,11 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     schema: useGridFormSchema(),
     showCollapseButton: false,
     submitOnChange: true,
+    collapsed: true,
+    commonConfig: {
+      labelWidth: 72,
+    },
+    wrapperClass: 'grid-cols-6',
   },
   gridOptions: {
     columns: useColumns(onActionClick, []), // 初始化为空数组

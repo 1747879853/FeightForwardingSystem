@@ -233,29 +233,63 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'RadioGroup',
+      component: 'Select',
       fieldName: 'recommend',
       label: $t('seaExport.freightRate.recommend'),
       componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
         options: [
           { label: $t('common.all'), value: null },
           { label: $t('common.yes'), value: true },
           { label: $t('common.no'), value: false },
         ],
-        buttonStyle: 'solid',
       },
     },
     {
-      component: 'RadioGroup',
+      component: 'Select',
       fieldName: 'isValid',
       label: $t('seaExport.freightRate.isValid'),
       componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
         options: [
           { label: $t('common.all'), value: null },
           { label: $t('common.valid'), value: true },
           { label: $t('common.invalid'), value: false },
         ],
-        buttonStyle: 'solid',
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'isDirect',
+      label: '是否中转',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        options: [
+          { label: $t('common.all'), value: null },
+          { label: $t('common.yes'), value: true },
+          { label: $t('common.no'), value: false },
+        ],
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'contractNo',
+      label: '约号',
+      componentProps: {
+        placeholder: '请输入约号',
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'remark',
+      label: '备注',
+      componentProps: {
+        placeholder: '请输入备注',
+        allowClear: true,
       },
     },
   ];
@@ -286,8 +320,9 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'carrier.enName',
       title: $t('seaExport.freightRate.carrierId'),
-      width: 260,
+      width: 200,
       align: 'left',
+      // showOverflow: true,
       slots: { default: 'carrierId' },
       formatter: ({ row }) => {
         return row.carrier?.code || '-';
@@ -298,6 +333,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.polId'),
       width: 240,
       align: 'left',
+      // showOverflow: true,
       slots: { default: 'polId' },
       formatter: ({ row }) => {
         return row.pol?.portName || '-';
@@ -317,6 +353,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.podId'),
       width: 240,
       align: 'left',
+      //showOverflow: true,
       slots: { default: 'podId' },
       formatter: ({ row }) => {
         return row.pod?.portName || '-';
@@ -337,6 +374,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: '订舱代理',
       width: 150,
       align: 'left',
+      showOverflow: true,
       formatter: ({ row }) => {
         return row.bookingAgentName || '-';
       },
@@ -346,6 +384,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: '约号',
       width: 200,
       align: 'left',
+      //showOverflow: true,
       slots: { default: 'contractNo' },
       formatter: ({ row }) => {
         return row.contractNo || '-';
@@ -443,9 +482,9 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'surchargeFees',
       title: $t('seaExport.freightRate.surchargeFees'),
-      minWidth: 400,
+      minWidth: 300,
       align: 'left',
-      showOverflow: false,
+      showOverflow: true,
       slots: { default: 'surchargeFees' },
     },
     {
@@ -466,6 +505,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.pot1Id'),
       width: 120,
       align: 'left',
+      // showOverflow: true,
       formatter: ({ row }) => {
         return row.poT1
           ? `${row.poT1?.portName},${row.poT1?.country.countryEnName}`
@@ -477,6 +517,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.pot2Id'),
       width: 120,
       align: 'left',
+      //showOverflow: true,
       formatter: ({ row }) => {
         return row.poT2
           ? `${row.poT2?.portName},${row.poT2?.country.countryEnName}`
