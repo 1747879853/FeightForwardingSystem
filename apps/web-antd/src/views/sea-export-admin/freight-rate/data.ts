@@ -251,6 +251,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'isValid',
       label: $t('seaExport.freightRate.isValid'),
+      defaultValue: true, // 默认选择"有效"，过滤掉无效数据
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
@@ -270,8 +271,8 @@ export function useGridFormSchema(): VbenFormSchema[] {
         allowClear: true,
         options: [
           { label: $t('common.all'), value: null },
-          { label: $t('common.yes'), value: true },
-          { label: $t('common.no'), value: false },
+          { label: '直达', value: true },
+          { label: '中转', value: false },
         ],
       },
     },
