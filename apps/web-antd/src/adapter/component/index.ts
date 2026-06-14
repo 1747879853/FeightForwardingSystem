@@ -521,6 +521,7 @@ export type ComponentType =
   | 'TreeSelect'
   | 'Upload'
   | 'UserSelect'
+  | 'BankStatementSelect'
   | 'CurrencySelect'
   | 'LaneSelect'
   | 'OrganizationSelect'
@@ -622,6 +623,9 @@ async function initComponentAdapter() {
     Upload: withPreviewUpload(),
     UserSelect: defineAsyncComponent(
       () => import('./biz-select/user-select.vue'),
+    ),
+    BankStatementSelect: defineAsyncComponent(
+      () => import('./biz-select/bank-statement-select.vue'),
     ),
     CurrencySelect: defineAsyncComponent(
       () => import('./biz-select/currency-select.vue'),

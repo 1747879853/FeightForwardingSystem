@@ -2,7 +2,7 @@
 title: 收费结算
 module: 结算管理
 author: Cursor Agent
-last_updated: 2026-06-10
+last_updated: 2026-06-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -11,8 +11,8 @@ last_updated: 2026-06-10
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **收费结算列表：** 进入 `/settlement-management/receive-settlement` 后可按结算单号、结算时间、创建人和银行流水筛选收费结算单；双击行进入编辑页，锁定单据进入只读查看页。
-- **新建收费结算：** 可从收费结算列表新建并通过银行流水 picker 选流水，也可从银行流水编辑页的“关联收费结算”卡片快捷新建并自动带入 `bankStatementId`。
+- **收费结算列表：** 进入 `/settlement-management/receive-settlement` 后可按结算单号、结算时间、创建人和银行流水筛选收费结算单；查询区一行六列，结算时间范围占两列，银行流水通过下拉选择并直接传 `bankStatementId`；双击行进入编辑页，锁定单据进入只读查看页。
+- **新建收费结算：** 可从收费结算列表新建，若查询区已选银行流水则自动带入；也可从银行流水编辑页的“关联收费结算”卡片快捷新建并自动带入 `bankStatementId`。
 - **添加结算明细：** 在表单内点击“添加明细”，右侧抽屉按结算对象、委托编号、主提单号拉取可结算费用，按业务分组展开后勾选费用并录入本次结算金额。
 - **编辑收费结算：** 未锁定单据可修改结算时间和备注；新增明细即时调用 `AddItemsAsync`，删除明细即时调用 `DeleteItemsAsync`。
 - **锁定与解锁：** 编辑页顶部提供锁定/解锁按钮；锁定后隐藏保存、删除、添加明细等编辑入口。
@@ -30,7 +30,7 @@ last_updated: 2026-06-10
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **银行流水** | 收款实际到账的流水记录，是收费结算主表必填归属。 | **银行流水**<br/>`BankStatementAdmin/GetPagedListAsync`、`DetailAsync` | 新建时可 picker 选择；从银行流水页进入时通过 `bankStatementId` query 预填。 | 新建必填；已有结算明细后不能更换。 |
+| **银行流水** | 收款实际到账的流水记录，是收费结算主表必填归属。 | **银行流水**<br/>`BankStatementAdmin/GetPagedListAsync`、`DetailAsync` | 列表查询区通过 `BankStatementSelect` 筛选；新建表单可 picker 选择；从银行流水页进入时通过 `bankStatementId` query 预填。 | 新建必填；已有结算明细后不能更换。 |
 | **结算时间** | 本次收费结算发生时间。 | **收费结算**<br/>`ReceiveSettlementAdmin/AddAsync`、`EditAsync` | 新建默认当前时间，可手动调整；编辑保存只提交该字段与备注。 | 必填；锁定后只读。 |
 | **结算明细** | 本次结算关联的订单费用集合。 | **收费结算**<br/>`GetOrderFeeGroupAsync`、`AddItemsAsync`、`DeleteItemsAsync` | 选费抽屉按业务分组返回可结算费用，确认后追加到主表明细。 | 新建不能为空；费用不可重复；本次结算金额必须大于 0 且不超过剩余额度。 |
 | **剩余额度** | 费用可继续被收费结算占用的金额。 | **收费结算**<br/>`GetOrderFeeGroupAsync` | 抽屉默认将本次结算金额填为剩余额度。 | 前端限制不超过 `remainingAmount`，后端继续校验。 |
@@ -48,4 +48,5 @@ last_updated: 2026-06-10
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-14 | `Refactor` | 收费结算列表将银行流水筛选移至查询表单，移除工具栏「选择银行流水」按钮；查询区改为一行六列布局，结算时间占两列，标签宽 64px。 | 列表筛选与接口 `bankStatementId` 参数对齐；`labelWidth` 需配置在 `formOptions.commonConfig` 才会生效。 |
 | 2026-06-10 | `Feature` | 新增收费结算列表、新建/编辑/只读页、银行流水 picker、选费抽屉，并接入银行流水编辑页快捷新建与双击跳转。 | 收费结算沿用付费结算的页面级列表/表单形态，但明细侧不支持编辑，只能按 AddItems/DeleteItems 即时提交。 |

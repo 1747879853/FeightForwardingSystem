@@ -21,7 +21,7 @@
 | fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-05-16 |
 | fee-management | `/fee-management/statement/add` | 费用管理 | 创建对账单，选择费用并形成可结算的对账记录。 | [对账单新增](./modules/fee-management/statement-add.md) | 2026-05-16 |
 | fee-management | `/fee-management/statement/:id/edit` | 费用管理 | 编辑已有对账单，在状态允许时调整主信息和费用明细。 | [对账单编辑](./modules/fee-management/statement-id-edit.md) | 2026-05-16 |
-| settlement-management | `/settlement-management/receive-settlement` | 结算管理 | 收费结算列表与编辑入口，支持按银行流水筛选、选择应收费用结算、锁定只读和银行流水页联动。 | [收费结算](./modules/settlement-management/receive-settlement.md) | 2026-06-10 |
+| settlement-management | `/settlement-management/receive-settlement` | 结算管理 | 收费结算列表与编辑入口，查询区支持按银行流水筛选、锁定只读和银行流水页联动。 | [收费结算](./modules/settlement-management/receive-settlement.md) | 2026-06-14 |
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-05-16 |
 | audit-approval | `/audit-approval/payment-review` | 审核审批 | 处理付款申请单的审核任务，支持批量或单条通过、驳回。 | [付款申请审核](./modules/audit-approval/payment-review.md) | 2026-05-16 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 展示单个费用审核任务的详细信息和对应费用实体。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-05-16 |

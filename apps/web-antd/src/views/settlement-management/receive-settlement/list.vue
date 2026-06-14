@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
 import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
 
 import { onMounted, ref } from 'vue';
@@ -12,7 +11,6 @@ import { Page } from '@vben/common-ui';
 import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { getBankStatementDetail } from '#/api/settlement-management/bank-statement-admin';
 import {
   deleteReceiveSettlement,
   getReceiveSettlementPagedList,
@@ -20,7 +18,6 @@ import {
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
-import BankStatementPicker from './bank-statement-picker/index.vue';
 import { useColumns, useGridFormSchema } from './data';
 import {
   getReceiveSettlementStatusColor,
@@ -32,9 +29,6 @@ const router = useRouter();
 const perm = createAbpPermission('Admin.ReceiveSettlement');
 
 const actionLoading = ref(false);
-const bankPickerRef = ref<InstanceType<typeof BankStatementPicker>>();
-const selectedBankStatementId = ref<string>();
-const selectedBankStatementNo = ref('');
 
 const toIsoString = (value: unknown): string | undefined => {
   if (!value) return undefined;
@@ -57,7 +51,6 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 
   return {
     ...formValues,
-    bankStatementId: selectedBankStatementId.value,
     settlementTimeStart: toIsoString(settlementTimeStart),
     settlementTimeEnd: toIsoString(settlementTimeEnd),
     settlementTimeRange: undefined,
@@ -72,7 +65,10 @@ const [Grid, gridApi] =
       showCollapseButton: true,
       collapsed: true,
       compact: true,
-      wrapperClass: 'grid-cols-4',
+      commonConfig: {
+        labelWidth: 64,
+      },
+      wrapperClass: 'grid-cols-6',
     },
     gridOptions: {
       columns: useColumns(),
@@ -128,11 +124,12 @@ function handleRowDblClick({
   router.push(`/settlement-management/receive-settlement/edit/${row.id}`);
 }
 
-function handleCreate() {
+async function handleCreate() {
+  const formValues = await gridApi.formApi.getValues();
   router.push({
     path: '/settlement-management/receive-settlement/add',
-    query: selectedBankStatementId.value
-      ? { bankStatementId: selectedBankStatementId.value }
+    query: formValues.bankStatementId
+      ? { bankStatementId: String(formValues.bankStatementId) }
       : undefined,
   });
 }
@@ -171,20 +168,6 @@ function handleBatchDelete() {
   });
 }
 
-function handleSelectBankStatement(
-  row: BankStatementAdminApi.BankStatementListDto,
-) {
-  selectedBankStatementId.value = row.id;
-  selectedBankStatementNo.value = row.bankStatementNo || row.id;
-  gridApi.query();
-}
-
-function clearBankStatementFilter() {
-  selectedBankStatementId.value = undefined;
-  selectedBankStatementNo.value = '';
-  gridApi.query();
-}
-
 function handleRefresh() {
   gridApi.query();
 }
@@ -194,15 +177,8 @@ async function initQueryBankStatement() {
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
   if (!id) return;
 
-  selectedBankStatementId.value = String(id);
-  try {
-    const detail = await getBankStatementDetail(String(id));
-    selectedBankStatementNo.value = detail.bankStatementNo || String(id);
-  } catch {
-    selectedBankStatementNo.value = String(id);
-  } finally {
-    gridApi.query();
-  }
+  await gridApi.formApi.setValues({ bankStatementId: String(id) });
+  gridApi.query();
 }
 
 useRefreshListOnFormReturn('ReceiveSettlementList', handleRefresh);
@@ -227,14 +203,6 @@ onMounted(() => {
           >
             批量删除
           </Button>
-          <Button @click="bankPickerRef?.open()">选择银行流水</Button>
-          <Tag
-            v-if="selectedBankStatementId"
-            closable
-            @close.prevent="clearBankStatementFilter"
-          >
-            {{ selectedBankStatementNo }}
-          </Tag>
         </Space>
       </template>
 
@@ -250,10 +218,5 @@ onMounted(() => {
         </Tag>
       </template>
     </Grid>
-
-    <BankStatementPicker
-      ref="bankPickerRef"
-      @select="handleSelectBankStatement"
-    />
   </Page>
 </template>
