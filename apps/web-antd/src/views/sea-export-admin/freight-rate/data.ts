@@ -255,7 +255,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
-        maxTagCount: 1,
+        maxTagCount: 3,
         mode: 'multiple', // 启用多选模式
         options: [
           { label: '已生效', value: 0 },
@@ -267,7 +267,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
     {
       component: 'Select',
       fieldName: 'isDirect',
-      label: '是否中转',
+      label: '是否直达',
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
