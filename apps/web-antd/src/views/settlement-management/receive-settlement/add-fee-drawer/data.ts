@@ -6,6 +6,7 @@ import { formatAmount } from '../form-data';
 export interface AddFeeDrawerProps {
   receiveSettlementId?: string;
   settlementId?: string;
+  settlementName?: string;
   selectedFeeIds?: string[];
 }
 
@@ -30,13 +31,12 @@ export type OrderGroup = ReceiveSettlementAdminApi.ReceiveSettlementFeeGroupDto;
 export function useAddFeeSearchSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'ClientSelect',
-      fieldName: 'settlementId',
+      component: 'Input',
+      fieldName: 'settlementName',
       label: '结算对象',
-      rules: 'required',
       componentProps: {
-        placeholder: '请选择结算对象',
-        allowClear: true,
+        disabled: true,
+        placeholder: '随银行流水自动带出',
         class: 'w-full',
       },
     },

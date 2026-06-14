@@ -7,12 +7,15 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { Page } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 
 import {
   Button,
   Card,
   DatePicker,
+  Descriptions,
+  DescriptionsItem,
   Input,
   InputNumber,
   message,
@@ -22,7 +25,10 @@ import {
   Tag,
 } from 'ant-design-vue';
 
-import { getBankStatementDetail } from '#/api/settlement-management/bank-statement-admin';
+import {
+  getBankStatementDetail,
+  getBankStatementReceiveSettlementPagedList,
+} from '#/api/settlement-management/bank-statement-admin';
 import {
   addReceiveSettlement,
   addReceiveSettlementItems,
@@ -41,6 +47,7 @@ import type { SelectedReceiveFee } from './add-fee-drawer/data';
 import BankStatementPicker from './bank-statement-picker/index.vue';
 import {
   formatAmount,
+  formatAmountWithCurrency,
   formatDateTime,
   getReceiveSettlementStatusColor,
   getReceiveSettlementStatusLabel,
@@ -76,6 +83,11 @@ const addFeeDrawerRef = ref<InstanceType<typeof AddFeeDrawer>>();
 const bankStatementId = ref('');
 const bankStatementNo = ref('');
 const bankStatementSettlementId = ref<string>();
+const bankStatementSettlementName = ref('');
+const bankStatementDetail =
+  ref<BankStatementAdminApi.BankStatementDetailDto | null>(null);
+const bankStatementSummaryLoading = ref(false);
+const otherSettledAmount = ref(0);
 const settlementNo = ref('');
 const status = ref(0);
 const locked = ref(false);
@@ -84,6 +96,7 @@ const creatorUserName = ref('');
 const settlementTime = ref<Dayjs>(dayjs());
 const remark = ref('');
 const items = ref<SettlementItem[]>([]);
+const selectedItemRowKeys = ref<string[]>([]);
 
 let rowKeyCounter = 0;
 const makeRowKey = () => `receive_fee_${++rowKeyCounter}_${Date.now()}`;
@@ -97,6 +110,9 @@ const canSave = computed(() => {
 });
 const canEditItems = computed(
   () => isEdit.value && !isReadonly.value && hasAccessByCodes([perm.edit]),
+);
+const canManageItems = computed(
+  () => !isReadonly.value && (!isEdit.value || canEditItems.value),
 );
 const canDelete = computed(
   () => isEdit.value && !isReadonly.value && hasAccessByCodes([perm.delete]),
@@ -115,6 +131,37 @@ const pageTitle = computed(() => {
 const selectedFeeIds = computed(() =>
   items.value.map((item) => item.orderFeeId),
 );
+
+const bankStatementCurrencyCode = computed(
+  () => bankStatementDetail.value?.currencyCode || '',
+);
+
+const currentSettlementTotal = computed(() =>
+  items.value.reduce((sum, item) => sum + (item.settledAmount || 0), 0),
+);
+
+const remainingSettleAmount = computed(
+  () =>
+    (bankStatementDetail.value?.amount ?? 0) -
+    otherSettledAmount.value -
+    currentSettlementTotal.value,
+);
+
+const isRemainingOverLimit = computed(() => remainingSettleAmount.value <= 0);
+
+function formatBankAmount(value: number | undefined | null) {
+  return formatAmountWithCurrency(value, bankStatementCurrencyCode.value);
+}
+
+const itemRowSelection = computed(() => {
+  if (!canManageItems.value) return undefined;
+  return {
+    selectedRowKeys: selectedItemRowKeys.value,
+    onChange: (keys: (string | number)[]) => {
+      selectedItemRowKeys.value = keys.map(String);
+    },
+  };
+});
 
 const columns = [
   {
@@ -153,9 +200,9 @@ const columns = [
   },
   {
     dataIndex: 'settledAmount',
+    key: 'settledAmount',
     title: '本次结算金额',
     width: 160,
-    slots: { customRender: 'settledAmount' },
   },
   {
     dataIndex: 'settlementName',
@@ -164,24 +211,35 @@ const columns = [
   },
   {
     dataIndex: 'remark',
+    key: 'remark',
     title: '备注',
     minWidth: 180,
-    slots: { customRender: 'remark' },
-  },
-  {
-    key: 'action',
-    title: '操作',
-    width: 90,
-    fixed: 'right' as const,
-    slots: { customRender: 'action' },
   },
 ];
 
-async function loadBankStatement(id: string) {
-  const detail = await getBankStatementDetail(id);
-  bankStatementId.value = detail.id;
-  bankStatementNo.value = detail.bankStatementNo || detail.id;
-  bankStatementSettlementId.value = detail.settlementId;
+async function loadBankStatementSummary(id: string) {
+  bankStatementSummaryLoading.value = true;
+  try {
+    const [detail, settlementRes] = await Promise.all([
+      getBankStatementDetail(id),
+      getBankStatementReceiveSettlementPagedList({
+        bankStatementId: id,
+        pageIndex: 1,
+        pageSize: 500,
+      }),
+    ]);
+
+    bankStatementId.value = detail.id;
+    bankStatementNo.value = detail.bankStatementNo || detail.id;
+    bankStatementSettlementId.value = detail.settlementId;
+    bankStatementSettlementName.value = detail.settlementName || '';
+    bankStatementDetail.value = detail;
+    otherSettledAmount.value = (settlementRes.items ?? [])
+      .filter((item) => item.id !== editId.value)
+      .reduce((sum, item) => sum + (item.totalSettledAmount || 0), 0);
+  } finally {
+    bankStatementSummaryLoading.value = false;
+  }
 }
 
 async function loadEditData() {
@@ -203,10 +261,11 @@ async function loadEditData() {
     items.value = (detail.receiveSettlementItems || []).map((item) =>
       mapDetailItem(item),
     );
+    selectedItemRowKeys.value = [];
 
     if (detail.bankStatementId) {
       try {
-        await loadBankStatement(detail.bankStatementId);
+        await loadBankStatementSummary(detail.bankStatementId);
       } catch {
         // 详情接口已返回流水号时，不因补充摘要失败阻断编辑页。
       }
@@ -259,20 +318,23 @@ function mapSelectedFee(fee: SelectedReceiveFee): SettlementItem {
   };
 }
 
-function handleSelectBankStatement(
+async function handleSelectBankStatement(
   row: BankStatementAdminApi.BankStatementListDto,
 ) {
   if (items.value.length > 0) {
     message.warning('已有结算明细时不能更换银行流水');
     return;
   }
-  bankStatementId.value = row.id;
-  bankStatementNo.value = row.bankStatementNo || row.id;
-  bankStatementSettlementId.value = row.settlementId;
+
+  try {
+    await loadBankStatementSummary(row.id);
+  } catch (error: any) {
+    message.error(error.message || '加载银行流水信息失败');
+  }
 }
 
 function handleOpenBankPicker() {
-  if (isReadonly.value) return;
+  if (isEdit.value || isReadonly.value) return;
   if (items.value.length > 0) {
     message.warning('已有结算明细时不能更换银行流水');
     return;
@@ -285,9 +347,14 @@ function handleOpenAddFee() {
     message.warning('请先选择银行流水');
     return;
   }
+  if (!bankStatementSettlementId.value) {
+    message.warning('当前银行流水未关联结算对象');
+    return;
+  }
   addFeeDrawerRef.value?.open({
     receiveSettlementId: editId.value,
     settlementId: bankStatementSettlementId.value,
+    settlementName: bankStatementSettlementName.value,
     selectedFeeIds: selectedFeeIds.value,
   });
 }
@@ -323,18 +390,7 @@ async function handleFeeConfirm(fees: SelectedReceiveFee[]) {
   }
 
   items.value = [...items.value, ...incoming.map((fee) => mapSelectedFee(fee))];
-}
-
-function updateItemAmount(key: string, value: unknown) {
-  const numericValue = Number(value ?? 0);
-  items.value = items.value.map((item) =>
-    item._key === key
-      ? {
-          ...item,
-          settledAmount: Number.isFinite(numericValue) ? numericValue : 0,
-        }
-      : item,
-  );
+  selectedItemRowKeys.value = [];
 }
 
 function updateItemRemark(key: string, value: string | undefined) {
@@ -343,23 +399,45 @@ function updateItemRemark(key: string, value: string | undefined) {
   );
 }
 
-function handleDeleteItem(row: SettlementItem | Record<string, any>) {
-  if (isReadonly.value) return;
-  const item = row as SettlementItem;
+function handleDeleteSelectedItems() {
+  if (!canManageItems.value) return;
+  if (selectedItemRowKeys.value.length === 0) {
+    message.warning('请先选择要删除的明细');
+    return;
+  }
+
+  const selectedItems = items.value.filter((item) =>
+    selectedItemRowKeys.value.includes(item._key),
+  );
+  if (selectedItems.length === 0) return;
+
+  const content =
+    selectedItems.length === 1
+      ? `确定要删除费用「${selectedItems[0]?.feeCodeName || '-'}」吗？`
+      : `确定要删除选中的 ${selectedItems.length} 条明细吗？`;
 
   Modal.confirm({
     title: '确认删除明细',
-    content: `确定要删除费用「${item.feeCodeName || '-'}」吗？`,
+    content,
     okType: 'danger',
     onOk: async () => {
-      if (isEdit.value && editId.value && item.id) {
+      if (isEdit.value && editId.value) {
+        const itemIds = selectedItems
+          .map((item) => item.id)
+          .filter((id): id is string => !!id);
+        if (itemIds.length !== selectedItems.length) {
+          message.warning('所选明细无法删除，请刷新后重试');
+          return;
+        }
+
         submitting.value = true;
         try {
           await deleteReceiveSettlementItems({
             id: editId.value,
-            receiveSettlementItemIds: [item.id],
+            receiveSettlementItemIds: itemIds,
           });
           message.success('删除明细成功');
+          selectedItemRowKeys.value = [];
           await loadEditData();
           markListShouldRefresh('ReceiveSettlementList');
         } catch (error: any) {
@@ -370,7 +448,11 @@ function handleDeleteItem(row: SettlementItem | Record<string, any>) {
         return;
       }
 
-      items.value = items.value.filter((rowItem) => rowItem._key !== item._key);
+      const selectedKeySet = new Set(selectedItemRowKeys.value);
+      items.value = items.value.filter(
+        (item) => !selectedKeySet.has(item._key),
+      );
+      selectedItemRowKeys.value = [];
     },
   });
 }
@@ -405,6 +487,15 @@ function validateForm(): boolean {
   if (overLimitItem) {
     message.warning(
       `费用「${overLimitItem.feeCodeName || '-'}」结算金额不能超过剩余额度 ${formatAmount(overLimitItem.remainingAmount)}`,
+    );
+    return false;
+  }
+
+  if (bankStatementDetail.value && remainingSettleAmount.value < 0) {
+    const availableAmount =
+      bankStatementDetail.value.amount - otherSettledAmount.value;
+    message.warning(
+      `本单结算合计 ${formatBankAmount(currentSettlementTotal.value)} 已超过流水剩余可结算金额 ${formatBankAmount(availableAmount)}`,
     );
     return false;
   }
@@ -516,11 +607,6 @@ function handleUnlock() {
   });
 }
 
-function goBankStatement() {
-  if (!bankStatementId.value) return;
-  router.push(`/bank-statement/edit/${bankStatementId.value}`);
-}
-
 async function initAddPage() {
   const rawId = route.query.bankStatementId;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -528,7 +614,7 @@ async function initAddPage() {
 
   pageLoading.value = true;
   try {
-    await loadBankStatement(String(id));
+    await loadBankStatementSummary(String(id));
   } catch (error: any) {
     message.error(error.message || '加载银行流水失败');
   } finally {
@@ -576,81 +662,165 @@ onMounted(() => {
     </template>
 
     <div v-loading="pageLoading" class="receive-settlement-form">
+      <Card
+        v-if="bankStatementId && bankStatementDetail"
+        title="银行流水信息"
+        size="small"
+        class="mb-3"
+      >
+        <div v-loading="bankStatementSummaryLoading">
+          <Descriptions :column="3" size="small" bordered>
+            <DescriptionsItem label="流水号">
+              {{
+                bankStatementDetail.bankStatementNo || bankStatementDetail.id
+              }}
+            </DescriptionsItem>
+            <DescriptionsItem label="交易时间">
+              {{ formatDateTime(bankStatementDetail.statementTime) }}
+            </DescriptionsItem>
+            <DescriptionsItem label="总金额">
+              <span class="bank-amount bank-amount--total">
+                {{ formatBankAmount(bankStatementDetail.amount) }}
+              </span>
+            </DescriptionsItem>
+            <DescriptionsItem label="币别">
+              <Tag v-if="bankStatementDetail.currencyCode">
+                {{ bankStatementDetail.currencyCode }}
+              </Tag>
+              <span v-else>-</span>
+            </DescriptionsItem>
+            <DescriptionsItem label="付款方">
+              {{ bankStatementDetail.settlementName || '-' }}
+            </DescriptionsItem>
+            <DescriptionsItem label="我司银行">
+              {{ bankStatementDetail.orgBankAccountName || '-' }}
+            </DescriptionsItem>
+            <DescriptionsItem label="交易备注" :span="3">
+              {{ bankStatementDetail.statementRemark || '-' }}
+            </DescriptionsItem>
+          </Descriptions>
+
+          <div class="bank-summary-row">
+            <div class="bank-summary-item">
+              <span class="bank-summary-label">已结算（不含本单）</span>
+              <span class="bank-summary-value bank-summary-value--settled">
+                {{ formatBankAmount(otherSettledAmount) }}
+              </span>
+            </div>
+            <div class="bank-summary-item">
+              <span class="bank-summary-label">剩余可结算</span>
+              <span
+                class="bank-summary-value"
+                :class="
+                  isRemainingOverLimit
+                    ? 'bank-summary-value--remaining-danger'
+                    : 'bank-summary-value--remaining'
+                "
+              >
+                {{ formatBankAmount(remainingSettleAmount) }}
+              </span>
+              <span v-if="isRemainingOverLimit" class="bank-summary-warning">
+                本单结算合计已超过流水剩余可结算金额
+              </span>
+            </div>
+            <div class="bank-summary-item">
+              <span class="bank-summary-label">本单本次合计</span>
+              <span class="bank-summary-value bank-summary-value--current">
+                {{ formatBankAmount(currentSettlementTotal) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       <Card title="结算信息" size="small">
         <div class="form-grid">
           <div class="form-item">
             <div class="form-label">银行流水</div>
-            <div class="inline-picker">
+            <div class="form-control">
               <Input
                 :value="bankStatementNo"
                 placeholder="请选择银行流水"
                 readonly
-              />
-              <Button
-                v-if="!isEdit && !isReadonly"
+                :class="{ 'bank-input--clickable': !isEdit && !isReadonly }"
                 @click="handleOpenBankPicker"
-              >
-                选择
-              </Button>
-              <Button v-if="bankStatementId" @click="goBankStatement">
-                查看
-              </Button>
+              />
             </div>
           </div>
-          <div v-if="isEdit" class="form-item">
+          <div class="form-item">
             <div class="form-label">结算单号</div>
-            <Input :value="settlementNo" disabled />
+            <div class="form-control">
+              <span class="form-text">{{ settlementNo || '-' }}</span>
+            </div>
+          </div>
+          <div class="form-item">
+            <div class="form-label">创建人</div>
+            <div class="form-control">
+              <span class="form-text">{{ creatorUserName || '-' }}</span>
+            </div>
           </div>
           <div class="form-item">
             <div class="form-label">结算时间</div>
-            <DatePicker
-              v-model:value="settlementTime"
-              show-time
-              format="YYYY-MM-DD HH:mm"
-              :disabled="isReadonly"
-              style="width: 100%"
-            />
+            <div class="form-control">
+              <DatePicker
+                v-model:value="settlementTime"
+                show-time
+                format="YYYY-MM-DD HH:mm"
+                :disabled="isReadonly"
+                style="width: 100%"
+              />
+            </div>
           </div>
           <div v-if="isEdit" class="form-item">
             <div class="form-label">结算状态</div>
-            <Tag :color="getReceiveSettlementStatusColor(status)">
-              {{ getReceiveSettlementStatusLabel(status) }}
-            </Tag>
+            <div class="form-control">
+              <Tag :color="getReceiveSettlementStatusColor(status)">
+                {{ getReceiveSettlementStatusLabel(status) }}
+              </Tag>
+            </div>
           </div>
           <div v-if="isEdit" class="form-item">
             <div class="form-label">锁定状态</div>
-            <Space>
-              <Tag :color="locked ? 'red' : 'green'">
-                {{ locked ? '已锁定' : '未锁定' }}
-              </Tag>
-              <span v-if="lockeTime">{{ formatDateTime(lockeTime) }}</span>
-            </Space>
+            <div class="form-control">
+              <Space>
+                <Tag :color="locked ? 'red' : 'green'">
+                  {{ locked ? '已锁定' : '未锁定' }}
+                </Tag>
+                <span v-if="lockeTime">{{ formatDateTime(lockeTime) }}</span>
+              </Space>
+            </div>
           </div>
-          <div v-if="isEdit" class="form-item">
-            <div class="form-label">创建人</div>
-            <Input :value="creatorUserName" disabled />
-          </div>
-          <div class="form-item form-item--wide">
+          <div class="form-item form-item--wide form-item--align-top">
             <div class="form-label">备注</div>
-            <Input.TextArea
-              v-model:value="remark"
-              :disabled="isReadonly"
-              :rows="3"
-              placeholder="请输入备注"
-            />
+            <div class="form-control">
+              <Input.TextArea
+                v-model:value="remark"
+                :disabled="isReadonly"
+                :rows="3"
+                placeholder="请输入备注"
+              />
+            </div>
           </div>
         </div>
       </Card>
 
       <Card title="结算明细" size="small" class="mt-3">
-        <template #extra>
-          <Button
-            v-if="!isEdit || canEditItems"
-            type="primary"
-            @click="handleOpenAddFee"
-          >
-            添加明细
-          </Button>
+        <template v-if="canManageItems" #extra>
+          <Space size="small">
+            <Button size="small" @click="handleOpenAddFee">
+              <IconifyIcon icon="mdi:plus" class="toolbar-btn-icon" />
+              添加明细
+            </Button>
+            <Button
+              size="small"
+              danger
+              :disabled="selectedItemRowKeys.length === 0"
+              @click="handleDeleteSelectedItems"
+            >
+              <IconifyIcon icon="mdi:delete-outline" class="toolbar-btn-icon" />
+              删除
+            </Button>
+          </Space>
         </template>
 
         <Table
@@ -658,28 +828,28 @@ onMounted(() => {
           :data-source="items"
           :pagination="false"
           :row-key="(record) => record._key"
+          :row-selection="itemRowSelection"
           size="small"
           bordered
-          :scroll="{ x: 1300 }"
+          :scroll="{ x: 1210 }"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.dataIndex === 'currencyCode'">
               <Tag v-if="record.currencyCode">{{ record.currencyCode }}</Tag>
               <span v-else>-</span>
             </template>
-            <template v-if="column.dataIndex === 'settledAmount'">
+            <template v-if="column.key === 'settledAmount'">
               <InputNumber
                 v-if="!record.id && !isReadonly"
-                :value="record.settledAmount"
+                v-model:value="record.settledAmount"
                 :min="0"
                 :max="record.remainingAmount"
                 :precision="2"
                 style="width: 130px"
-                @change="(value) => updateItemAmount(record._key, value)"
               />
               <span v-else>{{ formatAmount(record.settledAmount) }}</span>
             </template>
-            <template v-if="column.dataIndex === 'remark'">
+            <template v-if="column.key === 'remark'">
               <Input
                 v-if="!record.id && !isReadonly"
                 :value="record.remark"
@@ -689,18 +859,6 @@ onMounted(() => {
                 "
               />
               <span v-else>{{ record.remark || '-' }}</span>
-            </template>
-            <template v-if="column.key === 'action'">
-              <Button
-                v-if="!isReadonly && (!isEdit || canEditItems)"
-                type="link"
-                danger
-                size="small"
-                @click="handleDeleteItem(record)"
-              >
-                删除
-              </Button>
-              <span v-else>-</span>
             </template>
           </template>
         </Table>
@@ -717,7 +875,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .receive-settlement-form {
-  padding: 16px;
+  min-width: 0;
 }
 
 .form-grid {
@@ -727,7 +885,14 @@ onMounted(() => {
 }
 
 .form-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   min-width: 0;
+}
+
+.form-item--align-top {
+  align-items: flex-start;
 }
 
 .form-item--wide {
@@ -735,17 +900,96 @@ onMounted(() => {
 }
 
 .form-label {
-  margin-bottom: 4px;
+  flex-shrink: 0;
+  width: 72px;
+  font-size: 12px;
+  line-height: 32px;
+  color: #666;
+  text-align: right;
+}
+
+.form-item--align-top .form-label {
+  line-height: 32px;
+}
+
+.form-control {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-text {
+  font-size: 14px;
+  line-height: 32px;
+  color: #333;
+}
+
+.toolbar-btn-icon {
+  margin-right: 4px;
+  font-size: 14px;
+  vertical-align: -2px;
+}
+
+.bank-input--clickable {
+  cursor: pointer;
+}
+
+.bank-amount {
+  font-weight: 600;
+}
+
+.bank-amount--total {
+  color: #1677ff;
+}
+
+.bank-summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.bank-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+  text-align: center;
+}
+
+.bank-summary-value--settled {
+  color: #fa8c16;
+}
+
+.bank-summary-value--remaining {
+  color: #52c41a;
+}
+
+.bank-summary-value--remaining-danger,
+.bank-summary-warning {
+  color: #ff4d4f;
+}
+
+.bank-summary-value--current {
+  color: #722ed1;
+}
+
+.bank-summary-label {
   font-size: 12px;
   color: #666;
 }
 
-.inline-picker {
-  display: flex;
-  width: 100%;
+.bank-summary-value {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
-.inline-picker :deep(.ant-input) {
-  flex: 1;
+.bank-summary-warning {
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
 }
 </style>

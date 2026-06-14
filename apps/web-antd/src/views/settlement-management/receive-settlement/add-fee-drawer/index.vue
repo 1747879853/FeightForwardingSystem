@@ -95,9 +95,9 @@ const feeColumns = [
   },
   {
     dataIndex: 'settledAmount',
+    key: 'settledAmount',
     title: '本次结算金额',
     width: 160,
-    slots: { customRender: 'settledAmount' },
   },
 ];
 
@@ -108,7 +108,7 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
   await nextTick();
   await searchFormApi.resetForm();
   if (props.settlementId) {
-    searchFormApi.setValues({ settlementId: props.settlementId });
+    searchFormApi.setValues({ settlementName: props.settlementName || '' });
     await fetchData();
   }
 }
@@ -124,24 +124,26 @@ function resetState() {
 }
 
 async function handleSearch() {
-  const values = (await searchFormApi.getValues()) ?? {};
-  if (!values.settlementId) {
-    message.warning('请先选择结算对象');
+  if (!drawerProps.value.settlementId) {
+    message.warning('银行流水未关联结算对象');
     return;
   }
+  const values = (await searchFormApi.getValues()) ?? {};
   currentPage.value = 1;
   await fetchData(values);
 }
 
 async function fetchData(formValues?: Record<string, any>) {
+  const settlementId = drawerProps.value.settlementId;
+  if (!settlementId) return;
+
   const values = formValues ?? ((await searchFormApi.getValues()) || {});
-  if (!values.settlementId) return;
 
   loading.value = true;
   try {
     const result = await getOrderFeeGroupForReceiveSettlement({
       receiveSettlementId: drawerProps.value.receiveSettlementId,
-      settlementId: values.settlementId,
+      settlementId,
       commissionNum: values.commissionNum || undefined,
       mblNum: values.mblNum || undefined,
       pageIndex: currentPage.value,
@@ -193,9 +195,21 @@ function handleSelectAllFees(
   }
 }
 
-function updateSettledAmount(feeId: string, value: unknown) {
+function updateSettledAmount(
+  fee: ReceiveSettlementAdminApi.ReceiveSettlementFeeDto,
+  value: unknown,
+) {
+  if (disabledFeeIdSet.value.has(fee.id)) return;
+
   const numericValue = Number(value ?? 0);
-  settledAmountMap.set(feeId, Number.isFinite(numericValue) ? numericValue : 0);
+  settledAmountMap.set(
+    fee.id,
+    Number.isFinite(numericValue) ? numericValue : 0,
+  );
+
+  if (!selectedFeeIds.value.includes(fee.id)) {
+    selectedFeeIds.value = [...selectedFeeIds.value, fee.id];
+  }
 }
 
 function buildSelectedFees(): SelectedReceiveFee[] {
@@ -309,18 +323,17 @@ defineExpose({ open: openDrawer });
               <Tag v-if="fee.currencyCode">{{ fee.currencyCode }}</Tag>
               <span v-else>-</span>
             </template>
-            <template v-if="column.dataIndex === 'settledAmount'">
+            <template v-if="column.key === 'settledAmount'">
               <InputNumber
-                :value="settledAmountMap.get(fee.id)"
+                :value="
+                  settledAmountMap.get(fee.id) ?? fee.remainingAmount ?? 0
+                "
                 :min="0"
                 :max="fee.remainingAmount"
                 :precision="2"
-                :disabled="
-                  !selectedFeeIds.includes(fee.id) ||
-                  disabledFeeIdSet.has(fee.id)
-                "
+                :disabled="disabledFeeIdSet.has(fee.id)"
                 style="width: 130px"
-                @change="(value) => updateSettledAmount(fee.id, value)"
+                @change="(value) => updateSettledAmount(fee, value)"
               />
             </template>
           </template>
