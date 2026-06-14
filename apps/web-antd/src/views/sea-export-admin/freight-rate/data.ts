@@ -5,6 +5,7 @@ import { getEnumItems } from '#/utils/init-enum';
 import { $t } from '#/locales';
 import { editSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
 import { message } from 'ant-design-vue';
+import { FrightModule } from '#/api/system/permission';
 
 // 定义明确的接口类型
 interface FreightConditionItemOption {
@@ -233,29 +234,65 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'RadioGroup',
+      component: 'Select',
       fieldName: 'recommend',
       label: $t('seaExport.freightRate.recommend'),
       componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
         options: [
           { label: $t('common.all'), value: null },
           { label: $t('common.yes'), value: true },
           { label: $t('common.no'), value: false },
         ],
-        buttonStyle: 'solid',
       },
     },
     {
-      component: 'RadioGroup',
+      component: 'Select',
       fieldName: 'isValid',
       label: $t('seaExport.freightRate.isValid'),
+      defaultValue: 0, // 默认选择"有效"，过滤掉无效数据
       componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
         options: [
           { label: $t('common.all'), value: null },
-          { label: $t('common.valid'), value: true },
-          { label: $t('common.invalid'), value: false },
+          { label: '已生效', value: 0 },
+          { label: '未生效', value: 1 },
+          { label: '已过期', value: 2 },
         ],
-        buttonStyle: 'solid',
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'isDirect',
+      label: '是否中转',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        options: [
+          { label: $t('common.all'), value: null },
+          { label: '直达', value: true },
+          { label: '中转', value: false },
+        ],
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'contractNo',
+      label: '约号',
+      componentProps: {
+        placeholder: '请输入约号',
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'remark',
+      label: '备注',
+      componentProps: {
+        placeholder: '请输入备注',
+        allowClear: true,
       },
     },
   ];
@@ -267,6 +304,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
 export function useColumns<T = SeFreiPriceOutDto>(
   onActionClick: OnActionClickFn<T>,
   data?: SeFreiPriceOutDto[], // 添加数据参数用于生成动态列
+  maskedFields?: string[], // 被屏蔽的字段列表（PascalCase 格式）
 ): VxeTableGridOptions['columns'] {
   // 基础固定列（不包含动态箱型列）
   const baseColumnsBeforeCtn: VxeTableGridOptions['columns'] = [
@@ -274,17 +312,21 @@ export function useColumns<T = SeFreiPriceOutDto>(
       type: 'checkbox',
       width: 60,
       fixed: 'left',
+      align: 'center',
     },
     {
       field: 'recommend',
       title: $t('seaExport.freightRate.recommend'),
       width: 80,
+      align: 'center',
       slots: { default: 'recommend' },
     },
     {
       field: 'carrier.enName',
       title: $t('seaExport.freightRate.carrierId'),
-      width: 260,
+      width: 200,
+      align: 'left',
+      // showOverflow: true,
       slots: { default: 'carrierId' },
       formatter: ({ row }) => {
         return row.carrier?.code || '-';
@@ -293,7 +335,9 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'pol.portName',
       title: $t('seaExport.freightRate.polId'),
-      width: 180,
+      width: 240,
+      align: 'left',
+      // showOverflow: true,
       slots: { default: 'polId' },
       formatter: ({ row }) => {
         return row.pol?.portName || '-';
@@ -303,6 +347,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'country.countryName',
       title: $t('seaExport.freightRate.countryId'),
       width: 120,
+      align: 'left',
       formatter: ({ row }) => {
         return row.country?.countryName || '-';
       },
@@ -310,7 +355,9 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'pod.portName',
       title: $t('seaExport.freightRate.podId'),
-      width: 180,
+      width: 240,
+      align: 'left',
+      //showOverflow: true,
       slots: { default: 'podId' },
       formatter: ({ row }) => {
         return row.pod?.portName || '-';
@@ -320,6 +367,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'currency.code',
       title: $t('seaExport.freightRate.currencyId'),
       width: 80,
+      align: 'left',
       slots: { default: 'currencyId' },
       formatter: ({ row }) => {
         return row.currency?.code || '-';
@@ -329,6 +377,8 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'bookingAgentName',
       title: '订舱代理',
       width: 150,
+      align: 'left',
+      showOverflow: true,
       formatter: ({ row }) => {
         return row.bookingAgentName || '-';
       },
@@ -336,7 +386,9 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'contractNo',
       title: '约号',
-      width: 120,
+      width: 200,
+      align: 'left',
+      //showOverflow: true,
       slots: { default: 'contractNo' },
       formatter: ({ row }) => {
         return row.contractNo || '-';
@@ -352,7 +404,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: `ctn_${ctnName}`,
       title: ctnName,
       width: 140,
-      align: 'right',
+      align: 'left',
       showOverflow: false,
       slots: { default: 'ctnEditableCell' },
       params: {
@@ -434,20 +486,21 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'surchargeFees',
       title: $t('seaExport.freightRate.surchargeFees'),
-      minWidth: 400,
+      minWidth: 300,
       align: 'left',
-      showOverflow: false,
+      showOverflow: true,
       slots: { default: 'surchargeFees' },
     },
     {
       field: 'isDirect',
       title: $t('seaExport.freightRate.isDirect'),
       width: 80,
+      align: 'center',
       cellRender: {
         name: 'CellTag',
         options: [
-          { color: '#52c41a', label: $t('common.yes'), value: true },
-          { color: '#8c8c8c', label: $t('common.no'), value: false },
+          { color: '#52c41a', label: '直达', value: true },
+          { color: '#8c8c8c', label: '中转', value: false },
         ],
       },
     },
@@ -455,6 +508,8 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'poT1.portName',
       title: $t('seaExport.freightRate.pot1Id'),
       width: 120,
+      align: 'left',
+      // showOverflow: true,
       formatter: ({ row }) => {
         return row.poT1
           ? `${row.poT1?.portName},${row.poT1?.country.countryEnName}`
@@ -465,6 +520,8 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'poT2.portName',
       title: $t('seaExport.freightRate.pot2Id'),
       width: 120,
+      align: 'left',
+      //showOverflow: true,
       formatter: ({ row }) => {
         return row.poT2
           ? `${row.poT2?.portName},${row.poT2?.country.countryEnName}`
@@ -475,11 +532,13 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'voyage',
       title: $t('seaExport.freightRate.voyage'),
       width: 100,
+      align: 'left',
     },
     {
       field: 'etd',
       title: '开船日期',
       width: 150,
+      align: 'left',
       formatter: ({ row }) => {
         // 优先显示日期模式数据
         if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
@@ -522,6 +581,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'closeDocTime',
       title: '截单时间',
       width: 150,
+      align: 'left',
       formatter: ({ row }) => {
         // 优先显示日期模式数据
         if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
@@ -564,6 +624,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'closingTime',
       title: '截关时间',
       width: 150,
+      align: 'left',
       formatter: ({ row }) => {
         // 优先显示日期模式数据
         if (row.seFreiPriceDays && row.seFreiPriceDays.length > 0) {
@@ -606,6 +667,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'validTimeRange',
       title: $t('seaExport.freightRate.validTimeStart'),
       width: 220,
+      align: 'left',
       formatter: ({ row }) => {
         const startDate = row.validTimeStart;
         const endDate = row.validTimeEnd;
@@ -629,17 +691,20 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'isValid',
       title: $t('seaExport.freightRate.isValid'),
       width: 100,
+      align: 'center',
       slots: { default: 'isValid' },
     },
     {
       field: 'polFreeDays',
       title: '起运港免用箱',
       width: 110,
+      align: 'left',
     },
     {
       field: 'podFreeDaysCombined',
       title: '目的港免箱使天数',
       width: 280,
+      align: 'center',
       slots: {
         default: 'podFreeDaysCombined',
         header: 'podFreeDaysCombinedHeader',
@@ -649,6 +714,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'remark',
       title: $t('seaExport.freightRate.remark'),
       minWidth: 300,
+      align: 'left',
       showOverflow: false,
       cellRender: {
         name: 'VxeCellTextarea',
@@ -664,6 +730,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'creationTime',
       title: '录入时间',
       width: 160,
+      align: 'left',
       formatter: ({ row }) => {
         if (!row.creationTime) return '-';
 
@@ -683,11 +750,94 @@ export function useColumns<T = SeFreiPriceOutDto>(
   ];
 
   // 合并所有列：基础列（前） + 动态箱型列 + 基础列（后）
-  return [
+  const allColumns = [
     ...baseColumnsBeforeCtn,
     ...dynamicCtnColumns,
     ...baseColumnsAfterCtn,
   ];
+
+  // 根据字段权限过滤列
+  return filterColumnsByPermission(allColumns, maskedFields || []);
+}
+
+/**
+ * 运价模块字段映射（前端 field -> 后端 PropName）
+ * 用于字段权限控制，将表格列的 field 映射到后端的 PascalCase 属性名
+ */
+export const FREIGHT_RATE_FIELD_MAP: Record<string, string> = {
+  // 基础字段
+  recommend: 'Recommend',
+  'carrier.enName': 'CarrierId',
+  'pol.portName': 'PolId',
+  'country.countryName': 'CountryId',
+  'pod.portName': 'PodId',
+  'currency.code': 'CurrencyId',
+  bookingAgentName: 'BookingAgentId',
+  contractNo: 'ContractNo',
+  surchargeFees: 'SeFreiPriceFees',
+  isDirect: 'IsDirect',
+  'poT1.portName': 'PoT1Id',
+  'poT2.portName': 'PoT2Id',
+  voyage: 'Voyage',
+  etd: 'SeFreiPriceDays',
+  closeDocTime: 'SeFreiPriceDays',
+  closingTime: 'SeFreiPriceDays',
+  validTimeRange: 'ValidTimeStart',
+  isValid: 'IsValid',
+  polFreeDays: 'PolFreeDays',
+  podFreeDaysCombined: 'PodFreeDays',
+  remark: 'Remark',
+  creationTime: 'CreationTime',
+};
+
+/**
+ * 根据字段权限过滤列配置
+ * @param columns 原始列配置
+ * @param maskedFields 被屏蔽的字段列表（PascalCase 格式）
+ * @returns 过滤后的列配置
+ */
+export function filterColumnsByPermission(
+  columns: VxeTableGridOptions['columns'],
+  maskedFields: string[],
+): VxeTableGridOptions['columns'] {
+  if (!maskedFields || maskedFields.length === 0) {
+    return columns;
+  }
+
+  // 如果 columns 为 undefined，返回空数组
+  if (!columns) {
+    return [];
+  }
+
+  // 将 PascalCase 转换为 camelCase 进行匹配
+  const maskedFieldsCamelCase = maskedFields.map((field) => {
+    return field.charAt(0).toLowerCase() + field.slice(1);
+  });
+
+  return columns.filter((col) => {
+    if (!col || !col.field) {
+      // 保留没有 field 的列（如 checkbox、操作列等）
+      return true;
+    }
+
+    // 获取对应的后端字段名
+    const backendFieldName = FREIGHT_RATE_FIELD_MAP[col.field];
+
+    // 如果找不到映射，使用原始 field
+    const fieldNameToCheck = backendFieldName || col.field;
+
+    // 检查是否在被屏蔽列表中（不区分大小写）
+    const isMasked = maskedFields.some(
+      (masked) => masked.toLowerCase() === fieldNameToCheck.toLowerCase(),
+    );
+
+    if (isMasked) {
+      console.log(`[字段权限] 隐藏列: ${col.field} (${fieldNameToCheck})`);
+      return false;
+    }
+
+    return true;
+  });
 }
 
 /**

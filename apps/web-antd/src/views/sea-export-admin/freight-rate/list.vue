@@ -53,6 +53,8 @@ import BatchEditModal from './modules/batch-edit-modal.vue';
 import SyncUpdateForm from './modules/form.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
 import { buildAttachmentUrl } from '#/utils';
+import { getCurrentUserMaskedFields } from '#/api/system/permission';
+import { FrightModule } from '#/api/system/permission';
 
 // 创建运价管理的 ABP 权限对象
 const perm = createAbpPermission('Admin.SeFreiPrice');
@@ -63,18 +65,12 @@ const tableData = ref<SeFreiPriceOutDto[]>([]);
 // 当前选中的航线ID
 const selectedLineId = ref<number | undefined>(undefined);
 
-// 控制每行附加费的展开/收起状态
-const expandedRows = ref<Record<string, boolean>>({});
-
 // 订单状态下拉框
 const freightConditionItemOptions = ref<any[]>([]);
 const conditionComparisonTypeOptions = ref<any[]>([]);
 
-// 切换行的展开状态
-function toggleExpand(row: SeFreiPriceOutDto) {
-  const rowId = String(row.id);
-  expandedRows.value[rowId] = !expandedRows.value[rowId];
-}
+// 被屏蔽的字段列表（PascalCase 格式）
+const maskedFields = ref<string[]>([]);
 
 // 获取费用名称
 function getFeeName(fee: any): string {
@@ -138,6 +134,43 @@ function getFeeDetails(fee: any, row: SeFreiPriceOutDto): string[] {
   return details;
 }
 
+// 获取所有附加费名称（用逗号分隔）
+function getSurchargeFeeNames(row: SeFreiPriceOutDto): string {
+  if (!row.seFreiPriceFees || row.seFreiPriceFees.length === 0) {
+    return '-';
+  }
+
+  const feeNames = row.seFreiPriceFees.map((fee: any) => getFeeName(fee));
+  return feeNames.join(', ');
+}
+
+// 获取附加费详情文本（用于tooltip显示）
+function getSurchargeFeeTooltip(row: SeFreiPriceOutDto): string {
+  if (!row.seFreiPriceFees || row.seFreiPriceFees.length === 0) {
+    return '无附加费';
+  }
+
+  const details: string[] = [];
+
+  row.seFreiPriceFees.forEach((fee: any) => {
+    const feeName = getFeeName(fee);
+    const currency = getCurrencyName(fee);
+    const feeDetails = getFeeDetails(fee, row);
+
+    // 构建该费用的完整描述
+    let feeDesc = `${feeName} (${currency})`;
+    if (feeDetails.length > 0) {
+      // 所有箱型价格在同一行，用逗号分隔
+      feeDesc += ': ' + feeDetails.join(', ');
+    }
+
+    details.push(feeDesc);
+  });
+
+  // 每条费用之间用换行分隔
+  return details.join('\n');
+}
+
 const [FormModal, formModalApi] = useVbenModal({
   connectedComponent: Form,
   destroyOnClose: true,
@@ -189,6 +222,11 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     schema: useGridFormSchema(),
     showCollapseButton: false,
     submitOnChange: true,
+    collapsed: true,
+    commonConfig: {
+      labelWidth: 72,
+    },
+    wrapperClass: 'grid-cols-6',
   },
   gridOptions: {
     columns: useColumns(onActionClick, []), // 初始化为空数组
@@ -208,6 +246,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
             pageIndex: page.currentPage,
             pageSize: page.pageSize,
             ...formValues,
+            sorting: 'Id DESC',
             laneId: selectedLineId.value, // 添加航线ID作为查询参数
           });
           // 适配新的返回结构
@@ -251,13 +290,13 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
   },
 });
 
-// 监听表格数据变化，动态更新列配置
+// 监听表格数据和字段权限变化，动态更新列配置
 watch(
-  tableData,
-  async (newData) => {
+  [tableData, maskedFields],
+  async ([newData, newMaskedFields]) => {
     if (newData && newData.length > 0) {
       await nextTick();
-      const newColumns = useColumns(onActionClick, newData);
+      const newColumns = useColumns(onActionClick, newData, newMaskedFields);
       // 使用gridApi更新列配置
       gridApi.setGridOptions({
         columns: newColumns,
@@ -486,7 +525,10 @@ const LANE_TAB_SCROLL_STEP = 240;
 const LANE_TAB_SCROLL_DURATION = 280;
 let laneTabResizeObserver: ResizeObserver | null = null;
 let laneTabScrollAnimationId: number | null = null;
-let laneTabScrollIdleTimer: ReturnType<typeof setTimeout> | null = null;
+let laneTabScrollIdleTimer:
+  | ReturnType<typeof setTimeout>
+  | NodeJS.Timeout
+  | null = null;
 let isLaneTabAnimating = false;
 
 function updateLaneTabScrollState() {
@@ -514,7 +556,7 @@ function onLaneTabScroll() {
   laneTabScrollIdleTimer = window.setTimeout(() => {
     laneTabScrollIdleTimer = null;
     updateLaneTabScrollState();
-  }, 120);
+  }, 120) as any;
 }
 
 function stopLaneTabScrollAnimation() {
@@ -548,7 +590,9 @@ function animateLaneTabScroll(targetLeft: number) {
       1,
     );
     const eased = 1 - (1 - progress) ** 3;
-    el.scrollLeft = startLeft + distance * eased;
+    if (el) {
+      el.scrollLeft = startLeft + distance * eased;
+    }
 
     if (progress < 1) {
       laneTabScrollAnimationId = window.requestAnimationFrame(step);
@@ -675,7 +719,7 @@ function getIsValidText(row: SeFreiPriceOutDto): string {
     return '无效';
   }
 
-  return '有效';
+  return '已生效';
 }
 
 /**
@@ -685,7 +729,7 @@ function getIsValidColor(row: SeFreiPriceOutDto): string {
   const text = getIsValidText(row);
   //console.log('isValidText:', text);
   switch (text) {
-    case '有效':
+    case '已生效':
       return '#389e0d'; // 绿色
     case '未生效':
       return '#faad14'; // 橙色
@@ -698,6 +742,23 @@ function getIsValidColor(row: SeFreiPriceOutDto): string {
 
 onMounted(async () => {
   getLines();
+
+  // 获取当前用户的字段权限
+  try {
+    const maskedFieldsData = await getCurrentUserMaskedFields();
+    // 查找运价模块（SeFreiPrice = 7）的屏蔽字段
+    const freightRateModule = maskedFieldsData.find(
+      (module) => module.frightModule === FrightModule.SeFreiPrice,
+    );
+    if (freightRateModule && freightRateModule.fields) {
+      maskedFields.value = freightRateModule.fields.map((f) => f.propName);
+      console.log('[字段权限] 运价模块被屏蔽的字段:', maskedFields.value);
+    } else {
+      console.log('[字段权限] 运价模块没有屏蔽字段');
+    }
+  } catch (error) {
+    console.error('[字段权限] 获取字段权限失败:', error);
+  }
 
   // 加载枚举项用于条件费用显示
   freightConditionItemOptions.value = await getEnumItems(
@@ -767,14 +828,20 @@ onUnmounted(() => {
       <!-- 起运港自定义渲染插槽 -->
       <template #polId="{ row }">
         <div class="px-2 py-1">
-          {{ `${row.pol?.portName},${row.pol?.country.countryEnName}` || '-' }}
+          {{
+            `${row.pol?.portName},${row.pol?.country.countryEnName || ''}` ||
+            '-'
+          }}
         </div>
       </template>
 
       <!-- 目的港自定义渲染插槽 -->
       <template #podId="{ row }">
         <div class="px-2 py-1">
-          {{ `${row.pod?.portName},${row.pod?.country.countryEnName}` || '-' }}
+          {{
+            `${row.pod?.portName},${row.pod?.country.countryEnName || ''}` ||
+            '-'
+          }}
         </div>
       </template>
 
@@ -806,102 +873,30 @@ onUnmounted(() => {
 
       <!-- 附加费自定义渲染插槽 -->
       <template #surchargeFees="{ row }">
-        <div class="surcharge-fees-container">
-          <!-- 无附加费时显示占位符和编辑按钮 -->
+        <div class="surcharge-fees-container px-2 py-1">
+          <!-- 无附加费时显示占位符 -->
           <div
             v-if="!row.seFreiPriceFees || row.seFreiPriceFees.length === 0"
-            class="flex items-center justify-between py-2"
+            class="text-gray-300"
           >
-            <span class="text-gray-300">-</span>
-            <!-- <Button type="link" size="small" @click.stop="onEdit(row)" class="edit-surcharge-btn">
-              <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
-              {{ $t('common.edit') }}
-            </Button> -->
+            -
           </div>
 
-          <!-- 有附加费时显示折叠面板 -->
-          <div v-else class="surcharge-fees-wrapper">
-            <!-- 第一个附加费卡片始终显示，右侧带操作按钮 -->
-            <div class="surcharge-fee-card-with-actions">
-              <div class="surcharge-fee-card">
-                <div class="fee-card-content">
-                  <div class="fee-header">
-                    <span class="fee-name">{{
-                      getFeeName(row.seFreiPriceFees[0])
-                    }}</span>
-                    <span class="fee-currency">{{
-                      getCurrencyName(row.seFreiPriceFees[0])
-                    }}</span>
-                  </div>
-                  <div class="fee-details">
-                    <span
-                      v-for="(detail, idx) in getFeeDetails(
-                        row.seFreiPriceFees[0],
-                        row,
-                      )"
-                      :key="idx"
-                      class="fee-detail-item"
-                    >
-                      {{ detail }}
-                    </span>
-                  </div>
-                </div>
+          <!-- 有附加费时显示名称列表，悬浮显示详情 -->
+          <Tooltip
+            v-else
+            placement="topLeft"
+            :overlay-style="{ maxWidth: 'none' }"
+          >
+            <template #title>
+              <div class="whitespace-pre text-sm leading-relaxed">
+                {{ getSurchargeFeeTooltip(row) }}
               </div>
-
-              <!-- 右侧操作按钮区域 -->
-              <div class="card-actions">
-                <!-- 如果有多个附加费，显示展开按钮 -->
-                <Button
-                  v-if="row.seFreiPriceFees.length > 1"
-                  type="link"
-                  size="small"
-                  @click.stop="toggleExpand(row)"
-                  class="expand-button"
-                >
-                  <span>{{ expandedRows[row.id] ? '收起' : '展开' }}</span>
-                  <IconifyIcon
-                    :icon="
-                      expandedRows[row.id]
-                        ? 'mdi:chevron-up'
-                        : 'mdi:chevron-down'
-                    "
-                    class="ml-1 size-4"
-                  />
-                </Button>
-
-                <!-- 编辑按钮 -->
-                <!-- <Button type="link" size="small" @click.stop="onEdit(row)" class="edit-surcharge-btn">
-                  <IconifyIcon icon="mdi:pencil-outline" class="size-4" />
-                  {{ $t('common.edit') }}
-                </Button> -->
-              </div>
+            </template>
+            <div class="cursor-help truncate text-sm">
+              {{ getSurchargeFeeNames(row) }}
             </div>
-
-            <!-- 展开后显示所有附加费（从第二个开始） -->
-            <div v-show="expandedRows[row.id]" class="mt-2 space-y-2">
-              <div
-                v-for="(fee, index) in row.seFreiPriceFees.slice(1)"
-                :key="fee.id || index"
-                class="surcharge-fee-card"
-              >
-                <div class="fee-card-content">
-                  <div class="fee-header">
-                    <span class="fee-name">{{ getFeeName(fee) }}</span>
-                    <span class="fee-currency">{{ getCurrencyName(fee) }}</span>
-                  </div>
-                  <div class="fee-details">
-                    <span
-                      v-for="(detail, idx) in getFeeDetails(fee, row)"
-                      :key="idx"
-                      class="fee-detail-item"
-                    >
-                      {{ detail }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          </Tooltip>
         </div>
       </template>
 
@@ -1222,154 +1217,9 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-/* 确保附加费列的行高可以自适应内容 */
-:deep(.vxe-table .vxe-body--column[col-field='surchargeFees']) {
-  height: auto !important;
-  min-height: 60px !important;
-}
-
-:deep(.vxe-table .vxe-body--row) {
-  height: auto !important;
-}
-
-/* 淡化表格悬浮后的行背景色，确保复选框可见 */
-:deep(.vxe-table .vxe-body--row.is--hover) {
-  background-color: rgb(245 247 250 / 15%) !important;
-}
-
-/* 确保复选框在悬浮时仍然清晰可见 */
-:deep(.vxe-table .vxe-body--row.is--hover .vxe-checkbox) {
-  opacity: 1 !important;
-}
-
-/* 选中行的背景色保持不变或稍微调整 */
-:deep(.vxe-table .vxe-body--row.row--checkbox) {
-  background-color: rgb(230 240 255 / 50%) !important;
-}
-
-/* 选中且悬浮时的背景色 */
-:deep(.vxe-table .vxe-body--row.row--checkbox.is--hover) {
-  background-color: rgb(220 235 255 / 60%) !important;
-}
-
-/* 可编辑单元格的样式 */
-:deep(.cell-editable-number) {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-height: 28px;
-}
-
-:deep(.cell-editable-number:hover) {
-  outline: 1px dashed #4096ff;
-  background-color: rgb(239 246 255) !important;
-}
-
-/* 新增按钮渐变背景样式 */
-.gradient-primary-btn {
-  color: white !important;
-  background: linear-gradient(
-    109.04deg,
-    #4e83fe 9.09%,
-    #0f66fd 100%
-  ) !important;
-  border: none !important;
-}
-
-.gradient-primary-btn:hover {
-  background: linear-gradient(
-    109.04deg,
-    #5d8ffe 9.09%,
-    #1e72fd 100%
-  ) !important;
-  opacity: 0.9;
-}
-
-.gradient-primary-btn:active {
-  background: linear-gradient(
-    109.04deg,
-    #3d77fe 9.09%,
-    #005aed 100%
-  ) !important;
-}
-
 /* 附加费容器样式 */
 .surcharge-fees-container {
   position: relative;
-  min-height: 60px;
-}
-
-/* 附加费包装器（包含卡片和操作按钮） */
-.surcharge-fees-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* 带操作按钮的卡片容器 */
-.surcharge-fee-card-with-actions {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-/* 附加费卡片样式 */
-.surcharge-fee-card {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.surcharge-fee-card:hover {
-  border-color: #d0d5dd;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
-}
-
-.fee-card-content {
-  padding: 12px;
-}
-
-.fee-header {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.fee-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-}
-
-.fee-currency {
-  font-size: 12px;
-  color: #6b7280;
-  text-transform: lowercase;
-}
-
-.fee-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.fee-detail-item {
-  font-size: 13px;
-  line-height: 1.4;
-  color: #2563eb;
-}
-
-/* 卡片右侧操作按钮区域 */
-.card-actions {
-  display: flex;
-  flex-shrink: 0;
-  gap: 8px;
-  align-items: center;
 }
 
 /* 船公司 Logo 样式 */

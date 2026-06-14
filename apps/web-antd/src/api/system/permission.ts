@@ -577,7 +577,7 @@ async function getCurrentUserMaskedFields() {
       frightModuleName: string;
       fields: Array<{ propName: string; description: string }>;
     }>
-  >('/services/app/UserPropPermissionAdmin/GetCurrentUserMaskedFields');
+  >('/services/app/UserPropPermissionAdmin/GetCurrentUserMaskedFieldsAsync');
 }
 
 /**
@@ -591,7 +591,7 @@ async function getUserMaskedFields(userId: number) {
       frightModuleName: string;
       fields: Array<{ propName: string; description: string }>;
     }>
-  >('/services/app/UserPropPermissionAdmin/GetUserMaskedFields', {
+  >('/services/app/UserPropPermissionAdmin/GetUserMaskedFieldsAsync', {
     params: { userId },
   });
 }

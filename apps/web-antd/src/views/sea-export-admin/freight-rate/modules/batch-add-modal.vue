@@ -142,6 +142,13 @@ async function loadSelectOptions() {
       if (usdCurrency) {
         defaultCurrencyId.value = usdCurrency.id;
         console.log('USD 币别 ID:', defaultCurrencyId.value);
+
+        // 将 USD 的 label 存入缓存，避免显示为"币别(ID)"
+        updateLabelCache(
+          'currencies',
+          usdCurrency.id,
+          usdCurrency.code || 'USD',
+        );
       }
     } catch (error) {
       console.error('加载币别列表失败:', error);
@@ -202,6 +209,8 @@ function handleAddRow() {
 
 // 新增多行
 function addRows(count: number) {
+  const newRows = [];
+
   for (let i = 0; i < count; i++) {
     const newRow = createDefaultRow();
 
@@ -213,9 +222,11 @@ function addRows(count: number) {
       }));
     }
 
-    // 直接插入到 Grid 中
-    gridApi.grid?.insertAt(newRow, -1); // -1 表示插入到末尾
+    newRows.push(newRow);
   }
+
+  // 一次性批量插入所有行
+  gridApi.grid?.insertAt(newRows, -1); // -1 表示插入到末尾
 
   message.success(`已新增 ${count} 行`);
 }
@@ -278,10 +289,10 @@ function handleCopyRows() {
     return;
   }
 
-  // 复制每一行并插入到表格末尾
-  records.forEach((row: any) => {
+  // 收集所有复制的行
+  const newRows = records.map((row: any) => {
     // 深拷贝行数据，避免引用问题
-    const newRow = JSON.parse(
+    return JSON.parse(
       JSON.stringify({
         _rowKey: generateRowKey(),
         _isCopied: true, // 标记为复制的行
@@ -314,10 +325,10 @@ function handleCopyRows() {
         seFreiPriceCtns: row.seFreiPriceCtns ? [...row.seFreiPriceCtns] : [],
       }),
     );
-
-    // 插入到 Grid 中
-    gridApi.grid?.insertAt(newRow, -1);
   });
+
+  // 一次性批量插入所有复制的行
+  gridApi.grid?.insertAt(newRows, -1);
 
   message.success(`已复制 ${records.length} 行`);
 }
@@ -581,7 +592,7 @@ const [Grid, gridApi] = useVbenVxeGrid<any>({
     height: 400,
     rowConfig: {
       keyField: '_rowKey',
-      isHover: true,
+      //isHover: true,
     },
     rowStyle: ({ row }: any) => {
       if (row._isCopied) {
@@ -617,6 +628,108 @@ const [Grid, gridApi] = useVbenVxeGrid<any>({
     },
   },
 });
+
+// 编辑状态管理 - 用于懒加载下拉框
+const editingStates = ref<Map<string, Set<string>>>(new Map());
+
+// Label缓存 - 存储已选择的label值，避免重复调用API
+// 注意：所有ID都使用字符串作为key，避免大数精度丢失（JavaScript Number安全整数上限为2^53-1）
+const labelCache = ref({
+  carriers: new Map<string, string>(),
+  ports: new Map<string, string>(),
+  currencies: new Map<string, string>(),
+  clients: new Map<string, string>(),
+});
+
+// 检查某行的某个字段是否处于编辑状态
+function isEditing(rowKey: string, field: string): boolean {
+  return editingStates.value.get(rowKey)?.has(field) || false;
+}
+
+// 开始编辑某个字段
+function startEditing(rowKey: string, field: string) {
+  if (!editingStates.value.has(rowKey)) {
+    editingStates.value.set(rowKey, new Set());
+  }
+  editingStates.value.get(rowKey)!.add(field);
+}
+
+// 结束编辑某个字段
+function stopEditing(rowKey: string, field: string) {
+  const rowStates = editingStates.value.get(rowKey);
+  if (rowStates) {
+    rowStates.delete(field);
+    if (rowStates.size === 0) {
+      editingStates.value.delete(rowKey);
+    }
+  }
+}
+
+// 获取船公司名称（从缓存或返回ID）
+function getCarrierName(carrierId: number | string | undefined): string {
+  if (!carrierId) return '-';
+  // 使用字符串作为key查询，避免大数精度丢失
+  const key = String(carrierId);
+  return labelCache.value.carriers.get(key) || `船公司(${carrierId})`;
+}
+
+// 获取港口名称（从缓存或返回ID）
+function getPortName(portId: number | string | undefined): string {
+  if (!portId) return '-';
+  // 使用字符串作为key查询，避免大数精度丢失
+  const key = String(portId);
+  const cachedName = labelCache.value.ports.get(key);
+  return cachedName || `港口(${portId})`;
+}
+
+// 获取币别名称（从缓存或返回ID）
+function getCurrencyName(currencyId: number | string | undefined): string {
+  if (!currencyId) return '-';
+  // 使用字符串作为key查询，避免大数精度丢失
+  const key = String(currencyId);
+  return labelCache.value.currencies.get(key) || `币别(${currencyId})`;
+}
+
+// 获取客户名称（从缓存或返回ID）
+function getClientName(clientId: number | string | undefined): string {
+  if (!clientId) return '-';
+  const clientIdStr = String(clientId);
+  return labelCache.value.clients.get(clientIdStr) || `客户(${clientId})`;
+}
+
+// 更新label缓存（在Select的@change事件中调用）
+function updateLabelCache(
+  type: 'carriers' | 'ports' | 'currencies' | 'clients',
+  id: number | string,
+  label: string,
+) {
+  // 统一使用字符串作为key，避免大数精度丢失
+  const key = String(id);
+  if (type === 'clients') {
+    labelCache.value.clients.set(key, label);
+  } else {
+    labelCache.value[type].set(key, label);
+  }
+}
+
+// 格式化日期显示
+function formatDate(dateStr: string | undefined): string {
+  if (!dateStr) return '-';
+  return dateStr;
+}
+
+// 格式化时间显示
+function formatTime(timeStr: string | undefined): string {
+  if (!timeStr) return '-';
+  return timeStr;
+}
+
+// 格式化星期显示
+function formatWeekDay(dayOfWeek: number | undefined): string {
+  if (dayOfWeek === undefined || dayOfWeek === null) return '-';
+  const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  return weekDays[dayOfWeek] || '-';
+}
 
 // 监听箱型变化，更新列配置
 watch(
@@ -799,6 +912,8 @@ function resetForm() {
   addedCtnTypes.value = [];
   selectedRowKeys.value = [];
   rowKeyCounter = 0;
+  // 清空编辑状态
+  editingStates.value.clear();
 }
 </script>
 
@@ -862,33 +977,135 @@ function resetForm() {
       <Grid>
         <!-- 船公司 -->
         <template #carrierId="{ row }">
-          <CarrierSelect v-model="row.carrierId" style="width: 100%" />
+          <div v-if="isEditing(row._rowKey, 'carrierId')" class="w-full">
+            <CarrierSelect
+              v-model="row.carrierId"
+              style="width: 100%"
+              @blur="stopEditing(row._rowKey, 'carrierId')"
+              @change="
+                (val: any, option: any) => {
+                  if (option?.rawLabel) {
+                    updateLabelCache('carriers', val, option.rawLabel);
+                  }
+                  stopEditing(row._rowKey, 'carrierId');
+                }
+              "
+            />
+          </div>
+          <div
+            v-else
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
+            @click="startEditing(row._rowKey, 'carrierId')"
+          >
+            {{ getCarrierName(row.carrierId) }}
+          </div>
         </template>
 
         <!-- 起运港 -->
         <template #polId="{ row }">
-          <PortSelect v-model="row.polId" style="width: 100%" />
+          <div v-if="isEditing(row._rowKey, 'polId')" class="w-full">
+            <PortSelect
+              v-model="row.polId"
+              style="width: 100%"
+              @blur="stopEditing(row._rowKey, 'polId')"
+              @change="
+                (val: any, option: any) => {
+                  if (option?.rawLabel) {
+                    updateLabelCache('ports', val, option.rawLabel);
+                  }
+                  stopEditing(row._rowKey, 'polId');
+                }
+              "
+            />
+          </div>
+          <div
+            v-else
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
+            @click="startEditing(row._rowKey, 'polId')"
+          >
+            {{ getPortName(row.polId) }}
+          </div>
         </template>
 
         <!-- 目的港 -->
         <template #podId="{ row }">
-          <PortSelect v-model="row.podId" style="width: 100%" />
+          <div v-if="isEditing(row._rowKey, 'podId')" class="w-full">
+            <PortSelect
+              v-model="row.podId"
+              style="width: 100%"
+              @blur="stopEditing(row._rowKey, 'podId')"
+              @change="
+                (val: any, option: any) => {
+                  if (option?.rawLabel) {
+                    updateLabelCache('ports', val, option.rawLabel);
+                  }
+                  stopEditing(row._rowKey, 'podId');
+                }
+              "
+            />
+          </div>
+          <div
+            v-else
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
+            @click="startEditing(row._rowKey, 'podId')"
+          >
+            {{ getPortName(row.podId) }}
+          </div>
         </template>
 
         <!-- 币别 -->
         <template #currencyId="{ row }">
-          <CurrencySelect v-model="row.currencyId" style="width: 100%" />
+          <div v-if="isEditing(row._rowKey, 'currencyId')" class="w-full">
+            <CurrencySelect
+              v-model="row.currencyId"
+              style="width: 100%"
+              @blur="stopEditing(row._rowKey, 'currencyId')"
+              @change="
+                (val: any, option: any) => {
+                  if (option?.rawLabel) {
+                    updateLabelCache('currencies', val, option.rawLabel);
+                  }
+                  stopEditing(row._rowKey, 'currencyId');
+                }
+              "
+            />
+          </div>
+          <div
+            v-else
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
+            @click="startEditing(row._rowKey, 'currencyId')"
+          >
+            {{ getCurrencyName(row.currencyId) }}
+          </div>
         </template>
 
         <!-- 订舱代理 -->
         <template #bookingAgentId="{ row }">
-          <ClientSelect
-            v-model="row.bookingAgentId"
-            style="width: 100%"
-            placeholder="请选择订舱代理"
-            allow-clear
-            industry-category="o"
-          />
+          <div v-if="isEditing(row._rowKey, 'bookingAgentId')" class="w-full">
+            <ClientSelect
+              v-model="row.bookingAgentId"
+              style="width: 100%"
+              placeholder="请选择订舱代理"
+              allow-clear
+              industry-category="o"
+              @blur="stopEditing(row._rowKey, 'bookingAgentId')"
+              @change="
+                (val: any, option: any) => {
+                  if (option?.rawLabel) {
+                    updateLabelCache('clients', val, option.rawLabel);
+                  }
+                  stopEditing(row._rowKey, 'bookingAgentId');
+                }
+              "
+            />
+          </div>
+          <div
+            v-else
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
+            @click="startEditing(row._rowKey, 'bookingAgentId')"
+          >
+            {{ getClientName(row.bookingAgentId) }}
+          </div>
         </template>
 
         <!-- 是否直达 -->
@@ -903,22 +1120,60 @@ function resetForm() {
 
         <!-- 中转港1 -->
         <template #poT1Id="{ row }">
-          <PortSelect
-            v-model="row.poT1Id"
-            style="width: 100%"
-            allow-clear
-            :disabled="row.isDirect"
-          />
+          <div v-if="isEditing(row._rowKey, 'poT1Id')" class="w-full">
+            <PortSelect
+              v-model="row.poT1Id"
+              style="width: 100%"
+              allow-clear
+              :disabled="row.isDirect"
+              @blur="stopEditing(row._rowKey, 'poT1Id')"
+              @change="
+                (val: any, option: any) => {
+                  if (option?.rawLabel) {
+                    updateLabelCache('ports', val, option.rawLabel);
+                  }
+                  stopEditing(row._rowKey, 'poT1Id');
+                }
+              "
+            />
+          </div>
+          <div
+            v-else
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
+            :class="{ 'cursor-not-allowed opacity-50': row.isDirect }"
+            @click="!row.isDirect && startEditing(row._rowKey, 'poT1Id')"
+          >
+            {{ row.isDirect ? '-' : getPortName(row.poT1Id) }}
+          </div>
         </template>
 
         <!-- 中转港2 -->
         <template #poT2Id="{ row }">
-          <PortSelect
-            v-model="row.poT2Id"
-            style="width: 100%"
-            allow-clear
-            :disabled="row.isDirect"
-          />
+          <div v-if="isEditing(row._rowKey, 'poT2Id')" class="w-full">
+            <PortSelect
+              v-model="row.poT2Id"
+              style="width: 100%"
+              allow-clear
+              :disabled="row.isDirect"
+              @blur="stopEditing(row._rowKey, 'poT2Id')"
+              @change="
+                (val: any, option: any) => {
+                  if (option?.rawLabel) {
+                    updateLabelCache('ports', val, option.rawLabel);
+                  }
+                  stopEditing(row._rowKey, 'poT2Id');
+                }
+              "
+            />
+          </div>
+          <div
+            v-else
+            class="min-w-[80px] cursor-pointer rounded border border-dashed border-blue-300 bg-blue-50 px-2 py-1 text-center text-sm transition-all hover:border-blue-500 hover:bg-blue-100"
+            :class="{ 'cursor-not-allowed opacity-50': row.isDirect }"
+            @click="!row.isDirect && startEditing(row._rowKey, 'poT2Id')"
+          >
+            {{ row.isDirect ? '-' : getPortName(row.poT2Id) }}
+          </div>
         </template>
 
         <!-- 起运港免用箱天数 -->
@@ -998,48 +1253,97 @@ function resetForm() {
             <!-- 开船日期 -->
             <div class="flex items-center gap-2">
               <span class="shrink-0 text-xs text-gray-500">开船:</span>
-              <DatePicker
-                v-model:value="row.etd"
-                style="width: 180px"
-                placeholder="选择日期和时间"
-                value-format="YYYY-MM-DD"
-                format="YYYY-MM-DD"
-                :disabled="!!row.etdDayOfWeek"
-                allow-clear
-                @change="handleSwitchToDateTimeMode(row)"
-              />
+              <div v-if="isEditing(row._rowKey, 'etd')" class="w-[180px]">
+                <DatePicker
+                  v-model:value="row.etd"
+                  style="width: 100%"
+                  placeholder="选择日期"
+                  value-format="YYYY-MM-DD"
+                  format="YYYY-MM-DD"
+                  :disabled="!!row.etdDayOfWeek"
+                  allow-clear
+                  @blur="stopEditing(row._rowKey, 'etd')"
+                  @change="handleSwitchToDateTimeMode(row)"
+                />
+              </div>
+              <div
+                v-else
+                class="min-w-[100px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                :class="{ 'cursor-not-allowed opacity-50': !!row.etdDayOfWeek }"
+                @click="!row.etdDayOfWeek && startEditing(row._rowKey, 'etd')"
+              >
+                {{ formatDate(row.etd) }}
+              </div>
             </div>
             <!-- 截单时间 -->
             <div class="flex items-center gap-2">
               <span class="shrink-0 text-xs text-gray-500">截单:</span>
-              <DatePicker
-                v-model:value="row.closeDocTime"
-                style="width: 180px"
-                show-time
-                :time-picker-props="{ format: 'HH:mm' }"
-                placeholder="选择日期和时间"
-                value-format="YYYY-MM-DD HH:mm"
-                format="YYYY-MM-DD HH:mm"
-                :disabled="!!row.closeDocDayOfWeek"
-                allow-clear
-                @change="handleSwitchToDateTimeMode(row)"
-              />
+              <div
+                v-if="isEditing(row._rowKey, 'closeDocTime')"
+                class="w-[180px]"
+              >
+                <DatePicker
+                  v-model:value="row.closeDocTime"
+                  style="width: 100%"
+                  show-time
+                  :time-picker-props="{ format: 'HH:mm' }"
+                  placeholder="选择日期和时间"
+                  value-format="YYYY-MM-DD HH:mm"
+                  format="YYYY-MM-DD HH:mm"
+                  :disabled="!!row.closeDocDayOfWeek"
+                  allow-clear
+                  @blur="stopEditing(row._rowKey, 'closeDocTime')"
+                  @change="handleSwitchToDateTimeMode(row)"
+                />
+              </div>
+              <div
+                v-else
+                class="min-w-[100px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                :class="{
+                  'cursor-not-allowed opacity-50': !!row.closeDocDayOfWeek,
+                }"
+                @click="
+                  !row.closeDocDayOfWeek &&
+                  startEditing(row._rowKey, 'closeDocTime')
+                "
+              >
+                {{ formatDate(row.closeDocTime) }}
+              </div>
             </div>
             <!-- 截关时间 -->
             <div class="flex items-center gap-2">
               <span class="shrink-0 text-xs text-gray-500">截关:</span>
-              <DatePicker
-                v-model:value="row.closingTime"
-                style="width: 180px"
-                show-time
-                :time-picker-props="{ format: 'HH:mm' }"
-                placeholder="选择日期和时间"
-                value-format="YYYY-MM-DD HH:mm"
-                format="YYYY-MM-DD HH:mm"
-                :disabled="!!row.closingDayOfWeek"
-                allow-clear
-                @change="handleSwitchToDateTimeMode(row)"
-              />
+              <div
+                v-if="isEditing(row._rowKey, 'closingTime')"
+                class="w-[180px]"
+              >
+                <DatePicker
+                  v-model:value="row.closingTime"
+                  style="width: 100%"
+                  show-time
+                  :time-picker-props="{ format: 'HH:mm' }"
+                  placeholder="选择日期和时间"
+                  value-format="YYYY-MM-DD HH:mm"
+                  format="YYYY-MM-DD HH:mm"
+                  :disabled="!!row.closingDayOfWeek"
+                  allow-clear
+                  @blur="stopEditing(row._rowKey, 'closingTime')"
+                  @change="handleSwitchToDateTimeMode(row)"
+                />
+              </div>
+              <div
+                v-else
+                class="min-w-[100px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                :class="{
+                  'cursor-not-allowed opacity-50': !!row.closingDayOfWeek,
+                }"
+                @click="
+                  !row.closingDayOfWeek &&
+                  startEditing(row._rowKey, 'closingTime')
+                "
+              >
+                {{ formatDate(row.closingTime) }}
+              </div>
             </div>
           </div>
         </template>
@@ -1050,33 +1354,17 @@ function resetForm() {
             <!-- 开船日期（仅星期） -->
             <div class="flex items-center gap-2">
               <span class="shrink-0 text-xs text-gray-500">开船:</span>
-              <Select
-                v-model:value="row.etdDayOfWeek"
-                style="width: 100px"
-                placeholder="星期"
-                :disabled="!!row.etd"
-                allow-clear
-                @change="handleSwitchToWeekMode(row)"
+              <div
+                v-if="isEditing(row._rowKey, 'etdDayOfWeek')"
+                class="w-[100px]"
               >
-                <Select.Option :value="0">周日</Select.Option>
-                <Select.Option :value="1">周一</Select.Option>
-                <Select.Option :value="2">周二</Select.Option>
-                <Select.Option :value="3">周三</Select.Option>
-                <Select.Option :value="4">周四</Select.Option>
-                <Select.Option :value="5">周五</Select.Option>
-                <Select.Option :value="6">周六</Select.Option>
-              </Select>
-            </div>
-            <!-- 截单时间（星期+时间） -->
-            <div class="flex items-center gap-2">
-              <span class="shrink-0 text-xs text-gray-500">截单:</span>
-              <div class="flex flex-1 items-center gap-1">
                 <Select
-                  v-model:value="row.closeDocDayOfWeek"
-                  style="width: 70px"
+                  v-model:value="row.etdDayOfWeek"
+                  style="width: 100%"
                   placeholder="星期"
-                  :disabled="!!row.closeDocTime"
+                  :disabled="!!row.etd"
                   allow-clear
+                  @blur="stopEditing(row._rowKey, 'etdDayOfWeek')"
                   @change="handleSwitchToWeekMode(row)"
                 >
                   <Select.Option :value="0">周日</Select.Option>
@@ -1087,50 +1375,144 @@ function resetForm() {
                   <Select.Option :value="5">周五</Select.Option>
                   <Select.Option :value="6">周六</Select.Option>
                 </Select>
-                <TimePicker
-                  v-model:value="row.closeDocDayTime"
-                  style="width: 90px"
-                  placeholder="时间"
-                  format="HH:mm"
-                  value-format="HH:mm"
-                  :disabled="
-                    !row.closeDocDayOfWeek && row.closeDocDayOfWeek !== 0
+              </div>
+              <div
+                v-else
+                class="min-w-[80px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                :class="{ 'cursor-not-allowed opacity-50': !!row.etd }"
+                @click="!row.etd && startEditing(row._rowKey, 'etdDayOfWeek')"
+              >
+                {{ formatWeekDay(row.etdDayOfWeek) }}
+              </div>
+            </div>
+            <!-- 截单时间（星期+时间） -->
+            <div class="flex items-center gap-2">
+              <span class="shrink-0 text-xs text-gray-500">截单:</span>
+              <div class="flex flex-1 items-center gap-1">
+                <div
+                  v-if="isEditing(row._rowKey, 'closeDocDayOfWeek')"
+                  class="w-[70px]"
+                >
+                  <Select
+                    v-model:value="row.closeDocDayOfWeek"
+                    style="width: 100%"
+                    placeholder="星期"
+                    :disabled="!!row.closeDocTime"
+                    allow-clear
+                    @blur="stopEditing(row._rowKey, 'closeDocDayOfWeek')"
+                    @change="handleSwitchToWeekMode(row)"
+                  >
+                    <Select.Option :value="0">周日</Select.Option>
+                    <Select.Option :value="1">周一</Select.Option>
+                    <Select.Option :value="2">周二</Select.Option>
+                    <Select.Option :value="3">周三</Select.Option>
+                    <Select.Option :value="4">周四</Select.Option>
+                    <Select.Option :value="5">周五</Select.Option>
+                    <Select.Option :value="6">周六</Select.Option>
+                  </Select>
+                </div>
+                <div
+                  v-else
+                  class="w-[70px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                  :class="{
+                    'cursor-not-allowed opacity-50': !!row.closeDocTime,
+                  }"
+                  @click="
+                    !row.closeDocTime &&
+                    startEditing(row._rowKey, 'closeDocDayOfWeek')
                   "
-                  allow-clear
-                />
+                >
+                  {{ formatWeekDay(row.closeDocDayOfWeek) }}
+                </div>
+                <div
+                  v-if="isEditing(row._rowKey, 'closeDocDayTime')"
+                  class="w-[90px]"
+                >
+                  <TimePicker
+                    v-model:value="row.closeDocDayTime"
+                    style="width: 100%"
+                    placeholder="时间"
+                    format="HH:mm"
+                    value-format="HH:mm"
+                    :disabled="
+                      !row.closeDocDayOfWeek && row.closeDocDayOfWeek !== 0
+                    "
+                    allow-clear
+                    @blur="stopEditing(row._rowKey, 'closeDocDayTime')"
+                  />
+                </div>
+                <div
+                  v-else
+                  class="w-[90px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                  @click="startEditing(row._rowKey, 'closeDocDayTime')"
+                >
+                  {{ formatTime(row.closeDocDayTime) }}
+                </div>
               </div>
             </div>
             <!-- 截关时间（星期+时间） -->
             <div class="flex items-center gap-2">
               <span class="shrink-0 text-xs text-gray-500">截关:</span>
               <div class="flex flex-1 items-center gap-1">
-                <Select
-                  v-model:value="row.closingDayOfWeek"
-                  style="width: 70px"
-                  placeholder="星期"
-                  :disabled="!!row.closingTime"
-                  allow-clear
-                  @change="handleSwitchToWeekMode(row)"
+                <div
+                  v-if="isEditing(row._rowKey, 'closingDayOfWeek')"
+                  class="w-[70px]"
                 >
-                  <Select.Option :value="0">周日</Select.Option>
-                  <Select.Option :value="1">周一</Select.Option>
-                  <Select.Option :value="2">周二</Select.Option>
-                  <Select.Option :value="3">周三</Select.Option>
-                  <Select.Option :value="4">周四</Select.Option>
-                  <Select.Option :value="5">周五</Select.Option>
-                  <Select.Option :value="6">周六</Select.Option>
-                </Select>
-                <TimePicker
-                  v-model:value="row.closingDayTime"
-                  style="width: 90px"
-                  placeholder="时间"
-                  format="HH:mm"
-                  value-format="HH:mm"
-                  :disabled="
-                    !row.closingDayOfWeek && row.closingDayOfWeek !== 0
+                  <Select
+                    v-model:value="row.closingDayOfWeek"
+                    style="width: 100%"
+                    placeholder="星期"
+                    :disabled="!!row.closingTime"
+                    allow-clear
+                    @blur="stopEditing(row._rowKey, 'closingDayOfWeek')"
+                    @change="handleSwitchToWeekMode(row)"
+                  >
+                    <Select.Option :value="0">周日</Select.Option>
+                    <Select.Option :value="1">周一</Select.Option>
+                    <Select.Option :value="2">周二</Select.Option>
+                    <Select.Option :value="3">周三</Select.Option>
+                    <Select.Option :value="4">周四</Select.Option>
+                    <Select.Option :value="5">周五</Select.Option>
+                    <Select.Option :value="6">周六</Select.Option>
+                  </Select>
+                </div>
+                <div
+                  v-else
+                  class="w-[70px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                  :class="{
+                    'cursor-not-allowed opacity-50': !!row.closingTime,
+                  }"
+                  @click="
+                    !row.closingTime &&
+                    startEditing(row._rowKey, 'closingDayOfWeek')
                   "
-                  allow-clear
-                />
+                >
+                  {{ formatWeekDay(row.closingDayOfWeek) }}
+                </div>
+                <div
+                  v-if="isEditing(row._rowKey, 'closingDayTime')"
+                  class="w-[90px]"
+                >
+                  <TimePicker
+                    v-model:value="row.closingDayTime"
+                    style="width: 100%"
+                    placeholder="时间"
+                    format="HH:mm"
+                    value-format="HH:mm"
+                    :disabled="
+                      !row.closingDayOfWeek && row.closingDayOfWeek !== 0
+                    "
+                    allow-clear
+                    @blur="stopEditing(row._rowKey, 'closingDayTime')"
+                  />
+                </div>
+                <div
+                  v-else
+                  class="w-[90px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+                  @click="startEditing(row._rowKey, 'closingDayTime')"
+                >
+                  {{ formatTime(row.closingDayTime) }}
+                </div>
               </div>
             </div>
           </div>
@@ -1138,22 +1520,42 @@ function resetForm() {
 
         <!-- 有效起始日期 -->
         <template #validTimeStart="{ row }">
-          <DatePicker
-            v-model:value="row.validTimeStart"
-            style="width: 100%"
-            placeholder="选择日期"
-            value-format="YYYY-MM-DD"
-          />
+          <div v-if="isEditing(row._rowKey, 'validTimeStart')" class="w-full">
+            <DatePicker
+              v-model:value="row.validTimeStart"
+              style="width: 100%"
+              placeholder="选择日期"
+              value-format="YYYY-MM-DD"
+              @blur="stopEditing(row._rowKey, 'validTimeStart')"
+            />
+          </div>
+          <div
+            v-else
+            class="min-w-[100px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+            @click="startEditing(row._rowKey, 'validTimeStart')"
+          >
+            {{ formatDate(row.validTimeStart) }}
+          </div>
         </template>
 
         <!-- 有效截止日期 -->
         <template #validTimeEnd="{ row }">
-          <DatePicker
-            v-model:value="row.validTimeEnd"
-            style="width: 100%"
-            placeholder="选择日期"
-            value-format="YYYY-MM-DD"
-          />
+          <div v-if="isEditing(row._rowKey, 'validTimeEnd')" class="w-full">
+            <DatePicker
+              v-model:value="row.validTimeEnd"
+              style="width: 100%"
+              placeholder="选择日期"
+              value-format="YYYY-MM-DD"
+              @blur="stopEditing(row._rowKey, 'validTimeEnd')"
+            />
+          </div>
+          <div
+            v-else
+            class="min-w-[100px] cursor-pointer rounded border border-dashed border-purple-300 bg-purple-50 px-2 py-1 text-center text-sm transition-all hover:border-purple-500 hover:bg-purple-100"
+            @click="startEditing(row._rowKey, 'validTimeEnd')"
+          >
+            {{ formatDate(row.validTimeEnd) }}
+          </div>
         </template>
 
         <!-- 备注 -->
