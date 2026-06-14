@@ -246,6 +246,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
             pageIndex: page.currentPage,
             pageSize: page.pageSize,
             ...formValues,
+            sorting: 'Id DESC',
             laneId: selectedLineId.value, // 添加航线ID作为查询参数
           });
           // 适配新的返回结构
@@ -718,7 +719,7 @@ function getIsValidText(row: SeFreiPriceOutDto): string {
     return '无效';
   }
 
-  return '有效';
+  return '已生效';
 }
 
 /**
@@ -728,7 +729,7 @@ function getIsValidColor(row: SeFreiPriceOutDto): string {
   const text = getIsValidText(row);
   //console.log('isValidText:', text);
   switch (text) {
-    case '有效':
+    case '已生效':
       return '#389e0d'; // 绿色
     case '未生效':
       return '#faad14'; // 橙色

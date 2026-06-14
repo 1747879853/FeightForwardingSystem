@@ -251,14 +251,15 @@ export function useGridFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'isValid',
       label: $t('seaExport.freightRate.isValid'),
-      defaultValue: true, // 默认选择"有效"，过滤掉无效数据
+      defaultValue: 0, // 默认选择"有效"，过滤掉无效数据
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
         options: [
           { label: $t('common.all'), value: null },
-          { label: $t('common.valid'), value: true },
-          { label: $t('common.invalid'), value: false },
+          { label: '已生效', value: 0 },
+          { label: '未生效', value: 1 },
+          { label: '已过期', value: 2 },
         ],
       },
     },

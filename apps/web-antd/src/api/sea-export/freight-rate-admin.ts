@@ -573,8 +573,8 @@ export interface SeFreiPriceOutDto {
   lastModificationTime?: string;
   /** 最后修改人ID */
   lastModifierUserId?: number;
-  /** 是否有效（根据有效时间截止与当前时间比较） */
-  isValid: boolean;
+  /** 是否有效（生效状态。不传=不筛选；`0`=已生效；`1`=未生效；`2`=已过期） */
+  isValid: number;
   /** 船公司信息（关联对象） */
   carrier?: CarrierDto;
   /** 起运港信息（关联对象） */
@@ -776,7 +776,7 @@ export interface GetSeFreiPriceListInput {
   /** 订舱代理ID筛选 */
   bookingAgentId?: string;
   /** 是否有效筛选（根据有效时间截止与当前时间比较） */
-  isValid?: boolean;
+  isValid?: number;
   /** 当前页码，默认1 */
   pageIndex?: number;
   /** 每页记录数，默认10 */
