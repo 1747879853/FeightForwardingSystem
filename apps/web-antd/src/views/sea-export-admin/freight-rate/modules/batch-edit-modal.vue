@@ -4,6 +4,7 @@ import type {
   BatchEditSeFreiPriceInput,
   SeFreiPriceCtnEditDto,
   SeFreiPriceOutDto,
+  SeFreiPriceSimpleEditDto,
 } from '#/api/sea-export/freight-rate-admin';
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 import type { PortCodeAdminApi } from '#/api/system/base-data/port-code-admin';
@@ -38,7 +39,10 @@ import { getCtnCodePagedList as getBaseCtnCodes } from '#/api/system/base-data/c
 import { getCarrierDetail } from '#/api/system/base-data/carrier-admin';
 import { getPortCodeDetail } from '#/api/system/base-data/port-code-admin';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
-import { batchEditSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
+import {
+  batchEditSeFreiPrice,
+  batchEditSimpleSeFreiPrice,
+} from '#/api/sea-export/freight-rate-admin';
 import { $t } from '#/locales';
 
 const emit = defineEmits<{
@@ -624,8 +628,11 @@ async function handleSubmit() {
 
     console.log('Grid 中的数据:', gridRecords);
 
-    // 逐条处理每一行的修改
-    const promises = gridRecords.map(async (row, index) => {
+    // 构建批量提交数据列表
+    const submitDataList: SeFreiPriceSimpleEditDto[] = [];
+
+    // 遍历每一行，构建提交数据
+    gridRecords.forEach((row, index) => {
       const originalRow = originalData.value[index];
       if (!originalRow) return;
 
@@ -651,15 +658,18 @@ async function handleSubmit() {
       if (row.voyage !== originalRow.voyage) modifiedFields.add('voyage');
       if (row.contractNo !== originalRow.contractNo)
         modifiedFields.add('contractNo');
+      if (row.validTimeStart !== originalRow.validTimeStart)
+        modifiedFields.add('validTimeStart');
+      if (row.validTimeEnd !== originalRow.validTimeEnd)
+        modifiedFields.add('validTimeEnd');
+      if (row.remark !== originalRow.remark) modifiedFields.add('remark');
+      if (row.currencyId !== originalRow.currencyId)
+        modifiedFields.add('currencyId');
+      if (row.bookingAgentId !== originalRow.bookingAgentId)
+        modifiedFields.add('bookingAgentId');
 
       // 检查日期时间模式是否变化
       const originalDayData = originalRow.seFreiPriceDays?.[0];
-      const currentHasDateMode = row.etd || row.closeDocTime || row.closingTime;
-      const originalHasDateMode =
-        originalDayData?.etd ||
-        originalDayData?.closeDocTime ||
-        originalDayData?.closingTime;
-
       if (
         row.etd !== originalDayData?.etd ||
         row.closeDocTime !== originalDayData?.closeDocTime ||
@@ -681,43 +691,33 @@ async function handleSubmit() {
         modifiedFields.add('weekMode');
       }
 
-      if (row.validTimeStart !== originalRow.validTimeStart)
-        modifiedFields.add('validTimeStart');
-      if (row.validTimeEnd !== originalRow.validTimeEnd)
-        modifiedFields.add('validTimeEnd');
-      if (row.remark !== originalRow.remark) modifiedFields.add('remark');
-      if (row.currencyId !== originalRow.currencyId)
-        modifiedFields.add('currencyId');
-      if (row.bookingAgentId !== originalRow.bookingAgentId)
-        modifiedFields.add('bookingAgentId');
-
       // 如果没有字段被修改，且箱型也没有修改，跳过这一行
       if (modifiedFields.size === 0 && !hasCtnModified(row, originalRow)) {
         return;
       }
 
-      // 构建单条编辑参数
-      const submitData: BatchEditSeFreiPriceInput = {
-        ids: [row.id], // 只包含当前行的 ID
+      // 构建单条编辑参数（使用 SeFreiPriceSimpleEditDto）
+      const submitData: SeFreiPriceSimpleEditDto = {
+        id: row.id,
+        recommend: row.recommend,
+        carrierId: row.carrierId,
+        polId: row.polId,
+        podId: row.podId,
+        isDirect: row.isDirect,
+        poT1Id: row.poT1Id,
+        poT2Id: row.poT2Id,
+        polFreeDays: row.polFreeDays,
+        podFreeDays: row.podFreeDays,
+        poddem: row.poddem,
+        poddet: row.poddet,
+        voyage: row.voyage,
+        contractNo: row.contractNo,
+        validTimeStart: row.validTimeStart,
+        validTimeEnd: row.validTimeEnd,
+        remark: row.remark,
+        currencyId: row.currencyId,
+        bookingAgentId: row.bookingAgentId || null,
       };
-
-      // 添加被修改的字段
-      if (modifiedFields.has('recommend')) submitData.recommend = row.recommend;
-      if (modifiedFields.has('carrierId')) submitData.carrierId = row.carrierId;
-      if (modifiedFields.has('polId')) submitData.polId = row.polId;
-      if (modifiedFields.has('podId')) submitData.podId = row.podId;
-      if (modifiedFields.has('isDirect')) submitData.isDirect = row.isDirect;
-      if (modifiedFields.has('poT1Id')) submitData.poT1Id = row.poT1Id;
-      if (modifiedFields.has('poT2Id')) submitData.poT2Id = row.poT2Id;
-      if (modifiedFields.has('polFreeDays'))
-        submitData.polFreeDays = row.polFreeDays;
-      if (modifiedFields.has('podFreeDays'))
-        submitData.podFreeDays = row.podFreeDays;
-      if (modifiedFields.has('poddem')) submitData.poddem = row.poddem;
-      if (modifiedFields.has('poddet')) submitData.poddet = row.poddet;
-      if (modifiedFields.has('voyage')) submitData.voyage = row.voyage;
-      if (modifiedFields.has('contractNo'))
-        submitData.contractNo = row.contractNo;
 
       // 处理日期时间模式
       if (modifiedFields.has('dateTimeMode')) {
@@ -761,16 +761,6 @@ async function handleSubmit() {
         }
       }
 
-      if (modifiedFields.has('validTimeStart'))
-        submitData.validTimeStart = row.validTimeStart;
-      if (modifiedFields.has('validTimeEnd'))
-        submitData.validTimeEnd = row.validTimeEnd;
-      if (modifiedFields.has('remark')) submitData.remark = row.remark;
-      if (modifiedFields.has('currencyId'))
-        submitData.currencyId = row.currencyId;
-      if (modifiedFields.has('bookingAgentId'))
-        submitData.bookingAgentId = row.bookingAgentId || null;
-
       // 处理箱型成本
       if (
         hasCtnModified(row, originalRow) &&
@@ -784,13 +774,20 @@ async function handleSubmit() {
       }
 
       console.log(`第 ${index + 1} 行提交数据:`, submitData);
-
-      // 调用批量编辑 API（虽然叫批量，但可以只传一个 ID）
-      await batchEditSeFreiPrice(submitData);
+      submitDataList.push(submitData);
     });
 
-    // 等待所有请求完成
-    await Promise.all(promises);
+    // 如果没有需要提交的数据，直接返回
+    if (submitDataList.length === 0) {
+      message.warning('没有需要修改的数据');
+      modalApi.unlock();
+      return;
+    }
+
+    console.log('批量提交数据列表:', submitDataList);
+
+    // 一次性调用批量编辑 API
+    await batchEditSimpleSeFreiPrice(submitDataList);
 
     message.success('批量编辑成功');
     modalApi.close();

@@ -775,8 +775,8 @@ export interface GetSeFreiPriceListInput {
   contractNo?: string;
   /** 订舱代理ID筛选 */
   bookingAgentId?: string;
-  /** 是否有效筛选（根据有效时间截止与当前时间比较） */
-  isValid?: number;
+  /** 是否有效筛选（根据有效时间截止与当前时间比较），支持多选 */
+  isValid?: number | number[];
   /** 当前页码，默认1 */
   pageIndex?: number;
   /** 每页记录数，默认10 */
@@ -841,14 +841,14 @@ export function getSeFreiPriceDetail(id: string) {
  * @returns 返回分页的运价列表
  */
 export function getSeFreiPriceList(params: GetSeFreiPriceListInput) {
-  return requestClient.get<{
+  return requestClient.post<{
     items: SeFreiPriceOutDto[];
     totalCount: number;
     currentPage: number;
     totalPages: number;
     skipCount: number;
     maxResultCount: number;
-  }>(`${BASE_URL}/GetPagedListAsync`, { params });
+  }>(`${BASE_URL}/GetPagedListAsync`, params);
 }
 
 /**

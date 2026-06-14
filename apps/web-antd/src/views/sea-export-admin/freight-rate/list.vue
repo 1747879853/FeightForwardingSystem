@@ -226,7 +226,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     commonConfig: {
       labelWidth: 72,
     },
-    wrapperClass: 'grid-cols-6',
+    wrapperClass: 'grid-cols-5',
   },
   gridOptions: {
     columns: useColumns(onActionClick, []), // 初始化为空数组
@@ -242,13 +242,35 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
           { page }: { page: { currentPage: number; pageSize: number } },
           formValues: Record<string, any>,
         ) => {
-          const result = await getSeFreiPriceList({
+          // 处理 isValid 多选参数：如果是数组且为空，则不传递；如果有值则传递数组
+          const queryParams: any = {
             pageIndex: page.currentPage,
             pageSize: page.pageSize,
-            ...formValues,
             sorting: 'Id DESC',
             laneId: selectedLineId.value, // 添加航线ID作为查询参数
+          };
+
+          // 遍历表单值，特殊处理 isValid
+          Object.keys(formValues).forEach((key) => {
+            if (key === 'isValid') {
+              const value = formValues[key];
+              // 如果是数组且有值，传递数组；如果是空数组或null/undefined，不传递
+              if (Array.isArray(value)) {
+                if (value.length > 0) {
+                  queryParams[key] = value;
+                }
+              } else if (value !== null && value !== undefined) {
+                queryParams[key] = value;
+              }
+            } else {
+              // 其他字段正常传递
+              if (formValues[key] !== null && formValues[key] !== undefined) {
+                queryParams[key] = formValues[key];
+              }
+            }
           });
+
+          const result = await getSeFreiPriceList(queryParams);
           // 适配新的返回结构
           const items = result.items || [];
           // 更新表格数据用于生成动态列
