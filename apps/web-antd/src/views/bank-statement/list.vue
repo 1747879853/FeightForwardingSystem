@@ -52,7 +52,10 @@ const [Grid, gridApi] =
       showCollapseButton: true,
       collapsed: true,
       compact: true,
-      wrapperClass: 'grid-cols-4',
+      commonConfig: {
+        labelWidth: 64,
+      },
+      wrapperClass: 'grid-cols-6',
     },
     gridOptions: {
       columns: useColumns(),
