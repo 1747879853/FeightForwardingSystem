@@ -96,6 +96,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       component: 'RangePicker',
       fieldName: 'settlementTimeRange',
       label: '结算时间',
+      formItemClass: 'col-span-2',
       componentProps: {
         placeholder: ['开始时间', '结束时间'],
         showTime: true,
@@ -110,6 +111,16 @@ export function useGridFormSchema(): VbenFormSchema[] {
       label: '创建人',
       componentProps: {
         placeholder: '请选择创建人',
+        allowClear: true,
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'BankStatementSelect',
+      fieldName: 'bankStatementId',
+      label: '银行流水',
+      componentProps: {
+        placeholder: '请选择银行流水',
         allowClear: true,
         class: 'w-full',
       },

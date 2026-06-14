@@ -166,6 +166,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       component: 'RangePicker',
       fieldName: 'statementTimeRange',
       label: '交易时间',
+      formItemClass: 'col-span-2',
       componentProps: {
         placeholder: ['开始时间', '结束时间'],
         showTime: false,

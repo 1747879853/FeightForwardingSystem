@@ -6,6 +6,16 @@ export function formatAmount(value: number | undefined | null): string {
   return value.toFixed(2);
 }
 
+/** 格式化金额并附带币别 */
+export function formatAmountWithCurrency(
+  value: number | undefined | null,
+  currencyCode?: string,
+): string {
+  const amount = formatAmount(value);
+  if (amount === '-') return amount;
+  return currencyCode ? `${amount} ${currencyCode}` : amount;
+}
+
 /** 格式化日期时间到分钟 */
 export function formatDateTime(value: string | undefined | null): string {
   if (!value) return '-';
