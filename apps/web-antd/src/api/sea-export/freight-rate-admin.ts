@@ -569,6 +569,8 @@ export interface SeFreiPriceOutDto {
   creationTime: string;
   /** 创建人ID */
   creatorUserId?: number;
+  /** 创建人姓名（用于显示） */
+  creatorUserName?: string;
   /** 最后修改时间 */
   lastModificationTime?: string;
   /** 最后修改人ID */

@@ -468,14 +468,14 @@ function buildColumns(): VxeTableGridOptions['columns'] {
     {
       field: 'polId',
       title: '起运港',
-      width: 340,
+      width: 280,
 
       slots: { default: 'polId' },
     },
     {
       field: 'podId',
       title: '目的港',
-      width: 340,
+      width: 280,
 
       slots: { default: 'podId' },
     },

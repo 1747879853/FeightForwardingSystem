@@ -492,6 +492,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       showOverflow: true,
       slots: { default: 'surchargeFees' },
     },
+
     {
       field: 'isDirect',
       title: $t('seaExport.freightRate.isDirect'),
@@ -728,6 +729,17 @@ export function useColumns<T = SeFreiPriceOutDto>(
       },
     },
     {
+      field: 'creatorUserName',
+      title: '录入人',
+      width: 120,
+      align: 'left',
+      showOverflow: true,
+      slots: { default: 'creatorUserName' },
+      formatter: ({ row }) => {
+        return row.creatorUserName || '-';
+      },
+    },
+    {
       field: 'creationTime',
       title: '录入时间',
       width: 160,
@@ -776,6 +788,7 @@ export const FREIGHT_RATE_FIELD_MAP: Record<string, string> = {
   bookingAgentName: 'BookingAgentId',
   contractNo: 'ContractNo',
   surchargeFees: 'SeFreiPriceFees',
+  creatorUserName: 'CreatorUserId',
   isDirect: 'IsDirect',
   'poT1.portName': 'PoT1Id',
   'poT2.portName': 'PoT2Id',

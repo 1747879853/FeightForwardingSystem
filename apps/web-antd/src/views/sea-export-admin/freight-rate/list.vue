@@ -41,6 +41,7 @@ import {
   getSeFreiPriceList,
   getAllLaneCodes,
 } from '#/api/sea-export/freight-rate-admin';
+import { getUser } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 
@@ -72,9 +73,86 @@ const conditionComparisonTypeOptions = ref<any[]>([]);
 // 被屏蔽的字段列表（PascalCase 格式）
 const maskedFields = ref<string[]>([]);
 
+// 用户信息缓存（userId -> userName）
+const userCache = ref<Map<number, string>>(new Map());
+// 正在加载的用户ID集合
+const loadingUserIds = ref<Set<number>>(new Set());
+
 // 获取费用名称
 function getFeeName(fee: any): string {
   return fee.feeCode?.cnName || fee.feeCode?.enName || `费用${fee.feeCodeId}`;
+}
+
+/**
+ * 加载单个用户信息（带缓存）
+ */
+async function loadUserInfo(userId: number): Promise<string> {
+  // 如果缓存中已有，直接返回
+  if (userCache.value.has(userId)) {
+    return userCache.value.get(userId) || '';
+  }
+
+  // 如果正在加载中，等待
+  if (loadingUserIds.value.has(userId)) {
+    // 轮询等待缓存更新
+    return new Promise((resolve) => {
+      const checkInterval = setInterval(() => {
+        if (userCache.value.has(userId)) {
+          clearInterval(checkInterval);
+          resolve(userCache.value.get(userId) || '');
+        }
+      }, 100);
+      // 超时保护
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        resolve('');
+      }, 5000);
+    });
+  }
+
+  // 标记为加载中
+  loadingUserIds.value.add(userId);
+
+  try {
+    const user = await getUser(userId);
+    const userName = user.nickName || user.userName || String(userId);
+    userCache.value.set(userId, userName);
+    return userName;
+  } catch (error) {
+    console.error(`加载用户信息失败 (userId: ${userId}):`, error);
+    return String(userId);
+  } finally {
+    loadingUserIds.value.delete(userId);
+  }
+}
+
+/**
+ * 批量加载用户信息
+ */
+async function loadUsersInfo(userIds: number[]) {
+  const uniqueIds = [...new Set(userIds)].filter(
+    (id) => !userCache.value.has(id) && !loadingUserIds.value.has(id),
+  );
+
+  if (uniqueIds.length === 0) return;
+
+  // 并行加载所有用户信息
+  await Promise.all(uniqueIds.map((id) => loadUserInfo(id)));
+}
+
+/**
+ * 从表格数据中提取并加载所有录入人信息
+ */
+async function loadCreatorsFromTableData() {
+  const userIds = tableData.value
+    .map((row) => row.creatorUserId)
+    .filter((id): id is number => id != null && id > 0);
+
+  if (userIds.length > 0) {
+    await loadUsersInfo(userIds);
+    // 触发响应式更新
+    tableData.value = [...tableData.value];
+  }
 }
 
 // 获取币别名称
@@ -132,6 +210,21 @@ function getFeeDetails(fee: any, row: SeFreiPriceOutDto): string[] {
   });
 
   return details;
+}
+
+/**
+ * 获取录入人显示名称
+ */
+function getCreatorUserName(row: SeFreiPriceOutDto): string {
+  if (row.creatorUserName) {
+    return row.creatorUserName;
+  }
+
+  if (row.creatorUserId && userCache.value.has(row.creatorUserId)) {
+    return userCache.value.get(row.creatorUserId) || '-';
+  }
+
+  return row.creatorUserId ? String(row.creatorUserId) : '-';
 }
 
 // 获取所有附加费名称（用逗号分隔）
@@ -275,6 +368,10 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
           const items = result.items || [];
           // 更新表格数据用于生成动态列
           tableData.value = items;
+
+          // 加载录入人信息
+          await loadCreatorsFromTableData();
+
           return {
             items,
             totalCount: result.totalCount || 0,
@@ -871,6 +968,13 @@ onUnmounted(() => {
       <template #currencyId="{ row }">
         <div class="px-2 py-1">
           {{ row.currency?.code || '-' }}
+        </div>
+      </template>
+
+      <!-- 录入人自定义渲染插槽 -->
+      <template #creatorUserName="{ row }">
+        <div class="px-2 py-1">
+          {{ getCreatorUserName(row) }}
         </div>
       </template>
 
