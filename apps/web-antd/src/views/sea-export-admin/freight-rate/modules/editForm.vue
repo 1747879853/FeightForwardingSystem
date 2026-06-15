@@ -186,6 +186,7 @@ async function loadSelectData() {
     feeCodeList.value = (feeRes.items || []).map((item: any) => ({
       label: item.cnName || item.enName,
       value: item.id,
+      code: item.code,
     }));
 
     // 加载箱型列表
@@ -1868,7 +1869,9 @@ onMounted(() => {
                         const feeItem = feeCodeList.find(
                           (item) => item.value === option.value,
                         );
-                        const label = feeItem?.label || '';
+                        const label = feeItem?.code
+                          ? feeItem.code + '-' + feeItem.label
+                          : feeItem?.label || '';
                         return String(label)
                           .toLowerCase()
                           .includes(input.toLowerCase());
@@ -1882,7 +1885,7 @@ onMounted(() => {
                       :key="fee.value"
                       :value="fee.value"
                     >
-                      {{ fee.label }}
+                      {{ fee.code ? fee.code + '-' + fee.label : fee.label }}
                     </Select.Option>
                   </Select>
                 </td>

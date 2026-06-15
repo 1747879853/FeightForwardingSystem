@@ -244,7 +244,11 @@ async function loadSelectData() {
     feeCodeList.value = (feeRes.items || []).map((item: any) => ({
       label: item.cnName || item.enName,
       value: item.id,
+      currencyId: item.currencyId,
+      code: item.code,
     }));
+    console.log('currencyList:', currencyList.value);
+    console.log('feeCodeList:', feeCodeList.value);
   } catch (error) {
     console.error('加载下拉数据失败:', error);
   }
@@ -903,7 +907,7 @@ const [Modal, modalApi] = useVbenModal({
                       :key="fee.value"
                       :value="fee.value"
                     >
-                      {{ fee.label }}
+                      {{ fee.code ? fee.code + '-' + fee.label : fee.label }}
                     </Select.Option>
                   </Select>
                 </td>
