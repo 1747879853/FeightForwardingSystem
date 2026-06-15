@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-15] [模块权限搜索后保存丢失未展示权限修复](./changelogs/change-log-2026-06-15-permission-search-save-merge.md)
 - [2026-06-14] [收费结算表单银行流水摘要与结算进度](./changelogs/change-log-2026-06-14-receive-settlement-bank-summary.md)
 - [2026-06-14] [收费结算列表银行流水查询条件调整](./changelogs/change-log-2026-06-14-receive-settlement-bank-statement-filter.md)
 - [2026-06-12] [运价列表航线 Tab 靠左展示与横向滚动](./changelogs/change-log-2026-06-12-freight-rate-list-lane-tab-scroll.md)
