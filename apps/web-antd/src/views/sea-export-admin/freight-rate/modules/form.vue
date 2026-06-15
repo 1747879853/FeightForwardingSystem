@@ -41,7 +41,7 @@ const currencyList = ref<any[]>([]);
 
 // 费用代码列表（用于下拉选择，包含完整信息）
 const feeCodeList = ref<
-  Array<{ label: string; value: number; currencyId?: number }>
+  Array<{ label: string; value: number; currencyId?: number; code?: string }>
 >([]);
 
 // 枚举选项
@@ -527,7 +527,9 @@ function filterFeeOption(input: string, option: any) {
   if (!input) return true;
 
   const feeItem = feeCodeList.value.find((item) => item.value === option.value);
-  const label = feeItem?.label || '';
+  const label = feeItem?.code
+    ? feeItem.code + '-' + feeItem.label
+    : feeItem?.label || '';
 
   return String(label).toLowerCase().includes(input.toLowerCase());
 }
@@ -767,8 +769,10 @@ async function loadSelectData() {
     feeCodeList.value = (feeRes.items || []).map((item: any) => ({
       label: item.cnName || item.enName,
       value: item.id,
+      code: item.code,
       currencyId: item.currencyId, // 保留币别ID用于自动填充
     }));
+    console.log('feeCodeList:', feeCodeList.value);
   } catch (error) {
     console.error('加载下拉数据失败:', error);
   }
@@ -1211,7 +1215,7 @@ onMounted(async () => {
                       :key="fee.value"
                       :value="fee.value"
                     >
-                      {{ fee.label }}
+                      {{ fee.code ? fee.code + '-' + fee.label : fee.label }}
                     </Select.Option>
                   </Select>
                 </td>
