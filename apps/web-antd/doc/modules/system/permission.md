@@ -46,7 +46,7 @@ last_updated: 2026-06-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-06-15 | `Fix` | 修复模块权限搜索后保存时仅保留可见权限、其余权限被清空的缺陷；搜索状态下勾选变更与保存均合并不可见节点的已选权限。 | `VbenTree` 过滤子集时会回写剔除不可见 key 的 modelValue；`handlePermissionsChange` 需按可见/不可见分区合并。 |
+| 2026-06-15 | `Fix` | 修复模块权限搜索后保存时仅保留可见权限、其余权限被清空的缺陷；搜索状态下勾选变更与保存均合并不可见节点的已选权限；补充 `treeCheckedPermissions` 避免 Tree 回写引发递归更新。 | `VbenTree` 过滤子集时会回写剔除不可见 key 的 modelValue；搜索时仅传可见勾选给 Tree，全量集合由 `checkedPermissions` 维护。 |
 | 2026-06-09 | `Feature` | 模块权限 Tab 新增关键词搜索框，支持按显示名称与权限码过滤权限树，无匹配时展示提示文案。 | 前端基于全量 `getAllPermissionsTreeApi` 数据过滤；`checkedPermissions` 与展示树解耦，切换对象/Tab 清空搜索词。 |
 | 2026-06-09 | `Fix` | 字段权限列表 `UserPropPermissionAdmin/GetPagedListAsync` 分页参数改为 `pageIndex`/`pageSize`。 | 视图层已传 `page.currentPage`，API 层移除偏移量换算。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/system/permission` 对应组件 `src/views/system/permission/list.vue`，权限口径为 Admin.UserDataPermission / Admin.UserDataPermission.Get。 |

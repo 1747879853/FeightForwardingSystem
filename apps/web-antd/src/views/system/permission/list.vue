@@ -101,6 +101,15 @@ const hasPermissionSearchKeyword = computed(() =>
   Boolean(permissionSearchKeyword.value.trim()),
 );
 
+/** 搜索时仅向 Tree 传递可见节点的勾选，避免 Tree 回写剔除隐藏 key 引发递归更新 */
+const treeCheckedPermissions = computed(() => {
+  if (!hasPermissionSearchKeyword.value) {
+    return checkedPermissions.value;
+  }
+  const visibleKeys = new Set(collectPermissionKeys(filteredPermissions.value));
+  return checkedPermissions.value.filter((key) => visibleKeys.has(key));
+});
+
 // ==================== 权限树搜索 ====================
 
 function matchesPermissionKeyword(node: DataNode, keyword: string): boolean {
@@ -249,7 +258,14 @@ function handlePermissionsChange(keys: string[]) {
   const hiddenChecked = checkedPermissions.value.filter(
     (key) => !visibleKeys.has(key),
   );
-  checkedPermissions.value = [...new Set([...hiddenChecked, ...keys])];
+  const merged = [...new Set([...hiddenChecked, ...keys])];
+  if (
+    merged.length === checkedPermissions.value.length &&
+    merged.every((key) => checkedPermissions.value.includes(key))
+  ) {
+    return;
+  }
+  checkedPermissions.value = merged;
 }
 
 /** 保存模块权限 */
@@ -451,7 +467,7 @@ onMounted(() => {
                     v-else
                     :key="moduleTreeKey"
                     :tree-data="filteredPermissions"
-                    :model-value="checkedPermissions"
+                    :model-value="treeCheckedPermissions"
                     multiple
                     bordered
                     :default-expanded-level="moduleTreeExpandedLevel"

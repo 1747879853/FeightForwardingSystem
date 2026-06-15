@@ -13,5 +13,6 @@
 ## 避坑指南
 
 - 搜索过滤只影响 Tree 展示数据（`filteredPermissions`），**不得**让 `checkedPermissions` 与可见节点 1:1 同步。
+- 搜索时通过 `treeCheckedPermissions` 仅向 Tree 传可见勾选；若直接传全量 `checkedPermissions`，Tree 的 `updateTreeValue` 会回写剔除隐藏 key，与父组件合并逻辑形成递归更新（`Maximum recursive updates exceeded`）。
 - 若后续替换 Tree 组件或改为服务端搜索，保存前仍需以全量已选集合为准，不能仅提交当前可见勾选。
 - 2026-06-09 搜索功能文档已声明「checkedPermissions 与树展示解耦」，本修复补齐该约束的实际实现。
