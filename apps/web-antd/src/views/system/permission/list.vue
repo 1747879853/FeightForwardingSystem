@@ -140,6 +140,20 @@ function clearPermissionSearch() {
   permissionSearchKeyword.value = '';
 }
 
+function collectPermissionKeys(nodes: DataNode[]): string[] {
+  const keys: string[] = [];
+  for (const node of nodes) {
+    const authCode = String(node.authCode ?? node.id ?? '');
+    if (authCode) {
+      keys.push(authCode);
+    }
+    if (node.children) {
+      keys.push(...collectPermissionKeys(node.children as DataNode[]));
+    }
+  }
+  return keys;
+}
+
 // ==================== 数据加载方法 ====================
 
 /** 加载角色列表 */
@@ -224,9 +238,18 @@ function handleTargetChange() {
   }
 }
 
-/** 权限选择改变 */
+/** 权限选择改变（搜索过滤时合并不可见节点的已选权限，避免被 Tree 覆盖丢失） */
 function handlePermissionsChange(keys: string[]) {
-  checkedPermissions.value = keys;
+  if (!hasPermissionSearchKeyword.value) {
+    checkedPermissions.value = keys;
+    return;
+  }
+
+  const visibleKeys = new Set(collectPermissionKeys(filteredPermissions.value));
+  const hiddenChecked = checkedPermissions.value.filter(
+    (key) => !visibleKeys.has(key),
+  );
+  checkedPermissions.value = [...new Set([...hiddenChecked, ...keys])];
 }
 
 /** 保存模块权限 */
