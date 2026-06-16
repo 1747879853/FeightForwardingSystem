@@ -2,7 +2,7 @@
 title: 权限管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-06-15
+last_updated: 2026-06-16
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,8 +22,8 @@ last_updated: 2026-06-15
 # 2. 功能与操作说明 (Features & Operations)
 
 - **列表/页面访问：** 通过 `/system/permission` 进入 `权限管理` 页面。
+- **模块权限文案：** 「模块权限」Tab 节点名称来自 `auth.json`（`auth.${权限码.replaceAll('.','_')}`），应与左侧菜单 `meta.title` 保持一致；本次已对齐 38 个有菜单映射的模块权限键。
 - **模块权限搜索：** 在「模块权限」Tab 顶部输入关键词，按权限显示名称或权限码（如 `Admin.User.Get`）前端过滤树节点；保留命中节点的父级路径并自动展开；无匹配时提示「未找到匹配的权限」。切换角色/用户或 Tab 时搜索词自动清空。搜索仅影响树展示，保存时仍提交全量已选权限（含不可见节点）。
-- **系统配置维护：** 按页面职责维护用户、角色、组织、工作流、枚举或缓存信息。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -46,6 +46,7 @@ last_updated: 2026-06-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-16 | `Fix` | 对齐 38 个模块权限键与左侧菜单标题（`auth.json` 双语）；新增 `Admin.SeaImport` 文案；典型修正如用户管理、组织管理、付费申请、对账单、运价管理、应收应付审核等。 | 模块权限 Tab 仅读 `auth.json`；菜单读路由 i18n；新增菜单权限须双向同步。 |
 | 2026-06-15 | `Fix` | 修复模块权限搜索后保存时仅保留可见权限、其余权限被清空的缺陷；搜索状态下勾选变更与保存均合并不可见节点的已选权限；补充 `treeCheckedPermissions` 避免 Tree 回写引发递归更新。 | `VbenTree` 过滤子集时会回写剔除不可见 key 的 modelValue；搜索时仅传可见勾选给 Tree，全量集合由 `checkedPermissions` 维护。 |
 | 2026-06-09 | `Feature` | 模块权限 Tab 新增关键词搜索框，支持按显示名称与权限码过滤权限树，无匹配时展示提示文案。 | 前端基于全量 `getAllPermissionsTreeApi` 数据过滤；`checkedPermissions` 与展示树解耦，切换对象/Tab 清空搜索词。 |
 | 2026-06-09 | `Fix` | 字段权限列表 `UserPropPermissionAdmin/GetPagedListAsync` 分页参数改为 `pageIndex`/`pageSize`。 | 视图层已传 `page.currentPage`，API 层移除偏移量换算。 |
