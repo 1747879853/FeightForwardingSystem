@@ -459,7 +459,13 @@ async function loadEditData() {
 }
 
 onMounted(() => {
-  loadEditData();
+  if (isEdit.value) {
+    loadEditData();
+  } else {
+    nextTick(() => {
+      handleOpenAddFee();
+    });
+  }
 });
 
 // --- Submit ---
