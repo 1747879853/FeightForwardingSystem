@@ -25,11 +25,9 @@ async function ensureAccessInitialized(params: {
 
   const userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
 
-  let accessCodes = accessStore.accessCodes;
-  if (!accessCodes || accessCodes.length === 0) {
-    accessCodes = await getAccessCodesApi();
-    accessStore.setAccessCodes(accessCodes);
-  }
+  // 每次初始化权限时都从服务端拉取最新配置，避免使用 localStorage 中的过期权限码
+  const accessCodes = await getAccessCodesApi();
+  accessStore.setAccessCodes(accessCodes);
 
   const { accessibleMenus, accessibleRoutes } = await generateAccess({
     roles: accessCodes,
