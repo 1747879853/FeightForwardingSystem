@@ -44,6 +44,11 @@ import {
 import { getUser } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { useUserStore } from '@vben/stores';
+import {
+  editPropPermission,
+  getUserPermissions,
+} from '#/api/system/permission';
 
 import { useColumns, useGridFormSchema, formatSurchargeFees } from './data';
 import AddCtnModal from './modules/add-ctn-modal.vue';
@@ -60,6 +65,9 @@ import { FrightModule } from '#/api/system/permission';
 // 创建运价管理的 ABP 权限对象
 const perm = createAbpPermission('Admin.SeFreiPrice');
 
+// 获取用户store
+const userStore = useUserStore();
+
 // 存储表格数据用于生成动态列
 const tableData = ref<SeFreiPriceOutDto[]>([]);
 
@@ -73,86 +81,26 @@ const conditionComparisonTypeOptions = ref<any[]>([]);
 // 被屏蔽的字段列表（PascalCase 格式）
 const maskedFields = ref<string[]>([]);
 
-// 用户信息缓存（userId -> userName）
-const userCache = ref<Map<number, string>>(new Map());
-// 正在加载的用户ID集合
-const loadingUserIds = ref<Set<number>>(new Set());
+// 用户功能权限
+const userFunctionPermissions = ref<string[]>([]);
+const loadingPermissions = ref(false);
+
+// 计算属性：判断用户是否有特定权限
+const hasAddPermission = computed(() =>
+  userFunctionPermissions.value.includes('Admin.SeFreiPrice.Add'),
+);
+
+const hasEditPermission = computed(() =>
+  userFunctionPermissions.value.includes('Admin.SeFreiPrice.Edit'),
+);
+
+const hasDeletePermission = computed(() =>
+  userFunctionPermissions.value.includes('Admin.SeFreiPrice.Delete'),
+);
 
 // 获取费用名称
 function getFeeName(fee: any): string {
   return fee.feeCode?.cnName || fee.feeCode?.enName || `费用${fee.feeCodeId}`;
-}
-
-/**
- * 加载单个用户信息（带缓存）
- */
-async function loadUserInfo(userId: number): Promise<string> {
-  // 如果缓存中已有，直接返回
-  if (userCache.value.has(userId)) {
-    return userCache.value.get(userId) || '';
-  }
-
-  // 如果正在加载中，等待
-  if (loadingUserIds.value.has(userId)) {
-    // 轮询等待缓存更新
-    return new Promise((resolve) => {
-      const checkInterval = setInterval(() => {
-        if (userCache.value.has(userId)) {
-          clearInterval(checkInterval);
-          resolve(userCache.value.get(userId) || '');
-        }
-      }, 100);
-      // 超时保护
-      setTimeout(() => {
-        clearInterval(checkInterval);
-        resolve('');
-      }, 5000);
-    });
-  }
-
-  // 标记为加载中
-  loadingUserIds.value.add(userId);
-
-  try {
-    const user = await getUser(userId);
-    const userName = user.nickName || user.userName || String(userId);
-    userCache.value.set(userId, userName);
-    return userName;
-  } catch (error) {
-    console.error(`加载用户信息失败 (userId: ${userId}):`, error);
-    return String(userId);
-  } finally {
-    loadingUserIds.value.delete(userId);
-  }
-}
-
-/**
- * 批量加载用户信息
- */
-async function loadUsersInfo(userIds: number[]) {
-  const uniqueIds = [...new Set(userIds)].filter(
-    (id) => !userCache.value.has(id) && !loadingUserIds.value.has(id),
-  );
-
-  if (uniqueIds.length === 0) return;
-
-  // 并行加载所有用户信息
-  await Promise.all(uniqueIds.map((id) => loadUserInfo(id)));
-}
-
-/**
- * 从表格数据中提取并加载所有录入人信息
- */
-async function loadCreatorsFromTableData() {
-  const userIds = tableData.value
-    .map((row) => row.creatorUserId)
-    .filter((id): id is number => id != null && id > 0);
-
-  if (userIds.length > 0) {
-    await loadUsersInfo(userIds);
-    // 触发响应式更新
-    tableData.value = [...tableData.value];
-  }
 }
 
 // 获取币别名称
@@ -210,21 +158,6 @@ function getFeeDetails(fee: any, row: SeFreiPriceOutDto): string[] {
   });
 
   return details;
-}
-
-/**
- * 获取录入人显示名称
- */
-function getCreatorUserName(row: SeFreiPriceOutDto): string {
-  if (row.creatorUserName) {
-    return row.creatorUserName;
-  }
-
-  if (row.creatorUserId && userCache.value.has(row.creatorUserId)) {
-    return userCache.value.get(row.creatorUserId) || '-';
-  }
-
-  return row.creatorUserId ? String(row.creatorUserId) : '-';
 }
 
 // 获取所有附加费名称（用逗号分隔）
@@ -369,9 +302,6 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
           // 更新表格数据用于生成动态列
           tableData.value = items;
 
-          // 加载录入人信息
-          await loadCreatorsFromTableData();
-
           return {
             items,
             totalCount: result.totalCount || 0,
@@ -438,7 +368,13 @@ function getCheckboxRecords() {
  * 编辑运价
  */
 function onEdit(row: SeFreiPriceOutDto, onlySurchargeFees = true) {
-  formModalApi.setData({ id: row.id, onlySurchargeFees }).open();
+  formModalApi
+    .setData({
+      id: row.id,
+      onlySurchargeFees,
+      permission: hasEditPermission.value,
+    })
+    .open();
 }
 
 /**
@@ -588,20 +524,26 @@ function onRefresh() {
  * 新增运价
  */
 function onCreate() {
-  editFormModalApi.setData({}).open();
+  editFormModalApi.setData({ permission: hasAddPermission.value }).open();
 }
 
 /**
  * 编辑运价（双击单元格触发）
  */
 function onEditByDblClick(row: SeFreiPriceOutDto) {
-  editFormModalApi.setData({ id: row.id }).open();
+  editFormModalApi
+    .setData({ id: row.id, permission: hasEditPermission.value })
+    .open();
 }
 
 /**
  * 批量新增运价
  */
 function onBatchAdd() {
+  if (!hasAddPermission.value) {
+    message.warning('您没有批量新增运价的权限');
+    return;
+  }
   batchAddModalApi.open();
 }
 
@@ -862,6 +804,26 @@ function getIsValidColor(row: SeFreiPriceOutDto): string {
 onMounted(async () => {
   getLines();
 
+  // 获取当前用户的功能权限
+  try {
+    loadingPermissions.value = true;
+    const currentUserId = userStore.userInfo?.userId;
+    if (currentUserId) {
+      const permissions = await getUserPermissions(Number(currentUserId));
+      userFunctionPermissions.value = permissions || [];
+      console.log(
+        '[功能权限] 当前用户的功能权限:',
+        userFunctionPermissions.value,
+      );
+    } else {
+      console.warn('[功能权限] 未获取到当前用户ID');
+    }
+  } catch (error) {
+    console.error('[功能权限] 获取用户功能权限失败:', error);
+  } finally {
+    loadingPermissions.value = false;
+  }
+
   // 获取当前用户的字段权限
   try {
     const maskedFieldsData = await getCurrentUserMaskedFields();
@@ -968,13 +930,6 @@ onUnmounted(() => {
       <template #currencyId="{ row }">
         <div class="px-2 py-1">
           {{ row.currency?.code || '-' }}
-        </div>
-      </template>
-
-      <!-- 录入人自定义渲染插槽 -->
-      <template #creatorUserName="{ row }">
-        <div class="px-2 py-1">
-          {{ getCreatorUserName(row) }}
         </div>
       </template>
 
@@ -1176,27 +1131,34 @@ onUnmounted(() => {
 
       <template #toolbar-tools>
         <Space class="shrink-0">
-          <!-- 新增按钮 -->
-          <Button v-access:code="perm.add" type="primary" @click="onCreate">
+          <!-- 新增按钮    v-access:code="perm.add"-->
+          <Button
+            type="primary"
+            :disabled="!hasAddPermission"
+            @click="onCreate"
+          >
             <Plus class="size-5" />
             {{ $t('ui.actionTitle.create') }}
           </Button>
 
           <!-- 批量编辑按钮 -->
-          <Button v-access:code="perm.add" @click="onBatchEditModal">
+          <Button :disabled="!hasEditPermission" @click="onBatchEditModal">
             <IconifyIcon icon="mdi:square-edit-outline" class="size-5" />
             {{ $t('seaExport.freightRate.update') }}
           </Button>
 
           <!-- 复制按钮 -->
-          <Button v-access:code="perm.add" @click="onCopy">
+          <Button :disabled="!hasAddPermission" @click="onCopy">
             <Copy class="size-5" />
             {{ $t('seaExport.freightRate.copy') }}
           </Button>
 
           <!-- 批量操作下拉菜单 -->
-          <Dropdown v-access:code="perm.edit">
-            <Button>
+          <Dropdown
+            v-access:code="perm.edit"
+            :disabled="!hasEditPermission && !hasDeletePermission"
+          >
+            <Button :disabled="!hasEditPermission && !hasDeletePermission">
               {{ $t('seaExport.freightRate.batchOperation') }}
               <ChevronDown class="ml-1 size-4" />
             </Button>
@@ -1206,18 +1168,31 @@ onUnmounted(() => {
                   {{ $t('seaExport.freightRate.create') }}
                 </Menu.Item>
                 <Menu.Divider /> -->
-                <Menu.Item key="batchAdd" @click="onBatchAdd">
+                <Menu.Item
+                  key="batchAdd"
+                  :disabled="!hasAddPermission"
+                  @click="onBatchAdd"
+                >
                   {{ $t('seaExport.freightRate.batchAdd') }}
                 </Menu.Item>
                 <Menu.Divider />
-                <Menu.Item key="edit" @click="onBatchEdit">
+                <Menu.Item
+                  key="edit"
+                  :disabled="!hasEditPermission"
+                  @click="onBatchEdit"
+                >
                   {{ $t('seaExport.freightRate.batchEdit') }}
                 </Menu.Item>
-                <Menu.Item key="recommend" @click="onBatchRecommend(true)">
+                <Menu.Item
+                  key="recommend"
+                  :disabled="!hasEditPermission"
+                  @click="onBatchRecommend(true)"
+                >
                   {{ $t('seaExport.freightRate.batchRecommend') }}
                 </Menu.Item>
                 <Menu.Item
                   key="cancelRecommend"
+                  :disabled="!hasEditPermission"
                   @click="onBatchRecommend(false)"
                 >
                   {{ $t('seaExport.freightRate.batchCancelRecommend') }}
@@ -1225,12 +1200,17 @@ onUnmounted(() => {
                 <Menu.Divider />
                 <Menu.Item
                   key="delete"
+                  :disabled="!hasDeletePermission"
                   class="text-red-600"
                   @click="onBatchDelete"
                 >
-                  <span class="text-red-600">{{
-                    $t('seaExport.freightRate.batchDelete')
-                  }}</span>
+                  <span
+                    :class="{
+                      'text-red-600': hasDeletePermission,
+                      'text-gray-400': !hasDeletePermission,
+                    }"
+                    >{{ $t('seaExport.freightRate.batchDelete') }}</span
+                  >
                 </Menu.Item>
               </Menu>
             </template>

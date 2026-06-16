@@ -733,11 +733,6 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: '录入人',
       width: 120,
       align: 'left',
-      showOverflow: true,
-      slots: { default: 'creatorUserName' },
-      formatter: ({ row }) => {
-        return row.creatorUserName || '-';
-      },
     },
     {
       field: 'creationTime',
