@@ -359,6 +359,7 @@ function getSelectedFees(): SelectedFeeItem[] {
           feeCodeId: fee.feeCodeId,
           feeCodeName: fee.feeCodeName,
           currencyId: fee.currencyId,
+          currencyCode: fee.currencyCode,
           currencyName: fee.currencyName,
           settlementId: fee.settlementId,
           settlementName: fee.settlementName,
@@ -378,10 +379,12 @@ function resolveSettlementCurrencyName(targetId: number): string {
   const fromCurrencies = currencies.value.find(
     (c) => c.currencyId === targetId,
   );
-  if (fromCurrencies) return fromCurrencies.currencyName;
+  if (fromCurrencies) return fromCurrencies.currencyCode;
   for (const order of orderList.value) {
     for (const fee of order.orderFees ?? []) {
-      if (fee.currencyId === targetId) return fee.currencyName ?? '';
+      if (fee.currencyId === targetId) {
+        return fee.currencyCode ?? fee.currencyName ?? '';
+      }
     }
   }
   if (currencySelectRef.value) {
@@ -404,12 +407,15 @@ function handleConfirm() {
     const diffCurrencies = new Map<number, string>();
     for (const fee of selected) {
       if (fee.currencyId !== curSettlementCurrencyId) {
-        diffCurrencies.set(fee.currencyId, fee.currencyName ?? '');
+        diffCurrencies.set(
+          fee.currencyId,
+          fee.currencyCode ?? fee.currencyName ?? '',
+        );
       }
     }
     if (diffCurrencies.size > 0) {
       pendingCurrencies.value = [...diffCurrencies.entries()].map(
-        ([currencyId, currencyName]) => ({ currencyId, currencyName }),
+        ([currencyId, currencyCode]) => ({ currencyId, currencyCode }),
       );
       settlementCurrencyName.value = resolveSettlementCurrencyName(
         curSettlementCurrencyId,
@@ -486,8 +492,8 @@ const feeColumns = [
   },
   {
     title: '币别',
-    dataIndex: 'currencyName',
-    key: 'currencyName',
+    dataIndex: 'currencyCode',
+    key: 'currencyCode',
     width: 80,
   },
   {
@@ -640,6 +646,12 @@ defineExpose({ open: openDrawer });
                   <Tag :color="feeRecord.paySide === 0 ? 'blue' : 'orange'">
                     {{ getPaySideLabel(feeRecord.paySide) }}
                   </Tag>
+                </template>
+                <template v-else-if="column.key === 'currencyCode'">
+                  <Tag v-if="feeRecord.currencyCode">
+                    {{ feeRecord.currencyCode }}
+                  </Tag>
+                  <span v-else>{{ feeRecord.currencyName }}</span>
                 </template>
                 <template v-else-if="column.key === 'amount'">
                   {{ formatAmount(feeRecord.amount) }}

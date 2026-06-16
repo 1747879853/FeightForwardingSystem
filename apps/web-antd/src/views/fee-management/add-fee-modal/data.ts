@@ -33,6 +33,7 @@ export interface SelectedFeeItem {
   feeCodeId: number;
   feeCodeName?: string;
   currencyId: number;
+  currencyCode?: string;
   currencyName?: string;
   settlementId: string;
   settlementName?: string;
@@ -55,7 +56,14 @@ export interface FeeRowData extends PaymentApplicationAdminApi.OrderFeeDto {
 /** 币别汇总信息（动态列用） */
 export interface CurrencyInfo {
   currencyId: number;
-  currencyName: string;
+  currencyCode: string;
+}
+
+function resolveCurrencyCode(fee: {
+  currencyCode?: string;
+  currencyName?: string;
+}): string {
+  return fee.currencyCode ?? fee.currencyName ?? '';
 }
 
 /** 搜索表单 schema */
@@ -221,14 +229,15 @@ export function collectCurrencies(
   const map = new Map<number, string>();
   for (const order of items) {
     for (const fee of order.orderFees ?? []) {
-      if (fee.currencyId && fee.currencyName && !map.has(fee.currencyId)) {
-        map.set(fee.currencyId, fee.currencyName);
+      const currencyCode = resolveCurrencyCode(fee);
+      if (fee.currencyId && currencyCode && !map.has(fee.currencyId)) {
+        map.set(fee.currencyId, currencyCode);
       }
     }
   }
-  return [...map.entries()].map(([currencyId, currencyName]) => ({
+  return [...map.entries()].map(([currencyId, currencyCode]) => ({
     currencyId,
-    currencyName,
+    currencyCode,
   }));
 }
 
@@ -243,13 +252,13 @@ export function buildDynamicCurrencyColumns(currencies: CurrencyInfo[]) {
   for (const c of currencies) {
     columns.push({
       field: `currency_${c.currencyId}_receive`,
-      title: `${c.currencyName}未收`,
+      title: `${c.currencyCode}未收`,
       width: 120,
       align: 'right',
     });
     columns.push({
       field: `currency_${c.currencyId}_pay`,
-      title: `${c.currencyName}未付`,
+      title: `${c.currencyCode}未付`,
       width: 120,
       align: 'right',
     });

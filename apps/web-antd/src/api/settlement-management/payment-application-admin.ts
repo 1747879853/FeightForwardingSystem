@@ -432,6 +432,8 @@ export namespace PaymentApplicationAdminApi {
     unRqstPaymentAmount: number;
     unSettledAmount: number;
     feeCodeName?: string;
+    /** 币别代码 */
+    currencyCode?: string;
     currencyName?: string;
     settlementName?: string;
     unInvoicedAmount: number;

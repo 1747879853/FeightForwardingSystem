@@ -33,7 +33,7 @@ function handleOk() {
   for (const c of props.currencies) {
     const rate = rateValues.get(c.currencyId);
     if (rate == null || rate <= 0) {
-      message.warning(`请填写 ${c.currencyName} 的汇率`);
+      message.warning(`请填写 ${c.currencyCode} 的汇率`);
       return;
     }
   }
@@ -69,7 +69,7 @@ function onRateChange(currencyId: number, val: number | null) {
           class="flex items-center gap-3"
         >
           <div class="flex w-52 items-center justify-end gap-1">
-            <Tag color="blue">{{ currency.currencyName }}</Tag>
+            <Tag color="blue">{{ currency.currencyCode }}</Tag>
             <span class="text-gray-400">→</span>
             <Tag color="green">{{ settlementCurrencyName || '结算币别' }}</Tag>
           </div>
