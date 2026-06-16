@@ -17,10 +17,13 @@ import {
 } from '#/api/system/enum-admin';
 import { clearEnumCache } from '#/utils/init-enum';
 import { $t } from '#/locales';
+import { createAbpPermission } from '#/utils/abp-permission';
 
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
 import Detail from './modules/detail.vue';
+
+const perm = createAbpPermission('Admin.Enumeration');
 
 const [FormModal, formModalApi] = useVbenModal({
   connectedComponent: Form,
@@ -207,7 +210,7 @@ function handleFormSuccess() {
       <template #toolbar-tools>
         <!-- 新增按钮 -->
         <Button
-          v-access:code="'Admin'"
+          v-access:code="perm.add"
           type="primary"
           class="mr-1"
           @click="onCreate"
@@ -216,7 +219,7 @@ function handleFormSuccess() {
           {{ $t('ui.actionTitle.create') }}
         </Button>
         <!-- 批量删除按钮 -->
-        <!-- <Button v-access:code="'Admin'" danger type="primary" @click="onBatchDelete">
+        <!-- <Button v-access:code="perm.delete" danger type="primary" @click="onBatchDelete">
           {{ $t('ui.actionTitle.batchDelete') }}
         </Button> -->
       </template>

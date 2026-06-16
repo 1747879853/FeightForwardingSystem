@@ -9,8 +9,18 @@ const routes: RouteRecordRaw[] = [
       icon: 'ion:settings-outline',
       order: 9997,
       title: $t('system.title'),
-      // 系统管理模块：拥有 Admin 或 Admin.Get 权限即可访问
-      authority: abpPageAuthority('Admin'),
+      // 系统管理模块：拥有任一子菜单权限即可显示
+      authority: abpPageAuthority([
+        'Admin.Team.User',
+        'Admin.Team.Role',
+        'Admin.UserDataPermission',
+        'Admin.UserPropPermission',
+        'Admin.UserTablePermission',
+        'Admin.Team.Organization',
+        'Admin.WorkFlow',
+        'Admin.Enumeration',
+        'Admin.Setting.ClearCache',
+      ]),
     },
     name: 'System',
     path: '/system',
@@ -46,9 +56,12 @@ const routes: RouteRecordRaw[] = [
           icon: 'mdi:shield-key',
           keepAlive: true,
           title: $t('system.permission.title'),
-          // 权限管理：拥有 Admin.Permission 或 Admin.Permission.Get 权限
-          // TODO后台还没有分出来权限菜单，暂时用用户权限范围字段代替
-          authority: abpPageAuthority('Admin.UserDataPermission'),
+          // 权限管理：拥有数据/属性/表格权限任一即可访问
+          authority: abpPageAuthority([
+            'Admin.UserDataPermission',
+            'Admin.UserPropPermission',
+            'Admin.UserTablePermission',
+          ]),
         },
         component: () => import('#/views/system/permission/list.vue'),
       },
@@ -80,7 +93,7 @@ const routes: RouteRecordRaw[] = [
           icon: 'mdi:source-branch',
           keepAlive: true,
           title: $t('system.workflow.title'),
-          authority: abpPageAuthority('Admin'),
+          authority: abpPageAuthority('Admin.WorkFlow'),
         },
         component: () => import('#/views/system/workflow/list.vue'),
       },
@@ -90,7 +103,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'mdi:source-branch',
           title: $t('system.workflow.createTitle'),
-          authority: abpPageAuthority('Admin'),
+          authority: abpPageAuthority('Admin.WorkFlow'),
           hideInMenu: true,
           activePath: '/system/workflow',
         },
@@ -102,7 +115,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'mdi:source-branch',
           title: $t('system.workflow.editTitle'),
-          authority: abpPageAuthority('Admin'),
+          authority: abpPageAuthority('Admin.WorkFlow'),
           hideInMenu: true,
           activePath: '/system/workflow',
         },
@@ -115,7 +128,7 @@ const routes: RouteRecordRaw[] = [
           icon: 'mdi:format-list-bulleted',
           keepAlive: true,
           title: $t('system.enumeration.title'),
-          authority: abpPageAuthority('Admin'),
+          authority: abpPageAuthority('Admin.Enumeration'),
         },
         component: () => import('#/views/system/enumeration/list.vue'),
       },
@@ -125,7 +138,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'mdi:database-outline',
           title: $t('system.cache.title'),
-          authority: abpPageAuthority('Admin'),
+          authority: abpPageAuthority('Admin.Setting.ClearCache'),
         },
         component: () => import('#/views/system/cache/index.vue'),
       },

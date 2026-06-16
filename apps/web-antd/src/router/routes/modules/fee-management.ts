@@ -13,6 +13,7 @@ const routes: RouteRecordRaw[] = [
       authority: abpPageAuthority([
         'Admin.OrderFee.Lock',
         'Admin.PaymentApplication',
+        'Admin.Statement',
       ]),
     },
     name: 'FeeManagement',
