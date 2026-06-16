@@ -44,6 +44,11 @@ import {
 import { getUser } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { useUserStore } from '@vben/stores';
+import {
+  editPropPermission,
+  getUserPermissions,
+} from '#/api/system/permission';
 
 import { useColumns, useGridFormSchema, formatSurchargeFees } from './data';
 import AddCtnModal from './modules/add-ctn-modal.vue';
@@ -60,6 +65,9 @@ import { FrightModule } from '#/api/system/permission';
 // 创建运价管理的 ABP 权限对象
 const perm = createAbpPermission('Admin.SeFreiPrice');
 
+// 获取用户store
+const userStore = useUserStore();
+
 // 存储表格数据用于生成动态列
 const tableData = ref<SeFreiPriceOutDto[]>([]);
 
@@ -72,6 +80,23 @@ const conditionComparisonTypeOptions = ref<any[]>([]);
 
 // 被屏蔽的字段列表（PascalCase 格式）
 const maskedFields = ref<string[]>([]);
+
+// 用户功能权限
+const userFunctionPermissions = ref<string[]>([]);
+const loadingPermissions = ref(false);
+
+// 计算属性：判断用户是否有特定权限
+const hasAddPermission = computed(() =>
+  userFunctionPermissions.value.includes('Admin.SeFreiPrice.Add'),
+);
+
+const hasEditPermission = computed(() =>
+  userFunctionPermissions.value.includes('Admin.SeFreiPrice.Edit'),
+);
+
+const hasDeletePermission = computed(() =>
+  userFunctionPermissions.value.includes('Admin.SeFreiPrice.Delete'),
+);
 
 // 获取费用名称
 function getFeeName(fee: any): string {
@@ -343,7 +368,13 @@ function getCheckboxRecords() {
  * 编辑运价
  */
 function onEdit(row: SeFreiPriceOutDto, onlySurchargeFees = true) {
-  formModalApi.setData({ id: row.id, onlySurchargeFees }).open();
+  formModalApi
+    .setData({
+      id: row.id,
+      onlySurchargeFees,
+      permission: hasEditPermission.value,
+    })
+    .open();
 }
 
 /**
@@ -493,20 +524,26 @@ function onRefresh() {
  * 新增运价
  */
 function onCreate() {
-  editFormModalApi.setData({}).open();
+  editFormModalApi.setData({ permission: hasAddPermission.value }).open();
 }
 
 /**
  * 编辑运价（双击单元格触发）
  */
 function onEditByDblClick(row: SeFreiPriceOutDto) {
-  editFormModalApi.setData({ id: row.id }).open();
+  editFormModalApi
+    .setData({ id: row.id, permission: hasEditPermission.value })
+    .open();
 }
 
 /**
  * 批量新增运价
  */
 function onBatchAdd() {
+  if (!hasAddPermission.value) {
+    message.warning('您没有批量新增运价的权限');
+    return;
+  }
   batchAddModalApi.open();
 }
 
@@ -766,6 +803,26 @@ function getIsValidColor(row: SeFreiPriceOutDto): string {
 
 onMounted(async () => {
   getLines();
+
+  // 获取当前用户的功能权限
+  try {
+    loadingPermissions.value = true;
+    const currentUserId = userStore.userInfo?.userId;
+    if (currentUserId) {
+      const permissions = await getUserPermissions(Number(currentUserId));
+      userFunctionPermissions.value = permissions || [];
+      console.log(
+        '[功能权限] 当前用户的功能权限:',
+        userFunctionPermissions.value,
+      );
+    } else {
+      console.warn('[功能权限] 未获取到当前用户ID');
+    }
+  } catch (error) {
+    console.error('[功能权限] 获取用户功能权限失败:', error);
+  } finally {
+    loadingPermissions.value = false;
+  }
 
   // 获取当前用户的字段权限
   try {
@@ -1074,27 +1131,34 @@ onUnmounted(() => {
 
       <template #toolbar-tools>
         <Space class="shrink-0">
-          <!-- 新增按钮 -->
-          <Button v-access:code="perm.add" type="primary" @click="onCreate">
+          <!-- 新增按钮    v-access:code="perm.add"-->
+          <Button
+            type="primary"
+            :disabled="!hasAddPermission"
+            @click="onCreate"
+          >
             <Plus class="size-5" />
             {{ $t('ui.actionTitle.create') }}
           </Button>
 
           <!-- 批量编辑按钮 -->
-          <Button v-access:code="perm.add" @click="onBatchEditModal">
+          <Button :disabled="!hasEditPermission" @click="onBatchEditModal">
             <IconifyIcon icon="mdi:square-edit-outline" class="size-5" />
             {{ $t('seaExport.freightRate.update') }}
           </Button>
 
           <!-- 复制按钮 -->
-          <Button v-access:code="perm.add" @click="onCopy">
+          <Button :disabled="!hasAddPermission" @click="onCopy">
             <Copy class="size-5" />
             {{ $t('seaExport.freightRate.copy') }}
           </Button>
 
           <!-- 批量操作下拉菜单 -->
-          <Dropdown v-access:code="perm.edit">
-            <Button>
+          <Dropdown
+            v-access:code="perm.edit"
+            :disabled="!hasEditPermission && !hasDeletePermission"
+          >
+            <Button :disabled="!hasEditPermission && !hasDeletePermission">
               {{ $t('seaExport.freightRate.batchOperation') }}
               <ChevronDown class="ml-1 size-4" />
             </Button>
@@ -1104,18 +1168,31 @@ onUnmounted(() => {
                   {{ $t('seaExport.freightRate.create') }}
                 </Menu.Item>
                 <Menu.Divider /> -->
-                <Menu.Item key="batchAdd" @click="onBatchAdd">
+                <Menu.Item
+                  key="batchAdd"
+                  :disabled="!hasAddPermission"
+                  @click="onBatchAdd"
+                >
                   {{ $t('seaExport.freightRate.batchAdd') }}
                 </Menu.Item>
                 <Menu.Divider />
-                <Menu.Item key="edit" @click="onBatchEdit">
+                <Menu.Item
+                  key="edit"
+                  :disabled="!hasEditPermission"
+                  @click="onBatchEdit"
+                >
                   {{ $t('seaExport.freightRate.batchEdit') }}
                 </Menu.Item>
-                <Menu.Item key="recommend" @click="onBatchRecommend(true)">
+                <Menu.Item
+                  key="recommend"
+                  :disabled="!hasEditPermission"
+                  @click="onBatchRecommend(true)"
+                >
                   {{ $t('seaExport.freightRate.batchRecommend') }}
                 </Menu.Item>
                 <Menu.Item
                   key="cancelRecommend"
+                  :disabled="!hasEditPermission"
                   @click="onBatchRecommend(false)"
                 >
                   {{ $t('seaExport.freightRate.batchCancelRecommend') }}
@@ -1123,12 +1200,17 @@ onUnmounted(() => {
                 <Menu.Divider />
                 <Menu.Item
                   key="delete"
+                  :disabled="!hasDeletePermission"
                   class="text-red-600"
                   @click="onBatchDelete"
                 >
-                  <span class="text-red-600">{{
-                    $t('seaExport.freightRate.batchDelete')
-                  }}</span>
+                  <span
+                    :class="{
+                      'text-red-600': hasDeletePermission,
+                      'text-gray-400': !hasDeletePermission,
+                    }"
+                    >{{ $t('seaExport.freightRate.batchDelete') }}</span
+                  >
                 </Menu.Item>
               </Menu>
             </template>

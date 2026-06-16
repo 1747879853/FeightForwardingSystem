@@ -34,6 +34,7 @@ const emits = defineEmits(['success']);
 
 const formData = ref<SeFreiPriceOutDto>();
 const id = ref<string>();
+const hasPermission = ref<boolean>(false); // 是否有编辑权限（从父组件传入）
 const isEditMode = computed(() => !!id.value);
 
 // 时间模式控制（用于独立日期模块）
@@ -584,6 +585,7 @@ const [Modal, modalApi] = useVbenModal({
     await loadSelectData();
 
     const data = modalApi.getData<any>();
+    hasPermission.value = data.permission ?? false; // 从传入数据设置权限
     if (data?.id) {
       // 编辑模式
       id.value = data.id;
@@ -603,7 +605,7 @@ const [Modal, modalApi] = useVbenModal({
         validTimeEnd: '',
         currencyId: defaultCurrencyId.value || 0, // 默认设置为 USD，如果未找到则为 0
         creationTime: '',
-        isValid: true,
+        isValid: 0, // 0=已生效
         seFreiPriceCtns: defaultCtns,
         seFreiPriceFees: [],
       } as SeFreiPriceOutDto;
@@ -2225,7 +2227,9 @@ onMounted(() => {
       <!-- 底部按钮 -->
       <div class="form-footer">
         <Button @click="modalApi.close">取消</Button>
-        <Button type="primary" @click="handleSubmit">确定</Button>
+        <Button type="primary" @click="handleSubmit" :disabled="!hasPermission"
+          >确定</Button
+        >
       </div>
     </div>
   </Modal>
