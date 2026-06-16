@@ -942,7 +942,7 @@ function formatMonth(val: string | undefined | null): string {
         </div>
 
         <!-- 费用明细表格 -->
-        <Card size="small" class="mt-3">
+        <Card size="small">
           <template #title>
             <div class="flex items-center justify-between">
               <span class="font-semibold">{{ t('feeDetail') }}</span>
@@ -1155,7 +1155,6 @@ function formatMonth(val: string | undefined | null): string {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px;
 }
 
 .action-bar {

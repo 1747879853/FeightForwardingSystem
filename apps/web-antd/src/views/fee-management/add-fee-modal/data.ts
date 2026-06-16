@@ -103,6 +103,7 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
       component: 'RangePicker',
       fieldName: 'ETDRange',
       label: '业务日期',
+      formItemClass: 'col-span-2',
       componentProps: {
         placeholder: ['开始日期', '结束日期'],
         allowClear: true,

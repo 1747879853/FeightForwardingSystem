@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-16] [添加费用抽屉搜索布局与申请页内边距优化](./changelogs/change-log-2026-06-16-payment-application-add-fee-search-layout.md)
 - [2026-06-16] [新建付费申请自动弹出添加费用抽屉](./changelogs/change-log-2026-06-16-payment-application-add-auto-fee-drawer.md)
 - [2026-06-15] [模块权限搜索后保存丢失未展示权限修复](./changelogs/change-log-2026-06-15-permission-search-save-merge.md)
 - [2026-06-14] [收费结算表单银行流水摘要与结算进度](./changelogs/change-log-2026-06-14-receive-settlement-bank-summary.md)

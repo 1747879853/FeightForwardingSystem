@@ -19,6 +19,7 @@ import {
 import { CurrencySelect } from '#/adapter/component';
 import { useVbenForm } from '#/adapter/form';
 import { getOrderFeeGroupAsync } from '#/api/settlement-management/payment-application-admin';
+import { $t } from '#/locales';
 
 import ExchangeRateModal from './exchange-rate-modal.vue';
 
@@ -78,13 +79,49 @@ const throttledAutoSearch = useThrottleFn(
 const [SearchForm, searchFormApi] = useVbenForm({
   commonConfig: {
     componentProps: { class: 'w-full' },
+    labelWidth: 64,
   },
   layout: 'horizontal',
   schema: useAddFeeSearchSchema(),
-  showDefaultActions: false,
+  showDefaultActions: true,
+  actionLayout: 'inline',
+  actionWrapperClass: 'col-span-2 col-start-4 justify-end',
+  actionPosition: 'right',
+  submitButtonOptions: {
+    content: $t('common.query'),
+  },
   submitOnChange: false,
   compact: true,
-  wrapperClass: 'grid-cols-4',
+  wrapperClass: 'grid-cols-5',
+  handleSubmit: async (values) => {
+    if (!values.SettlementId) {
+      message.warning('请先选择结算单位');
+      return;
+    }
+    currentPage.value = 1;
+    await checkSearchChanged();
+    await fetchData(values);
+  },
+  handleReset: async () => {
+    const hasFees = (drawerProps.value.selectedFeeIds?.length ?? 0) > 0;
+    const preservedSettlementId = hasFees
+      ? drawerProps.value.settlementId
+      : undefined;
+    await searchFormApi.resetForm();
+    clearSelection();
+    lastSearchSnapshot = '';
+    orderList.value = [];
+    totalCount.value = 0;
+    currencies.value = [];
+    tableRows.value = [];
+    expandedRowKeys.value = [];
+    currentPage.value = 1;
+    if (preservedSettlementId) {
+      searchFormApi.setValues({ SettlementId: preservedSettlementId });
+      await nextTick();
+      await fetchData(await searchFormApi.getValues());
+    }
+  },
   handleValuesChange: (values) => {
     throttledAutoSearch(values);
   },
@@ -114,6 +151,8 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
   await nextTick();
   if (props.settlementId) {
     searchFormApi.setValues({ SettlementId: props.settlementId });
+    await nextTick();
+    await fetchData(await searchFormApi.getValues());
   }
   const hasFees = (props.selectedFeeIds?.length ?? 0) > 0;
   searchFormApi.updateSchema([
@@ -140,17 +179,6 @@ function resetState() {
 function clearSelection() {
   selectionMap.clear();
   appliedAmountMap.clear();
-}
-
-async function handleSearch() {
-  const values = await searchFormApi.getValues();
-  if (!values.SettlementId) {
-    message.warning('请先选择结算单位');
-    return;
-  }
-  currentPage.value = 1;
-  await checkSearchChanged();
-  await fetchData(values);
 }
 
 async function fetchData(formValues?: Record<string, any>) {
@@ -568,11 +596,6 @@ defineExpose({ open: openDrawer });
     <!-- 搜索区域 -->
     <div class="mb-4">
       <SearchForm />
-      <div class="mt-2 flex justify-end">
-        <Button type="primary" :loading="loading" @click="handleSearch">
-          查询
-        </Button>
-      </div>
     </div>
 
     <!-- 主体区域 -->
