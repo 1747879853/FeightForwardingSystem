@@ -15,3 +15,4 @@
 
 - 请将 `src/assets/img/jht/` 内 `logo.png`、`logo-text.png`（及可选 `favicon.png`）替换为金海通正式素材；当前为占位拷贝，仅保证可编译。
 - 修改 `.env.jht` 后需重新执行打包；本地调试金海通可用 `pnpm dev:jht` 或 `pnpm dev:antd:jht`。
+- **禁止**直接执行 `pnpm vite build --mode jht`：`_app.config.js` 会误读 `.env.production`，API 指向浩瀚远洋 `118.190.1.4:82`。须用 `pnpm build:jht` 或 `pnpm build:antd:jht`。详见 [解析日志](../parsing-logs/parse-log-2026-06-16-jht-build-mode-api-url-mismatch.md)。

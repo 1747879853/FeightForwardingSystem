@@ -45,6 +45,32 @@
 | `.env.jht`         | 津海通                                         |
 | `.env.production`  | 与 `hhyy` 保持一致（兼容旧 `production` mode） |
 
+### 生产 API 地址（`VITE_GLOB_API_URL`）
+
+| 品牌 | env 文件 | 当前 API |
+| --- | --- | --- |
+| 津海通 (jht) | `.env.jht` | `http://43.138.14.122:82/api` |
+| 浩瀚远洋 (hhyy) | `.env.hhyy` / `.env.production` | `http://118.190.1.4:82/api` |
+
+运行时生产环境通过 `dist/_app.config.js` 注入 API（`useAppConfig` → `window._VBEN_ADMIN_PRO_APP_CONF_`），**不是** `import.meta.env`。打包后可用以下命令校验：
+
+```powershell
+Get-Content dist/_app.config.js
+```
+
+### ⚠️ 打包命令与 API 加载（必读）
+
+**必须通过 `package.json` script 打包**，不可直接调用 `pnpm vite build --mode jht`：
+
+| 打包方式 | `_app.config.js` 实际读取的 env | jht 打包结果 |
+| --- | --- | --- |
+| `pnpm build:jht` / `pnpm build:antd:jht` ✅ | `.env.jht` | API = 43.138.14.122:82 |
+| `pnpm vite build --mode jht` ❌ | `.env.production`（mode 解析失败回退） | API = 118.190.1.4:82 |
+
+原因：`internal/vite-config` 生成 `_app.config.js` 时，`getConfFiles()` 从 `npm_lifecycle_script` 解析 `--mode`，绕过 npm script 直接调 vite 时解析失败，回退到 `production`。
+
+详见 [解析日志：jht 打包 API 地址误用 production 环境](../parsing-logs/parse-log-2026-06-16-jht-build-mode-api-url-mismatch.md)。
+
 ## 缓存隔离
 
 各品牌 `VITE_APP_NAMESPACE` 不同（如 `vben-web-antd-hhyy`），Pinia、偏好设置及业务 localStorage 均不会串库。切换品牌后若界面异常，可清空当前站点 localStorage。
@@ -69,3 +95,9 @@
 - 仅缓存 `aliyuncs.com` 的 `GET` 资源；缓存 Key = `origin + pathname`（去掉签名参数）。
 - 更新 OSS 文件后：改 SW 内 `CACHE_VERSION` 并重新部署，或更换 objectName。
 - 详见 [OSS Service Worker 缓存变更日志](../changelogs/change-log-2026-06-01-oss-service-worker-cache.md)。
+
+## 变更与解析日志
+
+| 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
+| :-- | :-- | :-- | :-- |
+| 2026-06-16 | `Parsing` | 无 | 解析直接执行 `pnpm vite build --mode jht` 导致 `_app.config.js` 误读 `.env.production`、API 指向 118.190.1.4:82 的根因；明确必须通过 `pnpm build:jht` 打包。 |
