@@ -7,27 +7,57 @@ import type { GenerateNumAdminApi } from '#/api/system/base-data/generate-num-ad
 import { z } from '#/adapter/form';
 import { $t } from '#/locales';
 
+/** 编号规则可选表名（Entity.Field） */
+const TABLE_NAME_VALUES = [
+  'SeaExport.CommissionNum',
+  'Statement.StatementNum',
+  'PaymentApplication.ApplicationNo',
+  'PaymentSettlement.SettlementNo',
+  'ReceiveSettlement.SettlementNo',
+  'BankStatement.BankStatementNo',
+] as const;
+
+type TableNameValue = (typeof TABLE_NAME_VALUES)[number];
+
+const TABLE_NAME_I18N_PREFIX = 'system.basicData.generateNum.tableNameOptions';
+
+/** 根据表名值获取 i18n 路径 */
+function getTableNameI18nKey(value: string) {
+  return `${TABLE_NAME_I18N_PREFIX}.${value}`;
+}
+
+/** 根据表名值获取显示文案 */
+export function getTableNameLabel(value?: string) {
+  if (!value) return '';
+  const normalized = value.trim();
+  if (!TABLE_NAME_VALUES.includes(normalized as TableNameValue)) {
+    return normalized;
+  }
+  const label = $t(getTableNameI18nKey(normalized));
+  return label === getTableNameI18nKey(normalized) ? normalized : label;
+}
+
+/** 获取表名下拉选项 */
+export function getTableNameOptions() {
+  return TABLE_NAME_VALUES.map((value) => ({
+    value,
+    label: getTableNameLabel(value),
+  }));
+}
+
 /**
  * 获取表格搜索表单的字段配置
  */
 export function useGridFormSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'Input',
-      fieldName: 'name',
-      label: $t('system.basicData.generateNum.name'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.input'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'Input',
+      component: 'Select',
       fieldName: 'tableName',
       label: $t('system.basicData.generateNum.tableName'),
       componentProps: {
-        placeholder: $t('ui.placeholder.input'),
         allowClear: true,
+        options: getTableNameOptions(),
+        placeholder: $t('ui.placeholder.select'),
       },
     },
     {
@@ -48,50 +78,21 @@ export function useGridFormSchema(): VbenFormSchema[] {
 export function useFormSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'Input',
-      fieldName: 'name',
-      label: $t('system.basicData.generateNum.name'),
-      componentProps: {
-        maxLength: 100,
-      },
-      rules: z
-        .string()
-        .trim()
-        .min(
-          1,
-          $t('ui.formRules.required', [
-            $t('system.basicData.generateNum.name'),
-          ]),
-        )
-        .max(
-          100,
-          $t('ui.formRules.maxLength', [
-            $t('system.basicData.generateNum.name'),
-            100,
-          ]),
-        ),
-    },
-    {
-      component: 'Input',
+      component: 'Select',
       fieldName: 'tableName',
       label: $t('system.basicData.generateNum.tableName'),
       componentProps: {
-        maxLength: 200,
+        allowClear: false,
+        class: 'w-full',
+        options: getTableNameOptions(),
+        placeholder: $t('ui.placeholder.select'),
       },
       rules: z
         .string()
-        .trim()
         .min(
           1,
           $t('ui.formRules.required', [
             $t('system.basicData.generateNum.tableName'),
-          ]),
-        )
-        .max(
-          200,
-          $t('ui.formRules.maxLength', [
-            $t('system.basicData.generateNum.tableName'),
-            200,
           ]),
         ),
     },
@@ -102,9 +103,7 @@ export function useFormSchema(): VbenFormSchema[] {
       defaultValue: 'none',
       componentProps: {
         allowClear: false,
-        style: {
-          width: '200px',
-        },
+        class: 'w-full',
         options: [
           {
             label: $t('system.basicData.generateNum.applyScopeOptions.none'),
@@ -125,6 +124,7 @@ export function useFormSchema(): VbenFormSchema[] {
       component: 'OrganizationSelect',
       fieldName: 'orgId',
       label: $t('system.basicData.generateNum.orgId'),
+      formItemClass: 'col-span-2',
       componentProps: {
         allowClear: true,
         appendCodeOnDisplayName: false,
@@ -139,6 +139,7 @@ export function useFormSchema(): VbenFormSchema[] {
       component: 'UserSelect',
       fieldName: 'generateNumUserIds',
       label: $t('system.basicData.generateNum.generateNumUsers'),
+      formItemClass: 'col-span-2',
       componentProps: {
         allowClear: true,
         mode: 'multiple',
@@ -160,14 +161,10 @@ export function useColumns(
 ): VxeTableGridOptions<GenerateNumAdminApi.GenerateNumDto>['columns'] {
   return [
     {
-      field: 'name',
-      title: $t('system.basicData.generateNum.name'),
-      minWidth: 150,
-    },
-    {
       field: 'tableName',
       title: $t('system.basicData.generateNum.tableName'),
-      minWidth: 180,
+      minWidth: 200,
+      formatter: ({ cellValue }) => getTableNameLabel(cellValue),
     },
     {
       field: 'orgName',
@@ -196,8 +193,8 @@ export function useColumns(
       align: 'right',
       cellRender: {
         attrs: {
-          nameField: 'name',
-          nameTitle: $t('system.basicData.generateNum.name'),
+          nameField: 'tableNameDisplay',
+          nameTitle: $t('system.basicData.generateNum.tableName'),
           onClick: onActionClick,
         },
         name: 'CellOperation',

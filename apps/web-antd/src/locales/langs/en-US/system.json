@@ -289,7 +289,7 @@
       "list": "Number Generation List",
       "name": "Number Rule",
       "keyword": "Keyword",
-      "tableName": "Table",
+      "tableName": "Number Rule",
       "applyScope": "Apply Scope",
       "orgId": "Applicable Organization",
       "generateNumUsers": "Applicable Users",
@@ -312,6 +312,26 @@
         "none": "No Restriction",
         "org": "By Organization",
         "user": "By User"
+      },
+      "tableNameOptions": {
+        "SeaExport": {
+          "CommissionNum": "Sea Export Commission No."
+        },
+        "Statement": {
+          "StatementNum": "Statement No."
+        },
+        "PaymentApplication": {
+          "ApplicationNo": "Payment Application No."
+        },
+        "PaymentSettlement": {
+          "SettlementNo": "Payment Settlement No."
+        },
+        "ReceiveSettlement": {
+          "SettlementNo": "Receive Settlement No."
+        },
+        "BankStatement": {
+          "BankStatementNo": "Bank Statement No."
+        }
       }
     },
     "exchangeRate": {

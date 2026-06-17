@@ -25,7 +25,7 @@ import {
 } from '#/api/system/base-data/generate-num-admin';
 import { $t } from '#/locales';
 
-import { useFormSchema } from '../data';
+import { useFormSchema, getTableNameLabel } from '../data';
 
 const emit = defineEmits<{ success: [] }>();
 const formData = ref<GenerateNumAdminApi.GenerateNumDto>();
@@ -77,14 +77,17 @@ let nextKey = 0;
 
 const getTitle = computed(() => {
   return formData.value?.id
-    ? $t('ui.actionTitle.edit', [$t('system.basicData.generateNum.name')])
-    : $t('ui.actionTitle.create', [$t('system.basicData.generateNum.name')]);
+    ? $t('ui.actionTitle.edit', [$t('system.basicData.generateNum.tableName')])
+    : $t('ui.actionTitle.create', [
+        $t('system.basicData.generateNum.tableName'),
+      ]);
 });
 
 const [Form, formApi] = useVbenForm({
   layout: 'vertical',
   schema: useFormSchema(),
   showDefaultActions: false,
+  wrapperClass: 'grid-cols-2',
 });
 
 const addRule = () => {
@@ -227,10 +230,12 @@ const [Modal, modalApi] = useVbenModal({
     };
 
     try {
+      const ruleName =
+        getTableNameLabel(values.tableName) || values.tableName || '';
       if (formData.value?.id) {
         await editGenerateNum({
           id: formData.value.id,
-          name: values.name,
+          name: ruleName,
           tableName: values.tableName,
           orgId: submitOrgId,
           generateNumRules: mapRulesToEdit(),
@@ -238,7 +243,7 @@ const [Modal, modalApi] = useVbenModal({
         });
       } else {
         await addGenerateNum({
-          name: values.name,
+          name: ruleName,
           tableName: values.tableName,
           orgId: submitOrgId,
           generateNumRules: mapRulesToAdd(),
@@ -272,7 +277,6 @@ const [Modal, modalApi] = useVbenModal({
           : false;
         const applyScope = hasOrg ? 'org' : hasUsers ? 'user' : 'none';
         formApi.setValues({
-          name: detail.name,
           tableName: detail.tableName,
           applyScope,
           orgId: detail.orgId,
@@ -325,7 +329,7 @@ const [Modal, modalApi] = useVbenModal({
         <table class="w-full min-w-[500px] text-sm">
           <thead>
             <tr class="border-b bg-gray-50">
-              <th class="px-3 py-2 text-left font-medium">
+              <th class="w-[180px] px-3 py-2 text-left font-medium">
                 {{ $t('system.basicData.generateNum.generateEnum') }}
               </th>
               <th class="px-3 py-2 text-left font-medium">
@@ -349,7 +353,7 @@ const [Modal, modalApi] = useVbenModal({
               :key="row.key"
               class="border-b last:border-b-0"
             >
-              <td class="px-3 py-2">
+              <td class="w-[180px] px-3 py-2">
                 <Select
                   v-model:value="row.generateEnum"
                   :options="generateEnumOptions"

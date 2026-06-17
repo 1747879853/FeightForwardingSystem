@@ -289,7 +289,7 @@
       "list": "编号生成列表",
       "name": "编号规则",
       "keyword": "关键字",
-      "tableName": "表名",
+      "tableName": "编号规则",
       "applyScope": "适用范围",
       "orgId": "适用组织",
       "generateNumUsers": "适用用户",
@@ -312,6 +312,26 @@
         "none": "不限制",
         "org": "指定组织",
         "user": "指定用户"
+      },
+      "tableNameOptions": {
+        "SeaExport": {
+          "CommissionNum": "海运出口委托编号"
+        },
+        "Statement": {
+          "StatementNum": "对账单号"
+        },
+        "PaymentApplication": {
+          "ApplicationNo": "付费申请单号"
+        },
+        "PaymentSettlement": {
+          "SettlementNo": "付费结算单号"
+        },
+        "ReceiveSettlement": {
+          "SettlementNo": "收费结算单号"
+        },
+        "BankStatement": {
+          "BankStatementNo": "银行流水号"
+        }
       }
     },
     "exchangeRate": {

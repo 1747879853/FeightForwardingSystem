@@ -14,7 +14,7 @@ import {
 } from '#/api/system/base-data/generate-num-admin';
 import { $t } from '#/locales';
 
-import { useColumns, useGridFormSchema } from './data';
+import { useColumns, useGridFormSchema, getTableNameLabel } from './data';
 import Form from './modules/form.vue';
 
 const [FormModal, formModalApi] = useVbenModal({
@@ -30,9 +30,13 @@ const handleEdit = (row: GenerateNumAdminApi.GenerateNumDto) => {
   formModalApi.setData({ id: row.id }).open();
 };
 
+const getRowDisplayName = (row: GenerateNumAdminApi.GenerateNumDto) =>
+  getTableNameLabel(row.tableName) || row.name || String(row.id);
+
 const handleDelete = async (row: GenerateNumAdminApi.GenerateNumDto) => {
+  const displayName = getRowDisplayName(row);
   const hideLoading = message.loading({
-    content: $t('ui.actionMessage.deleting', [row.name || String(row.id)]),
+    content: $t('ui.actionMessage.deleting', [displayName]),
     duration: 0,
     key: 'action_process_msg',
   });
@@ -40,9 +44,7 @@ const handleDelete = async (row: GenerateNumAdminApi.GenerateNumDto) => {
   try {
     await deleteGenerateNum(row.id);
     message.success({
-      content: $t('ui.actionMessage.deleteSuccess', [
-        row.name || String(row.id),
-      ]),
+      content: $t('ui.actionMessage.deleteSuccess', [displayName]),
       key: 'action_process_msg',
     });
     handleRefresh();
@@ -87,11 +89,19 @@ const [Grid, gridApi] = useVbenVxeGrid<GenerateNumAdminApi.GenerateNumDto>({
           formValues: Record<string, any>,
         ) => {
           const skipCount = (page.currentPage - 1) * page.pageSize;
-          return await getGenerateNumPagedList({
+          const result = await getGenerateNumPagedList({
             skipCount,
             maxResultCount: page.pageSize,
             ...formValues,
           });
+          return {
+            ...result,
+            items: (result.items ?? []).map((item) => ({
+              ...item,
+              tableNameDisplay:
+                getTableNameLabel(item.tableName) || item.tableName,
+            })),
+          };
         },
       },
     },
@@ -118,7 +128,7 @@ const handleRefresh = () => {
           <Plus class="size-5" />
           {{
             $t('ui.actionTitle.create', [
-              $t('system.basicData.generateNum.name'),
+              $t('system.basicData.generateNum.tableName'),
             ])
           }}
         </Button>

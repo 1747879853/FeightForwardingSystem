@@ -2,7 +2,7 @@
 title: 编号规则
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-06-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -35,7 +35,7 @@ last_updated: 2026-05-16
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **编码** | 基础资料唯一或半唯一识别字段。 | `src/views/system/basic-data/GenerateNumAdmin/data.ts` | **触发/依赖：** 被业务单据或下拉组件引用。 | 唯一性和格式以后端为准。 |
+| **表名** | 编号规则绑定的业务实体字段，决定该规则应用于哪类单号。 | `GenerateNumAdmin/data.ts` 固定下拉 | **触发/依赖：** 与后端 `Entity.Field` 约定一致，如 `SeaExport.CommissionNum`。 | 必选，仅允许预置 6 项。 |
 | **名称** | 给业务用户识别的显示值。 | `src/views/system/basic-data/GenerateNumAdmin/data.ts` | **触发/依赖：** 列表、表单、下拉组件共同展示。 | 通常不能为空。 |
 | **启用状态** | 控制资料是否可被业务选择。 | `src/api/system/base-data/*.ts` | **触发/依赖：** 禁用后不应继续作为新业务选择项。 | 历史单据展示需兼容旧值。 |
 
@@ -47,4 +47,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-17 | `Feature` | 表名字段由自由输入改为固定下拉，可选 6 种业务单号（海运出口委托、对账单、付费申请、付费结算、收费结算、银行流水）。 | 选项值格式为 `Entity.Field`，与后端 AppService 约定一致。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/generate-num` 对应组件 `src/views/system/basic-data/GenerateNumAdmin/list.vue`，权限口径为 Admin.GenerateNum / Admin.GenerateNum.Get。 |
