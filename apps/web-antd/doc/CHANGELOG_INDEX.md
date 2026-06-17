@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-17] [编号规则配置卡片交互与实时预览](./changelogs/change-log-2026-06-17-generate-num-rule-card-preview.md)
 - [2026-06-17] [海运出口新建页指定字段英文自动转大写](./changelogs/change-log-2026-06-17-sea-export-english-uppercase-input.md)
 - [2026-06-16] [模块权限文案与左侧菜单对齐](./changelogs/change-log-2026-06-16-permission-menu-label-alignment.md)
 - [2026-06-16] [添加费用抽屉搜索布局与申请页内边距优化](./changelogs/change-log-2026-06-16-payment-application-add-fee-search-layout.md)
