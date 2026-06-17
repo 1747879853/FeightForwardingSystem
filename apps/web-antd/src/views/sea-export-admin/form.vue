@@ -59,6 +59,7 @@ import { getUser, UserAttribute } from '#/api/system/user-admin';
 import { parseSeaExportUserAttribute } from '#/views/system/user/data';
 import { $t } from '#/locales';
 import { buildAttachmentUrl } from '#/utils';
+import { toEnglishUpperCase } from '#/utils/english-upper-case';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
@@ -1033,7 +1034,7 @@ const handlePortSelectPortName = (
   if (!remarkField || !portName) return;
   const api = portFormApiRef.current;
   if (!api) return;
-  void api.setFieldValue(remarkField, portName);
+  void api.setFieldValue(remarkField, toEnglishUpperCase(portName));
 };
 
 /** 右侧表单：港口信息 */
@@ -1845,6 +1846,24 @@ const parseNumberFromText = (value: unknown) => {
   const parsed = Number(matched[0]);
   return Number.isFinite(parsed) ? parsed : undefined;
 };
+const ENGLISH_UPPER_CASE_FIELDS = new Set([
+  'marks',
+  'goodsDes',
+  'shipperContent',
+  'consigneeContent',
+  'notifierContent',
+  'secondNotifierContent',
+  'podAgentContent',
+  'receivePortRemark',
+  'polRemark',
+  'poT1Remark',
+  'poT2Remark',
+  'podRemark',
+  'deliverPortRemark',
+  'vessel',
+  'innerVoyno',
+  'mblNum',
+]);
 const normalizeAiFieldValue = (field: string, value: unknown) => {
   if (AI_RECOGNIZE_DATE_FIELDS.has(field)) {
     return toDayjs(value as string | undefined);
@@ -1852,7 +1871,10 @@ const normalizeAiFieldValue = (field: string, value: unknown) => {
   if (field === 'pkgs' || field === 'kgs' || field === 'cbm') {
     return parseNumberFromText(value);
   }
-  if (field === 'mblNum' || field === 'bookingNum' || field === 'innerVoyno') {
+  if (ENGLISH_UPPER_CASE_FIELDS.has(field) && typeof value === 'string') {
+    return toEnglishUpperCase(value.trim());
+  }
+  if (field === 'bookingNum') {
     return typeof value === 'string' ? value.trim() : value;
   }
   return value;

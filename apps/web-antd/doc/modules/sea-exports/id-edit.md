@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-06-07
+last_updated: 2026-06-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -97,6 +97,7 @@ last_updated: 2026-06-07
 | 2026-06-07 | `Fix` | 服务流水线「取消完成」增加二次确认，提示所有服务项目将重新生成任务。 | `confirmCancelCompleteServiceType` 复用 `SERVICE_TASK_REGENERATE_CONFIRM_SUFFIX` 文案。 |
 | 2026-06-07 | `Fix` | 配置服务弹窗任意勾选变化即展示提示并二次确认，不再仅限取消已完成节点。 | `serviceTypeModalDraftChanged` 对比草稿与当前勾选；无变化直接关弹窗。 |
 | 2026-06-07 | `Feature` | 编辑态配置服务弹窗点「确定」后自动保存；二次确认提示「编辑或取消任意服务项目后所有服务项目都会重新生成任务」。 | `applyServiceTypeModalDraftAndSave` 应用草稿后复用 `handleSubmit`；新建页仍仅应用草稿。 |
+| 2026-06-17 | `Feature` | 与新建页共用提单类字段英文自动转大写（唛头、相关方备注、港口备注、主提单号、船名航次、箱号/封号等）。 | 嵌入 `form.vue` 的 `EnglishUpperInput`/`EnglishUpperTextarea` 与 `toEnglishUpperCase` 工具。 |
 | 2026-06-07 | `Feature` | 服务流水线按进度三态展示，节点勾选改弹窗维护；已完成节点取消勾选对接 `CancelCompleteAsync`。 | `loadEditData` 后须再应用弹窗草稿，避免勾选态被详情覆盖。 |
 | 2026-06-07 | `Style` | 服务项目 UI 改为 Chevron 箭头流水线（三态配色 + 悬浮 Tooltip），新建/编辑共用 `form.vue`。 | `clip-path` 箭头衔接；`Tooltip` 承载完成服务按钮，避免 `overflow-hidden` 裁切。 |
 | 2026-06-07 | `Feature` | 船公司回显与列表对接 `carrierCnShortName`：`CarrierSelect` selectedItems 改用 `cnShortName`，列表优先展示简称。 | 与 `carrier-select.vue` 默认 labelKey 对齐；简称缺失时回退 `carrierName`。 |

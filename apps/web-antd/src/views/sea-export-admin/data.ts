@@ -856,7 +856,7 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       },
     },
     {
-      component: 'Input',
+      component: 'EnglishUpperInput',
       fieldName: 'mblNum',
       label: $t('seaExport.export.mblNum'),
       componentProps: { allowClear: true },
@@ -913,7 +913,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
       formItemClass: 'party-flow-item party-flow-pos--1',
     }),
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'shipperContent',
       label: '',
       componentProps: {
@@ -930,7 +930,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
       formItemClass: 'party-flow-item party-flow-pos--2',
     }),
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'consigneeContent',
       label: '',
       componentProps: {
@@ -948,7 +948,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
         'party-flow-item party-flow-item--notifier party-flow-pos--3',
     }),
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'notifierContent',
       label: '',
       componentProps: {
@@ -967,7 +967,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
         'party-flow-item party-flow-item--notifier party-flow-item--notifier-secondary party-flow-pos--3 party-flow-item--hidden',
     }),
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'secondNotifierContent',
       label: '',
       componentProps: {
@@ -986,7 +986,7 @@ export function usePartyInfoFormSchema(): VbenFormSchema[] {
         'party-flow-item party-flow-item--notifier party-flow-item--notifier-pod-agent party-flow-pos--3 party-flow-item--hidden',
     }),
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'podAgentContent',
       label: '',
       componentProps: {
@@ -1272,21 +1272,21 @@ export function usePortFormSchema(
         'port-flow-item port-flow-item--last port-flow-pos--deliver',
     },
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'receivePortRemark',
       label: '',
       componentProps: { allowClear: true, rows: 1 },
       formItemClass: 'port-flow-remark port-flow-pos--receive-remark',
     },
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'polRemark',
       label: '',
       componentProps: { allowClear: true, rows: 1 },
       formItemClass: 'port-flow-remark port-flow-pos--pol-remark',
     },
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'poT1Remark',
       label: '',
       componentProps: { allowClear: true, rows: 1 },
@@ -1294,7 +1294,7 @@ export function usePortFormSchema(
         'port-flow-remark port-flow-remark--transit port-flow-pos--transit-remark',
     },
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'poT2Remark',
       label: '',
       componentProps: { allowClear: true, rows: 1 },
@@ -1302,14 +1302,14 @@ export function usePortFormSchema(
         'port-flow-remark port-flow-remark--transit port-flow-remark--transit-secondary port-flow-pos--transit-remark',
     },
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'podRemark',
       label: '',
       componentProps: { allowClear: true, rows: 1 },
       formItemClass: 'port-flow-remark port-flow-pos--pod-remark',
     },
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'deliverPortRemark',
       label: '',
       componentProps: { allowClear: true, rows: 1 },
@@ -1343,7 +1343,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       formItemClass: 'col-span-2',
     },
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'marks',
       label: $t('seaExport.export.marks'),
       componentProps: {
@@ -1354,7 +1354,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       formItemClass: 'col-span-3 cargo-main-item cargo-main-item--marks',
     },
     {
-      component: 'Textarea',
+      component: 'EnglishUpperTextarea',
       fieldName: 'goodsDes',
       label: $t('seaExport.export.goodsDes'),
       componentProps: {

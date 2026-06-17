@@ -541,6 +541,8 @@ export type ComponentType =
   | 'FeeCodeSelect'
   | 'ExchangeRateSelect'
   | 'VesselVoyageInput'
+  | 'EnglishUpperInput'
+  | 'EnglishUpperTextarea'
   | 'SigningInfoInput'
   | 'ServiceItemInput'
   | 'BillCountsInput'
@@ -695,6 +697,12 @@ async function initComponentAdapter() {
     ),
     VesselVoyageInput: defineAsyncComponent(
       () => import('./vessel-voyage-input.vue'),
+    ),
+    EnglishUpperInput: defineAsyncComponent(
+      () => import('./english-upper-input.vue'),
+    ),
+    EnglishUpperTextarea: defineAsyncComponent(
+      () => import('./english-upper-textarea.vue'),
     ),
     SigningInfoInput: defineAsyncComponent(
       () => import('./signing-info-input.vue'),

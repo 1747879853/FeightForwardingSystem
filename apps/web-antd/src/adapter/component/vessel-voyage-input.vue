@@ -9,6 +9,8 @@ import { $t } from '@vben/locales';
 
 import { Input } from 'ant-design-vue';
 
+import { toEnglishUpperCase } from '#/utils/english-upper-case';
+
 interface Props {
   /** 船名（主字段，由表单绑定） */
   value?: string;
@@ -47,7 +49,7 @@ const voyageValue = computed(() => props.secondFieldValue ?? '');
       :placeholder="$t('seaExport.export.vessel')"
       class="flex-1"
       allow-clear
-      @update:value="(v) => emit('update:value', v)"
+      @update:value="(v) => emit('update:value', toEnglishUpperCase(v))"
     />
     <Input
       :value="voyageValue"
@@ -56,7 +58,11 @@ const voyageValue = computed(() => props.secondFieldValue ?? '');
       class="flex-1"
       allow-clear
       @update:value="
-        (v) => props.formContext?.setFieldValue(props.secondFieldName, v)
+        (v) =>
+          props.formContext?.setFieldValue(
+            props.secondFieldName,
+            toEnglishUpperCase(v),
+          )
       "
     />
   </div>

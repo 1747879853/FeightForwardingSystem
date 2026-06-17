@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-06-07
+last_updated: 2026-06-17
 ---
 
 # 1. 业务背景说明 (Background)
@@ -69,6 +69,7 @@ last_updated: 2026-06-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-17 | `Feature` | 唛头、货物描述、相关方备注、港口备注、主提单号、船名航次、箱号/封号等提单类字段输入英文时自动转大写；港口联动备注与 AI 识别回填同步处理。 | 复用 `EnglishUpperInput`/`EnglishUpperTextarea` + `toEnglishUpperCase`；新建/编辑共用 `form.vue`。 |
 | 2026-06-07 | `Feature` | 保存时按勾选服务项的 `userAttribute` 动态校验干系人：每服务至少一个绑定角色已选人；销售、操作始终静态必填。 | `validateRequiredOrderUserAssignee` + `validateServiceBoundOrderUsers`；读 `latestAvailableServiceTypes` 缓存。 |
 | 2026-06-07 | `Style` | 服务项目 Chevron 节点尺寸紧凑化（40px 高、12px 字号），单节点最大宽度 140px。 | 对齐工作台 `workbench-business-table` Chevron 规格。 |
 | 2026-06-07 | `Feature` | 服务流水线三态展示，节点勾选改弹窗维护（新建页无取消完成接口）。 | 与编辑页共用 `form.vue`。 |

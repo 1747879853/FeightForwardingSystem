@@ -12,6 +12,7 @@ import CtnSelect from '#/adapter/component/biz-select/ctn-select.vue';
 import CodeGoodsSelect from '#/adapter/component/biz-select/code-goods-select.vue';
 import CodePackageSelect from '#/adapter/component/biz-select/code-package-select.vue';
 import { $t } from '#/locales';
+import { toEnglishUpperCase } from '#/utils/english-upper-case';
 
 const modelValue = defineModel<SeaExportAdminApi.OrderCtnAddDto[]>({
   default: () => [],
@@ -229,7 +230,9 @@ watch(
             :value="record.ctnNo"
             :placeholder="$t('seaExport.export.ctnNo')"
             allow-clear
-            @update:value="(v) => updateRow(index, 'ctnNo', v)"
+            @update:value="
+              (v) => updateRow(index, 'ctnNo', toEnglishUpperCase(v))
+            "
           />
         </template>
         <template v-else-if="column.key === 'sealNo'">
@@ -237,7 +240,9 @@ watch(
             :value="record.sealNo"
             :placeholder="$t('seaExport.export.sealNo')"
             allow-clear
-            @update:value="(v) => updateRow(index, 'sealNo', v)"
+            @update:value="
+              (v) => updateRow(index, 'sealNo', toEnglishUpperCase(v))
+            "
           />
         </template>
         <template v-else-if="column.key === 'pkgs'">
