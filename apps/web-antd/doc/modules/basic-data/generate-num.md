@@ -57,6 +57,7 @@ last_updated: 2026-06-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-17 | `Fix` | 列表适用组织、适用用户为空时显示「全部生效」，明确全局规则语义。 | 格式化逻辑集中在 `formatGenerateNumOrgDisplay` / `formatGenerateNumUsersDisplay`。 |
 | 2026-06-17 | `Feature` | 规则明细改为卡片交互：按生成类型显隐字段、上移下移自动排序、实时编号预览、悬浮删除图标。 | 预览逻辑在 `data.ts` 的 `buildGenerateNumPreview`；提交时 `mapRuleToAdd/Edit` 按 index 写 `sortId`。 |
 | 2026-06-17 | `Feature` | 表名字段由自由输入改为固定下拉，可选 6 种业务单号。 | 选项值格式为 `Entity.Field`，与后端 AppService 约定一致。 |
 | 2026-05-16 | `Parsing` | 无 | 按动态路由与页面源码重建文档；权限口径 Admin.GenerateNum / Admin.GenerateNum.Get。 |
