@@ -67,13 +67,16 @@ function resolveCurrencyCode(fee: {
 }
 
 /** 搜索表单 schema */
-export function useAddFeeSearchSchema(): VbenFormSchema[] {
+export function useAddFeeSearchSchema(options?: {
+  /** 是否必填结算单位（已有费用时需锁定并必填） */
+  settlementIdRequired?: boolean;
+}): VbenFormSchema[] {
   return [
     {
       component: 'ClientSelect',
       fieldName: 'SettlementId',
       label: '结算单位',
-      rules: 'required',
+      rules: options?.settlementIdRequired ? 'required' : undefined,
       componentProps: {
         industryCategory: '',
         placeholder: $t('ui.placeholder.select'),

@@ -66,9 +66,13 @@ const pendingCurrencies = ref<CurrencyInfo[]>([]);
 const settlementCurrencyName = ref('');
 const currencySelectRef = ref();
 
+function hasExistingFees(): boolean {
+  return (drawerProps.value.selectedFeeIds?.length ?? 0) > 0;
+}
+
 const throttledAutoSearch = useThrottleFn(
   async (values: Record<string, any>) => {
-    if (!values.SettlementId) return;
+    if (hasExistingFees() && !values.SettlementId) return;
     currentPage.value = 1;
     await checkSearchChanged();
     await fetchData(values);
@@ -94,7 +98,7 @@ const [SearchForm, searchFormApi] = useVbenForm({
   compact: true,
   wrapperClass: 'grid-cols-5',
   handleSubmit: async (values) => {
-    if (!values.SettlementId) {
+    if (hasExistingFees() && !values.SettlementId) {
       message.warning('请先选择结算单位');
       return;
     }
@@ -152,17 +156,18 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
   if (props.settlementId) {
     searchFormApi.setValues({ SettlementId: props.settlementId });
     await nextTick();
-    await fetchData(await searchFormApi.getValues());
   }
-  const hasFees = (props.selectedFeeIds?.length ?? 0) > 0;
+  const hasFees = hasExistingFees();
   searchFormApi.updateSchema([
     {
       fieldName: 'SettlementId',
+      rules: hasFees ? 'required' : undefined,
       componentProps: {
         disabled: hasFees,
       },
     },
   ]);
+  await fetchData(await searchFormApi.getValues());
 }
 
 function resetState() {
@@ -183,7 +188,7 @@ function clearSelection() {
 
 async function fetchData(formValues?: Record<string, any>) {
   const values = formValues ?? (await searchFormApi.getValues());
-  if (!values.SettlementId) return;
+  if (hasExistingFees() && !values.SettlementId) return;
 
   const [etdStart, etdEnd] = Array.isArray(values.ETDRange)
     ? values.ETDRange
@@ -469,8 +474,9 @@ function handleExchangeRateConfirm(rateMap: Map<number, number>) {
 
 async function emitResult(fees: SelectedFeeItem[]) {
   const values = await searchFormApi.getValues();
-  if (values.SettlementId) {
-    emit('update:settlementId', String(values.SettlementId));
+  const settlementId = values.SettlementId ?? fees[0]?.settlementId;
+  if (settlementId) {
+    emit('update:settlementId', String(settlementId));
   }
   emit('confirm', fees);
   open.value = false;
