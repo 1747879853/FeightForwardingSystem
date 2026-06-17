@@ -237,9 +237,30 @@ export function useFormSchema(): VbenFormSchema[] {
   ];
 }
 
-/**
- * 获取表格列配置
- */
+/** 适用组织/用户为空时表示全局生效 */
+export function formatGenerateNumOrgDisplay(
+  orgName?: string | null,
+  orgId?: number | null,
+) {
+  const hasOrg = orgId !== null && orgId !== undefined && orgId !== '';
+  if (hasOrg) {
+    return String(orgName ?? '').trim() || String(orgId);
+  }
+  return $t('system.basicData.generateNum.applyAll');
+}
+
+export function formatGenerateNumUsersDisplay(
+  users?: GenerateNumAdminApi.GenerateNumDto['generateNumUsers'],
+) {
+  const list = Array.isArray(users) ? users : [];
+  const labels = list
+    .map((item) => item?.nickName || item?.userId)
+    .filter(Boolean);
+  if (labels.length === 0) {
+    return $t('system.basicData.generateNum.applyAll');
+  }
+  return labels.join('、');
+}
 export function useColumns(
   onActionClick?: OnActionClickFn<GenerateNumAdminApi.GenerateNumDto>,
 ): VxeTableGridOptions<GenerateNumAdminApi.GenerateNumDto>['columns'] {
@@ -254,18 +275,14 @@ export function useColumns(
       field: 'orgName',
       title: $t('system.basicData.generateNum.orgId'),
       minWidth: 180,
+      formatter: ({ cellValue, row }) =>
+        formatGenerateNumOrgDisplay(cellValue, row.orgId),
     },
     {
       field: 'generateNumUsers',
       title: $t('system.basicData.generateNum.generateNumUsers'),
       minWidth: 220,
-      formatter: ({ cellValue }) => {
-        const users = Array.isArray(cellValue) ? cellValue : [];
-        return users
-          .map((item) => item?.nickName || item?.userId)
-          .filter(Boolean)
-          .join('、');
-      },
+      formatter: ({ cellValue }) => formatGenerateNumUsersDisplay(cellValue),
     },
     {
       field: 'creationTime',

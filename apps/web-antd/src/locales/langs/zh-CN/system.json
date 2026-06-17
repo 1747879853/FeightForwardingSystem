@@ -322,6 +322,7 @@
         "org": "指定组织",
         "user": "指定用户"
       },
+      "applyAll": "全部生效",
       "tableNameOptions": {
         "SeaExport": {
           "CommissionNum": "海运出口委托编号"

@@ -322,6 +322,7 @@
         "org": "By Organization",
         "user": "By User"
       },
+      "applyAll": "Applies to all",
       "tableNameOptions": {
         "SeaExport": {
           "CommissionNum": "Sea Export Commission No."
