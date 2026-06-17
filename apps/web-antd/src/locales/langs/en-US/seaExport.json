@@ -173,6 +173,7 @@
       "warehouse": "Warehouse"
     },
     "keyword": "Keyword",
+    "keywordPlaceholder": "MBL No./Booking No./Commission No.",
     "kgs": "KGS",
     "laneName": "Lane",
     "list": "Sea Export List",

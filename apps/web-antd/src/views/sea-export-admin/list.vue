@@ -210,3 +210,9 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
     </Grid>
   </Page>
 </template>
+
+<style scoped>
+:deep(.sea-export-keyword-input input::placeholder) {
+  font-size: 12px;
+}
+</style>

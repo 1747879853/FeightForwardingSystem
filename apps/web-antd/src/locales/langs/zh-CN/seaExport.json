@@ -5,6 +5,7 @@
     "list": "海运出口列表",
     "name": "海运出口",
     "keyword": "关键字",
+    "keywordPlaceholder": "主提单号/订舱编号/委托编号",
     "number": "单号",
     "formCardInfo": "订单信息",
     "formCardBasicInfo": "基础信息",

@@ -118,8 +118,9 @@ export function useGridFormSchema(): VbenFormSchema[] {
       fieldName: 'Keyword',
       label: $t('seaExport.export.keyword'),
       componentProps: {
-        placeholder: $t('ui.placeholder.input'),
+        placeholder: $t('seaExport.export.keywordPlaceholder'),
         allowClear: true,
+        class: 'sea-export-keyword-input',
       },
     },
     {
@@ -239,6 +240,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.organizationUnits'),
       componentProps: {
         allowClear: true,
+        isCompany: true,
         placeholder: $t('ui.placeholder.select'),
       },
     },
