@@ -2,10 +2,94 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn } from '#/adapter/vxe-table';
-import type { GenerateNumAdminApi } from '#/api/system/base-data/generate-num-admin';
+import type {
+  GenerateEnum,
+  GenerateNumAdminApi,
+} from '#/api/system/base-data/generate-num-admin';
+
+import dayjs from 'dayjs';
 
 import { z } from '#/adapter/form';
 import { $t } from '#/locales';
+
+/** 编号生成类型常量 */
+export const GENERATE_ENUM = {
+  AutoNum: 0,
+  Text: 1,
+  UserName: 2,
+  yyyyMMdd: 3,
+  yyMMdd: 4,
+} as const satisfies Record<string, GenerateEnum>;
+
+export type GenerateNumRulePreviewInput = {
+  generateEnum?: GenerateEnum;
+  text?: string;
+  length?: number;
+  sortId?: number;
+};
+
+/** 固定字符串：仅 Text(1) 有效 */
+export function showRuleTextField(generateEnum?: GenerateEnum) {
+  return generateEnum === GENERATE_ENUM.Text;
+}
+
+/** 长度：仅 AutoNum(0) 有效 */
+export function showRuleLengthField(generateEnum?: GenerateEnum) {
+  return generateEnum === GENERATE_ENUM.AutoNum;
+}
+
+/** 重置序号：非 AutoNum 有效，AutoNum 上无效 */
+export function showRuleResetField(generateEnum?: GenerateEnum) {
+  return (
+    generateEnum !== undefined &&
+    generateEnum !== null &&
+    generateEnum !== GENERATE_ENUM.AutoNum
+  );
+}
+
+export function buildGenerateNumRuleSegment(
+  rule: GenerateNumRulePreviewInput,
+  options?: { sampleNum?: number; userName?: string },
+): string {
+  const { sampleNum = 1, userName = '' } = options ?? {};
+
+  switch (rule.generateEnum) {
+    case GENERATE_ENUM.AutoNum: {
+      const length =
+        Number.isInteger(rule.length) && Number(rule.length) > 0
+          ? Number(rule.length)
+          : 4;
+      return String(sampleNum).padStart(length, '0');
+    }
+    case GENERATE_ENUM.Text:
+      return String(rule.text ?? '');
+    case GENERATE_ENUM.UserName:
+      return userName;
+    case GENERATE_ENUM.yyyyMMdd:
+      return dayjs().format('YYYYMMDD');
+    case GENERATE_ENUM.yyMMdd:
+      return dayjs().format('YYMMDD');
+    default:
+      return '';
+  }
+}
+
+/** 按列表顺序拼接各段，生成编号预览 */
+export function buildGenerateNumPreview(
+  rules: GenerateNumRulePreviewInput[],
+  options?: { sampleNum?: number; userName?: string },
+): string {
+  return rules
+    .filter(
+      (rule) => rule.generateEnum !== undefined && rule.generateEnum !== null,
+    )
+    .map((rule) => buildGenerateNumRuleSegment(rule, options))
+    .join('');
+}
+
+export function hasAutoNumRule(rules: GenerateNumRulePreviewInput[]) {
+  return rules.some((rule) => rule.generateEnum === GENERATE_ENUM.AutoNum);
+}
 
 /** 编号规则可选表名（Entity.Field） */
 const TABLE_NAME_VALUES = [

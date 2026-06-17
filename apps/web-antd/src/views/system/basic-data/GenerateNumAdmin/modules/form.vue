@@ -7,14 +7,19 @@ import type {
 import { computed, ref } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
+import { useUserStore } from '@vben/stores';
 
 import {
+  Alert,
   Button,
   Checkbox,
   Input,
   InputNumber,
   message,
   Select,
+  Space,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
@@ -25,10 +30,20 @@ import {
 } from '#/api/system/base-data/generate-num-admin';
 import { $t } from '#/locales';
 
-import { useFormSchema, getTableNameLabel } from '../data';
+import {
+  buildGenerateNumPreview,
+  GENERATE_ENUM,
+  getTableNameLabel,
+  hasAutoNumRule,
+  showRuleLengthField,
+  showRuleResetField,
+  showRuleTextField,
+  useFormSchema,
+} from '../data';
 
 const emit = defineEmits<{ success: [] }>();
 const formData = ref<GenerateNumAdminApi.GenerateNumDto>();
+const userStore = useUserStore();
 
 type RuleRow = {
   key: string;
@@ -36,7 +51,6 @@ type RuleRow = {
   text?: string;
   length?: number;
   reset?: boolean;
-  sortId?: number;
   id?: number;
   generateNumId?: number;
 };
@@ -50,23 +64,23 @@ type UserRelationRow = {
 
 const generateEnumOptions = computed(() => [
   {
-    value: 0 as GenerateEnum,
+    value: GENERATE_ENUM.AutoNum,
     label: $t('system.basicData.generateNum.generateEnumOptions.autoNum'),
   },
   {
-    value: 1 as GenerateEnum,
+    value: GENERATE_ENUM.Text,
     label: $t('system.basicData.generateNum.generateEnumOptions.text'),
   },
   {
-    value: 2 as GenerateEnum,
+    value: GENERATE_ENUM.UserName,
     label: $t('system.basicData.generateNum.generateEnumOptions.userName'),
   },
   {
-    value: 3 as GenerateEnum,
+    value: GENERATE_ENUM.yyyyMMdd,
     label: $t('system.basicData.generateNum.generateEnumOptions.yyyyMMdd'),
   },
   {
-    value: 4 as GenerateEnum,
+    value: GENERATE_ENUM.yyMMdd,
     label: $t('system.basicData.generateNum.generateEnumOptions.yyMMdd'),
   },
 ]);
@@ -74,6 +88,47 @@ const generateEnumOptions = computed(() => [
 const rulesData = ref<RuleRow[]>([]);
 const userRelationsData = ref<UserRelationRow[]>([]);
 let nextKey = 0;
+
+const previewUserName = computed(
+  () =>
+    userStore.userInfo?.username?.trim() ||
+    userStore.userInfo?.realName?.trim() ||
+    '',
+);
+
+const previewText = computed(() =>
+  buildGenerateNumPreview(rulesData.value, {
+    userName: previewUserName.value,
+    sampleNum: 1,
+  }),
+);
+
+const showPreviewMissingAutoNum = computed(
+  () => rulesData.value.length > 0 && !hasAutoNumRule(rulesData.value),
+);
+
+const hasAutoNumInOtherRows = (currentKey: string) =>
+  rulesData.value.some(
+    (rule) =>
+      rule.key !== currentKey && rule.generateEnum === GENERATE_ENUM.AutoNum,
+  );
+
+const getGenerateEnumOptionsForRow = (row: RuleRow) =>
+  generateEnumOptions.value.map((option) => ({
+    ...option,
+    disabled:
+      option.value === GENERATE_ENUM.AutoNum &&
+      hasAutoNumInOtherRows(row.key) &&
+      row.generateEnum !== GENERATE_ENUM.AutoNum,
+  }));
+
+const getRuleTitle = (row: RuleRow, index: number) => {
+  const baseTitle = `${$t('system.basicData.generateNum.ruleItem')} #${index + 1}`;
+  const typeLabel = generateEnumOptions.value.find(
+    (option) => option.value === row.generateEnum,
+  )?.label;
+  return typeLabel ? `${baseTitle} · ${typeLabel}` : baseTitle;
+};
 
 const getTitle = computed(() => {
   return formData.value?.id
@@ -90,22 +145,54 @@ const [Form, formApi] = useVbenForm({
   wrapperClass: 'grid-cols-2',
 });
 
-const addRule = () => {
-  rulesData.value = [
-    ...rulesData.value,
-    {
-      key: `rule_${nextKey++}`,
-      generateEnum: 0,
-      text: '',
-      length: 4,
-      reset: false,
-      sortId: rulesData.value.length,
-    },
-  ];
+const normalizeRuleOnTypeChange = (row: RuleRow) => {
+  if (row.generateEnum === GENERATE_ENUM.AutoNum) {
+    row.reset = false;
+    if (!Number.isInteger(row.length) || Number(row.length) <= 0) {
+      row.length = 4;
+    }
+    return;
+  }
+
+  if (row.generateEnum !== GENERATE_ENUM.Text) {
+    row.text = '';
+  }
 };
 
-const removeRule = (key: string) => {
-  rulesData.value = rulesData.value.filter((r) => r.key !== key);
+const addRule = () => {
+  rulesData.value.push({
+    key: `rule_${nextKey++}`,
+    generateEnum: GENERATE_ENUM.Text,
+    text: '',
+    length: 4,
+    reset: false,
+  });
+};
+
+const moveRule = (from: number, to: number) => {
+  if (
+    from === to ||
+    from < 0 ||
+    to < 0 ||
+    from >= rulesData.value.length ||
+    to >= rulesData.value.length
+  ) {
+    return;
+  }
+  const [moved] = rulesData.value.splice(from, 1);
+  rulesData.value.splice(to, 0, moved);
+};
+
+const moveUp = (index: number) => {
+  moveRule(index, index - 1);
+};
+
+const moveDown = (index: number) => {
+  moveRule(index, index + 1);
+};
+
+const removeRule = (index: number) => {
+  rulesData.value.splice(index, 1);
 };
 
 const validateBeforeSubmit = (values: Record<string, any>) => {
@@ -141,7 +228,7 @@ const validateBeforeSubmit = (values: Record<string, any>) => {
   }
 
   const autoNumCount = rulesData.value.filter(
-    (r) => r.generateEnum === 0,
+    (rule) => rule.generateEnum === GENERATE_ENUM.AutoNum,
   ).length;
   if (autoNumCount > 1) {
     message.error('自增编号数量不可超过1');
@@ -157,12 +244,18 @@ const validateBeforeSubmit = (values: Record<string, any>) => {
       return false;
     }
 
-    if (!Number.isInteger(row.length) || Number(row.length) <= 0) {
-      message.error(`第${rowNo}行规则长度必须大于0`);
+    if (
+      row.generateEnum === GENERATE_ENUM.AutoNum &&
+      (!Number.isInteger(row.length) || Number(row.length) <= 0)
+    ) {
+      message.error(`第${rowNo}行自增序号长度必须大于0`);
       return false;
     }
 
-    if (row.generateEnum === 1 && !String(row.text ?? '').trim()) {
+    if (
+      row.generateEnum === GENERATE_ENUM.Text &&
+      !String(row.text ?? '').trim()
+    ) {
       message.error(`第${rowNo}行固定字符串不能为空`);
       return false;
     }
@@ -170,6 +263,32 @@ const validateBeforeSubmit = (values: Record<string, any>) => {
 
   return true;
 };
+
+const mapRuleToAdd = (
+  rule: RuleRow,
+  index: number,
+): GenerateNumAdminApi.GenerateNumRuleAddDto => ({
+  generateEnum: rule.generateEnum,
+  text: rule.generateEnum === GENERATE_ENUM.Text ? rule.text : undefined,
+  length: rule.generateEnum === GENERATE_ENUM.AutoNum ? rule.length : undefined,
+  reset:
+    rule.generateEnum === GENERATE_ENUM.AutoNum ? false : Boolean(rule.reset),
+  sortId: index,
+});
+
+const mapRuleToEdit = (
+  rule: RuleRow,
+  index: number,
+): GenerateNumAdminApi.GenerateNumRuleEditDto => ({
+  id: rule.id,
+  generateNumId: rule.generateNumId ?? formData.value?.id,
+  generateEnum: rule.generateEnum,
+  text: rule.generateEnum === GENERATE_ENUM.Text ? rule.text : undefined,
+  length: rule.generateEnum === GENERATE_ENUM.AutoNum ? rule.length : undefined,
+  reset:
+    rule.generateEnum === GENERATE_ENUM.AutoNum ? false : Boolean(rule.reset),
+  sortId: index,
+});
 
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
@@ -192,26 +311,6 @@ const [Modal, modalApi] = useVbenModal({
         ? values.generateNumUserIds
         : [];
 
-    const mapRulesToAdd = (): GenerateNumAdminApi.GenerateNumRuleAddDto[] =>
-      rulesData.value.map((r) => ({
-        generateEnum: r.generateEnum,
-        text: r.generateEnum === 1 ? r.text : undefined,
-        length: r.length,
-        reset: Boolean(r.reset),
-        sortId: r.sortId ?? 0,
-      }));
-
-    const mapRulesToEdit = (): GenerateNumAdminApi.GenerateNumRuleEditDto[] =>
-      rulesData.value.map((r) => ({
-        id: r.id,
-        generateNumId: r.generateNumId ?? formData.value?.id,
-        generateEnum: r.generateEnum,
-        text: r.generateEnum === 1 ? r.text : undefined,
-        length: r.length,
-        reset: Boolean(r.reset),
-        sortId: r.sortId ?? 0,
-      }));
-
     const mapUsersToAdd = (): GenerateNumAdminApi.GenerateNumUserAddDto[] => {
       return submitUserIds.map((userId: number) => ({ userId }));
     };
@@ -219,7 +318,7 @@ const [Modal, modalApi] = useVbenModal({
     const mapUsersToEdit = (): GenerateNumAdminApi.GenerateNumUserEditDto[] => {
       return submitUserIds.map((userId: number) => {
         const existed = userRelationsData.value.find(
-          (u) => u.userId === userId,
+          (user) => user.userId === userId,
         );
         return {
           id: existed?.id,
@@ -238,7 +337,9 @@ const [Modal, modalApi] = useVbenModal({
           name: ruleName,
           tableName: values.tableName,
           orgId: submitOrgId,
-          generateNumRules: mapRulesToEdit(),
+          generateNumRules: rulesData.value.map((rule, index) =>
+            mapRuleToEdit(rule, index),
+          ),
           generateNumUsers: mapUsersToEdit(),
         });
       } else {
@@ -246,7 +347,9 @@ const [Modal, modalApi] = useVbenModal({
           name: ruleName,
           tableName: values.tableName,
           orgId: submitOrgId,
-          generateNumRules: mapRulesToAdd(),
+          generateNumRules: rulesData.value.map((rule, index) =>
+            mapRuleToAdd(rule, index),
+          ),
           generateNumUsers: mapUsersToAdd(),
         });
       }
@@ -281,19 +384,25 @@ const [Modal, modalApi] = useVbenModal({
           applyScope,
           orgId: detail.orgId,
           generateNumUserIds: (detail.generateNumUsers ?? []).map(
-            (u) => u.userId,
+            (user) => user.userId,
           ),
         });
-        rulesData.value = (detail.generateNumRules ?? []).map((r, i) => ({
-          key: `rule_${r.id ?? nextKey++}`,
-          id: r.id,
-          generateNumId: r.generateNumId,
-          generateEnum: r.generateEnum,
-          text: r.text,
-          length: r.length,
-          reset: r.reset,
-          sortId: r.sortId ?? i,
-        }));
+        rulesData.value = (detail.generateNumRules ?? [])
+          .slice()
+          .sort(
+            (a, b) =>
+              Number(a.sortId ?? Number.MAX_SAFE_INTEGER) -
+              Number(b.sortId ?? Number.MAX_SAFE_INTEGER),
+          )
+          .map((rule) => ({
+            key: `rule_${rule.id ?? nextKey++}`,
+            id: rule.id,
+            generateNumId: rule.generateNumId,
+            generateEnum: rule.generateEnum,
+            text: rule.text,
+            length: rule.length,
+            reset: rule.reset,
+          }));
         userRelationsData.value = detail.generateNumUsers ?? [];
       } finally {
         modalApi.lock(false);
@@ -314,9 +423,32 @@ const [Modal, modalApi] = useVbenModal({
 </script>
 
 <template>
-  <Modal :title="getTitle" class="w-[1000px]">
+  <Modal :title="getTitle" class="w-[920px]">
     <Form class="mx-4" />
     <div class="mx-4 mt-4">
+      <div
+        class="mb-4 rounded-lg border border-blue-100 bg-blue-50/70 px-4 py-3"
+      >
+        <div class="text-sm text-gray-500">
+          {{ $t('system.basicData.generateNum.preview') }}
+        </div>
+        <div
+          class="mt-1 break-all font-mono text-xl font-semibold text-blue-700"
+        >
+          {{ previewText || $t('system.basicData.generateNum.previewEmpty') }}
+        </div>
+        <div class="mt-1 text-xs text-gray-500">
+          {{ $t('system.basicData.generateNum.previewHint') }}
+        </div>
+        <Alert
+          v-if="showPreviewMissingAutoNum"
+          class="mt-3"
+          type="warning"
+          show-icon
+          :message="$t('system.basicData.generateNum.previewMissingAutoNum')"
+        />
+      </div>
+
       <div class="mb-2 flex items-center justify-between">
         <span class="text-sm font-medium">
           {{ $t('system.basicData.generateNum.rules') }}
@@ -325,51 +457,91 @@ const [Modal, modalApi] = useVbenModal({
           {{ $t('system.basicData.generateNum.addRule') }}
         </Button>
       </div>
-      <div class="overflow-x-auto rounded border">
-        <table class="w-full min-w-[500px] text-sm">
-          <thead>
-            <tr class="border-b bg-gray-50">
-              <th class="w-[180px] px-3 py-2 text-left font-medium">
-                {{ $t('system.basicData.generateNum.generateEnum') }}
-              </th>
-              <th class="px-3 py-2 text-left font-medium">
-                {{ $t('system.basicData.generateNum.text') }}
-              </th>
-              <th class="px-3 py-2 text-left font-medium">
-                {{ $t('system.basicData.generateNum.length') }}
-              </th>
-              <th class="px-3 py-2 text-left font-medium">
-                {{ $t('system.basicData.generateNum.reset') }}
-              </th>
-              <th class="px-3 py-2 text-left font-medium">
-                {{ $t('system.basicData.generateNum.sortId') }}
-              </th>
-              <th class="w-16 px-3 py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="row in rulesData"
-              :key="row.key"
-              class="border-b last:border-b-0"
-            >
-              <td class="w-[180px] px-3 py-2">
+
+      <div
+        v-if="rulesData.length === 0"
+        class="rounded border border-dashed px-4 py-8 text-center text-sm text-gray-400"
+      >
+        {{ $t('system.basicData.generateNum.previewEmpty') }}
+      </div>
+
+      <div v-else class="space-y-2">
+        <TransitionGroup name="generate-num-rule" tag="div" class="space-y-2">
+          <div
+            v-for="(row, index) in rulesData"
+            :key="row.key"
+            class="group rounded border border-gray-200 bg-white px-3 py-2.5"
+          >
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <div
+                class="min-w-0 border-l-4 border-blue-500 pl-2 text-sm font-semibold text-slate-800"
+              >
+                {{ getRuleTitle(row, index) }}
+              </div>
+              <Space :size="4" class="shrink-0">
+                <Button
+                  type="text"
+                  size="small"
+                  :disabled="index === 0"
+                  @click="moveUp(index)"
+                >
+                  {{ $t('system.basicData.generateNum.moveUp') }}
+                </Button>
+                <Button
+                  type="text"
+                  size="small"
+                  :disabled="index === rulesData.length - 1"
+                  @click="moveDown(index)"
+                >
+                  {{ $t('system.basicData.generateNum.moveDown') }}
+                </Button>
+                <button
+                  type="button"
+                  class="flex size-6 items-center justify-center rounded text-gray-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                  :title="$t('common.delete')"
+                  @click="removeRule(index)"
+                >
+                  <IconifyIcon icon="mdi:delete-outline" class="size-4" />
+                </button>
+              </Space>
+            </div>
+
+            <div class="flex flex-wrap items-end gap-x-3 gap-y-2">
+              <div class="w-[168px] shrink-0">
+                <div class="mb-1 text-xs text-gray-500">
+                  {{ $t('system.basicData.generateNum.generateEnum') }}
+                </div>
                 <Select
                   v-model:value="row.generateEnum"
-                  :options="generateEnumOptions"
+                  :options="getGenerateEnumOptionsForRow(row)"
                   allow-clear
                   class="w-full"
                   size="small"
+                  @change="normalizeRuleOnTypeChange(row)"
                 />
-              </td>
-              <td class="px-3 py-2">
+              </div>
+
+              <div
+                v-if="showRuleTextField(row.generateEnum)"
+                class="min-w-[120px] flex-1"
+              >
+                <div class="mb-1 text-xs text-gray-500">
+                  {{ $t('system.basicData.generateNum.text') }}
+                </div>
                 <Input
                   v-model:value="row.text"
                   :placeholder="$t('ui.placeholder.input')"
                   size="small"
                 />
-              </td>
-              <td class="px-3 py-2">
+              </div>
+
+              <div
+                v-if="showRuleLengthField(row.generateEnum)"
+                class="w-24 shrink-0"
+              >
+                <div class="mb-1 text-xs text-gray-500">
+                  {{ $t('system.basicData.generateNum.length') }}
+                </div>
                 <InputNumber
                   v-model:value="row.length"
                   :min="1"
@@ -377,33 +549,59 @@ const [Modal, modalApi] = useVbenModal({
                   class="w-full"
                   size="small"
                 />
-              </td>
-              <td class="px-3 py-2">
-                <Checkbox v-model:checked="row.reset" />
-              </td>
-              <td class="px-3 py-2">
-                <InputNumber
-                  v-model:value="row.sortId"
-                  :min="0"
-                  :precision="0"
-                  class="w-full"
-                  size="small"
-                />
-              </td>
-              <td class="px-3 py-2">
-                <Button
-                  type="link"
-                  danger
-                  size="small"
-                  @click="removeRule(row.key)"
-                >
-                  {{ $t('common.delete') }}
-                </Button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </div>
+
+              <div
+                v-if="showRuleResetField(row.generateEnum)"
+                class="shrink-0 pb-0.5"
+              >
+                <Tooltip :title="$t('system.basicData.generateNum.resetHint')">
+                  <label
+                    class="inline-flex cursor-pointer items-center gap-2 text-sm leading-6"
+                  >
+                    <Checkbox v-model:checked="row.reset" />
+                    <span>{{ $t('system.basicData.generateNum.reset') }}</span>
+                  </label>
+                </Tooltip>
+              </div>
+            </div>
+          </div>
+        </TransitionGroup>
+
+        <div class="text-xs text-gray-500">
+          {{ $t('system.basicData.generateNum.sortTip') }}
+        </div>
       </div>
     </div>
   </Modal>
 </template>
+
+<style scoped>
+.generate-num-rule-move,
+.generate-num-rule-enter-active,
+.generate-num-rule-leave-active {
+  transition:
+    transform 260ms cubic-bezier(0.25, 1, 0.5, 1),
+    opacity 220ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.generate-num-rule-enter-from,
+.generate-num-rule-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .generate-num-rule-move,
+  .generate-num-rule-enter-active,
+  .generate-num-rule-leave-active {
+    transition: none;
+  }
+
+  .generate-num-rule-enter-from,
+  .generate-num-rule-leave-to {
+    opacity: 1;
+    transform: none;
+  }
+}
+</style>
