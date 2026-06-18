@@ -44,11 +44,8 @@ import {
 import { getUser } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
-import { useUserStore } from '@vben/stores';
-import {
-  editPropPermission,
-  getUserPermissions,
-} from '#/api/system/permission';
+import { useUserStore, useAccessStore } from '@vben/stores';
+import { editPropPermission } from '#/api/system/permission';
 
 import { useColumns, useGridFormSchema, formatSurchargeFees } from './data';
 import AddCtnModal from './modules/add-ctn-modal.vue';
@@ -67,6 +64,8 @@ const perm = createAbpPermission('Admin.SeFreiPrice');
 
 // 获取用户store
 const userStore = useUserStore();
+// 获取权限store
+const accessStore = useAccessStore();
 
 // 存储表格数据用于生成动态列
 const tableData = ref<SeFreiPriceOutDto[]>([]);
@@ -804,20 +803,15 @@ function getIsValidColor(row: SeFreiPriceOutDto): string {
 onMounted(async () => {
   getLines();
 
-  // 获取当前用户的功能权限
+  // 从 Pinia store 中获取当前用户的功能权限
   try {
     loadingPermissions.value = true;
-    const currentUserId = userStore.userInfo?.userId;
-    if (currentUserId) {
-      const permissions = await getUserPermissions(Number(currentUserId));
-      userFunctionPermissions.value = permissions || [];
-      console.log(
-        '[功能权限] 当前用户的功能权限:',
-        userFunctionPermissions.value,
-      );
-    } else {
-      console.warn('[功能权限] 未获取到当前用户ID');
-    }
+    const accessCodes = accessStore.accessCodes || [];
+    userFunctionPermissions.value = accessCodes;
+    console.log(
+      '[功能权限] 当前用户的功能权限:',
+      userFunctionPermissions.value,
+    );
   } catch (error) {
     console.error('[功能权限] 获取用户功能权限失败:', error);
   } finally {
