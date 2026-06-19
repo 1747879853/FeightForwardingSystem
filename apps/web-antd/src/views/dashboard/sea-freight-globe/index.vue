@@ -265,10 +265,29 @@ const hoverPosition = ref({ x: 0, y: 0 });
 const originOptions = ref(fallbackOriginOptions);
 const isDark = ref(false);
 
+type GlobeWithInternals = InstanceType<typeof Globe> & {
+  _destructor?: () => void;
+  pauseAnimation?: () => void;
+  renderer?: () => {
+    dispose: () => void;
+    domElement: HTMLElement;
+    forceContextLoss?: () => void;
+  };
+  scene?: () => {
+    traverse: (
+      cb: (obj: {
+        geometry?: { dispose: () => void };
+        material?: { dispose: () => void } | { dispose: () => void }[];
+      }) => void,
+    ) => void;
+  };
+};
+
 let globe: InstanceType<typeof Globe> | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let autoRotateTimer: number | null = null;
 let controlsCleanup: (() => void) | null = null;
+let labelHoverCleanup: (() => void) | null = null;
 let themeObserver: MutationObserver | null = null;
 let themeToggleObserver: MutationObserver | null = null;
 let themeSyncTimer: number | null = null;
@@ -601,6 +620,39 @@ function focusOnPort(port: PortData, duration = 1200) {
   );
 }
 
+function bindPortLabelHoverDelegation(container: HTMLElement) {
+  labelHoverCleanup?.();
+
+  const onMouseOver = (event: MouseEvent) => {
+    const label = (event.target as HTMLElement).closest<HTMLElement>(
+      '.globe-port-label',
+    );
+    if (!label?.dataset.portCode) return;
+
+    const port = ports.find((item) => item.code === label.dataset.portCode);
+    hoveredPort.value = port ?? null;
+  };
+
+  const onMouseOut = (event: MouseEvent) => {
+    const label = (event.target as HTMLElement).closest<HTMLElement>(
+      '.globe-port-label',
+    );
+    if (!label?.dataset.portCode) return;
+
+    const relatedTarget = event.relatedTarget as Node | null;
+    if (relatedTarget && label.contains(relatedTarget)) return;
+
+    hoveredPort.value = null;
+  };
+
+  container.addEventListener('mouseover', onMouseOver);
+  container.addEventListener('mouseout', onMouseOut);
+  labelHoverCleanup = () => {
+    container.removeEventListener('mouseover', onMouseOver);
+    container.removeEventListener('mouseout', onMouseOut);
+  };
+}
+
 function buildPortLabel(port: PortData) {
   const element = document.createElement('div');
   element.className = [
@@ -610,6 +662,7 @@ function buildPortLabel(port: PortData) {
   ]
     .filter(Boolean)
     .join(' ');
+  element.dataset.portCode = port.code;
 
   const dot = document.createElement('span');
   dot.className = 'globe-port-label__dot';
@@ -618,15 +671,58 @@ function buildPortLabel(port: PortData) {
   text.className = 'globe-port-label__text';
   text.textContent = port.name;
 
-  element.addEventListener('mouseenter', () => {
-    hoveredPort.value = port;
-  });
-  element.addEventListener('mouseleave', () => {
-    hoveredPort.value = null;
-  });
-
   element.append(dot, text);
   return element;
+}
+
+function destroyGlobe() {
+  if (!globe) return;
+
+  const globeInstance = globe as GlobeWithInternals;
+
+  globeInstance.pauseAnimation?.();
+  controlsCleanup?.();
+  controlsCleanup = null;
+  labelHoverCleanup?.();
+  labelHoverCleanup = null;
+
+  globe.pointsData([]);
+  globe.arcsData([]);
+  globe.ringsData([]);
+  globe.htmlElementsData([]);
+
+  try {
+    const renderer = globeInstance.renderer?.();
+    const scene = globeInstance.scene?.();
+
+    globeInstance._destructor?.();
+
+    scene?.traverse((obj) => {
+      if (obj.geometry) {
+        obj.geometry.dispose();
+      }
+      if (obj.material) {
+        const materials = Array.isArray(obj.material)
+          ? obj.material
+          : [obj.material];
+        materials.forEach((material) => material.dispose());
+      }
+    });
+
+    if (renderer) {
+      renderer.forceContextLoss?.();
+      renderer.dispose();
+      renderer.domElement.remove();
+    }
+  } catch (error) {
+    console.warn('[sea-freight-globe] destroy globe failed:', error);
+  }
+
+  if (globeContainerRef.value) {
+    globeContainerRef.value.innerHTML = '';
+  }
+
+  globe = null;
 }
 
 function syncGlobeSize() {
@@ -823,6 +919,7 @@ async function initGlobe() {
     syncGlobeSize();
   });
   resizeObserver.observe(globeContainerRef.value);
+  bindPortLabelHoverDelegation(globeContainerRef.value);
 }
 
 watch(selectedOrigin, () => {
@@ -873,7 +970,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   clearAutoRotateTimer();
-  controlsCleanup?.();
   resizeObserver?.disconnect();
   themeObserver?.disconnect();
   themeToggleObserver?.disconnect();
@@ -881,10 +977,7 @@ onBeforeUnmount(() => {
     window.clearTimeout(themeSyncTimer);
     themeSyncTimer = null;
   }
-  if (globeContainerRef.value) {
-    globeContainerRef.value.innerHTML = '';
-  }
-  globe = null;
+  destroyGlobe();
 });
 </script>
 

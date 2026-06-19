@@ -716,32 +716,36 @@ const [Modal, modalApi] = useVbenModal({
   },
 
   async onOpenChange(isOpen) {
-    if (isOpen) {
-      const data = modalApi.getData<any>();
-      console.log('c-data:', data);
+    if (!isOpen) {
+      hideConditionPopup();
+      document.removeEventListener('click', hideConditionPopup);
+      return;
+    }
 
-      formApi.resetForm();
-      surchargeFees.value = [];
-      etdList.value = [];
-      etdDayList.value = [];
-      conditionalFeeConfigs.value = {};
-      dateEditMode.value = 'date';
+    const data = modalApi.getData<any>();
+    console.log('c-data:', data);
 
-      if (data?.ids) {
-        batchIds.value = data.ids;
+    formApi.resetForm();
+    surchargeFees.value = [];
+    etdList.value = [];
+    etdDayList.value = [];
+    conditionalFeeConfigs.value = {};
+    dateEditMode.value = 'date';
 
-        // 加载币别和费用代码列表
-        await loadSelectData();
+    if (data?.ids) {
+      batchIds.value = data.ids;
 
-        // 获取箱型列表
-        try {
-          const ctnResponse = await GetCtnCodesByPriceIdsAsync(data.ids);
-          ctnCodes.value = ctnResponse || [];
-          console.log('获取到的箱型列表:', ctnCodes.value);
-        } catch (error) {
-          console.error('获取箱型列表失败:', error);
-          ctnCodes.value = [];
-        }
+      // 加载币别和费用代码列表
+      await loadSelectData();
+
+      // 获取箱型列表
+      try {
+        const ctnResponse = await GetCtnCodesByPriceIdsAsync(data.ids);
+        ctnCodes.value = ctnResponse || [];
+        console.log('获取到的箱型列表:', ctnCodes.value);
+      } catch (error) {
+        console.error('获取箱型列表失败:', error);
+        ctnCodes.value = [];
       }
     }
   },

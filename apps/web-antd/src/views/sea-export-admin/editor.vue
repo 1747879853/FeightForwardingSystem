@@ -60,12 +60,6 @@ const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'changeHistory', label: '修改历史' },
 ]);
 
-setInterval(() => {
-  // console.log('editId.value', editId.value);
-  if (editId.value) {
-    getOrderFeeNumber();
-  }
-}, 60 * 1000);
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
   if (!tab.sectionKey) return;

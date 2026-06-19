@@ -727,30 +727,34 @@ const [Modal, modalApi] = useVbenModal({
   },
 
   async onOpenChange(isOpen) {
-    if (isOpen) {
-      const data = modalApi.getData<any>();
-      console.log('批量编辑数据:', data);
+    if (!isOpen) {
+      hideConditionPopup();
+      document.removeEventListener('click', hideConditionPopup);
+      return;
+    }
 
-      formApi.resetForm();
-      surchargeFees.value = [];
-      ctnCosts.value = {};
-      conditionalFeeConfigs.value = {};
+    const data = modalApi.getData<any>();
+    console.log('批量编辑数据:', data);
 
-      if (data?.ids) {
-        batchIds.value = data.ids;
+    formApi.resetForm();
+    surchargeFees.value = [];
+    ctnCosts.value = {};
+    conditionalFeeConfigs.value = {};
 
-        // 加载币别和费用代码列表
-        await loadSelectData();
+    if (data?.ids) {
+      batchIds.value = data.ids;
 
-        // 获取箱型列表
-        try {
-          const ctnResponse = await GetCtnCodesByPriceIdsAsync(data.ids);
-          ctnCodes.value = ctnResponse || [];
-          console.log('获取到的箱型列表:', ctnCodes.value);
-        } catch (error) {
-          console.error('获取箱型列表失败:', error);
-          ctnCodes.value = [];
-        }
+      // 加载币别和费用代码列表
+      await loadSelectData();
+
+      // 获取箱型列表
+      try {
+        const ctnResponse = await GetCtnCodesByPriceIdsAsync(data.ids);
+        ctnCodes.value = ctnResponse || [];
+        console.log('获取到的箱型列表:', ctnCodes.value);
+      } catch (error) {
+        console.error('获取箱型列表失败:', error);
+        ctnCodes.value = [];
       }
     }
   },
