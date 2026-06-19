@@ -6,6 +6,7 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
 
 import { createClientSelectSchema } from '../client/base/data';
+import { getFeeStatusOptions } from './orderFee/data';
 
 const USER_ATTRIBUTE = {
   operation: 1,
@@ -670,6 +671,24 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
           $t('seaExport.export.isBusinessLocking'),
           $t('seaExport.export.noBusinessLocking'),
         ),
+      },
+    },
+    {
+      field: 'feeStatusReceive',
+      title: $t('seaExport.export.orderFee.receivableCharges'),
+      minWidth: 100,
+      cellRender: {
+        name: 'CellTag',
+        options: getFeeStatusOptions(),
+      },
+    },
+    {
+      field: 'feeStatusPay',
+      title: $t('seaExport.export.orderFee.payableCharges'),
+      minWidth: 100,
+      cellRender: {
+        name: 'CellTag',
+        options: getFeeStatusOptions(),
       },
     },
     {

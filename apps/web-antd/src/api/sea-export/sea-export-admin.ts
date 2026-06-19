@@ -362,6 +362,10 @@ export namespace SeaExportAdminApi {
     organizationUnits?: OrganizationUnitSimpleDto[];
     companys?: OrganizationUnitSimpleDto[];
     transportOrder?: TransportOrderDto;
+    /** 应付费用最小状态（该方向无费用时为 null） */
+    feeStatusPay?: number | null;
+    /** 应收费用最小状态（该方向无费用时为 null） */
+    feeStatusReceive?: number | null;
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;
