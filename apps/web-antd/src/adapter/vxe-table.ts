@@ -867,7 +867,7 @@ setupVbenVxeTable({
         return h(ExchangeRateSelect, finalProps);
       },
     });
-    vxeUI.renderer.add('UnitSelect', {
+    vxeUI.renderer.add('CellUnitSelect', {
       renderTableDefault({ attrs, props }, { column, row }) {
         // 处理动态 disabled 属性
         const finalProps: any = {

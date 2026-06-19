@@ -8,11 +8,6 @@ import { $t } from '@vben/locales';
 
 import { Select } from 'ant-design-vue';
 
-import {
-  getCtnCodeDetail,
-  getCtnCodePagedList,
-} from '#/api/system/base-data/ctn-code-admin';
-
 import { usePagedSelect } from './use-paged-select';
 
 interface Props {
@@ -24,6 +19,8 @@ interface Props {
   placeholder?: string;
   /** 已选中的集装箱对象数组（用于编辑时回显） */
   selectedItems?: CtnCodeAdminApi.CtnCodeDto[];
+  /** 自定义单位选项列表（如果提供，则使用此列表而非API数据） */
+  unitOptions?: Array<{ label: string; value: string }>;
   /** value 字段名，默认 'id' */
   valueKey?: string;
 }
@@ -33,6 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],
+  unitOptions: undefined,
   valueKey: 'id',
 });
 
@@ -53,6 +51,7 @@ const DEFAULT_UNIT_OPTIONS = [
 ];
 
 const mapCtnToOption = (ctn: CtnCodeAdminApi.CtnCodeDto) => {
+  console.log('mapCtnToOption', ctn);
   const ctnAny = ctn as any;
   let label = ctnAny?.[props.labelKey];
   if (!label && props.labelKey === 'ctnSize') {
@@ -76,11 +75,16 @@ const fetchPageAdapter = async (params: {
   PageIndex: number;
   PageSize: number;
 }) => {
-  const res = await getCtnCodePagedList({
-    Keyword: params.KeyWords,
-    PageIndex: params.PageIndex,
-    PageSize: params.PageSize,
-  });
+  console.log('🔍 [UnitSelect.fetchPageAdapter] 被调用！');
+  console.log('🔍 [UnitSelect.fetchPageAdapter] params:', params);
+  console.log(
+    '🔍 [UnitSelect.fetchPageAdapter] props.unitOptions:',
+    props.unitOptions,
+  );
+  console.log(
+    '🔍 [UnitSelect.fetchPageAdapter] props.unitOptions !== undefined:',
+    props.unitOptions !== undefined,
+  );
 
   // 将固定选项转换为与API返回数据相同的格式
   const defaultOptionsAsItems = DEFAULT_UNIT_OPTIONS.map((opt) => ({
@@ -89,21 +93,63 @@ const fetchPageAdapter = async (params: {
     status: 0, // 启用状态
   })) as unknown as CtnCodeAdminApi.CtnCodeDto[];
 
+  // 如果提供了自定义单位选项（即使是空数组），则使用：固定选项 + 自定义箱型
+  if (props.unitOptions !== undefined) {
+    console.log('✅ [UnitSelect.fetchPageAdapter] 使用自定义 unitOptions');
+
+    const customOptionsAsItems = props.unitOptions.map((opt) => ({
+      id: opt.value,
+      ctnName: opt.label,
+      status: 0, // 启用状态
+    })) as unknown as CtnCodeAdminApi.CtnCodeDto[];
+
+    console.log(
+      '✅ [UnitSelect.fetchPageAdapter] customOptionsAsItems:',
+      customOptionsAsItems,
+    );
+    console.log(
+      '✅ [UnitSelect.fetchPageAdapter] customOptionsAsItems.length:',
+      customOptionsAsItems.length,
+    );
+
+    // ✅ 固定选项 + 自定义箱型列表
+    return {
+      items: [...defaultOptionsAsItems, ...customOptionsAsItems],
+      total: defaultOptionsAsItems.length + customOptionsAsItems.length,
+    };
+  }
+
+  console.log(
+    '⚠️ [UnitSelect.fetchPageAdapter] 未提供 unitOptions，只显示固定选项',
+  );
+
+  // 未提供 unitOptions 时，只显示固定选项
+  console.log(
+    '⚠️ [UnitSelect.fetchPageAdapter] defaultOptionsAsItems:',
+    defaultOptionsAsItems,
+  );
+
   return {
-    items: [...defaultOptionsAsItems, ...(res.items || [])],
-    total: DEFAULT_UNIT_OPTIONS.length + (res.totalCount || 0),
+    items: defaultOptionsAsItems,
+    total: defaultOptionsAsItems.length,
   };
 };
 
-const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
-  usePagedSelect({
-    fetchPage: fetchPageAdapter,
-    mapItemToOption: mapCtnToOption,
-    pageSize: props.pageSize,
-    queryKey: ['ctn'],
-    selectedItemsRef,
-    valueKey: props.valueKey,
-  });
+const {
+  api,
+  handlePopupScroll,
+  handleSearch,
+  mergeSelectedItems,
+  params,
+  reset,
+} = usePagedSelect({
+  fetchPage: fetchPageAdapter,
+  mapItemToOption: mapCtnToOption,
+  pageSize: props.pageSize,
+  queryKey: ['ctn'],
+  selectedItemsRef,
+  valueKey: props.valueKey,
+});
 
 const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
@@ -170,6 +216,21 @@ watch(
     ensureSelectedLoaded(value);
   },
   { immediate: true },
+);
+
+// ✅ 监听 unitOptions 变化，清空缓存并触发重新加载
+watch(
+  () => props.unitOptions,
+  (newOptions, oldOptions) => {
+    console.log('🔄 [UnitSelect] unitOptions 变化:', {
+      newOptions,
+      oldOptions,
+    });
+    // 重置状态，清空缓存，触发 ApiComponent 重新请求
+    reset();
+    console.log('✅ [UnitSelect] 已调用 reset()，触发重新加载');
+  },
+  { deep: true },
 );
 
 defineExpose({

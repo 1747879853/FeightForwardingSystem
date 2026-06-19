@@ -2,7 +2,7 @@ import { $t } from '#/locales';
 import dayjs from 'dayjs';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import { h } from 'vue';
+import { h, ref } from 'vue';
 import { Checkbox, Tag } from 'ant-design-vue';
 import { getEnumItems } from '#/utils/init-enum';
 
@@ -794,8 +794,12 @@ export function useOrderFeeColumns(
       field: 'unit',
       minWidth: 100,
       cellRender: {
-        name: 'UnitSelect',
+        name: 'CellUnitSelect',
         props: {
+          unitOptions: getOrderCtnList().map((ctn) => ({
+            label: ctn.ctnCodeName,
+            value: ctn.ctnCodeName,
+          })),
           disabled: (row: any) => !canEditFee(row.feeStatus),
         },
       },
@@ -1079,4 +1083,30 @@ export const getFeeStatusOptions = () => {
 export const getFeeStatusValueByLabel = (code: string): number | undefined => {
   const status = getFeeStatusOptions().find((item) => item.code === code);
   return status ? status.value : undefined;
+};
+
+// --------------------------------------------------------
+// 订单箱型列表（用于单位下拉框过滤）
+// --------------------------------------------------------
+const orderCtnListRef = ref<Array<{ ctnCodeId: number; ctnCodeName: string }>>(
+  [],
+);
+
+/**
+ * 设置订单箱型列表
+ * @param ctnList 箱型列表
+ */
+export const setOrderCtnList = (
+  ctnList: Array<{ ctnCodeId: number; ctnCodeName: string }>,
+) => {
+  console.log('📝 [setOrderCtnList] 设置箱型列表:', ctnList);
+  orderCtnListRef.value = ctnList;
+};
+
+/**
+ * 获取订单箱型列表
+ */
+export const getOrderCtnList = () => {
+  console.log('📖 [getOrderCtnList] 获取箱型列表:', orderCtnListRef.value);
+  return orderCtnListRef.value;
 };

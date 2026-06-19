@@ -60,6 +60,7 @@ const mapItemToOption = (item: FeeCodeAdminApi.FeeCodeDto) => {
   return {
     disabled: !item.enable,
     label,
+    rowLabel: itemAny?.[props.labelKey],
     value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
 };
@@ -175,6 +176,7 @@ defineExpose({
     :filter-option="false"
     :show-search="true"
     :allow-clear="true"
+    :option-label-prop="'rowLabel'"
     loading-slot="suffixIcon"
     model-prop-name="value"
     visible-event="onDropdownVisibleChange"

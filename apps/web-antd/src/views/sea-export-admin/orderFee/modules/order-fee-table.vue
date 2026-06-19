@@ -42,7 +42,12 @@ import {
 import { GetDetail } from '#/api/sea-export/change-order-admin';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { useOrderFeeColumns, initOrderFeeEnumCache } from '../data';
+import {
+  useOrderFeeColumns,
+  initOrderFeeEnumCache,
+  setOrderCtnList,
+  getOrderCtnList,
+} from '../data';
 import OrderFeeEditorModal from './order-fee-editor-modal.vue';
 import OrderFeeAuditHistoryModal from './order-fee-audit-history-modal.vue';
 
@@ -63,6 +68,9 @@ const props = defineProps<{
 const emit = defineEmits(['sync-fee']);
 
 const route = useRoute();
+
+// 订单箱型列表（用于单位下拉框过滤）
+const orderCtnList = ref<Array<{ ctnCodeId: number; ctnCodeName: string }>>([]);
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -180,6 +188,63 @@ const queryTableData = async () => {
 };
 const tmpAdd = ref(false);
 const tmpDel = ref(false);
+
+// 加载订单箱型列表
+const loadOrderCtnList = async () => {
+  console.log('🔍 [loadOrderCtnList] 开始加载，editId:', editId.value);
+
+  if (!editId.value) {
+    console.warn('⚠️ [loadOrderCtnList] editId 为空，跳过加载');
+    return;
+  }
+
+  try {
+    const orderDetail = await getSeaExportDetail(editId.value);
+    console.log('📦 [loadOrderCtnList] 订单详情:', orderDetail);
+    console.log(
+      '📦 [loadOrderCtnList] transportOrder:',
+      orderDetail?.transportOrder,
+    );
+    console.log(
+      '📦 [loadOrderCtnList] orderCtns:',
+      orderDetail?.transportOrder?.orderCtns,
+    );
+
+    if (orderDetail?.transportOrder?.orderCtns) {
+      // 提取唯一的箱型列表
+      const ctnMap = new Map<number, string>();
+      orderDetail.transportOrder.orderCtns.forEach((ctn: any) => {
+        console.log('📋 [loadOrderCtnList] 处理箱型:', ctn);
+        if (ctn.ctnCodeId && ctn.ctnCodeName) {
+          ctnMap.set(ctn.ctnCodeId, ctn.ctnCodeName);
+        }
+      });
+
+      const ctnList = Array.from(ctnMap.entries()).map(([id, name]) => ({
+        ctnCodeId: id,
+        ctnCodeName: name,
+      }));
+
+      console.log('✅ [loadOrderCtnList] 提取的箱型列表:', ctnList);
+
+      orderCtnList.value = ctnList;
+
+      // 设置到 data.ts 模块中
+      setOrderCtnList(ctnList);
+      console.log('✅ [loadOrderCtnList] 已调用 setOrderCtnList');
+
+      // 验证是否设置成功
+      const verifyList = getOrderCtnList();
+      console.log('🔍 [loadOrderCtnList] 验证 getOrderCtnList():', verifyList);
+    } else {
+      console.warn('⚠️ [loadOrderCtnList] orderCtns 不存在或为空');
+      // 设置为空数组
+      setOrderCtnList([]);
+    }
+  } catch (error) {
+    console.error('❌ [loadOrderCtnList] 加载订单箱型列表失败:', error);
+  }
+};
 
 // 模态框引用
 const modifyModalRef = ref<InstanceType<typeof OrderFeeEditorModal>>();
@@ -654,6 +719,8 @@ onMounted(() => {
   initOrderFeeEnumCache();
   getTableDate();
   getFeeCodeList();
+  // 加载订单箱型列表
+  loadOrderCtnList();
 });
 defineExpose({
   getTableDate,
