@@ -65,7 +65,7 @@ const props = defineProps<{
   payAmountMap?: Record<string, any>; // 应付金额汇总
 }>();
 
-const emit = defineEmits(['sync-fee']);
+const emit = defineEmits(['sync-fee', 'update-amount']);
 
 const route = useRoute();
 
@@ -591,8 +591,11 @@ const normalizeOrderFeeWithRowKey = (
   items: OrderFeeAdminApi.OrderFeeDto[] | undefined,
 ) => {
   if (!items?.length) return [];
+  console.log('normalizeOrderFeeWithRowKey', items);
   return items.map((item, i) => ({
     ...item,
+    industryCategory:
+      item.industryCategory === 0 ? null : item.industryCategory, // 确保行业类别有默认值，避免编辑时下拉框异常
     _rowKey: `ofee_${i}_${Date.now()}`,
   })) as any[];
 };
@@ -694,6 +697,74 @@ const syncFee = () => {
   };
   console.log('费用同步', syncFeeDto);
   emit('sync-fee', syncFeeDto);
+
+  // 实时计算当前表格的金额汇总
+  calculateAndEmitAmount(list);
+};
+
+// 计算并发送金额汇总数据
+const calculateAndEmitAmount = (list: OrderFeeAdminApi.OrderFeeDto[]) => {
+  if (!list || list.length === 0) {
+    emit('update-amount', {
+      type: props.type ?? 0,
+      amountMap: {},
+    });
+    return;
+  }
+
+  const amountMap: Record<string, any> = {};
+  const currencyIdList = list.map((item) => item.currencyId).filter(Boolean);
+
+  // 去重处理
+  const uniqueCurrencyIds = [...new Set(currencyIdList)];
+
+  uniqueCurrencyIds.forEach((currencyId) => {
+    const currencyList = list.filter((item) => item.currencyId === currencyId);
+
+    const totalAmount = currencyList.reduce((acc, cur) => {
+      return acc + (cur.amount || 0);
+    }, 0);
+
+    const totalRMBAmount = currencyList.reduce((acc, cur) => {
+      return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
+    }, 0);
+
+    const exchangeRate = currencyList[0]?.exchangeRate || 1;
+    const currencyName = currencyList[0]?.currencyName || '';
+
+    if (currencyId !== undefined && currencyId !== null) {
+      // 根据类型设置不同的字段名
+      if (props.type === 0) {
+        // 应收
+        amountMap[currencyId] = {
+          totalRecAmount: totalAmount,
+          totalRMBRecAmount: totalRMBAmount,
+          exchangeRate,
+          currencyName,
+          currencyId,
+        };
+      } else {
+        // 应付
+        amountMap[currencyId] = {
+          totalPayAmount: totalAmount,
+          totalRMBPayAmount: totalRMBAmount,
+          exchangeRate,
+          currencyName,
+          currencyId,
+        };
+      }
+    }
+  });
+
+  console.log(
+    `💰 [${props.type === 0 ? '应收' : '应付'}] 金额汇总更新:`,
+    amountMap,
+  );
+
+  emit('update-amount', {
+    type: props.type ?? 0,
+    amountMap,
+  });
 };
 
 watch(

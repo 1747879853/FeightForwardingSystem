@@ -474,6 +474,24 @@ const getOrderFeeNumber = async () => {
   });
 };
 
+// 处理费用表格的金额更新事件
+const handleAmountUpdate = (data: {
+  type: number;
+  amountMap: Record<string, any>;
+}) => {
+  console.log('📊 收到金额更新事件:', data);
+
+  if (data.type === 0) {
+    // 应收
+    recAmountMap.value = { ...data.amountMap };
+    console.log('✅ 应收金额已更新:', recAmountMap.value);
+  } else if (data.type === 1) {
+    // 应付
+    payAmountMap.value = { ...data.amountMap };
+    console.log('✅ 应付金额已更新:', payAmountMap.value);
+  }
+};
+
 onMounted(() => {
   console.log('\n========== 页面挂载开始 ==========');
   console.log(
@@ -551,11 +569,13 @@ onMounted(() => {
             :type="0"
             :rec-amount-map="recAmountMap"
             :pay-amount-map="payAmountMap"
+            @update-amount="handleAmountUpdate"
           />
           <OrderFeeTable
             :type="1"
             :rec-amount-map="recAmountMap"
             :pay-amount-map="payAmountMap"
+            @update-amount="handleAmountUpdate"
           />
           <div class="total-amount flex flex-wrap rounded-md px-4 py-1 shadow">
             <div

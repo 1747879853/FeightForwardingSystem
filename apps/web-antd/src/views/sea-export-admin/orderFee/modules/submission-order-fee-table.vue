@@ -454,9 +454,11 @@ onMounted(() => {
 
         <template v-if="column.key === 'industryCategory'">
           <span>{{
-            feeConstants
-              .getIndustryCategoryOptions()
-              .find((o) => o.value === record.industryCategory)?.label
+            !record.industryCategory || record.industryCategory === 0
+              ? ''
+              : feeConstants
+                  .getIndustryCategoryOptions()
+                  .find((o) => o.value === record.industryCategory)?.label
           }}</span>
         </template>
 

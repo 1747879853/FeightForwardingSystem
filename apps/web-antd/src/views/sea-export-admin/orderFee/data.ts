@@ -457,12 +457,17 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
 
       field: 'industryCategory',
       minWidth: 110,
-      cellRender: {
-        name: 'CellTag',
-        options: getIndustryCategoryOptions().map(({ label, key }) => ({
-          label,
-          value: key,
-        })),
+      slots: {
+        default: ({ row }: any) => {
+          // 如果行业类别为空、0 或 null，显示为空
+          if (!row.industryCategory || row.industryCategory === 0) {
+            return '';
+          }
+          const option = getIndustryCategoryOptions().find(
+            (o) => o.key === row.industryCategory,
+          );
+          return option ? option.label : '';
+        },
       },
     },
     {
