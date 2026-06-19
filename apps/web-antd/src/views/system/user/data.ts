@@ -268,24 +268,9 @@ export function useFormSchema(): VbenFormSchema[] {
         showCount: true,
         autocomplete: 'off',
       },
-      dependencies: {
-        triggerFields: ['emailAddress'],
-        rules: (values) => {
-          if (values.emailAddress && values.emailAddress.length > 0) {
-            return z
-              .string()
-              .email({
-                message: $t('common.invalidEmail', [$t('system.user.email')]),
-              })
-              .max(128, {
-                message: $t('common.maxLength', [$t('system.user.email'), 128]),
-              });
-          }
-          return z.string().optional();
-        },
-      },
       fieldName: 'emailAddress',
       label: $t('system.user.email'),
+      rules: 'email|max:128',
     },
     {
       component: 'Input',
