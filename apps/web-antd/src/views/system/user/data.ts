@@ -388,6 +388,7 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       fieldName: 'organizationId',
       label: $t('system.user.department'),
+      rules: 'selectRequired',
     },
     {
       component: 'Input',
@@ -406,6 +407,7 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       fieldName: 'userAttributeFlags',
       label: $t('system.user.userAttribute'),
+      rules: 'required',
     },
 
     {

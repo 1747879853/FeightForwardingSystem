@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-19] [用户管理所属部门与用户属性设为必填](./changelogs/change-log-2026-06-19-system-user-dept-attribute-required.md)
 - [2026-06-19] [组织管理新增时自动带出选中上级组织](./changelogs/change-log-2026-06-19-dept-create-parent-prefill.md)
 - [2026-06-19] [海运出口列表对接费用状态字段](./changelogs/change-log-2026-06-19-sea-export-list-fee-status-columns.md)
 - [2026-06-17] [编号规则配置卡片交互与实时预览](./changelogs/change-log-2026-06-17-generate-num-rule-card-preview.md)
