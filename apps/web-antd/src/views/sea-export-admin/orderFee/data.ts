@@ -672,21 +672,6 @@ export function useOrderFeeColumns(
       },
     },
     {
-      title: '保存状态',
-      field: '_saveStatus',
-      width: 80,
-      align: 'center',
-      slots: {
-        default: ({ row }: any) => {
-          // 如果 id 为空，显示未保存标识
-          if (!row.id) {
-            return h(Tag, { color: 'warning' }, () => '未保存');
-          }
-          return h(Tag, { color: 'success' }, () => '已保存');
-        },
-      },
-    },
-    {
       title: $t('seaExport.export.orderFee.invoiceStatus'),
       field: 'invoiceStatus',
       width: 80,

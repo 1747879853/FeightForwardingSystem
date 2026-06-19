@@ -236,6 +236,8 @@ setupVbenVxeTable({
           ...props,
           modelValue: row[column.field],
           'onUpdate:modelValue': onChange,
+          // 传递保存状态（id 为空表示未保存）
+          isSaved: !!row.id,
         };
 
         // 如果 disabled 是函数，则调用它并传入 row

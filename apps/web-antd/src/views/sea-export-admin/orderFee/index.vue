@@ -512,7 +512,7 @@ onMounted(() => {
 });
 </script>
 <template>
-  <Page auto-content-height>
+  <Page>
     <Spin :spinning="pageLoading">
       <div class="mx-2 flex items-stretch gap-6">
         <!-- 垂直方向撑满 -->

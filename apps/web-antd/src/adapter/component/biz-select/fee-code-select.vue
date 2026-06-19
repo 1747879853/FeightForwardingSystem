@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 
-import { computed, ref, toRef, watch } from 'vue';
+import { computed, ref, toRef, watch, h } from 'vue';
 
 import { ApiComponent } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
-import { Select } from 'ant-design-vue';
+import { Select, Tag } from 'ant-design-vue';
 
 import {
   getFeeCodeDetail,
@@ -26,6 +26,8 @@ interface Props {
   selectedItems?: FeeCodeAdminApi.FeeCodeDto[];
   /** value 字段名，默认 'id' */
   valueKey?: string;
+  /** 是否已保存（id 不为空表示已保存） */
+  isSaved?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -34,6 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
   placeholder: undefined,
   selectedItems: () => [],
   valueKey: 'id',
+  isSaved: true,
 });
 
 const emit = defineEmits<{
@@ -166,28 +169,54 @@ defineExpose({
 </script>
 
 <template>
-  <ApiComponent
-    ref="apiComponentRef"
-    :component="Select"
-    :api="api"
-    :params="params"
-    :model-value="modelValue"
-    :placeholder="computedPlaceholder"
-    :filter-option="false"
-    :show-search="true"
-    :allow-clear="true"
-    :option-label-prop="'rowLabel'"
-    loading-slot="suffixIcon"
-    model-prop-name="value"
-    visible-event="onDropdownVisibleChange"
-    @update:model-value="handleChange"
-    @search="handleSearch"
-    @popup-scroll="handlePopupScroll"
-    v-bind="$attrs"
-    class="w-full"
-  >
-    <template v-for="(_, name) in $slots" :key="name" #[name]="slotData">
-      <slot :name="name" v-bind="slotData || {}"></slot>
-    </template>
-  </ApiComponent>
+  <div class="fee-code-select-wrapper">
+    <ApiComponent
+      ref="apiComponentRef"
+      :component="Select"
+      :api="api"
+      :params="params"
+      :model-value="modelValue"
+      :placeholder="computedPlaceholder"
+      :filter-option="false"
+      :show-search="true"
+      :allow-clear="true"
+      :option-label-prop="'rowLabel'"
+      loading-slot="suffixIcon"
+      model-prop-name="value"
+      visible-event="onDropdownVisibleChange"
+      @update:model-value="handleChange"
+      @search="handleSearch"
+      @popup-scroll="handlePopupScroll"
+      v-bind="$attrs"
+      class="w-full"
+    >
+      <template v-for="(_, name) in $slots" :key="name" #[name]="slotData">
+        <slot :name="name" v-bind="slotData || {}"></slot>
+      </template>
+    </ApiComponent>
+
+    <!-- 未保存状态显示红色三角形标签 -->
+    <Tag v-if="!isSaved" color="red" class="unsaved-indicator" />
+  </div>
 </template>
+
+<style scoped lang="scss">
+.fee-code-select-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.unsaved-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  background-color: #ff4d4f;
+  border-radius: 0 !important;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+</style>
