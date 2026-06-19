@@ -192,7 +192,7 @@ const editContactData = async (
 };
 
 const addContact = () => {
-  modalApi.open();
+  modalApi.setData(null).open();
 };
 const editContact = (data: ClientContactAdminApi.ClientContactEditDto) => {
   modalApi.setData(data).open();

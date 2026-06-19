@@ -399,7 +399,16 @@ const loadEditData = async () => {
     pageLoading.value = false;
   }
 };
-
+const handleClientTypeChange = (checkedValues: number[]) => {
+  console.log('handleClientTypeChange', checkedValues);
+  if (!checkedValues.includes(1)) {
+    customerType.value = [];
+  }
+  if (!checkedValues.includes(2)) {
+    supplierType.value = [];
+  }
+  console.log('customerType.value', customerType.value);
+};
 /**
  * 更新干系人列表
  */
@@ -456,6 +465,9 @@ const handleSubmit = async () => {
         ...(supplierType.value || []),
       ]),
     ].join('');
+    console.log('customerType.value', customerType.value);
+    console.log('supplierType.value', supplierType.value);
+    console.log('industryCategories', industryCategories);
 
     // 构建地址列表（新增时不包含id）
     const addresses = addressList.value.map((item) => ({
@@ -713,7 +725,7 @@ const handleCancel = () => {
  * 添加地址
  */
 const addAddress = () => {
-  modalApi.open();
+  modalApi.setData(null).open();
 };
 /**
  * 编辑地址
@@ -821,7 +833,11 @@ onMounted(() => {
                 <span class="mx-3 font-extrabold">{{
                   $t('seaExport.client.smallTitle.type')
                 }}</span>
-                <CheckboxGroup name="CheckboxGroup" v-model:value="clientType">
+                <CheckboxGroup
+                  name="CheckboxGroup"
+                  v-model:value="clientType"
+                  :onChange="handleClientTypeChange"
+                >
                   <Checkbox :value="1" class="lineheight-32">
                     {{ $t('seaExport.client.clientTypeOptions.customer') }}
                   </Checkbox>
