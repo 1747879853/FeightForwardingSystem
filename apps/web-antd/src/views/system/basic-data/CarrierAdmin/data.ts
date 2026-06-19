@@ -38,14 +38,18 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       rules: z
         .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.carrier.cnName'),
+          ]),
+        })
         .max(
           100,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.carrier.cnName'),
             100,
           ]),
-        )
-        .optional(),
+        ),
     },
     {
       component: 'Input',
@@ -56,14 +60,18 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       rules: z
         .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.carrier.cnShortName'),
+          ]),
+        })
         .max(
           50,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.carrier.cnShortName'),
             50,
           ]),
-        )
-        .optional(),
+        ),
     },
     {
       component: 'Input',
@@ -74,14 +82,18 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       rules: z
         .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.carrier.enName'),
+          ]),
+        })
         .max(
           100,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.carrier.enName'),
             100,
           ]),
-        )
-        .optional(),
+        ),
     },
     {
       component: 'Input',
@@ -92,14 +104,18 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       rules: z
         .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.carrier.code'),
+          ]),
+        })
         .max(
           50,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.carrier.code'),
             50,
           ]),
-        )
-        .optional(),
+        ),
     },
     {
       component: 'Input',

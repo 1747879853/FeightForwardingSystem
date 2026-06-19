@@ -338,12 +338,13 @@ defineExpose({
       :width="800"
       @cancel="handlePreviewClose"
     >
-      <Image
-        :src="previewImageUrl"
-        :preview="false"
-        class="w-full"
-        style="max-height: 70vh; object-fit: contain"
-      />
+      <div class="flex items-center justify-center">
+        <Image
+          :src="previewImageUrl"
+          :preview="false"
+          style="max-width: 100%; max-height: 70vh; object-fit: contain"
+        />
+      </div>
     </Modal>
   </div>
 </template>
