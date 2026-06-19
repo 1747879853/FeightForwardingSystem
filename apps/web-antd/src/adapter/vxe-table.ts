@@ -871,10 +871,17 @@ setupVbenVxeTable({
     });
     vxeUI.renderer.add('CellUnitSelect', {
       renderTableDefault({ attrs, props }, { column, row }) {
+        // 动态获取 unitOptions，如果 props 中提供了函数则调用它
+        let dynamicUnitOptions = props?.unitOptions;
+        if (typeof dynamicUnitOptions === 'function') {
+          dynamicUnitOptions = dynamicUnitOptions();
+        }
+
         // 处理动态 disabled 属性
         const finalProps: any = {
           ...attrs,
           ...props,
+          unitOptions: dynamicUnitOptions, // 使用动态获取的 options
           modelValue: row[column.field],
           'onUpdate:modelValue': onChange,
         };

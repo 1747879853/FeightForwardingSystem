@@ -779,19 +779,40 @@ watch(
   },
   { immediate: true },
 );
+
+// 监听 editId 变化，重新加载箱型数据
+watch(
+  () => editId.value,
+  async (newEditId, oldEditId) => {
+    // 只在 editId 真正变化时才重新加载（排除初始化）
+    if (newEditId && newEditId !== oldEditId) {
+      console.log(
+        '🔄 [watch editId] editId 变化，重新加载箱型数据:',
+        newEditId,
+      );
+      await loadOrderCtnList();
+      // 重新加载表格数据
+      getTableDate();
+    }
+  },
+);
+
 const feeCodeList = ref<FeeCodeAdminApi.FeeCodeDto[]>([]);
 const getFeeCodeList = async () => {
   let res = (await getFeeCodePagedList({ PageIndex: 1, PageSize: 1000 })) || {};
   feeCodeList.value = res.items || [];
   //console.log('feeCodeList', feeCodeList.value);
 };
-onMounted(() => {
+onMounted(async () => {
   // 初始化枚举数据缓存
   initOrderFeeEnumCache();
+
+  // 先加载订单箱型列表，确保表格渲染时数据已就绪
+  await loadOrderCtnList();
+
+  // 再加载表格数据
   getTableDate();
   getFeeCodeList();
-  // 加载订单箱型列表
-  loadOrderCtnList();
 });
 defineExpose({
   getTableDate,

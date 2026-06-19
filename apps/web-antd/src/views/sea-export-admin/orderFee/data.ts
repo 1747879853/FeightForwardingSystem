@@ -786,10 +786,15 @@ export function useOrderFeeColumns(
       cellRender: {
         name: 'CellUnitSelect',
         props: {
-          unitOptions: getOrderCtnList().map((ctn) => ({
-            label: ctn.ctnCodeName,
-            value: ctn.ctnCodeName,
-          })),
+          // 使用普通箭头函数，而不是 getter，确保函数不会被立即执行
+          unitOptions: () => {
+            const list = orderCtnListRef.value;
+            console.log('🔍 [unitOptions函数] 当前箱型列表:', list);
+            return list.map((ctn) => ({
+              label: ctn.ctnCodeName,
+              value: ctn.ctnCodeName,
+            }));
+          },
           disabled: (row: any) => !canEditFee(row.feeStatus),
         },
       },
@@ -1078,9 +1083,9 @@ export const getFeeStatusValueByLabel = (code: string): number | undefined => {
 // --------------------------------------------------------
 // 订单箱型列表（用于单位下拉框过滤）
 // --------------------------------------------------------
-const orderCtnListRef = ref<Array<{ ctnCodeId: number; ctnCodeName: string }>>(
-  [],
-);
+export const orderCtnListRef = ref<
+  Array<{ ctnCodeId: number; ctnCodeName: string }>
+>([]);
 
 /**
  * 设置订单箱型列表
@@ -1089,7 +1094,6 @@ const orderCtnListRef = ref<Array<{ ctnCodeId: number; ctnCodeName: string }>>(
 export const setOrderCtnList = (
   ctnList: Array<{ ctnCodeId: number; ctnCodeName: string }>,
 ) => {
-  console.log('📝 [setOrderCtnList] 设置箱型列表:', ctnList);
   orderCtnListRef.value = ctnList;
 };
 
@@ -1097,6 +1101,5 @@ export const setOrderCtnList = (
  * 获取订单箱型列表
  */
 export const getOrderCtnList = () => {
-  console.log('📖 [getOrderCtnList] 获取箱型列表:', orderCtnListRef.value);
   return orderCtnListRef.value;
 };

@@ -146,7 +146,7 @@ const {
   fetchPage: fetchPageAdapter,
   mapItemToOption: mapCtnToOption,
   pageSize: props.pageSize,
-  queryKey: ['ctn'],
+  // queryKey: ['ctn'],
   selectedItemsRef,
   valueKey: props.valueKey,
 });
@@ -222,10 +222,6 @@ watch(
 watch(
   () => props.unitOptions,
   (newOptions, oldOptions) => {
-    console.log('🔄 [UnitSelect] unitOptions 变化:', {
-      newOptions,
-      oldOptions,
-    });
     // 重置状态，清空缓存，触发 ApiComponent 重新请求
     reset();
     console.log('✅ [UnitSelect] 已调用 reset()，触发重新加载');
