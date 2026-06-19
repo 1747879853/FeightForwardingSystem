@@ -42,17 +42,17 @@ last_updated: 2026-06-03
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **userName** | 登录用户名 | `GetMyAsync` | 只读展示 | — |
-| **nickName** | 昵称 | `GetMyAsync` | 只读展示 | — |
-| **departmentDisplay** | 部门（公司-部门） | `GetMyAsync` 的 `companyName` + `departmentName` 拼接 | 只读；顺序在昵称后、工号前 | — |
-| **employeeID** | 工号 | `GetMyAsync` | 只读 | — |
+| **userName** | 登录用户名 | `GetMyAsync` | 只读展示（纯文本） | — |
+| **nickName** | 昵称 | `GetMyAsync` | 只读展示（纯文本） | — |
+| **departmentDisplay** | 部门（公司-部门） | `GetMyAsync` 的 `companyName` + `departmentName` 拼接 | 只读（纯文本）；顺序在昵称后、工号前 | — |
+| **employeeID** | 工号 | `GetMyAsync` | 只读（纯文本） | — |
 | **enName** | 英文名称 | `GetMyAsync` / `UpdateMyInfoAsync` | 可编辑 | 空串提交为 `null` |
 | **phoneNumber** | 手机号 | 同上 | 可编辑 | 空串 → `null` |
 | **emailAddress** | 邮箱 | 同上 | 可编辑；登录后亦写入 `userInfo` 供右上角展示 | 空串 → `null` |
 | **officeTel** | 办公电话 | 同上 | 可编辑 | 空串 → `null` |
 | **qq** | QQ | 同上 | 可编辑 | 空串 → `null` |
 | **idNumber** | 身份证号 | 同上 | 可编辑 | 空串 → `null` |
-| **gender** | 性别 | 同上 | 可编辑；下拉：0 未知 / 1 男 / 2 女 | 可清空为 `null` |
+| **gender** | 性别 | 同上 | 可编辑；下拉：1 男 / 2 女；历史值 `0` 回显为空 | 可清空为 `null` |
 | **emailPwd** | 个人邮箱密码 | 同上 | 可编辑；密码框展示 | 空串 → `null` |
 | **avatar** | 头像 URL | `GetMyAsync`；上传走 `UpdateMyAvatarAsync` | **不在基本信息表单展示**；保存基本信息时隐式提交：`GetMyAsync.avatar` 为空则用 `userStore.userInfo.avatar` | 避免全量更新清空 |
 | **newPassword / confirmPassword** | 修改密码 | `ChangeMyPasswordAsync` 映射为 `password`、`confirmPassword` | 仅在「修改密码」页签 | 新密码最长 32 位；确认密码须一致 |
@@ -69,6 +69,8 @@ last_updated: 2026-06-03
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-19 | `Fix` | 个人信息页只读字段（用户名、昵称、部门、工号）改为纯文本展示，不再使用禁用 Input。 | 新增表单组件 `ReadonlyText`，与 vertical 布局表单项对齐。 |
+| 2026-06-19 | `Fix` | 性别下拉移除「未知」，仅保留男/女；历史值 `0` 回显为空。 | 与用户管理选项对齐，避免保存 `0` 后在管理端显示数字。 |
 | 2026-06-03 | `Fix` | 个人信息页「个人邮箱密码」输入框由 `VbenInputPassword` 调整为 `InputPassword`，修复与其它输入框高度不一致导致的错位。 | 表单组件混用时可能存在默认尺寸差异；该页需统一使用同一尺寸体系组件以保证行内对齐。 |
 | 2026-06-03 | `Feature` | 表单 vertical 布局（个人信息、修改密码）；修改密码移除旧密码字段；头像悬浮文案改为「上传头像」。 | `ProfileBaseSetting` / `ProfilePasswordSetting` 在 `@vben/common-ui` 统一 `layout: vertical`。 |
 | 2026-06-03 | `Feature` | 对接 `UserAdmin` 个人中心：两栏基本信息、独立改密、左侧头像上传；登录合并 `GetMyAsync` 填充右上角邮箱/头像；修复 `#/profile` 刷新菜单丢失与守卫重定向循环；保存时隐式携带 `avatar`。 | `getUserInfoApi` 使用 `Promise.allSettled`；`useAuthStore` 仅 `#/store` 导出；`Profile` 组件 `#avatar` 插槽。详见 [变更日志](../../changelogs/change-log-2026-06-03-profile-useradmin-integration.md)。 |

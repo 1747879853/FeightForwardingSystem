@@ -50,35 +50,23 @@ const formSchema = computed((): VbenFormSchema[] => {
   return [
     {
       fieldName: 'userName',
-      component: 'Input',
+      component: 'ReadonlyText',
       label: '用户名',
-      componentProps: {
-        disabled: true,
-      },
     },
     {
       fieldName: 'nickName',
-      component: 'Input',
+      component: 'ReadonlyText',
       label: '昵称',
-      componentProps: {
-        disabled: true,
-      },
     },
     {
       fieldName: 'departmentDisplay',
-      component: 'Input',
+      component: 'ReadonlyText',
       label: '部门',
-      componentProps: {
-        disabled: true,
-      },
     },
     {
       fieldName: 'employeeID',
-      component: 'Input',
+      component: 'ReadonlyText',
       label: '工号',
-      componentProps: {
-        disabled: true,
-      },
     },
     {
       fieldName: 'phoneNumber',
@@ -127,7 +115,6 @@ const formSchema = computed((): VbenFormSchema[] => {
       componentProps: {
         allowClear: true,
         options: [
-          { label: '未知', value: 0 },
           { label: '男', value: 1 },
           { label: '女', value: 2 },
         ],
@@ -171,7 +158,7 @@ async function loadMyInfo() {
     officeTel: toDisplayText(data.officeTel),
     qq: toDisplayText(data.qq),
     idNumber: toDisplayText(data.idNumber),
-    gender: data.gender ?? undefined,
+    gender: data.gender === 1 || data.gender === 2 ? data.gender : undefined,
     emailPwd: toDisplayText(data.emailPwd),
     companyName,
     departmentDisplay: buildDepartmentDisplay(companyName, departmentName),

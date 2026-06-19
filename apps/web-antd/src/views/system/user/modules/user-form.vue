@@ -113,7 +113,10 @@ const [Modal, modalApi] = useVbenModal({
             enName: userDetail.enName,
             qq: userDetail.qq,
             employeeID: userDetail.employeeID,
-            gender: userDetail.gender,
+            gender:
+              userDetail.gender === 1 || userDetail.gender === 2
+                ? userDetail.gender
+                : undefined,
             enable: userDetail.enable ?? true,
             idNumber: userDetail.idNumber,
             remark: userDetail.remark,
@@ -145,7 +148,8 @@ const [Modal, modalApi] = useVbenModal({
             enName: data.enName,
             qq: data.qq,
             employeeID: data.employeeID,
-            gender: data.gender,
+            gender:
+              data.gender === 1 || data.gender === 2 ? data.gender : undefined,
             enable: data.enable ?? true,
             idNumber: data.idNumber,
             remark: data.remark,

@@ -13,6 +13,8 @@
 
 ## 2026-06
 
+- [2026-06-19] [个人中心只读字段改为纯文本展示](./changelogs/change-log-2026-06-19-profile-readonly-text-display.md)
+- [2026-06-19] [性别选项统一为男/女两项](./changelogs/change-log-2026-06-19-gender-options-male-female-only.md)
 - [2026-06-19] [用户管理编辑时邮箱恢复为非必填](./changelogs/change-log-2026-06-19-system-user-email-optional.md)
 - [2026-06-19] [用户管理所属部门与用户属性设为必填](./changelogs/change-log-2026-06-19-system-user-dept-attribute-required.md)
 - [2026-06-19] [组织管理新增时自动带出选中上级组织](./changelogs/change-log-2026-06-19-dept-create-parent-prefill.md)

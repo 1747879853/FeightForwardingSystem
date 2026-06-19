@@ -137,7 +137,7 @@ export function formatUserAttribute(value: number | undefined): string {
     .join(', ');
 }
 
-/** 性别选项 */
+/** 性别选项（1 男 / 2 女） */
 export function getGenderOptions() {
   return [
     { label: $t('system.user.genderMale'), value: 1 },

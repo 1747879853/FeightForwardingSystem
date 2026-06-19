@@ -543,6 +543,7 @@ export type ComponentType =
   | 'VesselVoyageInput'
   | 'EnglishUpperInput'
   | 'EnglishUpperTextarea'
+  | 'ReadonlyText'
   | 'SigningInfoInput'
   | 'ServiceItemInput'
   | 'BillCountsInput'
@@ -704,6 +705,7 @@ async function initComponentAdapter() {
     EnglishUpperTextarea: defineAsyncComponent(
       () => import('./english-upper-textarea.vue'),
     ),
+    ReadonlyText: defineAsyncComponent(() => import('./readonly-text.vue')),
     SigningInfoInput: defineAsyncComponent(
       () => import('./signing-info-input.vue'),
     ),
