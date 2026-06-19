@@ -126,7 +126,8 @@ const [FormModal, formModalApi] = useVbenModal({
 });
 
 function onCreateOrg() {
-  formModalApi.setData(null).open();
+  const parentId = selectedKeys.value[0];
+  formModalApi.setData(parentId ? { parentId } : null).open();
 }
 
 function onEditOrg(node: SystemOrganizationUnitApi.OrganizationUnitTreeDto) {

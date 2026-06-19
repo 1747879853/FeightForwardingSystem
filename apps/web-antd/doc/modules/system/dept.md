@@ -2,7 +2,7 @@
 title: 部门管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-06-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,6 +22,7 @@ last_updated: 2026-05-16
 # 2. 功能与操作说明 (Features & Operations)
 
 - **列表/页面访问：** 通过 `/system/dept` 进入 `部门管理` 页面。
+- **新增组织：** 左侧树选中节点后，点击顶部「+」或右键「新增下级」，表单「上级组织」自动带出选中节点；未选中时上级组织留空。
 - **系统配置维护：** 按页面职责维护用户、角色、组织、工作流、枚举或缓存信息。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -45,4 +46,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-19 | `Feature` | 左侧树选中组织后点击「+」新增时，自动将选中节点作为上级组织带入表单。 | `onCreateOrg` 与 `onAppendOrg` 统一通过 `{ parentId }` 传参，由 `form.vue` 的 `onOpenChange` 写入 `parentId` 字段。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/system/dept` 对应组件 `src/views/system/dept/list.vue`，权限口径为 Admin.Team.Organization / Admin.Team.Organization.Get。 |
