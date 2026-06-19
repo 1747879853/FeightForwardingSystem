@@ -42,6 +42,7 @@ import FeeCodeSelect from './component/biz-select/fee-code-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
 import ExchangeRateSelect from '#/adapter/component/biz-select/exchange-rate-select.vue';
 import UnitSelect from '#/adapter/component/biz-select/unit-select.vue';
+import IndustryCategorySelect from '#/adapter/component/biz-select/industry-category-select.vue';
 
 setupVbenVxeTable({
   configVxeTable: (vxeUI) => {
@@ -582,12 +583,155 @@ setupVbenVxeTable({
           finalProps.disabled = finalProps.disabled(row);
         }
 
-        function onChange(newVal: any) {
-          if (newVal) {
+        async function onChange(newVal: any) {
+          if (!newVal) {
             row[column.field] = newVal;
+            return;
+          }
+
+          // 更新当前字段的值
+          row[column.field] = newVal;
+
+          // 如果是结算对象字段变化，需要根据行业类别自动切换
+          if (column.field === 'settlementId' && row['industryCategory']) {
+            console.log('结算对象变化，检查是否需要自动切换');
+            // 这里可以添加额外的逻辑，比如验证结算对象是否与行业类别匹配
           }
         }
         return h(ClientSelect, finalProps);
+      },
+    });
+
+    // 注册行业类别选择器渲染器
+    vxeUI.renderer.add('CellIndustryCategorySelect', {
+      renderTableDefault({ attrs, props }, { column, row }) {
+        // 处理动态 disabled 属性
+        const finalProps: any = {
+          ...attrs,
+          ...props,
+          modelValue: row[column.field],
+          'onUpdate:modelValue': onChange,
+        };
+
+        // 如果 disabled 是函数，则调用它并传入 row
+        if (typeof finalProps.disabled === 'function') {
+          finalProps.disabled = finalProps.disabled(row);
+        }
+
+        async function onChange(newVal: any) {
+          if (!newVal && newVal !== 0) {
+            row[column.field] = newVal;
+            return;
+          }
+
+          // 更新当前字段的值（存储的是key数字）
+          row[column.field] = newVal;
+
+          console.log('行业类别变化:', newVal);
+
+          // 将key转换为value（字母代码）用于联动逻辑
+          const industryCategoryValue = getIndustryCategoryOptions().find(
+            (item) => item.key === newVal,
+          )?.value;
+
+          if (industryCategoryValue) {
+            console.log('行业类别value:', industryCategoryValue);
+            // 根据行业类别自动切换结算对象
+            await fillSettlementIdByIndustryCategory(
+              row,
+              industryCategoryValue,
+            );
+          }
+        }
+
+        /**
+         * 根据行业类别从订单详情中获取对应的结算对象
+         */
+        async function fillSettlementIdByIndustryCategory(
+          row: any,
+          industryCategory: string,
+        ) {
+          try {
+            const transportOrderId = row['transportOrderId'];
+            if (!transportOrderId) {
+              console.warn('缺少运输订单ID，无法填充结算对象');
+              return;
+            }
+
+            // 获取订单详情
+            const orderDetail = await getSeaExportDetail(transportOrderId);
+            if (!orderDetail) {
+              console.warn('未找到订单详情');
+              return;
+            }
+
+            let settlementId: string | number | undefined;
+
+            // 根据行业类别映射到对应的字段
+            switch (industryCategory.toLowerCase()) {
+              case 'p': // 委托单位
+                settlementId = orderDetail.transportOrder?.clientId;
+                break;
+              case 'b': // 发货人
+                settlementId = orderDetail.transportOrder?.shipperId;
+                break;
+              case 'e': // 收货人
+                settlementId = orderDetail.transportOrder?.consigneeId;
+                break;
+              case 'h': // 通知人
+                settlementId = orderDetail.transportOrder?.notifierId;
+                break;
+              case 'c': // 场站
+                settlementId = orderDetail.yardId;
+                break;
+              case 'q': // 仓库
+                settlementId = orderDetail.transportOrder?.warehouseId;
+                break;
+              case 'i': // 车队
+                settlementId = orderDetail.transportOrder?.teamId;
+                break;
+              case 'f': // 报关行
+                settlementId = orderDetail.transportOrder?.custBrokerId;
+                break;
+              case 'r': // 保险公司
+                settlementId = orderDetail.transportOrder?.insuranceId;
+                break;
+              case 'o': // 订舱代理
+                settlementId = orderDetail.bookingAgentId;
+                break;
+              case 'n': // 船代
+                settlementId = orderDetail.shipAgentId;
+                break;
+              case 's': // 目的港代理
+                settlementId = orderDetail.podAgentId;
+                break;
+              default:
+                console.warn(`未识别的行业类别: ${industryCategory}`);
+                return;
+            }
+
+            // 如果找到了对应的结算对象ID，则填充
+            if (settlementId !== undefined && settlementId !== null) {
+              row['settlementId'] = String(settlementId);
+              console.log(
+                `自动填充结算对象: ${settlementId} (行业类别: ${industryCategory})`,
+              );
+
+              // 触发表格重新渲染
+              if (attrs?.onIndustryCategoryChange) {
+                await attrs.onIndustryCategoryChange(industryCategory, row);
+              }
+            } else {
+              console.warn(
+                `订单中未找到行业类别 ${industryCategory} 对应的结算对象`,
+              );
+            }
+          } catch (error) {
+            console.error('填充结算对象失败:', error);
+          }
+        }
+
+        return h(IndustryCategorySelect, finalProps);
       },
     });
     vxeUI.renderer.add('CurrencySelect', {

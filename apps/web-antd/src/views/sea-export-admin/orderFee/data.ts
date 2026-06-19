@@ -708,11 +708,7 @@ export function useOrderFeeColumns(
       field: 'industryCategory',
       minWidth: 110,
       cellRender: {
-        name: 'Select',
-        options: getIndustryCategoryOptions().map(({ label, key }) => ({
-          label,
-          value: key,
-        })),
+        name: 'CellIndustryCategorySelect',
         props: {
           disabled: (row: any) => !canEditFee(row.feeStatus),
         },

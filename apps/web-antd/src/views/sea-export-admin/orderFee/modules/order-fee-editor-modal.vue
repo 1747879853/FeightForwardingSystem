@@ -52,12 +52,15 @@ const [Modal, modalApi] = useVbenModal({
   },
   onOpenChange(isOpen: boolean) {
     if (isOpen) {
-      const data = modalApi.getData<OrderFeeAdminApi.OrderFeeDto>();
+      const data = modalApi.getData<any>();
       console.log('当前编辑的数据1:', data);
       if (data) {
-        currentFeeData.value = { ...data };
-        originalFeeData.value = { ...data };
-        orderFeeFormApi.setValues(data);
+        // 兼容旧的数据格式（直接传递费用数据）和新的数据格式（包含orderBaseData）
+        const feeData = data.feeData || data;
+        currentFeeData.value = { ...feeData };
+        originalFeeData.value = { ...feeData };
+
+        orderFeeFormApi.setValues(feeData);
       }
     } else {
       currentFeeData.value = null;

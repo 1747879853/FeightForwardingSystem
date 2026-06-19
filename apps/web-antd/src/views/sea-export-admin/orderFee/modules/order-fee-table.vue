@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
@@ -39,6 +40,7 @@ import {
 } from '#/api/audit-approval/expense-admin';
 
 import { GetDetail } from '#/api/sea-export/change-order-admin';
+import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { useOrderFeeColumns, initOrderFeeEnumCache } from '../data';
 import OrderFeeEditorModal from './order-fee-editor-modal.vue';
@@ -68,6 +70,7 @@ const editId = computed<string | undefined>(() => {
   return id ? String(id) : undefined;
 });
 
+// 订单基础数据（用于行业类别切换时自动填充结算对象）
 const ORDER_CTN_API_KEYS: Array<
   Extract<keyof OrderFeeAdminApi.OrderFeeDto, string>
 > = [
@@ -142,6 +145,7 @@ const queryTableData = async () => {
   if (props.mode === 'changeOrder') {
     return await setChangeOrderFee(changeOrderId.value);
   }
+
   let params = {
     TransportOrderId: editId.value,
     PaySide: props.type ?? 0,
@@ -444,7 +448,9 @@ const openModifyModal = () => {
   const selectedFee = list[0];
   // console.log('selectedFee', selectedFee);
 
-  modifyModalRef.value?.modalApi.setData(selectedFee);
+  modifyModalRef.value?.modalApi.setData({
+    feeData: selectedFee,
+  });
   modifyModalRef.value?.modalApi.open();
 };
 
