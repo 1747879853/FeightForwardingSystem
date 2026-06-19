@@ -201,10 +201,10 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           <img
             v-if="row?.carrierLogo?.url"
             :src="buildAttachmentUrl(row.carrierLogo.url)"
-            :alt="row?.carrierCnShortName || row?.carrierName || 'carrier-logo'"
+            :alt="row?.carrierCode || row?.carrier?.code || 'carrier-logo'"
             class="h-8 w-8 rounded object-contain"
           />
-          <span>{{ row?.carrierCnShortName || row?.carrierName || '--' }}</span>
+          <span>{{ row?.carrierCode || row?.carrier?.code || '--' }}</span>
         </span>
       </template>
     </Grid>

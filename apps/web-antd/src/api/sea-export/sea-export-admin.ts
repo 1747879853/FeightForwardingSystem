@@ -324,6 +324,8 @@ export namespace SeaExportAdminApi {
     carrierId?: number;
     carrier?: CarrierAdminApi.CarrierDto;
     carrierName?: string;
+    /** 船公司代码 */
+    carrierCode?: string;
     /** 船公司中文简称 */
     carrierCnShortName?: string;
     carrierLogo?: CarrierAdminApi.AttachmentItemDto | null;
