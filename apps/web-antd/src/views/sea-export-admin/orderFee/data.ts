@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { h } from 'vue';
-import { Tag } from 'ant-design-vue';
+import { Checkbox, Tag } from 'ant-design-vue';
 import { getEnumItems } from '#/utils/init-enum';
 
 // --------------------------------------------------------
@@ -656,6 +656,17 @@ export function useOrderFeeColumns(
   return [
     { type: 'checkbox', width: 48, fixed: 'left' },
     {
+      title: $t('common.index'),
+      field: '_rowIndex',
+      width: 60,
+      align: 'center',
+      slots: {
+        default: ({ rowIndex }: any) => {
+          return h('span', {}, String(rowIndex + 1));
+        },
+      },
+    },
+    {
       title: '保存状态',
       field: '_saveStatus',
       width: 80,
@@ -744,8 +755,8 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.ExchangeRate'),
       field: 'exchangeRate',
-      align: 'center',
-      width: 90,
+      align: 'right',
+      width: 100,
       cellRender: {
         name: 'CellInput',
         props: {
@@ -757,7 +768,8 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.unitPrice'),
       field: 'unitPrice',
-      width: 100,
+      width: 130,
+      align: 'right',
       cellRender: {
         name: 'CellInput',
         props: {
@@ -768,7 +780,8 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.amount'),
       field: 'amount',
-      minWidth: 120,
+      minWidth: 130,
+      align: 'right',
       cellRender: {
         name: 'CellInput',
         props: {
@@ -792,6 +805,7 @@ export function useOrderFeeColumns(
 
       field: 'quantity',
       minWidth: 100,
+      align: 'right',
       cellRender: {
         name: 'CellInput',
         props: {
@@ -803,7 +817,9 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.taxRate'),
 
       field: 'taxRate',
-      minWidth: 80,
+      minWidth: 90,
+      align: 'right',
+
       cellRender: {
         name: 'CellInput',
         props: {
@@ -814,34 +830,49 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
       field: 'noTaxUnitPrice',
-      minWidth: 100,
-      // cellRender: {
-      //   name: 'CellInput',
-      //   props: {
-      //     disabled: (row: any) => !canEditFee(row.feeStatus),
-      //   },
-      // },
+      minWidth: 120,
+      align: 'right',
+      formatter: ({ cellValue }: any) => {
+        if (cellValue === null || cellValue === undefined || cellValue === '')
+          return '';
+        return Number(cellValue).toLocaleString('zh-CN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      },
     },
     {
       title: $t('seaExport.export.orderFee.noTaxAmount'),
 
       field: 'noTaxAmount',
       minWidth: 120,
-      // cellRender: {
-      //   name: 'CellInput',
-      //   props: {
-      //     disabled: (row: any) => !canEditFee(row.feeStatus),
-      //   },
-      // },
+      align: 'right',
+      formatter: ({ cellValue }: any) => {
+        if (cellValue === null || cellValue === undefined || cellValue === '')
+          return '';
+        return Number(cellValue).toLocaleString('zh-CN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      },
     },
     {
       title: $t('seaExport.export.orderFee.rqstPaymentAmount'),
       field: 'rqstPaymentAmount',
       minWidth: 120,
+      align: 'right',
+      formatter: ({ cellValue }: any) => {
+        if (cellValue === null || cellValue === undefined || cellValue === '')
+          return '';
+        return Number(cellValue).toLocaleString('zh-CN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      },
       cellRender: {
         name: 'CellInput',
         props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+          disabled: (row: any) => true, // 申请付款金额不能修改
         },
       },
     },
@@ -849,27 +880,59 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.invoicedAmount'),
       field: 'invoicedAmount',
       minWidth: 120,
+      align: 'right',
+      formatter: ({ cellValue }: any) => {
+        if (cellValue === null || cellValue === undefined || cellValue === '')
+          return '';
+        return Number(cellValue).toLocaleString('zh-CN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      },
     },
     {
       title: $t('seaExport.export.orderFee.orderInvoiceAmount'),
       field: 'orderInvoiceAmount',
       minWidth: 120,
+      align: 'right',
+      formatter: ({ cellValue }: any) => {
+        if (cellValue === null || cellValue === undefined || cellValue === '')
+          return '';
+        return Number(cellValue).toLocaleString('zh-CN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      },
     },
     {
       title: $t('seaExport.export.orderFee.settledAmount'),
       field: 'settledAmount',
       minWidth: 120,
+      align: 'right',
+      formatter: ({ cellValue }: any) => {
+        if (cellValue === null || cellValue === undefined || cellValue === '')
+          return '';
+        return Number(cellValue).toLocaleString('zh-CN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      },
     },
     {
       title: $t('seaExport.export.orderFee.canInvoice'),
 
       field: 'canInvoice',
       minWidth: 100,
-      cellRender: {
-        //attrs: { beforeChange: onStatusChange },
-        name: 'CellSwitch',
-        props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+      align: 'center',
+      slots: {
+        default: ({ row }: any) => {
+          return h(Checkbox, {
+            checked: row.canInvoice === true,
+            disabled: !canEditFee(row.feeStatus),
+            onChange: (e: any) => {
+              row.canInvoice = e.target.checked;
+            },
+          });
         },
       },
     },
@@ -878,11 +941,16 @@ export function useOrderFeeColumns(
 
       field: 'isConfidential',
       minWidth: 100,
-      cellRender: {
-        //attrs: { beforeChange: onStatusChange },
-        name: 'CellSwitch',
-        props: {
-          disabled: (row: any) => !canEditFee(row.feeStatus),
+      align: 'center',
+      slots: {
+        default: ({ row }: any) => {
+          return h(Checkbox, {
+            checked: row.isConfidential === true,
+            disabled: !canEditFee(row.feeStatus),
+            onChange: (e: any) => {
+              row.isConfidential = e.target.checked;
+            },
+          });
         },
       },
     },

@@ -23,6 +23,7 @@ import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/da
 import { objectOmit } from '@vueuse/core';
 import {
   Button,
+  Checkbox,
   Image,
   Popconfirm,
   Switch,
@@ -203,6 +204,28 @@ setupVbenVxeTable({
           }
         }
         return h(Switch, finallyProps);
+      },
+    });
+
+    // 单元格渲染：复选框（用于布尔值字段）
+    vxeUI.renderer.add('CellCheckbox', {
+      renderTableDefault({ attrs, props }, { column, row }) {
+        // 处理动态 disabled 属性
+        const finallyProps: any = {
+          ...props,
+          checked: row[column.field] === true,
+          'onUpdate:checked': onChange,
+        };
+
+        // 如果 disabled 是函数，则调用它并传入 row
+        if (typeof finallyProps.disabled === 'function') {
+          finallyProps.disabled = finallyProps.disabled(row);
+        }
+
+        function onChange(newVal: boolean) {
+          row[column.field] = newVal;
+        }
+        return h(Checkbox, finallyProps);
       },
     });
     vxeUI.renderer.add('CellFeeCodeSelect', {
@@ -956,7 +979,7 @@ setupVbenVxeTable({
                       row[column.field.replace('unitPrice', 'noTaxAmount')] = (
                         (newVal / (1 + row['taxRate'] / 100)) *
                         row['quantity']
-                      ).toFixed(4);
+                      ).toFixed(2);
                     }
                   }
                 }
@@ -966,7 +989,7 @@ setupVbenVxeTable({
                     // 同时更新 含税金额 字段
                     row[column.field.replace('quantity', 'amount')] = (
                       newVal * row['unitPrice']
-                    ).toFixed(4);
+                    ).toFixed(2);
                   }
                   if (row['unitPrice'] && row['taxRate'] !== undefined) {
                     // 同时更新 不含税金额 字段
@@ -974,7 +997,7 @@ setupVbenVxeTable({
                       row['unitPrice'] / (1 + (row['taxRate'] || 0) / 100);
                     row[column.field.replace('quantity', 'noTaxAmount')] = (
                       noTaxUnitPrice * newVal
-                    ).toFixed(4);
+                    ).toFixed(2);
                   }
                 }
                 if (column.field === 'taxRate' && newVal !== '') {
@@ -988,7 +1011,7 @@ setupVbenVxeTable({
                     // 同时更新 不含税金额 字段
                     row[column.field.replace('taxRate', 'noTaxAmount')] = (
                       row['noTaxUnitPrice'] * row['quantity']
-                    ).toFixed(4);
+                    ).toFixed(2);
                   }
                 }
               })

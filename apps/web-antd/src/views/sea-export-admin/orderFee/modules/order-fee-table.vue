@@ -198,7 +198,8 @@ const openAuditHistoryModal = (row: OrderFeeAdminApi.OrderFeeDto) => {
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
   gridOptions: {
     columns: useOrderFeeColumns(props.type),
-    height: '300px',
+    height: '100%',
+    maxHeight: 500,
     keepSource: true,
     radioConfig: {
       highlight: true,
@@ -281,6 +282,7 @@ const addRowData = () => {
     taskStatus: '',
     invoiceStatus: 0,
     canInvoice: false,
+    isConfidential: false,
     dataEntryMethod: 0,
   } as any);
   dataSource.value = list;
@@ -738,17 +740,27 @@ defineExpose({
 <style scoped lang="scss">
 .order-fee-card {
   :deep(.ant-card-body) {
-    padding: 0 20px 20px !important;
+    padding: 0 20px 12px !important;
   }
 
-  :deep(.ant-table-content) {
-    min-height: 270px;
-    // max-height: 500px;
-    // overflow-y: auto;
+  .order-ctn-table {
+    display: flex;
+    flex-direction: column;
+    height: 500px;
+  }
+
+  :deep(.vxe-grid) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  :deep(.vxe-table--body-wrapper) {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 8px;
+    overflow-y: auto;
   }
 }
-
-// .custom-table {
-//   min-height: 300px;
-// }
 </style>
