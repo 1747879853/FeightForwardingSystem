@@ -457,7 +457,9 @@ setupVbenVxeTable({
             row['unit'] = ctns[0]?.ctnCodeName || '';
 
             // 计算箱型数量（有多少条箱型数据）
-            row['quantity'] = ctns.length;
+            row['quantity'] = ctns.filter(
+              (ctn) => ctn.ctnCodeName === ctns[0]?.ctnCodeName,
+            ).length;
           } catch (error) {
             console.error('填充箱型数量失败:', error);
           }
@@ -891,10 +893,109 @@ setupVbenVxeTable({
           finalProps.disabled = finalProps.disabled(row);
         }
 
-        function onChange(newVal: any) {
-          // 允许清空汇率字段
+        async function onChange(newVal: any) {
+          // 更新当前字段的值
           row[column.field] = newVal;
+
+          console.log('📦 [CellUnitSelect.onChange] 单位变化:', newVal);
+
+          if (!newVal) {
+            // 清空单位时，不自动清空数量（保留用户手动输入的值）
+            return;
+          }
+
+          // 根据单位类型自动填充数量
+          await fillQuantityByUnit(row, newVal);
         }
+
+        /**
+         * 根据单位类型自动填充数量
+         */
+        async function fillQuantityByUnit(row: any, unitName: string) {
+          try {
+            const transportOrderId = row['transportOrderId'];
+            if (!transportOrderId) {
+              console.warn('⚠️ [fillQuantityByUnit] 缺少运输订单ID');
+              return;
+            }
+
+            // 获取订单详情
+            const orderDetail = await getSeaExportDetail(transportOrderId);
+            if (!orderDetail || !orderDetail.transportOrder) {
+              console.warn('⚠️ [fillQuantityByUnit] 未找到订单详情');
+              return;
+            }
+
+            const transportOrder = orderDetail.transportOrder;
+            const unitNameLower = unitName.toLowerCase();
+
+            console.log(
+              '🔍 [fillQuantityByUnit] 单位:',
+              unitName,
+              '单位小写:',
+              unitNameLower,
+            );
+
+            // 根据单位类型填充数量
+            if (unitNameLower === '票' || unitNameLower === 'order') {
+              // 票：数量固定为 1
+              row['quantity'] = 1;
+              console.log('✅ [fillQuantityByUnit] 票数量: 1');
+            } else if (
+              unitNameLower === '毛重' ||
+              unitNameLower === 'kgs' ||
+              unitNameLower === 'weight'
+            ) {
+              // 重量：从订单获取 KGS
+              row['quantity'] = transportOrder.kgs || 0;
+              console.log('✅ [fillQuantityByUnit] 重量:', row['quantity']);
+            } else if (
+              unitNameLower === '尺码' ||
+              unitNameLower === 'cbm' ||
+              unitNameLower === 'measurement'
+            ) {
+              // 尺码：从订单获取 CBM
+              row['quantity'] = transportOrder.cbm || 0;
+              console.log('✅ [fillQuantityByUnit] 尺码:', row['quantity']);
+            } else if (
+              unitNameLower === '件数' ||
+              unitNameLower === 'pkgs' ||
+              unitNameLower === 'packages'
+            ) {
+              // 件数：从订单获取 PKGS
+              row['quantity'] = transportOrder.pkgs || 0;
+              console.log('✅ [fillQuantityByUnit] 件数:', row['quantity']);
+            } else if (unitNameLower === 'teu') {
+              // TEU：从订单获取 TEU
+              row['quantity'] = transportOrder.teu || 0;
+              console.log('✅ [fillQuantityByUnit] TEU:', row['quantity']);
+            } else if (unitNameLower !== '') {
+              // 箱型：查询订单的箱型列表数量
+              if (
+                transportOrder.orderCtns &&
+                transportOrder.orderCtns.length > 0
+              ) {
+                row['quantity'] = transportOrder.orderCtns.filter(
+                  (ctn) => ctn.ctnCodeName === unitName,
+                ).length;
+                console.log(
+                  '✅ [fillQuantityByUnit] 箱型数量:',
+                  row['quantity'],
+                );
+              } else {
+                row['quantity'] = 0;
+                console.log('✅ [fillQuantityByUnit] 箱型数量为 0');
+              }
+            } else {
+              // 其他单位：默认数量为 1
+              row['quantity'] = 1;
+              console.log('✅ [fillQuantityByUnit] 默认数量: 1');
+            }
+          } catch (error) {
+            console.error('❌ [fillQuantityByUnit] 填充数量失败:', error);
+          }
+        }
+
         return h(UnitSelect, finalProps);
       },
     });
