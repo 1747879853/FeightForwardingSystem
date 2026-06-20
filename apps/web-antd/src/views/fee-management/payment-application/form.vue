@@ -54,10 +54,13 @@ import FileUploadInput from '../../../adapter/component/file-upload/file-upload-
 
 import AddFeeDrawer from '../add-fee-modal/index.vue';
 import {
+  buildAppliedAmountCurrencyColumns,
   calcConvertedApplied,
   calcConvertedTotal,
+  collectAppliedCurrencies,
   formatAmount,
   groupFeesByOrder,
+  isAppliedAmountColumnKey,
   resolveFeeCurrencyCode,
   summarizeByCurrency,
   summarizeByCurrencyWithConversion,
@@ -132,7 +135,20 @@ const feeInnerColumns = computed(() =>
   useFeeInnerColumns(settlementCurrencyId.value !== null),
 );
 
-const orderGroups = computed(() => groupFeesByOrder(feeDetailRows.value));
+const appliedCurrencies = computed(() =>
+  collectAppliedCurrencies(feeDetailRows.value),
+);
+const appliedAmountDynamicColumns = computed(() =>
+  buildAppliedAmountCurrencyColumns(appliedCurrencies.value),
+);
+const allOrderGroupColumns = computed(() => [
+  ...orderGroupColumns,
+  ...appliedAmountDynamicColumns.value,
+]);
+
+const orderGroups = computed(() =>
+  groupFeesByOrder(feeDetailRows.value, appliedCurrencies.value),
+);
 const expandedGroupKeys = ref<string[]>([]);
 
 const currencySummaries = computed<CurrencySummary[]>(() =>
@@ -248,6 +264,15 @@ function handleOpenAddFee() {
       feeDetailRows.value.map((r) => [r.feeId, r.appliedAmount ?? 0]),
     ),
   });
+}
+
+function getGroupAppliedAmountDisplay(
+  record: OrderGroupRow,
+  columnKey: string | number | undefined,
+): string {
+  if (!isAppliedAmountColumnKey(String(columnKey))) return '';
+  const val = (record as unknown as Record<string, number>)[String(columnKey)];
+  return formatAmount(val ?? 0);
 }
 
 async function handleFeeConfirm(fees: SelectedFeeItem[]) {
@@ -972,7 +997,7 @@ function formatMonth(val: string | undefined | null): string {
 
           <div class="fee-group-table">
             <Table
-              :columns="orderGroupColumns"
+              :columns="allOrderGroupColumns"
               :data-source="orderGroups"
               :pagination="false"
               :scroll="{ x: 'max-content', y: 500 }"
@@ -992,21 +1017,8 @@ function formatMonth(val: string | undefined | null): string {
                 <template v-else-if="column.key === 'accountDate'">
                   {{ formatMonth(record.accountDate) }}
                 </template>
-                <template v-else-if="column.key === 'currencySummaries'">
-                  <div class="flex flex-wrap gap-x-3 gap-y-1">
-                    <span
-                      v-for="(cs, idx) in record.currencySummaries"
-                      :key="idx"
-                      class="inline-flex items-center gap-1"
-                    >
-                      <Tag color="blue" :bordered="false" size="small">
-                        {{ cs.currencyCode || cs.currencyName }}
-                      </Tag>
-                      <strong class="text-blue-600">
-                        {{ formatAmount(cs.amount) }}
-                      </strong>
-                    </span>
-                  </div>
+                <template v-else-if="isAppliedAmountColumnKey(column.key)">
+                  {{ getGroupAppliedAmountDisplay(record, column.key) }}
                 </template>
                 <template v-else>
                   {{ column.dataIndex ? record[column.dataIndex] : '' }}

@@ -62,6 +62,24 @@ export interface OrderCurrencyAmount {
   amount: number;
 }
 
+/** 费用明细中出现的币别（用于动态申请合计列） */
+export interface AppliedCurrencyInfo {
+  currencyId: number;
+  currencyCode?: string;
+  currencyName?: string;
+}
+
+/** 动态申请合计列字段前缀 */
+export const APPLIED_AMOUNT_FIELD_PREFIX = 'applied_amount_';
+
+export function appliedAmountFieldKey(currencyId: number): string {
+  return `${APPLIED_AMOUNT_FIELD_PREFIX}${currencyId}`;
+}
+
+export function isAppliedAmountColumnKey(key: string | undefined): boolean {
+  return !!key?.startsWith(APPLIED_AMOUNT_FIELD_PREFIX);
+}
+
 /** 订单分组行（业务 + 结算对象） */
 export interface OrderGroupRow {
   key: string;
@@ -87,8 +105,55 @@ function resolveFeeSettlementName(fee: FeeDetailRow): string {
   return fee.settlementName ?? '';
 }
 
+/** 从费用明细收集币别，按 currencyId 升序 */
+export function collectAppliedCurrencies(
+  fees: FeeDetailRow[],
+): AppliedCurrencyInfo[] {
+  const map = new Map<number, AppliedCurrencyInfo>();
+  for (const fee of fees) {
+    if (!map.has(fee.currencyId)) {
+      map.set(fee.currencyId, {
+        currencyId: fee.currencyId,
+        currencyCode: fee.currencyCode,
+        currencyName: fee.currencyName,
+      });
+    }
+  }
+  return [...map.values()].sort((a, b) => a.currencyId - b.currencyId);
+}
+
+/** 计算分组内某原币别的本次申请金额合计 */
+export function calcAppliedAmountByCurrency(
+  items: FeeDetailRow[],
+  currencyId: number,
+): number {
+  return items
+    .filter((f) => f.currencyId === currencyId)
+    .reduce((sum, f) => sum + (f.appliedAmount ?? 0), 0);
+}
+
+/** 根据币别生成「{币别}申请合计」动态列 */
+export function buildAppliedAmountCurrencyColumns(
+  currencies: AppliedCurrencyInfo[],
+) {
+  return currencies.map((c) => {
+    const label = c.currencyCode || c.currencyName || '';
+    const field = appliedAmountFieldKey(c.currencyId);
+    return {
+      title: `${label}申请合计`,
+      dataIndex: field,
+      key: field,
+      width: 120,
+      align: 'right' as const,
+    };
+  });
+}
+
 /** 按业务 + 结算对象分组费用，计算各币别汇总 */
-export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
+export function groupFeesByOrder(
+  fees: FeeDetailRow[],
+  currencies: AppliedCurrencyInfo[] = [],
+): OrderGroupRow[] {
   const map = new Map<string, FeeDetailRow[]>();
   for (const fee of fees) {
     const groupKey = `order_${fee.transportOrderId}_${fee.settlementId}`;
@@ -115,7 +180,7 @@ export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
         });
       }
     }
-    return {
+    const row: OrderGroupRow & Record<string, number> = {
       key,
       transportOrderId: first.transportOrderId,
       settlementId: first.settlementId,
@@ -133,6 +198,15 @@ export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
       children: items,
       currencySummaries: [...cMap.values()],
     };
+
+    for (const c of currencies) {
+      row[appliedAmountFieldKey(c.currencyId)] = calcAppliedAmountByCurrency(
+        items,
+        c.currencyId,
+      );
+    }
+
+    return row;
   });
 }
 
