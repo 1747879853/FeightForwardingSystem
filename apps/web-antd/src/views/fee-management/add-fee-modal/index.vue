@@ -10,6 +10,7 @@ import {
   Checkbox,
   Drawer,
   InputNumber,
+  Modal,
   message,
   Pagination,
   Table,
@@ -458,6 +459,18 @@ function getSelectedFees(): SelectedFeeItem[] {
   return result;
 }
 
+function validateSameSettlement(selected: SelectedFeeItem[]): boolean {
+  const settlementIds = new Set(
+    selected.map((fee) => fee.settlementId).filter(Boolean),
+  );
+  if (settlementIds.size <= 1) return true;
+  Modal.warning({
+    title: '提示',
+    content: '请选择同一结算对象费用',
+  });
+  return false;
+}
+
 function resolveSettlementCurrencyName(targetId: number): string {
   const fromCurrencies = currencies.value.find(
     (c) => c.currencyId === targetId,
@@ -484,6 +497,7 @@ function handleConfirm() {
     message.warning('请至少选择一条费用');
     return;
   }
+  if (!validateSameSettlement(selected)) return;
 
   const curSettlementCurrencyId = drawerProps.value.settlementCurrencyId;
   if (curSettlementCurrencyId != null) {
@@ -513,6 +527,7 @@ function handleConfirm() {
 
 function handleExchangeRateConfirm(rateMap: Map<number, number>) {
   const selected = getSelectedFees();
+  if (!validateSameSettlement(selected)) return;
   for (const fee of selected) {
     const rate = rateMap.get(fee.currencyId);
     if (rate !== undefined) {
