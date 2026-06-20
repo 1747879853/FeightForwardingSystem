@@ -154,6 +154,7 @@ setupVbenVxeTable({
             },
           ),
         ];
+        console.log(row, 'row', row['taskStatus']);
         if (row['taskStatus'] !== '') {
           ele = [];
           ele.push(

@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
-import dayjs from 'dayjs';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
 
@@ -25,8 +24,9 @@ import {
   Card,
 } from 'ant-design-vue';
 
-import * as feeConstants from '#/views/sea-export-admin/data';
-import * as submissionConstants from '#/views/audit-approval/data';
+import { $t } from '#/locales';
+
+import OrderFeeTable from '#/views/sea-export-admin/orderFee/modules/all-order-fee-table.vue';
 import {
   OrderFeeAuditAsync,
   OrderFeeRejectedAsync,
@@ -169,10 +169,6 @@ const startHorizontalDrag = (e: MouseEvent) => {
   document.body.style.cursor = 'col-resize';
   document.body.style.userSelect = 'none';
 };
-
-import { $t } from '#/locales';
-
-import OrderFeeTable from '#/views/sea-export-admin/orderFee/modules/all-order-fee-table.vue';
 
 const props = defineProps<{
   orderName: string;
@@ -319,25 +315,46 @@ const Rejected = (modalRemark: string) => {
     getTableDate();
   });
 };
-const OrderFeeAudit = (
+
+/**
+ * 统一的审核接口调用
+ * @param approve 是否通过
+ * @param modalRemark 备注
+ * @param ids 费用ID列表（包含所有需要审核的费用，不区分状态）
+ */
+const OrderFeeAuditByStatus = async (
   approve: boolean,
   modalRemark: string,
   ids: string[],
 ) => {
-  let OrderFeeAuditDto: ExpenseSubmissionAdminApi.OrderFeeTaskAuditDto = {
-    success: approve,
-    remark: modalRemark,
-    orderFeeIds: ids,
-  };
-  // console.log(OrderFeeAuditDto);
-  OrderFeeAuditAsync(OrderFeeAuditDto).then(() => {
+  if (!ids.length) return;
+
+  console.log('审核费用ID列表:', ids);
+
+  try {
+    // 统一调用 OrderFeeAuditAsync 接口
+    const dto: ExpenseSubmissionAdminApi.OrderFeeTaskAuditDto = {
+      success: approve,
+      remark: modalRemark,
+      orderFeeIds: ids,
+    };
+
+    await OrderFeeAuditAsync(dto);
+
     message.success({
       content: $t('ui.actionMessage.operationSuccess'),
       key: 'action_process_msg',
     });
     getTableDate();
-  });
+  } catch (error) {
+    console.error('审核失败:', error);
+    message.error({
+      content: $t('ui.actionMessage.operationFailed'),
+      key: 'action_process_msg',
+    });
+  }
 };
+
 const selectPass = (approve: boolean, modalRemark: string) => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
@@ -345,7 +362,7 @@ const selectPass = (approve: boolean, modalRemark: string) => {
     keysSet.has((row as any)._rowKey),
   );
   const ids = list.map((item) => item.id);
-  OrderFeeAudit(approve, modalRemark, ids);
+  OrderFeeAuditByStatus(approve, modalRemark, ids);
 };
 
 const allPass = (approve: boolean, modalRemark: string) => {
@@ -365,17 +382,51 @@ const allPass = (approve: boolean, modalRemark: string) => {
     });
     return;
   }
-  OrderFeeAudit(approve, modalRemark, ids);
+  OrderFeeAuditByStatus(approve, modalRemark, ids);
 };
 
 const recPass = (approve: boolean, modalRemark: string) => {
-  const ids = (dataSourceRec.value ?? []).map((item) => item.id);
-  OrderFeeAudit(approve, modalRemark, ids);
+  // 过滤出应收下已提交待审核的费用（排除已审核和未提交的费用）
+  const ids = (dataSourceRec.value ?? [])
+    .filter(
+      (item) =>
+        item.feeStatus === getFeeStatusValueByLabel('Submit') ||
+        item.feeStatus === getFeeStatusValueByLabel('RequestModification') ||
+        item.feeStatus === getFeeStatusValueByLabel('RequestDeletion'),
+    )
+    .map((item) => item.id);
+
+  if (!ids.length) {
+    message.warning({
+      content: $t('auditApproval.task.noPassSelect'),
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
+  OrderFeeAuditByStatus(approve, modalRemark, ids);
 };
 
 const payPass = (approve: boolean, modalRemark: string) => {
-  const ids = (dataSourcePay.value ?? []).map((item) => item.id);
-  OrderFeeAudit(approve, modalRemark, ids);
+  // 过滤出应付下已提交待审核的费用（排除已审核和未提交的费用）
+  const ids = (dataSourcePay.value ?? [])
+    .filter(
+      (item) =>
+        item.feeStatus === getFeeStatusValueByLabel('Submit') ||
+        item.feeStatus === getFeeStatusValueByLabel('RequestModification') ||
+        item.feeStatus === getFeeStatusValueByLabel('RequestDeletion'),
+    )
+    .map((item) => item.id);
+
+  if (!ids.length) {
+    message.warning({
+      content: $t('auditApproval.task.noPassSelect'),
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
+  OrderFeeAuditByStatus(approve, modalRemark, ids);
 };
 
 const layout = computed(() => {
