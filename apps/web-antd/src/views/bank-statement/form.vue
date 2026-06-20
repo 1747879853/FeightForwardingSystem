@@ -34,7 +34,6 @@ import {
   getBankStatementDetail,
   getBankStatementReceiveSettlementPagedList,
 } from '#/api/settlement-management/bank-statement-admin';
-import { getUser } from '#/api/system/user-admin';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
@@ -43,6 +42,7 @@ import {
   getReceiveSettlementStatusLabel,
   useReceiveSettlementColumns,
 } from './form-data';
+import { buildOperatorRows } from './utils';
 
 const perm = createAbpPermission('Admin.BankStatement');
 const receiveSettlementPerm = createAbpPermission('Admin.ReceiveSettlement');
@@ -168,33 +168,6 @@ function toOperatorSelectedItems(row: OperatorRow) {
   ];
 }
 
-async function resolveOperatorName(
-  operationId: number,
-  operationName?: string | null,
-) {
-  if (operationName) return operationName;
-  try {
-    const user = await getUser(operationId);
-    return user.userName || user.nickName || '';
-  } catch {
-    return '';
-  }
-}
-
-async function buildOperatorRows(
-  users: BankStatementAdminApi.BankStatementUserDto[] | undefined,
-) {
-  const rows = await Promise.all(
-    (users || []).map(async (u) => ({
-      _key: makeRowKey(),
-      operationId: u.operationId,
-      operationName: await resolveOperatorName(u.operationId, u.operationName),
-      remark: u.remark,
-    })),
-  );
-  return rows;
-}
-
 const operatorColumns = [
   { key: 'operationId', title: '操作人', width: 130 },
   { key: 'remark', title: '备注' },
@@ -226,7 +199,10 @@ async function loadEditData() {
     settlementId.value = detail.settlementId;
     clientInvoiceBankId.value = detail.clientInvoiceBankId;
 
-    operatorRows.value = await buildOperatorRows(detail.bankStatementUsers);
+    operatorRows.value = await buildOperatorRows(
+      detail.bankStatementUsers,
+      makeRowKey,
+    );
 
     await loadReceiveSettlements();
   } finally {

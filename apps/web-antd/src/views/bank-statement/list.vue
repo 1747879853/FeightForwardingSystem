@@ -17,6 +17,7 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
+import { enrichBankStatementListItems } from './utils';
 
 const perm = createAbpPermission('Admin.BankStatement');
 const router = useRouter();
@@ -77,12 +78,16 @@ const [Grid, gridApi] =
             { page }: { page: { currentPage: number; pageSize: number } },
             formValues: Record<string, unknown>,
           ) => {
-            return await getBankStatementPagedList({
+            const result = await getBankStatementPagedList({
               pageIndex: page.currentPage,
               pageSize: page.pageSize,
               sorting: 'statementTime desc',
               ...splitTimeRange(formValues),
             } as BankStatementAdminApi.BankStatementQueryDto);
+            return {
+              ...result,
+              items: await enrichBankStatementListItems(result.items || []),
+            };
           },
         },
       },

@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-20] [银行流水列表操作人列展示姓名](./changelogs/change-log-2026-06-20-bank-statement-list-operator-display.md)
 - [2026-06-20] [银行流水编辑页操作人回显姓名](./changelogs/change-log-2026-06-20-bank-statement-operator-display.md)
 - [2026-06-20] [海运出口列表港口列与表单对齐](./changelogs/change-log-2026-06-20-sea-export-list-port-columns.md)
 - [2026-06-20] [付费申请费用明细外层表动态申请合计列](./changelogs/change-log-2026-06-20-payment-application-applied-amount-dynamic-columns.md)

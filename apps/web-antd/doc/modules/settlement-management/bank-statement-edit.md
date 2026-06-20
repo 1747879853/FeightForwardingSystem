@@ -38,4 +38,4 @@ last_updated: 2026-06-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-06-20 | `Fix` | 修复编辑页右侧操作人 `UserSelect` 回显数字 ID 而非姓名的问题。 | `hydrateOperatorUserNames` + `loadOperatorUserName` 在详情缺 `operationName` 时调用 `GetUserAsync`；`selected-items` 经 `getOperatorDisplayName` 提供 label，配合稳定 `:key` 与 `usePagedSelect.mergeSelectedItems`。 |
+| 2026-06-20 | `Fix` | 修复编辑页右侧操作人 `UserSelect` 回显数字 ID 而非姓名的问题；名称解析逻辑抽至 `utils.ts` 与列表共用。 | `buildOperatorRows` 在详情缺 `operationName` 时调用 `GetUserAsync`；`selected-items` 传 `{ id, userName }` 配合 `usePagedSelect.mergeSelectedItems` 完成回显。 |
