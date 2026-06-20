@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
+import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { useExpenseAllColumns } from '../data';
 import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
@@ -27,6 +28,7 @@ import dayjs from 'dayjs';
 import * as feeConstants from '../data';
 
 import { OrderFeeTaskDetailAsync } from '#/api/audit-approval/expense-admin';
+import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 
 const dataSource = defineModel<ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[]>({
   default: () => [],
@@ -37,6 +39,66 @@ const props = defineProps<{
   transportOrderId: string;
   entityId: string;
 }>();
+
+// 币别符号映射表（从API获取）
+const currencySymbolMap = ref<Record<number, string>>({});
+
+/**
+ * 加载所有币别并构建符号映射表
+ */
+const loadCurrencySymbols = async () => {
+  try {
+    // 获取所有币别（使用较大的pageSize确保获取全部）
+    const result = await getCurrencyPagedList({
+      PageIndex: 1,
+      PageSize: 1000,
+    });
+
+    if (result && result.items) {
+      // 构建币别ID到符号的映射
+      const symbolMap: Record<number, string> = {};
+      result.items.forEach((currency: CurrencyAdminApi.CurrencyDto) => {
+        if (currency.id && currency.symbol) {
+          symbolMap[currency.id] = currency.symbol;
+        }
+      });
+      currencySymbolMap.value = symbolMap;
+      console.log('✅ 已加载币别符号映射:', symbolMap);
+    }
+  } catch (error) {
+    console.error('❌ 加载币别符号失败:', error);
+    // 失败时使用默认的硬编码映射
+    const defaultOptions = feeConstants.getCurrencyEnumSymbolOptions();
+    const symbolMap: Record<number, string> = {};
+    defaultOptions.forEach((opt) => {
+      symbolMap[opt.value] = opt.label;
+    });
+    currencySymbolMap.value = symbolMap;
+  }
+};
+
+/**
+ * 转换币别符号
+ * @param currencyId 币别ID
+ * @returns 币别符号
+ */
+const transCurrencySymbol = (currencyId: number | undefined) => {
+  // 如果 currencyId 为空，返回空字符串
+  if (currencyId === undefined || currencyId === null) {
+    return '';
+  }
+
+  // 优先从API获取的映射表中查找
+  if (currencySymbolMap.value[currencyId]) {
+    return currencySymbolMap.value[currencyId];
+  }
+
+  // 如果映射表中没有，则使用默认的硬编码选项
+  const option = feeConstants
+    .getCurrencyEnumSymbolOptions()
+    .find((o) => o.value === currencyId);
+  return option ? option.label : String(currencyId);
+};
 
 const handleModifyTask = (
   orderFeeTasks: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
@@ -86,16 +148,16 @@ const normalizeOrderFeeWithRowKey = (
     _rowKey: `ofee_${i}_${Date.now()}`,
     creationTime: dayjs(item.creationTime).format('YYYY-MM-DD HH:mm:ss'),
 
-    unitPriceStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.unitPrice}`,
-    amountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.amount}`,
-    noTaxUnitPriceStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.noTaxUnitPrice}`,
-    noTaxAmountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.noTaxAmount}`,
+    unitPriceStr: `${transCurrencySymbol(item.currencyId)}${item.unitPrice}`,
+    amountStr: `${transCurrencySymbol(item.currencyId)}${item.amount}`,
+    noTaxUnitPriceStr: `${transCurrencySymbol(item.currencyId)}${item.noTaxUnitPrice}`,
+    noTaxAmountStr: `${transCurrencySymbol(item.currencyId)}${item.noTaxAmount}`,
 
-    rqstPaymentAmountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.rqstPaymentAmount}`,
-    invoicedAmountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.invoicedAmount}`,
+    rqstPaymentAmountStr: `${transCurrencySymbol(item.currencyId)}${item.rqstPaymentAmount}`,
+    invoicedAmountStr: `${transCurrencySymbol(item.currencyId)}${item.invoicedAmount}`,
 
-    orderInvoiceAmountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.orderInvoiceAmount}`,
-    settledAmountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.settledAmount}`,
+    orderInvoiceAmountStr: `${transCurrencySymbol(item.currencyId)}${item.orderInvoiceAmount}`,
+    settledAmountStr: `${transCurrencySymbol(item.currencyId)}${item.settledAmount}`,
   })) as any[];
 };
 
@@ -145,7 +207,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
   },
   gridEvents: {
     // 单行选择变化事件
-    checkboxChange: ({ row, checked }) => {
+    checkboxChange: ({ checked }: any) => {
       const records = (gridApi.grid?.getCheckboxRecords?.() ?? []) as any;
 
       const ids = records.map((r: any) => r._rowKey);
@@ -154,7 +216,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
     },
 
     // 全选/取消全选事件
-    checkboxAll: ({ checked }) => {
+    checkboxAll: ({ checked }: any) => {
       const records = (gridApi.grid?.getCheckboxRecords?.() ?? []) as any;
 
       const ids = records.map((r: any) => r._rowKey);
@@ -162,7 +224,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
     },
 
     // 单选模式下的选择事件（如果使用 radio 类型）
-    radioChange: ({ row }) => {
+    radioChange: ({ row }: any) => {
       console.log('单选选中:', row);
     },
   },
@@ -196,7 +258,8 @@ watch(
   { immediate: true },
 );
 onMounted(() => {
-  //getTableDate();
+  // 组件挂载时加载币别符号
+  loadCurrencySymbols();
 });
 
 // 必须显式暴露

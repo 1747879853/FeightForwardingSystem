@@ -3,6 +3,7 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import dayjs from 'dayjs';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
+import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
 
 import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -11,6 +12,7 @@ import {
   getCurrencyEnumSymbolOptions,
   getFeeStatusValueByLabel,
 } from '#/views/sea-export-admin/orderFee/data';
+import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import {
   Button,
   Space,
@@ -49,7 +51,7 @@ const dataSource = computed(() => [
 
 const totalFeeRec = computed(() => {
   console.log(dataSourceRec.value);
-  return dataSourceRec.value.reduce((acc, cur) => acc + cur.amount, 0);
+  return dataSourceRec.value.reduce((acc, cur) => acc + (cur.amount || 0), 0);
 });
 
 const selectedRecKeys = ref<(string | number)[]>([]);
@@ -62,6 +64,9 @@ const selectedRowKeys = computed(() => [
 
 const childRecRef = ref<any>(null);
 const childPayRef = ref<any>(null);
+
+// 币别符号映射表（从API获取）
+const currencySymbolMap = ref<Record<number, string>>({});
 
 // 拖动相关状态
 const topHeight = ref<number>(50); // 上半部分高度百分比（垂直布局）
@@ -386,6 +391,12 @@ const getTableDate = () => {
   }
 };
 const transCurrencySymbol = (currencyId: number) => {
+  // 优先从API获取的映射表中查找
+  if (currencySymbolMap.value[currencyId]) {
+    return currencySymbolMap.value[currencyId];
+  }
+
+  // 如果映射表中没有，则使用默认的硬编码选项
   const option = getCurrencyEnumSymbolOptions().find(
     (o) => o.value === currencyId,
   );
@@ -478,9 +489,11 @@ const handleReceivableTableUpdate = (
   recAmountMap.value = {};
   const currencyIdList = dataSourceRec.value.map((item) => item.currencyId);
   currencyIdList.forEach((item) => {
+    if (item === undefined || item === null) return;
+
     let list = dataSourceRec.value.filter((item2) => item2.currencyId === item);
     let totalRecAmount = list.reduce((acc, cur) => {
-      return acc + cur.amount;
+      return acc + (cur.amount || 0);
     }, 0);
     let totalRMBRecAmount = list.reduce((acc, cur) => {
       return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
@@ -507,9 +520,11 @@ const handlePayableTableUpdate = (
   payAmountMap.value = {};
   const currencyIdList = dataSourcePay.value.map((item) => item.currencyId);
   currencyIdList.forEach((item) => {
+    if (item === undefined || item === null) return;
+
     let list = dataSourcePay.value.filter((item2) => item2.currencyId === item);
     let totalPayAmount = list.reduce((acc, cur) => {
-      return acc + cur.amount;
+      return acc + (cur.amount || 0);
     }, 0);
     let totalRMBPayAmount = list.reduce((acc, cur) => {
       return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
@@ -532,9 +547,49 @@ const handleReceivableTableSelect = (arr: (string | number)[]) => {
 const handlePayableTableSelect = (arr: (string | number)[]) => {
   selectedPayKeys.value = arr;
 };
+
+/**
+ * 加载所有币别并构建符号映射表
+ */
+const loadCurrencySymbols = async () => {
+  try {
+    // 获取所有币别（使用较大的pageSize确保获取全部）
+    const result = await getCurrencyPagedList({
+      PageIndex: 1,
+      PageSize: 1000,
+    });
+
+    if (result && result.items) {
+      // 构建币别ID到符号的映射
+      const symbolMap: Record<number, string> = {};
+      result.items.forEach((currency: CurrencyAdminApi.CurrencyDto) => {
+        if (currency.id && currency.symbol) {
+          symbolMap[currency.id] = currency.symbol;
+        }
+      });
+      currencySymbolMap.value = symbolMap;
+      console.log('✅ 已加载币别符号映射:', symbolMap);
+    }
+  } catch (error) {
+    console.error('❌ 加载币别符号失败:', error);
+    // 失败时使用默认的硬编码映射
+    const defaultOptions = getCurrencyEnumSymbolOptions();
+    const symbolMap: Record<number, string> = {};
+    defaultOptions.forEach((opt) => {
+      symbolMap[opt.value] = opt.label;
+    });
+    currencySymbolMap.value = symbolMap;
+  }
+};
+
 // 必须显式暴露
 defineExpose({
   getTableDate,
+});
+
+// 组件挂载时加载币别符号
+onMounted(() => {
+  loadCurrencySymbols();
 });
 </script>
 
