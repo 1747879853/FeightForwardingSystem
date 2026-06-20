@@ -25,7 +25,7 @@ export function resolveFeeCurrencyCode(
 export interface FeeDetailRow extends SelectedFeeItem {
   /** 委托编号 */
   commissionNum?: string;
-  /** 票据编号 */
+  /** 主提单号 */
   mblNum?: string;
   /** 会计日期 */
   accountDate?: string;
