@@ -71,6 +71,7 @@ const fetchPageAdapter = async (params: {
     Keyword: params.KeyWords,
     PageIndex: params.PageIndex,
     PageSize: params.PageSize,
+    Sorting: 'OrderNo ASC, Id DESC',
   });
   return {
     items: res.items || [],
