@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-20] [个人中心与用户管理邮箱必填及格式校验](./changelogs/change-log-2026-06-20-profile-system-user-email-required.md)
 - [2026-06-20] [箱型代码列表默认排序 OrderNo ASC, Id DESC](./changelogs/change-log-2026-06-20-ctn-code-list-sorting.md)
 - [2026-06-19] [个人中心只读字段改为纯文本展示](./changelogs/change-log-2026-06-19-profile-readonly-text-display.md)
 - [2026-06-19] [性别选项统一为男/女两项](./changelogs/change-log-2026-06-19-gender-options-male-female-only.md)

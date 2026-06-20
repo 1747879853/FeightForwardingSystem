@@ -270,7 +270,17 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       fieldName: 'emailAddress',
       label: $t('system.user.email'),
-      rules: 'email|max:128',
+      rules: z
+        .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [$t('system.user.email')]),
+        })
+        .max(128, {
+          message: $t('ui.formRules.maxLength', [$t('system.user.email'), 128]),
+        })
+        .refine((value) => /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(value), {
+          message: $t('ui.formRules.invalidEmail', [$t('system.user.email')]),
+        }),
     },
     {
       component: 'Input',
