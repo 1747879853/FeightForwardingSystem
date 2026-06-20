@@ -34,6 +34,7 @@ import {
   getBankStatementDetail,
   getBankStatementReceiveSettlementPagedList,
 } from '#/api/settlement-management/bank-statement-admin';
+import { getUser } from '#/api/system/user-admin';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
@@ -157,6 +158,43 @@ function updateOperatorRow(key: string, patch: Partial<OperatorRow>) {
   );
 }
 
+function toOperatorSelectedItems(row: OperatorRow) {
+  if (!row.operationId) return [];
+  return [
+    {
+      id: row.operationId,
+      userName: row.operationName || '',
+    },
+  ];
+}
+
+async function resolveOperatorName(
+  operationId: number,
+  operationName?: string | null,
+) {
+  if (operationName) return operationName;
+  try {
+    const user = await getUser(operationId);
+    return user.userName || user.nickName || '';
+  } catch {
+    return '';
+  }
+}
+
+async function buildOperatorRows(
+  users: BankStatementAdminApi.BankStatementUserDto[] | undefined,
+) {
+  const rows = await Promise.all(
+    (users || []).map(async (u) => ({
+      _key: makeRowKey(),
+      operationId: u.operationId,
+      operationName: await resolveOperatorName(u.operationId, u.operationName),
+      remark: u.remark,
+    })),
+  );
+  return rows;
+}
+
 const operatorColumns = [
   { key: 'operationId', title: '操作人', width: 130 },
   { key: 'remark', title: '备注' },
@@ -188,12 +226,7 @@ async function loadEditData() {
     settlementId.value = detail.settlementId;
     clientInvoiceBankId.value = detail.clientInvoiceBankId;
 
-    operatorRows.value = (detail.bankStatementUsers || []).map((u) => ({
-      _key: makeRowKey(),
-      operationId: u.operationId,
-      operationName: u.operationName,
-      remark: u.remark,
-    }));
+    operatorRows.value = await buildOperatorRows(detail.bankStatementUsers);
 
     await loadReceiveSettlements();
   } finally {
@@ -536,19 +569,9 @@ onMounted(() => {
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'operationId'">
                     <UserSelect
+                      :key="record._key"
                       :model-value="record.operationId"
-                      :selected-items="
-                        record.operationId
-                          ? [
-                              {
-                                id: record.operationId,
-                                userName:
-                                  record.operationName ||
-                                  String(record.operationId),
-                              },
-                            ]
-                          : []
-                      "
+                      :selected-items="toOperatorSelectedItems(record)"
                       :disabled="!canEdit && isEdit"
                       placeholder="请选择"
                       size="small"
