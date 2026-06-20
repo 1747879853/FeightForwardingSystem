@@ -6,6 +6,7 @@ export namespace CurrencyAdminApi {
     code?: string;
     cnName?: string;
     enName?: string;
+    symbol?: string;
     description?: string;
     financeSoftCode?: string;
     defaultRate?: number;
@@ -21,6 +22,7 @@ export namespace CurrencyAdminApi {
     code?: string;
     cnName?: string;
     enName?: string;
+    symbol?: string;
     description?: string;
     financeSoftCode?: string;
     defaultRate?: number;
@@ -36,6 +38,7 @@ export namespace CurrencyAdminApi {
     code?: string;
     cnName?: string;
     enName?: string;
+    symbol?: string;
     description?: string;
     financeSoftCode?: string;
     defaultRate?: number;

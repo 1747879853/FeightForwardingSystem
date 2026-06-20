@@ -47,6 +47,7 @@ const [Modal, modalApi] = useVbenModal({
         await editCurrency({
           id: formData.value.id,
           code: values.code,
+          symbol: values.symbol,
           cnName: values.cnName,
           enName: values.enName,
           description: values.description,
@@ -63,6 +64,7 @@ const [Modal, modalApi] = useVbenModal({
           code: values.code,
           cnName: values.cnName,
           enName: values.enName,
+          symbol: values.symbol,
           description: values.description,
           financeSoftCode: values.financeSoftCode,
           defaultRate: values.defaultRate,
@@ -95,6 +97,7 @@ const [Modal, modalApi] = useVbenModal({
           code: detail.code,
           cnName: detail.cnName,
           enName: detail.enName,
+          symbol: detail.symbol,
           description: detail.description,
           financeSoftCode: detail.financeSoftCode,
           defaultRate: detail.defaultRate,
