@@ -85,6 +85,16 @@ function resolveCurrencyCode(fee: {
   return fee.currencyCode ?? fee.currencyName ?? '';
 }
 
+/** PaySide 枚举选项 */
+export const PaySideOptions = [
+  { value: 0, label: '收' },
+  { value: 1, label: '付' },
+];
+
+export function getPaySideLabel(value: number): string {
+  return PaySideOptions.find((o) => o.value === value)?.label ?? '';
+}
+
 /** 搜索表单 schema */
 export function useAddFeeSearchSchema(options?: {
   /** 是否必填结算对象（已有费用时需锁定并必填） */
@@ -118,6 +128,26 @@ export function useAddFeeSearchSchema(options?: {
       label: '编号',
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'PaySide',
+      label: '收付类型',
+      defaultValue: 1,
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        options: PaySideOptions,
+      },
+    },
+    {
+      component: 'CurrencySelect',
+      fieldName: 'CurrencyId',
+      label: '币别',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
         allowClear: true,
       },
     },
@@ -156,15 +186,6 @@ export function useAddFeeSearchSchema(options?: {
         allowClear: true,
         mode: 'multiple',
         maxTagCount: 2,
-      },
-    },
-    {
-      component: 'CurrencySelect',
-      fieldName: 'CurrencyId',
-      label: '币别',
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
       },
     },
   ];
@@ -343,14 +364,4 @@ export function buildOrderRow(
     );
   }
   return row;
-}
-
-/** PaySide 枚举选项 */
-export const PaySideOptions = [
-  { value: 0, label: '收' },
-  { value: 1, label: '付' },
-];
-
-export function getPaySideLabel(value: number): string {
-  return PaySideOptions.find((o) => o.value === value)?.label ?? '';
 }

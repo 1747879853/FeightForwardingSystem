@@ -268,18 +268,19 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
         align: 'right' as const,
       },
       {
-        title: t('appliedAmount'),
-        dataIndex: 'appliedAmount',
-        key: 'appliedAmount',
-        width: 140,
-        align: 'right' as const,
-      },
-      {
         title: t('applicationRate'),
         dataIndex: 'rate',
         key: 'rate',
         width: 100,
         align: 'right' as const,
+      },
+      {
+        title: t('appliedAmount'),
+        dataIndex: 'appliedAmount',
+        key: 'appliedAmount',
+        width: 140,
+        align: 'right' as const,
+        className: 'fee-applied-amount-cell',
       },
     ];
   }
@@ -313,6 +314,7 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
       key: 'appliedAmount',
       width: 140,
       align: 'right' as const,
+      className: 'fee-applied-amount-cell',
     },
   ];
 }

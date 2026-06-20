@@ -123,9 +123,12 @@ const [SearchForm, searchFormApi] = useVbenForm({
     tableRows.value = [];
     expandedRowKeys.value = [];
     currentPage.value = 1;
+    searchFormApi.setValues({
+      PaySide: 1,
+      ...(preservedSettlementId ? { SettlementId: preservedSettlementId } : {}),
+    });
+    await nextTick();
     if (preservedSettlementId) {
-      searchFormApi.setValues({ SettlementId: preservedSettlementId });
-      await nextTick();
       await fetchData(await searchFormApi.getValues());
     }
   },
@@ -184,10 +187,11 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
   await nextTick();
   await searchFormApi.resetForm();
   await nextTick();
-  if (props.settlementId) {
-    searchFormApi.setValues({ SettlementId: props.settlementId });
-    await nextTick();
-  }
+  searchFormApi.setValues({
+    PaySide: 1,
+    ...(props.settlementId ? { SettlementId: props.settlementId } : {}),
+  });
+  await nextTick();
   const hasFees = hasExistingFees();
   searchFormApi.updateSchema([
     {
@@ -233,6 +237,7 @@ async function fetchData(formValues?: Record<string, any>) {
     SettlementId: values.SettlementId,
     OrgId: values.OrgId,
     Keyword: values.Keyword,
+    PaySide: values.PaySide ?? undefined,
     ETDStart: etdStart ? dayjs(etdStart).toISOString() : undefined,
     ETDEnd: etdEnd ? dayjs(etdEnd).toISOString() : undefined,
     CurrencyId: values.CurrencyId,
@@ -374,6 +379,7 @@ async function checkSearchChanged() {
     SettlementId: values?.SettlementId,
     OrgId: values?.OrgId,
     Keyword: values?.Keyword,
+    PaySide: values?.PaySide,
     CurrencyId: values?.CurrencyId,
   });
   if (lastSearchSnapshot && snapshot !== lastSearchSnapshot) {
@@ -587,6 +593,7 @@ const feeColumns = [
     key: 'appliedAmount',
     width: 130,
     align: 'right' as const,
+    className: 'fee-applied-amount-cell',
   },
 ];
 
@@ -736,7 +743,7 @@ defineExpose({ open: openDrawer });
                     :disabled="disabledFeeIds.has(feeRecord.id)"
                     :precision="2"
                     size="small"
-                    class="w-full"
+                    class="fee-applied-amount-input w-full"
                     @change="(val) => onAppliedAmountChange(feeRecord.id, val)"
                   />
                 </template>
@@ -836,6 +843,15 @@ defineExpose({ open: openDrawer });
 
 .expanded-fee-table :deep(.ant-table-thead > tr > th) {
   background: #fafafa;
+}
+
+.expanded-fee-table :deep(.fee-applied-amount-cell) {
+  padding-right: 8px !important;
+}
+
+.expanded-fee-table :deep(.fee-applied-amount-input .ant-input-number-input) {
+  font-weight: 600;
+  color: #1677ff;
 }
 
 .expanded-fee-table :deep(.ant-table-tbody > tr > td) {

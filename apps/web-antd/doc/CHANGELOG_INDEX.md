@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-20] [付费申请添加费用抽屉增加收付类型筛选](./changelogs/change-log-2026-06-20-payment-application-add-fee-payside-filter.md)
 - [2026-06-20] [付费申请添加费用禁选行本次结算不默认未结金额](./changelogs/change-log-2026-06-20-payment-application-add-fee-disabled-applied-amount.md)
 - [2026-06-20] [付费申请添加费用抽屉不再传 Id 查询](./changelogs/change-log-2026-06-20-payment-application-add-fee-no-id-param.md)
 - [2026-06-20] [付费申请选费分组适配业务+结算对象](./changelogs/change-log-2026-06-20-payment-application-fee-group-settlement.md)

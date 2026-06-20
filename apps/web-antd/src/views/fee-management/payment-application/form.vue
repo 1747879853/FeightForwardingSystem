@@ -1090,12 +1090,12 @@ function formatMonth(val: string | undefined | null): string {
                           :value="record.appliedAmount"
                           :precision="2"
                           size="small"
-                          class="w-full"
+                          class="fee-applied-amount-input w-full"
                           @change="
                             (val) => onAppliedAmountChange(record.feeId, val)
                           "
                         />
-                        <span v-else>{{
+                        <span v-else class="fee-applied-amount-value">{{
                           formatAmount(record.appliedAmount)
                         }}</span>
                       </template>
@@ -1345,6 +1345,20 @@ function formatMonth(val: string | undefined | null): string {
 
 .expanded-fee-table :deep(.ant-table-thead > tr > th) {
   background: #fafafa;
+}
+
+.expanded-fee-table :deep(.fee-applied-amount-cell) {
+  padding-right: 8px !important;
+}
+
+.fee-applied-amount-value {
+  font-weight: 600;
+  color: #1677ff;
+}
+
+.expanded-fee-table :deep(.fee-applied-amount-input .ant-input-number-input) {
+  font-weight: 600;
+  color: #1677ff;
 }
 
 .expanded-fee-table :deep(.ant-table-tbody > tr > td) {
