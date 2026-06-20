@@ -80,6 +80,19 @@ export function isAppliedAmountColumnKey(key: string | undefined): boolean {
   return !!key?.startsWith(APPLIED_AMOUNT_FIELD_PREFIX);
 }
 
+/** 销售 / 操作 / 客服列 key */
+export const USER_ROLE_COLUMN_KEYS = [
+  'saleUserNames',
+  'operationUserNames',
+  'customerServiceUserNames',
+] as const;
+
+export function isUserRoleColumnKey(key: string | number | undefined): boolean {
+  return USER_ROLE_COLUMN_KEYS.includes(
+    String(key) as (typeof USER_ROLE_COLUMN_KEYS)[number],
+  );
+}
+
 /** 订单分组行（业务 + 结算对象） */
 export interface OrderGroupRow {
   key: string;
@@ -143,7 +156,7 @@ export function buildAppliedAmountCurrencyColumns(
       title: `${label}申请合计`,
       dataIndex: field,
       key: field,
-      width: 120,
+      width: 85,
       align: 'right' as const,
     };
   });
@@ -223,14 +236,14 @@ export function useOrderGroupColumns() {
       title: t('commissionNum'),
       dataIndex: 'commissionNum',
       key: 'commissionNum',
-      width: 160,
+      width: 150,
       ellipsis: true,
     },
     {
       title: t('mblNum'),
       dataIndex: 'mblNum',
       key: 'mblNum',
-      width: 160,
+      width: 130,
       ellipsis: true,
     },
     {
@@ -244,57 +257,60 @@ export function useOrderGroupColumns() {
       title: t('settlementNameColumn'),
       dataIndex: 'settlementName',
       key: 'settlementName',
-      width: 160,
+      width: 110,
       ellipsis: true,
     },
     {
       title: t('etd'),
       dataIndex: 'etd',
       key: 'etd',
-      width: 120,
+      width: 100,
       ellipsis: true,
     },
     {
       title: t('accountDate'),
       dataIndex: 'accountDate',
       key: 'accountDate',
-      width: 120,
+      width: 85,
       ellipsis: true,
     },
     {
       title: t('polName'),
       dataIndex: 'polName',
       key: 'polName',
-      width: 120,
+      width: 110,
       ellipsis: true,
     },
     {
       title: t('podName'),
       dataIndex: 'podName',
       key: 'podName',
-      width: 120,
+      width: 110,
       ellipsis: true,
     },
     {
       title: '销售',
       dataIndex: 'saleUserNames',
       key: 'saleUserNames',
-      width: 120,
+      width: 72,
       ellipsis: true,
+      className: 'user-role-column',
     },
     {
       title: '操作',
       dataIndex: 'operationUserNames',
       key: 'operationUserNames',
-      width: 120,
+      width: 72,
       ellipsis: true,
+      className: 'user-role-column',
     },
     {
       title: '客服',
       dataIndex: 'customerServiceUserNames',
       key: 'customerServiceUserNames',
-      width: 120,
+      width: 72,
       ellipsis: true,
+      className: 'user-role-column',
     },
   ];
 }

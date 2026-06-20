@@ -453,6 +453,12 @@ export namespace PaymentApplicationAdminApi {
     enName?: string;
   }
 
+  /** 港口简要 DTO */
+  export interface PortSimpleDto {
+    portName?: string;
+    cnName?: string;
+  }
+
   /** 业务 + 结算对象分组 DTO */
   export interface PayAppFeeGroupDto {
     id: string;
@@ -468,8 +474,10 @@ export namespace PaymentApplicationAdminApi {
     clientName?: string;
     polId?: number;
     polName?: string;
+    pol?: PortSimpleDto;
     podId?: number;
     podName?: string;
+    pod?: PortSimpleDto;
     etd?: string;
     eta?: string;
     orderUsers?: OrderUserDto[];
@@ -524,8 +532,16 @@ export namespace PaymentApplicationAdminApi {
     goodsCompleteTime?: string;
     seaExportPOLId?: number;
     seaExportPOLCnName?: string;
+    /** 起运港英文名称（详情 transportOrder） */
+    seaExportPOLPortName?: string;
+    seaExportPOLName?: string;
+    seaExportPOL?: PortSimpleDto;
     seaExportPODId?: number;
     seaExportPODCnName?: string;
+    /** 目的港英文名称（详情 transportOrder） */
+    seaExportPODPortName?: string;
+    seaExportPODName?: string;
+    seaExportPOD?: PortSimpleDto;
     seaExportVessel?: string;
     seaExportInnerVoyno?: string;
     bizType: number;

@@ -15,6 +15,7 @@ import {
   Pagination,
   Table,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { CurrencySelect } from '#/adapter/component';
@@ -34,6 +35,10 @@ import {
   type FeeRowData,
   getPaySideLabel,
   type SelectedFeeItem,
+  resolveGroupSettlementName,
+  resolvePolPortDisplayName,
+  resolvePodPortDisplayName,
+  isUserRoleColumnField,
   useAddFeeSearchSchema,
   useOrderFixedColumns,
 } from './data';
@@ -435,8 +440,8 @@ function getSelectedFees(): SelectedFeeItem[] {
           clientName: order?.clientName,
           accountDate: order?.accountDate,
           etd: order?.etd,
-          polName: order?.polName,
-          podName: order?.podName,
+          polName: order ? resolvePolPortDisplayName(order) : '',
+          podName: order ? resolvePodPortDisplayName(order) : '',
           saleUserNames,
           operationUserNames,
           customerServiceUserNames,
@@ -447,7 +452,9 @@ function getSelectedFees(): SelectedFeeItem[] {
           currencyCode: fee.currencyCode,
           currencyName: fee.currencyName,
           settlementId: fee.settlementId,
-          settlementName: fee.settlementName,
+          settlementName: order
+            ? resolveGroupSettlementName(order)
+            : (fee.settlementName ?? ''),
           amount: fee.amount,
           settledAmount: fee.settledAmount,
           unSettledAmount: fee.unSettledAmount,
@@ -622,6 +629,19 @@ function formatMonth(val: string | undefined | null): string {
   return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM') : '';
 }
 
+function getUserRoleCellText(value: unknown): string {
+  if (value == null || value === '') return '';
+  return String(value);
+}
+
+function getUserRoleCellTextFromRecord(
+  record: Record<string, unknown>,
+  field: string | undefined,
+): string {
+  if (!field) return '';
+  return getUserRoleCellText(record[field]);
+}
+
 function onFeeCheckChange(groupKey: string, feeId: string, e: any) {
   toggleFee(groupKey, feeId, e.target.checked);
 }
@@ -654,7 +674,7 @@ defineExpose({ open: openDrawer });
   <Drawer
     :open="open"
     title="添加费用"
-    :width="1200"
+    :width="1400"
     :destroy-on-close="true"
     placement="right"
     @close="handleCancel"
@@ -704,6 +724,16 @@ defineExpose({ open: openDrawer });
           </template>
           <template v-else-if="column.field === 'accountDate'">
             {{ formatMonth(record.accountDate) }}
+          </template>
+          <template v-else-if="isUserRoleColumnField(column.field)">
+            <Tooltip
+              v-if="getUserRoleCellTextFromRecord(record, column.field)"
+              :title="getUserRoleCellTextFromRecord(record, column.field)"
+            >
+              <span class="ellipsis-cell">
+                {{ getUserRoleCellTextFromRecord(record, column.field) }}
+              </span>
+            </Tooltip>
           </template>
           <template v-else>
             {{ column.field ? record[column.field] : '' }}
@@ -832,6 +862,18 @@ defineExpose({ open: openDrawer });
 .fee-order-table :deep(.ant-table-expanded-row > td) {
   padding: 4px 8px;
   background: #fff;
+}
+
+.fee-order-table :deep(.user-role-column) {
+  max-width: 72px;
+}
+
+.fee-order-table .ellipsis-cell {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fee-order-table :deep(.ant-table-body) {

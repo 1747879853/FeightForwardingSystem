@@ -31,6 +31,7 @@ import {
   Spin,
   Table,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
@@ -54,6 +55,10 @@ import FileUploadInput from '../../../adapter/component/file-upload/file-upload-
 
 import AddFeeDrawer from '../add-fee-modal/index.vue';
 import {
+  resolvePodPortDisplayName,
+  resolvePolPortDisplayName,
+} from '../add-fee-modal/data';
+import {
   buildAppliedAmountCurrencyColumns,
   calcConvertedApplied,
   calcConvertedTotal,
@@ -61,6 +66,7 @@ import {
   formatAmount,
   groupFeesByOrder,
   isAppliedAmountColumnKey,
+  isUserRoleColumnKey,
   resolveFeeCurrencyCode,
   summarizeByCurrency,
   summarizeByCurrencyWithConversion,
@@ -275,6 +281,19 @@ function getGroupAppliedAmountDisplay(
   return formatAmount(val ?? 0);
 }
 
+function getUserRoleCellText(value: unknown): string {
+  if (value == null || value === '') return '';
+  return String(value);
+}
+
+function getUserRoleCellTextFromRecord(
+  record: OrderGroupRow,
+  dataIndex: string | number | undefined,
+): string {
+  if (!dataIndex) return '';
+  return getUserRoleCellText(record[String(dataIndex) as keyof OrderGroupRow]);
+}
+
 async function handleFeeConfirm(fees: SelectedFeeItem[]) {
   const existingIds = new Set(feeDetailRows.value.map((r) => r.feeId));
   const newRows: FeeDetailRow[] = fees
@@ -404,6 +423,7 @@ function onSettlementCurrencyChange(val: number | string | null) {
 function mapDetailToFeeRows(
   detail: PaymentApplicationAdminApi.PaymentApplicationDetailDto,
 ): FeeDetailRow[] {
+  const settlementShortName = detail.clientName ?? '';
   const rows: FeeDetailRow[] = [];
   for (const group of detail.payAppFeeBySeaExportGroup ?? []) {
     const order = group.transportOrder;
@@ -417,8 +437,8 @@ function mapDetailToFeeRows(
         clientName: order?.clientName,
         accountDate: order?.accountDate,
         etd: order?.etd,
-        polName: order?.seaExportPOLCnName,
-        podName: order?.seaExportPODCnName,
+        polName: order ? resolvePolPortDisplayName(order) : '',
+        podName: order ? resolvePodPortDisplayName(order) : '',
         saleUserNames: order?.saleNames?.join('、'),
         operationUserNames: order?.operatorNames?.join('、'),
         customerServiceUserNames: order?.customerServiceNames?.join('、'),
@@ -429,7 +449,11 @@ function mapDetailToFeeRows(
         currencyCode: resolveFeeCurrencyCode(fee, group.currencyGroup),
         currencyName: item.feeCurrencyName ?? fee?.currencyName,
         settlementId: fee?.settlementId ?? '',
-        settlementName: item.feeSettlementName ?? fee?.settlementName,
+        settlementName:
+          settlementShortName ||
+          item.feeSettlementName ||
+          fee?.settlementName ||
+          '',
         amount: fee?.amount ?? item.feeAmount ?? 0,
         settledAmount: fee?.settledAmount ?? 0,
         unSettledAmount: fee?.unSettledAmount ?? 0,
@@ -1020,6 +1044,22 @@ function formatMonth(val: string | undefined | null): string {
                 <template v-else-if="isAppliedAmountColumnKey(column.key)">
                   {{ getGroupAppliedAmountDisplay(record, column.key) }}
                 </template>
+                <template v-else-if="isUserRoleColumnKey(column.key)">
+                  <Tooltip
+                    v-if="
+                      getUserRoleCellTextFromRecord(record, column.dataIndex)
+                    "
+                    :title="
+                      getUserRoleCellTextFromRecord(record, column.dataIndex)
+                    "
+                  >
+                    <span class="ellipsis-cell">
+                      {{
+                        getUserRoleCellTextFromRecord(record, column.dataIndex)
+                      }}
+                    </span>
+                  </Tooltip>
+                </template>
                 <template v-else>
                   {{ column.dataIndex ? record[column.dataIndex] : '' }}
                 </template>
@@ -1350,6 +1390,18 @@ function formatMonth(val: string | undefined | null): string {
 .fee-group-table :deep(.ant-table-expanded-row > td) {
   padding: 4px 8px;
   background: #fff;
+}
+
+.fee-group-table :deep(.user-role-column) {
+  max-width: 72px;
+}
+
+.fee-group-table .ellipsis-cell {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .expanded-fee-table {
