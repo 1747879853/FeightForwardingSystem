@@ -1037,12 +1037,11 @@ function formatMonth(val: string | undefined | null): string {
               </template>
 
               <template #expandedRowRender="{ record: group }">
-                <div class="expanded-fee-table bg-gray-50 p-2">
+                <div class="expanded-fee-table p-2">
                   <Table
                     :columns="feeInnerColumns"
                     :data-source="group.children"
                     :pagination="false"
-                    :scroll="{ x: 'max-content' }"
                     row-key="feeId"
                     size="small"
                   >
@@ -1318,13 +1317,40 @@ function formatMonth(val: string | undefined | null): string {
   width: 100%;
 }
 
+.fee-group-table :deep(.ant-table-container::before),
+.fee-group-table :deep(.ant-table-container::after) {
+  box-shadow: none !important;
+}
+
 .fee-group-table :deep(.ant-table-expanded-row > td) {
   padding: 4px 8px;
+  background: #fff;
 }
 
 .expanded-fee-table {
-  max-width: 100%;
   overflow-x: auto;
+}
+
+.expanded-fee-table :deep(.ant-table-wrapper) {
+  width: max-content;
+  max-width: none;
+}
+
+.expanded-fee-table :deep(.ant-table-container::before),
+.expanded-fee-table :deep(.ant-table-container::after) {
+  box-shadow: none !important;
+}
+
+.expanded-fee-table :deep(.ant-table-thead > tr > th) {
+  background: #fafafa;
+}
+
+.expanded-fee-table :deep(.ant-table-tbody > tr > td) {
+  background: #fff;
+}
+
+.expanded-fee-table :deep(.ant-input-number-input) {
+  text-align: right;
 }
 
 .expand-toggle {

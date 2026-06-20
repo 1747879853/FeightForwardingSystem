@@ -272,12 +272,14 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
         dataIndex: 'appliedAmount',
         key: 'appliedAmount',
         width: 140,
+        align: 'right' as const,
       },
       {
         title: t('applicationRate'),
         dataIndex: 'rate',
         key: 'rate',
         width: 100,
+        align: 'right' as const,
       },
     ];
   }
@@ -310,6 +312,7 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
       dataIndex: 'appliedAmount',
       key: 'appliedAmount',
       width: 140,
+      align: 'right' as const,
     },
   ];
 }

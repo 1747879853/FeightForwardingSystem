@@ -558,6 +558,7 @@ const feeColumns = [
     dataIndex: 'appliedAmount',
     key: 'appliedAmount',
     width: 130,
+    align: 'right' as const,
   },
 ];
 
@@ -661,12 +662,11 @@ defineExpose({ open: openDrawer });
 
         <!-- 展开行内容：费用子表格 -->
         <template #expandedRowRender="{ record }">
-          <div class="expanded-fee-table bg-gray-50 p-2">
+          <div class="expanded-fee-table p-2">
             <Table
               :columns="feeColumns"
               :data-source="getFeeRows(record.groupKey)"
               :pagination="false"
-              :scroll="{ x: 900 }"
               row-key="id"
               size="small"
             >
@@ -775,8 +775,14 @@ defineExpose({ open: openDrawer });
 </template>
 
 <style scoped>
+.fee-order-table :deep(.ant-table-container::before),
+.fee-order-table :deep(.ant-table-container::after) {
+  box-shadow: none !important;
+}
+
 .fee-order-table :deep(.ant-table-expanded-row > td) {
   padding: 4px 8px;
+  background: #fff;
 }
 
 .fee-order-table :deep(.ant-table-body) {
@@ -785,8 +791,29 @@ defineExpose({ open: openDrawer });
 }
 
 .expanded-fee-table {
-  max-width: 100%;
   overflow-x: auto;
+}
+
+.expanded-fee-table :deep(.ant-table-wrapper) {
+  width: max-content;
+  max-width: none;
+}
+
+.expanded-fee-table :deep(.ant-table-container::before),
+.expanded-fee-table :deep(.ant-table-container::after) {
+  box-shadow: none !important;
+}
+
+.expanded-fee-table :deep(.ant-table-thead > tr > th) {
+  background: #fafafa;
+}
+
+.expanded-fee-table :deep(.ant-table-tbody > tr > td) {
+  background: #fff;
+}
+
+.expanded-fee-table :deep(.ant-input-number-input) {
+  text-align: right;
 }
 
 .expand-toggle {
