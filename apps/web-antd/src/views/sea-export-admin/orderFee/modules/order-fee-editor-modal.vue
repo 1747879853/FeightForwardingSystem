@@ -12,6 +12,8 @@ import {
   getIndustryCategoryOptions,
 } from '../data';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
+import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
+import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
 import { orderCtnListRef } from '../data';
 // 定义Props
 const props = defineProps<{
@@ -135,6 +137,9 @@ const [Modal, modalApi] = useVbenModal({
 
           // 为单位字段添加onChange事件监听，实现自动填充数量
           setupUnitChangeListener();
+
+          // 为费用代码字段添加onChange事件监听，实现自动填充相关字段
+          setupFeeCodeChangeListener();
         });
       } else {
         console.warn('⚠️ [编辑模态框] 没有接收到数据');
@@ -577,6 +582,366 @@ const handleFieldChange = async (fieldName: string) => {
       quantity: updatedValues.quantity || 0,
       taxRate: updatedValues.taxRate || 0,
     };
+  }
+};
+
+// 设置费用代码变化监听器，自动填充相关字段
+const setupFeeCodeChangeListener = async () => {
+  try {
+    // 获取表单API的实例
+    const formInstance = orderFeeFormApi.form;
+
+    if (!formInstance) {
+      console.warn('表单实例未初始化');
+      return;
+    }
+
+    // 获取当前表单值
+    const formValues = await orderFeeFormApi.getValues();
+    const transportOrderId =
+      formValues?.transportOrderId || currentFeeData.value?.transportOrderId;
+
+    if (!transportOrderId) {
+      console.warn('缺少运输订单ID');
+      return;
+    }
+
+    // 如果还没有加载订单基础数据，则加载
+    if (!orderBaseData.value) {
+      const orderDetail = await getSeaExportDetail(transportOrderId);
+      if (orderDetail) {
+        orderBaseData.value = orderDetail;
+        console.log('✅ 已加载订单基础数据（用于费用代码联动）:', orderDetail);
+      }
+    }
+
+    // 更新feeCodeId字段的schema，添加onChange事件
+    orderFeeFormApi.updateSchema([
+      {
+        fieldName: 'feeCodeId',
+        componentProps: {
+          onChange: async (newVal: any) => {
+            console.log('💰 [FeeCodeSelect.onChange] 费用代码变化:', newVal);
+
+            if (!newVal) {
+              return;
+            }
+
+            try {
+              // 获取费用代码详情
+              const feeCodeDetail = await getFeeCodeDetail(newVal);
+              if (!feeCodeDetail) {
+                console.warn('未找到费用代码详情');
+                return;
+              }
+
+              console.log('费用代码详情:', feeCodeDetail);
+
+              // 获取收付类型
+              const paySide = originalFeeData.value?.paySide; // 0=应收, 1=应付
+
+              // 1. 自动填充行业类别和结算对象
+              if (paySide === 0) {
+                // 应收费用：使用收费客户类型（defaultDebitName）
+                const debitCategory = feeCodeDetail.defaultDebitName;
+                if (debitCategory) {
+                  console.log(
+                    '自动填充行业类别:',
+                    debitCategory,
+                    getCategoryNumber(debitCategory),
+                  );
+                  await orderFeeFormApi.setFieldValue(
+                    'industryCategory',
+                    getCategoryNumber(debitCategory),
+                  );
+
+                  // 根据行业类别从订单详情中获取对应的结算对象
+                  await fillSettlementIdByIndustryCategoryForFeeCode(
+                    debitCategory,
+                  );
+                }
+              } else if (paySide === 1) {
+                // 应付费用：使用付费客户类型（defaultCreditName）
+                const creditCategory = feeCodeDetail.defaultCreditName;
+                if (creditCategory) {
+                  await orderFeeFormApi.setFieldValue(
+                    'industryCategory',
+                    getCategoryNumber(creditCategory),
+                  );
+
+                  // 根据行业类别从订单详情中获取对应的结算对象
+                  await fillSettlementIdByIndustryCategoryForFeeCode(
+                    creditCategory,
+                  );
+                }
+              }
+
+              // 2. 自动填充币别
+              if (feeCodeDetail.currencyId) {
+                await orderFeeFormApi.setFieldValue(
+                  'currencyId',
+                  feeCodeDetail.currencyId,
+                );
+
+                // 同时获取汇率
+                if (feeCodeDetail.currencyId) {
+                  try {
+                    // 先获取汇率详情
+                    const exchangeRateData = await getExchangeRateDetail(
+                      feeCodeDetail.currencyId,
+                    );
+
+                    // 判断是否为本位币：需要查询订单所属公司的本位币
+                    let isLocalCurrency = false;
+
+                    // 从row中获取运输订单ID
+                    if (transportOrderId && orderBaseData.value) {
+                      const orderDetail = orderBaseData.value;
+
+                      if (
+                        orderDetail.companys &&
+                        orderDetail.companys.length > 0
+                      ) {
+                        // 获取第一个所属公司（通常只有一个）
+                        const company = orderDetail.companys[0];
+
+                        // 检查该公司的本位币是否与当前选择的币别一致
+                        if (
+                          company?.localCurrencyId === feeCodeDetail.currencyId
+                        ) {
+                          isLocalCurrency = true;
+                        }
+                      }
+                    }
+
+                    // 如果是本位币，汇率固定为1
+                    if (isLocalCurrency) {
+                      await orderFeeFormApi.setFieldValue('exchangeRate', 1);
+                      console.log('检测到本位币，汇率固定为1');
+                    } else {
+                      // 非本位币，使用正常汇率
+                      const exchangeRate =
+                        paySide === 0
+                          ? exchangeRateData.drValue
+                          : exchangeRateData.crValue;
+                      await orderFeeFormApi.setFieldValue(
+                        'exchangeRate',
+                        exchangeRate,
+                      );
+                    }
+                  } catch (error) {
+                    console.error('获取汇率详情失败:', error);
+                  }
+                }
+              }
+
+              // 3. 自动填充税率
+              if (
+                feeCodeDetail.taxRate !== undefined &&
+                feeCodeDetail.taxRate !== null
+              ) {
+                await orderFeeFormApi.setFieldValue(
+                  'taxRate',
+                  feeCodeDetail.taxRate,
+                );
+              }
+
+              // 4. 自动填充单位和数量
+              const defaultUnitName = feeCodeDetail.defaultUnitName;
+              if (defaultUnitName) {
+                // 直接将单位名称填充到unit字段
+                await orderFeeFormApi.setFieldValue('unit', defaultUnitName);
+
+                // 根据单位类型自动填充数量
+                if (defaultUnitName) {
+                  // 如果是箱型，需要查询订单的箱型信息
+                  if (defaultUnitName === '箱型' || defaultUnitName === 'CTN') {
+                    await fillCtnQuantityForFeeCode();
+                  }
+                  // 如果是票，数量为1
+                  else if (
+                    defaultUnitName === '票' ||
+                    defaultUnitName === 'ORDER'
+                  ) {
+                    await orderFeeFormApi.setFieldValue('quantity', 1);
+                  }
+                  // 如果是重量、尺码、件数、TEU，从订单详情中获取
+                  else if (
+                    [
+                      '毛重',
+                      'KGS',
+                      '尺码',
+                      'CBM',
+                      '件数',
+                      'PKGS',
+                      'TEU',
+                    ].includes(defaultUnitName)
+                  ) {
+                    await fillOrderQuantityForFeeCode(defaultUnitName);
+                  }
+                }
+              }
+
+              // 触发金额重新计算
+              await handleFieldChange('taxRate');
+            } catch (error) {
+              console.error('自动填充费用信息失败:', error);
+            }
+          },
+        },
+      },
+    ]);
+  } catch (error) {
+    console.error('设置费用代码监听器失败:', error);
+  }
+};
+
+/**
+ * 将行业类别字母转换为数字
+ */
+function getCategoryNumber(category: string): number | undefined {
+  return getIndustryCategoryOptions().find((item) => item.value === category)
+    ?.key;
+}
+
+/**
+ * 根据行业类别从订单详情中获取对应的结算对象（用于费用代码变化时）
+ */
+const fillSettlementIdByIndustryCategoryForFeeCode = async (
+  industryCategory: string,
+) => {
+  try {
+    if (!orderBaseData.value) {
+      console.warn('订单基础数据未加载');
+      return;
+    }
+
+    const orderDetail = orderBaseData.value;
+    let settlementId: string | number | undefined;
+
+    // 根据行业类别映射到对应的字段
+    switch (industryCategory.toLowerCase()) {
+      case 'b': // 发货人
+        settlementId = orderDetail.transportOrder?.shipperId;
+        break;
+      case 'c': // 场站
+        settlementId = orderDetail.yardId;
+        break;
+      case 'e': // 收货人
+        settlementId = orderDetail.transportOrder?.consigneeId;
+        break;
+      case 'f': // 报关行
+        settlementId = orderDetail.transportOrder?.custBrokerId;
+        break;
+      case 'h': // 通知人
+        settlementId = orderDetail.transportOrder?.notifierId;
+        break;
+      case 'i': // 车队
+        settlementId = orderDetail.transportOrder?.teamId;
+        break;
+      case 'n': // 船代
+        settlementId = orderDetail.shipAgentId;
+        break;
+      case 'o': // 订舱代理
+        settlementId = orderDetail.bookingAgentId;
+        break;
+      case 'p': // 委托单位
+        settlementId = orderDetail.transportOrder?.clientId;
+        break;
+      case 'q': // 仓库
+        settlementId = orderDetail.transportOrder?.warehouseId;
+        break;
+      case 'r': // 保险公司
+        settlementId = orderDetail.transportOrder?.insuranceId;
+        break;
+      case 's': // 国外代理
+        settlementId = orderDetail.podAgentId;
+        break;
+      default:
+        console.warn(`未识别的行业类别: ${industryCategory}`);
+        return;
+    }
+
+    // 如果找到了对应的结算对象ID，则填充
+    if (settlementId !== undefined && settlementId !== null) {
+      await orderFeeFormApi.setFieldValue('settlementId', String(settlementId));
+      console.log(
+        `✅ 自动填充结算对象: ${settlementId} (行业类别: ${industryCategory})`,
+      );
+    } else {
+      console.warn(`订单中未找到行业类别 ${industryCategory} 对应的结算对象`);
+    }
+  } catch (error) {
+    console.error('填充结算对象失败:', error);
+  }
+};
+
+/**
+ * 填充箱型数量和单位（用于费用代码变化时）
+ */
+const fillCtnQuantityForFeeCode = async () => {
+  try {
+    if (!orderBaseData.value || !orderBaseData.value.transportOrder) {
+      console.warn('缺少订单详情');
+      return;
+    }
+
+    const ctns = orderBaseData.value.transportOrder.orderCtns;
+    if (!ctns || ctns.length === 0) {
+      await orderFeeFormApi.setFieldValue('quantity', 0);
+      return;
+    }
+
+    // 填充单位为第一个箱型名称
+    await orderFeeFormApi.setFieldValue('unit', ctns[0]?.ctnCodeName || '');
+
+    // 计算箱型数量（有多少条箱型数据）
+    const quantity = ctns.filter(
+      (ctn) => ctn.ctnCodeName === ctns[0]?.ctnCodeName,
+    ).length;
+    await orderFeeFormApi.setFieldValue('quantity', quantity);
+  } catch (error) {
+    console.error('填充箱型数量失败:', error);
+  }
+};
+
+/**
+ * 填充订单数量（重量、尺码、件数、TEU等，用于费用代码变化时）
+ */
+const fillOrderQuantityForFeeCode = async (unitName: string) => {
+  try {
+    if (!orderBaseData.value || !orderBaseData.value.transportOrder) {
+      console.warn('缺少订单详情');
+      return;
+    }
+
+    const transportOrder = orderBaseData.value.transportOrder;
+    let quantity = 0;
+
+    // 根据单位类型填充数量
+    switch (unitName.toLowerCase()) {
+      case '重量':
+      case 'weight':
+        quantity = transportOrder.kgs || 0;
+        break;
+      case '尺码':
+      case 'measurement':
+        quantity = transportOrder.cbm || 0;
+        break;
+      case '件数':
+      case 'packages':
+        quantity = transportOrder.pkgs || 0;
+        break;
+      case 'teu':
+        quantity = transportOrder.teu || 0;
+        break;
+      default:
+        quantity = 1;
+    }
+
+    await orderFeeFormApi.setFieldValue('quantity', quantity);
+  } catch (error) {
+    console.error('填充订单数量失败:', error);
   }
 };
 
