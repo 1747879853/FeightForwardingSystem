@@ -1,8 +1,25 @@
 import type { SelectedFeeItem } from '../add-fee-modal/data';
 
+import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
+
 import { $t } from '#/locales';
 
 const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
+
+/** 解析费用原始币别 code（兼容 currencyCode 为空时从分组或 orderFee.currencyName 取值） */
+export function resolveFeeCurrencyCode(
+  fee?: Pick<
+    PaymentApplicationAdminApi.OrderFeeDto,
+    'currencyId' | 'currencyCode' | 'currencyName'
+  >,
+  currencyGroup?: PaymentApplicationAdminApi.CurrencyGroupDto[],
+): string {
+  if (fee?.currencyCode) return fee.currencyCode;
+  const fromGroup = currencyGroup?.find((c) => c.id === fee?.currencyId)?.code;
+  if (fromGroup) return fromGroup;
+  if (fee?.currencyName) return fee.currencyName;
+  return '';
+}
 
 /** 费用明细表格行（在 SelectedFeeItem 基础上增加业务展示字段） */
 export interface FeeDetailRow extends SelectedFeeItem {
@@ -33,12 +50,14 @@ export interface FeeDetailRow extends SelectedFeeItem {
 /** 币别汇总信息 */
 export interface CurrencySummary {
   currencyId: number;
+  currencyCode?: string;
   currencyName: string;
   totalAmount: number;
 }
 
 /** 订单内单个币别的汇总 */
 export interface OrderCurrencyAmount {
+  currencyCode?: string;
   currencyName: string;
   amount: number;
 }
@@ -90,6 +109,7 @@ export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
         existing.amount += f.appliedAmount ?? 0;
       } else {
         cMap.set(f.currencyId, {
+          currencyCode: f.currencyCode ?? '',
           currencyName: f.currencyName ?? '',
           amount: f.appliedAmount ?? 0,
         });
@@ -224,8 +244,8 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
     },
     {
       title: t('originalCurrencyLabel'),
-      dataIndex: 'currencyName',
-      key: 'currencyName',
+      dataIndex: 'currencyCode',
+      key: 'currencyCode',
       width: 80,
     },
   ];
@@ -322,6 +342,7 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
 /** 币别折算汇总（指定结算币别时使用），按币别+汇率分组 */
 export interface CurrencyConversionSummary {
   currencyId: number;
+  currencyCode?: string;
   currencyName: string;
   /** 该组使用的申请汇率 */
   rate: number;
@@ -346,6 +367,7 @@ export function summarizeByCurrencyWithConversion(
     } else {
       map.set(key, {
         currencyId: fee.currencyId,
+        currencyCode: fee.currencyCode ?? '',
         currencyName: fee.currencyName ?? '',
         rate,
         originalTotal: applied,
@@ -366,6 +388,7 @@ export function summarizeByCurrency(fees: FeeDetailRow[]): CurrencySummary[] {
     } else {
       map.set(fee.currencyId, {
         currencyId: fee.currencyId,
+        currencyCode: fee.currencyCode ?? '',
         currencyName: fee.currencyName ?? '',
         totalAmount: fee.appliedAmount ?? 0,
       });

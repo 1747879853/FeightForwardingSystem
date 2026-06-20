@@ -58,6 +58,7 @@ import {
   calcConvertedTotal,
   formatAmount,
   groupFeesByOrder,
+  resolveFeeCurrencyCode,
   summarizeByCurrency,
   summarizeByCurrencyWithConversion,
   useFeeInnerColumns,
@@ -400,6 +401,7 @@ function mapDetailToFeeRows(
         feeCodeId: fee?.feeCodeId ?? 0,
         feeCodeName: item.feeCodeName ?? fee?.feeCodeName,
         currencyId: fee?.currencyId ?? 0,
+        currencyCode: resolveFeeCurrencyCode(fee, group.currencyGroup),
         currencyName: item.feeCurrencyName ?? fee?.currencyName,
         settlementId: fee?.settlementId ?? '',
         settlementName: item.feeSettlementName ?? fee?.settlementName,
@@ -874,7 +876,9 @@ function formatMonth(val: string | undefined | null): string {
                     class="currency-card"
                   >
                     <div class="currency-card__header">
-                      <Tag color="blue">{{ cs.currencyName }}</Tag>
+                      <Tag color="blue">{{
+                        cs.currencyCode || cs.currencyName
+                      }}</Tag>
                       <span class="currency-card__amount">
                         {{ formatAmount(cs.totalAmount) }}
                       </span>
@@ -899,7 +903,9 @@ function formatMonth(val: string | undefined | null): string {
                       class="conversion-card"
                     >
                       <div class="conversion-card__head">
-                        <Tag color="blue">{{ cs.currencyName }}</Tag>
+                        <Tag color="blue">{{
+                          cs.currencyCode || cs.currencyName
+                        }}</Tag>
                         <span class="conversion-card__amount">
                           {{ formatAmount(cs.originalTotal) }}
                         </span>
@@ -994,7 +1000,7 @@ function formatMonth(val: string | undefined | null): string {
                       class="inline-flex items-center gap-1"
                     >
                       <Tag color="blue" :bordered="false" size="small">
-                        {{ cs.currencyName }}
+                        {{ cs.currencyCode || cs.currencyName }}
                       </Tag>
                       <strong class="text-blue-600">
                         {{ formatAmount(cs.amount) }}
@@ -1065,6 +1071,9 @@ function formatMonth(val: string | undefined | null): string {
                           {{ getPaySideLabel(record.paySide) }}
                         </Tag>
                       </template>
+                      <template v-else-if="column.key === 'currencyCode'">
+                        {{ record.currencyCode || record.currencyName }}
+                      </template>
                       <template v-else-if="column.key === 'amount'">
                         {{ formatAmount(record.amount) }}
                       </template>
@@ -1132,7 +1141,9 @@ function formatMonth(val: string | undefined | null): string {
                 :key="cs.currencyId"
                 class="flex items-center gap-1"
               >
-                <Tag color="blue" size="small">{{ cs.currencyName }}</Tag>
+                <Tag color="blue" size="small">{{
+                  cs.currencyCode || cs.currencyName
+                }}</Tag>
                 <strong>{{ formatAmount(cs.totalAmount) }}</strong>
               </span>
             </div>

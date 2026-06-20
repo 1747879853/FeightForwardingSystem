@@ -568,7 +568,7 @@ const feeColumns = [
     width: 120,
   },
   {
-    title: '币别',
+    title: '原始币别',
     dataIndex: 'currencyCode',
     key: 'currencyCode',
     width: 80,
@@ -721,10 +721,7 @@ defineExpose({ open: openDrawer });
                   </Tag>
                 </template>
                 <template v-else-if="column.key === 'currencyCode'">
-                  <Tag v-if="feeRecord.currencyCode">
-                    {{ feeRecord.currencyCode }}
-                  </Tag>
-                  <span v-else>{{ feeRecord.currencyName }}</span>
+                  {{ feeRecord.currencyCode || feeRecord.currencyName }}
                 </template>
                 <template v-else-if="column.key === 'amount'">
                   {{ formatAmount(feeRecord.amount) }}
