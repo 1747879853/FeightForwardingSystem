@@ -72,6 +72,9 @@ const route = useRoute();
 // 订单箱型列表（用于单位下拉框过滤）
 const orderCtnList = ref<Array<{ ctnCodeId: number; ctnCodeName: string }>>([]);
 
+// 订单基础数据（用于行业类别切换时自动填充结算对象）
+const orderBaseData = ref<SeaExportAdminApi.SeaExportDto | null>(null);
+
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
   if (Array.isArray(id)) return id[0];
@@ -189,7 +192,7 @@ const queryTableData = async () => {
 const tmpAdd = ref(false);
 const tmpDel = ref(false);
 
-// 加载订单箱型列表
+// 加载订单箱型列表和订单基础数据
 const loadOrderCtnList = async () => {
   console.log('🔍 [loadOrderCtnList] 开始加载，editId:', editId.value);
 
@@ -209,6 +212,10 @@ const loadOrderCtnList = async () => {
       '📦 [loadOrderCtnList] orderCtns:',
       orderDetail?.transportOrder?.orderCtns,
     );
+
+    // 保存订单基础数据（用于行业类别切换时自动填充结算对象）
+    orderBaseData.value = orderDetail;
+    console.log('✅ [loadOrderCtnList] 已保存订单基础数据');
 
     if (orderDetail?.transportOrder?.orderCtns) {
       // 提取唯一的箱型列表
@@ -361,6 +368,38 @@ const delRow = () => {
   gridApi.query();
 };
 const showModifyWithRemark = () => {
+  if (!selectedRowKeys.value.length) return;
+
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+
+  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0，才可以申请修改
+  const invalidRows = list.filter((row) => {
+    const isApproved =
+      row.feeStatus === feeConstants.getFeeStatusValue.Approved;
+    const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
+    const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
+    const hasSettledAmount = (row.settledAmount || 0) !== 0;
+
+    return (
+      !isApproved ||
+      hasInvoicedAmount ||
+      hasOrderInvoiceAmount ||
+      hasSettledAmount
+    );
+  });
+
+  if (invalidRows.length > 0) {
+    message.error({
+      content:
+        '只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0的费用才可以申请修改',
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
   let modalRemark = '';
   // 创建弹窗实例
   const modal = Modal.confirm({
@@ -395,6 +434,38 @@ const showModifyWithRemark = () => {
   });
 };
 const showDeleteWithRemark = () => {
+  if (!selectedRowKeys.value.length) return;
+
+  const keysSet = new Set(selectedRowKeys.value);
+  const list = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+
+  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0，才可以申请删除
+  const invalidRows = list.filter((row) => {
+    const isApproved =
+      row.feeStatus === feeConstants.getFeeStatusValue.Approved;
+    const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
+    const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
+    const hasSettledAmount = (row.settledAmount || 0) !== 0;
+
+    return (
+      !isApproved ||
+      hasInvoicedAmount ||
+      hasOrderInvoiceAmount ||
+      hasSettledAmount
+    );
+  });
+
+  if (invalidRows.length > 0) {
+    message.error({
+      content:
+        '只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0的费用才可以申请删除',
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
   let modalRemark = '';
   // 创建弹窗实例
   const modal = Modal.confirm({
@@ -511,12 +582,13 @@ const openModifyModal = () => {
     return;
   }
 
-  // 打开模态框，传递选中的费用数据和合计数据
+  // 打开模态框，传递选中的费用数据、合计数据和订单基础数据
   const selectedFee = list[0];
-  // console.log('selectedFee', selectedFee);
+  console.log('selectedFee', selectedFee);
 
   modifyModalRef.value?.modalApi.setData({
     feeData: selectedFee,
+    orderBaseData: orderBaseData.value,
   });
   modifyModalRef.value?.modalApi.open();
 };

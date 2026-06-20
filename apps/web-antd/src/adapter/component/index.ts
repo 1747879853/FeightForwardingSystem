@@ -681,6 +681,12 @@ async function initComponentAdapter() {
     FeeCodeSelect: defineAsyncComponent(
       () => import('./biz-select/fee-code-select.vue'),
     ),
+    IndustryCategorySelect: defineAsyncComponent(
+      () => import('./biz-select/industry-category-select.vue'),
+    ),
+    UnitSelect: defineAsyncComponent(
+      () => import('./biz-select/unit-select.vue'),
+    ),
     ExchangeRateSelect: defineAsyncComponent(
       () => import('./biz-select/exchange-rate-select.vue'),
     ),

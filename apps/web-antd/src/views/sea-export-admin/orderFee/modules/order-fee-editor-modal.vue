@@ -1,12 +1,18 @@
 <script lang="ts" setup>
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import { computed, ref, watch } from 'vue';
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import { computed, ref, watch, nextTick } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
 import { useVbenForm } from '#/adapter/form';
 import { $t } from '#/locales';
 import * as feeConstants from '../data';
-import { getCurrencyEnumOptions, getCurrencyEnumSymbolOptions } from '../data';
-
+import {
+  getCurrencyEnumOptions,
+  getCurrencyEnumSymbolOptions,
+  getIndustryCategoryOptions,
+} from '../data';
+import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
+import { orderCtnListRef } from '../data';
 // 定义Props
 const props = defineProps<{
   recAmountMap: Record<string, any>;
@@ -20,6 +26,9 @@ const emit = defineEmits(['confirm']);
 // 当前编辑的费用数据
 const currentFeeData = ref<OrderFeeAdminApi.OrderFeeDto | null>(null);
 const originalFeeData = ref<OrderFeeAdminApi.OrderFeeDto | null>(null);
+
+// 订单基础数据（用于行业类别切换时自动填充结算对象）
+const orderBaseData = ref<SeaExportAdminApi.SeaExportDto | null>(null);
 
 // 表单API
 const [OrderFeeForm, orderFeeFormApi] = useVbenForm({
@@ -53,18 +62,88 @@ const [Modal, modalApi] = useVbenModal({
   onOpenChange(isOpen: boolean) {
     if (isOpen) {
       const data = modalApi.getData<any>();
-      console.log('当前编辑的数据1:', data);
+      console.log('📊 [编辑模态框] 打开，接收到的数据:', data);
+
       if (data) {
         // 兼容旧的数据格式（直接传递费用数据）和新的数据格式（包含orderBaseData）
         const feeData = data.feeData || data;
+        console.log('📊 [编辑模态框] 费用数据:', feeData);
+
         currentFeeData.value = { ...feeData };
         originalFeeData.value = { ...feeData };
+        orderBaseData.value = data.orderBaseData || null;
 
-        orderFeeFormApi.setValues(feeData);
+        console.log(
+          '📊 [编辑模态框] 设置的originalFeeData:',
+          originalFeeData.value,
+        );
+        console.log(
+          '📊 [编辑模态框] paySide值:',
+          originalFeeData.value?.paySide,
+        );
+
+        // 在nextTick中设置表单值，确保表单已完全初始化
+        nextTick(async () => {
+          console.log('📊 [编辑模态框] 开始设置表单值...');
+
+          // 打印feeData的所有字段名，用于对比
+          console.log(
+            '📊 [编辑模态框] feeData的字段列表:',
+            Object.keys(feeData),
+          );
+
+          // 等待一小段时间确保组件完全渲染
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // 逐个字段设置，便于调试
+          const fieldsToSet = [
+            'feeCodeId',
+            'industryCategory',
+            'settlementId',
+            'currencyId',
+            'exchangeRate',
+            'unit',
+            'quantity',
+            'noTaxUnitPrice',
+            'noTaxAmount',
+            'taxRate',
+            'unitPrice',
+            'amount',
+            'canInvoice',
+            'isConfidential',
+            'remark',
+          ];
+
+          console.log('📊 [编辑模态框] 准备设置的字段值:');
+          fieldsToSet.forEach((field) => {
+            console.log(`  - ${field}:`, feeData[field]);
+          });
+
+          // 设置表单值
+          await orderFeeFormApi.setValues(feeData);
+
+          // 验证表单值是否设置成功
+          const formValues = await orderFeeFormApi.getValues();
+          console.log('📊 [编辑模态框] 表单当前值:', formValues);
+          console.log(
+            '📊 [编辑模态框] 表单字段列表:',
+            Object.keys(formValues || {}),
+          );
+
+          // 为industryCategory字段添加onChange事件监听
+          setupIndustryCategoryChangeListener();
+
+          // 为单位字段添加onChange事件监听，实现自动填充数量
+          setupUnitChangeListener();
+        });
+      } else {
+        console.warn('⚠️ [编辑模态框] 没有接收到数据');
       }
     } else {
+      console.log('📊 [编辑模态框] 关闭');
       currentFeeData.value = null;
       originalFeeData.value = null;
+      orderBaseData.value = null;
     }
   },
 });
@@ -74,7 +153,281 @@ defineExpose({
   modalApi,
 });
 
-// 处理表单值变化
+// 设置行业类别变化监听器
+const setupIndustryCategoryChangeListener = async () => {
+  try {
+    // 获取表单API的实例
+    const formInstance = orderFeeFormApi.form;
+
+    if (!formInstance) {
+      console.warn('表单实例未初始化');
+      return;
+    }
+
+    // 获取当前表单值
+    const formValues = await orderFeeFormApi.getValues();
+    const transportOrderId =
+      formValues?.transportOrderId || currentFeeData.value?.transportOrderId;
+
+    if (!transportOrderId) {
+      console.warn('缺少运输订单ID');
+      return;
+    }
+
+    // 如果还没有加载订单基础数据，则加载
+    if (!orderBaseData.value) {
+      const orderDetail = await getSeaExportDetail(transportOrderId);
+      if (orderDetail) {
+        orderBaseData.value = orderDetail;
+        console.log('✅ 已加载订单基础数据:', orderDetail);
+      }
+    }
+
+    // 更新industryCategory字段的schema，添加onChange事件
+    orderFeeFormApi.updateSchema([
+      {
+        fieldName: 'industryCategory',
+        componentProps: {
+          onChange: async (value: any) => {
+            console.log('📊 行业类别发生变化:', value);
+
+            if (!value && value !== 0) {
+              console.log('行业类别被清空');
+              return;
+            }
+
+            // 将key转换为value（字母代码）用于联动逻辑
+            const industryCategoryValue = getIndustryCategoryOptions().find(
+              (item) => item.key === value,
+            )?.value;
+
+            if (industryCategoryValue) {
+              console.log('行业类别value:', industryCategoryValue);
+              // 根据行业类别自动切换结算对象
+              await fillSettlementIdByIndustryCategory(industryCategoryValue);
+            }
+          },
+        },
+      },
+    ]);
+  } catch (error) {
+    console.error('设置行业类别监听器失败:', error);
+  }
+};
+
+/**
+ * 根据行业类别从订单详情中获取对应的结算对象
+ */
+const fillSettlementIdByIndustryCategory = async (industryCategory: string) => {
+  try {
+    if (!orderBaseData.value) {
+      console.warn('订单基础数据未加载');
+      return;
+    }
+
+    const orderDetail = orderBaseData.value;
+    let settlementId: string | number | undefined;
+
+    // 根据行业类别映射到对应的字段
+    switch (industryCategory.toLowerCase()) {
+      case 'b': // 发货人
+        settlementId = orderDetail.transportOrder?.shipperId;
+        break;
+      case 'c': // 场站
+        settlementId = orderDetail.yardId;
+        break;
+      case 'e': // 收货人
+        settlementId = orderDetail.transportOrder?.consigneeId;
+        break;
+      case 'f': // 报关行
+        settlementId = orderDetail.transportOrder?.custBrokerId;
+        break;
+      case 'h': // 通知人
+        settlementId = orderDetail.transportOrder?.notifierId;
+        break;
+      case 'i': // 车队
+        settlementId = orderDetail.transportOrder?.teamId;
+        break;
+      case 'n': // 船代
+        settlementId = orderDetail.shipAgentId;
+        break;
+      case 'o': // 订舱代理
+        settlementId = orderDetail.bookingAgentId;
+        break;
+      case 'p': // 委托单位
+        settlementId = orderDetail.transportOrder?.clientId;
+        break;
+      case 'q': // 仓库
+        settlementId = orderDetail.transportOrder?.warehouseId;
+        break;
+      case 'r': // 保险公司
+        settlementId = orderDetail.transportOrder?.insuranceId;
+        break;
+      case 's': // 国外代理
+        settlementId = orderDetail.podAgentId;
+        break;
+      default:
+        console.warn(`未识别的行业类别: ${industryCategory}`);
+        return;
+    }
+
+    // 如果找到了对应的结算对象ID，则填充
+    if (settlementId !== undefined && settlementId !== null) {
+      await orderFeeFormApi.setFieldValue('settlementId', String(settlementId));
+      console.log(
+        `✅ 自动填充结算对象: ${settlementId} (行业类别: ${industryCategory})`,
+      );
+    } else {
+      console.warn(`订单中未找到行业类别 ${industryCategory} 对应的结算对象`);
+    }
+  } catch (error) {
+    console.error('填充结算对象失败:', error);
+  }
+};
+
+// 设置单位变化监听器，根据单位类型自动填充数量
+const setupUnitChangeListener = async () => {
+  try {
+    // 获取表单API的实例
+    const formInstance = orderFeeFormApi.form;
+
+    if (!formInstance) {
+      console.warn('表单实例未初始化');
+      return;
+    }
+
+    // 获取当前表单值
+    const formValues = await orderFeeFormApi.getValues();
+    const transportOrderId =
+      formValues?.transportOrderId || currentFeeData.value?.transportOrderId;
+
+    if (!transportOrderId) {
+      console.warn('缺少运输订单ID');
+      return;
+    }
+
+    // 如果还没有加载订单基础数据，则加载
+    if (!orderBaseData.value) {
+      const orderDetail = await getSeaExportDetail(transportOrderId);
+      if (orderDetail) {
+        orderBaseData.value = orderDetail;
+        console.log('✅ 已加载订单基础数据（用于单位联动）:', orderDetail);
+      }
+    }
+
+    // 更新unit字段的schema，添加onChange事件
+    orderFeeFormApi.updateSchema([
+      {
+        fieldName: 'unit',
+        componentProps: {
+          onChange: async (value: any) => {
+            console.log('📦 [UnitSelect.onChange] 单位变化:', value);
+
+            if (!value) {
+              // 清空单位时，不自动清空数量（保留用户手动输入的值）
+              return;
+            }
+
+            // 根据单位类型自动填充数量
+            await fillQuantityByUnit(value);
+          },
+        },
+      },
+    ]);
+  } catch (error) {
+    console.error('设置单位监听器失败:', error);
+  }
+};
+
+/**
+ * 根据单位类型自动填充数量
+ */
+const fillQuantityByUnit = async (unitName: string) => {
+  try {
+    if (!orderBaseData.value) {
+      console.warn('⚠️ [fillQuantityByUnit] 订单基础数据未加载');
+      return;
+    }
+
+    const orderDetail = orderBaseData.value;
+    if (!orderDetail.transportOrder) {
+      console.warn('⚠️ [fillQuantityByUnit] 未找到订单详情');
+      return;
+    }
+
+    const transportOrder = orderDetail.transportOrder;
+    const unitNameLower = unitName.toLowerCase();
+
+    console.log(
+      '🔍 [fillQuantityByUnit] 单位:',
+      unitName,
+      '单位小写:',
+      unitNameLower,
+    );
+
+    let quantity = 0;
+
+    // 根据单位类型填充数量
+    if (unitNameLower === '票' || unitNameLower === 'order') {
+      // 票：数量固定为 1
+      quantity = 1;
+      console.log('✅ [fillQuantityByUnit] 票数量: 1');
+    } else if (
+      unitNameLower === '毛重' ||
+      unitNameLower === 'kgs' ||
+      unitNameLower === 'weight'
+    ) {
+      // 重量：从订单获取 KGS
+      quantity = transportOrder.kgs || 0;
+      console.log('✅ [fillQuantityByUnit] 重量:', quantity);
+    } else if (
+      unitNameLower === '尺码' ||
+      unitNameLower === 'cbm' ||
+      unitNameLower === 'measurement'
+    ) {
+      // 尺码：从订单获取 CBM
+      quantity = transportOrder.cbm || 0;
+      console.log('✅ [fillQuantityByUnit] 尺码:', quantity);
+    } else if (
+      unitNameLower === '件数' ||
+      unitNameLower === 'pkgs' ||
+      unitNameLower === 'packages'
+    ) {
+      // 件数：从订单获取 PKGS
+      quantity = transportOrder.pkgs || 0;
+      console.log('✅ [fillQuantityByUnit] 件数:', quantity);
+    } else if (unitNameLower === 'teu') {
+      // TEU：从订单获取 TEU
+      quantity = transportOrder.teu || 0;
+      console.log('✅ [fillQuantityByUnit] TEU:', quantity);
+    } else if (unitNameLower !== '') {
+      // 箱型：查询订单的箱型列表数量
+      if (transportOrder.orderCtns && transportOrder.orderCtns.length > 0) {
+        quantity = transportOrder.orderCtns.filter(
+          (ctn: any) => ctn.ctnCodeName === unitName,
+        ).length;
+        console.log('✅ [fillQuantityByUnit] 箱型数量:', quantity);
+      } else {
+        quantity = 0;
+        console.log('✅ [fillQuantityByUnit] 箱型数量为 0');
+      }
+    } else {
+      // 其他单位：默认数量为 1
+      quantity = 1;
+      console.log('✅ [fillQuantityByUnit] 默认数量: 1');
+    }
+
+    // 更新数量字段
+    await orderFeeFormApi.setFieldValue('quantity', quantity);
+
+    // 触发数量变化的联动计算
+    await handleFieldChange('quantity');
+  } catch (error) {
+    console.error('❌ [fillQuantityByUnit] 填充数量失败:', error);
+  }
+};
+
+// 处理表单值变化 - 实现与VxeTable相同的联动计算逻辑
 const handleFieldChange = async (fieldName: string) => {
   console.log('表单字段变化:', fieldName);
   const values = await orderFeeFormApi.getValues();
@@ -85,44 +438,144 @@ const handleFieldChange = async (fieldName: string) => {
   const taxRate = Number(values.taxRate) || 0;
   let unitPrice = Number(values.unitPrice) || 0;
   let amount = Number(values.amount) || 0;
+  let noTaxAmount = Number(values.noTaxAmount) || 0;
 
-  // 核心计算公式：不含税金额 = 不含税单价 × 数量
-  const noTaxAmount = noTaxUnitPrice * quantity;
+  // 根据不同的字段变化执行相应的计算逻辑
 
-  console.log('计算过程:', {
-    noTaxUnitPrice,
-    quantity,
-    taxRate,
-    noTaxAmount,
-  });
+  // 1. 含税单价变化：同时更新含税金额、不含税单价、不含税金额
+  if (fieldName === 'unitPrice' && unitPrice !== 0) {
+    // 更新含税金额
+    if (quantity) {
+      amount = unitPrice * quantity;
+      await orderFeeFormApi.setFieldValue(
+        'amount',
+        parseFloat(amount.toFixed(2)),
+      );
+    }
 
-  // 更新不含税金额字段（始终自动计算）
-  orderFeeFormApi.setFieldValue(
-    'noTaxAmount',
-    parseFloat(noTaxAmount.toFixed(2)),
-  );
+    // 如果税率存在，更新不含税单价和不含税金额
+    if (taxRate !== undefined && taxRate !== null) {
+      noTaxUnitPrice = unitPrice / (1 + taxRate / 100);
+      await orderFeeFormApi.setFieldValue(
+        'noTaxUnitPrice',
+        parseFloat(noTaxUnitPrice.toFixed(4)),
+      );
 
-  // 根据不含税单价和税率计算含税单价
-  unitPrice =
-    taxRate > 0 ? noTaxUnitPrice * (1 + taxRate / 100) : noTaxUnitPrice;
+      if (quantity) {
+        const calculatedNoTaxAmount = noTaxUnitPrice * quantity;
+        await orderFeeFormApi.setFieldValue(
+          'noTaxAmount',
+          parseFloat(calculatedNoTaxAmount.toFixed(2)),
+        );
+      }
+    }
+  }
 
-  // 根据不含税金额和税率计算含税金额
-  amount = noTaxAmount * (1 + taxRate / 100);
+  // 2. 数量变化：同时更新含税金额、不含税金额
+  if (fieldName === 'quantity' && quantity !== 0) {
+    if (unitPrice) {
+      amount = unitPrice * quantity;
+      await orderFeeFormApi.setFieldValue(
+        'amount',
+        parseFloat(amount.toFixed(2)),
+      );
+    }
 
-  // 更新含税相关字段
-  orderFeeFormApi.setFieldValue('unitPrice', parseFloat(unitPrice.toFixed(4)));
-  orderFeeFormApi.setFieldValue('amount', parseFloat(amount.toFixed(2)));
+    if (noTaxUnitPrice) {
+      noTaxAmount = noTaxUnitPrice * quantity;
+      await orderFeeFormApi.setFieldValue(
+        'noTaxAmount',
+        parseFloat(noTaxAmount.toFixed(2)),
+      );
+    }
+  }
+
+  // 3. 税率变化：同时更新含税单价、含税金额（基于不含税单价）
+  if (fieldName === 'taxRate' && taxRate !== 0) {
+    if (noTaxUnitPrice) {
+      // 根据不含税单价和税率计算含税单价
+      unitPrice = noTaxUnitPrice * (1 + taxRate / 100);
+      await orderFeeFormApi.setFieldValue(
+        'unitPrice',
+        parseFloat(unitPrice.toFixed(4)),
+      );
+
+      // 计算不含税金额
+      noTaxAmount = noTaxUnitPrice * quantity;
+
+      // 根据不含税金额和税率计算含税金额
+      amount = noTaxAmount * (1 + taxRate / 100);
+      await orderFeeFormApi.setFieldValue(
+        'amount',
+        parseFloat(amount.toFixed(2)),
+      );
+    }
+  }
+
+  // 4. 不含税单价变化：同时更新不含税金额、含税单价、含税金额
+  if (fieldName === 'noTaxUnitPrice' && noTaxUnitPrice !== 0) {
+    // 更新不含税金额
+    noTaxAmount = noTaxUnitPrice * quantity;
+    await orderFeeFormApi.setFieldValue(
+      'noTaxAmount',
+      parseFloat(noTaxAmount.toFixed(2)),
+    );
+
+    // 根据不含税单价和税率计算含税单价
+    unitPrice =
+      taxRate > 0 ? noTaxUnitPrice * (1 + taxRate / 100) : noTaxUnitPrice;
+    await orderFeeFormApi.setFieldValue(
+      'unitPrice',
+      parseFloat(unitPrice.toFixed(4)),
+    );
+
+    // 根据不含税金额和税率计算含税金额
+    amount = noTaxAmount * (1 + taxRate / 100);
+    await orderFeeFormApi.setFieldValue(
+      'amount',
+      parseFloat(amount.toFixed(2)),
+    );
+  }
+
+  // 5. 不含税金额变化：更新不含税单价、含税单价和含税金额
+  if (fieldName === 'noTaxAmount' && noTaxAmount !== 0) {
+    if (quantity) {
+      // 根据不含税金额和数量计算不含税单价
+      noTaxUnitPrice = noTaxAmount / quantity;
+      await orderFeeFormApi.setFieldValue(
+        'noTaxUnitPrice',
+        parseFloat(noTaxUnitPrice.toFixed(4)),
+      );
+
+      // 根据不含税单价和税率计算含税单价
+      unitPrice = noTaxUnitPrice * (1 + taxRate / 100);
+      await orderFeeFormApi.setFieldValue(
+        'unitPrice',
+        parseFloat(unitPrice.toFixed(4)),
+      );
+
+      // 根据不含税金额和税率计算含税金额
+      amount = noTaxAmount * (1 + taxRate / 100);
+      await orderFeeFormApi.setFieldValue(
+        'amount',
+        parseFloat(amount.toFixed(2)),
+      );
+    }
+  }
 
   // 同步更新 currentFeeData，触发计算属性重新计算
   if (currentFeeData.value) {
+    const updatedValues = await orderFeeFormApi.getValues();
     currentFeeData.value = {
       ...currentFeeData.value,
-      noTaxUnitPrice: parseFloat(noTaxUnitPrice.toFixed(4)),
-      noTaxAmount: parseFloat(noTaxAmount.toFixed(2)),
-      unitPrice: parseFloat(unitPrice.toFixed(4)),
-      amount: parseFloat(amount.toFixed(2)),
-      quantity,
-      taxRate,
+      noTaxUnitPrice: parseFloat(
+        (updatedValues.noTaxUnitPrice || 0).toFixed(4),
+      ),
+      noTaxAmount: parseFloat((updatedValues.noTaxAmount || 0).toFixed(2)),
+      unitPrice: parseFloat((updatedValues.unitPrice || 0).toFixed(4)),
+      amount: parseFloat((updatedValues.amount || 0).toFixed(2)),
+      quantity: updatedValues.quantity || 0,
+      taxRate: updatedValues.taxRate || 0,
     };
   }
 };
@@ -140,16 +593,10 @@ function useOrderFeeFormSchema() {
       },
     },
     {
-      component: 'Select',
+      component: 'IndustryCategorySelect',
       fieldName: 'industryCategory',
       label: $t('seaExport.client.industryCategories'),
       componentProps: {
-        options: feeConstants
-          .getIndustryCategoryOptions()
-          .map(({ label, value }) => ({
-            label,
-            value,
-          })),
         style: { width: '100%' },
       },
     },
@@ -163,11 +610,13 @@ function useOrderFeeFormSchema() {
       },
     },
     {
-      component: 'Select',
+      component: 'CurrencySelect',
       fieldName: 'currencyId',
       label: $t('seaExport.export.orderFee.currency'),
       componentProps: {
-        options: getCurrencyEnumOptions().filter((item) => item.value !== 9999),
+        type: computed(() =>
+          originalFeeData.value?.paySide === 0 ? '应收' : '应付',
+        ),
         style: { width: '100%' },
       },
     },
@@ -175,8 +624,44 @@ function useOrderFeeFormSchema() {
       component: 'ExchangeRateSelect',
       fieldName: 'exchangeRate',
       label: $t('seaExport.export.orderFee.ExchangeRate'),
+      dependencies: {
+        triggerFields: ['currencyId'],
+        componentProps: (values: any, _formApi: any) => {
+          return {
+            currencyId: values.currencyId,
+            valueKey:
+              originalFeeData.value?.paySide === 0 ? 'drValue' : 'crValue',
+          };
+        },
+      },
+    },
+    {
+      component: 'UnitSelect',
+      fieldName: 'unit',
+      label: $t('seaExport.export.orderFee.unitEmum'),
       componentProps: {
-        valueKey: originalFeeData.value?.paySide === 0 ? 'drValue' : 'crValue',
+        // 使用computed确保响应式更新箱型列表
+        unitOptions: computed(() => {
+          const list = orderCtnListRef.value;
+          console.log('🔍 [unitOptions] 当前箱型列表:', list);
+          return list.map((ctn) => ({
+            label: ctn.ctnCodeName,
+            value: ctn.ctnCodeName,
+          }));
+        }),
+        style: { width: '100%' },
+      },
+    },
+
+    {
+      component: 'InputNumber',
+      fieldName: 'quantity',
+      label: $t('seaExport.export.orderFee.quantity'),
+      componentProps: {
+        min: 0,
+        precision: 2,
+        style: { width: '100%' },
+        onChange: () => handleFieldChange('quantity'),
       },
     },
     {
@@ -187,18 +672,7 @@ function useOrderFeeFormSchema() {
         min: 0,
         precision: 4,
         style: { width: '100%' },
-        //onChange: () => handleFieldChange('noTaxUnitPrice'),
-      },
-    },
-    {
-      component: 'InputNumber',
-      fieldName: 'quantity',
-      label: $t('seaExport.export.orderFee.quantity'),
-      componentProps: {
-        min: 0,
-        precision: 2,
-        style: { width: '100%' },
-        // onChange: () => handleFieldChange('quantity'),
+        onChange: () => handleFieldChange('noTaxUnitPrice'),
       },
     },
     {
@@ -208,18 +682,11 @@ function useOrderFeeFormSchema() {
       componentProps: {
         min: 0,
         precision: 2,
-        disabled: true,
         style: { width: '100%' },
+        onChange: () => handleFieldChange('noTaxAmount'),
       },
     },
-    {
-      component: 'UnitSelect',
-      fieldName: 'unit',
-      label: $t('seaExport.export.orderFee.unitEmum'),
-      componentProps: {
-        style: { width: '100%' },
-      },
-    },
+
     {
       component: 'InputNumber',
       fieldName: 'taxRate',
@@ -229,7 +696,7 @@ function useOrderFeeFormSchema() {
         max: 100,
         precision: 2,
         style: { width: '100%' },
-        //  onChange: () => handleFieldChange('taxRate'),
+        onChange: () => handleFieldChange('taxRate'),
       },
     },
     {
