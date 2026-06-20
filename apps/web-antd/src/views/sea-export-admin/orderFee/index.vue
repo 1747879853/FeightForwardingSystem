@@ -74,13 +74,23 @@ const allDisplayFields: DisplayFieldConfig[] = [
     label: $t('seaExport.export.bookingNum'),
     visible: true,
   },
-  { key: 'polName', label: $t('seaExport.export.polName'), visible: true },
-  { key: 'podName', label: $t('seaExport.export.podName'), visible: true },
   {
     key: 'receivePortName',
     label: $t('seaExport.export.receivePortId'),
     visible: true,
   },
+  { key: 'polName', label: $t('seaExport.export.polId'), visible: true },
+  {
+    key: 'poT1Name',
+    label: $t('seaExport.export.poT1Id'),
+    visible: true,
+  },
+  {
+    key: 'poT2Name',
+    label: $t('seaExport.export.poT2Id'),
+    visible: true,
+  },
+  { key: 'podName', label: $t('seaExport.export.podId'), visible: true },
   {
     key: 'deliverPortName',
     label: $t('seaExport.export.deliverPortId'),
@@ -208,14 +218,20 @@ const displayList = computed(() => {
       case 'bookingNum':
         value = to.value?.bookingNum || '--';
         break;
+      case 'receivePortName':
+        value = formValues.value?.receivePortName || '--';
+        break;
       case 'polName':
         value = formValues.value?.polName || '--';
         break;
+      case 'poT1Name':
+        value = formValues.value?.poT1Name || '--';
+        break;
+      case 'poT2Name':
+        value = formValues.value?.poT2Name || '--';
+        break;
       case 'podName':
         value = formValues.value?.podName || '--';
-        break;
-      case 'receivePortName':
-        value = formValues.value?.receivePortName || '--';
         break;
       case 'deliverPortName':
         value = formValues.value?.deliverPortName || '--';

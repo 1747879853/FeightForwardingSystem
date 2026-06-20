@@ -169,21 +169,31 @@ const setDisplayList = () => {
     value: to.value?.bookingNum || '--',
   };
   displayList.value.push(bookingNum);
-  let pol = {
-    name: $t('seaExport.export.polName'),
-    value: formValues.value?.polName || '--',
-  };
-  displayList.value.push(pol);
-  let pod = {
-    name: $t('seaExport.export.podName'),
-    value: formValues.value?.podName || '--',
-  };
-  displayList.value.push(pod);
   let receivePort = {
     name: $t('seaExport.export.receivePortId'),
     value: formValues.value?.receivePortName || '--',
   };
   displayList.value.push(receivePort);
+  let pol = {
+    name: $t('seaExport.export.polId'),
+    value: formValues.value?.polName || '--',
+  };
+  displayList.value.push(pol);
+  let poT1 = {
+    name: $t('seaExport.export.poT1Id'),
+    value: formValues.value?.poT1Name || '--',
+  };
+  displayList.value.push(poT1);
+  let poT2 = {
+    name: $t('seaExport.export.poT2Id'),
+    value: formValues.value?.poT2Name || '--',
+  };
+  displayList.value.push(poT2);
+  let pod = {
+    name: $t('seaExport.export.podId'),
+    value: formValues.value?.podName || '--',
+  };
+  displayList.value.push(pod);
   let deliverPort = {
     name: $t('seaExport.export.deliverPortId'),
     value: formValues.value?.deliverPortName || '--',
