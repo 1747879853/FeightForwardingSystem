@@ -63,6 +63,10 @@ export namespace ExpenseSubmissionAdminApi {
     /** 目的港 CnName */
     seaExportPODCnName?: string | null;
 
+    seaExportPODPortName?: string | null;
+
+    seaExportPOLPortName?: string | null;
+
     /** 船名 */
     seaExportVessel?: string | null;
 
@@ -216,7 +220,7 @@ export namespace ExpenseSubmissionAdminApi {
 
   export interface SubmitOrderFeeAuditDto {
     /** taskbase 的 id */
-    id: number;
+    id: string;
 
     /** 审核意见 是否通过 */
     success: boolean;
@@ -381,6 +385,19 @@ export namespace ExpenseSubmissionAdminApi {
     /** 业务id列表*/
     transportOrderIds?: string[] | null;
   }
+  export interface ModifyOrderFeeAuditDto {
+    /** taskbase 的 id */
+    id: string;
+
+    /** 审核意见 是否通过 */
+    success: boolean;
+
+    /** 备注 */
+    remark?: string | null;
+
+    /** 费用列表 所有费用都只能是待审核状态 */
+    orderFeeIds?: string[] | null;
+  }
 }
 
 const API_PREFIX = '/services/app/OrderFeeAdmin';
@@ -507,6 +524,26 @@ export const OrderFeeTaskBatchAudit = (
 ) => {
   return requestClient.post<number>(
     `${API_PREFIX}/OrderFeeTaskBatchAuditAsync`,
+    data,
+  );
+};
+
+/** 费用申请修改任务 审核 */
+export const OrderFeeTaskModifyAudit = (
+  data: ExpenseSubmissionAdminApi.ModifyOrderFeeAuditDto,
+) => {
+  return requestClient.post<number>(
+    `${API_PREFIX}/ModifyOrderFeeAuditAsync`,
+    data,
+  );
+};
+
+/** 费用申请删除任务 审核 */
+export const OrderFeeTaskDeleteAudit = (
+  data: ExpenseSubmissionAdminApi.ModifyOrderFeeAuditDto,
+) => {
+  return requestClient.post<number>(
+    `${API_PREFIX}/DeleteOrderFeeAuditAsync`,
     data,
   );
 };

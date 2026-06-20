@@ -4,14 +4,24 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { getFeeStatusOptions } from '#/views/sea-export-admin/orderFee/data';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
-import { BusinessTypeOptions } from '#/views/client/payment-terms/data/';
+import { BusinessTypeOptions } from '#/views/client/payment-terms/data';
 import { $t } from '#/locales';
+import dayjs from 'dayjs';
 
 /** 进展状态 */
 const getProcessedOptions = () => [
   { value: true, label: $t('auditApproval.ProcessedOptions.no') },
   { value: false, label: $t('auditApproval.ProcessedOptions.yes') },
 ];
+
+/**
+ * 格式化会计期间为年月格式 (YYYY-MM)
+ */
+const formatAccountDate = ({ cellValue }: any) => {
+  if (!cellValue) return '--';
+  const date = dayjs(cellValue);
+  return date.isValid() ? date.format('YYYY-MM') : '--';
+};
 
 export const getTaskStatusOptions = () => [
   {
@@ -223,7 +233,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       field: 'transportOrder.accountDate',
       title: $t('seaExport.export.accountDate'),
       minWidth: 100,
-      formatter: 'formatDate',
+      formatter: formatAccountDate,
     },
 
     {
@@ -238,14 +248,22 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       minWidth: 90,
     },
     {
-      field: 'transportOrder.seaExportPOLCnName',
+      field: 'transportOrder.seaExportPOLPortName',
       title: $t('seaExport.export.polId'),
       minWidth: 100,
+      formatter: ({ cellValue, row }: any) => {
+        // 优先使用 seaExportPOLPortName，如果为空则使用 seaExportPOLCnName
+        return cellValue || row.transportOrder?.seaExportPOLCnName || '--';
+      },
     },
     {
-      field: 'transportOrder.seaExportPODCnName',
+      field: 'transportOrder.seaExportPODPortName',
       title: $t('seaExport.export.podId'),
       minWidth: 100,
+      formatter: ({ cellValue, row }: any) => {
+        // 优先使用 seaExportPODPortName，如果为空则使用 seaExportPODCnName
+        return cellValue || row.transportOrder?.seaExportPODCnName || '--';
+      },
     },
     {
       field: 'transportOrder.seaExportVessel',
@@ -258,7 +276,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       minWidth: 100,
     },
     {
-      field: 'transportOrder.grossWeight',
+      field: 'transportOrder.kgs',
       title: $t('seaExport.export.grossWeight'),
       minWidth: 100,
     },
