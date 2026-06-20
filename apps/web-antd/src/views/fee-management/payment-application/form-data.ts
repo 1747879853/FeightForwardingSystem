@@ -43,10 +43,12 @@ export interface OrderCurrencyAmount {
   amount: number;
 }
 
-/** 订单分组行（费用明细外层展示） */
+/** 订单分组行（业务 + 结算对象） */
 export interface OrderGroupRow {
   key: string;
   transportOrderId: string;
+  settlementId: string;
+  settlementName: string;
   commissionNum: string;
   mblNum: string;
   clientName: string;
@@ -61,20 +63,25 @@ export interface OrderGroupRow {
   currencySummaries: OrderCurrencyAmount[];
 }
 
-/** 按订单分组费用，计算各币别汇总 */
+/** 解析费用行结算对象展示名 */
+function resolveFeeSettlementName(fee: FeeDetailRow): string {
+  return fee.settlementName ?? '';
+}
+
+/** 按业务 + 结算对象分组费用，计算各币别汇总 */
 export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
   const map = new Map<string, FeeDetailRow[]>();
   for (const fee of fees) {
-    const id = fee.transportOrderId;
-    const list = map.get(id);
+    const groupKey = `order_${fee.transportOrderId}_${fee.settlementId}`;
+    const list = map.get(groupKey);
     if (list) {
       list.push(fee);
     } else {
-      map.set(id, [fee]);
+      map.set(groupKey, [fee]);
     }
   }
 
-  return [...map.entries()].map(([transportOrderId, items]) => {
+  return [...map.entries()].map(([key, items]) => {
     const first = items[0]!;
     const cMap = new Map<number, OrderCurrencyAmount>();
     for (const f of items) {
@@ -89,8 +96,10 @@ export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
       }
     }
     return {
-      key: `order_${transportOrderId}`,
-      transportOrderId,
+      key,
+      transportOrderId: first.transportOrderId,
+      settlementId: first.settlementId,
+      settlementName: resolveFeeSettlementName(first),
       commissionNum: first.commissionNum ?? '',
       mblNum: first.mblNum ?? '',
       clientName: first.clientName ?? first.settlementName ?? '',
@@ -131,9 +140,16 @@ export function useOrderGroupColumns() {
       ellipsis: true,
     },
     {
-      title: t('clientName'),
+      title: t('orderClientName'),
       dataIndex: 'clientName',
       key: 'clientName',
+      width: 160,
+      ellipsis: true,
+    },
+    {
+      title: t('settlementNameColumn'),
+      dataIndex: 'settlementName',
+      key: 'settlementName',
       width: 160,
       ellipsis: true,
     },
@@ -194,13 +210,6 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
   const prefix = [
     { title: '', dataIndex: 'checkbox', key: 'checkbox', width: 36 },
     { title: t('serialNumber'), dataIndex: 'seq', key: 'seq', width: 44 },
-    {
-      title: t('settlementNameColumn'),
-      dataIndex: 'settlementName',
-      key: 'settlementName',
-      width: 120,
-      ellipsis: true,
-    },
     {
       title: t('paySide'),
       dataIndex: 'paySide',

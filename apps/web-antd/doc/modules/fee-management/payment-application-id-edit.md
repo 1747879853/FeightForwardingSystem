@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-06-20
 ---
 
 # 1. 业务背景说明 (Background)
@@ -38,6 +38,10 @@ last_updated: 2026-05-16
 | **申请单 ID** | 编辑上下文主键。 | 路由动态段 `:id` | **触发/依赖：** 用于加载付款申请详情。 | 必须有效。 |
 | **审核状态** | 控制是否可编辑。 | `PaymentApplicationStatus` | **触发/依赖：** 与付款审核页面联动。 | 审核中或已完成状态不应随意修改。 |
 
+| **结算对象** | 付款申请及费用明细的结算客户。 | `settlementId` / `clientName` / `settlementName` | **触发/依赖：** 主表选择后锁定添加费用抽屉筛选；费用内层列展示 `settlementName`。 | 已有费用时不可清空。 |
+
+| **费用分组** | 编辑页与选费抽屉外层列表的分组维度。 | `GetOrderFeeGroupAsync` / 本地 `groupFeesByOrder` | **触发/依赖：** 按「业务 + 结算对象」联合分组；`row-key` 为复合键。 | 同一业务可对应多行（不同结算对象）；底部统计为组数非票数。 |
+
 # 5. 核心业务卡点 (Business Blockers)
 
 > [!IMPORTANT] **[卡点 1：付款申请编辑一致性]** 编辑页必须尊重申请状态，不能绕过审核状态直接修改已进入流程的数据。
@@ -46,4 +50,6 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-20 | `Feature` | 选费抽屉与编辑页明细分组改为「业务+结算对象」；外层新增结算对象列，子表去掉该列；底部统计改为「共 X 组」。 | `PayAppFeeGroupDto` 补 `settlementId`/`settlement`；`groupKey`=`transportOrderId_settlementId`；单一结算对象锁定规则不变。 |
+| 2026-06-20 | `Fix` | 费用明细列与添加费用抽屉中「结算单位」统一为「结算对象」，与主表字段一致。 | `form-data.ts` 内层列使用 `settlementNameColumn` i18n；`add-fee-modal` 搜索与表格列同步引用 `paymentApplication` 文案键。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/fee-management/payment-application/:id/edit` 对应组件 `src/views/fee-management/payment-application/form.vue`，权限口径为 Admin.PaymentApplication / Admin.PaymentApplication.Get。 |

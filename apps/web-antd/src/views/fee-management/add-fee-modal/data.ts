@@ -59,6 +59,25 @@ export interface CurrencyInfo {
   currencyCode: string;
 }
 
+/** 业务 + 结算对象复合分组键 */
+export function buildFeeGroupKey(
+  transportOrderId: string,
+  settlementId: string,
+): string {
+  return `${transportOrderId}_${settlementId}`;
+}
+
+/** 解析分组结算对象展示名：fullName → name → 费用 settlementName */
+export function resolveGroupSettlementName(
+  group: PaymentApplicationAdminApi.PayAppFeeGroupDto,
+): string {
+  const settlement = group.settlement;
+  if (settlement?.fullName) return settlement.fullName;
+  if (settlement?.name) return settlement.name;
+  const firstFee = group.orderFees?.[0];
+  return firstFee?.settlementName ?? '';
+}
+
 function resolveCurrencyCode(fee: {
   currencyCode?: string;
   currencyName?: string;
@@ -68,14 +87,14 @@ function resolveCurrencyCode(fee: {
 
 /** 搜索表单 schema */
 export function useAddFeeSearchSchema(options?: {
-  /** 是否必填结算单位（已有费用时需锁定并必填） */
+  /** 是否必填结算对象（已有费用时需锁定并必填） */
   settlementIdRequired?: boolean;
 }): VbenFormSchema[] {
   return [
     {
       component: 'ClientSelect',
       fieldName: 'SettlementId',
-      label: '结算单位',
+      label: $t('seaExport.export.paymentApplication.clientName'),
       rules: options?.settlementIdRequired ? 'required' : undefined,
       componentProps: {
         industryCategory: '',
@@ -163,8 +182,14 @@ export function useOrderFixedColumns() {
     },
     {
       field: 'clientName',
-      title: '委托单位',
+      title: $t('seaExport.export.paymentApplication.orderClientName'),
       width: 200,
+      ellipsis: true,
+    },
+    {
+      field: 'settlementName',
+      title: $t('seaExport.export.paymentApplication.settlementNameColumn'),
+      width: 160,
       ellipsis: true,
     },
     {
@@ -286,8 +311,12 @@ export function buildOrderRow(
   order: PaymentApplicationAdminApi.PayAppFeeGroupDto,
   currencies: CurrencyInfo[],
 ): Record<string, any> {
+  const settlementId =
+    order.settlementId ?? order.orderFees?.[0]?.settlementId ?? '';
   const row: Record<string, any> = {
     ...order,
+    groupKey: buildFeeGroupKey(order.id, settlementId),
+    settlementName: resolveGroupSettlementName(order),
     saleUserNames: getOrderUserNamesByAttribute(
       order.orderUsers,
       PaymentApplicationAdminApi.UserAttribute.Sale,

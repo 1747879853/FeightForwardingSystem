@@ -13,6 +13,8 @@
 
 ## 2026-06
 
+- [2026-06-20] [付费申请选费分组适配业务+结算对象](./changelogs/change-log-2026-06-20-payment-application-fee-group-settlement.md)
+- [2026-06-20] [付费申请编辑页结算对象文案统一](./changelogs/change-log-2026-06-20-payment-application-settlement-label.md)
 - [2026-06-20] [个人中心与用户管理邮箱必填及格式校验](./changelogs/change-log-2026-06-20-profile-system-user-email-required.md)
 - [2026-06-20] [箱型代码列表默认排序 OrderNo ASC, Id DESC](./changelogs/change-log-2026-06-20-ctn-code-list-sorting.md)
 - [2026-06-19] [个人中心只读字段改为纯文本展示](./changelogs/change-log-2026-06-19-profile-readonly-text-display.md)

@@ -444,9 +444,20 @@ export namespace PaymentApplicationAdminApi {
     creatorUserId?: number;
   }
 
-  /** 业务分组 DTO */
+  /** 客户简要 DTO（结算对象） */
+  export interface ClientSimpleDto {
+    id: string;
+    name?: string;
+    code?: string;
+    fullName?: string;
+    enName?: string;
+  }
+
+  /** 业务 + 结算对象分组 DTO */
   export interface PayAppFeeGroupDto {
     id: string;
+    settlementId: string;
+    settlement?: ClientSimpleDto;
     bizType: number;
     commissionNum?: string;
     accountDate: string;

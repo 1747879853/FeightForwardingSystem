@@ -26,6 +26,7 @@ import ExchangeRateModal from './exchange-rate-modal.vue';
 import {
   type AddFeeDrawerProps,
   buildDynamicCurrencyColumns,
+  buildFeeGroupKey,
   buildOrderRow,
   collectCurrencies,
   type CurrencyInfo,
@@ -54,7 +55,7 @@ const pageSize = ref(20);
 const currencies = ref<CurrencyInfo[]>([]);
 const tableRows = ref<Record<string, any>[]>([]);
 
-/** 选中状态：orderId -> Set<feeId> */
+/** 选中状态：groupKey -> Set<feeId> */
 const selectionMap = reactive(new Map<string, Set<string>>());
 /** 费用输入金额：feeId -> appliedAmount */
 const appliedAmountMap = reactive(new Map<string, number>());
@@ -99,7 +100,9 @@ const [SearchForm, searchFormApi] = useVbenForm({
   wrapperClass: 'grid-cols-5',
   handleSubmit: async (values) => {
     if (hasExistingFees() && !values.SettlementId) {
-      message.warning('请先选择结算单位');
+      message.warning(
+        $t('seaExport.export.paymentApplication.noSettlementWarning'),
+      );
       return;
     }
     currentPage.value = 1;
@@ -235,31 +238,44 @@ async function handlePageChange(page: number, size: number) {
 
 // --- Checkbox 联动逻辑 ---
 
-function getOrderFees(
-  orderId: string,
-): PaymentApplicationAdminApi.OrderFeeDto[] {
-  const order = orderList.value.find((o) => o.id === orderId);
-  return order?.orderFees ?? [];
+function resolveGroupKey(
+  group: PaymentApplicationAdminApi.PayAppFeeGroupDto,
+): string {
+  const settlementId =
+    group.settlementId ?? group.orderFees?.[0]?.settlementId ?? '';
+  return buildFeeGroupKey(group.id, settlementId);
 }
 
-function isOrderChecked(orderId: string): boolean {
-  const fees = getOrderFees(orderId);
+function findGroupByKey(
+  groupKey: string,
+): PaymentApplicationAdminApi.PayAppFeeGroupDto | undefined {
+  return orderList.value.find((g) => resolveGroupKey(g) === groupKey);
+}
+
+function getGroupFees(
+  groupKey: string,
+): PaymentApplicationAdminApi.OrderFeeDto[] {
+  return findGroupByKey(groupKey)?.orderFees ?? [];
+}
+
+function isGroupChecked(groupKey: string): boolean {
+  const fees = getGroupFees(groupKey);
   if (fees.length === 0) return false;
-  const selected = selectionMap.get(orderId);
+  const selected = selectionMap.get(groupKey);
   if (!selected) return false;
   return fees.every((f) => selected.has(f.id));
 }
 
-function isOrderIndeterminate(orderId: string): boolean {
-  const fees = getOrderFees(orderId);
-  const selected = selectionMap.get(orderId);
+function isGroupIndeterminate(groupKey: string): boolean {
+  const fees = getGroupFees(groupKey);
+  const selected = selectionMap.get(groupKey);
   if (!selected || selected.size === 0) return false;
   const allChecked = fees.every((f) => selected.has(f.id));
   return !allChecked;
 }
 
-function toggleOrder(orderId: string, checked: boolean) {
-  const fees = getOrderFees(orderId);
+function toggleGroup(groupKey: string, checked: boolean) {
+  const fees = getGroupFees(groupKey);
   if (checked) {
     const set = new Set<string>();
     for (const fee of fees) {
@@ -268,43 +284,43 @@ function toggleOrder(orderId: string, checked: boolean) {
         appliedAmountMap.set(fee.id, fee.unSettledAmount ?? 0);
       }
     }
-    selectionMap.set(orderId, set);
+    selectionMap.set(groupKey, set);
   } else {
     const disabledIds = disabledFeeIds.value;
-    const existing = selectionMap.get(orderId);
+    const existing = selectionMap.get(groupKey);
     if (existing) {
       const kept = new Set<string>();
       for (const feeId of existing) {
         if (disabledIds.has(feeId)) kept.add(feeId);
       }
       if (kept.size > 0) {
-        selectionMap.set(orderId, kept);
+        selectionMap.set(groupKey, kept);
       } else {
-        selectionMap.delete(orderId);
+        selectionMap.delete(groupKey);
       }
     }
   }
 }
 
-function isFeeChecked(orderId: string, feeId: string): boolean {
-  return selectionMap.get(orderId)?.has(feeId) ?? false;
+function isFeeChecked(groupKey: string, feeId: string): boolean {
+  return selectionMap.get(groupKey)?.has(feeId) ?? false;
 }
 
-function toggleFee(orderId: string, feeId: string, checked: boolean) {
-  if (!selectionMap.has(orderId)) {
-    selectionMap.set(orderId, new Set());
+function toggleFee(groupKey: string, feeId: string, checked: boolean) {
+  if (!selectionMap.has(groupKey)) {
+    selectionMap.set(groupKey, new Set());
   }
-  const set = selectionMap.get(orderId)!;
+  const set = selectionMap.get(groupKey)!;
   if (checked) {
     set.add(feeId);
-    const fee = getOrderFees(orderId).find((f) => f.id === feeId);
+    const fee = getGroupFees(groupKey).find((f) => f.id === feeId);
     if (fee && !appliedAmountMap.has(feeId)) {
       appliedAmountMap.set(feeId, fee.unSettledAmount ?? 0);
     }
   } else {
     set.delete(feeId);
     if (set.size === 0) {
-      selectionMap.delete(orderId);
+      selectionMap.delete(groupKey);
     }
   }
 }
@@ -313,8 +329,8 @@ function setAppliedAmount(feeId: string, value: number | null) {
   appliedAmountMap.set(feeId, value ?? 0);
 }
 
-function getFeeRows(orderId: string): FeeRowData[] {
-  const fees = getOrderFees(orderId);
+function getFeeRows(groupKey: string): FeeRowData[] {
+  const fees = getGroupFees(groupKey);
   return fees.map((f) => ({
     ...f,
     appliedAmount: appliedAmountMap.get(f.id) ?? f.unSettledAmount ?? 0,
@@ -357,8 +373,8 @@ function getSelectedFees(): SelectedFeeItem[] {
       .map((user) => user.userNickName)
       .filter((name): name is string => Boolean(name))
       .join('、');
-  for (const [orderId, feeIds] of selectionMap.entries()) {
-    const order = orderList.value.find((o) => o.id === orderId);
+  for (const [groupKey, feeIds] of selectionMap.entries()) {
+    const order = findGroupByKey(groupKey);
     const saleUserNames = getOrderUserNamesByAttribute(
       order?.orderUsers,
       PaymentApplicationAdminApi.UserAttribute.Sale,
@@ -371,7 +387,7 @@ function getSelectedFees(): SelectedFeeItem[] {
       order?.orderUsers,
       PaymentApplicationAdminApi.UserAttribute.CustomerService,
     );
-    const fees = getOrderFees(orderId);
+    const fees = getGroupFees(groupKey);
     for (const fee of fees) {
       if (feeIds.has(fee.id) && !disabled.has(fee.id) && !seen.has(fee.id)) {
         seen.add(fee.id);
@@ -506,13 +522,6 @@ const feeColumns = [
     width: 40,
   },
   {
-    title: '结算单位',
-    dataIndex: 'settlementName',
-    key: 'settlementName',
-    width: 140,
-    ellipsis: true,
-  },
-  {
     title: '收付类型',
     dataIndex: 'paySide',
     key: 'paySide',
@@ -562,12 +571,12 @@ function formatMonth(val: string | undefined | null): string {
   return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM') : '';
 }
 
-function onFeeCheckChange(transportOrderId: string, feeId: string, e: any) {
-  toggleFee(transportOrderId, feeId, e.target.checked);
+function onFeeCheckChange(groupKey: string, feeId: string, e: any) {
+  toggleFee(groupKey, feeId, e.target.checked);
 }
 
-function onOrderCheckChange(orderId: string, e: any) {
-  toggleOrder(orderId, e.target.checked);
+function onGroupCheckChange(groupKey: string, e: any) {
+  toggleGroup(groupKey, e.target.checked);
 }
 
 function onExpandClick(record: any, e: Event, onExpand: Function) {
@@ -627,7 +636,7 @@ defineExpose({ open: openDrawer });
         :loading="loading"
         :pagination="false"
         :scroll="{ x: 'max-content', y: 500 }"
-        row-key="id"
+        row-key="groupKey"
         size="small"
         :expanded-row-keys="expandedRowKeys"
         @expanded-rows-change="onExpandedRowsChange"
@@ -655,7 +664,7 @@ defineExpose({ open: openDrawer });
           <div class="expanded-fee-table bg-gray-50 p-2">
             <Table
               :columns="feeColumns"
-              :data-source="getFeeRows(record.id)"
+              :data-source="getFeeRows(record.groupKey)"
               :pagination="false"
               :scroll="{ x: 900 }"
               row-key="id"
@@ -664,10 +673,10 @@ defineExpose({ open: openDrawer });
               <template #bodyCell="{ column, record: feeRecord }">
                 <template v-if="column.key === 'checkbox'">
                   <Checkbox
-                    :checked="isFeeChecked(record.id, feeRecord.id)"
+                    :checked="isFeeChecked(record.groupKey, feeRecord.id)"
                     :disabled="disabledFeeIds.has(feeRecord.id)"
                     @change="
-                      (e) => onFeeCheckChange(record.id, feeRecord.id, e)
+                      (e) => onFeeCheckChange(record.groupKey, feeRecord.id, e)
                     "
                   />
                 </template>
@@ -716,9 +725,9 @@ defineExpose({ open: openDrawer });
         <template #expandIcon="{ expanded, record, onExpand }">
           <div class="flex items-center gap-1">
             <Checkbox
-              :checked="isOrderChecked(record.id)"
-              :indeterminate="isOrderIndeterminate(record.id)"
-              @change="(e) => onOrderCheckChange(record.id, e)"
+              :checked="isGroupChecked(record.groupKey)"
+              :indeterminate="isGroupIndeterminate(record.groupKey)"
+              @change="(e) => onGroupCheckChange(record.groupKey, e)"
             />
             <span
               class="expand-toggle cursor-pointer"

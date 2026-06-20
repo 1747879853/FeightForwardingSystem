@@ -1123,7 +1123,7 @@ function formatMonth(val: string | undefined | null): string {
 
           <div class="fee-footer">
             <span>
-              {{ t('orderCount', [orderGroups.length]) }}
+              {{ t('groupCount', [orderGroups.length]) }}
             </span>
             <div class="flex items-center gap-4">
               <span
