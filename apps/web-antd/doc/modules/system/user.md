@@ -43,7 +43,7 @@ last_updated: 2026-06-19
 | **officeTel** | 用户办公电话。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `32`，可为空。 |
 | **senderDisplayName** | 邮件发件显示名。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗邮件配置区可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `64`，可为空。 |
 | **gender（性别）** | 用户性别。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗下拉选择；取值 `1` 男 / `2` 女，与个人中心一致；历史值 `0` 回显为空。 | 选填；可为 `null`。 |
-| **emailAddress（邮箱）** | 用户联系邮箱。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 新建与编辑弹窗均可编辑。 | **选填**；有值时校验邮箱格式，最大长度 `128`。 |
+| **emailAddress（邮箱）** | 用户联系邮箱。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 新建与编辑弹窗均可编辑。 | **必填**；校验邮箱格式，最大长度 `128`。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -53,6 +53,7 @@ last_updated: 2026-06-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-20 | `Feature` | 用户新建/编辑弹窗邮箱设为必填，并校验邮箱格式与最大长度 `128`。 | `emailAddress` 使用 Zod（`.min(1)` + 邮箱正则 + `.max(128)`）；复合字符串 `required\|email` 不会显示必填星号。 |
 | 2026-06-19 | `Fix` | 性别下拉统一为男/女两项；个人中心移除「未知」；历史值 `0` 回显为空，避免显示数字。 | 个人中心与用户管理选项对齐；`user-form.vue` / `base-setting.vue` 加载时过滤非法 gender 值。 |
 | 2026-06-19 | `Fix` | 修复用户编辑弹窗邮箱误显示为必填：邮箱始终选填，有值时才校验格式与长度。 | `emailAddress` 改回 `email\|max:128` 字符串规则；避免动态 `z.string().email()` 被表单框架判定为必填。 |
 | 2026-06-19 | `Fix` | 用户新建/编辑弹窗「所属部门」「用户属性」设为必填，未填写时阻止保存。 | 表单 Schema 分别使用 `selectRequired` 与 `required` 规则；用户属性仍为位标志多选，提交前合并为整型掩码。 |

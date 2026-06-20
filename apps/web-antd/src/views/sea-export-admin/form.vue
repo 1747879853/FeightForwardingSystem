@@ -1025,23 +1025,62 @@ const PORT_ID_FIELD_TO_REMARK_FIELD: Record<string, string> = {
 
 const portFormApiRef = { current: null as any };
 
-/** PortSelect 通过 emit `portName` 联动备注（在 data.ts 中经 `onPortName` 传入） */
-const handlePortSelectPortName = (
+const pickPortSelectOption = (option: unknown) => {
+  if (Array.isArray(option)) {
+    return option[0] as
+      | {
+          raw?: {
+            country?: { countryEnName?: string };
+            portName?: string;
+          };
+        }
+      | undefined;
+  }
+  return option as
+    | {
+        raw?: {
+          country?: { countryEnName?: string };
+          portName?: string;
+        };
+      }
+    | undefined;
+};
+
+/** 备注单段：去掉中文逗号及逗号后内容，避免与 country 重复拼接 */
+const normalizePortRemarkPart = (value: unknown) =>
+  (value ?? '').toString().replace(/，/g, ',').split(',')[0]?.trim() ?? '';
+
+/** 备注格式：portName, countryEnName（英文逗号 + 空格，大小写保持原样） */
+const formatSeaExportPortRemark = (raw?: {
+  country?: { countryEnName?: string };
+  portName?: string;
+}) => {
+  const portName = normalizePortRemarkPart(raw?.portName);
+  const countryEnName = normalizePortRemarkPart(raw?.country?.countryEnName);
+  if (portName && countryEnName) return `${portName}, ${countryEnName}`;
+  return portName || countryEnName || undefined;
+};
+
+/** PortSelect @change：从 option.raw 取 portName + countryEnName 联动备注 */
+const handlePortSelectChange = (
   fieldName: string,
-  portName: string | undefined,
+  _value: unknown,
+  option: unknown,
 ) => {
   const remarkField = PORT_ID_FIELD_TO_REMARK_FIELD[fieldName];
-  if (!remarkField || !portName) return;
+  if (!remarkField) return;
+  const remark = formatSeaExportPortRemark(pickPortSelectOption(option)?.raw);
+  if (!remark) return;
   const api = portFormApiRef.current;
   if (!api) return;
-  void api.setFieldValue(remarkField, toEnglishUpperCase(portName));
+  void api.setFieldValue(remarkField, remark);
 };
 
 /** 右侧表单：港口信息 */
 const [PortForm, portFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: usePortFormSchema({ onPortName: handlePortSelectPortName }).filter(
+  schema: usePortFormSchema({ onPortChange: handlePortSelectChange }).filter(
     (item) => !PORT_MOVED_TO_BASIC_FIELD_NAMES.has(item.fieldName),
   ),
   showDefaultActions: false,
@@ -2141,7 +2180,7 @@ const sanitizeOrderUsers = (
 /**
  * 从 id + name 构建 select 组件的 selectedItems，
  * 避免每个 select 组件单独调详情接口回显。
- * @param labelKey 对应 select 组件的 labelKey，如 ClientSelect 用 'name'，CarrierSelect 用 'cnShortName'，PortSelect 用 'portName'
+ * @param labelKey 对应 select 组件的回显字段，如 ClientSelect 用 'name'，PortSelect 用 'portName'
  */
 const toSelectedItems = (
   id: any,
@@ -2151,6 +2190,19 @@ const toSelectedItems = (
 ) => {
   if (id == null) return [];
   return [{ id, [labelKey]: name || '', ...extra }] as any[];
+};
+
+/** PortSelect 回显：portName 必填，countryEnName 可选（用于 labelKey 多字段拼接） */
+const toPortSelectedItems = (
+  id: unknown,
+  portName: unknown,
+  countryEnName?: unknown,
+) => {
+  const extra =
+    countryEnName != null && String(countryEnName).trim() !== ''
+      ? { country: { countryEnName: String(countryEnName).trim() } }
+      : {};
+  return toSelectedItems(id, portName, 'portName', extra);
 };
 
 const loadEditData = async () => {
@@ -2303,10 +2355,9 @@ const loadEditData = async () => {
       {
         fieldName: 'signingPortId',
         componentProps: {
-          selectedItems: toSelectedItems(
+          selectedItems: toPortSelectedItems(
             formValues.signingPortId,
             detail.signingPortName,
-            'portName',
           ),
         },
       },
@@ -2362,60 +2413,48 @@ const loadEditData = async () => {
       {
         fieldName: 'polId',
         componentProps: {
-          selectedItems: toSelectedItems(
-            formValues.polId,
-            detail.polName,
-            'portName',
-          ),
+          selectedItems: toPortSelectedItems(formValues.polId, detail.polName),
         },
       },
       {
         fieldName: 'podId',
         componentProps: {
-          selectedItems: toSelectedItems(
-            formValues.podId,
-            detail.podName,
-            'portName',
-          ),
+          selectedItems: toPortSelectedItems(formValues.podId, detail.podName),
         },
       },
       {
         fieldName: 'poT1Id',
         componentProps: {
-          selectedItems: toSelectedItems(
+          selectedItems: toPortSelectedItems(
             formValues.poT1Id,
             detail.poT1Name,
-            'portName',
           ),
         },
       },
       {
         fieldName: 'poT2Id',
         componentProps: {
-          selectedItems: toSelectedItems(
+          selectedItems: toPortSelectedItems(
             formValues.poT2Id,
             detail.poT2Name,
-            'portName',
           ),
         },
       },
       {
         fieldName: 'receivePortId',
         componentProps: {
-          selectedItems: toSelectedItems(
+          selectedItems: toPortSelectedItems(
             formValues.receivePortId,
             detail.receivePortName,
-            'portName',
           ),
         },
       },
       {
         fieldName: 'deliverPortId',
         componentProps: {
-          selectedItems: toSelectedItems(
+          selectedItems: toPortSelectedItems(
             formValues.deliverPortId,
             detail.deliverPortName,
-            'portName',
           ),
         },
       },

@@ -3,7 +3,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 
 import { computed, onMounted, ref } from 'vue';
 
-import { ProfileBaseSetting } from '@vben/common-ui';
+import { ProfileBaseSetting, z } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
 import { message } from 'ant-design-vue';
 
@@ -80,8 +80,17 @@ const formSchema = computed((): VbenFormSchema[] => {
       fieldName: 'emailAddress',
       component: 'Input',
       label: '邮箱',
+      rules: z
+        .string()
+        .min(1, { message: '请输入邮箱' })
+        .max(128, { message: '邮箱长度不能超过128位' })
+        .refine((value) => /^[\w.%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(value), {
+          message: '请输入有效的邮箱',
+        }),
       componentProps: {
+        maxlength: 128,
         placeholder: '请输入邮箱',
+        showCount: true,
       },
     },
     {

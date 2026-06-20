@@ -82,6 +82,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
     cellDblclick: handleRowDblclick,
   },
   gridOptions: {
+    align: 'left',
     columns: useColumns(),
     height: 'auto',
     keepSource: true,

@@ -1,14 +1,31 @@
 import type { SelectedFeeItem } from '../add-fee-modal/data';
 
+import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
+
 import { $t } from '#/locales';
 
 const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
+
+/** 解析费用原始币别 code（兼容 currencyCode 为空时从分组或 orderFee.currencyName 取值） */
+export function resolveFeeCurrencyCode(
+  fee?: Pick<
+    PaymentApplicationAdminApi.OrderFeeDto,
+    'currencyId' | 'currencyCode' | 'currencyName'
+  >,
+  currencyGroup?: PaymentApplicationAdminApi.CurrencyGroupDto[],
+): string {
+  if (fee?.currencyCode) return fee.currencyCode;
+  const fromGroup = currencyGroup?.find((c) => c.id === fee?.currencyId)?.code;
+  if (fromGroup) return fromGroup;
+  if (fee?.currencyName) return fee.currencyName;
+  return '';
+}
 
 /** 费用明细表格行（在 SelectedFeeItem 基础上增加业务展示字段） */
 export interface FeeDetailRow extends SelectedFeeItem {
   /** 委托编号 */
   commissionNum?: string;
-  /** 票据编号 */
+  /** 主提单号 */
   mblNum?: string;
   /** 会计日期 */
   accountDate?: string;
@@ -33,20 +50,55 @@ export interface FeeDetailRow extends SelectedFeeItem {
 /** 币别汇总信息 */
 export interface CurrencySummary {
   currencyId: number;
+  currencyCode?: string;
   currencyName: string;
   totalAmount: number;
 }
 
 /** 订单内单个币别的汇总 */
 export interface OrderCurrencyAmount {
+  currencyCode?: string;
   currencyName: string;
   amount: number;
 }
 
-/** 订单分组行（费用明细外层展示） */
+/** 费用明细中出现的币别（用于动态申请合计列） */
+export interface AppliedCurrencyInfo {
+  currencyId: number;
+  currencyCode?: string;
+  currencyName?: string;
+}
+
+/** 动态申请合计列字段前缀 */
+export const APPLIED_AMOUNT_FIELD_PREFIX = 'applied_amount_';
+
+export function appliedAmountFieldKey(currencyId: number): string {
+  return `${APPLIED_AMOUNT_FIELD_PREFIX}${currencyId}`;
+}
+
+export function isAppliedAmountColumnKey(key: string | undefined): boolean {
+  return !!key?.startsWith(APPLIED_AMOUNT_FIELD_PREFIX);
+}
+
+/** 销售 / 操作 / 客服列 key */
+export const USER_ROLE_COLUMN_KEYS = [
+  'saleUserNames',
+  'operationUserNames',
+  'customerServiceUserNames',
+] as const;
+
+export function isUserRoleColumnKey(key: string | number | undefined): boolean {
+  return USER_ROLE_COLUMN_KEYS.includes(
+    String(key) as (typeof USER_ROLE_COLUMN_KEYS)[number],
+  );
+}
+
+/** 订单分组行（业务 + 结算对象） */
 export interface OrderGroupRow {
   key: string;
   transportOrderId: string;
+  settlementId: string;
+  settlementName: string;
   commissionNum: string;
   mblNum: string;
   clientName: string;
@@ -61,20 +113,72 @@ export interface OrderGroupRow {
   currencySummaries: OrderCurrencyAmount[];
 }
 
-/** 按订单分组费用，计算各币别汇总 */
-export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
+/** 解析费用行结算对象展示名 */
+function resolveFeeSettlementName(fee: FeeDetailRow): string {
+  return fee.settlementName ?? '';
+}
+
+/** 从费用明细收集币别，按 currencyId 升序 */
+export function collectAppliedCurrencies(
+  fees: FeeDetailRow[],
+): AppliedCurrencyInfo[] {
+  const map = new Map<number, AppliedCurrencyInfo>();
+  for (const fee of fees) {
+    if (!map.has(fee.currencyId)) {
+      map.set(fee.currencyId, {
+        currencyId: fee.currencyId,
+        currencyCode: fee.currencyCode,
+        currencyName: fee.currencyName,
+      });
+    }
+  }
+  return [...map.values()].sort((a, b) => a.currencyId - b.currencyId);
+}
+
+/** 计算分组内某原币别的本次申请金额合计 */
+export function calcAppliedAmountByCurrency(
+  items: FeeDetailRow[],
+  currencyId: number,
+): number {
+  return items
+    .filter((f) => f.currencyId === currencyId)
+    .reduce((sum, f) => sum + (f.appliedAmount ?? 0), 0);
+}
+
+/** 根据币别生成「{币别}申请合计」动态列 */
+export function buildAppliedAmountCurrencyColumns(
+  currencies: AppliedCurrencyInfo[],
+) {
+  return currencies.map((c) => {
+    const label = c.currencyCode || c.currencyName || '';
+    const field = appliedAmountFieldKey(c.currencyId);
+    return {
+      title: `${label}申请合计`,
+      dataIndex: field,
+      key: field,
+      width: 85,
+      align: 'right' as const,
+    };
+  });
+}
+
+/** 按业务 + 结算对象分组费用，计算各币别汇总 */
+export function groupFeesByOrder(
+  fees: FeeDetailRow[],
+  currencies: AppliedCurrencyInfo[] = [],
+): OrderGroupRow[] {
   const map = new Map<string, FeeDetailRow[]>();
   for (const fee of fees) {
-    const id = fee.transportOrderId;
-    const list = map.get(id);
+    const groupKey = `order_${fee.transportOrderId}_${fee.settlementId}`;
+    const list = map.get(groupKey);
     if (list) {
       list.push(fee);
     } else {
-      map.set(id, [fee]);
+      map.set(groupKey, [fee]);
     }
   }
 
-  return [...map.entries()].map(([transportOrderId, items]) => {
+  return [...map.entries()].map(([key, items]) => {
     const first = items[0]!;
     const cMap = new Map<number, OrderCurrencyAmount>();
     for (const f of items) {
@@ -83,14 +187,17 @@ export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
         existing.amount += f.appliedAmount ?? 0;
       } else {
         cMap.set(f.currencyId, {
+          currencyCode: f.currencyCode ?? '',
           currencyName: f.currencyName ?? '',
           amount: f.appliedAmount ?? 0,
         });
       }
     }
-    return {
-      key: `order_${transportOrderId}`,
-      transportOrderId,
+    const row: OrderGroupRow & Record<string, number> = {
+      key,
+      transportOrderId: first.transportOrderId,
+      settlementId: first.settlementId,
+      settlementName: resolveFeeSettlementName(first),
       commissionNum: first.commissionNum ?? '',
       mblNum: first.mblNum ?? '',
       clientName: first.clientName ?? first.settlementName ?? '',
@@ -104,6 +211,15 @@ export function groupFeesByOrder(fees: FeeDetailRow[]): OrderGroupRow[] {
       children: items,
       currencySummaries: [...cMap.values()],
     };
+
+    for (const c of currencies) {
+      row[appliedAmountFieldKey(c.currencyId)] = calcAppliedAmountByCurrency(
+        items,
+        c.currencyId,
+      );
+    }
+
+    return row;
   });
 }
 
@@ -120,71 +236,81 @@ export function useOrderGroupColumns() {
       title: t('commissionNum'),
       dataIndex: 'commissionNum',
       key: 'commissionNum',
-      width: 160,
+      width: 150,
       ellipsis: true,
     },
     {
       title: t('mblNum'),
       dataIndex: 'mblNum',
       key: 'mblNum',
-      width: 160,
+      width: 130,
       ellipsis: true,
     },
     {
-      title: t('clientName'),
+      title: t('orderClientName'),
       dataIndex: 'clientName',
       key: 'clientName',
       width: 160,
       ellipsis: true,
     },
     {
+      title: t('settlementNameColumn'),
+      dataIndex: 'settlementName',
+      key: 'settlementName',
+      width: 110,
+      ellipsis: true,
+    },
+    {
       title: t('etd'),
       dataIndex: 'etd',
       key: 'etd',
-      width: 120,
+      width: 100,
       ellipsis: true,
     },
     {
       title: t('accountDate'),
       dataIndex: 'accountDate',
       key: 'accountDate',
-      width: 120,
+      width: 85,
       ellipsis: true,
     },
     {
       title: t('polName'),
       dataIndex: 'polName',
       key: 'polName',
-      width: 120,
+      width: 110,
       ellipsis: true,
     },
     {
       title: t('podName'),
       dataIndex: 'podName',
       key: 'podName',
-      width: 120,
+      width: 110,
       ellipsis: true,
     },
     {
       title: '销售',
       dataIndex: 'saleUserNames',
       key: 'saleUserNames',
-      width: 120,
+      width: 72,
       ellipsis: true,
+      className: 'user-role-column',
     },
     {
       title: '操作',
       dataIndex: 'operationUserNames',
       key: 'operationUserNames',
-      width: 120,
+      width: 72,
       ellipsis: true,
+      className: 'user-role-column',
     },
     {
       title: '客服',
       dataIndex: 'customerServiceUserNames',
       key: 'customerServiceUserNames',
-      width: 120,
+      width: 72,
       ellipsis: true,
+      className: 'user-role-column',
     },
   ];
 }
@@ -194,13 +320,6 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
   const prefix = [
     { title: '', dataIndex: 'checkbox', key: 'checkbox', width: 36 },
     { title: t('serialNumber'), dataIndex: 'seq', key: 'seq', width: 44 },
-    {
-      title: t('settlementNameColumn'),
-      dataIndex: 'settlementName',
-      key: 'settlementName',
-      width: 120,
-      ellipsis: true,
-    },
     {
       title: t('paySide'),
       dataIndex: 'paySide',
@@ -215,8 +334,8 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
     },
     {
       title: t('originalCurrencyLabel'),
-      dataIndex: 'currencyName',
-      key: 'currencyName',
+      dataIndex: 'currencyCode',
+      key: 'currencyCode',
       width: 80,
     },
   ];
@@ -259,16 +378,19 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
         align: 'right' as const,
       },
       {
-        title: t('appliedAmount'),
-        dataIndex: 'appliedAmount',
-        key: 'appliedAmount',
-        width: 140,
-      },
-      {
         title: t('applicationRate'),
         dataIndex: 'rate',
         key: 'rate',
         width: 100,
+        align: 'right' as const,
+      },
+      {
+        title: t('appliedAmount'),
+        dataIndex: 'appliedAmount',
+        key: 'appliedAmount',
+        width: 140,
+        align: 'right' as const,
+        className: 'fee-applied-amount-cell',
       },
     ];
   }
@@ -301,6 +423,8 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
       dataIndex: 'appliedAmount',
       key: 'appliedAmount',
       width: 140,
+      align: 'right' as const,
+      className: 'fee-applied-amount-cell',
     },
   ];
 }
@@ -308,6 +432,7 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
 /** 币别折算汇总（指定结算币别时使用），按币别+汇率分组 */
 export interface CurrencyConversionSummary {
   currencyId: number;
+  currencyCode?: string;
   currencyName: string;
   /** 该组使用的申请汇率 */
   rate: number;
@@ -332,6 +457,7 @@ export function summarizeByCurrencyWithConversion(
     } else {
       map.set(key, {
         currencyId: fee.currencyId,
+        currencyCode: fee.currencyCode ?? '',
         currencyName: fee.currencyName ?? '',
         rate,
         originalTotal: applied,
@@ -352,6 +478,7 @@ export function summarizeByCurrency(fees: FeeDetailRow[]): CurrencySummary[] {
     } else {
       map.set(fee.currencyId, {
         currencyId: fee.currencyId,
+        currencyCode: fee.currencyCode ?? '',
         currencyName: fee.currencyName ?? '',
         totalAmount: fee.appliedAmount ?? 0,
       });

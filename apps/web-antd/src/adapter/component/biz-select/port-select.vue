@@ -17,10 +17,10 @@ import { usePagedSelect } from './use-paged-select';
 
 interface Props {
   /**
-   * selectedItems 回显时注入的名称字段（与 `toSelectedItems` 的 labelKey 一致）
-   * 默认 'portName'，可用值：'portName' | 'cnName' 等
+   * 选中后下拉框展示字段；支持单字段或点路径数组，多字段以 `, ` 拼接。
+   * selectedItems 回显时尽量包含数组中的字段（缺字段则跳过，有 id 时会 lazy load 详情补全）。
    */
-  labelKey?: string;
+  labelKey?: string | string[];
   /** 每页数量，默认 20 */
   pageSize?: number;
   /** placeholder */
@@ -32,7 +32,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  labelKey: 'portName',
+  labelKey: () => ['portName', 'country.countryEnName'],
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],
@@ -41,9 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: any];
-  /** 当前选中港口的英文名称；清空选择时为 `undefined` */
-  portName: [portName: string | undefined];
-  /** change事件，传递value和完整的option对象 */
+  /** change 事件，option 含 `raw`（完整 PortCodeDto） */
   change: [value: any, option: any | any[]];
 }>();
 
@@ -55,39 +53,58 @@ const forwardSlotNames = computed(() =>
   Object.keys(slots).filter((n) => n !== 'option'),
 );
 
+const getNestedValue = (obj: unknown, path: string): string => {
+  const parts = path.split('.');
+  let cur: unknown = obj;
+  for (const part of parts) {
+    if (cur == null || typeof cur !== 'object') return '';
+    cur = (cur as Record<string, unknown>)[part];
+  }
+  return (cur ?? '').toString().trim();
+};
+
+const resolveLabelKey = (
+  port: PortCodeAdminApi.PortCodeDto,
+  labelKey: string | string[],
+): string => {
+  const keys = Array.isArray(labelKey) ? labelKey : [labelKey];
+  const parts = keys
+    .map((key) => getNestedValue(port, key))
+    .filter((value) => value !== '');
+  if (parts.length > 0) return parts.join(', ');
+
+  const portAny = port as Record<string, unknown>;
+  return (
+    (port.portName ?? '').toString().trim() ||
+    (port.cnName ?? '').toString().trim() ||
+    (port.ediCode ?? '').toString().trim() ||
+    String(portAny.id ?? '')
+  );
+};
+
 const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
-  const portAny = port as any;
+  const portAny = port as Record<string, unknown>;
   const ediCode = (port.ediCode ?? '').toString().trim();
   const countryEnName = (port.country?.countryEnName ?? '').toString().trim();
   const cnName = (port.cnName ?? '').toString().trim();
-  let nameForPath = (port.portName ?? '').toString().trim();
-  if (!nameForPath) {
-    nameForPath = (portAny?.[props.labelKey] ?? '').toString().trim();
-  }
-
-  /** 下拉里展示 ediCode/portName；选中后仅展示 ediCode，故 option.label 用 ediCode */
-  const dropdownLabel = `${ediCode}/${nameForPath} , ${countryEnName} / ${cnName}`;
-
-  // 用于显示的简洁label（类似于船公司的格式：EDI代码(港口名称)）
-  const simpleLabel = ediCode ? `${ediCode}(${nameForPath})` : nameForPath;
-
-  const label = `${nameForPath} , ${countryEnName}`;
-
-  const rawPortName = nameForPath;
-  const rawValue = portAny?.[props.valueKey];
+  const portName = (port.portName ?? '').toString().trim();
+  const rawLabel = ediCode ? `${ediCode}(${portName})` : portName;
+  const rawValue = portAny?.[props.valueKey] as number | string | undefined;
   return {
     disabled: port.status === 1,
-    dropdownLabel: dropdownLabel || label,
     /** 第一行：EDI代码/港口名称 */
-    line1: `${ediCode}/${nameForPath}`,
+    line1: `${ediCode}/${portName}`,
     /** 第二行：国家英文名 / 中文名称 */
     line2: `${countryEnName} / ${cnName}`,
-    label,
-    /** 供选中后 `portName` 事件使用，不依赖额外请求 */
-    portName: rawPortName || undefined,
-    /** 用于懒加载缓存的label值（简洁格式） */
-    rawLabel: simpleLabel,
-    value: rawValue === undefined || rawValue === null ? '' : rawValue,
+    label: resolveLabelKey(port, props.labelKey),
+    /** 完整港口 DTO，供业务层 @change 使用 */
+    raw: port,
+    /** 外部 label 缓存（EDI 简洁格式） */
+    rawLabel,
+    value:
+      rawValue === undefined || rawValue === null
+        ? ''
+        : (rawValue as number | string),
   };
 };
 
@@ -121,55 +138,6 @@ const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
 );
 
-const emitPortNameForValue = async (value: any) => {
-  const isEmpty =
-    value === undefined ||
-    value === null ||
-    value === '' ||
-    (Array.isArray(value) && value.length === 0);
-  if (isEmpty) {
-    emit('portName', undefined);
-    return;
-  }
-
-  const idRaw = Array.isArray(value) ? value[0] : value;
-  const idStr = parseIdToSafeString(idRaw);
-  if (idStr === null) {
-    emit('portName', undefined);
-    return;
-  }
-
-  const options = apiComponentRef.value?.getOptions?.() ?? [];
-  const fromOpt = options.find(
-    (o: { value: unknown; portName?: string }) => String(o.value) === idStr,
-  ) as { portName?: string } | undefined;
-  if (fromOpt?.portName) {
-    emit('portName', fromOpt.portName);
-    return;
-  }
-
-  for (const item of selectedItemsRef.value) {
-    if (String((item as any)[props.valueKey]) === idStr) {
-      let pn = (item as PortCodeAdminApi.PortCodeDto).portName;
-      if (pn == null || String(pn).trim() === '') {
-        pn = (item as any)[props.labelKey];
-      }
-      if (pn != null && String(pn).trim() !== '') {
-        emit('portName', String(pn).trim());
-        return;
-      }
-    }
-  }
-
-  try {
-    const detail = await getPortCodeDetail(idStr);
-    const pn = (detail?.portName ?? '').toString().trim();
-    emit('portName', pn || undefined);
-  } catch {
-    emit('portName', undefined);
-  }
-};
-
 // 处理值变化
 const handleChange = (value: any) => {
   const values = Array.isArray(value) ? value : [value];
@@ -183,11 +151,9 @@ const handleChange = (value: any) => {
   emit('update:modelValue', value);
 };
 
-// 处理change事件（转发完整的option对象）
+// 处理 change 事件（转发 value 与含 raw 的 option）
 const handleSelectChange = (value: any, option: any | any[]) => {
-  // 触发change事件，传递value和option
   emit('change', value, option);
-  // 同时更新modelValue
   handleChange(value);
 };
 
@@ -225,7 +191,9 @@ watch(
   selectedItemsRef,
   (items) => {
     for (const item of items) {
-      const idStr = parseIdToSafeString((item as any)[props.valueKey]);
+      const idStr = parseIdToSafeString(
+        (item as Record<string, unknown>)[props.valueKey],
+      );
       if (idStr !== null) {
         loadedSelectedIds.value.add(idStr);
       }

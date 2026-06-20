@@ -31,6 +31,7 @@ import {
   Spin,
   Table,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
@@ -54,10 +55,19 @@ import FileUploadInput from '../../../adapter/component/file-upload/file-upload-
 
 import AddFeeDrawer from '../add-fee-modal/index.vue';
 import {
+  resolvePodPortDisplayName,
+  resolvePolPortDisplayName,
+} from '../add-fee-modal/data';
+import {
+  buildAppliedAmountCurrencyColumns,
   calcConvertedApplied,
   calcConvertedTotal,
+  collectAppliedCurrencies,
   formatAmount,
   groupFeesByOrder,
+  isAppliedAmountColumnKey,
+  isUserRoleColumnKey,
+  resolveFeeCurrencyCode,
   summarizeByCurrency,
   summarizeByCurrencyWithConversion,
   useFeeInnerColumns,
@@ -131,7 +141,20 @@ const feeInnerColumns = computed(() =>
   useFeeInnerColumns(settlementCurrencyId.value !== null),
 );
 
-const orderGroups = computed(() => groupFeesByOrder(feeDetailRows.value));
+const appliedCurrencies = computed(() =>
+  collectAppliedCurrencies(feeDetailRows.value),
+);
+const appliedAmountDynamicColumns = computed(() =>
+  buildAppliedAmountCurrencyColumns(appliedCurrencies.value),
+);
+const allOrderGroupColumns = computed(() => [
+  ...orderGroupColumns,
+  ...appliedAmountDynamicColumns.value,
+]);
+
+const orderGroups = computed(() =>
+  groupFeesByOrder(feeDetailRows.value, appliedCurrencies.value),
+);
 const expandedGroupKeys = ref<string[]>([]);
 
 const currencySummaries = computed<CurrencySummary[]>(() =>
@@ -243,8 +266,32 @@ function handleOpenAddFee() {
     settlementId: settlementId.value || undefined,
     settlementCurrencyId: settlementCurrencyId.value,
     selectedFeeIds: feeDetailRows.value.map((r) => r.feeId),
-    paymentApplicationId: editId.value,
+    selectedAppliedAmounts: Object.fromEntries(
+      feeDetailRows.value.map((r) => [r.feeId, r.appliedAmount ?? 0]),
+    ),
   });
+}
+
+function getGroupAppliedAmountDisplay(
+  record: OrderGroupRow,
+  columnKey: string | number | undefined,
+): string {
+  if (!isAppliedAmountColumnKey(String(columnKey))) return '';
+  const val = (record as unknown as Record<string, number>)[String(columnKey)];
+  return formatAmount(val ?? 0);
+}
+
+function getUserRoleCellText(value: unknown): string {
+  if (value == null || value === '') return '';
+  return String(value);
+}
+
+function getUserRoleCellTextFromRecord(
+  record: OrderGroupRow,
+  dataIndex: string | number | undefined,
+): string {
+  if (!dataIndex) return '';
+  return getUserRoleCellText(record[String(dataIndex) as keyof OrderGroupRow]);
 }
 
 async function handleFeeConfirm(fees: SelectedFeeItem[]) {
@@ -376,6 +423,7 @@ function onSettlementCurrencyChange(val: number | string | null) {
 function mapDetailToFeeRows(
   detail: PaymentApplicationAdminApi.PaymentApplicationDetailDto,
 ): FeeDetailRow[] {
+  const settlementShortName = detail.clientName ?? '';
   const rows: FeeDetailRow[] = [];
   for (const group of detail.payAppFeeBySeaExportGroup ?? []) {
     const order = group.transportOrder;
@@ -389,8 +437,8 @@ function mapDetailToFeeRows(
         clientName: order?.clientName,
         accountDate: order?.accountDate,
         etd: order?.etd,
-        polName: order?.seaExportPOLCnName,
-        podName: order?.seaExportPODCnName,
+        polName: order ? resolvePolPortDisplayName(order) : '',
+        podName: order ? resolvePodPortDisplayName(order) : '',
         saleUserNames: order?.saleNames?.join('、'),
         operationUserNames: order?.operatorNames?.join('、'),
         customerServiceUserNames: order?.customerServiceNames?.join('、'),
@@ -398,9 +446,14 @@ function mapDetailToFeeRows(
         feeCodeId: fee?.feeCodeId ?? 0,
         feeCodeName: item.feeCodeName ?? fee?.feeCodeName,
         currencyId: fee?.currencyId ?? 0,
+        currencyCode: resolveFeeCurrencyCode(fee, group.currencyGroup),
         currencyName: item.feeCurrencyName ?? fee?.currencyName,
         settlementId: fee?.settlementId ?? '',
-        settlementName: item.feeSettlementName ?? fee?.settlementName,
+        settlementName:
+          settlementShortName ||
+          item.feeSettlementName ||
+          fee?.settlementName ||
+          '',
         amount: fee?.amount ?? item.feeAmount ?? 0,
         settledAmount: fee?.settledAmount ?? 0,
         unSettledAmount: fee?.unSettledAmount ?? 0,
@@ -872,7 +925,9 @@ function formatMonth(val: string | undefined | null): string {
                     class="currency-card"
                   >
                     <div class="currency-card__header">
-                      <Tag color="blue">{{ cs.currencyName }}</Tag>
+                      <Tag color="blue">{{
+                        cs.currencyCode || cs.currencyName
+                      }}</Tag>
                       <span class="currency-card__amount">
                         {{ formatAmount(cs.totalAmount) }}
                       </span>
@@ -897,7 +952,9 @@ function formatMonth(val: string | undefined | null): string {
                       class="conversion-card"
                     >
                       <div class="conversion-card__head">
-                        <Tag color="blue">{{ cs.currencyName }}</Tag>
+                        <Tag color="blue">{{
+                          cs.currencyCode || cs.currencyName
+                        }}</Tag>
                         <span class="conversion-card__amount">
                           {{ formatAmount(cs.originalTotal) }}
                         </span>
@@ -964,7 +1021,7 @@ function formatMonth(val: string | undefined | null): string {
 
           <div class="fee-group-table">
             <Table
-              :columns="orderGroupColumns"
+              :columns="allOrderGroupColumns"
               :data-source="orderGroups"
               :pagination="false"
               :scroll="{ x: 'max-content', y: 500 }"
@@ -984,21 +1041,24 @@ function formatMonth(val: string | undefined | null): string {
                 <template v-else-if="column.key === 'accountDate'">
                   {{ formatMonth(record.accountDate) }}
                 </template>
-                <template v-else-if="column.key === 'currencySummaries'">
-                  <div class="flex flex-wrap gap-x-3 gap-y-1">
-                    <span
-                      v-for="(cs, idx) in record.currencySummaries"
-                      :key="idx"
-                      class="inline-flex items-center gap-1"
-                    >
-                      <Tag color="blue" :bordered="false" size="small">
-                        {{ cs.currencyName }}
-                      </Tag>
-                      <strong class="text-blue-600">
-                        {{ formatAmount(cs.amount) }}
-                      </strong>
+                <template v-else-if="isAppliedAmountColumnKey(column.key)">
+                  {{ getGroupAppliedAmountDisplay(record, column.key) }}
+                </template>
+                <template v-else-if="isUserRoleColumnKey(column.key)">
+                  <Tooltip
+                    v-if="
+                      getUserRoleCellTextFromRecord(record, column.dataIndex)
+                    "
+                    :title="
+                      getUserRoleCellTextFromRecord(record, column.dataIndex)
+                    "
+                  >
+                    <span class="ellipsis-cell">
+                      {{
+                        getUserRoleCellTextFromRecord(record, column.dataIndex)
+                      }}
                     </span>
-                  </div>
+                  </Tooltip>
                 </template>
                 <template v-else>
                   {{ column.dataIndex ? record[column.dataIndex] : '' }}
@@ -1037,12 +1097,11 @@ function formatMonth(val: string | undefined | null): string {
               </template>
 
               <template #expandedRowRender="{ record: group }">
-                <div class="expanded-fee-table bg-gray-50 p-2">
+                <div class="expanded-fee-table p-2">
                   <Table
                     :columns="feeInnerColumns"
                     :data-source="group.children"
                     :pagination="false"
-                    :scroll="{ x: 'max-content' }"
                     row-key="feeId"
                     size="small"
                   >
@@ -1063,6 +1122,9 @@ function formatMonth(val: string | undefined | null): string {
                         <Tag :color="record.paySide === 0 ? 'blue' : 'orange'">
                           {{ getPaySideLabel(record.paySide) }}
                         </Tag>
+                      </template>
+                      <template v-else-if="column.key === 'currencyCode'">
+                        {{ record.currencyCode || record.currencyName }}
                       </template>
                       <template v-else-if="column.key === 'amount'">
                         {{ formatAmount(record.amount) }}
@@ -1089,12 +1151,12 @@ function formatMonth(val: string | undefined | null): string {
                           :value="record.appliedAmount"
                           :precision="2"
                           size="small"
-                          class="w-full"
+                          class="fee-applied-amount-input w-full"
                           @change="
                             (val) => onAppliedAmountChange(record.feeId, val)
                           "
                         />
-                        <span v-else>{{
+                        <span v-else class="fee-applied-amount-value">{{
                           formatAmount(record.appliedAmount)
                         }}</span>
                       </template>
@@ -1123,7 +1185,7 @@ function formatMonth(val: string | undefined | null): string {
 
           <div class="fee-footer">
             <span>
-              {{ t('orderCount', [orderGroups.length]) }}
+              {{ t('groupCount', [orderGroups.length]) }}
             </span>
             <div class="flex items-center gap-4">
               <span
@@ -1131,7 +1193,9 @@ function formatMonth(val: string | undefined | null): string {
                 :key="cs.currencyId"
                 class="flex items-center gap-1"
               >
-                <Tag color="blue" size="small">{{ cs.currencyName }}</Tag>
+                <Tag color="blue" size="small">{{
+                  cs.currencyCode || cs.currencyName
+                }}</Tag>
                 <strong>{{ formatAmount(cs.totalAmount) }}</strong>
               </span>
             </div>
@@ -1318,13 +1382,66 @@ function formatMonth(val: string | undefined | null): string {
   width: 100%;
 }
 
+.fee-group-table :deep(.ant-table-container::before),
+.fee-group-table :deep(.ant-table-container::after) {
+  box-shadow: none !important;
+}
+
 .fee-group-table :deep(.ant-table-expanded-row > td) {
   padding: 4px 8px;
+  background: #fff;
+}
+
+.fee-group-table :deep(.user-role-column) {
+  max-width: 72px;
+}
+
+.fee-group-table .ellipsis-cell {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .expanded-fee-table {
-  max-width: 100%;
   overflow-x: auto;
+}
+
+.expanded-fee-table :deep(.ant-table-wrapper) {
+  width: max-content;
+  max-width: none;
+}
+
+.expanded-fee-table :deep(.ant-table-container::before),
+.expanded-fee-table :deep(.ant-table-container::after) {
+  box-shadow: none !important;
+}
+
+.expanded-fee-table :deep(.ant-table-thead > tr > th) {
+  background: #fafafa;
+}
+
+.expanded-fee-table :deep(.fee-applied-amount-cell) {
+  padding-right: 8px !important;
+}
+
+.fee-applied-amount-value {
+  font-weight: 600;
+  color: #1677ff;
+}
+
+.expanded-fee-table :deep(.fee-applied-amount-input .ant-input-number-input) {
+  font-weight: 600;
+  color: #1677ff;
+}
+
+.expanded-fee-table :deep(.ant-table-tbody > tr > td) {
+  background: #fff;
+}
+
+.expanded-fee-table :deep(.ant-input-number-input) {
+  text-align: right;
 }
 
 .expand-toggle {

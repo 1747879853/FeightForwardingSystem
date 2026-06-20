@@ -3,6 +3,41 @@ import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-
 
 import { $t } from '#/locales';
 
+/** 费用明细港口展示：仅英文 portName，不回退中文名 */
+export function resolvePolPortDisplayName(source: {
+  pol?: PaymentApplicationAdminApi.PortSimpleDto;
+  polName?: string;
+  seaExportPOL?: PaymentApplicationAdminApi.PortSimpleDto;
+  seaExportPOLName?: string;
+  seaExportPOLPortName?: string;
+}): string {
+  return (
+    source.seaExportPOLPortName ??
+    source.pol?.portName ??
+    source.seaExportPOL?.portName ??
+    source.seaExportPOLName ??
+    source.polName ??
+    ''
+  );
+}
+
+export function resolvePodPortDisplayName(source: {
+  pod?: PaymentApplicationAdminApi.PortSimpleDto;
+  podName?: string;
+  seaExportPOD?: PaymentApplicationAdminApi.PortSimpleDto;
+  seaExportPODName?: string;
+  seaExportPODPortName?: string;
+}): string {
+  return (
+    source.seaExportPODPortName ??
+    source.pod?.portName ??
+    source.seaExportPOD?.portName ??
+    source.seaExportPODName ??
+    source.podName ??
+    ''
+  );
+}
+
 /** 组件 Props */
 export interface AddFeeDrawerProps {
   /** 结算对象 id（由外层表单传入） */
@@ -11,8 +46,8 @@ export interface AddFeeDrawerProps {
   settlementCurrencyId?: number | null;
   /** 已选费用 id 数组（不可编辑） */
   selectedFeeIds?: string[];
-  /** 当前付费申请 id，排除已选费用 */
-  paymentApplicationId?: string;
+  /** 已选费用本次结算金额（禁选行展示，不传则不显示默认值） */
+  selectedAppliedAmounts?: Record<string, number>;
 }
 
 /** 选中费用项（emit 给父组件） */
@@ -59,6 +94,39 @@ export interface CurrencyInfo {
   currencyCode: string;
 }
 
+/** 业务 + 结算对象复合分组键 */
+export function buildFeeGroupKey(
+  transportOrderId: string,
+  settlementId: string,
+): string {
+  return `${transportOrderId}_${settlementId}`;
+}
+
+/** 解析分组结算对象展示名：简称 name → 费用 settlementName → fullName */
+export function resolveGroupSettlementName(
+  group: PaymentApplicationAdminApi.PayAppFeeGroupDto,
+): string {
+  const settlement = group.settlement;
+  if (settlement?.name) return settlement.name;
+  const firstFee = group.orderFees?.[0];
+  if (firstFee?.settlementName) return firstFee.settlementName;
+  if (settlement?.fullName) return settlement.fullName;
+  return '';
+}
+
+/** 销售 / 操作 / 客服列 field */
+export const USER_ROLE_COLUMN_FIELDS = [
+  'saleUserNames',
+  'operationUserNames',
+  'customerServiceUserNames',
+] as const;
+
+export function isUserRoleColumnField(field: string | undefined): boolean {
+  return USER_ROLE_COLUMN_FIELDS.includes(
+    field as (typeof USER_ROLE_COLUMN_FIELDS)[number],
+  );
+}
+
 function resolveCurrencyCode(fee: {
   currencyCode?: string;
   currencyName?: string;
@@ -66,16 +134,26 @@ function resolveCurrencyCode(fee: {
   return fee.currencyCode ?? fee.currencyName ?? '';
 }
 
+/** PaySide 枚举选项 */
+export const PaySideOptions = [
+  { value: 0, label: '收' },
+  { value: 1, label: '付' },
+];
+
+export function getPaySideLabel(value: number): string {
+  return PaySideOptions.find((o) => o.value === value)?.label ?? '';
+}
+
 /** 搜索表单 schema */
 export function useAddFeeSearchSchema(options?: {
-  /** 是否必填结算单位（已有费用时需锁定并必填） */
+  /** 是否必填结算对象（已有费用时需锁定并必填） */
   settlementIdRequired?: boolean;
 }): VbenFormSchema[] {
   return [
     {
       component: 'ClientSelect',
       fieldName: 'SettlementId',
-      label: '结算单位',
+      label: $t('seaExport.export.paymentApplication.clientName'),
       rules: options?.settlementIdRequired ? 'required' : undefined,
       componentProps: {
         industryCategory: '',
@@ -99,6 +177,26 @@ export function useAddFeeSearchSchema(options?: {
       label: '编号',
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'PaySide',
+      label: '收付类型',
+      defaultValue: 1,
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        options: PaySideOptions,
+      },
+    },
+    {
+      component: 'CurrencySelect',
+      fieldName: 'CurrencyId',
+      label: '币别',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
         allowClear: true,
       },
     },
@@ -139,15 +237,6 @@ export function useAddFeeSearchSchema(options?: {
         maxTagCount: 2,
       },
     },
-    {
-      component: 'CurrencySelect',
-      fieldName: 'CurrencyId',
-      label: '币别',
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
-    },
   ];
 }
 
@@ -158,49 +247,58 @@ export function useOrderFixedColumns() {
     {
       field: 'commissionNum',
       title: '委托编号',
-      width: 180,
+      width: 150,
       ellipsis: true,
     },
     {
       field: 'clientName',
-      title: '委托单位',
-      width: 200,
+      title: $t('seaExport.export.paymentApplication.orderClientName'),
+      width: 160,
+      ellipsis: true,
+    },
+    {
+      field: 'settlementName',
+      title: $t('seaExport.export.paymentApplication.settlementNameColumn'),
+      width: 160,
       ellipsis: true,
     },
     {
       field: 'saleUserNames',
       title: '销售',
-      width: 120,
+      width: 72,
       ellipsis: true,
+      className: 'user-role-column',
     },
     {
       field: 'operationUserNames',
       title: '操作',
-      width: 120,
+      width: 72,
       ellipsis: true,
+      className: 'user-role-column',
     },
     {
       field: 'customerServiceUserNames',
       title: '客服',
-      width: 120,
+      width: 72,
       ellipsis: true,
+      className: 'user-role-column',
     },
     {
       field: 'accountDate',
       title: '会计日期',
-      width: 130,
+      width: 85,
       formatter: 'formatDate' as const,
     },
     {
       field: 'polName',
       title: '起运港',
-      width: 140,
+      width: 110,
       ellipsis: true,
     },
     {
       field: 'podName',
       title: '目的港',
-      width: 140,
+      width: 110,
       ellipsis: true,
     },
   ];
@@ -257,13 +355,13 @@ export function buildDynamicCurrencyColumns(currencies: CurrencyInfo[]) {
     columns.push({
       field: `currency_${c.currencyId}_receive`,
       title: `${c.currencyCode}未收`,
-      width: 120,
+      width: 85,
       align: 'right',
     });
     columns.push({
       field: `currency_${c.currencyId}_pay`,
       title: `${c.currencyCode}未付`,
-      width: 120,
+      width: 85,
       align: 'right',
     });
   }
@@ -286,8 +384,14 @@ export function buildOrderRow(
   order: PaymentApplicationAdminApi.PayAppFeeGroupDto,
   currencies: CurrencyInfo[],
 ): Record<string, any> {
+  const settlementId =
+    order.settlementId ?? order.orderFees?.[0]?.settlementId ?? '';
   const row: Record<string, any> = {
     ...order,
+    groupKey: buildFeeGroupKey(order.id, settlementId),
+    settlementName: resolveGroupSettlementName(order),
+    polName: resolvePolPortDisplayName(order),
+    podName: resolvePodPortDisplayName(order),
     saleUserNames: getOrderUserNamesByAttribute(
       order.orderUsers,
       PaymentApplicationAdminApi.UserAttribute.Sale,
@@ -314,14 +418,4 @@ export function buildOrderRow(
     );
   }
   return row;
-}
-
-/** PaySide 枚举选项 */
-export const PaySideOptions = [
-  { value: 0, label: '收' },
-  { value: 1, label: '付' },
-];
-
-export function getPaySideLabel(value: number): string {
-  return PaySideOptions.find((o) => o.value === value)?.label ?? '';
 }

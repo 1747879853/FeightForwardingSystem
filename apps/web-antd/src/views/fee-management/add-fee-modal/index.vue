@@ -10,10 +10,12 @@ import {
   Checkbox,
   Drawer,
   InputNumber,
+  Modal,
   message,
   Pagination,
   Table,
   Tag,
+  Tooltip,
 } from 'ant-design-vue';
 
 import { CurrencySelect } from '#/adapter/component';
@@ -26,12 +28,17 @@ import ExchangeRateModal from './exchange-rate-modal.vue';
 import {
   type AddFeeDrawerProps,
   buildDynamicCurrencyColumns,
+  buildFeeGroupKey,
   buildOrderRow,
   collectCurrencies,
   type CurrencyInfo,
   type FeeRowData,
   getPaySideLabel,
   type SelectedFeeItem,
+  resolveGroupSettlementName,
+  resolvePolPortDisplayName,
+  resolvePodPortDisplayName,
+  isUserRoleColumnField,
   useAddFeeSearchSchema,
   useOrderFixedColumns,
 } from './data';
@@ -54,7 +61,7 @@ const pageSize = ref(20);
 const currencies = ref<CurrencyInfo[]>([]);
 const tableRows = ref<Record<string, any>[]>([]);
 
-/** 选中状态：orderId -> Set<feeId> */
+/** 选中状态：groupKey -> Set<feeId> */
 const selectionMap = reactive(new Map<string, Set<string>>());
 /** 费用输入金额：feeId -> appliedAmount */
 const appliedAmountMap = reactive(new Map<string, number>());
@@ -99,7 +106,9 @@ const [SearchForm, searchFormApi] = useVbenForm({
   wrapperClass: 'grid-cols-5',
   handleSubmit: async (values) => {
     if (hasExistingFees() && !values.SettlementId) {
-      message.warning('请先选择结算单位');
+      message.warning(
+        $t('seaExport.export.paymentApplication.noSettlementWarning'),
+      );
       return;
     }
     currentPage.value = 1;
@@ -120,9 +129,12 @@ const [SearchForm, searchFormApi] = useVbenForm({
     tableRows.value = [];
     expandedRowKeys.value = [];
     currentPage.value = 1;
+    searchFormApi.setValues({
+      PaySide: 1,
+      ...(preservedSettlementId ? { SettlementId: preservedSettlementId } : {}),
+    });
+    await nextTick();
     if (preservedSettlementId) {
-      searchFormApi.setValues({ SettlementId: preservedSettlementId });
-      await nextTick();
       await fetchData(await searchFormApi.getValues());
     }
   },
@@ -146,6 +158,34 @@ const isSettlementCurrencyLocked = computed(
   () => (drawerProps.value.selectedFeeIds?.length ?? 0) > 0,
 );
 
+function isFeeDisabled(feeId: string): boolean {
+  return disabledFeeIds.value.has(feeId);
+}
+
+function resolveAppliedAmount(
+  feeId: string,
+  unSettledAmount?: number | null,
+): number | undefined {
+  if (appliedAmountMap.has(feeId)) {
+    return appliedAmountMap.get(feeId);
+  }
+  if (isFeeDisabled(feeId)) {
+    return undefined;
+  }
+  return unSettledAmount ?? 0;
+}
+
+function initDisabledFeeAppliedAmounts() {
+  const amounts = drawerProps.value.selectedAppliedAmounts;
+  if (!amounts) return;
+  for (const feeId of drawerProps.value.selectedFeeIds ?? []) {
+    const amount = amounts[feeId];
+    if (amount != null) {
+      appliedAmountMap.set(feeId, amount);
+    }
+  }
+}
+
 async function openDrawer(props: AddFeeDrawerProps = {}) {
   drawerProps.value = props;
   open.value = true;
@@ -153,10 +193,11 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
   await nextTick();
   await searchFormApi.resetForm();
   await nextTick();
-  if (props.settlementId) {
-    searchFormApi.setValues({ SettlementId: props.settlementId });
-    await nextTick();
-  }
+  searchFormApi.setValues({
+    PaySide: 1,
+    ...(props.settlementId ? { SettlementId: props.settlementId } : {}),
+  });
+  await nextTick();
   const hasFees = hasExistingFees();
   searchFormApi.updateSchema([
     {
@@ -168,6 +209,7 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
     },
   ]);
   await fetchData(await searchFormApi.getValues());
+  initDisabledFeeAppliedAmounts();
 }
 
 function resetState() {
@@ -198,10 +240,10 @@ async function fetchData(formValues?: Record<string, any>) {
   const feeCodeIds = values.FeeCodeIds;
 
   const params: PaymentApplicationAdminApi.GetOrderFeeGroupParams = {
-    Id: drawerProps.value.paymentApplicationId,
     SettlementId: values.SettlementId,
     OrgId: values.OrgId,
     Keyword: values.Keyword,
+    PaySide: values.PaySide ?? undefined,
     ETDStart: etdStart ? dayjs(etdStart).toISOString() : undefined,
     ETDEnd: etdEnd ? dayjs(etdEnd).toISOString() : undefined,
     CurrencyId: values.CurrencyId,
@@ -235,76 +277,89 @@ async function handlePageChange(page: number, size: number) {
 
 // --- Checkbox 联动逻辑 ---
 
-function getOrderFees(
-  orderId: string,
-): PaymentApplicationAdminApi.OrderFeeDto[] {
-  const order = orderList.value.find((o) => o.id === orderId);
-  return order?.orderFees ?? [];
+function resolveGroupKey(
+  group: PaymentApplicationAdminApi.PayAppFeeGroupDto,
+): string {
+  const settlementId =
+    group.settlementId ?? group.orderFees?.[0]?.settlementId ?? '';
+  return buildFeeGroupKey(group.id, settlementId);
 }
 
-function isOrderChecked(orderId: string): boolean {
-  const fees = getOrderFees(orderId);
+function findGroupByKey(
+  groupKey: string,
+): PaymentApplicationAdminApi.PayAppFeeGroupDto | undefined {
+  return orderList.value.find((g) => resolveGroupKey(g) === groupKey);
+}
+
+function getGroupFees(
+  groupKey: string,
+): PaymentApplicationAdminApi.OrderFeeDto[] {
+  return findGroupByKey(groupKey)?.orderFees ?? [];
+}
+
+function isGroupChecked(groupKey: string): boolean {
+  const fees = getGroupFees(groupKey);
   if (fees.length === 0) return false;
-  const selected = selectionMap.get(orderId);
+  const selected = selectionMap.get(groupKey);
   if (!selected) return false;
   return fees.every((f) => selected.has(f.id));
 }
 
-function isOrderIndeterminate(orderId: string): boolean {
-  const fees = getOrderFees(orderId);
-  const selected = selectionMap.get(orderId);
+function isGroupIndeterminate(groupKey: string): boolean {
+  const fees = getGroupFees(groupKey);
+  const selected = selectionMap.get(groupKey);
   if (!selected || selected.size === 0) return false;
   const allChecked = fees.every((f) => selected.has(f.id));
   return !allChecked;
 }
 
-function toggleOrder(orderId: string, checked: boolean) {
-  const fees = getOrderFees(orderId);
+function toggleGroup(groupKey: string, checked: boolean) {
+  const fees = getGroupFees(groupKey);
+  const disabledIds = disabledFeeIds.value;
   if (checked) {
     const set = new Set<string>();
     for (const fee of fees) {
       set.add(fee.id);
-      if (!appliedAmountMap.has(fee.id)) {
+      if (!disabledIds.has(fee.id) && !appliedAmountMap.has(fee.id)) {
         appliedAmountMap.set(fee.id, fee.unSettledAmount ?? 0);
       }
     }
-    selectionMap.set(orderId, set);
+    selectionMap.set(groupKey, set);
   } else {
-    const disabledIds = disabledFeeIds.value;
-    const existing = selectionMap.get(orderId);
+    const existing = selectionMap.get(groupKey);
     if (existing) {
       const kept = new Set<string>();
       for (const feeId of existing) {
         if (disabledIds.has(feeId)) kept.add(feeId);
       }
       if (kept.size > 0) {
-        selectionMap.set(orderId, kept);
+        selectionMap.set(groupKey, kept);
       } else {
-        selectionMap.delete(orderId);
+        selectionMap.delete(groupKey);
       }
     }
   }
 }
 
-function isFeeChecked(orderId: string, feeId: string): boolean {
-  return selectionMap.get(orderId)?.has(feeId) ?? false;
+function isFeeChecked(groupKey: string, feeId: string): boolean {
+  return selectionMap.get(groupKey)?.has(feeId) ?? false;
 }
 
-function toggleFee(orderId: string, feeId: string, checked: boolean) {
-  if (!selectionMap.has(orderId)) {
-    selectionMap.set(orderId, new Set());
+function toggleFee(groupKey: string, feeId: string, checked: boolean) {
+  if (!selectionMap.has(groupKey)) {
+    selectionMap.set(groupKey, new Set());
   }
-  const set = selectionMap.get(orderId)!;
+  const set = selectionMap.get(groupKey)!;
   if (checked) {
     set.add(feeId);
-    const fee = getOrderFees(orderId).find((f) => f.id === feeId);
-    if (fee && !appliedAmountMap.has(feeId)) {
+    const fee = getGroupFees(groupKey).find((f) => f.id === feeId);
+    if (fee && !isFeeDisabled(feeId) && !appliedAmountMap.has(feeId)) {
       appliedAmountMap.set(feeId, fee.unSettledAmount ?? 0);
     }
   } else {
     set.delete(feeId);
     if (set.size === 0) {
-      selectionMap.delete(orderId);
+      selectionMap.delete(groupKey);
     }
   }
 }
@@ -313,11 +368,11 @@ function setAppliedAmount(feeId: string, value: number | null) {
   appliedAmountMap.set(feeId, value ?? 0);
 }
 
-function getFeeRows(orderId: string): FeeRowData[] {
-  const fees = getOrderFees(orderId);
+function getFeeRows(groupKey: string): FeeRowData[] {
+  const fees = getGroupFees(groupKey);
   return fees.map((f) => ({
     ...f,
-    appliedAmount: appliedAmountMap.get(f.id) ?? f.unSettledAmount ?? 0,
+    appliedAmount: resolveAppliedAmount(f.id, f.unSettledAmount) ?? 0,
   }));
 }
 
@@ -330,10 +385,12 @@ async function checkSearchChanged() {
     SettlementId: values?.SettlementId,
     OrgId: values?.OrgId,
     Keyword: values?.Keyword,
+    PaySide: values?.PaySide,
     CurrencyId: values?.CurrencyId,
   });
   if (lastSearchSnapshot && snapshot !== lastSearchSnapshot) {
     clearSelection();
+    initDisabledFeeAppliedAmounts();
   }
   lastSearchSnapshot = snapshot;
 }
@@ -357,8 +414,8 @@ function getSelectedFees(): SelectedFeeItem[] {
       .map((user) => user.userNickName)
       .filter((name): name is string => Boolean(name))
       .join('、');
-  for (const [orderId, feeIds] of selectionMap.entries()) {
-    const order = orderList.value.find((o) => o.id === orderId);
+  for (const [groupKey, feeIds] of selectionMap.entries()) {
+    const order = findGroupByKey(groupKey);
     const saleUserNames = getOrderUserNamesByAttribute(
       order?.orderUsers,
       PaymentApplicationAdminApi.UserAttribute.Sale,
@@ -371,7 +428,7 @@ function getSelectedFees(): SelectedFeeItem[] {
       order?.orderUsers,
       PaymentApplicationAdminApi.UserAttribute.CustomerService,
     );
-    const fees = getOrderFees(orderId);
+    const fees = getGroupFees(groupKey);
     for (const fee of fees) {
       if (feeIds.has(fee.id) && !disabled.has(fee.id) && !seen.has(fee.id)) {
         seen.add(fee.id);
@@ -383,8 +440,8 @@ function getSelectedFees(): SelectedFeeItem[] {
           clientName: order?.clientName,
           accountDate: order?.accountDate,
           etd: order?.etd,
-          polName: order?.polName,
-          podName: order?.podName,
+          polName: order ? resolvePolPortDisplayName(order) : '',
+          podName: order ? resolvePodPortDisplayName(order) : '',
           saleUserNames,
           operationUserNames,
           customerServiceUserNames,
@@ -395,17 +452,30 @@ function getSelectedFees(): SelectedFeeItem[] {
           currencyCode: fee.currencyCode,
           currencyName: fee.currencyName,
           settlementId: fee.settlementId,
-          settlementName: fee.settlementName,
+          settlementName: order
+            ? resolveGroupSettlementName(order)
+            : (fee.settlementName ?? ''),
           amount: fee.amount,
           settledAmount: fee.settledAmount,
           unSettledAmount: fee.unSettledAmount,
-          appliedAmount:
-            appliedAmountMap.get(fee.id) ?? fee.unSettledAmount ?? 0,
+          appliedAmount: resolveAppliedAmount(fee.id, fee.unSettledAmount) ?? 0,
         });
       }
     }
   }
   return result;
+}
+
+function validateSameSettlement(selected: SelectedFeeItem[]): boolean {
+  const settlementIds = new Set(
+    selected.map((fee) => fee.settlementId).filter(Boolean),
+  );
+  if (settlementIds.size <= 1) return true;
+  Modal.warning({
+    title: '提示',
+    content: '请选择同一结算对象费用',
+  });
+  return false;
 }
 
 function resolveSettlementCurrencyName(targetId: number): string {
@@ -434,6 +504,7 @@ function handleConfirm() {
     message.warning('请至少选择一条费用');
     return;
   }
+  if (!validateSameSettlement(selected)) return;
 
   const curSettlementCurrencyId = drawerProps.value.settlementCurrencyId;
   if (curSettlementCurrencyId != null) {
@@ -463,6 +534,7 @@ function handleConfirm() {
 
 function handleExchangeRateConfirm(rateMap: Map<number, number>) {
   const selected = getSelectedFees();
+  if (!validateSameSettlement(selected)) return;
   for (const fee of selected) {
     const rate = rateMap.get(fee.currencyId);
     if (rate !== undefined) {
@@ -506,13 +578,6 @@ const feeColumns = [
     width: 40,
   },
   {
-    title: '结算单位',
-    dataIndex: 'settlementName',
-    key: 'settlementName',
-    width: 140,
-    ellipsis: true,
-  },
-  {
     title: '收付类型',
     dataIndex: 'paySide',
     key: 'paySide',
@@ -525,7 +590,7 @@ const feeColumns = [
     width: 120,
   },
   {
-    title: '币别',
+    title: '原始币别',
     dataIndex: 'currencyCode',
     key: 'currencyCode',
     width: 80,
@@ -549,6 +614,8 @@ const feeColumns = [
     dataIndex: 'appliedAmount',
     key: 'appliedAmount',
     width: 130,
+    align: 'right' as const,
+    className: 'fee-applied-amount-cell',
   },
 ];
 
@@ -562,12 +629,25 @@ function formatMonth(val: string | undefined | null): string {
   return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM') : '';
 }
 
-function onFeeCheckChange(transportOrderId: string, feeId: string, e: any) {
-  toggleFee(transportOrderId, feeId, e.target.checked);
+function getUserRoleCellText(value: unknown): string {
+  if (value == null || value === '') return '';
+  return String(value);
 }
 
-function onOrderCheckChange(orderId: string, e: any) {
-  toggleOrder(orderId, e.target.checked);
+function getUserRoleCellTextFromRecord(
+  record: Record<string, unknown>,
+  field: string | undefined,
+): string {
+  if (!field) return '';
+  return getUserRoleCellText(record[field]);
+}
+
+function onFeeCheckChange(groupKey: string, feeId: string, e: any) {
+  toggleFee(groupKey, feeId, e.target.checked);
+}
+
+function onGroupCheckChange(groupKey: string, e: any) {
+  toggleGroup(groupKey, e.target.checked);
 }
 
 function onExpandClick(record: any, e: Event, onExpand: Function) {
@@ -594,7 +674,7 @@ defineExpose({ open: openDrawer });
   <Drawer
     :open="open"
     title="添加费用"
-    :width="1200"
+    :width="1400"
     :destroy-on-close="true"
     placement="right"
     @close="handleCancel"
@@ -627,7 +707,7 @@ defineExpose({ open: openDrawer });
         :loading="loading"
         :pagination="false"
         :scroll="{ x: 'max-content', y: 500 }"
-        row-key="id"
+        row-key="groupKey"
         size="small"
         :expanded-row-keys="expandedRowKeys"
         @expanded-rows-change="onExpandedRowsChange"
@@ -645,6 +725,16 @@ defineExpose({ open: openDrawer });
           <template v-else-if="column.field === 'accountDate'">
             {{ formatMonth(record.accountDate) }}
           </template>
+          <template v-else-if="isUserRoleColumnField(column.field)">
+            <Tooltip
+              v-if="getUserRoleCellTextFromRecord(record, column.field)"
+              :title="getUserRoleCellTextFromRecord(record, column.field)"
+            >
+              <span class="ellipsis-cell">
+                {{ getUserRoleCellTextFromRecord(record, column.field) }}
+              </span>
+            </Tooltip>
+          </template>
           <template v-else>
             {{ column.field ? record[column.field] : '' }}
           </template>
@@ -652,22 +742,21 @@ defineExpose({ open: openDrawer });
 
         <!-- 展开行内容：费用子表格 -->
         <template #expandedRowRender="{ record }">
-          <div class="expanded-fee-table bg-gray-50 p-2">
+          <div class="expanded-fee-table p-2">
             <Table
               :columns="feeColumns"
-              :data-source="getFeeRows(record.id)"
+              :data-source="getFeeRows(record.groupKey)"
               :pagination="false"
-              :scroll="{ x: 900 }"
               row-key="id"
               size="small"
             >
               <template #bodyCell="{ column, record: feeRecord }">
                 <template v-if="column.key === 'checkbox'">
                   <Checkbox
-                    :checked="isFeeChecked(record.id, feeRecord.id)"
+                    :checked="isFeeChecked(record.groupKey, feeRecord.id)"
                     :disabled="disabledFeeIds.has(feeRecord.id)"
                     @change="
-                      (e) => onFeeCheckChange(record.id, feeRecord.id, e)
+                      (e) => onFeeCheckChange(record.groupKey, feeRecord.id, e)
                     "
                   />
                 </template>
@@ -677,10 +766,7 @@ defineExpose({ open: openDrawer });
                   </Tag>
                 </template>
                 <template v-else-if="column.key === 'currencyCode'">
-                  <Tag v-if="feeRecord.currencyCode">
-                    {{ feeRecord.currencyCode }}
-                  </Tag>
-                  <span v-else>{{ feeRecord.currencyName }}</span>
+                  {{ feeRecord.currencyCode || feeRecord.currencyName }}
                 </template>
                 <template v-else-if="column.key === 'amount'">
                   {{ formatAmount(feeRecord.amount) }}
@@ -691,13 +777,15 @@ defineExpose({ open: openDrawer });
                 <template v-else-if="column.key === 'appliedAmount'">
                   <InputNumber
                     :value="
-                      appliedAmountMap.get(feeRecord.id) ??
-                      feeRecord.unSettledAmount
+                      resolveAppliedAmount(
+                        feeRecord.id,
+                        feeRecord.unSettledAmount,
+                      )
                     "
                     :disabled="disabledFeeIds.has(feeRecord.id)"
                     :precision="2"
                     size="small"
-                    class="w-full"
+                    class="fee-applied-amount-input w-full"
                     @change="(val) => onAppliedAmountChange(feeRecord.id, val)"
                   />
                 </template>
@@ -716,9 +804,9 @@ defineExpose({ open: openDrawer });
         <template #expandIcon="{ expanded, record, onExpand }">
           <div class="flex items-center gap-1">
             <Checkbox
-              :checked="isOrderChecked(record.id)"
-              :indeterminate="isOrderIndeterminate(record.id)"
-              @change="(e) => onOrderCheckChange(record.id, e)"
+              :checked="isGroupChecked(record.groupKey)"
+              :indeterminate="isGroupIndeterminate(record.groupKey)"
+              @change="(e) => onGroupCheckChange(record.groupKey, e)"
             />
             <span
               class="expand-toggle cursor-pointer"
@@ -766,8 +854,26 @@ defineExpose({ open: openDrawer });
 </template>
 
 <style scoped>
+.fee-order-table :deep(.ant-table-container::before),
+.fee-order-table :deep(.ant-table-container::after) {
+  box-shadow: none !important;
+}
+
 .fee-order-table :deep(.ant-table-expanded-row > td) {
   padding: 4px 8px;
+  background: #fff;
+}
+
+.fee-order-table :deep(.user-role-column) {
+  max-width: 72px;
+}
+
+.fee-order-table .ellipsis-cell {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fee-order-table :deep(.ant-table-body) {
@@ -776,8 +882,38 @@ defineExpose({ open: openDrawer });
 }
 
 .expanded-fee-table {
-  max-width: 100%;
   overflow-x: auto;
+}
+
+.expanded-fee-table :deep(.ant-table-wrapper) {
+  width: max-content;
+  max-width: none;
+}
+
+.expanded-fee-table :deep(.ant-table-container::before),
+.expanded-fee-table :deep(.ant-table-container::after) {
+  box-shadow: none !important;
+}
+
+.expanded-fee-table :deep(.ant-table-thead > tr > th) {
+  background: #fafafa;
+}
+
+.expanded-fee-table :deep(.fee-applied-amount-cell) {
+  padding-right: 8px !important;
+}
+
+.expanded-fee-table :deep(.fee-applied-amount-input .ant-input-number-input) {
+  font-weight: 600;
+  color: #1677ff;
+}
+
+.expanded-fee-table :deep(.ant-table-tbody > tr > td) {
+  background: #fff;
+}
+
+.expanded-fee-table :deep(.ant-input-number-input) {
+  text-align: right;
 }
 
 .expand-toggle {

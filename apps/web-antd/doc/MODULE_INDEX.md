@@ -7,7 +7,7 @@
 | clients | `/clients` | 客户管理 | 维护客户主数据列表，是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-05-30 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料，为后续联系人、账期、发票、附件等客户子资料提供主记录。 | [客户新建](./modules/clients/create.md) | 2026-05-16 |
 | clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面。 | [客户编辑](./modules/clients/id-edit.md) | 2026-05-30 |
-| sea-exports | `/sea-exports` | 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-06-19 |
+| sea-exports | `/sea-exports` | 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-06-20 |
 | sea-exports | `/sea-exports/create` | 海运出口 | 创建新的海运出口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-06-17 |
 | sea-exports | `/sea-exports/:id/edit` | 海运出口 | 编辑页是海运出口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-06-17 |
 | sea-imports | `/sea-imports` | 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-05-30 |
@@ -16,8 +16,8 @@
 | freight-rate | `/freight-rate` | 运价管理 | 维护海运运价信息，为委托费用测算和报价提供基础数据入口。 | [运价管理](./modules/freight-rate/index.md) | 2026-06-12 |
 | fee-management | `/fee-management/fee-lock` | 费用管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/fee-management/fee-lock.md) | 2026-05-16 |
 | fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建和进入付款申请单编辑，是应付费用付款流程入口。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-05-16 |
-| fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请单，选择可申请的应付费用并形成待审核付款申请。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-06-16 |
-| fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑已有付款申请单，在状态允许时调整明细并提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-06-16 |
+| fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请单，选择可申请的应付费用并形成待审核付款申请。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-06-20 |
+| fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑已有付款申请单，在状态允许时调整明细并提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-06-20 |
 | fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-05-16 |
 | fee-management | `/fee-management/statement/add` | 费用管理 | 创建对账单，选择费用并形成可结算的对账记录。 | [对账单新增](./modules/fee-management/statement-add.md) | 2026-05-16 |
 | fee-management | `/fee-management/statement/:id/edit` | 费用管理 | 编辑已有对账单，在状态允许时调整主信息和费用明细。 | [对账单编辑](./modules/fee-management/statement-id-edit.md) | 2026-05-16 |
@@ -39,7 +39,7 @@
 | basic-data | `/basic-data/exchange-rate` | 基础资料 | 维护币种汇率，为跨币种费用、付款和结算提供换算基础。 | [汇率资料](./modules/basic-data/exchange-rate.md) | 2026-05-16 |
 | basic-data | `/basic-data/lane-code` | 基础资料 | 维护航线代码，支撑运价、港口和委托航线字段。 | [航线代码](./modules/basic-data/lane-code.md) | 2026-05-30 |
 | basic-data | `/basic-data/port-code` | 基础资料 | 维护港口资料，支撑起运港、目的港、卸货港等字段。 | [港口代码](./modules/basic-data/port-code.md) | 2026-05-30 |
-| basic-data | `/basic-data/ctn-code` | 基础资料 | 维护箱型箱量代码，支撑运价和委托箱型信息。 | [箱型代码](./modules/basic-data/ctn-code.md) | 2026-05-30 |
+| basic-data | `/basic-data/ctn-code` | 基础资料 | 维护箱型箱量代码，支撑运价和委托箱型信息。 | [箱型代码](./modules/basic-data/ctn-code.md) | 2026-06-20 |
 | basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-05-30 |
 | basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-06-17 |
 | basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板，列表按主配置维度分页（每行=一个主配置），支持明细顺序手动调整与重排动画反馈，并定义责任角色与字段展示/锁定/必填规则；SeaExportPropEnum 按千位分流（展示字段可含 1000+，锁定/必填仅 ≤1000）。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-05-30 |

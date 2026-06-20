@@ -150,7 +150,7 @@ export namespace CtnCodeAdminApi {
     IsDefault?: boolean;
     /** 备注 */
     Remark?: string;
-    /** 排序 默认是Id */
+    /** 排序 默认 OrderNo ASC, Id DESC */
     Sorting?: string;
     /** 当前页码 */
     PageIndex?: number;
@@ -169,7 +169,12 @@ export const getCtnCodePagedList = (
 ) => {
   return requestClient.get<CtnCodeAdminApi.PagedListOfCtnCodeDto>(
     `${API_PREFIX}/GetPagedListAsync`,
-    { params },
+    {
+      params: {
+        ...params,
+        Sorting: params.Sorting ?? 'OrderNo ASC, Id DESC',
+      },
+    },
   );
 };
 

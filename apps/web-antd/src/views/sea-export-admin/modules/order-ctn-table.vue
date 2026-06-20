@@ -111,6 +111,77 @@ const rowSelection = computed(() => ({
   },
 }));
 
+const tableColumns = computed(() => [
+  {
+    key: 'seq',
+    dataIndex: 'seq',
+    title: $t('common.index'),
+    width: 60,
+    align: 'center' as const,
+    className: 'order-ctn-table__seq-col',
+  },
+  {
+    key: 'ctnCodeId',
+    dataIndex: 'ctnCodeId',
+    title: $t('seaExport.export.ctnCodeId'),
+    width: 120,
+  },
+  {
+    key: 'ctnNo',
+    dataIndex: 'ctnNo',
+    title: $t('seaExport.export.ctnNo'),
+    width: 100,
+  },
+  {
+    key: 'sealNo',
+    dataIndex: 'sealNo',
+    title: $t('seaExport.export.sealNo'),
+    width: 90,
+  },
+  {
+    key: 'pkgs',
+    dataIndex: 'pkgs',
+    title: $t('seaExport.export.pkgs'),
+    width: 80,
+  },
+  {
+    key: 'codePackageId',
+    dataIndex: 'codePackageId',
+    title: $t('seaExport.export.codePackageId'),
+    width: 100,
+  },
+  {
+    key: 'grossWeight',
+    dataIndex: 'grossWeight',
+    title: $t('seaExport.export.grossWeight'),
+    width: 90,
+  },
+  {
+    key: 'tareWeight',
+    dataIndex: 'tareWeight',
+    title: $t('seaExport.export.tareWeight'),
+    width: 90,
+  },
+  {
+    key: 'volume',
+    dataIndex: 'volume',
+    title: $t('seaExport.export.volume'),
+    width: 90,
+  },
+  {
+    key: 'codeGoodsId',
+    dataIndex: 'codeGoodsId',
+    title: $t('seaExport.export.codeGoodsId'),
+    width: 100,
+  },
+  {
+    key: 'remark',
+    dataIndex: 'remark',
+    title: $t('seaExport.export.remark'),
+    minWidth: 100,
+  },
+]);
+
 let rowKeyCounter = 0;
 const addRow = () => {
   const list = [...(modelValue.value ?? [])];
@@ -206,15 +277,21 @@ watch(
       </Tooltip>
     </div>
     <Table
+      :columns="tableColumns"
       :data-source="dataSource"
       :row-selection="rowSelection"
       :pagination="false"
+      :scroll="{ x: 1100 }"
+      table-layout="fixed"
       size="small"
       bordered
       row-key="_rowKey"
     >
       <template #bodyCell="{ column, record, index }">
-        <template v-if="column.key === 'ctnCodeId'">
+        <template v-if="column.key === 'seq'">
+          {{ index + 1 }}
+        </template>
+        <template v-else-if="column.key === 'ctnCodeId'">
           <CtnSelect
             :model-value="record.ctnCodeId"
             :selected-items="
@@ -319,56 +396,6 @@ watch(
           />
         </template>
       </template>
-      <Table.Column
-        key="ctnCodeId"
-        :title="$t('seaExport.export.ctnCodeId')"
-        width="120"
-      />
-      <Table.Column
-        key="ctnNo"
-        :title="$t('seaExport.export.ctnNo')"
-        width="100"
-      />
-      <Table.Column
-        key="sealNo"
-        :title="$t('seaExport.export.sealNo')"
-        width="90"
-      />
-      <Table.Column
-        key="pkgs"
-        :title="$t('seaExport.export.pkgs')"
-        width="80"
-      />
-      <Table.Column
-        key="codePackageId"
-        :title="$t('seaExport.export.codePackageId')"
-        width="100"
-      />
-      <Table.Column
-        key="grossWeight"
-        :title="$t('seaExport.export.grossWeight')"
-        width="90"
-      />
-      <Table.Column
-        key="tareWeight"
-        :title="$t('seaExport.export.tareWeight')"
-        width="90"
-      />
-      <Table.Column
-        key="volume"
-        :title="$t('seaExport.export.volume')"
-        width="90"
-      />
-      <Table.Column
-        key="codeGoodsId"
-        :title="$t('seaExport.export.codeGoodsId')"
-        width="100"
-      />
-      <Table.Column
-        key="remark"
-        :title="$t('seaExport.export.remark')"
-        min-width="100"
-      />
     </Table>
     <div
       class="mt-2 flex items-center gap-6 rounded border border-[#f0f0f0] bg-[#fafafa] px-3 py-2 text-sm text-[#595959]"
@@ -389,3 +416,12 @@ watch(
     </div>
   </div>
 </template>
+
+<style scoped>
+.order-ctn-table :deep(th.order-ctn-table__seq-col),
+.order-ctn-table :deep(td.order-ctn-table__seq-col) {
+  width: 60px !important;
+  min-width: 60px !important;
+  max-width: 60px !important;
+}
+</style>
