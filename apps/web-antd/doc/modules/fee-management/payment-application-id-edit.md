@@ -50,6 +50,7 @@ last_updated: 2026-06-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-20 | `Fix` | 编辑页打开添加费用抽屉时，列表查询不再传当前申请单 `Id`。 | 与新增页一致；已关联费用通过 `selectedFeeIds` 禁选，避免重复添加。 |
 | 2026-06-20 | `Feature` | 选费抽屉与编辑页明细分组改为「业务+结算对象」；外层新增结算对象列，子表去掉该列；底部统计改为「共 X 组」。 | `PayAppFeeGroupDto` 补 `settlementId`/`settlement`；`groupKey`=`transportOrderId_settlementId`；单一结算对象锁定规则不变。 |
 | 2026-06-20 | `Fix` | 费用明细列与添加费用抽屉中「结算单位」统一为「结算对象」，与主表字段一致。 | `form-data.ts` 内层列使用 `settlementNameColumn` i18n；`add-fee-modal` 搜索与表格列同步引用 `paymentApplication` 文案键。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/fee-management/payment-application/:id/edit` 对应组件 `src/views/fee-management/payment-application/form.vue`，权限口径为 Admin.PaymentApplication / Admin.PaymentApplication.Get。 |

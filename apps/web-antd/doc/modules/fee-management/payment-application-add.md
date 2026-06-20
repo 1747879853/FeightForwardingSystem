@@ -21,7 +21,7 @@ last_updated: 2026-06-20
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **费用选择：** 从可申请费用中勾选生成付款申请；**新建时**进入页面后自动弹出添加费用抽屉（编辑模式不自动弹出）。抽屉内搜索区为五列布局，业务日期占两列，查询/重置按钮在币别条件同一行右侧；条件变更仍自动搜索。
+- **费用选择：** 从可申请费用中勾选生成付款申请；**新建时**进入页面后自动弹出添加费用抽屉（编辑模式不自动弹出）。抽屉内搜索区为五列布局，业务日期占两列，查询/重置按钮在币别条件同一行右侧；条件变更仍自动搜索。列表查询 `GetOrderFeeGroupAsync` **不传**当前申请单 `Id`，已选费用由前端 `selectedFeeIds` 禁选。
 - **金额汇总：** 根据费用明细计算申请金额。
 - **提交保存：** 保存后形成付款申请单，后续进入审核流程。
 
@@ -47,6 +47,8 @@ last_updated: 2026-06-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-20 | `Fix` | 已添加费用禁选时「本次结算」不再默认未结金额，展示申请单已有金额。 | `resolveAppliedAmount` + `selectedAppliedAmounts`；全选/单选跳过禁选费用写默认值。 |
+| 2026-06-20 | `Fix` | 添加费用抽屉查询 `GetOrderFeeGroupAsync` 不再传申请单 `Id`；已选费用仍由 `selectedFeeIds` 前端禁选。 | 移除 `AddFeeDrawerProps.paymentApplicationId` 及 `fetchData` 中 `Id` 参数。 |
 | 2026-06-20 | `Feature` | 添加费用抽屉按「业务+结算对象」分组展示；外层显示结算对象全称，分页 total 为分组数。 | 与 `GetOrderFeeGroupAsync` 新 DTO 对齐；`row-key` 使用 `${transportOrderId}_${settlementId}`。 |
 | 2026-06-16 | `feat` | 申请页去除与 Page 重复 padding；添加费用抽屉搜索区五列布局、业务日期占两列、查询重置紧跟币别右对齐。 | 搜索按钮通过 Vben `FormActions` + `col-start-4 col-span-2` 嵌入网格，避免破坏第二行对齐。 |
 | 2026-06-16 | `feat` | 新建付费申请（`/add`）挂载后自动打开添加费用抽屉；编辑页行为不变。 | 实现方式与 `payment-settlement/form.vue` 新建自动开抽屉一致：`onMounted` + `nextTick` + `handleOpenAddFee`。 |

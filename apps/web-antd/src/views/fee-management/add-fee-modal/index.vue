@@ -149,6 +149,34 @@ const isSettlementCurrencyLocked = computed(
   () => (drawerProps.value.selectedFeeIds?.length ?? 0) > 0,
 );
 
+function isFeeDisabled(feeId: string): boolean {
+  return disabledFeeIds.value.has(feeId);
+}
+
+function resolveAppliedAmount(
+  feeId: string,
+  unSettledAmount?: number | null,
+): number | undefined {
+  if (appliedAmountMap.has(feeId)) {
+    return appliedAmountMap.get(feeId);
+  }
+  if (isFeeDisabled(feeId)) {
+    return undefined;
+  }
+  return unSettledAmount ?? 0;
+}
+
+function initDisabledFeeAppliedAmounts() {
+  const amounts = drawerProps.value.selectedAppliedAmounts;
+  if (!amounts) return;
+  for (const feeId of drawerProps.value.selectedFeeIds ?? []) {
+    const amount = amounts[feeId];
+    if (amount != null) {
+      appliedAmountMap.set(feeId, amount);
+    }
+  }
+}
+
 async function openDrawer(props: AddFeeDrawerProps = {}) {
   drawerProps.value = props;
   open.value = true;
@@ -171,6 +199,7 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
     },
   ]);
   await fetchData(await searchFormApi.getValues());
+  initDisabledFeeAppliedAmounts();
 }
 
 function resetState() {
@@ -201,7 +230,6 @@ async function fetchData(formValues?: Record<string, any>) {
   const feeCodeIds = values.FeeCodeIds;
 
   const params: PaymentApplicationAdminApi.GetOrderFeeGroupParams = {
-    Id: drawerProps.value.paymentApplicationId,
     SettlementId: values.SettlementId,
     OrgId: values.OrgId,
     Keyword: values.Keyword,
@@ -276,17 +304,17 @@ function isGroupIndeterminate(groupKey: string): boolean {
 
 function toggleGroup(groupKey: string, checked: boolean) {
   const fees = getGroupFees(groupKey);
+  const disabledIds = disabledFeeIds.value;
   if (checked) {
     const set = new Set<string>();
     for (const fee of fees) {
       set.add(fee.id);
-      if (!appliedAmountMap.has(fee.id)) {
+      if (!disabledIds.has(fee.id) && !appliedAmountMap.has(fee.id)) {
         appliedAmountMap.set(fee.id, fee.unSettledAmount ?? 0);
       }
     }
     selectionMap.set(groupKey, set);
   } else {
-    const disabledIds = disabledFeeIds.value;
     const existing = selectionMap.get(groupKey);
     if (existing) {
       const kept = new Set<string>();
@@ -314,7 +342,7 @@ function toggleFee(groupKey: string, feeId: string, checked: boolean) {
   if (checked) {
     set.add(feeId);
     const fee = getGroupFees(groupKey).find((f) => f.id === feeId);
-    if (fee && !appliedAmountMap.has(feeId)) {
+    if (fee && !isFeeDisabled(feeId) && !appliedAmountMap.has(feeId)) {
       appliedAmountMap.set(feeId, fee.unSettledAmount ?? 0);
     }
   } else {
@@ -333,7 +361,7 @@ function getFeeRows(groupKey: string): FeeRowData[] {
   const fees = getGroupFees(groupKey);
   return fees.map((f) => ({
     ...f,
-    appliedAmount: appliedAmountMap.get(f.id) ?? f.unSettledAmount ?? 0,
+    appliedAmount: resolveAppliedAmount(f.id, f.unSettledAmount) ?? 0,
   }));
 }
 
@@ -350,6 +378,7 @@ async function checkSearchChanged() {
   });
   if (lastSearchSnapshot && snapshot !== lastSearchSnapshot) {
     clearSelection();
+    initDisabledFeeAppliedAmounts();
   }
   lastSearchSnapshot = snapshot;
 }
@@ -415,8 +444,7 @@ function getSelectedFees(): SelectedFeeItem[] {
           amount: fee.amount,
           settledAmount: fee.settledAmount,
           unSettledAmount: fee.unSettledAmount,
-          appliedAmount:
-            appliedAmountMap.get(fee.id) ?? fee.unSettledAmount ?? 0,
+          appliedAmount: resolveAppliedAmount(fee.id, fee.unSettledAmount) ?? 0,
         });
       }
     }
@@ -700,8 +728,10 @@ defineExpose({ open: openDrawer });
                 <template v-else-if="column.key === 'appliedAmount'">
                   <InputNumber
                     :value="
-                      appliedAmountMap.get(feeRecord.id) ??
-                      feeRecord.unSettledAmount
+                      resolveAppliedAmount(
+                        feeRecord.id,
+                        feeRecord.unSettledAmount,
+                      )
                     "
                     :disabled="disabledFeeIds.has(feeRecord.id)"
                     :precision="2"

@@ -13,6 +13,8 @@
 
 ## 2026-06
 
+- [2026-06-20] [付费申请添加费用禁选行本次结算不默认未结金额](./changelogs/change-log-2026-06-20-payment-application-add-fee-disabled-applied-amount.md)
+- [2026-06-20] [付费申请添加费用抽屉不再传 Id 查询](./changelogs/change-log-2026-06-20-payment-application-add-fee-no-id-param.md)
 - [2026-06-20] [付费申请选费分组适配业务+结算对象](./changelogs/change-log-2026-06-20-payment-application-fee-group-settlement.md)
 - [2026-06-20] [付费申请编辑页结算对象文案统一](./changelogs/change-log-2026-06-20-payment-application-settlement-label.md)
 - [2026-06-20] [个人中心与用户管理邮箱必填及格式校验](./changelogs/change-log-2026-06-20-profile-system-user-email-required.md)

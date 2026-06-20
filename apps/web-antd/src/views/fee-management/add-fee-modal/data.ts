@@ -11,8 +11,8 @@ export interface AddFeeDrawerProps {
   settlementCurrencyId?: number | null;
   /** 已选费用 id 数组（不可编辑） */
   selectedFeeIds?: string[];
-  /** 当前付费申请 id，排除已选费用 */
-  paymentApplicationId?: string;
+  /** 已选费用本次结算金额（禁选行展示，不传则不显示默认值） */
+  selectedAppliedAmounts?: Record<string, number>;
 }
 
 /** 选中费用项（emit 给父组件） */

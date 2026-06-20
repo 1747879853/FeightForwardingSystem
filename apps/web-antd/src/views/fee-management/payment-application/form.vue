@@ -243,7 +243,9 @@ function handleOpenAddFee() {
     settlementId: settlementId.value || undefined,
     settlementCurrencyId: settlementCurrencyId.value,
     selectedFeeIds: feeDetailRows.value.map((r) => r.feeId),
-    paymentApplicationId: editId.value,
+    selectedAppliedAmounts: Object.fromEntries(
+      feeDetailRows.value.map((r) => [r.feeId, r.appliedAmount ?? 0]),
+    ),
   });
 }
 
