@@ -1027,12 +1027,41 @@ const portFormApiRef = { current: null as any };
 
 const pickPortSelectOption = (option: unknown) => {
   if (Array.isArray(option)) {
-    return option[0] as { raw?: { portName?: string } } | undefined;
+    return option[0] as
+      | {
+          raw?: {
+            country?: { countryEnName?: string };
+            portName?: string;
+          };
+        }
+      | undefined;
   }
-  return option as { raw?: { portName?: string } } | undefined;
+  return option as
+    | {
+        raw?: {
+          country?: { countryEnName?: string };
+          portName?: string;
+        };
+      }
+    | undefined;
 };
 
-/** PortSelect @change：从 option.raw 取 portName 联动备注 */
+/** 备注单段：去掉中文逗号及逗号后内容，避免与 country 重复拼接 */
+const normalizePortRemarkPart = (value: unknown) =>
+  (value ?? '').toString().replace(/，/g, ',').split(',')[0]?.trim() ?? '';
+
+/** 备注格式：portName, countryEnName（英文逗号 + 空格，大小写保持原样） */
+const formatSeaExportPortRemark = (raw?: {
+  country?: { countryEnName?: string };
+  portName?: string;
+}) => {
+  const portName = normalizePortRemarkPart(raw?.portName);
+  const countryEnName = normalizePortRemarkPart(raw?.country?.countryEnName);
+  if (portName && countryEnName) return `${portName}, ${countryEnName}`;
+  return portName || countryEnName || undefined;
+};
+
+/** PortSelect @change：从 option.raw 取 portName + countryEnName 联动备注 */
 const handlePortSelectChange = (
   fieldName: string,
   _value: unknown,
@@ -1040,11 +1069,11 @@ const handlePortSelectChange = (
 ) => {
   const remarkField = PORT_ID_FIELD_TO_REMARK_FIELD[fieldName];
   if (!remarkField) return;
-  const portName = pickPortSelectOption(option)?.raw?.portName;
-  if (!portName) return;
+  const remark = formatSeaExportPortRemark(pickPortSelectOption(option)?.raw);
+  if (!remark) return;
   const api = portFormApiRef.current;
   if (!api) return;
-  void api.setFieldValue(remarkField, toEnglishUpperCase(portName));
+  void api.setFieldValue(remarkField, remark);
 };
 
 /** 右侧表单：港口信息 */

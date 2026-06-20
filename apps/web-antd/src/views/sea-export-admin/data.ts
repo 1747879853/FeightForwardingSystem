@@ -147,6 +147,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
+        labelKey: 'ediCode',
       },
     },
     {
@@ -156,6 +157,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
+        labelKey: 'ediCode',
       },
     },
     {
@@ -830,6 +832,7 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
+        labelKey: 'ediCode',
       },
     },
     {
@@ -1137,6 +1140,7 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
+        labelKey: 'ediCode',
       },
     },
     {
@@ -1226,6 +1230,7 @@ function buildPortSelectProps(
 ) {
   return {
     allowClear: true,
+    labelKey: 'ediCode',
     placeholder: $t('ui.placeholder.select'),
     ...(onPortChange
       ? {
