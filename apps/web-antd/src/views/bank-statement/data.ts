@@ -35,7 +35,12 @@ const formatOperators = (
   users: BankStatementAdminApi.BankStatementUserDto[] | undefined,
 ): string => {
   if (!users || users.length === 0) return '-';
-  return users.map((u) => u.operationName || String(u.operationId)).join(' / ');
+  return (
+    users
+      .map((u) => u.operationName)
+      .filter(Boolean)
+      .join(' / ') || '-'
+  );
 };
 
 /** 取第一个公司名称 */

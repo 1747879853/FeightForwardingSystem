@@ -986,28 +986,12 @@ const queueSyncServiceTypesByPol = (args: {
   }, 0);
 };
 const bindServiceTypeLinkageEvents = () => {
-  const handleClientIdChanged = (value: unknown) => {
-    queueSyncServiceTypesByPol({ clientId: value });
-  };
-  const handlePolIdChanged = (value: unknown) => {
-    queueSyncServiceTypesByPol({ polId: value });
-  };
   basicInfoFormApi.updateSchema([
     {
       fieldName: 'clientId',
       componentProps: {
         onChange: (value: unknown) => {
-          handleClientIdChanged(value);
-        },
-      },
-    },
-  ]);
-  portFormApi.updateSchema([
-    {
-      fieldName: 'polId',
-      componentProps: {
-        onChange: (value: unknown) => {
-          handlePolIdChanged(value);
+          queueSyncServiceTypesByPol({ clientId: value });
         },
       },
     },
@@ -1061,12 +1045,15 @@ const formatSeaExportPortRemark = (raw?: {
   return portName || countryEnName || undefined;
 };
 
-/** PortSelect @change：从 option.raw 取 portName + countryEnName 联动备注 */
+/** PortSelect @change：联动备注；起运港变更时同步服务项目 */
 const handlePortSelectChange = (
   fieldName: string,
-  _value: unknown,
+  value: unknown,
   option: unknown,
 ) => {
+  if (fieldName === 'polId') {
+    queueSyncServiceTypesByPol({ polId: value });
+  }
   const remarkField = PORT_ID_FIELD_TO_REMARK_FIELD[fieldName];
   if (!remarkField) return;
   const remark = formatSeaExportPortRemark(pickPortSelectOption(option)?.raw);

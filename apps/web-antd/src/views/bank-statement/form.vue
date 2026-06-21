@@ -42,6 +42,7 @@ import {
   getReceiveSettlementStatusLabel,
   useReceiveSettlementColumns,
 } from './form-data';
+import { buildOperatorRows } from './utils';
 
 const perm = createAbpPermission('Admin.BankStatement');
 const receiveSettlementPerm = createAbpPermission('Admin.ReceiveSettlement');
@@ -157,6 +158,16 @@ function updateOperatorRow(key: string, patch: Partial<OperatorRow>) {
   );
 }
 
+function toOperatorSelectedItems(row: OperatorRow) {
+  if (!row.operationId) return [];
+  return [
+    {
+      id: row.operationId,
+      userName: row.operationName || '',
+    },
+  ];
+}
+
 const operatorColumns = [
   { key: 'operationId', title: '操作人', width: 130 },
   { key: 'remark', title: '备注' },
@@ -188,12 +199,10 @@ async function loadEditData() {
     settlementId.value = detail.settlementId;
     clientInvoiceBankId.value = detail.clientInvoiceBankId;
 
-    operatorRows.value = (detail.bankStatementUsers || []).map((u) => ({
-      _key: makeRowKey(),
-      operationId: u.operationId,
-      operationName: u.operationName,
-      remark: u.remark,
-    }));
+    operatorRows.value = await buildOperatorRows(
+      detail.bankStatementUsers,
+      makeRowKey,
+    );
 
     await loadReceiveSettlements();
   } finally {
@@ -536,19 +545,9 @@ onMounted(() => {
                 <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'operationId'">
                     <UserSelect
+                      :key="record._key"
                       :model-value="record.operationId"
-                      :selected-items="
-                        record.operationId
-                          ? [
-                              {
-                                id: record.operationId,
-                                userName:
-                                  record.operationName ||
-                                  String(record.operationId),
-                              },
-                            ]
-                          : []
-                      "
+                      :selected-items="toOperatorSelectedItems(record)"
                       :disabled="!canEdit && isEdit"
                       placeholder="请选择"
                       size="small"
