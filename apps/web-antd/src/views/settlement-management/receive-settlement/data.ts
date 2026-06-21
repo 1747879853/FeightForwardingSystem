@@ -19,12 +19,6 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       fixed: 'left',
     },
     {
-      field: 'status',
-      title: '结算状态',
-      width: 110,
-      slots: { default: 'status' },
-    },
-    {
       field: 'settlementTime',
       title: '结算时间',
       width: 160,

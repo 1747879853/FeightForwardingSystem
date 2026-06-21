@@ -17,10 +17,6 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
-import {
-  getReceiveSettlementStatusColor,
-  getReceiveSettlementStatusLabel,
-} from './form-data';
 import ListTitleTabs, { type ListTabKey } from './list-title-tabs.vue';
 
 const activeTab = defineModel<ListTabKey>('activeTab', { required: true });
@@ -208,12 +204,6 @@ onMounted(() => {
           批量删除
         </Button>
       </Space>
-    </template>
-
-    <template #status="{ row }">
-      <Tag :color="getReceiveSettlementStatusColor(row.status)">
-        {{ getReceiveSettlementStatusLabel(row.status) }}
-      </Tag>
     </template>
 
     <template #locked="{ row }">

@@ -21,6 +21,7 @@ import ListTitleTabs, { type ListTabKey } from './list-title-tabs.vue';
 const activeTab = defineModel<ListTabKey>('activeTab', { required: true });
 
 const perm = createAbpPermission('Admin.BankStatement');
+const receiveSettlementPerm = createAbpPermission('Admin.ReceiveSettlement');
 const router = useRouter();
 
 /** 将时间范围拆分为起止参数 */
@@ -109,17 +110,36 @@ function getSelectedRows(): BankStatementAdminApi.BankStatementListDto[] {
     []) as BankStatementAdminApi.BankStatementListDto[];
 }
 
+function navigateToCreateReceiveSettlement(
+  row: BankStatementAdminApi.BankStatementListDto,
+) {
+  router.push({
+    path: '/settlement-management/receive-settlement/add',
+    query: { bankStatementId: row.id },
+  });
+}
+
 function handleRowDblClick({
   row,
 }: {
   row: BankStatementAdminApi.BankStatementListDto;
 }) {
   if (!row) return;
-  router.push(`/bank-statement/edit/${row.id}`);
+  navigateToCreateReceiveSettlement(row);
 }
 
 function handleCreate() {
-  router.push('/bank-statement/add');
+  const rows = getSelectedRows();
+  if (rows.length === 0) {
+    message.warning('请先选择银行流水');
+    return;
+  }
+  if (rows.length > 1) {
+    message.warning('每次只能针对一条银行流水新建收费结算，请只选择一条');
+    return;
+  }
+
+  navigateToCreateReceiveSettlement(rows[0]!);
 }
 
 function handleRefresh() {
@@ -165,7 +185,11 @@ async function handleDelete() {
 
     <template #toolbar-tools>
       <Space>
-        <Button v-access:code="perm.add" type="primary" @click="handleCreate">
+        <Button
+          v-access:code="receiveSettlementPerm.add"
+          type="primary"
+          @click="handleCreate"
+        >
           新建
         </Button>
         <Button v-access:code="perm.delete" danger @click="handleDelete">
