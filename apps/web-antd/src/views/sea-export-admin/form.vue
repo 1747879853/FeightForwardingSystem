@@ -359,6 +359,9 @@ const SERVICE_REQUIRE_FIELD_LABEL_KEY: Record<string, string> = {
 const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
+  commonConfig: {
+    labelClass: 'leading-[1em] mb-0',
+  },
   schema: [
     ...useBasicInfoFormSchema(isEdit.value).filter(
       (item) =>
@@ -1256,24 +1259,6 @@ const getOrderUserRoleLabel = (userAttribute?: number) => {
       return '-';
   }
 };
-const getOrderUserRoleIcon = (userAttribute?: number) => {
-  switch (userAttribute) {
-    case UserAttribute.Sales:
-      return 'mdi:handshake-outline';
-    case UserAttribute.Business:
-      return 'mdi:tag-multiple-outline';
-    case UserAttribute.Operation:
-      return 'mdi:truck-cargo-container';
-    case UserAttribute.CustomerService:
-      return 'mdi:forum-outline';
-    case UserAttribute.Documentation:
-      return 'mdi:file-sign';
-    case UserAttribute.OverseasCustomerService:
-      return 'mdi:earth-arrow-right';
-    default:
-      return 'mdi:account-outline';
-  }
-};
 const getOrderUserDisplayName = (row: OrderUserEditorRow) => {
   if (!row.userId) return row.userName || '';
   const mappedName = orderUserNameMap.value[row.userId];
@@ -1445,6 +1430,7 @@ const initializeOrderUsersPanel = (
     }
   }
   syncOrderUsersToForm();
+  void fillOrderUserNames(orderUserRows.value);
 };
 const openOrderUserRoleModal = () => {
   if (!availableOrderUserRoleOptions.value.length) {
@@ -3491,22 +3477,25 @@ defineExpose({
                           </div>
                         </div>
                       </template>
-                      <div
-                        class="order-user-panel__role-icon order-user-panel__role-icon--link"
+                      <Avatar
+                        :size="28"
+                        :src="getOrderUserAvatarSrc(row.userId)"
+                        class="order-user-panel__avatar order-user-panel__avatar--link"
                         @mouseenter="
                           loadOrderUserDetail(row.userId, row._rowKey)
                         "
                       >
-                        <IconifyIcon
-                          :icon="getOrderUserRoleIcon(row.userAttribute)"
-                        />
-                      </div>
+                        {{ getOrderUserAvatarText(row) }}
+                      </Avatar>
                     </Popover>
-                    <div v-else class="order-user-panel__role-icon">
-                      <IconifyIcon
-                        :icon="getOrderUserRoleIcon(row.userAttribute)"
-                      />
-                    </div>
+                    <Avatar
+                      v-else
+                      :size="28"
+                      :src="getOrderUserAvatarSrc()"
+                      class="order-user-panel__avatar"
+                    >
+                      ?
+                    </Avatar>
                   </div>
                   <UserSelect
                     :key="row._rowKey"
@@ -4840,26 +4829,18 @@ defineExpose({
   justify-content: space-between;
 }
 
-.order-user-panel__role-icon {
-  display: flex;
+.order-user-panel__avatar {
   flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  font-size: 16px;
-  color: #1677ff;
-  background: #e6f4ff;
-  border-radius: 6px;
+  cursor: default;
 }
 
-.order-user-panel__role-icon--link {
+.order-user-panel__avatar--link {
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.order-user-panel__role-icon--link:hover {
-  box-shadow: 0 4px 12px rgb(22 119 255 / 22%);
+.order-user-panel__avatar--link:hover {
+  box-shadow: 0 4px 12px rgb(15 23 42 / 18%);
   transform: translateY(-1px);
 }
 
