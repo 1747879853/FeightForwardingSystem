@@ -60,6 +60,8 @@ const pageLoading = ref(false);
 const submitting = ref(false);
 
 // 表单数据
+const settlementNo = ref(''); // 结算单号
+const companys = ref<Array<{ id: number; name?: string }>>([]); // 所属公司列表
 const settlementTime = ref(dayjs());
 const payType = ref<number | undefined>(undefined);
 const settlementId = ref<string>('');
@@ -762,6 +764,8 @@ async function loadEditData() {
   try {
     const detail = await getPaymentSettlementDetail(editId.value);
 
+    settlementNo.value = detail.settlementNo || ''; // 加载结算单号
+    companys.value = detail.companys || []; // 加载所属公司
     settlementTime.value = dayjs(detail.settlementTime);
     payType.value = detail.payType;
     settlementId.value = detail.settlementId;
@@ -871,7 +875,7 @@ async function loadEditData() {
               settlementId: detail.settlementId,
               clientName: detail.settlementName,
               currencyCode: app.currencyGroup?.[0]?.code || '',
-              currencyId: app.currencyId,
+              currencyId: app.currencyGroup?.[0]?.id, // 从 currencyGroup 中获取第一个币别的ID
               creatorUserName: detail.creatorUserName,
               totalSettleablePriceUpperLimit: 0,
               totalSettleablePriceLowerLimit: 0,
@@ -1311,7 +1315,7 @@ onMounted(() => {
       <Space>
         <Button @click="router.back()"> 返回 </Button>
         <Button type="primary" @click="handleSave" :loading="submitting">
-          确认结算
+          保存
         </Button>
       </Space>
     </template>
@@ -1321,7 +1325,7 @@ onMounted(() => {
       <div
         style="
           display: grid;
-          grid-template-columns: 280px 1fr 280px;
+          grid-template-columns: 320px 1fr 240px;
           gap: 16px;
           margin-bottom: 16px;
         "
@@ -1329,67 +1333,106 @@ onMounted(() => {
         <!-- 左侧：结算信息 -->
         <Card title="结算信息" :bordered="true" size="small">
           <div style="display: flex; flex-direction: column; gap: 12px">
-            <div>
+            <!-- 结算单号（仅编辑时显示） -->
+            <div v-if="isEdit">
               <div style="margin-bottom: 4px; font-size: 12px; color: #666">
-                结算人
+                结算单号
               </div>
-              <Input :value="currentUserName" disabled />
+              <Input :value="settlementNo" disabled />
             </div>
-            <div>
+
+            <!-- 所属公司 -->
+            <div v-if="companys.length > 0">
               <div style="margin-bottom: 4px; font-size: 12px; color: #666">
-                结算时间
-              </div>
-              <DatePicker
-                v-model:value="settlementTime"
-                show-time
-                format="YYYY-MM-DD HH:mm"
-                style="width: 100%"
-              />
-            </div>
-            <div>
-              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
-                付款方式
+                所属公司
               </div>
               <Select
-                v-model:value="payType"
-                :options="payTypeOptions"
-                placeholder="请选择"
-                allow-clear
-                style="width: 100%"
-              />
-            </div>
-            <div>
-              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
-                结算对象
-              </div>
-              <ClientSelect
-                v-model="settlementId"
-                placeholder="请选择结算对象"
-                allow-clear
+                mode="multiple"
+                :value="companys.map((c) => c.id)"
+                :options="companys.map((c) => ({ label: c.name, value: c.id }))"
                 disabled
                 style="width: 100%"
               />
             </div>
-            <div>
-              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
-                结算币别
+
+            <!-- 两列布局 -->
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            >
+              <div>
+                <div style="margin-bottom: 4px; font-size: 12px; color: #666">
+                  结算人
+                </div>
+                <Input :value="currentUserName" disabled />
               </div>
-              <CurrencySelect
-                v-model="currencyId"
-                placeholder="请选择"
-                allow-clear
-                disabled
-                style="width: 100%"
-              />
+              <div>
+                <div style="margin-bottom: 4px; font-size: 12px; color: #666">
+                  结算时间
+                </div>
+                <DatePicker
+                  v-model:value="settlementTime"
+                  show-time
+                  format="YYYY-MM-DD HH:mm"
+                  style="width: 100%"
+                />
+              </div>
             </div>
-            <div style="margin-top: 8px">
+
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            >
+              <div>
+                <div style="margin-bottom: 4px; font-size: 12px; color: #666">
+                  付款方式
+                </div>
+                <Select
+                  v-model:value="payType"
+                  :options="payTypeOptions"
+                  placeholder="请选择"
+                  allow-clear
+                  style="width: 100%"
+                />
+              </div>
+              <div>
+                <div style="margin-bottom: 4px; font-size: 12px; color: #666">
+                  结算对象
+                </div>
+                <ClientSelect
+                  v-model="settlementId"
+                  placeholder="请选择结算对象"
+                  allow-clear
+                  disabled
+                  style="width: 100%"
+                />
+              </div>
+            </div>
+
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            >
+              <div>
+                <div style="margin-bottom: 4px; font-size: 12px; color: #666">
+                  结算币别
+                </div>
+                <CurrencySelect
+                  v-model="currencyId"
+                  placeholder="请选择"
+                  allow-clear
+                  disabled
+                  style="width: 100%"
+                />
+              </div>
+              <div></div>
+            </div>
+
+            <div>
               <div style="margin-bottom: 4px; font-size: 12px; color: #666">
                 备注
               </div>
               <Input.TextArea
                 v-model:value="remark"
                 placeholder="请输入备注信息（选填）"
-                :rows="3"
+                :rows="2"
               />
             </div>
           </div>
@@ -1397,91 +1440,96 @@ onMounted(() => {
 
         <!-- 中间：费用汇总 -->
         <Card title="费用汇总" :bordered="true" size="small">
-          <div style="display: flex; flex-direction: column; gap: 16px">
+          <div style="display: flex; flex-direction: column; gap: 12px">
             <!-- 结算总金额 -->
             <div
               style="
-                padding: 16px;
+                padding: 12px;
                 text-align: center;
                 background: #f5f7fa;
                 border-radius: 4px;
               "
             >
-              <div style="margin-bottom: 8px; font-size: 12px; color: #999">
+              <div style="margin-bottom: 6px; font-size: 12px; color: #999">
                 结算总金额
               </div>
-              <div style="font-size: 24px; font-weight: bold; color: #1890ff">
+              <div style="font-size: 20px; font-weight: bold; color: #1890ff">
                 ¥{{ formatAmount(totalSettlementAmount) }}
               </div>
-              <div style="margin-top: 4px; font-size: 12px; color: #999">
+              <div style="margin-top: 2px; font-size: 12px; color: #999">
                 {{ currencyCode || 'RMB' }}
               </div>
             </div>
 
-            <!-- 我司银行 -->
+            <!-- 我司银行和对方银行同行显示 -->
             <div
-              style="
-                padding: 12px;
-                border: 1px solid #e8e8e8;
-                border-radius: 4px;
-              "
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
             >
+              <!-- 我司银行 -->
               <div
                 style="
-                  margin-bottom: 8px;
-                  font-size: 14px;
-                  font-weight: 500;
-                  color: #1890ff;
+                  padding: 10px;
+                  border: 1px solid #e8e8e8;
+                  border-radius: 4px;
                 "
               >
-                我司银行
+                <div
+                  style="
+                    margin-bottom: 6px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    color: #1890ff;
+                  "
+                >
+                  我司银行
+                </div>
+                <Select
+                  v-model:value="orgBankAccountId"
+                  :options="
+                    orgBankOptions.map((opt) => ({
+                      label: opt.label,
+                      value: opt.id,
+                    }))
+                  "
+                  placeholder="请先添加申请明细，然后选择我司银行"
+                  allow-clear
+                  :disabled="settlementItems.length === 0"
+                  style="width: 100%"
+                />
               </div>
-              <Select
-                v-model:value="orgBankAccountId"
-                :options="
-                  orgBankOptions.map((opt) => ({
-                    label: opt.label,
-                    value: opt.id,
-                  }))
-                "
-                placeholder="请先添加申请明细，然后选择我司银行"
-                allow-clear
-                :disabled="settlementItems.length === 0"
-                style="width: 100%"
-              />
-            </div>
 
-            <!-- 对方银行 -->
-            <div
-              style="
-                padding: 12px;
-                border: 1px solid #e8e8e8;
-                border-radius: 4px;
-              "
-            >
+              <!-- 对方银行 -->
               <div
                 style="
-                  margin-bottom: 8px;
-                  font-size: 14px;
-                  font-weight: 500;
-                  color: #fa8c16;
+                  padding: 10px;
+                  border: 1px solid #e8e8e8;
+                  border-radius: 4px;
                 "
               >
-                对方银行
+                <div
+                  style="
+                    margin-bottom: 6px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    color: #fa8c16;
+                  "
+                >
+                  对方银行
+                </div>
+                <Select
+                  v-model:value="clientInvoiceBankId"
+                  :options="
+                    clientBankOptions.map((opt) => ({
+                      label: opt.label,
+                      value: opt.id,
+                    }))
+                  "
+                  placeholder="请先选择结算对象，然后选择对方银行"
+                  allow-clear
+                  :disabled="!settlementId"
+                  style="width: 100%"
+                />
               </div>
-              <Select
-                v-model:value="clientInvoiceBankId"
-                :options="
-                  clientBankOptions.map((opt) => ({
-                    label: opt.label,
-                    value: opt.id,
-                  }))
-                "
-                placeholder="请先选择结算对象，然后选择对方银行"
-                allow-clear
-                :disabled="!settlementId"
-                style="width: 100%"
-              />
             </div>
 
             <!-- 手续费 -->
@@ -1492,20 +1540,17 @@ onMounted(() => {
                 placeholder="0.00"
                 :min="0"
                 :precision="2"
-                style="width: 120px"
+                style="width: 100px"
               />
               <span style="font-size: 12px; color: #999">RMB</span>
-              <span style="margin-left: auto; font-size: 12px; color: #999"
-                >手续费将计入结算总金额</span
-              >
             </div>
 
             <!-- 汇率管理（动态显示） -->
             <div
               v-if="rateList.length > 0"
               style="
-                padding: 12px;
-                margin-top: 16px;
+                padding: 10px;
+                margin-top: 8px;
                 background: #fafafa;
                 border: 1px solid #d9d9d9;
                 border-radius: 4px;
@@ -1513,8 +1558,8 @@ onMounted(() => {
             >
               <div
                 style="
-                  margin-bottom: 12px;
-                  font-size: 14px;
+                  margin-bottom: 8px;
+                  font-size: 13px;
                   font-weight: 500;
                   color: #1890ff;
                 "
@@ -1524,8 +1569,8 @@ onMounted(() => {
               <div
                 style="
                   display: grid;
-                  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                  gap: 12px;
+                  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                  gap: 8px;
                 "
               >
                 <div
@@ -1535,13 +1580,15 @@ onMounted(() => {
                     display: flex;
                     gap: 8px;
                     align-items: center;
-                    padding: 8px;
+                    padding: 6px;
                     background: white;
                     border: 1px solid #e8e8e8;
                     border-radius: 4px;
                   "
                 >
-                  <span style="color: #666; white-space: nowrap">
+                  <span
+                    style="font-size: 12px; color: #666; white-space: nowrap"
+                  >
                     {{ rate.currencyCode || `币别${rate.originalCurrencyId}` }}
                     → {{ currencyCode }}
                   </span>
@@ -1571,7 +1618,7 @@ onMounted(() => {
       </div>
 
       <!-- 申请明细 -->
-      <Card :bordered="true" size="small">
+      <Card :bordered="true" size="small" style="min-height: 300px">
         <template #title>
           <div style="display: flex; gap: 8px; align-items: center">
             <div

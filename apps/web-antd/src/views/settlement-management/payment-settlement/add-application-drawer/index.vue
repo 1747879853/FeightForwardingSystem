@@ -172,11 +172,12 @@ async function fetchData() {
         app.settledPrice = app.settledPrice ?? 0;
       }
 
-      // 原币申请：为每个币别分组初始化 settledAmount 字段
+      // 原币申请：为每个币别分组初始化 settledAmount 和 checked 字段
       if (app.currencyGroup) {
         app.currencyGroup = app.currencyGroup.map((group: any) => ({
           ...group,
           settledAmount: group.settledAmount ?? 0, // 初始化用户输入的结算金额，保留已有值或默认为0
+          checked: false, // 初始化复选框状态为未选中
         }));
       }
       return app;
@@ -238,7 +239,40 @@ async function handleConfirm() {
     return;
   }
 
-  // 验证是否选择了结算币别
+  // 如果用户没有选择结算币别，尝试从已选费用中自动推断
+  if (!selectedCurrencyId.value) {
+    // 收集所有已选费用中的币别ID
+    const currencyIds = new Set<number>();
+
+    selectedApps.forEach((app) => {
+      // 固定币别申请：直接使用 currencyId
+      if (app.currencyId) {
+        currencyIds.add(app.currencyId);
+      }
+      // 原币申请：收集所有被勾选且有结算金额的币别ID
+      else if (app.currencyGroup) {
+        app.currencyGroup.forEach((group: any) => {
+          if (
+            group.checked &&
+            group.settledAmount &&
+            group.settledAmount !== 0
+          ) {
+            currencyIds.add(group.id);
+          }
+        });
+      }
+    });
+
+    // 如果只有一个唯一的币别，自动设置为结算币别
+    if (currencyIds.size === 1) {
+      const autoSelectedCurrencyId = Array.from(currencyIds)[0];
+      selectedCurrencyId.value = autoSelectedCurrencyId;
+      console.log('自动设置结算币别为:', autoSelectedCurrencyId);
+      message.success(`自动选择结算币别`);
+    }
+  }
+
+  // 验证是否选择了结算币别（包括自动设置的情况）
   if (!selectedCurrencyId.value) {
     message.warning('请选择结算币别');
     return;
@@ -256,24 +290,31 @@ async function handleConfirm() {
         // 从用户输入获取 settledPrice
         item.settledPrice = app.settledPrice || 0;
       } else {
-        // 原币申请：只收集用户填写了结算金额的币别（过滤掉settledAmount为0或未填写的）
+        // 原币申请：只收集用户勾选且填写了结算金额的币别
         item.currencyItems = (app.currencyGroup || [])
           .filter((g: any) => {
-            // 首先检查是否有可结算金额范围
+            // 首先检查是否被勾选
+            if (!g.checked) {
+              return false;
+            }
+            // 然后检查是否有可结算金额范围
             const hasSettleableAmount =
               g.settleableUpperLimit > 0 || g.settleableLowerLimit < 0;
             // 然后检查用户是否填写了非零的结算金额
             const hasUserInput =
               g.settledAmount && g.settledAmount !== 0 ? true : false;
             console.log(
+              '币别检查:',
+              g.code,
+              'checked:',
+              g.checked,
+              'hasSettleableAmount:',
               hasSettleableAmount,
+              'hasUserInput:',
               hasUserInput,
-              g.settleableUpperLimit,
-              g.settleableLowerLimit,
-              g.settledAmount,
             );
-            // 只有同时满足两个条件才保留该币别
-            return hasSettleableAmount && hasUserInput;
+            // 必须同时满足：被勾选、有可结算金额、用户填写了非零金额
+            return g.checked && hasSettleableAmount && hasUserInput;
           })
           .map((g: any) => ({
             originalCurrencyId: g.id,
@@ -291,7 +332,7 @@ async function handleConfirm() {
         // 固定币别申请：检查settledPrice是否为0
         return item.settledPrice !== 0;
       } else {
-        // 原币申请：检查currencyItems是否为空（如果为空说明没有填写任何有效的结算金额）
+        // 原币申请：检查currencyItems是否为空（如果为空说明没有勾选任何有效的结算金额）
         return item.currencyItems && item.currencyItems.length > 0;
       }
     });
@@ -436,13 +477,13 @@ const columns: ColumnsType<PaymentApplicationAdminApi.PaymentApplicationForSettl
     },
     {
       title: '申请人',
-      dataIndex: 'creatorUserName',
-      key: 'creatorUserName',
+      dataIndex: 'auditUserNickName',
+      key: 'auditUserNickName',
       width: 100,
     },
     {
       title: '未结算费用',
-      key: 'unsettledRange',
+      key: 'unSettledAmount',
       width: 180,
       align: 'right',
     },
@@ -459,9 +500,15 @@ const columns: ColumnsType<PaymentApplicationAdminApi.PaymentApplicationForSettl
     },
   ];
 
-// 第二层列配置（币别分组）
+// 第二层列配置（币别分组）- 添加复选框列
 const currencyGroupColumns: ColumnsType<PaymentApplicationAdminApi.CurrencyGroupForSettlementDto> =
   [
+    {
+      title: '',
+      key: 'checkbox',
+      width: 50,
+      align: 'center',
+    },
     {
       title: '币别',
       dataIndex: 'code',
@@ -494,7 +541,7 @@ const currencyGroupColumns: ColumnsType<PaymentApplicationAdminApi.CurrencyGroup
     },
     {
       title: '未结算费用',
-      key: 'unsettledRange',
+      key: 'totalUnSettledAmount',
       width: 180,
       align: 'right',
     },
@@ -890,16 +937,14 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
           }}
         </template>
 
-        <template v-else-if="column.key === 'unsettledRange'">
+        <template v-else-if="column.key === 'unSettledAmount'">
           {{
-            formatUnsettledRange(
-              (
-                record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
-              ).totalSettleablePriceUpperLimit || 0,
-              (
-                record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
-              ).totalSettleablePriceLowerLimit || 0,
-            )
+            ((
+              record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+            ).totalSettleablePriceUpperLimit ?? 0) +
+            ((
+              record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+            ).totalSettleablePriceLowerLimit ?? 0)
           }}
         </template>
 
@@ -972,7 +1017,34 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
           }"
         >
           <template #bodyCell="{ column, record: currencyRecord }">
-            <template v-if="column.key === 'commissionNums'">
+            <!-- 复选框列 -->
+            <template v-if="column.key === 'checkbox'">
+              <div
+                v-if="!record.currencyId"
+                style="display: flex; justify-content: center"
+              >
+                <input
+                  type="checkbox"
+                  :checked="currencyRecord.checked"
+                  @change="
+                    (e) => {
+                      currencyRecord.checked = (
+                        e.target as HTMLInputElement
+                      ).checked;
+                    }
+                  "
+                  :disabled="
+                    !selectedRowKeys.includes(record.id) ||
+                    (currencyRecord.settleableUpperLimit === 0 &&
+                      currencyRecord.settleableLowerLimit === 0) ||
+                    (props.existingApplicationIds?.includes(record.id) ?? false)
+                  "
+                />
+              </div>
+              <span v-else style="color: #999">-</span>
+            </template>
+
+            <template v-else-if="column.key === 'commissionNums'">
               {{ getCommissionNums(currencyRecord.orderFees) }}
             </template>
 
@@ -980,13 +1052,8 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
               {{ getMblNums(currencyRecord.orderFees) }}
             </template>
 
-            <template v-else-if="column.key === 'unsettledRange'">
-              {{
-                formatUnsettledRange(
-                  currencyRecord.settleableUpperLimit || 0,
-                  currencyRecord.settleableLowerLimit || 0,
-                )
-              }}
+            <template v-else-if="column.key === 'totalUnSettledAmount'">
+              {{ currencyRecord.totalUnSettledAmount }}
             </template>
 
             <template v-else-if="column.key === 'settledAmount'">
