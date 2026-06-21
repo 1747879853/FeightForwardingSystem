@@ -144,6 +144,25 @@ export function getPaySideLabel(value: number): string {
   return PaySideOptions.find((o) => o.value === value)?.label ?? '';
 }
 
+/** 箱型箱量展示：按箱型汇总数量，如 20GP*2，40HQ*1 */
+export function formatOrderCtnsDisplay(
+  orderCtns?: PaymentApplicationAdminApi.OrderCtnSimpleDto[] | null,
+): string {
+  if (!Array.isArray(orderCtns) || orderCtns.length === 0) return '';
+
+  const ctnTypeCounter = new Map<string, number>();
+  for (const ctn of orderCtns) {
+    const label = ctn.ctnCodeName?.trim();
+    if (!label) continue;
+    ctnTypeCounter.set(label, (ctnTypeCounter.get(label) ?? 0) + 1);
+  }
+
+  if (ctnTypeCounter.size === 0) return '';
+  return [...ctnTypeCounter.entries()]
+    .map(([ctnType, count]) => `${ctnType}*${count}`)
+    .join('，');
+}
+
 /** 搜索表单 schema */
 export function useAddFeeSearchSchema(options?: {
   /** 是否必填结算对象（已有费用时需锁定并必填） */
@@ -248,6 +267,18 @@ export function useOrderFixedColumns() {
       field: 'commissionNum',
       title: '委托编号',
       width: 150,
+      ellipsis: true,
+    },
+    {
+      field: 'mblNum',
+      title: '主提单号',
+      width: 130,
+      ellipsis: true,
+    },
+    {
+      field: 'orderCtnsText',
+      title: '箱型箱量',
+      width: 120,
       ellipsis: true,
     },
     {
@@ -404,6 +435,7 @@ export function buildOrderRow(
       order.orderUsers,
       PaymentApplicationAdminApi.UserAttribute.CustomerService,
     ),
+    orderCtnsText: formatOrderCtnsDisplay(order.orderCtns),
   };
   for (const c of currencies) {
     row[`currency_${c.currencyId}_receive`] = calcCurrencySummary(

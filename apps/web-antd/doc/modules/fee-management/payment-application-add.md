@@ -2,7 +2,7 @@
 title: 付款申请新增
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-06-20
+last_updated: 2026-06-21
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,7 +21,7 @@ last_updated: 2026-06-20
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **费用选择：** 从可申请费用中勾选生成付款申请；**新建时**进入页面后自动弹出添加费用抽屉（编辑模式不自动弹出）。抽屉内搜索区为五列布局，业务日期占两列，查询/重置按钮在币别条件同一行右侧；条件变更仍自动搜索。列表查询 `GetOrderFeeGroupAsync` **不传**当前申请单 `Id`，已选费用由前端 `selectedFeeIds` 禁选；支持 **收付类型** 筛选（默认「付」，清空则收付均返回）。
+- **费用选择：** 从可申请费用中勾选生成付款申请；**新建时**进入页面后自动弹出添加费用抽屉（编辑模式不自动弹出）。抽屉内搜索区为五列布局，业务日期占两列，查询/重置按钮在币别条件同一行右侧；条件变更仍自动搜索。外层业务列表展示委托编号、**主提单号**（`mblNum`）、**箱型箱量**（`orderCtns` 按箱型汇总，如 `20GP*2`）等字段。列表查询 `GetOrderFeeGroupAsync` **不传**当前申请单 `Id`，已选费用由前端 `selectedFeeIds` 禁选；支持 **收付类型** 筛选（默认「付」，清空则收付均返回）。
 - **金额汇总：** 根据费用明细计算申请金额；外层分组表在客服列后动态展示「{币别}申请合计」列（按 `currencyId` 升序，无该币别费用显示 `0.00`）。
 - **提交保存：** 保存后形成付款申请单，后续进入审核流程。
 
@@ -47,6 +47,7 @@ last_updated: 2026-06-20
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-21 | `Feature` | 添加费用抽屉外层列表新增「主提单号」「箱型箱量」列。 | `formatOrderCtnsDisplay` 汇总 `orderCtns`；`PayAppFeeGroupDto.orderCtns` 类型补全。 |
 | 2026-06-20 | `Feature` | 费用明细外层分组表新增按原币动态列「{币别}申请合计」，列随已申请费用币别生成。 | `collectAppliedCurrencies` + `buildAppliedAmountCurrencyColumns`；`groupFeesByOrder` 写入 `applied_amount_{currencyId}` 字段。 |
 | 2026-06-20 | `Fix` | 已添加费用禁选时「本次结算」不再默认未结金额，展示申请单已有金额。 | `resolveAppliedAmount` + `selectedAppliedAmounts`；全选/单选跳过禁选费用写默认值。 |
 | 2026-06-20 | `Fix` | 添加费用抽屉查询 `GetOrderFeeGroupAsync` 不再传申请单 `Id`；已选费用仍由 `selectedFeeIds` 前端禁选。 | 移除 `AddFeeDrawerProps.paymentApplicationId` 及 `fetchData` 中 `Id` 参数。 |
