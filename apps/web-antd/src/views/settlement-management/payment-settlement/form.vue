@@ -1746,12 +1746,7 @@ onMounted(() => {
             >
               <template #bodyCell="{ column, record: currencyRecord }">
                 <template v-if="column.dataIndex === 'unsettledRange'">
-                  {{
-                    formatUnsettledRange(
-                      currencyRecord.settleableUpperLimit || 0,
-                      currencyRecord.settleableLowerLimit || 0,
-                    )
-                  }}
+                  {{ currencyRecord.totalUnSettledAmount }}
                 </template>
 
                 <template v-else-if="column.dataIndex === 'settledAmount'">

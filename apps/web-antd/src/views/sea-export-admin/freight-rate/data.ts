@@ -389,7 +389,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: '约号',
       width: 200,
       align: 'left',
-      //showOverflow: true,
+      showOverflow: true,
       slots: { default: 'contractNo' },
       formatter: ({ row }) => {
         return row.contractNo || '-';
@@ -717,16 +717,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.remark'),
       minWidth: 300,
       align: 'left',
-      showOverflow: false,
-      cellRender: {
-        name: 'VxeCellTextarea',
-        props: {
-          autosize: {
-            minRows: 1,
-            maxRows: 5,
-          },
-        },
-      },
+      showOverflow: true,
     },
     {
       field: 'creatorUserName',
