@@ -10,7 +10,8 @@
 - 新增 `getBankStatementDetailByPermission`，调用 `BankStatement/DetailAsync`。
 - 新增 `getBankStatementReceiveSettlementPagedListByPermission`，调用 `BankStatement/GetReceiveSettlementPagedListAsync`。
 - `bank-statement-picker` 弹窗列表与 `form.vue` 中 `loadBankStatementSummary`（详情 + 已结算汇总）均改用上述接口。
-- 银行流水列表页、通用 `BankStatementSelect`、银行流水编辑页仍使用 Admin 接口，行为不变。
+- `BankStatementSelect` 下拉列表与回显详情同样改用上述权限接口。
+- 银行流水列表页、银行流水编辑页仍使用 Admin 接口，行为不变。
 
 ## 避坑指南
 
