@@ -24,12 +24,15 @@ interface Props {
   secondFieldName?: string;
   /** 第二字段的当前值（从 formContext 或外部传入） */
   secondFieldValue?: string;
+  /** 与委托信息等区域一致的控件尺寸 */
+  size?: 'large' | 'middle' | 'small';
 }
 
 const props = withDefaults(defineProps<Props>(), {
   value: '',
   secondFieldName: 'innerVoyno',
   secondFieldValue: '',
+  size: undefined,
 });
 
 const emit = defineEmits<{
@@ -47,6 +50,7 @@ const voyageValue = computed(() => props.secondFieldValue ?? '');
       :value="vesselValue"
       :disabled="props.disabled"
       :placeholder="$t('seaExport.export.vessel')"
+      :size="props.size"
       class="flex-1"
       allow-clear
       @update:value="(v) => emit('update:value', toEnglishUpperCase(v))"
@@ -55,6 +59,7 @@ const voyageValue = computed(() => props.secondFieldValue ?? '');
       :value="voyageValue"
       :disabled="props.disabled"
       :placeholder="$t('seaExport.export.innerVoyno')"
+      :size="props.size"
       class="flex-1"
       allow-clear
       @update:value="

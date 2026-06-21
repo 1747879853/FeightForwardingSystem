@@ -25,6 +25,8 @@ interface Props {
   secondFieldName?: string;
   /** 第二字段当前值 */
   secondFieldValue?: number | string;
+  /** 与委托信息等区域一致的控件尺寸 */
+  size?: 'large' | 'middle' | 'small';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -33,6 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
   options: () => [],
   secondFieldName: 'copyNoBillEnum',
   secondFieldValue: undefined,
+  size: undefined,
 });
 
 const emit = defineEmits<{
@@ -49,6 +52,7 @@ const secondValue = computed(() => props.secondFieldValue);
       :value="firstValue"
       :disabled="props.disabled"
       :options="props.options"
+      :size="props.size"
       class="flex-1"
       placeholder="请选择"
       allow-clear
@@ -58,6 +62,7 @@ const secondValue = computed(() => props.secondFieldValue);
       :value="secondValue"
       :disabled="props.disabled"
       :options="props.options"
+      :size="props.size"
       class="flex-1"
       placeholder="请选择"
       allow-clear

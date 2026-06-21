@@ -2,7 +2,14 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import dayjs from 'dayjs';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -146,17 +153,50 @@ const currentUserId = computed(() => {
     : undefined;
 });
 
+/** 与委托信息一致：表单控件使用 small 尺寸 */
+function withSmallComponentProps(componentProps: unknown) {
+  if (typeof componentProps === 'function') {
+    return (...args: any[]) => ({
+      ...(componentProps as (...innerArgs: any[]) => Record<string, any>)(
+        ...args,
+      ),
+      size: 'small',
+    });
+  }
+  return {
+    ...((componentProps as Record<string, any> | undefined) ?? {}),
+    size: 'small',
+  };
+}
+
+function mapSchemaWithSmallSize<T extends { componentProps?: unknown }>(
+  schema: T[],
+): T[] {
+  return schema.map((item) => ({
+    ...item,
+    componentProps: withSmallComponentProps(item.componentProps),
+  }));
+}
+
+/** 垂直布局表单 label：与基础信息区块一致 */
+const VERTICAL_FORM_LABEL_CLASS = 'leading-[1em] mb-0';
+
 /** 左侧表单：相关方信息（发货人、收货人、通知人等） */
 const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: usePartyInfoFormSchema().map((item) =>
-    item.fieldName === 'orderUsers'
-      ? { ...item, formItemClass: 'party-flow-order-users-hidden' }
-      : item,
-  ),
+  schema: usePartyInfoFormSchema().map((item) => {
+    const nextItem =
+      item.fieldName === 'orderUsers'
+        ? { ...item, formItemClass: 'party-flow-order-users-hidden' }
+        : item;
+    return {
+      ...nextItem,
+      componentProps: withSmallComponentProps(nextItem.componentProps),
+    };
+  }),
   showDefaultActions: false,
-  wrapperClass: 'party-flow-wrap grid-cols-3 gap-x-8',
+  wrapperClass: 'party-flow-wrap grid-cols-6 gap-x-4',
 });
 
 const ENTRUST_STATIC_FIELD_NAMES = [
@@ -360,7 +400,7 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
   commonConfig: {
-    labelClass: 'leading-[1em] mb-0',
+    labelClass: VERTICAL_FORM_LABEL_CLASS,
   },
   schema: [
     ...useBasicInfoFormSchema(isEdit.value).filter(
@@ -377,16 +417,21 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
       ),
     ),
     ...usePortFormSchema().filter((item) => item.fieldName === 'signingPortId'),
-  ].sort((a, b) => {
-    const aIndex = BASIC_INFO_FIELD_ORDER_MAP.get(a.fieldName);
-    const bIndex = BASIC_INFO_FIELD_ORDER_MAP.get(b.fieldName);
-    if (aIndex === undefined && bIndex === undefined) return 0;
-    if (aIndex === undefined) return 1;
-    if (bIndex === undefined) return -1;
-    return aIndex - bIndex;
-  }),
+  ]
+    .sort((a, b) => {
+      const aIndex = BASIC_INFO_FIELD_ORDER_MAP.get(a.fieldName);
+      const bIndex = BASIC_INFO_FIELD_ORDER_MAP.get(b.fieldName);
+      if (aIndex === undefined && bIndex === undefined) return 0;
+      if (aIndex === undefined) return 1;
+      if (bIndex === undefined) return -1;
+      return aIndex - bIndex;
+    })
+    .map((item) => ({
+      ...item,
+      componentProps: withSmallComponentProps(item.componentProps),
+    })),
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-6 gap-x-4',
+  wrapperClass: 'basic-info-wrap form-controls-small grid-cols-6 gap-x-4',
 });
 
 /** 左侧表单：委托信息 */
@@ -402,24 +447,21 @@ const [EntrustInfoForm, entrustInfoFormApi] = useVbenForm({
     )
     .map((item) => ({
       ...item,
-      componentProps:
-        typeof item.componentProps === 'function'
-          ? (...args: any[]) => ({
-              ...(
-                item.componentProps as (
-                  ...innerArgs: any[]
-                ) => Record<string, any>
-              )(...args),
-              size: 'small',
-            })
-          : {
-              ...(item.componentProps ?? {}),
-              size: 'small',
-            },
+      componentProps: withSmallComponentProps(item.componentProps),
       formItemClass:
         item.fieldName === 'blType' || item.fieldName === 'billType'
-          ? 'col-span-1 entrust-top-label-item'
+          ? `col-span-1 entrust-top-label-item${
+              item.fieldName === 'billType'
+                ? ' entrust-top-label-item--bill-type'
+                : ''
+            }`
           : 'col-span-2',
+      labelClass:
+        item.fieldName === 'billType'
+          ? [item.labelClass, 'w-full justify-end text-right']
+              .filter(Boolean)
+              .join(' ')
+          : item.labelClass,
     })),
   showDefaultActions: false,
   commonConfig: {
@@ -432,11 +474,16 @@ const [EntrustInfoForm, entrustInfoFormApi] = useVbenForm({
 const [ShipmentForm, shipmentFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: useShipmentFormSchema().filter(
-    (item) => !SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES.has(item.fieldName),
+  commonConfig: {
+    labelClass: VERTICAL_FORM_LABEL_CLASS,
+  },
+  schema: mapSchemaWithSmallSize(
+    useShipmentFormSchema().filter(
+      (item) => !SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES.has(item.fieldName),
+    ),
   ),
   showDefaultActions: false,
-  wrapperClass: 'shipment-flow-wrap grid-cols-7 gap-x-8',
+  wrapperClass: 'shipment-flow-wrap form-controls-small grid-cols-7 gap-x-8',
 });
 
 const serviceTypeRequiredPropValues = ref<Map<number, number[]>>(new Map());
@@ -689,6 +736,7 @@ const collectCurrentFormValues = async () => {
     portValues,
     cargoTypeValues,
     cargoMainValues,
+    cargoMetricsValues,
     cargoRemarkValues,
   ] = await Promise.all([
     partyInfoFormApi.getValues(),
@@ -698,6 +746,7 @@ const collectCurrentFormValues = async () => {
     portFormApi.getValues(),
     cargoTypeInlineFormApi.getValues(),
     cargoMainFormApi.getValues(),
+    cargoMetricsFormApi.getValues(),
     cargoRemarkFormApi.getValues(),
   ]);
   return {
@@ -711,6 +760,7 @@ const collectCurrentFormValues = async () => {
     ...portValues,
     ...cargoTypeValues,
     ...cargoMainValues,
+    ...cargoMetricsValues,
     ...cargoRemarkValues,
   } as Record<string, any>;
 };
@@ -996,6 +1046,7 @@ const bindServiceTypeLinkageEvents = () => {
         onChange: (value: unknown) => {
           queueSyncServiceTypesByPol({ clientId: value });
         },
+        size: 'small',
       },
     },
   ]);
@@ -1070,30 +1121,39 @@ const handlePortSelectChange = (
 const [PortForm, portFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: usePortFormSchema({ onPortChange: handlePortSelectChange }).filter(
-    (item) => !PORT_MOVED_TO_BASIC_FIELD_NAMES.has(item.fieldName),
-  ),
+  commonConfig: {
+    labelClass: VERTICAL_FORM_LABEL_CLASS,
+  },
+  schema: usePortFormSchema({ onPortChange: handlePortSelectChange })
+    .filter((item) => !PORT_MOVED_TO_BASIC_FIELD_NAMES.has(item.fieldName))
+    .map((item) =>
+      String(item.formItemClass ?? '').includes('port-flow-remark')
+        ? item
+        : {
+            ...item,
+            componentProps: withSmallComponentProps(item.componentProps),
+          },
+    ),
   showDefaultActions: false,
-  wrapperClass: 'port-flow-wrap grid-cols-5 gap-x-8',
+  wrapperClass: 'port-flow-wrap form-controls-small grid-cols-5 gap-x-8',
 });
 portFormApiRef.current = portFormApi;
 bindServiceTypeLinkageEvents();
 
 const cargoSchema = useCargoFormSchema();
 const cargoInlineFieldNames = new Set(['cargoId', 'orderCodeGoodss']);
-const cargoTypeSchema = [
-  ...useBasicInfoFormSchema(isEdit.value),
-  ...cargoSchema,
-]
-  .filter((item) => cargoInlineFieldNames.has(item.fieldName))
-  .map((item) => ({
-    ...item,
-    hideLabel: true,
-    formItemClass:
-      item.fieldName === 'orderCodeGoodss'
-        ? 'cargo-type-inline-item cargo-type-inline-item--goods'
-        : 'cargo-type-inline-item cargo-type-inline-item--cargo',
-  }));
+const cargoTypeSchema = mapSchemaWithSmallSize(
+  [...useBasicInfoFormSchema(isEdit.value), ...cargoSchema]
+    .filter((item) => cargoInlineFieldNames.has(item.fieldName))
+    .map((item) => ({
+      ...item,
+      hideLabel: true,
+      formItemClass:
+        item.fieldName === 'orderCodeGoodss'
+          ? 'cargo-type-inline-item cargo-type-inline-item--goods'
+          : 'cargo-type-inline-item cargo-type-inline-item--cargo',
+    })),
+);
 const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
   layout: 'horizontal',
   compact: true,
@@ -1102,16 +1162,10 @@ const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
   commonConfig: {
     labelWidth: 0,
   },
-  wrapperClass: 'grid-cols-2 gap-x-3',
+  wrapperClass: 'form-controls-small grid-cols-2 gap-x-3',
 });
-const cargoMainFieldNames = new Set([
-  'pkgs',
-  'codePackageId',
-  'kgs',
-  'cbm',
-  'marks',
-  'goodsDes',
-]);
+const cargoMainFieldNames = new Set(['marks', 'goodsDes']);
+const cargoMetricsFieldNames = new Set(['pkgs', 'codePackageId', 'kgs', 'cbm']);
 const cargoRemarkFieldNames = new Set(['remark', 'internalRemark']);
 const cargoRemarkSchema = cargoSchema
   .filter((item) => cargoRemarkFieldNames.has(item.fieldName))
@@ -1120,13 +1174,42 @@ const cargoRemarkSchema = cargoSchema
     formItemClass: 'col-span-6',
   }));
 
-/** 中间表单：货物信息（不含备注） */
+/** 中间表单：货物信息 — 唛头 / 货描 */
 const [CargoMainForm, cargoMainFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: cargoSchema.filter((item) => cargoMainFieldNames.has(item.fieldName)),
+  commonConfig: {
+    labelClass: VERTICAL_FORM_LABEL_CLASS,
+  },
+  schema: cargoSchema
+    .filter((item) => cargoMainFieldNames.has(item.fieldName))
+    .map((item) => ({
+      ...item,
+      formItemClass:
+        item.fieldName === 'marks'
+          ? 'col-span-2 cargo-main-item cargo-main-item--marks min-h-0 !flex-shrink'
+          : 'col-span-3 cargo-main-item cargo-main-item--goods-des min-h-0 !flex-shrink',
+    })),
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-6 gap-x-4',
+  wrapperClass: 'cargo-main-wrap form-controls-small grid-cols-5 gap-x-4',
+});
+
+/** 中间表单：货物信息 — 件数 / 包装 / 毛重 / 体积 */
+const [CargoMetricsForm, cargoMetricsFormApi] = useVbenForm({
+  layout: 'vertical',
+  compact: true,
+  commonConfig: {
+    labelClass: VERTICAL_FORM_LABEL_CLASS,
+  },
+  schema: cargoSchema
+    .filter((item) => cargoMetricsFieldNames.has(item.fieldName))
+    .map((item) => ({
+      ...item,
+      componentProps: withSmallComponentProps(item.componentProps),
+      formItemClass: `cargo-metrics-item cargo-metrics-item--${item.fieldName === 'codePackageId' ? 'code-package' : item.fieldName}`,
+    })),
+  showDefaultActions: false,
+  wrapperClass: 'cargo-metrics-wrap form-controls-small grid-cols-1',
 });
 
 /** 左侧表单：备注信息 */
@@ -1587,14 +1670,14 @@ const applyTransitPortTabSchema = () => {
   portFormApi.updateSchema([
     {
       fieldName: 'poT1Id',
-      label: isPoT1Active ? '中转港1' : '中转港',
+      label: '',
       formItemClass: `port-flow-item port-flow-item--transit port-flow-pos--transit${
         isPoT1Active ? '' : ' port-flow-item--hidden'
       }`,
     },
     {
       fieldName: 'poT2Id',
-      label: isPoT1Active ? '中转港' : '中转港2',
+      label: '',
       formItemClass: `port-flow-item port-flow-item--transit port-flow-item--transit-secondary port-flow-pos--transit${
         isPoT1Active ? ' port-flow-item--hidden' : ''
       }`,
@@ -1966,6 +2049,7 @@ const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
     portFormApi.setValues(values),
     cargoTypeInlineFormApi.setValues(values),
     cargoMainFormApi.setValues(values),
+    cargoMetricsFormApi.setValues(values),
     cargoRemarkFormApi.setValues(values),
   ]);
 
@@ -2196,6 +2280,7 @@ const loadEditData = async () => {
             to?.shipperId,
             (to as any)?.shipperName,
           ),
+          size: 'small',
         },
       },
       {
@@ -2205,6 +2290,7 @@ const loadEditData = async () => {
             to?.consigneeId,
             (to as any)?.consigneeName,
           ),
+          size: 'small',
         },
       },
       {
@@ -2214,6 +2300,7 @@ const loadEditData = async () => {
             to?.notifierId,
             (to as any)?.notifierName,
           ),
+          size: 'small',
         },
       },
       {
@@ -2223,6 +2310,7 @@ const loadEditData = async () => {
             detail.secondNotifierId,
             detail.secondNotifierName,
           ),
+          size: 'small',
         },
       },
       {
@@ -2232,6 +2320,7 @@ const loadEditData = async () => {
             detail.podAgentId,
             detail.podAgentName,
           ),
+          size: 'small',
         },
       },
     ]);
@@ -2284,6 +2373,7 @@ const loadEditData = async () => {
         fieldName: 'clientId',
         componentProps: {
           selectedItems: toSelectedItems(to?.clientId, (to as any)?.clientName),
+          size: 'small',
         },
       },
       {
@@ -2294,6 +2384,7 @@ const loadEditData = async () => {
             (detail as any).codeIssueTypeName ?? (detail as any).issueTypeName,
             'billType',
           ),
+          size: 'small',
         },
       },
       {
@@ -2308,6 +2399,7 @@ const loadEditData = async () => {
               ...(detail.carrier?.code ? { code: detail.carrier.code } : {}),
             },
           ),
+          size: 'small',
         },
       },
       {
@@ -2317,12 +2409,14 @@ const loadEditData = async () => {
             detail.shipAgentId,
             detail.shipAgentName,
           ),
+          size: 'small',
         },
       },
       {
         fieldName: 'yardId',
         componentProps: {
           selectedItems: toSelectedItems(detail.yardId, detail.yardName),
+          size: 'small',
         },
       },
       {
@@ -2332,6 +2426,7 @@ const loadEditData = async () => {
             formValues.signingPortId,
             detail.signingPortName,
           ),
+          size: 'small',
         },
       },
     ]);
@@ -2340,6 +2435,7 @@ const loadEditData = async () => {
         fieldName: 'teamId',
         componentProps: {
           selectedItems: toSelectedItems(to?.teamId, (to as any)?.teamName),
+          size: 'small',
         },
       },
       {
@@ -2349,6 +2445,7 @@ const loadEditData = async () => {
             to?.custBrokerId,
             (to as any)?.custBrokerName,
           ),
+          size: 'small',
         },
       },
       {
@@ -2358,6 +2455,7 @@ const loadEditData = async () => {
             to?.warehouseId,
             (to as any)?.warehouseName,
           ),
+          size: 'small',
         },
       },
       {
@@ -2367,6 +2465,7 @@ const loadEditData = async () => {
             to?.insuranceId,
             (to as any)?.insuranceName,
           ),
+          size: 'small',
         },
       },
     ]);
@@ -2378,6 +2477,7 @@ const loadEditData = async () => {
             detail.bookingAgentId,
             detail.bookingAgentName,
           ),
+          size: 'small',
         },
       },
     ]);
@@ -2387,12 +2487,14 @@ const loadEditData = async () => {
         fieldName: 'polId',
         componentProps: {
           selectedItems: toPortSelectedItems(formValues.polId, detail.polName),
+          size: 'small',
         },
       },
       {
         fieldName: 'podId',
         componentProps: {
           selectedItems: toPortSelectedItems(formValues.podId, detail.podName),
+          size: 'small',
         },
       },
       {
@@ -2402,6 +2504,7 @@ const loadEditData = async () => {
             formValues.poT1Id,
             detail.poT1Name,
           ),
+          size: 'small',
         },
       },
       {
@@ -2411,6 +2514,7 @@ const loadEditData = async () => {
             formValues.poT2Id,
             detail.poT2Name,
           ),
+          size: 'small',
         },
       },
       {
@@ -2420,6 +2524,7 @@ const loadEditData = async () => {
             formValues.receivePortId,
             detail.receivePortName,
           ),
+          size: 'small',
         },
       },
       {
@@ -2429,10 +2534,11 @@ const loadEditData = async () => {
             formValues.deliverPortId,
             detail.deliverPortName,
           ),
+          size: 'small',
         },
       },
     ]);
-    cargoMainFormApi.updateSchema([
+    cargoMetricsFormApi.updateSchema([
       {
         fieldName: 'codePackageId',
         componentProps: {
@@ -2440,6 +2546,7 @@ const loadEditData = async () => {
             formValues.codePackageId,
             (to as any)?.codePackageName,
           ),
+          size: 'small',
         },
       },
     ]);
@@ -2452,6 +2559,7 @@ const loadEditData = async () => {
       portFormApi.setValues(formValues),
       cargoTypeInlineFormApi.setValues(formValues),
       cargoMainFormApi.setValues(formValues),
+      cargoMetricsFormApi.setValues(formValues),
       cargoRemarkFormApi.setValues(formValues),
     ]);
     initializeOrderUsersPanel(to?.orderUsers ?? []);
@@ -2580,6 +2688,7 @@ const handleSubmit = async () => {
     portResult,
     cargoTypeResult,
     cargoMainResult,
+    cargoMetricsResult,
     cargoRemarkResult,
   ] = await Promise.all([
     partyInfoFormApi.validate(),
@@ -2589,6 +2698,7 @@ const handleSubmit = async () => {
     portFormApi.validate(),
     cargoTypeInlineFormApi.validate(),
     cargoMainFormApi.validate(),
+    cargoMetricsFormApi.validate(),
     cargoRemarkFormApi.validate(),
   ]);
   const allValid =
@@ -2599,6 +2709,7 @@ const handleSubmit = async () => {
     portResult.valid &&
     cargoTypeResult.valid &&
     cargoMainResult.valid &&
+    cargoMetricsResult.valid &&
     cargoRemarkResult.valid;
   if (!allValid) {
     message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
@@ -2623,6 +2734,7 @@ const handleSubmit = async () => {
     portValues,
     cargoTypeValues,
     cargoMainValues,
+    cargoMetricsValues,
     cargoRemarkValues,
   ] = await Promise.all([
     partyInfoFormApi.getValues(),
@@ -2632,6 +2744,7 @@ const handleSubmit = async () => {
     portFormApi.getValues(),
     cargoTypeInlineFormApi.getValues(),
     cargoMainFormApi.getValues(),
+    cargoMetricsFormApi.getValues(),
     cargoRemarkFormApi.getValues(),
   ]);
   const values = {
@@ -2645,6 +2758,7 @@ const handleSubmit = async () => {
     ...portValues,
     ...cargoTypeValues,
     ...cargoMainValues,
+    ...cargoMetricsValues,
     ...cargoRemarkValues,
   };
   const dto = buildDto(values);
@@ -2731,6 +2845,86 @@ const handleBack = () => {
   router.push('/sea-exports');
 };
 
+const cargoMainLayoutLeftRef = ref<HTMLElement | null>(null);
+const cargoMainLayoutRightRef = ref<HTMLElement | null>(null);
+let cargoLayoutResizeObserver: ResizeObserver | null = null;
+let lastCargoLayoutSyncHeight = 0;
+let cargoLayoutSyncing = false;
+
+const applyCargoTextareaHeights = (targetHeight: number) => {
+  const leftEl = cargoMainLayoutLeftRef.value;
+  if (!leftEl || targetHeight <= 0) return;
+
+  for (const textarea of Array.from(
+    leftEl.querySelectorAll<HTMLTextAreaElement>('textarea.ant-input'),
+  )) {
+    const formItem =
+      textarea.closest<HTMLElement>('.flex-col') ??
+      textarea.closest<HTMLElement>('.relative.flex');
+    const label = formItem?.querySelector<HTMLElement>(':scope > label');
+    const labelHeight = label?.getBoundingClientRect().height ?? 0;
+    const textareaHeight = Math.max(
+      Math.round(targetHeight - labelHeight - 2),
+      48,
+    );
+
+    textarea.style.setProperty('height', `${textareaHeight}px`, 'important');
+    textarea.style.removeProperty('min-height');
+  }
+};
+
+const syncCargoMainLayoutHeight = () => {
+  if (cargoLayoutSyncing) return;
+
+  const leftEl = cargoMainLayoutLeftRef.value;
+  const rightEl = cargoMainLayoutRightRef.value;
+  if (!leftEl || !rightEl) return;
+
+  requestAnimationFrame(() => {
+    const targetHeight = Math.round(rightEl.getBoundingClientRect().height);
+    if (targetHeight <= 0) return;
+    if (Math.abs(targetHeight - lastCargoLayoutSyncHeight) < 2) return;
+
+    cargoLayoutSyncing = true;
+    cargoLayoutResizeObserver?.disconnect();
+    lastCargoLayoutSyncHeight = targetHeight;
+
+    leftEl.style.removeProperty('height');
+    leftEl.style.minHeight = `${targetHeight}px`;
+
+    requestAnimationFrame(() => {
+      applyCargoTextareaHeights(targetHeight);
+      cargoLayoutSyncing = false;
+      if (rightEl && cargoLayoutResizeObserver) {
+        cargoLayoutResizeObserver.observe(rightEl);
+      }
+    });
+  });
+};
+
+const bindCargoMainLayoutHeightSync = () => {
+  cargoLayoutResizeObserver?.disconnect();
+  cargoLayoutResizeObserver = null;
+  lastCargoLayoutSyncHeight = 0;
+
+  const rightEl = cargoMainLayoutRightRef.value;
+  if (!rightEl) return;
+
+  cargoLayoutResizeObserver = new ResizeObserver(() => {
+    syncCargoMainLayoutHeight();
+  });
+  cargoLayoutResizeObserver.observe(rightEl);
+  syncCargoMainLayoutHeight();
+};
+
+const scheduleCargoMainLayoutHeightSync = () => {
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      bindCargoMainLayoutHeightSync();
+    });
+  });
+};
+
 onMounted(() => {
   const initialize = async () => {
     await loadServiceTypeLabelMap();
@@ -2747,21 +2941,33 @@ onMounted(() => {
   applyTransitPortTabSchema();
   applyNotifierPartyTabSchema();
   void initialize();
+  scheduleCargoMainLayoutHeightSync();
   nextTick(() => {
     updateActiveSectionByScroll();
   });
   window.addEventListener('scroll', updateActiveSectionByScroll, {
     passive: true,
   });
+  window.addEventListener('resize', syncCargoMainLayoutHeight);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', updateActiveSectionByScroll);
+  window.removeEventListener('resize', syncCargoMainLayoutHeight);
+  cargoLayoutResizeObserver?.disconnect();
+  cargoLayoutResizeObserver = null;
   if (serviceTypeSyncTimer) {
     clearTimeout(serviceTypeSyncTimer);
     serviceTypeSyncTimer = undefined;
   }
 });
+
+watch(pageLoading, (loading) => {
+  if (!loading) {
+    scheduleCargoMainLayoutHeightSync();
+  }
+});
+
 defineExpose({
   scrollToSection,
 });
@@ -2876,11 +3082,18 @@ defineExpose({
                 <div class="content-section__actions">
                   <div class="content-section__actions-left">
                     <span class="service-pipeline__title">服务项目</span>
-                    <Tooltip v-if="showServiceItemContent" title="配置服务">
+                    <Tooltip
+                      v-if="
+                        showServiceItemContent ||
+                        (hasPolSelected && serviceTypeSyncLoading)
+                      "
+                      title="配置服务"
+                    >
                       <Button
                         type="text"
                         size="small"
                         class="service-pipeline__config-ellipsis"
+                        :disabled="serviceTypeSyncLoading"
                         @click="openServiceTypeModal"
                       >
                         ...
@@ -3140,6 +3353,11 @@ defineExpose({
                             </div>
                           </template>
                           <div v-else class="service-pipeline__state">
+                            <div
+                              v-if="serviceTypeSyncLoading"
+                              class="service-pipeline__loading-slot"
+                              aria-hidden="true"
+                            />
                             <Empty
                               v-if="!serviceTypeSyncLoading && !hasPolSelected"
                               :image="emptySimpleImage"
@@ -3206,8 +3424,8 @@ defineExpose({
                     @change="handleAiPdfFileChange"
                   />
                 </div>
-                <div class="content-section__header">
-                  <span class="card-title">
+                <div class="content-section__header section-title-bar">
+                  <span class="card-title card-title--on-primary">
                     <FileText class="size-4" />
                     {{ $t('seaExport.export.formCardBasicInfo') }}
                   </span>
@@ -3278,8 +3496,8 @@ defineExpose({
               </section>
 
               <section :ref="sectionRefs.shipment" class="content-section">
-                <div class="content-section__header">
-                  <span class="card-title">
+                <div class="content-section__header section-title-bar">
+                  <span class="card-title card-title--on-primary">
                     <Ship class="size-4" />
                     {{ $t('seaExport.export.formCardShipment') }}
                   </span>
@@ -3296,8 +3514,8 @@ defineExpose({
               </section>
 
               <section :ref="sectionRefs.port" class="content-section">
-                <div class="content-section__header">
-                  <span class="card-title">
+                <div class="content-section__header section-title-bar">
+                  <span class="card-title card-title--on-primary">
                     <MapPin class="size-4" />
                     {{ $t('seaExport.export.formCardPort') }}
                   </span>
@@ -3372,8 +3590,8 @@ defineExpose({
             <section :ref="sectionRefs.cargo">
               <Card class="cargo-container-card">
                 <template #title>
-                  <div class="cargo-container-card__title">
-                    <span class="card-title">
+                  <div class="cargo-container-card__title section-title-bar">
+                    <span class="card-title card-title--on-primary">
                       <Package class="size-4" />
                       {{ $t('seaExport.export.formCardCargo') }}
                     </span>
@@ -3382,7 +3600,20 @@ defineExpose({
                     </div>
                   </div>
                 </template>
-                <CargoMainForm />
+                <div class="cargo-main-layout">
+                  <div
+                    ref="cargoMainLayoutLeftRef"
+                    class="cargo-main-layout__left"
+                  >
+                    <CargoMainForm />
+                  </div>
+                  <div
+                    ref="cargoMainLayoutRightRef"
+                    class="cargo-main-layout__right"
+                  >
+                    <CargoMetricsForm />
+                  </div>
+                </div>
                 <div class="cargo-ctn-section">
                   <OrderCtnTable v-model="orderCtns" />
                 </div>
@@ -3610,6 +3841,45 @@ defineExpose({
 </template>
 
 <style scoped>
+@media (max-width: 1440px) {
+  .entrust-lock-row {
+    flex-wrap: wrap;
+  }
+
+  .entrust-lock-tag {
+    min-width: 160px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .main-layout {
+    flex-direction: column;
+  }
+
+  .left-column,
+  .side-card,
+  .center-column,
+  .right-column {
+    width: 100%;
+  }
+
+  .card-body--party {
+    min-height: auto;
+  }
+
+  .layout-banner__tabs {
+    display: none;
+  }
+
+  :deep(.port-flow-item::after) {
+    content: none !important;
+  }
+
+  :deep(.port-flow-item::before) {
+    content: none !important;
+  }
+}
+
 .sea-export-form-page {
   display: flex;
   flex-direction: column;
@@ -3683,46 +3953,59 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 0;
-  overflow: hidden;
+  overflow: hidden visible;
   background: #fff;
   border: 1px solid #e8e8e8;
   border-radius: 10px;
 }
 
 .side-card,
-.right-column,
+.right-column {
+  border-radius: 10px;
+}
+
 .cargo-container-card {
   border-radius: 10px;
+}
+
+.cargo-container-card :deep(.ant-card-head) {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+  border-bottom: none;
+  border-radius: 0;
+}
+
+.cargo-container-card :deep(.ant-card-head-wrapper) {
+  width: 100%;
+}
+
+.cargo-container-card :deep(.ant-card-head-title) {
+  flex: 1;
+  padding: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
+.cargo-container-card__title.section-title-bar {
+  padding: 8px 18px;
+  border-radius: 10px 10px 0 0;
 }
 
 .cargo-container-card__title {
   display: flex;
   gap: 12px;
   align-items: center;
+  width: 100%;
 }
 
-.cargo-ctn-section {
-  padding-top: 16px;
-  margin-top: 16px;
+.cargo-container-card :deep(.ant-card-body) {
+  padding: 6px 18px 14px;
+  overflow: visible;
 }
 
-.cargo-ctn-section__header {
-  margin-bottom: 12px;
-}
-
-.content-section {
-  padding: 0;
-}
-
-.content-section__header {
-  padding: 12px 18px 8px;
-  padding-bottom: 24px;
-}
-
-.content-section__header--cargo {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+.cargo-container-card :deep(.ant-spin-container) {
+  overflow: visible;
 }
 
 .cargo-type-inline-wrap {
@@ -3757,6 +4040,45 @@ defineExpose({
   width: 100%;
 }
 
+.cargo-ctn-section {
+  padding-top: 0;
+  margin-top: 12px;
+}
+
+.cargo-ctn-section :deep(.order-ctn-table__title-bar) {
+  margin-right: -18px;
+  margin-left: -18px;
+}
+
+.cargo-ctn-section__header {
+  margin-bottom: 12px;
+}
+
+.content-section {
+  padding: 0;
+}
+
+.section-title-bar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: hsl(var(--primary) / 15%);
+}
+
+.content-section__header {
+  padding: 0;
+}
+
+.content-section__header.section-title-bar {
+  padding: 8px 18px;
+}
+
+.content-section__header--cargo {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .cargo-type-inline-wrap :deep(.cargo-type-inline-item--goods > .flex-auto) {
   width: fit-content;
   min-width: 240px;
@@ -3777,38 +4099,115 @@ defineExpose({
   width: 100%;
 }
 
-.cargo-container-card :deep(.cargo-main-item--marks) {
-  grid-row: 2 / span 4;
-  grid-column: 1 / span 2;
+.cargo-main-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding-bottom: 4px;
+  overflow: visible;
 }
 
-.cargo-container-card :deep(.cargo-main-item--goods-des) {
-  grid-row: 2 / span 4;
-  grid-column: 3 / span 3;
+.cargo-main-layout__left {
+  flex: 5 1 0;
+  min-width: 0;
+  overflow: visible;
 }
 
-.cargo-container-card :deep(.cargo-main-item--pkgs) {
-  grid-row: 2;
-  grid-column: 6;
+.cargo-main-layout__right {
+  flex: 1 1 120px;
+  min-width: 120px;
 }
 
-.cargo-container-card :deep(.cargo-main-item--code-package) {
-  grid-row: 3;
-  grid-column: 6;
+.cargo-main-layout__left :deep(form) {
+  overflow: visible;
 }
 
-.cargo-container-card :deep(.cargo-main-item--kgs) {
-  grid-row: 4;
-  grid-column: 6;
+.cargo-main-layout__left :deep(.cargo-main-wrap) {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-flow: row;
+  gap: 1rem;
+  align-items: start;
+  overflow: visible;
 }
 
-.cargo-container-card :deep(.cargo-main-item--cbm) {
-  grid-row: 5;
-  grid-column: 6;
+.cargo-main-wrap :deep(.cargo-main-item--marks) {
+  grid-column: span 2 / span 2;
+  min-width: 0;
+}
+
+.cargo-main-wrap :deep(.cargo-main-item--goods-des) {
+  grid-column: span 3 / span 3;
+  min-width: 0;
+}
+
+.cargo-main-wrap :deep(.cargo-main-item) {
+  overflow: visible;
+}
+
+/* FormItem：去掉 compact 默认 pb-2，避免挤压 textarea */
+.cargo-main-wrap :deep(.relative.flex.flex-col) {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0 !important;
+  overflow: visible;
+}
+
+.cargo-main-wrap :deep(.relative.flex.flex-col > label) {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  line-height: 1;
+}
+
+/* Vben 默认 flex-auto overflow-hidden + p-[1px] 会裁切 textarea 底部 */
+.cargo-main-wrap :deep(.relative.flex.flex-col > .flex-auto) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+/* 内层 relative 默认 items-center 会导致 textarea 垂直居中后被 overflow 裁切 */
+.cargo-main-wrap :deep(.relative.flex.flex-col .flex-auto > .relative) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: stretch !important;
+  min-height: 0;
+  overflow: visible !important;
+}
+
+.cargo-main-wrap :deep(.relative.flex.flex-col .flex-auto > .relative > *) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.cargo-main-wrap :deep(.english-upper-textarea) {
+  display: block;
+  overflow: visible;
+}
+
+.cargo-main-wrap :deep(textarea.ant-input) {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 0;
+  resize: vertical;
+}
+
+.cargo-metrics-wrap :deep(.relative.flex) {
+  padding-bottom: 4px;
+}
+
+.cargo-metrics-wrap :deep(.cargo-metrics-item--cbm) {
+  padding-bottom: 0;
 }
 
 .content-section__body {
-  padding: 0 18px 14px;
+  padding: 6px 18px;
 }
 
 .content-section__actions {
@@ -3848,6 +4247,10 @@ defineExpose({
   font-size: 13px;
   font-weight: 600;
   color: #1f2937;
+}
+
+.card-title--on-primary {
+  color: hsl(var(--primary));
 }
 
 .card-body {
@@ -3890,16 +4293,6 @@ defineExpose({
   color: currentcolor;
 }
 
-@media (max-width: 1440px) {
-  .entrust-lock-row {
-    flex-wrap: wrap;
-  }
-
-  .entrust-lock-tag {
-    min-width: 160px;
-  }
-}
-
 .entrust-form-wrap :deep(label) {
   justify-content: flex-start !important;
   font-size: 14px;
@@ -3922,8 +4315,18 @@ defineExpose({
   width: 100% !important;
 }
 
+.entrust-form-wrap :deep(.entrust-top-label-item--bill-type) {
+  align-items: stretch;
+}
+
+.entrust-form-wrap :deep(.entrust-top-label-item--bill-type > label) {
+  justify-content: flex-end !important;
+  width: 100%;
+  text-align: right !important;
+}
+
 .card-body--party {
-  min-height: 620px;
+  min-height: auto;
 }
 
 .biz-block {
@@ -3942,13 +4345,23 @@ defineExpose({
 }
 
 .service-pipeline-spin--inline {
+  display: flex;
   flex: 1;
+  min-width: 0;
+}
+
+.service-pipeline-spin--inline :deep(.ant-spin-nested-loading) {
+  position: relative;
+  display: flex;
+  flex: 1;
+  width: 100%;
   min-width: 0;
 }
 
 .service-pipeline-spin--inline :deep(.ant-spin-container) {
   display: flex;
   flex: 1;
+  width: 100%;
   min-width: 0;
 }
 
@@ -3963,6 +4376,7 @@ defineExpose({
 .service-pipeline-body {
   box-sizing: border-box;
   flex: 1;
+  width: 100%;
   min-width: 0;
 }
 
@@ -4017,13 +4431,22 @@ defineExpose({
 
 .service-pipeline__state {
   display: flex;
+  flex: 1;
   align-items: center;
+  width: 100%;
+  min-width: 0;
   min-height: 32px;
+}
+
+.service-pipeline__loading-slot {
+  flex: 1;
+  min-width: 160px;
+  min-height: 26px;
 }
 
 .service-pipeline--inline .service-pipeline__state {
   justify-content: flex-start;
-  min-height: auto;
+  min-height: 26px;
 }
 
 .service-pipeline--inline .service-pipeline-empty--compact {
@@ -4052,6 +4475,10 @@ defineExpose({
 }
 
 .service-pipeline--inline {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
   padding: 0;
   background: transparent;
   border: none;
@@ -4568,10 +4995,7 @@ defineExpose({
 :deep(.port-flow-wrap) {
   --port-flow-col-gap: 2rem;
 
-  padding: 10px 10px 8px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  padding: 6px 0;
 }
 
 :deep(.port-flow-item--hidden) {
@@ -4638,14 +5062,20 @@ defineExpose({
 }
 
 :deep(.port-flow-item > label) {
+  min-height: 22px;
   font-weight: 500;
   color: rgb(0 0 0 / 65%);
 }
 
 :deep(.port-flow-item--transit > label) {
   display: flex;
+  gap: 6px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+}
+
+:deep(.port-flow-item--transit > label .transit-port-inline-switch) {
+  margin-left: 0;
 }
 
 :deep(.port-flow-pos--pod > label) {
@@ -4767,12 +5197,27 @@ defineExpose({
 }
 
 :deep(.port-flow-remark) {
-  padding: 0 10px 6px;
+  padding: 4px 10px 8px;
   margin-top: 0;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-top: 0;
   border-radius: 0 0 10px 10px;
+}
+
+:deep(.port-flow-remark > .flex-auto) {
+  overflow: visible;
+}
+
+:deep(.port-flow-remark .flex-auto > .relative) {
+  overflow: visible;
+}
+
+:deep(.port-flow-remark textarea.ant-input) {
+  display: block;
+  height: auto;
+  min-height: 32px;
+  line-height: 1.5715;
 }
 
 :deep(.port-flow-remark > label) {
@@ -4782,16 +5227,62 @@ defineExpose({
   color: rgb(0 0 0 / 65%);
 }
 
-:deep(.party-flow-wrap) {
-  padding: 10px 10px 8px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-}
-
 :deep(.party-flow-order-users) {
   grid-row: 1;
-  grid-column: 1 / span 4;
+  grid-column: 1 / span 6;
+}
+
+:deep(.form-controls-small input.ant-input),
+:deep(.form-controls-small .ant-input-affix-wrapper),
+:deep(.form-controls-small .ant-picker),
+:deep(.form-controls-small .ant-input-number) {
+  height: 24px;
+}
+
+:deep(.form-controls-small .ant-input-number-input) {
+  height: 22px;
+}
+
+:deep(.form-controls-small .ant-input-affix-wrapper) {
+  display: inline-flex;
+  align-items: center;
+}
+
+:deep(.form-controls-small .ant-input-affix-wrapper > input.ant-input) {
+  height: 22px;
+  line-height: 22px;
+}
+
+:deep(
+  .form-controls-small
+    .ant-select:not(.ant-select-customize-input)
+    .ant-select-selector
+) {
+  display: flex;
+  align-items: center;
+  height: 24px;
+}
+
+:deep(
+  .form-controls-small
+    .ant-select-single
+    .ant-select-selector
+    .ant-select-selection-item,
+  .form-controls-small
+    .ant-select-single
+    .ant-select-selector
+    .ant-select-selection-placeholder
+) {
+  line-height: 22px;
+}
+
+:deep(
+  .form-controls-small
+    .ant-select-single
+    .ant-select-selector
+    .ant-select-selection-search-input
+) {
+  height: 22px;
 }
 
 :deep(.party-flow-order-users-hidden) {
@@ -4799,43 +5290,43 @@ defineExpose({
 }
 
 :deep(.party-flow-pos--1) {
-  grid-row: 2;
-  grid-column: 1;
+  grid-row: 1;
+  grid-column: 1 / span 2;
 }
 
 :deep(.party-flow-pos--2) {
-  grid-row: 2;
-  grid-column: 2;
+  grid-row: 1;
+  grid-column: 3 / span 2;
 }
 
 :deep(.party-flow-pos--3) {
-  grid-row: 2;
-  grid-column: 3;
+  grid-row: 1;
+  grid-column: 5 / span 2;
 }
 
 :deep(.party-flow-pos--4) {
-  grid-row: 2;
-  grid-column: 4;
+  grid-row: 1;
+  grid-column: 1 / span 2;
 }
 
 :deep(.party-flow-content-pos--1) {
-  grid-row: 3;
-  grid-column: 1;
+  grid-row: 2;
+  grid-column: 1 / span 2;
 }
 
 :deep(.party-flow-content-pos--2) {
-  grid-row: 3;
-  grid-column: 2;
+  grid-row: 2;
+  grid-column: 3 / span 2;
 }
 
 :deep(.party-flow-content-pos--3) {
-  grid-row: 3;
-  grid-column: 3;
+  grid-row: 2;
+  grid-column: 5 / span 2;
 }
 
 :deep(.party-flow-content-pos--4) {
-  grid-row: 3;
-  grid-column: 4;
+  grid-row: 2;
+  grid-column: 1 / span 2;
 }
 
 :deep(.party-flow-item--hidden) {
@@ -4843,11 +5334,7 @@ defineExpose({
 }
 
 :deep(.party-flow-item) {
-  padding: 6px 10px 4px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-bottom: 0;
-  border-radius: 10px 10px 0 0;
+  padding: 0;
 }
 
 :deep(.party-flow-item > label) {
@@ -4862,12 +5349,44 @@ defineExpose({
 }
 
 :deep(.party-flow-content) {
-  padding: 0 10px 6px;
+  padding: 0;
   margin-top: 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-top: 0;
-  border-radius: 0 0 10px 10px;
+}
+
+:deep(
+  .party-flow-wrap
+    .party-flow-item
+    .ant-select:not(.ant-select-customize-input)
+    .ant-select-selector
+) {
+  display: flex;
+  align-items: center;
+  height: 24px;
+}
+
+:deep(
+  .party-flow-wrap
+    .party-flow-item
+    .ant-select-single
+    .ant-select-selector
+    .ant-select-selection-item,
+  .party-flow-wrap
+    .party-flow-item
+    .ant-select-single
+    .ant-select-selector
+    .ant-select-selection-placeholder
+) {
+  line-height: 22px;
+}
+
+:deep(
+  .party-flow-wrap
+    .party-flow-item
+    .ant-select-single
+    .ant-select-selector
+    .ant-select-selection-search-input
+) {
+  height: 22px;
 }
 
 .biz-block__title {
@@ -5164,47 +5683,18 @@ defineExpose({
   opacity: 1;
 }
 
-:deep(.ant-card .ant-card-head) {
+:deep(.ant-card:not(.cargo-container-card) .ant-card-head) {
   min-height: 44px;
   padding: 0 14px;
   background: #fafcff;
   border-bottom: 1px solid #edf2f7;
 }
 
-:deep(.ant-card .ant-card-head-title) {
+:deep(.ant-card:not(.cargo-container-card) .ant-card-head-title) {
   padding: 10px 0;
 }
 
-:deep(.ant-card .ant-card-body) {
+:deep(.ant-card:not(.cargo-container-card) .ant-card-body) {
   padding: 12px 14px;
-}
-
-@media (max-width: 1200px) {
-  .main-layout {
-    flex-direction: column;
-  }
-
-  .left-column,
-  .side-card,
-  .center-column,
-  .right-column {
-    width: 100%;
-  }
-
-  .card-body--party {
-    min-height: auto;
-  }
-
-  .layout-banner__tabs {
-    display: none;
-  }
-
-  :deep(.port-flow-item::after) {
-    content: none !important;
-  }
-
-  :deep(.port-flow-item::before) {
-    content: none !important;
-  }
 }
 </style>

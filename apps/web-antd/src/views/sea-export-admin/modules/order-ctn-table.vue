@@ -238,9 +238,9 @@ watch(
 </script>
 
 <template>
-  <div class="order-ctn-table">
-    <div class="mb-2 flex items-center gap-2">
-      <span class="text-sm font-medium text-gray-600">
+  <div class="order-ctn-table form-controls-small">
+    <div class="order-ctn-table__title-bar">
+      <span class="order-ctn-table__title-text">
         {{ $t('seaExport.export.orderCtns') }}
       </span>
       <Tooltip :title="$t('seaExport.export.addCtn')">
@@ -298,6 +298,7 @@ watch(
               toSelectedItems(record.ctnCodeId, record.ctnCodeName, 'ctnName')
             "
             class="w-full min-w-[100px]"
+            size="small"
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'ctnCodeId', v)"
           />
@@ -306,6 +307,7 @@ watch(
           <Input
             :value="record.ctnNo"
             :placeholder="$t('seaExport.export.ctnNo')"
+            size="small"
             allow-clear
             @update:value="
               (v) => updateRow(index, 'ctnNo', toEnglishUpperCase(v))
@@ -316,6 +318,7 @@ watch(
           <Input
             :value="record.sealNo"
             :placeholder="$t('seaExport.export.sealNo')"
+            size="small"
             allow-clear
             @update:value="
               (v) => updateRow(index, 'sealNo', toEnglishUpperCase(v))
@@ -327,6 +330,7 @@ watch(
             :value="record.pkgs"
             :placeholder="$t('seaExport.export.pkgs')"
             class="w-full"
+            size="small"
             :min="0"
             :controls="false"
             @update:value="(v) => updateRow(index, 'pkgs', v)"
@@ -339,6 +343,7 @@ watch(
               toSelectedItems(record.codePackageId, record.codePackageName)
             "
             class="w-full min-w-[90px]"
+            size="small"
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'codePackageId', v)"
           />
@@ -348,6 +353,7 @@ watch(
             :value="record.grossWeight"
             :placeholder="$t('seaExport.export.grossWeight')"
             class="w-full"
+            size="small"
             :min="0"
             :controls="false"
             :precision="2"
@@ -359,6 +365,7 @@ watch(
             :value="record.tareWeight"
             :placeholder="$t('seaExport.export.tareWeight')"
             class="w-full"
+            size="small"
             :min="0"
             :controls="false"
             :precision="2"
@@ -370,6 +377,7 @@ watch(
             :value="record.volume"
             :placeholder="$t('seaExport.export.volume')"
             class="w-full"
+            size="small"
             :min="0"
             :controls="false"
             :precision="2"
@@ -383,6 +391,7 @@ watch(
               toSelectedItems(record.codeGoodsId, record.codeGoodsName)
             "
             class="w-full min-w-[90px]"
+            size="small"
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'codeGoodsId', v)"
           />
@@ -391,6 +400,7 @@ watch(
           <Input
             :value="record.remark"
             :placeholder="$t('seaExport.export.remark')"
+            size="small"
             allow-clear
             @update:value="(v) => updateRow(index, 'remark', v)"
           />
@@ -418,6 +428,63 @@ watch(
 </template>
 
 <style scoped>
+.order-ctn-table__title-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 18px;
+  margin-bottom: 12px;
+  background: hsl(var(--primary) / 15%);
+}
+
+.order-ctn-table__title-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--primary));
+}
+
+.order-ctn-table :deep(input.ant-input),
+.order-ctn-table :deep(.ant-input-affix-wrapper),
+.order-ctn-table :deep(.ant-input-number) {
+  height: 24px;
+}
+
+.order-ctn-table :deep(.ant-input-number-input) {
+  height: 22px;
+}
+
+.order-ctn-table :deep(.ant-input-affix-wrapper) {
+  display: inline-flex;
+  align-items: center;
+}
+
+.order-ctn-table :deep(.ant-input-affix-wrapper > input.ant-input) {
+  height: 22px;
+  line-height: 22px;
+}
+
+.order-ctn-table
+  :deep(.ant-select:not(.ant-select-customize-input) .ant-select-selector) {
+  display: flex;
+  align-items: center;
+  height: 24px;
+}
+
+.order-ctn-table
+  :deep(
+    .ant-select-single .ant-select-selector .ant-select-selection-item,
+    .ant-select-single .ant-select-selector .ant-select-selection-placeholder
+  ) {
+  line-height: 22px;
+}
+
+.order-ctn-table
+  :deep(
+    .ant-select-single .ant-select-selector .ant-select-selection-search-input
+  ) {
+  height: 22px;
+}
+
 .order-ctn-table :deep(th.order-ctn-table__seq-col),
 .order-ctn-table :deep(td.order-ctn-table__seq-col) {
   width: 60px !important;

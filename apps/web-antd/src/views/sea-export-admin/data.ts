@@ -1287,7 +1287,7 @@ export function usePortFormSchema(
     {
       component: 'PortSelect',
       fieldName: 'poT1Id',
-      label: $t('seaExport.export.poT1Id'),
+      label: '',
       componentProps: buildPortSelectProps('poT1Id', onPortChange),
       formItemClass:
         'port-flow-item port-flow-item--transit port-flow-pos--transit',
@@ -1295,7 +1295,7 @@ export function usePortFormSchema(
     {
       component: 'PortSelect',
       fieldName: 'poT2Id',
-      label: $t('seaExport.export.poT2Id'),
+      label: '',
       componentProps: buildPortSelectProps('poT2Id', onPortChange),
       formItemClass:
         'port-flow-item port-flow-item--transit port-flow-item--transit-secondary port-flow-pos--transit',
@@ -1392,8 +1392,6 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.marks'),
       componentProps: {
         allowClear: true,
-        rows: 8,
-        style: { minHeight: '248px' },
       },
       formItemClass: 'col-span-3 cargo-main-item cargo-main-item--marks',
     },
@@ -1403,8 +1401,6 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.goodsDes'),
       componentProps: {
         allowClear: true,
-        rows: 8,
-        style: { minHeight: '248px' },
       },
       formItemClass: 'col-span-3 cargo-main-item cargo-main-item--goods-des',
     },
