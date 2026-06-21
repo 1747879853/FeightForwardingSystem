@@ -126,9 +126,13 @@ const handleModifyTask = (
   console.log('tasks', tasks);
   tasks.forEach((item) => {
     item.taskStatus = '';
-    if (item.task && item.task?.taskType === 1) {
+    if (item.task && item.task?.taskType === 1 && item.task?.taskStatus === 0) {
       item.taskStatus = $t('auditApproval.ApplyModification');
-    } else if (item.task && item.task?.taskType === 2) {
+    } else if (
+      item.task &&
+      item.task?.taskType === 2 &&
+      item.task?.taskStatus === 0
+    ) {
       item.taskStatus = $t('auditApproval.ApplyDeletion');
     } else {
       item.taskStatus = '';

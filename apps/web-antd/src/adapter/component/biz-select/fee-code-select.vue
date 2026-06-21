@@ -48,9 +48,8 @@ const selectedItemsRef = toRef(props, 'selectedItems');
 
 const mapItemToOption = (item: FeeCodeAdminApi.FeeCodeDto) => {
   const itemAny = item as any;
-  let label = item.code
-    ? item.code + '-' + itemAny?.[props.labelKey]
-    : itemAny?.[props.labelKey];
+  let surLabel = itemAny?.[props.labelKey] || '';
+  let label = item.code ? item.code + '-' + surLabel : surLabel;
   if (!label && props.labelKey === 'enName') {
     label = item.enName;
   }
