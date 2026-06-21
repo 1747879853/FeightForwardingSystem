@@ -929,7 +929,10 @@ onUnmounted(() => {
 
       <!-- 约号自定义渲染插槽 -->
       <template #contractNo="{ row }">
-        <div class="px-2 py-1 text-blue-600">
+        <div
+          class="overflow-hidden text-ellipsis whitespace-nowrap px-2 py-1 text-blue-600"
+          :title="row.contractNo || '-'"
+        >
           {{ row.contractNo || '-' }}
         </div>
       </template>

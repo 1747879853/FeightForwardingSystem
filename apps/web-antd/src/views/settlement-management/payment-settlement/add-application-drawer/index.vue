@@ -167,18 +167,26 @@ async function fetchData() {
 
     // 为每个申请初始化用户输入字段
     dataSource.value = (result.items || []).map((app) => {
-      // 固定币别申请：初始化 settledPrice 字段
+      // 固定币别申请：初始化 settledPrice 字段，默认为未结算费用
       if (app.currencyId) {
-        app.settledPrice = app.settledPrice ?? 0;
+        const unsettledAmount =
+          (app.totalSettleablePriceUpperLimit ?? 0) +
+          (app.totalSettleablePriceLowerLimit ?? 0);
+        app.settledPrice = app.settledPrice ?? unsettledAmount;
       }
 
       // 原币申请：为每个币别分组初始化 settledAmount 和 checked 字段
       if (app.currencyGroup) {
-        app.currencyGroup = app.currencyGroup.map((group: any) => ({
-          ...group,
-          settledAmount: group.settledAmount ?? 0, // 初始化用户输入的结算金额，保留已有值或默认为0
-          checked: false, // 初始化复选框状态为未选中
-        }));
+        app.currencyGroup = app.currencyGroup.map((group: any) => {
+          const unsettledAmount =
+            (group.settleableUpperLimit ?? 0) +
+            (group.settleableLowerLimit ?? 0);
+          return {
+            ...group,
+            settledAmount: group.settledAmount ?? unsettledAmount, // 初始化用户输入的结算金额，默认为未结算费用
+            checked: false, // 初始化复选框状态为未选中
+          };
+        });
       }
       return app;
     });
