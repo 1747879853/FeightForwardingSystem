@@ -1080,6 +1080,21 @@ export const getFeeStatusValueByLabel = (code: string): number | undefined => {
   return status ? status.value : undefined;
 };
 
+/**
+ * 海运出口列表组合费用状态（SeaExportFeeStatus）
+ * 综合应收/应付及更改单费用、申请修改/删除、结算等判断
+ */
+export const getSeaExportFeeStatusOptions = () => [
+  { value: 0, label: '录入状态', color: '#b8cdd7', code: 'Entering' },
+  { value: 1, label: '提交审核', color: '#ffc107', code: 'Submitted' },
+  { value: 2, label: '审核通过', color: '#67c23a', code: 'Passed' },
+  { value: 3, label: '部分结算', color: '#909399', code: 'PartialSettlement' },
+  { value: 4, label: '结算完毕', color: '#67c23a', code: 'Settlemented' },
+  { value: 5, label: '驳回', color: '#f56c6c', code: 'Rejected' },
+  { value: 6, label: '申请修改', color: '#ff9900', code: 'Modification' },
+  { value: 7, label: '申请删除', color: '#ff9900', code: 'Deletion' },
+];
+
 // --------------------------------------------------------
 // 订单箱型列表（用于单位下拉框过滤）
 // --------------------------------------------------------

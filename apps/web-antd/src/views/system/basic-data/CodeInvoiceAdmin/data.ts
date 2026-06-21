@@ -73,14 +73,18 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       rules: z
         .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.codeInvoice.code'),
+          ]),
+        })
         .max(
           50,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.codeInvoice.code'),
             50,
           ]),
-        )
-        .optional(),
+        ),
     },
     {
       component: 'Input',
@@ -91,14 +95,18 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       rules: z
         .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.codeInvoice.codeName'),
+          ]),
+        })
         .max(
           100,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.codeInvoice.codeName'),
             100,
           ]),
-        )
-        .optional(),
+        ),
     },
     {
       component: 'Input',
@@ -126,7 +134,7 @@ export function useFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'zeroTaxRateEnum',
       label: $t('system.basicData.codeInvoice.zeroTaxRateEnum'),
-
+      defaultValue: undefined,
       componentProps: {
         options: useZeroTaxRateOptions(),
         allowClear: true,
@@ -186,6 +194,10 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'defaultCurrency',
       label: $t('system.basicData.codeInvoice.defaultCurrency'),
       defaultValue: undefined,
+      componentProps: {
+        valueKey: 'code',
+        labelKey: 'code',
+      },
     },
     {
       component: 'Input',
@@ -292,6 +304,7 @@ export function useColumns(
       cellRender: {
         attrs: {
           nameField: 'name',
+          nameFieldFallbacks: ['name', 'code'],
           nameTitle: $t('system.basicData.codeInvoice.name'),
           onClick: onActionClick,
         },

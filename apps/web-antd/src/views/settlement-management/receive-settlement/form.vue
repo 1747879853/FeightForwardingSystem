@@ -26,8 +26,8 @@ import {
 } from 'ant-design-vue';
 
 import {
-  getBankStatementDetail,
-  getBankStatementReceiveSettlementPagedList,
+  getBankStatementDetailByPermission,
+  getBankStatementReceiveSettlementPagedListByPermission,
 } from '#/api/settlement-management/bank-statement-admin';
 import {
   addReceiveSettlement,
@@ -221,8 +221,8 @@ async function loadBankStatementSummary(id: string) {
   bankStatementSummaryLoading.value = true;
   try {
     const [detail, settlementRes] = await Promise.all([
-      getBankStatementDetail(id),
-      getBankStatementReceiveSettlementPagedList({
+      getBankStatementDetailByPermission(id),
+      getBankStatementReceiveSettlementPagedListByPermission({
         bankStatementId: id,
         pageIndex: 1,
         pageSize: 500,
@@ -351,10 +351,17 @@ function handleOpenAddFee() {
     message.warning('当前银行流水未关联结算对象');
     return;
   }
+  const currencyId = bankStatementDetail.value?.currencyId;
+  if (!currencyId) {
+    message.warning('当前银行流水未关联币别');
+    return;
+  }
   addFeeDrawerRef.value?.open({
     receiveSettlementId: editId.value,
     settlementId: bankStatementSettlementId.value,
     settlementName: bankStatementSettlementName.value,
+    currencyId,
+    currencyCode: bankStatementDetail.value?.currencyCode,
     selectedFeeIds: selectedFeeIds.value,
   });
 }

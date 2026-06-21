@@ -15,6 +15,10 @@ import {
   parseUserAttribute,
   useFormSchema,
 } from '../data';
+import {
+  avatarUrlToFormValue,
+  normalizeAvatarSubmitValue,
+} from '../avatar-utils';
 
 const emits = defineEmits(['success']);
 
@@ -48,7 +52,7 @@ const [Modal, modalApi] = useVbenModal({
       isActive: values.isActive,
       status: values.status,
       roleIds: values.roleIds,
-      avatar: values.avatar,
+      avatar: normalizeAvatarSubmitValue(values.avatar, formData.value?.avatar),
       organizationId: values.organizationId,
       userAttribute: combineUserAttribute(values.userAttributeFlags ?? []),
       enName: values.enName || undefined,
@@ -107,7 +111,7 @@ const [Modal, modalApi] = useVbenModal({
             phoneNumber: userDetail.phoneNumber,
             isActive: userDetail.isActive,
             status: userDetail.status,
-            avatar: userDetail.avatar,
+            avatar: avatarUrlToFormValue(userDetail.avatar),
             organizationId: (userDetail as any).organizationId,
             userAttributeFlags: parseUserAttribute(userDetail.userAttribute),
             enName: userDetail.enName,
@@ -142,7 +146,7 @@ const [Modal, modalApi] = useVbenModal({
             phoneNumber: data.phoneNumber,
             isActive: data.isActive,
             status: data.status,
-            avatar: data.avatar,
+            avatar: avatarUrlToFormValue(data.avatar),
             organizationId: (data as any).organizationId,
             userAttributeFlags: parseUserAttribute(data.userAttribute),
             enName: data.enName,

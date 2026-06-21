@@ -183,6 +183,14 @@ export const getBankStatementDetail = (id: string) => {
   );
 };
 
+/** 获取银行流水详情（按当前用户权限） */
+export const getBankStatementDetailByPermission = (id: string) => {
+  return requestClient.get<BankStatementAdminApi.BankStatementDetailDto>(
+    `${API_PREFIX}/DetailAsync`,
+    { params: { id } },
+  );
+};
+
 /** 获取银行流水分页列表（Admin） */
 export const getBankStatementPagedList = (
   params: BankStatementAdminApi.BankStatementQueryDto,
@@ -192,6 +200,15 @@ export const getBankStatementPagedList = (
   >(`${API_ADMIN_PREFIX}/GetPagedListAsync`, { params });
 };
 
+/** 获取银行流水分页列表（按当前用户权限过滤：操作人包含当前用户或未配置操作人） */
+export const getBankStatementPagedListByPermission = (
+  params: BankStatementAdminApi.BankStatementQueryDto,
+) => {
+  return requestClient.get<
+    BankStatementAdminApi.PagedList<BankStatementAdminApi.BankStatementListDto>
+  >(`${API_PREFIX}/GetPagedListAsync`, { params });
+};
+
 /** 获取银行流水下的收费结算分页列表（Admin） */
 export const getBankStatementReceiveSettlementPagedList = (
   params: BankStatementAdminApi.BankStatementReceiveSettlementQueryDto,
@@ -199,4 +216,13 @@ export const getBankStatementReceiveSettlementPagedList = (
   return requestClient.get<
     BankStatementAdminApi.PagedList<BankStatementAdminApi.ReceiveSettlementListDto>
   >(`${API_ADMIN_PREFIX}/GetReceiveSettlementPagedListAsync`, { params });
+};
+
+/** 获取银行流水下的收费结算分页列表（按当前用户权限） */
+export const getBankStatementReceiveSettlementPagedListByPermission = (
+  params: BankStatementAdminApi.BankStatementReceiveSettlementQueryDto,
+) => {
+  return requestClient.get<
+    BankStatementAdminApi.PagedList<BankStatementAdminApi.ReceiveSettlementListDto>
+  >(`${API_PREFIX}/GetReceiveSettlementPagedListAsync`, { params });
 };

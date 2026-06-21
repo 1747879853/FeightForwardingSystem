@@ -33,6 +33,7 @@ export namespace ReceiveSettlementAdminApi {
   export interface ReceiveSettlementFeeGroupQueryDto {
     receiveSettlementId?: string;
     settlementId?: string;
+    currencyId?: number;
     commissionNum?: string;
     mblNum?: string;
     pageIndex: number;

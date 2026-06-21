@@ -25,6 +25,10 @@ interface PinInputProps {
    * 最大重试时间
    */
   maxTime?: number;
+  /**
+   * 输入框占位符
+   */
+  placeholder?: string;
 }
 
 export type { PinInputProps };

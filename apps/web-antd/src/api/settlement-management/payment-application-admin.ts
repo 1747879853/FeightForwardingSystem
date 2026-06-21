@@ -459,6 +459,12 @@ export namespace PaymentApplicationAdminApi {
     cnName?: string;
   }
 
+  /** 箱型箱量简要 DTO */
+  export interface OrderCtnSimpleDto {
+    ctnCodeId?: number;
+    ctnCodeName?: string;
+  }
+
   /** 业务 + 结算对象分组 DTO */
   export interface PayAppFeeGroupDto {
     id: string;
@@ -482,6 +488,7 @@ export namespace PaymentApplicationAdminApi {
     eta?: string;
     orderUsers?: OrderUserDto[];
     orderFees?: OrderFeeDto[];
+    orderCtns?: OrderCtnSimpleDto[];
     isDeleted: boolean;
     creationTime: string;
   }

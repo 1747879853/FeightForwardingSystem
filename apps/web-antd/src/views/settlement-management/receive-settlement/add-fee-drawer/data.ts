@@ -7,6 +7,8 @@ export interface AddFeeDrawerProps {
   receiveSettlementId?: string;
   settlementId?: string;
   settlementName?: string;
+  currencyId?: number;
+  currencyCode?: string;
   selectedFeeIds?: string[];
 }
 
@@ -28,9 +30,14 @@ export interface SelectedReceiveFee {
 
 export type OrderGroup = ReceiveSettlementAdminApi.ReceiveSettlementFeeGroupDto;
 
+const searchFieldCommon = {
+  labelWidth: 64,
+} as const;
+
 export function useAddFeeSearchSchema(): VbenFormSchema[] {
   return [
     {
+      ...searchFieldCommon,
       component: 'Input',
       fieldName: 'settlementName',
       label: '结算对象',
@@ -41,6 +48,18 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
       },
     },
     {
+      ...searchFieldCommon,
+      component: 'CurrencySelect',
+      fieldName: 'currencyId',
+      label: '币别',
+      componentProps: {
+        disabled: true,
+        placeholder: '随银行流水自动带出',
+        class: 'w-full',
+      },
+    },
+    {
+      ...searchFieldCommon,
       component: 'Input',
       fieldName: 'commissionNum',
       label: '委托编号',
@@ -50,6 +69,7 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
       },
     },
     {
+      ...searchFieldCommon,
       component: 'Input',
       fieldName: 'mblNum',
       label: '主提单号',

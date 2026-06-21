@@ -368,6 +368,10 @@ export namespace SeaExportAdminApi {
     feeStatusPay?: number | null;
     /** 应收费用最小状态（该方向无费用时为 null） */
     feeStatusReceive?: number | null;
+    /** 应付费用组合状态（含更改单、结算等；该方向无费用时为 null） */
+    payFeeStatus?: number | null;
+    /** 应收费用组合状态（含更改单、结算等；该方向无费用时为 null） */
+    receiveFeeStatus?: number | null;
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;

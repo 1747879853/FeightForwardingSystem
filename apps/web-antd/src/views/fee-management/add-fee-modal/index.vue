@@ -674,7 +674,7 @@ defineExpose({ open: openDrawer });
   <Drawer
     :open="open"
     title="添加费用"
-    :width="1400"
+    :width="1600"
     :destroy-on-close="true"
     placement="right"
     @close="handleCancel"
@@ -733,6 +733,15 @@ defineExpose({ open: openDrawer });
               <span class="ellipsis-cell">
                 {{ getUserRoleCellTextFromRecord(record, column.field) }}
               </span>
+            </Tooltip>
+          </template>
+          <template
+            v-else-if="
+              column.field === 'mblNum' || column.field === 'orderCtnsText'
+            "
+          >
+            <Tooltip v-if="record[column.field]" :title="record[column.field]">
+              <span class="ellipsis-cell">{{ record[column.field] }}</span>
             </Tooltip>
           </template>
           <template v-else>

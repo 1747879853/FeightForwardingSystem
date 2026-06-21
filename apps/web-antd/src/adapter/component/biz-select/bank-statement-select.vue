@@ -9,8 +9,8 @@ import { $t } from '@vben/locales';
 import { Select } from 'ant-design-vue';
 
 import {
-  getBankStatementDetail,
-  getBankStatementPagedList,
+  getBankStatementDetailByPermission,
+  getBankStatementPagedListByPermission,
 } from '#/api/settlement-management/bank-statement-admin';
 
 import { usePagedSelect } from './use-paged-select';
@@ -63,7 +63,7 @@ const fetchPageAdapter = async (params: {
   PageIndex: number;
   PageSize: number;
 }) => {
-  const res = await getBankStatementPagedList({
+  const res = await getBankStatementPagedListByPermission({
     bankStatementNo: params.KeyWords,
     pageIndex: params.PageIndex,
     pageSize: params.PageSize,
@@ -79,7 +79,7 @@ const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
     fetchPage: fetchPageAdapter,
     mapItemToOption: mapBankStatementToOption,
     pageSize: props.pageSize,
-    queryKey: ['bank-statement'],
+    queryKey: ['bank-statement-by-permission'],
     selectedItemsRef,
     valueKey: props.valueKey,
   });
@@ -119,7 +119,7 @@ const ensureSelectedLoaded = async (rawValue: any) => {
 
     loadedSelectedIds.value.add(idStr);
     try {
-      const detail = await getBankStatementDetail(idStr);
+      const detail = await getBankStatementDetailByPermission(idStr);
       mergeSelectedItems([
         detail as BankStatementAdminApi.BankStatementListDto,
       ]);

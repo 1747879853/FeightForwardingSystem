@@ -5,6 +5,7 @@ import type { FeeNameAdminApi } from '#/api/system/base-data/fee-name-admin';
 import { Page, useVbenModal } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
+import { onMounted } from 'vue';
 import { Button, message } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
@@ -15,7 +16,12 @@ import {
 import { $t } from '#/locales';
 
 import { useColumns, useGridFormSchema } from './data';
+import { initCurrencyCache } from '../ExchangeRateAdmin/data';
 import Form from './modules/form.vue';
+
+onMounted(() => {
+  initCurrencyCache();
+});
 
 const [FormModal, formModalApi] = useVbenModal({
   connectedComponent: Form,

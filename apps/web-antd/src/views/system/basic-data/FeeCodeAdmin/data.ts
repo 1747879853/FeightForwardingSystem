@@ -5,6 +5,7 @@ import type { OnActionClickFn } from '#/adapter/vxe-table';
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 
 import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
+import { z } from '#/adapter/form';
 import { $t } from '#/locales';
 
 /**
@@ -48,6 +49,20 @@ export function useFormSchema(): VbenFormSchema[] {
       componentProps: {
         maxLength: 50,
       },
+      rules: z
+        .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.feeCode.code'),
+          ]),
+        })
+        .max(
+          50,
+          $t('ui.formRules.maxLength', [
+            $t('system.basicData.feeCode.code'),
+            50,
+          ]),
+        ),
     },
     {
       component: 'Input',
@@ -70,6 +85,11 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'currencyId',
       label: $t('system.basicData.feeCode.defaultCurrency'),
       defaultValue: undefined,
+      rules: z.number({
+        required_error: $t('ui.formRules.required', [
+          $t('system.basicData.feeCode.defaultCurrency'),
+        ]),
+      }),
     },
     {
       component: 'Select',
@@ -275,6 +295,7 @@ export function useColumns(
       cellRender: {
         attrs: {
           nameField: 'cnName',
+          nameFieldFallbacks: ['cnName', 'code', 'enName'],
           nameTitle: $t('system.basicData.feeCode.name'),
           onClick: onActionClick,
         },

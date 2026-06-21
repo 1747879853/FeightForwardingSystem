@@ -13,7 +13,7 @@ import {
   Tag,
 } from 'ant-design-vue';
 
-import { getBankStatementPagedList } from '#/api/settlement-management/bank-statement-admin';
+import { getBankStatementPagedListByPermission } from '#/api/settlement-management/bank-statement-admin';
 
 import { formatAmount, formatDateTime } from '../form-data';
 
@@ -76,7 +76,7 @@ const columns = [
 async function loadData() {
   loading.value = true;
   try {
-    const result = await getBankStatementPagedList({
+    const result = await getBankStatementPagedListByPermission({
       bankStatementNo: bankStatementNo.value || undefined,
       pageIndex: page.value,
       pageSize: pageSize.value,

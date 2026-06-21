@@ -38,14 +38,18 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       rules: z
         .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.codePackage.packageName'),
+          ]),
+        })
         .max(
           100,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.codePackage.packageName'),
             100,
           ]),
-        )
-        .optional(),
+        ),
     },
     {
       component: 'Input',

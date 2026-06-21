@@ -47,13 +47,19 @@ const remarkMap = reactive(new Map<string, string>());
 const [SearchForm, searchFormApi] = useVbenForm({
   commonConfig: {
     componentProps: { class: 'w-full' },
+    labelWidth: 64,
   },
   layout: 'horizontal',
   schema: useAddFeeSearchSchema(),
-  showDefaultActions: false,
+  showDefaultActions: true,
+  actionLayout: 'inline',
+  actionWrapperClass: 'col-start-5 justify-end',
+  actionPosition: 'right',
+  resetButtonOptions: { show: false },
+  submitButtonOptions: { show: false },
   submitOnChange: false,
   compact: true,
-  wrapperClass: 'grid-cols-3',
+  wrapperClass: 'grid-cols-5',
 });
 
 const tableRows = computed(() =>
@@ -108,7 +114,10 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
   await nextTick();
   await searchFormApi.resetForm();
   if (props.settlementId) {
-    searchFormApi.setValues({ settlementName: props.settlementName || '' });
+    searchFormApi.setValues({
+      settlementName: props.settlementName || '',
+      currencyId: props.currencyId,
+    });
     await fetchData();
   }
 }
@@ -128,6 +137,10 @@ async function handleSearch() {
     message.warning('银行流水未关联结算对象');
     return;
   }
+  if (!drawerProps.value.currencyId) {
+    message.warning('银行流水未关联币别');
+    return;
+  }
   const values = (await searchFormApi.getValues()) ?? {};
   currentPage.value = 1;
   await fetchData(values);
@@ -135,7 +148,8 @@ async function handleSearch() {
 
 async function fetchData(formValues?: Record<string, any>) {
   const settlementId = drawerProps.value.settlementId;
-  if (!settlementId) return;
+  const currencyId = drawerProps.value.currencyId;
+  if (!settlementId || !currencyId) return;
 
   const values = formValues ?? ((await searchFormApi.getValues()) || {});
 
@@ -144,6 +158,7 @@ async function fetchData(formValues?: Record<string, any>) {
     const result = await getOrderFeeGroupForReceiveSettlement({
       receiveSettlementId: drawerProps.value.receiveSettlementId,
       settlementId,
+      currencyId,
       commissionNum: values.commissionNum || undefined,
       mblNum: values.mblNum || undefined,
       pageIndex: currentPage.value,
@@ -283,11 +298,12 @@ defineExpose({ open: openDrawer });
     destroy-on-close
   >
     <div class="mb-3">
-      <SearchForm />
-      <div class="mt-2 flex justify-end gap-2">
-        <Button @click="handleSearch">查询</Button>
-        <Button type="primary" @click="handleConfirm">确认添加</Button>
-      </div>
+      <SearchForm>
+        <template #expand-after>
+          <Button @click="handleSearch">查询</Button>
+          <Button type="primary" @click="handleConfirm">确认添加</Button>
+        </template>
+      </SearchForm>
     </div>
 
     <Table
