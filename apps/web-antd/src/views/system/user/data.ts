@@ -513,6 +513,14 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       width: 80,
     },
     {
+      field: 'avatar',
+      title: $t('system.user.avatar'),
+      width: 72,
+      cellRender: {
+        name: 'CellAvatar',
+      },
+    },
+    {
       field: 'userName',
       title: $t('system.user.userName'),
       minWidth: 120,

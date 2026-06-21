@@ -41,6 +41,10 @@ const [Drawer, drawerApi] = useVbenDrawer({
 
     drawerApi.lock();
     const values = await formApi.getValues();
+    const zeroTaxRateEnum =
+      values.zeroTaxRateEnum === undefined || values.zeroTaxRateEnum === null
+        ? undefined
+        : values.zeroTaxRateEnum;
 
     try {
       if (formData.value?.id) {
@@ -51,7 +55,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
           name: values.name,
           taxCategory: values.taxCategory,
           taxRate: values.taxRate,
-          zeroTaxRateEnum: values.zeroTaxRateEnum,
+          zeroTaxRateEnum,
           taxClassificationCode: values.taxClassificationCode,
           taxClassificationName: values.taxClassificationName,
           isIncludingTax: values.isIncludingTax,
@@ -72,7 +76,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
           name: values.name,
           taxCategory: values.taxCategory,
           taxRate: values.taxRate,
-          zeroTaxRateEnum: values.zeroTaxRateEnum,
+          zeroTaxRateEnum,
           taxClassificationCode: values.taxClassificationCode,
           taxClassificationName: values.taxClassificationName,
           isIncludingTax: values.isIncludingTax,

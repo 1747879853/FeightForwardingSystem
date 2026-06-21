@@ -5,8 +5,9 @@ import type { OnActionClickFn } from '#/adapter/vxe-table';
 import type { FeeNameAdminApi } from '#/api/system/base-data/fee-name-admin';
 
 import { z } from '#/adapter/form';
-import { CurrencyEnum, InOutType } from '#/api/system/base-data/fee-name-admin';
+import { InOutType } from '#/api/system/base-data/fee-name-admin';
 import { $t } from '#/locales';
+import { formatCurrencyName } from '../ExchangeRateAdmin/data';
 
 /**
  * 获取出入类型枚举选项
@@ -71,14 +72,18 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       rules: z
         .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.feeName.code'),
+          ]),
+        })
         .max(
           50,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.feeName.code'),
             50,
           ]),
-        )
-        .optional(),
+        ),
     },
     {
       component: 'Input',
@@ -89,14 +94,18 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       rules: z
         .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.feeName.feeName'),
+          ]),
+        })
         .max(
           100,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.feeName.feeName'),
             100,
           ]),
-        )
-        .optional(),
+        ),
     },
     {
       component: 'Input',
@@ -141,14 +150,18 @@ export function useFormSchema(): VbenFormSchema[] {
       },
       rules: z
         .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.feeName.feeTypeStr'),
+          ]),
+        })
         .max(
           100,
           $t('ui.formRules.maxLength', [
             $t('system.basicData.feeName.feeTypeStr'),
             100,
           ]),
-        )
-        .optional(),
+        ),
     },
     {
       component: 'Textarea',
@@ -218,20 +231,15 @@ export function useColumns(
       field: 'defaultCurrency',
       title: $t('system.basicData.feeName.defaultCurrency'),
       minWidth: 100,
-      cellRender: {
-        name: 'CellTag',
-        options: [
-          {
-            color: 'error',
-            label: $t('system.basicData.feeName.currencyEnumOptions.rmb'),
-            value: CurrencyEnum.RMB,
-          },
-          {
-            color: 'warning',
-            label: $t('system.basicData.feeName.currencyEnumOptions.usd'),
-            value: CurrencyEnum.USD,
-          },
-        ],
+      formatter: ({ cellValue }) => {
+        if (cellValue === null || cellValue === undefined || cellValue === '') {
+          return '-';
+        }
+        const asNumber = Number(cellValue);
+        if (!Number.isNaN(asNumber)) {
+          return formatCurrencyName(asNumber);
+        }
+        return String(cellValue);
       },
     },
     {
@@ -250,6 +258,7 @@ export function useColumns(
       cellRender: {
         attrs: {
           nameField: 'name',
+          nameFieldFallbacks: ['name', 'code'],
           nameTitle: $t('system.basicData.feeName.name'),
           onClick: onActionClick,
         },

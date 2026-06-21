@@ -4,6 +4,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn } from '#/adapter/vxe-table';
 import type { LaneCodeAdminApi } from '#/api/system/base-data/lane-code-admin';
 
+import { z } from '#/adapter/form';
 import { $t } from '#/locales';
 
 const getStatusOptions = () => [
@@ -54,6 +55,11 @@ export function useFormSchema(): VbenFormSchema[] {
       componentProps: {
         allowClear: true,
       },
+      rules: z.string().min(1, {
+        message: $t('ui.formRules.required', [
+          $t('system.basicData.laneCode.code'),
+        ]),
+      }),
     },
     {
       component: 'Input',
@@ -143,6 +149,7 @@ export function useColumns(
       cellRender: {
         attrs: {
           nameField: 'laneName',
+          nameFieldFallbacks: ['laneName', 'laneEnName', 'code'],
           nameTitle: $t('system.basicData.laneCode.name'),
           onClick: onActionClick,
         },

@@ -194,6 +194,7 @@ export function useColumns(
       cellRender: {
         attrs: {
           nameField: 'cnName',
+          nameFieldFallbacks: ['cnName', 'enName', 'ediCode'],
           nameTitle: $t('system.basicData.codeFrt.name'),
           onClick: onActionClick,
         },

@@ -173,7 +173,14 @@ defineExpose({
 }
 
 .auth-code-login-card :deep(button.flex-grow) {
+  flex-shrink: 0;
+  min-width: 108px;
+  padding-right: 8px;
+  padding-left: 8px;
+  line-height: 1.25;
   color: rgb(255 255 255 / 90%);
+  text-align: center;
+  white-space: normal;
   background: rgb(255 255 255 / 10%);
   border-color: rgb(255 255 255 / 24%);
   box-shadow:
@@ -196,7 +203,7 @@ defineExpose({
 }
 
 .auth-code-login-card :deep(.relative.flex.w-full) {
-  gap: 6px;
+  gap: 8px;
 }
 
 .auth-code-login-card :deep(.mr-2) {

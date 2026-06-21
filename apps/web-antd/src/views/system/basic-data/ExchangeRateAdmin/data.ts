@@ -69,6 +69,15 @@ export function useGridFormSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
+    {
+      component: 'CurrencySelect',
+      fieldName: 'CurrencyId',
+      label: $t('system.basicData.exchangeRate.currencyId'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
   ];
 }
 
@@ -231,6 +240,12 @@ export function useColumns(
       field: 'currencyId',
       title: $t('system.basicData.exchangeRate.currencyId'),
       minWidth: 100,
+      formatter: ({ cellValue }) => {
+        if (cellValue === null || cellValue === undefined || cellValue === '') {
+          return '-';
+        }
+        return formatCurrencyName(Number(cellValue));
+      },
     },
     {
       field: 'drValue',
@@ -297,6 +312,7 @@ export function useColumns(
       cellRender: {
         attrs: {
           nameField: 'currencyId',
+          nameFieldFallbacks: ['currencyId', 'remark', 'localCurrency'],
           nameTitle: $t('system.basicData.exchangeRate.name'),
           onClick: onActionClick,
         },

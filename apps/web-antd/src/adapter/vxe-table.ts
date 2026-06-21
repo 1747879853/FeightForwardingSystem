@@ -34,8 +34,39 @@ import {
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
+import { buildAttachmentUrl } from '#/utils';
 
 import { ref } from 'vue';
+
+/** 操作列删除确认：按字段链回退展示名，避免名称为空时文案缺失 */
+function resolveCellOperationRowName(
+  row: Recordable,
+  attrs?: Recordable,
+): string {
+  if (typeof attrs?.getRowName === 'function') {
+    return attrs.getRowName(row);
+  }
+  const fields: string[] = [];
+  if (attrs?.nameField) {
+    fields.push(attrs.nameField);
+  }
+  if (Array.isArray(attrs?.nameFieldFallbacks)) {
+    fields.push(...attrs.nameFieldFallbacks);
+  }
+  if (fields.length === 0) {
+    fields.push('name', 'cnName', 'laneName', 'laneEnName', 'code', 'enName');
+  }
+  for (const field of fields) {
+    const value = row[field];
+    if (value !== null && value !== undefined && String(value).trim() !== '') {
+      return String(value);
+    }
+  }
+  if (row.id !== null && row.id !== undefined) {
+    return String(row.id);
+  }
+  return '';
+}
 
 import { useVbenForm } from './form';
 import ClientSelect from './component/biz-select/client-select.vue';
@@ -92,6 +123,24 @@ setupVbenVxeTable({
         const { props } = renderOpts;
         const { column, row } = params;
         return h(Image, { src: row[column.field], ...props });
+      },
+    });
+
+    vxeUI.renderer.add('CellAvatar', {
+      renderTableDefault(renderOpts, params) {
+        const { props } = renderOpts;
+        const { column, row } = params;
+        const src = buildAttachmentUrl(row[column.field]);
+        if (!src) {
+          return h('span', '-');
+        }
+        return h(Image, {
+          src,
+          width: 36,
+          height: 36,
+          style: { borderRadius: '50%', objectFit: 'cover' },
+          ...props,
+        });
       },
     });
 
@@ -1431,7 +1480,7 @@ setupVbenVxeTable({
                   'div',
                   { class: 'truncate' },
                   $t('ui.actionMessage.deleteConfirm', [
-                    row[attrs?.nameField || 'name'],
+                    resolveCellOperationRowName(row, attrs),
                   ]),
                 ),
             },
