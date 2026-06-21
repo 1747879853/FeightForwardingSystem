@@ -14,6 +14,7 @@ import {
   getBankStatementPagedList,
 } from '#/api/settlement-management/bank-statement-admin';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
@@ -74,21 +75,14 @@ const [Grid, gridApi] =
       },
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, unknown>,
-          ) => {
-            const result = await getBankStatementPagedList({
-              pageIndex: page.currentPage,
-              pageSize: page.pageSize,
-              sorting: 'statementTime desc',
-              ...splitTimeRange(formValues),
-            } as BankStatementAdminApi.BankStatementQueryDto);
-            return {
+          query: createPagedListQuery(getBankStatementPagedList, {
+            defaultSort: 'StatementTime DESC',
+            mapParams: splitTimeRange,
+            afterFetch: async (result) => ({
               ...result,
               items: await enrichBankStatementListItems(result.items || []),
-            };
-          },
+            }),
+          }),
         },
       },
       toolbarConfig: {

@@ -14,6 +14,7 @@ import {
   getSeaImportPagedList,
 } from '#/api/sea-import/sea-import-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
@@ -58,16 +59,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaImportAdminApi.SeaImportDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          return await getSeaImportPagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            ...formValues,
-          });
-        },
+        query: createPagedListQuery(getSeaImportPagedList),
       },
     },
     toolbarConfig: {

@@ -23,6 +23,7 @@ import { Page } from '@vben/common-ui';
 import { Button, Space, Card } from 'ant-design-vue';
 
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 const route = useRoute();
 
@@ -146,6 +147,12 @@ const formatPayment = (row: BillingPeriodAdminApi.ClientBillingPeriodDto) => {
   console.log('newRow', newRow);
   return newRow;
 };
+const fetchBillingPeriodPagedList = (params: Record<string, any>) =>
+  getBillingPeriodPagedList({
+    ...params,
+    clientId: editId.value,
+  });
+
 const [Grid, gridApi] =
   useVbenVxeGrid<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>({
     gridOptions: {
@@ -164,21 +171,12 @@ const [Grid, gridApi] =
       },
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, any>,
-          ) => {
-            const res = await getBillingPeriodPagedList({
-              PageIndex: page.currentPage,
-              PageSize: page.pageSize,
-              ClientId: editId.value,
-              ...formValues,
-            });
-            res.items = res.items.map((item) => {
-              return formatPayment(item);
-            });
-            return res;
-          },
+          query: createPagedListQuery(fetchBillingPeriodPagedList, {
+            afterFetch: (res) => ({
+              ...res,
+              items: res.items.map((item) => formatPayment(item)),
+            }),
+          }),
         },
       },
       toolbarConfig: {

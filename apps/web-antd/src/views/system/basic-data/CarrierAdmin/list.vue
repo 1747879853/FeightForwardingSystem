@@ -13,6 +13,7 @@ import {
   getCarrierPagedList,
 } from '#/api/system/base-data/carrier-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 import { buildAttachmentUrl } from '#/utils';
 
 import { useColumns, useGridFormSchema } from './data';
@@ -81,16 +82,7 @@ const [Grid, gridApi] = useVbenVxeGrid<CarrierAdminApi.CarrierDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          return await getCarrierPagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            ...formValues,
-          });
-        },
+        query: createPagedListQuery(getCarrierPagedList),
       },
     },
     toolbarConfig: {

@@ -13,6 +13,7 @@ import {
   getCodeIssueTypePagedList,
 } from '#/api/system/base-data/code-issue-type-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
@@ -82,16 +83,7 @@ const [Grid, gridApi] = useVbenVxeGrid<CodeIssueTypeAdminApi.CodeIssueTypeDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          return await getCodeIssueTypePagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            ...formValues,
-          });
-        },
+        query: createPagedListQuery(getCodeIssueTypePagedList),
       },
     },
     toolbarConfig: {

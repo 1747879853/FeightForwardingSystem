@@ -18,6 +18,7 @@ import { IconifyIcon } from '@vben/icons';
 import { Button, Space } from 'ant-design-vue';
 
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 const tmpAdd = ref(false);
 const dataSource = defineModel<ClientContactAdminApi.ClientContactDto[]>({
@@ -95,6 +96,12 @@ const handleActionClick = ({
   }
 };
 
+const fetchClientContactPagedList = (params: Record<string, any>) =>
+  getClientContactPagedList({
+    ...params,
+    clientId: editId.value,
+  });
+
 const [Grid, gridApi] = useVbenVxeGrid<ClientContactAdminApi.ClientContactDto>({
   gridOptions: {
     columns: useColumns(handleActionClick),
@@ -112,18 +119,7 @@ const [Grid, gridApi] = useVbenVxeGrid<ClientContactAdminApi.ClientContactDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          const res = await getClientContactPagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            ClientId: editId.value,
-            ...formValues,
-          });
-          return res;
-        },
+        query: createPagedListQuery(fetchClientContactPagedList),
       },
     },
     toolbarConfig: {

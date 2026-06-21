@@ -26,6 +26,7 @@ import {
   getTablePermissionList,
 } from '#/api/system/permission';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import {
   OperatorLabels,
@@ -80,6 +81,16 @@ function handleActionClick(
   }
 }
 
+const fetchTablePermissionList = (params: Record<string, any>) => {
+  if (!props.roleId && !props.userId) {
+    return Promise.resolve({ items: [], total: 0 });
+  }
+  return getTablePermissionList({
+    ...params,
+    ...currentTargetParams.value,
+  });
+};
+
 const [Grid, gridApi] =
   useVbenVxeGrid<SystemPermissionApi.UserTablePermissionDto>({
     gridOptions: {
@@ -90,20 +101,7 @@ const [Grid, gridApi] =
       keepSource: true,
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, any>,
-          ) => {
-            if (!props.roleId && !props.userId) {
-              return { items: [], total: 0 };
-            }
-            return await getTablePermissionList({
-              page: page.currentPage,
-              pageSize: page.pageSize,
-              ...currentTargetParams.value,
-              ...formValues,
-            });
-          },
+          query: createPagedListQuery(fetchTablePermissionList),
         },
       },
       rowConfig: {

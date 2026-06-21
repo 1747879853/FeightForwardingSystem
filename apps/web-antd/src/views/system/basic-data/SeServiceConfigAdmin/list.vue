@@ -15,6 +15,7 @@ import {
   getSeServiceConfigPagedList,
 } from '#/api/system/base-data/se-service-config-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 import {
   formatPolLabel,
   loadSeServiceTypeOptions,
@@ -108,17 +109,7 @@ const [Grid, gridApi] =
       },
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, any>,
-          ) => {
-            const result = await getSeServiceConfigPagedList({
-              pageIndex: page.currentPage,
-              pageSize: page.pageSize,
-              ...formValues,
-            });
-            return result;
-          },
+          query: createPagedListQuery(getSeServiceConfigPagedList),
         },
       },
       toolbarConfig: {

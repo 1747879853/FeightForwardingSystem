@@ -16,6 +16,7 @@ import {
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './base/data';
 
@@ -106,6 +107,11 @@ const handleDeleteSelected = () => {
   });
 };
 
+const fetchClientPagedList = (params: Record<string, any>) => {
+  clearSelection();
+  return getClientPagedList(params);
+};
+
 const [Grid, gridApi] = useVbenVxeGrid<ClientAdminApi.ClientDto>({
   gridEvents: {
     checkboxAll: syncSelectedRows,
@@ -134,17 +140,7 @@ const [Grid, gridApi] = useVbenVxeGrid<ClientAdminApi.ClientDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          clearSelection();
-          return await getClientPagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            ...formValues,
-          });
-        },
+        query: createPagedListQuery(fetchClientPagedList),
       },
     },
     toolbarConfig: {

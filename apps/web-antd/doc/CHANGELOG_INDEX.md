@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-21] [全站 vxe 分页列表列头远程排序](./changelogs/change-log-2026-06-21-vxe-paged-list-column-sorting.md)
 - [2026-06-21] [海运出口列表对接组合费用状态字段](./changelogs/change-log-2026-06-21-sea-export-list-combined-fee-status-columns.md)
 - [2026-06-21] [收费结算选费抽屉增加币别筛选并锁定银行流水币别](./changelogs/change-log-2026-06-21-receive-settlement-add-fee-currency-filter.md)
 - [2026-06-21] [收费结算新建页银行流水弹窗改用权限过滤接口](./changelogs/change-log-2026-06-21-receive-settlement-bank-picker-permission-api.md)

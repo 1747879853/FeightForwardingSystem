@@ -25,6 +25,7 @@ import {
   payAppReject,
 } from '#/api/audit-approval/payment-review-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { usePaymentReviewColumns, usePaymentReviewFormSchema } from './data';
 
@@ -92,16 +93,9 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
       },
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, unknown>,
-          ) => {
-            return await getPayAppTaskList({
-              PageIndex: page.currentPage,
-              PageSize: page.pageSize,
-              ...normalizeQuery(formValues),
-            });
-          },
+          query: createPagedListQuery(getPayAppTaskList, {
+            mapParams: normalizeQuery,
+          }),
         },
       },
       toolbarConfig: {

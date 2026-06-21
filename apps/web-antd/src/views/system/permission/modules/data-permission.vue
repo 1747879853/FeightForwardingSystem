@@ -20,6 +20,7 @@ import {
   getDataPermissionList,
 } from '#/api/system/permission';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useDataPermissionColumns, useDataPermissionFormSchema } from '../data';
 
@@ -60,6 +61,16 @@ function handleActionClick(
   }
 }
 
+const fetchDataPermissionList = (params: Record<string, any>) => {
+  if (!props.roleId && !props.userId) {
+    return Promise.resolve({ items: [], total: 0 });
+  }
+  return getDataPermissionList({
+    ...params,
+    ...currentTargetParams.value,
+  });
+};
+
 const [Grid, gridApi] =
   useVbenVxeGrid<SystemPermissionApi.UserDataPermissionDto>({
     gridOptions: {
@@ -68,20 +79,7 @@ const [Grid, gridApi] =
       keepSource: true,
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, any>,
-          ) => {
-            if (!props.roleId && !props.userId) {
-              return { items: [], total: 0 };
-            }
-            return await getDataPermissionList({
-              page: page.currentPage,
-              pageSize: page.pageSize,
-              ...currentTargetParams.value,
-              ...formValues,
-            });
-          },
+          query: createPagedListQuery(fetchDataPermissionList),
         },
       },
       rowConfig: {

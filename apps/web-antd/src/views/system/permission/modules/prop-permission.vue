@@ -23,6 +23,7 @@ import {
   getPropPermissionList,
 } from '#/api/system/permission';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { usePropPermissionColumns, usePropPermissionFormSchema } from '../data';
 
@@ -63,6 +64,16 @@ function handleActionClick(
   }
 }
 
+const fetchPropPermissionList = (params: Record<string, any>) => {
+  if (!props.roleId && !props.userId) {
+    return Promise.resolve({ items: [], total: 0 });
+  }
+  return getPropPermissionList({
+    ...params,
+    ...currentTargetParams.value,
+  });
+};
+
 const [Grid, gridApi] =
   useVbenVxeGrid<SystemPermissionApi.UserPropPermissionDto>({
     gridOptions: {
@@ -71,20 +82,7 @@ const [Grid, gridApi] =
       keepSource: true,
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, any>,
-          ) => {
-            if (!props.roleId && !props.userId) {
-              return { items: [], total: 0 };
-            }
-            return await getPropPermissionList({
-              page: page.currentPage,
-              pageSize: page.pageSize,
-              ...currentTargetParams.value,
-              ...formValues,
-            });
-          },
+          query: createPagedListQuery(fetchPropPermissionList),
         },
       },
       rowConfig: {

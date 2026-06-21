@@ -13,6 +13,7 @@ import {
   getFeeCodePagedList,
 } from '#/api/system/base-data/fee-code-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
@@ -80,16 +81,7 @@ const [Grid, gridApi] = useVbenVxeGrid<FeeCodeAdminApi.FeeCodeDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          return await getFeeCodePagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            ...formValues,
-          });
-        },
+        query: createPagedListQuery(getFeeCodePagedList),
       },
     },
     toolbarConfig: {

@@ -18,6 +18,7 @@ import {
 import { clearEnumCache } from '#/utils/init-enum';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
@@ -69,16 +70,7 @@ const [Grid, gridApi] = useVbenVxeGrid<EnumerationAdminApi.EnumerationListDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          return await getEnumerationPagedList({
-            page: page.currentPage,
-            pageSize: page.pageSize,
-            ...formValues,
-          });
-        },
+        query: createPagedListQuery(getEnumerationPagedList),
       },
     },
     rowConfig: {

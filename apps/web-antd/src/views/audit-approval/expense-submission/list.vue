@@ -11,6 +11,7 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { deleteSeaExport } from '#/api/sea-export/sea-export-admin';
 import { getSubmitOrderFeeList } from '#/api/audit-approval/expense-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from '../data';
 
@@ -57,16 +58,7 @@ const [Grid, gridApi] =
       },
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, any>,
-          ) => {
-            return await getSubmitOrderFeeList({
-              PageIndex: page.currentPage,
-              PageSize: page.pageSize,
-              ...formValues,
-            });
-          },
+          query: createPagedListQuery(getSubmitOrderFeeList),
         },
       },
       toolbarConfig: {

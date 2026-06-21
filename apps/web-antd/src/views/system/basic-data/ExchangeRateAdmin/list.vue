@@ -14,6 +14,7 @@ import {
   getExchangeRatePagedList,
 } from '#/api/system/base-data/exchange-rate-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import {
   initCurrencyCache,
@@ -91,25 +92,16 @@ const [Grid, gridApi] = useVbenVxeGrid<ExchangeRateAdminApi.ExchangeRateDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          let tmp = await getExchangeRatePagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            ...formValues,
-          });
-          tmp.items = tmp.items.map((item) => {
-            return {
+        query: createPagedListQuery(getExchangeRatePagedList, {
+          afterFetch: async (tmp) => ({
+            ...tmp,
+            items: tmp.items.map((item) => ({
               ...item,
               _rowKey: `exchangeRate_${item.id}_${Date.now()}`,
               currencyId: formatCurrencyName(item.currencyId),
-            };
-          });
-
-          return tmp;
-        },
+            })),
+          }),
+        }),
       },
     },
     toolbarConfig: {

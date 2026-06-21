@@ -18,6 +18,7 @@ import {
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { $t } from '#/locales';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -109,16 +110,9 @@ const [Grid, gridApi] =
       },
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, unknown>,
-          ) => {
-            return await getPaymentApplicationPagedList({
-              PageIndex: page.currentPage,
-              PageSize: page.pageSize,
-              ...normalizeQuery(formValues),
-            });
-          },
+          query: createPagedListQuery(getPaymentApplicationPagedList, {
+            mapParams: normalizeQuery,
+          }),
         },
       },
       toolbarConfig: {

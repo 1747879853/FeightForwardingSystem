@@ -34,6 +34,17 @@ import {
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
+import { getSortSessionList } from '#/store/sort-session';
+import {
+  applyDefaultSortable,
+  getEffectiveSortList,
+  isPagedListQuery,
+  isRemoteSortEnabled,
+  parseAbpSorting,
+  runWithSortContext,
+  syncGridSortFromSession,
+  toVxeDefaultSort,
+} from '#/utils/paged-list-query';
 import { buildAttachmentUrl } from '#/utils';
 
 import { ref } from 'vue';
@@ -1507,6 +1518,112 @@ setupVbenVxeTable({
   useVbenForm,
 });
 
+function handleRemoteSortChange(
+  params: Recordable<any>,
+  listKey: string,
+  defaultSort?: string,
+  onSyncStart?: () => void,
+  onSyncEnd?: () => void,
+) {
+  const grid = params?.$grid ?? params?.$table;
+  if (!listKey) {
+    return;
+  }
+
+  const sessionList = getSortSessionList(listKey);
+  const uiSortList =
+    sessionList.length > 0 ? sessionList : parseAbpSorting(defaultSort);
+  onSyncStart?.();
+  try {
+    syncGridSortFromSession(grid, uiSortList);
+  } finally {
+    onSyncEnd?.();
+  }
+}
+
+function enhanceGridOptionsForRemoteSort(
+  options: Recordable<any>,
+  listKey: string,
+) {
+  const gridOptions = options?.gridOptions;
+  if (!gridOptions || !isRemoteSortEnabled(gridOptions)) {
+    return options;
+  }
+
+  const queryFn = gridOptions?.proxyConfig?.ajax?.query;
+  if (!isPagedListQuery(queryFn)) {
+    return options;
+  }
+
+  const pagedSortOptions = queryFn.__pagedSortOptions ?? {};
+  const defaultSort = pagedSortOptions.defaultSort;
+  const columns =
+    applyDefaultSortable(gridOptions.columns) ?? gridOptions.columns;
+  const effectiveSortList = getEffectiveSortList(listKey, defaultSort);
+  const userSortChange = options.gridEvents?.sortChange;
+  let isSyncingSort = false;
+
+  const wrappedQuery = async (
+    params: Recordable<any>,
+    formValues: Recordable<any>,
+  ) => {
+    return runWithSortContext(
+      {
+        listKey,
+        columns,
+        defaultSort,
+        fieldMap: pagedSortOptions.fieldMap,
+      },
+      () => queryFn(params, formValues),
+    );
+  };
+
+  return {
+    ...options,
+    gridEvents: {
+      ...options.gridEvents,
+      sortChange: (params: Recordable<any>) => {
+        if (isSyncingSort) {
+          return;
+        }
+        handleRemoteSortChange(
+          params,
+          listKey,
+          defaultSort,
+          () => {
+            isSyncingSort = true;
+          },
+          () => {
+            isSyncingSort = false;
+          },
+        );
+        if (isFunction(userSortChange)) {
+          userSortChange(params);
+        }
+      },
+    },
+    gridOptions: {
+      ...gridOptions,
+      columns,
+      proxyConfig: {
+        ...gridOptions.proxyConfig,
+        sort: true,
+        ajax: {
+          ...gridOptions.proxyConfig?.ajax,
+          query: wrappedQuery,
+        },
+      },
+      sortConfig: {
+        ...gridOptions.sortConfig,
+        remote: true,
+        multiple: true,
+        chronological: true,
+        defaultSort: toVxeDefaultSort(effectiveSortList),
+      },
+    },
+  };
+}
+
 export const useVbenVxeGrid = <T extends Record<string, any>>(
   ...rest: Parameters<typeof useGrid<T, ComponentType>>
 ) => {
@@ -1545,92 +1662,95 @@ export const useVbenVxeGrid = <T extends Record<string, any>>(
   };
 
   const finalOptions = options
-    ? {
-        ...options,
-        columnPersist: {
-          ...options.columnPersist,
-          tableId: preferredTableId,
-          load:
-            options.columnPersist?.load ??
-            (async ({ keyword }) => {
-              await tableConfigStore.loadTableConfigsOnce();
-              const hit = tableConfigStore.getTableConfigByName(keyword);
-              debugLog('load start', {
-                fromGlobalStore: true,
-                hasLoaded: tableConfigStore.hasLoaded,
-                keyword,
-                preferredTableId,
-              });
-              debugLog('load result', {
-                hit,
-              });
-              if (!hit) {
-                return null;
-              }
-              return { id: hit.id, setting: hit.setting };
-            }),
-          add:
-            options.columnPersist?.add ??
-            (async ({ name, setting }) =>
-              await tableConfigStore.addTableConfig({
-                name,
-                setting,
-              })),
-          edit:
-            options.columnPersist?.edit ??
-            (async ({ id, name, setting }) =>
-              await tableConfigStore.editTableConfig({
-                id,
-                name,
-                setting,
-              })),
-          remove:
-            options.columnPersist?.remove ??
-            (async ({ id }) => await tableConfigStore.removeTableConfig(id)),
+    ? enhanceGridOptionsForRemoteSort(
+        {
+          ...options,
+          columnPersist: {
+            ...options.columnPersist,
+            tableId: preferredTableId,
+            load:
+              options.columnPersist?.load ??
+              (async ({ keyword }) => {
+                await tableConfigStore.loadTableConfigsOnce();
+                const hit = tableConfigStore.getTableConfigByName(keyword);
+                debugLog('load start', {
+                  fromGlobalStore: true,
+                  hasLoaded: tableConfigStore.hasLoaded,
+                  keyword,
+                  preferredTableId,
+                });
+                debugLog('load result', {
+                  hit,
+                });
+                if (!hit) {
+                  return null;
+                }
+                return { id: hit.id, setting: hit.setting };
+              }),
+            add:
+              options.columnPersist?.add ??
+              (async ({ name, setting }) =>
+                await tableConfigStore.addTableConfig({
+                  name,
+                  setting,
+                })),
+            edit:
+              options.columnPersist?.edit ??
+              (async ({ id, name, setting }) =>
+                await tableConfigStore.editTableConfig({
+                  id,
+                  name,
+                  setting,
+                })),
+            remove:
+              options.columnPersist?.remove ??
+              (async ({ id }) => await tableConfigStore.removeTableConfig(id)),
+          },
+          searchPersist: {
+            ...options.searchPersist,
+            tableId: preferredTableId,
+            load:
+              options.searchPersist?.load ??
+              (async ({ keyword }) => {
+                await tableConfigStore.loadSearchFormConfigsOnce();
+                const hit = tableConfigStore.getSearchFormConfigByName(keyword);
+                debugLog('search persist load start', {
+                  fromGlobalStore: true,
+                  hasLoaded: tableConfigStore.searchFormHasLoaded,
+                  keyword,
+                  preferredTableId,
+                });
+                debugLog('search persist load result', {
+                  hit,
+                });
+                if (!hit) {
+                  return null;
+                }
+                return { id: hit.id, setting: hit.setting };
+              }),
+            add:
+              options.searchPersist?.add ??
+              (async ({ name, setting }) =>
+                await tableConfigStore.addSearchFormConfig({
+                  name,
+                  setting,
+                })),
+            edit:
+              options.searchPersist?.edit ??
+              (async ({ id, name, setting }) =>
+                await tableConfigStore.editSearchFormConfig({
+                  id,
+                  name,
+                  setting,
+                })),
+            remove:
+              options.searchPersist?.remove ??
+              (async ({ id }) =>
+                await tableConfigStore.removeSearchFormConfig(id)),
+          },
         },
-        searchPersist: {
-          ...options.searchPersist,
-          tableId: preferredTableId,
-          load:
-            options.searchPersist?.load ??
-            (async ({ keyword }) => {
-              await tableConfigStore.loadSearchFormConfigsOnce();
-              const hit = tableConfigStore.getSearchFormConfigByName(keyword);
-              debugLog('search persist load start', {
-                fromGlobalStore: true,
-                hasLoaded: tableConfigStore.searchFormHasLoaded,
-                keyword,
-                preferredTableId,
-              });
-              debugLog('search persist load result', {
-                hit,
-              });
-              if (!hit) {
-                return null;
-              }
-              return { id: hit.id, setting: hit.setting };
-            }),
-          add:
-            options.searchPersist?.add ??
-            (async ({ name, setting }) =>
-              await tableConfigStore.addSearchFormConfig({
-                name,
-                setting,
-              })),
-          edit:
-            options.searchPersist?.edit ??
-            (async ({ id, name, setting }) =>
-              await tableConfigStore.editSearchFormConfig({
-                id,
-                name,
-                setting,
-              })),
-          remove:
-            options.searchPersist?.remove ??
-            (async ({ id }) =>
-              await tableConfigStore.removeSearchFormConfig(id)),
-        },
-      }
+        preferredTableId,
+      )
     : options;
   debugLog('init', {
     fallbackTableId,

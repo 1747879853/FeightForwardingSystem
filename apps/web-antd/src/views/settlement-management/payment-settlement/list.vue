@@ -19,6 +19,7 @@ import {
 
 import { useColumns, useGridFormSchema } from './data';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 const router = useRouter();
 const actionLoading = ref(false);
@@ -122,16 +123,9 @@ const [Grid, gridApi] =
       },
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, unknown>,
-          ) => {
-            return await getPaymentSettlementPagedList({
-              pageIndex: page.currentPage,
-              pageSize: page.pageSize,
-              ...normalizeQuery(formValues),
-            });
-          },
+          query: createPagedListQuery(getPaymentSettlementPagedList, {
+            mapParams: normalizeQuery,
+          }),
         },
       },
       toolbarConfig: {

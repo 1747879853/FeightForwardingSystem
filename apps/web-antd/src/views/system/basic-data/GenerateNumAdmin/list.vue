@@ -13,6 +13,7 @@ import {
   getGenerateNumPagedList,
 } from '#/api/system/base-data/generate-num-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema, getTableNameLabel } from './data';
 import Form from './modules/form.vue';
@@ -69,6 +70,16 @@ const handleActionClick = ({
   }
 };
 
+const fetchGenerateNumPagedList = (params: Record<string, any>) => {
+  const { pageIndex, pageSize, sorting, ...rest } = params;
+  return getGenerateNumPagedList({
+    skipCount: (pageIndex - 1) * pageSize,
+    maxResultCount: pageSize,
+    sorting,
+    ...rest,
+  });
+};
+
 const [Grid, gridApi] = useVbenVxeGrid<GenerateNumAdminApi.GenerateNumDto>({
   formOptions: {
     schema: useGridFormSchema(),
@@ -84,25 +95,16 @@ const [Grid, gridApi] = useVbenVxeGrid<GenerateNumAdminApi.GenerateNumDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          const skipCount = (page.currentPage - 1) * page.pageSize;
-          const result = await getGenerateNumPagedList({
-            skipCount,
-            maxResultCount: page.pageSize,
-            ...formValues,
-          });
-          return {
+        query: createPagedListQuery(fetchGenerateNumPagedList, {
+          afterFetch: (result) => ({
             ...result,
             items: (result.items ?? []).map((item) => ({
               ...item,
               tableNameDisplay:
                 getTableNameLabel(item.tableName) || item.tableName,
             })),
-          };
-        },
+          }),
+        }),
       },
     },
     toolbarConfig: {

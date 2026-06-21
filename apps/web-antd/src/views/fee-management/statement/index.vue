@@ -15,6 +15,7 @@ import {
 } from '#/api/settlement-management/statement-admin';
 import { $t } from '#/locales';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -60,16 +61,7 @@ const [Grid, gridApi] = useVbenVxeGrid<StatementAdminApi.StatementDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          return await getStatementPagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            ...formValues,
-          });
-        },
+        query: createPagedListQuery(getStatementPagedList),
       },
     },
     toolbarConfig: {

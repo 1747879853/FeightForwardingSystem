@@ -14,6 +14,7 @@ import {
   getFeeNamePagedList,
 } from '#/api/system/base-data/fee-name-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './data';
 import { initCurrencyCache } from '../ExchangeRateAdmin/data';
@@ -86,16 +87,7 @@ const [Grid, gridApi] = useVbenVxeGrid<FeeNameAdminApi.FeeNameDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          return await getFeeNamePagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            ...formValues,
-          });
-        },
+        query: createPagedListQuery(getFeeNamePagedList),
       },
     },
     toolbarConfig: {

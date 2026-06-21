@@ -14,6 +14,7 @@ import {
   getReceiveSettlementPagedList,
 } from '#/api/settlement-management/receive-settlement-admin';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
@@ -83,16 +84,9 @@ const [Grid, gridApi] =
       },
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, unknown>,
-          ) => {
-            return await getReceiveSettlementPagedList({
-              pageIndex: page.currentPage,
-              pageSize: page.pageSize,
-              ...normalizeQuery(formValues),
-            });
-          },
+          query: createPagedListQuery(getReceiveSettlementPagedList, {
+            mapParams: normalizeQuery,
+          }),
         },
       },
       toolbarConfig: {

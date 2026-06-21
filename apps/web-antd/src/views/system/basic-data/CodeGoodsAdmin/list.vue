@@ -13,6 +13,7 @@ import {
   getCodeGoodsPagedList,
 } from '#/api/system/base-data/code-goods-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
@@ -80,16 +81,7 @@ const [Grid, gridApi] = useVbenVxeGrid<CodeGoodsAdminApi.CodeGoodsDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          return await getCodeGoodsPagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            ...formValues,
-          });
-        },
+        query: createPagedListQuery(getCodeGoodsPagedList),
       },
     },
     toolbarConfig: {

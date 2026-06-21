@@ -16,6 +16,7 @@ import {
   createOrUpdateUser,
 } from '#/api';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { combineUserAttribute, useColumns, useGridFormSchema } from './data';
 import Form from './modules/user-form.vue';
@@ -138,29 +139,22 @@ const [Grid, gridApi] = useVbenVxeGrid<SystemUserAdminApi.SystemUser>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          const userAttributeFlags = Array.isArray(
-            formValues.UserAttributeFlags,
-          )
-            ? formValues.UserAttributeFlags
-            : [];
-          const userAttribute =
-            userAttributeFlags.length > 0
-              ? combineUserAttribute(userAttributeFlags)
-              : undefined;
-
-          const { UserAttributeFlags: _ignore, ...restFormValues } = formValues;
-
-          return await getUserPagedList({
-            page: page.currentPage,
-            pageSize: page.pageSize,
-            ...restFormValues,
-            userAttribute,
-          });
-        },
+        query: createPagedListQuery(getUserPagedList, {
+          mapParams: (formValues) => {
+            const userAttributeFlags = Array.isArray(
+              formValues.UserAttributeFlags,
+            )
+              ? formValues.UserAttributeFlags
+              : [];
+            const userAttribute =
+              userAttributeFlags.length > 0
+                ? combineUserAttribute(userAttributeFlags)
+                : undefined;
+            const { UserAttributeFlags: _ignore, ...restFormValues } =
+              formValues;
+            return { ...restFormValues, userAttribute };
+          },
+        }),
       },
     },
     rowConfig: {

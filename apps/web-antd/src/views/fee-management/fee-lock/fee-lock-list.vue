@@ -15,6 +15,7 @@ import {
 } from '#/api/sea-export/fee-lock-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import {
   type FeeLockTreeRow,
@@ -127,21 +128,13 @@ const [Grid, gridApi] = useVbenVxeGrid<FeeLockTreeRow>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, unknown>,
-        ) => {
-          const result = await getFeeLockPagedListApi({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            ...normalizeQuery(formValues),
-          });
-
-          return {
+        query: createPagedListQuery(getFeeLockPagedListApi, {
+          mapParams: normalizeQuery,
+          afterFetch: (result) => ({
             ...result,
             items: buildTreeRows(result.items ?? []),
-          };
-        },
+          }),
+        }),
       },
     },
     toolbarConfig: {

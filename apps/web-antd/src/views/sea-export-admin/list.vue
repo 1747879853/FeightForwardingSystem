@@ -15,7 +15,7 @@ import {
   getSeaExportPagedList,
 } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
-import { buildAttachmentUrl } from '#/utils';
+import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
@@ -98,18 +98,10 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          const query = normalizeQuery(formValues);
-          return await getSeaExportPagedList({
-            PageIndex: page.currentPage,
-            PageSize: page.pageSize,
-            Sorting: 'CreationTime DESC',
-            ...query,
-          });
-        },
+        query: createPagedListQuery(getSeaExportPagedList, {
+          defaultSort: 'CreationTime DESC',
+          mapParams: normalizeQuery,
+        }),
       },
     },
     toolbarConfig: {

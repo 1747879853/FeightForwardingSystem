@@ -695,6 +695,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'receiveFeeStatus',
       title: $t('seaExport.export.orderFee.receiveFeeStatus'),
       minWidth: 110,
+      sortable: false,
       cellRender: {
         name: 'CellTag',
         options: getSeaExportFeeStatusOptions(),
@@ -704,6 +705,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'payFeeStatus',
       title: $t('seaExport.export.orderFee.payFeeStatus'),
       minWidth: 110,
+      sortable: false,
       cellRender: {
         name: 'CellTag',
         options: getSeaExportFeeStatusOptions(),

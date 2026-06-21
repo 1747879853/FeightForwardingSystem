@@ -21,7 +21,7 @@ last_updated: 2026-06-21
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **分页检索：** 表格通过 `getSeaExportPagedList` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`，固定传入 `PageIndex`、`PageSize`、`Sorting: 'CreationTime DESC'`（最新委托优先），并合并查询区条件。
+- **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'CreationTime DESC', mapParams: normalizeQuery })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按创建时间倒序。
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`，`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`，提交前统一转换为 ISO 字符串。
 - **单选行维护：** 列表第一列为 radio 单选，不设置行内操作列；编辑和删除都依赖当前选中行，未选中时提示“请选择一条”。
 - **双击进入编辑：** 双击单元格会先设置当前行为选中态，再跳转 `/sea-exports/{id}/edit`。

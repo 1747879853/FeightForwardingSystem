@@ -55,7 +55,7 @@ import BatchAddModal from './modules/batch-add-modal.vue';
 import BatchEditModal from './modules/batch-edit-modal.vue';
 import SyncUpdateForm from './modules/form.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
-import { buildAttachmentUrl } from '#/utils';
+import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
 import { getCurrentUserMaskedFields } from '#/api/system/permission';
 import { FrightModule } from '#/api/system/permission';
 
@@ -242,6 +242,29 @@ function onActionClick(e: OnActionClickParams<SeFreiPriceOutDto>) {
   }
 }
 
+const mapFreightRateParams = (formValues: Record<string, any>) => {
+  const queryParams: Record<string, any> = {
+    laneId: selectedLineId.value,
+  };
+
+  Object.keys(formValues).forEach((key) => {
+    if (key === 'isValid') {
+      const value = formValues[key];
+      if (Array.isArray(value)) {
+        if (value.length > 0) {
+          queryParams[key] = value;
+        }
+      } else if (value !== null && value !== undefined) {
+        queryParams[key] = value;
+      }
+    } else if (formValues[key] !== null && formValues[key] !== undefined) {
+      queryParams[key] = formValues[key];
+    }
+  });
+
+  return queryParams;
+};
+
 const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
   formOptions: {
     schema: useGridFormSchema(),
@@ -263,51 +286,20 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async (
-          { page }: { page: { currentPage: number; pageSize: number } },
-          formValues: Record<string, any>,
-        ) => {
-          // 处理 isValid 多选参数：如果是数组且为空，则不传递；如果有值则传递数组
-          const queryParams: any = {
-            pageIndex: page.currentPage,
-            pageSize: page.pageSize,
-            sorting: 'Id DESC',
-            laneId: selectedLineId.value, // 添加航线ID作为查询参数
-          };
-
-          // 遍历表单值，特殊处理 isValid
-          Object.keys(formValues).forEach((key) => {
-            if (key === 'isValid') {
-              const value = formValues[key];
-              // 如果是数组且有值，传递数组；如果是空数组或null/undefined，不传递
-              if (Array.isArray(value)) {
-                if (value.length > 0) {
-                  queryParams[key] = value;
-                }
-              } else if (value !== null && value !== undefined) {
-                queryParams[key] = value;
-              }
-            } else {
-              // 其他字段正常传递
-              if (formValues[key] !== null && formValues[key] !== undefined) {
-                queryParams[key] = formValues[key];
-              }
-            }
-          });
-
-          const result = await getSeFreiPriceList(queryParams);
-          // 适配新的返回结构
-          const items = result.items || [];
-          // 更新表格数据用于生成动态列
-          tableData.value = items;
-
-          return {
-            items,
-            totalCount: result.totalCount || 0,
-            pageIndex: result.currentPage || 1,
-            pageSize: result.totalPages || 10,
-          };
-        },
+        query: createPagedListQuery(getSeFreiPriceList, {
+          defaultSort: 'Id DESC',
+          mapParams: mapFreightRateParams,
+          afterFetch: (result) => {
+            const items = result.items || [];
+            tableData.value = items;
+            return {
+              items,
+              totalCount: result.totalCount || 0,
+              pageIndex: result.currentPage || 1,
+              pageSize: result.totalPages || 10,
+            };
+          },
+        }),
       },
     },
     rowConfig: {

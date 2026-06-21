@@ -6,6 +6,7 @@ import { Page } from '@vben/common-ui';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getOrderFeeTaskList } from '#/api/audit-approval/expense-admin';
 import { $t } from '#/locales';
+import { createPagedListQuery } from '#/utils/paged-list-query';
 import { useExpenseAllColumns, useGridFormSchema } from '../data';
 import { Plus, ArrowDown, ArrowLeft } from '@vben/icons';
 import { IconifyIcon } from '@vben/icons';
@@ -72,16 +73,7 @@ const [Grid, gridApi] =
       },
       proxyConfig: {
         ajax: {
-          query: async (
-            { page }: { page: { currentPage: number; pageSize: number } },
-            formValues: Record<string, any>,
-          ) => {
-            return await getOrderFeeTaskList({
-              PageIndex: page.currentPage,
-              PageSize: page.pageSize,
-              ...formValues,
-            });
-          },
+          query: createPagedListQuery(getOrderFeeTaskList),
         },
       },
       toolbarConfig: {
