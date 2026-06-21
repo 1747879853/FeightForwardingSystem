@@ -351,10 +351,17 @@ function handleOpenAddFee() {
     message.warning('当前银行流水未关联结算对象');
     return;
   }
+  const currencyId = bankStatementDetail.value?.currencyId;
+  if (!currencyId) {
+    message.warning('当前银行流水未关联币别');
+    return;
+  }
   addFeeDrawerRef.value?.open({
     receiveSettlementId: editId.value,
     settlementId: bankStatementSettlementId.value,
     settlementName: bankStatementSettlementName.value,
+    currencyId,
+    currencyCode: bankStatementDetail.value?.currencyCode,
     selectedFeeIds: selectedFeeIds.value,
   });
 }

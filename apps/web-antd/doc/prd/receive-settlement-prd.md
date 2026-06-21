@@ -236,13 +236,14 @@ reference: apps/web-antd/doc/modules/settlement-management/receive-settlement.md
 
 ### 6.2 GetOrderFeeGroupAsync 查询参数
 
-| 参数                     | 说明                     |
-| ------------------------ | ------------------------ |
-| `receiveSettlementId`    | 编辑态传入，排除本单已选 |
-| `settlementId`           | 银行流水关联付款方 ID    |
-| `commissionNum`          | 可选                     |
-| `mblNum`                 | 可选                     |
-| `pageIndex` / `pageSize` | 分页                     |
+| 参数                     | 说明                              |
+| ------------------------ | --------------------------------- |
+| `receiveSettlementId`    | 编辑态传入，排除本单已选          |
+| `settlementId`           | 银行流水关联付款方 ID             |
+| `currencyId`             | 银行流水币别 ID，与流水一致且只读 |
+| `commissionNum`          | 可选                              |
+| `mblNum`                 | 可选                              |
+| `pageIndex` / `pageSize` | 分页                              |
 
 ---
 
