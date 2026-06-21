@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-21] [收费结算新建页银行流水弹窗改用权限过滤接口](./changelogs/change-log-2026-06-21-receive-settlement-bank-picker-permission-api.md)
 - [2026-06-21] [付费申请添加费用抽屉新增主提单号与箱型箱量列](./changelogs/change-log-2026-06-21-payment-application-add-fee-mbl-ctn-columns.md)
 - [2026-06-20] [银行流水列表操作人列展示姓名](./changelogs/change-log-2026-06-20-bank-statement-list-operator-display.md)
 - [2026-06-20] [银行流水编辑页操作人回显姓名](./changelogs/change-log-2026-06-20-bank-statement-operator-display.md)

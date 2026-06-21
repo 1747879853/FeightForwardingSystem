@@ -2,7 +2,7 @@
 title: 收费结算
 module: 结算管理
 author: Cursor Agent
-last_updated: 2026-06-14
+last_updated: 2026-06-21
 ---
 
 # 1. 业务背景说明 (Background)
@@ -30,7 +30,7 @@ last_updated: 2026-06-14
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **银行流水** | 收款实际到账的流水记录，是收费结算主表必填归属。 | **银行流水**<br/>`BankStatementAdmin/GetPagedListAsync`、`DetailAsync`、`GetReceiveSettlementPagedListAsync` | 列表查询区通过 `BankStatementSelect` 筛选；新建表单可 picker 选择；从银行流水页进入时通过 `bankStatementId` query 预填。选中后在表单上方 Card 展示流水基础信息与结算进度（已结算不含本单、剩余可结算、本单合计）。 | 新建必填；已有结算明细后不能更换。保存时本单合计不得超过流水剩余可结算金额。 |
+| **银行流水** | 收款实际到账的流水记录，是收费结算主表必填归属。 | **银行流水**<br/>收费结算表单：`BankStatement/GetPagedListAsync`、`DetailAsync`、`GetReceiveSettlementPagedListAsync`（按当前用户操作人权限过滤）；列表筛选下拉：`BankStatementAdmin/*` | 列表查询区通过 `BankStatementSelect` 筛选；新建表单 picker 选择；从银行流水页进入时通过 `bankStatementId` query 预填。选中后在表单上方 Card 展示流水基础信息与结算进度（已结算不含本单、剩余可结算、本单合计）。 | 新建必填；已有结算明细后不能更换。保存时本单合计不得超过流水剩余可结算金额。 |
 | **结算时间** | 本次收费结算发生时间。 | **收费结算**<br/>`ReceiveSettlementAdmin/AddAsync`、`EditAsync` | 新建默认当前时间，可手动调整；编辑保存只提交该字段与备注。 | 必填；锁定后只读。 |
 | **结算明细** | 本次结算关联的订单费用集合。 | **收费结算**<br/>`GetOrderFeeGroupAsync`、`AddItemsAsync`、`DeleteItemsAsync` | 选费抽屉按业务分组返回可结算费用，确认后追加到主表明细；结算对象随银行流水固定，抽屉内不可修改。 | 新建不能为空；费用不可重复；本次结算金额必须大于 0 且不超过剩余额度。 |
 | **剩余额度** | 费用可继续被收费结算占用的金额。 | **收费结算**<br/>`GetOrderFeeGroupAsync` | 抽屉默认将本次结算金额填为剩余额度。 | 前端限制不超过 `remainingAmount`，后端继续校验。 |
@@ -48,6 +48,9 @@ last_updated: 2026-06-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-21 | `Fix` | 收费结算拉取银行流水下关联结算列表改用 `BankStatement/GetReceiveSettlementPagedListAsync`。 | `loadBankStatementSummary` 中已结算汇总走 `getBankStatementReceiveSettlementPagedListByPermission`；银行流水编辑页子表仍用 Admin 接口。 |
+| 2026-06-21 | `Fix` | 收费结算拉取银行流水详情改用 `BankStatement/DetailAsync`，与 picker 权限过滤接口一致。 | `loadBankStatementSummary` 中详情走 `getBankStatementDetailByPermission`。 |
+| 2026-06-21 | `Fix` | 新建收费结算「选择银行流水」弹窗改用 `BankStatement/GetPagedListAsync`，仅展示当前用户有操作权限或未配置操作人的流水。 | 新增 `getBankStatementPagedListByPermission`；picker 与 Admin 列表/下拉职责分离。 |
 | 2026-06-14 | `Style` | 收费结算表单优化：流水汇总金额分色展示；结算单号新建/编辑均以文本展示；明细删除改为勾选行 + 工具栏删除；添加明细按钮改为小尺寸带图标。 | 明细区 `canManageItems` 统一控制勾选列与工具栏；编辑态批量删除走 `DeleteItemsAsync` 一次提交多个 `receiveSettlementItemIds`。 |
 | 2026-06-14 | `Feature` | 收费结算表单新增「银行流水信息」Card，展示流水基础字段及已结算/剩余可结算/本单合计；剩余不足标红，保存超限拦截。 | `loadBankStatementSummary` 并行拉 `DetailAsync` 与 `GetReceiveSettlementPagedListAsync`；编辑态汇总排除当前 `editId`，本单合计由明细 `settledAmount` computed 实时汇总。 |
 | 2026-06-14 | `Fix` | 修复添加明细抽屉与新建页结算明细表中「本次结算金额」无法输入的问题；抽屉内输入金额时自动勾选对应费用。 | 列配置中 `slots.customRender` 与 `#bodyCell` 冲突导致 InputNumber 未渲染，改为 `key` + `#bodyCell` 匹配。 |

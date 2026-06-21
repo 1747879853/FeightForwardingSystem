@@ -23,7 +23,7 @@
 | fee-management | `/fee-management/statement/:id/edit` | 费用管理 | 编辑已有对账单，在状态允许时调整主信息和费用明细。 | [对账单编辑](./modules/fee-management/statement-id-edit.md) | 2026-05-16 |
 | settlement-management | `/bank-statement` | 结算管理 | 银行流水列表，检索流水并进入新建/编辑；操作人列展示姓名。 | [银行流水列表](./modules/settlement-management/bank-statement-list.md) | 2026-06-20 |
 | settlement-management | `/bank-statement/edit/:id` | 结算管理 | 银行流水编辑页，维护流水信息与操作人，并展示关联收费结算子表。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-06-20 |
-| settlement-management | `/settlement-management/receive-settlement` | 结算管理 | 收费结算列表与编辑入口，查询区支持按银行流水筛选、锁定只读和银行流水页联动。 | [收费结算](./modules/settlement-management/receive-settlement.md) | 2026-06-14 |
+| settlement-management | `/settlement-management/receive-settlement` | 结算管理 | 收费结算列表与编辑入口，查询区支持按银行流水筛选、锁定只读和银行流水页联动。 | [收费结算](./modules/settlement-management/receive-settlement.md) | 2026-06-21 |
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-05-16 |
 | audit-approval | `/audit-approval/payment-review` | 审核审批 | 处理付款申请单的审核任务，支持批量或单条通过、驳回。 | [付款申请审核](./modules/audit-approval/payment-review.md) | 2026-05-16 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 展示单个费用审核任务的详细信息和对应费用实体。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-05-16 |
