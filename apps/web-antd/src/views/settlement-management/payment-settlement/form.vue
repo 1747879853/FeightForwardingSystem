@@ -1057,28 +1057,43 @@ function filterCurrencyGroupWithSettlement(
 ): PaymentApplicationAdminApi.CurrencyGroupForSettlementDto[] {
   if (!record.application.currencyGroup) return [];
 
-  // 固定币别申请：不显示第二层
-  if (record.application.currencyId) return [];
-
   // 原币申请：
   // - 编辑模式：显示所有币别（包括结算金额为0的），方便用户查看完整信息
   // - 新增模式：只显示用户填写了有效结算金额的币别
-  if (isEdit.value) {
-    // 编辑模式：返回所有币别
-    return record.application.currencyGroup;
+  if (!record.application.currencyId) {
+    // 原币申请
+    if (isEdit.value) {
+      // 编辑模式：返回所有币别
+      return record.application.currencyGroup;
+    } else {
+      // 新增模式：只显示有有效结算金额的币别
+      return record.application.currencyGroup.filter((currency) => {
+        const settledAmount = getSettledAmountForCurrency(
+          record.userCurrencyItems,
+          currency.id,
+        );
+        return (
+          settledAmount !== undefined &&
+          settledAmount !== null &&
+          settledAmount !== 0
+        );
+      });
+    }
   } else {
-    // 新增模式：只显示有有效结算金额的币别
-    return record.application.currencyGroup.filter((currency) => {
-      const settledAmount = getSettledAmountForCurrency(
-        record.userCurrencyItems,
-        currency.id,
-      );
-      return (
-        settledAmount !== undefined &&
-        settledAmount !== null &&
-        settledAmount !== 0
-      );
-    });
+    // 固定币别申请：也应该显示第二层（只有一个币别）
+    // 编辑模式：显示该币别
+    if (isEdit.value) {
+      return record.application.currencyGroup;
+    } else {
+      // 新增模式：检查是否有有效的结算金额
+      return record.application.currencyGroup.filter(() => {
+        return (
+          record.userSettledPrice !== undefined &&
+          record.userSettledPrice !== null &&
+          record.userSettledPrice !== 0
+        );
+      });
+    }
   }
 }
 
@@ -1163,86 +1178,27 @@ function convertCurrencyGroupForDetailToSettlement(
     }
   });
 
-  // 转换费用列表
-  const convertedOrderFees = orderFees.map((fee) =>
-    convertOrderFeeForDetailToSettlement(fee),
-  );
+  // 直接使用详情接口返回的 orderFees，保留所有原始字段
+  const convertedOrderFees = orderFees.map((fee) => ({
+    ...fee,
+    transportOrder: undefined, // 详情接口不包含此字段
+  })) as any;
 
   return {
     id: detailCurrency.id,
     code: detailCurrency.code,
     receiveAmount,
-    receivePrice: undefined, // 原币申请为 null
+    receivePrice: undefined,
     payAmount,
-    payPrice: undefined, // 原币申请为 null
+    payPrice: undefined,
     totalUnSettledAmount,
     settleableUpperLimit,
-    settleablePriceUpperLimit: undefined, // 原币申请为 null
+    settleablePriceUpperLimit: undefined,
     settleableLowerLimit,
-    settleablePriceLowerLimit: undefined, // 原币申请为 null
-    settledAmount: detailCurrency.settledAmount, // 保留本次结算金额字段
+    settleablePriceLowerLimit: undefined,
+    settledAmount: detailCurrency.settledAmount,
     orderFees: convertedOrderFees,
-  } as any; // 使用类型断言，允许添加 settledAmount 字段到返回对象中
-}
-
-/** 将详情接口的费用转换为选择列表格式 */
-function convertOrderFeeForDetailToSettlement(
-  detailFee: PaymentSettlementAdminApi.OrderFeeDto,
-): PaymentApplicationAdminApi.OrderFeeForSettlementDto {
-  return {
-    // 基类字段
-    id: detailFee.id,
-    creationTime: '', // 详情接口可能没有这个字段
-    creatorUserId: undefined,
-    lastModificationTime: undefined,
-    lastModifierUserId: undefined,
-    userId: 0,
-    organizationUnits: [],
-    companys: detailFee.companys || [],
-
-    // 本体字段
-    transportOrderId: detailFee.id, // 临时使用 fee.id，实际应该从其他地方获取
-    changeOrderId: undefined,
-    paySide: detailFee.paySide || 0,
-    feeStatus: detailFee.feeStatus || 0,
-    settlementStatus: 0,
-    invoiceStatus: 0,
-    feeCodeId: 0,
-    industryCategory: 0,
-    settlementId: '',
-    settlementName: detailFee.settlementName || '',
-    currencyId: 0,
-    currencyCode: detailFee.currencyCode || '',
-    currencyName: '',
-    exchangeRate: 0,
-    unitPrice: detailFee.unitPrice || 0,
-    amount: detailFee.amount || 0,
-    unit: detailFee.unit || '',
-    quantity: detailFee.quantity || 0,
-    taxIncluded: false,
-    taxRate: 0,
-    noTaxUnitPrice: 0,
-    noTaxAmount: 0,
-    invoicedAmount: 0,
-    orderInvoiceAmount: 0,
-    unInvoicedAmount: detailFee.unInvoicedAmount || 0,
-    settledAmount: detailFee.settledAmount || 0,
-    unSettledAmount: detailFee.unSettledAmount || 0,
-    canInvoice: false,
-    isConfidential: false,
-    dataEntryMethod: 0,
-    remark: detailFee.remark || '',
-    localCurrencyCode: '',
-    creatorUserName: '',
-    rqstPaymentAmount: 0,
-    unRqstPaymentAmount: 0,
-
-    // 本次结算量（关键：保留这个字段用于第三层显示）
-    thisSettledAmount: detailFee.thisSettledAmount,
-
-    // 关联业务信息（需要从其他地方获取）
-    transportOrder: undefined,
-  };
+  } as any;
 }
 
 /** 监听结算对象变化，更新名称并清空银行信息 */

@@ -430,6 +430,35 @@ function formatUnsettledRange(upperLimit: number, lowerLimit: number): string {
   return `[${formatAmount(lowerLimit)} ~ ${formatAmount(upperLimit)}]`;
 }
 
+// 获取原币申请的未结算费用统计（按币别分组）
+function getCurrencyGroupUnsettledTotal(
+  record: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto,
+): string {
+  // 如果是固定币别申请，不显示此统计
+  if (record.currencyId) {
+    return '';
+  }
+
+  // 原币申请：统计所有币别分组的未结算费用
+  if (!record.currencyGroup || record.currencyGroup.length === 0) {
+    return '-';
+  }
+
+  const currencyStats = record.currencyGroup
+    .map((group: any) => {
+      const unsettledAmount =
+        (group.settleableUpperLimit ?? 0) + (group.settleableLowerLimit ?? 0);
+      // 只显示有未结算费用的币别
+      if (unsettledAmount !== 0) {
+        return `${group.code}:${formatAmount(unsettledAmount)}`;
+      }
+      return null;
+    })
+    .filter((item): item is string => item !== null);
+
+  return currencyStats.length > 0 ? currencyStats.join('  ') : '-';
+}
+
 // 获取公司名称
 function getCompanyName(
   record: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto,
@@ -946,14 +975,31 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
         </template>
 
         <template v-else-if="column.key === 'unSettledAmount'">
-          {{
-            ((
-              record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
-            ).totalSettleablePriceUpperLimit ?? 0) +
-            ((
-              record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
-            ).totalSettleablePriceLowerLimit ?? 0)
-          }}
+          <!-- 固定币别申请：显示原有的计算方式 -->
+          <span
+            v-if="
+              (
+                record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+              ).currencyId
+            "
+          >
+            {{
+              ((
+                record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+              ).totalSettleablePriceUpperLimit ?? 0) +
+              ((
+                record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+              ).totalSettleablePriceLowerLimit ?? 0)
+            }}
+          </span>
+          <!-- 原币申请：显示各币别的未结算费用统计 -->
+          <span v-else>
+            {{
+              getCurrencyGroupUnsettledTotal(
+                record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto,
+              )
+            }}
+          </span>
         </template>
 
         <template v-else-if="column.key === 'settledPrice'">
