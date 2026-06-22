@@ -547,6 +547,7 @@ export type ComponentType =
   | 'SigningInfoInput'
   | 'ServiceItemInput'
   | 'BillCountsInput'
+  | 'FrtPrepareInput'
   | 'OrderGoodsButton'
   | 'OrderUsersButton'
   | BaseFormComponentType;
@@ -721,6 +722,9 @@ async function initComponentAdapter() {
     BillCountsInput: defineAsyncComponent(
       () => import('./bill-counts-input.vue'),
     ),
+    FrtPrepareInput: defineAsyncComponent(
+      () => import('./frt-prepare-input.vue'),
+    ),
     nameInput: defineAsyncComponent(() => import('./biz-input/name-input.vue')),
   };
 
@@ -746,6 +750,7 @@ export { initComponentAdapter };
 export {
   ClientSelect,
   ClientBankAccountSelect,
+  CodeSourceSelect,
   CurrencySelect,
   OrganizationSelect,
   OrgBankAccountSelect,

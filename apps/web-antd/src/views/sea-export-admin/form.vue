@@ -35,6 +35,7 @@ import {
   Modal,
   Popover,
   Radio,
+  Select,
   Space,
   Spin,
   Tag,
@@ -47,7 +48,7 @@ defineOptions({
   name: 'SeaExportAdminForm',
 });
 const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
-import { UserSelect } from '#/adapter/component';
+import { CodeSourceSelect, UserSelect } from '#/adapter/component';
 import { useVbenForm } from '#/adapter/form';
 import { runVisionOcrPdf } from '#/api/common';
 import {
@@ -70,8 +71,9 @@ import { toEnglishUpperCase } from '#/utils/english-upper-case';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
-import ReadonlyFormItem from './modules/readonly-form-item.vue';
 import {
+  getBillTypeOptions,
+  getBlTypeOptions,
   useBasicInfoFormSchema,
   useCargoFormSchema,
   usePartyInfoFormSchema,
@@ -199,22 +201,23 @@ const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
   wrapperClass: 'party-flow-wrap grid-cols-6 gap-x-4',
 });
 
-const ENTRUST_STATIC_FIELD_NAMES = [
+const BASIC_INFO_HEADER_READONLY_FIELD_NAMES = [
   'commissionNum',
   'countryName',
   'laneName',
   'accountDate',
   'settlementDate',
-];
-const ENTRUST_FORM_FIELD_NAMES = [
-  'codeSourceId',
-  'codeFrtId',
-  'prepareAtId',
-  'codeServiceId',
-  'tradeTermsType',
+] as const;
+const BASIC_INFO_HEADER_SELECT_FIELD_NAMES = [
   'blType',
   'billType',
-];
+  'codeSourceId',
+] as const;
+const BASIC_INFO_MERGED_ENTRUST_FIELD_NAMES = [
+  'codeFrtId',
+  'codeServiceId',
+  'tradeTermsType',
+] as const;
 const BASIC_INFO_FIELD_ORDER = [
   'clientId',
   'carrierId',
@@ -232,6 +235,9 @@ const BASIC_INFO_FIELD_ORDER = [
   'signingPortId',
   'signingTime',
   'noBillEnum',
+  'codeFrtId',
+  'codeServiceId',
+  'tradeTermsType',
 ] as const;
 const BASIC_INFO_FIELD_ORDER_MAP = new Map(
   BASIC_INFO_FIELD_ORDER.map((fieldName, index) => [fieldName, index]),
@@ -395,7 +401,7 @@ const SERVICE_REQUIRE_FIELD_LABEL_KEY: Record<string, string> = {
   clientId: 'seaExport.export.clientId',
 };
 
-/** 右侧表单：基础信息 */
+/** 中间表单：基础信息 */
 const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
@@ -403,14 +409,32 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
     labelClass: VERTICAL_FORM_LABEL_CLASS,
   },
   schema: [
-    ...useBasicInfoFormSchema(isEdit.value).filter(
-      (item) =>
-        ![
-          ...ENTRUST_STATIC_FIELD_NAMES,
-          ...ENTRUST_FORM_FIELD_NAMES,
-          'cargoId',
-        ].includes(item.fieldName),
-    ),
+    ...useBasicInfoFormSchema(isEdit.value)
+      .filter(
+        (item) =>
+          !BASIC_INFO_HEADER_READONLY_FIELD_NAMES.includes(
+            item.fieldName as (typeof BASIC_INFO_HEADER_READONLY_FIELD_NAMES)[number],
+          ) && item.fieldName !== 'cargoId',
+      )
+      .map((item) => {
+        const isHeaderSelectField =
+          BASIC_INFO_HEADER_SELECT_FIELD_NAMES.includes(
+            item.fieldName as (typeof BASIC_INFO_HEADER_SELECT_FIELD_NAMES)[number],
+          );
+        const isMergedEntrustField =
+          BASIC_INFO_MERGED_ENTRUST_FIELD_NAMES.includes(
+            item.fieldName as (typeof BASIC_INFO_MERGED_ENTRUST_FIELD_NAMES)[number],
+          );
+        return {
+          ...item,
+          componentProps: withSmallComponentProps(item.componentProps),
+          formItemClass: isHeaderSelectField
+            ? 'hidden'
+            : isMergedEntrustField
+              ? 'col-span-1'
+              : item.formItemClass,
+        };
+      }),
     ...useShipmentFormSchema().filter((item) =>
       BASIC_MODULE_EXTRA_FIELD_NAMES.includes(
         item.fieldName as (typeof BASIC_MODULE_EXTRA_FIELD_NAMES)[number],
@@ -434,41 +458,34 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   wrapperClass: 'basic-info-wrap form-controls-small grid-cols-6 gap-x-4',
 });
 
-/** 左侧表单：委托信息 */
-const [EntrustInfoForm, entrustInfoFormApi] = useVbenForm({
-  layout: 'horizontal',
-  compact: true,
-  schema: useBasicInfoFormSchema(isEdit.value)
-    .filter((item) => ENTRUST_FORM_FIELD_NAMES.includes(item.fieldName))
-    .sort(
-      (a, b) =>
-        ENTRUST_FORM_FIELD_NAMES.indexOf(a.fieldName) -
-        ENTRUST_FORM_FIELD_NAMES.indexOf(b.fieldName),
-    )
-    .map((item) => ({
-      ...item,
-      componentProps: withSmallComponentProps(item.componentProps),
-      formItemClass:
-        item.fieldName === 'blType' || item.fieldName === 'billType'
-          ? `col-span-1 entrust-top-label-item${
-              item.fieldName === 'billType'
-                ? ' entrust-top-label-item--bill-type'
-                : ''
-            }`
-          : 'col-span-2',
-      labelClass:
-        item.fieldName === 'billType'
-          ? [item.labelClass, 'w-full justify-end text-right']
-              .filter(Boolean)
-              .join(' ')
-          : item.labelClass,
-    })),
-  showDefaultActions: false,
-  commonConfig: {
-    labelWidth: 60,
-  },
-  wrapperClass: 'grid-cols-2 gap-x-2',
-});
+const blTypeOptions = computed(() => getBlTypeOptions());
+const billTypeOptions = computed(() => getBillTypeOptions());
+const headerBlType = ref<number | undefined>();
+const headerBillType = ref<number | undefined>();
+const headerCodeSourceId = ref<number | undefined>();
+const headerCodeSourceSelectedItems = ref<any[]>([]);
+
+const syncBasicInfoHeaderFields = async () => {
+  const values = await basicInfoFormApi.getValues();
+  headerBlType.value = values.blType;
+  headerBillType.value = values.billType;
+  headerCodeSourceId.value = values.codeSourceId;
+};
+
+const handleHeaderBlTypeChange = async (value: number | undefined) => {
+  headerBlType.value = value;
+  await basicInfoFormApi.setFieldValue('blType', value);
+};
+
+const handleHeaderBillTypeChange = async (value: number | undefined) => {
+  headerBillType.value = value;
+  await basicInfoFormApi.setFieldValue('billType', value);
+};
+
+const handleHeaderCodeSourceChange = async (value: number | undefined) => {
+  headerCodeSourceId.value = value;
+  await basicInfoFormApi.setFieldValue('codeSourceId', value);
+};
 
 /** 右侧表单：船期信息 */
 const [ShipmentForm, shipmentFormApi] = useVbenForm({
@@ -730,7 +747,6 @@ const getRequiredFieldLabelByProp = (propEnum: number) => {
 const collectCurrentFormValues = async () => {
   const [
     partyValues,
-    entrustValues,
     basicValues,
     shipmentValues,
     portValues,
@@ -740,7 +756,6 @@ const collectCurrentFormValues = async () => {
     cargoRemarkValues,
   ] = await Promise.all([
     partyInfoFormApi.getValues(),
-    entrustInfoFormApi.getValues(),
     basicInfoFormApi.getValues(),
     shipmentFormApi.getValues(),
     portFormApi.getValues(),
@@ -754,7 +769,6 @@ const collectCurrentFormValues = async () => {
     accountDate: entrustReadonlyInfo.value.accountDate,
     settlementDate: entrustReadonlyInfo.value.settlementDate,
     ...partyValues,
-    ...entrustValues,
     ...basicValues,
     ...shipmentValues,
     ...portValues,
@@ -1166,15 +1180,38 @@ const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
 });
 const cargoMainFieldNames = new Set(['marks', 'goodsDes']);
 const cargoMetricsFieldNames = new Set(['pkgs', 'codePackageId', 'kgs', 'cbm']);
-const cargoRemarkFieldNames = new Set(['remark', 'internalRemark']);
+const cargoRemarkFieldNames = ['internalRemark', 'remark'] as const;
 const cargoRemarkSchema = cargoSchema
-  .filter((item) => cargoRemarkFieldNames.has(item.fieldName))
+  .filter((item) =>
+    (cargoRemarkFieldNames as readonly string[]).includes(item.fieldName),
+  )
   .map((item) => ({
     ...item,
-    formItemClass: 'col-span-6',
+    label:
+      item.fieldName === 'internalRemark'
+        ? '备注信息'
+        : item.fieldName === 'remark'
+          ? '外部备注'
+          : item.label,
+    componentProps: {
+      allowClear: true,
+      rows: 3,
+      style: { minHeight: '72px' },
+    },
+    formItemClass: 'col-span-2 party-remark-field',
   }));
 
-/** 中间表单：货物信息 — 唛头 / 货描 */
+/** 收发通区块：备注信息 */
+const [CargoRemarkForm, cargoRemarkFormApi] = useVbenForm({
+  layout: 'vertical',
+  compact: true,
+  commonConfig: {
+    labelClass: VERTICAL_FORM_LABEL_CLASS,
+  },
+  schema: cargoRemarkSchema,
+  showDefaultActions: false,
+  wrapperClass: 'party-remark-wrap grid-cols-6 gap-x-4',
+});
 const [CargoMainForm, cargoMainFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
@@ -1212,16 +1249,7 @@ const [CargoMetricsForm, cargoMetricsFormApi] = useVbenForm({
   wrapperClass: 'cargo-metrics-wrap form-controls-small grid-cols-1',
 });
 
-/** 左侧表单：备注信息 */
-const [CargoRemarkForm, cargoRemarkFormApi] = useVbenForm({
-  layout: 'vertical',
-  compact: true,
-  schema: cargoRemarkSchema,
-  showDefaultActions: false,
-  wrapperClass: 'grid-cols-6 gap-x-4',
-});
-
-/** 箱型箱量数据（由 OrderCtnTable 管理） */
+/** 中间表单：货物信息 — 唛头 / 货描 */
 const orderCtns = ref<SeaExportAdminApi.OrderCtnAddDto[]>([]);
 const entrustReadonlyInfo = ref({
   commissionNum: '',
@@ -1230,8 +1258,6 @@ const entrustReadonlyInfo = ref({
   laneName: '',
   accountDateText: '',
   settlementDateText: '',
-  isBusinessLocking: false,
-  feeLocked: false,
   accountDate: undefined as unknown,
   settlementDate: undefined as unknown,
 });
@@ -1248,8 +1274,6 @@ const refreshEntrustReadonlyInfo = (values: Record<string, any>) => {
     settlementDateText: values.settlementDate
       ? dayjs(values.settlementDate).format('YYYY-MM-DD')
       : '-',
-    isBusinessLocking: !!values.isBusinessLocking,
-    feeLocked: !!values.feeLocked,
     accountDate: values.accountDate,
     settlementDate: values.settlementDate,
   };
@@ -2043,7 +2067,6 @@ const buildAiRecognizedFormValues = (payload: unknown) => {
 const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
   await Promise.all([
     partyInfoFormApi.setValues(values),
-    entrustInfoFormApi.setValues(values),
     basicInfoFormApi.setValues(values),
     shipmentFormApi.setValues(values),
     portFormApi.setValues(values),
@@ -2061,6 +2084,7 @@ const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
     settlementDate:
       values.settlementDate ?? entrustReadonlyInfo.value.settlementDate,
   });
+  await syncBasicInfoHeaderFields();
 };
 
 /** 提交时 dayjs/日期 转回 ISO 字符串 */
@@ -2325,49 +2349,6 @@ const loadEditData = async () => {
       },
     ]);
 
-    entrustInfoFormApi.updateSchema([
-      {
-        fieldName: 'codeSourceId',
-        componentProps: {
-          selectedItems: toSelectedItems(
-            to?.codeSourceId,
-            (to as any)?.codeSourceName,
-            'cnName',
-          ),
-        },
-      },
-      {
-        fieldName: 'codeFrtId',
-        componentProps: {
-          selectedItems: toSelectedItems(
-            to?.codeFrtId,
-            (to as any)?.codeFrtName,
-            'cnName',
-          ),
-        },
-      },
-      {
-        fieldName: 'prepareAtId',
-        componentProps: {
-          selectedItems: toSelectedItems(
-            formValues.prepareAtId,
-            (to as any)?.prepareAtName ?? (detail as any)?.prepareAtName,
-            'portName',
-          ),
-        },
-      },
-      {
-        fieldName: 'codeServiceId',
-        componentProps: {
-          selectedItems: toSelectedItems(
-            to?.codeServiceId,
-            (to as any)?.codeServiceName,
-            'cnName',
-          ),
-        },
-      },
-    ]);
-
     basicInfoFormApi.updateSchema([
       {
         fieldName: 'clientId',
@@ -2468,6 +2449,39 @@ const loadEditData = async () => {
           size: 'small',
         },
       },
+      {
+        fieldName: 'codeFrtId',
+        componentProps: {
+          frtProps: {
+            selectedItems: toSelectedItems(
+              to?.codeFrtId,
+              (to as any)?.codeFrtName,
+              'cnName',
+            ),
+            allowClear: true,
+          },
+          prepareProps: {
+            selectedItems: toSelectedItems(
+              formValues.prepareAtId,
+              (to as any)?.prepareAtName ?? (detail as any)?.prepareAtName,
+              'portName',
+            ),
+            allowClear: true,
+          },
+          size: 'small',
+        },
+      },
+      {
+        fieldName: 'codeServiceId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            to?.codeServiceId,
+            (to as any)?.codeServiceName,
+            'cnName',
+          ),
+          size: 'small',
+        },
+      },
     ]);
     shipmentFormApi.updateSchema([
       {
@@ -2553,7 +2567,6 @@ const loadEditData = async () => {
 
     await Promise.all([
       partyInfoFormApi.setValues(formValues),
-      entrustInfoFormApi.setValues(formValues),
       basicInfoFormApi.setValues(formValues),
       shipmentFormApi.setValues(formValues),
       portFormApi.setValues(formValues),
@@ -2565,6 +2578,12 @@ const loadEditData = async () => {
     initializeOrderUsersPanel(to?.orderUsers ?? []);
     const { savedSet, taskMap } = parseDetailServiceTypes(detail);
     refreshEntrustReadonlyInfo(formValues);
+    headerCodeSourceSelectedItems.value = toSelectedItems(
+      to?.codeSourceId,
+      (to as any)?.codeSourceName,
+      'cnName',
+    );
+    await syncBasicInfoHeaderFields();
 
     orderCtns.value = normalizeOrderCtnsWithRowKey(
       detail.transportOrder?.orderCtns as any,
@@ -2630,8 +2649,8 @@ const buildDto = (values: Record<string, any>) => {
     accountDate: toDateString(values.accountDate),
     settlementDate: toDateString(values.settlementDate),
     codeSourceId: values.codeSourceId ?? undefined,
-    isBusinessLocking: entrustReadonlyInfo.value.isBusinessLocking,
-    feeLocked: entrustReadonlyInfo.value.feeLocked,
+    isBusinessLocking: values.isBusinessLocking,
+    feeLocked: values.feeLocked,
     codeFrtId: values.codeFrtId ?? undefined,
     prepareAtId: values.prepareAtId ?? undefined,
     codeServiceId: values.codeServiceId ?? undefined,
@@ -2682,7 +2701,6 @@ const buildDto = (values: Record<string, any>) => {
 const handleSubmit = async () => {
   const [
     partyResult,
-    entrustResult,
     basicResult,
     shipmentResult,
     portResult,
@@ -2692,7 +2710,6 @@ const handleSubmit = async () => {
     cargoRemarkResult,
   ] = await Promise.all([
     partyInfoFormApi.validate(),
-    entrustInfoFormApi.validate(),
     basicInfoFormApi.validate(),
     shipmentFormApi.validate(),
     portFormApi.validate(),
@@ -2703,7 +2720,6 @@ const handleSubmit = async () => {
   ]);
   const allValid =
     partyResult.valid &&
-    entrustResult.valid &&
     basicResult.valid &&
     shipmentResult.valid &&
     portResult.valid &&
@@ -2728,7 +2744,6 @@ const handleSubmit = async () => {
   submitting.value = true;
   const [
     partyValues,
-    entrustValues,
     basicValues,
     shipmentValues,
     portValues,
@@ -2738,7 +2753,6 @@ const handleSubmit = async () => {
     cargoRemarkValues,
   ] = await Promise.all([
     partyInfoFormApi.getValues(),
-    entrustInfoFormApi.getValues(),
     basicInfoFormApi.getValues(),
     shipmentFormApi.getValues(),
     portFormApi.getValues(),
@@ -2752,7 +2766,6 @@ const handleSubmit = async () => {
     accountDate: entrustReadonlyInfo.value.accountDate,
     settlementDate: entrustReadonlyInfo.value.settlementDate,
     ...partyValues,
-    ...entrustValues,
     ...basicValues,
     ...shipmentValues,
     ...portValues,
@@ -2937,6 +2950,7 @@ onMounted(() => {
     initializeOrderUsersPanel(defaultOrderUsers);
     refreshEntrustReadonlyInfo({});
     serviceTypeRequiredPropValues.value = new Map();
+    void nextTick(() => syncBasicInfoHeaderFields());
   }
   applyTransitPortTabSchema();
   applyNotifierPartyTabSchema();
@@ -2978,103 +2992,6 @@ defineExpose({
     <Spin :spinning="pageLoading">
       <div class="sea-export-form-page">
         <div class="main-layout">
-          <!-- 左侧信息区 -->
-          <div class="left-column">
-            <Card class="side-card flex shrink-0 flex-col">
-              <template #title>
-                <span class="card-title">
-                  <FileText class="size-4" />
-                  委托信息
-                </span>
-              </template>
-              <div class="card-body">
-                <div class="entrust-static-list">
-                  <ReadonlyFormItem
-                    label="委托编号"
-                    :value="entrustReadonlyInfo.commissionNum"
-                  />
-                  <ReadonlyFormItem
-                    label="会计期间"
-                    :value="entrustReadonlyInfo.accountDateText"
-                  />
-                  <ReadonlyFormItem
-                    label="应结日期"
-                    :value="entrustReadonlyInfo.settlementDateText"
-                  />
-                </div>
-                <ReadonlyFormItem
-                  label="所属公司"
-                  :value="entrustReadonlyInfo.organizationUnitsText"
-                />
-                <div class="entrust-form-wrap">
-                  <EntrustInfoForm />
-                </div>
-                <div class="entrust-lock-row">
-                  <div class="entrust-lock-tag">
-                    <Tag
-                      :color="
-                        entrustReadonlyInfo.isBusinessLocking
-                          ? 'orange'
-                          : 'green'
-                      "
-                    >
-                      <span class="entrust-lock-tag__content">
-                        <IconifyIcon
-                          :icon="
-                            entrustReadonlyInfo.isBusinessLocking
-                              ? 'mdi:lock-outline'
-                              : 'mdi:lock-open-variant-outline'
-                          "
-                          class="entrust-lock-tag__icon"
-                        />
-                        {{
-                          entrustReadonlyInfo.isBusinessLocking
-                            ? '业务已锁定'
-                            : '业务未锁定'
-                        }}
-                      </span>
-                    </Tag>
-                  </div>
-                  <div class="entrust-lock-tag">
-                    <Tag
-                      :color="
-                        entrustReadonlyInfo.feeLocked ? 'orange' : 'green'
-                      "
-                    >
-                      <span class="entrust-lock-tag__content">
-                        <IconifyIcon
-                          :icon="
-                            entrustReadonlyInfo.feeLocked
-                              ? 'mdi:lock-outline'
-                              : 'mdi:lock-open-variant-outline'
-                          "
-                          class="entrust-lock-tag__icon"
-                        />
-                        {{
-                          entrustReadonlyInfo.feeLocked
-                            ? '费用已锁定'
-                            : '费用未锁定'
-                        }}
-                      </span>
-                    </Tag>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card class="side-card flex shrink-0 flex-col">
-              <template #title>
-                <span class="card-title">
-                  <FileText class="size-4" />
-                  备注信息
-                </span>
-              </template>
-              <div class="card-body">
-                <CargoRemarkForm />
-              </div>
-            </Card>
-          </div>
-
           <!-- 中间主表单 -->
           <div class="center-column">
             <div class="content-column">
@@ -3424,20 +3341,106 @@ defineExpose({
                     @change="handleAiPdfFileChange"
                   />
                 </div>
-                <div class="content-section__header section-title-bar">
+                <div
+                  class="content-section__header section-title-bar basic-info-header"
+                >
                   <span class="card-title card-title--on-primary">
                     <FileText class="size-4" />
                     {{ $t('seaExport.export.formCardBasicInfo') }}
                   </span>
+                  <div class="basic-info-header__meta">
+                    <div class="basic-info-header__item">
+                      <span class="basic-info-header__label">委托编号</span>
+                      <span class="basic-info-header__value">{{
+                        entrustReadonlyInfo.commissionNum || '-'
+                      }}</span>
+                    </div>
+                    <div class="basic-info-header__item">
+                      <span class="basic-info-header__label">会计期间</span>
+                      <span class="basic-info-header__value">{{
+                        entrustReadonlyInfo.accountDateText || '-'
+                      }}</span>
+                    </div>
+                    <div class="basic-info-header__item">
+                      <span class="basic-info-header__label">应结日期</span>
+                      <span class="basic-info-header__value">{{
+                        entrustReadonlyInfo.settlementDateText || '-'
+                      }}</span>
+                    </div>
+                    <div class="basic-info-header__item">
+                      <span class="basic-info-header__label">所属公司</span>
+                      <span
+                        class="basic-info-header__value basic-info-header__value--ellipsis"
+                        :title="entrustReadonlyInfo.organizationUnitsText"
+                      >
+                        {{ entrustReadonlyInfo.organizationUnitsText || '-' }}
+                      </span>
+                    </div>
+                    <div
+                      class="basic-info-header__item basic-info-header__item--select"
+                    >
+                      <span class="basic-info-header__label">{{
+                        $t('seaExport.export.blType')
+                      }}</span>
+                      <Select
+                        :value="headerBlType"
+                        allow-clear
+                        size="small"
+                        class="basic-info-header__select"
+                        :options="blTypeOptions"
+                        :placeholder="$t('ui.placeholder.select')"
+                        @update:value="handleHeaderBlTypeChange"
+                      />
+                    </div>
+                    <div
+                      class="basic-info-header__item basic-info-header__item--select"
+                    >
+                      <span class="basic-info-header__label">{{
+                        $t('seaExport.export.billType')
+                      }}</span>
+                      <Select
+                        :value="headerBillType"
+                        allow-clear
+                        size="small"
+                        class="basic-info-header__select"
+                        :options="billTypeOptions"
+                        :placeholder="$t('ui.placeholder.select')"
+                        @update:value="handleHeaderBillTypeChange"
+                      />
+                    </div>
+                    <div
+                      class="basic-info-header__item basic-info-header__item--select"
+                    >
+                      <span class="basic-info-header__label">{{
+                        $t('seaExport.export.codeSourceId')
+                      }}</span>
+                      <CodeSourceSelect
+                        :model-value="headerCodeSourceId"
+                        :selected-items="headerCodeSourceSelectedItems"
+                        allow-clear
+                        size="small"
+                        class="basic-info-header__select basic-info-header__select--source"
+                        :placeholder="$t('ui.placeholder.select')"
+                        @update:model-value="handleHeaderCodeSourceChange"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div class="content-section__body">
+                <div
+                  class="content-section__body content-section__body--flush-bottom"
+                >
                   <BasicInfoForm />
                 </div>
               </section>
 
               <section :ref="sectionRefs.party" class="content-section">
-                <div class="content-section__body">
+                <div
+                  class="content-section__body content-section__body--flush-top"
+                >
                   <PartyInfoForm />
+                  <div class="party-remark-row">
+                    <CargoRemarkForm />
+                  </div>
                   <Teleport
                     v-if="consigneePartyLabelTarget"
                     :to="consigneePartyLabelTarget"
@@ -3841,22 +3844,11 @@ defineExpose({
 </template>
 
 <style scoped>
-@media (max-width: 1440px) {
-  .entrust-lock-row {
-    flex-wrap: wrap;
-  }
-
-  .entrust-lock-tag {
-    min-width: 160px;
-  }
-}
-
 @media (max-width: 1200px) {
   .main-layout {
     flex-direction: column;
   }
 
-  .left-column,
   .side-card,
   .center-column,
   .right-column {
@@ -3930,22 +3922,12 @@ defineExpose({
   padding: 12px;
 }
 
-.left-column {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 220px;
-}
-
-.side-card {
-  width: 100%;
-}
-
 .center-column {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 14px;
+  width: 0;
   min-width: 0;
 }
 
@@ -4071,6 +4053,94 @@ defineExpose({
 
 .content-section__header.section-title-bar {
   padding: 8px 18px;
+}
+
+.basic-info-header {
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: flex-start;
+}
+
+.basic-info-header__meta {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  min-width: 0;
+}
+
+.basic-info-header__item {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 20px;
+  color: #595959;
+}
+
+.basic-info-header__item--select {
+  gap: 4px;
+}
+
+.basic-info-header__label {
+  flex-shrink: 0;
+  font-weight: 500;
+  color: #8c8c8c;
+}
+
+.basic-info-header__value {
+  color: #262626;
+}
+
+.basic-info-header__value--ellipsis {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.basic-info-header__select {
+  width: 108px;
+}
+
+.basic-info-header__select--source {
+  width: 120px;
+}
+
+.party-remark-row {
+  margin-top: 12px;
+}
+
+.party-remark-wrap :deep(.party-remark-field) {
+  padding-bottom: 0 !important;
+  overflow: visible;
+}
+
+.party-remark-wrap :deep(.party-remark-field > label) {
+  flex-shrink: 0;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+/* Vben 内层 flex-auto + items-center 会把 textarea 垂直居中并裁切 */
+.party-remark-wrap :deep(.party-remark-field .flex-auto) {
+  overflow: visible !important;
+}
+
+.party-remark-wrap :deep(.party-remark-field .flex-auto > .relative.flex) {
+  display: block;
+  width: 100%;
+  overflow: visible !important;
+}
+
+.party-remark-wrap :deep(.party-remark-field textarea.ant-input) {
+  display: block;
+  width: 100%;
+  min-height: 72px;
+  line-height: 1.5715;
+  resize: vertical;
 }
 
 .content-section__header--cargo {
@@ -4210,6 +4280,14 @@ defineExpose({
   padding: 6px 18px;
 }
 
+.content-section__body--flush-top {
+  padding-top: 0;
+}
+
+.content-section__body--flush-bottom {
+  padding-bottom: 0;
+}
+
 .content-section__actions {
   display: flex;
   gap: 12px;
@@ -4255,74 +4333,6 @@ defineExpose({
 
 .card-body {
   padding: 0 4px;
-}
-
-.entrust-static-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-bottom: 8px;
-  margin-bottom: 10px;
-  border-bottom: 1px dashed #f0f0f0;
-}
-
-.entrust-lock-row {
-  display: flex;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.entrust-lock-tag {
-  display: flex;
-  flex: 1;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
-}
-
-.entrust-lock-tag__content {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.entrust-lock-tag__icon {
-  font-size: 13px;
-  color: currentcolor;
-}
-
-.entrust-form-wrap :deep(label) {
-  justify-content: flex-start !important;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 24px;
-  color: #595959;
-  text-align: left;
-}
-
-.entrust-form-wrap :deep(.entrust-top-label-item) {
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.entrust-form-wrap :deep(.entrust-top-label-item > .flex-auto) {
-  width: 100%;
-}
-
-.entrust-form-wrap :deep(.entrust-top-label-item .ant-select) {
-  width: 100% !important;
-}
-
-.entrust-form-wrap :deep(.entrust-top-label-item--bill-type) {
-  align-items: stretch;
-}
-
-.entrust-form-wrap :deep(.entrust-top-label-item--bill-type > label) {
-  justify-content: flex-end !important;
-  width: 100%;
-  text-align: right !important;
 }
 
 .card-body--party {

@@ -12,11 +12,13 @@ defineOptions({
 interface Props {
   value?: string;
   allowClear?: boolean;
+  rows?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   value: undefined,
   allowClear: false,
+  rows: 1,
 });
 
 const emit = defineEmits<{
@@ -57,7 +59,7 @@ const handleClear = (event: MouseEvent) => {
     <Textarea
       :value="value"
       :allow-clear="false"
-      :rows="1"
+      :rows="rows"
       v-bind="textareaAttrs"
       @update:value="handleUpdate"
     />

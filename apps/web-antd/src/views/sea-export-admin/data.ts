@@ -837,13 +837,22 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       },
     },
     {
-      component: 'CodeFrtSelect',
+      component: 'FrtPrepareInput',
       fieldName: 'codeFrtId',
-      label: $t('seaExport.export.codeFrtId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      label: `${$t('seaExport.export.codeFrtId')}/${$t('seaExport.export.prepareAtId')}`,
+      componentProps: (values: Record<string, any>, formApi: any) => ({
+        formContext: formApi,
+        secondFieldName: 'prepareAtId',
+        secondFieldValue: values?.prepareAtId ?? undefined,
+        frtProps: {
+          placeholder: $t('ui.placeholder.select'),
+          allowClear: true,
+        },
+        prepareProps: {
+          placeholder: $t('ui.placeholder.select'),
+          allowClear: true,
+        },
+      }),
     },
     {
       component: 'PortSelect',
@@ -854,6 +863,7 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
         allowClear: true,
         labelKey: 'ediCode',
       },
+      formItemClass: 'hidden',
     },
     {
       component: 'CodeServiceSelect',
@@ -1392,6 +1402,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.marks'),
       componentProps: {
         allowClear: true,
+        rows: 7,
       },
       formItemClass: 'col-span-3 cargo-main-item cargo-main-item--marks',
     },
@@ -1401,6 +1412,7 @@ export function useCargoFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.goodsDes'),
       componentProps: {
         allowClear: true,
+        rows: 7,
       },
       formItemClass: 'col-span-3 cargo-main-item cargo-main-item--goods-des',
     },

@@ -178,7 +178,8 @@ const tableColumns = computed(() => [
     key: 'remark',
     dataIndex: 'remark',
     title: $t('seaExport.export.remark'),
-    minWidth: 100,
+    width: 160,
+    className: 'order-ctn-table__remark-col',
   },
 ]);
 
@@ -490,5 +491,12 @@ watch(
   width: 60px !important;
   min-width: 60px !important;
   max-width: 60px !important;
+}
+
+.order-ctn-table :deep(th.order-ctn-table__remark-col),
+.order-ctn-table :deep(td.order-ctn-table__remark-col) {
+  width: 160px !important;
+  min-width: 160px !important;
+  max-width: 160px !important;
 }
 </style>

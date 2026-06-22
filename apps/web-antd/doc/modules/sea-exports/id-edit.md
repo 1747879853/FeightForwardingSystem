@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-06-21
+last_updated: 2026-06-22
 ---
 
 # 1. 业务背景说明 (Background)
@@ -81,7 +81,7 @@ last_updated: 2026-06-21
 >
 > **[卡点 2：基础信息表单是嵌入复用]** 编辑工作台没有重新实现基础信息，而是用 `form.vue` 的 `embedded` 模式。修改新建页字段时往往也会影响编辑页，需同步确认 `isEdit`、详情回填和 DTO 构造。
 >
-> **[卡点 3：锁定状态目前以展示和透传为主]** 当前编辑表单展示业务锁定与费用锁定，并在保存 DTO 时保留其值，但不提供直接切换入口。锁费相关实际操作应与费用锁定页面或后端状态规则保持一致。
+> **[卡点 3：锁定状态目前以透传为主]** 编辑表单已移除业务/费用锁定 Tag 展示，保存 DTO 时仍保留 `isBusinessLocking`/`feeLocked` 原值，但不提供直接切换入口。锁费相关实际操作应与费用锁定页面或后端状态规则保持一致。
 >
 > **[卡点 4：费用标签数量是轮询统计]** `editor.vue` 每 60 秒刷新费用数量。若后续增加组件卸载、缓存或多工作台实例，需要注意定时器生命周期，否则可能出现重复请求。
 >
@@ -93,6 +93,7 @@ last_updated: 2026-06-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-22 | `Style` | 编辑/新建表单取消左侧委托栏：委托只读项与装运/订单类型并入「基础信息」标题行；业务来源、付费方式/地点、运输条款、贸易条款并入中间基础信息表单（提单/副本份数后）；备注信息与外部备注各占两列，置于收发通通知人下方；中间栏占满除右侧干系人外的宽度。 | 新增 `FrtPrepareInput` 合并 `codeFrtId`+`prepareAtId`；`blType`/`billType` 以隐藏字段存值，标题行 Select 通过 `basicInfoFormApi` 同步。 |
 | 2026-06-21 | `Style` | 服务项目流水线并入顶栏：左侧标题 + `...` 配置入口 + 紧凑 Chevron 节点，与 AI 识别等同行；配置入口悬停提示「配置服务」。 | `service-pipeline--inline` 承载顶栏内联样式，勿改全局 `.chevron-step` 以免影响其他场景。 |
 | 2026-06-07 | `Fix` | 「完成」校验 `seServiceTaskUsers`，「取消完成」校验 `completionUserId`，无权限时隐藏按钮并提示。 | `showServiceCompletePermissionHint` 与 `showServiceCancelPermissionHint` 分轨。 |
 | 2026-06-07 | `Fix` | 服务流水线「取消完成」增加二次确认，提示所有服务项目将重新生成任务。 | `confirmCancelCompleteServiceType` 复用 `SERVICE_TASK_REGENERATE_CONFIRM_SUFFIX` 文案。 |
