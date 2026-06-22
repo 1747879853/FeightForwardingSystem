@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-22] [公告管理与登录弹窗富文本展示](./changelogs/change-log-2026-06-22-announcement-admin-login-modal.md)
 - [2026-06-22] [海运出口表单布局合并左侧委托栏至基础信息](./changelogs/change-log-2026-06-22-sea-export-form-layout-consolidation.md)
 - [2026-06-21] [海运出口编辑页服务项目流水线并入顶部操作栏](./changelogs/change-log-2026-06-21-sea-export-edit-service-pipeline-toolbar.md)
 - [2026-06-21] [全站 vxe 分页列表列头远程排序](./changelogs/change-log-2026-06-21-vxe-paged-list-column-sorting.md)

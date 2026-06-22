@@ -21,6 +21,8 @@ import { openWindow } from '@vben/utils';
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 import LoginForm from '#/views/_core/authentication/login.vue';
+import AnnouncementLoginModal from '#/views/system/announcement/components/announcement-login-modal.vue';
+import { useAnnouncementLoginModal } from '#/views/system/announcement/use-announcement-login-modal';
 
 import RouteContentSpinner from './route-content-spinner.vue';
 
@@ -82,6 +84,8 @@ const userStore = useUserStore();
 const authStore = useAuthStore();
 const accessStore = useAccessStore();
 const { destroyWatermark, updateWatermark } = useWatermark();
+const { modalOpen, pendingAnnouncements } = useAnnouncementLoginModal();
+const announcementUserId = computed(() => userStore.userInfo?.userId || '');
 const showDot = computed(() =>
   notifications.value.some((item) => !item.isRead),
 );
@@ -208,6 +212,12 @@ watch(
       >
         <LoginForm />
       </AuthenticationLoginExpiredModal>
+      <AnnouncementLoginModal
+        v-if="announcementUserId"
+        v-model:open="modalOpen"
+        :announcements="pendingAnnouncements"
+        :user-id="announcementUserId"
+      />
     </template>
     <template #lock-screen>
       <LockScreen :avatar @to-login="handleLogout" />

@@ -53,8 +53,11 @@
     "@vben/types": "workspace:*",
     "@vben/utils": "workspace:*",
     "@vueuse/core": "catalog:",
+    "@wangeditor/editor": "^5.1.23",
+    "@wangeditor/editor-for-vue": "^5.1.12",
     "ant-design-vue": "catalog:",
     "dayjs": "catalog:",
+    "dompurify": "^3.4.11",
     "globe.gl": "^2.45.1",
     "json-bigint": "catalog:",
     "pinia": "catalog:",
@@ -63,6 +66,7 @@
     "vue-router": "catalog:"
   },
   "devDependencies": {
+    "@types/dompurify": "^3.2.0",
     "@types/json-bigint": "catalog:"
   }
 }
