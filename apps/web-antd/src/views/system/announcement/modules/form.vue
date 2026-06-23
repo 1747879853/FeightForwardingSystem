@@ -99,9 +99,6 @@ const buildPayload = async () => {
     endTime: toIsoString(values.endTime),
     sortId: values.sortId ?? 0,
     remark: values.remark || undefined,
-    organizationUnitIds: values.organizationUnitIds?.length
-      ? values.organizationUnitIds
-      : undefined,
     attachments: attachmentItems.length > 0 ? attachmentItems : undefined,
   };
 };
@@ -167,9 +164,6 @@ const [Drawer, drawerApi] = useVbenDrawer({
           endTime: toDayjs(detail.endTime),
           sortId: detail.sortId ?? 0,
           remark: detail.remark,
-          organizationUnitIds:
-            detail.organizationUnits?.map((item) => item.id).filter(Boolean) ??
-            [],
         });
       } finally {
         detailLoading.value = false;

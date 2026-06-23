@@ -18,29 +18,6 @@ export function isAnnouncementEffective(
   return true;
 }
 
-export function matchesAnnouncementOrganization(
-  announcement: AnnouncementAdminApi.AnnouncementDto,
-  companyId?: number | null,
-  departmentId?: number | null,
-): boolean {
-  const units = announcement.organizationUnits;
-  if (!units || units.length === 0) {
-    return true;
-  }
-  const ids = new Set(
-    units
-      .map((item) => item.id)
-      .filter((id): id is number => id !== undefined && id !== null),
-  );
-  if (companyId && ids.has(Number(companyId))) {
-    return true;
-  }
-  if (departmentId && ids.has(Number(departmentId))) {
-    return true;
-  }
-  return false;
-}
-
 export function sortAnnouncements(
   list: AnnouncementAdminApi.AnnouncementDto[],
 ) {

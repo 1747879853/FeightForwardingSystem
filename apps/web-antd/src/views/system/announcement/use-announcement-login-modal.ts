@@ -5,7 +5,6 @@ import { ref, watch } from 'vue';
 import { useAccess } from '@vben/access';
 import { useAccessStore, useUserStore } from '@vben/stores';
 
-import { getMyInfoApi } from '#/api/core/user';
 import { getAnnouncementPagedList } from '#/api/system/announcement-admin';
 import { abpActionCode } from '#/router/abp-authority';
 import {
@@ -14,7 +13,6 @@ import {
 } from '#/utils/announcement-read-storage';
 import {
   isAnnouncementEffective,
-  matchesAnnouncementOrganization,
   sortAnnouncements,
 } from '#/utils/announcement-filter';
 
@@ -58,24 +56,16 @@ export function useAnnouncementLoginModal() {
     }
 
     try {
-      const [listResult, myInfo] = await Promise.all([
-        getAnnouncementPagedList({
-          Enable: true,
-          PageIndex: 1,
-          PageSize: 500,
-          Sorting: 'SortId ASC, CreationTime DESC',
-        }),
-        getMyInfoApi(),
-      ]);
+      const listResult = await getAnnouncementPagedList({
+        Enable: true,
+        PageIndex: 1,
+        PageSize: 500,
+        Sorting: 'SortId ASC, CreationTime DESC',
+      });
 
       const unread = sortAnnouncements(listResult.items ?? []).filter(
         (item) =>
           isAnnouncementEffective(item) &&
-          matchesAnnouncementOrganization(
-            item,
-            myInfo.companyId,
-            myInfo.departmentId,
-          ) &&
           isAnnouncementUnread(userId, item.id, item.lastModificationTime),
       );
 

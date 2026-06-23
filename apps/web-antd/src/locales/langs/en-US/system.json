@@ -778,8 +778,6 @@
     "endTime": "Effective To",
     "sortId": "Sort Order",
     "remark": "Remark",
-    "organizationUnits": "Departments",
-    "organizationUnitsPlaceholder": "Leave empty for all users",
     "attachments": "Attachments",
     "creationTime": "Created At",
     "lastModificationTime": "Last Modified At",

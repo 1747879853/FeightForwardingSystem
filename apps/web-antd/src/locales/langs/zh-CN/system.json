@@ -780,8 +780,6 @@
     "endTime": "生效结束时间",
     "sortId": "排序",
     "remark": "备注",
-    "organizationUnits": "适用部门",
-    "organizationUnitsPlaceholder": "不选表示全员可见",
     "attachments": "附件",
     "creationTime": "创建时间",
     "lastModificationTime": "最后修改时间",

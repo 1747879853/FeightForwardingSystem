@@ -3,7 +3,6 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { AnnouncementAdminApi } from '#/api/system/announcement-admin';
 
-import { getOrganizationUnitTree } from '#/api/system/organization-unit';
 import { z } from '#/adapter/form';
 import { $t } from '#/locales';
 
@@ -82,24 +81,6 @@ export function useFormSchema(): VbenFormSchema[] {
         precision: 0,
         style: { width: '100%' },
       },
-    },
-    {
-      component: 'ApiTreeSelect',
-      fieldName: 'organizationUnitIds',
-      label: $t('system.announcement.organizationUnits'),
-      componentProps: {
-        api: async () => getOrganizationUnitTree(),
-        fieldNames: {
-          label: 'displayName',
-          value: 'id',
-          children: 'children',
-        },
-        multiple: true,
-        allowClear: true,
-        placeholder: $t('system.announcement.organizationUnitsPlaceholder'),
-        class: 'w-full',
-      },
-      formItemClass: 'col-span-2',
     },
     {
       component: 'Textarea',

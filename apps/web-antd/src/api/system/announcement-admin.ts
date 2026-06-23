@@ -28,12 +28,6 @@ export namespace AnnouncementAdminApi {
     id?: number;
   }
 
-  export interface OrganizationUnitDto {
-    id?: number;
-    displayName?: string | null;
-    code?: string | null;
-  }
-
   export interface AnnouncementAddDto {
     name?: string | null;
     text?: string | null;
@@ -42,7 +36,6 @@ export namespace AnnouncementAdminApi {
     endTime?: string | null;
     sortId?: number;
     remark?: string | null;
-    organizationUnitIds?: number[] | null;
     attachments?: AttachmentItemForItemInputDto[] | null;
   }
 
@@ -55,7 +48,6 @@ export namespace AnnouncementAdminApi {
     endTime?: string | null;
     sortId?: number;
     remark?: string | null;
-    organizationUnitIds?: number[] | null;
     attachments?: AttachmentItemForItemInputDto[] | null;
   }
 
@@ -68,7 +60,6 @@ export namespace AnnouncementAdminApi {
     endTime?: string | null;
     sortId?: number;
     remark?: string | null;
-    organizationUnits?: OrganizationUnitDto[] | null;
     attachments?: AttachmentItemDto[] | null;
     creationTime?: string;
     creatorUserId?: number | null;
