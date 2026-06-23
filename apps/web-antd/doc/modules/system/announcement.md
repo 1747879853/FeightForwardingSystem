@@ -21,7 +21,7 @@ last_updated: 2026-06-23
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **列表：** 关键字与启用状态筛选；勾选后顶部批量删除；双击行打开 Drawer 编辑。
+- **列表：** 关键字与启用状态筛选；勾选后顶部批量删除；双击行打开 Modal 编辑。
 - **新建/编辑：** `name`、`text`（wangEditor）、`enable`、`startTime`/`endTime`、`sortId`、`remark`、`attachments`。
 - **登录弹窗：** 进入主布局后自动检测；逐条展示富文本与附件下载；「我已阅读」写 localStorage；「稍后提醒」写 sessionStorage 跳过本会话。
 
@@ -53,6 +53,7 @@ last_updated: 2026-06-23
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-06-23 | 重构 | 新建/编辑改为居中弹窗，排序与备注同列 | 富文本 `autoHeight` 避免与 Modal 滚动条叠加 |
 | 2026-06-23 | 重构 | 移除适用部门字段与登录弹窗组织过滤 | 具备查看权限用户可见全部有效未读公告 |
 | 2026-06-23 | 修复 | 编辑抽屉生效起始/终止时间无法回显 | 回填前将 ISO 字符串转 `dayjs`，与 Ant Design DatePicker 值类型一致 |
 | 2026-06-23 | 修复 | 登录弹窗富文本内图片/链接相对路径无法加载 | `renderAnnouncementHtml` 复用 `buildAttachmentUrl`，与附件预览同一套拼接规则 |

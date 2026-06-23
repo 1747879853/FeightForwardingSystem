@@ -88,9 +88,8 @@ export function useFormSchema(): VbenFormSchema[] {
       label: $t('system.announcement.remark'),
       componentProps: {
         maxLength: 500,
-        rows: 3,
+        rows: 1,
       },
-      formItemClass: 'col-span-2',
       rules: z
         .string()
         .max(

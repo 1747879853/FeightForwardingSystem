@@ -4,7 +4,7 @@ import type { AnnouncementAdminApi } from '#/api/system/announcement-admin';
 
 import { computed, nextTick, ref } from 'vue';
 
-import { useVbenDrawer } from '@vben/common-ui';
+import { useVbenModal } from '@vben/common-ui';
 
 import dayjs from 'dayjs';
 import { message } from 'ant-design-vue';
@@ -109,8 +109,7 @@ const mountEditor = async () => {
   editorReady.value = true;
 };
 
-const [Drawer, drawerApi] = useVbenDrawer({
-  class: 'w-full max-w-[960px]',
+const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     const { valid } = await formApi.validate();
     if (!valid) {
@@ -123,7 +122,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
     }
 
     emit('confirm-start');
-    drawerApi.lock();
+    modalApi.lock();
     try {
       if (formData.value?.id) {
         await editAnnouncement({
@@ -135,9 +134,9 @@ const [Drawer, drawerApi] = useVbenDrawer({
       }
       message.success($t('ui.actionMessage.operationSuccess'));
     } finally {
-      drawerApi.lock(false);
+      modalApi.lock(false);
     }
-    await drawerApi.close();
+    await modalApi.close();
     emit('success');
   },
   async onOpenChange(isOpen) {
@@ -148,7 +147,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
       return;
     }
 
-    const data = drawerApi.getData<{ id?: number }>();
+    const data = modalApi.getData<{ id?: number }>();
     if (data?.id) {
       detailLoading.value = true;
       editorReady.value = false;
@@ -182,8 +181,8 @@ const [Drawer, drawerApi] = useVbenDrawer({
 </script>
 
 <template>
-  <Drawer :title="getTitle">
-    <div class="mx-4 flex flex-col gap-4">
+  <Modal :title="getTitle" class="w-full max-w-[960px]">
+    <div class="flex flex-col gap-4">
       <Form />
       <div class="col-span-2 flex flex-col gap-2">
         <div class="text-sm font-medium">
@@ -200,6 +199,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
           v-else-if="editorReady"
           :key="editorMountKey"
           v-model="richText"
+          auto-height
         />
       </div>
       <div class="col-span-2 flex flex-col gap-2">
@@ -209,5 +209,5 @@ const [Drawer, drawerApi] = useVbenDrawer({
         <FileUploadInput v-model="attachments" :max-count="20" />
       </div>
     </div>
-  </Drawer>
+  </Modal>
 </template>

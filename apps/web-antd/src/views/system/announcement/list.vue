@@ -3,7 +3,7 @@ import type { AnnouncementAdminApi } from '#/api/system/announcement-admin';
 
 import { ref } from 'vue';
 
-import { Page, useVbenDrawer } from '@vben/common-ui';
+import { Page, useVbenModal } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
 import { Button, message, Modal } from 'ant-design-vue';
@@ -20,8 +20,8 @@ import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
 
 const actionLoading = ref(false);
-const isDrawerOpen = ref(false);
-/** 屏蔽表格双击打开抽屉（确定按钮点击穿透） */
+const isModalOpen = ref(false);
+/** 屏蔽表格双击打开弹窗（确定按钮点击穿透） */
 const BLOCK_ROW_DBLCLICK_MS = 800;
 let suppressRowDblClickUntil = 0;
 
@@ -30,13 +30,14 @@ function blockRowDblClick() {
 }
 
 function canOpenRowEdit() {
-  return !isDrawerOpen.value && Date.now() >= suppressRowDblClickUntil;
+  return !isModalOpen.value && Date.now() >= suppressRowDblClickUntil;
 }
 
-const [FormDrawer, formDrawerApi] = useVbenDrawer({
+const [FormModal, formModalApi] = useVbenModal({
   connectedComponent: Form,
+  destroyOnClose: true,
   onOpenChange(isOpen) {
-    isDrawerOpen.value = isOpen;
+    isModalOpen.value = isOpen;
     if (!isOpen) {
       blockRowDblClick();
     }
@@ -47,14 +48,14 @@ const handleCreate = () => {
   if (!canOpenRowEdit()) {
     return;
   }
-  formDrawerApi.setData(null).open();
+  formModalApi.setData(null).open();
 };
 
 const handleEdit = (row: AnnouncementAdminApi.AnnouncementDto) => {
   if (!canOpenRowEdit()) {
     return;
   }
-  formDrawerApi.setData({ id: row.id }).open();
+  formModalApi.setData({ id: row.id }).open();
 };
 
 function onFormConfirmStart() {
@@ -150,7 +151,7 @@ const handleBatchDelete = () => {
 
 <template>
   <Page auto-content-height>
-    <FormDrawer @confirm-start="onFormConfirmStart" @success="onFormSuccess" />
+    <FormModal @confirm-start="onFormConfirmStart" @success="onFormSuccess" />
     <Grid :table-title="$t('system.announcement.list')">
       <template #toolbar-tools>
         <Button

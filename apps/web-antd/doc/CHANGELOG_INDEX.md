@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-23] [公告编辑弹窗化与表单布局优化](./changelogs/change-log-2026-06-23-announcement-edit-modal-layout.md)
 - [2026-06-23] [公告移除适用部门字段](./changelogs/change-log-2026-06-23-announcement-remove-organization-units.md)
 - [2026-06-23] [公告编辑生效时间回显修复](./changelogs/change-log-2026-06-23-announcement-edit-effective-time-echo.md)
 - [2026-06-23] [公告登录弹窗富文本附件路径拼接](./changelogs/change-log-2026-06-23-announcement-rich-text-attachment-url.md)

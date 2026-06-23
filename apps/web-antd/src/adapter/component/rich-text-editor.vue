@@ -17,11 +17,13 @@ import { $t } from '#/locales';
 const EMPTY_HTML = '<p><br></p>';
 
 interface Props {
+  autoHeight?: boolean;
   disabled?: boolean;
   placeholder?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  autoHeight: false,
   disabled: false,
   placeholder: undefined,
 });
@@ -62,6 +64,7 @@ const toolbarConfig: Partial<IToolbarConfig> = {
 const editorConfig: Partial<IEditorConfig> = {
   autoFocus: false,
   placeholder: props.placeholder || $t('system.announcement.textPlaceholder'),
+  scroll: !props.autoHeight,
   MENU_CONF: {
     uploadImage: {
       async customUpload(
@@ -140,6 +143,7 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="rich-text-editor rounded-md border border-[#d9d9d9] bg-white"
+    :class="{ 'rich-text-editor--auto-height': autoHeight }"
     @mousedown.stop
     @pointerdown.stop
   >
@@ -165,8 +169,19 @@ onBeforeUnmount(() => {
   overflow-y: auto;
 }
 
+.rich-text-editor--auto-height .rich-text-editor__body {
+  height: auto;
+  min-height: 280px;
+  overflow-y: visible;
+}
+
 .rich-text-editor :deep(.w-e-text-container) {
   height: 320px !important;
+}
+
+.rich-text-editor--auto-height :deep(.w-e-text-container) {
+  height: auto !important;
+  min-height: 280px !important;
 }
 
 .rich-text-editor :deep(.w-e-toolbar) {
