@@ -44,6 +44,14 @@ const [Form, formApi] = useVbenForm({
   wrapperClass: 'grid-cols-2',
 });
 
+const toDayjs = (value: unknown) => {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = dayjs(value as string | Date);
+  return parsed.isValid() ? parsed : undefined;
+};
+
 const toIsoString = (value: unknown) => {
   if (!value) {
     return undefined;
@@ -155,8 +163,8 @@ const [Drawer, drawerApi] = useVbenDrawer({
         formApi.setValues({
           name: detail.name,
           enable: detail.enable ?? true,
-          startTime: detail.startTime,
-          endTime: detail.endTime,
+          startTime: toDayjs(detail.startTime),
+          endTime: toDayjs(detail.endTime),
           sortId: detail.sortId ?? 0,
           remark: detail.remark,
           organizationUnitIds:

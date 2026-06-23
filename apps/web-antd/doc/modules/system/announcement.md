@@ -54,5 +54,6 @@ last_updated: 2026-06-23
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-06-23 | 修复 | 编辑抽屉生效起始/终止时间无法回显 | 回填前将 ISO 字符串转 `dayjs`，与 Ant Design DatePicker 值类型一致 |
 | 2026-06-23 | 修复 | 登录弹窗富文本内图片/链接相对路径无法加载 | `renderAnnouncementHtml` 复用 `buildAttachmentUrl`，与附件预览同一套拼接规则 |
 | 2026-06-22 | 功能 | 新增公告管理与登录 Modal 展示 | 展示逻辑挂载 `basic.vue`；过滤工具在 `utils/announcement-filter.ts` 与 `announcement-read-storage.ts` |
