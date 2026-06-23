@@ -11,7 +11,7 @@ import {
   markAnnouncementAsRead,
   setAnnouncementSkipSession,
 } from '#/utils/announcement-read-storage';
-import { sanitizeAnnouncementHtml } from '#/utils/sanitize-html';
+import { renderAnnouncementHtml } from '#/utils/sanitize-html';
 
 const props = defineProps<{
   announcements: AnnouncementAdminApi.AnnouncementDto[];
@@ -30,8 +30,8 @@ const currentAnnouncement = computed(
   () => props.announcements[currentIndex.value],
 );
 
-const sanitizedHtml = computed(() =>
-  sanitizeAnnouncementHtml(currentAnnouncement.value?.text),
+const renderedHtml = computed(() =>
+  renderAnnouncementHtml(currentAnnouncement.value?.text),
 );
 
 const progressText = computed(() => {
@@ -112,7 +112,7 @@ defineExpose({
       </div>
       <div
         class="announcement-login-modal__content max-h-[50vh] overflow-y-auto"
-        v-html="sanitizedHtml"
+        v-html="renderedHtml"
       />
       <div
         v-if="currentAnnouncement?.attachments?.length"

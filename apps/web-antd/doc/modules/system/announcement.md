@@ -2,7 +2,7 @@
 title: 公告管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-06-22
+last_updated: 2026-06-23
 ---
 
 # 1. 业务背景说明 (Background)
@@ -39,7 +39,7 @@ last_updated: 2026-06-22
 | 字段名 | 含义 | 数据来源 | 联动规则 | 校验 |
 | :-- | :-- | :-- | :-- | :-- |
 | **name** | 公告标题 | 表单 | 弹窗标题 | 必填 |
-| **text** | 富文本 HTML | wangEditor | DOMPurify 后展示 | 必填（去标签后非空） |
+| **text** | 富文本 HTML | wangEditor | `renderAnnouncementHtml` 消毒并拼接附件 URL 后展示 | 必填（去标签后非空） |
 | **enable** | 是否启用 | 表单 Switch | false=不展示 | - |
 | **organizationUnitIds** | 适用部门 | ApiTreeSelect | 空=全员；匹配用户 companyId/departmentId | - |
 | **attachments** | 附件 | FileUploadInput | 弹窗底部下载区 | - |
@@ -54,4 +54,5 @@ last_updated: 2026-06-22
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-06-23 | 修复 | 登录弹窗富文本内图片/链接相对路径无法加载 | `renderAnnouncementHtml` 复用 `buildAttachmentUrl`，与附件预览同一套拼接规则 |
 | 2026-06-22 | 功能 | 新增公告管理与登录 Modal 展示 | 展示逻辑挂载 `basic.vue`；过滤工具在 `utils/announcement-filter.ts` 与 `announcement-read-storage.ts` |
