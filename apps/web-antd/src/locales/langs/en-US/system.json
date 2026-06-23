@@ -189,6 +189,18 @@
       "keyword": "Keyword",
       "creationTime": "Creation Time"
     },
+    "attachmentDtlType": {
+      "title": "Attachment Type",
+      "list": "Attachment Type List",
+      "name": "Attachment Type",
+      "typeName": "Type Name",
+      "defaultModules": "Default Display Modules",
+      "defaultModulesPlaceholder": "Select business modules for default display",
+      "defaultModulesTip": "Selected modules will show this attachment type upload slot when creating new records",
+      "creatorUserName": "Created By",
+      "keyword": "Keyword",
+      "creationTime": "Creation Time"
+    },
     "codeSource": {
       "title": "Business Source",
       "list": "Business Source List",

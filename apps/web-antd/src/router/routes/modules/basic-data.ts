@@ -17,6 +17,7 @@ const routes: RouteRecordRaw[] = [
         'Admin.CodeGoods',
         'Admin.CodePackage',
         'Admin.CodeIssueType',
+        'Admin.AttachmentDtlType',
         'Admin.CodeSource',
         'Admin.CodeFrt',
         'Admin.Currency',
@@ -105,6 +106,18 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/system/basic-data/CodeIssueTypeAdmin/list.vue'),
+      },
+      {
+        path: '/basic-data/attachment-dtl-type',
+        name: 'BasicDataAttachmentDtlType',
+        meta: {
+          icon: 'mdi:paperclip',
+          keepAlive: true,
+          title: $t('system.basicData.attachmentDtlType.title'),
+          authority: abpPageAuthority('Admin.AttachmentDtlType'),
+        },
+        component: () =>
+          import('#/views/system/basic-data/AttachmentDtlTypeAdmin/list.vue'),
       },
       {
         path: '/basic-data/code-source',

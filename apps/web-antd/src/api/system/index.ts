@@ -1,3 +1,5 @@
+export * from './attachment-dtl-type';
+export * from './attachment-dtl-type-admin';
 export * from './base-data';
 export * from './dept';
 export * from './enum-admin';
