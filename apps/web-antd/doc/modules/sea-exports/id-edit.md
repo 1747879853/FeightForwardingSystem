@@ -94,6 +94,7 @@ last_updated: 2026-06-22
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
 | 2026-06-22 | `Style` | 编辑/新建表单取消左侧委托栏：委托只读项与装运/订单类型并入「基础信息」标题行；业务来源、付费方式/地点、运输条款、贸易条款并入中间基础信息表单（提单/副本份数后）；备注信息与外部备注各占两列，置于收发通通知人下方；中间栏占满除右侧干系人外的宽度。 | 新增 `FrtPrepareInput` 合并 `codeFrtId`+`prepareAtId`；`blType`/`billType` 以隐藏字段存值，标题行 Select 通过 `basicInfoFormApi` 同步。 |
+| 2026-06-23 | `Style` | 顶栏服务项目 Chevron 节点宽度固定 96px；首节点（常为 Tooltip 分支）统一 `service-chevron-flow__item` 外包，避免宽度样式未命中。 | Tooltip 根节点非 `span` 时 `> :deep(span)` 选择器无效；首节点须 `margin-left: 0`。 |
 | 2026-06-21 | `Style` | 服务项目流水线并入顶栏：左侧标题 + `...` 配置入口 + 紧凑 Chevron 节点，与 AI 识别等同行；配置入口悬停提示「配置服务」。 | `service-pipeline--inline` 承载顶栏内联样式，勿改全局 `.chevron-step` 以免影响其他场景。 |
 | 2026-06-07 | `Fix` | 「完成」校验 `seServiceTaskUsers`，「取消完成」校验 `completionUserId`，无权限时隐藏按钮并提示。 | `showServiceCompletePermissionHint` 与 `showServiceCancelPermissionHint` 分轨。 |
 | 2026-06-07 | `Fix` | 服务流水线「取消完成」增加二次确认，提示所有服务项目将重新生成任务。 | `confirmCancelCompleteServiceType` 复用 `SERVICE_TASK_REGENERATE_CONFIRM_SUFFIX` 文案。 |
