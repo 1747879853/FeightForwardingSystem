@@ -8,7 +8,7 @@ import { useVbenModal } from '@vben/common-ui';
 import { FormItem, message, Select } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
-import { buildModuleTypeLabelMap, getModuleTypes } from '#/api/common/lookup';
+import { getModuleTypeOptions } from '#/api/common/lookup';
 import {
   addAttachmentDtlType,
   editAttachmentDtlType,
@@ -40,11 +40,7 @@ const [Form, formApi] = useVbenForm({
 });
 
 const loadModuleTypeOptions = async () => {
-  const items = await getModuleTypes();
-  const labelMap = buildModuleTypeLabelMap(items);
-  moduleTypeOptions.value = [...labelMap.entries()]
-    .map(([value, label]) => ({ value, label }))
-    .sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'));
+  moduleTypeOptions.value = await getModuleTypeOptions();
 };
 
 const buildDefaultModulesPayload = () => {

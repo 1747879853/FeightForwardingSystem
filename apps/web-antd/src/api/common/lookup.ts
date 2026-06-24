@@ -1,38 +1,45 @@
-import { requestClient } from '#/api/request';
+import type { EnumerationAdminApi } from '#/api/system/enum-admin';
 
-export namespace CommonLookupApi {
-  /** 附件所属模块（ModuleTypeId / 默认展示模块 moduleType 共用数值） */
-  export interface ModuleType {
-    id?: string | null;
-    name?: string | null;
-    displayName?: string | null;
-  }
-}
+import { getEnumItems } from '#/utils/init-enum';
 
-const API_PREFIX = '/services/app/CommonLookup';
+/** 系统枚举「ModuleType」名称（system/enumeration 自定义枚举） */
+export const MODULE_TYPE_ENUM_NAME = 'ModuleType';
 
-/**
- * 获取 ModuleType 列表（用于附件默认展示模块等场景）
- */
-export const getModuleTypes = () => {
-  return requestClient.get<CommonLookupApi.ModuleType[]>(
-    `${API_PREFIX}/GetModuleTypes`,
-  );
-};
+export type ModuleTypeOption = { label: string; value: number };
 
 let moduleTypeLabelCache: Map<number, string> | null = null;
 
-/** 将 ModuleType 列表转为 moduleType 数值 -> 显示名 映射 */
+/** 将 ModuleType 枚举项转为 moduleType 数值 -> 显示名 映射 */
 export function buildModuleTypeLabelMap(
-  items: CommonLookupApi.ModuleType[],
+  items: EnumerationAdminApi.EnumerationItemDto[],
 ): Map<number, string> {
   const map = new Map<number, string>();
   for (const item of items) {
-    const value = Number(item.id);
+    if (item.enable === false) continue;
+    const value = Number(item.value);
     if (Number.isNaN(value)) continue;
-    map.set(value, item.displayName || item.name || String(value));
+    map.set(value, item.displayName || String(value));
   }
   return map;
+}
+
+/** 将 ModuleType 枚举项转为下拉选项 */
+export function buildModuleTypeOptionsFromEnum(
+  items: EnumerationAdminApi.EnumerationItemDto[],
+): ModuleTypeOption[] {
+  return [...buildModuleTypeLabelMap(items).entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'));
+}
+
+export async function getModuleTypeEnumItems() {
+  return getEnumItems(MODULE_TYPE_ENUM_NAME);
+}
+
+/** 获取 ModuleType 下拉选项（仅含已启用枚举项） */
+export async function getModuleTypeOptions(): Promise<ModuleTypeOption[]> {
+  const items = await getModuleTypeEnumItems();
+  return buildModuleTypeOptionsFromEnum(items);
 }
 
 /** 获取并缓存 moduleType 显示名映射 */
@@ -40,9 +47,14 @@ export async function getModuleTypeLabelMap(): Promise<Map<number, string>> {
   if (moduleTypeLabelCache) {
     return moduleTypeLabelCache;
   }
-  const items = await getModuleTypes();
+  const items = await getModuleTypeEnumItems();
   moduleTypeLabelCache = buildModuleTypeLabelMap(items);
   return moduleTypeLabelCache;
+}
+
+/** 清除 moduleType 显示名缓存（枚举变更后可调用） */
+export function clearModuleTypeLabelCache() {
+  moduleTypeLabelCache = null;
 }
 
 /** 将 moduleType 数值格式化为显示名 */
