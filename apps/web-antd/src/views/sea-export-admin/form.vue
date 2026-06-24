@@ -3310,36 +3310,39 @@ defineExpose({
                   </div>
                   <Space class="content-section__actions-right">
                     <Button
+                      size="small"
                       class="flex items-center justify-center"
                       :loading="aiRecognizing"
                       @click="handleAiRecognize"
                     >
                       <IconifyIcon
                         icon="mdi:robot-outline"
-                        class="mr-1 inline-block size-4 align-middle"
+                        class="mr-1 inline-block size-3.5 align-middle"
                       />
                       <span class="align-middle">AI识别</span>
                     </Button>
                     <Button
+                      size="small"
                       class="flex items-center justify-center"
                       @click="handlePrint"
                     >
                       <IconifyIcon
                         icon="mdi:printer-outline"
-                        class="mr-1 inline-block size-4 align-middle"
+                        class="mr-1 inline-block size-3.5 align-middle"
                       />
                       <span class="align-middle">打印</span>
                     </Button>
-                    <Button @click="handleCancel">
+                    <Button size="small" @click="handleCancel">
                       {{ $t('common.cancel') }}
                     </Button>
                     <Button
                       type="primary"
+                      size="small"
                       :loading="submitting"
                       class="flex items-center justify-center"
                       @click="handleSubmit"
                     >
-                      <Save class="mr-1 inline-block size-4 align-middle" />
+                      <Save class="mr-1 inline-block size-3.5 align-middle" />
                       <span class="align-middle">{{ $t('common.save') }}</span>
                     </Button>
                   </Space>
@@ -3930,6 +3933,7 @@ defineExpose({
   display: flex;
   gap: 14px;
   padding: 12px;
+  padding-top: 0;
 }
 
 .center-column {
