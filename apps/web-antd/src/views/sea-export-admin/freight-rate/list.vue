@@ -248,7 +248,14 @@ const mapFreightRateParams = (formValues: Record<string, any>) => {
   };
 
   Object.keys(formValues).forEach((key) => {
-    if (key === 'isValid') {
+    // 特殊处理：录入时间范围需要拆分为开始和结束时间
+    if (key === 'creationTimeRange') {
+      const rangeValue = formValues[key];
+      if (rangeValue && Array.isArray(rangeValue) && rangeValue.length === 2) {
+        queryParams.creationTimeStart = rangeValue[0];
+        queryParams.creationTimeEnd = rangeValue[1];
+      }
+    } else if (key === 'isValid') {
       const value = formValues[key];
       if (Array.isArray(value)) {
         if (value.length > 0) {

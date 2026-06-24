@@ -779,6 +779,12 @@ export interface GetSeFreiPriceListInput {
   bookingAgentId?: string;
   /** 是否有效筛选（根据有效时间截止与当前时间比较），支持多选 */
   isValid?: number | number[];
+  /** 录入时间范围（开始时间） */
+  creationTimeStart?: string;
+  /** 录入时间范围（结束时间） */
+  creationTimeEnd?: string;
+  /** 录入人ID筛选 */
+  creatorUserId?: number;
   /** 当前页码，默认1 */
   pageIndex?: number;
   /** 每页记录数，默认10 */
