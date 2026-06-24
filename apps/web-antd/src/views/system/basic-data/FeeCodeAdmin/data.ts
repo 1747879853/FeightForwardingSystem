@@ -71,6 +71,20 @@ export function useFormSchema(): VbenFormSchema[] {
       componentProps: {
         maxLength: 100,
       },
+      rules: z
+        .string()
+        .min(1, {
+          message: $t('ui.formRules.required', [
+            $t('system.basicData.feeCode.cnName'),
+          ]),
+        })
+        .max(
+          100,
+          $t('ui.formRules.maxLength', [
+            $t('system.basicData.feeCode.cnName'),
+            100,
+          ]),
+        ),
     },
     {
       component: 'Input',
