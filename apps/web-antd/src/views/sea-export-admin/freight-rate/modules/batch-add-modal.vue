@@ -308,6 +308,7 @@ function handleCopyRows() {
         poddem: row.poddem,
         poddet: row.poddet,
         voyage: row.voyage,
+        contractNo: row.contractNo, // 添加约号字段
         etd: row.etd,
         etdDayOfWeek: row.etdDayOfWeek,
         etdDayTime: row.etdDayTime,

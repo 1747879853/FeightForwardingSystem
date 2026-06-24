@@ -288,6 +288,27 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'RangePicker',
+      fieldName: 'creationTimeRange',
+      label: '录入时间',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        placeholder: ['开始日期', '结束日期'],
+        format: 'YYYY-MM-DD',
+        valueFormat: 'YYYY-MM-DD',
+      },
+    },
+    {
+      component: 'UserSelect',
+      fieldName: 'creatorUserId',
+      label: '录入人',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+      },
+    },
+    {
       component: 'Input',
       fieldName: 'remark',
       label: '备注',

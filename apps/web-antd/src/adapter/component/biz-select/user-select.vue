@@ -11,10 +11,9 @@ import { Select } from 'ant-design-vue';
 import { getUserPagedList } from '#/api/system/user-admin';
 
 import { usePagedSelect } from './use-paged-select';
-import type { st } from 'vue-router/dist/router-CWoNjPRp.mjs';
 
 interface Props {
-  /** label 字段名，默认 'userName'，可用值：'userName' | 'nickName' */
+  /** label 字段名，默认 'nickName'，可用值：'userName' | 'nickName' */
   labelKey?: string;
   /** 用户属性（位掩码），用于筛选用户 */
   userAttribute?: number;
@@ -29,7 +28,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  labelKey: 'userName',
+  labelKey: 'nickName',
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],
