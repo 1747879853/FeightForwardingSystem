@@ -2,6 +2,11 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
+import {
+  getPaymentApplicationStatusColor,
+  getPaymentApplicationStatusLabel,
+  resolvePaymentApplicationStatusTag,
+} from '#/constants/application-status';
 import { $t } from '#/locales';
 
 /** 查询表单配置 */
@@ -162,18 +167,19 @@ export function useApplicationColumns(): VxeTableGridOptions['columns'] {
 
 /** 获取状态标签颜色 */
 export function getStatusColor(status: number): string {
-  const colorMap: Record<number, string> = {
-    3: 'success',
-    4: 'warning',
-  };
-  return colorMap[status] || 'default';
+  return getPaymentApplicationStatusColor(status);
 }
 
 /** 获取状态文本 */
 export function getStatusText(status: number): string {
-  const textMap: Record<number, string> = {
-    3: '审核通过',
-    4: '部分结算',
-  };
-  return textMap[status] || '未知';
+  return getPaymentApplicationStatusLabel(status, (key) => $t(key));
+}
+
+/** 获取状态 Tag 完整属性（含白底黑字等自定义样式） */
+export function getStatusTagProps(status: number) {
+  const { label, value, ...tagProps } = resolvePaymentApplicationStatusTag(
+    status,
+    (key) => $t(key),
+  );
+  return { label, tagProps };
 }

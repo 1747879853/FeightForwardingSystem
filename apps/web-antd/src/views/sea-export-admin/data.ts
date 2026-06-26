@@ -409,7 +409,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'transportOrder.etd',
       title: $t('seaExport.export.etd'),
       minWidth: 140,
-      formatter: 'formatDateTime',
+      formatter: 'formatDate',
     },
     {
       field: 'transportOrder.clientName',
