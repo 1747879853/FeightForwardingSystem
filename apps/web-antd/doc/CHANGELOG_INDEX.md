@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-26] [海运出口干系人已删除用户静默回显](./changelogs/change-log-2026-06-26-sea-export-deleted-order-user-display.md)
 - [2026-06-26] [vxe 列表排序箭头方向修复](./changelogs/change-log-2026-06-26-vxe-sort-arrow-direction-fix.md)
 - [2026-06-24] [附件类型默认展示模块改用 ModuleType 枚举](./changelogs/change-log-2026-06-24-attachment-dtl-type-module-type-enum.md)
 - [2026-06-23] [附件类型管理前端实现](./changelogs/change-log-2026-06-23-attachment-dtl-type-admin.md)

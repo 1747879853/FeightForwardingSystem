@@ -69,6 +69,10 @@ import { $t } from '#/locales';
 import { buildAttachmentUrl } from '#/utils';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import {
+  formatDeletedUserFallback,
+  resolveUserDisplayName,
+} from '#/utils/user-display';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
 import {
@@ -1371,7 +1375,7 @@ const getOrderUserDisplayName = (row: OrderUserEditorRow) => {
   const mappedName = orderUserNameMap.value[row.userId];
   if (mappedName) return mappedName;
   if (row.userName && row.userName !== String(row.userId)) return row.userName;
-  return '';
+  return formatDeletedUserFallback(row.userId);
 };
 const getOrderUserAvatarSrc = (userId?: number) => {
   const avatar = getOrderUserDetail(userId)?.avatar?.trim();
@@ -1433,7 +1437,7 @@ const loadOrderUserDetail = async (
     setOrderUserNameForRow(
       rowKey,
       userId,
-      cachedDetail.nickName || cachedDetail.userName || String(userId),
+      resolveUserDisplayName(userId, undefined, cachedDetail),
     );
     return;
   }
@@ -1443,12 +1447,17 @@ const loadOrderUserDetail = async (
     [userId]: true,
   };
   try {
-    const detail = await getUser(userId);
+    const detail = await getUser(userId, { silent: true });
     syncOrderUserDetail(detail);
-    const displayName = detail.nickName || detail.userName || String(userId);
+    const displayName = resolveUserDisplayName(userId, undefined, detail);
     setOrderUserNameForRow(rowKey, userId, displayName);
   } catch {
-    // ignore user detail fetch error for hover card
+    const row = rowKey
+      ? orderUserRows.value.find((item) => item._rowKey === rowKey)
+      : undefined;
+    const fallback = resolveUserDisplayName(userId, row?.userName);
+    syncOrderUserName(userId, fallback);
+    setOrderUserNameForRow(rowKey, userId, fallback);
   } finally {
     orderUserDetailLoadingMap.value = {
       ...orderUserDetailLoadingMap.value,

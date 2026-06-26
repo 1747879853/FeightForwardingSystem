@@ -256,13 +256,21 @@ async function getUserPagedList(params: Recordable<any>) {
   };
 }
 
+type GetUserOptions = {
+  /** 为 true 时不弹出全局错误提示（用户不存在等场景） */
+  silent?: boolean;
+};
+
 /**
  * 获取单个用户
  */
-async function getUser(id: number) {
+async function getUser(id: number, options?: GetUserOptions) {
   return requestClient.get<SystemUserAdminApi.UserDto>(
     '/services/app/UserAdmin/GetUserAsync',
-    { params: { Id: id } },
+    {
+      params: { Id: id },
+      ...(options?.silent ? { skipErrorMessage: true } : {}),
+    },
   );
 }
 

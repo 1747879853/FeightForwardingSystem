@@ -5,10 +5,14 @@ import { computed, ref, watch } from 'vue';
 
 import { Button, Input, Modal, Select, Space, Table } from 'ant-design-vue';
 
-import { getUser, UserAttribute } from '#/api/system/user-admin';
+import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '@vben/locales';
 
 import UserSelect from '../biz-select/user-select.vue';
+import {
+  fetchUserDisplayName,
+  formatDeletedUserFallback,
+} from '#/utils/user-display';
 
 type OrderRow = SeaExportAdminApi.OrderUserAddDto & {
   _rowKey: string;
@@ -72,7 +76,10 @@ const displayText = computed(() => {
   const selectedUserNames = items
     .map((item) => {
       if (item.userId) {
-        return userNameMap.value[item.userId] || String(item.userId);
+        return (
+          userNameMap.value[item.userId] ||
+          formatDeletedUserFallback(item.userId)
+        );
       }
       return undefined;
     })
@@ -134,22 +141,32 @@ const updateUserAttribute = (
 
 const updateUser = (index: number, userId: number | undefined) => {
   updateRow(index, { userId, userName: undefined });
-  if (!userId || userNameMap.value[userId]) return;
-  getUser(userId)
-    .then((detail) => {
-      const userName = detail.userName || detail.nickName || String(userId);
-      userNameMap.value = { ...userNameMap.value, [userId]: userName };
-      const latest = [...pendingRows.value];
-      const row = latest[index];
-      if (row?.userId === userId) {
-        latest[index] = {
-          ...row,
-          userName,
-        };
-        pendingRows.value = latest;
-      }
-    })
-    .catch(() => {});
+  if (!userId) return;
+  if (userNameMap.value[userId]) {
+    const latest = [...pendingRows.value];
+    const row = latest[index];
+    if (row?.userId === userId) {
+      latest[index] = {
+        ...row,
+        userName: userNameMap.value[userId],
+      };
+      pendingRows.value = latest;
+    }
+    return;
+  }
+  const row = pendingRows.value[index];
+  void fetchUserDisplayName(userId, row?.userName).then((userName) => {
+    userNameMap.value = { ...userNameMap.value, [userId]: userName };
+    const latest = [...pendingRows.value];
+    const currentRow = latest[index];
+    if (currentRow?.userId === userId) {
+      latest[index] = {
+        ...currentRow,
+        userName,
+      };
+      pendingRows.value = latest;
+    }
+  });
 };
 
 const rowSelection = computed(() => ({
@@ -160,16 +177,17 @@ const rowSelection = computed(() => ({
 }));
 
 const loadUserNames = async (items: SeaExportAdminApi.OrderUserAddDto[]) => {
-  for (const item of items) {
-    if (!item.userId) continue;
-    const nickName = (item as any).userNickName as string | undefined;
-    if (nickName && !userNameMap.value[item.userId]) {
+  await Promise.all(
+    items.map(async (item) => {
+      if (!item.userId || userNameMap.value[item.userId]) return;
+      const nickName = (item as any).userNickName as string | undefined;
+      const userName = await fetchUserDisplayName(item.userId, nickName);
       userNameMap.value = {
         ...userNameMap.value,
-        [item.userId]: nickName,
+        [item.userId]: userName,
       };
-    }
-  }
+    }),
+  );
 };
 
 watch(
@@ -264,7 +282,9 @@ watch(
                       {
                         id: record.userId,
                         userName:
-                          record.userName || userNameMap[record.userId] || '',
+                          record.userName ||
+                          userNameMap[record.userId] ||
+                          formatDeletedUserFallback(record.userId),
                       },
                     ]
                   : []
