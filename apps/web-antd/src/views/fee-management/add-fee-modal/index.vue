@@ -596,7 +596,7 @@ const feeColumns = [
     width: 80,
   },
   {
-    title: '金额',
+    title: $t('seaExport.export.paymentApplication.originalAmountLabel'),
     dataIndex: 'amount',
     key: 'amount',
     width: 100,
