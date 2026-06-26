@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-26] [vxe 列表排序箭头方向修复](./changelogs/change-log-2026-06-26-vxe-sort-arrow-direction-fix.md)
 - [2026-06-24] [附件类型默认展示模块改用 ModuleType 枚举](./changelogs/change-log-2026-06-24-attachment-dtl-type-module-type-enum.md)
 - [2026-06-23] [附件类型管理前端实现](./changelogs/change-log-2026-06-23-attachment-dtl-type-admin.md)
 - [2026-06-23] [海运出口编辑页服务项目节点宽度调整](./changelogs/change-log-2026-06-23-sea-export-edit-service-pipeline-node-width.md)
