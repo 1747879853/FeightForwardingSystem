@@ -13,6 +13,8 @@
 
 ## 2026-06
 
+- [2026-06-27] [修复列宽持久化 resizeWidth 为 0 导致不生效](./changelogs/change-log-2026-06-27-vxe-column-width-persist-resizeWidth-zero-fix.md)
+- [2026-06-27] [useVbenVxeGrid 列宽调整纳入列配置持久化](./changelogs/change-log-2026-06-27-vxe-column-width-persist.md)
 - [2026-06-26] [海运出口干系人已删除用户静默回显](./changelogs/change-log-2026-06-26-sea-export-deleted-order-user-display.md)
 - [2026-06-26] [vxe 列表排序箭头方向修复](./changelogs/change-log-2026-06-26-vxe-sort-arrow-direction-fix.md)
 - [2026-06-24] [附件类型默认展示模块改用 ModuleType 枚举](./changelogs/change-log-2026-06-24-attachment-dtl-type-module-type-enum.md)

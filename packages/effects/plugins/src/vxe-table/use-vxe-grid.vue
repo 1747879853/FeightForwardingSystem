@@ -111,7 +111,11 @@ const searchPersistTimer = ref<number>();
 const columnUniqueKeyField = '_columnUniqueKey';
 const columnDefaultVisibleField = '_columnDefaultVisible';
 const columnDefaultFixedField = '_columnDefaultFixed';
+const columnDefaultWidthField = '_columnDefaultWidth';
+const columnBaselineWidthField = '_columnBaselineWidth';
+const COLUMN_WIDTH_DIFF_THRESHOLD = 1;
 const originalColumns = ref<any[]>([]);
+const baselineWidthsCaptured = ref(false);
 const searchFieldOptions = ref<SearchFieldOption[]>([]);
 const initializedSearchFields = ref(false);
 const isApplyingSearchFieldConfig = ref(false);
@@ -127,6 +131,7 @@ type ColumnPersistConfig = {
   visibleColumnKeys: string[];
   columnVisibility: Record<string, boolean>;
   columnFixed?: Record<string, '' | 'left' | 'right'>;
+  columnWidths?: Record<string, number>;
 };
 
 type SearchFieldPersistConfig = {
@@ -238,6 +243,50 @@ function normalizeFixedValue(value: unknown): '' | 'left' | 'right' {
   return '';
 }
 
+function resolveNumericWidth(value: unknown): number | undefined {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) {
+    return undefined;
+  }
+  return Math.round(num);
+}
+
+function resolveRuntimeColumnWidth(column: any): number | undefined {
+  const resizeWidth = resolveNumericWidth(column?.resizeWidth);
+  if (resizeWidth !== undefined) {
+    return resizeWidth;
+  }
+  return resolveNumericWidth(column?.renderWidth ?? column?.width);
+}
+
+function resolveBaselineColumnWidth(column: any): number | undefined {
+  return resolveNumericWidth(
+    column?.[columnDefaultWidthField] ?? column?.[columnBaselineWidthField],
+  );
+}
+
+function clampColumnWidth(column: any, width: number): number {
+  const minWidth = resolveNumericWidth(column?.minWidth);
+  if (minWidth !== undefined && width < minWidth) {
+    return minWidth;
+  }
+  return width;
+}
+
+function applyColumnWidthValue(column: any, width: number) {
+  column.width = clampColumnWidth(column, width);
+}
+
+function isColumnWidthChanged(
+  currentWidth: number | undefined,
+  baselineWidth: number | undefined,
+): boolean {
+  if (currentWidth === undefined || baselineWidth === undefined) {
+    return false;
+  }
+  return Math.abs(currentWidth - baselineWidth) > COLUMN_WIDTH_DIFF_THRESHOLD;
+}
+
 function buildColumnConfigFromColumns(columns: any[]): ColumnPersistConfig {
   const visibleColumnKeys: string[] = [];
   const columnVisibility: Record<string, boolean> = {};
@@ -288,6 +337,7 @@ function normalizeColumns(columns: any[]) {
     column.id = uniqueKey;
     column[columnDefaultVisibleField] = column.visible !== false;
     column[columnDefaultFixedField] = normalizeFixedValue(column.fixed);
+    column[columnDefaultWidthField] = resolveNumericWidth(column.width);
     if (column.visible === undefined) {
       column.visible = true;
     }
@@ -317,7 +367,23 @@ function normalizeParsedConfig(config: any): ColumnPersistConfig | null {
       }
     });
   }
-  return { visibleColumnKeys, columnVisibility, columnFixed };
+  const columnWidths: Record<string, number> = {};
+  if (config.columnWidths && typeof config.columnWidths === 'object') {
+    Object.entries(config.columnWidths).forEach(([key, value]) => {
+      if (typeof key === 'string') {
+        const width = resolveNumericWidth(value);
+        if (width !== undefined) {
+          columnWidths[key] = width;
+        }
+      }
+    });
+  }
+  return {
+    visibleColumnKeys,
+    columnVisibility,
+    columnFixed,
+    ...(Object.keys(columnWidths).length > 0 ? { columnWidths } : {}),
+  };
 }
 
 function parseColumnConfig(rawSetting: string): ColumnPersistConfig | null {
@@ -377,6 +443,15 @@ function applyColumnConfig(config: ColumnPersistConfig, columns: any[]) {
       const defaultFixed = normalizeFixedValue(column[columnDefaultFixedField]);
       column.fixed = defaultFixed || undefined;
     }
+    if (
+      config.columnWidths &&
+      Object.prototype.hasOwnProperty.call(config.columnWidths, key)
+    ) {
+      const savedWidth = resolveNumericWidth(config.columnWidths[key]);
+      if (savedWidth !== undefined) {
+        applyColumnWidthValue(column, savedWidth);
+      }
+    }
   }
 
   const orderedVisibleColumns: any[] = [];
@@ -430,6 +505,7 @@ function collectColumnConfigFromGrid(): null | ColumnPersistConfig {
   const stableKeyLookup = createStableKeyLookup(stableSourceColumns);
   const runtimeVisibleKeys: string[] = [];
   const runtimeFixedMap = new Map<string, '' | 'left' | 'right'>();
+  const runtimeWidthMap = new Map<string, number>();
   runtimeColumns.forEach((column: any, index: number) => {
     const uniqueKey =
       stableKeyLookup.get(getColumnSignature(column)) ??
@@ -437,6 +513,10 @@ function collectColumnConfigFromGrid(): null | ColumnPersistConfig {
       column?.id ??
       `col_${index}_${String(column?.field ?? column?.title ?? column?.type ?? 'column')}`;
     runtimeFixedMap.set(uniqueKey, normalizeFixedValue(column?.fixed));
+    const runtimeWidth = resolveRuntimeColumnWidth(column);
+    if (runtimeWidth !== undefined) {
+      runtimeWidthMap.set(uniqueKey, runtimeWidth);
+    }
     if (column?.visible !== false) {
       runtimeVisibleKeys.push(uniqueKey);
     }
@@ -445,6 +525,7 @@ function collectColumnConfigFromGrid(): null | ColumnPersistConfig {
   const allColumns = getLeafColumns(stableSourceColumns);
   const columnVisibility: Record<string, boolean> = {};
   const columnFixed: Record<string, '' | 'left' | 'right'> = {};
+  const columnWidths: Record<string, number> = {};
   allColumns.forEach((column, index) => {
     const uniqueKey =
       column?.[columnUniqueKeyField] ??
@@ -453,11 +534,17 @@ function collectColumnConfigFromGrid(): null | ColumnPersistConfig {
     columnVisibility[uniqueKey] = visibleKeySet.has(uniqueKey);
     const fallbackFixed = normalizeFixedValue(column?.fixed);
     columnFixed[uniqueKey] = runtimeFixedMap.get(uniqueKey) ?? fallbackFixed;
+    const baselineWidth = resolveBaselineColumnWidth(column);
+    const runtimeWidth = runtimeWidthMap.get(uniqueKey);
+    if (isColumnWidthChanged(runtimeWidth, baselineWidth) && runtimeWidth) {
+      columnWidths[uniqueKey] = runtimeWidth;
+    }
   });
   return {
     visibleColumnKeys: runtimeVisibleKeys,
     columnVisibility,
     columnFixed,
+    ...(Object.keys(columnWidths).length > 0 ? { columnWidths } : {}),
   };
 }
 
@@ -467,8 +554,75 @@ function buildResetDefaultColumns(columns: any[]) {
   leafColumns.forEach((column) => {
     column.visible = true;
     column.fixed = undefined;
+    const defaultWidth = resolveNumericWidth(column[columnDefaultWidthField]);
+    if (defaultWidth !== undefined) {
+      column.width = defaultWidth;
+    } else {
+      delete column.width;
+    }
   });
   return resetColumns;
+}
+
+async function captureColumnBaselineWidths() {
+  if (baselineWidthsCaptured.value || !isColumnPersistEnabled()) {
+    return;
+  }
+  const runtimeColumns = props.api.grid?.getColumns?.();
+  if (!Array.isArray(runtimeColumns) || runtimeColumns.length === 0) {
+    return;
+  }
+  const stableKeyLookup = createStableKeyLookup(originalColumns.value);
+  const originalLeafMap = new Map<string, any>();
+  getLeafColumns(originalColumns.value).forEach((column) => {
+    const key = String(column[columnUniqueKeyField] ?? column.id ?? '').trim();
+    if (key) {
+      originalLeafMap.set(key, column);
+    }
+  });
+  runtimeColumns.forEach((column: any) => {
+    const uniqueKey = String(
+      stableKeyLookup.get(getColumnSignature(column)) ??
+        column?.[columnUniqueKeyField] ??
+        column?.id ??
+        '',
+    ).trim();
+    if (!uniqueKey) {
+      return;
+    }
+    const originalColumn = originalLeafMap.get(uniqueKey);
+    if (!originalColumn) {
+      return;
+    }
+    if (
+      resolveNumericWidth(originalColumn[columnDefaultWidthField]) !== undefined
+    ) {
+      return;
+    }
+    const runtimeWidth = resolveRuntimeColumnWidth(column);
+    if (runtimeWidth !== undefined) {
+      originalColumn[columnBaselineWidthField] = runtimeWidth;
+    }
+  });
+  baselineWidthsCaptured.value = true;
+  debugLog('列宽基线采集完成', {
+    baselineColumns: getLeafColumns(originalColumns.value).map((column) => ({
+      uniqueKey: column[columnUniqueKeyField] ?? column.id,
+      baselineWidth: column[columnBaselineWidthField],
+      defaultWidth: column[columnDefaultWidthField],
+    })),
+  });
+}
+
+async function captureColumnBaselineWidthsWithRetry() {
+  await captureColumnBaselineWidths();
+  if (baselineWidthsCaptured.value) {
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+  await captureColumnBaselineWidths();
 }
 
 function clearLocalStorageCache() {
@@ -574,6 +728,7 @@ async function resetColumnConfig() {
   }
   userSettingId.value = undefined;
   clearLocalStorageCache();
+  baselineWidthsCaptured.value = false;
   if (originalColumns.value.length > 0) {
     const resetColumns = buildResetDefaultColumns(originalColumns.value);
     isApplyingColumnConfig.value = true;
@@ -583,6 +738,7 @@ async function resetColumnConfig() {
     await nextTick();
     props.api.grid?.refreshColumn?.();
     isApplyingColumnConfig.value = false;
+    await captureColumnBaselineWidthsWithRetry();
     debugLog('恢复默认列配置完成', {
       columnsAfterReset: summarizeColumns(resetColumns),
     });
@@ -705,6 +861,7 @@ async function loadColumnConfig() {
   await nextTick();
   props.api.grid?.refreshColumn?.();
   isApplyingColumnConfig.value = false;
+  await captureColumnBaselineWidthsWithRetry();
   initializedColumns.value = true;
   debugLog('列配置加载流程结束', {
     hasApplied,
@@ -1375,6 +1532,11 @@ function onColumnDropEnd(event: any) {
   (gridEvents.value as any)?.columnDropEnd?.(event);
 }
 
+function onColumnResizableChange(event: any) {
+  scheduleSaveColumnConfig();
+  (gridEvents.value as any)?.columnResizableChange?.(event);
+}
+
 const events = computed(() => {
   return {
     ...gridEvents.value,
@@ -1383,6 +1545,7 @@ const events = computed(() => {
     customChange: onCustomChange,
     customReset: onCustomReset,
     columnDropEnd: onColumnDropEnd,
+    columnResizableChange: onColumnResizableChange,
   };
 });
 
