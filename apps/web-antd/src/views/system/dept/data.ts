@@ -109,22 +109,22 @@ export function useSchema(): VbenFormSchema[] {
     // === 以下为公司专属字段，仅 isCompany=true 时显示 ===
     {
       component: 'Input',
-      componentProps: { maxLength: 128 },
+      componentProps: {
+        maxLength: 128,
+        placeholder: $t('system.dept.unifiedSocialCreditCodePlaceholder'),
+      },
       fieldName: 'unifiedSocialCreditCode',
       label: $t('system.dept.unifiedSocialCreditCode'),
       dependencies: {
         triggerFields: ['isCompany'],
         show: (values) => values.isCompany === true,
+        required: (values) => values.isCompany === true,
         rules: (values) => {
           if (values.isCompany === true) {
-            return z
-              .string()
-              .min(
-                1,
-                $t('ui.formRules.required', [
-                  $t('system.dept.unifiedSocialCreditCode'),
-                ]),
-              );
+            const message = $t(
+              'system.dept.unifiedSocialCreditCodePlaceholder',
+            );
+            return z.string({ required_error: message }).min(1, { message });
           }
           return z.string().optional();
         },

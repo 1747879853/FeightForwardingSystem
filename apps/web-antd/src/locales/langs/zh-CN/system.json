@@ -614,6 +614,7 @@
     "webUrl": "官方网址",
     "enable": "是否启用",
     "unifiedSocialCreditCode": "统一社会信用代码",
+    "unifiedSocialCreditCodePlaceholder": "请输入统一社会信用代码",
     "invoiceAddress": "开票地址",
     "invoiceTel": "开票电话",
     "orgInfo": "组织信息",

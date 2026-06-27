@@ -613,6 +613,7 @@
     "webUrl": "Website",
     "enable": "Enabled",
     "unifiedSocialCreditCode": "Unified Social Credit Code",
+    "unifiedSocialCreditCodePlaceholder": "Please enter unified social credit code",
     "invoiceAddress": "Invoice Address",
     "invoiceTel": "Invoice Phone",
     "orgInfo": "Organization Info",
