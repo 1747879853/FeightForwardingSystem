@@ -70,6 +70,7 @@ last_updated: 2026-06-27
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-27 | `Feature` | 提单类字段（唛头、货描、收发通、港口备注等）输入时全角英数字/标点/空格自动转半角，与既有英文大写规范串联执行。 | `toHalfWidth` 并入 `toEnglishUpperCase`；港口联动备注与 AI 回填同步生效。 |
 | 2026-06-27 | `Feature` | 顶部浏览器标签栏标题按主提单号/委托编号动态展示，未保存新建单默认「海运出口」。 | 逻辑收敛至 `use-sea-export-tab-title.ts`，新建页与编辑工作台嵌入表单共用。 |
 | 2026-06-17 | `Feature` | 唛头、货物描述、相关方备注、港口备注、主提单号、船名航次、箱号/封号等提单类字段输入英文时自动转大写；港口联动备注与 AI 识别回填同步处理。 | 复用 `EnglishUpperInput`/`EnglishUpperTextarea` + `toEnglishUpperCase`；新建/编辑共用 `form.vue`。 |
 | 2026-06-07 | `Feature` | 保存时按勾选服务项的 `userAttribute` 动态校验干系人：每服务至少一个绑定角色已选人；销售、操作始终静态必填。 | `validateRequiredOrderUserAssignee` + `validateServiceBoundOrderUsers`；读 `latestAvailableServiceTypes` 缓存。 |

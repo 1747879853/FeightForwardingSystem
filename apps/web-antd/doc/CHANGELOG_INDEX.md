@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-27] [海运出口提单类字段全角转半角](./changelogs/change-log-2026-06-27-sea-export-halfwidth-input.md)
 - [2026-06-27] [编号规则新增发票申请单号类型](./changelogs/change-log-2026-06-27-generate-num-invoice-issue-application-no.md)
 - [2026-06-27] [GetMyAsync 全量字段同步至 userStore.userInfo](./changelogs/change-log-2026-06-27-userinfo-getmyasync-full-sync.md)
 - [2026-06-27] [修复列宽持久化 resizeWidth 为 0 导致不生效](./changelogs/change-log-2026-06-27-vxe-column-width-persist-resizeWidth-zero-fix.md)

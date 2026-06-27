@@ -1116,15 +1116,18 @@ const pickPortSelectOption = (option: unknown) => {
 const normalizePortRemarkPart = (value: unknown) =>
   (value ?? '').toString().replace(/，/g, ',').split(',')[0]?.trim() ?? '';
 
-/** 备注格式：portName, countryEnName（英文逗号 + 空格，大小写保持原样） */
+/** 备注格式：portName, countryEnName（英文逗号 + 空格，联动时同步半角与大写） */
 const formatSeaExportPortRemark = (raw?: {
   country?: { countryEnName?: string };
   portName?: string;
 }) => {
   const portName = normalizePortRemarkPart(raw?.portName);
   const countryEnName = normalizePortRemarkPart(raw?.country?.countryEnName);
-  if (portName && countryEnName) return `${portName}, ${countryEnName}`;
-  return portName || countryEnName || undefined;
+  const remark =
+    portName && countryEnName
+      ? `${portName}, ${countryEnName}`
+      : portName || countryEnName || '';
+  return remark ? toEnglishUpperCase(remark) : undefined;
 };
 
 /** PortSelect @change：联动备注；起运港变更时同步服务项目 */

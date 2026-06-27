@@ -94,6 +94,7 @@ last_updated: 2026-06-27
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-27 | `Feature` | 与新建页共用提单类字段全角转半角（唛头、货描、收发通、港口备注等），与英文大写串联执行。 | `toHalfWidth` 并入 `toEnglishUpperCase`；嵌入 `form.vue` 的输入组件与 AI/港口联动回填同步生效。 |
 | 2026-06-27 | `Feature` | 浏览器标签栏标题随主提单号/委托编号动态更新；有主提单号优先展示主提单号。 | 嵌入 `form.vue` 调用 `useSeaExportTabTitle`；`KeepAlive` 下切换工作台子标签仍保持标题。 |
 | 2026-06-22 | `Style` | 编辑/新建表单取消左侧委托栏：委托只读项与装运/订单类型并入「基础信息」标题行；业务来源、付费方式/地点、运输条款、贸易条款并入中间基础信息表单（提单/副本份数后）；备注信息与外部备注各占两列，置于收发通通知人下方；中间栏占满除右侧干系人外的宽度。 | 新增 `FrtPrepareInput` 合并 `codeFrtId`+`prepareAtId`；`blType`/`billType` 以隐藏字段存值，标题行 Select 通过 `basicInfoFormApi` 同步。 |
 | 2026-06-26 | `Fix` | 干系人引用已删除用户时：`GetUserAsync` 静默请求、展示 `用户{id}（已删除）` 兜底，不再弹全局错误且 `UserSelect` 不回显纯数字 ID。 | `getUser({ silent: true })` + `skipErrorMessage`；逻辑复用 `utils/user-display.ts`。 |
