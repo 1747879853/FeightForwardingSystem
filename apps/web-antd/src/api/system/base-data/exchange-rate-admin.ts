@@ -38,6 +38,7 @@ export namespace ExchangeRateAdminApi {
   export interface ExchangeRateDto {
     id: number;
     currencyId?: number | string;
+    currencyCode?: string;
     drValue?: number;
     crValue?: number;
     customValue?: number;

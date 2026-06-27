@@ -237,15 +237,9 @@ export function useColumns(
 ): VxeTableGridOptions<ExchangeRateAdminApi.ExchangeRateDto>['columns'] {
   return [
     {
-      field: 'currencyId',
+      field: 'currencyCode',
       title: $t('system.basicData.exchangeRate.currencyId'),
       minWidth: 100,
-      formatter: ({ cellValue }) => {
-        if (cellValue === null || cellValue === undefined || cellValue === '') {
-          return '-';
-        }
-        return formatCurrencyName(Number(cellValue));
-      },
     },
     {
       field: 'drValue',
