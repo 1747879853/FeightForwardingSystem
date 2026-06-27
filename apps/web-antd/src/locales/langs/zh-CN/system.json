@@ -358,8 +358,11 @@
         "BankStatement": {
           "BankStatementNo": "银行流水号"
         },
-        "InvoiceIssue": {
+        "InvoiceApplication": {
           "ApplicationNo": "发票申请单号"
+        },
+        "InvoiceIssue": {
+          "ApplicationNo": "发票开具单号"
         }
       }
     },
@@ -477,6 +480,7 @@
     "supportExcel": "支持 .xlsx、.xls 格式的 Excel 文件",
     "onlyExcelAllowed": "只能上传 Excel 文件",
     "fileSizeLimit": "文件大小不能超过 10MB",
+    "company": "所属公司",
     "department": "所属部门",
     "userAttribute": "用户属性",
     "selectUserAttribute": "请选择用户属性",
@@ -597,6 +601,10 @@
     "isBoss": "负责人",
     "addedTime": "加入时间",
     "selectOrgFirst": "请先选择左侧组织",
+    "searchOrgKeywordRequired": "请输入组织名称",
+    "searchOrgNotFound": "未找到匹配的组织",
+    "selectUsersFirst": "请选择要添加的用户",
+    "cannotAddUserWithOrganization": "所选用户已有所属组织，无法重复添加",
     "searchUser": "搜索用户",
     "selectedUsers": "已选用户",
     "addSuccess": "添加成功",

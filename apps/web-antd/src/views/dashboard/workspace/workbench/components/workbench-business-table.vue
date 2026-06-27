@@ -9,7 +9,11 @@ import { computed, ref, watch } from 'vue';
 
 import { Pagination, Spin } from 'ant-design-vue';
 
-import type { BusinessRow, StageStep } from '../../workbench-data';
+import {
+  resolveDefaultStageKey,
+  type BusinessRow,
+  type StageStep,
+} from '../../workbench-data';
 import type { SeServiceShowColumn } from '../se-service-show-columns';
 
 interface TablePagination {
@@ -42,7 +46,18 @@ const emit = defineEmits<{
 }>();
 
 function resolveInitialStageKey(steps: StageStep[]) {
-  return steps.find((item) => item.active)?.key ?? steps[0]?.key ?? '';
+  if (props.activeStageKey) {
+    return props.activeStageKey;
+  }
+  return resolveDefaultStageKey(steps);
+}
+
+function syncStageKey(nextKey: string, notifyParent = false) {
+  if (!nextKey || nextKey === activeStageKey.value) return;
+  activeStageKey.value = nextKey;
+  if (notifyParent) {
+    emit('update:activeStageKey', nextKey);
+  }
 }
 
 const activeStageKey = ref(resolveInitialStageKey(props.stageSteps));
@@ -51,7 +66,7 @@ watch(
   () => props.stageSteps,
   (steps) => {
     if (!steps.some((item) => item.key === activeStageKey.value)) {
-      activeStageKey.value = resolveInitialStageKey(steps);
+      syncStageKey(resolveDefaultStageKey(steps), true);
     }
   },
 );
@@ -102,8 +117,10 @@ const useDynamicColumns = computed(() => props.dynamicColumns !== undefined);
 
 const tableDynamicColumns = computed(() => props.dynamicColumns ?? []);
 
+const isAssignedStage = computed(() => activeStageKey.value === 'assigned');
+
 const tableColspan = computed(() => {
-  const fixedCount = 3;
+  const fixedCount = isAssignedStage.value ? 3 : 2;
   if (useDynamicColumns.value) {
     return (
       (showSelection.value ? 1 : 0) +
@@ -111,7 +128,8 @@ const tableColspan = computed(() => {
       tableDynamicColumns.value.length
     );
   }
-  return showSelection.value ? 8 : 7;
+  const base = isAssignedStage.value ? 7 : 6;
+  return showSelection.value ? base + 1 : base;
 });
 
 const allSelected = computed(
@@ -293,7 +311,7 @@ function handlePaginationChange(page: number, pageSize: number) {
                 <th>ETD</th>
               </template>
               <th>处理人</th>
-              <th>被转交人</th>
+              <th v-if="isAssignedStage">转交备注</th>
             </tr>
           </thead>
           <tbody>
@@ -334,7 +352,7 @@ function handlePaginationChange(page: number, pageSize: number) {
                 <td>{{ row.etd }}</td>
               </template>
               <td>{{ row.taskUsersText || '--' }}</td>
-              <td>{{ row.assigneeUserName || '--' }}</td>
+              <td v-if="isAssignedStage">{{ row.assigneeRemark || '--' }}</td>
             </tr>
           </tbody>
         </table>

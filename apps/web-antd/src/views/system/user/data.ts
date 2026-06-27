@@ -2,7 +2,10 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SystemUserAdminApi } from '#/api';
 
-import { getOrganizationUnitTree } from '#/api/system/organization-unit';
+import {
+  getOrganizationUnitTree,
+  withOrganizationTreeDisabled,
+} from '#/api/system/organization-unit';
 import { UserAttribute, UserStatus } from '#/api';
 import { $t } from '#/locales';
 import { z } from '@vben/common-ui';
@@ -372,10 +375,16 @@ export function useFormSchema(): VbenFormSchema[] {
     },
 
     {
+      component: 'ReadonlyText',
+      fieldName: 'companyName',
+      label: $t('system.user.company'),
+    },
+    {
       component: 'ApiTreeSelect',
       componentProps: {
         allowClear: true,
-        api: getOrganizationUnitTree,
+        api: async () =>
+          withOrganizationTreeDisabled(await getOrganizationUnitTree()),
         class: 'w-full',
         labelField: 'displayName',
         valueField: 'id',
@@ -589,12 +598,6 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       field: 'creationTime',
       formatter: 'formatDateTime',
       title: $t('system.user.createTime'),
-      width: 170,
-    },
-    {
-      field: 'lastLoginTime',
-      formatter: 'formatDateTime',
-      title: $t('system.user.lastLoginTime'),
       width: 170,
     },
     {

@@ -10,6 +10,10 @@ import type {
 import dayjs from 'dayjs';
 
 import { z } from '#/adapter/form';
+import {
+  getOrganizationUnitTree,
+  withOrganizationTreeDisabled,
+} from '#/api/system/organization-unit';
 import { $t } from '#/locales';
 
 /** 编号生成类型常量 */
@@ -99,6 +103,7 @@ const TABLE_NAME_VALUES = [
   'PaymentSettlement.SettlementNo',
   'ReceiveSettlement.SettlementNo',
   'BankStatement.BankStatementNo',
+  'InvoiceApplication.ApplicationNo',
   'InvoiceIssue.ApplicationNo',
 ] as const;
 
@@ -146,11 +151,17 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'OrganizationSelect',
+      component: 'ApiTreeSelect',
       fieldName: 'orgId',
       label: $t('system.basicData.generateNum.orgId'),
       componentProps: {
         allowClear: true,
+        api: async () =>
+          withOrganizationTreeDisabled(await getOrganizationUnitTree()),
+        class: 'w-full',
+        labelField: 'displayName',
+        valueField: 'id',
+        childrenField: 'children',
         placeholder: $t('ui.placeholder.select'),
       },
     },

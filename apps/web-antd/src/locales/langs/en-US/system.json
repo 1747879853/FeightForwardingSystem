@@ -357,8 +357,11 @@
         "BankStatement": {
           "BankStatementNo": "Bank Statement No."
         },
-        "InvoiceIssue": {
+        "InvoiceApplication": {
           "ApplicationNo": "Invoice Application No."
+        },
+        "InvoiceIssue": {
+          "ApplicationNo": "Invoice Issue No."
         }
       }
     },
@@ -476,6 +479,7 @@
     "supportExcel": "Support .xlsx, .xls Excel files",
     "onlyExcelAllowed": "Only Excel files are allowed",
     "fileSizeLimit": "File size cannot exceed 10MB",
+    "company": "Company",
     "department": "Department",
     "userAttribute": "User Attribute",
     "selectUserAttribute": "Please select user attribute",
@@ -596,6 +600,11 @@
     "isBoss": "Leader",
     "addedTime": "Joined At",
     "selectOrgFirst": "Please select an organization first",
+    "searchOrgKeywordRequired": "Please enter organization name",
+    "searchOrgNotFound": "No matching organization found",
+    "selectUsersFirst": "Please select users to add",
+    "cannotAddUserWithOrganization":
+      "Selected users already belong to an organization and cannot be added again",
     "searchUser": "Search user",
     "selectedUsers": "Selected users",
     "addSuccess": "Added successfully",

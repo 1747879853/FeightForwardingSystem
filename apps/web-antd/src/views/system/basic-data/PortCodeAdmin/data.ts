@@ -74,12 +74,6 @@ export function useFormSchema(): VbenFormSchema[] {
       componentProps: { allowClear: true },
     },
     {
-      component: 'Input',
-      fieldName: 'chau',
-      label: $t('system.basicData.portCode.chau'),
-      componentProps: { allowClear: true },
-    },
-    {
       component: 'Textarea',
       fieldName: 'explain',
       label: $t('system.basicData.portCode.explain'),
@@ -182,6 +176,7 @@ export function useColumns(
       field: 'chau',
       title: $t('system.basicData.portCode.chau'),
       minWidth: 120,
+      formatter: ({ row }) => row.country?.chau ?? '',
     },
     {
       field: 'portType',

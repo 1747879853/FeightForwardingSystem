@@ -16,7 +16,7 @@ import {
 } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { message, Modal } from 'ant-design-vue';
+import { message, Modal, Textarea } from 'ant-design-vue';
 
 import UserSelect from '#/adapter/component/biz-select/user-select.vue';
 import { getOrderFeeTaskList } from '#/api/audit-approval/expense-admin';
@@ -46,6 +46,7 @@ import {
   filterModelDefaults,
   normalizePolId,
   processingTabs,
+  resolveDefaultStageKey,
   serviceTabs,
   serviceTypeLabel,
   toPortTab,
@@ -132,6 +133,7 @@ const transferVisible = ref(false);
 const transferSubmitting = ref(false);
 const transferTaskIds = ref<string[]>([]);
 const transferUserId = ref<number>();
+const transferAssigneeRemark = ref('');
 const reviewRawRows = ref<BusinessRow[]>([]);
 
 const REVIEW_TAB_KEYS = new Set(['ar-ap-review', 'payment-review']);
@@ -319,6 +321,7 @@ function mapWorkbenchItemToBusinessRow(
   return {
     assigneeUserId: task.assigneeUserId,
     assigneeUserName: assignee,
+    assigneeRemark: task.assigneeRemark?.trim() || '',
     bookingNo:
       seaExport?.transportOrder?.commissionNum || String(task.seaExportId),
     containerInfo: seaExport?.transportOrder?.totalCtn || '--',
@@ -370,9 +373,34 @@ function ensureActiveStage() {
     activeStageKey.value = '';
     return;
   }
-  if (!stageSteps.value.some((item) => item.key === activeStageKey.value)) {
-    activeStageKey.value = stageSteps.value[0]?.key ?? '';
+  if (
+    !activeStageKey.value ||
+    !stageSteps.value.some((item) => item.key === activeStageKey.value)
+  ) {
+    activeStageKey.value = resolveDefaultStageKey(stageSteps.value);
   }
+}
+
+function normalizeWorkbenchPagedList(
+  raw: SeServiceTaskAdminApi.PagedListOfSeServiceTaskWorkbenchItemDto,
+) {
+  const record =
+    raw as SeServiceTaskAdminApi.PagedListOfSeServiceTaskWorkbenchItemDto &
+      Record<string, unknown>;
+  const items =
+    record.items ??
+    (record.Items as
+      | SeServiceTaskAdminApi.SeServiceTaskWorkbenchItemDto[]
+      | undefined) ??
+    [];
+  const totalCount = Number(record.totalCount ?? record.TotalCount ?? 0);
+  const currentPageRaw = record.currentPage ?? record.CurrentPage;
+  const currentPage =
+    currentPageRaw === undefined || currentPageRaw === null
+      ? undefined
+      : Number(currentPageRaw);
+
+  return { currentPage, items, totalCount };
 }
 
 async function loadPortConfig(polId: string) {
@@ -449,11 +477,12 @@ async function loadSeaExportTaskList(options?: {
   }
 
   const result = await getSeServiceTaskWorkbenchPagedList(requestParams);
+  const normalized = normalizeWorkbenchPagedList(result);
 
-  pagedTasks.value = result.items ?? [];
-  seaExportPagination.total = result.totalCount ?? 0;
-  if (result.currentPage != null) {
-    seaExportPagination.current = result.currentPage;
+  pagedTasks.value = normalized.items;
+  seaExportPagination.total = normalized.totalCount;
+  if (normalized.currentPage != null) {
+    seaExportPagination.current = normalized.currentPage;
   }
 
   if (!pagedTasks.value.length && seaExportPagination.current > 1) {
@@ -467,7 +496,6 @@ async function loadSeaExportWorkbenchFull() {
   selectedRowKeys.value = [];
   try {
     await loadSeaExportCount(true);
-    ensureActiveStage();
     const polId = activePort.value;
     if (!polId) {
       activePortConfig.value = null;
@@ -741,6 +769,7 @@ function handleTransfer(ids: string[]) {
   }
   transferTaskIds.value = ids;
   transferUserId.value = undefined;
+  transferAssigneeRemark.value = '';
   transferVisible.value = true;
 }
 
@@ -750,10 +779,16 @@ async function submitTransfer() {
     message.warning('请选择被转交人');
     return;
   }
+  const remark = transferAssigneeRemark.value.trim();
+  if (!remark) {
+    message.warning('请填写转交备注');
+    return;
+  }
   transferSubmitting.value = true;
   try {
     await transferSeServiceTask({
       assigneeUserId: transferUserId.value,
+      assigneeRemark: remark,
       ids: transferTaskIds.value,
     });
     message.success('转交成功');
@@ -933,6 +968,16 @@ onMounted(() => {
             placeholder="请选择用户"
           />
         </div>
+        <div class="transfer-modal__field transfer-modal__field--block">
+          <label class="transfer-modal__label">转交备注</label>
+          <Textarea
+            v-model:value="transferAssigneeRemark"
+            :maxlength="500"
+            :rows="3"
+            placeholder="请输入转交备注"
+            show-count
+          />
+        </div>
       </div>
     </Modal>
   </div>
@@ -987,6 +1032,16 @@ onMounted(() => {
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+.transfer-modal__field--block {
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 12px;
+}
+
+.transfer-modal__field--block .transfer-modal__label {
+  width: auto;
 }
 
 .transfer-modal__label {

@@ -13,6 +13,8 @@
 
 ## 2026-06
 
+- [2026-06-27] [编号规则新增发票申请单号并修正开具单号文案](./changelogs/change-log-2026-06-27-generate-num-invoice-application-issue-no.md)
+- [2026-06-27] [组织管理全页移除负责人展示与维护](./changelogs/change-log-2026-06-27-dept-form-remove-charge-user.md)
 - [2026-06-27] [海运出口应收应付订单信息港口改展示备注字段](./changelogs/change-log-2026-06-27-sea-export-order-fee-port-remark-display.md)
 - [2026-06-27] [海运出口提单类字段全角转半角](./changelogs/change-log-2026-06-27-sea-export-halfwidth-input.md)
 - [2026-06-27] [编号规则新增发票申请单号类型](./changelogs/change-log-2026-06-27-generate-num-invoice-issue-application-no.md)

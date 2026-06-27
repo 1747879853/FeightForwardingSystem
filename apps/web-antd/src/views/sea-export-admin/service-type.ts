@@ -69,7 +69,7 @@ export function resolveServiceTypeValueByLabels(
 export function resolveServiceTypeLabelByMap(
   serviceType: number | undefined | null,
   labelMap: Map<number, string>,
-  fallback = '指派任务',
+  fallback = '转交任务',
 ) {
   if (serviceType == null) {
     return fallback;

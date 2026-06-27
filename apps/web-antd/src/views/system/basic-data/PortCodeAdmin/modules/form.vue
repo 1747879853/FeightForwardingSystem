@@ -46,7 +46,6 @@ const [Modal, modalApi] = useVbenModal({
           id: formData.value.id,
           portName: values.portName,
           cnName: values.cnName,
-          chau: values.chau,
           explain: values.explain,
           portType: values.portType,
           countryId: values.countryId,
@@ -59,7 +58,6 @@ const [Modal, modalApi] = useVbenModal({
         await addPortCode({
           portName: values.portName,
           cnName: values.cnName,
-          chau: values.chau,
           explain: values.explain,
           portType: values.portType,
           countryId: values.countryId,
@@ -94,7 +92,6 @@ const [Modal, modalApi] = useVbenModal({
       formApi.setValues({
         portName: detail.portName,
         cnName: detail.cnName,
-        chau: detail.chau,
         explain: detail.explain,
         portType: detail.portType,
         countryId: detail.countryId,

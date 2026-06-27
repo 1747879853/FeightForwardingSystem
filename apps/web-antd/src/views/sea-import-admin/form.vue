@@ -759,10 +759,6 @@ const getOrderUserStatusClass = (detail?: SystemUserAdminApi.UserDto) => {
   if (!detail?.isActive) return 'order-user-detail-card__status--inactive';
   return 'order-user-detail-card__status--active';
 };
-const formatOrderUserLastLogin = (lastLoginTime?: string) => {
-  if (!lastLoginTime) return '-';
-  return dayjs(lastLoginTime).format('YYYY-MM-DD HH:mm');
-};
 const syncOrderUserName = (userId: number, userName: string) => {
   orderUserNameMap.value = { ...orderUserNameMap.value, [userId]: userName };
 };
@@ -2721,14 +2717,6 @@ defineExpose({
                             <span>{{
                               getOrderUserDetailText(
                                 getOrderUserDetail(row.userId)?.emailAddress,
-                              )
-                            }}</span>
-                          </div>
-                          <div class="order-user-detail-card__info-item">
-                            <span>最近登录</span>
-                            <span>{{
-                              formatOrderUserLastLogin(
-                                getOrderUserDetail(row.userId)?.lastLoginTime,
                               )
                             }}</span>
                           </div>

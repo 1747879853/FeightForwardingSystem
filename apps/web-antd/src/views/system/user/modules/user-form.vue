@@ -8,6 +8,10 @@ import { message } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
 import { createOrUpdateUser, getUserForEdit } from '#/api/system/user-admin';
+import {
+  getOrganizationUnitTree,
+  resolveOrganizationCompanyName,
+} from '#/api/system/organization-unit';
 import { $t } from '#/locales';
 
 import {
@@ -24,6 +28,39 @@ const emits = defineEmits(['success']);
 
 const formData = ref<SystemUserAdminApi.SystemUser>();
 
+const id = ref<number>();
+const orgTreePromise = ref<ReturnType<typeof getOrganizationUnitTree> | null>(
+  null,
+);
+const lastSyncedOrganizationId = ref<number | undefined>();
+
+async function ensureOrgTree() {
+  if (!orgTreePromise.value) {
+    orgTreePromise.value = getOrganizationUnitTree();
+  }
+  return orgTreePromise.value;
+}
+
+async function syncCompanyName(
+  organizationId?: number | null,
+  apiCompanyName?: string | null,
+) {
+  const trimmedApiName = apiCompanyName?.trim();
+  if (trimmedApiName) {
+    await formApi.setFieldValue('companyName', trimmedApiName);
+    return;
+  }
+
+  if (organizationId === undefined || organizationId === null) {
+    await formApi.setFieldValue('companyName', '');
+    return;
+  }
+
+  const tree = await ensureOrgTree();
+  const companyName = resolveOrganizationCompanyName(tree, organizationId);
+  await formApi.setFieldValue('companyName', companyName);
+}
+
 const [Form, formApi] = useVbenForm({
   commonConfig: {
     componentProps: {
@@ -34,9 +71,14 @@ const [Form, formApi] = useVbenForm({
   schema: useFormSchema(),
   showDefaultActions: false,
   wrapperClass: 'grid-cols-2',
+  handleValuesChange: (values) => {
+    if (values.organizationId === lastSyncedOrganizationId.value) {
+      return;
+    }
+    lastSyncedOrganizationId.value = values.organizationId;
+    void syncCompanyName(values.organizationId);
+  },
 });
-
-const id = ref<number>();
 
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
@@ -95,12 +137,16 @@ const [Modal, modalApi] = useVbenModal({
         SystemUserAdminApi.SystemUser & { focusRoles?: boolean }
       >();
       formApi.resetForm();
+      lastSyncedOrganizationId.value = undefined;
+      orgTreePromise.value = null;
 
       if (data?.id) {
         id.value = data.id;
         try {
           const userDetail = await getUserForEdit(data.id);
           formData.value = { ...data, ...userDetail };
+          const organizationId = userDetail.organizationId;
+          lastSyncedOrganizationId.value = organizationId;
 
           await nextTick();
           formApi.setValues({
@@ -112,7 +158,7 @@ const [Modal, modalApi] = useVbenModal({
             isActive: userDetail.isActive,
             status: userDetail.status,
             avatar: avatarUrlToFormValue(userDetail.avatar),
-            organizationId: (userDetail as any).organizationId,
+            organizationId,
             userAttributeFlags: parseUserAttribute(userDetail.userAttribute),
             enName: userDetail.enName,
             qq: userDetail.qq,
@@ -130,6 +176,7 @@ const [Modal, modalApi] = useVbenModal({
             officeTel: userDetail.officeTel,
             senderDisplayName: userDetail.senderDisplayName,
           });
+          await syncCompanyName(organizationId, userDetail.companyName);
 
           if (data.focusRoles) {
             // 可以通过 formApi 实现聚焦逻辑
@@ -137,6 +184,8 @@ const [Modal, modalApi] = useVbenModal({
         } catch (error) {
           console.error('获取用户详情失败:', error);
           formData.value = data;
+          const organizationId = data.organizationId;
+          lastSyncedOrganizationId.value = organizationId;
           await nextTick();
           formApi.setValues({
             id: data.id,
@@ -147,7 +196,7 @@ const [Modal, modalApi] = useVbenModal({
             isActive: data.isActive,
             status: data.status,
             avatar: avatarUrlToFormValue(data.avatar),
-            organizationId: (data as any).organizationId,
+            organizationId,
             userAttributeFlags: parseUserAttribute(data.userAttribute),
             enName: data.enName,
             qq: data.qq,
@@ -163,6 +212,7 @@ const [Modal, modalApi] = useVbenModal({
             officeTel: data.officeTel,
             senderDisplayName: data.senderDisplayName,
           });
+          await syncCompanyName(organizationId);
         }
       } else {
         id.value = undefined;

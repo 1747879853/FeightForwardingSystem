@@ -112,6 +112,14 @@ export namespace SystemUserAdminApi {
     officeTel?: string;
     senderDisplayName?: string;
     userBankAccounts?: UserBankAccountDto[];
+    /** 所属部门组织 id */
+    organizationId?: number;
+    /** 所属公司 id（只读） */
+    companyId?: number | null;
+    /** 所属公司名称（只读） */
+    companyName?: string | null;
+    /** 所属部门名称（只读） */
+    departmentName?: string | null;
   }
 
   /** 用户编辑数据DTO（含数据权限） */

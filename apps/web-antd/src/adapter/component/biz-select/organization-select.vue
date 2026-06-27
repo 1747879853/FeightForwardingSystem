@@ -102,7 +102,7 @@ const options = computed(() => {
       const itemAny = item as any;
       const rawValue = itemAny?.[props.valueKey];
       return {
-        disabled: false,
+        disabled: item.enable === false,
         label: pickLabel(item),
         value: rawValue === undefined || rawValue === null ? '' : rawValue,
       };

@@ -68,15 +68,6 @@ export function useSchema(): VbenFormSchema[] {
       label: $t('system.dept.enName'),
     },
     {
-      component: 'UserSelect',
-      componentProps: {
-        allowClear: true,
-        class: 'w-full',
-      },
-      fieldName: 'chargeUserId',
-      label: $t('system.dept.chargeUser'),
-    },
-    {
       component: 'Input',
       componentProps: { maxLength: 64 },
       fieldName: 'contactPhone',
