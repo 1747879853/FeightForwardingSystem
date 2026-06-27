@@ -14,6 +14,8 @@ const routes: RouteRecordRaw[] = [
         'Admin.OrderFee.Lock',
         'Admin.PaymentApplication',
         'Admin.Statement',
+        'Admin.InvoiceIssue',
+        'Admin.InvoiceApplication',
       ]),
     },
     name: 'FeeManagement',
@@ -103,6 +105,82 @@ const routes: RouteRecordRaw[] = [
           activePath: '/fee-management/statement',
         },
         component: () => import('#/views/fee-management/statement/editor.vue'),
+      },
+      {
+        path: 'invoice-issue',
+        name: 'InvoiceIssueList',
+        meta: {
+          icon: 'mdi:receipt-text-outline',
+          keepAlive: true,
+          title: '发票开出',
+          authority: abpPageAuthority('Admin.InvoiceIssue.Get'),
+        },
+        component: () =>
+          import('#/views/fee-management/invoice-issue/list.vue'),
+      },
+      {
+        path: 'invoice-issue/add',
+        name: 'InvoiceIssueAdd',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '新建发票开出',
+          authority: abpPageAuthority('Admin.InvoiceIssue.Add'),
+          hideInMenu: true,
+          activePath: '/fee-management/invoice-issue',
+        },
+        component: () =>
+          import('#/views/fee-management/invoice-issue/form.vue'),
+      },
+      {
+        path: 'invoice-issue/:id/edit',
+        name: 'InvoiceIssueEdit',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '编辑发票开出',
+          authority: abpPageAuthority('Admin.InvoiceIssue.Edit'),
+          hideInMenu: true,
+          activePath: '/fee-management/invoice-issue',
+        },
+        component: () =>
+          import('#/views/fee-management/invoice-issue/form.vue'),
+      },
+      {
+        path: 'invoice-application',
+        name: 'InvoiceApplicationList',
+        meta: {
+          icon: 'mdi:file-document-outline',
+          keepAlive: true,
+          title: '发票申请',
+          authority: abpPageAuthority('Admin.InvoiceApplication.Get'),
+        },
+        component: () =>
+          import('#/views/fee-management/invoice-application/list.vue'),
+      },
+      {
+        path: 'invoice-application/add',
+        name: 'InvoiceApplicationAdd',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '新建发票申请',
+          authority: abpPageAuthority('Admin.InvoiceApplication.Add'),
+          hideInMenu: true,
+          activePath: '/fee-management/invoice-application',
+        },
+        component: () =>
+          import('#/views/fee-management/invoice-application/form.vue'),
+      },
+      {
+        path: 'invoice-application/:id/edit',
+        name: 'InvoiceApplicationEdit',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '编辑发票申请',
+          authority: abpPageAuthority('Admin.InvoiceApplication.Edit'),
+          hideInMenu: true,
+          activePath: '/fee-management/invoice-application',
+        },
+        component: () =>
+          import('#/views/fee-management/invoice-application/form.vue'),
       },
     ],
   },
