@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-06-17
+last_updated: 2026-06-27
 ---
 
 # 1. 业务背景说明 (Background)
@@ -27,6 +27,7 @@ last_updated: 2026-06-17
 - **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
 - **创建后跳转：** 新增成功后优先解析接口返回的记录 ID 并跳转 `/sea-exports/{id}/edit`；若返回值无法解析，则回到 `/sea-exports` 列表。
+- **顶部标签栏标题：** 浏览器标签栏标题随录入状态动态变化：未保存且无主提单号时为「海运出口」；录入主提单号后为「海运出口-{主提单号}」；保存后无主提单号时为「海运出口-{委托编号}」。主提单号优先于委托编号。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -69,6 +70,7 @@ last_updated: 2026-06-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-27 | `Feature` | 顶部浏览器标签栏标题按主提单号/委托编号动态展示，未保存新建单默认「海运出口」。 | 逻辑收敛至 `use-sea-export-tab-title.ts`，新建页与编辑工作台嵌入表单共用。 |
 | 2026-06-17 | `Feature` | 唛头、货物描述、相关方备注、港口备注、主提单号、船名航次、箱号/封号等提单类字段输入英文时自动转大写；港口联动备注与 AI 识别回填同步处理。 | 复用 `EnglishUpperInput`/`EnglishUpperTextarea` + `toEnglishUpperCase`；新建/编辑共用 `form.vue`。 |
 | 2026-06-07 | `Feature` | 保存时按勾选服务项的 `userAttribute` 动态校验干系人：每服务至少一个绑定角色已选人；销售、操作始终静态必填。 | `validateRequiredOrderUserAssignee` + `validateServiceBoundOrderUsers`；读 `latestAvailableServiceTypes` 缓存。 |
 | 2026-06-07 | `Style` | 服务项目 Chevron 节点尺寸紧凑化（40px 高、12px 字号），单节点最大宽度 140px。 | 对齐工作台 `workbench-business-table` Chevron 规格。 |

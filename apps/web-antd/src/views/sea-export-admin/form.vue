@@ -88,6 +88,7 @@ import {
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
 } from './service-type';
+import { useSeaExportTabTitle } from './use-sea-export-tab-title';
 
 const route = useRoute();
 const router = useRouter();
@@ -1067,6 +1068,15 @@ const bindServiceTypeLinkageEvents = () => {
         size: 'small',
       },
     },
+    {
+      fieldName: 'mblNum',
+      componentProps: {
+        onChange: (value: unknown) => {
+          tabMblNum.value = String(value ?? '').trim();
+        },
+        size: 'small',
+      },
+    },
   ]);
 };
 /** 港口选择字段与备注字段的对应；选中港口后自动填入对应备注字段 */
@@ -1265,6 +1275,18 @@ const entrustReadonlyInfo = ref({
   accountDate: undefined as unknown,
   settlementDate: undefined as unknown,
 });
+
+const tabMblNum = ref('');
+const tabCommissionNum = computed(
+  () => entrustReadonlyInfo.value.commissionNum || undefined,
+);
+const isOrderSaved = computed(() => isEdit.value);
+
+useSeaExportTabTitle(tabMblNum, tabCommissionNum, isOrderSaved);
+
+const syncTabTitleFromValues = (values: Record<string, any>) => {
+  tabMblNum.value = String(values.mblNum ?? '').trim();
+};
 
 const refreshEntrustReadonlyInfo = (values: Record<string, any>) => {
   entrustReadonlyInfo.value = {
@@ -2093,6 +2115,7 @@ const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
     settlementDate:
       values.settlementDate ?? entrustReadonlyInfo.value.settlementDate,
   });
+  syncTabTitleFromValues(values);
   await syncBasicInfoHeaderFields();
 };
 
@@ -2587,6 +2610,7 @@ const loadEditData = async () => {
     initializeOrderUsersPanel(to?.orderUsers ?? []);
     const { savedSet, taskMap } = parseDetailServiceTypes(detail);
     refreshEntrustReadonlyInfo(formValues);
+    syncTabTitleFromValues(formValues);
     headerCodeSourceSelectedItems.value = toSelectedItems(
       to?.codeSourceId,
       (to as any)?.codeSourceName,

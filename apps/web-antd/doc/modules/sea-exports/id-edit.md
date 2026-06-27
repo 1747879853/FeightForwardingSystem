@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-06-26
+last_updated: 2026-06-27
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,6 +22,7 @@ last_updated: 2026-06-26
 # 2. 功能与操作说明 (Features & Operations)
 
 - **工作台标签导航：** `editor.vue` 维护顶部标签，包含基础信息、更改单、服务详情、单证信息、应收应付、派车、分单、问题记录、修改历史。当前实现中基础信息、费用、更改单、派车、分单已经挂载组件；服务详情、单证信息、问题记录、修改历史目前主要作为标签预留。
+- **浏览器标签栏标题：** 由嵌入的 `form.vue` 通过 `useSeaExportTabTitle` 动态设置：有主提单号显示「海运出口-{主提单号}」，否则显示「海运出口-{委托编号}」；主提单号录入或详情回填后实时更新。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
 - **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 决定节点可见范围，`polId+clientId` 决定默认勾选。编辑态在详情回填后以 `detail.seaExportServices[].serviceType` 作为勾选覆盖源，确保本单历史勾选不被联动默认值覆盖。
 - **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，按 `sortId` 顺序以 Chevron 步骤条呈现三态：已完成（绿）/ 处理中（蓝）/ 还未到（灰）。**顶栏内联展示**：与 AI 识别等同处 `content-section__actions` 一行，左侧为「服务项目」标题、`...` 配置入口与紧凑流水线，右侧为操作按钮。节点增删在「配置服务」弹窗维护（展示 POL 全部节点 Checkbox）；**任意勾选变化**时编辑态点「确定」弹出二次确认后自动保存（弹窗内无常驻提示）。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
@@ -93,6 +94,7 @@ last_updated: 2026-06-26
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-27 | `Feature` | 浏览器标签栏标题随主提单号/委托编号动态更新；有主提单号优先展示主提单号。 | 嵌入 `form.vue` 调用 `useSeaExportTabTitle`；`KeepAlive` 下切换工作台子标签仍保持标题。 |
 | 2026-06-22 | `Style` | 编辑/新建表单取消左侧委托栏：委托只读项与装运/订单类型并入「基础信息」标题行；业务来源、付费方式/地点、运输条款、贸易条款并入中间基础信息表单（提单/副本份数后）；备注信息与外部备注各占两列，置于收发通通知人下方；中间栏占满除右侧干系人外的宽度。 | 新增 `FrtPrepareInput` 合并 `codeFrtId`+`prepareAtId`；`blType`/`billType` 以隐藏字段存值，标题行 Select 通过 `basicInfoFormApi` 同步。 |
 | 2026-06-26 | `Fix` | 干系人引用已删除用户时：`GetUserAsync` 静默请求、展示 `用户{id}（已删除）` 兜底，不再弹全局错误且 `UserSelect` 不回显纯数字 ID。 | `getUser({ silent: true })` + `skipErrorMessage`；逻辑复用 `utils/user-display.ts`。 |
 | 2026-06-23 | `Style` | 顶栏服务项目 Chevron 节点宽度固定 96px；首节点（常为 Tooltip 分支）统一 `service-chevron-flow__item` 外包，避免宽度样式未命中。 | Tooltip 根节点非 `span` 时 `> :deep(span)` 选择器无效；首节点须 `margin-left: 0`。 |
