@@ -15,15 +15,19 @@ import {
   Button,
   Card,
   Drawer,
+  Dropdown,
   Form,
   Input,
   InputNumber,
+  Menu,
+  MenuItem,
   message,
   Modal,
   Space,
   Spin,
   Table,
 } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 import { h } from 'vue';
 
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
@@ -597,7 +601,7 @@ function handleOpenFeeDetailModal() {
                   (o: any) => o.value === parentFee.transportOrder?.bizType,
                 )?.label || '-',
               carrier: parentFee.seaExport?.carrierName || '-',
-              company: parentFee.transportOrder.company || '-',
+              company: parentFee.transportOrder.companys[0].name || '-',
               children: [] as any[],
             };
 
@@ -1092,7 +1096,7 @@ function transformToTreeData(
           (o: any) => o.value === item.transportOrder?.bizType,
         )?.label || '-',
       carrier: item.seaExport?.carrierName || '-',
-      company: item.transportOrder.company || '-',
+      company: item.transportOrder.companys[0].name || '-',
       checked: false,
       children: [] as any[],
     };
@@ -1301,6 +1305,17 @@ const clientInvoiceHeaderOptions = computed(() => {
     value: info.id,
   }));
 });
+
+/** 根据发票类型获取标题 */
+function getInvoiceTitle(invoiceType: string): string {
+  const option = invoiceTypeOptions.find((opt) => opt.value === invoiceType);
+  return option ? option.label : '增值税电子普通发票';
+}
+
+/** 处理发票类型变化 */
+function handleInvoiceTypeChange({ key }: any) {
+  formData.value.invoiceType = key;
+}
 
 /** 处理发票抬头变化 */
 function handleClientInvoiceHeaderChange(headerId: any) {
@@ -1842,14 +1857,24 @@ async function loadDetail() {
             <Card>
               <template #title>
                 <Space>
-                  <span style="font-size: 24px; color: #c41e3a"
-                    >增值税电子普通发票</span
-                  >
-                  <Select
-                    v-model:value="formData.invoiceType"
-                    :options="invoiceTypeOptions"
-                    style="width: 200px"
-                  />
+                  <span style="font-size: 24px; color: #c41e3a">{{
+                    getInvoiceTitle(formData.invoiceType)
+                  }}</span>
+                  <Dropdown :trigger="['click']">
+                    <Button type="text" size="small">
+                      <IconifyIcon icon="ant-design:down-outlined" />
+                    </Button>
+                    <template #overlay>
+                      <Menu @click="handleInvoiceTypeChange">
+                        <MenuItem
+                          v-for="option in invoiceTypeOptions"
+                          :key="option.value"
+                        >
+                          {{ option.label }}
+                        </MenuItem>
+                      </Menu>
+                    </template>
+                  </Dropdown>
                 </Space>
               </template>
 
