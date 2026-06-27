@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-27] [编号规则新增发票申请单号类型](./changelogs/change-log-2026-06-27-generate-num-invoice-issue-application-no.md)
 - [2026-06-27] [GetMyAsync 全量字段同步至 userStore.userInfo](./changelogs/change-log-2026-06-27-userinfo-getmyasync-full-sync.md)
 - [2026-06-27] [修复列宽持久化 resizeWidth 为 0 导致不生效](./changelogs/change-log-2026-06-27-vxe-column-width-persist-resizeWidth-zero-fix.md)
 - [2026-06-27] [useVbenVxeGrid 列宽调整纳入列配置持久化](./changelogs/change-log-2026-06-27-vxe-column-width-persist.md)

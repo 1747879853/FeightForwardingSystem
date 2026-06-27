@@ -2,7 +2,7 @@
 title: 编号规则
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-06-17
+last_updated: 2026-06-27
 ---
 
 # 1. 业务背景说明 (Background)
@@ -39,7 +39,7 @@ last_updated: 2026-06-17
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **表名** | 编号规则绑定的业务实体字段。 | `GenerateNumAdmin/data.ts` 固定下拉 | 与后端 `Entity.Field` 一致，如 `SeaExport.CommissionNum`。 | 必选，预置 6 项。 |
+| **表名** | 编号规则绑定的业务实体字段。 | `GenerateNumAdmin/data.ts` 固定下拉 | 与后端 `Entity.Field` 一致，如 `SeaExport.CommissionNum`、`InvoiceIssue.ApplicationNo`。 | 必选，预置 7 项。 |
 | **适用范围** | 规则生效范围：全局 / 组织 / 用户。 | 表单 `applyScope` | 组织与用户互斥；选组织必填 `orgId`，选用户必选至少一人。 | 不可同时设组织与用户。 |
 | **生成类型 generateEnum** | 0 自增 / 1 固定文本 / 2 用户名 / 3 yyyyMMdd / 4 yyMMdd。 | 子规则卡片下拉 | 切换类型时清理无效字段；AutoNum 最多 1 条。 | 每条必选类型。 |
 | **固定字符串 text** | 固定前缀或中段文本。 | 子规则卡片 | **仅 Text(1) 展示与校验。** | Text 类型必填。 |
@@ -57,6 +57,7 @@ last_updated: 2026-06-17
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-27 | `Feature` | 编号规则类型新增 `InvoiceIssue.ApplicationNo`（发票申请单号）。 | 选项在 `data.ts` 的 `TABLE_NAME_VALUES` 维护，i18n 键为 `tableNameOptions.InvoiceIssue.ApplicationNo`。 |
 | 2026-06-17 | `Fix` | 列表适用组织、适用用户为空时显示「全部生效」，明确全局规则语义。 | 格式化逻辑集中在 `formatGenerateNumOrgDisplay` / `formatGenerateNumUsersDisplay`。 |
 | 2026-06-17 | `Feature` | 规则明细改为卡片交互：按生成类型显隐字段、上移下移自动排序、实时编号预览、悬浮删除图标。 | 预览逻辑在 `data.ts` 的 `buildGenerateNumPreview`；提交时 `mapRuleToAdd/Edit` 按 index 写 `sortId`。 |
 | 2026-06-17 | `Feature` | 表名字段由自由输入改为固定下拉，可选 6 种业务单号。 | 选项值格式为 `Entity.Field`，与后端 AppService 约定一致。 |

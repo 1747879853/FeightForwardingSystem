@@ -356,6 +356,9 @@
         },
         "BankStatement": {
           "BankStatementNo": "Bank Statement No."
+        },
+        "InvoiceIssue": {
+          "ApplicationNo": "Invoice Application No."
         }
       }
     },
