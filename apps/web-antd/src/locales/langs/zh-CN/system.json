@@ -358,8 +358,11 @@
         "BankStatement": {
           "BankStatementNo": "银行流水号"
         },
-        "InvoiceIssue": {
+        "InvoiceApplication": {
           "ApplicationNo": "发票申请单号"
+        },
+        "InvoiceIssue": {
+          "ApplicationNo": "发票开具单号"
         }
       }
     },

@@ -103,6 +103,7 @@ const TABLE_NAME_VALUES = [
   'PaymentSettlement.SettlementNo',
   'ReceiveSettlement.SettlementNo',
   'BankStatement.BankStatementNo',
+  'InvoiceApplication.ApplicationNo',
   'InvoiceIssue.ApplicationNo',
 ] as const;
 
