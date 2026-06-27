@@ -479,6 +479,7 @@
     "fileSizeLimit": "文件大小不能超过 10MB",
     "department": "所属部门",
     "userAttribute": "用户属性",
+    "selectUserAttribute": "请选择用户属性",
     "userAttributeOptions": {
       "operation": "操作",
       "customerService": "客服",

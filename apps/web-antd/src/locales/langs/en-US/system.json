@@ -478,6 +478,7 @@
     "fileSizeLimit": "File size cannot exceed 10MB",
     "department": "Department",
     "userAttribute": "User Attribute",
+    "selectUserAttribute": "Please select user attribute",
     "userAttributeOptions": {
       "operation": "Operation",
       "customerService": "Customer Service",

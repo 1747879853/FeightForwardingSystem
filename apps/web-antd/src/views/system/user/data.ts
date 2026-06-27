@@ -475,7 +475,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
         mode: 'multiple',
         allowClear: true,
         options: getUserAttributeOptions(),
-        placeholder: $t('system.user.userAttribute'),
+        placeholder: $t('system.user.selectUserAttribute'),
       },
       fieldName: 'UserAttributeFlags',
       label: $t('system.user.userAttribute'),
