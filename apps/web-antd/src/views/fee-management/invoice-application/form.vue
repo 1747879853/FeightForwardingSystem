@@ -77,7 +77,7 @@ const selectedGoodsRows = ref<string[]>([]); // 选中的商品明细行ID
 const formData = ref<any>({
   settlementId: '',
   companyId: 0,
-  currencyId: 1, // 默认人民币
+  currencyId: null, // 默认人民币
   invoiceType: InvoiceApplicationApi.InvoiceType.NormalElectric,
   require: '',
   remark: '',
@@ -92,6 +92,9 @@ const applicationDate = ref(dayjs().format('YYYY-MM-DD')); // 申请日期，自
 const applicantName = ref(''); // 申请人名称
 const applicantCompany = ref<number>(0); // 申请人所在公司ID
 const applicantCompanyName = ref('');
+
+const applicantTaxNumber = ref('');
+const applicantAddress = ref('');
 
 // 销售方银行账号列表（从用户信息中获取）
 const orgBankAccounts = ref<any[]>([]);
@@ -523,11 +526,22 @@ function handleResetFilter() {
 
 /** 打开费用选择抽屉 */
 function handleOpenFeeDrawer() {
-  // 如果是第一次添加费用，清空之前的选择
-  if (!selectedSettlementId.value) {
+  // ✅ 如果已经选择了结算单位和币别（即已经有费用），则保持固定不变
+  if (!formData.value.settlementId) {
+    // 首次添加费用，清空之前的选择
     selectedSettlementId.value = '';
     selectedCurrencyId.value = undefined;
     selectedFeeRowKeys.value = [];
+  } else {
+    // ✅ 已有费用，固定结算单位和币别
+    selectedSettlementId.value = formData.value.settlementId;
+    selectedCurrencyId.value = formData.value.currencyId;
+    console.log(
+      '🔒 已固定筛选条件 - 结算单位:',
+      selectedSettlementId.value,
+      '币别:',
+      selectedCurrencyId.value,
+    );
   }
 
   drawerVisible.value = true;
@@ -1039,6 +1053,11 @@ function initApplicantInfo() {
     if ((userInfo as any).companyId) {
       applicantCompany.value = (userInfo as any).companyId;
       applicantCompanyName.value = (userInfo as any).companyName || '';
+      applicantTaxNumber.value =
+        (userInfo as any).company.unifiedSocialCreditCode || '';
+      applicantAddress.value =
+        `${(userInfo as any).company.invoiceAddress || ''} ${(userInfo as any).company.invoiceTel || ''}` ||
+        '';
       console.log('✅ 从用户信息中获取公司ID:', applicantCompany.value);
     } else {
       console.warn('⚠️ 用户信息中未找到公司ID');
@@ -1046,10 +1065,10 @@ function initApplicantInfo() {
 
     // 从用户信息中获取银行账号列表
     if (
-      (userInfo as any).orgBankAccounts &&
-      Array.isArray((userInfo as any).orgBankAccounts)
+      (userInfo as any).company.orgBankAccounts &&
+      Array.isArray((userInfo as any).company.orgBankAccounts)
     ) {
-      orgBankAccounts.value = (userInfo as any).orgBankAccounts;
+      orgBankAccounts.value = (userInfo as any).company.orgBankAccounts;
       console.log(
         '✅ 从用户信息中获取银行账号列表:',
         orgBankAccounts.value.length,
@@ -1505,6 +1524,10 @@ async function loadDetail() {
     // 加载客户开票信息
     await loadClientInvoiceInfo(detail.settlementId);
 
+    // ✅ 设置固定的筛选条件（用于抽屉）
+    selectedSettlementId.value = detail.settlementId;
+    selectedCurrencyId.value = detail.currencyId || 1;
+
     // 设置汇率
     invoiceExchangeRate.value = detail.invoiceExchangeRate || 1.0;
 
@@ -1588,7 +1611,7 @@ async function loadDetail() {
                 >
                   <InputNumber
                     v-model:value="invoiceExchangeRate"
-                    :min="0"
+                    disabled
                     :precision="4"
                     style="width: 100%"
                     placeholder="请输入汇率"
@@ -1779,7 +1802,9 @@ async function loadDetail() {
                       <span style="min-width: 80px; color: #666"
                         ><strong>纳税人识别号:</strong></span
                       >
-                      <span style="flex: 1">91370200783723132P</span>
+                      <span style="flex: 1">{{
+                        applicantTaxNumber || '-'
+                      }}</span>
                     </div>
                     <div
                       style="display: flex; align-items: center; height: 28px"
@@ -1787,7 +1812,7 @@ async function loadDetail() {
                       <span style="min-width: 80px; color: #666"
                         ><strong>地址、电话:</strong></span
                       >
-                      <span style="flex: 1">(选填)</span>
+                      <span style="flex: 1">{{ applicantAddress || '-' }}</span>
                     </div>
                     <div
                       style="display: flex; align-items: center; height: 28px"
@@ -2100,7 +2125,10 @@ async function loadDetail() {
                 :model-value="selectedSettlementId"
                 placeholder="请选择结算单位"
                 style="flex: 1"
-                @update:model-value="(v) => updateSelectedSettlementId(v)"
+                :disabled="!!formData.settlementId"
+                @update:model-value="
+                  (v) => updateSelectedSettlementId(v as string)
+                "
               />
             </div>
             <div
@@ -2113,7 +2141,10 @@ async function loadDetail() {
                 :model-value="selectedCurrencyId"
                 placeholder="请选择币别"
                 style="flex: 1"
-                @update:model-value="(v) => updateSelectedCurrencyId(v)"
+                :disabled="!!formData.currencyId && formData.settlementId"
+                @update:model-value="
+                  (v) => updateSelectedCurrencyId(v as number)
+                "
               />
             </div>
             <div style="display: flex; flex: 1; justify-content: flex-end">

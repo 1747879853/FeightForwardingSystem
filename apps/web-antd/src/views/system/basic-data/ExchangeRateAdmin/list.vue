@@ -98,7 +98,6 @@ const [Grid, gridApi] = useVbenVxeGrid<ExchangeRateAdminApi.ExchangeRateDto>({
             items: tmp.items.map((item) => ({
               ...item,
               _rowKey: `exchangeRate_${item.id}_${Date.now()}`,
-              currencyId: formatCurrencyName(item.currencyId),
             })),
           }),
         }),
