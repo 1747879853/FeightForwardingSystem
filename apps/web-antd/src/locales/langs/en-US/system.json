@@ -598,6 +598,9 @@
     "selectOrgFirst": "Please select an organization first",
     "searchOrgKeywordRequired": "Please enter organization name",
     "searchOrgNotFound": "No matching organization found",
+    "selectUsersFirst": "Please select users to add",
+    "cannotAddUserWithOrganization":
+      "Selected users already belong to an organization and cannot be added again",
     "searchUser": "Search user",
     "selectedUsers": "Selected users",
     "addSuccess": "Added successfully",

@@ -599,6 +599,8 @@
     "selectOrgFirst": "请先选择左侧组织",
     "searchOrgKeywordRequired": "请输入组织名称",
     "searchOrgNotFound": "未找到匹配的组织",
+    "selectUsersFirst": "请选择要添加的用户",
+    "cannotAddUserWithOrganization": "所选用户已有所属组织，无法重复添加",
     "searchUser": "搜索用户",
     "selectedUsers": "已选用户",
     "addSuccess": "添加成功",

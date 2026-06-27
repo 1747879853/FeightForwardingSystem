@@ -314,13 +314,63 @@ export interface PagingListOfOrganizationUnitUserListDto {
   totalPages: number;
 }
 
-/** 组织成员搜索DTO */
+/** 组织成员搜索DTO（FindUserPagedListForOu 等） */
 export interface OrganizationUnitMemberDto {
   id: number;
   userName: string;
   nickName?: string;
   isActive: boolean;
   roleNames?: string;
+}
+
+/** GetUserPagingListForOu 接口项（name/value） */
+interface OrganizationUnitUserNameValueDto {
+  name?: string | null;
+  value?: string | null;
+}
+
+/** 添加组织成员候选用户（前端归一化） */
+export interface OrganizationUnitUserOptionDto {
+  id: number;
+  /** 原始展示名，如 昵称(用户名) */
+  label: string;
+  nickName: string;
+  userName: string;
+}
+
+/** 为添加组织成员查询用户的分页响应 */
+export interface PagingListOfOrganizationUnitUserOptionDto {
+  items: OrganizationUnitUserOptionDto[];
+  pageIndex: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages?: number;
+}
+
+function parseOrganizationUnitUserLabel(label: string) {
+  const trimmed = label.trim();
+  const match = trimmed.match(/^(.+)\(([^)]+)\)$/);
+  if (!match) {
+    return { label: trimmed, nickName: trimmed, userName: '' };
+  }
+  return {
+    label: trimmed,
+    nickName: match[1]?.trim() || trimmed,
+    userName: match[2]?.trim() || '',
+  };
+}
+
+function mapOrganizationUnitUserOption(
+  item: OrganizationUnitUserNameValueDto,
+): OrganizationUnitUserOptionDto | null {
+  const id = Number(item.value);
+  if (!Number.isFinite(id)) {
+    return null;
+  }
+  return {
+    id,
+    ...parseOrganizationUnitUserLabel(item.name ?? ''),
+  };
 }
 
 /** 获取组织下的用户分页列表 */
@@ -335,7 +385,42 @@ async function getOrganizationUnitUsers(params: {
   );
 }
 
-/** 搜索可添加到组织的用户 */
+/** 为添加组织成员查询用户（分页） */
+async function getUserPagingListForOu(params: {
+  keyWords?: string;
+  pageIndex?: number;
+  pageSize?: number;
+}): Promise<PagingListOfOrganizationUnitUserOptionDto> {
+  const queryParams = Object.fromEntries(
+    Object.entries({
+      KeyWords: params.keyWords,
+      PageIndex: params.pageIndex ?? 1,
+      PageSize: params.pageSize ?? 10,
+    }).filter(([_, value]) => value !== undefined && value !== ''),
+  );
+
+  const response = await requestClient.get<{
+    items?: OrganizationUnitUserNameValueDto[];
+    pageIndex: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages?: number;
+  }>('/services/app/OrganizationUnit/GetUserPagingListForOuAsync', {
+    params: queryParams,
+  });
+
+  return {
+    items: (response.items ?? [])
+      .map(mapOrganizationUnitUserOption)
+      .filter((item): item is OrganizationUnitUserOptionDto => item !== null),
+    pageIndex: response.pageIndex,
+    pageSize: response.pageSize,
+    totalCount: response.totalCount,
+    totalPages: response.totalPages,
+  };
+}
+
+/** 搜索可添加到组织的用户（已废弃，请使用 getUserPagingListForOu） */
 async function findUsersForOrganizationUnit(data: {
   keyWords?: string;
   organizationUnitId?: number;
@@ -435,6 +520,7 @@ export {
   getOrganizationUnitTree,
   getOrganizationUnitsWithLevel,
   getOrganizationUnitUsers,
+  getUserPagingListForOu,
   moveOrganizationUnit,
   removeUserFromOrganizationUnit,
   updateOrgBankAccount,

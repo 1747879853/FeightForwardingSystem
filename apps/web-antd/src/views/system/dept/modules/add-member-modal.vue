@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { OrganizationUnitMemberDto } from '#/api/system/organization-unit';
+import type { OrganizationUnitUserOptionDto } from '#/api/system/organization-unit';
 
 import { ref } from 'vue';
 
@@ -9,7 +9,7 @@ import { Input, message, Table } from 'ant-design-vue';
 
 import {
   addUsersToOrganizationUnit,
-  findUsersForOrganizationUnit,
+  getUserPagingListForOu,
 } from '#/api/system/organization-unit';
 import { $t } from '#/locales';
 
@@ -18,7 +18,7 @@ const emit = defineEmits(['success']);
 const organizationUnitId = ref<number>(0);
 const searchKeyword = ref('');
 const loading = ref(false);
-const userList = ref<OrganizationUnitMemberDto[]>([]);
+const userList = ref<OrganizationUnitUserOptionDto[]>([]);
 const totalCount = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(10);
@@ -26,19 +26,15 @@ const selectedRowKeys = ref<number[]>([]);
 
 const columns = [
   {
-    dataIndex: 'userName',
-    title: () => $t('system.dept.userName'),
-    width: 120,
-  },
-  {
     dataIndex: 'nickName',
     title: () => $t('system.dept.nickName'),
-    width: 120,
+    width: 140,
+    ellipsis: true,
   },
   {
-    dataIndex: 'roleNames',
-    title: () => $t('system.user.roles'),
-    width: 160,
+    dataIndex: 'userName',
+    title: () => $t('system.dept.userName'),
+    width: 140,
     ellipsis: true,
   },
 ];
@@ -46,11 +42,10 @@ const columns = [
 async function searchUsers() {
   loading.value = true;
   try {
-    const res = await findUsersForOrganizationUnit({
+    const res = await getUserPagingListForOu({
       keyWords: searchKeyword.value || undefined,
-      organizationUnitId: organizationUnitId.value,
-      skipCount: (currentPage.value - 1) * pageSize.value,
-      maxResultCount: pageSize.value,
+      pageIndex: currentPage.value,
+      pageSize: pageSize.value,
     });
     userList.value = res.items || [];
     totalCount.value = res.totalCount || 0;
@@ -77,9 +72,10 @@ function onSelectionChange(keys: number[]) {
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     if (selectedRowKeys.value.length === 0) {
-      message.warning($t('system.dept.selectOrgFirst'));
+      message.warning($t('system.dept.selectUsersFirst'));
       return;
     }
+
     modalApi.lock();
     try {
       await addUsersToOrganizationUnit({
