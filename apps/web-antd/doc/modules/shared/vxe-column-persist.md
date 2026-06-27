@@ -49,6 +49,7 @@ last_updated: 2026-06-27
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-06-27 | Fix | 列宽拖拽与持久化回填不再受 `minWidth` 限制 | 列初始化时将 `minWidth` 转为初始 `width` 并移除；全局 `resizableConfig.minWidth: 0` |
 | 2026-06-27 | Fix | 修复列宽拖拽后刷新不生效 | vxe 默认 `resizeWidth: 0` 阻断 `renderWidth` 回退，基线采集与稀疏保存均失败 |
 | 2026-06-27 | Feature | 列宽拖拽调整纳入列配置持久化，与显隐/顺序/固定共用一条 UserSetting | `columnResizableChange` 触发防抖保存；`columnWidths` 稀疏存储；无默认 width 列在加载后采 renderWidth 基线 |
 | 2026-05-29 | Feature/Fix | 列配置读取改为登录后全局预拉取 + 缓存 | `columnPersist.load/add/edit/remove` 走全局 store |

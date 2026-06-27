@@ -96,6 +96,9 @@ setupVbenVxeTable({
         columnConfig: {
           resizable: true,
         },
+        resizableConfig: {
+          minWidth: 0,
+        },
 
         formConfig: {
           // 全局禁用vxe-table的表单配置，使用formOptions
