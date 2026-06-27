@@ -353,7 +353,7 @@ const addRowData = () => {
     taxRate: 0,
     taskStatus: '',
     invoiceStatus: 0,
-    canInvoice: false,
+    canInvoice: true,
     isConfidential: false,
     dataEntryMethod: 0,
   } as any);
