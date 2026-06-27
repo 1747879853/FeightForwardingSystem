@@ -78,6 +78,9 @@
                     "
                     v-model="item.value"
                     placeholder="请选择付费申请人"
+                    use-rich-option-label
+                    option-label-prop="nickName"
+                    :selected-items="buildUserSelectedItems(item)"
                     style="width: 100%"
                     :allow-clear="false"
                     @change="
@@ -170,6 +173,9 @@
                     "
                     v-model="item.value"
                     placeholder="请选择付费申请人"
+                    use-rich-option-label
+                    option-label-prop="nickName"
+                    :selected-items="buildUserSelectedItems(item)"
                     style="width: 100%"
                     :allow-clear="false"
                     @change="
@@ -329,8 +335,33 @@ function onTaskTypeConditionChange(item, val) {
   }
 }
 
+function buildUserSelectedItems(item) {
+  if (item.value == null || item.value === '') {
+    return [];
+  }
+  return [
+    {
+      id: item.value,
+      nickName: item.valueText || String(item.value),
+    },
+  ];
+}
+
+function resolveUserValueText(val, opt) {
+  const option = Array.isArray(opt) ? opt[0] : opt;
+  return option?.nickName || option?.label || String(val);
+}
+
 function onValueChange(item, val, opt, _type) {
   item.value = val;
+  if (_type === 'user') {
+    if (val != null && val !== '') {
+      item.valueText = resolveUserValueText(val, opt);
+    } else {
+      item.valueText = undefined;
+    }
+    return;
+  }
   if (opt && opt.label) {
     item.valueText = opt.label;
   } else if (val != null) {
