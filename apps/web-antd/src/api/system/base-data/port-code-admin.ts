@@ -7,8 +7,6 @@ export namespace PortCodeAdminApi {
     portName?: string;
     /** 港口中文名称 */
     cnName?: string;
-    /** 所在大洲 */
-    chau?: string;
     /** 说明 */
     explain?: string;
     /** 港口类型 */
@@ -40,8 +38,6 @@ export namespace PortCodeAdminApi {
     portName?: string;
     /** 港口中文名称 */
     cnName?: string;
-    /** 所在大洲 */
-    chau?: string;
     /** 说明 */
     explain?: string;
     /** 港口类型 */
@@ -68,7 +64,7 @@ export namespace PortCodeAdminApi {
     country?: CountryCodeAdminApi.CountryCodeDto;
     /** 国家名称 */
     countryName?: string;
-    /** 所在大洲 */
+    /** 所在大洲（列表展示用，取自关联国家 `country.chau`，港口本身不维护该字段） */
     chau?: string;
     /** 说明 */
     explain?: string;

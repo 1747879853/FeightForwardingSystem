@@ -49,4 +49,4 @@ last_updated: 2026-05-30
 | :-- | :-- | :-- | :-- |
 | 2026-05-30 | `Feature` | 路由补充 `abpPageAuthority('Admin.PortCode')`，按模块权限控制页面访问。 | 与其他基础资料子路由一致，拥有模块或 `.Get` 权限即可进入。 |
 | 2026-05-21 | `Fix` | 修复港口分页下拉在 `modelValue` 对应数据不在第一页时，详情已返回但最终 options 未包含该港口的问题。 | `port-select.vue` 通过详情接口合并已选港口，公共 `usePagedSelect` 需同步触发 `ApiComponent` 刷新其内部 options。 |
-| 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/port-code` 对应组件 `src/views/system/basic-data/PortCodeAdmin/list.vue`，权限口径为 未声明独立 authority。 |
+| 2026-06-27 | `Fix` | 港口新建/编辑表单移除「所在大洲」；列表该列改展示关联国家的 `country.chau`。 | 大洲归属国家资料，港口通过 `countryId` 间接关联，避免误填无效字段。 |
