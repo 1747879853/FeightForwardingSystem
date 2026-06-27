@@ -53,7 +53,9 @@ const [Grid, gridApi] = useVbenVxeGrid<WorkFlowAdminApi.WorkFlowDto>({
     },
     proxyConfig: {
       ajax: {
-        query: createPagedListQuery(getWorkFlowList),
+        query: createPagedListQuery(getWorkFlowList, {
+          defaultSort: 'CreationTime DESC',
+        }),
       },
     },
     rowConfig: {

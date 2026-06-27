@@ -70,6 +70,7 @@ export function useColumns<T = WorkFlowAdminApi.WorkFlowDto>(
     {
       field: 'creationTime',
       formatter: 'formatDateTime',
+      sortField: 'CreationTime',
       title: $t('system.workflow.creationTime'),
       width: 180,
     },
