@@ -193,12 +193,6 @@ const userColumns = computed(() => [
     width: 140,
   },
   {
-    dataIndex: 'isBoss',
-    title: $t('system.dept.isBoss'),
-    width: 80,
-    key: 'isBoss',
-  },
-  {
     dataIndex: 'addedTime',
     key: 'addedTime',
     title: $t('system.dept.addedTime'),
@@ -570,9 +564,6 @@ loadTree();
                 <DescriptionsItem :label="$t('system.dept.enName')">
                   {{ selectedOrgDetail.enName || '-' }}
                 </DescriptionsItem>
-                <DescriptionsItem :label="$t('system.dept.chargeUser')">
-                  {{ selectedOrgDetail.chargeUserNickName || '-' }}
-                </DescriptionsItem>
                 <DescriptionsItem :label="$t('system.dept.contactPhone')">
                   {{ selectedOrgDetail.contactPhone || '-' }}
                 </DescriptionsItem>
@@ -641,12 +632,7 @@ loadTree();
                 @change="onTableChange"
               >
                 <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'isBoss'">
-                    <Tag v-if="record.isBoss" color="blue">
-                      {{ $t('system.dept.isBoss') }}
-                    </Tag>
-                  </template>
-                  <template v-else-if="column.key === 'addedTime'">
+                  <template v-if="column.key === 'addedTime'">
                     {{
                       record.addedTime
                         ? formatDateTime(record.addedTime) || '-'
