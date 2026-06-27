@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
+import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
 
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -25,7 +25,6 @@ import {
   addInvoiceIssue,
   editInvoiceIssue,
   getInvoiceIssueDetail,
-  InvoiceIssueType,
 } from '#/api/Invoice/InvoiceIssue';
 import { $t } from '#/locales';
 
@@ -37,7 +36,7 @@ const submitting = ref(false);
 
 /** 表单数据 */
 const formData = ref<Partial<InvoiceIssueApi.InvoiceIssueAddDto>>({
-  invoiceIssueType: InvoiceIssueType.ManualRecord,
+  invoiceIssueType: InvoiceIssueApi.InvoiceIssueType.ManualRecord,
   invoiceIssueTime: new Date().toISOString(),
   invoiceIssueItems: [],
   invoiceIssueGoodsDtls: [],
@@ -202,10 +201,14 @@ function handleCancel() {
               v-model:value="formData.invoiceIssueType"
               placeholder="请选择开票方式"
             >
-              <Select.Option :value="InvoiceIssueType.NuonuoInterface">
+              <Select.Option
+                :value="InvoiceIssueApi.InvoiceIssueType.NuonuoInterface"
+              >
                 诺诺接口开票
               </Select.Option>
-              <Select.Option :value="InvoiceIssueType.ManualRecord">
+              <Select.Option
+                :value="InvoiceIssueApi.InvoiceIssueType.ManualRecord"
+              >
                 手动记录
               </Select.Option>
             </Select>
