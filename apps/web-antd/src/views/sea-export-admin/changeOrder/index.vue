@@ -215,22 +215,22 @@ const displayList = computed(() => {
         value = to.value?.bookingNum || '--';
         break;
       case 'receivePortName':
-        value = formValues.value?.receivePortName || '--';
+        value = formValues.value?.receivePortRemark || '--';
         break;
       case 'polName':
-        value = formValues.value?.polName || '--';
+        value = formValues.value?.polRemark || '--';
         break;
       case 'poT1Name':
-        value = formValues.value?.poT1Name || '--';
+        value = formValues.value?.poT1Remark || '--';
         break;
       case 'poT2Name':
-        value = formValues.value?.poT2Name || '--';
+        value = formValues.value?.poT2Remark || '--';
         break;
       case 'podName':
-        value = formValues.value?.podName || '--';
+        value = formValues.value?.podRemark || '--';
         break;
       case 'deliverPortName':
-        value = formValues.value?.deliverPortName || '--';
+        value = formValues.value?.deliverPortRemark || '--';
         break;
       case 'codeSourceName':
         value = to.value?.codeSourceName || '--';

@@ -73,6 +73,7 @@ last_updated: 2026-06-27
 | **派车记录** | 出口拖车/派车执行信息。 | `dispatch/index.vue` / `dispatch-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；包含车队、堆场、工厂、地址和派车箱明细。 | 子记录需绑定当前海出 ID。 |
 | **分单记录** | 分票提单及其货物/箱明细。 | `modules/separate-bill.vue` / `sea-export-separate-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；维护分单相关方、提单、签单、货物、箱明细。 | 子记录需绑定当前海出 ID。 |
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
+| **港口备注（费用摘要）** | 收货地/起运港/中转港1/2/目的港/交货地备注。 | `SeaExportDto` 的 `receivePortRemark`、`polRemark`、`poT1Remark`、`poT2Remark`、`podRemark`、`deliverPortRemark` | **触发/依赖：** 应收应付与更改单顶部订单信息六段港口均展示备注字段，非 `*Name`。 | 备注为空显示 `--`。 |
 | **委托单位 / 起运港** | 服务项目联动查询入参。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync` | **触发/依赖：** 任一变更触发联动；`polId` 为空清空勾选。`polId` 查询用于可见范围，`polId+clientId` 查询用于默认勾选。 | 与新建页同一套 `form.vue` 逻辑。 |
 | **服务项目 / serviceTypes** | POL 配置下的服务节点勾选结果（与执行方字段解耦）。 | `serviceTypeNodes`；提交字段 `serviceTypes: number[]` | **触发/依赖：** 节点来自 `GetServiceTypesByPOLAsync`，label 来自 `ServiceType` 枚举；编辑态勾选优先 `seaExportServices[].serviceType`；`sortId` 始终取 POL 配置顺序。 | 勿再用执行方字段或 `organizationUnits` 推断节点勾选。 |
 
@@ -94,6 +95,7 @@ last_updated: 2026-06-27
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-27 | `Fix` | 应收应付与更改单顶部订单信息六段港口改为展示 `*Remark` 备注字段，与表单港口备注口径一致。 | `displayList` 配置 key 仍为 `*Name` 以兼容 localStorage；数据源改读 `SeaExportDto` 备注字段。 |
 | 2026-06-27 | `Feature` | 与新建页共用提单类字段全角转半角（唛头、货描、收发通、港口备注等），与英文大写串联执行。 | `toHalfWidth` 并入 `toEnglishUpperCase`；嵌入 `form.vue` 的输入组件与 AI/港口联动回填同步生效。 |
 | 2026-06-27 | `Feature` | 浏览器标签栏标题随主提单号/委托编号动态更新；有主提单号优先展示主提单号。 | 嵌入 `form.vue` 调用 `useSeaExportTabTitle`；`KeepAlive` 下切换工作台子标签仍保持标题。 |
 | 2026-06-22 | `Style` | 编辑/新建表单取消左侧委托栏：委托只读项与装运/订单类型并入「基础信息」标题行；业务来源、付费方式/地点、运输条款、贸易条款并入中间基础信息表单（提单/副本份数后）；备注信息与外部备注各占两列，置于收发通通知人下方；中间栏占满除右侧干系人外的宽度。 | 新增 `FrtPrepareInput` 合并 `codeFrtId`+`prepareAtId`；`blType`/`billType` 以隐藏字段存值，标题行 Select 通过 `basicInfoFormApi` 同步。 |
