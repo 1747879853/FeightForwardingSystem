@@ -94,15 +94,22 @@ const fetchPageAdapter = async (params: {
 };
 
 // 使用分页选择组合式函数
-const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
-  usePagedSelect({
-    fetchPage: fetchPageAdapter,
-    mapItemToOption: mapCurrencyToOption,
-    pageSize: props.pageSize,
-    queryKey: ['currency'],
-    selectedItemsRef,
-    valueKey: props.valueKey,
-  });
+const {
+  api,
+  handleDropdownVisibleChange,
+  handlePopupScroll,
+  handleSearch,
+  mergeSelectedItems,
+  params,
+  searchValue,
+} = usePagedSelect({
+  fetchPage: fetchPageAdapter,
+  mapItemToOption: mapCurrencyToOption,
+  pageSize: props.pageSize,
+  queryKey: ['currency'],
+  selectedItemsRef,
+  valueKey: props.valueKey,
+});
 
 const mergedApi = async () => {
   const options = await api();
@@ -214,8 +221,9 @@ defineExpose({
     :allow-clear="true"
     loading-slot="suffixIcon"
     model-prop-name="value"
-    visible-event="onDropdownVisibleChange"
+    :search-value="searchValue"
     @change="handleSelectChange"
+    @dropdown-visible-change="handleDropdownVisibleChange"
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"

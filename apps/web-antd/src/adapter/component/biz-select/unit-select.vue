@@ -137,11 +137,13 @@ const fetchPageAdapter = async (params: {
 
 const {
   api,
+  handleDropdownVisibleChange,
   handlePopupScroll,
   handleSearch,
   mergeSelectedItems,
   params,
   reset,
+  searchValue,
 } = usePagedSelect({
   fetchPage: fetchPageAdapter,
   mapItemToOption: mapCtnToOption,
@@ -249,8 +251,9 @@ defineExpose({
     :allow-clear="true"
     loading-slot="suffixIcon"
     model-prop-name="value"
-    visible-event="onDropdownVisibleChange"
+    :search-value="searchValue"
     @update:model-value="handleChange"
+    @dropdown-visible-change="handleDropdownVisibleChange"
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"

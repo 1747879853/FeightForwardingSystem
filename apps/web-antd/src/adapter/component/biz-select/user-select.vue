@@ -85,7 +85,14 @@ const extraParamsRef = computed(() => ({
 }));
 
 // 使用分页选择组合式函数
-const { api, handlePopupScroll, handleSearch, params } = usePagedSelect({
+const {
+  api,
+  handleDropdownVisibleChange,
+  handlePopupScroll,
+  handleSearch,
+  params,
+  searchValue,
+} = usePagedSelect({
   extraParamsRef,
   fetchPage: getUserPagedList,
   mapItemToOption: mapUserToOption,
@@ -134,8 +141,9 @@ defineExpose({
     :allow-clear="true"
     loading-slot="suffixIcon"
     model-prop-name="value"
-    visible-event="onDropdownVisibleChange"
+    :search-value="searchValue"
     @update:model-value="handleChange"
+    @dropdown-visible-change="handleDropdownVisibleChange"
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"

@@ -1,6 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
 
-import { computed, reactive, toRefs, watch } from 'vue';
+import { computed, reactive, ref, toRefs, watch } from 'vue';
 
 import { useQueryClient } from '@tanstack/vue-query';
 
@@ -53,6 +53,8 @@ export interface UsePagedSelectReturn {
   handlePopupScroll: (e: Event) => void;
   /** 处理搜索，重置分页并搜索 */
   handleSearch: (keyword: string) => void;
+  /** 下拉关闭时重置搜索词（与 Select 内部清空搜索框同步） */
+  handleDropdownVisibleChange: (visible: boolean) => void;
   /** 是否正在加载更多 */
   loadingMore: Ref<boolean>;
   /** 合并已选中项到缓存中 */
@@ -65,6 +67,8 @@ export interface UsePagedSelectReturn {
   }>;
   /** 重置状态 */
   reset: () => void;
+  /** 受控搜索框文本，需绑定到 Select searchValue */
+  searchValue: Ref<string>;
 }
 
 /**
@@ -100,6 +104,17 @@ export function usePagedSelect<T = any>(
   });
 
   const { loadingMore } = toRefs(state);
+  const searchValue = ref('');
+
+  /**
+   * 清空搜索词并重新拉取默认列表
+   */
+  const clearKeyword = () => {
+    if (!state.keyword && !searchValue.value) return;
+    state.keyword = '';
+    searchValue.value = '';
+    reset();
+  };
 
   /**
    * 重置分页状态
@@ -196,12 +211,23 @@ export function usePagedSelect<T = any>(
    * 处理搜索
    */
   const handleSearch = (nextKeyword: string) => {
+    searchValue.value = nextKeyword ?? '';
     const keyword = nextKeyword?.trim() ?? '';
     if (keyword === state.keyword) return;
 
     state.keyword = keyword;
     reset();
     // params 变化会自动触发 ApiComponent 重新请求
+  };
+
+  /**
+   * Select 收起时会清空搜索框 UI，但不一定触发 search('');
+   * 下拉关闭时同步重置内部 keyword，避免再次打开仍显示上次筛选结果。
+   */
+  const handleDropdownVisibleChange = (visible: boolean) => {
+    if (!visible) {
+      clearKeyword();
+    }
   };
 
   /**
@@ -278,11 +304,13 @@ export function usePagedSelect<T = any>(
   return {
     api,
     hasMore,
+    handleDropdownVisibleChange,
     handlePopupScroll,
     handleSearch,
     loadingMore,
     mergeSelectedItems,
     params,
     reset,
+    searchValue,
   };
 }

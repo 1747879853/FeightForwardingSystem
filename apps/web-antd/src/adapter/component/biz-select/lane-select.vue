@@ -78,15 +78,22 @@ const fetchPageAdapter = async (params: {
   };
 };
 
-const { api, handlePopupScroll, handleSearch, mergeSelectedItems, params } =
-  usePagedSelect({
-    fetchPage: fetchPageAdapter,
-    mapItemToOption: mapLaneToOption,
-    pageSize: props.pageSize,
-    queryKey: ['lane'],
-    selectedItemsRef,
-    valueKey: props.valueKey,
-  });
+const {
+  api,
+  handleDropdownVisibleChange,
+  handlePopupScroll,
+  handleSearch,
+  mergeSelectedItems,
+  params,
+  searchValue,
+} = usePagedSelect({
+  fetchPage: fetchPageAdapter,
+  mapItemToOption: mapLaneToOption,
+  pageSize: props.pageSize,
+  queryKey: ['lane'],
+  selectedItemsRef,
+  valueKey: props.valueKey,
+});
 
 const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
@@ -178,8 +185,9 @@ defineExpose({
     :allow-clear="true"
     loading-slot="suffixIcon"
     model-prop-name="value"
-    visible-event="onDropdownVisibleChange"
+    :search-value="searchValue"
     @update:model-value="handleChange"
+    @dropdown-visible-change="handleDropdownVisibleChange"
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"

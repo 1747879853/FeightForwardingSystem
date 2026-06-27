@@ -49,7 +49,14 @@ const mapRoleToOption = (role: SystemRoleApi.RoleListDto) => ({
 });
 
 // 使用分页选择组合式函数
-const { api, handlePopupScroll, handleSearch, params } = usePagedSelect({
+const {
+  api,
+  handleDropdownVisibleChange,
+  handlePopupScroll,
+  handleSearch,
+  params,
+  searchValue,
+} = usePagedSelect({
   fetchPage: getRoleList,
   mapItemToOption: mapRoleToOption,
   pageSize: props.pageSize,
@@ -91,13 +98,14 @@ defineExpose({
     :params="params"
     :model-value="modelValue"
     :placeholder="computedPlaceholder"
+    :search-value="searchValue"
     :filter-option="false"
     :show-search="true"
     :allow-clear="true"
     loading-slot="suffixIcon"
     model-prop-name="value"
-    visible-event="onDropdownVisibleChange"
     @update:model-value="handleChange"
+    @dropdown-visible-change="handleDropdownVisibleChange"
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"
