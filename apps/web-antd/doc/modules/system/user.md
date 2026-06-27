@@ -53,6 +53,7 @@ last_updated: 2026-06-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-27 | `Fix` | 用户新建/编辑弹窗增加只读「所属公司」，优先接口 `companyName`，否则按所选部门在组织树解析公司节点。 | `resolveOrganizationCompanyName` 于 `organization-unit.ts`；表单 `ReadonlyText` + 部门变更联动。 |
 | 2026-06-20 | `Feature` | 用户新建/编辑弹窗邮箱设为必填，并校验邮箱格式与最大长度 `128`。 | `emailAddress` 使用 Zod（`.min(1)` + 邮箱正则 + `.max(128)`）；复合字符串 `required\|email` 不会显示必填星号。 |
 | 2026-06-19 | `Fix` | 性别下拉统一为男/女两项；个人中心移除「未知」；历史值 `0` 回显为空，避免显示数字。 | 个人中心与用户管理选项对齐；`user-form.vue` / `base-setting.vue` 加载时过滤非法 gender 值。 |
 | 2026-06-19 | `Fix` | 修复用户编辑弹窗邮箱误显示为必填：邮箱始终选填，有值时才校验格式与长度。 | `emailAddress` 改回 `email\|max:128` 字符串规则；避免动态 `z.string().email()` 被表单框架判定为必填。 |

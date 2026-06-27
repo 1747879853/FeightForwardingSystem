@@ -477,6 +477,7 @@
     "supportExcel": "支持 .xlsx、.xls 格式的 Excel 文件",
     "onlyExcelAllowed": "只能上传 Excel 文件",
     "fileSizeLimit": "文件大小不能超过 10MB",
+    "company": "所属公司",
     "department": "所属部门",
     "userAttribute": "用户属性",
     "selectUserAttribute": "请选择用户属性",

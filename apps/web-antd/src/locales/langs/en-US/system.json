@@ -476,6 +476,7 @@
     "supportExcel": "Support .xlsx, .xls Excel files",
     "onlyExcelAllowed": "Only Excel files are allowed",
     "fileSizeLimit": "File size cannot exceed 10MB",
+    "company": "Company",
     "department": "Department",
     "userAttribute": "User Attribute",
     "selectUserAttribute": "Please select user attribute",

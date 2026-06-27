@@ -200,6 +200,50 @@ function withOrganizationTreeDisabled<T extends OrganizationTreeSelectableNode>(
   }));
 }
 
+type OrganizationTreeNode = SystemOrganizationUnitApi.OrganizationUnitTreeDto;
+
+/** 扁平化组织树，便于按 id 向上查找公司节点 */
+function flattenOrganizationTree(
+  nodes: OrganizationTreeNode[],
+  map = new Map<number, OrganizationTreeNode>(),
+): Map<number, OrganizationTreeNode> {
+  for (const node of nodes) {
+    map.set(node.id, node);
+    if (node.children?.length) {
+      flattenOrganizationTree(node.children, map);
+    }
+  }
+  return map;
+}
+
+/**
+ * 根据组织节点 id 解析所属公司名称（向上查找 isCompany 节点）
+ */
+function resolveOrganizationCompanyName(
+  tree: OrganizationTreeNode[],
+  organizationId?: number | null,
+): string {
+  if (organizationId === undefined || organizationId === null) {
+    return '';
+  }
+
+  const nodeMap = flattenOrganizationTree(tree);
+  let current = nodeMap.get(organizationId);
+
+  while (current) {
+    if (current.isCompany) {
+      return current.displayName?.trim() || '';
+    }
+    const parentId = current.parentId;
+    current =
+      parentId === undefined || parentId === null
+        ? undefined
+        : nodeMap.get(parentId);
+  }
+
+  return '';
+}
+
 /**
  * 获取组织单元列表
  * @param isCompany 是否是公司。true=公司，false=部门，undefined=全部
@@ -523,6 +567,7 @@ export {
   getUserPagingListForOu,
   moveOrganizationUnit,
   removeUserFromOrganizationUnit,
+  resolveOrganizationCompanyName,
   updateOrgBankAccount,
   updateOrganizationUnit,
   withOrganizationTreeDisabled,

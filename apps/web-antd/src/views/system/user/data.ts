@@ -375,6 +375,11 @@ export function useFormSchema(): VbenFormSchema[] {
     },
 
     {
+      component: 'ReadonlyText',
+      fieldName: 'companyName',
+      label: $t('system.user.company'),
+    },
+    {
       component: 'ApiTreeSelect',
       componentProps: {
         allowClear: true,
