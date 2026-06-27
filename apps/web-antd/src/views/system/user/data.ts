@@ -592,12 +592,6 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       width: 170,
     },
     {
-      field: 'lastLoginTime',
-      formatter: 'formatDateTime',
-      title: $t('system.user.lastLoginTime'),
-      width: 170,
-    },
-    {
       align: 'center',
       cellRender: {
         attrs: {
