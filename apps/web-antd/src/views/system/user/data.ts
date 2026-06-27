@@ -2,7 +2,10 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn, VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { SystemUserAdminApi } from '#/api';
 
-import { getOrganizationUnitTree } from '#/api/system/organization-unit';
+import {
+  getOrganizationUnitTree,
+  withOrganizationTreeDisabled,
+} from '#/api/system/organization-unit';
 import { UserAttribute, UserStatus } from '#/api';
 import { $t } from '#/locales';
 import { z } from '@vben/common-ui';
@@ -375,7 +378,8 @@ export function useFormSchema(): VbenFormSchema[] {
       component: 'ApiTreeSelect',
       componentProps: {
         allowClear: true,
-        api: getOrganizationUnitTree,
+        api: async () =>
+          withOrganizationTreeDisabled(await getOrganizationUnitTree()),
         class: 'w-full',
         labelField: 'displayName',
         valueField: 'id',

@@ -181,6 +181,25 @@ function listToTree<
   return result;
 }
 
+type OrganizationTreeSelectableNode = {
+  children?: OrganizationTreeSelectableNode[];
+  disabled?: boolean;
+  enable?: boolean;
+};
+
+/** 将组织树的 enable=false 映射为 TreeSelect 的 disabled */
+function withOrganizationTreeDisabled<T extends OrganizationTreeSelectableNode>(
+  nodes: T[],
+): T[] {
+  return nodes.map((node) => ({
+    ...node,
+    disabled: node.enable === false,
+    ...(node.children?.length
+      ? { children: withOrganizationTreeDisabled(node.children) }
+      : {}),
+  }));
+}
+
 /**
  * 获取组织单元列表
  * @param isCompany 是否是公司。true=公司，false=部门，undefined=全部
@@ -420,4 +439,5 @@ export {
   removeUserFromOrganizationUnit,
   updateOrgBankAccount,
   updateOrganizationUnit,
+  withOrganizationTreeDisabled,
 };
