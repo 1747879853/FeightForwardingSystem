@@ -174,7 +174,7 @@ function navigateTo(
 
       <template v-else>
         <div class="flex-center text-muted-foreground min-h-[150px] w-full">
-          {{ $t('common.noData') }}
+          {{ $t('ui.widgets.noNotifications') }}
         </div>
       </template>
 
