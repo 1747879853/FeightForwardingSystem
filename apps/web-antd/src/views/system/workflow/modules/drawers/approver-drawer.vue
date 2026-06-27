@@ -41,7 +41,8 @@
                 v-model="selectedUserIds"
                 mode="multiple"
                 placeholder="请选择审批用户"
-                label-key="userName"
+                use-rich-option-label
+                option-label-prop="nickName"
                 style="width: 100%"
                 @change="onUserChange"
               />
@@ -249,7 +250,8 @@ function onUserChange(ids, optionList) {
   if (Array.isArray(optionList)) {
     for (const opt of optionList) {
       if (opt && opt.value != null) {
-        userShowTexts.value[opt.value] = opt.label || String(opt.value);
+        userShowTexts.value[opt.value] =
+          opt.nickName || opt.label || String(opt.value);
       }
     }
   }

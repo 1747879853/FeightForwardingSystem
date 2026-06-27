@@ -11,10 +11,15 @@ import { Select } from 'ant-design-vue';
 import { getUserPagedList } from '#/api/system/user-admin';
 
 import { usePagedSelect } from './use-paged-select';
+import type { OptionItem } from './use-paged-select';
 
 interface Props {
   /** label 字段名，默认 'nickName'，可用值：'userName' | 'nickName' */
   labelKey?: string;
+  /** 选中后展示字段（如下拉与选中展示分离，配合 useRichOptionLabel） */
+  optionLabelProp?: string;
+  /** 下拉项展示为「用户名 — 昵称」，选中项仍用 optionLabelProp 或 labelKey */
+  useRichOptionLabel?: boolean;
   /** 用户属性（位掩码），用于筛选用户 */
   userAttribute?: number;
   /** 每页数量，默认 20 */
@@ -29,9 +34,11 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   labelKey: 'nickName',
+  optionLabelProp: undefined,
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],
+  useRichOptionLabel: false,
   valueKey: 'id',
 });
 
@@ -46,19 +53,31 @@ const selectedItemsRef = toRef(props, 'selectedItems');
 const userAttributeRef = toRef(props, 'userAttribute');
 // 将用户数据转换为 Option
 const mapUserToOption = (user: SystemUserAdminApi.UserListDto) => {
-  // 优先使用指定的 labelKey，fallback 到 userName
+  const nickName = user.nickName?.trim() || user.userName;
+  const userName = user.userName?.trim() || String(user.id);
+
   let label = (user as any)[props.labelKey];
   if (!label && props.labelKey === 'nickName') {
     label = user.userName;
   }
   label = label || user.userName;
 
-  return {
+  if (props.useRichOptionLabel) {
+    label = `${userName} — ${nickName}`;
+  }
+
+  const option: OptionItem = {
     // 回显用的 selectedItems 可能只有 id/nickName，缺 isActive 时不应禁用
     disabled: user.isActive === false,
     label,
     value: (user as any)[props.valueKey],
   };
+
+  if (props.optionLabelProp) {
+    option[props.optionLabelProp] = nickName;
+  }
+
+  return option;
 };
 
 const extraParamsRef = computed(() => ({
@@ -109,6 +128,7 @@ defineExpose({
     :params="params"
     :model-value="modelValue"
     :placeholder="computedPlaceholder"
+    :option-label-prop="optionLabelProp"
     :filter-option="false"
     :show-search="true"
     :allow-clear="true"
