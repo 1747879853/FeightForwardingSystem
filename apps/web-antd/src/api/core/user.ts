@@ -99,7 +99,16 @@ function adaptUserInfo(
     desc: '暂无描述', // 使用组织单位作为描述
     homePath: '/dashboard/sea-freight-globe', // 默认首页路径，可根据需要调整
     token: '', // token 通常从登录接口获取，这里返回空字符串
-  } as UserInfo;
+
+    // GetMyAsync 全量字段同步至 userStore.userInfo
+    ...safeMyInfo,
+    avatar,
+    emailAddress,
+    nickName: safeMyInfo.nickName ?? nickName,
+    userName: safeMyInfo.userName ?? userName,
+    username: userName,
+    realName: nickName,
+  };
 }
 
 /**

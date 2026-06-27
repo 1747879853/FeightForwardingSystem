@@ -2,7 +2,7 @@
 title: 个人中心
 module: 账户与认证
 author: auto-doc-sync
-last_updated: 2026-06-03
+last_updated: 2026-06-27
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,7 +26,7 @@ last_updated: 2026-06-03
 - **个人信息：** 左侧竖向 Tab「个人信息」；两栏表单、标签在上输入框在下（vertical）；底部「更新基本信息」提交 `UpdateMyInfoAsync`。
 - **修改密码：** Tab「修改密码」；新密码、确认密码（无旧密码）；标签在上、vertical 布局；提交 `User/ChangeMyPasswordAsync`（`password` + `confirmPassword`）。
 - **更换头像：** 左侧大头像悬浮显示「上传头像」；选择图片后先走通用上传接口，再 `UpdateMyAvatarAsync`，成功后刷新全局 `userStore` 头像（右上角同步更新）。
-- **登录后展示：** `getUserInfoApi` 合并 `GetMyAsync`，右上角邮箱不再使用写死占位邮箱。
+- **登录后展示：** `getUserInfoApi` 合并 `GetMyAsync` 全量字段至 `userStore.userInfo`（含公司/部门、联系方式等），右上角邮箱不再使用写死占位邮箱。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -35,7 +35,7 @@ last_updated: 2026-06-03
 | 未登录 | 访问 `/profile` | 跳转登录 | 路由守卫检测无 `accessToken` |
 | 已登录 | 首次进入业务路由 | 权限已检查 | `ensureAccessInitialized` 拉用户、权限码、生成菜单 |
 | 已登录 | F5 刷新 `/profile` | 页面正常 | core 路由分支同样执行初始化，避免菜单/头像丢失 |
-| 个人信息已改 | 点击更新基本信息 | 保存成功提示 | 重新 `GetMyAsync` 回填表单 |
+| 个人信息已改 | 点击更新基本信息 | 保存成功提示 | 重新 `GetMyAsync` 回填表单，并 `fetchUserInfo` 同步全局 store |
 | 头像已上传 | 选择图片文件 | 头像已更新 | 调用 `fetchUserInfo` 更新 store |
 
 # 4. 核心字段说明 (Field Definitions)
@@ -69,6 +69,7 @@ last_updated: 2026-06-03
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-27 | `Feature` | `GetMyAsync` 返回字段全量写入 `userStore.userInfo`；个人中心保存基本信息后刷新全局用户信息。 | `adaptUserInfo` spread `UserAdminMyDto` 并保留 `username`/`realName` 映射；`UserInfo` 类型扩展。详见 [变更日志](../../changelogs/change-log-2026-06-27-userinfo-getmyasync-full-sync.md)。 |
 | 2026-06-20 | `Feature` | 个人信息页邮箱设为必填，并校验邮箱格式与最大长度 `128`。 | 使用 Zod 规则，与用户管理弹窗写法一致。 |
 | 2026-06-19 | `Fix` | 个人信息页只读字段（用户名、昵称、部门、工号）改为纯文本展示，不再使用禁用 Input。 | 新增表单组件 `ReadonlyText`，与 vertical 布局表单项对齐。 |
 | 2026-06-19 | `Fix` | 性别下拉移除「未知」，仅保留男/女；历史值 `0` 回显为空。 | 与用户管理选项对齐，避免保存 `0` 后在管理端显示数字。 |
