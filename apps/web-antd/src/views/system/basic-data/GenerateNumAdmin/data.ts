@@ -276,6 +276,7 @@ export function useColumns(
       field: 'orgName',
       title: $t('system.basicData.generateNum.orgId'),
       minWidth: 180,
+      sortable: false,
       formatter: ({ cellValue, row }) =>
         formatGenerateNumOrgDisplay(cellValue, row.orgId),
     },
@@ -283,6 +284,7 @@ export function useColumns(
       field: 'generateNumUsers',
       title: $t('system.basicData.generateNum.generateNumUsers'),
       minWidth: 220,
+      sortable: false,
       formatter: ({ cellValue }) => formatGenerateNumUsersDisplay(cellValue),
     },
     {
