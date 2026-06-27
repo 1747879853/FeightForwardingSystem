@@ -77,8 +77,8 @@ export namespace SystemRoleApi {
 async function getRoleList(params: Recordable<any>) {
   const queryParams: SystemRoleApi.RoleQueryParams = {
     KeyWords: params.KeyWords || params.name || params.keyWords,
-    PageIndex: params.page || params.pageIndex || 1,
-    PageSize: params.pageSize || 10,
+    PageIndex: params.page || params.pageIndex || params.PageIndex || 1,
+    PageSize: params.pageSize || params.PageSize || 20,
     Sorting: params.sorting || 'Id desc',
   };
 

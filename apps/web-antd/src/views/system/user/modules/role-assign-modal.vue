@@ -29,18 +29,16 @@ async function fetchRoleItemsByNames(
 ): Promise<SystemRoleApi.RoleListDto[]> {
   if (roleNames.length === 0) return [];
 
-  // 获取所有角色，用于匹配名称
-  const { items: allRoles } = await getRoleList({ pageSize: 1000 });
-  const matchedRoles: SystemRoleApi.RoleListDto[] = [];
+  const matchedRoles = await Promise.all(
+    roleNames.map(async (name) => {
+      const { items } = await getRoleList({ KeyWords: name, pageSize: 20 });
+      return items.find((role) => role.name === name);
+    }),
+  );
 
-  for (const name of roleNames) {
-    const role = allRoles.find((r) => r.name === name);
-    if (role) {
-      matchedRoles.push(role);
-    }
-  }
-
-  return matchedRoles;
+  return matchedRoles.filter(
+    (role): role is SystemRoleApi.RoleListDto => role !== undefined,
+  );
 }
 
 const [Modal, modalApi] = useVbenModal({
