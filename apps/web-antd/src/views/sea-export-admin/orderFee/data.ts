@@ -926,10 +926,10 @@ export function useOrderFeeColumns(
       slots: {
         default: ({ row }: any) => {
           return h(Checkbox, {
-            checked: row.canInvoice === true,
+            checked: row.canInvoice === false,
             disabled: !canEditFee(row.feeStatus),
             onChange: (e: any) => {
-              row.canInvoice = e.target.checked;
+              row.canInvoice = !e.target.checked;
             },
           });
         },
