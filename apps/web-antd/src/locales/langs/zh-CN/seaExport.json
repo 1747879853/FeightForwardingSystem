@@ -158,10 +158,10 @@
     "orderFee": {
       "feeDetail": "费用明细",
       "receivableCharges": "应收费用",
-      "receiveFeeStatus": "应收费用状态",
+      "receiveFeeStatus": "应收状态",
       "receivableTax": "应收税费",
       "payableCharges": "应付费用",
-      "payFeeStatus": "应付费用状态",
+      "payFeeStatus": "应付状态",
       "payableTax": "应付税费",
       "totalReceivable": "应收合计",
       "totalPayable": "应付合计",
