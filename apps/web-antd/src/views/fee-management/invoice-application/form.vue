@@ -34,6 +34,7 @@ import { getCodeInvoicePagedList } from '#/api/system/base-data/code-invoice-adm
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { DatePicker, Select } from 'ant-design-vue';
+import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
 import { $t } from '#/locales';
 
 // 从命名空间中解构 API 函数
@@ -591,8 +592,11 @@ function handleOpenFeeDetailModal() {
               mblNum: parentFee.transportOrder.mblNum || '-',
               bookingNum: parentFee.transportOrder.bookingNum || '-',
               clientName: parentFee.transportOrder.clientName,
-              bizType: parentFee.seaExport?.bizType || '-',
-              carrier: parentFee.seaExport?.carrier || '-',
+              bizType:
+                getBizTypeOptions().find(
+                  (o: any) => o.value === parentFee.transportOrder?.bizType,
+                )?.label || '-',
+              carrier: parentFee.seaExport?.carrierName || '-',
               company: parentFee.transportOrder.company || '-',
               children: [] as any[],
             };
@@ -610,7 +614,7 @@ function handleOpenFeeDetailModal() {
             parentId: orderId,
             orderFee: fee.orderFee,
             appliedAmount: item.appliedAmount,
-            settlementUnit: fee.orderFee.settlementUnitName || '-',
+            settlementUnit: fee.orderFee.settlementName || '-',
             payReceiveType:
               fee.orderFee.payReceiveType === 'AR' ? '应收' : '应付',
             feeName: fee.orderFee.feeCodeName || '-',
@@ -1083,8 +1087,11 @@ function transformToTreeData(
       mblNum: item.transportOrder.mblNum || '-',
       bookingNum: item.transportOrder.bookingNum || '-',
       clientName: item.transportOrder.clientName,
-      bizType: item.seaExport?.bizType || '-',
-      carrier: item.seaExport?.carrier || '-',
+      bizType:
+        getBizTypeOptions().find(
+          (o: any) => o.value === item.transportOrder?.bizType,
+        )?.label || '-',
+      carrier: item.seaExport?.carrierName || '-',
       company: item.transportOrder.company || '-',
       checked: false,
       children: [] as any[],
@@ -1104,7 +1111,7 @@ function transformToTreeData(
           disabled: isAlreadyAdded, // ✅ 标记为禁用状态（用于row-selection）
           alreadyAdded: isAlreadyAdded, // ✅ 添加标记用于显示提示
           // 二级列字段
-          settlementUnit: fee.settlementUnitName || '-',
+          settlementUnit: fee.settlementName || '-',
           payReceiveType: fee.payReceiveType === 'AR' ? '应收' : '应付',
           feeName: fee.feeCodeName || '-',
           amount: fee.amount,
@@ -1484,13 +1491,13 @@ const feeParentColumns = computed(() => [
 
 // 费用表格列定义（二级 - 费用明细）
 const feeChildColumns = computed(() => [
-  {
-    title: '状态',
-    dataIndex: 'alreadyAdded',
-    key: 'alreadyAdded',
-    minWidth: 100,
-    align: 'center' as const,
-  },
+  // {
+  //   title: '状态',
+  //   dataIndex: 'alreadyAdded',
+  //   key: 'alreadyAdded',
+  //   minWidth: 100,
+  //   align: 'center' as const,
+  // },
   {
     title: '结算单位',
     dataIndex: 'settlementUnit',
