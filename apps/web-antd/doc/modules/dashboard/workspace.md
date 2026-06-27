@@ -40,7 +40,7 @@ last_updated: 2026-06-09
   - 内容区按服务项（ServiceType）分组展示任务，支持“指派任务”汇总组
 - **海运出口业务列表动态列：**
   - 列由当前 chevron 服务项的 `seServiceShows`（`SeaExportPropEnum`）驱动，严格 1 枚举 1 列，顺序与配置数组一致
-  - 固定列始终显示：委托单号、处理人、被转交人；`seServiceShows` 为空时不展示业务列
+  - 固定列始终显示：委托单号、处理人；「转交任务」节点额外显示转交备注列；`seServiceShows` 为空时不展示业务列
   - 表头文案取自 `SeaExportPropEnum` 枚举 `displayName`；审核 Tab 仍使用固定列，不受 `seServiceShows` 影响
 - **任务处理动作：**
   - 批量转交：`TransferAsync`（被转交人来自 `UserSelect` 全量用户）
@@ -83,6 +83,8 @@ last_updated: 2026-06-09
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
 | 2026-06-09 | `Fix` | 工作台 PagedList 分页参数对齐后端：`PageIndex`/`PageSize` 替代 `SkipCount`/`MaxResultCount`，分页器 current 直接传页码。 | 响应 `currentPage` 回写分页器；枚举/港口接口此前已用页码模式无需改动。 |
+| 2026-06-27 | `Fix` | 工作台「转交备注」列仅在「转交任务」节点展示。 | `activeStageKey === 'assigned'` 时显示。 |
+| 2026-06-27 | `Fix` | 工作台转交弹窗必填转交备注并提交 `assigneeRemark`；列表增加转交备注列；汇总节点文案「指派任务」改为「转交任务」。 | 对齐 `SeServiceTaskTransferDto` / `SeServiceTaskWorkbenchItemDto`。 |
 | 2026-06-09 | `Refactor` | 工作台海运出口服务改为 Count + PagedList 两层接口；服务端分页（默认 20）；筛选全服务端化；指派任务独立节点；编辑页保存后返回工作台自动刷新。 | 删除旧 `GetPagedListAsync` 封装；`seServiceShows` 改从 `SeServiceConfigAdmin` 按 `polId` 缓存加载；`WorkbenchBusinessTable` 新增分页 props。 |
 | 2026-06-07 | `Fix` | 工作台业务列表双击整行改为跳转对应编辑/详情页（海运出口编辑、应收应付费用详情、付费申请编辑），与单击委托单号行为一致。 | 双击复用 `open-sea-export` 事件；付费申请审核 Tab 的 `seaExportId` 改为 `paymentApplicationId`；移除 `open-business-list` 列表跳转。 |
 | 2026-06-07 | `Feature` | 工作台海运出口业务列表列改为按当前服务项 `seServiceShows` 动态展示，1 枚举 1 列，固定保留委托单号/处理人/被转交人。 | 新增 `se-service-show-columns.ts` 注册表；`WorkbenchBusinessTable.dynamicColumns` 仅海运出口 Tab 传入；`BusinessRow.seaExport` 供列取值。 |

@@ -49,6 +49,8 @@ export namespace SeServiceTaskAdminApi {
     completionTime?: string | null;
     assigneeTime?: string | null;
     assigneeUserId?: number | null;
+    /** 转交备注 */
+    assigneeRemark?: string | null;
     sortId?: number;
     remark?: string | null;
     seaExport?: SeaExportAdminApi.SeaExportDto;
@@ -91,6 +93,8 @@ export namespace SeServiceTaskAdminApi {
   export interface TransferInput {
     ids: string[];
     assigneeUserId: number;
+    /** 转交备注 */
+    assigneeRemark: string;
   }
 
   export interface CompleteInput {

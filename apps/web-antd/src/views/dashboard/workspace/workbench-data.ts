@@ -60,6 +60,8 @@ export interface BusinessRow {
   status: 'pending' | 'urgent' | 'supplement';
   assigneeUserId?: number | null;
   assigneeUserName?: string;
+  /** 转交备注 */
+  assigneeRemark?: string;
   taskUsersText: string;
   serviceTaskStatus: number;
   /** 海运出口原始数据，供 seServiceShows 动态列取值 */
@@ -141,12 +143,21 @@ export function normalizePolId(
   return String(value);
 }
 
+export function resolveDefaultStageKey(steps: StageStep[]): string {
+  if (!steps.length) return '';
+  const positiveSteps = steps.filter((step) => step.count > 0);
+  if (positiveSteps.length === 1) {
+    return positiveSteps[0]!.key;
+  }
+  return steps.find((step) => step.active)?.key ?? steps[0]?.key ?? '';
+}
+
 export function serviceTypeLabel(
   serviceType?: number | null,
   serviceTypeTextMap = DEFAULT_SERVICE_TYPE_TEXT_MAP,
 ): string {
   if (serviceType == null) {
-    return '指派任务';
+    return '转交任务';
   }
   return serviceTypeTextMap.get(Number(serviceType)) ?? `服务项${serviceType}`;
 }
