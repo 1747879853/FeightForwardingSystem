@@ -676,8 +676,15 @@ async function handleSaveFeeSelection() {
 
   addSelectedFeesToForm(selectedFees);
 
-  // 仅在首次添加费用时自动填充商品明细
+  // ✅ 根据商品明细数量决定处理方式
   if (isFirstTimeAdd) {
+    // 首次添加：自动填充商品明细
+    await autoFillGoodsDetails(selectedFees);
+  } else if (goodsDetails.value.length === 1) {
+    // ✅ 只有一行商品明细：将新费用金额合并到该行
+    await mergeAmountToExistingGoods(selectedFees);
+  } else {
+    // ✅ 多行商品明细：新增一条商品明细（同首次添加规则）
     await autoFillGoodsDetails(selectedFees);
   }
 
@@ -726,6 +733,145 @@ async function handleRefillGoodsDetails() {
     console.error('重新填充商品明细失败:', error);
     message.error('重新填充商品明细失败');
   }
+}
+
+/** 将新费用金额合并到现有商品明细 */
+async function mergeAmountToExistingGoods(selectedFees: any[]) {
+  // 确保只有一行商品明细
+  if (goodsDetails.value.length !== 1) {
+    console.warn('商品明细数量不为1，无法合并');
+    return;
+  }
+
+  // 确保发票商品编码列表已加载
+  if (codeInvoiceList.value.length === 0) {
+    console.warn('发票商品编码列表为空，尝试重新加载...');
+    await loadCodeInvoiceList();
+  }
+
+  // 获取当前发票币别（等于费用币别）
+  const invoiceCurrencyId = formData.value.currencyId;
+
+  if (!invoiceCurrencyId) {
+    console.warn('未设置发票币别，无法合并金额');
+    message.warning('请先选择发票币别');
+    return;
+  }
+
+  // 获取币别详情，将币别ID转换为币别代码
+  let currencyCode = '';
+  try {
+    const currencyDetail = await getCurrencyDetail(invoiceCurrencyId);
+    currencyCode = currencyDetail.code || '';
+    console.log(
+      '🔍 发票币别详情 - ID:',
+      invoiceCurrencyId,
+      '代码:',
+      currencyCode,
+    );
+  } catch (error) {
+    console.error('获取币别详情失败:', error);
+    message.warning('获取币别信息失败');
+    return;
+  }
+
+  if (!currencyCode) {
+    console.warn(`未找到币别ID ${invoiceCurrencyId} 对应的币别代码`);
+    message.warning('未找到币别信息，无法合并金额');
+    return;
+  }
+
+  // ✅ 根据发票币别（费用币别）查找默认的发票商品编码
+  const defaultCodeInvoice = codeInvoiceList.value.find(
+    (item) => item.isDefault && item.defaultCurrency === currencyCode,
+  );
+
+  if (!defaultCodeInvoice) {
+    console.warn(`未找到币别 ${currencyCode} 的默认发票商品编码`);
+    message.warning(`未找到币别 ${currencyCode} 对应的默认商品编码，无法合并`);
+    return;
+  }
+
+  console.log(
+    '✅ 找到默认商品编码:',
+    defaultCodeInvoice.name,
+    '规格:',
+    defaultCodeInvoice.specification,
+    '单位:',
+    defaultCodeInvoice.unit,
+  );
+
+  // 计算所有选中费用的总金额（使用本次申请金额，并转换为人民币）
+  let totalRmbAmount = 0; // 人民币总金额
+
+  selectedFees.forEach((fee: any) => {
+    // 使用用户填写的本次申请金额（保持原币别）
+    const appliedAmount = fee.appliedAmount || 0;
+    const feeCurrencyId = fee.orderFee.currencyId;
+    const feeCurrencyCode = fee.orderFee.currencyCode || '未知';
+
+    // ✅ 如果费用币别与人民币不同，需要进行汇率转换
+    if (feeCurrencyId !== 1) {
+      // 外币转人民币：本次申请金额 × 汇率
+      const convertedAmount = appliedAmount * (invoiceExchangeRate.value || 1);
+      totalRmbAmount += convertedAmount;
+      console.log(
+        `💰 外币转换 - ${feeCurrencyCode}: ${appliedAmount.toFixed(2)} × ${invoiceExchangeRate.value} = ${convertedAmount.toFixed(2)} RMB`,
+      );
+    } else {
+      // 币别是人民币，直接累加
+      totalRmbAmount += appliedAmount;
+      console.log(
+        `💰 同币别累加 - ${feeCurrencyCode}: ${appliedAmount.toFixed(2)}`,
+      );
+    }
+  });
+
+  console.log(
+    '📊 新费用总金额（人民币）:',
+    totalRmbAmount.toFixed(2),
+    '发票币别:',
+    currencyCode,
+  );
+
+  // ✅ 获取现有的商品明细行
+  const existingItem = goodsDetails.value[0];
+
+  // 检查现有行的商品编码是否与默认商品编码一致
+  if (existingItem.codeInvoiceId !== defaultCodeInvoice.id) {
+    console.warn(
+      '现有商品明细的商品编码与默认商品编码不一致，无法合并',
+      existingItem.codeInvoiceId,
+      defaultCodeInvoice.id,
+    );
+    message.warning('现有商品明细与当前币别不匹配，请手动处理或重新填充');
+    return;
+  }
+
+  // ✅ 合并金额到现有行
+  const taxRate = existingItem.taxRate || defaultCodeInvoice.taxRate || 0;
+  const currentAmount = existingItem.amount || 0;
+  const newAmount = currentAmount + totalRmbAmount;
+
+  // 更新现有行的数据
+  existingItem.amount = newAmount;
+  existingItem.unitPrice = newAmount; // 单价 = 总金额（因为数量为1）
+  existingItem.noTaxAmount = newAmount / (1 + taxRate / 100);
+  existingItem.taxAmount = (newAmount / (1 + taxRate / 100)) * (taxRate / 100);
+
+  console.log(
+    '✅ 合并金额完成 - 原金额:',
+    currentAmount.toFixed(2),
+    '新增金额:',
+    totalRmbAmount.toFixed(2),
+    '合并后金额:',
+    newAmount.toFixed(2),
+  );
+  console.log('📦 商品明细总数:', goodsDetails.value.length);
+
+  message.success(
+    `已将新费用金额合并到商品明细（+${totalRmbAmount.toFixed(2)}）`,
+  );
 }
 
 /** 自动填充商品明细 */
@@ -911,11 +1057,18 @@ async function loadFeeGroupData() {
   }
 }
 
+/** 获取已添加的费用ID列表 */
+function getAddedFeeIds(): Set<string> {
+  const items = formData.value.invoiceApplicationItems || [];
+  return new Set(items.map((item: any) => String(item.orderFeeId)));
+}
+
 /** 将费用数据转换为树状结构 */
 function transformToTreeData(
   items: InvoiceApplicationApi.InvoiceApplicationFeeGroupOutputDto[],
 ): any[] {
   const treeData: any[] = [];
+  const addedFeeIds = getAddedFeeIds(); // 获取已添加的费用ID
 
   items.forEach((item, index) => {
     // 父节点（运输订单）
@@ -937,15 +1090,19 @@ function transformToTreeData(
       children: [] as any[],
     };
 
-    // 子节点（费用明细）
+    // 子节点（费用明细）- ✅ 所有费用都显示，包括已添加的
     if (item.orderFees && item.orderFees.length > 0) {
       item.orderFees.forEach((fee, feeIndex) => {
+        const isAlreadyAdded = addedFeeIds.has(String(fee.id));
+
         const childNode: any = {
           id: `child_${fee.id}`,
           parentId: `parent_${item.transportOrder.id}`,
           orderFee: fee,
           appliedAmount: fee.remainingInvoiceAmount, // 默认值为未开票金额
           checked: false,
+          disabled: isAlreadyAdded, // ✅ 标记为禁用状态（用于row-selection）
+          alreadyAdded: isAlreadyAdded, // ✅ 添加标记用于显示提示
           // 二级列字段
           settlementUnit: fee.settlementUnitName || '-',
           payReceiveType: fee.payReceiveType === 'AR' ? '应收' : '应付',
@@ -954,6 +1111,8 @@ function transformToTreeData(
           currencyCode: fee.currencyCode || '-',
           remainingInvoiceAmount: fee.remainingInvoiceAmount,
         };
+
+        // ✅ 所有费用都加入列表（包括已添加的）
         parentNode.children.push(childNode);
       });
     }
@@ -1325,6 +1484,13 @@ const feeParentColumns = computed(() => [
 
 // 费用表格列定义（二级 - 费用明细）
 const feeChildColumns = computed(() => [
+  {
+    title: '状态',
+    dataIndex: 'alreadyAdded',
+    key: 'alreadyAdded',
+    minWidth: 100,
+    align: 'center' as const,
+  },
   {
     title: '结算单位',
     dataIndex: 'settlementUnit',
@@ -2180,6 +2346,9 @@ async function loadDetail() {
                 :row-selection="{
                   type: 'checkbox',
                   selectedRowKeys: getChildSelectedKeys(record),
+                  getCheckboxProps: (childRecord) => ({
+                    disabled: childRecord.disabled || childRecord.alreadyAdded,
+                  }),
                   onChange: (selectedRowKeys) =>
                     handleChildSelectionChange(
                       record,
@@ -2188,7 +2357,16 @@ async function loadDetail() {
                 }"
               >
                 <template #bodyCell="{ column, record: childRecord }">
-                  <template v-if="column.key === 'appliedAmount'">
+                  <template v-if="column.key === 'alreadyAdded'">
+                    <!-- 已添加的费用显示提示 -->
+                    <span
+                      v-if="childRecord.alreadyAdded"
+                      style="font-size: 12px; color: #999"
+                    >
+                      ✓ 已添加
+                    </span>
+                  </template>
+                  <template v-else-if="column.key === 'appliedAmount'">
                     <InputNumber
                       v-model:value="childRecord.appliedAmount"
                       :min="0"
@@ -2196,6 +2374,7 @@ async function loadDetail() {
                       :precision="2"
                       style="width: 100%"
                       size="small"
+                      :disabled="childRecord.alreadyAdded"
                     />
                   </template>
                 </template>
