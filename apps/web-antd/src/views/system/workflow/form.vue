@@ -35,7 +35,7 @@ const store = useWorkflowStore();
 const workflowId = computed(() => route.params.id);
 
 const workflowName = ref('');
-const taskType = ref(TaskType.PaymentApplication);
+const taskType = ref();
 const enable = ref(true);
 const nodeConfig = ref({});
 const flowPermission = ref([]);
@@ -154,6 +154,11 @@ async function save() {
     return;
   }
 
+  if (taskType.value == null) {
+    message.error($t('system.workflow.validationTaskType'));
+    return;
+  }
+
   saving.value = true;
   try {
     ensureAllRealNodeIds(nodeConfig.value);
@@ -219,6 +224,8 @@ onMounted(() => {
           <Select
             v-model:value="taskType"
             :options="taskTypeOptions"
+            :placeholder="$t('ui.placeholder.select')"
+            allow-clear
             style="min-width: 140px"
             size="small"
           />
