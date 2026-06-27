@@ -265,16 +265,8 @@ function resolveBaselineColumnWidth(column: any): number | undefined {
   );
 }
 
-function clampColumnWidth(column: any, width: number): number {
-  const minWidth = resolveNumericWidth(column?.minWidth);
-  if (minWidth !== undefined && width < minWidth) {
-    return minWidth;
-  }
-  return width;
-}
-
 function applyColumnWidthValue(column: any, width: number) {
-  column.width = clampColumnWidth(column, width);
+  column.width = width;
 }
 
 function isColumnWidthChanged(
@@ -327,9 +319,21 @@ function getLeafColumns(columns: any[] = [], result: any[] = []): any[] {
   return result;
 }
 
+function prepareColumnResize(column: any) {
+  const minWidth = resolveNumericWidth(column.minWidth);
+  const width = resolveNumericWidth(column.width);
+  if (width === undefined && minWidth !== undefined) {
+    column.width = minWidth;
+  }
+  if (column.minWidth !== undefined) {
+    delete column.minWidth;
+  }
+}
+
 function normalizeColumns(columns: any[]) {
   const leafColumns = getLeafColumns(columns);
   leafColumns.forEach((column, index) => {
+    prepareColumnResize(column);
     const keyBase = column.field ?? column.title ?? column.type ?? 'column';
     const uniqueKey = `col_${index}_${String(keyBase)}`;
     column[columnUniqueKeyField] = uniqueKey;
@@ -1585,6 +1589,17 @@ const showDefaultEmpty = computed(() => {
 });
 
 async function init() {
+  if (!isColumnPersistEnabled()) {
+    const rawColumns = toRaw(gridOptions.value?.columns ?? []);
+    if (Array.isArray(rawColumns) && rawColumns.length > 0) {
+      normalizeColumns(rawColumns);
+      props.api.setGridOptions({
+        columns: cloneDeep(rawColumns),
+      } as any);
+      await nextTick();
+      props.api.grid?.refreshColumn?.();
+    }
+  }
   await loadColumnConfig();
   await loadSearchFieldConfig();
   await nextTick();
