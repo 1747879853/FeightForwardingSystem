@@ -508,6 +508,8 @@ loadTree();
                         name: selectedOrg.displayName,
                       })
                     "
+                    placement="topRight"
+                    :overlay-inner-style="{ whiteSpace: 'nowrap' }"
                     :disabled="
                       !!(
                         selectedOrg.children && selectedOrg.children.length > 0
@@ -658,6 +660,8 @@ loadTree();
                           name: record.nickName || record.userName,
                         })
                       "
+                      placement="topLeft"
+                      :overlay-inner-style="{ whiteSpace: 'nowrap' }"
                       @confirm="onRemoveUser(record)"
                     >
                       <Button type="link" danger size="small">
