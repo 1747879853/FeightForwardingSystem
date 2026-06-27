@@ -9,6 +9,7 @@ import { computed, ref, watch } from 'vue';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
+import { formatDateTime } from '@vben/utils';
 
 import {
   Button,
@@ -199,6 +200,7 @@ const userColumns = computed(() => [
   },
   {
     dataIndex: 'addedTime',
+    key: 'addedTime',
     title: $t('system.dept.addedTime'),
     width: 170,
   },
@@ -642,7 +644,14 @@ loadTree();
                       {{ $t('system.dept.isBoss') }}
                     </Tag>
                   </template>
-                  <template v-if="column.key === 'action'">
+                  <template v-else-if="column.key === 'addedTime'">
+                    {{
+                      record.addedTime
+                        ? formatDateTime(record.addedTime) || '-'
+                        : '-'
+                    }}
+                  </template>
+                  <template v-else-if="column.key === 'action'">
                     <Popconfirm
                       :title="
                         $t('system.dept.confirmRemoveMember', {
