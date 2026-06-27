@@ -340,7 +340,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  text-align: right;
 }
 
 .fd-nav .fd-nav-back {
