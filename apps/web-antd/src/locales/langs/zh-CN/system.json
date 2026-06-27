@@ -597,6 +597,8 @@
     "isBoss": "负责人",
     "addedTime": "加入时间",
     "selectOrgFirst": "请先选择左侧组织",
+    "searchOrgKeywordRequired": "请输入组织名称",
+    "searchOrgNotFound": "未找到匹配的组织",
     "searchUser": "搜索用户",
     "selectedUsers": "已选用户",
     "addSuccess": "添加成功",

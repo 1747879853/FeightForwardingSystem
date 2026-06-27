@@ -91,6 +91,54 @@ function collectAllKeys(
   return keys;
 }
 
+type OrgSearchMatch = {
+  ancestorIds: number[];
+  node: SystemOrganizationUnitApi.OrganizationUnitTreeDto;
+};
+
+function findOrgByKeyword(
+  nodes: SystemOrganizationUnitApi.OrganizationUnitTreeDto[],
+  keyword: string,
+  ancestors: number[] = [],
+): OrgSearchMatch | null {
+  const normalized = keyword.trim().toLowerCase();
+  if (!normalized) return null;
+
+  for (const node of nodes) {
+    const displayName = (node.displayName ?? '').toLowerCase();
+    if (displayName.includes(normalized)) {
+      return { ancestorIds: ancestors, node };
+    }
+    if (node.children?.length) {
+      const found = findOrgByKeyword(node.children, keyword, [
+        ...ancestors,
+        node.id,
+      ]);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function onSearchOrg(value: string) {
+  const keyword = value.trim();
+  if (!keyword) {
+    message.warning($t('system.dept.searchOrgKeywordRequired'));
+    return;
+  }
+
+  const match = findOrgByKeyword(treeData.value, keyword);
+  if (!match) {
+    message.warning($t('system.dept.searchOrgNotFound'));
+    return;
+  }
+
+  expandedKeys.value = [
+    ...new Set([...expandedKeys.value, ...match.ancestorIds]),
+  ];
+  selectedKeys.value = [match.node.id];
+}
+
 async function loadTree() {
   treeLoading.value = true;
   try {
@@ -427,6 +475,7 @@ loadTree();
           class="mb-2"
           allow-clear
           size="small"
+          @search="onSearchOrg"
         />
 
         <Tree

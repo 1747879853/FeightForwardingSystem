@@ -596,6 +596,8 @@
     "isBoss": "Leader",
     "addedTime": "Joined At",
     "selectOrgFirst": "Please select an organization first",
+    "searchOrgKeywordRequired": "Please enter organization name",
+    "searchOrgNotFound": "No matching organization found",
     "searchUser": "Search user",
     "selectedUsers": "Selected users",
     "addSuccess": "Added successfully",
