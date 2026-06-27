@@ -21,8 +21,21 @@
             />
           </div>
 
-          <template v-if="approverConfig.passMethod !== 0">
+          <template v-if="needsApproverConfig">
             <div class="form-item">
+              <label class="form-label">审批人类型</label>
+              <a-radio-group
+                v-model:value="approverType"
+                class="approver-type-group"
+                @change="onApproverTypeChange"
+              >
+                <a-radio value="user">审批用户</a-radio>
+                <a-radio value="role">审批角色</a-radio>
+                <a-radio value="attribute">用户属性</a-radio>
+              </a-radio-group>
+            </div>
+
+            <div v-if="approverType === 'user'" class="form-item">
               <label class="form-label">审批用户</label>
               <UserSelect
                 v-model="selectedUserIds"
@@ -34,7 +47,7 @@
               />
             </div>
 
-            <div class="form-item">
+            <div v-else-if="approverType === 'role'" class="form-item">
               <label class="form-label">审批角色</label>
               <RoleSelect
                 v-model="selectedRoleIds"
@@ -46,7 +59,7 @@
               />
             </div>
 
-            <div class="form-item">
+            <div v-else class="form-item">
               <label class="form-label">用户属性</label>
               <a-select
                 v-model:value="selectedUserAttributes"
@@ -75,9 +88,12 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue';
+import { message } from 'ant-design-vue';
 import {
   Button as AButton,
   Drawer as ADrawer,
+  Radio as ARadio,
+  RadioGroup as ARadioGroup,
   Select as ASelect,
 } from 'ant-design-vue';
 import { useWorkflowStore } from '../../store';
@@ -102,6 +118,9 @@ const approverConfig = ref({
   error: false,
 });
 
+/** 会签/或签下审批用户、角色、用户属性三选一 */
+const approverType = ref('user');
+
 const selectedUserIds = ref([]);
 const selectedRoleIds = ref([]);
 const selectedUserAttributes = ref([]);
@@ -123,29 +142,71 @@ const userAttributeOptions = getUserAttributeOptions().map((o) => ({
   value: o.value,
 }));
 
+const needsApproverConfig = computed(
+  () =>
+    approverConfig.value.passMethod === WorkFlowPassMethod.Or ||
+    approverConfig.value.passMethod === WorkFlowPassMethod.And,
+);
+
+function inferApproverType(auditors) {
+  if (!auditors?.length) {
+    return 'user';
+  }
+  if (auditors.some((a) => a.userId != null && a.userId !== 0)) {
+    return 'user';
+  }
+  if (auditors.some((a) => a.roleId != null && a.roleId !== 0)) {
+    return 'role';
+  }
+  if (auditors.some((a) => a.userAttribute != null && a.userAttribute !== 0)) {
+    return 'attribute';
+  }
+  return 'user';
+}
+
+function clearApproverSelections() {
+  selectedUserIds.value = [];
+  selectedRoleIds.value = [];
+  selectedUserAttributes.value = [];
+  userShowTexts.value = {};
+  roleShowTexts.value = {};
+}
+
 function mergeAuditorsToSelections(auditors) {
+  const type = inferApproverType(auditors);
+  approverType.value = type;
+
   const userIds = [];
   const roleIds = [];
   const attrs = [];
   const uTexts = {};
   const rTexts = {};
 
-  if (auditors && auditors.length) {
+  if (auditors?.length) {
     for (const a of auditors) {
-      if (a.userId != null && a.userId !== 0) {
-        if (!userIds.includes(a.userId)) {
-          userIds.push(a.userId);
-          uTexts[a.userId] = a.showText || String(a.userId);
-        }
-      } else if (a.roleId != null && a.roleId !== 0) {
-        if (!roleIds.includes(a.roleId)) {
-          roleIds.push(a.roleId);
-          rTexts[a.roleId] = a.showText || String(a.roleId);
-        }
-      } else if (a.userAttribute != null && a.userAttribute !== 0) {
-        if (!attrs.includes(a.userAttribute)) {
-          attrs.push(a.userAttribute);
-        }
+      if (
+        type === 'user' &&
+        a.userId != null &&
+        a.userId !== 0 &&
+        !userIds.includes(a.userId)
+      ) {
+        userIds.push(a.userId);
+        uTexts[a.userId] = a.showText || String(a.userId);
+      } else if (
+        type === 'role' &&
+        a.roleId != null &&
+        a.roleId !== 0 &&
+        !roleIds.includes(a.roleId)
+      ) {
+        roleIds.push(a.roleId);
+        rTexts[a.roleId] = a.showText || String(a.roleId);
+      } else if (
+        type === 'attribute' &&
+        a.userAttribute != null &&
+        a.userAttribute !== 0 &&
+        !attrs.includes(a.userAttribute)
+      ) {
+        attrs.push(a.userAttribute);
       }
     }
   }
@@ -171,11 +232,17 @@ watch(approverConfig1, (val) => {
 
 function onPassMethodChange(val) {
   if (val === WorkFlowPassMethod.Pass) {
-    selectedUserIds.value = [];
-    selectedRoleIds.value = [];
-    selectedUserAttributes.value = [];
+    approverType.value = 'user';
+    clearApproverSelections();
     approverConfig.value.auditors = [];
+  } else {
+    approverType.value = 'user';
+    clearApproverSelections();
   }
+}
+
+function onApproverTypeChange() {
+  clearApproverSelections();
 }
 
 function onUserChange(ids, optionList) {
@@ -203,22 +270,28 @@ function onUserAttributeChange() {}
 function buildAuditors() {
   const auditors = [];
 
-  for (const uid of selectedUserIds.value) {
-    auditors.push({
-      userId: uid,
-      roleId: null,
-      userAttribute: 0,
-      showText: userShowTexts.value[uid] || String(uid),
-    });
+  if (approverType.value === 'user') {
+    for (const uid of selectedUserIds.value) {
+      auditors.push({
+        userId: uid,
+        roleId: null,
+        userAttribute: 0,
+        showText: userShowTexts.value[uid] || String(uid),
+      });
+    }
+    return auditors;
   }
 
-  for (const rid of selectedRoleIds.value) {
-    auditors.push({
-      userId: null,
-      roleId: rid,
-      userAttribute: 0,
-      showText: roleShowTexts.value[rid] || String(rid),
-    });
+  if (approverType.value === 'role') {
+    for (const rid of selectedRoleIds.value) {
+      auditors.push({
+        userId: null,
+        roleId: rid,
+        userAttribute: 0,
+        showText: roleShowTexts.value[rid] || String(rid),
+      });
+    }
+    return auditors;
   }
 
   for (const attr of selectedUserAttributes.value) {
@@ -235,29 +308,52 @@ function buildAuditors() {
 }
 
 function getApproverDisplayStr() {
-  const parts = [];
-  for (const uid of selectedUserIds.value) {
-    parts.push(userShowTexts.value[uid] || String(uid));
+  if (approverType.value === 'user') {
+    return selectedUserIds.value
+      .map((uid) => userShowTexts.value[uid] || String(uid))
+      .join(', ');
   }
-  for (const rid of selectedRoleIds.value) {
-    parts.push(roleShowTexts.value[rid] || String(rid));
+  if (approverType.value === 'role') {
+    return selectedRoleIds.value
+      .map((rid) => roleShowTexts.value[rid] || String(rid))
+      .join(', ');
   }
-  for (const attr of selectedUserAttributes.value) {
-    const opt = userAttributeOptions.find((o) => o.value === attr);
-    parts.push(opt ? opt.label : String(attr));
+  return selectedUserAttributes.value
+    .map((attr) => {
+      const opt = userAttributeOptions.find((o) => o.value === attr);
+      return opt ? opt.label : String(attr);
+    })
+    .join(', ');
+}
+
+function hasCurrentApproverSelection() {
+  if (approverType.value === 'user') {
+    return selectedUserIds.value.length > 0;
   }
-  return parts.join(', ');
+  if (approverType.value === 'role') {
+    return selectedRoleIds.value.length > 0;
+  }
+  return selectedUserAttributes.value.length > 0;
 }
 
 function saveApprover() {
-  const auditors =
-    approverConfig.value.passMethod === WorkFlowPassMethod.Pass
-      ? []
-      : buildAuditors();
+  const isPass = approverConfig.value.passMethod === WorkFlowPassMethod.Pass;
+
+  if (needsApproverConfig.value && !hasCurrentApproverSelection()) {
+    const typeLabel =
+      approverType.value === 'user'
+        ? '审批用户'
+        : approverType.value === 'role'
+          ? '审批角色'
+          : '用户属性';
+    message.warning(`请选择${typeLabel}`);
+    return;
+  }
+
+  const auditors = isPass ? [] : buildAuditors();
 
   const hasAuditors = auditors.length > 0;
-  const isPass = approverConfig.value.passMethod === WorkFlowPassMethod.Pass;
-  const error = !isPass && !hasAuditors;
+  const error = needsApproverConfig.value && !hasAuditors;
 
   const passMethodLabel =
     passMethodOptions.find((o) => o.value === approverConfig.value.passMethod)
@@ -307,6 +403,12 @@ function closeDrawer() {
   font-size: 14px;
   font-weight: 500;
   color: #333;
+}
+
+.approver-type-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
 }
 
 .pass-tip {

@@ -163,6 +163,10 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   // 通用的错误处理,如果没有进入上面的错误处理逻辑，就会进入这里
   client.addResponseInterceptor(
     errorMessageResponseInterceptor((msg: string, error) => {
+      if ((error?.config as { skipErrorMessage?: boolean })?.skipErrorMessage) {
+        return;
+      }
+
       // ABP格式的错误处理
       const responseData = error?.response?.data ?? {};
 

@@ -398,6 +398,13 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
   return [
     ...prefix,
     {
+      title: t('originalAmountLabel'),
+      dataIndex: 'amount',
+      key: 'amount',
+      width: 100,
+      align: 'right' as const,
+    },
+    {
       title: t('originalExchangeRate'),
       dataIndex: 'exchangeRate',
       key: 'exchangeRate',

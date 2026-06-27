@@ -99,6 +99,7 @@
     "logoutTip": "是否退出登录？",
     "viewAll": "查看所有消息",
     "notifications": "通知",
+    "noNotifications": "暂无消息",
     "markAllAsRead": "全部标记为已读",
     "clearNotifications": "清空",
     "checkUpdatesTitle": "新版本可用",

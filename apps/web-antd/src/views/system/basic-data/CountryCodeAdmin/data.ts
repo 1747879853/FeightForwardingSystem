@@ -51,13 +51,11 @@ export function useFormSchema(): VbenFormSchema[] {
       component: 'Input',
       fieldName: 'code',
       label: $t('system.basicData.countryCode.code'),
-      rules: z
-        .string()
-        .min(1, {
-          message: $t('ui.formRules.required', [
-            $t('system.basicData.countryCode.code'),
-          ]),
-        }),
+      rules: z.string().min(1, {
+        message: $t('ui.formRules.required', [
+          $t('system.basicData.countryCode.code'),
+        ]),
+      }),
       componentProps: { allowClear: true },
     },
     {
@@ -204,6 +202,7 @@ export function useColumns(
       cellRender: {
         attrs: {
           nameField: 'countryName',
+          nameFieldFallbacks: ['countryEnName', 'code'],
           nameTitle: $t('system.basicData.countryCode.name'),
           onClick: onActionClick,
         },

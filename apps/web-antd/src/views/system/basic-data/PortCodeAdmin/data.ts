@@ -4,6 +4,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { OnActionClickFn } from '#/adapter/vxe-table';
 import type { PortCodeAdminApi } from '#/api/system/base-data/port-code-admin';
 
+import { z } from '#/adapter/form';
 import { $t } from '#/locales';
 
 const getStatusOptions = () => [
@@ -58,6 +59,13 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'portName',
       label: $t('system.basicData.portCode.portName'),
       componentProps: { allowClear: true },
+      rules: z
+        .string({
+          required_error: $t('system.basicData.portCode.portNameRequired'),
+        })
+        .min(1, {
+          message: $t('system.basicData.portCode.portNameRequired'),
+        }),
     },
     {
       component: 'Input',
@@ -94,6 +102,13 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'countryId',
       label: $t('system.basicData.portCode.countryId'),
       defaultValue: undefined,
+      rules: z
+        .number({
+          required_error: $t('system.basicData.portCode.countryIdRequired'),
+        })
+        .min(1, {
+          message: $t('system.basicData.portCode.countryIdRequired'),
+        }),
     },
     {
       component: 'LaneSelect',
@@ -103,6 +118,13 @@ export function useFormSchema(): VbenFormSchema[] {
       componentProps: {
         labelKey: 'laneName',
       },
+      rules: z
+        .number({
+          required_error: $t('system.basicData.portCode.laneIdRequired'),
+        })
+        .min(1, {
+          message: $t('system.basicData.portCode.laneIdRequired'),
+        }),
     },
     {
       component: 'Input',
@@ -210,6 +232,7 @@ export function useColumns(
       cellRender: {
         attrs: {
           nameField: 'cnName',
+          nameFieldFallbacks: ['portName'],
           nameTitle: $t('system.basicData.portCode.name'),
           onClick: onActionClick,
         },

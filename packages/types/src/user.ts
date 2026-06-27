@@ -15,6 +15,23 @@ interface UserInfo extends BasicUserInfo {
    * accessToken
    */
   token: string;
+
+  /** GetMyAsync 扩展字段 */
+  companyId?: null | number;
+  companyName?: null | string;
+  departmentId?: null | number;
+  departmentName?: null | string;
+  emailAddress?: null | string;
+  emailPwd?: null | string;
+  employeeID?: null | string;
+  enName?: null | string;
+  gender?: null | number;
+  idNumber?: null | string;
+  nickName?: null | string;
+  officeTel?: null | string;
+  phoneNumber?: null | string;
+  qq?: null | string;
+  userName?: null | string;
 }
 
 export type { UserInfo };

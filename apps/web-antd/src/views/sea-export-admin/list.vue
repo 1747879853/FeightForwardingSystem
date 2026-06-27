@@ -101,6 +101,9 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
         query: createPagedListQuery(getSeaExportPagedList, {
           defaultSort: 'CreationTime DESC',
           mapParams: normalizeQuery,
+          fieldMap: {
+            'transportOrder.clientName': 'TransportOrder.Client.Name',
+          },
         }),
       },
     },

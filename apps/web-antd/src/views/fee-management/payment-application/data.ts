@@ -2,42 +2,11 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
-import { PaymentApplicationStatus } from '#/api/settlement-management/payment-application-admin';
-
+import { getPaymentApplicationStatusOptions } from '#/constants/application-status';
 import { $t } from '#/locales';
 
-const getPaymentApplicationStatusOptions = () => [
-  {
-    value: PaymentApplicationStatus.Entering,
-    label: $t('seaExport.export.paymentApplication.entering'),
-    color: 'default',
-  },
-  {
-    value: PaymentApplicationStatus.Auditing,
-    label: $t('seaExport.export.paymentApplication.auditing'),
-    color: 'processing',
-  },
-  {
-    value: PaymentApplicationStatus.Rejected,
-    label: $t('seaExport.export.paymentApplication.rejected'),
-    color: 'error',
-  },
-  {
-    value: PaymentApplicationStatus.Passed,
-    label: $t('seaExport.export.paymentApplication.passed'),
-    color: 'success',
-  },
-  {
-    value: PaymentApplicationStatus.Partial,
-    label: $t('seaExport.export.paymentApplication.partial'),
-    color: 'warning',
-  },
-  {
-    value: PaymentApplicationStatus.Settlemented,
-    label: $t('seaExport.export.paymentApplication.settlemented'),
-    color: 'success',
-  },
-];
+const paymentApplicationStatusOptions = () =>
+  getPaymentApplicationStatusOptions((key) => $t(key));
 
 export function useGridFormSchema(): VbenFormSchema[] {
   return [
@@ -67,9 +36,10 @@ export function useGridFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.export.paymentApplication.status'),
       componentProps: {
         allowClear: true,
-        options: getPaymentApplicationStatusOptions().map(
-          ({ label, value }) => ({ label, value }),
-        ),
+        options: paymentApplicationStatusOptions().map(({ label, value }) => ({
+          label,
+          value,
+        })),
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
       },
@@ -149,7 +119,7 @@ export function useColumns(): VxeTableGridOptions<PaymentApplicationAdminApi.Pay
       minWidth: 100,
       cellRender: {
         name: 'CellTag',
-        options: getPaymentApplicationStatusOptions(),
+        options: paymentApplicationStatusOptions(),
       },
     },
     {

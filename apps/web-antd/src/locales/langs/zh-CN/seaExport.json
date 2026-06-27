@@ -299,10 +299,10 @@
       "applicationNo": "申请单号",
       "autoGenerate": "自动生成",
       "status": "申请状态",
-      "entering": "录入中",
-      "auditing": "审核中",
-      "rejected": "已驳回",
-      "passed": "已通过",
+      "entering": "未提交",
+      "auditing": "已提交",
+      "rejected": "驳回",
+      "passed": "已审核",
       "partial": "部分结算",
       "settlemented": "结算完毕",
       "clientName": "结算对象",
@@ -373,6 +373,13 @@
       "applicationRate": "申请汇率",
       "convertedTotal": "折算合计",
       "serialNumber": "序号"
+    },
+    "invoiceApplication": {
+      "status": "申请状态",
+      "entering": "未提交",
+      "auditing": "已提交",
+      "rejected": "驳回",
+      "invoiced": "已开票"
     },
     "statement": {
       "title": "对账单",

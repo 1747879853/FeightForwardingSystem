@@ -20,7 +20,7 @@ import { useVbenForm } from '#/adapter/form';
 import { CurrencySelect } from '#/adapter/component';
 import { getPaymentApplicationPagedListForSettlement } from '#/api/settlement-management/payment-application-admin';
 
-import { useSearchSchema, getStatusColor, getStatusText } from './data';
+import { useSearchSchema, getStatusTagProps } from './data';
 
 interface Props {
   /** 付费结算ID（编辑时传入，用于排除已选择的申请） */
@@ -394,6 +394,11 @@ function formatAmount(value: number | undefined | null): string {
 function formatDateTime(dateTime: string | undefined | null): string {
   if (!dateTime) return '-';
   return dayjs(dateTime).format('YYYY-MM-DD HH:mm:ss');
+}
+
+// 获取付费申请状态 Tag 展示
+function resolveApplicationStatusTag(status: number) {
+  return getStatusTagProps(status);
 }
 
 // 从费用明细中聚合委托编号（去重后用逗号分隔）
@@ -928,20 +933,20 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
 
         <template v-else-if="column.key === 'status'">
           <Tag
-            :color="
-              getStatusColor(
+            v-bind="
+              resolveApplicationStatusTag(
                 (
                   record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
                 ).status,
-              )
+              ).tagProps
             "
           >
             {{
-              getStatusText(
+              resolveApplicationStatusTag(
                 (
                   record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
                 ).status,
-              )
+              ).label
             }}
           </Tag>
         </template>

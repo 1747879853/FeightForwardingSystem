@@ -225,6 +225,36 @@ export function toggleSortList(current: SortItem[], field: string): SortItem[] {
   return current.filter((_, itemIndex) => itemIndex !== index);
 }
 
+/**
+ * 根据 vxe 传入的目标排序状态更新会话列表。
+ * 列头循环：同方向再次点击取消；上下箭头：直接切换到 proxy 中的 asc/desc。
+ */
+export function applySortClick(
+  current: SortItem[],
+  clickedField: string,
+  proxySortList: SortItem[],
+): SortItem[] {
+  const proxyItem = proxySortList.find((item) => item.field === clickedField);
+  if (!proxyItem) {
+    return current.filter((item) => item.field !== clickedField);
+  }
+
+  const index = current.findIndex((item) => item.field === clickedField);
+  const currentItem = index >= 0 ? current[index] : undefined;
+
+  if (currentItem?.order === proxyItem.order) {
+    return current.filter((item) => item.field !== clickedField);
+  }
+
+  if (index === -1) {
+    return [...current, { field: clickedField, order: proxyItem.order }];
+  }
+
+  const next = [...current];
+  next[index] = { field: clickedField, order: proxyItem.order };
+  return next;
+}
+
 function normalizeVxeSortOrder(order: unknown): SortOrder | null {
   if (order === 'asc' || order === 'desc') {
     return order;
@@ -311,6 +341,14 @@ export function resolveEffectiveSortList(
   const proxySortList = parseVxeProxySorts(params);
   const defaultList = parseAbpSorting(defaultSort);
 
+  // vxe 再次点击已激活箭头会 clearSort，proxy 不再携带 sorts，须清空会话
+  if (proxySortList.length === 0 && sessionList.length > 0) {
+    if (listKey) {
+      setSortSessionList(listKey, []);
+    }
+    return defaultList;
+  }
+
   if (proxySortList.length > 0) {
     if (
       sessionList.length === 0 &&
@@ -326,7 +364,13 @@ export function resolveEffectiveSortList(
 
     const clickedField = findClickedSortField(sessionList, proxySortList);
     if (clickedField) {
-      const nextSessionList = toggleSortList(sessionList, clickedField);
+      const effectiveCurrent =
+        sessionList.length > 0 ? sessionList : defaultList;
+      const nextSessionList = applySortClick(
+        effectiveCurrent,
+        clickedField,
+        proxySortList,
+      );
       if (listKey) {
         setSortSessionList(listKey, nextSessionList);
       }

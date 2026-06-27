@@ -8,10 +8,12 @@ import { useUserStore } from '@vben/stores';
 import { message } from 'ant-design-vue';
 
 import { getMyInfoApi, updateMyInfoApi } from '#/api';
+import { useAuthStore } from '#/store';
 
 const profileBaseSettingRef = ref();
 const submitting = ref(false);
 const currentAvatar = ref<null | string>(null);
+const authStore = useAuthStore();
 const userStore = useUserStore();
 
 interface BaseSettingFormValues {
@@ -194,6 +196,7 @@ async function handleSubmit(values: Record<string, any>) {
     });
     message.success('个人信息更新成功');
     await loadMyInfo();
+    await authStore.fetchUserInfo();
   } finally {
     submitting.value = false;
   }

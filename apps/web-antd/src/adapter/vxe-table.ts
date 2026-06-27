@@ -1618,6 +1618,7 @@ function enhanceGridOptionsForRemoteSort(
         remote: true,
         multiple: true,
         chronological: true,
+        allowClear: true,
         defaultSort: toVxeDefaultSort(effectiveSortList),
       },
     },
