@@ -72,6 +72,8 @@ export function useSchema(): VbenFormSchema[] {
       componentProps: {
         allowClear: true,
         class: 'w-full',
+        optionLabelProp: 'nickName',
+        useRichOptionLabel: true,
       },
       fieldName: 'chargeUserId',
       label: $t('system.dept.chargeUser'),
