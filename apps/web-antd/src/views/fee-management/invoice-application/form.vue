@@ -1766,8 +1766,52 @@ async function loadDetail() {
                 </div>
               </div>
 
+              <!-- 商品明细操作按钮 -->
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 8px;
+                  background: rgb(196 30 58 / 3%);
+                  border-top: 1px solid #c41e3a;
+                  border-right: 1px solid #c41e3a;
+                  border-left: 1px solid #c41e3a;
+                "
+              >
+                <Space>
+                  <Button
+                    type="primary"
+                    size="small"
+                    @click="handleAddGoodsRow"
+                  >
+                    <template #icon
+                      ><IconifyIcon icon="ant-design:plus-outlined"
+                    /></template>
+                    添加商品明细
+                  </Button>
+                  <Button
+                    size="small"
+                    danger
+                    @click="handleDeleteSelectedGoodsRows"
+                    :disabled="selectedGoodsRows.length === 0"
+                  >
+                    <template #icon
+                      ><IconifyIcon icon="ant-design:delete-outlined"
+                    /></template>
+                    删除选中行 ({{ selectedGoodsRows.length }})
+                  </Button>
+                </Space>
+              </div>
+
               <!-- 商品明细表格 -->
-              <div style="margin-top: 16px">
+              <div
+                style="
+                  border-right: 1px solid #c41e3a;
+                  border-bottom: none;
+                  border-left: 1px solid #c41e3a;
+                "
+              >
                 <Table
                   :columns="[
                     {
@@ -1840,6 +1884,10 @@ async function loadDetail() {
                       );
                     },
                     type: 'checkbox',
+                  }"
+                  :style="{
+                    borderTop: 'none',
+                    borderBottom: 'none',
                   }"
                 >
                   <template #bodyCell="{ column, record, index }">
@@ -1924,28 +1972,47 @@ async function loadDetail() {
               <!-- 合计行 -->
               <div
                 style="
-                  padding: 8px;
-                  margin-top: 8px;
-                  background: #fafafa;
-                  border: 1px solid #d9d9d9;
+                  padding: 12px;
+                  background: rgb(196 30 58 / 5%);
+                  border-top: 2px solid #c41e3a;
+                  border-right: 1px solid #c41e3a;
+                  border-bottom: 1px solid #c41e3a;
+                  border-left: 1px solid #c41e3a;
                 "
               >
-                <Space :size="16">
-                  <span><strong>合计</strong></span>
-                  <span>发票金额: {{ totalInvoiceAmount.toFixed(2) }}</span>
-                  <span>税额: {{ totalTaxAmount.toFixed(2) }}</span>
-                  <span>申请金额: {{ totalAppliedAmount.toFixed(2) }}</span>
+                <Space :size="16" wrap>
+                  <span
+                    style="font-size: 14px; font-weight: bold; color: #c41e3a"
+                    >合计</span
+                  >
+                  <span style="font-size: 13px"
+                    ><strong>发票金额:</strong>
+                    {{ totalInvoiceAmount.toFixed(2) }}</span
+                  >
+                  <span style="font-size: 13px"
+                    ><strong>税额:</strong>
+                    {{ totalTaxAmount.toFixed(2) }}</span
+                  >
+                  <span style="font-size: 13px"
+                    ><strong>申请金额:</strong>
+                    {{ totalAppliedAmount.toFixed(2) }}</span
+                  >
                   <span
                     v-if="foreignCurrencyAmount !== null"
-                    style="color: #1890ff"
+                    style=" font-size: 13px;color: #1890ff"
                   >
-                    申请币别金额({{ selectedCurrencyCode }}):
+                    <strong>申请币别金额({{ selectedCurrencyCode }}):</strong>
                     {{ foreignCurrencyAmount.toFixed(2) }}
                   </span>
                 </Space>
                 <div
                   v-if="hasAmountDifference"
-                  style="margin-top: 8px; font-weight: bold; color: #ff4d4f"
+                  style="
+                    margin-top: 8px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: #ff4d4f;
+                  "
                 >
                   ⚠️ 发票金额与申请金额有差异请核对!
                 </div>
