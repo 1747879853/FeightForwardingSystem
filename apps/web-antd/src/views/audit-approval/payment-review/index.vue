@@ -81,7 +81,7 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
       showCollapseButton: true,
       collapsed: true,
       compact: true,
-      wrapperClass: 'grid-cols-2',
+      wrapperClass: 'grid-cols-5',
     },
     gridEvents: {
       cellClick: handleRowClick,
