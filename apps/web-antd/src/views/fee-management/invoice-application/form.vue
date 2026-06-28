@@ -40,6 +40,8 @@ import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { DatePicker, Select } from 'ant-design-vue';
 import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
 import { $t } from '#/locales';
+import RemarkTemplateModal from './components/RemarkTemplateModal.vue';
+import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vue';
 
 // 从命名空间中解构 API 函数
 const { addAsync, detailAsync, editAsync, getOrderFeeGroupAsync } =
@@ -78,6 +80,10 @@ const selectedFeeDetails = ref<any[]>([]); // 已选择的费用明细数据
 // 商品明细选中行
 const selectedGoodsRows = ref<string[]>([]); // 选中的商品明细行ID
 
+// 备注模板管理弹窗相关状态
+const remarkTemplateModalVisible = ref(false); // 备注模板管理弹窗显示状态
+const selectRemarkTemplateModalVisible = ref(false); // 选择备注模板弹窗显示状态
+
 // 表单数据
 const formData = ref<any>({
   settlementId: '',
@@ -97,6 +103,7 @@ const applicationDate = ref(dayjs().format('YYYY-MM-DD')); // 申请日期，自
 const applicantName = ref(''); // 申请人名称
 const applicantCompany = ref<number>(0); // 申请人所在公司ID
 const applicantCompanyName = ref('');
+const applicantCompanyId = ref(0);
 
 const applicantTaxNumber = ref('');
 const applicantAddress = ref('');
@@ -699,6 +706,95 @@ async function handleSaveFeeSelection() {
   drawerVisible.value = false;
 }
 
+/** 打开备注模板管理弹窗 */
+function handleOpenRemarkTemplateModal() {
+  remarkTemplateModalVisible.value = true;
+}
+
+/** 打开选择备注模板弹窗 */
+function handleOpenSelectRemarkTemplateModal() {
+  selectRemarkTemplateModalVisible.value = true;
+}
+
+/** 接收模板内容并填充到备注字段 */
+function handleUseTemplate(template: string) {
+  if (template) {
+    formData.value.remark = template;
+    message.success('模板已应用到备注');
+  }
+}
+
+/** 从费用明细中提取备注信息 */
+function handleExtractRemark() {
+  const items = formData.value.invoiceApplicationItems || [];
+
+  if (items.length === 0) {
+    message.warning('请先添加费用明细');
+    return;
+  }
+
+  try {
+    // 收集所有委托编号和主提单号
+    const commissionNums = new Set<string>();
+    const mblNums = new Set<string>();
+
+    // 按币别分组统计金额
+    const amountByCurrency: Record<number, { code: string; total: number }> =
+      {};
+
+    items.forEach((item: any) => {
+      // 提取委托编号
+      if (item.commissionNum) {
+        commissionNums.add(item.commissionNum);
+      }
+
+      // 提取主提单号
+      if (item.mblNum) {
+        mblNums.add(item.mblNum);
+      }
+
+      // 统计金额（按币别）
+      const currencyId = item.currencyId || formData.value.currencyId;
+      const appliedAmount = item.appliedAmount || 0;
+
+      if (!amountByCurrency[currencyId]) {
+        amountByCurrency[currencyId] = {
+          code: item.currencyCode || 'CNY',
+          total: 0,
+        };
+      }
+      amountByCurrency[currencyId].total += appliedAmount;
+    });
+
+    // 构建备注内容
+    let remark = '';
+
+    // 添加委托编号
+    if (commissionNums.size > 0) {
+      remark += `委托编号：${Array.from(commissionNums).join('、')}\n`;
+    }
+
+    // 添加主提单号
+    if (mblNums.size > 0) {
+      remark += `主提单号：${Array.from(mblNums).join('、')}\n`;
+    }
+
+    // 添加金额信息
+    remark += '\n';
+    Object.values(amountByCurrency).forEach(({ code, total }) => {
+      remark += `${code}金额(总计)：${total.toFixed(2)}\n`;
+    });
+
+    // 添加到备注字段
+    formData.value.remark = remark;
+
+    message.success(`已从 ${items.length} 条费用明细中提取备注信息`);
+  } catch (error) {
+    console.error('提取备注失败:', error);
+    message.error('提取备注失败');
+  }
+}
+
 /** 手动重新填充商品明细 */
 async function handleRefillGoodsDetails() {
   // 从 formData 中获取当前的费用明细
@@ -1223,6 +1319,7 @@ function initApplicantInfo() {
     if ((userInfo as any).companyId) {
       applicantCompany.value = (userInfo as any).companyId;
       applicantCompanyName.value = (userInfo as any).companyName || '';
+      applicantCompanyId.value = (userInfo as any).companyId || '';
       applicantTaxNumber.value =
         (userInfo as any).company.unifiedSocialCreditCode || '';
       applicantAddress.value =
@@ -2244,13 +2341,35 @@ async function loadDetail() {
               </div>
 
               <!-- 备注信息 -->
+              <!-- 备注信息 -->
               <div style="margin-top: 16px">
                 <Form layout="vertical" size="small">
                   <Form.Item label="备注信息">
+                    <Space style="width: 100%; margin-bottom: 8px">
+                      <Button
+                        size="small"
+                        type="primary"
+                        ghost
+                        @click="handleOpenSelectRemarkTemplateModal"
+                        :disabled="
+                          (formData.invoiceApplicationItems || []).length === 0
+                        "
+                      >
+                        <template #icon></template>
+                        使用模板
+                      </Button>
+                      <Button
+                        size="small"
+                        @click="handleOpenRemarkTemplateModal"
+                      >
+                        <template #icon></template>
+                        管理模板
+                      </Button>
+                    </Space>
                     <Input.TextArea
                       v-model:value="formData.remark"
-                      placeholder="请输入备注"
-                      :rows="2"
+                      placeholder="请输入备注，或点击按钮使用模板"
+                      :rows="3"
                     />
                   </Form.Item>
                 </Form>
@@ -2507,5 +2626,21 @@ async function loadDetail() {
         </div>
       </Spin>
     </Modal>
+
+    <!-- 备注模板管理弹窗 -->
+    <RemarkTemplateModal
+      v-model:visible="remarkTemplateModalVisible"
+      @use-template="handleUseTemplate"
+    />
+
+    <!-- 选择备注模板弹窗 -->
+    <SelectRemarkTemplateModal
+      v-model:visible="selectRemarkTemplateModalVisible"
+      :settlement-id="applicantCompanyId"
+      :currency-id="formData.currencyId"
+      :currency-code="selectedCurrencyCode"
+      :fee-details="formData.invoiceApplicationItems"
+      @use-template="handleUseTemplate"
+    />
   </Page>
 </template>
