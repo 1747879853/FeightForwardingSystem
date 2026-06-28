@@ -45,7 +45,7 @@
 | basic-data | `/basic-data/ctn-code` | 基础资料 | 维护箱型箱量代码，支撑运价和委托箱型信息。 | [箱型代码](./modules/basic-data/ctn-code.md) | 2026-06-20 |
 | basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-05-30 |
 | basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-06-27 |
-| basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板，列表按主配置维度分页（每行=一个主配置），支持明细顺序手动调整与重排动画反馈，并定义责任角色与字段展示/锁定/必填规则；SeaExportPropEnum 按千位分流（展示字段可含 1000+，锁定/必填仅 ≤1000）。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-05-30 |
+| basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板，列表按主配置维度分页（每行=一个主配置），支持明细顺序手动调整与重排动画反馈，并定义责任角色与字段展示/锁定/必填规则；SeaExportPropEnum 按千位分流（展示字段可含 1000+，锁定/必填仅 ≤1000）；服务项可开启「必填费用」绑定应收/应付费用代码，完成任务的费用校验由后端实现。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-06-28 |
 | system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息。 | [用户管理](./modules/system/user.md) | 2026-06-19 |
 | system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-30 |
 | system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-06-09 |

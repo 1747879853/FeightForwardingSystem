@@ -60,7 +60,7 @@ const mapItemToOption = (item: FeeCodeAdminApi.FeeCodeDto) => {
 
   const rawValue = itemAny?.[props.valueKey];
   return {
-    disabled: !item.enable,
+    disabled: item.enable === false,
     label,
     rowLabel: itemAny?.[props.labelKey],
     value: rawValue === undefined || rawValue === null ? '' : rawValue,

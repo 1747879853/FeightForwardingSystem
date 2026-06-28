@@ -25,7 +25,10 @@ import {
   getSeServiceConfigDetail,
 } from '#/api/system/base-data/se-service-config-admin';
 import { UserAttribute } from '#/api/system/user-admin';
+import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
+import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
+import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 import { $t } from '#/locales';
 import { getEnumItems } from '#/utils/init-enum';
 import { loadSeServiceTypeOptions, resolveServiceTypeLabel } from '../data';
@@ -56,6 +59,13 @@ type PropRefRow = {
   seaExportPropEnum: number;
 };
 
+type RequireFeeRow = {
+  id?: string;
+  paySide: number;
+  feeCodeId: number | string;
+  feeCodeName?: string;
+};
+
 type ItemRow = {
   rowKey: string;
   id?: string;
@@ -64,11 +74,21 @@ type ItemRow = {
   autoComplete: boolean;
   manualAllowed: boolean;
   reminder: boolean;
+  requireFee: boolean;
   remark?: string;
   seServiceShows: PropRefRow[];
   seServiceLocks: PropRefRow[];
   seServiceRequires: PropRefRow[];
+  /** 编辑回显用：保留子表 id / feeCodeName，提交时与下方数组合并 */
+  seServiceRequireFees: RequireFeeRow[];
+  requireReceiveFeeCodeIds: (number | string)[];
+  requirePayFeeCodeIds: (number | string)[];
 };
+
+/** 收付类型：应收 */
+const REQUIRE_FEE_PAY_SIDE_RECEIVE = 0;
+/** 收付类型：应付 */
+const REQUIRE_FEE_PAY_SIDE_PAY = 1;
 
 const emit = defineEmits<{ success: [] }>();
 
@@ -201,6 +221,150 @@ const updatePropRefs = (
   }));
 };
 
+const buildRequireFeesForAdd = (row: ItemRow) => {
+  if (!row.requireFee) {
+    return [];
+  }
+  return [
+    ...row.requireReceiveFeeCodeIds.map((feeCodeId) => ({
+      paySide: REQUIRE_FEE_PAY_SIDE_RECEIVE,
+      feeCodeId,
+    })),
+    ...row.requirePayFeeCodeIds.map((feeCodeId) => ({
+      paySide: REQUIRE_FEE_PAY_SIDE_PAY,
+      feeCodeId,
+    })),
+  ];
+};
+
+const buildRequireFeesForEdit = (row: ItemRow) => {
+  if (!row.requireFee) {
+    return [];
+  }
+  const findPrev = (paySide: number, feeCodeId: number | string) =>
+    row.seServiceRequireFees.find(
+      (fee) => fee.paySide === paySide && fee.feeCodeId === feeCodeId,
+    );
+
+  return [
+    ...row.requireReceiveFeeCodeIds.map((feeCodeId) => {
+      const prev = findPrev(REQUIRE_FEE_PAY_SIDE_RECEIVE, feeCodeId);
+      return {
+        id: prev?.id,
+        paySide: REQUIRE_FEE_PAY_SIDE_RECEIVE,
+        feeCodeId,
+      };
+    }),
+    ...row.requirePayFeeCodeIds.map((feeCodeId) => {
+      const prev = findPrev(REQUIRE_FEE_PAY_SIDE_PAY, feeCodeId);
+      return {
+        id: prev?.id,
+        paySide: REQUIRE_FEE_PAY_SIDE_PAY,
+        feeCodeId,
+      };
+    }),
+  ];
+};
+
+const getRequireFeeCodeIdsKey = (paySide: number) =>
+  paySide === REQUIRE_FEE_PAY_SIDE_RECEIVE
+    ? 'requireReceiveFeeCodeIds'
+    : 'requirePayFeeCodeIds';
+
+const getRequireFeeSelectedItems = (
+  row: ItemRow,
+  paySide: number,
+): FeeCodeAdminApi.FeeCodeDto[] => {
+  const codeIds = row[getRequireFeeCodeIdsKey(paySide)];
+  return row.seServiceRequireFees
+    .filter(
+      (fee) =>
+        fee.paySide === paySide &&
+        fee.feeCodeName &&
+        codeIds.some((id) => id === fee.feeCodeId),
+    )
+    .map(
+      (fee) =>
+        ({
+          id: fee.feeCodeId,
+          cnName: fee.feeCodeName,
+          enable: true,
+        }) as FeeCodeAdminApi.FeeCodeDto,
+    );
+};
+
+const syncRequireFeeMetaForIds = async (
+  rowIndex: number,
+  paySide: number,
+  ids: (number | string)[],
+) => {
+  for (const feeCodeId of ids) {
+    const currentRow = itemRows.value[rowIndex];
+    if (!currentRow) {
+      return;
+    }
+
+    const exists = currentRow.seServiceRequireFees.some(
+      (fee) => fee.paySide === paySide && fee.feeCodeId === feeCodeId,
+    );
+    if (exists) {
+      continue;
+    }
+
+    try {
+      const detail = await getFeeCodeDetail(feeCodeId);
+      const latestRow = itemRows.value[rowIndex];
+      if (!latestRow) {
+        return;
+      }
+      if (
+        latestRow.seServiceRequireFees.some(
+          (fee) => fee.paySide === paySide && fee.feeCodeId === feeCodeId,
+        )
+      ) {
+        continue;
+      }
+      itemRows.value[rowIndex] = {
+        ...latestRow,
+        seServiceRequireFees: [
+          ...latestRow.seServiceRequireFees,
+          { paySide, feeCodeId, feeCodeName: detail.cnName },
+        ],
+      };
+    } catch {
+      // 下拉组件会自行拉取选项文案
+    }
+  }
+};
+
+const updateRequireFeeCodeIds = (
+  rowIndex: number,
+  paySide: number,
+  values: unknown,
+) => {
+  const currentRow = itemRows.value[rowIndex];
+  if (!currentRow) {
+    return;
+  }
+
+  const ids = (
+    Array.isArray(values)
+      ? values
+      : values === undefined || values === null || values === ''
+        ? []
+        : [values]
+  ).filter((value) => value !== undefined && value !== null && value !== '');
+
+  const targetKey = getRequireFeeCodeIdsKey(paySide);
+
+  itemRows.value[rowIndex] = {
+    ...currentRow,
+    [targetKey]: [...ids] as (number | string)[],
+  };
+
+  void syncRequireFeeMetaForIds(rowIndex, paySide, ids);
+};
+
 const createRowKey = () => `se-service-item-${Date.now()}-${rowKeySeed++}`;
 
 const addItem = () => {
@@ -211,10 +375,14 @@ const addItem = () => {
     autoComplete: false,
     manualAllowed: true,
     reminder: false,
+    requireFee: false,
     remark: '',
     seServiceShows: [],
     seServiceLocks: [],
     seServiceRequires: [],
+    seServiceRequireFees: [],
+    requireReceiveFeeCodeIds: [],
+    requirePayFeeCodeIds: [],
   });
 };
 
@@ -273,6 +441,7 @@ const toPayloadItemsForAdd =
       autoComplete: row.autoComplete,
       manualAllowed: row.manualAllowed,
       reminder: row.reminder,
+      requireFee: row.requireFee,
       sortId: index,
       remark: row.remark,
       seServiceShows: row.seServiceShows.map((item) => ({
@@ -284,6 +453,7 @@ const toPayloadItemsForAdd =
       seServiceRequires: row.seServiceRequires.map((item) => ({
         seaExportPropEnum: Number(item.seaExportPropEnum),
       })),
+      seServiceRequireFees: row.requireFee ? buildRequireFeesForAdd(row) : [],
     }));
   };
 
@@ -296,6 +466,7 @@ const toPayloadItemsForEdit =
       autoComplete: row.autoComplete,
       manualAllowed: row.manualAllowed,
       reminder: row.reminder,
+      requireFee: row.requireFee,
       sortId: index,
       remark: row.remark,
       seServiceShows: row.seServiceShows.map((item) => ({
@@ -310,6 +481,7 @@ const toPayloadItemsForEdit =
         id: item.id,
         seaExportPropEnum: Number(item.seaExportPropEnum),
       })),
+      seServiceRequireFees: row.requireFee ? buildRequireFeesForEdit(row) : [],
     }));
   };
 
@@ -541,38 +713,55 @@ const [Modal, modalApi] = useVbenModal({
             Number(a.sortId ?? Number.MAX_SAFE_INTEGER) -
             Number(b.sortId ?? Number.MAX_SAFE_INTEGER),
         )
-        .map((item) => ({
-          rowKey: item.id || createRowKey(),
-          id: item.id,
-          serviceType: normalizeEnumNumber(item.serviceType),
-          userAttributeFlags: parseSeaExportUserAttribute(
-            Number(item.userAttribute || 0),
-          ),
-          autoComplete: Boolean(item.autoComplete),
-          manualAllowed: Boolean(item.manualAllowed),
-          reminder: Boolean(item.reminder),
-          remark: item.remark,
-          seServiceShows: (item.seServiceShows || []).map((sub) => ({
-            id: sub.id,
-            seaExportPropEnum: Number(sub.seaExportPropEnum),
-          })),
-          seServiceLocks: (item.seServiceLocks || [])
-            .map((sub) => ({
+        .map((item) => {
+          const requireFees = (item.seServiceRequireFees || []).map((fee) => ({
+            id: fee.id,
+            paySide: Number(fee.paySide),
+            feeCodeId: fee.feeCodeId,
+            feeCodeName: fee.feeCodeName,
+          }));
+
+          return {
+            rowKey: item.id || createRowKey(),
+            id: item.id,
+            serviceType: normalizeEnumNumber(item.serviceType),
+            userAttributeFlags: parseSeaExportUserAttribute(
+              Number(item.userAttribute || 0),
+            ),
+            autoComplete: Boolean(item.autoComplete),
+            manualAllowed: Boolean(item.manualAllowed),
+            reminder: Boolean(item.reminder),
+            requireFee: Boolean(item.requireFee),
+            remark: item.remark,
+            seServiceRequireFees: requireFees,
+            requireReceiveFeeCodeIds: requireFees
+              .filter((fee) => fee.paySide === REQUIRE_FEE_PAY_SIDE_RECEIVE)
+              .map((fee) => fee.feeCodeId),
+            requirePayFeeCodeIds: requireFees
+              .filter((fee) => fee.paySide === REQUIRE_FEE_PAY_SIDE_PAY)
+              .map((fee) => fee.feeCodeId),
+            seServiceShows: (item.seServiceShows || []).map((sub) => ({
               id: sub.id,
               seaExportPropEnum: Number(sub.seaExportPropEnum),
-            }))
-            .filter(
-              (sub) => sub.seaExportPropEnum <= SEA_EXPORT_EXTRA_PROP_BASE,
-            ),
-          seServiceRequires: (item.seServiceRequires || [])
-            .map((sub) => ({
-              id: sub.id,
-              seaExportPropEnum: Number(sub.seaExportPropEnum),
-            }))
-            .filter(
-              (sub) => sub.seaExportPropEnum <= SEA_EXPORT_EXTRA_PROP_BASE,
-            ),
-        }));
+            })),
+            seServiceLocks: (item.seServiceLocks || [])
+              .map((sub) => ({
+                id: sub.id,
+                seaExportPropEnum: Number(sub.seaExportPropEnum),
+              }))
+              .filter(
+                (sub) => sub.seaExportPropEnum <= SEA_EXPORT_EXTRA_PROP_BASE,
+              ),
+            seServiceRequires: (item.seServiceRequires || [])
+              .map((sub) => ({
+                id: sub.id,
+                seaExportPropEnum: Number(sub.seaExportPropEnum),
+              }))
+              .filter(
+                (sub) => sub.seaExportPropEnum <= SEA_EXPORT_EXTRA_PROP_BASE,
+              ),
+          };
+        });
       if (itemRows.value.length === 0) {
         addItem();
       }
@@ -742,6 +931,14 @@ const [Modal, modalApi] = useVbenModal({
               >
                 <Switch v-model:checked="row.reminder" />
               </FormItem>
+              <FormItem
+                class="service-item-inline-field shrink-0"
+                :label="$t('system.basicData.seServiceConfig.requireFee')"
+                :label-col="itemInlineLabelCol"
+                :wrapper-col="itemInlineWrapperCol"
+              >
+                <Switch v-model:checked="row.requireFee" />
+              </FormItem>
             </div>
 
             <FormItem
@@ -826,6 +1023,65 @@ const [Modal, modalApi] = useVbenModal({
                 />
               </FormItem>
             </div>
+
+            <template v-if="row.requireFee">
+              <div class="mb-2 grid grid-cols-2 gap-x-4 gap-y-2">
+                <FormItem
+                  class="service-item-leading-field min-w-0"
+                  :label="
+                    $t('system.basicData.seServiceConfig.requireReceiveFees')
+                  "
+                  :label-col="itemLeadingLabelCol"
+                  :wrapper-col="itemLeadingWrapperCol"
+                >
+                  <FeeCodeSelect
+                    mode="multiple"
+                    :model-value="row.requireReceiveFeeCodeIds"
+                    :selected-items="
+                      getRequireFeeSelectedItems(
+                        row,
+                        REQUIRE_FEE_PAY_SIDE_RECEIVE,
+                      )
+                    "
+                    :placeholder="$t('ui.placeholder.select')"
+                    @update:model-value="
+                      (values) =>
+                        updateRequireFeeCodeIds(
+                          index,
+                          REQUIRE_FEE_PAY_SIDE_RECEIVE,
+                          values,
+                        )
+                    "
+                  />
+                </FormItem>
+                <FormItem
+                  class="service-item-prop-field min-w-0"
+                  :label="$t('system.basicData.seServiceConfig.requirePayFees')"
+                  :label-col="itemPropLabelCol"
+                  :wrapper-col="itemLeadingWrapperCol"
+                >
+                  <FeeCodeSelect
+                    mode="multiple"
+                    :model-value="row.requirePayFeeCodeIds"
+                    :selected-items="
+                      getRequireFeeSelectedItems(row, REQUIRE_FEE_PAY_SIDE_PAY)
+                    "
+                    :placeholder="$t('ui.placeholder.select')"
+                    @update:model-value="
+                      (values) =>
+                        updateRequireFeeCodeIds(
+                          index,
+                          REQUIRE_FEE_PAY_SIDE_PAY,
+                          values,
+                        )
+                    "
+                  />
+                </FormItem>
+              </div>
+              <div class="mb-3 text-xs text-gray-500">
+                {{ $t('system.basicData.seServiceConfig.requireFeeTip') }}
+              </div>
+            </template>
 
             <FormItem
               class="service-item-leading-field mb-0"

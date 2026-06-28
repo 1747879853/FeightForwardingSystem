@@ -79,6 +79,7 @@ last_updated: 2026-06-28
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-28 | `Feature` | 分组设置持久化：用户选择的分组字段保存到用户设置，刷新/重新登录后自动恢复。 | 复用 `UserSettingAdmin`，table-config store 新增 `group_config_` 一套并登录预热；`useListGrouping.persist` 挂载恢复（不写回）+ 切换保存。 |
 | 2026-06-28 | `Feature` | 点击船公司/起运港/目的港/付费方式/签单方式分组中的「未填写」项时，列表仅展示对应字段为空的记录。 | 对接后端 5 个 `*Empty` 参数；`GroupFieldDef.emptyParamKey` + `decorateListParams` 选中项三态（undefined/null/具体值）区分全部、未填写与具体值。 |
 | 2026-06-28 | `Feature` | 列表新增分组统计：工具栏「分组设置」启用 9 维分组，Tab 展示各分组条数；点击 Tab 过滤列表；搜索与分组互斥。 | 抽象 `components/list-grouping` 供后续列表复用；`useListGrouping.decorateListParams` 负责签名比对与筛选追加；付费方式分组依赖 `CodeFrtId` 列表筛选。 |
 | 2026-06-21 | `Fix` | 列表移除原「应收费用」「应付费用」最小状态列，仅保留组合状态列 `receiveFeeStatus`/`payFeeStatus`。 | 后端仍返回 `feeStatusReceive`/`feeStatusPay`，前端列表不再展示。 |

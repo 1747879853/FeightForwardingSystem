@@ -13,6 +13,8 @@
 
 ## 2026-06
 
+- [2026-06-28] [列表分组设置持久化保存](./changelogs/change-log-2026-06-28-list-grouping-persist.md)
+- [2026-06-28] [港口服务项配置新增「必填费用」对接](./changelogs/change-log-2026-06-28-se-service-config-require-fee.md)
 - [2026-06-28] [海运出口列表「未填写」分组项筛选对接](./changelogs/change-log-2026-06-28-sea-export-list-empty-filter.md)
 - [2026-06-28] [海运出口列表分组统计与可复用分组组件](./changelogs/change-log-2026-06-28-sea-export-list-grouping.md)
 - [2026-06-28] [付费审核主从布局并展示申请费用明细](./changelogs/change-log-2026-06-28-payment-review-master-detail-layout.md)

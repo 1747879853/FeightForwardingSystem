@@ -15,6 +15,7 @@ import { defineStore } from 'pinia';
 
 const TABLE_CONFIG_KEYWORD = 'table_config_';
 const SEARCH_FORM_CONFIG_KEYWORD = 'search_form_config_';
+const GROUP_CONFIG_KEYWORD = 'group_config_';
 const TABLE_CONFIG_PAGE_SIZE = 999;
 
 type UserSettingItem = UserSettingAdminApi.UserSettingDto;
@@ -23,10 +24,13 @@ export const useTableConfigStore = defineStore('table-config', () => {
   const userStore = useUserStore();
   const tableConfigMap = ref<Record<string, UserSettingItem>>({});
   const searchFormConfigMap = ref<Record<string, UserSettingItem>>({});
+  const groupConfigMap = ref<Record<string, UserSettingItem>>({});
   const hasLoaded = ref(false);
   const searchFormHasLoaded = ref(false);
+  const groupHasLoaded = ref(false);
   const loadingPromise = ref<null | Promise<void>>(null);
   const searchFormLoadingPromise = ref<null | Promise<void>>(null);
+  const groupLoadingPromise = ref<null | Promise<void>>(null);
 
   function setTableConfigs(items: UserSettingItem[]) {
     const nextMap: Record<string, UserSettingItem> = {};
@@ -68,6 +72,40 @@ export const useTableConfigStore = defineStore('table-config', () => {
       ...searchFormConfigMap.value,
       [item.name]: item,
     };
+  }
+
+  function setGroupConfigs(items: UserSettingItem[]) {
+    const nextMap: Record<string, UserSettingItem> = {};
+    items.forEach((item) => {
+      if (!item?.name?.startsWith(GROUP_CONFIG_KEYWORD)) {
+        return;
+      }
+      nextMap[item.name] = item;
+    });
+    groupConfigMap.value = nextMap;
+  }
+
+  function upsertGroupConfig(item: UserSettingItem) {
+    if (!item?.name?.startsWith(GROUP_CONFIG_KEYWORD)) {
+      return;
+    }
+    groupConfigMap.value = {
+      ...groupConfigMap.value,
+      [item.name]: item,
+    };
+  }
+
+  function removeGroupConfigById(id: number) {
+    if (!id) {
+      return;
+    }
+    const nextMap: Record<string, UserSettingItem> = {};
+    Object.entries(groupConfigMap.value).forEach(([name, item]) => {
+      if (item.id !== id) {
+        nextMap[name] = item;
+      }
+    });
+    groupConfigMap.value = nextMap;
   }
 
   function removeTableConfigById(id: number) {
@@ -162,8 +200,45 @@ export const useTableConfigStore = defineStore('table-config', () => {
     return await searchFormLoadingPromise.value;
   }
 
+  async function loadGroupConfigsOnce(force = false) {
+    if (groupHasLoaded.value && !force) {
+      return;
+    }
+    if (groupLoadingPromise.value) {
+      return await groupLoadingPromise.value;
+    }
+    groupLoadingPromise.value = (async () => {
+      const creatorUserId = userStore.userInfo?.userId;
+      const firstPage = await getUserSettingPagedList({
+        CreatorUserId: creatorUserId,
+        Keyword: GROUP_CONFIG_KEYWORD,
+        PageIndex: 1,
+        PageSize: TABLE_CONFIG_PAGE_SIZE,
+      });
+      let items = [...(firstPage.items ?? [])];
+      if ((firstPage.totalCount ?? 0) > TABLE_CONFIG_PAGE_SIZE) {
+        const secondPage = await getUserSettingPagedList({
+          CreatorUserId: creatorUserId,
+          Keyword: GROUP_CONFIG_KEYWORD,
+          PageIndex: 2,
+          PageSize: TABLE_CONFIG_PAGE_SIZE,
+        });
+        items = items.concat(secondPage.items ?? []);
+      }
+      setGroupConfigs(items);
+      groupHasLoaded.value = true;
+    })().finally(() => {
+      groupLoadingPromise.value = null;
+    });
+    return await groupLoadingPromise.value;
+  }
+
   function getTableConfigByName(name: string) {
     return tableConfigMap.value[name] ?? null;
+  }
+
+  function getGroupConfigByName(name: string) {
+    return groupConfigMap.value[name] ?? null;
   }
 
   function getSearchFormConfigByName(name: string) {
@@ -217,6 +292,26 @@ export const useTableConfigStore = defineStore('table-config', () => {
     upsertTableConfig(payload);
   }
 
+  async function addGroupConfig(payload: { name: string; setting: string }) {
+    const id = await addUserSetting(payload);
+    upsertGroupConfig({ id, name: payload.name, setting: payload.setting });
+    return id;
+  }
+
+  async function editGroupConfig(payload: {
+    id: number;
+    name: string;
+    setting: string;
+  }) {
+    await editUserSetting(payload);
+    upsertGroupConfig(payload);
+  }
+
+  async function removeGroupConfig(id: number) {
+    await deleteUserSetting(id);
+    removeGroupConfigById(id);
+  }
+
   async function removeTableConfig(id: number) {
     await deleteUserSetting(id);
     removeTableConfigById(id);
@@ -232,23 +327,32 @@ export const useTableConfigStore = defineStore('table-config', () => {
   function $reset() {
     tableConfigMap.value = {};
     searchFormConfigMap.value = {};
+    groupConfigMap.value = {};
     hasLoaded.value = false;
     searchFormHasLoaded.value = false;
+    groupHasLoaded.value = false;
     loadingPromise.value = null;
     searchFormLoadingPromise.value = null;
+    groupLoadingPromise.value = null;
   }
 
   return {
     $reset,
+    addGroupConfig,
     addSearchFormConfig,
     addTableConfig,
+    editGroupConfig,
     editSearchFormConfig,
     editTableConfig,
+    getGroupConfigByName,
     getSearchFormConfigByName,
     getTableConfigByName,
+    groupHasLoaded,
     hasLoaded,
+    loadGroupConfigsOnce,
     loadSearchFormConfigsOnce,
     loadTableConfigsOnce,
+    removeGroupConfig,
     removeSearchFormConfig,
     searchFormHasLoaded,
     removeTableConfig,

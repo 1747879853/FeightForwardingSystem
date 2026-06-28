@@ -22,12 +22,45 @@ import {
   useListGrouping,
 } from '#/components/list-grouping';
 import { $t } from '#/locales';
+import { useTableConfigStore } from '#/store/table-config';
 import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
 const router = useRouter();
+const tableConfigStore = useTableConfigStore();
+
+/** 分组设置持久化 key（与列表 listKey 对齐，路由名 SeaExportList） */
+const GROUP_CONFIG_NAME = 'group_config_SeaExportList';
+
+const loadGroupField = async (): Promise<number | undefined> => {
+  await tableConfigStore.loadGroupConfigsOnce();
+  const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
+  if (!hit?.setting) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(hit.setting) as { field?: null | number };
+    return typeof parsed?.field === 'number' ? parsed.field : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const saveGroupField = (fieldValue: number | undefined) => {
+  const setting = JSON.stringify({ field: fieldValue ?? null });
+  const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
+  if (hit) {
+    void tableConfigStore.editGroupConfig({
+      id: hit.id,
+      name: GROUP_CONFIG_NAME,
+      setting,
+    });
+  } else {
+    void tableConfigStore.addGroupConfig({ name: GROUP_CONFIG_NAME, setting });
+  }
+};
 
 /**
  * 海运出口分组字段配置。
@@ -35,8 +68,18 @@ const router = useRouter();
  * 也是与之互斥的搜索表单字段名（付费方式无对应搜索项，启用时不影响搜索表单）。
  */
 const SEA_EXPORT_GROUP_FIELDS: GroupFieldDef[] = [
-  { value: 1, label: '装运方式', paramKey: 'BLType' },
-  { value: 2, label: '订单类型', paramKey: 'BillType' },
+  {
+    value: 1,
+    label: '装运方式',
+    paramKey: 'BLType',
+    emptyParamKey: 'BLTypeEmpty',
+  },
+  {
+    value: 2,
+    label: '订单类型',
+    paramKey: 'BillType',
+    emptyParamKey: 'BillTypeEmpty',
+  },
   { value: 3, label: '委托单位', paramKey: 'ClientId' },
   {
     value: 4,
@@ -46,7 +89,7 @@ const SEA_EXPORT_GROUP_FIELDS: GroupFieldDef[] = [
   },
   { value: 5, label: '起运港', paramKey: 'POLId', emptyParamKey: 'POLIdEmpty' },
   { value: 6, label: '目的港', paramKey: 'PODId', emptyParamKey: 'PODIdEmpty' },
-  { value: 7, label: '船名', paramKey: 'Vessel' },
+  { value: 7, label: '船名', paramKey: 'Vessel', emptyParamKey: 'VesselEmpty' },
   {
     value: 8,
     label: '付费方式',
@@ -85,6 +128,10 @@ const grouping = useListGrouping({
       ...baseParams,
       GroupField: field,
     } as SeaExportAdminApi.GetGroupedListParams),
+  persist: {
+    load: loadGroupField,
+    save: saveGroupField,
+  },
 });
 
 const normalizeQuery = (
