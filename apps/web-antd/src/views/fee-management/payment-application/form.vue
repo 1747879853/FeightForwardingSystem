@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { ClientInvoiceInfoAdminApi } from '#/api/sea-export/clinet-invoice-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { Attachment } from '#/api/common/upload';
 import type { SelectedFeeItem } from '../add-fee-modal/data';
@@ -9,7 +10,7 @@ import type {
   OrderGroupRow,
 } from './form-data';
 
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
@@ -27,6 +28,7 @@ import {
   Menu,
   MenuItem,
   message,
+  Select,
   Space,
   Spin,
   Table,
@@ -35,6 +37,7 @@ import {
 } from 'ant-design-vue';
 
 import { $t } from '#/locales';
+import { getClientInvoiceInfoList } from '#/api/sea-export/clinet-invoice-admin';
 import {
   markListShouldRefresh,
   returnToListWithRefresh,
@@ -187,6 +190,155 @@ const isSettlementLocked = computed(() => feeDetailRows.value.length > 0);
 const isSettlementCurrencyLocked = computed(
   () => feeDetailRows.value.length > 0,
 );
+
+// --- 结算对象银行账户 ---
+
+interface BankCurrencyRow {
+  currencyId: number;
+  currencyCode: string;
+  currencyName: string;
+}
+
+/** 结算对象下所有币别的开票银行（扁平化） */
+const clientBanks = ref<ClientInvoiceInfoAdminApi.ClientInvoiceBankDto[]>([]);
+const bankLoading = ref(false);
+/** 已加载银行列表的结算对象id */
+const loadedBankClientId = ref<string>('');
+/** currencyId -> clientInvoiceBankId */
+const bankSelections = ref<Record<number, string | undefined>>({});
+
+/** 银行选择可编辑（新增模式或编辑且录入中） */
+const canEditBank = computed(() => !isEdit.value || isEntering.value);
+
+/** 需要绑定银行的币别：原币结算=各费用币别；指定币别结算=结算币别 */
+const bankCurrencies = computed<BankCurrencyRow[]>(() => {
+  if (feeDetailRows.value.length === 0) return [];
+  if (settlementCurrencyId.value === null) {
+    return currencySummaries.value.map((cs) => ({
+      currencyId: cs.currencyId,
+      currencyCode: cs.currencyCode ?? '',
+      currencyName: cs.currencyName ?? '',
+    }));
+  }
+  return [
+    {
+      currencyId: settlementCurrencyId.value,
+      currencyCode: settlementCurrencyName.value,
+      currencyName: settlementCurrencyName.value,
+    },
+  ];
+});
+
+function getBankOptions(currencyId: number) {
+  return clientBanks.value
+    .filter((b) => b.currencyId === currencyId)
+    .map((b) => ({
+      value: b.id,
+      label: `${b.bankName || '-'} / ${b.accountName || '-'}`,
+    }));
+}
+
+function getBankById(
+  id: string | undefined,
+): ClientInvoiceInfoAdminApi.ClientInvoiceBankDto | undefined {
+  if (!id) return undefined;
+  return clientBanks.value.find((b) => b.id === id);
+}
+
+function getSelectedBank(
+  currencyId: number,
+): ClientInvoiceInfoAdminApi.ClientInvoiceBankDto | undefined {
+  return getBankById(bankSelections.value[currencyId]);
+}
+
+function onBankChange(currencyId: number, val: string | undefined) {
+  bankSelections.value = { ...bankSelections.value, [currencyId]: val };
+}
+
+/** 指定币别结算模式下的银行选择（结算币别） */
+const settlementBankValue = computed(() =>
+  settlementCurrencyId.value === null
+    ? undefined
+    : bankSelections.value[settlementCurrencyId.value],
+);
+const settlementBankOptions = computed(() =>
+  settlementCurrencyId.value === null
+    ? []
+    : getBankOptions(settlementCurrencyId.value),
+);
+const settlementSelectedBank = computed(() =>
+  settlementCurrencyId.value === null
+    ? undefined
+    : getSelectedBank(settlementCurrencyId.value),
+);
+function onSettlementBankChange(val: string | undefined) {
+  if (settlementCurrencyId.value === null) return;
+  onBankChange(settlementCurrencyId.value, val);
+}
+
+/** 为缺失/失效的币别选择默认银行（已有有效选择则保留） */
+function applyDefaultBankSelections() {
+  const next: Record<number, string | undefined> = { ...bankSelections.value };
+  for (const c of bankCurrencies.value) {
+    const optionsForCur = clientBanks.value.filter(
+      (b) => b.currencyId === c.currencyId,
+    );
+    const current = next[c.currencyId];
+    if (current && optionsForCur.some((b) => b.id === current)) continue;
+    const def = optionsForCur.find((b) => b.isDefault) ?? optionsForCur[0];
+    next[c.currencyId] = def?.id;
+  }
+  bankSelections.value = next;
+}
+
+/** 加载结算对象开票信息中维护的银行账户 */
+async function loadClientBanks(force = false) {
+  const clientId = settlementId.value;
+  if (!clientId) {
+    clientBanks.value = [];
+    loadedBankClientId.value = '';
+    return;
+  }
+  if (!force && loadedBankClientId.value === clientId) return;
+  bankLoading.value = true;
+  try {
+    const list = await getClientInvoiceInfoList({ ClientId: clientId });
+    const banks: ClientInvoiceInfoAdminApi.ClientInvoiceBankDto[] = [];
+    for (const info of list ?? []) {
+      for (const b of info.clientInvoiceBanks ?? []) banks.push(b);
+    }
+    clientBanks.value = banks;
+    loadedBankClientId.value = clientId;
+    applyDefaultBankSelections();
+  } finally {
+    bankLoading.value = false;
+  }
+}
+
+/** 费用币别变化时为新币别补默认银行 */
+watch(bankCurrencies, () => {
+  applyDefaultBankSelections();
+});
+
+function ensureBanksSelected(): boolean {
+  for (const c of bankCurrencies.value) {
+    if (!bankSelections.value[c.currencyId]) {
+      message.warning(
+        `请为币别【${c.currencyCode || c.currencyName}】选择结算银行`,
+      );
+      return false;
+    }
+  }
+  return true;
+}
+
+/** 构造提交用银行列表 */
+function buildBankSubmitList(): PaymentApplicationAdminApi.PaymentApplicationBankAddDto[] {
+  return bankCurrencies.value
+    .map((c) => bankSelections.value[c.currencyId])
+    .filter((id): id is string => !!id)
+    .map((id) => ({ clientInvoiceBankId: id }));
+}
 
 // --- Fee detail selection ---
 
@@ -388,10 +540,16 @@ function onEndTimeChange(_date: any, dateStr: string | string[]) {
 function onSettlementChange(val: string | null | undefined) {
   settlementId.value = val ? String(val) : '';
   settlementName.value = '';
+  bankSelections.value = {};
+  loadClientBanks(true);
 }
 
 function onSettlementIdSync(val: string) {
+  if (settlementId.value !== val) {
+    bankSelections.value = {};
+  }
   settlementId.value = val;
+  loadClientBanks();
 }
 
 function ensureSettlementSelected() {
@@ -467,6 +625,28 @@ function mapDetailToFeeRows(
   return rows;
 }
 
+/** 从详情的 currencyGroup.paymentApplicationBank 回填银行选择 */
+function restoreBankSelectionsFromDetail(
+  detail: PaymentApplicationAdminApi.PaymentApplicationDetailDto,
+) {
+  const groups = detail.currencyGroup ?? [];
+  const next: Record<number, string | undefined> = {};
+  if (settlementCurrencyId.value === null) {
+    // 原币结算：每个币别分组对应一条银行
+    for (const g of groups) {
+      const bankId = g.paymentApplicationBank?.clientInvoiceBankId;
+      if (bankId) next[g.id] = bankId;
+    }
+  } else {
+    // 指定币别结算：所有分组共享同一条结算币别银行
+    const sharedBankId = groups
+      .map((g) => g.paymentApplicationBank?.clientInvoiceBankId)
+      .find(Boolean);
+    if (sharedBankId) next[settlementCurrencyId.value] = sharedBankId;
+  }
+  bankSelections.value = next;
+}
+
 async function loadEditData() {
   if (!editId.value) return;
 
@@ -496,6 +676,9 @@ async function loadEditData() {
     feeDetailRows.value = mapDetailToFeeRows(detail);
     originalFeeDetailRows.value = feeDetailRows.value.map((r) => ({ ...r }));
     initialLoadFeeIds.value = new Set(feeDetailRows.value.map((r) => r.feeId));
+
+    await loadClientBanks(true);
+    restoreBankSelectionsFromDetail(detail);
 
     attachments.value = (detail.attachments ?? []).map((a) => ({
       attachmentId: a.attachmentId ?? a.id,
@@ -541,6 +724,8 @@ function buildSubmitData(
       url: a.url,
     }));
 
+  const banks = buildBankSubmitList();
+
   return {
     id: editId.value || undefined,
     status,
@@ -551,6 +736,7 @@ function buildSubmitData(
     require: paymentRequire.value || undefined,
     remark: remark.value || undefined,
     paymentApplicationItems: items,
+    paymentApplicationBanks: banks.length > 0 ? banks : undefined,
     attachments: attachmentItems.length > 0 ? attachmentItems : undefined,
   };
 }
@@ -565,6 +751,8 @@ async function saveEditMode() {
       url: a.url,
     }));
 
+  const banks = buildBankSubmitList();
+
   await editPaymentApplication({
     id,
     status: PaymentApplicationStatus.Entering,
@@ -572,6 +760,10 @@ async function saveEditMode() {
     endTime: endTime.value ? dayjs(endTime.value).toISOString() : null,
     require: paymentRequire.value || undefined,
     remark: remark.value || undefined,
+    paymentApplicationBanks:
+      banks.length > 0
+        ? banks.map((b) => ({ clientInvoiceBankId: b.clientInvoiceBankId }))
+        : undefined,
     attachments: attachmentItems.length > 0 ? attachmentItems : undefined,
   });
 
@@ -624,6 +816,9 @@ async function handleSave() {
     message.warning(t('noFeeWarning'));
     return;
   }
+  if (!ensureBanksSelected()) {
+    return;
+  }
   submitting.value = true;
   try {
     if (isEdit.value && editId.value) {
@@ -652,6 +847,9 @@ async function handleSubmit() {
     message.warning(t('noFeeWarning'));
     return;
   }
+  if (!ensureBanksSelected()) {
+    return;
+  }
   submitting.value = true;
   try {
     await addPaymentApplication(
@@ -674,6 +872,9 @@ async function handleSubmitAndNew() {
     message.warning(t('noFeeWarning'));
     return;
   }
+  if (!ensureBanksSelected()) {
+    return;
+  }
   submitting.value = true;
   try {
     await addPaymentApplication(
@@ -692,6 +893,9 @@ async function handleSubmitApplication() {
   if (!ensureSettlementSelected()) return;
   if (feeDetailRows.value.length === 0) {
     message.warning(t('noFeeWarning'));
+    return;
+  }
+  if (!ensureBanksSelected()) {
     return;
   }
   submitting.value = true;
@@ -727,6 +931,7 @@ function resetForm() {
   selectedRowKeys.value = [];
   expandedGroupKeys.value = [];
   attachments.value = [];
+  bankSelections.value = {};
   submitTime.value = dayjs().format('YYYY-MM-DD HH:mm');
 }
 
@@ -932,6 +1137,44 @@ function formatMonth(val: string | undefined | null): string {
                         {{ formatAmount(cs.totalAmount) }}
                       </span>
                     </div>
+                    <div class="bank-block">
+                      <span class="bank-block__label">
+                        结算银行<span class="bank-block__required">*</span>
+                      </span>
+                      <Select
+                        :value="bankSelections[cs.currencyId]"
+                        :options="getBankOptions(cs.currencyId)"
+                        :loading="bankLoading"
+                        :disabled="!canEditBank"
+                        size="small"
+                        class="w-full"
+                        placeholder="请选择结算银行"
+                        @update:value="(v) => onBankChange(cs.currencyId, v)"
+                      />
+                      <div
+                        v-if="getSelectedBank(cs.currencyId)"
+                        class="bank-detail"
+                      >
+                        <div class="bank-detail__row">
+                          <span class="bank-detail__label">开户行</span>
+                          <span class="bank-detail__value">{{
+                            getSelectedBank(cs.currencyId)?.bankName || '-'
+                          }}</span>
+                        </div>
+                        <div class="bank-detail__row">
+                          <span class="bank-detail__label">账号</span>
+                          <span class="bank-detail__value">{{
+                            getSelectedBank(cs.currencyId)?.bankAccount || '-'
+                          }}</span>
+                        </div>
+                        <div class="bank-detail__row">
+                          <span class="bank-detail__label">SWIFT</span>
+                          <span class="bank-detail__value">{{
+                            getSelectedBank(cs.currencyId)?.swiftCode || '-'
+                          }}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </template>
@@ -979,6 +1222,47 @@ function formatMonth(val: string | undefined | null): string {
                     <span class="conversion-total-bar__amount">
                       {{ formatAmount(grandConvertedTotal) }}
                     </span>
+                  </div>
+                  <div
+                    v-if="settlementCurrencyId !== null"
+                    class="bank-block bank-block--inline"
+                  >
+                    <span class="bank-block__label">
+                      结算银行<span class="bank-block__required">*</span>
+                      <template v-if="settlementCurrencyName">
+                        ({{ settlementCurrencyName }})
+                      </template>
+                    </span>
+                    <Select
+                      :value="settlementBankValue"
+                      :options="settlementBankOptions"
+                      :loading="bankLoading"
+                      :disabled="!canEditBank"
+                      size="small"
+                      style="width: 280px"
+                      placeholder="请选择结算银行"
+                      @update:value="onSettlementBankChange"
+                    />
+                    <div v-if="settlementSelectedBank" class="bank-detail">
+                      <div class="bank-detail__row">
+                        <span class="bank-detail__label">开户行</span>
+                        <span class="bank-detail__value">{{
+                          settlementSelectedBank?.bankName || '-'
+                        }}</span>
+                      </div>
+                      <div class="bank-detail__row">
+                        <span class="bank-detail__label">账号</span>
+                        <span class="bank-detail__value">{{
+                          settlementSelectedBank?.bankAccount || '-'
+                        }}</span>
+                      </div>
+                      <div class="bank-detail__row">
+                        <span class="bank-detail__label">SWIFT</span>
+                        <span class="bank-detail__value">{{
+                          settlementSelectedBank?.swiftCode || '-'
+                        }}</span>
+                      </div>
+                    </div>
                   </div>
                 </template>
               </template>
@@ -1286,7 +1570,10 @@ function formatMonth(val: string | undefined | null): string {
 }
 
 .currency-card {
-  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 240px;
   padding: 10px 16px;
   background: #f6f9ff;
   border: 1px solid #e8eef6;
@@ -1303,6 +1590,57 @@ function formatMonth(val: string | undefined | null): string {
   font-size: 18px;
   font-weight: 700;
   color: #1890ff;
+}
+
+.bank-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bank-block--inline {
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid #e8eef6;
+}
+
+.bank-block__label {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.bank-block__required {
+  margin-left: 2px;
+  color: #ff4d4f;
+}
+
+.bank-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  margin-top: 2px;
+  background: #fff;
+  border: 1px dashed #d9e2ec;
+  border-radius: 4px;
+}
+
+.bank-detail__row {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.bank-detail__label {
+  flex-shrink: 0;
+  width: 44px;
+  color: #8c8c8c;
+}
+
+.bank-detail__value {
+  color: #262626;
+  word-break: break-all;
 }
 
 .conversion-cards {

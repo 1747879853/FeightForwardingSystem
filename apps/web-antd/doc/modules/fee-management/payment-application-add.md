@@ -2,7 +2,7 @@
 title: 付款申请新增
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-06-21
+last_updated: 2026-06-28
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,6 +23,7 @@ last_updated: 2026-06-21
 
 - **费用选择：** 从可申请费用中勾选生成付款申请；**新建时**进入页面后自动弹出添加费用抽屉（编辑模式不自动弹出）。抽屉内搜索区为五列布局，业务日期占两列，查询/重置按钮在币别条件同一行右侧；条件变更仍自动搜索。外层业务列表展示委托编号、**主提单号**（`mblNum`）、**箱型箱量**（`orderCtns` 按箱型汇总，如 `20GP*2`）等字段。列表查询 `GetOrderFeeGroupAsync` **不传**当前申请单 `Id`，已选费用由前端 `selectedFeeIds` 禁选；支持 **收付类型** 筛选（默认「付」，清空则收付均返回）。
 - **金额汇总：** 根据费用明细计算申请金额；外层分组表在客服列后动态展示「{币别}申请合计」列（按 `currencyId` 升序，无该币别费用显示 `0.00`）。
+- **费用合计按币别绑定结算银行：** 费用合计区每个币别需绑定结算对象开票信息中维护的银行账户。银行来源 `ClientInvoiceInfoAdmin/GetListAsync`，按币别筛选；默认选中该币别默认账户（`isDefault`），多账户可下拉切换，选中后展示开户行 / 账号 / SWIFT Code。**原币结算**每种费用币别各需一条对应币别银行；**指定币别结算**仅需结算币别一条银行。银行为**必填**，提交/保存前校验。提交字段为 `paymentApplicationBanks`，编辑为全量替换。
 - **提交保存：** 保存后形成付款申请单，后续进入审核流程。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -38,15 +39,19 @@ last_updated: 2026-06-21
 | :-- | :-- | :-- | :-- | :-- |
 | **费用明细** | 付款申请的数据来源。 | `payment-application/form-data.ts` | **触发/依赖：** 决定申请金额和供应商/客户口径。 | 需过滤不可申请或已申请费用。 |
 | **申请主体** | 付款对象与业务归属。 | `payment-application-admin.ts` | **触发/依赖：** 影响审核和后续结算。 | 不能为空。 |
+| **结算银行** | 费用合计每个币别绑定的收款银行账户。 | **客户开票信息**<br/>`ClientInvoiceInfoAdmin/GetListAsync` | **触发/依赖：** 选项随结算对象与币别筛选；结算对象变更清空重载；默认选中该币别 `isDefault` 账户。 | **必填项**，原币结算每种费用币别各一条、指定币别结算仅结算币别一条；银行须属当前结算对象且主数据含开户行/账号/SWIFT。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
 > [!IMPORTANT] **[卡点 1：付款申请新增一致性]** 新增申请最重要的是避免重复选择费用和金额口径错误。
 
+> [!IMPORTANT] **[卡点 2：结算银行必填且币别口径严格]** 原币结算每种费用币别必须各选一条对应币别银行，指定币别结算必须且仅选一条结算币别银行；`bankSelections` 在原币模式以费用币别 id 为键、指定币别模式以结算币别 id 为键，编辑回填与提交需按当前模式取键，混用会导致校验失败。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-28 | `Feature` | 费用合计每个币别新增结算银行下拉（来源开票信息 `GetListAsync`），默认选中默认账户、可切换、必填，选中展示开户行/账号/SWIFT；提交携带 `paymentApplicationBanks`，编辑全量替换。 | 复用 `getClientInvoiceInfoList` 扁平化 `clientInvoiceBanks`；`bankCurrencies` 区分原币/指定币别口径；`applyDefaultBankSelections` 补默认；`restoreBankSelectionsFromDetail` 从 `currencyGroup[].paymentApplicationBank` 回填；API 新增 `PaymentApplicationBank*` DTO 与 `CurrencyGroupDto.paymentApplicationBank`。 |
 | 2026-06-21 | `Feature` | 添加费用抽屉外层列表新增「主提单号」「箱型箱量」列。 | `formatOrderCtnsDisplay` 汇总 `orderCtns`；`PayAppFeeGroupDto.orderCtns` 类型补全。 |
 | 2026-06-20 | `Feature` | 费用明细外层分组表新增按原币动态列「{币别}申请合计」，列随已申请费用币别生成。 | `collectAppliedCurrencies` + `buildAppliedAmountCurrencyColumns`；`groupFeesByOrder` 写入 `applied_amount_{currencyId}` 字段。 |
 | 2026-06-20 | `Fix` | 已添加费用禁选时「本次结算」不再默认未结金额，展示申请单已有金额。 | `resolveAppliedAmount` + `selectedAppliedAmounts`；全选/单选跳过禁选费用写默认值。 |

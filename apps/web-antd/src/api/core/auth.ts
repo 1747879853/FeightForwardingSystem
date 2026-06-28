@@ -182,7 +182,7 @@ export async function getUserConfigurationApi() {
 export async function getAccessCodesApi() {
   const config = await getUserConfigurationApi();
   // 从 grantedPermissions 对象中提取权限名称列表
-  return Object.keys(config.auth.grantedPermissions);
+  return Object.keys(config?.auth?.grantedPermissions ?? {});
 }
 
 /**

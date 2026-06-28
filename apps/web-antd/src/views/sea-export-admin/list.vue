@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import type { GroupFieldDef } from '#/components/list-grouping';
 
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
@@ -12,8 +13,14 @@ import { Button, message, Modal } from 'ant-design-vue';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deleteSeaExport,
+  getSeaExportGroupedList,
   getSeaExportPagedList,
 } from '#/api/sea-export/sea-export-admin';
+import {
+  GroupingSettings,
+  GroupingTabs,
+  useListGrouping,
+} from '#/components/list-grouping';
 import { $t } from '#/locales';
 import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
@@ -21,6 +28,38 @@ import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import { useColumns, useGridFormSchema } from './data';
 
 const router = useRouter();
+
+/**
+ * 海运出口分组字段配置。
+ * paramKey 既是「点击分组项后追加到列表查询」的参数名，
+ * 也是与之互斥的搜索表单字段名（付费方式无对应搜索项，启用时不影响搜索表单）。
+ */
+const SEA_EXPORT_GROUP_FIELDS: GroupFieldDef[] = [
+  { value: 1, label: '装运方式', paramKey: 'BLType' },
+  { value: 2, label: '订单类型', paramKey: 'BillType' },
+  { value: 3, label: '委托单位', paramKey: 'ClientId' },
+  {
+    value: 4,
+    label: '船公司',
+    paramKey: 'CarrierId',
+    emptyParamKey: 'CarrierIdEmpty',
+  },
+  { value: 5, label: '起运港', paramKey: 'POLId', emptyParamKey: 'POLIdEmpty' },
+  { value: 6, label: '目的港', paramKey: 'PODId', emptyParamKey: 'PODIdEmpty' },
+  { value: 7, label: '船名', paramKey: 'Vessel' },
+  {
+    value: 8,
+    label: '付费方式',
+    paramKey: 'CodeFrtId',
+    emptyParamKey: 'CodeFrtIdEmpty',
+  },
+  {
+    value: 9,
+    label: '签单方式',
+    paramKey: 'CodeIssueTypeId',
+    emptyParamKey: 'CodeIssueTypeIdEmpty',
+  },
+];
 
 const toIsoString = (value: unknown): string | undefined => {
   if (!value) {
@@ -38,6 +77,16 @@ const getRangeValue = (
     : [undefined, undefined];
 };
 
+const grouping = useListGrouping({
+  fields: SEA_EXPORT_GROUP_FIELDS,
+  getGridApi: () => gridApi,
+  fetchGroups: (baseParams, field) =>
+    getSeaExportGroupedList({
+      ...baseParams,
+      GroupField: field,
+    } as SeaExportAdminApi.GetGroupedListParams),
+});
+
 const normalizeQuery = (
   formValues: Record<string, unknown>,
 ): SeaExportAdminApi.GetPagedListParams => {
@@ -45,13 +94,17 @@ const normalizeQuery = (
   const [etdStart, etdEnd] = getRangeValue(ETDRange);
   const [closeDocTimeStart, closeDocTimeEnd] = getRangeValue(CloseDocTimeRange);
 
-  return {
+  const baseParams = {
     ...rest,
     ETDStart: toIsoString(etdStart),
     ETDEnd: toIsoString(etdEnd),
     CloseDocTimeStart: toIsoString(closeDocTimeStart),
     CloseDocTimeEnd: toIsoString(closeDocTimeEnd),
   };
+
+  return grouping.decorateListParams(
+    baseParams,
+  ) as SeaExportAdminApi.GetPagedListParams;
 };
 
 const handleRowDblclick = ({
@@ -174,12 +227,32 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
+const onGroupFieldChange = (value: number | undefined) => {
+  if (value === undefined) {
+    grouping.disable();
+  } else {
+    grouping.enableField(value);
+  }
+};
+
 useRefreshListOnFormReturn('SeaExportList', handleRefresh);
 </script>
 
 <template>
   <Page auto-content-height>
-    <Grid :table-title="$t('seaExport.export.list')">
+    <Grid
+      :table-title="
+        grouping.isGrouping.value ? '' : $t('seaExport.export.list')
+      "
+    >
+      <template v-if="grouping.isGrouping.value" #toolbar-actions>
+        <GroupingTabs
+          :items="grouping.groupItems.value"
+          :selected-id="grouping.selectedItemId.value"
+          :loading="grouping.loading.value"
+          @select="grouping.selectItem"
+        />
+      </template>
       <template #toolbar-tools>
         <Button class="mr-2" danger @click="handleDelete">
           {{ $t('common.delete') }}
@@ -187,10 +260,15 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         <Button class="mr-2" @click="handleEdit">
           {{ $t('common.edit') }}
         </Button>
-        <Button type="primary" @click="handleCreate">
+        <Button class="mr-2" type="primary" @click="handleCreate">
           <Plus class="size-5" />
           {{ $t('ui.actionTitle.create', [$t('seaExport.export.name')]) }}
         </Button>
+        <GroupingSettings
+          :fields="grouping.fields"
+          :value="grouping.enabledField.value?.value"
+          @change="onGroupFieldChange"
+        />
       </template>
       <template #carrierWithLogo="{ row }">
         <span class="inline-flex items-center gap-1">

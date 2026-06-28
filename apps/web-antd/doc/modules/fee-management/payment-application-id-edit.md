@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-06-21
+last_updated: 2026-06-28
 ---
 
 # 1. 业务背景说明 (Background)
@@ -50,6 +50,7 @@ last_updated: 2026-06-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-28 | `Feature` | 费用合计每个币别新增结算银行下拉（必填、默认选中默认账户、可切换、展示开户行/账号/SWIFT）；编辑保存经 `EditAsync` 全量替换 `paymentApplicationBanks`，详情按 `currencyGroup[].paymentApplicationBank` 回填。 | 与新增页共用 `form.vue`；`restoreBankSelectionsFromDetail` 区分原币（按币别 id）/指定币别（结算币别共享）回填；`saveEditMode` 携带银行编辑 DTO。 |
 | 2026-06-21 | `Feature` | 添加费用抽屉外层列表新增「主提单号」「箱型箱量」列。 | 与新增页共用 `add-fee-modal`；`mblNum` 直出，`orderCtns` 经 `formatOrderCtnsDisplay` 汇总展示。 |
 | 2026-06-20 | `Fix` | 编辑页打开添加费用抽屉时，列表查询不再传当前申请单 `Id`。 | 与新增页一致；已关联费用通过 `selectedFeeIds` 禁选，避免重复添加。 |
 | 2026-06-20 | `Feature` | 选费抽屉与编辑页明细分组改为「业务+结算对象」；外层新增结算对象列，子表去掉该列；底部统计改为「共 X 组」。 | `PayAppFeeGroupDto` 补 `settlementId`/`settlement`；`groupKey`=`transportOrderId_settlementId`；单一结算对象锁定规则不变。 |

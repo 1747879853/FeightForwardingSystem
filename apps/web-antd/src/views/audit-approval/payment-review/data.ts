@@ -11,62 +11,6 @@ const t = (key: string) => $t(`auditApproval.paymentReview.${key}`);
 export function usePaymentReviewFormSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'Input',
-      fieldName: 'Keyword',
-      label: $t('seaExport.export.number'),
-      componentProps: {
-        placeholder: t('keywordPlaceholder'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'Input',
-      fieldName: 'ApplicationNo',
-      label: t('applicationNo'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.input'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'ClientSelect',
-      fieldName: 'SettlementId',
-      label: t('settlementName'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-        class: 'w-full',
-      },
-    },
-    {
-      component: 'CurrencySelect',
-      fieldName: 'CurrencyId',
-      label: t('currencyCode'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-        class: 'w-full',
-      },
-    },
-    {
-      component: 'RangePicker',
-      fieldName: 'SubmitTimeRange',
-      label: t('submitTime'),
-      componentProps: {
-        allowClear: true,
-        class: 'w-full',
-      },
-    },
-    {
-      component: 'RangePicker',
-      fieldName: 'EndTimeRange',
-      label: t('endTime'),
-      componentProps: {
-        allowClear: true,
-        class: 'w-full',
-      },
-    },
-    {
       component: 'Select',
       fieldName: 'TaskStatus',
       label: $t('auditApproval.task.status'),
@@ -95,6 +39,54 @@ export function usePaymentReviewFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'Input',
+      fieldName: 'Keyword',
+      label: $t('seaExport.export.number'),
+      componentProps: {
+        placeholder: t('keywordPlaceholder'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'ApplicationNo',
+      label: t('applicationNo'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'ClientSelect',
+      fieldName: 'SettlementId',
+      label: t('settlementName'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'RangePicker',
+      fieldName: 'SubmitTimeRange',
+      label: t('submitTime'),
+      formItemClass: 'col-span-2',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'CurrencySelect',
+      fieldName: 'CurrencyId',
+      label: t('currencyCode'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        class: 'w-full',
+      },
+    },
+    {
       component: 'UserSelect',
       fieldName: 'CreatorUserId',
       label: t('creatorUserName'),
@@ -116,8 +108,19 @@ export function usePaymentReviewFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'RangePicker',
+      fieldName: 'EndTimeRange',
+      label: t('endTime'),
+      formItemClass: 'col-span-2',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'RangePicker',
       fieldName: 'AuditTimeRange',
       label: t('auditTime'),
+      formItemClass: 'col-span-2',
       componentProps: {
         allowClear: true,
         class: 'w-full',

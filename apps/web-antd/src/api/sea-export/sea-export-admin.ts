@@ -390,6 +390,38 @@ export namespace SeaExportAdminApi {
     totalPages?: number;
   }
 
+  /** 海运出口分组统计字段 */
+  export enum SeaExportGroupField {
+    /** 装运方式 */
+    BLType = 1,
+    /** 订单类型 */
+    BillType = 2,
+    /** 委托单位 */
+    Client = 3,
+    /** 船公司 */
+    Carrier = 4,
+    /** 起运港 */
+    POL = 5,
+    /** 目的港 */
+    POD = 6,
+    /** 船名 */
+    Vessel = 7,
+    /** 付费方式 */
+    CodeFrt = 8,
+    /** 签单方式 */
+    CodeIssueType = 9,
+  }
+
+  /** 分组统计单项 */
+  export interface SeaExportGroupDto {
+    /** 分组值 id（无值为 null） */
+    id: null | number | string;
+    /** 分组名称（无值为 null） */
+    name: null | string;
+    /** 该分组数据总条数 */
+    count: number;
+  }
+
   export interface GetPagedListParams {
     Keyword?: string;
     ETDStart?: string;
@@ -422,9 +454,27 @@ export namespace SeaExportAdminApi {
     BillType?: number;
     FeeLocked?: boolean;
     IsBusinessLocking?: boolean;
+    /** 付费方式 id（用于点击「付费方式」分组项后筛选列表） */
+    CodeFrtId?: number | string;
+    /** 仅返回船公司未填写记录（与 CarrierId 互斥） */
+    CarrierIdEmpty?: boolean;
+    /** 仅返回起运港未填写记录（与 POLId 互斥） */
+    POLIdEmpty?: boolean;
+    /** 仅返回目的港未填写记录（与 PODId 互斥） */
+    PODIdEmpty?: boolean;
+    /** 仅返回付费方式未填写记录（与 CodeFrtId 互斥） */
+    CodeFrtIdEmpty?: boolean;
+    /** 仅返回签单方式未填写记录（与 CodeIssueTypeId 互斥） */
+    CodeIssueTypeIdEmpty?: boolean;
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;
+  }
+
+  /** 分组统计入参：列表查询参数 + 分组字段 */
+  export interface GetGroupedListParams extends GetPagedListParams {
+    /** 分组字段，1装运方式~9签单方式 */
+    GroupField: SeaExportGroupField;
   }
 }
 
@@ -435,6 +485,15 @@ export const getSeaExportPagedList = (
 ) => {
   return requestClient.get<SeaExportAdminApi.PagedListOfSeaExportDto>(
     `${API_PREFIX}/GetPagedListAsync`,
+    { params },
+  );
+};
+
+export const getSeaExportGroupedList = (
+  params: SeaExportAdminApi.GetGroupedListParams,
+) => {
+  return requestClient.get<SeaExportAdminApi.SeaExportGroupDto[]>(
+    `${API_PREFIX}/GetGroupedListAsync`,
     { params },
   );
 };

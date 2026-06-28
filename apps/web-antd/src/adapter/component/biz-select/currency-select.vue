@@ -180,7 +180,10 @@ watch(
   selectedItemsRef,
   (items) => {
     for (const item of items) {
-      const idStr = parseIdToSafeString((item as any)[props.valueKey]);
+      const option = mapCurrencyToOption(item);
+      // 仅当 selectedItems 能解析出有效 label 时才标记已加载，避免阻断详情拉取
+      if (!option.label) continue;
+      const idStr = parseIdToSafeString(option.value);
       if (idStr !== null) {
         loadedSelectedIds.value.add(idStr);
       }

@@ -8,3 +8,4 @@
 | [Matt Pocock Agent Skills 使用指南](./matt-pocock-agent-skills-guide.md) | 已安装的 mattpocock/skills 用途、场景、工作流与调用方式 | 2026-05-25 |
 | [枚举在业务页面中的使用指南](./enumeration-usage-in-pages.md) | 枚举管理配置后，业务页如何 `getEnumItems` 等 | 2026-05-18 |
 | [多品牌开发与打包命令对照](./brand-dev-build-commands.md) | 品牌 dev/build 命令、API 注入机制、打包避坑及 GitHub Actions IIS 部署 Secrets | 2026-06-16 |
+| [测试数据索引](../test-data/TEST_DATA_INDEX.md) | MCP/手工造数记录；含[业务流程与测试数据规划](../test-data/business-flow-and-test-data-plan-2026-06-28.md) | 2026-06-28 |

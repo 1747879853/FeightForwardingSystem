@@ -81,6 +81,11 @@ export const useAuthStore = defineStore('auth', () => {
       // 存储访问令牌
       accessStore.setAccessToken(accessToken);
 
+      // 新会话开始：复位权限初始化标记，确保登录后的首页导航一定会在路由守卫中
+      // 重新生成菜单。否则若上一次会话遗留（或失效前未完成的初始化流程迟到写入）
+      // 把 isAccessChecked 置为 true，守卫会直接放行而跳过菜单重建，导致菜单只剩概览。
+      accessStore.setIsAccessChecked(false);
+
       // 可以在这里存储 refreshToken 和 userId（如果需要）
       // accessStore.setRefreshToken(refreshToken);
       // userStore.setUserId(userId);
