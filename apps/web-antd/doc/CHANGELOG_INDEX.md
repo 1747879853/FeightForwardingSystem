@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-28] [海运出口列表分组统计与可复用分组组件](./changelogs/change-log-2026-06-28-sea-export-list-grouping.md)
 - [2026-06-28] [付费审核主从布局并展示申请费用明细](./changelogs/change-log-2026-06-28-payment-review-master-detail-layout.md)
 - [2026-06-28] [付费申请费用合计按币别绑定结算银行](./changelogs/change-log-2026-06-28-payment-application-currency-bank-binding.md)
 - [2026-06-28] [登录后左侧菜单偶发只剩概览修复](./changelogs/change-log-2026-06-28-login-menu-access-codes-reuse.md)

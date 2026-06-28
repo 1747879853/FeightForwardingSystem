@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-06-21
+last_updated: 2026-06-28
 ---
 
 # 1. 业务背景说明 (Background)
@@ -28,6 +28,7 @@ last_updated: 2026-06-21
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录。
 - **页面缓存：** 路由 `SeaExportList` 已开启 `keepAlive`；从新建/编辑工作台返回时 `onActivated` 自动刷新；当前页删除成功后立即刷新。
 - **船公司展示升级：** 列表中的船公司列改为“Logo + 名称”展示，视觉上与编辑页和费用侧边摘要保持一致。
+- **分组统计（Tab 筛选）：** 工具栏「分组设置」可选择 9 种分组维度（装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式）；启用后左侧工具栏展示分组 Tab（样式对齐运价列表航线 Tab），表格标题隐藏。分组数据通过 `GetGroupedListAsync` 拉取，仅当顶部搜索条件变更时刷新；点击某分组 Tab 仅向列表查询追加对应筛选参数，分组 Tab 本身不变。分组字段与同名搜索项互斥（启用分组后禁用并清空对应搜索框）；同时只能启用一个分组字段。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -58,6 +59,8 @@ last_updated: 2026-06-21
 | **装运方式 / 贸易条款 / 订单类型** | 业务属性筛选条件。 | 前端枚举：装运方式 `整柜/拼箱分票/拼箱主票`，订单类型 `直单/分单`，贸易条款 `CIF/FOB/EXW/FCA/DDP/DDU/DAP/C&F` | **触发/依赖：** 列表用 tag 展示装运方式和订单类型。 | 需选择枚举值。 |
 | **费用锁定 / 业务锁定** | 控制订单费用或业务是否可继续变更。 | `transportOrder.feeLocked`、`transportOrder.isBusinessLocking` | **触发/依赖：** 列表可筛选，编辑页以锁定标签展示。 | 布尔值，是/否。 |
 | **应收费用状态 / 应付费用状态** | 该委托下对应方向（含更改单）费用的组合流转状态；无费用时为 null。 | 接口 `receiveFeeStatus`、`payFeeStatus`；枚举 `getSeaExportFeeStatusOptions`（八态含结算/驳回/申请修改删除） | **触发/依赖：** 后端按优先级聚合判断，与单笔 `FeeStatus` 枚举值不同。 | 可空；0–7 为 `SeaExportFeeStatus` 有效值。 |
+| **分组字段（GroupField）** | 分组统计维度，1~9 对应装运方式至签单方式。 | `GetGroupedListAsync` 入参 `GroupField`；枚举 `SeaExportGroupField` | **触发/依赖：** 与列表查询参数一致但不含分页；启用分组后对应搜索项被禁用。 | 同时只能启用一个；点击 Tab 追加 `paramKey` 到列表查询。 |
+| **分组项（GroupItem）** | 某一分组维度下的单个值及其条数。 | 接口返回 `{ id, name, count }` | **触发/依赖：** 点击 Tab 将 `id` 作为列表筛选值（如 `POLId`）；「全部」不追加筛选。 | `id`/`name` 可为 null（可空字段分组）。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -66,11 +69,16 @@ last_updated: 2026-06-21
 > **[卡点 2：日期区间不是原样提交]** `ETDRange` 和 `CloseDocTimeRange` 只存在于前端查询表单，接口实际接收的是拆分后的开始/结束字段。后端或接口联调时不能直接查找 `ETDRange` 参数。
 >
 > **[卡点 3：操作模式依赖单选行]** 本项目列表规范不使用操作列。编辑/删除必须先取 `getRadioRecord()`，双击行也会同步单选态；后续扩展批量操作时要避免破坏当前单选维护逻辑。
+>
+> **[卡点 4：分组与搜索互斥]** 启用某分组字段后，对应搜索项（如 `POLId`）会被禁用并清空；切换分组或关闭分组时恢复。勿在分组启用期间通过搜索项传入同维度条件，否则与分组 Tab 语义冲突。
+>
+> **[卡点 5：分组数据刷新时机]** 点击分组 Tab 只重查列表，不刷新分组统计；仅用户手动变更顶部搜索条件时才重新调用 `GetGroupedListAsync` 并重置 Tab 选中态。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-28 | `Feature` | 列表新增分组统计：工具栏「分组设置」启用 9 维分组，Tab 展示各分组条数；点击 Tab 过滤列表；搜索与分组互斥。 | 抽象 `components/list-grouping` 供后续列表复用；`useListGrouping.decorateListParams` 负责签名比对与筛选追加；付费方式分组依赖 `CodeFrtId` 列表筛选。 |
 | 2026-06-21 | `Fix` | 列表移除原「应收费用」「应付费用」最小状态列，仅保留组合状态列 `receiveFeeStatus`/`payFeeStatus`。 | 后端仍返回 `feeStatusReceive`/`feeStatusPay`，前端列表不再展示。 |
 | 2026-06-21 | `Feature` | 列表新增「应收费用状态」「应付费用状态」两列，对接 `receiveFeeStatus`、`payFeeStatus` 组合状态；保留原最小审核状态列。 | 使用 `getSeaExportFeeStatusOptions`（`SeaExportFeeStatus` 八态），勿与 `getFeeStatusOptions` 混用。 |
 | 2026-06-20 | `Fix` | 列表港口列补齐为六段（收货地→交货地），列名与新建/编辑表单 `usePortFormSchema` 对齐（起运港/目的港等），不再使用装货港/卸货港旧文案。 | 列标题改用 `polId`/`podId` 等表单同款 i18n key；字段均在 `SeaExportDto` 根级 `*Name` 属性。 |
