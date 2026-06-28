@@ -63,6 +63,7 @@ const templateList = ref<InvoiceRemarkTemplateApi.InvoiceRemarkTemListDto[]>(
 
 // 新增/编辑表单数据
 const formData = ref<Partial<InvoiceRemarkTemplateApi.InvoiceRemarkTemAddDto>>({
+  name: '',
   companyId: undefined,
   currencyId: undefined,
   template: '',
@@ -81,7 +82,7 @@ const selectedTemplateIds = ref<string[]>([]);
 
 // 可用占位符
 const availablePlaceholders = [
-  { label: '委托编号', value: '[委托编号]', example: '12345678' },
+  { label: '委托编号', value: '<委托编号>', example: '12345678' },
   { label: '主提单号', value: '<主提单号>', example: 'ABC123、RED345' },
   { label: '折算汇率', value: '[折算汇率]', example: '6.5' },
   { label: '外币金额(总计)', value: '[外币金额(总计)]', example: '10000.00' },
@@ -212,6 +213,7 @@ function autoLoadDefaultTemplate(settlementId: string, currencyId: number) {
   if (defaultTemplate) {
     // 自动填充表单
     formData.value = {
+      name: defaultTemplate.name,
       companyId: defaultTemplate.companyId,
       currencyId: defaultTemplate.currencyId,
       template: defaultTemplate.template,
@@ -240,6 +242,7 @@ function handleAdd() {
   isEditMode.value = false;
   editingId.value = '';
   formData.value = {
+    name: '',
     companyId: undefined,
     currencyId: undefined,
     template: '',
@@ -252,6 +255,7 @@ function handleEdit(record: InvoiceRemarkTemplateApi.InvoiceRemarkTemListDto) {
   isEditMode.value = true;
   editingId.value = record.id;
   formData.value = {
+    name: record.name,
     companyId: record.companyId,
     currencyId: record.currencyId,
     template: record.template,
@@ -320,6 +324,7 @@ function handleSetDefault(
           if (firstTemplate) {
             await InvoiceRemarkTemplateApi.editAsync({
               id: firstTemplate.id,
+              name: firstTemplate.name,
               companyId: firstTemplate.companyId,
               currencyId: firstTemplate.currencyId,
               template: firstTemplate.template,
@@ -331,6 +336,7 @@ function handleSetDefault(
         // 设置当前模板为默认
         await InvoiceRemarkTemplateApi.editAsync({
           id: record.id,
+          name: record.name,
           companyId: record.companyId,
           currencyId: record.currencyId,
           template: record.template,
@@ -365,6 +371,7 @@ async function handleSave() {
       // 编辑模式
       await InvoiceRemarkTemplateApi.editAsync({
         id: editingId.value,
+        name: formData.value.name!,
         companyId: formData.value.companyId!,
         currencyId: formData.value.currencyId!,
         template: formData.value.template,
@@ -387,6 +394,7 @@ async function handleSave() {
       // }
 
       await InvoiceRemarkTemplateApi.addAsync({
+        name: formData.value.name!,
         companyId: formData.value.companyId!,
         currencyId: formData.value.currencyId!,
         template: formData.value.template,
@@ -471,6 +479,7 @@ function handleBatchSetDefault() {
             if (firstTemplate) {
               await InvoiceRemarkTemplateApi.editAsync({
                 id: firstTemplate.id,
+                name: firstTemplate.name,
                 companyId: firstTemplate.companyId,
                 currencyId: firstTemplate.currencyId,
                 template: firstTemplate.template,
@@ -482,6 +491,7 @@ function handleBatchSetDefault() {
           // 设置当前模板为默认
           await InvoiceRemarkTemplateApi.editAsync({
             id: template.id,
+            name: template.name,
             companyId: template.companyId,
             currencyId: template.currencyId,
             template: template.template,
@@ -700,7 +710,7 @@ onMounted(() => {
                 />
                 <Tag v-if="item.default" color="orange">默认</Tag>
                 <span style="font-size: 16px; font-weight: bold">
-                  {{ item.company.displayName }}通用默认
+                  {{ item.name }}
                 </span>
                 <Tag :color="item.currency.code === 'RMB' ? 'green' : 'blue'">
                   {{ item.currency.code }}
@@ -769,8 +779,9 @@ onMounted(() => {
               >模板名称</label
             >
             <Input
-              :value="`${formData.companyId ? companyList.find((c) => c.id === formData.companyId)?.displayName : ''}${formData.currencyId ? '-' + (templateList.find((t) => t.currencyId === formData.currencyId)?.currency.code || '') : ''}`"
+              :value="formData.name"
               placeholder="如: RMB通用模板"
+              @update:value="(v) => (formData.name = v)"
             />
           </div>
 

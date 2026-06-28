@@ -12,6 +12,18 @@ interface Props {
   currencyCode?: string;
   // 费用明细数据，用于替换占位符
   feeDetails?: any[];
+  // 备注模板占位符数据对象
+  templateData?: {
+    commissionNum: string;
+    mblNum: string;
+    invoiceExchangeRate: number;
+    foreignCurrencyAmount: string;
+    rmbAmount: string;
+    clientBankName: string;
+    clientBankAccount: string;
+    orgBankName: string;
+    orgBankAccount: string;
+  };
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -20,6 +32,17 @@ const props = withDefaults(defineProps<Props>(), {
   currencyId: undefined,
   currencyCode: '',
   feeDetails: () => [],
+  templateData: () => ({
+    commissionNum: '',
+    mblNum: '',
+    invoiceExchangeRate: 1,
+    foreignCurrencyAmount: '0.00',
+    rmbAmount: '0.00',
+    clientBankName: '',
+    clientBankAccount: '',
+    orgBankName: '',
+    orgBankAccount: '',
+  }),
 });
 
 const emit = defineEmits<{
@@ -43,7 +66,7 @@ const templateList = ref<InvoiceRemarkTemplateApi.InvoiceRemarkTemListDto[]>(
 
 // 可用占位符（与 RemarkTemplateModal 保持一致）
 const availablePlaceholders = [
-  { label: '委托编号', value: '[委托编号]', example: '12345678' },
+  { label: '委托编号', value: '<委托编号>', example: '12345678' },
   { label: '主提单号', value: '<主提单号>', example: 'ABC123、RED345' },
   { label: '折算汇率', value: '[折算汇率]', example: '6.5' },
   { label: '外币金额(总计)', value: '[外币金额(总计)]', example: '10000.00' },
@@ -84,6 +107,58 @@ function generateRemarkFromFeeDetails(template: string): string {
   let result = template;
   const items = props.feeDetails || [];
 
+  // 优先使用传入的 templateData（动态计算的数据）
+  if (props.templateData) {
+    // 委托编号
+    if (props.templateData.commissionNum) {
+      result = result.replace(
+        /\<委托编号\>/g,
+        props.templateData.commissionNum,
+      );
+    }
+
+    // 主提单号
+    if (props.templateData.mblNum) {
+      result = result.replace(/<主提单号>/g, props.templateData.mblNum);
+    }
+
+    // 发票汇率
+    result = result.replace(
+      /\[折算汇率\]/g,
+      String(props.templateData.invoiceExchangeRate),
+    );
+
+    // 外币金额总计
+    result = result.replace(
+      /\[外币金额\(总计\)\]/g,
+      props.templateData.foreignCurrencyAmount,
+    );
+
+    // 人民币金额总计
+    result = result.replace(
+      /\[人民币金额\(总计\)\]/g,
+      props.templateData.rmbAmount,
+    );
+
+    // 购方银行
+    result = result.replace(/\[购方银行\]/g, props.templateData.clientBankName);
+
+    // 购方账号
+    result = result.replace(
+      /\[购方账号\]/g,
+      props.templateData.clientBankAccount,
+    );
+
+    // 销方银行
+    result = result.replace(/\[销方银行\]/g, props.templateData.orgBankName);
+
+    // 销方账号
+    result = result.replace(/\[销方账号\]/g, props.templateData.orgBankAccount);
+
+    return result;
+  }
+
+  // 如果没有 templateData，回退到旧逻辑
   if (items.length === 0) {
     // 如果没有费用数据，返回示例文本
     return generateExampleText(result);
@@ -121,7 +196,7 @@ function generateRemarkFromFeeDetails(template: string): string {
   // 委托编号
   if (commissionNums.size > 0) {
     result = result.replace(
-      /\[委托编号\]/g,
+      /\<委托编号\>/g,
       Array.from(commissionNums).join('、'),
     );
   }
@@ -259,7 +334,7 @@ watch(
           <div style="display: flex; gap: 8px; align-items: center">
             <Tag v-if="item.default" color="orange">默认</Tag>
             <span style="font-size: 16px; font-weight: bold">
-              {{ item.company.displayName }}通用默认
+              {{ item.name || '未命名' }}
             </span>
             <Tag :color="item.currency.code === 'RMB' ? 'green' : 'blue'">
               {{ item.currency.code }}
