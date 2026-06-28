@@ -1953,36 +1953,61 @@ async function loadDetail() {
 
               <!-- 备注信息 -->
               <div style="margin-top: 16px">
-                <Form layout="vertical" size="small">
-                  <Form.Item label="备注信息">
-                    <Space style="width: 100%; margin-bottom: 8px">
-                      <Button
-                        size="small"
-                        type="primary"
-                        ghost
-                        @click="handleOpenSelectRemarkTemplateModal"
-                        :disabled="
-                          (formData.invoiceApplicationItems || []).length === 0
-                        "
-                      >
-                        <template #icon></template>
-                        使用模板
-                      </Button>
-                      <Button
-                        size="small"
-                        @click="handleOpenRemarkTemplateModal"
-                      >
-                        <template #icon></template>
-                        管理模板
-                      </Button>
-                    </Space>
-                    <Input.TextArea
-                      v-model:value="formData.remark"
-                      placeholder="请输入备注，或点击按钮使用模板"
-                      :rows="3"
-                    />
-                  </Form.Item>
-                </Form>
+                <div
+                  style="
+                    height: auto;
+                    border: 1px solid #c41e3a;
+                    border-radius: 4px;
+                  "
+                >
+                  <div style="display: flex; gap: 12px">
+                    <div
+                      style="
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        width: 40px;
+                        padding: 10px 5px;
+                        font-size: 14px;
+                        font-weight: bold;
+                        color: #c41e3a;
+                        background-color: rgb(196 30 58 / 10%);
+                        border-right: 1px solid #c41e3a;
+                      "
+                    >
+                      备注信息
+                    </div>
+                    <div style="flex: 1; padding: 8px">
+                      <Space style="width: 100%; margin-bottom: 8px">
+                        <Button
+                          size="small"
+                          type="primary"
+                          ghost
+                          @click="handleOpenSelectRemarkTemplateModal"
+                          :disabled="
+                            (formData.invoiceApplicationItems || []).length ===
+                            0
+                          "
+                        >
+                          <template #icon></template>
+                          使用模板
+                        </Button>
+                        <Button
+                          size="small"
+                          @click="handleOpenRemarkTemplateModal"
+                        >
+                          <template #icon></template>
+                          管理模板
+                        </Button>
+                      </Space>
+                      <Input.TextArea
+                        v-model:value="formData.remark"
+                        placeholder="请输入备注,或点击按钮使用模板"
+                        :rows="3"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </Card>
           </div>
