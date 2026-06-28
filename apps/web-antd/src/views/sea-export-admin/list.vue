@@ -68,8 +68,18 @@ const saveGroupField = (fieldValue: number | undefined) => {
  * 也是与之互斥的搜索表单字段名（付费方式无对应搜索项，启用时不影响搜索表单）。
  */
 const SEA_EXPORT_GROUP_FIELDS: GroupFieldDef[] = [
-  { value: 1, label: '装运方式', paramKey: 'BLType' },
-  { value: 2, label: '订单类型', paramKey: 'BillType' },
+  {
+    value: 1,
+    label: '装运方式',
+    paramKey: 'BLType',
+    emptyParamKey: 'BLTypeEmpty',
+  },
+  {
+    value: 2,
+    label: '订单类型',
+    paramKey: 'BillType',
+    emptyParamKey: 'BillTypeEmpty',
+  },
   { value: 3, label: '委托单位', paramKey: 'ClientId' },
   {
     value: 4,
@@ -79,7 +89,7 @@ const SEA_EXPORT_GROUP_FIELDS: GroupFieldDef[] = [
   },
   { value: 5, label: '起运港', paramKey: 'POLId', emptyParamKey: 'POLIdEmpty' },
   { value: 6, label: '目的港', paramKey: 'PODId', emptyParamKey: 'PODIdEmpty' },
-  { value: 7, label: '船名', paramKey: 'Vessel' },
+  { value: 7, label: '船名', paramKey: 'Vessel', emptyParamKey: 'VesselEmpty' },
   {
     value: 8,
     label: '付费方式',

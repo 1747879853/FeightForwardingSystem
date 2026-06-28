@@ -456,6 +456,12 @@ export namespace SeaExportAdminApi {
     IsBusinessLocking?: boolean;
     /** 付费方式 id（用于点击「付费方式」分组项后筛选列表） */
     CodeFrtId?: number | string;
+    /** 仅返回装运方式未填写记录（与 BLType 互斥） */
+    BLTypeEmpty?: boolean;
+    /** 仅返回订单类型未填写记录（与 BillType 互斥） */
+    BillTypeEmpty?: boolean;
+    /** 仅返回船名未填写记录（与 Vessel 互斥） */
+    VesselEmpty?: boolean;
     /** 仅返回船公司未填写记录（与 CarrierId 互斥） */
     CarrierIdEmpty?: boolean;
     /** 仅返回起运港未填写记录（与 POLId 互斥） */
