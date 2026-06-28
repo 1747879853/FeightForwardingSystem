@@ -13,6 +13,7 @@
 
 ## 2026-06
 
+- [2026-06-28] [付费申请费用合计按币别绑定结算银行](./changelogs/change-log-2026-06-28-payment-application-currency-bank-binding.md)
 - [2026-06-28] [登录后左侧菜单偶发只剩概览修复](./changelogs/change-log-2026-06-28-login-menu-access-codes-reuse.md)
 - [2026-06-27] [编号规则新增发票申请单号并修正开具单号文案](./changelogs/change-log-2026-06-27-generate-num-invoice-application-issue-no.md)
 - [2026-06-27] [组织管理全页移除负责人展示与维护](./changelogs/change-log-2026-06-27-dept-form-remove-charge-user.md)

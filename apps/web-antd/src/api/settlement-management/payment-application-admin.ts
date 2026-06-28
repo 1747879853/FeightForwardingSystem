@@ -225,6 +225,28 @@ export namespace PaymentApplicationAdminApi {
     paymentApplicationBank?: any;
   }
 
+  /** 客户开票银行简要信息（详情返回） */
+  export interface ClientInvoiceBankSimpleDto {
+    id: string;
+    clientInvoiceInfoId?: string;
+    bankName?: string;
+    bankAccount?: string;
+    accountName?: string;
+    currencyId: number;
+    currencyCode?: string;
+    swiftCode?: string;
+    isDefault?: boolean;
+    sortId?: number;
+  }
+
+  /** 付费申请银行记录（详情返回） */
+  export interface PaymentApplicationBankDto {
+    id: string;
+    paymentApplicationId?: string;
+    clientInvoiceBankId: string;
+    clientInvoiceBanks?: ClientInvoiceBankSimpleDto[];
+  }
+
   /** 币别分组（通用） */
   export interface CurrencyGroupDto {
     id: number;
@@ -233,6 +255,9 @@ export namespace PaymentApplicationAdminApi {
     receivePrice?: number;
     payAmount: number;
     payPrice?: number;
+    totalUnSettledAmount?: number;
+    /** 该币别对应的付费申请银行（仅最外层 currencyGroup 返回） */
+    paymentApplicationBank?: PaymentApplicationBankDto | null;
   }
 
   /** 组织简要信息 */
@@ -606,6 +631,17 @@ export namespace PaymentApplicationAdminApi {
     remark?: string;
   }
 
+  /** 付费申请银行新增 DTO */
+  export interface PaymentApplicationBankAddDto {
+    clientInvoiceBankId: string;
+  }
+
+  /** 付费申请银行编辑 DTO（全量替换） */
+  export interface PaymentApplicationBankEditDto {
+    id?: string | null;
+    clientInvoiceBankId: string;
+  }
+
   /** 付费申请新增 DTO */
   export interface PaymentApplicationAddDto {
     id?: string;
@@ -617,10 +653,11 @@ export namespace PaymentApplicationAdminApi {
     require?: string;
     remark?: string;
     paymentApplicationItems?: PaymentApplicationItemAddDto[];
+    paymentApplicationBanks?: PaymentApplicationBankAddDto[];
     attachments?: AttachmentItemForItemInputDto[];
   }
 
-  /** 付费申请编辑 DTO（仅主表） */
+  /** 付费申请编辑 DTO（仅主表 + 银行全量替换） */
   export interface PaymentApplicationEditDto {
     id: string;
     status?: PaymentApplicationStatus;
@@ -628,6 +665,7 @@ export namespace PaymentApplicationAdminApi {
     endTime?: string | null;
     require?: string;
     remark?: string;
+    paymentApplicationBanks?: PaymentApplicationBankEditDto[];
     attachments?: AttachmentItemForItemInputDto[];
   }
 

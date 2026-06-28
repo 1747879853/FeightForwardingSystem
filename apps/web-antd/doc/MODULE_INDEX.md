@@ -16,8 +16,8 @@
 | freight-rate | `/freight-rate` | 运价管理 | 维护海运运价信息，为委托费用测算和报价提供基础数据入口。 | [运价管理](./modules/freight-rate/index.md) | 2026-06-12 |
 | fee-management | `/fee-management/fee-lock` | 费用管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/fee-management/fee-lock.md) | 2026-05-16 |
 | fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建和进入付款申请单编辑，是应付费用付款流程入口。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-05-16 |
-| fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请单，选择可申请的应付费用并形成待审核付款申请。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-06-21 |
-| fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑已有付款申请单，在状态允许时调整明细并提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-06-21 |
+| fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请单，选择可申请的应付费用并形成待审核付款申请。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-06-28 |
+| fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑已有付款申请单，在状态允许时调整明细并提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-06-28 |
 | fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-05-16 |
 | fee-management | `/fee-management/statement/add` | 费用管理 | 创建对账单，选择费用并形成可结算的对账记录。 | [对账单新增](./modules/fee-management/statement-add.md) | 2026-05-16 |
 | fee-management | `/fee-management/statement/:id/edit` | 费用管理 | 编辑已有对账单，在状态允许时调整主信息和费用明细。 | [对账单编辑](./modules/fee-management/statement-id-edit.md) | 2026-05-16 |
