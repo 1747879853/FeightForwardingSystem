@@ -25,7 +25,7 @@
 | settlement-management | `/bank-statement/edit/:id` | 结算管理 | 银行流水编辑页，维护流水信息与操作人，并展示关联收费结算子表。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-06-20 |
 | settlement-management | `/settlement-management/receive-settlement` | 结算管理 | 收费结算列表与编辑入口，查询区支持按银行流水筛选、锁定只读和银行流水页联动。 | [收费结算](./modules/settlement-management/receive-settlement.md) | 2026-06-21 |
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-05-16 |
-| audit-approval | `/audit-approval/payment-review` | 审核审批 | 处理付款申请单的审核任务，支持批量或单条通过、驳回。 | [付款申请审核](./modules/audit-approval/payment-review.md) | 2026-05-16 |
+| audit-approval | `/audit-approval/payment-review` | 审核审批 | 处理付款申请审核任务；主从布局展示费用合计、附件与费用明细，支持审核全部与批量驳回。 | [付款申请审核](./modules/audit-approval/payment-review.md) | 2026-06-28 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 展示单个费用审核任务的详细信息和对应费用实体。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-05-16 |
 | basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-05-30 |
 | basic-data | `/basic-data/code-invoice` | 基础资料 | 维护发票相关代码，支撑客户发票资料和结算开票口径。 | [发票代码](./modules/basic-data/code-invoice.md) | 2026-05-16 |

@@ -2,12 +2,12 @@
 title: 付款申请审核
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-06-28
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 处理付款申请单的审核任务，支持批量或单条通过、驳回。
+**白话解释：** 财务或审批人集中处理付款申请审核任务。选中列表中的申请后，可在同页查看费用合计、附件与费用明细，再执行「审核全部」或「批量驳回」。
 
 **路由与源码定位：**
 
@@ -16,33 +16,56 @@ last_updated: 2026-05-16
 | 页面路由 | `/audit-approval/payment-review` |
 | 路由名称 | `PaymentReview` |
 | 页面组件 | `src/views/audit-approval/payment-review/index.vue` |
+| 详情布局组件 | `src/views/audit-approval/payment-review/detail-panel.vue` |
 | 权限口径 | Admin.PaymentApplication.Audit / Admin.PaymentApplication.Audit.Get |
-| 关键源码 | `src/router/routes/modules/audit-approval.ts`<br/>`src/views/audit-approval/data.ts`<br/>`src/views/audit-approval/expense-all/index.vue`<br/>`src/views/audit-approval/expense-all/list.vue`<br/>`src/views/audit-approval/expense-all/modules/detail.vue`<br/>`src/views/audit-approval/payment-review/index.vue`<br/>`src/views/audit-approval/payment-review/data.ts`<br/>`src/api/audit-approval/expense-admin.ts`<br/>`src/api/audit-approval/payment-review-admin.ts` |
+| 关键源码 | `src/views/audit-approval/payment-review/index.vue`<br/>`src/views/audit-approval/payment-review/detail-panel.vue`<br/>`src/views/audit-approval/payment-review/data.ts`<br/>`src/api/audit-approval/payment-review-admin.ts`<br/>`src/api/settlement-management/payment-application-admin.ts`<br/>`src/views/fee-management/payment-application/form-data.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **付款审核查询：** 按申请单、状态、申请对象等条件查询付款审核任务。
-- **审核处理：** 对付款申请进行通过或驳回。
+- **付款审核查询：** 按申请单号、结算对象、币别、提交/审核时间等条件查询审核任务列表。
+- **选中查看详情：** 点击列表行，右侧展示该付款申请的费用合计与结算银行（只读），下方通铺费用明细分组表（只读），附件区展示已上传文件（只读预览）。
+- **审核全部：** 对当前列表页全部任务弹出备注框后批量通过（`payAppAudit`，`success: true`）。
+- **批量驳回：** 对当前列表页全部任务弹出备注框后批量驳回（`payAppReject`）。
+
+**页面布局：**
+
+```
+┌─────────────────────┬──────────────────┐
+│  审核任务列表        │  费用合计（占满剩余高度）│
+│                     ├──────────────────┤
+│                     │  附件信息         │
+├─────────────────────┴──────────────────┤
+│           费用明细（整行通铺）            │
+└────────────────────────────────────────┘
+```
 
 # 3. 状态流转说明 (Status Transitions)
 
-| 当前状态 | 触发人/动作  | 目标状态 | 状态说明                           |
-| :------- | :----------- | :------- | :--------------------------------- |
-| 页面初始 | 用户进入路由 | 页面可用 | 由动态路由与权限守卫完成组件挂载。 |
+| 当前状态 | 触发人/动作 | 目标状态 | 状态说明 |
+| :-- | :-- | :-- | :-- |
+| 审核中 | 审核人点击「审核全部」 | 已通过/部分通过 | 任务 `taskStatus` 由后端工作流更新 |
+| 审核中 | 审核人点击「批量驳回」 | 已驳回 | 需填写备注 |
+| 任意 | 点击列表行 | 详情已加载 | 按 `paymentApplicationId` 拉取 `DetailAsync` |
 
 # 4. 核心字段说明 (Field Definitions)
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **付款申请单** | 审核对象。 | `payment-review/data.ts` / `payment-review-admin.ts` | **触发/依赖：** 审核结果回写付款申请状态。 | 必须存在有效申请单。 |
-| **审核意见** | 通过或驳回说明。 | 审核接口 | **触发/依赖：** 影响工作流记录。 | 驳回时通常应填写原因。 |
+| **paymentApplicationId** | 付款申请主键，驱动详情加载。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 点击行 → `DetailAsync` | 无则详情区显示空态 |
+| **id（任务）** | 审核任务 ID，用于 Audit/Reject 接口。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 批量审核提交 | 列表为空时提示选择 |
+| **费用合计** | 各币别申请金额与结算银行。 | `DetailAsync` → `currencyGroup` | 原币/指定币别两种展示模式 | 只读 |
+| **费用明细** | 按业务+结算对象分组的费用行。 | `DetailAsync` → `payAppFeeBySeaExportGroup` | 复用付费申请 `form-data` 分组逻辑 | 只读 |
+| **审核意见** | 通过或驳回备注。 | 审核弹窗输入 | 写入 `AuditAsync` / `RejectAsync` | 建议驳回时填写 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
-> [!IMPORTANT] **[卡点 1：付款申请审核一致性]** 付款审核与付款申请状态强绑定，批量操作需确认选中任务状态一致。
+> [!IMPORTANT] **[卡点 1：任务 ID 与申请 ID 不可混用]** 详情接口使用 `paymentApplicationId`；审核接口使用任务行 `id`，批量操作时勿传错字段。
+
+> [!IMPORTANT] **[卡点 2：批量操作范围为当前页]** 「审核全部」「批量驳回」取 `grid.getTableData().tableData`，仅覆盖当前分页数据，非全库全选。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/audit-approval/payment-review` 对应组件 `src/views/audit-approval/payment-review/index.vue`，权限口径为 Admin.PaymentApplication.Audit / Admin.PaymentApplication.Audit.Get。 |
+| 2026-06-28 | `Feature` | 重构为主从布局：上左列表、上右费用合计+附件、下通铺费用明细；工具栏仅保留审核全部与批量驳回。 | 新增 `detail-panel.vue` 统一布局与详情加载；复用 `payment-application/form-data.ts` 保证合计/明细口径一致；`paymentApplicationId` 与任务 `id` 职责分离。 |
+| 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；权限口径为 Admin.PaymentApplication.Audit / Admin.PaymentApplication.Audit.Get。 |

@@ -1,22 +1,13 @@
 <script lang="ts" setup>
 import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
 
-import { h } from 'vue';
+import { h, ref } from 'vue';
 
 import dayjs from 'dayjs';
 
 import { Page } from '@vben/common-ui';
 
-import {
-  Button,
-  DropdownButton,
-  Menu,
-  MenuItem,
-  message,
-  Modal,
-  Space,
-  Textarea,
-} from 'ant-design-vue';
+import { Button, message, Modal, Space, Textarea } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -27,9 +18,23 @@ import {
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
+import DetailPanel from './detail-panel.vue';
 import { usePaymentReviewColumns, usePaymentReviewFormSchema } from './data';
 
 const t = (key: string) => $t(`auditApproval.paymentReview.${key}`);
+
+/** 当前选中行对应的付费申请ID（驱动右侧详情渲染） */
+const selectedPaymentApplicationId = ref<string | undefined>(undefined);
+
+function handleRowClick({
+  row,
+}: {
+  row: PaymentReviewAdminApi.PayAppTaskItemDto;
+}) {
+  selectedPaymentApplicationId.value = row.paymentApplicationId;
+  const grid = gridApi.grid as any;
+  grid?.setCurrentRow?.(row);
+}
 
 const toIsoString = (value: unknown): string | undefined => {
   if (!value) return undefined;
@@ -76,7 +81,10 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
       showCollapseButton: true,
       collapsed: true,
       compact: true,
-      wrapperClass: 'grid-cols-4',
+      wrapperClass: 'grid-cols-2',
+    },
+    gridEvents: {
+      cellClick: handleRowClick,
     },
     gridOptions: {
       columns: usePaymentReviewColumns(),
@@ -87,6 +95,8 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
       },
       rowConfig: {
         keyField: 'id',
+        isCurrent: true,
+        isHover: true,
       },
       pagerConfig: {
         enabled: true,
@@ -108,11 +118,6 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
   },
 );
 
-function getSelectedRows(): PaymentReviewAdminApi.PayAppTaskItemDto[] {
-  return (gridApi.grid?.getCheckboxRecords?.() ??
-    []) as PaymentReviewAdminApi.PayAppTaskItemDto[];
-}
-
 function getAllRows(): PaymentReviewAdminApi.PayAppTaskItemDto[] {
   return (gridApi.grid?.getTableData?.().tableData ??
     []) as PaymentReviewAdminApi.PayAppTaskItemDto[];
@@ -130,12 +135,10 @@ const doReject = async (remark: string, ids: string[]) => {
   gridApi.reload();
 };
 
-const showAuditConfirm = (approve: boolean, type: 'all' | 'selected') => {
+const showAuditConfirm = () => {
   let modalRemark = '';
   Modal.confirm({
-    title: approve
-      ? $t('auditApproval.task.okPass')
-      : $t('auditApproval.task.noPass'),
+    title: $t('auditApproval.task.okPass'),
     content: () =>
       h('div', {}, [
         h(Textarea, {
@@ -155,18 +158,18 @@ const showAuditConfirm = (approve: boolean, type: 'all' | 'selected') => {
     okText: $t('common.confirm'),
     cancelText: $t('common.cancel'),
     async onOk() {
-      const rows = type === 'all' ? getAllRows() : getSelectedRows();
+      const rows = getAllRows();
       if (rows.length === 0) {
         message.warning($t('ui.actionMessage.selectRequired'));
         return;
       }
       const ids = rows.map((r) => r.id);
-      await doAudit(approve, modalRemark, ids);
+      await doAudit(true, modalRemark, ids);
     },
   });
 };
 
-const showRejectConfirm = (type: 'all' | 'selected') => {
+const showRejectConfirm = () => {
   let modalRemark = '';
   Modal.confirm({
     title: t('rejectConfirmTitle'),
@@ -190,7 +193,7 @@ const showRejectConfirm = (type: 'all' | 'selected') => {
     cancelText: $t('common.cancel'),
     okButtonProps: { danger: true },
     async onOk() {
-      const rows = type === 'all' ? getAllRows() : getSelectedRows();
+      const rows = getAllRows();
       if (rows.length === 0) {
         message.warning($t('ui.actionMessage.selectRequired'));
         return;
@@ -200,48 +203,25 @@ const showRejectConfirm = (type: 'all' | 'selected') => {
     },
   });
 };
-
-const handleAuditMenuClick = (e: any) => {
-  if (e.key === 'selectPass') {
-    showAuditConfirm(true, 'selected');
-  }
-};
-
-const handleRejectMenuClick = (e: any) => {
-  if (e.key === 'selectReject') {
-    showRejectConfirm('selected');
-  }
-};
 </script>
 
 <template>
   <Page auto-content-height>
-    <Grid :table-title="t('title')">
-      <template #toolbar-tools>
-        <Space>
-          <DropdownButton type="primary" @click="showAuditConfirm(true, 'all')">
-            {{ $t('auditApproval.task.allPass') }}
-            <template #overlay>
-              <Menu @click="handleAuditMenuClick">
-                <MenuItem key="selectPass">
-                  {{ $t('auditApproval.task.selectPass') }}
-                </MenuItem>
-              </Menu>
-            </template>
-          </DropdownButton>
-
-          <DropdownButton danger @click="showRejectConfirm('all')">
-            {{ t('batchReject') }}
-            <template #overlay>
-              <Menu @click="handleRejectMenuClick">
-                <MenuItem key="selectReject">
-                  {{ t('selectReject') }}
-                </MenuItem>
-              </Menu>
-            </template>
-          </DropdownButton>
-        </Space>
+    <DetailPanel :payment-application-id="selectedPaymentApplicationId">
+      <template #list>
+        <Grid :table-title="t('title')">
+          <template #toolbar-tools>
+            <Space>
+              <Button type="primary" @click="showAuditConfirm">
+                {{ $t('auditApproval.task.allPass') }}
+              </Button>
+              <Button danger @click="showRejectConfirm">
+                {{ t('batchReject') }}
+              </Button>
+            </Space>
+          </template>
+        </Grid>
       </template>
-    </Grid>
+    </DetailPanel>
   </Page>
 </template>
