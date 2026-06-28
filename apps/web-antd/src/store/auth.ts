@@ -105,6 +105,7 @@ export const useAuthStore = defineStore('auth', () => {
         await Promise.all([
           tableConfigStore.loadTableConfigsOnce(),
           tableConfigStore.loadSearchFormConfigsOnce(),
+          tableConfigStore.loadGroupConfigsOnce(),
         ]);
       } catch {
         // 不阻塞登录主流程，表格配置在实际使用时可继续回退到本地/远端兜底

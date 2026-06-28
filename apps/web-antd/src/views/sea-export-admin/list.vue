@@ -22,12 +22,45 @@ import {
   useListGrouping,
 } from '#/components/list-grouping';
 import { $t } from '#/locales';
+import { useTableConfigStore } from '#/store/table-config';
 import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 
 const router = useRouter();
+const tableConfigStore = useTableConfigStore();
+
+/** 分组设置持久化 key（与列表 listKey 对齐，路由名 SeaExportList） */
+const GROUP_CONFIG_NAME = 'group_config_SeaExportList';
+
+const loadGroupField = async (): Promise<number | undefined> => {
+  await tableConfigStore.loadGroupConfigsOnce();
+  const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
+  if (!hit?.setting) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(hit.setting) as { field?: null | number };
+    return typeof parsed?.field === 'number' ? parsed.field : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const saveGroupField = (fieldValue: number | undefined) => {
+  const setting = JSON.stringify({ field: fieldValue ?? null });
+  const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
+  if (hit) {
+    void tableConfigStore.editGroupConfig({
+      id: hit.id,
+      name: GROUP_CONFIG_NAME,
+      setting,
+    });
+  } else {
+    void tableConfigStore.addGroupConfig({ name: GROUP_CONFIG_NAME, setting });
+  }
+};
 
 /**
  * 海运出口分组字段配置。
@@ -85,6 +118,10 @@ const grouping = useListGrouping({
       ...baseParams,
       GroupField: field,
     } as SeaExportAdminApi.GetGroupedListParams),
+  persist: {
+    load: loadGroupField,
+    save: saveGroupField,
+  },
 });
 
 const normalizeQuery = (

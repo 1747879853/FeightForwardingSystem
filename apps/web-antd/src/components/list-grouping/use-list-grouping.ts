@@ -1,6 +1,17 @@
 import type { GroupFieldDef, GroupItem } from './types';
 
-import { computed, ref, shallowRef } from 'vue';
+import { computed, onMounted, ref, shallowRef } from 'vue';
+
+/**
+ * 分组字段持久化适配（由调用方注入，通常基于用户设置接口）。
+ * 仅持久化「启用的分组字段」，不持久化选中的分组项（分组项随搜索条件刷新）。
+ */
+export interface ListGroupingPersist<TField extends number = number> {
+  /** 读取已保存的分组字段值；无则返回 null/undefined */
+  load: () => Promise<TField | null | undefined> | TField | null | undefined;
+  /** 保存当前分组字段值（undefined 表示不分组） */
+  save: (fieldValue: TField | undefined) => void;
+}
 
 interface UseListGroupingOptions<TField extends number = number> {
   /** 可选分组字段定义 */
@@ -15,6 +26,8 @@ interface UseListGroupingOptions<TField extends number = number> {
   ) => Promise<GroupItem[]>;
   /** 获取 gridApi（用于触发列表查询） */
   getGridApi: () => any;
+  /** 分组字段持久化（可选）；提供后会在挂载时恢复、切换时保存 */
+  persist?: ListGroupingPersist<TField>;
 }
 
 /** 计算搜索条件签名，用于判断「顶部搜索条件是否手动变更」 */
@@ -41,7 +54,7 @@ function buildSignature(params: Record<string, any>): string {
 export function useListGrouping<TField extends number = number>(
   options: UseListGroupingOptions<TField>,
 ) {
-  const { fields, fetchGroups, getGridApi } = options;
+  const { fields, fetchGroups, getGridApi, persist } = options;
 
   /** 当前启用的分组字段（undefined 表示不分组） */
   const enabledField = shallowRef<GroupFieldDef<TField> | undefined>(undefined);
@@ -153,8 +166,8 @@ export function useListGrouping<TField extends number = number>(
     return { ...listParams, [field.paramKey]: selectedItemId.value };
   }
 
-  /** 启用分组字段（切换或首次启用） */
-  function enableField(value: TField) {
+  /** 启用分组字段（内部，shouldPersist 控制是否写入持久化） */
+  function applyField(value: TField, shouldPersist: boolean) {
     const field = fields.find((item) => item.value === value);
     if (!field) {
       return;
@@ -166,7 +179,15 @@ export function useListGrouping<TField extends number = number>(
     // 强制下一次 decorate 刷新分组数据
     lastSignature = undefined;
     disableSearchField(field);
+    if (shouldPersist) {
+      persist?.save(value);
+    }
     getGridApi()?.query?.();
+  }
+
+  /** 启用分组字段（切换或首次启用） */
+  function enableField(value: TField) {
+    applyField(value, true);
   }
 
   /** 关闭分组 */
@@ -176,6 +197,7 @@ export function useListGrouping<TField extends number = number>(
     selectedItemId.value = undefined;
     groupItems.value = [];
     lastSignature = undefined;
+    persist?.save(undefined);
     getGridApi()?.query?.();
   }
 
@@ -186,6 +208,23 @@ export function useListGrouping<TField extends number = number>(
     }
     selectedItemId.value = id;
     getGridApi()?.query?.();
+  }
+
+  // 挂载后恢复持久化的分组字段（不再写回持久化，避免无意义的更新请求）
+  if (persist) {
+    onMounted(async () => {
+      try {
+        const saved = await persist.load();
+        if (saved == null || enabledField.value) {
+          return;
+        }
+        if (fields.some((item) => item.value === saved)) {
+          applyField(saved, false);
+        }
+      } catch {
+        // 恢复失败不影响列表正常使用
+      }
+    });
   }
 
   return {
