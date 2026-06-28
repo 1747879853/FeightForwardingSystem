@@ -6,17 +6,40 @@ export namespace SeServiceConfigAdminApi {
     seaExportPropEnum: number;
   }
 
+  /** 必填费用-新增输入；paySide：0=应收，1=应付 */
+  export interface SeServiceRequireFeeAddDto {
+    paySide: number;
+    feeCodeId: number | string;
+  }
+
+  /** 必填费用-编辑输入；有 id 表示修改，无 id 表示新增 */
+  export interface SeServiceRequireFeeEditDto {
+    id?: string;
+    paySide: number;
+    feeCodeId: number | string;
+  }
+
+  /** 必填费用-输出 */
+  export interface SeServiceRequireFeeDto {
+    id?: string;
+    paySide: number;
+    feeCodeId: number | string;
+    feeCodeName?: string;
+  }
+
   export interface SeServiceConfigItemAddDto {
     serviceType: number;
     userAttribute?: number;
     autoComplete?: boolean;
     manualAllowed?: boolean;
     reminder?: boolean;
+    requireFee?: boolean;
     sortId?: number;
     remark?: string;
     seServiceShows?: SeaExportPropRefDto[];
     seServiceLocks?: SeaExportPropRefDto[];
     seServiceRequires?: SeaExportPropRefDto[];
+    seServiceRequireFees?: SeServiceRequireFeeAddDto[];
   }
 
   export interface SeServiceConfigItemEditDto {
@@ -26,11 +49,13 @@ export namespace SeServiceConfigAdminApi {
     autoComplete?: boolean;
     manualAllowed?: boolean;
     reminder?: boolean;
+    requireFee?: boolean;
     sortId?: number;
     remark?: string;
     seServiceShows?: SeaExportPropRefDto[];
     seServiceLocks?: SeaExportPropRefDto[];
     seServiceRequires?: SeaExportPropRefDto[];
+    seServiceRequireFees?: SeServiceRequireFeeEditDto[];
   }
 
   export interface SeServiceConfigAddDto {
@@ -67,6 +92,7 @@ export namespace SeServiceConfigAdminApi {
     autoComplete?: boolean;
     manualAllowed?: boolean;
     reminder?: boolean;
+    requireFee?: boolean;
     sortId?: number;
     remark?: string;
   }
@@ -99,11 +125,13 @@ export namespace SeServiceConfigAdminApi {
     autoComplete?: boolean;
     manualAllowed?: boolean;
     reminder?: boolean;
+    requireFee?: boolean;
     sortId?: number;
     remark?: string;
     seServiceShows?: SeaExportPropRefDto[];
     seServiceLocks?: SeaExportPropRefDto[];
     seServiceRequires?: SeaExportPropRefDto[];
+    seServiceRequireFees?: SeServiceRequireFeeDto[];
   }
 
   export interface SeServiceConfigDetailDto {

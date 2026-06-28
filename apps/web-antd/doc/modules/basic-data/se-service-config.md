@@ -2,7 +2,7 @@
 title: 海运出口港口服务项配置
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-06-09
+last_updated: 2026-06-28
 ---
 
 # 1. 业务背景说明 (Background)
@@ -29,6 +29,7 @@ last_updated: 2026-06-09
 - **枚举驱动：** 弹窗会同时拉取 `ServiceType` 与 `SeaExportPropEnum` 两类枚举，分别用于服务项类型下拉和字段规则下拉；`SeaExportPropEnum` 采用「兜底清单 + 本地缓存 + 实时接口」三路合并，避免后端新增枚举项后前端下拉滞后。
 - **SeaExportPropEnum 千位分流：** 展示字段、锁定字段、完成时必填字段使用不同候选集——展示字段优先名称类额外枚举（`>1000`），锁定/必填仅允许基础字段（`≤1000`）。详见下文「SeaExportPropEnum 千位分流规则」。
 - **用户属性服务概览：** 在「服务项配置明细」上方展示各用户属性（销售/商务/操作/客服/单证/海外客服）当前已配置的服务项类型，随明细编辑实时更新。
+- **必填费用绑定：** 服务项可开启「必填费用」开关，开启后分别为「应收费用名称」「应付费用名称」多选绑定费用代码；完成该服务任务时后端校验业务的应收/应付是否已录入对应费用，缺失则拒绝完成并返回缺少清单（前端仅负责配置侧对接）。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -48,6 +49,8 @@ last_updated: 2026-06-09
 | **seServiceShows** | 服务完成前向用户展示的字段。 | 系统枚举<br/>`SeaExportPropEnum` | 候选集经千位去重：存在 `1000+x` 时隐藏基础项 `x`；无对应额外项的基础字段（如 `Vessel`、`ETD`）仍可选。 | 可选 `>1000` 的名称类枚举（如 `1017 ClientName`）；不可选手工录入的非法值。 |
 | **seServiceLocks** | 服务完成后锁定的字段。 | 系统枚举<br/>`SeaExportPropEnum` | 仅基础字段（`value ≤ 1000`），与服务项绑定差异更新。 | 不可选 `>1000` 的额外名称字段。 |
 | **seServiceRequires** | 服务完成时的必填字段。 | 系统枚举<br/>`SeaExportPropEnum` | 规则同 `seServiceLocks`，仅 `≤1000`。 | 不可选 `>1000` 的额外名称字段。 |
+| **requireFee** | 完成该服务任务是否需要必填费用。 | 服务项明细布尔开关 | 开启后展示「应收费用名称/应付费用名称」多选；关闭时提交空 `seServiceRequireFees`。 | 布尔；关闭则不参与完成校验。 |
+| **seServiceRequireFees** | 完成任务必须存在的费用清单（区分收付）。 | 费用代码<br/>`FeeCodeAdmin` / `FeeCodeSelect` | `paySide=0` 应收、`paySide=1` 应付；编辑按「有 id 改、无 id 增、缺失删」差异更新。 | `requireFee=true` 时由后端在完成任务时校验业务 `OrderFee` 是否含对应 `PaySide+FeeCodeId`。 |
 
 ### SeaExportPropEnum 千位分流规则
 
@@ -76,6 +79,7 @@ last_updated: 2026-06-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-28 | `Feature` | 服务项明细新增「必填费用」开关，开启后可为「应收费用名称/应付费用名称」多选绑定费用代码；完成任务的费用存在性校验与缺失提示由后端实现，前端仅对接配置侧。 | API DTO 新增 `requireFee` 与 `SeServiceRequireFee*`（含 `feeCodeName` 回显）；`form.vue` 以 `RequireFeeRow` 承载，按 `paySide=0/1` 拆分两个 `FeeCodeSelect(mode=multiple)`，提交按开关组装 `seServiceRequireFees` 并保留 `id` 做差异更新，差异比对以 `String(feeCodeId)` 归一规避大整型精度。 |
 | 2026-06-09 | `Feature` | 支持默认港口配置：起运港可不选，`polId` 为空时提交 `null`，列表与删除提示显示「默认港口配置」。 | `resolvePolIdForPayload` 统一空值口径；`formatPolLabel` / `isDefaultPolConfig` 供列表与弹窗复用。 |
 | 2026-05-30 | `Refactor` | 服务项类型枚举加载统一为 `getEnumItems('ServiceType')`，并抽离到共享模块，列表与弹窗不再各自维护独立实现。 | `SeServiceConfigAdmin/data.ts` 改为复用 `sea-export-admin/service-type.ts` 的加载与映射能力，移除 `serviceType` 小写回退分支，确保枚举口径唯一。 |
 | 2026-05-29 | `Feature` | 同步后端 `SeaExportPropEnum` 额外字段（`1001+`），并按千位规则拆分三套下拉：展示字段优先名称类额外枚举且隐藏被替代的基础项；锁定/必填仅允许 `≤1000` 基础字段。 | `buildSeaExportPropOptions` 以「是否存在 value+1000」做展示去重；枚举加载合并兜底清单、缓存与 `GetItemsByNameAsync` 三路数据源；`updatePropRefs` 按白名单过滤非法选项。 |
