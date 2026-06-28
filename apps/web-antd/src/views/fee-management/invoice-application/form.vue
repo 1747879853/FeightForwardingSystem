@@ -1237,6 +1237,54 @@ const foreignCurrencyAmount = computed(() => {
   return totalAppliedAmountOriginal.value;
 });
 
+/** 备注模板占位符数据对象 */
+const remarkTemplateData = computed(() => {
+  // 从费用明细中提取委托编号和主提单号
+  const items = formData.value.invoiceApplicationItems || [];
+  const commissionNums = new Set<string>();
+  const mblNums = new Set<string>();
+
+  items.forEach((item: any) => {
+    if (item.commissionNum) {
+      commissionNums.add(item.commissionNum);
+    }
+    if (item.mblNum) {
+      mblNums.add(item.mblNum);
+    }
+  });
+
+  // 获取购方银行信息
+  const clientBank = filteredClientBanks.value.find(
+    (b) => b.id === formData.value.clientInvoiceBankId,
+  );
+
+  // 获取销方银行信息
+  const orgBank = filteredOrgBanks.value.find(
+    (b) => b.id === formData.value.orgBankAccountId,
+  );
+
+  return {
+    // 委托编号（多个用顿号分隔）
+    commissionNum: Array.from(commissionNums).join('、') || '',
+    // 主提单号（多个用顿号分隔）
+    mblNum: Array.from(mblNums).join('、') || '',
+    // 发票汇率
+    invoiceExchangeRate: invoiceExchangeRate.value || 1,
+    // 外币金额总计（原币金额）
+    foreignCurrencyAmount: totalAppliedAmountOriginal.value.toFixed(2),
+    // 人民币金额总计
+    rmbAmount: totalAppliedAmount.value.toFixed(2),
+    // 购方银行名称
+    clientBankName: clientBank?.bankName || '',
+    // 购方银行账号
+    clientBankAccount: clientBank?.bankAccount || '',
+    // 销方银行名称
+    orgBankName: orgBank?.bankName || '',
+    // 销方银行账号
+    orgBankAccount: orgBank?.bankAccount || '',
+  };
+});
+
 /** 加载详情数据 */
 async function loadDetail() {
   if (!editId.value) return;
@@ -1896,6 +1944,7 @@ async function loadDetail() {
       :currency-id="formData.currencyId"
       :currency-code="selectedCurrencyCode"
       :fee-details="formData.invoiceApplicationItems"
+      :template-data="remarkTemplateData"
       @use-template="handleUseTemplate"
     />
   </Page>

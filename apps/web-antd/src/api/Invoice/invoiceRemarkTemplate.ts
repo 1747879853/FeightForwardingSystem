@@ -33,6 +33,7 @@ export namespace InvoiceRemarkTemplateApi {
    */
   export interface InvoiceRemarkTemDetailDto {
     id: string;
+    name: string;
     companyId: number;
     currencyId: number;
     template: string;
@@ -51,6 +52,7 @@ export namespace InvoiceRemarkTemplateApi {
    * 新增发票备注模板DTO
    */
   export interface InvoiceRemarkTemAddDto {
+    name: string;
     companyId: number;
     currencyId: number;
     template?: string;
@@ -76,6 +78,7 @@ export namespace InvoiceRemarkTemplateApi {
    */
   export interface InvoiceRemarkTemQueryDto {
     companyId?: number;
+    name?: string;
     currencyId?: number;
     default?: boolean;
     template?: string;
