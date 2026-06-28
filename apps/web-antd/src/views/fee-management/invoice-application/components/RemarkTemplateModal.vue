@@ -302,7 +302,7 @@ function handleSetDefault(
 ) {
   Modal.confirm({
     title: '确认设置为默认',
-    content: `确定要将"${record.company.displayName}-${record.currency.cnName}"设置为默认模板吗？`,
+    content: `确定要将"${record.name}"设置为默认模板吗？`,
     okText: '确定',
     cancelText: '取消',
     onOk: async () => {
@@ -717,9 +717,9 @@ onMounted(() => {
                 </Tag>
               </div>
               <Space size="small">
-                <Button size="small" type="primary" @click="handleUse(item)"
+                <!-- <Button size="small" type="primary" @click="handleUse(item)"
                   >使用</Button
-                >
+                > -->
                 <Button
                   v-if="!item.default"
                   size="small"

@@ -468,6 +468,20 @@ async function handleFeeSelectionSave(data: {
   console.log('✅ 币别ID:', currencyId);
   console.log('✅ feeGroupsData 数量:', groupsData?.length || 0);
 
+  // ✅ 详细检查 feeGroupsData 的结构
+  if (groupsData && groupsData.length > 0) {
+    console.log('✅ feeGroupsData 第一个订单组:', groupsData[0]);
+    const firstFee = groupsData[0].children?.[0];
+    if (firstFee) {
+      console.log('✅ 第一个费用的完整信息:', {
+        id: firstFee.id,
+        orderFeeId: firstFee.orderFee?.id,
+        commissionNum: firstFee.transportOrder?.commissionNum,
+        mblNum: firstFee.transportOrder?.mblNum,
+      });
+    }
+  }
+
   // 设置结算单位
   formData.value.settlementId = settlementId;
   formData.value.currencyId = currencyId;
@@ -531,6 +545,31 @@ function handleOpenRemarkTemplateModal() {
 
 /** 打开选择备注模板弹窗 */
 function handleOpenSelectRemarkTemplateModal() {
+  // ✅ 检查是否已添加费用
+  const items = formData.value.invoiceApplicationItems || [];
+
+  console.log('🔍 检查费用数据状态:');
+  console.log('  - invoiceApplicationItems:', items.length, '条');
+  console.log('  - feeGroupsData:', feeGroupsData.value.length, '个订单组');
+
+  if (items.length === 0) {
+    message.warning(
+      '请先点击"从发票申请导入费用"按钮，从抽屉中添加费用后再使用模板功能',
+    );
+    return;
+  }
+
+  if (feeGroupsData.value.length === 0) {
+    console.error(
+      '❌ 严重问题：invoiceApplicationItems 有数据但 feeGroupsData 为空！',
+    );
+    console.error(
+      '💡 这可能是费用数据传递过程中丢失了，请重新从抽屉中选择费用',
+    );
+    message.error('费用数据不完整，请重新添加费用');
+    return;
+  }
+
   selectRemarkTemplateModalVisible.value = true;
 }
 
@@ -1244,14 +1283,48 @@ const remarkTemplateData = computed(() => {
   const commissionNums = new Set<string>();
   const mblNums = new Set<string>();
 
-  items.forEach((item: any) => {
-    if (item.commissionNum) {
-      commissionNums.add(item.commissionNum);
-    }
-    if (item.mblNum) {
-      mblNums.add(item.mblNum);
-    }
-  });
+  console.log(
+    '🔍 remarkTemplateData - invoiceApplicationItems:',
+    items.length,
+    '条',
+  );
+  console.log(
+    '🔍 remarkTemplateData - feeGroupsData:',
+    feeGroupsData.value.length,
+    '个订单组',
+  );
+
+  // ✅ 关键修复：从 feeGroupsData 中获取完整的费用信息（包含 commissionNum 和 mblNum）
+  if (feeGroupsData.value && feeGroupsData.value.length > 0) {
+    const allFees = flattenTreeData(feeGroupsData.value);
+    console.log(
+      '🔍 remarkTemplateData - feeGroupsData 扁平化后:',
+      allFees.length,
+      '条费用',
+    );
+
+    items.forEach((item: any) => {
+      // 根据 orderFeeId 从 feeGroupsData 中查找对应的完整费用信息
+      const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
+
+      if (fee) {
+        // 从 transportOrder 中获取委托编号和主提单号
+        if (fee.transportOrder?.commissionNum) {
+          commissionNums.add(fee.transportOrder.commissionNum);
+          console.log('✅ 找到委托编号:', fee.transportOrder.commissionNum);
+        }
+        if (fee.transportOrder?.mblNum) {
+          mblNums.add(fee.transportOrder.mblNum);
+          console.log('✅ 找到主提单号:', fee.transportOrder.mblNum);
+        }
+      } else {
+        console.warn('⚠️ 未找到 orderFeeId 对应的费用:', item.orderFeeId);
+      }
+    });
+  } else {
+    console.warn('⚠️ feeGroupsData 为空，无法提取委托编号和主提单号');
+    console.warn('💡 提示：请先从抽屉中添加费用，然后再使用模板功能');
+  }
 
   // 获取购方银行信息
   const clientBank = filteredClientBanks.value.find(
@@ -1263,7 +1336,7 @@ const remarkTemplateData = computed(() => {
     (b) => b.id === formData.value.orgBankAccountId,
   );
 
-  return {
+  const result = {
     // 委托编号（多个用顿号分隔）
     commissionNum: Array.from(commissionNums).join('、') || '',
     // 主提单号（多个用顿号分隔）
@@ -1283,6 +1356,9 @@ const remarkTemplateData = computed(() => {
     // 销方银行账号
     orgBankAccount: orgBank?.bankAccount || '',
   };
+
+  console.log('✅ remarkTemplateData 最终结果:', result);
+  return result;
 });
 
 /** 加载详情数据 */
