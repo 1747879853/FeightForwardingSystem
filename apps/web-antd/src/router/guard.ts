@@ -23,6 +23,13 @@ async function ensureAccessInitialized(params: {
     return userStore.userInfo;
   }
 
+  // 以当前 accessToken 作为「会话纪元」：登录会写入新 token、登出会清空 token。
+  // 失效前未完成的初始化流程（stale）持有的是旧 token；其在 await 之后若发现
+  // token 已变化，说明会话已切换（已登出 / 已重新登录），必须放弃写入，避免用
+  // 旧会话拉到的空权限覆盖菜单并把 isAccessChecked 锁死，导致登录后菜单只剩概览。
+  const sessionToken = accessStore.accessToken;
+  const isSameSession = () => accessStore.accessToken === sessionToken;
+
   const userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
 
   // 复用登录流程已写入的权限码：
@@ -35,6 +42,11 @@ async function ensureAccessInitialized(params: {
   if (accessCodes.length === 0) {
     accessCodes = await getAccessCodesApi();
   }
+
+  // 拉取期间会话已切换，丢弃本次（stale）结果。
+  if (!isSameSession()) {
+    return userInfo;
+  }
   accessStore.setAccessCodes(accessCodes);
 
   const { accessibleMenus, accessibleRoutes } = await generateAccess({
@@ -42,6 +54,11 @@ async function ensureAccessInitialized(params: {
     router,
     routes: accessRoutes,
   });
+
+  // 生成期间会话已切换，丢弃本次（stale）结果，避免覆盖新会话的菜单。
+  if (!isSameSession()) {
+    return userInfo;
+  }
 
   accessStore.setAccessMenus(accessibleMenus);
   accessStore.setAccessRoutes(accessibleRoutes);
