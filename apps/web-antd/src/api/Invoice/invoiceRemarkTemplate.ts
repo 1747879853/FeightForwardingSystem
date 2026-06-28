@@ -103,7 +103,7 @@ export namespace InvoiceRemarkTemplateApi {
    */
   export function addAsync(data: InvoiceRemarkTemAddDto) {
     return requestClient.post<string>(
-      '/api/services/app/InvoiceRemarkTemAdmin/AddAsync',
+      '/services/app/InvoiceRemarkTemAdmin/AddAsync',
       data,
     );
   }
@@ -115,7 +115,7 @@ export namespace InvoiceRemarkTemplateApi {
    */
   export function editAsync(data: InvoiceRemarkTemEditDto) {
     return requestClient.put<boolean>(
-      '/api/services/app/InvoiceRemarkTemAdmin/EditAsync',
+      '/services/app/InvoiceRemarkTemAdmin/EditAsync',
       data,
     );
   }
@@ -127,7 +127,7 @@ export namespace InvoiceRemarkTemplateApi {
    */
   export function deleteAsync(data: InvoiceRemarkTemDeleteDto) {
     return requestClient.delete<boolean>(
-      '/api/services/app/InvoiceRemarkTemAdmin/DeleteAsync',
+      '/services/app/InvoiceRemarkTemAdmin/DeleteAsync',
       { data },
     );
   }
@@ -139,7 +139,7 @@ export namespace InvoiceRemarkTemplateApi {
    */
   export function detailAsync(id: string) {
     return requestClient.get<InvoiceRemarkTemDetailDto>(
-      '/api/services/app/InvoiceRemarkTemAdmin/DetailAsync',
+      '/services/app/InvoiceRemarkTemAdmin/DetailAsync',
       {
         params: { id },
       },
@@ -153,7 +153,7 @@ export namespace InvoiceRemarkTemplateApi {
    */
   export function getPagedListAsync(params: InvoiceRemarkTemQueryDto) {
     return requestClient.get<PagedList<InvoiceRemarkTemListDto>>(
-      '/api/services/app/InvoiceRemarkTemAdmin/GetPagedListAsync',
+      '/services/app/InvoiceRemarkTemAdmin/GetPagedListAsync',
       { params },
     );
   }

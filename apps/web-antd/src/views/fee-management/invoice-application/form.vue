@@ -14,31 +14,37 @@ import { useUserStore } from '@vben/stores';
 import {
   Button,
   Card,
-  Drawer,
+  Dropdown,
   Form,
   Input,
   InputNumber,
+  Menu,
+  MenuItem,
   message,
   Modal,
   Space,
   Spin,
   Table,
 } from 'ant-design-vue';
-import { h } from 'vue';
+import { IconifyIcon } from '@vben/icons';
 
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getClientDetail } from '#/api/sea-export/client-admin';
 import { getClientInvoiceInfoList } from '#/api/sea-export/clinet-invoice-admin';
 import { getCodeInvoicePagedList } from '#/api/system/base-data/code-invoice-admin';
-import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { DatePicker, Select } from 'ant-design-vue';
+import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
 import { $t } from '#/locales';
+import RemarkTemplateModal from './components/RemarkTemplateModal.vue';
+import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vue';
+import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
+import FeeDetailModal from './components/FeeDetailModal.vue';
+import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
 
 // 从命名空间中解构 API 函数
-const { addAsync, detailAsync, editAsync, getOrderFeeGroupAsync } =
-  InvoiceApplicationApi;
+const { addAsync, detailAsync, editAsync } = InvoiceApplicationApi;
 
 const route = useRoute();
 const router = useRouter();
@@ -54,16 +60,10 @@ const isEdit = computed(() => !!editId.value);
 const loading = ref(false);
 const submitLoading = ref(false);
 
-// 抽屉相关状态
+// 费用选择抽屉相关
+const feeSelectionDrawerRef = ref();
 const drawerVisible = ref(false);
-const feeDrawerLoading = ref(false);
-const selectedSettlementId = ref<string>(''); // 已选择的结算单位（固定）
-const selectedCurrencyId = ref<number>(); // 已选择的币别（固定）
-const selectedCurrencyCode = ref<string>(''); // 已选择的币别代码（用于显示）
-
-// 抽屉筛选条件
-const filterCommissionNum = ref<string>(''); // 委托编号筛选
-const filterMblNum = ref<string>(''); // 主提单号筛选
+const selectedCurrencyCode = ref<string>(''); //
 
 // 费用明细弹窗相关状态
 const feeDetailModalVisible = ref(false);
@@ -72,6 +72,10 @@ const selectedFeeDetails = ref<any[]>([]); // 已选择的费用明细数据
 
 // 商品明细选中行
 const selectedGoodsRows = ref<string[]>([]); // 选中的商品明细行ID
+
+// 备注模板管理弹窗相关状态
+const remarkTemplateModalVisible = ref(false); // 备注模板管理弹窗显示状态
+const selectRemarkTemplateModalVisible = ref(false); // 选择备注模板弹窗显示状态
 
 // 表单数据
 const formData = ref<any>({
@@ -92,6 +96,7 @@ const applicationDate = ref(dayjs().format('YYYY-MM-DD')); // 申请日期，自
 const applicantName = ref(''); // 申请人名称
 const applicantCompany = ref<number>(0); // 申请人所在公司ID
 const applicantCompanyName = ref('');
+const applicantCompanyId = ref(0);
 
 const applicantTaxNumber = ref('');
 const applicantAddress = ref('');
@@ -112,14 +117,14 @@ const codeInvoiceList = ref<CodeInvoiceAdminApi.CodeInvoiceDto[]>([]);
 // 发票汇率
 const invoiceExchangeRate = ref<number>(1.0);
 
+// 商品明细表格数据
+const goodsDetails = ref<any[]>([]);
+
 // 费用明细表格数据
 const feeGroupsData = ref<any[]>([]);
 
 // 选中的费用行 keys
 const selectedFeeRowKeys = ref<string[]>([]);
-
-// 商品明细表格数据
-const goodsDetails = ref<any[]>([]);
 
 // 获取 VxeTable 引用
 const feeGridRef = ref();
@@ -132,137 +137,9 @@ function getChildSelectedKeys(record: any): string[] {
   );
 }
 
-/** 处理子表格选择变化 */
-async function handleChildSelectionChange(
-  record: any,
-  selectedRowKeys: string[],
-) {
-  // 更新选中状态
-  const currentSelected = selectedFeeRowKeys.value.filter(
-    (key) =>
-      !record.children ||
-      !record.children.some((child: any) => child.id === key),
-  );
-  selectedFeeRowKeys.value = [...currentSelected, ...selectedRowKeys];
-
-  // 根据选中的费用自动更新币别和汇率
-  await updateCurrencyFromSelectedFees();
-}
-
-/** 从选中的费用中更新币别 */
-async function updateCurrencyFromSelectedFees() {
-  // 获取所有选中的费用（包括子节点）
-  const allSelected = flattenTreeData(feeGroupsData.value);
-  const selectedFees = allSelected.filter(
-    (item: any) => item.orderFee && selectedFeeRowKeys.value.includes(item.id),
-  );
-
-  console.log('所有选中的费用:', selectedFees);
-
-  if (selectedFees.length > 0) {
-    // 取第一个选中费用的币别作为发票币别
-    const firstFee = selectedFees[0];
-    const currencyId = firstFee.orderFee?.currencyId;
-
-    if (currencyId && currencyId !== selectedCurrencyId.value) {
-      selectedCurrencyId.value = currencyId;
-
-      // ✅ 同步更新表单中的发票币别（发票币别 = 费用币别）
-      formData.value.currencyId = currencyId;
-
-      // 加载默认汇率
-      await loadDefaultExchangeRate(currencyId);
-
-      // 根据币别更新销售方银行
-      updateOrgBankByCurrency();
-
-      console.log(
-        '🔄 自动更新发票币别:',
-        currencyId,
-        '汇率:',
-        invoiceExchangeRate.value,
-      );
-    }
-  }
-}
-
-/** 加载默认汇率 */
-async function loadDefaultExchangeRate(currencyId: number) {
-  try {
-    // 获取当前时间
-    const now = dayjs();
-    const currentDate = now.format('YYYY-MM-DD');
-
-    console.log('加载默认汇率 - 币别ID:', currencyId, '当前日期:', currentDate);
-
-    // 从汇率管理中查询符合条件的汇率
-    const result = await getExchangeRatePagedList({
-      CurrencyId: currencyId,
-      PageIndex: 1,
-      PageSize: 100, // 获取更多数据以便筛选
-    });
-
-    console.log('汇率查询结果:', result);
-
-    if (result.items && result.items.length > 0) {
-      // 查找符合当前时间的汇率记录
-      const matchedRate = result.items.find((item: any) => {
-        const startDate = item.startDate ? dayjs(item.startDate) : null;
-        const endDate = item.endDate ? dayjs(item.endDate) : null;
-
-        // 检查当前日期是否在有效期内
-        const isStartDateValid =
-          !startDate || now.isAfter(startDate) || now.isSame(startDate);
-        const isEndDateValid =
-          !endDate || now.isBefore(endDate) || now.isSame(endDate);
-
-        return isStartDateValid && isEndDateValid;
-      });
-
-      if (matchedRate) {
-        // 使用发票汇率（invoiceValue）作为默认值
-        const defaultRate = matchedRate.invoiceValue ?? 1.0;
-        invoiceExchangeRate.value = defaultRate;
-
-        console.log('找到匹配的汇率记录:', matchedRate);
-        console.log('设置默认汇率:', defaultRate);
-      } else {
-        // 如果没有找到符合时间的记录，使用第一条记录的发票汇率
-        const firstRate = result.items[0];
-        if (firstRate) {
-          const defaultRate = firstRate.invoiceValue ?? 1.0;
-          invoiceExchangeRate.value = defaultRate;
-
-          console.warn(
-            '未找到符合当前时间的汇率记录，使用第一条记录:',
-            firstRate,
-          );
-          console.log('设置默认汇率:', defaultRate);
-        } else {
-          // 如果连第一条记录都没有，使用默认值1.0
-          invoiceExchangeRate.value = 1.0;
-          console.warn(`未找到币别 ${currencyId} 的汇率记录，使用默认值1.0`);
-        }
-      }
-    } else {
-      // 没有找到任何汇率记录，使用默认值1.0
-      invoiceExchangeRate.value = 1.0;
-      console.warn(`未找到币别 ${currencyId} 的汇率记录，使用默认值1.0`);
-    }
-
-    // 获取币别代码用于显示
-    try {
-      const currencyDetail = await getCurrencyDetail(currencyId);
-      selectedCurrencyCode.value = currencyDetail.code || '';
-      console.log('币别代码:', selectedCurrencyCode.value);
-    } catch (error) {
-      console.error('获取币别详情失败:', error);
-      selectedCurrencyCode.value = '';
-    }
-  } catch (error) {
-    console.error('加载默认汇率失败:', error);
-    invoiceExchangeRate.value = 1.0;
-  }
+/** 打开费用选择抽屉 */
+function handleOpenFeeDrawer() {
+  feeSelectionDrawerRef.value?.handleOpenFeeDrawer();
 }
 
 /** 将树状数据扁平化 */
@@ -280,29 +157,6 @@ function flattenTreeData(data: any[]): any[] {
 
   flatten(data);
   return result;
-}
-
-/** 从表格获取选中的费用 */
-function getSelectedFeesFromTable(): any[] {
-  // 过滤出子节点（费用明细）
-  const allSelected = flattenTreeData(feeGroupsData.value);
-  const selectedFees = allSelected.filter(
-    (item: any) => item.orderFee && selectedFeeRowKeys.value.includes(item.id),
-  );
-
-  console.log('选中的费用:', selectedFees);
-  console.log(
-    '选中的费用详情:',
-    selectedFees.map((fee) => ({
-      id: fee.id,
-      orderFeeId: fee.orderFee?.id,
-      appliedAmount: fee.appliedAmount,
-      remainingInvoiceAmount: fee.orderFee.remainingInvoiceAmount,
-      currencyCode: fee.currencyCode,
-    })),
-  );
-
-  return selectedFees;
 }
 
 function addSelectedFeesToForm(selectedFees: any[]) {
@@ -488,72 +342,13 @@ function handleDeleteSelectedGoodsRows() {
   message.success(`已删除 ${deleteCount} 行`);
 }
 
-/** 重置筛选条件 */
-function handleResetFilter() {
-  selectedSettlementId.value = '';
-  selectedCurrencyId.value = undefined;
-  filterCommissionNum.value = ''; // 清空委托编号
-  filterMblNum.value = ''; // 清空主提单号
-  selectedFeeRowKeys.value = []; // 清空选中状态
-  loadFeeGroupData();
-}
-
-// // 监听结算单位变化，自动触发查询
-// watch(selectedSettlementId, (newValue) => {
-//   console.log('🔍 结算单位变化:', newValue);
-//   if (drawerVisible.value && newValue) {
-//     loadFeeGroupData();
-//   }
-// });
-
-// // 监听币别变化，自动触发查询并更新表单币别
-// watch(selectedCurrencyId, (newValue) => {
-//   console.log('🔍 币别变化:', newValue);
-
-//   if (newValue !== undefined) {
-//     // ✅ 同步更新表单中的发票币别（用户可以手动修改）
-//     formData.value.currencyId = newValue;
-
-//     // 重新根据币别选择银行
-//     updateClientBankByCurrency();
-
-//     // 如果在抽屉打开状态下，自动触发查询
-//     if (drawerVisible.value) {
-//       loadFeeGroupData();
-//     }
-//   }
-// });
-
-/** 打开费用选择抽屉 */
-function handleOpenFeeDrawer() {
-  // ✅ 如果已经选择了结算单位和币别（即已经有费用），则保持固定不变
-  if (!formData.value.settlementId) {
-    // 首次添加费用，清空之前的选择
-    selectedSettlementId.value = '';
-    selectedCurrencyId.value = undefined;
-    selectedFeeRowKeys.value = [];
-  } else {
-    // ✅ 已有费用，固定结算单位和币别
-    selectedSettlementId.value = formData.value.settlementId;
-    selectedCurrencyId.value = formData.value.currencyId;
-    console.log(
-      '🔒 已固定筛选条件 - 结算单位:',
-      selectedSettlementId.value,
-      '币别:',
-      selectedCurrencyId.value,
-    );
-  }
-
-  drawerVisible.value = true;
-  nextTick(() => {
-    loadFeeGroupData();
-  });
-}
-
 /** 打开费用明细弹窗 */
 function handleOpenFeeDetailModal() {
   // 从 formData 中获取已选择的费用明细
   const items = formData.value.invoiceApplicationItems || [];
+
+  console.log('🔍 打开费用明细弹窗 - 已选费用数量:', items.length);
+  console.log('🔍 feeGroupsData 数据:', feeGroupsData.value);
 
   if (items.length === 0) {
     message.warning('暂无费用明细数据');
@@ -565,20 +360,25 @@ function handleOpenFeeDetailModal() {
   try {
     // 根据 orderFeeId 从 feeGroupsData 中查找对应的完整信息
     const allFees = flattenTreeData(feeGroupsData.value);
+    console.log('🔍 扁平化后的所有费用数量:', allFees.length);
 
     // 构建已选择费用的树状结构
     const selectedDetails: any[] = [];
     const processedOrders = new Set<string>();
 
     items.forEach((item: any) => {
+      console.log('🔍 处理费用项:', item);
       const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
+      console.log('🔍 找到的费用对象:', fee);
 
       if (fee) {
         const orderId = fee.parentId;
+        console.log('🔍 订单ID:', orderId);
 
         // 如果这个订单还没有处理过，创建父节点
         if (!processedOrders.has(orderId)) {
           const parentFee = allFees.find((f: any) => f.id === orderId);
+          console.log('🔍 父节点费用对象:', parentFee);
 
           if (parentFee) {
             const parentNode: any = {
@@ -591,69 +391,92 @@ function handleOpenFeeDetailModal() {
               mblNum: parentFee.transportOrder.mblNum || '-',
               bookingNum: parentFee.transportOrder.bookingNum || '-',
               clientName: parentFee.transportOrder.clientName,
-              bizType: parentFee.seaExport?.bizType || '-',
-              carrier: parentFee.seaExport?.carrier || '-',
-              company: parentFee.transportOrder.company || '-',
+              bizType:
+                getBizTypeOptions().find(
+                  (o: any) => o.value === parentFee.transportOrder?.bizType,
+                )?.label || '-',
+              carrier: parentFee.seaExport?.carrierName || '-',
+              company: parentFee.transportOrder.companys[0].name || '-',
               children: [] as any[],
             };
 
             selectedDetails.push(parentNode);
             processedOrders.add(orderId);
+            console.log('✅ 添加父节点:', parentNode);
           }
         }
 
         // 添加子节点（费用明细）
         const parentNode = selectedDetails.find((p: any) => p.id === orderId);
         if (parentNode) {
-          parentNode.children.push({
+          const childNode = {
             id: fee.id,
             parentId: orderId,
             orderFee: fee.orderFee,
             appliedAmount: item.appliedAmount,
-            settlementUnit: fee.orderFee.settlementUnitName || '-',
+            settlementUnit: fee.orderFee.settlementName || '-',
             payReceiveType:
               fee.orderFee.payReceiveType === 'AR' ? '应收' : '应付',
             feeName: fee.orderFee.feeCodeName || '-',
             amount: fee.orderFee.amount,
             currencyCode: fee.orderFee.currencyCode || '-',
             remainingInvoiceAmount: fee.orderFee.remainingInvoiceAmount,
-          });
+          };
+          parentNode.children.push(childNode);
+          console.log('✅ 添加子节点:', childNode);
         }
       }
     });
 
     selectedFeeDetails.value = selectedDetails;
-    feeDetailModalVisible.value = true;
+    console.log('✅ 最终费用明细数据:', selectedFeeDetails.value);
+    console.log('✅ 父节点数量:', selectedDetails.length);
+    selectedDetails.forEach((detail, index) => {
+      console.log(
+        `✅ 父节点 ${index + 1} 的子节点数量:`,
+        detail.children?.length || 0,
+      );
+    });
 
-    console.log('费用明细弹窗数据:', selectedFeeDetails.value);
+    feeDetailModalVisible.value = true;
   } catch (error) {
-    console.error('加载费用明细失败:', error);
+    console.error('❌ 加载费用明细失败:', error);
     message.error('加载费用明细失败');
   } finally {
     feeDetailModalLoading.value = false;
   }
 }
 
-/** 保存费用选择 */
-async function handleSaveFeeSelection() {
-  const selectedFees = getSelectedFeesFromTable();
+/** 处理费用选择保存 */
+async function handleFeeSelectionSave(data: {
+  selectedFees: any[];
+  settlementId: string;
+  currencyId: number;
+  invoiceExchangeRate?: number;
+  feeGroupsData?: any[]; // ✅ 新增：接收完整的费用分组数据
+}) {
+  const {
+    selectedFees,
+    settlementId,
+    currencyId,
+    invoiceExchangeRate: rate,
+    feeGroupsData: groupsData,
+  } = data;
 
-  if (selectedFees.length === 0) {
-    message.warning('请至少选择一个费用');
-    return;
-  }
-
-  // 从第一个费用中获取结算单位ID
-  const firstFee = selectedFees[0];
-  const settlementId = firstFee.orderFee?.settlementId;
-
-  if (!settlementId) {
-    message.warning('无法获取结算单位信息');
-    return;
-  }
+  console.log('✅ 收到费用选择数据:', selectedFees.length, '条费用');
+  console.log('✅ 结算单位ID:', settlementId);
+  console.log('✅ 币别ID:', currencyId);
+  console.log('✅ feeGroupsData 数量:', groupsData?.length || 0);
 
   // 设置结算单位
   formData.value.settlementId = settlementId;
+  formData.value.currencyId = currencyId;
+
+  // ✅ 设置发票汇率（从费用选择抽屉中带过来）
+  if (rate !== undefined) {
+    invoiceExchangeRate.value = rate;
+    console.log('✅ 从费用选择抽屉中获取发票汇率:', rate);
+  }
 
   // ✅ 自动设置所属公司为当前登录用户的公司
   if (applicantCompany.value) {
@@ -671,17 +494,123 @@ async function handleSaveFeeSelection() {
   // 加载客户开票信息
   await loadClientInvoiceInfo(settlementId);
 
+  // ✅ 关键修复：直接使用从抽屉传递过来的 feeGroupsData
+  if (groupsData && groupsData.length > 0) {
+    feeGroupsData.value = [...groupsData]; // 创建副本，避免引用问题
+    console.log(
+      '✅ 已保存费用数据到 feeGroupsData:',
+      feeGroupsData.value.length,
+      '个订单组',
+    );
+  } else {
+    console.warn('⚠️ 未接收到 feeGroupsData 数据');
+  }
+
   // 判断是否是首次添加费用（商品明细为空时才自动填充）
   const isFirstTimeAdd = goodsDetails.value.length === 0;
 
   addSelectedFeesToForm(selectedFees);
 
-  // 仅在首次添加费用时自动填充商品明细
+  // ✅ 根据商品明细数量决定处理方式
   if (isFirstTimeAdd) {
+    // 首次添加：自动填充商品明细
+    await autoFillGoodsDetails(selectedFees);
+  } else if (goodsDetails.value.length === 1) {
+    // ✅ 只有一行商品明细：将新费用金额合并到该行
+    await mergeAmountToExistingGoods(selectedFees);
+  } else {
+    // ✅ 多行商品明细：新增一条商品明细（同首次添加规则）
     await autoFillGoodsDetails(selectedFees);
   }
+}
 
-  drawerVisible.value = false;
+/** 打开备注模板管理弹窗 */
+function handleOpenRemarkTemplateModal() {
+  remarkTemplateModalVisible.value = true;
+}
+
+/** 打开选择备注模板弹窗 */
+function handleOpenSelectRemarkTemplateModal() {
+  selectRemarkTemplateModalVisible.value = true;
+}
+
+/** 接收模板内容并填充到备注字段 */
+function handleUseTemplate(template: string) {
+  if (template) {
+    formData.value.remark = template;
+    message.success('模板已应用到备注');
+  }
+}
+
+/** 从费用明细中提取备注信息 */
+function handleExtractRemark() {
+  const items = formData.value.invoiceApplicationItems || [];
+
+  if (items.length === 0) {
+    message.warning('请先添加费用明细');
+    return;
+  }
+
+  try {
+    // 收集所有委托编号和主提单号
+    const commissionNums = new Set<string>();
+    const mblNums = new Set<string>();
+
+    // 按币别分组统计金额
+    const amountByCurrency: Record<number, { code: string; total: number }> =
+      {};
+
+    items.forEach((item: any) => {
+      // 提取委托编号
+      if (item.commissionNum) {
+        commissionNums.add(item.commissionNum);
+      }
+
+      // 提取主提单号
+      if (item.mblNum) {
+        mblNums.add(item.mblNum);
+      }
+
+      // 统计金额（按币别）
+      const currencyId = item.currencyId || formData.value.currencyId;
+      const appliedAmount = item.appliedAmount || 0;
+
+      if (!amountByCurrency[currencyId]) {
+        amountByCurrency[currencyId] = {
+          code: item.currencyCode || 'CNY',
+          total: 0,
+        };
+      }
+      amountByCurrency[currencyId].total += appliedAmount;
+    });
+
+    // 构建备注内容
+    let remark = '';
+
+    // 添加委托编号
+    if (commissionNums.size > 0) {
+      remark += `委托编号：${Array.from(commissionNums).join('、')}\n`;
+    }
+
+    // 添加主提单号
+    if (mblNums.size > 0) {
+      remark += `主提单号：${Array.from(mblNums).join('、')}\n`;
+    }
+
+    // 添加金额信息
+    remark += '\n';
+    Object.values(amountByCurrency).forEach(({ code, total }) => {
+      remark += `${code}金额(总计)：${total.toFixed(2)}\n`;
+    });
+
+    // 添加到备注字段
+    formData.value.remark = remark;
+
+    message.success(`已从 ${items.length} 条费用明细中提取备注信息`);
+  } catch (error) {
+    console.error('提取备注失败:', error);
+    message.error('提取备注失败');
+  }
 }
 
 /** 手动重新填充商品明细 */
@@ -726,6 +655,141 @@ async function handleRefillGoodsDetails() {
     console.error('重新填充商品明细失败:', error);
     message.error('重新填充商品明细失败');
   }
+}
+
+/** 将新费用金额合并到现有商品明细 */
+async function mergeAmountToExistingGoods(selectedFees: any[]) {
+  // 确保只有一行商品明细
+  if (goodsDetails.value.length !== 1) {
+    console.warn('商品明细数量不为1，无法合并');
+    return;
+  }
+
+  // 确保发票商品编码列表已加载
+  if (codeInvoiceList.value.length === 0) {
+    console.warn('发票商品编码列表为空，尝试重新加载...');
+    await loadCodeInvoiceList();
+  }
+
+  // 获取当前发票币别（等于费用币别）
+  const invoiceCurrencyId = formData.value.currencyId;
+
+  if (!invoiceCurrencyId) {
+    console.warn('未设置发票币别，无法合并金额');
+    message.warning('请先选择发票币别');
+    return;
+  }
+
+  // 获取币别详情，将币别ID转换为币别代码
+  let currencyCode = '';
+  try {
+    const currencyDetail = await getCurrencyDetail(invoiceCurrencyId);
+    currencyCode = currencyDetail.code || '';
+    console.log(
+      '🔍 发票币别详情 - ID:',
+      invoiceCurrencyId,
+      '代码:',
+      currencyCode,
+    );
+  } catch (error) {
+    console.error('获取币别详情失败:', error);
+    message.warning('获取币别信息失败');
+    return;
+  }
+
+  if (!currencyCode) {
+    console.warn(`未找到币别ID ${invoiceCurrencyId} 对应的币别代码`);
+    message.warning('未找到币别信息，无法合并金额');
+    return;
+  }
+
+  // ✅ 根据发票币别（费用币别）查找默认的发票商品编码
+  const defaultCodeInvoice = codeInvoiceList.value.find(
+    (item) => item.isDefault && item.defaultCurrency === currencyCode,
+  );
+
+  if (!defaultCodeInvoice) {
+    console.warn(`未找到币别 ${currencyCode} 的默认发票商品编码`);
+    message.warning(`未找到币别 ${currencyCode} 对应的默认商品编码，无法合并`);
+    return;
+  }
+
+  console.log(
+    '✅ 找到默认商品编码:',
+    defaultCodeInvoice.name,
+    '规格:',
+    defaultCodeInvoice.specification,
+    '单位:',
+    defaultCodeInvoice.unit,
+  );
+
+  // 计算所有选中费用的总金额（使用本次申请金额，并转换为人民币）
+  let totalRmbAmount = 0; // 人民币总金额
+
+  selectedFees.forEach((fee: any) => {
+    // 使用用户填写的本次申请金额（保持原币别）
+    const appliedAmount = fee.appliedAmount || 0;
+    const feeCurrencyId = fee.orderFee.currencyId;
+    const feeCurrencyCode = fee.orderFee.currencyCode || '未知';
+
+    // ✅ 如果费用币别与人民币不同，需要进行汇率转换
+    if (feeCurrencyId !== 1) {
+      // 外币转人民币：本次申请金额 × 汇率
+      const convertedAmount = appliedAmount * (invoiceExchangeRate.value || 1);
+      totalRmbAmount += convertedAmount;
+      console.log(
+        `💰 外币转换 - ${feeCurrencyCode}: ${appliedAmount.toFixed(2)} × ${invoiceExchangeRate.value} = ${convertedAmount.toFixed(2)} RMB`,
+      );
+    } else {
+      // 币别是人民币，直接累加
+      totalRmbAmount += appliedAmount;
+      console.log(
+        `💰 同币别累加 - ${feeCurrencyCode}: ${appliedAmount.toFixed(2)}`,
+      );
+    }
+  });
+
+  console.log(
+    '📊 新费用总金额（人民币）:',
+    totalRmbAmount.toFixed(2),
+    '发票币别:',
+    currencyCode,
+  );
+
+  // ✅ 获取现有的商品明细行
+  const existingItem = goodsDetails.value[0];
+
+  // 检查现有行的商品编码是否与默认商品编码一致
+  if (existingItem.codeInvoiceId !== defaultCodeInvoice.id) {
+    console.warn(
+      '现有商品明细的商品编码与默认商品编码不一致，无法合并',
+      existingItem.codeInvoiceId,
+      defaultCodeInvoice.id,
+    );
+    message.warning('现有商品明细与当前币别不匹配，请手动处理或重新填充');
+    return;
+  }
+
+  // ✅ 合并金额到现有行
+  const taxRate = existingItem.taxRate || defaultCodeInvoice.taxRate || 0;
+  const currentAmount = existingItem.amount || 0;
+  const newAmount = currentAmount + totalRmbAmount;
+
+  // 更新现有行的数据
+  existingItem.amount = newAmount;
+  existingItem.unitPrice = newAmount; // 单价 = 总金额（因为数量为1）
+  existingItem.noTaxAmount = newAmount / (1 + taxRate / 100);
+  existingItem.taxAmount = (newAmount / (1 + taxRate / 100)) * (taxRate / 100);
+
+  console.log(
+    '✅ 合并金额完成 - 原金额:',
+    currentAmount.toFixed(2),
+    '新增金额:',
+    totalRmbAmount.toFixed(2),
+    '合并后金额:',
+    newAmount.toFixed(2),
+  );
+  console.log('📦 自动填充的商品明细总数:', goodsDetails.value.length);
 }
 
 /** 自动填充商品明细 */
@@ -818,7 +882,7 @@ async function autoFillGoodsDetails(selectedFees: any[]) {
       );
     }
   });
-
+  selectedCurrencyCode.value = currencyCode;
   console.log(
     '📊 商品明细总金额（人民币）:',
     totalRmbAmount.toFixed(2),
@@ -858,110 +922,10 @@ async function autoFillGoodsDetails(selectedFees: any[]) {
   console.log('📦 自动填充的商品明细总数:', goodsDetails.value.length);
 }
 
-/** 加载费用分组数据 */
-async function loadFeeGroupData() {
-  console.log('🔍 开始加载费用数据');
-  console.log('  - selectedSettlementId:', selectedSettlementId.value);
-  console.log('  - selectedCurrencyId:', selectedCurrencyId.value);
-  console.log('  - filterCommissionNum:', filterCommissionNum.value);
-  console.log('  - filterMblNum:', filterMblNum.value);
-
-  feeDrawerLoading.value = true;
-  try {
-    const params: any = {
-      pageIndex: 1,
-      pageSize: 1000,
-    };
-
-    // 如果已经选择了结算单位和币别，则固定筛选条件
-    if (selectedSettlementId.value) {
-      params.settlementId = selectedSettlementId.value;
-    }
-    if (selectedCurrencyId.value !== undefined) {
-      params.currencyId = selectedCurrencyId.value;
-    }
-
-    // 添加委托编号和主提单号筛选条件
-    if (filterCommissionNum.value) {
-      params.commissionNum = filterCommissionNum.value;
-    }
-    if (filterMblNum.value) {
-      params.mblNum = filterMblNum.value;
-    }
-
-    // 如果有结算单位，传入invoiceApplicationId排除已关联的费用
-    if (formData.value.settlementId) {
-      params.invoiceApplicationId = editId.value;
-    }
-
-    console.log('📤 查询费用参数:', JSON.stringify(params, null, 2));
-
-    const result = await getOrderFeeGroupAsync(params);
-
-    // 转换数据为树状结构
-    const treeData = transformToTreeData(result.items || []);
-    feeGroupsData.value = treeData;
-
-    console.log('✅ 费用数据加载完成，共', treeData.length, '条');
-  } catch (error) {
-    console.error('❌ 加载费用数据失败:', error);
-    message.error('加载费用数据失败');
-  } finally {
-    feeDrawerLoading.value = false;
-  }
-}
-
-/** 将费用数据转换为树状结构 */
-function transformToTreeData(
-  items: InvoiceApplicationApi.InvoiceApplicationFeeGroupOutputDto[],
-): any[] {
-  const treeData: any[] = [];
-
-  items.forEach((item, index) => {
-    // 父节点（运输订单）
-    const parentNode: any = {
-      id: `parent_${item.transportOrder.id}`,
-      parentId: null,
-      transportOrder: item.transportOrder,
-      seaExport: item.seaExport,
-      orderFees: item.orderFees,
-      // 一级列字段
-      commissionNum: item.transportOrder.commissionNum,
-      mblNum: item.transportOrder.mblNum || '-',
-      bookingNum: item.transportOrder.bookingNum || '-',
-      clientName: item.transportOrder.clientName,
-      bizType: item.seaExport?.bizType || '-',
-      carrier: item.seaExport?.carrier || '-',
-      company: item.transportOrder.company || '-',
-      checked: false,
-      children: [] as any[],
-    };
-
-    // 子节点（费用明细）
-    if (item.orderFees && item.orderFees.length > 0) {
-      item.orderFees.forEach((fee, feeIndex) => {
-        const childNode: any = {
-          id: `child_${fee.id}`,
-          parentId: `parent_${item.transportOrder.id}`,
-          orderFee: fee,
-          appliedAmount: fee.remainingInvoiceAmount, // 默认值为未开票金额
-          checked: false,
-          // 二级列字段
-          settlementUnit: fee.settlementUnitName || '-',
-          payReceiveType: fee.payReceiveType === 'AR' ? '应收' : '应付',
-          feeName: fee.feeCodeName || '-',
-          amount: fee.amount,
-          currencyCode: fee.currencyCode || '-',
-          remainingInvoiceAmount: fee.remainingInvoiceAmount,
-        };
-        parentNode.children.push(childNode);
-      });
-    }
-
-    treeData.push(parentNode);
-  });
-
-  return treeData;
+/** 获取已添加的费用ID列表 */
+function getAddedFeeIds(): Set<string> {
+  const items = formData.value.invoiceApplicationItems || [];
+  return new Set(items.map((item: any) => String(item.orderFeeId)));
 }
 
 /** 加载发票商品编码列表 */
@@ -1053,6 +1017,7 @@ function initApplicantInfo() {
     if ((userInfo as any).companyId) {
       applicantCompany.value = (userInfo as any).companyId;
       applicantCompanyName.value = (userInfo as any).companyName || '';
+      applicantCompanyId.value = (userInfo as any).companyId || '';
       applicantTaxNumber.value =
         (userInfo as any).company.unifiedSocialCreditCode || '';
       applicantAddress.value =
@@ -1086,15 +1051,6 @@ function initApplicantInfo() {
     });
   }
 }
-const updateSelectedSettlementId = (settlementId: string) => {
-  selectedSettlementId.value = settlementId;
-  console.log('🔄 更新结算单位ID:', settlementId);
-};
-
-const updateSelectedCurrencyId = (currencyId: number) => {
-  selectedCurrencyId.value = currencyId;
-  console.log('🔄 更新币别ID:', currencyId);
-};
 
 /** 获取与开票币种一致的银行列表 */
 const filteredClientBanks = computed(() => {
@@ -1135,6 +1091,17 @@ const clientInvoiceHeaderOptions = computed(() => {
     value: info.id,
   }));
 });
+
+/** 根据发票类型获取标题 */
+function getInvoiceTitle(invoiceType: string): string {
+  const option = invoiceTypeOptions.find((opt) => opt.value === invoiceType);
+  return option ? option.label : '增值税电子普通发票';
+}
+
+/** 处理发票类型变化 */
+function handleInvoiceTypeChange({ key }: any) {
+  formData.value.invoiceType = key;
+}
 
 /** 处理发票抬头变化 */
 function handleClientInvoiceHeaderChange(headerId: any) {
@@ -1203,14 +1170,13 @@ onMounted(() => {
 // 发票类型选项
 const invoiceTypeOptions = [
   {
-    label: '普通发票(电票)',
+    label: '电子发票（普通发票）',
     value: InvoiceApplicationApi.InvoiceType.NormalElectric,
   },
   {
-    label: '普通发票(纸票)',
-    value: InvoiceApplicationApi.InvoiceType.NormalPaper,
+    label: '电子发票（增值税专用发票）',
+    value: InvoiceApplicationApi.InvoiceType.Special,
   },
-  { label: '专用发票', value: InvoiceApplicationApi.InvoiceType.Special },
 ];
 
 // 税率选项
@@ -1271,216 +1237,6 @@ const foreignCurrencyAmount = computed(() => {
   return totalAppliedAmountOriginal.value;
 });
 
-// 费用表格列定义（一级 - 运输订单）
-const feeParentColumns = computed(() => [
-  {
-    title: '委托编号',
-    dataIndex: 'commissionNum',
-    key: 'commissionNum',
-    minWidth: 140,
-    ellipsis: true,
-  },
-  {
-    title: '主提单号',
-    dataIndex: 'mblNum',
-    key: 'mblNum',
-    minWidth: 140,
-    ellipsis: true,
-  },
-  {
-    title: '订舱编号',
-    dataIndex: 'bookingNum',
-    key: 'bookingNum',
-    minWidth: 140,
-    ellipsis: true,
-  },
-  {
-    title: '结算单位',
-    dataIndex: 'clientName',
-    key: 'clientName',
-    minWidth: 180,
-    ellipsis: true,
-  },
-  {
-    title: '业务类型',
-    dataIndex: 'bizType',
-    key: 'bizType',
-    minWidth: 100,
-  },
-  {
-    title: '船公司',
-    dataIndex: 'carrier',
-    key: 'carrier',
-    minWidth: 120,
-    ellipsis: true,
-  },
-  {
-    title: '所属公司',
-    dataIndex: 'company',
-    key: 'company',
-    minWidth: 150,
-    ellipsis: true,
-  },
-]);
-
-// 费用表格列定义（二级 - 费用明细）
-const feeChildColumns = computed(() => [
-  {
-    title: '结算单位',
-    dataIndex: 'settlementUnit',
-    key: 'settlementUnit',
-    minWidth: 180,
-    ellipsis: true,
-  },
-  {
-    title: '收付类型',
-    dataIndex: 'payReceiveType',
-    key: 'payReceiveType',
-    minWidth: 80,
-    align: 'center' as const,
-  },
-  {
-    title: '费用名称',
-    dataIndex: 'feeName',
-    key: 'feeName',
-    minWidth: 200,
-    ellipsis: true,
-  },
-  {
-    title: '金额',
-    dataIndex: 'amount',
-    key: 'amount',
-    minWidth: 120,
-    align: 'right' as const,
-  },
-  {
-    title: '币别',
-    dataIndex: 'currencyCode',
-    key: 'currencyCode',
-    minWidth: 80,
-    align: 'center' as const,
-  },
-  {
-    title: '未开票金额',
-    dataIndex: 'remainingInvoiceAmount',
-    key: 'remainingInvoiceAmount',
-    minWidth: 120,
-    align: 'right' as const,
-  },
-  {
-    title: '本次申请金额',
-    dataIndex: 'appliedAmount',
-    key: 'appliedAmount',
-    minWidth: 180,
-    align: 'right' as const,
-  },
-]);
-
-// 费用明细弹窗表格列定义（一级 - 运输订单）
-const feeDetailParentColumns = computed(() => [
-  {
-    title: '委托编号',
-    dataIndex: 'commissionNum',
-    key: 'commissionNum',
-    minWidth: 140,
-    ellipsis: true,
-  },
-  {
-    title: '主提单号',
-    dataIndex: 'mblNum',
-    key: 'mblNum',
-    minWidth: 140,
-    ellipsis: true,
-  },
-  {
-    title: '订舱编号',
-    dataIndex: 'bookingNum',
-    key: 'bookingNum',
-    minWidth: 140,
-    ellipsis: true,
-  },
-  {
-    title: '结算单位',
-    dataIndex: 'clientName',
-    key: 'clientName',
-    minWidth: 180,
-    ellipsis: true,
-  },
-  {
-    title: '业务类型',
-    dataIndex: 'bizType',
-    key: 'bizType',
-    minWidth: 100,
-  },
-  {
-    title: '船公司',
-    dataIndex: 'carrier',
-    key: 'carrier',
-    minWidth: 120,
-    ellipsis: true,
-  },
-  {
-    title: '所属公司',
-    dataIndex: 'company',
-    key: 'company',
-    minWidth: 150,
-    ellipsis: true,
-  },
-]);
-
-// 费用明细弹窗表格列定义（二级 - 费用明细）
-const feeDetailChildColumns = computed(() => [
-  {
-    title: '结算单位',
-    dataIndex: 'settlementUnit',
-    key: 'settlementUnit',
-    minWidth: 180,
-    ellipsis: true,
-  },
-  {
-    title: '收付类型',
-    dataIndex: 'payReceiveType',
-    key: 'payReceiveType',
-    minWidth: 80,
-    align: 'center' as const,
-  },
-  {
-    title: '费用名称',
-    dataIndex: 'feeName',
-    key: 'feeName',
-    minWidth: 200,
-    ellipsis: true,
-  },
-  {
-    title: '金额',
-    dataIndex: 'amount',
-    key: 'amount',
-    minWidth: 120,
-    align: 'right' as const,
-  },
-  {
-    title: '币别',
-    dataIndex: 'currencyCode',
-    key: 'currencyCode',
-    minWidth: 80,
-    align: 'center' as const,
-  },
-  {
-    title: '未开票金额',
-    dataIndex: 'remainingInvoiceAmount',
-    key: 'remainingInvoiceAmount',
-    minWidth: 120,
-    align: 'right' as const,
-  },
-  {
-    title: '本次开票金额',
-    dataIndex: 'appliedAmount',
-    key: 'appliedAmount',
-    minWidth: 180,
-    align: 'right' as const,
-  },
-]);
-
 /** 加载详情数据 */
 async function loadDetail() {
   if (!editId.value) return;
@@ -1523,10 +1279,6 @@ async function loadDetail() {
 
     // 加载客户开票信息
     await loadClientInvoiceInfo(detail.settlementId);
-
-    // ✅ 设置固定的筛选条件（用于抽屉）
-    selectedSettlementId.value = detail.settlementId;
-    selectedCurrencyId.value = detail.currencyId || 1;
 
     // 设置汇率
     invoiceExchangeRate.value = detail.invoiceExchangeRate || 1.0;
@@ -1668,16 +1420,11 @@ async function loadDetail() {
           <div style="flex: 1; min-width: 0">
             <Card>
               <template #title>
-                <Space>
-                  <span style="font-size: 24px; color: #c41e3a"
-                    >增值税电子普通发票</span
-                  >
-                  <Select
-                    v-model:value="formData.invoiceType"
-                    :options="invoiceTypeOptions"
-                    style="width: 200px"
-                  />
-                </Space>
+                <div style="width: 100%; text-align: center">
+                  <span style="font-size: 24px; color: #c41e3a">{{
+                    getInvoiceTitle(formData.invoiceType)
+                  }}</span>
+                </div>
               </template>
 
               <template #extra>
@@ -1692,77 +1439,105 @@ async function loadDetail() {
                 <div
                   style="
                     flex: 1;
-                    padding: 12px;
-                    border: 1px solid #d9d9d9;
+                    height: 130px;
+                    border: 1px solid #c41e3a;
                     border-radius: 4px;
                   "
                 >
-                  <div
-                    style="
-                      margin-bottom: 8px;
-                      font-size: 14px;
-                      font-weight: bold;
-                      color: #c41e3a;
-                    "
-                  >
-                    购买方信息
-                  </div>
-                  <div style="font-size: 13px">
+                  <div style="display: flex; gap: 12px">
                     <div
-                      style="display: flex; align-items: center; height: 28px"
+                      style="
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        width: 40px;
+                        padding: 10px 5px;
+                        font-size: 14px;
+                        font-weight: bold;
+                        color: #c41e3a;
+                        background-color: rgb(196 30 58 / 10%);
+                        border-right: 1px solid #c41e3a;
+                      "
                     >
-                      <span style="min-width: 80px; color: #666"
-                        ><strong>名 称:</strong></span
-                      >
-                      <Select
-                        :value="selectedClientInvoiceInfo?.id"
-                        :options="clientInvoiceHeaderOptions"
-                        style="flex: 1"
-                        size="small"
-                        placeholder="请选择发票抬头"
-                        @change="handleClientInvoiceHeaderChange"
-                      />
+                      购买方信息
                     </div>
-                    <div
-                      style="display: flex; align-items: center; height: 28px"
-                    >
-                      <span style="min-width: 80px; color: #666"
-                        ><strong>纳税人识别号:</strong></span
+                    <div style="flex: 1; padding: 8px; font-size: 13px">
+                      <div
+                        style="display: flex; align-items: center; height: 28px"
                       >
-                      <span style="flex: 1">{{
-                        selectedClientInvoiceInfo?.taxNum || '(选填)'
-                      }}</span>
-                    </div>
-                    <div
-                      style="display: flex; align-items: center; height: 28px"
-                    >
-                      <span style="min-width: 80px; color: #666"
-                        ><strong>地址、电话:</strong></span
+                        <span
+                          style="
+                            min-width: 80px;
+                            margin-right: 8px;
+                            color: #666;
+                          "
+                          ><strong>名 称:</strong></span
+                        >
+                        <Select
+                          :value="selectedClientInvoiceInfo?.id"
+                          :options="clientInvoiceHeaderOptions"
+                          style="flex: 1"
+                          size="small"
+                          placeholder="请选择发票抬头"
+                          @change="handleClientInvoiceHeaderChange"
+                        />
+                      </div>
+                      <div
+                        style="display: flex; align-items: center; height: 28px"
                       >
-                      <span style="flex: 1"
-                        >{{ selectedClientInvoiceInfo?.address || '(选填)' }}
-                        {{ selectedClientInvoiceInfo?.tel || '' }}</span
+                        <span
+                          style="
+                            min-width: 80px;
+                            margin-right: 8px;
+                            color: #666;
+                          "
+                          ><strong>纳税人识别号:</strong></span
+                        >
+                        <span style="flex: 1">{{
+                          selectedClientInvoiceInfo?.taxNum || '(选填)'
+                        }}</span>
+                      </div>
+                      <div
+                        style="display: flex; align-items: center; height: 28px"
                       >
-                    </div>
-                    <div
-                      style="display: flex; align-items: center; height: 28px"
-                    >
-                      <span style="min-width: 80px; color: #666"
-                        ><strong>开户行及账号:</strong></span
+                        <span
+                          style="
+                            min-width: 80px;
+                            margin-right: 8px;
+                            color: #666;
+                          "
+                          ><strong>地址、电话:</strong></span
+                        >
+                        <span style="flex: 1"
+                          >{{ selectedClientInvoiceInfo?.address || '(选填)' }}
+                          {{ selectedClientInvoiceInfo?.tel || '' }}</span
+                        >
+                      </div>
+                      <div
+                        style="display: flex; align-items: center; height: 28px"
                       >
-                      <Select
-                        v-model:value="formData.clientInvoiceBankId"
-                        :options="
-                          filteredClientBanks.map((b) => ({
-                            label: `${b.bankName} - ${b.bankAccount}`,
-                            value: b.id,
-                          }))
-                        "
-                        style="flex: 1"
-                        size="small"
-                        placeholder="请选择银行"
-                        @change="handleClientBankChange"
-                      />
+                        <span
+                          style="
+                            min-width: 80px;
+                            margin-right: 8px;
+                            color: #666;
+                          "
+                          ><strong>开户行及账号:</strong></span
+                        >
+                        <Select
+                          v-model:value="formData.clientInvoiceBankId"
+                          :options="
+                            filteredClientBanks.map((b) => ({
+                              label: `${b.bankName} - ${b.bankAccount}`,
+                              value: b.id,
+                            }))
+                          "
+                          style="flex: 1"
+                          size="small"
+                          placeholder="请选择银行"
+                          @change="handleClientBankChange"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1770,68 +1545,98 @@ async function loadDetail() {
                 <div
                   style="
                     flex: 1;
-                    padding: 12px;
-                    border: 1px solid #d9d9d9;
+                    height: 130px;
+                    border: 1px solid #c41e3a;
                     border-radius: 4px;
                   "
                 >
-                  <div
-                    style="
-                      margin-bottom: 8px;
-                      font-size: 14px;
-                      font-weight: bold;
-                      color: #c41e3a;
-                    "
-                  >
-                    销售方信息
-                  </div>
-                  <div style="font-size: 13px">
+                  <div style="display: flex; gap: 12px">
                     <div
-                      style="display: flex; align-items: center; height: 28px"
+                      style="
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        width: 40px;
+                        padding: 10px 5px;
+                        font-size: 14px;
+                        font-weight: bold;
+                        color: #c41e3a;
+                        background-color: rgb(196 30 58 / 10%);
+                        border-right: 1px solid #c41e3a;
+                      "
                     >
-                      <span style="min-width: 80px; color: #666"
-                        ><strong>名 称:</strong></span
-                      >
-                      <span style="flex: 1">{{
-                        applicantCompanyName || '-'
-                      }}</span>
+                      销售方信息
                     </div>
-                    <div
-                      style="display: flex; align-items: center; height: 28px"
-                    >
-                      <span style="min-width: 80px; color: #666"
-                        ><strong>纳税人识别号:</strong></span
+                    <div style="flex: 1; padding: 8px; font-size: 13px">
+                      <div
+                        style="display: flex; align-items: center; height: 28px"
                       >
-                      <span style="flex: 1">{{
-                        applicantTaxNumber || '-'
-                      }}</span>
-                    </div>
-                    <div
-                      style="display: flex; align-items: center; height: 28px"
-                    >
-                      <span style="min-width: 80px; color: #666"
-                        ><strong>地址、电话:</strong></span
+                        <span
+                          style="
+                            min-width: 80px;
+                            margin-right: 8px;
+                            color: #666;
+                          "
+                          ><strong>名 称:</strong></span
+                        >
+                        <span style="flex: 1">{{
+                          applicantCompanyName || '-'
+                        }}</span>
+                      </div>
+                      <div
+                        style="display: flex; align-items: center; height: 28px"
                       >
-                      <span style="flex: 1">{{ applicantAddress || '-' }}</span>
-                    </div>
-                    <div
-                      style="display: flex; align-items: center; height: 28px"
-                    >
-                      <span style="min-width: 80px; color: #666"
-                        ><strong>开户行及账号:</strong></span
+                        <span
+                          style="
+                            min-width: 80px;
+                            margin-right: 8px;
+                            color: #666;
+                          "
+                          ><strong>纳税人识别号:</strong></span
+                        >
+                        <span style="flex: 1">{{
+                          applicantTaxNumber || '-'
+                        }}</span>
+                      </div>
+                      <div
+                        style="display: flex; align-items: center; height: 28px"
                       >
-                      <Select
-                        v-model:value="formData.orgBankAccountId"
-                        :options="
-                          filteredOrgBanks.map((b) => ({
-                            label: `${b.bankName} - ${b.bankAccount}`,
-                            value: b.id,
-                          }))
-                        "
-                        style="flex: 1"
-                        size="small"
-                        placeholder="请选择银行"
-                      />
+                        <span
+                          style="
+                            min-width: 80px;
+                            margin-right: 8px;
+                            color: #666;
+                          "
+                          ><strong>地址、电话:</strong></span
+                        >
+                        <span style="flex: 1">{{
+                          applicantAddress || '-'
+                        }}</span>
+                      </div>
+                      <div
+                        style="display: flex; align-items: center; height: 28px"
+                      >
+                        <span
+                          style="
+                            min-width: 80px;
+                            margin-right: 8px;
+                            color: #666;
+                          "
+                          ><strong>开户行及账号:</strong></span
+                        >
+                        <Select
+                          v-model:value="formData.orgBankAccountId"
+                          :options="
+                            filteredOrgBanks.map((b) => ({
+                              label: `${b.bankName} - ${b.bankAccount}`,
+                              value: b.id,
+                            }))
+                          "
+                          style="flex: 1"
+                          size="small"
+                          placeholder="请选择银行"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1839,29 +1644,6 @@ async function loadDetail() {
 
               <!-- 商品明细表格 -->
               <div style="margin-top: 16px">
-                <div style="margin-bottom: 8px">
-                  <Button
-                    size="small"
-                    @click="handleAddGoodsRow"
-                    :disabled="
-                      (formData.invoiceApplicationItems || []).length === 0
-                    "
-                  >
-                    <template #icon>➕</template>
-                    添加商品明细
-                  </Button>
-                  <Button
-                    size="small"
-                    danger
-                    style="margin-left: 8px"
-                    @click="handleDeleteSelectedGoodsRows"
-                    :disabled="selectedGoodsRows.length === 0"
-                  >
-                    <template #icon>❌</template>
-                    删除选中
-                  </Button>
-                </div>
-
                 <Table
                   :columns="[
                     {
@@ -2013,35 +1795,35 @@ async function loadDetail() {
                     </template>
                   </template>
                 </Table>
+              </div>
 
-                <!-- 合计行 -->
-                <div
-                  style="
-                    padding: 8px;
-                    margin-top: 8px;
-                    background: #fafafa;
-                    border: 1px solid #d9d9d9;
-                  "
-                >
-                  <Space :size="16">
-                    <span><strong>合计</strong></span>
-                    <span>发票金额: {{ totalInvoiceAmount.toFixed(2) }}</span>
-                    <span>税额: {{ totalTaxAmount.toFixed(2) }}</span>
-                    <span>申请金额: {{ totalAppliedAmount.toFixed(2) }}</span>
-                    <span
-                      v-if="foreignCurrencyAmount !== null"
-                      style="color: #1890ff"
-                    >
-                      申请币别金额({{ selectedCurrencyCode }}):
-                      {{ foreignCurrencyAmount.toFixed(2) }}
-                    </span>
-                  </Space>
-                  <div
-                    v-if="hasAmountDifference"
-                    style="margin-top: 8px; font-weight: bold; color: #ff4d4f"
+              <!-- 合计行 -->
+              <div
+                style="
+                  padding: 8px;
+                  margin-top: 8px;
+                  background: #fafafa;
+                  border: 1px solid #d9d9d9;
+                "
+              >
+                <Space :size="16">
+                  <span><strong>合计</strong></span>
+                  <span>发票金额: {{ totalInvoiceAmount.toFixed(2) }}</span>
+                  <span>税额: {{ totalTaxAmount.toFixed(2) }}</span>
+                  <span>申请金额: {{ totalAppliedAmount.toFixed(2) }}</span>
+                  <span
+                    v-if="foreignCurrencyAmount !== null"
+                    style="color: #1890ff"
                   >
-                    ⚠️ 发票金额与申请金额有差异请核对!
-                  </div>
+                    申请币别金额({{ selectedCurrencyCode }}):
+                    {{ foreignCurrencyAmount.toFixed(2) }}
+                  </span>
+                </Space>
+                <div
+                  v-if="hasAmountDifference"
+                  style="margin-top: 8px; font-weight: bold; color: #ff4d4f"
+                >
+                  ⚠️ 发票金额与申请金额有差异请核对!
                 </div>
               </div>
 
@@ -2049,10 +1831,31 @@ async function loadDetail() {
               <div style="margin-top: 16px">
                 <Form layout="vertical" size="small">
                   <Form.Item label="备注信息">
+                    <Space style="width: 100%; margin-bottom: 8px">
+                      <Button
+                        size="small"
+                        type="primary"
+                        ghost
+                        @click="handleOpenSelectRemarkTemplateModal"
+                        :disabled="
+                          (formData.invoiceApplicationItems || []).length === 0
+                        "
+                      >
+                        <template #icon></template>
+                        使用模板
+                      </Button>
+                      <Button
+                        size="small"
+                        @click="handleOpenRemarkTemplateModal"
+                      >
+                        <template #icon></template>
+                        管理模板
+                      </Button>
+                    </Space>
                     <Input.TextArea
                       v-model:value="formData.remark"
-                      placeholder="请输入备注"
-                      :rows="2"
+                      placeholder="请输入备注，或点击按钮使用模板"
+                      :rows="3"
                     />
                   </Form.Item>
                 </Form>
@@ -2064,237 +1867,36 @@ async function loadDetail() {
     </Card>
 
     <!-- 费用选择抽屉 -->
-    <Drawer
-      v-model:open="drawerVisible"
-      title="选择剩余未开票费用"
-      width="1000"
-      :footer-style="{ textAlign: 'right' }"
-    >
-      <Spin :spinning="feeDrawerLoading">
-        <!-- 筛选条件 -->
-        <div
-          style="
-            padding: 10px 5px;
-            margin-bottom: 16px;
-            background: #fafafa;
-            border: 1px solid #d9d9d9;
-            border-radius: 4px;
-          "
-        >
-          <div
-            style="
-              display: flex;
-              flex-wrap: wrap;
-              gap: 12px;
-              align-items: center;
-            "
-          >
-            <div
-              style="display: flex; gap: 8px; align-items: center; width: 305px"
-            >
-              <span style="min-width: 70px; font-size: 14px; color: #333"
-                >委托编号:</span
-              >
-              <Input
-                v-model:value="filterCommissionNum"
-                placeholder="请输入委托编号"
-                style="flex: 1"
-                allow-clear
-              />
-            </div>
-            <div
-              style="display: flex; gap: 8px; align-items: center; width: 305px"
-            >
-              <span style="min-width: 70px; font-size: 14px; color: #333"
-                >主提单号:</span
-              >
-              <Input
-                v-model:value="filterMblNum"
-                placeholder="请输入主提单号"
-                style="flex: 1"
-                allow-clear
-              />
-            </div>
-            <div
-              style="display: flex; gap: 8px; align-items: center; width: 305px"
-            >
-              <span style="min-width: 70px; font-size: 14px; color: #333"
-                >结算单位:</span
-              >
-              <ClientSelect
-                :model-value="selectedSettlementId"
-                placeholder="请选择结算单位"
-                style="flex: 1"
-                :disabled="!!formData.settlementId"
-                @update:model-value="
-                  (v) => updateSelectedSettlementId(v as string)
-                "
-              />
-            </div>
-            <div
-              style="display: flex; gap: 8px; align-items: center; width: 305px"
-            >
-              <span style="min-width: 70px; font-size: 14px; color: #333"
-                >币别:</span
-              >
-              <CurrencySelect
-                :model-value="selectedCurrencyId"
-                placeholder="请选择币别"
-                style="flex: 1"
-                :disabled="!!formData.currencyId && formData.settlementId"
-                @update:model-value="
-                  (v) => updateSelectedCurrencyId(v as number)
-                "
-              />
-            </div>
-            <div style="display: flex; flex: 1; justify-content: flex-end">
-              <Button type="primary" @click="loadFeeGroupData">查询</Button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 费用表格 - 使用 Ant Design Vue Table 实现树状表格 -->
-        <div style="border: 1px solid #d9d9d9; border-radius: 4px">
-          <Table
-            :columns="feeParentColumns"
-            :data-source="feeGroupsData"
-            :pagination="false"
-            bordered
-            size="small"
-            :expandable="{
-              defaultExpandAllRows: true,
-              childrenColumnName: 'children',
-            }"
-            row-key="id"
-            :scroll="{ y: 500 }"
-          >
-            <template #expandedRowRender="{ record }">
-              <Table
-                v-if="record.children && record.children.length > 0"
-                :columns="feeChildColumns"
-                :data-source="record.children"
-                :pagination="false"
-                bordered
-                size="small"
-                row-key="id"
-                :row-selection="{
-                  type: 'checkbox',
-                  selectedRowKeys: getChildSelectedKeys(record),
-                  onChange: (selectedRowKeys) =>
-                    handleChildSelectionChange(
-                      record,
-                      selectedRowKeys.map((key) => String(key)),
-                    ),
-                }"
-              >
-                <template #bodyCell="{ column, record: childRecord }">
-                  <template v-if="column.key === 'appliedAmount'">
-                    <InputNumber
-                      v-model:value="childRecord.appliedAmount"
-                      :min="0"
-                      :max="childRecord.remainingInvoiceAmount"
-                      :precision="2"
-                      style="width: 100%"
-                      size="small"
-                    />
-                  </template>
-                </template>
-              </Table>
-            </template>
-          </Table>
-        </div>
-
-        <!-- 币别汇率转换 -->
-        <!-- 已移动到 footer 区域 -->
-      </Spin>
-
-      <template #footer>
-        <div
-          style="
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            justify-content: space-between;
-          "
-        >
-          <!-- 左侧：币别汇率转换 -->
-          <div
-            v-if="selectedCurrencyId && selectedCurrencyId !== 1"
-            style="display: flex; gap: 8px; align-items: center"
-          >
-            <span style="font-size: 14px; color: #666"
-              >币别汇率转换 ({{ selectedCurrencyCode || '外币' }}兑人民币)</span
-            >
-            <Form layout="inline" size="small">
-              <Form.Item label="发票汇率">
-                <InputNumber
-                  v-model:value="invoiceExchangeRate"
-                  :min="0"
-                  :precision="4"
-                  style="width: 150px"
-                  placeholder="请输入汇率"
-                />
-              </Form.Item>
-            </Form>
-          </div>
-
-          <!-- 右侧：操作按钮 -->
-          <Space>
-            <Button @click="drawerVisible = false">取消</Button>
-            <Button type="primary" @click="handleSaveFeeSelection">确定</Button>
-          </Space>
-        </div>
-      </template>
-    </Drawer>
+    <FeeSelectionDrawer
+      ref="feeSelectionDrawerRef"
+      v-model:visible="drawerVisible"
+      :settlement-id="formData.settlementId"
+      :currency-id="formData.currencyId"
+      :invoice-application-id="editId"
+      @save="handleFeeSelectionSave"
+    />
 
     <!-- 费用明细弹窗 -->
-    <Modal
-      v-model:open="feeDetailModalVisible"
-      title="费用明细"
-      width="1000px"
-      :footer="null"
-      :body-style="{ padding: '16px' }"
-    >
-      <Spin :spinning="feeDetailModalLoading">
-        <div style="border: 1px solid #d9d9d9; border-radius: 4px">
-          <Table
-            :columns="feeDetailParentColumns"
-            :data-source="selectedFeeDetails"
-            :pagination="false"
-            bordered
-            size="small"
-            :expandable="{
-              defaultExpandAllRows: true,
-              childrenColumnName: 'children',
-            }"
-            row-key="id"
-            :scroll="{ y: 500 }"
-          >
-            <template #expandedRowRender="{ record }">
-              <Table
-                v-if="record.children && record.children.length > 0"
-                :columns="feeDetailChildColumns"
-                :data-source="record.children"
-                :pagination="false"
-                bordered
-                size="small"
-                row-key="id"
-              >
-                <template #bodyCell="{ column, record: childRecord }">
-                  <template v-if="column.dataIndex === 'appliedAmount'">
-                    <span
-                      style="font-size: 14px; font-weight: bold; color: #ff4d4f"
-                    >
-                      {{ childRecord.appliedAmount?.toFixed(2) || '0.00' }}
-                      {{ childRecord.currencyCode }}
-                    </span>
-                  </template>
-                </template>
-              </Table>
-            </template>
-          </Table>
-        </div>
-      </Spin>
-    </Modal>
+    <FeeDetailModal
+      v-model:visible="feeDetailModalVisible"
+      :loading="feeDetailModalLoading"
+      :fee-details="selectedFeeDetails"
+    />
+
+    <!-- 备注模板管理弹窗 -->
+    <RemarkTemplateModal
+      v-model:visible="remarkTemplateModalVisible"
+      @use-template="handleUseTemplate"
+    />
+
+    <!-- 选择备注模板弹窗 -->
+    <SelectRemarkTemplateModal
+      v-model:visible="selectRemarkTemplateModalVisible"
+      :settlement-id="applicantCompanyId"
+      :currency-id="formData.currencyId"
+      :currency-code="selectedCurrencyCode"
+      :fee-details="formData.invoiceApplicationItems"
+      @use-template="handleUseTemplate"
+    />
   </Page>
 </template>
