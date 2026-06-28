@@ -25,8 +25,16 @@ async function ensureAccessInitialized(params: {
 
   const userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
 
-  // 每次初始化权限时都从服务端拉取最新配置，避免使用 localStorage 中的过期权限码
-  const accessCodes = await getAccessCodesApi();
+  // 复用登录流程已写入的权限码：
+  // 菜单是在此处由 generateAccess 依据 accessCodes 生成的。登录流程
+  // （authStore.authLogin）已通过 Promise.all 拉取并写入正确的 accessCodes，
+  // 直接复用可避免守卫再次自行获取时与登录写入值不同步（如 token 过期重登、
+  // resetAllStores 之后的状态竞态）而导致 roles 为空、菜单只剩「概览」的问题。
+  // accessCodes 不做持久化，刷新后内存为空会在此自动重新拉取。
+  let accessCodes = accessStore.accessCodes;
+  if (accessCodes.length === 0) {
+    accessCodes = await getAccessCodesApi();
+  }
   accessStore.setAccessCodes(accessCodes);
 
   const { accessibleMenus, accessibleRoutes } = await generateAccess({
@@ -37,7 +45,13 @@ async function ensureAccessInitialized(params: {
 
   accessStore.setAccessMenus(accessibleMenus);
   accessStore.setAccessRoutes(accessibleRoutes);
-  accessStore.setIsAccessChecked(true);
+
+  // 兜底：若权限码仍为空，菜单只会渲染出「概览」一个菜单。此时不锁定
+  // isAccessChecked，使后续任意导航能重新获取权限并重建菜单，避免本会话被锁死、
+  // 必须刷新才能恢复。
+  if (accessCodes.length > 0) {
+    accessStore.setIsAccessChecked(true);
+  }
 
   return userInfo;
 }
@@ -139,7 +153,7 @@ function setupAccessGuard(router: Router) {
     });
     const redirectPath = (from.query.redirect ??
       (to.path === preferences.app.defaultHomePath
-        ? userInfo.homePath || preferences.app.defaultHomePath
+        ? userInfo?.homePath || preferences.app.defaultHomePath
         : to.fullPath)) as string;
 
     return {
