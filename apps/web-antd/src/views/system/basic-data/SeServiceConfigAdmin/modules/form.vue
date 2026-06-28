@@ -26,6 +26,7 @@ import {
 } from '#/api/system/base-data/se-service-config-admin';
 import { UserAttribute } from '#/api/system/user-admin';
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
+import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 import { $t } from '#/locales';
@@ -265,12 +266,17 @@ const buildRequireFeesForEdit = (row: ItemRow) => {
   ];
 };
 
+const getRequireFeeCodeIdsKey = (paySide: number) =>
+  paySide === REQUIRE_FEE_PAY_SIDE_RECEIVE
+    ? 'requireReceiveFeeCodeIds'
+    : 'requirePayFeeCodeIds';
+
 const getRequireFeeSelectedItems = (
   row: ItemRow,
   paySide: number,
-  codeIds: (number | string)[],
-): FeeCodeAdminApi.FeeCodeDto[] =>
-  row.seServiceRequireFees
+): FeeCodeAdminApi.FeeCodeDto[] => {
+  const codeIds = row[getRequireFeeCodeIdsKey(paySide)];
+  return row.seServiceRequireFees
     .filter(
       (fee) =>
         fee.paySide === paySide &&
@@ -282,8 +288,82 @@ const getRequireFeeSelectedItems = (
         ({
           id: fee.feeCodeId,
           cnName: fee.feeCodeName,
+          enable: true,
         }) as FeeCodeAdminApi.FeeCodeDto,
     );
+};
+
+const syncRequireFeeMetaForIds = async (
+  rowIndex: number,
+  paySide: number,
+  ids: (number | string)[],
+) => {
+  for (const feeCodeId of ids) {
+    const currentRow = itemRows.value[rowIndex];
+    if (!currentRow) {
+      return;
+    }
+
+    const exists = currentRow.seServiceRequireFees.some(
+      (fee) => fee.paySide === paySide && fee.feeCodeId === feeCodeId,
+    );
+    if (exists) {
+      continue;
+    }
+
+    try {
+      const detail = await getFeeCodeDetail(feeCodeId);
+      const latestRow = itemRows.value[rowIndex];
+      if (!latestRow) {
+        return;
+      }
+      if (
+        latestRow.seServiceRequireFees.some(
+          (fee) => fee.paySide === paySide && fee.feeCodeId === feeCodeId,
+        )
+      ) {
+        continue;
+      }
+      itemRows.value[rowIndex] = {
+        ...latestRow,
+        seServiceRequireFees: [
+          ...latestRow.seServiceRequireFees,
+          { paySide, feeCodeId, feeCodeName: detail.cnName },
+        ],
+      };
+    } catch {
+      // 下拉组件会自行拉取选项文案
+    }
+  }
+};
+
+const updateRequireFeeCodeIds = (
+  rowIndex: number,
+  paySide: number,
+  values: unknown,
+) => {
+  const currentRow = itemRows.value[rowIndex];
+  if (!currentRow) {
+    return;
+  }
+
+  const ids = (
+    Array.isArray(values)
+      ? values
+      : values === undefined || values === null || values === ''
+        ? []
+        : [values]
+  ).filter((value) => value !== undefined && value !== null && value !== '');
+
+  const targetKey = getRequireFeeCodeIdsKey(paySide);
+
+  itemRows.value[rowIndex] = {
+    ...currentRow,
+    [targetKey]: [...ids] as (number | string)[],
+  };
+
+  void syncRequireFeeMetaForIds(rowIndex, paySide, ids);
+};
 
 const createRowKey = () => `se-service-item-${Date.now()}-${rowKeySeed++}`;
 
@@ -955,16 +1035,23 @@ const [Modal, modalApi] = useVbenModal({
                   :wrapper-col="itemLeadingWrapperCol"
                 >
                   <FeeCodeSelect
-                    v-model="row.requireReceiveFeeCodeIds"
                     mode="multiple"
+                    :model-value="row.requireReceiveFeeCodeIds"
                     :selected-items="
                       getRequireFeeSelectedItems(
                         row,
                         REQUIRE_FEE_PAY_SIDE_RECEIVE,
-                        row.requireReceiveFeeCodeIds,
                       )
                     "
                     :placeholder="$t('ui.placeholder.select')"
+                    @update:model-value="
+                      (values) =>
+                        updateRequireFeeCodeIds(
+                          index,
+                          REQUIRE_FEE_PAY_SIDE_RECEIVE,
+                          values,
+                        )
+                    "
                   />
                 </FormItem>
                 <FormItem
@@ -974,16 +1061,20 @@ const [Modal, modalApi] = useVbenModal({
                   :wrapper-col="itemLeadingWrapperCol"
                 >
                   <FeeCodeSelect
-                    v-model="row.requirePayFeeCodeIds"
                     mode="multiple"
+                    :model-value="row.requirePayFeeCodeIds"
                     :selected-items="
-                      getRequireFeeSelectedItems(
-                        row,
-                        REQUIRE_FEE_PAY_SIDE_PAY,
-                        row.requirePayFeeCodeIds,
-                      )
+                      getRequireFeeSelectedItems(row, REQUIRE_FEE_PAY_SIDE_PAY)
                     "
                     :placeholder="$t('ui.placeholder.select')"
+                    @update:model-value="
+                      (values) =>
+                        updateRequireFeeCodeIds(
+                          index,
+                          REQUIRE_FEE_PAY_SIDE_PAY,
+                          values,
+                        )
+                    "
                   />
                 </FormItem>
               </div>
