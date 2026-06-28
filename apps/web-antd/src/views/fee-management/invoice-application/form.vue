@@ -120,6 +120,18 @@ const invoiceExchangeRate = ref<number>(1.0);
 // 商品明细表格数据
 const goodsDetails = ref<any[]>([]);
 
+// 监听商品明细数据变化
+watch(
+  () => goodsDetails.value,
+  (newVal) => {
+    console.log('📊 商品明细数据变化:', newVal.length, '条');
+    if (newVal.length > 0) {
+      console.log('📊 第一条商品明细:', newVal[0]);
+    }
+  },
+  { deep: true },
+);
+
 // 费用明细表格数据
 const feeGroupsData = ref<any[]>([]);
 
@@ -554,7 +566,7 @@ function handleOpenSelectRemarkTemplateModal() {
 
   if (items.length === 0) {
     message.warning(
-      '请先点击"从发票申请导入费用"按钮，从抽屉中添加费用后再使用模板功能',
+      '请先点击"从开票申请导入费用"按钮，从抽屉中添加费用后再使用模板功能',
     );
     return;
   }
@@ -1415,13 +1427,26 @@ async function loadDetail() {
       detail.invoiceApplicationGoodsDtls &&
       detail.invoiceApplicationGoodsDtls.length > 0
     ) {
-      goodsDetails.value = detail.invoiceApplicationGoodsDtls.map(
+      // 创建全新的数组副本，确保响应式更新
+      const newGoodsDetails = detail.invoiceApplicationGoodsDtls.map(
         (item: any, index: number) => ({
           ...item,
-          id: item.id || Date.now().toString() + index.toString(), // 如果已有ID则使用，否则生成新ID
+          // 确保 id 是字符串类型，如果不存在则生成新ID
+          id: item.id
+            ? String(item.id)
+            : Date.now().toString() + index.toString(),
         }),
       );
+
+      // 先清空再赋值，确保触发响应式更新
+      goodsDetails.value = [];
+      await nextTick();
+      goodsDetails.value = newGoodsDetails;
+
       console.log('✅ 加载商品明细:', goodsDetails.value.length, '条');
+      console.log('✅ 商品明细数据详情:', goodsDetails.value);
+    } else {
+      console.log('⚠️ 详情中没有商品明细数据');
     }
   } catch (error) {
     console.error('加载详情失败:', error);
@@ -1444,7 +1469,7 @@ async function loadDetail() {
       </Space>
     </div>
 
-    <Card :title="isEdit ? '编辑发票申请' : '新建发票申请'">
+    <Card :title="isEdit ? '编辑开票申请' : '新建开票申请'">
       <Spin :spinning="loading">
         <div style="display: flex; gap: 16px">
           <!-- 左侧基础配置 -->
@@ -1464,11 +1489,11 @@ async function loadDetail() {
                   />
                 </Form.Item>
 
-                <Form.Item label="发票申请人">
+                <Form.Item label="开票申请人">
                   <Input :value="applicantName" disabled />
                 </Form.Item>
 
-                <Form.Item label="发票申请日期">
+                <Form.Item label="开票申请日期">
                   <Input :value="applicationDate" disabled />
                 </Form.Item>
 
@@ -1504,7 +1529,7 @@ async function loadDetail() {
 
                 <Form.Item>
                   <Button type="primary" block @click="handleOpenFeeDrawer">
-                    从发票申请导入费用
+                    从开票申请导入费用
                   </Button>
                 </Form.Item>
 
@@ -1999,7 +2024,7 @@ async function loadDetail() {
                   >
                   <span
                     v-if="foreignCurrencyAmount !== null"
-                    style=" font-size: 13px;color: #1890ff"
+                    style="font-size: 13px; color: #1890ff"
                   >
                     <strong>申请币别金额({{ selectedCurrencyCode }}):</strong>
                     {{ foreignCurrencyAmount.toFixed(2) }}

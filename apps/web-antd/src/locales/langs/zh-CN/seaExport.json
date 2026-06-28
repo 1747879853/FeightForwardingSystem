@@ -180,7 +180,7 @@
       "noTaxAmount": "不含税金额",
       "rqstPaymentAmount": "申请付款金额",
       "invoicedAmount": "已开票金额",
-      "orderInvoiceAmount": "发票申请金额",
+      "orderInvoiceAmount": "开票申请金额",
       "settledAmount": "已结算金额",
       "canInvoice": "不开发票",
       "isConfidential": "是否机密",

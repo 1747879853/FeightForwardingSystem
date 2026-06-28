@@ -150,7 +150,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'mdi:file-document-outline',
           keepAlive: true,
-          title: '发票申请',
+          title: '开票申请',
           authority: abpPageAuthority('Admin.InvoiceApplication.Get'),
         },
         component: () =>
@@ -161,7 +161,7 @@ const routes: RouteRecordRaw[] = [
         name: 'InvoiceApplicationAdd',
         meta: {
           icon: 'mdi:file-document-edit-outline',
-          title: '新建发票申请',
+          title: '新建开票申请',
           authority: abpPageAuthority('Admin.InvoiceApplication.Add'),
           hideInMenu: true,
           activePath: '/fee-management/invoice-application',
@@ -174,7 +174,7 @@ const routes: RouteRecordRaw[] = [
         name: 'InvoiceApplicationEdit',
         meta: {
           icon: 'mdi:file-document-edit-outline',
-          title: '编辑发票申请',
+          title: '编辑开票申请',
           authority: abpPageAuthority('Admin.InvoiceApplication.Edit'),
           hideInMenu: true,
           activePath: '/fee-management/invoice-application',
