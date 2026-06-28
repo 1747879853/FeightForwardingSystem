@@ -456,6 +456,16 @@ export namespace SeaExportAdminApi {
     IsBusinessLocking?: boolean;
     /** 付费方式 id（用于点击「付费方式」分组项后筛选列表） */
     CodeFrtId?: number | string;
+    /** 仅返回船公司未填写记录（与 CarrierId 互斥） */
+    CarrierIdEmpty?: boolean;
+    /** 仅返回起运港未填写记录（与 POLId 互斥） */
+    POLIdEmpty?: boolean;
+    /** 仅返回目的港未填写记录（与 PODId 互斥） */
+    PODIdEmpty?: boolean;
+    /** 仅返回付费方式未填写记录（与 CodeFrtId 互斥） */
+    CodeFrtIdEmpty?: boolean;
+    /** 仅返回签单方式未填写记录（与 CodeIssueTypeId 互斥） */
+    CodeIssueTypeIdEmpty?: boolean;
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;

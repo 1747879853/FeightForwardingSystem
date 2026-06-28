@@ -118,6 +118,11 @@ export function useListGrouping<TField extends number = number>(
    * 在列表查询 `mapParams` 末尾调用：
    * 1. 若搜索条件相对上次发生变化 -> 刷新分组数据 + 重置选中项；
    * 2. 追加当前选中分组项的筛选条件。
+   *
+   * 选中项三态：
+   * - `undefined`：未点击任何分组项（「全部」），不追加筛选；
+   * - `null`：选中「未填写」分组项，追加 `{ [emptyParamKey]: true }`（需字段配置 `emptyParamKey`）；
+   * - 具体值：追加 `{ [paramKey]: 值 }`。
    */
   function decorateListParams(
     listParams: Record<string, any>,
@@ -134,9 +139,17 @@ export function useListGrouping<TField extends number = number>(
       void refreshGroups(listParams);
     }
 
-    if (selectedItemId.value === undefined || selectedItemId.value === null) {
+    // 「全部」：未点击任何分组项
+    if (selectedItemId.value === undefined) {
       return listParams;
     }
+    // 「未填写」分组项：传对应字段的 *Empty=true
+    if (selectedItemId.value === null) {
+      return field.emptyParamKey
+        ? { ...listParams, [field.emptyParamKey]: true }
+        : listParams;
+    }
+    // 具体分组值
     return { ...listParams, [field.paramKey]: selectedItemId.value };
   }
 

@@ -38,12 +38,27 @@ const SEA_EXPORT_GROUP_FIELDS: GroupFieldDef[] = [
   { value: 1, label: '装运方式', paramKey: 'BLType' },
   { value: 2, label: '订单类型', paramKey: 'BillType' },
   { value: 3, label: '委托单位', paramKey: 'ClientId' },
-  { value: 4, label: '船公司', paramKey: 'CarrierId' },
-  { value: 5, label: '起运港', paramKey: 'POLId' },
-  { value: 6, label: '目的港', paramKey: 'PODId' },
+  {
+    value: 4,
+    label: '船公司',
+    paramKey: 'CarrierId',
+    emptyParamKey: 'CarrierIdEmpty',
+  },
+  { value: 5, label: '起运港', paramKey: 'POLId', emptyParamKey: 'POLIdEmpty' },
+  { value: 6, label: '目的港', paramKey: 'PODId', emptyParamKey: 'PODIdEmpty' },
   { value: 7, label: '船名', paramKey: 'Vessel' },
-  { value: 8, label: '付费方式', paramKey: 'CodeFrtId' },
-  { value: 9, label: '签单方式', paramKey: 'CodeIssueTypeId' },
+  {
+    value: 8,
+    label: '付费方式',
+    paramKey: 'CodeFrtId',
+    emptyParamKey: 'CodeFrtIdEmpty',
+  },
+  {
+    value: 9,
+    label: '签单方式',
+    paramKey: 'CodeIssueTypeId',
+    emptyParamKey: 'CodeIssueTypeIdEmpty',
+  },
 ];
 
 const toIsoString = (value: unknown): string | undefined => {

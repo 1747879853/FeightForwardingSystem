@@ -17,6 +17,12 @@ export interface GroupFieldDef<TField extends number = number> {
    */
   paramKey: string;
   /**
+   * 可空字段「未填写」分组项（id/name 均为 null）对应的列表查询参数名。
+   * 点击该分组项时追加 `{ [emptyParamKey]: true }`（如起运港追加 `POLIdEmpty: true`）。
+   * 仅可空字段需要配置；非可空字段不配置时，未填写分组项不会追加筛选。
+   */
+  emptyParamKey?: string;
+  /**
    * 与该分组互斥的「搜索表单」字段名（启用分组后会被禁用并清空）。
    * 不传则默认取 `paramKey`；若搜索表单中不存在该字段则忽略。
    */
