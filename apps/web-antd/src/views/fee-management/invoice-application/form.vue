@@ -1162,6 +1162,18 @@ function getInvoiceTitle(invoiceType: string): string {
   return option ? option.label : '增值税电子普通发票';
 }
 
+/** 发票类型选项 */
+const invoiceTypeOptions = [
+  {
+    label: '电子发票（普通发票）',
+    value: InvoiceApplicationApi.InvoiceType.NormalElectric,
+  },
+  {
+    label: '电子发票（增值税专用发票）',
+    value: InvoiceApplicationApi.InvoiceType.Special,
+  },
+];
+
 /** 处理发票类型变化 */
 function handleInvoiceTypeChange({ key }: any) {
   formData.value.invoiceType = key;
@@ -1230,18 +1242,6 @@ onMounted(() => {
     });
   }
 });
-
-// 发票类型选项
-const invoiceTypeOptions = [
-  {
-    label: '电子发票（普通发票）',
-    value: InvoiceApplicationApi.InvoiceType.NormalElectric,
-  },
-  {
-    label: '电子发票（增值税专用发票）',
-    value: InvoiceApplicationApi.InvoiceType.Special,
-  },
-];
 
 // 税率选项
 const taxRateOptions = [
@@ -1443,10 +1443,23 @@ async function loadDetail() {
       : dayjs().format('YYYY-MM-DD');
 
     // 加载客户开票信息
+    // 加载客户开票信息
     await loadClientInvoiceInfo(detail.settlementId);
 
     // 设置汇率
     invoiceExchangeRate.value = detail.invoiceExchangeRate || 1.0;
+
+    // ✅ 加载币别代码
+    if (detail.currencyId) {
+      try {
+        const currencyDetail = await getCurrencyDetail(detail.currencyId);
+        selectedCurrencyCode.value = currencyDetail.code || '';
+        console.log('✅ 已加载币别代码:', selectedCurrencyCode.value);
+      } catch (error) {
+        console.error('加载币别详情失败:', error);
+        selectedCurrencyCode.value = '';
+      }
+    }
 
     // ✅ 根据币别更新销售方银行
     updateOrgBankByCurrency();
@@ -1657,9 +1670,31 @@ async function loadDetail() {
             <Card>
               <template #title>
                 <div style="width: 100%; text-align: center">
-                  <span style="font-size: 24px; color: #c41e3a">{{
-                    getInvoiceTitle(formData.invoiceType)
-                  }}</span>
+                  <Dropdown :trigger="['click']">
+                    <span
+                      style="
+                        display: inline-flex;
+                        gap: 8px;
+                        align-items: center;
+                        font-size: 24px;
+                        color: #c41e3a;
+                        cursor: pointer;
+                      "
+                    >
+                      {{ getInvoiceTitle(formData.invoiceType) }}
+                      <IconifyIcon icon="ant-design:down-outlined" />
+                    </span>
+                    <template #overlay>
+                      <Menu @click="handleInvoiceTypeChange">
+                        <MenuItem
+                          v-for="option in invoiceTypeOptions"
+                          :key="option.value"
+                        >
+                          {{ option.label }}
+                        </MenuItem>
+                      </Menu>
+                    </template>
+                  </Dropdown>
                 </div>
               </template>
 

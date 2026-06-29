@@ -398,7 +398,7 @@ function handleBatchSubmit() {
           >
             撤回
           </Button>
-          <Button
+          <!-- <Button
             v-if="
               row.status ===
               InvoiceApplicationApi.InvoiceApplicationStatus.Auditing
@@ -409,7 +409,7 @@ function handleBatchSubmit() {
             @click.stop="handleAudit(row)"
           >
             驳回
-          </Button>
+          </Button> -->
         </Space>
       </template>
     </Grid>
