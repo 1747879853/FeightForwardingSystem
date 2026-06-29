@@ -42,6 +42,7 @@ import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vu
 import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
 import FeeDetailModal from './components/FeeDetailModal.vue';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
+import { returnToListWithRefresh } from '#/utils/list-refresh-flag';
 
 // 从命名空间中解构 API 函数
 const { addAsync, detailAsync, editAsync } = InvoiceApplicationApi;
@@ -175,7 +176,7 @@ function addSelectedFeesToForm(selectedFees: any[]) {
   // 将选中的费用转换为 InvoiceApplicationItemAddDto
   const items = selectedFees.map((fee: any) => ({
     orderFeeId: fee.orderFee.id,
-    appliedAmount: fee.appliedAmount || fee.orderFee.remainingInvoiceAmount,
+    appliedAmount: fee.appliedAmount || fee.orderFee.remainingInvoiceAmount, // ✅ 保持原币金额，不进行汇率转换
     remark: '',
   }));
 
@@ -221,8 +222,18 @@ async function handleSubmit() {
             invoiceType: formData.value.invoiceType,
             invoiceApplicationItems:
               formData.value.invoiceApplicationItems || [],
-            invoiceApplicationGoodsDtls:
-              formData.value.invoiceApplicationGoodsDtls || [],
+            invoiceApplicationGoodsDtls: goodsDetails.value.map((item) => ({
+              codeInvoiceId: item.codeInvoiceId,
+              specification: item.specification,
+              unit: item.unit,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              amount: item.amount,
+              noTaxAmount: item.noTaxAmount,
+              taxRate: item.taxRate,
+              taxAmount: item.taxAmount,
+              remark: item.remark,
+            })),
             orgBankAccountId: formData.value.orgBankAccountId,
             clientInvoiceBankId: formData.value.clientInvoiceBankId,
           },
@@ -234,7 +245,9 @@ async function handleSubmit() {
     }
 
     // 返回列表并刷新
-    router.push('/fee-management/invoice-application');
+    returnToListWithRefresh('/fee-management/invoice-application', () => {
+      router.push('/fee-management/invoice-application');
+    });
   } catch (error) {
     console.error('保存失败:', error);
     message.error('保存失败');
@@ -589,7 +602,7 @@ function handleOpenSelectRemarkTemplateModal() {
 function handleUseTemplate(template: string) {
   if (template) {
     formData.value.remark = template;
-    message.success('模板已应用到备注');
+    //message.success('模板已应用到备注');
   }
 }
 
@@ -1392,6 +1405,22 @@ async function loadDetail() {
       return;
     }
 
+    // ✅ 从 feeGroups 中提取 invoiceApplicationItems
+    const invoiceApplicationItems: any[] = [];
+    if (detail.feeGroups && detail.feeGroups.length > 0) {
+      detail.feeGroups.forEach((group: any) => {
+        if (group.items && group.items.length > 0) {
+          group.items.forEach((item: any) => {
+            invoiceApplicationItems.push({
+              orderFeeId: item.orderFeeId,
+              appliedAmount: item.appliedAmount,
+              remark: item.remark || '',
+            });
+          });
+        }
+      });
+    }
+
     formData.value = {
       id: detail.id,
       settlementId: detail.settlementId,
@@ -1403,7 +1432,7 @@ async function loadDetail() {
       remark: detail.remark,
       orgBankAccountId: detail.orgBankAccountId,
       clientInvoiceBankId: detail.clientInvoiceBankId,
-      invoiceApplicationItems: [], // TODO: 从 detail.feeGroups 中提取
+      invoiceApplicationItems: invoiceApplicationItems, // ✅ 从 feeGroups 中提取
       invoiceApplicationGoodsDtls: detail.invoiceApplicationGoodsDtls || [],
     };
 
@@ -1421,6 +1450,64 @@ async function loadDetail() {
 
     // ✅ 根据币别更新销售方银行
     updateOrgBankByCurrency();
+
+    // ✅ 从 feeGroups 中构建 feeGroupsData（用于占位符替换等功能）
+    if (detail.feeGroups && detail.feeGroups.length > 0) {
+      const feeGroupsForDisplay: any[] = [];
+
+      detail.feeGroups.forEach((group: any) => {
+        const parentNode: any = {
+          id: group.transportOrder?.id || `order_${Date.now()}`,
+          parentId: null,
+          transportOrder: group.transportOrder,
+          seaExport: group.seaExport,
+          orderFees: group.items?.map((item: any) => item.orderFee) || [],
+          commissionNum: group.transportOrder?.commissionNum,
+          mblNum: group.transportOrder?.mblNum || '-',
+          bookingNum: group.transportOrder?.bookingNum || '-',
+          clientName: group.transportOrder?.clientName,
+          bizType:
+            getBizTypeOptions().find(
+              (o: any) => o.value === group.transportOrder?.bizType,
+            )?.label || '-',
+          carrier: group.seaExport?.carrierName || '-',
+          company: group.transportOrder?.companys?.[0]?.name || '-',
+          children: [] as any[],
+        };
+
+        // 添加子节点（费用明细）
+        if (group.items && group.items.length > 0) {
+          group.items.forEach((item: any) => {
+            const childNode: any = {
+              id: item.id,
+              parentId: parentNode.id,
+              orderFee: item.orderFee,
+              appliedAmount: item.appliedAmount,
+              settlementUnit: item.orderFee?.settlementName || '-',
+              payReceiveType: item.orderFee?.paySide === 0 ? '应收' : '应付',
+              feeName: item.orderFee?.feeCodeName || '-',
+              amount: item.orderFee?.amount,
+              currencyCode: item.orderFee?.currencyCode || '-',
+              remainingInvoiceAmount: item.remainingInvoiceAmount,
+              commissionNum: group.transportOrder?.commissionNum,
+              mblNum: group.transportOrder?.mblNum || '-',
+              bookingNum: group.transportOrder?.bookingNum || '-',
+              transportOrder: group.transportOrder,
+            };
+            parentNode.children.push(childNode);
+          });
+        }
+
+        feeGroupsForDisplay.push(parentNode);
+      });
+
+      feeGroupsData.value = feeGroupsForDisplay;
+      console.log(
+        '✅ 已加载 feeGroupsData:',
+        feeGroupsData.value.length,
+        '个订单组',
+      );
+    }
 
     // ✅ 加载商品明细数据，并为每行添加唯一ID
     if (

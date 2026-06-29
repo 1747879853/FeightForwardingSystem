@@ -665,10 +665,14 @@ defineExpose({
                 :precision="4"
                 style="width: 150px"
                 placeholder="请输入汇率"
+                disabled
               />
             </Form.Item>
           </Form>
         </div>
+
+        <!-- 占位元素，确保按钮始终在右侧 -->
+        <div v-else style="flex: 1"></div>
 
         <!-- 右侧：操作按钮 -->
         <Space>

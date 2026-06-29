@@ -241,6 +241,17 @@ const [Grid, gridApi] =
     },
   });
 
+/** 刷新列表 */
+function handleRefresh() {
+  gridApi.reload();
+}
+
+/** 监听表单返回，自动刷新列表 */
+useRefreshListOnFormReturn(
+  '/fee-management/invoice-application',
+  handleRefresh,
+);
+
 /** 获取选中的行 */
 function getSelectedRows(): InvoiceApplicationApi.InvoiceApplicationListDto[] {
   return (gridApi.grid?.getCheckboxRecords?.() ??
@@ -334,13 +345,6 @@ function handleBatchSubmit() {
     },
   });
 }
-
-/** 刷新列表 */
-function handleRefresh() {
-  gridApi.query();
-}
-
-useRefreshListOnFormReturn('InvoiceApplicationList', handleRefresh);
 </script>
 
 <template>
