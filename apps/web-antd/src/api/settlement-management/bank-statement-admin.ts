@@ -4,6 +4,18 @@ const API_ADMIN_PREFIX = '/services/app/BankStatementAdmin';
 const API_PREFIX = '/services/app/BankStatement';
 
 export namespace BankStatementAdminApi {
+  // ==================== 枚举定义 ====================
+
+  /** 银行流水核销状态 */
+  export enum BankStatementWriteOffStatus {
+    /** 待核销：没有对应的收费结算 */
+    PendingWriteOff = 0,
+    /** 部分核销：收费结算总结算金额 ≠ 银行流水 amount */
+    PartialWriteOff = 1,
+    /** 核销完成：收费结算总结算金额 = 银行流水 amount */
+    WriteOffCompleted = 2,
+  }
+
   // ==================== DTO 定义 ====================
 
   /** 操作人添加 DTO */
@@ -77,6 +89,10 @@ export namespace BankStatementAdminApi {
     orgBankAccountName?: string;
     clientInvoiceBankName?: string;
     bankStatementUsers?: BankStatementUserDto[];
+    /** 已结算金额（收为正、付为负） */
+    settledAmount?: number;
+    /** 核销状态 */
+    writeOffStatus?: BankStatementWriteOffStatus;
   }
 
   /** 银行流水列表 DTO */
@@ -101,6 +117,10 @@ export namespace BankStatementAdminApi {
     userId?: number;
     companys?: { id: number; displayName?: string }[];
     creationTime: string;
+    /** 已结算金额（收为正、付为负） */
+    settledAmount?: number;
+    /** 核销状态 */
+    writeOffStatus?: BankStatementWriteOffStatus;
   }
 
   /** 收费结算列表 DTO */
@@ -135,6 +155,7 @@ export namespace BankStatementAdminApi {
     statementTimeEnd?: string;
     creatorUserId?: number;
     orgId?: number;
+    writeOffStatus?: BankStatementWriteOffStatus;
     pageIndex: number;
     pageSize: number;
     sorting?: string;

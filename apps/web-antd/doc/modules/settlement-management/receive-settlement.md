@@ -2,7 +2,7 @@
 title: 收费结算
 module: 结算管理
 author: Cursor Agent
-last_updated: 2026-06-21
+last_updated: 2026-06-29
 ---
 
 # 1. 业务背景说明 (Background)
@@ -12,6 +12,7 @@ last_updated: 2026-06-21
 # 2. 功能与操作说明 (Features & Operations)
 
 - **收费结算列表：** 进入 `/settlement-management/receive-settlement` 后可按结算单号、结算时间、创建人和银行流水筛选收费结算单；查询区一行六列，结算时间范围占两列，银行流水通过下拉选择并直接传 `bankStatementId`；双击行进入编辑页，锁定单据进入只读查看页。
+- **银行流水 Tab：** 同一页面切换至「银行流水」Tab 时，展示与 `/bank-statement` 相同的列（含已结算金额、核销状态）及核销状态筛选；调用 `BankStatement/GetPagedListAsync`（按操作人权限过滤）；双击行快捷新建收费结算。
 - **新建收费结算：** 可从收费结算列表新建，若查询区已选银行流水则自动带入；也可从银行流水编辑页的“关联收费结算”卡片快捷新建并自动带入 `bankStatementId`。选中流水后在「结算信息」上方展示「银行流水信息」Card，含流水基础字段与结算进度汇总。
 - **添加结算明细：** 在表单内点击“添加明细”，右侧抽屉按银行流水关联的结算对象（只读）、**币别（只读，与流水一致）**、委托编号、主提单号拉取可结算费用，按业务分组展开后勾选费用并录入本次结算金额。明细表格通过勾选行 + 工具栏「删除」批量删除，不再使用操作列。
 - **编辑收费结算：** 未锁定单据可修改结算时间和备注；新增明细即时调用 `AddItemsAsync`，删除明细即时调用 `DeleteItemsAsync`。
@@ -48,6 +49,7 @@ last_updated: 2026-06-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-29 | `Feature` | 收费结算页「银行流水」Tab 列表新增已结算金额、核销状态列及核销状态筛选，与 Admin 银行流水列表字段对齐。 | 复用 `views/bank-statement/data.ts` 列与表单配置；`bank-statement-grid.vue` 增加 `#writeOffStatus` 插槽。 |
 | 2026-06-21 | `Style` | 添加明细抽屉搜索区改为一行五列，查询/确认按钮置于第 5 列。 | `wrapperClass: grid-cols-5`、`labelWidth: 64`，按钮通过 `expand-after` 插槽与筛选项同行。 |
 | 2026-06-21 | `Feature` | 添加明细抽屉新增只读币别，查询 `GetOrderFeeGroupAsync` 传 `currencyId` 与银行流水一致。 | `currencyId` 由 `bankStatementDetail` 经 `handleOpenAddFee` 传入 drawer props，搜索表单 `CurrencySelect` 禁用编辑。 |
 | 2026-06-21 | `Fix` | 收费结算列表 `BankStatementSelect` 下拉改用 `BankStatement` 权限过滤接口。 | 与 picker、表单摘要接口对齐；回显详情走 `getBankStatementDetailByPermission`。 |
