@@ -347,6 +347,11 @@ function transformToTreeData(
           amount: fee.amount,
           currencyCode: fee.currencyCode || '-',
           remainingInvoiceAmount: fee.remainingInvoiceAmount,
+          // ✅ 关键修复：在子节点中也保存委托编号和主提单号
+          commissionNum: item.transportOrder.commissionNum,
+          mblNum: item.transportOrder.mblNum || '-',
+          bookingNum: item.transportOrder.bookingNum || '-',
+          transportOrder: item.transportOrder, // ✅ 保存完整的 transportOrder 对象
         };
 
         parentNode.children.push(childNode);
@@ -660,10 +665,14 @@ defineExpose({
                 :precision="4"
                 style="width: 150px"
                 placeholder="请输入汇率"
+                disabled
               />
             </Form.Item>
           </Form>
         </div>
+
+        <!-- 占位元素，确保按钮始终在右侧 -->
+        <div v-else style="flex: 1"></div>
 
         <!-- 右侧：操作按钮 -->
         <Space>

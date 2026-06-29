@@ -894,7 +894,7 @@ defineExpose({
 <template>
   <Card class="order-fee-card">
     <div class="px-1">
-      <div class="mt-4">
+      <div>
         <div class="order-ctn-table">
           <Grid
             :table-title="
@@ -977,7 +977,7 @@ defineExpose({
   .order-ctn-table {
     display: flex;
     flex-direction: column;
-    height: 500px;
+    height: 400px;
   }
 
   :deep(.vxe-grid) {
@@ -992,6 +992,62 @@ defineExpose({
     min-height: 0;
     padding-bottom: 8px;
     overflow-y: auto;
+  }
+
+  // 优化横向滚动条样式
+  :deep(.vxe-table--scroll-x) {
+    height: 16px !important;
+
+    &::-webkit-scrollbar {
+      height: 16px !important;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      min-width: 40px;
+      background: #c1c1c1;
+      border-radius: 8px;
+
+      &:hover {
+        background: #a8a8a8;
+      }
+
+      &:active {
+        background: #8a8a8a;
+      }
+    }
+  }
+
+  // 优化纵向滚动条样式（如果需要）
+  :deep(.vxe-table--scroll-y) {
+    width: 16px !important;
+
+    &::-webkit-scrollbar {
+      width: 16px !important;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      min-height: 40px;
+      background: #c1c1c1;
+      border-radius: 8px;
+
+      &:hover {
+        background: #a8a8a8;
+      }
+
+      &:active {
+        background: #8a8a8a;
+      }
+    }
   }
 }
 </style>

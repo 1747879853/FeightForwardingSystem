@@ -2,33 +2,12 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
-
+import { getInvoiceApplicationStatusOptions } from '#/constants/application-status';
 import { $t } from '#/locales';
 
 /** 开票申请状态选项 */
-const getInvoiceApplicationStatusOptions = () => [
-  {
-    value: InvoiceApplicationApi.InvoiceApplicationStatus.Entering,
-    label: '录入',
-    color: 'default',
-  },
-  {
-    value: InvoiceApplicationApi.InvoiceApplicationStatus.Auditing,
-    label: '待审核',
-    color: 'blue',
-  },
-  {
-    value: InvoiceApplicationApi.InvoiceApplicationStatus.Rejected,
-    label: '驳回',
-    color: 'red',
-  },
-  {
-    value: InvoiceApplicationApi.InvoiceApplicationStatus.Invoiced,
-    label: '已开票',
-    color: 'green',
-  },
-];
-
+export const invoiceApplicationStatusOptions = () =>
+  getInvoiceApplicationStatusOptions((key) => $t(key));
 /** 发票类型选项 */
 const getInvoiceTypeOptions = () => [
   {
@@ -71,12 +50,10 @@ export function useGridFormSchema(): VbenFormSchema[] {
       label: '状态',
       componentProps: {
         allowClear: true,
-        options: getInvoiceApplicationStatusOptions().map(
-          ({ label, value }) => ({
-            label,
-            value,
-          }),
-        ),
+        options: invoiceApplicationStatusOptions().map(({ label, value }) => ({
+          label,
+          value,
+        })),
         placeholder: '请选择状态',
         class: 'w-full',
       },
@@ -166,7 +143,7 @@ export function useColumns(): VxeTableGridOptions<InvoiceApplicationApi.InvoiceA
       minWidth: 100,
       cellRender: {
         name: 'CellTag',
-        options: getInvoiceApplicationStatusOptions(),
+        options: invoiceApplicationStatusOptions(),
       },
     },
     {

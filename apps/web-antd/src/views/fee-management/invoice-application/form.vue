@@ -42,6 +42,7 @@ import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vu
 import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
 import FeeDetailModal from './components/FeeDetailModal.vue';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
+import { returnToListWithRefresh } from '#/utils/list-refresh-flag';
 
 // 从命名空间中解构 API 函数
 const { addAsync, detailAsync, editAsync } = InvoiceApplicationApi;
@@ -120,6 +121,18 @@ const invoiceExchangeRate = ref<number>(1.0);
 // 商品明细表格数据
 const goodsDetails = ref<any[]>([]);
 
+// 监听商品明细数据变化
+watch(
+  () => goodsDetails.value,
+  (newVal) => {
+    console.log('📊 商品明细数据变化:', newVal.length, '条');
+    if (newVal.length > 0) {
+      console.log('📊 第一条商品明细:', newVal[0]);
+    }
+  },
+  { deep: true },
+);
+
 // 费用明细表格数据
 const feeGroupsData = ref<any[]>([]);
 
@@ -163,7 +176,7 @@ function addSelectedFeesToForm(selectedFees: any[]) {
   // 将选中的费用转换为 InvoiceApplicationItemAddDto
   const items = selectedFees.map((fee: any) => ({
     orderFeeId: fee.orderFee.id,
-    appliedAmount: fee.appliedAmount || fee.orderFee.remainingInvoiceAmount,
+    appliedAmount: fee.appliedAmount || fee.orderFee.remainingInvoiceAmount, // ✅ 保持原币金额，不进行汇率转换
     remark: '',
   }));
 
@@ -209,8 +222,18 @@ async function handleSubmit() {
             invoiceType: formData.value.invoiceType,
             invoiceApplicationItems:
               formData.value.invoiceApplicationItems || [],
-            invoiceApplicationGoodsDtls:
-              formData.value.invoiceApplicationGoodsDtls || [],
+            invoiceApplicationGoodsDtls: goodsDetails.value.map((item) => ({
+              codeInvoiceId: item.codeInvoiceId,
+              specification: item.specification,
+              unit: item.unit,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              amount: item.amount,
+              noTaxAmount: item.noTaxAmount,
+              taxRate: item.taxRate,
+              taxAmount: item.taxAmount,
+              remark: item.remark,
+            })),
             orgBankAccountId: formData.value.orgBankAccountId,
             clientInvoiceBankId: formData.value.clientInvoiceBankId,
           },
@@ -222,7 +245,9 @@ async function handleSubmit() {
     }
 
     // 返回列表并刷新
-    router.push('/fee-management/invoice-application');
+    returnToListWithRefresh('/fee-management/invoice-application', () => {
+      router.push('/fee-management/invoice-application');
+    });
   } catch (error) {
     console.error('保存失败:', error);
     message.error('保存失败');
@@ -468,6 +493,20 @@ async function handleFeeSelectionSave(data: {
   console.log('✅ 币别ID:', currencyId);
   console.log('✅ feeGroupsData 数量:', groupsData?.length || 0);
 
+  // ✅ 详细检查 feeGroupsData 的结构
+  if (groupsData && groupsData.length > 0) {
+    console.log('✅ feeGroupsData 第一个订单组:', groupsData[0]);
+    const firstFee = groupsData[0].children?.[0];
+    if (firstFee) {
+      console.log('✅ 第一个费用的完整信息:', {
+        id: firstFee.id,
+        orderFeeId: firstFee.orderFee?.id,
+        commissionNum: firstFee.transportOrder?.commissionNum,
+        mblNum: firstFee.transportOrder?.mblNum,
+      });
+    }
+  }
+
   // 设置结算单位
   formData.value.settlementId = settlementId;
   formData.value.currencyId = currencyId;
@@ -531,6 +570,31 @@ function handleOpenRemarkTemplateModal() {
 
 /** 打开选择备注模板弹窗 */
 function handleOpenSelectRemarkTemplateModal() {
+  // ✅ 检查是否已添加费用
+  const items = formData.value.invoiceApplicationItems || [];
+
+  console.log('🔍 检查费用数据状态:');
+  console.log('  - invoiceApplicationItems:', items.length, '条');
+  console.log('  - feeGroupsData:', feeGroupsData.value.length, '个订单组');
+
+  if (items.length === 0) {
+    message.warning(
+      '请先点击"从开票申请导入费用"按钮，从抽屉中添加费用后再使用模板功能',
+    );
+    return;
+  }
+
+  if (feeGroupsData.value.length === 0) {
+    console.error(
+      '❌ 严重问题：invoiceApplicationItems 有数据但 feeGroupsData 为空！',
+    );
+    console.error(
+      '💡 这可能是费用数据传递过程中丢失了，请重新从抽屉中选择费用',
+    );
+    message.error('费用数据不完整，请重新添加费用');
+    return;
+  }
+
   selectRemarkTemplateModalVisible.value = true;
 }
 
@@ -538,7 +602,7 @@ function handleOpenSelectRemarkTemplateModal() {
 function handleUseTemplate(template: string) {
   if (template) {
     formData.value.remark = template;
-    message.success('模板已应用到备注');
+    //message.success('模板已应用到备注');
   }
 }
 
@@ -1098,6 +1162,18 @@ function getInvoiceTitle(invoiceType: string): string {
   return option ? option.label : '增值税电子普通发票';
 }
 
+/** 发票类型选项 */
+const invoiceTypeOptions = [
+  {
+    label: '电子发票（普通发票）',
+    value: InvoiceApplicationApi.InvoiceType.NormalElectric,
+  },
+  {
+    label: '电子发票（增值税专用发票）',
+    value: InvoiceApplicationApi.InvoiceType.Special,
+  },
+];
+
 /** 处理发票类型变化 */
 function handleInvoiceTypeChange({ key }: any) {
   formData.value.invoiceType = key;
@@ -1167,18 +1243,6 @@ onMounted(() => {
   }
 });
 
-// 发票类型选项
-const invoiceTypeOptions = [
-  {
-    label: '电子发票（普通发票）',
-    value: InvoiceApplicationApi.InvoiceType.NormalElectric,
-  },
-  {
-    label: '电子发票（增值税专用发票）',
-    value: InvoiceApplicationApi.InvoiceType.Special,
-  },
-];
-
 // 税率选项
 const taxRateOptions = [
   { label: '免税', value: 0 },
@@ -1244,14 +1308,48 @@ const remarkTemplateData = computed(() => {
   const commissionNums = new Set<string>();
   const mblNums = new Set<string>();
 
-  items.forEach((item: any) => {
-    if (item.commissionNum) {
-      commissionNums.add(item.commissionNum);
-    }
-    if (item.mblNum) {
-      mblNums.add(item.mblNum);
-    }
-  });
+  console.log(
+    '🔍 remarkTemplateData - invoiceApplicationItems:',
+    items.length,
+    '条',
+  );
+  console.log(
+    '🔍 remarkTemplateData - feeGroupsData:',
+    feeGroupsData.value.length,
+    '个订单组',
+  );
+
+  // ✅ 关键修复：从 feeGroupsData 中获取完整的费用信息（包含 commissionNum 和 mblNum）
+  if (feeGroupsData.value && feeGroupsData.value.length > 0) {
+    const allFees = flattenTreeData(feeGroupsData.value);
+    console.log(
+      '🔍 remarkTemplateData - feeGroupsData 扁平化后:',
+      allFees.length,
+      '条费用',
+    );
+
+    items.forEach((item: any) => {
+      // 根据 orderFeeId 从 feeGroupsData 中查找对应的完整费用信息
+      const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
+
+      if (fee) {
+        // 从 transportOrder 中获取委托编号和主提单号
+        if (fee.transportOrder?.commissionNum) {
+          commissionNums.add(fee.transportOrder.commissionNum);
+          console.log('✅ 找到委托编号:', fee.transportOrder.commissionNum);
+        }
+        if (fee.transportOrder?.mblNum) {
+          mblNums.add(fee.transportOrder.mblNum);
+          console.log('✅ 找到主提单号:', fee.transportOrder.mblNum);
+        }
+      } else {
+        console.warn('⚠️ 未找到 orderFeeId 对应的费用:', item.orderFeeId);
+      }
+    });
+  } else {
+    console.warn('⚠️ feeGroupsData 为空，无法提取委托编号和主提单号');
+    console.warn('💡 提示：请先从抽屉中添加费用，然后再使用模板功能');
+  }
 
   // 获取购方银行信息
   const clientBank = filteredClientBanks.value.find(
@@ -1263,7 +1361,7 @@ const remarkTemplateData = computed(() => {
     (b) => b.id === formData.value.orgBankAccountId,
   );
 
-  return {
+  const result = {
     // 委托编号（多个用顿号分隔）
     commissionNum: Array.from(commissionNums).join('、') || '',
     // 主提单号（多个用顿号分隔）
@@ -1283,6 +1381,9 @@ const remarkTemplateData = computed(() => {
     // 销方银行账号
     orgBankAccount: orgBank?.bankAccount || '',
   };
+
+  console.log('✅ remarkTemplateData 最终结果:', result);
+  return result;
 });
 
 /** 加载详情数据 */
@@ -1304,6 +1405,22 @@ async function loadDetail() {
       return;
     }
 
+    // ✅ 从 feeGroups 中提取 invoiceApplicationItems
+    const invoiceApplicationItems: any[] = [];
+    if (detail.feeGroups && detail.feeGroups.length > 0) {
+      detail.feeGroups.forEach((group: any) => {
+        if (group.items && group.items.length > 0) {
+          group.items.forEach((item: any) => {
+            invoiceApplicationItems.push({
+              orderFeeId: item.orderFeeId,
+              appliedAmount: item.appliedAmount,
+              remark: item.remark || '',
+            });
+          });
+        }
+      });
+    }
+
     formData.value = {
       id: detail.id,
       settlementId: detail.settlementId,
@@ -1315,7 +1432,7 @@ async function loadDetail() {
       remark: detail.remark,
       orgBankAccountId: detail.orgBankAccountId,
       clientInvoiceBankId: detail.clientInvoiceBankId,
-      invoiceApplicationItems: [], // TODO: 从 detail.feeGroups 中提取
+      invoiceApplicationItems: invoiceApplicationItems, // ✅ 从 feeGroups 中提取
       invoiceApplicationGoodsDtls: detail.invoiceApplicationGoodsDtls || [],
     };
 
@@ -1326,26 +1443,110 @@ async function loadDetail() {
       : dayjs().format('YYYY-MM-DD');
 
     // 加载客户开票信息
+    // 加载客户开票信息
     await loadClientInvoiceInfo(detail.settlementId);
 
     // 设置汇率
     invoiceExchangeRate.value = detail.invoiceExchangeRate || 1.0;
 
+    // ✅ 加载币别代码
+    if (detail.currencyId) {
+      try {
+        const currencyDetail = await getCurrencyDetail(detail.currencyId);
+        selectedCurrencyCode.value = currencyDetail.code || '';
+        console.log('✅ 已加载币别代码:', selectedCurrencyCode.value);
+      } catch (error) {
+        console.error('加载币别详情失败:', error);
+        selectedCurrencyCode.value = '';
+      }
+    }
+
     // ✅ 根据币别更新销售方银行
     updateOrgBankByCurrency();
+
+    // ✅ 从 feeGroups 中构建 feeGroupsData（用于占位符替换等功能）
+    if (detail.feeGroups && detail.feeGroups.length > 0) {
+      const feeGroupsForDisplay: any[] = [];
+
+      detail.feeGroups.forEach((group: any) => {
+        const parentNode: any = {
+          id: group.transportOrder?.id || `order_${Date.now()}`,
+          parentId: null,
+          transportOrder: group.transportOrder,
+          seaExport: group.seaExport,
+          orderFees: group.items?.map((item: any) => item.orderFee) || [],
+          commissionNum: group.transportOrder?.commissionNum,
+          mblNum: group.transportOrder?.mblNum || '-',
+          bookingNum: group.transportOrder?.bookingNum || '-',
+          clientName: group.transportOrder?.clientName,
+          bizType:
+            getBizTypeOptions().find(
+              (o: any) => o.value === group.transportOrder?.bizType,
+            )?.label || '-',
+          carrier: group.seaExport?.carrierName || '-',
+          company: group.transportOrder?.companys?.[0]?.name || '-',
+          children: [] as any[],
+        };
+
+        // 添加子节点（费用明细）
+        if (group.items && group.items.length > 0) {
+          group.items.forEach((item: any) => {
+            const childNode: any = {
+              id: item.id,
+              parentId: parentNode.id,
+              orderFee: item.orderFee,
+              appliedAmount: item.appliedAmount,
+              settlementUnit: item.orderFee?.settlementName || '-',
+              payReceiveType: item.orderFee?.paySide === 0 ? '应收' : '应付',
+              feeName: item.orderFee?.feeCodeName || '-',
+              amount: item.orderFee?.amount,
+              currencyCode: item.orderFee?.currencyCode || '-',
+              remainingInvoiceAmount: item.remainingInvoiceAmount,
+              commissionNum: group.transportOrder?.commissionNum,
+              mblNum: group.transportOrder?.mblNum || '-',
+              bookingNum: group.transportOrder?.bookingNum || '-',
+              transportOrder: group.transportOrder,
+            };
+            parentNode.children.push(childNode);
+          });
+        }
+
+        feeGroupsForDisplay.push(parentNode);
+      });
+
+      feeGroupsData.value = feeGroupsForDisplay;
+      console.log(
+        '✅ 已加载 feeGroupsData:',
+        feeGroupsData.value.length,
+        '个订单组',
+      );
+    }
 
     // ✅ 加载商品明细数据，并为每行添加唯一ID
     if (
       detail.invoiceApplicationGoodsDtls &&
       detail.invoiceApplicationGoodsDtls.length > 0
     ) {
-      goodsDetails.value = detail.invoiceApplicationGoodsDtls.map(
+      // 创建全新的数组副本，确保响应式更新
+      const newGoodsDetails = detail.invoiceApplicationGoodsDtls.map(
         (item: any, index: number) => ({
           ...item,
-          id: item.id || Date.now().toString() + index.toString(), // 如果已有ID则使用，否则生成新ID
+          // 确保 id 是字符串类型，如果不存在则生成新ID
+          id: item.id
+            ? String(item.id)
+            : Date.now().toString() + index.toString(),
         }),
       );
+
+      // 先清空再赋值，确保触发响应式更新
+      goodsDetails.value = [];
+      await nextTick();
+      goodsDetails.value = newGoodsDetails;
+
       console.log('✅ 加载商品明细:', goodsDetails.value.length, '条');
+      console.log('✅ 商品明细数据详情:', goodsDetails.value);
+    } else {
+      console.log('⚠️ 详情中没有商品明细数据');
     }
   } catch (error) {
     console.error('加载详情失败:', error);
@@ -1368,7 +1569,7 @@ async function loadDetail() {
       </Space>
     </div>
 
-    <Card :title="isEdit ? '编辑发票申请' : '新建发票申请'">
+    <Card :title="isEdit ? '编辑开票申请' : '新建开票申请'">
       <Spin :spinning="loading">
         <div style="display: flex; gap: 16px">
           <!-- 左侧基础配置 -->
@@ -1388,11 +1589,11 @@ async function loadDetail() {
                   />
                 </Form.Item>
 
-                <Form.Item label="发票申请人">
+                <Form.Item label="开票申请人">
                   <Input :value="applicantName" disabled />
                 </Form.Item>
 
-                <Form.Item label="发票申请日期">
+                <Form.Item label="开票申请日期">
                   <Input :value="applicationDate" disabled />
                 </Form.Item>
 
@@ -1428,7 +1629,7 @@ async function loadDetail() {
 
                 <Form.Item>
                   <Button type="primary" block @click="handleOpenFeeDrawer">
-                    从发票申请导入费用
+                    从开票申请导入费用
                   </Button>
                 </Form.Item>
 
@@ -1469,9 +1670,31 @@ async function loadDetail() {
             <Card>
               <template #title>
                 <div style="width: 100%; text-align: center">
-                  <span style="font-size: 24px; color: #c41e3a">{{
-                    getInvoiceTitle(formData.invoiceType)
-                  }}</span>
+                  <Dropdown :trigger="['click']">
+                    <span
+                      style="
+                        display: inline-flex;
+                        gap: 8px;
+                        align-items: center;
+                        font-size: 24px;
+                        color: #c41e3a;
+                        cursor: pointer;
+                      "
+                    >
+                      {{ getInvoiceTitle(formData.invoiceType) }}
+                      <IconifyIcon icon="ant-design:down-outlined" />
+                    </span>
+                    <template #overlay>
+                      <Menu @click="handleInvoiceTypeChange">
+                        <MenuItem
+                          v-for="option in invoiceTypeOptions"
+                          :key="option.value"
+                        >
+                          {{ option.label }}
+                        </MenuItem>
+                      </Menu>
+                    </template>
+                  </Dropdown>
                 </div>
               </template>
 
@@ -1690,8 +1913,52 @@ async function loadDetail() {
                 </div>
               </div>
 
+              <!-- 商品明细操作按钮 -->
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 8px;
+                  background: rgb(196 30 58 / 3%);
+                  border-top: 1px solid #c41e3a;
+                  border-right: 1px solid #c41e3a;
+                  border-left: 1px solid #c41e3a;
+                "
+              >
+                <Space>
+                  <Button
+                    type="primary"
+                    size="small"
+                    @click="handleAddGoodsRow"
+                  >
+                    <template #icon
+                      ><IconifyIcon icon="ant-design:plus-outlined"
+                    /></template>
+                    添加商品明细
+                  </Button>
+                  <Button
+                    size="small"
+                    danger
+                    @click="handleDeleteSelectedGoodsRows"
+                    :disabled="selectedGoodsRows.length === 0"
+                  >
+                    <template #icon
+                      ><IconifyIcon icon="ant-design:delete-outlined"
+                    /></template>
+                    删除选中行 ({{ selectedGoodsRows.length }})
+                  </Button>
+                </Space>
+              </div>
+
               <!-- 商品明细表格 -->
-              <div style="margin-top: 16px">
+              <div
+                style="
+                  border-right: 1px solid #c41e3a;
+                  border-bottom: none;
+                  border-left: 1px solid #c41e3a;
+                "
+              >
                 <Table
                   :columns="[
                     {
@@ -1764,6 +2031,10 @@ async function loadDetail() {
                       );
                     },
                     type: 'checkbox',
+                  }"
+                  :style="{
+                    borderTop: 'none',
+                    borderBottom: 'none',
                   }"
                 >
                   <template #bodyCell="{ column, record, index }">
@@ -1848,28 +2119,47 @@ async function loadDetail() {
               <!-- 合计行 -->
               <div
                 style="
-                  padding: 8px;
-                  margin-top: 8px;
-                  background: #fafafa;
-                  border: 1px solid #d9d9d9;
+                  padding: 12px;
+                  background: rgb(196 30 58 / 5%);
+                  border-top: 2px solid #c41e3a;
+                  border-right: 1px solid #c41e3a;
+                  border-bottom: 1px solid #c41e3a;
+                  border-left: 1px solid #c41e3a;
                 "
               >
-                <Space :size="16">
-                  <span><strong>合计</strong></span>
-                  <span>发票金额: {{ totalInvoiceAmount.toFixed(2) }}</span>
-                  <span>税额: {{ totalTaxAmount.toFixed(2) }}</span>
-                  <span>申请金额: {{ totalAppliedAmount.toFixed(2) }}</span>
+                <Space :size="16" wrap>
+                  <span
+                    style="font-size: 14px; font-weight: bold; color: #c41e3a"
+                    >合计</span
+                  >
+                  <span style="font-size: 13px"
+                    ><strong>发票金额:</strong>
+                    {{ totalInvoiceAmount.toFixed(2) }}</span
+                  >
+                  <span style="font-size: 13px"
+                    ><strong>税额:</strong>
+                    {{ totalTaxAmount.toFixed(2) }}</span
+                  >
+                  <span style="font-size: 13px"
+                    ><strong>申请金额:</strong>
+                    {{ totalAppliedAmount.toFixed(2) }}</span
+                  >
                   <span
                     v-if="foreignCurrencyAmount !== null"
-                    style="color: #1890ff"
+                    style="font-size: 13px; color: #1890ff"
                   >
-                    申请币别金额({{ selectedCurrencyCode }}):
+                    <strong>申请币别金额({{ selectedCurrencyCode }}):</strong>
                     {{ foreignCurrencyAmount.toFixed(2) }}
                   </span>
                 </Space>
                 <div
                   v-if="hasAmountDifference"
-                  style="margin-top: 8px; font-weight: bold; color: #ff4d4f"
+                  style="
+                    margin-top: 8px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: #ff4d4f;
+                  "
                 >
                   ⚠️ 发票金额与申请金额有差异请核对!
                 </div>
@@ -1877,36 +2167,61 @@ async function loadDetail() {
 
               <!-- 备注信息 -->
               <div style="margin-top: 16px">
-                <Form layout="vertical" size="small">
-                  <Form.Item label="备注信息">
-                    <Space style="width: 100%; margin-bottom: 8px">
-                      <Button
-                        size="small"
-                        type="primary"
-                        ghost
-                        @click="handleOpenSelectRemarkTemplateModal"
-                        :disabled="
-                          (formData.invoiceApplicationItems || []).length === 0
-                        "
-                      >
-                        <template #icon></template>
-                        使用模板
-                      </Button>
-                      <Button
-                        size="small"
-                        @click="handleOpenRemarkTemplateModal"
-                      >
-                        <template #icon></template>
-                        管理模板
-                      </Button>
-                    </Space>
-                    <Input.TextArea
-                      v-model:value="formData.remark"
-                      placeholder="请输入备注，或点击按钮使用模板"
-                      :rows="3"
-                    />
-                  </Form.Item>
-                </Form>
+                <div
+                  style="
+                    height: auto;
+                    border: 1px solid #c41e3a;
+                    border-radius: 4px;
+                  "
+                >
+                  <div style="display: flex; gap: 12px">
+                    <div
+                      style="
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        width: 40px;
+                        padding: 10px 5px;
+                        font-size: 14px;
+                        font-weight: bold;
+                        color: #c41e3a;
+                        background-color: rgb(196 30 58 / 10%);
+                        border-right: 1px solid #c41e3a;
+                      "
+                    >
+                      备注信息
+                    </div>
+                    <div style="flex: 1; padding: 8px">
+                      <Space style="width: 100%; margin-bottom: 8px">
+                        <Button
+                          size="small"
+                          type="primary"
+                          ghost
+                          @click="handleOpenSelectRemarkTemplateModal"
+                          :disabled="
+                            (formData.invoiceApplicationItems || []).length ===
+                            0
+                          "
+                        >
+                          <template #icon></template>
+                          使用模板
+                        </Button>
+                        <Button
+                          size="small"
+                          @click="handleOpenRemarkTemplateModal"
+                        >
+                          <template #icon></template>
+                          管理模板
+                        </Button>
+                      </Space>
+                      <Input.TextArea
+                        v-model:value="formData.remark"
+                        placeholder="请输入备注,或点击按钮使用模板"
+                        :rows="3"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </Card>
           </div>
