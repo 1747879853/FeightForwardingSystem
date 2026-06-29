@@ -53,6 +53,7 @@ function splitTimeRange(
 
 const [Grid, gridApi] =
   useVbenVxeGrid<BankStatementAdminApi.BankStatementListDto>({
+    columnPersist: { tableId: 'BankStatementList' },
     formOptions: {
       schema: useGridFormSchema(),
       submitOnChange: true,

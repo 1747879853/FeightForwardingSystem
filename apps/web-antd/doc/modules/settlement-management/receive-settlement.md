@@ -49,6 +49,7 @@ last_updated: 2026-06-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-06-29 | `Fix` | 收费结算页「收费结算」「银行流水」两个 Tab 列表分别声明持久化 `tableId`，避免列/搜索项/排序配置互相覆盖。 | `ReceiveSettlementList` 与 `BankStatementList`；银行流水 Tab 与 `/bank-statement` 共用 `BankStatementList` 键。 |
 | 2026-06-29 | `Feature` | 收费结算页「银行流水」Tab 列表新增已结算金额、核销状态列及核销状态筛选，与 Admin 银行流水列表字段对齐。 | 复用 `views/bank-statement/data.ts` 列与表单配置；`bank-statement-grid.vue` 增加 `#writeOffStatus` 插槽。 |
 | 2026-06-21 | `Style` | 添加明细抽屉搜索区改为一行五列，查询/确认按钮置于第 5 列。 | `wrapperClass: grid-cols-5`、`labelWidth: 64`，按钮通过 `expand-after` 插槽与筛选项同行。 |
 | 2026-06-21 | `Feature` | 添加明细抽屉新增只读币别，查询 `GetOrderFeeGroupAsync` 传 `currencyId` 与银行流水一致。 | `currencyId` 由 `bankStatementDetail` 经 `handleOpenAddFee` 传入 drawer props，搜索表单 `CurrencySelect` 禁用编辑。 |

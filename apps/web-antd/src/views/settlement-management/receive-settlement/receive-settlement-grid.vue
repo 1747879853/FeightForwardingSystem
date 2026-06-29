@@ -56,6 +56,7 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 
 const [Grid, gridApi] =
   useVbenVxeGrid<ReceiveSettlementAdminApi.ReceiveSettlementListDto>({
+    columnPersist: { tableId: 'ReceiveSettlementList' },
     formOptions: {
       schema: useGridFormSchema(),
       submitOnChange: true,
