@@ -198,41 +198,66 @@ setupVbenVxeTable({
           { color: 'success', label: $t('common.enabled'), value: 1 },
           { color: 'error', label: $t('common.disabled'), value: 0 },
         ];
-        let ModificationCount = '';
-        if (row['ModificationCount'] && row['ModificationCount'] > 0) {
-          ModificationCount = `+${row['ModificationCount']}`;
-        }
+
+        // 获取费用状态标签
         let tagItem = tagOptions.find((item) => item.value === value);
 
-        let ele = [
-          h(
-            Tag,
-            {
-              ...props,
-              ...objectOmit(tagItem ?? {}, ['label']),
-            },
-            {
-              default: () =>
-                tagItem ? tagItem?.label + ModificationCount : value,
-            },
-          ),
-        ];
-        console.log(row, 'row', row['taskStatus']);
-        if (row['taskStatus'] !== '') {
-          ele = [];
-          ele.push(
-            h(
-              Tag,
-              {
-                ...props,
-                color: '#ffc107',
-              },
-              { default: () => row['taskStatus'] },
-            ),
+        // 兼容多种大小写的 ModificationCount 字段名
+        const modificationCount =
+          row['ModificationCount'] ??
+          row['modificationCount'] ??
+          row['MODIFICATIONCOUNT'] ??
+          0;
+
+        console.log('CellFeeStatusTag - 渲染:', {
+          feeStatus: value,
+          modificationCount,
+          hasModifyTasks: !!row.modifyOrderFeeTasks,
+          modifyTasksLength: row.modifyOrderFeeTasks?.length || 0,
+          taskStatus: row.taskStatus,
+          rowId: row.id,
+        });
+
+        // 如果有修改次数，显示 "状态 +N" 格式
+        if (modificationCount && modificationCount > 0) {
+          // 使用 div 包裹而不是 Fragment
+          return h(
+            'div',
+            { style: { display: 'inline-flex', alignItems: 'center' } },
+            [
+              h(
+                Tag,
+                {
+                  ...props,
+                  ...objectOmit(tagItem ?? {}, ['label']),
+                  style: { marginRight: '0' }, // 去掉 Tag 的右边距
+                },
+                { default: () => tagItem?.label || value },
+              ),
+              h(
+                'span',
+                {
+                  style: {
+                    color: '#ff4d4f', // 红色
+                    fontWeight: 'bold', // 加粗
+                    marginLeft: '4px', // 左边距
+                  },
+                },
+                `+${modificationCount}`,
+              ),
+            ],
           );
         }
 
-        return h(Fragment, ele);
+        // 否则只显示状态标签
+        return h(
+          Tag,
+          {
+            ...props,
+            ...objectOmit(tagItem ?? {}, ['label']),
+          },
+          { default: () => tagItem?.label || value },
+        );
       },
     });
 

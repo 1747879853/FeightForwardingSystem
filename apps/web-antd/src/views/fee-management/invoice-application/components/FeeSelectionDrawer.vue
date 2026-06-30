@@ -25,6 +25,7 @@ interface Props {
   settlementId?: string; // 已选择的结算单位（固定）
   currencyId?: number; // 已选择的币别（固定）
   invoiceApplicationId?: string; // 发票申请ID（用于排除已关联的费用）
+  addedFeeIds?: string[]; // ✅ 新增：已添加的费用ID列表
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -32,6 +33,7 @@ const props = withDefaults(defineProps<Props>(), {
   settlementId: '',
   currencyId: undefined,
   invoiceApplicationId: '',
+  addedFeeIds: () => [], // ✅ 默认空数组
 });
 
 const emit = defineEmits<{
@@ -74,9 +76,9 @@ const invoiceExchangeRate = ref<number>(1.0);
 
 /** 获取子表格的选中 keys */
 function getChildSelectedKeys(record: any): string[] {
-  if (!record.children) return [];
+  if (!record.feeDetails) return [];
   return selectedFeeRowKeys.value.filter((key) =>
-    record.children.some((child: any) => child.id === key),
+    record.feeDetails.some((child: any) => child.id === key),
   );
 }
 
@@ -87,8 +89,8 @@ async function handleChildSelectionChange(
 ) {
   const currentSelected = selectedFeeRowKeys.value.filter(
     (key) =>
-      !record.children ||
-      !record.children.some((child: any) => child.id === key),
+      !record.feeDetails ||
+      !record.feeDetails.some((child: any) => child.id === key),
   );
   selectedFeeRowKeys.value = [...currentSelected, ...selectedRowKeys];
 
@@ -174,8 +176,8 @@ function flattenTreeData(data: any[]): any[] {
   function flatten(items: any[]) {
     items.forEach((item) => {
       result.push(item);
-      if (item.children && item.children.length > 0) {
-        flatten(item.children);
+      if (item.feeDetails && item.feeDetails.length > 0) {
+        flatten(item.feeDetails);
       }
     });
   }
@@ -297,8 +299,8 @@ async function loadFeeGroupData() {
 
 /** 获取已添加的费用ID列表 */
 function getAddedFeeIds(): Set<string> {
-  // TODO: 需要从父组件传入已添加的费用ID列表
-  return new Set();
+  // ✅ 从 props 中获取已添加的费用ID列表
+  return new Set(props.addedFeeIds || []);
 }
 
 /** 将费用数据转换为树状结构 */
@@ -309,25 +311,7 @@ function transformToTreeData(
   const addedFeeIds = getAddedFeeIds();
 
   items.forEach((item, index) => {
-    const parentNode: any = {
-      id: `parent_${item.transportOrder.id}`,
-      parentId: null,
-      transportOrder: item.transportOrder,
-      seaExport: item.seaExport,
-      orderFees: item.orderFees,
-      commissionNum: item.transportOrder.commissionNum,
-      mblNum: item.transportOrder.mblNum || '-',
-      bookingNum: item.transportOrder.bookingNum || '-',
-      clientName: item.transportOrder.clientName,
-      bizType:
-        getBizTypeOptions().find(
-          (o: any) => o.value === item.transportOrder?.bizType,
-        )?.label || '-',
-      carrier: item.seaExport?.carrierName || '-',
-      company: item.transportOrder.companys[0].name || '-',
-      checked: false,
-      children: [] as any[],
-    };
+    const childrenList: any[] = [];
 
     if (item.orderFees && item.orderFees.length > 0) {
       item.orderFees.forEach((fee, feeIndex) => {
@@ -354,9 +338,29 @@ function transformToTreeData(
           transportOrder: item.transportOrder, // ✅ 保存完整的 transportOrder 对象
         };
 
-        parentNode.children.push(childNode);
+        childrenList.push(childNode);
       });
     }
+
+    const parentNode: any = {
+      id: `parent_${item.transportOrder.id}`,
+      parentId: null,
+      transportOrder: item.transportOrder,
+      seaExport: item.seaExport,
+      orderFees: item.orderFees,
+      commissionNum: item.transportOrder.commissionNum,
+      mblNum: item.transportOrder.mblNum || '-',
+      bookingNum: item.transportOrder.bookingNum || '-',
+      clientName: item.transportOrder.clientName,
+      bizType:
+        getBizTypeOptions().find(
+          (o: any) => o.value === item.transportOrder?.bizType,
+        )?.label || '-',
+      carrier: item.seaExport?.carrierName || '-',
+      company: item.transportOrder.companys[0].name || '-',
+      checked: false,
+      feeDetails: childrenList, // ✅ 使用 feeDetails 而非 children，避免被 Table 识别为树形结构
+    };
 
     treeData.push(parentNode);
   });
@@ -586,16 +590,15 @@ defineExpose({
           size="small"
           :expandable="{
             defaultExpandAllRows: true,
-            childrenColumnName: 'children',
           }"
           row-key="id"
           :scroll="{ y: 500 }"
         >
           <template #expandedRowRender="{ record }">
             <Table
-              v-if="record.children && record.children.length > 0"
+              v-if="record.feeDetails && record.feeDetails.length > 0"
               :columns="feeChildColumns"
-              :data-source="record.children"
+              :data-source="record.feeDetails"
               :pagination="false"
               bordered
               size="small"

@@ -15,7 +15,7 @@ interface FeeDetailItem {
   bizType?: string;
   carrier?: string;
   company?: string;
-  children?: FeeChildItem[];
+  feeDetails?: FeeChildItem[]; // ✅ 使用 feeDetails 而非 children，避免被 Table 识别为树形结构
 }
 
 interface FeeChildItem {
@@ -45,13 +45,13 @@ const emit = defineEmits<{
 watch(
   () => props.feeDetails,
   (newVal) => {
-    console.log('📊 FeeDetailModal 接收到数据:', newVal);
+    console.log(' FeeDetailModal 接收到数据:', newVal);
     console.log('📊 父节点数量:', newVal.length);
     newVal.forEach((detail, index) => {
       console.log(`📊 父节点 ${index + 1}:`, {
         id: detail.id,
         commissionNum: detail.commissionNum,
-        childrenCount: detail.children?.length || 0,
+        childrenCount: detail.feeDetails?.length || 0, // ✅ 更新为 feeDetails
       });
     });
   },
@@ -187,16 +187,15 @@ function handleClose() {
           size="small"
           :expandable="{
             defaultExpandAllRows: true,
-            childrenColumnName: 'children',
           }"
           row-key="id"
           :scroll="{ y: 500 }"
         >
           <template #expandedRowRender="{ record }">
             <Table
-              v-if="record.children && record.children.length > 0"
+              v-if="record.feeDetails && record.feeDetails.length > 0"
               :columns="childColumns"
-              :data-source="record.children"
+              :data-source="record.feeDetails"
               :pagination="false"
               bordered
               size="small"

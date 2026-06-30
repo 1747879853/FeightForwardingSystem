@@ -711,11 +711,13 @@ onMounted(() => {
           <div
             class="left-top-section mt-1"
             :style="{
-              height: layout === 'horizontal' ? 'auto' : `${topHeight}%`,
+              height: layout === 'horizontal' ? '100%' : `${topHeight}%`,
               width: layout === 'horizontal' ? `${leftWidth}%` : 'auto',
-              flex: layout === 'horizontal' ? 'none' : 'none',
+              flex: layout === 'horizontal' ? `0 0 ${leftWidth}%` : 'none',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
             }"
-            :class="[layout === 'horizontal' ? '' : '']"
           >
             <OrderFeeTable
               @update-table-data="handleReceivableTableUpdate"
@@ -751,11 +753,14 @@ onMounted(() => {
           <div
             class="right-bottom-section mt-1"
             :style="{
-              height: layout === 'horizontal' ? 'auto' : `${100 - topHeight}%`,
+              height: layout === 'horizontal' ? '100%' : `${100 - topHeight}%`,
               width: layout === 'horizontal' ? `${100 - leftWidth}%` : 'auto',
-              flex: layout === 'horizontal' ? 'none' : 'none',
+              flex:
+                layout === 'horizontal' ? `0 0 ${100 - leftWidth}%` : 'none',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
             }"
-            :class="[layout === 'horizontal' ? '' : '']"
           >
             <OrderFeeTable
               @update-table-data="handlePayableTableUpdate"
@@ -869,6 +874,8 @@ onMounted(() => {
   &.flex-row {
     flex-direction: row;
     width: 100%;
+    // ✅ 左右布局时固定高度为 400px
+    height: 580px;
   }
 
   .left-top-section,
