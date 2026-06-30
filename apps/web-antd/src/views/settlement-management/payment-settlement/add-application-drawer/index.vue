@@ -646,9 +646,9 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
       width: 120,
     },
     {
-      title: '未开票金额',
-      dataIndex: 'unInvoicedAmount',
-      key: 'unInvoicedAmount',
+      title: '申请金额',
+      dataIndex: 'rqstPaymentAmount',
+      key: 'rqstPaymentAmount',
       width: 120,
       align: 'right',
     },
@@ -1198,6 +1198,10 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
 
                 <template v-else-if="column.key === 'amount'">
                   {{ formatAmount(feeItem.amount) }}
+                </template>
+
+                <template v-else-if="column.key === 'rqstPaymentAmount'">
+                  {{ formatAmount(feeItem.rqstPaymentAmount) }}
                 </template>
               </template>
             </Table>
