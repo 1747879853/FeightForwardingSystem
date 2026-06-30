@@ -367,72 +367,7 @@ const delRow = () => {
   tmpDel.value = true;
   gridApi.query();
 };
-const showModifyWithRemark = () => {
-  if (!selectedRowKeys.value.length) return;
 
-  const keysSet = new Set(selectedRowKeys.value);
-  const list = (dataSource.value ?? []).filter((row) =>
-    keysSet.has((row as any)._rowKey),
-  );
-
-  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0，才可以申请修改
-  const invalidRows = list.filter((row) => {
-    const isApproved =
-      row.feeStatus === feeConstants.getFeeStatusValue.Approved;
-    const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
-    const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
-    const hasSettledAmount = (row.settledAmount || 0) !== 0;
-
-    return (
-      !isApproved ||
-      hasInvoicedAmount ||
-      hasOrderInvoiceAmount ||
-      hasSettledAmount
-    );
-  });
-
-  if (invalidRows.length > 0) {
-    message.error({
-      content:
-        '只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0的费用才可以申请修改',
-      key: 'action_process_msg',
-    });
-    return;
-  }
-
-  let modalRemark = '';
-  // 创建弹窗实例
-  const modal = Modal.confirm({
-    title: $t('auditApproval.task.okModify'),
-    content: () =>
-      h('div', {}, [
-        h(Textarea, {
-          modelValue: modalRemark,
-          onChange: (val: any) => {
-            modalRemark = val.target?.value || val;
-            console.log('Textarea changed:', modalRemark);
-          },
-          rows: 3,
-          placeholder: $t('auditApproval.task.remarkModifyPlaceholder'),
-          maxlength: 100,
-          style: 'margin-top: 8px;',
-        }),
-      ]),
-    icon: null,
-    width: 520,
-    centered: true,
-    okText: $t('common.confirm'),
-    cancelText: $t('common.cancel'),
-    async onOk() {
-      await nextTick(); // 等待 Vue 响应式更新完成
-      //    console.log('remark onOk:', modalRemark);
-      submitModify(modalRemark);
-    },
-    onCancel() {
-      modalRemark = '';
-    },
-  });
-};
 const showDeleteWithRemark = () => {
   if (!selectedRowKeys.value.length) return;
 
@@ -441,26 +376,27 @@ const showDeleteWithRemark = () => {
     keysSet.has((row as any)._rowKey),
   );
 
-  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0，才可以申请删除
+  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额、申请付款金额全是0，才可以申请删除
   const invalidRows = list.filter((row) => {
     const isApproved =
       row.feeStatus === feeConstants.getFeeStatusValue.Approved;
     const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
     const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
     const hasSettledAmount = (row.settledAmount || 0) !== 0;
+    const hasRqstPaymentAmount = (row.rqstPaymentAmount || 0) !== 0;
 
     return (
       !isApproved ||
       hasInvoicedAmount ||
       hasOrderInvoiceAmount ||
-      hasSettledAmount
+      hasSettledAmount ||
+      hasRqstPaymentAmount
     );
   });
 
   if (invalidRows.length > 0) {
     message.error({
-      content:
-        '只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0的费用才可以申请删除',
+      content: '当前费用不允许申请更改',
       key: 'action_process_msg',
     });
     return;
@@ -574,6 +510,33 @@ const openModifyModal = () => {
   const list = (dataSource.value ?? []).filter((row) =>
     keysSet.has((row as any)._rowKey),
   );
+
+  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额、申请付款金额全是0，才可以申请修改
+  const invalidRows = list.filter((row) => {
+    const isApproved =
+      row.feeStatus === feeConstants.getFeeStatusValue.Approved;
+    const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
+    const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
+    const hasSettledAmount = (row.settledAmount || 0) !== 0;
+    const hasRqstPaymentAmount = (row.rqstPaymentAmount || 0) !== 0;
+
+    return (
+      !isApproved ||
+      hasInvoicedAmount ||
+      hasOrderInvoiceAmount ||
+      hasSettledAmount ||
+      hasRqstPaymentAmount
+    );
+  });
+
+  if (invalidRows.length > 0) {
+    message.error({
+      content: '当前费用不允许申请更改',
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
   if (list.length > 1) {
     message.error({
       content: $t('ui.actionMessage.lengthLimit1'),

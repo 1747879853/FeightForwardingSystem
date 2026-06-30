@@ -1092,8 +1092,8 @@ function useOrderFeeFormSchema() {
       fieldName: 'canInvoice',
       label: $t('seaExport.export.orderFee.canInvoice'),
       componentProps: {
-        checkedChildren: '是',
-        unCheckedChildren: '否',
+        checkedChildren: '否',
+        unCheckedChildren: '是',
       },
     },
     {
@@ -1331,7 +1331,7 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
                 >{{ $t('seaExport.export.orderFee.canInvoice') }}:</span
               >
               <span class="font-medium">{{
-                originalFeeData?.canInvoice ? '是' : '否'
+                originalFeeData?.canInvoice ? '否' : '是'
               }}</span>
             </div>
             <div class="flex">
