@@ -42,6 +42,12 @@ import {
 import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
+/** 收费结算变更后，收费结算列表与银行流水列表均需刷新 */
+function markReceiveSettlementRelatedListsShouldRefresh() {
+  markListShouldRefresh('ReceiveSettlementList');
+  markListShouldRefresh('BankStatementList');
+}
+
 import AddFeeDrawer from './add-fee-drawer/index.vue';
 import type { SelectedReceiveFee } from './add-fee-drawer/data';
 import BankStatementPicker from './bank-statement-picker/index.vue';
@@ -147,7 +153,7 @@ const remainingSettleAmount = computed(
     currentSettlementTotal.value,
 );
 
-const isRemainingOverLimit = computed(() => remainingSettleAmount.value <= 0);
+const isRemainingOverLimit = computed(() => remainingSettleAmount.value < 0);
 
 function formatBankAmount(value: number | undefined | null) {
   return formatAmountWithCurrency(value, bankStatementCurrencyCode.value);
@@ -387,7 +393,7 @@ async function handleFeeConfirm(fees: SelectedReceiveFee[]) {
       });
       message.success('添加明细成功');
       await loadEditData();
-      markListShouldRefresh('ReceiveSettlementList');
+      markReceiveSettlementRelatedListsShouldRefresh();
     } catch (error: any) {
       message.error(error.message || '添加明细失败');
     } finally {
@@ -446,7 +452,7 @@ function handleDeleteSelectedItems() {
           message.success('删除明细成功');
           selectedItemRowKeys.value = [];
           await loadEditData();
-          markListShouldRefresh('ReceiveSettlementList');
+          markReceiveSettlementRelatedListsShouldRefresh();
         } catch (error: any) {
           message.error(error.message || '删除明细失败');
         } finally {
@@ -522,7 +528,7 @@ async function handleSave() {
         remark: remark.value || undefined,
       });
       message.success('保存成功');
-      markListShouldRefresh('ReceiveSettlementList');
+      markReceiveSettlementRelatedListsShouldRefresh();
       await loadEditData();
       return;
     }
@@ -538,7 +544,7 @@ async function handleSave() {
       })),
     });
     message.success('新建成功');
-    markListShouldRefresh('ReceiveSettlementList');
+    markReceiveSettlementRelatedListsShouldRefresh();
     router.replace(`/settlement-management/receive-settlement/edit/${id}`);
   } catch (error: any) {
     message.error(error.message || '保存失败');
@@ -559,7 +565,7 @@ function handleDelete() {
       try {
         await deleteReceiveSettlement({ id: editId.value! });
         message.success('删除成功');
-        markListShouldRefresh('ReceiveSettlementList');
+        markReceiveSettlementRelatedListsShouldRefresh();
         router.push('/settlement-management/receive-settlement');
       } catch (error: any) {
         message.error(error.message || '删除失败');
@@ -581,7 +587,7 @@ function handleLock() {
       try {
         await lockReceiveSettlement({ id: editId.value! });
         message.success('锁定成功');
-        markListShouldRefresh('ReceiveSettlementList');
+        markReceiveSettlementRelatedListsShouldRefresh();
         await loadEditData();
       } catch (error: any) {
         message.error(error.message || '锁定失败');
@@ -603,7 +609,7 @@ function handleUnlock() {
       try {
         await unlockReceiveSettlement({ id: editId.value! });
         message.success('解锁成功');
-        markListShouldRefresh('ReceiveSettlementList');
+        markReceiveSettlementRelatedListsShouldRefresh();
         await loadEditData();
       } catch (error: any) {
         message.error(error.message || '解锁失败');

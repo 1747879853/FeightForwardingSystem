@@ -2,6 +2,7 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
 import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
+import { BankStatementAdminApi as BankStatementApi } from '#/api/settlement-management/bank-statement-admin';
 
 import dayjs from 'dayjs';
 
@@ -29,6 +30,50 @@ export const receiveSettlementStatusMap: Record<
   4: { label: '部分结算', color: 'warning' },
   5: { label: '已结算', color: 'success' },
 };
+
+/** 银行流水核销状态枚举 */
+export const bankStatementWriteOffStatusMap: Record<
+  number,
+  { label: string; color: string }
+> = {
+  [BankStatementApi.BankStatementWriteOffStatus.PendingWriteOff]: {
+    label: '待核销',
+    color: 'default',
+  },
+  [BankStatementApi.BankStatementWriteOffStatus.PartialWriteOff]: {
+    label: '部分核销',
+    color: 'warning',
+  },
+  [BankStatementApi.BankStatementWriteOffStatus.WriteOffCompleted]: {
+    label: '核销完成',
+    color: 'success',
+  },
+};
+
+/** 核销状态下拉选项 */
+export function getBankStatementWriteOffStatusOptions() {
+  return Object.entries(bankStatementWriteOffStatusMap).map(
+    ([value, { label }]) => ({
+      label,
+      value: Number(value),
+    }),
+  );
+}
+
+/** 获取核销状态展示信息 */
+export function getBankStatementWriteOffStatusInfo(
+  status: number | undefined | null,
+): { label: string; color: string } {
+  if (status === undefined || status === null) {
+    return { label: '-', color: 'default' };
+  }
+  return (
+    bankStatementWriteOffStatusMap[status] ?? {
+      label: String(status),
+      color: 'default',
+    }
+  );
+}
 
 /** 拼接操作人名称 */
 const formatOperators = (
@@ -82,6 +127,19 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       width: 120,
       align: 'right',
       formatter: ({ cellValue }) => formatAmount(cellValue),
+    },
+    {
+      field: 'settledAmount',
+      title: '已结算金额',
+      width: 120,
+      align: 'right',
+      formatter: ({ cellValue }) => formatAmount(cellValue),
+    },
+    {
+      field: 'writeOffStatus',
+      title: '核销状态',
+      width: 100,
+      slots: { default: 'writeOffStatus' },
     },
     {
       field: 'currencyCode',
@@ -164,6 +222,17 @@ export function useGridFormSchema(): VbenFormSchema[] {
       componentProps: {
         placeholder: '请选择币别',
         allowClear: true,
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'writeOffStatus',
+      label: '核销状态',
+      componentProps: {
+        placeholder: '请选择核销状态',
+        allowClear: true,
+        options: getBankStatementWriteOffStatusOptions(),
         class: 'w-full',
       },
     },

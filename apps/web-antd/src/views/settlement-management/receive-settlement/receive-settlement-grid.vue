@@ -15,7 +15,6 @@ import {
 } from '#/api/settlement-management/receive-settlement-admin';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { createPagedListQuery } from '#/utils/paged-list-query';
-import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 import ListTitleTabs, { type ListTabKey } from './list-title-tabs.vue';
@@ -57,6 +56,7 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 
 const [Grid, gridApi] =
   useVbenVxeGrid<ReceiveSettlementAdminApi.ReceiveSettlementListDto>({
+    columnPersist: { tableId: 'ReceiveSettlementList' },
     formOptions: {
       schema: useGridFormSchema(),
       submitOnChange: true,
@@ -172,10 +172,12 @@ async function initQueryBankStatement() {
   gridApi.query();
 }
 
-useRefreshListOnFormReturn('ReceiveSettlementList', handleRefresh);
-
 onMounted(() => {
   initQueryBankStatement();
+});
+
+defineExpose({
+  refresh: handleRefresh,
 });
 </script>
 

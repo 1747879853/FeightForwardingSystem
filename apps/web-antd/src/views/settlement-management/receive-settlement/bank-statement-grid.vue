@@ -4,18 +4,21 @@ import type { BankStatementAdminApi } from '#/api/settlement-management/bank-sta
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
-import { Button, message, Modal, Space } from 'ant-design-vue';
+import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deleteBankStatement,
   getBankStatementPagedListByPermission,
 } from '#/api/settlement-management/bank-statement-admin';
-import { useColumns, useGridFormSchema } from '#/views/bank-statement/data';
+import {
+  useColumns,
+  useGridFormSchema,
+  getBankStatementWriteOffStatusInfo,
+} from '#/views/bank-statement/data';
 import { enrichBankStatementListItems } from '#/views/bank-statement/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { createPagedListQuery } from '#/utils/paged-list-query';
-import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import ListTitleTabs, { type ListTabKey } from './list-title-tabs.vue';
 
@@ -50,6 +53,7 @@ function splitTimeRange(
 
 const [Grid, gridApi] =
   useVbenVxeGrid<BankStatementAdminApi.BankStatementListDto>({
+    columnPersist: { tableId: 'BankStatementList' },
     formOptions: {
       schema: useGridFormSchema(),
       submitOnChange: true,
@@ -140,7 +144,9 @@ function handleRefresh() {
   gridApi.query();
 }
 
-useRefreshListOnFormReturn('BankStatementList', handleRefresh);
+defineExpose({
+  refresh: handleRefresh,
+});
 
 async function handleDelete() {
   const rows = getSelectedRows();
@@ -190,6 +196,16 @@ async function handleDelete() {
           删除
         </Button>
       </Space>
+    </template>
+
+    <template #writeOffStatus="{ row }">
+      <Tag
+        v-if="row.writeOffStatus !== undefined && row.writeOffStatus !== null"
+        :color="getBankStatementWriteOffStatusInfo(row.writeOffStatus).color"
+      >
+        {{ getBankStatementWriteOffStatusInfo(row.writeOffStatus).label }}
+      </Tag>
+      <span v-else>-</span>
     </template>
   </Grid>
 </template>

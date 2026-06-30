@@ -6,7 +6,7 @@ import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
-import { Button, message, Modal, Space } from 'ant-design-vue';
+import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -17,7 +17,11 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
-import { useColumns, useGridFormSchema } from './data';
+import {
+  useColumns,
+  useGridFormSchema,
+  getBankStatementWriteOffStatusInfo,
+} from './data';
 import { enrichBankStatementListItems } from './utils';
 
 const perm = createAbpPermission('Admin.BankStatement');
@@ -162,6 +166,16 @@ async function handleDelete() {
             删除
           </Button>
         </Space>
+      </template>
+
+      <template #writeOffStatus="{ row }">
+        <Tag
+          v-if="row.writeOffStatus !== undefined && row.writeOffStatus !== null"
+          :color="getBankStatementWriteOffStatusInfo(row.writeOffStatus).color"
+        >
+          {{ getBankStatementWriteOffStatusInfo(row.writeOffStatus).label }}
+        </Tag>
+        <span v-else>-</span>
       </template>
     </Grid>
   </Page>
