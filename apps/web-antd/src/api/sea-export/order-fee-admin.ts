@@ -295,6 +295,21 @@ export namespace OrderFeeAdminApi {
     totalPages?: number;
   }
 
+  /** 收付互生费用输入参数 */
+  export interface GenerateOppositeOrderFeesInputDto {
+    /** 业务id（TransportOrder.Id） */
+    transportOrderId: string;
+
+    /** 输入费用的收付类型（0=收 1=付）。收→生成应付；付→生成应收 */
+    paySide: number;
+
+    /** 源费用id列表（均需属于该业务、该收付类型、该更改单） */
+    orderFeeIds: string[];
+
+    /** 更改单id，可空。不为空时校验源费用归属该更改单，新费用归属该更改单，并判断该更改单是否费用锁定 */
+    changeOrderId?: string;
+  }
+
   /** 新增业务费用 */
   export const addOrderFee = (data: OrderFeeAdminApi.OrderFeeAddDto) => {
     return requestClient.post<number>(`${API_PREFIX}/AddAsync`, data);
@@ -364,4 +379,14 @@ export const getOrderFeeStatistics = (transportOrderId: string | number) => {
     params: { transportOrderId }, // 传递运输订单 ID 作为查询参数
     responseType: 'json',
   });
+};
+
+/** 收付互生费用（收转付/付转收） */
+export const generateOppositeOrderFees = (
+  data: OrderFeeAdminApi.GenerateOppositeOrderFeesInputDto,
+) => {
+  return requestClient.post<string[]>(
+    `${API_PREFIX}/GenerateOppositeOrderFeesAsync`,
+    data,
+  );
 };

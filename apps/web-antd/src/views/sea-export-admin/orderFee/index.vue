@@ -411,9 +411,31 @@ const totalAmount = computed(() => {
 // 配置弹窗引用
 const configModalRef = ref<any>(null);
 
+// 应收和应付表格的引用
+const recOrderFeeTableRef = ref<InstanceType<typeof OrderFeeTable>>();
+const payOrderFeeTableRef = ref<InstanceType<typeof OrderFeeTable>>();
+
 // 打开配置弹窗
 const openConfigModal = () => {
   configModalRef.value?.open();
+};
+
+// 处理刷新对立表格事件（收付互生后调用）
+const handleRefreshOppositeTable = (type: number) => {
+  console.log(
+    '🔄 [handleRefreshOppositeTable] 收到刷新对立表格事件，当前类型:',
+    type,
+  );
+
+  if (type === 0) {
+    // 当前是应收表，需要刷新生成的应付表
+    console.log('✅ 刷新生成的应付表格');
+    payOrderFeeTableRef.value?.getTableDate();
+  } else {
+    // 当前是应付表，需要刷新生成的应收表
+    console.log('✅ 刷新生成的应收表格');
+    recOrderFeeTableRef.value?.getTableDate();
+  }
 };
 
 const loadSeaExportData = async () => {
@@ -582,16 +604,20 @@ onMounted(() => {
         </Card>
         <div class="flex min-w-0 flex-1 flex-col gap-2">
           <OrderFeeTable
+            ref="recOrderFeeTableRef"
             :type="0"
             :rec-amount-map="recAmountMap"
             :pay-amount-map="payAmountMap"
             @update-amount="handleAmountUpdate"
+            @refresh-opposite-table="() => handleRefreshOppositeTable(0)"
           />
           <OrderFeeTable
+            ref="payOrderFeeTableRef"
             :type="1"
             :rec-amount-map="recAmountMap"
             :pay-amount-map="payAmountMap"
             @update-amount="handleAmountUpdate"
+            @refresh-opposite-table="() => handleRefreshOppositeTable(1)"
           />
           <div class="total-amount flex flex-wrap rounded-md px-4 py-1 shadow">
             <div
