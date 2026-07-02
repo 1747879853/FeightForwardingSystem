@@ -4,11 +4,13 @@ import dayjs from 'dayjs';
 
 import {
   Button,
+  DatePicker,
   Drawer,
   Form,
   Input,
   InputNumber,
   message,
+  Select,
   Space,
   Spin,
   Table,
@@ -62,8 +64,15 @@ const selectedCurrencyId = ref<number | undefined>();
 const selectedCurrencyCode = ref<string>('');
 
 // 抽屉筛选条件
-const filterCommissionNum = ref<string>('');
+const keyWord = ref<string>('');
 const filterMblNum = ref<string>('');
+const filterClientId = ref<string>(''); // 新增：委托单位
+const filterEtdStart = ref<string>(''); // 新增：开船日期起
+const filterEtdEnd = ref<string>(''); // 新增：开船日期止
+const filterPaySide = ref<number>(0); // 新增：收付类型，默认应收(0)
+
+// ✅ 新增：用于 RangePicker 的日期范围状态
+const filterEtdRange = ref<[dayjs.Dayjs, dayjs.Dayjs] | undefined>(undefined);
 
 // 费用明细表格数据
 const feeGroupsData = ref<any[]>([]);
@@ -200,10 +209,41 @@ function getSelectedFeesFromTable(): any[] {
 function handleResetFilter() {
   selectedSettlementId.value = '';
   selectedCurrencyId.value = undefined;
-  filterCommissionNum.value = '';
+  keyWord.value = '';
   filterMblNum.value = '';
+  filterClientId.value = '';
+  filterEtdStart.value = '';
+  filterEtdEnd.value = '';
+  filterEtdRange.value = undefined; // ✅ 重置日期范围
+  filterPaySide.value = 0;
   selectedFeeRowKeys.value = [];
   loadFeeGroupData();
+}
+
+/** 处理日期范围变化 */
+function handleEtdRangeChange(
+  dates: [dayjs.Dayjs, dayjs.Dayjs] | [string, string] | undefined,
+) {
+  if (dates && dates.length === 2) {
+    const startDate = dates[0];
+    const endDate = dates[1];
+
+    // 处理 Dayjs 对象或字符串
+    if (typeof startDate === 'string') {
+      filterEtdStart.value = startDate;
+    } else {
+      filterEtdStart.value = startDate?.format('YYYY-MM-DD') || '';
+    }
+
+    if (typeof endDate === 'string') {
+      filterEtdEnd.value = endDate;
+    } else {
+      filterEtdEnd.value = endDate?.format('YYYY-MM-DD') || '';
+    }
+  } else {
+    filterEtdStart.value = '';
+    filterEtdEnd.value = '';
+  }
 }
 
 /** 打开费用选择抽屉 */
@@ -274,12 +314,25 @@ async function loadFeeGroupData() {
       params.currencyId = selectedCurrencyId.value;
     }
 
-    if (filterCommissionNum.value) {
-      params.commissionNum = filterCommissionNum.value;
+    // 合并委托编号和主提单号到 commissionNum 参数
+    if (keyWord.value) {
+      params.keyword = keyWord.value;
     }
-    if (filterMblNum.value) {
-      params.mblNum = filterMblNum.value;
+    // 新增：委托单位
+    if (filterClientId.value) {
+      params.clientId = filterClientId.value;
     }
+
+    // 新增：开船日期范围
+    if (filterEtdStart.value) {
+      params.etdStart = filterEtdStart.value;
+    }
+    if (filterEtdEnd.value) {
+      params.etdEnd = filterEtdEnd.value;
+    }
+
+    // 新增：收付类型
+    params.paySide = filterPaySide.value;
 
     if (props.invoiceApplicationId) {
       params.invoiceApplicationId = props.invoiceApplicationId;
@@ -524,11 +577,11 @@ defineExpose({
             style="display: flex; gap: 8px; align-items: center; width: 305px"
           >
             <span style="min-width: 70px; font-size: 14px; color: #333"
-              >委托编号:</span
+              >编号:</span
             >
             <Input
-              v-model:value="filterCommissionNum"
-              placeholder="请输入委托编号"
+              v-model:value="keyWord"
+              placeholder="请输入委托编号或主提单号"
               style="flex: 1"
               allow-clear
             />
@@ -537,13 +590,44 @@ defineExpose({
             style="display: flex; gap: 8px; align-items: center; width: 305px"
           >
             <span style="min-width: 70px; font-size: 14px; color: #333"
-              >主提单号:</span
+              >委托单位:</span
             >
-            <Input
-              v-model:value="filterMblNum"
-              placeholder="请输入主提单号"
+            <ClientSelect
+              v-model:model-value="filterClientId"
+              placeholder="请选择委托单位"
               style="flex: 1"
               allow-clear
+            />
+          </div>
+          <div
+            style="display: flex; gap: 8px; align-items: center; width: 305px"
+          >
+            <span style="min-width: 70px; font-size: 14px; color: #333"
+              >开船日期:</span
+            >
+            <DatePicker.RangePicker
+              v-model:value="filterEtdRange"
+              @update:value="handleEtdRangeChange"
+              style="flex: 1"
+              format="YYYY-MM-DD"
+              :placeholder="['开始日期', '结束日期']"
+            />
+          </div>
+          <div
+            style="display: flex; gap: 8px; align-items: center; width: 305px"
+          >
+            <span style="min-width: 70px; font-size: 14px; color: #333"
+              >收付类型:</span
+            >
+            <Select
+              v-model:value="filterPaySide"
+              style="flex: 1"
+              :options="[
+                { label: '全部', value: null },
+                { label: '应收', value: 0 },
+                { label: '应付', value: 1 },
+              ]"
+              placeholder="请选择收付类型"
             />
           </div>
           <div
