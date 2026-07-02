@@ -2382,32 +2382,24 @@ async function loadDetail() {
                       {{ record.noTaxAmount?.toFixed(2) || '0.00' }}
                     </template>
                     <template v-else-if="column.key === 'taxRate'">
-                      <div style="display: flex; gap: 4px">
-                        <Select
-                          v-model:value="record.taxRate"
-                          :options="taxRateOptions"
-                          style="flex: 1"
-                          size="small"
-                          placeholder="选择税率"
-                          allow-clear
-                          @change="() => handleTaxRateChange(record)"
-                        />
-                        <InputNumber
-                          v-model:value="record.taxRate"
-                          :min="0"
-                          :max="100"
-                          :precision="2"
-                          :step="0.01"
-                          style="width: 100px"
-                          size="small"
-                          placeholder="自定义"
-                          addon-after="%"
-                          @change="() => handleTaxRateChange(record)"
-                        />
-                      </div>
+                      <Select
+                        v-model:value="record.taxRate"
+                        :options="taxRateOptions"
+                        style="width: 100%"
+                        size="small"
+                        placeholder="选择税率"
+                        allow-clear
+                        @change="() => handleTaxRateChange(record)"
+                      />
                     </template>
                     <template v-else-if="column.key === 'taxAmount'">
                       {{ record.taxAmount?.toFixed(2) || '0.00' }}
+                    </template>
+                    <template v-else-if="column.key === 'totalAmount'">
+                      {{ record.totalAmount?.toFixed(2) || '0.00' }}
+                    </template>
+                    <template v-else-if="column.key === 'remark'">
+                      <Input v-model:value="record.remark" size="small" />
                     </template>
                   </template>
                 </Table>
