@@ -60,6 +60,7 @@ const currentFormType = ref<DataPermissionType>();
 
 const itemRows = ref<DataPermissionItemRow[]>([]);
 const loadingItems = ref(false);
+const isApplyingItems = ref(false);
 const currentPermissionRow = ref<SystemPermissionApi.UserDataPermissionDto>();
 
 // ==================== 计算属性 ====================
@@ -219,7 +220,7 @@ const [FormModal, modalApi] = useVbenModal({
       await nextTick();
       const data =
         modalApi.getData<SystemPermissionApi.UserDataPermissionDto>();
-      formApi.resetForm();
+      await formApi.resetForm();
       resetEntityState();
 
       if (data?.id) {
@@ -227,7 +228,7 @@ const [FormModal, modalApi] = useVbenModal({
         const detail = await resolvePermissionDetail(data);
         originalDataPermissionType.value = detail.dataPermissionType;
         currentFormType.value = detail.dataPermissionType;
-        formApi.setValues({
+        await formApi.setValues({
           manageType: detail.manageType,
           dataPermissionType: detail.dataPermissionType,
         });
@@ -294,7 +295,7 @@ function resetEntityState() {
 async function resolvePermissionDetail(
   data: SystemPermissionApi.UserDataPermissionDto,
 ) {
-  if (data.items) {
+  if (Array.isArray(data.items)) {
     return data;
   }
   return getDataPermissionDetail(data.id);
@@ -307,13 +308,18 @@ async function applyPermissionItems(
     return;
   }
 
-  const items = data.items || [];
-  entityIds.value = items.map((item) => item.entityId);
+  isApplyingItems.value = true;
+  try {
+    const items = data.items || [];
+    entityIds.value = items.map((item) => item.entityId);
 
-  if (data.dataPermissionType === DataPermissionType.ManyUser) {
-    selectedUsers.value = await loadUsersByIds(entityIds.value);
-  } else if (data.dataPermissionType === DataPermissionType.ManyPart) {
-    selectedOrgs.value = await loadOrgsByIds(entityIds.value);
+    if (data.dataPermissionType === DataPermissionType.ManyUser) {
+      selectedUsers.value = await loadUsersByIds(entityIds.value);
+    } else if (data.dataPermissionType === DataPermissionType.ManyPart) {
+      selectedOrgs.value = await loadOrgsByIds(entityIds.value);
+    }
+  } finally {
+    isApplyingItems.value = false;
   }
 }
 
@@ -426,7 +432,7 @@ watch(
 );
 
 watch(currentFormType, (newType, oldType) => {
-  if (oldType === undefined || newType === oldType) {
+  if (oldType === undefined || newType === oldType || isApplyingItems.value) {
     return;
   }
   if (needsDataPermissionItems(newType) && needsDataPermissionItems(oldType)) {
