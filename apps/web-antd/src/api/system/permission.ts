@@ -191,7 +191,6 @@ export namespace SystemPermissionApi {
     userId?: number;
     roleId?: number;
     frightModule: FrightModule;
-    manageType: ManageType;
   }
 
   /** 表级权限编辑DTO */
@@ -200,7 +199,6 @@ export namespace SystemPermissionApi {
     userId?: number;
     roleId?: number;
     frightModule: FrightModule;
-    manageType: ManageType;
   }
 
   /** 表级权限条件DTO */
@@ -210,12 +208,24 @@ export namespace SystemPermissionApi {
     propName: string;
     operator: UserTablePermissionOperator;
     value: string;
+    showName?: string;
+    showValue?: string;
   }
 
   /** 表级权限条件新增DTO */
   export interface UserTablePermissionConditionAddDto {
     userTablePermissionId: number;
     propName: string;
+    operator: UserTablePermissionOperator;
+    value: string;
+    showName?: string;
+    showValue?: string;
+  }
+
+  /** 表级权限条件编辑DTO（后端仅更新 operator / value） */
+  export interface UserTablePermissionConditionEditDto {
+    id: number;
+    userTablePermissionId: number;
     operator: UserTablePermissionOperator;
     value: string;
   }
@@ -414,10 +424,9 @@ async function getTablePermissionList(params: Recordable<any>) {
     keyword: params.keyword,
     userId: params.userId,
     roleId: params.roleId,
-    skipCount:
-      ((params.page || params.pageIndex || 1) - 1) * (params.pageSize || 10),
-    maxResultCount: params.pageSize || 10,
-    sorting: params.sorting || 'Id',
+    pageIndex: params.pageIndex || params.page || 1,
+    pageSize: params.pageSize || 10,
+    sorting: params.sorting || 'CreationTime DESC',
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserTablePermissionDto>
@@ -470,9 +479,10 @@ async function deleteTablePermission(id: number) {
 async function getTablePermissionConditionList(params: Recordable<any>) {
   const queryParams = {
     userTablePermissionId: params.userTablePermissionId,
-    skipCount:
-      ((params.page || params.pageIndex || 1) - 1) * (params.pageSize || 100),
-    maxResultCount: params.pageSize || 100,
+    keyword: params.keyword,
+    pageIndex: params.pageIndex || params.page || 1,
+    pageSize: params.pageSize || 100,
+    sorting: params.sorting || 'Id',
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserTablePermissionConditionDto>
@@ -493,6 +503,18 @@ async function addTablePermissionCondition(
 ) {
   return requestClient.post<number>(
     '/services/app/UserTablePermissionConditionAdmin/AddAsync',
+    data,
+  );
+}
+
+/**
+ * 编辑表级权限条件（仅 operator / value 生效）
+ */
+async function editTablePermissionCondition(
+  data: SystemPermissionApi.UserTablePermissionConditionEditDto,
+) {
+  return requestClient.put<boolean>(
+    '/services/app/UserTablePermissionConditionAdmin/EditAsync',
     data,
   );
 }
@@ -614,6 +636,7 @@ export {
   deleteTablePermission,
   deleteTablePermissionCondition,
   editTablePermission,
+  editTablePermissionCondition,
   getTablePermissionConditionList,
   getTablePermissionList,
   // 字段权限
