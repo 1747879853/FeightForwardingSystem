@@ -155,8 +155,22 @@ export namespace RiskbirdApi {
 
   /** 分页列表响应 */
   export interface PagedList<T> {
-    totalCount: number;
+    skipCount: number;
+    maxResultCount: number;
     items: T[];
+    totalCount: number;
+    currentPage: number;
+    totalPages: number;
+  }
+
+  /** API响应包装器 */
+  export interface ApiResponse<T> {
+    result: T;
+    targetUrl: string | null;
+    success: boolean;
+    error: string | null;
+    unAuthorizedRequest: boolean;
+    __abp: boolean;
   }
 
   // ==================== API 方法定义 ====================
@@ -166,56 +180,67 @@ export namespace RiskbirdApi {
    * POST services/app/RiskbirdAdmin/SearchCompanyAsync
    * @param data 搜索条件
    */
-  export function searchCompanyAsync(data: RiskbirdCompanySearchDto) {
-    return requestClient.post<RiskbirdCompanySearchResultDto[]>(
+  export const searchCompanyAsync = (data: RiskbirdCompanySearchDto) => {
+    return requestClient.post<PagedList<RiskbirdCompanySearchResultDto>>(
       'services/app/RiskbirdAdmin/SearchCompanyAsync',
       data,
     );
-  }
+  };
 
   /**
    * 获取企业详细信息
    * POST services/app/RiskbirdAdmin/GetCompanyDetailAsync
    * @param data 查询条件（含CompanyId和可选的ClientId用于回写）
    */
-  export function getCompanyDetailAsync(data: RiskbirdCompanyDetailInputDto) {
+  export const getCompanyDetailAsync = (
+    data: RiskbirdCompanyDetailInputDto,
+  ) => {
     return requestClient.post<RiskbirdCompanyDetailDto>(
       'services/app/RiskbirdAdmin/GetCompanyDetailAsync',
       data,
     );
-  }
+  };
 
   /**
    * 获取风鸟账号列表
    * GET services/app/RiskbirdAdmin/GetAccountListAsync
    */
-  export function getAccountListAsync() {
+  export const getAccountListAsync = () => {
     return requestClient.get<PagedList<RiskbirdAccountDto>>(
       'services/app/RiskbirdAdmin/GetAccountListAsync',
     );
-  }
+  };
 
   /**
    * 保存风鸟账号（新增或编辑）
    * POST services/app/RiskbirdAdmin/SaveAccountAsync
    * @param data 账号信息
    */
-  export function saveAccountAsync(data: RiskbirdAccountSaveDto) {
+  export const saveAccountAsync = (data: RiskbirdAccountSaveDto) => {
     return requestClient.post<boolean>(
       'services/app/RiskbirdAdmin/SaveAccountAsync',
       data,
     );
-  }
+  };
 
   /**
    * 删除风鸟账号
    * DELETE services/app/RiskbirdAdmin/DeleteAccountAsync
    * @param id 账号ID
    */
-  export function deleteAccountAsync(id: number) {
+  export const deleteAccountAsync = (id: number) => {
     return requestClient.delete<boolean>(
       'services/app/RiskbirdAdmin/DeleteAccountAsync',
       { params: { id } },
     );
-  }
+  };
 }
+
+// 导出常用函数，方便直接导入使用
+export const {
+  searchCompanyAsync,
+  getCompanyDetailAsync,
+  getAccountListAsync,
+  saveAccountAsync,
+  deleteAccountAsync,
+} = RiskbirdApi;

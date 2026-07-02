@@ -490,7 +490,9 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       fieldName: 'fullName',
       label: $t('seaExport.client.fullName'),
       rules: 'required',
-      componentProps: { allowClear: true },
+      componentProps: {
+        allowClear: true,
+      },
     },
     {
       component: 'Input',

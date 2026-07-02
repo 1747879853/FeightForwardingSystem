@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref, watch, markRaw } from 'vue';
+import { computed, nextTick, onMounted, ref, watch, markRaw, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -20,6 +20,7 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 import { useVbenForm } from '#/adapter/form';
 import { getAreaAndParents } from '#/api/common/area';
 import AddressModal from './address-modal.vue';
+import RiskbirdSearchModal from './riskbird-search-modal.vue';
 import { useVbenModal } from '@vben/common-ui';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { getUser, UserAttribute } from '#/api/system/user-admin';
@@ -35,6 +36,7 @@ import {
   Ship,
   Users,
   Plus,
+  Search,
 } from '@vben/icons';
 import {
   addClient,
@@ -52,6 +54,7 @@ import {
 } from './data';
 import * as ClientConstants from './data';
 import UserSelect from '#/adapter/component/biz-select/user-select.vue';
+import type { RiskbirdApi } from '#/api/riskbird/riskbird';
 
 const route = useRoute();
 const router = useRouter();
@@ -170,28 +173,198 @@ const [Modal, modalApi] = useVbenModal({
   connectedComponent: AddressModal,
 });
 
+/** 风鸟企业查询弹窗 */
+const [RiskbirdModal, riskbirdModalApi] = useVbenModal({
+  connectedComponent: RiskbirdSearchModal,
+});
+
 /** 用于存储当前的客户全称，用于 watch 监听 */
 const currentFullName = ref<string>('');
 
-/** 监听客户全称变化，自动生成客户代码 */
-watch(
-  () => currentFullName.value,
-  (newFullName) => {
-    console.log('watch-newFullName', newFullName);
-    // 只在新增模式下且客户代码为空时自动生成
-    if (!isEdit.value && newFullName) {
-      baseFormApi.getValues().then((values: any) => {
-        //  const currentCode = values.code;
-        //  if (!currentCode) {
-        const autoCode = getFirstLetters(newFullName);
-        if (autoCode) {
-          baseFormApi.setValues({ code: autoCode });
-        }
-        // }
-      });
+/**
+ * 解析风鸟日期（兼容毫秒/秒时间戳与日期字符串）
+ */
+const parseRiskbirdDate = (dateValue: any): string => {
+  if (!dateValue) return '';
+
+  // 如果是数字类型的时间戳
+  if (typeof dateValue === 'number') {
+    // 判断是毫秒还是秒（大于10位通常是毫秒）
+    const timestamp = dateValue > 9999999999 ? dateValue : dateValue * 1000;
+    const date = dayjs(timestamp);
+    return date.isValid() ? date.format('YYYY-MM-DD') : '';
+  }
+
+  // 如果是字符串
+  if (typeof dateValue === 'string') {
+    // 尝试解析为日期
+    const date = dayjs(dateValue);
+    if (date.isValid()) {
+      return date.format('YYYY-MM-DD');
     }
-  },
-);
+
+    // 尝试作为数字时间戳解析
+    const numValue = Number(dateValue);
+    if (!isNaN(numValue)) {
+      const timestamp = numValue > 9999999999 ? numValue : numValue * 1000;
+      const parsedDate = dayjs(timestamp);
+      return parsedDate.isValid() ? parsedDate.format('YYYY-MM-DD') : '';
+    }
+  }
+
+  return '';
+};
+
+/**
+ * 格式化营业期限
+ */
+const formatBusinessTerm = (
+  opFrom: number | undefined,
+  opTo: number | undefined,
+): string => {
+  if (!opFrom && !opTo) return '';
+
+  const fromDate = parseRiskbirdDate(opFrom);
+  const toDate = opTo ? parseRiskbirdDate(opTo) : '长期';
+
+  if (fromDate) {
+    return `${fromDate} 至 ${toDate}`;
+  }
+
+  return '';
+};
+
+/**
+ * 打开风鸟企业查询弹窗
+ */
+const openRiskbirdSearch = async () => {
+  console.log('openRiskbirdSearch - 开始');
+
+  // 获取当前表单中的全称
+  const values = await baseFormApi.getValues();
+  const fullName = values.fullName;
+
+  console.log('openRiskbirdSearch - fullName:', fullName);
+  console.log('openRiskbirdSearch - editId.value:', editId.value);
+
+  if (!fullName) {
+    message.warning('请先输入客户全称');
+    return;
+  }
+
+  // 设置搜索关键字为当前全称，并传入clientId（编辑模式用于回写）
+  console.log('准备打开弹窗，传递数据:', {
+    searchKeyword: fullName,
+    clientId: editId.value,
+  });
+
+  riskbirdModalApi
+    .setData({
+      searchKeyword: fullName, // 传递搜索关键字
+      clientId: editId.value, // 编辑模式传入clientId用于回写
+    })
+    .open();
+
+  console.log('弹窗已打开');
+};
+
+/**
+ * 处理从风鸟导入的数据
+ */
+const handleRiskbirdImport = async (
+  detail: RiskbirdApi.RiskbirdCompanyDetailDto,
+) => {
+  try {
+    // 构建要更新的字段
+    const updateData: Record<string, any> = {};
+
+    // 1. 纳税人识别号 -> taxNo
+    if (detail.uniscid) {
+      updateData.taxNo = detail.uniscid;
+    }
+
+    // 2. 法人 -> legalPerson
+    if (detail.personName) {
+      updateData.legalPerson = detail.personName;
+    }
+
+    // 3. 注册资本 -> registeredCapital
+    if (detail.regConcat) {
+      updateData.registeredCapital = detail.regConcat;
+    }
+
+    // 4. 成立时间 -> establishmentDate
+    if (detail.esDate) {
+      const establishmentDate = parseRiskbirdDate(detail.esDate);
+      if (establishmentDate) {
+        updateData.establishmentDate = dayjs(establishmentDate);
+      }
+    }
+
+    // 5. 营业期限 -> businessTerm
+    if (detail.opFrom || detail.opTo) {
+      const businessTerm = formatBusinessTerm(detail.opFrom, detail.opTo);
+      if (businessTerm) {
+        updateData.businessTerm = businessTerm;
+      }
+    }
+
+    // 6. 地址 -> address
+    if (detail.dom || detail.regAddr) {
+      updateData.address = detail.dom || detail.regAddr;
+    }
+
+    // 7. 英文名称 -> enName
+    if (detail.enName || detail.enterpriseNameEng) {
+      updateData.enName = detail.enName || detail.enterpriseNameEng;
+    }
+
+    // 8. 电话 -> phone
+    if (detail.tel) {
+      updateData.phone = detail.tel;
+    }
+
+    // 9. 网址 -> url
+    if (detail.website) {
+      updateData.url = detail.website;
+    }
+
+    // 10. 邮箱 -> email
+    if (detail.email) {
+      updateData.email = detail.email;
+    }
+
+    // 更新基础信息表单
+    if (Object.keys(updateData).length > 0) {
+      await baseFormApi.setValues(updateData);
+
+      // 更新业务信息表单
+      const businessUpdateData: Record<string, any> = {};
+      if (updateData.legalPerson)
+        businessUpdateData.legalPerson = updateData.legalPerson;
+      if (updateData.registeredCapital)
+        businessUpdateData.registeredCapital = updateData.registeredCapital;
+      if (updateData.establishmentDate)
+        businessUpdateData.establishmentDate = updateData.establishmentDate;
+      if (updateData.businessTerm)
+        businessUpdateData.businessTerm = updateData.businessTerm;
+
+      if (Object.keys(businessUpdateData).length > 0) {
+        await businessFormApi.setValues(businessUpdateData);
+      }
+
+      message.success('数据导入成功');
+    } else {
+      message.warning('未找到可导入的数据');
+    }
+
+    // 关闭弹窗
+    riskbirdModalApi.close();
+  } catch (error: any) {
+    console.error('导入失败:', error);
+    message.error(error?.message || '导入失败');
+  }
+};
 
 /** DatePicker 需要的 dayjs 对象，API 返回的是字符串 */
 const toDayjs = (val: string | null | undefined) =>
@@ -399,7 +572,7 @@ const loadEditData = async () => {
     pageLoading.value = false;
   }
 };
-const handleClientTypeChange = (checkedValues: number[]) => {
+const handleClientTypeChange = (checkedValues: any[]) => {
   console.log('handleClientTypeChange', checkedValues);
   if (!checkedValues.includes(1)) {
     customerType.value = [];
@@ -780,12 +953,32 @@ const delAddress = (index: number) => {
 onMounted(() => {
   loadEditData();
 
-  // 在表单初始化后，为fullName字段添加onChange监听
-  nextTick(() => {
+  // 在表单初始化后，为fullName字段添加onChange监听和查询按钮
+  // 使用setTimeout确保表单完全渲染后再添加按钮
+  setTimeout(() => {
+    console.log('isEdit.value:', isEdit.value);
+    console.log('editId.value:', editId.value);
+
     if (!isEdit.value) {
+      console.log('新增模式：添加风鸟查询按钮');
       baseFormApi.updateSchema([
         {
           fieldName: 'fullName',
+          suffix: () => {
+            return h(
+              Button,
+              {
+                type: 'link',
+                size: 'small',
+                onClick: openRiskbirdSearch,
+                class: 'ml-1',
+              },
+              () => [
+                h(Search, { class: 'size-4' }),
+                h('span', { class: 'ml-1' }, '风鸟查询'),
+              ],
+            );
+          },
           componentProps: {
             onChange: (e: any) => {
               const newFullName = e.target?.value || '';
@@ -795,8 +988,31 @@ onMounted(() => {
           },
         },
       ]);
+    } else {
+      // 编辑模式也添加查询按钮，但不需要onChange监听
+      console.log('编辑模式：添加风鸟查询按钮');
+      baseFormApi.updateSchema([
+        {
+          fieldName: 'fullName',
+          suffix: () => {
+            return h(
+              Button,
+              {
+                type: 'link',
+                size: 'small',
+                onClick: openRiskbirdSearch,
+                class: 'ml-1',
+              },
+              () => [
+                h(Search, { class: 'size-4' }),
+                h('span', { class: 'ml-1' }, '风鸟查询'),
+              ],
+            );
+          },
+        },
+      ]);
     }
-  });
+  }, 100); // 延迟100ms确保表单完全渲染
 });
 </script>
 
@@ -944,6 +1160,7 @@ onMounted(() => {
           </section>
         </div>
       </div>
+
       <div class="content-column">
         <section class="content-section">
           <div class="content-section__header flex justify-between">
@@ -1069,6 +1286,13 @@ onMounted(() => {
       </div>
     </Card>
     <Modal @add="addAddressData" @edit="editAddressData" />
+    <RiskbirdModal
+      width="1200px"
+      height="700px"
+      title="风鸟企业查询"
+      :footer="false"
+      @import="handleRiskbirdImport"
+    />
   </div>
 </template>
 
