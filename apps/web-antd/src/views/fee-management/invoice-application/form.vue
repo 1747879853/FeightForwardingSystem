@@ -538,6 +538,154 @@ function handleOpenFeeDetailModal() {
   }
 }
 
+/** ✅ 新增：处理删除费用 */
+async function handleDeleteFee(feeId: string) {
+  console.log('🗑️ 开始删除费用 - feeId:', feeId);
+
+  // 1. 从 invoiceApplicationItems 中移除该费用
+  const items = formData.value.invoiceApplicationItems || [];
+  const removedItem = items.find((item: any) => {
+    // 需要从 feeGroupsData 中找到对应的 orderFeeId
+    const allFees = flattenTreeData(feeGroupsData.value);
+    const fee = allFees.find((f: any) => f.id === feeId);
+    return fee && item.orderFeeId === fee.orderFee?.id;
+  });
+
+  if (!removedItem) {
+    console.error('❌ 未找到要删除的费用项');
+    message.error('未找到要删除的费用');
+    return;
+  }
+
+  // 过滤掉该费用
+  formData.value.invoiceApplicationItems = items.filter(
+    (item: any) => item !== removedItem,
+  );
+
+  console.log(
+    '✅ 已从 invoiceApplicationItems 中删除费用，剩余:',
+    formData.value.invoiceApplicationItems.length,
+    '条',
+  );
+
+  // 2. 重新计算商品明细金额
+  await recalculateGoodsDetails();
+
+  // 3. 关闭弹窗并重新打开以刷新显示
+  feeDetailModalVisible.value = false;
+  await nextTick();
+  handleOpenFeeDetailModal();
+
+  message.success('删除成功，已重新计算金额');
+}
+
+/** ✅ 新增：重新计算商品明细金额 */
+async function recalculateGoodsDetails() {
+  const items = formData.value.invoiceApplicationItems || [];
+
+  if (items.length === 0) {
+    console.log('⚠️ 没有费用明细，清空商品明细');
+    goodsDetails.value = [];
+    return;
+  }
+
+  // 确保发票商品编码列表已加载
+  if (codeInvoiceList.value.length === 0) {
+    await loadCodeInvoiceList();
+  }
+
+  // 获取当前发票币别
+  const invoiceCurrencyId = formData.value.currencyId;
+  if (!invoiceCurrencyId) {
+    console.warn('未设置发票币别');
+    return;
+  }
+
+  // 获取币别代码
+  let currencyCode = '';
+  try {
+    const currencyDetail = await getCurrencyDetail(invoiceCurrencyId);
+    currencyCode = currencyDetail.code || '';
+  } catch (error) {
+    console.error('获取币别详情失败:', error);
+    return;
+  }
+
+  if (!currencyCode) {
+    console.warn('未找到币别代码');
+    return;
+  }
+
+  // 查找默认商品编码
+  const defaultCodeInvoice = codeInvoiceList.value.find(
+    (item) => item.isDefault && item.defaultCurrency === currencyCode,
+  );
+
+  if (!defaultCodeInvoice) {
+    console.warn('未找到默认商品编码');
+    return;
+  }
+
+  // 计算所有费用的总金额（转换为人民币）
+  let totalRmbAmount = 0;
+
+  // 从 feeGroupsData 中获取完整的费用信息
+  const allFees = flattenTreeData(feeGroupsData.value);
+
+  items.forEach((item: any) => {
+    const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
+    if (fee) {
+      const appliedAmount = item.appliedAmount || 0;
+      const feeCurrencyId = fee.orderFee.currencyId;
+
+      // 如果需要汇率转换
+      if (feeCurrencyId !== 1) {
+        totalRmbAmount += appliedAmount * (invoiceExchangeRate.value || 1);
+      } else {
+        totalRmbAmount += appliedAmount;
+      }
+    }
+  });
+
+  console.log('📊 重新计算后的总金额（人民币）:', totalRmbAmount.toFixed(2));
+
+  // 如果只有一行商品明细，更新该行金额
+  if (goodsDetails.value.length === 1) {
+    const existingItem = goodsDetails.value[0];
+
+    // 检查商品编码是否匹配
+    if (existingItem.codeInvoiceId === defaultCodeInvoice.id) {
+      const taxRate = existingItem.taxRate || defaultCodeInvoice.taxRate || 0;
+
+      existingItem.amount = totalRmbAmount;
+      existingItem.unitPrice = totalRmbAmount;
+      existingItem.noTaxAmount = totalRmbAmount / (1 + taxRate / 100);
+      existingItem.taxAmount =
+        (totalRmbAmount / (1 + taxRate / 100)) * (taxRate / 100);
+
+      console.log('✅ 已更新商品明细金额');
+    } else {
+      console.warn('⚠️ 商品编码不匹配，无法自动更新');
+      message.warning('商品明细与当前币别不匹配，请手动调整或重新填充');
+    }
+  } else if (goodsDetails.value.length > 1) {
+    // 多行商品明细时，提示用户手动处理
+    message.warning('当前存在多行商品明细，删除费用后请手动调整各行的金额');
+  } else {
+    // 没有商品明细，自动创建
+    await autoFillGoodsDetails(
+      items
+        .map((item: any) => {
+          const fee = allFees.find(
+            (f: any) => f.orderFee?.id === item.orderFeeId,
+          );
+          return fee;
+        })
+        .filter(Boolean),
+    );
+  }
+}
+
 /** 处理费用选择保存 */
 async function handleFeeSelectionSave(data: {
   selectedFees: any[];
@@ -2361,6 +2509,7 @@ async function loadDetail() {
       v-model:visible="feeDetailModalVisible"
       :loading="feeDetailModalLoading"
       :fee-details="selectedFeeDetails"
+      @delete-fee="handleDeleteFee"
     />
 
     <!-- 备注模板管理弹窗 -->

@@ -326,7 +326,7 @@ function transformToTreeData(
           disabled: isAlreadyAdded,
           alreadyAdded: isAlreadyAdded,
           settlementUnit: fee.settlementName || '-',
-          payReceiveType: fee.payReceiveType === 'AR' ? '应收' : '应付',
+          payReceiveType: fee.paySide === 1 ? '应付' : '应收',
           feeName: fee.feeCodeName || '-',
           amount: fee.amount,
           currencyCode: fee.currencyCode || '-',
