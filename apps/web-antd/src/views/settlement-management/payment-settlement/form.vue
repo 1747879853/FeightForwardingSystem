@@ -817,12 +817,12 @@ async function loadEditData() {
             | Array<{ originalCurrencyId: number; settledAmount: number }>
             | undefined;
 
-          // 判断是固定币别还是原币申请（通过检查是否有多个币别）
-          const hasMultipleCurrencies =
+          // 判断是固定币别还是原币申请（通过检查 currencyGroup 是否有多个币别）
+          const isMultiCurrency =
             app.currencyGroup && app.currencyGroup.length > 1;
 
           if (
-            !hasMultipleCurrencies &&
+            !isMultiCurrency &&
             app.totalSettledPrice !== undefined &&
             app.totalSettledPrice !== null
           ) {
@@ -842,14 +842,28 @@ async function loadEditData() {
 
           // 构造 application 对象用于展示
           // 需要将详情接口的 CurrencyGroupForDetailDto 转换为 CurrencyGroupForSettlementDto 格式
-          const convertedCurrencyGroup: PaymentApplicationAdminApi.CurrencyGroupForSettlementDto[] =
-            [];
+          const convertedCurrencyGroup: PaymentApplicationAdminApi.CurrencyGroupForSettlementDto[] &
+            { settledAmount?: number }[] = [];
 
           if (app.currencyGroup && app.currencyGroup.length > 0) {
             for (const detailCurrency of app.currencyGroup) {
               // 使用通用转换函数
               const convertedCurrency =
                 convertCurrencyGroupForDetailToSettlement(detailCurrency);
+
+              // 关键修复：将已保存的结算金额覆盖到转换后的 currencyGroup 中
+              // 对于原币申请（有多个币别），使用 userCurrencyItems 中的值
+              if (isMultiCurrency && userCurrencyItems) {
+                const savedItem = userCurrencyItems.find(
+                  (item) => item.originalCurrencyId === convertedCurrency.id,
+                );
+                if (savedItem !== undefined) {
+                  convertedCurrency.settledAmount = savedItem.settledAmount;
+                }
+              }
+              // 对于固定币别申请，settledAmount 应该从 totalSettledPrice 获取（已在上面提取）
+              // 但由于固定币别只有一个币别，且第二层不显示输入框，这里不需要特殊处理
+
               convertedCurrencyGroup.push(convertedCurrency);
             }
           }
@@ -882,7 +896,7 @@ async function loadEditData() {
               // 从 paymentSettlementItems 中获取公司信息
               companys: companys,
               // 关键：使用转换后的 currencyGroup，包含完整的费用明细
-              currencyGroup: convertedCurrencyGroup,
+              currencyGroup: convertedCurrencyGroup as any,
             };
 
           rebuiltItems.push({
@@ -1142,7 +1156,9 @@ function formatUnsettledRange(upperLimit: number, lowerLimit: number): string {
 /** 将详情接口的币别分组转换为选择列表格式 */
 function convertCurrencyGroupForDetailToSettlement(
   detailCurrency: PaymentSettlementAdminApi.CurrencyGroupForDetailDto,
-): PaymentApplicationAdminApi.CurrencyGroupForSettlementDto {
+): PaymentApplicationAdminApi.CurrencyGroupForSettlementDto & {
+  settledAmount?: number;
+} {
   // 从 orderFees 中计算汇总数据
   const orderFees = detailCurrency.orderFees || [];
 
@@ -1196,7 +1212,7 @@ function convertCurrencyGroupForDetailToSettlement(
     settleablePriceUpperLimit: undefined,
     settleableLowerLimit,
     settleablePriceLowerLimit: undefined,
-    settledAmount: detailCurrency.settledAmount,
+    settledAmount: detailCurrency.settledAmount, // 保留已保存的结算金额
     orderFees: convertedOrderFees,
   } as any;
 }
@@ -1638,13 +1654,21 @@ onMounted(() => {
               <Tag color="red">{{ record.application.currencyCode }}</Tag>
             </template>
             <template v-else-if="column.dataIndex === 'settledPriceDisplay'">
+              <!-- 固定币别申请：显示 userSettledPrice -->
               <span
                 v-if="record.application.currencyId"
                 style="font-weight: bold; color: #fa8c16"
               >
                 ¥{{ formatAmount(record.userSettledPrice || 0) }}
               </span>
-              <span v-else style="color: #999">原币申请</span>
+              <!-- 原币申请：计算所有币别的结算金额总和 -->
+              <span v-else style="font-weight: bold; color: #fa8c16">
+                ¥{{
+                  formatAmount(
+                    calculateTotalFromCurrencyItems(record.userCurrencyItems),
+                  )
+                }}
+              </span>
             </template>
             <template v-else-if="column.key === 'action'">
               <Space>
@@ -1731,6 +1755,18 @@ onMounted(() => {
                     { dataIndex: 'feeCodeName', title: '费用名称', width: 120 },
                     { dataIndex: 'currencyCode', title: '币别', width: 80 },
                     {
+                      dataIndex: 'amount',
+                      title: '原始金额',
+                      width: 120,
+                      align: 'right',
+                    },
+                    {
+                      dataIndex: 'rqstPaymentAmount',
+                      title: '申请金额',
+                      width: 120,
+                      align: 'right',
+                    },
+                    {
                       dataIndex: 'unInvoicedAmount',
                       title: '未开票金额',
                       width: 120,
@@ -1755,11 +1791,17 @@ onMounted(() => {
                     </template>
 
                     <template v-else-if="column.dataIndex === 'bizType'">
-                      {{ feeItem.transportOrder?.bizType || '-' }}
+                      {{
+                        getBizTypeName(feeItem.transportOrder?.bizType) || '-'
+                      }}
                     </template>
 
                     <template v-else-if="column.dataIndex === 'mblNum'">
                       {{ feeItem.transportOrder?.mblNum || '-' }}
+                    </template>
+
+                    <template v-else-if="column.dataIndex === 'paySide'">
+                      {{ feeItem.paySide === 0 ? '收' : '付' }}
                     </template>
                   </template>
                 </Table>

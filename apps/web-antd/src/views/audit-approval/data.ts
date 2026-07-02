@@ -14,6 +14,12 @@ const getProcessedOptions = () => [
   { value: false, label: $t('auditApproval.ProcessedOptions.yes') },
 ];
 
+/** 费用审核状态 */
+const getFeeAuditStatusOptions = () => [
+  { value: null, label: '全部' },
+  { value: false, label: $t('auditApproval.status.Submitted') },
+];
+
 /**
  * 格式化会计期间为年月格式 (YYYY-MM)
  */
@@ -96,10 +102,11 @@ export function useGridFormSchema(): VbenFormSchema[] {
     {
       component: 'Select',
       fieldName: 'Processed',
-      label: $t('auditApproval.Processed'),
+      label: '费用审核状态',
+      defaultValue: false,
       componentProps: {
         allowClear: true,
-        options: getProcessedOptions(),
+        options: getFeeAuditStatusOptions(),
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
       },

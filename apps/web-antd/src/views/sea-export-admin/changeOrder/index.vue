@@ -319,6 +319,22 @@ const openConfigModal = () => {
 
 const PayOrderFeeRef = ref<any>(null);
 const RecOrderFeeRef = ref<any>(null);
+
+// 处理刷新对立表格事件（收付互生后调用）
+const handleRefreshOppositeTable = (type: number) => {
+  console.log('🔄 [changeOrder] 收到刷新对立表格事件，当前类型:', type);
+
+  if (type === 0) {
+    // 当前是应收表，需要刷新生成的应付表
+    console.log('✅ 刷新生成的应付表格');
+    PayOrderFeeRef.value?.getTableDate(changeOrder.value?.id);
+  } else {
+    // 当前是应付表，需要刷新生成的应收表
+    console.log('✅ 刷新生成的应收表格');
+    RecOrderFeeRef.value?.getTableDate(changeOrder.value?.id);
+  }
+};
+
 const setCurrentChangeOrder = (curChangeOrder: any) => {
   if (curChangeOrder) {
     changeOrder.value = curChangeOrder;
@@ -614,12 +630,14 @@ onMounted(() => {
               :mode="'changeOrder'"
               ref="RecOrderFeeRef"
               @sync-fee="syncFee"
+              @refresh-opposite-table="() => handleRefreshOppositeTable(0)"
             />
             <OrderFeeTable
               :type="1"
               :mode="'changeOrder'"
               ref="PayOrderFeeRef"
               @sync-fee="syncFee"
+              @refresh-opposite-table="() => handleRefreshOppositeTable(1)"
             />
             <div
               class="total-amount flex flex-wrap rounded-md px-4 py-1 shadow"

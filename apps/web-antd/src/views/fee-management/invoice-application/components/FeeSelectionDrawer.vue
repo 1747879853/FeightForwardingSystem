@@ -4,11 +4,13 @@ import dayjs from 'dayjs';
 
 import {
   Button,
+  DatePicker,
   Drawer,
   Form,
   Input,
   InputNumber,
   message,
+  Select,
   Space,
   Spin,
   Table,
@@ -25,6 +27,7 @@ interface Props {
   settlementId?: string; // 已选择的结算单位（固定）
   currencyId?: number; // 已选择的币别（固定）
   invoiceApplicationId?: string; // 发票申请ID（用于排除已关联的费用）
+  addedFeeIds?: string[]; // ✅ 新增：已添加的费用ID列表
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -32,6 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
   settlementId: '',
   currencyId: undefined,
   invoiceApplicationId: '',
+  addedFeeIds: () => [], // ✅ 默认空数组
 });
 
 const emit = defineEmits<{
@@ -60,8 +64,15 @@ const selectedCurrencyId = ref<number | undefined>();
 const selectedCurrencyCode = ref<string>('');
 
 // 抽屉筛选条件
-const filterCommissionNum = ref<string>('');
+const keyWord = ref<string>('');
 const filterMblNum = ref<string>('');
+const filterClientId = ref<string>(''); // 新增：委托单位
+const filterEtdStart = ref<string>(''); // 新增：开船日期起
+const filterEtdEnd = ref<string>(''); // 新增：开船日期止
+const filterPaySide = ref<number>(0); // 新增：收付类型，默认应收(0)
+
+// ✅ 新增：用于 RangePicker 的日期范围状态
+const filterEtdRange = ref<[dayjs.Dayjs, dayjs.Dayjs] | undefined>(undefined);
 
 // 费用明细表格数据
 const feeGroupsData = ref<any[]>([]);
@@ -74,9 +85,9 @@ const invoiceExchangeRate = ref<number>(1.0);
 
 /** 获取子表格的选中 keys */
 function getChildSelectedKeys(record: any): string[] {
-  if (!record.children) return [];
+  if (!record.feeDetails) return [];
   return selectedFeeRowKeys.value.filter((key) =>
-    record.children.some((child: any) => child.id === key),
+    record.feeDetails.some((child: any) => child.id === key),
   );
 }
 
@@ -87,8 +98,8 @@ async function handleChildSelectionChange(
 ) {
   const currentSelected = selectedFeeRowKeys.value.filter(
     (key) =>
-      !record.children ||
-      !record.children.some((child: any) => child.id === key),
+      !record.feeDetails ||
+      !record.feeDetails.some((child: any) => child.id === key),
   );
   selectedFeeRowKeys.value = [...currentSelected, ...selectedRowKeys];
 
@@ -174,8 +185,8 @@ function flattenTreeData(data: any[]): any[] {
   function flatten(items: any[]) {
     items.forEach((item) => {
       result.push(item);
-      if (item.children && item.children.length > 0) {
-        flatten(item.children);
+      if (item.feeDetails && item.feeDetails.length > 0) {
+        flatten(item.feeDetails);
       }
     });
   }
@@ -198,10 +209,41 @@ function getSelectedFeesFromTable(): any[] {
 function handleResetFilter() {
   selectedSettlementId.value = '';
   selectedCurrencyId.value = undefined;
-  filterCommissionNum.value = '';
+  keyWord.value = '';
   filterMblNum.value = '';
+  filterClientId.value = '';
+  filterEtdStart.value = '';
+  filterEtdEnd.value = '';
+  filterEtdRange.value = undefined; // ✅ 重置日期范围
+  filterPaySide.value = 0;
   selectedFeeRowKeys.value = [];
   loadFeeGroupData();
+}
+
+/** 处理日期范围变化 */
+function handleEtdRangeChange(
+  dates: [dayjs.Dayjs, dayjs.Dayjs] | [string, string] | undefined,
+) {
+  if (dates && dates.length === 2) {
+    const startDate = dates[0];
+    const endDate = dates[1];
+
+    // 处理 Dayjs 对象或字符串
+    if (typeof startDate === 'string') {
+      filterEtdStart.value = startDate;
+    } else {
+      filterEtdStart.value = startDate?.format('YYYY-MM-DD') || '';
+    }
+
+    if (typeof endDate === 'string') {
+      filterEtdEnd.value = endDate;
+    } else {
+      filterEtdEnd.value = endDate?.format('YYYY-MM-DD') || '';
+    }
+  } else {
+    filterEtdStart.value = '';
+    filterEtdEnd.value = '';
+  }
 }
 
 /** 打开费用选择抽屉 */
@@ -272,12 +314,25 @@ async function loadFeeGroupData() {
       params.currencyId = selectedCurrencyId.value;
     }
 
-    if (filterCommissionNum.value) {
-      params.commissionNum = filterCommissionNum.value;
+    // 合并委托编号和主提单号到 commissionNum 参数
+    if (keyWord.value) {
+      params.keyword = keyWord.value;
     }
-    if (filterMblNum.value) {
-      params.mblNum = filterMblNum.value;
+    // 新增：委托单位
+    if (filterClientId.value) {
+      params.clientId = filterClientId.value;
     }
+
+    // 新增：开船日期范围
+    if (filterEtdStart.value) {
+      params.etdStart = filterEtdStart.value;
+    }
+    if (filterEtdEnd.value) {
+      params.etdEnd = filterEtdEnd.value;
+    }
+
+    // 新增：收付类型
+    params.paySide = filterPaySide.value;
 
     if (props.invoiceApplicationId) {
       params.invoiceApplicationId = props.invoiceApplicationId;
@@ -297,8 +352,8 @@ async function loadFeeGroupData() {
 
 /** 获取已添加的费用ID列表 */
 function getAddedFeeIds(): Set<string> {
-  // TODO: 需要从父组件传入已添加的费用ID列表
-  return new Set();
+  // ✅ 从 props 中获取已添加的费用ID列表
+  return new Set(props.addedFeeIds || []);
 }
 
 /** 将费用数据转换为树状结构 */
@@ -309,6 +364,37 @@ function transformToTreeData(
   const addedFeeIds = getAddedFeeIds();
 
   items.forEach((item, index) => {
+    const childrenList: any[] = [];
+
+    if (item.orderFees && item.orderFees.length > 0) {
+      item.orderFees.forEach((fee, feeIndex) => {
+        const isAlreadyAdded = addedFeeIds.has(String(fee.id));
+
+        const childNode: any = {
+          id: `child_${fee.id}`,
+          parentId: `parent_${item.transportOrder.id}`,
+          orderFee: fee,
+          appliedAmount: fee.remainingInvoiceAmount,
+          checked: false,
+          disabled: isAlreadyAdded,
+          alreadyAdded: isAlreadyAdded,
+          settlementUnit: fee.settlementName || '-',
+          payReceiveType: fee.paySide === 1 ? '应付' : '应收',
+          feeName: fee.feeCodeName || '-',
+          amount: fee.amount,
+          currencyCode: fee.currencyCode || '-',
+          remainingInvoiceAmount: fee.remainingInvoiceAmount,
+          // ✅ 关键修复：在子节点中也保存委托编号和主提单号
+          commissionNum: item.transportOrder.commissionNum,
+          mblNum: item.transportOrder.mblNum || '-',
+          bookingNum: item.transportOrder.bookingNum || '-',
+          transportOrder: item.transportOrder, // ✅ 保存完整的 transportOrder 对象
+        };
+
+        childrenList.push(childNode);
+      });
+    }
+
     const parentNode: any = {
       id: `parent_${item.transportOrder.id}`,
       parentId: null,
@@ -326,37 +412,8 @@ function transformToTreeData(
       carrier: item.seaExport?.carrierName || '-',
       company: item.transportOrder.companys[0].name || '-',
       checked: false,
-      children: [] as any[],
+      feeDetails: childrenList, // ✅ 使用 feeDetails 而非 children，避免被 Table 识别为树形结构
     };
-
-    if (item.orderFees && item.orderFees.length > 0) {
-      item.orderFees.forEach((fee, feeIndex) => {
-        const isAlreadyAdded = addedFeeIds.has(String(fee.id));
-
-        const childNode: any = {
-          id: `child_${fee.id}`,
-          parentId: `parent_${item.transportOrder.id}`,
-          orderFee: fee,
-          appliedAmount: fee.remainingInvoiceAmount,
-          checked: false,
-          disabled: isAlreadyAdded,
-          alreadyAdded: isAlreadyAdded,
-          settlementUnit: fee.settlementName || '-',
-          payReceiveType: fee.payReceiveType === 'AR' ? '应收' : '应付',
-          feeName: fee.feeCodeName || '-',
-          amount: fee.amount,
-          currencyCode: fee.currencyCode || '-',
-          remainingInvoiceAmount: fee.remainingInvoiceAmount,
-          // ✅ 关键修复：在子节点中也保存委托编号和主提单号
-          commissionNum: item.transportOrder.commissionNum,
-          mblNum: item.transportOrder.mblNum || '-',
-          bookingNum: item.transportOrder.bookingNum || '-',
-          transportOrder: item.transportOrder, // ✅ 保存完整的 transportOrder 对象
-        };
-
-        parentNode.children.push(childNode);
-      });
-    }
 
     treeData.push(parentNode);
   });
@@ -520,11 +577,11 @@ defineExpose({
             style="display: flex; gap: 8px; align-items: center; width: 305px"
           >
             <span style="min-width: 70px; font-size: 14px; color: #333"
-              >委托编号:</span
+              >编号:</span
             >
             <Input
-              v-model:value="filterCommissionNum"
-              placeholder="请输入委托编号"
+              v-model:value="keyWord"
+              placeholder="请输入委托编号或主提单号"
               style="flex: 1"
               allow-clear
             />
@@ -533,13 +590,44 @@ defineExpose({
             style="display: flex; gap: 8px; align-items: center; width: 305px"
           >
             <span style="min-width: 70px; font-size: 14px; color: #333"
-              >主提单号:</span
+              >委托单位:</span
             >
-            <Input
-              v-model:value="filterMblNum"
-              placeholder="请输入主提单号"
+            <ClientSelect
+              v-model:model-value="filterClientId"
+              placeholder="请选择委托单位"
               style="flex: 1"
               allow-clear
+            />
+          </div>
+          <div
+            style="display: flex; gap: 8px; align-items: center; width: 305px"
+          >
+            <span style="min-width: 70px; font-size: 14px; color: #333"
+              >开船日期:</span
+            >
+            <DatePicker.RangePicker
+              v-model:value="filterEtdRange"
+              @update:value="handleEtdRangeChange"
+              style="flex: 1"
+              format="YYYY-MM-DD"
+              :placeholder="['开始日期', '结束日期']"
+            />
+          </div>
+          <div
+            style="display: flex; gap: 8px; align-items: center; width: 305px"
+          >
+            <span style="min-width: 70px; font-size: 14px; color: #333"
+              >收付类型:</span
+            >
+            <Select
+              v-model:value="filterPaySide"
+              style="flex: 1"
+              :options="[
+                { label: '全部', value: null },
+                { label: '应收', value: 0 },
+                { label: '应付', value: 1 },
+              ]"
+              placeholder="请选择收付类型"
             />
           </div>
           <div
@@ -586,16 +674,15 @@ defineExpose({
           size="small"
           :expandable="{
             defaultExpandAllRows: true,
-            childrenColumnName: 'children',
           }"
           row-key="id"
           :scroll="{ y: 500 }"
         >
           <template #expandedRowRender="{ record }">
             <Table
-              v-if="record.children && record.children.length > 0"
+              v-if="record.feeDetails && record.feeDetails.length > 0"
               :columns="feeChildColumns"
-              :data-source="record.children"
+              :data-source="record.feeDetails"
               :pagination="false"
               bordered
               size="small"

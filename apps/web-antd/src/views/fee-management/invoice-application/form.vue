@@ -144,9 +144,9 @@ const feeGridRef = ref();
 
 /** 获取子表格的选中 keys */
 function getChildSelectedKeys(record: any): string[] {
-  if (!record.children) return [];
+  if (!record.feeDetails) return []; // ✅ 更新为 feeDetails，与 FeeSelectionDrawer 保持一致
   return selectedFeeRowKeys.value.filter((key) =>
-    record.children.some((child: any) => child.id === key),
+    record.feeDetails.some((child: any) => child.id === key),
   );
 }
 
@@ -162,8 +162,9 @@ function flattenTreeData(data: any[]): any[] {
   function flatten(items: any[]) {
     items.forEach((item) => {
       result.push(item);
-      if (item.children && item.children.length > 0) {
-        flatten(item.children);
+      if (item.feeDetails && item.feeDetails.length > 0) {
+        // ✅ 更新为 feeDetails，与 FeeSelectionDrawer 保持一致
+        flatten(item.feeDetails);
       }
     });
   }
@@ -173,8 +174,24 @@ function flattenTreeData(data: any[]): any[] {
 }
 
 function addSelectedFeesToForm(selectedFees: any[]) {
+  // ✅ 获取已存在的费用ID集合
+  const existingFeeIds = getAddedFeeIds();
+
+  // ✅ 过滤掉已存在的费用，只添加新的费用
+  const newFees = selectedFees.filter((fee: any) => {
+    const feeId = String(fee.orderFee.id);
+    return !existingFeeIds.has(feeId);
+  });
+
+  // 如果没有新费用，直接返回
+  if (newFees.length === 0) {
+    console.log('⚠️ 所有选择的费用都已存在，无需重复添加');
+    message.warning('所选费用已全部添加，无新增费用');
+    return;
+  }
+
   // 将选中的费用转换为 InvoiceApplicationItemAddDto
-  const items = selectedFees.map((fee: any) => ({
+  const items = newFees.map((fee: any) => ({
     orderFeeId: fee.orderFee.id,
     appliedAmount: fee.appliedAmount || fee.orderFee.remainingInvoiceAmount, // ✅ 保持原币金额，不进行汇率转换
     remark: '',
@@ -187,7 +204,11 @@ function addSelectedFeesToForm(selectedFees: any[]) {
 
   formData.value.invoiceApplicationItems.push(...items);
 
-  console.log('添加的费用明细:', items);
+  console.log(
+    `✅ 添加了 ${items.length} 条新费用明细（已过滤 ${selectedFees.length - newFees.length} 条重复费用）:`,
+    items,
+  );
+  message.success(`成功添加 ${items.length} 条新费用`);
 }
 
 /** 提交表单 */
@@ -312,9 +333,16 @@ function handleAmountChange(record: any) {
   record.taxAmount = (record.amount / (1 + taxRate / 100)) * (taxRate / 100);
 }
 
-/** 商品明细 - 税率变化 */
+/** 处理商品明细 - 税率变化 */
 function handleTaxRateChange(record: any) {
-  handleQuantityOrPriceChange(record);
+  // 确保税率为数字类型
+  const taxRate = Number(record.taxRate) || 0;
+  record.taxRate = taxRate;
+
+  // 重新计算不含税金额和税额
+  const amount = record.amount || 0;
+  record.noTaxAmount = amount / (1 + taxRate / 100);
+  record.taxAmount = (amount / (1 + taxRate / 100)) * (taxRate / 100);
 }
 
 /** 添加商品明细行 */
@@ -323,7 +351,7 @@ function handleAddGoodsRow() {
   const items = formData.value.invoiceApplicationItems || [];
 
   if (items.length === 0) {
-    message.warning('请先从抽屉中添加费用，然后再添加商品明细');
+    message.warning('请先从抽屉中添加费用,然后再添加商品明细');
     return;
   }
 
@@ -373,10 +401,28 @@ function handleOpenFeeDetailModal() {
   const items = formData.value.invoiceApplicationItems || [];
 
   console.log('🔍 打开费用明细弹窗 - 已选费用数量:', items.length);
-  console.log('🔍 feeGroupsData 数据:', feeGroupsData.value);
+  console.log('🔍 feeGroupsData 状态检查:');
+  console.log('  - feeGroupsData.value:', feeGroupsData.value);
+  console.log('  - feeGroupsData.value.length:', feeGroupsData.value.length);
+  console.log(
+    '  - feeGroupsData.value 是否为空数组:',
+    feeGroupsData.value.length === 0,
+  );
 
   if (items.length === 0) {
     message.warning('暂无费用明细数据');
+    return;
+  }
+
+  // ✅ 关键检查：如果 feeGroupsData 为空，提示用户重新添加费用
+  if (feeGroupsData.value.length === 0) {
+    console.error(' 严重问题：feeGroupsData 为空！');
+    console.error('💡 原因可能是：');
+    console.error('   1. 从抽屉选择费用后，数据没有正确保存到 feeGroupsData');
+    console.error('   2. 页面刷新后丢失了费用数据');
+    console.error('   3. 需要重新从抽屉中添加费用');
+
+    message.error('费用数据丢失，请重新点击"从开票申请导入费用"按钮添加费用');
     return;
   }
 
@@ -386,24 +432,39 @@ function handleOpenFeeDetailModal() {
     // 根据 orderFeeId 从 feeGroupsData 中查找对应的完整信息
     const allFees = flattenTreeData(feeGroupsData.value);
     console.log('🔍 扁平化后的所有费用数量:', allFees.length);
+    console.log(
+      ' 所有费用ID列表:',
+      allFees.map((f: any) => f.id),
+    );
+    console.log(
+      '🔍 所有费用的 orderFee?.id 列表:',
+      allFees.map((f: any) => f.orderFee?.id),
+    );
 
     // 构建已选择费用的树状结构
     const selectedDetails: any[] = [];
     const processedOrders = new Set<string>();
 
-    items.forEach((item: any) => {
-      console.log('🔍 处理费用项:', item);
+    items.forEach((item: any, index: number) => {
+      console.log(`\n=== 处理第 ${index + 1} 个费用项 ===`);
+      console.log('🔍 费用项详情:', item);
+      console.log('🔍 要查找的 orderFeeId:', item.orderFeeId);
+
       const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
-      console.log('🔍 找到的费用对象:', fee);
+      console.log(' 找到的费用对象:', fee);
+      console.log('🔍 费用对象JSON:', JSON.stringify(fee, null, 2));
 
       if (fee) {
         const orderId = fee.parentId;
-        console.log('🔍 订单ID:', orderId);
+        console.log(' 订单ID (fee.parentId):', orderId);
+        console.log('🔍 已处理的订单:', Array.from(processedOrders));
 
         // 如果这个订单还没有处理过，创建父节点
         if (!processedOrders.has(orderId)) {
           const parentFee = allFees.find((f: any) => f.id === orderId);
+          console.log('🔍 查找父节点 - 目标ID:', orderId);
           console.log('🔍 父节点费用对象:', parentFee);
+          console.log('🔍 父节点是否存在:', !!parentFee);
 
           if (parentFee) {
             const parentNode: any = {
@@ -422,17 +483,21 @@ function handleOpenFeeDetailModal() {
                 )?.label || '-',
               carrier: parentFee.seaExport?.carrierName || '-',
               company: parentFee.transportOrder.companys[0].name || '-',
-              children: [] as any[],
+              feeDetails: [] as any[], // ✅ 使用 feeDetails 而非 children，与 FeeDetailModal 保持一致
             };
 
             selectedDetails.push(parentNode);
             processedOrders.add(orderId);
-            console.log('✅ 添加父节点:', parentNode);
+            console.log('✅ 添加父节点成功');
+          } else {
+            console.error('❌ 未找到父节点！orderId:', orderId);
           }
         }
 
         // 添加子节点（费用明细）
         const parentNode = selectedDetails.find((p: any) => p.id === orderId);
+        console.log('🔍 在 selectedDetails 中查找父节点:', parentNode);
+
         if (parentNode) {
           const childNode = {
             id: fee.id,
@@ -447,19 +512,27 @@ function handleOpenFeeDetailModal() {
             currencyCode: fee.orderFee.currencyCode || '-',
             remainingInvoiceAmount: fee.orderFee.remainingInvoiceAmount,
           };
-          parentNode.children.push(childNode);
-          console.log('✅ 添加子节点:', childNode);
+          parentNode.feeDetails.push(childNode); // ✅ 更新为 feeDetails
+          console.log('✅ 添加子节点成功');
+        } else {
+          console.error(
+            '❌ 在 selectedDetails 中未找到父节点！orderId:',
+            orderId,
+          );
         }
+      } else {
+        console.error('❌ 未找到对应的费用对象！orderFeeId:', item.orderFeeId);
       }
     });
 
     selectedFeeDetails.value = selectedDetails;
+    console.log('\n=== 最终结果 ===');
     console.log('✅ 最终费用明细数据:', selectedFeeDetails.value);
     console.log('✅ 父节点数量:', selectedDetails.length);
     selectedDetails.forEach((detail, index) => {
       console.log(
-        `✅ 父节点 ${index + 1} 的子节点数量:`,
-        detail.children?.length || 0,
+        `✅ 父节点 ${index + 1} (${detail.id}) 的子节点数量:`,
+        detail.feeDetails?.length || 0,
       );
     });
 
@@ -469,6 +542,154 @@ function handleOpenFeeDetailModal() {
     message.error('加载费用明细失败');
   } finally {
     feeDetailModalLoading.value = false;
+  }
+}
+
+/** ✅ 新增：处理删除费用 */
+async function handleDeleteFee(feeId: string) {
+  console.log('🗑️ 开始删除费用 - feeId:', feeId);
+
+  // 1. 从 invoiceApplicationItems 中移除该费用
+  const items = formData.value.invoiceApplicationItems || [];
+  const removedItem = items.find((item: any) => {
+    // 需要从 feeGroupsData 中找到对应的 orderFeeId
+    const allFees = flattenTreeData(feeGroupsData.value);
+    const fee = allFees.find((f: any) => f.id === feeId);
+    return fee && item.orderFeeId === fee.orderFee?.id;
+  });
+
+  if (!removedItem) {
+    console.error('❌ 未找到要删除的费用项');
+    message.error('未找到要删除的费用');
+    return;
+  }
+
+  // 过滤掉该费用
+  formData.value.invoiceApplicationItems = items.filter(
+    (item: any) => item !== removedItem,
+  );
+
+  console.log(
+    '✅ 已从 invoiceApplicationItems 中删除费用，剩余:',
+    formData.value.invoiceApplicationItems.length,
+    '条',
+  );
+
+  // 2. 重新计算商品明细金额
+  await recalculateGoodsDetails();
+
+  // 3. 关闭弹窗并重新打开以刷新显示
+  feeDetailModalVisible.value = false;
+  await nextTick();
+  handleOpenFeeDetailModal();
+
+  message.success('删除成功，已重新计算金额');
+}
+
+/** ✅ 新增：重新计算商品明细金额 */
+async function recalculateGoodsDetails() {
+  const items = formData.value.invoiceApplicationItems || [];
+
+  if (items.length === 0) {
+    console.log('⚠️ 没有费用明细，清空商品明细');
+    goodsDetails.value = [];
+    return;
+  }
+
+  // 确保发票商品编码列表已加载
+  if (codeInvoiceList.value.length === 0) {
+    await loadCodeInvoiceList();
+  }
+
+  // 获取当前发票币别
+  const invoiceCurrencyId = formData.value.currencyId;
+  if (!invoiceCurrencyId) {
+    console.warn('未设置发票币别');
+    return;
+  }
+
+  // 获取币别代码
+  let currencyCode = '';
+  try {
+    const currencyDetail = await getCurrencyDetail(invoiceCurrencyId);
+    currencyCode = currencyDetail.code || '';
+  } catch (error) {
+    console.error('获取币别详情失败:', error);
+    return;
+  }
+
+  if (!currencyCode) {
+    console.warn('未找到币别代码');
+    return;
+  }
+
+  // 查找默认商品编码
+  const defaultCodeInvoice = codeInvoiceList.value.find(
+    (item) => item.isDefault && item.defaultCurrency === currencyCode,
+  );
+
+  if (!defaultCodeInvoice) {
+    console.warn('未找到默认商品编码');
+    return;
+  }
+
+  // 计算所有费用的总金额（转换为人民币）
+  let totalRmbAmount = 0;
+
+  // 从 feeGroupsData 中获取完整的费用信息
+  const allFees = flattenTreeData(feeGroupsData.value);
+
+  items.forEach((item: any) => {
+    const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
+    if (fee) {
+      const appliedAmount = item.appliedAmount || 0;
+      const feeCurrencyId = fee.orderFee.currencyId;
+
+      // 如果需要汇率转换
+      if (feeCurrencyId !== 1) {
+        totalRmbAmount += appliedAmount * (invoiceExchangeRate.value || 1);
+      } else {
+        totalRmbAmount += appliedAmount;
+      }
+    }
+  });
+
+  console.log('📊 重新计算后的总金额（人民币）:', totalRmbAmount.toFixed(2));
+
+  // 如果只有一行商品明细，更新该行金额
+  if (goodsDetails.value.length === 1) {
+    const existingItem = goodsDetails.value[0];
+
+    // 检查商品编码是否匹配
+    if (existingItem.codeInvoiceId === defaultCodeInvoice.id) {
+      const taxRate = existingItem.taxRate || defaultCodeInvoice.taxRate || 0;
+
+      existingItem.amount = totalRmbAmount;
+      existingItem.unitPrice = totalRmbAmount;
+      existingItem.noTaxAmount = totalRmbAmount / (1 + taxRate / 100);
+      existingItem.taxAmount =
+        (totalRmbAmount / (1 + taxRate / 100)) * (taxRate / 100);
+
+      console.log('✅ 已更新商品明细金额');
+    } else {
+      console.warn('⚠️ 商品编码不匹配，无法自动更新');
+      message.warning('商品明细与当前币别不匹配，请手动调整或重新填充');
+    }
+  } else if (goodsDetails.value.length > 1) {
+    // 多行商品明细时，提示用户手动处理
+    message.warning('当前存在多行商品明细，删除费用后请手动调整各行的金额');
+  } else {
+    // 没有商品明细，自动创建
+    await autoFillGoodsDetails(
+      items
+        .map((item: any) => {
+          const fee = allFees.find(
+            (f: any) => f.orderFee?.id === item.orderFeeId,
+          );
+          return fee;
+        })
+        .filter(Boolean),
+    );
   }
 }
 
@@ -496,7 +717,7 @@ async function handleFeeSelectionSave(data: {
   // ✅ 详细检查 feeGroupsData 的结构
   if (groupsData && groupsData.length > 0) {
     console.log('✅ feeGroupsData 第一个订单组:', groupsData[0]);
-    const firstFee = groupsData[0].children?.[0];
+    const firstFee = groupsData[0].feeDetails?.[0]; // ✅ 更新为 feeDetails，与 FeeSelectionDrawer 保持一致
     if (firstFee) {
       console.log('✅ 第一个费用的完整信息:', {
         id: firstFee.id,
@@ -533,14 +754,31 @@ async function handleFeeSelectionSave(data: {
   // 加载客户开票信息
   await loadClientInvoiceInfo(settlementId);
 
-  // ✅ 关键修复：直接使用从抽屉传递过来的 feeGroupsData
+  // ✅ 关键修复：合并费用组数据，避免重复添加
   if (groupsData && groupsData.length > 0) {
-    feeGroupsData.value = [...groupsData]; // 创建副本，避免引用问题
-    console.log(
-      '✅ 已保存费用数据到 feeGroupsData:',
-      feeGroupsData.value.length,
-      '个订单组',
-    );
+    // ✅ 获取已存在的运输订单ID集合（用于去重）
+    const existingOrderIds = new Set<string>();
+    feeGroupsData.value.forEach((group: any) => {
+      if (group.transportOrder?.id) {
+        existingOrderIds.add(String(group.transportOrder.id));
+      }
+    });
+
+    // ✅ 过滤掉已存在的订单组，只添加新的
+    const newGroups = groupsData.filter((group: any) => {
+      const orderId = group.transportOrder?.id;
+      return orderId && !existingOrderIds.has(String(orderId));
+    });
+
+    // ✅ 合并新旧费用组数据
+    if (newGroups.length > 0) {
+      feeGroupsData.value = [...feeGroupsData.value, ...newGroups];
+      console.log(
+        `✅ 已合并费用数据到 feeGroupsData: 新增 ${newGroups.length} 个订单组，总计 ${feeGroupsData.value.length} 个订单组`,
+      );
+    } else {
+      console.log('⚠️ 所有订单组都已存在，无需重复添加');
+    }
   } else {
     console.warn('⚠️ 未接收到 feeGroupsData 数据');
   }
@@ -548,18 +786,46 @@ async function handleFeeSelectionSave(data: {
   // 判断是否是首次添加费用（商品明细为空时才自动填充）
   const isFirstTimeAdd = goodsDetails.value.length === 0;
 
+  // ✅ 关键修复：获取已存在的费用ID集合，用于过滤
+  const existingFeeIds = getAddedFeeIds();
+
+  // ✅ 过滤出真正的新费用（排除已存在的）
+  const newFees = selectedFees.filter((fee: any) => {
+    const feeId = String(fee.orderFee?.id);
+    return !existingFeeIds.has(feeId);
+  });
+
+  console.log('📊 费用过滤结果:', {
+    抽屉返回总数: selectedFees.length,
+    已存在数量: selectedFees.length - newFees.length,
+    实际新增数量: newFees.length,
+  });
+
+  // 如果没有新费用，直接返回
+  if (newFees.length === 0) {
+    console.log('⚠️ 没有新费用需要处理');
+    message.warning('所选费用已全部添加，无新增费用');
+    return;
+  }
+
   addSelectedFeesToForm(selectedFees);
 
-  // ✅ 根据商品明细数量决定处理方式
+  // ✅ 根据商品明细数量决定处理方式（使用过滤后的新费用）
   if (isFirstTimeAdd) {
     // 首次添加：自动填充商品明细
-    await autoFillGoodsDetails(selectedFees);
+    await autoFillGoodsDetails(newFees);
   } else if (goodsDetails.value.length === 1) {
     // ✅ 只有一行商品明细：将新费用金额合并到该行
-    await mergeAmountToExistingGoods(selectedFees);
+    await mergeAmountToExistingGoods(newFees);
   } else {
-    // ✅ 多行商品明细：新增一条商品明细（同首次添加规则）
-    await autoFillGoodsDetails(selectedFees);
+    // ✅ 多行商品明细：提示用户手动处理，避免数据混乱
+    console.warn('⚠️ 存在多行商品明细，无法自动合并');
+    message.warning(
+      '当前存在多行商品明细，系统无法自动合并金额。建议：\n' +
+        '1. 删除多余的商品明细，保留一行\n' +
+        '2. 或手动调整各行的金额',
+    );
+    // 不再自动添加新的商品明细
   }
 }
 
@@ -858,8 +1124,8 @@ async function mergeAmountToExistingGoods(selectedFees: any[]) {
 
 /** 自动填充商品明细 */
 async function autoFillGoodsDetails(selectedFees: any[]) {
-  // 重置商品明细
-  goodsDetails.value = [];
+  // ✅ 移除清空逻辑，改为追加模式
+  // goodsDetails.value = [];
 
   // 确保发票商品编码列表已加载
   if (codeInvoiceList.value.length === 0) {
@@ -990,6 +1256,11 @@ async function autoFillGoodsDetails(selectedFees: any[]) {
 function getAddedFeeIds(): Set<string> {
   const items = formData.value.invoiceApplicationItems || [];
   return new Set(items.map((item: any) => String(item.orderFeeId)));
+}
+
+/** ✅ 新增：将已添加的费用ID列表转换为数组格式（用于传递给子组件） */
+function getAddedFeeIdsArray(): string[] {
+  return Array.from(getAddedFeeIds());
 }
 
 /** 加载发票商品编码列表 */
@@ -1243,13 +1514,23 @@ onMounted(() => {
   }
 });
 
-// 税率选项
+/** 税率选项（包含常用税率和自定义输入） */
 const taxRateOptions = [
   { label: '免税', value: 0 },
   { label: '6%', value: 6 },
   { label: '9%', value: 9 },
   { label: '13%', value: 13 },
 ];
+
+/** 获取税率显示文本 */
+function getTaxRateLabel(value: number | string): string {
+  if (value === 0 || value === '0') return '免税';
+  if (value === 6 || value === '6') return '6%';
+  if (value === 9 || value === '9') return '9%';
+  if (value === 13 || value === '13') return '13%';
+  // 自定义税率
+  return `${value}%`;
+}
 
 /** 计算商品明细总金额（人民币） */
 const totalInvoiceAmount = computed(() => {
@@ -1485,7 +1766,7 @@ async function loadDetail() {
             )?.label || '-',
           carrier: group.seaExport?.carrierName || '-',
           company: group.transportOrder?.companys?.[0]?.name || '-',
-          children: [] as any[],
+          feeDetails: [] as any[], // ✅ 更新为 feeDetails，与 FeeSelectionDrawer 保持一致
         };
 
         // 添加子节点（费用明细）
@@ -1507,7 +1788,7 @@ async function loadDetail() {
               bookingNum: group.transportOrder?.bookingNum || '-',
               transportOrder: group.transportOrder,
             };
-            parentNode.children.push(childNode);
+            parentNode.feeDetails.push(childNode); // ✅ 更新为 feeDetails
           });
         }
 
@@ -2101,13 +2382,29 @@ async function loadDetail() {
                       {{ record.noTaxAmount?.toFixed(2) || '0.00' }}
                     </template>
                     <template v-else-if="column.key === 'taxRate'">
-                      <Select
-                        v-model:value="record.taxRate"
-                        :options="taxRateOptions"
-                        style="width: 100%"
-                        size="small"
-                        @change="() => handleTaxRateChange(record)"
-                      />
+                      <div style="display: flex; gap: 4px">
+                        <Select
+                          v-model:value="record.taxRate"
+                          :options="taxRateOptions"
+                          style="flex: 1"
+                          size="small"
+                          placeholder="选择税率"
+                          allow-clear
+                          @change="() => handleTaxRateChange(record)"
+                        />
+                        <InputNumber
+                          v-model:value="record.taxRate"
+                          :min="0"
+                          :max="100"
+                          :precision="2"
+                          :step="0.01"
+                          style="width: 100px"
+                          size="small"
+                          placeholder="自定义"
+                          addon-after="%"
+                          @change="() => handleTaxRateChange(record)"
+                        />
+                      </div>
                     </template>
                     <template v-else-if="column.key === 'taxAmount'">
                       {{ record.taxAmount?.toFixed(2) || '0.00' }}
@@ -2236,6 +2533,7 @@ async function loadDetail() {
       :settlement-id="formData.settlementId"
       :currency-id="formData.currencyId"
       :invoice-application-id="editId"
+      :added-fee-ids="getAddedFeeIdsArray()"
       @save="handleFeeSelectionSave"
     />
 
@@ -2244,6 +2542,7 @@ async function loadDetail() {
       v-model:visible="feeDetailModalVisible"
       :loading="feeDetailModalLoading"
       :fee-details="selectedFeeDetails"
+      @delete-fee="handleDeleteFee"
     />
 
     <!-- 备注模板管理弹窗 -->

@@ -287,7 +287,8 @@ async function handleConfirm() {
   }
 
   // 构造返回数据，并过滤掉结算金额为0的申请和币别
-  const result = selectedApps
+  const result = dataSource.value
+    .filter((app) => selectedRowKeys.value.includes(app.id))
     .map((app) => {
       const item: any = {
         application: app,
@@ -645,9 +646,9 @@ const orderFeeColumns: ColumnsType<PaymentApplicationAdminApi.OrderFeeForSettlem
       width: 120,
     },
     {
-      title: '未开票金额',
-      dataIndex: 'unInvoicedAmount',
-      key: 'unInvoicedAmount',
+      title: '申请金额',
+      dataIndex: 'rqstPaymentAmount',
+      key: 'rqstPaymentAmount',
       width: 120,
       align: 'right',
     },
@@ -1061,10 +1062,10 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
       </template>
 
       <!-- 第二层：币别分组 -->
-      <template #expandedRowRender="{ record }">
+      <template #expandedRowRender="{ record: applicationRecord }">
         <Table
           :columns="currencyGroupColumns"
-          :data-source="record.currencyGroup || []"
+          :data-source="applicationRecord.currencyGroup || []"
           :pagination="false"
           row-key="id"
           bordered
@@ -1079,7 +1080,7 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
             <!-- 复选框列 -->
             <template v-if="column.key === 'checkbox'">
               <div
-                v-if="!record.currencyId"
+                v-if="!applicationRecord.currencyId"
                 style="display: flex; justify-content: center"
               >
                 <input
@@ -1087,16 +1088,42 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
                   :checked="currencyRecord.checked"
                   @change="
                     (e) => {
-                      currencyRecord.checked = (
-                        e.target as HTMLInputElement
-                      ).checked;
+                      const isChecked = (e.target as HTMLInputElement).checked;
+                      currencyRecord.checked = isChecked;
+
+                      console.log('二级复选框变化:', {
+                        isChecked,
+                        applicationId: applicationRecord.id,
+                        currentSelectedKeys: selectedRowKeys,
+                        alreadyIncluded: selectedRowKeys.includes(
+                          applicationRecord.id,
+                        ),
+                      });
+
+                      // 如果勾选了二级，自动选中一级
+                      if (
+                        isChecked &&
+                        !selectedRowKeys.includes(applicationRecord.id)
+                      ) {
+                        selectedRowKeys = [
+                          ...selectedRowKeys,
+                          applicationRecord.id,
+                        ];
+                        console.log('已自动选中一级:', applicationRecord.id);
+                        console.log(
+                          '更新后的selectedRowKeys:',
+                          selectedRowKeys,
+                        );
+                      }
                     }
                   "
                   :disabled="
-                    !selectedRowKeys.includes(record.id) ||
                     (currencyRecord.settleableUpperLimit === 0 &&
                       currencyRecord.settleableLowerLimit === 0) ||
-                    (props.existingApplicationIds?.includes(record.id) ?? false)
+                    (props.existingApplicationIds?.includes(
+                      applicationRecord.id,
+                    ) ??
+                      false)
                   "
                 />
               </div>
@@ -1117,7 +1144,7 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
 
             <template v-else-if="column.key === 'settledAmount'">
               <InputNumber
-                v-if="!record.currencyId"
+                v-if="!applicationRecord.currencyId"
                 v-model:value="currencyRecord.settledAmount"
                 :min="currencyRecord.settleableLowerLimit || 0"
                 :max="currencyRecord.settleableUpperLimit || 0"
@@ -1125,10 +1152,13 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
                 placeholder="请输入"
                 style="width: 100%"
                 :disabled="
-                  !selectedRowKeys.includes(record.id) ||
+                  !selectedRowKeys.includes(applicationRecord.id) ||
                   (currencyRecord.settleableUpperLimit === 0 &&
                     currencyRecord.settleableLowerLimit === 0) ||
-                  (props.existingApplicationIds?.includes(record.id) ?? false)
+                  (props.existingApplicationIds?.includes(
+                    applicationRecord.id,
+                  ) ??
+                    false)
                 "
               />
               <span v-else style="color: #999">-</span>
@@ -1168,6 +1198,10 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
 
                 <template v-else-if="column.key === 'amount'">
                   {{ formatAmount(feeItem.amount) }}
+                </template>
+
+                <template v-else-if="column.key === 'rqstPaymentAmount'">
+                  {{ formatAmount(feeItem.rqstPaymentAmount) }}
                 </template>
               </template>
             </Table>

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { watch } from 'vue';
-import { Modal, Spin, Table } from 'ant-design-vue';
+import { Modal, Spin, Table, Button, message } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 
 interface FeeDetailItem {
   id: string;
@@ -15,7 +16,7 @@ interface FeeDetailItem {
   bizType?: string;
   carrier?: string;
   company?: string;
-  children?: FeeChildItem[];
+  feeDetails?: FeeChildItem[]; // ✅ 使用 feeDetails 而非 children，避免被 Table 识别为树形结构
 }
 
 interface FeeChildItem {
@@ -39,19 +40,20 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:visible', value: boolean): void;
+  (e: 'delete-fee', feeId: string): void; // ✅ 新增：删除费用的事件
 }>();
 
 // 监听数据变化，打印调试信息
 watch(
   () => props.feeDetails,
   (newVal) => {
-    console.log('📊 FeeDetailModal 接收到数据:', newVal);
+    console.log(' FeeDetailModal 接收到数据:', newVal);
     console.log('📊 父节点数量:', newVal.length);
     newVal.forEach((detail, index) => {
       console.log(`📊 父节点 ${index + 1}:`, {
         id: detail.id,
         commissionNum: detail.commissionNum,
-        childrenCount: detail.children?.length || 0,
+        childrenCount: detail.feeDetails?.length || 0, // ✅ 更新为 feeDetails
       });
     });
   },
@@ -158,13 +160,34 @@ const childColumns = [
     title: '本次开票金额',
     dataIndex: 'appliedAmount',
     key: 'appliedAmount',
-    minWidth: 180,
+    minWidth: 150,
     align: 'right' as const,
+  },
+  {
+    title: '操作',
+    key: 'action',
+    width: 100,
+    align: 'center' as const,
+    fixed: 'right' as const,
   },
 ];
 
 function handleClose() {
   emit('update:visible', false);
+}
+
+// 删除费用
+function handleDeleteFee(feeId: string, commissionNum: string) {
+  Modal.confirm({
+    title: '确认删除',
+    content: `确定要删除委托编号为 ${commissionNum} 下的这条费用吗？删除后将重新计算总金额。`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: () => {
+      emit('delete-fee', feeId);
+      message.success('删除成功');
+    },
+  });
 }
 </script>
 
@@ -187,16 +210,15 @@ function handleClose() {
           size="small"
           :expandable="{
             defaultExpandAllRows: true,
-            childrenColumnName: 'children',
           }"
           row-key="id"
           :scroll="{ y: 500 }"
         >
           <template #expandedRowRender="{ record }">
             <Table
-              v-if="record.children && record.children.length > 0"
+              v-if="record.feeDetails && record.feeDetails.length > 0"
               :columns="childColumns"
-              :data-source="record.children"
+              :data-source="record.feeDetails"
               :pagination="false"
               bordered
               size="small"
@@ -210,6 +232,24 @@ function handleClose() {
                     {{ childRecord.appliedAmount?.toFixed(2) || '0.00' }}
                     {{ childRecord.currencyCode }}
                   </span>
+                </template>
+                <template v-else-if="column.key === 'action'">
+                  <Button
+                    type="link"
+                    danger
+                    size="small"
+                    @click="
+                      handleDeleteFee(
+                        childRecord.id,
+                        record.commissionNum || '',
+                      )
+                    "
+                  >
+                    <template #icon>
+                      <IconifyIcon icon="ant-design:delete-outlined" />
+                    </template>
+                    删除
+                  </Button>
                 </template>
               </template>
             </Table>

@@ -29,6 +29,7 @@ import {
   batchEditOrderFee,
   getOrderFeePagedList,
   batchDeleteOrderFee,
+  generateOppositeOrderFees,
 } from '#/api/sea-export/order-fee-admin';
 
 import {
@@ -65,7 +66,11 @@ const props = defineProps<{
   payAmountMap?: Record<string, any>; // 应付金额汇总
 }>();
 
-const emit = defineEmits(['sync-fee', 'update-amount']);
+const emit = defineEmits([
+  'sync-fee',
+  'update-amount',
+  'refresh-opposite-table',
+]);
 
 const route = useRoute();
 
@@ -367,72 +372,7 @@ const delRow = () => {
   tmpDel.value = true;
   gridApi.query();
 };
-const showModifyWithRemark = () => {
-  if (!selectedRowKeys.value.length) return;
 
-  const keysSet = new Set(selectedRowKeys.value);
-  const list = (dataSource.value ?? []).filter((row) =>
-    keysSet.has((row as any)._rowKey),
-  );
-
-  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0，才可以申请修改
-  const invalidRows = list.filter((row) => {
-    const isApproved =
-      row.feeStatus === feeConstants.getFeeStatusValue.Approved;
-    const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
-    const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
-    const hasSettledAmount = (row.settledAmount || 0) !== 0;
-
-    return (
-      !isApproved ||
-      hasInvoicedAmount ||
-      hasOrderInvoiceAmount ||
-      hasSettledAmount
-    );
-  });
-
-  if (invalidRows.length > 0) {
-    message.error({
-      content:
-        '只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0的费用才可以申请修改',
-      key: 'action_process_msg',
-    });
-    return;
-  }
-
-  let modalRemark = '';
-  // 创建弹窗实例
-  const modal = Modal.confirm({
-    title: $t('auditApproval.task.okModify'),
-    content: () =>
-      h('div', {}, [
-        h(Textarea, {
-          modelValue: modalRemark,
-          onChange: (val: any) => {
-            modalRemark = val.target?.value || val;
-            console.log('Textarea changed:', modalRemark);
-          },
-          rows: 3,
-          placeholder: $t('auditApproval.task.remarkModifyPlaceholder'),
-          maxlength: 100,
-          style: 'margin-top: 8px;',
-        }),
-      ]),
-    icon: null,
-    width: 520,
-    centered: true,
-    okText: $t('common.confirm'),
-    cancelText: $t('common.cancel'),
-    async onOk() {
-      await nextTick(); // 等待 Vue 响应式更新完成
-      //    console.log('remark onOk:', modalRemark);
-      submitModify(modalRemark);
-    },
-    onCancel() {
-      modalRemark = '';
-    },
-  });
-};
 const showDeleteWithRemark = () => {
   if (!selectedRowKeys.value.length) return;
 
@@ -441,26 +381,27 @@ const showDeleteWithRemark = () => {
     keysSet.has((row as any)._rowKey),
   );
 
-  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0，才可以申请删除
+  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额、申请付款金额全是0，才可以申请删除
   const invalidRows = list.filter((row) => {
     const isApproved =
       row.feeStatus === feeConstants.getFeeStatusValue.Approved;
     const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
     const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
     const hasSettledAmount = (row.settledAmount || 0) !== 0;
+    const hasRqstPaymentAmount = (row.rqstPaymentAmount || 0) !== 0;
 
     return (
       !isApproved ||
       hasInvoicedAmount ||
       hasOrderInvoiceAmount ||
-      hasSettledAmount
+      hasSettledAmount ||
+      hasRqstPaymentAmount
     );
   });
 
   if (invalidRows.length > 0) {
     message.error({
-      content:
-        '只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额全是0的费用才可以申请删除',
+      content: '当前费用不允许申请更改',
       key: 'action_process_msg',
     });
     return;
@@ -542,6 +483,80 @@ const orderFeeWithdraw = () => {
     getTableDate();
   });
 };
+
+// 收付互生费用（应收生成应付 / 应付生成应收）
+const generateOppositeFees = async () => {
+  if (!selectedRowKeys.value.length) {
+    message.warning($t('common.selectDataFirst'));
+    return;
+  }
+
+  const keysSet = new Set(selectedRowKeys.value);
+  const selectedList = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+
+  if (selectedList.length === 0) {
+    message.warning($t('common.selectDataFirst'));
+    return;
+  }
+
+  // 校验：只能选择录入状态或驳回状态的费用
+  const invalidRows = selectedList.filter((row) => {
+    return (
+      row.feeStatus !== feeConstants.getFeeStatusValue.Entering &&
+      row.feeStatus !== feeConstants.getFeeStatusValue.Rejected
+    );
+  });
+
+  if (invalidRows.length > 0) {
+    message.error({
+      content: '只能选择"录入"或"驳回"状态的费用进行收付互生',
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
+  // 获取当前更改单ID（如果有）
+  const changeOrderId =
+    props.mode === 'changeOrder' ? props.parentChangeOrderId : undefined;
+
+  // 构建请求参数
+  const params: OrderFeeAdminApi.GenerateOppositeOrderFeesInputDto = {
+    transportOrderId: editId.value || '',
+    paySide: props.type, // 当前表格的收付类型（0=收，1=付）
+    orderFeeIds: selectedList.map((item) => item.id),
+    changeOrderId: changeOrderId,
+  };
+
+  console.log('🔄 [generateOppositeFees] 收付互生参数:', params);
+
+  try {
+    const result = await generateOppositeOrderFees(params);
+    console.log('✅ [generateOppositeFees] 生成的费用ID列表:', result);
+
+    message.success({
+      content: `成功生成 ${result.length} 条${props.type === 0 ? '应付' : '应收'}费用`,
+      key: 'action_process_msg',
+    });
+
+    // 刷新当前表格数据
+    await getTableDate();
+
+    // 通知父组件同步费用（触发emit事件）
+    syncFee();
+
+    // 通知父组件刷新对立表格（应收生成应付时刷新应付表，反之亦然）
+    emit('refresh-opposite-table');
+  } catch (error) {
+    console.error('❌ [generateOppositeFees] 收付互生失败:', error);
+    message.error({
+      content: '收付互生失败，请检查费用状态和配置',
+      key: 'action_process_msg',
+    });
+  }
+};
+
 const Submitted = () => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
@@ -574,6 +589,33 @@ const openModifyModal = () => {
   const list = (dataSource.value ?? []).filter((row) =>
     keysSet.has((row as any)._rowKey),
   );
+
+  // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额、申请付款金额全是0，才可以申请修改
+  const invalidRows = list.filter((row) => {
+    const isApproved =
+      row.feeStatus === feeConstants.getFeeStatusValue.Approved;
+    const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
+    const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
+    const hasSettledAmount = (row.settledAmount || 0) !== 0;
+    const hasRqstPaymentAmount = (row.rqstPaymentAmount || 0) !== 0;
+
+    return (
+      !isApproved ||
+      hasInvoicedAmount ||
+      hasOrderInvoiceAmount ||
+      hasSettledAmount ||
+      hasRqstPaymentAmount
+    );
+  });
+
+  if (invalidRows.length > 0) {
+    message.error({
+      content: '当前费用不允许申请更改',
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
   if (list.length > 1) {
     message.error({
       content: $t('ui.actionMessage.lengthLimit1'),
@@ -921,6 +963,14 @@ defineExpose({
                   @click="removeSelectedRows"
                 >
                   {{ $t('common.delete') }}
+                </Button>
+
+                <Button
+                  type="primary"
+                  :disabled="!selectedRowKeys.length"
+                  @click="generateOppositeFees"
+                >
+                  {{ type === 0 ? '应收生成应付' : '应付生成应收' }}
                 </Button>
 
                 <DropdownButton

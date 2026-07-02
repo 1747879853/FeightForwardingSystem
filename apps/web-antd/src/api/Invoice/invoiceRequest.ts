@@ -122,6 +122,8 @@ export namespace InvoiceApplicationApi {
 
   /** 开票申请费用查询DTO */
   export interface InvoiceApplicationFeeQueryDto {
+    /** 关键字（可输入委托编号、主提单号、订舱编号、结算单位、业务类别、船公司、委托单位、开船日期、销售、会计期间、操作人、起运港、目的港、船名、航次、组织） */
+    keyWord?: string;
     /** 开票申请ID（编辑时传入，排除此申请已关联的费用） */
     invoiceApplicationId?: string;
     /** 委托编号（模糊） */

@@ -43,7 +43,7 @@ const selectedItemsRef = toRef(props, 'selectedItems');
 
 /** 默认的固定单位选项 */
 const DEFAULT_UNIT_OPTIONS = [
-  { label: '重量', value: 'weight' },
+  { label: '毛重', value: 'KGS' },
   { label: '尺码', value: 'measurement' },
   { label: '件数', value: 'piece' },
   { label: 'TEU', value: 'teu' },
