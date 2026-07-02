@@ -312,10 +312,9 @@ async function getDataPermissionList(params: Recordable<any>) {
     keyword: params.keyword,
     userId: params.userId,
     roleId: params.roleId,
-    skipCount:
-      ((params.page || params.pageIndex || 1) - 1) * (params.pageSize || 10),
-    maxResultCount: params.pageSize || 10,
-    sorting: params.sorting || 'Id',
+    pageIndex: params.pageIndex || params.page || 1,
+    pageSize: params.pageSize || 10,
+    sorting: params.sorting || 'CreationTime DESC',
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserDataPermissionDto>
@@ -368,9 +367,9 @@ async function deleteDataPermission(id: number) {
 async function getDataPermissionItemList(params: Recordable<any>) {
   const queryParams = {
     userDataPermissionId: params.userDataPermissionId,
-    skipCount:
-      ((params.page || params.pageIndex || 1) - 1) * (params.pageSize || 100),
-    maxResultCount: params.pageSize || 100,
+    pageIndex: params.pageIndex || params.page || 1,
+    pageSize: params.pageSize || 100,
+    sorting: params.sorting || 'Id',
   };
   const response = await requestClient.get<
     SystemPermissionApi.PagedList<SystemPermissionApi.UserDataPermissionItemDto>

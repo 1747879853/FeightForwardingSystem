@@ -4,11 +4,9 @@ import type { SystemPermissionApi } from '#/api/system/permission';
 import { FreightRateLabelOptions } from '#/api/sea-export/freight-rate-admin';
 import {
   DataPermissionType,
-  DataPermissionTypeOptions,
   FrightModule,
   FrightModuleOptions,
   ManageType,
-  ManageTypeOptions,
   OperatorOptions,
   UserTablePermissionOperator,
 } from '#/api/system/permission';
@@ -16,19 +14,78 @@ import { $t } from '#/locales';
 
 // ==================== 枚举标签映射 ====================
 
-export const ManageTypeLabels: Record<ManageType, string> = {
-  [ManageType.Get]: '查询',
-  [ManageType.Edit]: '编辑',
-};
+export function formatManageType(value: ManageType) {
+  const labels: Record<ManageType, string> = {
+    [ManageType.Get]: $t('system.permission.manageTypeGet'),
+    [ManageType.Edit]: $t('system.permission.manageTypeEdit'),
+  };
+  return labels[value] ?? String(value);
+}
 
-export const DataPermissionTypeLabels: Record<DataPermissionType, string> = {
-  [DataPermissionType.My]: '自己',
-  [DataPermissionType.MyPart]: '本部门',
-  [DataPermissionType.MyCompany]: '本公司',
-  [DataPermissionType.ManyUser]: '多用户',
-  [DataPermissionType.ManyPart]: '多部门/多公司',
-  [DataPermissionType.All]: '全部',
-};
+export function formatDataPermissionType(value: DataPermissionType) {
+  const labels: Record<DataPermissionType, string> = {
+    [DataPermissionType.My]: $t('system.permission.dataPermissionTypeMy'),
+    [DataPermissionType.MyPart]: $t(
+      'system.permission.dataPermissionTypeMyPart',
+    ),
+    [DataPermissionType.MyCompany]: $t(
+      'system.permission.dataPermissionTypeMyCompany',
+    ),
+    [DataPermissionType.ManyUser]: $t(
+      'system.permission.dataPermissionTypeManyUser',
+    ),
+    [DataPermissionType.ManyPart]: $t(
+      'system.permission.dataPermissionTypeManyPart',
+    ),
+    [DataPermissionType.All]: $t('system.permission.dataPermissionTypeAll'),
+  };
+  return labels[value] ?? String(value);
+}
+
+/** 数据权限表单可选项（排除「自己」，系统默认无需配置） */
+export function getDataPermissionFormTypeOptions() {
+  return [
+    {
+      label: $t('system.permission.dataPermissionTypeMyPart'),
+      value: DataPermissionType.MyPart,
+    },
+    {
+      label: $t('system.permission.dataPermissionTypeMyCompany'),
+      value: DataPermissionType.MyCompany,
+    },
+    {
+      label: $t('system.permission.dataPermissionTypeManyUser'),
+      value: DataPermissionType.ManyUser,
+    },
+    {
+      label: $t('system.permission.dataPermissionTypeManyPart'),
+      value: DataPermissionType.ManyPart,
+    },
+    {
+      label: $t('system.permission.dataPermissionTypeAll'),
+      value: DataPermissionType.All,
+    },
+  ];
+}
+
+export function getManageTypeOptions() {
+  return [
+    {
+      label: $t('system.permission.manageTypeGet'),
+      value: ManageType.Get,
+    },
+    {
+      label: $t('system.permission.manageTypeEdit'),
+      value: ManageType.Edit,
+    },
+  ];
+}
+
+export function needsDataPermissionItems(type?: DataPermissionType) {
+  return (
+    type === DataPermissionType.ManyUser || type === DataPermissionType.ManyPart
+  );
+}
 
 export const FrightModuleLabels: Record<FrightModule, string> = {
   [FrightModule.SeaExport]: '海运出口',
@@ -61,19 +118,20 @@ export function useDataPermissionFormSchema(): VbenFormSchema[] {
       component: 'Select',
       componentProps: {
         class: 'w-full',
-        options: ManageTypeOptions,
-        placeholder: '请选择功能类型',
+        options: getManageTypeOptions(),
+        placeholder: $t('system.permission.manageTypePlaceholder'),
       },
       fieldName: 'manageType',
       label: $t('system.permission.manageType'),
       rules: 'required',
+      defaultValue: ManageType.Get,
     },
     {
       component: 'Select',
       componentProps: {
         class: 'w-full',
-        options: DataPermissionTypeOptions,
-        placeholder: '请选择数据范围',
+        options: getDataPermissionFormTypeOptions(),
+        placeholder: $t('system.permission.dataPermissionTypePlaceholder'),
       },
       fieldName: 'dataPermissionType',
       label: $t('system.permission.dataPermissionType'),
@@ -82,9 +140,27 @@ export function useDataPermissionFormSchema(): VbenFormSchema[] {
   ];
 }
 
+export function useDataPermissionItemColumns(): VxeTableGridOptions['columns'] {
+  return [
+    {
+      field: 'entityId',
+      title: $t('system.permission.entityId'),
+      width: 100,
+    },
+    {
+      field: 'entityName',
+      minWidth: 200,
+      title: $t('system.permission.entityName'),
+    },
+  ];
+}
+
 export function useDataPermissionColumns<
   T = SystemPermissionApi.UserDataPermissionDto,
->(onActionClick: OnActionClickFn<T>): VxeTableGridOptions['columns'] {
+>(
+  onActionClick: OnActionClickFn<T>,
+  onViewItems?: (row: T) => void,
+): VxeTableGridOptions['columns'] {
   return [
     {
       field: 'id',
@@ -95,14 +171,13 @@ export function useDataPermissionColumns<
       field: 'manageType',
       title: $t('system.permission.manageType'),
       width: 120,
-      formatter: ({ cellValue }) => ManageTypeLabels[cellValue] || cellValue,
+      formatter: ({ cellValue }) => formatManageType(cellValue),
     },
     {
       field: 'dataPermissionType',
       title: $t('system.permission.dataPermissionType'),
       width: 150,
-      formatter: ({ cellValue }) =>
-        DataPermissionTypeLabels[cellValue] || cellValue,
+      formatter: ({ cellValue }) => formatDataPermissionType(cellValue),
     },
     {
       field: 'creationTime',
@@ -117,13 +192,26 @@ export function useDataPermissionColumns<
           nameField: 'id',
           nameTitle: $t('system.permission.name'),
           onClick: onActionClick,
+          actions: onViewItems
+            ? [
+                {
+                  code: 'viewItems',
+                  text: $t('system.permission.viewDataPermissionItems'),
+                  show: (row: T) =>
+                    needsDataPermissionItems(
+                      (row as SystemPermissionApi.UserDataPermissionDto)
+                        .dataPermissionType,
+                    ),
+                },
+              ]
+            : undefined,
         },
         name: 'CellOperation',
       },
       field: 'operation',
       fixed: 'right',
       title: $t('system.permission.operation'),
-      width: 130,
+      width: 200,
     },
   ];
 }
@@ -145,7 +233,7 @@ export function useTablePermissionFormSchema(): VbenFormSchema[] {
     {
       component: 'Select',
       componentProps: {
-        options: ManageTypeOptions,
+        options: getManageTypeOptions(),
         placeholder: '请选择功能类型',
       },
       fieldName: 'manageType',
@@ -177,7 +265,7 @@ export function useTablePermissionColumns<
       field: 'manageType',
       title: $t('system.permission.manageType'),
       width: 120,
-      formatter: ({ cellValue }) => ManageTypeLabels[cellValue] || cellValue,
+      formatter: ({ cellValue }) => formatManageType(cellValue),
     },
     {
       field: 'creationTime',

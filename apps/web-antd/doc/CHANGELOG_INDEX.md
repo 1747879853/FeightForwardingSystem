@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-02 权限管理数据权限对接子项维护](./changelogs/change-log-2026-07-02-system-permission-data-permission.md)
 - [2026-07-02 海运出口船期时间轴竖向分割条移至预抵日期后](./changelogs/change-log-2026-07-02-sea-export-shipment-divider-after-eta.md)
 
 ## 2026-06
