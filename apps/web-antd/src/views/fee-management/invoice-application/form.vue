@@ -333,9 +333,16 @@ function handleAmountChange(record: any) {
   record.taxAmount = (record.amount / (1 + taxRate / 100)) * (taxRate / 100);
 }
 
-/** 商品明细 - 税率变化 */
+/** 处理商品明细 - 税率变化 */
 function handleTaxRateChange(record: any) {
-  handleQuantityOrPriceChange(record);
+  // 确保税率为数字类型
+  const taxRate = Number(record.taxRate) || 0;
+  record.taxRate = taxRate;
+
+  // 重新计算不含税金额和税额
+  const amount = record.amount || 0;
+  record.noTaxAmount = amount / (1 + taxRate / 100);
+  record.taxAmount = (amount / (1 + taxRate / 100)) * (taxRate / 100);
 }
 
 /** 添加商品明细行 */
@@ -344,7 +351,7 @@ function handleAddGoodsRow() {
   const items = formData.value.invoiceApplicationItems || [];
 
   if (items.length === 0) {
-    message.warning('请先从抽屉中添加费用，然后再添加商品明细');
+    message.warning('请先从抽屉中添加费用,然后再添加商品明细');
     return;
   }
 
@@ -1507,13 +1514,23 @@ onMounted(() => {
   }
 });
 
-// 税率选项
+/** 税率选项（包含常用税率和自定义输入） */
 const taxRateOptions = [
   { label: '免税', value: 0 },
   { label: '6%', value: 6 },
   { label: '9%', value: 9 },
   { label: '13%', value: 13 },
 ];
+
+/** 获取税率显示文本 */
+function getTaxRateLabel(value: number | string): string {
+  if (value === 0 || value === '0') return '免税';
+  if (value === 6 || value === '6') return '6%';
+  if (value === 9 || value === '9') return '9%';
+  if (value === 13 || value === '13') return '13%';
+  // 自定义税率
+  return `${value}%`;
+}
 
 /** 计算商品明细总金额（人民币） */
 const totalInvoiceAmount = computed(() => {
@@ -2365,13 +2382,29 @@ async function loadDetail() {
                       {{ record.noTaxAmount?.toFixed(2) || '0.00' }}
                     </template>
                     <template v-else-if="column.key === 'taxRate'">
-                      <Select
-                        v-model:value="record.taxRate"
-                        :options="taxRateOptions"
-                        style="width: 100%"
-                        size="small"
-                        @change="() => handleTaxRateChange(record)"
-                      />
+                      <div style="display: flex; gap: 4px">
+                        <Select
+                          v-model:value="record.taxRate"
+                          :options="taxRateOptions"
+                          style="flex: 1"
+                          size="small"
+                          placeholder="选择税率"
+                          allow-clear
+                          @change="() => handleTaxRateChange(record)"
+                        />
+                        <InputNumber
+                          v-model:value="record.taxRate"
+                          :min="0"
+                          :max="100"
+                          :precision="2"
+                          :step="0.01"
+                          style="width: 100px"
+                          size="small"
+                          placeholder="自定义"
+                          addon-after="%"
+                          @change="() => handleTaxRateChange(record)"
+                        />
+                      </div>
                     </template>
                     <template v-else-if="column.key === 'taxAmount'">
                       {{ record.taxAmount?.toFixed(2) || '0.00' }}
