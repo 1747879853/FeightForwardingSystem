@@ -15,7 +15,9 @@ const route = useRoute();
 function resolveInitialTab(): ListTabKey {
   const tab = route.query.tab;
   const value = Array.isArray(tab) ? tab[0] : tab;
-  return value === 'bank-statement' ? 'bank-statement' : 'receive-settlement';
+  return value === 'receive-settlement'
+    ? 'receive-settlement'
+    : 'bank-statement';
 }
 
 const activeTab = ref<ListTabKey>(resolveInitialTab());
@@ -45,14 +47,14 @@ onActivated(() => {
 
 <template>
   <Page auto-content-height>
-    <ReceiveSettlementGrid
-      v-if="activeTab === 'receive-settlement'"
-      ref="receiveSettlementGridRef"
+    <BankStatementGrid
+      v-if="activeTab === 'bank-statement'"
+      ref="bankStatementGridRef"
       v-model:active-tab="activeTab"
     />
-    <BankStatementGrid
+    <ReceiveSettlementGrid
       v-else
-      ref="bankStatementGridRef"
+      ref="receiveSettlementGridRef"
       v-model:active-tab="activeTab"
     />
   </Page>
