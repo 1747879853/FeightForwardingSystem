@@ -4,8 +4,8 @@ export type ListTabKey = 'bank-statement' | 'receive-settlement';
 const activeKey = defineModel<ListTabKey>('activeKey', { required: true });
 
 const tabs: { key: ListTabKey; label: string }[] = [
-  { key: 'receive-settlement', label: '收费结算' },
   { key: 'bank-statement', label: '银行流水' },
+  { key: 'receive-settlement', label: '收费结算' },
 ];
 </script>
 

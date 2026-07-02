@@ -11,6 +11,10 @@
 - 同一天多条可在标题后加简短后缀区分
 - 无对应月份时先新增月份分组，再添加条目
 
+## 2026-07
+
+- [2026-07-02 海运出口船期时间轴竖向分割条移至预抵日期后](./changelogs/change-log-2026-07-02-sea-export-shipment-divider-after-eta.md)
+
 ## 2026-06
 
 - [2026-06-29] [收费结算页双列表持久化 tableId 分离](./changelogs/change-log-2026-06-29-receive-settlement-dual-list-table-id.md)
