@@ -19,12 +19,10 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getOrganizationUnits } from '#/api/system/organization-unit';
 import {
   addDataPermission,
-  addDataPermissionItem,
   DataPermissionType,
   deleteDataPermission,
-  deleteDataPermissionItem,
   editDataPermission,
-  getDataPermissionItemList,
+  getDataPermissionDetail,
   getDataPermissionList,
 } from '#/api/system/permission';
 import { getUser } from '#/api/system/user-admin';
@@ -55,7 +53,6 @@ type DataPermissionItemRow = SystemPermissionApi.UserDataPermissionItemDto & {
 
 const editingId = ref<number>();
 const originalDataPermissionType = ref<DataPermissionType>();
-const existingItems = ref<SystemPermissionApi.UserDataPermissionItemDto[]>([]);
 const entityIds = ref<number[]>([]);
 const selectedUsers = ref<SystemUserAdminApi.UserListDto[]>([]);
 const selectedOrgs = ref<SystemOrganizationUnitApi.OrganizationUnitDto[]>([]);
@@ -196,15 +193,19 @@ const [FormModal, modalApi] = useVbenModal({
       ...currentTargetParams.value,
       manageType: values.manageType,
       dataPermissionType,
+      entityIds: needsItems ? entityIds.value : [],
     };
 
     modalApi.lock();
     try {
-      const permissionId = editingId.value
-        ? await saveMainRule(submitData)
-        : await addDataPermission(submitData);
-
-      await syncPermissionItems(permissionId, dataPermissionType, needsItems);
+      if (editingId.value) {
+        await editDataPermission({
+          id: editingId.value,
+          ...submitData,
+        });
+      } else {
+        await addDataPermission(submitData);
+      }
 
       message.success($t('system.permission.saveSuccess'));
       modalApi.close();
@@ -223,13 +224,14 @@ const [FormModal, modalApi] = useVbenModal({
 
       if (data?.id) {
         editingId.value = data.id;
-        originalDataPermissionType.value = data.dataPermissionType;
-        currentFormType.value = data.dataPermissionType;
+        const detail = await resolvePermissionDetail(data);
+        originalDataPermissionType.value = detail.dataPermissionType;
+        currentFormType.value = detail.dataPermissionType;
         formApi.setValues({
-          manageType: data.manageType,
-          dataPermissionType: data.dataPermissionType,
+          manageType: detail.manageType,
+          dataPermissionType: detail.dataPermissionType,
         });
-        await loadPermissionItems(data.id, data.dataPermissionType);
+        await applyPermissionItems(detail);
       } else {
         editingId.value = undefined;
         originalDataPermissionType.value = undefined;
@@ -254,7 +256,7 @@ const [ItemsDrawer, itemsDrawerApi] = useVbenDrawer({
         itemsDrawerApi.getData<SystemPermissionApi.UserDataPermissionDto>();
       if (data?.id) {
         currentPermissionRow.value = data;
-        loadItemRows(data.id, data.dataPermissionType);
+        loadItemRows(data);
       }
     }
   },
@@ -287,27 +289,30 @@ function resetEntityState() {
   entityIds.value = [];
   selectedUsers.value = [];
   selectedOrgs.value = [];
-  existingItems.value = [];
 }
 
-async function loadPermissionItems(
-  permissionId: number,
-  dataPermissionType: DataPermissionType,
+async function resolvePermissionDetail(
+  data: SystemPermissionApi.UserDataPermissionDto,
 ) {
-  if (!needsDataPermissionItems(dataPermissionType)) {
+  if (data.items) {
+    return data;
+  }
+  return getDataPermissionDetail(data.id);
+}
+
+async function applyPermissionItems(
+  data: SystemPermissionApi.UserDataPermissionDto,
+) {
+  if (!needsDataPermissionItems(data.dataPermissionType)) {
     return;
   }
 
-  const res = await getDataPermissionItemList({
-    userDataPermissionId: permissionId,
-    pageSize: 500,
-  });
-  existingItems.value = res.items || [];
-  entityIds.value = existingItems.value.map((item) => item.entityId);
+  const items = data.items || [];
+  entityIds.value = items.map((item) => item.entityId);
 
-  if (dataPermissionType === DataPermissionType.ManyUser) {
+  if (data.dataPermissionType === DataPermissionType.ManyUser) {
     selectedUsers.value = await loadUsersByIds(entityIds.value);
-  } else if (dataPermissionType === DataPermissionType.ManyPart) {
+  } else if (data.dataPermissionType === DataPermissionType.ManyPart) {
     selectedOrgs.value = await loadOrgsByIds(entityIds.value);
   }
 }
@@ -340,64 +345,13 @@ async function loadOrgsByIds(ids: number[]) {
   return allOrgs.filter((org) => idSet.has(org.id));
 }
 
-async function saveMainRule(
-  submitData: SystemPermissionApi.UserDataPermissionAddDto,
-) {
-  await editDataPermission({
-    id: editingId.value!,
-    ...submitData,
-  } as SystemPermissionApi.UserDataPermissionEditDto);
-  return editingId.value!;
-}
-
-async function syncPermissionItems(
-  permissionId: number,
-  dataPermissionType: DataPermissionType,
-  needsItems: boolean,
-) {
-  if (!needsItems) {
-    if (existingItems.value.length > 0) {
-      await Promise.all(
-        existingItems.value.map((item) => deleteDataPermissionItem(item.id)),
-      );
-    }
-    return;
-  }
-
-  const existingIdSet = new Set(
-    existingItems.value.map((item) => item.entityId),
-  );
-  const newIdSet = new Set(entityIds.value);
-
-  const toDelete = existingItems.value.filter(
-    (item) => !newIdSet.has(item.entityId),
-  );
-  const toAdd = entityIds.value.filter((id) => !existingIdSet.has(id));
-
-  await Promise.all(toDelete.map((item) => deleteDataPermissionItem(item.id)));
-  await Promise.all(
-    toAdd.map((entityId) =>
-      addDataPermissionItem({
-        userDataPermissionId: permissionId,
-        entityId,
-      }),
-    ),
-  );
-}
-
-async function loadItemRows(
-  permissionId: number,
-  dataPermissionType: DataPermissionType,
-) {
+async function loadItemRows(row: SystemPermissionApi.UserDataPermissionDto) {
   loadingItems.value = true;
   try {
-    const res = await getDataPermissionItemList({
-      userDataPermissionId: permissionId,
-      pageSize: 500,
-    });
-    const items = res.items || [];
+    const detail = await resolvePermissionDetail(row);
+    const items = detail.items || [];
 
-    if (dataPermissionType === DataPermissionType.ManyUser) {
+    if (detail.dataPermissionType === DataPermissionType.ManyUser) {
       const users = await loadUsersByIds(items.map((item) => item.entityId));
       const userMap = new Map(users.map((user) => [user.id, user]));
       itemRows.value = items.map((item) => ({
@@ -410,7 +364,7 @@ async function loadItemRows(
       return;
     }
 
-    if (dataPermissionType === DataPermissionType.ManyPart) {
+    if (detail.dataPermissionType === DataPermissionType.ManyPart) {
       const orgs = await loadOrgsByIds(items.map((item) => item.entityId));
       const orgMap = new Map(
         orgs.map((org: SystemOrganizationUnitApi.OrganizationUnitDto) => [

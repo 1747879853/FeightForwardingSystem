@@ -143,7 +143,13 @@ export namespace SystemPermissionApi {
     roleId?: number;
     dataPermissionType: DataPermissionType;
     manageType: ManageType;
+    userNickName?: string;
+    roleName?: string;
+    items?: UserDataPermissionItemDto[];
     creationTime?: string;
+    creatorUserId?: number;
+    lastModificationTime?: string;
+    lastModifierUserId?: number;
   }
 
   /** 数据权限新增DTO */
@@ -152,6 +158,7 @@ export namespace SystemPermissionApi {
     roleId?: number;
     dataPermissionType: DataPermissionType;
     manageType: ManageType;
+    entityIds?: number[];
   }
 
   /** 数据权限编辑DTO */
@@ -161,17 +168,12 @@ export namespace SystemPermissionApi {
     roleId?: number;
     dataPermissionType: DataPermissionType;
     manageType: ManageType;
+    entityIds?: number[];
   }
 
   /** 数据权限子项DTO */
   export interface UserDataPermissionItemDto {
     id: number;
-    userDataPermissionId: number;
-    entityId: number;
-  }
-
-  /** 数据权限子项新增DTO */
-  export interface UserDataPermissionItemAddDto {
     userDataPermissionId: number;
     entityId: number;
   }
@@ -372,45 +374,12 @@ async function deleteDataPermission(id: number) {
 }
 
 /**
- * 获取数据权限子项列表
+ * 获取数据权限详情（含子表 items）
  */
-async function getDataPermissionItemList(params: Recordable<any>) {
-  const queryParams = {
-    userDataPermissionId: params.userDataPermissionId,
-    pageIndex: params.pageIndex || params.page || 1,
-    pageSize: params.pageSize || 100,
-    sorting: params.sorting || 'Id',
-  };
-  const response = await requestClient.get<
-    SystemPermissionApi.PagedList<SystemPermissionApi.UserDataPermissionItemDto>
-  >('/services/app/UserDataPermissionItemAdmin/GetPagedListAsync', {
-    params: queryParams,
-  });
-  return {
-    items: response.items || [],
-    totalCount: response.totalCount || 0,
-  };
-}
-
-/**
- * 新增数据权限子项
- */
-async function addDataPermissionItem(
-  data: SystemPermissionApi.UserDataPermissionItemAddDto,
-) {
-  return requestClient.post<number>(
-    '/services/app/UserDataPermissionItemAdmin/AddAsync',
-    data,
-  );
-}
-
-/**
- * 删除数据权限子项
- */
-async function deleteDataPermissionItem(id: number) {
-  return requestClient.delete<boolean>(
-    '/services/app/UserDataPermissionItemAdmin/DeleteAsync',
-    { data: { id } },
+async function getDataPermissionDetail(id: number) {
+  return requestClient.get<SystemPermissionApi.UserDataPermissionDto>(
+    '/services/app/UserDataPermissionAdmin/DetailAsync',
+    { params: { id } },
   );
 }
 
@@ -624,11 +593,9 @@ export {
   getUserPermissions,
   // 数据权限
   addDataPermission,
-  addDataPermissionItem,
   deleteDataPermission,
-  deleteDataPermissionItem,
   editDataPermission,
-  getDataPermissionItemList,
+  getDataPermissionDetail,
   getDataPermissionList,
   // 表级权限
   addTablePermission,

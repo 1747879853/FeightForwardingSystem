@@ -180,6 +180,18 @@ export function useDataPermissionColumns<
       formatter: ({ cellValue }) => formatDataPermissionType(cellValue),
     },
     {
+      field: 'itemCount',
+      title: $t('system.permission.itemCount'),
+      width: 100,
+      formatter: ({ row }) => {
+        const record = row as SystemPermissionApi.UserDataPermissionDto;
+        if (!needsDataPermissionItems(record.dataPermissionType)) {
+          return '-';
+        }
+        return String(record.items?.length ?? 0);
+      },
+    },
+    {
       field: 'creationTime',
       formatter: 'formatDateTime',
       title: $t('system.permission.createTime'),

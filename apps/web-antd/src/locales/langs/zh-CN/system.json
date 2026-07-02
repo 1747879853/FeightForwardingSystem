@@ -785,6 +785,7 @@
     "viewConditions": "查看条件",
     "tableConditionList": "过滤条件",
     "conditionCount": "条件数",
+    "itemCount": "明细数",
     "noTableConditions": "暂无条件，可点击上方按钮添加",
     "selectModuleFirst": "请先选择业务模块",
     "modulePlaceholder": "请选择业务模块",

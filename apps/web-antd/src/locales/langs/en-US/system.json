@@ -784,6 +784,7 @@
     "viewConditions": "View Conditions",
     "tableConditionList": "Filter Conditions",
     "conditionCount": "Conditions",
+    "itemCount": "Items",
     "noTableConditions": "No conditions yet. Click the button above to add one.",
     "selectModuleFirst": "Please select a business module first",
     "modulePlaceholder": "Select business module",
