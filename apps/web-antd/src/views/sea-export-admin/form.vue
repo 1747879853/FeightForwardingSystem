@@ -4987,7 +4987,7 @@ defineExpose({
 
 .shipment-flow-divider {
   position: absolute;
-  inset: 0 auto 0 42.65%;
+  inset: 0 auto 0 57.14%;
   z-index: 2;
   width: 2px;
   pointer-events: none;
@@ -5031,7 +5031,7 @@ defineExpose({
 
 :deep(
   .shipment-time-item:not(.shipment-time-item--last):not(
-      .shipment-time-pos--3
+      .shipment-time-pos--4
     )::after
 ) {
   position: absolute;
@@ -5048,7 +5048,7 @@ defineExpose({
 
 :deep(
   .shipment-time-item:not(.shipment-time-item--last):not(
-      .shipment-time-pos--3
+      .shipment-time-pos--4
     )::before
 ) {
   position: absolute;
