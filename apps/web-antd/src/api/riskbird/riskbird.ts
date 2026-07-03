@@ -47,33 +47,45 @@ export namespace RiskbirdApi {
     /** 企业ID */
     entId: string;
     /** 企业名称 */
-    entName?: string;
+    name?: string;
     /** 统一社会信用代码 */
-    uniscid?: string;
-    /** 法人 */
-    personName?: string;
-    /** 注册资本 */
-    regConcat?: string;
+    creditCode?: string;
+    /** 法定代表人 */
+    legalPerson?: string;
+    /** 注册资本（在raw对象中） */
+    raw?: {
+      regCap?: string;
+      esDate?: string;
+      [key: string]: any;
+    };
+    /** 营业期限起 */
+    operateFrom?: string;
+    /** 营业期限止 */
+    operateTo?: string;
+    /** 注册地址 */
+    address?: string;
+    /** 电话 */
+    phone?: string;
+    /** 邮箱 */
+    email?: string;
+    /** 官网网址 */
+    website?: string;
     /** 实收资本 */
     recCap?: string;
-    /** 成立日期 */
+    /** 成立日期（兼容旧字段） */
     esDate?: string;
-    /** 营业期限起 */
+    /** 营业期限起（兼容旧字段） */
     opFrom?: number;
-    /** 营业期限止 */
+    /** 营业期限止（兼容旧字段） */
     opTo?: number;
-    /** 地址 */
+    /** 地址（兼容旧字段） */
     dom?: string;
     /** 经营范围 */
     scope?: string;
     /** 英文名称 */
     enName?: string;
-    /** 官网网址 */
-    website?: string;
-    /** 电话 */
+    /** 电话（兼容旧字段） */
     tel?: string;
-    /** 邮箱 */
-    email?: string;
     /** 企业类型 */
     type?: string;
     /** 行业 */
@@ -94,7 +106,7 @@ export namespace RiskbirdApi {
     historyNames?: string;
     /** 英文名 */
     enterpriseNameEng?: string;
-    /** 注册地址 */
+    /** 注册地址（兼容旧字段） */
     regAddr?: string;
     /** 最新年报年份 */
     latestReportYear?: string;
@@ -106,7 +118,7 @@ export namespace RiskbirdApi {
     tags?: string[];
     /** 风险信息 */
     riskInfo?: any;
-    /** 基本信息JSON（原始数据） */
+    /** 基本信息JSON（原始数据，兼容旧字段） */
     jbxxInfo?: Recordable<any>;
     [key: string]: any;
   }

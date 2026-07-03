@@ -284,61 +284,103 @@ const handleRiskbirdImport = async (
     // 构建要更新的字段
     const updateData: Record<string, any> = {};
 
-    // 1. 纳税人识别号 -> taxNo
-    if (detail.uniscid) {
+    console.log('开始导入风鸟数据:', detail);
+
+    // 1. 统一社会信用代码 -> taxNo（新字段：creditCode）
+    if (detail.creditCode) {
+      updateData.taxNo = detail.creditCode;
+      console.log('导入税号:', detail.creditCode);
+    } else if (detail.uniscid) {
+      // 兼容旧字段
       updateData.taxNo = detail.uniscid;
+      console.log('导入税号(旧字段):', detail.uniscid);
     }
 
-    // 2. 法人 -> legalPerson
-    if (detail.personName) {
+    // 2. 法定代表人 -> legalPerson（新字段：legalPerson）
+    if (detail.legalPerson) {
+      updateData.legalPerson = detail.legalPerson;
+      console.log('导入法人:', detail.legalPerson);
+    } else if (detail.personName) {
+      // 兼容旧字段
       updateData.legalPerson = detail.personName;
+      console.log('导入法人(旧字段):', detail.personName);
     }
 
-    // 3. 注册资本 -> registeredCapital
-    if (detail.regConcat) {
+    // 3. 注册资本 -> registeredCapital（新字段：raw.regCap）
+    if (detail.raw?.regCap) {
+      updateData.registeredCapital = detail.raw.regCap;
+      console.log('导入注册资本:', detail.raw.regCap);
+    } else if (detail.regConcat) {
+      // 兼容旧字段
       updateData.registeredCapital = detail.regConcat;
+      console.log('导入注册资本(旧字段):', detail.regConcat);
     }
 
-    // 4. 成立时间 -> establishmentDate
-    if (detail.esDate) {
-      const establishmentDate = parseRiskbirdDate(detail.esDate);
+    // 4. 成立日期 -> establishmentDate（新字段：raw.esDate）
+    const esDate = detail.raw?.esDate || detail.esDate;
+    if (esDate) {
+      const establishmentDate = parseRiskbirdDate(esDate);
       if (establishmentDate) {
         updateData.establishmentDate = dayjs(establishmentDate);
+        console.log('导入成立日期:', establishmentDate);
       }
     }
 
-    // 5. 营业期限 -> businessTerm
-    if (detail.opFrom || detail.opTo) {
-      const businessTerm = formatBusinessTerm(detail.opFrom, detail.opTo);
+    // 5. 营业期限 -> businessTerm（新字段：operateFrom/operateTo）
+    const operateFrom =
+      detail.operateFrom || (detail.opFrom ? String(detail.opFrom) : undefined);
+    const operateTo =
+      detail.operateTo || (detail.opTo ? String(detail.opTo) : undefined);
+    if (operateFrom || operateTo) {
+      const businessTerm = formatBusinessTerm(
+        operateFrom ? parseInt(operateFrom) : undefined,
+        operateTo ? parseInt(operateTo) : undefined,
+      );
       if (businessTerm) {
         updateData.businessTerm = businessTerm;
+        console.log('导入营业期限:', businessTerm);
       }
     }
 
-    // 6. 地址 -> address
-    if (detail.dom || detail.regAddr) {
+    // 6. 注册地址 -> address（新字段：address）
+    if (detail.address) {
+      updateData.address = detail.address;
+      console.log('导入地址:', detail.address);
+    } else if (detail.dom || detail.regAddr) {
+      // 兼容旧字段
       updateData.address = detail.dom || detail.regAddr;
+      console.log('导入地址(旧字段):', detail.dom || detail.regAddr);
     }
 
     // 7. 英文名称 -> enName
     if (detail.enName || detail.enterpriseNameEng) {
       updateData.enName = detail.enName || detail.enterpriseNameEng;
+      console.log('导入英文名称:', detail.enName || detail.enterpriseNameEng);
     }
 
-    // 8. 电话 -> phone
-    if (detail.tel) {
+    // 8. 电话 -> phone（新字段：phone）
+    if (detail.phone) {
+      updateData.phone = detail.phone;
+      console.log('导入电话:', detail.phone);
+    } else if (detail.tel) {
+      // 兼容旧字段
       updateData.phone = detail.tel;
+      console.log('导入电话(旧字段):', detail.tel);
     }
 
-    // 9. 网址 -> url
+    // 9. 官网 -> url
     if (detail.website) {
       updateData.url = detail.website;
+      console.log('导入官网:', detail.website);
     }
 
     // 10. 邮箱 -> email
     if (detail.email) {
       updateData.email = detail.email;
+      console.log('导入邮箱:', detail.email);
     }
+
+    console.log('准备更新的字段:', updateData);
 
     // 更新基础信息表单
     if (Object.keys(updateData).length > 0) {

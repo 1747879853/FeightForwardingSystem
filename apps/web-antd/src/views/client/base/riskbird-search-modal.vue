@@ -66,13 +66,13 @@ const parseDate = (dateStr: string | undefined): string => {
  * 格式化营业期限
  */
 const formatBusinessTerm = (
-  opFrom: number | undefined,
-  opTo: number | undefined,
+  operateFrom: string | undefined,
+  operateTo: string | undefined,
 ): string => {
-  if (!opFrom && !opTo) return '';
+  if (!operateFrom && !operateTo) return '';
 
-  const fromDate = opFrom ? dayjs(opFrom).format('YYYY-MM-DD') : '';
-  const toDate = opTo ? dayjs(opTo).format('YYYY-MM-DD') : '长期';
+  const fromDate = operateFrom ? dayjs(operateFrom).format('YYYY-MM-DD') : '';
+  const toDate = operateTo ? dayjs(operateTo).format('YYYY-MM-DD') : '长期';
 
   if (fromDate) {
     return `${fromDate} 至 ${toDate}`;
@@ -187,7 +187,7 @@ const columns = [
 </script>
 
 <template>
-  <Modal :width="1200" class="flex h-full flex-col">
+  <Modal class="flex h-full w-[1200px] max-w-[1200px] flex-col">
     <!-- 搜索结果区域 - 上下布局 -->
     <div class="flex flex-1 flex-col overflow-hidden">
       <!-- 上方：公司列表 -->
@@ -238,46 +238,42 @@ const columns = [
               <div class="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <span class="text-gray-600">企业名称：</span>
-                  <span>{{ selectedCompanyDetail.entName || '-' }}</span>
+                  <span>{{ selectedCompanyDetail.name || '-' }}</span>
                 </div>
                 <div>
                   <span class="text-gray-600">统一社会信用代码：</span>
-                  <span>{{ selectedCompanyDetail.uniscid || '-' }}</span>
+                  <span>{{ selectedCompanyDetail.creditCode || '-' }}</span>
                 </div>
                 <div>
                   <span class="text-gray-600">法定代表人：</span>
-                  <span>{{ selectedCompanyDetail.personName || '-' }}</span>
+                  <span>{{ selectedCompanyDetail.legalPerson || '-' }}</span>
                 </div>
                 <div>
                   <span class="text-gray-600">注册资本：</span>
-                  <span>{{ selectedCompanyDetail.regConcat || '-' }}</span>
+                  <span>{{ selectedCompanyDetail.raw?.regCap || '-' }}</span>
                 </div>
                 <div>
                   <span class="text-gray-600">成立日期：</span>
                   <span>{{
-                    parseDate(selectedCompanyDetail.esDate) || '-'
+                    parseDate(selectedCompanyDetail.raw?.esDate) || '-'
                   }}</span>
                 </div>
                 <div>
                   <span class="text-gray-600">营业期限：</span>
                   <span>{{
                     formatBusinessTerm(
-                      selectedCompanyDetail.opFrom,
-                      selectedCompanyDetail.opTo,
+                      selectedCompanyDetail.operateFrom,
+                      selectedCompanyDetail.operateTo,
                     ) || '-'
                   }}</span>
                 </div>
                 <div class="col-span-2">
                   <span class="text-gray-600">注册地址：</span>
-                  <span>{{
-                    selectedCompanyDetail.dom ||
-                    selectedCompanyDetail.regAddr ||
-                    '-'
-                  }}</span>
+                  <span>{{ selectedCompanyDetail.address || '-' }}</span>
                 </div>
                 <div>
                   <span class="text-gray-600">电话：</span>
-                  <span>{{ selectedCompanyDetail.tel || '-' }}</span>
+                  <span>{{ selectedCompanyDetail.phone || '-' }}</span>
                 </div>
                 <div>
                   <span class="text-gray-600">邮箱：</span>
