@@ -42,6 +42,7 @@ import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vu
 import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
 import FeeDetailModal from './components/FeeDetailModal.vue';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
+import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 
 // 从命名空间中解构 API 函数
 const { addAsync, detailAsync, editAsync, submitAsync } = InvoiceApplicationApi;
@@ -76,6 +77,9 @@ const selectedGoodsRows = ref<string[]>([]); // 选中的商品明细行ID
 // 备注模板管理弹窗相关状态
 const remarkTemplateModalVisible = ref(false); // 备注模板管理弹窗显示状态
 const selectRemarkTemplateModalVisible = ref(false); // 选择备注模板弹窗显示状态
+
+// 备注模板组件引用
+const remarkTemplateModalRef = ref();
 
 // 表单数据
 const formData = ref<any>({
@@ -828,6 +832,9 @@ async function handleFeeSelectionSave(data: {
     }
   }
 
+  // ✅ 根据币别自动选择销售方默认银行
+  updateOrgBankByCurrency();
+
   // 加载客户开票信息
   await loadClientInvoiceInfo(settlementId);
 
@@ -886,6 +893,9 @@ async function handleFeeSelectionSave(data: {
   }
 
   addSelectedFeesToForm(selectedFees);
+
+  // ✅ 自动加载当前币别对应的默认备注模板
+  await loadDefaultRemarkTemplate();
 
   // ✅ 根据商品明细数量决定处理方式（使用过滤后的新费用）
   if (isFirstTimeAdd) {
@@ -1370,6 +1380,45 @@ async function loadClientInvoiceInfo(settlementId: string) {
     updateClientBankByCurrency();
   } catch (error) {
     console.error('加载客户开票信息失败:', error);
+  }
+}
+
+/** ✅ 新增：加载当前币别对应的默认备注模板 */
+async function loadDefaultRemarkTemplate() {
+  // 检查是否有必要的参数
+  if (!formData.value.companyId || !formData.value.currencyId) {
+    console.log('⚠️ 缺少公司ID或币别ID，无法加载默认备注模板');
+    return;
+  }
+
+  // 如果备注字段已经有内容，不覆盖用户已输入的内容
+  if (formData.value.remark && formData.value.remark.trim()) {
+    console.log('⚠️ 备注字段已有内容，跳过自动填充');
+    return;
+  }
+
+  try {
+    // ✅ 直接调用 RemarkTemplateModal 组件的方法获取默认模板，并传入 templateData 进行占位符替换
+    const template =
+      await remarkTemplateModalRef.value?.getDefaultRemarkTemplate(
+        formData.value.companyId,
+        formData.value.currencyId,
+        remarkTemplateData.value, // ✅ 传入动态计算的模板数据
+      );
+
+    if (template) {
+      formData.value.remark = template;
+      console.log(
+        '✅ 已自动加载并替换默认备注模板:',
+        template.substring(0, 50),
+      );
+      message.success('已自动应用默认备注模板');
+    } else {
+      console.log('ℹ️ 未找到默认备注模板');
+    }
+  } catch (error) {
+    console.error('加载默认备注模板失败:', error);
+    // 静默失败，不影响主流程
   }
 }
 
@@ -1905,6 +1954,11 @@ async function loadDetail() {
       console.log('✅ 商品明细数据详情:', goodsDetails.value);
     } else {
       console.log('⚠️ 详情中没有商品明细数据');
+    }
+
+    // ✅ 如果备注为空，尝试加载默认备注模板
+    if (!formData.value.remark || !formData.value.remark.trim()) {
+      await loadDefaultRemarkTemplate();
     }
   } catch (error) {
     console.error('加载详情失败:', error);
@@ -2630,6 +2684,7 @@ async function loadDetail() {
 
     <!-- 备注模板管理弹窗 -->
     <RemarkTemplateModal
+      ref="remarkTemplateModalRef"
       v-model:visible="remarkTemplateModalVisible"
       @use-template="handleUseTemplate"
     />
