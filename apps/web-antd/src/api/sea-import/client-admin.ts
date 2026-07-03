@@ -1,6 +1,18 @@
 import { requestClient } from '#/api/request';
 
 export namespace ClientAdminApi {
+  /** 对账人DTO */
+  export interface ClientReconcilerDto {
+    /** 主键ID */
+    id: string;
+    /** 所属客户ID */
+    clientId: string;
+    /** 对账人用户ID */
+    userId: number;
+    /** 对账人昵称 */
+    userNickName?: string;
+  }
+
   /** 新增客户参数 */
   export interface ClientAddDto {
     /** 客户简称 */
@@ -31,6 +43,8 @@ export namespace ClientAdminApi {
     industryCategories?: string;
     /** 备注 */
     remark?: string;
+    /** 对账人用户ID列表 */
+    reconcilerUserIds?: number[];
   }
 
   /** 编辑客户参数 */
@@ -64,6 +78,8 @@ export namespace ClientAdminApi {
     industryCategories?: string;
     /** 备注 */
     remark?: string;
+    /** 对账人用户ID列表 */
+    reconcilerUserIds?: number[];
   }
 
   /** 客户详情/列表输出 */
@@ -96,6 +112,8 @@ export namespace ClientAdminApi {
     industryCategories?: string;
     /** 备注 */
     remark?: string;
+    /** 对账人列表 */
+    reconcilers?: ClientReconcilerDto[];
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;

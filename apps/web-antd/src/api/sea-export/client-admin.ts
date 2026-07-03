@@ -188,6 +188,8 @@ export namespace ClientAdminApi {
     documentations?: ClientStakeholderAddDto[];
     /** 地址列表 */
     addresses?: ClientAddressAddDto[];
+    /** 对账人用户ID列表 */
+    reconcilerUserIds?: number[];
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -318,6 +320,8 @@ export namespace ClientAdminApi {
     documentations?: ClientStakeholderEditDto[];
     /** 地址列表 */
     addresses?: ClientAddressEditDto[];
+    /** 对账人用户ID列表 */
+    reconcilerUserIds?: number[];
   }
 
   /** 简易币种DTO */
@@ -360,6 +364,18 @@ export namespace ClientAdminApi {
     creationTime: string;
     creatorUserId?: number;
     id: number;
+  }
+
+  /** 对账人DTO */
+  export interface ClientReconcilerDto {
+    /** 主键ID */
+    id: string;
+    /** 所属客户ID */
+    clientId: string;
+    /** 对账人用户ID */
+    userId: number;
+    /** 对账人昵称 */
+    userNickName?: string;
   }
 
   export interface ClientStakeholderListDto {
@@ -557,6 +573,8 @@ export namespace ClientAdminApi {
     documentations?: ClientStakeholderDto[];
     /** 地址列表 详情有 列表没有 */
     addresses?: ClientAddressDto[];
+    /** 对账人列表 */
+    reconcilers?: ClientReconcilerDto[];
     /** 国家 */
     country?: CountryCodeDto;
     isDeleted: boolean;

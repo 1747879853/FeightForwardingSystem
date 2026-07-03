@@ -23,7 +23,7 @@ import AddressModal from './address-modal.vue';
 import RiskbirdSearchModal from './riskbird-search-modal.vue';
 import { useVbenModal } from '@vben/common-ui';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
-import { getUser, UserAttribute } from '#/api/system/user-admin';
+import { getUser, UserAttribute, UserStatus } from '#/api/system/user-admin';
 import dayjs from 'dayjs';
 import { pinyin } from 'pinyin-pro';
 import {
@@ -104,6 +104,11 @@ const defaultOrderUsers = ref<ClientAdminApi.ClientStakeholderListDto[]>([
   { userAttribute: UserAttribute.CustomerService, stakeholderList: [] },
   { userAttribute: UserAttribute.Documentation, stakeholderList: [] },
 ]);
+
+/** 对账人用户ID列表 */
+const reconcilerUserIds = ref<number[]>([]);
+/** 对账人列表（带详细信息） */
+const reconcilerList = ref<ClientAdminApi.ClientReconcilerDto[]>([]);
 
 /**
  * 从字符串中提取首字母（用于生成客户代码）
@@ -485,6 +490,10 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     }
   });
 
+  // 初始化对账人列表
+  reconcilerUserIds.value = detail.reconcilers?.map((r) => r.userId) || [];
+  reconcilerList.value = detail.reconcilers || [];
+
   // 初始化地址列表
   addressList.value = (detail.addresses || []).map((addr) => ({
     id: addr.id,
@@ -595,6 +604,13 @@ const updateStakeholders = (
   defaultOrderUsers.value.forEach((orderUser) => {
     if (orderUser.userAttribute === userAttribute) orderUser.userIds = values;
   });
+};
+
+/**
+ * 更新对账人列表
+ */
+const updateReconcilers = (values: number[]) => {
+  reconcilerUserIds.value = values;
 };
 
 /**
@@ -767,6 +783,8 @@ const handleSubmit = async () => {
         documentations: documentationsEdit,
 
         addresses,
+        // 对账人用户ID列表
+        reconcilerUserIds: reconcilerUserIds.value,
       };
       createdId = await editClient(editData);
     } else {
@@ -861,6 +879,8 @@ const handleSubmit = async () => {
         documentations: documentationsAdd,
 
         addresses,
+        // 对账人用户ID列表
+        reconcilerUserIds: reconcilerUserIds.value,
       };
       createdId = await addClient(addData);
       const resolvedCreatedId =
@@ -1289,7 +1309,34 @@ onMounted(() => {
           </UserSelect>
         </div>
       </div>
+
+      <!-- 对账人区域 -->
+      <div
+        class="stakeholders-content mt-2 w-full space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3 shadow"
+      >
+        <div class="font-semibold">对账人</div>
+        <div>
+          <UserSelect
+            mode="multiple"
+            :model-value="reconcilerUserIds"
+            labelKey="nickName"
+            :selected-items="
+              reconcilerList.map((r) => ({
+                id: r.userId,
+                nickName: r.userNickName,
+                userName: '',
+                isActive: true,
+                isPhoneNumberConfirmed: false,
+                status: UserStatus.Passed as any,
+                creationTime: '',
+              })) as SystemUserAdminApi.UserListDto[]
+            "
+            @update:model-value="updateReconcilers($event as number[])"
+          />
+        </div>
+      </div>
     </Card>
+
     <Modal @add="addAddressData" @edit="editAddressData" />
     <RiskbirdModal
       width="1200px"
