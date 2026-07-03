@@ -16,7 +16,7 @@
     "bankName": "开户银行",
     "bankAccount": "银行账号",
     "accountName": "账户名称",
-    "currency": "币种",
+    "currency": "币别",
     "swiftCode": "Swift Code",
     "newInvoice": "新开票信息"
   },

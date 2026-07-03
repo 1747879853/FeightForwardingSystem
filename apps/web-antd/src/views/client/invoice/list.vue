@@ -62,6 +62,8 @@ const loadInvoiceList = async () => {
     // 默认展开第一个
     if (invoiceList.value.length > 0 && invoiceList.value[0]) {
       activeKey.value = [invoiceList.value[0].id];
+    } else {
+      handleAddInvoice();
     }
   } catch (error) {
     console.error('加载开票信息列表失败:', error);

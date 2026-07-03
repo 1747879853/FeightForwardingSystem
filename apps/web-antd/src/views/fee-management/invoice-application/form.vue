@@ -2065,7 +2065,7 @@ async function loadDetail() {
                   </Button>
                 </Form.Item>
 
-                <Form.Item v-if="goodsDetails.length > 0">
+                <!-- <Form.Item v-if="goodsDetails.length > 0">
                   <Button
                     type="dashed"
                     block
@@ -2074,7 +2074,7 @@ async function loadDetail() {
                   >
                     🔄 根据当前费用重新填充商品明细
                   </Button>
-                </Form.Item>
+                </Form.Item> -->
               </Form>
             </Card>
 
