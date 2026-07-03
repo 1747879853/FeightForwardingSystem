@@ -40,7 +40,8 @@ const handleRowDblclick = ({
   }
   transportOrderId.value = row.transportOrder.id || '';
   entityId.value = row.entityId || '';
-  orderName.value = `当前选中: ${row.transportOrder.mblNum}(${row.transportOrder.clientName})`;
+  const mblNum = row.transportOrder.mblNum || '--';
+  orderName.value = `当前选中: ${mblNum}(${row.transportOrder.clientName})`;
 };
 
 const [Grid, gridApi] =
