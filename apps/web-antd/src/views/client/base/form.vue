@@ -83,6 +83,7 @@ const clientType = ref<number[]>([1]);
 const clientTypeCoopStatus = ref<number>();
 const customerType = ref<string[]>();
 const supplierType = ref<string[]>();
+const supplierCoopStatus = ref<number>();
 const getOrderUserRoleLabel = (userAttribute?: number) => {
   switch (userAttribute) {
     case UserAttribute.Sales:
@@ -441,19 +442,6 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     (item, index) => industryCategoriesArray.indexOf(item) === index,
   );
   console.log('industryCategoriesArray', industryCategoriesArray);
-
-  // 获取客户和供应商各自的行业类别值集合
-  const customerCategoryValues = new Set(
-    ClientConstants.getCustomerIndustryCategoryOptions().map(
-      (opt) => opt.value,
-    ),
-  );
-  const supplierCategoryValues = new Set(
-    ClientConstants.getSupplierIndustryCategoryOptions().map(
-      (opt) => opt.value,
-    ),
-  );
-
   // 区分客户和供应商的行业类别
   const isCustomer = detail.isClient;
   const isSupplier = detail.isSupplier;
@@ -464,22 +452,16 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   if (isSupplier) clientType.value.push(2);
 
   // 设置合作状态
-  clientTypeCoopStatus.value = isCustomer
-    ? detail.clientCoopStatus
-    : detail.supplierCoopStatus;
+  clientTypeCoopStatus.value = detail.clientCoopStatus;
+  supplierCoopStatus.value = detail.supplierCoopStatus;
 
-  // 设置行业类别：根据行业类别值是否在对应选项列表中来分配
-  customerType.value = [];
-  supplierType.value = [];
-
-  industryCategoriesArray.forEach((category) => {
-    if (customerCategoryValues.has(category)) {
-      customerType.value?.push(category);
-    }
-    if (supplierCategoryValues.has(category)) {
-      supplierType.value?.push(category);
-    }
-  });
+  // 设置行业类别
+  if (isCustomer) {
+    customerType.value = industryCategoriesArray;
+  }
+  if (isSupplier) {
+    supplierType.value = industryCategoriesArray;
+  }
 
   // 初始化干系人列表
   defaultOrderUsers.value.forEach((orderUser) => {
@@ -592,17 +574,14 @@ const loadEditData = async () => {
 };
 const handleClientTypeChange = (checkedValues: any[]) => {
   console.log('handleClientTypeChange', checkedValues);
-
-  // 当取消勾选"客户"时，清空客户相关的行业类别选择
   if (!checkedValues.includes(1)) {
+    // 取消客户类型时，清空客户的行业类别选择
     customerType.value = [];
   }
-
-  // 当取消勾选"供应商"时，清空供应商相关的行业类别选择
   if (!checkedValues.includes(2)) {
+    // 取消供应商类型时，清空供应商的行业类别选择
     supplierType.value = [];
   }
-
   console.log('customerType.value', customerType.value);
   console.log('supplierType.value', supplierType.value);
 };
@@ -744,7 +723,7 @@ const handleSubmit = async () => {
         enAddress: baseValues.enAddress,
         mainProduct: baseValues.mainProduct,
         enable: baseValues.enable ?? true,
-        clientType: clientType.value.includes(1) ? 0 : 2,
+
         industryCategories,
         remark: baseValues.remark,
         enFullName: baseValues.enFullName,
@@ -763,6 +742,7 @@ const handleSubmit = async () => {
         clientCoopStatus: clientType.value.includes(1)
           ? clientTypeCoopStatus.value
           : undefined,
+        clientType: clientValues.clientType,
         clientLevel: clientValues.clientLevel,
         source: clientValues.source,
         cargoType: clientValues.cargoType,
@@ -773,7 +753,7 @@ const handleSubmit = async () => {
         // 供应商相关信息
         isSupplier: clientType.value.includes(2),
         supplierCoopStatus: clientType.value.includes(2)
-          ? clientTypeCoopStatus.value
+          ? supplierCoopStatus.value
           : undefined,
         supplierLevel: supplierValues.supplierLevel,
         supplierCurrencyId: supplierValues.supplierCurrencyId,
@@ -837,7 +817,7 @@ const handleSubmit = async () => {
         enAddress: baseValues.enAddress,
         mainProduct: baseValues.mainProduct,
         enable: baseValues.enable ?? true,
-        clientType: clientType.value.includes(1) ? 0 : 2,
+
         industryCategories,
         remark: baseValues.remark,
         enFullName: baseValues.enFullName,
@@ -856,6 +836,7 @@ const handleSubmit = async () => {
         clientCoopStatus: clientType.value.includes(1)
           ? clientTypeCoopStatus.value
           : undefined,
+        clientType: clientValues.clientType,
         clientLevel: clientValues.clientLevel,
         source: clientValues.source,
         cargoType: clientValues.cargoType,
@@ -866,7 +847,7 @@ const handleSubmit = async () => {
         // 供应商相关信息
         isSupplier: clientType.value.includes(2),
         supplierCoopStatus: clientType.value.includes(2)
-          ? clientTypeCoopStatus.value
+          ? supplierCoopStatus.value
           : undefined,
         supplierLevel: supplierValues.supplierLevel,
         supplierCurrencyId: supplierValues.supplierCurrencyId,
@@ -1093,7 +1074,7 @@ onMounted(() => {
                     {{ $t('seaExport.client.clientTypeOptions.supplier') }}
                   </Checkbox>
                   <Select
-                    v-model:value="clientTypeCoopStatus"
+                    v-model:value="supplierCoopStatus"
                     v-if="clientType.includes(2)"
                     :options="ClientConstants.getSupplierCoopStatusOptions()"
                     allowClear

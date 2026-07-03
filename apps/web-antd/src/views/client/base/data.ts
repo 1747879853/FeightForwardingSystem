@@ -639,7 +639,6 @@ export function useSupplierFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'supplierLevel',
       label: $t('seaExport.client.supplierLevel'),
-      rules: 'required',
       componentProps: {
         allowClear: true,
         options: getSupplierLevelOptions(),
