@@ -441,6 +441,19 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     (item, index) => industryCategoriesArray.indexOf(item) === index,
   );
   console.log('industryCategoriesArray', industryCategoriesArray);
+
+  // 获取客户和供应商各自的行业类别值集合
+  const customerCategoryValues = new Set(
+    ClientConstants.getCustomerIndustryCategoryOptions().map(
+      (opt) => opt.value,
+    ),
+  );
+  const supplierCategoryValues = new Set(
+    ClientConstants.getSupplierIndustryCategoryOptions().map(
+      (opt) => opt.value,
+    ),
+  );
+
   // 区分客户和供应商的行业类别
   const isCustomer = detail.isClient;
   const isSupplier = detail.isSupplier;
@@ -455,13 +468,18 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     ? detail.clientCoopStatus
     : detail.supplierCoopStatus;
 
-  // 设置行业类别
-  if (isCustomer) {
-    customerType.value = industryCategoriesArray;
-  }
-  if (isSupplier) {
-    supplierType.value = industryCategoriesArray;
-  }
+  // 设置行业类别：根据行业类别值是否在对应选项列表中来分配
+  customerType.value = [];
+  supplierType.value = [];
+
+  industryCategoriesArray.forEach((category) => {
+    if (customerCategoryValues.has(category)) {
+      customerType.value?.push(category);
+    }
+    if (supplierCategoryValues.has(category)) {
+      supplierType.value?.push(category);
+    }
+  });
 
   // 初始化干系人列表
   defaultOrderUsers.value.forEach((orderUser) => {
@@ -574,13 +592,19 @@ const loadEditData = async () => {
 };
 const handleClientTypeChange = (checkedValues: any[]) => {
   console.log('handleClientTypeChange', checkedValues);
+
+  // 当取消勾选"客户"时，清空客户相关的行业类别选择
   if (!checkedValues.includes(1)) {
     customerType.value = [];
   }
+
+  // 当取消勾选"供应商"时，清空供应商相关的行业类别选择
   if (!checkedValues.includes(2)) {
     supplierType.value = [];
   }
+
   console.log('customerType.value', customerType.value);
+  console.log('supplierType.value', supplierType.value);
 };
 /**
  * 更新干系人列表
