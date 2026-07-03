@@ -129,7 +129,7 @@ const handleSelectCompany = async (company: any) => {
 
   try {
     const detailData: RiskbirdApi.RiskbirdCompanyDetailInputDto = {
-      CompanyId: company.entId, // 使用entId而不是id
+      entId: company.entId, // 使用entId而不是id
     };
 
     // 使用 modalApi.getData() 获取传递的数据

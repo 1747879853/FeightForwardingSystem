@@ -16,7 +16,7 @@ export namespace RiskbirdApi {
   /** 企业详情入参DTO */
   export interface RiskbirdCompanyDetailInputDto {
     /** 风鸟返回的企业ID */
-    CompanyId: string;
+    entId: string;
     /** 客户ID（传入时将工商信息回写到客户表） */
     ClientId?: string;
   }
@@ -45,7 +45,7 @@ export namespace RiskbirdApi {
   /** 企业详细信息DTO */
   export interface RiskbirdCompanyDetailDto {
     /** 企业ID */
-    companyId: string;
+    entId: string;
     /** 企业名称 */
     entName?: string;
     /** 统一社会信用代码 */

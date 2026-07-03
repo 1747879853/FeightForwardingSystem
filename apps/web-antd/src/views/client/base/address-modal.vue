@@ -4,6 +4,7 @@ import { $t } from '#/locales';
 import { useVbenForm } from '#/adapter/form';
 import { useAddressFormSchema } from './data';
 import { ref } from 'vue';
+import { message } from 'ant-design-vue';
 const [AddressForm, addressFormApi] = useVbenForm({
   layout: 'vertical',
   schema: useAddressFormSchema(),
@@ -19,8 +20,18 @@ const isEdit = ref(false);
 const [Modal, modalApi] = useVbenModal({
   onConfirm: async () => {
     console.info('onConfirm');
+
+    // 先进行表单验证
+    const { valid, errors } = await addressFormApi.validate();
+    if (!valid) {
+      console.error('表单验证失败:', errors);
+      message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
+      return;
+    }
+
     const addressValues = await addressFormApi.getValues();
     console.info('addressValues', addressValues);
+
     if (!isEdit.value) {
       emits('add', addressValues);
     } else {
