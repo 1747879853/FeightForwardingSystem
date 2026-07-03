@@ -552,6 +552,7 @@
     "clientName": "客户简称",
     "code": "客户代码",
     "phone": "公司电话",
+    "mobile": "手机号",
     "taxNo": "纳税人识别号",
     "fullName": "客户全称",
     "enName": "英文全称",

@@ -160,7 +160,7 @@ const handleDeleteInvoice = (invoiceId: string) => {
     okType: 'danger',
     onOk: async () => {
       try {
-        await deleteClientInvoiceInfo({ id: invoiceId });
+        await deleteClientInvoiceInfo({ ids: [invoiceId] });
         message.success($t('common.deleteSuccess'));
         await loadInvoiceList();
       } catch (error) {

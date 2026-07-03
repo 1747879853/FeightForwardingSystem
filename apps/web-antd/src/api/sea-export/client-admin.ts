@@ -108,6 +108,8 @@ export namespace ClientAdminApi {
     code?: string;
     /** 公司电话 */
     phone?: string;
+    /** 手机号 */
+    mobile?: string;
     /** 客户全称 */
     fullName?: string;
     /** 客户英文名 */
@@ -242,6 +244,8 @@ export namespace ClientAdminApi {
     code?: string;
     /** 公司电话 */
     phone?: string;
+    /** 手机号 */
+    mobile?: string;
     /** 客户全称 */
     fullName?: string;
     /** 客户英文名 */
@@ -481,6 +485,8 @@ export namespace ClientAdminApi {
     code?: string;
     /** 公司电话 */
     phone?: string;
+    /** 手机号 */
+    mobile?: string;
     /** 客户全称 */
     fullName?: string;
     /** 客户英文名 */

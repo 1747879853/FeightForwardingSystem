@@ -522,6 +522,12 @@ export function useBaseFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Input',
+      fieldName: 'mobile',
+      label: $t('seaExport.client.mobile'),
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'Input',
       fieldName: 'email',
       label: $t('seaExport.client.email'),
       componentProps: { allowClear: true },

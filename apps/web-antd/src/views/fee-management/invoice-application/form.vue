@@ -2380,6 +2380,8 @@ async function loadDetail() {
               <!-- 商品明细表格 -->
               <div
                 style="
+                  height: 300px;
+                  overflow-y: auto;
                   border-right: 1px solid #c41e3a;
                   border-bottom: none;
                   border-left: 1px solid #c41e3a;
@@ -2651,7 +2653,7 @@ async function loadDetail() {
                       <Input.TextArea
                         v-model:value="formData.remark"
                         placeholder="请输入备注,或点击按钮使用模板"
-                        :rows="3"
+                        :rows="6"
                       />
                     </div>
                   </div>

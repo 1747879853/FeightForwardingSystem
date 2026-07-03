@@ -3,7 +3,7 @@ import { requestClient } from '#/api/request';
 export namespace ClientInvoiceInfoAdminApi {
   /** GUID ID DTO */
   export interface GuidIdDto {
-    id: string;
+    id?: string;
     /** 批量删除用这个 */
     ids?: string[];
   }
