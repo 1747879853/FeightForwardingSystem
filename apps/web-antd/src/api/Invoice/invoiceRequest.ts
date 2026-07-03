@@ -388,6 +388,7 @@ export namespace InvoiceApplicationApi {
     rejectUserNickName?: string;
     totalAppliedAmount: number;
     itemCount: number;
+    invoiceAmount: number;
     invoiceExchangeRate?: number;
   }
 

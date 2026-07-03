@@ -42,10 +42,9 @@ import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vu
 import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
 import FeeDetailModal from './components/FeeDetailModal.vue';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
-import { returnToListWithRefresh } from '#/utils/list-refresh-flag';
 
 // 从命名空间中解构 API 函数
-const { addAsync, detailAsync, editAsync } = InvoiceApplicationApi;
+const { addAsync, detailAsync, editAsync, submitAsync } = InvoiceApplicationApi;
 
 const route = useRoute();
 const router = useRouter();
@@ -265,13 +264,90 @@ async function handleSubmit() {
       message.success('创建成功');
     }
 
-    // 返回列表并刷新
-    returnToListWithRefresh('/fee-management/invoice-application', () => {
-      router.push('/fee-management/invoice-application');
-    });
+    // 保存后不关闭页面，保持当前状态
+    console.log('✅ 保存成功，保持在当前页面');
   } catch (error) {
     console.error('保存失败:', error);
     message.error('保存失败');
+  } finally {
+    submitLoading.value = false;
+  }
+}
+
+/** 提交审核 */
+async function handleSubmitForAudit() {
+  // 基本验证
+  if (!formData.value.settlementId) {
+    message.warning('请选择结算对象');
+    return;
+  }
+  if (!formData.value.companyId) {
+    message.warning('请选择所属公司');
+    return;
+  }
+
+  // 验证是否有费用明细
+  const items = formData.value.invoiceApplicationItems || [];
+  if (items.length === 0) {
+    message.warning('请先添加费用明细后再提交');
+    return;
+  }
+
+  submitLoading.value = true;
+  try {
+    // 如果是新建，先保存再提交
+    if (!isEdit.value) {
+      // 先保存
+      const batchData: InvoiceApplicationApi.InvoiceApplicationBatchAddDto = {
+        settlementId: formData.value.settlementId!,
+        companyId: formData.value.companyId!,
+        require: formData.value.require,
+        remark: formData.value.remark,
+        currencyGroups: [
+          {
+            currencyId: formData.value.currencyId || 1,
+            invoiceType: formData.value.invoiceType,
+            invoiceApplicationItems:
+              formData.value.invoiceApplicationItems || [],
+            invoiceApplicationGoodsDtls: goodsDetails.value.map((item) => ({
+              codeInvoiceId: item.codeInvoiceId,
+              specification: item.specification,
+              unit: item.unit,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              amount: item.amount,
+              noTaxAmount: item.noTaxAmount,
+              taxRate: item.taxRate,
+              taxAmount: item.taxAmount,
+              remark: item.remark,
+            })),
+            orgBankAccountId: formData.value.orgBankAccountId,
+            clientInvoiceBankId: formData.value.clientInvoiceBankId,
+          },
+        ],
+      };
+
+      const ids = await addAsync(batchData);
+
+      // 获取第一个创建的申请ID并提交
+      if (ids && ids.length > 0) {
+        await submitAsync({ id: ids[0]! });
+        message.success('创建并提交成功');
+
+        // 提交成功后返回列表页面
+        router.push('/fee-management/invoice-application');
+      }
+    } else {
+      // 编辑模式直接提交
+      await submitAsync({ id: editId.value! });
+      message.success('提交成功');
+
+      // 提交成功后返回列表页面
+      router.push('/fee-management/invoice-application');
+    }
+  } catch (error) {
+    console.error('提交失败:', error);
+    message.error('提交失败');
   } finally {
     submitLoading.value = false;
   }
@@ -431,6 +507,7 @@ function handleOpenFeeDetailModal() {
   try {
     // 根据 orderFeeId 从 feeGroupsData 中查找对应的完整信息
     const allFees = flattenTreeData(feeGroupsData.value);
+
     console.log('🔍 扁平化后的所有费用数量:', allFees.length);
     console.log(
       ' 所有费用ID列表:',
@@ -1845,6 +1922,20 @@ async function loadDetail() {
       <Space>
         <Button type="primary" :loading="submitLoading" @click="handleSubmit">
           {{ isEdit ? '保存' : '创建' }}
+        </Button>
+        <Button
+          type="primary"
+          :loading="submitLoading"
+          @click="handleSubmitForAudit"
+          v-if="
+            !isEdit ||
+            formData.status ===
+              InvoiceApplicationApi.InvoiceApplicationStatus.Entering ||
+            formData.status ===
+              InvoiceApplicationApi.InvoiceApplicationStatus.Rejected
+          "
+        >
+          提交审核
         </Button>
         <Button @click="handleCancel">取消</Button>
       </Space>
