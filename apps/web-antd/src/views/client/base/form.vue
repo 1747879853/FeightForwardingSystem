@@ -1041,7 +1041,7 @@ onMounted(() => {
               },
               () => [
                 h(Search, { class: 'size-4' }),
-                h('span', { class: 'ml-1' }, '风鸟查询'),
+                h('span', { class: 'ml-1' }, '查询'),
               ],
             );
           },
@@ -1382,7 +1382,7 @@ onMounted(() => {
     <RiskbirdModal
       width="1200px"
       height="700px"
-      title="风鸟企业查询"
+      title="企业查询"
       :footer="false"
       @import="handleRiskbirdImport"
     />
