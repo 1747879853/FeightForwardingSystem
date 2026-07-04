@@ -310,9 +310,209 @@ export namespace OrderFeeAdminApi {
     changeOrderId?: string;
   }
 
+  // ==================== 批量引入费用相关DTO ====================
+
+  /** 查询海运出口费用输入参数 */
+  export interface SeaExportFeeQueryInputDto {
+    /** 委托单位id（TransportOrder.ClientId） */
+    clientId?: string;
+    /** 船公司id（SeaExport.CarrierId） */
+    carrierId?: number;
+    /** 起运港id（SeaExport.POLId） */
+    pOLId?: number;
+    /** 目的港id（SeaExport.PODId） */
+    pODId?: number;
+    /** 编号，模糊匹配 委托编号(CommissionNum) + 主提单号(MblNum) */
+    keyword?: string;
+    /** 费用收付类型，用于过滤费用（0=收 1=付） */
+    paySide?: number;
+  }
+
+  /** 海运出口业务信息子对象 */
+  export interface SeaExportFeeTransportOrderDto {
+    /** 委托编号 */
+    commissionNum?: string;
+    /** 主提单号 */
+    mblNum?: string;
+    /** 委托单位名称 */
+    clientName?: string;
+    /** 箱型箱量（按箱型名分组 "箱型*数量" 空格拼接） */
+    totalCtn?: string;
+  }
+
+  /** 海运出口费用项 */
+  export interface SeaExportFeeItemDto {
+    /** 费用id（引入时作为来源费用id） */
+    id: string;
+    /** 收付类型 */
+    paySide: number;
+    /** 费用名（费用代码名称） */
+    feeCodeName: string;
+    /** 结算对象类别（行业类别） */
+    industryCategory: number;
+    /** 结算对象名称 */
+    settlementName: string;
+    /** 币别code */
+    currencyCode: string;
+    /** 汇率 */
+    exchangeRate: number;
+    /** 含税单价 */
+    unitPrice: number;
+    /** 金额 */
+    amount: number;
+    /** 单位 */
+    unit: string;
+    /** 数量 */
+    quantity: number;
+    /** 税率(%) */
+    taxRate: number;
+    /** 不含税单价 */
+    noTaxUnitPrice: number;
+    /** 不含税金额 */
+    noTaxAmount: number;
+    /** 是否允许开票 */
+    canInvoice: boolean;
+    /** 是否机密 */
+    isConfidential: boolean;
+    /** 备注 */
+    remark?: string;
+  }
+
+  /** 海运出口费用列表项 */
+  export interface SeaExportFeeListDto {
+    /** 海运出口id（即 TransportOrder.Id） */
+    id: string;
+    /** 起运港名称 */
+    pOLName?: string;
+    /** 目的港名称 */
+    pODName?: string;
+    /** 船公司名称 */
+    carrierName?: string;
+    /** 船名 */
+    vessel?: string;
+    /** 航次 */
+    innerVoyno?: string;
+    /** 业务信息子对象 */
+    transportOrder?: SeaExportFeeTransportOrderDto;
+    /** 符合条件的费用列表 */
+    orderFees: SeaExportFeeItemDto[];
+  }
+
+  /** 批量引入费用输入参数 */
+  export interface ImportOrderFeesToTransportOrderInputDto {
+    /** 目标业务id，费用将插入到该业务下 */
+    transportOrderId: string;
+    /** 要引入的来源费用id列表 */
+    orderFeeIds: string[];
+    /** 更改单id，可空。不为空时新费用归属该更改单，并改判更改单费用锁定 */
+    changeOrderId?: string;
+    /** 是否引入原费用结算对象。true：保留源费用 SettlementId；false：将 SettlementId 改为目标业务的委托单位 ClientId */
+    importOriginalSettlement: boolean;
+  }
+
   /** 新增业务费用 */
   export const addOrderFee = (data: OrderFeeAdminApi.OrderFeeAddDto) => {
     return requestClient.post<number>(`${API_PREFIX}/AddAsync`, data);
+  };
+
+  /** 编辑业务费用 */
+  export const editOrderFee = (data: OrderFeeAdminApi.OrderFeeEditDto) => {
+    return requestClient.put<number>(`${API_PREFIX}/EditAsync`, data);
+  };
+
+  /** 批量编辑业务费用 */
+  export const batchEditOrderFee = (
+    data: OrderFeeAdminApi.OrderFeeEditDto[],
+  ) => {
+    let handleData = { orderFees: data };
+    return requestClient.put<number>(
+      `${API_PREFIX}/BatchEditAsync`,
+      handleData,
+    );
+  };
+
+  /** 删除业务费用 */
+  // export const deleteOrderFee = (id: number) => {
+  //   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
+  //     data: { id },
+  //   });
+  // };
+  /** 批量删除 */
+  export const batchDeleteOrderFee = (ids: number[]) => {
+    return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
+      data: { ids },
+    });
+  };
+
+  /** 获取业务费用分页列表 */
+  export const getOrderFeePagedList = (
+    params: OrderFeeAdminApi.GetPagedListParams,
+  ) => {
+    return requestClient.get<OrderFeeAdminApi.PagedListOfOrderFeeDto>(
+      `${API_PREFIX}/GetPagedListAsync`,
+      { params },
+    );
+  };
+
+  /** 获取业务费用详情 */
+  export const getOrderFeeDetail = (id: number) => {
+    return requestClient.get<OrderFeeAdminApi.OrderFeeDto>(
+      `${API_PREFIX}/GetDetailAsync`,
+      { params: { id } },
+    );
+  };
+
+  /** 导出业务费用列表 */
+  export const exportOrderFeeList = (
+    params: OrderFeeAdminApi.GetPagedListParams,
+  ) => {
+    return requestClient.get(`${API_PREFIX}/ExportToExcelAsync`, {
+      params,
+      responseType: 'blob', // 以二进制流的形式接收响应
+    });
+  };
+
+  /** 获取业务费用相关的下拉列表数据 */
+  export const getOrderFeeDropdownData = () => {
+    return requestClient.get(`${API_PREFIX}/GetDropdownDataAsync`);
+  };
+
+  /** 获取业务费用相关的统计数据 */
+  export const getOrderFeeStatistics = (transportOrderId: string | number) => {
+    return requestClient.get(`${API_PREFIX}/GetStatisticsAsync`, {
+      params: { transportOrderId }, // 传递运输订单 ID 作为查询参数
+      responseType: 'json',
+    });
+  };
+
+  /** 收付互生费用（收转付/付转收） */
+  export const generateOppositeOrderFees = (
+    data: OrderFeeAdminApi.GenerateOppositeOrderFeesInputDto,
+  ) => {
+    return requestClient.post<string[]>(
+      `${API_PREFIX}/GenerateOppositeOrderFeesAsync`,
+      data,
+    );
+  };
+
+  /** 查询海运出口费用 */
+  export const getSeaExportFees = (
+    params: OrderFeeAdminApi.SeaExportFeeQueryInputDto,
+  ) => {
+    return requestClient.get<OrderFeeAdminApi.SeaExportFeeListDto[]>(
+      `${API_PREFIX}/GetSeaExportFeesAsync`,
+      { params },
+    );
+  };
+
+  /** 为某条业务批量引入费用 */
+  export const importOrderFeesToTransportOrder = (
+    data: OrderFeeAdminApi.ImportOrderFeesToTransportOrderInputDto,
+  ) => {
+    return requestClient.post<string[]>(
+      `${API_PREFIX}/ImportOrderFeesToTransportOrderAsync`,
+      data,
+    );
   };
 }
 
