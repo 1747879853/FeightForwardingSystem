@@ -43,6 +43,11 @@ const [modal, modalApi] = useVbenModal({
       resetState();
     }
   },
+  onConfirm: async () => {
+    await handleImport();
+
+    modalApi.close();
+  },
 });
 
 // 当前业务ID和收付类型
@@ -159,42 +164,33 @@ const handleImport = async () => {
     return;
   }
 
-  Modal.confirm({
-    title: '确认导入',
-    content: `确定要导入选中的 ${selectedFeeIds.value.length} 条费用吗？`,
-    okText: '确定',
-    cancelText: '取消',
-    onOk: async () => {
-      try {
-        const params: OrderFeeAdminApi.ImportOrderFeesToTransportOrderInputDto =
-          {
-            transportOrderId: currentTransportOrderId.value,
-            orderFeeIds: selectedFeeIds.value,
-            changeOrderId: undefined, // 暂不支持更改单
-            importOriginalSettlement: false, // 默认不保留原结算对象
-          };
+  try {
+    const params: OrderFeeAdminApi.ImportOrderFeesToTransportOrderInputDto = {
+      transportOrderId: currentTransportOrderId.value,
+      orderFeeIds: selectedFeeIds.value,
+      changeOrderId: undefined, // 暂不支持更改单
+      importOriginalSettlement: false, // 默认不保留原结算对象
+    };
 
-        const result = await importOrderFeesToTransportOrder(params);
+    const result = await importOrderFeesToTransportOrder(params);
 
-        message.success({
-          content: `成功导入 ${result.length} 条费用`,
-          key: 'import_msg',
-        });
+    message.success({
+      content: `成功导入 ${result.length} 条费用`,
+      key: 'import_msg',
+    });
 
-        // 触发确认事件，通知父组件刷新
-        emit('confirm');
+    // 触发确认事件，通知父组件刷新
+    emit('confirm');
 
-        // 关闭弹窗
-        modalApi.close();
-      } catch (error) {
-        console.error('导入失败:', error);
-        message.error({
-          content: '导入失败，请稍后重试',
-          key: 'import_msg',
-        });
-      }
-    },
-  });
+    // 关闭弹窗
+    modalApi.close();
+  } catch (error) {
+    console.error('导入失败:', error);
+    message.error({
+      content: '导入失败，请稍后重试',
+      key: 'import_msg',
+    });
+  }
 };
 
 // 重置状态
@@ -363,13 +359,14 @@ defineExpose({
               - 主提单号: {{ selectedSeaExport.transportOrder.mblNum }}
             </span>
           </h3>
-          <Button
+          <!-- <Button
             type="primary"
             @click="handleImport"
             :disabled="selectedFeeIds.length === 0"
           >
             导入选中费用 ({{ selectedFeeIds.length }})
-          </Button>
+          </Button> -->
+          <div>选中费用 ({{ selectedFeeIds.length }})</div>
         </div>
 
         <Table
