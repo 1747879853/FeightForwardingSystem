@@ -25,7 +25,7 @@ const actionLoading = ref(false);
 
 /** 处理新建 */
 function handleCreate() {
-  router.push('/fee-management/invoice-issue/add');
+  router.push('/settlement-management/invoice-issue/add');
 }
 
 /** 处理编辑 */
@@ -35,7 +35,7 @@ function handleEdit(row: InvoiceIssueApi.InvoiceIssueListDto) {
   if (grid && grid.setRadioRow) {
     grid.setRadioRow(row);
   }
-  router.push(`/fee-management/invoice-issue/${row.id}/edit`);
+  router.push(`/settlement-management/invoice-issue/${row.id}/edit`);
 }
 
 /** 双击行处理 */

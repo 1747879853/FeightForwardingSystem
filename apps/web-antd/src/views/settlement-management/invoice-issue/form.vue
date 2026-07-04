@@ -159,7 +159,7 @@ async function handleSubmit() {
       message.success('新建成功');
     }
 
-    router.push('/fee-management/invoice-issue');
+    router.push('/settlement-management/invoice-issue');
   } catch (error) {
     console.error('提交失败:', error);
     message.error(isEditMode.value ? '修改失败' : '新建失败');
@@ -174,7 +174,7 @@ function handleCancel() {
     title: '确认取消',
     content: '确定要取消吗？未保存的数据将丢失。',
     onOk: () => {
-      router.push('/fee-management/invoice-issue');
+      router.push('/settlement-management/invoice-issue');
     },
   });
 }

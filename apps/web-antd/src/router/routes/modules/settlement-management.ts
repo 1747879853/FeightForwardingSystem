@@ -12,6 +12,7 @@ const routes: RouteRecordRaw[] = [
       authority: abpPageAuthority([
         'Admin.PaymentSettlement',
         'Admin.ReceiveSettlement',
+        'Admin.InvoiceIssue.Get',
       ]),
     },
     name: 'SettlementManagement',
@@ -92,6 +93,44 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/settlement-management/receive-settlement/form.vue'),
+      },
+      {
+        path: 'invoice-issue',
+        name: 'InvoiceIssueList',
+        meta: {
+          icon: 'mdi:receipt-text-outline',
+          keepAlive: true,
+          title: '发票开出',
+          authority: abpPageAuthority('Admin.InvoiceIssue.Get'),
+        },
+        component: () =>
+          import('#/views/settlement-management/invoice-issue/list.vue'),
+      },
+      {
+        path: 'invoice-issue/add',
+        name: 'InvoiceIssueAdd',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '新建发票开出',
+          authority: abpPageAuthority('Admin.InvoiceIssue.Add'),
+          hideInMenu: true,
+          activePath: '/settlement-management/invoice-issue',
+        },
+        component: () =>
+          import('#/views/settlement-management/invoice-issue/form.vue'),
+      },
+      {
+        path: 'invoice-issue/:id/edit',
+        name: 'InvoiceIssueEdit',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '编辑发票开出',
+          authority: abpPageAuthority('Admin.InvoiceIssue.Edit'),
+          hideInMenu: true,
+          activePath: '/settlement-management/invoice-issue',
+        },
+        component: () =>
+          import('#/views/settlement-management/invoice-issue/form.vue'),
       },
     ],
   },

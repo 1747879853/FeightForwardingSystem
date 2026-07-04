@@ -107,44 +107,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('#/views/fee-management/statement/editor.vue'),
       },
       {
-        path: 'invoice-issue',
-        name: 'InvoiceIssueList',
-        meta: {
-          icon: 'mdi:receipt-text-outline',
-          keepAlive: true,
-          title: '发票开出',
-          authority: abpPageAuthority('Admin.InvoiceIssue.Get'),
-        },
-        component: () =>
-          import('#/views/fee-management/invoice-issue/list.vue'),
-      },
-      {
-        path: 'invoice-issue/add',
-        name: 'InvoiceIssueAdd',
-        meta: {
-          icon: 'mdi:file-document-edit-outline',
-          title: '新建发票开出',
-          authority: abpPageAuthority('Admin.InvoiceIssue.Add'),
-          hideInMenu: true,
-          activePath: '/fee-management/invoice-issue',
-        },
-        component: () =>
-          import('#/views/fee-management/invoice-issue/form.vue'),
-      },
-      {
-        path: 'invoice-issue/:id/edit',
-        name: 'InvoiceIssueEdit',
-        meta: {
-          icon: 'mdi:file-document-edit-outline',
-          title: '编辑发票开出',
-          authority: abpPageAuthority('Admin.InvoiceIssue.Edit'),
-          hideInMenu: true,
-          activePath: '/fee-management/invoice-issue',
-        },
-        component: () =>
-          import('#/views/fee-management/invoice-issue/form.vue'),
-      },
-      {
         path: 'invoice-application',
         name: 'InvoiceApplicationList',
         meta: {
