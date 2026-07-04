@@ -83,6 +83,15 @@ const handleSearch = async () => {
     selectedSeaExport.value = null;
     selectedFeeIds.value = [];
 
+    // 如果查询结果不为空，自动选中第一条并加载其费用
+    if (seaExportList.value.length > 0) {
+      selectedSeaExport.value = seaExportList.value[0] || null;
+      console.log(
+        '✅ [handleSearch] 自动选中第一条业务:',
+        selectedSeaExport.value,
+      );
+    }
+
     message.success({
       content: `查询到 ${seaExportList.value.length} 条符合条件的业务`,
       key: 'search_msg',
@@ -212,9 +221,9 @@ defineExpose({
 <template>
   <modal
     :title="$t('seaExport.export.orderFee.batchImportFee')"
-    class="h-[780px] w-[1600px]"
-    :footer="null"
+    class="h-[1150px] w-[1600px]"
     :bodyStyle="{ padding: '24px' }"
+    @confirm="handleImport"
   >
     <div class="batch-import-container">
       <!-- 搜索区域 -->
@@ -280,8 +289,7 @@ defineExpose({
               title: '委托编号',
               dataIndex: ['transportOrder', 'commissionNum'],
               key: 'commissionNum',
-              width: 120,
-              fixed: 'left',
+              width: 160,
             },
             {
               title: '主提单号',
@@ -318,7 +326,7 @@ defineExpose({
               title: '航次',
               dataIndex: 'innerVoyno',
               key: 'innerVoyno',
-              width: 80,
+              width: 110,
             },
             {
               title: '箱型箱量',
@@ -329,7 +337,7 @@ defineExpose({
           ]"
           :rowKey="(record) => record.id"
           :pagination="false"
-          :scroll="{ x: 1200, y: 200 }"
+          :scroll="{ x: 1200, y: 300 }"
           :rowClassName="
             (record) =>
               selectedSeaExport?.id === record.id ? 'selected-row' : ''
@@ -346,7 +354,14 @@ defineExpose({
       <div class="fee-section" v-if="selectedSeaExport">
         <div class="fee-header">
           <h3 class="section-title">
-            费用列表 <span class="hint-text">（点击行选择/取消）</span>
+            费用列表
+
+            <span
+              class="mbl-info"
+              v-if="selectedSeaExport.transportOrder?.mblNum"
+            >
+              - 主提单号: {{ selectedSeaExport.transportOrder.mblNum }}
+            </span>
           </h3>
           <Button
             type="primary"
@@ -372,20 +387,20 @@ defineExpose({
               title: '收付类型',
               dataIndex: 'paySide',
               key: 'paySide',
-              width: 80,
+              width: 100,
               customRender: ({ text }) => (text === 0 ? '应收' : '应付'),
             },
             {
               title: '费用名称',
               dataIndex: 'feeCodeName',
               key: 'feeCodeName',
-              width: 120,
+              width: 160,
             },
             {
               title: '结算对象',
               dataIndex: 'settlementName',
               key: 'settlementName',
-              width: 150,
+              width: 190,
             },
             {
               title: '币别',
@@ -417,7 +432,7 @@ defineExpose({
               title: '税率(%)',
               dataIndex: 'taxRate',
               key: 'taxRate',
-              width: 80,
+              width: 100,
             },
             {
               title: '备注',
@@ -428,7 +443,7 @@ defineExpose({
           ]"
           :rowKey="(record) => record.id"
           :pagination="false"
-          :scroll="{ x: 1400, y: 250 }"
+          :scroll="{ x: 1400, y: 350 }"
         />
       </div>
     </div>
@@ -440,7 +455,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-height: 700px;
+  // max-height: 900px;
   padding: 4px;
   overflow-y: auto;
 }
@@ -500,6 +515,13 @@ defineExpose({
       font-size: 12px;
       font-weight: normal;
       color: #9ca3af;
+    }
+
+    .mbl-info {
+      margin-left: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #4096ff;
     }
   }
 }
