@@ -190,9 +190,6 @@ watch(
         <template v-if="column.key === 'currencyId'">
           <CurrencySelect
             :model-value="record.currencyId"
-            :selected-items="
-              toSelectedItems(record.currencyId, record.currencyCode, 'code')
-            "
             class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'currencyId', v)"
