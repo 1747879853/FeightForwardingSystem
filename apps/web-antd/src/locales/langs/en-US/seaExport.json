@@ -254,6 +254,8 @@
       "ExchangeRate": "Exchange Rate",
       "amount": "Amount (incl. tax)",
       "auditHistory": "Audit History",
+      "batchImport": "Import Fees",
+      "batchImportFee": "Batch Import Fees",
       "canInvoice": "Allow Invoice",
       "currency": "Currency",
       "dataEntryMethod": "Data Entry Method",

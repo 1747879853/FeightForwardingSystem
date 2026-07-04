@@ -504,7 +504,7 @@ export const getSeaExportGroupedList = (
   );
 };
 
-export const getSeaExportDetail = (id: string | string) => {
+export const getSeaExportDetail = (id: string | number) => {
   return requestClient.get<SeaExportAdminApi.SeaExportDto>(
     `${API_PREFIX}/DetailAsync`,
     { params: { Id: id } },

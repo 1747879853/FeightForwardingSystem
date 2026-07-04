@@ -414,106 +414,6 @@ export namespace OrderFeeAdminApi {
   export const addOrderFee = (data: OrderFeeAdminApi.OrderFeeAddDto) => {
     return requestClient.post<number>(`${API_PREFIX}/AddAsync`, data);
   };
-
-  /** 编辑业务费用 */
-  export const editOrderFee = (data: OrderFeeAdminApi.OrderFeeEditDto) => {
-    return requestClient.put<number>(`${API_PREFIX}/EditAsync`, data);
-  };
-
-  /** 批量编辑业务费用 */
-  export const batchEditOrderFee = (
-    data: OrderFeeAdminApi.OrderFeeEditDto[],
-  ) => {
-    let handleData = { orderFees: data };
-    return requestClient.put<number>(
-      `${API_PREFIX}/BatchEditAsync`,
-      handleData,
-    );
-  };
-
-  /** 删除业务费用 */
-  // export const deleteOrderFee = (id: number) => {
-  //   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
-  //     data: { id },
-  //   });
-  // };
-  /** 批量删除 */
-  export const batchDeleteOrderFee = (ids: number[]) => {
-    return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
-      data: { ids },
-    });
-  };
-
-  /** 获取业务费用分页列表 */
-  export const getOrderFeePagedList = (
-    params: OrderFeeAdminApi.GetPagedListParams,
-  ) => {
-    return requestClient.get<OrderFeeAdminApi.PagedListOfOrderFeeDto>(
-      `${API_PREFIX}/GetPagedListAsync`,
-      { params },
-    );
-  };
-
-  /** 获取业务费用详情 */
-  export const getOrderFeeDetail = (id: number) => {
-    return requestClient.get<OrderFeeAdminApi.OrderFeeDto>(
-      `${API_PREFIX}/GetDetailAsync`,
-      { params: { id } },
-    );
-  };
-
-  /** 导出业务费用列表 */
-  export const exportOrderFeeList = (
-    params: OrderFeeAdminApi.GetPagedListParams,
-  ) => {
-    return requestClient.get(`${API_PREFIX}/ExportToExcelAsync`, {
-      params,
-      responseType: 'blob', // 以二进制流的形式接收响应
-    });
-  };
-
-  /** 获取业务费用相关的下拉列表数据 */
-  export const getOrderFeeDropdownData = () => {
-    return requestClient.get(`${API_PREFIX}/GetDropdownDataAsync`);
-  };
-
-  /** 获取业务费用相关的统计数据 */
-  export const getOrderFeeStatistics = (transportOrderId: string | number) => {
-    return requestClient.get(`${API_PREFIX}/GetStatisticsAsync`, {
-      params: { transportOrderId }, // 传递运输订单 ID 作为查询参数
-      responseType: 'json',
-    });
-  };
-
-  /** 收付互生费用（收转付/付转收） */
-  export const generateOppositeOrderFees = (
-    data: OrderFeeAdminApi.GenerateOppositeOrderFeesInputDto,
-  ) => {
-    return requestClient.post<string[]>(
-      `${API_PREFIX}/GenerateOppositeOrderFeesAsync`,
-      data,
-    );
-  };
-
-  /** 查询海运出口费用 */
-  export const getSeaExportFees = (
-    params: OrderFeeAdminApi.SeaExportFeeQueryInputDto,
-  ) => {
-    return requestClient.get<OrderFeeAdminApi.SeaExportFeeListDto[]>(
-      `${API_PREFIX}/GetSeaExportFeesAsync`,
-      { params },
-    );
-  };
-
-  /** 为某条业务批量引入费用 */
-  export const importOrderFeesToTransportOrder = (
-    data: OrderFeeAdminApi.ImportOrderFeesToTransportOrderInputDto,
-  ) => {
-    return requestClient.post<string[]>(
-      `${API_PREFIX}/ImportOrderFeesToTransportOrderAsync`,
-      data,
-    );
-  };
 }
 
 /** 编辑业务费用 */
@@ -587,6 +487,26 @@ export const generateOppositeOrderFees = (
 ) => {
   return requestClient.post<string[]>(
     `${API_PREFIX}/GenerateOppositeOrderFeesAsync`,
+    data,
+  );
+};
+
+/** 查询海运出口费用 */
+export const getSeaExportFees = (
+  params: OrderFeeAdminApi.SeaExportFeeQueryInputDto,
+) => {
+  return requestClient.get<OrderFeeAdminApi.SeaExportFeeListDto[]>(
+    `${API_PREFIX}/GetSeaExportFeesAsync`,
+    { params },
+  );
+};
+
+/** 为某条业务批量引入费用 */
+export const importOrderFeesToTransportOrder = (
+  data: OrderFeeAdminApi.ImportOrderFeesToTransportOrderInputDto,
+) => {
+  return requestClient.post<string[]>(
+    `${API_PREFIX}/ImportOrderFeesToTransportOrderAsync`,
     data,
   );
 };
