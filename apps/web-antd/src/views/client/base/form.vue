@@ -380,6 +380,13 @@ const handleRiskbirdImport = async (
       console.log('导入邮箱:', detail.email);
     }
 
+    // 11. 名称 -> name
+    if (detail.name) {
+      updateData.name = detail.name;
+      updateData.fullName = detail.name; // 同步更新全称
+      console.log('导入名称:', detail.name);
+    }
+
     console.log('准备更新的字段:', updateData);
 
     // 更新基础信息表单

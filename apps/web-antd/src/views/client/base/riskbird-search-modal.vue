@@ -72,7 +72,10 @@ const formatBusinessTerm = (
   if (!operateFrom && !operateTo) return '';
 
   const fromDate = operateFrom ? dayjs(operateFrom).format('YYYY-MM-DD') : '';
-  const toDate = operateTo ? dayjs(operateTo).format('YYYY-MM-DD') : '长期';
+  const toDate =
+    operateTo && operateTo !== '长期'
+      ? dayjs(operateTo).format('YYYY-MM-DD')
+      : '长期';
 
   if (fromDate) {
     return `${fromDate} 至 ${toDate}`;
