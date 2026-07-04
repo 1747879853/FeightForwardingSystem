@@ -8,9 +8,13 @@ import { $t } from '#/locales';
 import form from 'ant-design-vue/es/form';
 
 import { useVbenForm } from '#/adapter/form';
-import { getOrganizationUnitTree } from '#/api/system/organization-unit';
+import {
+  getMyPermissionCompanies,
+  type SystemOrganizationUnitApi,
+} from '#/api/system/organization-unit';
 import { UserAttribute } from '#/api/system/user-admin';
 import type { BillingPeriodAdminApi } from '#/api/sea-export/billing-period-admin';
+
 /**
  * 业务类型枚举
  */
@@ -230,9 +234,16 @@ export function useBillFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.client.paymentTerms.orgs'),
       componentProps: {
         api: async () => {
-          // 调用接口获取树形数据
-          const result = await getOrganizationUnitTree();
-          return result;
+          // 调用接口获取有权限的公司列表
+          const companies = await getMyPermissionCompanies();
+          // 转换为树形选择器需要的格式（虽然是扁平列表，但ApiTreeSelect也能处理）
+          return companies.map(
+            (company: SystemOrganizationUnitApi.OrganizationUnitSimpleDto) => ({
+              id: company.id,
+              displayName: company.name,
+              children: [],
+            }),
+          );
         },
         // 字段映射配置
         fieldNames: {
@@ -244,6 +255,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
         allowClear: true,
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
+        treeCheckable: false, // 禁用树形勾选，作为普通多选下拉使用
       },
     },
     {
