@@ -363,7 +363,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
   gridOptions: {
     columns: useOrderFeeColumns(props.type),
     height: '100%',
-    maxHeight: 500,
+    maxHeight: 700,
     keepSource: true,
     radioConfig: {
       highlight: true,
@@ -1123,7 +1123,7 @@ defineExpose({
   .order-ctn-table {
     display: flex;
     flex-direction: column;
-    height: 400px;
+    height: 500px;
   }
 
   :deep(.vxe-grid) {
