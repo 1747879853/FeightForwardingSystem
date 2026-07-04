@@ -190,6 +190,24 @@ const queryTableData = async () => {
       }
       item.taskStatus = '';
     }
+
+    // 根据结算状态重新计算费用状态
+    // 只有审核通过的费用才需要根据结算金额调整状态
+    if (item.feeStatus === feeConstants.getFeeStatusValue.Approved) {
+      const amount = item.amount || 0;
+      const settledAmount = item.settledAmount || 0;
+
+      if (settledAmount <= 0) {
+        // 未结算，保持审核通过状态
+        item.feeStatus = feeConstants.getFeeStatusValue.Approved;
+      } else if (settledAmount >= amount) {
+        // 已完全结算
+        item.feeStatus = feeConstants.getFeeStatusValue.Settled;
+      } else if (settledAmount > 0 && settledAmount < amount) {
+        // 部分结算
+        item.feeStatus = feeConstants.getFeeStatusValue.PartialSettlement;
+      }
+    }
   });
   //  console.log('res', res.items);
   dataSource.value = normalizeOrderFeeWithRowKey(res.items);
