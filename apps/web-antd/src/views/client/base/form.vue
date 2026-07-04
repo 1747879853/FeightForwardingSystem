@@ -327,18 +327,30 @@ const handleRiskbirdImport = async (
     }
 
     // 5. 营业期限 -> businessTerm（新字段：operateFrom/operateTo）
-    const operateFrom =
-      detail.operateFrom || (detail.opFrom ? String(detail.opFrom) : undefined);
-    const operateTo =
-      detail.operateTo || (detail.opTo ? String(detail.opTo) : undefined);
+    const operateFrom = detail.operateFrom;
+    const operateTo = detail.operateTo;
     if (operateFrom || operateTo) {
-      const businessTerm = formatBusinessTerm(
-        operateFrom ? parseInt(operateFrom) : undefined,
-        operateTo ? parseInt(operateTo) : undefined,
-      );
-      if (businessTerm) {
+      // operateFrom和operateTo已经是日期字符串格式（如"2018-10-29"），不需要parseInt
+      const fromDate = operateFrom
+        ? dayjs(operateFrom).format('YYYY-MM-DD')
+        : '';
+      const toDate =
+        operateTo && operateTo !== '长期'
+          ? dayjs(operateTo).format('YYYY-MM-DD')
+          : '长期';
+
+      if (fromDate) {
+        const businessTerm = `${fromDate} 至 ${toDate}`;
         updateData.businessTerm = businessTerm;
-        console.log('导入营业期限:', businessTerm);
+        console.log(
+          '导入营业期限:',
+          businessTerm,
+          '(from:',
+          operateFrom,
+          ', to:',
+          operateTo,
+          ')',
+        );
       }
     }
 
@@ -411,6 +423,39 @@ const handleRiskbirdImport = async (
       message.success('数据导入成功');
     } else {
       message.warning('未找到可导入的数据');
+    }
+
+    // 12. 导入地址信息（如果存在地区名称、详细地址或联系电话）
+    const hasAddressData = detail.regionName || detail.address || detail.phone;
+    if (hasAddressData) {
+      // 检查地址列表是否为空
+      const shouldSetDefault = addressList.value.length === 0;
+
+      // 构建地址对象
+      const newAddress: ClientAdminApi.ClientAddressAddDto = {
+        name: detail.regionName || detail.name || '默认地址',
+        address: detail.address || '',
+        contactPerson: '', // 风鸟数据中没有联系人字段
+        mobile: detail.phone || '',
+        tel: '', // 风鸟数据中只有一个电话字段，用作mobile
+        isDefault: shouldSetDefault, // 如果地址列表为空，设置为默认地址
+        remark: '',
+      };
+
+      console.log('导入地址信息:', newAddress);
+
+      // 如果设置为默认地址，先取消其他地址的默认状态
+      if (shouldSetDefault) {
+        addressList.value.forEach((item) => {
+          item.isDefault = false;
+        });
+      }
+
+      // 添加地址到列表
+      addressList.value.push(newAddress);
+      console.log('地址已添加到列表，当前地址数量:', addressList.value.length);
+
+      message.success('地址信息导入成功');
     }
 
     // 关闭弹窗
@@ -1051,7 +1096,7 @@ onMounted(() => {
               },
               () => [
                 h(Search, { class: 'size-4' }),
-                h('span', { class: 'ml-1' }, '查询'),
+                h('span', { class: 'ml-1' }, '企查查'),
               ],
             );
           },
@@ -1081,7 +1126,7 @@ onMounted(() => {
               },
               () => [
                 h(Search, { class: 'size-4' }),
-                h('span', { class: 'ml-1' }, '风鸟查询'),
+                h('span', { class: 'ml-1' }, 'q'),
               ],
             );
           },

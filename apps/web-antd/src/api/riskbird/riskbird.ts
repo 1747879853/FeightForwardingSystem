@@ -64,6 +64,8 @@ export namespace RiskbirdApi {
     operateTo?: string;
     /** 注册地址 */
     address?: string;
+    /** 地区名称 */
+    regionName?: string;
     /** 电话 */
     phone?: string;
     /** 邮箱 */
