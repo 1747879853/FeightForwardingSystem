@@ -172,7 +172,7 @@ export function useColumns(): VxeTableGridOptions<PaymentApplicationAdminApi.Pay
       field: 'endTime',
       title: $t('seaExport.export.paymentApplication.endTime'),
       minWidth: 160,
-      formatter: 'formatDateTime',
+      formatter: 'formatDate',
     },
     {
       field: 'creationTime',
