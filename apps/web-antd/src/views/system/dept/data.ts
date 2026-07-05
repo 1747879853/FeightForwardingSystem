@@ -214,13 +214,6 @@ export function useBankAccountSchema(): VbenFormSchema[] {
     {
       component: 'Input',
       componentProps: { maxLength: 128 },
-      fieldName: 'cnapsCode',
-      label: $t('system.dept.bankAccount.cnapsCode'),
-      help: $t('system.dept.bankAccount.cnapsCodeHelp'),
-    },
-    {
-      component: 'Input',
-      componentProps: { maxLength: 128 },
       fieldName: 'swiftCode',
       label: $t('system.dept.bankAccount.swiftCode'),
       help: $t('system.dept.bankAccount.swiftCodeHelp'),

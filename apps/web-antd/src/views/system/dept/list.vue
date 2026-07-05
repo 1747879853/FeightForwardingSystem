@@ -351,11 +351,6 @@ const bankAccountColumns = computed(() => [
     width: 80,
   },
   {
-    dataIndex: 'cnapsCode',
-    title: $t('system.dept.bankAccount.cnapsCode'),
-    width: 120,
-  },
-  {
     dataIndex: 'swiftCode',
     title: $t('system.dept.bankAccount.swiftCode'),
     width: 120,
