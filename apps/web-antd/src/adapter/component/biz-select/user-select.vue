@@ -1,14 +1,14 @@
 <script lang="ts" setup>
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
-import { computed, ref, toRef } from 'vue';
+import { computed, ref, toRef, watch } from 'vue';
 
 import { ApiComponent } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
 import { Select } from 'ant-design-vue';
 
-import { getUserPagedList } from '#/api/system/user-admin';
+import { getUser, getUserPagedList } from '#/api/system/user-admin';
 
 import { usePagedSelect } from './use-paged-select';
 import type { OptionItem } from './use-paged-select';
@@ -90,7 +90,9 @@ const {
   handleDropdownVisibleChange,
   handlePopupScroll,
   handleSearch,
+  mergeSelectedItems,
   params,
+  pinSelectedFromOptions,
   searchValue,
 } = usePagedSelect({
   extraParamsRef,
@@ -99,6 +101,7 @@ const {
   pageSize: props.pageSize,
   queryKey: ['user'],
   selectedItemsRef,
+  selectedValuesRef: modelValue,
   valueKey: props.valueKey,
 });
 
@@ -107,14 +110,70 @@ const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
 );
 
-// 处理值变化
+const apiComponentRef = ref();
+const loadedSelectedIds = ref(new Set<string>());
+
+const parseIdToSafeString = (value: unknown): string | null => {
+  if (value === undefined || value === null || value === '') return null;
+  return String(value);
+};
+
 const handleChange = (value: any) => {
+  const options = apiComponentRef.value?.getOptions?.() ?? [];
+  pinSelectedFromOptions(value, options);
   modelValue.value = value;
   emit('update:modelValue', value);
 };
 
-// ApiComponent ref
-const apiComponentRef = ref();
+const ensureSelectedLoaded = async (rawValue: any) => {
+  if (rawValue === undefined || rawValue === null || rawValue === '') return;
+  const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+
+  for (const value of values) {
+    const idStr = parseIdToSafeString(value);
+    if (idStr === null) continue;
+
+    const options = apiComponentRef.value?.getOptions?.() ?? [];
+    const hasOption = options.some(
+      (option: OptionItem) => String(option.value) === idStr,
+    );
+    if (hasOption) {
+      loadedSelectedIds.value.add(idStr);
+      continue;
+    }
+
+    if (loadedSelectedIds.value.has(idStr)) continue;
+
+    loadedSelectedIds.value.add(idStr);
+    try {
+      const detail = await getUser(Number(idStr), { silent: true });
+      mergeSelectedItems([detail]);
+    } catch {
+      loadedSelectedIds.value.delete(idStr);
+    }
+  }
+};
+
+watch(
+  selectedItemsRef,
+  (items) => {
+    for (const item of items) {
+      const idStr = parseIdToSafeString((item as any)[props.valueKey]);
+      if (idStr !== null) {
+        loadedSelectedIds.value.add(idStr);
+      }
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  modelValue,
+  (value) => {
+    void ensureSelectedLoaded(value);
+  },
+  { immediate: true },
+);
 
 // 暴露方法
 defineExpose({
