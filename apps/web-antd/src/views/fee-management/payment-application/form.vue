@@ -320,18 +320,6 @@ watch(bankCurrencies, () => {
   applyDefaultBankSelections();
 });
 
-function ensureBanksSelected(): boolean {
-  for (const c of bankCurrencies.value) {
-    if (!bankSelections.value[c.currencyId]) {
-      message.warning(
-        `请为币别【${c.currencyCode || c.currencyName}】选择结算银行`,
-      );
-      return false;
-    }
-  }
-  return true;
-}
-
 /** 构造提交用银行列表 */
 function buildBankSubmitList(): PaymentApplicationAdminApi.PaymentApplicationBankAddDto[] {
   return bankCurrencies.value
@@ -816,9 +804,6 @@ async function handleSave() {
     message.warning(t('noFeeWarning'));
     return;
   }
-  if (!ensureBanksSelected()) {
-    return;
-  }
   submitting.value = true;
   try {
     if (isEdit.value && editId.value) {
@@ -847,9 +832,6 @@ async function handleSubmit() {
     message.warning(t('noFeeWarning'));
     return;
   }
-  if (!ensureBanksSelected()) {
-    return;
-  }
   submitting.value = true;
   try {
     await addPaymentApplication(
@@ -872,9 +854,6 @@ async function handleSubmitAndNew() {
     message.warning(t('noFeeWarning'));
     return;
   }
-  if (!ensureBanksSelected()) {
-    return;
-  }
   submitting.value = true;
   try {
     await addPaymentApplication(
@@ -893,9 +872,6 @@ async function handleSubmitApplication() {
   if (!ensureSettlementSelected()) return;
   if (feeDetailRows.value.length === 0) {
     message.warning(t('noFeeWarning'));
-    return;
-  }
-  if (!ensureBanksSelected()) {
     return;
   }
   submitting.value = true;
@@ -1138,9 +1114,7 @@ function formatMonth(val: string | undefined | null): string {
                       </span>
                     </div>
                     <div class="bank-block">
-                      <span class="bank-block__label">
-                        结算银行<span class="bank-block__required">*</span>
-                      </span>
+                      <span class="bank-block__label"> 结算银行 </span>
                       <Select
                         :value="bankSelections[cs.currencyId]"
                         :options="getBankOptions(cs.currencyId)"
@@ -1228,7 +1202,7 @@ function formatMonth(val: string | undefined | null): string {
                     class="bank-block bank-block--inline"
                   >
                     <span class="bank-block__label">
-                      结算银行<span class="bank-block__required">*</span>
+                      结算银行
                       <template v-if="settlementCurrencyName">
                         ({{ settlementCurrencyName }})
                       </template>
@@ -1607,11 +1581,6 @@ function formatMonth(val: string | undefined | null): string {
 .bank-block__label {
   font-size: 12px;
   color: #8c8c8c;
-}
-
-.bank-block__required {
-  margin-left: 2px;
-  color: #ff4d4f;
 }
 
 .bank-detail {
