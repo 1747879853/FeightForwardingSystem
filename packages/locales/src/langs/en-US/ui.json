@@ -5,7 +5,8 @@
     "deleting": "Deleting {0} ...",
     "lengthLimit1": "",
     "operationFailed": "Operation failed",
-    "operationSuccess": "Operation succeeded"
+    "operationSuccess": "Operation succeeded",
+    "selectRequired": "Please select records to continue"
   },
   "actionTitle": {
     "create": "Create {0}",
