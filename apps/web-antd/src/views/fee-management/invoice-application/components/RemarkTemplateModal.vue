@@ -555,6 +555,133 @@ watch(
 onMounted(() => {
   // 初始化时不自动加载，等待模态框打开
 });
+
+/** 获取默认备注模板 */
+async function getDefaultRemarkTemplate(
+  companyId: number,
+  currencyId: number,
+  templateData?: {
+    commissionNum: string;
+    mblNum: string;
+    invoiceExchangeRate: number;
+    foreignCurrencyAmount: string;
+    rmbAmount: string;
+    clientBankName: string;
+    clientBankAccount: string;
+    orgBankName: string;
+    orgBankAccount: string;
+  },
+): Promise<string> {
+  try {
+    console.log(
+      '🔍 查询默认备注模板 - 公司ID:',
+      companyId,
+      '币别ID:',
+      currencyId,
+    );
+
+    const result = await InvoiceRemarkTemplateApi.getPagedListAsync({
+      pageIndex: 1,
+      pageSize: 1,
+      companyId,
+      currencyId,
+      default: true, // 只查询默认模板
+    });
+
+    if (result.items && result.items.length > 0) {
+      const defaultTemplate = result.items[0];
+      if (defaultTemplate) {
+        let templateContent = defaultTemplate.template || '';
+
+        // ✅ 如果有 templateData，进行占位符替换
+        if (templateData) {
+          templateContent = replacePlaceholders(templateContent, templateData);
+          console.log(
+            '✅ 已获取并替换默认备注模板:',
+            templateContent.substring(0, 50),
+          );
+        } else {
+          console.log(
+            '✅ 已获取默认备注模板（未替换占位符）:',
+            templateContent.substring(0, 50),
+          );
+        }
+
+        return templateContent;
+      }
+    } else {
+      console.log('ℹ️ 未找到默认备注模板');
+    }
+    return '';
+  } catch (error) {
+    console.error('获取默认备注模板失败:', error);
+    return '';
+  }
+}
+
+/** 根据模板数据替换占位符生成实际备注 */
+function replacePlaceholders(
+  template: string,
+  templateData: {
+    commissionNum: string;
+    mblNum: string;
+    invoiceExchangeRate: number;
+    foreignCurrencyAmount: string;
+    rmbAmount: string;
+    clientBankName: string;
+    clientBankAccount: string;
+    orgBankName: string;
+    orgBankAccount: string;
+  },
+): string {
+  if (!template) return '';
+
+  let result = template;
+
+  // 委托编号
+  if (templateData.commissionNum) {
+    result = result.replace(/\<委托编号\>/g, templateData.commissionNum);
+  }
+
+  // 主提单号
+  if (templateData.mblNum) {
+    result = result.replace(/<主提单号>/g, templateData.mblNum);
+  }
+
+  // 发票汇率
+  result = result.replace(
+    /\[折算汇率\]/g,
+    String(templateData.invoiceExchangeRate),
+  );
+
+  // 外币金额总计
+  result = result.replace(
+    /\[外币金额\(总计\)\]/g,
+    templateData.foreignCurrencyAmount,
+  );
+
+  // 人民币金额总计
+  result = result.replace(/\[人民币金额\(总计\)\]/g, templateData.rmbAmount);
+
+  // 购方银行
+  result = result.replace(/\[购方银行\]/g, templateData.clientBankName);
+
+  // 购方账号
+  result = result.replace(/\[购方账号\]/g, templateData.clientBankAccount);
+
+  // 销方银行
+  result = result.replace(/\[销方银行\]/g, templateData.orgBankName);
+
+  // 销方账号
+  result = result.replace(/\[销方账号\]/g, templateData.orgBankAccount);
+
+  return result;
+}
+
+// 暴露方法给父组件
+defineExpose({
+  getDefaultRemarkTemplate,
+});
 </script>
 
 <template>

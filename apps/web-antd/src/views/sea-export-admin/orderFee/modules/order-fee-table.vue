@@ -51,6 +51,7 @@ import {
 } from '../data';
 import OrderFeeEditorModal from './order-fee-editor-modal.vue';
 import OrderFeeAuditHistoryModal from './order-fee-audit-history-modal.vue';
+import BatchImportFeeModal from './batch-import-fee-modal.vue';
 
 const dataSource = defineModel<OrderFeeAdminApi.OrderFeeDto[]>({
   default: () => [],
@@ -190,6 +191,24 @@ const queryTableData = async () => {
       }
       item.taskStatus = '';
     }
+
+    // 根据结算状态重新计算费用状态
+    // 只有审核通过的费用才需要根据结算金额调整状态
+    if (item.feeStatus === feeConstants.getFeeStatusValue.Approved) {
+      const amount = item.amount || 0;
+      const settledAmount = item.settledAmount || 0;
+
+      if (settledAmount <= 0) {
+        // 未结算，保持审核通过状态
+        item.feeStatus = feeConstants.getFeeStatusValue.Approved;
+      } else if (settledAmount >= amount) {
+        // 已完全结算
+        item.feeStatus = feeConstants.getFeeStatusValue.Settled;
+      } else if (settledAmount > 0 && settledAmount < amount) {
+        // 部分结算
+        item.feeStatus = feeConstants.getFeeStatusValue.PartialSettlement;
+      }
+    }
   });
   //  console.log('res', res.items);
   dataSource.value = normalizeOrderFeeWithRowKey(res.items);
@@ -262,6 +281,74 @@ const loadOrderCtnList = async () => {
 const modifyModalRef = ref<InstanceType<typeof OrderFeeEditorModal>>();
 const auditHistoryModalRef =
   ref<InstanceType<typeof OrderFeeAuditHistoryModal>>();
+const batchImportModalRef = ref<InstanceType<typeof BatchImportFeeModal>>();
+
+// 打开批量引入费用弹窗
+const openBatchImportModal = async () => {
+  // 获取当前订单的详细信息，用于设置默认检索条件
+  console.log('🔍 [openBatchImportModal] 检查 editId:', editId.value);
+  console.log('🔍 [openBatchImportModal] editId 类型:', typeof editId.value);
+
+  if (!editId.value) {
+    console.warn('⚠️ [openBatchImportModal] editId 为空');
+    message.warning('请先保存业务信息');
+    return;
+  }
+
+  try {
+    console.log(
+      '🔄 [openBatchImportModal] 开始调用 getSeaExportDetail, 参数:',
+      editId.value,
+    );
+    const orderDetail = await getSeaExportDetail(editId.value);
+
+    console.log('✅ [openBatchImportModal] 获取订单详情成功');
+    console.log('📋 [openBatchImportModal] 订单详情:', orderDetail);
+    console.log('📋 [openBatchImportModal] carrierId:', orderDetail?.carrierId);
+    console.log('📋 [openBatchImportModal] polId:', orderDetail?.polId);
+    console.log('📋 [openBatchImportModal] podId:', orderDetail?.podId);
+
+    // 设置弹窗数据
+    batchImportModalRef.value?.modalApi.setData({
+      transportOrderId: editId.value,
+      paySide: props.type, // 当前表格的收付类型（0=应收，1=应付）
+      carrierId: orderDetail?.carrierId,
+      polId: orderDetail?.polId,
+      podId: orderDetail?.podId,
+    });
+
+    console.log('✅ [openBatchImportModal] 已设置弹窗数据，准备打开弹窗');
+
+    // 打开弹窗
+    batchImportModalRef.value?.modalApi.open();
+  } catch (error) {
+    console.error('❌ [openBatchImportModal] 获取订单详情失败:', error);
+    console.error('❌ [openBatchImportModal] 错误对象:', error);
+    console.error(
+      '❌ [openBatchImportModal] 错误消息:',
+      error instanceof Error ? error.message : '未知错误',
+    );
+    console.error(
+      '❌ [openBatchImportModal] 错误堆栈:',
+      error instanceof Error ? error.stack : '无堆栈信息',
+    );
+
+    const errorMsg = error instanceof Error ? error.message : '请稍后重试';
+    message.error(`获取订单详情失败: ${errorMsg}`);
+  }
+};
+
+// 处理批量导入确认
+const handleBatchImportConfirm = () => {
+  // 刷新当前表格数据
+  getTableDate();
+
+  // 通知父组件同步费用
+  syncFee();
+
+  // 通知父组件刷新对立表格
+  emit('refresh-opposite-table');
+};
 
 // 打开审核历史弹窗
 const openAuditHistoryModal = (row: OrderFeeAdminApi.OrderFeeDto) => {
@@ -277,7 +364,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
     id: `sea-export-order-fee-${props.type}`,
     columns: useOrderFeeColumns(props.type),
     height: '100%',
-    maxHeight: 500,
+    maxHeight: 700,
     keepSource: true,
     radioConfig: {
       highlight: true,
@@ -948,6 +1035,9 @@ defineExpose({
           >
             <template #toolbar-tools>
               <Space>
+                <Button @click="openBatchImportModal">
+                  {{ $t('seaExport.export.orderFee.batchImport') }}
+                </Button>
                 <Button type="primary" @click="addRow">
                   {{ $t('common.create') }}
                 </Button>
@@ -1016,6 +1106,12 @@ defineExpose({
 
     <!-- 审核历史模态框 -->
     <OrderFeeAuditHistoryModal ref="auditHistoryModalRef" />
+
+    <!-- 批量引入费用模态框 -->
+    <BatchImportFeeModal
+      ref="batchImportModalRef"
+      @confirm="handleBatchImportConfirm"
+    />
   </Card>
 </template>
 
@@ -1028,7 +1124,7 @@ defineExpose({
   .order-ctn-table {
     display: flex;
     flex-direction: column;
-    height: 400px;
+    height: 500px;
   }
 
   :deep(.vxe-grid) {

@@ -41,6 +41,15 @@ export namespace SystemOrganizationUnitApi {
     orgBankAccounts?: OrgBankAccountDto[] | null;
   }
 
+  /** 公司简易返回模型（用于数据权限公司列表） */
+  export interface OrganizationUnitSimpleDto {
+    id: number;
+    name: string;
+    localCurrencyId?: number | null;
+    /** 本位币代码（只读） */
+    localCurrencyCode?: string | null;
+  }
+
   /** 组织单元列表项DTO（带层级） */
   export interface OrganizationUnitWithLevelDto {
     id: number;
@@ -48,6 +57,19 @@ export namespace SystemOrganizationUnitApi {
     code: string;
     displayName: string;
     level: number;
+  }
+
+  /** 组织单元查询DTO（用于搜索接口） */
+  export interface OrganizationUnitQueryDto {
+    isCompany?: boolean | null;
+    isDisabled?: boolean | null;
+  }
+
+  /** 组织单元当前用户查询DTO（用于带用户ID的搜索接口） */
+  export interface OrganizationUnitCurrentQueryDto {
+    id: number;
+    isCompany?: boolean | null;
+    isDisabled?: boolean | null;
   }
 
   /** 创建组织单元输入DTO */
@@ -92,6 +114,19 @@ export namespace SystemOrganizationUnitApi {
   export interface MoveOrganizationUnitInputDto {
     id: number;
     newParentId?: number | null;
+  }
+
+  /** 无组织用户分页查询DTO */
+  export interface UsersForOuPagingQueryDto {
+    pageIndex?: number;
+    pageSize?: number;
+    keyWords?: string | null;
+  }
+
+  /** NameValue DTO（用于无组织用户列表） */
+  export interface NameValueDto {
+    name?: string | null;
+    value?: string | null;
   }
 
   /** 银行账户DTO */
@@ -246,37 +281,48 @@ function resolveOrganizationCompanyName(
 
 /**
  * 获取组织单元列表
- * @param isCompany 是否是公司。true=公司，false=部门，undefined=全部
+ * @param params 查询参数，支持按公司/部门、启用/禁用状态筛选
  */
 async function getOrganizationUnits(
-  isCompany?: boolean,
+  params?: SystemOrganizationUnitApi.OrganizationUnitQueryDto,
 ): Promise<SystemOrganizationUnitApi.OrganizationUnitDto[]> {
   return requestClient.get(
     '/services/app/OrganizationUnit/GetOrganizationUnitsAsync',
     {
-      params: { IsCompany: isCompany },
+      params: {
+        IsCompany: params?.isCompany,
+        IsDisabled: params?.isDisabled,
+      },
     },
   );
 }
 
 /**
  * 获取组织单元树
+ * @param params 查询参数，支持按公司/部门、启用/禁用状态筛选
  */
-async function getOrganizationUnitTree(): Promise<
-  SystemOrganizationUnitApi.OrganizationUnitTreeDto[]
-> {
-  const list = await getOrganizationUnits();
+async function getOrganizationUnitTree(
+  params?: SystemOrganizationUnitApi.OrganizationUnitQueryDto,
+): Promise<SystemOrganizationUnitApi.OrganizationUnitTreeDto[]> {
+  const list = await getOrganizationUnits(params);
   return listToTree(list);
 }
 
 /**
  * 获取组织单元列表（含层级）
+ * @param params 查询参数，支持按公司/部门、启用/禁用状态筛选
  */
-async function getOrganizationUnitsWithLevel(): Promise<
-  SystemOrganizationUnitApi.OrganizationUnitWithLevelDto[]
-> {
+async function getOrganizationUnitsWithLevel(
+  params?: SystemOrganizationUnitApi.OrganizationUnitQueryDto,
+): Promise<SystemOrganizationUnitApi.OrganizationUnitWithLevelDto[]> {
   return requestClient.get(
     '/services/app/OrganizationUnit/GetOrganizationUnitsWithLevelAsync',
+    {
+      params: {
+        IsCompany: params?.isCompany,
+        IsDisabled: params?.isDisabled,
+      },
+    },
   );
 }
 
@@ -289,6 +335,19 @@ async function getOrganizationUnit(
   return requestClient.get(
     '/services/app/OrganizationUnit/GetOrganizationUnitAsync',
     { params: { Id: id } },
+  );
+}
+
+/**
+ * 获取当前登录人有数据权限的公司列表
+ * 按当前登录人的数据权限返回其拥有权限的分公司（公司）列表
+ * 结果只包含公司（isCompany=true），不含部门
+ */
+async function getMyPermissionCompanies(): Promise<
+  SystemOrganizationUnitApi.OrganizationUnitSimpleDto[]
+> {
+  return requestClient.get(
+    '/services/app/OrganizationUnit/GetMyPermissionCompaniesAsync',
   );
 }
 
@@ -444,7 +503,7 @@ async function getUserPagingListForOu(params: {
   );
 
   const response = await requestClient.get<{
-    items?: OrganizationUnitUserNameValueDto[];
+    items?: SystemOrganizationUnitApi.NameValueDto[];
     pageIndex: number;
     pageSize: number;
     totalCount: number;
@@ -557,6 +616,7 @@ export {
   deleteOrgBankAccount,
   deleteOrganizationUnit,
   findUsersForOrganizationUnit,
+  getMyPermissionCompanies,
   getOrgBankAccount,
   getOrgBankAccountList,
   getOrganizationUnit,

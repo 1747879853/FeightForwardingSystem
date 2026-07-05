@@ -42,10 +42,10 @@ import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vu
 import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
 import FeeDetailModal from './components/FeeDetailModal.vue';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
-import { returnToListWithRefresh } from '#/utils/list-refresh-flag';
+import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 
 // 从命名空间中解构 API 函数
-const { addAsync, detailAsync, editAsync } = InvoiceApplicationApi;
+const { addAsync, detailAsync, editAsync, submitAsync } = InvoiceApplicationApi;
 
 const route = useRoute();
 const router = useRouter();
@@ -77,6 +77,9 @@ const selectedGoodsRows = ref<string[]>([]); // 选中的商品明细行ID
 // 备注模板管理弹窗相关状态
 const remarkTemplateModalVisible = ref(false); // 备注模板管理弹窗显示状态
 const selectRemarkTemplateModalVisible = ref(false); // 选择备注模板弹窗显示状态
+
+// 备注模板组件引用
+const remarkTemplateModalRef = ref();
 
 // 表单数据
 const formData = ref<any>({
@@ -265,13 +268,90 @@ async function handleSubmit() {
       message.success('创建成功');
     }
 
-    // 返回列表并刷新
-    returnToListWithRefresh('/fee-management/invoice-application', () => {
-      router.push('/fee-management/invoice-application');
-    });
+    // 保存后不关闭页面，保持当前状态
+    console.log('✅ 保存成功，保持在当前页面');
   } catch (error) {
     console.error('保存失败:', error);
     message.error('保存失败');
+  } finally {
+    submitLoading.value = false;
+  }
+}
+
+/** 提交审核 */
+async function handleSubmitForAudit() {
+  // 基本验证
+  if (!formData.value.settlementId) {
+    message.warning('请选择结算对象');
+    return;
+  }
+  if (!formData.value.companyId) {
+    message.warning('请选择所属公司');
+    return;
+  }
+
+  // 验证是否有费用明细
+  const items = formData.value.invoiceApplicationItems || [];
+  if (items.length === 0) {
+    message.warning('请先添加费用明细后再提交');
+    return;
+  }
+
+  submitLoading.value = true;
+  try {
+    // 如果是新建，先保存再提交
+    if (!isEdit.value) {
+      // 先保存
+      const batchData: InvoiceApplicationApi.InvoiceApplicationBatchAddDto = {
+        settlementId: formData.value.settlementId!,
+        companyId: formData.value.companyId!,
+        require: formData.value.require,
+        remark: formData.value.remark,
+        currencyGroups: [
+          {
+            currencyId: formData.value.currencyId || 1,
+            invoiceType: formData.value.invoiceType,
+            invoiceApplicationItems:
+              formData.value.invoiceApplicationItems || [],
+            invoiceApplicationGoodsDtls: goodsDetails.value.map((item) => ({
+              codeInvoiceId: item.codeInvoiceId,
+              specification: item.specification,
+              unit: item.unit,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              amount: item.amount,
+              noTaxAmount: item.noTaxAmount,
+              taxRate: item.taxRate,
+              taxAmount: item.taxAmount,
+              remark: item.remark,
+            })),
+            orgBankAccountId: formData.value.orgBankAccountId,
+            clientInvoiceBankId: formData.value.clientInvoiceBankId,
+          },
+        ],
+      };
+
+      const ids = await addAsync(batchData);
+
+      // 获取第一个创建的申请ID并提交
+      if (ids && ids.length > 0) {
+        await submitAsync({ id: ids[0]! });
+        message.success('创建并提交成功');
+
+        // 提交成功后返回列表页面
+        router.push('/fee-management/invoice-application');
+      }
+    } else {
+      // 编辑模式直接提交
+      await submitAsync({ id: editId.value! });
+      message.success('提交成功');
+
+      // 提交成功后返回列表页面
+      router.push('/fee-management/invoice-application');
+    }
+  } catch (error) {
+    console.error('提交失败:', error);
+    message.error('提交失败');
   } finally {
     submitLoading.value = false;
   }
@@ -431,6 +511,7 @@ function handleOpenFeeDetailModal() {
   try {
     // 根据 orderFeeId 从 feeGroupsData 中查找对应的完整信息
     const allFees = flattenTreeData(feeGroupsData.value);
+
     console.log('🔍 扁平化后的所有费用数量:', allFees.length);
     console.log(
       ' 所有费用ID列表:',
@@ -751,6 +832,9 @@ async function handleFeeSelectionSave(data: {
     }
   }
 
+  // ✅ 根据币别自动选择销售方默认银行
+  updateOrgBankByCurrency();
+
   // 加载客户开票信息
   await loadClientInvoiceInfo(settlementId);
 
@@ -809,6 +893,9 @@ async function handleFeeSelectionSave(data: {
   }
 
   addSelectedFeesToForm(selectedFees);
+
+  // ✅ 自动加载当前币别对应的默认备注模板
+  await loadDefaultRemarkTemplate();
 
   // ✅ 根据商品明细数量决定处理方式（使用过滤后的新费用）
   if (isFirstTimeAdd) {
@@ -1293,6 +1380,45 @@ async function loadClientInvoiceInfo(settlementId: string) {
     updateClientBankByCurrency();
   } catch (error) {
     console.error('加载客户开票信息失败:', error);
+  }
+}
+
+/** ✅ 新增：加载当前币别对应的默认备注模板 */
+async function loadDefaultRemarkTemplate() {
+  // 检查是否有必要的参数
+  if (!formData.value.companyId || !formData.value.currencyId) {
+    console.log('⚠️ 缺少公司ID或币别ID，无法加载默认备注模板');
+    return;
+  }
+
+  // 如果备注字段已经有内容，不覆盖用户已输入的内容
+  if (formData.value.remark && formData.value.remark.trim()) {
+    console.log('⚠️ 备注字段已有内容，跳过自动填充');
+    return;
+  }
+
+  try {
+    // ✅ 直接调用 RemarkTemplateModal 组件的方法获取默认模板，并传入 templateData 进行占位符替换
+    const template =
+      await remarkTemplateModalRef.value?.getDefaultRemarkTemplate(
+        formData.value.companyId,
+        formData.value.currencyId,
+        remarkTemplateData.value, // ✅ 传入动态计算的模板数据
+      );
+
+    if (template) {
+      formData.value.remark = template;
+      console.log(
+        '✅ 已自动加载并替换默认备注模板:',
+        template.substring(0, 50),
+      );
+      message.success('已自动应用默认备注模板');
+    } else {
+      console.log('ℹ️ 未找到默认备注模板');
+    }
+  } catch (error) {
+    console.error('加载默认备注模板失败:', error);
+    // 静默失败，不影响主流程
   }
 }
 
@@ -1829,6 +1955,11 @@ async function loadDetail() {
     } else {
       console.log('⚠️ 详情中没有商品明细数据');
     }
+
+    // ✅ 如果备注为空，尝试加载默认备注模板
+    if (!formData.value.remark || !formData.value.remark.trim()) {
+      await loadDefaultRemarkTemplate();
+    }
   } catch (error) {
     console.error('加载详情失败:', error);
     message.error('加载详情失败');
@@ -1845,6 +1976,20 @@ async function loadDetail() {
       <Space>
         <Button type="primary" :loading="submitLoading" @click="handleSubmit">
           {{ isEdit ? '保存' : '创建' }}
+        </Button>
+        <Button
+          type="primary"
+          :loading="submitLoading"
+          @click="handleSubmitForAudit"
+          v-if="
+            !isEdit ||
+            formData.status ===
+              InvoiceApplicationApi.InvoiceApplicationStatus.Entering ||
+            formData.status ===
+              InvoiceApplicationApi.InvoiceApplicationStatus.Rejected
+          "
+        >
+          提交审核
         </Button>
         <Button @click="handleCancel">取消</Button>
       </Space>
@@ -1920,7 +2065,7 @@ async function loadDetail() {
                   </Button>
                 </Form.Item>
 
-                <Form.Item v-if="goodsDetails.length > 0">
+                <!-- <Form.Item v-if="goodsDetails.length > 0">
                   <Button
                     type="dashed"
                     block
@@ -1929,7 +2074,7 @@ async function loadDetail() {
                   >
                     🔄 根据当前费用重新填充商品明细
                   </Button>
-                </Form.Item>
+                </Form.Item> -->
               </Form>
             </Card>
 
@@ -2235,6 +2380,8 @@ async function loadDetail() {
               <!-- 商品明细表格 -->
               <div
                 style="
+                  height: 300px;
+                  overflow-y: auto;
                   border-right: 1px solid #c41e3a;
                   border-bottom: none;
                   border-left: 1px solid #c41e3a;
@@ -2506,7 +2653,7 @@ async function loadDetail() {
                       <Input.TextArea
                         v-model:value="formData.remark"
                         placeholder="请输入备注,或点击按钮使用模板"
-                        :rows="3"
+                        :rows="6"
                       />
                     </div>
                   </div>
@@ -2539,6 +2686,7 @@ async function loadDetail() {
 
     <!-- 备注模板管理弹窗 -->
     <RemarkTemplateModal
+      ref="remarkTemplateModalRef"
       v-model:visible="remarkTemplateModalVisible"
       @use-template="handleUseTemplate"
     />

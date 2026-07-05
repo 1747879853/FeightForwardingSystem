@@ -13,10 +13,13 @@ import { $t } from '#/locales';
 interface Props {
   /** 客户开票信息表id */
   clientInvoiceInfoId?: string;
+  /** 发票抬头，用于默认填充账户名称 */
+  invoiceHeader?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   clientInvoiceInfoId: '',
+  invoiceHeader: '',
 });
 
 const modelValue = defineModel<
@@ -47,9 +50,11 @@ const addRow = () => {
   list.push({
     _rowKey: `bank_${++rowKeyCounter}_${Date.now()}`,
     clientInvoiceInfoId: props.clientInvoiceInfoId || '',
-    currencyId: 0,
+    currencyId: 1,
     isDefault: false,
     sortId: list.length + 1,
+    // 账户名称默认为发票抬头
+    accountName: props.invoiceHeader || '',
   } as any);
   modelValue.value = list;
 };
@@ -74,9 +79,11 @@ const updateRow = (
     list[index] = {
       _rowKey: `bank_${++rowKeyCounter}_${Date.now()}`,
       clientInvoiceInfoId: props.clientInvoiceInfoId || '',
-      currencyId: 0,
+      currencyId: null,
       isDefault: false,
       sortId: index + 1,
+      // 账户名称默认为发票抬头
+      accountName: props.invoiceHeader || '',
     } as any;
   }
   const updatedRow = { ...list[index], [field]: value };
@@ -85,7 +92,7 @@ const updateRow = (
     updatedRow.clientInvoiceInfoId = props.clientInvoiceInfoId || '';
   }
   if (updatedRow.currencyId === undefined || updatedRow.currencyId === null) {
-    updatedRow.currencyId = 0;
+    updatedRow.currencyId = 1;
   }
   list[index] =
     updatedRow as ClientInvoiceInfoAdminApi.ClientInvoiceBankAddOrEditDto & {
@@ -109,6 +116,26 @@ watch(
     selectedRowKeys.value = selectedRowKeys.value.filter((k) => keys.has(k));
   },
   { immediate: true },
+);
+
+// 监听发票抬头变化，更新所有空账户名称的银行信息
+watch(
+  () => props.invoiceHeader,
+  (newHeader) => {
+    if (!newHeader) return;
+
+    const list = (modelValue.value ?? []).map((bank) => {
+      // 如果账户名称为空，则使用发票抬头填充
+      if (!bank.accountName) {
+        return { ...bank, accountName: newHeader };
+      }
+      return bank;
+    });
+
+    if (list.length > 0) {
+      modelValue.value = list;
+    }
+  },
 );
 </script>
 
@@ -160,7 +187,15 @@ watch(
       row-key="_rowKey"
     >
       <template #bodyCell="{ column, record, index }">
-        <template v-if="column.key === 'bankName'">
+        <template v-if="column.key === 'currencyId'">
+          <CurrencySelect
+            :model-value="record.currencyId"
+            class="w-full min-w-[100px]"
+            :placeholder="$t('ui.placeholder.select')"
+            @update:model-value="(v) => updateRow(index, 'currencyId', v)"
+          />
+        </template>
+        <template v-else-if="column.key === 'bankName'">
           <Input
             :value="record.bankName"
             :placeholder="$t('client.invoice.bankName')"
@@ -184,17 +219,6 @@ watch(
             @update:value="(v) => updateRow(index, 'accountName', v)"
           />
         </template>
-        <template v-else-if="column.key === 'currencyId'">
-          <CurrencySelect
-            :model-value="record.currencyId"
-            :selected-items="
-              toSelectedItems(record.currencyId, record.currencyCode, 'code')
-            "
-            class="w-full min-w-[100px]"
-            :placeholder="$t('ui.placeholder.select')"
-            @update:model-value="(v) => updateRow(index, 'currencyId', v)"
-          />
-        </template>
         <template v-else-if="column.key === 'swiftCode'">
           <Input
             :value="record.swiftCode"
@@ -211,6 +235,11 @@ watch(
         </template>
       </template>
       <Table.Column
+        key="currencyId"
+        :title="$t('client.invoice.currency')"
+        width="120"
+      />
+      <Table.Column
         key="bankName"
         :title="$t('client.invoice.bankName')"
         width="150"
@@ -224,11 +253,6 @@ watch(
         key="accountName"
         :title="$t('client.invoice.accountName')"
         width="150"
-      />
-      <Table.Column
-        key="currencyId"
-        :title="$t('client.invoice.currency')"
-        width="120"
       />
       <Table.Column
         key="swiftCode"

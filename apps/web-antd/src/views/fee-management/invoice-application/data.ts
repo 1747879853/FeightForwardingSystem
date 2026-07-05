@@ -157,6 +157,16 @@ export function useColumns(): VxeTableGridOptions<InvoiceApplicationApi.InvoiceA
       },
     },
     {
+      field: 'invoiceAmount',
+      title: '发票金额',
+      minWidth: 120,
+      align: 'right',
+      formatter: ({ cellValue }) => {
+        if (cellValue === null || cellValue === undefined) return '-';
+        return Number(cellValue).toFixed(2);
+      },
+    },
+    {
       field: 'itemCount',
       title: '费用数量',
       minWidth: 100,

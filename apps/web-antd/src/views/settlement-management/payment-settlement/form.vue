@@ -809,6 +809,24 @@ async function loadEditData() {
     const rebuiltItems: SettlementItem[] = [];
 
     if (detail.paymentApplications && detail.paymentApplications.length > 0) {
+      // 🔍 调试：打印 paymentSettlementItems 的结构
+      console.log('paymentSettlementItems:', detail.paymentSettlementItems);
+      if (
+        detail.paymentSettlementItems &&
+        detail.paymentSettlementItems.length > 0
+      ) {
+        console.log(
+          '第一个 settlement item 的 orderFee:',
+          detail.paymentSettlementItems[0]?.orderFee,
+        );
+        console.log(
+          'orderFee 是否有 transportOrder:',
+          detail.paymentSettlementItems[0]?.orderFee
+            ? 'transportOrder' in detail.paymentSettlementItems[0].orderFee
+            : false,
+        );
+      }
+
       for (const app of detail.paymentApplications) {
         try {
           // 从 currencyGroup 中提取用户输入的结算数据
@@ -847,9 +865,37 @@ async function loadEditData() {
 
           if (app.currencyGroup && app.currencyGroup.length > 0) {
             for (const detailCurrency of app.currencyGroup) {
-              // 使用通用转换函数
+              // 使用通用转换函数（已优化为保留所有原始字段）
               const convertedCurrency =
                 convertCurrencyGroupForDetailToSettlement(detailCurrency);
+
+              // 🔍 调试：打印转换后的 orderFees 结构
+              console.log(
+                `币别 ${detailCurrency.code} 的 orderFees:`,
+                convertedCurrency.orderFees,
+              );
+              if (
+                convertedCurrency.orderFees &&
+                convertedCurrency.orderFees.length > 0
+              ) {
+                const firstFee = convertedCurrency.orderFees[0];
+                console.log(
+                  `第一个费用的完整结构:`,
+                  JSON.stringify(firstFee, null, 2),
+                );
+                console.log(
+                  '是否有 transportOrder:',
+                  firstFee ? 'transportOrder' in firstFee : false,
+                );
+                console.log(
+                  '是否有 rqstPaymentAmount:',
+                  firstFee ? 'rqstPaymentAmount' in firstFee : false,
+                );
+                console.log(
+                  '是否有 unSettledAmount:',
+                  firstFee ? 'unSettledAmount' in firstFee : false,
+                );
+              }
 
               // 关键修复：将已保存的结算金额覆盖到转换后的 currencyGroup 中
               // 对于原币申请（有多个币别），使用 userCurrencyItems 中的值
@@ -1162,6 +1208,25 @@ function convertCurrencyGroupForDetailToSettlement(
   // 从 orderFees 中计算汇总数据
   const orderFees = detailCurrency.orderFees || [];
 
+  // 🔍 调试：打印原始 orderFees 的第一个元素
+  if (orderFees.length > 0) {
+    const firstFee = orderFees[0];
+    console.log(`币别 ${detailCurrency.code} 的原始 orderFees[0]:`, firstFee);
+    console.log(
+      '是否有 transportOrder:',
+      firstFee ? 'transportOrder' in firstFee : false,
+    );
+    console.log(
+      '是否有 rqstPaymentAmount:',
+      firstFee ? 'rqstPaymentAmount' in firstFee : false,
+    );
+    console.log(
+      '是否有 unSettledAmount:',
+      firstFee ? 'unSettledAmount' in firstFee : false,
+    );
+    console.log('所有字段名:', firstFee ? Object.keys(firstFee) : []);
+  }
+
   // 计算应收/应付金额（根据 paySide 区分）
   let receiveAmount = 0;
   let payAmount = 0;
@@ -1194,11 +1259,9 @@ function convertCurrencyGroupForDetailToSettlement(
     }
   });
 
-  // 直接使用详情接口返回的 orderFees，保留所有原始字段
-  const convertedOrderFees = orderFees.map((fee) => ({
-    ...fee,
-    transportOrder: undefined, // 详情接口不包含此字段
-  })) as any;
+  // ✅ 关键修复：直接使用原始 orderFees，保留后端返回的所有字段（包括 transportOrder、rqstPaymentAmount 等）
+  // 不要做任何过滤或修改，让后端返回什么就显示什么
+  const convertedOrderFees = [...orderFees] as any;
 
   return {
     id: detailCurrency.id,

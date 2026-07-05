@@ -490,7 +490,9 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       fieldName: 'fullName',
       label: $t('seaExport.client.fullName'),
       rules: 'required',
-      componentProps: { allowClear: true },
+      componentProps: {
+        allowClear: true,
+      },
     },
     {
       component: 'Input',
@@ -516,6 +518,12 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       component: 'Input',
       fieldName: 'phone',
       label: $t('seaExport.client.phone'),
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'Input',
+      fieldName: 'mobile',
+      label: $t('seaExport.client.mobile'),
       componentProps: { allowClear: true },
     },
     {
@@ -637,7 +645,6 @@ export function useSupplierFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'supplierLevel',
       label: $t('seaExport.client.supplierLevel'),
-      rules: 'required',
       componentProps: {
         allowClear: true,
         options: getSupplierLevelOptions(),
