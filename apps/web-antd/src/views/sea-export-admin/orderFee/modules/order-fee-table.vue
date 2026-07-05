@@ -274,6 +274,7 @@ const openAuditHistoryModal = (row: OrderFeeAdminApi.OrderFeeDto) => {
 
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
   gridOptions: {
+    id: `sea-export-order-fee-${props.type}`,
     columns: useOrderFeeColumns(props.type),
     height: '100%',
     maxHeight: 500,

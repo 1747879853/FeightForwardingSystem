@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-05 vxe 列显隐持久化保存修复（getFullColumns + 孪生表格 tableId）](./changelogs/change-log-2026-07-05-vxe-column-visibility-persist-fix.md)
 - [2026-07-02 权限管理数据权限对接统一子表接口](./changelogs/change-log-2026-07-02-system-permission-data-permission-unified-api.md)
 - [2026-07-02 权限管理表级权限对接条件维护](./changelogs/change-log-2026-07-02-system-permission-table-permission.md)
 - [2026-07-02 权限管理数据权限对接子项维护](./changelogs/change-log-2026-07-02-system-permission-data-permission.md)
