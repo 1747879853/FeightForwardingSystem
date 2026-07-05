@@ -167,6 +167,7 @@ const normalizeOrderFeeWithRowKey = (
 
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
   gridOptions: {
+    id: `sea-export-all-order-fee-${props.type}`,
     columns: useExpenseAllColumns(),
     height: '100%',
     minHeight: 200,

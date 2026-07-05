@@ -108,6 +108,7 @@ const initializedColumns = ref(false);
 const isApplyingColumnConfig = ref(false);
 const persistTimer = ref<number>();
 const searchPersistTimer = ref<number>();
+const persistSaveTrigger = ref('unknown');
 const columnUniqueKeyField = '_columnUniqueKey';
 const columnDefaultVisibleField = '_columnDefaultVisible';
 const columnDefaultFixedField = '_columnDefaultFixed';
@@ -127,11 +128,39 @@ const searchFieldPopoverContainerRef = useTemplateRef<HTMLElement>(
 const debugPrefix = '[vxe-column-persist]';
 const debugStorageKey = '__debug_vxe_persist';
 
+type ColumnPersistDebugInfo = {
+  savedAt: string;
+  tableId: string;
+  userSettingKey: string;
+  trigger: string;
+  totals: {
+    stableColumnCount: number;
+    getColumnsCount: number;
+    getFullColumnsCount: number;
+    visibleInConfig: number;
+    hiddenInConfig: number;
+  };
+  keyMapping: {
+    fullColumnsSignatureMatched: number;
+    fullColumnsColumnKeyMatched: number;
+    fullColumnsFallbackMatched: number;
+    visibleKeysNotInStableColumns: number;
+  };
+  flags: {
+    suspicious: boolean;
+    isApplyingColumnConfig: boolean;
+    initializedColumns: boolean;
+  };
+  /** localStorage.__debug_vxe_persist=1 时附带完整快照 */
+  verbose?: Record<string, unknown>;
+};
+
 type ColumnPersistConfig = {
   visibleColumnKeys: string[];
   columnVisibility: Record<string, boolean>;
   columnFixed?: Record<string, '' | 'left' | 'right'>;
   columnWidths?: Record<string, number>;
+  _debug?: ColumnPersistDebugInfo;
 };
 
 type SearchFieldPersistConfig = {
@@ -178,20 +207,23 @@ const searchFallbackStorageKey = computed(
 );
 const searchUserSettingId = ref<number>();
 
-function debugLog(message: string, payload?: Record<string, any>) {
-  let enabled = false;
+function isDebugPersistEnabled() {
   try {
-    enabled =
+    return (
       typeof window !== 'undefined' &&
       ['1', 'true'].includes(
         String(
           window.localStorage?.getItem(debugStorageKey) ?? '',
         ).toLowerCase(),
-      );
+      )
+    );
   } catch {
-    enabled = false;
+    return false;
   }
-  if (!enabled) {
+}
+
+function debugLog(message: string, payload?: Record<string, any>) {
+  if (!isDebugPersistEnabled()) {
     return;
   }
   if (payload) {
@@ -234,6 +266,156 @@ function createStableKeyLookup(columns: any[]) {
     lookup.set(getColumnSignature(column), key);
   });
   return lookup;
+}
+
+function resolveStableColumnKeyMeta(
+  column: any,
+  stableKeyLookup: Map<string, string>,
+  index = 0,
+) {
+  const signature = getColumnSignature(column);
+  const fromLookup = stableKeyLookup.get(signature);
+  if (fromLookup) {
+    return {
+      key: fromLookup,
+      match: 'signature' as const,
+      signature,
+    };
+  }
+  const fromColumn = String(
+    column?.[columnUniqueKeyField] ?? column?.id ?? '',
+  ).trim();
+  if (fromColumn) {
+    return {
+      key: fromColumn,
+      match: 'columnKey' as const,
+      signature,
+    };
+  }
+  return {
+    key: `col_${index}_${String(column?.field ?? column?.title ?? column?.type ?? 'column')}`,
+    match: 'fallback' as const,
+    signature,
+  };
+}
+
+function resolveStableColumnKey(
+  column: any,
+  stableKeyLookup: Map<string, string>,
+  index = 0,
+): string {
+  return resolveStableColumnKeyMeta(column, stableKeyLookup, index).key;
+}
+
+function buildColumnPersistDebug(
+  config: ColumnPersistConfig,
+  trigger: string,
+  context: {
+    getColumnsCount: number;
+    getFullColumnsCount: number;
+    keyMapping: ColumnPersistDebugInfo['keyMapping'];
+    suspicious?: boolean;
+    verbose?: Record<string, unknown>;
+  },
+): ColumnPersistDebugInfo {
+  const hiddenInConfig = Object.values(config.columnVisibility).filter(
+    (visible) => visible === false,
+  ).length;
+  const debugInfo: ColumnPersistDebugInfo = {
+    savedAt: new Date().toISOString(),
+    tableId: resolvedTableId.value,
+    userSettingKey: userSettingKey.value,
+    trigger,
+    totals: {
+      stableColumnCount: Object.keys(config.columnVisibility).length,
+      getColumnsCount: context.getColumnsCount,
+      getFullColumnsCount: context.getFullColumnsCount,
+      visibleInConfig: config.visibleColumnKeys.length,
+      hiddenInConfig,
+    },
+    keyMapping: context.keyMapping,
+    flags: {
+      suspicious: context.suspicious === true,
+      isApplyingColumnConfig: isApplyingColumnConfig.value,
+      initializedColumns: initializedColumns.value,
+    },
+  };
+  if (context.verbose) {
+    debugInfo.verbose = context.verbose;
+  }
+  return debugInfo;
+}
+
+function saveBlockedColumnPersistDebug(
+  trigger: string,
+  reason: string,
+  config: ColumnPersistConfig,
+  debugInfo: ColumnPersistDebugInfo,
+) {
+  if (!resolvedTableId.value) {
+    return;
+  }
+  try {
+    const payload = JSON.stringify({
+      blockedAt: debugInfo.savedAt,
+      reason,
+      trigger,
+      tableId: resolvedTableId.value,
+      userSettingKey: userSettingKey.value,
+      config,
+      _debug: debugInfo,
+    });
+    localStorage.setItem(`fallback_debug_${userSettingKey.value}`, payload);
+  } catch {
+    // ignore quota errors
+  }
+}
+
+/** vxe 4.17+：getColumns() 仅返回 visibleColumn，显隐采集须用 getFullColumns */
+function getRuntimeFullColumns(): any[] {
+  const grid = props.api.grid as any;
+  if (!grid) {
+    return [];
+  }
+  const fullColumns = grid.getFullColumns?.();
+  if (Array.isArray(fullColumns) && fullColumns.length > 0) {
+    return fullColumns;
+  }
+  const tableColumn = grid.getTableColumn?.();
+  if (
+    Array.isArray(tableColumn?.fullColumn) &&
+    tableColumn.fullColumn.length > 0
+  ) {
+    return tableColumn.fullColumn;
+  }
+  const visibleColumns = grid.getColumns?.();
+  return Array.isArray(visibleColumns) ? visibleColumns : [];
+}
+
+function isSuspiciousColumnPersistConfig(
+  config: ColumnPersistConfig,
+  totalColumnCount: number,
+): boolean {
+  const visibleCount = config.visibleColumnKeys.length;
+  if (totalColumnCount < 3 || visibleCount === 0) {
+    return visibleCount === 0;
+  }
+  const onlyKey = String(config.visibleColumnKeys[0] ?? '');
+  const onlyCheckboxVisible =
+    visibleCount === 1 &&
+    totalColumnCount > 5 &&
+    (onlyKey.includes('checkbox') || onlyKey.endsWith('_checkbox'));
+  if (onlyCheckboxVisible) {
+    return true;
+  }
+  const hiddenCount = Object.values(config.columnVisibility).filter(
+    (visible) => visible === false,
+  ).length;
+  return (
+    totalColumnCount > 5 &&
+    visibleCount <= 1 &&
+    hiddenCount >= totalColumnCount - 1
+  );
 }
 
 function normalizeFixedValue(value: unknown): '' | 'left' | 'right' {
@@ -387,6 +569,7 @@ function normalizeParsedConfig(config: any): ColumnPersistConfig | null {
     columnVisibility,
     columnFixed,
     ...(Object.keys(columnWidths).length > 0 ? { columnWidths } : {}),
+    ...(config._debug ? { _debug: config._debug } : {}),
   };
 }
 
@@ -497,36 +680,90 @@ function applyColumnConfig(config: ColumnPersistConfig, columns: any[]) {
   return { matchedOrderCount, matchedVisibilityCount };
 }
 
-function collectColumnConfigFromGrid(): null | ColumnPersistConfig {
-  const runtimeColumns = props.api.grid?.getColumns?.();
-  if (!Array.isArray(runtimeColumns) || runtimeColumns.length === 0) {
+function collectColumnConfigFromGrid(
+  trigger = persistSaveTrigger.value,
+): null | ColumnPersistConfig {
+  const grid = props.api.grid;
+  if (!grid) {
     return null;
   }
   const stableSourceColumns =
     originalColumns.value.length > 0
       ? originalColumns.value
       : toRaw(gridOptions.value?.columns ?? []);
+  const allColumns = getLeafColumns(stableSourceColumns);
+  if (allColumns.length === 0) {
+    return null;
+  }
   const stableKeyLookup = createStableKeyLookup(stableSourceColumns);
-  const runtimeVisibleKeys: string[] = [];
+  const stableKeySet = new Set(
+    allColumns.map(
+      (column, index) =>
+        column?.[columnUniqueKeyField] ??
+        column?.id ??
+        `col_${index}_${String(column?.field ?? column?.title ?? column?.type ?? 'column')}`,
+    ),
+  );
+  const runtimeFullLeafColumns = getLeafColumns(getRuntimeFullColumns());
+  const runtimeVisibleColumns = grid.getColumns?.() ?? [];
+  const getColumnsCount = Array.isArray(runtimeVisibleColumns)
+    ? runtimeVisibleColumns.length
+    : 0;
+  const getFullColumnsCount = runtimeFullLeafColumns.length;
+  if (getFullColumnsCount === 0 && getColumnsCount === 0) {
+    return null;
+  }
+
+  const keyMapping = {
+    fullColumnsSignatureMatched: 0,
+    fullColumnsColumnKeyMatched: 0,
+    fullColumnsFallbackMatched: 0,
+    visibleKeysNotInStableColumns: 0,
+  };
+  const unmappedFullColumns: Array<Record<string, unknown>> = [];
+
+  const runtimeVisibilityMap = new Map<string, boolean>();
   const runtimeFixedMap = new Map<string, '' | 'left' | 'right'>();
   const runtimeWidthMap = new Map<string, number>();
-  runtimeColumns.forEach((column: any, index: number) => {
-    const uniqueKey =
-      stableKeyLookup.get(getColumnSignature(column)) ??
-      column?.[columnUniqueKeyField] ??
-      column?.id ??
-      `col_${index}_${String(column?.field ?? column?.title ?? column?.type ?? 'column')}`;
-    runtimeFixedMap.set(uniqueKey, normalizeFixedValue(column?.fixed));
+  runtimeFullLeafColumns.forEach((column: any, index: number) => {
+    const meta = resolveStableColumnKeyMeta(column, stableKeyLookup, index);
+    if (meta.match === 'signature') {
+      keyMapping.fullColumnsSignatureMatched++;
+    } else if (meta.match === 'columnKey') {
+      keyMapping.fullColumnsColumnKeyMatched++;
+    } else {
+      keyMapping.fullColumnsFallbackMatched++;
+      unmappedFullColumns.push({
+        resolvedKey: meta.key,
+        runtimeId: column?.id,
+        signature: meta.signature,
+        field: column?.field,
+        title: column?.title,
+        type: column?.type,
+        visible: column?.visible !== false,
+      });
+    }
+    runtimeVisibilityMap.set(meta.key, column?.visible !== false);
+    runtimeFixedMap.set(meta.key, normalizeFixedValue(column?.fixed));
     const runtimeWidth = resolveRuntimeColumnWidth(column);
     if (runtimeWidth !== undefined) {
-      runtimeWidthMap.set(uniqueKey, runtimeWidth);
-    }
-    if (column?.visible !== false) {
-      runtimeVisibleKeys.push(uniqueKey);
+      runtimeWidthMap.set(meta.key, runtimeWidth);
     }
   });
-  const visibleKeySet = new Set(runtimeVisibleKeys);
-  const allColumns = getLeafColumns(stableSourceColumns);
+
+  const runtimeVisibleKeys: string[] = [];
+  if (Array.isArray(runtimeVisibleColumns)) {
+    runtimeVisibleColumns.forEach((column: any, index: number) => {
+      const meta = resolveStableColumnKeyMeta(column, stableKeyLookup, index);
+      if (!stableKeySet.has(meta.key)) {
+        keyMapping.visibleKeysNotInStableColumns++;
+      }
+      if (column?.visible !== false) {
+        runtimeVisibleKeys.push(meta.key);
+      }
+    });
+  }
+
   const columnVisibility: Record<string, boolean> = {};
   const columnFixed: Record<string, '' | 'left' | 'right'> = {};
   const columnWidths: Record<string, number> = {};
@@ -535,7 +772,9 @@ function collectColumnConfigFromGrid(): null | ColumnPersistConfig {
       column?.[columnUniqueKeyField] ??
       column?.id ??
       `col_${index}_${String(column?.field ?? column?.title ?? column?.type ?? 'column')}`;
-    columnVisibility[uniqueKey] = visibleKeySet.has(uniqueKey);
+    columnVisibility[uniqueKey] = runtimeVisibilityMap.has(uniqueKey)
+      ? runtimeVisibilityMap.get(uniqueKey)!
+      : runtimeVisibleKeys.includes(uniqueKey);
     const fallbackFixed = normalizeFixedValue(column?.fixed);
     columnFixed[uniqueKey] = runtimeFixedMap.get(uniqueKey) ?? fallbackFixed;
     const baselineWidth = resolveBaselineColumnWidth(column);
@@ -544,12 +783,77 @@ function collectColumnConfigFromGrid(): null | ColumnPersistConfig {
       columnWidths[uniqueKey] = runtimeWidth;
     }
   });
-  return {
-    visibleColumnKeys: runtimeVisibleKeys,
+
+  const visibleColumnKeys =
+    runtimeVisibleKeys.length > 0
+      ? runtimeVisibleKeys
+      : allColumns
+          .filter((column, index) => {
+            const uniqueKey =
+              column?.[columnUniqueKeyField] ??
+              column?.id ??
+              `col_${index}_${String(column?.field ?? column?.title ?? column?.type ?? 'column')}`;
+            return columnVisibility[uniqueKey] !== false;
+          })
+          .map(
+            (column, index) =>
+              column?.[columnUniqueKeyField] ??
+              column?.id ??
+              `col_${index}_${String(column?.field ?? column?.title ?? column?.type ?? 'column')}`,
+          );
+
+  const config: ColumnPersistConfig = {
+    visibleColumnKeys,
     columnVisibility,
     columnFixed,
     ...(Object.keys(columnWidths).length > 0 ? { columnWidths } : {}),
   };
+
+  const suspicious = isSuspiciousColumnPersistConfig(config, allColumns.length);
+  const visibleKeySet = new Set(config.visibleColumnKeys);
+  const visibilityMismatch = Object.entries(config.columnVisibility)
+    .filter(([key, visible]) => visible !== visibleKeySet.has(key))
+    .map(([key, visible]) => ({
+      key,
+      columnVisibility: visible,
+      inVisibleColumnKeys: visibleKeySet.has(key),
+    }));
+
+  const debugInfo = buildColumnPersistDebug(config, trigger, {
+    getColumnsCount,
+    getFullColumnsCount,
+    keyMapping,
+    suspicious,
+    verbose: isDebugPersistEnabled()
+      ? {
+          stableColumns: summarizeColumns(stableSourceColumns),
+          runtimeFullColumns: summarizeColumns(runtimeFullLeafColumns),
+          runtimeVisibleColumns: summarizeColumns(
+            Array.isArray(runtimeVisibleColumns) ? runtimeVisibleColumns : [],
+          ),
+          unmappedFullColumns,
+          visibilityMismatch,
+        }
+      : undefined,
+  });
+  config._debug = debugInfo;
+
+  if (suspicious) {
+    debugLog('检测到疑似残缺列配置，跳过保存以免污染远端', {
+      config,
+      totalColumnCount: allColumns.length,
+      _debug: debugInfo,
+    });
+    saveBlockedColumnPersistDebug(
+      trigger,
+      'suspicious_column_config',
+      config,
+      debugInfo,
+    );
+    return null;
+  }
+
+  return config;
 }
 
 function buildResetDefaultColumns(columns: any[]) {
@@ -584,12 +888,9 @@ async function captureColumnBaselineWidths() {
       originalLeafMap.set(key, column);
     }
   });
-  runtimeColumns.forEach((column: any) => {
+  runtimeColumns.forEach((column: any, index: number) => {
     const uniqueKey = String(
-      stableKeyLookup.get(getColumnSignature(column)) ??
-        column?.[columnUniqueKeyField] ??
-        column?.id ??
-        '',
+      resolveStableColumnKey(column, stableKeyLookup, index),
     ).trim();
     if (!uniqueKey) {
       return;
@@ -697,21 +998,23 @@ async function saveColumnConfig(config: ColumnPersistConfig) {
   }
 }
 
-function scheduleSaveColumnConfig() {
+function scheduleSaveColumnConfig(trigger = 'unknown') {
   if (!isColumnPersistEnabled() || isApplyingColumnConfig.value) {
     return;
   }
+  persistSaveTrigger.value = trigger;
   if (persistTimer.value) {
     window.clearTimeout(persistTimer.value);
   }
   persistTimer.value = window.setTimeout(async () => {
-    const config = collectColumnConfigFromGrid();
+    const config = collectColumnConfigFromGrid(trigger);
     if (!config) {
-      debugLog('采集运行时列配置为空，跳过保存');
+      debugLog('采集运行时列配置为空或已拦截，跳过保存', { trigger });
       return;
     }
     debugLog('采集运行时列配置', {
       config,
+      trigger,
       runtimeColumns: summarizeColumns(props.api.grid?.getColumns?.() ?? []),
     });
     await saveColumnConfig(config);
@@ -795,6 +1098,12 @@ async function loadColumnConfig() {
       });
       const remoteConfig = parseColumnConfig(remoteSetting?.setting ?? '');
       if (remoteConfig) {
+        if (remoteConfig._debug) {
+          debugLog('加载远端列配置调试信息', {
+            _debug: remoteConfig._debug,
+            userSettingKey: userSettingKey.value,
+          });
+        }
         const applyResult = applyColumnConfig(remoteConfig, rawColumns);
         const hasRemoteKeys =
           remoteConfig.visibleColumnKeys.length > 0 ||
@@ -809,6 +1118,19 @@ async function loadColumnConfig() {
             normalizedColumns: summarizeColumns(rawColumns),
           });
           const healedConfig = buildColumnConfigFromColumns(rawColumns);
+          healedConfig._debug = buildColumnPersistDebug(healedConfig, 'heal', {
+            getColumnsCount: getLeafColumns(
+              props.api.grid?.getColumns?.() ?? [],
+            ).length,
+            getFullColumnsCount: getLeafColumns(getRuntimeFullColumns()).length,
+            keyMapping: {
+              fullColumnsSignatureMatched: 0,
+              fullColumnsColumnKeyMatched: 0,
+              fullColumnsFallbackMatched: 0,
+              visibleKeysNotInStableColumns: 0,
+            },
+            suspicious: false,
+          });
           await saveColumnConfig(healedConfig);
           debugLog('已自愈覆盖远端配置', {
             healedConfig,
@@ -1517,12 +1839,12 @@ function onSearchBtnClick() {
 }
 
 function onCustom(event: any) {
-  scheduleSaveColumnConfig();
+  scheduleSaveColumnConfig('custom');
   (gridEvents.value as any)?.custom?.(event);
 }
 
 function onCustomChange(event: any) {
-  scheduleSaveColumnConfig();
+  scheduleSaveColumnConfig('customChange');
   (gridEvents.value as any)?.customChange?.(event);
 }
 
@@ -1532,12 +1854,12 @@ async function onCustomReset(event: any) {
 }
 
 function onColumnDropEnd(event: any) {
-  scheduleSaveColumnConfig();
+  scheduleSaveColumnConfig('columnDropEnd');
   (gridEvents.value as any)?.columnDropEnd?.(event);
 }
 
 function onColumnResizableChange(event: any) {
-  scheduleSaveColumnConfig();
+  scheduleSaveColumnConfig('columnResizableChange');
   (gridEvents.value as any)?.columnResizableChange?.(event);
 }
 

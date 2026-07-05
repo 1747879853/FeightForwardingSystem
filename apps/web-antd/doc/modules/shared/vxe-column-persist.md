@@ -2,7 +2,7 @@
 title: vxe 列表列配置持久化
 module: 共享能力
 author: auto-doc-sync
-last_updated: 2026-06-27
+last_updated: 2026-07-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,16 +25,50 @@ last_updated: 2026-06-27
   "visibleColumnKeys": ["col_0_orderNo", "col_1_clientName"],
   "columnVisibility": { "col_0_orderNo": true },
   "columnFixed": { "col_0_orderNo": "left" },
-  "columnWidths": { "col_1_clientName": 240 }
+  "columnWidths": { "col_1_clientName": 240 },
+  "_debug": {
+    "savedAt": "2026-07-05T12:00:00.000Z",
+    "tableId": "sea-export-order-fee-0",
+    "userSettingKey": "table_config_sea-export-order-fee-0",
+    "trigger": "customChange",
+    "totals": {
+      "stableColumnCount": 26,
+      "getColumnsCount": 20,
+      "getFullColumnsCount": 26,
+      "visibleInConfig": 20,
+      "hiddenInConfig": 6
+    },
+    "keyMapping": {
+      "fullColumnsSignatureMatched": 26,
+      "fullColumnsColumnKeyMatched": 0,
+      "fullColumnsFallbackMatched": 0,
+      "visibleKeysNotInStableColumns": 0
+    },
+    "flags": {
+      "suspicious": false,
+      "isApplyingColumnConfig": false,
+      "initializedColumns": true
+    }
+  }
 }
 ```
 
-| 字段                | 说明                           |
-| :------------------ | :----------------------------- |
-| `visibleColumnKeys` | 可见列顺序                     |
-| `columnVisibility`  | 列显隐                         |
-| `columnFixed`       | 列固定 left/right              |
-| `columnWidths`      | 稀疏列宽，仅存有意义的用户调整 |
+| 字段                | 说明                                   |
+| :------------------ | :------------------------------------- |
+| `visibleColumnKeys` | 可见列顺序                             |
+| `columnVisibility`  | 列显隐                                 |
+| `columnFixed`       | 列固定 left/right                      |
+| `columnWidths`      | 稀疏列宽，仅存有意义的用户调整         |
+| `_debug`            | 每次保存附带的排查快照（不影响列回放） |
+
+### `_debug` 排查说明
+
+- **每次成功保存**都会写入 `_debug`（随 UserSetting 一起存后端）。
+- **`trigger`**：保存触发来源（`custom` / `customChange` / `columnDropEnd` / `columnResizableChange` / `heal`）。
+- **`keyMapping.fullColumnsFallbackMatched > 0`**：列 key 映射失败，重点怀疑字段/标题变更或 vxe 运行时列信息异常。
+- **`totals.getColumnsCount` 远小于 `totals.stableColumnCount`**：保存时可见列偏少，对照 `visibleInConfig` 看是否只剩 checkbox。
+- **保存被拦截**（疑似残缺配置）：不会写远端，快照落在 `localStorage['fallback_debug_table_config_${tableId}']`。
+- **更详细快照**：`localStorage.setItem('__debug_vxe_persist', '1')` 后，`_debug.verbose` 会附带各列摘要与 `visibilityMismatch`。
 
 # 4. 生效条件
 
@@ -49,6 +83,8 @@ last_updated: 2026-06-27
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-07-05 | Feature | 列配置保存附带 `_debug` 排查快照，拦截保存时写入 localStorage | trigger/keyMapping/totals 便于对照 UserSetting 还原保存现场 |
+| 2026-07-05 | Fix | 列显隐持久化改为 getFullColumns 采集真实显隐，孪生费用表独立 tableId | vxe 4.17 getColumns 仅含 visibleColumn，原保存逻辑会把隐藏列误写 false |
 | 2026-06-27 | Fix | 列宽拖拽与持久化回填不再受 `minWidth` 限制 | 列初始化时将 `minWidth` 转为初始 `width` 并移除；全局 `resizableConfig.minWidth: 0` |
 | 2026-06-27 | Fix | 修复列宽拖拽后刷新不生效 | vxe 默认 `resizeWidth: 0` 阻断 `renderWidth` 回退，基线采集与稀疏保存均失败 |
 | 2026-06-27 | Feature | 列宽拖拽调整纳入列配置持久化，与显隐/顺序/固定共用一条 UserSetting | `columnResizableChange` 触发防抖保存；`columnWidths` 稀疏存储；无默认 width 列在加载后采 renderWidth 基线 |
