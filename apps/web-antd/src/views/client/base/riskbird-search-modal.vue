@@ -100,8 +100,11 @@ const handleSearch = async (keyword: string) => {
   selectedCompanyDetail.value = null;
 
   try {
-    console.log('开始调用API，参数:', { Keyword: keyword });
-    const response = await searchCompanyAsync({ Keyword: keyword });
+    console.log('开始调用API，参数:', { Keyword: keyword, pageSize: 50 });
+    const response = await searchCompanyAsync({
+      Keyword: keyword,
+      pageSize: 50,
+    });
     console.log('API响应:', response);
 
     // 后端直接返回 PagedList 结构 { items: [...] }，没有外层包装

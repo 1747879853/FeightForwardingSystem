@@ -14,7 +14,6 @@ const routes: RouteRecordRaw[] = [
         'Admin.OrderFee.Lock',
         'Admin.PaymentApplication',
         'Admin.Statement',
-        'Admin.InvoiceIssue',
         'Admin.InvoiceApplication',
       ]),
     },
