@@ -1126,7 +1126,7 @@ onMounted(() => {
               },
               () => [
                 h(Search, { class: 'size-4' }),
-                h('span', { class: 'ml-1' }, 'q'),
+                h('span', { class: 'ml-1' }, '企查查'),
               ],
             );
           },

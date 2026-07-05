@@ -1,6 +1,7 @@
 import type { Recordable } from '@vben/types';
 
 import { requestClient } from '#/api/request';
+import type { ClientInvoiceInfoAdminApi } from '#/api/sea-export/clinet-invoice-admin';
 
 export namespace InvoiceIssueApi {
   /** 发票开出方式枚举 */
@@ -201,6 +202,8 @@ export namespace InvoiceIssueApi {
     currency: CurrencySimpleDto;
     /** 客户银行简易信息 */
     clientInvoiceBank: ClientInvoiceBankSimpleDto;
+    /** 客户开票信息（根据ClientInvoiceBankId解析，无则null） */
+    clientInvoiceInfo?: ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto | null;
     /** 我司银行简易信息 */
     orgBankAccount: OrgBankAccountSimpleDto;
     /** 发票汇率 */
@@ -234,6 +237,8 @@ export namespace InvoiceIssueApi {
     settlement: ClientSimpleDto;
     currency: CurrencySimpleDto;
     clientInvoiceBank: ClientInvoiceBankSimpleDto;
+    /** 客户开票信息（根据ClientInvoiceBankId解析，无则null） */
+    clientInvoiceInfo?: ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto | null;
     orgBankAccount: OrgBankAccountSimpleDto;
     invoiceExchangeRate?: number;
     /** 关联开票申请条数 */

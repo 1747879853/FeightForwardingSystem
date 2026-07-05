@@ -35,7 +35,7 @@ const loading = ref(false);
 const submitting = ref(false);
 
 /** 表单数据 */
-const formData = ref<Partial<InvoiceIssueApi.InvoiceIssueAddDto>>({
+const formData = ref<Partial<InvoiceIssueApi.InvoiceIssueDetailDto>>({
   invoiceIssueType: InvoiceIssueApi.InvoiceIssueType.ManualRecord,
   invoiceIssueTime: new Date().toISOString(),
   invoiceIssueItems: [],
@@ -55,10 +55,7 @@ async function loadDetail(id: string) {
   loading.value = true;
   try {
     const detail = await getInvoiceIssueDetail(id);
-    formData.value = {
-      ...detail,
-      id: detail.id,
-    };
+    formData.value = detail;
   } catch (error) {
     console.error('加载详情失败:', error);
     message.error('加载详情失败');
@@ -252,6 +249,65 @@ function handleCancel() {
           </Form.Item>
         </div>
 
+        <!-- 客户开票信息（编辑模式下显示） -->
+        <Divider
+          v-if="isEditMode && (formData as any).clientInvoiceInfo"
+          orientation="left"
+        >
+          客户开票信息
+        </Divider>
+        <div
+          v-if="isEditMode && (formData as any).clientInvoiceInfo"
+          class="mb-4 grid grid-cols-3 gap-4"
+        >
+          <div class="info-item">
+            <span class="label">发票抬头：</span>
+            <span class="value">{{
+              (formData as any).clientInvoiceInfo.header || '-'
+            }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">税号：</span>
+            <span class="value">{{
+              (formData as any).clientInvoiceInfo.taxNum || '-'
+            }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">地址：</span>
+            <span class="value">{{
+              (formData as any).clientInvoiceInfo.address || '-'
+            }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">电话：</span>
+            <span class="value">{{
+              (formData as any).clientInvoiceInfo.tel || '-'
+            }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">手机：</span>
+            <span class="value">{{
+              (formData as any).clientInvoiceInfo.mobile || '-'
+            }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">默认银行：</span>
+            <span class="value">
+              {{
+                (
+                  (formData as any).clientInvoiceInfo
+                    ?.clientInvoiceBanks as any[]
+                )?.find((b: any) => b.isDefault)?.bankName ||
+                (
+                  (formData as any).clientInvoiceInfo
+                    ?.clientInvoiceBanks as any[]
+                )?.[0]?.bankName ||
+                '-'
+              }}
+            </span>
+          </div>
+        </div>
+
         <!-- 开票申请明细 -->
         <Divider orientation="left">
           开票申请明细
@@ -415,5 +471,24 @@ function handleCancel() {
 <style scoped>
 .invoice-issue-form {
   max-width: 100%;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 4px;
+
+  .label {
+    min-width: 80px;
+    font-weight: 500;
+    color: #666;
+  }
+
+  .value {
+    flex: 1;
+    color: #333;
+  }
 }
 </style>

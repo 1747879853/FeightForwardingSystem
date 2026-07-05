@@ -148,6 +148,20 @@ export function useColumns(): VxeTableGridOptions<InvoiceIssueApi.InvoiceIssueLi
       minWidth: 120,
     },
     {
+      field: 'clientInvoiceInfo.header',
+      title: '发票抬头',
+      minWidth: 160,
+      showOverflow: true,
+      slots: { default: 'clientInvoiceInfoHeader' },
+    },
+    {
+      field: 'clientInvoiceInfo.taxNum',
+      title: '税号',
+      minWidth: 160,
+      showOverflow: true,
+      slots: { default: 'clientInvoiceInfoTaxNum' },
+    },
+    {
       field: 'totalAmount',
       title: '金额合计',
       minWidth: 120,

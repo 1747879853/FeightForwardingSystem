@@ -180,6 +180,12 @@ useRefreshListOnFormReturn('InvoiceIssueList', handleRefresh);
       <template #currencyCode="{ row }">
         {{ row.currency?.code || '-' }}
       </template>
+      <template #clientInvoiceInfoHeader="{ row }">
+        {{ row.clientInvoiceInfo?.header || '-' }}
+      </template>
+      <template #clientInvoiceInfoTaxNum="{ row }">
+        {{ row.clientInvoiceInfo?.taxNum || '-' }}
+      </template>
       <template #action="{ row }">
         <Space>
           <Button type="link" size="small" @click.stop="handleEdit(row)">
