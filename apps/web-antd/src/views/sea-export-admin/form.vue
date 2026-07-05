@@ -2308,16 +2308,20 @@ const toSelectedItems = (
   return [{ id, [labelKey]: name || '', ...extra }] as any[];
 };
 
-/** PortSelect 回显：portName 必填，countryEnName 可选（用于 labelKey 多字段拼接） */
+/** PortSelect 回显：portName + ediCode（labelKey 为 ediCode 时展示依赖 ediCode），countryEnName 可选 */
 const toPortSelectedItems = (
   id: unknown,
   portName: unknown,
+  ediCode?: unknown,
   countryEnName?: unknown,
 ) => {
-  const extra =
-    countryEnName != null && String(countryEnName).trim() !== ''
-      ? { country: { countryEnName: String(countryEnName).trim() } }
-      : {};
+  const extra: Record<string, unknown> = {};
+  if (ediCode != null && String(ediCode).trim() !== '') {
+    extra.ediCode = String(ediCode).trim();
+  }
+  if (countryEnName != null && String(countryEnName).trim() !== '') {
+    extra.country = { countryEnName: String(countryEnName).trim() };
+  }
   return toSelectedItems(id, portName, 'portName', extra);
 };
 
@@ -2441,6 +2445,7 @@ const loadEditData = async () => {
           selectedItems: toPortSelectedItems(
             formValues.signingPortId,
             detail.signingPortName,
+            detail.signingPortEdiCode,
           ),
           size: 'small',
         },
@@ -2496,10 +2501,10 @@ const loadEditData = async () => {
             allowClear: true,
           },
           prepareProps: {
-            selectedItems: toSelectedItems(
+            selectedItems: toPortSelectedItems(
               formValues.prepareAtId,
-              (to as any)?.prepareAtName ?? (detail as any)?.prepareAtName,
-              'portName',
+              detail.prepareAtName ?? (to as any)?.prepareAtName,
+              detail.prepareAtEdiCode ?? (to as any)?.prepareAtEdiCode,
             ),
             allowClear: true,
           },
@@ -2535,14 +2540,22 @@ const loadEditData = async () => {
       {
         fieldName: 'polId',
         componentProps: {
-          selectedItems: toPortSelectedItems(formValues.polId, detail.polName),
+          selectedItems: toPortSelectedItems(
+            formValues.polId,
+            detail.polName,
+            detail.polEdiCode,
+          ),
           size: 'small',
         },
       },
       {
         fieldName: 'podId',
         componentProps: {
-          selectedItems: toPortSelectedItems(formValues.podId, detail.podName),
+          selectedItems: toPortSelectedItems(
+            formValues.podId,
+            detail.podName,
+            detail.podEdiCode,
+          ),
           size: 'small',
         },
       },
@@ -2552,6 +2565,7 @@ const loadEditData = async () => {
           selectedItems: toPortSelectedItems(
             formValues.poT1Id,
             detail.poT1Name,
+            detail.poT1EdiCode,
           ),
           size: 'small',
         },
@@ -2562,6 +2576,7 @@ const loadEditData = async () => {
           selectedItems: toPortSelectedItems(
             formValues.poT2Id,
             detail.poT2Name,
+            detail.poT2EdiCode,
           ),
           size: 'small',
         },
@@ -2572,6 +2587,7 @@ const loadEditData = async () => {
           selectedItems: toPortSelectedItems(
             formValues.receivePortId,
             detail.receivePortName,
+            detail.receivePortEdiCode,
           ),
           size: 'small',
         },
@@ -2582,6 +2598,7 @@ const loadEditData = async () => {
           selectedItems: toPortSelectedItems(
             formValues.deliverPortId,
             detail.deliverPortName,
+            detail.deliverPortEdiCode,
           ),
           size: 'small',
         },

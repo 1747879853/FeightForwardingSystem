@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-02
+last_updated: 2026-07-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -95,6 +95,7 @@ last_updated: 2026-07-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-05 | `Fix` | 编辑页港口下拉（六段港口、签单港、付费地点）回显改为展示详情接口返回的 EDI 代码，与 `labelKey: 'ediCode'` 一致。 | `toPortSelectedItems` 注入 `ediCode`；`SeaExportDto` 补齐 `*EdiCode` 字段。 |
 | 2026-07-02 | `Style` | 船期信息时间轴竖向分割条由「实际开船」后移至「预抵日期」后，左侧为货好至预抵，右侧为截 VGM/截单/截舱单。 | `.shipment-flow-divider` 左偏移 `57.14%`；横向箭头排除类由 `shipment-time-pos--3` 改为 `--4`。 |
 | 2026-06-27 | `Fix` | 应收应付与更改单顶部订单信息六段港口改为展示 `*Remark` 备注字段，与表单港口备注口径一致。 | `displayList` 配置 key 仍为 `*Name` 以兼容 localStorage；数据源改读 `SeaExportDto` 备注字段。 |
 | 2026-06-27 | `Feature` | 与新建页共用提单类字段全角转半角（唛头、货描、收发通、港口备注等），与英文大写串联执行。 | `toHalfWidth` 并入 `toEnglishUpperCase`；嵌入 `form.vue` 的输入组件与 AI/港口联动回填同步生效。 |
