@@ -14,6 +14,7 @@
 ## 2026-07
 
 - [2026-07-07 修复 defaultSort 下列头排序叠加默认字段](./changelogs/change-log-2026-07-07-vxe-default-sort-replace-on-column-click.md)
+- [2026-07-06 海运出口 TextIn AI 识别对接（新建/编辑）](./changelogs/change-log-2026-07-06-sea-export-textin-ai-extract.md)
 - [2026-07-06 全局打印格式封装与海运出口打印对接](./changelogs/change-log-2026-07-06-global-print-format-sea-export.md)
 - [2026-07-06 模块权限文案与后端 displayName 对齐](./changelogs/change-log-2026-07-06-system-permission-auth-i18n-sync.md)
 - [2026-07-05 银行流水新建/编辑页布局改版（标题操作人、右关联结算、底选费建单）](./changelogs/change-log-2026-07-05-bank-statement-form-layout.md)
