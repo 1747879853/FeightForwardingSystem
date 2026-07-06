@@ -524,6 +524,9 @@ async function handleFeeSelectionSave(data: {
   // 加载客户开票信息
   await loadClientInvoiceInfo(settlementId);
 
+  // ✅ 根据币别更新销售方银行（自动选择默认银行）
+  updateOrgBankByCurrency();
+
   // ✅ 关键修复：合并申请组数据，避免重复添加
   if (groupsData && groupsData.length > 0) {
     // ✅ 获取已存在的申请ID集合（用于去重）
@@ -1386,6 +1389,111 @@ const filteredOrgBanks = computed(() => {
   return orgBankAccounts.value.filter((bank) => bank.currencyId === currencyId);
 });
 
+/** ✅ 新增：为备注模板生成占位符数据 */
+const remarkTemplateData = computed(() => {
+  const items = formData.value.invoiceIssueItems || [];
+
+  if (items.length === 0) {
+    console.log('⚠️ 没有费用明细，无法生成占位符数据');
+    return {
+      commissionNum: '',
+      mblNum: '',
+      invoiceExchangeRate: invoiceExchangeRate.value,
+      foreignCurrencyAmount: '0.00',
+      rmbAmount: '0.00',
+      clientBankName: '',
+      clientBankAccount: '',
+      orgBankName: '',
+      orgBankAccount: '',
+    };
+  }
+
+  // 从 applicationGroupsData 中获取完整的费用信息
+  const allApplications = flattenTreeData(applicationGroupsData.value);
+
+  console.log('🔍 扁平化后的申请数据数量:', allApplications.length);
+  if (allApplications.length > 0) {
+    console.log(
+      '🔍 第一个申请的 commissionNum:',
+      allApplications[0].commissionNum,
+    );
+    console.log('🔍 第一个申请的 mblNum:', allApplications[0].mblNum);
+  }
+
+  // 收集委托编号和主提单号
+  const commissionNums = new Set<string>();
+  const mblNums = new Set<string>();
+
+  // 统计金额（按币别）
+  let totalForeignAmount = 0;
+  let totalRmbAmount = 0;
+  let invoiceCurrencyCode = '';
+
+  items.forEach((item: any) => {
+    const app = allApplications.find(
+      (a: any) => a.id === item.invoiceApplicationId,
+    );
+
+    if (app) {
+      // 收集委托编号
+      if (app.commissionNum) {
+        commissionNums.add(app.commissionNum);
+      }
+
+      // 收集主提单号
+      if (app.mblNum) {
+        mblNums.add(app.mblNum);
+      }
+
+      // 统计金额
+      const appliedAmount = app.totalAppliedAmount || 0;
+      const appCurrencyId = app.currencyId;
+      const appCurrencyCode = app.currencyCode || 'CNY';
+
+      // 如果是发票币别，累加外币金额
+      if (appCurrencyId === formData.value.currencyId) {
+        totalForeignAmount += appliedAmount;
+        if (!invoiceCurrencyCode) {
+          invoiceCurrencyCode = appCurrencyCode;
+        }
+      }
+
+      // 转换为人民币
+      if (appCurrencyId !== 1) {
+        totalRmbAmount += appliedAmount * (invoiceExchangeRate.value || 1);
+      } else {
+        totalRmbAmount += appliedAmount;
+      }
+    }
+  });
+
+  // 获取客户银行信息
+  const clientBank = filteredClientBanks.value.find(
+    (b) => b.id === formData.value.clientInvoiceBankId,
+  );
+
+  // 获取销售方银行信息
+  const orgBank = filteredOrgBanks.value.find(
+    (b) => b.id === formData.value.orgBankAccountId,
+  );
+
+  const templateData = {
+    commissionNum: Array.from(commissionNums).join('、'),
+    mblNum: Array.from(mblNums).join('、'),
+    invoiceExchangeRate: invoiceExchangeRate.value,
+    foreignCurrencyAmount: totalForeignAmount.toFixed(2),
+    rmbAmount: totalRmbAmount.toFixed(2),
+    clientBankName: clientBank?.bankName || '',
+    clientBankAccount: clientBank?.bankAccount || '',
+    orgBankName: orgBank?.bankName || '',
+    orgBankAccount: orgBank?.bankAccount || '',
+  };
+
+  console.log('📋 生成的备注模板占位符数据:', templateData);
+
+  return templateData;
+});
+
 /** 税率选项（包含常用税率和自定义输入） */
 const taxRateOptions = [
   { label: '免税', value: 0 },
@@ -2208,6 +2316,8 @@ onMounted(() => {
       v-model:visible="selectRemarkTemplateModalVisible"
       :settlement-id="formData.companyId"
       :currency-id="formData.currencyId"
+      :fee-details="applicationGroupsData"
+      :template-data="remarkTemplateData"
       @use-template="handleUseRemarkTemplate"
     />
   </Page>

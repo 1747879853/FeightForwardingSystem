@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, h, nextTick, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 
 import {
@@ -266,6 +266,135 @@ async function handleSaveFeeSelection() {
     return;
   }
 
+  // ✅ 校验1：检查用户本次选择的多个申请之间，发票抬头和币别是否一致
+  if (selectedApplications.length > 1) {
+    const firstApp = selectedApplications[0];
+    const expectedHeaderId = firstApp.clientInvoiceBankId;
+    const expectedCurrencyId = firstApp.currencyId;
+
+    const inconsistentApps: any[] = [];
+
+    selectedApplications.forEach((app: any, index: number) => {
+      if (index === 0) return; // 跳过第一个
+
+      const reasons: string[] = [];
+
+      // 检查发票抬头是否一致
+      if (app.clientInvoiceBankId !== expectedHeaderId) {
+        reasons.push(
+          `发票抬头不一致（期望：${expectedHeaderId}，实际：${app.clientInvoiceBankId}）`,
+        );
+      }
+
+      // 检查币别是否一致
+      if (app.currencyId !== expectedCurrencyId) {
+        reasons.push(
+          `币别不一致（期望：${expectedCurrencyId}，实际：${app.currencyId}）`,
+        );
+      }
+
+      if (reasons.length > 0) {
+        inconsistentApps.push({
+          applicationNo: app.applicationNo,
+          reasons,
+        });
+      }
+    });
+
+    if (inconsistentApps.length > 0) {
+      const errorMessages = inconsistentApps.map((app) => {
+        return `• 申请单号 ${app.applicationNo}：${app.reasons.join('；')}`;
+      });
+
+      message.error({
+        content: h('div', [
+          h(
+            'div',
+            { style: 'font-weight: bold; margin-bottom: 8px;' },
+            '所选申请的发票抬头或币别不一致：',
+          ),
+          ...errorMessages.map((msg) =>
+            h('div', { style: 'margin-left: 16px; margin-bottom: 4px;' }, msg),
+          ),
+          h(
+            'div',
+            { style: 'margin-top: 8px; color: #ff4d4f;' },
+            '请确保所有申请的发票抬头和币别保持一致。',
+          ),
+        ]),
+        duration: 5,
+      });
+      console.error('❌ 校验失败，申请之间不一致:', inconsistentApps);
+      return;
+    }
+
+    console.log('✅ 本次选择的申请之间一致性校验通过');
+  }
+
+  // ✅ 校验2：仅当 props.headerId 或 props.currencyId 有值时（即非首次添加），才需要与首次选择的一致性校验
+  if (props.headerId !== '' || props.currencyId !== null) {
+    // 收集不符合要求的申请
+    const invalidApplications: any[] = [];
+
+    selectedApplications.forEach((app: any) => {
+      const reasons: string[] = [];
+
+      // 校验发票抬头
+      if (props.headerId && app.clientInvoiceBankId !== props.headerId) {
+        reasons.push(
+          `发票抬头不一致（期望：${props.headerId}，实际：${app.clientInvoiceBankId}）`,
+        );
+      }
+
+      // 校验币别
+      if (
+        props.currencyId !== undefined &&
+        app.currencyId !== props.currencyId
+      ) {
+        reasons.push(
+          `币别不一致（期望：${props.currencyId}，实际：${app.currencyId}）`,
+        );
+      }
+
+      if (reasons.length > 0) {
+        invalidApplications.push({
+          applicationNo: app.applicationNo,
+          reasons,
+        });
+      }
+    });
+
+    // 如果有不符合要求的申请，阻止保存并提示用户
+    if (invalidApplications.length > 0) {
+      const errorMessages = invalidApplications.map((app) => {
+        return `• 申请单号 ${app.applicationNo}：${app.reasons.join('；')}`;
+      });
+
+      message.error({
+        content: h('div', [
+          h(
+            'div',
+            { style: 'font-weight: bold; margin-bottom: 8px;' },
+            '所选申请与首次选择不一致：',
+          ),
+          ...errorMessages.map((msg) =>
+            h('div', { style: 'margin-left: 16px; margin-bottom: 4px;' }, msg),
+          ),
+          h(
+            'div',
+            { style: 'margin-top: 8px; color: #ff4d4f;' },
+            '请确保所有申请的发票抬头和币别与首次选择的保持一致。',
+          ),
+        ]),
+        duration: 5,
+      });
+      console.error('❌ 校验失败，与首次选择不一致:', invalidApplications);
+      return;
+    }
+  } else {
+    console.log('✅ 首次添加，跳过与历史数据的一致性校验');
+  }
+
   const firstApp = selectedApplications[0];
   const settlementId = firstApp.settlementId;
   const currencyId = firstApp.currencyId;
@@ -426,6 +555,37 @@ function transformToTreeData(
       }
     }
 
+    // ✅ 从子节点中提取委托编号和主提单号（去重）
+    const commissionNums = new Set<string>();
+    const mblNums = new Set<string>();
+
+    if (app.invoiceApplicationItems && app.invoiceApplicationItems.length > 0) {
+      app.invoiceApplicationItems.forEach((item) => {
+        const commissionNum = item.orderFee?.transportOrder?.commissionNum;
+        const mblNum = item.orderFee?.transportOrder?.mblNum;
+
+        if (commissionNum) {
+          commissionNums.add(commissionNum);
+        }
+        if (mblNum) {
+          mblNums.add(mblNum);
+        }
+      });
+    }
+
+    console.log(
+      '📋 申请',
+      app.applicationNo,
+      '提取的委托编号:',
+      Array.from(commissionNums),
+    );
+    console.log(
+      '📋 申请',
+      app.applicationNo,
+      '提取的主提单号:',
+      Array.from(mblNums),
+    );
+
     const parentNode: any = {
       id: app.id,
       parentId: null,
@@ -452,6 +612,9 @@ function transformToTreeData(
       invoiceApplicationItems: childrenList, // 使用 invoiceApplicationItems 作为子节点
       // ✅ 保留商品明细数据（用于合并商品明细）
       invoiceApplicationGoodsDtls: app.invoiceApplicationGoodsDtls || [],
+      // ✅ 新增：委托编号和主提单号（从子节点提取，多个用、分隔）
+      commissionNum: Array.from(commissionNums).join('、') || '-',
+      mblNum: Array.from(mblNums).join('、') || '-',
       // 保留原始数据
       settlementId: app.settlementId,
       currencyId: app.currencyId,
