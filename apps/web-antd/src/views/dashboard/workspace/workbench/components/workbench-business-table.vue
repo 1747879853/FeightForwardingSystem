@@ -207,6 +207,20 @@ function handleOpenSeaExport(seaExportId: string, event: MouseEvent) {
   }, 220);
 }
 
+function handleRowClick(row: BusinessRow, event: MouseEvent) {
+  if (!showSelection.value) return;
+
+  const target = event.target as HTMLElement | null;
+  if (
+    target?.closest('input[type="checkbox"]') ||
+    target?.closest('.booking-link')
+  ) {
+    return;
+  }
+
+  toggleOne(row.id, !props.selectedRowKeys.includes(row.id));
+}
+
 function handleRowDblclick(row: BusinessRow) {
   clearBookingLinkClickTimer();
   if (!row.seaExportId) return;
@@ -322,6 +336,11 @@ function handlePaginationChange(page: number, pageSize: number) {
               v-for="row in rows"
               :key="row.id"
               class="business-table__row"
+              :class="{
+                'business-table__row--selected':
+                  showSelection && selectedRowKeys.includes(row.id),
+              }"
+              @click="handleRowClick(row, $event)"
               @dblclick="handleRowDblclick(row)"
             >
               <td v-if="showSelection" class="checkbox-col">
@@ -619,6 +638,10 @@ function handlePaginationChange(page: number, pageSize: number) {
 
 .business-table tbody tr:hover td {
   background: rgb(37 140 244 / 5%);
+}
+
+.business-table__row--selected td {
+  background: rgb(37 140 244 / 10%) !important;
 }
 
 .business-table td {
