@@ -61,122 +61,142 @@ export function getReceiveSettlementStatusColor(
 export function useReceiveSettlementItemReadonlyColumns() {
   return [
     {
+      key: 'commissionNum',
       dataIndex: 'commissionNum',
       title: '委托编号',
-      width: 150,
+      ellipsis: true,
     },
     {
+      key: 'mblNum',
       dataIndex: 'mblNum',
       title: '主提单号',
-      width: 150,
+      ellipsis: true,
     },
     {
+      key: 'feeCodeName',
       dataIndex: 'feeCodeName',
       title: '费用名称',
-      minWidth: 150,
+      ellipsis: true,
     },
     {
+      key: 'currencyCode',
       dataIndex: 'currencyCode',
       title: '币别',
-      width: 90,
+      width: 72,
     },
     {
+      key: 'amount',
       dataIndex: 'amount',
       title: '费用总额',
-      width: 120,
+      width: 96,
       align: 'right' as const,
       customRender: ({ text }: { text: number }) => formatAmount(text),
     },
     {
+      key: 'remainingAmount',
       dataIndex: 'remainingAmount',
       title: '剩余额度',
-      width: 120,
+      width: 96,
       align: 'right' as const,
       customRender: ({ text }: { text: number }) => formatAmount(text),
     },
     {
+      key: 'settledAmount',
       dataIndex: 'settledAmount',
-      title: '本次结算金额',
-      width: 130,
+      title: '本次结算',
+      width: 96,
       align: 'right' as const,
       customRender: ({ text }: { text: number }) => formatAmount(text),
     },
     {
+      key: 'settlementName',
       dataIndex: 'settlementName',
       title: '结算对象',
-      minWidth: 140,
+      ellipsis: true,
     },
     {
+      key: 'remark',
       dataIndex: 'remark',
       title: '备注',
-      minWidth: 160,
       ellipsis: true,
     },
   ];
+}
+
+/** 收费结算锁定状态归一化 */
+export function isReceiveSettlementLocked(locked: unknown): boolean {
+  return locked === true || locked === 1 || locked === '1' || locked === 'true';
 }
 
 /** 收费结算只读子表 ant Table 列配置 */
 export function useReceiveSettlementColumns() {
   return [
     {
+      key: 'settlementNo',
       dataIndex: 'settlementNo',
       title: '结算单号',
-      width: 170,
-      fixed: 'left' as const,
+      ellipsis: true,
     },
     {
+      key: 'status',
       dataIndex: 'status',
       title: '结算状态',
-      width: 110,
-      slots: { customRender: 'status' },
+      width: 88,
     },
     {
+      key: 'settlementTime',
       dataIndex: 'settlementTime',
       title: '结算时间',
-      width: 150,
+      width: 132,
       customRender: ({ text }: { text: string }) => formatDateTime(text),
     },
     {
+      key: 'totalSettledAmount',
       dataIndex: 'totalSettledAmount',
       title: '明细总金额',
-      width: 130,
+      width: 100,
       align: 'right' as const,
       customRender: ({ text }: { text: number }) => formatAmount(text),
     },
     {
+      key: 'itemCount',
       dataIndex: 'itemCount',
       title: '明细条数',
-      width: 90,
+      width: 88,
       align: 'right' as const,
     },
     {
+      key: 'locked',
       dataIndex: 'locked',
       title: '锁定状态',
-      width: 90,
-      slots: { customRender: 'locked' },
+      width: 80,
     },
     {
+      key: 'lockeTime',
       dataIndex: 'lockeTime',
       title: '锁定时间',
-      width: 150,
+      width: 132,
       customRender: ({ text }: { text: string }) =>
         text ? formatDateTime(text) : '-',
     },
     {
+      key: 'creatorUserName',
       dataIndex: 'creatorUserName',
       title: '创建人',
-      width: 90,
+      width: 80,
+      ellipsis: true,
     },
     {
+      key: 'creationTime',
       dataIndex: 'creationTime',
       title: '创建时间',
-      width: 150,
+      width: 132,
       customRender: ({ text }: { text: string }) => formatDateTime(text),
     },
     {
+      key: 'remark',
       dataIndex: 'remark',
       title: '备注',
-      minWidth: 160,
       ellipsis: true,
     },
   ];

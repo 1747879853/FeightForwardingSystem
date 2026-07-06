@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
@@ -89,6 +89,30 @@ const operatorRows = ref<BankStatementOperatorRow[]>([]);
 
 const settlementPanelRef = ref<InstanceType<typeof ReceiveSettlementPanel>>();
 const createFeePanelRef = ref<InstanceType<typeof CreateSettlementFeePanel>>();
+const leftPanelRef = ref<HTMLElement>();
+const rightPanelMaxHeight = ref<number>();
+
+const rightPanelStyle = computed(() =>
+  rightPanelMaxHeight.value
+    ? { maxHeight: `${rightPanelMaxHeight.value}px` }
+    : undefined,
+);
+
+let leftPanelResizeObserver: ResizeObserver | undefined;
+
+function syncRightPanelHeight() {
+  rightPanelMaxHeight.value = leftPanelRef.value?.offsetHeight ?? 0;
+}
+
+function setupLeftPanelResizeObserver() {
+  leftPanelResizeObserver?.disconnect();
+  if (!leftPanelRef.value) return;
+  leftPanelResizeObserver = new ResizeObserver(() => {
+    syncRightPanelHeight();
+  });
+  leftPanelResizeObserver.observe(leftPanelRef.value);
+  syncRightPanelHeight();
+}
 
 const writeOffStatusInfo = computed(() =>
   getBankStatementWriteOffStatusInfo(writeOffStatus.value),
@@ -163,6 +187,11 @@ async function loadEditData() {
 }
 
 async function handleSettlementCreated() {
+  await loadEditData();
+  await createFeePanelRef.value?.reload();
+}
+
+async function handleSettlementDeleted() {
   await loadEditData();
   await createFeePanelRef.value?.reload();
 }
@@ -244,10 +273,23 @@ onMounted(() => {
     loadEditData();
   }
 });
+
+watch(
+  () => [isEdit.value, pageLoading.value] as const,
+  async ([editMode, loading]) => {
+    if (!editMode || loading) return;
+    await nextTick();
+    setupLeftPanelResizeObserver();
+  },
+);
+
+onUnmounted(() => {
+  leftPanelResizeObserver?.disconnect();
+});
 </script>
 
 <template>
-  <Page>
+  <Page content-class="!p-3">
     <template #title>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
         <span class="text-lg font-semibold">
@@ -274,14 +316,17 @@ onMounted(() => {
       </Space>
     </template>
 
-    <div v-loading="pageLoading" class="bank-statement-page flex flex-col">
+    <div
+      v-loading="pageLoading"
+      class="bank-statement-page flex flex-col gap-3"
+    >
       <div
-        class="form-main-layout pb-4"
+        class="form-main-layout"
         :class="{ 'form-main-layout--create': !isEdit }"
       >
-        <div class="form-main-layout__left">
+        <div ref="leftPanelRef" class="form-main-layout__left">
           <Card title="流水信息" size="small" class="form-panel-card">
-            <div class="bank-statement-form grid grid-cols-3 gap-x-4 gap-y-3">
+            <div class="bank-statement-form grid grid-cols-2 gap-x-4 gap-y-3">
               <template v-if="isEdit">
                 <div>
                   <div class="mb-1 text-xs text-gray-500">流水号</div>
@@ -505,10 +550,15 @@ onMounted(() => {
           </Card>
         </div>
 
-        <div v-if="isEdit" class="form-main-layout__right">
+        <div
+          v-if="isEdit"
+          class="form-main-layout__right"
+          :style="rightPanelStyle"
+        >
           <ReceiveSettlementPanel
             ref="settlementPanelRef"
             :bank-statement-id="editId || ''"
+            @deleted="handleSettlementDeleted"
           />
         </div>
       </div>
@@ -516,7 +566,6 @@ onMounted(() => {
       <CreateSettlementFeePanel
         v-if="isEdit && canAddReceiveSettlement && editId"
         ref="createFeePanelRef"
-        class="mt-1"
         :bank-statement-id="editId"
         :bank-statement-amount="savedAmount"
         :other-settled-amount="otherSettledAmount"
@@ -533,7 +582,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .form-main-layout {
   display: grid;
-  grid-template-columns: minmax(0, 4fr) minmax(0, 6fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
   gap: 12px;
   align-items: stretch;
 }
@@ -542,11 +591,23 @@ onMounted(() => {
   grid-template-columns: 1fr;
 }
 
-.form-main-layout__left,
+.form-main-layout__left {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .form-main-layout__right {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.form-main-layout__right > * {
+  flex: 1;
+  min-height: 0;
 }
 
 .form-panel-card {
