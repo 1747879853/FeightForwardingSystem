@@ -66,6 +66,7 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 import { getUser, UserAttribute } from '#/api/system/user-admin';
 import { parseSeaExportUserAttribute } from '#/views/system/user/data';
 import { $t } from '#/locales';
+import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import { buildAttachmentUrl } from '#/utils';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
@@ -130,6 +131,9 @@ const pageTitle = computed(() => {
 
 const pageLoading = ref(false);
 const submitting = ref(false);
+const printing = ref(false);
+const formSnapshotJson = ref<string | null>(null);
+const { openPrint } = usePrintFormat();
 const aiRecognizing = ref(false);
 const aiOcrPdfInputRef = ref<HTMLInputElement | null>(null);
 const transportOrderId = ref<number | undefined>();
@@ -2648,6 +2652,7 @@ const loadEditData = async () => {
       savedServiceTypeSet: savedSet,
       taskMap,
     });
+    await syncFormSnapshot();
   } finally {
     pageLoading.value = false;
   }
@@ -2903,8 +2908,79 @@ const handleAiRecognize = () => {
   aiOcrPdfInputRef.value?.click();
 };
 
-const handlePrint = () => {
-  // TODO: 后续接入打印逻辑
+const syncFormSnapshot = async () => {
+  await nextTick();
+  const values = await collectCurrentFormValues();
+  formSnapshotJson.value = JSON.stringify(buildDto(values));
+};
+
+const isFormDirty = async () => {
+  if (!formSnapshotJson.value) return false;
+  const values = await collectCurrentFormValues();
+  return JSON.stringify(buildDto(values)) !== formSnapshotJson.value;
+};
+
+const confirmUnsavedPrint = () => {
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const settle = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    Modal.confirm({
+      title: '存在未保存的修改',
+      content: '当前表单有未保存的修改，确认按当前内容打印吗？',
+      okText: '确认打印',
+      cancelText: '取消',
+      onOk: () => {
+        settle(true);
+      },
+      onCancel: () => {
+        settle(false);
+      },
+    });
+  });
+};
+
+const resolvePrintJson = async (): Promise<string | null> => {
+  if (!isEdit.value || !editId.value) {
+    message.warning('请先保存后再打印');
+    return null;
+  }
+
+  try {
+    const dirty = await isFormDirty();
+    if (dirty) {
+      const confirmed = await confirmUnsavedPrint();
+      if (!confirmed) return null;
+      const values = await collectCurrentFormValues();
+      return JSON.stringify(buildDto(values));
+    }
+
+    const detail = await getSeaExportDetail(editId.value);
+    return JSON.stringify(detail);
+  } catch {
+    message.error('获取打印数据失败');
+    return null;
+  }
+};
+
+const handlePrint = async () => {
+  if (printing.value) return;
+  printing.value = true;
+  const hideLoading = message.loading('正在准备打印...', 0);
+  try {
+    const json = await resolvePrintJson();
+    if (!json) return;
+    openPrint({ printJsonType: PrintJsonType.SeaExportDetail, json });
+  } catch {
+    message.error('打印准备失败，请稍后重试');
+  } finally {
+    hideLoading();
+    printing.value = false;
+  }
 };
 
 const handleBack = () => {
@@ -3377,6 +3453,7 @@ defineExpose({
                     <Button
                       size="small"
                       class="flex items-center justify-center"
+                      :loading="printing"
                       @click="handlePrint"
                     >
                       <IconifyIcon

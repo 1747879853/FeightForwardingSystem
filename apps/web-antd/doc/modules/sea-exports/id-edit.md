@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-05
+last_updated: 2026-07-06
 ---
 
 # 1. 业务背景说明 (Background)
@@ -36,7 +36,7 @@ last_updated: 2026-07-05
 - **更改单处理：** 更改单页基于运输单 ID 管理变更原因、会计期间和关联费用，接口使用 `/services/app/ChangeOrderAdmin`；更改单 DTO 带 `feeLocked` 和费用锁定人/时间信息。
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
 - **分单处理：** 分单页按 `seaExportId` 分页加载分单记录，支持新增、编辑、删除，维护分单相关方、提单号、货物、签单、运费/服务代码以及分单箱明细。
-- **取消与返回：** 嵌入表单内的取消按钮仍会返回 `/sea-exports` 列表；编辑保存成功后停留当前工作台上下文，并重新拉取详情以保持与服务端一致。
+- **打印：** 顶栏「打印」按钮调用全局 `usePrintFormat().openPrint`：先弹窗选择 `PrintJsonType=0`（海运出口详情）下的打印模板，确认后调 `PrintAsync` 生成 PDF 并触发下载。新增模式禁止打印；有未保存修改时二次确认后按当前表单内容打印，否则重新拉取 `DetailAsync` 原始对象序列化。
 - **完成服务：** 编辑态服务流水线「完成服务」/「取消完成」成功后重新拉取详情，同步任务状态、勾选展示及只读摘要。「完成」仅 `seServiceTaskUsers` 处理人可操作；「取消完成」仅 `completionUserId` 对应完成人可操作；无权限时悬浮展示提示。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -95,6 +95,7 @@ last_updated: 2026-07-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-06 | `Feature` | 顶栏「打印」对接 `PrintFormatAdmin`：弹窗选模板后生成 PDF 下载；新增模式禁止打印；未保存修改二次确认后按当前表单打印，否则重新 DetailAsync。 | 全局封装 `components/print-format` + `app.vue` 挂载；业务模块传入 `printJsonType` 与 JSON 字符串。 |
 | 2026-07-05 | `Fix` | 编辑页港口下拉（六段港口、签单港、付费地点）回显改为展示详情接口返回的 EDI 代码，与 `labelKey: 'ediCode'` 一致。 | `toPortSelectedItems` 注入 `ediCode`；`SeaExportDto` 补齐 `*EdiCode` 字段。 |
 | 2026-07-02 | `Style` | 船期信息时间轴竖向分割条由「实际开船」后移至「预抵日期」后，左侧为货好至预抵，右侧为截 VGM/截单/截舱单。 | `.shipment-flow-divider` 左偏移 `57.14%`；横向箭头排除类由 `shipment-time-pos--3` 改为 `--4`。 |
 | 2026-06-27 | `Fix` | 应收应付与更改单顶部订单信息六段港口改为展示 `*Remark` 备注字段，与表单港口备注口径一致。 | `displayList` 配置 key 仍为 `*Name` 以兼容 localStorage；数据源改读 `SeaExportDto` 备注字段。 |
