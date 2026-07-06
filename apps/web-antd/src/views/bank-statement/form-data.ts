@@ -12,8 +12,21 @@ export function formatDateTime(value: string | undefined | null): string {
   return dayjs(value).format('YYYY-MM-DD HH:mm');
 }
 
+/** 收费结算状态归一化（接口可能返回字符串） */
+export function normalizeReceiveSettlementStatus(
+  status: number | string | undefined | null,
+): number | undefined {
+  if (status === undefined || status === null || status === '') {
+    return undefined;
+  }
+  const normalized = Number(status);
+  return Number.isFinite(normalized) ? normalized : undefined;
+}
+
 /** 收费结算状态文字 */
-export function getReceiveSettlementStatusLabel(status: number): string {
+export function getReceiveSettlementStatusLabel(
+  status: number | string | undefined | null,
+): string {
   const map: Record<number, string> = {
     0: '录入中',
     1: '审核中',
@@ -22,11 +35,15 @@ export function getReceiveSettlementStatusLabel(status: number): string {
     4: '部分结算',
     5: '已结算',
   };
-  return map[status] ?? '未知';
+  const normalized = normalizeReceiveSettlementStatus(status);
+  if (normalized === undefined) return '-';
+  return map[normalized] ?? '未知';
 }
 
 /** 收费结算状态 Tag 颜色 */
-export function getReceiveSettlementStatusColor(status: number): string {
+export function getReceiveSettlementStatusColor(
+  status: number | string | undefined | null,
+): string {
   const map: Record<number, string> = {
     0: 'default',
     1: 'processing',
@@ -35,7 +52,67 @@ export function getReceiveSettlementStatusColor(status: number): string {
     4: 'warning',
     5: 'success',
   };
-  return map[status] ?? 'default';
+  const normalized = normalizeReceiveSettlementStatus(status);
+  if (normalized === undefined) return 'default';
+  return map[normalized] ?? 'default';
+}
+
+/** 关联收费结算展开区：只读费用明细列 */
+export function useReceiveSettlementItemReadonlyColumns() {
+  return [
+    {
+      dataIndex: 'commissionNum',
+      title: '委托编号',
+      width: 150,
+    },
+    {
+      dataIndex: 'mblNum',
+      title: '主提单号',
+      width: 150,
+    },
+    {
+      dataIndex: 'feeCodeName',
+      title: '费用名称',
+      minWidth: 150,
+    },
+    {
+      dataIndex: 'currencyCode',
+      title: '币别',
+      width: 90,
+    },
+    {
+      dataIndex: 'amount',
+      title: '费用总额',
+      width: 120,
+      align: 'right' as const,
+      customRender: ({ text }: { text: number }) => formatAmount(text),
+    },
+    {
+      dataIndex: 'remainingAmount',
+      title: '剩余额度',
+      width: 120,
+      align: 'right' as const,
+      customRender: ({ text }: { text: number }) => formatAmount(text),
+    },
+    {
+      dataIndex: 'settledAmount',
+      title: '本次结算金额',
+      width: 130,
+      align: 'right' as const,
+      customRender: ({ text }: { text: number }) => formatAmount(text),
+    },
+    {
+      dataIndex: 'settlementName',
+      title: '结算对象',
+      minWidth: 140,
+    },
+    {
+      dataIndex: 'remark',
+      title: '备注',
+      minWidth: 160,
+      ellipsis: true,
+    },
+  ];
 }
 
 /** 收费结算只读子表 ant Table 列配置 */

@@ -7,7 +7,6 @@ import dayjs from 'dayjs';
 
 import { Page } from '@vben/common-ui';
 import { useAccess } from '@vben/access';
-import { IconifyIcon } from '@vben/icons';
 
 import {
   Button,
@@ -17,7 +16,6 @@ import {
   InputNumber,
   message,
   Space,
-  Table,
   Tag,
 } from 'ant-design-vue';
 
@@ -26,7 +24,6 @@ import {
   CurrencySelect,
   OrgBankAccountSelect,
   ClientBankAccountSelect,
-  UserSelect,
 } from '#/adapter/component';
 import {
   addBankStatement,
@@ -37,12 +34,11 @@ import {
 import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
-import {
-  getReceiveSettlementStatusColor,
-  getReceiveSettlementStatusLabel,
-  useReceiveSettlementColumns,
-} from './form-data';
-import { buildOperatorRows } from './utils';
+import CreateSettlementFeePanel from './components/create-settlement-fee-panel.vue';
+import OperatorTitleBar from './components/operator-title-bar.vue';
+import ReceiveSettlementPanel from './components/receive-settlement-panel.vue';
+import { getBankStatementWriteOffStatusInfo } from './data';
+import { type BankStatementOperatorRow, buildOperatorRows } from './utils';
 
 const perm = createAbpPermission('Admin.BankStatement');
 const receiveSettlementPerm = createAbpPermission('Admin.ReceiveSettlement');
@@ -62,7 +58,6 @@ const editId = computed<string | undefined>(() => {
 });
 const isEdit = computed(() => !!editId.value);
 
-// ==================== 表单字段 ====================
 const pageLoading = ref(false);
 const submitting = ref(false);
 
@@ -77,109 +72,61 @@ const messageText = ref('');
 const orgBankAccountId = ref<string | undefined>(undefined);
 const settlementId = ref<string>('');
 const clientInvoiceBankId = ref<string | undefined>(undefined);
+/** 已落库的流水快照，供底部选费区使用（不随未保存的表单编辑变化） */
+const savedSettlementId = ref<string>('');
+const savedSettlementName = ref('');
+const savedCurrencyId = ref<number | undefined>(undefined);
+const savedCurrencyCode = ref('');
+const savedAmount = ref(0);
+const writeOffStatus = ref<
+  BankStatementAdminApi.BankStatementWriteOffStatus | undefined
+>(undefined);
+const settledAmount = ref(0);
 
-// 操作人列表
-interface OperatorRow {
-  _key: string;
-  operationId?: number;
-  operationName?: string;
-  remark?: string;
-}
 let rowKeyCounter = 0;
 const makeRowKey = () => `op_${++rowKeyCounter}_${Date.now()}`;
-const operatorRows = ref<OperatorRow[]>([]);
+const operatorRows = ref<BankStatementOperatorRow[]>([]);
 
-// ==================== 收费结算子表 ====================
-const settlementList = ref<BankStatementAdminApi.ReceiveSettlementListDto[]>(
-  [],
+const settlementPanelRef = ref<InstanceType<typeof ReceiveSettlementPanel>>();
+const createFeePanelRef = ref<InstanceType<typeof CreateSettlementFeePanel>>();
+
+const writeOffStatusInfo = computed(() =>
+  getBankStatementWriteOffStatusInfo(writeOffStatus.value),
 );
-const settlementLoading = ref(false);
-const settlementTotal = ref(0);
-const settlementPage = ref(1);
-const settlementPageSize = ref(10);
-const settlementNoFilter = ref('');
 
-const receiveSettlementColumns = useReceiveSettlementColumns();
+const otherSettledAmount = computed(() => settledAmount.value || 0);
 
-async function loadReceiveSettlements() {
-  if (!editId.value) return;
-  settlementLoading.value = true;
-  try {
-    const res = await getBankStatementReceiveSettlementPagedList({
-      bankStatementId: editId.value,
-      settlementNo: settlementNoFilter.value || undefined,
-      pageIndex: settlementPage.value,
-      pageSize: settlementPageSize.value,
-    });
-    settlementList.value = res.items || [];
-    settlementTotal.value = res.totalCount || 0;
-  } finally {
-    settlementLoading.value = false;
-  }
-}
-
-function handleSettlementPageChange(page: number, pageSize: number) {
-  settlementPage.value = page;
-  settlementPageSize.value = pageSize;
-  loadReceiveSettlements();
-}
-
-function handleSettlementSearch() {
-  settlementPage.value = 1;
-  loadReceiveSettlements();
-}
-
-function handleCreateReceiveSettlement() {
-  if (!editId.value) return;
-  router.push({
-    path: '/settlement-management/receive-settlement/add',
-    query: { bankStatementId: editId.value },
-  });
-}
-
-function handleReceiveSettlementRowDblClick(
-  row: BankStatementAdminApi.ReceiveSettlementListDto,
+function applySavedBankStatementSnapshot(
+  detail: BankStatementAdminApi.BankStatementDetailDto,
 ) {
-  router.push(`/settlement-management/receive-settlement/edit/${row.id}`);
+  savedSettlementId.value = detail.settlementId;
+  savedSettlementName.value = detail.settlementName || '';
+  savedCurrencyId.value = detail.currencyId;
+  savedCurrencyCode.value = detail.currencyCode || '';
+  savedAmount.value = detail.amount ?? 0;
 }
 
-// ==================== 操作人行操作 ====================
-function addOperatorRow() {
-  operatorRows.value = [...operatorRows.value, { _key: makeRowKey() }];
-}
-
-function removeOperatorRow(key: string) {
-  operatorRows.value = operatorRows.value.filter((r) => r._key !== key);
-}
-
-function updateOperatorRow(key: string, patch: Partial<OperatorRow>) {
-  operatorRows.value = operatorRows.value.map((r) =>
-    r._key === key ? { ...r, ...patch } : r,
-  );
-}
-
-function toOperatorSelectedItems(row: OperatorRow) {
-  if (!row.operationId) return [];
-  return [
-    {
-      id: row.operationId,
-      userName: row.operationName || '',
-    },
-  ];
-}
-
-const operatorColumns = [
-  { key: 'operationId', title: '操作人', width: 130 },
-  { key: 'remark', title: '备注' },
-  { key: 'action', title: '', width: 40, align: 'center' as const },
-];
-
-// ==================== 联动：结算对象变更清空对方银行 ====================
 watch(settlementId, () => {
   clientInvoiceBankId.value = undefined;
 });
 
-// ==================== 加载编辑数据 ====================
+async function loadOtherSettledAmount() {
+  if (!editId.value) {
+    settledAmount.value = 0;
+    return;
+  }
+
+  const res = await getBankStatementReceiveSettlementPagedList({
+    bankStatementId: editId.value,
+    pageIndex: 1,
+    pageSize: 500,
+  });
+  settledAmount.value = (res.items ?? []).reduce(
+    (sum, item) => sum + (item.totalSettledAmount || 0),
+    0,
+  );
+}
+
 async function loadEditData() {
   if (!editId.value) return;
   pageLoading.value = true;
@@ -198,19 +145,28 @@ async function loadEditData() {
     orgBankAccountId.value = detail.orgBankAccountId;
     settlementId.value = detail.settlementId;
     clientInvoiceBankId.value = detail.clientInvoiceBankId;
+    writeOffStatus.value = detail.writeOffStatus;
+    settledAmount.value = detail.settledAmount ?? 0;
+    applySavedBankStatementSnapshot(detail);
 
     operatorRows.value = await buildOperatorRows(
       detail.bankStatementUsers,
       makeRowKey,
     );
 
-    await loadReceiveSettlements();
+    await loadOtherSettledAmount();
+    await settlementPanelRef.value?.refresh();
+    await createFeePanelRef.value?.reload();
   } finally {
     pageLoading.value = false;
   }
 }
 
-// ==================== 保存 ====================
+async function handleSettlementCreated() {
+  await loadEditData();
+  await createFeePanelRef.value?.reload();
+}
+
 async function handleSave() {
   if (!amount.value && amount.value !== 0) {
     message.warning('请输入总金额');
@@ -230,8 +186,11 @@ async function handleSave() {
   }
 
   const bankStatementUsers = operatorRows.value
-    .filter((r) => r.operationId)
-    .map((r) => ({ operationId: r.operationId!, remark: r.remark || '' }));
+    .filter((row) => row.operationId)
+    .map((row) => ({
+      operationId: row.operationId!,
+      remark: row.remark || '',
+    }));
 
   submitting.value = true;
   try {
@@ -252,6 +211,7 @@ async function handleSave() {
       });
       message.success('保存成功');
       markListShouldRefresh('BankStatementList');
+      await loadEditData();
     } else {
       const newId = await addBankStatement({
         amount: amount.value!,
@@ -287,7 +247,19 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page :title="isEdit ? '编辑银行流水' : '新建银行流水'">
+  <Page>
+    <template #title>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span class="text-lg font-semibold">
+          {{ isEdit ? '编辑银行流水' : '新建银行流水' }}
+        </span>
+        <OperatorTitleBar
+          v-model:rows="operatorRows"
+          :disabled="!canEdit && isEdit"
+        />
+      </div>
+    </template>
+
     <template #extra>
       <Space>
         <Button @click="handleBack">返回</Button>
@@ -303,17 +275,23 @@ onMounted(() => {
     </template>
 
     <div v-loading="pageLoading" class="bank-statement-page flex flex-col">
-      <!-- 左主右辅：流水信息 + 操作人 -->
-      <div class="form-main-layout pb-4">
+      <div
+        class="form-main-layout pb-4"
+        :class="{ 'form-main-layout--create': !isEdit }"
+      >
         <div class="form-main-layout__left">
           <Card title="流水信息" size="small" class="form-panel-card">
             <div class="bank-statement-form grid grid-cols-3 gap-x-4 gap-y-3">
               <template v-if="isEdit">
-                <!-- 流水号：纯文本展示 -->
                 <div>
                   <div class="mb-1 text-xs text-gray-500">流水号</div>
-                  <div class="flex h-8 items-center text-sm text-gray-600">
-                    {{ bankStatementNo || '-' }}
+                  <div
+                    class="flex h-8 items-center gap-2 text-sm text-gray-600"
+                  >
+                    <span>{{ bankStatementNo || '-' }}</span>
+                    <Tag :color="writeOffStatusInfo.color">
+                      {{ writeOffStatusInfo.label }}
+                    </Tag>
                   </div>
                 </div>
 
@@ -527,144 +505,27 @@ onMounted(() => {
           </Card>
         </div>
 
-        <div class="form-main-layout__right">
-          <Card title="操作人" size="small" class="form-panel-card">
-            <div class="operator-panel-body">
-              <Table
-                class="operator-table"
-                :columns="operatorColumns"
-                :data-source="operatorRows"
-                :pagination="false"
-                row-key="_key"
-                size="small"
-                :bordered="false"
-                :locale="{
-                  emptyText: '未配置操作人，所有人均可在非 Admin 端查看该流水',
-                }"
-              >
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'operationId'">
-                    <UserSelect
-                      :key="record._key"
-                      :model-value="record.operationId"
-                      :selected-items="toOperatorSelectedItems(record)"
-                      :disabled="!canEdit && isEdit"
-                      placeholder="请选择"
-                      size="small"
-                      class="w-full"
-                      @update:model-value="
-                        (v) =>
-                          updateOperatorRow(record._key, { operationId: v })
-                      "
-                    />
-                  </template>
-                  <template v-else-if="column.key === 'remark'">
-                    <Input
-                      :value="record.remark"
-                      :disabled="!canEdit && isEdit"
-                      placeholder="备注"
-                      size="small"
-                      allow-clear
-                      @update:value="
-                        (v) => updateOperatorRow(record._key, { remark: v })
-                      "
-                    />
-                  </template>
-                  <template v-else-if="column.key === 'action'">
-                    <Button
-                      v-if="canEdit || !isEdit"
-                      type="text"
-                      danger
-                      size="small"
-                      title="删除"
-                      @click="removeOperatorRow(record._key)"
-                    >
-                      <IconifyIcon
-                        icon="mdi:trash-can-outline"
-                        class="size-4"
-                      />
-                    </Button>
-                  </template>
-                </template>
-              </Table>
-
-              <Button
-                v-if="canEdit || !isEdit"
-                type="dashed"
-                block
-                class="operator-add-btn"
-                @click="addOperatorRow"
-              >
-                <IconifyIcon
-                  icon="ant-design:plus-outlined"
-                  class="mr-1 size-4"
-                />
-                添加操作人
-              </Button>
-            </div>
-          </Card>
+        <div v-if="isEdit" class="form-main-layout__right">
+          <ReceiveSettlementPanel
+            ref="settlementPanelRef"
+            :bank-statement-id="editId || ''"
+          />
         </div>
       </div>
 
-      <!-- 关联收费结算（仅编辑页） -->
-      <Card v-if="isEdit" title="关联收费结算" size="small">
-        <template #extra>
-          <Space>
-            <Input
-              v-model:value="settlementNoFilter"
-              placeholder="结算单号模糊搜索"
-              allow-clear
-              style="width: 200px"
-              @press-enter="handleSettlementSearch"
-            />
-            <Button size="small" @click="handleSettlementSearch">查询</Button>
-            <Button
-              v-if="canAddReceiveSettlement"
-              size="small"
-              type="primary"
-              @click="handleCreateReceiveSettlement"
-            >
-              新建收费结算
-            </Button>
-          </Space>
-        </template>
-
-        <Table
-          :columns="receiveSettlementColumns"
-          :data-source="settlementList"
-          :loading="settlementLoading"
-          :pagination="{
-            current: settlementPage,
-            pageSize: settlementPageSize,
-            total: settlementTotal,
-            showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 条`,
-            onChange: handleSettlementPageChange,
-          }"
-          row-key="id"
-          size="small"
-          bordered
-          :scroll="{ x: 1100 }"
-          :custom-row="
-            (record) => ({
-              onDblclick: () => handleReceiveSettlementRowDblClick(record),
-            })
-          "
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.dataIndex === 'status'">
-              <Tag :color="getReceiveSettlementStatusColor(record.status)">
-                {{ getReceiveSettlementStatusLabel(record.status) }}
-              </Tag>
-            </template>
-            <template v-if="column.dataIndex === 'locked'">
-              <Tag :color="record.locked ? 'red' : 'green'">
-                {{ record.locked ? '已锁定' : '未锁定' }}
-              </Tag>
-            </template>
-          </template>
-        </Table>
-      </Card>
+      <CreateSettlementFeePanel
+        v-if="isEdit && canAddReceiveSettlement && editId"
+        ref="createFeePanelRef"
+        class="mt-1"
+        :bank-statement-id="editId"
+        :bank-statement-amount="savedAmount"
+        :other-settled-amount="otherSettledAmount"
+        :settlement-id="savedSettlementId"
+        :settlement-name="savedSettlementName"
+        :currency-id="savedCurrencyId"
+        :currency-code="savedCurrencyCode"
+        @created="handleSettlementCreated"
+      />
     </div>
   </Page>
 </template>
@@ -672,9 +533,13 @@ onMounted(() => {
 <style scoped lang="scss">
 .form-main-layout {
   display: grid;
-  grid-template-columns: minmax(0, 14fr) minmax(0, 10fr);
+  grid-template-columns: minmax(0, 4fr) minmax(0, 6fr);
   gap: 12px;
   align-items: stretch;
+}
+
+.form-main-layout--create {
+  grid-template-columns: 1fr;
 }
 
 .form-main-layout__left,
@@ -696,64 +561,12 @@ onMounted(() => {
   }
 }
 
-.operator-panel-body {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-}
-
 .bank-statement-form {
   :deep(.ant-picker),
   :deep(.ant-input-number),
   :deep(.ant-select) {
     width: 100%;
   }
-}
-
-.operator-table {
-  flex: 1;
-  margin-bottom: 8px;
-
-  :deep(.ant-table) {
-    font-size: 13px;
-  }
-
-  :deep(.ant-table-container) {
-    border: 1px solid #f0f0f0;
-    border-radius: 4px;
-  }
-
-  :deep(.ant-table-thead > tr > th) {
-    padding: 6px 8px;
-    font-size: 12px;
-    font-weight: 500;
-    color: #8c8c8c;
-    background: #fafafa;
-  }
-
-  :deep(.ant-table-tbody > tr > td) {
-    padding: 4px 6px;
-  }
-
-  :deep(.ant-table-tbody > tr:last-child > td) {
-    border-bottom: none;
-  }
-
-  :deep(.ant-empty) {
-    margin: 12px 0;
-  }
-
-  :deep(.ant-empty-description) {
-    font-size: 12px;
-    color: #bfbfbf;
-  }
-}
-
-.operator-add-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 @media (max-width: 1280px) {
