@@ -1,201 +1,174 @@
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
-import type { VbenFormSchema } from '#/adapter/form';
-import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
-
 import { $t } from '#/locales';
 
-/** 发票开出方式选项 */
-const getInvoiceIssueTypeOptions = () => [
+import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
+
+/**
+ * 发票开出列表表格列配置
+ */
+export const columns: VxeTableGridOptions['columns'] = [
   {
-    value: InvoiceIssueApi.InvoiceIssueType.NuonuoInterface,
-    label: '诺诺接口开票',
-    color: 'blue',
+    title: '开出单号',
+    field: 'applicationNo',
+    width: 150,
+    fixed: 'left',
   },
   {
-    value: InvoiceIssueApi.InvoiceIssueType.ManualRecord,
-    label: '手动记录',
-    color: 'orange',
+    title: '发票号',
+    field: 'invoiceNo',
+    width: 150,
+  },
+  {
+    title: '开票时间',
+    field: 'invoiceIssueTime',
+    width: 120,
+  },
+  {
+    title: '结算对象',
+    field: 'settlement.name',
+    width: 150,
+  },
+  {
+    title: '发票抬头',
+    field: 'clientInvoiceInfo.header',
+    width: 180,
+    slots: { default: 'clientInvoiceInfoHeader' },
+  },
+  {
+    title: '税号',
+    field: 'clientInvoiceInfo.taxNum',
+    width: 150,
+    slots: { default: 'clientInvoiceInfoTaxNum' },
+  },
+  {
+    title: '币别',
+    field: 'currency.code',
+    width: 100,
+  },
+  {
+    title: '发票类型',
+    field: 'invoiceType',
+    width: 120,
+  },
+  {
+    title: '开票汇率',
+    field: 'invoiceExchangeRate',
+    width: 100,
+  },
+  {
+    title: '申请条数',
+    field: 'itemCount',
+    width: 100,
+  },
+  {
+    title: '商品金额合计',
+    field: 'totalAmount',
+    width: 120,
+  },
+  {
+    title: '申请人',
+    field: 'applyUserName',
+    width: 120,
+  },
+  {
+    title: '申请时间',
+    field: 'applyTime',
+    width: 120,
+  },
+  {
+    title: '备注',
+    field: 'remark',
+    minWidth: 150,
+    showOverflow: true,
   },
 ];
 
-export function useGridFormSchema(): VbenFormSchema[] {
-  return [
-    {
-      component: 'Input',
-      fieldName: 'applicationNo',
-      label: '开出单号',
-      componentProps: {
-        placeholder: '请输入开出单号',
-        allowClear: true,
-      },
+/**
+ * 发票开出查询表单配置
+ */
+export const searchFormSchema = [
+  {
+    fieldName: 'applicationNo',
+    label: '开出单号',
+    component: 'Input',
+    componentProps: {
+      placeholder: '请输入开出单号',
     },
-    {
-      component: 'Input',
-      fieldName: 'invoiceNo',
-      label: '发票号',
-      componentProps: {
-        placeholder: '请输入发票号',
-        allowClear: true,
-      },
+  },
+  {
+    fieldName: 'invoiceNo',
+    label: '发票号',
+    component: 'Input',
+    componentProps: {
+      placeholder: '请输入发票号',
     },
-    {
-      component: 'Select',
-      fieldName: 'invoiceIssueType',
-      label: '开票方式',
-      componentProps: {
-        allowClear: true,
-        options: getInvoiceIssueTypeOptions().map(({ label, value }) => ({
-          label,
-          value,
-        })),
-        placeholder: '请选择开票方式',
-        class: 'w-full',
-      },
+  },
+  {
+    fieldName: 'settlementId',
+    label: '结算对象',
+    component: 'ClientSelect',
+    componentProps: {
+      placeholder: '请选择结算对象',
     },
-    {
-      component: 'ClientSelect',
-      fieldName: 'settlementId',
-      label: '结算对象',
-      componentProps: {
-        placeholder: '请选择结算对象',
-        allowClear: true,
-        class: 'w-full',
-      },
+  },
+  {
+    fieldName: 'currencyId',
+    label: '币别',
+    component: 'CurrencySelect',
+    componentProps: {
+      placeholder: '请选择币别',
     },
-    {
-      component: 'CurrencySelect',
-      fieldName: 'currencyId',
-      label: '币别',
-      componentProps: {
-        placeholder: '请选择币别',
-        allowClear: true,
-        class: 'w-full',
-      },
+  },
+  {
+    fieldName: 'invoiceIssueType',
+    label: '开出方式',
+    component: 'Select',
+    componentProps: {
+      placeholder: '请选择开出方式',
+      options: [
+        {
+          label: '诺诺接口开票',
+          value: InvoiceIssueApi.InvoiceIssueType.NuonuoInterface,
+        },
+        {
+          label: '手动记录',
+          value: InvoiceIssueApi.InvoiceIssueType.ManualRecord,
+        },
+      ],
     },
-    {
-      component: 'Input',
-      fieldName: 'invoiceType',
-      label: '发票类型',
-      componentProps: {
-        placeholder: '请输入发票类型',
-        allowClear: true,
-      },
+  },
+  {
+    fieldName: 'invoiceType',
+    label: '发票类型',
+    component: 'Select',
+    componentProps: {
+      placeholder: '请选择发票类型',
+      options: [
+        { label: '普通发票(电票)', value: 'p' },
+        { label: '普通发票(纸票)', value: 'c' },
+        { label: '专用发票', value: 's' },
+      ],
     },
-    {
-      component: 'RangePicker',
-      fieldName: 'invoiceIssueTimeRange',
-      label: '开票时间',
-      componentProps: {
-        placeholder: ['开始时间', '结束时间'],
-        allowClear: true,
-        class: 'w-full',
-      },
+  },
+  {
+    fieldName: 'invoiceIssueTimeStart',
+    label: '开票时间起',
+    component: 'DatePicker',
+    componentProps: {
+      placeholder: '请选择开始日期',
+      format: 'YYYY-MM-DD',
+      valueFormat: 'YYYY-MM-DD',
     },
-    {
-      component: 'UserSelect',
-      fieldName: 'creatorUserId',
-      label: '创建人',
-      componentProps: {
-        placeholder: '请选择创建人',
-        allowClear: true,
-        class: 'w-full',
-      },
+  },
+  {
+    fieldName: 'invoiceIssueTimeEnd',
+    label: '开票时间止',
+    component: 'DatePicker',
+    componentProps: {
+      placeholder: '请选择结束日期',
+      format: 'YYYY-MM-DD',
+      valueFormat: 'YYYY-MM-DD',
     },
-  ];
-}
-
-export function useColumns(): VxeTableGridOptions<InvoiceIssueApi.InvoiceIssueListDto>['columns'] {
-  return [
-    { type: 'checkbox', width: 50, fixed: 'left' },
-    { type: 'seq', width: 50, fixed: 'left' },
-    {
-      field: 'applicationNo',
-      title: '开出单号',
-      minWidth: 160,
-      fixed: 'left',
-    },
-    {
-      field: 'invoiceNo',
-      title: '发票号',
-      minWidth: 140,
-    },
-    {
-      field: 'invoiceIssueType',
-      title: '开票方式',
-      minWidth: 120,
-      cellRender: {
-        name: 'CellTag',
-        options: getInvoiceIssueTypeOptions(),
-      },
-    },
-    {
-      field: 'settlementName',
-      title: '结算对象',
-      minWidth: 160,
-      showOverflow: true,
-      slots: { default: 'settlementName' },
-    },
-    {
-      field: 'currencyCode',
-      title: '币别',
-      minWidth: 80,
-      slots: { default: 'currencyCode' },
-    },
-    {
-      field: 'invoiceType',
-      title: '发票类型',
-      minWidth: 120,
-    },
-    {
-      field: 'totalAmount',
-      title: '金额合计',
-      minWidth: 120,
-      align: 'right',
-      formatter: ({ cellValue }) => {
-        if (cellValue === null || cellValue === undefined) return '-';
-        return Number(cellValue).toFixed(2);
-      },
-    },
-    {
-      field: 'itemCount',
-      title: '申请数量',
-      minWidth: 100,
-      align: 'center',
-    },
-    {
-      field: 'invoiceIssueTime',
-      title: '开票时间',
-      minWidth: 160,
-      formatter: 'formatDateTime',
-    },
-    {
-      field: 'applyUserName',
-      title: '申请人',
-      minWidth: 100,
-    },
-    {
-      field: 'creatorUserName',
-      title: '创建人',
-      minWidth: 100,
-    },
-    {
-      field: 'require',
-      title: '开票要求',
-      minWidth: 160,
-      showOverflow: true,
-    },
-    {
-      field: 'remark',
-      title: '备注',
-      minWidth: 160,
-      showOverflow: true,
-    },
-    {
-      field: 'creationTime',
-      title: '创建时间',
-      minWidth: 160,
-      formatter: 'formatDateTime',
-    },
-  ];
-}
+  },
+];

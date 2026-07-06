@@ -11,12 +11,16 @@ export namespace RiskbirdApi {
     Keyword?: string;
     /** 客户ID（传入时使用客户的FullName作为查询关键字） */
     ClientId?: string;
+    /** 每页记录数 */
+    pageSize: number;
   }
 
   /** 企业详情入参DTO */
   export interface RiskbirdCompanyDetailInputDto {
     /** 风鸟返回的企业ID */
     entId: string;
+    /** 每页记录数 */
+    pageSize: number;
     /** 客户ID（传入时将工商信息回写到客户表） */
     ClientId?: string;
   }

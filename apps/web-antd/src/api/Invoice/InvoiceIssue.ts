@@ -1,6 +1,7 @@
 import type { Recordable } from '@vben/types';
 
 import { requestClient } from '#/api/request';
+import type { ClientInvoiceInfoAdminApi } from '#/api/sea-export/clinet-invoice-admin';
 
 export namespace InvoiceIssueApi {
   /** 发票开出方式枚举 */
@@ -109,6 +110,8 @@ export namespace InvoiceIssueApi {
     invoiceNo?: string;
     /** 开票时间 */
     invoiceIssueTime: string;
+    /** 开票汇率（外币转人民币的汇率） */
+    invoiceExchangeRate?: number;
     /** 开票要求 */
     require?: string;
     /** 备注 */
@@ -201,6 +204,8 @@ export namespace InvoiceIssueApi {
     currency: CurrencySimpleDto;
     /** 客户银行简易信息 */
     clientInvoiceBank: ClientInvoiceBankSimpleDto;
+    /** 客户开票信息（根据ClientInvoiceBankId解析，无则null） */
+    clientInvoiceInfo?: ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto | null;
     /** 我司银行简易信息 */
     orgBankAccount: OrgBankAccountSimpleDto;
     /** 发票汇率 */
@@ -234,6 +239,8 @@ export namespace InvoiceIssueApi {
     settlement: ClientSimpleDto;
     currency: CurrencySimpleDto;
     clientInvoiceBank: ClientInvoiceBankSimpleDto;
+    /** 客户开票信息（根据ClientInvoiceBankId解析，无则null） */
+    clientInvoiceInfo?: ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto | null;
     orgBankAccount: OrgBankAccountSimpleDto;
     invoiceExchangeRate?: number;
     /** 关联开票申请条数 */
@@ -279,6 +286,161 @@ export namespace InvoiceIssueApi {
     pageSize: number;
     /** 排序字段（默认 CreationTime DESC） */
     sorting?: string;
+  }
+
+  /** 运输订单简易信息 */
+  export interface TransportOrderSimpleDto {
+    id: string;
+    commissionNum?: string;
+    mblNum?: string;
+    bookingNum?: string;
+    clientName?: string;
+    etd?: string;
+    [key: string]: any;
+  }
+
+  /** 海运出口简易信息 */
+  export interface SeaExportSimpleDto {
+    id: string;
+    vessel?: string;
+    innerVoyno?: string;
+    polId?: number;
+    polName?: string;
+    podId?: number;
+    podName?: string;
+    carrierId?: number;
+    carrierName?: string;
+    [key: string]: any;
+  }
+
+  /** 订单费用信息（扩展版，包含SeaExport） */
+  export interface OrderFeeDto {
+    id: string;
+    feeCodeName?: string;
+    currencyId: number;
+    currencyCode?: string;
+    amount: number;
+    invoicedAmount: number;
+    remainingInvoiceAmount: number;
+    settlementName?: string;
+    settlementId: string;
+    feeStatus: number;
+    paySide: number;
+    taxRate?: number;
+    creatorUserId?: number;
+    accountDate?: string;
+    /** 对应的运输订单 */
+    transportOrder?: TransportOrderSimpleDto;
+    /** 对应的海运出口信息（仅本接口会赋值） */
+    seaExport?: SeaExportSimpleDto;
+    [key: string]: any;
+  }
+
+  /** 开票申请费用明细详情DTO（用于发票开出列表） */
+  export interface InvoiceApplicationItemDetailDto {
+    id: string;
+    invoiceApplicationId: string;
+    orderFeeId: string;
+    appliedAmount: number;
+    remark?: string;
+    /** 费用详情（含transportOrder和seaExport） */
+    orderFee: OrderFeeDto;
+    remainingInvoiceAmount: number;
+  }
+
+  /** 开票申请商品明细DTO */
+  export interface InvoiceApplicationGoodsDtlDto {
+    id: string;
+    invoiceApplicationId: string;
+    codeInvoiceId: number;
+    codeInvoiceName?: string;
+    specification?: string;
+    unit?: string;
+    quantity: number;
+    unitPrice: number;
+    amount: number;
+    noTaxAmount: number;
+    taxRate: number;
+    taxAmount: number;
+    remark?: string;
+  }
+
+  /** 发票开出用-已提交开票申请DTO */
+  export interface InvoiceIssueApplicationDto {
+    /** 开票申请ID */
+    id: string;
+    /** 申请单号 */
+    applicationNo?: string;
+    /** 发票号 */
+    invoiceNo?: string;
+    /** 结算对象ID */
+    settlementId: string;
+    /** 状态 */
+    status: string;
+    /** 币别ID */
+    currencyId: number;
+    /** 发票类型 */
+    invoiceType?: string;
+    /** 客户银行ID */
+    clientInvoiceBankId: string;
+    /** 我司银行ID */
+    orgBankAccountId: string;
+    /** 申请人ID */
+    applyUserId?: number;
+    /** 申请时间 */
+    applyTime?: string;
+    /** 开票要求 */
+    require?: string;
+    /** 备注 */
+    remark?: string;
+    /** 创建人名称 */
+    creatorUserName?: string;
+    /** 申请人名称 */
+    applyUserName?: string;
+    /** 结算对象名称 */
+    settlementName?: string;
+    /** ✅ 所属公司名称 */
+    companyName?: string;
+    /** 币别代码 */
+    currencyCode?: string;
+    /** 发票汇率 */
+    invoiceExchangeRate?: number;
+    /** 开票申请费用明细列表（扁平化，不按运输订单分组） */
+    invoiceApplicationItems: InvoiceApplicationItemDetailDto[];
+    /** 开票申请商品明细列表 */
+    invoiceApplicationGoodsDtls: InvoiceApplicationGoodsDtlDto[];
+    /** 原币申请金额合计 */
+    totalAppliedAmount: number;
+    /** 商品明细人民币金额合计 */
+    totalGoodsAmount: number;
+    /** 折算后的人民币金额（根据当前发票汇率计算） */
+    appliedAmountRmb?: number;
+    /** 金额是否匹配（根据当前发票汇率判断） */
+    amountMatched: boolean;
+    /** 客户开票信息（根据ClientInvoiceBankId解析，无则null） */
+    clientInvoiceInfo?: ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto | null;
+  }
+
+  /** 发票开出用-已提交开票申请查询参数 */
+  export interface InvoiceIssueApplicationQueryDto {
+    /** 申请单号（模糊） */
+    applicationNo?: string;
+    /** 结算对象ID */
+    settlementId?: string;
+    /** 币别ID */
+    currencyId?: number;
+    /** 发票类型 */
+    invoiceType?: string;
+    /** 申请时间起 */
+    applyTimeStart?: string;
+    /** 申请时间止 */
+    applyTimeEnd?: string;
+    /** 申请人ID */
+    applyUserId?: number;
+    /** 抬头（模糊，通过ClientInvoiceInfo.Header过滤） */
+    header?: string;
+    /** 组织ID（通过UserId查询） */
+    orgId?: number;
   }
 }
 
@@ -362,10 +524,24 @@ async function getInvoiceIssuePagedList(params: Recordable<any>): Promise<{
   };
 }
 
+/**
+ * 获取发票开出用的已提交开票申请列表（不分页）
+ * @param params 查询参数
+ */
+async function getSubmittedApplicationList(
+  params: InvoiceIssueApi.InvoiceIssueApplicationQueryDto = {},
+) {
+  return requestClient.get<InvoiceIssueApi.InvoiceIssueApplicationDto[]>(
+    '/services/app/InvoiceIssueAdmin/GetSubmittedApplicationListAsync',
+    { params },
+  );
+}
+
 export {
   addInvoiceIssue,
   deleteInvoiceIssue,
   editInvoiceIssue,
   getInvoiceIssueDetail,
   getInvoiceIssuePagedList,
+  getSubmittedApplicationList,
 };
