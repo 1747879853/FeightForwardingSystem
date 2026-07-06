@@ -239,9 +239,22 @@ function handleSettlementSearch() {
   loadReceiveSettlements();
 }
 
+function shouldIgnoreSettlementRowDblClick(event: MouseEvent) {
+  const target = event.target as HTMLElement | null;
+  if (!target) return true;
+
+  return Boolean(
+    target.closest(
+      '.ant-table-row-expand-icon, .ant-table-row-expand-icon-cell, .ant-table-cell-with-append, .ant-checkbox-wrapper, .ant-checkbox',
+    ),
+  );
+}
+
 function handleReceiveSettlementRowDblClick(
   row: BankStatementAdminApi.ReceiveSettlementListDto,
+  event: MouseEvent,
 ) {
+  if (shouldIgnoreSettlementRowDblClick(event)) return;
   router.push(`/settlement-management/receive-settlement/edit/${row.id}`);
 }
 
@@ -450,7 +463,8 @@ defineExpose({
         :row-selection="settlementRowSelection"
         :custom-row="
           (record) => ({
-            onDblclick: () => handleReceiveSettlementRowDblClick(record),
+            onDblclick: (event) =>
+              handleReceiveSettlementRowDblClick(record, event),
           })
         "
         @expand="handleExpand"
