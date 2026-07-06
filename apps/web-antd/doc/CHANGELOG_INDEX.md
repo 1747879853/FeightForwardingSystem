@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-06 模块权限文案与后端 displayName 对齐](./changelogs/change-log-2026-07-06-system-permission-auth-i18n-sync.md)
 - [2026-07-05 银行流水新建/编辑页布局改版（标题操作人、右关联结算、底选费建单）](./changelogs/change-log-2026-07-05-bank-statement-form-layout.md)
 - [2026-07-05 海运出口详情港口下拉 EDI 回显补齐](./changelogs/change-log-2026-07-05-sea-export-port-edicode-echo.md)
 - [2026-07-05 vxe 列显隐持久化保存修复（getFullColumns + 孪生表格 tableId）](./changelogs/change-log-2026-07-05-vxe-column-visibility-persist-fix.md)
