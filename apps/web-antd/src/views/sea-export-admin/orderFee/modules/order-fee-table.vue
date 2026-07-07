@@ -528,6 +528,15 @@ const showDeleteWithRemark = () => {
     },
   });
 };
+const ImportOther = async (e: any) => {
+  //console.log('SubmittedOther', e);
+  switch (e.key) {
+    case 'submit': {
+      generateOppositeFees();
+      break;
+    }
+  }
+};
 const SubmittedOther = async (e: any) => {
   //console.log('SubmittedOther', e);
   switch (e.key) {
@@ -541,7 +550,6 @@ const SubmittedOther = async (e: any) => {
     }
   }
 };
-
 const orderFeeWithdraw = () => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
@@ -638,10 +646,10 @@ const generateOppositeFees = async () => {
     emit('refresh-opposite-table');
   } catch (error) {
     console.error('❌ [generateOppositeFees] 收付互生失败:', error);
-    message.error({
-      content: '收付互生失败，请检查费用状态和配置',
-      key: 'action_process_msg',
-    });
+    // message.error({
+    //   content: '收付互生失败，请检查费用状态和配置',
+    //   key: 'action_process_msg',
+    // });
   }
 };
 
@@ -1035,9 +1043,6 @@ defineExpose({
           >
             <template #toolbar-tools>
               <Space>
-                <Button @click="openBatchImportModal">
-                  {{ $t('seaExport.export.orderFee.batchImport') }}
-                </Button>
                 <Button type="primary" @click="addRow">
                   {{ $t('common.create') }}
                 </Button>
@@ -1056,13 +1061,16 @@ defineExpose({
                   {{ $t('common.delete') }}
                 </Button>
 
-                <Button
-                  type="primary"
-                  :disabled="!selectedRowKeys.length"
-                  @click="generateOppositeFees"
-                >
-                  {{ type === 0 ? '应收生成应付' : '应付生成应收' }}
-                </Button>
+                <DropdownButton @click="openBatchImportModal" type="primary">
+                  {{ $t('seaExport.export.orderFee.batchImport') }}
+                  <template #overlay>
+                    <Menu @click="ImportOther">
+                      <MenuItem key="submit">
+                        {{ type === 0 ? '应收生成应付' : '应付生成应收' }}
+                      </MenuItem>
+                    </Menu>
+                  </template>
+                </DropdownButton>
 
                 <DropdownButton
                   @click="Submitted"
