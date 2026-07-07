@@ -14,8 +14,34 @@ import CodePackageSelect from '#/adapter/component/biz-select/code-package-selec
 import { $t } from '#/locales';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 
+const props = withDefaults(
+  defineProps<{
+    yardRealQueryDisabled?: boolean;
+    yardRealQueryDisabledTip?: string;
+    yardRealQueryLoading?: boolean;
+    yardRealQueryVisible?: boolean;
+  }>(),
+  {
+    yardRealQueryDisabled: false,
+    yardRealQueryDisabledTip: '',
+    yardRealQueryLoading: false,
+    yardRealQueryVisible: false,
+  },
+);
+
+const emit = defineEmits<{
+  yardRealQuery: [];
+}>();
+
 const modelValue = defineModel<SeaExportAdminApi.OrderCtnAddDto[]>({
   default: () => [],
+});
+
+const yardRealQueryTooltip = computed(() => {
+  if (props.yardRealQueryDisabled && props.yardRealQueryDisabledTip) {
+    return props.yardRealQueryDisabledTip;
+  }
+  return $t('seaExport.yardRealQuery.query');
 });
 
 const selectedRowKeys = ref<(string | number)[]>([]);
@@ -244,6 +270,23 @@ watch(
       <span class="order-ctn-table__title-text">
         {{ $t('seaExport.export.orderCtns') }}
       </span>
+      <Tooltip v-if="props.yardRealQueryVisible" :title="yardRealQueryTooltip">
+        <Button
+          size="small"
+          class="order-ctn-table__yard-query-btn"
+          :disabled="props.yardRealQueryDisabled"
+          :loading="props.yardRealQueryLoading"
+          @click="emit('yardRealQuery')"
+        >
+          <IconifyIcon
+            icon="mdi:cloud-sync-outline"
+            class="mr-1 inline-block size-3.5 align-middle"
+          />
+          <span class="align-middle">{{
+            $t('seaExport.yardRealQuery.query')
+          }}</span>
+        </Button>
+      </Tooltip>
       <Tooltip :title="$t('seaExport.export.addCtn')">
         <Button
           type="text"
@@ -439,9 +482,21 @@ watch(
 }
 
 .order-ctn-table__title-text {
+  flex: 1;
   font-size: 13px;
   font-weight: 600;
   color: hsl(var(--primary));
+}
+
+.order-ctn-table__yard-query-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border: 1px solid hsl(var(--primary) / 25%);
 }
 
 .order-ctn-table :deep(input.ant-input),

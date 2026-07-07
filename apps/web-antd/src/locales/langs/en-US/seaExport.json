@@ -548,6 +548,21 @@
     "tips": "Tips",
     "saveSuccess": "Save Successful"
   },
+  "yardRealQuery": {
+    "query": "Yard Live Query",
+    "querying": "Querying yard data...",
+    "success": "Query succeeded. Container and related data have been updated.",
+    "failed": "Yard live query failed",
+    "saveOrderFirst": "Please save the order before querying",
+    "saveFirst": "Save first",
+    "discardAndQuery": "Discard and query",
+    "unsavedTitle": "Unsaved changes",
+    "unsavedContent": "The query writes back using saved data. Unsaved edits will not be included. Save first, or discard changes to continue.",
+    "missingMblNum": "Please enter the master B/L number first",
+    "missingYard": "Please select a yard first",
+    "missingYardCode": "The selected yard has no code and cannot be queried",
+    "unmatchedCtnTypes": "The following container types were not written back: {0}"
+  },
   "yundang": {
     "subscribe": "Yundang Subscribe",
     "subscribeTitle": "Yundang Ocean Bill Subscription",

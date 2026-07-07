@@ -840,6 +840,21 @@
     "tips": "提示",
     "saveSuccess": "保存成功"
   },
+  "yardRealQuery": {
+    "query": "场站实时查询",
+    "querying": "正在查询场站数据...",
+    "success": "查询成功，已回写箱货等信息",
+    "failed": "场站实时查询失败",
+    "saveOrderFirst": "请先保存订单后再查询",
+    "saveFirst": "先保存",
+    "discardAndQuery": "放弃并查询",
+    "unsavedTitle": "存在未保存的修改",
+    "unsavedContent": "查询将基于已保存数据回写，当前未保存的修改不会参与查询。请先保存，或放弃修改后继续。",
+    "missingMblNum": "请先填写主提单号",
+    "missingYard": "请先选择场站",
+    "missingYardCode": "所选场站缺少代码，无法查询",
+    "unmatchedCtnTypes": "以下箱型未能回写：{0}"
+  },
   "yundang": {
     "subscribe": "云当订阅",
     "subscribeTitle": "云当海运运单订阅",

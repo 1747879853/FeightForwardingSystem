@@ -13,6 +13,7 @@ import {
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
+import { useAccess } from '@vben/access';
 
 import {
   ArrowLeft,
@@ -100,10 +101,15 @@ import {
 } from './service-type';
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
 import { useSeaExportCopy } from './use-sea-export-copy';
+import { useYardRealQuery } from './use-yard-real-query';
 import { useYundangOceanSubscribe } from './use-yundang-ocean-subscribe';
 
 const perm = createAbpPermission('Admin.SeaExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
+const { hasAccessByCodes } = useAccess();
+const hasYardRealQueryAccess = computed(() =>
+  hasAccessByCodes([externalApiUseCode]),
+);
 
 const route = useRoute();
 const router = useRouter();
@@ -2963,6 +2969,38 @@ const { copying: copyingSeaExport, copyFrom: copySeaExportFromCurrent } =
 const { SubscribeModal, ResultModal, openSubscribe, onSubscribed } =
   useYundangOceanSubscribe();
 
+const { loading: yardRealQueryLoading, runQuery: runYardRealQuery } =
+  useYardRealQuery({
+    editId,
+    isFormDirty,
+    onSave: handleSubmit,
+    onReload: async () => {
+      if (!editId.value) {
+        return;
+      }
+      await loadEditData();
+      return getSeaExportDetail(editId.value);
+    },
+    getQueryContext: async () => {
+      const values = await collectCurrentFormValues();
+      return {
+        mblNum: String(values.mblNum ?? tabMblNum.value ?? '').trim(),
+        yardId: values.yardId,
+      };
+    },
+  });
+
+const yardRealQueryDisabled = computed(() => !isEdit.value || !editId.value);
+const yardRealQueryDisabledTip = computed(() =>
+  yardRealQueryDisabled.value
+    ? $t('seaExport.yardRealQuery.saveOrderFirst')
+    : '',
+);
+
+const handleYardRealQuery = async () => {
+  await runYardRealQuery();
+};
+
 const handleYundangSubscribe = async () => {
   if (!isEdit.value || !editId.value) {
     return;
@@ -3864,7 +3902,14 @@ defineExpose({
                   </div>
                 </div>
                 <div class="cargo-ctn-section">
-                  <OrderCtnTable v-model="orderCtns" />
+                  <OrderCtnTable
+                    v-model="orderCtns"
+                    :yard-real-query-visible="hasYardRealQueryAccess"
+                    :yard-real-query-disabled="yardRealQueryDisabled"
+                    :yard-real-query-disabled-tip="yardRealQueryDisabledTip"
+                    :yard-real-query-loading="yardRealQueryLoading"
+                    @yard-real-query="handleYardRealQuery"
+                  />
                 </div>
               </Card>
             </section>
