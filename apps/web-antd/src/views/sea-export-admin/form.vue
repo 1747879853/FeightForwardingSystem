@@ -100,8 +100,10 @@ import {
 } from './service-type';
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
 import { useSeaExportCopy } from './use-sea-export-copy';
+import { useYundangOceanSubscribe } from './use-yundang-ocean-subscribe';
 
 const perm = createAbpPermission('Admin.SeaExport');
+const externalApiUseCode = 'Admin.ExternalApi.Use';
 
 const route = useRoute();
 const router = useRouter();
@@ -2958,6 +2960,27 @@ const { copying: copyingSeaExport, copyFrom: copySeaExportFromCurrent } =
     checkDirty: isFormDirty,
   });
 
+const { SubscribeModal, ResultModal, openSubscribe, onSubscribed } =
+  useYundangOceanSubscribe();
+
+const handleYundangSubscribe = async () => {
+  if (!isEdit.value || !editId.value) {
+    return;
+  }
+  const basicValues = await basicInfoFormApi.getValues();
+  openSubscribe(
+    [
+      {
+        id: editId.value,
+        commissionNum: entrustReadonlyInfo.value.commissionNum,
+        mblNum: tabMblNum.value,
+        bookingNum: String(basicValues.bookingNum ?? ''),
+      },
+    ],
+    { fromEditor: true },
+  );
+};
+
 const handleCopySeaExport = async () => {
   if (!isEdit.value || !editId.value) {
     return;
@@ -3527,6 +3550,21 @@ defineExpose({
                       />
                       <span class="align-middle">打印</span>
                     </Button>
+                    <Button
+                      v-if="isEdit"
+                      v-access:code="externalApiUseCode"
+                      size="small"
+                      class="flex items-center justify-center"
+                      @click="handleYundangSubscribe"
+                    >
+                      <IconifyIcon
+                        icon="mdi:radar"
+                        class="mr-1 inline-block size-3.5 align-middle"
+                      />
+                      <span class="align-middle">{{
+                        $t('seaExport.yundang.subscribe')
+                      }}</span>
+                    </Button>
                     <Button size="small" @click="handleCancel">
                       {{ $t('common.cancel') }}
                     </Button>
@@ -4048,6 +4086,8 @@ defineExpose({
         </div>
       </div>
     </Modal>
+    <SubscribeModal @subscribed="onSubscribed" />
+    <ResultModal />
   </component>
 </template>
 

@@ -839,5 +839,47 @@
     "hide": "隐藏",
     "tips": "提示",
     "saveSuccess": "保存成功"
+  },
+  "yundang": {
+    "subscribe": "云当订阅",
+    "subscribeTitle": "云当海运运单订阅",
+    "confirmSubscribe": "确认订阅",
+    "selectedCount": "已选择 {0} 票海运出口",
+    "savedDataHint": "将按系统中已保存的数据发起订阅（不含当前未保存的修改）",
+    "batchHint": "已选超过 {0} 票，后端将自动分批提交",
+    "pleaseSelectRecords": "请先勾选要订阅的海运出口",
+    "referenceType": "单号类型",
+    "referenceTypeBl": "提单号",
+    "referenceTypeBk": "订舱号",
+    "referenceTypeCn": "箱号",
+    "noticeEmail": "通知邮箱",
+    "noticeEmailPlaceholder": "张三<123456@zs.com>;李四<654321@ls.com>（可选）",
+    "advancedOptions": "高级选项",
+    "sceneLabel": "订阅场景",
+    "requiresActivation": "需云当开通",
+    "scene": {
+      "normal": "正常订阅",
+      "specifiedContainer": "一票多柜（指定单箱）",
+      "sino": "中外运 SINO 船东",
+      "history": "历史箱号订阅",
+      "autoCarrier": "船东自动识别",
+      "comprehensive": "综合（船东+码头）"
+    },
+    "result": {
+      "title": "云当订阅结果",
+      "summary": "共 {0} 条，成功 {1} 条，失败 {2} 条",
+      "close": "知道了",
+      "orderLabel": "委托/单号",
+      "referenceNo": "订阅单号",
+      "ctnrNo": "箱号",
+      "status": "状态",
+      "resultType": "结果",
+      "errorMessage": "失败原因",
+      "success": "成功",
+      "failed": "失败",
+      "toastAllSuccess": "订阅完成：成功 {0}/{1} 条",
+      "toastAllFailed": "订阅失败：{0}/{1} 条均未成功",
+      "toastPartial": "订阅完成：成功 {0} 条，失败 {1} 条（共 {2} 条）"
+    }
   }
 }

@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-07 海运出口云当运单批量订阅前端对接](./changelogs/change-log-2026-07-07-sea-export-yundang-subscribe.md)
 - [2026-07-07 海运出口编辑页附件 Tab 对接](./changelogs/change-log-2026-07-07-sea-export-attachments-tab.md)
 - [2026-07-07 海运出口复制功能前端对接](./changelogs/change-log-2026-07-07-sea-export-copy.md)
 - [2026-07-07 海运出口应收应付费用打印](./changelogs/change-log-2026-07-07-sea-export-order-fee-print.md)

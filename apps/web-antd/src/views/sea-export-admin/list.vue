@@ -29,9 +29,16 @@ import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
 import { useSeaExportCopy } from './use-sea-export-copy';
+import {
+  buildSeaExportSubscribeRow,
+  useYundangOceanSubscribe,
+} from './use-yundang-ocean-subscribe';
 
 const perm = createAbpPermission('Admin.SeaExport');
+const externalApiUseCode = 'Admin.ExternalApi.Use';
 const { copying, copyFrom } = useSeaExportCopy();
+const { SubscribeModal, ResultModal, openSubscribe, onSubscribed } =
+  useYundangOceanSubscribe();
 
 const router = useRouter();
 const tableConfigStore = useTableConfigStore();
@@ -164,10 +171,9 @@ const handleRowDblclick = ({
 }: {
   row: SeaExportAdminApi.SeaExportDto;
 }) => {
-  // 设置当前行为选中状态，显示选中色
   const grid = gridApi.grid as any;
-  if (grid && grid.setRadioRow) {
-    grid.setRadioRow(row);
+  if (grid?.setCheckboxRow) {
+    grid.setCheckboxRow(row, true);
   }
   router.push(`/sea-exports/${row.id}/edit`);
 };
@@ -191,8 +197,9 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
     columns: useColumns(),
     height: 'auto',
     keepSource: true,
-    radioConfig: {
+    checkboxConfig: {
       highlight: true,
+      reserve: true,
       trigger: 'row',
     },
     rowConfig: {
@@ -221,9 +228,18 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
   },
 });
 
-const getSelectedRow = (): SeaExportAdminApi.SeaExportDto | undefined => {
+const getCheckboxRecords = (): SeaExportAdminApi.SeaExportDto[] => {
   const grid = gridApi.grid as any;
-  return grid?.getRadioRecord?.() ?? undefined;
+  return grid?.getCheckboxRecords?.() ?? [];
+};
+
+const requireExactlyOneRow = (): SeaExportAdminApi.SeaExportDto | undefined => {
+  const rows = getCheckboxRecords();
+  if (rows.length !== 1) {
+    message.warning($t('seaExport.export.pleaseSelectOne'));
+    return undefined;
+  }
+  return rows[0];
 };
 
 const handleCreate = () => {
@@ -231,18 +247,16 @@ const handleCreate = () => {
 };
 
 const handleEdit = () => {
-  const row = getSelectedRow();
+  const row = requireExactlyOneRow();
   if (!row) {
-    message.warning($t('seaExport.export.pleaseSelectOne'));
     return;
   }
   router.push(`/sea-exports/${row.id}/edit`);
 };
 
 const handleCopy = () => {
-  const row = getSelectedRow();
+  const row = requireExactlyOneRow();
   if (!row) {
-    message.warning($t('seaExport.export.pleaseSelectOne'));
     return;
   }
   void copyFrom({
@@ -255,9 +269,8 @@ const handleCopy = () => {
 };
 
 const handleDelete = () => {
-  const row = getSelectedRow();
+  const row = requireExactlyOneRow();
   if (!row) {
-    message.warning($t('seaExport.export.pleaseSelectOne'));
     return;
   }
 
@@ -294,6 +307,15 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
+const handleYundangSubscribe = () => {
+  const rows = getCheckboxRecords();
+  if (rows.length === 0) {
+    message.warning($t('seaExport.yundang.pleaseSelectRecords'));
+    return;
+  }
+  openSubscribe(rows.map((row) => buildSeaExportSubscribeRow(row)));
+};
+
 const onGroupFieldChange = (value: number | undefined) => {
   if (value === undefined) {
     grouping.disable();
@@ -321,6 +343,13 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         />
       </template>
       <template #toolbar-tools>
+        <Button
+          v-access:code="externalApiUseCode"
+          class="mr-2"
+          @click="handleYundangSubscribe"
+        >
+          {{ $t('seaExport.yundang.subscribe') }}
+        </Button>
         <Button class="mr-2" danger @click="handleDelete">
           {{ $t('common.delete') }}
         </Button>
@@ -363,6 +392,8 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         </span>
       </template>
     </Grid>
+    <SubscribeModal @subscribed="onSubscribed" />
+    <ResultModal />
   </Page>
 </template>
 

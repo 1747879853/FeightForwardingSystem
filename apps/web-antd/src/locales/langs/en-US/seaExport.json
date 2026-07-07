@@ -548,5 +548,47 @@
     "tips": "Tips",
     "saveSuccess": "Save Successful"
   },
+  "yundang": {
+    "subscribe": "Yundang Subscribe",
+    "subscribeTitle": "Yundang Ocean Bill Subscription",
+    "confirmSubscribe": "Subscribe",
+    "selectedCount": "{0} sea export(s) selected",
+    "savedDataHint": "Subscription uses saved data in the system (unsaved edits are excluded).",
+    "batchHint": "More than {0} records selected; the server will submit in batches.",
+    "pleaseSelectRecords": "Please select sea export records to subscribe.",
+    "referenceType": "Reference Type",
+    "referenceTypeBl": "B/L No.",
+    "referenceTypeBk": "Booking No.",
+    "referenceTypeCn": "Container No.",
+    "noticeEmail": "Notice Email",
+    "noticeEmailPlaceholder": "Name<email@example.com>;... (optional)",
+    "advancedOptions": "Advanced Options",
+    "sceneLabel": "Subscribe Scene",
+    "requiresActivation": "Requires Yundang activation",
+    "scene": {
+      "normal": "Normal",
+      "specifiedContainer": "Specified Container",
+      "sino": "SINO Carrier",
+      "history": "History Container",
+      "autoCarrier": "Auto Carrier",
+      "comprehensive": "Comprehensive (Carrier + Terminal)"
+    },
+    "result": {
+      "title": "Yundang Subscription Result",
+      "summary": "Total {0}, success {1}, failed {2}",
+      "close": "Close",
+      "orderLabel": "Order / No.",
+      "referenceNo": "Reference No.",
+      "ctnrNo": "Container No.",
+      "status": "Status",
+      "resultType": "Result",
+      "errorMessage": "Error",
+      "success": "Success",
+      "failed": "Failed",
+      "toastAllSuccess": "Subscription done: {0}/{1} succeeded",
+      "toastAllFailed": "Subscription failed: {0}/{1} failed",
+      "toastPartial": "Subscription done: {0} succeeded, {1} failed (total {2})"
+    }
+  },
   "title": "Sea Export"
 }

@@ -390,11 +390,16 @@ export function useGridFormSchema(): VbenFormSchema[] {
 }
 
 /**
- * 列表列配置（无操作列，第一列为 radio 单选列）
+ * 列表列配置（无操作列，第一列为 checkbox 多选列）
  */
 export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto>['columns'] {
   return [
-    { type: 'radio', width: 48, fixed: 'left' },
+    {
+      type: 'checkbox',
+      width: 48,
+      fixed: 'left',
+      align: 'center',
+    },
     {
       field: 'transportOrder.commissionNum',
       title: $t('seaExport.export.commissionNum'),
