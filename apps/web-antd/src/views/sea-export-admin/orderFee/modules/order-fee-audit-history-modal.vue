@@ -142,6 +142,13 @@ const parseAndCompareFields = (
       'unSettledAmount', // 未结算金额
       'unInvoicedAmount', // 未开票金额
 
+      'amount',
+      'unitPrice',
+      'noTaxAmount',
+      'noTaxUnitPrice',
+      'IsConfidential', // 是否机密
+      'quantity',
+
       // 其他字段（包括各种大小写变体）
       'localCurrencyCode', // 本位币代码
       'Remark',
@@ -185,17 +192,17 @@ const parseAndCompareFields = (
       currencyId: '币别ID',
       currencyName: '币别名称',
       exchangeRate: '汇率',
-      unitPrice: '含税单价',
-      amount: '金额',
+      UnitPrice: '含税单价',
+      Amount: '金额',
       unit: '单位',
-      quantity: '数量',
-      taxRate: '税率',
-      noTaxUnitPrice: '不含税单价',
-      noTaxAmount: '不含税金额',
-      rqstPaymentAmount: '付费申请金额',
-      invoicedAmount: '已开票金额',
-      orderInvoiceAmount: '发票申请金额',
-      settledAmount: '已结算金额',
+      Quantity: '数量',
+      TaxRate: '税率',
+      NoTaxUnitPrice: '不含税单价',
+      NoTaxAmount: '不含税金额',
+      RqstPaymentAmount: '付费申请金额',
+      InvoicedAmount: '已开票金额',
+      OrderInvoiceAmount: '发票申请金额',
+      SettledAmount: '已结算金额',
       unRqstPaymentAmount: '未申请金额',
       unSettledAmount: '未结算金额',
       unInvoicedAmount: '未开票金额',
