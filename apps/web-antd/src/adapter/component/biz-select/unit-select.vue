@@ -202,9 +202,32 @@ watch(
 watch(
   () => props.unitOptions,
   (newOptions, oldOptions) => {
-    // 重置状态，清空缓存，触发 ApiComponent 重新请求
-    reset();
-    console.log('✅ [UnitSelect] 已调用 reset()，触发重新加载');
+    // 深度比较数组内容，避免不必要的重置
+    if (oldOptions !== undefined && newOptions !== undefined) {
+      // 如果长度不同，肯定变化了
+      if (newOptions.length !== oldOptions.length) {
+        reset();
+        console.log('✅ [UnitSelect] 已调用 reset()，触发重新加载（长度变化）');
+        return;
+      }
+
+      // 如果长度相同，逐个比较内容
+      const isSame = newOptions.every((newOpt, index) => {
+        const oldOpt = oldOptions[index];
+        return newOpt.label === oldOpt?.label && newOpt.value === oldOpt?.value;
+      });
+
+      if (!isSame) {
+        reset();
+        console.log('✅ [UnitSelect] 已调用 reset()，触发重新加载（内容变化）');
+      } else {
+        console.log('⏭️ [UnitSelect] unitOptions 未变化，跳过 reset()');
+      }
+    } else {
+      // 首次加载或从 undefined 变为有值
+      reset();
+      console.log('✅ [UnitSelect] 已调用 reset()，触发重新加载（初始化）');
+    }
   },
   { deep: true },
 );

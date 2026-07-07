@@ -213,8 +213,8 @@ const queryTableData = async () => {
   //  console.log('res', res.items);
   dataSource.value = normalizeOrderFeeWithRowKey(res.items);
 };
-const tmpAdd = ref(false);
-const tmpDel = ref(false);
+const tmpAdd = ref(false); // ✅ 已废弃，保留以避免其他潜在引用
+const tmpDel = ref(false); // ✅ 已废弃，保留以避免其他潜在引用
 
 // 加载订单箱型列表和订单基础数据
 const loadOrderCtnList = async () => {
@@ -379,17 +379,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
     proxyConfig: {
       ajax: {
         query: async () => {
-          //      console.log('addRowData', tmpAdd.value);
-          if (tmpAdd.value) {
-            tmpAdd.value = false;
-            console.log('addRowDataing');
-            addRowData();
-            return dataSource.value;
-          }
-          if (tmpDel.value) {
-            tmpDel.value = false;
-            return dataSource.value;
-          }
+          // ✅ 简化查询逻辑，直接返回数据源
           await queryTableData();
           return dataSource.value;
         },
@@ -434,8 +424,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
   },
 });
 const addRowData = () => {
-  const list = [...(dataSource.value ?? [])];
-  list.push({
+  const newRow = {
     _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
     id: '',
     transportOrderId: editId.value,
@@ -449,16 +438,27 @@ const addRowData = () => {
     canInvoice: true,
     isConfidential: false,
     dataEntryMethod: 0,
-  } as any);
+  } as any;
+
+  // ✅ 使用 VxeTable 的 insertAt 方法在末尾插入新行
+  gridApi.grid?.insertAt(newRow, -1);
+
+  // 同时更新 dataSource 以保持数据一致性
+  const list = [...(dataSource.value ?? [])];
+  list.push(newRow);
   dataSource.value = list;
+
+  console.log('✅ [addRowData] 已添加新行，当前行数:', dataSource.value.length);
 };
+
 const addRow = () => {
-  tmpAdd.value = true;
-  gridApi.query();
+  // ✅ 直接调用 addRowData，避免触发完整的表格重新渲染
+  addRowData();
 };
+
 const delRow = () => {
-  tmpDel.value = true;
-  gridApi.query();
+  // ✅ 删除操作也直接处理
+  removeSelectedRows();
 };
 
 const showDeleteWithRemark = () => {
@@ -868,28 +868,52 @@ const saveRow = () => {
 const removeSelectedRows = () => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
-  const list = (dataSource.value ?? []).filter(
-    (row) => !keysSet.has((row as any)._rowKey),
+
+  // 获取需要删除的行
+  const rowsToDelete = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
   );
-  const needDelIds = (dataSource.value ?? [])
-    .filter((row) => keysSet.has((row as any)._rowKey))
+
+  const needDelIds = rowsToDelete
     .filter((row) => (row as any).id !== '')
     .map((row) => (row as any).id);
-  //console.log('needDelIds', needDelIds);
 
   selectedRowKeys.value = [];
+
   if (props.mode !== 'changeOrder' && needDelIds.length > 0) {
     batchDeleteOrderFee(needDelIds).then(() => {
+      // ✅ 使用 VxeTable 的 removeCheckboxRow 方法删除选中的行
+      gridApi.grid?.removeCheckboxRow();
+
+      // 同时更新 dataSource
+      const list = (dataSource.value ?? []).filter(
+        (row) => !keysSet.has((row as any)._rowKey),
+      );
       dataSource.value = list;
-      delRow();
+
+      console.log(
+        '✅ [removeSelectedRows] 已删除行（API），当前行数:',
+        dataSource.value.length,
+      );
       message.success({
         content: $t('ui.actionMessage.operationSuccess'),
         key: 'action_process_msg',
       });
     });
   } else {
+    // ✅ 使用 VxeTable 的 removeCheckboxRow 方法删除选中的行
+    gridApi.grid?.removeCheckboxRow();
+
+    // 同时更新 dataSource
+    const list = (dataSource.value ?? []).filter(
+      (row) => !keysSet.has((row as any)._rowKey),
+    );
     dataSource.value = list;
-    delRow();
+
+    console.log(
+      '✅ [removeSelectedRows] 已删除行（本地），当前行数:',
+      dataSource.value.length,
+    );
   }
 };
 
