@@ -583,7 +583,7 @@ const orderFeeWithdraw = () => {
 // 收付互生费用（应收生成应付 / 应付生成应收）
 const generateOppositeFees = async () => {
   if (!selectedRowKeys.value.length) {
-    message.warning($t('common.selectDataFirst'));
+    message.warning($t('请选择一条数据'));
     return;
   }
 
@@ -593,23 +593,7 @@ const generateOppositeFees = async () => {
   );
 
   if (selectedList.length === 0) {
-    message.warning($t('common.selectDataFirst'));
-    return;
-  }
-
-  // 校验：只能选择录入状态或驳回状态的费用
-  const invalidRows = selectedList.filter((row) => {
-    return (
-      row.feeStatus !== feeConstants.getFeeStatusValue.Entering &&
-      row.feeStatus !== feeConstants.getFeeStatusValue.Rejected
-    );
-  });
-
-  if (invalidRows.length > 0) {
-    message.error({
-      content: '只能选择"录入"或"驳回"状态的费用进行收付互生',
-      key: 'action_process_msg',
-    });
+    message.warning($t('请选择一条数据'));
     return;
   }
 
@@ -722,12 +706,25 @@ const openModifyModal = () => {
 
   // 打开模态框，传递选中的费用数据、合计数据和订单基础数据
   const selectedFee = list[0];
-  console.log('selectedFee', selectedFee);
+  console.log('📊 [父组件] selectedFee:', selectedFee);
+  console.log(
+    '📊 [父组件] orderBaseData.value 是否存在:',
+    !!orderBaseData.value,
+  );
+  console.log('📊 [父组件] 准备传递给子组件的数据:', {
+    feeData: selectedFee,
+    hasOrderBaseData: !!orderBaseData.value,
+    orderBaseDataKeys: orderBaseData.value
+      ? Object.keys(orderBaseData.value)
+      : [],
+  });
 
   modifyModalRef.value?.modalApi.setData({
     feeData: selectedFee,
     orderBaseData: orderBaseData.value,
   });
+
+  console.log('✅ [父组件] 已调用 setData，准备打开模态框');
   modifyModalRef.value?.modalApi.open();
 };
 

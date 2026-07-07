@@ -15,6 +15,7 @@ import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
 import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
 import { orderCtnListRef } from '../data';
+
 // 定义Props
 const props = defineProps<{
   recAmountMap: Record<string, any>;
@@ -31,6 +32,80 @@ const originalFeeData = ref<OrderFeeAdminApi.OrderFeeDto | null>(null);
 
 // 订单基础数据（用于行业类别切换时自动填充结算对象）
 const orderBaseData = ref<SeaExportAdminApi.SeaExportDto | null>(null);
+
+// 订单详情加载状态标记（防止重复加载）
+const isLoadingOrderDetail = ref(false);
+
+// 统一的订单详情加载函数（带缓存和防重复加载）
+const loadOrderDetailIfNeeded = async (transportOrderId: string) => {
+  console.log(
+    '🔍 [loadOrderDetailIfNeeded] 被调用, transportOrderId:',
+    transportOrderId,
+  );
+  console.log(
+    '🔍 [loadOrderDetailIfNeeded] 当前 orderBaseData.value:',
+    orderBaseData.value,
+  );
+  console.log(
+    '🔍 [loadOrderDetailIfNeeded] 当前 isLoadingOrderDetail:',
+    isLoadingOrderDetail.value,
+  );
+
+  // 如果已经有订单数据，直接返回
+  if (orderBaseData.value) {
+    console.log('✅ [loadOrderDetailIfNeeded] 使用缓存的订单数据');
+    return orderBaseData.value;
+  }
+
+  // 防止并发加载
+  if (isLoadingOrderDetail.value) {
+    console.log('⏳ [loadOrderDetailIfNeeded] 正在加载中，等待...');
+    // 等待加载完成
+    await new Promise<void>((resolve) => {
+      const checkInterval = setInterval(() => {
+        if (!isLoadingOrderDetail.value) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 50);
+    });
+    console.log('✅ [loadOrderDetailIfNeeded] 等待结束，返回缓存数据');
+    return orderBaseData.value;
+  }
+
+  if (!transportOrderId) {
+    console.warn('⚠️ [loadOrderDetailIfNeeded] 缺少运输订单ID');
+    return null;
+  }
+
+  try {
+    isLoadingOrderDetail.value = true;
+    console.log(
+      '🔄 [loadOrderDetailIfNeeded] 开始加载订单详情:',
+      transportOrderId,
+    );
+
+    const orderDetail = await getSeaExportDetail(transportOrderId);
+    console.log('📥 [loadOrderDetailIfNeeded] API返回数据:', !!orderDetail);
+
+    if (orderDetail) {
+      orderBaseData.value = orderDetail;
+      console.log('✅ [loadOrderDetailIfNeeded] 订单详情加载成功并已缓存');
+    } else {
+      console.warn('⚠️ [loadOrderDetailIfNeeded] 订单详情为空');
+    }
+
+    return orderDetail;
+  } catch (error) {
+    console.error('❌ [loadOrderDetailIfNeeded] 加载订单详情失败:', error);
+    return null;
+  } finally {
+    isLoadingOrderDetail.value = false;
+    console.log(
+      '🏁 [loadOrderDetailIfNeeded] 加载完成，isLoadingOrderDetail设为false',
+    );
+  }
+};
 
 // 表单API
 const [OrderFeeForm, orderFeeFormApi] = useVbenForm({
@@ -65,6 +140,14 @@ const [Modal, modalApi] = useVbenModal({
     if (isOpen) {
       const data = modalApi.getData<any>();
       console.log('📊 [编辑模态框] 打开，接收到的数据:', data);
+      console.log(
+        '📊 [编辑模态框] data.orderBaseData 是否存在:',
+        !!data?.orderBaseData,
+      );
+      console.log(
+        '📊 [编辑模态框] data.feeData.transportOrderId:',
+        data?.feeData?.transportOrderId,
+      );
 
       if (data) {
         // 兼容旧的数据格式（直接传递费用数据）和新的数据格式（包含orderBaseData）
@@ -73,7 +156,23 @@ const [Modal, modalApi] = useVbenModal({
 
         currentFeeData.value = { ...feeData };
         originalFeeData.value = { ...feeData };
-        orderBaseData.value = data.orderBaseData || null;
+
+        // 如果父组件已经传入了orderBaseData，直接使用；否则后续按需加载
+        if (data.orderBaseData) {
+          orderBaseData.value = data.orderBaseData;
+          console.log('✅ [编辑模态框] 使用父组件传入的订单数据');
+          console.log(
+            '✅ [编辑模态框] orderBaseData.value 已设置:',
+            !!orderBaseData.value,
+          );
+        } else {
+          orderBaseData.value = null;
+          console.log('⚠️ [编辑模态框] 未传入订单数据，将按需加载');
+          console.log(
+            '⚠️ [编辑模态框] 当前 orderBaseData.value:',
+            orderBaseData.value,
+          );
+        }
 
         console.log(
           '📊 [编辑模态框] 设置的originalFeeData:',
@@ -132,6 +231,26 @@ const [Modal, modalApi] = useVbenModal({
             Object.keys(formValues || {}),
           );
 
+          // 预加载订单详情（只加载一次，后续所有监听器共享）
+          const transportOrderId =
+            feeData?.transportOrderId || currentFeeData.value?.transportOrderId;
+          console.log(
+            '🔄 [编辑模态框] 准备预加载订单详情，transportOrderId:',
+            transportOrderId,
+          );
+          console.log(
+            '🔄 [编辑模态框] 当前 orderBaseData.value 状态:',
+            !!orderBaseData.value,
+          );
+
+          if (transportOrderId) {
+            await loadOrderDetailIfNeeded(transportOrderId);
+            console.log(
+              '✅ [编辑模态框] 预加载完成，orderBaseData.value 状态:',
+              !!orderBaseData.value,
+            );
+          }
+
           // 为industryCategory字段添加onChange事件监听
           setupIndustryCategoryChangeListener();
 
@@ -149,6 +268,7 @@ const [Modal, modalApi] = useVbenModal({
       currentFeeData.value = null;
       originalFeeData.value = null;
       orderBaseData.value = null;
+      isLoadingOrderDetail.value = false;
     }
   },
 });
@@ -179,14 +299,8 @@ const setupIndustryCategoryChangeListener = async () => {
       return;
     }
 
-    // 如果还没有加载订单基础数据，则加载
-    if (!orderBaseData.value) {
-      const orderDetail = await getSeaExportDetail(transportOrderId);
-      if (orderDetail) {
-        orderBaseData.value = orderDetail;
-        console.log('✅ 已加载订单基础数据:', orderDetail);
-      }
-    }
+    // 使用统一的加载函数（会自动使用缓存）
+    await loadOrderDetailIfNeeded(transportOrderId);
 
     // 更新industryCategory字段的schema，添加onChange事件
     orderFeeFormApi.updateSchema([
@@ -311,14 +425,8 @@ const setupUnitChangeListener = async () => {
       return;
     }
 
-    // 如果还没有加载订单基础数据，则加载
-    if (!orderBaseData.value) {
-      const orderDetail = await getSeaExportDetail(transportOrderId);
-      if (orderDetail) {
-        orderBaseData.value = orderDetail;
-        console.log('✅ 已加载订单基础数据（用于单位联动）:', orderDetail);
-      }
-    }
+    // 使用统一的加载函数（会自动使用缓存）
+    await loadOrderDetailIfNeeded(transportOrderId);
 
     // 更新unit字段的schema，添加onChange事件
     orderFeeFormApi.updateSchema([
@@ -606,14 +714,8 @@ const setupFeeCodeChangeListener = async () => {
       return;
     }
 
-    // 如果还没有加载订单基础数据，则加载
-    if (!orderBaseData.value) {
-      const orderDetail = await getSeaExportDetail(transportOrderId);
-      if (orderDetail) {
-        orderBaseData.value = orderDetail;
-        console.log('✅ 已加载订单基础数据（用于费用代码联动）:', orderDetail);
-      }
-    }
+    // 使用统一的加载函数（会自动使用缓存）
+    await loadOrderDetailIfNeeded(transportOrderId);
 
     // 更新feeCodeId字段的schema，添加onChange事件
     orderFeeFormApi.updateSchema([
@@ -1161,10 +1263,10 @@ const updatedProfit = computed(() => {
 
   // 根据收付类型计算新利润
   if (originalFeeData.value.paySide === 0) {
-    // 应收：加上差额
+    // 应收费用：增加金额会提升利润，减少金额会降低利润
     return originalProfit.value + amountDiff;
   } else {
-    // 应付：减去差额
+    // 应付费用：增加金额会降低利润，减少金额会提升利润
     return originalProfit.value - amountDiff;
   }
 });

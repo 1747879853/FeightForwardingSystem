@@ -75,17 +75,6 @@ const fetchPageAdapter = async (params: {
   PageIndex: number;
   PageSize: number;
 }) => {
-  console.log('🔍 [UnitSelect.fetchPageAdapter] 被调用！');
-  console.log('🔍 [UnitSelect.fetchPageAdapter] params:', params);
-  console.log(
-    '🔍 [UnitSelect.fetchPageAdapter] props.unitOptions:',
-    props.unitOptions,
-  );
-  console.log(
-    '🔍 [UnitSelect.fetchPageAdapter] props.unitOptions !== undefined:',
-    props.unitOptions !== undefined,
-  );
-
   // 将固定选项转换为与API返回数据相同的格式
   const defaultOptionsAsItems = DEFAULT_UNIT_OPTIONS.map((opt) => ({
     id: opt.value,
@@ -95,22 +84,11 @@ const fetchPageAdapter = async (params: {
 
   // 如果提供了自定义单位选项（即使是空数组），则使用：固定选项 + 自定义箱型
   if (props.unitOptions !== undefined) {
-    console.log('✅ [UnitSelect.fetchPageAdapter] 使用自定义 unitOptions');
-
     const customOptionsAsItems = props.unitOptions.map((opt) => ({
       id: opt.value,
       ctnName: opt.label,
       status: 0, // 启用状态
     })) as unknown as CtnCodeAdminApi.CtnCodeDto[];
-
-    console.log(
-      '✅ [UnitSelect.fetchPageAdapter] customOptionsAsItems:',
-      customOptionsAsItems,
-    );
-    console.log(
-      '✅ [UnitSelect.fetchPageAdapter] customOptionsAsItems.length:',
-      customOptionsAsItems.length,
-    );
 
     // ✅ 固定选项 + 自定义箱型列表
     return {
