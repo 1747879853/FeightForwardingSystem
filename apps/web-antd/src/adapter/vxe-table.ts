@@ -1213,6 +1213,30 @@ setupVbenVxeTable({
                     ).toFixed(2);
                   }
                 }
+
+                // 含税金额 变化 同时更新 含税单价、不含税单价、不含税金额
+                if (column.field === 'amount' && newVal !== '') {
+                  const amountValue = Number(newVal);
+                  const quantity = row['quantity'];
+                  const taxRate = row['taxRate'];
+
+                  if (quantity && quantity !== 0) {
+                    // 1. 计算含税单价 = 含税金额 / 数量
+                    const unitPrice = amountValue / quantity;
+                    row['unitPrice'] = Number(unitPrice.toFixed(4));
+
+                    // 2. 如果存在税率，计算不含税单价和不含税金额
+                    if (taxRate !== undefined && taxRate !== null) {
+                      // 不含税单价 = 含税单价 / (1 + 税率/100)
+                      const noTaxUnitPrice = unitPrice / (1 + taxRate / 100);
+                      row['noTaxUnitPrice'] = Number(noTaxUnitPrice.toFixed(4));
+
+                      // 不含税金额 = 不含税单价 × 数量
+                      const noTaxAmount = noTaxUnitPrice * quantity;
+                      row['noTaxAmount'] = Number(noTaxAmount.toFixed(2));
+                    }
+                  }
+                }
               })
               .finally(() => {
                 row[loadingKey] = false;
