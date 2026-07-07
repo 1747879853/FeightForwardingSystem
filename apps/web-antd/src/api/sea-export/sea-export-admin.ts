@@ -492,6 +492,14 @@ export namespace SeaExportAdminApi {
     /** 分组字段，1装运方式~9签单方式 */
     GroupField: SeaExportGroupField;
   }
+
+  /** 海运出口复制入参 */
+  export interface SeaExportCopyDto {
+    /** 源海运出口 id（与 DeleteAsync 一致） */
+    id: string;
+    /** 是否复制费用（仅 ChangeOrderId 为空的费用） */
+    copyOrderFees: boolean;
+  }
 }
 
 const API_PREFIX = '/services/app/SeaExportAdmin';
@@ -542,4 +550,8 @@ export const deleteSeaExport = (id: number) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data: { id },
   });
+};
+
+export const copySeaExport = (data: SeaExportAdminApi.SeaExportCopyDto) => {
+  return requestClient.post<string>(`${API_PREFIX}/CopyAsync`, data);
 };

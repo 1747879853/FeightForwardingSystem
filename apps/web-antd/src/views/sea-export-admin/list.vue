@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
-import { Plus } from '@vben/icons';
+import { Copy, Plus } from '@vben/icons';
 
 import { Button, message, Modal } from 'ant-design-vue';
 
@@ -24,9 +24,14 @@ import {
 import { $t } from '#/locales';
 import { useTableConfigStore } from '#/store/table-config';
 import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
+import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import { useColumns, useGridFormSchema } from './data';
+import { useSeaExportCopy } from './use-sea-export-copy';
+
+const perm = createAbpPermission('Admin.SeaExport');
+const { copying, copyFrom } = useSeaExportCopy();
 
 const router = useRouter();
 const tableConfigStore = useTableConfigStore();
@@ -234,6 +239,21 @@ const handleEdit = () => {
   router.push(`/sea-exports/${row.id}/edit`);
 };
 
+const handleCopy = () => {
+  const row = getSelectedRow();
+  if (!row) {
+    message.warning($t('seaExport.export.pleaseSelectOne'));
+    return;
+  }
+  void copyFrom({
+    id: row.id,
+    commissionNum: row.transportOrder?.commissionNum,
+    mblNum: row.transportOrder?.mblNum,
+    bookingNum: row.transportOrder?.bookingNum,
+    clientName: row.transportOrder?.clientName,
+  });
+};
+
 const handleDelete = () => {
   const row = getSelectedRow();
   if (!row) {
@@ -307,7 +327,21 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         <Button class="mr-2" @click="handleEdit">
           {{ $t('common.edit') }}
         </Button>
-        <Button class="mr-2" type="primary" @click="handleCreate">
+        <Button
+          v-access:code="perm.add"
+          class="mr-2"
+          :loading="copying"
+          @click="handleCopy"
+        >
+          <Copy class="size-5" />
+          {{ $t('seaExport.export.copy') }}
+        </Button>
+        <Button
+          v-access:code="perm.add"
+          class="mr-2"
+          type="primary"
+          @click="handleCreate"
+        >
           <Plus class="size-5" />
           {{ $t('ui.actionTitle.create', [$t('seaExport.export.name')]) }}
         </Button>

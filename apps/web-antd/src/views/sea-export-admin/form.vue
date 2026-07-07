@@ -16,6 +16,7 @@ import { Page } from '@vben/common-ui';
 
 import {
   ArrowLeft,
+  Copy,
   FileText,
   IconifyIcon,
   MapPin,
@@ -68,6 +69,7 @@ import { parseSeaExportUserAttribute } from '#/views/system/user/data';
 import { $t } from '#/locales';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import { buildAttachmentUrl } from '#/utils';
+import { createAbpPermission } from '#/utils/abp-permission';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import {
@@ -97,6 +99,9 @@ import {
   loadSeServiceTypeOptions,
 } from './service-type';
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
+import { useSeaExportCopy } from './use-sea-export-copy';
+
+const perm = createAbpPermission('Admin.SeaExport');
 
 const route = useRoute();
 const router = useRouter();
@@ -2948,6 +2953,25 @@ const isFormDirty = async () => {
   return JSON.stringify(buildDto(values)) !== formSnapshotJson.value;
 };
 
+const { copying: copyingSeaExport, copyFrom: copySeaExportFromCurrent } =
+  useSeaExportCopy({
+    checkDirty: isFormDirty,
+  });
+
+const handleCopySeaExport = async () => {
+  if (!isEdit.value || !editId.value) {
+    return;
+  }
+  const basicValues = await basicInfoFormApi.getValues();
+  void copySeaExportFromCurrent({
+    id: editId.value,
+    commissionNum: entrustReadonlyInfo.value.commissionNum,
+    mblNum: tabMblNum.value,
+    bookingNum: String(basicValues.bookingNum ?? ''),
+    clientName: String(basicValues.clientName ?? ''),
+  });
+};
+
 const confirmUnsavedPrint = () => {
   return new Promise<boolean>((resolve) => {
     let settled = false;
@@ -3466,6 +3490,19 @@ defineExpose({
                     </Spin>
                   </div>
                   <Space class="content-section__actions-right">
+                    <Button
+                      v-if="isEdit"
+                      v-access:code="perm.add"
+                      size="small"
+                      class="flex items-center justify-center"
+                      :loading="copyingSeaExport"
+                      @click="handleCopySeaExport"
+                    >
+                      <Copy class="mr-1 inline-block size-3.5 align-middle" />
+                      <span class="align-middle">{{
+                        $t('seaExport.export.copy')
+                      }}</span>
+                    </Button>
                     <Button
                       size="small"
                       class="flex items-center justify-center"

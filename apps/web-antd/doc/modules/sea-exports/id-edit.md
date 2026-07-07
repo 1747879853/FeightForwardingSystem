@@ -38,6 +38,7 @@ last_updated: 2026-07-07
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
 - **分单处理：** 分单页按 `seaExportId` 分页加载分单记录，支持新增、编辑、删除，维护分单相关方、提单号、货物、签单、运费/服务代码以及分单箱明细。
 - **打印：** 顶栏「打印」按钮调用全局 `usePrintFormat().openPrint`：先弹窗选择 `PrintJsonType=0`（海运出口详情）下的打印模板，确认后调 `PrintAsync` 生成 PDF 并触发下载。新增模式禁止打印；有未保存修改时二次确认后按当前表单内容打印，否则重新拉取 `DetailAsync` 原始对象序列化。
+- **复制：** 编辑页顶栏「复制」按钮（需 `Admin.SeaExport.Add`）；若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制）；调用 `CopyAsync` 成功后 `replace` 至新票编辑页。
 - **完成服务：** 编辑态服务流水线「完成服务」/「取消完成」成功后重新拉取详情，同步任务状态、勾选展示及只读摘要。「完成」仅 `seServiceTaskUsers` 处理人可操作；「取消完成」仅 `completionUserId` 对应完成人可操作；无权限时悬浮展示提示。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -48,6 +49,7 @@ last_updated: 2026-07-07
 | 基础信息标签 | 组件挂载 | 详情回填 | 调用 `DetailAsync`，把海出字段和运输单字段展开到多分区表单。 |
 | 基础信息编辑中 | 点击保存且校验通过 | 编辑成功 | 调用 `EditAsync`，成功提示后停留当前编辑上下文，并调用 `loadEditData` 重新拉取详情。 |
 | 基础信息编辑中 | 点击取消 | 返回列表 | 跳转 `/sea-exports`。 |
+| 基础信息编辑中 | 点击复制并确认 | 新票编辑页 | 若有未保存修改先警告；调 `CopyAsync` 后 `replace` 至 `/sea-exports/{newId}/edit`。 |
 | 任意工作台状态 | 切换到费用标签 | 费用列表加载 | `OrderFee` 以运输单 ID 查询费用明细，并可维护应收/应付。 |
 | 费用录入状态 | 提交审核 | 提交审核 | 费用状态由录入进入审核链路，审核结果在费用审核模块处理。 |
 | 费用提交审核 | 审核通过 | 审核通过 | 费用可进入后续开票、付款、对账、结算链路。 |
@@ -96,6 +98,7 @@ last_updated: 2026-07-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-07 | `Feature` | 编辑页顶栏新增「复制」：未保存时警告，确认弹窗可选 `copyOrderFees`；成功后跳转新票编辑页。 | 复用 `useSeaExportCopy` + `isFormDirty`；权限 `Admin.SeaExport.Add`。 |
 | 2026-07-07 | `Feature` | 应收应付 Tab 费用表支持勾选已保存行打印；应收 `PrintJsonType=1000`、应付 `1500`，JSON 为费用对象数组。 | `order-fee-table.vue` 复用全局 `usePrintFormat`；未保存行拦截；更改单 Tab 不展示打印。 |
 | 2026-07-06 | `Feature` | 基础信息 AI 识别对接 TextIn：支持 PDF/图片、名称→id 回填、Drawer 预览 citations 定位；空值/0/空 Guid 不回填。 | 新建/编辑共用 `form.vue`；新增 `text-in-admin.ts`、`ai-extract-preview-drawer.vue`、`ai-extract-utils.ts`；移除 `runVisionOcrPdf` 调用。 |
 | 2026-07-06 | `Feature` | 顶栏「打印」对接 `PrintFormatAdmin`：弹窗选模板后生成 PDF 下载；新增模式禁止打印；未保存修改二次确认后按当前表单打印，否则重新 DetailAsync。 | 全局封装 `components/print-format` + `app.vue` 挂载；业务模块传入 `printJsonType` 与 JSON 字符串。 |

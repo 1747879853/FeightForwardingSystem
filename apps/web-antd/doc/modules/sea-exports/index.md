@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-06-28
+last_updated: 2026-07-07
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,6 +26,7 @@ last_updated: 2026-06-28
 - **单选行维护：** 列表第一列为 radio 单选，不设置行内操作列；编辑和删除都依赖当前选中行，未选中时提示“请选择一条”。
 - **双击进入编辑：** 双击单元格会先设置当前行为选中态，再跳转 `/sea-exports/{id}/edit`。
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录。
+- **复制委托：** 选中一条后点击「复制」（需 `Admin.SeaExport.Add` 权限），确认弹窗可选「同时复制费用」；成功后跳转新票编辑页 `/sea-exports/{newId}/edit`。
 - **页面缓存：** 路由 `SeaExportList` 已开启 `keepAlive`；从新建/编辑工作台返回时 `onActivated` 自动刷新；当前页删除成功后立即刷新。
 - **船公司展示升级：** 列表中的船公司列改为“Logo + 名称”展示，视觉上与编辑页和费用侧边摘要保持一致。
 - **分组统计（Tab 筛选）：** 工具栏「分组设置」可选择 9 种分组维度（装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式）；启用后左侧工具栏展示分组 Tab（样式对齐运价列表航线 Tab），表格标题隐藏。分组数据通过 `GetGroupedListAsync` 拉取，仅当顶部搜索条件变更时刷新；点击某分组 Tab 仅向列表查询追加对应筛选参数，分组 Tab 本身不变。分组字段与同名搜索项互斥（启用分组后禁用并清空对应搜索框）；同时只能启用一个分组字段。
@@ -38,6 +39,7 @@ last_updated: 2026-06-28
 | 未选中记录 | 点击编辑或删除 | 操作被拦截 | 前端提示必须先选择一条委托。 |
 | 已选中记录 | 点击编辑或双击行 | 编辑工作台 | 跳转 `/sea-exports/:id/edit`，`:id` 必须匹配 36 位 GUID 路由约束。 |
 | 已选中记录 | 点击删除并确认 | 列表刷新 | 调用删除接口，成功后重新查询当前列表。 |
+| 已选中记录 | 点击复制并确认 | 新票编辑页 | 调用 `CopyAsync`，可选 `copyOrderFees`；成功后 `replace` 至 `/sea-exports/{newId}/edit`。 |
 | 任意列表状态 | 点击新增 | 新建页面 | 跳转 `/sea-exports/create`。 |
 
 # 4. 核心字段说明 (Field Definitions)
@@ -79,6 +81,7 @@ last_updated: 2026-06-28
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-07 | `Feature` | 列表新增「复制」按钮：选中委托后可复制新建，确认弹窗可选 `copyOrderFees`；需 `Admin.SeaExport.Add` 权限；成功后跳转新票编辑页。 | `useSeaExportCopy` composable 统一列表/编辑复制流程；对接 `CopyAsync`，字段 `copyOrderFees` 非 `copyFees`。 |
 | 2026-06-28 | `Feature` | 分组设置持久化：用户选择的分组字段保存到用户设置，刷新/重新登录后自动恢复。 | 复用 `UserSettingAdmin`，table-config store 新增 `group_config_` 一套并登录预热；`useListGrouping.persist` 挂载恢复（不写回）+ 切换保存。 |
 | 2026-06-28 | `Feature` | 点击船公司/起运港/目的港/付费方式/签单方式分组中的「未填写」项时，列表仅展示对应字段为空的记录。 | 对接后端 5 个 `*Empty` 参数；`GroupFieldDef.emptyParamKey` + `decorateListParams` 选中项三态（undefined/null/具体值）区分全部、未填写与具体值。 |
 | 2026-06-28 | `Feature` | 列表新增分组统计：工具栏「分组设置」启用 9 维分组，Tab 展示各分组条数；点击 Tab 过滤列表；搜索与分组互斥。 | 抽象 `components/list-grouping` 供后续列表复用；`useListGrouping.decorateListParams` 负责签名比对与筛选追加；付费方式分组依赖 `CodeFrtId` 列表筛选。 |

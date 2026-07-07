@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-07 海运出口复制功能前端对接](./changelogs/change-log-2026-07-07-sea-export-copy.md)
 - [2026-07-07 海运出口应收应付费用打印](./changelogs/change-log-2026-07-07-sea-export-order-fee-print.md)
 - [2026-07-07 修复 defaultSort 下列头排序叠加默认字段](./changelogs/change-log-2026-07-07-vxe-default-sort-replace-on-column-click.md)
 - [2026-07-06 海运出口 TextIn AI 识别对接（新建/编辑）](./changelogs/change-log-2026-07-06-sea-export-textin-ai-extract.md)
