@@ -1,35 +1,9 @@
 import { requestClient } from '#/api/request';
 
 export namespace YundangAdminApi {
-  /** 订阅场景 */
-  export const YundangOceanSubscribeScene = {
-    Normal: 0,
-    SpecifiedContainer: 1,
-    Sino: 2,
-    History: 3,
-    AutoCarrier: 4,
-    Comprehensive: 5,
-  } as const;
-
-  export type YundangOceanSubscribeSceneValue =
-    (typeof YundangOceanSubscribeScene)[keyof typeof YundangOceanSubscribeScene];
-
-  /** 单号类型 */
-  export const YundangReferenceType = {
-    BL: 0,
-    BK: 1,
-    CN: 2,
-  } as const;
-
-  export type YundangReferenceTypeValue =
-    (typeof YundangReferenceType)[keyof typeof YundangReferenceType];
-
   export interface YundangOceanBatchSubscribeInputDto {
+    /** 待订阅的海运出口 Id 集合，单次最多 30 条（超出后端自动分批） */
     seaExportIds: string[];
-    scene?: YundangOceanSubscribeSceneValue;
-    referenceType?: YundangReferenceTypeValue;
-    serviceType?: string;
-    noticeEmail?: string;
   }
 
   export interface YundangOceanSubscribeItemResultDto {
@@ -68,8 +42,4 @@ export namespace YundangAdminApi {
   };
 }
 
-export const {
-  batchSubscribeOceanBill,
-  YundangOceanSubscribeScene,
-  YundangReferenceType,
-} = YundangAdminApi;
+export const { batchSubscribeOceanBill } = YundangAdminApi;

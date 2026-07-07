@@ -40,7 +40,7 @@ last_updated: 2026-07-07
 - **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型分组展示；进入时并行加载模块默认类型配置与已有附件；上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`；默认客户可见，无 `Admin.SeaExport.Edit` 时只读。
 - **打印：** 顶栏「打印」按钮调用全局 `usePrintFormat().openPrint`：先弹窗选择 `PrintJsonType=0`（海运出口详情）下的打印模板，确认后调 `PrintAsync` 生成 PDF 并触发下载。新增模式禁止打印；有未保存修改时二次确认后按当前表单内容打印，否则重新拉取 `DetailAsync` 原始对象序列化。
 - **复制：** 编辑页顶栏「复制」按钮（需 `Admin.SeaExport.Add`）；若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制）；调用 `CopyAsync` 成功后 `replace` 至新票编辑页。
-- **云当订阅：** 基础信息 Tab 顶栏「打印」与「取消」之间「云当订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；与列表共用 `useYundangOceanSubscribe`，单票 `seaExportIds`；弹窗提示按已保存数据订阅。
+- **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。
 - **完成服务：** 编辑态服务流水线「完成服务」/「取消完成」成功后重新拉取详情，同步任务状态、勾选展示及只读摘要。「完成」仅 `seServiceTaskUsers` 处理人可操作；「取消完成」仅 `completionUserId` 对应完成人可操作；无权限时悬浮展示提示。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -103,7 +103,10 @@ last_updated: 2026-07-07
 | :-- | :-- | :-- | :-- |
 | 2026-07-07 | `Feature` | 编辑工作台新增「附件」Tab（单证信息之后）：按附件类型分组、即时上传/删除、默认客户可见；仅编辑页可用。 | 对接 `GetAttachmentsAsync`/`AddAttachmentsAsync`/`DeleteAttachmentsAsync`；`moduleType` 经 `resolveModuleTypeByLabel` 解析；权限对齐 `Admin.SeaExport.Edit`。 |
 | 2026-07-07 | `Feature` | 编辑页顶栏新增「复制」：未保存时警告，确认弹窗可选 `copyOrderFees`；成功后跳转新票编辑页。 | 复用 `useSeaExportCopy` + `isFormDirty`；权限 `Admin.SeaExport.Add`。 |
-| 2026-07-07 | `Feature` | 基础信息 Tab 顶栏新增「云当订阅」：单票对接云当批量订阅，toast + 结果 Modal；提示按已保存数据订阅。 | `useYundangOceanSubscribe`；权限 `Admin.ExternalApi.Use`。 |
+| 2026-07-07 | `Refactor` | 运踪订阅取消二次确认，点击按钮直接提交。 | 编辑页按钮 `:loading="subscribing"`。 |
+| 2026-07-07 | `Style` | 页面文案「云当订阅」统一改为「运踪订阅」，不对外暴露第三方服务品牌。 | 仅改 i18n 用户可见文案。 |
+| 2026-07-07 | `Refactor` | 运踪订阅弹窗简化为确认框，仅传 `seaExportIds`；后端按 BLType 自动选择提单号或箱号订阅。 | 与列表共用 composable；权限仍为 `Admin.ExternalApi.Use`。 |
+| 2026-07-07 | `Feature` | 基础信息 Tab 顶栏新增「运踪订阅」：单票对接批量运踪订阅，toast + 结果 Modal；提示按已保存数据订阅。 | `useYundangOceanSubscribe`；权限 `Admin.ExternalApi.Use`。 |
 | 2026-07-07 | `Feature` | 应收应付 Tab 费用表支持勾选已保存行打印；应收 `PrintJsonType=1000`、应付 `1500`，JSON 为费用对象数组。 | `order-fee-table.vue` 复用全局 `usePrintFormat`；未保存行拦截；更改单 Tab 不展示打印。 |
 | 2026-07-06 | `Feature` | 基础信息 AI 识别对接 TextIn：支持 PDF/图片、名称→id 回填、Drawer 预览 citations 定位；空值/0/空 Guid 不回填。 | 新建/编辑共用 `form.vue`；新增 `text-in-admin.ts`、`ai-extract-preview-drawer.vue`、`ai-extract-utils.ts`；移除 `runVisionOcrPdf` 调用。 |
 | 2026-07-06 | `Feature` | 顶栏「打印」对接 `PrintFormatAdmin`：弹窗选模板后生成 PDF 下载；新增模式禁止打印；未保存修改二次确认后按当前表单打印，否则重新 DetailAsync。 | 全局封装 `components/print-format` + `app.vue` 挂载；业务模块传入 `printJsonType` 与 JSON 字符串。 |

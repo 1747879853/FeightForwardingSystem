@@ -37,8 +37,7 @@ import {
 const perm = createAbpPermission('Admin.SeaExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
 const { copying, copyFrom } = useSeaExportCopy();
-const { SubscribeModal, ResultModal, openSubscribe, onSubscribed } =
-  useYundangOceanSubscribe();
+const { ResultModal, subscribe, subscribing } = useYundangOceanSubscribe();
 
 const router = useRouter();
 const tableConfigStore = useTableConfigStore();
@@ -309,11 +308,7 @@ const handleRefresh = () => {
 
 const handleYundangSubscribe = () => {
   const rows = getCheckboxRecords();
-  if (rows.length === 0) {
-    message.warning($t('seaExport.yundang.pleaseSelectRecords'));
-    return;
-  }
-  openSubscribe(rows.map((row) => buildSeaExportSubscribeRow(row)));
+  subscribe(rows.map((row) => buildSeaExportSubscribeRow(row)));
 };
 
 const onGroupFieldChange = (value: number | undefined) => {
@@ -346,6 +341,7 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         <Button
           v-access:code="externalApiUseCode"
           class="mr-2"
+          :loading="subscribing"
           @click="handleYundangSubscribe"
         >
           {{ $t('seaExport.yundang.subscribe') }}
@@ -392,7 +388,6 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         </span>
       </template>
     </Grid>
-    <SubscribeModal @subscribed="onSubscribed" />
     <ResultModal />
   </Page>
 </template>

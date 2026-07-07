@@ -13,6 +13,9 @@
 
 ## 2026-07
 
+- [2026-07-07 运踪订阅取消二次确认](./changelogs/change-log-2026-07-07-tracking-subscribe-no-confirm.md)
+- [2026-07-07 运踪订阅文案去品牌化（隐藏云当）](./changelogs/change-log-2026-07-07-tracking-subscribe-rebrand.md)
+- [2026-07-07 云当海运订阅接口简化（仅传 seaExportIds）](./changelogs/change-log-2026-07-07-yundang-subscribe-simplify.md)
 - [2026-07-07 海运出口云当运单批量订阅前端对接](./changelogs/change-log-2026-07-07-sea-export-yundang-subscribe.md)
 - [2026-07-07 海运出口编辑页附件 Tab 对接](./changelogs/change-log-2026-07-07-sea-export-attachments-tab.md)
 - [2026-07-07 海运出口复制功能前端对接](./changelogs/change-log-2026-07-07-sea-export-copy.md)

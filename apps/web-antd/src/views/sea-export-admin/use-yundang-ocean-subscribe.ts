@@ -1,14 +1,18 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { YundangAdminApi } from '#/api/yundang/yundang-admin';
 
+import { ref } from 'vue';
+
 import { useVbenModal } from '@vben/common-ui';
 
 import { message } from 'ant-design-vue';
 
+import { batchSubscribeOceanBill } from '#/api/yundang/yundang-admin';
 import { $t } from '#/locales';
 
-import YundangSubscribeModal from './modules/yundang-subscribe-modal.vue';
 import YundangSubscribeResultModal from './modules/yundang-subscribe-result-modal.vue';
+
+const MAX_BATCH_HINT = 30;
 
 export interface SeaExportSubscribeRowInfo {
   id: string;
@@ -57,49 +61,58 @@ function showSubscribeToast(
 }
 
 export function useYundangOceanSubscribe() {
-  const [SubscribeModal, subscribeModalApi] = useVbenModal({
-    connectedComponent: YundangSubscribeModal,
-    destroyOnClose: true,
-  });
+  const subscribing = ref(false);
 
   const [ResultModal, resultModalApi] = useVbenModal({
     connectedComponent: YundangSubscribeResultModal,
     destroyOnClose: true,
   });
 
-  const openSubscribe = (
+  const showSubscribeResult = (
+    result: YundangAdminApi.YundangOceanBatchSubscribeResultDto,
     rows: SeaExportSubscribeRowInfo[],
-    options?: { fromEditor?: boolean },
   ) => {
+    showSubscribeToast(result);
+    resultModalApi
+      .setData({
+        result,
+        rows,
+      })
+      .open();
+  };
+
+  const subscribe = async (rows: SeaExportSubscribeRowInfo[]) => {
     if (rows.length === 0) {
       message.warning($t('seaExport.yundang.pleaseSelectRecords'));
       return;
     }
-    subscribeModalApi
-      .setData({
-        rows,
-        fromEditor: options?.fromEditor,
-      })
-      .open();
-  };
+    if (subscribing.value) {
+      return;
+    }
 
-  const onSubscribed = (payload: {
-    result: YundangAdminApi.YundangOceanBatchSubscribeResultDto;
-    rows: SeaExportSubscribeRowInfo[];
-  }) => {
-    showSubscribeToast(payload.result);
-    resultModalApi
-      .setData({
-        result: payload.result,
-        rows: payload.rows,
-      })
-      .open();
+    if (rows.length > MAX_BATCH_HINT) {
+      message.warning($t('seaExport.yundang.batchHint', [MAX_BATCH_HINT]));
+    }
+
+    subscribing.value = true;
+    const hideLoading = message.loading({
+      content: $t('seaExport.yundang.subscribing'),
+      duration: 0,
+    });
+    try {
+      const result = await batchSubscribeOceanBill({
+        seaExportIds: rows.map((row) => row.id),
+      });
+      showSubscribeResult(result, [...rows]);
+    } finally {
+      hideLoading();
+      subscribing.value = false;
+    }
   };
 
   return {
-    SubscribeModal,
     ResultModal,
-    openSubscribe,
-    onSubscribed,
+    subscribe,
+    subscribing,
   };
 }

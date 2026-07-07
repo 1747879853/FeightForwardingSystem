@@ -2968,8 +2968,7 @@ const { copying: copyingSeaExport, copyFrom: copySeaExportFromCurrent } =
     checkDirty: isFormDirty,
   });
 
-const { SubscribeModal, ResultModal, openSubscribe, onSubscribed } =
-  useYundangOceanSubscribe();
+const { ResultModal, subscribe, subscribing } = useYundangOceanSubscribe();
 
 const { loading: yardRealQueryLoading, runQuery: runYardRealQuery } =
   useYardRealQuery({
@@ -3008,17 +3007,14 @@ const handleYundangSubscribe = async () => {
     return;
   }
   const basicValues = await basicInfoFormApi.getValues();
-  openSubscribe(
-    [
-      {
-        id: editId.value,
-        commissionNum: entrustReadonlyInfo.value.commissionNum,
-        mblNum: tabMblNum.value,
-        bookingNum: String(basicValues.bookingNum ?? ''),
-      },
-    ],
-    { fromEditor: true },
-  );
+  await subscribe([
+    {
+      id: editId.value,
+      commissionNum: entrustReadonlyInfo.value.commissionNum,
+      mblNum: tabMblNum.value,
+      bookingNum: String(basicValues.bookingNum ?? ''),
+    },
+  ]);
 };
 
 const handleCopySeaExport = async () => {
@@ -3595,6 +3591,7 @@ defineExpose({
                       v-access:code="externalApiUseCode"
                       size="small"
                       class="flex items-center justify-center"
+                      :loading="subscribing"
                       @click="handleYundangSubscribe"
                     >
                       <IconifyIcon
@@ -4133,7 +4130,6 @@ defineExpose({
         </div>
       </div>
     </Modal>
-    <SubscribeModal @subscribed="onSubscribed" />
     <ResultModal />
   </component>
 </template>
