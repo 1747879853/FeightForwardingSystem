@@ -7,13 +7,16 @@ import orderFee from './orderFee/index.vue';
 import SeparateBill from './modules/separate-bill.vue';
 import changeOrder from '#/views/sea-export-admin/changeOrder/index.vue';
 import dispatch from '#/views/sea-export-admin/dispatch/index.vue';
+import attachments from '#/views/sea-export-admin/attachments/index.vue';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
+import { $t } from '#/locales';
 
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
 type FormSectionTabKey = 'basic' | 'party' | 'shipment' | 'port';
 type TabKey =
   | FormSectionTabKey
   | 'fee'
+  | 'attachments'
   | 'dispatch'
   | 'billInfo'
   | 'issueRecord'
@@ -54,6 +57,7 @@ const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'party', label: '更改单', sectionKey: 'party' },
   { key: 'shipment', label: '服务详情', sectionKey: 'shipment' },
   { key: 'port', label: '单证信息', sectionKey: 'port' },
+  { key: 'attachments', label: $t('seaExport.export.attachments.tabTitle') },
   { key: 'dispatch', label: '派车' },
   { key: 'billInfo', label: '分单' },
   { key: 'issueRecord', label: '问题记录' },
@@ -135,6 +139,9 @@ const getContentTabStyle = (isActive: boolean) =>
           </KeepAlive>
           <KeepAlive include="SeaExportSeparateBill">
             <SeparateBill v-if="activeTab === 'billInfo'" />
+          </KeepAlive>
+          <KeepAlive include="SeaExportAttachments">
+            <attachments v-if="activeTab === 'attachments'" />
           </KeepAlive>
           <KeepAlive include="SeaExportAdminForm">
             <Form

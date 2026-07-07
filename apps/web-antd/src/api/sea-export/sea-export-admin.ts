@@ -500,6 +500,50 @@ export namespace SeaExportAdminApi {
     /** 是否复制费用（仅 ChangeOrderId 为空的费用） */
     copyOrderFees: boolean;
   }
+
+  export interface AttachmentDtlTypeSimpleDto {
+    id: number;
+    name?: string | null;
+    sortId?: number;
+  }
+
+  export interface AttachmentItemForItemInputDto {
+    attachmentId: number;
+    attachmentDtlTypeId?: number | null;
+    clientVisible?: boolean;
+    displayOrder?: number;
+    itemId?: string | null;
+    url?: string | null;
+    id?: number | null;
+  }
+
+  export interface AttachmentItemDto extends AttachmentItemForItemInputDto {
+    moduleTypeId?: string | null;
+    attachmentDtlType?: AttachmentDtlTypeSimpleDto | null;
+    isFirstShow?: boolean;
+    mediaType?: number;
+    friendlyFileName?: string | null;
+    fileLength?: number | null;
+    creationTime?: string | null;
+    creatorUserId?: number | null;
+    creatorUserNickName?: string | null;
+  }
+
+  export interface AttachmentGroupDto {
+    attachmentDtlTypeId?: number | null;
+    attachmentDtlType?: AttachmentDtlTypeSimpleDto | null;
+    items?: AttachmentItemDto[] | null;
+  }
+
+  export interface SeaExportAttachmentsAddDto {
+    id: string;
+    attachments?: AttachmentItemForItemInputDto[] | null;
+  }
+
+  export interface SeaExportAttachmentsDeleteDto {
+    id: string;
+    attachmentIds?: number[] | null;
+  }
 }
 
 const API_PREFIX = '/services/app/SeaExportAdmin';
@@ -554,4 +598,28 @@ export const deleteSeaExport = (id: number) => {
 
 export const copySeaExport = (data: SeaExportAdminApi.SeaExportCopyDto) => {
   return requestClient.post<string>(`${API_PREFIX}/CopyAsync`, data);
+};
+
+/** 获取海运出口附件（按附件详细类型分组） */
+export const getSeaExportAttachments = (id: string) => {
+  return requestClient.get<SeaExportAdminApi.AttachmentGroupDto[]>(
+    `${API_PREFIX}/GetAttachmentsAsync`,
+    { params: { Id: id } },
+  );
+};
+
+/** 给海运出口添加附件 */
+export const addSeaExportAttachments = (
+  data: SeaExportAdminApi.SeaExportAttachmentsAddDto,
+) => {
+  return requestClient.post<boolean>(`${API_PREFIX}/AddAttachmentsAsync`, data);
+};
+
+/** 删除海运出口附件关联 */
+export const deleteSeaExportAttachments = (
+  data: SeaExportAdminApi.SeaExportAttachmentsDeleteDto,
+) => {
+  return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAttachmentsAsync`, {
+    data,
+  });
 };
