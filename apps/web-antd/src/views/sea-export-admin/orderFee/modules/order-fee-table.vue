@@ -219,8 +219,8 @@ const queryTableData = async () => {
   //  console.log('res', res.items);
   dataSource.value = normalizeOrderFeeWithRowKey(res.items);
 };
-const tmpAdd = ref(false);
-const tmpDel = ref(false);
+const tmpAdd = ref(false); // ✅ 已废弃，保留以避免其他潜在引用
+const tmpDel = ref(false); // ✅ 已废弃，保留以避免其他潜在引用
 
 // 加载订单箱型列表和订单基础数据
 const loadOrderCtnList = async () => {
@@ -390,17 +390,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
     proxyConfig: {
       ajax: {
         query: async () => {
-          //      console.log('addRowData', tmpAdd.value);
-          if (tmpAdd.value) {
-            tmpAdd.value = false;
-            console.log('addRowDataing');
-            addRowData();
-            return dataSource.value;
-          }
-          if (tmpDel.value) {
-            tmpDel.value = false;
-            return dataSource.value;
-          }
+          // ✅ 简化查询逻辑，直接返回数据源
           await queryTableData();
           return dataSource.value;
         },
@@ -445,8 +435,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
   },
 });
 const addRowData = () => {
-  const list = [...(dataSource.value ?? [])];
-  list.push({
+  const newRow = {
     _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
     id: '',
     transportOrderId: editId.value,
@@ -460,16 +449,27 @@ const addRowData = () => {
     canInvoice: true,
     isConfidential: false,
     dataEntryMethod: 0,
-  } as any);
+  } as any;
+
+  // ✅ 使用 VxeTable 的 insertAt 方法在末尾插入新行
+  gridApi.grid?.insertAt(newRow, -1);
+
+  // 同时更新 dataSource 以保持数据一致性
+  const list = [...(dataSource.value ?? [])];
+  list.push(newRow);
   dataSource.value = list;
+
+  console.log('✅ [addRowData] 已添加新行，当前行数:', dataSource.value.length);
 };
+
 const addRow = () => {
-  tmpAdd.value = true;
-  gridApi.query();
+  // ✅ 直接调用 addRowData，避免触发完整的表格重新渲染
+  addRowData();
 };
+
 const delRow = () => {
-  tmpDel.value = true;
-  gridApi.query();
+  // ✅ 删除操作也直接处理
+  removeSelectedRows();
 };
 
 const getSelectedRows = (): OrderFeeAdminApi.OrderFeeDto[] => {
@@ -592,6 +592,15 @@ const showDeleteWithRemark = () => {
     },
   });
 };
+const ImportOther = async (e: any) => {
+  //console.log('SubmittedOther', e);
+  switch (e.key) {
+    case 'submit': {
+      generateOppositeFees();
+      break;
+    }
+  }
+};
 const SubmittedOther = async (e: any) => {
   //console.log('SubmittedOther', e);
   switch (e.key) {
@@ -605,7 +614,6 @@ const SubmittedOther = async (e: any) => {
     }
   }
 };
-
 const orderFeeWithdraw = () => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
@@ -639,7 +647,7 @@ const orderFeeWithdraw = () => {
 // 收付互生费用（应收生成应付 / 应付生成应收）
 const generateOppositeFees = async () => {
   if (!selectedRowKeys.value.length) {
-    message.warning($t('common.selectDataFirst'));
+    message.warning($t('请选择一条数据'));
     return;
   }
 
@@ -649,23 +657,7 @@ const generateOppositeFees = async () => {
   );
 
   if (selectedList.length === 0) {
-    message.warning($t('common.selectDataFirst'));
-    return;
-  }
-
-  // 校验：只能选择录入状态或驳回状态的费用
-  const invalidRows = selectedList.filter((row) => {
-    return (
-      row.feeStatus !== feeConstants.getFeeStatusValue.Entering &&
-      row.feeStatus !== feeConstants.getFeeStatusValue.Rejected
-    );
-  });
-
-  if (invalidRows.length > 0) {
-    message.error({
-      content: '只能选择"录入"或"驳回"状态的费用进行收付互生',
-      key: 'action_process_msg',
-    });
+    message.warning($t('请选择一条数据'));
     return;
   }
 
@@ -702,10 +694,10 @@ const generateOppositeFees = async () => {
     emit('refresh-opposite-table');
   } catch (error) {
     console.error('❌ [generateOppositeFees] 收付互生失败:', error);
-    message.error({
-      content: '收付互生失败，请检查费用状态和配置',
-      key: 'action_process_msg',
-    });
+    // message.error({
+    //   content: '收付互生失败，请检查费用状态和配置',
+    //   key: 'action_process_msg',
+    // });
   }
 };
 
@@ -778,12 +770,25 @@ const openModifyModal = () => {
 
   // 打开模态框，传递选中的费用数据、合计数据和订单基础数据
   const selectedFee = list[0];
-  console.log('selectedFee', selectedFee);
+  console.log('📊 [父组件] selectedFee:', selectedFee);
+  console.log(
+    '📊 [父组件] orderBaseData.value 是否存在:',
+    !!orderBaseData.value,
+  );
+  console.log('📊 [父组件] 准备传递给子组件的数据:', {
+    feeData: selectedFee,
+    hasOrderBaseData: !!orderBaseData.value,
+    orderBaseDataKeys: orderBaseData.value
+      ? Object.keys(orderBaseData.value)
+      : [],
+  });
 
   modifyModalRef.value?.modalApi.setData({
     feeData: selectedFee,
     orderBaseData: orderBaseData.value,
   });
+
+  console.log('✅ [父组件] 已调用 setData，准备打开模态框');
   modifyModalRef.value?.modalApi.open();
 };
 
@@ -927,28 +932,52 @@ const saveRow = () => {
 const removeSelectedRows = () => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
-  const list = (dataSource.value ?? []).filter(
-    (row) => !keysSet.has((row as any)._rowKey),
+
+  // 获取需要删除的行
+  const rowsToDelete = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
   );
-  const needDelIds = (dataSource.value ?? [])
-    .filter((row) => keysSet.has((row as any)._rowKey))
+
+  const needDelIds = rowsToDelete
     .filter((row) => (row as any).id !== '')
     .map((row) => (row as any).id);
-  //console.log('needDelIds', needDelIds);
 
   selectedRowKeys.value = [];
+
   if (props.mode !== 'changeOrder' && needDelIds.length > 0) {
     batchDeleteOrderFee(needDelIds).then(() => {
+      // ✅ 使用 VxeTable 的 removeCheckboxRow 方法删除选中的行
+      gridApi.grid?.removeCheckboxRow();
+
+      // 同时更新 dataSource
+      const list = (dataSource.value ?? []).filter(
+        (row) => !keysSet.has((row as any)._rowKey),
+      );
       dataSource.value = list;
-      delRow();
+
+      console.log(
+        '✅ [removeSelectedRows] 已删除行（API），当前行数:',
+        dataSource.value.length,
+      );
       message.success({
         content: $t('ui.actionMessage.operationSuccess'),
         key: 'action_process_msg',
       });
     });
   } else {
+    // ✅ 使用 VxeTable 的 removeCheckboxRow 方法删除选中的行
+    gridApi.grid?.removeCheckboxRow();
+
+    // 同时更新 dataSource
+    const list = (dataSource.value ?? []).filter(
+      (row) => !keysSet.has((row as any)._rowKey),
+    );
     dataSource.value = list;
-    delRow();
+
+    console.log(
+      '✅ [removeSelectedRows] 已删除行（本地），当前行数:',
+      dataSource.value.length,
+    );
   }
 };
 
@@ -1099,9 +1128,6 @@ defineExpose({
           >
             <template #toolbar-tools>
               <Space>
-                <Button @click="openBatchImportModal">
-                  {{ $t('seaExport.export.orderFee.batchImport') }}
-                </Button>
                 <Button type="primary" @click="addRow">
                   {{ $t('common.create') }}
                 </Button>
@@ -1133,13 +1159,16 @@ defineExpose({
                   {{ $t('common.delete') }}
                 </Button>
 
-                <Button
-                  type="primary"
-                  :disabled="!selectedRowKeys.length"
-                  @click="generateOppositeFees"
-                >
-                  {{ type === 0 ? '应收生成应付' : '应付生成应收' }}
-                </Button>
+                <DropdownButton @click="openBatchImportModal" type="primary">
+                  {{ $t('seaExport.export.orderFee.batchImport') }}
+                  <template #overlay>
+                    <Menu @click="ImportOther">
+                      <MenuItem key="submit">
+                        {{ type === 0 ? '应收生成应付' : '应付生成应收' }}
+                      </MenuItem>
+                    </Menu>
+                  </template>
+                </DropdownButton>
 
                 <DropdownButton
                   @click="Submitted"

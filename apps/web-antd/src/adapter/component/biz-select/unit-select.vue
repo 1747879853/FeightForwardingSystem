@@ -75,17 +75,6 @@ const fetchPageAdapter = async (params: {
   PageIndex: number;
   PageSize: number;
 }) => {
-  console.log('🔍 [UnitSelect.fetchPageAdapter] 被调用！');
-  console.log('🔍 [UnitSelect.fetchPageAdapter] params:', params);
-  console.log(
-    '🔍 [UnitSelect.fetchPageAdapter] props.unitOptions:',
-    props.unitOptions,
-  );
-  console.log(
-    '🔍 [UnitSelect.fetchPageAdapter] props.unitOptions !== undefined:',
-    props.unitOptions !== undefined,
-  );
-
   // 将固定选项转换为与API返回数据相同的格式
   const defaultOptionsAsItems = DEFAULT_UNIT_OPTIONS.map((opt) => ({
     id: opt.value,
@@ -95,22 +84,11 @@ const fetchPageAdapter = async (params: {
 
   // 如果提供了自定义单位选项（即使是空数组），则使用：固定选项 + 自定义箱型
   if (props.unitOptions !== undefined) {
-    console.log('✅ [UnitSelect.fetchPageAdapter] 使用自定义 unitOptions');
-
     const customOptionsAsItems = props.unitOptions.map((opt) => ({
       id: opt.value,
       ctnName: opt.label,
       status: 0, // 启用状态
     })) as unknown as CtnCodeAdminApi.CtnCodeDto[];
-
-    console.log(
-      '✅ [UnitSelect.fetchPageAdapter] customOptionsAsItems:',
-      customOptionsAsItems,
-    );
-    console.log(
-      '✅ [UnitSelect.fetchPageAdapter] customOptionsAsItems.length:',
-      customOptionsAsItems.length,
-    );
 
     // ✅ 固定选项 + 自定义箱型列表
     return {
@@ -224,9 +202,32 @@ watch(
 watch(
   () => props.unitOptions,
   (newOptions, oldOptions) => {
-    // 重置状态，清空缓存，触发 ApiComponent 重新请求
-    reset();
-    console.log('✅ [UnitSelect] 已调用 reset()，触发重新加载');
+    // 深度比较数组内容，避免不必要的重置
+    if (oldOptions !== undefined && newOptions !== undefined) {
+      // 如果长度不同，肯定变化了
+      if (newOptions.length !== oldOptions.length) {
+        reset();
+        console.log('✅ [UnitSelect] 已调用 reset()，触发重新加载（长度变化）');
+        return;
+      }
+
+      // 如果长度相同，逐个比较内容
+      const isSame = newOptions.every((newOpt, index) => {
+        const oldOpt = oldOptions[index];
+        return newOpt.label === oldOpt?.label && newOpt.value === oldOpt?.value;
+      });
+
+      if (!isSame) {
+        reset();
+        console.log('✅ [UnitSelect] 已调用 reset()，触发重新加载（内容变化）');
+      } else {
+        console.log('⏭️ [UnitSelect] unitOptions 未变化，跳过 reset()');
+      }
+    } else {
+      // 首次加载或从 undefined 变为有值
+      reset();
+      console.log('✅ [UnitSelect] 已调用 reset()，触发重新加载（初始化）');
+    }
   },
   { deep: true },
 );

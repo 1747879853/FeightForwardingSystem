@@ -364,7 +364,7 @@ const totalAmount = computed(() => {
   totalList.forEach((item) => {
     let recName = `应收${transCurrency(item.currencyId)}:`;
     let recColor = 'green';
-    let recAmount = (item.totalRecAmount || 0).toFixed(2);
+    let recAmount = (Number(item.totalRecAmount) || 0).toFixed(2);
     list.push({
       name: recName,
       color: recColor,
@@ -375,7 +375,7 @@ const totalAmount = computed(() => {
 
     let payName = `应付${transCurrency(item.currencyId)}:`;
     let payColor = 'yellow';
-    let payAmount = (item.totalPayAmount || 0).toFixed(2);
+    let payAmount = (Number(item.totalPayAmount) || 0).toFixed(2);
     list.push({
       name: payName,
       color: payColor,
@@ -385,7 +385,9 @@ const totalAmount = computed(() => {
 
     let profitName = `${transCurrency(item.currencyId)}利润:`;
     let profitColor = 'blue';
-    let profitAmount = (recAmount - payAmount).toFixed(2);
+    let profitAmount = (
+      (Number(item.totalRecAmount) || 0) - (Number(item.totalPayAmount) || 0)
+    ).toFixed(2);
     list.push({
       name: profitName,
       color: profitColor,

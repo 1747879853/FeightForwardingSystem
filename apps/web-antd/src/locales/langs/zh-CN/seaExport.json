@@ -256,7 +256,7 @@
       "updatedProfit": "更改后利润",
       "profitDifference": "利润差额",
       "auditHistory": "审核历史",
-      "batchImport": "引入费用",
+      "batchImport": "历史引入",
       "batchImportFee": "批量引入费用"
     },
     "dispatch": {

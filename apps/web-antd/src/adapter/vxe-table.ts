@@ -49,6 +49,52 @@ import { buildAttachmentUrl } from '#/utils';
 
 import { ref } from 'vue';
 
+// 🔥 全局订单详情缓存（避免重复调用API）
+const orderDetailCache = new Map<string, any>();
+const orderDetailLoading = new Map<string, Promise<any>>();
+
+/**
+ * 统一的订单详情加载函数（带缓存和防并发）
+ */
+async function loadOrderDetailCached(transportOrderId: string) {
+  if (!transportOrderId) {
+    console.warn('⚠️ [loadOrderDetailCached] 缺少运输订单ID');
+    return null;
+  }
+
+  // 如果缓存中已有，直接返回
+  if (orderDetailCache.has(transportOrderId)) {
+    console.log('✅ [loadOrderDetailCached] 使用缓存数据:', transportOrderId);
+    return orderDetailCache.get(transportOrderId);
+  }
+
+  // 如果正在加载中，等待完成
+  if (orderDetailLoading.has(transportOrderId)) {
+    console.log('⏳ [loadOrderDetailCached] 等待加载完成:', transportOrderId);
+    return await orderDetailLoading.get(transportOrderId);
+  }
+
+  // 开始加载
+  console.log('🔄 [loadOrderDetailCached] 开始加载:', transportOrderId);
+  const loadingPromise = getSeaExportDetail(transportOrderId)
+    .then((detail) => {
+      if (detail) {
+        orderDetailCache.set(transportOrderId, detail);
+        console.log('✅ [loadOrderDetailCached] 加载成功并已缓存');
+      }
+      orderDetailLoading.delete(transportOrderId);
+      return detail;
+    })
+    .catch((error) => {
+      console.error('❌ [loadOrderDetailCached] 加载失败:', error);
+      orderDetailLoading.delete(transportOrderId);
+      throw error;
+    });
+
+  orderDetailLoading.set(transportOrderId, loadingPromise);
+  return await loadingPromise;
+}
+
 /** 操作列删除确认：按字段链回退展示名，避免名称为空时文案缺失 */
 function resolveCellOperationRowName(
   row: Recordable,
@@ -208,15 +254,6 @@ setupVbenVxeTable({
           row['modificationCount'] ??
           row['MODIFICATIONCOUNT'] ??
           0;
-
-        console.log('CellFeeStatusTag - 渲染:', {
-          feeStatus: value,
-          modificationCount,
-          hasModifyTasks: !!row.modifyOrderFeeTasks,
-          modifyTasksLength: row.modifyOrderFeeTasks?.length || 0,
-          taskStatus: row.taskStatus,
-          rowId: row.id,
-        });
 
         // 如果有修改次数，显示 "状态 +N" 格式
         if (modificationCount && modificationCount > 0) {
@@ -405,9 +442,9 @@ setupVbenVxeTable({
 
                   if (transportOrderId) {
                     try {
-                      // 获取订单详情
+                      // 获取订单详情（使用缓存）
                       const orderDetail =
-                        await getSeaExportDetail(transportOrderId);
+                        await loadOrderDetailCached(transportOrderId);
 
                       if (
                         orderDetail &&
@@ -529,8 +566,8 @@ setupVbenVxeTable({
               return;
             }
 
-            // 获取订单详情
-            const orderDetail = await getSeaExportDetail(transportOrderId);
+            // 获取订单详情（使用缓存）
+            const orderDetail = await loadOrderDetailCached(transportOrderId);
             if (!orderDetail || !orderDetail.transportOrder?.orderCtns) {
               console.warn('未找到订单箱型信息');
               return;
@@ -565,8 +602,8 @@ setupVbenVxeTable({
               return;
             }
 
-            // 获取订单详情
-            const orderDetail = await getSeaExportDetail(transportOrderId);
+            // 获取订单详情（使用缓存）
+            const orderDetail = await loadOrderDetailCached(transportOrderId);
             if (!orderDetail || !orderDetail.transportOrder) {
               console.warn('未找到订单详情');
               return;
@@ -613,8 +650,8 @@ setupVbenVxeTable({
               return;
             }
 
-            // 获取订单详情
-            const orderDetail = await getSeaExportDetail(transportOrderId);
+            // 获取订单详情（使用缓存）
+            const orderDetail = await loadOrderDetailCached(transportOrderId);
             if (!orderDetail) {
               console.warn('未找到订单详情');
               return;
@@ -774,8 +811,8 @@ setupVbenVxeTable({
               return;
             }
 
-            // 获取订单详情
-            const orderDetail = await getSeaExportDetail(transportOrderId);
+            // 获取订单详情（使用缓存）
+            const orderDetail = await loadOrderDetailCached(transportOrderId);
             if (!orderDetail) {
               console.warn('未找到订单详情');
               return;
@@ -885,9 +922,9 @@ setupVbenVxeTable({
 
               if (transportOrderId) {
                 try {
-                  // 获取订单详情
+                  // 获取订单详情（使用缓存）
                   const orderDetail =
-                    await getSeaExportDetail(transportOrderId);
+                    await loadOrderDetailCached(transportOrderId);
 
                   if (
                     orderDetail &&
@@ -1008,8 +1045,8 @@ setupVbenVxeTable({
               return;
             }
 
-            // 获取订单详情
-            const orderDetail = await getSeaExportDetail(transportOrderId);
+            // 获取订单详情（使用缓存）
+            const orderDetail = await loadOrderDetailCached(transportOrderId);
             if (!orderDetail || !orderDetail.transportOrder) {
               console.warn('⚠️ [fillQuantityByUnit] 未找到订单详情');
               return;
@@ -1211,6 +1248,30 @@ setupVbenVxeTable({
                     row[column.field.replace('taxRate', 'noTaxAmount')] = (
                       row['noTaxUnitPrice'] * row['quantity']
                     ).toFixed(2);
+                  }
+                }
+
+                // 含税金额 变化 同时更新 含税单价、不含税单价、不含税金额
+                if (column.field === 'amount' && newVal !== '') {
+                  const amountValue = Number(newVal);
+                  const quantity = row['quantity'];
+                  const taxRate = row['taxRate'];
+
+                  if (quantity && quantity !== 0) {
+                    // 1. 计算含税单价 = 含税金额 / 数量
+                    const unitPrice = amountValue / quantity;
+                    row['unitPrice'] = Number(unitPrice.toFixed(4));
+
+                    // 2. 如果存在税率，计算不含税单价和不含税金额
+                    if (taxRate !== undefined && taxRate !== null) {
+                      // 不含税单价 = 含税单价 / (1 + 税率/100)
+                      const noTaxUnitPrice = unitPrice / (1 + taxRate / 100);
+                      row['noTaxUnitPrice'] = Number(noTaxUnitPrice.toFixed(4));
+
+                      // 不含税金额 = 不含税单价 × 数量
+                      const noTaxAmount = noTaxUnitPrice * quantity;
+                      row['noTaxAmount'] = Number(noTaxAmount.toFixed(2));
+                    }
                   }
                 }
               })

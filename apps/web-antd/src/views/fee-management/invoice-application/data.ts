@@ -9,7 +9,7 @@ import { $t } from '#/locales';
 export const invoiceApplicationStatusOptions = () =>
   getInvoiceApplicationStatusOptions((key) => $t(key));
 /** 发票类型选项 */
-const getInvoiceTypeOptions = () => [
+export const getInvoiceTypeOptions = () => [
   {
     value: InvoiceApplicationApi.InvoiceType.NormalElectric,
     label: '普通发票(电票)',

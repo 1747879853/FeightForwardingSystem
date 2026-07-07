@@ -21,6 +21,7 @@ import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
 import { getSubmittedApplicationList } from '#/api/Invoice/InvoiceIssue';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
+import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-application/data';
 
 interface Props {
   visible: boolean;
@@ -67,7 +68,6 @@ const selectedCurrencyCode = ref<string>('');
 
 // 抽屉筛选条件
 const keyWord = ref<string>(''); // 编号（申请单号）
-const filterCompanyId = ref<number | undefined>(undefined); // 所属公司
 const filterApplyTimeStart = ref<string>(''); // 申请日期起
 const filterApplyTimeEnd = ref<string>(''); // 申请日期止
 const filterHeader = ref<string>(''); // 发票抬头
@@ -165,6 +165,13 @@ async function loadDefaultExchangeRate(currencyId: number) {
   }
 }
 
+/** 获取发票类型显示文本 */
+function getInvoiceTypeText(invoiceType: string | number): string {
+  const options = getInvoiceTypeOptions();
+  const option = options.find((opt) => opt.value === invoiceType);
+  return option ? option.label : '-';
+}
+
 /** 将树状数据扁平化 */
 function flattenTreeData(data: any[]): any[] {
   const result: any[] = [];
@@ -201,7 +208,6 @@ function handleResetFilter() {
   selectedCurrencyId.value = undefined;
   selectedHeaderId.value = '';
   keyWord.value = '';
-  filterCompanyId.value = undefined;
   filterApplyTimeStart.value = '';
   filterApplyTimeEnd.value = '';
   filterApplyTimeRange.value = undefined;
@@ -453,11 +459,6 @@ async function loadApplicationGroupData() {
       params.applicationNo = keyWord.value;
     }
 
-    // 所属公司
-    if (filterCompanyId.value) {
-      // TODO: 如果后端支持，添加companyId过滤
-    }
-
     // 申请日期范围
     if (filterApplyTimeStart.value) {
       params.applyTimeStart = filterApplyTimeStart.value;
@@ -664,24 +665,31 @@ watch(
 // 申请表格列定义（一级 - 开票申请）
 const appParentColumns = computed(() => [
   {
+    title: '可开票',
+    dataIndex: 'amountMatched',
+    key: 'amountMatched',
+    Width: 50,
+    align: 'center' as const,
+  },
+  {
     title: '所属公司',
     dataIndex: 'companyName',
     key: 'companyName',
-    minWidth: 150,
+    minWidth: 200,
     ellipsis: true,
   },
   {
     title: '申请单号',
     dataIndex: 'applicationNo',
     key: 'applicationNo',
-    minWidth: 140,
+    minWidth: 180,
     ellipsis: true,
   },
   {
     title: '发票抬头',
     dataIndex: 'header',
     key: 'header',
-    minWidth: 180,
+    minWidth: 250,
     ellipsis: true,
   },
   {
@@ -707,7 +715,7 @@ const appParentColumns = computed(() => [
     title: '申请日期',
     dataIndex: 'applyTime',
     key: 'applyTime',
-    minWidth: 120,
+    minWidth: 280,
   },
   {
     title: '开票要求',
@@ -720,7 +728,7 @@ const appParentColumns = computed(() => [
     title: '发票类型',
     dataIndex: 'invoiceType',
     key: 'invoiceType',
-    minWidth: 120,
+    minWidth: 160,
   },
   {
     title: '开票汇率',
@@ -729,15 +737,9 @@ const appParentColumns = computed(() => [
     minWidth: 100,
     align: 'right' as const,
   },
+
   {
-    title: '可开票',
-    dataIndex: 'amountMatched',
-    key: 'amountMatched',
-    minWidth: 80,
-    align: 'center' as const,
-  },
-  {
-    title: '申请开票原币金额',
+    title: '申请开票金额',
     dataIndex: 'totalAppliedAmount',
     key: 'totalAppliedAmount',
     minWidth: 140,
@@ -864,7 +866,7 @@ defineExpose({
   <Drawer
     v-model:open="drawerVisible"
     title="选择已提交的开票申请"
-    width="1200"
+    width="1600"
     :footer-style="{ textAlign: 'right' }"
   >
     <Spin :spinning="feeDrawerLoading">
@@ -892,20 +894,6 @@ defineExpose({
               placeholder="请输入申请单号"
               style="flex: 1"
               allow-clear
-            />
-          </div>
-          <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
-          >
-            <span style="min-width: 70px; font-size: 14px; color: #333"
-              >所属公司:</span
-            >
-            <Input
-              v-model:value="filterCompanyId"
-              placeholder="请输入所属公司"
-              style="flex: 1"
-              allow-clear
-              disabled
             />
           </div>
           <div
@@ -999,6 +987,9 @@ defineExpose({
               >
                 {{ record.amountMatched ? '✓ 可开' : '✗ 不可开' }}
               </span>
+            </template>
+            <template v-else-if="column.key === 'invoiceType'">
+              <span>{{ getInvoiceTypeText(record.invoiceType) }}</span>
             </template>
           </template>
           <template #expandedRowRender="{ record }">
