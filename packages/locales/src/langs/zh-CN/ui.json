@@ -33,6 +33,7 @@
     "uploadFailed": "上传失败",
     "uploadSuccess": "上传成功",
     "pleaseSelectData": "请选择数据",
+    "selectRequired": "请先勾选需要操作的记录",
     "confirmDeleteSelected": "确认删除所选数据吗？"
   },
   "placeholder": {

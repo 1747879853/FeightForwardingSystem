@@ -50,7 +50,8 @@ defineOptions({
 const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 import { CodeSourceSelect, UserSelect } from '#/adapter/component';
 import { useVbenForm } from '#/adapter/form';
-import { runVisionOcrPdf } from '#/api/common';
+import { extractSeaExportToAddDto } from '#/api/common';
+import type { TextInAdminApi } from '#/api/common/text-in-admin';
 import {
   addSeaExport,
   editSeaExport,
@@ -66,6 +67,7 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 import { getUser, UserAttribute } from '#/api/system/user-admin';
 import { parseSeaExportUserAttribute } from '#/views/system/user/data';
 import { $t } from '#/locales';
+import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import { buildAttachmentUrl } from '#/utils';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
@@ -75,6 +77,14 @@ import {
 } from '#/utils/user-display';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
+import AiExtractPreviewDrawer from './modules/ai-extract-preview-drawer.vue';
+import {
+  AI_EXTRACT_ACCEPT,
+  buildAiExtractFormPayload,
+  isAiExtractSupportedFile,
+  pickExtractedLabel,
+  resolveCitationKeys,
+} from './modules/ai-extract-utils';
 import {
   getBillTypeOptions,
   getBlTypeOptions,
@@ -130,8 +140,19 @@ const pageTitle = computed(() => {
 
 const pageLoading = ref(false);
 const submitting = ref(false);
+const printing = ref(false);
+const formSnapshotJson = ref<string | null>(null);
+const { openPrint } = usePrintFormat();
 const aiRecognizing = ref(false);
-const aiOcrPdfInputRef = ref<HTMLInputElement | null>(null);
+const aiExtractFileInputRef = ref<HTMLInputElement | null>(null);
+const aiPreviewOpen = ref(false);
+const aiPreviewFile = ref<File | null>(null);
+const aiPreviewCitations = ref<
+  Record<string, TextInAdminApi.TextInFieldCitationDto>
+>({});
+const aiPreviewIsFromCache = ref(false);
+const aiActiveField = ref<string | null>(null);
+const aiFilledFieldSet = ref<Set<string>>(new Set());
 const transportOrderId = ref<number | undefined>();
 const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
   { userAttribute: UserAttribute.Sales, sortId: 6 },
@@ -1953,44 +1974,6 @@ const AI_RECOGNIZE_DATE_FIELDS = new Set([
   'accountDate',
   'settlementDate',
 ]);
-const isPlainObject = (value: unknown): value is Record<string, any> =>
-  Object.prototype.toString.call(value) === '[object Object]';
-const normalizeOcrFieldName = (field: string) =>
-  field ? `${field.charAt(0).toLowerCase()}${field.slice(1)}` : field;
-const normalizeOcrLookupKey = (field: string) =>
-  (field || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_:/\\.\-()]+/g, '');
-const AI_RECOGNIZE_FIELD_ALIASES: Record<string, string> = {
-  bookingno: 'bookingNum',
-  blno: 'mblNum',
-  vessel: 'vessel',
-  voyage: 'innerVoyno',
-  marks: 'marks',
-  noofpackages: 'pkgs',
-  numberofcontainersorpackages: 'pkgs',
-  grossweight: 'kgs',
-  measurement: 'cbm',
-  descriptionofgoods: 'goodsDes',
-  shipper: 'shipperContent',
-  consignee: 'consigneeContent',
-  notifyparty: 'notifierContent',
-  portofloading: 'polRemark',
-  portofdischarge: 'podRemark',
-  placeofreceipt: 'receivePortRemark',
-  placeofdelivery: 'deliverPortRemark',
-  发货人: 'shipperContent',
-  收货人: 'consigneeContent',
-  通知人: 'notifierContent',
-  船名: 'vessel',
-  航次: 'innerVoyno',
-  起运港: 'polRemark',
-  卸货港: 'podRemark',
-  收货地: 'receivePortRemark',
-  交货地: 'deliverPortRemark',
-  船期: 'etd',
-};
 const parseNumberFromText = (value: unknown) => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value !== 'string') return undefined;
@@ -2032,73 +2015,14 @@ const normalizeAiFieldValue = (field: string, value: unknown) => {
   }
   return value;
 };
-const extractOcrFieldPayload = (payload: unknown): Record<string, any> => {
-  let parsedPayload = payload;
-  if (typeof parsedPayload === 'string') {
-    try {
-      parsedPayload = JSON.parse(parsedPayload);
-    } catch {
-      return {};
-    }
-  }
-  if (Array.isArray(parsedPayload)) {
-    parsedPayload = parsedPayload[0];
-  }
-  if (!isPlainObject(parsedPayload)) return {};
-
-  const rawObject = parsedPayload as Record<string, any>;
-  for (const key of ['fields', 'fieldMap', 'ocrFields', 'data', 'result']) {
-    if (isPlainObject(rawObject[key])) {
-      return rawObject[key];
-    }
-  }
-  return rawObject;
-};
-const buildAiRecognizedFormValues = (payload: unknown) => {
-  const basePayload = extractOcrFieldPayload(payload);
-  const mergedPayload: Record<string, any> = {};
-  const mergePayloadObject = (source: unknown) => {
-    if (!isPlainObject(source)) return;
-    Object.entries(source).forEach(([rawKey, value]) => {
-      const normalizedKey = normalizeOcrFieldName(rawKey);
-      mergedPayload[normalizedKey] = value;
-    });
-  };
-
-  mergePayloadObject(basePayload);
-  mergePayloadObject(basePayload.transportOrder);
-  mergePayloadObject(basePayload.seaExport);
-  mergePayloadObject(basePayload.transportOrderDto);
-  mergePayloadObject(basePayload.seaExportDto);
-
-  const formValues: Record<string, any> = {};
-  const applyRecognizedValue = (field: string, value: unknown) => {
-    if (!AI_RECOGNIZE_ALLOWED_FIELDS.has(field)) return;
-    if (value === undefined) return;
-    const normalizedValue = normalizeAiFieldValue(field, value);
-    if (normalizedValue === undefined) return;
-    formValues[field] = normalizedValue;
-  };
-  Object.entries(mergedPayload).forEach(([rawField, value]) => {
-    const field = normalizeOcrFieldName(rawField);
-    applyRecognizedValue(field, value);
-    const aliasField =
-      AI_RECOGNIZE_FIELD_ALIASES[normalizeOcrLookupKey(rawField)];
-    if (aliasField) {
-      applyRecognizedValue(aliasField, value);
-    }
-  });
-  delete formValues.serviceTypes;
-  if (
-    formValues.codeIssueTypeId == null &&
-    formValues.issueType != null &&
-    Number.isFinite(Number(formValues.issueType))
-  ) {
-    formValues.codeIssueTypeId = Number(formValues.issueType);
-  }
-  return formValues;
-};
-const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
+const applyAiRecognizedFormValues = async (
+  values: Record<string, any>,
+  options?: {
+    orderCtnsPayload?: SeaExportAdminApi.OrderCtnAddDto[];
+    orderCodeGoodssPayload?: number[];
+    filledFields?: string[];
+  },
+) => {
   await Promise.all([
     partyInfoFormApi.setValues(values),
     basicInfoFormApi.setValues(values),
@@ -2110,6 +2034,16 @@ const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
     cargoRemarkFormApi.setValues(values),
   ]);
 
+  if (options?.orderCodeGoodssPayload?.length) {
+    await cargoTypeInlineFormApi.setValues({
+      orderCodeGoodss: options.orderCodeGoodssPayload,
+    });
+  }
+
+  if (options?.orderCtnsPayload?.length) {
+    orderCtns.value = normalizeOrderCtnsWithRowKey(options.orderCtnsPayload);
+  }
+
   refreshEntrustReadonlyInfo({
     ...entrustReadonlyInfo.value,
     commissionNum:
@@ -2120,6 +2054,164 @@ const applyAiRecognizedFormValues = async (values: Record<string, any>) => {
   });
   syncTabTitleFromValues(values);
   await syncBasicInfoHeaderFields();
+
+  if (values.polId != null || values.clientId != null) {
+    await syncServiceTypesByPol({
+      polId: values.polId,
+      clientId: values.clientId,
+      force: true,
+    });
+  }
+
+  if (options?.filledFields?.length) {
+    aiFilledFieldSet.value = new Set(options.filledFields);
+    applyAiTextFieldMarkers(options.filledFields);
+  }
+};
+
+const mergeAiFocusProps = (
+  fieldName: string,
+  componentProps: Record<string, any> = {},
+) => ({
+  ...componentProps,
+  onFocus: (...args: any[]) => {
+    aiActiveField.value = fieldName;
+    componentProps.onFocus?.(...args);
+  },
+});
+
+const applyAiTextFieldMarkers = (filledFields: string[]) => {
+  const filledSet = new Set(filledFields);
+  const withMarker = (fieldName: string) => ({
+    fieldName,
+    formItemClass: filledSet.has(fieldName) ? 'ai-extract-filled-field' : '',
+    componentProps: mergeAiFocusProps(fieldName),
+  });
+
+  partyInfoFormApi.updateSchema([
+    withMarker('shipperContent'),
+    withMarker('consigneeContent'),
+    withMarker('notifierContent'),
+  ]);
+  basicInfoFormApi.updateSchema([
+    withMarker('mblNum'),
+    withMarker('bookingNum'),
+    withMarker('tradeTermsType'),
+  ]);
+  shipmentFormApi.updateSchema([
+    withMarker('vessel'),
+    withMarker('innerVoyno'),
+    withMarker('goodsCompleteTime'),
+    withMarker('etd'),
+    withMarker('signingTime'),
+  ]);
+  cargoTypeInlineFormApi.updateSchema([withMarker('orderCodeGoodss')]);
+  cargoMainFormApi.updateSchema([withMarker('marks'), withMarker('goodsDes')]);
+  cargoMetricsFormApi.updateSchema([
+    withMarker('pkgs'),
+    withMarker('kgs'),
+    withMarker('cbm'),
+  ]);
+};
+
+const buildAiSelectSchemaItem = (
+  fieldName: string,
+  filledFields: string[],
+  componentProps: Record<string, any>,
+) => ({
+  fieldName,
+  formItemClass: filledFields.includes(fieldName)
+    ? 'ai-extract-filled-field'
+    : '',
+  componentProps: {
+    ...mergeAiFocusProps(fieldName, componentProps),
+    size: 'small',
+  },
+});
+
+const applyAiExtractSelectedItems = (
+  values: Record<string, any>,
+  extractedSchema?: Record<string, unknown>,
+  filledFields: string[] = [],
+) => {
+  const schema = extractedSchema ?? {};
+  const item = (fieldName: string, componentProps: Record<string, any>) =>
+    buildAiSelectSchemaItem(fieldName, filledFields, componentProps);
+
+  basicInfoFormApi.updateSchema([
+    item('clientId', {
+      selectedItems: toSelectedItems(
+        values.clientId,
+        pickExtractedLabel(schema, resolveCitationKeys('clientId')),
+      ),
+    }),
+    item('codeIssueTypeId', {
+      selectedItems: toSelectedItems(
+        values.codeIssueTypeId,
+        pickExtractedLabel(schema, resolveCitationKeys('codeIssueTypeId')),
+        'billType',
+      ),
+    }),
+    item('carrierId', {
+      selectedItems: toSelectedItems(
+        values.carrierId,
+        pickExtractedLabel(schema, resolveCitationKeys('carrierId')),
+        'cnShortName',
+      ),
+    }),
+    item('shipAgentId', {
+      selectedItems: toSelectedItems(
+        values.shipAgentId,
+        pickExtractedLabel(schema, resolveCitationKeys('shipAgentId')),
+      ),
+    }),
+    item('codeServiceId', {
+      selectedItems: toSelectedItems(
+        values.codeServiceId,
+        pickExtractedLabel(schema, resolveCitationKeys('codeServiceId')),
+        'enName',
+      ),
+    }),
+  ]);
+
+  portFormApi.updateSchema([
+    item('polId', {
+      selectedItems: toPortSelectedItems(
+        values.polId,
+        pickExtractedLabel(schema, ['起运港名称']),
+        pickExtractedLabel(schema, ['起运港代码']),
+      ),
+    }),
+    item('podId', {
+      selectedItems: toPortSelectedItems(
+        values.podId,
+        pickExtractedLabel(schema, ['目的港名称']),
+        pickExtractedLabel(schema, ['目的港代码']),
+      ),
+    }),
+    item('deliverPortId', {
+      selectedItems: toPortSelectedItems(
+        values.deliverPortId,
+        pickExtractedLabel(schema, ['交货地名称']),
+        pickExtractedLabel(schema, ['交货港代码']),
+      ),
+    }),
+    item('signingPortId', {
+      selectedItems: toPortSelectedItems(
+        values.signingPortId,
+        pickExtractedLabel(schema, resolveCitationKeys('signingPortId')),
+      ),
+    }),
+  ]);
+
+  cargoMetricsFormApi.updateSchema([
+    item('codePackageId', {
+      selectedItems: toSelectedItems(
+        values.codePackageId,
+        pickExtractedLabel(schema, resolveCitationKeys('codePackageId')),
+      ),
+    }),
+  ]);
 };
 
 /** 提交时 dayjs/日期 转回 ISO 字符串 */
@@ -2308,16 +2400,20 @@ const toSelectedItems = (
   return [{ id, [labelKey]: name || '', ...extra }] as any[];
 };
 
-/** PortSelect 回显：portName 必填，countryEnName 可选（用于 labelKey 多字段拼接） */
+/** PortSelect 回显：portName + ediCode（labelKey 为 ediCode 时展示依赖 ediCode），countryEnName 可选 */
 const toPortSelectedItems = (
   id: unknown,
   portName: unknown,
+  ediCode?: unknown,
   countryEnName?: unknown,
 ) => {
-  const extra =
-    countryEnName != null && String(countryEnName).trim() !== ''
-      ? { country: { countryEnName: String(countryEnName).trim() } }
-      : {};
+  const extra: Record<string, unknown> = {};
+  if (ediCode != null && String(ediCode).trim() !== '') {
+    extra.ediCode = String(ediCode).trim();
+  }
+  if (countryEnName != null && String(countryEnName).trim() !== '') {
+    extra.country = { countryEnName: String(countryEnName).trim() };
+  }
   return toSelectedItems(id, portName, 'portName', extra);
 };
 
@@ -2441,6 +2537,7 @@ const loadEditData = async () => {
           selectedItems: toPortSelectedItems(
             formValues.signingPortId,
             detail.signingPortName,
+            detail.signingPortEdiCode,
           ),
           size: 'small',
         },
@@ -2496,10 +2593,10 @@ const loadEditData = async () => {
             allowClear: true,
           },
           prepareProps: {
-            selectedItems: toSelectedItems(
+            selectedItems: toPortSelectedItems(
               formValues.prepareAtId,
-              (to as any)?.prepareAtName ?? (detail as any)?.prepareAtName,
-              'portName',
+              detail.prepareAtName ?? (to as any)?.prepareAtName,
+              detail.prepareAtEdiCode ?? (to as any)?.prepareAtEdiCode,
             ),
             allowClear: true,
           },
@@ -2535,14 +2632,22 @@ const loadEditData = async () => {
       {
         fieldName: 'polId',
         componentProps: {
-          selectedItems: toPortSelectedItems(formValues.polId, detail.polName),
+          selectedItems: toPortSelectedItems(
+            formValues.polId,
+            detail.polName,
+            detail.polEdiCode,
+          ),
           size: 'small',
         },
       },
       {
         fieldName: 'podId',
         componentProps: {
-          selectedItems: toPortSelectedItems(formValues.podId, detail.podName),
+          selectedItems: toPortSelectedItems(
+            formValues.podId,
+            detail.podName,
+            detail.podEdiCode,
+          ),
           size: 'small',
         },
       },
@@ -2552,6 +2657,7 @@ const loadEditData = async () => {
           selectedItems: toPortSelectedItems(
             formValues.poT1Id,
             detail.poT1Name,
+            detail.poT1EdiCode,
           ),
           size: 'small',
         },
@@ -2562,6 +2668,7 @@ const loadEditData = async () => {
           selectedItems: toPortSelectedItems(
             formValues.poT2Id,
             detail.poT2Name,
+            detail.poT2EdiCode,
           ),
           size: 'small',
         },
@@ -2572,6 +2679,7 @@ const loadEditData = async () => {
           selectedItems: toPortSelectedItems(
             formValues.receivePortId,
             detail.receivePortName,
+            detail.receivePortEdiCode,
           ),
           size: 'small',
         },
@@ -2582,6 +2690,7 @@ const loadEditData = async () => {
           selectedItems: toPortSelectedItems(
             formValues.deliverPortId,
             detail.deliverPortName,
+            detail.deliverPortEdiCode,
           ),
           size: 'small',
         },
@@ -2631,6 +2740,7 @@ const loadEditData = async () => {
       savedServiceTypeSet: savedSet,
       taskMap,
     });
+    await syncFormSnapshot();
   } finally {
     pageLoading.value = false;
   }
@@ -2847,15 +2957,13 @@ const handleCancel = () => {
   router.push('/sea-exports');
 };
 
-const handleAiPdfFileChange = async (event: Event) => {
+const handleAiFileChange = async (event: Event) => {
   const target = event.target as HTMLInputElement | null;
   const file = target?.files?.[0];
   if (!file) return;
 
-  const isPdfFile =
-    file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
-  if (!isPdfFile) {
-    message.warning('请上传 PDF 文件');
+  if (!isAiExtractSupportedFile(file)) {
+    message.warning('请上传 PDF 或图片文件（png/jpg/jpeg/bmp/tiff/webp）');
     if (target) target.value = '';
     return;
   }
@@ -2863,14 +2971,39 @@ const handleAiPdfFileChange = async (event: Event) => {
   aiRecognizing.value = true;
   const hideLoading = message.loading('AI识别中，请稍候...', 0);
   try {
-    const ocrPayload = await runVisionOcrPdf(file);
-    const formValues = buildAiRecognizedFormValues(ocrPayload);
-    const recognizedFieldCount = Object.keys(formValues).length;
+    const result = await extractSeaExportToAddDto(file);
+    if (result.extract?.code != null && result.extract.code !== 200) {
+      message.error(result.extract.message || 'AI识别失败，请稍后重试');
+      return;
+    }
+
+    const payload = buildAiExtractFormPayload(result, {
+      allowedFields: AI_RECOGNIZE_ALLOWED_FIELDS,
+      normalizeValue: normalizeAiFieldValue,
+    });
+    const recognizedFieldCount = payload.filledFields.length;
     if (recognizedFieldCount === 0) {
       message.warning('识别成功，但没有可回填的字段');
       return;
     }
-    await applyAiRecognizedFormValues(formValues);
+
+    applyAiExtractSelectedItems(
+      payload.formValues,
+      result.extract?.extractedSchema,
+      payload.filledFields,
+    );
+    await applyAiRecognizedFormValues(payload.formValues, {
+      orderCtnsPayload: payload.orderCtns,
+      orderCodeGoodssPayload: payload.orderCodeGoodss,
+      filledFields: payload.filledFields,
+    });
+
+    aiPreviewFile.value = file;
+    aiPreviewCitations.value = result.extract?.citations ?? {};
+    aiPreviewIsFromCache.value = Boolean(result.extract?.isFromCache);
+    aiActiveField.value = payload.filledFields[0] ?? null;
+    aiPreviewOpen.value = true;
+
     message.success(`AI识别完成，已回填 ${recognizedFieldCount} 个字段`);
   } catch {
     message.error('AI识别失败，请稍后重试');
@@ -2883,11 +3016,82 @@ const handleAiPdfFileChange = async (event: Event) => {
 
 const handleAiRecognize = () => {
   if (aiRecognizing.value) return;
-  aiOcrPdfInputRef.value?.click();
+  aiExtractFileInputRef.value?.click();
 };
 
-const handlePrint = () => {
-  // TODO: 后续接入打印逻辑
+const syncFormSnapshot = async () => {
+  await nextTick();
+  const values = await collectCurrentFormValues();
+  formSnapshotJson.value = JSON.stringify(buildDto(values));
+};
+
+const isFormDirty = async () => {
+  if (!formSnapshotJson.value) return false;
+  const values = await collectCurrentFormValues();
+  return JSON.stringify(buildDto(values)) !== formSnapshotJson.value;
+};
+
+const confirmUnsavedPrint = () => {
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const settle = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    Modal.confirm({
+      title: '存在未保存的修改',
+      content: '当前表单有未保存的修改，确认按当前内容打印吗？',
+      okText: '确认打印',
+      cancelText: '取消',
+      onOk: () => {
+        settle(true);
+      },
+      onCancel: () => {
+        settle(false);
+      },
+    });
+  });
+};
+
+const resolvePrintJson = async (): Promise<string | null> => {
+  if (!isEdit.value || !editId.value) {
+    message.warning('请先保存后再打印');
+    return null;
+  }
+
+  try {
+    const dirty = await isFormDirty();
+    if (dirty) {
+      const confirmed = await confirmUnsavedPrint();
+      if (!confirmed) return null;
+      const values = await collectCurrentFormValues();
+      return JSON.stringify(buildDto(values));
+    }
+
+    const detail = await getSeaExportDetail(editId.value);
+    return JSON.stringify(detail);
+  } catch {
+    message.error('获取打印数据失败');
+    return null;
+  }
+};
+
+const handlePrint = async () => {
+  if (printing.value) return;
+  printing.value = true;
+  const hideLoading = message.loading('正在准备打印...', 0);
+  try {
+    const json = await resolvePrintJson();
+    if (!json) return;
+    openPrint({ printJsonType: PrintJsonType.SeaExportDetail, json });
+  } catch {
+    message.error('打印准备失败，请稍后重试');
+  } finally {
+    hideLoading();
+    printing.value = false;
+  }
 };
 
 const handleBack = () => {
@@ -3360,6 +3564,7 @@ defineExpose({
                     <Button
                       size="small"
                       class="flex items-center justify-center"
+                      :loading="printing"
                       @click="handlePrint"
                     >
                       <IconifyIcon
@@ -3383,11 +3588,11 @@ defineExpose({
                     </Button>
                   </Space>
                   <input
-                    ref="aiOcrPdfInputRef"
+                    ref="aiExtractFileInputRef"
                     type="file"
-                    accept=".pdf,application/pdf"
+                    :accept="AI_EXTRACT_ACCEPT"
                     class="hidden"
-                    @change="handleAiPdfFileChange"
+                    @change="handleAiFileChange"
                   />
                 </div>
                 <div
@@ -3889,6 +4094,13 @@ defineExpose({
         </div>
       </div>
     </Modal>
+    <AiExtractPreviewDrawer
+      v-model:open="aiPreviewOpen"
+      :file="aiPreviewFile"
+      :citations="aiPreviewCitations"
+      :active-field="aiActiveField"
+      :is-from-cache="aiPreviewIsFromCache"
+    />
   </component>
 </template>
 
@@ -5766,5 +5978,20 @@ defineExpose({
 
 :deep(.ant-card:not(.cargo-container-card) .ant-card-body) {
   padding: 12px 14px;
+}
+
+:deep(.ai-extract-filled-field) {
+  position: relative;
+}
+
+:deep(.ai-extract-filled-field::before) {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  content: '';
+  background: hsl(var(--primary));
+  border-radius: 2px;
 }
 </style>

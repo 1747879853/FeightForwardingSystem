@@ -1,6 +1,35 @@
 import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
+import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
 
 import { getUser } from '#/api/system/user-admin';
+
+/** 编辑页操作人行 */
+export interface BankStatementOperatorRow {
+  _key: string;
+  operationId?: number;
+  operationName?: string;
+  remark?: string;
+}
+
+/** 收费结算详情费用项 → 只读表格行 */
+export function mapReceiveSettlementDetailItem(
+  item: ReceiveSettlementAdminApi.ReceiveSettlementItemDetailDto,
+) {
+  const orderFee = item.orderFee;
+  const order = item.transportOrder;
+  return {
+    id: item.id,
+    commissionNum: order?.commissionNum,
+    mblNum: order?.mblNum,
+    feeCodeName: orderFee?.feeCodeName,
+    currencyCode: orderFee?.currencyCode,
+    amount: orderFee?.amount ?? 0,
+    remainingAmount: orderFee?.remainingAmount ?? 0,
+    settlementName: orderFee?.settlementName,
+    settledAmount: item.settledAmount,
+    remark: item.remark || '',
+  };
+}
 
 /** 按 operationId 解析操作人显示名（接口未带 operationName 时调用 GetUserAsync） */
 export async function resolveOperatorName(
@@ -51,7 +80,7 @@ export async function enrichBankStatementListItems(
 export async function buildOperatorRows(
   users: BankStatementAdminApi.BankStatementUserDto[] | undefined,
   makeRowKey: () => string,
-) {
+): Promise<BankStatementOperatorRow[]> {
   return Promise.all(
     (users || []).map(async (u) => ({
       _key: makeRowKey(),

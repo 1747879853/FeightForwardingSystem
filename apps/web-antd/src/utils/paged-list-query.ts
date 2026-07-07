@@ -362,10 +362,33 @@ export function resolveEffectiveSortList(
       return sessionList;
     }
 
+    // 无会话时点击 defaultSort 之外的列：vxe 会把 default 与新列一并传入 proxy，
+    // 业务期望替换默认排序而非叠加（如 CreationTime DESC + Client.Name DESC）。
+    if (sessionList.length === 0 && defaultList.length > 0) {
+      const defaultFields = new Set(defaultList.map((item) => item.field));
+      const addedFields = proxySortList.filter(
+        (item) => !defaultFields.has(item.field),
+      );
+      if (addedFields.length > 0) {
+        const clickedItem = addedFields[addedFields.length - 1]!;
+        const nextSessionList = [
+          { field: clickedItem.field, order: clickedItem.order },
+        ];
+        if (listKey) {
+          setSortSessionList(listKey, nextSessionList);
+        }
+        return nextSessionList;
+      }
+    }
+
     const clickedField = findClickedSortField(sessionList, proxySortList);
     if (clickedField) {
       const effectiveCurrent =
-        sessionList.length > 0 ? sessionList : defaultList;
+        sessionList.length > 0
+          ? sessionList
+          : defaultList.length > 0
+            ? defaultList
+            : [];
       const nextSessionList = applySortClick(
         effectiveCurrent,
         clickedField,

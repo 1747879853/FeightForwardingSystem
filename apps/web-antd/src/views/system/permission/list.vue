@@ -70,6 +70,8 @@ const loadingPermissions = ref(false);
 const checkedPermissions = ref<string[]>([]);
 const savingPermissions = ref(false);
 const permissionSearchKeyword = ref('');
+/** 权限码 -> 父级权限码（来自后端 parentName） */
+const permissionParentMap = ref<Map<string, string>>(new Map());
 
 // ==================== 计算属性 ====================
 
@@ -163,6 +165,39 @@ function collectPermissionKeys(nodes: DataNode[]): string[] {
   return keys;
 }
 
+function buildPermissionParentMap(nodes: DataNode[]): Map<string, string> {
+  const map = new Map<string, string>();
+  const walk = (list: DataNode[]) => {
+    for (const node of list) {
+      const authCode = String(node.authCode ?? node.id ?? '');
+      const pid = String(node.pid ?? '');
+      if (authCode && pid && pid !== '0') {
+        map.set(authCode, pid);
+      }
+      if (node.children) {
+        walk(node.children as DataNode[]);
+      }
+    }
+  };
+  walk(nodes);
+  return map;
+}
+
+/** 勾选子权限时自动补齐全部祖先权限 */
+function expandWithAncestorPermissions(keys: string[]): string[] {
+  const expanded = new Set(keys);
+  const parentMap = permissionParentMap.value;
+  for (const key of keys) {
+    let current = key;
+    while (parentMap.has(current)) {
+      const parent = parentMap.get(current)!;
+      expanded.add(parent);
+      current = parent;
+    }
+  }
+  return [...expanded];
+}
+
 // ==================== 数据加载方法 ====================
 
 /** 加载角色列表 */
@@ -203,6 +238,12 @@ async function loadPermissions() {
   try {
     const res = await getAllPermissionsTreeApi($t);
     permissions.value = res as unknown as DataNode[];
+    permissionParentMap.value = buildPermissionParentMap(permissions.value);
+    if (checkedPermissions.value.length > 0) {
+      checkedPermissions.value = expandWithAncestorPermissions(
+        checkedPermissions.value,
+      );
+    }
   } finally {
     loadingPermissions.value = false;
   }
@@ -223,7 +264,7 @@ async function loadCheckedPermissions() {
     } else {
       perms = await getUserPermissions(currentTargetId.value);
     }
-    checkedPermissions.value = perms || [];
+    checkedPermissions.value = expandWithAncestorPermissions(perms || []);
   } finally {
     loadingPermissions.value = false;
   }
@@ -249,8 +290,10 @@ function handleTargetChange() {
 
 /** 权限选择改变（搜索过滤时合并不可见节点的已选权限，避免被 Tree 覆盖丢失） */
 function handlePermissionsChange(keys: string[]) {
+  const expandedKeys = expandWithAncestorPermissions(keys);
+
   if (!hasPermissionSearchKeyword.value) {
-    checkedPermissions.value = keys;
+    checkedPermissions.value = expandedKeys;
     return;
   }
 
@@ -258,7 +301,9 @@ function handlePermissionsChange(keys: string[]) {
   const hiddenChecked = checkedPermissions.value.filter(
     (key) => !visibleKeys.has(key),
   );
-  const merged = [...new Set([...hiddenChecked, ...keys])];
+  const merged = expandWithAncestorPermissions([
+    ...new Set([...hiddenChecked, ...expandedKeys]),
+  ]);
   if (
     merged.length === checkedPermissions.value.length &&
     merged.every((key) => checkedPermissions.value.includes(key))
@@ -277,12 +322,14 @@ async function handleSaveModulePermissions() {
     if (targetType.value === 'role') {
       await updateRolePermissions(
         currentTargetId.value,
-        checkedPermissions.value,
+        expandWithAncestorPermissions(checkedPermissions.value),
       );
     } else {
       await updateUserPermissions({
         userId: currentTargetId.value,
-        permissionNames: checkedPermissions.value,
+        permissionNames: expandWithAncestorPermissions(
+          checkedPermissions.value,
+        ),
       });
     }
     message.success($t('system.permission.permissionSaved'));

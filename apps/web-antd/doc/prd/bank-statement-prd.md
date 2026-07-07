@@ -118,7 +118,10 @@ reference: apps/web-antd/src/views/bank-statement/**, apps/web-antd/doc/modules/
 
 ### 4.2 新建/编辑页
 
-**布局：** 左「流水信息」+ 右「操作人」；编辑页额外展示「关联收费结算」Card。
+**布局：**
+
+- **新建页：** 标题行「操作人」（Tag + Popover）+ 左「流水信息」；保存后跳转编辑页。
+- **编辑页：** 标题行操作人；左 40%「流水信息」（含核销状态 Tag）；右 60%「关联收费结算」（全列、搜索、分页、行展开只读明细、双击跳转）；底部全宽「选择费用并创建结算单」（需 `Admin.ReceiveSettlement.Add`）。
 
 **流水信息字段：**
 
@@ -136,23 +139,29 @@ reference: apps/web-antd/src/views/bank-statement/**, apps/web-antd/doc/modules/
 
 \* 无 `Edit` 权限时编辑页字段只读，保存按钮隐藏。
 
-**操作人 Card：**
+**操作人（标题行）：**
 
-- 可增删行；每行：操作人（UserSelect）+ 备注。
-- 空状态提示：「未配置操作人，所有人均可在非 Admin 端查看该流水」。
-- 保存时仅提交已选操作人的行（`operationId` 有值）。
+- Tag 展示已选操作人，Popover 内增删行；每行：操作人（UserSelect）+ 备注。
+- 空状态提示：「未配置时，所有人均可在非 Admin 端查看」。
+- 保存时仅提交已选 `operationId` 的行。
 
 **保存行为：**
 
 - 新建成功 → 提示「创建成功」→ **跳转编辑页**（`replace` 到 `/bank-statement/edit/:id`）。
 - 编辑成功 → 提示「保存成功」，停留当前页。
 
-**关联收费结算（仅编辑页）：**
+**关联收费结算（仅编辑页，右侧 Card）：**
 
 - 按 `bankStatementId` 分页加载；可按结算单号模糊搜索。
-- 列：结算单号、结算状态、结算时间、明细总金额、明细条数、锁定状态、锁定时间、创建人、创建时间、备注。
-- **双击行** → 跳转收费结算编辑/只读页。
-- 「新建收费结算」→ 带 `bankStatementId` query 进入收费结算新建页。
+- 列：结算单号、结算状态（Tag 中文）、结算时间、明细总金额、明细条数、锁定状态、锁定时间、创建人、创建时间、备注。
+- **行展开** → 调 `ReceiveSettlementAdmin/DetailAsync` 展示只读费用明细。
+- **双击行** → 跳转收费结算编辑页。
+- 无「新建收费结算」按钮；建单走底部选费区。
+
+**底部选费建单（仅编辑页，需 Add 权限）：**
+
+- 复用收费结算 `GetOrderFeeGroupAsync` 分组选费；勾选费用后点击「创建结算单」直接建单（结算时间取当前时间）。
+- 「创建结算单」调用 `ReceiveSettlementAdmin/AddAsync`；成功后停留本页并刷新关联列表。
 
 ---
 

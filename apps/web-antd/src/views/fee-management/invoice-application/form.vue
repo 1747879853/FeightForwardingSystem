@@ -58,6 +58,12 @@ const editId = computed<string | undefined>(() => {
 });
 
 const isEdit = computed(() => !!editId.value);
+
+// 判断是否为只读模式（通过路由路径判断）
+const isReadOnly = computed(() => {
+  return route.path.includes('/view');
+});
+
 const loading = ref(false);
 const submitLoading = ref(false);
 
@@ -1801,8 +1807,9 @@ async function loadDetail() {
   try {
     const detail = await detailAsync(editId.value);
 
-    // 检查状态，只有录入或驳回状态可以编辑
+    // 检查状态，只有录入或驳回状态可以编辑（只读模式除外）
     if (
+      !isReadOnly.value &&
       detail.status !==
         InvoiceApplicationApi.InvoiceApplicationStatus.Entering &&
       detail.status !== InvoiceApplicationApi.InvoiceApplicationStatus.Rejected
@@ -1974,7 +1981,12 @@ async function loadDetail() {
     <!-- 顶部操作按钮 -->
     <div style="margin-bottom: 16px; text-align: right">
       <Space>
-        <Button type="primary" :loading="submitLoading" @click="handleSubmit">
+        <Button
+          type="primary"
+          :loading="submitLoading"
+          @click="handleSubmit"
+          :disabled="isReadOnly"
+        >
           {{ isEdit ? '保存' : '创建' }}
         </Button>
         <Button
@@ -1988,10 +2000,13 @@ async function loadDetail() {
             formData.status ===
               InvoiceApplicationApi.InvoiceApplicationStatus.Rejected
           "
+          :disabled="isReadOnly"
         >
           提交审核
         </Button>
-        <Button @click="handleCancel">取消</Button>
+        <Button @click="handleCancel">{{
+          isReadOnly ? '关闭' : '取消'
+        }}</Button>
       </Space>
     </div>
 
@@ -2050,17 +2065,27 @@ async function loadDetail() {
                     v-model:value="formData.require"
                     placeholder="请输入客户的特殊开票要求..."
                     :rows="3"
+                    :disabled="isReadOnly"
                   />
                 </Form.Item>
 
                 <Form.Item>
-                  <Button type="primary" block @click="handleOpenFeeDrawer">
+                  <Button
+                    type="primary"
+                    block
+                    @click="handleOpenFeeDrawer"
+                    :disabled="isReadOnly"
+                  >
                     从开票申请导入费用
                   </Button>
                 </Form.Item>
 
                 <Form.Item>
-                  <Button block @click="handleOpenFeeDetailModal">
+                  <Button
+                    block
+                    @click="handleOpenFeeDetailModal"
+                    :disabled="isReadOnly"
+                  >
                     查看费用明细
                   </Button>
                 </Form.Item>
@@ -2096,16 +2121,16 @@ async function loadDetail() {
             <Card>
               <template #title>
                 <div style="width: 100%; text-align: center">
-                  <Dropdown :trigger="['click']">
+                  <Dropdown :trigger="['click']" :disabled="isReadOnly">
                     <span
-                      style="
-                        display: inline-flex;
-                        gap: 8px;
-                        align-items: center;
-                        font-size: 24px;
-                        color: #c41e3a;
-                        cursor: pointer;
-                      "
+                      :style="{
+                        display: 'inline-flex',
+                        gap: '8px',
+                        alignItems: 'center',
+                        fontSize: '24px',
+                        color: isReadOnly ? '#999' : '#c41e3a',
+                        cursor: isReadOnly ? 'not-allowed' : 'pointer',
+                      }"
                     >
                       {{ getInvoiceTitle(formData.invoiceType) }}
                       <IconifyIcon icon="ant-design:down-outlined" />
@@ -2177,6 +2202,7 @@ async function loadDetail() {
                           size="small"
                           placeholder="请选择发票抬头"
                           @change="handleClientInvoiceHeaderChange"
+                          :disabled="isReadOnly"
                         />
                       </div>
                       <div
@@ -2222,9 +2248,9 @@ async function loadDetail() {
                           ><strong>开户行及账号:</strong></span
                         >
                         <Select
-                          v-model:value="formData.clientInvoiceBankId"
+                          v-model:value="formData.orgBankAccountId"
                           :options="
-                            filteredClientBanks.map((b) => ({
+                            filteredOrgBanks.map((b) => ({
                               label: `${b.bankName} - ${b.bankAccount}`,
                               value: b.id,
                             }))
@@ -2232,7 +2258,7 @@ async function loadDetail() {
                           style="flex: 1"
                           size="small"
                           placeholder="请选择银行"
-                          @change="handleClientBankChange"
+                          :disabled="isReadOnly"
                         />
                       </div>
                     </div>
@@ -2332,6 +2358,7 @@ async function loadDetail() {
                           style="flex: 1"
                           size="small"
                           placeholder="请选择银行"
+                          :disabled="isReadOnly"
                         />
                       </div>
                     </div>
@@ -2357,6 +2384,7 @@ async function loadDetail() {
                     type="primary"
                     size="small"
                     @click="handleAddGoodsRow"
+                    :disabled="isReadOnly"
                   >
                     <template #icon
                       ><IconifyIcon icon="ant-design:plus-outlined"
@@ -2367,7 +2395,7 @@ async function loadDetail() {
                     size="small"
                     danger
                     @click="handleDeleteSelectedGoodsRows"
-                    :disabled="selectedGoodsRows.length === 0"
+                    :disabled="selectedGoodsRows.length === 0 || isReadOnly"
                   >
                     <template #icon
                       ><IconifyIcon icon="ant-design:delete-outlined"
@@ -2449,17 +2477,21 @@ async function loadDetail() {
                   bordered
                   size="small"
                   row-key="id"
-                  :row-selection="{
-                    selectedRowKeys: selectedGoodsRows,
-                    onChange: (selectedRowKeys) => {
-                      selectedGoodsRows.splice(
-                        0,
-                        selectedGoodsRows.length,
-                        ...selectedRowKeys.map(String),
-                      );
-                    },
-                    type: 'checkbox',
-                  }"
+                  :row-selection="
+                    isReadOnly
+                      ? undefined
+                      : {
+                          selectedRowKeys: selectedGoodsRows,
+                          onChange: (selectedRowKeys) => {
+                            selectedGoodsRows.splice(
+                              0,
+                              selectedGoodsRows.length,
+                              ...selectedRowKeys.map(String),
+                            );
+                          },
+                          type: 'checkbox',
+                        }
+                  "
                   :style="{
                     borderTop: 'none',
                     borderBottom: 'none',
@@ -2479,12 +2511,14 @@ async function loadDetail() {
                         size="small"
                         placeholder="请选择"
                         @change="() => handleGoodsNameChange(record, index)"
+                        :disabled="isReadOnly"
                       />
                     </template>
                     <template v-else-if="column.key === 'specification'">
                       <Input
                         v-model:value="record.specification"
                         size="small"
+                        :disabled="isReadOnly"
                       />
                     </template>
                     <template v-else-if="column.key === 'unit'">
@@ -2493,6 +2527,7 @@ async function loadDetail() {
                         :options="[{ label: '票', value: '票' }]"
                         style="width: 100%"
                         size="small"
+                        :disabled="isReadOnly"
                       />
                     </template>
                     <template v-else-if="column.key === 'quantity'">
@@ -2503,6 +2538,7 @@ async function loadDetail() {
                         style="width: 100%"
                         size="small"
                         @change="() => handleQuantityOrPriceChange(record)"
+                        :disabled="isReadOnly"
                       />
                     </template>
                     <template v-else-if="column.key === 'unitPrice'">
@@ -2513,6 +2549,7 @@ async function loadDetail() {
                         style="width: 100%"
                         size="small"
                         @change="() => handleQuantityOrPriceChange(record)"
+                        :disabled="isReadOnly"
                       />
                     </template>
                     <template v-else-if="column.key === 'amount'">
@@ -2523,6 +2560,7 @@ async function loadDetail() {
                         style="width: 100%"
                         size="small"
                         @change="() => handleAmountChange(record)"
+                        :disabled="isReadOnly"
                       />
                     </template>
                     <template v-else-if="column.key === 'noTaxAmount'">
@@ -2537,6 +2575,7 @@ async function loadDetail() {
                         placeholder="选择税率"
                         allow-clear
                         @change="() => handleTaxRateChange(record)"
+                        :disabled="isReadOnly"
                       />
                     </template>
                     <template v-else-if="column.key === 'taxAmount'">
@@ -2546,7 +2585,11 @@ async function loadDetail() {
                       {{ record.totalAmount?.toFixed(2) || '0.00' }}
                     </template>
                     <template v-else-if="column.key === 'remark'">
-                      <Input v-model:value="record.remark" size="small" />
+                      <Input
+                        v-model:value="record.remark"
+                        size="small"
+                        :disabled="isReadOnly"
+                      />
                     </template>
                   </template>
                 </Table>
@@ -2636,7 +2679,7 @@ async function loadDetail() {
                           @click="handleOpenSelectRemarkTemplateModal"
                           :disabled="
                             (formData.invoiceApplicationItems || []).length ===
-                            0
+                              0 || isReadOnly
                           "
                         >
                           <template #icon></template>
@@ -2645,6 +2688,7 @@ async function loadDetail() {
                         <Button
                           size="small"
                           @click="handleOpenRemarkTemplateModal"
+                          :disabled="isReadOnly"
                         >
                           <template #icon></template>
                           管理模板
@@ -2654,6 +2698,7 @@ async function loadDetail() {
                         v-model:value="formData.remark"
                         placeholder="请输入备注,或点击按钮使用模板"
                         :rows="6"
+                        :disabled="isReadOnly"
                       />
                     </div>
                   </div>

@@ -1,6 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
 
-import { computed, reactive, ref, toRefs, watch } from 'vue';
+import { computed, nextTick, reactive, ref, toRefs, watch } from 'vue';
 
 import { useQueryClient } from '@tanstack/vue-query';
 
@@ -40,6 +40,8 @@ export interface PagedSelectOptions<T = any> {
   pageSize?: number;
   /** 已选中项的 ref（用于编辑时回显不在第一页的数据） */
   selectedItemsRef?: Ref<T[]>;
+  /** 当前选中值 ref，下拉关闭重置缓存时保留对应 option 以正确回显 label */
+  selectedValuesRef?: Ref<any>;
   /** value 字段名，默认 'id' */
   valueKey?: string;
 }
@@ -59,6 +61,8 @@ export interface UsePagedSelectReturn {
   loadingMore: Ref<boolean>;
   /** 合并已选中项到缓存中 */
   mergeSelectedItems: (items: any[]) => void;
+  /** 从当前 options 中 pin 已选值 */
+  pinSelectedFromOptions: (rawValue: any, options: OptionItem[]) => void;
   /** 计算属性：当前参数（用于触发 ApiComponent 重新请求） */
   params: ComputedRef<{
     keyword: string;
@@ -83,6 +87,7 @@ export function usePagedSelect<T = any>(
     mapItemToOption,
     pageSize = 20,
     selectedItemsRef,
+    selectedValuesRef,
     queryKey,
     staleTime = 5 * 60 * 1000,
     extraParamsRef,
@@ -105,6 +110,59 @@ export function usePagedSelect<T = any>(
 
   const { loadingMore } = toRefs(state);
   const searchValue = ref('');
+  /** 已选 option 持久缓存，下拉关闭重置分页时不丢失 label */
+  const pinnedCache = new Map<number | string, OptionItem>();
+
+  const normalizeSelectedValues = (raw: any): Array<number | string> => {
+    if (raw === undefined || raw === null || raw === '') return [];
+    const list = Array.isArray(raw) ? raw : [raw];
+    return list.filter(
+      (value) => value !== undefined && value !== null && value !== '',
+    );
+  };
+
+  const findCachedOption = (value: number | string): OptionItem | undefined => {
+    const direct = state.cache.get(value) ?? pinnedCache.get(value);
+    if (direct) return direct;
+
+    const asNumber = Number(value);
+    if (!Number.isNaN(asNumber)) {
+      return state.cache.get(asNumber) ?? pinnedCache.get(asNumber);
+    }
+
+    const asString = String(value);
+    return state.cache.get(asString) ?? pinnedCache.get(asString);
+  };
+
+  const pinOption = (option: OptionItem) => {
+    if (option.value === undefined || option.value === null) return;
+    pinnedCache.set(option.value, option);
+  };
+
+  const syncPinnedCacheWithSelection = () => {
+    const activeValues = new Set(
+      normalizeSelectedValues(selectedValuesRef?.value).map(String),
+    );
+    if (activeValues.size === 0) {
+      pinnedCache.clear();
+      return;
+    }
+
+    for (const [key, option] of pinnedCache) {
+      if (
+        !activeValues.has(String(key)) &&
+        !activeValues.has(String(option.value))
+      ) {
+        pinnedCache.delete(key);
+      }
+    }
+  };
+
+  const restorePinnedToCache = () => {
+    for (const option of pinnedCache.values()) {
+      state.cache.set(option.value, option);
+    }
+  };
 
   /**
    * 清空搜索词并重新拉取默认列表
@@ -120,9 +178,17 @@ export function usePagedSelect<T = any>(
    * 重置分页状态
    */
   const reset = () => {
+    syncPinnedCacheWithSelection();
+
     state.pageIndex = 1;
     state.total = 0;
     state.cache.clear();
+    restorePinnedToCache();
+
+    if (pinnedCache.size > 0) {
+      state.optionsVersion += 1;
+    }
+
     state.queryVersion += 1;
   };
 
@@ -138,14 +204,38 @@ export function usePagedSelect<T = any>(
       if (!item) continue;
       const option = mapItemToOption(item);
       if (option.value !== undefined && option.value !== null) {
-        if (!state.cache.has(option.value)) {
+        if (!state.cache.has(option.value) && !pinnedCache.has(option.value)) {
           hasNewOption = true;
         }
         state.cache.set(option.value, option);
+        pinOption(option);
       }
     }
 
     if (hasNewOption) {
+      state.optionsVersion += 1;
+    }
+  };
+
+  /**
+   * 从当前 options 中同步 pin 已选值（用于 change 早于 dropdown close 的场景）
+   */
+  const pinSelectedFromOptions = (rawValue: any, options: OptionItem[]) => {
+    for (const value of normalizeSelectedValues(rawValue)) {
+      const matched = options.find((option) => option.value == value);
+      if (matched) {
+        pinOption(matched);
+        state.cache.set(matched.value, matched);
+      } else {
+        const cached = findCachedOption(value);
+        if (cached) {
+          pinOption(cached);
+          state.cache.set(cached.value, cached);
+        }
+      }
+    }
+
+    if (pinnedCache.size > 0) {
       state.optionsVersion += 1;
     }
   };
@@ -193,6 +283,8 @@ export function usePagedSelect<T = any>(
         }
       }
 
+      restorePinnedToCache();
+
       // 确保已选项始终在 options 中（解决回显问题）
       if (selectedItemsRef?.value) {
         mergeSelectedItems(selectedItemsRef.value);
@@ -226,7 +318,10 @@ export function usePagedSelect<T = any>(
    */
   const handleDropdownVisibleChange = (visible: boolean) => {
     if (!visible) {
-      clearKeyword();
+      // Select 可能先触发 dropdown close 再触发 change，延迟重置避免丢失已选 label
+      nextTick(() => {
+        clearKeyword();
+      });
     }
   };
 
@@ -290,6 +385,25 @@ export function usePagedSelect<T = any>(
     );
   }
 
+  if (selectedValuesRef) {
+    watch(
+      selectedValuesRef,
+      (value) => {
+        syncPinnedCacheWithSelection();
+        if (value === undefined || value === null || value === '') return;
+
+        for (const selectedValue of normalizeSelectedValues(value)) {
+          const cached = findCachedOption(selectedValue);
+          if (cached) {
+            pinOption(cached);
+            state.cache.set(cached.value, cached);
+          }
+        }
+      },
+      { flush: 'sync' },
+    );
+  }
+
   // 监听 extraParamsRef 变化，重置并触发重新请求
   if (extraParamsRef) {
     watch(
@@ -310,6 +424,7 @@ export function usePagedSelect<T = any>(
     loadingMore,
     mergeSelectedItems,
     params,
+    pinSelectedFromOptions,
     reset,
     searchValue,
   };

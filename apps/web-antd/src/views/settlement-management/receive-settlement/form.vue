@@ -675,147 +675,163 @@ onMounted(() => {
     </template>
 
     <div v-loading="pageLoading" class="receive-settlement-form">
-      <Card
-        v-if="bankStatementId && bankStatementDetail"
-        title="银行流水信息"
-        size="small"
-        class="mb-3"
+      <div
+        class="form-info-layout"
+        :class="{
+          'form-info-layout--single': !(bankStatementId && bankStatementDetail),
+        }"
       >
-        <div v-loading="bankStatementSummaryLoading">
-          <Descriptions :column="3" size="small" bordered>
-            <DescriptionsItem label="流水号">
-              {{
-                bankStatementDetail.bankStatementNo || bankStatementDetail.id
-              }}
-            </DescriptionsItem>
-            <DescriptionsItem label="交易时间">
-              {{ formatDateTime(bankStatementDetail.statementTime) }}
-            </DescriptionsItem>
-            <DescriptionsItem label="总金额">
-              <span class="bank-amount bank-amount--total">
-                {{ formatBankAmount(bankStatementDetail.amount) }}
-              </span>
-            </DescriptionsItem>
-            <DescriptionsItem label="币别">
-              <Tag v-if="bankStatementDetail.currencyCode">
-                {{ bankStatementDetail.currencyCode }}
-              </Tag>
-              <span v-else>-</span>
-            </DescriptionsItem>
-            <DescriptionsItem label="付款方">
-              {{ bankStatementDetail.settlementName || '-' }}
-            </DescriptionsItem>
-            <DescriptionsItem label="我司银行">
-              {{ bankStatementDetail.orgBankAccountName || '-' }}
-            </DescriptionsItem>
-            <DescriptionsItem label="交易备注" :span="3">
-              {{ bankStatementDetail.statementRemark || '-' }}
-            </DescriptionsItem>
-          </Descriptions>
-
-          <div class="bank-summary-row">
-            <div class="bank-summary-item">
-              <span class="bank-summary-label">已结算（不含本单）</span>
-              <span class="bank-summary-value bank-summary-value--settled">
-                {{ formatBankAmount(otherSettledAmount) }}
-              </span>
-            </div>
-            <div class="bank-summary-item">
-              <span class="bank-summary-label">剩余可结算</span>
-              <span
-                class="bank-summary-value"
-                :class="
-                  isRemainingOverLimit
-                    ? 'bank-summary-value--remaining-danger'
-                    : 'bank-summary-value--remaining'
-                "
-              >
-                {{ formatBankAmount(remainingSettleAmount) }}
-              </span>
-              <span v-if="isRemainingOverLimit" class="bank-summary-warning">
-                本单结算合计已超过流水剩余可结算金额
-              </span>
-            </div>
-            <div class="bank-summary-item">
-              <span class="bank-summary-label">本单本次合计</span>
-              <span class="bank-summary-value bank-summary-value--current">
-                {{ formatBankAmount(currentSettlementTotal) }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <Card title="结算信息" size="small">
-        <div class="form-grid">
-          <div class="form-item">
-            <div class="form-label">银行流水</div>
-            <div class="form-control">
-              <Input
-                :value="bankStatementNo"
-                placeholder="请选择银行流水"
-                readonly
-                :class="{ 'bank-input--clickable': !isEdit && !isReadonly }"
-                @click="handleOpenBankPicker"
-              />
-            </div>
-          </div>
-          <div class="form-item">
-            <div class="form-label">结算单号</div>
-            <div class="form-control">
-              <span class="form-text">{{ settlementNo || '-' }}</span>
-            </div>
-          </div>
-          <div class="form-item">
-            <div class="form-label">创建人</div>
-            <div class="form-control">
-              <span class="form-text">{{ creatorUserName || '-' }}</span>
-            </div>
-          </div>
-          <div class="form-item">
-            <div class="form-label">结算时间</div>
-            <div class="form-control">
-              <DatePicker
-                v-model:value="settlementTime"
-                show-time
-                format="YYYY-MM-DD HH:mm"
-                :disabled="isReadonly"
-                style="width: 100%"
-              />
-            </div>
-          </div>
-          <div v-if="isEdit" class="form-item">
-            <div class="form-label">结算状态</div>
-            <div class="form-control">
-              <Tag :color="getReceiveSettlementStatusColor(status)">
-                {{ getReceiveSettlementStatusLabel(status) }}
-              </Tag>
-            </div>
-          </div>
-          <div v-if="isEdit" class="form-item">
-            <div class="form-label">锁定状态</div>
-            <div class="form-control">
-              <Space>
-                <Tag :color="locked ? 'red' : 'green'">
-                  {{ locked ? '已锁定' : '未锁定' }}
+        <Card
+          v-if="bankStatementId && bankStatementDetail"
+          title="银行流水信息"
+          size="small"
+          class="form-info-layout__panel form-panel-card"
+        >
+          <div v-loading="bankStatementSummaryLoading">
+            <Descriptions :column="2" size="small" bordered>
+              <DescriptionsItem label="流水号">
+                {{
+                  bankStatementDetail.bankStatementNo || bankStatementDetail.id
+                }}
+              </DescriptionsItem>
+              <DescriptionsItem label="交易时间">
+                {{ formatDateTime(bankStatementDetail.statementTime) }}
+              </DescriptionsItem>
+              <DescriptionsItem label="总金额">
+                <span class="bank-amount bank-amount--total">
+                  {{ formatBankAmount(bankStatementDetail.amount) }}
+                </span>
+              </DescriptionsItem>
+              <DescriptionsItem label="币别">
+                <Tag v-if="bankStatementDetail.currencyCode">
+                  {{ bankStatementDetail.currencyCode }}
                 </Tag>
-                <span v-if="lockeTime">{{ formatDateTime(lockeTime) }}</span>
-              </Space>
+                <span v-else>-</span>
+              </DescriptionsItem>
+              <DescriptionsItem label="付款方">
+                {{ bankStatementDetail.settlementName || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="我司银行">
+                {{ bankStatementDetail.orgBankAccountName || '-' }}
+              </DescriptionsItem>
+              <DescriptionsItem label="交易备注" :span="2">
+                {{ bankStatementDetail.statementRemark || '-' }}
+              </DescriptionsItem>
+            </Descriptions>
+
+            <div class="bank-summary-row bank-summary-row--compact">
+              <div class="bank-summary-item">
+                <span class="bank-summary-label">已结算（不含本单）</span>
+                <span class="bank-summary-value bank-summary-value--settled">
+                  {{ formatBankAmount(otherSettledAmount) }}
+                </span>
+              </div>
+              <div class="bank-summary-item">
+                <span class="bank-summary-label">剩余可结算</span>
+                <span
+                  class="bank-summary-value"
+                  :class="
+                    isRemainingOverLimit
+                      ? 'bank-summary-value--remaining-danger'
+                      : 'bank-summary-value--remaining'
+                  "
+                >
+                  {{ formatBankAmount(remainingSettleAmount) }}
+                </span>
+                <span v-if="isRemainingOverLimit" class="bank-summary-warning">
+                  本单结算合计已超过流水剩余可结算金额
+                </span>
+              </div>
+              <div class="bank-summary-item">
+                <span class="bank-summary-label">本单本次合计</span>
+                <span class="bank-summary-value bank-summary-value--current">
+                  {{ formatBankAmount(currentSettlementTotal) }}
+                </span>
+              </div>
             </div>
           </div>
-          <div class="form-item form-item--wide form-item--align-top">
-            <div class="form-label">备注</div>
-            <div class="form-control">
-              <Input.TextArea
-                v-model:value="remark"
-                :disabled="isReadonly"
-                :rows="3"
-                placeholder="请输入备注"
-              />
+        </Card>
+
+        <Card
+          title="结算信息"
+          size="small"
+          class="form-info-layout__panel form-panel-card"
+        >
+          <div
+            class="form-grid"
+            :class="{
+              'form-grid--compact': bankStatementId && bankStatementDetail,
+            }"
+          >
+            <div class="form-item">
+              <div class="form-label">银行流水</div>
+              <div class="form-control">
+                <Input
+                  :value="bankStatementNo"
+                  placeholder="请选择银行流水"
+                  readonly
+                  :class="{ 'bank-input--clickable': !isEdit && !isReadonly }"
+                  @click="handleOpenBankPicker"
+                />
+              </div>
+            </div>
+            <div class="form-item">
+              <div class="form-label">结算单号</div>
+              <div class="form-control">
+                <span class="form-text">{{ settlementNo || '-' }}</span>
+              </div>
+            </div>
+            <div class="form-item">
+              <div class="form-label">创建人</div>
+              <div class="form-control">
+                <span class="form-text">{{ creatorUserName || '-' }}</span>
+              </div>
+            </div>
+            <div class="form-item">
+              <div class="form-label">结算时间</div>
+              <div class="form-control">
+                <DatePicker
+                  v-model:value="settlementTime"
+                  show-time
+                  format="YYYY-MM-DD HH:mm"
+                  :disabled="isReadonly"
+                  style="width: 100%"
+                />
+              </div>
+            </div>
+            <div v-if="isEdit" class="form-item">
+              <div class="form-label">结算状态</div>
+              <div class="form-control">
+                <Tag :color="getReceiveSettlementStatusColor(status)">
+                  {{ getReceiveSettlementStatusLabel(status) }}
+                </Tag>
+              </div>
+            </div>
+            <div v-if="isEdit" class="form-item">
+              <div class="form-label">锁定状态</div>
+              <div class="form-control">
+                <Space>
+                  <Tag :color="locked ? 'red' : 'green'">
+                    {{ locked ? '已锁定' : '未锁定' }}
+                  </Tag>
+                  <span v-if="lockeTime">{{ formatDateTime(lockeTime) }}</span>
+                </Space>
+              </div>
+            </div>
+            <div class="form-item form-item--wide form-item--align-top">
+              <div class="form-label">备注</div>
+              <div class="form-control">
+                <Input.TextArea
+                  v-model:value="remark"
+                  :disabled="isReadonly"
+                  :rows="3"
+                  placeholder="请输入备注"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       <Card title="结算明细" size="small" class="mt-3">
         <template v-if="canManageItems" #extra>
@@ -891,6 +907,33 @@ onMounted(() => {
   min-width: 0;
 }
 
+.form-info-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  margin-bottom: 12px;
+}
+
+.form-info-layout--single {
+  grid-template-columns: 1fr;
+}
+
+.form-info-layout__panel {
+  min-width: 0;
+}
+
+.form-panel-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  :deep(.ant-card-body) {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -910,6 +953,14 @@ onMounted(() => {
 
 .form-item--wide {
   grid-column: span 3;
+}
+
+.form-grid--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-grid--compact .form-item--wide {
+  grid-column: span 2;
 }
 
 .form-label {
@@ -961,6 +1012,28 @@ onMounted(() => {
   padding-top: 12px;
   margin-top: 12px;
   border-top: 1px solid #f0f0f0;
+}
+
+.bank-summary-row--compact {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bank-summary-row--compact .bank-summary-item {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.bank-summary-row--compact .bank-summary-warning {
+  text-align: right;
+}
+
+@media (max-width: 1280px) {
+  .form-info-layout:not(.form-info-layout--single) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .bank-summary-item {

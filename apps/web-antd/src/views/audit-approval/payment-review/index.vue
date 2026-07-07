@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
 
-import { h, ref } from 'vue';
+import { computed, h, ref } from 'vue';
 
 import dayjs from 'dayjs';
 
@@ -73,6 +73,14 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
   };
 };
 
+const selectedRows = ref<PaymentReviewAdminApi.PayAppTaskItemDto[]>([]);
+
+const syncSelectedRows = () => {
+  selectedRows.value = getCheckboxRecords();
+};
+
+const hasSelection = computed(() => selectedRows.value.length > 0);
+
 const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
   {
     formOptions: {
@@ -85,6 +93,8 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
     },
     gridEvents: {
       cellClick: handleRowClick,
+      checkboxAll: syncSelectedRows,
+      checkboxChange: syncSelectedRows,
     },
     gridOptions: {
       columns: usePaymentReviewColumns(),
@@ -118,24 +128,37 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
   },
 );
 
-function getAllRows(): PaymentReviewAdminApi.PayAppTaskItemDto[] {
-  return (gridApi.grid?.getTableData?.().tableData ??
+function getCheckboxRecords(): PaymentReviewAdminApi.PayAppTaskItemDto[] {
+  return (gridApi.grid?.getCheckboxRecords?.() ??
     []) as PaymentReviewAdminApi.PayAppTaskItemDto[];
 }
+
+function getSelectedRows(): PaymentReviewAdminApi.PayAppTaskItemDto[] {
+  return selectedRows.value;
+}
+
+const reloadGrid = async () => {
+  await gridApi.reload();
+  syncSelectedRows();
+};
 
 const doAudit = async (approve: boolean, remark: string, ids: string[]) => {
   await payAppAudit({ success: approve, remark, ids });
   message.success($t('ui.actionMessage.operationSuccess'));
-  gridApi.reload();
+  await reloadGrid();
 };
 
 const doReject = async (remark: string, ids: string[]) => {
   await payAppReject({ remark, ids });
   message.success($t('ui.actionMessage.operationSuccess'));
-  gridApi.reload();
+  await reloadGrid();
 };
 
 const showAuditConfirm = () => {
+  if (!hasSelection.value) {
+    message.warning($t('ui.actionMessage.selectRequired'));
+    return;
+  }
   let modalRemark = '';
   Modal.confirm({
     title: $t('auditApproval.task.okPass'),
@@ -158,7 +181,7 @@ const showAuditConfirm = () => {
     okText: $t('common.confirm'),
     cancelText: $t('common.cancel'),
     async onOk() {
-      const rows = getAllRows();
+      const rows = getSelectedRows();
       if (rows.length === 0) {
         message.warning($t('ui.actionMessage.selectRequired'));
         return;
@@ -170,6 +193,10 @@ const showAuditConfirm = () => {
 };
 
 const showRejectConfirm = () => {
+  if (!hasSelection.value) {
+    message.warning($t('ui.actionMessage.selectRequired'));
+    return;
+  }
   let modalRemark = '';
   Modal.confirm({
     title: t('rejectConfirmTitle'),
@@ -193,7 +220,7 @@ const showRejectConfirm = () => {
     cancelText: $t('common.cancel'),
     okButtonProps: { danger: true },
     async onOk() {
-      const rows = getAllRows();
+      const rows = getSelectedRows();
       if (rows.length === 0) {
         message.warning($t('ui.actionMessage.selectRequired'));
         return;
@@ -212,11 +239,19 @@ const showRejectConfirm = () => {
         <Grid :table-title="t('title')">
           <template #toolbar-tools>
             <Space>
-              <Button type="primary" @click="showAuditConfirm">
-                {{ $t('auditApproval.task.allPass') }}
+              <Button
+                type="primary"
+                :disabled="!hasSelection"
+                @click="showAuditConfirm"
+              >
+                {{ t('auditPass') }}
               </Button>
-              <Button danger @click="showRejectConfirm">
-                {{ t('batchReject') }}
+              <Button
+                danger
+                :disabled="!hasSelection"
+                @click="showRejectConfirm"
+              >
+                {{ t('selectReject') }}
               </Button>
             </Space>
           </template>

@@ -143,6 +143,19 @@ const routes: RouteRecordRaw[] = [
         component: () =>
           import('#/views/fee-management/invoice-application/form.vue'),
       },
+      {
+        path: 'invoice-application/:id/view',
+        name: 'InvoiceApplicationView',
+        meta: {
+          icon: 'mdi:file-document-outline',
+          title: '查看开票申请',
+          authority: abpPageAuthority('Admin.InvoiceApplication.Get'),
+          hideInMenu: true,
+          activePath: '/fee-management/invoice-application',
+        },
+        component: () =>
+          import('#/views/fee-management/invoice-application/form.vue'),
+      },
     ],
   },
 ];
