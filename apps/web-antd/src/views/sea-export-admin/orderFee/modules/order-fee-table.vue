@@ -18,7 +18,11 @@ import {
   Card,
 } from 'ant-design-vue';
 
+import { IconifyIcon } from '@vben/icons';
+
 import { $t } from '#/locales';
+
+import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 
 import * as feeConstants from '../data';
 import * as clientConstants from '#/views/client/base/data';
@@ -58,6 +62,8 @@ const dataSource = defineModel<OrderFeeAdminApi.OrderFeeDto[]>({
 });
 
 const selectedRowKeys = ref<(string | number)[]>([]);
+const printing = ref(false);
+const { openPrint } = usePrintFormat();
 
 const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
@@ -373,6 +379,11 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
     rowConfig: {
       keyField: '_rowKey',
     },
+    checkboxConfig: {
+      highlight: true,
+      reserve: true,
+      trigger: 'row',
+    },
     pagerConfig: {
       enabled: false,
     },
@@ -459,6 +470,59 @@ const addRow = () => {
 const delRow = () => {
   tmpDel.value = true;
   gridApi.query();
+};
+
+const getSelectedRows = (): OrderFeeAdminApi.OrderFeeDto[] => {
+  const fromGrid = (gridApi.grid?.getCheckboxRecords?.() ??
+    []) as OrderFeeAdminApi.OrderFeeDto[];
+  if (fromGrid.length) return fromGrid;
+
+  const keysSet = new Set(selectedRowKeys.value);
+  return (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as { _rowKey?: string })._rowKey),
+  );
+};
+
+const isSavedOrderFee = (row: OrderFeeAdminApi.OrderFeeDto) =>
+  Boolean(row.id && String(row.id).trim());
+
+const handlePrint = async () => {
+  if (printing.value) return;
+
+  const selected = getSelectedRows();
+  if (!selected.length) {
+    message.warning($t('common.selectDataFirst'));
+    return;
+  }
+  if (selected.some((row) => !isSavedOrderFee(row))) {
+    message.warning('请先保存费用后再打印');
+    return;
+  }
+
+  printing.value = true;
+  const hideLoading = message.loading('正在准备打印...', 0);
+  try {
+    const json = JSON.stringify(
+      selected.map((row) => {
+        const { _rowKey, ...fee } = row as OrderFeeAdminApi.OrderFeeDto & {
+          _rowKey?: string;
+        };
+        return fee;
+      }),
+    );
+    openPrint({
+      printJsonType:
+        props.type === 0
+          ? PrintJsonType.RecOrderFeeList
+          : PrintJsonType.PayOrderFeeList,
+      json,
+    });
+  } catch {
+    message.error('打印准备失败，请稍后重试');
+  } finally {
+    hideLoading();
+    printing.value = false;
+  }
 };
 
 const showDeleteWithRemark = () => {
@@ -1048,6 +1112,19 @@ defineExpose({
                 >
                   {{ $t('common.save') }}
                 </Button>
+                <Button
+                  v-show="props.mode !== 'changeOrder'"
+                  :disabled="!selectedRowKeys.length"
+                  :loading="printing"
+                  @click="handlePrint"
+                >
+                  <IconifyIcon
+                    icon="mdi:printer-outline"
+                    class="mr-1 inline-block size-3.5 align-middle"
+                  />
+                  打印
+                </Button>
+
                 <Button
                   danger
                   :disabled="!selectedRowKeys.length"

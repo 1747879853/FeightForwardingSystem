@@ -2,6 +2,10 @@
 export enum PrintJsonType {
   /** 海运出口详情 */
   SeaExportDetail = 0,
+  /** 应收费用列表 */
+  RecOrderFeeList = 1000,
+  /** 应付费用列表 */
+  PayOrderFeeList = 1500,
   /** 海运进口详情 */
   SeaImportDetail = 4000,
   /** 空运出口详情 */
