@@ -1095,8 +1095,10 @@ const bindServiceTypeLinkageEvents = () => {
     {
       fieldName: 'mblNum',
       componentProps: {
-        onChange: (value: unknown) => {
-          tabMblNum.value = String(value ?? '').trim();
+        onChange: async () => {
+          await nextTick();
+          const values = await basicInfoFormApi.getValues();
+          tabMblNum.value = String(values.mblNum ?? '').trim();
         },
         size: 'small',
       },
