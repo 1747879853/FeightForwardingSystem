@@ -82,6 +82,9 @@ last_updated: 2026-07-07
 | **港口备注（费用摘要）** | 收货地/起运港/中转港1/2/目的港/交货地备注。 | `SeaExportDto` 的 `receivePortRemark`、`polRemark`、`poT1Remark`、`poT2Remark`、`podRemark`、`deliverPortRemark` | **触发/依赖：** 应收应付与更改单顶部订单信息六段港口均展示备注字段，非 `*Name`。 | 备注为空显示 `--`。 |
 | **委托单位 / 起运港** | 服务项目联动查询入参。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync` | **触发/依赖：** 任一变更触发联动；`polId` 为空清空勾选。`polId` 查询用于可见范围，`polId+clientId` 查询用于默认勾选。 | 与新建页同一套 `form.vue` 逻辑。 |
 | **服务项目 / serviceTypes** | POL 配置下的服务节点勾选结果（与执行方字段解耦）。 | `serviceTypeNodes`；提交字段 `serviceTypes: number[]` | **触发/依赖：** 节点来自 `GetServiceTypesByPOLAsync`，label 来自 `ServiceType` 枚举；编辑态勾选优先 `seaExportServices[].serviceType`；`sortId` 始终取 POL 配置顺序。 | 勿再用执行方字段或 `organizationUnits` 推断节点勾选。 |
+| **货物类型 cargoId** | 普通货/冻柜/危险品/超限箱。 | `transportOrder.cargoId`；枚举 `CargoType`（S=0/R=1/D=2/O=3） | **触发/依赖：** 货物信息 Card 标题行内联选择；`R` 展示冻柜 7 项，`D` 展示危险品 11 项；切换离开对应类型清空扩展字段。 | 全部可选；扩展字段经 `transportOrder` 提交。 |
+| **危险品扩展字段** | 危品申报信息（等级、编号、联系人等）。 | `transportOrder.dgLevel` 等 11 项 | **触发/依赖：** 仅 `cargoId=2` 时展示与提交。 | 字符串最长 32；`dgMarinePollution` 三态 bool。 |
+| **冻柜扩展字段** | 冷藏温度、通风、湿度等。 | `transportOrder.reeferTemperature` 等 7 项 | **触发/依赖：** 仅 `cargoId=1` 时展示与提交；`reeferTemperatureUnit` 前端枚举 `0=℃/1=℉`。 | 全部可选；`reeferVentOpen` 三态 bool。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -101,6 +104,7 @@ last_updated: 2026-07-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-07 | `Feature` | 货物信息区按 `cargoId` 条件展示危险品（11 项）与冻柜（7 项）扩展字段；切换类型清空对应数据；新建/编辑共用。 | `useDgFormSchema`/`useReeferFormSchema`；`flattenDetail`/`buildDto` 映射 `transportOrder`；列表不改。 |
 | 2026-07-07 | `Feature` | 编辑工作台新增「附件」Tab（单证信息之后）：按附件类型分组、即时上传/删除、默认客户可见；仅编辑页可用。 | 对接 `GetAttachmentsAsync`/`AddAttachmentsAsync`/`DeleteAttachmentsAsync`；`moduleType` 经 `resolveModuleTypeByLabel` 解析；权限对齐 `Admin.SeaExport.Edit`。 |
 | 2026-07-07 | `Feature` | 编辑页顶栏新增「复制」：未保存时警告，确认弹窗可选 `copyOrderFees`；成功后跳转新票编辑页。 | 复用 `useSeaExportCopy` + `isFormDirty`；权限 `Admin.SeaExport.Add`。 |
 | 2026-07-07 | `Refactor` | 运踪订阅取消二次确认，点击按钮直接提交。 | 编辑页按钮 `:loading="subscribing"`。 |

@@ -53,13 +53,251 @@ const getIssueTypeOptions = () => [
   { value: 5, label: $t('seaExport.export.issueTypeOptions.agency') },
 ];
 
+/** 货物类型（与 ClientAdminApi.CargoType / 后端 CargoType 一致） */
+export const CARGO_TYPE = {
+  S: 0,
+  R: 1,
+  D: 2,
+  O: 3,
+} as const;
+
 /** 货物类型枚举 */
 export const getCargoTypeOptions = () => [
-  { value: 0, label: $t('seaExport.export.cargoTypeOptions.normal') },
-  { value: 1, label: $t('seaExport.export.cargoTypeOptions.refrigerated') },
-  { value: 2, label: $t('seaExport.export.cargoTypeOptions.dangerous') },
-  { value: 3, label: $t('seaExport.export.cargoTypeOptions.outOfGauge') },
+  {
+    value: CARGO_TYPE.S,
+    label: $t('seaExport.export.cargoTypeOptions.normal'),
+  },
+  {
+    value: CARGO_TYPE.R,
+    label: $t('seaExport.export.cargoTypeOptions.refrigerated'),
+  },
+  {
+    value: CARGO_TYPE.D,
+    label: $t('seaExport.export.cargoTypeOptions.dangerous'),
+  },
+  {
+    value: CARGO_TYPE.O,
+    label: $t('seaExport.export.cargoTypeOptions.outOfGauge'),
+  },
 ];
+
+/** 冻柜温度单位（后端仅存 int?，含义由前端维护） */
+export const getReeferTemperatureUnitOptions = () => [
+  { value: 0, label: '℃' },
+  { value: 1, label: '℉' },
+];
+
+const getNullableBooleanOptions = () => [
+  { value: true, label: $t('common.yes') },
+  { value: false, label: $t('common.no') },
+];
+
+const cargoExtensionInputProps = () => ({
+  allowClear: true,
+  maxlength: 32,
+  placeholder: $t('ui.placeholder.input'),
+});
+
+/** 危险品扩展字段名（表单顶层拍平） */
+export const DG_FIELD_NAMES = [
+  'dgLevel',
+  'dgNo',
+  'dgPageNo',
+  'dgLabel',
+  'dgPackingCategory',
+  'dgContact',
+  'dgTel',
+  'dgNetWeight',
+  'dgFlashPoint',
+  'dgPackingNo',
+  'dgMarinePollution',
+] as const;
+
+/** 冻柜扩展字段名（表单顶层拍平） */
+export const REEFER_FIELD_NAMES = [
+  'reeferTemperature',
+  'reeferVentilation',
+  'reeferHumidity',
+  'reeferMinTemperature',
+  'reeferMaxTemperature',
+  'reeferTemperatureUnit',
+  'reeferVentOpen',
+] as const;
+
+export function createEmptyDgValues(): Record<
+  (typeof DG_FIELD_NAMES)[number],
+  undefined
+> {
+  return {
+    dgLevel: undefined,
+    dgNo: undefined,
+    dgPageNo: undefined,
+    dgLabel: undefined,
+    dgPackingCategory: undefined,
+    dgContact: undefined,
+    dgTel: undefined,
+    dgNetWeight: undefined,
+    dgFlashPoint: undefined,
+    dgPackingNo: undefined,
+    dgMarinePollution: undefined,
+  };
+}
+
+export function createEmptyReeferValues(): Record<
+  (typeof REEFER_FIELD_NAMES)[number],
+  undefined
+> {
+  return {
+    reeferTemperature: undefined,
+    reeferVentilation: undefined,
+    reeferHumidity: undefined,
+    reeferMinTemperature: undefined,
+    reeferMaxTemperature: undefined,
+    reeferTemperatureUnit: undefined,
+    reeferVentOpen: undefined,
+  };
+}
+
+/**
+ * 危险品申报表单 schema（cargoId = 危险品 时展示）
+ */
+export function useDgFormSchema(): VbenFormSchema[] {
+  const inputProps = cargoExtensionInputProps();
+  return [
+    {
+      component: 'Input',
+      fieldName: 'dgLevel',
+      label: $t('seaExport.export.dgLevel'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'dgNo',
+      label: $t('seaExport.export.dgNo'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'dgPageNo',
+      label: $t('seaExport.export.dgPageNo'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'dgLabel',
+      label: $t('seaExport.export.dgLabel'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'dgPackingCategory',
+      label: $t('seaExport.export.dgPackingCategory'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'dgContact',
+      label: $t('seaExport.export.dgContact'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'dgTel',
+      label: $t('seaExport.export.dgTel'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'dgNetWeight',
+      label: $t('seaExport.export.dgNetWeight'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'dgFlashPoint',
+      label: $t('seaExport.export.dgFlashPoint'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'dgPackingNo',
+      label: $t('seaExport.export.dgPackingNo'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Select',
+      fieldName: 'dgMarinePollution',
+      label: $t('seaExport.export.dgMarinePollution'),
+      componentProps: {
+        allowClear: true,
+        options: getNullableBooleanOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+  ];
+}
+
+/**
+ * 冻柜控制表单 schema（cargoId = 冻柜 时展示）
+ */
+export function useReeferFormSchema(): VbenFormSchema[] {
+  const inputProps = cargoExtensionInputProps();
+  return [
+    {
+      component: 'Input',
+      fieldName: 'reeferTemperature',
+      label: $t('seaExport.export.reeferTemperature'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Select',
+      fieldName: 'reeferTemperatureUnit',
+      label: $t('seaExport.export.reeferTemperatureUnit'),
+      componentProps: {
+        allowClear: true,
+        options: getReeferTemperatureUnitOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'reeferMinTemperature',
+      label: $t('seaExport.export.reeferMinTemperature'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'reeferMaxTemperature',
+      label: $t('seaExport.export.reeferMaxTemperature'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'reeferVentilation',
+      label: $t('seaExport.export.reeferVentilation'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Input',
+      fieldName: 'reeferHumidity',
+      label: $t('seaExport.export.reeferHumidity'),
+      componentProps: inputProps,
+    },
+    {
+      component: 'Select',
+      fieldName: 'reeferVentOpen',
+      label: $t('seaExport.export.reeferVentOpen'),
+      componentProps: {
+        allowClear: true,
+        options: getNullableBooleanOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+  ];
+}
 
 /** 贸易条款枚举 */
 const getTradeTermsTypeOptions = () => [

@@ -153,6 +153,42 @@ export namespace SeaExportAdminApi {
     totalCtn?: string;
     teu?: number;
     codePackageName?: string;
+    /** 危品等级 */
+    dgLevel?: string;
+    /** 危品编号 */
+    dgNo?: string;
+    /** 危品页号 */
+    dgPageNo?: string;
+    /** 危品标签 */
+    dgLabel?: string;
+    /** 危品包装类别 */
+    dgPackingCategory?: string;
+    /** 危品联系人 */
+    dgContact?: string;
+    /** 危品电话 */
+    dgTel?: string;
+    /** 净重 */
+    dgNetWeight?: string;
+    /** 闪点 */
+    dgFlashPoint?: string;
+    /** 装箱编号 */
+    dgPackingNo?: string;
+    /** 是否海污 */
+    dgMarinePollution?: boolean;
+    /** 温度 */
+    reeferTemperature?: string;
+    /** 通风 */
+    reeferVentilation?: string;
+    /** 湿度 */
+    reeferHumidity?: string;
+    /** 最低温度 */
+    reeferMinTemperature?: string;
+    /** 最高温度 */
+    reeferMaxTemperature?: string;
+    /** 温度单位（0=℃、1=℉） */
+    reeferTemperatureUnit?: number;
+    /** 通风口是否打开 */
+    reeferVentOpen?: boolean;
   }
 
   export interface TransportOrderEditDto extends TransportOrderAddDto {

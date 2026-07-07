@@ -87,12 +87,17 @@ import {
   resolveCitationKeys,
 } from './modules/ai-extract-utils';
 import {
+  CARGO_TYPE,
+  createEmptyDgValues,
+  createEmptyReeferValues,
   getBillTypeOptions,
   getBlTypeOptions,
   useBasicInfoFormSchema,
   useCargoFormSchema,
+  useDgFormSchema,
   usePartyInfoFormSchema,
   usePortFormSchema,
+  useReeferFormSchema,
   useShipmentFormSchema,
 } from './data';
 import {
@@ -783,6 +788,8 @@ const collectCurrentFormValues = async () => {
     cargoMainValues,
     cargoMetricsValues,
     cargoRemarkValues,
+    cargoDgValues,
+    cargoReeferValues,
   ] = await Promise.all([
     partyInfoFormApi.getValues(),
     basicInfoFormApi.getValues(),
@@ -792,6 +799,8 @@ const collectCurrentFormValues = async () => {
     cargoMainFormApi.getValues(),
     cargoMetricsFormApi.getValues(),
     cargoRemarkFormApi.getValues(),
+    cargoDgFormApi.getValues(),
+    cargoReeferFormApi.getValues(),
   ]);
   return {
     commissionNum: entrustReadonlyInfo.value.commissionNum,
@@ -805,6 +814,8 @@ const collectCurrentFormValues = async () => {
     ...cargoMainValues,
     ...cargoMetricsValues,
     ...cargoRemarkValues,
+    ...cargoDgValues,
+    ...cargoReeferValues,
   } as Record<string, any>;
 };
 const getMissingRequiredLabelsForServiceType = async (serviceType: number) => {
@@ -1198,6 +1209,7 @@ portFormApiRef.current = portFormApi;
 bindServiceTypeLinkageEvents();
 
 const cargoSchema = useCargoFormSchema();
+const currentCargoId = ref<number | undefined>();
 const cargoInlineFieldNames = new Set(['cargoId', 'orderCodeGoodss']);
 const cargoTypeSchema = mapSchemaWithSmallSize(
   [...useBasicInfoFormSchema(isEdit.value), ...cargoSchema]
@@ -1220,6 +1232,12 @@ const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
     labelWidth: 0,
   },
   wrapperClass: 'form-controls-small grid-cols-2 gap-x-3',
+  handleValuesChange: (values, fieldsChanged) => {
+    if (!fieldsChanged.includes('cargoId')) {
+      return;
+    }
+    currentCargoId.value = values.cargoId as number | undefined;
+  },
 });
 const cargoMainFieldNames = new Set(['marks', 'goodsDes']);
 const cargoMetricsFieldNames = new Set(['pkgs', 'codePackageId', 'kgs', 'cbm']);
@@ -1290,6 +1308,46 @@ const [CargoMetricsForm, cargoMetricsFormApi] = useVbenForm({
     })),
   showDefaultActions: false,
   wrapperClass: 'cargo-metrics-wrap form-controls-small grid-cols-1',
+});
+
+const showDgFields = computed(() => currentCargoId.value === CARGO_TYPE.D);
+const showReeferFields = computed(() => currentCargoId.value === CARGO_TYPE.R);
+
+const [CargoDgForm, cargoDgFormApi] = useVbenForm({
+  layout: 'vertical',
+  compact: true,
+  commonConfig: {
+    labelClass: VERTICAL_FORM_LABEL_CLASS,
+  },
+  schema: useDgFormSchema().map((item) => ({
+    ...item,
+    componentProps: withSmallComponentProps(item.componentProps),
+  })),
+  showDefaultActions: false,
+  wrapperClass: 'cargo-extension-wrap form-controls-small grid-cols-4 gap-x-4',
+});
+
+const [CargoReeferForm, cargoReeferFormApi] = useVbenForm({
+  layout: 'vertical',
+  compact: true,
+  commonConfig: {
+    labelClass: VERTICAL_FORM_LABEL_CLASS,
+  },
+  schema: useReeferFormSchema().map((item) => ({
+    ...item,
+    componentProps: withSmallComponentProps(item.componentProps),
+  })),
+  showDefaultActions: false,
+  wrapperClass: 'cargo-extension-wrap form-controls-small grid-cols-4 gap-x-4',
+});
+
+watch(currentCargoId, async (nextCargoId, prevCargoId) => {
+  if (prevCargoId === CARGO_TYPE.D && nextCargoId !== CARGO_TYPE.D) {
+    await cargoDgFormApi.setValues(createEmptyDgValues());
+  }
+  if (prevCargoId === CARGO_TYPE.R && nextCargoId !== CARGO_TYPE.R) {
+    await cargoReeferFormApi.setValues(createEmptyReeferValues());
+  }
 });
 
 /** 中间表单：货物信息 — 唛头 / 货描 */
@@ -2036,6 +2094,8 @@ const applyAiRecognizedFormValues = async (
     cargoMainFormApi.setValues(values),
     cargoMetricsFormApi.setValues(values),
     cargoRemarkFormApi.setValues(values),
+    cargoDgFormApi.setValues(values),
+    cargoReeferFormApi.setValues(values),
   ]);
 
   if (options?.orderCodeGoodssPayload?.length) {
@@ -2250,6 +2310,24 @@ const flattenDetail = (
       .map((item: any) => item?.codeGoodsId)
       .filter((id: any) => id !== undefined && id !== null),
     orderUsers: to?.orderUsers ?? [],
+    dgLevel: to?.dgLevel,
+    dgNo: to?.dgNo,
+    dgPageNo: to?.dgPageNo,
+    dgLabel: to?.dgLabel,
+    dgPackingCategory: to?.dgPackingCategory,
+    dgContact: to?.dgContact,
+    dgTel: to?.dgTel,
+    dgNetWeight: to?.dgNetWeight,
+    dgFlashPoint: to?.dgFlashPoint,
+    dgPackingNo: to?.dgPackingNo,
+    dgMarinePollution: to?.dgMarinePollution,
+    reeferTemperature: to?.reeferTemperature,
+    reeferVentilation: to?.reeferVentilation,
+    reeferHumidity: to?.reeferHumidity,
+    reeferMinTemperature: to?.reeferMinTemperature,
+    reeferMaxTemperature: to?.reeferMaxTemperature,
+    reeferTemperatureUnit: to?.reeferTemperatureUnit,
+    reeferVentOpen: to?.reeferVentOpen,
   };
 };
 
@@ -2658,7 +2736,10 @@ const loadEditData = async () => {
       cargoMainFormApi.setValues(formValues),
       cargoMetricsFormApi.setValues(formValues),
       cargoRemarkFormApi.setValues(formValues),
+      cargoDgFormApi.setValues(formValues),
+      cargoReeferFormApi.setValues(formValues),
     ]);
+    currentCargoId.value = formValues.cargoId as number | undefined;
     initializeOrderUsersPanel(to?.orderUsers ?? []);
     const { savedSet, taskMap } = parseDetailServiceTypes(detail);
     refreshEntrustReadonlyInfo(formValues);
@@ -2771,6 +2852,32 @@ const buildDto = (values: Record<string, any>) => {
       .map((codeGoodsId: number) => ({ codeGoodsId })),
     orderCtns: sanitizeOrderCtns(orderCtns.value),
     orderUsers: sanitizeOrderUsers(values.orderUsers),
+    ...(values.cargoId === CARGO_TYPE.D
+      ? {
+          dgLevel: values.dgLevel,
+          dgNo: values.dgNo,
+          dgPageNo: values.dgPageNo,
+          dgLabel: values.dgLabel,
+          dgPackingCategory: values.dgPackingCategory,
+          dgContact: values.dgContact,
+          dgTel: values.dgTel,
+          dgNetWeight: values.dgNetWeight,
+          dgFlashPoint: values.dgFlashPoint,
+          dgPackingNo: values.dgPackingNo,
+          dgMarinePollution: values.dgMarinePollution,
+        }
+      : {}),
+    ...(values.cargoId === CARGO_TYPE.R
+      ? {
+          reeferTemperature: values.reeferTemperature,
+          reeferVentilation: values.reeferVentilation,
+          reeferHumidity: values.reeferHumidity,
+          reeferMinTemperature: values.reeferMinTemperature,
+          reeferMaxTemperature: values.reeferMaxTemperature,
+          reeferTemperatureUnit: values.reeferTemperatureUnit ?? undefined,
+          reeferVentOpen: values.reeferVentOpen,
+        }
+      : {}),
   };
 
   if (isEdit.value && transportOrderId.value) {
@@ -2794,6 +2901,8 @@ const handleSubmit = async () => {
     cargoMainResult,
     cargoMetricsResult,
     cargoRemarkResult,
+    cargoDgResult,
+    cargoReeferResult,
   ] = await Promise.all([
     partyInfoFormApi.validate(),
     basicInfoFormApi.validate(),
@@ -2803,6 +2912,8 @@ const handleSubmit = async () => {
     cargoMainFormApi.validate(),
     cargoMetricsFormApi.validate(),
     cargoRemarkFormApi.validate(),
+    cargoDgFormApi.validate(),
+    cargoReeferFormApi.validate(),
   ]);
   const allValid =
     partyResult.valid &&
@@ -2812,7 +2923,9 @@ const handleSubmit = async () => {
     cargoTypeResult.valid &&
     cargoMainResult.valid &&
     cargoMetricsResult.valid &&
-    cargoRemarkResult.valid;
+    cargoRemarkResult.valid &&
+    cargoDgResult.valid &&
+    cargoReeferResult.valid;
   if (!allValid) {
     message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
     return;
@@ -2837,6 +2950,8 @@ const handleSubmit = async () => {
     cargoMainValues,
     cargoMetricsValues,
     cargoRemarkValues,
+    cargoDgValues,
+    cargoReeferValues,
   ] = await Promise.all([
     partyInfoFormApi.getValues(),
     basicInfoFormApi.getValues(),
@@ -2846,6 +2961,8 @@ const handleSubmit = async () => {
     cargoMainFormApi.getValues(),
     cargoMetricsFormApi.getValues(),
     cargoRemarkFormApi.getValues(),
+    cargoDgFormApi.getValues(),
+    cargoReeferFormApi.getValues(),
   ]);
   const values = {
     commissionNum: entrustReadonlyInfo.value.commissionNum,
@@ -2859,6 +2976,8 @@ const handleSubmit = async () => {
     ...cargoMainValues,
     ...cargoMetricsValues,
     ...cargoRemarkValues,
+    ...cargoDgValues,
+    ...cargoReeferValues,
   };
   const dto = buildDto(values);
 
@@ -3900,6 +4019,18 @@ defineExpose({
                     <CargoMetricsForm />
                   </div>
                 </div>
+                <div v-show="showDgFields" class="cargo-extension-section">
+                  <div class="cargo-extension-section__title">
+                    {{ $t('seaExport.export.dgSectionTitle') }}
+                  </div>
+                  <CargoDgForm />
+                </div>
+                <div v-show="showReeferFields" class="cargo-extension-section">
+                  <div class="cargo-extension-section__title">
+                    {{ $t('seaExport.export.reeferSectionTitle') }}
+                  </div>
+                  <CargoReeferForm />
+                </div>
                 <div class="cargo-ctn-section">
                   <OrderCtnTable
                     v-model="orderCtns"
@@ -4317,6 +4448,23 @@ defineExpose({
 .cargo-ctn-section {
   padding-top: 0;
   margin-top: 12px;
+}
+
+.cargo-extension-section {
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid rgb(0 0 0 / 6%);
+}
+
+.cargo-extension-section__title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(0 0 0 / 88%);
+}
+
+.cargo-extension-wrap :deep(.ant-form-item) {
+  margin-bottom: 12px;
 }
 
 .cargo-ctn-section :deep(.order-ctn-table__title-bar) {
