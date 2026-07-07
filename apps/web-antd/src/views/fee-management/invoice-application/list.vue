@@ -165,7 +165,16 @@ const handleRowDblclick = ({
 }: {
   row: InvoiceApplicationApi.InvoiceApplicationListDto;
 }) => {
-  handleEdit(row);
+  // 只有录入和驳回状态可以编辑
+  if (
+    row.status === InvoiceApplicationApi.InvoiceApplicationStatus.Entering ||
+    row.status === InvoiceApplicationApi.InvoiceApplicationStatus.Rejected
+  ) {
+    handleEdit(row);
+  } else {
+    // 其他状态（如待审核、已开票等）以只读模式查看
+    router.push(`/fee-management/invoice-application/${row.id}/view`);
+  }
 };
 
 /** 转换日期为 ISO 字符串 */
