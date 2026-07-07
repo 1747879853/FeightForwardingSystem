@@ -51,7 +51,6 @@ const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 import { CodeSourceSelect, UserSelect } from '#/adapter/component';
 import { useVbenForm } from '#/adapter/form';
 import { extractSeaExportToAddDto } from '#/api/common';
-import type { TextInAdminApi } from '#/api/common/text-in-admin';
 import {
   addSeaExport,
   editSeaExport,
@@ -77,7 +76,6 @@ import {
 } from '#/utils/user-display';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
-import AiExtractPreviewDrawer from './modules/ai-extract-preview-drawer.vue';
 import {
   AI_EXTRACT_ACCEPT,
   buildAiExtractFormPayload,
@@ -145,14 +143,6 @@ const formSnapshotJson = ref<string | null>(null);
 const { openPrint } = usePrintFormat();
 const aiRecognizing = ref(false);
 const aiExtractFileInputRef = ref<HTMLInputElement | null>(null);
-const aiPreviewOpen = ref(false);
-const aiPreviewFile = ref<File | null>(null);
-const aiPreviewCitations = ref<
-  Record<string, TextInAdminApi.TextInFieldCitationDto>
->({});
-const aiPreviewIsFromCache = ref(false);
-const aiActiveField = ref<string | null>(null);
-const aiFilledFieldSet = ref<Set<string>>(new Set());
 const transportOrderId = ref<number | undefined>();
 const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
   { userAttribute: UserAttribute.Sales, sortId: 6 },
@@ -2020,7 +2010,6 @@ const applyAiRecognizedFormValues = async (
   options?: {
     orderCtnsPayload?: SeaExportAdminApi.OrderCtnAddDto[];
     orderCodeGoodssPayload?: number[];
-    filledFields?: string[];
   },
 ) => {
   await Promise.all([
@@ -2062,81 +2051,17 @@ const applyAiRecognizedFormValues = async (
       force: true,
     });
   }
-
-  if (options?.filledFields?.length) {
-    aiFilledFieldSet.value = new Set(options.filledFields);
-    applyAiTextFieldMarkers(options.filledFields);
-  }
 };
-
-const mergeAiFocusProps = (
-  fieldName: string,
-  componentProps: Record<string, any> = {},
-) => ({
-  ...componentProps,
-  onFocus: (...args: any[]) => {
-    aiActiveField.value = fieldName;
-    componentProps.onFocus?.(...args);
-  },
-});
-
-const applyAiTextFieldMarkers = (filledFields: string[]) => {
-  const filledSet = new Set(filledFields);
-  const withMarker = (fieldName: string) => ({
-    fieldName,
-    formItemClass: filledSet.has(fieldName) ? 'ai-extract-filled-field' : '',
-    componentProps: mergeAiFocusProps(fieldName),
-  });
-
-  partyInfoFormApi.updateSchema([
-    withMarker('shipperContent'),
-    withMarker('consigneeContent'),
-    withMarker('notifierContent'),
-  ]);
-  basicInfoFormApi.updateSchema([
-    withMarker('mblNum'),
-    withMarker('bookingNum'),
-    withMarker('tradeTermsType'),
-  ]);
-  shipmentFormApi.updateSchema([
-    withMarker('vessel'),
-    withMarker('innerVoyno'),
-    withMarker('goodsCompleteTime'),
-    withMarker('etd'),
-    withMarker('signingTime'),
-  ]);
-  cargoTypeInlineFormApi.updateSchema([withMarker('orderCodeGoodss')]);
-  cargoMainFormApi.updateSchema([withMarker('marks'), withMarker('goodsDes')]);
-  cargoMetricsFormApi.updateSchema([
-    withMarker('pkgs'),
-    withMarker('kgs'),
-    withMarker('cbm'),
-  ]);
-};
-
-const buildAiSelectSchemaItem = (
-  fieldName: string,
-  filledFields: string[],
-  componentProps: Record<string, any>,
-) => ({
-  fieldName,
-  formItemClass: filledFields.includes(fieldName)
-    ? 'ai-extract-filled-field'
-    : '',
-  componentProps: {
-    ...mergeAiFocusProps(fieldName, componentProps),
-    size: 'small',
-  },
-});
 
 const applyAiExtractSelectedItems = (
   values: Record<string, any>,
   extractedSchema?: Record<string, unknown>,
-  filledFields: string[] = [],
 ) => {
   const schema = extractedSchema ?? {};
-  const item = (fieldName: string, componentProps: Record<string, any>) =>
-    buildAiSelectSchemaItem(fieldName, filledFields, componentProps);
+  const item = (fieldName: string, componentProps: Record<string, any>) => ({
+    fieldName,
+    componentProps: { ...componentProps, size: 'small' },
+  });
 
   basicInfoFormApi.updateSchema([
     item('clientId', {
@@ -2990,19 +2915,11 @@ const handleAiFileChange = async (event: Event) => {
     applyAiExtractSelectedItems(
       payload.formValues,
       result.extract?.extractedSchema,
-      payload.filledFields,
     );
     await applyAiRecognizedFormValues(payload.formValues, {
       orderCtnsPayload: payload.orderCtns,
       orderCodeGoodssPayload: payload.orderCodeGoodss,
-      filledFields: payload.filledFields,
     });
-
-    aiPreviewFile.value = file;
-    aiPreviewCitations.value = result.extract?.citations ?? {};
-    aiPreviewIsFromCache.value = Boolean(result.extract?.isFromCache);
-    aiActiveField.value = payload.filledFields[0] ?? null;
-    aiPreviewOpen.value = true;
 
     message.success(`AI识别完成，已回填 ${recognizedFieldCount} 个字段`);
   } catch {
@@ -4094,13 +4011,6 @@ defineExpose({
         </div>
       </div>
     </Modal>
-    <AiExtractPreviewDrawer
-      v-model:open="aiPreviewOpen"
-      :file="aiPreviewFile"
-      :citations="aiPreviewCitations"
-      :active-field="aiActiveField"
-      :is-from-cache="aiPreviewIsFromCache"
-    />
   </component>
 </template>
 
@@ -5978,20 +5888,5 @@ defineExpose({
 
 :deep(.ant-card:not(.cargo-container-card) .ant-card-body) {
   padding: 12px 14px;
-}
-
-:deep(.ai-extract-filled-field) {
-  position: relative;
-}
-
-:deep(.ai-extract-filled-field::before) {
-  position: absolute;
-  top: 8px;
-  bottom: 8px;
-  left: 0;
-  width: 3px;
-  content: '';
-  background: hsl(var(--primary));
-  border-radius: 2px;
 }
 </style>
