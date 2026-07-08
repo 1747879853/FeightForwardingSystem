@@ -587,6 +587,7 @@
     "sync": "Sync Dates",
     "missingParams": "Please enter vessel, voyage, and ETD first",
     "success": "Historical dates synced",
+    "empty": "No historical dates found to sync",
     "failed": "Failed to sync dates"
   },
   "yundang": {

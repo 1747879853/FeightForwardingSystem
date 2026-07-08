@@ -77,7 +77,10 @@ export function useSyncShipmentDates(options: UseSyncShipmentDatesOptions) {
       });
 
       if (currentSeq !== requestSeq) return;
-      if (!result) return;
+      if (!result) {
+        message.warning($t('seaExport.syncShipmentDates.empty'));
+        return;
+      }
 
       const updates: Array<[string, ReturnType<typeof toDayjsField>]> = [];
       if (result.atd != null) updates.push(['atd', toDayjsField(result.atd)]);
@@ -103,6 +106,8 @@ export function useSyncShipmentDates(options: UseSyncShipmentDatesOptions) {
 
       if (updates.length > 0) {
         message.success($t('seaExport.syncShipmentDates.success'));
+      } else {
+        message.warning($t('seaExport.syncShipmentDates.empty'));
       }
     } catch (error: any) {
       if (currentSeq !== requestSeq) return;
