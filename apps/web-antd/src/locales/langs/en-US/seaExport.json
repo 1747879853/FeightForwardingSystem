@@ -583,6 +583,12 @@
     "missingYardCode": "The selected yard has no code and cannot be queried",
     "unmatchedCtnTypes": "The following container types were not written back: {0}"
   },
+  "syncShipmentDates": {
+    "sync": "Sync Dates",
+    "missingParams": "Please enter vessel, voyage, and ETD first",
+    "success": "Historical dates synced",
+    "failed": "Failed to sync dates"
+  },
   "yundang": {
     "subscribe": "Tracking Subscribe",
     "batchHint": "More than {0} records selected; the server will submit in batches.",

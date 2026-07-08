@@ -107,6 +107,7 @@ import {
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
 import { useSeaExportCopy } from './use-sea-export-copy';
 import { useYardRealQuery } from './use-yard-real-query';
+import { useSyncShipmentDates } from './use-sync-shipment-dates';
 import { useYundangOceanSubscribe } from './use-yundang-ocean-subscribe';
 
 const perm = createAbpPermission('Admin.SeaExport');
@@ -342,7 +343,7 @@ const buildServiceTypeNodes = (
 ): ServiceTypeNode[] => {
   return polNodes
     .slice()
-    .sort((a, b) => a.sortId - b.sortId)
+    .sort((a, b) => a.sortId - b.sortId || a.serviceType - b.serviceType)
     .map((node) => {
       const serviceType = Number(node.serviceType);
       const taskInfo = taskMap?.get(serviceType);
@@ -435,6 +436,10 @@ const SERVICE_REQUIRE_FIELD_LABEL_KEY: Record<string, string> = {
   clientId: 'seaExport.export.clientId',
 };
 
+const syncDateVessel = ref('');
+const syncDateInnerVoyno = ref('');
+const syncDateEtd = ref<unknown>(undefined);
+
 /** 中间表单：基础信息 */
 const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
@@ -490,6 +495,14 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
     })),
   showDefaultActions: false,
   wrapperClass: 'basic-info-wrap form-controls-small grid-cols-6 gap-x-4',
+  handleValuesChange: (values, fieldsChanged) => {
+    if (fieldsChanged.includes('vessel')) {
+      syncDateVessel.value = String(values.vessel ?? '').trim();
+    }
+    if (fieldsChanged.includes('innerVoyno')) {
+      syncDateInnerVoyno.value = String(values.innerVoyno ?? '').trim();
+    }
+  },
 });
 
 const blTypeOptions = computed(() => getBlTypeOptions());
@@ -535,6 +548,25 @@ const [ShipmentForm, shipmentFormApi] = useVbenForm({
   ),
   showDefaultActions: false,
   wrapperClass: 'shipment-flow-wrap form-controls-small grid-cols-7 gap-x-8',
+  handleValuesChange: (values, fieldsChanged) => {
+    if (fieldsChanged.includes('etd')) {
+      syncDateEtd.value = values.etd;
+    }
+  },
+});
+
+const {
+  canSync: canSyncShipmentDates,
+  disabledTip: syncShipmentDatesDisabledTip,
+  loading: syncShipmentDatesLoading,
+  refreshParamsFromForms: refreshSyncShipmentDateParams,
+  syncDates: handleSyncShipmentDates,
+} = useSyncShipmentDates({
+  vessel: syncDateVessel,
+  innerVoyno: syncDateInnerVoyno,
+  etd: syncDateEtd,
+  basicInfoFormApi,
+  shipmentFormApi,
 });
 
 const serviceTypeRequiredPropValues = ref<Map<number, number[]>>(new Map());
@@ -584,20 +616,45 @@ type ServicePipelineState = 'active' | 'done' | 'upcoming';
 const checkedServiceTypeNodes = computed(() =>
   serviceTypeNodes.value.filter((node) => node.checked),
 );
-const getServicePipelineActiveIndex = (nodes: ServiceTypeNode[]) =>
-  nodes.findIndex((node) => node.taskStatus !== SERVICE_TASK_STATUS_PROCESSED);
+const getDistinctServiceSortIdsAsc = (nodes: ServiceTypeNode[]) => {
+  const sortIds = new Set<number>();
+  nodes.forEach((node) => sortIds.add(node.sortId));
+  return [...sortIds].sort((a, b) => a - b);
+};
+/** 当前应处理的 sortId 组：取最小 sortId 且组内尚未全部完成 */
+const getServicePipelineActiveSortId = (nodes: ServiceTypeNode[]) => {
+  for (const sortId of getDistinctServiceSortIdsAsc(nodes)) {
+    const groupNodes = nodes.filter((node) => node.sortId === sortId);
+    const groupComplete = groupNodes.every(
+      (node) => node.taskStatus === SERVICE_TASK_STATUS_PROCESSED,
+    );
+    if (!groupComplete) {
+      return sortId;
+    }
+  }
+  return null;
+};
 const getServicePipelineState = (
   node: ServiceTypeNode,
   nodes: ServiceTypeNode[] = checkedServiceTypeNodes.value,
 ): ServicePipelineState => {
-  const index = nodes.findIndex(
-    (item) => item.serviceType === node.serviceType,
-  );
-  if (index < 0) return 'upcoming';
-  const activeIndex = getServicePipelineActiveIndex(nodes);
-  if (activeIndex === -1) return 'done';
-  if (index < activeIndex) return 'done';
-  if (index === activeIndex) return 'active';
+  const inList = nodes.some((item) => item.serviceType === node.serviceType);
+  if (!inList) return 'upcoming';
+
+  if (node.taskStatus === SERVICE_TASK_STATUS_PROCESSED) {
+    return 'done';
+  }
+
+  const activeSortId = getServicePipelineActiveSortId(nodes);
+  if (activeSortId === null) {
+    return 'done';
+  }
+  if (node.sortId < activeSortId) {
+    return 'done';
+  }
+  if (node.sortId === activeSortId) {
+    return 'active';
+  }
   return 'upcoming';
 };
 const isServiceTypeNodeDone = (node: ServiceTypeNode) =>
@@ -615,9 +672,6 @@ const isServiceChevronStepLast = (index: number, total: number) =>
 const getServiceNodeTooltipStatusMeta = (node: ServiceTypeNode) => {
   if (node.taskStatus === SERVICE_TASK_STATUS_PROCESSED) {
     return { label: '已完成', color: 'success' as const };
-  }
-  if (node.taskStatus === SERVICE_TASK_STATUS_PENDING) {
-    return { label: '待处理', color: 'processing' as const };
   }
   const state = getServicePipelineState(node);
   if (state === 'done') {
@@ -748,7 +802,8 @@ const canCompleteServiceTypeNode = (node: ServiceTypeNode) =>
   !!node.taskId &&
   node.taskStatus === SERVICE_TASK_STATUS_PENDING &&
   node.checked &&
-  (!isServiceTypeNodeInProgress(node) || canOperateServiceTaskByHandler(node));
+  isServiceTypeNodeInProgress(node) &&
+  canOperateServiceTaskByHandler(node);
 const canCancelCompleteServiceTypeNode = (node: ServiceTypeNode) =>
   isEdit.value &&
   !!node.taskId &&
@@ -842,6 +897,10 @@ const handleCompleteServiceType = async (node: ServiceTypeNode) => {
   }
   if (node.taskStatus === SERVICE_TASK_STATUS_PROCESSED) {
     message.info('当前服务已完成');
+    return;
+  }
+  if (!isServiceTypeNodeInProgress(node)) {
+    message.warning('当前服务还未轮到处理');
     return;
   }
   if (showServiceCompletePermissionHint(node)) {
@@ -2221,6 +2280,13 @@ const toDateString = (val: unknown) => {
   return d.isValid() ? d.toISOString() : undefined;
 };
 
+/** 提交时 dayjs/日期 转回日期字符串（精度到天） */
+const toDateOnlyString = (val: unknown) => {
+  if (val == null) return undefined;
+  const d = dayjs(val as string | Date);
+  return d.isValid() ? d.format('YYYY-MM-DD') : undefined;
+};
+
 const flattenDetail = (
   detail: SeaExportAdminApi.SeaExportDto,
 ): Record<string, any> => {
@@ -2750,6 +2816,7 @@ const loadEditData = async () => {
       'cnName',
     );
     await syncBasicInfoHeaderFields();
+    await refreshSyncShipmentDateParams();
 
     orderCtns.value = normalizeOrderCtnsWithRowKey(
       detail.transportOrder?.orderCtns as any,
@@ -2823,9 +2890,9 @@ const buildDto = (values: Record<string, any>) => {
     codeServiceId: values.codeServiceId ?? undefined,
     cargoId: values.cargoId ?? undefined,
     tradeTermsType: values.tradeTermsType ?? undefined,
-    goodsCompleteTime: toDateString(values.goodsCompleteTime),
-    etd: toDateString(values.etd),
-    atd: toDateString(values.atd),
+    goodsCompleteTime: toDateOnlyString(values.goodsCompleteTime),
+    etd: toDateOnlyString(values.etd),
+    atd: toDateOnlyString(values.atd),
     eta: toDateString(values.eta),
     clientId: values.clientId,
     teamId: values.teamId ?? undefined,
@@ -3431,8 +3498,7 @@ defineExpose({
                                               node,
                                             ) &&
                                               node.taskStatus ===
-                                                SERVICE_TASK_STATUS_PENDING &&
-                                              (node.taskUsers?.length ?? 0) > 0)
+                                                SERVICE_TASK_STATUS_PENDING)
                                           "
                                           class="chevron-step-tooltip__info"
                                         >
@@ -3901,11 +3967,30 @@ defineExpose({
               </section>
 
               <section :ref="sectionRefs.shipment" class="content-section">
-                <div class="content-section__header section-title-bar">
+                <div
+                  class="content-section__header section-title-bar shipment-info-header"
+                >
                   <span class="card-title card-title--on-primary">
                     <Ship class="size-4" />
                     {{ $t('seaExport.export.formCardShipment') }}
                   </span>
+                  <Tooltip :title="syncShipmentDatesDisabledTip">
+                    <Button
+                      size="small"
+                      class="shipment-info-header__sync-btn"
+                      :disabled="!canSyncShipmentDates"
+                      :loading="syncShipmentDatesLoading"
+                      @click="handleSyncShipmentDates"
+                    >
+                      <IconifyIcon
+                        icon="mdi:calendar-sync-outline"
+                        class="mr-1 inline-block size-3.5 align-middle"
+                      />
+                      <span class="align-middle">{{
+                        $t('seaExport.syncShipmentDates.sync')
+                      }}</span>
+                    </Button>
+                  </Tooltip>
                 </div>
                 <div class="content-section__body">
                   <div class="shipment-flow-container">
@@ -4493,6 +4578,21 @@ defineExpose({
 
 .content-section__header.section-title-bar {
   padding: 8px 18px;
+}
+
+.shipment-info-header {
+  gap: 8px;
+}
+
+.shipment-info-header__sync-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 10%);
+  border: 1px solid hsl(var(--primary) / 25%);
 }
 
 .basic-info-header {

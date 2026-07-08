@@ -580,6 +580,22 @@ export namespace SeaExportAdminApi {
     id: string;
     attachmentIds?: number[] | null;
   }
+
+  /** GET GetDates 请求参数 */
+  export interface GetSeaExportDatesParams {
+    vessel: string;
+    innerVoyno: string;
+    etd: string;
+  }
+
+  /** GET GetDates 响应；无历史数据时为 null */
+  export interface SeaExportDatesDto {
+    atd?: string | null;
+    eta?: string | null;
+    closeVgmTime?: string | null;
+    closeDocTime?: string | null;
+    closeManifestTime?: string | null;
+  }
 }
 
 const API_PREFIX = '/services/app/SeaExportAdmin';
@@ -658,4 +674,14 @@ export const deleteSeaExportAttachments = (
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAttachmentsAsync`, {
     data,
   });
+};
+
+/** 根据船名、航次、开船日期查询历史票证日期组合 */
+export const getSeaExportDates = (
+  params: SeaExportAdminApi.GetSeaExportDatesParams,
+) => {
+  return requestClient.get<SeaExportAdminApi.SeaExportDatesDto | null>(
+    `${API_PREFIX}/GetDatesAsync`,
+    { params },
+  );
 };

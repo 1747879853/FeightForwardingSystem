@@ -98,6 +98,13 @@ const cargoExtensionInputProps = () => ({
   placeholder: $t('ui.placeholder.input'),
 });
 
+/** 日期控件：精度到天 */
+const DATE_ONLY_PICKER_PROPS = {
+  class: 'w-full',
+  showTime: false,
+  format: 'YYYY-MM-DD',
+};
+
 /** 危险品扩展字段名（表单顶层拍平） */
 export const DG_FIELD_NAMES = [
   'dgLevel',
@@ -1353,21 +1360,21 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
       component: 'DatePicker',
       fieldName: 'goodsCompleteTime',
       label: $t('seaExport.export.goodsCompleteTime'),
-      componentProps: { class: 'w-full' },
+      componentProps: DATE_ONLY_PICKER_PROPS,
       formItemClass: 'shipment-time-item shipment-time-pos--1',
     },
     {
       component: 'DatePicker',
       fieldName: 'etd',
       label: $t('seaExport.export.etd'),
-      componentProps: { class: 'w-full' },
+      componentProps: DATE_ONLY_PICKER_PROPS,
       formItemClass: 'shipment-time-item shipment-time-pos--2',
     },
     {
       component: 'DatePicker',
       fieldName: 'atd',
       label: $t('seaExport.export.atd'),
-      componentProps: { class: 'w-full' },
+      componentProps: DATE_ONLY_PICKER_PROPS,
       formItemClass: 'shipment-time-item shipment-time-pos--3',
     },
     {
