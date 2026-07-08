@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-08 海运出口箱型箱量工具栏按钮靠左](./changelogs/change-log-2026-07-08-sea-export-order-ctn-toolbar-left.md)
 - [2026-07-07 海运出口对接危险品与冻柜扩展字段](./changelogs/change-log-2026-07-07-sea-export-dg-reefer-fields.md)
 - [2026-07-07 运踪订阅取消二次确认](./changelogs/change-log-2026-07-07-tracking-subscribe-no-confirm.md)
 - [2026-07-07 运踪订阅文案去品牌化（隐藏云当）](./changelogs/change-log-2026-07-07-tracking-subscribe-rebrand.md)

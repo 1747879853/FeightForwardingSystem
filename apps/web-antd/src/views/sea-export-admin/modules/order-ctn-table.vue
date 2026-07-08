@@ -482,7 +482,6 @@ watch(
 }
 
 .order-ctn-table__title-text {
-  flex: 1;
   font-size: 13px;
   font-weight: 600;
   color: hsl(var(--primary));

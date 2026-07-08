@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-02
+last_updated: 2026-07-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -70,6 +70,7 @@ last_updated: 2026-07-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-08 | `Style` | 箱型箱量标题栏新增/删除等按钮改为紧跟标题靠左，不再顶到右侧。 | 共用 `order-ctn-table.vue`；去掉标题 `flex: 1`。 |
 | 2026-07-06 | `Feature` | AI 识别对接 TextIn：支持 PDF/图片、Drawer 预览 citations 定位、箱型箱量/品名回填；空值/0/空 Guid 不回填。 | 与编辑页共用 `form.vue`；新增 `text-in-admin.ts` 与预览 Drawer 组件。 |
 | 2026-07-02 | `Style` | 船期信息时间轴竖向分割条移至预抵日期后，与编辑页一致。 | 共用 `form.vue` 的 `.shipment-flow-divider` 与箭头排除规则。 |
 | 2026-06-27 | `Feature` | 提单类字段（唛头、货描、收发通、港口备注等）输入时全角英数字/标点/空格自动转半角，与既有英文大写规范串联执行。 | `toHalfWidth` 并入 `toEnglishUpperCase`；港口联动备注与 AI 回填同步生效。 |
