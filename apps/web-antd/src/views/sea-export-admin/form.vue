@@ -697,6 +697,7 @@ const getServiceTypeNodeIcon = (node: ServiceTypeNode) => {
 const shouldShowServiceNodeTooltip = (node: ServiceTypeNode) =>
   getServicePipelineState(node) !== 'upcoming';
 const isServiceGroupAllUpcoming = (group: ServiceTypeNodeGroup) =>
+  group.nodes.length > 1 &&
   group.nodes.every((node) => getServicePipelineState(node) === 'upcoming');
 const formatServiceGroupLabels = (nodes: ServiceTypeNode[]) =>
   nodes.map((node) => node.label).join(' / ');
