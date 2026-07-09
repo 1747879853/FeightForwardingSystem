@@ -565,8 +565,8 @@ const [Form, formApi] = useVbenForm({
  */
 function validateValidityPeriod(): boolean {
   if (!formData.value?.validTimeStart || !formData.value?.validTimeEnd) {
-    validityPeriodError.value = '';
-    return true; // 如果任一日期为空，则不进行验证
+    validityPeriodError.value = '有效起始时间和有效截止时间为必填项';
+    return false; // 如果任一日期为空，则验证失败
   }
 
   const startDate = new Date(formData.value.validTimeStart);
