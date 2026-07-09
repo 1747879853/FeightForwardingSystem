@@ -1516,6 +1516,8 @@ const orderUserRows = ref<OrderUserEditorRow[]>([]);
 const orderUserNameMap = ref<Record<number, string>>({});
 const orderUserDetailMap = ref<Record<number, SystemUserAdminApi.UserDto>>({});
 const orderUserDetailLoadingMap = ref<Record<number, boolean>>({});
+/** 已确认 getUser 失败的用户，才展示「已删除」兜底 */
+const orderUserLoadFailedSet = ref(new Set<number>());
 let orderUserRowKeyCounter = 0;
 const makeOrderUserRowKey = () =>
   `order_user_${++orderUserRowKeyCounter}_${Date.now()}`;
@@ -1587,12 +1589,30 @@ const getOrderUserRoleLabel = (userAttribute?: number) => {
       return '-';
   }
 };
-const getOrderUserDisplayName = (row: OrderUserEditorRow) => {
+const getOrderUserResolvedName = (row: OrderUserEditorRow) => {
   if (!row.userId) return row.userName || '';
   const mappedName = orderUserNameMap.value[row.userId];
   if (mappedName) return mappedName;
   if (row.userName && row.userName !== String(row.userId)) return row.userName;
+  return '';
+};
+const getOrderUserDisplayName = (row: OrderUserEditorRow) => {
+  const resolved = getOrderUserResolvedName(row);
+  if (resolved) return resolved;
+  if (!row.userId) return '';
+  if (
+    isOrderUserDetailLoading(row.userId) ||
+    !orderUserLoadFailedSet.value.has(row.userId)
+  ) {
+    return '';
+  }
   return formatDeletedUserFallback(row.userId);
+};
+const getOrderUserSelectedItems = (row: OrderUserEditorRow) => {
+  if (!row.userId) return [];
+  const nickName = getOrderUserResolvedName(row);
+  if (!nickName) return [];
+  return [{ id: row.userId, nickName }];
 };
 const getOrderUserAvatarSrc = (userId?: number) => {
   const avatar = getOrderUserDetail(userId)?.avatar?.trim();
@@ -1665,6 +1685,11 @@ const loadOrderUserDetail = async (
   };
   try {
     const detail = await getUser(userId, { silent: true });
+    if (orderUserLoadFailedSet.value.has(userId)) {
+      const next = new Set(orderUserLoadFailedSet.value);
+      next.delete(userId);
+      orderUserLoadFailedSet.value = next;
+    }
     syncOrderUserDetail(detail);
     const displayName = resolveUserDisplayName(userId, undefined, detail);
     setOrderUserNameForRow(rowKey, userId, displayName);
@@ -1673,6 +1698,10 @@ const loadOrderUserDetail = async (
       ? orderUserRows.value.find((item) => item._rowKey === rowKey)
       : undefined;
     const fallback = resolveUserDisplayName(userId, row?.userName);
+    orderUserLoadFailedSet.value = new Set([
+      ...orderUserLoadFailedSet.value,
+      userId,
+    ]);
     syncOrderUserName(userId, fallback);
     setOrderUserNameForRow(rowKey, userId, fallback);
   } finally {
@@ -4346,16 +4375,7 @@ defineExpose({
                     :model-value="row.userId"
                     :user-attribute="row.userAttribute"
                     label-key="nickName"
-                    :selected-items="
-                      row.userId
-                        ? [
-                            {
-                              id: row.userId,
-                              nickName: getOrderUserDisplayName(row),
-                            },
-                          ]
-                        : []
-                    "
+                    :selected-items="getOrderUserSelectedItems(row)"
                     :placeholder="$t('seaExport.export.pleaseSelectOrderUser')"
                     size="small"
                     allow-clear
