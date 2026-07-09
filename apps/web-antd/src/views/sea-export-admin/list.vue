@@ -8,11 +8,10 @@ import { useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { Copy, Plus } from '@vben/icons';
 
-import { Button, message, Modal } from 'ant-design-vue';
+import { Button, message } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
-  deleteSeaExport,
   getSeaExportGroupedList,
   getSeaExportPagedList,
 } from '#/api/sea-export/sea-export-admin';
@@ -245,14 +244,6 @@ const handleCreate = () => {
   router.push('/sea-exports/create');
 };
 
-const handleEdit = () => {
-  const row = requireExactlyOneRow();
-  if (!row) {
-    return;
-  }
-  router.push(`/sea-exports/${row.id}/edit`);
-};
-
 const handleCopy = () => {
   const row = requireExactlyOneRow();
   if (!row) {
@@ -264,41 +255,6 @@ const handleCopy = () => {
     mblNum: row.transportOrder?.mblNum,
     bookingNum: row.transportOrder?.bookingNum,
     clientName: row.transportOrder?.clientName,
-  });
-};
-
-const handleDelete = () => {
-  const row = requireExactlyOneRow();
-  if (!row) {
-    return;
-  }
-
-  const name =
-    row.transportOrder?.commissionNum ||
-    row.transportOrder?.mblNum ||
-    `${row.id}`;
-
-  Modal.confirm({
-    title: $t('ui.actionTitle.delete', [$t('seaExport.export.name')]),
-    content: $t('ui.actionMessage.deleteConfirm', [name]),
-    okType: 'danger',
-    async onOk() {
-      const hideLoading = message.loading({
-        content: $t('ui.actionMessage.deleting', [name]),
-        duration: 0,
-        key: 'action_process_msg',
-      });
-      try {
-        await deleteSeaExport(row.id);
-        message.success({
-          content: $t('ui.actionMessage.deleteSuccess', [name]),
-          key: 'action_process_msg',
-        });
-        handleRefresh();
-      } catch {
-        hideLoading();
-      }
-    },
   });
 };
 
@@ -346,12 +302,6 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         >
           {{ $t('seaExport.yundang.subscribe') }}
         </Button>
-        <Button class="mr-2" danger @click="handleDelete">
-          {{ $t('common.delete') }}
-        </Button>
-        <Button class="mr-2" @click="handleEdit">
-          {{ $t('common.edit') }}
-        </Button>
         <Button
           v-access:code="perm.add"
           class="mr-2"
@@ -368,7 +318,7 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           @click="handleCreate"
         >
           <Plus class="size-5" />
-          {{ $t('ui.actionTitle.create', [$t('seaExport.export.name')]) }}
+          {{ $t('common.create') }}
         </Button>
         <GroupingSettings
           :fields="grouping.fields"
