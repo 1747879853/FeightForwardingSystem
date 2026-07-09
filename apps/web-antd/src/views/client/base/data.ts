@@ -479,7 +479,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
 export function useBaseFormSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'Input',
+      component: 'shortNameInput',
       fieldName: 'name',
       label: $t('seaExport.client.clientName'),
       rules: 'required',

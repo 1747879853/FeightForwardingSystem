@@ -726,6 +726,9 @@ async function initComponentAdapter() {
       () => import('./frt-prepare-input.vue'),
     ),
     nameInput: defineAsyncComponent(() => import('./biz-input/name-input.vue')),
+    shortNameInput: defineAsyncComponent(
+      () => import('./biz-input/short-name-input.vue'),
+    ),
   };
 
   // 将组件注册到全局共享状态中
