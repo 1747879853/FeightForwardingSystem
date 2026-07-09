@@ -50,6 +50,8 @@ export namespace ClientAdminApi {
     id?: string;
     /** 客户全称 */
     fullName?: string;
+    /** 客户简称  */
+    name?: string;
   }
 
   /** Guid类型的Id Dto */
@@ -637,7 +639,7 @@ const API_PREFIX = '/services/app/ClientAdmin';
  * 客户全称校验
  */
 export const clientNameCheck = (data: ClientAdminApi.ClientNameCheckDto) => {
-  return requestClient.post<void>(`${API_PREFIX}/ClientNameChecksync`, data);
+  return requestClient.post<void>(`${API_PREFIX}/CheckDuplicateAsync`, data);
 };
 
 /**

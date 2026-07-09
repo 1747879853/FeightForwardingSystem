@@ -13,11 +13,11 @@ import { $t } from '#/locales';
  */
 const getBillingUnitOptions = () => [
   { label: '箱型', value: 'CTN' },
-  { label: '票', value: 'ORDER' },
+  { label: '票', value: '票' },
   { label: 'TEU', value: 'TEU' },
-  { label: '尺码', value: 'CBM' },
-  { label: '毛重', value: 'KGS' },
-  { label: '件数', value: 'PKGS' },
+  { label: '尺码', value: '尺码' },
+  { label: '毛重', value: '毛重' },
+  { label: '件数', value: '件数' },
 ];
 
 /**

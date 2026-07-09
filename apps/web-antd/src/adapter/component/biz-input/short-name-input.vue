@@ -50,14 +50,14 @@ watch(
     try {
       const res = await clientNameCheck({
         id: editId ? editId.value : '',
-        fullName: value.trim(),
+        name: value.trim(),
       });
       console.log(res);
       isSuccess.value = 2;
-      nameDes.value = '恭喜，该客户名称可用';
+      nameDes.value = '恭喜，该客户简称可用';
     } catch (error) {
       isSuccess.value = 1;
-      nameDes.value = '该客户名称已存在';
+      nameDes.value = '该客户简称已存在';
       console.log(error);
     }
   },
