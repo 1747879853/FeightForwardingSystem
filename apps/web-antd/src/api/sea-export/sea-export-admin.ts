@@ -24,6 +24,17 @@ export namespace SeaExportAdminApi {
     clientId?: number | string;
   }
 
+  /**
+   * 服务项目入参（新增/编辑）。
+   * sortId 为优先级（数值越小优先级越高，相同值代表同优先级并行任务），由前端传入。
+   */
+  export interface SeaExportServiceItemDto {
+    /** 服务项类型（ServiceType 枚举） */
+    serviceType: number;
+    /** 排序 id / 优先级 */
+    sortId: number;
+  }
+
   /** 业务箱型新增输入 */
   export interface OrderCtnAddDto {
     /** 箱型id */
@@ -278,7 +289,7 @@ export namespace SeaExportAdminApi {
     deliverPortRemark?: string;
     sortId?: number;
     remark?: string;
-    serviceTypes?: number[];
+    serviceTypes?: SeaExportServiceItemDto[];
     organizationUnits?: OrganizationUnitSimpleDto[];
     transportOrder?: TransportOrderAddDto;
   }
@@ -323,7 +334,7 @@ export namespace SeaExportAdminApi {
     deliverPortRemark?: string;
     sortId?: number;
     remark?: string;
-    serviceTypes?: number[];
+    serviceTypes?: SeaExportServiceItemDto[];
     organizationUnits?: OrganizationUnitSimpleDto[];
     transportOrder?: TransportOrderEditDto;
   }

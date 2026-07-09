@@ -397,6 +397,15 @@ const getCheckedServiceTypes = () =>
   serviceTypeNodes.value
     .filter((node) => node.checked)
     .map((node) => node.serviceType);
+/** 提交入参用：勾选的服务项（含前端传入的 sortId 优先级），按优先级升序 */
+const getCheckedServiceTypeItems =
+  (): SeaExportAdminApi.SeaExportServiceItemDto[] =>
+    sortServiceTypeNodesBySortId(
+      serviceTypeNodes.value.filter((node) => node.checked),
+    ).map((node) => ({
+      serviceType: node.serviceType,
+      sortId: node.sortId,
+    }));
 const SERVICE_REQUIRE_PROP_TO_FIELD_NAME: Record<number, string> = {
   1: 'carrierId',
   2: 'polId',
@@ -2951,7 +2960,7 @@ const buildDto = (values: Record<string, any>) => {
     deliverPortRemark: values.deliverPortRemark,
     sortId: values.sortId,
     remark: values.remark,
-    serviceTypes: getCheckedServiceTypes(),
+    serviceTypes: getCheckedServiceTypeItems(),
   };
 
   const transportOrderFields: Record<string, any> = {
