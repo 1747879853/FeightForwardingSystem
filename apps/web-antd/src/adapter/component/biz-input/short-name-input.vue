@@ -50,7 +50,7 @@ watch(
     try {
       const res = await clientNameCheck({
         id: editId ? editId.value : '',
-        name: value,
+        name: value.trim(),
       });
       console.log(res);
       isSuccess.value = 2;

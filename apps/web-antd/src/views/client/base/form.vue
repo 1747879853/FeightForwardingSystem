@@ -823,11 +823,11 @@ const handleSubmit = async () => {
       const editData: ClientAdminApi.ClientEditDto = {
         id: currentEditId,
         // 基本信息
-        name: baseValues.name,
+        name: baseValues.name.trim(),
         code: baseValues.code,
         phone: baseValues.phone,
         mobile: baseValues.mobile,
-        fullName: baseValues.fullName,
+        fullName: baseValues.fullName.trim(),
         enName: baseValues.enName,
         countryId: baseValues.country,
         areaId,
@@ -920,11 +920,11 @@ const handleSubmit = async () => {
       // 新增模式提交数据
       const addData: ClientAdminApi.ClientAddDto = {
         // 基本信息
-        name: baseValues.name,
+        name: baseValues.name.trim(),
         code: baseValues.code,
         phone: baseValues.phone,
         mobile: baseValues.mobile,
-        fullName: baseValues.fullName,
+        fullName: baseValues.fullName.trim(),
         enName: baseValues.enName,
         countryId: baseValues.country,
         areaId,
