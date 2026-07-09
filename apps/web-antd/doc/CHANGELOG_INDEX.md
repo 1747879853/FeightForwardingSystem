@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-09 海运出口服务项目按 sortId 视觉分组](./changelogs/change-log-2026-07-09-sea-export-service-sortid-visual-group.md)
 - [2026-07-08 港口服务项配置改为维护 sortId 排序](./changelogs/change-log-2026-07-08-se-service-config-item-sortid.md)
 - [2026-07-08 海运出口船期同步日期按钮](./changelogs/change-log-2026-07-08-sea-export-sync-shipment-dates.md)
 - [2026-07-08 海运出口箱型箱量工具栏按钮靠左](./changelogs/change-log-2026-07-08-sea-export-order-ctn-toolbar-left.md)
