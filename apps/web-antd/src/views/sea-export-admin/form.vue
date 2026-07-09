@@ -340,10 +340,18 @@ const buildServiceTypeNodes = (
   savedServiceTypeSet?: Set<number>,
   clientCheckedMap?: Map<number, boolean>,
   taskMap?: Map<number, ServiceTypeTaskInfo>,
+  savedSortIdMap?: Map<number, number>,
 ): ServiceTypeNode[] => {
+  const resolveSortId = (serviceType: number, polSortId: number) =>
+    savedSortIdMap?.get(serviceType) ?? polSortId;
   return polNodes
     .slice()
-    .sort((a, b) => a.sortId - b.sortId || a.serviceType - b.serviceType)
+    .sort(
+      (a, b) =>
+        resolveSortId(Number(a.serviceType), a.sortId) -
+          resolveSortId(Number(b.serviceType), b.sortId) ||
+        a.serviceType - b.serviceType,
+    )
     .map((node) => {
       const serviceType = Number(node.serviceType);
       const taskInfo = taskMap?.get(serviceType);
@@ -356,7 +364,7 @@ const buildServiceTypeNodes = (
       return {
         serviceType,
         label: enumLabelMap.get(serviceType) ?? `${serviceType}`,
-        sortId: node.sortId,
+        sortId: resolveSortId(serviceType, node.sortId),
         checked,
         taskStatus: taskInfo?.taskStatus,
         taskId: taskInfo?.taskId,
@@ -370,8 +378,13 @@ const buildServiceTypeNodes = (
 const parseDetailServiceTypes = (detail: SeaExportAdminApi.SeaExportDto) => {
   const services = detail.seaExportServices ?? [];
   const savedSet = new Set<number>(services.map((item) => item.serviceType));
+  // 编辑态以已保存的 seaExportServices.sortId 作为分组/排序依据（快照优先于 POL 配置）
+  const savedSortIdMap = new Map<number, number>();
   const taskMap = new Map<number, ServiceTypeTaskInfo>();
   services.forEach((item) => {
+    if (item.sortId != null) {
+      savedSortIdMap.set(item.serviceType, Number(item.sortId));
+    }
     const rawTaskId = item.seServiceTask?.id;
     const taskId =
       rawTaskId == null ? undefined : String(rawTaskId).trim() || undefined;
@@ -391,7 +404,7 @@ const parseDetailServiceTypes = (detail: SeaExportAdminApi.SeaExportDto) => {
       })),
     });
   });
-  return { savedSet, taskMap };
+  return { savedSet, savedSortIdMap, taskMap };
 };
 const getCheckedServiceTypes = () =>
   serviceTypeNodes.value
@@ -1082,6 +1095,7 @@ const applyServiceTypeStateByPol = (
   checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
   overrides?: {
     savedServiceTypeSet?: Set<number>;
+    savedSortIdMap?: Map<number, number>;
     taskMap?: Map<number, ServiceTypeTaskInfo>;
   },
 ) => {
@@ -1098,6 +1112,7 @@ const applyServiceTypeStateByPol = (
     overrides?.savedServiceTypeSet,
     clientCheckedMap,
     overrides?.taskMap,
+    overrides?.savedSortIdMap,
   );
   serviceTypeRequiredPropValues.value = buildServiceRequiredPropsByType(
     availableServiceTypes,
@@ -1124,6 +1139,7 @@ const syncServiceTypesByPol = async (
     polId?: unknown;
     force?: boolean;
     savedServiceTypeSet?: Set<number>;
+    savedSortIdMap?: Map<number, number>;
     taskMap?: Map<number, ServiceTypeTaskInfo>;
   } = {},
 ) => {
@@ -1175,6 +1191,7 @@ const syncServiceTypesByPol = async (
       extractServiceTypesByPolResult(checkedServiceTypesResponse),
       {
         savedServiceTypeSet: args.savedServiceTypeSet,
+        savedSortIdMap: args.savedSortIdMap,
         taskMap: args.taskMap,
       },
     );
@@ -2894,7 +2911,8 @@ const loadEditData = async () => {
     ]);
     currentCargoId.value = formValues.cargoId as number | undefined;
     initializeOrderUsersPanel(to?.orderUsers ?? []);
-    const { savedSet, taskMap } = parseDetailServiceTypes(detail);
+    const { savedSet, savedSortIdMap, taskMap } =
+      parseDetailServiceTypes(detail);
     refreshEntrustReadonlyInfo(formValues);
     syncTabTitleFromValues(formValues);
     headerCodeSourceSelectedItems.value = toSelectedItems(
@@ -2913,6 +2931,7 @@ const loadEditData = async () => {
       clientId: formValues.clientId,
       force: true,
       savedServiceTypeSet: savedSet,
+      savedSortIdMap,
       taskMap,
     });
     await syncFormSnapshot();
