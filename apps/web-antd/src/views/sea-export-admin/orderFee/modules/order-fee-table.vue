@@ -18,11 +18,7 @@ import {
   Card,
 } from 'ant-design-vue';
 
-import { IconifyIcon } from '@vben/icons';
-
 import { $t } from '#/locales';
-
-import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 
 import * as feeConstants from '../data';
 import * as clientConstants from '#/views/client/base/data';
@@ -62,8 +58,6 @@ const dataSource = defineModel<OrderFeeAdminApi.OrderFeeDto[]>({
 });
 
 const selectedRowKeys = ref<(string | number)[]>([]);
-const printing = ref(false);
-const { openPrint } = usePrintFormat();
 
 const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
@@ -219,8 +213,8 @@ const queryTableData = async () => {
   //  console.log('res', res.items);
   dataSource.value = normalizeOrderFeeWithRowKey(res.items);
 };
-const tmpAdd = ref(false); // ✅ 已废弃，保留以避免其他潜在引用
-const tmpDel = ref(false); // ✅ 已废弃，保留以避免其他潜在引用
+const tmpAdd = ref(false);
+const tmpDel = ref(false);
 
 // 加载订单箱型列表和订单基础数据
 const loadOrderCtnList = async () => {
@@ -379,18 +373,23 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
     rowConfig: {
       keyField: '_rowKey',
     },
-    checkboxConfig: {
-      highlight: true,
-      reserve: true,
-      trigger: 'row',
-    },
     pagerConfig: {
       enabled: false,
     },
     proxyConfig: {
       ajax: {
         query: async () => {
-          // ✅ 简化查询逻辑，直接返回数据源
+          //      console.log('addRowData', tmpAdd.value);
+          if (tmpAdd.value) {
+            tmpAdd.value = false;
+            console.log('addRowDataing');
+            addRowData();
+            return dataSource.value;
+          }
+          if (tmpDel.value) {
+            tmpDel.value = false;
+            return dataSource.value;
+          }
           await queryTableData();
           return dataSource.value;
         },
@@ -435,7 +434,8 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
   },
 });
 const addRowData = () => {
-  const newRow = {
+  const list = [...(dataSource.value ?? [])];
+  list.push({
     _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
     id: '',
     transportOrderId: editId.value,
@@ -449,80 +449,16 @@ const addRowData = () => {
     canInvoice: true,
     isConfidential: false,
     dataEntryMethod: 0,
-  } as any;
-
-  // ✅ 使用 VxeTable 的 insertAt 方法在末尾插入新行
-  gridApi.grid?.insertAt(newRow, -1);
-
-  // 同时更新 dataSource 以保持数据一致性
-  const list = [...(dataSource.value ?? [])];
-  list.push(newRow);
+  } as any);
   dataSource.value = list;
-
-  console.log('✅ [addRowData] 已添加新行，当前行数:', dataSource.value.length);
 };
-
 const addRow = () => {
-  // ✅ 直接调用 addRowData，避免触发完整的表格重新渲染
-  addRowData();
+  tmpAdd.value = true;
+  gridApi.query();
 };
-
 const delRow = () => {
-  // ✅ 删除操作也直接处理
-  removeSelectedRows();
-};
-
-const getSelectedRows = (): OrderFeeAdminApi.OrderFeeDto[] => {
-  const fromGrid = (gridApi.grid?.getCheckboxRecords?.() ??
-    []) as OrderFeeAdminApi.OrderFeeDto[];
-  if (fromGrid.length) return fromGrid;
-
-  const keysSet = new Set(selectedRowKeys.value);
-  return (dataSource.value ?? []).filter((row) =>
-    keysSet.has((row as { _rowKey?: string })._rowKey),
-  );
-};
-
-const isSavedOrderFee = (row: OrderFeeAdminApi.OrderFeeDto) =>
-  Boolean(row.id && String(row.id).trim());
-
-const handlePrint = async () => {
-  if (printing.value) return;
-
-  const selected = getSelectedRows();
-  if (!selected.length) {
-    message.warning($t('common.selectDataFirst'));
-    return;
-  }
-  if (selected.some((row) => !isSavedOrderFee(row))) {
-    message.warning('请先保存费用后再打印');
-    return;
-  }
-
-  printing.value = true;
-  const hideLoading = message.loading('正在准备打印...', 0);
-  try {
-    const json = JSON.stringify(
-      selected.map((row) => {
-        const { _rowKey, ...fee } = row as OrderFeeAdminApi.OrderFeeDto & {
-          _rowKey?: string;
-        };
-        return fee;
-      }),
-    );
-    openPrint({
-      printJsonType:
-        props.type === 0
-          ? PrintJsonType.RecOrderFeeList
-          : PrintJsonType.PayOrderFeeList,
-      json,
-    });
-  } catch {
-    message.error('打印准备失败，请稍后重试');
-  } finally {
-    hideLoading();
-    printing.value = false;
-  }
+  tmpDel.value = true;
+  gridApi.query();
 };
 
 const showDeleteWithRemark = () => {
@@ -932,52 +868,28 @@ const saveRow = () => {
 const removeSelectedRows = () => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
-
-  // 获取需要删除的行
-  const rowsToDelete = (dataSource.value ?? []).filter((row) =>
-    keysSet.has((row as any)._rowKey),
+  const list = (dataSource.value ?? []).filter(
+    (row) => !keysSet.has((row as any)._rowKey),
   );
-
-  const needDelIds = rowsToDelete
+  const needDelIds = (dataSource.value ?? [])
+    .filter((row) => keysSet.has((row as any)._rowKey))
     .filter((row) => (row as any).id !== '')
     .map((row) => (row as any).id);
+  //console.log('needDelIds', needDelIds);
 
   selectedRowKeys.value = [];
-
   if (props.mode !== 'changeOrder' && needDelIds.length > 0) {
     batchDeleteOrderFee(needDelIds).then(() => {
-      // ✅ 使用 VxeTable 的 removeCheckboxRow 方法删除选中的行
-      gridApi.grid?.removeCheckboxRow();
-
-      // 同时更新 dataSource
-      const list = (dataSource.value ?? []).filter(
-        (row) => !keysSet.has((row as any)._rowKey),
-      );
       dataSource.value = list;
-
-      console.log(
-        '✅ [removeSelectedRows] 已删除行（API），当前行数:',
-        dataSource.value.length,
-      );
+      delRow();
       message.success({
         content: $t('ui.actionMessage.operationSuccess'),
         key: 'action_process_msg',
       });
     });
   } else {
-    // ✅ 使用 VxeTable 的 removeCheckboxRow 方法删除选中的行
-    gridApi.grid?.removeCheckboxRow();
-
-    // 同时更新 dataSource
-    const list = (dataSource.value ?? []).filter(
-      (row) => !keysSet.has((row as any)._rowKey),
-    );
     dataSource.value = list;
-
-    console.log(
-      '✅ [removeSelectedRows] 已删除行（本地），当前行数:',
-      dataSource.value.length,
-    );
+    delRow();
   }
 };
 
@@ -1138,19 +1050,6 @@ defineExpose({
                 >
                   {{ $t('common.save') }}
                 </Button>
-                <Button
-                  v-show="props.mode !== 'changeOrder'"
-                  :disabled="!selectedRowKeys.length"
-                  :loading="printing"
-                  @click="handlePrint"
-                >
-                  <IconifyIcon
-                    icon="mdi:printer-outline"
-                    class="mr-1 inline-block size-3.5 align-middle"
-                  />
-                  打印
-                </Button>
-
                 <Button
                   danger
                   :disabled="!selectedRowKeys.length"
