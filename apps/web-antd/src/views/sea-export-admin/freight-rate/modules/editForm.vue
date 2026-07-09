@@ -37,6 +37,9 @@ const id = ref<string>();
 const hasPermission = ref<boolean>(false); // 是否有编辑权限（从父组件传入）
 const isEditMode = computed(() => !!id.value);
 
+// 添加有效期验证状态
+const validityPeriodError = ref<string>('');
+
 // 时间模式控制（用于独立日期模块）
 const dateEditMode = ref<'date' | 'week'>('date'); // 默认日期模式
 
@@ -519,7 +522,7 @@ const [Form, formApi] = useVbenForm({
     //     onChange: (value: any) => {
     //       if (value !== undefined && value !== null) {
     //         dateEditMode.value = 'week';
-    //         formApi.setValues({ closingTime: undefined });
+    //         formApi.setgle({ closingTime: undefined });
     //       }
     //     },
     //   },
@@ -554,6 +557,29 @@ const [Form, formApi] = useVbenForm({
   showDefaultActions: false,
   wrapperClass: 'grid-cols-4',
 });
+
+// ==================== 方法定义 ====================
+
+/**
+ * 验证有效期时间范围
+ */
+function validateValidityPeriod(): boolean {
+  if (!formData.value?.validTimeStart || !formData.value?.validTimeEnd) {
+    validityPeriodError.value = '';
+    return true; // 如果任一日期为空，则不进行验证
+  }
+
+  const startDate = new Date(formData.value.validTimeStart);
+  const endDate = new Date(formData.value.validTimeEnd);
+
+  if (endDate < startDate) {
+    validityPeriodError.value = '有效截止时间不能早于有效起始时间';
+    return false;
+  }
+
+  validityPeriodError.value = '';
+  return true;
+}
 
 // ==================== Modal 配置 ====================
 
@@ -1042,7 +1068,7 @@ function showConditionPopup(
 function hideConditionPopup() {
   conditionPopupVisible.value = false;
   currentConditionCell.value = null;
-  // 使用 try-catch 避免在 DOM 销毁时出错
+  // 使用 try-catch 遥避在 DOM 销毁时出错
   try {
     document.removeEventListener('click', hideConditionPopup);
   } catch (error) {
@@ -1178,6 +1204,12 @@ async function handleSubmit() {
     const result = await formApi.validate();
     if (!result.valid) {
       message.error('请检查表单填写');
+      return;
+    }
+
+    // 验证有效期时间范围
+    if (!validateValidityPeriod()) {
+      message.error(validityPeriodError.value);
       return;
     }
 
