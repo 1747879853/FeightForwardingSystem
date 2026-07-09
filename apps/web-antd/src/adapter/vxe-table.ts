@@ -522,15 +522,7 @@ setupVbenVxeTable({
                 }
                 // 如果是重量、尺码、件数、TEU，从订单详情中获取
                 else if (
-                  [
-                    '毛重',
-                    'KGS',
-                    '尺码',
-                    'CBM',
-                    '件数',
-                    'PKGS',
-                    'TEU',
-                  ].includes(defaultUnitName)
+                  ['毛重', '尺码', '件数', 'TEU'].includes(defaultUnitName)
                 ) {
                   await fillOrderQuantity(row, defaultUnitName);
                 }
@@ -610,22 +602,20 @@ setupVbenVxeTable({
             }
 
             const transportOrder = orderDetail.transportOrder;
+            console.log('transportOrder:', transportOrder);
 
             // 根据单位类型填充数量
             switch (unitName.toLowerCase()) {
-              case '重量':
-              case 'weight':
+              case '毛重':
                 row['quantity'] = transportOrder.kgs || 0;
                 break;
               case '尺码':
-              case 'measurement':
                 row['quantity'] = transportOrder.cbm || 0;
                 break;
               case '件数':
-              case 'packages':
                 row['quantity'] = transportOrder.pkgs || 0;
                 break;
-              case 'teu':
+              case 'TEU':
                 row['quantity'] = transportOrder.teu || 0;
                 break;
               default:
