@@ -81,7 +81,7 @@ last_updated: 2026-07-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-07-11 | `Feature` | 列表新增「运踪订阅」状态列（未订阅/订阅失败/订阅成功 Tag），对接 `isYundangSubscribed`、`isYundangSubscribeSuccess`；订阅动作完成后刷新列表拿最新状态。 | 状态由两字段组合推导：`getYundangSubscribeStatus`/`getYundangSubscribeStatusMeta`（`use-yundang-ocean-subscribe.ts`）；列通过 slot `yundangSubscribeStatus` 渲染。 |
+| 2026-07-11 | `Feature` | 列表新增「运踪订阅」状态列（未订阅/失败/成功 Tag），对接两字段；订阅后刷新列表。 | 状态由 `getYundangSubscribeStatus`/`getYundangSubscribeStatusMeta` 组合推导；列 slot `yundangSubscribeStatus`。 |
 | 2026-07-07 | `Refactor` | 运踪订阅取消二次确认弹窗，点击按钮直接提交并展示结果。 | 删除 `yundang-subscribe-modal.vue`；`subscribe()` 直接调 API。 |
 | 2026-07-07 | `Style` | 页面文案「云当订阅」统一改为「运踪订阅」，不对外暴露第三方服务品牌。 | 仅改 i18n 用户可见文案；内部 API 路径与 composable 命名不变。 |
 | 2026-07-07 | `Refactor` | 运踪订阅弹窗简化为确认框，仅传 `seaExportIds`；后端按装运方式自动判断订阅单号类型。 | 移除 scene/referenceType/noticeEmail；新增 `autoSubscribeHint` 文案。 |

@@ -2628,7 +2628,10 @@ defineExpose({
                       <span class="align-middle">打印</span>
                     </Button>
                     <template v-if="isEdit">
-                      <Tag :color="yundangSubscribeStatusMeta.color">
+                      <Tag
+                        v-if="yundangSubscribeStatus !== 'none'"
+                        :color="yundangSubscribeStatusMeta.color"
+                      >
                         {{ yundangSubscribeStatusMeta.label }}
                       </Tag>
                       <Tooltip

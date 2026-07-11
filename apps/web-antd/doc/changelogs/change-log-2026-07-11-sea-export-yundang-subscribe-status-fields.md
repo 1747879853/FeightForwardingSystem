@@ -21,10 +21,10 @@ module: 海运出口 / 运踪订阅
 2. **状态推导 helper**：`views/sea-export-admin/use-yundang-ocean-subscribe.ts` 新增：
    - `getYundangSubscribeStatus(row)` → `'none' | 'failed' | 'success'`（组合两字段推导：无记录→none；有记录未成功→failed；有记录且成功→success）。
    - `getYundangSubscribeStatusMeta(status)` → `{ color, label }`（default/error/success，文案取 i18n）。
-3. **列表**（`list.vue` + `data.ts`）：新增「运踪订阅」状态列，用 `Tag` 通过 slot `yundangSubscribeStatus` 渲染三态；订阅动作完成后调用 `gridApi.query()` 刷新以拿到最新状态。
+3. **列表**（`list.vue` + `data.ts`）：新增「运踪订阅」状态列，用 `Tag` 通过 slot `yundangSubscribeStatus` 渲染三态（未订阅/失败/成功）；订阅动作完成后调用 `gridApi.query()` 刷新以拿到最新状态。
 4. **编辑页**（`basic-info-form/form.vue`）：
    - `loadEditData` 回填 `isYundangSubscribed / isYundangSubscribeSuccess` 到本地 ref。
-   - 顶栏订阅按钮旁展示状态 `Tag`；按钮文案在 `none→运踪订阅`、`failed→重新订阅` 间切换；`success` 时禁用并给出「已成功订阅」Tooltip（同单号不可再批量订阅成功）。
+   - 顶栏：**仅**在已发起过订阅时展示状态 `Tag`（失败/成功）；未订阅不展示 Tag，靠按钮「运踪订阅」表达；按钮文案在 `none→运踪订阅`、`failed→重新订阅` 间切换；`success` 时禁用并给出「已成功订阅」Tooltip。
    - 订阅完成后 `await loadEditData()` 刷新状态。
 5. **i18n**：`seaExport.yundang` 新增 `resubscribe`、`alreadySubscribed`、`statusColumn`、`status.{notSubscribed,failed,success}`（zh-CN / en-US）。
 
