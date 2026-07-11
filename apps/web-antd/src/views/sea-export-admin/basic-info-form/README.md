@@ -49,6 +49,7 @@ ai-extract-utils.ts → sea-export-detail-mapper.ts（toDayjs）
 | `../use-yard-real-query.ts` | 场站实时查询 | 否 |
 | `../use-sync-shipment-dates.ts` | 船期日期联动同步 | 否 |
 | `../use-sea-export-copy.ts` | 单据「复制」+ 未保存警告 | 是（`list.vue`） |
-| `../use-yundang-ocean-subscribe.ts` | 云单海运订阅 | 是（`list.vue` 及订阅结果弹窗） |
+| `../use-yundang-ocean-subscribe.ts` | 海运运踪订阅 | 是（`list.vue` 及订阅结果弹窗） |
+| `../use-yundang-ocean-track.ts` | 运踪详情查询与弹窗 | 是（`list.vue`、`form.vue`） |
 
 > 说明：`use-sea-export-tab-title` / `use-yard-real-query` / `use-sync-shipment-dates` / `order-ctn-table.vue` 目前仅本表单使用，为控制本次改动范围暂留上级目录；如需进一步内聚可后续一并迁入本目录。

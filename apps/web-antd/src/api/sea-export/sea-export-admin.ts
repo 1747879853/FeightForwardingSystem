@@ -429,10 +429,12 @@ export namespace SeaExportAdminApi {
     payFeeStatus?: number | null;
     /** 应收费用组合状态（含更改单、结算等；该方向无费用时为 null） */
     receiveFeeStatus?: number | null;
-    /** 是否已发起过云当海运运单订阅（存在订阅记录即为 true） */
+    /** 是否已发起过海运运单运踪订阅（存在订阅记录即为 true） */
     isYundangSubscribed?: boolean;
     /** 当前订阅记录是否订阅成功（对应订阅表 isSuccess） */
     isYundangSubscribeSuccess?: boolean;
+    /** 运单最新运踪状态（列表展示，有推送时由后端填充） */
+    yundangTrackStatus?: string;
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;

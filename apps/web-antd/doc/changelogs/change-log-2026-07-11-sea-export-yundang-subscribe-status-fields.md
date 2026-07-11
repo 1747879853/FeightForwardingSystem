@@ -1,5 +1,5 @@
 ---
-title: 海运出口对接云当订阅状态字段（列表列 + 编辑页状态联动）
+title: 海运出口对接运踪订阅状态字段（列表列 + 编辑页状态联动）
 date: 2026-07-11
 type: Feature
 scope: apps/web-antd
@@ -10,7 +10,7 @@ module: 海运出口 / 运踪订阅
 
 海运出口列表（`GetPagedListAsync`）与详情（`DetailAsync`）接口新增两个随 `SeaExportDto` 一并返回的运踪订阅状态字段：
 
-- `isYundangSubscribed`：是否已发起过云当海运运单订阅（存在订阅记录即为 `true`）。
+- `isYundangSubscribed`：是否已发起过海运运单运踪订阅（存在订阅记录即为 `true`）。
 - `isYundangSubscribeSuccess`：当前订阅记录是否订阅成功（对应订阅表 `isSuccess`）。
 
 这两个字段不是独立接口，用于前端控制「订阅 / 重新订阅」入口的展示与禁用。本次将其对接到列表与编辑页。

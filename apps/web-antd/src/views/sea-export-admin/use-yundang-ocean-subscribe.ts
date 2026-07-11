@@ -21,7 +21,7 @@ export interface SeaExportSubscribeRowInfo {
   bookingNum?: null | string;
 }
 
-/** 云当运踪订阅状态：未订阅 / 订阅失败 / 订阅成功 */
+/** 运踪订阅状态：未订阅 / 订阅失败 / 订阅成功 */
 export type YundangSubscribeStatus = 'failed' | 'none' | 'success';
 
 /**

@@ -598,6 +598,67 @@
     "subscribing": "Subscribing tracking…",
     "pleaseSelectRecords": "Please select sea export records to subscribe.",
     "statusColumn": "Tracking",
+    "trackStatusColumn": "Track Status",
+    "viewTracking": "View Tracking",
+    "trackStatus": {
+      "notSubscribed": "Not Subscribed",
+      "subscribeFailed": "Subscribe Failed",
+      "waitingPush": "Waiting for Data"
+    },
+    "tracking": {
+      "title": "Tracking Details",
+      "titleWithOrder": "Tracking - {0}",
+      "close": "Close",
+      "refresh": "Refresh",
+      "loadFailed": "Failed to load tracking info",
+      "lastUpdated": "Last updated at {0}",
+      "neverSubscribed": "Not subscribed yet. Use Tracking Subscribe first.",
+      "subscribeFailedTitle": "Tracking subscription failed",
+      "waitingPushTitle": "Subscribed, waiting for tracking data",
+      "waitingPushDesc": "Tracking data is pushed asynchronously. Refresh later or keep this dialog open to poll.",
+      "referenceNo": "Reference No.",
+      "carrier": "Carrier",
+      "blTypeLabel": "No. Type",
+      "subscribeTime": "Subscribed At",
+      "trackStatus": "Track Status",
+      "vesselVoyage": "Vessel / Voyage",
+      "polPod": "POL / POD",
+      "currentNode": "Current",
+      "nodeState": {
+        "completed": "Completed",
+        "current": "In Progress",
+        "estimated": "Estimated",
+        "planned": "Planned",
+        "pending": "Not Reached"
+      },
+      "estimated": "Estimated",
+      "emptyNodes": "No ocean nodes",
+      "emptyCarriages": "No carriage segments",
+      "emptyContainers": "No containers",
+      "blType": {
+        "bl": "B/L No.",
+        "bk": "Booking No.",
+        "cn": "Container No."
+      },
+      "tabs": {
+        "nodes": "Milestones",
+        "carriages": "Carriages",
+        "containers": "Containers"
+      },
+      "carriage": {
+        "sno": "No.",
+        "route": "Route",
+        "vessel": "Vessel",
+        "voyage": "Voyage"
+      },
+      "container": {
+        "sizeType": "Size/Type",
+        "sealNo": "Seal No.",
+        "currentStatus": "Current Status",
+        "currentPlace": "Current Place",
+        "currentStatusTime": "Status Time"
+      }
+    },
     "status": {
       "notSubscribed": "Not Subscribed",
       "failed": "Failed",

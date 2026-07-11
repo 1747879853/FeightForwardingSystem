@@ -13,7 +13,10 @@
 
 ## 2026-07
 
-- [2026-07-11 海运出口对接云当订阅状态字段（列表列 + 编辑页状态联动）](./changelogs/change-log-2026-07-11-sea-export-yundang-subscribe-status-fields.md)
+- [2026-07-11 运踪模块去除第三方服务商名称（去品牌化补漏）](./changelogs/change-log-2026-07-11-sea-export-tracking-vendor-debrand.md)
+- [2026-07-11 海运出口运踪 UI 精简（去订阅列/Tag、保存复制合并、时间轴苹果风）](./changelogs/change-log-2026-07-11-sea-export-yundang-ui-cleanup.md)
+- [2026-07-11 海运出口运踪状态列与运踪详情弹窗（GetOceanPushInfoAsync）](./changelogs/change-log-2026-07-11-sea-export-yundang-tracking-push-info.md)
+- [2026-07-11 海运出口对接运踪订阅状态字段（列表列 + 编辑页状态联动）](./changelogs/change-log-2026-07-11-sea-export-yundang-subscribe-status-fields.md)
 - [2026-07-11 海运出口基础信息表单目录化收敛 + 死代码清理](./changelogs/change-log-2026-07-11-sea-export-form-directory-and-cleanup.md)
 - [2026-07-11 海运出口基础信息 form.vue 模块化拆分（批次 1–4）](./changelogs/change-log-2026-07-11-sea-export-form-modularization.md)
 - [2026-07-11 公告登录弹窗已读改为会话级存储](./changelogs/change-log-2026-07-11-announcement-read-session-storage.md)
@@ -28,9 +31,9 @@
 - [2026-07-08 海运出口箱型箱量工具栏按钮靠左](./changelogs/change-log-2026-07-08-sea-export-order-ctn-toolbar-left.md)
 - [2026-07-07 海运出口对接危险品与冻柜扩展字段](./changelogs/change-log-2026-07-07-sea-export-dg-reefer-fields.md)
 - [2026-07-07 运踪订阅取消二次确认](./changelogs/change-log-2026-07-07-tracking-subscribe-no-confirm.md)
-- [2026-07-07 运踪订阅文案去品牌化（隐藏云当）](./changelogs/change-log-2026-07-07-tracking-subscribe-rebrand.md)
-- [2026-07-07 云当海运订阅接口简化（仅传 seaExportIds）](./changelogs/change-log-2026-07-07-yundang-subscribe-simplify.md)
-- [2026-07-07 海运出口云当运单批量订阅前端对接](./changelogs/change-log-2026-07-07-sea-export-yundang-subscribe.md)
+- [2026-07-07 运踪订阅文案去品牌化（隐藏第三方服务商名称）](./changelogs/change-log-2026-07-07-tracking-subscribe-rebrand.md)
+- [2026-07-07 海运运踪订阅接口简化（仅传 seaExportIds）](./changelogs/change-log-2026-07-07-yundang-subscribe-simplify.md)
+- [2026-07-07 海运出口运单批量运踪订阅前端对接](./changelogs/change-log-2026-07-07-sea-export-yundang-subscribe.md)
 - [2026-07-07 海运出口编辑页附件 Tab 对接](./changelogs/change-log-2026-07-07-sea-export-attachments-tab.md)
 - [2026-07-07 海运出口复制功能前端对接](./changelogs/change-log-2026-07-07-sea-export-copy.md)
 - [2026-07-07 海运出口应收应付费用打印](./changelogs/change-log-2026-07-07-sea-export-order-fee-print.md)

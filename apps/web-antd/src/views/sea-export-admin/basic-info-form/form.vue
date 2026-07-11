@@ -30,7 +30,10 @@ import {
   Button,
   Card,
   Checkbox,
+  Dropdown,
   Empty,
+  Menu,
+  MenuItem,
   message,
   Modal,
   Popover,
@@ -42,6 +45,8 @@ import {
   Tooltip,
 } from 'ant-design-vue';
 import { useUserStore } from '@vben/stores';
+
+const DropdownButton = Dropdown.Button;
 
 defineOptions({
   name: 'SeaExportAdminForm',
@@ -119,12 +124,13 @@ import { useYardRealQuery } from '../use-yard-real-query';
 import { useSyncShipmentDates } from '../use-sync-shipment-dates';
 import {
   getYundangSubscribeStatus,
-  getYundangSubscribeStatusMeta,
   useYundangOceanSubscribe,
 } from '../use-yundang-ocean-subscribe';
+import { useYundangOceanTrack } from '../use-yundang-ocean-track';
 
 const perm = createAbpPermission('Admin.SeaExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
+const externalApiGetCode = 'Admin.ExternalApi.Get';
 const { hasAccessByCodes } = useAccess();
 const hasYardRealQueryAccess = computed(() =>
   hasAccessByCodes([externalApiUseCode]),
@@ -1991,18 +1997,15 @@ const { submitting, buildDto, handleSubmit, syncFormSnapshot, isFormDirty } =
     router,
   });
 
-const handleCancel = () => {
-  router.push('/sea-exports');
-};
-
 const { copying: copyingSeaExport, copyFrom: copySeaExportFromCurrent } =
   useSeaExportCopy({
     checkDirty: isFormDirty,
   });
 
 const { ResultModal, subscribe, subscribing } = useYundangOceanSubscribe();
+const { TrackingModal, openTracking } = useYundangOceanTrack();
 
-/** 云当运踪订阅状态（随详情返回，订阅后重新加载详情刷新） */
+/** 运踪订阅状态（随详情返回，订阅后重新加载详情刷新） */
 const yundangSubscribed = ref(false);
 const yundangSubscribeSuccess = ref(false);
 const yundangSubscribeStatus = computed(() =>
@@ -2010,9 +2013,6 @@ const yundangSubscribeStatus = computed(() =>
     isYundangSubscribed: yundangSubscribed.value,
     isYundangSubscribeSuccess: yundangSubscribeSuccess.value,
   }),
-);
-const yundangSubscribeStatusMeta = computed(() =>
-  getYundangSubscribeStatusMeta(yundangSubscribeStatus.value),
 );
 /** 已成功订阅的同单号禁止重复批量订阅 */
 const yundangSubscribeDisabled = computed(
@@ -2070,6 +2070,21 @@ const handleYundangSubscribe = async () => {
     },
   ]);
   await loadEditData();
+};
+
+const handleOpenYundangTracking = () => {
+  if (!isEdit.value || !editId.value) {
+    return;
+  }
+  openTracking({
+    seaExportId: editId.value,
+    orderLabel:
+      entrustReadonlyInfo.value.commissionNum?.trim() ||
+      tabMblNum.value?.trim() ||
+      editId.value,
+    isYundangSubscribed: yundangSubscribed.value,
+    isYundangSubscribeSuccess: yundangSubscribeSuccess.value,
+  });
 };
 
 const handleCopySeaExport = async () => {
@@ -2616,19 +2631,6 @@ defineExpose({
                   </div>
                   <Space class="content-section__actions-right">
                     <Button
-                      v-if="isEdit"
-                      v-access:code="perm.add"
-                      size="small"
-                      class="flex items-center justify-center"
-                      :loading="copyingSeaExport"
-                      @click="handleCopySeaExport"
-                    >
-                      <Copy class="mr-1 inline-block size-3.5 align-middle" />
-                      <span class="align-middle">{{
-                        $t('seaExport.export.copy')
-                      }}</span>
-                    </Button>
-                    <Button
                       size="small"
                       class="flex items-center justify-center"
                       :loading="aiRecognizing"
@@ -2653,12 +2655,6 @@ defineExpose({
                       <span class="align-middle">打印</span>
                     </Button>
                     <template v-if="isEdit">
-                      <Tag
-                        v-if="yundangSubscribeStatus !== 'none'"
-                        :color="yundangSubscribeStatusMeta.color"
-                      >
-                        {{ yundangSubscribeStatusMeta.label }}
-                      </Tag>
                       <Tooltip
                         :title="
                           yundangSubscribeDisabled
@@ -2683,11 +2679,51 @@ defineExpose({
                           }}</span>
                         </Button>
                       </Tooltip>
+                      <Button
+                        v-access:code="externalApiGetCode"
+                        size="small"
+                        class="flex items-center justify-center"
+                        @click="handleOpenYundangTracking"
+                      >
+                        <IconifyIcon
+                          icon="mdi:map-marker-path"
+                          class="mr-1 inline-block size-3.5 align-middle"
+                        />
+                        <span class="align-middle">{{
+                          $t('seaExport.yundang.viewTracking')
+                        }}</span>
+                      </Button>
                     </template>
-                    <Button size="small" @click="handleCancel">
-                      {{ $t('common.cancel') }}
-                    </Button>
+                    <DropdownButton
+                      v-if="isEdit"
+                      type="primary"
+                      size="small"
+                      :loading="submitting"
+                      :trigger="['hover']"
+                      class="sea-export-save-dropdown"
+                      @click="handleSubmit"
+                    >
+                      <Save class="mr-1 inline-block size-3.5 align-middle" />
+                      <span class="align-middle">{{ $t('common.save') }}</span>
+                      <template #overlay>
+                        <Menu>
+                          <MenuItem
+                            v-access:code="perm.add"
+                            :disabled="copyingSeaExport"
+                            @click="handleCopySeaExport"
+                          >
+                            <Copy
+                              class="mr-1 inline-block size-3.5 align-middle"
+                            />
+                            <span class="align-middle">{{
+                              $t('seaExport.export.copy')
+                            }}</span>
+                          </MenuItem>
+                        </Menu>
+                      </template>
+                    </DropdownButton>
                     <Button
+                      v-else
                       type="primary"
                       size="small"
                       :loading="submitting"
@@ -3241,6 +3277,7 @@ defineExpose({
       </div>
     </Modal>
     <ResultModal />
+    <TrackingModal />
   </component>
 </template>
 

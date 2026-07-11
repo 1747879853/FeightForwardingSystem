@@ -890,6 +890,67 @@
     "subscribing": "运踪订阅中…",
     "pleaseSelectRecords": "请先勾选要订阅的海运出口",
     "statusColumn": "运踪订阅",
+    "trackStatusColumn": "运踪状态",
+    "viewTracking": "查看运踪",
+    "trackStatus": {
+      "notSubscribed": "未订阅",
+      "subscribeFailed": "订阅失败",
+      "waitingPush": "等待推送"
+    },
+    "tracking": {
+      "title": "运踪详情",
+      "titleWithOrder": "运踪详情 - {0}",
+      "close": "关闭",
+      "refresh": "刷新",
+      "loadFailed": "加载运踪信息失败",
+      "lastUpdated": "最后更新于 {0}",
+      "neverSubscribed": "尚未订阅运踪，请先使用「运踪订阅」",
+      "subscribeFailedTitle": "运踪订阅失败",
+      "waitingPushTitle": "已订阅，等待运踪数据推送",
+      "waitingPushDesc": "运单动态异步推送中，请稍后刷新或保持本窗口打开自动轮询",
+      "referenceNo": "订阅单号",
+      "carrier": "船东",
+      "blTypeLabel": "单号类型",
+      "subscribeTime": "订阅时间",
+      "trackStatus": "跟踪状态",
+      "vesselVoyage": "船名/航次",
+      "polPod": "起运港/目的港",
+      "currentNode": "当前节点",
+      "nodeState": {
+        "completed": "已完成",
+        "current": "进行中",
+        "estimated": "预计",
+        "planned": "计划中",
+        "pending": "未到"
+      },
+      "estimated": "预计",
+      "emptyNodes": "暂无海运节点",
+      "emptyCarriages": "暂无航段信息",
+      "emptyContainers": "暂无集装箱信息",
+      "blType": {
+        "bl": "提单号",
+        "bk": "订舱号",
+        "cn": "箱号"
+      },
+      "tabs": {
+        "nodes": "里程碑",
+        "carriages": "航段",
+        "containers": "集装箱"
+      },
+      "carriage": {
+        "sno": "序号",
+        "route": "航线",
+        "vessel": "船名",
+        "voyage": "航次"
+      },
+      "container": {
+        "sizeType": "箱型",
+        "sealNo": "封号",
+        "currentStatus": "当前状态",
+        "currentPlace": "当前地点",
+        "currentStatusTime": "状态时间"
+      }
+    },
     "status": {
       "notSubscribed": "未订阅",
       "failed": "订阅失败",

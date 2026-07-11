@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-07
+last_updated: 2026-07-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,6 +25,7 @@ last_updated: 2026-07-07
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`，`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`，提交前统一转换为 ISO 字符串。
 - **多选行维护：** 列表第一列为 checkbox 多选，不设置行内操作列；编辑/删除/复制要求恰好选中 1 行，未满足时提示「请先选择一条记录」；双击行会勾选该行并进入编辑。
 - **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示。
+- **运踪状态（列表列）：** 「运踪状态」列优先展示接口 `yundangTrackStatus`；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录。
 - **复制委托：** 选中一条后点击「复制」（需 `Admin.SeaExport.Add` 权限），确认弹窗可选「同时复制费用」；成功后跳转新票编辑页 `/sea-exports/{newId}/edit`。
 - **页面缓存：** 路由 `SeaExportList` 已开启 `keepAlive`；从新建/编辑工作台返回时 `onActivated` 自动刷新；当前页删除成功后立即刷新。
@@ -81,9 +82,12 @@ last_updated: 2026-07-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-07-11 | `Feature` | 列表新增「运踪订阅」状态列（未订阅/失败/成功 Tag），对接两字段；订阅后刷新列表。 | 状态由 `getYundangSubscribeStatus`/`getYundangSubscribeStatusMeta` 组合推导；列 slot `yundangSubscribeStatus`。 |
+| 2026-07-11 | `Style` | 运踪模块去除第三方服务商名称（i18n/注释/历史文档补漏）。 | 用户可见层统一「运踪」表述；内部 API 字段名保持不变。 |
+| 2026-07-11 | `Style` | 移除「运踪订阅」列，改由「运踪状态」列涵盖是否订阅信息。 | 删除 `data.ts` `isYundangSubscribed` 列与 `list.vue` `yundangSubscribeStatus` slot 及 `getYundangSubscribeStatus(Meta)` 引用。 |
+| 2026-07-11 | `Feature` | 新增「运踪状态」列与详情弹窗（`GetOceanPushInfoAsync`）；有 `Admin.ExternalApi.Get` 可点击 Tag 查看里程碑/航段/箱轨迹。 | `use-yundang-ocean-track.ts` + `yundang-tracking-modal.vue`；列表预留 `yundangTrackStatus` 字段优先展示。 |
+| 2026-07-11 | `Feature` | 列表新增「运踪订阅」状态列（未订阅/失败/成功 Tag），对接两字段；订阅后刷新列表。（已被同日「移除运踪订阅列」取代） | 状态由 `getYundangSubscribeStatus`/`getYundangSubscribeStatusMeta` 组合推导；列 slot `yundangSubscribeStatus`。 |
 | 2026-07-07 | `Refactor` | 运踪订阅取消二次确认弹窗，点击按钮直接提交并展示结果。 | 删除 `yundang-subscribe-modal.vue`；`subscribe()` 直接调 API。 |
-| 2026-07-07 | `Style` | 页面文案「云当订阅」统一改为「运踪订阅」，不对外暴露第三方服务品牌。 | 仅改 i18n 用户可见文案；内部 API 路径与 composable 命名不变。 |
+| 2026-07-07 | `Style` | 页面旧版第三方品牌文案统一改为「运踪订阅」，不对外暴露服务商名称。 | 仅改 i18n 用户可见文案；内部 API 路径与 composable 命名不变。 |
 | 2026-07-07 | `Refactor` | 运踪订阅弹窗简化为确认框，仅传 `seaExportIds`；后端按装运方式自动判断订阅单号类型。 | 移除 scene/referenceType/noticeEmail；新增 `autoSubscribeHint` 文案。 |
 | 2026-07-07 | `Feature` | 列表改为 checkbox 多选；新增「运踪订阅」批量对接外部运踪服务，需 `Admin.ExternalApi.Use`；编辑/删除/复制仍要求单选。 | `useYundangOceanSubscribe` + `api/yundang/yundang-admin.ts`；结果 Modal 按订阅明细 `items` 展示。 |
 | 2026-07-07 | `Feature` | 列表新增「复制」按钮：选中委托后可复制新建，确认弹窗可选 `copyOrderFees`；需 `Admin.SeaExport.Add` 权限；成功后跳转新票编辑页。 | `useSeaExportCopy` composable 统一列表/编辑复制流程；对接 `CopyAsync`，字段 `copyOrderFees` 非 `copyFees`。 |

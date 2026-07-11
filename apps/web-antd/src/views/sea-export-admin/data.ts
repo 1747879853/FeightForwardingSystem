@@ -342,6 +342,51 @@ const getPartyName = (
   fallbackContent: string | undefined,
 ) => name || fallbackContent || '';
 
+/** 服务任务状态：已处理 */
+const SERVICE_TASK_STATUS_PROCESSED = 1;
+
+const getServiceTypeLabel = (
+  serviceType: number,
+  labelMap?: Map<number, string>,
+) => labelMap?.get(Number(serviceType)) ?? `服务项${serviceType}`;
+
+/**
+ * 计算列表「业务状态」列文案（前端根据 seaExportServices 计算得到）。
+ *
+ * 规则：服务项按 sortId 升序分组，取「最小 sortId 且组内未全部完成」的分组，
+ * 展示该分组内尚未完成的服务项名称（即当前进行到哪个服务）。
+ * - 无服务项：返回 '-'
+ * - 全部服务项已完成：返回 '已完成'
+ */
+export function getSeaExportBusinessStatusText(
+  row: SeaExportAdminApi.SeaExportDto,
+  labelMap?: Map<number, string>,
+): string {
+  const services = row.seaExportServices ?? [];
+  if (services.length === 0) {
+    return '-';
+  }
+  const isProcessed = (service: SeaExportAdminApi.SeaExportServiceDto) =>
+    Number(service.seServiceTask?.serviceTaskStatus) ===
+    SERVICE_TASK_STATUS_PROCESSED;
+  const sortIds = [
+    ...new Set(services.map((item) => Number(item.sortId))),
+  ].sort((a, b) => a - b);
+  for (const sortId of sortIds) {
+    const groupServices = services.filter(
+      (item) => Number(item.sortId) === sortId,
+    );
+    const groupDone = groupServices.every((item) => isProcessed(item));
+    if (!groupDone) {
+      return groupServices
+        .filter((item) => !isProcessed(item))
+        .map((item) => getServiceTypeLabel(item.serviceType, labelMap))
+        .join('、');
+    }
+  }
+  return '已完成';
+}
+
 const formatMonth = (value: string | undefined) => {
   if (!value) {
     return '';
@@ -942,6 +987,14 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       },
     },
     {
+      field: 'businessStatus',
+      title: '业务状态',
+      minWidth: 130,
+      sortable: false,
+      showOverflow: true,
+      slots: { default: 'businessStatus' },
+    },
+    {
       field: 'receiveFeeStatus',
       title: $t('seaExport.export.orderFee.receiveFeeStatus'),
       minWidth: 110,
@@ -962,11 +1015,11 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       },
     },
     {
-      field: 'isYundangSubscribed',
-      title: $t('seaExport.yundang.statusColumn'),
-      minWidth: 100,
+      field: 'yundangTrackStatus',
+      title: $t('seaExport.yundang.trackStatusColumn'),
+      minWidth: 120,
       sortable: false,
-      slots: { default: 'yundangSubscribeStatus' },
+      slots: { default: 'yundangTrackStatus' },
     },
     {
       field: 'creatorUserNickName',

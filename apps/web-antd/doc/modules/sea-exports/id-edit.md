@@ -44,8 +44,9 @@ last_updated: 2026-07-11
 - **分单处理：** 分单页按 `seaExportId` 分页加载分单记录，支持新增、编辑、删除，维护分单相关方、提单号、货物、签单、运费/服务代码以及分单箱明细。
 - **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型分组展示；进入时并行加载模块默认类型配置与已有附件；上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`；默认客户可见，无 `Admin.SeaExport.Edit` 时只读。
 - **打印：** 顶栏「打印」按钮调用全局 `usePrintFormat().openPrint`：先弹窗选择 `PrintJsonType=0`（海运出口详情）下的打印模板，确认后调 `PrintAsync` 生成 PDF 并触发下载。新增模式禁止打印；有未保存修改时二次确认后按当前表单内容打印，否则重新拉取 `DetailAsync` 原始对象序列化。
-- **复制：** 编辑页顶栏「复制」按钮（需 `Admin.SeaExport.Add`）；若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制）；调用 `CopyAsync` 成功后 `replace` 至新票编辑页。
+- **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
 - **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。
+- **查看运踪：** 基础信息 Tab 顶栏「查看运踪」（仅编辑态，需 `Admin.ExternalApi.Get`）；调用 `GetOceanPushInfoAsync` 弹窗展示订阅概要、里程碑、航段、集装箱轨迹；等待推送态自动轮询刷新。
 - **完成服务：** 编辑态服务流水线「完成服务」/「取消完成」成功后重新拉取详情，同步任务状态、勾选展示及只读摘要。「完成」仅 `seServiceTaskUsers` 处理人可操作；「取消完成」仅 `completionUserId` 对应完成人可操作；无权限时悬浮展示提示。
 - **已完成服务锁定字段只读：** 编辑态按「所有已完成任务对应服务项的 `seServiceLocks` 并集」将相关表单字段置为 `disabled`（`SeaExportPropEnum → 字段名` 映射，广播到基础/船期/港口表单）；取消完成或改港重写后自动解除。锁定字段虽 `disabled`，其值仍随 DTO 提交、由后端用库值覆盖。
 - **保存重建二次确认：** 编辑保存时，若 `polId` 或勾选 `serviceType` 集合相对详情发生变化，**且本票已存在任意服务任务**，弹确认「将清空全部服务任务进度并重新生成」，取消则中止保存。配置弹窗「确定」后直接应用勾选并保存，重建确认统一由保存流程处理。
@@ -116,6 +117,9 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-11 | `Style` | 运踪模块去除第三方服务商名称（i18n/注释/历史文档补漏）。 | 用户可见层统一「运踪」表述；内部 API 字段名保持不变。 |
+| 2026-07-11 | `Style` | 顶栏精简：移除订阅状态 Tag 与「取消」按钮；「复制」并入「保存」为悬浮下拉（`Dropdown.Button`），主键保存、下拉复制。运踪时间轴改苹果风（实心圆点+系统色+胶囊标签），「待发生」拆为「计划中/未到」。 | 删除 `handleCancel`/`yundangSubscribeStatusMeta`；`DropdownButton = Dropdown.Button`；`yundang-tracking-modal.vue` 圆点与分割线对齐 12px 中轴。 |
+| 2026-07-11 | `Feature` | 顶栏新增「查看运踪」按钮（`Admin.ExternalApi.Get`），弹窗对接 `GetOceanPushInfoAsync`，含等待推送轮询。 | 复用 `useYundangOceanTrack` 与列表同源 `yundang-tracking-modal.vue`。 |
 | 2026-07-11 | `Feature` | 顶栏：未订阅不展示状态 Tag（靠「运踪订阅」按钮判断）；失败/成功展示 Tag，按钮文案「运踪订阅/重新订阅」，成功时禁用；订阅后重拉详情。 | `loadEditData` 回填两字段；复用 `getYundangSubscribeStatus(Meta)`；`none` 不渲染 Tag。 |
 | 2026-07-11 | `Refactor` | 无（纯代码组织调整，行为不变）。 | 基础信息表单收敛至 `basic-info-form/` 目录：迁入 `form.vue`/`form.css` 及 5 个私有拆分文件（`sea-export-detail-mapper`/`service-type-nodes`/`ai-extract-utils`/`use-order-users`/`use-sea-export-ai-recognize`/`use-sea-export-submit`），新增 README 梳理职责与依赖；路由 `SeaExportCreate` 与 `editor.vue` 引用同步更新；清理 `form.vue` 5 处未使用声明（`ArrowLeft`/`Users`/`pageTitle`/`isServiceTypeNodeDone`/`handleBack`）。共享文件保留原位（`data.ts`/`service-type.ts`/`use-sea-export-copy`/`use-yundang-ocean-subscribe`）。 |
 | 2026-07-11 | `Refactor` | 无（纯代码组织调整，行为不变）。`form.vue`（新建/编辑共用）按批次拆分，累计 6581→约 3191 行（样式移至 `form.css`）。 | 批次 1 抽 `sea-export-detail-mapper.ts`（映射）；批次 2 抽 `service-type-nodes.ts`（服务项纯逻辑）；批次 3 抽 `use-order-users.ts`（干系人 composable，模板仍在 form.vue）；批次 4 把 AI 字段白名单/规范化下沉 `modules/ai-extract-utils.ts`，编排抽为 `use-sea-export-ai-recognize.ts`（DOM 触发 `aiExtractFileInputRef`/`handleAiRecognize` 留 form.vue，规避 Volar 对模板 `ref=""` 不计读取的误报）；批次 5 把 `buildDto` 抽为纯函数 `buildSeaExportDto`、`submitting`/校验/重建确认/提交/脏检查抽为 `use-sea-export-submit.ts`；批次 6 把 `<style scoped>` 外链为 `form.css`（`<style scoped src>`），并为共享 stylelint 配置放宽 `.css`/`.scss` 的 `:deep`/`:global`。基线 stash 对比确认类型错误集无新增（批次 5 另消除 1 处 `polId` 历史报错）。 |
@@ -133,7 +137,7 @@ last_updated: 2026-07-11
 | 2026-07-07 | `Feature` | 编辑工作台新增「附件」Tab（单证信息之后）：按附件类型分组、即时上传/删除、默认客户可见；仅编辑页可用。 | 对接 `GetAttachmentsAsync`/`AddAttachmentsAsync`/`DeleteAttachmentsAsync`；`moduleType` 经 `resolveModuleTypeByLabel` 解析；权限对齐 `Admin.SeaExport.Edit`。 |
 | 2026-07-07 | `Feature` | 编辑页顶栏新增「复制」：未保存时警告，确认弹窗可选 `copyOrderFees`；成功后跳转新票编辑页。 | 复用 `useSeaExportCopy` + `isFormDirty`；权限 `Admin.SeaExport.Add`。 |
 | 2026-07-07 | `Refactor` | 运踪订阅取消二次确认，点击按钮直接提交。 | 编辑页按钮 `:loading="subscribing"`。 |
-| 2026-07-07 | `Style` | 页面文案「云当订阅」统一改为「运踪订阅」，不对外暴露第三方服务品牌。 | 仅改 i18n 用户可见文案。 |
+| 2026-07-07 | `Style` | 页面旧版第三方品牌文案统一改为「运踪订阅」，不对外暴露服务商名称。 | 仅改 i18n 用户可见文案。 |
 | 2026-07-07 | `Refactor` | 运踪订阅弹窗简化为确认框，仅传 `seaExportIds`；后端按 BLType 自动选择提单号或箱号订阅。 | 与列表共用 composable；权限仍为 `Admin.ExternalApi.Use`。 |
 | 2026-07-07 | `Feature` | 基础信息 Tab 顶栏新增「运踪订阅」：单票对接批量运踪订阅，toast + 结果 Modal；提示按已保存数据订阅。 | `useYundangOceanSubscribe`；权限 `Admin.ExternalApi.Use`。 |
 | 2026-07-07 | `Feature` | 应收应付 Tab 费用表支持勾选已保存行打印；应收 `PrintJsonType=1000`、应付 `1500`，JSON 为费用对象数组。 | `order-fee-table.vue` 复用全局 `usePrintFormat`；未保存行拦截；更改单 Tab 不展示打印。 |

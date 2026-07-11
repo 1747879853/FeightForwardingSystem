@@ -2,11 +2,14 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
+import { computed, onMounted, ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 import { Copy, Plus } from '@vben/icons';
+
+import { useAccess } from '@vben/access';
 
 import { Button, message, Tag } from 'ant-design-vue';
 
@@ -26,22 +29,49 @@ import { buildAttachmentUrl, createPagedListQuery } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
-import { useColumns, useGridFormSchema } from './data';
+import {
+  getSeaExportBusinessStatusText,
+  useColumns,
+  useGridFormSchema,
+} from './data';
+import {
+  buildServiceTypeLabelMap,
+  loadSeServiceTypeOptions,
+} from './service-type';
 import { useSeaExportCopy } from './use-sea-export-copy';
 import {
   buildSeaExportSubscribeRow,
-  getYundangSubscribeStatus,
-  getYundangSubscribeStatusMeta,
   useYundangOceanSubscribe,
 } from './use-yundang-ocean-subscribe';
+import {
+  buildYundangTrackRow,
+  getYundangTrackStatusColor,
+  getYundangTrackStatusLabel,
+  resolveOrderLabel,
+  useYundangOceanTrack,
+} from './use-yundang-ocean-track';
 
 const perm = createAbpPermission('Admin.SeaExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
+const externalApiGetCode = 'Admin.ExternalApi.Get';
 const { copying, copyFrom } = useSeaExportCopy();
 const { ResultModal, subscribe, subscribing } = useYundangOceanSubscribe();
+const { TrackingModal, openTracking } = useYundangOceanTrack();
+const { hasAccessByCodes } = useAccess();
+const canViewYundangTracking = computed(() =>
+  hasAccessByCodes([externalApiGetCode]),
+);
 
 const router = useRouter();
 const tableConfigStore = useTableConfigStore();
+
+/** 服务项类型枚举 label 映射（用于「业务状态」列展示服务名称） */
+const serviceTypeLabelMap = ref<Map<number, string>>(new Map());
+
+onMounted(async () => {
+  const options = await loadSeServiceTypeOptions();
+  serviceTypeLabelMap.value = buildServiceTypeLabelMap(options);
+});
 
 /** 分组设置持久化 key（与列表 listKey 对齐，路由名 SeaExportList） */
 const GROUP_CONFIG_NAME = 'group_config_SeaExportList';
@@ -272,6 +302,16 @@ const handleYundangSubscribe = async () => {
   }
 };
 
+const handleOpenYundangTracking = (row: SeaExportAdminApi.SeaExportDto) => {
+  const trackRow = buildYundangTrackRow(row);
+  openTracking({
+    seaExportId: trackRow.id,
+    orderLabel: resolveOrderLabel(trackRow),
+    isYundangSubscribed: trackRow.isYundangSubscribed,
+    isYundangSubscribeSuccess: trackRow.isYundangSubscribeSuccess,
+  });
+};
+
 const onGroupFieldChange = (value: number | undefined) => {
   if (value === undefined) {
     grouping.disable();
@@ -331,16 +371,21 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           @change="onGroupFieldChange"
         />
       </template>
-      <template #yundangSubscribeStatus="{ row }">
+      <template #businessStatus="{ row }">
+        {{ getSeaExportBusinessStatusText(row, serviceTypeLabelMap) }}
+      </template>
+      <template #yundangTrackStatus="{ row }">
         <Tag
-          :color="
-            getYundangSubscribeStatusMeta(getYundangSubscribeStatus(row)).color
-          "
+          v-if="canViewYundangTracking"
+          class="cursor-pointer"
+          :color="getYundangTrackStatusColor(buildYundangTrackRow(row))"
+          @click.stop="handleOpenYundangTracking(row)"
         >
-          {{
-            getYundangSubscribeStatusMeta(getYundangSubscribeStatus(row)).label
-          }}
+          {{ getYundangTrackStatusLabel(buildYundangTrackRow(row)) }}
         </Tag>
+        <span v-else class="text-[rgba(0,0,0,0.65)]">
+          {{ getYundangTrackStatusLabel(buildYundangTrackRow(row)) }}
+        </span>
       </template>
       <template #carrierWithLogo="{ row }">
         <span class="inline-flex items-center gap-1">
@@ -355,6 +400,7 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
       </template>
     </Grid>
     <ResultModal />
+    <TrackingModal />
   </Page>
 </template>
 
