@@ -892,6 +892,7 @@
     "statusColumn": "运踪订阅",
     "trackStatusColumn": "运踪状态",
     "viewTracking": "查看运踪",
+    "trackingInfo": "运踪信息",
     "trackStatus": {
       "notSubscribed": "未订阅",
       "subscribeFailed": "订阅失败",

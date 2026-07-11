@@ -600,6 +600,7 @@
     "statusColumn": "Tracking",
     "trackStatusColumn": "Track Status",
     "viewTracking": "View Tracking",
+    "trackingInfo": "Tracking Info",
     "trackStatus": {
       "notSubscribed": "Not Subscribed",
       "subscribeFailed": "Subscribe Failed",

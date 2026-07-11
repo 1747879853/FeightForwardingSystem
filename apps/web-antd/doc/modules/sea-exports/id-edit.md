@@ -46,8 +46,7 @@ last_updated: 2026-07-11
 - **打印：** 顶栏「打印」按钮调用全局 `usePrintFormat().openPrint`：先弹窗选择 `PrintJsonType=0`（海运出口详情）下的打印模板，确认后调 `PrintAsync` 生成 PDF 并触发下载。新增模式禁止打印；有未保存修改时二次确认后按当前表单内容打印，否则重新拉取 `DetailAsync` 原始对象序列化。
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
 - **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。
-- **查看运踪：** 基础信息 Tab 顶栏「查看运踪」（仅编辑态，需 `Admin.ExternalApi.Get`）；调用 `GetOceanPushInfoAsync` 弹窗展示订阅概要、里程碑、集装箱轨迹；等待推送态自动轮询刷新。展示内容抽为 `modules/yundang-tracking-panel.vue`，弹窗与「运踪」Tab 共用（已去除与顶部基础信息重复的「航段」Tab）。
-- **运踪 Tab：** 编辑工作台顶部新增「运踪」Tab；点击即渲染 `<YundangTrackingPanel :sea-export-id="editId" resolve-state-from-subscription />`，无需弹窗直接查看运踪四态（未订阅/订阅失败/等待推送/已推送）；因无列表侧订阅布尔字段，四态与状态文案由 `pushInfo.subscription` 推导；切走卸载并停止轮询。
+- **运踪信息：** 编辑工作台顶部「运踪信息」Tab 内直接查看（`Admin.ExternalApi.Get`）；调用 `GetOceanPushInfoAsync` 展示订阅概要、里程碑、集装箱轨迹；等待推送态自动轮询刷新；内容区 padding 12px。基础信息 Tab 顶栏不再提供「查看运踪」按钮。
 - **完成服务：** 编辑态服务流水线「完成服务」/「取消完成」成功后重新拉取详情，同步任务状态、勾选展示及只读摘要。「完成」仅 `seServiceTaskUsers` 处理人可操作；「取消完成」仅 `completionUserId` 对应完成人可操作；无权限时悬浮展示提示。
 - **已完成服务锁定字段只读：** 编辑态按「所有已完成任务对应服务项的 `seServiceLocks` 并集」将相关表单字段置为 `disabled`（`SeaExportPropEnum → 字段名` 映射，广播到基础/船期/港口表单）；取消完成或改港重写后自动解除。锁定字段虽 `disabled`，其值仍随 DTO 提交、由后端用库值覆盖。
 - **保存重建二次确认：** 编辑保存时，若 `polId` 或勾选 `serviceType` 集合相对详情发生变化，**且本票已存在任意服务任务**，弹确认「将清空全部服务任务进度并重新生成」，取消则中止保存。配置弹窗「确定」后直接应用勾选并保存，重建确认统一由保存流程处理。
@@ -118,6 +117,7 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-11 | `Style` | 运踪 Tab：里程碑/集装箱时间轴改为水平展示；运踪页白底铺满。 | `yundang-tracking-panel.vue` 新增 `track-timeline--horizontal`；集装箱轨迹按时间升序左→右，最新节点标记为「进行中」。 |
 | 2026-07-11 | `Feature` | 干系人面板默认固定展示销售/商务/操作/客服/单证；海外客服无值不展示；新建态按委托单位绑定干系人默认回填，操作/单证/客服未绑定兜底当前账号；委托单位与起运港加必填标识。 | `use-order-users.ts` 新增 `applyClientDefaultOrderUsers`；`form.vue` 在新建态 `clientId` onChange 调 `getClientDetail`；`data.ts` 为 `clientId`/`polId` 设 `selectRequired`。 |
 | 2026-07-11 | `Feature` | 编辑工作台新增「运踪」Tab（点击直接查看运踪信息）；运踪详情去除与顶部基础信息重复的「航段」Tab；基础信息顶栏移除「查看运踪」按钮。 | 抽取 `yundang-tracking-panel.vue` 供弹窗与 Tab 复用；Tab 侧传 `resolve-state-from-subscription`，四态由 `pushInfo.subscription` 推导；`editor.vue` 新增 `tracking` TabKey。 |
 | 2026-07-11 | `Style` | 箱型箱量表格列宽优化：收窄序号/箱型列，加宽箱号/封号列。 | 共用 `order-ctn-table.vue`；列宽通过 `tableColumns.width` 与 `order-ctn-table__*-col` CSS 双处固定。 |

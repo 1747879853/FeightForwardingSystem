@@ -119,7 +119,7 @@ const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'attachments', label: $t('seaExport.export.attachments.tabTitle') },
   { key: 'dispatch', label: '派车' },
   { key: 'billInfo', label: '分单' },
-  { key: 'tracking', label: $t('seaExport.yundang.viewTracking') },
+  { key: 'tracking', label: $t('seaExport.yundang.trackingInfo') },
   { key: 'issueRecord', label: '问题记录' },
   { key: 'changeHistory', label: '修改历史' },
 ]);
@@ -186,7 +186,7 @@ const getContentTabStyle = (isActive: boolean) =>
           {{ tab.label }}
         </span>
       </div>
-      <div class="flex items-stretch gap-3">
+      <div class="flex flex-1 items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
           <KeepAlive include="ChangeOrder">
             <changeOrder v-if="activeTab === 'party'" />
@@ -205,7 +205,7 @@ const getContentTabStyle = (isActive: boolean) =>
           </KeepAlive>
           <div
             v-if="activeTab === 'tracking'"
-            class="min-h-full flex-1 bg-white p-4"
+            class="m-3 flex flex-1 flex-col rounded-xl bg-white p-4"
           >
             <YundangTrackingPanel
               :sea-export-id="editId"

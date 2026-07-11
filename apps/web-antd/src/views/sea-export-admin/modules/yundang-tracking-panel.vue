@@ -196,6 +196,7 @@ function getOceanNodeVisual(
 function getContainerStatusVisual(
   status: YundangAdminApi.YundangShipmentContainerStatusInfoDto,
   index: number,
+  lastIndex: number,
 ): TimelineVisualMeta {
   if (status.isEstimate) {
     return {
@@ -206,7 +207,7 @@ function getContainerStatusVisual(
       label: $t('seaExport.yundang.tracking.nodeState.estimated'),
     };
   }
-  if (index === 0) {
+  if (index === lastIndex) {
     return {
       state: 'current',
       icon: 'ph:navigation-arrow-fill',
@@ -228,16 +229,18 @@ function sortContainerStatuses(
   statuses: YundangAdminApi.YundangShipmentContainerStatusInfoDto[],
 ) {
   return [...statuses].sort(
-    (a, b) => dayjs(b.eventTime).valueOf() - dayjs(a.eventTime).valueOf(),
+    (a, b) => dayjs(a.eventTime).valueOf() - dayjs(b.eventTime).valueOf(),
   );
 }
 
 function getSortedContainerStatusesWithVisual(
   statuses: YundangAdminApi.YundangShipmentContainerStatusInfoDto[],
 ) {
-  return sortContainerStatuses(statuses).map((status, index) => ({
+  const sorted = sortContainerStatuses(statuses);
+  const lastIndex = Math.max(sorted.length - 1, 0);
+  return sorted.map((status, index) => ({
     status,
-    visual: getContainerStatusVisual(status, index),
+    visual: getContainerStatusVisual(status, index, lastIndex),
   }));
 }
 
@@ -356,7 +359,7 @@ const handleRefresh = async () => {
 </script>
 
 <template>
-  <div class="yundang-tracking-panel">
+  <div class="yundang-tracking-panel bg-white">
     <div class="mb-3 flex items-center justify-between gap-3">
       <div class="flex flex-wrap items-center gap-2">
         <Tag :color="viewState === 'has_shipment' ? 'processing' : 'default'">
@@ -528,7 +531,6 @@ const handleRefresh = async () => {
             />
             <Timeline
               v-else
-              mode="left"
               class="track-timeline track-timeline--horizontal mt-2"
             >
               <TimelineItem
@@ -636,10 +638,7 @@ const handleRefresh = async () => {
                   </DescriptionsItem>
                 </Descriptions>
 
-                <Timeline
-                  mode="left"
-                  class="track-timeline track-timeline--horizontal"
-                >
+                <Timeline class="track-timeline track-timeline--horizontal">
                   <TimelineItem
                     v-for="{
                       status,
@@ -831,5 +830,76 @@ const handleRefresh = async () => {
   font-variant-numeric: tabular-nums;
   line-height: 1.5;
   color: rgb(60 60 67 / 45%);
+}
+
+/* 水平时间轴：里程碑 / 集装箱轨迹从左到右展示 */
+.track-timeline--horizontal {
+  display: flex;
+  flex-flow: row nowrap;
+  padding: 16px 4px 8px;
+  margin: 0;
+  overflow-x: auto;
+
+  :deep(.ant-timeline-item) {
+    position: relative;
+    flex: 1 0 168px;
+    min-width: 168px;
+    max-width: 220px;
+    padding-bottom: 0 !important;
+    margin: 0;
+  }
+
+  :deep(.ant-timeline-item-tail) {
+    position: absolute;
+    inset-block-start: 12px;
+    inset-inline-start: calc(50% + 14px);
+    top: 12px;
+    left: calc(50% + 14px);
+    width: calc(100% - 28px);
+    height: 0;
+    border: none;
+    border-top: 1.5px solid rgb(60 60 67 / 12%);
+    transform: none;
+  }
+
+  :deep(.ant-timeline-item:last-child .ant-timeline-item-tail) {
+    display: none;
+  }
+
+  :deep(.ant-timeline-item-head),
+  :deep(.ant-timeline-item-head-custom) {
+    position: relative;
+    inset: auto;
+    top: auto;
+    left: auto;
+    width: fit-content;
+    margin: 0 auto 10px;
+    transform: none;
+  }
+
+  :deep(.ant-timeline-item-content) {
+    position: relative;
+    inset: auto;
+    top: auto;
+    min-height: 0;
+    padding: 0 6px;
+    margin: 0 !important;
+    margin-inline-start: 0 !important;
+    text-align: center;
+  }
+
+  .track-timeline-card__header {
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .track-timeline-card__title {
+    font-size: 13px;
+  }
+}
+
+.yundang-tracking-panel {
+  min-height: 100%;
 }
 </style>
