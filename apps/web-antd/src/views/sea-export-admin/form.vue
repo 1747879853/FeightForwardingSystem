@@ -5409,13 +5409,13 @@ defineExpose({
 
 /* 组间留间距以区分不同 sortId 组：组尾右向箭头尖 + 间距 + 组首左凹口，仍具箭头链流向感 */
 .service-chevron-flow__group + .service-chevron-flow__group {
-  margin-left: 10px;
+  margin-left: 6px;
 }
 
 .service-pipeline--inline
   .service-chevron-flow__group
   + .service-chevron-flow__group {
-  margin-left: 8px;
+  margin-left: 4px;
 }
 
 .service-chevron-flow > :deep(span),

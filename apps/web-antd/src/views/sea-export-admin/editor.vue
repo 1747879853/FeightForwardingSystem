@@ -169,7 +169,7 @@ const getContentTabStyle = (isActive: boolean) =>
 
 <template>
   <Page auto-content-height content-class="!p-0">
-    <div class="flex min-w-0 flex-1 flex-col gap-2">
+    <div class="flex min-w-0 flex-1 flex-col">
       <div class="content-tabs" :style="contentTabsStyle">
         <span
           v-for="tab in tabs"

@@ -115,6 +115,7 @@ last_updated: 2026-07-11
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
 | 2026-07-11 | `Feature` | 编辑工作台记住当前顶部 Tab：离开后再进入同一票自动打开离开前的标签。 | `editor.vue` 用 `sessionStorage` + `buildBrandStorageKey('sea-export-edit-active-tab:{id}')`；`watch(activeTab)` 写入、`watch(editId)`/初始化读取；非法 key 回退 `basic`。 |
+| 2026-07-11 | `Style` | 顶部 Tab 与表单间距改为只靠内容区 padding 控制（去掉外层 `gap-2`）；服务流水线组间间距缩小（内联 `4px` / 普通 `6px`）。 | `editor.vue` 外层去掉 `gap-2`；`.service-chevron-flow__group + .group` 间距下调。 |
 | 2026-07-11 | `Fix` | 服务流水线同 `sortId` 组内节点未合并、组间露三角缝修复：改为组内无缝咬合、组间留间距区分、整条保持箭头链流向。 | 咬合位移由 `chevron-step` 下沉到 `service-chevron-flow__item` 层（普通 `-12px`/inline `-7px`），每组组首 `item` 不做位移；`isServiceChevronFlowFirst/Last` 改回按整条链全局首尾计算；组间 `margin` 恢复。 |
 | 2026-07-11 | `Style` | 服务流水线视觉分组只按 `sortId` 合并成块，不再区分任务状态（移除仅「还未到」组合并的特判）；组内服务仍各自单独完成/取消完成。 | 删除 `isServiceGroupAllUpcoming`/`formatServiceGroupLabels`/`isServiceChevronGroupFirst`/`isServiceChevronGroupLast` 与合并单标签块模板；`isServiceChevronFlowFirst/Last` 改为按组内首尾节点计算。 |
 | 2026-07-11 | `Feature` | 编辑页服务项目重接 POL 联动：首屏拉配置仅作元数据（勾选/进度仍以详情为准）；改起运港/委托单位按 `checked` 重写勾选并回到新建态流水线；已完成任务的 `seServiceLocks` 字段只读；保存时按「港变或集合变且已有任务」弹重建确认；补齐服务责任角色预校验。 | 新增 `applyServiceTypeStateForEditInitial`/`getServiceLockedFieldNames`/`applyServiceLockedFields`/`confirmServiceTaskRebuild`；移除 `syncServiceTypesByPol`/`queueSyncServiceTypesByPol` 的 `isEdit` 短路，改用 `suppressServiceTypeLinkage`；删除 `applyServiceTypeStateFromDetail`/`buildServiceTypeNodesFromDetail`；`handleSubmit` 增加重建判定与确认。 |
