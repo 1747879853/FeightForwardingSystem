@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-11 海运出口服务流水线同 sortId 组视觉咬合修复](./changelogs/change-log-2026-07-11-sea-export-service-chevron-seamless.md)
 - [2026-07-11 海运出口编辑工作台记住并恢复当前 Tab](./changelogs/change-log-2026-07-11-sea-export-edit-tab-persist.md)
 - [2026-07-11 海运出口编辑页服务项目重接 POL 联动 + 已完成锁定字段 + 保存重建确认](./changelogs/change-log-2026-07-11-sea-export-edit-service-pol-relink-locks-rebuild.md)
 - [2026-07-10 海运出口编辑页服务项目与 POL 配置解耦](./changelogs/change-log-2026-07-10-sea-export-edit-service-sortid-snapshot.md)
