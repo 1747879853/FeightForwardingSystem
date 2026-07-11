@@ -39,7 +39,7 @@
 | basic-data | `/basic-data/currency` | 基础资料 | 维护币种资料，支撑费用、运价、付款和结算金额。 | [币种资料](./modules/basic-data/currency.md) | 2026-05-16 |
 | basic-data | `/basic-data/fee-name` | 基础资料 | 维护费用名称字典，是费用录入和费用代码的基础。 | [费用名称](./modules/basic-data/fee-name.md) | 2026-05-16 |
 | basic-data | `/basic-data/fee-code` | 基础资料 | 维护费用代码及费用属性，支撑应收应付费用明细。 | [费用代码](./modules/basic-data/fee-code.md) | 2026-05-16 |
-| basic-data | `/basic-data/exchange-rate` | 基础资料 | 维护币种汇率，为跨币种费用、付款和结算提供换算基础。 | [汇率资料](./modules/basic-data/exchange-rate.md) | 2026-05-16 |
+| settlement-management | `/settlement-management/exchange-rate` | 财务管理 | 维护币种汇率，为跨币种费用、付款和结算提供换算基础。 | [汇率资料](./modules/basic-data/exchange-rate.md) | 2026-07-12 |
 | basic-data | `/basic-data/lane-code` | 基础资料 | 维护航线代码，支撑运价、港口和委托航线字段。 | [航线代码](./modules/basic-data/lane-code.md) | 2026-05-30 |
 | basic-data | `/basic-data/port-code` | 基础资料 | 维护港口资料，支撑起运港、目的港、卸货港等字段。 | [港口代码](./modules/basic-data/port-code.md) | 2026-05-30 |
 | basic-data | `/basic-data/ctn-code` | 基础资料 | 维护箱型箱量代码，支撑运价和委托箱型信息。 | [箱型代码](./modules/basic-data/ctn-code.md) | 2026-06-20 |

@@ -15,6 +15,7 @@ const routes: RouteRecordRaw[] = [
         'Admin.InvoiceIssue.Get',
         'Admin.BankStatement',
         'Admin.OrderFee.Lock',
+        'Admin.ExchangeRate',
       ]),
     },
     name: 'SettlementManagement',
@@ -155,6 +156,18 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/fee-management/fee-lock/fee-lock-list.vue'),
+      },
+      {
+        path: 'exchange-rate',
+        name: 'ExchangeRateList',
+        meta: {
+          icon: 'mdi:chart-line',
+          keepAlive: true,
+          title: $t('system.basicData.exchangeRate.title'),
+          authority: abpPageAuthority('Admin.ExchangeRate'),
+        },
+        component: () =>
+          import('#/views/system/basic-data/ExchangeRateAdmin/list.vue'),
       },
     ],
   },

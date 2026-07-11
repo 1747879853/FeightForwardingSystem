@@ -23,7 +23,6 @@ const routes: RouteRecordRaw[] = [
         'Admin.Currency',
         'Admin.FeeName',
         'Admin.FeeCode',
-        'Admin.ExchangeRate',
         'Admin.LaneCode',
         'Admin.PortCode',
         'Admin.CtnCode',
@@ -178,18 +177,6 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/system/basic-data/FeeCodeAdmin/list.vue'),
-      },
-      {
-        path: '/basic-data/exchange-rate',
-        name: 'BasicDataExchangeRate',
-        meta: {
-          icon: 'mdi:chart-line',
-          keepAlive: true,
-          title: $t('system.basicData.exchangeRate.title'),
-          authority: abpPageAuthority('Admin.ExchangeRate'),
-        },
-        component: () =>
-          import('#/views/system/basic-data/ExchangeRateAdmin/list.vue'),
       },
       {
         path: '/basic-data/lane-code',
