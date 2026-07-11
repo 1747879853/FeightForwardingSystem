@@ -52,8 +52,6 @@ const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 import { CodeSourceSelect, UserSelect } from '#/adapter/component';
 import { useVbenForm } from '#/adapter/form';
 import {
-  addSeaExport,
-  editSeaExport,
   getServiceTypesByPOL,
   getSeaExportDetail,
 } from '#/api/sea-export/sea-export-admin';
@@ -65,16 +63,11 @@ import { $t } from '#/locales';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
-import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
 import {
   flattenDetail,
   normalizeOrderCtnsWithRowKey,
-  sanitizeOrderCtns,
-  sanitizeOrderUsers,
-  toDateOnlyString,
-  toDateString,
   toPortSelectedItems,
   toSelectedItems,
 } from './sea-export-detail-mapper';
@@ -120,6 +113,7 @@ import {
   sortServiceTypeNodesBySortId,
 } from './service-type-nodes';
 import { useSeaExportAiRecognize } from './use-sea-export-ai-recognize';
+import { useSeaExportSubmit } from './use-sea-export-submit';
 import { defaultOrderUsers, useOrderUsers } from './use-order-users';
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
 import { useSeaExportCopy } from './use-sea-export-copy';
@@ -173,9 +167,7 @@ const pageTitle = computed(() => {
 });
 
 const pageLoading = ref(false);
-const submitting = ref(false);
 const printing = ref(false);
-const formSnapshotJson = ref<string | null>(null);
 const { openPrint } = usePrintFormat();
 const transportOrderId = ref<number | undefined>();
 const currentUserId = computed(() => {
@@ -1945,282 +1937,41 @@ const loadEditData = async () => {
   }
 };
 
-const buildDto = (values: Record<string, any>) => {
-  const seaExportFields: Record<string, any> = {
-    blType: values.blType ?? undefined,
-    billType: values.billType ?? undefined,
-    codeIssueTypeId: values.codeIssueTypeId ?? values.issueType ?? undefined,
-    issueType: values.codeIssueTypeId ?? values.issueType ?? undefined,
-    vessel: values.vessel,
-    innerVoyno: values.innerVoyno,
-    carrierId: values.carrierId ?? undefined,
-    secondNotifierId: values.secondNotifierId ?? undefined,
-    secondNotifierContent: values.secondNotifierContent,
-    podAgentId: values.podAgentId ?? undefined,
-    podAgentContent: values.podAgentContent,
-    bookingAgentId: values.bookingAgentId ?? undefined,
-    shipAgentId: values.shipAgentId ?? undefined,
-    yardId: values.yardId ?? undefined,
-    noBillEnum: values.noBillEnum ?? undefined,
-    copyNoBillEnum: values.copyNoBillEnum ?? undefined,
-    prepareAtId: values.prepareAtId ?? undefined,
-    closingTime: toDateString(values.closingTime),
-    closeVgmTime: toDateString(values.closeVgmTime),
-    closeDocTime: toDateString(values.closeDocTime),
-    closeManifestTime: toDateString(values.closeManifestTime),
-    signingTime: toDateString(values.signingTime),
-    signingPortId: values.signingPortId ?? undefined,
-    podId: values.podId ?? undefined,
-    podRemark: values.podRemark,
-    polId: values.polId ?? undefined,
-    polRemark: values.polRemark,
-    poT1Id: values.poT1Id ?? undefined,
-    poT1Remark: values.poT1Remark,
-    poT2Id: values.poT2Id ?? undefined,
-    poT2Remark: values.poT2Remark,
-    receivePortId: values.receivePortId ?? undefined,
-    receivePortRemark: values.receivePortRemark,
-    deliverPortId: values.deliverPortId ?? undefined,
-    deliverPortRemark: values.deliverPortRemark,
-    sortId: values.sortId,
-    remark: values.remark,
-    serviceTypes: getCheckedServiceTypeItems(),
-  };
-
-  const transportOrderFields: Record<string, any> = {
-    commissionNum: values.commissionNum,
-    mblNum: values.mblNum,
-    bookingNum: values.bookingNum,
-    accountDate: toDateString(values.accountDate),
-    settlementDate: toDateString(values.settlementDate),
-    codeSourceId: values.codeSourceId ?? undefined,
-    isBusinessLocking: values.isBusinessLocking,
-    feeLocked: values.feeLocked,
-    codeFrtId: values.codeFrtId ?? undefined,
-    prepareAtId: values.prepareAtId ?? undefined,
-    codeServiceId: values.codeServiceId ?? undefined,
-    cargoId: values.cargoId ?? undefined,
-    tradeTermsType: values.tradeTermsType ?? undefined,
-    goodsCompleteTime: toDateOnlyString(values.goodsCompleteTime),
-    etd: toDateOnlyString(values.etd),
-    atd: toDateOnlyString(values.atd),
-    eta: toDateString(values.eta),
-    clientId: values.clientId,
-    teamId: values.teamId ?? undefined,
-    custBrokerId: values.custBrokerId ?? undefined,
-    warehouseId: values.warehouseId ?? undefined,
-    insuranceId: values.insuranceId ?? undefined,
-    consigneeId: values.consigneeId ?? undefined,
-    consigneeContent: values.consigneeContent,
-    shipperId: values.shipperId ?? undefined,
-    shipperContent: values.shipperContent,
-    notifierId: values.notifierId ?? undefined,
-    notifierContent: values.notifierContent,
-    marks: values.marks,
-    pkgs: values.pkgs ?? undefined,
-    codePackageId: values.codePackageId ?? undefined,
-    goodsDes: values.goodsDes,
-    kgs: values.kgs,
-    cbm: values.cbm,
-    internalRemark: values.internalRemark,
-    orderCodeGoodss: (values.orderCodeGoodss ?? [])
-      .filter(
-        (codeGoodsId: any) => codeGoodsId !== undefined && codeGoodsId !== null,
-      )
-      .map((codeGoodsId: number) => ({ codeGoodsId })),
-    orderCtns: sanitizeOrderCtns(orderCtns.value),
-    orderUsers: sanitizeOrderUsers(values.orderUsers),
-    ...(values.cargoId === CARGO_TYPE.D
-      ? {
-          dgLevel: values.dgLevel,
-          dgNo: values.dgNo,
-          dgPageNo: values.dgPageNo,
-          dgLabel: values.dgLabel,
-          dgPackingCategory: values.dgPackingCategory,
-          dgContact: values.dgContact,
-          dgTel: values.dgTel,
-          dgNetWeight: values.dgNetWeight,
-          dgFlashPoint: values.dgFlashPoint,
-          dgPackingNo: values.dgPackingNo,
-          dgMarinePollution: values.dgMarinePollution,
-        }
-      : {}),
-    ...(values.cargoId === CARGO_TYPE.R
-      ? {
-          reeferTemperature: values.reeferTemperature,
-          reeferVentilation: values.reeferVentilation,
-          reeferHumidity: values.reeferHumidity,
-          reeferMinTemperature: values.reeferMinTemperature,
-          reeferMaxTemperature: values.reeferMaxTemperature,
-          reeferTemperatureUnit: values.reeferTemperatureUnit ?? undefined,
-          reeferVentOpen: values.reeferVentOpen,
-        }
-      : {}),
-  };
-
-  if (isEdit.value && transportOrderId.value) {
-    (transportOrderFields as any).id = transportOrderId.value;
-  }
-
-  return {
-    ...seaExportFields,
-    ...(isEdit.value && editId.value ? { id: editId.value } : {}),
-    transportOrder: transportOrderFields,
-  };
-};
-
-const handleSubmit = async () => {
-  const [
-    partyResult,
-    basicResult,
-    shipmentResult,
-    portResult,
-    cargoTypeResult,
-    cargoMainResult,
-    cargoMetricsResult,
-    cargoRemarkResult,
-    cargoDgResult,
-    cargoReeferResult,
-  ] = await Promise.all([
-    partyInfoFormApi.validate(),
-    basicInfoFormApi.validate(),
-    shipmentFormApi.validate(),
-    portFormApi.validate(),
-    cargoTypeInlineFormApi.validate(),
-    cargoMainFormApi.validate(),
-    cargoMetricsFormApi.validate(),
-    cargoRemarkFormApi.validate(),
-    cargoDgFormApi.validate(),
-    cargoReeferFormApi.validate(),
-  ]);
-  const allValid =
-    partyResult.valid &&
-    basicResult.valid &&
-    shipmentResult.valid &&
-    portResult.valid &&
-    cargoTypeResult.valid &&
-    cargoMainResult.valid &&
-    cargoMetricsResult.valid &&
-    cargoRemarkResult.valid &&
-    cargoDgResult.valid &&
-    cargoReeferResult.valid;
-  if (!allValid) {
-    message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
-    return;
-  }
-  if (!validateSalesRoleCount()) {
-    return;
-  }
-  if (!validateRequiredOrderUserAssignee()) {
-    return;
-  }
-  if (!validateServiceBoundOrderUsers()) {
-    return;
-  }
-
-  submitting.value = true;
-  const [
-    partyValues,
-    basicValues,
-    shipmentValues,
-    portValues,
-    cargoTypeValues,
-    cargoMainValues,
-    cargoMetricsValues,
-    cargoRemarkValues,
-    cargoDgValues,
-    cargoReeferValues,
-  ] = await Promise.all([
-    partyInfoFormApi.getValues(),
-    basicInfoFormApi.getValues(),
-    shipmentFormApi.getValues(),
-    portFormApi.getValues(),
-    cargoTypeInlineFormApi.getValues(),
-    cargoMainFormApi.getValues(),
-    cargoMetricsFormApi.getValues(),
-    cargoRemarkFormApi.getValues(),
-    cargoDgFormApi.getValues(),
-    cargoReeferFormApi.getValues(),
-  ]);
-  const values = {
-    commissionNum: entrustReadonlyInfo.value.commissionNum,
-    accountDate: entrustReadonlyInfo.value.accountDate,
-    settlementDate: entrustReadonlyInfo.value.settlementDate,
-    ...partyValues,
-    ...basicValues,
-    ...shipmentValues,
-    ...portValues,
-    ...cargoTypeValues,
-    ...cargoMainValues,
-    ...cargoMetricsValues,
-    ...cargoRemarkValues,
-    ...cargoDgValues,
-    ...cargoReeferValues,
-  };
-  if (isEdit.value && editHasAnyServiceTask.value) {
-    const polChanged =
-      normalizeIdForCompare(values.polId) !== editOriginalPolId.value;
-    const currentServiceTypeSet = new Set(getCheckedServiceTypes());
-    const serviceTypeSetChanged =
-      currentServiceTypeSet.size !== editOriginalServiceTypeSet.value.size ||
-      [...currentServiceTypeSet].some(
-        (serviceType) => !editOriginalServiceTypeSet.value.has(serviceType),
-      );
-    if (polChanged || serviceTypeSetChanged) {
-      const confirmed = await confirmServiceTaskRebuild();
-      if (!confirmed) {
-        submitting.value = false;
-        return;
-      }
-    }
-  }
-  const dto = buildDto(values);
-
-  try {
-    if (isEdit.value) {
-      await editSeaExport(dto as SeaExportAdminApi.SeaExportEditDto);
-      message.success($t('ui.actionMessage.operationSuccess'));
-      markListShouldRefresh('SeaExportList');
-      markListShouldRefresh('Workspace');
-      await loadEditData();
-    } else {
-      const createdId = await addSeaExport(
-        dto as SeaExportAdminApi.SeaExportAddDto,
-      );
-      message.success($t('ui.actionMessage.operationSuccess'));
-      markListShouldRefresh('SeaExportList');
-      markListShouldRefresh('Workspace');
-      const resolvedCreatedId =
-        (createdId as any)?.id ?? (createdId as any)?.result ?? createdId;
-      const createdIdStr =
-        resolvedCreatedId === null || resolvedCreatedId === undefined
-          ? ''
-          : String(resolvedCreatedId).trim();
-      if (createdIdStr) {
-        router.push(`/sea-exports/${createdIdStr}/edit`);
-      } else {
-        router.push('/sea-exports');
-      }
-    }
-  } finally {
-    submitting.value = false;
-  }
-};
+const { submitting, buildDto, handleSubmit, syncFormSnapshot, isFormDirty } =
+  useSeaExportSubmit({
+    formApis: {
+      party: partyInfoFormApi,
+      basic: basicInfoFormApi,
+      shipment: shipmentFormApi,
+      port: portFormApi,
+      cargoTypeInline: cargoTypeInlineFormApi,
+      cargoMain: cargoMainFormApi,
+      cargoMetrics: cargoMetricsFormApi,
+      cargoRemark: cargoRemarkFormApi,
+      cargoDg: cargoDgFormApi,
+      cargoReefer: cargoReeferFormApi,
+    },
+    collectCurrentFormValues,
+    orderCtns,
+    isEdit,
+    editId,
+    transportOrderId,
+    getCheckedServiceTypes,
+    getCheckedServiceTypeItems,
+    editHasAnyServiceTask,
+    editOriginalPolId,
+    editOriginalServiceTypeSet,
+    normalizeIdForCompare,
+    confirmServiceTaskRebuild,
+    validateSalesRoleCount,
+    validateRequiredOrderUserAssignee,
+    validateServiceBoundOrderUsers,
+    loadEditData,
+    router,
+  });
 
 const handleCancel = () => {
   router.push('/sea-exports');
-};
-
-const syncFormSnapshot = async () => {
-  await nextTick();
-  const values = await collectCurrentFormValues();
-  formSnapshotJson.value = JSON.stringify(buildDto(values));
-};
-
-const isFormDirty = async () => {
-  if (!formSnapshotJson.value) return false;
-  const values = await collectCurrentFormValues();
-  return JSON.stringify(buildDto(values)) !== formSnapshotJson.value;
 };
 
 const { copying: copyingSeaExport, copyFrom: copySeaExportFromCurrent } =
