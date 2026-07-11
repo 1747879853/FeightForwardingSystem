@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
-import { nextTick, ref, watch } from 'vue';
+import { h, nextTick, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
-import { Button, message, Modal, Space } from 'ant-design-vue';
+import { Button, Checkbox, message, Modal, Space } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -23,7 +23,11 @@ import {
   createPagedListQuery,
 } from '#/utils/paged-list-query';
 
-import { useColumns, useGridFormSchema } from './data';
+import {
+  isAppliedTotalChildField,
+  useColumns,
+  useGridFormSchema,
+} from './data';
 
 const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
 
@@ -32,6 +36,8 @@ const actionLoading = ref(false);
 const { open: openWorkflowTimeline } = useWorkflowTimeline();
 
 const tableData = ref<PaymentApplicationAdminApi.PaymentApplicationDto[]>([]);
+/** 列配置面板中的「申请合计」总开关，统一控制各币别平铺列的显隐 */
+const appliedTotalVisible = ref(true);
 
 function handleViewWorkflow(
   row: PaymentApplicationAdminApi.PaymentApplicationDto,
@@ -104,6 +110,28 @@ const [Grid, gridApi] =
       columns: useColumns(),
       height: 'auto',
       keepSource: true,
+      // 列配置面板隐藏各币别平铺列，改由顶部单个「申请合计」开关统一控制显隐
+      customConfig: {
+        visibleMethod: ({ column }: { column: { field?: string } }) =>
+          !isAppliedTotalChildField(column?.field),
+        slots: {
+          top: () =>
+            h(
+              'div',
+              { class: 'applied-total-custom-toggle' },
+              h(
+                Checkbox,
+                {
+                  checked: appliedTotalVisible.value,
+                  onChange: (e: any) => {
+                    appliedTotalVisible.value = !!e?.target?.checked;
+                  },
+                },
+                () => t('appliedTotal'),
+              ),
+            ),
+        },
+      },
       checkboxConfig: {
         highlight: true,
       },
@@ -133,13 +161,15 @@ const [Grid, gridApi] =
     },
   });
 
-// 每页数据变化时按当前页币别打平重建「币别申请合计」列
+// 每页数据或「申请合计」开关变化时，按当前页币别平铺重建列
 watch(
-  tableData,
-  async (rows) => {
+  [tableData, appliedTotalVisible],
+  async () => {
     await nextTick();
     gridApi.setGridOptions({
-      columns: applyDefaultSortable(useColumns(rows)),
+      columns: applyDefaultSortable(
+        useColumns(tableData.value, appliedTotalVisible.value),
+      ),
     });
   },
   { deep: true },
@@ -208,3 +238,10 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
     </Grid>
   </Page>
 </template>
+
+<style scoped>
+:deep(.applied-total-custom-toggle) {
+  padding: 6px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+</style>

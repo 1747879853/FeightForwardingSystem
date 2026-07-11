@@ -8,11 +8,18 @@ import { $t } from '#/locales';
 const paymentApplicationStatusOptions = () =>
   getPaymentApplicationStatusOptions((key) => $t(key));
 
-/** 动态「申请合计」列字段前缀 */
+/** 动态「申请合计」子列字段前缀 */
 const APPLIED_TOTAL_FIELD_PREFIX = 'appliedTotal_';
 
 function appliedTotalFieldKey(currencyId: number): string {
   return `${APPLIED_TOTAL_FIELD_PREFIX}${currencyId}`;
+}
+
+/** 是否为「申请合计」下的币别子列（用于列配置面板隐藏子列，只保留分组开关） */
+export function isAppliedTotalChildField(
+  field: string | undefined | null,
+): boolean {
+  return !!field && field.startsWith(APPLIED_TOTAL_FIELD_PREFIX);
 }
 
 interface AppliedTotalCurrency {
@@ -48,8 +55,11 @@ function calcRowAppliedTotal(
   return (group.payAmount ?? 0) + (group.receiveAmount ?? 0);
 }
 
-/** 按币别打平生成申请合计列，一列一个币别 */
-function buildAppliedTotalColumns(currencies: AppliedTotalCurrency[]) {
+/** 按币别平铺生成申请合计列，一列一个币别（单行表头） */
+function buildAppliedTotalColumns(
+  currencies: AppliedTotalCurrency[],
+  visible: boolean,
+) {
   const suffix = $t('seaExport.export.paymentApplication.appliedTotal');
   return currencies.map((c) => ({
     field: appliedTotalFieldKey(c.currencyId),
@@ -57,6 +67,7 @@ function buildAppliedTotalColumns(currencies: AppliedTotalCurrency[]) {
     minWidth: 120,
     align: 'right' as const,
     sortable: false,
+    visible,
     formatter: ({
       row,
     }: {
@@ -165,9 +176,13 @@ export function useGridFormSchema(): VbenFormSchema[] {
 
 export function useColumns(
   rows: PaymentApplicationAdminApi.PaymentApplicationDto[] = [],
+  appliedTotalVisible = true,
 ): VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns'] {
+  // 按当前页币别平铺生成申请合计列（单行表头），
+  // 其显隐由列配置面板的单个「申请合计」开关统一控制
   const appliedTotalColumns = buildAppliedTotalColumns(
     collectAppliedTotalCurrencies(rows),
+    appliedTotalVisible,
   );
 
   return [
