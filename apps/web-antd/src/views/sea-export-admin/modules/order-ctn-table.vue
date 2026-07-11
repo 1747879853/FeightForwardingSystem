@@ -142,7 +142,7 @@ const tableColumns = computed(() => [
     key: 'seq',
     dataIndex: 'seq',
     title: $t('common.index'),
-    width: 60,
+    width: 40,
     align: 'center' as const,
     className: 'order-ctn-table__seq-col',
   },
@@ -150,19 +150,22 @@ const tableColumns = computed(() => [
     key: 'ctnCodeId',
     dataIndex: 'ctnCodeId',
     title: $t('seaExport.export.ctnCodeId'),
-    width: 120,
+    width: 76,
+    className: 'order-ctn-table__ctn-col',
   },
   {
     key: 'ctnNo',
     dataIndex: 'ctnNo',
     title: $t('seaExport.export.ctnNo'),
-    width: 100,
+    width: 130,
+    className: 'order-ctn-table__ctn-no-col',
   },
   {
     key: 'sealNo',
     dataIndex: 'sealNo',
     title: $t('seaExport.export.sealNo'),
-    width: 90,
+    width: 120,
+    className: 'order-ctn-table__seal-no-col',
   },
   {
     key: 'pkgs',
@@ -325,7 +328,7 @@ watch(
       :data-source="dataSource"
       :row-selection="rowSelection"
       :pagination="false"
-      :scroll="{ x: 1100 }"
+      :scroll="{ x: 1108 }"
       table-layout="fixed"
       size="small"
       bordered
@@ -341,7 +344,7 @@ watch(
             :selected-items="
               toSelectedItems(record.ctnCodeId, record.ctnCodeName, 'ctnName')
             "
-            class="w-full min-w-[100px]"
+            class="w-full min-w-0"
             size="small"
             :placeholder="$t('ui.placeholder.select')"
             @update:model-value="(v) => updateRow(index, 'ctnCodeId', v)"
@@ -542,9 +545,30 @@ watch(
 
 .order-ctn-table :deep(th.order-ctn-table__seq-col),
 .order-ctn-table :deep(td.order-ctn-table__seq-col) {
-  width: 60px !important;
-  min-width: 60px !important;
-  max-width: 60px !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+}
+
+.order-ctn-table :deep(th.order-ctn-table__ctn-col),
+.order-ctn-table :deep(td.order-ctn-table__ctn-col) {
+  width: 76px !important;
+  min-width: 76px !important;
+  max-width: 76px !important;
+}
+
+.order-ctn-table :deep(th.order-ctn-table__ctn-no-col),
+.order-ctn-table :deep(td.order-ctn-table__ctn-no-col) {
+  width: 130px !important;
+  min-width: 130px !important;
+  max-width: 130px !important;
+}
+
+.order-ctn-table :deep(th.order-ctn-table__seal-no-col),
+.order-ctn-table :deep(td.order-ctn-table__seal-no-col) {
+  width: 120px !important;
+  min-width: 120px !important;
+  max-width: 120px !important;
 }
 
 .order-ctn-table :deep(th.order-ctn-table__remark-col),

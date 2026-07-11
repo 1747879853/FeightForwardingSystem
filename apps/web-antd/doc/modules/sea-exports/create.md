@@ -70,6 +70,7 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-11 | `Style` | 箱型箱量表格列宽优化：收窄序号/箱型列，加宽箱号/封号列。 | 共用 `order-ctn-table.vue`；列宽通过 `tableColumns.width` 与 `order-ctn-table__*-col` CSS 双处固定。 |
 | 2026-07-11 | `Refactor` | 无（纯代码组织调整，行为不变）。 | 基础信息表单收敛至 `basic-info-form/` 目录：迁入 `form.vue`/`form.css` 及 5 个私有拆分文件（映射/服务项纯逻辑/AI 规范化/干系人/AI 识别/保存提交），新增 README 梳理职责与依赖；路由与 `editor.vue` 引用同步更新；清理 `form.vue` 5 处未使用声明。共享文件（`data.ts`/`service-type.ts`/`use-sea-export-copy`/`use-yundang-ocean-subscribe`）保留原位。 |
 | 2026-07-08 | `Feature` | 船期信息标题栏新增「同步日期」：船名+航次+开船日期齐全后可按历史票证回填 ATD/ETA/截 VGM/截单/截舱单。 | `GetDates` + `use-sync-shipment-dates.ts`；仅回填非 null 字段，无数据静默。 |
 | 2026-07-08 | `Style` | 箱型箱量标题栏新增/删除等按钮改为紧跟标题靠左，不再顶到右侧。 | 共用 `order-ctn-table.vue`；去掉标题 `flex: 1`。 |

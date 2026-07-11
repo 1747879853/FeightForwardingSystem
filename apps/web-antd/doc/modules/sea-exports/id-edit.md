@@ -117,6 +117,7 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-11 | `Style` | 箱型箱量表格列宽优化：收窄序号/箱型列，加宽箱号/封号列。 | 共用 `order-ctn-table.vue`；列宽通过 `tableColumns.width` 与 `order-ctn-table__*-col` CSS 双处固定。 |
 | 2026-07-11 | `Style` | 运踪模块去除第三方服务商名称（i18n/注释/历史文档补漏）。 | 用户可见层统一「运踪」表述；内部 API 字段名保持不变。 |
 | 2026-07-11 | `Style` | 顶栏精简：移除订阅状态 Tag 与「取消」按钮；「复制」并入「保存」为悬浮下拉（`Dropdown.Button`），主键保存、下拉复制。运踪时间轴改苹果风（实心圆点+系统色+胶囊标签），「待发生」拆为「计划中/未到」。 | 删除 `handleCancel`/`yundangSubscribeStatusMeta`；`DropdownButton = Dropdown.Button`；`yundang-tracking-modal.vue` 圆点与分割线对齐 12px 中轴。 |
 | 2026-07-11 | `Feature` | 顶栏新增「查看运踪」按钮（`Admin.ExternalApi.Get`），弹窗对接 `GetOceanPushInfoAsync`，含等待推送轮询。 | 复用 `useYundangOceanTrack` 与列表同源 `yundang-tracking-modal.vue`。 |
