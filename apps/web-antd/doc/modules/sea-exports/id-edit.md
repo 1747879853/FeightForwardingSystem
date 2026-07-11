@@ -22,13 +22,14 @@ last_updated: 2026-07-11
 # 2. 功能与操作说明 (Features & Operations)
 
 - **工作台标签导航：** `editor.vue` 维护顶部标签，包含基础信息、更改单、服务详情、单证信息、**附件**、应收应付、派车、分单、问题记录、修改历史。当前实现中基础信息、费用、更改单、**附件**、派车、分单已经挂载组件；服务详情、单证信息、问题记录、修改历史目前主要作为标签预留。
+- **工作台 Tab 记忆：** 切换顶部标签时，按当前委托 ID 将 `activeTab` 写入 `sessionStorage`（键经 `buildBrandStorageKey` 品牌隔离）；再次进入同一票编辑页时自动恢复离开前的 Tab。切换不同委托 ID 时各自独立记忆；关闭浏览器标签后会话清空，下次默认回到「基础信息」。
 - **浏览器标签栏标题：** 由嵌入的 `form.vue` 通过 `useSeaExportTabTitle` 动态设置：有主提单号显示「海运出口-{主提单号}」，否则显示「海运出口-{委托编号}」；主提单号录入或详情回填后实时更新。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
 - **AI 识别辅助：** 与新建页共用 `form.vue` 顶栏「AI识别」：支持 PDF/图片上传，对接 TextIn `ExtractSeaExportToAddDtoAsync`；识别结果覆盖回填（空值/0/空 Guid 跳过），右侧 Drawer 预览原文件并支持 citations 字段定位高亮。
 - **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 决定节点可见范围，`polId+clientId` 决定默认勾选。**新建页**与**编辑页**均走 POL 联动，但语义不同：
   - **编辑首屏**：拉 `GetServiceTypesByPOLAsync`（按 `polId`）仅作为**元数据**（`sortId`/`userAttribute`/`seServiceLocks`/`seServiceRequires`）；勾选与任务进度以详情 `seaExportServices` 为准；港口配置缺失的历史服务项照常保留（回填期间 `suppressServiceTypeLinkage` 抑制误触发）。
   - **编辑改起运港 / 改委托单位**：按新 `polId(+clientId)` 的 `checked` **重写勾选**（客户排除项默认不勾、可手动勾回），并**丢弃任务进度**，流水线回到「新建态」仅展示服务项、不显示待处理/已完成任务，直至保存成功后 `loadEditData` 恢复真实任务态。
-- **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，**完全按 `sortId` 分组**：同 `sortId` 节点在 Chevron 流中紧密排列为一块，不同 `sortId` 组之间留出间距；组内服务为同一优先级，轮到该组时全部待处理节点同时显示「处理中」、展示处理人且均可操作，组内全部完成后才进入下一 `sortId` 组。**顶栏内联展示**：与 AI 识别等同处 `content-section__actions` 一行，左侧为「服务项目」标题、`...` 配置入口与紧凑流水线，右侧为操作按钮。节点增删在「配置服务」弹窗维护（按 `sortId` 分组展示 POL 全部节点 Checkbox）；**任意勾选变化**时编辑态点「确定」弹出二次确认后自动保存（弹窗内无常驻提示）。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
+- **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，**完全按 `sortId` 分组**：同 `sortId` 节点在 Chevron 流中合并为一个视觉块（组内首节点左端收圆、尾节点右端收圆），不同 `sortId` 组之间留间距。**视觉分组只看 `sortId`，不再区分待处理/已完成/还未到**（旧的「仅全『还未到』组才合并成单标签块」逻辑已移除）；组内每个服务仍各自渲染、单独完成/取消完成。组内服务为同一优先级，轮到该组时全部待处理节点同时显示「处理中」、展示处理人且均可操作，组内全部完成后才进入下一 `sortId` 组。**顶栏内联展示**：与 AI 识别等同处 `content-section__actions` 一行，左侧为「服务项目」标题、`...` 配置入口与紧凑流水线，右侧为操作按钮。节点增删在「配置服务」弹窗维护（按 `sortId` 分组展示 POL 全部节点 Checkbox）；**任意勾选变化**时编辑态点「确定」弹出二次确认后自动保存（弹窗内无常驻提示）。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
 - **干系人角色约束：** 销售、操作不可删除且必须已选人（销售必须且只能有一人）；其他角色按需添加。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
@@ -57,6 +58,8 @@ last_updated: 2026-07-11
 | 基础信息编辑中 | 点击保存且校验通过 | 编辑成功 | 调用 `EditAsync`，成功提示后停留当前编辑上下文，并调用 `loadEditData` 重新拉取详情。 |
 | 基础信息编辑中 | 点击取消 | 返回列表 | 跳转 `/sea-exports`。 |
 | 基础信息编辑中 | 点击复制并确认 | 新票编辑页 | 若有未保存修改先警告；调 `CopyAsync` 后 `replace` 至 `/sea-exports/{newId}/edit`。 |
+| 任意工作台状态 | 切换顶部标签 | 写入 Tab 记忆 | `activeTab` 按委托 ID 存入 `sessionStorage`。 |
+| 再次进入编辑页 | 组件挂载 / `editId` 变化 | 恢复离开前 Tab | 读取有效 `TabKey`；无记录或非法值时回退「基础信息」。 |
 | 任意工作台状态 | 切换到费用标签 | 费用列表加载 | `OrderFee` 以运输单 ID 查询费用明细，并可维护应收/应付。 |
 | 费用录入状态 | 提交审核 | 提交审核 | 费用状态由录入进入审核链路，审核结果在费用审核模块处理。 |
 | 费用提交审核 | 审核通过 | 审核通过 | 费用可进入后续开票、付款、对账、结算链路。 |
@@ -111,6 +114,8 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-11 | `Feature` | 编辑工作台记住当前顶部 Tab：离开后再进入同一票自动打开离开前的标签。 | `editor.vue` 用 `sessionStorage` + `buildBrandStorageKey('sea-export-edit-active-tab:{id}')`；`watch(activeTab)` 写入、`watch(editId)`/初始化读取；非法 key 回退 `basic`。 |
+| 2026-07-11 | `Style` | 服务流水线视觉分组只按 `sortId` 合并成块，不再区分任务状态（移除仅「还未到」组合并的特判）；组内服务仍各自单独完成/取消完成。 | 删除 `isServiceGroupAllUpcoming`/`formatServiceGroupLabels`/`isServiceChevronGroupFirst`/`isServiceChevronGroupLast` 与合并单标签块模板；`isServiceChevronFlowFirst/Last` 改为按组内首尾节点计算。 |
 | 2026-07-11 | `Feature` | 编辑页服务项目重接 POL 联动：首屏拉配置仅作元数据（勾选/进度仍以详情为准）；改起运港/委托单位按 `checked` 重写勾选并回到新建态流水线；已完成任务的 `seServiceLocks` 字段只读；保存时按「港变或集合变且已有任务」弹重建确认；补齐服务责任角色预校验。 | 新增 `applyServiceTypeStateForEditInitial`/`getServiceLockedFieldNames`/`applyServiceLockedFields`/`confirmServiceTaskRebuild`；移除 `syncServiceTypesByPol`/`queueSyncServiceTypesByPol` 的 `isEdit` 短路，改用 `suppressServiceTypeLinkage`；删除 `applyServiceTypeStateFromDetail`/`buildServiceTypeNodesFromDetail`；`handleSubmit` 增加重建判定与确认。 |
 | 2026-07-10 | `Fix` | 编辑页服务项目与 POL 解耦：仅新增页拉取 POL 渲染；编辑态只读详情 `seaExportServices`，改起运港/委托单位不再重查 POL。（本条已被 2026-07-11 重接 POL 联动取代） | `applyServiceTypeStateFromDetail`；`syncServiceTypesByPol`/`queueSyncServiceTypesByPol` 在 `isEdit` 短路。 |
 | 2026-07-09 | `Fix` | 服务项目顶栏流水线与配置弹窗按 `sortId` 视觉分组：同组节点紧密排列为一块，不同优先级组之间留出间距。 | `checkedServiceTypeNodeGroups` / `serviceTypeNodeGroups` 复用 `groupServiceTypeNodesBySortId`；Chevron 首尾样式按全局首尾节点计算。 |

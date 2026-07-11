@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { nextTick, ref, computed } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { useRoute } from 'vue-router';
 import Form from './form.vue';
@@ -10,6 +10,7 @@ import dispatch from '#/views/sea-export-admin/dispatch/index.vue';
 import attachments from '#/views/sea-export-admin/attachments/index.vue';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 import { $t } from '#/locales';
+import { buildBrandStorageKey } from '#/utils/brand-storage';
 
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
 type FormSectionTabKey = 'basic' | 'party' | 'shipment' | 'port';
@@ -22,8 +23,51 @@ type TabKey =
   | 'issueRecord'
   | 'changeHistory';
 type FormExpose = { scrollToSection: (key: SectionKey) => void };
+
+const VALID_TAB_KEYS: readonly TabKey[] = [
+  'basic',
+  'fee',
+  'party',
+  'shipment',
+  'port',
+  'attachments',
+  'dispatch',
+  'billInfo',
+  'issueRecord',
+  'changeHistory',
+] as const;
+
+const TAB_STORAGE_KEY_PREFIX = 'sea-export-edit-active-tab';
+
+function isValidTabKey(key: string): key is TabKey {
+  return (VALID_TAB_KEYS as readonly string[]).includes(key);
+}
+
+function getTabStorageKey(id: string) {
+  return buildBrandStorageKey(`${TAB_STORAGE_KEY_PREFIX}:${id}`);
+}
+
+function readStoredTab(id: string | undefined): TabKey | null {
+  if (!id) return null;
+  try {
+    const raw = sessionStorage.getItem(getTabStorageKey(id));
+    if (raw && isValidTabKey(raw)) return raw;
+  } catch {
+    // sessionStorage 不可用时忽略
+  }
+  return null;
+}
+
+function writeStoredTab(id: string | undefined, tab: TabKey) {
+  if (!id) return;
+  try {
+    sessionStorage.setItem(getTabStorageKey(id), tab);
+  } catch {
+    // sessionStorage 不可用时忽略
+  }
+}
+
 const formRef = ref<FormExpose | null>(null);
-const activeTab = ref<TabKey>('basic');
 const route = useRoute();
 
 const editId = computed<string | undefined>(() => {
@@ -31,6 +75,18 @@ const editId = computed<string | undefined>(() => {
   if (Array.isArray(id)) return id[0];
   return id ? String(id) : undefined;
 });
+
+/** 按委托 ID 记忆当前 Tab，离开后再进入时恢复 */
+const activeTab = ref<TabKey>(readStoredTab(editId.value) ?? 'basic');
+
+watch(editId, (id) => {
+  activeTab.value = readStoredTab(id) ?? 'basic';
+});
+
+watch(activeTab, (tab) => {
+  writeStoredTab(editId.value, tab);
+});
+
 const feeName = computed(() => `应收应付 ${feeNumber.value}`);
 const feeNumber = ref<string>('');
 const getOrderFeeNumber = async () => {
