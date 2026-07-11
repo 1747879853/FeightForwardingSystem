@@ -16,12 +16,12 @@ import {
   message,
   Modal,
   Select,
-  Space,
   Spin,
-  Table,
+  Tooltip,
   Upload,
 } from 'ant-design-vue';
 
+import AttachmentViewerModal from '#/adapter/component/file-preview/attachment-viewer-modal.vue';
 import { resolveModuleTypeByLabel } from '#/api/common/lookup';
 import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
 import {
@@ -54,14 +54,35 @@ const ALLOWED_TYPES = [
   '.docx',
   '.xls',
   '.xlsx',
+  '.ppt',
+  '.pptx',
+  '.csv',
   '.jpg',
   '.jpeg',
   '.png',
   '.gif',
   '.bmp',
+  '.webp',
+  '.svg',
+  '.tif',
+  '.tiff',
   '.zip',
   '.rar',
 ];
+
+/** 图片扩展名集合，用于卡片内展示缩略图 */
+const IMAGE_EXTENSIONS = new Set([
+  'bmp',
+  'gif',
+  'ico',
+  'jpeg',
+  'jpg',
+  'png',
+  'svg',
+  'tif',
+  'tiff',
+  'webp',
+]);
 
 const perm = createAbpPermission('Admin.SeaExport');
 const { hasAccessByCodes } = useAccess();
@@ -99,7 +120,7 @@ const getGroupKey = (typeId: number | null) =>
   typeId === null ? 'null' : String(typeId);
 
 const getClientVisible = (typeId: number | null) =>
-  clientVisibleByTypeId.value.get(typeId) ?? true;
+  clientVisibleByTypeId.value.get(typeId) ?? false;
 
 const setClientVisible = (typeId: number | null, value: boolean) => {
   clientVisibleByTypeId.value.set(typeId, value);
@@ -393,48 +414,54 @@ const handleDelete = (row: SeaExportAdminApi.AttachmentItemDto) => {
   });
 };
 
-const columns = computed(() => {
-  const baseColumns = [
-    {
-      title: $t('seaExport.export.attachments.fileName'),
-      dataIndex: 'friendlyFileName',
-      key: 'friendlyFileName',
-      ellipsis: true,
-    },
-    {
-      title: $t('seaExport.export.attachments.fileSize'),
-      dataIndex: 'fileLength',
-      key: 'fileLength',
-      width: 120,
-    },
-    {
-      title: $t('seaExport.export.attachments.clientVisible'),
-      dataIndex: 'clientVisible',
-      key: 'clientVisible',
-      width: 100,
-    },
-    {
-      title: $t('seaExport.export.attachments.uploadTime'),
-      dataIndex: 'creationTime',
-      key: 'creationTime',
-      width: 180,
-    },
-    {
-      title: $t('seaExport.export.attachments.uploader'),
-      dataIndex: 'creatorUserNickName',
-      key: 'creatorUserNickName',
-      width: 120,
-    },
-    {
-      title: $t('seaExport.export.attachments.operation'),
-      key: 'operation',
-      width: 180,
-      fixed: 'right' as const,
-    },
-  ];
+const getFileName = (row: SeaExportAdminApi.AttachmentItemDto): string => {
+  const name = row.friendlyFileName || row.url || '';
+  return name.split('/').pop() || $t('system.basicData.attachmentFallback');
+};
 
-  return baseColumns;
-});
+const getFileExtension = (row: SeaExportAdminApi.AttachmentItemDto): string => {
+  const source = row.friendlyFileName || row.url || '';
+  const match = source.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
+  return match ? match[1].toLowerCase() : '';
+};
+
+const isImageFile = (row: SeaExportAdminApi.AttachmentItemDto): boolean =>
+  IMAGE_EXTENSIONS.has(getFileExtension(row));
+
+const getFileIcon = (row: SeaExportAdminApi.AttachmentItemDto): string => {
+  const ext = getFileExtension(row);
+  if (ext === 'pdf') return 'mdi:file-pdf-box';
+  if (['doc', 'docx'].includes(ext)) return 'mdi:file-word-box';
+  if (['csv', 'xls', 'xlsx'].includes(ext)) return 'mdi:file-excel-box';
+  if (['ppt', 'pptx'].includes(ext)) return 'mdi:file-powerpoint-box';
+  if (['rar', 'zip'].includes(ext)) return 'mdi:folder-zip-outline';
+  if (IMAGE_EXTENSIONS.has(ext)) return 'mdi:file-image-outline';
+  return 'mdi:file-document-outline';
+};
+
+const getFileIconColor = (row: SeaExportAdminApi.AttachmentItemDto): string => {
+  const ext = getFileExtension(row);
+  if (ext === 'pdf') return '#e5252a';
+  if (['doc', 'docx'].includes(ext)) return '#2b579a';
+  if (['csv', 'xls', 'xlsx'].includes(ext)) return '#217346';
+  if (['ppt', 'pptx'].includes(ext)) return '#d24726';
+  if (IMAGE_EXTENSIONS.has(ext)) return '#8b5cf6';
+  return '#8c8c8c';
+};
+
+const previewOpen = ref(false);
+const previewUrl = ref('');
+const previewFileName = ref('');
+
+const handlePreview = (row: SeaExportAdminApi.AttachmentItemDto) => {
+  if (!row.url) {
+    message.warning($t('seaExport.export.attachments.noFileUrl'));
+    return;
+  }
+  previewUrl.value = row.url;
+  previewFileName.value = getFileName(row);
+  previewOpen.value = true;
+};
 
 onMounted(() => {
   loadAttachments();
@@ -444,20 +471,6 @@ onMounted(() => {
 <template>
   <div class="sea-export-attachments p-4">
     <Spin :spinning="loading">
-      <div
-        v-if="canEdit && (groups.length > 0 || availableOtherTypes.length > 0)"
-        class="mb-4 flex justify-end"
-      >
-        <Button
-          type="dashed"
-          :disabled="availableOtherTypes.length === 0"
-          @click="openAddOtherTypeModal"
-        >
-          <IconifyIcon icon="mdi:plus" class="mr-1 size-4" />
-          {{ $t('seaExport.export.attachments.addOtherType') }}
-        </Button>
-      </div>
-
       <div v-if="groups.length === 0 && !loading" class="py-12">
         <Empty :description="$t('seaExport.export.attachments.empty')">
           <Button
@@ -470,115 +483,141 @@ onMounted(() => {
         </Empty>
       </div>
 
-      <div v-else class="flex flex-col gap-4">
+      <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Card
           v-for="group in groups"
           :key="getGroupKey(group.attachmentDtlTypeId)"
-          :title="group.name"
           size="small"
+          class="attachment-card"
         >
-          <div
-            v-if="canEdit"
-            class="mb-3 flex flex-wrap items-center justify-between gap-3"
-          >
-            <Checkbox
-              :checked="getClientVisible(group.attachmentDtlTypeId)"
-              @update:checked="
-                (value) => setClientVisible(group.attachmentDtlTypeId, !!value)
-              "
-            >
-              {{ $t('seaExport.export.attachments.clientVisible') }}
-            </Checkbox>
-
-            <Upload
-              :before-upload="(file) => handleBeforeUpload(file, group)"
-              :disabled="uploadingTypeId === group.attachmentDtlTypeId"
-              :show-upload-list="false"
-              multiple
-            >
-              <Button
-                type="primary"
-                :loading="uploadingTypeId === group.attachmentDtlTypeId"
-              >
-                <IconifyIcon icon="mdi:upload" class="mr-1 size-4" />
-                {{ $t('seaExport.export.attachments.upload') }}
-              </Button>
-            </Upload>
-          </div>
-
-          <Table
-            :columns="columns"
-            :data-source="group.items"
-            :pagination="false"
-            :row-key="(row) => row.attachmentId"
-            size="small"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'friendlyFileName'">
-                <div class="flex items-center gap-2">
-                  <IconifyIcon
-                    class="text-gray-400"
-                    icon="mdi:file-document-outline"
-                  />
-                  <span>{{ record.friendlyFileName || '-' }}</span>
-                </div>
-              </template>
-
-              <template v-else-if="column.key === 'fileLength'">
-                {{ formatFileSize(record.fileLength) }}
-              </template>
-
-              <template v-else-if="column.key === 'clientVisible'">
+          <template #title>
+            <div class="flex items-center gap-2">
+              <span class="truncate font-medium" :title="group.name">
+                {{ group.name }}
+              </span>
+              <span class="text-xs font-normal text-gray-400">
                 {{
-                  record.clientVisible
-                    ? $t('seaExport.export.attachments.visibleYes')
-                    : $t('seaExport.export.attachments.visibleNo')
+                  $t('seaExport.export.attachments.fileCount', [
+                    group.items.length,
+                  ])
                 }}
-              </template>
+              </span>
+            </div>
+          </template>
 
-              <template v-else-if="column.key === 'creationTime'">
-                {{ record.creationTime || '-' }}
-              </template>
+          <template v-if="canEdit" #extra>
+            <div class="flex items-center gap-3">
+              <Checkbox
+                :checked="getClientVisible(group.attachmentDtlTypeId)"
+                @update:checked="
+                  (value) =>
+                    setClientVisible(group.attachmentDtlTypeId, !!value)
+                "
+              >
+                <span class="text-xs">
+                  {{ $t('seaExport.export.attachments.clientVisible') }}
+                </span>
+              </Checkbox>
 
-              <template v-else-if="column.key === 'creatorUserNickName'">
-                {{ record.creatorUserNickName || '-' }}
-              </template>
+              <Upload
+                :before-upload="(file) => handleBeforeUpload(file, group)"
+                :disabled="uploadingTypeId === group.attachmentDtlTypeId"
+                :show-upload-list="false"
+                multiple
+              >
+                <Button
+                  type="link"
+                  size="small"
+                  class="px-0"
+                  :loading="uploadingTypeId === group.attachmentDtlTypeId"
+                >
+                  <IconifyIcon icon="mdi:upload" class="mr-1 size-4" />
+                  {{ $t('seaExport.export.attachments.upload') }}
+                </Button>
+              </Upload>
+            </div>
+          </template>
 
-              <template v-else-if="column.key === 'operation'">
-                <Space>
+          <div class="attachment-card-list">
+            <div
+              v-if="group.items.length === 0"
+              class="py-6 text-center text-xs text-gray-400"
+            >
+              {{ $t('seaExport.export.attachments.emptyType') }}
+            </div>
+
+            <div
+              v-for="item in group.items"
+              :key="item.attachmentId"
+              class="attachment-file-item"
+              @click="handlePreview(item)"
+            >
+              <img
+                v-if="isImageFile(item) && item.url"
+                :src="buildAttachmentUrl(item.url)"
+                class="attachment-file-thumb"
+                alt=""
+              />
+              <IconifyIcon
+                v-else
+                :icon="getFileIcon(item)"
+                :style="{ color: getFileIconColor(item) }"
+                class="size-8 shrink-0"
+              />
+
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-sm" :title="getFileName(item)">
+                  {{ getFileName(item) }}
+                </div>
+                <div class="text-xs text-gray-400">
+                  {{ formatFileSize(item.fileLength) }}
+                  <span v-if="item.creatorUserNickName">
+                    · {{ item.creatorUserNickName }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="attachment-file-actions" @click.stop>
+                <Tooltip :title="$t('seaExport.export.attachments.preview')">
+                  <Button type="text" size="small" @click="handlePreview(item)">
+                    <IconifyIcon icon="mdi:eye-outline" />
+                  </Button>
+                </Tooltip>
+                <Tooltip :title="$t('seaExport.export.attachments.download')">
                   <Button
-                    type="link"
+                    type="text"
                     size="small"
-                    @click="handleDownload(record)"
+                    @click="handleDownload(item)"
                   >
                     <IconifyIcon icon="mdi:download" />
-                    {{ $t('seaExport.export.attachments.download') }}
                   </Button>
+                </Tooltip>
+                <Tooltip v-if="canEdit" :title="$t('common.delete')">
                   <Button
-                    v-if="canEdit"
-                    type="link"
+                    type="text"
                     size="small"
                     danger
-                    @click="handleDelete(record)"
+                    @click="handleDelete(item)"
                   >
                     <IconifyIcon icon="mdi:delete" />
-                    {{ $t('common.delete') }}
                   </Button>
-                </Space>
-              </template>
-            </template>
-
-            <template #emptyText>
-              <span class="text-gray-400">
-                {{ $t('seaExport.export.attachments.emptyType') }}
-              </span>
-            </template>
-          </Table>
-
-          <div v-if="canEdit" class="mt-2 text-xs text-gray-400">
-            {{ $t('seaExport.export.attachments.uploadTip') }}
+                </Tooltip>
+              </div>
+            </div>
           </div>
         </Card>
+
+        <button
+          v-if="canEdit && availableOtherTypes.length > 0"
+          type="button"
+          class="attachment-add-card"
+          @click="openAddOtherTypeModal"
+        >
+          <IconifyIcon icon="mdi:plus" class="size-6" />
+          <span class="mt-1 text-sm">
+            {{ $t('seaExport.export.attachments.addOtherType') }}
+          </span>
+        </button>
       </div>
     </Spin>
 
@@ -611,5 +650,84 @@ onMounted(() => {
         />
       </div>
     </Modal>
+
+    <AttachmentViewerModal
+      v-model:open="previewOpen"
+      :file-url="previewUrl"
+      :file-name="previewFileName"
+    />
   </div>
 </template>
+
+<style scoped>
+.attachment-card :deep(.ant-card-body) {
+  padding: 12px;
+}
+
+.attachment-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.attachment-file-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+}
+
+.attachment-file-item:hover {
+  background-color: hsl(var(--accent));
+  border-color: hsl(var(--border));
+}
+
+.attachment-file-thumb {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.attachment-file-actions {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.attachment-file-item:hover .attachment-file-actions {
+  opacity: 1;
+}
+
+.attachment-add-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  background-color: transparent;
+  border: 1px dashed hsl(var(--border));
+  border-radius: 8px;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.attachment-add-card:hover {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+</style>

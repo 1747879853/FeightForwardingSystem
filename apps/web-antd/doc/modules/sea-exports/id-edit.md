@@ -42,7 +42,7 @@ last_updated: 2026-07-12
 - **更改单处理：** 更改单页基于运输单 ID 管理变更原因、会计期间和关联费用，接口使用 `/services/app/ChangeOrderAdmin`；更改单 DTO 带 `feeLocked` 和费用锁定人/时间信息。
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
 - **分单处理：** 分单页按 `seaExportId` 分页加载分单记录，支持新增、编辑、删除，维护分单相关方、提单号、货物、签单、运费/服务代码以及分单箱明细。
-- **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型分组展示；进入时并行加载模块默认类型配置与已有附件；上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`；默认客户可见，无 `Admin.SeaExport.Edit` 时只读。
+- **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；卡片标题行右侧合并「客户可见」勾选与「上传」；文件列表支持点击预览、下载、删除；网格末尾虚线卡片可「添加其他类型」。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`；**默认客户不可见**（`clientVisible` 默认 `false`），无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局 `AttachmentViewerModal`：PDF 内嵌 iframe、Office 走微软在线预览、图片直接展示。
 - **打印：** 顶栏「打印」按钮调用全局 `usePrintFormat().openPrint`：先弹窗选择 `PrintJsonType=0`（海运出口详情）下的打印模板，确认后调 `PrintAsync` 生成 PDF 并触发下载。新增模式禁止打印；有未保存修改时二次确认后按当前表单内容打印，否则重新拉取 `DetailAsync` 原始对象序列化。
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
 - **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。
@@ -88,7 +88,7 @@ last_updated: 2026-07-12
 | **更改单** | 业务变更记录及其关联费用。 | `ChangeOrderAdminApi.ChangeOrderDto` / `/services/app/ChangeOrderAdmin` | **触发/依赖：** 更改单携带 `accountDate`、`reason`、`orderFees` 和锁费信息。 | 必须保持同一 `transportOrderId`。 |
 | **派车记录** | 出口拖车/派车执行信息。 | `dispatch/index.vue` / `dispatch-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；包含车队、堆场、工厂、地址和派车箱明细。 | 子记录需绑定当前海出 ID。 |
 | **分单记录** | 分票提单及其货物/箱明细。 | `modules/separate-bill.vue` / `sea-export-separate-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；维护分单相关方、提单、签单、货物、箱明细。 | 子记录需绑定当前海出 ID。 |
-| **附件分组** | 按附件详细类型（提单、托书等）展示的上传区域与文件列表。 | `GetListByModuleTypesAsync` + `GetAttachmentsAsync` / `SeaExportAdmin` | **触发/依赖：** `moduleType` 取枚举「海运出口」；空配置类型仍展示上传槽位。 | 上传需 `Admin.SeaExport.Edit`；`clientVisible` 仅在上传时设定。 |
+| **附件分组** | 按附件详细类型（提单、托书等）以卡片网格展示的上传区域与文件列表。 | `GetListByModuleTypesAsync` + `GetAttachmentsAsync` / `SeaExportAdmin` | **触发/依赖：** `moduleType` 取枚举「海运出口」；空配置类型仍展示上传槽位；点击文件打开 `AttachmentViewerModal` 预览。 | 上传需 `Admin.SeaExport.Edit`；`clientVisible` 默认 `false`，仅在上传时设定。 |
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
 | **港口备注（费用摘要）** | 收货地/起运港/中转港1/2/目的港/交货地备注。 | `SeaExportDto` 的 `receivePortRemark`、`polRemark`、`poT1Remark`、`poT2Remark`、`podRemark`、`deliverPortRemark` | **触发/依赖：** 应收应付与更改单顶部订单信息六段港口均展示备注字段，非 `*Name`。 | 备注为空显示 `--`。 |
 | **委托单位 / 起运港** | 服务项目联动查询入参；委托单位亦为干系人默认来源。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync`；`ClientAdmin.DetailAsync` | **触发/依赖：** 任一变更触发服务项联动；`polId` 为空清空勾选。`polId` 查询用于可见范围，`polId+clientId` 查询用于默认勾选。新建态 `clientId` 变更额外触发干系人默认回填。 | **必填项**（`selectRequired`）；与新建页同一套 `form.vue` 逻辑。 |
@@ -117,6 +117,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Feature` | 附件 Tab 改为卡片网格（一行 3 个）：标题行合并客户可见与上传；点击文件全局弹窗预览（PDF iframe / Office embed.aspx / 图片直显）；默认客户不可见；支持 webp/svg/ppt 等格式上传；「添加其他类型」并入网格末尾虚线卡片。 | 新增 `attachment-viewer-modal.vue`；`attachments/index.vue` 移除 Table 改卡片列表；`getClientVisible` 默认 `false`；`ALLOWED_TYPES` 扩展图片与 Office 后缀。 |
 | 2026-07-12 | `Fix` | 编辑态干系人：销售/商务/操作/客服/单证五个默认岗位始终显示——订单未保存某默认角色时补一张空卡（此前编辑态只按已存数据渲染，如缺「商务」会漏卡）；海外客服仍「有值才显示」不变。 | `use-order-users.ts` 的 `createOrderUserRows` 编辑分支：映射+海外客服过滤后，用 `presentRoles` 计算缺失默认角色并补空行，再按 `defaultOrderUsers` 顺序排序（非默认角色/海外客服排其后）；空卡无 `userId`，保存时被 `sanitizeOrderUsers` 过滤不写库。 |
 | 2026-07-11 | `Style` | 运踪 Tab：里程碑/集装箱时间轴改为水平展示；运踪页白底铺满。 | `yundang-tracking-panel.vue` 新增 `track-timeline--horizontal`；集装箱轨迹按时间升序左→右，最新节点标记为「进行中」。 |
 | 2026-07-11 | `Feature` | 干系人面板默认固定展示销售/商务/操作/客服/单证；海外客服无值不展示；新建态按委托单位绑定干系人默认回填，操作/单证/客服未绑定兜底当前账号；委托单位与起运港加必填标识。 | `use-order-users.ts` 新增 `applyClientDefaultOrderUsers`；`form.vue` 在新建态 `clientId` onChange 调 `getClientDetail`；`data.ts` 为 `clientId`/`polId` 设 `selectRequired`。 |
