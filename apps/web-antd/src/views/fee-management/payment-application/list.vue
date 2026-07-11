@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
-import { nextTick, onMounted, ref, watch } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -25,9 +25,9 @@ import {
 
 import {
   buildColumns,
-  captureAppliedTotalAnchorState,
-  isAppliedTotalAnchorField,
+  buildColumnsWithRuntime,
   isAppliedTotalChildField,
+  PAYMENT_APPLICATION_LIST_TABLE_ID,
   useGridFormSchema,
 } from './data';
 
@@ -38,54 +38,46 @@ const actionLoading = ref(false);
 const { open: openWorkflowTimeline } = useWorkflowTimeline();
 
 const tableData = ref<PaymentApplicationAdminApi.PaymentApplicationDto[]>([]);
-/** 防止列同步过程中的重入 */
-let syncingAppliedTotal = false;
+/** 防止重建过程中的重入 */
+let rebuildingAppliedTotal = false;
 
 /**
- * 「申请合计」锚点代理：让各币别列的显隐与整体位置跟随锚点列。
- * - 币别列的 visible = 锚点列 visible（列配置里控制显隐）
- * - 币别列整体紧跟在锚点列之后（列配置里拖动锚点即调整整体顺序）
+ * 重建「申请合计」相关列：以运行时锚点列状态为唯一数据源，
+ * 保留静态列的显隐/固定/列宽/顺序，再按当前页数据重挂各币别列。
  */
-function syncAppliedTotalColumns() {
-  if (syncingAppliedTotal) return;
-  const grid = gridApi.grid as any;
-  if (!grid?.getFullColumn) return;
-  const fullCols: any[] = grid.getFullColumn() ?? [];
-  const anchor = fullCols.find((c) => isAppliedTotalAnchorField(c?.field));
-  const currencyCols = fullCols.filter((c) =>
-    isAppliedTotalChildField(c?.field),
-  );
-  if (!anchor || currencyCols.length === 0) return;
-
-  const anchorVisible = anchor.visible !== false;
-  let changed = false;
-  for (const col of currencyCols) {
-    if ((col.visible !== false) !== anchorVisible) {
-      col.visible = anchorVisible;
-      changed = true;
-    }
-  }
-
-  const rest = fullCols.filter((c) => !isAppliedTotalChildField(c?.field));
-  const anchorIndex = rest.indexOf(anchor);
-  const newOrder = [
-    ...rest.slice(0, anchorIndex + 1),
-    ...currencyCols,
-    ...rest.slice(anchorIndex + 1),
-  ];
-  const orderChanged =
-    newOrder.length === fullCols.length &&
-    newOrder.some((col, index) => col !== fullCols[index]);
-
-  if (!changed && !orderChanged) return;
-
-  syncingAppliedTotal = true;
-  Promise.resolve(grid.loadColumn?.(newOrder))
-    .catch(() => {})
-    .finally(() => {
-      grid.refreshColumn?.();
-      syncingAppliedTotal = false;
+async function rebuildAppliedTotalColumns() {
+  if (rebuildingAppliedTotal) return;
+  rebuildingAppliedTotal = true;
+  try {
+    // 双 nextTick 确保列配置面板的显隐/顺序改动已提交到运行时列
+    await nextTick();
+    await nextTick();
+    const grid = gridApi.grid as any;
+    const runtimeColumns =
+      grid?.getFullColumns?.() ?? grid?.getFullColumn?.() ?? [];
+    gridApi.setGridOptions({
+      columns: applyDefaultSortable(
+        buildColumnsWithRuntime(tableData.value, runtimeColumns),
+      ),
     });
+  } finally {
+    rebuildingAppliedTotal = false;
+  }
+}
+
+/** 恢复默认：用默认列重建（申请合计回到默认位置并全部显示），不沿用运行时顺序/显隐 */
+async function rebuildDefaultColumns() {
+  if (rebuildingAppliedTotal) return;
+  rebuildingAppliedTotal = true;
+  try {
+    await nextTick();
+    await nextTick();
+    gridApi.setGridOptions({
+      columns: applyDefaultSortable(buildColumns(tableData.value)),
+    });
+  } finally {
+    rebuildingAppliedTotal = false;
+  }
 }
 
 function handleViewWorkflow(
@@ -144,7 +136,7 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 
 const [Grid, gridApi] =
   useVbenVxeGrid<PaymentApplicationAdminApi.PaymentApplicationDto>({
-    columnPersist: { tableId: 'PaymentApplicationList' },
+    columnPersist: { tableId: PAYMENT_APPLICATION_LIST_TABLE_ID },
     formOptions: {
       schema: useGridFormSchema(),
       submitOnChange: true,
@@ -155,13 +147,25 @@ const [Grid, gridApi] =
     },
     gridEvents: {
       cellDblclick: handleRowDblclick,
-      custom: () => nextTick(syncAppliedTotalColumns),
-      customChange: () => nextTick(syncAppliedTotalColumns),
-      customReset: () => nextTick(syncAppliedTotalColumns),
-      columnDropEnd: () => nextTick(syncAppliedTotalColumns),
+      // 仅在确认/重置（已提交状态）时重建，避免面板交互中途重建破坏暂存勾选
+      custom: (params: { type?: string }) => {
+        const type = params?.type;
+        if (type && ['cancel', 'close', 'open'].includes(type)) return;
+        if (type === 'reset') {
+          void rebuildDefaultColumns();
+          return;
+        }
+        void rebuildAppliedTotalColumns();
+      },
+      customReset: () => {
+        void rebuildDefaultColumns();
+      },
+      columnDropEnd: () => {
+        void rebuildAppliedTotalColumns();
+      },
     },
     gridOptions: {
-      columns: buildColumns(),
+      columns: applyDefaultSortable(buildColumns()),
       height: 'auto',
       keepSource: true,
       // 列配置面板隐藏各币别平铺列，仅保留「申请合计」锚点列作为唯一配置项
@@ -198,28 +202,14 @@ const [Grid, gridApi] =
     },
   });
 
-// 每页数据变化时重建币别列，并保留「申请合计」锚点的显隐与整体顺序
+// 每页数据变化时重建币别列，显隐/顺序始终跟随「申请合计」锚点配置
 watch(
   tableData,
-  async (rows) => {
-    const grid = gridApi.grid as any;
-    const anchorState = captureAppliedTotalAnchorState(
-      grid?.getFullColumn?.() ?? [],
-    );
-    await nextTick();
-    gridApi.setGridOptions({
-      columns: applyDefaultSortable(buildColumns(rows, anchorState)),
-    });
-    await nextTick();
-    syncAppliedTotalColumns();
+  () => {
+    void rebuildAppliedTotalColumns();
   },
   { deep: true },
 );
-
-onMounted(async () => {
-  await nextTick();
-  syncAppliedTotalColumns();
-});
 
 function getSelectedRows(): PaymentApplicationAdminApi.PaymentApplicationDto[] {
   return (gridApi.grid?.getCheckboxRecords?.() ??
@@ -271,6 +261,9 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
           </Button>
         </Space>
       </template>
+      <template #appliedTotalAnchorHeader="{ column }">
+        {{ column.params?.anchorHeader || column.title }}
+      </template>
       <template #action="{ row }">
         <Button
           v-if="row.status !== PaymentApplicationStatus.Entering"
@@ -286,8 +279,9 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
 </template>
 
 <style scoped>
-/* 「申请合计」锚点代理列：仅用于列配置项，不在表格中占用可见空间 */
-:deep(.applied-total-anchor-col) {
-  display: none !important;
+/* 各币别申请合计列：表头不换行，超出显示 tooltip */
+:deep(.applied-total-currency-col .vxe-cell--title),
+:deep(.applied-total-currency-col .vxe-cell) {
+  white-space: nowrap;
 }
 </style>

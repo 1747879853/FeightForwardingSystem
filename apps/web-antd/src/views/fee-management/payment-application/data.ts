@@ -8,7 +8,10 @@ import { $t } from '#/locales';
 const paymentApplicationStatusOptions = () =>
   getPaymentApplicationStatusOptions((key) => $t(key));
 
-/** 「申请合计」锚点列字段：作为列配置中唯一可见/可拖动/可持久化的代理项 */
+/** 列配置持久化 key（与 columnPersist.tableId 对应） */
+export const PAYMENT_APPLICATION_LIST_TABLE_ID = 'PaymentApplicationList';
+
+/** 「申请合计」锚点列字段：列配置中唯一可见/可持久化的代理项 */
 export const APPLIED_TOTAL_ANCHOR_FIELD = 'appliedTotal';
 /** 各币别申请合计列字段前缀（表格中真实渲染，但在列配置面板中隐藏） */
 const APPLIED_TOTAL_FIELD_PREFIX = 'appliedTotal_';
@@ -64,25 +67,78 @@ function calcRowAppliedTotal(
   return (group.payAmount ?? 0) + (group.receiveAmount ?? 0);
 }
 
-/** 按币别平铺生成申请合计列，一列一个币别（单行表头） */
-function buildAppliedTotalColumns(currencies: AppliedTotalCurrency[]) {
-  const suffix = $t('seaExport.export.paymentApplication.appliedTotal');
-  return currencies.map((c) => ({
-    field: appliedTotalFieldKey(c.currencyId),
-    title: `${c.currencyCode || c.currencyId}${suffix}`,
+/** 申请合计列（锚点列与币别跟随列）的公共属性 */
+function appliedTotalColumnBase() {
+  return {
     minWidth: 120,
     align: 'right' as const,
     sortable: false,
-    resizable: false,
-    formatter: ({
-      row,
-    }: {
-      row: PaymentApplicationAdminApi.PaymentApplicationDto;
-    }) => {
-      const val = calcRowAppliedTotal(row, c.currencyId);
-      return val == null ? '' : val.toFixed(2);
-    },
+    showHeaderOverflow: 'title' as const,
+    headerClassName: 'applied-total-currency-col',
+    className: 'applied-total-currency-col',
+  };
+}
+
+function appliedTotalFormatter(currencyId: number) {
+  return ({
+    row,
+  }: {
+    row: PaymentApplicationAdminApi.PaymentApplicationDto;
+  }) => {
+    const val = calcRowAppliedTotal(row, currencyId);
+    return val == null ? '' : val.toFixed(2);
+  };
+}
+
+/**
+ * 「申请合计」锚点列：一个真实可见列，承载「首个币别」的申请合计。
+ * - 列配置面板显示为「申请合计」（title），是控制整组显隐/顺序的唯一开关，字段稳定可持久化
+ * - 表头通过插槽显示「{首个币别}申请合计」（params.anchorHeader）
+ */
+function buildAppliedTotalAnchorColumn(
+  currencies: AppliedTotalCurrency[],
+  visible: boolean,
+) {
+  const suffix = $t('seaExport.export.paymentApplication.appliedTotal');
+  const first = currencies[0];
+  const headerLabel = first
+    ? `${first.currencyCode || first.currencyId}${suffix}`
+    : suffix;
+  return {
+    ...appliedTotalColumnBase(),
+    field: APPLIED_TOTAL_ANCHOR_FIELD,
+    title: suffix,
+    visible,
+    params: { anchorHeader: headerLabel },
+    slots: { header: 'appliedTotalAnchorHeader' },
+    formatter: first ? appliedTotalFormatter(first.currencyId) : () => '',
+  };
+}
+
+/** 其余币别的申请合计跟随列（显隐/顺序跟随锚点列，列配置面板中隐藏） */
+function buildAppliedTotalFollowerColumns(
+  currencies: AppliedTotalCurrency[],
+  visible: boolean,
+) {
+  const suffix = $t('seaExport.export.paymentApplication.appliedTotal');
+  return currencies.slice(1).map((c) => ({
+    ...appliedTotalColumnBase(),
+    field: appliedTotalFieldKey(c.currencyId),
+    title: `${c.currencyCode || c.currencyId}${suffix}`,
+    visible,
+    formatter: appliedTotalFormatter(c.currencyId),
   }));
+}
+
+/** 将申请合计列组插入到某静态列之后（默认在「应收总额」后） */
+function insertAppliedTotalGroup<T extends Record<string, any>>(
+  columns: T[],
+  afterField: string,
+  group: T[],
+): T[] {
+  const index = columns.findIndex((col) => col.field === afterField);
+  const at = index >= 0 ? index + 1 : columns.length;
+  return [...columns.slice(0, at), ...group, ...columns.slice(at)];
 }
 
 export function useGridFormSchema(): VbenFormSchema[] {
@@ -180,117 +236,8 @@ export function useGridFormSchema(): VbenFormSchema[] {
   ];
 }
 
-/** 「申请合计」锚点列在列配置中的状态（显隐 + 整体插入位置） */
-export interface AppliedTotalAnchorState {
-  visible: boolean;
-  /** 锚点块整体紧跟在该 field/type 列之后；undefined 表示使用默认位置 */
-  insertAfterField?: string;
-}
-
-/** 从当前表格列快照读取「申请合计」锚点状态 */
-export function captureAppliedTotalAnchorState(
-  fullColumns: Array<{ field?: string; type?: string; visible?: boolean }>,
-): AppliedTotalAnchorState | null {
-  const anchorIndex = fullColumns.findIndex((c) =>
-    isAppliedTotalAnchorField(c?.field),
-  );
-  if (anchorIndex < 0) return null;
-
-  let insertAfterField: string | undefined;
-  for (let i = anchorIndex - 1; i >= 0; i--) {
-    const col = fullColumns[i];
-    if (
-      !isAppliedTotalAnchorField(col?.field) &&
-      !isAppliedTotalChildField(col?.field)
-    ) {
-      insertAfterField = col?.field ?? col?.type;
-      break;
-    }
-  }
-
-  return {
-    visible: fullColumns[anchorIndex]!.visible !== false,
-    insertAfterField,
-  };
-}
-
-function resolveColumnIdentity(
-  column: Record<string, any>,
-): string | undefined {
-  return column.field ?? column.type;
-}
-
-/** 将锚点块（锚点列 + 各币别列）按保存的状态插入到列配置中 */
-export function applyAppliedTotalAnchorState<T extends Record<string, any>>(
-  columns: T[],
-  state: AppliedTotalAnchorState | null,
-): T[] {
-  if (!state) return columns;
-
-  const isBlockCol = (col: T) =>
-    isAppliedTotalAnchorField(col.field) || isAppliedTotalChildField(col.field);
-
-  const block = columns.filter(isBlockCol).map((col) => ({
-    ...col,
-    visible: isAppliedTotalAnchorField(col.field)
-      ? state.visible
-      : state.visible,
-  }));
-  const rest = columns.filter((col) => !isBlockCol(col));
-
-  if (block.length === 0) return columns;
-
-  let insertIndex = rest.length;
-  if (state.insertAfterField) {
-    const afterIndex = rest.findIndex(
-      (col) => resolveColumnIdentity(col) === state.insertAfterField,
-    );
-    if (afterIndex >= 0) {
-      insertIndex = afterIndex + 1;
-    }
-  } else {
-    const defaultAfter = rest.findIndex(
-      (col) => col.field === 'totalReceivePrice',
-    );
-    if (defaultAfter >= 0) {
-      insertIndex = defaultAfter + 1;
-    }
-  }
-
-  return [...rest.slice(0, insertIndex), ...block, ...rest.slice(insertIndex)];
-}
-
-/** 按当前页数据生成列，并可叠加锚点列的显隐/顺序状态 */
-export function buildColumns(
-  rows: PaymentApplicationAdminApi.PaymentApplicationDto[] = [],
-  anchorState: AppliedTotalAnchorState | null = null,
-): VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns'] {
-  const columns = useColumns(rows) ?? [];
-  return applyAppliedTotalAnchorState(columns, anchorState) as NonNullable<
-    VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns']
-  >;
-}
-
-export function useColumns(
-  rows: PaymentApplicationAdminApi.PaymentApplicationDto[] = [],
-): VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns'] {
-  // 按当前页币别平铺生成申请合计列（单行表头，表格中真实渲染，但面板中隐藏）
-  const appliedTotalColumns = buildAppliedTotalColumns(
-    collectAppliedTotalCurrencies(rows),
-  );
-  // 「申请合计」锚点代理列：列配置面板中唯一可见项，控制币别列的显隐与整体顺序；
-  // 表格中通过 0 宽 + CSS 隐藏其自身单元格，不占用可见空间
-  const appliedTotalAnchor = {
-    field: APPLIED_TOTAL_ANCHOR_FIELD,
-    title: $t('seaExport.export.paymentApplication.appliedTotal'),
-    width: 0,
-    minWidth: 0,
-    resizable: false,
-    sortable: false,
-    headerClassName: 'applied-total-anchor-col',
-    className: 'applied-total-anchor-col',
-  };
-
+/** 静态列（不含申请合计组），申请合计组默认插入在「应收总额」之后 */
+function buildStaticColumns(): Array<Record<string, any>> {
   return [
     { type: 'checkbox', width: 50, fixed: 'left' },
     { type: 'seq', width: 50, fixed: 'left' },
@@ -332,8 +279,6 @@ export function useColumns(
       minWidth: 120,
       align: 'right',
     },
-    appliedTotalAnchor,
-    ...appliedTotalColumns,
     {
       field: 'creatorUserName',
       title: $t('seaExport.export.paymentApplication.creatorUserName'),
@@ -370,4 +315,107 @@ export function useColumns(
       formatter: 'formatDateTime',
     },
   ];
+}
+
+const APPLIED_TOTAL_DEFAULT_AFTER_FIELD = 'totalReceivePrice';
+
+/** 首次渲染列（申请合计组在默认位置，锚点承载首个币别） */
+export function buildColumns(
+  rows: PaymentApplicationAdminApi.PaymentApplicationDto[] = [],
+): VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns'] {
+  const currencies = collectAppliedTotalCurrencies(rows);
+  const group = [
+    buildAppliedTotalAnchorColumn(currencies, true),
+    ...buildAppliedTotalFollowerColumns(currencies, true),
+  ];
+  return insertAppliedTotalGroup(
+    buildStaticColumns(),
+    APPLIED_TOTAL_DEFAULT_AFTER_FIELD,
+    group,
+  ) as NonNullable<
+    VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns']
+  >;
+}
+
+/**
+ * 结合运行时列状态重建列，作为「申请合计」显隐/顺序的唯一数据源：
+ * - 静态列与锚点列沿用运行时的显隐、固定、列宽与顺序（保留用户在列配置里的调整与持久化结果，避免翻页/配置后被重置）
+ * - 锚点列是真实列（可拖动、可调宽、可显隐，走 vxe 原生），承载首个币别
+ * - 其余币别作为跟随列，显隐跟随锚点、整体紧跟在锚点之后
+ */
+export function buildColumnsWithRuntime(
+  rows: PaymentApplicationAdminApi.PaymentApplicationDto[] = [],
+  runtimeColumns: Array<Record<string, any>> = [],
+): NonNullable<
+  VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns']
+> {
+  const currencies = collectAppliedTotalCurrencies(rows);
+  const rtList = Array.isArray(runtimeColumns) ? runtimeColumns : [];
+
+  const rtByKey = new Map<
+    string,
+    { col: Record<string, any>; order: number }
+  >();
+  rtList.forEach((col, index) => {
+    const key = col?.field ?? col?.type;
+    if (key != null && !rtByKey.has(String(key))) {
+      rtByKey.set(String(key), { col, order: index });
+    }
+  });
+
+  const anchorRt = rtByKey.get(APPLIED_TOTAL_ANCHOR_FIELD);
+  const anchorVisible = anchorRt ? anchorRt.col.visible !== false : true;
+
+  const anchorColumn = buildAppliedTotalAnchorColumn(currencies, anchorVisible);
+  const followerColumns = buildAppliedTotalFollowerColumns(
+    currencies,
+    anchorVisible,
+  );
+
+  // 可排序列 = 静态列 + 锚点列（默认位置），按运行时顺序与显隐合并
+  const orderables = insertAppliedTotalGroup(
+    buildStaticColumns(),
+    APPLIED_TOTAL_DEFAULT_AFTER_FIELD,
+    [anchorColumn],
+  );
+
+  const merged = orderables.map((col, index) => {
+    const key = col.field ?? col.type;
+    const rt = key == null ? undefined : rtByKey.get(String(key));
+    const nextCol: Record<string, any> = { ...col };
+    let order = index;
+    if (rt) {
+      order = rt.order;
+      // 锚点列显隐已在 buildAppliedTotalAnchorColumn 里处理，其余列沿用运行时显隐
+      if (!isAppliedTotalAnchorField(col.field)) {
+        nextCol.visible = rt.col.visible !== false;
+      }
+      const fixed = rt.col.fixed;
+      if (fixed === 'left' || fixed === 'right') {
+        nextCol.fixed = fixed;
+      }
+      const resizeWidth = Number(rt.col.resizeWidth);
+      if (Number.isFinite(resizeWidth) && resizeWidth > 0) {
+        nextCol.width = resizeWidth;
+      }
+    }
+    return { col: nextCol, order, index };
+  });
+
+  merged.sort((a, b) => a.order - b.order || a.index - b.index);
+  const ordered = merged.map((item) => item.col);
+
+  // 跟随列整体紧跟在锚点列之后
+  const anchorIndex = ordered.findIndex((col) =>
+    isAppliedTotalAnchorField(col.field),
+  );
+  const insertAt = anchorIndex >= 0 ? anchorIndex + 1 : ordered.length;
+
+  return [
+    ...ordered.slice(0, insertAt),
+    ...followerColumns,
+    ...ordered.slice(insertAt),
+  ] as NonNullable<
+    VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns']
+  >;
 }
