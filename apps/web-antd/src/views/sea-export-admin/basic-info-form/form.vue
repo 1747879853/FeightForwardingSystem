@@ -615,7 +615,7 @@ const getServiceNodeTooltipStatusMeta = (node: ServiceTypeNode) => {
     return { label: '已完成', color: 'success' as const };
   }
   if (state === 'active') {
-    return { label: '处理中', color: 'processing' as const };
+    return { label: '待处理', color: 'warning' as const };
   }
   return { label: '还未到', color: 'default' as const };
 };
