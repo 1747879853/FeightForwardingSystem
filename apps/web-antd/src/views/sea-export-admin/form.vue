@@ -43,7 +43,6 @@ import {
   Tag,
   Tooltip,
 } from 'ant-design-vue';
-import { preferences } from '@vben/preferences';
 import { useUserStore } from '@vben/stores';
 
 defineOptions({
@@ -63,32 +62,21 @@ import {
   cancelCompleteSeServiceTask,
   completeSeServiceTask,
 } from '#/api/sea-export/se-service-task-admin';
-import type { SystemUserAdminApi } from '#/api/system/user-admin';
-
-import { getUser, UserAttribute } from '#/api/system/user-admin';
-import { parseSeaExportUserAttribute } from '#/views/system/user/data';
 import { $t } from '#/locales';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
-import { buildAttachmentUrl } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
-import {
-  formatDeletedUserFallback,
-  resolveUserDisplayName,
-} from '#/utils/user-display';
 
 import OrderCtnTable from './modules/order-ctn-table.vue';
 import {
   flattenDetail,
-  hasValidUserId,
   normalizeOrderCtnsWithRowKey,
   sanitizeOrderCtns,
   sanitizeOrderUsers,
   toDateOnlyString,
   toDateString,
   toDayjs,
-  toOptionalNumber,
   toPortSelectedItems,
   toSelectedItems,
 } from './sea-export-detail-mapper';
@@ -139,6 +127,7 @@ import {
   SERVICE_TASK_STATUS_PROCESSED,
   sortServiceTypeNodesBySortId,
 } from './service-type-nodes';
+import { defaultOrderUsers, useOrderUsers } from './use-order-users';
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
 import { useSeaExportCopy } from './use-sea-export-copy';
 import { useYardRealQuery } from './use-yard-real-query';
@@ -198,24 +187,6 @@ const { openPrint } = usePrintFormat();
 const aiRecognizing = ref(false);
 const aiExtractFileInputRef = ref<HTMLInputElement | null>(null);
 const transportOrderId = ref<number | undefined>();
-const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
-  { userAttribute: UserAttribute.Sales, sortId: 6 },
-  { userAttribute: UserAttribute.Business, sortId: 5 },
-  { userAttribute: UserAttribute.Operation, sortId: 4 },
-  { userAttribute: UserAttribute.CustomerService, sortId: 3 },
-  { userAttribute: UserAttribute.Documentation, sortId: 2 },
-  { userAttribute: UserAttribute.OverseasCustomerService, sortId: 1 },
-];
-/** 不可删除的必填干系人角色（销售、操作始终必填；其余由服务项目动态校验） */
-const requiredOrderUserRoles: number[] = [
-  UserAttribute.Sales,
-  UserAttribute.Operation,
-];
-const defaultCurrentUserRoleSet = new Set([
-  UserAttribute.Operation,
-  UserAttribute.CustomerService,
-  UserAttribute.Documentation,
-]);
 const currentUserId = computed(() => {
   const rawUserId = userStore.userInfo?.userId;
   if (!rawUserId) return undefined;
@@ -1394,19 +1365,41 @@ const notifierPartyTab = ref<'notifier' | 'podAgent' | 'secondNotifier'>(
   'notifier',
 );
 const notifierPartyLabelTarget = ref<HTMLElement | null>(null);
-type OrderUserEditorRow = SeaExportAdminApi.OrderUserAddDto & {
-  _rowKey: string;
-  userName?: string;
-};
-const orderUserRows = ref<OrderUserEditorRow[]>([]);
-const orderUserNameMap = ref<Record<number, string>>({});
-const orderUserDetailMap = ref<Record<number, SystemUserAdminApi.UserDto>>({});
-const orderUserDetailLoadingMap = ref<Record<number, boolean>>({});
-/** 已确认 getUser 失败的用户，才展示「已删除」兜底 */
-const orderUserLoadFailedSet = ref(new Set<number>());
-let orderUserRowKeyCounter = 0;
-const makeOrderUserRowKey = () =>
-  `order_user_${++orderUserRowKeyCounter}_${Date.now()}`;
+const {
+  orderUserRows,
+  orderUserRoleModalOpen,
+  orderUserRoleModalSelected,
+  availableOrderUserRoleOptions,
+  requiredOrderUserRoles,
+  getOrderUserRoleLabel,
+  getOrderUserDisplayName,
+  getOrderUserSelectedItems,
+  getOrderUserAvatarSrc,
+  getOrderUserAvatarText,
+  getOrderUserDetail,
+  isOrderUserDetailLoading,
+  getOrderUserDetailText,
+  getOrderUserStatusText,
+  getOrderUserStatusClass,
+  loadOrderUserDetail,
+  initializeOrderUsersPanel,
+  openOrderUserRoleModal,
+  handleOrderUserRoleModalCancel,
+  handleOrderUserRoleModalConfirm,
+  removeOrderUserRole,
+  updateOrderUser,
+  validateSalesRoleCount,
+  validateRequiredOrderUserAssignee,
+  validateServiceBoundOrderUsers,
+} = useOrderUsers({
+  partyInfoFormApi,
+  currentUserId,
+  isEdit,
+  serviceTypeNodes,
+  serviceTypeSyncLoading,
+  polServiceConfigLoaded,
+  latestAvailableServiceTypes,
+});
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
 const sectionRefs = {
   basic: ref<HTMLElement | null>(null),
@@ -1416,403 +1409,6 @@ const sectionRefs = {
   party: ref<HTMLElement | null>(null),
 } as const;
 const currentSection = ref<SectionKey>('basic');
-const orderUserRoleOptions = computed(() => [
-  {
-    label: $t('system.user.userAttributeOptions.sales'),
-    value: UserAttribute.Sales,
-  },
-  {
-    label: $t('system.user.userAttributeOptions.business'),
-    value: UserAttribute.Business,
-  },
-  {
-    label: $t('system.user.userAttributeOptions.operation'),
-    value: UserAttribute.Operation,
-  },
-  {
-    label: $t('system.user.userAttributeOptions.customerService'),
-    value: UserAttribute.CustomerService,
-  },
-  {
-    label: $t('system.user.userAttributeOptions.documentation'),
-    value: UserAttribute.Documentation,
-  },
-  {
-    label: $t('system.user.userAttributeOptions.overseasCustomerService'),
-    value: UserAttribute.OverseasCustomerService,
-  },
-]);
-const orderUserRoleModalOpen = ref(false);
-const orderUserRoleModalSelected = ref<number | undefined>();
-const selectedOrderUserRoleSet = computed(
-  () =>
-    new Set(
-      orderUserRows.value
-        .map((row) => row.userAttribute)
-        .filter((item): item is number => item != null),
-    ),
-);
-const availableOrderUserRoleOptions = computed(() =>
-  orderUserRoleOptions.value.filter(
-    (option) => !selectedOrderUserRoleSet.value.has(option.value),
-  ),
-);
-const getOrderUserRoleLabel = (userAttribute?: number) => {
-  switch (userAttribute) {
-    case UserAttribute.Sales:
-      return $t('system.user.userAttributeOptions.sales');
-    case UserAttribute.Business:
-      return $t('system.user.userAttributeOptions.business');
-    case UserAttribute.Operation:
-      return $t('system.user.userAttributeOptions.operation');
-    case UserAttribute.CustomerService:
-      return $t('system.user.userAttributeOptions.customerService');
-    case UserAttribute.Documentation:
-      return $t('system.user.userAttributeOptions.documentation');
-    case UserAttribute.OverseasCustomerService:
-      return $t('system.user.userAttributeOptions.overseasCustomerService');
-    default:
-      return '-';
-  }
-};
-const getOrderUserResolvedName = (row: OrderUserEditorRow) => {
-  if (!row.userId) return row.userName || '';
-  const mappedName = orderUserNameMap.value[row.userId];
-  if (mappedName) return mappedName;
-  if (row.userName && row.userName !== String(row.userId)) return row.userName;
-  return '';
-};
-const getOrderUserDisplayName = (row: OrderUserEditorRow) => {
-  const resolved = getOrderUserResolvedName(row);
-  if (resolved) return resolved;
-  if (!row.userId) return '';
-  if (
-    isOrderUserDetailLoading(row.userId) ||
-    !orderUserLoadFailedSet.value.has(row.userId)
-  ) {
-    return '';
-  }
-  return formatDeletedUserFallback(row.userId);
-};
-const getOrderUserSelectedItems = (row: OrderUserEditorRow) => {
-  if (!row.userId) return [];
-  const nickName = getOrderUserResolvedName(row);
-  if (!nickName) return [];
-  return [{ id: row.userId, nickName }];
-};
-const getOrderUserAvatarSrc = (userId?: number) => {
-  const avatar = getOrderUserDetail(userId)?.avatar?.trim();
-  if (avatar) return buildAttachmentUrl(avatar);
-  return preferences.app.defaultAvatar;
-};
-const getOrderUserAvatarText = (row: OrderUserEditorRow) => {
-  const displayName =
-    getOrderUserDisplayName(row) ||
-    getOrderUserDetail(row.userId)?.nickName ||
-    getOrderUserDetail(row.userId)?.userName;
-  const normalized = displayName?.trim();
-  if (normalized) return normalized.slice(0, 1);
-  return '?';
-};
-const getOrderUserDetail = (userId?: number) =>
-  userId ? orderUserDetailMap.value[userId] : undefined;
-const isOrderUserDetailLoading = (userId?: number) =>
-  !!(userId && orderUserDetailLoadingMap.value[userId]);
-const getOrderUserDetailText = (value?: string) => value?.trim() || '-';
-const getOrderUserStatusText = (detail?: SystemUserAdminApi.UserDto) => {
-  if (!detail) return '未知';
-  return detail.isActive ? '启用' : '禁用';
-};
-const getOrderUserStatusClass = (detail?: SystemUserAdminApi.UserDto) => {
-  if (!detail?.isActive) return 'order-user-detail-card__status--inactive';
-  return 'order-user-detail-card__status--active';
-};
-const syncOrderUserName = (userId: number, userName: string) => {
-  orderUserNameMap.value = { ...orderUserNameMap.value, [userId]: userName };
-};
-const syncOrderUserDetail = (detail: SystemUserAdminApi.UserDto) => {
-  orderUserDetailMap.value = {
-    ...orderUserDetailMap.value,
-    [detail.id]: detail,
-  };
-  const displayName = detail.nickName || detail.userName || String(detail.id);
-  syncOrderUserName(detail.id, displayName);
-};
-const setOrderUserNameForRow = (
-  rowKey: string | undefined,
-  userId: number,
-  userName: string,
-) => {
-  if (!rowKey) return;
-  orderUserRows.value = orderUserRows.value.map((row) => {
-    if (row._rowKey !== rowKey || row.userId !== userId) return row;
-    return { ...row, userName };
-  });
-  syncOrderUsersToForm();
-};
-const loadOrderUserDetail = async (
-  userId: number | undefined,
-  rowKey?: string,
-) => {
-  if (!userId) return;
-  const cachedDetail = orderUserDetailMap.value[userId];
-  if (cachedDetail) {
-    setOrderUserNameForRow(
-      rowKey,
-      userId,
-      resolveUserDisplayName(userId, undefined, cachedDetail),
-    );
-    return;
-  }
-  if (orderUserDetailLoadingMap.value[userId]) return;
-  orderUserDetailLoadingMap.value = {
-    ...orderUserDetailLoadingMap.value,
-    [userId]: true,
-  };
-  try {
-    const detail = await getUser(userId, { silent: true });
-    if (orderUserLoadFailedSet.value.has(userId)) {
-      const next = new Set(orderUserLoadFailedSet.value);
-      next.delete(userId);
-      orderUserLoadFailedSet.value = next;
-    }
-    syncOrderUserDetail(detail);
-    const displayName = resolveUserDisplayName(userId, undefined, detail);
-    setOrderUserNameForRow(rowKey, userId, displayName);
-  } catch {
-    const row = rowKey
-      ? orderUserRows.value.find((item) => item._rowKey === rowKey)
-      : undefined;
-    const fallback = resolveUserDisplayName(userId, row?.userName);
-    orderUserLoadFailedSet.value = new Set([
-      ...orderUserLoadFailedSet.value,
-      userId,
-    ]);
-    syncOrderUserName(userId, fallback);
-    setOrderUserNameForRow(rowKey, userId, fallback);
-  } finally {
-    orderUserDetailLoadingMap.value = {
-      ...orderUserDetailLoadingMap.value,
-      [userId]: false,
-    };
-  }
-};
-const withOrderUserSortId = (rows: OrderUserEditorRow[]) => {
-  const total = rows.length;
-  return rows.map((row, index) => ({
-    ...row,
-    sortId: total - index,
-  }));
-};
-const normalizeOrderUserItem = (item: SeaExportAdminApi.OrderUserAddDto) => ({
-  ...item,
-  userId: toOptionalNumber(item.userId),
-  userAttribute: toOptionalNumber(item.userAttribute),
-  sortId: toOptionalNumber(item.sortId),
-});
-const cloneOrderUsersForForm = (rows: OrderUserEditorRow[]) =>
-  withOrderUserSortId(rows).map(({ _rowKey: _k, userName: _n, ...rest }) => ({
-    ...rest,
-  }));
-const createOrderUserRows = (
-  items: SeaExportAdminApi.OrderUserAddDto[] | undefined,
-) => {
-  if (!items?.length) {
-    return defaultOrderUsers.map((item) => {
-      const normalizedItem = normalizeOrderUserItem(item);
-      const shouldDefaultCurrentUser =
-        normalizedItem.userAttribute != null &&
-        defaultCurrentUserRoleSet.has(normalizedItem.userAttribute) &&
-        currentUserId.value != null;
-      return {
-        ...normalizedItem,
-        userId: shouldDefaultCurrentUser
-          ? currentUserId.value
-          : normalizedItem.userId,
-        _rowKey: makeOrderUserRowKey(),
-      };
-    });
-  }
-  return items.map((item) => {
-    const nickName = (item as any).userNickName as string | undefined;
-    return {
-      ...normalizeOrderUserItem(item),
-      userName: nickName || undefined,
-      _rowKey: makeOrderUserRowKey(),
-    };
-  });
-};
-const syncOrderUsersToForm = () => {
-  partyInfoFormApi.setValues({
-    orderUsers: cloneOrderUsersForForm(orderUserRows.value),
-  });
-};
-const fillOrderUserNames = async (rows: OrderUserEditorRow[]) => {
-  const toLoadRows = rows.filter(
-    (row): row is OrderUserEditorRow & { userId: number } =>
-      row.userId != null && row.userId > 0,
-  );
-  await Promise.all(
-    toLoadRows.map((row) => loadOrderUserDetail(row.userId, row._rowKey)),
-  );
-};
-const initializeOrderUsersPanel = (
-  items: SeaExportAdminApi.OrderUserAddDto[] | undefined,
-) => {
-  orderUserRows.value = createOrderUserRows(items);
-  for (const row of orderUserRows.value) {
-    if (row.userId && row.userName) {
-      orderUserNameMap.value = {
-        ...orderUserNameMap.value,
-        [row.userId]: row.userName,
-      };
-    }
-  }
-  syncOrderUsersToForm();
-  void fillOrderUserNames(orderUserRows.value);
-};
-const openOrderUserRoleModal = () => {
-  if (!availableOrderUserRoleOptions.value.length) {
-    message.warning('所有角色已添加，不可重复添加');
-    return;
-  }
-  orderUserRoleModalSelected.value =
-    availableOrderUserRoleOptions.value[0]?.value;
-  orderUserRoleModalOpen.value = true;
-};
-const handleOrderUserRoleModalCancel = () => {
-  orderUserRoleModalSelected.value = undefined;
-  orderUserRoleModalOpen.value = false;
-};
-const handleOrderUserRoleModalConfirm = () => {
-  const userAttribute = orderUserRoleModalSelected.value;
-  if (userAttribute == null) {
-    message.warning('请选择角色');
-    return;
-  }
-  if (selectedOrderUserRoleSet.value.has(userAttribute)) {
-    message.warning(`${getOrderUserRoleLabel(userAttribute)}角色已存在`);
-    return;
-  }
-  orderUserRows.value = [
-    ...orderUserRows.value,
-    {
-      _rowKey: makeOrderUserRowKey(),
-      userAttribute,
-      sortId: 0,
-    },
-  ];
-  syncOrderUsersToForm();
-  handleOrderUserRoleModalCancel();
-};
-const removeOrderUserRole = (rowKey: string) => {
-  const row = orderUserRows.value.find((item) => item._rowKey === rowKey);
-  if (
-    row?.userAttribute != null &&
-    requiredOrderUserRoles.includes(row.userAttribute)
-  ) {
-    message.warning(`${getOrderUserRoleLabel(row.userAttribute)}角色不可删除`);
-    return;
-  }
-  orderUserRows.value = orderUserRows.value.filter(
-    (row) => row._rowKey !== rowKey,
-  );
-  syncOrderUsersToForm();
-};
-const updateOrderUser = (rowKey: string, userId: number | undefined) => {
-  orderUserRows.value = orderUserRows.value.map((row) => {
-    if (row._rowKey !== rowKey) return row;
-    return {
-      ...row,
-      userId,
-      userName: userId ? orderUserNameMap.value[userId] : undefined,
-    };
-  });
-  syncOrderUsersToForm();
-  if (!userId) return;
-  void loadOrderUserDetail(userId, rowKey);
-};
-const validateSalesRoleCount = () => {
-  const salesCount = orderUserRows.value.filter(
-    (row) => row.userAttribute === UserAttribute.Sales,
-  ).length;
-  if (salesCount !== 1) {
-    message.warning('干系人中必须且只能有一个销售角色');
-    return false;
-  }
-  return true;
-};
-const validateRequiredOrderUserAssignee = () => {
-  for (const role of requiredOrderUserRoles) {
-    const row = orderUserRows.value.find((item) => item.userAttribute === role);
-    if (!row) {
-      message.warning(`请添加${getOrderUserRoleLabel(role)}角色`);
-      return false;
-    }
-    if (!hasValidUserId(row.userId)) {
-      message.warning(`${getOrderUserRoleLabel(role)}必须选择人员`);
-      return false;
-    }
-  }
-  return true;
-};
-const formatBoundRoleOptionsLabel = (roles: number[]) =>
-  roles.map((role) => getOrderUserRoleLabel(role)).join('或');
-const validateServiceBoundOrderUsers = () => {
-  const checkedNodes = serviceTypeNodes.value.filter((node) => node.checked);
-  if (!checkedNodes.length) {
-    return true;
-  }
-  if (
-    !isEdit.value &&
-    (serviceTypeSyncLoading.value || !polServiceConfigLoaded.value)
-  ) {
-    message.warning('服务项目配置加载中，请稍后保存');
-    return false;
-  }
-  const polConfigMap = new Map<number, SeaExportAdminApi.ServiceTypeByPolDto>();
-  latestAvailableServiceTypes.value.forEach((item) => {
-    const serviceType = Number(item.serviceType);
-    if (!Number.isFinite(serviceType)) return;
-    polConfigMap.set(serviceType, item);
-  });
-  for (const node of checkedNodes) {
-    const boundRoles = parseSeaExportUserAttribute(
-      polConfigMap.get(node.serviceType)?.userAttribute,
-    );
-    if (!boundRoles.length) continue;
-    const isServiceSatisfied = boundRoles.some((role) => {
-      const row = orderUserRows.value.find(
-        (item) => item.userAttribute === role,
-      );
-      return hasValidUserId(row?.userId);
-    });
-    if (isServiceSatisfied) continue;
-    const rolesWithRowNoUser = boundRoles.filter((role) => {
-      const row = orderUserRows.value.find(
-        (item) => item.userAttribute === role,
-      );
-      return row != null && !hasValidUserId(row.userId);
-    });
-    if (rolesWithRowNoUser.length > 0) {
-      message.warning(
-        `${getOrderUserRoleLabel(rolesWithRowNoUser[0])}必须选择人员（${node.label}）`,
-      );
-      return false;
-    }
-    if (boundRoles.length === 1) {
-      message.warning(
-        `请添加${getOrderUserRoleLabel(boundRoles[0])}角色（${node.label}）`,
-      );
-      return false;
-    }
-    message.warning(
-      `${node.label}服务缺少责任人员，请添加${formatBoundRoleOptionsLabel(boundRoles)}角色`,
-    );
-    return false;
-  }
-  return true;
-};
 const refreshPortLabelTargets = () => {
   nextTick(() => {
     transitPortLabelTarget.value = document.querySelector(
