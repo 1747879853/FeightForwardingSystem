@@ -297,8 +297,19 @@ function getGroupFees(
   return findGroupByKey(groupKey)?.orderFees ?? [];
 }
 
+function getSelectableGroupFees(
+  groupKey: string,
+): PaymentApplicationAdminApi.OrderFeeDto[] {
+  const disabledIds = disabledFeeIds.value;
+  return getGroupFees(groupKey).filter((fee) => !disabledIds.has(fee.id));
+}
+
+function isGroupCheckboxDisabled(groupKey: string): boolean {
+  return getSelectableGroupFees(groupKey).length === 0;
+}
+
 function isGroupChecked(groupKey: string): boolean {
-  const fees = getGroupFees(groupKey);
+  const fees = getSelectableGroupFees(groupKey);
   if (fees.length === 0) return false;
   const selected = selectionMap.get(groupKey);
   if (!selected) return false;
@@ -306,37 +317,38 @@ function isGroupChecked(groupKey: string): boolean {
 }
 
 function isGroupIndeterminate(groupKey: string): boolean {
-  const fees = getGroupFees(groupKey);
+  const fees = getSelectableGroupFees(groupKey);
+  if (fees.length === 0) return false;
   const selected = selectionMap.get(groupKey);
   if (!selected || selected.size === 0) return false;
-  const allChecked = fees.every((f) => selected.has(f.id));
-  return !allChecked;
+  const selectedCount = fees.filter((f) => selected.has(f.id)).length;
+  return selectedCount > 0 && selectedCount < fees.length;
 }
 
 function toggleGroup(groupKey: string, checked: boolean) {
-  const fees = getGroupFees(groupKey);
-  const disabledIds = disabledFeeIds.value;
+  const fees = getSelectableGroupFees(groupKey);
+  if (fees.length === 0) return;
+
   if (checked) {
     const set = new Set<string>();
     for (const fee of fees) {
       set.add(fee.id);
-      if (!disabledIds.has(fee.id) && !appliedAmountMap.has(fee.id)) {
+      if (!appliedAmountMap.has(fee.id)) {
         appliedAmountMap.set(fee.id, fee.unSettledAmount ?? 0);
       }
     }
     selectionMap.set(groupKey, set);
   } else {
     const existing = selectionMap.get(groupKey);
-    if (existing) {
-      const kept = new Set<string>();
-      for (const feeId of existing) {
-        if (disabledIds.has(feeId)) kept.add(feeId);
-      }
-      if (kept.size > 0) {
-        selectionMap.set(groupKey, kept);
-      } else {
-        selectionMap.delete(groupKey);
-      }
+    if (!existing) return;
+    const set = new Set(existing);
+    for (const fee of fees) {
+      set.delete(fee.id);
+    }
+    if (set.size > 0) {
+      selectionMap.set(groupKey, set);
+    } else {
+      selectionMap.delete(groupKey);
     }
   }
 }
@@ -346,6 +358,7 @@ function isFeeChecked(groupKey: string, feeId: string): boolean {
 }
 
 function toggleFee(groupKey: string, feeId: string, checked: boolean) {
+  if (isFeeDisabled(feeId)) return;
   if (!selectionMap.has(groupKey)) {
     selectionMap.set(groupKey, new Set());
   }
@@ -814,6 +827,7 @@ defineExpose({ open: openDrawer });
           <div class="flex items-center gap-1">
             <Checkbox
               :checked="isGroupChecked(record.groupKey)"
+              :disabled="isGroupCheckboxDisabled(record.groupKey)"
               :indeterminate="isGroupIndeterminate(record.groupKey)"
               @change="(e) => onGroupCheckChange(record.groupKey, e)"
             />
