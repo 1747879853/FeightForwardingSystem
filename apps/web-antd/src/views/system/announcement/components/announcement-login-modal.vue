@@ -7,10 +7,7 @@ import { Button, Modal } from 'ant-design-vue';
 
 import { $t } from '#/locales';
 import { buildAttachmentUrl } from '#/utils';
-import {
-  markAnnouncementAsRead,
-  setAnnouncementSkipSession,
-} from '#/utils/announcement-read-storage';
+import { markAnnouncementAsRead } from '#/utils/announcement-read-storage';
 import { renderAnnouncementHtml } from '#/utils/sanitize-html';
 
 const props = defineProps<{
@@ -66,11 +63,6 @@ const openAttachment = (url?: string | null) => {
   window.open(buildAttachmentUrl(url), '_blank', 'noopener,noreferrer');
 };
 
-const handleRemindLater = () => {
-  setAnnouncementSkipSession(props.userId);
-  closeModal();
-};
-
 const handleMarkRead = () => {
   const current = currentAnnouncement.value;
   if (!current?.id) {
@@ -104,7 +96,6 @@ defineExpose({
     :mask-closable="false"
     :keyboard="false"
     destroy-on-close
-    @cancel="handleRemindLater"
   >
     <div class="announcement-login-modal flex flex-col gap-4">
       <div v-if="progressText" class="text-sm text-foreground/70">
@@ -138,9 +129,6 @@ defineExpose({
       </div>
     </div>
     <template #footer>
-      <Button @click="handleRemindLater">
-        {{ $t('system.announcement.remindLater') }}
-      </Button>
       <Button type="primary" @click="handleMarkRead">
         {{ $t('system.announcement.markAsRead') }}
       </Button>

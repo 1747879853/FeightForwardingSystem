@@ -4,15 +4,11 @@ function getReadStorageKey(userId: string | number) {
   return `announcement:read:${userId}`;
 }
 
-export function getSkipSessionKey(userId: string | number) {
-  return `announcement:skip-session:${userId}`;
-}
-
 export function loadAnnouncementReadMap(
   userId: string | number,
 ): AnnouncementReadMap {
   try {
-    const raw = localStorage.getItem(getReadStorageKey(userId));
+    const raw = sessionStorage.getItem(getReadStorageKey(userId));
     if (!raw) {
       return {};
     }
@@ -30,7 +26,7 @@ export function markAnnouncementAsRead(
 ) {
   const map = loadAnnouncementReadMap(userId);
   map[String(announcementId)] = readAt;
-  localStorage.setItem(getReadStorageKey(userId), JSON.stringify(map));
+  sessionStorage.setItem(getReadStorageKey(userId), JSON.stringify(map));
 }
 
 export function isAnnouncementUnread(
@@ -46,12 +42,4 @@ export function isAnnouncementUnread(
     return false;
   }
   return new Date(lastModificationTime).getTime() > new Date(readAt).getTime();
-}
-
-export function setAnnouncementSkipSession(userId: string | number) {
-  sessionStorage.setItem(getSkipSessionKey(userId), '1');
-}
-
-export function isAnnouncementSkipSession(userId: string | number) {
-  return sessionStorage.getItem(getSkipSessionKey(userId)) === '1';
 }

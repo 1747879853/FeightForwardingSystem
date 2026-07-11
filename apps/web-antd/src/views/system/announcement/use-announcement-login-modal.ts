@@ -7,10 +7,7 @@ import { useAccessStore, useUserStore } from '@vben/stores';
 
 import { getAnnouncementPagedList } from '#/api/system/announcement-admin';
 import { abpActionCode } from '#/router/abp-authority';
-import {
-  isAnnouncementSkipSession,
-  isAnnouncementUnread,
-} from '#/utils/announcement-read-storage';
+import { isAnnouncementUnread } from '#/utils/announcement-read-storage';
 import {
   isAnnouncementEffective,
   sortAnnouncements,
@@ -43,10 +40,6 @@ export function useAnnouncementLoginModal() {
     }
 
     if (!hasAccessByCodes([ANNOUNCEMENT_GET_PERMISSION])) {
-      return;
-    }
-
-    if (isAnnouncementSkipSession(userId)) {
       return;
     }
 

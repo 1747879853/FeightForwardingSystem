@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-11 公告登录弹窗已读改为会话级存储](./changelogs/change-log-2026-07-11-announcement-read-session-storage.md)
 - [2026-07-11 海运出口编辑页 Tab 与服务组间距微调](./changelogs/change-log-2026-07-11-sea-export-edit-spacing-tweak.md)
 - [2026-07-11 海运出口服务流水线同 sortId 组视觉咬合修复](./changelogs/change-log-2026-07-11-sea-export-service-chevron-seamless.md)
 - [2026-07-11 海运出口编辑工作台记住并恢复当前 Tab](./changelogs/change-log-2026-07-11-sea-export-edit-tab-persist.md)
