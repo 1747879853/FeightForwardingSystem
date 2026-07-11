@@ -17,7 +17,7 @@ import { addSeaExport, editSeaExport } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
-import { CARGO_TYPE } from './data';
+import { CARGO_TYPE } from '../data';
 import {
   sanitizeOrderCtns,
   sanitizeOrderUsers,

@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { useRoute } from 'vue-router';
-import Form from './form.vue';
+import Form from './basic-info-form/form.vue';
 import orderFee from './orderFee/index.vue';
 import SeparateBill from './modules/separate-bill.vue';
 import changeOrder from '#/views/sea-export-admin/changeOrder/index.vue';

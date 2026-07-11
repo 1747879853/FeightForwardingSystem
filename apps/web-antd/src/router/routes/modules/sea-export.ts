@@ -34,7 +34,8 @@ const routes: RouteRecordRaw[] = [
           activePath: '/sea-exports',
           authority: abpPageAuthority('Admin.SeaExport'),
         },
-        component: () => import('#/views/sea-export-admin/form.vue'),
+        component: () =>
+          import('#/views/sea-export-admin/basic-info-form/form.vue'),
       },
       {
         path: ':id([0-9a-fA-F-]{36})/edit',

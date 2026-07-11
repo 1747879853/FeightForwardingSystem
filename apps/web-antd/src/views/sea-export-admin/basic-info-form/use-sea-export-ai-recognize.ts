@@ -2,7 +2,7 @@
  * 海运出口 AI 识别回填编排。
  *
  * 负责选文件 → 调用识别接口 → 规范化 → 回填多个子表单 / 箱表 / Select 回显 /
- * 只读信息 / 服务项联动的整条链路。纯规范化策略见 modules/ai-extract-utils.ts。
+ * 只读信息 / 服务项联动的整条链路。纯规范化策略见 ./ai-extract-utils.ts。
  */
 import type { ComputedRef, Ref } from 'vue';
 
@@ -29,7 +29,7 @@ import {
   normalizeAiFieldValue,
   pickExtractedLabel,
   resolveCitationKeys,
-} from './modules/ai-extract-utils';
+} from './ai-extract-utils';
 
 type AiRecognizeFormApi = {
   setValues: (values: Record<string, any>) => Promise<void> | void;

@@ -16,7 +16,6 @@ import { Page } from '@vben/common-ui';
 import { useAccess } from '@vben/access';
 
 import {
-  ArrowLeft,
   Copy,
   FileText,
   IconifyIcon,
@@ -24,7 +23,6 @@ import {
   Package,
   Save,
   Ship,
-  Users,
 } from '@vben/icons';
 
 import {
@@ -64,14 +62,14 @@ import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 
-import OrderCtnTable from './modules/order-ctn-table.vue';
+import OrderCtnTable from '../modules/order-ctn-table.vue';
 import {
   flattenDetail,
   normalizeOrderCtnsWithRowKey,
   toPortSelectedItems,
   toSelectedItems,
 } from './sea-export-detail-mapper';
-import { AI_EXTRACT_ACCEPT } from './modules/ai-extract-utils';
+import { AI_EXTRACT_ACCEPT } from './ai-extract-utils';
 import {
   CARGO_TYPE,
   createEmptyDgValues,
@@ -85,11 +83,11 @@ import {
   usePortFormSchema,
   useReeferFormSchema,
   useShipmentFormSchema,
-} from './data';
+} from '../data';
 import {
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
-} from './service-type';
+} from '../service-type';
 import type {
   EditServiceSnapshot,
   ServicePipelineState,
@@ -115,11 +113,11 @@ import {
 import { useSeaExportAiRecognize } from './use-sea-export-ai-recognize';
 import { useSeaExportSubmit } from './use-sea-export-submit';
 import { defaultOrderUsers, useOrderUsers } from './use-order-users';
-import { useSeaExportTabTitle } from './use-sea-export-tab-title';
-import { useSeaExportCopy } from './use-sea-export-copy';
-import { useYardRealQuery } from './use-yard-real-query';
-import { useSyncShipmentDates } from './use-sync-shipment-dates';
-import { useYundangOceanSubscribe } from './use-yundang-ocean-subscribe';
+import { useSeaExportTabTitle } from '../use-sea-export-tab-title';
+import { useSeaExportCopy } from '../use-sea-export-copy';
+import { useYardRealQuery } from '../use-yard-real-query';
+import { useSyncShipmentDates } from '../use-sync-shipment-dates';
+import { useYundangOceanSubscribe } from '../use-yundang-ocean-subscribe';
 
 const perm = createAbpPermission('Admin.SeaExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
@@ -159,12 +157,6 @@ const editId = computed<string | undefined>(() => {
 });
 
 const isEdit = computed(() => !!editId.value);
-
-const pageTitle = computed(() => {
-  return isEdit.value
-    ? $t('ui.actionTitle.edit', [$t('seaExport.export.name')])
-    : $t('ui.actionTitle.create', [$t('seaExport.export.name')]);
-});
 
 const pageLoading = ref(false);
 const printing = ref(false);
@@ -564,8 +556,6 @@ const getServicePipelineState = (
   }
   return 'upcoming';
 };
-const isServiceTypeNodeDone = (node: ServiceTypeNode) =>
-  getServicePipelineState(node) === 'done';
 const getServiceTypeNodeIcon = (node: ServiceTypeNode) => {
   const state = getServicePipelineState(node);
   if (state === 'done') return 'mdi:check-circle';
@@ -2103,10 +2093,6 @@ const handlePrint = async () => {
     hideLoading();
     printing.value = false;
   }
-};
-
-const handleBack = () => {
-  router.push('/sea-exports');
 };
 
 const cargoMainLayoutLeftRef = ref<HTMLElement | null>(null);

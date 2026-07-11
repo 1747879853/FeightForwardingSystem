@@ -3,7 +3,7 @@ import type { TextInAdminApi } from '#/api/common/text-in-admin';
 
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
 
-import { toDayjs } from '../sea-export-detail-mapper';
+import { toDayjs } from './sea-export-detail-mapper';
 
 export const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
 
