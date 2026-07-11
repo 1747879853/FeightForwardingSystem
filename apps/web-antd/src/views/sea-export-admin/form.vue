@@ -51,7 +51,6 @@ defineOptions({
 const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 import { CodeSourceSelect, UserSelect } from '#/adapter/component';
 import { useVbenForm } from '#/adapter/form';
-import { extractSeaExportToAddDto } from '#/api/common';
 import {
   addSeaExport,
   editSeaExport,
@@ -76,17 +75,10 @@ import {
   sanitizeOrderUsers,
   toDateOnlyString,
   toDateString,
-  toDayjs,
   toPortSelectedItems,
   toSelectedItems,
 } from './sea-export-detail-mapper';
-import {
-  AI_EXTRACT_ACCEPT,
-  buildAiExtractFormPayload,
-  isAiExtractSupportedFile,
-  pickExtractedLabel,
-  resolveCitationKeys,
-} from './modules/ai-extract-utils';
+import { AI_EXTRACT_ACCEPT } from './modules/ai-extract-utils';
 import {
   CARGO_TYPE,
   createEmptyDgValues,
@@ -127,6 +119,7 @@ import {
   SERVICE_TASK_STATUS_PROCESSED,
   sortServiceTypeNodesBySortId,
 } from './service-type-nodes';
+import { useSeaExportAiRecognize } from './use-sea-export-ai-recognize';
 import { defaultOrderUsers, useOrderUsers } from './use-order-users';
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
 import { useSeaExportCopy } from './use-sea-export-copy';
@@ -184,8 +177,6 @@ const submitting = ref(false);
 const printing = ref(false);
 const formSnapshotJson = ref<string | null>(null);
 const { openPrint } = usePrintFormat();
-const aiRecognizing = ref(false);
-const aiExtractFileInputRef = ref<HTMLInputElement | null>(null);
 const transportOrderId = ref<number | undefined>();
 const currentUserId = computed(() => {
   const rawUserId = userStore.userInfo?.userId;
@@ -1563,264 +1554,32 @@ const updateActiveSectionByScroll = () => {
   }
 };
 
-const AI_RECOGNIZE_ALLOWED_FIELDS = new Set([
-  'blType',
-  'billType',
-  'codeIssueTypeId',
-  'issueType',
-  'vessel',
-  'innerVoyno',
-  'carrierId',
-  'secondNotifierId',
-  'secondNotifierContent',
-  'podAgentId',
-  'podAgentContent',
-  'bookingAgentId',
-  'shipAgentId',
-  'yardId',
-  'noBillEnum',
-  'copyNoBillEnum',
-  'prepareAtId',
-  'closingTime',
-  'closeVgmTime',
-  'closeDocTime',
-  'closeManifestTime',
-  'signingTime',
-  'signingPortId',
-  'podId',
-  'podRemark',
-  'polId',
-  'polRemark',
-  'poT1Id',
-  'poT1Remark',
-  'poT2Id',
-  'poT2Remark',
-  'receivePortId',
-  'receivePortRemark',
-  'deliverPortId',
-  'deliverPortRemark',
-  'remark',
-  'commissionNum',
-  'mblNum',
-  'bookingNum',
-  'accountDate',
-  'settlementDate',
-  'codeSourceId',
-  'codeFrtId',
-  'codeServiceId',
-  'cargoId',
-  'tradeTermsType',
-  'goodsCompleteTime',
-  'etd',
-  'atd',
-  'eta',
-  'clientId',
-  'teamId',
-  'custBrokerId',
-  'warehouseId',
-  'insuranceId',
-  'consigneeId',
-  'consigneeContent',
-  'shipperId',
-  'shipperContent',
-  'notifierId',
-  'notifierContent',
-  'marks',
-  'pkgs',
-  'codePackageId',
-  'goodsDes',
-  'kgs',
-  'cbm',
-  'internalRemark',
-]);
-const AI_RECOGNIZE_DATE_FIELDS = new Set([
-  'goodsCompleteTime',
-  'etd',
-  'atd',
-  'eta',
-  'closingTime',
-  'closeVgmTime',
-  'closeDocTime',
-  'closeManifestTime',
-  'signingTime',
-  'accountDate',
-  'settlementDate',
-]);
-const parseNumberFromText = (value: unknown) => {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value !== 'string') return undefined;
-  const matched = value.replace(/,/g, '').match(/-?\d+(\.\d+)?/);
-  if (!matched) return undefined;
-  const parsed = Number(matched[0]);
-  return Number.isFinite(parsed) ? parsed : undefined;
-};
-const ENGLISH_UPPER_CASE_FIELDS = new Set([
-  'marks',
-  'goodsDes',
-  'shipperContent',
-  'consigneeContent',
-  'notifierContent',
-  'secondNotifierContent',
-  'podAgentContent',
-  'receivePortRemark',
-  'polRemark',
-  'poT1Remark',
-  'poT2Remark',
-  'podRemark',
-  'deliverPortRemark',
-  'vessel',
-  'innerVoyno',
-  'mblNum',
-]);
-const normalizeAiFieldValue = (field: string, value: unknown) => {
-  if (AI_RECOGNIZE_DATE_FIELDS.has(field)) {
-    return toDayjs(value as string | undefined);
-  }
-  if (field === 'pkgs' || field === 'kgs' || field === 'cbm') {
-    return parseNumberFromText(value);
-  }
-  if (ENGLISH_UPPER_CASE_FIELDS.has(field) && typeof value === 'string') {
-    return toEnglishUpperCase(value.trim());
-  }
-  if (field === 'bookingNum') {
-    return typeof value === 'string' ? value.trim() : value;
-  }
-  return value;
-};
-const applyAiRecognizedFormValues = async (
-  values: Record<string, any>,
-  options?: {
-    orderCtnsPayload?: SeaExportAdminApi.OrderCtnAddDto[];
-    orderCodeGoodssPayload?: number[];
+const { aiRecognizing, handleAiFileChange } = useSeaExportAiRecognize({
+  formApis: {
+    party: partyInfoFormApi,
+    basic: basicInfoFormApi,
+    shipment: shipmentFormApi,
+    port: portFormApi,
+    cargoTypeInline: cargoTypeInlineFormApi,
+    cargoMain: cargoMainFormApi,
+    cargoMetrics: cargoMetricsFormApi,
+    cargoRemark: cargoRemarkFormApi,
+    cargoDg: cargoDgFormApi,
+    cargoReefer: cargoReeferFormApi,
   },
-) => {
-  await Promise.all([
-    partyInfoFormApi.setValues(values),
-    basicInfoFormApi.setValues(values),
-    shipmentFormApi.setValues(values),
-    portFormApi.setValues(values),
-    cargoTypeInlineFormApi.setValues(values),
-    cargoMainFormApi.setValues(values),
-    cargoMetricsFormApi.setValues(values),
-    cargoRemarkFormApi.setValues(values),
-    cargoDgFormApi.setValues(values),
-    cargoReeferFormApi.setValues(values),
-  ]);
+  orderCtns,
+  entrustReadonlyInfo,
+  refreshEntrustReadonlyInfo,
+  syncTabTitleFromValues,
+  syncBasicInfoHeaderFields,
+  isEdit,
+  syncServiceTypesByPol,
+});
 
-  if (options?.orderCodeGoodssPayload?.length) {
-    await cargoTypeInlineFormApi.setValues({
-      orderCodeGoodss: options.orderCodeGoodssPayload,
-    });
-  }
-
-  if (options?.orderCtnsPayload?.length) {
-    orderCtns.value = normalizeOrderCtnsWithRowKey(options.orderCtnsPayload);
-  }
-
-  refreshEntrustReadonlyInfo({
-    ...entrustReadonlyInfo.value,
-    commissionNum:
-      values.commissionNum ?? entrustReadonlyInfo.value.commissionNum,
-    accountDate: values.accountDate ?? entrustReadonlyInfo.value.accountDate,
-    settlementDate:
-      values.settlementDate ?? entrustReadonlyInfo.value.settlementDate,
-  });
-  syncTabTitleFromValues(values);
-  await syncBasicInfoHeaderFields();
-
-  if (!isEdit.value && (values.polId != null || values.clientId != null)) {
-    await syncServiceTypesByPol({
-      polId: values.polId,
-      clientId: values.clientId,
-      force: true,
-    });
-  }
-};
-
-const applyAiExtractSelectedItems = (
-  values: Record<string, any>,
-  extractedSchema?: Record<string, unknown>,
-) => {
-  const schema = extractedSchema ?? {};
-  const item = (fieldName: string, componentProps: Record<string, any>) => ({
-    fieldName,
-    componentProps: { ...componentProps, size: 'small' },
-  });
-
-  basicInfoFormApi.updateSchema([
-    item('clientId', {
-      selectedItems: toSelectedItems(
-        values.clientId,
-        pickExtractedLabel(schema, resolveCitationKeys('clientId')),
-      ),
-    }),
-    item('codeIssueTypeId', {
-      selectedItems: toSelectedItems(
-        values.codeIssueTypeId,
-        pickExtractedLabel(schema, resolveCitationKeys('codeIssueTypeId')),
-        'billType',
-      ),
-    }),
-    item('carrierId', {
-      selectedItems: toSelectedItems(
-        values.carrierId,
-        pickExtractedLabel(schema, resolveCitationKeys('carrierId')),
-        'cnShortName',
-      ),
-    }),
-    item('shipAgentId', {
-      selectedItems: toSelectedItems(
-        values.shipAgentId,
-        pickExtractedLabel(schema, resolveCitationKeys('shipAgentId')),
-      ),
-    }),
-    item('codeServiceId', {
-      selectedItems: toSelectedItems(
-        values.codeServiceId,
-        pickExtractedLabel(schema, resolveCitationKeys('codeServiceId')),
-        'enName',
-      ),
-    }),
-  ]);
-
-  portFormApi.updateSchema([
-    item('polId', {
-      selectedItems: toPortSelectedItems(
-        values.polId,
-        pickExtractedLabel(schema, ['起运港名称']),
-        pickExtractedLabel(schema, ['起运港代码']),
-      ),
-    }),
-    item('podId', {
-      selectedItems: toPortSelectedItems(
-        values.podId,
-        pickExtractedLabel(schema, ['目的港名称']),
-        pickExtractedLabel(schema, ['目的港代码']),
-      ),
-    }),
-    item('deliverPortId', {
-      selectedItems: toPortSelectedItems(
-        values.deliverPortId,
-        pickExtractedLabel(schema, ['交货地名称']),
-        pickExtractedLabel(schema, ['交货港代码']),
-      ),
-    }),
-    item('signingPortId', {
-      selectedItems: toPortSelectedItems(
-        values.signingPortId,
-        pickExtractedLabel(schema, resolveCitationKeys('signingPortId')),
-      ),
-    }),
-  ]);
-
-  cargoMetricsFormApi.updateSchema([
-    item('codePackageId', {
-      selectedItems: toSelectedItems(
-        values.codePackageId,
-        pickExtractedLabel(schema, resolveCitationKeys('codePackageId')),
-      ),
-    }),
-  ]);
+const aiExtractFileInputRef = ref<HTMLInputElement | null>(null);
+const handleAiRecognize = () => {
+  if (aiRecognizing.value) return;
+  aiExtractFileInputRef.value?.click();
 };
 
 const loadEditData = async () => {
@@ -2450,60 +2209,6 @@ const handleSubmit = async () => {
 
 const handleCancel = () => {
   router.push('/sea-exports');
-};
-
-const handleAiFileChange = async (event: Event) => {
-  const target = event.target as HTMLInputElement | null;
-  const file = target?.files?.[0];
-  if (!file) return;
-
-  if (!isAiExtractSupportedFile(file)) {
-    message.warning('请上传 PDF 或图片文件（png/jpg/jpeg/bmp/tiff/webp）');
-    if (target) target.value = '';
-    return;
-  }
-
-  aiRecognizing.value = true;
-  const hideLoading = message.loading('AI识别中，请稍候...', 0);
-  try {
-    const result = await extractSeaExportToAddDto(file);
-    if (result.extract?.code != null && result.extract.code !== 200) {
-      message.error(result.extract.message || 'AI识别失败，请稍后重试');
-      return;
-    }
-
-    const payload = buildAiExtractFormPayload(result, {
-      allowedFields: AI_RECOGNIZE_ALLOWED_FIELDS,
-      normalizeValue: normalizeAiFieldValue,
-    });
-    const recognizedFieldCount = payload.filledFields.length;
-    if (recognizedFieldCount === 0) {
-      message.warning('识别成功，但没有可回填的字段');
-      return;
-    }
-
-    applyAiExtractSelectedItems(
-      payload.formValues,
-      result.extract?.extractedSchema,
-    );
-    await applyAiRecognizedFormValues(payload.formValues, {
-      orderCtnsPayload: payload.orderCtns,
-      orderCodeGoodssPayload: payload.orderCodeGoodss,
-    });
-
-    message.success(`AI识别完成，已回填 ${recognizedFieldCount} 个字段`);
-  } catch {
-    message.error('AI识别失败，请稍后重试');
-  } finally {
-    hideLoading();
-    aiRecognizing.value = false;
-    if (target) target.value = '';
-  }
-};
-
-const handleAiRecognize = () => {
-  if (aiRecognizing.value) return;
-  aiExtractFileInputRef.value?.click();
 };
 
 const syncFormSnapshot = async () => {
