@@ -1,14 +1,13 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { $t } from '#/locales';
 import { abpPageAuthority } from '#/router/abp-authority';
 
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      icon: 'lucide:ship',
-      order: 210,
-      title: '运价管理',
+      icon: 'lucide:route',
+      order: 190,
+      title: '航线管理',
       authority: abpPageAuthority('Admin.SeFreiPrice'),
     },
     name: 'FreightRate',
@@ -20,7 +19,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'lucide:ship',
           keepAlive: true,
-          title: '运价管理',
+          title: '运价查询',
           authority: abpPageAuthority('Admin.SeFreiPrice'),
         },
         component: () =>

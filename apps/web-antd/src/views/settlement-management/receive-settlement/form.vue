@@ -130,8 +130,8 @@ const canUnlock = computed(
   () => isEdit.value && locked.value && hasAccessByCodes([extraPerm.unlock]),
 );
 const pageTitle = computed(() => {
-  if (!isEdit.value) return '新建收费结算';
-  return isReadonly.value ? '查看收费结算' : '编辑收费结算';
+  if (!isEdit.value) return '新建收费核销';
+  return isReadonly.value ? '查看收费核销' : '编辑收费核销';
 });
 
 const selectedFeeIds = computed(() =>
@@ -558,7 +558,7 @@ function handleDelete() {
 
   Modal.confirm({
     title: '确认删除',
-    content: `确定要删除收费结算「${settlementNo.value || editId.value}」吗？`,
+    content: `确定要删除收费核销「${settlementNo.value || editId.value}」吗？`,
     okType: 'danger',
     onOk: async () => {
       actionLoading.value = true;
@@ -581,7 +581,7 @@ function handleLock() {
 
   Modal.confirm({
     title: '确认锁定',
-    content: `确定要锁定收费结算「${settlementNo.value || editId.value}」吗？锁定后将无法编辑和删除。`,
+    content: `确定要锁定收费核销「${settlementNo.value || editId.value}」吗？锁定后将无法编辑和删除。`,
     onOk: async () => {
       actionLoading.value = true;
       try {
@@ -603,7 +603,7 @@ function handleUnlock() {
 
   Modal.confirm({
     title: '确认解锁',
-    content: `确定要解锁收费结算「${settlementNo.value || editId.value}」吗？`,
+    content: `确定要解锁收费核销「${settlementNo.value || editId.value}」吗？`,
     onOk: async () => {
       actionLoading.value = true;
       try {

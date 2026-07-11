@@ -1,23 +1,23 @@
 ---
-title: 收费结算
-module: 结算管理
+title: 收费核销
+module: 费用管理
 author: Cursor Agent
-last_updated: 2026-06-29
+last_updated: 2026-07-11
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 收费结算用于把银行流水与应收费用的实际收款动作关联起来。财务人员先确定一条银行流水，再选择该结算对象下仍有剩余额度的“收”类型费用，录入本次结算金额，形成收费结算单。单据可锁定，锁定后只能查看或解锁，不能继续改主表、增删明细或删除单据。
+**白话解释：** 收费核销用于把银行流水与应收费用的实际收款动作关联起来。财务人员先确定一条银行流水，再选择该结算对象下仍有剩余额度的“收”类型费用，录入本次结算金额，形成收费核销单。单据可锁定，锁定后只能查看或解锁，不能继续改主表、增删明细或删除单据。侧边栏入口位于「费用管理」分组下，页面 URL 仍为 `/settlement-management/receive-settlement`。
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **收费结算列表：** 进入 `/settlement-management/receive-settlement` 后可按结算单号、结算时间、创建人和银行流水筛选收费结算单；查询区一行六列，结算时间范围占两列，银行流水通过下拉选择并直接传 `bankStatementId`；双击行进入编辑页，锁定单据进入只读查看页。
-- **银行流水 Tab：** 同一页面切换至「银行流水」Tab 时，展示与 `/bank-statement` 相同的列（含已结算金额、核销状态）及核销状态筛选；调用 `BankStatement/GetPagedListAsync`（按操作人权限过滤）；双击行快捷新建收费结算。
-- **新建收费结算：** 可从收费结算列表新建，若查询区已选银行流水则自动带入；也可从银行流水编辑页的“关联收费结算”卡片快捷新建并自动带入 `bankStatementId`。选中流水后在「结算信息」上方展示「银行流水信息」Card，含流水基础字段与结算进度汇总。
+- **收费核销列表：** 进入 `/settlement-management/receive-settlement` 后可按结算单号、结算时间、创建人和银行流水筛选收费核销单；查询区一行六列，结算时间范围占两列，银行流水通过下拉选择并直接传 `bankStatementId`；双击行进入编辑页，锁定单据进入只读查看页。
+- **银行流水 Tab：** 同一页面切换至「银行流水」Tab 时，展示与 `/bank-statement` 相同的列（含已结算金额、核销状态）及核销状态筛选；调用 `BankStatement/GetPagedListAsync`（按操作人权限过滤）；双击行快捷新建收费核销。
+- **新建收费核销：** 可从收费核销列表新建，若查询区已选银行流水则自动带入；也可从银行流水编辑页的“关联收费核销”卡片快捷新建并自动带入 `bankStatementId`。选中流水后在「结算信息」上方展示「银行流水信息」Card，含流水基础字段与结算进度汇总。
 - **添加结算明细：** 在表单内点击“添加明细”，右侧抽屉按银行流水关联的结算对象（只读）、**币别（只读，与流水一致）**、委托编号、主提单号拉取可结算费用，按业务分组展开后勾选费用并录入本次结算金额。明细表格通过勾选行 + 工具栏「删除」批量删除，不再使用操作列。
-- **编辑收费结算：** 未锁定单据可修改结算时间和备注；新增明细即时调用 `AddItemsAsync`，删除明细即时调用 `DeleteItemsAsync`。
+- **编辑收费核销：** 未锁定单据可修改结算时间和备注；新增明细即时调用 `AddItemsAsync`，删除明细即时调用 `DeleteItemsAsync`。
 - **锁定与解锁：** 编辑页顶部提供锁定/解锁按钮；锁定后隐藏保存、删除、添加明细等编辑入口。
-- **银行流水联动：** 银行流水编辑页展示关联收费结算子表，可搜索结算单号、快捷新建收费结算，也可双击行进入收费结算页。
+- **银行流水联动：** 银行流水编辑页展示关联收费核销子表，可搜索结算单号、快捷新建收费核销，也可双击行进入收费核销页。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -31,11 +31,11 @@ last_updated: 2026-06-29
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **银行流水** | 收款实际到账的流水记录，是收费结算主表必填归属。 | **银行流水**<br/>收费结算：`BankStatement/GetPagedListAsync`、`DetailAsync`、`GetReceiveSettlementPagedListAsync`（按当前用户操作人权限过滤，含列表筛选下拉 `BankStatementSelect`） | 列表查询区通过 `BankStatementSelect` 筛选；新建表单 picker 选择；从银行流水页进入时通过 `bankStatementId` query 预填。选中后在表单上方 Card 展示流水基础信息与结算进度（已结算不含本单、剩余可结算、本单合计）。 | 新建必填；已有结算明细后不能更换。保存时本单合计不得超过流水剩余可结算金额。 |
-| **结算时间** | 本次收费结算发生时间。 | **收费结算**<br/>`ReceiveSettlementAdmin/AddAsync`、`EditAsync` | 新建默认当前时间，可手动调整；编辑保存只提交该字段与备注。 | 必填；锁定后只读。 |
-| **结算明细** | 本次结算关联的订单费用集合。 | **收费结算**<br/>`GetOrderFeeGroupAsync`、`AddItemsAsync`、`DeleteItemsAsync` | 选费抽屉按业务分组返回可结算费用，确认后追加到主表明细；结算对象与币别均随银行流水固定，抽屉内不可修改；查询传 `currencyId` 与流水一致。 | 新建不能为空；费用不可重复；本次结算金额必须大于 0 且不超过剩余额度。 |
-| **剩余额度** | 费用可继续被收费结算占用的金额。 | **收费结算**<br/>`GetOrderFeeGroupAsync` | 抽屉默认将本次结算金额填为剩余额度。 | 前端限制不超过 `remainingAmount`，后端继续校验。 |
-| **锁定状态** | 控制单据是否允许编辑和删除。 | **收费结算**<br/>`DetailAsync`、`LockAsync`、`UnLockAsync` | 已锁定进入只读页；解锁后恢复编辑。 | 锁定后不能保存、删除、增删明细。 |
+| **银行流水** | 收款实际到账的流水记录，是收费核销主表必填归属。 | **银行流水**<br/>收费核销：`BankStatement/GetPagedListAsync`、`DetailAsync`、`GetReceiveSettlementPagedListAsync`（按当前用户操作人权限过滤，含列表筛选下拉 `BankStatementSelect`） | 列表查询区通过 `BankStatementSelect` 筛选；新建表单 picker 选择；从银行流水页进入时通过 `bankStatementId` query 预填。选中后在表单上方 Card 展示流水基础信息与结算进度（已结算不含本单、剩余可结算、本单合计）。 | 新建必填；已有结算明细后不能更换。保存时本单合计不得超过流水剩余可结算金额。 |
+| **结算时间** | 本次收费核销发生时间。 | **收费核销**<br/>`ReceiveSettlementAdmin/AddAsync`、`EditAsync` | 新建默认当前时间，可手动调整；编辑保存只提交该字段与备注。 | 必填；锁定后只读。 |
+| **结算明细** | 本次结算关联的订单费用集合。 | **收费核销**<br/>`GetOrderFeeGroupAsync`、`AddItemsAsync`、`DeleteItemsAsync` | 选费抽屉按业务分组返回可结算费用，确认后追加到主表明细；结算对象与币别均随银行流水固定，抽屉内不可修改；查询传 `currencyId` 与流水一致。 | 新建不能为空；费用不可重复；本次结算金额必须大于 0 且不超过剩余额度。 |
+| **剩余额度** | 费用可继续被收费核销占用的金额。 | **收费核销**<br/>`GetOrderFeeGroupAsync` | 抽屉默认将本次结算金额填为剩余额度。 | 前端限制不超过 `remainingAmount`，后端继续校验。 |
+| **锁定状态** | 控制单据是否允许编辑和删除。 | **收费核销**<br/>`DetailAsync`、`LockAsync`、`UnLockAsync` | 已锁定进入只读页；解锁后恢复编辑。 | 锁定后不能保存、删除、增删明细。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -49,7 +49,8 @@ last_updated: 2026-06-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-06-29 | `Fix` | 收费结算页「收费结算」「银行流水」两个 Tab 列表分别声明持久化 `tableId`，避免列/搜索项/排序配置互相覆盖。 | `ReceiveSettlementList` 与 `BankStatementList`；银行流水 Tab 与 `/bank-statement` 共用 `BankStatementList` 键。 |
+| 2026-07-11 | `Refactor` | 「收费结算」更名为「收费核销」；侧边栏入口迁至「费用管理」分组，页面 URL 不变。列表 Tab、权限文案、表单标题与确认弹窗同步更名。 | 路由在 `fee-management.ts` 以绝对 path 挂载 `ReceiveSettlement*` 子路由；`activePath` 仍指向 `/settlement-management/receive-settlement`。 |
+| 2026-06-29 | `Fix` | 收费核销页「收费核销」「银行流水」两个 Tab 列表分别声明持久化 `tableId`，避免列/搜索项/排序配置互相覆盖。 | `ReceiveSettlementList` 与 `BankStatementList`；银行流水 Tab 与 `/bank-statement` 共用 `BankStatementList` 键。 |
 | 2026-06-29 | `Feature` | 收费结算页「银行流水」Tab 列表新增已结算金额、核销状态列及核销状态筛选，与 Admin 银行流水列表字段对齐。 | 复用 `views/bank-statement/data.ts` 列与表单配置；`bank-statement-grid.vue` 增加 `#writeOffStatus` 插槽。 |
 | 2026-06-21 | `Style` | 添加明细抽屉搜索区改为一行五列，查询/确认按钮置于第 5 列。 | `wrapperClass: grid-cols-5`、`labelWidth: 64`，按钮通过 `expand-after` 插槽与筛选项同行。 |
 | 2026-06-21 | `Feature` | 添加明细抽屉新增只读币别，查询 `GetOrderFeeGroupAsync` 传 `currencyId` 与银行流水一致。 | `currencyId` 由 `bankStatementDetail` 经 `handleOpenAddFee` 传入 drawer props，搜索表单 `CurrencySelect` 禁用编辑。 |

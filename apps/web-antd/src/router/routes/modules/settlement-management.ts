@@ -1,18 +1,20 @@
 import type { RouteRecordRaw } from 'vue-router';
 
+import { $t } from '#/locales';
 import { abpPageAuthority } from '#/router/abp-authority';
 
 const routes: RouteRecordRaw[] = [
   {
     meta: {
       icon: 'mdi:cash-register',
-      order: 300,
-      title: '结算管理',
+      order: 220,
+      title: '财务管理',
       hideChildrenInMenu: false,
       authority: abpPageAuthority([
         'Admin.PaymentSettlement',
-        'Admin.ReceiveSettlement',
         'Admin.InvoiceIssue.Get',
+        'Admin.BankStatement',
+        'Admin.OrderFee.Lock',
       ]),
     },
     name: 'SettlementManagement',
@@ -57,44 +59,6 @@ const routes: RouteRecordRaw[] = [
           import('#/views/settlement-management/payment-settlement/form.vue'),
       },
       {
-        path: 'receive-settlement',
-        name: 'ReceiveSettlementList',
-        meta: {
-          icon: 'mdi:file-document-check-outline',
-          keepAlive: true,
-          title: '收费结算',
-          authority: abpPageAuthority('Admin.ReceiveSettlement.Get'),
-        },
-        component: () =>
-          import('#/views/settlement-management/receive-settlement/list.vue'),
-      },
-      {
-        path: 'receive-settlement/add',
-        name: 'ReceiveSettlementAdd',
-        meta: {
-          icon: 'mdi:file-document-edit-outline',
-          title: '新建收费结算',
-          authority: abpPageAuthority('Admin.ReceiveSettlement.Add'),
-          hideInMenu: true,
-          activePath: '/settlement-management/receive-settlement',
-        },
-        component: () =>
-          import('#/views/settlement-management/receive-settlement/form.vue'),
-      },
-      {
-        path: 'receive-settlement/edit/:id',
-        name: 'ReceiveSettlementEdit',
-        meta: {
-          icon: 'mdi:file-document-edit-outline',
-          title: '编辑收费结算',
-          authority: abpPageAuthority('Admin.ReceiveSettlement.Get'),
-          hideInMenu: true,
-          activePath: '/settlement-management/receive-settlement',
-        },
-        component: () =>
-          import('#/views/settlement-management/receive-settlement/form.vue'),
-      },
-      {
         path: 'invoice-issue',
         name: 'InvoiceIssueList',
         meta: {
@@ -131,6 +95,66 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/settlement-management/invoice-issue/form.vue'),
+      },
+      {
+        meta: {
+          icon: 'mdi:bank-transfer',
+          title: '银行流水',
+          hideChildrenInMenu: true,
+          authority: abpPageAuthority('Admin.BankStatement'),
+        },
+        name: 'BankStatement',
+        path: '/bank-statement',
+        children: [
+          {
+            path: '',
+            name: 'BankStatementList',
+            meta: {
+              icon: 'mdi:bank-transfer',
+              keepAlive: true,
+              title: '银行流水',
+              authority: abpPageAuthority('Admin.BankStatement'),
+              hideInMenu: true,
+            },
+            component: () => import('#/views/bank-statement/list.vue'),
+          },
+          {
+            path: 'add',
+            name: 'BankStatementAdd',
+            meta: {
+              icon: 'mdi:bank-transfer',
+              title: '新建银行流水',
+              authority: abpPageAuthority('Admin.BankStatement'),
+              hideInMenu: true,
+              activePath: '/bank-statement',
+            },
+            component: () => import('#/views/bank-statement/form.vue'),
+          },
+          {
+            path: 'edit/:id',
+            name: 'BankStatementEdit',
+            meta: {
+              icon: 'mdi:bank-transfer',
+              title: '编辑银行流水',
+              authority: abpPageAuthority('Admin.BankStatement'),
+              hideInMenu: true,
+              activePath: '/bank-statement',
+            },
+            component: () => import('#/views/bank-statement/form.vue'),
+          },
+        ],
+      },
+      {
+        path: 'fee-lock',
+        name: 'SeaExportFeeLockList',
+        meta: {
+          icon: 'mdi:lock-outline',
+          keepAlive: true,
+          title: $t('seaExport.export.feeLock.list'),
+          authority: abpPageAuthority('Admin.OrderFee.Lock'),
+        },
+        component: () =>
+          import('#/views/fee-management/fee-lock/fee-lock-list.vue'),
       },
     ],
   },

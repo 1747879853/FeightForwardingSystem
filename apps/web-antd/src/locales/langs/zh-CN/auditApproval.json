@@ -60,7 +60,7 @@
     "detail": "费用审核详情"
   },
   "paymentReview": {
-    "title": "付费审核",
+    "title": "付费审批",
     "applicationNo": "申请单号",
     "settlementName": "结算对象",
     "currencyCode": "结算币别",

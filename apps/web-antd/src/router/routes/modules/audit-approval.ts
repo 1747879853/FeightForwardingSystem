@@ -7,7 +7,7 @@ const routes: RouteRecordRaw[] = [
   {
     meta: {
       icon: 'mdi:file-document-check-outline',
-      order: 202,
+      order: 210,
       title: $t('auditApproval.title'),
       hideChildrenInMenu: false,
       authority: abpPageAuthority([

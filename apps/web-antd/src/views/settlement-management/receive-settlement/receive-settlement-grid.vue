@@ -134,13 +134,13 @@ function handleBatchDelete() {
 
   const lockedItems = rows.filter((row) => row.locked);
   if (lockedItems.length > 0) {
-    message.warning('选中的记录中有已锁定的收费结算，无法删除');
+    message.warning('选中的记录中有已锁定的收费核销，无法删除');
     return;
   }
 
   Modal.confirm({
     title: '确认删除',
-    content: `确定要删除选中的 ${rows.length} 条收费结算吗？`,
+    content: `确定要删除选中的 ${rows.length} 条收费核销吗？`,
     okType: 'danger',
     onOk: async () => {
       actionLoading.value = true;

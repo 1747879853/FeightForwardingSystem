@@ -1,13 +1,13 @@
 ---
 title: 公告管理
-module: 系统管理
+module: 公告管理
 author: auto-doc-sync
 last_updated: 2026-07-11
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 管理员在系统管理下维护面向内部用户的系统公告，可配置生效时间、富文本内容与附件。拥有公告查看权限的用户登录后，未读且在有效期内的公告会以 Modal 逐条强提醒。
+**白话解释：** 管理员维护面向内部用户的系统公告，可配置生效时间、富文本内容与附件。拥有公告查看权限的用户登录后，未读且在有效期内的公告会以 Modal 逐条强提醒。侧边栏自「系统管理」子项提升为独立顶级菜单，页面 URL 仍为 `/system/announcement`。
 
 **路由与源码定位：**
 
@@ -17,7 +17,7 @@ last_updated: 2026-07-11
 | 路由名称 | `SystemAnnouncement` |
 | 页面组件 | `src/views/system/announcement/list.vue` |
 | 权限口径 | `Admin.Announcement` / `Admin.Announcement.Get` |
-| 关键源码 | `src/router/routes/modules/system.ts`<br/>`src/api/system/announcement-admin.ts`<br/>`src/views/system/announcement/`<br/>`src/layouts/basic.vue` |
+| 关键源码 | `src/router/routes/modules/announcement.ts`<br/>`src/api/system/announcement-admin.ts`<br/>`src/views/system/announcement/`<br/>`src/layouts/basic.vue` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
@@ -54,6 +54,7 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-07-11 | 重构 | 侧边栏从「系统管理」子项提升为独立顶级「公告管理」 | 新增 `announcement.ts` 路由模块，`order: 9998`；`system.ts` 移除公告子路由 |
 | 2026-07-11 | 调整 | 登录弹窗仅保留「我已阅读」，已读改存 sessionStorage | 移除 skip-session；关闭浏览器后会话清空可再弹 |
 | 2026-06-23 | 重构 | 新建/编辑改为居中弹窗，排序与备注同列 | 富文本 `autoHeight` 避免与 Modal 滚动条叠加 |
 | 2026-06-23 | 重构 | 移除适用部门字段与登录弹窗组织过滤 | 具备查看权限用户可见全部有效未读公告 |

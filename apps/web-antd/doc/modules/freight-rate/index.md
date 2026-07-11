@@ -1,13 +1,13 @@
 ---
-title: 运价管理
-module: 运价管理
+title: 运价查询
+module: 航线管理
 author: auto-doc-sync
-last_updated: 2026-06-12
+last_updated: 2026-07-11
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 维护海运运价信息，为委托费用测算和报价提供基础数据入口。
+**白话解释：** 维护海运运价信息，为委托费用测算和报价提供基础数据入口。侧边栏位于「航线管理」分组下，子菜单名称为「运价查询」，页面路由仍为 `/freight-rate`。
 
 **路由与源码定位：**
 
@@ -49,6 +49,7 @@ last_updated: 2026-06-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-11 | `Refactor` | 侧边栏由独立「运价管理」改为「航线管理」分组下的「运价查询」子菜单；页面 path 与组件不变。 | `freight-rate.ts` 父级 `title` 为「航线管理」，`order: 190`；子路由 `FreightRateList` title 为「运价查询」。 |
 | 2026-06-12 | `Feature` | 列表航线 Tab 靠左展示，超出时可左右滚动切换，且不再挤占右侧批量操作按钮。 | Tab 区与按钮区分 slot 布局；滚动动画期间只改 DOM，结束后再更新 Vue 滚动状态。 |
 | 2026-06-12 | `Fix` | 批量新增弹窗一次新增多行时改为批量插入并增加 loading 反馈，减轻 10 行级卡顿。 | `insertRowsBatch` 合并 `getFullData` + `loadData` 替代循环 `insertAt`；复制行同步走同一路径。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/freight-rate` 对应组件 `src/views/sea-export-admin/freight-rate/list.vue`，权限口径为 未在路由中声明独立权限。 |

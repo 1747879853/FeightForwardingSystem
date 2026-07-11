@@ -1,23 +1,23 @@
 ---
 title: 费用锁定
-module: 费用管理
+module: 财务管理
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-07-11
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。
+**白话解释：** 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。菜单归属「财务管理」分组，与付费结算、银行流水等财务收尾动作并列。
 
 **路由与源码定位：**
 
 | 项目 | 内容 |
 | :-- | :-- |
-| 页面路由 | `/fee-management/fee-lock` |
+| 页面路由 | `/settlement-management/fee-lock` |
 | 路由名称 | `SeaExportFeeLockList` |
 | 页面组件 | `src/views/fee-management/fee-lock/fee-lock-list.vue` |
 | 权限口径 | Admin.OrderFee.Lock / Admin.OrderFee.Lock.Get |
-| 关键源码 | `src/router/routes/modules/fee-management.ts`<br/>`src/views/fee-management/fee-lock/fee-lock-list.vue`<br/>`src/views/fee-management/fee-lock/fee-lock-data.ts`<br/>`src/views/fee-management/payment-application/list.vue`<br/>`src/views/fee-management/payment-application/form.vue`<br/>`src/views/fee-management/payment-application/data.ts`<br/>`src/views/fee-management/statement/index.vue`<br/>`src/views/fee-management/statement/editor.vue`<br/>`src/views/fee-management/statement/data.ts`<br/>`src/api/settlement-management/payment-application-admin.ts`<br/>`src/api/settlement-management/statement-admin.ts` |
+| 关键源码 | `src/router/routes/modules/settlement-management.ts`<br/>`src/views/fee-management/fee-lock/fee-lock-list.vue`<br/>`src/views/fee-management/fee-lock/fee-lock-data.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
@@ -45,4 +45,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/fee-management/fee-lock` 对应组件 `src/views/fee-management/fee-lock/fee-lock-list.vue`，权限口径为 Admin.OrderFee.Lock / Admin.OrderFee.Lock.Get。 |
+| 2026-07-11 | `Refactor` | 菜单从「费用管理」迁至「财务管理」下；路由 path 由 `/fee-management/fee-lock` 改为 `/settlement-management/fee-lock`，页面组件与权限码不变。 | 路由定义在 `settlement-management.ts` 子项；`order` 位于付费结算、发票开出、银行流水之后。 |
+| 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；原页面 `/fee-management/fee-lock` 对应组件 `fee-lock-list.vue`。 |

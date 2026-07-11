@@ -19,7 +19,6 @@ const routes: RouteRecordRaw[] = [
         'Admin.Team.Organization',
         'Admin.WorkFlow',
         'Admin.Enumeration',
-        'Admin.Announcement',
         'Admin.Setting.ClearCache',
       ]),
     },
@@ -132,17 +131,6 @@ const routes: RouteRecordRaw[] = [
           authority: abpPageAuthority('Admin.Enumeration'),
         },
         component: () => import('#/views/system/enumeration/list.vue'),
-      },
-      {
-        path: '/system/announcement',
-        name: 'SystemAnnouncement',
-        meta: {
-          icon: 'mdi:bullhorn-outline',
-          keepAlive: true,
-          title: $t('system.announcement.title'),
-          authority: abpPageAuthority('Admin.Announcement'),
-        },
-        component: () => import('#/views/system/announcement/list.vue'),
       },
       {
         path: '/system/cache',

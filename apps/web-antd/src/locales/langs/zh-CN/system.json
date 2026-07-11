@@ -353,7 +353,7 @@
           "SettlementNo": "付费结算单号"
         },
         "ReceiveSettlement": {
-          "SettlementNo": "收费结算单号"
+          "SettlementNo": "收费核销单号"
         },
         "BankStatement": {
           "BankStatementNo": "银行流水号"

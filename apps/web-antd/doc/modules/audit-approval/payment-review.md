@@ -1,13 +1,13 @@
 ---
-title: 付款申请审核
+title: 付费审批
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-06-28
+last_updated: 2026-07-11
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 财务或审批人集中处理付款申请审核任务。选中列表中的申请后，可在同页查看费用合计、附件与费用明细，再执行「审核全部」或「批量驳回」。
+**白话解释：** 财务或审批人集中处理付款申请审批任务。选中列表中的申请后，可在同页查看费用合计、附件与费用明细，再执行「审核全部」或「批量驳回」。菜单文案由「付费审核」更名为「付费审批」。
 
 **路由与源码定位：**
 
@@ -67,5 +67,6 @@ last_updated: 2026-06-28
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-11 | `Refactor` | 侧边栏菜单文案由「付费审核」更名为「付费审批」，路由 path 与审核逻辑不变。 | `auditApproval.json` 中 `paymentReview.title` 更新；`audit-approval.ts` `order` 调整为 210。 |
 | 2026-06-28 | `Feature` | 重构为主从布局：上左列表、上右费用合计+附件、下通铺费用明细；工具栏仅保留审核全部与批量驳回。 | 新增 `detail-panel.vue` 统一布局与详情加载；复用 `payment-application/form-data.ts` 保证合计/明细口径一致；`paymentApplicationId` 与任务 `id` 职责分离。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；权限口径为 Admin.PaymentApplication.Audit / Admin.PaymentApplication.Audit.Get。 |
