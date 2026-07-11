@@ -516,10 +516,27 @@ const getServiceLockedFieldNames = (): Set<string> => {
 const applyServiceLockedFields = () => {
   if (!isEdit.value) return;
   const lockedFields = getServiceLockedFieldNames();
-  const patches = SERVICE_LOCKABLE_FIELD_NAMES.map((fieldName) => ({
-    fieldName,
-    componentProps: { disabled: lockedFields.has(fieldName) },
-  }));
+  const patches = SERVICE_LOCKABLE_FIELD_NAMES.map((fieldName) => {
+    // vessel 使用 VesselVoyageInput 合并组件，componentProps 为函数，
+    // 需保留 secondFieldValue（航次）等动态入参，否则 updateSchema 会以
+    // 静态对象覆盖函数，导致航次显示丢失且无法写回 innerVoyno。
+    if (fieldName === 'vessel') {
+      return {
+        fieldName,
+        componentProps: (values: Record<string, any>, formApi: any) => ({
+          formContext: formApi,
+          secondFieldName: 'innerVoyno',
+          secondFieldValue: values?.innerVoyno ?? '',
+          size: 'small',
+          disabled: lockedFields.has(fieldName),
+        }),
+      };
+    }
+    return {
+      fieldName,
+      componentProps: { disabled: lockedFields.has(fieldName) },
+    };
+  });
   basicInfoFormApi.updateSchema(patches);
   shipmentFormApi.updateSchema(patches);
   portFormApi.updateSchema(patches);
@@ -1736,9 +1753,16 @@ const loadEditData = async () => {
         },
       },
       {
+        // codeFrtId 使用 FrtPrepareInput 合并组件，componentProps 为函数，
+        // 需保留 secondFieldValue（付费地点）/formContext 等动态入参，否则
+        // updateSchema 会以静态对象覆盖函数，导致付费地点显示丢失且无法写回 prepareAtId。
         fieldName: 'codeFrtId',
-        componentProps: {
+        componentProps: (values: Record<string, any>, formApi: any) => ({
+          formContext: formApi,
+          secondFieldName: 'prepareAtId',
+          secondFieldValue: values?.prepareAtId ?? undefined,
           frtProps: {
+            placeholder: $t('ui.placeholder.select'),
             selectedItems: toSelectedItems(
               to?.codeFrtId,
               (to as any)?.codeFrtName,
@@ -1747,6 +1771,7 @@ const loadEditData = async () => {
             allowClear: true,
           },
           prepareProps: {
+            placeholder: $t('ui.placeholder.select'),
             selectedItems: toPortSelectedItems(
               formValues.prepareAtId,
               detail.prepareAtName ?? (to as any)?.prepareAtName,
@@ -1755,7 +1780,7 @@ const loadEditData = async () => {
             allowClear: true,
           },
           size: 'small',
-        },
+        }),
       },
       {
         fieldName: 'codeServiceId',
