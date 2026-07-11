@@ -962,6 +962,13 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       },
     },
     {
+      field: 'isYundangSubscribed',
+      title: $t('seaExport.yundang.statusColumn'),
+      minWidth: 100,
+      sortable: false,
+      slots: { default: 'yundangSubscribeStatus' },
+    },
+    {
       field: 'creatorUserNickName',
       title: '录入人',
       minWidth: 120,

@@ -884,9 +884,17 @@
   },
   "yundang": {
     "subscribe": "运踪订阅",
+    "resubscribe": "重新订阅",
+    "alreadySubscribed": "该单号已成功订阅，无需重复订阅",
     "batchHint": "已选超过 {0} 票，后端将自动分批提交",
     "subscribing": "运踪订阅中…",
     "pleaseSelectRecords": "请先勾选要订阅的海运出口",
+    "statusColumn": "运踪订阅",
+    "status": {
+      "notSubscribed": "未订阅",
+      "failed": "订阅失败",
+      "success": "订阅成功"
+    },
     "result": {
       "title": "运踪订阅结果",
       "summary": "共 {0} 条，成功 {1} 条，失败 {2} 条",

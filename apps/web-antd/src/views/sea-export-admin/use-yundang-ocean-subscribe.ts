@@ -21,6 +21,47 @@ export interface SeaExportSubscribeRowInfo {
   bookingNum?: null | string;
 }
 
+/** 云当运踪订阅状态：未订阅 / 订阅失败 / 订阅成功 */
+export type YundangSubscribeStatus = 'failed' | 'none' | 'success';
+
+/**
+ * 依据 isYundangSubscribed / isYundangSubscribeSuccess 组合推导订阅状态。
+ * 无订阅记录 → none；有记录但未成功 → failed；有记录且成功 → success。
+ */
+export function getYundangSubscribeStatus(row: {
+  isYundangSubscribeSuccess?: boolean | null;
+  isYundangSubscribed?: boolean | null;
+}): YundangSubscribeStatus {
+  if (!row.isYundangSubscribed) {
+    return 'none';
+  }
+  return row.isYundangSubscribeSuccess ? 'success' : 'failed';
+}
+
+/** 订阅状态对应的展示文案与 Tag 颜色 */
+export function getYundangSubscribeStatusMeta(status: YundangSubscribeStatus): {
+  color: string;
+  label: string;
+} {
+  switch (status) {
+    case 'failed': {
+      return { color: 'error', label: $t('seaExport.yundang.status.failed') };
+    }
+    case 'success': {
+      return {
+        color: 'success',
+        label: $t('seaExport.yundang.status.success'),
+      };
+    }
+    default: {
+      return {
+        color: 'default',
+        label: $t('seaExport.yundang.status.notSubscribed'),
+      };
+    }
+  }
+}
+
 export function buildSeaExportSubscribeRow(
   row: SeaExportAdminApi.SeaExportDto,
 ): SeaExportSubscribeRowInfo {

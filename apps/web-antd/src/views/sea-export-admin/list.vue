@@ -8,7 +8,7 @@ import { useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { Copy, Plus } from '@vben/icons';
 
-import { Button, message } from 'ant-design-vue';
+import { Button, message, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -30,6 +30,8 @@ import { useColumns, useGridFormSchema } from './data';
 import { useSeaExportCopy } from './use-sea-export-copy';
 import {
   buildSeaExportSubscribeRow,
+  getYundangSubscribeStatus,
+  getYundangSubscribeStatusMeta,
   useYundangOceanSubscribe,
 } from './use-yundang-ocean-subscribe';
 
@@ -262,9 +264,12 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
-const handleYundangSubscribe = () => {
+const handleYundangSubscribe = async () => {
   const rows = getCheckboxRecords();
-  subscribe(rows.map((row) => buildSeaExportSubscribeRow(row)));
+  await subscribe(rows.map((row) => buildSeaExportSubscribeRow(row)));
+  if (rows.length > 0) {
+    gridApi.query();
+  }
 };
 
 const onGroupFieldChange = (value: number | undefined) => {
@@ -325,6 +330,17 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           :value="grouping.enabledField.value?.value"
           @change="onGroupFieldChange"
         />
+      </template>
+      <template #yundangSubscribeStatus="{ row }">
+        <Tag
+          :color="
+            getYundangSubscribeStatusMeta(getYundangSubscribeStatus(row)).color
+          "
+        >
+          {{
+            getYundangSubscribeStatusMeta(getYundangSubscribeStatus(row)).label
+          }}
+        </Tag>
       </template>
       <template #carrierWithLogo="{ row }">
         <span class="inline-flex items-center gap-1">

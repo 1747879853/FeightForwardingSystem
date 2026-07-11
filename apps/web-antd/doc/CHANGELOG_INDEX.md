@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-11 海运出口对接云当订阅状态字段（列表列 + 编辑页状态联动）](./changelogs/change-log-2026-07-11-sea-export-yundang-subscribe-status-fields.md)
 - [2026-07-11 海运出口基础信息表单目录化收敛 + 死代码清理](./changelogs/change-log-2026-07-11-sea-export-form-directory-and-cleanup.md)
 - [2026-07-11 海运出口基础信息 form.vue 模块化拆分（批次 1–4）](./changelogs/change-log-2026-07-11-sea-export-form-modularization.md)
 - [2026-07-11 公告登录弹窗已读改为会话级存储](./changelogs/change-log-2026-07-11-announcement-read-session-storage.md)

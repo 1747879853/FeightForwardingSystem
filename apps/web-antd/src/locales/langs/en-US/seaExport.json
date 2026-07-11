@@ -592,9 +592,17 @@
   },
   "yundang": {
     "subscribe": "Tracking Subscribe",
+    "resubscribe": "Resubscribe",
+    "alreadySubscribed": "This bill has already been subscribed successfully.",
     "batchHint": "More than {0} records selected; the server will submit in batches.",
     "subscribing": "Subscribing tracking…",
     "pleaseSelectRecords": "Please select sea export records to subscribe.",
+    "statusColumn": "Tracking",
+    "status": {
+      "notSubscribed": "Not Subscribed",
+      "failed": "Failed",
+      "success": "Subscribed"
+    },
     "result": {
       "title": "Tracking Subscribe Result",
       "summary": "Total {0}, success {1}, failed {2}",

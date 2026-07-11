@@ -117,7 +117,11 @@ import { useSeaExportTabTitle } from '../use-sea-export-tab-title';
 import { useSeaExportCopy } from '../use-sea-export-copy';
 import { useYardRealQuery } from '../use-yard-real-query';
 import { useSyncShipmentDates } from '../use-sync-shipment-dates';
-import { useYundangOceanSubscribe } from '../use-yundang-ocean-subscribe';
+import {
+  getYundangSubscribeStatus,
+  getYundangSubscribeStatusMeta,
+  useYundangOceanSubscribe,
+} from '../use-yundang-ocean-subscribe';
 
 const perm = createAbpPermission('Admin.SeaExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
@@ -1572,6 +1576,8 @@ const loadEditData = async () => {
   try {
     const detail = await getSeaExportDetail(editId.value);
     transportOrderId.value = detail.transportOrder?.id;
+    yundangSubscribed.value = detail.isYundangSubscribed ?? false;
+    yundangSubscribeSuccess.value = detail.isYundangSubscribeSuccess ?? false;
     const formValues = flattenDetail(detail);
     const to = detail.transportOrder;
 
@@ -1971,6 +1977,28 @@ const { copying: copyingSeaExport, copyFrom: copySeaExportFromCurrent } =
 
 const { ResultModal, subscribe, subscribing } = useYundangOceanSubscribe();
 
+/** 云当运踪订阅状态（随详情返回，订阅后重新加载详情刷新） */
+const yundangSubscribed = ref(false);
+const yundangSubscribeSuccess = ref(false);
+const yundangSubscribeStatus = computed(() =>
+  getYundangSubscribeStatus({
+    isYundangSubscribed: yundangSubscribed.value,
+    isYundangSubscribeSuccess: yundangSubscribeSuccess.value,
+  }),
+);
+const yundangSubscribeStatusMeta = computed(() =>
+  getYundangSubscribeStatusMeta(yundangSubscribeStatus.value),
+);
+/** 已成功订阅的同单号禁止重复批量订阅 */
+const yundangSubscribeDisabled = computed(
+  () => yundangSubscribeStatus.value === 'success',
+);
+const yundangSubscribeButtonText = computed(() =>
+  yundangSubscribeStatus.value === 'failed'
+    ? $t('seaExport.yundang.resubscribe')
+    : $t('seaExport.yundang.subscribe'),
+);
+
 const { loading: yardRealQueryLoading, runQuery: runYardRealQuery } =
   useYardRealQuery({
     editId,
@@ -2004,7 +2032,7 @@ const handleYardRealQuery = async () => {
 };
 
 const handleYundangSubscribe = async () => {
-  if (!isEdit.value || !editId.value) {
+  if (!isEdit.value || !editId.value || yundangSubscribeDisabled.value) {
     return;
   }
   const basicValues = await basicInfoFormApi.getValues();
@@ -2016,6 +2044,7 @@ const handleYundangSubscribe = async () => {
       bookingNum: String(basicValues.bookingNum ?? ''),
     },
   ]);
+  await loadEditData();
 };
 
 const handleCopySeaExport = async () => {
@@ -2598,22 +2627,35 @@ defineExpose({
                       />
                       <span class="align-middle">打印</span>
                     </Button>
-                    <Button
-                      v-if="isEdit"
-                      v-access:code="externalApiUseCode"
-                      size="small"
-                      class="flex items-center justify-center"
-                      :loading="subscribing"
-                      @click="handleYundangSubscribe"
-                    >
-                      <IconifyIcon
-                        icon="mdi:radar"
-                        class="mr-1 inline-block size-3.5 align-middle"
-                      />
-                      <span class="align-middle">{{
-                        $t('seaExport.yundang.subscribe')
-                      }}</span>
-                    </Button>
+                    <template v-if="isEdit">
+                      <Tag :color="yundangSubscribeStatusMeta.color">
+                        {{ yundangSubscribeStatusMeta.label }}
+                      </Tag>
+                      <Tooltip
+                        :title="
+                          yundangSubscribeDisabled
+                            ? $t('seaExport.yundang.alreadySubscribed')
+                            : ''
+                        "
+                      >
+                        <Button
+                          v-access:code="externalApiUseCode"
+                          size="small"
+                          class="flex items-center justify-center"
+                          :loading="subscribing"
+                          :disabled="yundangSubscribeDisabled"
+                          @click="handleYundangSubscribe"
+                        >
+                          <IconifyIcon
+                            icon="mdi:radar"
+                            class="mr-1 inline-block size-3.5 align-middle"
+                          />
+                          <span class="align-middle">{{
+                            yundangSubscribeButtonText
+                          }}</span>
+                        </Button>
+                      </Tooltip>
+                    </template>
                     <Button size="small" @click="handleCancel">
                       {{ $t('common.cancel') }}
                     </Button>
