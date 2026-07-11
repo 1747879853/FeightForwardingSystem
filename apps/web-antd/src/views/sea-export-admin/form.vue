@@ -375,20 +375,35 @@ const buildServiceTypeNodes = (
       };
     });
 };
+type EditServiceSnapshot = {
+  savedServiceTypeSet: Set<number>;
+  savedSortIdMap: Map<number, number>;
+  taskMap: Map<number, ServiceTypeTaskInfo>;
+};
+const editServiceSnapshot = ref<EditServiceSnapshot | null>(null);
+/** 编辑态：详情原始起运港 / 服务项集合 / 是否已有任务，用于保存时判断是否重建 */
+const editOriginalPolId = ref<string>('');
+const editOriginalServiceTypeSet = ref<Set<number>>(new Set());
+const editHasAnyServiceTask = ref(false);
+/** 编辑态回填期间抑制起运港/委托单位联动，避免详情回填 setValues 误触发重写勾选 */
+const suppressServiceTypeLinkage = ref(false);
 const parseDetailServiceTypes = (detail: SeaExportAdminApi.SeaExportDto) => {
   const services = detail.seaExportServices ?? [];
-  const savedSet = new Set<number>(services.map((item) => item.serviceType));
-  // 编辑态以已保存的 seaExportServices.sortId 作为分组/排序依据（快照优先于 POL 配置）
+  const savedSet = new Set<number>();
+  // 编辑态服务项目仅来自详情 seaExportServices，不再参与 POL 联动
   const savedSortIdMap = new Map<number, number>();
   const taskMap = new Map<number, ServiceTypeTaskInfo>();
   services.forEach((item) => {
+    const serviceType = Number(item.serviceType);
+    if (!Number.isFinite(serviceType)) return;
+    savedSet.add(serviceType);
     if (item.sortId != null) {
-      savedSortIdMap.set(item.serviceType, Number(item.sortId));
+      savedSortIdMap.set(serviceType, Number(item.sortId));
     }
     const rawTaskId = item.seServiceTask?.id;
     const taskId =
       rawTaskId == null ? undefined : String(rawTaskId).trim() || undefined;
-    taskMap.set(item.serviceType, {
+    taskMap.set(serviceType, {
       taskId,
       taskStatus:
         item.seServiceTask == null
@@ -405,6 +420,46 @@ const parseDetailServiceTypes = (detail: SeaExportAdminApi.SeaExportDto) => {
     });
   });
   return { savedSet, savedSortIdMap, taskMap };
+};
+/**
+ * 编辑态首次回填：以港口配置为「元数据」（sortId/userAttribute/锁定/必填），
+ * 勾选状态与任务进度仍以详情为准；港口配置缺失的历史服务项照常保留。
+ */
+const applyServiceTypeStateForEditInitial = (
+  polConfig: null | SeaExportAdminApi.ServiceTypeByPolDto[],
+  snapshot: EditServiceSnapshot,
+) => {
+  const polNodes = Array.isArray(polConfig) ? polConfig : [];
+  latestAvailableServiceTypes.value = polNodes;
+  const nodes = buildServiceTypeNodes(
+    polNodes,
+    serviceTypeLabelMap.value,
+    snapshot.savedServiceTypeSet,
+    undefined,
+    snapshot.taskMap,
+    snapshot.savedSortIdMap,
+  );
+  const presentTypes = new Set(nodes.map((node) => node.serviceType));
+  snapshot.savedServiceTypeSet.forEach((serviceType) => {
+    if (presentTypes.has(serviceType)) return;
+    const taskInfo = snapshot.taskMap.get(serviceType);
+    nodes.push({
+      serviceType,
+      label: serviceTypeLabelMap.value.get(serviceType) ?? `${serviceType}`,
+      sortId: snapshot.savedSortIdMap.get(serviceType) ?? serviceType,
+      checked: true,
+      taskStatus: taskInfo?.taskStatus,
+      taskId: taskInfo?.taskId,
+      completionUserId: taskInfo?.completionUserId,
+      completionTime: taskInfo?.completionTime,
+      completionUserNickName: taskInfo?.completionUserNickName,
+      taskUsers: taskInfo?.taskUsers,
+    });
+  });
+  serviceTypeNodes.value = sortServiceTypeNodesBySortId(nodes);
+  updateServiceTypeRequiredProps();
+  polServiceConfigLoaded.value = true;
+  applyServiceLockedFields();
 };
 const getCheckedServiceTypes = () =>
   serviceTypeNodes.value
@@ -634,6 +689,45 @@ const updateServiceTypeRequiredProps = () => {
     checkedSet,
   );
 };
+/** 可被服务锁定的表单字段（SeaExportPropEnum → 字段名，与必填字段映射一致） */
+const SERVICE_LOCKABLE_FIELD_NAMES = [
+  ...new Set(Object.values(SERVICE_REQUIRE_PROP_TO_FIELD_NAME)),
+];
+/** 已完成服务任务锁定的字段集合（取所有已处理任务对应服务项的 seServiceLocks 并集） */
+const getServiceLockedFieldNames = (): Set<string> => {
+  const lockedFields = new Set<string>();
+  if (!isEdit.value) return lockedFields;
+  const configMap = new Map<number, SeaExportAdminApi.ServiceTypeByPolDto>();
+  latestAvailableServiceTypes.value.forEach((item) => {
+    const serviceType = Number(item.serviceType);
+    if (!Number.isFinite(serviceType)) return;
+    configMap.set(serviceType, item);
+  });
+  serviceTypeNodes.value.forEach((node) => {
+    if (node.taskStatus !== SERVICE_TASK_STATUS_PROCESSED) return;
+    const locks = configMap.get(node.serviceType)?.seServiceLocks ?? [];
+    locks.forEach((propEnum) => {
+      const fieldName = SERVICE_REQUIRE_PROP_TO_FIELD_NAME[Number(propEnum)];
+      if (fieldName) lockedFields.add(fieldName);
+    });
+  });
+  return lockedFields;
+};
+/**
+ * 将「已完成服务锁定字段」置为只读；未锁定字段恢复可编辑。
+ * updateSchema 会按 fieldName 深合并 componentProps，对不属于该表单的字段是无操作，故可广播到多个表单。
+ */
+const applyServiceLockedFields = () => {
+  if (!isEdit.value) return;
+  const lockedFields = getServiceLockedFieldNames();
+  const patches = SERVICE_LOCKABLE_FIELD_NAMES.map((fieldName) => ({
+    fieldName,
+    componentProps: { disabled: lockedFields.has(fieldName) },
+  }));
+  basicInfoFormApi.updateSchema(patches);
+  shipmentFormApi.updateSchema(patches);
+  portFormApi.updateSchema(patches);
+};
 type ServicePipelineState = 'active' | 'done' | 'upcoming';
 type ServiceTypeNodeGroup = {
   sortId: number;
@@ -793,14 +887,27 @@ const applyServiceTypeModalDraft = () => {
 };
 const SERVICE_TASK_REGENERATE_CONFIRM_SUFFIX =
   '所有服务项目都会重新生成任务。是否继续？';
-const SERVICE_TYPE_CONFIG_CONFIRM_CONTENT = `编辑或取消任意服务项目后，${SERVICE_TASK_REGENERATE_CONFIRM_SUFFIX}`;
+/** 编辑态保存时的重建二次确认（仅在起运港/服务项集合变更且本票已存在任务时触发） */
+const confirmServiceTaskRebuild = () =>
+  new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: '确认修改起运港 / 服务项目',
+      content:
+        '起运港或服务项目集合已变更，保存后将清空本票全部服务任务进度并按新配置重新生成。是否继续？',
+      okText: '继续保存',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
+    });
+  });
 const applyServiceTypeModalDraftAndSave = async () => {
   applyServiceTypeModalDraft();
   if (isEdit.value) {
     await handleSubmit();
   }
 };
-const handleServiceTypeModalConfirm = () => {
+const handleServiceTypeModalConfirm = async () => {
   if (!serviceTypeModalDraftChanged.value) {
     serviceTypeModalOpen.value = false;
     return;
@@ -809,22 +916,8 @@ const handleServiceTypeModalConfirm = () => {
     applyServiceTypeModalDraft();
     return;
   }
-  return new Promise<void>((resolve, reject) => {
-    Modal.confirm({
-      title: '确认编辑服务项目',
-      content: SERVICE_TYPE_CONFIG_CONFIRM_CONTENT,
-      okText: '继续',
-      cancelText: '取消',
-      okType: 'danger',
-      onOk: async () => {
-        await applyServiceTypeModalDraftAndSave();
-        resolve();
-      },
-      onCancel: () => {
-        reject(new Error('cancel'));
-      },
-    });
-  });
+  // 编辑态：应用勾选后立即保存；是否重建的二次确认统一交由保存流程处理
+  await applyServiceTypeModalDraftAndSave();
 };
 const isServiceTypeNodeInProgress = (node: ServiceTypeNode) =>
   getServicePipelineState(node) === 'active';
@@ -1048,12 +1141,16 @@ const toOptionalQueryValue = (value: unknown) => {
   if (value === undefined || value === null || value === '') return undefined;
   return value;
 };
+/** 归一化 id 用于「是否变更」比较（空值统一为空串） */
+const normalizeIdForCompare = (value: unknown) =>
+  value === undefined || value === null || value === '' ? '' : String(value);
 let serviceTypeLinkageRequestId = 0;
 const linkedClientId = ref<unknown>(undefined);
 const linkedPolId = ref<unknown>(undefined);
 const serviceTypeSyncLoading = ref(false);
 const polServiceConfigLoaded = ref(false);
 const polHasNoServiceConfig = computed(() => {
+  if (isEdit.value) return false;
   if (toOptionalQueryValue(linkedPolId.value) === undefined) return false;
   if (serviceTypeSyncLoading.value || !polServiceConfigLoaded.value)
     return false;
@@ -1062,13 +1159,17 @@ const polHasNoServiceConfig = computed(() => {
 const hasPolSelected = computed(
   () => toOptionalQueryValue(linkedPolId.value) !== undefined,
 );
-const showServiceItemContent = computed(
-  () =>
+const showServiceItemContent = computed(() => {
+  if (isEdit.value) {
+    return serviceTypeNodes.value.length > 0 && !serviceTypeSyncLoading.value;
+  }
+  return (
     hasPolSelected.value &&
     !serviceTypeSyncLoading.value &&
     polServiceConfigLoaded.value &&
-    !polHasNoServiceConfig.value,
-);
+    !polHasNoServiceConfig.value
+  );
+});
 let serviceTypeSyncTimer: ReturnType<typeof setTimeout> | undefined;
 let latestServiceTypeQueryKey = '';
 const buildClientCheckedMap = (
@@ -1093,26 +1194,17 @@ const resetServiceTypeStateWhenPolEmpty = () => {
 const applyServiceTypeStateByPol = (
   availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
   checkedServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
-  overrides?: {
-    savedServiceTypeSet?: Set<number>;
-    savedSortIdMap?: Map<number, number>;
-    taskMap?: Map<number, ServiceTypeTaskInfo>;
-  },
 ) => {
   const polNodes = Array.isArray(availableServiceTypes)
     ? availableServiceTypes
     : [];
   latestAvailableServiceTypes.value = polNodes;
-  const clientCheckedMap = overrides?.savedServiceTypeSet
-    ? undefined
-    : buildClientCheckedMap(checkedServiceTypes);
+  const clientCheckedMap = buildClientCheckedMap(checkedServiceTypes);
   serviceTypeNodes.value = buildServiceTypeNodes(
     polNodes,
     serviceTypeLabelMap.value,
-    overrides?.savedServiceTypeSet,
+    undefined,
     clientCheckedMap,
-    overrides?.taskMap,
-    overrides?.savedSortIdMap,
   );
   serviceTypeRequiredPropValues.value = buildServiceRequiredPropsByType(
     availableServiceTypes,
@@ -1138,9 +1230,6 @@ const syncServiceTypesByPol = async (
     clientId?: unknown;
     polId?: unknown;
     force?: boolean;
-    savedServiceTypeSet?: Set<number>;
-    savedSortIdMap?: Map<number, number>;
-    taskMap?: Map<number, ServiceTypeTaskInfo>;
   } = {},
 ) => {
   const requestId = ++serviceTypeLinkageRequestId;
@@ -1189,12 +1278,11 @@ const syncServiceTypesByPol = async (
     applyServiceTypeStateByPol(
       extractServiceTypesByPolResult(serviceTypesByPolResponse),
       extractServiceTypesByPolResult(checkedServiceTypesResponse),
-      {
-        savedServiceTypeSet: args.savedServiceTypeSet,
-        savedSortIdMap: args.savedSortIdMap,
-        taskMap: args.taskMap,
-      },
     );
+    // 编辑态改起运港/委托单位后，按新配置重写勾选并回到「新建态」展示（不显示任务进度），同时解除历史锁定
+    if (isEdit.value) {
+      applyServiceLockedFields();
+    }
   } catch {
     if (requestId !== serviceTypeLinkageRequestId) return;
     polServiceConfigLoaded.value = false;
@@ -1209,6 +1297,7 @@ const queueSyncServiceTypesByPol = (args: {
   clientId?: unknown;
   polId?: unknown;
 }) => {
+  if (suppressServiceTypeLinkage.value) return;
   if (Object.prototype.hasOwnProperty.call(args, 'clientId')) {
     linkedClientId.value = toOptionalQueryValue(args.clientId);
   }
@@ -1912,7 +2001,10 @@ const validateServiceBoundOrderUsers = () => {
   if (!checkedNodes.length) {
     return true;
   }
-  if (serviceTypeSyncLoading.value || !polServiceConfigLoaded.value) {
+  if (
+    !isEdit.value &&
+    (serviceTypeSyncLoading.value || !polServiceConfigLoaded.value)
+  ) {
     message.warning('服务项目配置加载中，请稍后保存');
     return false;
   }
@@ -2282,7 +2374,7 @@ const applyAiRecognizedFormValues = async (
   syncTabTitleFromValues(values);
   await syncBasicInfoHeaderFields();
 
-  if (values.polId != null || values.clientId != null) {
+  if (!isEdit.value && (values.polId != null || values.clientId != null)) {
     await syncServiceTypesByPol({
       polId: values.polId,
       clientId: values.clientId,
@@ -2608,6 +2700,7 @@ const toPortSelectedItems = (
 const loadEditData = async () => {
   if (!editId.value) return;
 
+  suppressServiceTypeLinkage.value = true;
   pageLoading.value = true;
   try {
     const detail = await getSeaExportDetail(editId.value);
@@ -2913,6 +3006,18 @@ const loadEditData = async () => {
     initializeOrderUsersPanel(to?.orderUsers ?? []);
     const { savedSet, savedSortIdMap, taskMap } =
       parseDetailServiceTypes(detail);
+    editServiceSnapshot.value = {
+      savedServiceTypeSet: savedSet,
+      savedSortIdMap,
+      taskMap,
+    };
+    editOriginalServiceTypeSet.value = new Set(savedSet);
+    editOriginalPolId.value = normalizeIdForCompare(detail.polId);
+    editHasAnyServiceTask.value = [...taskMap.values()].some(
+      (info) =>
+        info.taskStatus === SERVICE_TASK_STATUS_PENDING ||
+        info.taskStatus === SERVICE_TASK_STATUS_PROCESSED,
+    );
     refreshEntrustReadonlyInfo(formValues);
     syncTabTitleFromValues(formValues);
     headerCodeSourceSelectedItems.value = toSelectedItems(
@@ -2926,16 +3031,31 @@ const loadEditData = async () => {
     orderCtns.value = normalizeOrderCtnsWithRowKey(
       detail.transportOrder?.orderCtns as any,
     );
-    await syncServiceTypesByPol({
-      polId: formValues.polId,
-      clientId: formValues.clientId,
-      force: true,
-      savedServiceTypeSet: savedSet,
-      savedSortIdMap,
-      taskMap,
-    });
+    linkedPolId.value = toOptionalQueryValue(formValues.polId);
+    linkedClientId.value = toOptionalQueryValue(formValues.clientId);
+    // 编辑态首屏拉取港口服务项配置，仅作为锁定/必填/责任角色等元数据；勾选与任务进度仍以详情为准
+    const polIdForConfig = toOptionalQueryValue(formValues.polId);
+    let polConfig: null | SeaExportAdminApi.ServiceTypeByPolDto[] = null;
+    if (polIdForConfig !== undefined) {
+      try {
+        polConfig = extractServiceTypesByPolResult(
+          await getServiceTypesByPOL({
+            polId: polIdForConfig as number | string,
+          }),
+        );
+      } catch {
+        polConfig = null;
+      }
+    }
+    if (editServiceSnapshot.value) {
+      applyServiceTypeStateForEditInitial(polConfig, editServiceSnapshot.value);
+    } else {
+      serviceTypeNodes.value = [];
+      polServiceConfigLoaded.value = true;
+    }
     await syncFormSnapshot();
   } finally {
+    suppressServiceTypeLinkage.value = false;
     pageLoading.value = false;
   }
 };
@@ -3152,6 +3272,23 @@ const handleSubmit = async () => {
     ...cargoDgValues,
     ...cargoReeferValues,
   };
+  if (isEdit.value && editHasAnyServiceTask.value) {
+    const polChanged =
+      normalizeIdForCompare(values.polId) !== editOriginalPolId.value;
+    const currentServiceTypeSet = new Set(getCheckedServiceTypes());
+    const serviceTypeSetChanged =
+      currentServiceTypeSet.size !== editOriginalServiceTypeSet.value.size ||
+      [...currentServiceTypeSet].some(
+        (serviceType) => !editOriginalServiceTypeSet.value.has(serviceType),
+      );
+    if (polChanged || serviceTypeSetChanged) {
+      const confirmed = await confirmServiceTaskRebuild();
+      if (!confirmed) {
+        submitting.value = false;
+        return;
+      }
+    }
+  }
   const dto = buildDto(values);
 
   try {
@@ -3479,6 +3616,7 @@ onMounted(() => {
     }
   };
   if (!isEdit.value) {
+    editServiceSnapshot.value = null;
     initializeOrderUsersPanel(defaultOrderUsers);
     refreshEntrustReadonlyInfo({});
     serviceTypeRequiredPropValues.value = new Map();
