@@ -5,7 +5,7 @@ author: auto-doc-sync
 last_updated: 2026-07-11
 ---
 
-<!-- 说明：本页复用 `form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `modules/ai-extract-utils.ts`（AI 识别）等模块，行为不变。 -->
+<!-- 说明：本页复用 `form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `modules/ai-extract-utils.ts`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，行为不变。 -->
 
 # 1. 业务背景说明 (Background)
 
@@ -116,7 +116,7 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-07-11 | `Refactor` | 无（纯代码组织调整，行为不变）。`form.vue`（新建/编辑共用）脚本按批次拆分，累计 6581→约 5480 行。 | 批次 1 抽 `sea-export-detail-mapper.ts`（映射）；批次 2 抽 `service-type-nodes.ts`（服务项纯逻辑）；批次 3 抽 `use-order-users.ts`（干系人 composable，模板仍在 form.vue）；批次 4 把 AI 字段白名单/规范化下沉 `modules/ai-extract-utils.ts`，编排抽为 `use-sea-export-ai-recognize.ts`（DOM 触发 `aiExtractFileInputRef`/`handleAiRecognize` 留 form.vue，规避 Volar 对模板 `ref=""` 不计读取的误报）。基线 stash 对比确认类型错误集无新增。 |
+| 2026-07-11 | `Refactor` | 无（纯代码组织调整，行为不变）。`form.vue`（新建/编辑共用）脚本按批次拆分，累计 6581→约 5240 行。 | 批次 1 抽 `sea-export-detail-mapper.ts`（映射）；批次 2 抽 `service-type-nodes.ts`（服务项纯逻辑）；批次 3 抽 `use-order-users.ts`（干系人 composable，模板仍在 form.vue）；批次 4 把 AI 字段白名单/规范化下沉 `modules/ai-extract-utils.ts`，编排抽为 `use-sea-export-ai-recognize.ts`（DOM 触发 `aiExtractFileInputRef`/`handleAiRecognize` 留 form.vue，规避 Volar 对模板 `ref=""` 不计读取的误报）；批次 5 把 `buildDto` 抽为纯函数 `buildSeaExportDto`、`submitting`/校验/重建确认/提交/脏检查抽为 `use-sea-export-submit.ts`。基线 stash 对比确认类型错误集无新增（批次 5 另消除 1 处 `polId` 历史报错）。 |
 | 2026-07-11 | `Feature` | 编辑工作台记住当前顶部 Tab：离开后再进入同一票自动打开离开前的标签。 | `editor.vue` 用 `sessionStorage` + `buildBrandStorageKey('sea-export-edit-active-tab:{id}')`；`watch(activeTab)` 写入、`watch(editId)`/初始化读取；非法 key 回退 `basic`。 |
 | 2026-07-11 | `Style` | 顶部 Tab 与表单间距改为只靠内容区 padding 控制（去掉外层 `gap-2`）；服务流水线组间间距缩小（内联 `4px` / 普通 `6px`）。 | `editor.vue` 外层去掉 `gap-2`；`.service-chevron-flow__group + .group` 间距下调。 |
 | 2026-07-11 | `Fix` | 服务流水线同 `sortId` 组内节点未合并、组间露三角缝修复：改为组内无缝咬合、组间留间距区分、整条保持箭头链流向。 | 咬合位移由 `chevron-step` 下沉到 `service-chevron-flow__item` 层（普通 `-12px`/inline `-7px`），每组组首 `item` 不做位移；`isServiceChevronFlowFirst/Last` 改回按整条链全局首尾计算；组间 `margin` 恢复。 |
