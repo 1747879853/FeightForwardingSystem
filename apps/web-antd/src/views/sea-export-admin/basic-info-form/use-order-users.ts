@@ -12,6 +12,7 @@ import { preferences } from '@vben/preferences';
 
 import { message } from 'ant-design-vue';
 
+import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
@@ -27,14 +28,16 @@ import { parseSeaExportUserAttribute } from '#/views/system/user/data';
 import { hasValidUserId, toOptionalNumber } from './sea-export-detail-mapper';
 import type { ServiceTypeNode } from './service-type-nodes';
 
-/** 新建态默认干系人角色（含默认优先级 sortId） */
+/**
+ * 新建态默认干系人角色（含默认优先级 sortId）。
+ * 海外客服不默认展示（仅编辑态有值时才显示），故不在此列表内。
+ */
 export const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
   { userAttribute: UserAttribute.Sales, sortId: 6 },
   { userAttribute: UserAttribute.Business, sortId: 5 },
   { userAttribute: UserAttribute.Operation, sortId: 4 },
   { userAttribute: UserAttribute.CustomerService, sortId: 3 },
   { userAttribute: UserAttribute.Documentation, sortId: 2 },
-  { userAttribute: UserAttribute.OverseasCustomerService, sortId: 1 },
 ];
 
 type OrderUserEditorRow = SeaExportAdminApi.OrderUserAddDto & {
@@ -309,14 +312,21 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
         };
       });
     }
-    return items.map((item) => {
-      const nickName = (item as any).userNickName as string | undefined;
-      return {
-        ...normalizeOrderUserItem(item),
-        userName: nickName || undefined,
-        _rowKey: makeOrderUserRowKey(),
-      };
-    });
+    return items
+      .map((item) => {
+        const nickName = (item as any).userNickName as string | undefined;
+        return {
+          ...normalizeOrderUserItem(item),
+          userName: nickName || undefined,
+          _rowKey: makeOrderUserRowKey(),
+        };
+      })
+      .filter(
+        (row) =>
+          // 海外客服仅在已分配人员时展示，无值不显示
+          row.userAttribute !== UserAttribute.OverseasCustomerService ||
+          hasValidUserId(row.userId),
+      );
   };
   const syncOrderUsersToForm = () => {
     partyInfoFormApi.setValues({
@@ -344,6 +354,63 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
         };
       }
     }
+    syncOrderUsersToForm();
+    void fillOrderUserNames(orderUserRows.value);
+  };
+  /** 委托单位干系人角色 → 干系人面板角色（客户仅维护销售/客服/操作/单证四类） */
+  const pickDefaultClientStakeholder = (
+    list?: ClientAdminApi.ClientStakeholderDto[],
+  ) => {
+    if (!list?.length) return undefined;
+    return list.find((item) => item.isDefault) ?? list[0];
+  };
+  /**
+   * 依据委托单位（clientId）已绑定的干系人默认回填面板：
+   * - 销售/客服/操作/单证：取客户「默认」干系人（无默认取第一个）
+   * - 操作/单证/客服：客户未绑定时，兜底填当前登录账号
+   * - 其余角色（商务/海外客服等）不在客户维度维护，保持原值不动
+   * 仅在用户主动切换委托单位时调用，不改动商务等未绑定角色。
+   */
+  const applyClientDefaultOrderUsers = (client?: ClientAdminApi.ClientDto) => {
+    const roleAssignment = new Map<
+      number,
+      { userId: number; userName?: string }
+    >();
+    const assignFromClient = (
+      role: number,
+      list?: ClientAdminApi.ClientStakeholderDto[],
+    ) => {
+      const picked = pickDefaultClientStakeholder(list);
+      if (picked?.userId) {
+        roleAssignment.set(role, {
+          userId: picked.userId,
+          userName: picked.userNickName || undefined,
+        });
+      }
+    };
+    assignFromClient(UserAttribute.Sales, client?.sales);
+    assignFromClient(UserAttribute.CustomerService, client?.customerServices);
+    assignFromClient(UserAttribute.Operation, client?.operations);
+    assignFromClient(UserAttribute.Documentation, client?.documentations);
+    // 委托单位未绑定操作/单证/客服时，默认展示当前登录账号
+    if (currentUserId.value != null) {
+      for (const role of [
+        UserAttribute.Operation,
+        UserAttribute.Documentation,
+        UserAttribute.CustomerService,
+      ]) {
+        if (!roleAssignment.has(role)) {
+          roleAssignment.set(role, { userId: currentUserId.value });
+        }
+      }
+    }
+    if (!roleAssignment.size) return;
+    orderUserRows.value = orderUserRows.value.map((row) => {
+      if (row.userAttribute == null) return row;
+      const target = roleAssignment.get(row.userAttribute);
+      if (!target) return row;
+      return { ...row, userId: target.userId, userName: target.userName };
+    });
     syncOrderUsersToForm();
     void fillOrderUserNames(orderUserRows.value);
   };
@@ -515,6 +582,7 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
     getOrderUserStatusClass,
     loadOrderUserDetail,
     initializeOrderUsersPanel,
+    applyClientDefaultOrderUsers,
     openOrderUserRoleModal,
     handleOrderUserRoleModalCancel,
     handleOrderUserRoleModalConfirm,

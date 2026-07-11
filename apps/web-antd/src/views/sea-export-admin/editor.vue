@@ -8,6 +8,7 @@ import SeparateBill from './modules/separate-bill.vue';
 import changeOrder from '#/views/sea-export-admin/changeOrder/index.vue';
 import dispatch from '#/views/sea-export-admin/dispatch/index.vue';
 import attachments from '#/views/sea-export-admin/attachments/index.vue';
+import YundangTrackingPanel from './modules/yundang-tracking-panel.vue';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
@@ -20,6 +21,7 @@ type TabKey =
   | 'attachments'
   | 'dispatch'
   | 'billInfo'
+  | 'tracking'
   | 'issueRecord'
   | 'changeHistory';
 type FormExpose = { scrollToSection: (key: SectionKey) => void };
@@ -33,6 +35,7 @@ const VALID_TAB_KEYS: readonly TabKey[] = [
   'attachments',
   'dispatch',
   'billInfo',
+  'tracking',
   'issueRecord',
   'changeHistory',
 ] as const;
@@ -116,6 +119,7 @@ const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'attachments', label: $t('seaExport.export.attachments.tabTitle') },
   { key: 'dispatch', label: '派车' },
   { key: 'billInfo', label: '分单' },
+  { key: 'tracking', label: $t('seaExport.yundang.viewTracking') },
   { key: 'issueRecord', label: '问题记录' },
   { key: 'changeHistory', label: '修改历史' },
 ]);
@@ -199,6 +203,15 @@ const getContentTabStyle = (isActive: boolean) =>
           <KeepAlive include="SeaExportAttachments">
             <attachments v-if="activeTab === 'attachments'" />
           </KeepAlive>
+          <div
+            v-if="activeTab === 'tracking'"
+            class="min-h-full flex-1 bg-white p-4"
+          >
+            <YundangTrackingPanel
+              :sea-export-id="editId"
+              resolve-state-from-subscription
+            />
+          </div>
           <KeepAlive include="SeaExportAdminForm">
             <Form
               v-if="activeTab === 'basic'"

@@ -13,6 +13,8 @@
 
 ## 2026-07
 
+- [2026-07-11 海运出口干系人默认展示优化与委托单位/起运港必填](./changelogs/change-log-2026-07-11-sea-export-order-users-and-required-fields.md)
+- [2026-07-11 海运出口编辑页新增「运踪」Tab + 运踪详情去除航段 Tab](./changelogs/change-log-2026-07-11-sea-export-tracking-tab-and-carriage-removed.md)
 - [2026-07-11 海运出口箱型箱量表格列宽优化](./changelogs/change-log-2026-07-11-sea-export-order-ctn-column-width.md)
 - [2026-07-11 海运出口列表列头排序字段映射（DTO → 实体路径）](./changelogs/change-log-2026-07-11-sea-export-list-sort-field-mapping.md)
 - [2026-07-11 运踪模块去除第三方服务商名称（去品牌化补漏）](./changelogs/change-log-2026-07-11-sea-export-tracking-vendor-debrand.md)

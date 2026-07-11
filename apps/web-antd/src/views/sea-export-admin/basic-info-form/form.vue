@@ -54,6 +54,7 @@ defineOptions({
 const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 import { CodeSourceSelect, UserSelect } from '#/adapter/component';
 import { useVbenForm } from '#/adapter/form';
+import { getClientDetail } from '#/api/sea-export/client-admin';
 import {
   getServiceTypesByPOL,
   getSeaExportDetail,
@@ -126,11 +127,9 @@ import {
   getYundangSubscribeStatus,
   useYundangOceanSubscribe,
 } from '../use-yundang-ocean-subscribe';
-import { useYundangOceanTrack } from '../use-yundang-ocean-track';
 
 const perm = createAbpPermission('Admin.SeaExport');
 const externalApiUseCode = 'Admin.ExternalApi.Use';
-const externalApiGetCode = 'Admin.ExternalApi.Get';
 const { hasAccessByCodes } = useAccess();
 const hasYardRealQueryAccess = computed(() =>
   hasAccessByCodes([externalApiUseCode]),
@@ -1057,6 +1056,22 @@ const queueSyncServiceTypesByPol = (args: {
     });
   }, 0);
 };
+/** 委托单位变更：按其已绑定干系人默认回填干系人面板（缺失操作/单证/客服兜底当前账号） */
+const applyClientDefaultOrderUsersByClientId = async (value: unknown) => {
+  // 仅新建态按委托单位默认回填，避免覆盖编辑态已保存的干系人
+  if (isEdit.value || suppressServiceTypeLinkage.value) return;
+  const clientId = toOptionalQueryValue(value);
+  if (clientId === undefined) {
+    applyClientDefaultOrderUsers(undefined);
+    return;
+  }
+  try {
+    const client = await getClientDetail(String(clientId));
+    applyClientDefaultOrderUsers(client);
+  } catch {
+    applyClientDefaultOrderUsers(undefined);
+  }
+};
 const bindServiceTypeLinkageEvents = () => {
   basicInfoFormApi.updateSchema([
     {
@@ -1064,6 +1079,7 @@ const bindServiceTypeLinkageEvents = () => {
       componentProps: {
         onChange: (value: unknown) => {
           queueSyncServiceTypesByPol({ clientId: value });
+          void applyClientDefaultOrderUsersByClientId(value);
         },
         size: 'small',
       },
@@ -1383,6 +1399,7 @@ const {
   getOrderUserStatusClass,
   loadOrderUserDetail,
   initializeOrderUsersPanel,
+  applyClientDefaultOrderUsers,
   openOrderUserRoleModal,
   handleOrderUserRoleModalCancel,
   handleOrderUserRoleModalConfirm,
@@ -2003,7 +2020,6 @@ const { copying: copyingSeaExport, copyFrom: copySeaExportFromCurrent } =
   });
 
 const { ResultModal, subscribe, subscribing } = useYundangOceanSubscribe();
-const { TrackingModal, openTracking } = useYundangOceanTrack();
 
 /** 运踪订阅状态（随详情返回，订阅后重新加载详情刷新） */
 const yundangSubscribed = ref(false);
@@ -2070,21 +2086,6 @@ const handleYundangSubscribe = async () => {
     },
   ]);
   await loadEditData();
-};
-
-const handleOpenYundangTracking = () => {
-  if (!isEdit.value || !editId.value) {
-    return;
-  }
-  openTracking({
-    seaExportId: editId.value,
-    orderLabel:
-      entrustReadonlyInfo.value.commissionNum?.trim() ||
-      tabMblNum.value?.trim() ||
-      editId.value,
-    isYundangSubscribed: yundangSubscribed.value,
-    isYundangSubscribeSuccess: yundangSubscribeSuccess.value,
-  });
 };
 
 const handleCopySeaExport = async () => {
@@ -2679,20 +2680,6 @@ defineExpose({
                           }}</span>
                         </Button>
                       </Tooltip>
-                      <Button
-                        v-access:code="externalApiGetCode"
-                        size="small"
-                        class="flex items-center justify-center"
-                        @click="handleOpenYundangTracking"
-                      >
-                        <IconifyIcon
-                          icon="mdi:map-marker-path"
-                          class="mr-1 inline-block size-3.5 align-middle"
-                        />
-                        <span class="align-middle">{{
-                          $t('seaExport.yundang.viewTracking')
-                        }}</span>
-                      </Button>
                     </template>
                     <DropdownButton
                       v-if="isEdit"
@@ -3277,7 +3264,6 @@ defineExpose({
       </div>
     </Modal>
     <ResultModal />
-    <TrackingModal />
   </component>
 </template>
 

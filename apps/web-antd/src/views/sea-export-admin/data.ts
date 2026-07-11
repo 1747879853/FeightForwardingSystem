@@ -1246,6 +1246,7 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       fieldName: 'clientId',
       industryCategory: 'p',
       label: $t('seaExport.export.clientId'),
+      rules: 'selectRequired',
     }),
     createClientSelectSchema({
       fieldName: 'teamId',
@@ -1614,6 +1615,7 @@ export function usePortFormSchema(
       component: 'PortSelect',
       fieldName: 'polId',
       label: $t('seaExport.export.polId'),
+      rules: 'selectRequired',
       componentProps: buildPortSelectProps('polId', onPortChange),
       formItemClass: 'port-flow-item port-flow-pos--pol',
     },
