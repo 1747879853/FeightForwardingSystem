@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
-import { ref } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -18,7 +18,10 @@ import {
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { $t } from '#/locales';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
-import { createPagedListQuery } from '#/utils/paged-list-query';
+import {
+  applyDefaultSortable,
+  createPagedListQuery,
+} from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './data';
 
@@ -27,6 +30,8 @@ const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
 const router = useRouter();
 const actionLoading = ref(false);
 const { open: openWorkflowTimeline } = useWorkflowTimeline();
+
+const tableData = ref<PaymentApplicationAdminApi.PaymentApplicationDto[]>([]);
 
 function handleViewWorkflow(
   row: PaymentApplicationAdminApi.PaymentApplicationDto,
@@ -112,6 +117,10 @@ const [Grid, gridApi] =
         ajax: {
           query: createPagedListQuery(getPaymentApplicationPagedList, {
             mapParams: normalizeQuery,
+            afterFetch: (result: any) => {
+              tableData.value = result?.items ?? [];
+              return result;
+            },
           }),
         },
       },
@@ -123,6 +132,18 @@ const [Grid, gridApi] =
       },
     },
   });
+
+// 每页数据变化时按当前页币别打平重建「币别申请合计」列
+watch(
+  tableData,
+  async (rows) => {
+    await nextTick();
+    gridApi.setGridOptions({
+      columns: applyDefaultSortable(useColumns(rows)),
+    });
+  },
+  { deep: true },
+);
 
 function getSelectedRows(): PaymentApplicationAdminApi.PaymentApplicationDto[] {
   return (gridApi.grid?.getCheckboxRecords?.() ??

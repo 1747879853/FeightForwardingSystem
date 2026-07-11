@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 付费申请添加费用自动保存与列表申请合计列](./changelogs/change-log-2026-07-12-payment-application-fee-auto-save.md)
 - [2026-07-12 全局表格选中行背景统一为主题色 15% 透明](./changelogs/change-log-2026-07-12-global-table-row-selected-bg-primary.md)
 - [2026-07-12 海运出口附件 Tab 卡片化布局与全局预览弹窗](./changelogs/change-log-2026-07-12-sea-export-attachments-card-preview.md)
 - [2026-07-12 海运出口列表港口列改显备注、排序仍用港口字段](./changelogs/change-log-2026-07-12-sea-export-list-port-columns-show-remark.md)

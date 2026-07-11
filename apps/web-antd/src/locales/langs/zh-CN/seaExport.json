@@ -411,6 +411,7 @@
       "convertedAmount": "折算金额",
       "exchangeRate": "汇率",
       "appliedAmount": "本次申请金额",
+      "appliedTotal": "申请合计",
       "commissionNum": "委托编号",
       "mblNum": "主提单号",
       "accountDate": "会计日期",

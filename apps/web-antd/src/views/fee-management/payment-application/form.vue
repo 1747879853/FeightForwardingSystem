@@ -458,6 +458,7 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
           remark: row.itemRemark || undefined,
         })),
       });
+      message.success('保存成功');
     } catch {
       message.error('添加费用关联失败');
       return;
@@ -504,11 +505,6 @@ async function handleDeleteSelected() {
 
 function isOriginalFee(feeId: string): boolean {
   return isEdit.value && initialLoadFeeIds.value.has(feeId);
-}
-
-function onAppliedAmountChange(feeId: string, val: number | null) {
-  const row = feeDetailRows.value.find((r) => r.feeId === feeId);
-  if (row) row.appliedAmount = val ?? 0;
 }
 
 function onRateChange(feeId: string, val: number | null) {
@@ -1404,17 +1400,7 @@ function formatMonth(val: string | undefined | null): string {
                         {{ formatAmount(record.unSettledAmount) }}
                       </template>
                       <template v-else-if="column.key === 'appliedAmount'">
-                        <InputNumber
-                          v-if="!isOriginalFee(record.feeId)"
-                          :value="record.appliedAmount"
-                          :precision="2"
-                          size="small"
-                          class="fee-applied-amount-input w-full"
-                          @change="
-                            (val) => onAppliedAmountChange(record.feeId, val)
-                          "
-                        />
-                        <span v-else class="fee-applied-amount-value">{{
+                        <span class="fee-applied-amount-value">{{
                           formatAmount(record.appliedAmount)
                         }}</span>
                       </template>

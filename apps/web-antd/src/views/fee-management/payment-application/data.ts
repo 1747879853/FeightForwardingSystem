@@ -8,6 +8,66 @@ import { $t } from '#/locales';
 const paymentApplicationStatusOptions = () =>
   getPaymentApplicationStatusOptions((key) => $t(key));
 
+/** 动态「申请合计」列字段前缀 */
+const APPLIED_TOTAL_FIELD_PREFIX = 'appliedTotal_';
+
+function appliedTotalFieldKey(currencyId: number): string {
+  return `${APPLIED_TOTAL_FIELD_PREFIX}${currencyId}`;
+}
+
+interface AppliedTotalCurrency {
+  currencyId: number;
+  currencyCode: string;
+}
+
+/** 从当前页数据收集出现的币别（按 currencyId 升序去重） */
+function collectAppliedTotalCurrencies(
+  rows: PaymentApplicationAdminApi.PaymentApplicationDto[],
+): AppliedTotalCurrency[] {
+  const map = new Map<number, AppliedTotalCurrency>();
+  for (const row of rows) {
+    for (const group of row.currencyGroup ?? []) {
+      if (group.id != null && !map.has(group.id)) {
+        map.set(group.id, {
+          currencyId: group.id,
+          currencyCode: group.code ?? '',
+        });
+      }
+    }
+  }
+  return [...map.values()].sort((a, b) => a.currencyId - b.currencyId);
+}
+
+/** 计算某行某币别的申请合计（原币）= 收申请量 + 付申请量 */
+function calcRowAppliedTotal(
+  row: PaymentApplicationAdminApi.PaymentApplicationDto,
+  currencyId: number,
+): number | undefined {
+  const group = row.currencyGroup?.find((g) => g.id === currencyId);
+  if (!group) return undefined;
+  return (group.payAmount ?? 0) + (group.receiveAmount ?? 0);
+}
+
+/** 按币别打平生成申请合计列，一列一个币别 */
+function buildAppliedTotalColumns(currencies: AppliedTotalCurrency[]) {
+  const suffix = $t('seaExport.export.paymentApplication.appliedTotal');
+  return currencies.map((c) => ({
+    field: appliedTotalFieldKey(c.currencyId),
+    title: `${c.currencyCode || c.currencyId}${suffix}`,
+    minWidth: 120,
+    align: 'right' as const,
+    sortable: false,
+    formatter: ({
+      row,
+    }: {
+      row: PaymentApplicationAdminApi.PaymentApplicationDto;
+    }) => {
+      const val = calcRowAppliedTotal(row, c.currencyId);
+      return val == null ? '' : val.toFixed(2);
+    },
+  }));
+}
+
 export function useGridFormSchema(): VbenFormSchema[] {
   return [
     {
@@ -103,7 +163,13 @@ export function useGridFormSchema(): VbenFormSchema[] {
   ];
 }
 
-export function useColumns(): VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns'] {
+export function useColumns(
+  rows: PaymentApplicationAdminApi.PaymentApplicationDto[] = [],
+): VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns'] {
+  const appliedTotalColumns = buildAppliedTotalColumns(
+    collectAppliedTotalCurrencies(rows),
+  );
+
   return [
     { type: 'checkbox', width: 50, fixed: 'left' },
     { type: 'seq', width: 50, fixed: 'left' },
@@ -145,6 +211,7 @@ export function useColumns(): VxeTableGridOptions<PaymentApplicationAdminApi.Pay
       minWidth: 120,
       align: 'right',
     },
+    ...appliedTotalColumns,
     {
       field: 'creatorUserName',
       title: $t('seaExport.export.paymentApplication.creatorUserName'),
