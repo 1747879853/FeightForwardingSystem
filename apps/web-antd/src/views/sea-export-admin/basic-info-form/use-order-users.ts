@@ -312,7 +312,7 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
         };
       });
     }
-    return items
+    const mappedRows = items
       .map((item) => {
         const nickName = (item as any).userNickName as string | undefined;
         return {
@@ -327,6 +327,38 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
           row.userAttribute !== UserAttribute.OverseasCustomerService ||
           hasValidUserId(row.userId),
       );
+    // 销售/商务/操作/客服/单证 五个默认角色始终展示：
+    // 编辑态若订单未保存某默认角色，补一张空卡（保存时无人员会被过滤，不会写库）。
+    const presentRoles = new Set(
+      mappedRows
+        .map((row) => row.userAttribute)
+        .filter((attr): attr is number => attr != null),
+    );
+    const missingDefaultRows = defaultOrderUsers
+      .filter(
+        (item) =>
+          item.userAttribute != null && !presentRoles.has(item.userAttribute),
+      )
+      .map((item) => ({
+        ...normalizeOrderUserItem(item),
+        _rowKey: makeOrderUserRowKey(),
+      }));
+    // 默认角色按 defaultOrderUsers 顺序在前，其余角色（如海外客服/手动新增）保持相对顺序在后
+    const roleDisplayOrder = new Map<number, number>(
+      defaultOrderUsers.reduce<[number, number][]>((acc, item, index) => {
+        if (item.userAttribute != null) acc.push([item.userAttribute, index]);
+        return acc;
+      }, []),
+    );
+    const getRoleDisplayOrder = (attr?: number) =>
+      attr != null && roleDisplayOrder.has(attr)
+        ? (roleDisplayOrder.get(attr) as number)
+        : defaultOrderUsers.length;
+    return [...mappedRows, ...missingDefaultRows].sort(
+      (a, b) =>
+        getRoleDisplayOrder(a.userAttribute) -
+        getRoleDisplayOrder(b.userAttribute),
+    );
   };
   const syncOrderUsersToForm = () => {
     partyInfoFormApi.setValues({

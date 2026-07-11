@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 海运出口编辑态干系人默认五岗位始终显示（补空卡）](./changelogs/change-log-2026-07-12-sea-export-order-users-default-roles-always-show.md)
 - [2026-07-11 侧边栏菜单重组与收费核销更名](./changelogs/change-log-2026-07-11-sidebar-menu-restructure.md)
 - [2026-07-11 海运出口干系人默认展示优化与委托单位/起运港必填](./changelogs/change-log-2026-07-11-sea-export-order-users-and-required-fields.md)
 - [2026-07-11 海运出口编辑页新增「运踪」Tab + 运踪详情去除航段 Tab](./changelogs/change-log-2026-07-11-sea-export-tracking-tab-and-carriage-removed.md)
