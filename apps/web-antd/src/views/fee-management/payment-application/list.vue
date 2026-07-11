@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 
-import { h, nextTick, ref, watch } from 'vue';
+import { nextTick, onMounted, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
-import { Button, Checkbox, message, Modal, Space } from 'ant-design-vue';
+import { Button, message, Modal, Space } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -24,8 +24,10 @@ import {
 } from '#/utils/paged-list-query';
 
 import {
+  buildColumns,
+  captureAppliedTotalAnchorState,
+  isAppliedTotalAnchorField,
   isAppliedTotalChildField,
-  useColumns,
   useGridFormSchema,
 } from './data';
 
@@ -36,8 +38,55 @@ const actionLoading = ref(false);
 const { open: openWorkflowTimeline } = useWorkflowTimeline();
 
 const tableData = ref<PaymentApplicationAdminApi.PaymentApplicationDto[]>([]);
-/** 列配置面板中的「申请合计」总开关，统一控制各币别平铺列的显隐 */
-const appliedTotalVisible = ref(true);
+/** 防止列同步过程中的重入 */
+let syncingAppliedTotal = false;
+
+/**
+ * 「申请合计」锚点代理：让各币别列的显隐与整体位置跟随锚点列。
+ * - 币别列的 visible = 锚点列 visible（列配置里控制显隐）
+ * - 币别列整体紧跟在锚点列之后（列配置里拖动锚点即调整整体顺序）
+ */
+function syncAppliedTotalColumns() {
+  if (syncingAppliedTotal) return;
+  const grid = gridApi.grid as any;
+  if (!grid?.getFullColumn) return;
+  const fullCols: any[] = grid.getFullColumn() ?? [];
+  const anchor = fullCols.find((c) => isAppliedTotalAnchorField(c?.field));
+  const currencyCols = fullCols.filter((c) =>
+    isAppliedTotalChildField(c?.field),
+  );
+  if (!anchor || currencyCols.length === 0) return;
+
+  const anchorVisible = anchor.visible !== false;
+  let changed = false;
+  for (const col of currencyCols) {
+    if ((col.visible !== false) !== anchorVisible) {
+      col.visible = anchorVisible;
+      changed = true;
+    }
+  }
+
+  const rest = fullCols.filter((c) => !isAppliedTotalChildField(c?.field));
+  const anchorIndex = rest.indexOf(anchor);
+  const newOrder = [
+    ...rest.slice(0, anchorIndex + 1),
+    ...currencyCols,
+    ...rest.slice(anchorIndex + 1),
+  ];
+  const orderChanged =
+    newOrder.length === fullCols.length &&
+    newOrder.some((col, index) => col !== fullCols[index]);
+
+  if (!changed && !orderChanged) return;
+
+  syncingAppliedTotal = true;
+  Promise.resolve(grid.loadColumn?.(newOrder))
+    .catch(() => {})
+    .finally(() => {
+      grid.refreshColumn?.();
+      syncingAppliedTotal = false;
+    });
+}
 
 function handleViewWorkflow(
   row: PaymentApplicationAdminApi.PaymentApplicationDto,
@@ -95,6 +144,7 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 
 const [Grid, gridApi] =
   useVbenVxeGrid<PaymentApplicationAdminApi.PaymentApplicationDto>({
+    columnPersist: { tableId: 'PaymentApplicationList' },
     formOptions: {
       schema: useGridFormSchema(),
       submitOnChange: true,
@@ -105,32 +155,19 @@ const [Grid, gridApi] =
     },
     gridEvents: {
       cellDblclick: handleRowDblclick,
+      custom: () => nextTick(syncAppliedTotalColumns),
+      customChange: () => nextTick(syncAppliedTotalColumns),
+      customReset: () => nextTick(syncAppliedTotalColumns),
+      columnDropEnd: () => nextTick(syncAppliedTotalColumns),
     },
     gridOptions: {
-      columns: useColumns(),
+      columns: buildColumns(),
       height: 'auto',
       keepSource: true,
-      // 列配置面板隐藏各币别平铺列，改由顶部单个「申请合计」开关统一控制显隐
+      // 列配置面板隐藏各币别平铺列，仅保留「申请合计」锚点列作为唯一配置项
       customConfig: {
         visibleMethod: ({ column }: { column: { field?: string } }) =>
           !isAppliedTotalChildField(column?.field),
-        slots: {
-          top: () =>
-            h(
-              'div',
-              { class: 'applied-total-custom-toggle' },
-              h(
-                Checkbox,
-                {
-                  checked: appliedTotalVisible.value,
-                  onChange: (e: any) => {
-                    appliedTotalVisible.value = !!e?.target?.checked;
-                  },
-                },
-                () => t('appliedTotal'),
-              ),
-            ),
-        },
       },
       checkboxConfig: {
         highlight: true,
@@ -161,19 +198,28 @@ const [Grid, gridApi] =
     },
   });
 
-// 每页数据或「申请合计」开关变化时，按当前页币别平铺重建列
+// 每页数据变化时重建币别列，并保留「申请合计」锚点的显隐与整体顺序
 watch(
-  [tableData, appliedTotalVisible],
-  async () => {
+  tableData,
+  async (rows) => {
+    const grid = gridApi.grid as any;
+    const anchorState = captureAppliedTotalAnchorState(
+      grid?.getFullColumn?.() ?? [],
+    );
     await nextTick();
     gridApi.setGridOptions({
-      columns: applyDefaultSortable(
-        useColumns(tableData.value, appliedTotalVisible.value),
-      ),
+      columns: applyDefaultSortable(buildColumns(rows, anchorState)),
     });
+    await nextTick();
+    syncAppliedTotalColumns();
   },
   { deep: true },
 );
+
+onMounted(async () => {
+  await nextTick();
+  syncAppliedTotalColumns();
+});
 
 function getSelectedRows(): PaymentApplicationAdminApi.PaymentApplicationDto[] {
   return (gridApi.grid?.getCheckboxRecords?.() ??
@@ -240,8 +286,8 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
 </template>
 
 <style scoped>
-:deep(.applied-total-custom-toggle) {
-  padding: 6px 12px;
-  border-bottom: 1px solid #f0f0f0;
+/* 「申请合计」锚点代理列：仅用于列配置项，不在表格中占用可见空间 */
+:deep(.applied-total-anchor-col) {
+  display: none !important;
 }
 </style>

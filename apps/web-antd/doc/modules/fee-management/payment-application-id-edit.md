@@ -43,7 +43,7 @@ last_updated: 2026-07-12
 
 | **费用分组** | 编辑页与选费抽屉外层列表的分组维度。 | `GetOrderFeeGroupAsync` / 本地 `groupFeesByOrder` | **触发/依赖：** 按「业务 + 结算对象」联合分组；`row-key` 为复合键。 | 同一业务可对应多行（不同结算对象）；底部统计为组数非票数。 |
 
-| **本次申请金额** | 单条费用本次申请付款金额。 | 添加费用抽屉 `appliedAmount` → `PayAppItemAddAsync` | **触发/依赖：** 仅在抽屉内编辑；外侧明细只读展示。 | 默认取未结金额；编辑模式确认添加即落库。 |
+| **本次申请金额** | 单条费用本次申请付款金额。 | 添加费用抽屉 `appliedAmount` → `PayAppItemAddAsync` | **触发/依赖：** 仅在抽屉内编辑；外侧明细只读展示。 | 默认取 `unRqstPaymentAmount`；不得超过未结金额；编辑模式确认添加即落库。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -53,6 +53,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 「未结金额」改用 `unRqstPaymentAmount`；「本次结算」不得超过未结金额。 | `add-fee-modal` 列与默认值、`validateAppliedAmounts`；外侧明细 `form-data.ts` 同步字段。 |
 | 2026-07-12 | `Fix` | 外侧费用明细「本次申请金额」改为只读；编辑模式添加费用 `PayAppItemAddAsync` 成功后提示「保存成功」。 | 申请金额以抽屉 `appliedAmount` 为唯一编辑入口；移除 `onAppliedAmountChange`。 |
 | 2026-06-28 | `Feature` | 费用合计每个币别新增结算银行下拉（必填、默认选中默认账户、可切换、展示开户行/账号/SWIFT）；编辑保存经 `EditAsync` 全量替换 `paymentApplicationBanks`，详情按 `currencyGroup[].paymentApplicationBank` 回填。 | 与新增页共用 `form.vue`；`restoreBankSelectionsFromDetail` 区分原币（按币别 id）/指定币别（结算币别共享）回填；`saveEditMode` 携带银行编辑 DTO。 |
 | 2026-06-21 | `Feature` | 添加费用抽屉外层列表新增「主提单号」「箱型箱量」列。 | 与新增页共用 `add-fee-modal`；`mblNum` 直出，`orderCtns` 经 `formatOrderCtnsDisplay` 汇总展示。 |

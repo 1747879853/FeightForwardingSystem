@@ -598,7 +598,7 @@ function mapDetailToFeeRows(
           '',
         amount: fee?.amount ?? item.feeAmount ?? 0,
         settledAmount: fee?.settledAmount ?? 0,
-        unSettledAmount: fee?.unSettledAmount ?? 0,
+        unRqstPaymentAmount: fee?.unRqstPaymentAmount ?? 0,
         appliedAmount: item.appliedAmount,
         exchangeRate: fee?.exchangeRate,
         itemRemark: item.remark ?? '',
@@ -1396,8 +1396,10 @@ function formatMonth(val: string | undefined | null): string {
                       <template v-else-if="column.key === 'settledAmount'">
                         {{ formatAmount(record.settledAmount) }}
                       </template>
-                      <template v-else-if="column.key === 'unSettledAmount'">
-                        {{ formatAmount(record.unSettledAmount) }}
+                      <template
+                        v-else-if="column.key === 'unRqstPaymentAmount'"
+                      >
+                        {{ formatAmount(record.unRqstPaymentAmount) }}
                       </template>
                       <template v-else-if="column.key === 'appliedAmount'">
                         <span class="fee-applied-amount-value">{{

@@ -75,7 +75,8 @@ export interface SelectedFeeItem {
   amount: number;
   /** 已结算金额 */
   settledAmount: number;
-  unSettledAmount: number;
+  /** 未付费申请金额（原币） */
+  unRqstPaymentAmount: number;
   /** 本次结算金额（用户输入） */
   appliedAmount: number;
   /** 原始汇率 */
@@ -407,7 +408,7 @@ export function calcCurrencySummary(
 ): number {
   return orderFees
     .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
-    .reduce((sum, f) => sum + (f.unSettledAmount ?? 0), 0);
+    .reduce((sum, f) => sum + (f.unRqstPaymentAmount ?? 0), 0);
 }
 
 /** 将订单数据转为表格行（含动态币别字段） */

@@ -8,18 +8,27 @@ import { $t } from '#/locales';
 const paymentApplicationStatusOptions = () =>
   getPaymentApplicationStatusOptions((key) => $t(key));
 
-/** 动态「申请合计」子列字段前缀 */
+/** 「申请合计」锚点列字段：作为列配置中唯一可见/可拖动/可持久化的代理项 */
+export const APPLIED_TOTAL_ANCHOR_FIELD = 'appliedTotal';
+/** 各币别申请合计列字段前缀（表格中真实渲染，但在列配置面板中隐藏） */
 const APPLIED_TOTAL_FIELD_PREFIX = 'appliedTotal_';
 
 function appliedTotalFieldKey(currencyId: number): string {
   return `${APPLIED_TOTAL_FIELD_PREFIX}${currencyId}`;
 }
 
-/** 是否为「申请合计」下的币别子列（用于列配置面板隐藏子列，只保留分组开关） */
+/** 是否为币别申请合计列（面板隐藏、显隐与顺序跟随锚点列） */
 export function isAppliedTotalChildField(
   field: string | undefined | null,
 ): boolean {
   return !!field && field.startsWith(APPLIED_TOTAL_FIELD_PREFIX);
+}
+
+/** 是否为「申请合计」锚点代理列 */
+export function isAppliedTotalAnchorField(
+  field: string | undefined | null,
+): boolean {
+  return field === APPLIED_TOTAL_ANCHOR_FIELD;
 }
 
 interface AppliedTotalCurrency {
@@ -56,10 +65,7 @@ function calcRowAppliedTotal(
 }
 
 /** 按币别平铺生成申请合计列，一列一个币别（单行表头） */
-function buildAppliedTotalColumns(
-  currencies: AppliedTotalCurrency[],
-  visible: boolean,
-) {
+function buildAppliedTotalColumns(currencies: AppliedTotalCurrency[]) {
   const suffix = $t('seaExport.export.paymentApplication.appliedTotal');
   return currencies.map((c) => ({
     field: appliedTotalFieldKey(c.currencyId),
@@ -67,7 +73,7 @@ function buildAppliedTotalColumns(
     minWidth: 120,
     align: 'right' as const,
     sortable: false,
-    visible,
+    resizable: false,
     formatter: ({
       row,
     }: {
@@ -174,16 +180,116 @@ export function useGridFormSchema(): VbenFormSchema[] {
   ];
 }
 
+/** 「申请合计」锚点列在列配置中的状态（显隐 + 整体插入位置） */
+export interface AppliedTotalAnchorState {
+  visible: boolean;
+  /** 锚点块整体紧跟在该 field/type 列之后；undefined 表示使用默认位置 */
+  insertAfterField?: string;
+}
+
+/** 从当前表格列快照读取「申请合计」锚点状态 */
+export function captureAppliedTotalAnchorState(
+  fullColumns: Array<{ field?: string; type?: string; visible?: boolean }>,
+): AppliedTotalAnchorState | null {
+  const anchorIndex = fullColumns.findIndex((c) =>
+    isAppliedTotalAnchorField(c?.field),
+  );
+  if (anchorIndex < 0) return null;
+
+  let insertAfterField: string | undefined;
+  for (let i = anchorIndex - 1; i >= 0; i--) {
+    const col = fullColumns[i];
+    if (
+      !isAppliedTotalAnchorField(col?.field) &&
+      !isAppliedTotalChildField(col?.field)
+    ) {
+      insertAfterField = col?.field ?? col?.type;
+      break;
+    }
+  }
+
+  return {
+    visible: fullColumns[anchorIndex]!.visible !== false,
+    insertAfterField,
+  };
+}
+
+function resolveColumnIdentity(
+  column: Record<string, any>,
+): string | undefined {
+  return column.field ?? column.type;
+}
+
+/** 将锚点块（锚点列 + 各币别列）按保存的状态插入到列配置中 */
+export function applyAppliedTotalAnchorState<T extends Record<string, any>>(
+  columns: T[],
+  state: AppliedTotalAnchorState | null,
+): T[] {
+  if (!state) return columns;
+
+  const isBlockCol = (col: T) =>
+    isAppliedTotalAnchorField(col.field) || isAppliedTotalChildField(col.field);
+
+  const block = columns.filter(isBlockCol).map((col) => ({
+    ...col,
+    visible: isAppliedTotalAnchorField(col.field)
+      ? state.visible
+      : state.visible,
+  }));
+  const rest = columns.filter((col) => !isBlockCol(col));
+
+  if (block.length === 0) return columns;
+
+  let insertIndex = rest.length;
+  if (state.insertAfterField) {
+    const afterIndex = rest.findIndex(
+      (col) => resolveColumnIdentity(col) === state.insertAfterField,
+    );
+    if (afterIndex >= 0) {
+      insertIndex = afterIndex + 1;
+    }
+  } else {
+    const defaultAfter = rest.findIndex(
+      (col) => col.field === 'totalReceivePrice',
+    );
+    if (defaultAfter >= 0) {
+      insertIndex = defaultAfter + 1;
+    }
+  }
+
+  return [...rest.slice(0, insertIndex), ...block, ...rest.slice(insertIndex)];
+}
+
+/** 按当前页数据生成列，并可叠加锚点列的显隐/顺序状态 */
+export function buildColumns(
+  rows: PaymentApplicationAdminApi.PaymentApplicationDto[] = [],
+  anchorState: AppliedTotalAnchorState | null = null,
+): VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns'] {
+  const columns = useColumns(rows) ?? [];
+  return applyAppliedTotalAnchorState(columns, anchorState) as NonNullable<
+    VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns']
+  >;
+}
+
 export function useColumns(
   rows: PaymentApplicationAdminApi.PaymentApplicationDto[] = [],
-  appliedTotalVisible = true,
 ): VxeTableGridOptions<PaymentApplicationAdminApi.PaymentApplicationDto>['columns'] {
-  // 按当前页币别平铺生成申请合计列（单行表头），
-  // 其显隐由列配置面板的单个「申请合计」开关统一控制
+  // 按当前页币别平铺生成申请合计列（单行表头，表格中真实渲染，但面板中隐藏）
   const appliedTotalColumns = buildAppliedTotalColumns(
     collectAppliedTotalCurrencies(rows),
-    appliedTotalVisible,
   );
+  // 「申请合计」锚点代理列：列配置面板中唯一可见项，控制币别列的显隐与整体顺序；
+  // 表格中通过 0 宽 + CSS 隐藏其自身单元格，不占用可见空间
+  const appliedTotalAnchor = {
+    field: APPLIED_TOTAL_ANCHOR_FIELD,
+    title: $t('seaExport.export.paymentApplication.appliedTotal'),
+    width: 0,
+    minWidth: 0,
+    resizable: false,
+    sortable: false,
+    headerClassName: 'applied-total-anchor-col',
+    className: 'applied-total-anchor-col',
+  };
 
   return [
     { type: 'checkbox', width: 50, fixed: 'left' },
@@ -226,6 +332,7 @@ export function useColumns(
       minWidth: 120,
       align: 'right',
     },
+    appliedTotalAnchor,
     ...appliedTotalColumns,
     {
       field: 'creatorUserName',

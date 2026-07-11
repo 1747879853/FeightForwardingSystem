@@ -24,7 +24,7 @@ last_updated: 2026-07-12
 - **申请单查询：** 按申请状态、客户/供应商、时间等条件查询付款申请。
 - **创建申请：** 进入新增页选择可申请付款的费用。
 - **编辑申请：** 进入编辑页维护申请单明细。
-- **申请合计列：** 列表按当前页数据动态展示各币别「{币别}申请合计」列（收+付原币合计）。
+- **申请合计列：** 列表按当前页数据动态展示各币别「{币别}申请合计」列（收+付原币合计）；列配置面板仅保留「申请合计」锚点项，拖动/显隐锚点即统一控制各币别列。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -49,5 +49,6 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 列配置「申请合计」改为锚点代理列，拖动/显隐锚点统一控制各币别申请合计列。 | `APPLIED_TOTAL_ANCHOR_FIELD` + `syncAppliedTotalColumns`；币别列在面板隐藏、跟随锚点顺序与显隐。 |
 | 2026-07-12 | `Feature` | 列表按当前页币别动态生成「{币别}申请合计」列。 | `useColumns(rows)` + `watch(tableData)` 重建列；`calcRowAppliedTotal` 汇总 pay+receive。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/fee-management/payment-application` 对应组件 `src/views/fee-management/payment-application/list.vue`，权限口径为 Admin.PaymentApplication / Admin.PaymentApplication.Get。 |

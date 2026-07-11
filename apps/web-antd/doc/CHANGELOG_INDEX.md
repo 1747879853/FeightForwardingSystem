@@ -13,6 +13,8 @@
 
 ## 2026-07
 
+- [2026-07-12 付费申请未结金额改用 unRqstPaymentAmount 并限制本次结算](./changelogs/change-log-2026-07-12-payment-application-unrqst-payment-amount.md)
+- [2026-07-12 付费申请列表申请合计改为锚点代理列](./changelogs/change-log-2026-07-12-payment-application-applied-total-anchor.md)
 - [2026-07-12 付费申请添加费用父级全选跳过禁选行](./changelogs/change-log-2026-07-12-payment-application-add-fee-group-select-skip-disabled.md)
 - [2026-07-12 付费申请添加费用自动保存与列表申请合计列](./changelogs/change-log-2026-07-12-payment-application-fee-auto-save.md)
 - [2026-07-12 全局表格选中行背景统一为主题色 15% 透明](./changelogs/change-log-2026-07-12-global-table-row-selected-bg-primary.md)

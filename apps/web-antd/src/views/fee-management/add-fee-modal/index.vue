@@ -164,7 +164,7 @@ function isFeeDisabled(feeId: string): boolean {
 
 function resolveAppliedAmount(
   feeId: string,
-  unSettledAmount?: number | null,
+  unRqstPaymentAmount?: number | null,
 ): number | undefined {
   if (appliedAmountMap.has(feeId)) {
     return appliedAmountMap.get(feeId);
@@ -172,7 +172,7 @@ function resolveAppliedAmount(
   if (isFeeDisabled(feeId)) {
     return undefined;
   }
-  return unSettledAmount ?? 0;
+  return unRqstPaymentAmount ?? 0;
 }
 
 function initDisabledFeeAppliedAmounts() {
@@ -334,7 +334,7 @@ function toggleGroup(groupKey: string, checked: boolean) {
     for (const fee of fees) {
       set.add(fee.id);
       if (!appliedAmountMap.has(fee.id)) {
-        appliedAmountMap.set(fee.id, fee.unSettledAmount ?? 0);
+        appliedAmountMap.set(fee.id, fee.unRqstPaymentAmount ?? 0);
       }
     }
     selectionMap.set(groupKey, set);
@@ -367,7 +367,7 @@ function toggleFee(groupKey: string, feeId: string, checked: boolean) {
     set.add(feeId);
     const fee = getGroupFees(groupKey).find((f) => f.id === feeId);
     if (fee && !isFeeDisabled(feeId) && !appliedAmountMap.has(feeId)) {
-      appliedAmountMap.set(feeId, fee.unSettledAmount ?? 0);
+      appliedAmountMap.set(feeId, fee.unRqstPaymentAmount ?? 0);
     }
   } else {
     set.delete(feeId);
@@ -385,7 +385,7 @@ function getFeeRows(groupKey: string): FeeRowData[] {
   const fees = getGroupFees(groupKey);
   return fees.map((f) => ({
     ...f,
-    appliedAmount: resolveAppliedAmount(f.id, f.unSettledAmount) ?? 0,
+    appliedAmount: resolveAppliedAmount(f.id, f.unRqstPaymentAmount) ?? 0,
   }));
 }
 
@@ -470,13 +470,32 @@ function getSelectedFees(): SelectedFeeItem[] {
             : (fee.settlementName ?? ''),
           amount: fee.amount,
           settledAmount: fee.settledAmount,
-          unSettledAmount: fee.unSettledAmount,
-          appliedAmount: resolveAppliedAmount(fee.id, fee.unSettledAmount) ?? 0,
+          unRqstPaymentAmount: fee.unRqstPaymentAmount ?? 0,
+          appliedAmount:
+            resolveAppliedAmount(fee.id, fee.unRqstPaymentAmount) ?? 0,
         });
       }
     }
   }
   return result;
+}
+
+function validateAppliedAmounts(selected: SelectedFeeItem[]): boolean {
+  for (const fee of selected) {
+    const maxAmount = fee.unRqstPaymentAmount ?? 0;
+    const applied = fee.appliedAmount ?? 0;
+    if (applied <= 0) {
+      message.warning('本次结算必须大于 0');
+      return false;
+    }
+    if (applied > maxAmount) {
+      message.warning(
+        `费用「${fee.feeCodeName ?? ''}」本次结算不能超过未结金额 ${formatAmount(maxAmount)}`,
+      );
+      return false;
+    }
+  }
+  return true;
 }
 
 function validateSameSettlement(selected: SelectedFeeItem[]): boolean {
@@ -518,6 +537,7 @@ function handleConfirm() {
     return;
   }
   if (!validateSameSettlement(selected)) return;
+  if (!validateAppliedAmounts(selected)) return;
 
   const curSettlementCurrencyId = drawerProps.value.settlementCurrencyId;
   if (curSettlementCurrencyId != null) {
@@ -548,6 +568,7 @@ function handleConfirm() {
 function handleExchangeRateConfirm(rateMap: Map<number, number>) {
   const selected = getSelectedFees();
   if (!validateSameSettlement(selected)) return;
+  if (!validateAppliedAmounts(selected)) return;
   for (const fee of selected) {
     const rate = rateMap.get(fee.currencyId);
     if (rate !== undefined) {
@@ -617,8 +638,8 @@ const feeColumns = [
   },
   {
     title: '未结金额',
-    dataIndex: 'unSettledAmount',
-    key: 'unSettledAmount',
+    dataIndex: 'unRqstPaymentAmount',
+    key: 'unRqstPaymentAmount',
     width: 100,
     align: 'right' as const,
   },
@@ -793,18 +814,20 @@ defineExpose({ open: openDrawer });
                 <template v-else-if="column.key === 'amount'">
                   {{ formatAmount(feeRecord.amount) }}
                 </template>
-                <template v-else-if="column.key === 'unSettledAmount'">
-                  {{ formatAmount(feeRecord.unSettledAmount) }}
+                <template v-else-if="column.key === 'unRqstPaymentAmount'">
+                  {{ formatAmount(feeRecord.unRqstPaymentAmount) }}
                 </template>
                 <template v-else-if="column.key === 'appliedAmount'">
                   <InputNumber
                     :value="
                       resolveAppliedAmount(
                         feeRecord.id,
-                        feeRecord.unSettledAmount,
+                        feeRecord.unRqstPaymentAmount,
                       )
                     "
                     :disabled="disabledFeeIds.has(feeRecord.id)"
+                    :min="0"
+                    :max="feeRecord.unRqstPaymentAmount ?? 0"
                     :precision="2"
                     size="small"
                     class="fee-applied-amount-input w-full"
