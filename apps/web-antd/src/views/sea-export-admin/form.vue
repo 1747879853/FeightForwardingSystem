@@ -117,6 +117,28 @@ import {
   buildServiceTypeLabelMap,
   loadSeServiceTypeOptions,
 } from './service-type';
+import type {
+  EditServiceSnapshot,
+  ServicePipelineState,
+  ServiceTypeNode,
+} from './service-type-nodes';
+import {
+  buildServiceRequiredPropsByType,
+  buildServiceTypeNodes,
+  formatServiceTaskCompletionTime,
+  formatServiceTaskUsersText,
+  getRequiredFieldLabelByProp,
+  getServicePipelineActiveSortId,
+  groupServiceTypeNodesBySortId,
+  hasServiceTaskHandlerRestriction,
+  isRequiredFieldFilled,
+  parseDetailServiceTypes,
+  SERVICE_LOCKABLE_FIELD_NAMES,
+  SERVICE_REQUIRE_PROP_TO_FIELD_NAME,
+  SERVICE_TASK_STATUS_PENDING,
+  SERVICE_TASK_STATUS_PROCESSED,
+  sortServiceTypeNodesBySortId,
+} from './service-type-nodes';
 import { useSeaExportTabTitle } from './use-sea-export-tab-title';
 import { useSeaExportCopy } from './use-sea-export-copy';
 import { useYardRealQuery } from './use-yard-real-query';
@@ -305,93 +327,11 @@ const SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES = new Set([
   ...BASIC_MODULE_EXTRA_FIELD_NAMES,
 ]);
 const PORT_MOVED_TO_BASIC_FIELD_NAMES = new Set(['signingPortId']);
-const SERVICE_TASK_STATUS_PENDING = 0;
-const SERVICE_TASK_STATUS_PROCESSED = 1;
-type ServiceTypeTaskUser = {
-  userId: number;
-  userNickName?: string;
-};
-type ServiceTypeTaskInfo = {
-  taskId?: string;
-  taskStatus?: 0 | 1 | null;
-  completionUserId?: number | null;
-  completionTime?: string | null;
-  completionUserNickName?: string | null;
-  taskUsers?: ServiceTypeTaskUser[];
-};
-type ServiceTypeNode = {
-  serviceType: number;
-  label: string;
-  sortId: number;
-  checked: boolean;
-  taskStatus?: 0 | 1 | null;
-  taskId?: string;
-  completionUserId?: number | null;
-  completionTime?: string | null;
-  completionUserNickName?: string | null;
-  taskUsers?: ServiceTypeTaskUser[];
-};
 const serviceTypeNodes = ref<ServiceTypeNode[]>([]);
 const serviceTypeLabelMap = ref(new Map<number, string>());
 const loadServiceTypeLabelMap = async () => {
   const options = await loadSeServiceTypeOptions();
   serviceTypeLabelMap.value = buildServiceTypeLabelMap(options);
-};
-const toServiceTaskStatusValue = (
-  value: unknown,
-): ServiceTypeNode['taskStatus'] => {
-  const status = Number(value);
-  if (status === SERVICE_TASK_STATUS_PENDING)
-    return SERVICE_TASK_STATUS_PENDING;
-  if (status === SERVICE_TASK_STATUS_PROCESSED)
-    return SERVICE_TASK_STATUS_PROCESSED;
-  return undefined;
-};
-const buildServiceTypeNodes = (
-  polNodes: SeaExportAdminApi.ServiceTypeByPolDto[],
-  enumLabelMap: Map<number, string>,
-  savedServiceTypeSet?: Set<number>,
-  clientCheckedMap?: Map<number, boolean>,
-  taskMap?: Map<number, ServiceTypeTaskInfo>,
-  savedSortIdMap?: Map<number, number>,
-): ServiceTypeNode[] => {
-  const resolveSortId = (serviceType: number, polSortId: number) =>
-    savedSortIdMap?.get(serviceType) ?? polSortId;
-  return polNodes
-    .slice()
-    .sort(
-      (a, b) =>
-        resolveSortId(Number(a.serviceType), a.sortId) -
-          resolveSortId(Number(b.serviceType), b.sortId) ||
-        a.serviceType - b.serviceType,
-    )
-    .map((node) => {
-      const serviceType = Number(node.serviceType);
-      const taskInfo = taskMap?.get(serviceType);
-      let checked = !!node.checked;
-      if (savedServiceTypeSet) {
-        checked = savedServiceTypeSet.has(serviceType);
-      } else if (clientCheckedMap?.has(serviceType)) {
-        checked = clientCheckedMap.get(serviceType) ?? false;
-      }
-      return {
-        serviceType,
-        label: enumLabelMap.get(serviceType) ?? `${serviceType}`,
-        sortId: resolveSortId(serviceType, node.sortId),
-        checked,
-        taskStatus: taskInfo?.taskStatus,
-        taskId: taskInfo?.taskId,
-        completionUserId: taskInfo?.completionUserId,
-        completionTime: taskInfo?.completionTime,
-        completionUserNickName: taskInfo?.completionUserNickName,
-        taskUsers: taskInfo?.taskUsers,
-      };
-    });
-};
-type EditServiceSnapshot = {
-  savedServiceTypeSet: Set<number>;
-  savedSortIdMap: Map<number, number>;
-  taskMap: Map<number, ServiceTypeTaskInfo>;
 };
 const editServiceSnapshot = ref<EditServiceSnapshot | null>(null);
 /** 编辑态：详情原始起运港 / 服务项集合 / 是否已有任务，用于保存时判断是否重建 */
@@ -400,40 +340,6 @@ const editOriginalServiceTypeSet = ref<Set<number>>(new Set());
 const editHasAnyServiceTask = ref(false);
 /** 编辑态回填期间抑制起运港/委托单位联动，避免详情回填 setValues 误触发重写勾选 */
 const suppressServiceTypeLinkage = ref(false);
-const parseDetailServiceTypes = (detail: SeaExportAdminApi.SeaExportDto) => {
-  const services = detail.seaExportServices ?? [];
-  const savedSet = new Set<number>();
-  // 编辑态服务项目仅来自详情 seaExportServices，不再参与 POL 联动
-  const savedSortIdMap = new Map<number, number>();
-  const taskMap = new Map<number, ServiceTypeTaskInfo>();
-  services.forEach((item) => {
-    const serviceType = Number(item.serviceType);
-    if (!Number.isFinite(serviceType)) return;
-    savedSet.add(serviceType);
-    if (item.sortId != null) {
-      savedSortIdMap.set(serviceType, Number(item.sortId));
-    }
-    const rawTaskId = item.seServiceTask?.id;
-    const taskId =
-      rawTaskId == null ? undefined : String(rawTaskId).trim() || undefined;
-    taskMap.set(serviceType, {
-      taskId,
-      taskStatus:
-        item.seServiceTask == null
-          ? null
-          : toServiceTaskStatusValue(item.seServiceTask.serviceTaskStatus),
-      completionUserId: item.seServiceTask?.completionUserId ?? null,
-      completionTime: item.seServiceTask?.completionTime ?? null,
-      completionUserNickName:
-        item.seServiceTask?.completionUserNickName ?? null,
-      taskUsers: (item.seServiceTask?.seServiceTaskUsers ?? []).map((user) => ({
-        userId: user.userId,
-        userNickName: user.userNickName,
-      })),
-    });
-  });
-  return { savedSet, savedSortIdMap, taskMap };
-};
 /**
  * 编辑态首次回填：以港口配置为「元数据」（sortId/userAttribute/锁定/必填），
  * 勾选状态与任务进度仍以详情为准；港口配置缺失的历史服务项照常保留。
@@ -487,45 +393,6 @@ const getCheckedServiceTypeItems =
       serviceType: node.serviceType,
       sortId: node.sortId,
     }));
-const SERVICE_REQUIRE_PROP_TO_FIELD_NAME: Record<number, string> = {
-  1: 'carrierId',
-  2: 'polId',
-  3: 'podId',
-  4: 'vessel',
-  5: 'innerVoyno',
-  6: 'closingTime',
-  7: 'closeDocTime',
-  8: 'closeVgmTime',
-  9: 'closeManifestTime',
-  10: 'bookingAgentId',
-  11: 'shipAgentId',
-  12: 'yardId',
-  13: 'codeIssueTypeId',
-  14: 'mblNum',
-  15: 'bookingNum',
-  16: 'etd',
-  17: 'clientId',
-};
-const SERVICE_REQUIRE_FIELD_LABEL_KEY: Record<string, string> = {
-  carrierId: 'seaExport.export.carrierId',
-  polId: 'seaExport.export.polId',
-  podId: 'seaExport.export.podId',
-  vessel: 'seaExport.export.vessel',
-  innerVoyno: 'seaExport.export.innerVoyno',
-  closingTime: 'seaExport.export.closingTime',
-  closeDocTime: 'seaExport.export.closeDocTime',
-  closeVgmTime: 'seaExport.export.closeVgmTime',
-  closeManifestTime: 'seaExport.export.closeManifestTime',
-  bookingAgentId: 'seaExport.export.bookingAgentId',
-  shipAgentId: 'seaExport.export.shipAgentId',
-  yardId: 'seaExport.export.yardId',
-  codeIssueTypeId: 'seaExport.export.codeIssueTypeId',
-  mblNum: 'seaExport.export.mblNum',
-  bookingNum: 'seaExport.export.bookingNum',
-  etd: 'seaExport.export.etd',
-  clientId: 'seaExport.export.clientId',
-};
-
 const syncDateVessel = ref('');
 const syncDateInnerVoyno = ref('');
 const syncDateEtd = ref<unknown>(undefined);
@@ -665,36 +532,6 @@ const latestAvailableServiceTypes = ref<
 >([]);
 const completingServiceType = ref<number>();
 const cancellingServiceType = ref<number>();
-const normalizeRequiredProps = (value: unknown): number[] => {
-  if (!Array.isArray(value)) return [];
-  return [
-    ...new Set(
-      value
-        .map((item) => Number(item))
-        .filter((item) => Number.isFinite(item) && item > 0),
-    ),
-  ];
-};
-const buildServiceRequiredPropsByType = (
-  availableServiceTypes: null | SeaExportAdminApi.ServiceTypeByPolDto[],
-  checkedServiceTypeSet: Set<number>,
-) => {
-  const sourceMap = new Map<number, SeaExportAdminApi.ServiceTypeByPolDto>();
-  (Array.isArray(availableServiceTypes) ? availableServiceTypes : []).forEach(
-    (item) => {
-      const serviceType = Number(item?.serviceType);
-      if (!Number.isFinite(serviceType)) return;
-      sourceMap.set(serviceType, item);
-    },
-  );
-  const result = new Map<number, number[]>();
-  checkedServiceTypeSet.forEach((serviceType) => {
-    const matched = sourceMap.get(serviceType);
-    if (!matched) return;
-    result.set(serviceType, normalizeRequiredProps(matched.seServiceRequires));
-  });
-  return result;
-};
 const updateServiceTypeRequiredProps = () => {
   const checkedSet = new Set(getCheckedServiceTypes());
   serviceTypeRequiredPropValues.value = buildServiceRequiredPropsByType(
@@ -702,10 +539,6 @@ const updateServiceTypeRequiredProps = () => {
     checkedSet,
   );
 };
-/** 可被服务锁定的表单字段（SeaExportPropEnum → 字段名，与必填字段映射一致） */
-const SERVICE_LOCKABLE_FIELD_NAMES = [
-  ...new Set(Object.values(SERVICE_REQUIRE_PROP_TO_FIELD_NAME)),
-];
 /** 已完成服务任务锁定的字段集合（取所有已处理任务对应服务项的 seServiceLocks 并集） */
 const getServiceLockedFieldNames = (): Set<string> => {
   const lockedFields = new Set<string>();
@@ -741,31 +574,6 @@ const applyServiceLockedFields = () => {
   shipmentFormApi.updateSchema(patches);
   portFormApi.updateSchema(patches);
 };
-type ServicePipelineState = 'active' | 'done' | 'upcoming';
-type ServiceTypeNodeGroup = {
-  sortId: number;
-  nodes: ServiceTypeNode[];
-};
-const getDistinctServiceSortIdsAsc = (nodes: ServiceTypeNode[]) => {
-  const sortIds = new Set<number>();
-  nodes.forEach((node) => sortIds.add(node.sortId));
-  return [...sortIds].sort((a, b) => a - b);
-};
-const sortServiceTypeNodesBySortId = (nodes: ServiceTypeNode[]) =>
-  [...nodes].sort(
-    (a, b) => a.sortId - b.sortId || a.serviceType - b.serviceType,
-  );
-const groupServiceTypeNodesBySortId = (
-  nodes: ServiceTypeNode[],
-): ServiceTypeNodeGroup[] => {
-  const sortIds = getDistinctServiceSortIdsAsc(nodes);
-  return sortIds.map((sortId) => ({
-    sortId,
-    nodes: nodes
-      .filter((node) => node.sortId === sortId)
-      .sort((a, b) => a.serviceType - b.serviceType),
-  }));
-};
 const checkedServiceTypeNodes = computed(() =>
   sortServiceTypeNodesBySortId(
     serviceTypeNodes.value.filter((node) => node.checked),
@@ -779,19 +587,6 @@ const serviceTypeNodeGroups = computed(() =>
     sortServiceTypeNodesBySortId(serviceTypeNodes.value),
   ),
 );
-/** 当前应处理的 sortId 组：取最小 sortId 且组内尚未全部完成 */
-const getServicePipelineActiveSortId = (nodes: ServiceTypeNode[]) => {
-  for (const sortId of getDistinctServiceSortIdsAsc(nodes)) {
-    const groupNodes = nodes.filter((node) => node.sortId === sortId);
-    const groupComplete = groupNodes.every(
-      (node) => node.taskStatus === SERVICE_TASK_STATUS_PROCESSED,
-    );
-    if (!groupComplete) {
-      return sortId;
-    }
-  }
-  return null;
-};
 const getServicePipelineState = (
   node: ServiceTypeNode,
   nodes: ServiceTypeNode[] = checkedServiceTypeNodes.value,
@@ -935,14 +730,6 @@ const isCurrentUserServiceTaskHandler = (node: ServiceTypeNode) => {
   if (!users.length) return true;
   return users.some((item) => item.userId === userId);
 };
-const formatServiceTaskUsersText = (node: ServiceTypeNode) => {
-  const names = (node.taskUsers ?? [])
-    .map((item) => item.userNickName || `用户${item.userId}`)
-    .filter(Boolean);
-  return names.length ? names.join('、') : '-';
-};
-const hasServiceTaskHandlerRestriction = (node: ServiceTypeNode) =>
-  (node.taskUsers?.length ?? 0) > 0;
 const canOperateServiceTaskByHandler = (node: ServiceTypeNode) =>
   !hasServiceTaskHandlerRestriction(node) ||
   isCurrentUserServiceTaskHandler(node);
@@ -981,29 +768,6 @@ const canCancelCompleteServiceTypeNode = (node: ServiceTypeNode) =>
   node.taskStatus === SERVICE_TASK_STATUS_PROCESSED &&
   node.checked &&
   isCurrentUserServiceCompleter(node);
-const formatServiceTaskCompletionTime = (value?: string | null) => {
-  if (!value) return '-';
-  const parsed = dayjs(value);
-  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm') : value;
-};
-const isRequiredFieldFilled = (value: unknown) => {
-  if (value === null || value === undefined) return false;
-  if (typeof value === 'string') return value.trim() !== '';
-  if (Array.isArray(value)) return value.length > 0;
-  if (typeof value === 'object') {
-    if (typeof (value as { isValid?: () => boolean }).isValid === 'function') {
-      return !!(value as { isValid: () => boolean }).isValid();
-    }
-    return true;
-  }
-  return true;
-};
-const getRequiredFieldLabelByProp = (propEnum: number) => {
-  const fieldName = SERVICE_REQUIRE_PROP_TO_FIELD_NAME[propEnum];
-  if (!fieldName) return `字段(${propEnum})`;
-  const labelKey = SERVICE_REQUIRE_FIELD_LABEL_KEY[fieldName];
-  return labelKey ? $t(labelKey) : fieldName;
-};
 const collectCurrentFormValues = async () => {
   const [
     partyValues,
