@@ -2,7 +2,7 @@
 title: vxe 列表列配置持久化
 module: 共享能力
 author: auto-doc-sync
-last_updated: 2026-07-05
+last_updated: 2026-07-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -83,6 +83,7 @@ last_updated: 2026-07-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | Style | vxe-grid 全局选中行（checkbox/radio/current）背景改为主题色 15% 透明 | 变量定义于 `packages/effects/plugins/src/vxe-table/style.css` `:root .vxe-grid`；与 antd Table 全局规则（`packages/styles/src/antd/index.css`）并列维护 |
 | 2026-07-05 | Feature | 列配置保存附带 `_debug` 排查快照，拦截保存时写入 localStorage | trigger/keyMapping/totals 便于对照 UserSetting 还原保存现场 |
 | 2026-07-05 | Fix | 列显隐持久化改为 getFullColumns 采集真实显隐，孪生费用表独立 tableId | vxe 4.17 getColumns 仅含 visibleColumn，原保存逻辑会把隐藏列误写 false |
 | 2026-06-27 | Fix | 列宽拖拽与持久化回填不再受 `minWidth` 限制 | 列初始化时将 `minWidth` 转为初始 `width` 并移除；全局 `resizableConfig.minWidth: 0` |

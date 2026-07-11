@@ -24,7 +24,7 @@ last_updated: 2026-07-12
 - **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'CreationTime DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按创建时间倒序。
 - **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO，故 DTO 后填充的 `*Name` 列通过 `fieldMap` 映射到实体导航路径：船公司 `carrierCode → Carrier.CnName`、订舱代理 `bookingAgentName → BookingAgent.Name`、港口 `polName/podName/receivePortName/poT1Name/poT2Name/deliverPortName → {POL/POD/ReceivePort/POT1/POT2/DeliverPort}.PortName`、航线 `laneName → POD.Lane.LaneName`、业务来源/付费方式/签单方式 `codeSourceName/codeFrtName/codeIssueTypeName → TransportOrder.CodeSource.CnName / TransportOrder.CodeFrt.CnName / CodeIssueType.BillType`。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`companys`）、后填充列（`creatorUserNickName`、收发通名称、`codePackageName`）显式 `sortable: false`，避免点击后端反射报错回退。
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`，`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`，提交前统一转换为 ISO 字符串。
-- **多选行维护：** 列表第一列为 checkbox 多选，不设置行内操作列；编辑/删除/复制要求恰好选中 1 行，未满足时提示「请先选择一条记录」；双击行会勾选该行并进入编辑。
+- **多选行维护：** 列表第一列为 checkbox 多选，不设置行内操作列；编辑/删除/复制要求恰好选中 1 行，未满足时提示「请先选择一条记录」；双击行会勾选该行并进入编辑。选中行背景为全局主题色 15% 透明（`hsl(var(--primary) / 15%)`，由 `packages/effects/plugins/src/vxe-table/style.css` 中 checkbox 选中变量控制）。
 - **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示。
 - **运踪状态（列表列）：** 「运踪状态」列优先展示接口 `yundangTrackStatus`；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录。
@@ -83,6 +83,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Style` | 列表 checkbox 选中行背景改为跟随主题主色 15% 透明，与全站表格选中态统一。 | 列表使用 `useVbenVxeGrid` + `checkboxConfig.highlight`，选中背景由 `vxe-table/style.css` 的 `--vxe-ui-table-row-checkbox-checked-background-color` 控制，非 antd Table；仅改 antd 全局样式不会影响本页。 |
 | 2026-07-12 | `Feature` | 列表六段港口列（收货地/起运港/中转港1/2/目的港/交货地）单元格改为展示各自的备注字段，列头排序仍按港口字段。 | `data.ts` `useColumns` 为六列补 `formatter: ({ row }) => row.xxxRemark ?? ''`（`receivePortRemark`…`deliverPortRemark`），列 `field` 保持 `*Name` 不变，排序仍走 `list.vue` `fieldMap` 映射的 `*.PortName` 实体路径。显示与排序靠 `formatter`/`field` 解耦。 |
 | 2026-07-11 | `Feature` | 列表列头排序对接：船公司/订舱代理/收货地/起运港/中转港1/2/目的港/交货地/航线/业务来源/付费方式/签单方式等 DTO 展示列支持按实体导航路径排序；计算/集合/后填充列关闭排序。 | 在 `list.vue` `fieldMap` 将 DTO `*Name` 映射到 `Carrier.CnName`/`BookingAgent.Name`/`*.PortName`/`POD.Lane.LaneName` 等实体路径（`sorting` 作用于 `SeaExport` 实体非 DTO）；`data.ts` 对 `totalCtn/teu`、业务人员、`companys`、收发通名称、`codePackageName`、`creatorUserNickName` 显式 `sortable: false`。端口导航属性按 EF `[ForeignKey]` 约定推断。 |
 | 2026-07-11 | `Style` | 运踪模块去除第三方服务商名称（i18n/注释/历史文档补漏）。 | 用户可见层统一「运踪」表述；内部 API 字段名保持不变。 |
