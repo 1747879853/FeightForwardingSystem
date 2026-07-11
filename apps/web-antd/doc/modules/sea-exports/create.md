@@ -15,9 +15,9 @@ last_updated: 2026-07-11
 | :-- | :-- |
 | 页面路由 | `/sea-exports/create` |
 | 路由名称 | `SeaExportCreate` |
-| 页面组件 | `src/views/sea-export-admin/form.vue` |
+| 页面组件 | `src/views/sea-export-admin/basic-info-form/form.vue` |
 | 权限口径 | 路由未声明独立权限；通过 `activePath: /sea-exports` 归属海运出口菜单 |
-| 关键源码 | `src/router/routes/modules/sea-export.ts`<br/>`src/views/sea-export-admin/list.vue`<br/>`src/views/sea-export-admin/form.vue`<br/>`src/views/sea-export-admin/editor.vue`<br/>`src/views/sea-export-admin/data.ts`<br/>`src/views/sea-export-admin/orderFee/data.ts`<br/>`src/api/sea-export/sea-export-admin.ts`<br/>`src/api/sea-export/order-fee-admin.ts`<br/>`src/api/sea-export/change-order-admin.ts` |
+| 关键源码 | `src/router/routes/modules/sea-export.ts`<br/>`src/views/sea-export-admin/list.vue`<br/>`src/views/sea-export-admin/basic-info-form/form.vue`（及同目录 README 与私有拆分文件）<br/>`src/views/sea-export-admin/editor.vue`<br/>`src/views/sea-export-admin/data.ts`<br/>`src/views/sea-export-admin/orderFee/data.ts`<br/>`src/api/sea-export/sea-export-admin.ts`<br/>`src/api/sea-export/order-fee-admin.ts`<br/>`src/api/sea-export/change-order-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
@@ -70,6 +70,7 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-11 | `Refactor` | 无（纯代码组织调整，行为不变）。 | 基础信息表单收敛至 `basic-info-form/` 目录：迁入 `form.vue`/`form.css` 及 5 个私有拆分文件（映射/服务项纯逻辑/AI 规范化/干系人/AI 识别/保存提交），新增 README 梳理职责与依赖；路由与 `editor.vue` 引用同步更新；清理 `form.vue` 5 处未使用声明。共享文件（`data.ts`/`service-type.ts`/`use-sea-export-copy`/`use-yundang-ocean-subscribe`）保留原位。 |
 | 2026-07-08 | `Feature` | 船期信息标题栏新增「同步日期」：船名+航次+开船日期齐全后可按历史票证回填 ATD/ETA/截 VGM/截单/截舱单。 | `GetDates` + `use-sync-shipment-dates.ts`；仅回填非 null 字段，无数据静默。 |
 | 2026-07-08 | `Style` | 箱型箱量标题栏新增/删除等按钮改为紧跟标题靠左，不再顶到右侧。 | 共用 `order-ctn-table.vue`；去掉标题 `flex: 1`。 |
 | 2026-07-06 | `Feature` | AI 识别对接 TextIn：支持 PDF/图片、Drawer 预览 citations 定位、箱型箱量/品名回填；空值/0/空 Guid 不回填。 | 与编辑页共用 `form.vue`；新增 `text-in-admin.ts` 与预览 Drawer 组件。 |
