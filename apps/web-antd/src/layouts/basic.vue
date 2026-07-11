@@ -7,7 +7,12 @@ import { useRouter } from 'vue-router';
 import { AuthenticationLoginExpiredModal } from '@vben/common-ui';
 import { VBEN_DOC_URL, VBEN_GITHUB_URL } from '@vben/constants';
 import { useWatermark } from '@vben/hooks';
-import { BookOpenText, CircleHelp, SvgGithubIcon } from '@vben/icons';
+import {
+  BookOpenText,
+  CircleHelp,
+  createIconifyIcon,
+  SvgGithubIcon,
+} from '@vben/icons';
 import {
   BasicLayout,
   LockScreen,
@@ -16,7 +21,10 @@ import {
 } from '@vben/layouts';
 import { preferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
-import { openWindow } from '@vben/utils';
+
+import { VbenIconButton } from '@vben-core/shadcn-ui';
+
+import { Tooltip } from 'ant-design-vue';
 
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
@@ -25,6 +33,8 @@ import AnnouncementLoginModal from '#/views/system/announcement/components/annou
 import { useAnnouncementLoginModal } from '#/views/system/announcement/use-announcement-login-modal';
 
 import RouteContentSpinner from './route-content-spinner.vue';
+
+const MeetingIcon = createIconifyIcon('fluent-color:video-24');
 
 // 消息通知待接后端 API，暂以空列表占位（#0133 方案 C）
 const notifications = ref<NotificationItem[]>([]);
@@ -89,6 +99,35 @@ const userEmail = computed(() => {
   );
 });
 
+const MEETING_BASE_URL = 'https://test.jiayuebetter.com/index.html';
+const MEETING_ROOM = '123456';
+const MEETING_PASSWORD = 'jiayueruanjian';
+
+function buildMeetingUrl() {
+  const name =
+    userStore.userInfo?.nickName ||
+    userStore.userInfo?.realName ||
+    userStore.userInfo?.username ||
+    userStore.userInfo?.userName ||
+    '';
+
+  const params = new URLSearchParams({
+    room: MEETING_ROOM,
+    password: MEETING_PASSWORD,
+    name,
+  });
+
+  return `${MEETING_BASE_URL}?${params.toString()}`;
+}
+
+function handleOpenMeeting() {
+  const url = buildMeetingUrl();
+  const meetingWindow = window.open(url, '_blank');
+  if (meetingWindow) {
+    meetingWindow.opener = null;
+  }
+}
+
 async function handleLogout() {
   await authStore.logout(false);
 }
@@ -135,6 +174,16 @@ watch(
 
 <template>
   <BasicLayout @clear-preferences-and-logout="handleLogout">
+    <template #header-right-49>
+      <Tooltip title="在线会议" placement="bottom">
+        <VbenIconButton
+          class="my-0 mr-1 rounded-md sm:mr-2"
+          @click="handleOpenMeeting"
+        >
+          <MeetingIcon class="size-5" />
+        </VbenIconButton>
+      </Tooltip>
+    </template>
     <template #user-dropdown>
       <UserDropdown
         :avatar
