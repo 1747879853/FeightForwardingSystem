@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-11
+last_updated: 2026-07-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -52,7 +52,7 @@ last_updated: 2026-07-11
 | **开船日期** | 按运输单 ETD 时间过滤海出委托。 | `ETDRange` -> `ETDStart` / `ETDEnd` | **触发/依赖：** 前端拆分日期区间并转 ISO。 | RangePicker 可为空；开始/结束均可由组件约束。 |
 | **截单时间** | 按截单时间过滤委托。 | `CloseDocTimeRange` -> `CloseDocTimeStart` / `CloseDocTimeEnd` | **触发/依赖：** 支持时间选择，提交前转 ISO。 | 可清空；时间格式由日期组件控制。 |
 | **客户** | 委托关联的委托客户。 | `createClientSelectSchema({ industryCategory: 'p' })` / `ClientId` | **触发/依赖：** 影响列表定位和后续编辑页的结算对象、费用、对账链路。 | 需选择有效客户主数据。 |
-| **起运港 / 目的港** | 航线节点筛选字段。 | `PortSelect` / `POLId`、`PODId` | **触发/依赖：** 与港口资料联动；列表按表单港口链路展示 `receivePortName` → `polName` → `poT1Name` → `poT2Name` → `podName` → `deliverPortName`，列标题与新建页一致（收货地/起运港/中转港1/2/目的港/交货地）。 | 需选择有效港口资料。 |
+| **起运港 / 目的港** | 航线节点筛选字段。 | `PortSelect` / `POLId`、`PODId` | **触发/依赖：** 与港口资料联动；列表六段港口列（收货地/起运港/中转港1/2/目的港/交货地）**单元格改为展示各自的备注字段**（`receivePortRemark` … `deliverPortRemark`，经 `formatter` 返回），但列 `field` 仍为 `*Name`，故**列头排序仍作用于各自港口字段**。 | 需选择有效港口资料。 |
 | **船名 / 航次** | 船期检索字段。 | `Vessel`、`InnerVoyno` | **触发/依赖：** 与编辑页船名航次输入保持同一字段口径。 | 文本可清空。 |
 | **船公司 / 订舱代理** | 承运与订舱服务主体。 | `CarrierSelect`、客户选择组件 `industryCategory: 'o'` | **触发/依赖：** 列表展示承运人 `carrierLogo + carrierCnShortName`（回退 `carrierName`）及订舱代理名称。 | 需选择有效基础资料或客户资料。 |
 | **业务人员** | 销售、操作、商务、客服、单证等订单人员。 | `UserSelect` + `USER_ATTRIBUTE` 枚举 | **触发/依赖：** 列表列从 `transportOrder.orderUsers` 按角色过滤并拼接姓名。 | 需选择符合对应用户属性的用户。 |
@@ -83,6 +83,7 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Feature` | 列表六段港口列（收货地/起运港/中转港1/2/目的港/交货地）单元格改为展示各自的备注字段，列头排序仍按港口字段。 | `data.ts` `useColumns` 为六列补 `formatter: ({ row }) => row.xxxRemark ?? ''`（`receivePortRemark`…`deliverPortRemark`），列 `field` 保持 `*Name` 不变，排序仍走 `list.vue` `fieldMap` 映射的 `*.PortName` 实体路径。显示与排序靠 `formatter`/`field` 解耦。 |
 | 2026-07-11 | `Feature` | 列表列头排序对接：船公司/订舱代理/收货地/起运港/中转港1/2/目的港/交货地/航线/业务来源/付费方式/签单方式等 DTO 展示列支持按实体导航路径排序；计算/集合/后填充列关闭排序。 | 在 `list.vue` `fieldMap` 将 DTO `*Name` 映射到 `Carrier.CnName`/`BookingAgent.Name`/`*.PortName`/`POD.Lane.LaneName` 等实体路径（`sorting` 作用于 `SeaExport` 实体非 DTO）；`data.ts` 对 `totalCtn/teu`、业务人员、`companys`、收发通名称、`codePackageName`、`creatorUserNickName` 显式 `sortable: false`。端口导航属性按 EF `[ForeignKey]` 约定推断。 |
 | 2026-07-11 | `Style` | 运踪模块去除第三方服务商名称（i18n/注释/历史文档补漏）。 | 用户可见层统一「运踪」表述；内部 API 字段名保持不变。 |
 | 2026-07-11 | `Style` | 移除「运踪订阅」列，改由「运踪状态」列涵盖是否订阅信息。 | 删除 `data.ts` `isYundangSubscribed` 列与 `list.vue` `yundangSubscribeStatus` slot 及 `getYundangSubscribeStatus(Meta)` 引用。 |

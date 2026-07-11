@@ -13,6 +13,8 @@
 
 ## 2026-07
 
+- [2026-07-12 海运出口附件 Tab 卡片化布局与全局预览弹窗](./changelogs/change-log-2026-07-12-sea-export-attachments-card-preview.md)
+- [2026-07-12 海运出口列表港口列改显备注、排序仍用港口字段](./changelogs/change-log-2026-07-12-sea-export-list-port-columns-show-remark.md)
 - [2026-07-12 海运出口编辑态干系人默认五岗位始终显示（补空卡）](./changelogs/change-log-2026-07-12-sea-export-order-users-default-roles-always-show.md)
 - [2026-07-11 侧边栏菜单重组与收费核销更名](./changelogs/change-log-2026-07-11-sidebar-menu-restructure.md)
 - [2026-07-11 海运出口干系人默认展示优化与委托单位/起运港必填](./changelogs/change-log-2026-07-11-sea-export-order-users-and-required-fields.md)
