@@ -794,17 +794,20 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'transportOrder.totalCtn',
       title: $t('seaExport.export.orderCtns'),
       minWidth: 120,
+      sortable: false,
       showOverflow: true,
     },
     {
       field: 'transportOrder.teu',
       title: 'TEU',
       minWidth: 90,
+      sortable: false,
     },
     {
       field: 'operationUserName',
       title: $t('system.user.userAttributeOptions.operation'),
       minWidth: 100,
+      sortable: false,
       formatter: ({ row }) =>
         getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.operation),
       showOverflow: true,
@@ -813,6 +816,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'saleUserName',
       title: $t('system.user.userAttributeOptions.sales'),
       minWidth: 100,
+      sortable: false,
       formatter: ({ row }) =>
         getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.sale),
       showOverflow: true,
@@ -821,6 +825,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'customerServiceUserName',
       title: $t('system.user.userAttributeOptions.customerService'),
       minWidth: 120,
+      sortable: false,
       formatter: ({ row }) =>
         getRoleName(
           row.transportOrder?.orderUsers,
@@ -832,6 +837,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'documentationUserName',
       title: $t('system.user.userAttributeOptions.documentation'),
       minWidth: 100,
+      sortable: false,
       formatter: ({ row }) =>
         getRoleName(
           row.transportOrder?.orderUsers,
@@ -843,6 +849,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'businessUserName',
       title: $t('system.user.userAttributeOptions.business'),
       minWidth: 100,
+      sortable: false,
       formatter: ({ row }) =>
         getRoleName(row.transportOrder?.orderUsers, USER_ATTRIBUTE.business),
       showOverflow: true,
@@ -851,6 +858,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'companys',
       title: $t('seaExport.export.organizationUnits'),
       minWidth: 140,
+      sortable: false,
       formatter: ({ row }) => row.companys?.[0]?.name || '',
       showOverflow: true,
     },
@@ -864,6 +872,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'transportOrder.shipperName',
       title: $t('seaExport.export.shipperId'),
       minWidth: 140,
+      sortable: false,
       formatter: ({ row }) =>
         getPartyName(
           row.transportOrder?.shipperName,
@@ -875,6 +884,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'transportOrder.consigneeName',
       title: $t('seaExport.export.consigneeId'),
       minWidth: 140,
+      sortable: false,
       formatter: ({ row }) =>
         getPartyName(
           row.transportOrder?.consigneeName,
@@ -886,6 +896,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'transportOrder.notifierName',
       title: $t('seaExport.export.notifierId'),
       minWidth: 140,
+      sortable: false,
       formatter: ({ row }) =>
         getPartyName(
           row.transportOrder?.notifierName,
@@ -902,6 +913,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'transportOrder.codePackageName',
       title: $t('seaExport.export.codePackageId'),
       minWidth: 100,
+      sortable: false,
       showOverflow: true,
     },
     {
@@ -1025,6 +1037,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'creatorUserNickName',
       title: '录入人',
       minWidth: 120,
+      sortable: false,
       showOverflow: true,
     },
     {

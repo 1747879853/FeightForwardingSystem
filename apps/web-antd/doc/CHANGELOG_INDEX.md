@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-11 海运出口列表列头排序字段映射（DTO → 实体路径）](./changelogs/change-log-2026-07-11-sea-export-list-sort-field-mapping.md)
 - [2026-07-11 运踪模块去除第三方服务商名称（去品牌化补漏）](./changelogs/change-log-2026-07-11-sea-export-tracking-vendor-debrand.md)
 - [2026-07-11 海运出口运踪 UI 精简（去订阅列/Tag、保存复制合并、时间轴苹果风）](./changelogs/change-log-2026-07-11-sea-export-yundang-ui-cleanup.md)
 - [2026-07-11 海运出口运踪状态列与运踪详情弹窗（GetOceanPushInfoAsync）](./changelogs/change-log-2026-07-11-sea-export-yundang-tracking-push-info.md)
