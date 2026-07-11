@@ -1215,7 +1215,7 @@ const cargoRemarkSchema = cargoSchema
     ...item,
     label:
       item.fieldName === 'internalRemark'
-        ? '备注信息'
+        ? $t('seaExport.export.internalRemark')
         : item.fieldName === 'remark'
           ? '外部备注'
           : item.label,
@@ -1227,7 +1227,7 @@ const cargoRemarkSchema = cargoSchema
     formItemClass: 'col-span-2 party-remark-field',
   }));
 
-/** 收发通区块：备注信息 */
+/** 收发通区块：内部备注 / 外部备注 */
 const [CargoRemarkForm, cargoRemarkFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
