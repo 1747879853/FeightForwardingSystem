@@ -261,6 +261,14 @@ export namespace SeaExportAdminApi {
     bookingAgentId?: number;
     shipAgentId?: number;
     yardId?: number;
+    /** 场站联系人 */
+    yardContact?: string;
+    /** 场站邮箱 */
+    yardEmail?: string;
+    /** 场站手机 */
+    yardMobile?: string;
+    /** 场站电话 */
+    yardTel?: string;
     /** 签单方式id（新版字段） */
     codeIssueTypeId?: number;
     /** 签单方式id（旧字段，兼容） */
@@ -306,6 +314,14 @@ export namespace SeaExportAdminApi {
     bookingAgentId?: number;
     shipAgentId?: number;
     yardId?: number;
+    /** 场站联系人 */
+    yardContact?: string;
+    /** 场站邮箱 */
+    yardEmail?: string;
+    /** 场站手机 */
+    yardMobile?: string;
+    /** 场站电话 */
+    yardTel?: string;
     /** 签单方式id（新版字段） */
     codeIssueTypeId?: number;
     /** 签单方式id（旧字段，兼容） */
