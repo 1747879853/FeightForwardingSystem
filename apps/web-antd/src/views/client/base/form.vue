@@ -684,25 +684,35 @@ const handleClientTypeChange = (checkedValues: any[]) => {
 };
 
 const handleIsClientChange = (e: any) => {
-  const checked = e.target.checked;
+  const checked = e.includes(1);
   isClient.value = checked;
-  if (!checked) {
-    // 取消客户类型时，清空客户的行业类别选择
+  if (checked) {
+    // 勾选客户类型时，默认设置为正式客户
+    clientTypeCoopStatus.value = 1;
+  } else {
+    // 取消客户类型时，清空客户的行业类别选择和合作状态
     customerType.value = [];
+    clientTypeCoopStatus.value = undefined;
   }
   console.log('isClient.value', isClient.value);
   console.log('customerType.value', customerType.value);
+  console.log('clientTypeCoopStatus.value', clientTypeCoopStatus.value);
 };
 
 const handleIsSupplierChange = (e: any) => {
-  const checked = e.target.checked;
+  const checked = e.includes(2);
   isSupplier.value = checked;
-  if (!checked) {
-    // 取消供应商类型时，清空供应商的行业类别选择
+  if (checked) {
+    // 勾选供应商类型时，默认设置为正式供应商
+    supplierCoopStatus.value = 1;
+  } else {
+    // 取消供应商类型时，清空供应商的行业类别选择和合作状态
     supplierType.value = [];
+    supplierCoopStatus.value = undefined;
   }
   console.log('isSupplier.value', isSupplier.value);
   console.log('supplierType.value', supplierType.value);
+  console.log('supplierCoopStatus.value', supplierCoopStatus.value);
 };
 
 /**

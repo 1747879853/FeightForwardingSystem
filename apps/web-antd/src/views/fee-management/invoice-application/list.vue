@@ -316,7 +316,7 @@ function handleBatchSubmit() {
     return;
   }
 
-  // 过滤出可以提交的记录（录入或驳回状态）
+  // 过滤出可以提交的记录(录入或驳回状态)
   const canSubmitRows = rows.filter(
     (row) =>
       row.status === InvoiceApplicationApi.InvoiceApplicationStatus.Entering ||
@@ -330,13 +330,13 @@ function handleBatchSubmit() {
 
   if (canSubmitRows.length < rows.length) {
     message.warning(
-      `选中的 ${rows.length} 条记录中，只有 ${canSubmitRows.length} 条可以提交`,
+      `选中的 ${rows.length} 条记录中,只有 ${canSubmitRows.length} 条可以提交`,
     );
   }
 
   Modal.confirm({
     title: '确认提交',
-    content: `确定要提交选中的 ${canSubmitRows.length} 条开票申请进行审核吗？`,
+    content: `确定要提交选中的 ${canSubmitRows.length} 条开票申请进行审核吗?`,
     onOk: async () => {
       actionLoading.value = true;
       try {
@@ -354,6 +354,52 @@ function handleBatchSubmit() {
     },
   });
 }
+
+/** 批量撤回审核 */
+function handleBatchWithdraw() {
+  const rows = getSelectedRows();
+  if (rows.length === 0) {
+    message.warning('请先选择要撤回的记录');
+    return;
+  }
+
+  // 过滤出可以撤回的记录(待审核状态)
+  const canWithdrawRows = rows.filter(
+    (row) =>
+      row.status === InvoiceApplicationApi.InvoiceApplicationStatus.Auditing,
+  );
+
+  if (canWithdrawRows.length === 0) {
+    message.warning('选中的记录中没有可以撤回的申请');
+    return;
+  }
+
+  if (canWithdrawRows.length < rows.length) {
+    message.warning(
+      `选中的 ${rows.length} 条记录中,只有 ${canWithdrawRows.length} 条可以撤回`,
+    );
+  }
+
+  Modal.confirm({
+    title: '确认撤回',
+    content: `确定要撤回选中的 ${canWithdrawRows.length} 条开票申请吗?`,
+    onOk: async () => {
+      actionLoading.value = true;
+      try {
+        for (const row of canWithdrawRows) {
+          await withdrawAsync({ id: row.id });
+        }
+        message.success('撤回成功');
+        handleRefresh();
+      } catch (error) {
+        console.error('撤回失败:', error);
+        message.error('撤回失败');
+      } finally {
+        actionLoading.value = false;
+      }
+    },
+  });
+}
 </script>
 
 <template>
@@ -363,62 +409,10 @@ function handleBatchSubmit() {
         <Space>
           <Button type="primary" @click="handleCreate"> 新建 </Button>
           <Button @click="handleBatchSubmit"> 批量提交 </Button>
+          <Button @click="handleBatchWithdraw"> 批量撤回 </Button>
           <Button danger :loading="actionLoading" @click="handleBatchDelete">
             删除
           </Button>
-        </Space>
-      </template>
-      <template #action="{ row }">
-        <Space>
-          <Button
-            v-if="
-              row.status ===
-                InvoiceApplicationApi.InvoiceApplicationStatus.Entering ||
-              row.status ===
-                InvoiceApplicationApi.InvoiceApplicationStatus.Rejected
-            "
-            type="link"
-            size="small"
-            @click.stop="handleEdit(row)"
-          >
-            编辑
-          </Button>
-          <Button
-            v-if="
-              row.status ===
-                InvoiceApplicationApi.InvoiceApplicationStatus.Entering ||
-              row.status ===
-                InvoiceApplicationApi.InvoiceApplicationStatus.Rejected
-            "
-            type="link"
-            size="small"
-            @click.stop="handleSubmit(row)"
-          >
-            提交
-          </Button>
-          <Button
-            v-if="
-              row.status ===
-              InvoiceApplicationApi.InvoiceApplicationStatus.Auditing
-            "
-            type="link"
-            size="small"
-            @click.stop="handleWithdraw(row)"
-          >
-            撤回
-          </Button>
-          <!-- <Button
-            v-if="
-              row.status ===
-              InvoiceApplicationApi.InvoiceApplicationStatus.Auditing
-            "
-            type="link"
-            size="small"
-            danger
-            @click.stop="handleAudit(row)"
-          >
-            驳回
-          </Button> -->
         </Space>
       </template>
     </Grid>

@@ -205,12 +205,5 @@ export function useColumns(): VxeTableGridOptions<InvoiceApplicationApi.InvoiceA
       minWidth: 160,
       showOverflow: true,
     },
-    {
-      field: 'action',
-      title: '操作',
-      width: 280,
-      fixed: 'right',
-      slots: { default: 'action' },
-    },
   ];
 }
