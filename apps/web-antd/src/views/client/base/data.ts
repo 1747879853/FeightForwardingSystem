@@ -444,6 +444,16 @@ export const formatIndustryCategories = (value?: string): string => {
 };
 
 /**
+ * 格式化干系人列表为可读字符串（显示昵称）
+ */
+export const formatStakeholders = (
+  stakeholders?: ClientAdminApi.ClientStakeholderDto[],
+): string => {
+  if (!stakeholders || stakeholders.length === 0) return '';
+  return stakeholders.map((s) => s.userNickName || String(s.userId)).join(', ');
+};
+
+/**
  * 列表页搜索表单 schema
  */
 export function useGridFormSchema(): VbenFormSchema[] {
@@ -470,6 +480,24 @@ export function useGridFormSchema(): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
       },
     },
+    // {
+    //   component: 'UserSelect',
+    //   fieldName: 'SaleId',
+    //   label: $t('system.user.userAttributeOptions.sales'),
+    //   componentProps: {
+    //     allowClear: true,
+    //     userAttribute: 16, // UserAttribute.Sale
+    //   },
+    // },
+    // {
+    //   component: 'UserSelect',
+    //   fieldName: 'OperationId',
+    //   label: $t('system.user.userAttributeOptions.operation'),
+    //   componentProps: {
+    //     allowClear: true,
+    //     userAttribute: 1, // UserAttribute.Operation
+    //   },
+    // },
   ];
 }
 
@@ -513,6 +541,16 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       fieldName: 'taxNo',
       label: $t('seaExport.client.taxNo'),
       componentProps: { allowClear: true },
+    },
+    {
+      component: 'CodeSourceSelect',
+      fieldName: 'codeSourceId',
+      label: $t('seaExport.client.codeSource'),
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
+      },
     },
     {
       component: 'Input',
@@ -598,17 +636,6 @@ export function useClientFormSchema(): VbenFormSchema[] {
       componentProps: {
         allowClear: true,
         options: getClientLevelOptions(),
-        class: 'w-full',
-        placeholder: $t('ui.placeholder.select'),
-      },
-    },
-    {
-      component: 'Select',
-      fieldName: 'source',
-      label: $t('seaExport.client.source'),
-      componentProps: {
-        allowClear: true,
-        options: getClientSourceOptions(),
         class: 'w-full',
         placeholder: $t('ui.placeholder.select'),
       },
@@ -865,6 +892,18 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       title: $t('seaExport.client.phone'),
       minWidth: 120,
     },
+    // {
+    //   field: 'sales',
+    //   title: $t('system.user.userAttributeOptions.sales'),
+    //   minWidth: 120,
+    //   formatter: ({ cellValue }) => formatStakeholders(cellValue),
+    // },
+    // {
+    //   field: 'operations',
+    //   title: $t('system.user.userAttributeOptions.operation'),
+    //   minWidth: 120,
+    //   formatter: ({ cellValue }) => formatStakeholders(cellValue),
+    // },
     {
       field: 'clientType',
       title: $t('seaExport.client.clientType'),

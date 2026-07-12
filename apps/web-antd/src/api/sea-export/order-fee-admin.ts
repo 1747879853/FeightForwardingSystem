@@ -130,6 +130,9 @@ export namespace OrderFeeAdminApi {
     /** 结算状态 */
     settlementStatus?: number;
 
+    /** 组合费用状态（计算字段，非数据库列） */
+    combinedFeeStatus?: number;
+
     submitOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
     modifyOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];
     deleteOrderFeeTasks?: ExpenseSubmissionAdminApi.TaskItemDto[];

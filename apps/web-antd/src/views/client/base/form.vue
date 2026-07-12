@@ -610,6 +610,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     code: detail.code,
     enName: detail.enName,
     taxNo: detail.taxNo,
+    codeSourceId: detail.codeSourceId,
     phone: detail.phone,
     mobile: detail.mobile,
     email: detail.email,
@@ -892,6 +893,7 @@ const handleSubmit = async () => {
         enAddress: baseValues.enAddress,
         mainProduct: baseValues.mainProduct,
         enable: baseValues.enable ?? true,
+        codeSourceId: baseValues.codeSourceId,
 
         industryCategories,
         remark: baseValues.remark,
@@ -991,6 +993,7 @@ const handleSubmit = async () => {
         enable: baseValues.enable ?? true,
 
         industryCategories,
+        codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
         enFullName: baseValues.enFullName,
         taxNo: baseValues.taxNo,
