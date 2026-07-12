@@ -723,7 +723,35 @@ const updateStakeholders = (
   values: number[],
 ) => {
   defaultOrderUsers.value.forEach((orderUser) => {
-    if (orderUser.userAttribute === userAttribute) orderUser.userIds = values;
+    if (orderUser.userAttribute === userAttribute) {
+      // 更新 userIds
+      orderUser.userIds = values;
+
+      // 同步更新 stakeholderList，确保编辑模式下能正确提交
+      const existingList = orderUser.stakeholderList || [];
+      const existingMap = new Map(
+        existingList.map((item) => [item.userId, item]),
+      );
+
+      orderUser.stakeholderList = values.map((userId) => {
+        const existing = existingMap.get(userId);
+        if (existing) {
+          // 如果已存在，保留原有信息
+          return existing;
+        } else {
+          // 如果是新增的，创建基本对象（编辑模式需要 clientId）
+          return {
+            clientId: editId.value || '',
+            userId,
+            isDefault: false,
+            userAttribute: userAttribute!,
+            isDeleted: false,
+            creationTime: new Date().toISOString(),
+            id: 0, // 新增的干系人 id 为 0
+          } as ClientAdminApi.ClientStakeholderDto;
+        }
+      });
+    }
   });
 };
 
