@@ -7,6 +7,9 @@ import jiayueLoginLogo from '#/assets/img/jiayue/logo-login.webp';
 import jhtLogo from '#/assets/img/jht/logo.png';
 import jhtLogoText from '#/assets/img/jht/logo-text.png';
 import jhtLoginLogo from '#/assets/img/jht/logo-login.png';
+import sjtdLogo from '#/assets/img/sjtd/logo.png';
+import sjtdLogoText from '#/assets/img/sjtd/logo-text.png';
+import sjtdLoginLogo from '#/assets/img/sjtd/logo-login.png';
 
 const appBrand = import.meta.env.VITE_APP_BRAND;
 
@@ -19,10 +22,20 @@ export const isHhyyBrand = appBrand === 'hhyy';
 /** 佳越软件（pnpm dev 默认，Vben 中性 Logo） */
 export const isJiayueBrand = appBrand === 'jiayue';
 
-function pickBrandAsset<T>(jht: T, hhyy: T, jiayue: T, fallback: T): T {
+/** 世纪通达 */
+export const isSjtdBrand = appBrand === 'sjtd';
+
+function pickBrandAsset<T>(
+  jht: T,
+  hhyy: T,
+  jiayue: T,
+  sjtd: T,
+  fallback: T,
+): T {
   if (isJhtBrand) return jht;
   if (isHhyyBrand) return hhyy;
   if (isJiayueBrand) return jiayue;
+  if (isSjtdBrand) return sjtd;
   return fallback;
 }
 
@@ -31,6 +44,7 @@ export const brandLogo = pickBrandAsset(
   jhtLogo,
   hhyyLogo,
   jiayueLogo,
+  sjtdLogo,
   jiayueLogo,
 );
 
@@ -39,6 +53,7 @@ export const brandLogoText = pickBrandAsset(
   jhtLogoText,
   hhyyLogoText,
   jiayueLogoText,
+  sjtdLogoText,
   jiayueLogoText,
 );
 
@@ -47,6 +62,7 @@ const defaultBrandLoginBackVideoOssUrl = pickBrandAsset(
   'https://oss.jiayuebetter.com/jht-login-back.mp4',
   'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
   'https://oss.jiayuebetter.com/login-back.mp4',
+  'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
   'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
 );
 
@@ -58,6 +74,7 @@ export const brandLoginTitleLogo = pickBrandAsset(
   jhtLoginLogo,
   hhyyLoginLogo,
   jiayueLoginLogo,
+  sjtdLoginLogo,
   undefined,
 );
 

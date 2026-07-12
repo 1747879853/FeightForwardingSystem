@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-13 世纪通达（sjtd）独立打包命令与品牌环境](./changelogs/change-log-2026-07-13-sjtd-brand-pack.md)
 - [2026-07-12 biz-select 大数 ID 校验与透传修复（港口/费用代码/汇率/客户账期）](./changelogs/change-log-2026-07-12-biz-select-bigint-id-validation.md)
 - [2026-07-12 海运出口列表开启/切换分组后列设置被重置（vxe columns 引用稳定化）](./changelogs/change-log-2026-07-12-sea-export-list-grouping-column-persist.md)
 - [2026-07-12 海运出口新建保存后关闭残留空白标签](./changelogs/change-log-2026-07-12-sea-export-create-save-blank-tab.md)

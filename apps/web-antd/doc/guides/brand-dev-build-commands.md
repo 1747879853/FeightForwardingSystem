@@ -9,6 +9,7 @@
 | 佳越软件（本地默认） | `pnpm dev:antd` 或 `pnpm dev:antd:jiayue` | 一般不单独打包 | `development` | `src/assets/img/jiayue/` |
 | 浩瀚远洋 | `pnpm dev:antd:hhyy` | `pnpm build:antd:hhyy` | `hhyy` | `src/assets/img/hhyy/` |
 | 津海通 | `pnpm dev:antd:jht` | `pnpm build:antd:jht` | `jht` | `src/assets/img/jht/` |
+| 世纪通达 | `pnpm dev:antd:sjtd` | `pnpm build:antd:sjtd` | `sjtd` | `src/assets/img/sjtd/` |
 
 `pnpm build:antd` 与 `pnpm build:antd:hhyy` 等价（浩瀚远洋）。
 
@@ -43,6 +44,7 @@
 | `.env.development` | 佳越软件：`VITE_APP_BRAND=jiayue`              |
 | `.env.hhyy`        | 浩瀚远洋                                       |
 | `.env.jht`         | 津海通                                         |
+| `.env.sjtd`        | 世纪通达                                       |
 | `.env.production`  | 与 `hhyy` 保持一致（兼容旧 `production` mode） |
 
 ### 生产 API 地址（`VITE_GLOB_API_URL`）
@@ -51,6 +53,7 @@
 | --- | --- | --- |
 | 津海通 (jht) | `.env.jht` | `http://43.138.14.122:82/api` |
 | 浩瀚远洋 (hhyy) | `.env.hhyy` / `.env.production` | `http://118.190.1.4:82/api` |
+| 世纪通达 (sjtd) | `.env.sjtd` | `http://43.138.14.122:84/api` |
 
 运行时生产环境通过 `dist/_app.config.js` 注入 API（`useAppConfig` → `window._VBEN_ADMIN_PRO_APP_CONF_`），**不是** `import.meta.env`。打包后可用以下命令校验：
 
@@ -100,4 +103,6 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-07-13 | `Fix` | 世纪通达（sjtd）品牌名称与生产 API 更正为 43.138.14.122:84 | `.env.sjtd` 与 `vite.config.mts` dev 代理同步 |
+| 2026-07-13 | `Feature` | 新增世纪通达（sjtd）独立打包与开发命令 | 新增 `.env.sjtd`、`build:sjtd`/`dev:sjtd`；`brand-assets.ts` 与 `vite.config.mts` 注册 sjtd 素材目录 |
 | 2026-06-16 | `Parsing` | 无 | 解析直接执行 `pnpm vite build --mode jht` 导致 `_app.config.js` 误读 `.env.production`、API 指向 118.190.1.4:82 的根因；明确必须通过 `pnpm build:jht` 打包。 |
