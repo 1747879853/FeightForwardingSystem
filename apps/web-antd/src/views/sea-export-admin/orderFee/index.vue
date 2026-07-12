@@ -38,6 +38,13 @@ defineOptions({
   name: 'OrderFee',
 });
 
+const emit = defineEmits<{
+  (
+    e: 'fee-count-change',
+    payload: { recCount: number; payCount: number },
+  ): void;
+}>();
+
 const route = useRoute();
 const router = useRouter();
 
@@ -250,7 +257,10 @@ const displayList = computed(() => {
         value = formValues.value?.innerVoyno || '--';
         break;
       case 'carrierName':
-        value = formValues.value?.carrierName || '--';
+        value =
+          formValues.value?.carrierCnShortName ||
+          formValues.value?.carrierName ||
+          '--';
         break;
       case 'etd':
         value = formatNormalDate(formValues.value?.etd);
@@ -509,6 +519,18 @@ const getOrderFeeNumber = async () => {
   });
 };
 
+// 各方向费用行数（0 应收 / 1 应付），用于同步父级 Tab 数字
+const feeCountMap = ref<Record<number, number>>({ 0: 0, 1: 0 });
+
+// 费用表数据变化时，上抛最新应收/应付数量
+const handleFeeSync = (data: { type: number; orderFees: any[] }) => {
+  feeCountMap.value[data.type] = data.orderFees?.length ?? 0;
+  emit('fee-count-change', {
+    recCount: feeCountMap.value[0] ?? 0,
+    payCount: feeCountMap.value[1] ?? 0,
+  });
+};
+
 // 处理费用表格的金额更新事件
 const handleAmountUpdate = (data: {
   type: number;
@@ -605,7 +627,9 @@ onMounted(() => {
             :type="0"
             :rec-amount-map="recAmountMap"
             :pay-amount-map="payAmountMap"
+            :order-detail="formValues"
             @update-amount="handleAmountUpdate"
+            @sync-fee="handleFeeSync"
             @refresh-opposite-table="() => handleRefreshOppositeTable(0)"
           />
           <OrderFeeTable
@@ -613,7 +637,9 @@ onMounted(() => {
             :type="1"
             :rec-amount-map="recAmountMap"
             :pay-amount-map="payAmountMap"
+            :order-detail="formValues"
             @update-amount="handleAmountUpdate"
+            @sync-fee="handleFeeSync"
             @refresh-opposite-table="() => handleRefreshOppositeTable(1)"
           />
           <div class="total-amount flex flex-wrap rounded-md px-4 py-1 shadow">

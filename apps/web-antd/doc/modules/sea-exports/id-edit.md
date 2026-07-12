@@ -44,7 +44,7 @@ last_updated: 2026-07-12
 - **更改单处理：** 更改单页基于运输单 ID 管理变更原因、会计期间和关联费用，接口使用 `/services/app/ChangeOrderAdmin`；更改单 DTO 带 `feeLocked` 和费用锁定人/时间信息。
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
 - **分单处理：** 分单页按 `seaExportId` 分页加载分单记录，支持新增、编辑、删除，维护分单相关方、提单号、货物、签单、运费/服务代码以及分单箱明细。
-- **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；卡片标题行右侧合并「客户可见」勾选与「上传」；文件列表支持点击预览、下载、删除；网格末尾虚线卡片可「添加其他类型」。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`；**默认客户不可见**（`clientVisible` 默认 `false`），无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局 `AttachmentViewerModal`：PDF 内嵌 iframe、Office 走微软在线预览、图片直接展示。
+- **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；卡片标题行右侧合并「客户可见」勾选与「上传」；文件列表支持点击预览、下载、删除；网格末尾虚线卡片可「添加其他类型」。每个文件项在文件名下方展示「大小 · 上传人：{昵称}」及「上传时间：{YYYY-MM-DD HH:mm:ss}」（分别取 `creatorUserNickName` 与 `creationTime`，时间经 `@vben/utils` 的 `formatDateTime` 格式化，值为空则不展示对应行）。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`；**默认客户不可见**（`clientVisible` 默认 `false`），无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局 `AttachmentViewerModal`：PDF 内嵌 iframe、Office 走微软在线预览、图片直接展示。
 - **打印：** 顶栏「打印」按钮调用全局 `usePrintFormat().openPrint`：先弹窗选择 `PrintJsonType=0`（海运出口详情）下的打印模板，确认后调 `PrintAsync` 生成 PDF 并触发下载。新增模式禁止打印；有未保存修改时二次确认后按当前表单内容打印，否则重新拉取 `DetailAsync` 原始对象序列化。
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
 - **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。
@@ -119,7 +119,10 @@ last_updated: 2026-07-12
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
-| :-- | :-- | :-- | :-- |
+| :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-12 | `Feature`/`Fix`/`Perf` | ①应收应付费用新增/删除后，顶部「应收应付 x - y」Tab 数字实时刷新；②订单信息卡片「船公司」改显中文简称 `carrierCnShortName`（兜底全称），应收应付与更改单页一致；③消除进入更改单/应收应付 Tab 时 `DetailAsync` 被请求 3 次的冗余。 | ①`order-fee-table.vue` 经 `sync-fee` 上抛行数→`orderFee/index.vue` 汇总为 `fee-count-change`→`editor.vue` `setFeeNumber` 更新 Tab 标签（计数含未保存新建行，属即时反馈）；②`displayList` `carrierName` 分支改 `carrierCnShortName |  | carrierName |  | '--'`；③三次来源：父页 `loadSeaExportData`1 次 + 两个`order-fee-table`各`onMounted`拉 1 次。改为`order-fee-table`新增`orderDetail`prop，由父组件`:order-detail="formValues"`传入并`watch(immediate)` 应用箱型/基础数据，`onMounted` 不再自请求；切换单据（`editId`变化）时仍强制拉一次防`KeepAlive` 旧值；`openBatchImportModal`复用`orderBaseData`。 |
+| 2026-07-12 | `Fix` | 恢复应收应付费用表「打印」按钮：勾选已保存行后按应收 `1000` / 应付 `1500` 打开全局打印；未保存行拦截；更改单模式不展示。同日二次修复「点了没反应」：打印按钮去掉 `:disabled`，未勾选时提示「请先勾选要打印的费用」（原引用了不存在的 i18n key `common.selectDataFirst`）。 | `74d0eabf` 改费用表时误删；按 `f071268c` 恢复，且不回退 checkbox `trigger: 'row'`。浏览器实测：勾选→弹出「选择打印模板」可打印。 |
+| 2026-07-12 | `Feature` | 附件 Tab 文件项补充展示「上传人」与「上传时间」：文件名下方第一行为「大小 · 上传人：{昵称}」，第二行为「上传时间：{时间}」，字段为空则各自隐藏。 | `attachments/index.vue` 引入 `@vben/utils` 的 `formatDateTime`，模板复用已有 i18n key `seaExport.export.attachments.uploader/uploadTime`；数据取自 `AttachmentItemDto.creatorUserNickName` / `creationTime`（DTO 与接口 `GetAttachmentsAsync` 已返回，无需后端改动）。 |
 | 2026-07-12 | `Feature` | 船名/航次宽度 3:2；运输条款与贸易条款合并为一项（1:1）；签单地点/日期表单与费用/更改单左侧面板隐藏；顶部预留 Tab（服务详情/单证信息/问题记录/修改历史）暂时隐藏。 | 新增 `ServiceTradeTermsInput`；`VesselVoyageInput` 支持 `mainRatio`/`secondRatio`；`codeServiceId` 回显补丁须保持函数式 `componentProps`。 |
 | 2026-07-12 | `Feature` | 基础信息右侧拆为上下两卡：上「干系人」、下只读「场站信息」（联系人/邮箱/手机/电话）；详情回填，不参与保存。 | `SeaExportDto` 补齐四字段；`flattenDetail` + `entrustReadonlyInfo` 承载；`right-column` 改为纵向 flex 容器。 |
 | 2026-07-12 | `Fix` | 运踪里程碑：仅按 `actualityTime` 升序排列；无实际时间且非当前节点不再显示「未到」，仅保留节点名称（可能为非适用服务点）。 | `yundang-tracking-panel.vue` 移除 `pending` 状态；无时间时不渲染状态胶囊与时间行。 |

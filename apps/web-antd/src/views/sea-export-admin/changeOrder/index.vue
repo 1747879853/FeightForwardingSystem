@@ -246,7 +246,10 @@ const displayList = computed(() => {
         value = formValues.value?.innerVoyno || '--';
         break;
       case 'carrierName':
-        value = formValues.value?.carrierName || '--';
+        value =
+          formValues.value?.carrierCnShortName ||
+          formValues.value?.carrierName ||
+          '--';
         break;
       case 'etd':
         value = formatNormalDate(formValues.value?.etd);
@@ -623,6 +626,7 @@ onMounted(() => {
             <OrderFeeTable
               :type="0"
               :mode="'changeOrder'"
+              :order-detail="formValues"
               ref="RecOrderFeeRef"
               @sync-fee="syncFee"
               @refresh-opposite-table="() => handleRefreshOppositeTable(0)"
@@ -630,6 +634,7 @@ onMounted(() => {
             <OrderFeeTable
               :type="1"
               :mode="'changeOrder'"
+              :order-detail="formValues"
               ref="PayOrderFeeRef"
               @sync-fee="syncFee"
               @refresh-opposite-table="() => handleRefreshOppositeTable(1)"

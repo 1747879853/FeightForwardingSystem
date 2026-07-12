@@ -92,6 +92,18 @@ watch(activeTab, (tab) => {
 
 const feeName = computed(() => `应收应付 ${feeNumber.value}`);
 const feeNumber = ref<string>('');
+
+/** 将当前应收/应付数量写入费用 Tab 标签 */
+const setFeeNumber = (recCount: number, payCount: number) => {
+  feeNumber.value = `${recCount} - ${payCount}`;
+  tabs.value = tabs.value.map((tab) => {
+    if (tab.key === 'fee') {
+      return { ...tab, label: feeName.value };
+    }
+    return tab;
+  });
+};
+
 const getOrderFeeNumber = async () => {
   let params = {
     TransportOrderId: editId.value,
@@ -99,16 +111,18 @@ const getOrderFeeNumber = async () => {
     PageSize: 999,
   };
   const res = await getOrderFeePagedList(params);
-  feeNumber.value = `${res.items.filter((item) => item.paySide === 0).length} - ${res.items.filter((item) => item.paySide === 1).length}`;
-  tabs.value = tabs.value.map((tab) => {
-    if (tab.key === 'fee') {
-      return { ...tab, label: feeName.value };
-    }
-    return tab;
-  });
+  setFeeNumber(
+    res.items.filter((item) => item.paySide === 0).length,
+    res.items.filter((item) => item.paySide === 1).length,
+  );
   return;
 };
 getOrderFeeNumber();
+
+/** 费用表新增/删除时，实时刷新 Tab 上的应收/应付数量 */
+const onFeeCountChange = (payload: { recCount: number; payCount: number }) => {
+  setFeeNumber(payload.recCount, payload.payCount);
+};
 
 const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'basic', label: '基础信息', sectionKey: 'basic' },
@@ -193,7 +207,10 @@ const getContentTabStyle = (isActive: boolean) =>
             <changeOrder v-if="activeTab === 'party'" />
           </KeepAlive>
           <KeepAlive include="OrderFee">
-            <orderFee v-if="activeTab === 'fee'" />
+            <orderFee
+              v-if="activeTab === 'fee'"
+              @fee-count-change="onFeeCountChange"
+            />
           </KeepAlive>
           <KeepAlive include="SeaExportDispatch">
             <dispatch v-if="activeTab === 'dispatch'" />
