@@ -74,11 +74,12 @@ export function buildAttachmentUrl(url?: string) {
 
 /**
  * 弹窗 iframe 内嵌 PDF 预览地址。
- * 通过 hash 隐藏 Chrome/Edge 自带工具栏与左侧缩略图/分页栏。
+ * - toolbar/navpanes：隐藏工具栏与左侧缩略图
+ * - view=FitH：按宽度铺满，避免两侧黑边留白
  * 仅用于预览；下载、新窗口打开请使用原始 URL。
  */
 export function buildPdfEmbedUrl(url?: string) {
   if (!url) return '';
   const base = url.split('#')[0] ?? url;
-  return `${base}#toolbar=0&navpanes=0`;
+  return `${base}#toolbar=0&navpanes=0&view=FitH`;
 }

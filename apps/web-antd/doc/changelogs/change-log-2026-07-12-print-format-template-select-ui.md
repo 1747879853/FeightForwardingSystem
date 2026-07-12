@@ -25,9 +25,13 @@
    - 原用 `<Spin>` 包裹内容，选中模板后 `previewLoading=true` 且 iframe/Empty 均被 `v-if` 隐藏，Spin 内容区塌陷导致转圈跑到顶部。
    - 改为与 `attachment-viewer-modal` 一致的绝对定位覆盖：`Spin` / iframe / Empty 三选一渲染，`.print-preview-loading` 用 `position:absolute + translate(-50%,-50%)` 居中。
 
+6. **导出交互改悬停下拉**（`print-format-modal.vue`）
+   - 移除底部「导出格式」Select；鼠标悬停「导出」按钮弹出菜单（PDF / Excel / Word），点击即按对应格式导出；直接点按钮默认导出 PDF。
+   - 空状态文案「请选择模板生成预览」在深色预览底上改为白色。
+
 ## 附件 PDF 一致性
 
-附件预览弹窗（`attachment-viewer-modal.vue`）的 PDF 分支与打印共用 `buildPdfEmbedUrl`（`#toolbar=0&navpanes=0`），同样隐藏顶部工具栏与左侧缩略图/分页，无需额外改动。
+附件预览弹窗（`attachment-viewer-modal.vue`）的 PDF 分支与打印共用 `buildPdfEmbedUrl`（`#toolbar=0&navpanes=0&view=FitH`），同样隐藏顶部工具栏与左侧缩略图/分页；宽度约 `72%`、高度约 `64vh`，避免撑出页面垂直滚动条。
 
 ## 避坑指南
 

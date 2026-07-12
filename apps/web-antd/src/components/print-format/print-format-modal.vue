@@ -1,7 +1,16 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 
-import { Button, Empty, Modal, Select, Spin } from 'ant-design-vue';
+import {
+  Button,
+  Dropdown,
+  Empty,
+  Menu,
+  MenuItem,
+  Modal,
+  Select,
+  Spin,
+} from 'ant-design-vue';
 
 import { buildPdfEmbedUrl } from '#/utils';
 
@@ -15,7 +24,6 @@ const {
   exporting,
   templates,
   selectedTemplateId,
-  exportFormat,
   previewUrl,
   close,
   handleTemplateChange,
@@ -34,17 +42,25 @@ const templateOptions = computed(() =>
   })),
 );
 
-const formatOptions = [
-  { label: 'PDF', value: PrintExportFormat.Pdf },
-  { label: 'Excel', value: PrintExportFormat.Excel },
-  { label: 'Word', value: PrintExportFormat.Word },
+const exportDisabled = computed(
+  () => !selectedTemplateId.value || loading.value,
+);
+
+const formatMenuItems = [
+  { key: PrintExportFormat.Pdf, label: '导出 PDF' },
+  { key: PrintExportFormat.Excel, label: '导出 Excel' },
+  { key: PrintExportFormat.Word, label: '导出 Word' },
 ];
+
+function onExportMenuClick(info: { key: number | string }) {
+  handleExport(Number(info.key) as PrintExportFormat);
+}
 </script>
 
 <template>
   <Modal
     v-model:open="visible"
-    :width="1200"
+    :width="'92vw'"
     :destroy-on-close="true"
     :mask-closable="false"
     wrap-class-name="print-format-modal"
@@ -64,44 +80,47 @@ const formatOptions = [
       </div>
     </template>
 
-    <!-- PDF 预览 -->
-    <div
-      class="relative overflow-hidden rounded-md border border-[#f0f0f0] bg-[#f5f5f5]"
-      style="height: 76vh"
-    >
+    <!-- PDF 预览：贴边铺满，FitH 消除两侧黑边 -->
+    <div class="print-preview-body">
       <Spin v-if="previewLoading" class="print-preview-loading" size="large" />
       <iframe
         v-else-if="previewEmbedUrl"
         :src="previewEmbedUrl"
-        class="h-full w-full border-0"
+        class="print-preview-iframe"
         title="打印预览"
       ></iframe>
-      <div v-else class="flex h-full items-center justify-center">
+      <div
+        v-else
+        class="print-preview-empty flex h-full items-center justify-center"
+      >
         <Empty :image="emptySimpleImage" description="请选择模板生成预览" />
       </div>
     </div>
 
     <template #footer>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-[#595959]">导出格式</span>
-          <Select
-            v-model:value="exportFormat"
-            :options="formatOptions"
-            style="width: 120px"
-          />
-        </div>
-        <div class="flex items-center gap-2">
-          <Button @click="close">关闭</Button>
+      <div class="flex items-center justify-end gap-2">
+        <Button @click="close">关闭</Button>
+        <Dropdown :trigger="['hover']" placement="topRight">
           <Button
             type="primary"
             :loading="exporting"
-            :disabled="!selectedTemplateId || loading"
-            @click="handleExport"
+            :disabled="exportDisabled"
+            @click="handleExport(PrintExportFormat.Pdf)"
           >
             导出
           </Button>
-        </div>
+          <template #overlay>
+            <Menu @click="onExportMenuClick">
+              <MenuItem
+                v-for="item in formatMenuItems"
+                :key="item.key"
+                :disabled="exportDisabled"
+              >
+                {{ item.label }}
+              </MenuItem>
+            </Menu>
+          </template>
+        </Dropdown>
       </div>
     </template>
   </Modal>
@@ -109,8 +128,27 @@ const formatOptions = [
 
 <style>
 .print-format-modal .ant-modal {
-  top: 24px;
+  top: 16px;
+  max-width: 1600px;
   padding-bottom: 0;
+}
+
+.print-format-modal .ant-modal-body {
+  padding: 0;
+}
+
+.print-format-modal .print-preview-body {
+  position: relative;
+  height: 78vh;
+  overflow: hidden;
+  background: #525659;
+}
+
+.print-format-modal .print-preview-iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
 
 .print-format-modal .print-preview-loading {
@@ -118,5 +156,14 @@ const formatOptions = [
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+.print-format-modal .print-preview-empty .ant-empty-description {
+  color: #fff;
+}
+
+.print-format-modal .print-preview-empty .ant-empty-img-simple-g,
+.print-format-modal .print-preview-empty .ant-empty-img-simple-path {
+  stroke: #d9d9d9;
 }
 </style>

@@ -19,5 +19,6 @@
 ## 避坑指南
 
 - `#toolbar=0&navpanes=0` 主要对 **Chrome / Edge** 内置 PDF 阅读器生效；Firefox / Safari 行为可能不同。
+- 另加 `view=FitH` 按宽度铺满，消除两侧黑边；若仍有上下灰边属页面比例所致，属正常。
 - 切勿把带 hash 的 embed URL 用于下载链接，否则可能影响下载文件名或导致二次打开异常。
 - URL 已带 `#` 时会整段替换为预览参数，避免重复 hash。

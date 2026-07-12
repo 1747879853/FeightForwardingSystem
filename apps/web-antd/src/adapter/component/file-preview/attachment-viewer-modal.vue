@@ -140,7 +140,7 @@ watch(
     v-model:open="modelOpen"
     :title="computedTitle"
     :footer="null"
-    width="90%"
+    width="72%"
     class="attachment-viewer-modal"
     destroy-on-close
     @cancel="handleCancel"
@@ -257,8 +257,9 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 70vh;
-  overflow: auto;
+  height: 64vh;
+  overflow: hidden;
+  background: hsl(var(--background));
 }
 
 .attachment-viewer-image-wrap {
@@ -272,13 +273,14 @@ watch(
 
 .attachment-viewer-image :deep(img) {
   max-width: 100%;
-  max-height: calc(70vh - 32px);
+  max-height: calc(64vh - 32px);
   object-fit: contain;
 }
 
 .attachment-viewer-iframe {
   width: 100%;
   height: 100%;
+  background: #525659;
   border: 0;
 }
 

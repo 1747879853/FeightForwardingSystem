@@ -129,15 +129,21 @@ function handleTemplateChange(templateId: string) {
  * 导出当前模板：
  * - PDF：直接下载已生成的预览文件；
  * - Excel/Word：重新按目标格式生成并在新窗口打开下载。
+ * @param format 指定导出格式；不传则使用当前 exportFormat（默认 PDF）
  */
-async function handleExport() {
+async function handleExport(format?: PrintExportFormat) {
   if (!selectedTemplateId.value) {
     message.warning('请先选择打印模板');
     return;
   }
 
+  if (format !== undefined) {
+    exportFormat.value = format;
+  }
+  const targetFormat = exportFormat.value;
+
   // PDF 复用已生成的预览文件，避免重复请求。
-  if (exportFormat.value === PrintExportFormat.Pdf) {
+  if (targetFormat === PrintExportFormat.Pdf) {
     if (previewUrl.value) {
       downloadFileByUrl(previewUrl.value, previewFilename.value);
       return;
@@ -155,7 +161,7 @@ async function handleExport() {
     const filename = await printFormatAsync({
       printFormatId: selectedTemplateId.value,
       json: pendingJson.value,
-      format: exportFormat.value,
+      format: targetFormat,
     });
     if (!filename) {
       message.error('导出失败，未返回文件');
