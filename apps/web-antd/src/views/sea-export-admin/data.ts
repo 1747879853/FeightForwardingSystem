@@ -482,6 +482,11 @@ export function useGridFormSchema(): VbenFormSchema[] {
       industryCategory: 'o',
       label: $t('seaExport.export.bookingAgentId'),
     }),
+    createClientSelectSchema({
+      fieldName: 'YardId',
+      industryCategory: 'c',
+      label: $t('seaExport.export.yardId'),
+    }),
     {
       component: 'UserSelect',
       fieldName: 'SaleId',
@@ -721,6 +726,12 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
     {
       field: 'bookingAgentName',
       title: $t('seaExport.export.bookingAgentId'),
+      minWidth: 120,
+      showOverflow: true,
+    },
+    {
+      field: 'yardName',
+      title: $t('seaExport.export.yardId'),
       minWidth: 120,
       showOverflow: true,
     },

@@ -144,6 +144,12 @@ const SEA_EXPORT_GROUP_FIELDS: GroupFieldDef[] = [
     paramKey: 'CodeIssueTypeId',
     emptyParamKey: 'CodeIssueTypeIdEmpty',
   },
+  {
+    value: 10,
+    label: '场站',
+    paramKey: 'YardId',
+    emptyParamKey: 'YardIdEmpty',
+  },
 ];
 
 const toIsoString = (value: unknown): string | undefined => {
@@ -249,6 +255,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
             'transportOrder.codeFrtName': 'TransportOrder.CodeFrt.CnName',
             carrierCode: 'Carrier.CnName',
             bookingAgentName: 'BookingAgent.Name',
+            yardName: 'Yard.Name',
             receivePortName: 'ReceivePort.PortName',
             polName: 'POL.PortName',
             poT1Name: 'POT1.PortName',

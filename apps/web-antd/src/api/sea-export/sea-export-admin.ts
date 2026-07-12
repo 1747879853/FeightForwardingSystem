@@ -476,6 +476,8 @@ export namespace SeaExportAdminApi {
     CodeFrt = 8,
     /** 签单方式 */
     CodeIssueType = 9,
+    /** 场站 */
+    Yard = 10,
   }
 
   /** 分组统计单项 */
@@ -499,6 +501,10 @@ export namespace SeaExportAdminApi {
     InnerVoyno?: string;
     CarrierId?: number;
     BookingAgentId?: string | number;
+    /** 场站 id（往来单位，精确匹配） */
+    YardId?: string | number;
+    /** 仅返回场站未填写记录（与 YardId 互斥） */
+    YardIdEmpty?: boolean;
     SaleId?: number;
     OperationId?: number;
     BusinessId?: number;
