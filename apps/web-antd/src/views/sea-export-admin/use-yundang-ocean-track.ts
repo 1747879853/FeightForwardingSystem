@@ -18,7 +18,7 @@ export interface YundangTrackRowInfo {
   id: string;
   isYundangSubscribed?: boolean | null;
   isYundangSubscribeSuccess?: boolean | null;
-  yundangTrackStatus?: null | string;
+  yundangShipmentOceanNode?: null | YundangAdminApi.YundangShipmentOceanNodeInfoDto;
   commissionNum?: null | string;
   mblNum?: null | string;
   bookingNum?: null | string;
@@ -38,7 +38,7 @@ export function buildYundangTrackRow(
     id: String(row.id),
     isYundangSubscribed: row.isYundangSubscribed,
     isYundangSubscribeSuccess: row.isYundangSubscribeSuccess,
-    yundangTrackStatus: row.yundangTrackStatus,
+    yundangShipmentOceanNode: row.yundangShipmentOceanNode,
     commissionNum: row.transportOrder?.commissionNum,
     mblNum: row.transportOrder?.mblNum,
     bookingNum: row.transportOrder?.bookingNum,
@@ -61,6 +61,7 @@ export function resolveYundangViewState(
   row: {
     isYundangSubscribeSuccess?: boolean | null;
     isYundangSubscribed?: boolean | null;
+    yundangShipmentOceanNode?: null | YundangAdminApi.YundangShipmentOceanNodeInfoDto;
   },
   pushInfo?: null | YundangAdminApi.YundangOceanPushInfoDto,
 ): YundangViewState {
@@ -69,6 +70,9 @@ export function resolveYundangViewState(
   }
   if (!row.isYundangSubscribeSuccess) {
     return 'subscribe_failed';
+  }
+  if (row.yundangShipmentOceanNode?.stateDescCN?.trim()) {
+    return 'has_shipment';
   }
   if (!pushInfo?.shipment) {
     return 'waiting_push';
@@ -79,15 +83,15 @@ export function resolveYundangViewState(
 function resolveLatestStatusFromShipment(
   shipment: YundangAdminApi.YundangShipmentInfoDto,
 ): string | undefined {
-  if (shipment.trackStatus?.trim()) {
-    return shipment.trackStatus.trim();
-  }
   const currentNode = shipment.oceanNodes?.find((node) => node.isCurrent);
   if (currentNode?.stateDescCN?.trim()) {
     return currentNode.stateDescCN.trim();
   }
   if (currentNode?.stateDesc?.trim()) {
     return currentNode.stateDesc.trim();
+  }
+  if (shipment.trackStatus?.trim()) {
+    return shipment.trackStatus.trim();
   }
   const firstContainer = shipment.containers?.[0];
   if (firstContainer?.currentStatus?.trim()) {
@@ -97,20 +101,20 @@ function resolveLatestStatusFromShipment(
 }
 
 /**
- * 列表「运踪状态」列展示文案：优先列表字段 / 推送详情，否则按订阅状态回退。
+ * 列表「运踪状态」列展示文案：优先当前节点 stateDescCN / 推送详情，否则按订阅状态回退。
  */
 export function getYundangTrackStatusLabel(
   row: YundangTrackRowInfo,
   pushInfo?: null | YundangAdminApi.YundangOceanPushInfoDto,
 ): string {
+  if (row.yundangShipmentOceanNode?.stateDescCN?.trim()) {
+    return row.yundangShipmentOceanNode.stateDescCN.trim();
+  }
   if (pushInfo?.shipment) {
     const latest = resolveLatestStatusFromShipment(pushInfo.shipment);
     if (latest) {
       return latest;
     }
-  }
-  if (row.yundangTrackStatus?.trim()) {
-    return row.yundangTrackStatus.trim();
   }
 
   const subscribeStatus = getYundangSubscribeStatus(row);

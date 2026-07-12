@@ -1,7 +1,8 @@
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 import type { UserAttribute } from '#/api/system/user-admin';
-import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
+import type { YundangAdminApi } from '#/api/yundang/yundang-admin';
 
 import { requestClient } from '#/api/request';
 
@@ -435,6 +436,8 @@ export namespace SeaExportAdminApi {
     isYundangSubscribeSuccess?: boolean;
     /** 运单最新运踪状态（列表展示，有推送时由后端填充） */
     yundangTrackStatus?: string;
+    /** 运单当前海运节点（列表展示运踪状态文案取 stateDescCN） */
+    yundangShipmentOceanNode?: null | YundangAdminApi.YundangShipmentOceanNodeInfoDto;
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;

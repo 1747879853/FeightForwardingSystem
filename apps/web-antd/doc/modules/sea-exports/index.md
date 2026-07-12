@@ -26,7 +26,7 @@ last_updated: 2026-07-12
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`，`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`，提交前统一转换为 ISO 字符串。
 - **多选行维护：** 列表第一列为 checkbox 多选，不设置行内操作列；编辑/删除/复制要求恰好选中 1 行，未满足时提示「请先选择一条记录」；双击行会勾选该行并进入编辑。选中行背景为全局主题色 15% 透明（`hsl(var(--primary) / 15%)`，由 `packages/effects/plugins/src/vxe-table/style.css` 中 checkbox 选中变量控制）。
 - **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示。
-- **运踪状态（列表列）：** 「运踪状态」列优先展示接口 `yundangTrackStatus`；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
+- **运踪状态（列表列）：** 「运踪状态」列优先展示列表 DTO `yundangShipmentOceanNode.stateDescCN`（当前海运节点中文描述）；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录。
 - **复制委托：** 选中一条后点击「复制」（需 `Admin.SeaExport.Add` 权限），确认弹窗可选「同时复制费用」；成功后跳转新票编辑页 `/sea-exports/{newId}/edit`。
 - **页面缓存：** 路由 `SeaExportList` 已开启 `keepAlive`；从新建/编辑工作台返回时 `onActivated` 自动刷新；当前页删除成功后立即刷新。
@@ -83,6 +83,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Feature` | 列表「运踪状态」列改显 `yundangShipmentOceanNode.stateDescCN`，不再使用 `yundangTrackStatus`。 | `use-yundang-ocean-track.ts` 的 `getYundangTrackStatusLabel`/`resolveYundangViewState`；`SeaExportDto` 新增嵌套节点字段。 |
 | 2026-07-12 | `Fix` | 运踪详情弹窗里程碑：仅按 `actualityTime` 升序；无实际时间节点不再显示「未到」。 | 与编辑页运踪 Tab 共用 `yundang-tracking-panel.vue`。 |
 | 2026-07-12 | `Style` | 列表 checkbox 选中行背景改为跟随主题主色 15% 透明，与全站表格选中态统一。 | 列表使用 `useVbenVxeGrid` + `checkboxConfig.highlight`，选中背景由 `vxe-table/style.css` 的 `--vxe-ui-table-row-checkbox-checked-background-color` 控制，非 antd Table；仅改 antd 全局样式不会影响本页。 |
 | 2026-07-12 | `Feature` | 列表六段港口列（收货地/起运港/中转港1/2/目的港/交货地）单元格改为展示各自的备注字段，列头排序仍按港口字段。 | `data.ts` `useColumns` 为六列补 `formatter: ({ row }) => row.xxxRemark ?? ''`（`receivePortRemark`…`deliverPortRemark`），列 `field` 保持 `*Name` 不变，排序仍走 `list.vue` `fieldMap` 映射的 `*.PortName` 实体路径。显示与排序靠 `formatter`/`field` 解耦。 |
