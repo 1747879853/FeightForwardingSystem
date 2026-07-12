@@ -384,9 +384,8 @@ function onAuditUserChange(value: unknown) {
 }
 
 .field :deep(.ant-select) {
-  width: 170px !important;
-  min-width: 170px;
-  max-width: 170px;
+  width: 100% !important;
+  min-width: 0;
 }
 
 .filter-panel :deep(.ant-picker-input > input),

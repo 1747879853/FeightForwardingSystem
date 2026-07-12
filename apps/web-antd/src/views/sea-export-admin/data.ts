@@ -435,7 +435,7 @@ const formatMonth = (value: string | undefined) => {
 export function useGridFormSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'Input',
+      component: 'TrimInput',
       fieldName: 'Keyword',
       label: $t('seaExport.export.keyword'),
       componentProps: {

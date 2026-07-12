@@ -13,6 +13,9 @@
 
 ## 2026-07
 
+- [2026-07-12 工作台编号 Keyword 检索、仅勾选选中与 TrimInput](./changelogs/change-log-2026-07-12-workspace-keyword-trim-checkbox.md)
+- [2026-07-12 恢复应收应付费用表打印按钮](./changelogs/change-log-2026-07-12-sea-export-order-fee-print-restore.md)
+- [2026-07-12 海运出口附件 Tab 展示上传人与上传时间](./changelogs/change-log-2026-07-12-sea-export-attachments-uploader-time.md)
 - [2026-07-12 工作台审核筛选对齐费用审核并修复详情深链与筛选布局](./changelogs/change-log-2026-07-12-workspace-review-filter-and-expense-detail.md)
 - [2026-07-12 侧边栏一级菜单更换语义化 Iconify 图标](./changelogs/change-log-2026-07-12-sidebar-top-menu-icons.md)
 - [2026-07-12 海运出口列表分组不缓存（每次进入都拉取）并修复首屏默认分组只剩「全部」](./changelogs/change-log-2026-07-12-sea-export-list-grouping-no-cache.md)

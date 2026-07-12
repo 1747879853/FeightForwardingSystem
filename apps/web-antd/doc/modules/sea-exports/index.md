@@ -52,7 +52,7 @@ last_updated: 2026-07-12
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **关键字** | 用于模糊检索委托相关信息。 | 查询 schema `Keyword` / 接口参数 `Keyword` | **触发/依赖：** 查询表单 `submitOnChange`，字段变化会触发表格查询。 | 可清空；具体匹配范围以后端为准。 |
+| **关键字 / 编号** | 按主提单号 / 订舱编号 / 委托编号模糊检索。 | 查询 schema `Keyword`（组件 `TrimInput`）/ 接口参数 `Keyword` | **触发/依赖：** 输入/粘贴时自动去除前后空格；`submitOnChange` 触发表格查询；`normalizeQuery` 再 trim 兜底。 | 可清空；匹配范围以后端为准。 |
 | **开船日期** | 按运输单 ETD 时间过滤海出委托。 | `ETDRange` -> `ETDStart` / `ETDEnd` | **触发/依赖：** 前端拆分日期区间并转 ISO。 | RangePicker 可为空；开始/结束均可由组件约束。 |
 | **截单时间** | 按截单时间过滤委托。 | `CloseDocTimeRange` -> `CloseDocTimeStart` / `CloseDocTimeEnd` | **触发/依赖：** 支持时间选择，提交前转 ISO。 | 可清空；时间格式由日期组件控制。 |
 | **客户** | 委托关联的委托客户。 | `createClientSelectSchema({ industryCategory: 'p' })` / `ClientId` | **触发/依赖：** 影响列表定位和后续编辑页的结算对象、费用、对账链路。 | 需选择有效客户主数据。 |
@@ -95,6 +95,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 「编号」检索改用 `TrimInput`，粘贴带空格时输入框即时去首尾空格。 | 仅参数层 trim 无法清掉可见空格；见 `change-log-2026-07-12-workspace-keyword-trim-checkbox.md`。 |
 | 2026-07-12 | `Fix` | 分组统计不再缓存：每次重新进入列表都拉取最新分组条数；并修复首屏默认分组（如船公司）只剩「全部」拉不到分组明细的问题。 | `use-list-grouping.ts` 移除内部自动 `onMounted` 恢复，新增 `restorePersistedField()`（`applyField` 增 `skipQuery` 仅设状态不查询）+ `refreshGroupData()`（复用 `lastBaseParams` 只刷新分组）；`list.vue` `onMounted` 改「恢复分组字段→submitForm 首查」确定性时序消除竞态，`onActivated` 每次进入刷新分组（跳过首次激活）。 |
 | 2026-07-12 | `Fix` | 列表仅点击 checkbox 才选中，单击行不再切换勾选；双击进编辑仍会勾选当前行。 | `checkboxConfig.trigger` 由 `'row'` 改为 `'default'`；同批统一改客户/费用锁定及多处 radio 列表。 |
 | 2026-07-12 | `Style` | 列表「业务状态」色块背景改为半透明 rgba，降低抢眼度；文字色不变。 | 仅改 `SEA_EXPORT_BUSINESS_STATUS_COLORS` 的 `background`（done/active/upcoming 分别约 0.45/0.55/0.6）。 |

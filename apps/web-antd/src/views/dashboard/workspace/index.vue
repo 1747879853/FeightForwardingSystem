@@ -160,7 +160,7 @@ function buildSeaExportFilterParams(): SeServiceTaskAdminApi.GetWorkbenchFilterP
   const [etdStartRaw, etdEndRaw] = appliedFilterModel.etdRange ?? [];
   const etdStartDate = etdStartRaw ? dayjs(etdStartRaw) : null;
   const etdEndDate = etdEndRaw ? dayjs(etdEndRaw) : null;
-  const mblNum = appliedFilterModel.mblNum.trim();
+  const keyword = appliedFilterModel.keyword.trim();
 
   return {
     CarrierId: appliedFilterModel.carrierId,
@@ -171,7 +171,7 @@ function buildSeaExportFilterParams(): SeServiceTaskAdminApi.GetWorkbenchFilterP
     ETDStart: etdStartDate?.isValid()
       ? etdStartDate.startOf('day').toISOString()
       : undefined,
-    MblNum: mblNum || undefined,
+    Keyword: keyword || undefined,
     PODId: appliedFilterModel.podId,
     ServiceTaskStatus: activeProcessingTab.value === 'processed' ? 1 : 0,
   };

@@ -21,7 +21,7 @@ last_updated: 2026-07-12
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **审核任务查询：** 按任务状态、任务类型、业务单据等筛选费用审核任务。
+- **审核任务查询：** 按任务状态、任务类型、编号（主提单号/订舱编号/委托编号，`TrimInput` 自动去空格）等筛选费用审核任务。
 - **行选中：** 单选列表**仅点击 radio 才选中**（`radioConfig.trigger: 'default'`），单击行不切换选中。
 - **审核处理：** 进入详情查看费用变更并通过或驳回。
 
@@ -37,6 +37,7 @@ last_updated: 2026-07-12
 | :-- | :-- | :-- | :-- | :-- |
 | **任务状态** | 费用审核任务所处阶段。 | `audit-approval/data.ts` | **触发/依赖：** 影响列表筛选和操作按钮。 | 状态流转以后端工作流为准。 |
 | **任务类型** | 新增、修改、删除等费用动作。 | `getTaskTypeOptions` | **触发/依赖：** 决定详情页展示和审核含义。 | 需与费用提交 DTO 对齐。 |
+| **编号（Keyword）** | 按主提单号 / 订舱编号 / 委托编号检索。 | 查询 schema `Keyword`（`TrimInput`） | **触发/依赖：** 输入即时 trim；label 为「编号」，placeholder「主提单号/订舱编号/委托编号」。 | 可清空。 |
 | **费用明细** | 审核的业务对象。 | `expense-admin.ts` | **触发/依赖：** 通过后影响订单费用正式状态。 | 金额、币种、费目必须可追溯。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -47,6 +48,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 查询「单号」改为「编号」，placeholder 统一为「主提单号/订舱编号/委托编号」；改用 `TrimInput` 自动去空格。 | 见 `change-log-2026-07-12-workspace-keyword-trim-checkbox.md`。 |
 | 2026-07-12 | `Feature` | 工作台应收应付筛选对齐本页搜索条件；`GetPagedListParams` 补充业务筛选字段类型。 | 本页列表仍内嵌详情；工作台深链走独立 `ExpenseDetail` 路由，见 `change-log-2026-07-12-workspace-review-filter-and-expense-detail.md`。 |
 | 2026-07-12 | `Fix` | 费用审核/提交相关列表仅点击 radio 才选中，单击行不再切换选中。 | `radioConfig.trigger` 由 `'row'` 改为 `'default'`（`expense-all`、`expense-submission`）。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/audit-approval/expense-review` 对应组件 `src/views/audit-approval/expense-all/index.vue`，权限口径为 Admin.OrderFee.Audit / Admin.OrderFee.Audit.Get。 |

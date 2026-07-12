@@ -212,6 +212,8 @@ const normalizeQuery = (
 
   const baseParams = {
     ...rest,
+    Keyword:
+      typeof rest.Keyword === 'string' ? rest.Keyword.trim() : rest.Keyword,
     ETDStart: toIsoString(etdStart),
     ETDEnd: toIsoString(etdEnd),
     CloseDocTimeStart: toIsoString(closeDocTimeStart),
