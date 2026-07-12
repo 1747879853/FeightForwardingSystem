@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 港口服务项配置移除是否主流程开关](./changelogs/change-log-2026-07-12-se-service-config-remove-main-process-switch.md)
 - [2026-07-12 在线会议会议号按品牌环境区分](./changelogs/change-log-2026-07-12-meeting-room-by-brand.md)
 - [2026-07-12 打印弹窗模板下拉与预览体验优化](./changelogs/change-log-2026-07-12-print-format-template-select-ui.md)
 - [2026-07-12 PDF 弹窗预览隐藏工具栏与左侧分页](./changelogs/change-log-2026-07-12-pdf-embed-hide-toolbar.md)

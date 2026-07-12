@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import type { SeServiceConfigAdminApi } from '#/api/system/base-data/se-service-config-admin';
-import type { EnumerationAdminApi } from '#/api/system/enum-admin';
 import type { ServiceTypeOption } from '#/views/sea-export-admin/service-type';
 
 import { computed, ref } from 'vue';
@@ -26,11 +25,7 @@ import {
   editSeServiceConfig,
   getSeServiceConfigDetail,
 } from '#/api/system/base-data/se-service-config-admin';
-import {
-  editEnumeration,
-  getEnumerationDetail,
-  getItemsByName,
-} from '#/api/system/enum-admin';
+import { getItemsByName } from '#/api/system/enum-admin';
 import { UserAttribute } from '#/api/system/user-admin';
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
@@ -108,9 +103,6 @@ const formState = ref<{
 const itemRows = ref<ItemRow[]>([]);
 const selectedPortItems = ref<PortSelectItem[]>([]);
 const serviceTypeOptions = ref<ServiceTypeOption[]>([]);
-const serviceTypeEnumDetail = ref<EnumerationAdminApi.EnumerationDetailDto>();
-const serviceTypeProcessDraft = ref<Map<number, boolean>>(new Map());
-const serviceTypeProcessOriginal = ref<Map<number, boolean>>(new Map());
 const seaExportShowPropOptions = ref<SelectOption[]>([]);
 const seaExportLockRequirePropOptions = ref<SelectOption[]>([]);
 let rowKeySeed = 0;
@@ -507,9 +499,6 @@ const resetState = () => {
   };
   itemRows.value = [];
   selectedPortItems.value = [];
-  serviceTypeEnumDetail.value = undefined;
-  serviceTypeProcessDraft.value = new Map();
-  serviceTypeProcessOriginal.value = new Map();
 };
 
 const buildSelectOptions = (items: EnumItem[]) => {
@@ -576,52 +565,6 @@ const mergeSeaExportPropItems = (...groups: EnumItem[][]): EnumItem[] => {
 const getServiceTypeLabel = (serviceType?: number) =>
   resolveServiceTypeLabel(serviceType, serviceTypeOptions.value);
 
-const isServiceTypeProcess = (serviceType?: number) => {
-  if (serviceType === undefined || serviceType === null) return false;
-  return serviceTypeProcessDraft.value.get(Number(serviceType)) ?? false;
-};
-
-const setServiceTypeProcess = (
-  serviceType: number | undefined,
-  checked: boolean,
-) => {
-  if (serviceType === undefined || serviceType === null) return;
-  serviceTypeProcessDraft.value.set(Number(serviceType), checked);
-  serviceTypeProcessDraft.value = new Map(serviceTypeProcessDraft.value);
-};
-
-const serviceTypeProcessChanged = computed(() => {
-  const original = serviceTypeProcessOriginal.value;
-  return [...serviceTypeProcessDraft.value].some(
-    ([serviceType, checked]) =>
-      checked !== (original.get(serviceType) ?? false),
-  );
-});
-
-const saveServiceTypeProcessConfig = async () => {
-  if (!serviceTypeProcessChanged.value) return;
-  const detail = serviceTypeEnumDetail.value;
-  if (!detail) {
-    throw new Error('未获取到服务项目枚举详情，无法保存主流程配置');
-  }
-  await editEnumeration({
-    id: detail.id,
-    name: detail.name,
-    description: detail.description,
-    remark: detail.remark,
-    enumerationItems: (detail.enumerationItems || []).map((item) => ({
-      id: item.id,
-      value: Number(item.value),
-      enable: item.enable ?? true,
-      extra1: serviceTypeProcessDraft.value.get(Number(item.value)) ?? false,
-      displayName: item.displayName,
-      description: item.description,
-      remark: item.remark,
-    })),
-  });
-  serviceTypeProcessOriginal.value = new Map(serviceTypeProcessDraft.value);
-};
-
 const userAttributeServiceSummary = computed<AttributeServiceSummaryRow[]>(
   () => {
     const attributeServiceMap = new Map<number, Set<number>>();
@@ -674,33 +617,6 @@ const getItemTitle = (row: ItemRow, index: number) => {
 
 const loadServiceTypeOptions = async () => {
   serviceTypeOptions.value = await loadSeServiceTypeOptions();
-  const optionProcessMap = new Map<number, boolean>(
-    serviceTypeOptions.value.map((option): [number, boolean] => [
-      Number(option.value),
-      option.isBusinessProcess === true,
-    ]),
-  );
-  serviceTypeProcessDraft.value = optionProcessMap;
-  serviceTypeProcessOriginal.value = new Map(optionProcessMap);
-
-  const items = await getItemsByName('ServiceType').catch(() => []);
-  const enumerationId = items.find((item) => item.enumerationId)?.enumerationId;
-  if (!enumerationId) return;
-
-  const detail = await getEnumerationDetail(enumerationId).catch(() => {
-    message.warning('服务项目主流程配置加载失败，本次不可修改');
-    return undefined;
-  });
-  if (!detail) return;
-  serviceTypeEnumDetail.value = detail;
-  const detailProcessMap = new Map<number, boolean>(
-    (detail.enumerationItems || []).map((item): [number, boolean] => [
-      Number(item.value),
-      item.extra1 === true,
-    ]),
-  );
-  serviceTypeProcessDraft.value = detailProcessMap;
-  serviceTypeProcessOriginal.value = new Map(detailProcessMap);
 };
 
 const loadSeaExportPropOptions = async () => {
@@ -724,8 +640,6 @@ const [Modal, modalApi] = useVbenModal({
 
     modalApi.lock();
     try {
-      // 主流程标记属于全局 ServiceType 枚举，先保存后再提交港口配置。
-      await saveServiceTypeProcessConfig();
       if (formState.value.id) {
         await editSeServiceConfig({
           id: formState.value.id,
@@ -967,19 +881,6 @@ const [Modal, modalApi] = useVbenModal({
                   :min="0"
                   :precision="0"
                   class="w-20"
-                />
-              </div>
-              <div class="flex shrink-0 items-center gap-1.5">
-                <span class="text-sm text-gray-500"> 是否主流程（全局） </span>
-                <Switch
-                  :checked="isServiceTypeProcess(row.serviceType)"
-                  :disabled="
-                    row.serviceType === undefined || !serviceTypeEnumDetail
-                  "
-                  @update:checked="
-                    (checked) =>
-                      setServiceTypeProcess(row.serviceType, Boolean(checked))
-                  "
                 />
               </div>
             </div>
