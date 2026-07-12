@@ -2049,7 +2049,7 @@ onUnmounted(() => {
           class="relative ml-2 inline-flex items-center"
         >
           <VxeButton
-            icon="vxe-icon-menu"
+            icon="vxe-icon-search-zoom-in"
             circle
             :status="showSearchFieldPopover ? 'primary' : undefined"
             title="搜索项设置"
