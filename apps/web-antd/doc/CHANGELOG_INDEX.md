@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 客户列表行业类别补齐 a/k 中文映射](./changelogs/change-log-2026-07-12-client-industry-category-letter-labels.md)
 - [2026-07-12 海运出口新建/编辑补齐订舱代理字段](./changelogs/change-log-2026-07-12-sea-export-booking-agent-basic-field.md)
 - [2026-07-12 海运出口场站联系人移至字段标签并悬浮展示联系方式](./changelogs/change-log-2026-07-12-sea-export-yard-contact-label-popover.md)
 - [2026-07-12 biz-select 禁用态统一改为只读文本外观](./changelogs/change-log-2026-07-12-biz-select-disabled-readonly.md)
