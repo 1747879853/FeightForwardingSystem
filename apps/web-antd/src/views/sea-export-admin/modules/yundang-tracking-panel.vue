@@ -52,7 +52,7 @@ type TimelineVisualState =
   | 'completed'
   | 'current'
   | 'estimated'
-  | 'pending'
+  | 'neutral'
   | 'planned';
 
 interface TimelineVisualMeta {
@@ -60,7 +60,7 @@ interface TimelineVisualMeta {
   icon: string;
   color: string;
   bg: string;
-  label: string;
+  label?: string;
 }
 
 const loading = ref(false);
@@ -114,11 +114,11 @@ const lastUpdatedText = computed(() => {
   return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm:ss') : String(raw);
 });
 
-const sortedOceanNodes = computed(() => {
+const oceanNodes = computed(() => {
   const nodes = pushInfo.value?.shipment?.oceanNodes ?? [];
   return [...nodes].sort((a, b) => {
-    const timeA = resolveNodeTime(a);
-    const timeB = resolveNodeTime(b);
+    const timeA = a.actualityTime?.trim();
+    const timeB = b.actualityTime?.trim();
     if (!timeA && !timeB) {
       return 0;
     }
@@ -133,7 +133,7 @@ const sortedOceanNodes = computed(() => {
 });
 
 const oceanNodesWithVisual = computed(() =>
-  sortedOceanNodes.value.map((node) => ({
+  oceanNodes.value.map((node) => ({
     node,
     visual: getOceanNodeVisual(node),
   })),
@@ -185,11 +185,10 @@ function getOceanNodeVisual(
     };
   }
   return {
-    state: 'pending',
+    state: 'neutral',
     icon: 'ph:circle',
     color: '#8e8e93',
     bg: '#c7c7cc',
-    label: $t('seaExport.yundang.tracking.nodeState.pending'),
   };
 }
 
@@ -526,7 +525,7 @@ const handleRefresh = async () => {
             :tab="$t('seaExport.yundang.tracking.tabs.nodes')"
           >
             <Empty
-              v-if="sortedOceanNodes.length === 0"
+              v-if="oceanNodes.length === 0"
               :description="$t('seaExport.yundang.tracking.emptyNodes')"
             />
             <Timeline
@@ -566,6 +565,7 @@ const handleRefresh = async () => {
                       }}
                     </span>
                     <span
+                      v-if="visual.label"
                       class="track-timeline-card__pill"
                       :class="`track-timeline-card__pill--${visual.state}`"
                     >
@@ -575,7 +575,10 @@ const handleRefresh = async () => {
                   <div v-if="node.place" class="track-timeline-card__place">
                     {{ node.place }}
                   </div>
-                  <div class="track-timeline-card__time">
+                  <div
+                    v-if="resolveNodeTime(node)"
+                    class="track-timeline-card__time"
+                  >
                     {{ formatMaybeDateTime(resolveNodeTime(node)) }}
                   </div>
                 </div>
@@ -813,7 +816,7 @@ const handleRefresh = async () => {
 }
 
 .track-timeline-card__pill--planned,
-.track-timeline-card__pill--pending {
+.track-timeline-card__pill--neutral {
   color: #8e8e93;
   background: rgb(120 120 128 / 12%);
 }
