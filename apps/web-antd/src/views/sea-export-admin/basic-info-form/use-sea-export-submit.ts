@@ -198,7 +198,9 @@ export type UseSeaExportSubmitDeps = {
   validateRequiredOrderUserAssignee: () => boolean;
   validateServiceBoundOrderUsers: () => boolean;
   loadEditData: () => Promise<void>;
-  router: { push: (to: string) => unknown };
+  closeTabByKey: (key: string) => Promise<void>;
+  getCurrentTabKey: () => string;
+  router: { replace: (to: string) => unknown };
 };
 
 export function useSeaExportSubmit(deps: UseSeaExportSubmitDeps) {
@@ -220,6 +222,8 @@ export function useSeaExportSubmit(deps: UseSeaExportSubmitDeps) {
     validateRequiredOrderUserAssignee,
     validateServiceBoundOrderUsers,
     loadEditData,
+    closeTabByKey,
+    getCurrentTabKey,
     router,
   } = deps;
 
@@ -303,11 +307,13 @@ export function useSeaExportSubmit(deps: UseSeaExportSubmitDeps) {
           resolvedCreatedId === null || resolvedCreatedId === undefined
             ? ''
             : String(resolvedCreatedId).trim();
+        const createTabKey = getCurrentTabKey();
         if (createdIdStr) {
-          router.push(`/sea-exports/${createdIdStr}/edit`);
+          await router.replace(`/sea-exports/${createdIdStr}/edit`);
         } else {
-          router.push('/sea-exports');
+          await router.replace('/sea-exports');
         }
+        await closeTabByKey(createTabKey);
       }
     } finally {
       submitting.value = false;

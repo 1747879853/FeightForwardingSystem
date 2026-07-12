@@ -16,6 +16,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 import { useAccess } from '@vben/access';
+import { useTabs } from '@vben/hooks';
 
 import {
   Copy,
@@ -141,6 +142,7 @@ const hasYardRealQueryAccess = computed(() =>
 
 const route = useRoute();
 const router = useRouter();
+const { closeTabByKey } = useTabs();
 const userStore = useUserStore();
 const props = withDefaults(
   defineProps<{
@@ -2116,6 +2118,8 @@ const { submitting, buildDto, handleSubmit, syncFormSnapshot, isFormDirty } =
     validateRequiredOrderUserAssignee,
     validateServiceBoundOrderUsers,
     loadEditData,
+    closeTabByKey,
+    getCurrentTabKey: () => route.fullPath,
     router,
   });
 

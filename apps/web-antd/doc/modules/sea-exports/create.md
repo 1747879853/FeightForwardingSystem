@@ -27,7 +27,7 @@ last_updated: 2026-07-12
 - **右侧栏与场站联系人：** 右侧主卡片为「干系人」。场站联系人/邮箱/手机/电话与编辑页一致挂在「场站」标签旁只读展示（新建态通常为空显示 `-`）；保存时随 `SeaExportAddDto` 透传（新建多为空）。
 - **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护，并按 `ServiceType.extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
-- **创建后跳转：** 新增成功后优先解析接口返回的记录 ID 并跳转 `/sea-exports/{id}/edit`；若返回值无法解析，则回到 `/sea-exports` 列表。
+- **创建后跳转：** 新增成功后优先解析接口返回的记录 ID，以 `router.replace` 进入 `/sea-exports/{id}/edit`；若返回值无法解析，则 `replace` 回 `/sea-exports` 列表。跳转后关闭原新建页顶部标签，避免残留空白 Tab。
 - **顶部标签栏标题：** 浏览器标签栏标题随录入状态动态变化：未保存且无主提单号时为「海运出口」；录入主提单号后为「海运出口-{主提单号}」；保存后无主提单号时为「海运出口-{委托编号}」。主提单号优先于委托编号。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -68,11 +68,14 @@ last_updated: 2026-07-12
 > **[卡点 4：新增成功跳转依赖后端返回 ID]** 前端兼容 `createdId.id`、`createdId.result` 和直接返回值三种形式。若接口不返回可解析 ID，页面只能回列表，无法自动进入编辑工作台。
 >
 > **[卡点 5：服务项目联动是“双语义”查询]** `polId` 查询用于“显示哪些卡片”，`polId+clientId` 查询用于“默认勾选哪些卡片”；两者不可混用。若仅按 `checked` 控制展示，会把“未默认勾选”误判成“未配置服务”。
+>
+> **[卡点 6：新建保存后必须关闭原 Tab]** `/create` 与 `/:id/edit` 是不同 Tab key；仅 `push`/`replace` 都会留下新建页标签。须在跳转前缓存 create 的 `fullPath`，跳转后 `closeTabByKey`，否则顶部会残留空白标签。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 新建保存成功后 `replace` 进编辑页并关闭原新建页 Tab，消除顶部残留空白标签。 | `useSeaExportSubmit` 注入 `closeTabByKey`/`getCurrentTabKey`；关闭须用跳转前缓存的 create key。 |
 | 2026-07-12 | `Fix` | 保存 DTO 带回场站联系人四字段（与编辑页同源修复，避免漏传被后端空覆盖）。 | 与编辑页共用 `collectCurrentFormValues` + `buildSeaExportDto`；新建态通常为空透传。 |
 | 2026-07-12 | `Fix` | 基础信息区补齐「订舱代理」字段，可选行业类别为订舱代理的客户并随单保存。 | 与编辑页共用 `form.vue`；`bookingAgentId` 纳入 `BASIC_MODULE_EXTRA_FIELD_NAMES` 从船期 schema 迁入，避免只剔除不迁入导致字段消失。 |
 | 2026-07-12 | `Feature` | 配置服务项目弹窗按「主流程 / 非主流程」分组展示。 | 与编辑页共用 `form.vue`；分类读取 `ServiceType.extra1`，任务优先级仍读取 POL 配置 `sortId`。 |
