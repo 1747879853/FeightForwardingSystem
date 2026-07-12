@@ -122,6 +122,8 @@ export namespace ClientAdminApi {
     areaId?: string;
     /** 地址 */
     address?: string;
+    /** 业务来源 */
+    codeSourceId?: number;
     /** 英文地址 */
     enAddress?: string;
     /** 主营产品 */
@@ -272,6 +274,8 @@ export namespace ClientAdminApi {
     remark?: string;
     /** 客户英文全称 */
     enFullName?: string;
+    /** 业务来源 */
+    codeSourceId?: number;
     /** 纳税人识别号 */
     taxNo?: string;
     /** 邮箱 */
@@ -503,6 +507,8 @@ export namespace ClientAdminApi {
     enAddress?: string;
     /** 主营产品 */
     mainProduct?: string;
+    /** 业务来源 */
+    codeSourceId?: number;
     /** 是否有效 */
     enable: boolean;
     /** 客户性质 0-直客 1-同行 2-供应商 */
