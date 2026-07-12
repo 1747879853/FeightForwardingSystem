@@ -602,7 +602,7 @@ export namespace SeaExportAdminApi {
     fileLength?: number | null;
     creationTime?: string | null;
     creatorUserId?: number | null;
-    creatorUserNickName?: string | null;
+    creatorUserName?: string | null;
   }
 
   export interface AttachmentGroupDto {

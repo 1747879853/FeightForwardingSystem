@@ -17,6 +17,10 @@ interface Props {
   fileUrl?: string;
   /** 文件名，用于识别类型与标题展示 */
   fileName?: string;
+  /** 上传人 */
+  uploader?: string;
+  /** 已格式化的上传时间 */
+  uploadTime?: string;
   /** 弹窗标题 */
   title?: string;
 }
@@ -25,6 +29,8 @@ const props = withDefaults(defineProps<Props>(), {
   open: false,
   fileUrl: '',
   fileName: '',
+  uploader: '',
+  uploadTime: '',
   title: '',
 });
 
@@ -137,6 +143,14 @@ watch(
     @cancel="handleCancel"
   >
     <div class="attachment-viewer-toolbar">
+      <div class="attachment-viewer-meta">
+        <span v-if="uploader">
+          {{ $t('component.filePreview.uploader') }}：{{ uploader }}
+        </span>
+        <span v-if="uploadTime">
+          {{ $t('component.filePreview.uploadTime') }}：{{ uploadTime }}
+        </span>
+      </div>
       <Space>
         <Button size="small" @click="handleOpenInNewWindow">
           <IconifyIcon icon="mdi:open-in-new" class="mr-1 size-4" />
@@ -216,9 +230,23 @@ watch(
 }
 
 .attachment-viewer-toolbar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
   padding: 8px 16px;
   background: hsl(var(--accent));
   border-bottom: 1px solid hsl(var(--border));
+}
+
+.attachment-viewer-meta {
+  display: flex;
+  gap: 16px;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
 }
 
 .attachment-viewer-body {
