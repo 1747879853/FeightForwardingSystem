@@ -4,6 +4,8 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import dayjs from 'dayjs';
 import {
   computed,
+  defineComponent,
+  h,
   nextTick,
   onBeforeUnmount,
   onMounted,
@@ -53,7 +55,7 @@ defineOptions({
 });
 const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 import { CodeSourceSelect, UserSelect } from '#/adapter/component';
-import { useVbenForm } from '#/adapter/form';
+import { type VbenFormSchema, useVbenForm } from '#/adapter/form';
 import { getClientDetail } from '#/api/sea-export/client-admin';
 import {
   getServiceTypesByPOL,
@@ -357,6 +359,74 @@ const syncDateVessel = ref('');
 const syncDateInnerVoyno = ref('');
 const syncDateEtd = ref<unknown>(undefined);
 
+const entrustReadonlyInfo = ref({
+  commissionNum: '',
+  organizationUnitsText: '-',
+  countryName: '',
+  laneName: '',
+  accountDateText: '',
+  settlementDateText: '',
+  accountDate: undefined as unknown,
+  settlementDate: undefined as unknown,
+  yardContact: '',
+  yardEmail: '',
+  yardMobile: '',
+  yardTel: '',
+});
+
+const YardFieldLabel = defineComponent({
+  name: 'SeaExportYardFieldLabel',
+  setup() {
+    return () => {
+      const detailItems = [
+        ['场站邮箱', entrustReadonlyInfo.value.yardEmail],
+        ['场站手机', entrustReadonlyInfo.value.yardMobile],
+        ['场站电话', entrustReadonlyInfo.value.yardTel],
+      ];
+      return h('span', { class: 'flex w-full min-w-0 items-center' }, [
+        h('span', $t('seaExport.export.yardId')),
+        h(
+          Popover,
+          { placement: 'topLeft', trigger: 'hover' },
+          {
+            content: () =>
+              h(
+                'div',
+                { class: 'flex min-w-56 flex-col gap-2' },
+                detailItems.map(([label, value]) =>
+                  h('div', { class: 'flex gap-3 text-xs', key: label }, [
+                    h('span', { class: 'shrink-0 text-gray-500' }, label),
+                    h(
+                      'span',
+                      {
+                        class:
+                          'min-w-0 flex-1 break-all text-right text-gray-900',
+                      },
+                      value || '-',
+                    ),
+                  ]),
+                ),
+              ),
+            default: () =>
+              h(
+                'span',
+                {
+                  class:
+                    'ml-auto max-w-28 cursor-help truncate pl-2 text-xs font-normal text-primary',
+                  onClick: (event: MouseEvent) => event.stopPropagation(),
+                },
+                entrustReadonlyInfo.value.yardContact || '-',
+              ),
+          },
+        ),
+      ]);
+    };
+  },
+});
+const yardFieldLabelSchemaContent = YardFieldLabel as unknown as NonNullable<
+  VbenFormSchema['label']
+>;
+
 /** 中间表单：基础信息 */
 const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
@@ -384,6 +454,10 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
         return {
           ...item,
           componentProps: withSmallComponentProps(item.componentProps),
+          label:
+            isEdit.value && item.fieldName === 'yardId'
+              ? yardFieldLabelSchemaContent
+              : item.label,
           formItemClass: isHeaderSelectField
             ? 'hidden'
             : isMergedEntrustField
@@ -1353,20 +1427,6 @@ watch(currentCargoId, async (nextCargoId, prevCargoId) => {
 
 /** 中间表单：货物信息 — 唛头 / 货描 */
 const orderCtns = ref<SeaExportAdminApi.OrderCtnAddDto[]>([]);
-const entrustReadonlyInfo = ref({
-  commissionNum: '',
-  organizationUnitsText: '-',
-  countryName: '',
-  laneName: '',
-  accountDateText: '',
-  settlementDateText: '',
-  accountDate: undefined as unknown,
-  settlementDate: undefined as unknown,
-  yardContact: '',
-  yardEmail: '',
-  yardMobile: '',
-  yardTel: '',
-});
 
 const tabMblNum = ref('');
 const tabCommissionNum = computed(
@@ -1748,6 +1808,7 @@ const loadEditData = async () => {
       },
       {
         fieldName: 'yardId',
+        label: yardFieldLabelSchemaContent,
         componentProps: {
           selectedItems: toSelectedItems(detail.yardId, detail.yardName),
           size: 'small',
@@ -3251,51 +3312,6 @@ defineExpose({
                 >
                   + 添加角色
                 </Button>
-              </div>
-            </Card>
-
-            <Card class="right-column__card">
-              <template #title>
-                <span class="card-title"> 场站信息 </span>
-              </template>
-
-              <div class="yard-readonly-panel">
-                <div class="yard-readonly-panel__item">
-                  <span class="yard-readonly-panel__label">场站联系人</span>
-                  <span
-                    class="yard-readonly-panel__value"
-                    :title="entrustReadonlyInfo.yardContact"
-                  >
-                    {{ entrustReadonlyInfo.yardContact || '-' }}
-                  </span>
-                </div>
-                <div class="yard-readonly-panel__item">
-                  <span class="yard-readonly-panel__label">场站邮箱</span>
-                  <span
-                    class="yard-readonly-panel__value"
-                    :title="entrustReadonlyInfo.yardEmail"
-                  >
-                    {{ entrustReadonlyInfo.yardEmail || '-' }}
-                  </span>
-                </div>
-                <div class="yard-readonly-panel__item">
-                  <span class="yard-readonly-panel__label">场站手机</span>
-                  <span
-                    class="yard-readonly-panel__value"
-                    :title="entrustReadonlyInfo.yardMobile"
-                  >
-                    {{ entrustReadonlyInfo.yardMobile || '-' }}
-                  </span>
-                </div>
-                <div class="yard-readonly-panel__item">
-                  <span class="yard-readonly-panel__label">场站电话</span>
-                  <span
-                    class="yard-readonly-panel__value"
-                    :title="entrustReadonlyInfo.yardTel"
-                  >
-                    {{ entrustReadonlyInfo.yardTel || '-' }}
-                  </span>
-                </div>
               </div>
             </Card>
           </div>

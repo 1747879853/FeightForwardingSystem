@@ -35,7 +35,7 @@ last_updated: 2026-07-12
 - **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，**完全按 `sortId` 分组**：同 `sortId` 节点在 Chevron 流中无缝咬合成一块：咬合位移下沉到 `item` 层（每个非组首节点重叠一个箭头宽），组内相邻节点稳定无缝、跨组仍保持箭头链流向，仅整条链全局首端左收圆、尾端右收圆；不同 `sortId` 组之间保留间距以区分分组。**视觉分组只看 `sortId`，不再区分待处理/已完成/还未到**（旧的「仅全『还未到』组才合并成单标签块」逻辑已移除）；组内每个服务仍各自渲染、单独完成/取消完成。组内服务为同一优先级，轮到该组时全部待处理节点同时显示「处理中」、展示处理人且均可操作，组内全部完成后才进入下一 `sortId` 组。**顶栏内联展示**：与 AI 识别等同处 `content-section__actions` 一行，左侧为「服务项目」标题、`...` 配置入口与紧凑流水线，右侧为操作按钮。节点增删在「配置服务」弹窗维护：按 `ServiceType` 枚举项 `extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序；**任意勾选变化**时编辑态点「确定」弹出二次确认后自动保存（弹窗内无常驻提示）。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
 - **干系人角色约束：** 面板始终固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；**编辑态订单未保存某默认角色时也会补一张空卡**（保存时无人员会被过滤，不写库），确保这五个岗位新建/编辑都不会缺卡；销售、操作不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，仅编辑态详情已有人员或手动「添加角色」后出现。新建态选择委托单位后按客户绑定干系人默认回填（`getClientDetail` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位不重写已保存干系人。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。
-- **右侧栏布局（干系人 + 场站信息）：** 基础信息右侧为纵向两块卡片：上方仍为「干系人」；下方为只读「场站信息」，展示 `yardContact`（场站联系人）、`yardEmail`（场站邮箱）、`yardMobile`（场站手机）、`yardTel`（场站电话）。值来自详情 `SeaExportDto`，经 `flattenDetail` 写入 `entrustReadonlyInfo`，**不参与保存提交**；空值显示 `-`。
+- **场站联系方式展示：** 编辑态在基础信息「场站」字段标签行最右侧展示 `yardContact`（场站联系人），与字段右边界对齐；悬浮联系人后展示 `yardEmail`（场站邮箱）、`yardMobile`（场站手机）、`yardTel`（场站电话）。值来自详情 `SeaExportDto`，经 `flattenDetail` 写入 `entrustReadonlyInfo`，**不参与保存提交**；空值显示 `-`。右侧栏仅保留「干系人」卡片，不再单独展示场站信息卡片。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
 - **船公司选中回显：** 详情接口返回 `carrierLogo` 与 `carrierCnShortName` 后，编辑页在 `carrierId` 的 `selectedItems` 中拼接 `cnShortName`、`code`（若有）与 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + CODE(简称)”。
 - **锁定状态展示：** 左侧委托信息显示委托编号、会计期间、应结日期、所属公司，并以标签展示“业务已/未锁定”和“费用已/未锁定”。保存时会把只读锁定状态带回 `transportOrder`。
@@ -80,7 +80,7 @@ last_updated: 2026-07-12
 | **海出 ID** | 工作台路由上下文主键。 | 路由动态段 `:id` / `SeaExportDto.id` | **触发/依赖：** 用于加载海出详情、派车、分单等子资源。 | 路由正则要求 36 位 GUID。 |
 | **运输单 ID** | 费用、更改单等公共业务的上下文主键。 | `detail.transportOrder.id` | **触发/依赖：** 费用统计、费用分页、更改单查询均依赖 `TransportOrderId`。 | 详情必须返回有效运输单 ID。 |
 | **委托编号 / 会计期间 / 应结日期 / 所属公司** | 基础信息标题行只读摘要。 | `transportOrder.commissionNum/accountDate/settlementDate`、`organizationUnits` | **触发/依赖：** 加载详情后刷新 `entrustReadonlyInfo`。 | 前端展示为只读。 |
-| **场站联系人 / 邮箱 / 手机 / 电话** | 右侧「场站信息」只读摘要。 | `SeaExportDto.yardContact` / `yardEmail` / `yardMobile` / `yardTel` | **触发/依赖：** `flattenDetail` → `refreshEntrustReadonlyInfo`；与中间区 `yardId` 选择解耦，当前不随改场站即时刷新。 | 前端只读，不提交；空值显示 `-`。 |
+| **场站联系人 / 邮箱 / 手机 / 电话** | 「场站」标签右侧展示联系人，悬浮后展示邮箱、手机、电话。 | `SeaExportDto.yardContact` / `yardEmail` / `yardMobile` / `yardTel` | **触发/依赖：** `flattenDetail` → `refreshEntrustReadonlyInfo`；与 `yardId` 选择解耦，当前不随改场站即时刷新。 | 仅编辑态展示；前端只读，不提交；空值显示 `-`。 |
 | **业务锁定** | 业务资料是否已锁定。 | `transportOrder.isBusinessLocking` | **触发/依赖：** 编辑页以锁图标标签展示，保存时保留当前只读值。 | 不在当前表单中直接切换。 |
 | **费用锁定** | 费用是否允许继续变动。 | `transportOrder.feeLocked`、更改单 `feeLocked` | **触发/依赖：** 影响订单费用与更改单业务判断；费用锁定/解锁入口在费用管理模块。 | 当前页展示并随 DTO 带回，不直接切换。 |
 | **费用标签数量** | 应收与应付费用数量摘要。 | `getOrderFeePagedList` / `paySide` | **触发/依赖：** 每 60 秒按运输单 ID 统计一次，应收为 `paySide=0`，应付为 `paySide=1`。 | 仅作为提示，不代表金额汇总。 |
@@ -120,6 +120,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-12 | `Feature/Fix` | 场站联系人移至「场站」字段标签右侧，悬浮展示邮箱、手机、电话；删除右侧独立场站信息卡片，并修复详情已返回联系人但标签未显示。 | 联系方式继续复用详情只读字段与 `entrustReadonlyInfo`，不进入保存 DTO；场站标签使用正式 `defineComponent` 组件，在初始 schema 和详情 `updateSchema` 时显式绑定，避免 DOM 注入受动态表单 patch 清除。 |
 | 2026-07-12 | `Feature` | 配置服务项目弹窗按「主流程 / 非主流程」分组展示。 | 流程分类来自 `ServiceType` 枚举子项 `extra1`；弹窗分组与任务 `sortId` 推进保持独立。 |
 | 2026-07-12 | `Feature`/`Fix`/`Perf` | ①应收应付费用新增/删除后，顶部「应收应付 x - y」Tab 数字实时刷新；②订单信息卡片「船公司」改显中文简称 `carrierCnShortName`（兜底全称），应收应付与更改单页一致；③消除进入更改单/应收应付 Tab 时 `DetailAsync` 被请求 3 次的冗余。 | ①`order-fee-table.vue` 经 `sync-fee` 上抛行数→`orderFee/index.vue` 汇总为 `fee-count-change`→`editor.vue` `setFeeNumber` 更新 Tab 标签（计数含未保存新建行，属即时反馈）；②`displayList` `carrierName` 分支改 `carrierCnShortName |  | carrierName |  | '--'`；③三次来源：父页 `loadSeaExportData`1 次 + 两个`order-fee-table`各`onMounted`拉 1 次。改为`order-fee-table`新增`orderDetail`prop，由父组件`:order-detail="formValues"`传入并`watch(immediate)` 应用箱型/基础数据，`onMounted` 不再自请求；切换单据（`editId`变化）时仍强制拉一次防`KeepAlive` 旧值；`openBatchImportModal`复用`orderBaseData`。 |
 | 2026-07-12 | `Feature` | 全局打印弹窗升级为「PDF 预览 + 多格式导出」：选模板后自动拉 PDF 用 iframe 预览，底部下拉选 PDF/Excel/Word 导出——PDF 下载、Excel/Word 新窗口打开。详情打印与费用打印透明复用。 | 后端 `PrintAsync` 新增 `format`（`PrintExportFormat` 0/1/2）；前端 `types.ts` 加枚举、`GetPrintFileDto` 加 `format`、`use-print-format.ts` + `print-format-modal.vue` 重构；`openPrint` 签名不变。端到端预览待后端稳定后实测。 |

@@ -508,31 +508,6 @@
   overflow: visible;
 }
 
-.yard-readonly-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.yard-readonly-panel__item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.yard-readonly-panel__label {
-  font-size: 12px;
-  color: #8c8c8c;
-}
-
-.yard-readonly-panel__value {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 13px;
-  color: #1f2937;
-  white-space: nowrap;
-}
-
 .card-title {
   display: flex;
   gap: 8px;
