@@ -6,7 +6,7 @@ import { $t } from '@vben/locales';
 
 import { Button, Empty, Image, Modal, Space, Spin } from 'ant-design-vue';
 
-import { buildAttachmentUrl } from '#/utils';
+import { buildAttachmentUrl, buildPdfEmbedUrl } from '#/utils';
 
 type FileCategory = 'image' | 'office' | 'other' | 'pdf';
 
@@ -73,6 +73,9 @@ const modelOpen = computed({
 
 /** 完整可访问地址 */
 const fullUrl = computed(() => buildAttachmentUrl(props.fileUrl));
+
+/** PDF 弹窗预览地址（隐藏浏览器工具栏与左侧分页） */
+const pdfEmbedUrl = computed(() => buildPdfEmbedUrl(fullUrl.value));
 
 /** 文件扩展名 */
 const extension = computed(() => {
@@ -181,8 +184,8 @@ watch(
           size="large"
         />
         <iframe
-          v-if="fullUrl"
-          :src="fullUrl"
+          v-if="pdfEmbedUrl"
+          :src="pdfEmbedUrl"
           :title="computedTitle"
           class="attachment-viewer-iframe"
           frameborder="0"

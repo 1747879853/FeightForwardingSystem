@@ -45,7 +45,7 @@ last_updated: 2026-07-12
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
 - **分单处理：** 分单页按 `seaExportId` 分页加载分单记录，支持新增、编辑、删除，维护分单相关方、提单号、货物、签单、运费/服务代码以及分单箱明细。
 - **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；每张卡片的文件列表固定显示 3 个文件项，超出后卡片内纵向滚动；卡片标题行右侧合并「客户可见」勾选与「上传」；文件列表支持点击预览、下载、删除；网格末尾虚线卡片可「添加其他类型」。每个文件项在文件名下方将「大小 · 上传人：{姓名} · 上传时间：{YYYY-MM-DD HH:mm:ss}」压缩到同一行（分别取 `creatorUserName` 与 `creationTime`，时间经 `@vben/utils` 的 `formatDateTime` 格式化，值为空则隐藏对应字段）。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`；**默认客户不可见**（`clientVisible` 默认 `false`），无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局 `AttachmentViewerModal`：PDF 内嵌 iframe、Office 走微软在线预览、图片直接展示，工具栏同步展示上传人和上传时间。
-- **打印：** 顶栏「打印」按钮调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0` 海运出口详情）；应收应付费用表打印用 `PrintJsonType=1000/1500`。打印弹窗（`components/print-format`）为「PDF 预览 + 多格式导出」：选中模板后先以 `format=0` 拉 PDF 用 `iframe` 预览，底部下拉可选导出格式（PDF/Excel/Word）；PDF 直接下载，Excel/Word 经 `window.open` 新窗口下载。后端 `PrintAsync` 新增 `format` 入参（`PrintExportFormat` 0/1/2，缺省 PDF），返回文件名拼 `/PrintTempFile/{文件名}`。新增模式禁止打印；有未保存修改时二次确认后按当前表单内容打印，否则重新拉取 `DetailAsync` 原始对象序列化。
+- **打印：** 顶栏「打印」按钮调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0` 海运出口详情）；应收应付费用表打印用 `PrintJsonType=1000/1500`。打印弹窗（`components/print-format`）为「PDF 预览 + 多格式导出」：模板改用**标题行下拉**选择，**默认不选**、选中后才以 `format=0` 拉 PDF 用 `iframe` 预览（`#toolbar=0&navpanes=0` 隐藏工具栏与左侧分页），底部下拉可选导出格式（PDF/Excel/Word）；PDF 直接下载，Excel/Word 经 `window.open` 新窗口下载。后端 `PrintAsync` 新增 `format` 入参（`PrintExportFormat` 0/1/2，缺省 PDF），返回文件名经 `buildStaticFileUrl` 拼 `/PrintTempFile/{文件名}`（开发环境用 `VITE_GLOB_STATIC_URL` 直连后端，不落 localhost）。新增模式禁止打印；有未保存修改时二次确认后按当前表单内容打印，否则重新拉取 `DetailAsync` 原始对象序列化。
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
 - **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。
 - **运踪信息：** 编辑工作台顶部「运踪信息」Tab 内直接查看（`Admin.ExternalApi.Get`）；调用 `GetOceanPushInfoAsync` 展示订阅概要、里程碑、集装箱轨迹；等待推送态自动轮询刷新；内容区 padding 12px。基础信息 Tab 顶栏不再提供「查看运踪」按钮。
@@ -121,6 +121,8 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-12 | `Feature/Fix` | 打印弹窗：模板改标题行下拉、默认不选（选后才渲染 PDF）、窗口加大（1200 宽 / 76vh 高）；修复本地开发 PDF 静态地址落到 localhost 无法加载。 | 移除左侧 `RadioGroup` 两栏布局，`Modal #title` 内嵌模板 `Select`；`loadTemplates` 不再自动选首个/预览；新增 `getStaticFileOrigin`/`buildStaticFileUrl` + `.env.development` 的 `VITE_GLOB_STATIC_URL`，`resolvePrintFileUrl` 改用之直连后端静态目录。 |
+| 2026-07-12 | `Style` | PDF 弹窗预览（附件 / 打印）隐藏浏览器自带工具栏与左侧缩略图分页，只显示正文。 | 统一 `buildPdfEmbedUrl` → `#toolbar=0&navpanes=0`；仅绑 iframe，下载/新窗口仍用原始 URL。 |
 | 2026-07-12 | `Fix` | 保存时带回场站联系人/邮箱/手机/电话，避免编辑保存后被空覆盖。 | 四字段仅存 `entrustReadonlyInfo`，须同时改 `collectCurrentFormValues` 与 `buildSeaExportDto`；Add/Edit DTO 类型对齐 OpenAPI。 |
 | 2026-07-12 | `Fix` | 基础信息区补齐「订舱代理」字段（新建/编辑共用），可选行业类别为订舱代理的客户并随单保存。 | 根因：`bookingAgentId` 仅在 `SHIPMENT_MOVED_TO_BASIC` 剔除船期区，未进 `BASIC_MODULE_EXTRA_FIELD_NAMES` 迁入基础信息；回显 `selectedItems` 同步改挂 `basicInfoFormApi`。 |
 | 2026-07-12 | `Feature/Fix` | 场站联系人移至「场站」字段标签右侧，悬浮展示邮箱、手机、电话；删除右侧独立场站信息卡片，并修复详情已返回联系人但标签未显示。 | 联系方式继续复用详情只读字段与 `entrustReadonlyInfo`，不进入保存 DTO；场站标签使用正式 `defineComponent` 组件，在初始 schema 和详情 `updateSchema` 时显式绑定，避免 DOM 注入受动态表单 patch 清除。 |

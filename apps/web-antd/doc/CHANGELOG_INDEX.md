@@ -13,6 +13,8 @@
 
 ## 2026-07
 
+- [2026-07-12 打印弹窗模板下拉与预览体验优化](./changelogs/change-log-2026-07-12-print-format-template-select-ui.md)
+- [2026-07-12 PDF 弹窗预览隐藏工具栏与左侧分页](./changelogs/change-log-2026-07-12-pdf-embed-hide-toolbar.md)
 - [2026-07-12 海运出口保存时带回场站联系人信息](./changelogs/change-log-2026-07-12-sea-export-save-yard-contact.md)
 - [2026-07-12 客户列表行业类别补齐 a/k 中文映射](./changelogs/change-log-2026-07-12-client-industry-category-letter-labels.md)
 - [2026-07-12 海运出口新建/编辑补齐订舱代理字段](./changelogs/change-log-2026-07-12-sea-export-booking-agent-basic-field.md)

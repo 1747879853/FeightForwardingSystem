@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import {
-  Button,
-  Card,
-  message,
-  Space,
-  Spin,
-  Checkbox,
-  CheckboxGroup,
-  Select,
-  Tag,
-  Modal,
-} from 'ant-design-vue';
+
+import { Modal, Spin } from 'ant-design-vue';
+
+import { buildPdfEmbedUrl } from '#/utils';
+
 interface Props {
   value: boolean;
   src: string;
@@ -34,6 +27,8 @@ const modelValue = computed({
   set: (val) => emit('update:value', val),
 });
 
+const embedSrc = computed(() => buildPdfEmbedUrl(props.src));
+
 const handleCancel = () => {
   modelValue.value = false;
   emit('close');
@@ -51,8 +46,8 @@ const handleCancel = () => {
   >
     <div style="width: 100%; height: 80vh">
       <iframe
-        v-if="modelValue && src"
-        :src="src"
+        v-if="modelValue && embedSrc"
+        :src="embedSrc"
         frameborder="0"
         style="width: 100%; height: 100%"
         :title="title"

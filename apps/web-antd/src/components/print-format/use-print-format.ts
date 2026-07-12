@@ -12,7 +12,7 @@ import {
   PrintExportFormat,
   type PrintJsonType,
 } from '#/components/print-format/types';
-import { buildAttachmentUrl } from '#/utils/attachment-url';
+import { buildStaticFileUrl } from '#/utils/attachment-url';
 import { downloadFileByUrl } from '#/utils/download-file';
 
 const visible = ref(false);
@@ -37,7 +37,7 @@ function resolvePrintFileUrl(filename: string) {
   const path = filename.startsWith('/')
     ? filename
     : `/PrintTempFile/${filename}`;
-  return buildAttachmentUrl(path);
+  return buildStaticFileUrl(path);
 }
 
 function close() {
@@ -94,11 +94,7 @@ async function loadTemplates(printJsonType: PrintJsonType) {
       close();
       return;
     }
-    const firstTemplate = templates.value[0];
-    if (firstTemplate) {
-      selectedTemplateId.value = firstTemplate.id;
-      await loadPreview();
-    }
+    // 默认不选择模板，待用户在下拉中选择后再渲染 PDF 预览。
   } catch {
     message.error('获取打印模板失败');
     close();
