@@ -22,7 +22,7 @@ last_updated: 2026-05-30
 # 2. 功能与操作说明 (Features & Operations)
 
 - **列表查询：** 通过客户列表页筛选并分页加载客户资料。
-- **顶部操作：** 遵循项目规范，基于勾选记录执行新增、修改、删除等动作。
+- **顶部操作：** 遵循项目规范，基于勾选记录执行新增、修改、删除等动作；**仅点击 checkbox 才选中**（`checkboxConfig.trigger: 'default'`），单击行不切换选中。
 - **页面缓存：** 路由 `ClientList` 已开启 `keepAlive`；从新建/编辑页返回时通过 `onActivated` 自动刷新列表，当前页删除成功后立即 `gridApi.query()`。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -47,5 +47,6 @@ last_updated: 2026-05-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 客户列表仅点击 checkbox 才选中，单击行不再切换勾选；联系人/付款条件子表 radio 同步改为仅点控件选中。 | `checkboxConfig`/`radioConfig` 的 `trigger` 由 `'row'` 改为 `'default'`。 |
 | 2026-05-30 | `Feature` | 客户列表路由开启 `keepAlive`；从 `/clients/create` 或编辑页返回时 `onActivated` 自动刷新，删除成功后即时刷新。 | 独立表单页列表需在缓存开启后补 `onActivated`，否则返回列表会展示旧数据；详见 [列表页 keepAlive 与刷新约定](../../guides/list-page-keepalive-refresh.md)。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/clients` 对应组件 `src/views/client/list.vue`，权限口径为 未在路由中声明独立权限。 |

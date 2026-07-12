@@ -22,6 +22,7 @@ last_updated: 2026-05-16
 # 2. 功能与操作说明 (Features & Operations)
 
 - **审核任务查询：** 按任务状态、任务类型、业务单据等筛选费用审核任务。
+- **行选中：** 单选列表**仅点击 radio 才选中**（`radioConfig.trigger: 'default'`），单击行不切换选中。
 - **审核处理：** 进入详情查看费用变更并通过或驳回。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -46,4 +47,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 费用审核/提交相关列表仅点击 radio 才选中，单击行不再切换选中。 | `radioConfig.trigger` 由 `'row'` 改为 `'default'`（`expense-all`、`expense-submission`）。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/audit-approval/expense-review` 对应组件 `src/views/audit-approval/expense-all/index.vue`，权限口径为 Admin.OrderFee.Audit / Admin.OrderFee.Audit.Get。 |

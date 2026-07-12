@@ -61,7 +61,7 @@ const [Grid, gridApi] = useVbenVxeGrid<ChangeOrderAdminApi.ChangeOrderEditDto>({
     keepSource: true,
     radioConfig: {
       highlight: true,
-      trigger: 'row',
+      trigger: 'default',
     },
     rowConfig: {
       keyField: '_rowKey',

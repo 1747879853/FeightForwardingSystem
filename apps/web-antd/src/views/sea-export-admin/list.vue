@@ -267,7 +267,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
     checkboxConfig: {
       highlight: true,
       reserve: true,
-      trigger: 'row',
+      trigger: 'default',
     },
     rowConfig: {
       keyField: 'id',

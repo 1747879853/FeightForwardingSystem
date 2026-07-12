@@ -371,7 +371,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
     keepSource: true,
     radioConfig: {
       highlight: true,
-      trigger: 'row',
+      trigger: 'default',
     },
     rowConfig: {
       keyField: '_rowKey',
