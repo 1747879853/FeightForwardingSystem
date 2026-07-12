@@ -417,18 +417,19 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
 
 <template>
   <Page auto-content-height>
-    <Grid
-      :table-title="
-        grouping.isGrouping.value ? '' : $t('seaExport.export.list')
-      "
-    >
-      <template v-if="grouping.isGrouping.value" #toolbar-actions>
+    <Grid>
+      <!-- 工具栏左侧插槽始终挂载，避免开启分组时 table-title 与插槽切换导致 vxe options 重算并重置列设置 -->
+      <template #toolbar-actions>
         <GroupingTabs
+          v-if="grouping.isGrouping.value"
           :items="grouping.groupItems.value"
           :selected-id="grouping.selectedItemId.value"
           :loading="grouping.loading.value"
           @select="grouping.selectItem"
         />
+        <div v-else class="mr-1 pl-1 text-[1rem]">
+          {{ $t('seaExport.export.list') }}
+        </div>
       </template>
       <template #toolbar-tools>
         <Button
