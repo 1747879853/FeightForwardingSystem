@@ -46,6 +46,7 @@ const [Modal, modalApi] = useVbenModal({
       enumerationItems: enumerationItems.value.map((item) => ({
         ...item,
         enable: item.enable ?? true,
+        extra1: item.extra1 ?? false,
       })),
     };
 
@@ -117,6 +118,9 @@ const getModalTitle = computed(() => {
     ? $t('common.edit', $t('system.enumeration.name'))
     : $t('common.create', $t('system.enumeration.name'));
 });
+const isServiceTypeEnum = computed(
+  () => formData.value?.name === 'ServiceType',
+);
 
 /**
  * 添加枚举项
@@ -131,6 +135,7 @@ function addEnumItem() {
   enumerationItems.value.push({
     value: maxValue + 1,
     enable: true,
+    extra1: false,
     displayName: '',
     description: '',
     remark: '',
@@ -254,12 +259,24 @@ function getContrastColor(hexColor: string): string {
                 </div>
               </div>
             </div>
-            <div class="flex flex-col gap-16">
+            <div class="flex flex-col gap-4">
+              <label
+                v-if="isServiceTypeEnum"
+                class="flex items-center gap-1 text-xs"
+              >
+                <input v-model="item.extra1" type="checkbox" />
+                是否业务流程
+              </label>
               <label class="flex items-center gap-1 text-xs">
                 <input v-model="item.enable" type="checkbox" />
                 {{ $t('system.enumeration.enable') }}
               </label>
-              <Button danger size="small" @click="removeEnumItem(index)">
+              <Button
+                class="mt-auto"
+                danger
+                size="small"
+                @click="removeEnumItem(index)"
+              >
                 {{ $t('common.delete') }}
               </Button>
             </div>

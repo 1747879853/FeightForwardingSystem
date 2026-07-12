@@ -102,6 +102,12 @@ function isColorValue(value: string): boolean {
                     item.enable ? $t('common.enabled') : $t('common.disabled')
                   }}
                 </Tag>
+                <Tag
+                  v-if="enumDetail.name === 'ServiceType'"
+                  :color="item.extra1 ? 'processing' : 'default'"
+                >
+                  {{ item.extra1 ? '主流程' : '非主流程' }}
+                </Tag>
               </div>
             </div>
             <div class="grid grid-cols-2 gap-2 text-sm">

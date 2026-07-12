@@ -45,7 +45,7 @@
 | basic-data | `/basic-data/ctn-code` | 基础资料 | 维护箱型箱量代码，支撑运价和委托箱型信息。 | [箱型代码](./modules/basic-data/ctn-code.md) | 2026-06-20 |
 | basic-data | `/basic-data/country-code` | 基础资料 | 维护国家资料，支撑港口、客户地址和业务区域字段。 | [国家代码](./modules/basic-data/country-code.md) | 2026-05-30 |
 | basic-data | `/basic-data/generate-num` | 基础资料 | 维护业务编号生成规则，支持组织、用户或全局范围的编号策略。 | [编号规则](./modules/basic-data/generate-num.md) | 2026-06-27 |
-| basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板，列表按主配置维度分页（每行=一个主配置），服务项明细通过 `sortId` 维护顺序（数字越小越靠前），并定义责任角色与字段展示/锁定/必填规则；SeaExportPropEnum 按千位分流（展示字段可含 1000+，锁定/必填仅 ≤1000）；服务项可开启「必填费用」绑定应收/应付费用代码，完成任务的费用校验由后端实现。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-07-08 |
+| basic-data | `/basic-data/se-service-config` | 基础资料 | 维护海运出口按起运港的服务项模板、顺序、责任角色和字段规则；服务项可同步维护全局 `ServiceType.extra1` 主流程标记。 | [海运出口港口服务项配置](./modules/basic-data/se-service-config.md) | 2026-07-12 |
 | system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息。 | [用户管理](./modules/system/user.md) | 2026-06-19 |
 | system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-30 |
 | system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-07-06 |
@@ -53,7 +53,7 @@
 | system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-05-16 |
 | system | `/system/workflow/create` | 系统管理 | 创建审批工作流，配置任务类型、条件和审批节点。 | [工作流新建](./modules/system/workflow-create.md) | 2026-05-16 |
 | system | `/system/workflow/edit/:id` | 系统管理 | 编辑已有审批工作流，维护节点、条件和适用任务类型。 | [工作流编辑](./modules/system/workflow-edit-id.md) | 2026-05-16 |
-| system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源；接入说明见 [枚举使用指南](./guides/enumeration-usage-in-pages.md)。 | [枚举管理](./modules/system/enumeration.md) | 2026-05-18 |
+| system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源；`ServiceType` 子项可维护业务流程标记 `extra1`。 | [枚举管理](./modules/system/enumeration.md) | 2026-07-12 |
 | announcement | `/system/announcement` | 公告管理 | 维护系统公告（富文本与附件），登录后对具备查看权限的用户弹出未读公告。独立顶级菜单。 | [公告管理](./modules/system/announcement.md) | 2026-07-12 |
 | system | `/system/cache` | 系统管理 | 查看或清理系统缓存，辅助排查字典、权限或配置刷新问题。 | [缓存管理](./modules/system/cache.md) | 2026-05-16 |
 | system | `/system/global-font` | 系统管理 | 统一前端页面与组件字体来源；hhyy/jiayue/jht 全部走固定 OSS 直连；本地 TTF 已移除且 SW 已停用。 | [全局字体配置](./modules/system/global-font.md) | 2026-06-03 |
