@@ -2,7 +2,7 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, onActivated, onMounted, ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -321,11 +321,25 @@ const applyDefaultAccountDate = async () => {
 
 onMounted(async () => {
   await applyDefaultAccountDate();
+  // 先恢复持久化的分组字段（仅设置状态，不查询），确保首查即带上分组维度，
+  // 从而在同一次查询中拉取分组数据，避免恢复与首查竞态导致分组只剩「全部」。
+  await grouping.restorePersistedField();
   // 用 submitForm 触发首查：它会把当前表单值写入「最近提交值」，
   // 从而让首查及后续分页/排序都带上默认会计期间（gridApi.query 用的是最近提交值）。
   await gridApi.formApi.submitForm();
   // 默认值已写入表单，之后完全尊重表单值（允许清空/改月）
   accountDateDefaultApplied = true;
+});
+
+// 列表页 keepAlive，分组统计不做缓存：每次重新进入列表都拉取一遍分组数据。
+// 首次激活与 onMounted 首查重合，跳过以避免重复请求。
+let firstActivate = true;
+onActivated(() => {
+  if (firstActivate) {
+    firstActivate = false;
+    return;
+  }
+  grouping.refreshGroupData();
 });
 
 const getCheckboxRecords = (): SeaExportAdminApi.SeaExportDto[] => {

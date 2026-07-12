@@ -34,7 +34,8 @@ last_updated: 2026-07-12
 - **页面缓存：** 路由 `SeaExportList` 已开启 `keepAlive`；从新建/编辑工作台返回时 `onActivated` 自动刷新；当前页删除成功后立即刷新。
 - **船公司展示升级：** 列表中的船公司列改为“Logo + 名称”展示，视觉上与编辑页和费用侧边摘要保持一致。
 - **分组 Tab 船公司 Logo：** 当分组维度为「船公司」时，分组 Tab 在名称前展示对应船司 Logo（与列表船公司列「Logo + 名称」一致）。Logo 来源于 `GetGroupedListAsync` 船公司分组返回的 `logo` 附件；`list.vue` 的 `fetchGroups` 用 `buildAttachmentUrl` 将相对路径解析为完整地址注入通用 `GroupItem.logoUrl`，通用组件 `grouping-tabs.vue` 仅在 `logoUrl` 有值时渲染图片。其他分组维度或「未填写」项无 Logo。
-- **分组统计（Tab 筛选）：** 工具栏「分组设置」可选择 9 种分组维度（装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式）；启用后左侧工具栏展示分组 Tab（样式对齐运价列表航线 Tab），表格标题隐藏。分组数据通过 `GetGroupedListAsync` 拉取，仅当顶部搜索条件变更时刷新；点击某分组 Tab 仅向列表查询追加对应筛选参数，分组 Tab 本身不变。分组字段与同名搜索项互斥（启用分组后禁用并清空对应搜索框）；同时只能启用一个分组字段。被禁用的搜索项会给出直观提示：placeholder 显示「已按『X』分组」，label 旁帮助图标 tooltip 说明「该条件已作为分组维度，暂不可筛选，关闭分组后可恢复」，关闭分组后自动还原原始 placeholder/help。
+- **分组统计（Tab 筛选）：** 工具栏「分组设置」可选择 9 种分组维度（装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式）；启用后左侧工具栏展示分组 Tab（样式对齐运价列表航线 Tab），表格标题隐藏。分组数据通过 `GetGroupedListAsync` 拉取，顶部搜索条件变更时刷新；点击某分组 Tab 仅向列表查询追加对应筛选参数，分组 Tab 本身不变。分组字段与同名搜索项互斥（启用分组后禁用并清空对应搜索框）；同时只能启用一个分组字段。被禁用的搜索项会给出直观提示：placeholder 显示「已按『X』分组」，label 旁帮助图标 tooltip 说明「该条件已作为分组维度，暂不可筛选，关闭分组后可恢复」，关闭分组后自动还原原始 placeholder/help。
+- **分组数据不缓存（每次进入都拉取）：** 列表 `keepAlive`，但分组统计不做缓存——`onActivated` 每次重新进入列表都会调用 `grouping.refreshGroupData()`（复用最近一次列表查询参数）重新拉取分组条数，仅刷新分组、不改选中项、不重查列表；首次激活（与 `onMounted` 首查重合）刻意跳过以免重复请求。首屏若持久化过默认分组字段，`onMounted` 会先 `restorePersistedField()` 恢复分组字段状态（不查询），再由 `submitForm` 首查在同一次查询中拉取分组数据，避免「恢复 vs 首查」竞态导致分组只剩「全部」。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -86,12 +87,15 @@ last_updated: 2026-07-12
 >
 > **[卡点 4：分组与搜索互斥]** 启用某分组字段后，对应搜索项（如 `POLId`）会被禁用并清空；切换分组或关闭分组时恢复。勿在分组启用期间通过搜索项传入同维度条件，否则与分组 Tab 语义冲突。
 >
-> **[卡点 5：分组数据刷新时机]** 点击分组 Tab 只重查列表，不刷新分组统计；仅用户手动变更顶部搜索条件时才重新调用 `GetGroupedListAsync` 并重置 Tab 选中态。
+> **[卡点 5：分组数据刷新时机]** 点击分组 Tab 只重查列表，不刷新分组统计；用户手动变更顶部搜索条件时会重新调用 `GetGroupedListAsync` 并重置 Tab 选中态。此外分组统计不做缓存：`onActivated` 每次重新进入列表都会 `refreshGroupData()` 刷新分组（跳过首次激活）。
+>
+> **[卡点 6：分组恢复必须先于首查且不自查]** 首屏恢复持久化分组字段用 `restorePersistedField()`（内部 `applyField(..., skipQuery: true)`）只设状态、不触发查询，首查统一由 `submitForm` 完成，确保首查即带分组维度并拉到分组数据。若让恢复自行 `query()` 会与首查竞速、重复请求，且可能出现分组只剩「全部」。`useListGrouping` 已移除内部自动 `onMounted` 恢复，新接入列表须在挂载时机显式调用 `restorePersistedField()`。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 分组统计不再缓存：每次重新进入列表都拉取最新分组条数；并修复首屏默认分组（如船公司）只剩「全部」拉不到分组明细的问题。 | `use-list-grouping.ts` 移除内部自动 `onMounted` 恢复，新增 `restorePersistedField()`（`applyField` 增 `skipQuery` 仅设状态不查询）+ `refreshGroupData()`（复用 `lastBaseParams` 只刷新分组）；`list.vue` `onMounted` 改「恢复分组字段→submitForm 首查」确定性时序消除竞态，`onActivated` 每次进入刷新分组（跳过首次激活）。 |
 | 2026-07-12 | `Fix` | 列表仅点击 checkbox 才选中，单击行不再切换勾选；双击进编辑仍会勾选当前行。 | `checkboxConfig.trigger` 由 `'row'` 改为 `'default'`；同批统一改客户/费用锁定及多处 radio 列表。 |
 | 2026-07-12 | `Style` | 列表「业务状态」色块背景改为半透明 rgba，降低抢眼度；文字色不变。 | 仅改 `SEA_EXPORT_BUSINESS_STATUS_COLORS` 的 `background`（done/active/upcoming 分别约 0.45/0.55/0.6）。 |
 | 2026-07-12 | `Feature` | 船公司分组的分组 Tab 在名称前展示对应船司 Logo，其他分组维度不变。 | 通用 `GroupItem` 新增 `logoUrl`（已解析地址），`grouping-tabs.vue` 有值才渲染 `<img>`；`list.vue` `fetchGroups` 改异步，用 `buildAttachmentUrl` 解析接口 `logo.url` 注入；`SeaExportGroupDto` 补 `logo?: AttachmentItemDto`。业务侧解析 URL、通用组件保持无业务耦合。 |
