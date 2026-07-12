@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 打印弹窗改为 PDF 预览 + 多格式导出（Excel/Word 新窗口）](./changelogs/change-log-2026-07-12-print-format-multi-export-preview.md)
 - [2026-07-12 海运出口费用 Tab 计数实时刷新、船公司显示中文简称、详情去重请求](./changelogs/change-log-2026-07-12-sea-export-fee-tab-count-carrier-detail-dedup.md)
 - [2026-07-12 工作台编号 Keyword 检索、仅勾选选中与 TrimInput](./changelogs/change-log-2026-07-12-workspace-keyword-trim-checkbox.md)
 - [2026-07-12 恢复应收应付费用表打印按钮](./changelogs/change-log-2026-07-12-sea-export-order-fee-print-restore.md)
