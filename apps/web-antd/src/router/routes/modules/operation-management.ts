@@ -6,7 +6,7 @@ import { abpPageAuthority } from '#/router/abp-authority';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      icon: 'mdi:clipboard-text-outline',
+      icon: 'streamline-freehand-color:office-work-wireless',
       order: 195,
       title: '操作管理',
       authority: abpPageAuthority('Admin.SeaExport'),

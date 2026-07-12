@@ -6,7 +6,7 @@ import { abpPageAuthority } from '#/router/abp-authority';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      icon: 'mdi:cash-multiple',
+      icon: 'icon-park:finance',
       order: 200,
       title: '费用管理',
       hideChildrenInMenu: false,

@@ -82,6 +82,7 @@ last_updated: 2026-06-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Style` | 侧边栏「工作台」一级菜单图标改为 `vscode-icons:file-type-go-work`。 | 与其它一级业务菜单同步更换语义化 Iconify 图标，见 `change-log-2026-07-12-sidebar-top-menu-icons.md`。 |
 | 2026-06-09 | `Fix` | 工作台 PagedList 分页参数对齐后端：`PageIndex`/`PageSize` 替代 `SkipCount`/`MaxResultCount`，分页器 current 直接传页码。 | 响应 `currentPage` 回写分页器；枚举/港口接口此前已用页码模式无需改动。 |
 | 2026-06-27 | `Fix` | 工作台「转交备注」列仅在「转交任务」节点展示。 | `activeStageKey === 'assigned'` 时显示。 |
 | 2026-06-27 | `Fix` | 工作台转交弹窗必填转交备注并提交 `assigneeRemark`；列表增加转交备注列；汇总节点文案「指派任务」改为「转交任务」。 | 对齐 `SeServiceTaskTransferDto` / `SeServiceTaskWorkbenchItemDto`。 |

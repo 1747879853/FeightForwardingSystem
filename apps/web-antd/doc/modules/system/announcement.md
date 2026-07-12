@@ -54,6 +54,7 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | Style | 一级菜单图标改为 `streamline-plump-color:announcement-megaphone-flat` | 与其它一级业务菜单同步更换语义化 Iconify 图标 |
 | 2026-07-11 | 重构 | 侧边栏从「系统管理」子项提升为独立顶级「公告管理」 | 新增 `announcement.ts` 路由模块，`order: 9998`；`system.ts` 移除公告子路由 |
 | 2026-07-11 | 调整 | 登录弹窗仅保留「我已阅读」，已读改存 sessionStorage | 移除 skip-session；关闭浏览器后会话清空可再弹 |
 | 2026-06-23 | 重构 | 新建/编辑改为居中弹窗，排序与备注同列 | 富文本 `autoHeight` 避免与 Modal 滚动条叠加 |

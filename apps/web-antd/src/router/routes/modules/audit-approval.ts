@@ -6,7 +6,7 @@ import { abpPageAuthority } from '#/router/abp-authority';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      icon: 'mdi:file-document-check-outline',
+      icon: 'streamline-freehand-color:security-phone-protection-approved',
       order: 210,
       title: $t('auditApproval.title'),
       hideChildrenInMenu: false,

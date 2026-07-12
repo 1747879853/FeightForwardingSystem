@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 侧边栏一级菜单更换语义化 Iconify 图标](./changelogs/change-log-2026-07-12-sidebar-top-menu-icons.md)
 - [2026-07-12 海运出口列表分组不缓存（每次进入都拉取）并修复首屏默认分组只剩「全部」](./changelogs/change-log-2026-07-12-sea-export-list-grouping-no-cache.md)
 - [2026-07-12 列表勾选改为仅点击 checkbox/radio 选中](./changelogs/change-log-2026-07-12-list-checkbox-trigger-default.md)
 - [2026-07-12 海运出口表单布局：船名航次 3:2、条款合并、签单字段与预留 Tab 隐藏](./changelogs/change-log-2026-07-12-sea-export-form-layout-hide-signing-tabs.md)

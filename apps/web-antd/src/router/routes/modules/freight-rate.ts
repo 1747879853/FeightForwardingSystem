@@ -5,7 +5,7 @@ import { abpPageAuthority } from '#/router/abp-authority';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      icon: 'lucide:route',
+      icon: 'emojione:ship',
       order: 190,
       title: '航线管理',
       authority: abpPageAuthority('Admin.SeFreiPrice'),
