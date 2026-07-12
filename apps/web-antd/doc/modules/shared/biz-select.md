@@ -26,7 +26,7 @@ last_updated: 2026-07-12
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **modelValue/value** | 当前选中的业务主键或主键数组 | 各业务主数据接口 | 由 options、selectedItems 或详情接口解析显示名称 | 值类型由具体组件约定 |
+| **modelValue/value** | 当前选中的业务主键或主键数组 | 各业务主数据接口 | 由 options、selectedItems 或详情接口解析显示名称 | 雪花主键经 json-bigint 为 **string**，表单校验与提交须原样透传，禁止 `Number()` |
 | **disabled** | 是否整体禁止编辑 | 页面权限或业务状态 | 为 `true` 时切换为只读文本外观 | 只控制交互和视觉，不替代后端权限 |
 | **selectedItems** | 编辑回显所需的完整业务对象 | 页面详情数据 | 已选项不在当前分页时补入选项缓存 | 分页选择组件按需传入 |
 
@@ -34,8 +34,11 @@ last_updated: 2026-07-12
 
 > [!IMPORTANT] **[卡点 1：只读态不能直接显示 ID]** 多数业务选择值是主键，禁用态仍需保留原选项加载和标签解析流程，不能直接渲染 `modelValue`。
 
+> [!IMPORTANT] **[卡点 2：雪花 ID 禁止转 number]** 超过 2^53-1 的 ID 在响应中为 string；关联表单不得使用 `z.number()` / `Number()`，否则校验失败或删改错记录。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 港口/费用代码/汇率/客户账期等页面统一大数 ID 字符串校验与透传约定。 | 与 `request.ts` json-bigint `storeAsString` 对齐；biz-select 内 `parseIdToSafeString` 仅用于缓存键，不意味着表单可 coerce 为 number。 |
 | 2026-07-12 | `Feature` | 所有 biz-select 在整体禁用时改为清晰的只读文本外观 | 保留底层 Select/Cascader 解析标签，统一通过 `biz-select` 样式标识收敛视觉行为 |

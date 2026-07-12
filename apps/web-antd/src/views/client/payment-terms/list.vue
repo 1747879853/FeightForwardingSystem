@@ -41,8 +41,8 @@ const handleActionClick = ({
 }: OnActionClickParams<BillingPeriodAdminApi.ClientBillingPeriodDto>) => {
   switch (code) {
     case 'delete': {
-      // IdDto 要求 id 为 number 类型,但 row.id 可能是 string | number
-      delContact({ id: Number(row.id) });
+      // row.id 可能是大数 string，原样透传，禁止 Number() 转换（丢精度）
+      delContact({ id: row.id });
       break;
     }
     case 'edit': {

@@ -99,11 +99,18 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'currencyId',
       label: $t('system.basicData.feeCode.defaultCurrency'),
       defaultValue: undefined,
-      rules: z.number({
-        required_error: $t('ui.formRules.required', [
-          $t('system.basicData.feeCode.defaultCurrency'),
-        ]),
-      }),
+      // biz-select 的大数 ID 经 json-bigint 解析为 string，需按字符串校验/透传，禁止 Number() 转换（丢精度）
+      rules: z.preprocess(
+        (value) =>
+          value === undefined || value === null || value === ''
+            ? undefined
+            : String(value),
+        z.string({
+          required_error: $t('ui.formRules.required', [
+            $t('system.basicData.feeCode.defaultCurrency'),
+          ]),
+        }),
+      ),
     },
     {
       component: 'Select',

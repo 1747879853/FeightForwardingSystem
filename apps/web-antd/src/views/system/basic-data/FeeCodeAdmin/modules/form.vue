@@ -110,7 +110,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
       return;
     }
 
-    const data = drawerApi.getData<{ id?: number }>();
+    const data = drawerApi.getData<{ id?: number | string }>();
     if (data?.id) {
       // 编辑模式 - 加载详情
       drawerApi.lock();

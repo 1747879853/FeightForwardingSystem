@@ -2,7 +2,7 @@
 title: 客户编辑
 module: 客户管理
 author: auto-doc-sync
-last_updated: 2026-06-09
+last_updated: 2026-07-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -38,7 +38,7 @@ last_updated: 2026-06-09
 | :-- | :-- | :-- | :-- | :-- |
 | **客户 ID** | 编辑上下文的主键。 | 路由动态段 `:id` | **触发/依赖：** 用于加载客户及其子资料。 | 必须是有效 GUID。 |
 | **联系人** | 客户沟通对象。 | `src/views/client/contact/data.ts` / `client-contact-admin.ts` | **触发/依赖：** 依赖当前客户 ID。 | 删除和编辑需保持父客户上下文。 |
-| **付款条件** | 客户账期与结算约定。 | `src/views/client/payment-terms/data.ts` | **触发/依赖：** 影响费用、付款和结算口径。 | 需与后端账期规则保持一致。 |
+| **付款条件** | 客户账期与结算约定。 | `src/views/client/payment-terms/data.ts` / `billing-period-admin.ts` | **触发/依赖：** 影响费用、付款和结算口径。 | 删除时 `row.id` 可能为大数 string，须原样透传，禁止 `Number()`。 |
 | **排除服务项** | 委托单位在各起运港（含默认港口配置）禁用的海运出口服务项。 | `ClientExceptServiceAdmin` | **触发/依赖：** 依赖客户为委托单位；展示数据来自全局 `SeServiceConfig` 与 `ClientExceptService` 合并计算 `isChecked`；`polId` 为空的分组表示默认模板。 | 非委托单位不可查看/修改；保存默认分组排除项时 `polId` 传 `null`。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -49,6 +49,7 @@ last_updated: 2026-06-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 客户账期删除不再对 `row.id` 使用 `Number()`，避免大数主键删错记录。 | `BillingPeriodAdminApi.IdDto.id` 改为 `number \| string`，与 json-bigint 响应一致。 |
 | 2026-06-09 | `Feature` | 客户「海运出口服务项目」Tab 支持展示默认港口配置分组，保存排除项时 `polId` 传 `null`。 | `formatPolLabel` / `buildEditPayload` / `getPortGroupKey` 统一空 `polId` 口径，文案复用基础资料 `defaultPolConfig`。 |
 | 2026-05-30 | `Refactor` | “海运出口服务项目”Tab 的服务项枚举加载统一改为 `ServiceType` 大写口径，并复用海运出口共享模块。 | `except-service/index.vue` 改为调用统一 `loadSeServiceTypeOptions()`，移除 `serviceType` 小写回退，确保客户页与海运出口主流程枚举源一致。 |
 | 2026-05-24 | `Feature` | 新增「海运出口服务项目」Tab，对接委托单位按港口排除服务项。 | API：`GetClientExceptServicesAsync` / `EditClientExceptServicesAsync`；保存仅提交 `isChecked=false` 的 `serviceTypes`。 |

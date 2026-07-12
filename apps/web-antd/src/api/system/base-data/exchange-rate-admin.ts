@@ -3,7 +3,8 @@ import { requestClient } from '#/api/request';
 export namespace ExchangeRateAdminApi {
   /** 新增汇率参数 */
   export interface ExchangeRateAddDto {
-    currencyId?: number;
+    /** 币别Id（大数经 json-bigint 解析为 string，需原样透传） */
+    currencyId?: number | string;
     drValue?: number;
     crValue?: number;
     customValue?: number;
@@ -19,8 +20,10 @@ export namespace ExchangeRateAdminApi {
 
   /** 编辑汇率参数 */
   export interface ExchangeRateEditDto {
-    id: number;
-    currencyId?: number;
+    /** 汇率Id（大数经 json-bigint 解析为 string，需原样透传） */
+    id: number | string;
+    /** 币别Id（大数经 json-bigint 解析为 string，需原样透传） */
+    currencyId?: number | string;
     drValue?: number;
     crValue?: number;
     customValue?: number;
@@ -36,7 +39,8 @@ export namespace ExchangeRateAdminApi {
 
   /** 汇率详情 */
   export interface ExchangeRateDto {
-    id: number;
+    /** 汇率Id（大数经 json-bigint 解析为 string） */
+    id: number | string;
     currencyId?: number | string;
     currencyCode?: string;
     drValue?: number;
@@ -118,8 +122,9 @@ export const editExchangeRate = (
 
 /**
  * 删除汇率
+ * @param id 汇率 ID，大数以 string 透传避免精度丢失
  */
-export const deleteExchangeRate = (id: number) => {
+export const deleteExchangeRate = (id: number | string) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data: { id },
   });

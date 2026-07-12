@@ -2,7 +2,7 @@
 title: 费用代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-07-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -35,6 +35,7 @@ last_updated: 2026-05-16
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
+| **currencyId** | 默认币别主键。 | `CurrencySelect`<br/>`currency-admin` | **触发/依赖：** 费用录入默认币种。 | **必填**；大数 ID 为 string 时原样校验与提交，禁止 `Number()`。 |
 | **编码** | 基础资料唯一或半唯一识别字段。 | `src/views/system/basic-data/FeeCodeAdmin/data.ts` | **触发/依赖：** 被业务单据或下拉组件引用。 | 唯一性和格式以后端为准。 |
 | **名称** | 给业务用户识别的显示值。 | `src/views/system/basic-data/FeeCodeAdmin/data.ts` | **触发/依赖：** 列表、表单、下拉组件共同展示。 | 通常不能为空。 |
 | **启用状态** | 控制资料是否可被业务选择。 | `src/api/system/base-data/*.ts` | **触发/依赖：** 禁用后不应继续作为新业务选择项。 | 历史单据展示需兼容旧值。 |
@@ -47,4 +48,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 修复费用代码编辑时切换默认币别的大数 ID 校验与精度问题。 | `currencyId` 由 `z.number()` 改为 preprocess→string；DTO/delete 参数支持 `number \| string`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/fee-code` 对应组件 `src/views/system/basic-data/FeeCodeAdmin/list.vue`，权限口径为 Admin.FeeCode / Admin.FeeCode.Get。 |

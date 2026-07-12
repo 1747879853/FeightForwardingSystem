@@ -146,9 +146,10 @@ export namespace BillingPeriodAdminApi {
   }
   /** ID DTO */
   export interface IdDto {
-    id: number;
+    /** 大数 ID 经 json-bigint 解析为 string，需原样透传避免精度丢失 */
+    id: number | string;
     /** 批量删除用这个 */
-    ids?: number[];
+    ids?: (number | string)[];
   }
 }
 /** 不分页列表响应 */
