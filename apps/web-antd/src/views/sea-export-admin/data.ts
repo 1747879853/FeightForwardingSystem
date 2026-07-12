@@ -362,9 +362,9 @@ export const SEA_EXPORT_BUSINESS_STATUS_COLORS: Record<
   SeaExportBusinessStatusState,
   { background: string; color: string }
 > = {
-  done: { color: '#005313', background: '#a8e6cf' },
-  active: { color: '#854d0e', background: '#fef3c7' },
-  upcoming: { color: '#414752', background: '#f2f2f2' },
+  done: { color: '#005313', background: 'rgba(168, 230, 207, 0.45)' },
+  active: { color: '#854d0e', background: 'rgba(254, 243, 199, 0.55)' },
+  upcoming: { color: '#414752', background: 'rgba(242, 242, 242, 0.6)' },
 };
 
 /**
