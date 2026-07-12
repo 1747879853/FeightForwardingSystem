@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 在线会议会议号按品牌环境区分](./changelogs/change-log-2026-07-12-meeting-room-by-brand.md)
 - [2026-07-12 打印弹窗模板下拉与预览体验优化](./changelogs/change-log-2026-07-12-print-format-template-select-ui.md)
 - [2026-07-12 PDF 弹窗预览隐藏工具栏与左侧分页](./changelogs/change-log-2026-07-12-pdf-embed-hide-toolbar.md)
 - [2026-07-12 海运出口保存时带回场站联系人信息](./changelogs/change-log-2026-07-12-sea-export-save-yard-contact.md)

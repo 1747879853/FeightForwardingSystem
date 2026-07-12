@@ -28,6 +28,7 @@ import { Tooltip } from 'ant-design-vue';
 
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
+import { isJhtBrand } from '#/utils/brand-assets';
 import LoginForm from '#/views/_core/authentication/login.vue';
 import AnnouncementLoginModal from '#/views/system/announcement/components/announcement-login-modal.vue';
 import { useAnnouncementLoginModal } from '#/views/system/announcement/use-announcement-login-modal';
@@ -100,7 +101,8 @@ const userEmail = computed(() => {
 });
 
 const MEETING_BASE_URL = 'https://test.jiayuebetter.com/index.html';
-const MEETING_ROOM = '123456';
+/** 津海通 999999；浩瀚远洋 / 佳越软件 123456 */
+const MEETING_ROOM = isJhtBrand ? '999999' : '123456';
 const MEETING_PASSWORD = 'jiayueruanjian';
 
 function buildMeetingUrl() {
