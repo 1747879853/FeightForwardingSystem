@@ -567,7 +567,8 @@ setupVbenVxeTable({
 
             const ctns = orderDetail.transportOrder.orderCtns;
             if (ctns.length === 0) {
-              row['quantity'] = 0;
+              row['unit'] = '票';
+              row['quantity'] = 1;
               return;
             }
 

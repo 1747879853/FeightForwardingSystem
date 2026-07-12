@@ -2204,13 +2204,13 @@ onMounted(() => {
                     ><strong>申请金额:</strong>
                     {{ totalAppliedAmount.toFixed(2) }}</span
                   >
-                  <span
+                  <!-- <span
                     v-if="foreignCurrencyAmount !== null"
                     style="font-size: 13px; color: #1890ff"
                   >
                     <strong>申请币别金额:</strong>
                     {{ foreignCurrencyAmount.toFixed(2) }}
-                  </span>
+                  </span> -->
                 </Space>
                 <div
                   v-if="hasAmountDifference"

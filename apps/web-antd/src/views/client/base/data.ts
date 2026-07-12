@@ -246,6 +246,16 @@ const getCustomerIndustryCategoryOptions = () => [
     value: 'b',
     label: $t('seaExport.client.industryCategoryOptions.shipper'),
   },
+  {
+    key: 5,
+    value: 'e',
+    label: $t('seaExport.client.industryCategoryOptions.consignee'),
+  },
+  {
+    key: 20,
+    value: 'u',
+    label: $t('seaExport.client.industryCategoryOptions.factory'),
+  },
 ];
 
 const getSupplierIndustryCategoryOptions = () => [
@@ -263,11 +273,6 @@ const getSupplierIndustryCategoryOptions = () => [
     key: 4,
     value: 'd',
     label: $t('seaExport.client.industryCategoryOptions.airline'),
-  },
-  {
-    key: 5,
-    value: 'e',
-    label: $t('seaExport.client.industryCategoryOptions.consignee'),
   },
   {
     key: 6,
@@ -306,11 +311,6 @@ const getSupplierIndustryCategoryOptions = () => [
     key: 19,
     value: 's',
     label: $t('seaExport.client.industryCategoryOptions.destinationAgent'),
-  },
-  {
-    key: 20,
-    value: 'u',
-    label: $t('seaExport.client.industryCategoryOptions.factory'),
   },
 ];
 

@@ -696,7 +696,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.feecodeName'),
 
       field: 'feeCodeId',
-      minWidth: 150,
+      minWidth: 300,
       cellRender: {
         name: 'CellFeeCodeSelect',
         props: {

@@ -284,6 +284,90 @@ async function handleSubmit() {
   }
 }
 
+/** 直接提交（先保存再提交） */
+async function handleDirectSubmit() {
+  // 基本验证
+  if (!formData.value.settlementId) {
+    message.warning('请选择结算对象');
+    return;
+  }
+  if (!formData.value.companyId) {
+    message.warning('请选择所属公司');
+    return;
+  }
+
+  // 验证是否有费用明细
+  const items = formData.value.invoiceApplicationItems || [];
+  if (items.length === 0) {
+    message.warning('请先添加费用明细后再提交');
+    return;
+  }
+
+  submitLoading.value = true;
+  try {
+    let applicationId: string | undefined;
+
+    // 如果是新建，先保存
+    if (!isEdit.value) {
+      const batchData: InvoiceApplicationApi.InvoiceApplicationBatchAddDto = {
+        settlementId: formData.value.settlementId!,
+        companyId: formData.value.companyId!,
+        require: formData.value.require,
+        remark: formData.value.remark,
+        currencyGroups: [
+          {
+            currencyId: formData.value.currencyId || 1,
+            invoiceType: formData.value.invoiceType,
+            invoiceApplicationItems:
+              formData.value.invoiceApplicationItems || [],
+            invoiceApplicationGoodsDtls: goodsDetails.value.map((item) => ({
+              codeInvoiceId: item.codeInvoiceId,
+              specification: item.specification,
+              unit: item.unit,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              amount: item.amount,
+              noTaxAmount: item.noTaxAmount,
+              taxRate: item.taxRate,
+              taxAmount: item.taxAmount,
+              remark: item.remark,
+            })),
+            orgBankAccountId: formData.value.orgBankAccountId,
+            clientInvoiceBankId: formData.value.clientInvoiceBankId,
+          },
+        ],
+      };
+
+      const ids = await addAsync(batchData);
+
+      // 获取第一个创建的申请ID
+      if (ids && ids.length > 0) {
+        applicationId = ids[0];
+      }
+    } else {
+      // 编辑模式，先保存修改
+      await editAsync(
+        formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto,
+      );
+      applicationId = editId.value;
+    }
+
+    // 保存成功后提交
+    if (applicationId) {
+      await submitAsync({ id: applicationId });
+      message.success('提交成功');
+
+      // 提交成功后返回列表页面
+      router.push('/fee-management/invoice-application');
+    }
+  } catch (error) {
+    console.error('提交失败:', error);
+    message.error('提交失败');
+  } finally {
+    submitLoading.value = false;
+  }
+}
+
 /** 提交审核 */
 async function handleSubmitForAudit() {
   // 基本验证
@@ -1992,6 +2076,14 @@ async function loadDetail() {
         <Button
           type="primary"
           :loading="submitLoading"
+          @click="handleDirectSubmit"
+          :disabled="isReadOnly"
+        >
+          提交
+        </Button>
+        <!-- <Button
+          type="primary"
+          :loading="submitLoading"
           @click="handleSubmitForAudit"
           v-if="
             !isEdit ||
@@ -2003,7 +2095,7 @@ async function loadDetail() {
           :disabled="isReadOnly"
         >
           提交审核
-        </Button>
+        </Button> -->
         <Button @click="handleCancel">{{
           isReadOnly ? '关闭' : '取消'
         }}</Button>
