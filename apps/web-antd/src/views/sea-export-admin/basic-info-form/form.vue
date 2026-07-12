@@ -1342,6 +1342,10 @@ const entrustReadonlyInfo = ref({
   settlementDateText: '',
   accountDate: undefined as unknown,
   settlementDate: undefined as unknown,
+  yardContact: '',
+  yardEmail: '',
+  yardMobile: '',
+  yardTel: '',
 });
 
 const tabMblNum = ref('');
@@ -1370,6 +1374,10 @@ const refreshEntrustReadonlyInfo = (values: Record<string, any>) => {
       : '-',
     accountDate: values.accountDate,
     settlementDate: values.settlementDate,
+    yardContact: values.yardContact ?? '',
+    yardEmail: values.yardEmail ?? '',
+    yardMobile: values.yardMobile ?? '',
+    yardTel: values.yardTel ?? '',
   };
 };
 
@@ -3051,159 +3059,211 @@ defineExpose({
           </div>
 
           <!-- 右侧快捷区 -->
-          <Card class="right-column">
-            <template #title>
-              <span class="card-title">
-                {{ $t('seaExport.export.orderUsers') }}
-              </span>
-            </template>
+          <div class="right-column">
+            <Card class="right-column__card">
+              <template #title>
+                <span class="card-title">
+                  {{ $t('seaExport.export.orderUsers') }}
+                </span>
+              </template>
 
-            <div class="order-user-panel">
-              <div
-                v-for="row in orderUserRows"
-                :key="row._rowKey"
-                class="order-user-panel__row"
-              >
-                <div class="order-user-panel__body">
-                  <div class="order-user-panel__header">
-                    <div class="order-user-panel__role-label">
-                      {{ getOrderUserRoleLabel(row.userAttribute) }}
-                    </div>
-                    <Popover
-                      v-if="row.userId"
-                      placement="leftTop"
-                      trigger="hover"
-                      overlay-class-name="order-user-detail-popover"
-                    >
-                      <template #content>
-                        <div class="order-user-detail-card">
-                          <div class="order-user-detail-card__header">
-                            <Avatar
-                              :size="38"
-                              :src="getOrderUserAvatarSrc(row.userId)"
-                              class="order-user-detail-card__avatar"
-                            >
-                              {{ getOrderUserAvatarText(row) }}
-                            </Avatar>
-                            <div class="order-user-detail-card__title-wrap">
-                              <div class="order-user-detail-card__name">
-                                {{ getOrderUserDisplayName(row) || '-' }}
+              <div class="order-user-panel">
+                <div
+                  v-for="row in orderUserRows"
+                  :key="row._rowKey"
+                  class="order-user-panel__row"
+                >
+                  <div class="order-user-panel__body">
+                    <div class="order-user-panel__header">
+                      <div class="order-user-panel__role-label">
+                        {{ getOrderUserRoleLabel(row.userAttribute) }}
+                      </div>
+                      <Popover
+                        v-if="row.userId"
+                        placement="leftTop"
+                        trigger="hover"
+                        overlay-class-name="order-user-detail-popover"
+                      >
+                        <template #content>
+                          <div class="order-user-detail-card">
+                            <div class="order-user-detail-card__header">
+                              <Avatar
+                                :size="38"
+                                :src="getOrderUserAvatarSrc(row.userId)"
+                                class="order-user-detail-card__avatar"
+                              >
+                                {{ getOrderUserAvatarText(row) }}
+                              </Avatar>
+                              <div class="order-user-detail-card__title-wrap">
+                                <div class="order-user-detail-card__name">
+                                  {{ getOrderUserDisplayName(row) || '-' }}
+                                </div>
+                                <div class="order-user-detail-card__sub-title">
+                                  账号：{{
+                                    getOrderUserDetailText(
+                                      getOrderUserDetail(row.userId)?.userName,
+                                    )
+                                  }}
+                                </div>
                               </div>
-                              <div class="order-user-detail-card__sub-title">
-                                账号：{{
-                                  getOrderUserDetailText(
-                                    getOrderUserDetail(row.userId)?.userName,
+                              <span
+                                class="order-user-detail-card__status"
+                                :class="
+                                  getOrderUserStatusClass(
+                                    getOrderUserDetail(row.userId),
+                                  )
+                                "
+                              >
+                                {{
+                                  getOrderUserStatusText(
+                                    getOrderUserDetail(row.userId),
                                   )
                                 }}
+                              </span>
+                            </div>
+                            <div
+                              v-if="
+                                isOrderUserDetailLoading(row.userId) &&
+                                !getOrderUserDetail(row.userId)
+                              "
+                              class="order-user-detail-card__loading"
+                            >
+                              加载中...
+                            </div>
+                            <div v-else class="order-user-detail-card__info">
+                              <div class="order-user-detail-card__info-item">
+                                <span>角色</span>
+                                <span>{{
+                                  getOrderUserRoleLabel(row.userAttribute)
+                                }}</span>
+                              </div>
+                              <div class="order-user-detail-card__info-item">
+                                <span>手机</span>
+                                <span>{{
+                                  getOrderUserDetailText(
+                                    getOrderUserDetail(row.userId)?.phoneNumber,
+                                  )
+                                }}</span>
+                              </div>
+                              <div class="order-user-detail-card__info-item">
+                                <span>邮箱</span>
+                                <span>{{
+                                  getOrderUserDetailText(
+                                    getOrderUserDetail(row.userId)
+                                      ?.emailAddress,
+                                  )
+                                }}</span>
                               </div>
                             </div>
-                            <span
-                              class="order-user-detail-card__status"
-                              :class="
-                                getOrderUserStatusClass(
-                                  getOrderUserDetail(row.userId),
-                                )
-                              "
-                            >
-                              {{
-                                getOrderUserStatusText(
-                                  getOrderUserDetail(row.userId),
-                                )
-                              }}
-                            </span>
                           </div>
-                          <div
-                            v-if="
-                              isOrderUserDetailLoading(row.userId) &&
-                              !getOrderUserDetail(row.userId)
-                            "
-                            class="order-user-detail-card__loading"
-                          >
-                            加载中...
-                          </div>
-                          <div v-else class="order-user-detail-card__info">
-                            <div class="order-user-detail-card__info-item">
-                              <span>角色</span>
-                              <span>{{
-                                getOrderUserRoleLabel(row.userAttribute)
-                              }}</span>
-                            </div>
-                            <div class="order-user-detail-card__info-item">
-                              <span>手机</span>
-                              <span>{{
-                                getOrderUserDetailText(
-                                  getOrderUserDetail(row.userId)?.phoneNumber,
-                                )
-                              }}</span>
-                            </div>
-                            <div class="order-user-detail-card__info-item">
-                              <span>邮箱</span>
-                              <span>{{
-                                getOrderUserDetailText(
-                                  getOrderUserDetail(row.userId)?.emailAddress,
-                                )
-                              }}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </template>
+                        </template>
+                        <Avatar
+                          :size="28"
+                          :src="getOrderUserAvatarSrc(row.userId)"
+                          class="order-user-panel__avatar order-user-panel__avatar--link"
+                          @mouseenter="
+                            loadOrderUserDetail(row.userId, row._rowKey)
+                          "
+                        >
+                          {{ getOrderUserAvatarText(row) }}
+                        </Avatar>
+                      </Popover>
                       <Avatar
+                        v-else
                         :size="28"
-                        :src="getOrderUserAvatarSrc(row.userId)"
-                        class="order-user-panel__avatar order-user-panel__avatar--link"
-                        @mouseenter="
-                          loadOrderUserDetail(row.userId, row._rowKey)
-                        "
+                        :src="getOrderUserAvatarSrc()"
+                        class="order-user-panel__avatar"
                       >
-                        {{ getOrderUserAvatarText(row) }}
+                        ?
                       </Avatar>
-                    </Popover>
-                    <Avatar
-                      v-else
-                      :size="28"
-                      :src="getOrderUserAvatarSrc()"
-                      class="order-user-panel__avatar"
-                    >
-                      ?
-                    </Avatar>
+                    </div>
+                    <UserSelect
+                      :key="row._rowKey"
+                      :model-value="row.userId"
+                      :user-attribute="row.userAttribute"
+                      label-key="nickName"
+                      :selected-items="getOrderUserSelectedItems(row)"
+                      :placeholder="
+                        $t('seaExport.export.pleaseSelectOrderUser')
+                      "
+                      size="small"
+                      allow-clear
+                      class="order-user-panel__select"
+                      @update:model-value="
+                        (v) => updateOrderUser(row._rowKey, v)
+                      "
+                    />
                   </div>
-                  <UserSelect
-                    :key="row._rowKey"
-                    :model-value="row.userId"
-                    :user-attribute="row.userAttribute"
-                    label-key="nickName"
-                    :selected-items="getOrderUserSelectedItems(row)"
-                    :placeholder="$t('seaExport.export.pleaseSelectOrderUser')"
+                  <Button
+                    v-if="
+                      row.userAttribute != null &&
+                      !requiredOrderUserRoles.includes(row.userAttribute)
+                    "
+                    type="text"
+                    danger
                     size="small"
-                    allow-clear
-                    class="order-user-panel__select"
-                    @update:model-value="(v) => updateOrderUser(row._rowKey, v)"
-                  />
+                    class="order-user-panel__delete-btn"
+                    title="删除角色"
+                    @click.stop="removeOrderUserRole(row._rowKey)"
+                  >
+                    <IconifyIcon icon="mdi:close-circle" />
+                  </Button>
                 </div>
                 <Button
-                  v-if="
-                    row.userAttribute != null &&
-                    !requiredOrderUserRoles.includes(row.userAttribute)
-                  "
-                  type="text"
-                  danger
-                  size="small"
-                  class="order-user-panel__delete-btn"
-                  title="删除角色"
-                  @click.stop="removeOrderUserRole(row._rowKey)"
+                  class="order-user-panel__add-btn"
+                  :disabled="!availableOrderUserRoleOptions.length"
+                  @click="openOrderUserRoleModal"
                 >
-                  <IconifyIcon icon="mdi:close-circle" />
+                  + 添加角色
                 </Button>
               </div>
-              <Button
-                class="order-user-panel__add-btn"
-                :disabled="!availableOrderUserRoleOptions.length"
-                @click="openOrderUserRoleModal"
-              >
-                + 添加角色
-              </Button>
-            </div>
-          </Card>
+            </Card>
+
+            <Card class="right-column__card">
+              <template #title>
+                <span class="card-title"> 场站信息 </span>
+              </template>
+
+              <div class="yard-readonly-panel">
+                <div class="yard-readonly-panel__item">
+                  <span class="yard-readonly-panel__label">场站联系人</span>
+                  <span
+                    class="yard-readonly-panel__value"
+                    :title="entrustReadonlyInfo.yardContact"
+                  >
+                    {{ entrustReadonlyInfo.yardContact || '-' }}
+                  </span>
+                </div>
+                <div class="yard-readonly-panel__item">
+                  <span class="yard-readonly-panel__label">场站邮箱</span>
+                  <span
+                    class="yard-readonly-panel__value"
+                    :title="entrustReadonlyInfo.yardEmail"
+                  >
+                    {{ entrustReadonlyInfo.yardEmail || '-' }}
+                  </span>
+                </div>
+                <div class="yard-readonly-panel__item">
+                  <span class="yard-readonly-panel__label">场站手机</span>
+                  <span
+                    class="yard-readonly-panel__value"
+                    :title="entrustReadonlyInfo.yardMobile"
+                  >
+                    {{ entrustReadonlyInfo.yardMobile || '-' }}
+                  </span>
+                </div>
+                <div class="yard-readonly-panel__item">
+                  <span class="yard-readonly-panel__label">场站电话</span>
+                  <span
+                    class="yard-readonly-panel__value"
+                    :title="entrustReadonlyInfo.yardTel"
+                  >
+                    {{ entrustReadonlyInfo.yardTel || '-' }}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     </Spin>

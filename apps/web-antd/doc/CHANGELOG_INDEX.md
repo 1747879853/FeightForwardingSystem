@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 海运出口详情右侧拆分干系人与场站只读信息](./changelogs/change-log-2026-07-12-sea-export-right-yard-readonly.md)
 - [2026-07-12 海运出口列表业务状态背景色增加透明度](./changelogs/change-log-2026-07-12-sea-export-list-business-status-bg-opacity.md)
 - [2026-07-12 海运出口列表船公司分组 Tab 展示船司 Logo](./changelogs/change-log-2026-07-12-sea-export-carrier-group-logo.md)
 - [2026-07-12 海运出口列表业务状态列按进度态着色](./changelogs/change-log-2026-07-12-sea-export-list-business-status-color.md)

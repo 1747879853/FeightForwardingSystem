@@ -61,6 +61,10 @@ export const flattenDetail = (
     bookingAgentId: detail.bookingAgentId,
     shipAgentId: detail.shipAgentId,
     yardId: detail.yardId,
+    yardContact: detail.yardContact,
+    yardEmail: detail.yardEmail,
+    yardMobile: detail.yardMobile,
+    yardTel: detail.yardTel,
     noBillEnum: detail.noBillEnum,
     copyNoBillEnum: detail.copyNoBillEnum,
     goodsCompleteTime: toDayjs(

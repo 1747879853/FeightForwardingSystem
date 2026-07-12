@@ -5,7 +5,7 @@ author: auto-doc-sync
 last_updated: 2026-07-12
 ---
 
-<!-- 说明：本页复用 `form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `modules/ai-extract-utils.ts`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`，行为不变。 -->
+<!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `modules/ai-extract-utils.ts`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`，行为不变。 -->
 
 # 1. 业务背景说明 (Background)
 
@@ -34,6 +34,7 @@ last_updated: 2026-07-12
 - **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，**完全按 `sortId` 分组**：同 `sortId` 节点在 Chevron 流中无缝咬合成一块：咬合位移下沉到 `item` 层（每个非组首节点重叠一个箭头宽），组内相邻节点稳定无缝、跨组仍保持箭头链流向，仅整条链全局首端左收圆、尾端右收圆；不同 `sortId` 组之间保留间距以区分分组。**视觉分组只看 `sortId`，不再区分待处理/已完成/还未到**（旧的「仅全『还未到』组才合并成单标签块」逻辑已移除）；组内每个服务仍各自渲染、单独完成/取消完成。组内服务为同一优先级，轮到该组时全部待处理节点同时显示「处理中」、展示处理人且均可操作，组内全部完成后才进入下一 `sortId` 组。**顶栏内联展示**：与 AI 识别等同处 `content-section__actions` 一行，左侧为「服务项目」标题、`...` 配置入口与紧凑流水线，右侧为操作按钮。节点增删在「配置服务」弹窗维护（按 `sortId` 分组展示 POL 全部节点 Checkbox）；**任意勾选变化**时编辑态点「确定」弹出二次确认后自动保存（弹窗内无常驻提示）。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
 - **干系人角色约束：** 面板始终固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；**编辑态订单未保存某默认角色时也会补一张空卡**（保存时无人员会被过滤，不写库），确保这五个岗位新建/编辑都不会缺卡；销售、操作不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，仅编辑态详情已有人员或手动「添加角色」后出现。新建态选择委托单位后按客户绑定干系人默认回填（`getClientDetail` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位不重写已保存干系人。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。
+- **右侧栏布局（干系人 + 场站信息）：** 基础信息右侧为纵向两块卡片：上方仍为「干系人」；下方为只读「场站信息」，展示 `yardContact`（场站联系人）、`yardEmail`（场站邮箱）、`yardMobile`（场站手机）、`yardTel`（场站电话）。值来自详情 `SeaExportDto`，经 `flattenDetail` 写入 `entrustReadonlyInfo`，**不参与保存提交**；空值显示 `-`。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
 - **船公司选中回显：** 详情接口返回 `carrierLogo` 与 `carrierCnShortName` 后，编辑页在 `carrierId` 的 `selectedItems` 中拼接 `cnShortName`、`code`（若有）与 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + CODE(简称)”。
 - **锁定状态展示：** 左侧委托信息显示委托编号、会计期间、应结日期、所属公司，并以标签展示“业务已/未锁定”和“费用已/未锁定”。保存时会把只读锁定状态带回 `transportOrder`。
@@ -77,7 +78,8 @@ last_updated: 2026-07-12
 | :-- | :-- | :-- | :-- | :-- |
 | **海出 ID** | 工作台路由上下文主键。 | 路由动态段 `:id` / `SeaExportDto.id` | **触发/依赖：** 用于加载海出详情、派车、分单等子资源。 | 路由正则要求 36 位 GUID。 |
 | **运输单 ID** | 费用、更改单等公共业务的上下文主键。 | `detail.transportOrder.id` | **触发/依赖：** 费用统计、费用分页、更改单查询均依赖 `TransportOrderId`。 | 详情必须返回有效运输单 ID。 |
-| **委托编号 / 会计期间 / 应结日期 / 所属公司** | 左侧委托只读摘要。 | `transportOrder.commissionNum/accountDate/settlementDate`、`organizationUnits` | **触发/依赖：** 加载详情后刷新 `entrustReadonlyInfo`。 | 前端展示为只读。 |
+| **委托编号 / 会计期间 / 应结日期 / 所属公司** | 基础信息标题行只读摘要。 | `transportOrder.commissionNum/accountDate/settlementDate`、`organizationUnits` | **触发/依赖：** 加载详情后刷新 `entrustReadonlyInfo`。 | 前端展示为只读。 |
+| **场站联系人 / 邮箱 / 手机 / 电话** | 右侧「场站信息」只读摘要。 | `SeaExportDto.yardContact` / `yardEmail` / `yardMobile` / `yardTel` | **触发/依赖：** `flattenDetail` → `refreshEntrustReadonlyInfo`；与中间区 `yardId` 选择解耦，当前不随改场站即时刷新。 | 前端只读，不提交；空值显示 `-`。 |
 | **业务锁定** | 业务资料是否已锁定。 | `transportOrder.isBusinessLocking` | **触发/依赖：** 编辑页以锁图标标签展示，保存时保留当前只读值。 | 不在当前表单中直接切换。 |
 | **费用锁定** | 费用是否允许继续变动。 | `transportOrder.feeLocked`、更改单 `feeLocked` | **触发/依赖：** 影响订单费用与更改单业务判断；费用锁定/解锁入口在费用管理模块。 | 当前页展示并随 DTO 带回，不直接切换。 |
 | **费用标签数量** | 应收与应付费用数量摘要。 | `getOrderFeePagedList` / `paySide` | **触发/依赖：** 每 60 秒按运输单 ID 统计一次，应收为 `paySide=0`，应付为 `paySide=1`。 | 仅作为提示，不代表金额汇总。 |
@@ -117,6 +119,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Feature` | 基础信息右侧拆为上下两卡：上「干系人」、下只读「场站信息」（联系人/邮箱/手机/电话）；详情回填，不参与保存。 | `SeaExportDto` 补齐四字段；`flattenDetail` + `entrustReadonlyInfo` 承载；`right-column` 改为纵向 flex 容器。 |
 | 2026-07-12 | `Fix` | 运踪里程碑：仅按 `actualityTime` 升序排列；无实际时间且非当前节点不再显示「未到」，仅保留节点名称（可能为非适用服务点）。 | `yundang-tracking-panel.vue` 移除 `pending` 状态；无时间时不渲染状态胶囊与时间行。 |
 | 2026-07-12 | `Feature` | 附件 Tab 改为卡片网格（一行 3 个）：标题行合并客户可见与上传；点击文件全局弹窗预览（PDF iframe / Office embed.aspx / 图片直显）；默认客户不可见；支持 webp/svg/ppt 等格式上传；「添加其他类型」并入网格末尾虚线卡片。 | 新增 `attachment-viewer-modal.vue`；`attachments/index.vue` 移除 Table 改卡片列表；`getClientVisible` 默认 `false`；`ALLOWED_TYPES` 扩展图片与 Office 后缀。 |
 | 2026-07-12 | `Fix` | 编辑态干系人：销售/商务/操作/客服/单证五个默认岗位始终显示——订单未保存某默认角色时补一张空卡（此前编辑态只按已存数据渲染，如缺「商务」会漏卡）；海外客服仍「有值才显示」不变。 | `use-order-users.ts` 的 `createOrderUserRows` 编辑分支：映射+海外客服过滤后，用 `presentRoles` 计算缺失默认角色并补空行，再按 `defaultOrderUsers` 顺序排序（非默认角色/海外客服排其后）；空卡无 `userId`，保存时被 `sanitizeOrderUsers` 过滤不写库。 |

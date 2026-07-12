@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-11
+last_updated: 2026-07-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,6 +24,7 @@ last_updated: 2026-07-11
 - **AI 识别辅助：** 页面提供「AI识别」按钮，支持 PDF 与图片（png/jpg/jpeg/bmp/tiff/webp），调用 TextIn `ExtractSeaExportToAddDtoAsync` 后由后端完成名称→id 匹配并回填表单；空值、`0`、空 Guid 不回填。识别成功后右侧 Drawer 展示原文件，点击/聚焦已回填字段可联动高亮 `citations` 定位；缓存命中显示「来自缓存」标签。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
 - **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。
+- **右侧栏布局（干系人 + 场站信息）：** 右侧纵向两块卡片：上方「干系人」；下方只读「场站信息」（`yardContact`/`yardEmail`/`yardMobile`/`yardTel`）。新建态无详情，四字段为空显示 `-`；与编辑页共用 `form.vue`，不参与保存提交。
 - **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
 - **创建后跳转：** 新增成功后优先解析接口返回的记录 ID 并跳转 `/sea-exports/{id}/edit`；若返回值无法解析，则回到 `/sea-exports` 列表。
@@ -70,6 +71,7 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Feature` | 右侧拆为上下两卡：上「干系人」、下只读「场站信息」（联系人/邮箱/手机/电话）；新建态为空显示 `-`。 | 与编辑页共用 `form.vue`/`form.css`；字段挂 `SeaExportDto`，经 `entrustReadonlyInfo` 展示，不入提交 DTO。 |
 | 2026-07-11 | `Feature` | 干系人面板默认固定展示销售/商务/操作/客服/单证；海外客服不默认展示；选择委托单位后按客户绑定干系人默认回填，操作/单证/客服未绑定兜底当前账号；委托单位与起运港加必填标识。 | 与编辑页共用 `form.vue`/`use-order-users.ts`；`data.ts` 为 `clientId`/`polId` 设 `selectRequired`。 |
 | 2026-07-11 | `Style` | 箱型箱量表格列宽优化：收窄序号/箱型列，加宽箱号/封号列。 | 共用 `order-ctn-table.vue`；列宽通过 `tableColumns.width` 与 `order-ctn-table__*-col` CSS 双处固定。 |
 | 2026-07-11 | `Refactor` | 无（纯代码组织调整，行为不变）。 | 基础信息表单收敛至 `basic-info-form/` 目录：迁入 `form.vue`/`form.css` 及 5 个私有拆分文件（映射/服务项纯逻辑/AI 规范化/干系人/AI 识别/保存提交），新增 README 梳理职责与依赖；路由与 `editor.vue` 引用同步更新；清理 `form.vue` 5 处未使用声明。共享文件（`data.ts`/`service-type.ts`/`use-sea-export-copy`/`use-yundang-ocean-subscribe`）保留原位。 |
