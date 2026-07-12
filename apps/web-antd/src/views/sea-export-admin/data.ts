@@ -320,11 +320,6 @@ const getTradeTermsTypeOptions = () => [
   { value: 7, label: $t('seaExport.export.tradeTermsTypeOptions.cAndF') },
 ];
 
-const getBooleanTagOptions = (trueLabel: string, falseLabel: string) => [
-  { value: true, label: trueLabel, color: 'warning' },
-  { value: false, label: falseLabel, color: 'success' },
-];
-
 const getRoleName = (
   orderUsers: SeaExportAdminApi.OrderUserDto[] | undefined,
   userAttribute: number,
@@ -1009,26 +1004,16 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
     {
       field: 'transportOrder.feeLocked',
       title: $t('seaExport.export.isFeeLocking'),
-      minWidth: 110,
-      cellRender: {
-        name: 'CellTag',
-        options: getBooleanTagOptions(
-          $t('seaExport.export.isFeeLocking'),
-          $t('seaExport.export.noFeeLocking'),
-        ),
-      },
+      minWidth: 90,
+      align: 'center',
+      slots: { default: 'feeLocked' },
     },
     {
       field: 'transportOrder.isBusinessLocking',
       title: $t('seaExport.export.isBusinessLocking'),
-      minWidth: 110,
-      cellRender: {
-        name: 'CellTag',
-        options: getBooleanTagOptions(
-          $t('seaExport.export.isBusinessLocking'),
-          $t('seaExport.export.noBusinessLocking'),
-        ),
-      },
+      minWidth: 90,
+      align: 'center',
+      slots: { default: 'businessLocked' },
     },
     {
       field: 'businessStatus',

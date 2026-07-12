@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 海运出口列表费用/业务锁定列改显图标](./changelogs/change-log-2026-07-12-sea-export-list-lock-columns-icon.md)
 - [2026-07-12 海运出口列表运踪状态改显当前节点 stateDescCN](./changelogs/change-log-2026-07-12-sea-export-list-track-status-state-desc-cn.md)
 - [2026-07-12 付费申请未结金额改用 unRqstPaymentAmount 并限制本次结算](./changelogs/change-log-2026-07-12-payment-application-unrqst-payment-amount.md)
 - [2026-07-12 付费申请列表申请合计改为可见锚点列（可拖动/显隐/持久化）](./changelogs/change-log-2026-07-12-payment-application-applied-total-anchor.md)

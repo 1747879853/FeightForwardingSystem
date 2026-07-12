@@ -7,7 +7,7 @@ import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
-import { Copy, Plus } from '@vben/icons';
+import { Copy, LockKeyhole, LockKeyholeOpen, Plus } from '@vben/icons';
 
 import { useAccess } from '@vben/access';
 
@@ -256,6 +256,9 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
       enabled: true,
     },
     proxyConfig: {
+      // 关闭自动加载：改由 onMounted 里先写入「会计日期」默认值（当月）再手动查询，
+      // 否则首查在表单模型尚未落入默认值时触发，会漏掉默认会计期间。
+      autoLoad: false,
       ajax: {
         query: createPagedListQuery(getSeaExportPagedList, {
           defaultSort: 'CreationTime DESC',
@@ -286,6 +289,21 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
       zoom: true,
     },
   },
+});
+
+/** 默认会计期间：当月（起止均为当月，配合 normalizeQuery 扩展为整月区间） */
+const applyDefaultAccountDate = async () => {
+  const currentMonth = dayjs().startOf('month');
+  await gridApi.formApi.setValues({
+    AccountDateRange: [currentMonth, currentMonth],
+  });
+};
+
+onMounted(async () => {
+  await applyDefaultAccountDate();
+  // 用 submitForm 触发首查：它会把当前表单值写入「最近提交值」，
+  // 从而让首查及后续分页/排序都带上默认会计期间（gridApi.query 用的是最近提交值）。
+  await gridApi.formApi.submitForm();
 });
 
 const getCheckboxRecords = (): SeaExportAdminApi.SeaExportDto[] => {
@@ -400,6 +418,20 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           :value="grouping.enabledField.value?.value"
           @change="onGroupFieldChange"
         />
+      </template>
+      <template #feeLocked="{ row }">
+        <LockKeyhole
+          v-if="row?.transportOrder?.feeLocked"
+          class="mx-auto size-4 text-red-500"
+        />
+        <LockKeyholeOpen v-else class="mx-auto size-4 text-gray-300" />
+      </template>
+      <template #businessLocked="{ row }">
+        <LockKeyhole
+          v-if="row?.transportOrder?.isBusinessLocking"
+          class="mx-auto size-4 text-red-500"
+        />
+        <LockKeyholeOpen v-else class="mx-auto size-4 text-gray-300" />
       </template>
       <template #businessStatus="{ row }">
         {{ getSeaExportBusinessStatusText(row, serviceTypeLabelMap) }}
