@@ -33,6 +33,7 @@ last_updated: 2026-07-12
 - **复制委托：** 选中一条后点击「复制」（需 `Admin.SeaExport.Add` 权限），确认弹窗可选「同时复制费用」；成功后跳转新票编辑页 `/sea-exports/{newId}/edit`。
 - **页面缓存：** 路由 `SeaExportList` 已开启 `keepAlive`；从新建/编辑工作台返回时 `onActivated` 自动刷新；当前页删除成功后立即刷新。
 - **船公司展示升级：** 列表中的船公司列改为“Logo + 名称”展示，视觉上与编辑页和费用侧边摘要保持一致。
+- **分组 Tab 船公司 Logo：** 当分组维度为「船公司」时，分组 Tab 在名称前展示对应船司 Logo（与列表船公司列「Logo + 名称」一致）。Logo 来源于 `GetGroupedListAsync` 船公司分组返回的 `logo` 附件；`list.vue` 的 `fetchGroups` 用 `buildAttachmentUrl` 将相对路径解析为完整地址注入通用 `GroupItem.logoUrl`，通用组件 `grouping-tabs.vue` 仅在 `logoUrl` 有值时渲染图片。其他分组维度或「未填写」项无 Logo。
 - **分组统计（Tab 筛选）：** 工具栏「分组设置」可选择 9 种分组维度（装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式）；启用后左侧工具栏展示分组 Tab（样式对齐运价列表航线 Tab），表格标题隐藏。分组数据通过 `GetGroupedListAsync` 拉取，仅当顶部搜索条件变更时刷新；点击某分组 Tab 仅向列表查询追加对应筛选参数，分组 Tab 本身不变。分组字段与同名搜索项互斥（启用分组后禁用并清空对应搜索框）；同时只能启用一个分组字段。被禁用的搜索项会给出直观提示：placeholder 显示「已按『X』分组」，label 旁帮助图标 tooltip 说明「该条件已作为分组维度，暂不可筛选，关闭分组后可恢复」，关闭分组后自动还原原始 placeholder/help。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -91,6 +92,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Feature` | 船公司分组的分组 Tab 在名称前展示对应船司 Logo，其他分组维度不变。 | 通用 `GroupItem` 新增 `logoUrl`（已解析地址），`grouping-tabs.vue` 有值才渲染 `<img>`；`list.vue` `fetchGroups` 改异步，用 `buildAttachmentUrl` 解析接口 `logo.url` 注入；`SeaExportGroupDto` 补 `logo?: AttachmentItemDto`。业务侧解析 URL、通用组件保持无业务耦合。 |
 | 2026-07-12 | `Fix` | 会计期间默认当月在分组恢复等早期查询场景下仍带上；用户清空后不再被兜底回填。 | `accountDateDefaultApplied` + `normalizeQuery` 兜底；首查继续 `setValues` + `submitForm`（最近提交值机制）。 |
 | 2026-07-12 | `Style` | 列表「业务状态」按未开始/进行中/已完成三态着色，色值对齐详情页服务项目。 | `getSeaExportBusinessStatusMeta` + `SEA_EXPORT_BUSINESS_STATUS_COLORS`；保留 `getSeaExportBusinessStatusText` 兼容。 |
 | 2026-07-12 | `Feature` | 开启某字段分组后，被禁用的对应搜索项增加直观提示：placeholder 显示「已按『X』分组」，label 旁帮助图标说明原因与恢复方式；关闭分组自动还原。 | 改 `components/list-grouping/use-list-grouping.ts` 的 `disableSearchField`/`restoreSearchField`：置灰同时改写 `placeholder`/`help` 并缓存原值；还原用空字符串覆盖以规避 `defu` 忽略 `undefined`。通用组合式函数改动，复用列表均受益。 |

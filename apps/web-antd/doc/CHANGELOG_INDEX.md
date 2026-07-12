@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 海运出口列表船公司分组 Tab 展示船司 Logo](./changelogs/change-log-2026-07-12-sea-export-carrier-group-logo.md)
 - [2026-07-12 海运出口列表业务状态列按进度态着色](./changelogs/change-log-2026-07-12-sea-export-list-business-status-color.md)
 - [2026-07-12 海运出口列表会计期间默认当月首查兜底](./changelogs/change-log-2026-07-12-sea-export-list-account-date-default-race.md)
 - [2026-07-12 列表分组禁用搜索项增加直观提示](./changelogs/change-log-2026-07-12-grouping-disabled-search-hint.md)

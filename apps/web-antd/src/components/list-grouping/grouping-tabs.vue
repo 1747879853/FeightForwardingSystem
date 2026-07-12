@@ -200,8 +200,16 @@ onBeforeUnmount(() => {
           "
           @click="onClick(item.id)"
         >
-          {{ item.name || '未填写' }}
-          <span class="text-gray-400">({{ item.count }})</span>
+          <span class="inline-flex items-center gap-1">
+            <img
+              v-if="item.logoUrl"
+              :src="item.logoUrl"
+              :alt="item.name || ''"
+              class="h-5 w-5 rounded object-contain"
+            />
+            <span>{{ item.name || '未填写' }}</span>
+            <span class="text-gray-400">({{ item.count }})</span>
+          </span>
         </div>
       </div>
     </div>

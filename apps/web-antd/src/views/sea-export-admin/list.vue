@@ -172,11 +172,17 @@ const getRangeValue = (
 const grouping = useListGrouping({
   fields: SEA_EXPORT_GROUP_FIELDS,
   getGridApi: () => gridApi,
-  fetchGroups: (baseParams, field) =>
-    getSeaExportGroupedList({
+  fetchGroups: async (baseParams, field) => {
+    const items = await getSeaExportGroupedList({
       ...baseParams,
       GroupField: field,
-    } as SeaExportAdminApi.GetGroupedListParams),
+    } as SeaExportAdminApi.GetGroupedListParams);
+    // 船公司分组会返回 logo 附件，解析为可访问地址供分组 Tab 展示
+    return (items ?? []).map((item) => ({
+      ...item,
+      logoUrl: item.logo?.url ? buildAttachmentUrl(item.logo.url) : undefined,
+    }));
+  },
   persist: {
     load: loadGroupField,
     save: saveGroupField,

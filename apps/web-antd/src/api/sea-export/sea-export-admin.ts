@@ -488,6 +488,8 @@ export namespace SeaExportAdminApi {
     name: null | string;
     /** 该分组数据总条数 */
     count: number;
+    /** 分组项 logo 附件（仅船公司分组返回，用于展示船司 logo） */
+    logo?: AttachmentItemDto | null;
   }
 
   export interface GetPagedListParams {
