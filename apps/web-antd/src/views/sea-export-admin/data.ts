@@ -3,6 +3,8 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
+import dayjs from 'dayjs';
+
 import { $t } from '#/locales';
 
 import { createClientSelectSchema } from '../client/base/data';
@@ -423,6 +425,19 @@ export function useGridFormSchema(): VbenFormSchema[] {
         allowClear: true,
         class: 'w-full',
         placeholder: ['开始日期', '结束日期'],
+      },
+    },
+    {
+      component: 'RangePicker',
+      fieldName: 'AccountDateRange',
+      label: $t('seaExport.export.accountDate'),
+      formItemClass: 'col-span-2',
+      defaultValue: [dayjs().startOf('month'), dayjs().startOf('month')],
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        picker: 'month',
+        placeholder: ['开始月份', '结束月份'],
       },
     },
     createClientSelectSchema({

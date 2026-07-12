@@ -185,9 +185,10 @@ const grouping = useListGrouping({
 const normalizeQuery = (
   formValues: Record<string, unknown>,
 ): SeaExportAdminApi.GetPagedListParams => {
-  const { ETDRange, CloseDocTimeRange, ...rest } = formValues;
+  const { ETDRange, CloseDocTimeRange, AccountDateRange, ...rest } = formValues;
   const [etdStart, etdEnd] = getRangeValue(ETDRange);
   const [closeDocTimeStart, closeDocTimeEnd] = getRangeValue(CloseDocTimeRange);
+  const [accountDateStart, accountDateEnd] = getRangeValue(AccountDateRange);
 
   const baseParams = {
     ...rest,
@@ -195,6 +196,16 @@ const normalizeQuery = (
     ETDEnd: toIsoString(etdEnd),
     CloseDocTimeStart: toIsoString(closeDocTimeStart),
     CloseDocTimeEnd: toIsoString(closeDocTimeEnd),
+    AccountDateStart: accountDateStart
+      ? dayjs(accountDateStart as string | Date)
+          .startOf('month')
+          .toISOString()
+      : undefined,
+    AccountDateEnd: accountDateEnd
+      ? dayjs(accountDateEnd as string | Date)
+          .endOf('month')
+          .toISOString()
+      : undefined,
   };
 
   return grouping.decorateListParams(

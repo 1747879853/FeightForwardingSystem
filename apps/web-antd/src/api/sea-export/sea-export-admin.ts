@@ -516,6 +516,10 @@ export namespace SeaExportAdminApi {
     CtnNo?: string;
     CloseDocTimeStart?: string;
     CloseDocTimeEnd?: string;
+    /** 会计期间起（>=），一般为当月 1 号 */
+    AccountDateStart?: string;
+    /** 会计期间止（<=） */
+    AccountDateEnd?: string;
     Remark?: string;
     CargoId?: number;
     GoodsDes?: string;
