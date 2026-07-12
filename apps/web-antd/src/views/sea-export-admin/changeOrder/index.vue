@@ -170,11 +170,6 @@ const allDisplayFields: DisplayFieldConfig[] = [
     visible: true,
   },
   {
-    key: 'signingTime',
-    label: $t('seaExport.export.signingTime'),
-    visible: true,
-  },
-  {
     key: 'codeServiceName',
     label: $t('seaExport.export.codeServiceId'),
     visible: true,

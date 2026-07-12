@@ -26,6 +26,10 @@ interface Props {
   secondFieldValue?: string;
   /** 与委托信息等区域一致的控件尺寸 */
   size?: 'large' | 'middle' | 'small';
+  /** 船名（主字段）flex 伸缩比例，默认 1 */
+  mainRatio?: number;
+  /** 船次（第二字段）flex 伸缩比例，默认 1 */
+  secondRatio?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -33,6 +37,8 @@ const props = withDefaults(defineProps<Props>(), {
   secondFieldName: 'innerVoyno',
   secondFieldValue: '',
   size: undefined,
+  mainRatio: 1,
+  secondRatio: 1,
 });
 
 const emit = defineEmits<{
@@ -51,7 +57,8 @@ const voyageValue = computed(() => props.secondFieldValue ?? '');
       :disabled="props.disabled"
       :placeholder="$t('seaExport.export.vessel')"
       :size="props.size"
-      class="flex-1"
+      class="min-w-0"
+      :style="{ flex: props.mainRatio }"
       allow-clear
       @update:value="(v) => emit('update:value', toEnglishUpperCase(v))"
     />
@@ -60,7 +67,8 @@ const voyageValue = computed(() => props.secondFieldValue ?? '');
       :disabled="props.disabled"
       :placeholder="$t('seaExport.export.innerVoyno')"
       :size="props.size"
-      class="flex-1"
+      class="min-w-0"
+      :style="{ flex: props.secondRatio }"
       allow-clear
       @update:value="
         (v) =>

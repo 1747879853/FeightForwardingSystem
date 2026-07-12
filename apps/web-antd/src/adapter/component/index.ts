@@ -548,6 +548,7 @@ export type ComponentType =
   | 'ServiceItemInput'
   | 'BillCountsInput'
   | 'FrtPrepareInput'
+  | 'ServiceTradeTermsInput'
   | 'OrderGoodsButton'
   | 'OrderUsersButton'
   | BaseFormComponentType;
@@ -724,6 +725,9 @@ async function initComponentAdapter() {
     ),
     FrtPrepareInput: defineAsyncComponent(
       () => import('./frt-prepare-input.vue'),
+    ),
+    ServiceTradeTermsInput: defineAsyncComponent(
+      () => import('./service-trade-terms-input.vue'),
     ),
     nameInput: defineAsyncComponent(() => import('./biz-input/name-input.vue')),
     shortNameInput: defineAsyncComponent(

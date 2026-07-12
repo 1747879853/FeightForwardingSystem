@@ -44,10 +44,11 @@ last_updated: 2026-07-12
 | **应结日期** | 结算日期。 | `transportOrder.settlementDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到天计算；无开船日期则取当前时间（到天），并结合委托单位账期规则。 | 禁止手动修改。 |
 | **所属公司** | 业务单所属公司。 | `organizationUnits` | **触发/依赖：** 新建、编辑保存后，后端根据干系人中销售所属公司自动生成。 | 禁止手动修改。 |
 | **业务来源** | 订单业务来源分类。 | `transportOrder.codeSourceId`；`CodeSourceSelect`（基础数据） | - | - |
-| **付费方式** | 运费付费方式。 | `transportOrder.codeFrtId`；`CodeFrtSelect`（基础数据） | - | - |
+| **付费方式** | 运费付费方式。 | `transportOrder.codeFrtId`；与付费地点合并为 `FrtPrepareInput` | **触发/依赖：** 与 `prepareAtId` 同栏展示。 | - |
 | **付费地点** | 运费支付地点港口。 | `transportOrder.prepareAtId`；`PortSelect`（基础数据） | **触发/依赖：** 付费方式为预付时显示起运港（`polId`）；为到付时显示交货地（`deliverPortId`）。 | - |
-| **运输条款** | 运输服务条款。 | `transportOrder.codeServiceId`；`CodeServiceSelect`（基础数据） | - | - |
-| **贸易条款** | 贸易术语类型。 | `transportOrder.tradeTermsType`；枚举（CIF / FOB / EXW 等） | - | - |
+| **运输条款 / 贸易条款** | 运输服务条款与贸易术语；视觉合并为一个表单项。 | `ServiceTradeTermsInput` -> `codeServiceId` + `tradeTermsType`（贸易条款枚举 CIF/FOB 等） | **触发/依赖：** 主字段 `codeServiceId`，第二字段经 `formContext` 写回 `tradeTermsType`；内部宽度 1:1。 | - |
+| **船名航次** | 船名和内航次；海出侧船名:船次宽度 **3:2**。 | `VesselVoyageInput` -> `vessel`、`innerVoyno`（`mainRatio:3` / `secondRatio:2`） | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 |
+| **签单地点 / 签单日期** | 签单港与签单时间。 | `signingPortId`、`signingTime` | **触发/依赖：** 表单当前 `hidden`，模型保留可提交。 | - |
 | **业务锁定** | 业务资料是否锁定。 | `transportOrder.isBusinessLocking`；后端默认未锁定 | - | 禁止手动修改。 |
 | **费用锁定** | 费用是否锁定。 | `transportOrder.feeLocked`；后端默认未锁定 | - | 禁止手动修改。 |
 | **装运方式** | 整柜、拼箱分票、拼箱主票。 | `blType`；枚举 `0` 整柜 / `1` 拼箱分票 / `2` 拼箱主票 | **触发/依赖：** 默认整柜。 | - |
@@ -71,6 +72,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Feature` | 船名/航次宽度 3:2；运输条款与贸易条款合并为一项（1:1）；签单地点/日期表单隐藏（模型保留）。 | 与编辑页共用 `data.ts`/`form.vue`；新增 `ServiceTradeTermsInput`。 |
 | 2026-07-12 | `Feature` | 右侧拆为上下两卡：上「干系人」、下只读「场站信息」（联系人/邮箱/手机/电话）；新建态为空显示 `-`。 | 与编辑页共用 `form.vue`/`form.css`；字段挂 `SeaExportDto`，经 `entrustReadonlyInfo` 展示，不入提交 DTO。 |
 | 2026-07-11 | `Feature` | 干系人面板默认固定展示销售/商务/操作/客服/单证；海外客服不默认展示；选择委托单位后按客户绑定干系人默认回填，操作/单证/客服未绑定兜底当前账号；委托单位与起运港加必填标识。 | 与编辑页共用 `form.vue`/`use-order-users.ts`；`data.ts` 为 `clientId`/`polId` 设 `selectRequired`。 |
 | 2026-07-11 | `Style` | 箱型箱量表格列宽优化：收窄序号/箱型列，加宽箱号/封号列。 | 共用 `order-ctn-table.vue`；列宽通过 `tableColumns.width` 与 `order-ctn-table__*-col` CSS 双处固定。 |

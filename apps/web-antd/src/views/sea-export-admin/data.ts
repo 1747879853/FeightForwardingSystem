@@ -1239,13 +1239,23 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       formItemClass: 'hidden',
     },
     {
-      component: 'CodeServiceSelect',
+      component: 'ServiceTradeTermsInput',
       fieldName: 'codeServiceId',
-      label: $t('seaExport.export.codeServiceId'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-      },
+      label: `${$t('seaExport.export.codeServiceId')}/${$t('seaExport.export.tradeTermsType')}`,
+      componentProps: (values: Record<string, any>, formApi: any) => ({
+        formContext: formApi,
+        secondFieldName: 'tradeTermsType',
+        secondFieldValue: values?.tradeTermsType ?? undefined,
+        serviceProps: {
+          placeholder: $t('ui.placeholder.select'),
+          allowClear: true,
+        },
+        tradeTermsOptions: getTradeTermsTypeOptions(),
+        tradeTermsProps: {
+          placeholder: $t('ui.placeholder.select'),
+          allowClear: true,
+        },
+      }),
     },
     {
       component: 'Select',
@@ -1257,6 +1267,7 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
       },
+      formItemClass: 'hidden',
     },
     {
       component: 'Select',
@@ -1447,6 +1458,8 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
         formContext: formApi,
         secondFieldName: 'innerVoyno',
         secondFieldValue: values?.innerVoyno ?? '',
+        mainRatio: 3,
+        secondRatio: 2,
       }),
     },
     {
@@ -1546,6 +1559,7 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
         allowClear: true,
         labelKey: 'ediCode',
       },
+      formItemClass: 'hidden',
     },
     {
       component: 'DatePicker',
@@ -1554,6 +1568,7 @@ export function useShipmentFormSchema(): VbenFormSchema[] {
       componentProps: {
         class: 'w-full',
       },
+      formItemClass: 'hidden',
     },
   ];
 }
@@ -1862,4 +1877,9 @@ export function useCargoFormSchema(): VbenFormSchema[] {
   ];
 }
 
-export { getBlTypeOptions, getBillTypeOptions, getIssueTypeOptions };
+export {
+  getBlTypeOptions,
+  getBillTypeOptions,
+  getIssueTypeOptions,
+  getTradeTermsTypeOptions,
+};

@@ -82,6 +82,7 @@ import {
   createEmptyReeferValues,
   getBillTypeOptions,
   getBlTypeOptions,
+  getTradeTermsTypeOptions,
   useBasicInfoFormSchema,
   useCargoFormSchema,
   useDgFormSchema,
@@ -241,7 +242,6 @@ const BASIC_INFO_HEADER_SELECT_FIELD_NAMES = [
 const BASIC_INFO_MERGED_ENTRUST_FIELD_NAMES = [
   'codeFrtId',
   'codeServiceId',
-  'tradeTermsType',
 ] as const;
 const BASIC_INFO_FIELD_ORDER = [
   'clientId',
@@ -534,6 +534,8 @@ const applyServiceLockedFields = () => {
           secondFieldValue: values?.innerVoyno ?? '',
           size: 'small',
           disabled: lockedFields.has(fieldName),
+          mainRatio: 3,
+          secondRatio: 2,
         }),
       };
     }
@@ -1814,15 +1816,30 @@ const loadEditData = async () => {
         }),
       },
       {
+        // codeServiceId 使用 ServiceTradeTermsInput 合并组件，componentProps 为函数，
+        // 需保留 secondFieldValue（贸易条款）/formContext/tradeTermsOptions 等动态入参，
+        // 否则 updateSchema 会以静态对象覆盖函数，导致贸易条款下拉丢失且无法写回 tradeTermsType。
         fieldName: 'codeServiceId',
-        componentProps: {
-          selectedItems: toSelectedItems(
-            to?.codeServiceId,
-            (to as any)?.codeServiceName,
-            'cnName',
-          ),
+        componentProps: (values: Record<string, any>, formApi: any) => ({
+          formContext: formApi,
+          secondFieldName: 'tradeTermsType',
+          secondFieldValue: values?.tradeTermsType ?? undefined,
+          serviceProps: {
+            placeholder: $t('ui.placeholder.select'),
+            selectedItems: toSelectedItems(
+              to?.codeServiceId,
+              (to as any)?.codeServiceName,
+              'cnName',
+            ),
+            allowClear: true,
+          },
+          tradeTermsOptions: getTradeTermsTypeOptions(),
+          tradeTermsProps: {
+            placeholder: $t('ui.placeholder.select'),
+            allowClear: true,
+          },
           size: 'small',
-        },
+        }),
       },
     ]);
     shipmentFormApi.updateSchema([
