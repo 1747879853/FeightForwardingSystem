@@ -246,6 +246,16 @@ const getCustomerIndustryCategoryOptions = () => [
     value: 'b',
     label: $t('seaExport.client.industryCategoryOptions.shipper'),
   },
+  {
+    key: 5,
+    value: 'e',
+    label: $t('seaExport.client.industryCategoryOptions.consignee'),
+  },
+  {
+    key: 20,
+    value: 'u',
+    label: $t('seaExport.client.industryCategoryOptions.factory'),
+  },
 ];
 
 const getSupplierIndustryCategoryOptions = () => [
