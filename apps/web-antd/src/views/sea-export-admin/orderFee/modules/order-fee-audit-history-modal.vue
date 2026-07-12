@@ -356,6 +356,9 @@ defineExpose({
                     : '-'
                 }}
               </span>
+              <span v-if="task.creatorUserName" class="audit-modifier">
+                {{ task.creatorUserName }}
+              </span>
               <Tag
                 v-if="getTaskTypeTag(task.taskType)"
                 :color="getTaskTypeTag(task.taskType)?.color"
@@ -461,6 +464,11 @@ defineExpose({
   .audit-time {
     font-size: 13px;
     color: #8c8c8c;
+  }
+
+  .audit-modifier {
+    font-size: 13px;
+    color: #595959;
   }
 }
 

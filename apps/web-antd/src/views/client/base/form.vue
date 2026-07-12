@@ -457,7 +457,7 @@ const handleRiskbirdImport = async (
       addressList.value.push(newAddress);
       console.log('地址已添加到列表，当前地址数量:', addressList.value.length);
 
-      message.success('地址信息导入成功');
+      //message.success('地址信息导入成功');
     }
 
     // 关闭弹窗
@@ -804,16 +804,25 @@ const handleSubmit = async () => {
     console.log('supplierType.value', supplierType.value);
     console.log('industryCategories', industryCategories);
 
-    // 构建地址列表（新增时不包含id）
-    const addresses = addressList.value.map((item) => ({
-      name: item.name || '',
-      isDefault: item.isDefault ?? false,
-      address: item.address,
-      contactPerson: item.contactPerson,
-      mobile: item.mobile,
-      tel: item.tel,
-      remark: item.remark,
-    }));
+    // 构建地址列表（编辑模式保留id，新增模式不包含id）
+    const addresses = addressList.value.map((item) => {
+      const addressData: any = {
+        name: item.name || '',
+        isDefault: item.isDefault ?? false,
+        address: item.address,
+        contactPerson: item.contactPerson,
+        mobile: item.mobile,
+        tel: item.tel,
+        remark: item.remark,
+      };
+
+      // 编辑模式下，如果地址有id，需要保留
+      if (isEdit.value && item.id) {
+        addressData.id = item.id;
+      }
+
+      return addressData;
+    });
 
     // 处理 areaId：取路径数组的最后一个（最后一级）
     const areaIdPath = Array.isArray(baseValues.areaId)
