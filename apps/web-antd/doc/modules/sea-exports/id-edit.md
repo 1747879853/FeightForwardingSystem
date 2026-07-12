@@ -24,7 +24,7 @@ last_updated: 2026-07-12
 # 2. 功能与操作说明 (Features & Operations)
 
 - **工作台标签导航：** `editor.vue` 维护顶部标签，当前可见：基础信息、应收应付、更改单、**附件**、派车、分单、运踪信息。已挂载组件的标签均可进入对应子页；**服务详情 / 单证信息 / 问题记录 / 修改历史** 暂从顶部导航隐藏（代码中注释保留，便于恢复）。「服务详情 / 单证信息」原为滚动定位到基础信息表单内船期/港口区块，隐藏页签后区块内容仍在「基础信息」页内可编辑。
-- **基础信息字段布局：** 船名/航次使用 `VesselVoyageInput`，海出侧比例 **3:2**；运输条款/贸易条款合并为 `ServiceTradeTermsInput`（内部 1:1，字段仍为 `codeServiceId` + `tradeTermsType`）；**签单地点 / 签单日期** 表单 `hidden`（模型保留可提交）；应收应付与更改单左侧「海运出口信息」面板不再展示签单日期。
+- **基础信息字段布局：** 船名/航次使用 `VesselVoyageInput`，海出侧比例 **3:2**；运输条款/贸易条款合并为 `ServiceTradeTermsInput`（内部 1:1，字段仍为 `codeServiceId` + `tradeTermsType`）；**订舱代理**（`bookingAgentId`）与船公司/船代/场站一并迁入基础信息区，排在船代之后、车队之前；**签单地点 / 签单日期** 表单 `hidden`（模型保留可提交）；应收应付与更改单左侧「海运出口信息」面板不再展示签单日期。
 - **工作台 Tab 记忆：** 切换顶部标签时，按当前委托 ID 将 `activeTab` 写入 `sessionStorage`（键经 `buildBrandStorageKey` 品牌隔离）；再次进入同一票编辑页时自动恢复离开前的 Tab。切换不同委托 ID 时各自独立记忆；关闭浏览器标签后会话清空，下次默认回到「基础信息」。
 - **浏览器标签栏标题：** 由嵌入的 `form.vue` 通过 `useSeaExportTabTitle` 动态设置：有主提单号显示「海运出口-{主提单号}」，否则显示「海运出口-{委托编号}」；主提单号录入或详情回填后实时更新。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
@@ -94,6 +94,7 @@ last_updated: 2026-07-12
 | **附件分组** | 按附件详细类型（提单、托书等）以卡片网格展示的上传区域与文件列表。 | `GetListByModuleTypesAsync` + `GetAttachmentsAsync` / `SeaExportAdmin` | **触发/依赖：** `moduleType` 取枚举「海运出口」；空配置类型仍展示上传槽位；点击文件打开 `AttachmentViewerModal` 预览。 | 上传需 `Admin.SeaExport.Edit`；`clientVisible` 默认 `false`，仅在上传时设定。 |
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
 | **港口备注（费用摘要）** | 收货地/起运港/中转港1/2/目的港/交货地备注。 | `SeaExportDto` 的 `receivePortRemark`、`polRemark`、`poT1Remark`、`poT2Remark`、`podRemark`、`deliverPortRemark` | **触发/依赖：** 应收应付与更改单顶部订单信息六段港口均展示备注字段，非 `*Name`。 | 备注为空显示 `--`。 |
+| **订舱代理** | 订舱服务执行方客户。 | `SeaExportDto.bookingAgentId` / `bookingAgentName`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与流水线节点解耦，始终展示；schema 自船期迁入基础信息（`BASIC_MODULE_EXTRA_FIELD_NAMES`）；编辑回显走 `basicInfoFormApi` 的 `selectedItems`。 | 可选；须为含订舱代理属性的客户。 |
 | **委托单位 / 起运港** | 服务项目联动查询入参；委托单位亦为干系人默认来源。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync`；`ClientAdmin.DetailAsync` | **触发/依赖：** 任一变更触发服务项联动；`polId` 为空清空勾选。`polId` 查询用于可见范围，`polId+clientId` 查询用于默认勾选。新建态 `clientId` 变更额外触发干系人默认回填。 | **必填项**（`selectRequired`）；与新建页同一套 `form.vue` 逻辑。 |
 | **服务项目 / serviceTypes** | POL 配置下的服务节点勾选结果（与执行方字段解耦）。 | `serviceTypeNodes`；提交字段 `serviceTypes: number[]` | **触发/依赖：** 节点范围与优先级来自 `GetServiceTypesByPOLAsync` / `seaExportServices`；label 与主流程标记来自 `ServiceType` 枚举，其中 `extra1=true` 表示主流程。配置弹窗按主/非主流程分组，任务顺序仍按 `sortId`。 | 勿再用执行方字段或 `organizationUnits` 推断节点勾选；缺失 `extra1` 按非主流程。 |
 | **货物类型 cargoId** | 普通货/冻柜/危险品/超限箱。 | `transportOrder.cargoId`；枚举 `CargoType`（S=0/R=1/D=2/O=3） | **触发/依赖：** 货物信息 Card 标题行内联选择；`R` 展示冻柜 7 项，`D` 展示危险品 11 项；切换离开对应类型清空扩展字段。 | 全部可选；扩展字段经 `transportOrder` 提交。 |
@@ -120,6 +121,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-12 | `Fix` | 基础信息区补齐「订舱代理」字段（新建/编辑共用），可选行业类别为订舱代理的客户并随单保存。 | 根因：`bookingAgentId` 仅在 `SHIPMENT_MOVED_TO_BASIC` 剔除船期区，未进 `BASIC_MODULE_EXTRA_FIELD_NAMES` 迁入基础信息；回显 `selectedItems` 同步改挂 `basicInfoFormApi`。 |
 | 2026-07-12 | `Feature/Fix` | 场站联系人移至「场站」字段标签右侧，悬浮展示邮箱、手机、电话；删除右侧独立场站信息卡片，并修复详情已返回联系人但标签未显示。 | 联系方式继续复用详情只读字段与 `entrustReadonlyInfo`，不进入保存 DTO；场站标签使用正式 `defineComponent` 组件，在初始 schema 和详情 `updateSchema` 时显式绑定，避免 DOM 注入受动态表单 patch 清除。 |
 | 2026-07-12 | `Feature` | 配置服务项目弹窗按「主流程 / 非主流程」分组展示。 | 流程分类来自 `ServiceType` 枚举子项 `extra1`；弹窗分组与任务 `sortId` 推进保持独立。 |
 | 2026-07-12 | `Feature`/`Fix`/`Perf` | ①应收应付费用新增/删除后，顶部「应收应付 x - y」Tab 数字实时刷新；②订单信息卡片「船公司」改显中文简称 `carrierCnShortName`（兜底全称），应收应付与更改单页一致；③消除进入更改单/应收应付 Tab 时 `DetailAsync` 被请求 3 次的冗余。 | ①`order-fee-table.vue` 经 `sync-fee` 上抛行数→`orderFee/index.vue` 汇总为 `fee-count-change`→`editor.vue` `setFeeNumber` 更新 Tab 标签（计数含未保存新建行，属即时反馈）；②`displayList` `carrierName` 分支改 `carrierCnShortName |  | carrierName |  | '--'`；③三次来源：父页 `loadSeaExportData`1 次 + 两个`order-fee-table`各`onMounted`拉 1 次。改为`order-fee-table`新增`orderDetail`prop，由父组件`:order-detail="formValues"`传入并`watch(immediate)` 应用箱型/基础数据，`onMounted` 不再自请求；切换单据（`editId`变化）时仍强制拉一次防`KeepAlive` 旧值；`openBatchImportModal`复用`orderBaseData`。 |

@@ -276,12 +276,12 @@ const BASIC_MODULE_EXTRA_FIELD_NAMES = [
   'innerVoyno',
   'carrierId',
   'shipAgentId',
+  'bookingAgentId',
   'yardId',
   'signingTime',
   'signingPortId',
 ] as const;
 const SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES = new Set([
-  'bookingAgentId',
   ...BASIC_MODULE_EXTRA_FIELD_NAMES,
 ]);
 const PORT_MOVED_TO_BASIC_FIELD_NAMES = new Set(['signingPortId']);
@@ -1807,6 +1807,16 @@ const loadEditData = async () => {
         },
       },
       {
+        fieldName: 'bookingAgentId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.bookingAgentId,
+            detail.bookingAgentName,
+          ),
+          size: 'small',
+        },
+      },
+      {
         fieldName: 'yardId',
         label: yardFieldLabelSchemaContent,
         componentProps: {
@@ -1921,19 +1931,6 @@ const loadEditData = async () => {
         }),
       },
     ]);
-    shipmentFormApi.updateSchema([
-      {
-        fieldName: 'bookingAgentId',
-        componentProps: {
-          selectedItems: toSelectedItems(
-            detail.bookingAgentId,
-            detail.bookingAgentName,
-          ),
-          size: 'small',
-        },
-      },
-    ]);
-
     portFormApi.updateSchema([
       {
         fieldName: 'polId',
