@@ -54,6 +54,10 @@ import { ref } from 'vue';
 const orderDetailCache = new Map<string, any>();
 const orderDetailLoading = new Map<string, Promise<any>>();
 
+// 🔥 全局集装箱详情缓存（避免重复调用API）
+const ctnCodeCache = new Map<number, any>();
+const ctnCodeLoading = new Map<number, Promise<any>>();
+
 /**
  * 统一的订单详情加载函数（带缓存和防并发）
  */
@@ -93,6 +97,48 @@ async function loadOrderDetailCached(transportOrderId: string) {
     });
 
   orderDetailLoading.set(transportOrderId, loadingPromise);
+  return await loadingPromise;
+}
+
+/**
+ * 统一的集装箱详情加载函数（带缓存和防并发）
+ */
+async function loadCtnCodeCached(ctnCodeId: number) {
+  if (!ctnCodeId) {
+    console.warn('⚠️ [loadCtnCodeCached] 缺少集装箱ID');
+    return null;
+  }
+
+  // 如果缓存中已有，直接返回
+  if (ctnCodeCache.has(ctnCodeId)) {
+    console.log('✅ [loadCtnCodeCached] 使用缓存数据:', ctnCodeId);
+    return ctnCodeCache.get(ctnCodeId);
+  }
+
+  // 如果正在加载中，等待完成
+  if (ctnCodeLoading.has(ctnCodeId)) {
+    console.log('⏳ [loadCtnCodeCached] 等待加载完成:', ctnCodeId);
+    return await ctnCodeLoading.get(ctnCodeId);
+  }
+
+  // 开始加载
+  console.log('🔄 [loadCtnCodeCached] 开始加载:', ctnCodeId);
+  const loadingPromise = getCtnCodeDetail(ctnCodeId)
+    .then((detail) => {
+      if (detail) {
+        ctnCodeCache.set(ctnCodeId, detail);
+        console.log('✅ [loadCtnCodeCached] 加载成功并已缓存:', ctnCodeId);
+      }
+      ctnCodeLoading.delete(ctnCodeId);
+      return detail;
+    })
+    .catch((error) => {
+      console.error('❌ [loadCtnCodeCached] 加载失败:', ctnCodeId, error);
+      ctnCodeLoading.delete(ctnCodeId);
+      throw error;
+    });
+
+  ctnCodeLoading.set(ctnCodeId, loadingPromise);
   return await loadingPromise;
 }
 
@@ -640,8 +686,8 @@ setupVbenVxeTable({
                   }
 
                   try {
-                    // 获取集装箱详情以获取TEU值
-                    const ctnDetail = await getCtnCodeDetail(ctn.ctnCodeId);
+                    // 使用缓存获取集装箱详情以获取TEU值
+                    const ctnDetail = await loadCtnCodeCached(ctn.ctnCodeId);
                     if (
                       ctnDetail &&
                       ctnDetail.teu !== undefined &&
@@ -1152,8 +1198,8 @@ setupVbenVxeTable({
                   }
 
                   try {
-                    // 获取集装箱详情以获取TEU值
-                    const ctnDetail = await getCtnCodeDetail(ctn.ctnCodeId);
+                    // 使用缓存获取集装箱详情以获取TEU值
+                    const ctnDetail = await loadCtnCodeCached(ctn.ctnCodeId);
                     if (
                       ctnDetail &&
                       ctnDetail.teu !== undefined &&
