@@ -623,6 +623,10 @@ export namespace ClientAdminApi {
     Keyword?: string;
     /** 行业类别 */
     IndustryCategory?: string;
+    /** 销售ID */
+    SaleId?: number;
+    /** 操作ID */
+    OperationId?: number;
     /** 排序 默认是Id */
     Sorting?: string;
     /** 当前页码 */
