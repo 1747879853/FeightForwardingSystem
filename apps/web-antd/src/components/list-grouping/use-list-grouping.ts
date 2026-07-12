@@ -69,6 +69,10 @@ export function useListGrouping<TField extends number = number>(
   let lastSignature: string | undefined;
   /** 当前因启用分组而被禁用的搜索项字段名 */
   let disabledSearchField: string | undefined;
+  /** 被禁用搜索项的原始 placeholder / help，恢复时还原 */
+  let disabledFieldOriginal:
+    | { help?: unknown; placeholder?: unknown }
+    | undefined;
   /** 用于丢弃过期的分组请求结果 */
   let fetchToken = 0;
 
@@ -78,21 +82,45 @@ export function useListGrouping<TField extends number = number>(
     return getGridApi()?.formApi;
   }
 
-  /** 禁用并清空互斥的搜索项 */
+  /**
+   * 禁用并清空互斥的搜索项。
+   * 为了让用户直观知道「该项是因为开启分组才不可用」，除置灰外还会：
+   * - 将 placeholder 替换为「已按『X』分组」内联提示；
+   * - 在 label 旁挂帮助图标（help），说明原因与恢复方式。
+   * 原始 placeholder / help 会被记录，关闭分组时还原。
+   */
   function disableSearchField(field: GroupFieldDef<TField>) {
     const target = field.searchField ?? field.paramKey;
     const formApi = getFormApi();
     if (!formApi || !target) {
       return;
     }
+    const schemaItem = (formApi.state?.schema ?? []).find(
+      (item: any) => item.fieldName === target,
+    );
+    const currentProps = (schemaItem?.componentProps ?? {}) as Record<
+      string,
+      unknown
+    >;
+    disabledFieldOriginal = {
+      placeholder: currentProps.placeholder,
+      help: schemaItem?.help,
+    };
     disabledSearchField = target;
     formApi.updateSchema([
-      { fieldName: target, componentProps: { disabled: true } },
+      {
+        fieldName: target,
+        help: `该条件已作为「${field.label}」分组维度，暂不可筛选；关闭分组后可恢复。`,
+        componentProps: {
+          disabled: true,
+          placeholder: `已按「${field.label}」分组`,
+        },
+      },
     ]);
     formApi.setFieldValue?.(target, undefined);
   }
 
-  /** 恢复之前被禁用的搜索项 */
+  /** 恢复之前被禁用的搜索项（含 placeholder / help 还原） */
   function restoreSearchField() {
     if (!disabledSearchField) {
       return;
@@ -101,10 +129,17 @@ export function useListGrouping<TField extends number = number>(
     formApi?.updateSchema?.([
       {
         fieldName: disabledSearchField,
-        componentProps: { disabled: false },
+        // merge 基于 defu 会忽略 undefined（保留旧值），故用空字符串兜底覆盖，
+        // 确保帮助图标与分组提示 placeholder 都能被清掉。
+        help: (disabledFieldOriginal?.help ?? '') as any,
+        componentProps: {
+          disabled: false,
+          placeholder: disabledFieldOriginal?.placeholder ?? '',
+        },
       },
     ]);
     disabledSearchField = undefined;
+    disabledFieldOriginal = undefined;
   }
 
   async function refreshGroups(baseParams: Record<string, any>) {

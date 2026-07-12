@@ -32,7 +32,7 @@ last_updated: 2026-07-12
 - **复制委托：** 选中一条后点击「复制」（需 `Admin.SeaExport.Add` 权限），确认弹窗可选「同时复制费用」；成功后跳转新票编辑页 `/sea-exports/{newId}/edit`。
 - **页面缓存：** 路由 `SeaExportList` 已开启 `keepAlive`；从新建/编辑工作台返回时 `onActivated` 自动刷新；当前页删除成功后立即刷新。
 - **船公司展示升级：** 列表中的船公司列改为“Logo + 名称”展示，视觉上与编辑页和费用侧边摘要保持一致。
-- **分组统计（Tab 筛选）：** 工具栏「分组设置」可选择 9 种分组维度（装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式）；启用后左侧工具栏展示分组 Tab（样式对齐运价列表航线 Tab），表格标题隐藏。分组数据通过 `GetGroupedListAsync` 拉取，仅当顶部搜索条件变更时刷新；点击某分组 Tab 仅向列表查询追加对应筛选参数，分组 Tab 本身不变。分组字段与同名搜索项互斥（启用分组后禁用并清空对应搜索框）；同时只能启用一个分组字段。
+- **分组统计（Tab 筛选）：** 工具栏「分组设置」可选择 9 种分组维度（装运方式、订单类型、委托单位、船公司、起运港、目的港、船名、付费方式、签单方式）；启用后左侧工具栏展示分组 Tab（样式对齐运价列表航线 Tab），表格标题隐藏。分组数据通过 `GetGroupedListAsync` 拉取，仅当顶部搜索条件变更时刷新；点击某分组 Tab 仅向列表查询追加对应筛选参数，分组 Tab 本身不变。分组字段与同名搜索项互斥（启用分组后禁用并清空对应搜索框）；同时只能启用一个分组字段。被禁用的搜索项会给出直观提示：placeholder 显示「已按『X』分组」，label 旁帮助图标 tooltip 说明「该条件已作为分组维度，暂不可筛选，关闭分组后可恢复」，关闭分组后自动还原原始 placeholder/help。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -71,6 +71,8 @@ last_updated: 2026-07-12
 
 # 5. 核心业务卡点 (Business Blockers)
 
+> [!IMPORTANT] **[卡点 0：分组禁用提示的还原依赖空值覆盖]** 分组禁用搜索项时会改写其 `placeholder`/`help` 作为提示，关闭分组需还原。`updateSchema` 底层用 `defu` 合并会忽略 `undefined`（保留旧值），所以还原时必须用空字符串等假值覆盖，而非 `undefined`，否则提示会残留。
+>
 > [!IMPORTANT] **[卡点 1：列表字段跨 SeaExport 与 TransportOrder 两层 DTO]** 表格大量字段来自 `row.transportOrder.*`，例如委托编号、客户、件毛体、锁费状态；另一些字段来自海出主表，例如船公司、港口、船名航次。改列配置或接口 DTO 时要确认字段层级，否则会出现列表空值。
 >
 > **[卡点 2：日期区间不是原样提交]** `ETDRange` 和 `CloseDocTimeRange` 只存在于前端查询表单，接口实际接收的是拆分后的开始/结束字段。后端或接口联调时不能直接查找 `ETDRange` 参数。
@@ -85,6 +87,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Feature` | 开启某字段分组后，被禁用的对应搜索项增加直观提示：placeholder 显示「已按『X』分组」，label 旁帮助图标说明原因与恢复方式；关闭分组自动还原。 | 改 `components/list-grouping/use-list-grouping.ts` 的 `disableSearchField`/`restoreSearchField`：置灰同时改写 `placeholder`/`help` 并缓存原值；还原用空字符串覆盖以规避 `defu` 忽略 `undefined`。通用组合式函数改动，复用列表均受益。 |
 | 2026-07-12 | `Style` | 列表「费用锁定」「业务锁定」列改为仅显示锁/开锁图标；进入列表会计期间默认当月且首查带上该条件。 | `feeLocked`/`businessLocked` slot + `LockKeyhole`/`LockKeyholeOpen`；`autoLoad: false` 后 `setValues` + `submitForm` 避免首查漏默认期间。 |
 | 2026-07-12 | `Feature` | 列表「运踪状态」列改显 `yundangShipmentOceanNode.stateDescCN`，不再使用 `yundangTrackStatus`。 | `use-yundang-ocean-track.ts` 的 `getYundangTrackStatusLabel`/`resolveYundangViewState`；`SeaExportDto` 新增嵌套节点字段。 |
 | 2026-07-12 | `Fix` | 运踪详情弹窗里程碑：仅按 `actualityTime` 升序；无实际时间节点不再显示「未到」。 | 与编辑页运踪 Tab 共用 `yundang-tracking-panel.vue`。 |
