@@ -16,6 +16,7 @@ import { get, isFunction, isString } from '@vben/utils';
 
 import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
 import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
+import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { useTableConfigStore } from '#/store/table-config';
 import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
@@ -616,9 +617,57 @@ setupVbenVxeTable({
               case '件数':
                 row['quantity'] = transportOrder.pkgs || 0;
                 break;
-              case 'TEU':
-                row['quantity'] = transportOrder.teu || 0;
+              case 'teu': {
+                // TEU需要根据订单中的箱型信息计算
+                const orderCtns = transportOrder.orderCtns;
+                if (!orderCtns || orderCtns.length === 0) {
+                  row['quantity'] = 0;
+                  console.log(
+                    '✅ [fillOrderQuantity] TEU数量为 0（无箱型数据）',
+                  );
+                  break;
+                }
+
+                // 计算所有箱型的TEU总和
+                let totalTeu = 0;
+                for (const ctn of orderCtns) {
+                  if (!ctn.ctnCodeId) {
+                    console.warn(
+                      '⚠️ [fillOrderQuantity] 箱型缺少ctnCodeId:',
+                      ctn,
+                    );
+                    continue;
+                  }
+
+                  try {
+                    // 获取集装箱详情以获取TEU值
+                    const ctnDetail = await getCtnCodeDetail(ctn.ctnCodeId);
+                    if (
+                      ctnDetail &&
+                      ctnDetail.teu !== undefined &&
+                      ctnDetail.teu !== null
+                    ) {
+                      totalTeu += ctnDetail.teu;
+                      console.log(
+                        `📦 [fillOrderQuantity] 箱型 ${ctn.ctnCodeName} TEU: ${ctnDetail.teu}`,
+                      );
+                    } else {
+                      console.warn(
+                        `⚠️ [fillOrderQuantity] 箱型 ${ctn.ctnCodeName} 未找到TEU值`,
+                      );
+                    }
+                  } catch (error) {
+                    console.error(
+                      `❌ [fillOrderQuantity] 获取箱型 ${ctn.ctnCodeId} 详情失败:`,
+                      error,
+                    );
+                  }
+                }
+
+                row['quantity'] = totalTeu;
+                console.log('✅ [fillOrderQuantity] TEU总数量:', totalTeu);
                 break;
+              }
               default:
                 row['quantity'] = 1;
             }
@@ -1083,9 +1132,53 @@ setupVbenVxeTable({
               row['quantity'] = transportOrder.pkgs || 0;
               console.log('✅ [fillQuantityByUnit] 件数:', row['quantity']);
             } else if (unitNameLower === 'teu') {
-              // TEU：从订单获取 TEU
-              row['quantity'] = transportOrder.teu || 0;
-              console.log('✅ [fillQuantityByUnit] TEU:', row['quantity']);
+              // TEU需要根据订单中的箱型信息计算
+              const orderCtns = transportOrder.orderCtns;
+              if (!orderCtns || orderCtns.length === 0) {
+                row['quantity'] = 0;
+                console.log(
+                  '✅ [fillQuantityByUnit] TEU数量为 0（无箱型数据）',
+                );
+              } else {
+                // 计算所有箱型的TEU总和
+                let totalTeu = 0;
+                for (const ctn of orderCtns) {
+                  if (!ctn.ctnCodeId) {
+                    console.warn(
+                      '⚠️ [fillQuantityByUnit] 箱型缺少ctnCodeId:',
+                      ctn,
+                    );
+                    continue;
+                  }
+
+                  try {
+                    // 获取集装箱详情以获取TEU值
+                    const ctnDetail = await getCtnCodeDetail(ctn.ctnCodeId);
+                    if (
+                      ctnDetail &&
+                      ctnDetail.teu !== undefined &&
+                      ctnDetail.teu !== null
+                    ) {
+                      totalTeu += ctnDetail.teu;
+                      console.log(
+                        `📦 [fillQuantityByUnit] 箱型 ${ctn.ctnCodeName} TEU: ${ctnDetail.teu}`,
+                      );
+                    } else {
+                      console.warn(
+                        `⚠️ [fillQuantityByUnit] 箱型 ${ctn.ctnCodeName} 未找到TEU值`,
+                      );
+                    }
+                  } catch (error) {
+                    console.error(
+                      `❌ [fillQuantityByUnit] 获取箱型 ${ctn.ctnCodeId} 详情失败:`,
+                      error,
+                    );
+                  }
+                }
+
+                row['quantity'] = totalTeu;
+                console.log('✅ [fillQuantityByUnit] TEU总数量:', totalTeu);
+              }
             } else if (unitNameLower !== '') {
               // 箱型：查询订单的箱型列表数量
               if (
