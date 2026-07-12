@@ -9,6 +9,8 @@ export namespace EnumerationAdminApi {
     value: number;
     /** 是否启用 */
     enable: boolean;
+    /** 扩展标记1（ServiceType 中表示是否业务主流程） */
+    extra1?: boolean;
     /** 枚举值的展示文本 */
     displayName?: string;
     /** 描述 */
@@ -25,6 +27,8 @@ export namespace EnumerationAdminApi {
     value: number;
     /** 是否启用 */
     enable: boolean;
+    /** 扩展标记1（ServiceType 中表示是否业务主流程） */
+    extra1?: boolean;
     /** 枚举值的展示文本 */
     displayName?: string;
     /** 描述 */
@@ -85,6 +89,8 @@ export namespace EnumerationAdminApi {
     value: number;
     /** 是否启用 */
     enable: boolean;
+    /** 扩展标记1（ServiceType 中表示是否业务主流程） */
+    extra1?: boolean;
     /** 枚举值的展示文本 */
     displayName?: string;
     /** 描述 */

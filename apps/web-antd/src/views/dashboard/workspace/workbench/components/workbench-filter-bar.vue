@@ -105,13 +105,13 @@ function onProcessingTabChange(value: unknown) {
         />
       </label>
       <label class="field">
-        <span class="field__label">MBL:</span>
+        <span class="field__label">编号:</span>
         <Input
           class="field__input"
-          :value="modelValue.mblNum"
-          placeholder="输入主提单号"
+          :value="modelValue.keyword"
+          placeholder="主提单号/订舱编号/委托编号"
           allow-clear
-          @update:value="patchField('mblNum', $event ?? '')"
+          @update:value="patchField('keyword', ($event ?? '').trim())"
         />
       </label>
       <label class="field">
@@ -212,9 +212,8 @@ function onProcessingTabChange(value: unknown) {
 }
 
 .field :deep(.ant-select) {
-  width: 170px !important;
-  min-width: 170px;
-  max-width: 170px;
+  width: 100% !important;
+  min-width: 0;
 }
 
 .filter-panel :deep(.ant-picker-input > input),

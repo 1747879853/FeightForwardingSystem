@@ -28,6 +28,8 @@ export type ServiceTypeTaskInfo = {
 export type ServiceTypeNode = {
   serviceType: number;
   label: string;
+  /** 是否业务主流程（ServiceType 枚举项 extra1） */
+  isBusinessProcess: boolean;
   sortId: number;
   checked: boolean;
   taskStatus?: 0 | 1 | null;
@@ -66,6 +68,7 @@ export const buildServiceTypeNodes = (
   clientCheckedMap?: Map<number, boolean>,
   taskMap?: Map<number, ServiceTypeTaskInfo>,
   savedSortIdMap?: Map<number, number>,
+  processMap?: Map<number, boolean>,
 ): ServiceTypeNode[] => {
   const resolveSortId = (serviceType: number, polSortId: number) =>
     savedSortIdMap?.get(serviceType) ?? polSortId;
@@ -89,6 +92,7 @@ export const buildServiceTypeNodes = (
       return {
         serviceType,
         label: enumLabelMap.get(serviceType) ?? `${serviceType}`,
+        isBusinessProcess: processMap?.get(serviceType) ?? false,
         sortId: resolveSortId(serviceType, node.sortId),
         checked,
         taskStatus: taskInfo?.taskStatus,

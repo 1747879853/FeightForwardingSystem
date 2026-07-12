@@ -170,12 +170,35 @@ const startHorizontalDrag = (e: MouseEvent) => {
   document.body.style.userSelect = 'none';
 };
 
-const props = defineProps<{
-  orderName: string;
-  transportOrderId: string;
-  entityId: string;
-  feeTableType: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    orderName?: string;
+    transportOrderId?: string;
+    entityId?: string;
+    feeTableType?: string;
+  }>(),
+  {
+    orderName: '',
+    transportOrderId: '',
+    entityId: '',
+    feeTableType: '',
+  },
+);
+
+const route = useRoute();
+const router = useRouter();
+
+// 作为独立路由页打开时（工作台跳转），从路由参数兜底取值
+const isStandalone = computed(
+  () => !props.transportOrderId && Boolean(route.params.id),
+);
+const resolvedTransportOrderId = computed(
+  () => props.transportOrderId || String(route.params.id ?? ''),
+);
+const resolvedEntityId = computed(
+  () => props.entityId || String(route.params.entityId ?? ''),
+);
+const standaloneTableType = ref<string>('vertical');
 
 const totalFee = (
   dataSource: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
@@ -430,8 +453,12 @@ const payPass = (approve: boolean, modalRemark: string) => {
 };
 
 const layout = computed(() => {
-  return props.feeTableType;
+  return props.feeTableType || standaloneTableType.value;
 });
+
+const changeStandaloneTableType = (type: string) => {
+  standaloneTableType.value = type;
+};
 
 const getTableDate = () => {
   if (childRecRef.value) {
@@ -645,145 +672,172 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex items-stretch">
-    <!--  -->
-    <div class="flex min-w-0 flex-1 flex-col gap-2">
-      <Card>
-        <template #title>
-          <div class="flex">
-            <span class="mr-2 flex items-center gap-2">
-              <Package class="size-4" />
-              {{ $t('seaExport.export.orderFee.feeDetail') }}
-            </span>
-            <div class="my-1 flex items-center justify-between">
-              <Space>
-                <!-- <Button type="primary" size="small" :disabled="!selectedRowKeys.length"
+  <div :class="isStandalone ? 'expense-detail-standalone' : ''">
+    <div v-if="isStandalone" class="standalone-toolbar mb-2 flex items-center">
+      <Button @click="router.back()">
+        <ArrowLeft class="size-4" />
+        {{ $t('common.back') }}
+      </Button>
+      <span class="split mx-4 flex">|</span>
+      <Button
+        class="mr-2"
+        :class="[layout === 'vertical' ? 'green-btn' : '']"
+        @click="changeStandaloneTableType('vertical')"
+      >
+        {{ $t('auditApproval.tableType.vertical') }}
+      </Button>
+      <Button
+        :class="[layout === 'horizontal' ? 'green-btn' : '']"
+        @click="changeStandaloneTableType('horizontal')"
+      >
+        {{ $t('auditApproval.tableType.horizontal') }}
+      </Button>
+    </div>
+    <div class="flex items-stretch">
+      <!--  -->
+      <div class="flex min-w-0 flex-1 flex-col gap-2">
+        <Card>
+          <template #title>
+            <div class="flex">
+              <span class="mr-2 flex items-center gap-2">
+                <Package class="size-4" />
+                {{ $t('seaExport.export.orderFee.feeDetail') }}
+              </span>
+              <div class="my-1 flex items-center justify-between">
+                <Space>
+                  <!-- <Button type="primary" size="small" :disabled="!selectedRowKeys.length"
                   @click="showConfirmWithRemark(true)">
                   {{ $t('auditApproval.Passed') }}
                 </Button> -->
-                <DropdownButton
-                  @click="showConfirmWithRemark(true, 'all')"
-                  size="small"
-                  type="primary"
-                >
-                  {{ $t('auditApproval.task.allPass') }}
-                  <template #overlay>
-                    <Menu @click="SubmittedOther">
-                      <MenuItem key="selectPass">
-                        {{ $t('auditApproval.task.selectPass') }}
-                      </MenuItem>
-                      <MenuItem key="recPass">
-                        {{ $t('auditApproval.task.recPass') }}
-                      </MenuItem>
-                      <MenuItem key="payPass">
-                        {{ $t('auditApproval.task.payPass') }}
-                      </MenuItem>
-                    </Menu>
-                  </template>
-                </DropdownButton>
-                <Button
-                  class="yellow-btn"
-                  size="small"
-                  :disabled="!selectedRowKeys.length"
-                  @click="showConfirmWithRemark(false, 'selectPass')"
-                  >{{ $t('auditApproval.task.noPass') }}</Button
-                >
-                <Button
-                  danger
-                  size="small"
-                  :disabled="!selectedRowKeys.length"
-                  @click="showRejectWithRemark"
-                >
-                  {{ $t('auditApproval.task.passReject') }}
-                </Button>
-              </Space>
+                  <DropdownButton
+                    @click="showConfirmWithRemark(true, 'all')"
+                    size="small"
+                    type="primary"
+                  >
+                    {{ $t('auditApproval.task.allPass') }}
+                    <template #overlay>
+                      <Menu @click="SubmittedOther">
+                        <MenuItem key="selectPass">
+                          {{ $t('auditApproval.task.selectPass') }}
+                        </MenuItem>
+                        <MenuItem key="recPass">
+                          {{ $t('auditApproval.task.recPass') }}
+                        </MenuItem>
+                        <MenuItem key="payPass">
+                          {{ $t('auditApproval.task.payPass') }}
+                        </MenuItem>
+                      </Menu>
+                    </template>
+                  </DropdownButton>
+                  <Button
+                    class="yellow-btn"
+                    size="small"
+                    :disabled="!selectedRowKeys.length"
+                    @click="showConfirmWithRemark(false, 'selectPass')"
+                    >{{ $t('auditApproval.task.noPass') }}</Button
+                  >
+                  <Button
+                    danger
+                    size="small"
+                    :disabled="!selectedRowKeys.length"
+                    @click="showRejectWithRemark"
+                  >
+                    {{ $t('auditApproval.task.passReject') }}
+                  </Button>
+                </Space>
+              </div>
+              <div class="select-name flex flex-1 text-sm font-normal">
+                {{ props.orderName }}
+              </div>
             </div>
-            <div class="select-name flex flex-1 text-sm font-normal">
-              {{ props.orderName }}
+          </template>
+          <div
+            class="split-container"
+            :class="[layout === 'horizontal' ? 'flex-row' : 'flex-col']"
+          >
+            <!-- 左侧/上侧区域 -->
+            <div
+              class="left-top-section mt-1"
+              :style="{
+                height: layout === 'horizontal' ? '100%' : `${topHeight}%`,
+                width: layout === 'horizontal' ? `${leftWidth}%` : 'auto',
+                flex: layout === 'horizontal' ? `0 0 ${leftWidth}%` : 'none',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+              }"
+            >
+              <OrderFeeTable
+                @update-table-data="handleReceivableTableUpdate"
+                @update-select-data="handleReceivableTableSelect"
+                :transportOrderId="resolvedTransportOrderId"
+                :entityId="resolvedEntityId"
+                :type="0"
+                ref="childRecRef"
+              />
+            </div>
+
+            <!-- 垂直拖动分隔条（上下布局） -->
+            <div
+              v-if="layout !== 'horizontal'"
+              class="drag-handle drag-handle-vertical"
+              :class="{ dragging: isDragging && dragDirection === 'vertical' }"
+              @mousedown="startVerticalDrag"
+            >
+              <div class="drag-line"></div>
+            </div>
+
+            <!-- 水平拖动分隔条（左右布局） -->
+            <div
+              v-if="layout === 'horizontal'"
+              class="drag-handle drag-handle-horizontal"
+              :class="{
+                dragging: isDragging && dragDirection === 'horizontal',
+              }"
+              @mousedown="startHorizontalDrag"
+            >
+              <div class="drag-line"></div>
+            </div>
+
+            <!-- 右侧/下侧区域 -->
+            <div
+              class="right-bottom-section mt-1"
+              :style="{
+                height:
+                  layout === 'horizontal' ? '100%' : `${100 - topHeight}%`,
+                width: layout === 'horizontal' ? `${100 - leftWidth}%` : 'auto',
+                flex:
+                  layout === 'horizontal' ? `0 0 ${100 - leftWidth}%` : 'none',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+              }"
+            >
+              <OrderFeeTable
+                @update-table-data="handlePayableTableUpdate"
+                @update-select-data="handlePayableTableSelect"
+                :transportOrderId="resolvedTransportOrderId"
+                :entityId="resolvedEntityId"
+                :type="1"
+                ref="childPayRef"
+              />
             </div>
           </div>
-        </template>
-        <div
-          class="split-container"
-          :class="[layout === 'horizontal' ? 'flex-row' : 'flex-col']"
-        >
-          <!-- 左侧/上侧区域 -->
+        </Card>
+        <div class="total-amount flex rounded-md px-4 py-1 shadow">
           <div
-            class="left-top-section mt-1"
-            :style="{
-              height: layout === 'horizontal' ? '100%' : `${topHeight}%`,
-              width: layout === 'horizontal' ? `${leftWidth}%` : 'auto',
-              flex: layout === 'horizontal' ? `0 0 ${leftWidth}%` : 'none',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-            }"
+            v-for="(item, index) in totalAmount"
+            class="mr-4 flex"
+            :key="item.name"
           >
-            <OrderFeeTable
-              @update-table-data="handleReceivableTableUpdate"
-              @update-select-data="handleReceivableTableSelect"
-              :transportOrderId="props.transportOrderId"
-              :entityId="props.entityId"
-              :type="0"
-              ref="childRecRef"
-            />
+            <span class="flex">{{ item.name }}</span>
+            <span class="ml-2 flex font-medium" :class="item.color">{{
+              item.value
+            }}</span>
+            <span class="split mx-4 flex" v-show="(index + 1) % 3 === 0"
+              >|
+            </span>
           </div>
-
-          <!-- 垂直拖动分隔条（上下布局） -->
-          <div
-            v-if="layout !== 'horizontal'"
-            class="drag-handle drag-handle-vertical"
-            :class="{ dragging: isDragging && dragDirection === 'vertical' }"
-            @mousedown="startVerticalDrag"
-          >
-            <div class="drag-line"></div>
-          </div>
-
-          <!-- 水平拖动分隔条（左右布局） -->
-          <div
-            v-if="layout === 'horizontal'"
-            class="drag-handle drag-handle-horizontal"
-            :class="{ dragging: isDragging && dragDirection === 'horizontal' }"
-            @mousedown="startHorizontalDrag"
-          >
-            <div class="drag-line"></div>
-          </div>
-
-          <!-- 右侧/下侧区域 -->
-          <div
-            class="right-bottom-section mt-1"
-            :style="{
-              height: layout === 'horizontal' ? '100%' : `${100 - topHeight}%`,
-              width: layout === 'horizontal' ? `${100 - leftWidth}%` : 'auto',
-              flex:
-                layout === 'horizontal' ? `0 0 ${100 - leftWidth}%` : 'none',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-            }"
-          >
-            <OrderFeeTable
-              @update-table-data="handlePayableTableUpdate"
-              @update-select-data="handlePayableTableSelect"
-              :transportOrderId="props.transportOrderId"
-              :entityId="props.entityId"
-              :type="1"
-              ref="childPayRef"
-            />
-          </div>
-        </div>
-      </Card>
-      <div class="total-amount flex rounded-md px-4 py-1 shadow">
-        <div
-          v-for="(item, index) in totalAmount"
-          class="mr-4 flex"
-          :key="item.name"
-        >
-          <span class="flex">{{ item.name }}</span>
-          <span class="ml-2 flex font-medium" :class="item.color">{{
-            item.value
-          }}</span>
-          <span class="split mx-4 flex" v-show="(index + 1) % 3 === 0">| </span>
         </div>
       </div>
     </div>

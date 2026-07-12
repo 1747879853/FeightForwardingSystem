@@ -1,6 +1,9 @@
 import { requestClient } from '#/api/request';
 
-import { PrintJsonType } from '#/components/print-format/types';
+import {
+  PrintExportFormat,
+  PrintJsonType,
+} from '#/components/print-format/types';
 
 export namespace PrintFormatAdminApi {
   export interface PrintFormatDto {
@@ -37,6 +40,8 @@ export namespace PrintFormatAdminApi {
   export interface GetPrintFileDto {
     printFormatId: string;
     json: string;
+    /** 导出格式，缺省为 PDF（0）；1=Excel，2=Word */
+    format?: PrintExportFormat;
   }
 }
 

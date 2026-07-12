@@ -6,7 +6,7 @@ import { abpPageAuthority } from '#/router/abp-authority';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      icon: 'mdi:file-document-check-outline',
+      icon: 'streamline-freehand-color:security-phone-protection-approved',
       order: 210,
       title: $t('auditApproval.title'),
       hideChildrenInMenu: false,
@@ -46,6 +46,10 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'expense-review/:id/expense-detail/:entityId',
         name: 'ExpenseDetail',
+        props: (route) => ({
+          transportOrderId: route.params.id,
+          entityId: route.params.entityId,
+        }),
         meta: {
           title: $t('auditApproval.expenseReview.detail'),
           hideInMenu: true,

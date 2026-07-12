@@ -13,6 +13,17 @@
 
 ## 2026-07
 
+- [2026-07-12 运价列表搜索项设置弹层恢复显示](./changelogs/change-log-2026-07-12-freight-rate-search-settings-popover.md)
+- [2026-07-12 服务项目 extra1 对接与主/非主流程分组](./changelogs/change-log-2026-07-12-service-type-extra1-process-groups.md)
+- [2026-07-12 打印弹窗改为 PDF 预览 + 多格式导出（Excel/Word 新窗口）](./changelogs/change-log-2026-07-12-print-format-multi-export-preview.md)
+- [2026-07-12 海运出口费用 Tab 计数实时刷新、船公司显示中文简称、详情去重请求](./changelogs/change-log-2026-07-12-sea-export-fee-tab-count-carrier-detail-dedup.md)
+- [2026-07-12 工作台编号 Keyword 检索、仅勾选选中与 TrimInput](./changelogs/change-log-2026-07-12-workspace-keyword-trim-checkbox.md)
+- [2026-07-12 恢复应收应付费用表打印按钮](./changelogs/change-log-2026-07-12-sea-export-order-fee-print-restore.md)
+- [2026-07-12 海运出口附件 Tab 展示上传人与上传时间](./changelogs/change-log-2026-07-12-sea-export-attachments-uploader-time.md)
+- [2026-07-12 工作台审核筛选对齐费用审核并修复详情深链与筛选布局](./changelogs/change-log-2026-07-12-workspace-review-filter-and-expense-detail.md)
+- [2026-07-12 侧边栏一级菜单更换语义化 Iconify 图标](./changelogs/change-log-2026-07-12-sidebar-top-menu-icons.md)
+- [2026-07-12 海运出口列表分组不缓存（每次进入都拉取）并修复首屏默认分组只剩「全部」](./changelogs/change-log-2026-07-12-sea-export-list-grouping-no-cache.md)
+- [2026-07-12 列表勾选改为仅点击 checkbox/radio 选中](./changelogs/change-log-2026-07-12-list-checkbox-trigger-default.md)
 - [2026-07-12 海运出口表单布局：船名航次 3:2、条款合并、签单字段与预留 Tab 隐藏](./changelogs/change-log-2026-07-12-sea-export-form-layout-hide-signing-tabs.md)
 - [2026-07-12 海运出口详情右侧拆分干系人与场站只读信息](./changelogs/change-log-2026-07-12-sea-export-right-yard-readonly.md)
 - [2026-07-12 海运出口列表业务状态背景色增加透明度](./changelogs/change-log-2026-07-12-sea-export-list-business-status-bg-opacity.md)

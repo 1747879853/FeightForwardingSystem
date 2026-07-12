@@ -28,7 +28,7 @@ export interface FilterModel {
   etdRange: [string, string] | [Dayjs, Dayjs] | null;
   clientId?: string;
   carrierId?: number;
-  mblNum: string;
+  keyword: string;
   podId?: number;
 }
 
@@ -99,7 +99,7 @@ export const filterModelDefaults: FilterModel = {
   carrierId: undefined,
   clientId: undefined,
   etdRange: null,
-  mblNum: '',
+  keyword: '',
   podId: undefined,
 };
 

@@ -22,6 +22,7 @@ last_updated: 2026-07-11
 # 2. 功能与操作说明 (Features & Operations)
 
 - **锁费查询：** 检索可锁定或已锁定的运输单费用。
+- **行选中：** 多选列表**仅点击 checkbox 才选中**（`checkboxConfig.trigger: 'default'`），单击行不切换选中。
 - **锁定/解锁：** 对目标运输单执行锁费状态变更。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -45,5 +46,6 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 列表仅点击 checkbox 才选中，单击行不再切换勾选。 | `checkboxConfig.trigger` 由 `'row'` 改为 `'default'`。 |
 | 2026-07-11 | `Refactor` | 菜单从「费用管理」迁至「财务管理」下；路由 path 由 `/fee-management/fee-lock` 改为 `/settlement-management/fee-lock`，页面组件与权限码不变。 | 路由定义在 `settlement-management.ts` 子项；`order` 位于付费结算、发票开出、银行流水之后。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；原页面 `/fee-management/fee-lock` 对应组件 `fee-lock-list.vue`。 |

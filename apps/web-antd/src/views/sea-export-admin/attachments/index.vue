@@ -7,6 +7,7 @@ import { useRoute } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { IconifyIcon } from '@vben/icons';
+import { formatDateTime } from '@vben/utils';
 
 import {
   Button,
@@ -452,6 +453,8 @@ const getFileIconColor = (row: SeaExportAdminApi.AttachmentItemDto): string => {
 const previewOpen = ref(false);
 const previewUrl = ref('');
 const previewFileName = ref('');
+const previewUploader = ref('');
+const previewUploadTime = ref('');
 
 const handlePreview = (row: SeaExportAdminApi.AttachmentItemDto) => {
   if (!row.url) {
@@ -460,6 +463,10 @@ const handlePreview = (row: SeaExportAdminApi.AttachmentItemDto) => {
   }
   previewUrl.value = row.url;
   previewFileName.value = getFileName(row);
+  previewUploader.value = row.creatorUserName ?? '';
+  previewUploadTime.value = row.creationTime
+    ? formatDateTime(row.creationTime)
+    : '';
   previewOpen.value = true;
 };
 
@@ -569,10 +576,32 @@ onMounted(() => {
                 <div class="truncate text-sm" :title="getFileName(item)">
                   {{ getFileName(item) }}
                 </div>
-                <div class="text-xs text-gray-400">
-                  {{ formatFileSize(item.fileLength) }}
-                  <span v-if="item.creatorUserNickName">
-                    · {{ item.creatorUserNickName }}
+                <div
+                  class="attachment-file-meta text-xs text-gray-400"
+                  :title="
+                    [
+                      formatFileSize(item.fileLength),
+                      item.creatorUserName
+                        ? `${$t('seaExport.export.attachments.uploader')}：${item.creatorUserName}`
+                        : '',
+                      item.creationTime
+                        ? `${$t('seaExport.export.attachments.uploadTime')}：${formatDateTime(item.creationTime)}`
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  "
+                >
+                  <span>{{ formatFileSize(item.fileLength) }}</span>
+                  <span v-if="item.creatorUserName">
+                    {{ $t('seaExport.export.attachments.uploader') }}：{{
+                      item.creatorUserName
+                    }}
+                  </span>
+                  <span v-if="item.creationTime">
+                    {{ $t('seaExport.export.attachments.uploadTime') }}：{{
+                      formatDateTime(item.creationTime)
+                    }}
                   </span>
                 </div>
               </div>
@@ -655,6 +684,8 @@ onMounted(() => {
       v-model:open="previewOpen"
       :file-url="previewUrl"
       :file-name="previewFileName"
+      :uploader="previewUploader"
+      :upload-time="previewUploadTime"
     />
   </div>
 </template>
@@ -668,12 +699,13 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 320px;
+  height: 180px;
   overflow-y: auto;
 }
 
 .attachment-file-item {
   display: flex;
+  flex: 0 0 54px;
   gap: 10px;
   align-items: center;
   padding: 8px;
@@ -696,6 +728,22 @@ onMounted(() => {
   height: 32px;
   object-fit: cover;
   border-radius: 4px;
+}
+
+.attachment-file-meta {
+  display: flex;
+  gap: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.attachment-file-meta > span {
+  flex-shrink: 0;
+}
+
+.attachment-file-meta > span + span::before {
+  margin: 0 4px;
+  content: '·';
 }
 
 .attachment-file-actions {

@@ -117,7 +117,7 @@ const [Grid, gridApi] = useVbenVxeGrid<FeeLockTreeRow>({
     checkboxConfig: {
       checkStrictly: true,
       highlight: true,
-      trigger: 'row',
+      trigger: 'default',
     },
     treeConfig: {
       rowField: 'id',

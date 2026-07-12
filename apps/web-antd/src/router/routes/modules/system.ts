@@ -6,7 +6,7 @@ import { abpPageAuthority } from '#/router/abp-authority';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      icon: 'ion:settings-outline',
+      icon: 'gcp:gce-systems-management',
       order: 9997,
       title: $t('system.title'),
       // 系统管理模块：拥有任一子菜单权限即可显示

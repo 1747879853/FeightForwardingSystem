@@ -2,7 +2,7 @@
 title: 枚举管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-05-18
+last_updated: 2026-07-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-05-18
 # 2. 功能与操作说明 (Features & Operations)
 
 - **列表/页面访问：** 通过 `/system/enumeration` 进入「枚举管理」页面。
-- **新建/编辑枚举：** 维护枚举名称（英文唯一）、描述及子表枚举值（`value`、`displayName`、`enable` 等）。
+- **新建/编辑枚举：** 维护枚举名称（英文唯一）、描述及子表枚举值（`value`、`displayName`、`enable` 等）。编辑 `ServiceType` 时可通过「是否业务流程」维护子项 `extra1`。
 - **业务页面消费：** 使用 `getEnumItems('枚举名称')` 获取选项；详见 [使用指南](../../guides/enumeration-usage-in-pages.md)。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -43,6 +43,7 @@ last_updated: 2026-05-18
 | **枚举值 value** | 存库与接口提交用的数字。 | 枚举子表 `EnumerationItemDto.value` | **触发/依赖：** 表单绑定 value，展示用 displayName。 | 数值类型。 |
 | **展示文本 displayName** | 下拉、表格展示文案。 | 枚举子表 | **触发/依赖：** 映射为 Select 的 `label`。 | 展示层可选填，建议必填。 |
 | **是否启用 enable** | 该项是否作为有效选项。 | 枚举子表 | **触发/依赖：** 前端可过滤未启用项。 | 布尔。 |
+| **扩展标记 extra1** | `ServiceType` 中表示服务项目是否属于业务主流程。 | 枚举子表 `EnumerationItemDto.extra1` | **触发/依赖：** 海运出口配置服务项目弹窗据此分为「主流程 / 非主流程」。 | 布尔；缺省为 `false`，其他枚举通常保持 `false`。 |
 | **权限码** | 控制枚举管理页可见与访问。 | `src/router/routes/modules/system.ts` | **触发/依赖：** 经 `abpPageAuthority` 参与动态路由过滤。 | 用户须具备 Admin 相关权限。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -57,5 +58,6 @@ last_updated: 2026-05-18
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Feature` | `ServiceType` 枚举子项支持维护并查看「是否业务流程」。 | 前端 DTO 对接 `extra1`；保存时缺省归一为 `false`，海运出口将其映射为 `isBusinessProcess`。 |
 | 2026-05-16 | `Parsing` | 无 | 按路由与页面源码重建文档；权限口径 Admin / Admin.Get。 |
 | 2026-05-18 | `Parsing` | 无 | 补充「业务页面如何使用枚举」：新增 [enumeration-usage-in-pages.md](../../guides/enumeration-usage-in-pages.md)；梳理 `getEnumItems` / `initEnumCache` / `GetItemsByNameAsync` 链路及海出运价、订单费用等参考实现。 |

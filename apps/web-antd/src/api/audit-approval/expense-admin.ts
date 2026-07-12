@@ -213,6 +213,20 @@ export namespace ExpenseSubmissionAdminApi {
   export interface GetPagedListParams {
     Processed?: boolean;
     Remark?: string;
+    /** 业务类型 */
+    BizType?: number;
+    /** 业务编号/关键字 */
+    Keyword?: string;
+    /** 委托单位（客户）id */
+    ClientId?: string;
+    /** ETD 起 */
+    ETDStart?: string;
+    /** ETD 止（截止日期） */
+    ETDEnd?: string;
+    /** 销售 用户 id */
+    SaleId?: number;
+    /** 操作 用户 id */
+    OperatorId?: number;
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;

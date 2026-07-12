@@ -1,6 +1,12 @@
+import { getItemsByName } from '#/api/system/enum-admin';
 import { getEnumItems } from '#/utils/init-enum';
 
-export type ServiceTypeOption = { label: string; value: number };
+export type ServiceTypeOption = {
+  /** 是否业务主流程（来源于 ServiceType 枚举项 extra1） */
+  isBusinessProcess: boolean;
+  label: string;
+  value: number;
+};
 const normalizeServiceTypeLabel = (label?: string) =>
   (label || '').replace(/\s+/g, '').toLowerCase();
 
@@ -9,6 +15,7 @@ export function buildServiceTypeOptionsFromEnum(
     | {
         displayName?: string;
         enable?: boolean;
+        extra1?: boolean;
         value: number;
       }[]
     | undefined,
@@ -16,6 +23,7 @@ export function buildServiceTypeOptionsFromEnum(
   const options = (items || [])
     .filter((item) => item.enable !== false)
     .map((item) => ({
+      isBusinessProcess: item.extra1 === true,
       label: item.displayName || `${item.value}`,
       value: Number(item.value),
     }))
@@ -25,8 +33,15 @@ export function buildServiceTypeOptionsFromEnum(
 }
 
 export async function loadSeServiceTypeEnumItems() {
-  const items = await getEnumItems('ServiceType');
-  return items || [];
+  // ServiceType 的 extra1 可在枚举管理中动态调整；直接读取后端缓存接口，
+  // 避免旧版 localStorage 枚举缓存缺少 extra1 时全部误归为非主流程。
+  try {
+    const items = await getItemsByName('ServiceType');
+    return items || [];
+  } catch {
+    // 网络异常时仍允许使用本地缓存完成基础选项回显。
+    return getEnumItems('ServiceType', false);
+  }
 }
 
 export async function loadSeServiceTypeOptions() {
@@ -40,6 +55,16 @@ export function buildServiceTypeLabelMap(
   const map = new Map<number, string>();
   for (const item of serviceTypeOptions) {
     map.set(Number(item.value), item.label);
+  }
+  return map;
+}
+
+export function buildServiceTypeProcessMap(
+  serviceTypeOptions: ServiceTypeOption[],
+) {
+  const map = new Map<number, boolean>();
+  for (const item of serviceTypeOptions) {
+    map.set(Number(item.value), item.isBusinessProcess);
   }
   return map;
 }

@@ -93,6 +93,7 @@ import {
 } from '../data';
 import {
   buildServiceTypeLabelMap,
+  buildServiceTypeProcessMap,
   loadSeServiceTypeOptions,
 } from '../service-type';
 import type {
@@ -284,9 +285,11 @@ const SHIPMENT_MOVED_TO_BASIC_FIELD_NAMES = new Set([
 const PORT_MOVED_TO_BASIC_FIELD_NAMES = new Set(['signingPortId']);
 const serviceTypeNodes = ref<ServiceTypeNode[]>([]);
 const serviceTypeLabelMap = ref(new Map<number, string>());
+const serviceTypeProcessMap = ref(new Map<number, boolean>());
 const loadServiceTypeLabelMap = async () => {
   const options = await loadSeServiceTypeOptions();
   serviceTypeLabelMap.value = buildServiceTypeLabelMap(options);
+  serviceTypeProcessMap.value = buildServiceTypeProcessMap(options);
 };
 const editServiceSnapshot = ref<EditServiceSnapshot | null>(null);
 /** 编辑态：详情原始起运港 / 服务项集合 / 是否已有任务，用于保存时判断是否重建 */
@@ -312,6 +315,7 @@ const applyServiceTypeStateForEditInitial = (
     undefined,
     snapshot.taskMap,
     snapshot.savedSortIdMap,
+    serviceTypeProcessMap.value,
   );
   const presentTypes = new Set(nodes.map((node) => node.serviceType));
   snapshot.savedServiceTypeSet.forEach((serviceType) => {
@@ -320,6 +324,7 @@ const applyServiceTypeStateForEditInitial = (
     nodes.push({
       serviceType,
       label: serviceTypeLabelMap.value.get(serviceType) ?? `${serviceType}`,
+      isBusinessProcess: serviceTypeProcessMap.value.get(serviceType) ?? false,
       sortId: snapshot.savedSortIdMap.get(serviceType) ?? serviceType,
       checked: true,
       taskStatus: taskInfo?.taskStatus,
@@ -556,11 +561,21 @@ const checkedServiceTypeNodes = computed(() =>
 const checkedServiceTypeNodeGroups = computed(() =>
   groupServiceTypeNodesBySortId(checkedServiceTypeNodes.value),
 );
-const serviceTypeNodeGroups = computed(() =>
-  groupServiceTypeNodesBySortId(
-    sortServiceTypeNodesBySortId(serviceTypeNodes.value),
-  ),
-);
+const serviceTypeModalGroups = computed(() => {
+  const nodes = sortServiceTypeNodesBySortId(serviceTypeNodes.value);
+  return [
+    {
+      key: 'main',
+      label: '主流程',
+      nodes: nodes.filter((node) => node.isBusinessProcess),
+    },
+    {
+      key: 'non-main',
+      label: '非主流程',
+      nodes: nodes.filter((node) => !node.isBusinessProcess),
+    },
+  ].filter((group) => group.nodes.length > 0);
+});
 const getServicePipelineState = (
   node: ServiceTypeNode,
   nodes: ServiceTypeNode[] = checkedServiceTypeNodes.value,
@@ -948,6 +963,9 @@ const applyServiceTypeStateByPol = (
     serviceTypeLabelMap.value,
     undefined,
     clientCheckedMap,
+    undefined,
+    undefined,
+    serviceTypeProcessMap.value,
   );
   serviceTypeRequiredPropValues.value = buildServiceRequiredPropsByType(
     availableServiceTypes,
@@ -3321,21 +3339,29 @@ defineExpose({
     >
       <div class="service-type-modal__list">
         <div
-          v-for="group in serviceTypeNodeGroups"
-          :key="group.sortId"
+          v-for="group in serviceTypeModalGroups"
+          :key="group.key"
           class="service-type-modal__group"
         >
-          <div
-            v-for="node in group.nodes"
-            :key="node.serviceType"
-            class="service-type-modal__item"
-          >
-            <Checkbox
-              :checked="isServiceTypeModalChecked(node.serviceType)"
-              @change="handleServiceTypeModalDraftChange(node, $event)"
+          <div class="service-type-modal__group-title">
+            {{ group.label }}
+            <span class="service-type-modal__group-count">
+              {{ group.nodes.length }}
+            </span>
+          </div>
+          <div class="service-type-modal__group-items">
+            <div
+              v-for="node in group.nodes"
+              :key="node.serviceType"
+              class="service-type-modal__item"
             >
-              <span class="service-type-modal__label">{{ node.label }}</span>
-            </Checkbox>
+              <Checkbox
+                :checked="isServiceTypeModalChecked(node.serviceType)"
+                @change="handleServiceTypeModalDraftChange(node, $event)"
+              >
+                <span class="service-type-modal__label">{{ node.label }}</span>
+              </Checkbox>
+            </div>
           </div>
         </div>
       </div>

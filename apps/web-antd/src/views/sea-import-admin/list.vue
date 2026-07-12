@@ -49,7 +49,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaImportAdminApi.SeaImportDto>({
     keepSource: true,
     radioConfig: {
       highlight: true,
-      trigger: 'row',
+      trigger: 'default',
     },
     rowConfig: {
       keyField: 'id',
