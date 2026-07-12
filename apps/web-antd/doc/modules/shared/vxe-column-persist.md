@@ -79,10 +79,13 @@ last_updated: 2026-07-12
 
 > [!IMPORTANT] **动态换列页面** 运行时通过 `setGridOptions({ columns })` 整体换列时，v1 不会自动套用已保存列宽；用户需在新列集上重新拖拽。
 
+> [!IMPORTANT] **columns 引用稳定化** `options` 计算属性用 `getBoundColumnsSignature`（`field/title/type/visible/fixed/width`）判断列定义是否变化：签名不变时复用同一 `columns` 数组引用，避免与列无关的响应式重算（如工具栏插槽读取分组 Tab 的 loading/items）改变 `columns` 引用触发 vxe `reloadColumn`，从而冲掉用户运行时的显隐/顺序/列宽。若新增会影响列渲染但未纳入签名的字段，需同步扩充签名。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | Fix | 工具栏等与列无关的重算不再重置用户列设置（显隐/顺序/列宽） | 根因：`toolbarOptions` 调用插槽渲染读取分组 Tab 响应式状态 → `options` 重算生成新 `columns` 引用 → vxe `reloadColumn`。修复：`getBoundColumnsSignature` 稳定 `columns` 引用，签名变化才下发 |
 | 2026-07-12 | Style | vxe-grid 全局选中行（checkbox/radio/current）背景改为主题色 15% 透明 | 变量定义于 `packages/effects/plugins/src/vxe-table/style.css` `:root .vxe-grid`；与 antd Table 全局规则（`packages/styles/src/antd/index.css`）并列维护 |
 | 2026-07-05 | Feature | 列配置保存附带 `_debug` 排查快照，拦截保存时写入 localStorage | trigger/keyMapping/totals 便于对照 UserSetting 还原保存现场 |
 | 2026-07-05 | Fix | 列显隐持久化改为 getFullColumns 采集真实显隐，孪生费用表独立 tableId | vxe 4.17 getColumns 仅含 visibleColumn，原保存逻辑会把隐藏列误写 false |

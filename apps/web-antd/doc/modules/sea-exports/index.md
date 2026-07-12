@@ -95,7 +95,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-07-12 | `Fix` | 开启分组后列设置不再被重置为默认。 | 根因是 `table-title` 与 `#toolbar-actions` 挂载态联动切换触发 `use-vxe-grid` 重算 options 并重放 columns；改为插槽始终挂载、内部切换标题/Tab。 |
+| 2026-07-12 | `Fix` | 开启分组或切换分组维度后列设置（显隐/顺序/列宽）不再被重置。 | 表层：`#toolbar-actions` 插槽常挂载、内部切换标题/Tab。根因在插件：`toolbarOptions` 调用插槽渲染读取分组 Tab 响应式状态 → `options` 重算生成新 `columns` 引用 → vxe `reloadColumn`；修复用 `getBoundColumnsSignature` 稳定 `columns` 引用（见 `modules/shared/vxe-column-persist.md`）。 |
 | 2026-07-12 | `Fix` | 「编号」检索改用 `TrimInput`，粘贴带空格时输入框即时去首尾空格。 | 仅参数层 trim 无法清掉可见空格；见 `change-log-2026-07-12-workspace-keyword-trim-checkbox.md`。 |
 | 2026-07-12 | `Fix` | 分组统计不再缓存：每次重新进入列表都拉取最新分组条数；并修复首屏默认分组（如船公司）只剩「全部」拉不到分组明细的问题。 | `use-list-grouping.ts` 移除内部自动 `onMounted` 恢复，新增 `restorePersistedField()`（`applyField` 增 `skipQuery` 仅设状态不查询）+ `refreshGroupData()`（复用 `lastBaseParams` 只刷新分组）；`list.vue` `onMounted` 改「恢复分组字段→submitForm 首查」确定性时序消除竞态，`onActivated` 每次进入刷新分组（跳过首次激活）。 |
 | 2026-07-12 | `Fix` | 列表仅点击 checkbox 才选中，单击行不再切换勾选；双击进编辑仍会勾选当前行。 | `checkboxConfig.trigger` 由 `'row'` 改为 `'default'`；同批统一改客户/费用锁定及多处 radio 列表。 |
