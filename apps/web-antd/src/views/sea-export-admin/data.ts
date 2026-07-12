@@ -348,20 +348,41 @@ const getServiceTypeLabel = (
 ) => labelMap?.get(Number(serviceType)) ?? `服务项${serviceType}`;
 
 /**
- * 计算列表「业务状态」列文案（前端根据 seaExportServices 计算得到）。
+ * 列表「业务状态」进度态：
+ * - `upcoming`：无服务项（未开始）
+ * - `active`：进行中（存在未完成的服务项）
+ * - `done`：全部服务项已完成
+ */
+export type SeaExportBusinessStatusState = 'active' | 'done' | 'upcoming';
+
+/**
+ * 「业务状态」状态色（与详情页顶部服务项目 chevron 颜色保持一致，见 basic-info-form/form.css）。
+ */
+export const SEA_EXPORT_BUSINESS_STATUS_COLORS: Record<
+  SeaExportBusinessStatusState,
+  { background: string; color: string }
+> = {
+  done: { color: '#005313', background: '#a8e6cf' },
+  active: { color: '#854d0e', background: '#fef3c7' },
+  upcoming: { color: '#414752', background: '#f2f2f2' },
+};
+
+/**
+ * 计算列表「业务状态」列的文案与进度态（前端根据 seaExportServices 计算得到）。
  *
  * 规则：服务项按 sortId 升序分组，取「最小 sortId 且组内未全部完成」的分组，
  * 展示该分组内尚未完成的服务项名称（即当前进行到哪个服务）。
- * - 无服务项：返回 '-'
- * - 全部服务项已完成：返回 '已完成'
+ * - 无服务项：文案 '-'，态 `upcoming`
+ * - 存在未完成服务项：文案为当前进行中的服务名称，态 `active`
+ * - 全部服务项已完成：文案 '已完成'，态 `done`
  */
-export function getSeaExportBusinessStatusText(
+export function getSeaExportBusinessStatusMeta(
   row: SeaExportAdminApi.SeaExportDto,
   labelMap?: Map<number, string>,
-): string {
+): { state: SeaExportBusinessStatusState; text: string } {
   const services = row.seaExportServices ?? [];
   if (services.length === 0) {
-    return '-';
+    return { text: '-', state: 'upcoming' };
   }
   const isProcessed = (service: SeaExportAdminApi.SeaExportServiceDto) =>
     Number(service.seServiceTask?.serviceTaskStatus) ===
@@ -375,13 +396,25 @@ export function getSeaExportBusinessStatusText(
     );
     const groupDone = groupServices.every((item) => isProcessed(item));
     if (!groupDone) {
-      return groupServices
+      const text = groupServices
         .filter((item) => !isProcessed(item))
         .map((item) => getServiceTypeLabel(item.serviceType, labelMap))
         .join('、');
+      return { text, state: 'active' };
     }
   }
-  return '已完成';
+  return { text: '已完成', state: 'done' };
+}
+
+/**
+ * 计算列表「业务状态」列文案（前端根据 seaExportServices 计算得到）。
+ * 详见 {@link getSeaExportBusinessStatusMeta}。
+ */
+export function getSeaExportBusinessStatusText(
+  row: SeaExportAdminApi.SeaExportDto,
+  labelMap?: Map<number, string>,
+): string {
+  return getSeaExportBusinessStatusMeta(row, labelMap).text;
 }
 
 const formatMonth = (value: string | undefined) => {

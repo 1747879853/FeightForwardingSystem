@@ -30,7 +30,8 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 
 import {
-  getSeaExportBusinessStatusText,
+  getSeaExportBusinessStatusMeta,
+  SEA_EXPORT_BUSINESS_STATUS_COLORS,
   useColumns,
   useGridFormSchema,
 } from './data';
@@ -182,13 +183,26 @@ const grouping = useListGrouping({
   },
 });
 
+/**
+ * 会计日期默认值是否已写入表单。
+ * 用于兜底：在默认值写入前（如分组恢复抢先触发查询），仍按当月过滤；
+ * 写入后则完全尊重表单值（允许用户清空或改月）。
+ */
+let accountDateDefaultApplied = false;
+
 const normalizeQuery = (
   formValues: Record<string, unknown>,
 ): SeaExportAdminApi.GetPagedListParams => {
   const { ETDRange, CloseDocTimeRange, AccountDateRange, ...rest } = formValues;
   const [etdStart, etdEnd] = getRangeValue(ETDRange);
   const [closeDocTimeStart, closeDocTimeEnd] = getRangeValue(CloseDocTimeRange);
-  const [accountDateStart, accountDateEnd] = getRangeValue(AccountDateRange);
+  let [accountDateStart, accountDateEnd] = getRangeValue(AccountDateRange);
+  // 默认值尚未写入表单前的早期查询，兜底按当月过滤，避免首屏漏掉默认会计期间
+  if (!accountDateStart && !accountDateEnd && !accountDateDefaultApplied) {
+    const currentMonth = dayjs().startOf('month');
+    accountDateStart = currentMonth;
+    accountDateEnd = currentMonth;
+  }
 
   const baseParams = {
     ...rest,
@@ -304,6 +318,8 @@ onMounted(async () => {
   // 用 submitForm 触发首查：它会把当前表单值写入「最近提交值」，
   // 从而让首查及后续分页/排序都带上默认会计期间（gridApi.query 用的是最近提交值）。
   await gridApi.formApi.submitForm();
+  // 默认值已写入表单，之后完全尊重表单值（允许清空/改月）
+  accountDateDefaultApplied = true;
 });
 
 const getCheckboxRecords = (): SeaExportAdminApi.SeaExportDto[] => {
@@ -358,6 +374,12 @@ const handleOpenYundangTracking = (row: SeaExportAdminApi.SeaExportDto) => {
     isYundangSubscribed: trackRow.isYundangSubscribed,
     isYundangSubscribeSuccess: trackRow.isYundangSubscribeSuccess,
   });
+};
+
+/** 「业务状态」列：计算最新服务进度文案 + 对应状态色（与详情页服务项目一致） */
+const resolveBusinessStatus = (row: SeaExportAdminApi.SeaExportDto) => {
+  const meta = getSeaExportBusinessStatusMeta(row, serviceTypeLabelMap.value);
+  return { ...meta, colors: SEA_EXPORT_BUSINESS_STATUS_COLORS[meta.state] };
 };
 
 const onGroupFieldChange = (value: number | undefined) => {
@@ -434,7 +456,22 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         <LockKeyholeOpen v-else class="mx-auto size-4 text-gray-300" />
       </template>
       <template #businessStatus="{ row }">
-        {{ getSeaExportBusinessStatusText(row, serviceTypeLabelMap) }}
+        <span
+          v-if="resolveBusinessStatus(row).text === '-'"
+          class="text-gray-400"
+        >
+          -
+        </span>
+        <span
+          v-else
+          class="inline-flex items-center rounded px-2 py-0.5 text-xs leading-5"
+          :style="{
+            color: resolveBusinessStatus(row).colors.color,
+            backgroundColor: resolveBusinessStatus(row).colors.background,
+          }"
+        >
+          {{ resolveBusinessStatus(row).text }}
+        </span>
       </template>
       <template #yundangTrackStatus="{ row }">
         <Tag

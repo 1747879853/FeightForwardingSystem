@@ -13,6 +13,8 @@
 
 ## 2026-07
 
+- [2026-07-12 海运出口列表业务状态列按进度态着色](./changelogs/change-log-2026-07-12-sea-export-list-business-status-color.md)
+- [2026-07-12 海运出口列表会计期间默认当月首查兜底](./changelogs/change-log-2026-07-12-sea-export-list-account-date-default-race.md)
 - [2026-07-12 列表分组禁用搜索项增加直观提示](./changelogs/change-log-2026-07-12-grouping-disabled-search-hint.md)
 - [2026-07-12 海运出口列表费用/业务锁定列改显图标](./changelogs/change-log-2026-07-12-sea-export-list-lock-columns-icon.md)
 - [2026-07-12 海运出口列表运踪状态改显当前节点 stateDescCN](./changelogs/change-log-2026-07-12-sea-export-list-track-status-state-desc-cn.md)

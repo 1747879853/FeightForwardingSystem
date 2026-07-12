@@ -21,7 +21,8 @@ last_updated: 2026-07-12
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'CreationTime DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按创建时间倒序。关闭 `autoLoad`，挂载后写入默认会计期间（当月）再 `submitForm` 首查。
+- **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'CreationTime DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按创建时间倒序。关闭 `autoLoad`，挂载后写入默认会计期间（当月）再 `submitForm` 首查；`normalizeQuery` 在默认值写入前对空会计期间按当月兜底，避免分组恢复抢先查询漏条件。
+- **业务状态列：** 文案仍按服务项进度计算；展示按 `upcoming/active/done` 三态着色（与详情页服务项目色一致）。
 - **锁定列展示：** 「费用锁定」「业务锁定」仅显示图标（锁定红锁 / 未锁定灰开锁），不再用文案 Tag。
 - **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO，故 DTO 后填充的 `*Name` 列通过 `fieldMap` 映射到实体导航路径：船公司 `carrierCode → Carrier.CnName`、订舱代理 `bookingAgentName → BookingAgent.Name`、港口 `polName/podName/receivePortName/poT1Name/poT2Name/deliverPortName → {POL/POD/ReceivePort/POT1/POT2/DeliverPort}.PortName`、航线 `laneName → POD.Lane.LaneName`、业务来源/付费方式/签单方式 `codeSourceName/codeFrtName/codeIssueTypeName → TransportOrder.CodeSource.CnName / TransportOrder.CodeFrt.CnName / CodeIssueType.BillType`。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`companys`）、后填充列（`creatorUserNickName`、收发通名称、`codePackageName`）显式 `sortable: false`，避免点击后端反射报错回退。
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`，`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`，提交前统一转换为 ISO 字符串。
@@ -63,7 +64,8 @@ last_updated: 2026-07-12
 | **来源 / 签单方式** | 业务来源与签单方式过滤条件。 | `CodeSourceSelect`、`CodeIssueTypeSelect` | **触发/依赖：** 列表展示 `codeSourceName`、`codeIssueTypeName`。 | 需选择有效代码资料。 |
 | **装运方式 / 贸易条款 / 订单类型** | 业务属性筛选条件。 | 前端枚举：装运方式 `整柜/拼箱分票/拼箱主票`，订单类型 `直单/分单`，贸易条款 `CIF/FOB/EXW/FCA/DDP/DDU/DAP/C&F` | **触发/依赖：** 列表用 tag 展示装运方式和订单类型。 | 需选择枚举值。 |
 | **费用锁定 / 业务锁定** | 控制订单费用或业务是否可继续变更。 | `transportOrder.feeLocked`、`transportOrder.isBusinessLocking` | **触发/依赖：** 列表列仅图标展示（锁定红色 `LockKeyhole` / 未锁定灰色 `LockKeyholeOpen`）；查询区仍可按是/否筛选；编辑页以锁定标签展示。 | 布尔值，是/否。 |
-| **会计期间（查询）** | 按运输单会计期间过滤委托；进入列表默认当月。 | `AccountDateRange` -> `AccountDateStart` / `AccountDateEnd`（整月起止 ISO） | **触发/依赖：** `autoLoad: false`，挂载后写入当月再 `submitForm` 首查，保证分页/排序沿用最近提交值。 | Month RangePicker；可清空后重查。 |
+| **会计期间（查询）** | 按运输单会计期间过滤委托；进入列表默认当月。 | `AccountDateRange` -> `AccountDateStart` / `AccountDateEnd`（整月起止 ISO） | **触发/依赖：** `autoLoad: false`，挂载后写入当月再 `submitForm` 首查；写入前的早期查询由 `accountDateDefaultApplied` 兜底当月。 | Month RangePicker；可清空后重查（写入后不再兜底）。 |
+| **业务状态** | 当前进行到的服务项名称，或「已完成」/「-」。 | 前端 `getSeaExportBusinessStatusMeta` 根据 `seaExportServices` 计算 | **触发/依赖：** 三态色 `SEA_EXPORT_BUSINESS_STATUS_COLORS` 对齐详情页服务项目。 | 无服务项显示 `-`；非空以色块展示。 |
 | **应收费用状态 / 应付费用状态** | 该委托下对应方向（含更改单）费用的组合流转状态；无费用时为 null。 | 接口 `receiveFeeStatus`、`payFeeStatus`；枚举 `getSeaExportFeeStatusOptions`（八态含结算/驳回/申请修改删除） | **触发/依赖：** 后端按优先级聚合判断，与单笔 `FeeStatus` 枚举值不同。 | 可空；0–7 为 `SeaExportFeeStatus` 有效值。 |
 | **分组字段（GroupField）** | 分组统计维度，1~9 对应装运方式至签单方式。 | `GetGroupedListAsync` 入参 `GroupField`；枚举 `SeaExportGroupField` | **触发/依赖：** 与列表查询参数一致但不含分页；启用分组后对应搜索项被禁用。 | 同时只能启用一个；点击 Tab 追加 `paramKey` 到列表查询。 |
 | **分组项（GroupItem）** | 某一分组维度下的单个值及其条数。 | 接口返回 `{ id, name, count }` | **触发/依赖：** 点击 Tab 将 `id` 作为列表筛选值（如 `POLId`）；「全部」不追加筛选。 | `id`/`name` 可为 null（可空字段分组）。 |
@@ -73,9 +75,11 @@ last_updated: 2026-07-12
 
 > [!IMPORTANT] **[卡点 0：分组禁用提示的还原依赖空值覆盖]** 分组禁用搜索项时会改写其 `placeholder`/`help` 作为提示，关闭分组需还原。`updateSchema` 底层用 `defu` 合并会忽略 `undefined`（保留旧值），所以还原时必须用空字符串等假值覆盖，而非 `undefined`，否则提示会残留。
 >
+> [!IMPORTANT] **[卡点 0.5：搜索默认值必须写入「最近提交值」]** `gridApi.query()` 读的是最近提交值而非表单当前值；挂载期默认会计期间需 `submitForm`。分组恢复可能抢先 `query`，靠 `normalizeQuery` + `accountDateDefaultApplied` 在默认值写入前兜底当月；写入后用户清空不再回填。验证需硬刷新（HMR 不重跑 `onMounted`）。
+>
 > [!IMPORTANT] **[卡点 1：列表字段跨 SeaExport 与 TransportOrder 两层 DTO]** 表格大量字段来自 `row.transportOrder.*`，例如委托编号、客户、件毛体、锁费状态；另一些字段来自海出主表，例如船公司、港口、船名航次。改列配置或接口 DTO 时要确认字段层级，否则会出现列表空值。
 >
-> **[卡点 2：日期区间不是原样提交]** `ETDRange` 和 `CloseDocTimeRange` 只存在于前端查询表单，接口实际接收的是拆分后的开始/结束字段。后端或接口联调时不能直接查找 `ETDRange` 参数。
+> **[卡点 2：日期区间不是原样提交]** `ETDRange`、`CloseDocTimeRange`、`AccountDateRange` 只存在于前端查询表单，接口实际接收拆分后的开始/结束字段（会计期间为整月 ISO）。后端或接口联调时不能直接查找 `*Range` 参数。
 >
 > **[卡点 3：操作模式依赖多选行]** 编辑/删除/复制要求恰好选中 1 行；运踪订阅支持多选。双击行会勾选该行；勿假设仍为 radio 单选。
 >
@@ -87,6 +91,8 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 会计期间默认当月在分组恢复等早期查询场景下仍带上；用户清空后不再被兜底回填。 | `accountDateDefaultApplied` + `normalizeQuery` 兜底；首查继续 `setValues` + `submitForm`（最近提交值机制）。 |
+| 2026-07-12 | `Style` | 列表「业务状态」按未开始/进行中/已完成三态着色，色值对齐详情页服务项目。 | `getSeaExportBusinessStatusMeta` + `SEA_EXPORT_BUSINESS_STATUS_COLORS`；保留 `getSeaExportBusinessStatusText` 兼容。 |
 | 2026-07-12 | `Feature` | 开启某字段分组后，被禁用的对应搜索项增加直观提示：placeholder 显示「已按『X』分组」，label 旁帮助图标说明原因与恢复方式；关闭分组自动还原。 | 改 `components/list-grouping/use-list-grouping.ts` 的 `disableSearchField`/`restoreSearchField`：置灰同时改写 `placeholder`/`help` 并缓存原值；还原用空字符串覆盖以规避 `defu` 忽略 `undefined`。通用组合式函数改动，复用列表均受益。 |
 | 2026-07-12 | `Style` | 列表「费用锁定」「业务锁定」列改为仅显示锁/开锁图标；进入列表会计期间默认当月且首查带上该条件。 | `feeLocked`/`businessLocked` slot + `LockKeyhole`/`LockKeyholeOpen`；`autoLoad: false` 后 `setValues` + `submitForm` 避免首查漏默认期间。 |
 | 2026-07-12 | `Feature` | 列表「运踪状态」列改显 `yundangShipmentOceanNode.stateDescCN`，不再使用 `yundangTrackStatus`。 | `use-yundang-ocean-track.ts` 的 `getYundangTrackStatusLabel`/`resolveYundangViewState`；`SeaExportDto` 新增嵌套节点字段。 |
