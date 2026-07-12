@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 biz-select 禁用态统一改为只读文本外观](./changelogs/change-log-2026-07-12-biz-select-disabled-readonly.md)
 - [2026-07-12 运价列表搜索项设置弹层恢复显示](./changelogs/change-log-2026-07-12-freight-rate-search-settings-popover.md)
 - [2026-07-12 服务项目 extra1 对接与主/非主流程分组](./changelogs/change-log-2026-07-12-service-type-extra1-process-groups.md)
 - [2026-07-12 打印弹窗改为 PDF 预览 + 多格式导出（Excel/Word 新窗口）](./changelogs/change-log-2026-07-12-print-format-multi-export-preview.md)

@@ -213,7 +213,7 @@ defineExpose({
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"
-    class="w-full"
+    class="biz-select w-full"
   >
     <template v-for="(_, name) in $slots" #[name]="slotData">
       <slot :key="name" :name="name" v-bind="slotData || {}"></slot>

@@ -164,7 +164,7 @@ defineExpose({
     :filter-option="false"
     :show-search="true"
     :allow-clear="true"
-    class="w-full"
+    class="biz-select w-full"
     @update:value="handleChange"
     @search="handleSearch"
   >

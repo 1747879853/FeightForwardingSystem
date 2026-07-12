@@ -243,7 +243,7 @@ defineExpose({
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"
-    class="w-full"
+    class="biz-select w-full"
   >
     <!-- eslint-disable-next-line vue/no-v-for-template-key -- 多插槽名需 v-for+#[name] -->
     <template v-for="name in forwardSlotNames" :key="name" #[name]="slotData">
