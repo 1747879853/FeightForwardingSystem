@@ -106,7 +106,7 @@ function isColorValue(value: string): boolean {
                   v-if="enumDetail.name === 'ServiceType'"
                   :color="item.extra1 ? 'processing' : 'default'"
                 >
-                  {{ item.extra1 ? '主流程' : '非主流程' }}
+                  {{ item.extra1 ? '主流程' : '服务项目' }}
                 </Tag>
               </div>
             </div>

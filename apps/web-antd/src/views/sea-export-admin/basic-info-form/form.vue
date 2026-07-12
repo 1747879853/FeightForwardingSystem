@@ -647,7 +647,7 @@ const serviceTypeModalGroups = computed(() => {
     },
     {
       key: 'non-main',
-      label: '非主流程',
+      label: '服务项目',
       nodes: nodes.filter((node) => !node.isBusinessProcess),
     },
   ].filter((group) => group.nodes.length > 0);
