@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-12 工作台审核筛选对齐费用审核并修复详情深链与筛选布局](./changelogs/change-log-2026-07-12-workspace-review-filter-and-expense-detail.md)
 - [2026-07-12 侧边栏一级菜单更换语义化 Iconify 图标](./changelogs/change-log-2026-07-12-sidebar-top-menu-icons.md)
 - [2026-07-12 海运出口列表分组不缓存（每次进入都拉取）并修复首屏默认分组只剩「全部」](./changelogs/change-log-2026-07-12-sea-export-list-grouping-no-cache.md)
 - [2026-07-12 列表勾选改为仅点击 checkbox/radio 选中](./changelogs/change-log-2026-07-12-list-checkbox-trigger-default.md)

@@ -2,7 +2,7 @@
 | --- | --- | --- | --- | --- | --- |
 | \_core | `/profile` | 账户与认证 | 当前用户维护个人资料、修改密码与头像；对接 `UserAdmin/GetMyAsync` 等接口，登录后合并信息至右上角展示。 | [个人中心](./modules/_core/profile.md) | 2026-06-03 |
 | dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |
-| dashboard | `/workspace` | 驾驶舱 | 用于承载用户工作台信息，提供日常任务、快捷入口或个人维度概览。 | [工作台](./modules/dashboard/workspace.md) | 2026-07-12 |
+| dashboard | `/workspace` | 驾驶舱 | 工作台：海运出口服务 + 应收应付/付费申请审核；审核筛选对齐费用审核页，支持费用详情深链。 | [工作台](./modules/dashboard/workspace.md) | 2026-07-12 |
 | dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 用于以地球可视化方式展示海运相关数据，是 dashboard 分组下的专题看板。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-05-16 |
 | clients | `/clients` | 客户管理 | 维护客户主数据列表，是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-07-12 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料，为后续联系人、账期、发票、附件等客户子资料提供主记录。 | [客户新建](./modules/clients/create.md) | 2026-05-16 |
@@ -26,7 +26,7 @@
 | settlement-management | `/settlement-management/fee-lock` | 财务管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/settlement-management/fee-lock.md) | 2026-07-12 |
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-07-12 |
 | audit-approval | `/audit-approval/payment-review` | 审核审批 | 处理付款申请审批任务；主从布局展示费用合计、附件与费用明细，支持审核全部与批量驳回。 | [付费审批](./modules/audit-approval/payment-review.md) | 2026-07-11 |
-| audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 展示单个费用审核任务的详细信息和对应费用实体。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-05-16 |
+| audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 费用审核详情：支持列表内嵌与独立路由深链（路由 props 映射 transportOrderId/entityId）。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-07-12 |
 | basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-05-30 |
 | basic-data | `/basic-data/code-invoice` | 基础资料 | 维护发票相关代码，支撑客户发票资料和结算开票口径。 | [发票代码](./modules/basic-data/code-invoice.md) | 2026-05-16 |
 | basic-data | `/basic-data/code-service` | 基础资料 | 维护服务项目代码，支撑委托服务项与费用识别。 | [服务代码](./modules/basic-data/code-service.md) | 2026-05-16 |

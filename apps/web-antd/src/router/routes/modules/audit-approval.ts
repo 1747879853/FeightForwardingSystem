@@ -46,6 +46,10 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'expense-review/:id/expense-detail/:entityId',
         name: 'ExpenseDetail',
+        props: (route) => ({
+          transportOrderId: route.params.id,
+          entityId: route.params.entityId,
+        }),
         meta: {
           title: $t('auditApproval.expenseReview.detail'),
           hideInMenu: true,

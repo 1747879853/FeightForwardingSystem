@@ -91,7 +91,13 @@ const router = useRouter();
 const filterModel = reactive({ ...filterModelDefaults });
 const appliedFilterModel = reactive({ ...filterModelDefaults });
 const arApReviewFilterDefaults = {
-  remark: '',
+  bizType: undefined as number | undefined,
+  keyword: '',
+  clientId: undefined as string | undefined,
+  etdStart: null as any,
+  etdEnd: null as any,
+  saleId: undefined as number | undefined,
+  operatorId: undefined as number | undefined,
 };
 const paymentReviewFilterDefaults = {
   applicationNo: '',
@@ -674,10 +680,15 @@ async function loadReviewWorkbench() {
   loading.value = true;
   try {
     if (activeServiceTab.value === 'ar-ap-review') {
-      const remark = appliedArApReviewFilterModel.remark.trim();
       const result = await getOrderFeeTaskList({
         Processed: activeProcessingTab.value === 'processed',
-        Remark: remark || undefined,
+        BizType: appliedArApReviewFilterModel.bizType,
+        Keyword: appliedArApReviewFilterModel.keyword.trim() || undefined,
+        ClientId: appliedArApReviewFilterModel.clientId,
+        ETDStart: toIsoString(appliedArApReviewFilterModel.etdStart),
+        ETDEnd: toIsoString(appliedArApReviewFilterModel.etdEnd),
+        SaleId: appliedArApReviewFilterModel.saleId,
+        OperatorId: appliedArApReviewFilterModel.operatorId,
         PageIndex: 1,
         PageSize: 200,
       });
@@ -1009,6 +1020,16 @@ onMounted(() => {
 
 .workbench-main--review {
   margin-bottom: 20px;
+}
+
+.workbench-main--review :deep(.table-card) {
+  margin-top: 12px;
+}
+
+.workbench-main--review :deep(.business-table th),
+.workbench-main--review :deep(.business-table td) {
+  padding-right: 8px;
+  padding-left: 8px;
 }
 
 .workbench-coming-soon {

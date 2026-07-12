@@ -2,7 +2,7 @@
 title: 费用审核
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-07-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -47,5 +47,6 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Feature` | 工作台应收应付筛选对齐本页搜索条件；`GetPagedListParams` 补充业务筛选字段类型。 | 本页列表仍内嵌详情；工作台深链走独立 `ExpenseDetail` 路由，见 `change-log-2026-07-12-workspace-review-filter-and-expense-detail.md`。 |
 | 2026-07-12 | `Fix` | 费用审核/提交相关列表仅点击 radio 才选中，单击行不再切换选中。 | `radioConfig.trigger` 由 `'row'` 改为 `'default'`（`expense-all`、`expense-submission`）。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/audit-approval/expense-review` 对应组件 `src/views/audit-approval/expense-all/index.vue`，权限口径为 Admin.OrderFee.Audit / Admin.OrderFee.Audit.Get。 |

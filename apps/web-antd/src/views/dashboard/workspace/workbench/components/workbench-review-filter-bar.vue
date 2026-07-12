@@ -13,9 +13,16 @@ import { computed } from 'vue';
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
 import UserSelect from '#/adapter/component/biz-select/user-select.vue';
+import { BusinessTypeOptions } from '#/views/client/payment-terms/data';
 
 export interface ArApReviewFilterModel {
-  remark: string;
+  bizType?: number;
+  keyword: string;
+  clientId?: string;
+  etdStart?: any;
+  etdEnd?: any;
+  saleId?: number;
+  operatorId?: number;
 }
 
 export interface PaymentReviewFilterModel {
@@ -84,6 +91,26 @@ function onProcessingTabChange(value: unknown) {
   emit('update:activeProcessingTab', String(value ?? 'processing'));
 }
 
+function onArApBizTypeChange(value: unknown) {
+  patchArApField('bizType', (value as number | undefined) ?? undefined);
+}
+
+function onArApClientChange(value: unknown) {
+  patchArApField('clientId', (value as string | undefined) ?? undefined);
+}
+
+function onArApSaleChange(value: unknown) {
+  patchArApField('saleId', (value as number | undefined) ?? undefined);
+}
+
+function onArApOperatorChange(value: unknown) {
+  patchArApField('operatorId', (value as number | undefined) ?? undefined);
+}
+
+function onArApDateChange(field: 'etdEnd' | 'etdStart', value: unknown) {
+  patchArApField(field, (value ?? null) as any);
+}
+
 function onSettlementChange(value: unknown) {
   patchPaymentField('settlementId', (value as string | undefined) ?? undefined);
 }
@@ -123,13 +150,74 @@ function onAuditUserChange(value: unknown) {
       </label>
       <template v-if="props.mode === 'ar-ap-review'">
         <label class="field">
-          <span class="field__label">任务备注:</span>
+          <span class="field__label">业务类型:</span>
+          <Select
+            class="field__input"
+            :value="arApModel.bizType"
+            :options="BusinessTypeOptions"
+            placeholder="请选择业务类型"
+            allow-clear
+            @update:value="onArApBizTypeChange"
+          />
+        </label>
+        <label class="field">
+          <span class="field__label">业务编号:</span>
           <Input
             class="field__input"
-            :value="arApModel.remark"
-            placeholder="输入备注关键字"
+            :value="arApModel.keyword"
+            placeholder="输入业务编号/关键字"
             allow-clear
-            @update:value="patchArApField('remark', $event ?? '')"
+            @update:value="patchArApField('keyword', $event ?? '')"
+          />
+        </label>
+        <label class="field">
+          <span class="field__label">客户:</span>
+          <ClientSelect
+            class="field__input"
+            :model-value="arApModel.clientId"
+            :selected-items="[]"
+            placeholder="请选择客户"
+            @update:model-value="onArApClientChange"
+          />
+        </label>
+        <label class="field">
+          <span class="field__label">ETD:</span>
+          <DatePicker
+            class="field__input"
+            :value="arApModel.etdStart ?? undefined"
+            placeholder="请选择 ETD"
+            @update:value="onArApDateChange('etdStart', $event)"
+          />
+        </label>
+        <label class="field">
+          <span class="field__label">截止日期:</span>
+          <DatePicker
+            class="field__input"
+            :value="arApModel.etdEnd ?? undefined"
+            placeholder="请选择截止日期"
+            @update:value="onArApDateChange('etdEnd', $event)"
+          />
+        </label>
+        <label class="field">
+          <span class="field__label">销售:</span>
+          <UserSelect
+            class="field__input"
+            :model-value="arApModel.saleId"
+            :selected-items="[]"
+            :user-attribute="16"
+            placeholder="请选择销售"
+            @update:model-value="onArApSaleChange"
+          />
+        </label>
+        <label class="field">
+          <span class="field__label">操作:</span>
+          <UserSelect
+            class="field__input"
+            :model-value="arApModel.operatorId"
+            :selected-items="[]"
+            :user-attribute="1"
+            placeholder="请选择操作"
+            @update:model-value="onArApOperatorChange"
           />
         </label>
       </template>
@@ -204,15 +292,15 @@ function onAuditUserChange(value: unknown) {
           />
         </label>
       </template>
-    </div>
 
-    <div class="filter-actions">
-      <button class="btn btn-reset" type="button" @click="emit('reset')">
-        重置
-      </button>
-      <button class="btn btn-search" type="button" @click="emit('search')">
-        立即查询
-      </button>
+      <div class="filter-actions">
+        <button class="btn btn-reset" type="button" @click="emit('reset')">
+          重置
+        </button>
+        <button class="btn btn-search" type="button" @click="emit('search')">
+          立即查询
+        </button>
+      </div>
     </div>
   </section>
 </template>
@@ -233,8 +321,9 @@ function onAuditUserChange(value: unknown) {
 .filter-grid {
   display: grid;
   flex: 1;
-  grid-template-columns: repeat(6, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 12px;
+  align-items: center;
 }
 
 .field {
@@ -246,6 +335,7 @@ function onAuditUserChange(value: unknown) {
 
 .field__label {
   flex: none;
+  width: 64px;
   font-size: 12px;
   font-weight: 500;
   color: #181b20;
@@ -258,6 +348,7 @@ function onAuditUserChange(value: unknown) {
 
 .filter-actions {
   display: flex;
+  grid-column: -2 / -1;
   gap: 8px;
   justify-content: flex-end;
 }
@@ -330,20 +421,6 @@ function onAuditUserChange(value: unknown) {
     flex-direction: column;
     align-items: stretch;
     padding: 12px 20px;
-  }
-
-  .filter-actions {
-    justify-content: flex-start;
-  }
-
-  .filter-grid {
-    grid-template-columns: repeat(3, minmax(180px, 1fr));
-  }
-}
-
-@media (max-width: 1200px) {
-  .filter-grid {
-    grid-template-columns: repeat(2, minmax(180px, 1fr));
   }
 }
 </style>
