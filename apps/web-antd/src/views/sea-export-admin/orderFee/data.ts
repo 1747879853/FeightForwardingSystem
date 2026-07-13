@@ -679,7 +679,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.invoiceStatus'),
       field: 'invoiceStatus',
-      width: 80,
+      width: 100,
       sortable: true,
       cellRender: {
         name: 'CellTag',
