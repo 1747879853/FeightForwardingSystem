@@ -35,7 +35,12 @@ export function useExpandable(props: FormRenderProps) {
     [
       () => props.showCollapseButton,
       () => breakpoints.active().value,
-      () => props.schema?.length,
+      // 用「字段顺序 + 显隐」指纹而非仅长度：搜索项持久化会在长度不变的情况下
+      // 重排或显隐字段，只盯长度会让「折叠保留数」停留在旧布局，出现第一行留白/错位。
+      () =>
+        props.schema
+          ?.map((item) => `${item?.fieldName}:${item?.hide ? 0 : 1}`)
+          .join(','),
       () => isVisible.value,
     ],
     async ([val]) => {
