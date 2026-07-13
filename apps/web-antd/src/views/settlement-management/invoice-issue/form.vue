@@ -47,8 +47,6 @@ import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vu
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
 // ✅ 新增：导入开票申请详情API
 import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
-// ✅ 新增：导入备注模板API
-import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 
 const route = useRoute();
 const router = useRouter();
@@ -599,11 +597,6 @@ async function handleFeeSelectionSave(data: {
     // 没有商品明细，尝试自动填充
     await autoFillGoodsDetails(newApplications);
   }
-
-  // ✅ 新增：自动应用默认备注模板（仅当备注为空时）
-  if (!formData.value.remark || !formData.value.remark.trim()) {
-    await loadAndApplyDefaultRemarkTemplate();
-  }
 }
 
 /** 将选中的申请添加到表单 */
@@ -744,104 +737,7 @@ function handleUseRemarkTemplate(template: string) {
   formData.value.remark = template;
   //message.success('已应用备注模板');
 }
-/** ✅ 新增：根据模板数据替换占位符生成实际备注 */
-function replacePlaceholders(template: string, templateData: any): string {
-  if (!template) return '';
 
-  let result = template;
-
-  // 委托编号
-  if (templateData.commissionNum) {
-    result = result.replace(/\<委托编号\>/g, templateData.commissionNum);
-  }
-
-  // 主提单号
-  if (templateData.mblNum) {
-    result = result.replace(/<主提单号>/g, templateData.mblNum);
-  }
-
-  // 发票汇率
-  result = result.replace(
-    /\[折算汇率\]/g,
-    String(templateData.invoiceExchangeRate),
-  );
-
-  // 外币金额总计
-  result = result.replace(
-    /\[外币金额\(总计\)\]/g,
-    templateData.foreignCurrencyAmount,
-  );
-
-  // 人民币金额总计
-  result = result.replace(/\[人民币金额\(总计\)\]/g, templateData.rmbAmount);
-
-  // 购方银行
-  result = result.replace(/\[购方银行\]/g, templateData.clientBankName);
-
-  // 购方账号
-  result = result.replace(/\[购方账号\]/g, templateData.clientBankAccount);
-
-  // 销方银行
-  result = result.replace(/\[销方银行\]/g, templateData.orgBankName);
-
-  // 销方账号
-  result = result.replace(/\[销方账号\]/g, templateData.orgBankAccount);
-
-  return result;
-}
-
-/** ✅ 新增：获取并应用默认备注模板 */
-async function loadAndApplyDefaultRemarkTemplate() {
-  try {
-    const companyId = formData.value.companyId;
-    const currencyId = formData.value.currencyId;
-
-    if (!companyId || !currencyId) {
-      console.log('⚠️ 缺少公司ID或币别ID，无法加载默认备注模板');
-      return;
-    }
-
-    console.log(
-      '🔍 查询默认备注模板 - 公司ID:',
-      companyId,
-      '币别ID:',
-      currencyId,
-    );
-
-    const result = await InvoiceRemarkTemplateApi.getPagedListAsync({
-      pageIndex: 1,
-      pageSize: 1,
-      companyId,
-      currencyId,
-      default: true, // 只查询默认模板
-    });
-
-    if (result.items && result.items.length > 0) {
-      const defaultTemplate = result.items[0];
-      if (defaultTemplate && defaultTemplate.template) {
-        // ✅ 使用当前的 remarkTemplateData 进行占位符替换
-        const templateData = remarkTemplateData.value;
-        const replacedTemplate = replacePlaceholders(
-          defaultTemplate.template,
-          templateData,
-        );
-
-        // ✅ 只有当备注字段为空时才自动填充
-        if (!formData.value.remark || !formData.value.remark.trim()) {
-          formData.value.remark = replacedTemplate;
-          console.log('✅ 已自动应用默认备注模板（占位符已替换）');
-          message.success('已自动应用默认备注模板');
-        } else {
-          console.log('⚠️ 备注字段已有内容，跳过自动填充');
-        }
-      }
-    } else {
-      console.log('ℹ️ 未找到默认备注模板');
-    }
-  } catch (error) {
-    console.error('获取默认备注模板失败:', error);
-  }
-}
 /** 初始化申请人信息 */
 function initApplicantInfo() {
   const userInfo = userStore.userInfo;

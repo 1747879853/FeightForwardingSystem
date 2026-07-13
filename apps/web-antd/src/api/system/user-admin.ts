@@ -23,9 +23,104 @@ export enum UserAttribute {
   HR = 128,
 }
 
+// ==================== 用户管理 API (UserAdminAppService) ====================
+
 export namespace SystemUserAdminApi {
   /** 用户状态 */
   export type UserStatus = typeof UserStatus;
+
+  /** 用户属性 */
+  export type UserAttributeType = typeof UserAttribute;
+
+  /** 分页列表响应结构 */
+  export interface PagedList<T> {
+    items: T[];
+    totalCount: number;
+    currentPage: number;
+    totalPages: number;
+  }
+
+  /** 简易用户DTO（用于下拉选人、列表展示） */
+  export interface UserSimpleDto {
+    id: number;
+    nickName: string;
+    enName?: string;
+    employeeID?: string;
+    avatar?: string;
+    organization?: string;
+  }
+
+  /** 用户角色DTO */
+  export interface UserRoleDto {
+    roleId: number;
+    roleName: string;
+    roleDisplayName: string;
+  }
+
+  /** 用户资料DTO */
+  export interface UserProfileDto {
+    userId: number;
+    trueName?: string;
+    nickName?: string;
+    phoneNumber?: string;
+    gender?: number;
+    birthday?: string;
+    address?: string;
+    description?: string;
+    avatar?: string;
+    emailAddress?: string;
+    wechat?: string;
+  }
+
+  /** 公司银行账户打印DTO */
+  export interface CompanyBankAccountPrintDto {
+    currencyCode: string;
+    accountName: string;
+    bankShortName: string;
+    bankName: string;
+    bankAccount: string;
+  }
+
+  /** 用户打印信息DTO */
+  export interface UserPrintDto {
+    nickName?: string;
+    enName?: string;
+    emailAddress?: string;
+    phoneNumber?: string;
+    companyDisplayName?: string;
+    companyShortName?: string;
+    companyEnName?: string;
+    companyAddress?: string;
+    companyContactPhone?: string;
+    companyEmail?: string;
+    unifiedSocialCreditCode?: string;
+    logo?: string;
+    defaultBanks?: CompanyBankAccountPrintDto[];
+  }
+
+  /** 密码复杂度设置 */
+  export interface PasswordComplexitySetting {
+    requiredLength: number;
+    requireDigit: boolean;
+    requireLowercase: boolean;
+    requireUppercase: boolean;
+    requireNonAlphanumeric: boolean;
+  }
+
+  /** 修改密码输入DTO */
+  export interface MyPasswordInputDto {
+    password: string;
+    confirmPassword: string;
+  }
+
+  /** 用户简易分页查询参数 */
+  export interface UserSimplePagedQueryDto {
+    keyWords?: string;
+    userAttribute?: number;
+    pageIndex?: number;
+    pageSize?: number;
+    sorting?: string;
+  }
 
   /** 用户列表项DTO */
   export interface UserListDto {
@@ -228,7 +323,11 @@ export namespace SystemUserAdminApi {
 /**
  * 获取用户分页列表
  */
-async function getUserPagedList(params: Recordable<any>) {
+async function getUserPagedList(
+  params: SystemUserAdminApi.UserQueryParams,
+): Promise<
+  Pick<SystemUserAdminApi.PagingListOfUserListDto, 'items' | 'totalCount'>
+> {
   const queryParams: SystemUserAdminApi.UserQueryParams = {
     KeyWords: params.KeyWords || params.keyWords,
     IsActive: params.IsActive ?? params.isActive,
@@ -272,7 +371,10 @@ type GetUserOptions = {
 /**
  * 获取单个用户
  */
-async function getUser(id: number, options?: GetUserOptions) {
+async function getUser(
+  id: number,
+  options?: GetUserOptions,
+): Promise<SystemUserAdminApi.UserDto> {
   return requestClient.get<SystemUserAdminApi.UserDto>(
     '/services/app/UserAdmin/GetUserAsync',
     {
@@ -285,7 +387,9 @@ async function getUser(id: number, options?: GetUserOptions) {
 /**
  * 获取用户详情用于后台编辑
  */
-async function getUserForEdit(id: number) {
+async function getUserForEdit(
+  id: number,
+): Promise<SystemUserAdminApi.UserInAdminDataPermissionDto> {
   return requestClient.get<SystemUserAdminApi.UserInAdminDataPermissionDto>(
     '/services/app/UserAdmin/GetUserForEditAsync',
     { params: { Id: id } },
@@ -297,8 +401,8 @@ async function getUserForEdit(id: number) {
  */
 async function createOrUpdateUser(
   data: SystemUserAdminApi.UserInAdminInputDto,
-) {
-  return requestClient.post(
+): Promise<SystemUserAdminApi.UserDto> {
+  return requestClient.post<SystemUserAdminApi.UserDto>(
     '/services/app/UserAdmin/CreateOrUpdateUserAsync',
     data,
   );
@@ -309,8 +413,8 @@ async function createOrUpdateUser(
  */
 async function createOrUpdateUserWithDataPermission(
   data: SystemUserAdminApi.UserInAdminDataPermissionInputDto,
-) {
-  return requestClient.post(
+): Promise<SystemUserAdminApi.UserInAdminDataPermissionDto> {
+  return requestClient.post<SystemUserAdminApi.UserInAdminDataPermissionDto>(
     '/services/app/UserAdmin/CreateOrUpdateUserInAdminAsync',
     data,
   );
@@ -321,7 +425,7 @@ async function createOrUpdateUserWithDataPermission(
  * @param ids 用户ID数组
  * @param toId 可选，将数据转移到目标用户
  */
-async function deleteUser(ids: number, toId?: number) {
+async function deleteUser(ids: number, toId?: number): Promise<void> {
   return requestClient.delete('/services/app/UserAdmin/DeleteUsersAsync', {
     params: { Id: ids, ToId: toId },
   });
@@ -331,9 +435,12 @@ async function deleteUser(ids: number, toId?: number) {
  * 获取用户的角色名称列表
  */
 async function getUserRolesName(userId: number): Promise<string[]> {
-  return requestClient.get('/services/app/UserAdmin/GetRolesNameAsync', {
-    params: { Id: userId },
-  });
+  return requestClient.get<string[]>(
+    '/services/app/UserAdmin/GetRolesNameAsync',
+    {
+      params: { Id: userId },
+    },
+  );
 }
 
 /**
@@ -342,16 +449,22 @@ async function getUserRolesName(userId: number): Promise<string[]> {
 async function setUserRoles(
   data: SystemUserAdminApi.UserRolesDto,
 ): Promise<SystemUserAdminApi.IdentityResult> {
-  return requestClient.post('/services/app/UserAdmin/SetRolesAsync', data);
+  return requestClient.post<SystemUserAdminApi.IdentityResult>(
+    '/services/app/UserAdmin/SetRolesAsync',
+    data,
+  );
 }
 
 /**
  * 获取用户权限
  */
 async function getUserPermissions(userId: number): Promise<string[]> {
-  return requestClient.get('/services/app/UserAdmin/GetUserPermissionsAsync', {
-    params: { Id: userId },
-  });
+  return requestClient.get<string[]>(
+    '/services/app/UserAdmin/GetUserPermissionsAsync',
+    {
+      params: { Id: userId },
+    },
+  );
 }
 
 /**
@@ -359,7 +472,7 @@ async function getUserPermissions(userId: number): Promise<string[]> {
  */
 async function updateUserPermissions(
   data: SystemUserAdminApi.UserPermissionDto,
-) {
+): Promise<void> {
   return requestClient.put(
     '/services/app/UserAdmin/UpdateUserPermissionsAsync',
     data,
@@ -369,7 +482,7 @@ async function updateUserPermissions(
 /**
  * 重置用户所有权限
  */
-async function resetUserAllPermissions(userId: number) {
+async function resetUserAllPermissions(userId: number): Promise<void> {
   return requestClient.post(
     '/services/app/UserAdmin/ResetAllPermissionsAsync',
     { id: userId },
@@ -384,19 +497,21 @@ async function resetUserAllPermissions(userId: number) {
 async function changePassword(
   data: SystemUserAdminApi.PasswordInputDto,
   unlock = false,
-) {
+): Promise<SystemUserAdminApi.IdentityResult> {
   const url = unlock
     ? '/services/app/UserAdmin/ChangePasswordAndUnlockAsync'
     : '/services/app/UserAdmin/ChangePasswordAsync';
-  return requestClient.post(url, data);
+  return requestClient.post<SystemUserAdminApi.IdentityResult>(url, data);
 }
 
 /**
  * 导入用户
  * @param formData 包含文件的FormData
  */
-async function importUsers(formData: FormData) {
-  return requestClient.post(
+async function importUsers(
+  formData: FormData,
+): Promise<SystemUserAdminApi.IdentityResult> {
+  return requestClient.post<SystemUserAdminApi.IdentityResult>(
     '/services/app/UserAdmin/ImportUsersAsync',
     formData,
     {
@@ -411,7 +526,7 @@ async function importUsers(formData: FormData) {
 async function getUserBankAccountList(
   userId: number,
 ): Promise<SystemUserAdminApi.UserBankAccountDto[]> {
-  return requestClient.get(
+  return requestClient.get<SystemUserAdminApi.UserBankAccountDto[]>(
     '/services/app/UserAdmin/GetUserBankAccountListAsync',
     { params: { Id: userId } },
   );
@@ -423,9 +538,12 @@ async function getUserBankAccountList(
 async function getUserBankAccount(
   id: number,
 ): Promise<SystemUserAdminApi.UserBankAccountDto> {
-  return requestClient.get('/services/app/UserAdmin/GetUserBankAccountAsync', {
-    params: { Id: id },
-  });
+  return requestClient.get<SystemUserAdminApi.UserBankAccountDto>(
+    '/services/app/UserAdmin/GetUserBankAccountAsync',
+    {
+      params: { Id: id },
+    },
+  );
 }
 
 /**
@@ -434,7 +552,7 @@ async function getUserBankAccount(
 async function createUserBankAccount(
   data: SystemUserAdminApi.CreateUserBankAccountInputDto,
 ): Promise<SystemUserAdminApi.UserBankAccountDto> {
-  return requestClient.post(
+  return requestClient.post<SystemUserAdminApi.UserBankAccountDto>(
     '/services/app/UserAdmin/CreateUserBankAccountAsync',
     data,
   );
@@ -446,7 +564,7 @@ async function createUserBankAccount(
 async function updateUserBankAccount(
   data: SystemUserAdminApi.UpdateUserBankAccountInputDto,
 ): Promise<SystemUserAdminApi.UserBankAccountDto> {
-  return requestClient.put(
+  return requestClient.put<SystemUserAdminApi.UserBankAccountDto>(
     '/services/app/UserAdmin/UpdateUserBankAccountAsync',
     data,
   );
@@ -456,13 +574,83 @@ async function updateUserBankAccount(
  * 删除用户银行账户
  */
 async function deleteUserBankAccount(id: number): Promise<void> {
-  return requestClient.delete(
+  return requestClient.delete<void>(
     '/services/app/UserAdmin/DeleteUserBankAccountAsync',
     { params: { Id: id } },
   );
 }
 
+// ==================== 用户通用 API (UserAppService) 函数实现 ====================
+
+/**
+ * 获取用户简易分页列表
+ * @description 仅需登录，返回精简字段，适合下拉搜索选人。仅返回审核已通过且已激活的用户
+ * @param params 查询参数
+ */
+async function getUserSimplePagedList(
+  params: SystemUserAdminApi.UserSimplePagedQueryDto,
+): Promise<SystemUserAdminApi.PagedList<SystemUserAdminApi.UserSimpleDto>> {
+  const queryParams: Recordable<any> = {
+    keyWords: params.keyWords,
+    userAttribute: params.userAttribute,
+    pageIndex: params.pageIndex || 1,
+    pageSize: params.pageSize || 10,
+    sorting: params.sorting || 'CreationTime DESC',
+  };
+
+  // 过滤掉 undefined 值
+  const filteredParams = Object.fromEntries(
+    Object.entries(queryParams).filter(([_, v]) => v !== undefined),
+  );
+
+  return requestClient.get('/services/app/User/GetUserSimplePagedListAsync', {
+    params: filteredParams,
+  });
+}
+
+/**
+ * 获取单个用户详细信息（通用接口）
+ * @description 根据用户id获取完整用户信息，包含角色和用户资料
+ * @param id 用户ID
+ */
+async function getUserById(id: number): Promise<SystemUserAdminApi.UserDto> {
+  return requestClient.get<SystemUserAdminApi.UserDto>(
+    '/services/app/User/GetUserAsync',
+    {
+      params: { id },
+    },
+  );
+}
+
+/**
+ * 获取当前用户的打印信息
+ * @description 获取当前登录用户的打印信息，包含个人联系方式及所属公司的打印要素
+ */
+async function getUserPrint(): Promise<SystemUserAdminApi.UserPrintDto> {
+  return requestClient.get('/services/app/User/GetUserPrintAsync');
+}
+
+/**
+ * 获取密码复杂度规则设置
+ * @description 获取系统密码复杂度规则，用于注册或修改密码时的前端校验提示
+ */
+async function getPasswordComplexitySetting(): Promise<SystemUserAdminApi.PasswordComplexitySetting> {
+  return requestClient.get('/services/app/User/GetPasswordComplexitySetting');
+}
+
+/**
+ * 修改当前用户密码
+ * @description 当前登录用户修改自己的登录密码
+ * @param data 密码数据
+ */
+async function changeMyPassword(
+  data: SystemUserAdminApi.MyPasswordInputDto,
+): Promise<void> {
+  return requestClient.post('/services/app/User/ChangeMyPasswordAsync', data);
+}
+
 export {
+  changeMyPassword,
   changePassword,
   createOrUpdateUser,
   createOrUpdateUserWithDataPermission,
@@ -472,10 +660,14 @@ export {
   getUser,
   getUserBankAccount,
   getUserBankAccountList,
+  getUserById,
   getUserForEdit,
   getUserPagedList,
   getUserPermissions,
+  getUserPrint,
   getUserRolesName,
+  getUserSimplePagedList,
+  getPasswordComplexitySetting,
   importUsers,
   resetUserAllPermissions,
   setUserRoles,

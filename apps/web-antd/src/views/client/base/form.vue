@@ -1456,16 +1456,6 @@ onMounted(() => {
             :mode="'multiple'"
             :model-value="item.userIds"
             labelKey="nickName"
-            :selected-items="
-              item?.stakeholderList
-                ? item.stakeholderList.map((s) => {
-                    return {
-                      id: s.id,
-                      nickName: s.userNickName,
-                    } as SystemUserAdminApi.UserListDto;
-                  })
-                : []
-            "
             :user-attribute="item.userAttribute"
             @update:model-value="
               (v) => updateStakeholders(item.userAttribute, v as number[])
@@ -1485,17 +1475,6 @@ onMounted(() => {
             mode="multiple"
             :model-value="reconcilerUserIds"
             labelKey="nickName"
-            :selected-items="
-              reconcilerList.map((r) => ({
-                id: r.userId,
-                nickName: r.userNickName,
-                userName: '',
-                isActive: true,
-                isPhoneNumberConfirmed: false,
-                status: UserStatus.Passed as any,
-                creationTime: '',
-              })) as SystemUserAdminApi.UserListDto[]
-            "
             @update:model-value="updateReconcilers($event as number[])"
           />
         </div>
