@@ -8,7 +8,7 @@ import { $t } from '@vben/locales';
 
 import { Select } from 'ant-design-vue';
 
-import { getUser, getUserPagedList } from '#/api/system/user-admin';
+import { getUser, getUserSimplePagedList } from '#/api/system/user-admin';
 
 import { usePagedSelect } from './use-paged-select';
 import type { OptionItem } from './use-paged-select';
@@ -27,7 +27,7 @@ interface Props {
   /** placeholder */
   placeholder?: string;
   /** 已选中的用户对象数组（用于编辑时回显） */
-  selectedItems?: SystemUserAdminApi.UserListDto[];
+  selectedItems?: SystemUserAdminApi.UserSimpleDto[];
   /** value 字段名，默认 'id' */
   valueKey?: string;
 }
@@ -52,23 +52,13 @@ const modelValue = defineModel<any>();
 const selectedItemsRef = toRef(props, 'selectedItems');
 const userAttributeRef = toRef(props, 'userAttribute');
 // 将用户数据转换为 Option
-const mapUserToOption = (user: SystemUserAdminApi.UserListDto) => {
-  const nickName = user.nickName?.trim() || user.userName;
-  const userName = user.userName?.trim() || String(user.id);
-
-  let label = (user as any)[props.labelKey];
-  if (!label && props.labelKey === 'nickName') {
-    label = user.userName;
-  }
-  label = label || user.userName;
-
-  if (props.useRichOptionLabel) {
-    label = `${userName} — ${nickName}`;
-  }
-
+const mapUserToOption = (user: SystemUserAdminApi.UserSimpleDto) => {
+  const nickName = user.nickName?.trim();
+  //const userName = user.userName?.trim() || String(user.id);
+  let label = nickName;
   const option: OptionItem = {
     // 回显用的 selectedItems 可能只有 id/nickName，缺 isActive 时不应禁用
-    disabled: user.isActive === false,
+    //disabled: user.isActive === false,
     label,
     value: (user as any)[props.valueKey],
   };
@@ -78,6 +68,16 @@ const mapUserToOption = (user: SystemUserAdminApi.UserListDto) => {
   }
 
   return option;
+};
+
+// 适配器函数：将 FetchPageParams 转换为 UserSimplePagedQueryDto
+const fetchUserSimplePagedList = async (params: any) => {
+  return getUserSimplePagedList({
+    keyWords: params.KeyWords,
+    userAttribute: params.userAttribute,
+    pageIndex: params.PageIndex,
+    pageSize: params.PageSize,
+  });
 };
 
 const extraParamsRef = computed(() => ({
@@ -96,7 +96,7 @@ const {
   searchValue,
 } = usePagedSelect({
   extraParamsRef,
-  fetchPage: getUserPagedList,
+  fetchPage: fetchUserSimplePagedList,
   mapItemToOption: mapUserToOption,
   pageSize: props.pageSize,
   queryKey: ['user'],
