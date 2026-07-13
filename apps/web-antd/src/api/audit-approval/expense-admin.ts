@@ -227,6 +227,33 @@ export namespace ExpenseSubmissionAdminApi {
     SaleId?: number;
     /** 操作 用户 id */
     OperatorId?: number;
+    /** 船名模糊匹配 */
+    Vessel?: string;
+    /** 航次模糊匹配 */
+    InnerVoyno?: string;
+
+    // 空值筛选字段（仅当传入 true 时生效）
+    /** 委托单位未填写 */
+    ClientIdEmpty?: boolean;
+    /** 船名未填写 */
+    VesselEmpty?: boolean;
+    /** 装运方式未填写（SeaExport == null） */
+    BLTypeEmpty?: boolean;
+    /** 订单类型未填写（SeaExport == null） */
+    BillTypeEmpty?: boolean;
+    /** 船公司未填写 */
+    CarrierIdEmpty?: boolean;
+    /** 起运港未填写 */
+    POLIdEmpty?: boolean;
+    /** 目的港未填写 */
+    PODIdEmpty?: boolean;
+    /** 付费方式未填写 */
+    CodeFrtIdEmpty?: boolean;
+    /** 签单方式未填写 */
+    CodeIssueTypeIdEmpty?: boolean;
+    /** 场站未填写 */
+    YardIdEmpty?: boolean;
+
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;
@@ -399,6 +426,7 @@ export namespace ExpenseSubmissionAdminApi {
     /** 业务id列表*/
     transportOrderIds?: string[] | null;
   }
+
   export interface ModifyOrderFeeAuditDto {
     /** taskbase 的 id */
     id: string;
@@ -411,6 +439,66 @@ export namespace ExpenseSubmissionAdminApi {
 
     /** 费用列表 所有费用都只能是待审核状态 */
     orderFeeIds?: string[] | null;
+  }
+
+  // ==================== 分组统计相关DTO ====================
+
+  /** 分组字段枚举（SeaExportGroupField） */
+  export enum SeaExportGroupField {
+    /** 装运方式 */
+    BLType = 1,
+    /** 订单类型 */
+    BillType = 2,
+    /** 委托单位 */
+    Client = 3,
+    /** 船公司 */
+    Carrier = 4,
+    /** 起运港 */
+    POL = 5,
+    /** 目的港 */
+    POD = 6,
+    /** 船名 */
+    Vessel = 7,
+    /** 付费方式 */
+    CodeFrt = 8,
+    /** 签单方式 */
+    CodeIssueType = 9,
+    /** 场站 */
+    Yard = 10,
+  }
+
+  /** 附件项DTO */
+  export interface AttachmentItemDto {
+    /** 附件id */
+    id: number;
+    /** 附件关联id */
+    attachmentId: number;
+    /** 关联项id */
+    itemId: string;
+    /** 模块类型id */
+    moduleTypeId: string;
+    /** 附件URL */
+    url: string;
+    /** 友好文件名 */
+    friendlyFileName: string;
+  }
+
+  /** 分组统计结果DTO */
+  export interface OrderFeeTaskGroupDto {
+    /** 分组值id。枚举类为枚举数值字符串；委托单位、场站为Guid字符串；船名为船名字符串本身；船公司/港口/付费方式/签单方式为long类型id字符串；无值时为null */
+    id: string | null;
+    /** 分组名称。无值时为null */
+    name: string | null;
+    /** 该分组下的业务单总条数（TransportOrderId去重后计数） */
+    count: number;
+    /** 船公司logo（仅groupField=4时有值，其余分组为null） */
+    logo: AttachmentItemDto | null;
+  }
+
+  /** 分组统计查询参数（继承GetPagedListParams，新增groupField） */
+  export interface OrderFeeTaskGroupQueryDto extends GetPagedListParams {
+    /** 分组字段枚举值（必填） */
+    groupField: SeaExportGroupField;
   }
 }
 
@@ -559,5 +647,15 @@ export const OrderFeeTaskDeleteAudit = (
   return requestClient.post<number>(
     `${API_PREFIX}/DeleteOrderFeeAuditAsync`,
     data,
+  );
+};
+
+/** 获取费用任务分组统计列表 */
+export const getOrderFeeTaskGroupedList = (
+  params: ExpenseSubmissionAdminApi.OrderFeeTaskGroupQueryDto,
+) => {
+  return requestClient.get<ExpenseSubmissionAdminApi.OrderFeeTaskGroupDto[]>(
+    `${API_PREFIX}/OrderFeeTaskGroupedListAsync`,
+    { params },
   );
 };

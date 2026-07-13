@@ -1,10 +1,21 @@
 <script lang="ts" setup>
-import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
-import { OrderFeeTaskBatchAudit } from '#/api/audit-approval/expense-admin';
+import {
+  OrderFeeTaskBatchAudit,
+  ExpenseSubmissionAdminApi,
+} from '#/api/audit-approval/expense-admin';
+import type { GroupFieldDef } from '#/components/list-grouping';
 import { useRouter } from 'vue-router';
 import { Page } from '@vben/common-ui';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { getOrderFeeTaskList } from '#/api/audit-approval/expense-admin';
+import {
+  getOrderFeeTaskList,
+  getOrderFeeTaskGroupedList,
+} from '#/api/audit-approval/expense-admin';
+import {
+  GroupingSettings,
+  GroupingTabs,
+  useListGrouping,
+} from '#/components/list-grouping';
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 import { useExpenseAllColumns, useGridFormSchema } from '../data';
@@ -23,6 +34,111 @@ import {
 
 import Detail from './modules/detail.vue';
 const router = useRouter();
+
+// ==================== 分组统计配置 ====================
+
+/**
+ * 费用任务分组字段配置。
+ * paramKey 既是「点击分组项后追加到列表查询」的参数名，
+ * 也是与之互斥的搜索表单字段名。
+ */
+const ORDER_FEE_TASK_GROUP_FIELDS: GroupFieldDef[] = [
+  {
+    value: ExpenseSubmissionAdminApi.SeaExportGroupField.BLType,
+    label: '装运方式',
+    paramKey: 'BLType',
+    emptyParamKey: 'BLTypeEmpty',
+  },
+  {
+    value: ExpenseSubmissionAdminApi.SeaExportGroupField.BillType,
+    label: '订单类型',
+    paramKey: 'BillType',
+    emptyParamKey: 'BillTypeEmpty',
+  },
+  {
+    value: ExpenseSubmissionAdminApi.SeaExportGroupField.Client,
+    label: '委托单位',
+    paramKey: 'ClientId',
+  },
+  {
+    value: ExpenseSubmissionAdminApi.SeaExportGroupField.Carrier,
+    label: '船公司',
+    paramKey: 'CarrierId',
+    emptyParamKey: 'CarrierIdEmpty',
+  },
+  {
+    value: ExpenseSubmissionAdminApi.SeaExportGroupField.POL,
+    label: '起运港',
+    paramKey: 'POLId',
+    emptyParamKey: 'POLIdEmpty',
+  },
+  {
+    value: ExpenseSubmissionAdminApi.SeaExportGroupField.POD,
+    label: '目的港',
+    paramKey: 'PODId',
+    emptyParamKey: 'PODIdEmpty',
+  },
+  {
+    value: ExpenseSubmissionAdminApi.SeaExportGroupField.Vessel,
+    label: '船名',
+    paramKey: 'Vessel',
+    emptyParamKey: 'VesselEmpty',
+  },
+  {
+    value: ExpenseSubmissionAdminApi.SeaExportGroupField.CodeFrt,
+    label: '付费方式',
+    paramKey: 'CodeFrtId',
+    emptyParamKey: 'CodeFrtIdEmpty',
+  },
+  {
+    value: ExpenseSubmissionAdminApi.SeaExportGroupField.CodeIssueType,
+    label: '签单方式',
+    paramKey: 'CodeIssueTypeId',
+    emptyParamKey: 'CodeIssueTypeIdEmpty',
+  },
+  {
+    value: ExpenseSubmissionAdminApi.SeaExportGroupField.Yard,
+    label: '场站',
+    paramKey: 'YardId',
+    emptyParamKey: 'YardIdEmpty',
+  },
+];
+
+// 分组统计状态
+const grouping = useListGrouping({
+  fields: ORDER_FEE_TASK_GROUP_FIELDS,
+  getGridApi: () => gridApi,
+  fetchGroups: async (baseParams, field) => {
+    // 构建分组查询参数
+    const groupParams: any = {
+      ...baseParams,
+      groupField: field as ExpenseSubmissionAdminApi.SeaExportGroupField,
+    };
+
+    console.log(
+      '📊 [费用任务分组统计] 调用 getOrderFeeTaskGroupedList，参数:',
+      groupParams,
+    );
+
+    const items = await getOrderFeeTaskGroupedList(groupParams);
+    console.log('📊 [费用任务分组统计] 返回结果:', items);
+    return items ?? [];
+  },
+});
+
+// 默认按委托单位分组（在组件挂载后执行）
+onMounted(() => {
+  // 延迟执行，确保 gridApi 已初始化
+  setTimeout(() => {
+    const clientIdField = ORDER_FEE_TASK_GROUP_FIELDS.find(
+      (field) => field.paramKey === 'ClientId',
+    );
+    if (clientIdField && !grouping.enabledField.value) {
+      console.log('📊 [默认分组] 自动启用委托单位分组');
+      grouping.enableField(clientIdField.value as number);
+    }
+  }, 100);
+});
 
 const transportOrderId = ref<string>('');
 const orderName = ref<string>('');
@@ -74,7 +190,14 @@ const [Grid, gridApi] =
       },
       proxyConfig: {
         ajax: {
-          query: createPagedListQuery(getOrderFeeTaskList),
+          query: createPagedListQuery(getOrderFeeTaskList, {
+            mapParams: (formValues) => {
+              // 使用 grouping.decorateListParams 处理分组筛选条件
+              const params = grouping.decorateListParams(formValues);
+              console.log('📋 [费用任务列表查询] 查询参数:', params);
+              return params;
+            },
+          }),
         },
       },
       toolbarConfig: {
@@ -85,6 +208,15 @@ const [Grid, gridApi] =
       },
     },
   });
+
+const onGroupFieldChange = (value: number | undefined) => {
+  if (value === undefined) {
+    grouping.disable();
+  } else {
+    grouping.enableField(value);
+  }
+};
+
 const SubmittedOther = async (e: any) => {
   console.log('SubmittedOther', e);
   showConfirmWithRemark(true, e.key);
@@ -185,12 +317,17 @@ const changeTableType = (type: string) => {
 
 <template>
   <Page auto-content-height>
-    <Grid
-      class="mb-[10px] h-[430px]"
-      :table-title="$t('auditApproval.expenseReview.title')"
-    >
-      <template #toolbar-actions​>
-        <div class="flex">
+    <Grid class="mb-[10px] h-[430px]">
+      <!-- 工具栏左侧插槽始终挂载，避免开启分组时 table-title 与插槽切换导致 vxe options 重算并重置列设置 -->
+      <template #toolbar-actions>
+        <GroupingTabs
+          v-if="grouping.isGrouping.value"
+          :items="grouping.groupItems.value"
+          :selected-id="grouping.selectedItemId.value"
+          :loading="grouping.loading.value"
+          @select="grouping.selectItem"
+        />
+        <div v-else class="flex text-base font-medium">
           <span>{{ $t('auditApproval.expenseReview.title') }}</span>
         </div>
       </template>
@@ -225,6 +362,11 @@ const changeTableType = (type: string) => {
           <IconifyIcon icon="boxicons:arrow-left-right" class="size-4" />
           {{ $t('auditApproval.tableType.horizontal') }}
         </Button>
+        <GroupingSettings
+          :fields="grouping.fields"
+          :value="grouping.enabledField.value?.value"
+          @change="onGroupFieldChange"
+        />
       </template>
     </Grid>
     <Detail
