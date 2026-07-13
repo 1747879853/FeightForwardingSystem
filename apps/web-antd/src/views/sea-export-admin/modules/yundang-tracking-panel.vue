@@ -148,23 +148,7 @@ const lastUpdatedText = computed(() => {
   return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm:ss') : String(raw);
 });
 
-const oceanNodes = computed(() => {
-  const nodes = pushInfo.value?.shipment?.oceanNodes ?? [];
-  return [...nodes].sort((a, b) => {
-    const timeA = a.actualityTime?.trim();
-    const timeB = b.actualityTime?.trim();
-    if (!timeA && !timeB) {
-      return 0;
-    }
-    if (!timeA) {
-      return 1;
-    }
-    if (!timeB) {
-      return -1;
-    }
-    return dayjs(timeA).valueOf() - dayjs(timeB).valueOf();
-  });
-});
+const oceanNodes = computed(() => pushInfo.value?.shipment?.oceanNodes ?? []);
 
 const oceanNodesWithVisual = computed(() =>
   oceanNodes.value.map((node) => ({

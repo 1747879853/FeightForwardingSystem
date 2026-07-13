@@ -53,6 +53,7 @@
 - [2026-07-12 付费申请列表申请合计改为可见锚点列（可拖动/显隐/持久化）](./changelogs/change-log-2026-07-12-payment-application-applied-total-anchor.md)
 - [2026-07-12 付费申请添加费用父级全选跳过禁选行](./changelogs/change-log-2026-07-12-payment-application-add-fee-group-select-skip-disabled.md)
 - [2026-07-12 付费申请添加费用自动保存与列表申请合计列](./changelogs/change-log-2026-07-12-payment-application-fee-auto-save.md)
+- [2026-07-13 运踪里程碑取消前端排序，保持后端返回顺序](./changelogs/change-log-2026-07-13-yundang-milestone-backend-order.md)
 - [2026-07-12 运踪里程碑仅按实际时间排序并移除「未到」状态](./changelogs/change-log-2026-07-12-yundang-milestone-actuality-time.md)
 - [2026-07-12 全局表格选中行背景统一为主题色 15% 透明](./changelogs/change-log-2026-07-12-global-table-row-selected-bg-primary.md)
 - [2026-07-12 海运出口附件 Tab 卡片化布局与全局预览弹窗](./changelogs/change-log-2026-07-12-sea-export-attachments-card-preview.md)

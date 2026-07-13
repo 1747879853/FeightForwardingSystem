@@ -133,7 +133,8 @@ last_updated: 2026-07-12
 | 2026-07-12 | `Feature` | 附件 Tab 文件项将大小、上传人、上传时间合并为一行展示；预览弹窗工具栏同步展示上传人和上传时间，空值分别隐藏。 | 上传人对接 `AttachmentItemDto.creatorUserName`，时间取 `creationTime` 并经 `formatDateTime` 格式化；`AttachmentViewerModal` 新增可选的 `uploader` / `uploadTime` props，不影响其他调用方。 |
 | 2026-07-12 | `Feature` | 船名/航次宽度 3:2；运输条款与贸易条款合并为一项（1:1）；签单地点/日期表单与费用/更改单左侧面板隐藏；顶部预留 Tab（服务详情/单证信息/问题记录/修改历史）暂时隐藏。 | 新增 `ServiceTradeTermsInput`；`VesselVoyageInput` 支持 `mainRatio`/`secondRatio`；`codeServiceId` 回显补丁须保持函数式 `componentProps`。 |
 | 2026-07-12 | `Feature` | 基础信息右侧拆为上下两卡：上「干系人」、下只读「场站信息」（联系人/邮箱/手机/电话）；详情回填，不参与保存。 | `SeaExportDto` 补齐四字段；`flattenDetail` + `entrustReadonlyInfo` 承载；`right-column` 改为纵向 flex 容器。 |
-| 2026-07-12 | `Fix` | 运踪里程碑：仅按 `actualityTime` 升序排列；无实际时间且非当前节点不再显示「未到」，仅保留节点名称（可能为非适用服务点）。 | `yundang-tracking-panel.vue` 移除 `pending` 状态；无时间时不渲染状态胶囊与时间行。 |
+| 2026-07-13 | `Fix` | 运踪里程碑取消前端排序，完全按 `GetOceanPushInfoAsync` 返回的 `oceanNodes` 顺序展示。 | `yundang-tracking-panel.vue` 移除 `actualityTime` 升序 `.sort()`；状态样式逻辑不变。 |
+| 2026-07-12 | `Fix` | 运踪里程碑：仅按 `actualityTime` 升序排列；无实际时间且非当前节点不再显示「未到」，仅保留节点名称（可能为非适用服务点）。（已被 2026-07-13 取消前端排序取代） | `yundang-tracking-panel.vue` 移除 `pending` 状态；无时间时不渲染状态胶囊与时间行。 |
 | 2026-07-12 | `Feature` | 附件 Tab 改为卡片网格（一行 3 个）：标题行合并客户可见与上传；点击文件全局弹窗预览（PDF iframe / Office embed.aspx / 图片直显）；默认客户不可见；支持 webp/svg/ppt 等格式上传；「添加其他类型」并入网格末尾虚线卡片。 | 新增 `attachment-viewer-modal.vue`；`attachments/index.vue` 移除 Table 改卡片列表；`getClientVisible` 默认 `false`；`ALLOWED_TYPES` 扩展图片与 Office 后缀。 |
 | 2026-07-12 | `Fix` | 编辑态干系人：销售/商务/操作/客服/单证五个默认岗位始终显示——订单未保存某默认角色时补一张空卡（此前编辑态只按已存数据渲染，如缺「商务」会漏卡）；海外客服仍「有值才显示」不变。 | `use-order-users.ts` 的 `createOrderUserRows` 编辑分支：映射+海外客服过滤后，用 `presentRoles` 计算缺失默认角色并补空行，再按 `defaultOrderUsers` 顺序排序（非默认角色/海外客服排其后）；空卡无 `userId`，保存时被 `sanitizeOrderUsers` 过滤不写库。 |
 | 2026-07-11 | `Style` | 运踪 Tab：里程碑/集装箱时间轴改为水平展示；运踪页白底铺满。 | `yundang-tracking-panel.vue` 新增 `track-timeline--horizontal`；集装箱轨迹按时间升序左→右，最新节点标记为「进行中」。 |
