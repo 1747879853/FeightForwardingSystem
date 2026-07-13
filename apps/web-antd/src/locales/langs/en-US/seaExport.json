@@ -614,6 +614,8 @@
       "titleWithOrder": "Tracking - {0}",
       "close": "Close",
       "refresh": "Refresh",
+      "viewMap": "View tracking map",
+      "viewMapEmpty": "No reference no, cannot view tracking map",
       "loadFailed": "Failed to load tracking info",
       "lastUpdated": "Last updated at {0}",
       "neverSubscribed": "Not subscribed yet. Use Tracking Subscribe first.",

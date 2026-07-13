@@ -13,6 +13,9 @@
 
 ## 2026-07
 
+- [2026-07-13 全局表格鼠标 hover 背景色统一为选中背景色](./changelogs/change-log-2026-07-13-global-table-row-hover-bg-selected.md)
+- [2026-07-13 运踪面板新增「查看轨迹地图」入口（复用全局弹窗）](./changelogs/change-log-2026-07-13-yundang-tracking-panel-view-map-entry.md)
+- [2026-07-13 全局货物轨迹地图弹窗（iframe 内嵌 trackingeyes）](./changelogs/change-log-2026-07-13-global-tracking-map-modal.md)
 - [2026-07-13 世纪通达（sjtd）独立打包命令与品牌环境](./changelogs/change-log-2026-07-13-sjtd-brand-pack.md)
 - [2026-07-12 biz-select 大数 ID 校验与透传修复（港口/费用代码/汇率/客户账期）](./changelogs/change-log-2026-07-12-biz-select-bigint-id-validation.md)
 - [2026-07-12 海运出口列表开启/切换分组后列设置被重置（vxe columns 引用稳定化）](./changelogs/change-log-2026-07-12-sea-export-list-grouping-column-persist.md)
@@ -50,6 +53,7 @@
 - [2026-07-12 付费申请列表申请合计改为可见锚点列（可拖动/显隐/持久化）](./changelogs/change-log-2026-07-12-payment-application-applied-total-anchor.md)
 - [2026-07-12 付费申请添加费用父级全选跳过禁选行](./changelogs/change-log-2026-07-12-payment-application-add-fee-group-select-skip-disabled.md)
 - [2026-07-12 付费申请添加费用自动保存与列表申请合计列](./changelogs/change-log-2026-07-12-payment-application-fee-auto-save.md)
+- [2026-07-13 运踪里程碑取消前端排序，保持后端返回顺序](./changelogs/change-log-2026-07-13-yundang-milestone-backend-order.md)
 - [2026-07-12 运踪里程碑仅按实际时间排序并移除「未到」状态](./changelogs/change-log-2026-07-12-yundang-milestone-actuality-time.md)
 - [2026-07-12 全局表格选中行背景统一为主题色 15% 透明](./changelogs/change-log-2026-07-12-global-table-row-selected-bg-primary.md)
 - [2026-07-12 海运出口附件 Tab 卡片化布局与全局预览弹窗](./changelogs/change-log-2026-07-12-sea-export-attachments-card-preview.md)

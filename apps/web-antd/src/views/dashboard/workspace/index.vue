@@ -34,6 +34,7 @@ import {
   getSeServiceConfigDetail,
   getSeServiceConfigPagedList,
 } from '#/api/system/base-data/se-service-config-admin';
+import { isJhtBrand } from '#/utils/brand-assets';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import {
   buildServiceTypeLabelMap,
@@ -917,7 +918,7 @@ onMounted(() => {
     <div class="workbench-layout">
       <template v-if="isSeaExportTab">
         <main class="workbench-main">
-          <WorkbenchEmergencyQueue :tasks="emergencyTasks" />
+          <WorkbenchEmergencyQueue v-if="!isJhtBrand" :tasks="emergencyTasks" />
           <WorkbenchBusinessTable
             :enable-task-actions="true"
             :dynamic-columns="seaExportDynamicColumns"
@@ -937,7 +938,10 @@ onMounted(() => {
             @open-sea-export="handleOpenSeaExport"
           />
         </main>
-        <WorkbenchExceptionPanel :summary="exceptionSummary" />
+        <WorkbenchExceptionPanel
+          v-if="!isJhtBrand"
+          :summary="exceptionSummary"
+        />
       </template>
       <template v-else-if="isReviewTab">
         <main class="workbench-main workbench-main--review">

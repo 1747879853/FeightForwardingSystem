@@ -7,6 +7,7 @@ import { preferences, usePreferences } from '@vben/preferences';
 import { App, ConfigProvider, theme } from 'ant-design-vue';
 
 import { PrintFormatModal } from '#/components/print-format';
+import { TrackingMapModal } from '#/components/tracking-map';
 import { WorkflowTimelineModal } from '#/components/workflow-timeline';
 import { antdLocale } from '#/locales';
 
@@ -43,6 +44,7 @@ const tokenTheme = computed(() => {
       <RouterView />
       <PrintFormatModal />
       <WorkflowTimelineModal />
+      <TrackingMapModal />
     </App>
   </ConfigProvider>
 </template>

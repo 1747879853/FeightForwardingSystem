@@ -17,8 +17,11 @@ import {
   Tag,
   Timeline,
   TimelineItem,
+  Tooltip,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
+
+import { useTrackingMap } from '#/components/tracking-map';
 
 import { getOceanPushInfo } from '#/api/yundang/yundang-admin';
 import { $t } from '#/locales';
@@ -33,6 +36,8 @@ const props = withDefaults(
   defineProps<{
     isYundangSubscribed?: boolean | null;
     isYundangSubscribeSuccess?: boolean | null;
+    /** 订阅号（提单号 mblNo），用于查看轨迹地图；未传时从推送详情派生 */
+    mblNo?: null | string;
     /** 无订阅状态字段时（如编辑页运踪 Tab），从推送详情的订阅记录推导四态 */
     resolveStateFromSubscription?: boolean;
     seaExportId?: string;
@@ -40,10 +45,13 @@ const props = withDefaults(
   {
     isYundangSubscribed: undefined,
     isYundangSubscribeSuccess: undefined,
+    mblNo: undefined,
     resolveStateFromSubscription: false,
     seaExportId: undefined,
   },
 );
+
+const { open: openTrackingMap } = useTrackingMap();
 
 const POLL_INTERVAL_MS = 30_000;
 const POLL_MAX_TIMES = 20;
@@ -103,6 +111,32 @@ const statusLabel = computed(() => {
   );
 });
 
+/** 查看轨迹地图使用的订阅号：优先外部传入，其次从推送详情（订阅号/提单号）派生 */
+const mapReferenceNo = computed(() => {
+  const external = props.mblNo?.trim();
+  if (external) {
+    return external;
+  }
+  const subscriptionRef = pushInfo.value?.subscription?.referenceNo?.trim();
+  if (subscriptionRef) {
+    return subscriptionRef;
+  }
+  const shipment = pushInfo.value?.shipment;
+  return (
+    shipment?.blNo?.trim() ||
+    shipment?.referenceNo?.trim() ||
+    shipment?.bkgNo?.trim() ||
+    ''
+  );
+});
+
+const handleViewMap = () => {
+  if (!mapReferenceNo.value) {
+    return;
+  }
+  openTrackingMap({ mblNo: mapReferenceNo.value });
+};
+
 const lastUpdatedText = computed(() => {
   const shipmentTime = pushInfo.value?.shipment?.lastPushTime;
   const subscriptionTime = pushInfo.value?.subscription?.lastPushTime;
@@ -114,23 +148,7 @@ const lastUpdatedText = computed(() => {
   return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm:ss') : String(raw);
 });
 
-const oceanNodes = computed(() => {
-  const nodes = pushInfo.value?.shipment?.oceanNodes ?? [];
-  return [...nodes].sort((a, b) => {
-    const timeA = a.actualityTime?.trim();
-    const timeB = b.actualityTime?.trim();
-    if (!timeA && !timeB) {
-      return 0;
-    }
-    if (!timeA) {
-      return 1;
-    }
-    if (!timeB) {
-      return -1;
-    }
-    return dayjs(timeA).valueOf() - dayjs(timeB).valueOf();
-  });
-});
+const oceanNodes = computed(() => pushInfo.value?.shipment?.oceanNodes ?? []);
 
 const oceanNodesWithVisual = computed(() =>
   oceanNodes.value.map((node) => ({
@@ -368,14 +386,33 @@ const handleRefresh = async () => {
           {{ $t('seaExport.yundang.tracking.lastUpdated', [lastUpdatedText]) }}
         </span>
       </div>
-      <Button
-        size="small"
-        :loading="refreshing"
-        :disabled="loading"
-        @click="handleRefresh"
-      >
-        {{ $t('seaExport.yundang.tracking.refresh') }}
-      </Button>
+      <div class="flex items-center gap-2">
+        <Tooltip
+          v-if="!mapReferenceNo"
+          :title="$t('seaExport.yundang.tracking.viewMapEmpty')"
+        >
+          <Button size="small" type="primary" ghost disabled>
+            <template #icon>
+              <IconifyIcon icon="ph:map-trifold" class="mr-1 inline-block" />
+            </template>
+            {{ $t('seaExport.yundang.tracking.viewMap') }}
+          </Button>
+        </Tooltip>
+        <Button v-else size="small" type="primary" ghost @click="handleViewMap">
+          <template #icon>
+            <IconifyIcon icon="ph:map-trifold" class="mr-1 inline-block" />
+          </template>
+          {{ $t('seaExport.yundang.tracking.viewMap') }}
+        </Button>
+        <Button
+          size="small"
+          :loading="refreshing"
+          :disabled="loading"
+          @click="handleRefresh"
+        >
+          {{ $t('seaExport.yundang.tracking.refresh') }}
+        </Button>
+      </div>
     </div>
 
     <Spin :spinning="loading">

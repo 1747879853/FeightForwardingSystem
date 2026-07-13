@@ -83,3 +83,8 @@
   > td.ant-table-cell-row-hover {
   background: hsl(var(--primary) / 15%) !important;
 }
+
+/** 全局表格鼠标 hover 背景色统一为选中背景色 */
+.ant-app .ant-table-tbody > tr > td.ant-table-cell-row-hover {
+  background: hsl(var(--primary) / 15%) !important;
+}
