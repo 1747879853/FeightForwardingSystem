@@ -751,6 +751,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: '录入时间',
       width: 160,
       align: 'left',
+      sortable: true,
       formatter: ({ row }) => {
         if (!row.creationTime) return '-';
 

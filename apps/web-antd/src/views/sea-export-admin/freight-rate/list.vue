@@ -242,11 +242,15 @@ function onActionClick(e: OnActionClickParams<SeFreiPriceOutDto>) {
   }
 }
 
-const mapFreightRateParams = (formValues: Record<string, any>) => {
+const mapFreightRateParams = (
+  formValues: Record<string, any>,
+  sortParams?: Record<string, any>,
+) => {
   const queryParams: Record<string, any> = {
     laneId: selectedLineId.value,
   };
 
+  // 处理表单查询参数
   Object.keys(formValues).forEach((key) => {
     // 特殊处理：录入时间范围需要拆分为开始和结束时间
     if (key === 'creationTimeRange') {
@@ -269,6 +273,17 @@ const mapFreightRateParams = (formValues: Record<string, any>) => {
     }
   });
 
+  // 处理排序参数
+  if (sortParams && Object.keys(sortParams).length > 0) {
+    // 将排序参数转换为后端需要的格式，例如 "Id DESC"
+    const sortField = sortParams.field;
+    const sortOrder = sortParams.order; // asc | desc
+
+    if (sortField && sortOrder) {
+      queryParams.sorting = `${sortField} ${sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
+    }
+  }
+
   return queryParams;
 };
 
@@ -288,27 +303,31 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     height: 'auto',
     keepSource: true,
     showOverflow: false, // 覆盖全局配置，允许内容完整显示
+    sortConfig: {
+      remote: true, // 启用远程排序
+      defaultSort: { field: 'creationTime', order: 'desc' }, // 默认按创建时间降序排序
+    },
     pagerConfig: {
       enabled: true,
     },
     proxyConfig: {
+      sort: true, // 启用代理排序
       ajax: {
         query: createPagedListQuery(getSeFreiPriceList, {
-          defaultSort: 'Id DESC',
+          defaultSort: 'CreationTime DESC',
           mapParams: mapFreightRateParams,
-          afterFetch: (result) => {
+          fieldMap: {
+            creationTime: 'CreationTime',
+          },
+          afterFetch: (result: any) => {
             const items = result.items || [];
             tableData.value = items;
-            return {
-              items,
-              totalCount: result.totalCount || 0,
-              pageIndex: result.currentPage || 1,
-              pageSize: result.totalPages || 10,
-            };
+            return result;
           },
         }),
       },
     },
+
     rowConfig: {
       keyField: 'id',
       isHover: true,
