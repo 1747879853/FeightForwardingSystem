@@ -282,39 +282,23 @@ function translateCarriageType(type?: string) {
   }
 }
 
-/** 箱轨迹数据来源：1=船东，2=码头，4=云当计算 */
-function translateSource(sourceCd?: string) {
-  switch (sourceCd) {
-    case '1': {
-      return $t('seaExport.yundang.tracking.container.sourceCarrier');
-    }
-    case '2': {
-      return $t('seaExport.yundang.tracking.container.sourceTerminal');
-    }
-    case '4': {
-      return $t('seaExport.yundang.tracking.container.sourceYundang');
-    }
-    default: {
-      return sourceCd || '';
-    }
-  }
-}
-
 /** 集装箱异常标识：1=甩柜，2=异常 */
 function resolveRolledTag(isRolled?: string) {
   if (isRolled === '1') {
     return {
+      show: true,
       color: 'error',
       label: $t('seaExport.yundang.tracking.container.rolled'),
     };
   }
   if (isRolled === '2') {
     return {
+      show: true,
       color: 'warning',
       label: $t('seaExport.yundang.tracking.container.abnormal'),
     };
   }
-  return null;
+  return { show: false, color: 'default', label: '' };
 }
 
 function formatMaybeDateTime(value?: string) {
@@ -711,10 +695,6 @@ const handleRefresh = async () => {
                   >
                     {{ formatMaybeDateTime(resolveNodeTime(node)) }}
                   </div>
-                  <div v-if="node.total" class="track-timeline-card__meta">
-                    {{ $t('seaExport.yundang.tracking.node.progress') }}
-                    {{ node.count ?? 0 }}/{{ node.total }}
-                  </div>
                 </div>
               </TimelineItem>
             </Timeline>
@@ -780,9 +760,12 @@ const handleRefresh = async () => {
                 :key="container.id"
                 :tab="container.ctnrNo || container.id"
               >
-                <div v-if="resolveRolledTag(container.isRolled)" class="mb-2">
-                  <Tag :color="resolveRolledTag(container.isRolled)!.color">
-                    {{ resolveRolledTag(container.isRolled)!.label }}
+                <div
+                  v-if="resolveRolledTag(container.isRolled).show"
+                  class="mb-2"
+                >
+                  <Tag :color="resolveRolledTag(container.isRolled).color">
+                    {{ resolveRolledTag(container.isRolled).label }}
                   </Tag>
                 </div>
                 <Descriptions bordered size="small" :column="2" class="mb-3">
@@ -931,14 +914,6 @@ const handleRefresh = async () => {
                       <div class="track-timeline-card__time">
                         {{ status.eventTime || '--' }}
                       </div>
-                      <div
-                        v-if="translateSource(status.sourceCd)"
-                        class="track-timeline-card__meta"
-                      >
-                        {{
-                          $t('seaExport.yundang.tracking.container.source')
-                        }}：{{ translateSource(status.sourceCd) }}
-                      </div>
                     </div>
                   </TimelineItem>
                 </Timeline>
@@ -1079,13 +1054,6 @@ const handleRefresh = async () => {
   font-variant-numeric: tabular-nums;
   line-height: 1.5;
   color: rgb(60 60 67 / 45%);
-}
-
-.track-timeline-card__meta {
-  margin-top: 1px;
-  font-size: 11px;
-  line-height: 1.5;
-  color: rgb(60 60 67 / 40%);
 }
 
 /* 航段 / 费用表格：细边框、留白、数字等宽 */

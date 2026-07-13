@@ -963,10 +963,6 @@
         "typeBarge": "驳船",
         "typeTruck": "陆运"
       },
-      "node": {
-        "progress": "进度",
-        "ais": "AIS"
-      },
       "container": {
         "sizeType": "箱型",
         "sealNo": "封号",
@@ -981,11 +977,7 @@
         "chargeTitle": "费用/免箱期",
         "chargeType": "费用类型",
         "lfd": "最后免费日",
-        "freeDayDesc": "免费天数",
-        "source": "来源",
-        "sourceCarrier": "船东",
-        "sourceTerminal": "码头",
-        "sourceYundang": "云当"
+        "freeDayDesc": "免费天数"
       }
     },
     "status": {

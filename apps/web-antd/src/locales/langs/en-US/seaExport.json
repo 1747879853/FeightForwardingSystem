@@ -671,10 +671,6 @@
         "typeBarge": "Barge",
         "typeTruck": "Truck"
       },
-      "node": {
-        "progress": "Progress",
-        "ais": "AIS"
-      },
       "container": {
         "sizeType": "Size/Type",
         "sealNo": "Seal No.",
@@ -689,11 +685,7 @@
         "chargeTitle": "Charges / Free Time",
         "chargeType": "Charge Type",
         "lfd": "Last Free Day",
-        "freeDayDesc": "Free Days",
-        "source": "Source",
-        "sourceCarrier": "Carrier",
-        "sourceTerminal": "Terminal",
-        "sourceYundang": "Yundang"
+        "freeDayDesc": "Free Days"
       }
     },
     "status": {
