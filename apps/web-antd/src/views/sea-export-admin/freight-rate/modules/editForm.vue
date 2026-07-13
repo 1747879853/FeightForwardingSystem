@@ -1905,7 +1905,7 @@ onMounted(() => {
                 <td class="border border-gray-300 px-2 py-2">
                   <Select
                     v-model:value="surcharge.feeCodeId"
-                    class="w-full"
+                    class="fee-name-select w-full"
                     show-search
                     :filter-option="
                       (input: string, option: any) => {
@@ -1923,11 +1923,13 @@ onMounted(() => {
                     "
                     placeholder="请选择费用名称"
                     allow-clear
+                    :dropdown-match-select-width="false"
                   >
                     <Select.Option
                       v-for="fee in feeCodeList"
                       :key="fee.value"
                       :value="fee.value"
+                      :title="fee.code ? fee.code + '-' + fee.label : fee.label"
                     >
                       {{ fee.code ? fee.code + '-' + fee.label : fee.label }}
                     </Select.Option>
@@ -1938,7 +1940,7 @@ onMounted(() => {
                 <td class="border border-gray-300 px-2 py-2">
                   <Select
                     v-model:value="surcharge.currencyId"
-                    class="w-full"
+                    class="currency-select-fixed w-full"
                     show-search
                     :filter-option="
                       (input: string, option: any) => {
@@ -1959,6 +1961,7 @@ onMounted(() => {
                       v-for="currency in currencyList"
                       :key="currency.value"
                       :value="currency.value"
+                      :title="currency.label"
                     >
                       {{ currency.label }}
                     </Select.Option>
@@ -2523,6 +2526,36 @@ input[type='text']:focus {
 .currency-select :deep(.ant-select-focused .ant-select-selector) {
   border-color: #f59e0b !important;
   box-shadow: 0 0 0 2px rgb(245 158 11 / 20%) !important;
+}
+
+/* 费用名称选择框固定宽度样式 */
+.fee-name-select {
+  min-width: 200px;
+}
+
+.fee-name-select :deep(.ant-select-selector) {
+  min-width: 200px;
+}
+
+.fee-name-select :deep(.ant-select-selection-item) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 币别选择框固定宽度样式 */
+.currency-select-fixed {
+  min-width: 120px;
+}
+
+.currency-select-fixed :deep(.ant-select-selector) {
+  min-width: 120px;
+}
+
+.currency-select-fixed :deep(.ant-select-selection-item) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 必填标签样式 */
