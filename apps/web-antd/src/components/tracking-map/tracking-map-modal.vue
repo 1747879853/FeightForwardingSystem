@@ -1,25 +1,54 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 
-import { Empty, Modal } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 
+import { Button, Empty, message, Modal, Tooltip } from 'ant-design-vue';
+
+import { buildTrackingMapSrc } from './build-tracking-map-src';
 import { useTrackingMap } from './use-tracking-map';
 
 const { visible, referenceNo, close } = useTrackingMap();
+const router = useRouter();
 
-// 内嵌地址与企业编号仅来自 env，不在页面/代码中直接暴露原始 URL 与企业编号
-const baseUrl = (import.meta.env.VITE_GLOB_TRACKING_MAP_URL as string) || '';
-const companyId =
-  (import.meta.env.VITE_GLOB_TRACKING_COMPANY_ID as string) || '';
+const iframeSrc = computed(() => buildTrackingMapSrc(referenceNo.value));
 
-const iframeSrc = computed(() => {
-  if (!baseUrl || !companyId || !referenceNo.value) return '';
-  const [path, query = ''] = baseUrl.split('?');
-  const params = new URLSearchParams(query);
-  params.set('companyid', companyId);
-  params.set('referenceno', referenceNo.value);
-  return `${path}?${params.toString()}`;
+/** 可分享的独立静态页绝对链接（免登录），自动兼容 hash / history 路由模式 */
+const shareUrl = computed(() => {
+  if (!referenceNo.value) return '';
+  const { href } = router.resolve({
+    name: 'TrackingMapPage',
+    params: { mblNo: referenceNo.value },
+  });
+  return `${window.location.origin}${href}`;
 });
+
+async function copyShareLink() {
+  if (!shareUrl.value) return;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(shareUrl.value);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = shareUrl.value;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.append(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      textarea.remove();
+    }
+    message.success('分享链接已复制');
+  } catch {
+    message.error('复制失败，请手动复制');
+  }
+}
+
+function openInNewTab() {
+  if (!shareUrl.value) return;
+  window.open(shareUrl.value, '_blank', 'noopener');
+}
 </script>
 
 <template>
@@ -35,16 +64,47 @@ const iframeSrc = computed(() => {
     @cancel="close"
   >
     <div class="tracking-map">
-      <iframe
-        v-if="iframeSrc"
-        :src="iframeSrc"
-        class="tracking-map__frame"
-        frameborder="0"
-        allow="geolocation"
-        referrerpolicy="no-referrer"
-      ></iframe>
-      <div v-else class="tracking-map__empty">
-        <Empty description="暂无可查询的订阅号" />
+      <div v-if="iframeSrc" class="tracking-map__toolbar">
+        <span class="tracking-map__ref">
+          订阅号：<strong>{{ referenceNo }}</strong>
+        </span>
+        <div class="tracking-map__actions">
+          <Tooltip title="在新窗口打开可分享的轨迹页">
+            <Button size="small" @click="openInNewTab">
+              <template #icon>
+                <IconifyIcon
+                  icon="ph:arrow-square-out"
+                  class="mr-1 inline-block"
+                />
+              </template>
+              新窗口打开
+            </Button>
+          </Tooltip>
+          <Tooltip title="复制免登录分享链接，可发送给外部客户">
+            <Button type="primary" size="small" @click="copyShareLink">
+              <template #icon>
+                <IconifyIcon
+                  icon="ph:share-network"
+                  class="mr-1 inline-block"
+                />
+              </template>
+              复制分享链接
+            </Button>
+          </Tooltip>
+        </div>
+      </div>
+      <div class="tracking-map__content">
+        <iframe
+          v-if="iframeSrc"
+          :src="iframeSrc"
+          class="tracking-map__frame"
+          frameborder="0"
+          allow="geolocation"
+          referrerpolicy="no-referrer"
+        ></iframe>
+        <div v-else class="tracking-map__empty">
+          <Empty description="暂无可查询的订阅号" />
+        </div>
       </div>
     </div>
   </Modal>
@@ -52,8 +112,36 @@ const iframeSrc = computed(() => {
 
 <style scoped>
 .tracking-map {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 80vh;
+}
+
+.tracking-map__toolbar {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgb(60 60 67 / 10%);
+}
+
+.tracking-map__ref {
+  font-size: 13px;
+  color: rgb(60 60 67 / 60%);
+}
+
+.tracking-map__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tracking-map__content {
+  flex: 1;
+  min-height: 0;
 }
 
 .tracking-map__frame {

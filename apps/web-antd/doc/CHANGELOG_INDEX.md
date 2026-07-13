@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-13 货物轨迹独立静态页（免登录 + 品牌 logo + iframe 内嵌）](./changelogs/change-log-2026-07-13-tracking-map-standalone-page.md)
 - [2026-07-13 全局表格鼠标 hover 背景色统一为选中背景色](./changelogs/change-log-2026-07-13-global-table-row-hover-bg-selected.md)
 - [2026-07-13 运踪面板新增「查看轨迹地图」入口（复用全局弹窗）](./changelogs/change-log-2026-07-13-yundang-tracking-panel-view-map-entry.md)
 - [2026-07-13 全局货物轨迹地图弹窗（iframe 内嵌 trackingeyes）](./changelogs/change-log-2026-07-13-global-tracking-map-modal.md)
