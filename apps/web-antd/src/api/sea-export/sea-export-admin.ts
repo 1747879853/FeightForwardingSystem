@@ -1,7 +1,8 @@
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 import type { UserAttribute } from '#/api/system/user-admin';
-import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
+import type { YundangAdminApi } from '#/api/yundang/yundang-admin';
 
 import { requestClient } from '#/api/request';
 
@@ -22,6 +23,17 @@ export namespace SeaExportAdminApi {
     polId?: number | string;
     /** 委托单位 id（用于排除客户排除的服务项） */
     clientId?: number | string;
+  }
+
+  /**
+   * 服务项目入参（新增/编辑）。
+   * sortId 为优先级（数值越小优先级越高，相同值代表同优先级并行任务），由前端传入。
+   */
+  export interface SeaExportServiceItemDto {
+    /** 服务项类型（ServiceType 枚举） */
+    serviceType: number;
+    /** 排序 id / 优先级 */
+    sortId: number;
   }
 
   /** 业务箱型新增输入 */
@@ -153,6 +165,42 @@ export namespace SeaExportAdminApi {
     totalCtn?: string;
     teu?: number;
     codePackageName?: string;
+    /** 危品等级 */
+    dgLevel?: string;
+    /** 危品编号 */
+    dgNo?: string;
+    /** 危品页号 */
+    dgPageNo?: string;
+    /** 危品标签 */
+    dgLabel?: string;
+    /** 危品包装类别 */
+    dgPackingCategory?: string;
+    /** 危品联系人 */
+    dgContact?: string;
+    /** 危品电话 */
+    dgTel?: string;
+    /** 净重 */
+    dgNetWeight?: string;
+    /** 闪点 */
+    dgFlashPoint?: string;
+    /** 装箱编号 */
+    dgPackingNo?: string;
+    /** 是否海污 */
+    dgMarinePollution?: boolean;
+    /** 温度 */
+    reeferTemperature?: string;
+    /** 通风 */
+    reeferVentilation?: string;
+    /** 湿度 */
+    reeferHumidity?: string;
+    /** 最低温度 */
+    reeferMinTemperature?: string;
+    /** 最高温度 */
+    reeferMaxTemperature?: string;
+    /** 温度单位（0=℃、1=℉） */
+    reeferTemperatureUnit?: number;
+    /** 通风口是否打开 */
+    reeferVentOpen?: boolean;
   }
 
   export interface TransportOrderEditDto extends TransportOrderAddDto {
@@ -213,6 +261,14 @@ export namespace SeaExportAdminApi {
     bookingAgentId?: number;
     shipAgentId?: number;
     yardId?: number;
+    /** 场站联系人 */
+    yardContact?: string;
+    /** 场站邮箱 */
+    yardEmail?: string;
+    /** 场站手机 */
+    yardMobile?: string;
+    /** 场站电话 */
+    yardTel?: string;
     /** 签单方式id（新版字段） */
     codeIssueTypeId?: number;
     /** 签单方式id（旧字段，兼容） */
@@ -242,7 +298,7 @@ export namespace SeaExportAdminApi {
     deliverPortRemark?: string;
     sortId?: number;
     remark?: string;
-    serviceTypes?: number[];
+    serviceTypes?: SeaExportServiceItemDto[];
     organizationUnits?: OrganizationUnitSimpleDto[];
     transportOrder?: TransportOrderAddDto;
   }
@@ -258,6 +314,14 @@ export namespace SeaExportAdminApi {
     bookingAgentId?: number;
     shipAgentId?: number;
     yardId?: number;
+    /** 场站联系人 */
+    yardContact?: string;
+    /** 场站邮箱 */
+    yardEmail?: string;
+    /** 场站手机 */
+    yardMobile?: string;
+    /** 场站电话 */
+    yardTel?: string;
     /** 签单方式id（新版字段） */
     codeIssueTypeId?: number;
     /** 签单方式id（旧字段，兼容） */
@@ -287,7 +351,7 @@ export namespace SeaExportAdminApi {
     deliverPortRemark?: string;
     sortId?: number;
     remark?: string;
-    serviceTypes?: number[];
+    serviceTypes?: SeaExportServiceItemDto[];
     organizationUnits?: OrganizationUnitSimpleDto[];
     transportOrder?: TransportOrderEditDto;
   }
@@ -313,6 +377,14 @@ export namespace SeaExportAdminApi {
     yardId?: number;
     yard?: ClientAdminApi.ClientDto;
     yardName?: string;
+    /** 场站联系人 */
+    yardContact?: string;
+    /** 场站邮箱 */
+    yardEmail?: string;
+    /** 场站手机 */
+    yardMobile?: string;
+    /** 场站电话 */
+    yardTel?: string;
     /** 签单方式id（新版字段） */
     codeIssueTypeId?: number;
     /** 签单方式名称（新版字段） */
@@ -382,6 +454,14 @@ export namespace SeaExportAdminApi {
     payFeeStatus?: number | null;
     /** 应收费用组合状态（含更改单、结算等；该方向无费用时为 null） */
     receiveFeeStatus?: number | null;
+    /** 是否已发起过海运运单运踪订阅（存在订阅记录即为 true） */
+    isYundangSubscribed?: boolean;
+    /** 当前订阅记录是否订阅成功（对应订阅表 isSuccess） */
+    isYundangSubscribeSuccess?: boolean;
+    /** 运单最新运踪状态（列表展示，有推送时由后端填充） */
+    yundangTrackStatus?: string;
+    /** 运单当前海运节点（列表展示运踪状态文案取 stateDescCN） */
+    yundangShipmentOceanNode?: null | YundangAdminApi.YundangShipmentOceanNodeInfoDto;
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -420,6 +500,8 @@ export namespace SeaExportAdminApi {
     CodeFrt = 8,
     /** 签单方式 */
     CodeIssueType = 9,
+    /** 场站 */
+    Yard = 10,
   }
 
   /** 分组统计单项 */
@@ -430,6 +512,8 @@ export namespace SeaExportAdminApi {
     name: null | string;
     /** 该分组数据总条数 */
     count: number;
+    /** 分组项 logo 附件（仅船公司分组返回，用于展示船司 logo） */
+    logo?: AttachmentItemDto | null;
   }
 
   export interface GetPagedListParams {
@@ -443,6 +527,10 @@ export namespace SeaExportAdminApi {
     InnerVoyno?: string;
     CarrierId?: number;
     BookingAgentId?: string | number;
+    /** 场站 id（往来单位，精确匹配） */
+    YardId?: string | number;
+    /** 仅返回场站未填写记录（与 YardId 互斥） */
+    YardIdEmpty?: boolean;
     SaleId?: number;
     OperationId?: number;
     BusinessId?: number;
@@ -454,6 +542,10 @@ export namespace SeaExportAdminApi {
     CtnNo?: string;
     CloseDocTimeStart?: string;
     CloseDocTimeEnd?: string;
+    /** 会计期间起（>=），一般为当月 1 号 */
+    AccountDateStart?: string;
+    /** 会计期间止（<=） */
+    AccountDateEnd?: string;
     Remark?: string;
     CargoId?: number;
     GoodsDes?: string;
@@ -491,6 +583,74 @@ export namespace SeaExportAdminApi {
   export interface GetGroupedListParams extends GetPagedListParams {
     /** 分组字段，1装运方式~9签单方式 */
     GroupField: SeaExportGroupField;
+  }
+
+  /** 海运出口复制入参 */
+  export interface SeaExportCopyDto {
+    /** 源海运出口 id（与 DeleteAsync 一致） */
+    id: string;
+    /** 是否复制费用（仅 ChangeOrderId 为空的费用） */
+    copyOrderFees: boolean;
+  }
+
+  export interface AttachmentDtlTypeSimpleDto {
+    id: number;
+    name?: string | null;
+    sortId?: number;
+  }
+
+  export interface AttachmentItemForItemInputDto {
+    attachmentId: number;
+    attachmentDtlTypeId?: number | null;
+    clientVisible?: boolean;
+    displayOrder?: number;
+    itemId?: string | null;
+    url?: string | null;
+    id?: number | null;
+  }
+
+  export interface AttachmentItemDto extends AttachmentItemForItemInputDto {
+    moduleTypeId?: string | null;
+    attachmentDtlType?: AttachmentDtlTypeSimpleDto | null;
+    isFirstShow?: boolean;
+    mediaType?: number;
+    friendlyFileName?: string | null;
+    fileLength?: number | null;
+    creationTime?: string | null;
+    creatorUserId?: number | null;
+    creatorUserName?: string | null;
+  }
+
+  export interface AttachmentGroupDto {
+    attachmentDtlTypeId?: number | null;
+    attachmentDtlType?: AttachmentDtlTypeSimpleDto | null;
+    items?: AttachmentItemDto[] | null;
+  }
+
+  export interface SeaExportAttachmentsAddDto {
+    id: string;
+    attachments?: AttachmentItemForItemInputDto[] | null;
+  }
+
+  export interface SeaExportAttachmentsDeleteDto {
+    id: string;
+    attachmentIds?: number[] | null;
+  }
+
+  /** GET GetDates 请求参数 */
+  export interface GetSeaExportDatesParams {
+    vessel: string;
+    innerVoyno: string;
+    etd: string;
+  }
+
+  /** GET GetDates 响应；无历史数据时为 null */
+  export interface SeaExportDatesDto {
+    atd?: string | null;
+    eta?: string | null;
+    closeVgmTime?: string | null;
+    closeDocTime?: string | null;
+    closeManifestTime?: string | null;
   }
 }
 
@@ -542,4 +702,42 @@ export const deleteSeaExport = (id: number) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data: { id },
   });
+};
+
+export const copySeaExport = (data: SeaExportAdminApi.SeaExportCopyDto) => {
+  return requestClient.post<string>(`${API_PREFIX}/CopyAsync`, data);
+};
+
+/** 获取海运出口附件（按附件详细类型分组） */
+export const getSeaExportAttachments = (id: string) => {
+  return requestClient.get<SeaExportAdminApi.AttachmentGroupDto[]>(
+    `${API_PREFIX}/GetAttachmentsAsync`,
+    { params: { Id: id } },
+  );
+};
+
+/** 给海运出口添加附件 */
+export const addSeaExportAttachments = (
+  data: SeaExportAdminApi.SeaExportAttachmentsAddDto,
+) => {
+  return requestClient.post<boolean>(`${API_PREFIX}/AddAttachmentsAsync`, data);
+};
+
+/** 删除海运出口附件关联 */
+export const deleteSeaExportAttachments = (
+  data: SeaExportAdminApi.SeaExportAttachmentsDeleteDto,
+) => {
+  return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAttachmentsAsync`, {
+    data,
+  });
+};
+
+/** 根据船名、航次、开船日期查询历史票证日期组合 */
+export const getSeaExportDates = (
+  params: SeaExportAdminApi.GetSeaExportDatesParams,
+) => {
+  return requestClient.get<SeaExportAdminApi.SeaExportDatesDto | null>(
+    `${API_PREFIX}/GetDatesAsync`,
+    { params },
+  );
 };

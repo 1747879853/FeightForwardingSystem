@@ -16,6 +16,7 @@ import { get, isFunction, isString } from '@vben/utils';
 
 import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
 import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
+import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { useTableConfigStore } from '#/store/table-config';
 import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
@@ -52,6 +53,10 @@ import { ref } from 'vue';
 // 🔥 全局订单详情缓存（避免重复调用API）
 const orderDetailCache = new Map<string, any>();
 const orderDetailLoading = new Map<string, Promise<any>>();
+
+// 🔥 全局集装箱详情缓存（避免重复调用API）
+const ctnCodeCache = new Map<number, any>();
+const ctnCodeLoading = new Map<number, Promise<any>>();
 
 /**
  * 统一的订单详情加载函数（带缓存和防并发）
@@ -92,6 +97,48 @@ async function loadOrderDetailCached(transportOrderId: string) {
     });
 
   orderDetailLoading.set(transportOrderId, loadingPromise);
+  return await loadingPromise;
+}
+
+/**
+ * 统一的集装箱详情加载函数（带缓存和防并发）
+ */
+async function loadCtnCodeCached(ctnCodeId: number) {
+  if (!ctnCodeId) {
+    console.warn('⚠️ [loadCtnCodeCached] 缺少集装箱ID');
+    return null;
+  }
+
+  // 如果缓存中已有，直接返回
+  if (ctnCodeCache.has(ctnCodeId)) {
+    console.log('✅ [loadCtnCodeCached] 使用缓存数据:', ctnCodeId);
+    return ctnCodeCache.get(ctnCodeId);
+  }
+
+  // 如果正在加载中，等待完成
+  if (ctnCodeLoading.has(ctnCodeId)) {
+    console.log('⏳ [loadCtnCodeCached] 等待加载完成:', ctnCodeId);
+    return await ctnCodeLoading.get(ctnCodeId);
+  }
+
+  // 开始加载
+  console.log('🔄 [loadCtnCodeCached] 开始加载:', ctnCodeId);
+  const loadingPromise = getCtnCodeDetail(ctnCodeId)
+    .then((detail) => {
+      if (detail) {
+        ctnCodeCache.set(ctnCodeId, detail);
+        console.log('✅ [loadCtnCodeCached] 加载成功并已缓存:', ctnCodeId);
+      }
+      ctnCodeLoading.delete(ctnCodeId);
+      return detail;
+    })
+    .catch((error) => {
+      console.error('❌ [loadCtnCodeCached] 加载失败:', ctnCodeId, error);
+      ctnCodeLoading.delete(ctnCodeId);
+      throw error;
+    });
+
+  ctnCodeLoading.set(ctnCodeId, loadingPromise);
   return await loadingPromise;
 }
 
@@ -522,15 +569,7 @@ setupVbenVxeTable({
                 }
                 // 如果是重量、尺码、件数、TEU，从订单详情中获取
                 else if (
-                  [
-                    '毛重',
-                    'KGS',
-                    '尺码',
-                    'CBM',
-                    '件数',
-                    'PKGS',
-                    'TEU',
-                  ].includes(defaultUnitName)
+                  ['毛重', '尺码', '件数', 'TEU'].includes(defaultUnitName)
                 ) {
                   await fillOrderQuantity(row, defaultUnitName);
                 }
@@ -575,7 +614,8 @@ setupVbenVxeTable({
 
             const ctns = orderDetail.transportOrder.orderCtns;
             if (ctns.length === 0) {
-              row['quantity'] = 0;
+              row['unit'] = '票';
+              row['quantity'] = 1;
               return;
             }
 
@@ -610,24 +650,70 @@ setupVbenVxeTable({
             }
 
             const transportOrder = orderDetail.transportOrder;
+            console.log('transportOrder:', transportOrder);
 
             // 根据单位类型填充数量
             switch (unitName.toLowerCase()) {
-              case '重量':
-              case 'weight':
+              case '毛重':
                 row['quantity'] = transportOrder.kgs || 0;
                 break;
               case '尺码':
-              case 'measurement':
                 row['quantity'] = transportOrder.cbm || 0;
                 break;
               case '件数':
-              case 'packages':
                 row['quantity'] = transportOrder.pkgs || 0;
                 break;
-              case 'teu':
-                row['quantity'] = transportOrder.teu || 0;
+              case 'teu': {
+                // TEU需要根据订单中的箱型信息计算
+                const orderCtns = transportOrder.orderCtns;
+                if (!orderCtns || orderCtns.length === 0) {
+                  row['quantity'] = 0;
+                  console.log(
+                    '✅ [fillOrderQuantity] TEU数量为 0（无箱型数据）',
+                  );
+                  break;
+                }
+
+                // 计算所有箱型的TEU总和
+                let totalTeu = 0;
+                for (const ctn of orderCtns) {
+                  if (!ctn.ctnCodeId) {
+                    console.warn(
+                      '⚠️ [fillOrderQuantity] 箱型缺少ctnCodeId:',
+                      ctn,
+                    );
+                    continue;
+                  }
+
+                  try {
+                    // 使用缓存获取集装箱详情以获取TEU值
+                    const ctnDetail = await loadCtnCodeCached(ctn.ctnCodeId);
+                    if (
+                      ctnDetail &&
+                      ctnDetail.teu !== undefined &&
+                      ctnDetail.teu !== null
+                    ) {
+                      totalTeu += ctnDetail.teu;
+                      console.log(
+                        `📦 [fillOrderQuantity] 箱型 ${ctn.ctnCodeName} TEU: ${ctnDetail.teu}`,
+                      );
+                    } else {
+                      console.warn(
+                        `⚠️ [fillOrderQuantity] 箱型 ${ctn.ctnCodeName} 未找到TEU值`,
+                      );
+                    }
+                  } catch (error) {
+                    console.error(
+                      `❌ [fillOrderQuantity] 获取箱型 ${ctn.ctnCodeId} 详情失败:`,
+                      error,
+                    );
+                  }
+                }
+
+                row['quantity'] = totalTeu;
+                console.log('✅ [fillOrderQuantity] TEU总数量:', totalTeu);
                 break;
+              }
               default:
                 row['quantity'] = 1;
             }
@@ -1092,9 +1178,53 @@ setupVbenVxeTable({
               row['quantity'] = transportOrder.pkgs || 0;
               console.log('✅ [fillQuantityByUnit] 件数:', row['quantity']);
             } else if (unitNameLower === 'teu') {
-              // TEU：从订单获取 TEU
-              row['quantity'] = transportOrder.teu || 0;
-              console.log('✅ [fillQuantityByUnit] TEU:', row['quantity']);
+              // TEU需要根据订单中的箱型信息计算
+              const orderCtns = transportOrder.orderCtns;
+              if (!orderCtns || orderCtns.length === 0) {
+                row['quantity'] = 0;
+                console.log(
+                  '✅ [fillQuantityByUnit] TEU数量为 0（无箱型数据）',
+                );
+              } else {
+                // 计算所有箱型的TEU总和
+                let totalTeu = 0;
+                for (const ctn of orderCtns) {
+                  if (!ctn.ctnCodeId) {
+                    console.warn(
+                      '⚠️ [fillQuantityByUnit] 箱型缺少ctnCodeId:',
+                      ctn,
+                    );
+                    continue;
+                  }
+
+                  try {
+                    // 使用缓存获取集装箱详情以获取TEU值
+                    const ctnDetail = await loadCtnCodeCached(ctn.ctnCodeId);
+                    if (
+                      ctnDetail &&
+                      ctnDetail.teu !== undefined &&
+                      ctnDetail.teu !== null
+                    ) {
+                      totalTeu += ctnDetail.teu;
+                      console.log(
+                        `📦 [fillQuantityByUnit] 箱型 ${ctn.ctnCodeName} TEU: ${ctnDetail.teu}`,
+                      );
+                    } else {
+                      console.warn(
+                        `⚠️ [fillQuantityByUnit] 箱型 ${ctn.ctnCodeName} 未找到TEU值`,
+                      );
+                    }
+                  } catch (error) {
+                    console.error(
+                      `❌ [fillQuantityByUnit] 获取箱型 ${ctn.ctnCodeId} 详情失败:`,
+                      error,
+                    );
+                  }
+                }
+
+                row['quantity'] = totalTeu;
+                console.log('✅ [fillQuantityByUnit] TEU总数量:', totalTeu);
+              }
             } else if (unitNameLower !== '') {
               // 箱型：查询订单的箱型列表数量
               if (

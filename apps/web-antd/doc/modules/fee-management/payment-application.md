@@ -2,7 +2,7 @@
 title: 付款申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-07-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,6 +24,7 @@ last_updated: 2026-05-16
 - **申请单查询：** 按申请状态、客户/供应商、时间等条件查询付款申请。
 - **创建申请：** 进入新增页选择可申请付款的费用。
 - **编辑申请：** 进入编辑页维护申请单明细。
+- **申请合计列：** 列表按当前页数据动态展示各币别「{币别}申请合计」列（收+付原币合计）；列配置面板仅保留「申请合计」一项（可见锚点列，承载首个币别），像普通列一样可拖动、调宽、显隐并持久化，其余币别作为跟随列自动跟随锚点的显隐与顺序。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -38,6 +39,8 @@ last_updated: 2026-05-16
 | **申请状态** | 付款申请单当前处理阶段。 | `payment-application/data.ts` / `PaymentApplicationStatus` | **触发/依赖：** 影响编辑、提交和审核入口。 | 状态流转以后端枚举为准。 |
 | **申请金额** | 本次申请付款金额汇总。 | `form-data.ts` | **触发/依赖：** 由费用明细汇总而来。 | 不得超过可申请口径。 |
 
+| **{币别}申请合计** | 列表按币别展示的申请合计（原币）。 | `currencyGroup[].payAmount + receiveAmount` | **触发/依赖：** 当前页数据变化时动态生成列。 | 只读展示。 |
+
 # 5. 核心业务卡点 (Business Blockers)
 
 > [!IMPORTANT] **[卡点 1：付款申请列表一致性]** 付款申请需保证费用选择、申请金额和审核状态一致，避免重复申请或超额申请。
@@ -46,4 +49,7 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 「申请合计」改为可见锚点列，面板中可拖动/调宽/显隐并持久化，各币别跟随列自动跟随；修复取消勾选仍渲染、相邻「申请人」列无法调宽、拖动排序不生效。 | 锚点 `appliedTotal` 承载首个币别、`slots.header` 动态表头；`buildColumnsWithRuntime` 以 `grid.getFullColumns()` 运行时列为唯一数据源保留显隐/固定/宽/序；`visibleMethod` 隐藏跟随列；移除 `customChange` 中途重建。 |
+| 2026-07-12 | `Fix` | （已被同日方案取代）列配置「申请合计」曾用 0 宽隐藏锚点代理列。 | 旧 `syncAppliedTotalColumns` 方案与 Vxe 布局/拖拽冲突，已重构为可见锚点列。 |
+| 2026-07-12 | `Feature` | 列表按当前页币别动态生成「{币别}申请合计」列。 | `useColumns(rows)` + `watch(tableData)` 重建列；`calcRowAppliedTotal` 汇总 pay+receive。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/fee-management/payment-application` 对应组件 `src/views/fee-management/payment-application/list.vue`，权限口径为 Admin.PaymentApplication / Admin.PaymentApplication.Get。 |

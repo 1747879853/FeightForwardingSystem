@@ -136,12 +136,11 @@ const getLaneIdOptions = () => [
 
 /** 行业类别枚举选项（value 取字母，与 IndustryCategory 注释对应：a 船公司、b 发货人、c 场站…） */
 const getIndustryCategoryOptions = () => [
-  // {
-  //   key: 1,
-  //   value: 'a',
-  //   label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
-  //   module: [],
-  // },
+  {
+    key: 1,
+    value: 'a',
+    label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
+  },
   {
     key: 2,
     value: 'b',
@@ -187,7 +186,11 @@ const getIndustryCategoryOptions = () => [
     value: 'j',
     label: $t('seaExport.client.industryCategoryOptions.trader'),
   },
-
+  {
+    key: 11,
+    value: 'k',
+    label: $t('seaExport.client.industryCategoryOptions.agent'),
+  },
   {
     key: 12,
     value: 'l',
@@ -246,6 +249,16 @@ const getCustomerIndustryCategoryOptions = () => [
     value: 'b',
     label: $t('seaExport.client.industryCategoryOptions.shipper'),
   },
+  {
+    key: 5,
+    value: 'e',
+    label: $t('seaExport.client.industryCategoryOptions.consignee'),
+  },
+  {
+    key: 20,
+    value: 'u',
+    label: $t('seaExport.client.industryCategoryOptions.factory'),
+  },
 ];
 
 const getSupplierIndustryCategoryOptions = () => [
@@ -263,11 +276,6 @@ const getSupplierIndustryCategoryOptions = () => [
     key: 4,
     value: 'd',
     label: $t('seaExport.client.industryCategoryOptions.airline'),
-  },
-  {
-    key: 5,
-    value: 'e',
-    label: $t('seaExport.client.industryCategoryOptions.consignee'),
   },
   {
     key: 6,
@@ -306,11 +314,6 @@ const getSupplierIndustryCategoryOptions = () => [
     key: 19,
     value: 's',
     label: $t('seaExport.client.industryCategoryOptions.destinationAgent'),
-  },
-  {
-    key: 20,
-    value: 'u',
-    label: $t('seaExport.client.industryCategoryOptions.factory'),
   },
 ];
 
@@ -444,6 +447,16 @@ export const formatIndustryCategories = (value?: string): string => {
 };
 
 /**
+ * 格式化干系人列表为可读字符串（显示昵称）
+ */
+export const formatStakeholders = (
+  stakeholders?: ClientAdminApi.ClientStakeholderDto[],
+): string => {
+  if (!stakeholders || stakeholders.length === 0) return '';
+  return stakeholders.map((s) => s.userNickName || String(s.userId)).join(', ');
+};
+
+/**
  * 列表页搜索表单 schema
  */
 export function useGridFormSchema(): VbenFormSchema[] {
@@ -470,6 +483,24 @@ export function useGridFormSchema(): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
       },
     },
+    // {
+    //   component: 'UserSelect',
+    //   fieldName: 'SaleId',
+    //   label: $t('system.user.userAttributeOptions.sales'),
+    //   componentProps: {
+    //     allowClear: true,
+    //     userAttribute: 16, // UserAttribute.Sale
+    //   },
+    // },
+    // {
+    //   component: 'UserSelect',
+    //   fieldName: 'OperationId',
+    //   label: $t('system.user.userAttributeOptions.operation'),
+    //   componentProps: {
+    //     allowClear: true,
+    //     userAttribute: 1, // UserAttribute.Operation
+    //   },
+    // },
   ];
 }
 
@@ -479,7 +510,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
 export function useBaseFormSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'Input',
+      component: 'shortNameInput',
       fieldName: 'name',
       label: $t('seaExport.client.clientName'),
       rules: 'required',
@@ -513,6 +544,16 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       fieldName: 'taxNo',
       label: $t('seaExport.client.taxNo'),
       componentProps: { allowClear: true },
+    },
+    {
+      component: 'CodeSourceSelect',
+      fieldName: 'codeSourceId',
+      label: $t('seaExport.client.codeSource'),
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
+      },
     },
     {
       component: 'Input',
@@ -598,17 +639,6 @@ export function useClientFormSchema(): VbenFormSchema[] {
       componentProps: {
         allowClear: true,
         options: getClientLevelOptions(),
-        class: 'w-full',
-        placeholder: $t('ui.placeholder.select'),
-      },
-    },
-    {
-      component: 'Select',
-      fieldName: 'source',
-      label: $t('seaExport.client.source'),
-      componentProps: {
-        allowClear: true,
-        options: getClientSourceOptions(),
         class: 'w-full',
         placeholder: $t('ui.placeholder.select'),
       },
@@ -865,6 +895,18 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       title: $t('seaExport.client.phone'),
       minWidth: 120,
     },
+    // {
+    //   field: 'sales',
+    //   title: $t('system.user.userAttributeOptions.sales'),
+    //   minWidth: 120,
+    //   formatter: ({ cellValue }) => formatStakeholders(cellValue),
+    // },
+    // {
+    //   field: 'operations',
+    //   title: $t('system.user.userAttributeOptions.operation'),
+    //   minWidth: 120,
+    //   formatter: ({ cellValue }) => formatStakeholders(cellValue),
+    // },
     {
       field: 'clientType',
       title: $t('seaExport.client.clientType'),

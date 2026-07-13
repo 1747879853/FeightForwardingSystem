@@ -212,7 +212,7 @@ watch(
     :change-on-select="true"
     :allow-clear="true"
     :show-search="false"
-    class="w-full"
+    class="biz-select w-full"
     v-bind="$attrs"
     @change="handleChange"
   />

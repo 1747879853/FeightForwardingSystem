@@ -117,6 +117,9 @@ const columnBaselineWidthField = '_columnBaselineWidth';
 const COLUMN_WIDTH_DIFF_THRESHOLD = 1;
 const originalColumns = ref<any[]>([]);
 const baselineWidthsCaptured = ref(false);
+/** 保持下发 columns 引用稳定的缓存（签名一致时复用同一数组引用，避免 vxe 重载列） */
+let stableBoundColumnsSignature: string | undefined;
+let stableBoundColumns: any[] | undefined;
 const searchFieldOptions = ref<SearchFieldOption[]>([]);
 const initializedSearchFields = ref(false);
 const isApplyingSearchFieldConfig = ref(false);
@@ -499,6 +502,27 @@ function getLeafColumns(columns: any[] = [], result: any[] = []): any[] {
     result.push(column);
   }
   return result;
+}
+
+/**
+ * 计算「用于下发给 vxe 的 columns」的定义签名。
+ * 只纳入列定义与显隐/固定/列宽等会影响列渲染的字段——
+ * 用于在与列无关的重算（如工具栏插槽读取分组等响应式状态）时保持 columns 引用稳定，
+ * 避免 vxe 因 columns 引用变化而 reloadColumn，冲掉用户运行时的显隐/顺序/列宽。
+ */
+function getBoundColumnsSignature(columns: any[]): string {
+  return getLeafColumns(columns)
+    .map((column) =>
+      [
+        column?.field ?? '',
+        column?.title ?? '',
+        column?.type ?? '',
+        column?.visible === false ? 0 : 1,
+        normalizeFixedValue(column?.fixed),
+        resolveNumericWidth(column?.width) ?? '',
+      ].join('~'),
+    )
+    .join('|');
 }
 
 function prepareColumnResize(column: any) {
@@ -1822,6 +1846,20 @@ const options = computed(() => {
     mergedOptions.toolbarConfig.refresh = false;
     mergedOptions.toolbarConfig.zoom = false;
   }
+
+  // 列定义/显隐/固定/列宽未变化时，复用同一 columns 数组引用。
+  // 否则工具栏等与列无关的响应式重算（如分组 Tab 的 loading/items 变化）会
+  // 生成新的 columns 引用触发 vxe reloadColumn，把用户运行时的列设置重置掉。
+  if (Array.isArray(mergedOptions.columns)) {
+    const signature = getBoundColumnsSignature(mergedOptions.columns);
+    if (stableBoundColumns && stableBoundColumnsSignature === signature) {
+      mergedOptions.columns = stableBoundColumns;
+    } else {
+      stableBoundColumnsSignature = signature;
+      stableBoundColumns = mergedOptions.columns;
+    }
+  }
+
   return mergedOptions;
 });
 
@@ -2049,7 +2087,7 @@ onUnmounted(() => {
           class="relative ml-2 inline-flex items-center"
         >
           <VxeButton
-            icon="vxe-icon-menu"
+            icon="vxe-icon-search-zoom-in"
             circle
             :status="showSearchFieldPopover ? 'primary' : undefined"
             title="搜索项设置"

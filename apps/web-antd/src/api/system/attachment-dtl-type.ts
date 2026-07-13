@@ -4,6 +4,7 @@ export namespace AttachmentDtlTypeApi {
   export interface AttachmentDtlTypeSimpleDto {
     id: number;
     name?: string | null;
+    sortId?: number;
   }
 
   export interface AttachmentDtlTypeByModuleQueryDto {

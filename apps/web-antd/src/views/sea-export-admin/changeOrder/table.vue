@@ -55,12 +55,13 @@ const tmpDel = ref(false);
 
 const [Grid, gridApi] = useVbenVxeGrid<ChangeOrderAdminApi.ChangeOrderEditDto>({
   gridOptions: {
+    id: 'sea-export-change-order-list',
     columns: useColumns(),
     height: '300px',
     keepSource: true,
     radioConfig: {
       highlight: true,
-      trigger: 'row',
+      trigger: 'default',
     },
     rowConfig: {
       keyField: '_rowKey',

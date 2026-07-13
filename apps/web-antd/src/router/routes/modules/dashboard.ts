@@ -9,7 +9,6 @@ const routes: RouteRecordRaw[] = [
     path: '/analytics',
     component: () => import('#/views/dashboard/analytics/index.vue'),
     meta: {
-      affixTab: true,
       icon: 'lucide:area-chart',
       order: 0,
       title: $t('page.dashboard.analytics'),
@@ -21,7 +20,8 @@ const routes: RouteRecordRaw[] = [
     path: '/workspace',
     component: () => import('#/views/dashboard/workspace/index.vue'),
     meta: {
-      icon: 'carbon:workspace',
+      affixTab: true,
+      icon: 'vscode-icons:file-type-go-work',
       order: 1,
       title: $t('page.dashboard.workspace'),
       authority: abpPageAuthority('Admin.Workbench'),

@@ -6,7 +6,8 @@ export namespace FeeCodeAdminApi {
     code?: string;
     cnName?: string;
     enName?: string;
-    currencyId?: number;
+    /** 币别Id（大数经 json-bigint 解析为 string，需原样透传） */
+    currencyId?: number | string;
     defaultUnitName?: string;
     defaultDebitName?: string;
     defaultCreditName?: string;
@@ -29,11 +30,13 @@ export namespace FeeCodeAdminApi {
 
   /** 编辑费用代码参数 */
   export interface FeeCodeEditDto {
-    id: number;
+    /** 费用代码Id（大数经 json-bigint 解析为 string，需原样透传） */
+    id: number | string;
     code?: string;
     cnName?: string;
     enName?: string;
-    currencyId?: number;
+    /** 币别Id（大数经 json-bigint 解析为 string，需原样透传） */
+    currencyId?: number | string;
     defaultUnitName?: string;
     defaultDebitName?: string;
     defaultCreditName?: string;
@@ -56,11 +59,13 @@ export namespace FeeCodeAdminApi {
 
   /** 费用代码详情 */
   export interface FeeCodeDto {
-    id: number;
+    /** 费用代码Id（大数经 json-bigint 解析为 string） */
+    id: number | string;
     code?: string;
     cnName?: string;
     enName?: string;
-    currencyId?: number;
+    /** 币别Id（大数经 json-bigint 解析为 string） */
+    currencyId?: number | string;
     defaultUnitName?: string;
     defaultDebitName?: string;
     defaultCreditName?: string;
@@ -142,8 +147,9 @@ export const editFeeCode = (data: FeeCodeAdminApi.FeeCodeEditDto) => {
 
 /**
  * 删除费用代码
+ * @param id 费用代码 ID，大数以 string 透传避免精度丢失
  */
-export const deleteFeeCode = (id: number) => {
+export const deleteFeeCode = (id: number | string) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data: { id },
   });

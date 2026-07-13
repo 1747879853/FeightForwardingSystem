@@ -1,0 +1,61 @@
+/*
+ * biz-select 整体禁用时以只读文本呈现。
+ * 保留 Select/Cascader 的选项解析能力，避免异步回显退化为业务 ID。
+ */
+.biz-select.ant-select-disabled {
+  cursor: default;
+}
+
+.biz-select.ant-select-disabled .ant-select-selector {
+  align-items: center !important;
+  min-height: 2rem !important;
+  padding-inline: 0 !important;
+  color: hsl(var(--foreground)) !important;
+  cursor: default !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.biz-select.ant-select-disabled .ant-select-selection-item,
+.biz-select.ant-select-disabled .ant-select-selection-placeholder {
+  color: hsl(var(--foreground)) !important;
+}
+
+.biz-select.ant-select-disabled .ant-select-selection-placeholder {
+  opacity: 0.45;
+}
+
+.biz-select.ant-select-disabled.ant-select-single .ant-select-selection-item,
+.biz-select.ant-select-disabled.ant-select-single
+  .ant-select-selection-placeholder {
+  display: flex;
+  align-items: center;
+  line-height: normal !important;
+}
+
+.biz-select.ant-select-disabled .ant-select-arrow,
+.biz-select.ant-select-disabled .ant-select-clear,
+.biz-select.ant-select-disabled .ant-select-selection-search {
+  display: none !important;
+}
+
+.biz-select.ant-select-disabled.ant-select-multiple
+  .ant-select-selection-overflow {
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.biz-select.ant-select-disabled.ant-select-multiple .ant-select-selection-item {
+  height: auto;
+  padding: 0;
+  margin: 0;
+  line-height: 2rem;
+  background: transparent;
+  border: 0;
+}
+
+.biz-select.ant-select-disabled.ant-select-multiple
+  .ant-select-selection-item-remove {
+  display: none;
+}

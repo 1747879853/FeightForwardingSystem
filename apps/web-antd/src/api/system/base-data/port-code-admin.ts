@@ -11,10 +11,10 @@ export namespace PortCodeAdminApi {
     explain?: string;
     /** 港口类型 */
     portType?: string;
-    /** 国家Id */
-    countryId?: number;
-    /** 航线Id */
-    laneId?: number;
+    /** 国家Id（大数经 json-bigint 解析为 string，需原样透传） */
+    countryId?: number | string;
+    /** 航线Id（大数经 json-bigint 解析为 string，需原样透传） */
+    laneId?: number | string;
     /** EDI代码 */
     ediCode?: string;
     /** 统计区域 */
@@ -33,7 +33,8 @@ export namespace PortCodeAdminApi {
 
   /** 编辑港口信息参数 */
   export interface PortCodeEditDto {
-    id: number;
+    /** 港口Id（大数经 json-bigint 解析为 string，需原样透传） */
+    id: number | string;
     /** 港口英文名称 */
     portName?: string;
     /** 港口中文名称 */
@@ -42,10 +43,10 @@ export namespace PortCodeAdminApi {
     explain?: string;
     /** 港口类型 */
     portType?: string;
-    /** 国家Id */
-    countryId?: number;
-    /** 航线Id */
-    laneId?: number;
+    /** 国家Id（大数经 json-bigint 解析为 string，需原样透传） */
+    countryId?: number | string;
+    /** 航线Id（大数经 json-bigint 解析为 string，需原样透传） */
+    laneId?: number | string;
     /** EDI代码 */
     ediCode?: string;
     /** 统计区域 */
@@ -70,10 +71,10 @@ export namespace PortCodeAdminApi {
     explain?: string;
     /** 港口类型 */
     portType?: string;
-    /** 国家Id */
-    countryId?: number;
-    /** 航线Id */
-    laneId?: number;
+    /** 国家Id（大数经 json-bigint 解析为 string） */
+    countryId?: number | string;
+    /** 航线Id（大数经 json-bigint 解析为 string） */
+    laneId?: number | string;
     /** 航线代码 */
     laneCode?: string;
     /** 航线中文名称 */
@@ -93,7 +94,8 @@ export namespace PortCodeAdminApi {
     lastModifierUserId?: number;
     creationTime?: string;
     creatorUserId?: number;
-    id: number;
+    /** 港口Id（大数经 json-bigint 解析为 string） */
+    id: number | string;
   }
 
   /** 分页列表响应 */
@@ -163,8 +165,9 @@ export const editPortCode = (data: PortCodeAdminApi.PortCodeEditDto) => {
 
 /**
  * 删除港口信息
+ * @param id 港口 ID，大数以 string 透传避免精度丢失
  */
-export const deletePortCode = (id: number) => {
+export const deletePortCode = (id: number | string) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data: { id },
   });

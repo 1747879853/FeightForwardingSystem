@@ -353,7 +353,7 @@
           "SettlementNo": "付费结算单号"
         },
         "ReceiveSettlement": {
-          "SettlementNo": "收费结算单号"
+          "SettlementNo": "收费核销单号"
         },
         "BankStatement": {
           "BankStatementNo": "银行流水号"
@@ -413,7 +413,7 @@
       "requirePayFees": "应付费用名称",
       "requireFeeTip": "开启后，完成该服务任务时需先在业务的应收/应付中录入下方绑定的费用名称，否则无法完成。",
       "creationTime": "创建时间",
-      "sortTip": "可通过“上移/下移”手动调整服务项顺序，保存时按当前列表顺序自动写入排序值（从0开始）。",
+      "sortTip": "请为每条服务项维护排序值，数字越小越靠前；列表按排序值升序展示，保存时按维护值提交。",
       "serviceItemCount": "服务项数量",
       "userAttributeServiceOverview": "概览",
       "noServiceConfigured": "未配置"

@@ -18,6 +18,21 @@ const getPortTypeOptions = () => [
 ];
 
 /**
+ * biz-select 选中值校验：json-bigint 会把超过 2^53-1 的 ID 解析为字符串，
+ * 必须保持字符串校验/透传，禁止 Number() 转换（会丢精度）
+ */
+const requiredSelectIdRule = (message: string) =>
+  z.preprocess(
+    (value) =>
+      value === undefined || value === null || value === ''
+        ? undefined
+        : String(value),
+    z
+      .string({ required_error: message })
+      .refine((value) => value !== '0', { message }),
+  );
+
+/**
  * 获取表格搜索表单的字段配置
  */
 export function useGridFormSchema(): VbenFormSchema[] {
@@ -96,13 +111,9 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'countryId',
       label: $t('system.basicData.portCode.countryId'),
       defaultValue: undefined,
-      rules: z
-        .number({
-          required_error: $t('system.basicData.portCode.countryIdRequired'),
-        })
-        .min(1, {
-          message: $t('system.basicData.portCode.countryIdRequired'),
-        }),
+      rules: requiredSelectIdRule(
+        $t('system.basicData.portCode.countryIdRequired'),
+      ),
     },
     {
       component: 'LaneSelect',
@@ -112,13 +123,9 @@ export function useFormSchema(): VbenFormSchema[] {
       componentProps: {
         labelKey: 'laneName',
       },
-      rules: z
-        .number({
-          required_error: $t('system.basicData.portCode.laneIdRequired'),
-        })
-        .min(1, {
-          message: $t('system.basicData.portCode.laneIdRequired'),
-        }),
+      rules: requiredSelectIdRule(
+        $t('system.basicData.portCode.laneIdRequired'),
+      ),
     },
     {
       component: 'Input',

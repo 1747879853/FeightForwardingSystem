@@ -78,8 +78,10 @@ const sectionRefs = {
 const currentSection = ref<SectionKey>('basic');
 const pageLoading = ref(false);
 const submitting = ref(false);
-
-const clientType = ref<number[]>([1]);
+const isCustomerType = ref<number[]>();
+const isSupplierType = ref<number[]>();
+const isClient = ref<boolean>(false);
+const isSupplier = ref<boolean>(false);
 const clientTypeCoopStatus = ref<number>();
 const customerType = ref<string[]>();
 const supplierType = ref<string[]>();
@@ -455,7 +457,7 @@ const handleRiskbirdImport = async (
       addressList.value.push(newAddress);
       console.log('地址已添加到列表，当前地址数量:', addressList.value.length);
 
-      message.success('地址信息导入成功');
+      //message.success('地址信息导入成功');
     }
 
     // 关闭弹窗
@@ -543,22 +545,23 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   console.log('industryCategoriesArray', industryCategoriesArray);
   // 区分客户和供应商的行业类别
   const isCustomer = detail.isClient;
-  const isSupplier = detail.isSupplier;
+  const isSupplierDetail = detail.isSupplier;
 
   // 设置客户类型
-  clientType.value = [];
-  if (isCustomer) clientType.value.push(1);
-  if (isSupplier) clientType.value.push(2);
+  isClient.value = detail.isClient;
+  isClient.value ? (isCustomerType.value = [1]) : (isCustomerType.value = []);
+  isSupplier.value = detail.isSupplier;
+  isSupplier.value ? (isSupplierType.value = [2]) : (isSupplierType.value = []);
 
   // 设置合作状态
   clientTypeCoopStatus.value = detail.clientCoopStatus;
   supplierCoopStatus.value = detail.supplierCoopStatus;
 
   // 设置行业类别
-  if (isCustomer) {
+  if (isClient.value) {
     customerType.value = industryCategoriesArray;
   }
-  if (isSupplier) {
+  if (isSupplier.value) {
     supplierType.value = industryCategoriesArray;
   }
 
@@ -607,6 +610,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     code: detail.code,
     enName: detail.enName,
     taxNo: detail.taxNo,
+    codeSourceId: detail.codeSourceId,
     phone: detail.phone,
     mobile: detail.mobile,
     email: detail.email,
@@ -660,10 +664,10 @@ const loadEditData = async () => {
     await businessFormApi.setValues(formValues);
 
     // 根据客户类型设置对应的表单
-    if (clientType.value.includes(1)) {
+    if (isClient.value) {
       await clientFormApi.setValues(formValues);
     }
-    if (clientType.value.includes(2)) {
+    if (isSupplier.value) {
       await supplierFormApi.setValues(formValues);
     }
 
@@ -678,17 +682,40 @@ const loadEditData = async () => {
 };
 const handleClientTypeChange = (checkedValues: any[]) => {
   console.log('handleClientTypeChange', checkedValues);
-  if (!checkedValues.includes(1)) {
-    // 取消客户类型时，清空客户的行业类别选择
-    customerType.value = [];
-  }
-  if (!checkedValues.includes(2)) {
-    // 取消供应商类型时，清空供应商的行业类别选择
-    supplierType.value = [];
-  }
-  console.log('customerType.value', customerType.value);
-  console.log('supplierType.value', supplierType.value);
 };
+
+const handleIsClientChange = (e: any) => {
+  const checked = e.includes(1);
+  isClient.value = checked;
+  if (checked) {
+    // 勾选客户类型时，默认设置为正式客户
+    clientTypeCoopStatus.value = 1;
+  } else {
+    // 取消客户类型时，清空客户的行业类别选择和合作状态
+    customerType.value = [];
+    clientTypeCoopStatus.value = undefined;
+  }
+  console.log('isClient.value', isClient.value);
+  console.log('customerType.value', customerType.value);
+  console.log('clientTypeCoopStatus.value', clientTypeCoopStatus.value);
+};
+
+const handleIsSupplierChange = (e: any) => {
+  const checked = e.includes(2);
+  isSupplier.value = checked;
+  if (checked) {
+    // 勾选供应商类型时，默认设置为正式供应商
+    supplierCoopStatus.value = 1;
+  } else {
+    // 取消供应商类型时，清空供应商的行业类别选择和合作状态
+    supplierType.value = [];
+    supplierCoopStatus.value = undefined;
+  }
+  console.log('isSupplier.value', isSupplier.value);
+  console.log('supplierType.value', supplierType.value);
+  console.log('supplierCoopStatus.value', supplierCoopStatus.value);
+};
+
 /**
  * 更新干系人列表
  */
@@ -697,7 +724,35 @@ const updateStakeholders = (
   values: number[],
 ) => {
   defaultOrderUsers.value.forEach((orderUser) => {
-    if (orderUser.userAttribute === userAttribute) orderUser.userIds = values;
+    if (orderUser.userAttribute === userAttribute) {
+      // 更新 userIds
+      orderUser.userIds = values;
+
+      // 同步更新 stakeholderList，确保编辑模式下能正确提交
+      const existingList = orderUser.stakeholderList || [];
+      const existingMap = new Map(
+        existingList.map((item) => [item.userId, item]),
+      );
+
+      orderUser.stakeholderList = values.map((userId) => {
+        const existing = existingMap.get(userId);
+        if (existing) {
+          // 如果已存在，保留原有信息
+          return existing;
+        } else {
+          // 如果是新增的，创建基本对象（编辑模式需要 clientId）
+          return {
+            clientId: editId.value || '',
+            userId,
+            isDefault: false,
+            userAttribute: userAttribute!,
+            isDeleted: false,
+            creationTime: new Date().toISOString(),
+            id: 0, // 新增的干系人 id 为 0
+          } as ClientAdminApi.ClientStakeholderDto;
+        }
+      });
+    }
   });
 };
 
@@ -720,12 +775,8 @@ const handleSubmit = async () => {
       await Promise.all([
         baseFormApi.validate(),
         businessFormApi.validate(),
-        clientType.value.includes(1)
-          ? clientFormApi.validate()
-          : Promise.resolve(),
-        clientType.value.includes(2)
-          ? supplierFormApi.validate()
-          : Promise.resolve(),
+        isClient.value ? clientFormApi.validate() : Promise.resolve(),
+        isSupplier.value ? supplierFormApi.validate() : Promise.resolve(),
       ]);
 
     if (!baseValid || !businessValid) {
@@ -736,10 +787,8 @@ const handleSubmit = async () => {
     // 获取所有表单的值
     const baseValues = await baseFormApi.getValues();
     const businessValues = await businessFormApi.getValues();
-    const clientValues = clientType.value.includes(1)
-      ? await clientFormApi.getValues()
-      : {};
-    const supplierValues = clientType.value.includes(2)
+    const clientValues = isClient.value ? await clientFormApi.getValues() : {};
+    const supplierValues = isSupplier.value
       ? await supplierFormApi.getValues()
       : {};
 
@@ -756,16 +805,25 @@ const handleSubmit = async () => {
     console.log('supplierType.value', supplierType.value);
     console.log('industryCategories', industryCategories);
 
-    // 构建地址列表（新增时不包含id）
-    const addresses = addressList.value.map((item) => ({
-      name: item.name || '',
-      isDefault: item.isDefault ?? false,
-      address: item.address,
-      contactPerson: item.contactPerson,
-      mobile: item.mobile,
-      tel: item.tel,
-      remark: item.remark,
-    }));
+    // 构建地址列表（编辑模式保留id，新增模式不包含id）
+    const addresses = addressList.value.map((item) => {
+      const addressData: any = {
+        name: item.name || '',
+        isDefault: item.isDefault ?? false,
+        address: item.address,
+        contactPerson: item.contactPerson,
+        mobile: item.mobile,
+        tel: item.tel,
+        remark: item.remark,
+      };
+
+      // 编辑模式下，如果地址有id，需要保留
+      if (isEdit.value && item.id) {
+        addressData.id = item.id;
+      }
+
+      return addressData;
+    });
 
     // 处理 areaId：取路径数组的最后一个（最后一级）
     const areaIdPath = Array.isArray(baseValues.areaId)
@@ -823,11 +881,11 @@ const handleSubmit = async () => {
       const editData: ClientAdminApi.ClientEditDto = {
         id: currentEditId,
         // 基本信息
-        name: baseValues.name,
+        name: baseValues.name.trim(),
         code: baseValues.code,
         phone: baseValues.phone,
         mobile: baseValues.mobile,
-        fullName: baseValues.fullName,
+        fullName: baseValues.fullName.trim(),
         enName: baseValues.enName,
         countryId: baseValues.country,
         areaId,
@@ -835,6 +893,7 @@ const handleSubmit = async () => {
         enAddress: baseValues.enAddress,
         mainProduct: baseValues.mainProduct,
         enable: baseValues.enable ?? true,
+        codeSourceId: baseValues.codeSourceId,
 
         industryCategories,
         remark: baseValues.remark,
@@ -850,8 +909,8 @@ const handleSubmit = async () => {
         businessTerm: businessValues.businessTerm,
 
         // 客户相关信息
-        isClient: clientType.value.includes(1),
-        clientCoopStatus: clientType.value.includes(1)
+        isClient: isCustomerType.value?.includes(1) ?? false,
+        clientCoopStatus: isCustomerType.value?.includes(1)
           ? clientTypeCoopStatus.value
           : undefined,
         clientType: clientValues.clientType,
@@ -863,8 +922,8 @@ const handleSubmit = async () => {
         clientLastTxnTime: clientValues.clientLastTxnTime,
 
         // 供应商相关信息
-        isSupplier: clientType.value.includes(2),
-        supplierCoopStatus: clientType.value.includes(2)
+        isSupplier: isSupplierType.value?.includes(2) ?? false,
+        supplierCoopStatus: isSupplierType.value?.includes(2)
           ? supplierCoopStatus.value
           : undefined,
         supplierLevel: supplierValues.supplierLevel,
@@ -920,11 +979,11 @@ const handleSubmit = async () => {
       // 新增模式提交数据
       const addData: ClientAdminApi.ClientAddDto = {
         // 基本信息
-        name: baseValues.name,
+        name: baseValues.name.trim(),
         code: baseValues.code,
         phone: baseValues.phone,
         mobile: baseValues.mobile,
-        fullName: baseValues.fullName,
+        fullName: baseValues.fullName.trim(),
         enName: baseValues.enName,
         countryId: baseValues.country,
         areaId,
@@ -934,6 +993,7 @@ const handleSubmit = async () => {
         enable: baseValues.enable ?? true,
 
         industryCategories,
+        codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
         enFullName: baseValues.enFullName,
         taxNo: baseValues.taxNo,
@@ -947,28 +1007,42 @@ const handleSubmit = async () => {
         businessTerm: businessValues.businessTerm,
 
         // 客户相关信息
-        isClient: clientType.value.includes(1),
-        clientCoopStatus: clientType.value.includes(1)
+        isClient: isClient.value,
+        clientCoopStatus: isClient.value
           ? clientTypeCoopStatus.value
           : undefined,
-        clientType: clientValues.clientType,
-        clientLevel: clientValues.clientLevel,
-        source: clientValues.source,
-        cargoType: clientValues.cargoType,
-        clientCurrencyId: clientValues.clientCurrencyId,
-        clientCoopSince: clientValues.clientCoopSince,
-        clientLastTxnTime: clientValues.clientLastTxnTime,
+        clientType: isClient.value ? clientValues.clientType : undefined,
+        clientLevel: isClient.value ? clientValues.clientLevel : undefined,
+        source: isClient.value ? clientValues.source : undefined,
+        cargoType: isClient.value ? clientValues.cargoType : undefined,
+        clientCurrencyId: isClient.value
+          ? clientValues.clientCurrencyId
+          : undefined,
+        clientCoopSince: isClient.value
+          ? clientValues.clientCoopSince
+          : undefined,
+        clientLastTxnTime: isClient.value
+          ? clientValues.clientLastTxnTime
+          : undefined,
 
         // 供应商相关信息
-        isSupplier: clientType.value.includes(2),
-        supplierCoopStatus: clientType.value.includes(2)
+        isSupplier: isSupplier.value,
+        supplierCoopStatus: isSupplier.value
           ? supplierCoopStatus.value
           : undefined,
-        supplierLevel: supplierValues.supplierLevel,
-        supplierCurrencyId: supplierValues.supplierCurrencyId,
-        laneIds: supplierValues.laneIds,
-        supplierCoopSince: supplierValues.supplierCoopSince,
-        supplierLastTxnTime: supplierValues.supplierLastTxnTime,
+        supplierLevel: isSupplier.value
+          ? supplierValues.supplierLevel
+          : undefined,
+        supplierCurrencyId: isSupplier.value
+          ? supplierValues.supplierCurrencyId
+          : undefined,
+        laneIds: isSupplier.value ? supplierValues.laneIds : undefined,
+        supplierCoopSince: isSupplier.value
+          ? supplierValues.supplierCoopSince
+          : undefined,
+        supplierLastTxnTime: isSupplier.value
+          ? supplierValues.supplierLastTxnTime
+          : undefined,
 
         sales: salesAdd,
         customerServices: customerServicesAdd,
@@ -1166,63 +1240,58 @@ onMounted(() => {
           </div>
           <div class="content-section__body">
             <div class="mb-2">
-              <div class="my-2 rounded-lg bg-gray-100 py-1 shadow">
-                <span class="mx-3 font-extrabold">{{
-                  $t('seaExport.client.smallTitle.type')
+              <div class="my-2 rounded-lg bg-gray-50 py-2 shadow">
+                <span class="ml-3 mr-6 font-extrabold">{{
+                  $t('seaExport.client.smallTitle.customerType')
                 }}</span>
                 <CheckboxGroup
                   name="CheckboxGroup"
-                  v-model:value="clientType"
-                  :onChange="handleClientTypeChange"
+                  v-model:value="isCustomerType"
+                  :onChange="handleIsClientChange"
                 >
                   <Checkbox :value="1" class="lineheight-32">
                     {{ $t('seaExport.client.clientTypeOptions.customer') }}
                   </Checkbox>
                   <Select
                     v-model:value="clientTypeCoopStatus"
-                    v-if="clientType.includes(1)"
                     :options="ClientConstants.getCustomerCoopStatusOptions()"
                     allowClear
-                    class="mr-4 min-w-[100px]"
-                    :placeholder="$t('ui.placeholder.select')"
-                  />
-                  <Checkbox :value="2" class="lineheight-32">
-                    {{ $t('seaExport.client.clientTypeOptions.supplier') }}
-                  </Checkbox>
-                  <Select
-                    v-model:value="supplierCoopStatus"
-                    v-if="clientType.includes(2)"
-                    :options="ClientConstants.getSupplierCoopStatusOptions()"
-                    allowClear
-                    class="min-w-[100px]"
+                    class="ml-4 mr-5 min-w-[100px]"
                     :placeholder="$t('ui.placeholder.select')"
                   />
                 </CheckboxGroup>
-              </div>
-              <div
-                class="my-2 rounded-lg bg-gray-50 py-2 shadow"
-                v-if="clientType.includes(1)"
-              >
-                <span class="mx-3 font-extrabold">{{
-                  $t('seaExport.client.smallTitle.customerType')
-                }}</span>
                 <CheckboxGroup
                   name="CheckboxGroup"
+                  v-if="isCustomerType?.includes(1)"
                   v-model:value="customerType"
                   :options="
                     ClientConstants.getCustomerIndustryCategoryOptions()
                   "
                 />
               </div>
-              <div
-                class="mb-4 mt-2 rounded-lg bg-gray-50 py-2 shadow"
-                v-if="clientType.includes(2)"
-              >
+              <div class="mb-4 mt-2 rounded-lg bg-gray-50 py-2 shadow">
                 <span class="mx-3 font-extrabold">{{
                   $t('seaExport.client.smallTitle.supplierType')
                 }}</span>
                 <CheckboxGroup
                   name="CheckboxGroup"
+                  v-model:value="isSupplierType"
+                  :onChange="handleIsSupplierChange"
+                >
+                  <Checkbox :value="2" class="lineheight-32">
+                    {{ $t('seaExport.client.clientTypeOptions.supplier') }}
+                  </Checkbox>
+                  <Select
+                    v-model:value="supplierCoopStatus"
+                    :options="ClientConstants.getSupplierCoopStatusOptions()"
+                    allowClear
+                    class="mr-3 min-w-[100px]"
+                    :placeholder="$t('ui.placeholder.select')"
+                  />
+                </CheckboxGroup>
+                <CheckboxGroup
+                  name="CheckboxGroup"
+                  v-if="isSupplierType?.includes(2)"
                   v-model:value="supplierType"
                   :options="
                     ClientConstants.getSupplierIndustryCategoryOptions()
@@ -1251,7 +1320,7 @@ onMounted(() => {
             </div>
           </section>
         </div>
-        <div class="content-column" v-if="clientType.includes(1)">
+        <div class="content-column">
           <section class="content-section">
             <div class="content-section__header">
               <span class="card-title">
@@ -1267,7 +1336,7 @@ onMounted(() => {
             </div>
           </section>
         </div>
-        <div class="content-column" v-if="clientType.includes(2)">
+        <div class="content-column" v-if="isSupplier">
           <section class="content-section">
             <div class="content-section__header">
               <span class="card-title">

@@ -39,6 +39,7 @@ export {
   Languages,
   LoaderCircle,
   LockKeyhole,
+  LockKeyholeOpen,
   LogOut,
   MailCheck,
   Maximize,

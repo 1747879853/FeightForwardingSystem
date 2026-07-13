@@ -50,6 +50,8 @@ export namespace ClientAdminApi {
     id?: string;
     /** 客户全称 */
     fullName?: string;
+    /** 客户简称  */
+    name?: string;
   }
 
   /** Guid类型的Id Dto */
@@ -120,6 +122,8 @@ export namespace ClientAdminApi {
     areaId?: string;
     /** 地址 */
     address?: string;
+    /** 业务来源 */
+    codeSourceId?: number;
     /** 英文地址 */
     enAddress?: string;
     /** 主营产品 */
@@ -270,6 +274,8 @@ export namespace ClientAdminApi {
     remark?: string;
     /** 客户英文全称 */
     enFullName?: string;
+    /** 业务来源 */
+    codeSourceId?: number;
     /** 纳税人识别号 */
     taxNo?: string;
     /** 邮箱 */
@@ -501,6 +507,8 @@ export namespace ClientAdminApi {
     enAddress?: string;
     /** 主营产品 */
     mainProduct?: string;
+    /** 业务来源 */
+    codeSourceId?: number;
     /** 是否有效 */
     enable: boolean;
     /** 客户性质 0-直客 1-同行 2-供应商 */
@@ -615,6 +623,10 @@ export namespace ClientAdminApi {
     Keyword?: string;
     /** 行业类别 */
     IndustryCategory?: string;
+    /** 销售ID */
+    SaleId?: number;
+    /** 操作ID */
+    OperationId?: number;
     /** 排序 默认是Id */
     Sorting?: string;
     /** 当前页码 */
@@ -637,7 +649,7 @@ const API_PREFIX = '/services/app/ClientAdmin';
  * 客户全称校验
  */
 export const clientNameCheck = (data: ClientAdminApi.ClientNameCheckDto) => {
-  return requestClient.post<void>(`${API_PREFIX}/ClientNameChecksync`, data);
+  return requestClient.post<void>(`${API_PREFIX}/CheckDuplicateAsync`, data);
 };
 
 /**

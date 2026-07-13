@@ -1244,7 +1244,7 @@ onUnmounted(() => {
 /* 航线 tab 靠左展示，超出时横向滚动，不挤压右侧操作按钮 */
 :deep(.vxe-toolbar) {
   flex-wrap: nowrap;
-  overflow: hidden;
+  overflow: visible;
 }
 
 :deep(.vxe-buttons--wrapper:not(:empty)) {

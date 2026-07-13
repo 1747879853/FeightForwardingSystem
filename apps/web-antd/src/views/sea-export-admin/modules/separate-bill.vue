@@ -1088,6 +1088,6 @@ onMounted(() => {
   :deep(
     .ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-row-hover
   ) {
-  background: #e6f4ff !important;
+  background: hsl(var(--primary) / 15%) !important;
 }
 </style>

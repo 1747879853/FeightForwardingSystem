@@ -133,7 +133,7 @@ function handleCreate() {
     return;
   }
   if (rows.length > 1) {
-    message.warning('每次只能针对一条银行流水新建收费结算，请只选择一条');
+    message.warning('每次只能针对一条银行流水新建收费核销，请只选择一条');
     return;
   }
 

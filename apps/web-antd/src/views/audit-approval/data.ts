@@ -123,11 +123,11 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'Input',
+      component: 'TrimInput',
       fieldName: 'Keyword',
-      label: $t('seaExport.export.number'),
+      label: $t('seaExport.export.keyword'),
       componentProps: {
-        placeholder: $t('ui.placeholder.input'),
+        placeholder: $t('seaExport.export.keywordPlaceholder'),
         allowClear: true,
       },
     },

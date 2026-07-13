@@ -12,6 +12,7 @@ const BRAND_IMG_BY_APP_BRAND: Record<string, string> = {
   hhyy: 'hhyy',
   jht: 'jht',
   jiayue: 'jiayue',
+  sjtd: 'sjtd',
 };
 
 function loadAppEnv(mode: string) {
@@ -58,8 +59,12 @@ function resolveFaviconSrc(brandImgDir: string) {
 }
 
 function resolveApiTarget(mode: string) {
-  if (resolveAppBrand(mode) === 'jht') {
+  const brand = resolveAppBrand(mode);
+  if (brand === 'jht') {
     return 'http://43.138.14.122:82';
+  }
+  if (brand === 'sjtd') {
+    return 'http://43.138.14.122:84';
   }
   return 'http://118.190.1.4:82';
 }

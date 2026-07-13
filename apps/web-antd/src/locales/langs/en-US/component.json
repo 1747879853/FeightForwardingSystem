@@ -12,5 +12,13 @@
     "allowedTypes": "Allowed types",
     "maxSize": "Max size",
     "maxCount": "Max count"
+  },
+  "filePreview": {
+    "title": "File Preview",
+    "openInNewWindow": "Open in New Window",
+    "download": "Download",
+    "uploader": "Uploaded by",
+    "uploadTime": "Uploaded at",
+    "unsupported": "Online preview is not supported for this file type. Please download to view."
   }
 }

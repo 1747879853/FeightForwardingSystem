@@ -283,7 +283,7 @@ function handleDelete() {
   );
 
   if (itemSelections.length === 0 && selectedRows.length === 0) {
-    message.warning('请先选择要删除的收费结算或费用明细');
+    message.warning('请先选择要删除的收费核销或费用明细');
     return;
   }
 
@@ -302,12 +302,12 @@ function handleDelete() {
   }
 
   if (selectedRows.length > 0 && !canDeleteSettlement.value) {
-    message.warning('当前账号无删除收费结算权限');
+    message.warning('当前账号无删除收费核销权限');
     return;
   }
 
   if (selectedRows.some((row) => isReceiveSettlementLocked(row.locked))) {
-    message.warning('选中的记录中有已锁定的收费结算，无法删除');
+    message.warning('选中的记录中有已锁定的收费核销，无法删除');
     return;
   }
 
@@ -319,7 +319,7 @@ function handleDelete() {
       return settlement && isReceiveSettlementLocked(settlement.locked);
     })
   ) {
-    message.warning('已锁定的收费结算不能删除明细');
+    message.warning('已锁定的收费核销不能删除明细');
     return;
   }
 
@@ -337,7 +337,7 @@ function handleDelete() {
     contentParts.push(`${pendingItemCount} 条费用明细`);
   }
   if (selectedRows.length > 0) {
-    contentParts.push(`${selectedRows.length} 条收费结算`);
+    contentParts.push(`${selectedRows.length} 条收费核销`);
   }
 
   Modal.confirm({
@@ -418,7 +418,7 @@ defineExpose({
 </script>
 
 <template>
-  <Card title="关联收费结算" size="small" class="form-panel-card">
+  <Card title="关联收费核销" size="small" class="form-panel-card">
     <template #extra>
       <Space>
         <Button

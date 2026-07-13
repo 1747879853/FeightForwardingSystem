@@ -1,13 +1,13 @@
 ---
 title: 银行流水列表
-module: 结算管理
+module: 财务管理
 author: Cursor Agent
-last_updated: 2026-06-29
+last_updated: 2026-07-11
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 银行流水列表是结算管理的主入口，用于检索、新建和进入编辑。列表展示流水号、交易时间、付款方、金额及操作人等关键信息；操作人决定该流水在非 Admin 端的可见范围。
+**白话解释：** 银行流水列表是财务管理分组下的入口，用于检索、新建和进入编辑。列表展示流水号、交易时间、付款方、金额及操作人等关键信息；操作人决定该流水在非 Admin 端的可见范围。侧边栏自独立顶级菜单迁入「财务管理」分组，URL 仍为 `/bank-statement`。
 
 # 2. 功能与操作说明 (Features & Operations)
 
@@ -40,5 +40,6 @@ last_updated: 2026-06-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-06-29 | `Feature` | 列表新增「已结算金额」「核销状态」列；查询区支持按核销状态筛选。收费结算页「银行流水」Tab 同步展示与筛选。 | 列与筛选项定义在 `views/bank-statement/data.ts`，Admin 列表与权限过滤 Tab 共用；核销状态 Tag 通过 `#writeOffStatus` 插槽渲染。 |
+| 2026-07-11 | `Refactor` | 侧边栏从独立顶级菜单迁入「财务管理」分组；路由定义移至 `settlement-management.ts`，path `/bank-statement` 不变。 | 删除独立 `bank-statement.ts` 模块文件，以嵌套子路由挂载在财务管理下。 |
+| 2026-06-29 | `Feature` | 列表新增「已结算金额」「核销状态」列；查询区支持按核销状态筛选。收费核销页「银行流水」Tab 同步展示与筛选。 | 列与筛选项定义在 `views/bank-statement/data.ts`，Admin 列表与权限过滤 Tab 共用；核销状态 Tag 通过 `#writeOffStatus` 插槽渲染。 |
 | 2026-06-20 | `Fix` | 列表「操作人」列改为展示用户姓名；接口缺 `operationName` 时异步补齐，与编辑页逻辑统一至 `utils.ts`。 | `enrichBankStatementListItems` 对当前页 `operationId` 去重后批量请求，避免 N 次重复 `GetUserAsync`。 |

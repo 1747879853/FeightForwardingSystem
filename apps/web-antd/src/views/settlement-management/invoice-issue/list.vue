@@ -18,6 +18,19 @@ import { columns, searchFormSchema } from './data';
 
 const router = useRouter();
 
+// 选中的行
+const selectedRows = ref<any[]>([]);
+
+/** 处理行双击事件 */
+function handleRowDblClick({ row }: any) {
+  handleEdit(row);
+}
+
+/** 处理复选框选择变化 */
+function handleCheckboxChange({ records }: any) {
+  selectedRows.value = records;
+}
+
 const [Grid, gridApi] = useVbenVxeGrid({
   formOptions: {
     schema: searchFormSchema,
@@ -45,6 +58,10 @@ const [Grid, gridApi] = useVbenVxeGrid({
     },
     rowConfig: {
       keyField: 'id',
+      isHover: true,
+    },
+    checkboxConfig: {
+      reserve: true,
     },
     toolbarConfig: {
       custom: true,
@@ -54,6 +71,10 @@ const [Grid, gridApi] = useVbenVxeGrid({
       search: true,
       zoom: true,
     },
+  },
+  gridEvents: {
+    cellDblclick: handleRowDblClick,
+    checkboxChange: handleCheckboxChange,
   },
 });
 
@@ -71,10 +92,41 @@ function handleEdit(row: any) {
 async function handleDelete(row: any) {
   try {
     await deleteInvoiceIssue(row.id);
+    message.success('删除成功');
     gridApi.query();
   } catch (error) {
     console.error('删除失败:', error);
+    message.error('删除失败');
   }
+}
+
+/** 批量删除 */
+async function handleBatchDelete() {
+  if (!selectedRows.value || selectedRows.value.length === 0) {
+    message.warning('请至少选择一条数据');
+    return;
+  }
+
+  Modal.confirm({
+    title: '确认删除',
+    content: `确定要删除选中的 ${selectedRows.value.length} 条数据吗？`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        // 逐个删除选中的记录
+        for (const row of selectedRows.value) {
+          await deleteInvoiceIssue(row.id);
+        }
+        message.success('批量删除成功');
+        selectedRows.value = [];
+        gridApi.query();
+      } catch (error) {
+        console.error('批量删除失败:', error);
+        message.error('批量删除失败');
+      }
+    },
+  });
 }
 
 /** 查看详情 */
@@ -88,6 +140,13 @@ function handleView(row: any) {
     <Grid table-title="发票开出列表">
       <template #toolbar-tools>
         <Button type="primary" @click="handleAdd"> 新建 </Button>
+        <Button danger @click="handleBatchDelete" style="margin-left: 8px">
+          <IconifyIcon
+            icon="ant-design:delete-outlined"
+            style="margin-right: 4px"
+          />
+          批量删除
+        </Button>
       </template>
 
       <template #clientInvoiceInfoHeader="{ row }">

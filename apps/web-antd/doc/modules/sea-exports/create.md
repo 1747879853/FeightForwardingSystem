@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-02
+last_updated: 2026-07-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -15,18 +15,19 @@ last_updated: 2026-07-02
 | :-- | :-- |
 | 页面路由 | `/sea-exports/create` |
 | 路由名称 | `SeaExportCreate` |
-| 页面组件 | `src/views/sea-export-admin/form.vue` |
+| 页面组件 | `src/views/sea-export-admin/basic-info-form/form.vue` |
 | 权限口径 | 路由未声明独立权限；通过 `activePath: /sea-exports` 归属海运出口菜单 |
-| 关键源码 | `src/router/routes/modules/sea-export.ts`<br/>`src/views/sea-export-admin/list.vue`<br/>`src/views/sea-export-admin/form.vue`<br/>`src/views/sea-export-admin/editor.vue`<br/>`src/views/sea-export-admin/data.ts`<br/>`src/views/sea-export-admin/orderFee/data.ts`<br/>`src/api/sea-export/sea-export-admin.ts`<br/>`src/api/sea-export/order-fee-admin.ts`<br/>`src/api/sea-export/change-order-admin.ts` |
+| 关键源码 | `src/router/routes/modules/sea-export.ts`<br/>`src/views/sea-export-admin/list.vue`<br/>`src/views/sea-export-admin/basic-info-form/form.vue`（及同目录 README 与私有拆分文件）<br/>`src/views/sea-export-admin/editor.vue`<br/>`src/views/sea-export-admin/data.ts`<br/>`src/views/sea-export-admin/orderFee/data.ts`<br/>`src/api/sea-export/sea-export-admin.ts`<br/>`src/api/sea-export/order-fee-admin.ts`<br/>`src/api/sea-export/change-order-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
 - **AI 识别辅助：** 页面提供「AI识别」按钮，支持 PDF 与图片（png/jpg/jpeg/bmp/tiff/webp），调用 TextIn `ExtractSeaExportToAddDtoAsync` 后由后端完成名称→id 匹配并回填表单；空值、`0`、空 Guid 不回填。识别成功后右侧 Drawer 展示原文件，点击/聚焦已回填字段可联动高亮 `citations` 定位；缓存命中显示「来自缓存」标签。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
-- **干系人角色约束：** 销售、操作不可删除且必须已选人（销售必须且只能有一人）；其他角色通过「+ 添加角色」弹窗按需添加。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。
-- **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。
+- **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。
+- **右侧栏与场站联系人：** 右侧主卡片为「干系人」。场站联系人/邮箱/手机/电话与编辑页一致挂在「场站」标签旁只读展示（新建态通常为空显示 `-`）；保存时随 `SeaExportAddDto` 透传（新建多为空）。
+- **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护，并按 `ServiceType.extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
-- **创建后跳转：** 新增成功后优先解析接口返回的记录 ID 并跳转 `/sea-exports/{id}/edit`；若返回值无法解析，则回到 `/sea-exports` 列表。
+- **创建后跳转：** 新增成功后优先解析接口返回的记录 ID，以 `router.replace` 进入 `/sea-exports/{id}/edit`；若返回值无法解析，则 `replace` 回 `/sea-exports` 列表。跳转后关闭原新建页顶部标签，避免残留空白 Tab。
 - **顶部标签栏标题：** 浏览器标签栏标题随录入状态动态变化：未保存且无主提单号时为「海运出口」；录入主提单号后为「海运出口-{主提单号}」；保存后无主提单号时为「海运出口-{委托编号}」。主提单号优先于委托编号。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -37,16 +38,18 @@ last_updated: 2026-07-02
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **委托单位** | 委托客户，是运输单必填主体。 | `transportOrder.clientId`；`ClientSelect`（客户属性为委托单位） | **触发/依赖：** 选择后参与服务项目联动查询（`clientId`）；并自动带出干系人。 | 必填。 |
+| **委托单位** | 委托客户，是运输单必填主体。 | `transportOrder.clientId`；`ClientSelect`（客户属性为委托单位）；`ClientAdmin.DetailAsync` | **触发/依赖：** 选择后参与服务项目联动查询（`clientId`）；并调用 `applyClientDefaultOrderUsers` 按客户绑定干系人回填，操作/单证/客服未绑定兜底当前账号。 | **必填项**（`selectRequired`）。 |
 | **委托编号** | 业务委托号。 | `transportOrder.commissionNum`；按编号生成规则自动生成 |  | 前端禁用，不手工录入。 |
 | **会计期间** | 财务期间。 | `transportOrder.accountDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到月计算；无开船日期则取当前时间（到月）。 | 禁止手动修改。 |
 | **应结日期** | 结算日期。 | `transportOrder.settlementDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到天计算；无开船日期则取当前时间（到天），并结合委托单位账期规则。 | 禁止手动修改。 |
 | **所属公司** | 业务单所属公司。 | `organizationUnits` | **触发/依赖：** 新建、编辑保存后，后端根据干系人中销售所属公司自动生成。 | 禁止手动修改。 |
 | **业务来源** | 订单业务来源分类。 | `transportOrder.codeSourceId`；`CodeSourceSelect`（基础数据） | - | - |
-| **付费方式** | 运费付费方式。 | `transportOrder.codeFrtId`；`CodeFrtSelect`（基础数据） | - | - |
+| **付费方式** | 运费付费方式。 | `transportOrder.codeFrtId`；与付费地点合并为 `FrtPrepareInput` | **触发/依赖：** 与 `prepareAtId` 同栏展示。 | - |
 | **付费地点** | 运费支付地点港口。 | `transportOrder.prepareAtId`；`PortSelect`（基础数据） | **触发/依赖：** 付费方式为预付时显示起运港（`polId`）；为到付时显示交货地（`deliverPortId`）。 | - |
-| **运输条款** | 运输服务条款。 | `transportOrder.codeServiceId`；`CodeServiceSelect`（基础数据） | - | - |
-| **贸易条款** | 贸易术语类型。 | `transportOrder.tradeTermsType`；枚举（CIF / FOB / EXW 等） | - | - |
+| **运输条款 / 贸易条款** | 运输服务条款与贸易术语；视觉合并为一个表单项。 | `ServiceTradeTermsInput` -> `codeServiceId` + `tradeTermsType`（贸易条款枚举 CIF/FOB 等） | **触发/依赖：** 主字段 `codeServiceId`，第二字段经 `formContext` 写回 `tradeTermsType`；内部宽度 1:1。 | - |
+| **订舱代理** | 订舱服务执行方客户。 | `bookingAgentId`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与船公司/船代/场站一并迁入基础信息区，排在船代后、车队前；与服务流水线解耦，始终展示。 | 可选；须为含订舱代理属性的客户。 |
+| **船名航次** | 船名和内航次；海出侧船名:船次宽度 **3:2**。 | `VesselVoyageInput` -> `vessel`、`innerVoyno`（`mainRatio:3` / `secondRatio:2`） | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 |
+| **签单地点 / 签单日期** | 签单港与签单时间。 | `signingPortId`、`signingTime` | **触发/依赖：** 表单当前 `hidden`，模型保留可提交。 | - |
 | **业务锁定** | 业务资料是否锁定。 | `transportOrder.isBusinessLocking`；后端默认未锁定 | - | 禁止手动修改。 |
 | **费用锁定** | 费用是否锁定。 | `transportOrder.feeLocked`；后端默认未锁定 | - | 禁止手动修改。 |
 | **装运方式** | 整柜、拼箱分票、拼箱主票。 | `blType`；枚举 `0` 整柜 / `1` 拼箱分票 / `2` 拼箱主票 | **触发/依赖：** 默认整柜。 | - |
@@ -65,11 +68,24 @@ last_updated: 2026-07-02
 > **[卡点 4：新增成功跳转依赖后端返回 ID]** 前端兼容 `createdId.id`、`createdId.result` 和直接返回值三种形式。若接口不返回可解析 ID，页面只能回列表，无法自动进入编辑工作台。
 >
 > **[卡点 5：服务项目联动是“双语义”查询]** `polId` 查询用于“显示哪些卡片”，`polId+clientId` 查询用于“默认勾选哪些卡片”；两者不可混用。若仅按 `checked` 控制展示，会把“未默认勾选”误判成“未配置服务”。
+>
+> **[卡点 6：新建保存后必须关闭原 Tab]** `/create` 与 `/:id/edit` 是不同 Tab key；仅 `push`/`replace` 都会留下新建页标签。须在跳转前缓存 create 的 `fullPath`，跳转后 `closeTabByKey`，否则顶部会残留空白标签。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 新建保存成功后 `replace` 进编辑页并关闭原新建页 Tab，消除顶部残留空白标签。 | `useSeaExportSubmit` 注入 `closeTabByKey`/`getCurrentTabKey`；关闭须用跳转前缓存的 create key。 |
+| 2026-07-12 | `Fix` | 保存 DTO 带回场站联系人四字段（与编辑页同源修复，避免漏传被后端空覆盖）。 | 与编辑页共用 `collectCurrentFormValues` + `buildSeaExportDto`；新建态通常为空透传。 |
+| 2026-07-12 | `Fix` | 基础信息区补齐「订舱代理」字段，可选行业类别为订舱代理的客户并随单保存。 | 与编辑页共用 `form.vue`；`bookingAgentId` 纳入 `BASIC_MODULE_EXTRA_FIELD_NAMES` 从船期 schema 迁入，避免只剔除不迁入导致字段消失。 |
+| 2026-07-12 | `Feature` | 配置服务项目弹窗按「主流程 / 非主流程」分组展示。 | 与编辑页共用 `form.vue`；分类读取 `ServiceType.extra1`，任务优先级仍读取 POL 配置 `sortId`。 |
+| 2026-07-12 | `Feature` | 船名/航次宽度 3:2；运输条款与贸易条款合并为一项（1:1）；签单地点/日期表单隐藏（模型保留）。 | 与编辑页共用 `data.ts`/`form.vue`；新增 `ServiceTradeTermsInput`。 |
+| 2026-07-12 | `Feature` | 右侧拆为上下两卡：上「干系人」、下只读「场站信息」（联系人/邮箱/手机/电话）；新建态为空显示 `-`。 | 与编辑页共用 `form.vue`/`form.css`；字段挂 `SeaExportDto`，经 `entrustReadonlyInfo` 展示，不入提交 DTO。 |
+| 2026-07-11 | `Feature` | 干系人面板默认固定展示销售/商务/操作/客服/单证；海外客服不默认展示；选择委托单位后按客户绑定干系人默认回填，操作/单证/客服未绑定兜底当前账号；委托单位与起运港加必填标识。 | 与编辑页共用 `form.vue`/`use-order-users.ts`；`data.ts` 为 `clientId`/`polId` 设 `selectRequired`。 |
+| 2026-07-11 | `Style` | 箱型箱量表格列宽优化：收窄序号/箱型列，加宽箱号/封号列。 | 共用 `order-ctn-table.vue`；列宽通过 `tableColumns.width` 与 `order-ctn-table__*-col` CSS 双处固定。 |
+| 2026-07-11 | `Refactor` | 无（纯代码组织调整，行为不变）。 | 基础信息表单收敛至 `basic-info-form/` 目录：迁入 `form.vue`/`form.css` 及 5 个私有拆分文件（映射/服务项纯逻辑/AI 规范化/干系人/AI 识别/保存提交），新增 README 梳理职责与依赖；路由与 `editor.vue` 引用同步更新；清理 `form.vue` 5 处未使用声明。共享文件（`data.ts`/`service-type.ts`/`use-sea-export-copy`/`use-yundang-ocean-subscribe`）保留原位。 |
+| 2026-07-08 | `Feature` | 船期信息标题栏新增「同步日期」：船名+航次+开船日期齐全后可按历史票证回填 ATD/ETA/截 VGM/截单/截舱单。 | `GetDates` + `use-sync-shipment-dates.ts`；仅回填非 null 字段，无数据静默。 |
+| 2026-07-08 | `Style` | 箱型箱量标题栏新增/删除等按钮改为紧跟标题靠左，不再顶到右侧。 | 共用 `order-ctn-table.vue`；去掉标题 `flex: 1`。 |
 | 2026-07-06 | `Feature` | AI 识别对接 TextIn：支持 PDF/图片、Drawer 预览 citations 定位、箱型箱量/品名回填；空值/0/空 Guid 不回填。 | 与编辑页共用 `form.vue`；新增 `text-in-admin.ts` 与预览 Drawer 组件。 |
 | 2026-07-02 | `Style` | 船期信息时间轴竖向分割条移至预抵日期后，与编辑页一致。 | 共用 `form.vue` 的 `.shipment-flow-divider` 与箭头排除规则。 |
 | 2026-06-27 | `Feature` | 提单类字段（唛头、货描、收发通、港口备注等）输入时全角英数字/标点/空格自动转半角，与既有英文大写规范串联执行。 | `toHalfWidth` 并入 `toEnglishUpperCase`；港口联动备注与 AI 回填同步生效。 |
@@ -83,6 +99,7 @@ last_updated: 2026-07-02
 | 2026-06-07 | `Refactor` | 服务流水线改为 `ServiceTypeNode` 枚举驱动，与执行方五字段完全解耦；删除代收支与 `organizationUnits` 提交。 | 新建/编辑共用 `form.vue`；节点来自 POL 配置 + `ServiceType` displayName，提交 `serviceTypes` 由勾选节点 value 集合生成。 |
 | 2026-06-07 | `Refactor` | 服务项目枚举值与节点文案不再使用前端硬编码 `0~5`，统一在运行时从 `getEnumItems('ServiceType')` 读取并映射。 | 新建页与编辑页共用 `form.vue`，服务项勾选、提交 `serviceTypes` 与节点名称均收敛到同一枚举源，降低枚举中心变更带来的前端漂移风险。 |
 | 2026-05-30 | `Fix` | 服务项目空态改为紧凑一行提示；未选/清空起运港时不渲染服务节点并提示先选起运港；可见服务项与顺序完全由起运港配置回显。 | 初始可见态改为全隐藏，`getServiceItemVisible` 仅 `=== true` 时展示。 |
+| 2026-07-11 | `Refactor` | 无（纯代码组织调整，行为不变）。共用 `form.vue` 按批次拆分，累计 6581→约 3191 行（样式移至 `form.css`）。 | 抽出 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `modules/ai-extract-utils.ts`（AI 识别编排/规范化）、`use-sea-export-submit.ts`（`buildSeaExportDto` 纯函数 + 提交/脏检查 composable）；`<style scoped>` 外链为 `form.css` 并放宽共享 stylelint 的 `.css`/`.scss` 深度选择器。调用点等价替换，DTO 与校验链路不变。详见 `changelogs/change-log-2026-07-11-sea-export-form-modularization.md`。 |
 | 2026-05-30 | `Fix` | 起运港已选但未配置任何服务项时，服务项目区域展示空态提示，不再渲染空白。 | 新增 `polHasNoServiceConfig` 与联动 loading 态，仅在 `GetServiceTypesByPOLAsync` 成功返回且可见卡片为空时提示。 |
 | 2026-05-30 | `Refactor` | 服务项类型值映射改为复用统一常量 `SERVICE_TYPE_VALUE`，与工作台/港口服务项配置/客户排除服务项保持同源。 | `form.vue` 继续承载“服务项值 -> 业务字段”映射语义，枚举数值来源收敛到 `service-type.ts`，降低 0~5 硬编码漂移风险。 |
 | 2026-05-29 | `Fix` | 服务项目联动改为双查询语义：`polId` 决定可见卡片，`polId+clientId` 决定默认勾选；起运港未配置卡片隐藏。 | `form.vue` 新增可见态集合并动态渲染卡片列表，避免把默认勾选逻辑误用于可见范围。 |

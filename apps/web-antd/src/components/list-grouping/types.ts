@@ -37,4 +37,10 @@ export interface GroupItem {
   name: null | string;
   /** 该分组数据总条数 */
   count: number;
+  /**
+   * 分组项 logo 展示地址（已解析为可直接访问的完整地址）。
+   * 由调用方在 `fetchGroups` 中按需注入（如船公司分组展示船司 logo）；
+   * 无值时分组项不展示 logo。
+   */
+  logoUrl?: string;
 }

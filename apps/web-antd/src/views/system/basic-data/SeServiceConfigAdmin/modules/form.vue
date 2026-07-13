@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { SeServiceConfigAdminApi } from '#/api/system/base-data/se-service-config-admin';
+import type { ServiceTypeOption } from '#/views/sea-export-admin/service-type';
 
 import { computed, ref } from 'vue';
 
@@ -24,6 +25,7 @@ import {
   editSeServiceConfig,
   getSeServiceConfigDetail,
 } from '#/api/system/base-data/se-service-config-admin';
+import { getItemsByName } from '#/api/system/enum-admin';
 import { UserAttribute } from '#/api/system/user-admin';
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
@@ -32,7 +34,6 @@ import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 import { $t } from '#/locales';
 import { getEnumItems } from '#/utils/init-enum';
 import { loadSeServiceTypeOptions, resolveServiceTypeLabel } from '../data';
-import { getItemsByName } from '#/api/system/enum-admin';
 import {
   combineUserAttribute,
   getSeaExportOrderUserRoleOptions,
@@ -69,6 +70,7 @@ type RequireFeeRow = {
 type ItemRow = {
   rowKey: string;
   id?: string;
+  sortId?: number;
   serviceType?: number;
   userAttributeFlags: number[];
   autoComplete: boolean;
@@ -100,7 +102,7 @@ const formState = ref<{
 }>({});
 const itemRows = ref<ItemRow[]>([]);
 const selectedPortItems = ref<PortSelectItem[]>([]);
-const serviceTypeOptions = ref<SelectOption[]>([]);
+const serviceTypeOptions = ref<ServiceTypeOption[]>([]);
 const seaExportShowPropOptions = ref<SelectOption[]>([]);
 const seaExportLockRequirePropOptions = ref<SelectOption[]>([]);
 let rowKeySeed = 0;
@@ -135,6 +137,27 @@ const SEA_EXPORT_PROP_FALLBACK_ITEMS: EnumItem[] = [
 ];
 
 const userAttributeOptions = computed(() => getSeaExportOrderUserRoleOptions());
+
+const sortedItemRows = computed(() =>
+  [...itemRows.value].sort(
+    (a, b) =>
+      Number(a.sortId ?? Number.MAX_SAFE_INTEGER) -
+      Number(b.sortId ?? Number.MAX_SAFE_INTEGER),
+  ),
+);
+
+const getNextItemSortId = () => {
+  if (itemRows.value.length === 0) {
+    return 0;
+  }
+  const maxSortId = Math.max(
+    ...itemRows.value.map((row) => Number(row.sortId ?? 0)),
+  );
+  return Number.isFinite(maxSortId) ? maxSortId + 1 : 0;
+};
+
+const findItemRowIndex = (row: ItemRow) =>
+  itemRows.value.findIndex((item) => item.rowKey === row.rowKey);
 
 /** 服务项各行首个 label 统一宽度，便于纵向对齐 */
 const itemLeadingLabelCol = { flex: '0 0 120px' };
@@ -370,6 +393,7 @@ const createRowKey = () => `se-service-item-${Date.now()}-${rowKeySeed++}`;
 const addItem = () => {
   itemRows.value.push({
     rowKey: createRowKey(),
+    sortId: getNextItemSortId(),
     serviceType: undefined,
     userAttributeFlags: [],
     autoComplete: false,
@@ -386,30 +410,11 @@ const addItem = () => {
   });
 };
 
-const removeItem = (index: number) => {
-  itemRows.value.splice(index, 1);
-};
-
-const moveItem = (from: number, to: number) => {
-  if (
-    from === to ||
-    from < 0 ||
-    to < 0 ||
-    from >= itemRows.value.length ||
-    to >= itemRows.value.length
-  ) {
-    return;
+const removeItem = (row: ItemRow) => {
+  const index = findItemRowIndex(row);
+  if (index >= 0) {
+    itemRows.value.splice(index, 1);
   }
-  const [moved] = itemRows.value.splice(from, 1);
-  itemRows.value.splice(to, 0, moved);
-};
-
-const moveUp = (index: number) => {
-  moveItem(index, index - 1);
-};
-
-const moveDown = (index: number) => {
-  moveItem(index, index + 1);
 };
 
 const validateForm = () => {
@@ -435,14 +440,14 @@ const validateForm = () => {
 
 const toPayloadItemsForAdd =
   (): SeServiceConfigAdminApi.SeServiceConfigItemAddDto[] => {
-    return itemRows.value.map((row, index) => ({
+    return itemRows.value.map((row) => ({
       serviceType: Number(row.serviceType),
       userAttribute: combineUserAttribute(row.userAttributeFlags),
       autoComplete: row.autoComplete,
       manualAllowed: row.manualAllowed,
       reminder: row.reminder,
       requireFee: row.requireFee,
-      sortId: index,
+      sortId: Number(row.sortId ?? 0),
       remark: row.remark,
       seServiceShows: row.seServiceShows.map((item) => ({
         seaExportPropEnum: Number(item.seaExportPropEnum),
@@ -459,7 +464,7 @@ const toPayloadItemsForAdd =
 
 const toPayloadItemsForEdit =
   (): SeServiceConfigAdminApi.SeServiceConfigItemEditDto[] => {
-    return itemRows.value.map((row, index) => ({
+    return itemRows.value.map((row) => ({
       id: row.id,
       serviceType: Number(row.serviceType),
       userAttribute: combineUserAttribute(row.userAttributeFlags),
@@ -467,7 +472,7 @@ const toPayloadItemsForEdit =
       manualAllowed: row.manualAllowed,
       reminder: row.reminder,
       requireFee: row.requireFee,
-      sortId: index,
+      sortId: Number(row.sortId ?? 0),
       remark: row.remark,
       seServiceShows: row.seServiceShows.map((item) => ({
         id: item.id,
@@ -665,7 +670,7 @@ const [Modal, modalApi] = useVbenModal({
     resetState();
     const modalData = modalApi.getData<{
       id?: string;
-      serviceTypeOptions?: SelectOption[];
+      serviceTypeOptions?: ServiceTypeOption[];
       polId?: number | string;
       polPortName?: string;
       polCnName?: string;
@@ -724,6 +729,7 @@ const [Modal, modalApi] = useVbenModal({
           return {
             rowKey: item.id || createRowKey(),
             id: item.id,
+            sortId: Number(item.sortId ?? 0),
             serviceType: normalizeEnumNumber(item.serviceType),
             userAttributeFlags: parseSeaExportUserAttribute(
               Number(item.userAttribute || 0),
@@ -855,36 +861,35 @@ const [Modal, modalApi] = useVbenModal({
 
       <TransitionGroup name="service-item" tag="div" class="space-y-3 pr-1">
         <div
-          v-for="(row, index) in itemRows"
+          v-for="(row, index) in sortedItemRows"
           :key="row.rowKey"
           class="rounded border border-gray-200 p-3"
         >
-          <div class="mb-3 flex items-center justify-between">
-            <div
-              class="border-l-4 border-blue-500 pl-2 text-base font-semibold text-slate-800"
-            >
-              {{ getItemTitle(row, index) }}
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div class="flex min-w-0 flex-1 items-center gap-3">
+              <div
+                class="border-l-4 border-blue-500 pl-2 text-base font-semibold text-slate-800"
+              >
+                {{ getItemTitle(row, index) }}
+              </div>
+              <div class="flex shrink-0 items-center gap-1.5">
+                <span class="text-sm text-gray-500">
+                  {{ $t('system.basicData.seServiceConfig.sortId') }}
+                </span>
+                <InputNumber
+                  v-model:value="row.sortId"
+                  :min="0"
+                  :precision="0"
+                  class="w-20"
+                />
+              </div>
             </div>
             <Space :size="4">
               <Button
                 type="text"
-                :disabled="index === 0"
-                @click="moveUp(index)"
-              >
-                {{ $t('system.basicData.seServiceConfig.moveUp') }}
-              </Button>
-              <Button
-                type="text"
-                :disabled="index === itemRows.length - 1"
-                @click="moveDown(index)"
-              >
-                {{ $t('system.basicData.seServiceConfig.moveDown') }}
-              </Button>
-              <Button
-                type="text"
                 danger
                 :disabled="itemRows.length <= 1"
-                @click="removeItem(index)"
+                @click="removeItem(row)"
               >
                 {{ $t('common.delete') }}
               </Button>
@@ -1047,7 +1052,7 @@ const [Modal, modalApi] = useVbenModal({
                     @update:model-value="
                       (values) =>
                         updateRequireFeeCodeIds(
-                          index,
+                          findItemRowIndex(row),
                           REQUIRE_FEE_PAY_SIDE_RECEIVE,
                           values,
                         )
@@ -1070,7 +1075,7 @@ const [Modal, modalApi] = useVbenModal({
                     @update:model-value="
                       (values) =>
                         updateRequireFeeCodeIds(
-                          index,
+                          findItemRowIndex(row),
                           REQUIRE_FEE_PAY_SIDE_PAY,
                           values,
                         )

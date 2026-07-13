@@ -32,6 +32,15 @@ const [Form, formApi] = useVbenForm({
   showDefaultActions: false,
 });
 
+/**
+ * 大数 ID（json-bigint 解析为 string）必须原样透传，
+ * 禁止 Number() 转换，超过 2^53-1 会丢精度
+ */
+const normalizeSelectId = (value: unknown): number | string | undefined => {
+  if (value === undefined || value === null || value === '') return undefined;
+  return typeof value === 'number' ? value : String(value);
+};
+
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
     const { valid } = await formApi.validate();
@@ -48,8 +57,8 @@ const [Modal, modalApi] = useVbenModal({
           cnName: values.cnName,
           explain: values.explain,
           portType: values.portType,
-          countryId: values.countryId,
-          laneId: values.laneId,
+          countryId: normalizeSelectId(values.countryId),
+          laneId: normalizeSelectId(values.laneId),
           ediCode: values.ediCode,
           statisticalArea: values.statisticalArea,
           status: values.status,
@@ -60,8 +69,8 @@ const [Modal, modalApi] = useVbenModal({
           cnName: values.cnName,
           explain: values.explain,
           portType: values.portType,
-          countryId: values.countryId,
-          laneId: values.laneId,
+          countryId: normalizeSelectId(values.countryId),
+          laneId: normalizeSelectId(values.laneId),
           ediCode: values.ediCode,
           statisticalArea: values.statisticalArea,
           status: values.status,
@@ -78,7 +87,7 @@ const [Modal, modalApi] = useVbenModal({
   async onOpenChange(isOpen) {
     if (!isOpen) return;
 
-    const data = modalApi.getData<{ id?: number }>();
+    const data = modalApi.getData<{ id?: number | string }>();
     if (!data?.id) {
       formData.value = undefined;
       formApi.resetForm();

@@ -226,7 +226,7 @@ defineExpose({
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
     v-bind="$attrs"
-    class="carrier-select-with-logo w-full"
+    class="biz-select carrier-select-with-logo w-full"
   >
     <template v-for="name in forwardSlotNames" #[name]="slotData">
       <slot :name="name" v-bind="slotData || {}"></slot>

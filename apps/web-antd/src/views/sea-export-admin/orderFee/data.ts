@@ -85,11 +85,11 @@ export const getFeeStatusValue = {
   Entering: 0,
   Submit: 1,
   Approved: 2,
-  Rejected: 3,
-  ApplyModify: 4,
-  ApplyDelete: 5,
-  PartialSettlement: 6,
-  Settled: 7,
+  PartialSettlement: 3,
+  Settled: 4,
+  Rejected: 5,
+  ApplyModify: 6,
+  ApplyDelete: 7,
 };
 
 // --------------------------------------------------------
@@ -120,12 +120,11 @@ export const getUserAttributeEnumOptions = () => [
 // --------------------------------------------------------
 /** 行业类别枚举选项（value 取字母，与 IndustryCategory 注释对应：a 船公司、b 发货人、c 场站…） */
 export const getIndustryCategoryOptions = () => [
-  // {
-  //   key: 1,
-  //   value: 'a',
-  //   label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
-  //   module: [],
-  // },
+  {
+    key: 1,
+    value: 'a',
+    label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
+  },
   {
     key: 2,
     value: 'b',
@@ -171,7 +170,11 @@ export const getIndustryCategoryOptions = () => [
     value: 'j',
     label: $t('seaExport.client.industryCategoryOptions.trader'),
   },
-
+  {
+    key: 11,
+    value: 'k',
+    label: $t('seaExport.client.industryCategoryOptions.agent'),
+  },
   {
     key: 12,
     value: 'l',
@@ -441,7 +444,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('seaExport.export.orderFee.feeStatus'),
       align: 'center',
-      field: 'feeStatus',
+      field: 'combinedFeeStatus',
       minWidth: 100,
       cellRender: {
         name: 'CellFeeStatusTag',
@@ -685,7 +688,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.feeStatus'),
       align: 'center',
-      field: 'feeStatus',
+      field: 'combinedFeeStatus',
       minWidth: 100,
       cellRender: {
         name: 'CellFeeStatusTag',
@@ -696,7 +699,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.feecodeName'),
 
       field: 'feeCodeId',
-      minWidth: 150,
+      minWidth: 300,
       cellRender: {
         name: 'CellFeeCodeSelect',
         props: {
@@ -1044,37 +1047,19 @@ export const getInvoiceStatusOptions = () => {
 export const getFeeStatusOptions = () => {
   return [
     { value: 0, label: '录入状态', color: '#b8cdd7', code: 'Entering' },
-    { value: 1, label: '提交审核', color: '#ffc107', code: 'Submit' },
-    { value: 2, label: '审核通过', color: '#67c23a', code: 'Approved' },
-    { value: 3, label: '驳回', color: '#f56c6c', code: 'Rejected' },
+    { value: 1, label: '提交审核', color: '#ffc107', code: 'Submitted' },
+    { value: 2, label: '审核通过', color: '#67c23a', code: 'Passed' },
     {
-      value: 4,
-      label: '申请修改',
-      color: '#ff9900',
-      code: 'RequestModification',
-    },
-    { value: 5, label: '申请删除', color: '#ff9900', code: 'RequestDeletion' },
-    {
-      value: 6,
+      value: 3,
       label: '部分结算',
       color: '#909399',
       code: 'PartialSettlement',
     },
-    { value: 7, label: '结算完毕', color: '#67c23a', code: 'Settled' },
+    { value: 4, label: '结算完毕', color: '#67c23a', code: 'Settlemented' },
+    { value: 5, label: '驳回', color: '#f56c6c', code: 'Rejected' },
+    { value: 6, label: '申请修改', color: '#ff9900', code: 'Modification' },
+    { value: 7, label: '申请删除', color: '#ff9900', code: 'Deletion' },
   ];
-
-  //     return feeStatusCache.length > 0
-  // ? feeStatusCache
-  // : [
-  //     { value: 0, label: '录入状态', color: '#b8cdd7' },
-  //     { value: 1, label: '提交审核', color: '#ffc107' },
-  //     { value: 2, label: '审核通过', color: '#67c23a' },
-  //     { value: 3, label: '驳回', color: '#f56c6c' },
-  //     { value: 4, label: '申请修改', color: '#ff9900' },
-  //     { value: 5, label: '申请删除', color: '#ff9900' },
-  //     { value: 6, label: '部分结算', color: '#909399' },
-  //     { value: 7, label: '结算完毕', color: '#67c23a' },
-  //   ];
 };
 
 export const getFeeStatusValueByLabel = (code: string): number | undefined => {

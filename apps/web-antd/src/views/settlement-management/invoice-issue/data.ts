@@ -9,6 +9,11 @@ import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
  */
 export const columns: VxeTableGridOptions['columns'] = [
   {
+    type: 'checkbox',
+    width: 50,
+    fixed: 'left',
+  },
+  {
     title: '开出单号',
     field: 'applicationNo',
     width: 150,

@@ -88,6 +88,7 @@ defineExpose({
 
 <template>
   <Select
+    class="biz-select w-full"
     :value="selectedValue"
     :options="options"
     :loading="loading"

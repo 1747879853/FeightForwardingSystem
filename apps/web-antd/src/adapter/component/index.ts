@@ -541,6 +541,7 @@ export type ComponentType =
   | 'FeeCodeSelect'
   | 'ExchangeRateSelect'
   | 'VesselVoyageInput'
+  | 'TrimInput'
   | 'EnglishUpperInput'
   | 'EnglishUpperTextarea'
   | 'ReadonlyText'
@@ -548,6 +549,7 @@ export type ComponentType =
   | 'ServiceItemInput'
   | 'BillCountsInput'
   | 'FrtPrepareInput'
+  | 'ServiceTradeTermsInput'
   | 'OrderGoodsButton'
   | 'OrderUsersButton'
   | BaseFormComponentType;
@@ -706,6 +708,7 @@ async function initComponentAdapter() {
     VesselVoyageInput: defineAsyncComponent(
       () => import('./vessel-voyage-input.vue'),
     ),
+    TrimInput: defineAsyncComponent(() => import('./trim-input.vue')),
     EnglishUpperInput: defineAsyncComponent(
       () => import('./english-upper-input.vue'),
     ),
@@ -725,7 +728,13 @@ async function initComponentAdapter() {
     FrtPrepareInput: defineAsyncComponent(
       () => import('./frt-prepare-input.vue'),
     ),
+    ServiceTradeTermsInput: defineAsyncComponent(
+      () => import('./service-trade-terms-input.vue'),
+    ),
     nameInput: defineAsyncComponent(() => import('./biz-input/name-input.vue')),
+    shortNameInput: defineAsyncComponent(
+      () => import('./biz-input/short-name-input.vue'),
+    ),
   };
 
   // 将组件注册到全局共享状态中

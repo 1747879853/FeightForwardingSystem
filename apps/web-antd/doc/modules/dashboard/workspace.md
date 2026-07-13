@@ -2,12 +2,12 @@
 title: 工作台
 module: 驾驶舱
 author: auto-doc-sync
-last_updated: 2026-06-09
+last_updated: 2026-07-12
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 工作台承载“海运出口服务 / 应收应付审核 / 付费申请审核”三大业务入口；三个入口均已提供统一的顶部查询区与业务列表视图，其中海运出口服务仍按起运港 + 服务项节点组织任务，两个审核入口聚焦审核任务浏览与进入处理页。
+**白话解释：** 工作台承载“海运出口服务 / 应收应付审核 / 付费申请审核”三大业务入口；三个入口均已提供统一的顶部查询区与业务列表视图，其中海运出口服务仍按起运港 + 服务项节点组织任务，两个审核入口聚焦审核任务浏览与进入处理页。应收应付审核筛选字段与 `/audit-approval/expense-review` 对齐。
 
 **路由与源码定位：**
 
@@ -28,13 +28,16 @@ last_updated: 2026-06-09
 - **海运出口服务查询：**
   - 统计接口：`SeServiceTaskAdmin/GetWorkbenchCountAsync`（起运港 Tab + 服务项 Badge）
   - 列表接口：`SeServiceTaskAdmin/GetWorkbenchPagedListAsync`（按 `POLId` + `ServiceType` 分页，指派任务不传 `ServiceType`；分页参数 `PageIndex`/`PageSize`，页码从 1 开始）
-  - 条件：ETD 区间（ISO 闭区间）、客户、船公司、MBL、POD、任务状态（待处理/已处理）
+  - 条件：ETD 区间（ISO 闭区间）、客户、船公司、**编号（Keyword：主提单号/订舱编号/委托编号）**、POD、任务状态（待处理/已处理）；已移除独立 MBL 条件
   - 动态列：切换起运港时拉 `SeServiceConfigAdmin` 详情，按 `seServiceShows` 渲染
   - 分页：默认 20 条，可选 10/20/50
 - **审核 Tab 查询与列表：**
   - 应收应付审核接口：`OrderFeeAdmin/OrderFeeTaskListAsync`
   - 付费申请审核接口：`PaymentApplicationAdmin/PayAppTaskListAsync`
-  - 查询区样式复用海运出口风格，但字段按审核接口能力独立配置（不再复用海运出口字段）；列表统一复用工作台业务表格组件。
+  - 应收应付筛选字段：处理状态、业务类型、业务编号、客户、ETD、截止日期、销售、操作（对齐费用审核列表页）。
+  - 付费申请筛选字段：处理状态、业务编号、申请单号、结算对象、币种、提交时间、申请人、审核人。
+  - 查询区：`WorkbenchReviewFilterBar` 使用 CSS Grid（`auto-fill`），label 固定宽；按钮组占最后一列并右对齐，换行后与首行内容右缘对齐；列表统一复用工作台业务表格组件。筛选区内 Select 与 Input 同宽（`width: 100%`，不定死 170px）。
+  - 审核 Tab 表格：卡片上边距 12px，单元格左右内边距 8px（仅审核 Tab）。
 - **任务分组展示：**
   - 头部按起运港（POL）切换，并展示该港口任务数 Badge
   - 内容区按服务项（ServiceType）分组展示任务，支持“指派任务”汇总组
@@ -42,6 +45,7 @@ last_updated: 2026-06-09
   - 列由当前 chevron 服务项的 `seServiceShows`（`SeaExportPropEnum`）驱动，严格 1 枚举 1 列，顺序与配置数组一致
   - 固定列始终显示：委托单号、处理人；「转交任务」节点额外显示转交备注列；`seServiceShows` 为空时不展示业务列
   - 表头文案取自 `SeaExportPropEnum` 枚举 `displayName`；审核 Tab 仍使用固定列，不受 `seServiceShows` 影响
+- **行选中：** 海运出口服务业务列表**仅点击 checkbox 才选中**，单击行不切换选中；双击行仍进入编辑。
 - **任务处理动作：**
   - 批量转交：`TransferAsync`（被转交人来自 `UserSelect` 全量用户）
   - 单条/批量完成：`CompleteAsync`（批量为逐条调用）
@@ -71,6 +75,7 @@ last_updated: 2026-06-09
 | **ids + assigneeUserId** | 批量转交入参。 | `TransferAsync` | **触发/依赖：** 由表格勾选行 + 转交弹窗用户选择组装。 | 被转交人不能为空，任务需可转交。 |
 | **id** | 完成任务入参。 | `CompleteAsync` | **触发/依赖：** 行内完成或批量完成逐条提交。 | 任务需处于待处理且当前用户有处理权限。 |
 | **seServiceShows** | 当前服务项向用户展示的海运出口字段（枚举数组）。 | `SeServiceConfigAdmin/DetailAsync`（按起运港 `polId` 查配置） | **触发/依赖：** 切换 chevron 服务项节点时重建业务列表动态列；表头取 `SeaExportPropEnum.displayName`。 | 指派任务不展示动态列；为空时不展示业务列。 |
+| **Keyword（编号）** | 按主提单号 / 订舱编号 / 委托编号统一模糊检索。 | `GetWorkbenchCountAsync` / `GetWorkbenchPagedListAsync` 参数 `Keyword` | **触发/依赖：** 筛选栏输入即时 trim；Count 与 PagedList 共用同一过滤参数。 | 可清空；已替代原 `MblNum`。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -82,6 +87,9 @@ last_updated: 2026-06-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Feature` | 海运出口服务筛选改为「编号」Keyword（可查主提单/订舱/委托），移除 MBL；业务列表仅 checkbox 选中；编号输入自动 trim；筛选下拉与 Input 同宽。 | 见 `change-log-2026-07-12-workspace-keyword-trim-checkbox.md`；Count/PagedList 共用 `Keyword`。 |
+| 2026-07-12 | `Feature` | 应收应付审核筛选对齐费用审核页；修复费用详情深链；审核筛选区 Grid 换行与按钮右对齐；审核表格间距/单元格 padding 调整。 | 见 `change-log-2026-07-12-workspace-review-filter-and-expense-detail.md`；跳转仍用 `transportOrderId::entityId`。 |
+| 2026-07-12 | `Style` | 侧边栏「工作台」一级菜单图标改为 `vscode-icons:file-type-go-work`。 | 与其它一级业务菜单同步更换语义化 Iconify 图标，见 `change-log-2026-07-12-sidebar-top-menu-icons.md`。 |
 | 2026-06-09 | `Fix` | 工作台 PagedList 分页参数对齐后端：`PageIndex`/`PageSize` 替代 `SkipCount`/`MaxResultCount`，分页器 current 直接传页码。 | 响应 `currentPage` 回写分页器；枚举/港口接口此前已用页码模式无需改动。 |
 | 2026-06-27 | `Fix` | 工作台「转交备注」列仅在「转交任务」节点展示。 | `activeStageKey === 'assigned'` 时显示。 |
 | 2026-06-27 | `Fix` | 工作台转交弹窗必填转交备注并提交 `assigneeRemark`；列表增加转交备注列；汇总节点文案「指派任务」改为「转交任务」。 | 对齐 `SeServiceTaskTransferDto` / `SeServiceTaskWorkbenchItemDto`。 |

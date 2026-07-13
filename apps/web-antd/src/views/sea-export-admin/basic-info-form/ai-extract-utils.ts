@@ -1,6 +1,10 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { TextInAdminApi } from '#/api/common/text-in-admin';
 
+import { toEnglishUpperCase } from '#/utils/english-upper-case';
+
+import { toDayjs } from './sea-export-detail-mapper';
+
 export const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
 
 export const AI_EXTRACT_ACCEPT =
@@ -194,3 +198,130 @@ export function pickExtractedLabel(
   }
   return '';
 }
+
+/** AI 识别允许回填的表单字段白名单 */
+export const AI_RECOGNIZE_ALLOWED_FIELDS = new Set([
+  'blType',
+  'billType',
+  'codeIssueTypeId',
+  'issueType',
+  'vessel',
+  'innerVoyno',
+  'carrierId',
+  'secondNotifierId',
+  'secondNotifierContent',
+  'podAgentId',
+  'podAgentContent',
+  'bookingAgentId',
+  'shipAgentId',
+  'yardId',
+  'noBillEnum',
+  'copyNoBillEnum',
+  'prepareAtId',
+  'closingTime',
+  'closeVgmTime',
+  'closeDocTime',
+  'closeManifestTime',
+  'signingTime',
+  'signingPortId',
+  'podId',
+  'podRemark',
+  'polId',
+  'polRemark',
+  'poT1Id',
+  'poT1Remark',
+  'poT2Id',
+  'poT2Remark',
+  'receivePortId',
+  'receivePortRemark',
+  'deliverPortId',
+  'deliverPortRemark',
+  'remark',
+  'commissionNum',
+  'mblNum',
+  'bookingNum',
+  'accountDate',
+  'settlementDate',
+  'codeSourceId',
+  'codeFrtId',
+  'codeServiceId',
+  'cargoId',
+  'tradeTermsType',
+  'goodsCompleteTime',
+  'etd',
+  'atd',
+  'eta',
+  'clientId',
+  'teamId',
+  'custBrokerId',
+  'warehouseId',
+  'insuranceId',
+  'consigneeId',
+  'consigneeContent',
+  'shipperId',
+  'shipperContent',
+  'notifierId',
+  'notifierContent',
+  'marks',
+  'pkgs',
+  'codePackageId',
+  'goodsDes',
+  'kgs',
+  'cbm',
+  'internalRemark',
+]);
+const AI_RECOGNIZE_DATE_FIELDS = new Set([
+  'goodsCompleteTime',
+  'etd',
+  'atd',
+  'eta',
+  'closingTime',
+  'closeVgmTime',
+  'closeDocTime',
+  'closeManifestTime',
+  'signingTime',
+  'accountDate',
+  'settlementDate',
+]);
+const parseNumberFromText = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'string') return undefined;
+  const matched = value.replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+  if (!matched) return undefined;
+  const parsed = Number(matched[0]);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+const ENGLISH_UPPER_CASE_FIELDS = new Set([
+  'marks',
+  'goodsDes',
+  'shipperContent',
+  'consigneeContent',
+  'notifierContent',
+  'secondNotifierContent',
+  'podAgentContent',
+  'receivePortRemark',
+  'polRemark',
+  'poT1Remark',
+  'poT2Remark',
+  'podRemark',
+  'deliverPortRemark',
+  'vessel',
+  'innerVoyno',
+  'mblNum',
+]);
+/** 按字段类型规范化 AI 识别值（日期→dayjs、数值→number、英文字段→大写） */
+export const normalizeAiFieldValue = (field: string, value: unknown) => {
+  if (AI_RECOGNIZE_DATE_FIELDS.has(field)) {
+    return toDayjs(value as string | undefined);
+  }
+  if (field === 'pkgs' || field === 'kgs' || field === 'cbm') {
+    return parseNumberFromText(value);
+  }
+  if (ENGLISH_UPPER_CASE_FIELDS.has(field) && typeof value === 'string') {
+    return toEnglishUpperCase(value.trim());
+  }
+  if (field === 'bookingNum') {
+    return typeof value === 'string' ? value.trim() : value;
+  }
+  return value;
+};

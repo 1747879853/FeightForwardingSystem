@@ -412,7 +412,7 @@
       "requirePayFees": "Required Payable Fees",
       "requireFeeTip": "When enabled, the bound receivable/payable fees must be entered in the business before this service task can be completed.",
       "creationTime": "Creation Time",
-      "sortTip": "Use Move Up/Move Down to reorder items manually. On save, sortId is auto assigned by current order (starting from 0).",
+      "sortTip": "Set a sort value for each service item. Smaller numbers appear first. Items are displayed in ascending order and saved with the maintained sortId.",
       "serviceItemCount": "Service Item Count",
       "userAttributeServiceOverview": "Overview",
       "noServiceConfigured": "Not configured"

@@ -1,3 +1,20 @@
+// Vue scoped 深度选择器（含通过 `<style src>` 外链的组件样式）在 SFC 编译期会被转换，
+// 但独立的 .css/.scss 文件按普通样式解析，需显式放宽这些伪类/伪元素避免误报。
+const vueScopedSelectorRules = {
+  'selector-pseudo-class-no-unknown': [
+    true,
+    {
+      ignorePseudoClasses: ['global', 'deep'],
+    },
+  ],
+  'selector-pseudo-element-no-unknown': [
+    true,
+    {
+      ignorePseudoElements: ['v-deep', 'v-global', 'v-slotted'],
+    },
+  ],
+};
+
 export default {
   extends: ['stylelint-config-standard', 'stylelint-config-recess-order'],
   ignoreFiles: [
@@ -13,18 +30,13 @@ export default {
       customSyntax: 'postcss-html',
       files: ['*.(html|vue)', '**/*.(html|vue)'],
       rules: {
-        'selector-pseudo-class-no-unknown': [
-          true,
-          {
-            ignorePseudoClasses: ['global', 'deep'],
-          },
-        ],
-        'selector-pseudo-element-no-unknown': [
-          true,
-          {
-            ignorePseudoElements: ['v-deep', 'v-global', 'v-slotted'],
-          },
-        ],
+        ...vueScopedSelectorRules,
+      },
+    },
+    {
+      files: ['*.css', '**/*.css'],
+      rules: {
+        ...vueScopedSelectorRules,
       },
     },
     {
@@ -34,6 +46,9 @@ export default {
         'stylelint-config-recommended-vue/scss',
       ],
       files: ['*.scss', '**/*.scss'],
+      rules: {
+        ...vueScopedSelectorRules,
+      },
     },
   ],
   plugins: [

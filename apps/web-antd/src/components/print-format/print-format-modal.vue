@@ -1,69 +1,169 @@
 <script lang="ts" setup>
-import { Button, Empty, Modal, Radio, RadioGroup, Spin } from 'ant-design-vue';
+import { computed } from 'vue';
 
+import {
+  Button,
+  Dropdown,
+  Empty,
+  Menu,
+  MenuItem,
+  Modal,
+  Select,
+  Spin,
+} from 'ant-design-vue';
+
+import { buildPdfEmbedUrl } from '#/utils';
+
+import { PrintExportFormat } from './types';
 import { usePrintFormat } from './use-print-format';
 
-const printFormatState = usePrintFormat();
 const {
   visible,
   loading,
-  printing,
+  previewLoading,
+  exporting,
   templates,
   selectedTemplateId,
+  previewUrl,
   close,
-  confirmPrint,
-} = printFormatState;
+  handleTemplateChange,
+  handleExport,
+} = usePrintFormat();
 
 const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
+
+/** 预览用：隐藏 PDF 工具栏与左侧分页；下载仍用原始 previewUrl */
+const previewEmbedUrl = computed(() => buildPdfEmbedUrl(previewUrl.value));
+
+const templateOptions = computed(() =>
+  templates.value.map((item) => ({
+    label: item.name || '未命名模板',
+    value: item.id,
+  })),
+);
+
+const exportDisabled = computed(
+  () => !selectedTemplateId.value || loading.value,
+);
+
+const formatMenuItems = [
+  { key: PrintExportFormat.Pdf, label: '导出 PDF' },
+  { key: PrintExportFormat.Excel, label: '导出 Excel' },
+  { key: PrintExportFormat.Word, label: '导出 Word' },
+];
+
+function onExportMenuClick(info: { key: number | string }) {
+  handleExport(Number(info.key) as PrintExportFormat);
+}
 </script>
 
 <template>
   <Modal
     v-model:open="visible"
-    title="选择打印模板"
-    :width="480"
+    :width="'92vw'"
     :destroy-on-close="true"
     :mask-closable="false"
+    wrap-class-name="print-format-modal"
     @cancel="close"
   >
-    <Spin :spinning="loading">
-      <div v-if="!loading && templates.length === 0" class="py-6">
-        <Empty :image="emptySimpleImage" description="暂无可用打印模板" />
+    <template #title>
+      <div class="flex items-center gap-3 pr-8">
+        <span>打印预览</span>
+        <Select
+          :value="selectedTemplateId"
+          :options="templateOptions"
+          :loading="loading"
+          placeholder="请选择打印模板"
+          style="width: 260px"
+          @change="handleTemplateChange"
+        />
       </div>
+    </template>
 
-      <RadioGroup
+    <!-- PDF 预览：贴边铺满，FitH 消除两侧黑边 -->
+    <div class="print-preview-body">
+      <Spin v-if="previewLoading" class="print-preview-loading" size="large" />
+      <iframe
+        v-else-if="previewEmbedUrl"
+        :src="previewEmbedUrl"
+        class="print-preview-iframe"
+        title="打印预览"
+      ></iframe>
+      <div
         v-else
-        v-model:value="selectedTemplateId"
-        class="flex w-full flex-col gap-3 py-2"
+        class="print-preview-empty flex h-full items-center justify-center"
       >
-        <Radio
-          v-for="item in templates"
-          :key="item.id"
-          :value="item.id"
-          class="!m-0 w-full rounded-md border border-[#f0f0f0] px-3 py-2"
-        >
-          <div class="flex flex-col gap-0.5">
-            <span class="text-sm font-medium text-[#262626]">
-              {{ item.name || '未命名模板' }}
-            </span>
-            <span v-if="item.remark" class="text-xs text-[#8c8c8c]">
-              {{ item.remark }}
-            </span>
-          </div>
-        </Radio>
-      </RadioGroup>
-    </Spin>
+        <Empty :image="emptySimpleImage" description="请选择模板生成预览" />
+      </div>
+    </div>
 
     <template #footer>
-      <Button @click="close">取消</Button>
-      <Button
-        type="primary"
-        :loading="printing"
-        :disabled="!selectedTemplateId || loading"
-        @click="confirmPrint"
-      >
-        打印
-      </Button>
+      <div class="flex items-center justify-end gap-2">
+        <Button @click="close">关闭</Button>
+        <Dropdown :trigger="['hover']" placement="topRight">
+          <Button
+            type="primary"
+            :loading="exporting"
+            :disabled="exportDisabled"
+            @click="handleExport(PrintExportFormat.Pdf)"
+          >
+            导出
+          </Button>
+          <template #overlay>
+            <Menu @click="onExportMenuClick">
+              <MenuItem
+                v-for="item in formatMenuItems"
+                :key="item.key"
+                :disabled="exportDisabled"
+              >
+                {{ item.label }}
+              </MenuItem>
+            </Menu>
+          </template>
+        </Dropdown>
+      </div>
     </template>
   </Modal>
 </template>
+
+<style>
+.print-format-modal .ant-modal {
+  top: 16px;
+  max-width: 1600px;
+  padding-bottom: 0;
+}
+
+.print-format-modal .ant-modal-body {
+  padding: 0;
+}
+
+.print-format-modal .print-preview-body {
+  position: relative;
+  height: 78vh;
+  overflow: hidden;
+  background: #525659;
+}
+
+.print-format-modal .print-preview-iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.print-format-modal .print-preview-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.print-format-modal .print-preview-empty .ant-empty-description {
+  color: #fff;
+}
+
+.print-format-modal .print-preview-empty .ant-empty-img-simple-g,
+.print-format-modal .print-preview-empty .ant-empty-img-simple-path {
+  stroke: #d9d9d9;
+}
+</style>

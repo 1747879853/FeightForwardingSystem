@@ -12,5 +12,13 @@
     "allowedTypes": "支持格式",
     "maxSize": "最大大小",
     "maxCount": "最多数量"
+  },
+  "filePreview": {
+    "title": "文件预览",
+    "openInNewWindow": "新窗口打开",
+    "download": "下载",
+    "uploader": "上传人",
+    "uploadTime": "上传时间",
+    "unsupported": "该文件类型暂不支持在线预览，请下载后查看"
   }
 }

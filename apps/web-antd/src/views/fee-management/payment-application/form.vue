@@ -458,6 +458,7 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
           remark: row.itemRemark || undefined,
         })),
       });
+      message.success('保存成功');
     } catch {
       message.error('添加费用关联失败');
       return;
@@ -504,11 +505,6 @@ async function handleDeleteSelected() {
 
 function isOriginalFee(feeId: string): boolean {
   return isEdit.value && initialLoadFeeIds.value.has(feeId);
-}
-
-function onAppliedAmountChange(feeId: string, val: number | null) {
-  const row = feeDetailRows.value.find((r) => r.feeId === feeId);
-  if (row) row.appliedAmount = val ?? 0;
 }
 
 function onRateChange(feeId: string, val: number | null) {
@@ -602,7 +598,7 @@ function mapDetailToFeeRows(
           '',
         amount: fee?.amount ?? item.feeAmount ?? 0,
         settledAmount: fee?.settledAmount ?? 0,
-        unSettledAmount: fee?.unSettledAmount ?? 0,
+        unRqstPaymentAmount: fee?.unRqstPaymentAmount ?? 0,
         appliedAmount: item.appliedAmount,
         exchangeRate: fee?.exchangeRate,
         itemRemark: item.remark ?? '',
@@ -1400,21 +1396,13 @@ function formatMonth(val: string | undefined | null): string {
                       <template v-else-if="column.key === 'settledAmount'">
                         {{ formatAmount(record.settledAmount) }}
                       </template>
-                      <template v-else-if="column.key === 'unSettledAmount'">
-                        {{ formatAmount(record.unSettledAmount) }}
+                      <template
+                        v-else-if="column.key === 'unRqstPaymentAmount'"
+                      >
+                        {{ formatAmount(record.unRqstPaymentAmount) }}
                       </template>
                       <template v-else-if="column.key === 'appliedAmount'">
-                        <InputNumber
-                          v-if="!isOriginalFee(record.feeId)"
-                          :value="record.appliedAmount"
-                          :precision="2"
-                          size="small"
-                          class="fee-applied-amount-input w-full"
-                          @change="
-                            (val) => onAppliedAmountChange(record.feeId, val)
-                          "
-                        />
-                        <span v-else class="fee-applied-amount-value">{{
+                        <span class="fee-applied-amount-value">{{
                           formatAmount(record.appliedAmount)
                         }}</span>
                       </template>

@@ -18,7 +18,11 @@ import {
   Card,
 } from 'ant-design-vue';
 
+import { IconifyIcon } from '@vben/icons';
+
 import { $t } from '#/locales';
+
+import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 
 import * as feeConstants from '../data';
 import * as clientConstants from '#/views/client/base/data';
@@ -47,7 +51,6 @@ import {
   useOrderFeeColumns,
   initOrderFeeEnumCache,
   setOrderCtnList,
-  getOrderCtnList,
 } from '../data';
 import OrderFeeEditorModal from './order-fee-editor-modal.vue';
 import OrderFeeAuditHistoryModal from './order-fee-audit-history-modal.vue';
@@ -58,6 +61,8 @@ const dataSource = defineModel<OrderFeeAdminApi.OrderFeeDto[]>({
 });
 
 const selectedRowKeys = ref<(string | number)[]>([]);
+const printing = ref(false);
+const { openPrint } = usePrintFormat();
 
 const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
@@ -65,6 +70,7 @@ const props = defineProps<{
   parentChangeOrderId?: string; //更改单Id
   recAmountMap?: Record<string, any>; // 应收金额汇总
   payAmountMap?: Record<string, any>; // 应付金额汇总
+  orderDetail?: SeaExportAdminApi.SeaExportDto | null; // 父组件传入的订单详情，避免重复请求 DetailAsync
 }>();
 
 const emit = defineEmits([
@@ -216,66 +222,44 @@ const queryTableData = async () => {
 const tmpAdd = ref(false);
 const tmpDel = ref(false);
 
-// 加载订单箱型列表和订单基础数据
-const loadOrderCtnList = async () => {
-  console.log('🔍 [loadOrderCtnList] 开始加载，editId:', editId.value);
+// 应用订单详情：保存基础数据并提取箱型列表（供单位下拉框过滤使用）
+const applyOrderDetail = (
+  orderDetail: SeaExportAdminApi.SeaExportDto | null | undefined,
+) => {
+  // 保存订单基础数据（用于行业类别切换时自动填充结算对象）
+  orderBaseData.value = orderDetail ?? null;
 
-  if (!editId.value) {
-    console.warn('⚠️ [loadOrderCtnList] editId 为空，跳过加载');
-    return;
-  }
+  const orderCtns = orderDetail?.transportOrder?.orderCtns;
+  if (orderCtns?.length) {
+    // 提取唯一的箱型列表
+    const ctnMap = new Map<number, string>();
+    orderCtns.forEach((ctn: any) => {
+      if (ctn.ctnCodeId && ctn.ctnCodeName) {
+        ctnMap.set(ctn.ctnCodeId, ctn.ctnCodeName);
+      }
+    });
 
-  try {
-    const orderDetail = await getSeaExportDetail(editId.value);
-    console.log('📦 [loadOrderCtnList] 订单详情:', orderDetail);
-    console.log(
-      '📦 [loadOrderCtnList] transportOrder:',
-      orderDetail?.transportOrder,
-    );
-    console.log(
-      '📦 [loadOrderCtnList] orderCtns:',
-      orderDetail?.transportOrder?.orderCtns,
-    );
+    const ctnList = Array.from(ctnMap.entries()).map(([id, name]) => ({
+      ctnCodeId: id,
+      ctnCodeName: name,
+    }));
 
-    // 保存订单基础数据（用于行业类别切换时自动填充结算对象）
-    orderBaseData.value = orderDetail;
-    console.log('✅ [loadOrderCtnList] 已保存订单基础数据');
-
-    if (orderDetail?.transportOrder?.orderCtns) {
-      // 提取唯一的箱型列表
-      const ctnMap = new Map<number, string>();
-      orderDetail.transportOrder.orderCtns.forEach((ctn: any) => {
-        console.log('📋 [loadOrderCtnList] 处理箱型:', ctn);
-        if (ctn.ctnCodeId && ctn.ctnCodeName) {
-          ctnMap.set(ctn.ctnCodeId, ctn.ctnCodeName);
-        }
-      });
-
-      const ctnList = Array.from(ctnMap.entries()).map(([id, name]) => ({
-        ctnCodeId: id,
-        ctnCodeName: name,
-      }));
-
-      console.log('✅ [loadOrderCtnList] 提取的箱型列表:', ctnList);
-
-      orderCtnList.value = ctnList;
-
-      // 设置到 data.ts 模块中
-      setOrderCtnList(ctnList);
-      console.log('✅ [loadOrderCtnList] 已调用 setOrderCtnList');
-
-      // 验证是否设置成功
-      const verifyList = getOrderCtnList();
-      console.log('🔍 [loadOrderCtnList] 验证 getOrderCtnList():', verifyList);
-    } else {
-      console.warn('⚠️ [loadOrderCtnList] orderCtns 不存在或为空');
-      // 设置为空数组
-      setOrderCtnList([]);
-    }
-  } catch (error) {
-    console.error('❌ [loadOrderCtnList] 加载订单箱型列表失败:', error);
+    orderCtnList.value = ctnList;
+    setOrderCtnList(ctnList);
+  } else {
+    orderCtnList.value = [];
+    setOrderCtnList([]);
   }
 };
+
+// 父组件传入的订单详情就绪后应用（初始加载走此处，不再单独请求 DetailAsync）
+watch(
+  () => props.orderDetail,
+  (detail) => {
+    if (detail) applyOrderDetail(detail);
+  },
+  { immediate: true },
+);
 
 // 模态框引用
 const modifyModalRef = ref<InstanceType<typeof OrderFeeEditorModal>>();
@@ -296,11 +280,9 @@ const openBatchImportModal = async () => {
   }
 
   try {
-    console.log(
-      '🔄 [openBatchImportModal] 开始调用 getSeaExportDetail, 参数:',
-      editId.value,
-    );
-    const orderDetail = await getSeaExportDetail(editId.value);
+    // 优先复用已加载的订单详情，避免重复请求 DetailAsync
+    const orderDetail =
+      orderBaseData.value ?? (await getSeaExportDetail(editId.value));
 
     console.log('✅ [openBatchImportModal] 获取订单详情成功');
     console.log('📋 [openBatchImportModal] 订单详情:', orderDetail);
@@ -361,14 +343,17 @@ const openAuditHistoryModal = (row: OrderFeeAdminApi.OrderFeeDto) => {
 
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
   gridOptions: {
-    id: `sea-export-order-fee-${props.type}`,
+    id:
+      props.mode === 'changeOrder'
+        ? `sea-export-change-order-fee-${props.type}`
+        : `sea-export-order-fee-${props.type}`,
     columns: useOrderFeeColumns(props.type),
     height: '100%',
     maxHeight: 700,
     keepSource: true,
     radioConfig: {
       highlight: true,
-      trigger: 'row',
+      trigger: 'default',
     },
     rowConfig: {
       keyField: '_rowKey',
@@ -459,6 +444,59 @@ const addRow = () => {
 const delRow = () => {
   tmpDel.value = true;
   gridApi.query();
+};
+
+const getSelectedRows = (): OrderFeeAdminApi.OrderFeeDto[] => {
+  const fromGrid = (gridApi.grid?.getCheckboxRecords?.() ??
+    []) as OrderFeeAdminApi.OrderFeeDto[];
+  if (fromGrid.length) return fromGrid;
+
+  const keysSet = new Set(selectedRowKeys.value);
+  return (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as { _rowKey?: string })._rowKey),
+  );
+};
+
+const isSavedOrderFee = (row: OrderFeeAdminApi.OrderFeeDto) =>
+  Boolean(row.id && String(row.id).trim());
+
+const handlePrint = async () => {
+  if (printing.value) return;
+
+  const selected = getSelectedRows();
+  if (!selected.length) {
+    message.warning('请先勾选要打印的费用');
+    return;
+  }
+  if (selected.some((row) => !isSavedOrderFee(row))) {
+    message.warning('请先保存费用后再打印');
+    return;
+  }
+
+  printing.value = true;
+  const hideLoading = message.loading('正在准备打印...', 0);
+  try {
+    const json = JSON.stringify(
+      selected.map((row) => {
+        const { _rowKey, ...fee } = row as OrderFeeAdminApi.OrderFeeDto & {
+          _rowKey?: string;
+        };
+        return fee;
+      }),
+    );
+    openPrint({
+      printJsonType:
+        props.type === 0
+          ? PrintJsonType.RecOrderFeeList
+          : PrintJsonType.PayOrderFeeList,
+      json,
+    });
+  } catch {
+    message.error('打印准备失败，请稍后重试');
+  } finally {
+    hideLoading();
+    printing.value = false;
+  }
 };
 
 const showDeleteWithRemark = () => {
@@ -993,11 +1031,14 @@ watch(
   async (newEditId, oldEditId) => {
     // 只在 editId 真正变化时才重新加载（排除初始化）
     if (newEditId && newEditId !== oldEditId) {
-      console.log(
-        '🔄 [watch editId] editId 变化，重新加载箱型数据:',
-        newEditId,
-      );
-      await loadOrderCtnList();
+      // 切换单据时父组件（KeepAlive）的 orderDetail 可能仍是旧值，
+      // 这里强制按新 id 拉取一次最新详情，保证箱型/基础数据同步
+      try {
+        const orderDetail = await getSeaExportDetail(newEditId);
+        applyOrderDetail(orderDetail);
+      } catch (error) {
+        console.error('❌ [watch editId] 加载订单详情失败:', error);
+      }
       // 重新加载表格数据
       getTableDate();
     }
@@ -1014,10 +1055,10 @@ onMounted(async () => {
   // 初始化枚举数据缓存
   initOrderFeeEnumCache();
 
-  // 先加载订单箱型列表，确保表格渲染时数据已就绪
-  await loadOrderCtnList();
+  // 订单详情（含箱型列表、订单基础数据）由父组件通过 orderDetail 传入，
+  // 见上方 watch(props.orderDetail)，此处不再单独请求 DetailAsync，避免同一 Tab 重复拉取。
 
-  // 再加载表格数据
+  // 加载表格数据
   getTableDate();
   getFeeCodeList();
 });
@@ -1049,6 +1090,17 @@ defineExpose({
                   v-show="props.mode !== 'changeOrder'"
                 >
                   {{ $t('common.save') }}
+                </Button>
+                <Button
+                  v-show="props.mode !== 'changeOrder'"
+                  :loading="printing"
+                  @click="handlePrint"
+                >
+                  <IconifyIcon
+                    icon="mdi:printer-outline"
+                    class="mr-1 inline-block size-3.5 align-middle"
+                  />
+                  打印
                 </Button>
                 <Button
                   danger

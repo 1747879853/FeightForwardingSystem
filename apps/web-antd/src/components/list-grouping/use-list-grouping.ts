@@ -1,6 +1,6 @@
 import type { GroupFieldDef, GroupItem } from './types';
 
-import { computed, onMounted, ref, shallowRef } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 
 /**
  * 分组字段持久化适配（由调用方注入，通常基于用户设置接口）。
@@ -67,8 +67,14 @@ export function useListGrouping<TField extends number = number>(
 
   /** 最近一次刷新分组时的搜索条件签名；undefined 表示需要强制刷新 */
   let lastSignature: string | undefined;
+  /** 最近一次列表查询使用的基础搜索参数（供「重新进入列表」时刷新分组复用） */
+  let lastBaseParams: Record<string, any> = {};
   /** 当前因启用分组而被禁用的搜索项字段名 */
   let disabledSearchField: string | undefined;
+  /** 被禁用搜索项的原始 placeholder / help，恢复时还原 */
+  let disabledFieldOriginal:
+    | { help?: unknown; placeholder?: unknown }
+    | undefined;
   /** 用于丢弃过期的分组请求结果 */
   let fetchToken = 0;
 
@@ -78,21 +84,45 @@ export function useListGrouping<TField extends number = number>(
     return getGridApi()?.formApi;
   }
 
-  /** 禁用并清空互斥的搜索项 */
+  /**
+   * 禁用并清空互斥的搜索项。
+   * 为了让用户直观知道「该项是因为开启分组才不可用」，除置灰外还会：
+   * - 将 placeholder 替换为「已按『X』分组」内联提示；
+   * - 在 label 旁挂帮助图标（help），说明原因与恢复方式。
+   * 原始 placeholder / help 会被记录，关闭分组时还原。
+   */
   function disableSearchField(field: GroupFieldDef<TField>) {
     const target = field.searchField ?? field.paramKey;
     const formApi = getFormApi();
     if (!formApi || !target) {
       return;
     }
+    const schemaItem = (formApi.state?.schema ?? []).find(
+      (item: any) => item.fieldName === target,
+    );
+    const currentProps = (schemaItem?.componentProps ?? {}) as Record<
+      string,
+      unknown
+    >;
+    disabledFieldOriginal = {
+      placeholder: currentProps.placeholder,
+      help: schemaItem?.help,
+    };
     disabledSearchField = target;
     formApi.updateSchema([
-      { fieldName: target, componentProps: { disabled: true } },
+      {
+        fieldName: target,
+        help: `该条件已作为「${field.label}」分组维度，暂不可筛选；关闭分组后可恢复。`,
+        componentProps: {
+          disabled: true,
+          placeholder: `已按「${field.label}」分组`,
+        },
+      },
     ]);
     formApi.setFieldValue?.(target, undefined);
   }
 
-  /** 恢复之前被禁用的搜索项 */
+  /** 恢复之前被禁用的搜索项（含 placeholder / help 还原） */
   function restoreSearchField() {
     if (!disabledSearchField) {
       return;
@@ -101,10 +131,17 @@ export function useListGrouping<TField extends number = number>(
     formApi?.updateSchema?.([
       {
         fieldName: disabledSearchField,
-        componentProps: { disabled: false },
+        // merge 基于 defu 会忽略 undefined（保留旧值），故用空字符串兜底覆盖，
+        // 确保帮助图标与分组提示 placeholder 都能被清掉。
+        help: (disabledFieldOriginal?.help ?? '') as any,
+        componentProps: {
+          disabled: false,
+          placeholder: disabledFieldOriginal?.placeholder ?? '',
+        },
       },
     ]);
     disabledSearchField = undefined;
+    disabledFieldOriginal = undefined;
   }
 
   async function refreshGroups(baseParams: Record<string, any>) {
@@ -145,6 +182,7 @@ export function useListGrouping<TField extends number = number>(
       return listParams;
     }
 
+    lastBaseParams = { ...listParams };
     const signature = buildSignature(listParams);
     if (signature !== lastSignature) {
       lastSignature = signature;
@@ -166,8 +204,17 @@ export function useListGrouping<TField extends number = number>(
     return { ...listParams, [field.paramKey]: selectedItemId.value };
   }
 
-  /** 启用分组字段（内部，shouldPersist 控制是否写入持久化） */
-  function applyField(value: TField, shouldPersist: boolean) {
+  /**
+   * 启用分组字段（内部）。
+   * - `shouldPersist`：是否写入持久化；
+   * - `skipQuery`：是否跳过触发列表查询（用于「挂载时恢复」场景，
+   *   由调用方在写入表单默认值后统一触发首查，避免竞态导致分组数据拉取不到）。
+   */
+  function applyField(
+    value: TField,
+    shouldPersist: boolean,
+    skipQuery = false,
+  ) {
     const field = fields.find((item) => item.value === value);
     if (!field) {
       return;
@@ -182,12 +229,36 @@ export function useListGrouping<TField extends number = number>(
     if (shouldPersist) {
       persist?.save(value);
     }
-    getGridApi()?.query?.();
+    if (!skipQuery) {
+      getGridApi()?.query?.();
+    }
   }
 
   /** 启用分组字段（切换或首次启用） */
   function enableField(value: TField) {
     applyField(value, true);
+  }
+
+  /**
+   * 恢复已持久化的分组字段（仅设置状态，不触发列表查询）。
+   * 由列表页在挂载时于「写入表单默认值之后、首次查询之前」调用，
+   * 使首次查询即带上分组字段，从而在同一次查询中拉取分组数据。
+   */
+  async function restorePersistedField(): Promise<void> {
+    if (!persist) {
+      return;
+    }
+    try {
+      const saved = await persist.load();
+      if (saved == null || enabledField.value) {
+        return;
+      }
+      if (fields.some((item) => item.value === saved)) {
+        applyField(saved, false, true);
+      }
+    } catch {
+      // 恢复失败不影响列表正常使用
+    }
   }
 
   /** 关闭分组 */
@@ -201,6 +272,18 @@ export function useListGrouping<TField extends number = number>(
     getGridApi()?.query?.();
   }
 
+  /**
+   * 强制刷新分组数据（不改变选中项）。
+   * 用于「重新进入列表页」等场景：分组统计不做缓存，每次进入都拉取最新数据。
+   * 复用最近一次列表查询的搜索参数，未启用分组时不做任何事。
+   */
+  function refreshGroupData() {
+    if (!enabledField.value) {
+      return;
+    }
+    void refreshGroups(lastBaseParams);
+  }
+
   /** 点击分组项（id 为 undefined 表示「全部」） */
   function selectItem(id: null | number | string | undefined) {
     if (selectedItemId.value === id) {
@@ -208,23 +291,6 @@ export function useListGrouping<TField extends number = number>(
     }
     selectedItemId.value = id;
     getGridApi()?.query?.();
-  }
-
-  // 挂载后恢复持久化的分组字段（不再写回持久化，避免无意义的更新请求）
-  if (persist) {
-    onMounted(async () => {
-      try {
-        const saved = await persist.load();
-        if (saved == null || enabledField.value) {
-          return;
-        }
-        if (fields.some((item) => item.value === saved)) {
-          applyField(saved, false);
-        }
-      } catch {
-        // 恢复失败不影响列表正常使用
-      }
-    });
   }
 
   return {
@@ -238,6 +304,8 @@ export function useListGrouping<TField extends number = number>(
     enableField,
     disable,
     selectItem,
+    refreshGroupData,
+    restorePersistedField,
   };
 }
 

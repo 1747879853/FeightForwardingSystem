@@ -21,6 +21,35 @@ export function getApiRootUrl() {
 }
 
 /**
+ * 获取静态文件（如打印生成的 PDF `/PrintTempFile`）的后端根地址。
+ * - 生产环境：VITE_GLOB_API_URL 去掉 /api 后缀
+ * - 开发环境：VITE_GLOB_STATIC_URL（不能用 localhost，需指向真实后端）
+ * 未配置时返回空字符串。
+ */
+export function getStaticFileOrigin() {
+  if (import.meta.env.PROD) {
+    return removeApiSuffix(apiURL);
+  }
+  const devStatic = (import.meta.env.VITE_GLOB_STATIC_URL as string) || '';
+  return devStatic ? removeApiSuffix(devStatic) : '';
+}
+
+/**
+ * 拼接静态文件访问地址：优先使用后端静态根地址，避免开发环境落到 localhost。
+ */
+export function buildStaticFileUrl(url?: string) {
+  if (!url) return '';
+  if (PROTOCOL_URL_REGEXP.test(url) || /^(blob:|data:)/i.test(url)) {
+    return url;
+  }
+  const origin = getStaticFileOrigin();
+  const path = url.startsWith('/') ? url : `/${url}`;
+  return origin
+    ? `${trimTrailingSlash(origin)}${path}`
+    : buildAttachmentUrl(url);
+}
+
+/**
  * 拼接附件访问地址。
  * 规则：VITE_GLOB_API_URL 去掉末尾 /api 后，与附件相对路径拼接。
  */
@@ -41,4 +70,16 @@ export function buildAttachmentUrl(url?: string) {
     origin && PROTOCOL_URL_REGEXP.test(origin) ? origin : fallbackOrigin;
   const path = url.startsWith('/') ? url : `/${url}`;
   return base ? `${trimTrailingSlash(base)}${path}` : path;
+}
+
+/**
+ * 弹窗 iframe 内嵌 PDF 预览地址。
+ * - toolbar/navpanes：隐藏工具栏与左侧缩略图
+ * - view=FitH：按宽度铺满，避免两侧黑边留白
+ * 仅用于预览；下载、新窗口打开请使用原始 URL。
+ */
+export function buildPdfEmbedUrl(url?: string) {
+  if (!url) return '';
+  const base = url.split('#')[0] ?? url;
+  return `${base}#toolbar=0&navpanes=0&view=FitH`;
 }

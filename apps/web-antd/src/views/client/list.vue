@@ -130,7 +130,7 @@ const [Grid, gridApi] = useVbenVxeGrid<ClientAdminApi.ClientDto>({
     checkboxConfig: {
       highlight: true,
       reserve: false,
-      trigger: 'row',
+      trigger: 'default',
     },
     rowConfig: {
       keyField: 'id',

@@ -1,7 +1,21 @@
+/** 打印导出格式，与后端 PrintExportFormat 枚举对齐 */
+export enum PrintExportFormat {
+  /** PDF 文档 */
+  Pdf = 0,
+  /** Excel 2007（.xlsx） */
+  Excel = 1,
+  /** Word 2007（.docx） */
+  Word = 2,
+}
+
 /** 打印数据源类型，与业务模块对应 */
 export enum PrintJsonType {
   /** 海运出口详情 */
   SeaExportDetail = 0,
+  /** 应收费用列表 */
+  RecOrderFeeList = 1000,
+  /** 应付费用列表 */
+  PayOrderFeeList = 1500,
   /** 海运进口详情 */
   SeaImportDetail = 4000,
   /** 空运出口详情 */

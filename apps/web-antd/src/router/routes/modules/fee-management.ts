@@ -6,70 +6,20 @@ import { abpPageAuthority } from '#/router/abp-authority';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      icon: 'mdi:cash-multiple',
-      order: 201,
-      title: $t('seaExport.export.feeManagement'),
+      icon: 'icon-park:finance',
+      order: 200,
+      title: '费用管理',
       hideChildrenInMenu: false,
       authority: abpPageAuthority([
-        'Admin.OrderFee.Lock',
-        'Admin.PaymentApplication',
         'Admin.Statement',
         'Admin.InvoiceApplication',
+        'Admin.PaymentApplication',
+        'Admin.ReceiveSettlement',
       ]),
     },
     name: 'FeeManagement',
     path: '/fee-management',
     children: [
-      {
-        path: 'fee-lock',
-        name: 'SeaExportFeeLockList',
-        meta: {
-          icon: 'mdi:lock-outline',
-          keepAlive: true,
-          title: $t('seaExport.export.feeLock.list'),
-          authority: abpPageAuthority('Admin.OrderFee.Lock'),
-        },
-        component: () =>
-          import('#/views/fee-management/fee-lock/fee-lock-list.vue'),
-      },
-      {
-        path: 'payment-application',
-        name: 'PaymentApplicationList',
-        meta: {
-          icon: 'mdi:file-document-outline',
-          keepAlive: true,
-          title: $t('seaExport.export.paymentApplication.list'),
-          authority: abpPageAuthority('Admin.PaymentApplication'),
-        },
-        component: () =>
-          import('#/views/fee-management/payment-application/list.vue'),
-      },
-      {
-        path: 'payment-application/add',
-        name: 'PaymentApplicationAdd',
-        meta: {
-          icon: 'mdi:file-document-edit-outline',
-          title: $t('seaExport.export.paymentApplication.addTitle'),
-          authority: abpPageAuthority('Admin.PaymentApplication'),
-          hideInMenu: true,
-          activePath: '/fee-management/payment-application',
-        },
-        component: () =>
-          import('#/views/fee-management/payment-application/form.vue'),
-      },
-      {
-        path: 'payment-application/:id/edit',
-        name: 'PaymentApplicationEdit',
-        meta: {
-          icon: 'mdi:file-document-edit-outline',
-          title: $t('seaExport.export.paymentApplication.editTitle'),
-          authority: abpPageAuthority('Admin.PaymentApplication'),
-          hideInMenu: true,
-          activePath: '/fee-management/payment-application',
-        },
-        component: () =>
-          import('#/views/fee-management/payment-application/form.vue'),
-      },
       {
         path: 'statement',
         name: 'StatementList',
@@ -155,6 +105,82 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/fee-management/invoice-application/form.vue'),
+      },
+      {
+        path: 'payment-application',
+        name: 'PaymentApplicationList',
+        meta: {
+          icon: 'mdi:file-document-outline',
+          keepAlive: true,
+          title: $t('seaExport.export.paymentApplication.list'),
+          authority: abpPageAuthority('Admin.PaymentApplication'),
+        },
+        component: () =>
+          import('#/views/fee-management/payment-application/list.vue'),
+      },
+      {
+        path: 'payment-application/add',
+        name: 'PaymentApplicationAdd',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: $t('seaExport.export.paymentApplication.addTitle'),
+          authority: abpPageAuthority('Admin.PaymentApplication'),
+          hideInMenu: true,
+          activePath: '/fee-management/payment-application',
+        },
+        component: () =>
+          import('#/views/fee-management/payment-application/form.vue'),
+      },
+      {
+        path: 'payment-application/:id/edit',
+        name: 'PaymentApplicationEdit',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: $t('seaExport.export.paymentApplication.editTitle'),
+          authority: abpPageAuthority('Admin.PaymentApplication'),
+          hideInMenu: true,
+          activePath: '/fee-management/payment-application',
+        },
+        component: () =>
+          import('#/views/fee-management/payment-application/form.vue'),
+      },
+      {
+        path: '/settlement-management/receive-settlement',
+        name: 'ReceiveSettlementList',
+        meta: {
+          icon: 'mdi:file-document-check-outline',
+          keepAlive: true,
+          title: '收费核销',
+          authority: abpPageAuthority('Admin.ReceiveSettlement.Get'),
+        },
+        component: () =>
+          import('#/views/settlement-management/receive-settlement/list.vue'),
+      },
+      {
+        path: '/settlement-management/receive-settlement/add',
+        name: 'ReceiveSettlementAdd',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '新建收费核销',
+          authority: abpPageAuthority('Admin.ReceiveSettlement.Add'),
+          hideInMenu: true,
+          activePath: '/settlement-management/receive-settlement',
+        },
+        component: () =>
+          import('#/views/settlement-management/receive-settlement/form.vue'),
+      },
+      {
+        path: '/settlement-management/receive-settlement/edit/:id',
+        name: 'ReceiveSettlementEdit',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '编辑收费核销',
+          authority: abpPageAuthority('Admin.ReceiveSettlement.Get'),
+          hideInMenu: true,
+          activePath: '/settlement-management/receive-settlement',
+        },
+        component: () =>
+          import('#/views/settlement-management/receive-settlement/form.vue'),
       },
     ],
   },

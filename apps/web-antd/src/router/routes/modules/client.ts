@@ -6,8 +6,8 @@ import { abpPageAuthority } from '#/router/abp-authority';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      icon: 'mdi:account-multiple-outline',
-      order: 100,
+      icon: 'openmoji:assembly-group',
+      order: 230,
       title: $t('seaExport.client.title'),
       hideChildrenInMenu: true,
       authority: abpPageAuthority('Admin.Client'),

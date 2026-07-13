@@ -5,7 +5,7 @@ const activeKey = defineModel<ListTabKey>('activeKey', { required: true });
 
 const tabs: { key: ListTabKey; label: string }[] = [
   { key: 'bank-statement', label: '银行流水' },
-  { key: 'receive-settlement', label: '收费结算' },
+  { key: 'receive-settlement', label: '收费核销' },
 ];
 </script>
 

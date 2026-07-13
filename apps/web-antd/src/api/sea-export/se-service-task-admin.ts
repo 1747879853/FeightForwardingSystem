@@ -76,7 +76,8 @@ export namespace SeServiceTaskAdminApi {
     ETDEnd?: string;
     ClientId?: string;
     CarrierId?: number;
-    MblNum?: string;
+    /** 编号：主提单号/订舱编号/委托编号 */
+    Keyword?: string;
     PODId?: number;
     Sorting?: string;
   }

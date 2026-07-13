@@ -64,3 +64,12 @@ export function formatModuleTypeLabel(
 ): string {
   return labelMap.get(moduleType) ?? String(moduleType);
 }
+
+/** 按显示名解析 ModuleType 枚举值 */
+export async function resolveModuleTypeByLabel(
+  label: string,
+): Promise<number | null> {
+  const options = await getModuleTypeOptions();
+  const found = options.find((item) => item.label === label);
+  return found?.value ?? null;
+}

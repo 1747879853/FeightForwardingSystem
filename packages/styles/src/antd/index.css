@@ -73,3 +73,13 @@
 .ant-app .form-valid-error .ant-picker-focused {
   box-shadow: 0 0 0 2px rgb(255 38 5 / 6%);
 }
+
+/** 全局表格选中行背景色 */
+.ant-app .ant-table-tbody > tr.ant-table-row-selected > td,
+.ant-app .ant-table-tbody > tr.ant-table-row-selected:hover > td,
+.ant-app
+  .ant-table-tbody
+  > tr.ant-table-row-selected
+  > td.ant-table-cell-row-hover {
+  background: hsl(var(--primary) / 15%) !important;
+}

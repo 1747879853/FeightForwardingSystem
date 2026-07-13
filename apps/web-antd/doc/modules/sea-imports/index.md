@@ -22,6 +22,7 @@ last_updated: 2026-05-16
 # 2. 功能与操作说明 (Features & Operations)
 
 - **委托检索：** 按查询区条件分页加载委托单。
+- **行选中：** 单选列表**仅点击 radio 才选中**（`radioConfig.trigger: 'default'`），单击行不切换选中。
 - **进入编辑：** 双击或选择记录后进入 `/sea-imports/:id/edit`。
 - **进入新建：** 通过新增动作进入 `/sea-imports/create`。
 
@@ -47,4 +48,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-12 | `Fix` | 列表仅点击 radio 才选中，单击行不再切换选中。 | `radioConfig.trigger` 由 `'row'` 改为 `'default'`；费用子表同步。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/sea-imports` 对应组件 `src/views/sea-import-admin/list.vue`，权限口径为 未在路由中声明独立权限。 |

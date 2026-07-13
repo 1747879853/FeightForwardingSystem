@@ -2,7 +2,7 @@
 title: 海运出口港口服务项配置
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-06-28
+last_updated: 2026-07-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -20,8 +20,7 @@ last_updated: 2026-06-28
 - **弹窗与标题可读性优化：** 缩减弹窗宽度并强化明细标题视觉层级，提升聚焦效率。
 - **标题样式收敛：** 标题改为左侧品牌蓝竖线强调，并移除浅底色与圆角，减少视觉噪声。
 - **滚动体验优化：** 移除明细区内层滚动，仅保留外层弹窗滚动，避免双滚动条冲突。
-- **明细顺序手动调整：** 在每条服务项明细提供“上移/下移”，可按业务执行顺序调整并保存。
-- **顺序调整动画反馈：** 明细重排增加平滑位移动画，清晰提示服务项的起止位置变化。
+- **明细顺序维护：** 每条服务项明细可维护「排序」数值，数字越小越靠前；列表按排序值升序展示，保存时按维护值提交。
 - **起运港显示口径统一：** 列表“起运港”优先显示 `portName`，兼容历史 `pol` 对象字段。
 - **编辑态港口回显补齐：** 详情接口返回 `pol.portName` 时，编辑弹窗会手动拼装 `selected-items`，并统一 `polId` 为字符串口径，避免分页下拉未命中或超大整型 ID 类型不一致导致起运港不显示。
 - **服务项类型枚举稳态回显：** 列表与编辑弹窗共用 `resolveServiceTypeLabel`；列表优先从 `seServiceConfigItems` 明细（按 `sortId`）推导展示，并优先使用后端枚举文案字段，避免与编辑弹窗明细不一致。
@@ -44,11 +43,12 @@ last_updated: 2026-06-28
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **polId** | 配置所属起运港；为空表示默认港口配置。 | `PortCode` 基础数据<br/>`PortSelect` | 决定配置作用范围；同租户内具体港口唯一，默认配置仅允许一条。 | 可选；有值时后端校验港口存在且不能重复配置。 |
-| **serviceType** | 服务项类型。 | 系统枚举<br/>`ServiceType` | 同一配置下服务项展示顺序由数组顺序确定。 | 同一配置下不可重复。 |
+| **serviceType** | 服务项类型。 | 系统枚举<br/>`ServiceType` | 同一配置下服务项展示顺序由 `sortId` 升序决定。 | 同一配置下不可重复。 |
 | **userAttribute** | 服务项责任角色（Flags）。 | 用户属性枚举（海运出口订单 6 项：销售、商务、操作、客服、单证、海外客服） | 一个服务项可绑定多个角色；选项与海运出口单据订单用户角色一致。 | 位标志可组合，提交为整型掩码；不含财务/人事。 |
 | **seServiceShows** | 服务完成前向用户展示的字段。 | 系统枚举<br/>`SeaExportPropEnum` | 候选集经千位去重：存在 `1000+x` 时隐藏基础项 `x`；无对应额外项的基础字段（如 `Vessel`、`ETD`）仍可选。 | 可选 `>1000` 的名称类枚举（如 `1017 ClientName`）；不可选手工录入的非法值。 |
 | **seServiceLocks** | 服务完成后锁定的字段。 | 系统枚举<br/>`SeaExportPropEnum` | 仅基础字段（`value ≤ 1000`），与服务项绑定差异更新。 | 不可选 `>1000` 的额外名称字段。 |
 | **seServiceRequires** | 服务完成时的必填字段。 | 系统枚举<br/>`SeaExportPropEnum` | 规则同 `seServiceLocks`，仅 `≤1000`。 | 不可选 `>1000` 的额外名称字段。 |
+| **sortId（服务项）** | 服务项在配置内的展示与执行顺序。 | 明细表单手动维护 | 数值越小越靠前；弹窗列表、列表页服务类型汇总、工作台均按 `sortId` 升序读取。 | 非负整数；新增时默认取当前最大值 +1。 |
 | **requireFee** | 完成该服务任务是否需要必填费用。 | 服务项明细布尔开关 | 开启后展示「应收费用名称/应付费用名称」多选；关闭时提交空 `seServiceRequireFees`。 | 布尔；关闭则不参与完成校验。 |
 | **seServiceRequireFees** | 完成任务必须存在的费用清单（区分收付）。 | 费用代码<br/>`FeeCodeAdmin` / `FeeCodeSelect` | `paySide=0` 应收、`paySide=1` 应付；编辑按「有 id 改、无 id 增、缺失删」差异更新。 | `requireFee=true` 时由后端在完成任务时校验业务 `OrderFee` 是否含对应 `PaySide+FeeCodeId`。 |
 
@@ -73,13 +73,15 @@ last_updated: 2026-06-28
 
 # 5. 核心业务卡点 (Business Blockers)
 
-> [!IMPORTANT] **[卡点 1：编辑排序口径]** 前端需保证 `seServiceConfigItems` 数组顺序与每项 `sortId`（从 0 开始）一致提交；若仅调整其一，可能引发回显顺序漂移。
+> [!IMPORTANT] **[卡点 1：编辑排序口径]** 服务项顺序以每项维护的 `sortId` 为准提交与回显；请勿依赖数组物理顺序，修改排序值后界面会按升序重排。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
-| 2026-06-28 | `Feature` | 服务项明细新增「必填费用」开关，开启后可为「应收费用名称/应付费用名称」多选绑定费用代码；完成任务的费用存在性校验与缺失提示由后端实现，前端仅对接配置侧。 | API DTO 新增 `requireFee` 与 `SeServiceRequireFee*`（含 `feeCodeName` 回显）；`form.vue` 以 `RequireFeeRow` 承载，按 `paySide=0/1` 拆分两个 `FeeCodeSelect(mode=multiple)`，提交按开关组装 `seServiceRequireFees` 并保留 `id` 做差异更新，差异比对以 `String(feeCodeId)` 归一规避大整型精度。 |
+| 2026-07-12 | `Refactor` | 港口服务项配置弹窗移除「是否主流程（全局）」开关；保存时不再同步更新 `ServiceType.extra1`。 | 主流程标记仅在枚举管理维护；海运出口配置服务项目弹窗仍读取 `extra1` 分组。 |
+| 2026-07-12 | `Feature` | 服务项明细新增「是否主流程（全局）」开关，保存港口配置时同步更新 `ServiceType.extra1`。 | 枚举编辑必须先拉完整 `EnumerationDetailDto` 再全量提交子表，不能直接提交 `GetItemsByNameAsync` 的启用项集合。 |
+| 2026-07-08 | `Feature` | 服务项明细暴露「排序」字段，移除「上移/下移」按钮；弹窗按维护的 `sortId` 升序展示，保存时直接提交用户维护值。 | `ItemRow` 新增 `sortId`；`sortedItemRows` 计算属性驱动展示顺序；`toPayloadItems*` 不再用数组下标覆盖 `sortId`；新增项默认 `max(sortId)+1`。 |
 | 2026-06-09 | `Feature` | 支持默认港口配置：起运港可不选，`polId` 为空时提交 `null`，列表与删除提示显示「默认港口配置」。 | `resolvePolIdForPayload` 统一空值口径；`formatPolLabel` / `isDefaultPolConfig` 供列表与弹窗复用。 |
 | 2026-05-30 | `Refactor` | 服务项类型枚举加载统一为 `getEnumItems('ServiceType')`，并抽离到共享模块，列表与弹窗不再各自维护独立实现。 | `SeServiceConfigAdmin/data.ts` 改为复用 `sea-export-admin/service-type.ts` 的加载与映射能力，移除 `serviceType` 小写回退分支，确保枚举口径唯一。 |
 | 2026-05-29 | `Feature` | 同步后端 `SeaExportPropEnum` 额外字段（`1001+`），并按千位规则拆分三套下拉：展示字段优先名称类额外枚举且隐藏被替代的基础项；锁定/必填仅允许 `≤1000` 基础字段。 | `buildSeaExportPropOptions` 以「是否存在 value+1000」做展示去重；枚举加载合并兜底清单、缓存与 `GetItemsByNameAsync` 三路数据源；`updatePropRefs` 按白名单过滤非法选项。 |

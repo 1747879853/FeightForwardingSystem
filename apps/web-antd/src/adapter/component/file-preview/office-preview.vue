@@ -12,6 +12,8 @@ import {
   Modal,
 } from 'ant-design-vue';
 
+import { buildPdfEmbedUrl } from '#/utils';
+
 interface Props {
   // 控制显示
   visible?: boolean;
@@ -153,6 +155,9 @@ const previewUrl = computed(() => {
 
   return props.fileUrl;
 });
+
+/** PDF iframe 预览地址（隐藏工具栏与左侧分页） */
+const pdfEmbedUrl = computed(() => buildPdfEmbedUrl(previewUrl.value));
 
 // 处理取消
 const handleCancel = () => {
@@ -365,7 +370,7 @@ defineExpose({
       <div v-else-if="fileType === 'pdf'" class="pdf-container">
         <iframe
           v-if="visible"
-          :src="previewUrl"
+          :src="pdfEmbedUrl"
           frameborder="0"
           class="pdf-iframe"
         ></iframe>
