@@ -33,6 +33,7 @@ import DisplayFieldsConfigModal, {
   type DisplayFieldConfig,
 } from './modules/display-fields-config-modal.vue';
 import { useDisplayFieldConfig } from './composables/use-display-field-config';
+import { buildAttachmentUrl } from '#/utils';
 
 defineOptions({
   name: 'OrderFee',
@@ -604,14 +605,8 @@ onMounted(() => {
                 class="inline-flex items-center gap-1"
               >
                 <img
-                  v-if="
-                    formValues?.carrierLogo?.url ||
-                    formValues?.carrier?.logo?.url
-                  "
-                  :src="
-                    formValues?.carrierLogo?.url ||
-                    formValues?.carrier?.logo?.url
-                  "
+                  v-if="formValues?.carrierLogo?.url"
+                  :src="buildAttachmentUrl(formValues?.carrierLogo?.url)"
                   :alt="formValues?.carrierName || 'carrier-logo'"
                   class="h-8 w-8 rounded object-contain"
                 />
