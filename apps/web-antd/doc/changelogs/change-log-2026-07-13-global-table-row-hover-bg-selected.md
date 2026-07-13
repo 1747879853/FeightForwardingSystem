@@ -36,20 +36,35 @@ last_updated: 2026-07-13
 
 与既有「选中行背景」规则并存，保证未选中行 hover 也用主色 15%。
 
-### 3. vxe-grid 行 hover 开关（`apps/web-antd/src/views/sea-export-admin/list.vue`）
+### 3. vxe-grid 行 hover 全局开关（`apps/web-antd/src/adapter/vxe-table.ts`）
 
-vxe 的行 hover 背景**仅在 `rowConfig.isHover: true` 时才渲染**。`/sea-exports` 列表此前 `rowConfig` 只配了 `keyField`，未开 `isHover`，导致改了全局 `*-row-hover-*` 变量仍看不到 hover 效果。本次补上：
+vxe 的行 hover 背景**仅在 `rowConfig.isHover: true` 时才渲染**（源码 `body.js`：`if (rowOpts.isHover || highlightHoverRow)`）。此前只有 `freight-rate`、`bank-statement`、`payment-review`、公告等少数列表单独开了 `isHover`，`/sea-exports` 等大量列表未开，导致改了全局 `*-row-hover-*` 变量仍看不到 hover。
+
+为一次性覆盖全站，改在 `setupVbenVxeTable` 的全局配置里设默认值，而非逐页配置：
 
 ```ts
-rowConfig: {
-  keyField: 'id',
-  isHover: true,
-},
+vxeUI.setConfig({
+  grid: {
+    /* ... */
+  } as VxeTableGridOptions,
+  table: {
+    rowConfig: {
+      isHover: true,
+    },
+  },
+});
 ```
+
+原理：vxe 表格 `computeRowOpts = Object.assign({}, getConfig().table.rowConfig, props.rowConfig)`（`table.js`），且 `vxe-grid` 仅在页面显式传了 `rowConfig` 时才透传给内部 table。因此：
+
+- 页面**未配** `rowConfig` → 直接用全局 `{ isHover: true }`；
+- 页面**已配** `rowConfig`（如 `{ keyField: 'id' }`）→ 与全局**浅合并**为 `{ isHover: true, keyField: 'id' }`。
+
+各列表原有 `isHover: true` 变为冗余但无害；本次已顺手移除 `/sea-exports` 的重复配置，以全局配置为唯一来源。
 
 ## 避坑指南
 
 1. **hover 态与选中态本次已对齐**：此前 changelog（2026-07-12）仅统一了选中态，hover 仍是灰；本次专门覆盖 hover 变量/选择器，二者现在一致。
 2. **列表页多为 vxe-grid**：仅改 antd `index.css` 不影响 `/sea-exports` 等 `useVbenVxeGrid` 页面，必须同步改 `vxe-table/style.css` 的 `*-row-hover-*` 变量。
-3. **vxe hover 背景需 `isHover: true` 才生效**：即使全局 `--vxe-ui-table-row-hover-background-color` 已设，若某列表 `rowConfig` 未开 `isHover`，鼠标经过不会有任何背景色。`freight-rate`、`bank-statement`、`payment-review`、公告等列表已开启，`/sea-exports` 本次补开；其余若需 hover 效果需按需补 `isHover: true`。
+3. **vxe hover 需 `rowConfig.isHover`，现由全局配置统一开启**：不要再逐页加 `isHover: true`；全局默认已在 `adapter/vxe-table.ts` 的 `setConfig({ table: { rowConfig: { isHover: true } } })` 中设置。全局键是 `table.rowConfig`（不是 `grid.rowConfig`），因为内部 table 的 `computeRowOpts` 读的是 `getConfig().table.rowConfig`。
 4. **局部 `!important` 会覆盖全局**：业务页若在 scoped 里对 `.ant-table-cell-row-hover` 硬编码灰色，会盖过全局；应复用 `hsl(var(--primary) / 15%)` 或删除冗余局部样式。

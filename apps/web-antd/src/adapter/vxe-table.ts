@@ -213,6 +213,13 @@ setupVbenVxeTable({
         size: 'small',
         stripe: true,
       } as VxeTableGridOptions,
+      // 全局启用行 hover 高亮：各列表无需单独配置 rowConfig.isHover，
+      // 页面自定义的 rowConfig（如 keyField）会与此默认值浅合并。
+      table: {
+        rowConfig: {
+          isHover: true,
+        },
+      },
     });
 
     /**

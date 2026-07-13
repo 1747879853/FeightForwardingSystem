@@ -273,7 +273,6 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
     },
     rowConfig: {
       keyField: 'id',
-      isHover: true,
     },
     pagerConfig: {
       enabled: true,
