@@ -14,7 +14,7 @@ module: 海运出口 / 运踪
 
 1. **里程碑**：`oceanNodes` 直接使用 `shipment.oceanNodes`，移除按 `actualityTime` 的 `.sort()`。
 2. **集装箱轨迹**：`container.statuses` 直接渲染，移除 `sortContainerStatuses`（原按 `eventTime` 升序）；辅助函数重命名为 `getContainerStatusesWithVisual`。
-3. **不变**：节点/箱轨迹状态样式与展示时间逻辑保持原样；集装箱轨迹仍将数组末项标记为「进行中」（基于后端顺序的最后一项）。
+3. **不变**：里程碑节点状态样式仍由 `isCurrent` / 时间字段驱动；集装箱轨迹仅 `isEstimate` 展示「预计」样式，不做当前高亮。
 
 # 避坑指南
 

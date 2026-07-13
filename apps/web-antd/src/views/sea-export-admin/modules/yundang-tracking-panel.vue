@@ -212,8 +212,6 @@ function getOceanNodeVisual(
 
 function getContainerStatusVisual(
   status: YundangAdminApi.YundangShipmentContainerStatusInfoDto,
-  index: number,
-  lastIndex: number,
 ): TimelineVisualMeta {
   if (status.isEstimate) {
     return {
@@ -224,31 +222,21 @@ function getContainerStatusVisual(
       label: $t('seaExport.yundang.tracking.nodeState.estimated'),
     };
   }
-  if (index === lastIndex) {
-    return {
-      state: 'current',
-      icon: 'ph:navigation-arrow-fill',
-      color: '#007aff',
-      bg: '#007aff',
-      label: $t('seaExport.yundang.tracking.nodeState.current'),
-    };
-  }
   return {
     state: 'completed',
     icon: 'ph:check-bold',
     color: '#34c759',
     bg: '#34c759',
-    label: $t('seaExport.yundang.tracking.nodeState.completed'),
   };
 }
 
 function getContainerStatusesWithVisual(
-  statuses: YundangAdminApi.YundangShipmentContainerStatusInfoDto[],
+  container: YundangAdminApi.YundangShipmentContainerInfoDto,
 ) {
-  const lastIndex = Math.max(statuses.length - 1, 0);
-  return statuses.map((status, index) => ({
+  const statuses = container.statuses ?? [];
+  return statuses.map((status) => ({
     status,
-    visual: getContainerStatusVisual(status, index, lastIndex),
+    visual: getContainerStatusVisual(status),
   }));
 }
 
@@ -672,7 +660,7 @@ const handleRefresh = async () => {
                 <Timeline class="track-timeline track-timeline--horizontal">
                   <TimelineItem
                     v-for="{ status, visual } in getContainerStatusesWithVisual(
-                      container.statuses ?? [],
+                      container,
                     )"
                     :key="status.id"
                     :color="visual.color"
@@ -692,8 +680,6 @@ const handleRefresh = async () => {
                     <div
                       class="track-timeline-card"
                       :class="{
-                        'track-timeline-card--current':
-                          visual.state === 'current',
                         'track-timeline-card--estimated':
                           visual.state === 'estimated',
                       }"
@@ -703,6 +689,7 @@ const handleRefresh = async () => {
                           {{ status.statusDesc || status.statusDescEn || '--' }}
                         </span>
                         <span
+                          v-if="visual.label"
                           class="track-timeline-card__pill"
                           :class="`track-timeline-card__pill--${visual.state}`"
                         >

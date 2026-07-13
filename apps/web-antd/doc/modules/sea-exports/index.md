@@ -106,6 +106,7 @@ last_updated: 2026-07-12
 | 2026-07-12 | `Feature` | 开启某字段分组后，被禁用的对应搜索项增加直观提示：placeholder 显示「已按『X』分组」，label 旁帮助图标说明原因与恢复方式；关闭分组自动还原。 | 改 `components/list-grouping/use-list-grouping.ts` 的 `disableSearchField`/`restoreSearchField`：置灰同时改写 `placeholder`/`help` 并缓存原值；还原用空字符串覆盖以规避 `defu` 忽略 `undefined`。通用组合式函数改动，复用列表均受益。 |
 | 2026-07-12 | `Style` | 列表「费用锁定」「业务锁定」列改为仅显示锁/开锁图标；进入列表会计期间默认当月且首查带上该条件。 | `feeLocked`/`businessLocked` slot + `LockKeyhole`/`LockKeyholeOpen`；`autoLoad: false` 后 `setValues` + `submitForm` 避免首查漏默认期间。 |
 | 2026-07-12 | `Feature` | 列表「运踪状态」列改显 `yundangShipmentOceanNode.stateDescCN`，不再使用 `yundangTrackStatus`。 | `use-yundang-ocean-track.ts` 的 `getYundangTrackStatusLabel`/`resolveYundangViewState`；`SeaExportDto` 新增嵌套节点字段。 |
+| 2026-07-13 | `Fix` | 运踪详情集装箱轨迹状态不再前端推断；不做蓝色当前高亮，仅 `isEstimate` 展示「预计」。 | 与编辑页运踪 Tab 共用 `yundang-tracking-panel.vue`。 |
 | 2026-07-13 | `Fix` | 运踪详情里程碑与集装箱轨迹取消前端排序，完全按后端返回顺序展示。 | 与编辑页运踪 Tab 共用 `yundang-tracking-panel.vue`。 |
 | 2026-07-12 | `Fix` | 运踪详情弹窗里程碑：仅按 `actualityTime` 升序；无实际时间节点不再显示「未到」。（已被 2026-07-13 取消前端排序取代） | 与编辑页运踪 Tab 共用 `yundang-tracking-panel.vue`。 |
 | 2026-07-12 | `Style` | 列表 checkbox 选中行背景改为跟随主题主色 15% 透明，与全站表格选中态统一。 | 列表使用 `useVbenVxeGrid` + `checkboxConfig.highlight`，选中背景由 `vxe-table/style.css` 的 `--vxe-ui-table-row-checkbox-checked-background-color` 控制，非 antd Table；仅改 antd 全局样式不会影响本页。 |
