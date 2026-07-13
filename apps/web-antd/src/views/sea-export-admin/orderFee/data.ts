@@ -680,6 +680,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.invoiceStatus'),
       field: 'invoiceStatus',
       width: 80,
+      sortable: true,
       cellRender: {
         name: 'CellTag',
         options: getInvoiceStatusOptions(),
@@ -690,6 +691,7 @@ export function useOrderFeeColumns(
       align: 'center',
       field: 'combinedFeeStatus',
       minWidth: 100,
+      sortable: true,
       cellRender: {
         name: 'CellFeeStatusTag',
         options: getFeeStatusOptions(),
@@ -700,6 +702,7 @@ export function useOrderFeeColumns(
 
       field: 'feeCodeId',
       minWidth: 300,
+      sortable: true,
       cellRender: {
         name: 'CellFeeCodeSelect',
         props: {
@@ -713,6 +716,7 @@ export function useOrderFeeColumns(
 
       field: 'industryCategory',
       minWidth: 110,
+      sortable: true,
       cellRender: {
         name: 'CellIndustryCategorySelect',
         props: {
@@ -725,6 +729,7 @@ export function useOrderFeeColumns(
 
       field: 'settlementId',
       minWidth: 150,
+      sortable: true,
       cellRender: {
         name: 'CellClientSelect',
         props: {
@@ -739,6 +744,7 @@ export function useOrderFeeColumns(
       field: 'currencyId',
       align: 'center',
       minWidth: 100,
+      sortable: true,
       cellRender: {
         name: 'CurrencySelect',
         props: {
@@ -752,6 +758,7 @@ export function useOrderFeeColumns(
       field: 'exchangeRate',
       align: 'right',
       width: 100,
+      sortable: true,
       cellRender: {
         name: 'CellInput',
         props: {
@@ -765,6 +772,7 @@ export function useOrderFeeColumns(
       field: 'unitPrice',
       width: 130,
       align: 'right',
+      sortable: true,
       cellRender: {
         name: 'CellInput',
         props: {
@@ -777,6 +785,7 @@ export function useOrderFeeColumns(
       field: 'amount',
       minWidth: 130,
       align: 'right',
+      sortable: true,
       cellRender: {
         name: 'CellInput',
         props: {
@@ -788,6 +797,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.unitEmum'),
       field: 'unit',
       minWidth: 100,
+      sortable: true,
       cellRender: {
         name: 'CellUnitSelect',
         props: {
@@ -810,6 +820,7 @@ export function useOrderFeeColumns(
       field: 'quantity',
       minWidth: 100,
       align: 'right',
+      sortable: true,
       cellRender: {
         name: 'CellInput',
         props: {
@@ -823,7 +834,7 @@ export function useOrderFeeColumns(
       field: 'taxRate',
       minWidth: 90,
       align: 'right',
-
+      sortable: true,
       cellRender: {
         name: 'CellInput',
         props: {
@@ -836,6 +847,7 @@ export function useOrderFeeColumns(
       field: 'noTaxUnitPrice',
       minWidth: 120,
       align: 'right',
+      sortable: true,
       formatter: ({ cellValue }: any) => {
         if (cellValue === null || cellValue === undefined || cellValue === '')
           return '';
@@ -851,6 +863,7 @@ export function useOrderFeeColumns(
       field: 'noTaxAmount',
       minWidth: 120,
       align: 'right',
+      sortable: true,
       formatter: ({ cellValue }: any) => {
         if (cellValue === null || cellValue === undefined || cellValue === '')
           return '';
@@ -865,6 +878,7 @@ export function useOrderFeeColumns(
       field: 'rqstPaymentAmount',
       minWidth: 120,
       align: 'right',
+      sortable: true,
       formatter: ({ cellValue }: any) => {
         if (cellValue === null || cellValue === undefined || cellValue === '')
           return '';
@@ -885,6 +899,7 @@ export function useOrderFeeColumns(
       field: 'invoicedAmount',
       minWidth: 120,
       align: 'right',
+      sortable: true,
       formatter: ({ cellValue }: any) => {
         if (cellValue === null || cellValue === undefined || cellValue === '')
           return '';
@@ -899,6 +914,7 @@ export function useOrderFeeColumns(
       field: 'orderInvoiceAmount',
       minWidth: 120,
       align: 'right',
+      sortable: true,
       formatter: ({ cellValue }: any) => {
         if (cellValue === null || cellValue === undefined || cellValue === '')
           return '';
@@ -913,6 +929,7 @@ export function useOrderFeeColumns(
       field: 'settledAmount',
       minWidth: 120,
       align: 'right',
+      sortable: true,
       formatter: ({ cellValue }: any) => {
         if (cellValue === null || cellValue === undefined || cellValue === '')
           return '';
@@ -928,6 +945,7 @@ export function useOrderFeeColumns(
       field: 'canInvoice',
       minWidth: 100,
       align: 'center',
+      sortable: true,
       slots: {
         default: ({ row }: any) => {
           return h(Checkbox, {
@@ -946,6 +964,7 @@ export function useOrderFeeColumns(
       field: 'isConfidential',
       minWidth: 100,
       align: 'center',
+      sortable: true,
       slots: {
         default: ({ row }: any) => {
           return h(Checkbox, {
@@ -962,6 +981,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.remark'),
       field: 'remark',
       minWidth: 150,
+      sortable: true,
       cellRender: {
         name: 'CellInput',
         props: {
@@ -973,6 +993,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.dataEntryMethod'),
       field: 'dataEntryMethod',
       minWidth: 110,
+      sortable: true,
       cellRender: {
         name: 'CellTag',
         options: getDataEntryMethodOptions(),
@@ -983,11 +1004,13 @@ export function useOrderFeeColumns(
       title: $t('auditApproval.task.creatorUserName'),
       field: 'creatorUserName',
       width: 110,
+      sortable: true,
     },
     {
       title: $t('auditApproval.task.createTime'),
       field: 'creationTime',
       width: 150,
+      sortable: true,
       formatter: 'formatDateTime',
     },
   ];

@@ -358,6 +358,10 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
     rowConfig: {
       keyField: '_rowKey',
     },
+    sortConfig: {
+      trigger: 'cell', // 点击单元格触发排序
+      remote: false, // 前端排序
+    },
     pagerConfig: {
       enabled: false,
     },
