@@ -242,20 +242,11 @@ function getContainerStatusVisual(
   };
 }
 
-function sortContainerStatuses(
+function getContainerStatusesWithVisual(
   statuses: YundangAdminApi.YundangShipmentContainerStatusInfoDto[],
 ) {
-  return [...statuses].sort(
-    (a, b) => dayjs(a.eventTime).valueOf() - dayjs(b.eventTime).valueOf(),
-  );
-}
-
-function getSortedContainerStatusesWithVisual(
-  statuses: YundangAdminApi.YundangShipmentContainerStatusInfoDto[],
-) {
-  const sorted = sortContainerStatuses(statuses);
-  const lastIndex = Math.max(sorted.length - 1, 0);
-  return sorted.map((status, index) => ({
+  const lastIndex = Math.max(statuses.length - 1, 0);
+  return statuses.map((status, index) => ({
     status,
     visual: getContainerStatusVisual(status, index, lastIndex),
   }));
@@ -680,10 +671,7 @@ const handleRefresh = async () => {
 
                 <Timeline class="track-timeline track-timeline--horizontal">
                   <TimelineItem
-                    v-for="{
-                      status,
-                      visual,
-                    } in getSortedContainerStatusesWithVisual(
+                    v-for="{ status, visual } in getContainerStatusesWithVisual(
                       container.statuses ?? [],
                     )"
                     :key="status.id"
