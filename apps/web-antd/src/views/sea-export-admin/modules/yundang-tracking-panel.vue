@@ -150,6 +150,13 @@ const lastUpdatedText = computed(() => {
 
 const oceanNodes = computed(() => pushInfo.value?.shipment?.oceanNodes ?? []);
 
+/** 航段按 sno 升序展示 */
+const carriages = computed(() =>
+  [...(pushInfo.value?.shipment?.carriages ?? [])].sort(
+    (a, b) => (a.sno ?? 0) - (b.sno ?? 0),
+  ),
+);
+
 const oceanNodesWithVisual = computed(() =>
   oceanNodes.value.map((node) => ({
     node,
@@ -233,11 +240,81 @@ function getContainerStatusVisual(
 function getContainerStatusesWithVisual(
   container: YundangAdminApi.YundangShipmentContainerInfoDto,
 ) {
-  const statuses = container.statuses ?? [];
+  // 后端未对箱轨迹排序，前端按事件时间升序还原时间线
+  const statuses = [...(container.statuses ?? [])].sort((a, b) => {
+    const timeA = dayjs(a.eventTime);
+    const timeB = dayjs(b.eventTime);
+    if (!timeA.isValid() || !timeB.isValid()) {
+      return 0;
+    }
+    return timeA.valueOf() - timeB.valueOf();
+  });
   return statuses.map((status) => ({
     status,
     visual: getContainerStatusVisual(status),
   }));
+}
+
+/** 航段航线：中文名优先，回退英文名 / 港口代码 */
+function resolveCarriageRoute(
+  carriage: YundangAdminApi.YundangShipmentCarriageInfoDto,
+) {
+  const from = carriage.polNameCn || carriage.polNameEn || carriage.polCd;
+  const to = carriage.podNameCn || carriage.podNameEn || carriage.podCd;
+  return [from, to].filter(Boolean).join(' → ') || '--';
+}
+
+/** 航段类型：1=大船，2=驳船，3=陆运 */
+function translateCarriageType(type?: string) {
+  switch (type) {
+    case '1': {
+      return $t('seaExport.yundang.tracking.carriage.typeMainVessel');
+    }
+    case '2': {
+      return $t('seaExport.yundang.tracking.carriage.typeBarge');
+    }
+    case '3': {
+      return $t('seaExport.yundang.tracking.carriage.typeTruck');
+    }
+    default: {
+      return type || '--';
+    }
+  }
+}
+
+/** 箱轨迹数据来源：1=船东，2=码头，4=云当计算 */
+function translateSource(sourceCd?: string) {
+  switch (sourceCd) {
+    case '1': {
+      return $t('seaExport.yundang.tracking.container.sourceCarrier');
+    }
+    case '2': {
+      return $t('seaExport.yundang.tracking.container.sourceTerminal');
+    }
+    case '4': {
+      return $t('seaExport.yundang.tracking.container.sourceYundang');
+    }
+    default: {
+      return sourceCd || '';
+    }
+  }
+}
+
+/** 集装箱异常标识：1=甩柜，2=异常 */
+function resolveRolledTag(isRolled?: string) {
+  if (isRolled === '1') {
+    return {
+      color: 'error',
+      label: $t('seaExport.yundang.tracking.container.rolled'),
+    };
+  }
+  if (isRolled === '2') {
+    return {
+      color: 'warning',
+      label: $t('seaExport.yundang.tracking.container.abnormal'),
+    };
+  }
+  return null;
 }
 
 function formatMaybeDateTime(value?: string) {
@@ -529,9 +606,46 @@ const handleRefresh = async () => {
             {{ pushInfo.shipment.ata || '--' }}
           </DescriptionsItem>
           <DescriptionsItem
+            v-if="pushInfo.shipment.aisEta"
+            :label="$t('seaExport.yundang.tracking.aisEta')"
+          >
+            {{ pushInfo.shipment.aisEta }}
+          </DescriptionsItem>
+          <DescriptionsItem
+            v-if="pushInfo.shipment.firstEta"
+            :label="$t('seaExport.yundang.tracking.firstEta')"
+          >
+            {{ pushInfo.shipment.firstEta }}
+          </DescriptionsItem>
+          <DescriptionsItem
+            v-if="pushInfo.shipment.pld || pushInfo.shipment.pldCd"
+            :label="$t('seaExport.yundang.tracking.deliveryPlace')"
+          >
+            {{ pushInfo.shipment.pld || pushInfo.shipment.pldCd }}
+          </DescriptionsItem>
+          <DescriptionsItem
+            v-if="pushInfo.shipment.etaPld"
+            :label="$t('seaExport.yundang.tracking.etaPld')"
+          >
+            {{ pushInfo.shipment.etaPld }}
+          </DescriptionsItem>
+          <DescriptionsItem
+            v-if="pushInfo.shipment.ataPld"
+            :label="$t('seaExport.yundang.tracking.ataPld')"
+          >
+            {{ pushInfo.shipment.ataPld }}
+          </DescriptionsItem>
+          <DescriptionsItem
             :label="$t('seaExport.yundang.tracking.trackStatus')"
           >
             {{ pushInfo.shipment.trackStatus || '--' }}
+          </DescriptionsItem>
+          <DescriptionsItem
+            v-if="pushInfo.shipment.remark"
+            :label="$t('seaExport.yundang.tracking.remark')"
+            :span="2"
+          >
+            {{ pushInfo.shipment.remark }}
           </DescriptionsItem>
         </Descriptions>
 
@@ -597,9 +711,59 @@ const handleRefresh = async () => {
                   >
                     {{ formatMaybeDateTime(resolveNodeTime(node)) }}
                   </div>
+                  <div v-if="node.total" class="track-timeline-card__meta">
+                    {{ $t('seaExport.yundang.tracking.node.progress') }}
+                    {{ node.count ?? 0 }}/{{ node.total }}
+                  </div>
                 </div>
               </TimelineItem>
             </Timeline>
+          </TabPane>
+
+          <TabPane
+            key="carriages"
+            :tab="$t('seaExport.yundang.tracking.tabs.carriages')"
+          >
+            <Empty
+              v-if="carriages.length === 0"
+              :description="$t('seaExport.yundang.tracking.emptyCarriages')"
+            />
+            <table v-else class="carriage-table">
+              <thead>
+                <tr>
+                  <th>{{ $t('seaExport.yundang.tracking.carriage.sno') }}</th>
+                  <th>{{ $t('seaExport.yundang.tracking.carriage.type') }}</th>
+                  <th>{{ $t('seaExport.yundang.tracking.carriage.route') }}</th>
+                  <th>
+                    {{ $t('seaExport.yundang.tracking.carriage.vessel') }}
+                  </th>
+                  <th>{{ $t('seaExport.yundang.tracking.carriage.etd') }}</th>
+                  <th>{{ $t('seaExport.yundang.tracking.carriage.atd') }}</th>
+                  <th>{{ $t('seaExport.yundang.tracking.carriage.eta') }}</th>
+                  <th>{{ $t('seaExport.yundang.tracking.carriage.ata') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="carriage in carriages" :key="carriage.id">
+                  <td>{{ carriage.sno ?? '--' }}</td>
+                  <td>{{ translateCarriageType(carriage.type) }}</td>
+                  <td class="carriage-table__route">
+                    {{ resolveCarriageRoute(carriage) }}
+                  </td>
+                  <td>
+                    {{
+                      [carriage.vesselName, carriage.voy]
+                        .filter(Boolean)
+                        .join(' / ') || '--'
+                    }}
+                  </td>
+                  <td>{{ carriage.etd || '--' }}</td>
+                  <td>{{ carriage.atd || '--' }}</td>
+                  <td>{{ carriage.eta || carriage.aisEta || '--' }}</td>
+                  <td>{{ carriage.ata || carriage.aisAta || '--' }}</td>
+                </tr>
+              </tbody>
+            </table>
           </TabPane>
 
           <TabPane
@@ -616,6 +780,11 @@ const handleRefresh = async () => {
                 :key="container.id"
                 :tab="container.ctnrNo || container.id"
               >
+                <div v-if="resolveRolledTag(container.isRolled)" class="mb-2">
+                  <Tag :color="resolveRolledTag(container.isRolled)!.color">
+                    {{ resolveRolledTag(container.isRolled)!.label }}
+                  </Tag>
+                </div>
                 <Descriptions bordered size="small" :column="2" class="mb-3">
                   <DescriptionsItem
                     :label="$t('seaExport.yundang.tracking.container.sizeType')"
@@ -630,6 +799,24 @@ const handleRefresh = async () => {
                     :label="$t('seaExport.yundang.tracking.container.sealNo')"
                   >
                     {{ container.sealNo || '--' }}
+                  </DescriptionsItem>
+                  <DescriptionsItem
+                    v-if="container.pkgs != null"
+                    :label="$t('seaExport.yundang.tracking.container.pkgs')"
+                  >
+                    {{ container.pkgs }}
+                  </DescriptionsItem>
+                  <DescriptionsItem
+                    v-if="container.gwgt != null"
+                    :label="$t('seaExport.yundang.tracking.container.gwgt')"
+                  >
+                    {{ container.gwgt }}
+                  </DescriptionsItem>
+                  <DescriptionsItem
+                    v-if="container.vgm != null"
+                    :label="$t('seaExport.yundang.tracking.container.vgm')"
+                  >
+                    {{ container.vgm }}
                   </DescriptionsItem>
                   <DescriptionsItem
                     :label="
@@ -656,6 +843,45 @@ const handleRefresh = async () => {
                     {{ container.currentStatusTime || '--' }}
                   </DescriptionsItem>
                 </Descriptions>
+
+                <div
+                  v-if="(container.charges?.length ?? 0) > 0"
+                  class="charge-block mb-3"
+                >
+                  <div class="charge-block__title">
+                    {{ $t('seaExport.yundang.tracking.container.chargeTitle') }}
+                  </div>
+                  <table class="carriage-table">
+                    <thead>
+                      <tr>
+                        <th>
+                          {{
+                            $t(
+                              'seaExport.yundang.tracking.container.chargeType',
+                            )
+                          }}
+                        </th>
+                        <th>
+                          {{ $t('seaExport.yundang.tracking.container.lfd') }}
+                        </th>
+                        <th>
+                          {{
+                            $t(
+                              'seaExport.yundang.tracking.container.freeDayDesc',
+                            )
+                          }}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="charge in container.charges" :key="charge.id">
+                        <td>{{ charge.chargeType || '--' }}</td>
+                        <td>{{ charge.lfd || '--' }}</td>
+                        <td>{{ charge.freeDayDesc || '--' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
 
                 <Timeline class="track-timeline track-timeline--horizontal">
                   <TimelineItem
@@ -704,6 +930,14 @@ const handleRefresh = async () => {
                       </div>
                       <div class="track-timeline-card__time">
                         {{ status.eventTime || '--' }}
+                      </div>
+                      <div
+                        v-if="translateSource(status.sourceCd)"
+                        class="track-timeline-card__meta"
+                      >
+                        {{
+                          $t('seaExport.yundang.tracking.container.source')
+                        }}：{{ translateSource(status.sourceCd) }}
                       </div>
                     </div>
                   </TimelineItem>
@@ -845,6 +1079,55 @@ const handleRefresh = async () => {
   font-variant-numeric: tabular-nums;
   line-height: 1.5;
   color: rgb(60 60 67 / 45%);
+}
+
+.track-timeline-card__meta {
+  margin-top: 1px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgb(60 60 67 / 40%);
+}
+
+/* 航段 / 费用表格：细边框、留白、数字等宽 */
+.carriage-table {
+  width: 100%;
+  font-size: 13px;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid rgb(60 60 67 / 8%);
+  }
+
+  th {
+    font-weight: 590;
+    color: rgb(60 60 67 / 60%);
+    white-space: nowrap;
+    background: rgb(120 120 128 / 5%);
+  }
+
+  td {
+    font-variant-numeric: tabular-nums;
+    color: rgb(0 0 0 / 82%);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.carriage-table__route {
+  font-weight: 510;
+  white-space: nowrap;
+}
+
+.charge-block__title {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 590;
+  color: rgb(0 0 0 / 82%);
 }
 
 /* 水平时间轴：里程碑 / 集装箱轨迹从左到右展示 */

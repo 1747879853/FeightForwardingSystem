@@ -638,6 +638,12 @@
         "pending": "Not Reached"
       },
       "estimated": "Estimated",
+      "aisEta": "AIS ETA",
+      "firstEta": "First ETA",
+      "etaPld": "ETA (Delivery)",
+      "ataPld": "ATA (Delivery)",
+      "deliveryPlace": "Delivery Place",
+      "remark": "Remark",
       "emptyNodes": "No ocean nodes",
       "emptyCarriages": "No carriage segments",
       "emptyContainers": "No containers",
@@ -654,15 +660,40 @@
       "carriage": {
         "sno": "No.",
         "route": "Route",
-        "vessel": "Vessel",
-        "voyage": "Voyage"
+        "type": "Type",
+        "vessel": "Vessel / Voyage",
+        "voyage": "Voyage",
+        "etd": "ETD",
+        "atd": "ATD",
+        "eta": "ETA",
+        "ata": "ATA",
+        "typeMainVessel": "Ocean Vessel",
+        "typeBarge": "Barge",
+        "typeTruck": "Truck"
+      },
+      "node": {
+        "progress": "Progress",
+        "ais": "AIS"
       },
       "container": {
         "sizeType": "Size/Type",
         "sealNo": "Seal No.",
         "currentStatus": "Current Status",
         "currentPlace": "Current Place",
-        "currentStatusTime": "Status Time"
+        "currentStatusTime": "Status Time",
+        "pkgs": "Packages",
+        "gwgt": "Gross Weight",
+        "vgm": "VGM",
+        "rolled": "Rolled",
+        "abnormal": "Abnormal",
+        "chargeTitle": "Charges / Free Time",
+        "chargeType": "Charge Type",
+        "lfd": "Last Free Day",
+        "freeDayDesc": "Free Days",
+        "source": "Source",
+        "sourceCarrier": "Carrier",
+        "sourceTerminal": "Terminal",
+        "sourceYundang": "Yundang"
       }
     },
     "status": {
