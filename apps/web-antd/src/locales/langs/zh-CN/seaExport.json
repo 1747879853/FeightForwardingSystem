@@ -906,6 +906,8 @@
       "titleWithOrder": "运踪详情 - {0}",
       "close": "关闭",
       "refresh": "刷新",
+      "viewMap": "查看轨迹地图",
+      "viewMapEmpty": "暂无订阅号，无法查看轨迹地图",
       "loadFailed": "加载运踪信息失败",
       "lastUpdated": "最后更新于 {0}",
       "neverSubscribed": "尚未订阅运踪，请先使用「运踪订阅」",
