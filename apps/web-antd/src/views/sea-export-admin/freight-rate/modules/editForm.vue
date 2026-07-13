@@ -210,6 +210,13 @@ async function loadSelectData() {
     freightConditionItemOptions.value = await getEnumItems(
       'freightConditionItem',
     );
+    freightConditionItemOptions.value = freightConditionItemOptions.value.map(
+      (item) => ({
+        ...item,
+        label: item.displayName,
+        value: item.value,
+      }),
+    );
     conditionComparisonTypeOptions.value = await getEnumItems(
       'conditionComparisonType',
     );
@@ -1366,10 +1373,10 @@ async function handleSubmit() {
           : [],
     };
 
-    const hideLoading = message.loading({
-      content: isEditMode.value ? '保存中...' : '新增中...',
-      duration: 0,
-    });
+    // const hideLoading = message.loading({
+    //   content: isEditMode.value ? '保存中...' : '新增中...',
+    //   duration: 0,
+    // });
 
     if (isEditMode.value) {
       await editSeFreiPrice({
@@ -1382,12 +1389,11 @@ async function handleSubmit() {
       message.success('新增成功');
     }
 
-    hideLoading();
     modalApi.close();
     emits('success');
   } catch (error) {
     console.error('提交失败:', error);
-    message.error('操作失败');
+    //message.error('操作失败');
   }
 }
 
@@ -1853,24 +1859,27 @@ onMounted(() => {
         </div>
 
         <div v-else class="overflow-x-auto">
-          <table class="w-full border-collapse border border-gray-300">
+          <table
+            class="w-full border-collapse border border-gray-300"
+            style="min-width: max-content"
+          >
             <thead>
               <tr class="bg-gray-100">
                 <th
                   class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 150px"
+                  style="width: 150px; min-width: 150px"
                 >
                   费用名称
                 </th>
                 <th
                   class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 100px"
+                  style="width: 100px; min-width: 100px"
                 >
                   币别
                 </th>
                 <th
                   class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 120px"
+                  style="width: 120px; min-width: 120px"
                 >
                   计费方式
                 </th>
@@ -1878,12 +1887,13 @@ onMounted(() => {
                   v-for="ctn in dynamicCtnTypes"
                   :key="ctn.ctnCodeId"
                   class="border border-gray-300 px-3 py-2 text-center"
+                  style="min-width: 220px"
                 >
                   {{ ctn.name }}
                 </th>
                 <th
                   class="border border-gray-300 px-3 py-2 text-center"
-                  style="width: 80px"
+                  style="width: 80px; min-width: 80px"
                 >
                   操作
                 </th>
@@ -1980,7 +1990,7 @@ onMounted(() => {
                   <!-- 按票计费模式：只显示第一个箱型列的输入框 -->
                   <div
                     v-if="surcharge.priceFeeType === 1"
-                    class="relative mt-6"
+                    class="relative mt-2"
                   >
                     <!-- 只在第一个箱型列显示价格输入框 -->
                     <template
@@ -2018,9 +2028,9 @@ onMounted(() => {
                   </div>
 
                   <!-- 按集装箱计费模式：每个箱型独立输入 -->
-                  <div v-else class="relative mt-6">
+                  <div v-else class="relative mt-2">
                     <!-- 条件模式图标 -->
-                    <div class="absolute left-1 top-1 z-10">
+                    <div class="top-f1 absolute z-10">
                       <button
                         type="button"
                         class="flex h-5 w-5 items-center justify-center rounded bg-white text-gray-400 shadow-sm transition-all hover:text-blue-600 hover:shadow-md"
@@ -2042,7 +2052,7 @@ onMounted(() => {
                           currentConditionCell?.feeIndex === index &&
                           currentConditionCell?.ctnCodeId === ctn.ctnCodeId
                         "
-                        class="absolute left-0 top-7 z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white p-3 shadow-xl"
+                        class="absolute left-0 top-7 z-50 min-w-[180px] rounded-lg border border-gray-200 bg-white shadow-xl"
                         @click.stop
                       >
                         <label
@@ -2290,6 +2300,11 @@ onMounted(() => {
   }
 }
 
+.top-f1 {
+  top: -1.5rem;
+  left: -0.5rem;
+}
+
 .edit-form-container {
   max-height: 70vh;
   padding: 16px;
@@ -2384,7 +2399,7 @@ onMounted(() => {
 }
 
 .form-section {
-  padding: 16px;
+  padding: 10px;
   margin-bottom: 24px;
   background: #fafafa;
   border-radius: 8px;
@@ -2394,7 +2409,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 0 0 16px;
+  margin: 0 0 6px;
   font-size: 16px;
   font-weight: 600;
   color: #262626;
