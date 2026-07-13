@@ -45,6 +45,10 @@ import FeeSelectionDrawerForIssue from './components/FeeSelectionDrawerForIssue.
 import RemarkTemplateModal from './components/RemarkTemplateModal.vue';
 import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vue';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
+// ✅ 新增：导入开票申请详情API
+import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
+// ✅ 新增：导入备注模板API
+import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 
 const route = useRoute();
 const router = useRouter();
@@ -595,6 +599,11 @@ async function handleFeeSelectionSave(data: {
     // 没有商品明细，尝试自动填充
     await autoFillGoodsDetails(newApplications);
   }
+
+  // ✅ 新增：自动应用默认备注模板（仅当备注为空时）
+  if (!formData.value.remark || !formData.value.remark.trim()) {
+    await loadAndApplyDefaultRemarkTemplate();
+  }
 }
 
 /** 将选中的申请添加到表单 */
@@ -733,9 +742,106 @@ function handleOpenSelectRemarkTemplateModal() {
 /** 使用备注模板 */
 function handleUseRemarkTemplate(template: string) {
   formData.value.remark = template;
-  message.success('已应用备注模板');
+  //message.success('已应用备注模板');
+}
+/** ✅ 新增：根据模板数据替换占位符生成实际备注 */
+function replacePlaceholders(template: string, templateData: any): string {
+  if (!template) return '';
+
+  let result = template;
+
+  // 委托编号
+  if (templateData.commissionNum) {
+    result = result.replace(/\<委托编号\>/g, templateData.commissionNum);
+  }
+
+  // 主提单号
+  if (templateData.mblNum) {
+    result = result.replace(/<主提单号>/g, templateData.mblNum);
+  }
+
+  // 发票汇率
+  result = result.replace(
+    /\[折算汇率\]/g,
+    String(templateData.invoiceExchangeRate),
+  );
+
+  // 外币金额总计
+  result = result.replace(
+    /\[外币金额\(总计\)\]/g,
+    templateData.foreignCurrencyAmount,
+  );
+
+  // 人民币金额总计
+  result = result.replace(/\[人民币金额\(总计\)\]/g, templateData.rmbAmount);
+
+  // 购方银行
+  result = result.replace(/\[购方银行\]/g, templateData.clientBankName);
+
+  // 购方账号
+  result = result.replace(/\[购方账号\]/g, templateData.clientBankAccount);
+
+  // 销方银行
+  result = result.replace(/\[销方银行\]/g, templateData.orgBankName);
+
+  // 销方账号
+  result = result.replace(/\[销方账号\]/g, templateData.orgBankAccount);
+
+  return result;
 }
 
+/** ✅ 新增：获取并应用默认备注模板 */
+async function loadAndApplyDefaultRemarkTemplate() {
+  try {
+    const companyId = formData.value.companyId;
+    const currencyId = formData.value.currencyId;
+
+    if (!companyId || !currencyId) {
+      console.log('⚠️ 缺少公司ID或币别ID，无法加载默认备注模板');
+      return;
+    }
+
+    console.log(
+      '🔍 查询默认备注模板 - 公司ID:',
+      companyId,
+      '币别ID:',
+      currencyId,
+    );
+
+    const result = await InvoiceRemarkTemplateApi.getPagedListAsync({
+      pageIndex: 1,
+      pageSize: 1,
+      companyId,
+      currencyId,
+      default: true, // 只查询默认模板
+    });
+
+    if (result.items && result.items.length > 0) {
+      const defaultTemplate = result.items[0];
+      if (defaultTemplate && defaultTemplate.template) {
+        // ✅ 使用当前的 remarkTemplateData 进行占位符替换
+        const templateData = remarkTemplateData.value;
+        const replacedTemplate = replacePlaceholders(
+          defaultTemplate.template,
+          templateData,
+        );
+
+        // ✅ 只有当备注字段为空时才自动填充
+        if (!formData.value.remark || !formData.value.remark.trim()) {
+          formData.value.remark = replacedTemplate;
+          console.log('✅ 已自动应用默认备注模板（占位符已替换）');
+          message.success('已自动应用默认备注模板');
+        } else {
+          console.log('⚠️ 备注字段已有内容，跳过自动填充');
+        }
+      }
+    } else {
+      console.log('ℹ️ 未找到默认备注模板');
+    }
+  } catch (error) {
+    console.error('获取默认备注模板失败:', error);
+  }
+}
 /** 初始化申请人信息 */
 function initApplicantInfo() {
   const userInfo = userStore.userInfo;
@@ -1163,7 +1269,7 @@ async function mergeGoodsDetailsFromApplications(selectedApplications: any[]) {
   // ✅ 更新商品明细
   if (mergedGoodsDetails.length > 0) {
     goodsDetails.value = mergedGoodsDetails;
-    message.success(`成功合并 ${mergedGoodsDetails.length} 条商品明细`);
+    // message.success(`成功合并 ${mergedGoodsDetails.length} 条商品明细`);
   } else {
     console.warn('⚠️ 没有可合并的商品明细');
     message.warning('所选申请中没有商品明细数据');
@@ -1557,9 +1663,10 @@ async function loadDetail() {
 
     // ✅ 从 invoiceIssueItems 中构建 applicationGroupsData（用于占位符替换等功能）
     if (detail.invoiceIssueItems && detail.invoiceIssueItems.length > 0) {
-      // TODO: 这里需要根据实际情况构建申请组数据
-      // 目前简化处理，后续可以根据需要完善
       console.log('✅ 已加载申请明细:', detail.invoiceIssueItems.length, '条');
+
+      // ✅ 关键修复：需要根据 invoiceApplicationId 重新获取完整的申请数据
+      await loadFullApplicationData(detail.invoiceIssueItems);
     }
 
     // ✅ 加载商品明细数据，并为每行添加唯一ID
@@ -1593,6 +1700,136 @@ async function loadDetail() {
     message.error('加载详情失败');
   } finally {
     loading.value = false;
+  }
+}
+
+/** ✅ 新增:根据 invoiceIssueItems 加载完整的申请数据 */
+async function loadFullApplicationData(invoiceIssueItems: any[]) {
+  try {
+    // 提取所有的 invoiceApplicationId
+    const applicationIds = invoiceIssueItems.map(
+      (item: any) => item.invoiceApplicationId,
+    );
+
+    console.log('🔍 需要加载的申请ID列表:', applicationIds);
+
+    // ✅ 调用开票申请详情接口获取完整数据
+    const groupsData: any[] = [];
+
+    for (const appItemId of applicationIds) {
+      try {
+        console.log('📥 正在加载申请详情:', appItemId);
+        const appDetail = await InvoiceApplicationAdminApi.detail(appItemId);
+
+        console.log('✅ 成功加载申请详情:', {
+          id: appDetail.id,
+          applicationNo: appDetail.applicationNo,
+          commissionNum:
+            appDetail.feeGroups?.[0]?.transportOrder?.commissionNum,
+          mblNum: appDetail.feeGroups?.[0]?.transportOrder?.mblNum,
+        });
+
+        // ✅ 构建扁平化的费用明细列表
+        const flatItems: any[] = [];
+        let totalAppliedAmount = 0;
+
+        appDetail.feeGroups.forEach((group: any) => {
+          group.items.forEach((item: any) => {
+            flatItems.push({
+              id: item.id,
+              invoiceApplicationId: appDetail.id,
+              orderFeeId: item.orderFeeId,
+              appliedAmount: item.appliedAmount,
+              remark: item.remark,
+              orderFee: item.orderFee,
+              remainingInvoiceAmount: item.remainingInvoiceAmount,
+              // ✅ 关键字段：从 transportOrder 中获取委托编号和主提单号
+              commissionNum: group.transportOrder?.commissionNum || '',
+              mblNum: group.transportOrder?.mblNum || '',
+              currencyId: appDetail.currencyId,
+              currencyCode: appDetail.currencyCode,
+              totalAppliedAmount: item.appliedAmount,
+            });
+
+            totalAppliedAmount += item.appliedAmount;
+          });
+        });
+
+        // ✅ 构建申请组对象（与抽屉返回的数据结构一致）
+        // ✅ 从第一个费用项中获取 commissionNum 和 mblNum（同一申请的所有费用项应该属于同一个运输订单）
+        const firstItem = flatItems[0];
+
+        const applicationGroup = {
+          id: appDetail.id,
+          applicationNo: appDetail.applicationNo,
+          settlementId: appDetail.settlementId,
+          status: appDetail.status,
+          currencyId: appDetail.currencyId,
+          currencyCode: appDetail.currencyCode,
+          invoiceType: appDetail.invoiceType,
+          clientInvoiceBankId: appDetail.clientInvoiceBankId,
+          orgBankAccountId: appDetail.orgBankAccountId,
+          applyUserId: appDetail.applyUserId,
+          applyTime: appDetail.applyTime,
+          require: appDetail.require,
+          remark: appDetail.remark,
+          creatorUserName: appDetail.creatorUserName,
+          applyUserName: appDetail.applyUserName,
+          settlementName: appDetail.settlementName,
+          companyName: undefined,
+          invoiceExchangeRate: appDetail.invoiceExchangeRate,
+          // ✅ 关键字段：委托编号和主提单号（放在申请组顶层，方便占位符替换）
+          commissionNum: firstItem?.commissionNum || '',
+          mblNum: firstItem?.mblNum || '',
+          invoiceApplicationItems: flatItems,
+          invoiceApplicationGoodsDtls:
+            appDetail.invoiceApplicationGoodsDtls || [],
+          totalAppliedAmount: totalAppliedAmount,
+          totalGoodsAmount: 0,
+          amountMatched: true,
+          clientInvoiceInfo: null,
+        };
+
+        groupsData.push(applicationGroup);
+      } catch (error) {
+        console.error(`❌ 加载申请 ${appItemId} 详情失败:`, error);
+        message.warning(`加载申请 ${appItemId} 详情失败`);
+      }
+    }
+
+    // ✅ 设置 applicationGroupsData
+    applicationGroupsData.value = groupsData;
+    console.log(
+      '✅ applicationGroupsData 已加载完成，共',
+      groupsData.length,
+      '个申请组',
+    );
+
+    // ✅ 调试日志：验证 commissionNum 和 mblNum 是否正确设置
+    if (groupsData.length > 0) {
+      console.log('📋 第一个申请组的详细信息:', {
+        id: groupsData[0].id,
+        applicationNo: groupsData[0].applicationNo,
+        commissionNum: groupsData[0].commissionNum,
+        mblNum: groupsData[0].mblNum,
+        invoiceApplicationItemsCount:
+          groupsData[0].invoiceApplicationItems?.length || 0,
+      });
+
+      if (
+        groupsData[0].invoiceApplicationItems &&
+        groupsData[0].invoiceApplicationItems.length > 0
+      ) {
+        console.log('📋 第一个费用项的详细信息:', {
+          id: groupsData[0].invoiceApplicationItems[0].id,
+          commissionNum: groupsData[0].invoiceApplicationItems[0].commissionNum,
+          mblNum: groupsData[0].invoiceApplicationItems[0].mblNum,
+        });
+      }
+    }
+  } catch (error) {
+    console.error('加载完整申请数据失败:', error);
+    message.error('加载申请详情失败，占位符可能无法正确替换');
   }
 }
 
