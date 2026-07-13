@@ -348,6 +348,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.carrierId'),
       width: 200,
       align: 'left',
+      sortable: true,
       // showOverflow: true,
       slots: { default: 'carrierId' },
       formatter: ({ row }) => {
@@ -359,6 +360,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.polId'),
       width: 240,
       align: 'left',
+      sortable: true,
       // showOverflow: true,
       slots: { default: 'polId' },
       formatter: ({ row }) => {
@@ -379,6 +381,7 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.podId'),
       width: 240,
       align: 'left',
+      sortable: true,
       //showOverflow: true,
       slots: { default: 'podId' },
       formatter: ({ row }) => {
@@ -390,11 +393,13 @@ export function useColumns<T = SeFreiPriceOutDto>(
       title: $t('seaExport.freightRate.currencyId'),
       width: 80,
       align: 'left',
+      sortable: true,
       slots: { default: 'currencyId' },
       formatter: ({ row }) => {
         return row.currency?.code || '-';
       },
     },
+
     {
       field: 'bookingAgentName',
       title: '订舱代理',
@@ -517,8 +522,9 @@ export function useColumns<T = SeFreiPriceOutDto>(
     {
       field: 'isDirect',
       title: $t('seaExport.freightRate.isDirect'),
-      width: 80,
+      width: 100,
       align: 'center',
+      sortable: true,
       cellRender: {
         name: 'CellTag',
         options: [

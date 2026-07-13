@@ -318,6 +318,11 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
           mapParams: mapFreightRateParams,
           fieldMap: {
             creationTime: 'CreationTime',
+            'carrier.enName': 'CarrierId',
+            'pol.portName': 'PolId',
+            'pod.portName': 'PodId',
+            'currency.code': 'CurrencyId',
+            isDirect: 'IsDirect',
           },
           afterFetch: (result: any) => {
             const items = result.items || [];
