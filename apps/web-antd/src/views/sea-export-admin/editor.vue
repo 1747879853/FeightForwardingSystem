@@ -10,6 +10,7 @@ import dispatch from '#/views/sea-export-admin/dispatch/index.vue';
 import attachments from '#/views/sea-export-admin/attachments/index.vue';
 import YundangTrackingPanel from './modules/yundang-tracking-panel.vue';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
+import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
 
@@ -24,7 +25,10 @@ type TabKey =
   | 'tracking'
   | 'issueRecord'
   | 'changeHistory';
-type FormExpose = { scrollToSection: (key: SectionKey) => void };
+type FormExpose = {
+  isFormDirty: () => boolean | Promise<boolean>;
+  scrollToSection: (key: SectionKey) => void;
+};
 
 const VALID_TAB_KEYS: readonly TabKey[] = [
   'basic',
@@ -151,6 +155,14 @@ const onSectionChange = (sectionKey: SectionKey) => {
   if (sectionKey === 'cargo') return;
   activeTab.value = sectionKey;
 };
+
+// 编辑工作台未保存拦截：无论当前停留在哪个内部标签，离开路由时都基于基础信息表单的脏状态二次确认
+useUnsavedGuard({
+  isDirty: async () => {
+    const check = formRef.value?.isFormDirty;
+    return check ? await check() : false;
+  },
+});
 
 const contentTabsStyle = {
   display: 'flex',

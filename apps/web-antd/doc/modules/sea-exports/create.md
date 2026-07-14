@@ -75,6 +75,8 @@ last_updated: 2026-07-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-14 | `Fix` | 修复文本字段（收货人/发货人/通知人内容、各备注）「输入后又删空」恢复原状，切标签/跳转仍被误拦的问题。 | 脏检查比对由裸 `JSON.stringify` 改为经 `normalizeForDirtyCheck`（`undefined`/`null`/`''` 等价、递归 + 键排序）的 `stableDtoJson`；`syncFormSnapshot`/`isFormDirty` 共用，提交侧 `buildDto` 不变。详见 `changelogs/change-log-2026-07-14-sea-export-dirty-check-empty-value-normalize.md`。 |
+| 2026-07-14 | `Feature` | 新建页填写后未保存就切标签页/点菜单跳转/浏览器后退时，弹二次确认「有未保存的内容」，确认才离开。对应 TAPD `#1161580498001000498`。 | 接入全局工具 `useUnsavedGuard({ isDirty: isFormDirty, enabled: () => !props.embedded })`（详见 `modules/shared/unsaved-guard.md`）。新建态 `onMounted` 补 `syncFormSnapshot()` 建立空白基线，否则 `isFormDirty` 恒为 false 永不弹窗；`use-sea-export-submit.ts` 新建保存成功后、`router.replace` 前补 `syncFormSnapshot()` 避免误拦保存跳转。 |
 | 2026-07-14 | `Feature` | AI 识别上传放开 Word/Excel/RTF（doc/docx/xls/xlsx/rtf），与原有 PDF/图片一并可选。 | 仅放宽 `AI_EXTRACT_ACCEPT` / `isAiExtractSupportedFile` 与前端提示；仍走 `ExtractSeaExportToAddDtoAsync`，识别效果依赖后端 TextIn 对 Office 的支持。 |
 | 2026-07-12 | `Fix` | 新建保存成功后 `replace` 进编辑页并关闭原新建页 Tab，消除顶部残留空白标签。 | `useSeaExportSubmit` 注入 `closeTabByKey`/`getCurrentTabKey`；关闭须用跳转前缓存的 create key。 |
 | 2026-07-12 | `Fix` | 保存 DTO 带回场站联系人四字段（与编辑页同源修复，避免漏传被后端空覆盖）。 | 与编辑页共用 `collectCurrentFormValues` + `buildSeaExportDto`；新建态通常为空透传。 |

@@ -59,5 +59,8 @@
   "close": "关闭",
   "pleaseSelect": "请选择",
   "invalid": "无效",
-  "valid": "有效"
+  "valid": "有效",
+  "leave": "离开",
+  "unsavedLeaveTitle": "有未保存的内容",
+  "unsavedLeaveContent": "当前页面有未保存的修改，直接离开将丢失这些修改，确定要离开吗？"
 }

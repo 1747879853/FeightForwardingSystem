@@ -165,6 +165,42 @@ export const buildSeaExportDto = (
   };
 };
 
+/**
+ * 脏检查专用的结构归一化：
+ * - 把 `undefined` / `null` / `''` 视为等价的「空」，对象里的空键统一丢弃；
+ * - 递归处理对象与数组，数组保序（空元素用 `null` 占位以保留长度语义）；
+ * - 对象键排序，避免键顺序差异造成的误判。
+ *
+ * 仅用于快照比对，不影响实际提交的 DTO。这样「输入后又删空」的文本字段
+ * （备注/收货人内容等）不会因为 `undefined`↔`''`↔`null` 的漂移被误判为已修改。
+ */
+const normalizeForDirtyCheck = (value: any): any => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => {
+      const normalized = normalizeForDirtyCheck(item);
+      return normalized === undefined ? null : normalized;
+    });
+  }
+  if (typeof value === 'object') {
+    const result: Record<string, any> = {};
+    for (const key of Object.keys(value).sort()) {
+      const normalized = normalizeForDirtyCheck(value[key]);
+      if (normalized !== undefined) {
+        result[key] = normalized;
+      }
+    }
+    return result;
+  }
+  return value;
+};
+
+/** 生成稳定、可比较的快照字符串（空值等价 + 键有序） */
+const stableDtoJson = (dto: Record<string, any>): string =>
+  JSON.stringify(normalizeForDirtyCheck(dto) ?? {});
+
 type SubmitFormApi = {
   validate: () => Promise<{ valid: boolean }>;
 };
@@ -308,6 +344,8 @@ export function useSeaExportSubmit(deps: UseSeaExportSubmitDeps) {
             ? ''
             : String(resolvedCreatedId).trim();
         const createTabKey = getCurrentTabKey();
+        // 保存成功后跳转前重置脏检查基线，避免触发未保存拦截的二次确认
+        await syncFormSnapshot();
         if (createdIdStr) {
           await router.replace(`/sea-exports/${createdIdStr}/edit`);
         } else {
@@ -323,13 +361,13 @@ export function useSeaExportSubmit(deps: UseSeaExportSubmitDeps) {
   const syncFormSnapshot = async () => {
     await nextTick();
     const values = await collectCurrentFormValues();
-    formSnapshotJson.value = JSON.stringify(buildDto(values));
+    formSnapshotJson.value = stableDtoJson(buildDto(values));
   };
 
   const isFormDirty = async () => {
     if (!formSnapshotJson.value) return false;
     const values = await collectCurrentFormValues();
-    return JSON.stringify(buildDto(values)) !== formSnapshotJson.value;
+    return stableDtoJson(buildDto(values)) !== formSnapshotJson.value;
   };
 
   return {

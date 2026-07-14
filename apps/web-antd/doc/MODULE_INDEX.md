@@ -8,7 +8,7 @@
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料，为后续联系人、账期、发票、附件等客户子资料提供主记录。 | [客户新建](./modules/clients/create.md) | 2026-05-16 |
 | clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面；账期删除大数 ID 原样透传。 | [客户编辑](./modules/clients/id-edit.md) | 2026-07-12 |
 | sea-exports | `/sea-exports` | 操作管理 / 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口；支持多选后运踪批量订阅，并展示运踪订阅状态列。侧边栏收纳于「操作管理」分组。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-07-14 |
-| sea-exports | `/sea-exports/create` | 操作管理 / 海运出口 | 创建新的海运出口委托单；保存成功后 replace 进入编辑工作台并关闭原新建页标签。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-07-12 |
+| sea-exports | `/sea-exports/create` | 操作管理 / 海运出口 | 创建新的海运出口委托单；保存成功后 replace 进入编辑工作台并关闭原新建页标签；未保存时切标签/跳转弹二次确认。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-07-14 |
 | sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；场站联系人在标签旁展示，保存时透传防空覆盖。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-07-14 |
 | sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-07-12 |
 | sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-07-11 |
@@ -63,3 +63,4 @@
 | shared | `/tracking-map/:mblNo?` | 共享能力 | 货物轨迹独立静态页：免登录、URL 传订阅号、iframe 内嵌轨迹地图、页头品牌 logo 随 VITE_APP_BRAND 自动切换；支持 `?lang=en` 英文分享；可分享给外部客户。 | [货物轨迹独立静态页](./modules/shared/tracking-map-page.md) | 2026-07-14 |
 | shared | （全站分页 vxe 列表） | 共享能力 | 分页列表列头远程多列排序，统一 `sorting` 参数与 `createPagedListQuery` 接入。 | [vxe 列表排序](./modules/shared/vxe-list-sorting.md) | 2026-06-21 |
 | shared | （全站 vxe 列表） | 共享能力 | 列显隐/顺序/固定/列宽按用户与 tableId 持久化，工具栏恢复默认一并重置；columns 引用稳定化避免无关重算重置列。 | [vxe 列配置持久化](./modules/shared/vxe-column-persist.md) | 2026-07-12 |
+| shared | （全站页面级表单） | 共享能力 | 未保存内容离开拦截：`useUnsavedGuard({ isDirty })` + 全局 `beforeEach`，切标签/菜单跳转/后退/关闭当前标签时二次确认；首个接入方为海运出口新建与编辑工作台。 | [未保存内容离开拦截](./modules/shared/unsaved-guard.md) | 2026-07-14 |

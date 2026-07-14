@@ -58,6 +58,7 @@ const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 import { CodeSourceSelect, UserSelect } from '#/adapter/component';
 import { type VbenFormSchema, useVbenForm } from '#/adapter/form';
 import { getClientDetail } from '#/api/sea-export/client-admin';
+import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import {
   getServiceTypesByPOL,
   getSeaExportDetail,
@@ -2128,6 +2129,13 @@ const { copying: copyingSeaExport, copyFrom: copySeaExportFromCurrent } =
     checkDirty: isFormDirty,
   });
 
+// 页面级表单未保存拦截：切换标签页 / 菜单跳转 / 关闭当前标签页时二次确认。
+// 内嵌于编辑工作台（editor.vue）时由父级统一登记，此处仅在独立页面（新建）生效。
+useUnsavedGuard({
+  isDirty: isFormDirty,
+  enabled: () => !props.embedded,
+});
+
 const { ResultModal, subscribe, subscribing } = useYundangOceanSubscribe();
 
 /** 运踪订阅状态（随详情返回，订阅后重新加载详情刷新） */
@@ -2360,6 +2368,8 @@ onMounted(() => {
     loadEditData();
     if (!isEdit.value) {
       void syncServiceTypesByPol();
+      // 新建态记录初始空白快照，作为未保存拦截的脏检查基线
+      await syncFormSnapshot();
     }
   };
   if (!isEdit.value) {
@@ -2401,6 +2411,7 @@ watch(pageLoading, (loading) => {
 
 defineExpose({
   scrollToSection,
+  isFormDirty,
 });
 </script>
 

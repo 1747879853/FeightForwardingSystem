@@ -13,6 +13,8 @@
 
 ## 2026-07
 
+- [2026-07-14 海运出口脏检查空值归一化（修复删空后仍被拦截）](./changelogs/change-log-2026-07-14-sea-export-dirty-check-empty-value-normalize.md)
+- [2026-07-14 未保存内容离开拦截全局工具（切标签/菜单跳转二次确认）](./changelogs/change-log-2026-07-14-unsaved-changes-navigation-guard.md)
 - [2026-07-14 公告管理新增与批量删除按钮按权限显示](./changelogs/change-log-2026-07-14-announcement-action-permissions.md)
 - [2026-07-14 海运出口附件对接批量修改客户可见接口（单文件切换 + 类型批量）](./changelogs/change-log-2026-07-14-sea-export-attachments-client-visible-update.md)
 - [2026-07-14 用户列表展示所属组织完整路径](./changelogs/change-log-2026-07-14-user-list-organization-path.md)
