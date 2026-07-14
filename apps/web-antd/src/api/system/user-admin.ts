@@ -122,6 +122,13 @@ export namespace SystemUserAdminApi {
     sorting?: string;
   }
 
+  /** 用户所属组织机构路径项 */
+  export interface UserOrganizationPathItemDto {
+    id: number;
+    name: string;
+    isCompany: boolean;
+  }
+
   /** 用户列表项DTO */
   export interface UserListDto {
     id: number;
@@ -134,6 +141,10 @@ export namespace SystemUserAdminApi {
     status: UserStatus;
     avatar?: string;
     userAttribute?: UserAttribute;
+    /** 所属部门名称（用户直接挂载的组织名称） */
+    organization?: string;
+    /** 所属组织机构路径，从顶级组织到当前组织按层级排列 */
+    organizationPath?: UserOrganizationPathItemDto[];
     creationTime: string;
     lastLoginTime?: string;
     roles?: string[];
