@@ -233,6 +233,7 @@ export type UseSeaExportSubmitDeps = {
   validateSalesRoleCount: () => boolean;
   validateRequiredOrderUserAssignee: () => boolean;
   validateServiceBoundOrderUsers: () => boolean;
+  validateShipmentDates: () => Promise<boolean>;
   loadEditData: () => Promise<void>;
   closeTabByKey: (key: string) => Promise<void>;
   getCurrentTabKey: () => string;
@@ -257,6 +258,7 @@ export function useSeaExportSubmit(deps: UseSeaExportSubmitDeps) {
     validateSalesRoleCount,
     validateRequiredOrderUserAssignee,
     validateServiceBoundOrderUsers,
+    validateShipmentDates,
     loadEditData,
     closeTabByKey,
     getCurrentTabKey,
@@ -299,6 +301,9 @@ export function useSeaExportSubmit(deps: UseSeaExportSubmitDeps) {
       return;
     }
     if (!validateServiceBoundOrderUsers()) {
+      return;
+    }
+    if (!(await validateShipmentDates())) {
       return;
     }
 

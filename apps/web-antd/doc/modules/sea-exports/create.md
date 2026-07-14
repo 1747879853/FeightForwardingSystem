@@ -23,10 +23,13 @@ last_updated: 2026-07-14
 
 - **AI 识别辅助：** 页面提供「AI识别」按钮，支持 PDF、图片（png/jpg/jpeg/bmp/tiff/webp）与 Office（doc/docx/xls/xlsx/rtf），调用 TextIn `ExtractSeaExportToAddDtoAsync` 后由后端完成名称→id 匹配并回填表单；空值、`0`、空 Guid 不回填。识别成功后右侧 Drawer 展示原文件，点击/聚焦已回填字段可联动高亮 `citations` 定位；缓存命中显示「来自缓存」标签。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
-- **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。
+- **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。
 - **右侧栏与场站联系人：** 右侧主卡片为「干系人」。场站联系人/邮箱/手机/电话与编辑页一致挂在「场站」标签旁只读展示（新建态通常为空显示 `-`）；保存时随 `SeaExportAddDto` 透传（新建多为空）。
 - **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护，并按 `ServiceType.extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
+- **船期时间校验：** 保存时逐项校验截 VGM、截单、截舱单日期；任一日期晚于开船日期或实际开船日期时提示对应字段并阻止保存。
+- **付费地点联动：** 选择到付（中文名含“到付”或 EDI 代码 `CC`）时，付费地点自动带出目的港；选择预付（中文名含“预付”或 EDI 代码 `PP`）时，自动带出起运港，带出后仍可手动修改。
+- **箱包装默认值：** 新增箱型箱量行时，将货物信息中的订单级总包装 ID 与文本复制到箱行包装；箱行包装仍可独立修改。
 - **创建后跳转：** 新增成功后优先解析接口返回的记录 ID，以 `router.replace` 进入 `/sea-exports/{id}/edit`；若返回值无法解析，则 `replace` 回 `/sea-exports` 列表。跳转后关闭原新建页顶部标签，避免残留空白 Tab。
 - **顶部标签栏标题：** 浏览器标签栏标题随录入状态动态变化：未保存且无主提单号时为「海运出口」；录入主提单号后为「海运出口-{主提单号}」；保存后无主提单号时为「海运出口-{委托编号}」。主提单号优先于委托编号。
 
@@ -45,7 +48,7 @@ last_updated: 2026-07-14
 | **所属公司** | 业务单所属公司。 | `organizationUnits` | **触发/依赖：** 新建、编辑保存后，后端根据干系人中销售所属公司自动生成。 | 禁止手动修改。 |
 | **业务来源** | 订单业务来源分类。 | `transportOrder.codeSourceId`；`CodeSourceSelect`（基础数据） | - | - |
 | **付费方式** | 运费付费方式。 | `transportOrder.codeFrtId`；与付费地点合并为 `FrtPrepareInput` | **触发/依赖：** 与 `prepareAtId` 同栏展示。 | - |
-| **付费地点** | 运费支付地点港口。 | `transportOrder.prepareAtId`；`PortSelect`（基础数据） | **触发/依赖：** 付费方式为预付时显示起运港（`polId`）；为到付时显示交货地（`deliverPortId`）。 | - |
+| **付费地点** | 运费支付地点港口。 | `transportOrder.prepareAtId`；`PortSelect`（基础数据） | **触发/依赖：** 付费方式为预付时带出起运港（`polId`）；为到付时带出目的港（`podId`），带出后允许修改。 | - |
 | **运输条款 / 贸易条款** | 运输服务条款与贸易术语；视觉合并为一个表单项。 | `ServiceTradeTermsInput` -> `codeServiceId` + `tradeTermsType`（贸易条款枚举 CIF/FOB 等） | **触发/依赖：** 主字段 `codeServiceId`，第二字段经 `formContext` 写回 `tradeTermsType`；内部宽度 1:1。 | - |
 | **订舱代理** | 订舱服务执行方客户。 | `bookingAgentId`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与船公司/船代/场站一并迁入基础信息区，排在船代后、车队前；与服务流水线解耦，始终展示。 | 可选；须为含订舱代理属性的客户。 |
 | **船名航次** | 船名和内航次；海出侧船名:船次宽度 **3:2**。 | `VesselVoyageInput` -> `vessel`、`innerVoyno`（`mainRatio:3` / `secondRatio:2`） | **触发/依赖：** 一个组合输入维护两个字段。 | 文本可为空，格式以后端为准。 |
@@ -75,6 +78,7 @@ last_updated: 2026-07-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-14 | `Fix` | 销售/操作显示必填标识；截关日期不得晚于开船/实际开船；预付/到付自动带出起运港/目的港；新增箱行默认复制总包装 ID 与文本。 | 总包装与箱行包装共用 `CodePackageSelect` 数据源但分属订单级与箱行级字段；通过选择事件缓存文本，新增行无需再拉包装详情。 |
 | 2026-07-14 | `Fix` | 修复文本字段（收货人/发货人/通知人内容、各备注）「输入后又删空」恢复原状，切标签/跳转仍被误拦的问题。 | 脏检查比对由裸 `JSON.stringify` 改为经 `normalizeForDirtyCheck`（`undefined`/`null`/`''` 等价、递归 + 键排序）的 `stableDtoJson`；`syncFormSnapshot`/`isFormDirty` 共用，提交侧 `buildDto` 不变。详见 `changelogs/change-log-2026-07-14-sea-export-dirty-check-empty-value-normalize.md`。 |
 | 2026-07-14 | `Feature` | 新建页填写后未保存就切标签页/点菜单跳转/浏览器后退时，弹二次确认「有未保存的内容」，确认才离开。对应 TAPD `#1161580498001000498`。 | 接入全局工具 `useUnsavedGuard({ isDirty: isFormDirty, enabled: () => !props.embedded })`（详见 `modules/shared/unsaved-guard.md`）。新建态 `onMounted` 补 `syncFormSnapshot()` 建立空白基线，否则 `isFormDirty` 恒为 false 永不弹窗；`use-sea-export-submit.ts` 新建保存成功后、`router.replace` 前补 `syncFormSnapshot()` 避免误拦保存跳转。 |
 | 2026-07-14 | `Feature` | AI 识别上传放开 Word/Excel/RTF（doc/docx/xls/xlsx/rtf），与原有 PDF/图片一并可选。 | 仅放宽 `AI_EXTRACT_ACCEPT` / `isAiExtractSupportedFile` 与前端提示；仍走 `ExtractSeaExportToAddDtoAsync`，识别效果依赖后端 TextIn 对 Office 的支持。 |

@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-14 海运出口表单校验、付费地点与箱包装联动优化](./changelogs/change-log-2026-07-14-sea-export-form-optimizations.md)
 - [2026-07-14 海运出口脏检查空值归一化（修复删空后仍被拦截）](./changelogs/change-log-2026-07-14-sea-export-dirty-check-empty-value-normalize.md)
 - [2026-07-14 未保存内容离开拦截全局工具（切标签/菜单跳转二次确认）](./changelogs/change-log-2026-07-14-unsaved-changes-navigation-guard.md)
 - [2026-07-14 公告管理新增与批量删除按钮按权限显示](./changelogs/change-log-2026-07-14-announcement-action-permissions.md)
