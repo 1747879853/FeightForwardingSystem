@@ -25,7 +25,31 @@ const referenceNo = computed(() => {
   return typeof raw === 'string' ? raw.trim() : '';
 });
 
-const iframeSrc = computed(() => buildTrackingMapSrc(referenceNo.value));
+// 语言来自 query（?lang=en），用于分享给海外客户的英文链接，默认中文
+const lang = computed(() => {
+  const raw = Array.isArray(route.query.lang)
+    ? route.query.lang[0]
+    : route.query.lang;
+  return raw === 'en' ? 'en' : 'zh';
+});
+
+/** 页内文案跟随 URL lang，不依赖系统全局语言（分享页可能免登录访问） */
+const pageText = computed(() =>
+  lang.value === 'en'
+    ? {
+        title: 'Cargo Tracking',
+        empty:
+          'No reference number available. Please open the link with a subscription number.',
+      }
+    : {
+        title: '货物轨迹查询',
+        empty: '暂无可查询的订阅号，请通过带订阅号的链接访问',
+      },
+);
+
+const iframeSrc = computed(() =>
+  buildTrackingMapSrc(referenceNo.value, lang.value),
+);
 </script>
 
 <template>
@@ -40,7 +64,7 @@ const iframeSrc = computed(() => buildTrackingMapSrc(referenceNo.value));
         />
         <span v-else class="tracking-page__company">{{ companyName }}</span>
       </div>
-      <span class="tracking-page__title">货物轨迹查询</span>
+      <span class="tracking-page__title">{{ pageText.title }}</span>
     </header>
 
     <main class="tracking-page__body">
@@ -53,7 +77,7 @@ const iframeSrc = computed(() => buildTrackingMapSrc(referenceNo.value));
         referrerpolicy="no-referrer"
       ></iframe>
       <div v-else class="tracking-page__empty">
-        <Empty description="暂无可查询的订阅号，请通过带订阅号的链接访问" />
+        <Empty :description="pageText.empty" />
       </div>
     </main>
   </div>

@@ -1,10 +1,19 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import type { TrackingMapLang } from './build-tracking-map-src';
+
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { IconifyIcon } from '@vben/icons';
 
-import { Button, Empty, message, Modal, Tooltip } from 'ant-design-vue';
+import {
+  Button,
+  Empty,
+  message,
+  Modal,
+  Segmented,
+  Tooltip,
+} from 'ant-design-vue';
 
 import { buildTrackingMapSrc } from './build-tracking-map-src';
 import { useTrackingMap } from './use-tracking-map';
@@ -12,7 +21,21 @@ import { useTrackingMap } from './use-tracking-map';
 const { visible, referenceNo, close } = useTrackingMap();
 const router = useRouter();
 
-const iframeSrc = computed(() => buildTrackingMapSrc(referenceNo.value));
+/** 内嵌页语言，切换后 iframe 与分享链接同步；默认中文 */
+const lang = ref<TrackingMapLang>('zh');
+const langOptions = [
+  { label: '中文', value: 'zh' },
+  { label: 'English', value: 'en' },
+];
+
+// 每次打开弹窗重置为中文，避免上次的英文选择带入新订阅号
+watch(visible, (open) => {
+  if (open) lang.value = 'zh';
+});
+
+const iframeSrc = computed(() =>
+  buildTrackingMapSrc(referenceNo.value, lang.value),
+);
 
 /** 可分享的独立静态页绝对链接（免登录），自动兼容 hash / history 路由模式 */
 const shareUrl = computed(() => {
@@ -20,6 +43,7 @@ const shareUrl = computed(() => {
   const { href } = router.resolve({
     name: 'TrackingMapPage',
     params: { mblNo: referenceNo.value },
+    query: lang.value === 'en' ? { lang: 'en' } : {},
   });
   return `${window.location.origin}${href}`;
 });
@@ -39,7 +63,9 @@ async function copyShareLink() {
       document.execCommand('copy');
       textarea.remove();
     }
-    message.success('分享链接已复制');
+    message.success(
+      lang.value === 'en' ? '英文分享链接已复制' : '分享链接已复制',
+    );
   } catch {
     message.error('复制失败，请手动复制');
   }
@@ -69,6 +95,13 @@ function openInNewTab() {
           订阅号：<strong>{{ referenceNo }}</strong>
         </span>
         <div class="tracking-map__actions">
+          <Tooltip title="切换轨迹地图语言，分享链接同步生成对应语言">
+            <Segmented
+              v-model:value="lang"
+              :options="langOptions"
+              size="small"
+            />
+          </Tooltip>
           <Tooltip title="在新窗口打开可分享的轨迹页">
             <Button size="small" @click="openInNewTab">
               <template #icon>
