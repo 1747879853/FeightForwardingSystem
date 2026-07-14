@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-14 公告管理新增与批量删除按钮按权限显示](./changelogs/change-log-2026-07-14-announcement-action-permissions.md)
 - [2026-07-14 用户列表展示所属组织完整路径](./changelogs/change-log-2026-07-14-user-list-organization-path.md)
 - [2026-07-14 GenerateEnum 新增 yyyyMM / yyMM 年月日期段](./changelogs/change-log-2026-07-14-generate-enum-yyyyMM-yyMM.md)
 - [2026-07-14 海运出口 AI 识别放开 Word/Excel/RTF](./changelogs/change-log-2026-07-14-sea-export-ai-extract-office.md)
