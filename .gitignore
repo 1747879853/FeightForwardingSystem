@@ -52,3 +52,4 @@ vite.config.ts.*
 .cursor
 .agents
 skills-lock.json
+.vscode/settings.json
