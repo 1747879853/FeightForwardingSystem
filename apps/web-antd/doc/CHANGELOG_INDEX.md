@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-14 海运出口 AI 识别放开 Word/Excel/RTF](./changelogs/change-log-2026-07-14-sea-export-ai-extract-office.md)
 - [2026-07-14 货物轨迹支持中英文切换（分享英文链接）](./changelogs/change-log-2026-07-14-tracking-map-lang-switch.md)
 - [2026-07-14 可折叠搜索表单在持久化重排后按新布局重算保留项](./changelogs/change-log-2026-07-14-form-collapse-expandable-schema-fingerprint.md)
 - [2026-07-13 云当运踪推送信息全字段对接（类型补全 + 面板航段/AIS/免箱期/件数重量/甩柜）](./changelogs/change-log-2026-07-13-yundang-ocean-push-full-fields.md)

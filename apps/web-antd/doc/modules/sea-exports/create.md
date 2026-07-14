@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-07-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,7 +21,7 @@ last_updated: 2026-07-12
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **AI 识别辅助：** 页面提供「AI识别」按钮，支持 PDF 与图片（png/jpg/jpeg/bmp/tiff/webp），调用 TextIn `ExtractSeaExportToAddDtoAsync` 后由后端完成名称→id 匹配并回填表单；空值、`0`、空 Guid 不回填。识别成功后右侧 Drawer 展示原文件，点击/聚焦已回填字段可联动高亮 `citations` 定位；缓存命中显示「来自缓存」标签。
+- **AI 识别辅助：** 页面提供「AI识别」按钮，支持 PDF、图片（png/jpg/jpeg/bmp/tiff/webp）与 Office（doc/docx/xls/xlsx/rtf），调用 TextIn `ExtractSeaExportToAddDtoAsync` 后由后端完成名称→id 匹配并回填表单；空值、`0`、空 Guid 不回填。识别成功后右侧 Drawer 展示原文件，点击/聚焦已回填字段可联动高亮 `citations` 定位；缓存命中显示「来自缓存」标签。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
 - **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。
 - **右侧栏与场站联系人：** 右侧主卡片为「干系人」。场站联系人/邮箱/手机/电话与编辑页一致挂在「场站」标签旁只读展示（新建态通常为空显示 `-`）；保存时随 `SeaExportAddDto` 透传（新建多为空）。
@@ -75,6 +75,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-14 | `Feature` | AI 识别上传放开 Word/Excel/RTF（doc/docx/xls/xlsx/rtf），与原有 PDF/图片一并可选。 | 仅放宽 `AI_EXTRACT_ACCEPT` / `isAiExtractSupportedFile` 与前端提示；仍走 `ExtractSeaExportToAddDtoAsync`，识别效果依赖后端 TextIn 对 Office 的支持。 |
 | 2026-07-12 | `Fix` | 新建保存成功后 `replace` 进编辑页并关闭原新建页 Tab，消除顶部残留空白标签。 | `useSeaExportSubmit` 注入 `closeTabByKey`/`getCurrentTabKey`；关闭须用跳转前缓存的 create key。 |
 | 2026-07-12 | `Fix` | 保存 DTO 带回场站联系人四字段（与编辑页同源修复，避免漏传被后端空覆盖）。 | 与编辑页共用 `collectCurrentFormValues` + `buildSeaExportDto`；新建态通常为空透传。 |
 | 2026-07-12 | `Fix` | 基础信息区补齐「订舱代理」字段，可选行业类别为订舱代理的客户并随单保存。 | 与编辑页共用 `form.vue`；`bookingAgentId` 纳入 `BASIC_MODULE_EXTRA_FIELD_NAMES` 从船期 schema 迁入，避免只剔除不迁入导致字段消失。 |

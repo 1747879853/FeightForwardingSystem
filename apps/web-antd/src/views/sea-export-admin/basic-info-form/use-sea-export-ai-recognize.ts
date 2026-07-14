@@ -218,7 +218,9 @@ export function useSeaExportAiRecognize(deps: UseSeaExportAiRecognizeDeps) {
     if (!file) return;
 
     if (!isAiExtractSupportedFile(file)) {
-      message.warning('请上传 PDF 或图片文件（png/jpg/jpeg/bmp/tiff/webp）');
+      message.warning(
+        '请上传 PDF、图片（png/jpg/jpeg/bmp/tiff/webp）或 Office 文件（doc/docx/xls/xlsx/rtf）',
+      );
       if (target) target.value = '';
       return;
     }
