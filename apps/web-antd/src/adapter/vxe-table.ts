@@ -314,7 +314,14 @@ setupVbenVxeTable({
           // 使用 div 包裹而不是 Fragment
           return h(
             'div',
-            { style: { display: 'inline-flex', alignItems: 'center' } },
+            {
+              style: {
+                display: 'inline-flex',
+                alignItems: 'center',
+                cursor: 'pointer', // 添加鼠标指针样式，提示可点击
+              },
+              title: `双击查看审核历史（共 ${modificationCount} 次修改）`, // 添加提示文本
+            },
             [
               h(
                 Tag,
@@ -332,7 +339,9 @@ setupVbenVxeTable({
                     color: '#ff4d4f', // 红色
                     fontWeight: 'bold', // 加粗
                     marginLeft: '4px', // 左边距
+                    cursor: 'pointer', // 添加鼠标指针样式
                   },
+                  title: `点击查看 ${modificationCount} 次修改记录`, // 为 +N 标记添加单独的提示
                 },
                 `+${modificationCount}`,
               ),
@@ -346,6 +355,7 @@ setupVbenVxeTable({
           {
             ...props,
             ...objectOmit(tagItem ?? {}, ['label']),
+            style: { cursor: 'pointer' }, // 添加鼠标指针样式
           },
           { default: () => tagItem?.label || value },
         );
