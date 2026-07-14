@@ -21,6 +21,7 @@ import {
 import { getBankStatementReceiveSettlementPagedList } from '#/api/settlement-management/bank-statement-admin';
 import {
   deleteReceiveSettlement,
+  deleteReceiveSettlementInvoiceItems,
   deleteReceiveSettlementItems,
   getReceiveSettlementDetail,
 } from '#/api/settlement-management/receive-settlement-admin';
@@ -28,13 +29,22 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import {
+  getReceiveSettlementPaySideColor,
+  getReceiveSettlementPaySideLabel,
   getReceiveSettlementStatusColor,
   getReceiveSettlementStatusLabel,
+  getReceiveSettlementTypeColor,
+  getReceiveSettlementTypeLabel,
+  isInvoiceReceiveSettlement,
   isReceiveSettlementLocked,
   useReceiveSettlementColumns,
+  useReceiveSettlementInvoiceItemReadonlyColumns,
   useReceiveSettlementItemReadonlyColumns,
 } from '../form-data';
-import { mapReceiveSettlementDetailItem } from '../utils';
+import {
+  mapReceiveSettlementDetailItem,
+  mapReceiveSettlementInvoiceDetailItem,
+} from '../utils';
 
 const props = defineProps<{
   bankStatementId: string;
@@ -68,12 +78,24 @@ const expandedRowKeys = ref<string[]>([]);
 const selectedSettlementRowKeys = ref<string[]>([]);
 const selectedItemIdsBySettlement = ref<Record<string, string[]>>({});
 const detailLoadingMap = ref<Record<string, boolean>>({});
-const detailItemsMap = ref<
-  Record<string, ReturnType<typeof mapReceiveSettlementDetailItem>[]>
->({});
+type SettlementDetailRow =
+  | ReturnType<typeof mapReceiveSettlementDetailItem>
+  | ReturnType<typeof mapReceiveSettlementInvoiceDetailItem>;
+const detailItemsMap = ref<Record<string, SettlementDetailRow[]>>({});
 
 const receiveSettlementColumns = useReceiveSettlementColumns();
 const itemReadonlyColumns = useReceiveSettlementItemReadonlyColumns();
+const invoiceItemReadonlyColumns =
+  useReceiveSettlementInvoiceItemReadonlyColumns();
+
+/** 按结算行类型选择展开区列 */
+function getItemColumns(
+  record: BankStatementAdminApi.ReceiveSettlementListDto,
+) {
+  return isInvoiceReceiveSettlement(record.type)
+    ? invoiceItemReadonlyColumns
+    : itemReadonlyColumns;
+}
 
 const tableWrapRef = ref<HTMLElement>();
 const tableScrollY = ref<number>();
@@ -162,11 +184,16 @@ function markReceiveSettlementRelatedListsShouldRefresh() {
 
 async function refreshSettlementDetail(settlementId: string) {
   const detail = await getReceiveSettlementDetail(settlementId);
+  const rows: SettlementDetailRow[] = isInvoiceReceiveSettlement(detail.type)
+    ? (detail.receiveSettlementInvoiceItems || []).map((item) =>
+        mapReceiveSettlementInvoiceDetailItem(item),
+      )
+    : (detail.receiveSettlementItems || []).map((item) =>
+        mapReceiveSettlementDetailItem(item),
+      );
   detailItemsMap.value = {
     ...detailItemsMap.value,
-    [settlementId]: (detail.receiveSettlementItems || []).map((item) =>
-      mapReceiveSettlementDetailItem(item),
-    ),
+    [settlementId]: rows,
   };
 }
 
@@ -255,7 +282,10 @@ function handleReceiveSettlementRowDblClick(
   event: MouseEvent,
 ) {
   if (shouldIgnoreSettlementRowDblClick(event)) return;
-  router.push(`/settlement-management/receive-settlement/edit/${row.id}`);
+  const basePath = isInvoiceReceiveSettlement(row.type)
+    ? '/settlement-management/receive-settlement/edit-by-invoice'
+    : '/settlement-management/receive-settlement/edit';
+  router.push(`${basePath}/${row.id}`);
 }
 
 async function handleExpand(expanded: boolean, record: { id: string }) {
@@ -349,12 +379,21 @@ function handleDelete() {
       try {
         if (pendingItemSelections.length > 0) {
           await Promise.all(
-            pendingItemSelections.map(({ settlementId, itemIds }) =>
-              deleteReceiveSettlementItems({
+            pendingItemSelections.map(({ settlementId, itemIds }) => {
+              const settlement = settlementList.value.find(
+                (row) => row.id === settlementId,
+              );
+              if (isInvoiceReceiveSettlement(settlement?.type)) {
+                return deleteReceiveSettlementInvoiceItems({
+                  id: settlementId,
+                  receiveSettlementInvoiceItemIds: itemIds,
+                });
+              }
+              return deleteReceiveSettlementItems({
                 id: settlementId,
                 receiveSettlementItemIds: itemIds,
-              }),
-            ),
+              });
+            }),
           );
         }
 
@@ -470,7 +509,12 @@ defineExpose({
         @expand="handleExpand"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'status'">
+          <template v-if="column.key === 'type'">
+            <Tag :color="getReceiveSettlementTypeColor(record.type)">
+              {{ getReceiveSettlementTypeLabel(record.type) }}
+            </Tag>
+          </template>
+          <template v-else-if="column.key === 'status'">
             <Tag :color="getReceiveSettlementStatusColor(record.status)">
               {{ getReceiveSettlementStatusLabel(record.status) }}
             </Tag>
@@ -513,7 +557,7 @@ defineExpose({
         <template #expandedRowRender="{ record }">
           <Table
             class="settlement-item-table"
-            :columns="itemReadonlyColumns"
+            :columns="getItemColumns(record)"
             :data-source="detailItemsMap[record.id] ?? []"
             :loading="detailLoadingMap[record.id]"
             :pagination="false"
@@ -531,6 +575,11 @@ defineExpose({
               <template v-if="column.dataIndex === 'currencyCode'">
                 <Tag v-if="item.currencyCode">{{ item.currencyCode }}</Tag>
                 <span v-else>-</span>
+              </template>
+              <template v-else-if="column.dataIndex === 'paySide'">
+                <Tag :color="getReceiveSettlementPaySideColor(item.paySide)">
+                  {{ getReceiveSettlementPaySideLabel(item.paySide) }}
+                </Tag>
               </template>
             </template>
           </Table>

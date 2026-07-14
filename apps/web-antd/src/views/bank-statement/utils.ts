@@ -31,6 +31,28 @@ export function mapReceiveSettlementDetailItem(
   };
 }
 
+/** 按开票申请结算详情明细 → 只读表格行 */
+export function mapReceiveSettlementInvoiceDetailItem(
+  item: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceItemDetailDto,
+) {
+  const orderFee = item.orderFee;
+  const order = item.transportOrder;
+  return {
+    id: item.id,
+    applicationNo: item.applicationNo,
+    invoiceNo: item.invoiceNo,
+    commissionNum: order?.commissionNum,
+    mblNum: order?.mblNum,
+    feeCodeName: orderFee?.feeCodeName,
+    paySide: orderFee?.paySide,
+    currencyCode: orderFee?.currencyCode,
+    amount: orderFee?.amount ?? 0,
+    settledAmount: item.settledAmount,
+    settlementName: orderFee?.settlementName,
+    remark: item.remark || '',
+  };
+}
+
 /** 按 operationId 解析操作人显示名（接口未带 operationName 时调用 GetUserAsync） */
 export async function resolveOperatorName(
   operationId: number,

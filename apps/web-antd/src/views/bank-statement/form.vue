@@ -16,6 +16,7 @@ import {
   InputNumber,
   message,
   Space,
+  Tabs,
   Tag,
 } from 'ant-design-vue';
 
@@ -35,6 +36,7 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import CreateSettlementFeePanel from './components/create-settlement-fee-panel.vue';
+import CreateSettlementInvoicePanel from './components/create-settlement-invoice-panel.vue';
 import OperatorTitleBar from './components/operator-title-bar.vue';
 import ReceiveSettlementPanel from './components/receive-settlement-panel.vue';
 import { getBankStatementWriteOffStatusInfo } from './data';
@@ -89,6 +91,15 @@ const operatorRows = ref<BankStatementOperatorRow[]>([]);
 
 const settlementPanelRef = ref<InstanceType<typeof ReceiveSettlementPanel>>();
 const createFeePanelRef = ref<InstanceType<typeof CreateSettlementFeePanel>>();
+const createInvoicePanelRef =
+  ref<InstanceType<typeof CreateSettlementInvoicePanel>>();
+/** 底部新建结算方式：按费用 / 按开票申请 */
+const createMode = ref<'fee' | 'invoice'>('fee');
+
+async function reloadActiveCreatePanel() {
+  await createFeePanelRef.value?.reload();
+  await createInvoicePanelRef.value?.reload();
+}
 const leftPanelRef = ref<HTMLElement>();
 const rightPanelMaxHeight = ref<number>();
 
@@ -180,7 +191,7 @@ async function loadEditData() {
 
     await loadOtherSettledAmount();
     await settlementPanelRef.value?.refresh();
-    await createFeePanelRef.value?.reload();
+    await reloadActiveCreatePanel();
   } finally {
     pageLoading.value = false;
   }
@@ -188,12 +199,12 @@ async function loadEditData() {
 
 async function handleSettlementCreated() {
   await loadEditData();
-  await createFeePanelRef.value?.reload();
+  await reloadActiveCreatePanel();
 }
 
 async function handleSettlementDeleted() {
   await loadEditData();
-  await createFeePanelRef.value?.reload();
+  await reloadActiveCreatePanel();
 }
 
 async function handleSave() {
@@ -563,18 +574,39 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <CreateSettlementFeePanel
+      <Tabs
         v-if="isEdit && canAddReceiveSettlement && editId"
-        ref="createFeePanelRef"
-        :bank-statement-id="editId"
-        :bank-statement-amount="savedAmount"
-        :other-settled-amount="otherSettledAmount"
-        :settlement-id="savedSettlementId"
-        :settlement-name="savedSettlementName"
-        :currency-id="savedCurrencyId"
-        :currency-code="savedCurrencyCode"
-        @created="handleSettlementCreated"
-      />
+        v-model:active-key="createMode"
+        class="create-settlement-tabs"
+        destroy-inactive-tab-pane
+      >
+        <Tabs.TabPane key="fee" tab="费用结算">
+          <CreateSettlementFeePanel
+            ref="createFeePanelRef"
+            :bank-statement-id="editId"
+            :bank-statement-amount="savedAmount"
+            :other-settled-amount="otherSettledAmount"
+            :settlement-id="savedSettlementId"
+            :settlement-name="savedSettlementName"
+            :currency-id="savedCurrencyId"
+            :currency-code="savedCurrencyCode"
+            @created="handleSettlementCreated"
+          />
+        </Tabs.TabPane>
+        <Tabs.TabPane key="invoice" tab="发票结算">
+          <CreateSettlementInvoicePanel
+            ref="createInvoicePanelRef"
+            :bank-statement-id="editId"
+            :bank-statement-amount="savedAmount"
+            :other-settled-amount="otherSettledAmount"
+            :settlement-id="savedSettlementId"
+            :settlement-name="savedSettlementName"
+            :currency-id="savedCurrencyId"
+            :currency-code="savedCurrencyCode"
+            @created="handleSettlementCreated"
+          />
+        </Tabs.TabPane>
+      </Tabs>
     </div>
   </Page>
 </template>

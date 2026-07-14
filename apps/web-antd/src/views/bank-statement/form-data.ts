@@ -128,6 +128,122 @@ export function isReceiveSettlementLocked(locked: unknown): boolean {
   return locked === true || locked === 1 || locked === '1' || locked === 'true';
 }
 
+/** 结算类型文字：0 按费用(按业务)，1 按开票申请 */
+export function getReceiveSettlementTypeLabel(
+  type: number | string | undefined | null,
+): string {
+  const normalized = normalizeReceiveSettlementStatus(type);
+  return normalized === 1 ? '发票结算' : '费用结算';
+}
+
+/** 结算类型 Tag 颜色 */
+export function getReceiveSettlementTypeColor(
+  type: number | string | undefined | null,
+): string {
+  const normalized = normalizeReceiveSettlementStatus(type);
+  return normalized === 1 ? 'purple' : 'blue';
+}
+
+/** 判断是否按开票申请结算（type=1） */
+export function isInvoiceReceiveSettlement(
+  type: number | string | undefined | null,
+): boolean {
+  return normalizeReceiveSettlementStatus(type) === 1;
+}
+
+/** 收付方向文字：0 应收，1 应付 */
+export function getReceiveSettlementPaySideLabel(
+  paySide: number | string | undefined | null,
+): string {
+  const normalized = normalizeReceiveSettlementStatus(paySide);
+  if (normalized === 1) return '应付';
+  if (normalized === 0) return '应收';
+  return '-';
+}
+
+/** 收付方向 Tag 颜色 */
+export function getReceiveSettlementPaySideColor(
+  paySide: number | string | undefined | null,
+): string {
+  return normalizeReceiveSettlementStatus(paySide) === 1 ? 'orange' : 'green';
+}
+
+/** 关联收费核销展开区：按开票申请结算的只读明细列 */
+export function useReceiveSettlementInvoiceItemReadonlyColumns() {
+  return [
+    {
+      key: 'applicationNo',
+      dataIndex: 'applicationNo',
+      title: '开票申请单号',
+      ellipsis: true,
+    },
+    {
+      key: 'invoiceNo',
+      dataIndex: 'invoiceNo',
+      title: '发票号',
+      ellipsis: true,
+    },
+    {
+      key: 'commissionNum',
+      dataIndex: 'commissionNum',
+      title: '委托编号',
+      ellipsis: true,
+    },
+    {
+      key: 'mblNum',
+      dataIndex: 'mblNum',
+      title: '主提单号',
+      ellipsis: true,
+    },
+    {
+      key: 'feeCodeName',
+      dataIndex: 'feeCodeName',
+      title: '费用名称',
+      ellipsis: true,
+    },
+    {
+      key: 'paySide',
+      dataIndex: 'paySide',
+      title: '收付',
+      width: 72,
+    },
+    {
+      key: 'currencyCode',
+      dataIndex: 'currencyCode',
+      title: '币别',
+      width: 72,
+    },
+    {
+      key: 'amount',
+      dataIndex: 'amount',
+      title: '费用总额',
+      width: 96,
+      align: 'right' as const,
+      customRender: ({ text }: { text: number }) => formatAmount(text),
+    },
+    {
+      key: 'settledAmount',
+      dataIndex: 'settledAmount',
+      title: '本次结算',
+      width: 96,
+      align: 'right' as const,
+      customRender: ({ text }: { text: number }) => formatAmount(text),
+    },
+    {
+      key: 'settlementName',
+      dataIndex: 'settlementName',
+      title: '结算对象',
+      ellipsis: true,
+    },
+    {
+      key: 'remark',
+      dataIndex: 'remark',
+      title: '备注',
+      ellipsis: true,
+    },
+  ];
+}
+
 /** 收费结算只读子表 ant Table 列配置 */
 export function useReceiveSettlementColumns() {
   return [
@@ -136,6 +252,12 @@ export function useReceiveSettlementColumns() {
       dataIndex: 'settlementNo',
       title: '结算单号',
       ellipsis: true,
+    },
+    {
+      key: 'type',
+      dataIndex: 'type',
+      title: '结算类型',
+      width: 90,
     },
     {
       key: 'status',
@@ -153,7 +275,7 @@ export function useReceiveSettlementColumns() {
     {
       key: 'totalSettledAmount',
       dataIndex: 'totalSettledAmount',
-      title: '明细总金额',
+      title: '结算净额',
       width: 100,
       align: 'right' as const,
       customRender: ({ text }: { text: number }) => formatAmount(text),

@@ -48,6 +48,41 @@ export function getReceiveSettlementStatusColor(status: number): string {
   return map[status] ?? 'default';
 }
 
+/** 结算类型文字：0 按费用(按业务)，1 按开票申请 */
+export function getReceiveSettlementTypeLabel(type: number): string {
+  const map: Record<number, string> = {
+    0: '按业务',
+    1: '按开票申请',
+  };
+  return map[type] ?? '按业务';
+}
+
+/** 结算类型 Tag 颜色 */
+export function getReceiveSettlementTypeColor(type: number): string {
+  return type === 1 ? 'purple' : 'blue';
+}
+
+/** 收付方向文字：0 应收，1 应付 */
+export function getPaySideLabel(paySide: number | undefined | null): string {
+  if (paySide === 1) return '应付';
+  if (paySide === 0) return '应收';
+  return '-';
+}
+
+/** 收付方向 Tag 颜色 */
+export function getPaySideColor(paySide: number | undefined | null): string {
+  return paySide === 1 ? 'orange' : 'green';
+}
+
+/** 结算金额净额符号：应收为正，应付为负 */
+export function toNetAmount(
+  paySide: number | undefined | null,
+  amount: number | undefined | null,
+): number {
+  const value = amount ?? 0;
+  return paySide === 1 ? -value : value;
+}
+
 export interface ReceiveSettlementSelectedFee {
   id?: string;
   orderFeeId: string;

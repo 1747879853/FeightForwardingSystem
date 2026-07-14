@@ -129,6 +129,8 @@ export namespace BankStatementAdminApi {
     bankStatementId: string;
     settlementNo?: string;
     status: number;
+    /** 结算类型 0 按费用(按业务) 1 按开票申请 */
+    type?: number;
     settlementTime: string;
     locked: boolean;
     lockeTime?: string;
