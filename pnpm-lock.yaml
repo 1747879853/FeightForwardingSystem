@@ -639,6 +639,9 @@ importers:
 
   apps/web-antd:
     dependencies:
+      '@handsontable/vue3':
+        specifier: ^18.0.0
+        version: 18.0.0(handsontable@18.0.0)(vue@3.5.26(typescript@5.9.3))
       '@tanstack/vue-query':
         specifier: 'catalog:'
         version: 5.92.1(vue@3.5.26(typescript@5.9.3))
@@ -711,6 +714,9 @@ importers:
       globe.gl:
         specifier: ^2.45.1
         version: 2.45.1
+      handsontable:
+        specifier: ^18.0.0
+        version: 18.0.0
       json-bigint:
         specifier: 'catalog:'
         version: 1.0.0
@@ -3450,6 +3456,12 @@ packages:
 
   '@floating-ui/vue@1.1.9':
     resolution: {integrity: sha512-BfNqNW6KA83Nexspgb9DZuz578R7HT8MZw1CfK9I6Ah4QReNWEJsXWHN+SdmOVLNGmTPDi+fDT535Df5PzMLbQ==}
+
+  '@handsontable/vue3@18.0.0':
+    resolution: {integrity: sha512-9YCT8cEQnKfu/jKpLlNtlZtmXL5ze5F5tOmXDmSvW60r9yGS/qbjg4Q8acOXDvXCC0S2krgpxL5VD51kcmZbVw==}
+    peerDependencies:
+      handsontable: ^18.0.0
+      vue: ^3.5.24
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -6977,6 +6989,9 @@ packages:
 
   h3@1.15.4:
     resolution: {integrity: sha512-z5cFQWDffyOe4vQ9xIqNfCZdV4p//vy6fBnr8Q1AWnVZ0teurKMG66rLj++TKwKPUP3u7iMUvrvKaEUiQw2QWQ==}
+
+  handsontable@18.0.0:
+    resolution: {integrity: sha512-U4H6gDrwGTfjahSyoGHhFHZvOZWB7ReQ3iBvJUIcZPdqdppdZ+FSYNovw+3MH1guJfGgRIhoLYnbSm8Gd6Ft8w==}
 
   happy-dom@17.6.3:
     resolution: {integrity: sha512-UVIHeVhxmxedbWPCfgS55Jg2rDfwf2BCKeylcPSqazLz5w3Kri7Q4xdBJubsr/+VUzFLh0VjIvh13RaDA2/Xug==}
@@ -10630,6 +10645,7 @@ packages:
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
     engines: {node: '>=18'}
+    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   whatwg-mimetype@3.0.0:
     resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
@@ -12775,6 +12791,11 @@ snapshots:
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
+
+  '@handsontable/vue3@18.0.0(handsontable@18.0.0)(vue@3.5.26(typescript@5.9.3))':
+    dependencies:
+      handsontable: 18.0.0
+      vue: 3.5.26(typescript@5.9.3)
 
   '@humanfs/core@0.19.1': {}
 
@@ -16794,6 +16815,8 @@ snapshots:
       radix3: 1.1.2
       ufo: 1.6.1
       uncrypto: 0.1.3
+
+  handsontable@18.0.0: {}
 
   happy-dom@17.6.3:
     dependencies:

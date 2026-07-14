@@ -581,35 +581,18 @@ onMounted(() => {
                 <Users class="size-4" />
                 {{ $t('seaExport.export.formCardInfo') }}
               </span>
-              <Button
-                type="text"
-                size="small"
-                @click="openConfigModal"
-                class="text-gray-500 hover:text-blue-600"
-              >
+              <Button type="text" size="small" @click="openConfigModal" class="text-gray-500 hover:text-blue-600">
                 <Settings class="size-4" />
               </Button>
             </span>
           </template>
-          <div
-            class="flex flex-1 px-1 py-1"
-            v-for="item in displayList"
-            :key="item.key"
-          >
+          <div class="flex flex-1 px-1 py-1" v-for="item in displayList" :key="item.key">
             <span class="flex w-[85px] font-semibold">
-              {{ `${item.name} : ` }}</span
-            >
+              {{ `${item.name} : ` }}</span>
             <span class="flex w-[145px]">
-              <span
-                v-if="item.key === 'carrierName'"
-                class="inline-flex items-center gap-1"
-              >
-                <img
-                  v-if="formValues?.carrierLogo?.url"
-                  :src="buildAttachmentUrl(formValues?.carrierLogo?.url)"
-                  :alt="formValues?.carrierName || 'carrier-logo'"
-                  class="h-8 w-8 rounded object-contain"
-                />
+              <span v-if="item.key === 'carrierName'" class="inline-flex items-center gap-1">
+                <img v-if="formValues?.carrierLogo?.url" :src="buildAttachmentUrl(formValues?.carrierLogo?.url)"
+                  :alt="formValues?.carrierName || 'carrier-logo'" class="h-8 w-8 rounded object-contain" />
                 <span>{{ item.value || '--' }}</span>
               </span>
               <span v-else>{{ item.value || '--' }}</span>
@@ -617,38 +600,19 @@ onMounted(() => {
           </div>
         </Card>
         <div class="flex min-w-0 flex-1 flex-col gap-2">
-          <OrderFeeTable
-            ref="recOrderFeeTableRef"
-            :type="0"
-            :rec-amount-map="recAmountMap"
-            :pay-amount-map="payAmountMap"
-            :order-detail="formValues"
-            @update-amount="handleAmountUpdate"
-            @sync-fee="handleFeeSync"
-            @refresh-opposite-table="() => handleRefreshOppositeTable(0)"
-          />
-          <OrderFeeTable
-            ref="payOrderFeeTableRef"
-            :type="1"
-            :rec-amount-map="recAmountMap"
-            :pay-amount-map="payAmountMap"
-            :order-detail="formValues"
-            @update-amount="handleAmountUpdate"
-            @sync-fee="handleFeeSync"
-            @refresh-opposite-table="() => handleRefreshOppositeTable(1)"
-          />
+          <OrderFeeTable ref="recOrderFeeTableRef" :type="0" :rec-amount-map="recAmountMap"
+            :pay-amount-map="payAmountMap" :order-detail="formValues" @update-amount="handleAmountUpdate"
+            @sync-fee="handleFeeSync" @refresh-opposite-table="() => handleRefreshOppositeTable(0)" />
+          <OrderFeeTable ref="payOrderFeeTableRef" :type="1" :rec-amount-map="recAmountMap"
+            :pay-amount-map="payAmountMap" :order-detail="formValues" @update-amount="handleAmountUpdate"
+            @sync-fee="handleFeeSync" @refresh-opposite-table="() => handleRefreshOppositeTable(1)" />
           <div class="total-amount flex flex-wrap rounded-md px-4 py-1 shadow">
-            <div
-              v-for="(item, index) in totalAmount"
-              class="mr-4 flex"
-              :key="item.name"
-            >
+            <div v-for="(item, index) in totalAmount" class="mr-4 flex" :key="item.name">
               <span class="flex">{{ item.name }}</span>
               <span class="ml-2 flex font-medium" :class="item.color">{{
                 item.value
               }}</span>
-              <span class="split mx-4 flex" v-show="(index + 1) % 3 === 0"
-                >|
+              <span class="split mx-4 flex" v-show="(index + 1) % 3 === 0">|
               </span>
             </div>
           </div>
@@ -657,11 +621,8 @@ onMounted(() => {
     </Spin>
 
     <!-- 显示字段配置弹窗 -->
-    <DisplayFieldsConfigModal
-      ref="configModalRef"
-      :available-fields="displayFieldConfig"
-      @confirm="handleConfigConfirm"
-    />
+    <DisplayFieldsConfigModal ref="configModalRef" :available-fields="displayFieldConfig"
+      @confirm="handleConfigConfirm" />
   </Page>
 </template>
 <style scoped lang="scss">

@@ -38,6 +38,7 @@
     "#/*": "./src/*"
   },
   "dependencies": {
+    "@handsontable/vue3": "^18.0.0",
     "@tanstack/vue-query": "catalog:",
     "@vben-core/menu-ui": "workspace:*",
     "@vben-core/shadcn-ui": "workspace:*",
@@ -62,6 +63,7 @@
     "dayjs": "catalog:",
     "dompurify": "^3.4.11",
     "globe.gl": "^2.45.1",
+    "handsontable": "^18.0.0",
     "json-bigint": "catalog:",
     "pinia": "catalog:",
     "pinyin-pro": "^3.28.1",

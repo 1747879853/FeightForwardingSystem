@@ -6,6 +6,10 @@ import { registerOssCacheServiceWorker } from '#/utils/register-oss-cache-sw';
 
 import { overridesPreferences } from './preferences';
 
+// 完整版（含 filters / dropdown / comment 等）
+import 'handsontable/styles/handsontable.min.css';
+import 'handsontable/styles/ht-theme-main.min.css';
+
 const MIN_APP_LOADING_MS = 800;
 
 async function ensureMinAppLoadingVisible() {
