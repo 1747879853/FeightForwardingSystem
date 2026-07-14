@@ -515,8 +515,8 @@ function handleTaxRateChange(record: any) {
   record.taxAmount = (amount / (1 + taxRate / 100)) * (taxRate / 100);
 }
 
-/** 添加商品明细行 */
-function handleAddGoodsRow() {
+/** 添加商品明细行 - 在指定索引后插入 */
+function handleAddGoodsRow(index?: number) {
   // ✅ 检查是否已经从抽屉中添加了费用
   const items = formData.value.invoiceApplicationItems || [];
 
@@ -525,7 +525,7 @@ function handleAddGoodsRow() {
     return;
   }
 
-  goodsDetails.value.push({
+  const newRow = {
     id: Date.now().toString() + Math.random().toString(36).substr(2, 9), // 生成唯一ID
     codeInvoiceId: undefined,
     specification: '',
@@ -537,7 +537,14 @@ function handleAddGoodsRow() {
     taxRate: 0,
     taxAmount: 0,
     remark: '',
-  });
+  };
+
+  // 如果指定了索引，在该行后面插入；否则添加到末尾
+  if (index !== undefined && index >= 0) {
+    goodsDetails.value.splice(index + 1, 0, newRow);
+  } else {
+    goodsDetails.value.push(newRow);
+  }
 }
 
 /** 删除商品明细行 */
@@ -2161,27 +2168,6 @@ async function loadDetail() {
                   />
                 </Form.Item>
 
-                <Form.Item>
-                  <Button
-                    type="primary"
-                    block
-                    @click="handleOpenFeeDrawer"
-                    :disabled="isReadOnly"
-                  >
-                    从开票申请导入费用
-                  </Button>
-                </Form.Item>
-
-                <Form.Item>
-                  <Button
-                    block
-                    @click="handleOpenFeeDetailModal"
-                    :disabled="isReadOnly"
-                  >
-                    查看费用明细
-                  </Button>
-                </Form.Item>
-
                 <!-- <Form.Item v-if="goodsDetails.length > 0">
                   <Button
                     type="dashed"
@@ -2475,24 +2461,23 @@ async function loadDetail() {
                   <Button
                     type="primary"
                     size="small"
-                    @click="handleAddGoodsRow"
+                    @click="handleOpenFeeDrawer"
                     :disabled="isReadOnly"
                   >
                     <template #icon
-                      ><IconifyIcon icon="ant-design:plus-outlined"
+                      ><IconifyIcon icon="ant-design:import-outlined"
                     /></template>
-                    添加商品明细
+                    从开票申请导入费用
                   </Button>
                   <Button
                     size="small"
-                    danger
-                    @click="handleDeleteSelectedGoodsRows"
-                    :disabled="selectedGoodsRows.length === 0 || isReadOnly"
+                    @click="handleOpenFeeDetailModal"
+                    :disabled="isReadOnly"
                   >
                     <template #icon
-                      ><IconifyIcon icon="ant-design:delete-outlined"
+                      ><IconifyIcon icon="ant-design:eye-outlined"
                     /></template>
-                    删除选中行 ({{ selectedGoodsRows.length }})
+                    查看费用明细
                   </Button>
                 </Space>
               </div>
@@ -2509,6 +2494,13 @@ async function loadDetail() {
               >
                 <Table
                   :columns="[
+                    {
+                      title: '操作',
+                      key: 'action',
+                      width: 50,
+                      fixed: 'left',
+                      align: 'center',
+                    },
                     {
                       title: '货物或应税劳务名称',
                       dataIndex: 'codeInvoiceId',
@@ -2569,28 +2561,40 @@ async function loadDetail() {
                   bordered
                   size="small"
                   row-key="id"
-                  :row-selection="
-                    isReadOnly
-                      ? undefined
-                      : {
-                          selectedRowKeys: selectedGoodsRows,
-                          onChange: (selectedRowKeys) => {
-                            selectedGoodsRows.splice(
-                              0,
-                              selectedGoodsRows.length,
-                              ...selectedRowKeys.map(String),
-                            );
-                          },
-                          type: 'checkbox',
-                        }
-                  "
+                  :scroll="{ x: 1030 }"
                   :style="{
                     borderTop: 'none',
                     borderBottom: 'none',
                   }"
                 >
                   <template #bodyCell="{ column, record, index }">
-                    <template v-if="column.key === 'codeInvoiceId'">
+                    <template v-if="column.key === 'action'">
+                      <Space
+                        :size="2"
+                        style="justify-content: center; width: 100%"
+                      >
+                        <Button
+                          type="link"
+                          @click="handleAddGoodsRow(index)"
+                          :disabled="isReadOnly"
+                          style="padding: 5px; font-size: 18px; color: #52c41a"
+                        >
+                          <IconifyIcon icon="ant-design:plus-circle-outlined" />
+                        </Button>
+                        <Button
+                          type="link"
+                          danger
+                          @click="handleDeleteGoodsRow(index)"
+                          :disabled="isReadOnly || goodsDetails.length <= 1"
+                          style="padding: 5px; font-size: 18px"
+                        >
+                          <IconifyIcon
+                            icon="ant-design:minus-circle-outlined"
+                          />
+                        </Button>
+                      </Space>
+                    </template>
+                    <template v-else-if="column.key === 'codeInvoiceId'">
                       <Select
                         v-model:value="record.codeInvoiceId"
                         :options="
