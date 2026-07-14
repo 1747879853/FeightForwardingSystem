@@ -330,7 +330,9 @@
         "text": "Fixed Text",
         "userName": "User Name",
         "yyyyMMdd": "Date (yyyyMMdd)",
-        "yyMMdd": "Date (yyMMdd)"
+        "yyMMdd": "Date (yyMMdd)",
+        "yyyyMM": "Date (yyyyMM)",
+        "yyMM": "Date (yyMM)"
       },
       "applyScopeOptions": {
         "none": "No Restriction",

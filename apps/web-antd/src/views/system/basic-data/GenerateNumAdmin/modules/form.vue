@@ -83,6 +83,14 @@ const generateEnumOptions = computed(() => [
     value: GENERATE_ENUM.yyMMdd,
     label: $t('system.basicData.generateNum.generateEnumOptions.yyMMdd'),
   },
+  {
+    value: GENERATE_ENUM.yyyyMM,
+    label: $t('system.basicData.generateNum.generateEnumOptions.yyyyMM'),
+  },
+  {
+    value: GENERATE_ENUM.yyMM,
+    label: $t('system.basicData.generateNum.generateEnumOptions.yyMM'),
+  },
 ]);
 
 const rulesData = ref<RuleRow[]>([]);

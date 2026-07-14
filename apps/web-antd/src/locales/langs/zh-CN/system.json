@@ -331,7 +331,9 @@
         "text": "固定文本",
         "userName": "用户名",
         "yyyyMMdd": "日期(yyyyMMdd)",
-        "yyMMdd": "日期(yyMMdd)"
+        "yyMMdd": "日期(yyMMdd)",
+        "yyyyMM": "日期(yyyyMM)",
+        "yyMM": "日期(yyMM)"
       },
       "applyScopeOptions": {
         "none": "不限制",

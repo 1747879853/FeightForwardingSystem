@@ -303,6 +303,8 @@ export const getGenerateEnumOptions = () => [
   { value: 2, label: '用户名' },
   { value: 3, label: '四位年两位月两位日' },
   { value: 4, label: '两位年两位月两位日' },
+  { value: 5, label: '四位年两位月' },
+  { value: 6, label: '两位年两位月' },
 ];
 
 // --------------------------------------------------------
