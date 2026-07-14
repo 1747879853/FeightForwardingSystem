@@ -18,6 +18,7 @@ import {
   Modal,
   Select,
   Spin,
+  Switch,
   Tooltip,
   Upload,
 } from 'ant-design-vue';
@@ -30,6 +31,7 @@ import {
   deleteSeaExportAttachments,
   getSeaExportAttachments,
 } from '#/api/sea-export/sea-export-admin';
+import { updateAttachmentItemsClientVisible } from '#/api/system/attachment';
 import {
   getAttachmentDtlTypeList,
   getAttachmentDtlTypesByModuleTypes,
@@ -125,6 +127,95 @@ const getClientVisible = (typeId: number | null) =>
 
 const setClientVisible = (typeId: number | null, value: boolean) => {
   clientVisibleByTypeId.value.set(typeId, value);
+};
+
+/** 单文件客户可见性更新中的 AttachmentItem id 集合 */
+const visibilityUpdatingItemIds = ref<Set<number>>(new Set());
+/** 类型批量更新中的 attachmentDtlTypeId 集合 */
+const visibilityUpdatingGroupIds = ref<Set<number | null>>(new Set());
+
+const isItemVisibilityUpdating = (item: SeaExportAdminApi.AttachmentItemDto) =>
+  typeof item.id === 'number' && visibilityUpdatingItemIds.value.has(item.id);
+
+const isGroupVisibilityUpdating = (group: AttachmentTypeGroup) =>
+  visibilityUpdatingGroupIds.value.has(group.attachmentDtlTypeId);
+
+/** 类型头 Checkbox 选中态：有附件时反映「全部可见」，否则回退为上传默认值 */
+const getGroupVisibleChecked = (group: AttachmentTypeGroup) => {
+  if (group.items.length === 0) {
+    return getClientVisible(group.attachmentDtlTypeId);
+  }
+  return group.items.every((item) => item.clientVisible === true);
+};
+
+/** 类型头 Checkbox 半选态：部分附件可见 */
+const getGroupVisibleIndeterminate = (group: AttachmentTypeGroup) => {
+  if (group.items.length === 0) return false;
+  const visibleCount = group.items.filter(
+    (item) => item.clientVisible === true,
+  ).length;
+  return visibleCount > 0 && visibleCount < group.items.length;
+};
+
+/** 类型批量修改客户可见：同步上传默认值，并批量更新该类型下既有附件 */
+const handleGroupVisibleChange = async (
+  group: AttachmentTypeGroup,
+  value: boolean,
+) => {
+  setClientVisible(group.attachmentDtlTypeId, value);
+
+  const targets = group.items.filter(
+    (item) => typeof item.id === 'number' && item.id > 0,
+  );
+  if (targets.length === 0) return;
+
+  const groupId = group.attachmentDtlTypeId;
+  visibilityUpdatingGroupIds.value = new Set(
+    visibilityUpdatingGroupIds.value,
+  ).add(groupId);
+  try {
+    await updateAttachmentItemsClientVisible(
+      targets.map((item) => ({ id: item.id as number, clientVisible: value })),
+    );
+    for (const item of group.items) {
+      item.clientVisible = value;
+    }
+    message.success($t('seaExport.export.attachments.visibilityUpdateSuccess'));
+  } catch (error) {
+    console.error('更新客户可见性失败:', error);
+    message.error($t('seaExport.export.attachments.visibilityUpdateFailed'));
+  } finally {
+    const next = new Set(visibilityUpdatingGroupIds.value);
+    next.delete(groupId);
+    visibilityUpdatingGroupIds.value = next;
+  }
+};
+
+/** 单文件切换客户可见 */
+const handleItemVisibleChange = async (
+  item: SeaExportAdminApi.AttachmentItemDto,
+  value: boolean,
+) => {
+  if (typeof item.id !== 'number' || item.id <= 0) return;
+
+  const itemId = item.id;
+  visibilityUpdatingItemIds.value = new Set(
+    visibilityUpdatingItemIds.value,
+  ).add(itemId);
+  try {
+    await updateAttachmentItemsClientVisible([
+      { id: itemId, clientVisible: value },
+    ]);
+    item.clientVisible = value;
+    message.success($t('seaExport.export.attachments.visibilityUpdateSuccess'));
+  } catch (error) {
+    console.error('更新客户可见性失败:', error);
+    message.error($t('seaExport.export.attachments.visibilityUpdateFailed'));
+  } finally {
+    const next = new Set(visibilityUpdatingItemIds.value);
+    next.delete(itemId);
+    visibilityUpdatingItemIds.value = next;
+  }
 };
 
 const resolveGroupName = (
@@ -515,10 +606,11 @@ onMounted(() => {
           <template v-if="canEdit" #extra>
             <div class="flex items-center gap-3">
               <Checkbox
-                :checked="getClientVisible(group.attachmentDtlTypeId)"
+                :checked="getGroupVisibleChecked(group)"
+                :indeterminate="getGroupVisibleIndeterminate(group)"
+                :disabled="isGroupVisibilityUpdating(group)"
                 @update:checked="
-                  (value) =>
-                    setClientVisible(group.attachmentDtlTypeId, !!value)
+                  (value) => handleGroupVisibleChange(group, !!value)
                 "
               >
                 <span class="text-xs">
@@ -605,6 +697,25 @@ onMounted(() => {
                   </span>
                 </div>
               </div>
+
+              <span v-if="canEdit" class="shrink-0" @click.stop>
+                <Tooltip
+                  :title="
+                    item.clientVisible
+                      ? $t('seaExport.export.attachments.clientVisibleTip')
+                      : $t('seaExport.export.attachments.clientInvisibleTip')
+                  "
+                >
+                  <Switch
+                    size="small"
+                    :checked="!!item.clientVisible"
+                    :loading="isItemVisibilityUpdating(item)"
+                    @change="
+                      (checked) => handleItemVisibleChange(item, !!checked)
+                    "
+                  />
+                </Tooltip>
+              </span>
 
               <div class="attachment-file-actions" @click.stop>
                 <Tooltip :title="$t('seaExport.export.attachments.preview')">
