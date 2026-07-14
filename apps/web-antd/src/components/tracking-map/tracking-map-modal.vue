@@ -129,6 +129,7 @@ function openInNewTab() {
       <div class="tracking-map__content">
         <iframe
           v-if="iframeSrc"
+          :key="iframeSrc"
           :src="iframeSrc"
           class="tracking-map__frame"
           frameborder="0"

@@ -10,7 +10,8 @@ export type TrackingMapLang = 'en' | 'zh';
  * 拼装货物轨迹地图 iframe 地址。
  * - 地址与企业编号收敛在 env，调用方只传订阅号（referenceno / mblNo）
  * - 兼容带 hash（如 `#/Map`）的地址：仅用 URLSearchParams 处理 `?` 后查询段
- * - `lang` 为 `en` 时追加 `lang=en`，切换内嵌页为英文（默认中文不追加）
+ * - **始终显式写入 `lang`**（`zh` / `en`）：从英文切回中文时若省略参数，
+ *   trackingeyes SPA 会继续沿用上次语言，导致切换无效
  * - 缺少地址 / 企业编号 / 订阅号任一时返回空串
  */
 export function buildTrackingMapSrc(
@@ -25,8 +26,6 @@ export function buildTrackingMapSrc(
   const params = new URLSearchParams(query);
   params.set('companyid', companyId);
   params.set('referenceno', reference);
-  if (lang === 'en') {
-    params.set('lang', 'en');
-  }
+  params.set('lang', lang === 'en' ? 'en' : 'zh');
   return `${path}?${params.toString()}`;
 }

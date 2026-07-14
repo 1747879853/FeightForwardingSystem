@@ -8,11 +8,12 @@
 
 - **`build-tracking-map-src.ts` 新增 `lang` 参数**：
   - 新增导出类型 `TrackingMapLang = 'en' | 'zh'`。
-  - `buildTrackingMapSrc(referenceNo, lang?)`：当 `lang === 'en'` 时向 iframe 地址追加 `lang=en`；默认中文不追加，保持原行为。
+  - `buildTrackingMapSrc(referenceNo, lang?)`：**始终**写入 `lang=zh` 或 `lang=en`（中文也显式传，避免从英文切回时省略参数导致 SPA 不刷新语言）。
   - `index.ts` 追加导出 `TrackingMapLang` 类型。
 - **弹窗 `tracking-map-modal.vue` 新增语言切换**：
   - 工具栏加入 `Segmented` 中文 / English 切换（`lang` 状态，默认中文）。
   - iframe `src` 与「复制分享链接」「新窗口打开」的分享 URL 均随所选语言同步；英文时分享链接带 `?lang=en`。
+  - iframe 使用 `:key="iframeSrc"`，语言切换时强制销毁重建，确保 trackingeyes 重新加载。
   - 每次打开弹窗重置为中文，避免上一次的英文选择带入新订阅号。
   - 复制成功提示按语言区分（“英文分享链接已复制” / “分享链接已复制”）。
 - **独立静态页 `views/tracking-map/page.vue` 识别语言**：
@@ -21,7 +22,7 @@
 
 ## 避坑指南
 
-- **宿主页文案也跟 URL lang**：页头「货物轨迹查询」与 Empty 文案按 `?lang=` 本地切换，不再写死中文；iframe 则透传 `lang=en` 给 trackingeyes。
+- **始终显式写入 `lang`**：中文也传 `lang=zh`（不再省略）。从英文切回中文若去掉参数，trackingeyes SPA 会沿用上次语言导致切换无效；弹窗 iframe 另加 `:key="iframeSrc"` 强制重载。
 - **分享链接语言以生成时选择为准**：复制/新窗口打开时读取的是当前 `lang` 状态，切换语言后需重新复制才会得到对应语言链接。
-- **默认中文不追加参数**：保持与历史链接兼容，中文场景不带 `lang`。
+- **中文分享链接可不带 lang**：分享 URL 仍仅在英文时追加 `?lang=en`（静态页缺省即中文）；iframe 内嵌地址则始终带 `lang=zh|en`。
 - **不改系统全局语言**：静态页只按 URL query 决定自身文案，不会调用全局 `setLocale`。

@@ -70,6 +70,7 @@ const iframeSrc = computed(() =>
     <main class="tracking-page__body">
       <iframe
         v-if="iframeSrc"
+        :key="iframeSrc"
         :src="iframeSrc"
         class="tracking-page__frame"
         frameborder="0"
