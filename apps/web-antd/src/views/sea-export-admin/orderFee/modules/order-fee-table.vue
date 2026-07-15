@@ -55,7 +55,8 @@ import {
 import OrderFeeEditorModal from './order-fee-editor-modal.vue';
 import OrderFeeAuditHistoryModal from './order-fee-audit-history-modal.vue';
 import BatchImportFeeModal from './batch-import-fee-modal.vue';
-
+import { changeIsUnfinishedAsync, getIsFinishedAsync } from '#/api/sea-export/fee-lock-admin';
+import weiwanjie from '#/assets/img/base/weiwanjie.png';
 const dataSource = defineModel<OrderFeeAdminApi.OrderFeeDto[]>({
   default: () => [],
 });
@@ -63,6 +64,10 @@ const dataSource = defineModel<OrderFeeAdminApi.OrderFeeDto[]>({
 const selectedRowKeys = ref<(string | number)[]>([]);
 const printing = ref(false);
 const { openPrint } = usePrintFormat();
+
+// 完结状态管理
+const isFinished = ref<boolean>(true); // true表示已完结，false表示未完结
+const loadingFinishStatus = ref(false);
 
 const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
@@ -647,6 +652,52 @@ const orderFeeWithdraw = () => {
   });
 };
 
+/**
+ * 获取完结状态
+ */
+const loadFinishStatus = async () => {
+  if (!editId.value) return;
+  
+  loadingFinishStatus.value = true;
+  try {
+    const finished = await getIsFinishedAsync(editId.value);
+    isFinished.value = finished;
+    console.log('📊 [完结状态] 当前状态:', finished ? '已完结' : '未完结');
+  } catch (error) {
+    console.error('❌ [完结状态] 获取失败:', error);
+    //message.error('获取完结状态失败');
+  } finally {
+    loadingFinishStatus.value = false;
+  }
+};
+
+/**
+ * 切换完结/未完结状态
+ */
+const toggleFinishStatus = async () => {
+  if (!editId.value) {
+    message.warning('请先保存业务信息');
+    return;
+  }
+
+  try {
+    const result = await changeIsUnfinishedAsync(editId.value);
+    
+    // 切换成功后更新本地状态
+    isFinished.value = !isFinished.value;
+    
+    message.success({
+      content: isFinished.value ? '已设置为已完结' : '已设置为未完结',
+      key: 'action_process_msg',
+    });
+    
+    console.log('✅ [完结状态] 切换成功，当前状态:', isFinished.value ? '已完结' : '未完结');
+  } catch (error) {
+    console.error('❌ [完结状态] 切换失败:', error);
+    //message.error('切换完结状态失败');
+  }
+};
+
 // 收付互生费用（应收生成应付 / 应付生成应收）
 const generateOppositeFees = async () => {
   if (!selectedRowKeys.value.length) {
@@ -1070,6 +1121,9 @@ watch(
       }
       // 重新加载表格数据
       getTableDate();
+      
+      // 重新加载完结状态
+      loadFinishStatus();
     }
   },
 );
@@ -1090,6 +1144,9 @@ onMounted(async () => {
   // 加载表格数据
   getTableDate();
   getFeeCodeList();
+  
+  // 加载完结状态
+  loadFinishStatus();
 });
 defineExpose({
   getTableDate,
@@ -1098,6 +1155,15 @@ defineExpose({
 
 <template>
   <Card class="order-fee-card">
+    <!-- 右上角完结状态图片 -->
+    <div 
+      v-if="!isFinished" 
+      class="finish-status-badge"
+      title="业务未完结"
+    >
+      <img  v-show='type === 0' :src="weiwanjie" alt="未完结" class="w-46 h-46" />
+    </div>
+    
     <div class="px-1">
       <div>
         <div class="order-ctn-table">
@@ -1174,6 +1240,15 @@ defineExpose({
                   @click="orderFeeWithdraw"
                   >{{ $t('auditApproval.withdraw') }}</Button
                 >
+                
+                <Button
+                  v-show='type === 0'
+                  type="default"
+                  :loading="loadingFinishStatus"
+                  @click="toggleFinishStatus"
+                >
+                  {{ isFinished ? '设为未完结' : '设为已完结' }}
+                </Button>
               </Space>
             </template>
           </Grid>
@@ -1203,6 +1278,8 @@ defineExpose({
 
 <style scoped lang="scss">
 .order-fee-card {
+  position: relative; // 为绝对定位的子元素提供定位上下文
+  
   :deep(.ant-card-body) {
     padding: 0 20px 12px !important;
   }
@@ -1281,6 +1358,21 @@ defineExpose({
         background: #8a8a8a;
       }
     }
+  }
+}
+
+// 完结状态徽章（右上角绝对定位）
+.finish-status-badge {
+  position: absolute;
+  top: 10px;
+  right: -50px;
+  z-index: 10;
+  
+  img {
+    display: block;
+    width: 164px;
+    height: 164px;
+    object-fit: contain;
   }
 }
 </style>
