@@ -109,7 +109,7 @@ function setupCommonGuard(router: Router) {
  * @param router
  */
 function setupAccessGuard(router: Router) {
-  router.beforeEach(async (to, from) => {
+  router.beforeEach(async (to) => {
     const accessStore = useAccessStore();
     const userStore = useUserStore();
     const authStore = useAuthStore();
@@ -117,11 +117,8 @@ function setupAccessGuard(router: Router) {
     // 基本路由，这些路由不需要进入权限拦截
     if (coreRouteNames.includes(to.name as string)) {
       if (to.path === LOGIN_PATH && accessStore.accessToken) {
-        return decodeURIComponent(
-          (to.query?.redirect as string) ||
-            userStore.userInfo?.homePath ||
-            preferences.app.defaultHomePath,
-        );
+        // 登录后固定回首页，忽略历史地址（redirect）
+        return userStore.userInfo?.homePath || preferences.app.defaultHomePath;
       }
 
       // 刷新进入 /profile 等核心页时，也需要初始化用户信息和菜单权限
@@ -143,16 +140,10 @@ function setupAccessGuard(router: Router) {
         return true;
       }
 
-      // 没有访问权限，跳转登录页面
+      // 没有访问权限，跳转登录页面（登录后固定回首页，不携带历史地址）
       if (to.fullPath !== LOGIN_PATH) {
         return {
           path: LOGIN_PATH,
-          // 如不需要，直接删除 query
-          query:
-            to.fullPath === preferences.app.defaultHomePath
-              ? {}
-              : { redirect: encodeURIComponent(to.fullPath) },
-          // 携带当前跳转的页面，登录后重新跳转该页面
           replace: true,
         };
       }
@@ -169,10 +160,13 @@ function setupAccessGuard(router: Router) {
       router,
       userStore,
     });
-    const redirectPath = (from.query.redirect ??
-      (to.path === preferences.app.defaultHomePath
+    // 登录后固定回首页，忽略历史地址（redirect）；
+    // 但刷新非首页时（to 即当前页）仍停留当前页，避免刷新被弹回首页。
+    const redirectPath = (
+      to.path === preferences.app.defaultHomePath
         ? userInfo?.homePath || preferences.app.defaultHomePath
-        : to.fullPath)) as string;
+        : to.fullPath
+    ) as string;
 
     return {
       ...router.resolve(decodeURIComponent(redirectPath)),
