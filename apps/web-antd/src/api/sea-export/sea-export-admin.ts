@@ -700,7 +700,7 @@ export const editSeaExport = (data: SeaExportAdminApi.SeaExportEditDto) => {
   return requestClient.put<boolean>(`${API_PREFIX}/EditAsync`, data);
 };
 
-export const deleteSeaExport = (id: number) => {
+export const deleteSeaExport = (id: number | string) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data: { id },
   });

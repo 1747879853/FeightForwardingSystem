@@ -11,10 +11,11 @@ import { Copy, LockKeyhole, LockKeyholeOpen, Plus } from '@vben/icons';
 
 import { useAccess } from '@vben/access';
 
-import { Button, message, Tag } from 'ant-design-vue';
+import { Button, message, Modal, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
+  deleteSeaExport,
   getSeaExportGroupedList,
   getSeaExportPagedList,
 } from '#/api/sea-export/sea-export-admin';
@@ -376,6 +377,43 @@ const handleCopy = () => {
   });
 };
 
+const handleDelete = () => {
+  const row = requireExactlyOneRow();
+  if (!row) {
+    return;
+  }
+
+  const name =
+    row.transportOrder?.commissionNum ||
+    row.transportOrder?.mblNum ||
+    `${row.id}`;
+
+  Modal.confirm({
+    title: $t('ui.actionTitle.delete', [$t('seaExport.export.name')]),
+    content: $t('ui.actionMessage.deleteConfirm', [name]),
+    okType: 'danger',
+    async onOk() {
+      const hideLoading = message.loading({
+        content: $t('ui.actionMessage.deleting', [name]),
+        duration: 0,
+        key: 'action_process_msg',
+      });
+      try {
+        await deleteSeaExport(row.id);
+        message.success({
+          content: $t('ui.actionMessage.deleteSuccess', [name]),
+          key: 'action_process_msg',
+        });
+        const grid = gridApi.grid as any;
+        grid?.clearCheckboxRow?.();
+        handleRefresh();
+      } catch {
+        hideLoading();
+      }
+    },
+  });
+};
+
 const handleRefresh = () => {
   gridApi.query();
 };
@@ -439,6 +477,14 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           @click="handleYundangSubscribe"
         >
           {{ $t('seaExport.yundang.subscribe') }}
+        </Button>
+        <Button
+          v-access:code="perm.delete"
+          class="mr-2"
+          danger
+          @click="handleDelete"
+        >
+          {{ $t('common.delete') }}
         </Button>
         <Button
           v-access:code="perm.add"
