@@ -218,6 +218,8 @@ export namespace SeaExportAdminApi {
     lastModifierUserId?: number;
     creationTime?: string;
     creatorUserId?: number;
+    /** 未完结状态。true 未完结，false 已完结（默认） */
+    isUnfinished?: boolean;
   }
 
   export interface OrganizationUnitSimpleDto {

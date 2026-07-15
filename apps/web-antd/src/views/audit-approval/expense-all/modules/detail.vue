@@ -393,9 +393,9 @@ const allPass = (approve: boolean, modalRemark: string) => {
   const ids = (dataSource.value ?? [])
     .filter(
       (item) =>
-        item.feeStatus === getFeeStatusValueByLabel('Submit') ||
-        item.feeStatus === getFeeStatusValueByLabel('RequestModification') ||
-        item.feeStatus === getFeeStatusValueByLabel('RequestDeletion'),
+        item.combinedFeeStatus === getFeeStatusValueByLabel('Submitted') ||
+        item.combinedFeeStatus === getFeeStatusValueByLabel('Modification') ||
+        item.combinedFeeStatus === getFeeStatusValueByLabel('Deletion'),
     )
     .map((item) => item.id);
   if (!ids.length) {
@@ -413,9 +413,9 @@ const recPass = (approve: boolean, modalRemark: string) => {
   const ids = (dataSourceRec.value ?? [])
     .filter(
       (item) =>
-        item.feeStatus === getFeeStatusValueByLabel('Submit') ||
-        item.feeStatus === getFeeStatusValueByLabel('RequestModification') ||
-        item.feeStatus === getFeeStatusValueByLabel('RequestDeletion'),
+        item.combinedFeeStatus === getFeeStatusValueByLabel('Submitted') ||
+        item.combinedFeeStatus === getFeeStatusValueByLabel('Modification') ||
+        item.combinedFeeStatus === getFeeStatusValueByLabel('Deletion'),
     )
     .map((item) => item.id);
 
@@ -435,9 +435,9 @@ const payPass = (approve: boolean, modalRemark: string) => {
   const ids = (dataSourcePay.value ?? [])
     .filter(
       (item) =>
-        item.feeStatus === getFeeStatusValueByLabel('Submit') ||
-        item.feeStatus === getFeeStatusValueByLabel('RequestModification') ||
-        item.feeStatus === getFeeStatusValueByLabel('RequestDeletion'),
+        item.combinedFeeStatus === getFeeStatusValueByLabel('Submitted') ||
+        item.combinedFeeStatus === getFeeStatusValueByLabel('Modification') ||
+        item.combinedFeeStatus === getFeeStatusValueByLabel('Deletion'),
     )
     .map((item) => item.id);
 

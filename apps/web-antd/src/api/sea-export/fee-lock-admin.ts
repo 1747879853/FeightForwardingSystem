@@ -99,3 +99,19 @@ export const feeUnLockAsync = (
 ) => {
   return requestClient.put<boolean>(`${API_PREFIX}/FeeUnLockAsync`, data);
 };
+
+/** 切换未完结状态 */
+export const changeIsUnfinishedAsync = (id: string) => {
+  return requestClient.put<boolean>(
+    `${API_PREFIX}/ChangeIsUnfinishedAsync`,
+    { id },
+  );
+};
+
+/** 获取是否已完结 */
+export const getIsFinishedAsync = (id: string) => {
+  return requestClient.get<boolean>(
+    `${API_PREFIX}/GetIsFinishedAsync`,
+    { params: { id } },
+  );
+};

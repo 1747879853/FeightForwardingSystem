@@ -1049,6 +1049,19 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       slots: { default: 'businessLocked' },
     },
     {
+      field: 'transportOrder.isUnfinished',
+      title: '未完结状态',
+      minWidth: 100,
+      align: 'center',
+      cellRender: {
+        name: 'CellTag',
+        options: [
+          { value: true, label: '未完结', color: 'warning' },
+          { value: false, label: '已完结', color: 'success' },
+        ],
+      },
+    },
+    {
       field: 'businessStatus',
       title: '业务状态',
       minWidth: 130,

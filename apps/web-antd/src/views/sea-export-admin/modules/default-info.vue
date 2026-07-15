@@ -41,6 +41,7 @@ const displayList = ref<
 >([]);
 const feeLocking = ref($t('seaExport.export.noFeeLocking'));
 const businessLocking = ref($t('seaExport.export.noBusinessLocking'));
+const unfinishedStatus = ref('已完结');
 const getData = async () => {
   if (!editId.value) return;
 
@@ -87,6 +88,13 @@ const getData = async () => {
     } else {
       businessLocking.value = $t('seaExport.export.noBusinessLocking');
     }
+
+    // 设置未完结状态
+    if (detail.transportOrder?.isUnfinished) {
+      unfinishedStatus.value = '未完结';
+    } else {
+      unfinishedStatus.value = '已完结';
+    }
   } finally {
     pageLoading.value = false;
   }
@@ -110,7 +118,8 @@ onMounted(() => {
 
         <div class="flex flex-1 px-1 py-1">
           <div class="mr-2 bg-gray-300 p-1 text-sm">{{ feeLocking }}</div>
-          <div class="bg-gray-300 p-1 text-sm">{{ businessLocking }}</div>
+          <div class="mr-2 bg-gray-300 p-1 text-sm">{{ businessLocking }}</div>
+          <div class="bg-gray-300 p-1 text-sm">{{ unfinishedStatus }}</div>
         </div>
       </Card>
     </div>

@@ -19,6 +19,19 @@ const getFeeLockedOptions = () => [
   },
 ];
 
+const getUnfinishedOptions = () => [
+  {
+    value: true,
+    label: '未完结',
+    color: 'warning',
+  },
+  {
+    value: false,
+    label: '已完结',
+    color: 'success',
+  },
+];
+
 const getRowTypeOptions = () => [
   {
     value: 'order',
@@ -49,6 +62,8 @@ export interface FeeLockTreeRow {
   feeUnLockedTime?: string;
   reason?: string;
   remark?: string;
+  /** 未完结状态。true 未完结，false 已完结 */
+  isUnfinished?: boolean;
   children?: FeeLockTreeRow[];
 }
 
@@ -184,6 +199,15 @@ export function useFeeLockColumns(): VxeTableGridOptions<FeeLockTreeRow>['column
       cellRender: {
         name: 'CellTag',
         options: getFeeLockedOptions(),
+      },
+    },
+    {
+      field: 'isUnfinished',
+      title: '未完结状态',
+      minWidth: 120,
+      cellRender: {
+        name: 'CellTag',
+        options: getUnfinishedOptions(),
       },
     },
     {
