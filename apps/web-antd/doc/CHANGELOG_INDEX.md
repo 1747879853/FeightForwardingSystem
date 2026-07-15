@@ -13,6 +13,17 @@
 
 ## 2026-07
 
+- [2026-07-14 发票结算入口整合与银行流水页支持发票结算](./changelogs/change-log-2026-07-14-receive-settlement-invoice-entries-and-bank-statement.md)
+- [2026-07-14 海运出口表单校验、付费地点与箱包装联动优化](./changelogs/change-log-2026-07-14-sea-export-form-optimizations.md)
+- [2026-07-14 收费核销新增「按开票申请结算（发票结算）」](./changelogs/change-log-2026-07-14-receive-settlement-by-invoice-application.md)
+- [2026-07-14 海运出口脏检查空值归一化（修复删空后仍被拦截）](./changelogs/change-log-2026-07-14-sea-export-dirty-check-empty-value-normalize.md)
+- [2026-07-14 未保存内容离开拦截全局工具（切标签/菜单跳转二次确认）](./changelogs/change-log-2026-07-14-unsaved-changes-navigation-guard.md)
+- [2026-07-14 公告管理新增与批量删除按钮按权限显示](./changelogs/change-log-2026-07-14-announcement-action-permissions.md)
+- [2026-07-14 海运出口附件对接批量修改客户可见接口（单文件切换 + 类型批量）](./changelogs/change-log-2026-07-14-sea-export-attachments-client-visible-update.md)
+- [2026-07-14 用户列表展示所属组织完整路径](./changelogs/change-log-2026-07-14-user-list-organization-path.md)
+- [2026-07-14 GenerateEnum 新增 yyyyMM / yyMM 年月日期段](./changelogs/change-log-2026-07-14-generate-enum-yyyyMM-yyMM.md)
+- [2026-07-14 海运出口 AI 识别放开 Word/Excel/RTF](./changelogs/change-log-2026-07-14-sea-export-ai-extract-office.md)
+- [2026-07-14 货物轨迹支持中英文切换（分享英文链接）](./changelogs/change-log-2026-07-14-tracking-map-lang-switch.md)
 - [2026-07-14 可折叠搜索表单在持久化重排后按新布局重算保留项](./changelogs/change-log-2026-07-14-form-collapse-expandable-schema-fingerprint.md)
 - [2026-07-13 云当运踪推送信息全字段对接（类型补全 + 面板航段/AIS/免箱期/件数重量/甩柜）](./changelogs/change-log-2026-07-13-yundang-ocean-push-full-fields.md)
 - [2026-07-13 货物轨迹独立静态页（免登录 + 品牌 logo + iframe 内嵌）](./changelogs/change-log-2026-07-13-tracking-map-standalone-page.md)

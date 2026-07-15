@@ -331,7 +331,9 @@
         "text": "固定文本",
         "userName": "用户名",
         "yyyyMMdd": "日期(yyyyMMdd)",
-        "yyMMdd": "日期(yyMMdd)"
+        "yyMMdd": "日期(yyMMdd)",
+        "yyyyMM": "日期(yyyyMM)",
+        "yyMM": "日期(yyMM)"
       },
       "applyScopeOptions": {
         "none": "不限制",
@@ -486,6 +488,7 @@
     "fileSizeLimit": "文件大小不能超过 10MB",
     "company": "所属公司",
     "department": "所属部门",
+    "organization": "所属组织",
     "userAttribute": "用户属性",
     "selectUserAttribute": "请选择用户属性",
     "userAttributeOptions": {

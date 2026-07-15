@@ -2,7 +2,11 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
 
-import { formatAmount, formatDateTime } from './form-data';
+import {
+  formatAmount,
+  formatDateTime,
+  getReceiveSettlementTypeLabel,
+} from './form-data';
 
 /** 收费结算列表列配置 */
 export function useColumns(): VxeTableGridOptions['columns'] {
@@ -19,6 +23,12 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       fixed: 'left',
     },
     {
+      field: 'type',
+      title: '结算类型',
+      width: 110,
+      formatter: ({ cellValue }) => getReceiveSettlementTypeLabel(cellValue),
+    },
+    {
       field: 'settlementTime',
       title: '结算时间',
       width: 160,
@@ -31,7 +41,7 @@ export function useColumns(): VxeTableGridOptions['columns'] {
     },
     {
       field: 'totalSettledAmount',
-      title: '明细总金额',
+      title: '结算净额',
       width: 130,
       align: 'right',
       formatter: ({ cellValue }) => formatAmount(cellValue),

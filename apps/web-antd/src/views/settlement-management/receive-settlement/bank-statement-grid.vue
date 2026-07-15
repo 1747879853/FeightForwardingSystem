@@ -4,7 +4,17 @@ import type { BankStatementAdminApi } from '#/api/settlement-management/bank-sta
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
-import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
+
+import {
+  Button,
+  Dropdown,
+  Menu,
+  message,
+  Modal,
+  Space,
+  Tag,
+} from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -110,9 +120,14 @@ function getSelectedRows(): BankStatementAdminApi.BankStatementListDto[] {
 
 function navigateToCreateReceiveSettlement(
   row: BankStatementAdminApi.BankStatementListDto,
+  type: 'fee' | 'invoice' = 'fee',
 ) {
+  const path =
+    type === 'invoice'
+      ? '/settlement-management/receive-settlement/add-by-invoice'
+      : '/settlement-management/receive-settlement/add';
   router.push({
-    path: '/settlement-management/receive-settlement/add',
+    path,
     query: { bankStatementId: row.id },
   });
 }
@@ -126,18 +141,30 @@ function handleRowDblClick({
   navigateToCreateReceiveSettlement(row);
 }
 
-function handleCreate() {
+/** 取出唯一选中的银行流水（校验单选） */
+function getSingleSelectedRow():
+  | BankStatementAdminApi.BankStatementListDto
+  | undefined {
   const rows = getSelectedRows();
   if (rows.length === 0) {
     message.warning('请先选择银行流水');
-    return;
+    return undefined;
   }
   if (rows.length > 1) {
     message.warning('每次只能针对一条银行流水新建收费核销，请只选择一条');
-    return;
+    return undefined;
   }
+  return rows[0]!;
+}
 
-  navigateToCreateReceiveSettlement(rows[0]!);
+function handleCreate() {
+  const row = getSingleSelectedRow();
+  if (row) navigateToCreateReceiveSettlement(row, 'fee');
+}
+
+function handleCreateByInvoice() {
+  const row = getSingleSelectedRow();
+  if (row) navigateToCreateReceiveSettlement(row, 'invoice');
 }
 
 function handleRefresh() {
@@ -185,13 +212,23 @@ async function handleDelete() {
 
     <template #toolbar-tools>
       <Space>
-        <Button
+        <Dropdown
           v-access:code="receiveSettlementPerm.add"
-          type="primary"
-          @click="handleCreate"
+          :trigger="['hover']"
         >
-          新建
-        </Button>
+          <Button type="primary" @click="handleCreate">
+            新建
+            <IconifyIcon icon="mdi:chevron-down" class="ml-1" />
+          </Button>
+          <template #overlay>
+            <Menu>
+              <Menu.Item key="fee" @click="handleCreate"> 费用结算 </Menu.Item>
+              <Menu.Item key="invoice" @click="handleCreateByInvoice">
+                发票结算
+              </Menu.Item>
+            </Menu>
+          </template>
+        </Dropdown>
         <Button v-access:code="perm.delete" danger @click="handleDelete">
           删除
         </Button>

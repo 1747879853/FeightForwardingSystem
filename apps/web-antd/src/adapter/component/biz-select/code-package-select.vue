@@ -37,6 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
+  change: [value: any, option?: { label?: string; value?: any }];
   'update:modelValue': [value: any];
 }>();
 
@@ -118,6 +119,16 @@ const handleChange = (value: any) => {
   }
   modelValue.value = value;
   emit('update:modelValue', value);
+
+  if (value === undefined || value === null || value === '') {
+    emit('change', value, undefined);
+    return;
+  }
+  const options = apiComponentRef.value?.getOptions?.() || [];
+  const matched = options.find(
+    (opt: any) => String(opt?.value) === String(value),
+  );
+  emit('change', value, matched);
 };
 
 const ensureSelectedLoaded = async (rawValue: any) => {

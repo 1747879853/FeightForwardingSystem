@@ -550,6 +550,17 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       minWidth: 100,
     },
     {
+      field: 'organizationPath',
+      title: $t('system.user.organization'),
+      minWidth: 200,
+      formatter: ({ row, cellValue }) => {
+        if (Array.isArray(cellValue) && cellValue.length > 0) {
+          return cellValue.map((item: any) => item?.name).join('/');
+        }
+        return row?.organization || '-';
+      },
+    },
+    {
       field: 'phoneNumber',
       title: $t('system.user.phoneNumber'),
       minWidth: 130,

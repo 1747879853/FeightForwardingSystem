@@ -8,7 +8,7 @@ import { toDayjs } from './sea-export-detail-mapper';
 export const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
 
 export const AI_EXTRACT_ACCEPT =
-  '.pdf,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp,application/pdf,image/png,image/jpeg,image/bmp,image/tiff,image/webp';
+  '.pdf,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp,.doc,.docx,.xls,.xlsx,.rtf,application/pdf,image/png,image/jpeg,image/bmp,image/tiff,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/rtf,text/rtf';
 
 export const AI_EXTRACT_IMAGE_EXTENSIONS = new Set([
   'png',
@@ -18,6 +18,15 @@ export const AI_EXTRACT_IMAGE_EXTENSIONS = new Set([
   'tiff',
   'tif',
   'webp',
+]);
+
+/** Word / Excel / RTF 扩展名（随 File input accept 一并放开） */
+export const AI_EXTRACT_OFFICE_EXTENSIONS = new Set([
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'rtf',
 ]);
 
 /** 表单字段 -> citations 中文字段名（可多 key） */
@@ -67,7 +76,8 @@ export function isEmptyRecognizedValue(value: unknown): boolean {
 export function isAiExtractSupportedFile(file: File): boolean {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
   if (ext === 'pdf') return true;
-  return AI_EXTRACT_IMAGE_EXTENSIONS.has(ext);
+  if (AI_EXTRACT_IMAGE_EXTENSIONS.has(ext)) return true;
+  return AI_EXTRACT_OFFICE_EXTENSIONS.has(ext);
 }
 
 export function isPdfFile(file: File): boolean {

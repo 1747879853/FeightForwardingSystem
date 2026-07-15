@@ -2,7 +2,7 @@
 title: 货物轨迹独立静态页
 module: 共享能力
 author: 自动生成
-last_updated: 2026-07-13
+last_updated: 2026-07-14
 route: /tracking-map/:mblNo?
 ---
 
@@ -12,9 +12,10 @@ route: /tracking-map/:mblNo?
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **打开轨迹页：** 访问 `/tracking-map/:mblNo`，页头显示品牌 logo + 「货物轨迹查询」，主体全屏 iframe 渲染轨迹地图。
+- **打开轨迹页：** 访问 `/tracking-map/:mblNo`，页头显示品牌 logo + 「货物轨迹查询」（英文链接则为 `Cargo Tracking`），主体全屏 iframe 渲染轨迹地图。
 - **免登录：** 未登录也可直接访问（`meta.ignoreAccess: true`），适合分享给外部客户。
-- **空态：** 不带订阅号（`/tracking-map`）时展示「暂无可查询的订阅号，请通过带订阅号的链接访问」。
+- **英文分享：** 链接带 `?lang=en`（如 `/tracking-map/MBL123?lang=en`）时，**页头文案 + 空态 + 地图内嵌页**均为英文；缺省或非 `en` 按中文。
+- **空态：** 不带订阅号（`/tracking-map`）时按语言展示对应空态提示。
 - **品牌自适应：** 页头 logo 随打包品牌 `VITE_APP_BRAND` 自动切换（hhyy/jht/sjtd/jiayue）。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -29,6 +30,7 @@ route: /tracking-map/:mblNo?
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **mblNo** | 订阅号（提单号），对应 trackingeyes 的 `referenceno` | 路由 `params.mblNo`（兼容 `query.mblNo`） | 触发 iframe src 拼装 | 为空时展示空态 |
+| **lang** | 页面语言（`zh`/`en`），同时影响页头标题、空态文案及 iframe `lang=en` | 路由 `query.lang` | 影响文案 + iframe src | 仅 `en` 生效，其余按中文处理 |
 | **品牌 logo** | 页头公司 logo | `brand-assets.ts`（`brandLogoText`→`brandLogo`）+ `VITE_APP_BRAND` | 随打包品牌固定 | 缺省回退方形 logo / 公司名文字 |
 | **companyid** | 企业编号，对外不暴露 | `env: VITE_GLOB_TRACKING_COMPANY_ID` | 拼入 iframe src | 缺失则不渲染 iframe |
 
@@ -45,3 +47,5 @@ route: /tracking-map/:mblNo?
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
 | 2026-07-13 | `Feature` | 新增可分享的货物轨迹独立静态页（免登录、URL 传订阅号、iframe 内嵌、页头品牌 logo）。 | 启用 external 路由 + `ignoreAccess`；抽 `buildTrackingMapSrc` 供弹窗与静态页复用；logo 用 brand-assets 随品牌切换。已用 chrome-devtools 实测带号渲染与空态。 |
+| 2026-07-14 | `Feature` | 支持英文分享链接：`?lang=en` 时地图以英文渲染，便于分享给看英文的客户。 | 从 `route.query.lang` 解析语言传入 `buildTrackingMapSrc(referenceNo, lang)`；`en` 生效其余默认中文。 |
+| 2026-07-14 | `Fix` | 页头「货物轨迹查询」与空态文案跟随 `?lang=`，英文显示 `Cargo Tracking`。 | 本地 `pageText` 映射，不依赖全局 i18n（分享页免登录也正确）。 |

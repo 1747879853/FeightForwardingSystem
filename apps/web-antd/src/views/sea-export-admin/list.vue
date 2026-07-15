@@ -446,7 +446,9 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           :loading="copying"
           @click="handleCopy"
         >
-          <Copy class="size-5" />
+          <template #icon>
+            <Copy class="size-4" />
+          </template>
           {{ $t('seaExport.export.copy') }}
         </Button>
         <Button
@@ -455,7 +457,9 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
           type="primary"
           @click="handleCreate"
         >
-          <Plus class="size-5" />
+          <template #icon>
+            <Plus class="size-4" />
+          </template>
           {{ $t('common.create') }}
         </Button>
         <GroupingSettings

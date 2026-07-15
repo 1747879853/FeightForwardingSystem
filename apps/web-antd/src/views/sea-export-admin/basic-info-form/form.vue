@@ -58,6 +58,8 @@ const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
 import { CodeSourceSelect, UserSelect } from '#/adapter/component';
 import { type VbenFormSchema, useVbenForm } from '#/adapter/form';
 import { getClientDetail } from '#/api/sea-export/client-admin';
+import { getCodeFrtDetail } from '#/api/system/base-data/code-frt-admin';
+import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import {
   getServiceTypesByPOL,
   getSeaExportDetail,
@@ -302,6 +304,8 @@ const editOriginalServiceTypeSet = ref<Set<number>>(new Set());
 const editHasAnyServiceTask = ref(false);
 /** 编辑态回填期间抑制起运港/委托单位联动，避免详情回填 setValues 误触发重写勾选 */
 const suppressServiceTypeLinkage = ref(false);
+/** 记录上一次的付费方式，仅在真正变更时触发付费地点联动 */
+const lastCodeFrtId = ref<number | string | undefined>();
 /**
  * 编辑态首次回填：以港口配置为「元数据」（sortId/userAttribute/锁定/必填），
  * 勾选状态与任务进度仍以详情为准；港口配置缺失的历史服务项照常保留。
@@ -429,6 +433,39 @@ const yardFieldLabelSchemaContent = YardFieldLabel as unknown as NonNullable<
   VbenFormSchema['label']
 >;
 
+/**
+ * 付费方式→付费地点联动：
+ * - 付费方式为「到付」(cnName 含「到付」/ ediCode=CC) → 付费地点带出目的港(podId)
+ * - 付费方式为「预付」(cnName 含「预付」/ ediCode=PP) → 付费地点带出起运港(polId)
+ * 付费方式变更时触发（含详情回填），带出后仍允许手动修改。
+ */
+const applyFrtPrepareByCodeFrt = async (
+  codeFrtId: number | string | undefined,
+) => {
+  if (codeFrtId === undefined || codeFrtId === null || codeFrtId === '') return;
+  let detail: Awaited<ReturnType<typeof getCodeFrtDetail>> | undefined;
+  try {
+    detail = await getCodeFrtDetail(codeFrtId);
+  } catch {
+    return;
+  }
+  const cnName = String(detail?.cnName ?? '');
+  const ediCode = String(detail?.ediCode ?? '').toUpperCase();
+  const isCollect = cnName.includes('到付') || ediCode === 'CC';
+  const isPrepaid = cnName.includes('预付') || ediCode === 'PP';
+  if (!isCollect && !isPrepaid) return;
+  const portValues = await portFormApi.getValues();
+  const targetPortId = isCollect ? portValues.podId : portValues.polId;
+  if (
+    targetPortId === undefined ||
+    targetPortId === null ||
+    targetPortId === ''
+  ) {
+    return;
+  }
+  await basicInfoFormApi.setFieldValue('prepareAtId', targetPortId);
+};
+
 /** 中间表单：基础信息 */
 const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
   layout: 'vertical',
@@ -494,6 +531,13 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
     }
     if (fieldsChanged.includes('innerVoyno')) {
       syncDateInnerVoyno.value = String(values.innerVoyno ?? '').trim();
+    }
+    if (fieldsChanged.includes('codeFrtId')) {
+      const codeFrtId = values.codeFrtId;
+      if (codeFrtId !== lastCodeFrtId.value) {
+        lastCodeFrtId.value = codeFrtId;
+        void applyFrtPrepareByCodeFrt(codeFrtId);
+      }
     }
   },
 });
@@ -1373,6 +1417,33 @@ const [CargoMainForm, cargoMainFormApi] = useVbenForm({
   wrapperClass: 'cargo-main-wrap form-controls-small grid-cols-5 gap-x-4',
 });
 
+/** 订单级总包装（id + 文本），新建箱型时一并带出，避免再拉详情回显 */
+const orderCodePackage = ref<{
+  id?: number | string;
+  name?: string;
+}>({});
+
+const syncOrderCodePackage = (
+  id: number | string | undefined,
+  name?: string,
+) => {
+  if (id === undefined || id === null || id === '') {
+    orderCodePackage.value = {};
+    return;
+  }
+  orderCodePackage.value = {
+    id,
+    name: name?.trim() || undefined,
+  };
+};
+
+const resolveCodePackageLabel = (option: any): string | undefined => {
+  if (!option) return undefined;
+  const opt = Array.isArray(option) ? option[0] : option;
+  const label = opt?.label ?? opt?.name;
+  return label == null || label === '' ? undefined : String(label);
+};
+
 /** 中间表单：货物信息 — 件数 / 包装 / 毛重 / 体积 */
 const [CargoMetricsForm, cargoMetricsFormApi] = useVbenForm({
   layout: 'vertical',
@@ -1382,14 +1453,52 @@ const [CargoMetricsForm, cargoMetricsFormApi] = useVbenForm({
   },
   schema: cargoSchema
     .filter((item) => cargoMetricsFieldNames.has(item.fieldName))
-    .map((item) => ({
-      ...item,
-      componentProps: withSmallComponentProps(item.componentProps),
-      formItemClass: `cargo-metrics-item cargo-metrics-item--${item.fieldName === 'codePackageId' ? 'code-package' : item.fieldName}`,
-    })),
+    .map((item) => {
+      const baseProps = withSmallComponentProps(item.componentProps);
+      if (item.fieldName !== 'codePackageId') {
+        return {
+          ...item,
+          componentProps: baseProps,
+          formItemClass: `cargo-metrics-item cargo-metrics-item--${item.fieldName}`,
+        };
+      }
+      return {
+        ...item,
+        componentProps:
+          typeof baseProps === 'function'
+            ? (...args: any[]) => ({
+                ...(baseProps as (...inner: any[]) => Record<string, any>)(
+                  ...args,
+                ),
+                onChange: (value: any, option: any) => {
+                  syncOrderCodePackage(value, resolveCodePackageLabel(option));
+                },
+              })
+            : {
+                ...(baseProps as Record<string, any>),
+                onChange: (value: any, option: any) => {
+                  syncOrderCodePackage(value, resolveCodePackageLabel(option));
+                },
+              },
+        formItemClass: 'cargo-metrics-item cargo-metrics-item--code-package',
+      };
+    }),
   showDefaultActions: false,
   wrapperClass: 'cargo-metrics-wrap form-controls-small grid-cols-1',
 });
+
+/** 新建箱型时带回总包装 id + 文本 */
+const getDefaultCodePackage = async () => {
+  const values = await cargoMetricsFormApi.getValues();
+  const id = values.codePackageId ?? undefined;
+  if (id === undefined || id === null || id === '') return undefined;
+  const cached = orderCodePackage.value;
+  const name =
+    cached.id !== undefined && String(cached.id) === String(id)
+      ? cached.name
+      : undefined;
+  return { id, name };
+};
 
 const showDgFields = computed(() => currentCargoId.value === CARGO_TYPE.D);
 const showReeferFields = computed(() => currentCargoId.value === CARGO_TYPE.R);
@@ -2014,9 +2123,16 @@ const loadEditData = async () => {
             (to as any)?.codePackageName,
           ),
           size: 'small',
+          onChange: (value: any, option: any) => {
+            syncOrderCodePackage(value, resolveCodePackageLabel(option));
+          },
         },
       },
     ]);
+    syncOrderCodePackage(
+      formValues.codePackageId,
+      (to as any)?.codePackageName,
+    );
 
     await Promise.all([
       partyInfoFormApi.setValues(formValues),
@@ -2088,6 +2204,44 @@ const loadEditData = async () => {
   }
 };
 
+/**
+ * 校验截关类时间（截VGM/截单/截舱单）需早于开船日期与实际开船。
+ * 任一截关时间晚于开船日期或实际开船（按日期比较）时提示并阻止保存。
+ */
+const validateShipmentDates = async (): Promise<boolean> => {
+  const values = await shipmentFormApi.getValues();
+  const cutTimeFields = [
+    { field: 'closeVgmTime', labelKey: 'seaExport.export.closeVgmTime' },
+    { field: 'closeDocTime', labelKey: 'seaExport.export.closeDocTime' },
+    {
+      field: 'closeManifestTime',
+      labelKey: 'seaExport.export.closeManifestTime',
+    },
+  ];
+  const departureFields = [
+    { value: values.etd, labelKey: 'seaExport.export.etd' },
+    { value: values.atd, labelKey: 'seaExport.export.atd' },
+  ];
+  for (const cut of cutTimeFields) {
+    const cutValue = values[cut.field];
+    if (!cutValue) continue;
+    const cutDay = dayjs(cutValue);
+    if (!cutDay.isValid()) continue;
+    for (const departure of departureFields) {
+      if (!departure.value) continue;
+      const departureDay = dayjs(departure.value);
+      if (!departureDay.isValid()) continue;
+      if (cutDay.isAfter(departureDay, 'day')) {
+        message.warning(
+          `${$t(cut.labelKey)}应早于${$t(departure.labelKey)}，请核查`,
+        );
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
 const { submitting, buildDto, handleSubmit, syncFormSnapshot, isFormDirty } =
   useSeaExportSubmit({
     formApis: {
@@ -2117,6 +2271,7 @@ const { submitting, buildDto, handleSubmit, syncFormSnapshot, isFormDirty } =
     validateSalesRoleCount,
     validateRequiredOrderUserAssignee,
     validateServiceBoundOrderUsers,
+    validateShipmentDates,
     loadEditData,
     closeTabByKey,
     getCurrentTabKey: () => route.fullPath,
@@ -2127,6 +2282,13 @@ const { copying: copyingSeaExport, copyFrom: copySeaExportFromCurrent } =
   useSeaExportCopy({
     checkDirty: isFormDirty,
   });
+
+// 页面级表单未保存拦截：切换标签页 / 菜单跳转 / 关闭当前标签页时二次确认。
+// 内嵌于编辑工作台（editor.vue）时由父级统一登记，此处仅在独立页面（新建）生效。
+useUnsavedGuard({
+  isDirty: isFormDirty,
+  enabled: () => !props.embedded,
+});
 
 const { ResultModal, subscribe, subscribing } = useYundangOceanSubscribe();
 
@@ -2360,6 +2522,8 @@ onMounted(() => {
     loadEditData();
     if (!isEdit.value) {
       void syncServiceTypesByPol();
+      // 新建态记录初始空白快照，作为未保存拦截的脏检查基线
+      await syncFormSnapshot();
     }
   };
   if (!isEdit.value) {
@@ -2401,6 +2565,7 @@ watch(pageLoading, (loading) => {
 
 defineExpose({
   scrollToSection,
+  isFormDirty,
 });
 </script>
 
@@ -3148,6 +3313,7 @@ defineExpose({
                 <div class="cargo-ctn-section">
                   <OrderCtnTable
                     v-model="orderCtns"
+                    :get-default-code-package="getDefaultCodePackage"
                     :yard-real-query-visible="hasYardRealQueryAccess"
                     :yard-real-query-disabled="yardRealQueryDisabled"
                     :yard-real-query-disabled-tip="yardRealQueryDisabledTip"
@@ -3177,6 +3343,15 @@ defineExpose({
                   <div class="order-user-panel__body">
                     <div class="order-user-panel__header">
                       <div class="order-user-panel__role-label">
+                        <span
+                          v-if="
+                            row.userAttribute != null &&
+                            requiredOrderUserRoles.includes(row.userAttribute)
+                          "
+                          class="order-user-panel__role-required"
+                        >
+                          *
+                        </span>
                         {{ getOrderUserRoleLabel(row.userAttribute) }}
                       </div>
                       <Popover

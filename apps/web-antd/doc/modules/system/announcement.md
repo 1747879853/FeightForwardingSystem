@@ -2,7 +2,7 @@
 title: 公告管理
 module: 公告管理
 author: auto-doc-sync
-last_updated: 2026-07-11
+last_updated: 2026-07-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,7 +21,7 @@ last_updated: 2026-07-11
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **列表：** 关键字与启用状态筛选；勾选后顶部批量删除；双击行打开 Modal 编辑。
+- **列表：** 关键字与启用状态筛选；勾选后顶部批量删除；双击行打开 Modal 编辑。【新增】与【批量删除】分别按 `Admin.Announcement.Add`、`Admin.Announcement.Delete` 权限显示。
 - **新建/编辑：** `name`、`text`（wangEditor）、`enable`、`startTime`/`endTime`、`sortId`、`remark`、`attachments`。
 - **登录弹窗：** 进入主布局后自动检测；逐条展示富文本与附件下载；仅「我已阅读」按钮，已读写入 `sessionStorage`（关闭浏览器后会话清空，公告可再次弹出）。
 
@@ -54,6 +54,7 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-07-14 | 修复 | 新增与批量删除按钮按角色动作权限显示，无权限时隐藏 | 复用 `createAbpPermission('Admin.Announcement')`，与系统管理其他列表保持一致 |
 | 2026-07-12 | Style | 一级菜单图标改为 `streamline-plump-color:announcement-megaphone-flat` | 与其它一级业务菜单同步更换语义化 Iconify 图标 |
 | 2026-07-11 | 重构 | 侧边栏从「系统管理」子项提升为独立顶级「公告管理」 | 新增 `announcement.ts` 路由模块，`order: 9998`；`system.ts` 移除公告子路由 |
 | 2026-07-11 | 调整 | 登录弹窗仅保留「我已阅读」，已读改存 sessionStorage | 移除 skip-session；关闭浏览器后会话清空可再弹 |

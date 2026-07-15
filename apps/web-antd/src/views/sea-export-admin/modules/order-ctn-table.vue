@@ -16,12 +16,24 @@ import { toEnglishUpperCase } from '#/utils/english-upper-case';
 
 const props = withDefaults(
   defineProps<{
+    /**
+     * 新建箱型时取订单级「总包装」id + 文本（点击时实时读取，允许修改）。
+     * 优先于 defaultCodePackageId。
+     */
+    getDefaultCodePackage?: () =>
+      | Promise<{ id?: number | string; name?: string } | undefined>
+      | { id?: number | string; name?: string }
+      | undefined;
+    /** 订单级「总包装」id，新建箱型时默认带出（允许修改） */
+    defaultCodePackageId?: number | string;
     yardRealQueryDisabled?: boolean;
     yardRealQueryDisabledTip?: string;
     yardRealQueryLoading?: boolean;
     yardRealQueryVisible?: boolean;
   }>(),
   {
+    getDefaultCodePackage: undefined,
+    defaultCodePackageId: undefined,
     yardRealQueryDisabled: false,
     yardRealQueryDisabledTip: '',
     yardRealQueryLoading: false,
@@ -213,9 +225,29 @@ const tableColumns = computed(() => [
 ]);
 
 let rowKeyCounter = 0;
-const addRow = () => {
+const addRow = async () => {
   const list = [...(modelValue.value ?? [])];
-  list.push({ _rowKey: `ctn_${++rowKeyCounter}_${Date.now()}` } as any);
+  const defaultPackage = props.getDefaultCodePackage
+    ? await props.getDefaultCodePackage()
+    : props.defaultCodePackageId != null && props.defaultCodePackageId !== ''
+      ? { id: props.defaultCodePackageId }
+      : undefined;
+  const defaultPackageId = defaultPackage?.id;
+  const hasDefaultPackage =
+    defaultPackageId !== undefined &&
+    defaultPackageId !== null &&
+    defaultPackageId !== '';
+  const codePackageName = defaultPackage?.name?.trim() || undefined;
+
+  list.push({
+    _rowKey: `ctn_${++rowKeyCounter}_${Date.now()}`,
+    ...(hasDefaultPackage
+      ? {
+          codePackageId: defaultPackageId,
+          ...(codePackageName ? { codePackageName } : {}),
+        }
+      : {}),
+  } as any);
   modelValue.value = list;
 };
 
@@ -243,7 +275,10 @@ const updateRow = (
 
 const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
   if (id == null) return [];
-  return [{ id, [labelKey]: name || '' }] as any[];
+  // 无名称时不传 selectedItems，交由 Select 按 id 拉取详情回显文案；
+  // 若传 { id, name: '' }，会标记为已加载且标签为空，界面会退化成显示 id。
+  if (name === undefined || name === null || name === '') return [];
+  return [{ id, [labelKey]: name }] as any[];
 };
 
 watch(

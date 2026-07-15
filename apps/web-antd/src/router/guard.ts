@@ -6,6 +6,7 @@ import { useAccessStore, useUserStore } from '@vben/stores';
 import { startProgress, stopProgress } from '@vben/utils';
 
 import { getAccessCodesApi } from '#/api';
+import { setupUnsavedNavigationGuard } from '#/composables/use-unsaved-guard';
 import { accessRoutes, coreRouteNames } from '#/router/routes';
 import { useAuthStore } from '#/store';
 
@@ -185,6 +186,8 @@ function setupAccessGuard(router: Router) {
  * @param router
  */
 function createRouterGuard(router: Router) {
+  /** 未保存内容拦截：需最先注册，用户取消离开时可尽早中断后续守卫 */
+  setupUnsavedNavigationGuard(router);
   /** 通用 */
   setupCommonGuard(router);
   /** 权限访问 */

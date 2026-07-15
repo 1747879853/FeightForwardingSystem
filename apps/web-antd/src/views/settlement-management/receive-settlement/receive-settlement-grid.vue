@@ -4,9 +4,18 @@ import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/rece
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import { IconifyIcon } from '@vben/icons';
 import dayjs from 'dayjs';
 
-import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
+import {
+  Button,
+  Dropdown,
+  Menu,
+  message,
+  Modal,
+  Space,
+  Tag,
+} from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -112,13 +121,27 @@ function handleRowDblClick({
   row: ReceiveSettlementAdminApi.ReceiveSettlementListDto;
 }) {
   if (!row) return;
-  router.push(`/settlement-management/receive-settlement/edit/${row.id}`);
+  const basePath =
+    row.type === 1
+      ? '/settlement-management/receive-settlement/edit-by-invoice'
+      : '/settlement-management/receive-settlement/edit';
+  router.push(`${basePath}/${row.id}`);
 }
 
 async function handleCreate() {
   const formValues = await gridApi.formApi.getValues();
   router.push({
     path: '/settlement-management/receive-settlement/add',
+    query: formValues.bankStatementId
+      ? { bankStatementId: String(formValues.bankStatementId) }
+      : undefined,
+  });
+}
+
+async function handleCreateByInvoice() {
+  const formValues = await gridApi.formApi.getValues();
+  router.push({
+    path: '/settlement-management/receive-settlement/add-by-invoice',
     query: formValues.bankStatementId
       ? { bankStatementId: String(formValues.bankStatementId) }
       : undefined,
@@ -189,9 +212,20 @@ defineExpose({
 
     <template #toolbar-tools>
       <Space wrap>
-        <Button v-access:code="perm.add" type="primary" @click="handleCreate">
-          新建
-        </Button>
+        <Dropdown v-access:code="perm.add" :trigger="['hover']">
+          <Button type="primary" @click="handleCreate">
+            新建
+            <IconifyIcon icon="mdi:chevron-down" class="ml-1" />
+          </Button>
+          <template #overlay>
+            <Menu>
+              <Menu.Item key="fee" @click="handleCreate"> 费用结算 </Menu.Item>
+              <Menu.Item key="invoice" @click="handleCreateByInvoice">
+                发票结算
+              </Menu.Item>
+            </Menu>
+          </template>
+        </Dropdown>
         <Button
           v-access:code="perm.delete"
           :loading="actionLoading"

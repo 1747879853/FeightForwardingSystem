@@ -8,6 +8,18 @@ export namespace ReceiveSettlementAdminApi {
     items: T[];
   }
 
+  /** 收付方向枚举 */
+  export enum PaySide {
+    Receive = 0,
+    Pay = 1,
+  }
+
+  /** 结算类型枚举：0 按费用(按业务)，1 按开票申请 */
+  export enum ReceiveSettlementType {
+    ByFee = 0,
+    ByInvoiceApplication = 1,
+  }
+
   export interface TransportOrderSimpleDto {
     id: string;
     commissionNum?: string;
@@ -20,6 +32,7 @@ export namespace ReceiveSettlementAdminApi {
     id: string;
     feeCodeName?: string;
     currencyCode?: string;
+    paySide?: PaySide;
     amount: number;
     remainingAmount: number;
     settlementName?: string;
@@ -82,10 +95,27 @@ export namespace ReceiveSettlementAdminApi {
     id: string;
     feeCodeName?: string;
     currencyCode?: string;
+    paySide?: PaySide;
     amount?: number;
     remainingAmount?: number;
     settlementName?: string;
     remark?: string;
+  }
+
+  /** 按开票申请结算明细（详情） */
+  export interface ReceiveSettlementInvoiceItemDetailDto {
+    id: string;
+    receiveSettlementId: string;
+    invoiceApplicationId: string;
+    invoiceApplicationItemId: string;
+    orderFeeId: string;
+    settledAmount: number;
+    remark?: string;
+    applicationNo?: string;
+    invoiceNo?: string;
+    appliedAmount: number;
+    orderFee?: OrderFeeDto;
+    transportOrder?: TransportOrderSimpleDto;
   }
 
   export interface ReceiveSettlementItemDetailDto {
@@ -103,13 +133,20 @@ export namespace ReceiveSettlementAdminApi {
     bankStatementId: string;
     settlementNo?: string;
     status: number;
+    /** 结算类型 0 按费用(按业务) 1 按开票申请 */
+    type: number;
     settlementTime: string;
     locked: boolean;
     lockeTime?: string;
     remark?: string;
     creatorUserName?: string;
+    creatorUserNickName?: string;
+    lastModifierUserNickName?: string;
     bankStatementNo?: string;
+    /** 结算总额（净额 = Σ收明细 − Σ付明细，跨两种子表） */
+    totalSettledAmount: number;
     receiveSettlementItems: ReceiveSettlementItemDetailDto[];
+    receiveSettlementInvoiceItems: ReceiveSettlementInvoiceItemDetailDto[];
   }
 
   export interface ReceiveSettlementListDto {
@@ -117,15 +154,88 @@ export namespace ReceiveSettlementAdminApi {
     bankStatementId: string;
     settlementNo?: string;
     status: number;
+    /** 结算类型 0 按费用(按业务) 1 按开票申请 */
+    type: number;
     settlementTime: string;
     locked: boolean;
     lockeTime?: string;
     remark?: string;
     creatorUserName?: string;
+    creatorUserNickName?: string;
+    lastModifierUserNickName?: string;
     bankStatementNo?: string;
     totalSettledAmount: number;
     itemCount: number;
     creationTime?: string;
+  }
+
+  /** 按开票申请分组拉取可结算明细查询 */
+  export interface InvoiceAppSettleQueryDto {
+    receiveSettlementId?: string;
+    applicationNo?: string;
+    invoiceNo?: string;
+    settlementId?: string;
+    currencyId?: number;
+    companyId?: number;
+    applyTimeStart?: string;
+    applyTimeEnd?: string;
+    onlySettleable?: boolean;
+    pageIndex: number;
+    pageSize: number;
+    sorting?: string;
+  }
+
+  /** 按开票申请分组下的可结算费用明细 */
+  export interface InvoiceAppSettleItemDto {
+    invoiceApplicationItemId: string;
+    orderFeeId: string;
+    feeCodeName?: string;
+    currencyCode?: string;
+    paySide: PaySide;
+    amount: number;
+    appliedAmount: number;
+    invoicedAmount: number;
+    settledAmount: number;
+    invoiceSettleableAmount: number;
+    settlementName?: string;
+    transportOrder?: TransportOrderSimpleDto;
+  }
+
+  /** 按开票申请分组（一组 = 一个已开票的开票申请） */
+  export interface InvoiceAppSettleGroupDto {
+    invoiceApplicationId: string;
+    applicationNo?: string;
+    invoiceNo?: string;
+    settlementId: string;
+    settlementName?: string;
+    currencyId: number;
+    currencyCode?: string;
+    applyTime: string;
+    items: InvoiceAppSettleItemDto[];
+  }
+
+  /** 按开票申请结算的单条明细入参（逐条开票明细） */
+  export interface ReceiveSettlementByInvoiceItemDto {
+    invoiceApplicationItemId: string;
+    settledAmount: number;
+    remark?: string;
+  }
+
+  export interface ReceiveSettlementAddByInvoiceDto {
+    bankStatementId: string;
+    settlementTime: string;
+    remark?: string;
+    items: ReceiveSettlementByInvoiceItemDto[];
+  }
+
+  export interface ReceiveSettlementAddItemsByInvoiceDto {
+    id: string;
+    items: ReceiveSettlementByInvoiceItemDto[];
+  }
+
+  export interface ReceiveSettlementDeleteInvoiceItemsDto {
+    id: string;
+    receiveSettlementInvoiceItemIds: string[];
   }
 
   export interface ReceiveSettlementQueryDto {
@@ -208,4 +318,45 @@ export const unlockReceiveSettlement = (
   data: ReceiveSettlementAdminApi.ReceiveSettlementLockDto,
 ) => {
   return requestClient.put<boolean>(`${API_ADMIN_PREFIX}/UnLockAsync`, data);
+};
+
+/** 按开票申请分组拉取可结算明细 */
+export const getInvoiceApplicationGroupForSettlement = (
+  params: ReceiveSettlementAdminApi.InvoiceAppSettleQueryDto,
+) => {
+  return requestClient.get<
+    ReceiveSettlementAdminApi.PagedList<ReceiveSettlementAdminApi.InvoiceAppSettleGroupDto>
+  >(`${API_ADMIN_PREFIX}/GetInvoiceApplicationGroupForSettlementAsync`, {
+    params,
+  });
+};
+
+/** 按开票申请新建收费核销（type=1） */
+export const addReceiveSettlementByInvoiceApplication = (
+  data: ReceiveSettlementAdminApi.ReceiveSettlementAddByInvoiceDto,
+) => {
+  return requestClient.post<string>(
+    `${API_ADMIN_PREFIX}/AddByInvoiceApplicationAsync`,
+    data,
+  );
+};
+
+/** 按开票申请向已有收费核销追加明细 */
+export const addReceiveSettlementItemsByInvoiceApplication = (
+  data: ReceiveSettlementAdminApi.ReceiveSettlementAddItemsByInvoiceDto,
+) => {
+  return requestClient.post<boolean>(
+    `${API_ADMIN_PREFIX}/AddItemsByInvoiceApplicationAsync`,
+    data,
+  );
+};
+
+/** 删除按开票申请结算明细 */
+export const deleteReceiveSettlementInvoiceItems = (
+  data: ReceiveSettlementAdminApi.ReceiveSettlementDeleteInvoiceItemsDto,
+) => {
+  return requestClient.post<boolean>(
+    `${API_ADMIN_PREFIX}/DeleteInvoiceItemsAsync`,
+    data,
+  );
 };

@@ -2,12 +2,12 @@
 title: 用户管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-06-19
+last_updated: 2026-07-14
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 维护系统用户、组织、角色、数据权限和登录相关基础信息。
+**白话解释：** 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表可展示用户所属组织的完整层级路径。
 
 **路由与源码定位：**
 
@@ -24,6 +24,7 @@ last_updated: 2026-06-19
 - **列表/页面访问：** 通过 `/system/user` 进入 `用户管理` 页面。
 - **系统配置维护：** 按页面职责维护用户、角色、组织、工作流、枚举或缓存信息。
 - **账号可用判断口径：** 列表仅保留「账号启用」字段用于判断是否可使用系统，不再展示「账号状态」列。
+- **所属组织路径：** 列表「所属组织」列优先用 `organizationPath` 按层级拼接（如 `世纪通达/操作部/操作一部`）；无路径时回退 `organization`。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -39,6 +40,7 @@ last_updated: 2026-06-19
 | **页面数据** | 系统管理页面的列表、表单或配置对象。 | src/views/system/user/data.ts | **触发/依赖：** 与系统 API 契约联动。 | 字段校验以后端接口为准。 |
 | **enable（账号启用）** | 标识账号是否允许登录和使用系统。 | `GET /services/app/UserAdmin/GetPagedListAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户离职（`isActive=false`）时前端联动将 `enable` 自动置为 `false`；列表仅展示该字段作为账号可用依据。 | 布尔值；建议与人员在职状态保持一致。 |
 | **organizationId（所属部门）** | 用户归属组织。 | `GET /services/app/OrganizationUnit/GetOrganizationUnitTreeAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗通过组织树选择。 | **必填项**，未选择时阻止保存。 |
+| **organizationPath / organization（所属组织）** | 列表展示用户组织层级路径或直接部门名。 | `GET /services/app/UserAdmin/GetUserPagedListAsync` 的 `organizationPath[]`（`id`/`name`/`isCompany`）与 `organization` | **触发/依赖：** 列 `formatter` 优先拼接路径名，否则回退部门名。 | 只读展示；未挂组织时路径为空数组。 |
 | **userAttributeFlags（用户属性）** | 用户业务角色位标志（可多选）。 | 前端 `getUserAttributeOptions()` 枚举 | **触发/依赖：** 提交前由 `combineUserAttribute` 合并为 `userAttribute` 整型掩码。 | **必填项**，至少勾选一项。 |
 | **officeTel** | 用户办公电话。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `32`，可为空。 |
 | **senderDisplayName** | 邮件发件显示名。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗邮件配置区可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `64`，可为空。 |
@@ -53,6 +55,7 @@ last_updated: 2026-06-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-14 | `Feature` | 用户列表新增「所属组织」列，展示 `organizationPath` 拼接路径（如 `世纪通达/操作部/操作一部`），无路径时回退 `organization`。 | `UserListDto` 补齐路径 DTO；列定义在 `user/data.ts` 的 `useColumns`。 |
 | 2026-06-27 | `Fix` | 用户新建/编辑弹窗增加只读「所属公司」，优先接口 `companyName`，否则按所选部门在组织树解析公司节点。 | `resolveOrganizationCompanyName` 于 `organization-unit.ts`；表单 `ReadonlyText` + 部门变更联动。 |
 | 2026-06-20 | `Feature` | 用户新建/编辑弹窗邮箱设为必填，并校验邮箱格式与最大长度 `128`。 | `emailAddress` 使用 Zod（`.min(1)` + 邮箱正则 + `.max(128)`）；复合字符串 `required\|email` 不会显示必填星号。 |
 | 2026-06-19 | `Fix` | 性别下拉统一为男/女两项；个人中心移除「未知」；历史值 `0` 回显为空，避免显示数字。 | 个人中心与用户管理选项对齐；`user-form.vue` / `base-setting.vue` 加载时过滤非法 gender 值。 |

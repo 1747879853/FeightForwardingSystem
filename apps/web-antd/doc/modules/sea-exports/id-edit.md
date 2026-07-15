@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-07-14
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `modules/ai-extract-utils.ts`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`，行为不变。 -->
@@ -28,15 +28,17 @@ last_updated: 2026-07-12
 - **工作台 Tab 记忆：** 切换顶部标签时，按当前委托 ID 将 `activeTab` 写入 `sessionStorage`（键经 `buildBrandStorageKey` 品牌隔离）；再次进入同一票编辑页时自动恢复离开前的 Tab。切换不同委托 ID 时各自独立记忆；关闭浏览器标签后会话清空，下次默认回到「基础信息」。
 - **浏览器标签栏标题：** 由嵌入的 `form.vue` 通过 `useSeaExportTabTitle` 动态设置：有主提单号显示「海运出口-{主提单号}」，否则显示「海运出口-{委托编号}」；主提单号录入或详情回填后实时更新。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
-- **AI 识别辅助：** 与新建页共用 `form.vue` 顶栏「AI识别」：支持 PDF/图片上传，对接 TextIn `ExtractSeaExportToAddDtoAsync`；识别结果覆盖回填（空值/0/空 Guid 跳过），右侧 Drawer 预览原文件并支持 citations 字段定位高亮。
+- **AI 识别辅助：** 与新建页共用 `form.vue` 顶栏「AI识别」：支持 PDF/图片/Word/Excel/RTF（doc/docx/xls/xlsx/rtf）上传，对接 TextIn `ExtractSeaExportToAddDtoAsync`；识别结果覆盖回填（空值/0/空 Guid 跳过），右侧 Drawer 预览原文件并支持 citations 字段定位高亮。
 - **服务项目联动：** 嵌入的 `form.vue` 在变更委托单位或起运港时执行双语义查询：仅 `polId` 决定节点可见范围，`polId+clientId` 决定默认勾选。**新建页**与**编辑页**均走 POL 联动，但语义不同：
   - **编辑首屏**：拉 `GetServiceTypesByPOLAsync`（按 `polId`）仅作为**元数据**（`sortId`/`userAttribute`/`seServiceLocks`/`seServiceRequires`）；勾选与任务进度以详情 `seaExportServices` 为准；港口配置缺失的历史服务项照常保留（回填期间 `suppressServiceTypeLinkage` 抑制误触发）。
   - **编辑改起运港 / 改委托单位**：按新 `polId(+clientId)` 的 `checked` **重写勾选**（客户排除项默认不勾、可手动勾回），并**丢弃任务进度**，流水线回到「新建态」仅展示服务项、不显示待处理/已完成任务，直至保存成功后 `loadEditData` 恢复真实任务态。
 - **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，**完全按 `sortId` 分组**：同 `sortId` 节点在 Chevron 流中无缝咬合成一块：咬合位移下沉到 `item` 层（每个非组首节点重叠一个箭头宽），组内相邻节点稳定无缝、跨组仍保持箭头链流向，仅整条链全局首端左收圆、尾端右收圆；不同 `sortId` 组之间保留间距以区分分组。**视觉分组只看 `sortId`，不再区分待处理/已完成/还未到**（旧的「仅全『还未到』组才合并成单标签块」逻辑已移除）；组内每个服务仍各自渲染、单独完成/取消完成。组内服务为同一优先级，轮到该组时全部待处理节点同时显示「处理中」、展示处理人且均可操作，组内全部完成后才进入下一 `sortId` 组。**顶栏内联展示**：与 AI 识别等同处 `content-section__actions` 一行，左侧为「服务项目」标题、`...` 配置入口与紧凑流水线，右侧为操作按钮。节点增删在「配置服务」弹窗维护：按 `ServiceType` 枚举项 `extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序；**任意勾选变化**时编辑态点「确定」弹出二次确认后自动保存（弹窗内无常驻提示）。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
-- **干系人角色约束：** 面板始终固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；**编辑态订单未保存某默认角色时也会补一张空卡**（保存时无人员会被过滤，不写库），确保这五个岗位新建/编辑都不会缺卡；销售、操作不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，仅编辑态详情已有人员或手动「添加角色」后出现。新建态选择委托单位后按客户绑定干系人默认回填（`getClientDetail` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位不重写已保存干系人。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。
+- **干系人角色约束：** 面板始终固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；**编辑态订单未保存某默认角色时也会补一张空卡**（保存时无人员会被过滤，不写库），确保这五个岗位新建/编辑都不会缺卡；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，仅编辑态详情已有人员或手动「添加角色」后出现。新建态选择委托单位后按客户绑定干系人默认回填（`getClientDetail` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位不重写已保存干系人。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。
 - **场站联系方式展示与保存：** 编辑态在基础信息「场站」字段标签行最右侧展示 `yardContact`（场站联系人），与字段右边界对齐；悬浮联系人后展示 `yardEmail`（场站邮箱）、`yardMobile`（场站手机）、`yardTel`（场站电话）。值来自详情 `SeaExportDto`，经 `flattenDetail` 写入 `entrustReadonlyInfo`（UI 只读）；保存时由 `collectCurrentFormValues` 取出并经 `buildSeaExportDto` 写入 `EditAsync` 根字段，避免漏传被后端空覆盖。空值显示 `-`。右侧栏仅保留「干系人」卡片。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
+- **船期与付费联动：** 保存时校验截 VGM、截单、截舱单日期不得晚于开船日期或实际开船日期；详情回填或用户切换付费方式时，到付自动以目的港覆盖付费地点，预付自动以起运港覆盖付费地点。
+- **箱包装默认值：** 新增箱型箱量行时，从订单级总包装复制包装 ID 与显示文本，避免远程下拉只显示数字 ID；复制后箱行包装仍可单独修改。
 - **船公司选中回显：** 详情接口返回 `carrierLogo` 与 `carrierCnShortName` 后，编辑页在 `carrierId` 的 `selectedItems` 中拼接 `cnShortName`、`code`（若有）与 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + CODE(简称)”。
 - **锁定状态展示：** 左侧委托信息显示委托编号、会计期间、应结日期、所属公司，并以标签展示“业务已/未锁定”和“费用已/未锁定”。保存时会把只读锁定状态带回 `transportOrder`。
 - **费用数量提示：** 工作台进入后调用 `getOrderFeePagedList({ TransportOrderId })`，统计应收 `paySide === 0` 与应付 `paySide === 1` 数量，将费用标签显示为“应收应付 x - y”，并每 60 秒刷新一次。
@@ -44,7 +46,7 @@ last_updated: 2026-07-12
 - **更改单处理：** 更改单页基于运输单 ID 管理变更原因、会计期间和关联费用，接口使用 `/services/app/ChangeOrderAdmin`；更改单 DTO 带 `feeLocked` 和费用锁定人/时间信息。
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
 - **分单处理：** 分单页按 `seaExportId` 分页加载分单记录，支持新增、编辑、删除，维护分单相关方、提单号、货物、签单、运费/服务代码以及分单箱明细。
-- **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；每张卡片的文件列表固定显示 3 个文件项，超出后卡片内纵向滚动；卡片标题行右侧合并「客户可见」勾选与「上传」；文件列表支持点击预览、下载、删除；网格末尾虚线卡片可「添加其他类型」。每个文件项在文件名下方将「大小 · 上传人：{姓名} · 上传时间：{YYYY-MM-DD HH:mm:ss}」压缩到同一行（分别取 `creatorUserName` 与 `creationTime`，时间经 `@vben/utils` 的 `formatDateTime` 格式化，值为空则隐藏对应字段）。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`；**默认客户不可见**（`clientVisible` 默认 `false`），无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局 `AttachmentViewerModal`：PDF 内嵌 iframe、Office 走微软在线预览、图片直接展示，工具栏同步展示上传人和上传时间。
+- **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；每张卡片的文件列表固定显示 3 个文件项，超出后卡片内纵向滚动；卡片标题行右侧合并「客户可见」勾选与「上传」；文件列表支持点击预览、下载、删除，且每个文件项带一个「客户可见」`Switch`（如实回显 `item.clientVisible`）；网格末尾虚线卡片可「添加其他类型」。每个文件项在文件名下方将「大小 · 上传人：{姓名} · 上传时间：{YYYY-MM-DD HH:mm:ss}」压缩到同一行（分别取 `creatorUserName` 与 `creationTime`，时间经 `@vben/utils` 的 `formatDateTime` 格式化，值为空则隐藏对应字段）。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`。**客户可见性可回改**：单文件切换 `Switch` 或点击卡片标题行「客户可见」`Checkbox`（该类型批量），均调用 `Attachment/UpdateAttachmentItemsClientVisibleAsync`（PUT，入参 `[{ id, clientVisible }]`，`id` 为 `AttachmentItem.id`）；标题行 `Checkbox` 由该类型下各文件可见态计算全选/半选，勾选即批量提交全部文件，同时作为新上传的默认值（**新上传仍默认客户不可见**）。无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局 `AttachmentViewerModal`：PDF 内嵌 iframe、Office 走微软在线预览、图片直接展示，工具栏同步展示上传人和上传时间。
 - **打印：** 顶栏「打印」按钮调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0` 海运出口详情）；应收应付费用表打印用 `PrintJsonType=1000/1500`。打印弹窗（`components/print-format`）为「PDF 预览 + 多格式导出」：模板改用**标题行下拉**选择，**默认不选**、选中后才以 `format=0` 拉 PDF 用 `iframe` 预览（`#toolbar=0&navpanes=0` 隐藏工具栏与左侧分页），底部下拉可选导出格式（PDF/Excel/Word）；PDF 直接下载，Excel/Word 经 `window.open` 新窗口下载。后端 `PrintAsync` 新增 `format` 入参（`PrintExportFormat` 0/1/2，缺省 PDF），返回文件名经 `buildStaticFileUrl` 拼 `/PrintTempFile/{文件名}`（开发环境用 `VITE_GLOB_STATIC_URL` 直连后端，不落 localhost）。新增模式禁止打印；有未保存修改时二次确认后按当前表单内容打印，否则重新拉取 `DetailAsync` 原始对象序列化。
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
 - **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。
@@ -91,7 +93,8 @@ last_updated: 2026-07-12
 | **更改单** | 业务变更记录及其关联费用。 | `ChangeOrderAdminApi.ChangeOrderDto` / `/services/app/ChangeOrderAdmin` | **触发/依赖：** 更改单携带 `accountDate`、`reason`、`orderFees` 和锁费信息。 | 必须保持同一 `transportOrderId`。 |
 | **派车记录** | 出口拖车/派车执行信息。 | `dispatch/index.vue` / `dispatch-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；包含车队、堆场、工厂、地址和派车箱明细。 | 子记录需绑定当前海出 ID。 |
 | **分单记录** | 分票提单及其货物/箱明细。 | `modules/separate-bill.vue` / `sea-export-separate-admin` | **触发/依赖：** 以 `seaExportId` 查询和保存；维护分单相关方、提单、签单、货物、箱明细。 | 子记录需绑定当前海出 ID。 |
-| **附件分组** | 按附件详细类型（提单、托书等）以卡片网格展示的上传区域与文件列表。 | `GetListByModuleTypesAsync` + `GetAttachmentsAsync` / `SeaExportAdmin` | **触发/依赖：** `moduleType` 取枚举「海运出口」；空配置类型仍展示上传槽位；点击文件打开 `AttachmentViewerModal` 预览。 | 上传需 `Admin.SeaExport.Edit`；`clientVisible` 默认 `false`，仅在上传时设定。 |
+| **附件分组** | 按附件详细类型（提单、托书等）以卡片网格展示的上传区域与文件列表。 | `GetListByModuleTypesAsync` + `GetAttachmentsAsync` / `SeaExportAdmin` | **触发/依赖：** `moduleType` 取枚举「海运出口」；空配置类型仍展示上传槽位；点击文件打开 `AttachmentViewerModal` 预览。 | 上传需 `Admin.SeaExport.Edit`；新上传 `clientVisible` 默认 `false`。 |
+| **客户可见（clientVisible）** | 单个附件对客户端是否可见。 | `AttachmentItemDto.clientVisible` / `Attachment.UpdateAttachmentItemsClientVisibleAsync`（PUT） | **触发/依赖：** 文件项 `Switch` 单条切换；卡片标题行 `Checkbox` 按类型批量切换（全选/半选由各文件计算）；入参 `[{ id: AttachmentItem.id, clientVisible }]`。 | 需 `Admin.SeaExport.Edit`；`id<=0` 忽略，空集合不报错。 |
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
 | **港口备注（费用摘要）** | 收货地/起运港/中转港1/2/目的港/交货地备注。 | `SeaExportDto` 的 `receivePortRemark`、`polRemark`、`poT1Remark`、`poT2Remark`、`podRemark`、`deliverPortRemark` | **触发/依赖：** 应收应付与更改单顶部订单信息六段港口均展示备注字段，非 `*Name`。 | 备注为空显示 `--`。 |
 | **订舱代理** | 订舱服务执行方客户。 | `SeaExportDto.bookingAgentId` / `bookingAgentName`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与流水线节点解耦，始终展示；schema 自船期迁入基础信息（`BASIC_MODULE_EXTRA_FIELD_NAMES`）；编辑回显走 `basicInfoFormApi` 的 `selectedItems`。 | 可选；须为含订舱代理属性的客户。 |
@@ -121,6 +124,11 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-14 | `Fix` | 销售/操作显示必填标识；截关日期不得晚于开船/实际开船；预付/到付自动覆盖为起运港/目的港；新增箱行默认复制总包装 ID 与文本。 | 总包装与箱行包装使用同一包装基础资料，但分别保存于 `transportOrder.codePackageId` 与 `orderCtns[].codePackageId`；选择组件通过 `change(value, option)` 提供文本，避免新增行再请求详情。 |
+| 2026-07-14 | `Fix` | 修复文本字段（收货人/发货人/通知人内容、各备注）「输入后又删空」恢复原状，切标签/跳转仍被误拦的问题。 | 脏检查比对由裸 `JSON.stringify` 改为经 `normalizeForDirtyCheck`（`undefined`/`null`/`''` 等价、递归 + 键排序）的 `stableDtoJson`；`syncFormSnapshot`/`isFormDirty` 共用，提交侧 `buildDto` 不变。详见 `changelogs/change-log-2026-07-14-sea-export-dirty-check-empty-value-normalize.md`。 |
+| 2026-07-14 | `Feature` | 编辑工作台有未保存修改时，切标签页/点菜单跳转/关闭当前标签/浏览器后退弹二次确认，确认才离开；无论停留在哪个内部标签都以基础信息表单脏状态为准。对应 TAPD `#1161580498001000498`。 | 接入全局工具 `useUnsavedGuard`（详见 `modules/shared/unsaved-guard.md`）：`editor.vue` 以 `() => formRef.value?.isFormDirty?.()` 登记，`FormExpose` 补 `isFormDirty`；嵌入 `form.vue` 以 `enabled: () => !props.embedded` 关闭自身守卫，避免重复登记。编辑保存走 `loadEditData` 末尾 `syncFormSnapshot` 刷新基线，无跳转不会误拦。 |
+| 2026-07-14 | `Feature` | 附件 Tab 支持回改已上传附件的「客户可见」：文件项 `Switch` 单条切换、卡片标题行 `Checkbox` 按类型批量切换（全选/半选），加载时按 `item.clientVisible` 回显。 | 新增 `api/system/attachment.ts` 封装 `Attachment/UpdateAttachmentItemsClientVisibleAsync`（**PUT**，非需求文档写的 POST）；入参 `[{ id, clientVisible }]` 的 `id` 为 `AttachmentItemDto.id`（≠删除用的 `attachmentId`）；标题行 `Checkbox` 语义由「上传默认值」升级为「类型全部可见 + 上传默认值」，`groups` 深层响应式直接改 `item.clientVisible` 回显。 |
+| 2026-07-14 | `Feature` | AI 识别上传放开 Word/Excel/RTF（doc/docx/xls/xlsx/rtf），与原有 PDF/图片一并可选。 | 与新建页共用 `AI_EXTRACT_ACCEPT` / `isAiExtractSupportedFile`；识别仍走 TextIn，Office 效果依赖后端能力。 |
 | 2026-07-12 | `Feature/Fix` | 打印弹窗：模板改标题行下拉、默认不选（选后才渲染 PDF）、窗口加大（1200 宽 / 76vh 高）；修复本地开发 PDF 静态地址落到 localhost 无法加载。 | 移除左侧 `RadioGroup` 两栏布局，`Modal #title` 内嵌模板 `Select`；`loadTemplates` 不再自动选首个/预览；新增 `getStaticFileOrigin`/`buildStaticFileUrl` + `.env.development` 的 `VITE_GLOB_STATIC_URL`，`resolvePrintFileUrl` 改用之直连后端静态目录。 |
 | 2026-07-12 | `Style` | PDF 弹窗预览（附件 / 打印）隐藏浏览器自带工具栏与左侧缩略图分页，只显示正文。 | 统一 `buildPdfEmbedUrl` → `#toolbar=0&navpanes=0`；仅绑 iframe，下载/新窗口仍用原始 URL。 |
 | 2026-07-12 | `Fix` | 保存时带回场站联系人/邮箱/手机/电话，避免编辑保存后被空覆盖。 | 四字段仅存 `entrustReadonlyInfo`，须同时改 `collectCurrentFormValues` 与 `buildSeaExportDto`；Add/Edit DTO 类型对齐 OpenAPI。 |

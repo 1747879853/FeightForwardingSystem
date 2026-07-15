@@ -23,6 +23,8 @@ export const GENERATE_ENUM = {
   UserName: 2,
   yyyyMMdd: 3,
   yyMMdd: 4,
+  yyyyMM: 5,
+  yyMM: 6,
 } as const satisfies Record<string, GenerateEnum>;
 
 export type GenerateNumRulePreviewInput = {
@@ -73,6 +75,10 @@ export function buildGenerateNumRuleSegment(
       return dayjs().format('YYYYMMDD');
     case GENERATE_ENUM.yyMMdd:
       return dayjs().format('YYMMDD');
+    case GENERATE_ENUM.yyyyMM:
+      return dayjs().format('YYYYMM');
+    case GENERATE_ENUM.yyMM:
+      return dayjs().format('YYMM');
     default:
       return '';
   }

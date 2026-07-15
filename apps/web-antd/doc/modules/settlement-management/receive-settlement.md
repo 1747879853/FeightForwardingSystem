@@ -2,7 +2,7 @@
 title: 收费核销
 module: 费用管理
 author: Cursor Agent
-last_updated: 2026-07-11
+last_updated: 2026-07-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -14,6 +14,8 @@ last_updated: 2026-07-11
 - **收费核销列表：** 进入 `/settlement-management/receive-settlement` 后可按结算单号、结算时间、创建人和银行流水筛选收费核销单；查询区一行六列，结算时间范围占两列，银行流水通过下拉选择并直接传 `bankStatementId`；双击行进入编辑页，锁定单据进入只读查看页。
 - **银行流水 Tab：** 同一页面切换至「银行流水」Tab 时，展示与 `/bank-statement` 相同的列（含已结算金额、核销状态）及核销状态筛选；调用 `BankStatement/GetPagedListAsync`（按操作人权限过滤）；双击行快捷新建收费核销。
 - **新建收费核销：** 可从收费核销列表新建，若查询区已选银行流水则自动带入；也可从银行流水编辑页的“关联收费核销”卡片快捷新建并自动带入 `bankStatementId`。选中流水后在「结算信息」上方展示「银行流水信息」Card，含流水基础字段与结算进度汇总。
+- **新建入口（悬浮下拉选类型）：** 收费核销列表与「银行流水」Tab 的「新建」均为鼠标悬浮下拉，可选「费用结算 / 发票结算」；主按钮点击默认费用结算。银行流水 Tab 选中一条流水后按类型分别跳 `/add` 或 `/add-by-invoice` 并带 `bankStatementId`。
+- **新建发票结算（按开票申请，type=1）：** 列表工具栏「新建」下拉选「发票结算」进入 `/add-by-invoice`。点击「添加明细」在抽屉内按开票申请分组（一组 = 一张已开票申请）展开勾选费用明细，展示收付方向、本单开票额、发票可结算余额，录入本次结算金额；「仅显示可结算」开关对应 `onlySettleable`。结算净额按收付方向计算（应付计负）。编辑走 `/edit-by-invoice/:id`，追加/删除明细分别调用 `AddItemsByInvoiceApplicationAsync` / `DeleteInvoiceItemsAsync`。列表按 `type` 双击进入对应表单，并新增「结算类型」列。
 - **添加结算明细：** 在表单内点击“添加明细”，右侧抽屉按银行流水关联的结算对象（只读）、**币别（只读，与流水一致）**、委托编号、主提单号拉取可结算费用，按业务分组展开后勾选费用并录入本次结算金额。明细表格通过勾选行 + 工具栏「删除」批量删除，不再使用操作列。
 - **编辑收费核销：** 未锁定单据可修改结算时间和备注；新增明细即时调用 `AddItemsAsync`，删除明细即时调用 `DeleteItemsAsync`。
 - **锁定与解锁：** 编辑页顶部提供锁定/解锁按钮；锁定后隐藏保存、删除、添加明细等编辑入口。
@@ -45,10 +47,18 @@ last_updated: 2026-07-11
 
 > [!IMPORTANT] **[卡点 3：锁定不是不可查看]** 锁定单据仍可从列表或银行流水子表双击进入，只是页面进入只读模式。删除和编辑必须隐藏或拦截。
 
+> [!IMPORTANT] **[卡点 4：两种结算共用已结算池]** 按费用（type=0）与按开票申请（type=1）共用 `OrderFee.SettledAmount`，同一费用被其中一种结算占用后，另一种可用额度相应减少。发票口径可结算余额 = `max(0, 已开票 − 已结算)`；同一费用可能出现在多张已开票申请中，前端把同一 `orderFeeId` 视作共享池聚合校验，最终以后端悲观锁双口径校验为准。
+
+> [!IMPORTANT] **[卡点 5：净额与毛额]** 列表/详情 `totalSettledAmount` 为净额（收正付负、跨两张子表，不落库现算）；落库仍为各自毛额。前端「结算净额」列与「本单本次净额」需按 `paySide` 换算。
+
+> [!IMPORTANT] **[卡点 6：类型不可混]** type=0 与 type=1 各走各的追加/删除接口；列表双击必须依据 `row.type` 路由到 `/edit` 或 `/edit-by-invoice`，否则明细为空。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-14 | `Feature` | 收费核销列表与「银行流水」Tab 的「新建」合并为悬浮下拉，可选费用结算/发票结算；银行流水 Tab 按类型跳 `/add` 或 `/add-by-invoice`。 | `Dropdown` hover 触发 + `Menu`；`bank-statement-grid` 抽 `getSingleSelectedRow`，`navigateToCreateReceiveSettlement(row, type)` 分流路由。 |
+| 2026-07-14 | `Feature` | 新增「按开票申请结算（发票结算，type=1）」：列表「新建发票结算」入口、按开票申请分组选明细抽屉、`invoice-form.vue` 新建/编辑/只读、追加与删除开票明细、结算类型列。 | API 增加 `PaySide`/`ReceiveSettlementType` 枚举与 4 个按开票接口（`GetInvoiceApplicationGroupForSettlementAsync`/`AddByInvoiceApplicationAsync`/`AddItemsByInvoiceApplicationAsync`/`DeleteInvoiceItemsAsync`）；`DetailDto` 补 `receiveSettlementInvoiceItems`；净额按 `toNetAmount(paySide, amount)` 计算；新增 `add-by-invoice`/`edit-by-invoice/:id` 路由。 |
 | 2026-07-11 | `Refactor` | 「收费结算」更名为「收费核销」；侧边栏入口迁至「费用管理」分组，页面 URL 不变。列表 Tab、权限文案、表单标题与确认弹窗同步更名。 | 路由在 `fee-management.ts` 以绝对 path 挂载 `ReceiveSettlement*` 子路由；`activePath` 仍指向 `/settlement-management/receive-settlement`。 |
 | 2026-06-29 | `Fix` | 收费核销页「收费核销」「银行流水」两个 Tab 列表分别声明持久化 `tableId`，避免列/搜索项/排序配置互相覆盖。 | `ReceiveSettlementList` 与 `BankStatementList`；银行流水 Tab 与 `/bank-statement` 共用 `BankStatementList` 键。 |
 | 2026-06-29 | `Feature` | 收费结算页「银行流水」Tab 列表新增已结算金额、核销状态列及核销状态筛选，与 Admin 银行流水列表字段对齐。 | 复用 `views/bank-statement/data.ts` 列与表单配置；`bank-statement-grid.vue` 增加 `#writeOffStatus` 插槽。 |

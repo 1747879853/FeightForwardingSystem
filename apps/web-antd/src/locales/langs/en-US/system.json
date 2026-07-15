@@ -330,7 +330,9 @@
         "text": "Fixed Text",
         "userName": "User Name",
         "yyyyMMdd": "Date (yyyyMMdd)",
-        "yyMMdd": "Date (yyMMdd)"
+        "yyMMdd": "Date (yyMMdd)",
+        "yyyyMM": "Date (yyyyMM)",
+        "yyMM": "Date (yyMM)"
       },
       "applyScopeOptions": {
         "none": "No Restriction",
@@ -485,6 +487,7 @@
     "fileSizeLimit": "File size cannot exceed 10MB",
     "company": "Company",
     "department": "Department",
+    "organization": "Organization",
     "userAttribute": "User Attribute",
     "selectUserAttribute": "Please select user attribute",
     "userAttributeOptions": {

@@ -1917,6 +1917,12 @@
   white-space: nowrap;
 }
 
+.order-user-panel__role-required {
+  margin-right: 2px;
+  font-family: SimSun, sans-serif;
+  color: #ff4d4f;
+}
+
 .order-user-panel__select {
   width: 100%;
 }

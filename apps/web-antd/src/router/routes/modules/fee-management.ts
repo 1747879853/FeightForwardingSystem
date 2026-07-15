@@ -182,6 +182,32 @@ const routes: RouteRecordRaw[] = [
         component: () =>
           import('#/views/settlement-management/receive-settlement/form.vue'),
       },
+      {
+        path: '/settlement-management/receive-settlement/add-by-invoice',
+        name: 'ReceiveSettlementAddByInvoice',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '新建发票结算',
+          authority: abpPageAuthority('Admin.ReceiveSettlement.Add'),
+          hideInMenu: true,
+          activePath: '/settlement-management/receive-settlement',
+        },
+        component: () =>
+          import('#/views/settlement-management/receive-settlement/invoice-form.vue'),
+      },
+      {
+        path: '/settlement-management/receive-settlement/edit-by-invoice/:id',
+        name: 'ReceiveSettlementEditByInvoice',
+        meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '编辑发票结算',
+          authority: abpPageAuthority('Admin.ReceiveSettlement.Get'),
+          hideInMenu: true,
+          activePath: '/settlement-management/receive-settlement',
+        },
+        component: () =>
+          import('#/views/settlement-management/receive-settlement/invoice-form.vue'),
+      },
     ],
   },
 ];

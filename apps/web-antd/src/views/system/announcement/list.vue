@@ -14,10 +14,13 @@ import {
   getAnnouncementPagedList,
 } from '#/api/system/announcement-admin';
 import { $t } from '#/locales';
+import { createAbpPermission } from '#/utils/abp-permission';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
+
+const perm = createAbpPermission('Admin.Announcement');
 
 const actionLoading = ref(false);
 const isModalOpen = ref(false);
@@ -155,6 +158,7 @@ const handleBatchDelete = () => {
     <Grid :table-title="$t('system.announcement.list')">
       <template #toolbar-tools>
         <Button
+          v-access:code="perm.delete"
           class="mr-2"
           danger
           :loading="actionLoading"
@@ -162,7 +166,7 @@ const handleBatchDelete = () => {
         >
           {{ $t('system.announcement.batchDelete') }}
         </Button>
-        <Button type="primary" @click="handleCreate">
+        <Button v-access:code="perm.add" type="primary" @click="handleCreate">
           <Plus class="size-5" />
           {{ $t('ui.actionTitle.create', [$t('system.announcement.name')]) }}
         </Button>

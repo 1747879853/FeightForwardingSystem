@@ -334,11 +334,23 @@ const handleBatchImportConfirm = () => {
 
 // 打开审核历史弹窗
 const openAuditHistoryModal = (row: OrderFeeAdminApi.OrderFeeDto) => {
-  if (!row) return;
-  console.log('row', row);
+  if (!row) {
+    console.warn('⚠️ [openAuditHistoryModal] row 为空，无法打开弹窗');
+    return;
+  }
+
+  console.log('✅ [openAuditHistoryModal] 准备打开审核历史弹窗', {
+    feeId: row.id,
+    feeStatus: row.feeStatus,
+    modificationCount: row.ModificationCount,
+    hasData: !!auditHistoryModalRef.value,
+  });
+
   // 设置数据并打开模态框
   auditHistoryModalRef.value?.modalApi.setData(row);
   auditHistoryModalRef.value?.modalApi.open();
+
+  console.log('✅ [openAuditHistoryModal] 已调用 open() 方法');
 };
 
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
@@ -394,9 +406,22 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
   gridEvents: {
     // 双击单元格事件 - 当双击费用状态列时打开审核历史
     cellDblclick: ({ column, row }: any) => {
+      console.log('🔍 [cellDblclick] 双击事件触发', {
+        columnField: column?.field,
+        columnName: column?.title,
+        rowData: row,
+        hasModificationCount: row?.ModificationCount > 0,
+      });
+
       // 检查是否是费用状态列
-      if (column?.field === 'feeStatus') {
+      if (column?.field === 'combinedFeeStatus') {
+        console.log('✅ [cellDblclick] 检测到费用状态列，准备打开审核历史弹窗');
         openAuditHistoryModal(row);
+      } else {
+        console.log(
+          '❌ [cellDblclick] 非费用状态列，不执行操作',
+          column?.field,
+        );
       }
     },
 
