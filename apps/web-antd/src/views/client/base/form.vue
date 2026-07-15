@@ -596,6 +596,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     id: addr.id,
     name: addr.name || '',
     isDefault: addr.isDefault,
+    addressType: addr.addressType,
     address: addr.address || '',
     contactPerson: addr.contactPerson || '',
     mobile: addr.mobile || '',
@@ -810,6 +811,7 @@ const handleSubmit = async () => {
       const addressData: any = {
         name: item.name || '',
         isDefault: item.isDefault ?? false,
+        addressType: item.addressType,
         address: item.address,
         contactPerson: item.contactPerson,
         mobile: item.mobile,
@@ -1392,6 +1394,17 @@ onMounted(() => {
                       (o) => o.value === item.isDefault,
                     )?.label
                   }}</tag>
+                  <tag 
+                    v-if="item.addressType !== undefined && item.addressType !== null"
+                    color="green"
+                    class="ml-2"
+                  >
+                    {{
+                      ClientConstants.getAddressTypeOptions().find(
+                        (o) => o.value === item.addressType,
+                      )?.label
+                    }}
+                  </tag>
                 </div>
                 <div>
                   <Button type="text" @click="editAddress(item)" size="small">
@@ -1587,3 +1600,9 @@ onMounted(() => {
   background: linear-gradient(to right, #1677ff18, #fff);
 }
 </style>
+
+
+
+
+
+

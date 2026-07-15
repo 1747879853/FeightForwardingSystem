@@ -697,6 +697,13 @@
       "mobile": "联系电话",
       "remark": "备注",
       "isDefault": "是否默认",
+      "addressType": "地址类型",
+      "addressTypeOptions": {
+        "office": "办公地址",
+        "shipping": "发货地址",
+        "receiving": "收货地址",
+        "other": "其他地址"
+      },
       "isDefaultOptions": {
         "yes": "默认",
         "no": "非默认"

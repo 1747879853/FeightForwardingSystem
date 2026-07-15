@@ -345,6 +345,26 @@ const getDefaultOptions = () => [
   },
 ];
 
+/** 地址类型枚举选项 */
+export const getAddressTypeOptions = () => [
+  {
+    value: 0,
+    label: $t('seaExport.client.addressOptions.addressTypeOptions.office'),
+  },
+  {
+    value: 1,
+    label: $t('seaExport.client.addressOptions.addressTypeOptions.shipping'),
+  },
+  {
+    value: 2,
+    label: $t('seaExport.client.addressOptions.addressTypeOptions.receiving'),
+  },
+  {
+    value: 3,
+    label: $t('seaExport.client.addressOptions.addressTypeOptions.other'),
+  },
+];
+
 const getCustomerCoopStatusOptions = () => [
   {
     value: 0,
@@ -724,6 +744,14 @@ export function useAddressFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.client.addressOptions.name'),
       rules: 'required',
       componentProps: { allowClear: true },
+    },
+    {
+      component: 'RadioGroup',
+      fieldName: 'addressType',
+      label: $t('seaExport.client.addressOptions.addressType'),
+      componentProps: {
+        options: getAddressTypeOptions(),
+      },
     },
     {
       component: 'Input',

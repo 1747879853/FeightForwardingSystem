@@ -90,6 +90,8 @@ export namespace ClientAdminApi {
     name: string;
     /** 是否默认 */
     isDefault?: boolean;
+    /** 地址类型 0-办公地址 1-发货地址 2-收货地址 3-其他地址 */
+    addressType?: number;
     /** 地址 */
     address?: string;
     /** 联系人 */
@@ -225,6 +227,8 @@ export namespace ClientAdminApi {
     clientId?: string;
     /** 名字 例如 **分公司 */
     name?: string;
+    /** 地址类型 0-办公地址 1-发货地址 2-收货地址 3-其他地址 */
+    addressType?: number;
     /** 是否默认 */
     isDefault?: boolean;
     /** 地址 */
@@ -407,6 +411,8 @@ export namespace ClientAdminApi {
     isDefault: boolean;
     /** 地址 */
     address?: string;
+    /** 地址类型 0-办公地址 1-发货地址 2-收货地址 3-其他地址 */
+    addressType?: number;
     /** 联系人 */
     contactPerson?: string;
     /** 手机 */
