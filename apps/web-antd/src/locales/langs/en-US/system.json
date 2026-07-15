@@ -610,8 +610,7 @@
     "searchOrgKeywordRequired": "Please enter organization name",
     "searchOrgNotFound": "No matching organization found",
     "selectUsersFirst": "Please select users to add",
-    "cannotAddUserWithOrganization":
-      "Selected users already belong to an organization and cannot be added again",
+    "cannotAddUserWithOrganization": "Selected users already belong to an organization and cannot be added again",
     "searchUser": "Search user",
     "selectedUsers": "Selected users",
     "addSuccess": "Added successfully",
@@ -635,6 +634,8 @@
     "orgInfo": "Organization Info",
     "orgCode": "Organization Code",
     "memberCount": "Member Count",
+    "currentMemberCountShort": "Current",
+    "totalMemberCountShort": "Incl. Sub-orgs",
     "confirmDeleteOrg": "Are you sure to delete organization \"{name}\"?",
     "bankAccountList": "Bank Accounts",
     "addBankAccount": "Add Bank Account",

@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-15 部门管理组织人数展示优化](./changelogs/change-log-2026-07-15-dept-member-count-display.md)
 - [2026-07-15 海运出口列表补充删除按钮](./changelogs/change-log-2026-07-15-sea-export-list-delete-button.md)
 - [2026-07-14 发票结算入口整合与银行流水页支持发票结算](./changelogs/change-log-2026-07-14-receive-settlement-invoice-entries-and-bank-statement.md)
 - [2026-07-14 海运出口表单校验、付费地点与箱包装联动优化](./changelogs/change-log-2026-07-14-sea-export-form-optimizations.md)

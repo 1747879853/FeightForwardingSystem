@@ -495,7 +495,13 @@ loadTree();
                   v-if="node.memberCount != null"
                   class="ml-1 text-xs text-gray-400"
                 >
-                  ({{ node.memberCount }})
+                  <template v-if="node.isCompany">
+                    ({{ $t('system.dept.currentMemberCountShort') }}
+                    {{ node.memberCount }} /
+                    {{ $t('system.dept.totalMemberCountShort') }}
+                    {{ node.memberCountTotal ?? 0 }})
+                  </template>
+                  <template v-else> ({{ node.memberCount }}) </template>
                 </span>
               </span>
               <template #overlay>
@@ -580,9 +586,6 @@ loadTree();
               >
                 <DescriptionsItem :label="$t('system.dept.deptName')">
                   {{ selectedOrgDetail.displayName }}
-                </DescriptionsItem>
-                <DescriptionsItem :label="$t('system.dept.orgCode')">
-                  {{ selectedOrgDetail.code }}
                 </DescriptionsItem>
                 <DescriptionsItem :label="$t('system.dept.orgType')">
                   <Tag :color="selectedOrgDetail.isCompany ? 'blue' : 'green'">

@@ -49,7 +49,7 @@
 | system | `/system/user` | 系统管理 | 维护系统用户、组织、角色、数据权限和登录相关基础信息；列表展示所属组织完整路径。 | [用户管理](./modules/system/user.md) | 2026-07-14 |
 | system | `/system/role` | 系统管理 | 维护角色及角色权限，是权限分配的核心入口。 | [角色管理](./modules/system/role.md) | 2026-05-30 |
 | system | `/system/permission` | 系统管理 | 维护用户数据权限和权限范围，当前路由暂用用户权限范围字段作为入口权限。 | [权限管理](./modules/system/permission.md) | 2026-07-06 |
-| system | `/system/dept` | 系统管理 | 维护组织/部门树，为用户归属、数据权限和业务组织范围提供基础。 | [部门管理](./modules/system/dept.md) | 2026-05-16 |
+| system | `/system/dept` | 系统管理 | 维护组织/部门树，为用户归属、数据权限和业务组织范围提供基础。 | [部门管理](./modules/system/dept.md) | 2026-07-15 |
 | system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-05-16 |
 | system | `/system/workflow/create` | 系统管理 | 创建审批工作流，配置任务类型、条件和审批节点。 | [工作流新建](./modules/system/workflow-create.md) | 2026-05-16 |
 | system | `/system/workflow/edit/:id` | 系统管理 | 编辑已有审批工作流，维护节点、条件和适用任务类型。 | [工作流编辑](./modules/system/workflow-edit-id.md) | 2026-05-16 |

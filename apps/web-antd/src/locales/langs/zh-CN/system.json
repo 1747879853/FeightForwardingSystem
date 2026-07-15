@@ -635,6 +635,8 @@
     "orgInfo": "组织信息",
     "orgCode": "组织编码",
     "memberCount": "成员数",
+    "currentMemberCountShort": "本级",
+    "totalMemberCountShort": "含下级",
     "confirmDeleteOrg": "确定要删除组织「{name}」吗？",
     "bankAccountList": "银行账户",
     "addBankAccount": "新增银行账户",
