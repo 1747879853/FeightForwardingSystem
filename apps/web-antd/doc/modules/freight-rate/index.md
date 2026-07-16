@@ -2,12 +2,12 @@
 title: 运价查询
 module: 航线管理
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-07-16
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 维护海运运价信息，为委托费用测算和报价提供基础数据入口。侧边栏位于「航线管理」分组下，子菜单名称为「运价查询」，页面路由仍为 `/freight-rate`。
+**白话解释：** 维护海运运价信息，为委托费用测算和报价提供基础数据入口。侧边栏位于「航线管理」分组下（与「船期查询」并列），子菜单名称为「运价查询」，页面路由仍为 `/freight-rate`。
 
 **路由与源码定位：**
 
@@ -16,7 +16,7 @@ last_updated: 2026-07-12
 | 页面路由 | `/freight-rate` |
 | 路由名称 | `FreightRateList` |
 | 页面组件 | `src/views/sea-export-admin/freight-rate/list.vue` |
-| 权限口径 | 未在路由中声明独立权限 |
+| 权限口径 | `Admin.SeFreiPrice` / `Admin.SeFreiPrice.Get`（父级另聚合 `Admin.Schedule`） |
 | 关键源码 | `src/router/routes/modules/freight-rate.ts`<br/>`src/views/sea-export-admin/freight-rate/list.vue`<br/>`src/views/sea-export-admin/freight-rate/data.ts`<br/>`src/api/sea-export/freight-rate-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
@@ -50,6 +50,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-16 | `Refactor` | 「航线管理」下并列「运价查询」「船期查询」；删除独立「船期管理」顶级菜单。 | 父级 `authority` 聚合 `Admin.SeFreiPrice`+`Admin.Schedule`；船期子路由绝对 path `/schedule`。 |
 | 2026-07-12 | `Fix` | 修复点击「搜索项设置」后弹层被工具栏裁剪、看似无响应的问题。 | 工具栏允许溢出显示，航线 Tab 仍由自身容器负责横向裁剪与滚动。 |
 | 2026-07-11 | `Refactor` | 侧边栏由独立「运价管理」改为「航线管理」分组下的「运价查询」子菜单；页面 path 与组件不变。 | `freight-rate.ts` 父级 `title` 为「航线管理」，`order: 190`；子路由 `FreightRateList` title 为「运价查询」。 |
 | 2026-06-12 | `Feature` | 列表航线 Tab 靠左展示，超出时可左右滚动切换，且不再挤占右侧批量操作按钮。 | Tab 区与按钮区分 slot 布局；滚动动画期间只改 DOM，结束后再更新 Vue 滚动状态。 |

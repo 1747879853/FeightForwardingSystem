@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-16 船期查询并入航线管理菜单](./changelogs/change-log-2026-07-16-lane-management-menu-schedule.md)
 - [2026-07-16 用户管理操作列外露修改/权限/角色，其余收入更多](./changelogs/change-log-2026-07-16-user-list-operation-column-width.md)
 - [2026-07-15 部门管理组织人数展示优化](./changelogs/change-log-2026-07-15-dept-member-count-display.md)
 - [2026-07-15 海运出口列表补充删除按钮](./changelogs/change-log-2026-07-15-sea-export-list-delete-button.md)

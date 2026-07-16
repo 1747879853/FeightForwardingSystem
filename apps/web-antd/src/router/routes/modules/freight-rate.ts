@@ -8,7 +8,7 @@ const routes: RouteRecordRaw[] = [
       icon: 'emojione:ship',
       order: 190,
       title: '航线管理',
-      authority: abpPageAuthority('Admin.SeFreiPrice'),
+      authority: abpPageAuthority(['Admin.SeFreiPrice', 'Admin.Schedule']),
     },
     name: 'FreightRate',
     path: '/freight-rate',
@@ -24,6 +24,17 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/sea-export-admin/freight-rate/list.vue'),
+      },
+      {
+        path: '/schedule',
+        name: 'ScheduleQueryList',
+        meta: {
+          icon: 'mdi:ferry',
+          keepAlive: true,
+          title: '船期查询',
+          authority: abpPageAuthority('Admin.Schedule'),
+        },
+        component: () => import('#/views/schedule-query/list.vue'),
       },
     ],
   },
