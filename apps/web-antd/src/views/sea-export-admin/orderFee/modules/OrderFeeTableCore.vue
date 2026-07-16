@@ -568,16 +568,16 @@ defineExpose({
 
 <style scoped lang="scss">
 .handsontable-wrapper {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
+  flex: 1; // ✅ 使用 flex 布局自动填充剩余空间
+  min-height: 0; // ✅ 防止 flex 子项溢出
+  overflow: hidden; // ✅ 修复:改为 hidden,由 Handsontable 内部处理滚动
 
   :deep(.htCore) {
     width: 100% !important;
   }
 
   :deep(.ht_master) {
-    max-height: calc(700px - 60px);
+    // ✅ 修复:移除固定的 max-height,让表格高度由父容器控制
     overflow: auto !important;
   }
 

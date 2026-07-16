@@ -19,6 +19,7 @@ import {
 } from 'ant-design-vue';
 
 import { IconifyIcon } from '@vben/icons';
+import Handsontable from 'handsontable'; // ✅ 新增:导入 Handsontable
 
 import { $t } from '#/locales';
 
@@ -599,6 +600,51 @@ const hotColumns = computed(() => {
     return [];
   }
 
+  // ✅ 新增:在第一列添加复选框列
+  const checkboxColumn: any = {
+    data: '_isSelected', // 使用虚拟字段存储选中状态
+    title: '', // 表头由 afterGetColHeader 处理
+    width: 50,
+    type: 'text', // ✅ 修复：改为 text 类型，避免 Handsontable 默认 checkbox 行为
+    className: 'htCenter htMiddle', // 居中对齐
+    readOnly: true, // ✅ 设置为只读，防止 Handsontable 编辑
+    // ✅ 自定义渲染器:在数据行显示复选框
+    renderer: function (
+      this: any,
+      instance: any,
+      td: HTMLTableCellElement,
+      row: number,
+      col: number,
+      prop: string,
+      value: any,
+      cellProperties: any,
+    ) {
+      // 根据 selectedRowKeys 判断当前行是否应该被选中
+      const rowData = dataSource.value[row];
+      const rowKey = (rowData as any)?._rowKey;
+      const isSelected = rowKey && selectedRowKeys.value.includes(rowKey);
+      
+      console.log('🔵 [checkbox renderer] 行:', row, 'rowKey:', rowKey, 'isSelected:', isSelected);
+      
+      // ✅ 手动创建复选框 DOM
+      td.innerHTML = '';
+      td.style.textAlign = 'center';
+      td.style.verticalAlign = 'middle';
+      
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = !!isSelected;
+      checkbox.style.width = '16px';
+      checkbox.style.height = '16px';
+      checkbox.style.cursor = 'pointer';
+      checkbox.style.pointerEvents = 'none'; // ✅ 阻止复选框自身响应点击，由单元格事件处理
+      
+      td.appendChild(checkbox);
+      
+      return td;
+    },
+  };
+
   // 定义可排序的字段列表（参考 order-fee-table.vue）
   const sortableFields = new Set([
     'invoiceStatus',
@@ -627,7 +673,11 @@ const hotColumns = computed(() => {
     'creationTime',
   ]);
 
-  return vxeColumns.map((col) => {
+  // ✅ 将复选框列添加到最前面
+  const columns = [checkboxColumn];
+
+  // 映射原有列
+  const mappedColumns = vxeColumns.map((col) => {
     const hotCol: any = {
       data: col.field,
       title: col.title,
@@ -804,6 +854,8 @@ const hotColumns = computed(() => {
 
     return hotCol;
   });
+
+  return columns.concat(mappedColumns);
 });
 
 // ==================== Handsontable 设置 ====================
@@ -811,9 +863,9 @@ const hotColumns = computed(() => {
 const hotSettings = computed(() => ({
   data: dataSource.value,
   columns: hotColumns.value,
-  rowHeaders: true, // 隐藏行头（A列）
+  rowHeaders: false, // ✅ 隐藏默认行头,使用自定义复选框列
   colHeaders: true,
-  height: 'auto',
+  height: '100%', // ✅ 修复:使用百分比高度而不是 auto,避免滚动时高度变化
   maxHeight: 700,
   licenseKey: 'non-commercial-and-evaluation',
   contextMenu: true,
@@ -822,14 +874,73 @@ const hotSettings = computed(() => ({
   stretchH: 'all',
   autoWrapRow: true,
   autoWrapCol: true,
+  // ✅ 添加 afterGetColHeader 事件来处理全选复选框
+  afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
+    console.log('🔵 [afterGetColHeader] col:', col, 'TH:', TH);
+    
+    // 只在第一列（复选框列）的表头添加全选功能
+    if (col === 0) {
+      // 先清空表头内容
+      TH.innerHTML = '';
+      
+      // 创建复选框容器
+      const container = document.createElement('div');
+      container.style.display = 'flex';
+      container.style.alignItems = 'center';
+      container.style.justifyContent = 'center';
+      container.style.height = '100%';
+      
+      // 创建全选复选框
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'select-all-checkbox';
+      checkbox.style.width = '16px';
+      checkbox.style.height = '16px';
+      checkbox.style.cursor = 'pointer';
+      
+      // 设置初始状态
+      const allSelected = selectedRowKeys.value.length > 0 && 
+                         selectedRowKeys.value.length === dataSource.value.length;
+      checkbox.checked = allSelected;
+      
+      container.appendChild(checkbox);
+      TH.appendChild(container);
+      
+      console.log('✅ [afterGetColHeader] 已添加全选复选框');
+      
+      // 添加点击事件
+      checkbox.onclick = (e) => {
+        e.stopPropagation();
+        const isChecked = checkbox.checked;
+        
+        if (isChecked) {
+          // 全选
+          selectedRowKeys.value = dataSource.value.map((row: any) => row._rowKey);
+        } else {
+          // 取消全选
+          selectedRowKeys.value = [];
+        }
+        
+        console.log('✅ [全选] 当前选中:', selectedRowKeys.value.length, '行');
+        
+        // 刷新表格以更新所有行的复选框状态
+        nextTick(() => {
+          if (coreTableRef.value?.hotTableRef?.hotInstance) {
+            coreTableRef.value.hotTableRef.hotInstance.render();
+          }
+        });
+      };
+    }
+  },
   afterSelection: (
     row: number,
     column: number,
     row2: number,
     column2: number,
   ) => {
-    const selectedRows = dataSource.value.slice(row, row2 + 1);
-    selectedRowKeys.value = selectedRows.map((r) => (r as any)._rowKey);
+    // ✅ 修复：移除 afterSelection 中的选中逻辑，避免与复选框冲突
+    // 不再在这里更新 selectedRowKeys，只通过复选框来控制选中状态
+    console.log('ℹ️ [afterSelection] 跳过选中逻辑，仅由复选框控制');
   },
   afterChange: (changes: any, source: string) => {
     // 调用联动逻辑处理
@@ -855,6 +966,48 @@ const hotSettings = computed(() => ({
     const rowIndex = coords.row;
 
     console.log('🔵 [afterOnCellMouseDown] 点击事件', { rowIndex, columnIndex });
+
+    // ✅ 处理复选框列的点击（第一列）
+    if (columnIndex === 0 && rowIndex >= 0) {
+      console.log('✅ [afterOnCellMouseDown] 点击复选框列');
+      
+      // ✅ 阻止事件冒泡和默认行为，防止 Handsontable 的默认选中逻辑
+      event.stopPropagation();
+      event.preventDefault();
+      
+      const rowData = dataSource.value[rowIndex];
+      const rowKey = (rowData as any)?._rowKey;
+      
+      if (!rowKey) {
+        console.warn('⚠️ [afterOnCellMouseDown] 行数据缺少 _rowKey');
+        return;
+      }
+      
+      // ✅ 根据当前选中状态切换
+      const isCurrentlySelected = selectedRowKeys.value.includes(rowKey);
+      
+      if (isCurrentlySelected) {
+        // 从选中列表移除
+        const index = selectedRowKeys.value.indexOf(rowKey);
+        if (index > -1) {
+          selectedRowKeys.value.splice(index, 1);
+        }
+        console.log('✅ [复选框] 取消选中，当前选中:', selectedRowKeys.value.length, '行');
+      } else {
+        // 添加到选中列表
+        selectedRowKeys.value.push(rowKey);
+        console.log('✅ [复选框] 选中，当前选中:', selectedRowKeys.value.length, '行');
+      }
+      
+      // ✅ 刷新表格以更新复选框状态
+      nextTick(() => {
+        if (coreTableRef.value?.hotTableRef?.hotInstance) {
+          coreTableRef.value.hotTableRef.hotInstance.render();
+        }
+      });
+      
+      return;
+    }
 
     // 处理表头点击（排序）
     if (rowIndex === -1 && columnIndex >= 0) {
@@ -1188,6 +1341,22 @@ watch(
   { deep: true },
 );
 
+// ✅ 新增：监听 selectedRowKeys 变化，刷新表格以更新复选框状态
+watch(
+  () => selectedRowKeys.value,
+  () => {
+    console.log('🔵 [watch selectedRowKeys] 选中状态变化:', selectedRowKeys.value.length, '行');
+    
+    nextTick(() => {
+      if (coreTableRef.value?.hotTableRef?.hotInstance) {
+        // 重新渲染表格以更新复选框状态
+        coreTableRef.value.hotTableRef.hotInstance.render();
+      }
+    });
+  },
+  { deep: true },
+);
+
 defineExpose({
   getTableDate,
 });
@@ -1327,7 +1496,8 @@ defineExpose({
   .handsontable-container {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: 100%; // ✅ 确保容器占满父元素高度
+    min-height: 400px; // ✅ 添加最小高度,防止内容过少时表格塌陷
     overflow: hidden;
     border: 1px solid #e8e8e8;
     border-radius: 4px;
@@ -1340,6 +1510,7 @@ defineExpose({
     padding: 12px 16px;
     background: #fafafa;
     border-bottom: 1px solid #e8e8e8;
+    flex-shrink: 0; // ✅ 防止表头被压缩
 
     .table-title {
       font-size: 14px;
@@ -1350,6 +1521,39 @@ defineExpose({
     .toolbar-actions {
       display: flex;
       gap: 8px;
+    }
+  }
+}
+
+// ✅ 新增:复选框列样式
+:deep(.handsontable) {
+  // 复选框列居中对齐
+  td.htCenter {
+    text-align: center !important;
+    vertical-align: middle !important;
+  }
+  
+  // 表头复选框样式
+  th .select-all-checkbox {
+    cursor: pointer;
+    
+    &:hover {
+      accent-color: #1890ff;
+    }
+  }
+  
+  // 数据行复选框样式
+  td input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    
+    &:hover {
+      accent-color: #1890ff;
+    }
+    
+    &:checked {
+      accent-color: #1890ff;
     }
   }
 }
