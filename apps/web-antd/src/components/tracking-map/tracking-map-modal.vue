@@ -15,11 +15,17 @@ import {
   Tooltip,
 } from 'ant-design-vue';
 
+import { brandLogo, brandLogoText } from '#/utils/brand-assets';
+
 import { buildTrackingMapSrc } from './build-tracking-map-src';
 import { useTrackingMap } from './use-tracking-map';
 
 const { visible, referenceNo, close } = useTrackingMap();
 const router = useRouter();
+
+// 弹窗头部品牌 logo（横版优先，缺省回退方形），随打包品牌 VITE_APP_BRAND 自动切换
+const headerLogo = brandLogoText || brandLogo;
+const companyName = (import.meta.env.VITE_APP_TITLE as string) || '';
 
 /** 内嵌页语言，切换后 iframe 与分享链接同步；默认中文 */
 const lang = ref<TrackingMapLang>('zh');
@@ -91,9 +97,18 @@ function openInNewTab() {
   >
     <div class="tracking-map">
       <div v-if="iframeSrc" class="tracking-map__toolbar">
-        <span class="tracking-map__ref">
-          订阅号：<strong>{{ referenceNo }}</strong>
-        </span>
+        <div class="tracking-map__brand">
+          <img
+            v-if="headerLogo"
+            :src="headerLogo"
+            :alt="companyName || 'logo'"
+            class="tracking-map__logo"
+          />
+          <span v-else class="tracking-map__company">{{ companyName }}</span>
+          <span class="tracking-map__ref">
+            订阅号：<strong>{{ referenceNo }}</strong>
+          </span>
+        </div>
         <div class="tracking-map__actions">
           <Tooltip title="切换轨迹地图语言，分享链接同步生成对应语言">
             <Segmented
@@ -162,9 +177,30 @@ function openInNewTab() {
   border-bottom: 1px solid rgb(60 60 67 / 10%);
 }
 
+.tracking-map__brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.tracking-map__logo {
+  max-width: 160px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.tracking-map__company {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgb(0 0 0 / 88%);
+}
+
 .tracking-map__ref {
+  padding-left: 12px;
   font-size: 13px;
   color: rgb(60 60 67 / 60%);
+  border-left: 1px solid rgb(60 60 67 / 12%);
 }
 
 .tracking-map__actions {

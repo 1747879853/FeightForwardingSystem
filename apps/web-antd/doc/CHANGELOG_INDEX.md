@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-16 货物轨迹弹窗工具栏展示品牌 Logo](./changelogs/change-log-2026-07-16-tracking-map-modal-brand-logo.md)
 - [2026-07-16 船期查询并入航线管理菜单](./changelogs/change-log-2026-07-16-lane-management-menu-schedule.md)
 - [2026-07-16 用户管理操作列外露修改/权限/角色，其余收入更多](./changelogs/change-log-2026-07-16-user-list-operation-column-width.md)
 - [2026-07-15 部门管理组织人数展示优化](./changelogs/change-log-2026-07-15-dept-member-count-display.md)
