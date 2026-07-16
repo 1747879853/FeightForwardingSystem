@@ -37,6 +37,8 @@ import {
   getFeeStatusOptions,
   getDataEntryMethodOptions,
 } from '../data';
+import { changeIsUnfinishedAsync, getIsFinishedAsync } from '#/api/sea-export/fee-lock-admin';
+import weiwanjie from '#/assets/img/base/weiwanjie.png';
 
 // 导入拆分后的组件和 composables
 import OrderFeeTableCore from './OrderFeeTableCore.vue';
@@ -97,6 +99,56 @@ const linkage = useOrderFeeLinkage(props, {
   editId,
   orderBaseData,
 });
+
+// ==================== 完结状态管理 ====================
+
+// 完结状态管理
+const isFinished = ref<boolean>(true); // true表示已完结，false表示未完结
+const loadingFinishStatus = ref(false);
+
+/**
+ * 获取完结状态
+ */
+const loadFinishStatus = async () => {
+  if (!editId.value) return;
+  
+  loadingFinishStatus.value = true;
+  try {
+    const finished = await getIsFinishedAsync(editId.value);
+    isFinished.value = finished;
+    console.log('📊 [完结状态] 当前状态:', finished ? '已完结' : '未完结');
+  } catch (error) {
+    console.error('❌ [完结状态] 获取失败:', error);
+  } finally {
+    loadingFinishStatus.value = false;
+  }
+};
+
+/**
+ * 切换完结/未完结状态
+ */
+const toggleFinishStatus = async () => {
+  if (!editId.value) {
+    message.warning('请先保存业务信息');
+    return;
+  }
+
+  try {
+    const result = await changeIsUnfinishedAsync(editId.value);
+    
+    // 切换成功后更新本地状态
+    isFinished.value = !isFinished.value;
+    
+    message.success({
+      content: isFinished.value ? '已设置为已完结' : '已设置为未完结',
+      key: 'action_process_msg',
+    });
+    
+    console.log('✅ [完结状态] 切换成功，当前状态:', isFinished.value ? '已完结' : '未完结');
+  } catch (error) {
+    console.error('❌ [完结状态] 切换失败:', error);
+  }
+};
 
 // ==================== 打印功能 ====================
 
@@ -1266,6 +1318,9 @@ onMounted(async () => {
   await initDropdownSources();
   getTableDate();
   getFeeCodeList();
+  
+  // 加载完结状态
+  loadFinishStatus();
 });
 
 // 监听 orderCtnList 变化，更新单位列表
@@ -1401,6 +1456,18 @@ watch(
   { deep: true },
 );
 
+// 监听 editId 变化，重新加载完结状态
+watch(
+  () => editId.value,
+  async (newEditId, oldEditId) => {
+    // 只在 editId 真正变化时才重新加载（排除初始化）
+    if (newEditId && newEditId !== oldEditId) {
+      // 重新加载完结状态
+      loadFinishStatus();
+    }
+  },
+);
+
 defineExpose({
   getTableDate,
 });
@@ -1408,6 +1475,15 @@ defineExpose({
 
 <template>
   <Card class="order-fee-card">
+    <!-- 右上角完结状态图片 -->
+    <div 
+      v-if="!isFinished" 
+      class="finish-status-badge"
+      title="业务未完结"
+    >
+      <img  v-show='type === 0' :src="weiwanjie" alt="未完结" class="w-46 h-46" />
+    </div>
+    
     <div class="px-1">
       <div>
         <div class="order-ctn-table">
@@ -1485,6 +1561,15 @@ defineExpose({
                   @click="actions.orderFeeWithdraw"
                   >{{ $t('auditApproval.withdraw') }}</Button
                 >
+                
+                <Button
+                  v-show='type === 0'
+                  type="default"
+                  :loading="loadingFinishStatus"
+                  @click="toggleFinishStatus"
+                >
+                  {{ isFinished ? '设为未完结' : '设为已完结' }}
+                </Button>
               </Space>
             </div>
 
@@ -1527,6 +1612,8 @@ defineExpose({
 
 <style scoped lang="scss">
 .order-fee-card {
+  position: relative; // 为绝对定位的子元素提供定位上下文
+  
   :deep(.ant-card-body) {
     padding: 0 20px 12px !important;
   }
@@ -1534,7 +1621,7 @@ defineExpose({
   .order-ctn-table {
     display: flex;
     flex-direction: column;
-    height: 650px; // ✅ 调整:增加高度以容纳表头和工具栏
+    height: 575px; // ✅ 调整:增加高度以容纳表头和工具栏
   }
 
   .handsontable-container {
@@ -1566,6 +1653,21 @@ defineExpose({
       display: flex;
       gap: 8px;
     }
+  }
+}
+
+// 完结状态徽章（右上角绝对定位）
+.finish-status-badge {
+  position: absolute;
+  top: 20px;
+  right: 0px;
+  z-index: 999;
+  
+  img {
+    display: block;
+    width: 104px;
+    height: 104px;
+    object-fit: contain;
   }
 }
 
