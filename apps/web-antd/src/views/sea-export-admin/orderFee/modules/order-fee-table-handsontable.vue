@@ -865,9 +865,9 @@ const hotColumns = computed(() => {
         return td;
       };
     } else if (col.field === 'combinedFeeStatus' || col.field === 'feeStatus') {
-      // 费用状态 - 显示中文标签（只读）
+      // 费用状态 - 显示中文标签(只读),支持修改次数显示和双击事件
       hotCol.type = 'text';
-      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
+      hotCol.readOnly = true; // ✅ 设置为只读,不允许修改
       hotCol.renderer = function (
         this: any,
         instance: any,
@@ -878,8 +878,45 @@ const hotColumns = computed(() => {
         value: any,
         cellProperties: any,
       ) {
+        const rowData = dataSource.value[row] as any;
         const label = getFeeStatusLabel(value);
-        td.innerHTML = `<span style="color: #262626;">${label || ''}</span>`;
+        
+        // 兼容多种大小写的 ModificationCount 字段名
+        const modificationCount =
+          rowData?.ModificationCount ??
+          rowData?.modificationCount ??
+          rowData?.MODIFICATIONCOUNT ??
+          0;
+
+        // 如果有修改次数,显示 "状态 +N" 格式
+        if (modificationCount && modificationCount > 0) {
+          td.innerHTML = '';
+          td.style.display = 'inline-flex';
+          td.style.alignItems = 'center';
+          td.style.cursor = 'pointer';
+          td.title = `双击查看审核历史(共 ${modificationCount} 次修改)`;
+          
+          // 创建状态标签容器
+          const statusSpan = document.createElement('span');
+          statusSpan.textContent = label || '';
+          statusSpan.style.color = '#262626';
+          statusSpan.style.marginRight = '0';
+          td.appendChild(statusSpan);
+          
+          // 创建 +N 标记
+          const countSpan = document.createElement('span');
+          countSpan.textContent = `+${modificationCount}`;
+          countSpan.style.color = '#ff4d4f'; // 红色
+          countSpan.style.fontWeight = 'bold'; // 加粗
+          countSpan.style.marginLeft = '4px';
+          countSpan.style.cursor = 'pointer';
+          countSpan.title = `点击查看 ${modificationCount} 次修改记录`;
+          td.appendChild(countSpan);
+        } else {
+          // 否则只显示状态标签
+          td.innerHTML = `<span style="color: #262626; cursor: pointer;" title="双击查看审核历史">${label || ''}</span>`;
+        }
+        
         return td;
       };
     } else if (col.field === 'creationTime' || col.field === 'task.auditTime') {
@@ -1087,7 +1124,50 @@ const hotSettings = computed(() => ({
     const columnIndex = coords.col;
     const rowIndex = coords.row;
 
-    console.log('🔵 [afterOnCellMouseDown] 点击事件', { rowIndex, columnIndex });
+    console.log('🔵 [afterOnCellMouseDown] 点击事件', { 
+      rowIndex, 
+      columnIndex,
+      detail: event.detail, // ✅ 用于判断单击还是双击
+    });
+
+    // ✅ 处理双击事件 - 当双击费用状态列时打开审核历史弹窗
+    if (event.detail === 2 && rowIndex >= 0 && columnIndex >= 0) {
+      console.log('🖱️ [afterOnCellMouseDown] 检测到双击事件');
+      
+      const columnConfig = hotColumns.value[columnIndex];
+      if (!columnConfig) {
+        console.warn('⚠️ [afterOnCellMouseDown] 未找到列配置');
+        return;
+      }
+
+      const field = columnConfig.data;
+      console.log('🔵 [afterOnCellMouseDown] 双击字段:', field);
+
+      // 检查是否是费用状态列
+      if (field === 'combinedFeeStatus' || field === 'feeStatus') {
+        console.log('✅ [afterOnCellMouseDown] 双击费用状态列，准备打开审核历史弹窗');
+        
+        // 获取当前行数据
+        const rowData = dataSource.value[rowIndex];
+        if (!rowData) {
+          console.warn('⚠️ [afterOnCellMouseDown] 行数据为空');
+          return;
+        }
+
+        console.log('📋 [afterOnCellMouseDown] 行数据:', {
+          id: rowData.id,
+          feeStatus: rowData.feeStatus,
+          combinedFeeStatus: rowData.combinedFeeStatus,
+          ModificationCount: rowData.ModificationCount,
+        });
+
+        // 打开审核历史弹窗
+        openAuditHistoryModal(rowData as OrderFeeAdminApi.OrderFeeDto);
+        return; // ✅ 双击事件处理完毕，不再执行后续逻辑
+      } else {
+        console.log('❌ [afterOnCellMouseDown] 非费用状态列，不执行操作', field);
+      }
+    }
 
     // ✅ 处理复选框列的点击（第一列，索引0）
     if (columnIndex === 0 && rowIndex >= 0) {

@@ -28,7 +28,7 @@ import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { UserAttribute } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 
-import OrderFeeTable from './modules/order-fee-table.vue';
+import OrderFeeTable from './modules/order-fee-table-handsontable.vue';
 import DisplayFieldsConfigModal, {
   type DisplayFieldConfig,
 } from './modules/display-fields-config-modal.vue';
