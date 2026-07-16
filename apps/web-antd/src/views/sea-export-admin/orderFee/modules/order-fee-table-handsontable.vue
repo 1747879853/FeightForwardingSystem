@@ -889,6 +889,35 @@ const hotSettings = computed(() => ({
   stretchH: 'all',
   autoWrapRow: true,
   autoWrapCol: true,
+  // ✅ 新增：行渲染器 - 根据费用状态设置行背景色
+  // ✅ 新增：在渲染后设置行背景色 - 根据费用状态
+  afterRenderer: function (
+    this: any,
+    td: HTMLTableCellElement,
+    row: number,
+    col: number,
+    prop: string,
+    value: any,
+    cellProperties: any,
+  ) {
+    const rowData = dataSource.value[row];
+    
+    if (rowData) {
+      // 获取费用状态（优先使用 combinedFeeStatus，其次使用 feeStatus）
+      const feeStatus = (rowData as any).combinedFeeStatus ?? (rowData as any).feeStatus;
+      
+      if (feeStatus !== undefined && feeStatus !== null) {
+        // 根据费用状态设置背景色
+        const statusOptions = getFeeStatusOptions();
+        const statusOption = statusOptions.find((opt) => opt.value === feeStatus);
+        
+        if (statusOption?.color) {
+          // ✅ 使用 !important 确保背景色不被内联样式覆盖
+          td.style.setProperty('background-color', statusOption.color + '30', 'important');
+        }
+      }
+    }
+  },
   // ✅ 添加 afterGetColHeader 事件来处理全选复选框
   afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
     console.log('🔵 [afterGetColHeader] col:', col, 'TH:', TH);
