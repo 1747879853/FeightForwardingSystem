@@ -2,7 +2,7 @@
 import type { VxeTableGridOptions } from '#/adapter/vxe-table';
 import type { FeituoScheduleAdminApi } from '#/api/schedule/feituo-schedule-admin';
 
-import { Page } from '@vben/common-ui';
+import { Page, useVbenModal } from '@vben/common-ui';
 
 import { message, Tag, Tooltip } from 'ant-design-vue';
 
@@ -10,6 +10,7 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { queryScheduleAsync } from '#/api/schedule/feituo-schedule-admin';
 
 import { getTransportModeText, useColumns, useGridFormSchema } from './data';
+import VesselAisModal from './modules/vessel-ais-modal.vue';
 
 type FeituoScheduleItemDto = FeituoScheduleAdminApi.FeituoScheduleItemDto;
 type FeituoScheduleTransitDto = FeituoScheduleAdminApi.FeituoScheduleTransitDto;
@@ -30,7 +31,27 @@ function validateQueryParams(
   return formValues;
 }
 
+const [AisModal, aisModalApi] = useVbenModal({
+  connectedComponent: VesselAisModal,
+  destroyOnClose: true,
+});
+
+/** 双击行：弹窗展示该船舶的 AIS 定位（优先 MMSI，缺失回退船名） */
+function handleRowDblclick({ row }: { row: FeituoScheduleItemDto }) {
+  const mmsi = row.mmsi?.trim() || row.vessel?.trim();
+  if (!mmsi) {
+    message.warning('该船期缺少 MMSI 与船名，无法定位');
+    return;
+  }
+  const voyage = row.voyage ? `/${row.voyage}` : '';
+  const title = row.vessel ? `${row.vessel}${voyage}` : mmsi;
+  aisModalApi.setData({ mmsi, title }).open();
+}
+
 const [Grid] = useVbenVxeGrid<FeituoScheduleItemDto>({
+  gridEvents: {
+    cellDblclick: handleRowDblclick,
+  },
   formOptions: {
     schema: useGridFormSchema(),
     // 实时外部接口，避免字段变化即触发查询，改为点击查询按钮
@@ -89,7 +110,7 @@ const [Grid] = useVbenVxeGrid<FeituoScheduleItemDto>({
 
           // statusCode=20001 表示查询成功但无数据，属正常情况
           if (result?.statusCode === 20_001) {
-            message.info(result.message || '未查询到船期数据');
+            message.info('未查询到船期数据');
           }
 
           return {
@@ -127,7 +148,7 @@ function getTransitTooltip(transits?: FeituoScheduleTransitDto[]): string {
         vesselVoyage && `船名/航次: ${vesselVoyage}`,
         mode !== '-' && `方式: ${mode}`,
         [eta, etd].filter(Boolean).join(' / '),
-        t.terminal && `码头: ${t.terminal}`,
+        (t.terminalCn || t.terminal) && `码头: ${t.terminalCn || t.terminal}`,
       ].filter(Boolean);
       return parts.join('  ');
     })
@@ -142,6 +163,7 @@ function getTransitSummary(transits?: FeituoScheduleTransitDto[]): string {
 
 <template>
   <Page auto-content-height>
+    <AisModal />
     <Grid>
       <!-- 船名/航次 -->
       <template #vesselVoyage="{ row }">
@@ -167,8 +189,11 @@ function getTransitSummary(transits?: FeituoScheduleTransitDto[]): string {
               >（{{ row.polCode }}）</span
             >
           </span>
-          <span v-if="row.polTerminal" class="text-xs text-gray-500">
-            {{ row.polTerminal }}
+          <span
+            v-if="row.polTerminalCn || row.polTerminal"
+            class="text-xs text-gray-500"
+          >
+            {{ row.polTerminalCn || row.polTerminal }}
           </span>
         </div>
       </template>
@@ -182,8 +207,11 @@ function getTransitSummary(transits?: FeituoScheduleTransitDto[]): string {
               >（{{ row.podCode }}）</span
             >
           </span>
-          <span v-if="row.podTerminal" class="text-xs text-gray-500">
-            {{ row.podTerminal }}
+          <span
+            v-if="row.podTerminalCn || row.podTerminal"
+            class="text-xs text-gray-500"
+          >
+            {{ row.podTerminalCn || row.podTerminal }}
           </span>
         </div>
       </template>

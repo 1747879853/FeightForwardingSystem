@@ -25,6 +25,35 @@ export function getTransportModeText(mode?: string): string {
 }
 
 /**
+ * 船舶 AIS 定位 Iframe 配置（读自 VITE_GLOB_FREIGHTOWER_AIS_* 环境变量）
+ */
+export const AIS_IFRAME_CONFIG = {
+  /** Iframe 基础地址（hash 路由） */
+  baseUrl:
+    (import.meta.env.VITE_GLOB_FREIGHTOWER_AIS_URL as string) ||
+    'https://i.saas.freightower.com/#/ais/vessel',
+  /** 客户账号 */
+  clientId:
+    (import.meta.env.VITE_GLOB_FREIGHTOWER_AIS_CLIENT_ID as string) || '',
+  /** 密钥 */
+  key: (import.meta.env.VITE_GLOB_FREIGHTOWER_AIS_KEY as string) || '',
+};
+
+/**
+ * 构建船舶 AIS 定位 Iframe 地址
+ * @param mmsiOrVessel MMSI 号或船名（支持多条，用英文逗号隔开）
+ */
+export function buildAisIframeUrl(mmsiOrVessel?: string): string {
+  const { baseUrl, clientId, key } = AIS_IFRAME_CONFIG;
+  const params = new URLSearchParams();
+  if (key) params.set('key', key);
+  params.set('clientId', clientId);
+  params.set('mmsi', (mmsiOrVessel ?? '').trim());
+  params.set('lang', 'zh');
+  return `${baseUrl}?${params.toString()}`;
+}
+
+/**
  * 表格搜索表单配置
  */
 export function useGridFormSchema(): VbenFormSchema[] {
@@ -154,6 +183,24 @@ function formatDate(value?: string): string {
   return datePart.length >= 10 ? datePart.slice(0, 10) : datePart;
 }
 
+/** 通用文本兜底：空值统一显示 - */
+function text(value?: null | number | string): string {
+  return value === null || value === undefined || value === ''
+    ? '-'
+    : String(value);
+}
+
+/** 共舱结果集摘要文本 */
+function formatShareCabins(
+  shareCabins?: FeituoScheduleAdminApi.FeituoShareCabinDto[],
+): string {
+  if (!shareCabins || shareCabins.length === 0) return '-';
+  return shareCabins
+    .map((c) => [c.carrier, c.scac].filter(Boolean).join('/'))
+    .filter(Boolean)
+    .join('、');
+}
+
 /**
  * 表格列配置
  */
@@ -186,6 +233,13 @@ export function useColumns(): VxeTableGridOptions<FeituoScheduleItemDto>['column
       slots: { default: 'vesselVoyage' },
     },
     {
+      field: 'scac',
+      title: '船公司SCAC',
+      width: 110,
+      align: 'left',
+      formatter: ({ row }) => text(row.scac),
+    },
+    {
       field: 'transportMode',
       title: '运输方式',
       width: 100,
@@ -200,18 +254,172 @@ export function useColumns(): VxeTableGridOptions<FeituoScheduleItemDto>['column
       slots: { default: 'isTransit' },
     },
     {
-      field: 'pol',
+      field: 'imoNumber',
+      title: 'IMO号',
+      width: 110,
+      align: 'left',
+      formatter: ({ row }) => text(row.imoNumber),
+    },
+    {
+      field: 'mmsi',
+      title: 'MMSI号',
+      width: 110,
+      align: 'left',
+      formatter: ({ row }) => text(row.mmsi),
+    },
+    {
+      field: 'callSign',
+      title: '呼号',
+      width: 100,
+      align: 'left',
+      formatter: ({ row }) => text(row.callSign),
+    },
+    {
+      field: 'shipManager',
+      title: '母船简称',
+      width: 120,
+      align: 'left',
+      formatter: ({ row }) => text(row.shipManager),
+    },
+    {
+      field: 'shipManagerEn',
+      title: '母船全称',
+      width: 160,
+      align: 'left',
+      formatter: ({ row }) => text(row.shipManagerEn),
+    },
+    {
+      field: 'polName',
       title: '起运港',
       minWidth: 200,
       align: 'left',
       slots: { default: 'pol' },
     },
     {
-      field: 'pod',
+      field: 'pol',
+      title: '起运港(原始英文)',
+      width: 160,
+      align: 'left',
+      formatter: ({ row }) => text(row.pol),
+    },
+    {
+      field: 'polCountry',
+      title: '起运港国家',
+      width: 110,
+      align: 'left',
+      formatter: ({ row }) => text(row.polCountry),
+    },
+    {
+      field: 'polTerminal',
+      title: '起运港码头(原始)',
+      width: 160,
+      align: 'left',
+      formatter: ({ row }) => text(row.polTerminal),
+    },
+    {
+      field: 'polTerminalCn',
+      title: '起运港码头(标准)',
+      width: 160,
+      align: 'left',
+      formatter: ({ row }) => text(row.polTerminalCn),
+    },
+    {
+      field: 'polUnCode',
+      title: '起运港UNCODE',
+      width: 120,
+      align: 'left',
+      formatter: ({ row }) => text(row.polUnCode),
+    },
+    {
+      field: 'polUnName',
+      title: '起运港UN名',
+      width: 150,
+      align: 'left',
+      formatter: ({ row }) => text(row.polUnName),
+    },
+    {
+      field: 'polTimeZone',
+      title: '起运港时区',
+      width: 110,
+      align: 'left',
+      formatter: ({ row }) => text(row.polTimeZone),
+    },
+    {
+      field: 'podName',
       title: '目的港',
       minWidth: 200,
       align: 'left',
       slots: { default: 'pod' },
+    },
+    {
+      field: 'pod',
+      title: '目的港(原始英文)',
+      width: 160,
+      align: 'left',
+      formatter: ({ row }) => text(row.pod),
+    },
+    {
+      field: 'podCountry',
+      title: '目的港国家',
+      width: 110,
+      align: 'left',
+      formatter: ({ row }) => text(row.podCountry),
+    },
+    {
+      field: 'podTerminal',
+      title: '目的港码头(原始)',
+      width: 160,
+      align: 'left',
+      formatter: ({ row }) => text(row.podTerminal),
+    },
+    {
+      field: 'podTerminalCn',
+      title: '目的港码头(标准)',
+      width: 160,
+      align: 'left',
+      formatter: ({ row }) => text(row.podTerminalCn),
+    },
+    {
+      field: 'podUnCode',
+      title: '目的港UNCODE',
+      width: 120,
+      align: 'left',
+      formatter: ({ row }) => text(row.podUnCode),
+    },
+    {
+      field: 'podUnName',
+      title: '目的港UN名',
+      width: 150,
+      align: 'left',
+      formatter: ({ row }) => text(row.podUnName),
+    },
+    {
+      field: 'podTimeZone',
+      title: '目的港时区',
+      width: 110,
+      align: 'left',
+      formatter: ({ row }) => text(row.podTimeZone),
+    },
+    {
+      field: 'transits',
+      title: '中转港',
+      minWidth: 200,
+      align: 'left',
+      slots: { default: 'transits' },
+    },
+    {
+      field: 'routeEtd',
+      title: '计划离港班期',
+      width: 120,
+      align: 'center',
+      formatter: ({ row }) => text(row.routeEtd),
+    },
+    {
+      field: 'routeEta',
+      title: '计划到港班期',
+      width: 120,
+      align: 'center',
+      formatter: ({ row }) => text(row.routeEta),
     },
     {
       field: 'etd',
@@ -228,21 +436,18 @@ export function useColumns(): VxeTableGridOptions<FeituoScheduleItemDto>['column
       formatter: ({ row }) => formatDate(row.eta),
     },
     {
-      field: 'totalDuration',
-      title: '预计航程(天)',
-      width: 110,
-      align: 'center',
-      formatter: ({ row }) =>
-        row.totalDuration === null || row.totalDuration === undefined
-          ? '-'
-          : String(row.totalDuration),
-    },
-    {
       field: 'staticEtd',
       title: '计划离港',
       width: 120,
       align: 'center',
       formatter: ({ row }) => formatDate(row.staticEtd),
+    },
+    {
+      field: 'staticEtdWeekOfYear',
+      title: '业务周次',
+      width: 90,
+      align: 'center',
+      formatter: ({ row }) => text(row.staticEtdWeekOfYear),
     },
     {
       field: 'staticEta',
@@ -252,84 +457,141 @@ export function useColumns(): VxeTableGridOptions<FeituoScheduleItemDto>['column
       formatter: ({ row }) => formatDate(row.staticEta),
     },
     {
+      field: 'atd',
+      title: '实际离港',
+      width: 120,
+      align: 'center',
+      formatter: ({ row }) => text(row.atd),
+    },
+    {
+      field: 'ata',
+      title: '实际到港',
+      width: 120,
+      align: 'center',
+      formatter: ({ row }) => text(row.ata),
+    },
+    {
+      field: 'totalDuration',
+      title: '预计航程(天)',
+      width: 110,
+      align: 'center',
+      formatter: ({ row }) => text(row.totalDuration),
+    },
+    {
       field: 'transitTime',
       title: '计划航程(天)',
       width: 110,
       align: 'center',
-      formatter: ({ row }) =>
-        row.transitTime === null || row.transitTime === undefined
-          ? '-'
-          : String(row.transitTime),
-    },
-    {
-      field: 'transits',
-      title: '中转港',
-      minWidth: 200,
-      align: 'left',
-      slots: { default: 'transits' },
+      formatter: ({ row }) => text(row.transitTime),
     },
     {
       field: 'routeCode',
       title: '航线代码',
       width: 120,
       align: 'left',
-      formatter: ({ row }) => row.routeCode || '-',
+      formatter: ({ row }) => text(row.routeCode),
     },
     {
       field: 'displayName',
       title: '标准航线代码',
       width: 130,
       align: 'left',
-      formatter: ({ row }) => row.displayName || '-',
+      formatter: ({ row }) => text(row.displayName),
     },
     {
-      field: 'shipManager',
-      title: '母船简称',
-      width: 120,
+      field: 'shareCabins',
+      title: '共舱',
+      minWidth: 160,
       align: 'left',
-      formatter: ({ row }) => row.shipManager || '-',
+      formatter: ({ row }) => formatShareCabins(row.shareCabins),
     },
     {
       field: 'cyCutoff',
       title: '截关时间',
       width: 150,
       align: 'center',
-      formatter: ({ row }) => row.cyCutoff || '-',
+      formatter: ({ row }) => text(row.cyCutoff),
     },
     {
       field: 'siCutoff',
       title: '截单时间',
       width: 150,
       align: 'center',
-      formatter: ({ row }) => row.siCutoff || '-',
+      formatter: ({ row }) => text(row.siCutoff),
     },
     {
       field: 'vgmCutoff',
       title: '截VGM时间',
       width: 150,
       align: 'center',
-      formatter: ({ row }) => row.vgmCutoff || '-',
+      formatter: ({ row }) => text(row.vgmCutoff),
     },
     {
       field: 'bookingCutoff',
       title: '截订舱时间',
       width: 150,
       align: 'center',
-      formatter: ({ row }) => row.bookingCutoff || '-',
+      formatter: ({ row }) => text(row.bookingCutoff),
     },
     {
       field: 'inlandCutoff',
       title: '截港时间',
       width: 150,
       align: 'center',
-      formatter: ({ row }) => row.inlandCutoff || '-',
+      formatter: ({ row }) => text(row.inlandCutoff),
+    },
+    {
+      field: 'manifestCutoff',
+      title: '截海外舱单时间',
+      width: 150,
+      align: 'center',
+      formatter: ({ row }) => text(row.manifestCutoff),
+    },
+    {
+      field: 'cvCutoff',
+      title: '截放行条时间',
+      width: 150,
+      align: 'center',
+      formatter: ({ row }) => text(row.cvCutoff),
+    },
+    {
+      field: 'pathCode',
+      title: '路径ID',
+      width: 120,
+      align: 'left',
+      visible: false,
+      formatter: ({ row }) => text(row.pathCode),
+    },
+    {
+      field: 'pathDescription',
+      title: '路径描述',
+      minWidth: 160,
+      align: 'left',
+      visible: false,
+      formatter: ({ row }) => text(row.pathDescription),
+    },
+    {
+      field: 'solutionDescription',
+      title: '数据描述',
+      minWidth: 160,
+      align: 'left',
+      visible: false,
+      formatter: ({ row }) => text(row.solutionDescription),
+    },
+    {
+      field: 'solutionCode',
+      title: '数据唯一ID',
+      width: 160,
+      align: 'left',
+      visible: false,
+      formatter: ({ row }) => text(row.solutionCode),
     },
     {
       field: 'updateTime',
       title: '最后更新时间',
       width: 160,
       align: 'center',
-      formatter: ({ row }) => row.updateTime || '-',
+      formatter: ({ row }) => text(row.updateTime),
     },
   ];
 }
