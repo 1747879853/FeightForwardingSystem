@@ -15,6 +15,130 @@ import { GetDetail } from '#/api/sea-export/change-order-admin';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 
 /**
+ * 从订单详情中提取所有可能的结算对象映射
+ */
+const extractSettlementNameMap = (
+  orderDetail: SeaExportAdminApi.SeaExportDto | null | undefined,
+): Map<any, string> => {
+  const nameMap = new Map<any, string>();
+  
+  if (!orderDetail) return nameMap;
+
+  const transportOrder = orderDetail.transportOrder;
+
+  // 委托单位（主要客户）
+  if (transportOrder?.clientId && transportOrder.clientName) {
+    nameMap.set(transportOrder.clientId, transportOrder.clientName);
+  }
+
+  // 发货人
+  if (transportOrder?.shipperId && transportOrder.shipperContent) {
+    try {
+      const shipperContent = JSON.parse(transportOrder.shipperContent);
+      const name = shipperContent.name || shipperContent.cnName;
+      if (name) {
+        nameMap.set(transportOrder.shipperId, name);
+      }
+    } catch (e) {
+      console.warn('解析发货人信息失败:', e);
+    }
+  }
+
+  // 收货人
+  if (transportOrder?.consigneeId && transportOrder.consigneeContent) {
+    try {
+      const consigneeContent = JSON.parse(transportOrder.consigneeContent);
+      const name = consigneeContent.name || consigneeContent.cnName;
+      if (name) {
+        nameMap.set(transportOrder.consigneeId, name);
+      }
+    } catch (e) {
+      console.warn('解析收货人信息失败:', e);
+    }
+  }
+
+  // 通知人
+  if (transportOrder?.notifierId && transportOrder.notifierContent) {
+    try {
+      const notifierContent = JSON.parse(transportOrder.notifierContent);
+      const name = notifierContent.name || notifierContent.cnName;
+      if (name) {
+        nameMap.set(transportOrder.notifierId, name);
+      }
+    } catch (e) {
+      console.warn('解析通知人信息失败:', e);
+    }
+  }
+
+  // 第二通知人
+  if (orderDetail.secondNotifierId && orderDetail.secondNotifier?.name) {
+    nameMap.set(orderDetail.secondNotifierId, orderDetail.secondNotifier.name);
+  }
+
+  // 目的港代理
+  if (orderDetail.podAgentId && orderDetail.podAgent?.name) {
+    nameMap.set(orderDetail.podAgentId, orderDetail.podAgent.name);
+  }
+
+  // 订舱代理
+  if (orderDetail.bookingAgentId && orderDetail.bookingAgent?.name) {
+    nameMap.set(orderDetail.bookingAgentId, orderDetail.bookingAgent.name);
+  }
+
+  // 船代
+  if (orderDetail.shipAgentId && orderDetail.shipAgent?.name) {
+    nameMap.set(orderDetail.shipAgentId, orderDetail.shipAgent.name);
+  }
+
+  // 场站
+  if (orderDetail.yardId && orderDetail.yard?.name) {
+    nameMap.set(orderDetail.yardId, orderDetail.yard.name);
+  }
+
+  // 车队
+  if (transportOrder?.teamId && transportOrder.teamName) {
+    nameMap.set(transportOrder.teamId, transportOrder.teamName);
+  }
+
+  // 报关行
+  if (transportOrder?.custBrokerId && transportOrder.custBrokerName) {
+    nameMap.set(transportOrder.custBrokerId, transportOrder.custBrokerName);
+  }
+
+  // 仓库
+  if (transportOrder?.warehouseId && transportOrder.warehouseName) {
+    nameMap.set(transportOrder.warehouseId, transportOrder.warehouseName);
+  }
+
+  // 保险公司
+  if (transportOrder?.insuranceId && transportOrder.insuranceName) {
+    nameMap.set(transportOrder.insuranceId, transportOrder.insuranceName);
+  }
+
+  return nameMap;
+};
+
+/**
+ * 为费用数据填充结算对象名称
+ */
+const fillSettlementNames = (
+  fees: OrderFeeAdminApi.OrderFeeDto[],
+  settlementNameMap: Map<any, string>,
+): OrderFeeAdminApi.OrderFeeDto[] => {
+  return fees.map((fee) => {
+    const feeWithKey = fee as any;
+    if (feeWithKey.settlementId && !feeWithKey.__settlementName) {
+      const name = settlementNameMap.get(feeWithKey.settlementId);
+      if (name) {
+        feeWithKey.__settlementName = name;
+        console.log('✅ [fillSettlementNames] 填充结算对象名称:', name);
+      }
+    }
+    return feeWithKey;
+  });
+};
+
+/**
  * 订单费用数据管理 Composable
  * 负责数据的加载、同步、金额计算等逻辑
  */
@@ -129,7 +253,12 @@ export function useOrderFeeData(
         }
       });
 
-      dataSource.value = normalizeOrderFeeWithRowKey(orderFees);
+      // 从订单详情中提取结算对象名称映射
+      const settlementNameMap = extractSettlementNameMap(props.orderDetail);
+      // 为费用数据填充结算对象名称
+      const feesWithNames = fillSettlementNames(orderFees, settlementNameMap);
+
+      dataSource.value = normalizeOrderFeeWithRowKey(feesWithNames);
       syncFee();
     } else {
       dataSource.value = [];
@@ -188,7 +317,12 @@ export function useOrderFeeData(
       }
     });
 
-    const normalizedData = normalizeOrderFeeWithRowKey(res.items);
+    // 从订单详情中提取结算对象名称映射
+    const settlementNameMap = extractSettlementNameMap(props.orderDetail);
+    // 为费用数据填充结算对象名称
+    const feesWithNames = fillSettlementNames(res.items, settlementNameMap);
+
+    const normalizedData = normalizeOrderFeeWithRowKey(feesWithNames);
     console.log('📊 [queryTableData] 加载数据:', normalizedData.length, '条');
     dataSource.value = normalizedData;
 

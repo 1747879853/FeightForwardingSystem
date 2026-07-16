@@ -241,9 +241,14 @@ const getIndustryCategoryLabel = (industryCategory: any): string => {
  */
 const getCurrencyLabel = (currencyId: any): string => {
   if (!currencyId) return '';
+  
+  // 确保类型一致进行比较
+  const currencyIdStr = String(currencyId);
   const option = dropdownSources.value.currencyList.find(
-    (opt) => opt.value === currencyId,
+    (opt) => String(opt.value) === currencyIdStr,
   );
+  
+  console.log('🔍 [getCurrencyLabel] 查找币别:', currencyId, '→', option?.label || '未找到');
   return option?.label || '';
 };
 
@@ -329,22 +334,23 @@ const hotColumns = computed(() => {
         value: any,
         cellProperties: any,
       ) {
-        // ✅ 直接从当前行获取 __settlementName，而不是遍历所有数据
-        const rowData = instance.getDataAtRow(row);
-        const settlementName = rowData?.__settlementName;
+        // ✅ 直接从当前行数据源中获取 __settlementName
+        const rowData = dataSource.value[row];
+        const settlementName = (rowData as any)?.__settlementName;
 
         let label = '';
         if (settlementName) {
           label = settlementName;
+          console.log('🎨 [settlementId renderer] 行', row, '显示名称:', label);
         } else if (value) {
           // fallback：如果没有缓存，显示 ID
           label = String(value);
+          console.warn('⚠️ [settlementId renderer] 行', row, '无__settlementName，显示ID:', label);
         }
 
         td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
         return td;
       };
-    } else if (col.field === 'currencyId') {
     } else if (col.field === 'currencyId') {
       hotCol.type = 'text';
       hotCol.renderer = function (
@@ -358,6 +364,7 @@ const hotColumns = computed(() => {
         cellProperties: any,
       ) {
         const label = getCurrencyLabel(value);
+        console.log('🎨 [currencyId renderer] 行', row, '币别ID:', value, '→ 显示:', label || '请选择');
         td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
         return td;
       };

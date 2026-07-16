@@ -237,5 +237,6 @@
     "nolebase",
     "rollup",
     "vitest"
-  ]
+  ],
+  "svn.ignoreMissingSvnWarning": true
 }
