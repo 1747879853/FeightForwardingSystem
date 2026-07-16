@@ -6,7 +6,6 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { computed, h, nextTick, ref } from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
-import Handsontable from 'handsontable';
 import { Select, message } from 'ant-design-vue';
 
 import { getClientPagedList } from '#/api/sea-export/client-admin';
@@ -23,13 +22,20 @@ interface Props {
     unitList: Array<{ label: string; value: any }>;
   };
   orderDetail?: SeaExportAdminApi.SeaExportDto | null; // 新增：订单详情
+  sortableFields?: Set<string>; // 可排序字段列表
+  sortState?: {
+    field: string | null;
+    order: 'asc' | 'desc' | null;
+  }; // 排序状态
 }
 
 const props = defineProps<Props>();
 
-const emit = defineEmits(['update:selectedRowKeys']);
+const emit = defineEmits(['update:selectedRowKeys', 'column-sort']);
 
 const hotTableRef = ref<any>(null);
+
+// ==================== 客户列表缓存 ====================
 
 // 用于存储当前编辑的单元格信息
 const currentEditingCell = ref<{
@@ -38,6 +44,8 @@ const currentEditingCell = ref<{
   field: string;
   td: HTMLTableCellElement | null;
 } | null>(null);
+
+// ==================== 客户列表加载 ====================
 
 // 客户列表缓存（简化版，不依赖 Vue Query）
 const clientListCache = ref<Array<{ label: string; value: any }>>([]);
@@ -559,16 +567,18 @@ defineExpose({
 
 <style scoped lang="scss">
 .handsontable-wrapper {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
+  flex: 1; // ✅ 使用 flex 布局自动填充剩余空间
+  height: 600px; // ✅ 新增:固定容器高度,与 hotSettings.height 保持一致
+  min-height: 0; // ✅ 防止 flex 子项溢出
+  overflow: hidden; // ✅ 修复:改为 hidden,由 Handsontable 内部处理滚动
 
   :deep(.htCore) {
     width: 100% !important;
   }
 
   :deep(.ht_master) {
-    max-height: calc(700px - 60px);
+    // ✅ 修复:设置固定高度,避免滚动时高度变化
+    height: 600px !important;
     overflow: auto !important;
   }
 

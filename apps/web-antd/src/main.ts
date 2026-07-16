@@ -6,9 +6,14 @@ import { registerOssCacheServiceWorker } from '#/utils/register-oss-cache-sw';
 
 import { overridesPreferences } from './preferences';
 
-// 完整版（含 filters / dropdown / comment 等）
+// 完整版(含 filters / dropdown / comment 等)
 import 'handsontable/styles/handsontable.min.css';
 import 'handsontable/styles/ht-theme-main.min.css';
+
+import { registerAllModules } from 'handsontable/registry';
+registerAllModules();
+
+// numeric 单元格类型在 Handsontable 中已经内置,无需手动注册
 
 const MIN_APP_LOADING_MS = 800;
 

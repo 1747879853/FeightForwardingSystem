@@ -666,18 +666,18 @@ export function useOrderFeeColumns(
   type: number,
 ): VxeTableGridOptions<OrderFeeAdminApi.OrderFeeEditDto>['columns'] {
   return [
-    { type: 'checkbox', width: 48, fixed: 'left' },
-    {
-      title: $t('common.index'),
-      field: '_rowIndex',
-      width: 60,
-      align: 'center',
-      slots: {
-        default: ({ rowIndex }: any) => {
-          return h('span', {}, String(rowIndex + 1));
-        },
-      },
-    },
+    // { type: 'checkbox', width: 48, fixed: 'left' },
+    // {
+    //   title: $t('common.index'),
+    //   field: '_rowIndex',
+    //   width: 60,
+    //   align: 'center',
+    //   slots: {
+    //     default: ({ rowIndex }: any) => {
+    //       return h('span', {}, String(rowIndex + 1));
+    //     },
+    //   },
+    // },
     {
       title: $t('seaExport.export.orderFee.invoiceStatus'),
       field: 'invoiceStatus',
@@ -951,7 +951,7 @@ export function useOrderFeeColumns(
       slots: {
         default: ({ row }: any) => {
           return h(Checkbox, {
-            checked: row.canInvoice === false,
+            checked: row.canInvoice === true,
             disabled: !canEditFee(row.feeStatus),
             onChange: (e: any) => {
               row.canInvoice = !e.target.checked;

@@ -1364,14 +1364,14 @@ defineExpose({
 // 完结状态徽章（右上角绝对定位）
 .finish-status-badge {
   position: absolute;
-  top: 10px;
-  right: -50px;
+  top: 20px;
+  right: 0px;
   z-index: 10;
   
   img {
     display: block;
-    width: 164px;
-    height: 164px;
+    width: 104px;
+    height: 104px;
     object-fit: contain;
   }
 }
