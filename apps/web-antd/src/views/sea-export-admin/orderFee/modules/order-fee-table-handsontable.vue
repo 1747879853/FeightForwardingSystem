@@ -331,22 +331,34 @@ const formatDateTime = (dateValue: any): string => {
  * 从订单详情中提取结算对象名称（用于补充缺失的__settlementName）
  */
 const extractSettlementNameFromOrder = (settlementId: any): string | null => {
-  if (!settlementId || !orderBaseData.value) return null;
+  if (!settlementId || !orderBaseData.value) {
+    console.log('⚠️ [extractSettlementNameFromOrder] 缺少必要参数', { 
+      settlementId, 
+      hasOrderBaseData: !!orderBaseData.value 
+    });
+    return null;
+  }
 
   const settlementIdStr = String(settlementId);
   const orderDetail = orderBaseData.value;
   const transportOrder = orderDetail.transportOrder;
 
+  console.log('🔍 [extractSettlementNameFromOrder] 查找结算对象:', settlementIdStr);
+
   // 委托单位（主要客户）
   if (transportOrder?.clientId && String(transportOrder.clientId) === settlementIdStr) {
-    return transportOrder.clientName || null;
+    const name = transportOrder.clientName || null;
+    console.log('✅ [extractSettlementNameFromOrder] 匹配委托单位:', name);
+    return name;
   }
 
   // 发货人
   if (transportOrder?.shipperId && String(transportOrder.shipperId) === settlementIdStr) {
     try {
       const shipperContent = JSON.parse(transportOrder.shipperContent || '{}');
-      return shipperContent.name || shipperContent.cnName || null;
+      const name = shipperContent.name || shipperContent.cnName || null;
+      console.log('✅ [extractSettlementNameFromOrder] 匹配发货人:', name);
+      return name;
     } catch (e) {
       console.warn('解析发货人信息失败:', e);
     }
@@ -356,7 +368,9 @@ const extractSettlementNameFromOrder = (settlementId: any): string | null => {
   if (transportOrder?.consigneeId && String(transportOrder.consigneeId) === settlementIdStr) {
     try {
       const consigneeContent = JSON.parse(transportOrder.consigneeContent || '{}');
-      return consigneeContent.name || consigneeContent.cnName || null;
+      const name = consigneeContent.name || consigneeContent.cnName || null;
+      console.log('✅ [extractSettlementNameFromOrder] 匹配收货人:', name);
+      return name;
     } catch (e) {
       console.warn('解析收货人信息失败:', e);
     }
@@ -366,7 +380,9 @@ const extractSettlementNameFromOrder = (settlementId: any): string | null => {
   if (transportOrder?.notifierId && String(transportOrder.notifierId) === settlementIdStr) {
     try {
       const notifierContent = JSON.parse(transportOrder.notifierContent || '{}');
-      return notifierContent.name || notifierContent.cnName || null;
+      const name = notifierContent.name || notifierContent.cnName || null;
+      console.log('✅ [extractSettlementNameFromOrder] 匹配通知人:', name);
+      return name;
     } catch (e) {
       console.warn('解析通知人信息失败:', e);
     }
@@ -374,49 +390,68 @@ const extractSettlementNameFromOrder = (settlementId: any): string | null => {
 
   // 第二通知人
   if (orderDetail.secondNotifierId && String(orderDetail.secondNotifierId) === settlementIdStr) {
-    return orderDetail.secondNotifier?.name || null;
+    const name = orderDetail.secondNotifier?.name || null;
+    console.log('✅ [extractSettlementNameFromOrder] 匹配第二通知人:', name);
+    return name;
   }
 
   // 目的港代理
   if (orderDetail.podAgentId && String(orderDetail.podAgentId) === settlementIdStr) {
-    return orderDetail.podAgent?.name || null;
+    const name = orderDetail.podAgent?.name || null;
+    console.log('✅ [extractSettlementNameFromOrder] 匹配目的港代理:', name);
+    return name;
   }
 
   // 订舱代理
   if (orderDetail.bookingAgentId && String(orderDetail.bookingAgentId) === settlementIdStr) {
-    return orderDetail.bookingAgent?.name || null;
+    const name = orderDetail.bookingAgent?.name || null;
+    console.log('✅ [extractSettlementNameFromOrder] 匹配订舱代理:', name);
+    return name;
   }
 
   // 船代
   if (orderDetail.shipAgentId && String(orderDetail.shipAgentId) === settlementIdStr) {
-    return orderDetail.shipAgent?.name || null;
+    const name = orderDetail.shipAgent?.name || null;
+    console.log('✅ [extractSettlementNameFromOrder] 匹配船代:', name);
+    return name;
   }
 
   // 场站
   if (orderDetail.yardId && String(orderDetail.yardId) === settlementIdStr) {
-    return orderDetail.yard?.name || null;
+    const name = orderDetail.yard?.name || null;
+    console.log('✅ [extractSettlementNameFromOrder] 匹配场站:', name);
+    return name;
   }
 
   // 车队
   if (transportOrder?.teamId && String(transportOrder.teamId) === settlementIdStr) {
-    return transportOrder.teamName || null;
+    const name = transportOrder.teamName || null;
+    console.log('✅ [extractSettlementNameFromOrder] 匹配车队:', name);
+    return name;
   }
 
   // 报关行
   if (transportOrder?.custBrokerId && String(transportOrder.custBrokerId) === settlementIdStr) {
-    return transportOrder.custBrokerName || null;
+    const name = transportOrder.custBrokerName || null;
+    console.log('✅ [extractSettlementNameFromOrder] 匹配报关行:', name);
+    return name;
   }
 
   // 仓库
   if (transportOrder?.warehouseId && String(transportOrder.warehouseId) === settlementIdStr) {
-    return transportOrder.warehouseName || null;
+    const name = transportOrder.warehouseName || null;
+    console.log('✅ [extractSettlementNameFromOrder] 匹配仓库:', name);
+    return name;
   }
 
   // 保险公司
   if (transportOrder?.insuranceId && String(transportOrder.insuranceId) === settlementIdStr) {
-    return transportOrder.insuranceName || null;
+    const name = transportOrder.insuranceName || null;
+    console.log('✅ [extractSettlementNameFromOrder] 匹配保险公司:', name);
+    return name;
   }
 
+  console.warn('❌ [extractSettlementNameFromOrder] 未找到匹配的结算对象:', settlementIdStr);
   return null;
 };
 
@@ -651,7 +686,7 @@ const hotColumns = computed(() => {
       ) {
         // ✅ 直接从当前行数据源中获取 __settlementName
         const rowData = dataSource.value[row];
-        const settlementName = (rowData as any)?.__settlementName;
+        const settlementName = (rowData as any)?.settlementName || (rowData as any)?.__settlementName;
 
         let label = '';
         if (settlementName) {
@@ -1049,24 +1084,49 @@ watch(
 watch(
   () => orderBaseData.value,
   (newOrderDetail) => {
-    if (!newOrderDetail || !dataSource.value.length) return;
+    if (!newOrderDetail || !dataSource.value.length) {
+      console.log('⚠️ [watch orderBaseData] 跳过填充，条件不满足', {
+        hasOrderDetail: !!newOrderDetail,
+        dataSourceLength: dataSource.value.length,
+      });
+      return;
+    }
     
     console.log('🔄 [watch orderBaseData] 订单详情变化，重新填充结算对象名称');
     
+    let updatedCount = 0;
     // 为现有数据补充结算对象名称
     const enrichedData = dataSource.value.map((row: any) => {
       if (row.settlementId && !row.__settlementName) {
         const settlementName = extractSettlementNameFromOrder(row.settlementId);
         if (settlementName) {
           row.__settlementName = settlementName;
+          updatedCount++;
           console.log('✅ [watch orderBaseData] 补充结算对象名称:', settlementName);
         }
       }
       return row;
     });
     
-    // 更新数据源并刷新表格
-    dataSource.value = enrichedData;
+    console.log('📊 [watch orderBaseData] 更新了', updatedCount, '行数据的结算对象名称');
+    
+    // 只有在有更新时才刷新表格
+    if (updatedCount > 0) {
+      dataSource.value = enrichedData;
+      
+      // 等待 Vue 更新后再刷新 Handsontable
+      nextTick(() => {
+        if (coreTableRef.value?.hotTableRef?.hotInstance) {
+          console.log('🔄 [watch orderBaseData] 调用 hotInstance.loadData 刷新表格');
+          coreTableRef.value.hotTableRef.hotInstance.loadData(enrichedData);
+          
+          nextTick(() => {
+            coreTableRef.value?.hotTableRef?.hotInstance?.render();
+            console.log('✅ [watch orderBaseData] 表格刷新完成');
+          });
+        }
+      });
+    }
   },
   { deep: true },
 );
@@ -1087,17 +1147,39 @@ watch(
         // ✅ 关键修复：在 loadData 之前，确保所有行都有 __settlementName
         const enrichedData = (newData || []).map((row: any) => {
           if (row.settlementId && !row.__settlementName) {
-            // 尝试从 orderBaseData 中提取结算对象名称
+            console.log('⚠️ [watch dataSource] 发现缺失 __settlementName 的行，尝试补充', {
+              settlementId: row.settlementId,
+              hasOrderBaseData: !!orderBaseData.value,
+            });
+            
+            // 策略1：尝试从 orderBaseData 中提取结算对象名称
             const settlementName = extractSettlementNameFromOrder(row.settlementId);
             if (settlementName) {
               row.__settlementName = settlementName;
-              console.log('✅ [watch dataSource] 补充结算对象名称:', settlementName);
+              console.log('✅ [watch dataSource] 成功补充结算对象名称:', settlementName);
+            } else {
+              // 策略2：降级 - 尝试从已加载的其他行中查找缓存的名称
+              for (const existingRow of dataSource.value) {
+                const existingRowAny = existingRow as any;
+                if (String(existingRowAny.settlementId) === String(row.settlementId) && existingRowAny.__settlementName) {
+                  row.__settlementName = existingRowAny.__settlementName;
+                  console.log('✅ [watch dataSource] 从其他行缓存中获取结算对象名称:', existingRowAny.__settlementName);
+                  break;
+                }
+              }
             }
           }
           return row;
         });
         
+        console.log('📦 [watch dataSource] 准备加载数据， enrichedData 行数:', enrichedData.length);
         coreTableRef.value.hotTableRef.hotInstance.loadData(enrichedData);
+        
+        // ✅ 额外渲染一次确保视图更新
+        nextTick(() => {
+          coreTableRef.value?.hotTableRef?.hotInstance?.render();
+          console.log('✅ [watch dataSource] 表格渲染完成');
+        });
       } else {
         console.warn('⚠️ [watch dataSource] hotInstance 不存在');
       }
