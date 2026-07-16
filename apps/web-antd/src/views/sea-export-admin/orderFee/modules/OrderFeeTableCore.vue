@@ -571,13 +571,15 @@ defineExpose({
   flex: 1; // ✅ 使用 flex 布局自动填充剩余空间
   min-height: 0; // ✅ 防止 flex 子项溢出
   overflow: hidden; // ✅ 修复:改为 hidden,由 Handsontable 内部处理滚动
+  height: 600px; // ✅ 新增:固定容器高度,与 hotSettings.height 保持一致
 
   :deep(.htCore) {
     width: 100% !important;
   }
 
   :deep(.ht_master) {
-    // ✅ 修复:移除固定的 max-height,让表格高度由父容器控制
+    // ✅ 修复:设置固定高度,避免滚动时高度变化
+    height: 600px !important;
     overflow: auto !important;
   }
 

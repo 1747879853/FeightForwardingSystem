@@ -769,8 +769,9 @@ const hotColumns = computed(() => {
         return td;
       };
     } else if (col.field === 'invoiceStatus') {
-      // 开票状态 - 显示中文标签
+      // 开票状态 - 显示中文标签（只读）
       hotCol.type = 'text';
+      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
       hotCol.renderer = function (
         this: any,
         instance: any,
@@ -786,8 +787,9 @@ const hotColumns = computed(() => {
         return td;
       };
     } else if (col.field === 'combinedFeeStatus' || col.field === 'feeStatus') {
-      // 费用状态 - 显示中文标签
+      // 费用状态 - 显示中文标签（只读）
       hotCol.type = 'text';
+      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
       hotCol.renderer = function (
         this: any,
         instance: any,
@@ -803,8 +805,9 @@ const hotColumns = computed(() => {
         return td;
       };
     } else if (col.field === 'creationTime' || col.field === 'task.auditTime') {
-      // 录入时间和审核时间 - 格式化日期显示
+      // 录入时间和审核时间 - 格式化日期显示（只读）
       hotCol.type = 'text';
+      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
       hotCol.renderer = function (
         this: any,
         instance: any,
@@ -820,8 +823,9 @@ const hotColumns = computed(() => {
         return td;
       };
     } else if (col.field === 'dataEntryMethod') {
-      // 数据录入方式 - 显示中文标签
+      // 数据录入方式 - 显示中文标签（只读）
       hotCol.type = 'text';
+      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
       hotCol.renderer = function (
         this: any,
         instance: any,
@@ -848,6 +852,18 @@ const hotColumns = computed(() => {
       };
     } else if (col.field === 'canInvoice' || col.field === 'isConfidential') {
       hotCol.type = 'checkbox';
+    } else if (['noTaxUnitPrice', 'noTaxAmount', 'rqstPaymentAmount', 'invoicedAmount', 'orderInvoiceAmount', 'settledAmount'].includes(col.field || '')) {
+      // ✅ 不含税单价、不含税金额、申请付款金额、已开票金额、开票申请金额、已结算金额 - 设置为只读
+      hotCol.type = 'numeric';
+      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
+      hotCol.numericFormat = {
+        pattern: '0.00',
+        culture: 'en-US',
+      };
+    } else if (col.field === 'creatorUserName') {
+      // ✅ 录入人 - 设置为只读
+      hotCol.type = 'text';
+      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
     } else {
       hotCol.type = 'text';
     }
@@ -865,8 +881,7 @@ const hotSettings = computed(() => ({
   columns: hotColumns.value,
   rowHeaders: false, // ✅ 隐藏默认行头,使用自定义复选框列
   colHeaders: true,
-  height: '100%', // ✅ 修复:使用百分比高度而不是 auto,避免滚动时高度变化
-  maxHeight: 700,
+  height: 520, // ✅ 修复:减小高度以留出滚动条空间(原600)
   licenseKey: 'non-commercial-and-evaluation',
   contextMenu: true,
   manualColumnResize: true,
@@ -1490,14 +1505,14 @@ defineExpose({
   .order-ctn-table {
     display: flex;
     flex-direction: column;
-    height: 500px;
+    height: 650px; // ✅ 调整:增加高度以容纳表头和工具栏
   }
 
   .handsontable-container {
     display: flex;
     flex-direction: column;
     height: 100%; // ✅ 确保容器占满父元素高度
-    min-height: 400px; // ✅ 添加最小高度,防止内容过少时表格塌陷
+    min-height: 570px; // ✅ 调整:与表格固定高度+表头高度保持一致(原600)
     overflow: hidden;
     border: 1px solid #e8e8e8;
     border-radius: 4px;
