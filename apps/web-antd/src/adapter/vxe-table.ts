@@ -25,12 +25,15 @@ import { objectOmit } from '@vueuse/core';
 import {
   Button,
   Checkbox,
+  Dropdown,
   Image,
+  Input,
+  Menu,
+  Modal,
   Popconfirm,
+  Select,
   Switch,
   Tag,
-  Select,
-  Input,
   message,
 } from 'ant-design-vue';
 
@@ -1628,38 +1631,53 @@ setupVbenVxeTable({
           edit: {
             text: $t('common.edit'),
           },
+          more: {
+            text: $t('common.more'),
+          },
         };
+
+        function resolveOperationOpt(opt: string | Recordable<any>) {
+          if (isString(opt)) {
+            return presets[opt]
+              ? { code: opt, ...presets[opt], ...defaultProps }
+              : {
+                  code: opt,
+                  text: $te(`common.${opt}`) ? $t(`common.${opt}`) : opt,
+                  ...defaultProps,
+                };
+          }
+          return { ...defaultProps, ...presets[opt.code], ...opt };
+        }
+
+        function resolveOperationBtn(opt: Recordable<any>) {
+          const optBtn: Recordable<any> = {};
+          Object.keys(opt).forEach((key) => {
+            if (key === 'children' && Array.isArray(opt.children)) {
+              optBtn.children = opt.children
+                .map((child: string | Recordable<any>) =>
+                  resolveOperationBtn(resolveOperationOpt(child)),
+                )
+                .filter((child: Recordable<any>) => child.show !== false);
+              return;
+            }
+            optBtn[key] = isFunction(opt[key]) ? opt[key](row) : opt[key];
+          });
+          return optBtn;
+        }
+
         const operations: Array<Recordable<any>> = (
           options || ['edit', 'delete']
         )
-          .map((opt) => {
-            if (isString(opt)) {
-              return presets[opt]
-                ? { code: opt, ...presets[opt], ...defaultProps }
-                : {
-                    code: opt,
-                    text: $te(`common.${opt}`) ? $t(`common.${opt}`) : opt,
-                    ...defaultProps,
-                  };
-            } else {
-              return { ...defaultProps, ...presets[opt.code], ...opt };
-            }
-          })
-          .map((opt) => {
-            const optBtn: Recordable<any> = {};
-            Object.keys(opt).forEach((key) => {
-              optBtn[key] = isFunction(opt[key]) ? opt[key](row) : opt[key];
-            });
-            return optBtn;
-          })
+          .map((opt) => resolveOperationBtn(resolveOperationOpt(opt)))
           .filter((opt) => opt.show !== false);
 
         function renderBtn(opt: Recordable<any>, listen = true) {
+          const { children: _children, show: _show, ...btnOpt } = opt;
           return h(
             Button,
             {
               ...props,
-              ...opt,
+              ...btnOpt,
               icon: undefined,
               onClick: listen
                 ? () =>
@@ -1684,8 +1702,16 @@ setupVbenVxeTable({
           );
         }
 
+        function triggerOperation(code: string) {
+          attrs?.onClick?.({
+            code,
+            row,
+          });
+        }
+
         function renderConfirm(opt: Recordable<any>) {
           let viewportWrapper: HTMLElement | null = null;
+          const { children: _children, show: _show, ...confirmOpt } = opt;
           return h(
             Popconfirm,
             {
@@ -1703,7 +1729,7 @@ setupVbenVxeTable({
               placement: 'topLeft',
               title: $t('ui.actionTitle.delete', [attrs?.nameTitle || '']),
               ...props,
-              ...opt,
+              ...confirmOpt,
               icon: undefined,
               onOpenChange: (open: boolean) => {
                 // 当弹窗打开时，禁止表格的滚动
@@ -1714,10 +1740,7 @@ setupVbenVxeTable({
                 }
               },
               onConfirm: () => {
-                attrs?.onClick?.({
-                  code: opt.code,
-                  row,
-                });
+                triggerOperation(opt.code);
               },
             },
             {
@@ -1734,9 +1757,74 @@ setupVbenVxeTable({
           );
         }
 
-        const btns = operations.map((opt) =>
-          opt.code === 'delete' ? renderConfirm(opt) : renderBtn(opt),
-        );
+        function renderMore(opt: Recordable<any>) {
+          const children = Array.isArray(opt.children) ? opt.children : [];
+          if (children.length === 0) {
+            return null;
+          }
+          return h(
+            Dropdown,
+            {
+              trigger: ['click'],
+              getPopupContainer: () => document.body,
+            },
+            {
+              default: () => renderBtn({ ...opt, code: 'more' }, false),
+              overlay: () =>
+                h(
+                  Menu,
+                  {
+                    onClick: ({ key }: { key: string | number }) => {
+                      const child = children.find(
+                        (item: Recordable<any>) =>
+                          String(item.code) === String(key),
+                      );
+                      if (!child) {
+                        return;
+                      }
+                      if (child.code === 'delete') {
+                        Modal.confirm({
+                          title: $t('ui.actionTitle.delete', [
+                            attrs?.nameTitle || '',
+                          ]),
+                          content: $t('ui.actionMessage.deleteConfirm', [
+                            resolveCellOperationRowName(row, attrs),
+                          ]),
+                          okType: 'danger',
+                          onOk: () => triggerOperation(child.code),
+                        });
+                        return;
+                      }
+                      triggerOperation(child.code);
+                    },
+                  },
+                  () =>
+                    children.map((child: Recordable<any>) =>
+                      h(
+                        Menu.Item,
+                        {
+                          key: child.code,
+                          danger: child.danger === true,
+                        },
+                        () => child.text,
+                      ),
+                    ),
+                ),
+            },
+          );
+        }
+
+        const btns = operations
+          .map((opt) => {
+            if (Array.isArray(opt.children) && opt.children.length > 0) {
+              return renderMore(opt);
+            }
+            if (opt.code === 'delete') {
+              return renderConfirm(opt);
+            }
+            return renderBtn(opt);
+          })
+          .filter(Boolean);
         return h(
           'div',
           {

@@ -2,7 +2,7 @@
 title: 用户管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-07-14
+last_updated: 2026-07-16
 ---
 
 # 1. 业务背景说明 (Background)
@@ -25,6 +25,7 @@ last_updated: 2026-07-14
 - **系统配置维护：** 按页面职责维护用户、角色、组织、工作流、枚举或缓存信息。
 - **账号可用判断口径：** 列表仅保留「账号启用」字段用于判断是否可使用系统，不再展示「账号状态」列。
 - **所属组织路径：** 列表「所属组织」列优先用 `organizationPath` 按层级拼接（如 `世纪通达/操作部/操作一部`）；无路径时回退 `organization`。
+- **行内操作：** 操作列固定右侧；外露「修改 / 权限配置 / 分配角色」，「银行账户 / 修改密码 / 删除」收入「更多」下拉；默认列宽 `280`。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -55,6 +56,7 @@ last_updated: 2026-07-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-16 | `Fix` | 用户列表操作列改为外露「修改 / 权限配置 / 分配角色」，其余收入「更多」；列宽 `280`。 | `CellOperation` 新增 `children`→Dropdown；删除在菜单内用 `Modal.confirm`。 |
 | 2026-07-14 | `Feature` | 用户列表新增「所属组织」列，展示 `organizationPath` 拼接路径（如 `世纪通达/操作部/操作一部`），无路径时回退 `organization`。 | `UserListDto` 补齐路径 DTO；列定义在 `user/data.ts` 的 `useColumns`。 |
 | 2026-06-27 | `Fix` | 用户新建/编辑弹窗增加只读「所属公司」，优先接口 `companyName`，否则按所选部门在组织树解析公司节点。 | `resolveOrganizationCompanyName` 于 `organization-unit.ts`；表单 `ReadonlyText` + 部门变更联动。 |
 | 2026-06-20 | `Feature` | 用户新建/编辑弹窗邮箱设为必填，并校验邮箱格式与最大长度 `128`。 | `emailAddress` 使用 Zod（`.min(1)` + 邮箱正则 + `.max(128)`）；复合字符串 `required\|email` 不会显示必填星号。 |

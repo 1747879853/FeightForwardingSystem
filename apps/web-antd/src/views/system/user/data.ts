@@ -622,20 +622,29 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
         name: 'CellOperation',
         options: [
           { code: 'edit', text: $t('common.edit') },
-          {
-            code: 'bankAccount',
-            text: $t('system.user.bankAccountAction'),
-          },
-          { code: 'setRoles', text: $t('system.user.setRoles') },
           { code: 'permission', text: $t('system.user.permission') },
-          { code: 'changePassword', text: $t('system.user.changePassword') },
-          { code: 'delete', text: $t('common.delete'), danger: true },
+          { code: 'setRoles', text: $t('system.user.setRoles') },
+          {
+            code: 'more',
+            text: $t('common.more'),
+            children: [
+              {
+                code: 'bankAccount',
+                text: $t('system.user.bankAccountAction'),
+              },
+              {
+                code: 'changePassword',
+                text: $t('system.user.changePassword'),
+              },
+              { code: 'delete', text: $t('common.delete'), danger: true },
+            ],
+          },
         ],
       },
       field: 'operation',
       fixed: 'right',
       title: $t('system.user.operation'),
-      width: 480,
+      width: 280,
     },
   ];
 }
