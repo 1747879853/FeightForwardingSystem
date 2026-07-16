@@ -6,7 +6,6 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { computed, h, nextTick, ref } from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
-import Handsontable from 'handsontable';
 import { Select, message } from 'ant-design-vue';
 
 import { getClientPagedList } from '#/api/sea-export/client-admin';
@@ -569,9 +568,9 @@ defineExpose({
 <style scoped lang="scss">
 .handsontable-wrapper {
   flex: 1; // ✅ 使用 flex 布局自动填充剩余空间
+  height: 600px; // ✅ 新增:固定容器高度,与 hotSettings.height 保持一致
   min-height: 0; // ✅ 防止 flex 子项溢出
   overflow: hidden; // ✅ 修复:改为 hidden,由 Handsontable 内部处理滚动
-  height: 600px; // ✅ 新增:固定容器高度,与 hotSettings.height 保持一致
 
   :deep(.htCore) {
     width: 100% !important;
