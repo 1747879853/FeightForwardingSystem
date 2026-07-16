@@ -56,6 +56,7 @@
     "dev:naive": "pnpm -F @vben/web-naive run dev",
     "dev:tdesign": "pnpm -F @vben/web-tdesign run dev",
     "dev:play": "pnpm -F @vben/playground run dev",
+    "deploy:antd:jht": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy-jht.ps1",
     "format": "vsh lint --format",
     "lint": "vsh lint",
     "postinstall": "pnpm -r run stub --if-present",

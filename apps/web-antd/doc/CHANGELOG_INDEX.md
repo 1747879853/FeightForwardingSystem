@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-16 津海通本地打包与 MSDeploy 发布脚本](./changelogs/change-log-2026-07-16-jht-local-msdeploy.md)
 - [2026-07-16 船期查询列表全字段展示](./changelogs/change-log-2026-07-16-schedule-query-all-fields-columns.md)
 - [2026-07-16 船期查询对接飞驼新增字段（MMSI 定位）](./changelogs/change-log-2026-07-16-schedule-query-feituo-fields-mmsi.md)
 - [2026-07-16 船期查询 AIS 定位配置改为环境变量](./changelogs/change-log-2026-07-16-schedule-query-ais-env-config.md)

@@ -37,6 +37,40 @@
 
 提交信息含 `[skip ci]` 时，两路部署均跳过。
 
+### 本地打包并发布津海通
+
+Windows 本机安装 MSDeploy 3.x 后，可从仓库根目录执行与 jht Workflow 一致的构建、打包、WhatIf 预览和 IIS 同步：
+
+```powershell
+$env:IIS_JHT_SERVER_IP = '服务器 IP'
+$env:IIS_JHT_SITE_NAME = 'IIS 站点或应用路径'
+$env:IIS_JHT_USER = 'Web Deploy 用户'
+$env:IIS_JHT_PWD = 'Web Deploy 密码'
+pnpm deploy:antd:jht
+```
+
+若不设置 `IIS_JHT_PWD`，脚本会以安全输入框提示密码。GitHub Actions Secrets 无法下载到本机，以上变量仅作用于当前 PowerShell 会话，不要把生产凭据写入仓库。
+
+常用参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `-InstallDeps` | 构建前执行 `pnpm install --frozen-lockfile` |
+| `-SkipBuild` | 跳过构建，重新打包并发布现有 `dist` |
+| `-WhatIfOnly` | 只执行 MSDeploy 发布预览，不修改服务器 |
+| `-SkipConnectivityCheck` | 跳过 8172 端口检查 |
+| `-Force` | 跳过正式发布前输入 `jht` 的二次确认，适合受控自动化 |
+| `-Endpoint <URL>` | 覆盖默认的 `https://IP:8172/msdeploy.axd?site=站点名` |
+| `-MsDeployPath <路径>` | 指定非默认安装位置的 `msdeploy.exe` |
+
+示例：只预览已有产物：
+
+```powershell
+.\scripts\deploy-jht.ps1 -SkipBuild -WhatIfOnly
+```
+
+脚本会校验 `dist/_app.config.js` 中的 API 与 `.env.jht` 一致，避免把读取了 `.env.production` 的混合品牌产物发布到 jht 站点；发布时继续保留服务器上的站点验证文件、`logs` 和 `data` 目录。
+
 ## 环境文件
 
 | 文件               | 说明                                           |
@@ -103,6 +137,7 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-07-16 | `Feature` | 新增津海通本地构建、MSDeploy 打包、预览与 IIS 发布命令 | 本地配置沿用 `IIS_JHT_*` 命名；产物 API 校验阻止错误 mode 上线 |
 | 2026-07-13 | `Fix` | 世纪通达（sjtd）品牌名称与生产 API 更正为 43.138.14.122:84 | `.env.sjtd` 与 `vite.config.mts` dev 代理同步 |
 | 2026-07-13 | `Feature` | 新增世纪通达（sjtd）独立打包与开发命令 | 新增 `.env.sjtd`、`build:sjtd`/`dev:sjtd`；`brand-assets.ts` 与 `vite.config.mts` 注册 sjtd 素材目录 |
 | 2026-06-16 | `Parsing` | 无 | 解析直接执行 `pnpm vite build --mode jht` 导致 `_app.config.js` 误读 `.env.production`、API 指向 118.190.1.4:82 的根因；明确必须通过 `pnpm build:jht` 打包。 |
