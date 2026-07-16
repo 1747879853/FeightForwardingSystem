@@ -468,12 +468,12 @@ async function editInvoiceIssue(data: InvoiceIssueApi.InvoiceIssueEditDto) {
 
 /**
  * 删除发票开出
- * @param id 发票开出ID
+ * @param ids 发票开出ID
  */
 async function deleteInvoiceIssue(id: string) {
   return requestClient.delete<boolean>(
     '/services/app/InvoiceIssueAdmin/DeleteAsync',
-    { params: { id } },
+    { data: { id} },
   );
 }
 

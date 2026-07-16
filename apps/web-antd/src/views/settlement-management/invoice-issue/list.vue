@@ -123,7 +123,7 @@ async function handleBatchDelete() {
         gridApi.query();
       } catch (error) {
         console.error('批量删除失败:', error);
-        message.error('批量删除失败');
+        //message.error('批量删除失败');
       }
     },
   });
