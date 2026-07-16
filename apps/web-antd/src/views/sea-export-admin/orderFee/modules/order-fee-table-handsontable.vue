@@ -697,6 +697,32 @@ const hotColumns = computed(() => {
     },
   };
 
+  // ✅ 新增:在第二列添加序号列
+  const indexColumn: any = {
+    data: null, // 不绑定到数据字段
+    title: '序号',
+    width: 60,
+    type: 'text',
+    className: 'htCenter htMiddle', // 居中对齐
+    readOnly: true, // 设置为只读
+    // ✅ 自定义渲染器:显示行号（从1开始）
+    renderer: function (
+      this: any,
+      instance: any,
+      td: HTMLTableCellElement,
+      row: number,
+      col: number,
+      prop: string,
+      value: any,
+      cellProperties: any,
+    ) {
+      td.innerHTML = `<span style="color: #262626;">${row + 1}</span>`;
+      td.style.textAlign = 'center';
+      td.style.verticalAlign = 'middle';
+      return td;
+    },
+  };
+
   // 定义可排序的字段列表（参考 order-fee-table.vue）
   const sortableFields = new Set([
     'invoiceStatus',
@@ -725,8 +751,8 @@ const hotColumns = computed(() => {
     'creationTime',
   ]);
 
-  // ✅ 将复选框列添加到最前面
-  const columns = [checkboxColumn];
+  // ✅ 将复选框列和序号列添加到最前面
+  const columns = [checkboxColumn, indexColumn];
 
   // 映射原有列
   const mappedColumns = vxeColumns.map((col) => {
@@ -1063,7 +1089,7 @@ const hotSettings = computed(() => ({
 
     console.log('🔵 [afterOnCellMouseDown] 点击事件', { rowIndex, columnIndex });
 
-    // ✅ 处理复选框列的点击（第一列）
+    // ✅ 处理复选框列的点击（第一列，索引0）
     if (columnIndex === 0 && rowIndex >= 0) {
       console.log('✅ [afterOnCellMouseDown] 点击复选框列');
       
@@ -1102,6 +1128,12 @@ const hotSettings = computed(() => ({
         }
       });
       
+      return;
+    }
+
+    // ✅ 跳过序号列（第二列，索引1），不触发任何操作
+    if (columnIndex === 1) {
+      console.log('ℹ️ [afterOnCellMouseDown] 点击序号列，跳过');
       return;
     }
 
