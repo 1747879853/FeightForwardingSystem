@@ -36,10 +36,10 @@ const [Grid] = useVbenVxeGrid<FeituoScheduleItemDto>({
     // 实时外部接口，避免字段变化即触发查询，改为点击查询按钮
     submitOnChange: false,
     showCollapseButton: true,
-    collapsed: false,
-    wrapperClass: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
+    collapsed: true,
+    wrapperClass: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-6',
     commonConfig: {
-      labelWidth: 110,
+      labelWidth: 92,
     },
   },
   gridOptions: {

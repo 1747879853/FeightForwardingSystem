@@ -30,22 +30,27 @@ export function getTransportModeText(mode?: string): string {
 export function useGridFormSchema(): VbenFormSchema[] {
   return [
     {
-      component: 'Input',
+      component: 'PortSelect',
       fieldName: 'polCode',
-      label: '起始港五字码',
-      rules: 'required',
+      label: '起始港',
+      rules: 'selectRequired',
       componentProps: {
-        placeholder: '如 CNSHA',
+        placeholder: '请选择起始港',
+        // 查询接口以五字码（EDI 代码）为准，故 value 取 ediCode
+        valueKey: 'ediCode',
+        labelKey: 'ediCode',
         allowClear: true,
       },
     },
     {
-      component: 'Input',
+      component: 'PortSelect',
       fieldName: 'podCode',
-      label: '目的港五字码',
-      rules: 'required',
+      label: '目的港',
+      rules: 'selectRequired',
       componentProps: {
-        placeholder: '如 USLGB',
+        placeholder: '请选择目的港',
+        valueKey: 'ediCode',
+        labelKey: 'ediCode',
         allowClear: true,
       },
     },
@@ -72,6 +77,20 @@ export function useGridFormSchema(): VbenFormSchema[] {
         placeholder: '请选择范围',
         allowClear: false,
         options: weeksOutOptions,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'isTransit',
+      label: '中转标识',
+      componentProps: {
+        placeholder: '不传返回全部',
+        allowClear: true,
+        options: [
+          { label: '全部', value: null },
+          { label: '直达', value: 0 },
+          { label: '中转', value: 1 },
+        ],
       },
     },
     {
@@ -105,20 +124,6 @@ export function useGridFormSchema(): VbenFormSchema[] {
       componentProps: {
         placeholder: '选填',
         allowClear: true,
-      },
-    },
-    {
-      component: 'Select',
-      fieldName: 'isTransit',
-      label: '中转标识',
-      componentProps: {
-        placeholder: '不传返回全部',
-        allowClear: true,
-        options: [
-          { label: '全部', value: null },
-          { label: '直达', value: 0 },
-          { label: '中转', value: 1 },
-        ],
       },
     },
     {

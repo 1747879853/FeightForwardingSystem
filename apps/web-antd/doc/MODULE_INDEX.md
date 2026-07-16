@@ -14,7 +14,7 @@
 | sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-07-11 |
 | sea-imports | `/sea-imports/:id/edit` | 操作管理 / 海运进口 | 编辑页是海运进口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运进口编辑工作台](./modules/sea-imports/id-edit.md) | 2026-07-11 |
 | freight-rate | `/freight-rate` | 航线管理 / 运价查询 | 维护海运运价信息，为委托费用测算和报价提供基础数据入口；侧边栏位于「航线管理」分组下。 | [运价查询](./modules/freight-rate/index.md) | 2026-07-16 |
-| schedule-query | `/schedule` | 航线管理 / 船期查询 | 对接飞驼船期实时查询；侧边栏与运价同属「航线管理」分组。 | [船期查询](./modules/schedule-query/index.md) | 2026-07-16 |
+| schedule-query | `/schedule` | 航线管理 / 船期查询 | 对接飞驼船期实时查询；起始/目的港用 PortSelect（EDI）；筛选一行 6 列默认收起。 | [船期查询](./modules/schedule-query/index.md) | 2026-07-16 |
 | fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建和进入付款申请单编辑，是应付费用付款流程入口。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-07-12 |
 | fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请单，选择可申请的应付费用并形成待审核付款申请。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-07-12 |
 | fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑已有付款申请单，在状态允许时调整明细并提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-07-12 |

@@ -21,7 +21,9 @@ last_updated: 2026-07-16
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **船期查询：** 按条件调用飞驼 `QueryScheduleAsync` 实时查询船期（不落库）。
+- **船期查询：** 按条件调用飞驼 `QueryScheduleAsync` 实时查询船期（不落库）；点击查询按钮才请求（`submitOnChange: false`，`autoLoad: false`）。
+- **筛选布局：** 一行 6 列，默认收起；`labelWidth: 92`。收起首行：起始港、目的港、预计离港、范围(周)、中转标识、预计到港。
+- **港口选择：** 起始港/目的港使用系统 `PortSelect`，选中值为 EDI 五字码。
 - **菜单归属：** 与「运价查询」同属侧边栏「航线管理」分组。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -34,7 +36,10 @@ last_updated: 2026-07-16
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **查询条件** | 船期检索入参。 | `FeituoScheduleAdmin/QueryScheduleAsync` | **触发/依赖：** 提交后刷新列表结果。 | 以后端校验为准。 |
+| **polCode / podCode** | 起始港 / 目的港五字码。 | `PortSelect`（`valueKey=ediCode`） | 提交后带入查询入参。 | 必填（`selectRequired`）。 |
+| **etd / weeksOut** | 预计离港日期、范围(周)。 | 表单 DatePicker / Select | 有 `eta` 时范围(周)不生效（后端语义）。 | 必填。 |
+| **isTransit** | 中转标识（全部/直达/中转）。 | 表单 Select | 不传则返回全部。 | 选填。 |
+| **其余选填** | 船公司、航线代码、中转港、船名等。 | CarrierSelect / Input | 有值才写入查询入参。 | 选填。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -45,3 +50,4 @@ last_updated: 2026-07-16
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
 | 2026-07-16 | `Refactor` | 船期查询从独立「船期管理」顶级菜单并入「航线管理」；URL `/schedule` 不变。 | 删除 `schedule.ts`；子路由挂在 `freight-rate.ts`，父级权限聚合 `SeFreiPrice`+`Schedule`。 |
+| 2026-07-16 | `Feature` | 起始/目的港改为 PortSelect（EDI 五字码）；筛选一行 6 列、默认收起，中转标识紧邻范围(周)，labelWidth=92。 | 查询入参字段名仍为 `polCode`/`podCode`，仅组件与布局调整。 |
