@@ -23,13 +23,20 @@ interface Props {
     unitList: Array<{ label: string; value: any }>;
   };
   orderDetail?: SeaExportAdminApi.SeaExportDto | null; // 新增：订单详情
+  sortableFields?: Set<string>; // 可排序字段列表
+  sortState?: {
+    field: string | null;
+    order: 'asc' | 'desc' | null;
+  }; // 排序状态
 }
 
 const props = defineProps<Props>();
 
-const emit = defineEmits(['update:selectedRowKeys']);
+const emit = defineEmits(['update:selectedRowKeys', 'column-sort']);
 
 const hotTableRef = ref<any>(null);
+
+// ==================== 客户列表缓存 ====================
 
 // 用于存储当前编辑的单元格信息
 const currentEditingCell = ref<{
@@ -38,6 +45,8 @@ const currentEditingCell = ref<{
   field: string;
   td: HTMLTableCellElement | null;
 } | null>(null);
+
+// ==================== 客户列表加载 ====================
 
 // 客户列表缓存（简化版，不依赖 Vue Query）
 const clientListCache = ref<Array<{ label: string; value: any }>>([]);

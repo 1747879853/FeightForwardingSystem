@@ -5,6 +5,7 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import dayjs from 'dayjs';
 import {
   Button,
   Space,
@@ -31,6 +32,9 @@ import {
   getCurrencyEnumOptions,
   useOrderFeeColumns,
   initOrderFeeEnumCache,
+  getInvoiceStatusOptions,
+  getFeeStatusOptions,
+  getDataEntryMethodOptions,
 } from '../data';
 
 // 导入拆分后的组件和 composables
@@ -210,7 +214,7 @@ const updateUnitList = () => {
   console.log('📏 [updateUnitList] 单位列表更新:', uniqueUnits.length, '条');
 };
 
-// ==================== Handsontable 列配置 ====================
+// ==================== 辅助函数 ====================
 
 /**
  * 根据费用代码ID获取显示标签
@@ -271,6 +275,56 @@ const getSettlementLabel = (settlementId: any): string => {
 
   // 如果没有缓存，返回 ID（fallback）
   return String(settlementId);
+};
+
+/**
+ * 根据开票状态值获取显示标签
+ */
+const getInvoiceStatusLabel = (invoiceStatus: any): string => {
+  if (invoiceStatus === undefined || invoiceStatus === null) return '';
+  
+  const option = getInvoiceStatusOptions().find(
+    (opt) => opt.value === invoiceStatus,
+  );
+  return option?.label || String(invoiceStatus);
+};
+
+/**
+ * 根据费用状态值获取显示标签
+ */
+const getFeeStatusLabel = (feeStatus: any): string => {
+  if (feeStatus === undefined || feeStatus === null) return '';
+  
+  const option = getFeeStatusOptions().find(
+    (opt) => opt.value === feeStatus,
+  );
+  return option?.label || String(feeStatus);
+};
+
+/**
+ * 根据数据录入方式值获取显示标签
+ */
+const getDataEntryMethodLabel = (dataEntryMethod: any): string => {
+  if (dataEntryMethod === undefined || dataEntryMethod === null) return '';
+  
+  const option = getDataEntryMethodOptions().find(
+    (opt) => opt.value === dataEntryMethod,
+  );
+  return option?.label || String(dataEntryMethod);
+};
+
+/**
+ * 格式化日期时间显示
+ */
+const formatDateTime = (dateValue: any): string => {
+  if (!dateValue) return '';
+  
+  try {
+    return dayjs(dateValue).format('YYYY-MM-DD HH:mm:ss');
+  } catch (error) {
+    console.warn('日期格式化失败:', error);
+    return String(dateValue);
+  }
 };
 
 /**
@@ -366,6 +420,140 @@ const extractSettlementNameFromOrder = (settlementId: any): string | null => {
   return null;
 };
 
+// ==================== 排序功能 ====================
+
+/**
+ * 排序状态管理
+ */
+const sortState = ref<{
+  field: string | null;
+  order: 'asc' | 'desc' | null;
+}>({
+  field: null,
+  order: null,
+});
+
+/**
+ * 获取排序图标
+ */
+const getSortIcon = (field: string) => {
+  if (sortState.value.field !== field) {
+    return '▼'; // 未排序状态
+  }
+  
+  if (sortState.value.order === 'asc') {
+    return '▲'; // 升序
+  }
+  
+  if (sortState.value.order === 'desc') {
+    return '▼'; // 降序
+  }
+  
+  return '▼'; // 默认
+};
+
+/**
+ * 可排序字段列表（计算属性）
+ */
+const sortableFieldsSet = computed(() => new Set([
+  'invoiceStatus',
+  'combinedFeeStatus',
+  'feeCodeId',
+  'industryCategory',
+  'settlementId',
+  'currencyId',
+  'exchangeRate',
+  'unitPrice',
+  'amount',
+  'unit',
+  'quantity',
+  'taxRate',
+  'noTaxUnitPrice',
+  'noTaxAmount',
+  'rqstPaymentAmount',
+  'invoicedAmount',
+  'orderInvoiceAmount',
+  'settledAmount',
+  'canInvoice',
+  'isConfidential',
+  'remark',
+  'dataEntryMethod',
+  'creatorUserName',
+  'creationTime',
+]));
+
+/**
+ * 处理列头点击排序
+ */
+const handleColumnSort = (field: string) => {
+  if (!field) return;
+
+  let newOrder: 'asc' | 'desc' | null = 'asc';
+  
+  // 如果当前列已经在排序，则切换顺序
+  if (sortState.value.field === field) {
+    if (sortState.value.order === 'asc') {
+      newOrder = 'desc';
+    } else if (sortState.value.order === 'desc') {
+      // 第三次点击取消排序
+      newOrder = null;
+    }
+  }
+
+  sortState.value = {
+    field: newOrder ? field : null,
+    order: newOrder,
+  };
+
+  // 执行排序
+  if (newOrder && field) {
+    sortDataSource(field, newOrder);
+  } else {
+    // 取消排序，恢复原始顺序
+    getTableDate();
+  }
+};
+
+/**
+ * 对数据源进行排序
+ */
+const sortDataSource = (field: string, order: 'asc' | 'desc') => {
+  if (!dataSource.value || dataSource.value.length === 0) return;
+
+  const sorted = [...dataSource.value].sort((a: any, b: any) => {
+    let aValue = a[field];
+    let bValue = b[field];
+
+    // 处理嵌套字段（如 task.creatorUserName）
+    if (field.includes('.')) {
+      const keys = field.split('.');
+      aValue = keys.reduce((obj: any, key: string) => obj?.[key], a);
+      bValue = keys.reduce((obj: any, key: string) => obj?.[key], b);
+    }
+
+    // 处理空值
+    if (aValue === null || aValue === undefined) aValue = '';
+    if (bValue === null || bValue === undefined) bValue = '';
+
+    // 数字类型排序
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return order === 'asc' ? aValue - bValue : bValue - aValue;
+    }
+
+    // 字符串类型排序
+    const aStr = String(aValue).toLowerCase();
+    const bStr = String(bValue).toLowerCase();
+    
+    if (aStr < bStr) return order === 'asc' ? -1 : 1;
+    if (aStr > bStr) return order === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  dataSource.value = sorted;
+  
+  console.log('📊 [排序] 字段:', field, '顺序:', order, '行数:', sorted.length);
+};
+
 /**
  * 转换vxe-table列配置为handsontable列配置
  */
@@ -376,12 +564,46 @@ const hotColumns = computed(() => {
     return [];
   }
 
+  // 定义可排序的字段列表（参考 order-fee-table.vue）
+  const sortableFields = new Set([
+    'invoiceStatus',
+    'combinedFeeStatus',
+    'feeCodeId',
+    'industryCategory',
+    'settlementId',
+    'currencyId',
+    'exchangeRate',
+    'unitPrice',
+    'amount',
+    'unit',
+    'quantity',
+    'taxRate',
+    'noTaxUnitPrice',
+    'noTaxAmount',
+    'rqstPaymentAmount',
+    'invoicedAmount',
+    'orderInvoiceAmount',
+    'settledAmount',
+    'canInvoice',
+    'isConfidential',
+    'remark',
+    'dataEntryMethod',
+    'creatorUserName',
+    'creationTime',
+  ]);
+
   return vxeColumns.map((col) => {
     const hotCol: any = {
       data: col.field,
       title: col.title,
       width: col.width || col.minWidth || 100,
     };
+
+    // 添加排序图标到标题（如果该字段可排序）
+    if (col.field && sortableFields.has(col.field)) {
+      const sortIcon = getSortIcon(col.field);
+      hotCol.title = `${col.title} ${sortIcon}`;
+    }
 
     if (col.field === 'feeCodeId') {
       hotCol.type = 'text';
@@ -461,6 +683,74 @@ const hotColumns = computed(() => {
         td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
         return td;
       };
+    } else if (col.field === 'invoiceStatus') {
+      // 开票状态 - 显示中文标签
+      hotCol.type = 'text';
+      hotCol.renderer = function (
+        this: any,
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) {
+        const label = getInvoiceStatusLabel(value);
+        td.innerHTML = `<span style="color: #262626;">${label || ''}</span>`;
+        return td;
+      };
+    } else if (col.field === 'combinedFeeStatus' || col.field === 'feeStatus') {
+      // 费用状态 - 显示中文标签
+      hotCol.type = 'text';
+      hotCol.renderer = function (
+        this: any,
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) {
+        const label = getFeeStatusLabel(value);
+        td.innerHTML = `<span style="color: #262626;">${label || ''}</span>`;
+        return td;
+      };
+    } else if (col.field === 'creationTime' || col.field === 'task.auditTime') {
+      // 录入时间和审核时间 - 格式化日期显示
+      hotCol.type = 'text';
+      hotCol.renderer = function (
+        this: any,
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) {
+        const formattedDate = formatDateTime(value);
+        td.innerHTML = `<span style="color: #262626;">${formattedDate}</span>`;
+        return td;
+      };
+    } else if (col.field === 'dataEntryMethod') {
+      // 数据录入方式 - 显示中文标签
+      hotCol.type = 'text';
+      hotCol.renderer = function (
+        this: any,
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) {
+        const label = getDataEntryMethodLabel(value);
+        td.innerHTML = `<span style="color: #262626;">${label || ''}</span>`;
+        return td;
+      };
     } else if (
       ['exchangeRate', 'unitPrice', 'amount', 'quantity', 'taxRate'].includes(
         col.field || '',
@@ -486,7 +776,7 @@ const hotColumns = computed(() => {
 const hotSettings = computed(() => ({
   data: dataSource.value,
   columns: hotColumns.value,
-  rowHeaders: true,
+  rowHeaders: true, // 隐藏行头（A列）
   colHeaders: true,
   height: 'auto',
   maxHeight: 700,
@@ -529,7 +819,43 @@ const hotSettings = computed(() => ({
     const columnIndex = coords.col;
     const rowIndex = coords.row;
 
-    if (rowIndex < 0) return;
+    console.log('🔵 [afterOnCellMouseDown] 点击事件', { rowIndex, columnIndex });
+
+    // 处理表头点击（排序）
+    if (rowIndex === -1 && columnIndex >= 0) {
+      console.log('✅ [afterOnCellMouseDown] 检测到表头点击');
+      
+      const columnConfig = hotColumns.value[columnIndex];
+      if (!columnConfig || !columnConfig.data) {
+        console.warn('⚠️ [afterOnCellMouseDown] 未找到列配置');
+        return;
+      }
+      
+      const field = columnConfig.data;
+      console.log('✅ [afterOnCellMouseDown] 字段:', field);
+      
+      // 检查该字段是否可排序
+      if (!sortableFieldsSet.value.has(field)) {
+        console.log('⚠️ [afterOnCellMouseDown] 字段不可排序:', field);
+        return;
+      }
+      
+      console.log('🎯 [afterOnCellMouseDown] 触发排序');
+      
+      // 阻止默认行为
+      event.preventDefault();
+      event.stopPropagation();
+      
+      // 触发排序
+      handleColumnSort(field);
+      return;
+    }
+
+    // 处理数据行点击（跳过行头）
+    if (rowIndex < 0 || columnIndex < 0) {
+      console.log('⚠️ [afterOnCellMouseDown] 跳过非数据单元格');
+      return;
+    }
 
     const columnConfig = hotColumns.value[columnIndex];
     if (!columnConfig) return;
@@ -874,7 +1200,10 @@ defineExpose({
               :hot-settings="hotSettings"
               :dropdown-sources="dropdownSources"
               :order-detail="orderBaseData"
+              :sortable-fields="sortableFieldsSet"
+              :sort-state="sortState"
               @update:selected-row-keys="selectedRowKeys = $event"
+              @column-sort="handleColumnSort"
             />
           </div>
         </div>
