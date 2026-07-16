@@ -1,113 +1,105 @@
 ---
-title: 收费结算 PRD（测试版）
-module: 结算管理
+title: 收费核销业务逻辑
+module: 费用管理 / 结算管理
 route: /settlement-management/receive-settlement
-version: v1.0
-last_updated: 2026-06-14
-audience: QA
+version: v2.0
+last_updated: 2026-07-17
+audience: 业务 / QA / 研发
 reference: apps/web-antd/doc/modules/settlement-management/receive-settlement.md
 ---
 
-# 收费结算 PRD（测试版）
+# 收费核销业务逻辑说明
 
-> **模块名称：** 收费结算  
-> **页面路径：** `/settlement-management/receive-settlement`（列表）、`/add`（新建）、`/edit/:id`（编辑/只读）  
-> **菜单入口：** 结算管理 → 收费结算  
+> **菜单入口：** 费用管理 → 收费核销  
+> **列表路径：** `/settlement-management/receive-settlement`  
+> **按开票新建示例：** `/settlement-management/receive-settlement/add-by-invoice?bankStatementId=83744d2c-1588-46c1-8c45-bb6df7ecf080`  
 > **权限标识：** `Admin.ReceiveSettlement`  
-> **文档版本：** v1.0  
-> **更新日期：** 2026-06-14  
-> **参考文档：** [收费结算模块活文档](../modules/settlement-management/receive-settlement.md)、[银行流水 PRD](./bank-statement-prd.md)
+> **关联文档：** [模块活文档](../modules/settlement-management/receive-settlement.md)、[银行流水工作台](./bank-statement-edit-prd.md)、[核销抽屉](./bank-statement-drawer-prd.md)
 
 ---
 
-## 1. 产品概述
+## 1. 业务一句话
 
-### 1.1 业务背景
-
-收费结算把**银行流水**（实际到账）与**应收费用**（「收」类型、仍有剩余额度）关联起来。财务选定流水 → 勾选费用并录入本次结算金额 → 生成收费结算单。单据可**锁定**；锁定后仅可查看或解锁，不可改主表、增删明细或删除。
-
-### 1.2 核心价值
-
-| 维度     | 说明                                                 |
-| -------- | ---------------------------------------------------- |
-| 操作粒度 | 一张收费结算单 = 一次对某条流水的费用分摊            |
-| 使用场景 | 财务收款核销、多笔费用合并结算                       |
-| 下游影响 | 占用费用剩余额度、占用流水可结算余额；锁定后冻结编辑 |
-
-### 1.3 不在本功能范围内
-
-- 不包含 `status` 的前端审核流转（仅 Tag 展示，后端驱动）
-- 不支持编辑已保存明细的「本次结算金额」（只能删后重加）
-- 选费抽屉**不支持**费用代码、ETD、组织等筛选（接口无此参数）
-- 付费结算（`/payment-settlement`）不在本文范围
+收费核销把**银行流水（实际到账）**与**应收/应付费用占用**关联起来：财务选定一条流水，再按「费用」或「开票申请」勾选明细并录入本次结算金额，生成核销单；单据可锁定。两种方式共用同一条费用已结算池，列表/汇总按**净额**（收正付负）展示。
 
 ---
 
-## 2. 目标用户与权限
+## 2. 两种核销方式
 
-### 2.1 角色
+| 对比项 | 按费用（type=0） | 按开票申请 / 发票结算（type=1） |
+| :-- | :-- | :-- |
+| 业务含义 | 直接按订单费用剩余额度核销 | 按已开票申请明细、发票口径余额核销 |
+| 新建路由 | `/receive-settlement/add` | `/receive-settlement/add-by-invoice` |
+| 编辑路由 | `/receive-settlement/edit/:id` | `/receive-settlement/edit-by-invoice/:id` |
+| 页面组件 | `form.vue` | `invoice-form.vue` |
+| 选明细抽屉 | `add-fee-drawer`（按业务/委托分组） | `add-invoice-application-drawer`（按开票申请分组） |
+| 新建接口 | `AddAsync` | `AddByInvoiceApplicationAsync` |
+| 追加明细 | `AddItemsAsync` | `AddItemsByInvoiceApplicationAsync` |
+| 删除明细 | `DeleteItemsAsync` | `DeleteInvoiceItemsAsync` |
+| 本单占用流水口径 | 明细金额合计（毛额相加） | **净额** Σ `toNetAmount(paySide, amount)` |
+| 列表类型文案 | 按业务 | 按开票申请 |
 
-| 角色       | 典型操作                                   |
-| ---------- | ------------------------------------------ |
-| 财务       | 新建/编辑收费结算、添加删除明细、锁定/解锁 |
-| 无权限用户 | 不可见菜单                                 |
-
-### 2.2 权限点（ABP）
-
-| 权限                             | 说明                    |
-| -------------------------------- | ----------------------- |
-| `Admin.ReceiveSettlement.Get`    | 列表、编辑/只读页访问   |
-| `Admin.ReceiveSettlement.Add`    | 新建、保存新建          |
-| `Admin.ReceiveSettlement.Edit`   | 编辑保存、添加/删除明细 |
-| `Admin.ReceiveSettlement.Delete` | 单条删除、列表批量删除  |
-| `Admin.ReceiveSettlement.Lock`   | 锁定                    |
-| `Admin.ReceiveSettlement.Unlock` | 解锁                    |
-
-**测试前置：** 准备全权限账号；另备无 Lock/Unlock、无 Edit 账号验证按钮显隐。
+**类型不可混：** 列表双击、银行流水抽屉编辑必须按 `row.type` 进入对应表单；对 type=0 调按开票追加接口会被后端拒绝。
 
 ---
 
-## 3. 功能清单
+## 3. 页面与入口地图
 
-| #   | 功能                 | 入口                       | 优先级 |
-| --- | -------------------- | -------------------------- | ------ |
-| F1  | 列表查询与分页       | 列表页                     | P0     |
-| F2  | 按银行流水筛选       | 查询区 BankStatementSelect | P0     |
-| F3  | 新建收费结算         | 工具栏「新建」             | P0     |
-| F4  | 编辑/查看            | 双击行（锁定→只读）        | P0     |
-| F5  | 银行流水信息 Card    | 表单页顶部                 | P0     |
-| F6  | 添加结算明细         | 选费抽屉                   | P0     |
-| F7  | 删除结算明细         | 勾选 + 工具栏「删除」      | P0     |
-| F8  | 锁定 / 解锁          | 编辑页顶部                 | P0     |
-| F9  | 删除结算单           | 编辑页 / 列表批量          | P1     |
-| F10 | 从银行流水页联动进入 | query `bankStatementId`    | P0     |
+```text
+费用管理 → 收费核销列表
+├─ Tab「收费核销」
+│   ├─ 新建下拉 → 费用结算 → /add[?bankStatementId]
+│   ├─ 新建下拉 → 发票结算 → /add-by-invoice[?bankStatementId]
+│   └─ 双击行 → 按 type 进 /edit/:id 或 /edit-by-invoice/:id
+│       （已锁定仍可进，页面只读）
+└─ Tab「银行流水」
+    ├─ 勾选一条流水 + 新建下拉 → 带 bankStatementId 跳转
+    └─ 双击流水行 → 默认按费用新建（带 bankStatementId）
+
+财务管理 → 银行流水编辑（工作台）
+└─ 右侧抽屉新增/编辑核销（不跳独立路由，嵌入同一套 form）
+   详见 bank-statement-drawer-prd.md
+```
+
+### 3.1 Query 预填 `bankStatementId`
+
+| 场景 | 行为 |
+| :-- | :-- |
+| 列表查询区已选流水后点「新建」 | 新建页 query 带入该流水并预填 |
+| 访问 `/add?bankStatementId=xxx` 或 `/add-by-invoice?bankStatementId=xxx` | 加载流水详情，展示「银行流水信息」Card |
+| 访问列表 `?bankStatementId=xxx` | 查询区预填该流水并触发查询 |
+| 银行流水 Tab 选中后新建 | 必须只选一条；多选提示「每次只能针对一条」 |
+
+示例（用户给出的路径）：
+
+```text
+/settlement-management/receive-settlement/add-by-invoice
+  ?bankStatementId=83744d2c-1588-46c1-8c45-bb6df7ecf080
+```
+
+含义：在指定银行流水上**新建按开票申请核销单**；页面打开后应已选中该流水，并展示流水金额、已结算、剩余可结算。
 
 ---
 
-## 4. 页面结构
+## 4. 列表页结构
 
-### 4.1 列表页
+### 4.1 Tab「收费核销」
 
-- **布局：** 查询区（默认折叠，一行六列，`labelWidth=64`）+ 表格 + 分页。
-- **交互：** 勾选 + 工具栏；**双击行**进入编辑页（锁定单据同样进入，页面只读）。
+- 查询：结算单号、结算时间范围、创建人、银行流水（`BankStatementSelect`，权限过滤接口）。
+- 列含：结算单号、**结算类型**、结算状态、结算时间、银行流水号、**结算净额**、明细条数、锁定、创建人、备注等。
+- 交互：勾选 + 顶部操作；**无操作列**；双击进编辑；批量删除遇锁定行整批拦截。
+- 「新建」为悬浮下拉：费用结算 / 发票结算；主按钮默认费用结算。
 
-**查询字段：**
+### 4.2 Tab「银行流水」
 
-| 字段 | 接口参数 | 说明 |
-| --- | --- | --- |
-| 结算单号 | `settlementNo` | 模糊 |
-| 结算时间 | `settlementTimeStart` / `settlementTimeEnd` | 范围，占两列，含时分 |
-| 创建人 | `creatorUserId` |  |
-| 银行流水 | `bankStatementId` | 下拉搜索，关键字映射 `bankStatementNo` |
+- 与 `/bank-statement` 列表字段对齐（含已结算金额、核销状态筛选）。
+- 接口：`BankStatement/GetPagedListAsync`（按当前用户操作人权限过滤）。
+- 「新建」同样下拉分流到 `/add` 或 `/add-by-invoice`。
 
-**URL 预填：** 访问 `/receive-settlement?bankStatementId=xxx` 时，查询区自动选中该流水并触发查询。
-
-**列表列：** 结算单号、结算状态、结算时间、银行流水号、明细总金额、明细条数、锁定状态、锁定时间、创建人、创建时间、备注。
-
-**结算状态枚举（只读展示）：**
+### 4.3 结算状态（只读 Tag）
 
 | 值  | 文案     |
-| --- | -------- |
+| :-- | :------- |
 | 0   | 录入中   |
 | 1   | 审核中   |
 | 2   | 已驳回   |
@@ -115,114 +107,231 @@ reference: apps/web-antd/doc/modules/settlement-management/receive-settlement.md
 | 4   | 部分结算 |
 | 5   | 已结算   |
 
-### 4.2 新建/编辑/只读页
-
-#### 4.2.1 银行流水信息 Card（选中流水后展示）
-
-**基础字段（来自 `BankStatementAdmin/DetailAsync`）：** 流水号、交易时间、总金额、币别、付款方、交易备注、我司银行。
-
-**结算进度汇总：**
-
-| 指标 | 计算方式 |
-| --- | --- |
-| 已结算（不含本单） | 该流水下其他收费结算单 `totalSettledAmount` 之和（编辑时排除当前单 ID） |
-| 剩余可结算 | 流水 `amount` − 已结算（不含本单）− 本单明细 `settledAmount` 合计 |
-| 本单本次合计 | 当前明细 `settledAmount` 实时求和 |
-
-- 数据来源：并行请求 `DetailAsync` + `GetReceiveSettlementPagedListAsync`（`pageSize=500`）。
-- **剩余可结算 ≤ 0** 时数值与警告文案标红；保存时若剩余 < 0 前端阻断。
-
-#### 4.2.2 结算信息 Card
-
-| 字段     | 新建            | 编辑       | 只读       | 说明                 |
-| -------- | --------------- | ---------- | ---------- | -------------------- |
-| 银行流水 | 点击打开 Picker | 只读       | 只读       | 有明细后不可更换     |
-| 结算单号 | —               | 文本       | 文本       | 后端生成             |
-| 创建人   | —               | 文本       | 文本       |                      |
-| 结算时间 | 可编辑          | 可编辑     | 只读       | 默认当前时间，含时分 |
-| 结算状态 | —               | Tag        | Tag        |                      |
-| 锁定状态 | —               | Tag + 时间 | Tag + 时间 |                      |
-| 备注     | 可编辑          | 可编辑     | 只读       |                      |
-
-#### 4.2.3 结算明细表格
-
-| 列                  | 说明                           |
-| ------------------- | ------------------------------ |
-| 委托编号 / 主提单号 |                                |
-| 费用名称 / 币别     |                                |
-| 费用总额 / 剩余额度 | 只读                           |
-| 本次结算金额        | 新建态可改；**已保存明细只读** |
-| 结算对象 / 备注     | 新建态备注可改；已保存只读     |
-
-- 无操作列；通过**勾选行 + 工具栏「删除」**批量删明细。
-- 「添加明细」：打开右侧选费抽屉。
-
-#### 4.2.4 选费抽屉
-
-**筛选（仅以下三项有效）：**
-
-| 字段     | 说明                               |
-| -------- | ---------------------------------- |
-| 结算对象 | **只读**，随银行流水付款方自动带出 |
-| 委托编号 | `commissionNum`                    |
-| 主提单号 | `mblNum`                           |
-
-**交互：**
-
-- 按业务（委托）分组展示，可展开查看费用行。
-- 勾选费用并录入「本次结算金额」；输入金额时自动勾选该行。
-- 默认金额为该费用「剩余额度」；`max` 绑定剩余额度。
-- 已在主表明细中的费用不可重复选（disabled）。
-- 确认后：新建态追加到本地明细；编辑态即时调用 `AddItemsAsync` 并刷新。
-
-**顶部按钮（编辑页）：** 返回、保存、锁定、解锁、删除——按权限与锁定状态显隐。
+前端**不提供**审核或状态流转按钮；`status` 仅展示。
 
 ---
 
-## 5. 业务规则（测试重点）
+## 5. 表单页共用骨架（费用 / 发票）
 
-| 规则 ID | 规则描述 |
-| --- | --- |
-| R-01 | 新建必填：银行流水、结算时间、至少 1 条明细 |
-| R-02 | 每条明细「本次结算金额」必须 **> 0** |
-| R-03 | 新建态明细金额不得超过该费用「剩余额度」 |
-| R-04 | 本单明细合计不得超过流水「剩余可结算」（含其他结算单已占金额） |
-| R-05 | **已有明细后不可更换银行流水**（前端拦截） |
-| R-06 | **已保存明细不可改金额**，只能删除后重新添加 |
-| R-07 | 编辑保存主表仅提交 `settlementTime`、`remark`（`EditAsync`） |
-| R-08 | 编辑态增删明细分别即时调用 `AddItemsAsync` / `DeleteItemsAsync` |
-| R-09 | 锁定后：隐藏保存、删除、添加明细、明细勾选与删除；页面标题为「查看收费结算」 |
-| R-10 | 锁定单据仍可从列表/银行流水子表双击进入（只读，非 404） |
-| R-11 | 列表批量删除：含已锁定行时整批拦截 |
-| R-12 | 新建成功 → 跳转编辑页（`replace`） |
-| R-13 | 列表点「新建」时，若查询区已选银行流水，通过 query 带入新建页 |
-| R-14 | `status` 无前端变更入口，勿测「页面上能否改状态」 |
+```text
+┌─ 标题栏 ─────────────────────────────────────────────┐
+│ 新建/编辑/查看…          [返回|关闭] [保存] [锁定…]   │
+├─ 银行流水信息 Card（选中流水后）──────────────────────┤
+│ 流水号/交易时间/金额/币别/付款方/银行…                │
+│ 已结算(不含本单) | 剩余可结算 | 本单本次合计(或净额)   │
+├─ 结算信息 ───────────────────────────────────────────┤
+│ 银行流水 | 结算单号 | 创建人 | 结算时间 | 状态 | 备注 │
+├─ 结算明细 ───────────────────────────────────────────┤
+│ [添加明细] [删除] + 表格勾选                          │
+└──────────────────────────────────────────────────────┘
+右侧抽屉：选费用 / 选开票申请明细
+```
+
+### 5.1 银行流水摘要计算
+
+| 指标 | 计算 |
+| :-- | :-- |
+| 已结算（不含本单） | 该流水下其他核销单 `totalSettledAmount` 之和（编辑排除当前单） |
+| 本单本次合计 | type=0：明细 `settledAmount` 求和；type=1：按收付换算净额求和 |
+| 剩余可结算 | 流水 `amount` − 已结算（不含本单）− 本单本次合计 |
+
+- 数据：并行拉流水详情 + 关联核销列表（`pageSize=500`）。
+- 权限侧用 `BankStatement/DetailAsync`、`GetReceiveSettlementPagedListAsync`（按操作人过滤），与 Admin 编辑页接口职责分离。
+- 剩余 &lt; 0 时标红；保存前端阻断。
+
+### 5.2 结算信息字段
+
+| 字段            | 新建        | 编辑 | 只读 | 规则                 |
+| :-------------- | :---------- | :--- | :--- | :------------------- |
+| 银行流水        | Picker 可选 | 只读 | 只读 | **有明细后不可更换** |
+| 结算单号        | —           | 文本 | 文本 | 后端生成             |
+| 结算时间        | 默认可改    | 可改 | 只读 | 必填                 |
+| 结算状态 / 锁定 | —           | Tag  | Tag  | 只读展示             |
+| 备注            | 可改        | 可改 | 只读 |                      |
+
+编辑保存主表仅 `EditAsync`：`settlementTime` + `remark`。
+
+### 5.3 锁定
+
+| 动作 | 接口 | 效果 |
+| :-- | :-- | :-- |
+| 锁定 | `LockAsync` | 只读：隐藏保存/删除/添加明细/勾选删除；标题变为「查看…」 |
+| 解锁 | `UnLockAsync` | 恢复可编辑 |
+| 已锁定进页 | — | 仍可从列表/工作台打开，不是 404 |
 
 ---
 
-## 6. 接口清单
+## 6. 按费用核销（type=0）详述
 
-| 接口 | 方法 | 用途 |
-| --- | --- | --- |
-| `ReceiveSettlementAdmin/GetPagedListAsync` | GET | 列表 |
-| `ReceiveSettlementAdmin/DetailAsync` | GET | 详情 |
-| `ReceiveSettlementAdmin/AddAsync` | POST | 新建（含明细） |
-| `ReceiveSettlementAdmin/EditAsync` | PUT | 改主表 |
-| `ReceiveSettlementAdmin/AddItemsAsync` | POST | 编辑态加明细 |
-| `ReceiveSettlementAdmin/DeleteItemsAsync` | POST | 编辑态删明细 |
-| `ReceiveSettlementAdmin/DeleteAsync` | DELETE | 删单 |
-| `ReceiveSettlementAdmin/LockAsync` | PUT | 锁定 |
-| `ReceiveSettlementAdmin/UnLockAsync` | PUT | 解锁 |
-| `ReceiveSettlementAdmin/GetOrderFeeGroupAsync` | GET | 选费抽屉 |
-| `BankStatementAdmin/DetailAsync` | GET | 流水摘要 Card |
-| `BankStatementAdmin/GetReceiveSettlementPagedListAsync` | GET | 流水下其他结算单汇总 |
+### 6.1 选费抽屉
 
-### 6.1 新建请求体示例
+| 筛选项              | 说明                               |
+| :------------------ | :--------------------------------- |
+| 结算对象            | **只读**，随流水付款方带出         |
+| 币别                | **只读**，与流水 `currencyId` 一致 |
+| 委托编号 / 主提单号 | 可选模糊                           |
+
+- 按运输业务分组展开费用行；默认「本次结算金额」= 费用剩余额度。
+- 输入金额自动勾选；已在主表明细的费用不可再选。
+- 新建态确认后追加本地；编辑态即时 `AddItemsAsync`。
+
+### 6.2 校验（保存前）
+
+| 规则           | 说明                                          |
+| :------------- | :-------------------------------------------- |
+| 必填           | 银行流水、结算时间、至少 1 条明细（新建）     |
+| 金额 &gt; 0    | 每条本次结算金额                              |
+| 不超过费用剩余 | 未保存明细：`settledAmount ≤ remainingAmount` |
+| 不超过流水剩余 | 本单合计不得使「剩余可结算」&lt; 0            |
+| 费用不重复     | 同一 `orderFeeId` 不可重复                    |
+
+### 6.3 明细维护特点
+
+- **已保存明细金额不可改**（后端无改单条金额接口）；调整须先删后加。
+- 删除：勾选行 + 工具栏「删除」→ `DeleteItemsAsync`。
+
+---
+
+## 7. 按开票申请核销（type=1）详述
+
+对应路由：`/add-by-invoice`、`/edit-by-invoice/:id`。
+
+### 7.1 选开票抽屉
+
+| 筛选项                | 说明                                         |
+| :-------------------- | :------------------------------------------- |
+| 结算对象 / 币别       | 随流水固定（只读）                           |
+| 开票申请单号 / 发票号 | 可选                                         |
+| 申请时间范围          | 可选                                         |
+| **仅显示可结算**      | `onlySettleable`：只看发票口径仍有余额的明细 |
+
+- 一组 = 一张**已开票**开票申请；展开后勾选费用明细。
+- 展示：收付方向、本单开票额、**发票可结算余额** `invoiceSettleableAmount`。
+- 发票口径余额口径：`max(0, 已开票 − 已结算)`（与费用结算池共用已结算）。
+- 确认后：新建追加本地；编辑即时 `AddItemsByInvoiceApplicationAsync`。
+
+### 7.2 净额占用流水
+
+```text
+toNetAmount(paySide, amount) =
+  应收(paySide=0) → +amount
+  应付(paySide=1) → −amount
+
+本单本次净额 = Σ toNetAmount(...)
+剩余可结算   = 流水金额 − 其他单净额合计 − 本单本次净额
+```
+
+列表/详情字段 `totalSettledAmount` 亦为净额（跨费用子表与开票子表现算，不落库净额字段）；落库仍是各明细毛额。
+
+### 7.3 校验（保存前）
+
+| 规则 | 说明 |
+| :-- | :-- |
+| 与费用单相同的主表必填 | 流水、时间、明细非空 |
+| 金额 &gt; 0 | 每条毛额 |
+| **按 orderFeeId 聚合** | 未保存明细对同一费用的本次结算合计 ≤ 该费用发票可结算余额（多张开票申请可能含同一费用，前端按共享池聚合） |
+| 净额不超流水剩余 | 同上「剩余可结算」 |
+
+最终以后端悲观锁 + 双口径校验为准；前端聚合仅为提前拦截。
+
+### 7.4 明细列（发票单）
+
+开票申请单号、发票号、委托/主提单、费用名称、**收付**、币别、费用总额、发票可结算余额、本次结算金额、结算对象、备注等。
+
+删除走 `DeleteInvoiceItemsAsync`（入参为开票明细则 ID 列表，不是费用明细则）。
+
+---
+
+## 8. 共用已结算池（跨类型卡点）
+
+```text
+OrderFee.SettledAmount（已结算）
+        ↑
+   ┌────┴────┐
+type=0 按费用   type=1 按开票
+（互占同一池，一种占用后另一种可用额度下降）
+```
+
+| 口径           | 含义                                    |
+| :------------- | :-------------------------------------- |
+| 费用剩余额度   | 费用总额 − 已结算（按费用结算抽屉用）   |
+| 发票可结算余额 | max(0, 已开票 − 已结算)（按开票抽屉用） |
+
+测试时需构造：同一费用先被 type=0 占用一部分，再开 type=1，确认余额联动。
+
+---
+
+## 9. 状态与生命周期
+
+```mermaid
+flowchart LR
+  New[新建核销单] -->|保存成功| Edit[未锁定可编辑]
+  Edit -->|锁定| Locked[已锁定只读]
+  Locked -->|解锁| Edit
+  Edit -->|追加/删除明细| Edit
+  Edit -->|删除单据| Gone[单据删除]
+  Locked -->|删除| Blocked[前端拦截]
+```
+
+- 新建成功：独立路由 `replace` 到对应编辑页；嵌入抽屉模式则关抽屉并通知父页刷新。
+- 编辑增删明细：即时调接口，不攒到主表保存。
+- 流水核销状态（待核销/部分/完成）由银行流水侧汇总核销净额驱动，见 [银行流水工作台](./bank-statement-edit-prd.md)。
+
+---
+
+## 10. 权限矩阵
+
+| 权限                                      | 作用                        |
+| :---------------------------------------- | :-------------------------- |
+| `Admin.ReceiveSettlement.Get`             | 列表、编辑/只读页           |
+| `Admin.ReceiveSettlement.Add`             | 新建（含费用/发票两种入口） |
+| `Admin.ReceiveSettlement.Edit`            | 主表保存、增删明细          |
+| `Admin.ReceiveSettlement.Delete`          | 删单、列表批量删            |
+| `Admin.ReceiveSettlement.Lock` / `Unlock` | 锁定 / 解锁                 |
+
+银行流水选择器、摘要接口走用户有权查看的流水（操作人配置过滤），与 Admin 全量列表不同。
+
+---
+
+## 11. 核心接口
+
+| 接口 | 用途 |
+| :-- | :-- |
+| `ReceiveSettlementAdmin/GetPagedListAsync` | 核销列表 |
+| `ReceiveSettlementAdmin/DetailAsync` | 详情（含 `type`、两套子表） |
+| `ReceiveSettlementAdmin/AddAsync` | 按费用新建 |
+| `ReceiveSettlementAdmin/AddByInvoiceApplicationAsync` | 按开票新建 |
+| `ReceiveSettlementAdmin/EditAsync` | 改结算时间/备注 |
+| `ReceiveSettlementAdmin/AddItemsAsync` / `DeleteItemsAsync` | 费用明细增删 |
+| `ReceiveSettlementAdmin/AddItemsByInvoiceApplicationAsync` / `DeleteInvoiceItemsAsync` | 开票明细增删 |
+| `ReceiveSettlementAdmin/LockAsync` / `UnLockAsync` / `DeleteAsync` | 锁定/解锁/删单 |
+| `ReceiveSettlementAdmin/GetOrderFeeGroupAsync` | 选费 |
+| `ReceiveSettlementAdmin/GetInvoiceApplicationGroupForSettlementAsync` | 选开票 |
+| `BankStatement/.../DetailAsync` 等 | 流水摘要与关联单汇总 |
+
+### 11.1 按开票新建请求体示例
+
+```json
+{
+  "bankStatementId": "83744d2c-1588-46c1-8c45-bb6df7ecf080",
+  "settlementTime": "2026-07-17T04:00:00.000Z",
+  "remark": "",
+  "items": [
+    {
+      "invoiceApplicationItemId": "guid",
+      "settledAmount": 1000.0,
+      "remark": ""
+    }
+  ]
+}
+```
+
+### 11.2 按费用新建请求体示例
 
 ```json
 {
   "bankStatementId": "guid",
-  "settlementTime": "2026-06-14T08:00:00.000Z",
+  "settlementTime": "2026-07-17T04:00:00.000Z",
   "remark": "",
   "receiveSettlementItems": [
     {
@@ -234,116 +343,72 @@ reference: apps/web-antd/doc/modules/settlement-management/receive-settlement.md
 }
 ```
 
-### 6.2 GetOrderFeeGroupAsync 查询参数
+---
 
-| 参数                     | 说明                              |
-| ------------------------ | --------------------------------- |
-| `receiveSettlementId`    | 编辑态传入，排除本单已选          |
-| `settlementId`           | 银行流水关联付款方 ID             |
-| `currencyId`             | 银行流水币别 ID，与流水一致且只读 |
-| `commissionNum`          | 可选                              |
-| `mblNum`                 | 可选                              |
-| `pageIndex` / `pageSize` | 分页                              |
+## 12. 业务卡点与易错点
+
+1. **明细金额不能编辑** — 只能删后重加；勿报「无法改本次结算金额」为缺陷（产品设计）。
+2. **选费筛选项有限** — 无费用代码/ETD/组织等筛选；勿当漏功能。
+3. **类型路由必须正确** — 发票单进 `/edit` 会明细为空；费用单进 `/edit-by-invoice` 同理。
+4. **净额 vs 毛额** — 发票单占用流水看净额；落库与录入仍是正数毛额 + 收付方向。
+5. **双类型共用已结算池** — 测交叉占用；同一 `orderFeeId` 出现在多张开票申请时前端聚合校验。
+6. **流水摘要 pageSize=500** — 单流水下核销单极多时「已结算」可能不准，需大数据量关注。
+7. **嵌入模式 ID** — 银行流水抽屉内必须用 `embeddedId`（核销单 ID），勿读流水路由 `:id`。
+8. **status 不可操作** — 仅 Tag；勿测页面改状态。
 
 ---
 
-## 7. 测试用例（建议）
+## 13. 建议验收场景
 
-### 7.1 入口与权限
-
-| 用例 ID | 步骤                | 期望结果                              |
-| ------- | ------------------- | ------------------------------------- |
-| TC-001  | 无 Get 权限访问列表 | 无菜单或 403                          |
-| TC-002  | 有 Get 无 Add       | 「新建」隐藏                          |
-| TC-003  | 锁定单双击进入      | 标题「查看收费结算」，无保存/添加明细 |
-| TC-004  | 有 Get 无 Lock      | 锁定按钮隐藏                          |
-
-### 7.2 主流程（P0）
-
-| 用例 ID | 步骤 | 期望结果 |
-| --- | --- | --- |
-| TC-101 | 列表选银行流水 → 新建 | 新建页流水已预填，摘要 Card 展示 |
-| TC-102 | 选流水 → 添加明细 → 保存 | 成功跳转编辑页，结算单号有值 |
-| TC-103 | 编辑：改结算时间、备注 → 保存 | `EditAsync` 成功 |
-| TC-104 | 编辑：添加明细 | 即时保存，明细增加，汇总刷新 |
-| TC-105 | 编辑：勾选明细删除 | 即时删除，汇总刷新 |
-| TC-106 | 锁定 → 刷新 | 只读；列表锁定 Tag 为红 |
-| TC-107 | 解锁 → 再编辑 | 恢复可编辑 |
-| TC-108 | 从银行流水编辑页「新建收费结算」 | 流水预填，流程同 TC-101 |
-
-### 7.3 金额与额度
-
-| 用例 ID | 步骤 | 期望结果 |
-| --- | --- | --- |
-| TC-201 | 本单合计 > 流水剩余 | 剩余标红；保存提示超限 |
-| TC-202 | 明细金额 > 费用剩余额度 | 保存前 warning |
-| TC-203 | 明细金额 = 0 或空 | 保存前 warning |
-| TC-204 | 流水 10000，单 A 6000 + 单 B 4000 | 第二单剩余为 0，再建第三单应超限 |
-| TC-205 | 编辑态修改已保存明细金额 | 输入框不可编辑 |
-
-### 7.4 边界与回归
-
-| 用例 ID | 步骤                        | 期望结果                   |
-| ------- | --------------------------- | -------------------------- |
-| TC-301  | 有明细后点击换流水          | 提示不可更换               |
-| TC-302  | 选费抽屉重复选同一费用      | 不可选或确认提示已在明细中 |
-| TC-303  | 批量删除含锁定行            | 提示无法删除               |
-| TC-304  | 列表 URL 带 bankStatementId | 查询区预填并查询           |
-| TC-305  | 选费仅填委托编号搜索        | 结果过滤正确               |
-| TC-306  | 抽屉结算对象为只读          | 不可切换其他客户           |
-
-### 7.5 跨模块联动
-
-| 用例 ID | 步骤                                 | 期望结果           |
-| ------- | ------------------------------------ | ------------------ |
-| TC-401  | 银行流水编辑页子表与收费结算列表数据 | 同一流水下记录一致 |
-| TC-402  | 收费结算保存后回银行流水页           | 子表出现新记录     |
+| # | 场景 | 期望 |
+| :-- | :-- | :-- |
+| 1 | 打开 `add-by-invoice?bankStatementId=…` | 流水已预填，摘要 Card 有金额与剩余 |
+| 2 | 按开票勾选含应收+应付明细并保存 | 成功跳转 `edit-by-invoice/:id`；净额与流水剩余正确 |
+| 3 | 本单净额 &gt; 流水剩余 | 剩余标红；保存拦截 |
+| 4 | 同一费用发票余额不足（多申请聚合） | 保存前提示可用额度 |
+| 5 | 列表双击 type=1 行 | 进入发票编辑页，明细有值 |
+| 6 | 按费用建单后再按开票核同一费用 | 开票可结算余额已减少 |
+| 7 | 锁定后双击进入 | 「查看…」；无保存/添加明细 |
+| 8 | 银行流水工作台抽屉新建发票核销 | 关抽屉后工作台已核销/剩余刷新（见抽屉 PRD） |
+| 9 | 有明细后尝试换流水 | 提示不可更换 |
+| 10 | 编辑态删开票明细 | 走 `DeleteInvoiceItemsAsync`，汇总刷新 |
 
 ---
 
-## 8. 验收标准（Must Have）
+## 14. 测试数据建议
 
-1. 列表筛选（含银行流水）、新建、编辑、锁定/解锁主流程可用。
-2. 流水摘要与三层金额校验（费用剩余、流水剩余、本单合计）行为正确。
-3. 明细仅支持新增/删除，已保存金额不可改。
-4. 与银行流水页双向跳转与 query 预填正常。
-5. 权限与锁定态 UI 与接口一致。
-
----
-
-## 9. 已知风险与测试关注点
-
-| 风险点 | 说明 | 测试建议 |
-| --- | --- | --- |
-| 汇总 pageSize=500 | 单流水下结算单 >500 时「已结算」可能不准 | 大数据量环境抽测或标记待确认 |
-| 明细级 vs 流水级校验 | 两层独立；单笔不超剩余 ≠ 合计不超流水 | 分别构造用例 |
-| status 不可操作 | 后端驱动 | 勿报「无法改状态」缺陷 |
-| 币别混合 | 流水与费用币别关系依赖后端 | 多币别费用 + 单币别流水场景需后端确认 |
-| 2026-06-14 输入修复 | 抽屉/明细金额 InputNumber 曾不渲染 | 回归输入与自动勾选 |
+| 数据项 | 建议 |
+| :-- | :-- |
+| 银行流水 | 无核销 / 部分核销各至少 1 条；金额与币别明确 |
+| 应收费用 | 同付款方、同币别，剩余 &gt; 0 |
+| 开票申请 | 已开票；含应收与应付明细；最好含同一费用出现在两张申请中的边界数据 |
+| 交叉核销 | 先 type=0 占一部分，再测 type=1 |
+| 账号 | 全权限 / 无 Add / 无 Edit / 无 Lock |
 
 ---
 
-## 10. 测试数据建议
-
-| 数据项   | 建议                                     |
-| -------- | ---------------------------------------- |
-| 银行流水 | 至少 2 条：一条无结算、一条已部分结算    |
-| 应收费用 | 同一付款方下多条「收」费用，剩余额度 > 0 |
-| 委托数据 | 含委托编号、主提单号，便于抽屉筛选       |
-| 锁定场景 | 1 张已锁定 + 1 张未锁定                  |
-| 账号     | 全权限 / 无 Lock / 无 Edit               |
-
----
-
-## 11. 附录：关键源码索引
+## 15. 源码索引
 
 | 文件 | 职责 |
-| --- | --- |
-| `src/router/routes/modules/settlement-management.ts` | 路由与权限 |
-| `src/views/settlement-management/receive-settlement/list.vue` | 列表、批量删除、query 预填 |
-| `src/views/settlement-management/receive-settlement/form.vue` | 表单、汇总、锁定、校验 |
-| `src/views/settlement-management/receive-settlement/add-fee-drawer/` | 选费抽屉 |
-| `src/views/settlement-management/receive-settlement/bank-statement-picker/` | 流水选择 |
-| `src/adapter/component/biz-select/bank-statement-select.vue` | 列表筛选下拉 |
-| `src/api/settlement-management/receive-settlement-admin.ts` | API |
-| `doc/modules/settlement-management/receive-settlement.md` | 模块活文档 |
+| :-- | :-- |
+| `router/.../fee-management.ts` | 列表与 add/edit/add-by-invoice/edit-by-invoice 路由 |
+| `receive-settlement/list.vue` | 双 Tab 容器 |
+| `receive-settlement-grid.vue` | 核销列表与新建下拉 |
+| `bank-statement-grid.vue` | 银行流水 Tab 与带流水新建 |
+| `form.vue` | 按费用表单（含 embedded） |
+| `invoice-form.vue` | 按开票表单（含 embedded） |
+| `add-fee-drawer/` | 选费 |
+| `add-invoice-application-drawer/` | 选开票 |
+| `form-data.ts` | 状态/类型/收付文案、`toNetAmount` |
+| `api/.../receive-settlement-admin.ts` | 全部核销 API |
+
+---
+
+## 16. 与旧版 PRD 差异（相对 2026-06-14）
+
+| 旧版 | 现版 |
+| :-- | :-- |
+| 仅「收费结算」按费用一条链路 | 正式「收费核销」+ **按开票申请**完整链路 |
+| 菜单在结算管理表述 | 侧栏在「费用管理」，URL 仍为 `/settlement-management/receive-settlement` |
+| 未写净额/双类型共用池 | 专节说明净额、共享已结算池、类型分流 |
+| 未写银行流水工作台抽屉 | 交叉引用工作台与抽屉 PRD；独立路由与嵌入模式并存 |

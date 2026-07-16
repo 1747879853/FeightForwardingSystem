@@ -53,6 +53,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  cancel: [];
   created: [];
 }>();
 
@@ -408,16 +409,6 @@ defineExpose({ reload });
     size="small"
     class="create-settlement-fee-panel"
   >
-    <template #extra>
-      <span
-        class="text-sm"
-        :class="isRemainingOverLimit ? 'text-red-500' : 'text-gray-600'"
-      >
-        本批合计 {{ formatBankAmount(currentSelectionTotal) }}，剩余可结算
-        {{ formatBankAmount(remainingSettleAmount) }}
-      </span>
-    </template>
-
     <div
       class="fee-toolbar mb-3 flex flex-wrap items-center justify-between gap-3"
     >
@@ -429,14 +420,6 @@ defineExpose({ reload });
         <Button @click="handleReset">重置</Button>
         <Button type="primary" @click="handleSearch">查询</Button>
       </div>
-
-      <Button
-        type="primary"
-        :loading="creating"
-        @click="handleCreateSettlement"
-      >
-        创建结算单
-      </Button>
     </div>
 
     <Table
@@ -478,7 +461,13 @@ defineExpose({ reload });
                 :max="fee.remainingAmount"
                 :precision="2"
                 style="width: 130px"
-                @change="(value) => updateSettledAmount(fee, value)"
+                @change="
+                  (value) =>
+                    updateSettledAmount(
+                      fee as ReceiveSettlementAdminApi.ReceiveSettlementFeeDto,
+                      value,
+                    )
+                "
               />
             </template>
           </template>
@@ -496,6 +485,30 @@ defineExpose({ reload });
         @change="handlePageChange"
       />
     </div>
+
+    <div class="settlement-submit-bar">
+      <div class="settlement-submit-bar__summary">
+        <span>已选择 {{ selectedFeeIds.length }} 条</span>
+        <span>
+          本次核销
+          <strong>{{ formatBankAmount(currentSelectionTotal) }}</strong>
+        </span>
+        <span :class="{ 'text-red-600': isRemainingOverLimit }">
+          核销后剩余
+          <strong>{{ formatBankAmount(remainingSettleAmount) }}</strong>
+        </span>
+      </div>
+      <div class="settlement-submit-bar__actions">
+        <Button @click="emit('cancel')">取消</Button>
+        <Button
+          type="primary"
+          :loading="creating"
+          @click="handleCreateSettlement"
+        >
+          确认核销
+        </Button>
+      </div>
+    </div>
   </Card>
 </template>
 
@@ -509,6 +522,40 @@ defineExpose({ reload });
 .fee-toolbar__search {
   :deep(.relative.flex.pb-2) {
     padding-bottom: 0;
+  }
+}
+
+.settlement-submit-bar {
+  position: sticky;
+  bottom: -12px;
+  z-index: 2;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  margin: 16px -12px -12px;
+  background: #fbfcfe;
+  border-top: 1px solid #e3e8ef;
+  box-shadow: 0 -4px 12px rgb(35 50 68 / 6%);
+}
+
+.settlement-submit-bar__summary,
+.settlement-submit-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.settlement-submit-bar__summary {
+  font-size: 13px;
+  color: #667487;
+
+  strong {
+    margin-left: 4px;
+    font-variant-numeric: tabular-nums;
+    color: #283442;
   }
 }
 </style>

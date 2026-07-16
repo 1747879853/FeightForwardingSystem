@@ -21,6 +21,7 @@
 - [2026-07-16 货物轨迹弹窗工具栏展示品牌 Logo](./changelogs/change-log-2026-07-16-tracking-map-modal-brand-logo.md)
 - [2026-07-16 船期查询并入航线管理菜单](./changelogs/change-log-2026-07-16-lane-management-menu-schedule.md)
 - [2026-07-16 用户管理操作列外露修改/权限/角色，其余收入更多](./changelogs/change-log-2026-07-16-user-list-operation-column-width.md)
+- [2026-07-16 银行流水财务核销工作台优化](./changelogs/change-log-2026-07-16-bank-statement-finance-workbench.md)
 - [2026-07-15 部门管理组织人数展示优化](./changelogs/change-log-2026-07-15-dept-member-count-display.md)
 - [2026-07-15 海运出口列表补充删除按钮](./changelogs/change-log-2026-07-15-sea-export-list-delete-button.md)
 - [2026-07-14 发票结算入口整合与银行流水页支持发票结算](./changelogs/change-log-2026-07-14-receive-settlement-invoice-entries-and-bank-statement.md)

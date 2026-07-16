@@ -66,6 +66,14 @@ interface SettlementItem extends ReceiveSettlementSelectedFee {
 
 const route = useRoute();
 const router = useRouter();
+const props = defineProps<{
+  embedded?: boolean;
+  embeddedId?: string;
+}>();
+const emit = defineEmits<{
+  close: [];
+  changed: [];
+}>();
 const perm = createAbpPermission('Admin.ReceiveSettlement');
 const extraPerm = {
   lock: 'Admin.ReceiveSettlement.Lock',
@@ -74,6 +82,7 @@ const extraPerm = {
 const { hasAccessByCodes } = useAccess();
 
 const editId = computed<string | undefined>(() => {
+  if (props.embeddedId) return props.embeddedId;
   const id = route.params.id;
   if (Array.isArray(id)) return id[0];
   return id ? String(id) : undefined;
@@ -133,6 +142,14 @@ const pageTitle = computed(() => {
   if (!isEdit.value) return '新建收费核销';
   return isReadonly.value ? '查看收费核销' : '编辑收费核销';
 });
+
+function handleBack() {
+  if (props.embedded) {
+    emit('close');
+    return;
+  }
+  router.back();
+}
 
 const selectedFeeIds = computed(() =>
   items.value.map((item) => item.orderFeeId),
@@ -530,6 +547,7 @@ async function handleSave() {
       message.success('保存成功');
       markReceiveSettlementRelatedListsShouldRefresh();
       await loadEditData();
+      emit('changed');
       return;
     }
 
@@ -545,6 +563,11 @@ async function handleSave() {
     });
     message.success('新建成功');
     markReceiveSettlementRelatedListsShouldRefresh();
+    emit('changed');
+    if (props.embedded) {
+      emit('close');
+      return;
+    }
     router.replace(`/settlement-management/receive-settlement/edit/${id}`);
   } catch (error: any) {
     message.error(error.message || '保存失败');
@@ -566,6 +589,11 @@ function handleDelete() {
         await deleteReceiveSettlement({ id: editId.value! });
         message.success('删除成功');
         markReceiveSettlementRelatedListsShouldRefresh();
+        emit('changed');
+        if (props.embedded) {
+          emit('close');
+          return;
+        }
         router.push('/settlement-management/receive-settlement');
       } catch (error: any) {
         message.error(error.message || '删除失败');
@@ -648,7 +676,7 @@ onMounted(() => {
   <Page :title="pageTitle">
     <template #extra>
       <Space>
-        <Button @click="router.back()">返回</Button>
+        <Button @click="handleBack">{{ embedded ? '关闭' : '返回' }}</Button>
         <Button
           v-if="canSave"
           type="primary"

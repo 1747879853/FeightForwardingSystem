@@ -1,675 +1,487 @@
 <script lang="ts" setup>
 import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
 
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
-import { useAccess } from '@vben/access';
+import { IconifyIcon } from '@vben/icons';
 
 import {
   Button,
   Card,
+  DropdownButton,
   Input,
-  message,
-  Modal,
-  Space,
+  Menu,
+  MenuItem,
   Table,
   Tag,
   Tooltip,
 } from 'ant-design-vue';
 
 import { getBankStatementReceiveSettlementPagedList } from '#/api/settlement-management/bank-statement-admin';
-import {
-  deleteReceiveSettlement,
-  deleteReceiveSettlementInvoiceItems,
-  deleteReceiveSettlementItems,
-  getReceiveSettlementDetail,
-} from '#/api/settlement-management/receive-settlement-admin';
-import { createAbpPermission } from '#/utils/abp-permission';
-import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import {
-  getReceiveSettlementPaySideColor,
-  getReceiveSettlementPaySideLabel,
+  formatAmount,
+  formatDateTime,
   getReceiveSettlementStatusColor,
   getReceiveSettlementStatusLabel,
   getReceiveSettlementTypeColor,
   getReceiveSettlementTypeLabel,
-  isInvoiceReceiveSettlement,
-  isReceiveSettlementLocked,
-  useReceiveSettlementColumns,
-  useReceiveSettlementInvoiceItemReadonlyColumns,
-  useReceiveSettlementItemReadonlyColumns,
 } from '../form-data';
-import {
-  mapReceiveSettlementDetailItem,
-  mapReceiveSettlementInvoiceDetailItem,
-} from '../utils';
 
 const props = defineProps<{
   bankStatementId: string;
+  canCreateSettlement?: boolean;
+  canEditSettlement?: boolean;
+  currencyCode?: string;
+  remainingAmount: number;
 }>();
 
 const emit = defineEmits<{
-  deleted: [];
+  create: [mode: 'fee' | 'invoice'];
+  edit: [row: BankStatementAdminApi.ReceiveSettlementListDto];
 }>();
-
-const router = useRouter();
-const perm = createAbpPermission('Admin.ReceiveSettlement');
-const { hasAccessByCodes } = useAccess();
-
-const canDeleteSettlement = computed(() => hasAccessByCodes([perm.delete]));
-const canDeleteItems = computed(() => hasAccessByCodes([perm.edit]));
-const canDelete = computed(
-  () => canDeleteSettlement.value || canDeleteItems.value,
-);
 
 const settlementList = ref<BankStatementAdminApi.ReceiveSettlementListDto[]>(
   [],
 );
-const settlementLoading = ref(false);
-const deleteLoading = ref(false);
-const settlementTotal = ref(0);
-const settlementPage = ref(1);
-const settlementPageSize = ref(10);
+const loading = ref(false);
+const total = ref(0);
+const currentPage = ref(1);
+const pageSize = ref(10);
 const settlementNoFilter = ref('');
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
-const expandedRowKeys = ref<string[]>([]);
-const selectedSettlementRowKeys = ref<string[]>([]);
-const selectedItemIdsBySettlement = ref<Record<string, string[]>>({});
-const detailLoadingMap = ref<Record<string, boolean>>({});
-type SettlementDetailRow =
-  | ReturnType<typeof mapReceiveSettlementDetailItem>
-  | ReturnType<typeof mapReceiveSettlementInvoiceDetailItem>;
-const detailItemsMap = ref<Record<string, SettlementDetailRow[]>>({});
-
-const receiveSettlementColumns = useReceiveSettlementColumns();
-const itemReadonlyColumns = useReceiveSettlementItemReadonlyColumns();
-const invoiceItemReadonlyColumns =
-  useReceiveSettlementInvoiceItemReadonlyColumns();
-
-/** 按结算行类型选择展开区列 */
-function getItemColumns(
-  record: BankStatementAdminApi.ReceiveSettlementListDto,
-) {
-  return isInvoiceReceiveSettlement(record.type)
-    ? invoiceItemReadonlyColumns
-    : itemReadonlyColumns;
-}
-
-const tableWrapRef = ref<HTMLElement>();
-const tableScrollY = ref<number>();
-
-let tableWrapResizeObserver: ResizeObserver | undefined;
-
-function syncTableScrollY() {
-  const wrap = tableWrapRef.value;
-  if (!wrap) return;
-  const paginationHeight = 48;
-  const tableHeaderHeight = 39;
-  tableScrollY.value = Math.max(
-    wrap.clientHeight - paginationHeight - tableHeaderHeight,
-    120,
-  );
-}
-
-function setupTableWrapResizeObserver() {
-  tableWrapResizeObserver?.disconnect();
-  if (!tableWrapRef.value) return;
-  tableWrapResizeObserver = new ResizeObserver(() => {
-    syncTableScrollY();
-  });
-  tableWrapResizeObserver.observe(tableWrapRef.value);
-  syncTableScrollY();
-}
-
-const tableScroll = computed(() =>
-  tableScrollY.value ? { y: tableScrollY.value } : undefined,
-);
-
-const hasSelectedItems = computed(() =>
-  Object.values(selectedItemIdsBySettlement.value).some(
-    (ids) => ids.length > 0,
-  ),
-);
-
-const hasSelection = computed(
-  () => hasSelectedItems.value || selectedSettlementRowKeys.value.length > 0,
-);
-
-const settlementRowSelection = computed(() => {
-  if (!canDeleteSettlement.value) return undefined;
+const isFiltering = computed(() => Boolean(settlementNoFilter.value.trim()));
+const tablePagination = computed(() => {
+  if (total.value <= pageSize.value) return false;
   return {
-    selectedRowKeys: selectedSettlementRowKeys.value,
-    onChange: (keys: (string | number)[]) => {
-      selectedSettlementRowKeys.value = keys.map(String);
-    },
-    getCheckboxProps: (
-      record: BankStatementAdminApi.ReceiveSettlementListDto,
-    ) => ({
-      disabled: isReceiveSettlementLocked(record.locked),
-    }),
+    current: currentPage.value,
+    pageSize: pageSize.value,
+    total: total.value,
+    showSizeChanger: true,
+    showTotal: (value: number) => `共 ${value} 张核销单`,
+    onChange: handlePageChange,
   };
 });
 
-function getItemRowSelection(settlementId: string, locked?: boolean) {
-  if (!canDeleteItems.value || isReceiveSettlementLocked(locked))
-    return undefined;
-  return {
-    selectedRowKeys: selectedItemIdsBySettlement.value[settlementId] ?? [],
-    onChange: (keys: (string | number)[]) => {
-      selectedItemIdsBySettlement.value = {
-        ...selectedItemIdsBySettlement.value,
-        [settlementId]: keys.map(String),
-      };
-    },
-  };
-}
+const columns = [
+  {
+    key: 'settlementNo',
+    dataIndex: 'settlementNo',
+    title: '核销单号',
+    minWidth: 180,
+    ellipsis: true,
+  },
+  {
+    key: 'type',
+    dataIndex: 'type',
+    title: '核销方式',
+    width: 110,
+  },
+  {
+    key: 'status',
+    dataIndex: 'status',
+    title: '状态',
+    width: 96,
+  },
+  {
+    key: 'totalSettledAmount',
+    dataIndex: 'totalSettledAmount',
+    title: '核销金额',
+    width: 150,
+    align: 'right' as const,
+  },
+  {
+    key: 'itemCount',
+    dataIndex: 'itemCount',
+    title: '明细',
+    width: 80,
+    align: 'right' as const,
+  },
+  {
+    key: 'settlementTime',
+    dataIndex: 'settlementTime',
+    title: '核销时间',
+    width: 150,
+    customRender: ({ text }: { text: string }) => formatDateTime(text),
+  },
+  {
+    key: 'creatorUserName',
+    dataIndex: 'creatorUserName',
+    title: '创建人',
+    width: 110,
+    ellipsis: true,
+  },
+  {
+    key: 'remark',
+    dataIndex: 'remark',
+    title: '备注',
+    minWidth: 160,
+    ellipsis: true,
+  },
+  {
+    key: 'action',
+    title: '操作',
+    width: 76,
+    fixed: 'right' as const,
+  },
+];
 
-function clearSelection() {
-  selectedSettlementRowKeys.value = [];
-  selectedItemIdsBySettlement.value = {};
-}
-
-function getItemSelections() {
-  return Object.entries(selectedItemIdsBySettlement.value)
-    .filter(([, itemIds]) => itemIds.length > 0)
-    .map(([settlementId, itemIds]) => ({ settlementId, itemIds }));
-}
-
-function markReceiveSettlementRelatedListsShouldRefresh() {
-  markListShouldRefresh('ReceiveSettlementList');
-  markListShouldRefresh('BankStatementList');
-}
-
-async function refreshSettlementDetail(settlementId: string) {
-  const detail = await getReceiveSettlementDetail(settlementId);
-  const rows: SettlementDetailRow[] = isInvoiceReceiveSettlement(detail.type)
-    ? (detail.receiveSettlementInvoiceItems || []).map((item) =>
-        mapReceiveSettlementInvoiceDetailItem(item),
-      )
-    : (detail.receiveSettlementItems || []).map((item) =>
-        mapReceiveSettlementDetailItem(item),
-      );
-  detailItemsMap.value = {
-    ...detailItemsMap.value,
-    [settlementId]: rows,
-  };
-}
-
-async function refreshExpandedSettlementDetails(settlementIds: string[]) {
-  const expandedIds = settlementIds.filter((id) =>
-    expandedRowKeys.value.includes(id),
-  );
-  if (expandedIds.length === 0) return;
-
-  await Promise.all(
-    expandedIds.map(async (settlementId) => {
-      detailLoadingMap.value = {
-        ...detailLoadingMap.value,
-        [settlementId]: true,
-      };
-      try {
-        await refreshSettlementDetail(settlementId);
-      } finally {
-        detailLoadingMap.value = {
-          ...detailLoadingMap.value,
-          [settlementId]: false,
-        };
-      }
-    }),
-  );
-}
-
-function removeSettlementDetailCache(settlementIds: string[]) {
-  if (settlementIds.length === 0) return;
-  const nextMap = { ...detailItemsMap.value };
-  const nextItemSelection = { ...selectedItemIdsBySettlement.value };
-  for (const settlementId of settlementIds) {
-    delete nextMap[settlementId];
-    delete nextItemSelection[settlementId];
-  }
-  detailItemsMap.value = nextMap;
-  selectedItemIdsBySettlement.value = nextItemSelection;
-  expandedRowKeys.value = expandedRowKeys.value.filter(
-    (id) => !settlementIds.includes(id),
-  );
+function formatSettlementAmount(value: number | undefined | null) {
+  const amountText = formatAmount(value ?? 0);
+  return props.currencyCode
+    ? `${amountText} ${props.currencyCode}`
+    : amountText;
 }
 
 async function loadReceiveSettlements() {
   if (!props.bankStatementId) return;
-  settlementLoading.value = true;
+  loading.value = true;
   try {
-    const res = await getBankStatementReceiveSettlementPagedList({
+    const result = await getBankStatementReceiveSettlementPagedList({
       bankStatementId: props.bankStatementId,
-      settlementNo: settlementNoFilter.value || undefined,
-      pageIndex: settlementPage.value,
-      pageSize: settlementPageSize.value,
+      settlementNo: settlementNoFilter.value.trim() || undefined,
+      pageIndex: currentPage.value,
+      pageSize: pageSize.value,
     });
-    settlementList.value = res.items || [];
-    settlementTotal.value = res.totalCount || 0;
+    settlementList.value = result.items ?? [];
+    total.value = result.totalCount ?? 0;
   } finally {
-    settlementLoading.value = false;
-    await nextTick();
-    syncTableScrollY();
+    loading.value = false;
   }
 }
 
-function handleSettlementPageChange(page: number, pageSize: number) {
-  settlementPage.value = page;
-  settlementPageSize.value = pageSize;
+function handleSearch() {
+  currentPage.value = 1;
   loadReceiveSettlements();
 }
 
-function handleSettlementSearch() {
-  settlementPage.value = 1;
+function clearSearch() {
+  settlementNoFilter.value = '';
+  handleSearch();
+}
+
+function handlePageChange(page: number, size: number) {
+  currentPage.value = page;
+  pageSize.value = size;
   loadReceiveSettlements();
 }
 
-function shouldIgnoreSettlementRowDblClick(event: MouseEvent) {
-  const target = event.target as HTMLElement | null;
-  if (!target) return true;
-
-  return Boolean(
-    target.closest(
-      '.ant-table-row-expand-icon, .ant-table-row-expand-icon-cell, .ant-table-cell-with-append, .ant-checkbox-wrapper, .ant-checkbox',
-    ),
-  );
+function openSettlement(row: Record<string, any>) {
+  emit('edit', row as BankStatementAdminApi.ReceiveSettlementListDto);
 }
 
-function handleReceiveSettlementRowDblClick(
-  row: BankStatementAdminApi.ReceiveSettlementListDto,
-  event: MouseEvent,
-) {
-  if (shouldIgnoreSettlementRowDblClick(event)) return;
-  const basePath = isInvoiceReceiveSettlement(row.type)
-    ? '/settlement-management/receive-settlement/edit-by-invoice'
-    : '/settlement-management/receive-settlement/edit';
-  router.push(`${basePath}/${row.id}`);
+function requestCreate(mode: 'fee' | 'invoice') {
+  emit('create', mode);
 }
 
-async function handleExpand(expanded: boolean, record: { id: string }) {
-  if (!expanded) return;
-  if (detailItemsMap.value[record.id]) return;
-
-  detailLoadingMap.value = {
-    ...detailLoadingMap.value,
-    [record.id]: true,
-  };
-  try {
-    await refreshSettlementDetail(record.id);
-  } finally {
-    detailLoadingMap.value = {
-      ...detailLoadingMap.value,
-      [record.id]: false,
-    };
-  }
+function handleCreateMenu({ key }: { key: string | number }) {
+  requestCreate(String(key) === 'invoice' ? 'invoice' : 'fee');
 }
 
-function handleDelete() {
-  const itemSelections = getItemSelections();
-  const selectedRows = settlementList.value.filter((row) =>
-    selectedSettlementRowKeys.value.includes(row.id),
-  );
-
-  if (itemSelections.length === 0 && selectedRows.length === 0) {
-    message.warning('请先选择要删除的收费核销或费用明细');
-    return;
-  }
-
-  if (
-    itemSelections.length > 0 &&
-    !canDeleteItems.value &&
-    selectedRows.length > 0 &&
-    !canDeleteSettlement.value
-  ) {
-    return;
-  }
-
-  if (itemSelections.length > 0 && !canDeleteItems.value) {
-    message.warning('当前账号无删除费用明细权限');
-    return;
-  }
-
-  if (selectedRows.length > 0 && !canDeleteSettlement.value) {
-    message.warning('当前账号无删除收费核销权限');
-    return;
-  }
-
-  if (selectedRows.some((row) => isReceiveSettlementLocked(row.locked))) {
-    message.warning('选中的记录中有已锁定的收费核销，无法删除');
-    return;
-  }
-
-  if (
-    itemSelections.some(({ settlementId }) => {
-      const settlement = settlementList.value.find(
-        (row) => row.id === settlementId,
-      );
-      return settlement && isReceiveSettlementLocked(settlement.locked);
-    })
-  ) {
-    message.warning('已锁定的收费核销不能删除明细');
-    return;
-  }
-
-  const settlementIdsToDelete = new Set(selectedRows.map((row) => row.id));
-  const pendingItemSelections = itemSelections.filter(
-    ({ settlementId }) => !settlementIdsToDelete.has(settlementId),
-  );
-  const pendingItemCount = pendingItemSelections.reduce(
-    (sum, item) => sum + item.itemIds.length,
-    0,
-  );
-
-  const contentParts: string[] = [];
-  if (pendingItemCount > 0) {
-    contentParts.push(`${pendingItemCount} 条费用明细`);
-  }
-  if (selectedRows.length > 0) {
-    contentParts.push(`${selectedRows.length} 条收费核销`);
-  }
-
-  Modal.confirm({
-    title: '确认删除',
-    content: `确定要删除选中的 ${contentParts.join('和')}吗？`,
-    okType: 'danger',
-    onOk: async () => {
-      deleteLoading.value = true;
-      try {
-        if (pendingItemSelections.length > 0) {
-          await Promise.all(
-            pendingItemSelections.map(({ settlementId, itemIds }) => {
-              const settlement = settlementList.value.find(
-                (row) => row.id === settlementId,
-              );
-              if (isInvoiceReceiveSettlement(settlement?.type)) {
-                return deleteReceiveSettlementInvoiceItems({
-                  id: settlementId,
-                  receiveSettlementInvoiceItemIds: itemIds,
-                });
-              }
-              return deleteReceiveSettlementItems({
-                id: settlementId,
-                receiveSettlementItemIds: itemIds,
-              });
-            }),
-          );
-        }
-
-        if (selectedRows.length > 0) {
-          await Promise.all(
-            selectedRows.map((row) => deleteReceiveSettlement({ id: row.id })),
-          );
-          removeSettlementDetailCache(selectedRows.map((row) => row.id));
-        }
-
-        const affectedSettlementIds = [
-          ...new Set([
-            ...pendingItemSelections.map(({ settlementId }) => settlementId),
-            ...selectedRows.map((row) => row.id),
-          ]),
-        ];
-
-        clearSelection();
-        await loadReceiveSettlements();
-        await refreshExpandedSettlementDetails(affectedSettlementIds);
-        markReceiveSettlementRelatedListsShouldRefresh();
-        emit('deleted');
-
-        if (pendingItemCount > 0 && selectedRows.length > 0) {
-          message.success('删除成功');
-        } else if (pendingItemCount > 0) {
-          message.success('删除明细成功');
-        } else {
-          message.success('删除成功');
-        }
-      } catch (error: any) {
-        message.error(error.message || '删除失败');
-      } finally {
-        deleteLoading.value = false;
-      }
-    },
-  });
-}
-
-function getOtherSettledAmount() {
-  return settlementList.value.reduce(
-    (sum, item) => sum + (item.totalSettledAmount || 0),
-    0,
-  );
-}
-
-onMounted(async () => {
-  await loadReceiveSettlements();
-  await nextTick();
-  setupTableWrapResizeObserver();
+watch(settlementNoFilter, () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(handleSearch, 300);
 });
 
+onMounted(loadReceiveSettlements);
 onUnmounted(() => {
-  tableWrapResizeObserver?.disconnect();
+  if (searchTimer) clearTimeout(searchTimer);
 });
 
 defineExpose({
   refresh: loadReceiveSettlements,
-  getOtherSettledAmount,
 });
 </script>
 
 <template>
-  <Card title="关联收费核销" size="small" class="form-panel-card">
-    <template #extra>
-      <Space>
-        <Button
-          v-if="canDelete"
-          size="small"
-          danger
-          :disabled="!hasSelection"
-          :loading="deleteLoading"
-          @click="handleDelete"
-        >
-          删除
-        </Button>
-        <Input
-          v-model:value="settlementNoFilter"
-          placeholder="结算单号模糊搜索"
-          allow-clear
-          style="width: 200px"
-          @press-enter="handleSettlementSearch"
-        />
-        <Button size="small" @click="handleSettlementSearch">查询</Button>
-      </Space>
+  <Card size="small" class="settlement-card">
+    <template #title>
+      <div class="settlement-card__title">
+        <span>关联核销单</span>
+        <span class="settlement-card__count">{{ total }}</span>
+      </div>
     </template>
 
-    <div ref="tableWrapRef" class="settlement-table-wrap">
-      <Table
-        :columns="receiveSettlementColumns"
-        :data-source="settlementList"
-        :loading="settlementLoading"
-        :pagination="{
-          current: settlementPage,
-          pageSize: settlementPageSize,
-          total: settlementTotal,
-          showSizeChanger: true,
-          showTotal: (total) => `共 ${total} 条`,
-          onChange: handleSettlementPageChange,
-        }"
-        v-model:expanded-row-keys="expandedRowKeys"
-        row-key="id"
-        size="small"
-        bordered
-        :scroll="tableScroll"
-        :row-selection="settlementRowSelection"
-        :custom-row="
-          (record) => ({
-            onDblclick: (event) =>
-              handleReceiveSettlementRowDblClick(record, event),
-          })
-        "
-        @expand="handleExpand"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'type'">
-            <Tag :color="getReceiveSettlementTypeColor(record.type)">
-              {{ getReceiveSettlementTypeLabel(record.type) }}
-            </Tag>
+    <template #extra>
+      <div class="settlement-toolbar">
+        <Input
+          v-model:value="settlementNoFilter"
+          placeholder="搜索核销单号"
+          allow-clear
+          class="settlement-search"
+          @press-enter="handleSearch"
+        >
+          <template #prefix>
+            <IconifyIcon icon="mdi:magnify" class="size-4 text-gray-400" />
           </template>
-          <template v-else-if="column.key === 'status'">
-            <Tag :color="getReceiveSettlementStatusColor(record.status)">
-              {{ getReceiveSettlementStatusLabel(record.status) }}
-            </Tag>
-          </template>
-          <template v-else-if="column.key === 'locked'">
-            <Tag
-              :color="
-                isReceiveSettlementLocked(record.locked) ? 'red' : 'green'
-              "
-            >
-              {{
-                isReceiveSettlementLocked(record.locked) ? '已锁定' : '未锁定'
-              }}
-            </Tag>
-          </template>
-          <template v-else-if="column.key === 'remark'">
-            <Tooltip
-              v-if="record.remark"
-              :title="record.remark"
-              placement="topLeft"
-            >
-              <span class="settlement-ellipsis-cell">{{ record.remark }}</span>
-            </Tooltip>
-            <span v-else>-</span>
-          </template>
-          <template v-else-if="column.key === 'settlementNo'">
-            <Tooltip
-              v-if="record.settlementNo"
-              :title="record.settlementNo"
-              placement="topLeft"
-            >
-              <span class="settlement-ellipsis-cell">{{
-                record.settlementNo
-              }}</span>
-            </Tooltip>
-            <span v-else>-</span>
-          </template>
-        </template>
+        </Input>
 
-        <template #expandedRowRender="{ record }">
-          <Table
-            class="settlement-item-table"
-            :columns="getItemColumns(record)"
-            :data-source="detailItemsMap[record.id] ?? []"
-            :loading="detailLoadingMap[record.id]"
-            :pagination="false"
-            row-key="id"
-            size="small"
-            bordered
-            :row-selection="
-              getItemRowSelection(
-                record.id,
-                isReceiveSettlementLocked(record.locked),
-              )
-            "
-          >
-            <template #bodyCell="{ column, record: item }">
-              <template v-if="column.dataIndex === 'currencyCode'">
-                <Tag v-if="item.currencyCode">{{ item.currencyCode }}</Tag>
-                <span v-else>-</span>
-              </template>
-              <template v-else-if="column.dataIndex === 'paySide'">
-                <Tag :color="getReceiveSettlementPaySideColor(item.paySide)">
-                  {{ getReceiveSettlementPaySideLabel(item.paySide) }}
-                </Tag>
-              </template>
-            </template>
-          </Table>
-        </template>
-      </Table>
+        <DropdownButton
+          v-if="canCreateSettlement"
+          type="primary"
+          @click="requestCreate('fee')"
+        >
+          新建核销
+          <template #overlay>
+            <Menu @click="handleCreateMenu">
+              <MenuItem key="fee">按费用核销</MenuItem>
+              <MenuItem key="invoice">按开票申请核销</MenuItem>
+            </Menu>
+          </template>
+        </DropdownButton>
+      </div>
+    </template>
+
+    <div
+      v-if="!loading && settlementList.length === 0"
+      class="settlement-empty"
+    >
+      <div class="settlement-empty__icon">
+        <IconifyIcon
+          :icon="
+            isFiltering
+              ? 'mdi:file-search-outline'
+              : 'mdi:clipboard-text-outline'
+          "
+          class="size-6"
+        />
+      </div>
+      <div class="settlement-empty__content">
+        <h3>{{ isFiltering ? '未找到匹配的核销单' : '暂无关联核销单' }}</h3>
+        <p v-if="isFiltering">换一个核销单号，或清除搜索条件后重试。</p>
+        <p v-else>
+          当前剩余可核销
+          <strong>{{ formatSettlementAmount(remainingAmount) }}</strong>
+        </p>
+        <div class="settlement-empty__actions">
+          <Button v-if="isFiltering" size="small" @click="clearSearch">
+            清除搜索
+          </Button>
+          <template v-else-if="canCreateSettlement">
+            <Button size="small" @click="requestCreate('fee')">
+              按费用核销
+            </Button>
+            <Button size="small" @click="requestCreate('invoice')">
+              按开票申请核销
+            </Button>
+          </template>
+        </div>
+      </div>
     </div>
+
+    <Table
+      v-else
+      :columns="columns"
+      :data-source="settlementList"
+      :loading="loading"
+      :pagination="tablePagination"
+      :custom-row="
+        (record) => ({
+          onClick: () => openSettlement(record),
+        })
+      "
+      row-key="id"
+      size="small"
+      :scroll="{ x: 1150 }"
+      class="settlement-table"
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'type'">
+          <Tag :color="getReceiveSettlementTypeColor(record.type)">
+            {{ getReceiveSettlementTypeLabel(record.type) }}
+          </Tag>
+        </template>
+        <template v-else-if="column.key === 'status'">
+          <Tag :color="getReceiveSettlementStatusColor(record.status)">
+            {{ getReceiveSettlementStatusLabel(record.status) }}
+          </Tag>
+        </template>
+        <template v-else-if="column.key === 'settlementNo'">
+          <Tooltip :title="record.settlementNo">
+            <span class="settlement-no">{{ record.settlementNo || '-' }}</span>
+          </Tooltip>
+        </template>
+        <template v-else-if="column.key === 'totalSettledAmount'">
+          <span class="settlement-amount">
+            {{ formatSettlementAmount(record.totalSettledAmount) }}
+          </span>
+        </template>
+        <template v-else-if="column.key === 'itemCount'">
+          {{ record.itemCount ?? 0 }} 条
+        </template>
+        <template v-else-if="column.key === 'remark'">
+          <Tooltip v-if="record.remark" :title="record.remark">
+            <span class="ellipsis-cell">{{ record.remark }}</span>
+          </Tooltip>
+          <span v-else>-</span>
+        </template>
+        <template v-else-if="column.key === 'action'">
+          <Button
+            type="link"
+            size="small"
+            class="px-0"
+            @click.stop="openSettlement(record)"
+          >
+            {{ canEditSettlement ? '编辑' : '查看' }}
+          </Button>
+        </template>
+      </template>
+    </Table>
   </Card>
 </template>
 
 <style scoped lang="scss">
-.form-panel-card {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
+.settlement-card {
   min-width: 0;
-  height: 100%;
+  border-color: #e3e8ef;
+
+  :deep(.ant-card-head) {
+    min-height: 56px;
+    padding-inline: 20px;
+    background: #fbfcfe;
+  }
 
   :deep(.ant-card-body) {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-width: 0;
-    min-height: 0;
-  }
-
-  :deep(.ant-table-wrapper) {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  :deep(.ant-spin-nested-loading),
-  :deep(.ant-spin-container) {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  .settlement-table-wrap {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
-
-    :deep(.ant-table) {
-      table-layout: fixed;
-    }
-
-    :deep(.ant-table-content) {
-      overflow-x: hidden !important;
-    }
-
-    :deep(.ant-table-thead > tr > th) {
-      white-space: nowrap;
-    }
-  }
-
-  :deep(.settlement-item-table .ant-table) {
-    table-layout: fixed;
-  }
-
-  :deep(.settlement-item-table .ant-table-content) {
-    overflow-x: hidden !important;
-  }
-
-  :deep(.settlement-item-table .ant-table-thead > tr > th) {
-    white-space: nowrap;
-  }
-
-  :deep(.ant-table-body) {
-    overflow: auto !important;
-    overflow-x: hidden !important;
-  }
-
-  :deep(.ant-table-pagination) {
-    flex-shrink: 0;
-    padding-top: 12px;
-    margin-top: auto;
+    padding: 0;
   }
 }
 
-.settlement-ellipsis-cell {
+.settlement-card__title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 600;
+  color: #202936;
+}
+
+.settlement-card__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding-inline: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #667487;
+  background: #eef2f6;
+  border-radius: 10px;
+}
+
+.settlement-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settlement-search {
+  width: 220px;
+}
+
+.settlement-empty {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 220px;
+  padding: 52px 24px;
+  color: #5d6b7c;
+}
+
+.settlement-empty__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  color: #7a8797;
+  background: #f0f3f7;
+  border-radius: 50%;
+}
+
+.settlement-empty__content {
+  h3 {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #303b49;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: #7a8797;
+  }
+
+  strong {
+    font-variant-numeric: tabular-nums;
+    color: #c56a08;
+  }
+}
+
+.settlement-empty__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.settlement-table {
+  :deep(.ant-table-thead > tr > th) {
+    color: #667487;
+    background: #f7f9fb;
+  }
+
+  :deep(.ant-table-tbody > tr) {
+    cursor: pointer;
+  }
+
+  :deep(.ant-table-pagination) {
+    margin-inline: 20px;
+  }
+}
+
+.settlement-no {
+  font-weight: 500;
+  color: #1677ff;
+}
+
+.settlement-amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #283442;
+}
+
+.ellipsis-cell {
   display: inline-block;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: bottom;
   white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .settlement-card {
+    :deep(.ant-card-head) {
+      align-items: flex-start;
+      padding-block: 12px;
+    }
+
+    :deep(.ant-card-extra) {
+      width: 100%;
+      padding-top: 8px;
+      margin-inline-start: 0;
+    }
+  }
+
+  .settlement-toolbar {
+    width: 100%;
+  }
+
+  .settlement-search {
+    flex: 1;
+    width: auto;
+  }
 }
 </style>

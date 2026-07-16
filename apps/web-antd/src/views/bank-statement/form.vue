@@ -1,22 +1,25 @@
 <script lang="ts" setup>
-import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
-
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
 import { Page } from '@vben/common-ui';
 import { useAccess } from '@vben/access';
+import { IconifyIcon } from '@vben/icons';
 
 import {
   Button,
   Card,
   DatePicker,
+  DropdownButton,
   Input,
   InputNumber,
+  Menu,
+  MenuItem,
   message,
+  Modal,
+  Progress,
   Space,
-  Tabs,
   Tag,
 } from 'ant-design-vue';
 
@@ -27,6 +30,7 @@ import {
   ClientBankAccountSelect,
 } from '#/adapter/component';
 import {
+  BankStatementAdminApi,
   addBankStatement,
   editBankStatement,
   getBankStatementDetail,
@@ -35,10 +39,9 @@ import {
 import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
-import CreateSettlementFeePanel from './components/create-settlement-fee-panel.vue';
-import CreateSettlementInvoicePanel from './components/create-settlement-invoice-panel.vue';
 import OperatorTitleBar from './components/operator-title-bar.vue';
 import ReceiveSettlementPanel from './components/receive-settlement-panel.vue';
+import SettlementWorkbenchDrawer from './components/settlement-workbench-drawer.vue';
 import { getBankStatementWriteOffStatusInfo } from './data';
 import { type BankStatementOperatorRow, buildOperatorRows } from './utils';
 
@@ -84,52 +87,99 @@ const writeOffStatus = ref<
   BankStatementAdminApi.BankStatementWriteOffStatus | undefined
 >(undefined);
 const settledAmount = ref(0);
+const creatorUserName = ref('');
 
 let rowKeyCounter = 0;
 const makeRowKey = () => `op_${++rowKeyCounter}_${Date.now()}`;
 const operatorRows = ref<BankStatementOperatorRow[]>([]);
 
 const settlementPanelRef = ref<InstanceType<typeof ReceiveSettlementPanel>>();
-const createFeePanelRef = ref<InstanceType<typeof CreateSettlementFeePanel>>();
-const createInvoicePanelRef =
-  ref<InstanceType<typeof CreateSettlementInvoicePanel>>();
-/** 底部新建结算方式：按费用 / 按开票申请 */
-const createMode = ref<'fee' | 'invoice'>('fee');
-
-async function reloadActiveCreatePanel() {
-  await createFeePanelRef.value?.reload();
-  await createInvoicePanelRef.value?.reload();
-}
-const leftPanelRef = ref<HTMLElement>();
-const rightPanelMaxHeight = ref<number>();
-
-const rightPanelStyle = computed(() =>
-  rightPanelMaxHeight.value
-    ? { maxHeight: `${rightPanelMaxHeight.value}px` }
-    : undefined,
-);
-
-let leftPanelResizeObserver: ResizeObserver | undefined;
-
-function syncRightPanelHeight() {
-  rightPanelMaxHeight.value = leftPanelRef.value?.offsetHeight ?? 0;
-}
-
-function setupLeftPanelResizeObserver() {
-  leftPanelResizeObserver?.disconnect();
-  if (!leftPanelRef.value) return;
-  leftPanelResizeObserver = new ResizeObserver(() => {
-    syncRightPanelHeight();
-  });
-  leftPanelResizeObserver.observe(leftPanelRef.value);
-  syncRightPanelHeight();
-}
+const settlementDrawerRef =
+  ref<InstanceType<typeof SettlementWorkbenchDrawer>>();
+const settlementSectionRef = ref<HTMLElement>();
+const basicInfoExpanded = ref(true);
+const counterpartyBankNotice = ref(false);
+const savedFormFingerprint = ref('');
 
 const writeOffStatusInfo = computed(() =>
   getBankStatementWriteOffStatusInfo(writeOffStatus.value),
 );
 
 const otherSettledAmount = computed(() => settledAmount.value || 0);
+const remainingAmount = computed(
+  () => savedAmount.value - otherSettledAmount.value,
+);
+const isPendingWriteOff = computed(
+  () =>
+    writeOffStatus.value ===
+    BankStatementAdminApi.BankStatementWriteOffStatus.PendingWriteOff,
+);
+const canEditStatement = computed(
+  () => !isEdit.value || (canEdit.value && isPendingWriteOff.value),
+);
+const canCreateSettlement = computed(
+  () =>
+    isEdit.value && canAddReceiveSettlement.value && remainingAmount.value > 0,
+);
+const canEditReceiveSettlement = computed(() =>
+  hasAccessByCodes([receiveSettlementPerm.edit]),
+);
+const isOverSettled = computed(() => remainingAmount.value < 0);
+const writeOffProgress = computed(() => {
+  if (savedAmount.value <= 0) return otherSettledAmount.value > 0 ? 100 : 0;
+  return (otherSettledAmount.value / savedAmount.value) * 100;
+});
+const progressPercent = computed(() =>
+  Math.min(100, Math.max(0, Number(writeOffProgress.value.toFixed(1)))),
+);
+const progressLabel = computed(() => {
+  const value = writeOffProgress.value;
+  return `${value.toFixed(Number.isInteger(value) ? 0 : 1)}%`;
+});
+const progressStrokeColor = computed(() => {
+  if (isOverSettled.value) return '#cf1322';
+  if (remainingAmount.value === 0 && savedAmount.value > 0) return '#389e0d';
+  return '#1677ff';
+});
+const statementDateText = computed(() =>
+  statementTime.value ? statementTime.value.format('YYYY-MM-DD') : '-',
+);
+
+const formFingerprint = computed(() =>
+  JSON.stringify({
+    amount: amount.value ?? null,
+    clientInvoiceBankId: clientInvoiceBankId.value ?? null,
+    currencyId: currencyId.value ?? null,
+    message: messageText.value,
+    operatorRows: operatorRows.value
+      .filter((row) => row.operationId)
+      .map((row) => ({
+        operationId: row.operationId,
+        remark: row.remark || '',
+      })),
+    orgBankAccountId: orgBankAccountId.value ?? null,
+    remark: remark.value,
+    settlementId: settlementId.value,
+    statementRemark: statementRemark.value,
+    statementTime: statementTime.value?.toISOString() ?? null,
+    transactionFee: transactionFee.value ?? null,
+  }),
+);
+
+const hasUnsavedChanges = computed(
+  () =>
+    canEditStatement.value &&
+    Boolean(savedFormFingerprint.value) &&
+    formFingerprint.value !== savedFormFingerprint.value,
+);
+
+function formatMoney(value: number) {
+  const text = value.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return savedCurrencyCode.value ? `${text} ${savedCurrencyCode.value}` : text;
+}
 
 function applySavedBankStatementSnapshot(
   detail: BankStatementAdminApi.BankStatementDetailDto,
@@ -141,8 +191,23 @@ function applySavedBankStatementSnapshot(
   savedAmount.value = detail.amount ?? 0;
 }
 
-watch(settlementId, () => {
+watch(settlementId, (value, previousValue) => {
+  if (
+    pageLoading.value ||
+    !previousValue ||
+    previousValue === value ||
+    !clientInvoiceBankId.value
+  ) {
+    return;
+  }
+
   clientInvoiceBankId.value = undefined;
+  counterpartyBankNotice.value = true;
+  message.info('付款方已变更，对方银行已清空，请重新选择');
+});
+
+watch(clientInvoiceBankId, (value) => {
+  if (value) counterpartyBankNotice.value = false;
 });
 
 async function loadOtherSettledAmount() {
@@ -181,7 +246,11 @@ async function loadEditData() {
     settlementId.value = detail.settlementId;
     clientInvoiceBankId.value = detail.clientInvoiceBankId;
     writeOffStatus.value = detail.writeOffStatus;
+    basicInfoExpanded.value =
+      detail.writeOffStatus ===
+      BankStatementAdminApi.BankStatementWriteOffStatus.PendingWriteOff;
     settledAmount.value = detail.settledAmount ?? 0;
+    creatorUserName.value = detail.creatorUserName || '';
     applySavedBankStatementSnapshot(detail);
 
     operatorRows.value = await buildOperatorRows(
@@ -191,7 +260,8 @@ async function loadEditData() {
 
     await loadOtherSettledAmount();
     await settlementPanelRef.value?.refresh();
-    await reloadActiveCreatePanel();
+    await nextTick();
+    savedFormFingerprint.value = formFingerprint.value;
   } finally {
     pageLoading.value = false;
   }
@@ -199,30 +269,79 @@ async function loadEditData() {
 
 async function handleSettlementCreated() {
   await loadEditData();
-  await reloadActiveCreatePanel();
 }
 
-async function handleSettlementDeleted() {
-  await loadEditData();
-  await reloadActiveCreatePanel();
+function openCreateSettlement(mode: 'fee' | 'invoice') {
+  settlementDrawerRef.value?.openCreate(mode);
 }
 
-async function handleSave() {
+function requestCreateSettlement(mode: 'fee' | 'invoice') {
+  if (isOverSettled.value) {
+    message.warning('当前流水已发生超核销，请先检查并调整已有核销单');
+    settlementSectionRef.value?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+    return;
+  }
+
+  if (!hasUnsavedChanges.value) {
+    openCreateSettlement(mode);
+    return;
+  }
+
+  Modal.confirm({
+    title: '先保存流水信息',
+    content:
+      '当前流水信息尚未保存。核销将使用已保存的付款方、币别和金额，请先保存后再继续。',
+    okText: '保存并继续核销',
+    cancelText: '继续编辑',
+    async onOk() {
+      const saved = await handleSave();
+      if (!saved)
+        return Promise.reject(new Error('BANK_STATEMENT_SAVE_FAILED'));
+      openCreateSettlement(mode);
+    },
+  });
+}
+
+function scrollToSettlementList() {
+  settlementSectionRef.value?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  });
+}
+
+function handleCreateMenu({ key }: { key: string | number }) {
+  requestCreateSettlement(String(key) === 'invoice' ? 'invoice' : 'fee');
+}
+
+function openEditSettlement(
+  row: BankStatementAdminApi.ReceiveSettlementListDto,
+) {
+  settlementDrawerRef.value?.openEdit(row);
+}
+
+async function handleSave(): Promise<boolean> {
+  if (!canEditStatement.value) {
+    message.warning('仅待核销状态的银行流水可以编辑');
+    return false;
+  }
   if (!amount.value && amount.value !== 0) {
     message.warning('请输入总金额');
-    return;
+    return false;
   }
   if (!currencyId.value) {
     message.warning('请选择币别');
-    return;
+    return false;
   }
   if (!statementTime.value) {
     message.warning('请选择交易时间');
-    return;
+    return false;
   }
   if (!settlementId.value) {
     message.warning('请选择付款方');
-    return;
+    return false;
   }
 
   const bankStatementUsers = operatorRows.value
@@ -268,8 +387,12 @@ async function handleSave() {
       });
       message.success('创建成功');
       markListShouldRefresh('BankStatementList');
-      router.replace(`/bank-statement/edit/${newId}`);
+      savedFormFingerprint.value = formFingerprint.value;
+      await router.replace(`/bank-statement/edit/${newId}`);
     }
+    return true;
+  } catch {
+    return false;
   } finally {
     submitting.value = false;
   }
@@ -279,37 +402,65 @@ function handleBack() {
   router.push('/bank-statement');
 }
 
-onMounted(() => {
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+  if (!hasUnsavedChanges.value) return;
+  event.preventDefault();
+  event.returnValue = '';
+}
+
+onBeforeRouteLeave(() => {
+  if (!hasUnsavedChanges.value) return true;
+  return new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: '离开当前页面？',
+      content: '流水信息仍有未保存的修改，离开后这些修改将丢失。',
+      okText: '放弃修改并离开',
+      cancelText: '继续编辑',
+      okButtonProps: { danger: true },
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
+    });
+  });
+});
+
+onMounted(async () => {
+  window.addEventListener('beforeunload', handleBeforeUnload);
   if (isEdit.value) {
-    loadEditData();
+    await loadEditData();
+  } else {
+    await nextTick();
+    savedFormFingerprint.value = formFingerprint.value;
   }
 });
 
-watch(
-  () => [isEdit.value, pageLoading.value] as const,
-  async ([editMode, loading]) => {
-    if (!editMode || loading) return;
-    await nextTick();
-    setupLeftPanelResizeObserver();
-  },
-);
+watch(editId, async (value, previousValue) => {
+  if (value && value !== previousValue) await loadEditData();
+});
 
 onUnmounted(() => {
-  leftPanelResizeObserver?.disconnect();
+  window.removeEventListener('beforeunload', handleBeforeUnload);
 });
 </script>
 
 <template>
   <Page content-class="!p-3">
     <template #title>
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <span class="text-lg font-semibold">
-          {{ isEdit ? '编辑银行流水' : '新建银行流水' }}
-        </span>
-        <OperatorTitleBar
-          v-model:rows="operatorRows"
-          :disabled="!canEdit && isEdit"
-        />
+      <div class="page-identity">
+        <div class="page-identity__title">
+          <span>
+            {{ isEdit ? `银行流水 ${bankStatementNo || '-'}` : '新建银行流水' }}
+          </span>
+          <Tag v-if="isEdit" :color="writeOffStatusInfo.color">
+            {{ writeOffStatusInfo.label }}
+          </Tag>
+        </div>
+        <div v-if="isEdit" class="page-identity__meta">
+          {{ savedSettlementName || '未指定付款方' }}
+          <span>·</span>
+          {{ statementDateText }}
+          <span>·</span>
+          {{ savedCurrencyCode || '未指定币别' }}
+        </div>
       </div>
     </template>
 
@@ -317,9 +468,10 @@ onUnmounted(() => {
       <Space>
         <Button @click="handleBack">返回</Button>
         <Button
-          v-if="canEdit || !isEdit"
+          v-if="canEditStatement"
           type="primary"
           :loading="submitting"
+          :disabled="!hasUnsavedChanges"
           @click="handleSave"
         >
           保存
@@ -331,327 +483,531 @@ onUnmounted(() => {
       v-loading="pageLoading"
       class="bank-statement-page flex flex-col gap-3"
     >
-      <div
-        class="form-main-layout"
-        :class="{ 'form-main-layout--create': !isEdit }"
-      >
-        <div ref="leftPanelRef" class="form-main-layout__left">
-          <Card title="流水信息" size="small" class="form-panel-card">
-            <div class="bank-statement-form grid grid-cols-2 gap-x-4 gap-y-3">
-              <template v-if="isEdit">
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">流水号</div>
-                  <div
-                    class="flex h-8 items-center gap-2 text-sm text-gray-600"
-                  >
-                    <span>{{ bankStatementNo || '-' }}</span>
-                    <Tag :color="writeOffStatusInfo.color">
-                      {{ writeOffStatusInfo.label }}
-                    </Tag>
-                  </div>
-                </div>
+      <Card v-if="isEdit" size="small" class="statement-overview-card">
+        <div class="statement-overview">
+          <div class="statement-overview__access">
+            <div class="statement-creator">
+              <IconifyIcon icon="mdi:account-circle-outline" class="size-4" />
+              <span>创建人：{{ creatorUserName || '-' }}</span>
+            </div>
+            <OperatorTitleBar
+              v-model:rows="operatorRows"
+              :disabled="!canEditStatement"
+            />
+          </div>
 
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">
-                    交易时间 <span class="text-red-500">*</span>
-                  </div>
-                  <DatePicker
-                    v-model:value="statementTime"
-                    :show-time="false"
-                    format="YYYY-MM-DD"
-                    :disabled="!canEdit && isEdit"
-                    class="w-full"
-                  />
-                </div>
+          <div class="statement-overview__metrics">
+            <div class="statement-metric">
+              <span>流水金额</span>
+              <strong>{{ formatMoney(savedAmount) }}</strong>
+            </div>
+            <div class="statement-metric statement-metric--settled">
+              <span>已核销</span>
+              <strong>{{ formatMoney(otherSettledAmount) }}</strong>
+            </div>
+            <div
+              class="statement-metric"
+              :class="{ 'statement-metric--danger': remainingAmount < 0 }"
+            >
+              <span>剩余可核销</span>
+              <strong>{{ formatMoney(remainingAmount) }}</strong>
+            </div>
+          </div>
 
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">
-                    币别 <span class="text-red-500">*</span>
-                  </div>
-                  <CurrencySelect
-                    v-model="currencyId"
-                    :disabled="!canEdit && isEdit"
-                    placeholder="请选择币别"
-                    allow-clear
-                    class="w-full"
-                  />
-                </div>
+          <DropdownButton
+            v-if="canCreateSettlement"
+            type="primary"
+            class="statement-overview__actions"
+            @click="requestCreateSettlement('fee')"
+          >
+            新建核销
+            <template #overlay>
+              <Menu @click="handleCreateMenu">
+                <MenuItem key="fee">按费用核销</MenuItem>
+                <MenuItem key="invoice">按开票申请核销</MenuItem>
+              </Menu>
+            </template>
+          </DropdownButton>
+        </div>
 
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">
-                    总金额 <span class="text-red-500">*</span>
-                  </div>
-                  <InputNumber
-                    v-model:value="amount"
-                    :min="0"
-                    :precision="2"
-                    :disabled="!canEdit && isEdit"
-                    class="w-full"
-                    placeholder="请输入金额"
-                  />
-                </div>
+        <div class="write-off-progress">
+          <div class="write-off-progress__label">
+            <span>核销进度</span>
+            <strong>{{ progressLabel }}</strong>
+          </div>
+          <Progress
+            :percent="progressPercent"
+            :show-info="false"
+            :stroke-color="progressStrokeColor"
+            size="small"
+          />
+        </div>
 
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">
-                    付款方 <span class="text-red-500">*</span>
-                  </div>
-                  <ClientSelect
-                    v-model="settlementId"
-                    :disabled="!canEdit && isEdit"
-                    placeholder="请选择付款方"
-                    allow-clear
-                    class="w-full"
-                  />
-                </div>
+        <div v-if="isOverSettled" class="statement-risk-notice">
+          <div>
+            <strong>已发生超核销</strong>
+            <span>请先检查或调整已有核销单，暂不建议继续新建核销。</span>
+          </div>
+          <Button
+            type="link"
+            danger
+            size="small"
+            @click="scrollToSettlementList"
+          >
+            查看异常核销单
+          </Button>
+        </div>
+      </Card>
 
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">手续费</div>
-                  <InputNumber
-                    v-model:value="transactionFee"
-                    :min="0"
-                    :precision="2"
-                    :disabled="!canEdit && isEdit"
-                    class="w-full"
-                    placeholder="请输入手续费"
-                  />
-                </div>
+      <Card size="small" class="form-panel-card">
+        <template #title>
+          <div class="form-panel-card__title">
+            <span>流水基础信息</span>
+            <span v-if="isEdit && !canEditStatement" class="locked-state">
+              <IconifyIcon icon="mdi:lock-outline" class="size-4" />
+              已锁定
+            </span>
+          </div>
+        </template>
+        <template #extra>
+          <div class="form-panel-card__extra">
+            <OperatorTitleBar
+              v-if="!isEdit"
+              v-model:rows="operatorRows"
+              :disabled="false"
+            />
+            <Button
+              type="text"
+              size="small"
+              @click="basicInfoExpanded = !basicInfoExpanded"
+            >
+              {{ basicInfoExpanded ? '收起' : '展开' }}
+              <IconifyIcon
+                :icon="
+                  basicInfoExpanded ? 'mdi:chevron-up' : 'mdi:chevron-down'
+                "
+                class="ml-1 size-4"
+              />
+            </Button>
+          </div>
+        </template>
 
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">我司银行</div>
-                  <OrgBankAccountSelect
-                    :value="orgBankAccountId"
-                    :disabled="!canEdit && isEdit"
-                    placeholder="请选择我司银行"
-                    allow-clear
-                    class="w-full"
-                    @update:value="(v) => (orgBankAccountId = v)"
-                  />
+        <div v-show="basicInfoExpanded" class="bank-statement-form">
+          <section class="form-group">
+            <h3>核心到账信息</h3>
+            <div class="core-fields-grid">
+              <div class="form-field">
+                <div class="form-label">
+                  交易时间 <span class="text-red-500">*</span>
                 </div>
+                <DatePicker
+                  v-model:value="statementTime"
+                  :show-time="false"
+                  format="YYYY-MM-DD"
+                  :disabled="!canEditStatement"
+                  class="w-full"
+                />
+              </div>
 
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">对方银行</div>
-                  <ClientBankAccountSelect
-                    :value="clientInvoiceBankId"
-                    :client-id="settlementId"
-                    :disabled="(!canEdit && isEdit) || !settlementId"
-                    placeholder="请先选择付款方"
-                    allow-clear
-                    class="w-full"
-                    @update:value="(v) => (clientInvoiceBankId = v)"
-                  />
+              <div class="form-field form-field--payer">
+                <div class="form-label">
+                  付款方 <span class="text-red-500">*</span>
                 </div>
-              </template>
+                <ClientSelect
+                  v-model="settlementId"
+                  :disabled="!canEditStatement"
+                  placeholder="请选择付款方"
+                  allow-clear
+                  class="w-full"
+                />
+              </div>
 
-              <template v-else>
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">
-                    交易时间 <span class="text-red-500">*</span>
-                  </div>
-                  <DatePicker
-                    v-model:value="statementTime"
-                    :show-time="false"
-                    format="YYYY-MM-DD"
-                    class="w-full"
-                  />
+              <div class="form-field">
+                <div class="form-label">
+                  币别 <span class="text-red-500">*</span>
                 </div>
+                <CurrencySelect
+                  v-model="currencyId"
+                  :disabled="!canEditStatement"
+                  placeholder="请选择币别"
+                  allow-clear
+                  class="w-full"
+                />
+              </div>
 
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">
-                    币别 <span class="text-red-500">*</span>
-                  </div>
-                  <CurrencySelect
-                    v-model="currencyId"
-                    placeholder="请选择币别"
-                    allow-clear
-                    class="w-full"
-                  />
+              <div class="form-field form-field--money">
+                <div class="form-label">
+                  总金额 <span class="text-red-500">*</span>
                 </div>
+                <InputNumber
+                  v-model:value="amount"
+                  :min="0"
+                  :precision="2"
+                  :disabled="!canEditStatement"
+                  class="money-input w-full"
+                  placeholder="请输入金额"
+                />
+              </div>
 
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">
-                    付款方 <span class="text-red-500">*</span>
-                  </div>
-                  <ClientSelect
-                    v-model="settlementId"
-                    placeholder="请选择付款方"
-                    allow-clear
-                    class="w-full"
-                  />
+              <div class="form-field">
+                <div class="form-label">手续费</div>
+                <InputNumber
+                  v-model:value="transactionFee"
+                  :min="0"
+                  :precision="2"
+                  :disabled="!canEditStatement"
+                  class="money-input w-full"
+                  placeholder="请输入手续费"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section class="form-group form-group--divided">
+            <h3>银行信息</h3>
+            <div class="bank-fields-grid">
+              <div class="form-field">
+                <div class="form-label">我司银行</div>
+                <OrgBankAccountSelect
+                  :value="orgBankAccountId"
+                  :disabled="!canEditStatement"
+                  placeholder="请选择我司银行"
+                  allow-clear
+                  class="w-full"
+                  @update:value="(v) => (orgBankAccountId = v)"
+                />
+              </div>
+
+              <div class="form-field">
+                <div class="form-label">对方银行</div>
+                <ClientBankAccountSelect
+                  :value="clientInvoiceBankId"
+                  :client-id="settlementId"
+                  :disabled="!canEditStatement || !settlementId"
+                  placeholder="请先选择付款方"
+                  allow-clear
+                  class="w-full"
+                  @update:value="(v) => (clientInvoiceBankId = v)"
+                />
+                <div v-if="counterpartyBankNotice" class="field-notice">
+                  付款方已变更，请重新选择对方银行。
                 </div>
+              </div>
+            </div>
+          </section>
 
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">
-                    总金额 <span class="text-red-500">*</span>
-                  </div>
-                  <InputNumber
-                    v-model:value="amount"
-                    :min="0"
-                    :precision="2"
-                    class="w-full"
-                    placeholder="请输入金额"
-                  />
-                </div>
-
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">手续费</div>
-                  <InputNumber
-                    v-model:value="transactionFee"
-                    :min="0"
-                    :precision="2"
-                    class="w-full"
-                    placeholder="请输入手续费"
-                  />
-                </div>
-
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">我司银行</div>
-                  <OrgBankAccountSelect
-                    :value="orgBankAccountId"
-                    placeholder="请选择我司银行"
-                    allow-clear
-                    class="w-full"
-                    @update:value="(v) => (orgBankAccountId = v)"
-                  />
-                </div>
-
-                <div>
-                  <div class="mb-1 text-xs text-gray-500">对方银行</div>
-                  <ClientBankAccountSelect
-                    :value="clientInvoiceBankId"
-                    :client-id="settlementId"
-                    :disabled="!settlementId"
-                    placeholder="请先选择付款方"
-                    allow-clear
-                    class="w-full"
-                    @update:value="(v) => (clientInvoiceBankId = v)"
-                  />
-                </div>
-              </template>
-
-              <div>
-                <div class="mb-1 text-xs text-gray-500">交易备注</div>
+          <details class="supplementary-details">
+            <summary>补充信息</summary>
+            <div class="supplementary-fields-grid">
+              <div class="form-field">
+                <div class="form-label">银行交易摘要</div>
                 <Input
                   v-model:value="statementRemark"
-                  :disabled="!canEdit && isEdit"
-                  placeholder="请输入交易备注"
+                  :disabled="!canEditStatement"
+                  placeholder="银行回单或交易摘要"
                   allow-clear
                 />
               </div>
 
-              <div>
-                <div class="mb-1 text-xs text-gray-500">留言</div>
+              <div class="form-field">
+                <div class="form-label">付款方留言</div>
                 <Input
                   v-model:value="messageText"
-                  :disabled="!canEdit && isEdit"
-                  placeholder="请输入留言"
+                  :disabled="!canEditStatement"
+                  placeholder="付款方随交易附带的留言"
                   allow-clear
                 />
               </div>
 
-              <div>
-                <div class="mb-1 text-xs text-gray-500">备注</div>
+              <div class="form-field">
+                <div class="form-label">内部备注</div>
                 <Input
                   v-model:value="remark"
-                  :disabled="!canEdit && isEdit"
-                  placeholder="请输入备注"
+                  :disabled="!canEditStatement"
+                  placeholder="仅供内部协作查看"
                   allow-clear
                 />
               </div>
             </div>
-          </Card>
+          </details>
         </div>
+      </Card>
 
-        <div
-          v-if="isEdit"
-          class="form-main-layout__right"
-          :style="rightPanelStyle"
-        >
-          <ReceiveSettlementPanel
-            ref="settlementPanelRef"
-            :bank-statement-id="editId || ''"
-            @deleted="handleSettlementDeleted"
-          />
-        </div>
-      </div>
-
-      <Tabs
-        v-if="isEdit && canAddReceiveSettlement && editId"
-        v-model:active-key="createMode"
-        class="create-settlement-tabs"
-        destroy-inactive-tab-pane
+      <section
+        v-if="isEdit"
+        ref="settlementSectionRef"
+        class="settlement-section"
       >
-        <Tabs.TabPane key="fee" tab="费用结算">
-          <CreateSettlementFeePanel
-            ref="createFeePanelRef"
-            :bank-statement-id="editId"
-            :bank-statement-amount="savedAmount"
-            :other-settled-amount="otherSettledAmount"
-            :settlement-id="savedSettlementId"
-            :settlement-name="savedSettlementName"
-            :currency-id="savedCurrencyId"
-            :currency-code="savedCurrencyCode"
-            @created="handleSettlementCreated"
-          />
-        </Tabs.TabPane>
-        <Tabs.TabPane key="invoice" tab="发票结算">
-          <CreateSettlementInvoicePanel
-            ref="createInvoicePanelRef"
-            :bank-statement-id="editId"
-            :bank-statement-amount="savedAmount"
-            :other-settled-amount="otherSettledAmount"
-            :settlement-id="savedSettlementId"
-            :settlement-name="savedSettlementName"
-            :currency-id="savedCurrencyId"
-            :currency-code="savedCurrencyCode"
-            @created="handleSettlementCreated"
-          />
-        </Tabs.TabPane>
-      </Tabs>
+        <ReceiveSettlementPanel
+          ref="settlementPanelRef"
+          :bank-statement-id="editId || ''"
+          :can-create-settlement="canCreateSettlement"
+          :can-edit-settlement="canEditReceiveSettlement"
+          :currency-code="savedCurrencyCode"
+          :remaining-amount="remainingAmount"
+          @create="requestCreateSettlement"
+          @edit="openEditSettlement"
+        />
+      </section>
+
+      <SettlementWorkbenchDrawer
+        v-if="isEdit && editId"
+        ref="settlementDrawerRef"
+        :bank-statement-id="editId"
+        :bank-statement-amount="savedAmount"
+        :other-settled-amount="otherSettledAmount"
+        :settlement-id="savedSettlementId"
+        :settlement-name="savedSettlementName"
+        :currency-id="savedCurrencyId"
+        :currency-code="savedCurrencyCode"
+        @changed="handleSettlementCreated"
+      />
     </div>
   </Page>
 </template>
 
 <style scoped lang="scss">
-.form-main-layout {
+.page-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.page-identity__title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #202936;
+}
+
+.page-identity__meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 400;
+  color: #748194;
+}
+
+.statement-overview-card {
+  border-color: #e3e8ef;
+
+  :deep(.ant-card-body) {
+    padding: 18px 20px 14px;
+  }
+}
+
+.statement-overview {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
-  gap: 12px;
-  align-items: stretch;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(500px, 1.8fr) auto;
+  gap: 24px;
+  align-items: center;
 }
 
-.form-main-layout--create {
-  grid-template-columns: 1fr;
-}
-
-.form-main-layout__left {
+.statement-overview__access {
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  gap: 7px;
+  align-items: flex-start;
 }
 
-.form-main-layout__right {
+.statement-creator {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  color: #748194;
+}
+
+.statement-overview__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 0;
+}
+
+.statement-metric {
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
+  gap: 4px;
+  padding: 4px 20px;
+  border-left: 1px solid #e3e8ef;
+
+  span {
+    font-size: 12px;
+    color: #748194;
+  }
+
+  strong {
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+    color: #202936;
+  }
 }
 
-.form-main-layout__right > * {
-  flex: 1;
-  min-height: 0;
+.statement-metric--settled strong {
+  color: #0878c9;
+}
+
+.statement-metric:last-child {
+  margin-left: 8px;
+  background: #fff7e8;
+  border-left: 0;
+  border-radius: 8px;
+
+  strong {
+    color: #b75b06;
+  }
+}
+
+.statement-metric--danger:last-child {
+  background: #fff1f0;
+
+  strong {
+    color: #cf1322;
+  }
+}
+
+.write-off-progress {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+  align-items: center;
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid #edf0f4;
+}
+
+.write-off-progress__label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #748194;
+
+  strong {
+    font-variant-numeric: tabular-nums;
+    color: #344153;
+  }
+}
+
+.statement-risk-notice {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #a61d24;
+  background: #fff1f0;
+  border: 1px solid #ffccc7;
+  border-radius: 6px;
+
+  div {
+    display: flex;
+    gap: 8px;
+  }
 }
 
 .form-panel-card {
   display: flex;
-  flex: 1;
   flex-direction: column;
+  border-color: #e3e8ef;
+
+  :deep(.ant-card-head) {
+    min-height: 48px;
+    padding-inline: 20px;
+  }
 
   :deep(.ant-card-body) {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
+    padding: 18px 20px 20px;
   }
+}
+
+.form-panel-card__title,
+.form-panel-card__extra,
+.locked-state {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.form-panel-card__title {
+  font-weight: 600;
+  color: #202936;
+}
+
+.locked-state {
+  font-size: 12px;
+  font-weight: 400;
+  color: #748194;
+}
+
+.form-group h3 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #465365;
+}
+
+.form-group--divided {
+  padding-top: 18px;
+  margin-top: 18px;
+  border-top: 1px solid #edf0f4;
+}
+
+.core-fields-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1fr) minmax(280px, 2fr) minmax(120px, 0.75fr)
+    minmax(170px, 1.1fr) minmax(150px, 1fr);
+  gap: 16px;
+}
+
+.bank-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.form-label {
+  margin-bottom: 5px;
+  font-size: 12px;
+  color: #667487;
+}
+
+.field-notice {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #d46b08;
+}
+
+.supplementary-details {
+  padding-top: 14px;
+  margin-top: 18px;
+  border-top: 1px solid #edf0f4;
+
+  summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #526070;
+    cursor: pointer;
+  }
+}
+
+.supplementary-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 16px;
+  padding-top: 10px;
 }
 
 .bank-statement-form {
@@ -660,11 +1016,73 @@ onUnmounted(() => {
   :deep(.ant-select) {
     width: 100%;
   }
+
+  :deep(.money-input input) {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
 }
 
-@media (max-width: 1280px) {
-  .form-main-layout {
+.settlement-section {
+  min-width: 0;
+  scroll-margin-top: 12px;
+}
+
+@media (max-width: 1180px) {
+  .statement-overview {
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+  }
+
+  .statement-overview__metrics {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+
+  .core-fields-grid {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+
+  .form-field--payer {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 720px) {
+  .statement-overview,
+  .statement-overview__metrics,
+  .core-fields-grid,
+  .bank-fields-grid,
+  .supplementary-fields-grid {
     grid-template-columns: 1fr;
+  }
+
+  .statement-overview__metrics {
+    grid-row: auto;
+    grid-column: auto;
+  }
+
+  .statement-overview__actions {
+    justify-self: start;
+  }
+
+  .statement-metric,
+  .statement-metric:last-child {
+    padding: 10px 0;
+    margin-left: 0;
+    background: transparent;
+    border-bottom: 1px solid #edf0f4;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .form-field--payer {
+    grid-column: auto;
+  }
+
+  .write-off-progress {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }
 </style>

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { BankStatementOperatorRow } from '../utils';
 
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 
@@ -23,6 +23,8 @@ const emit = defineEmits<{
 const popoverOpen = ref(false);
 let rowKeyCounter = 0;
 const makeRowKey = () => `op_${++rowKeyCounter}_${Date.now()}`;
+
+const validRows = computed(() => props.rows.filter((row) => row.operationId));
 
 const operatorColumns = [
   { key: 'operationId', title: '操作人', width: 130 },
@@ -67,7 +69,7 @@ function toOperatorSelectedItems(row: BankStatementOperatorRow) {
   return [
     {
       id: row.operationId,
-      userName: row.operationName || '',
+      nickName: row.operationName || '',
     },
   ];
 }
@@ -78,25 +80,7 @@ function handleRemoveTag(row: BankStatementOperatorRow) {
 </script>
 
 <template>
-  <div class="operator-title-bar flex flex-wrap items-center gap-2">
-    <span class="text-xs text-gray-400">操作人</span>
-
-    <template v-if="rows.filter((row) => row.operationId).length === 0">
-      <span class="text-xs text-gray-400">
-        未配置时，所有人均可在非 Admin 端查看
-      </span>
-    </template>
-
-    <Tag
-      v-for="row in rows.filter((row) => row.operationId)"
-      :key="row._key"
-      :closable="!disabled"
-      class="operator-tag"
-      @close="handleRemoveTag(row)"
-    >
-      {{ row.operationName || row.operationId }}
-    </Tag>
-
+  <div class="operator-title-bar">
     <Popover
       v-model:open="popoverOpen"
       trigger="click"
@@ -105,6 +89,11 @@ function handleRemoveTag(row: BankStatementOperatorRow) {
     >
       <template #content>
         <div class="operator-popover-body">
+          <div class="operator-default-note">
+            <IconifyIcon icon="mdi:shield-account-outline" class="size-4" />
+            <span>流水创建人默认可核销，以下为额外授权人员。</span>
+          </div>
+
           <Table
             class="operator-table"
             :columns="operatorColumns"
@@ -114,7 +103,7 @@ function handleRemoveTag(row: BankStatementOperatorRow) {
             size="small"
             :bordered="false"
             :locale="{
-              emptyText: '未配置操作人，所有人均可在非 Admin 端查看该流水',
+              emptyText: '暂无额外核销人',
             }"
           >
             <template #bodyCell="{ column, record }">
@@ -122,14 +111,18 @@ function handleRemoveTag(row: BankStatementOperatorRow) {
                 <UserSelect
                   :key="record._key"
                   :model-value="record.operationId"
-                  :selected-items="toOperatorSelectedItems(record)"
+                  :selected-items="
+                    toOperatorSelectedItems(record as BankStatementOperatorRow)
+                  "
                   :disabled="disabled"
                   placeholder="请选择"
                   size="small"
                   class="w-full"
                   @update:model-value="
                     (value) =>
-                      updateOperatorRow(record._key, { operationId: value })
+                      updateOperatorRow(record._key, {
+                        operationId: value as number | undefined,
+                      })
                   "
                 />
               </template>
@@ -173,23 +166,76 @@ function handleRemoveTag(row: BankStatementOperatorRow) {
         </div>
       </template>
 
-      <Button v-if="!disabled" type="link" size="small" class="px-1">
-        <IconifyIcon icon="ant-design:plus-outlined" class="mr-1 size-3.5" />
-        管理操作人
+      <Button type="text" size="small" class="operator-trigger">
+        <IconifyIcon icon="mdi:shield-account-outline" class="size-4" />
+        <span>核销权限：创建人 + {{ validRows.length }} 人</span>
+        <span class="operator-trigger__action">{{
+          disabled ? '查看' : '设置'
+        }}</span>
       </Button>
     </Popover>
+
+    <div v-if="validRows.length" class="operator-tags" aria-label="额外核销人">
+      <Tag
+        v-for="row in validRows"
+        :key="row._key"
+        :closable="!disabled"
+        class="operator-tag"
+        @close="handleRemoveTag(row)"
+      >
+        {{ row.operationName || row.operationId }}
+      </Tag>
+    </div>
   </div>
 </template>
 
 <style scoped lang="scss">
 .operator-title-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+
   :deep(.operator-tag) {
     margin-inline-end: 0;
   }
 }
 
+.operator-trigger {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  height: 30px;
+  padding-inline: 8px;
+  color: #526070;
+  background: #f2f5f8;
+  border-radius: 6px;
+}
+
+.operator-trigger__action {
+  color: #1677ff;
+}
+
+.operator-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .operator-popover-body {
   width: 420px;
+}
+
+.operator-default-note {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #526070;
+  background: #f4f7fa;
+  border-radius: 6px;
 }
 
 .operator-table {
