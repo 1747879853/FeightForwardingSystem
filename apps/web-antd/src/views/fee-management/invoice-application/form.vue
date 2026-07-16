@@ -723,32 +723,47 @@ function handleOpenFeeDetailModal() {
   }
 }
 
-/** ✅ 新增：处理删除费用 */
-async function handleDeleteFee(feeId: string) {
-  console.log('🗑️ 开始删除费用 - feeId:', feeId);
+/** ✅ 新增：处理删除费用（支持批量删除） */
+async function handleDeleteFee(feeIds: string | string[]) {
+  // 将单个ID转换为数组，支持批量删除
+  const idsToDelete = Array.isArray(feeIds) ? feeIds : [feeIds];
+  
+  console.log('🗑️ 开始批量删除费用 - 数量:', idsToDelete.length, 'IDs:', idsToDelete);
 
-  // 1. 从 invoiceApplicationItems 中移除该费用
+  if (idsToDelete.length === 0) {
+    message.warning('没有要删除的费用');
+    return;
+  }
+
+  // 1. 从 invoiceApplicationItems 中移除这些费用
   const items = formData.value.invoiceApplicationItems || [];
-  const removedItem = items.find((item: any) => {
-    // 需要从 feeGroupsData 中找到对应的 orderFeeId
-    const allFees = flattenTreeData(feeGroupsData.value);
+  const allFees = flattenTreeData(feeGroupsData.value);
+  
+  // 找出所有需要删除的费用项
+  const removedItems: any[] = [];
+  idsToDelete.forEach((feeId) => {
     const fee = allFees.find((f: any) => f.id === feeId);
-    return fee && item.orderFeeId === fee.orderFee?.id;
+    if (fee) {
+      const removedItem = items.find((item: any) => item.orderFeeId === fee.orderFee?.id);
+      if (removedItem) {
+        removedItems.push(removedItem);
+      }
+    }
   });
 
-  if (!removedItem) {
+  if (removedItems.length === 0) {
     console.error('❌ 未找到要删除的费用项');
     message.error('未找到要删除的费用');
     return;
   }
 
-  // 过滤掉该费用
+  // 过滤掉这些费用
   formData.value.invoiceApplicationItems = items.filter(
-    (item: any) => item !== removedItem,
+    (item: any) => !removedItems.includes(item),
   );
 
   console.log(
-    '✅ 已从 invoiceApplicationItems 中删除费用，剩余:',
+    `✅ 已从 invoiceApplicationItems 中删除 ${removedItems.length} 条费用，剩余:`,
     formData.value.invoiceApplicationItems.length,
     '条',
   );
@@ -761,13 +776,12 @@ async function handleDeleteFee(feeId: string) {
   await nextTick();
   handleOpenFeeDetailModal();
 
-  message.success('删除成功，已重新计算金额');
+  message.success(`成功删除 ${removedItems.length} 条费用，已重新计算金额`);
 }
 
 /** ✅ 新增：重新计算商品明细金额 */
 async function recalculateGoodsDetails() {
   const items = formData.value.invoiceApplicationItems || [];
-
   if (items.length === 0) {
     console.log('⚠️ 没有费用明细，清空商品明细');
     goodsDetails.value = [];
