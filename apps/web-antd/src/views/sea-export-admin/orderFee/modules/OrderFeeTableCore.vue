@@ -409,12 +409,19 @@ const showAntdSelect = async (
     return;
   }
 
-  // 渲染基础 Select 组件
+  // 渲染基础 Select 组件（支持搜索过滤）
   const selectComponent = h(Select, {
     value: currentValue,
     options: options,
     placeholder: `请选择${getFieldLabel(field)}`,
     style: { width: '100%' },
+    showSearch: true, // ✅ 启用搜索功能
+    filterOption: (input: string, option: any) => {
+      // ✅ 自定义过滤逻辑：支持按 label 模糊搜索
+      if (!input) return true;
+      const label = option?.label || '';
+      return label.toLowerCase().includes(input.toLowerCase());
+    },
     onChange: (value: any) => {
       handleSelectChange(value, field, rowIndex, container);
     },
