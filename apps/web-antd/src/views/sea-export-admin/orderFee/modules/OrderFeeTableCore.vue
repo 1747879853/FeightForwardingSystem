@@ -50,52 +50,119 @@ const currentSelectContainer = ref<HTMLElement | null>(null);
 const currentCloseHandler = ref<((e: MouseEvent) => void) | null>(null);
 const isClosed = ref(false); // ✅ 防止多次触发清理
 
-// ==================== 客户列表加载 ====================
+// ==================== 数据缓存 ====================
 
-// 客户列表缓存（简化版，不依赖 Vue Query）
-const clientListCache = ref<Array<{ label: string; value: any }>>([]);
-const clientListLoading = ref(false);
+// 客户列表缓存（按行业类别分类）
+const clientListCache = ref<Record<string, Array<{ label: string; value: any }>>>({});
+const clientListLoading = ref<Record<string, boolean>>({});
+
+// 费用代码列表缓存
+const feeCodeListCache = ref<Array<{ label: string; value: any }>>([]);
 
 /**
- * 加载客户列表（简化版，不使用 usePagedSelect）
+ * 加载客户列表（带缓存）
  */
 const loadClientList = async (
+  industryCategory: string,
   keyword?: string,
 ): Promise<Array<{ label: string; value: any }>> => {
-  if (clientListLoading.value) {
-    return clientListCache.value;
+  // 使用行业类别作为缓存键
+  const cacheKey = `${industryCategory}_${keyword || 'all'}`;
+  
+  // 检查是否有缓存
+  if (clientListCache.value[cacheKey]) {
+    console.log('✅ [loadClientList] 从缓存获取客户列表，行业类别:', industryCategory);
+    return clientListCache.value[cacheKey];
+  }
+
+  // 检查是否正在加载
+  if (clientListLoading.value[cacheKey]) {
+    console.log('🔄 [loadClientList] 客户列表正在加载中，等待完成，行业类别:', industryCategory);
+    // 等待加载完成
+    while (clientListLoading.value[cacheKey]) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return clientListCache.value[cacheKey] || [];
   }
 
   try {
-    clientListLoading.value = true;
+    clientListLoading.value[cacheKey] = true;
     console.log(
       '🔄 [loadClientList] 开始加载客户列表',
+      industryCategory,
       keyword ? `关键词: ${keyword}` : '',
     );
 
     const res = await getClientPagedList({
       Keyword: keyword || '',
+      IndustryCategory: industryCategory, // 传递行业类别参数
       PageIndex: 1,
-      PageSize: 100, // 加载更多数据
+      PageSize: 100,
     });
 
     const clients = (res.items || []).map(
       (client: ClientAdminApi.ClientDto) => ({
-        label: `${client.name}${client.code ? ` (${client.code})` : ''}`,
+        label: `${client.fullName || client.name}${client.code ? ` (${client.code})` : ''}`,
         value: client.id,
       }),
     );
 
-    clientListCache.value = clients;
-    console.log('✅ [loadClientList] 加载成功，共', clients.length, '条');
+    // 缓存结果
+    clientListCache.value[cacheKey] = clients;
+    console.log('✅ [loadClientList] 加载成功，共', clients.length, '条，已缓存');
 
     return clients;
   } catch (error) {
     console.error('❌ [loadClientList] 加载失败:', error);
     return [];
   } finally {
-    clientListLoading.value = false;
+    clientListLoading.value[cacheKey] = false;
   }
+};
+
+/**
+ * 清空客户列表缓存
+ */
+const clearClientListCache = (industryCategory?: string) => {
+  if (industryCategory) {
+    // 清空特定行业的缓存
+    const keys = Object.keys(clientListCache.value).filter(key => 
+      key.startsWith(`${industryCategory}_`)
+    );
+    keys.forEach(key => {
+      delete clientListCache.value[key];
+      delete clientListLoading.value[key];
+    });
+    console.log('🗑️ [clearClientListCache] 清空行业', industryCategory, '的缓存');
+  } else {
+    // 清空所有缓存
+    clientListCache.value = {};
+    clientListLoading.value = {};
+    console.log('🗑️ [clearClientListCache] 清空所有客户列表缓存');
+  }
+};
+
+/**
+ * 加载费用代码列表（带缓存）
+ */
+const loadFeeCodeList = async (): Promise<Array<{ label: string; value: any }>> => {
+  // 如果已经有缓存，直接返回
+  if (feeCodeListCache.value.length > 0) {
+    console.log('✅ [loadFeeCodeList] 从缓存获取费用代码列表，共', feeCodeListCache.value.length, '条');
+    return feeCodeListCache.value;
+  }
+
+  // 检查 props 中是否已有数据
+  if (props.dropdownSources?.feeCodeList && props.dropdownSources.feeCodeList.length > 0) {
+    feeCodeListCache.value = props.dropdownSources.feeCodeList;
+    console.log('✅ [loadFeeCodeList] 从 props 获取费用代码列表，共', feeCodeListCache.value.length, '条');
+    return feeCodeListCache.value;
+  }
+
+  console.log('🔄 [loadFeeCodeList] 费用代码列表缓存为空，需要加载');
+  // 这里可以根据需要从API加载费用代码列表
+  // 暂时返回空数组，实际使用中应该从API获取
+  return [];
 };
 
 /**
@@ -616,20 +683,10 @@ const showAntdSelect = async (
       '开始加载对应客户列表',
     );
 
-    // 根据行业类别加载客户列表
+    // 根据行业类别加载客户列表（使用缓存）
     try {
-      const res = await getClientPagedList({
-        Keyword: '',
-        IndustryCategory: industryCategoryValue, // 传递行业类别参数
-        PageIndex: 1,
-        PageSize: 100,
-      });
-
-      options = (res.items || []).map((client: ClientAdminApi.ClientDto) => ({
-        label: `${client.fullName || client.name}${client.code ? ` (${client.code})` : ''}`,
-        value: client.id,
-      }));
-
+      options = await loadClientList(industryCategoryValue);
+      
       // 缓存当前选项，用于后续显示名称
       currentOptionsCache.value = options;
 
@@ -812,9 +869,59 @@ const handleAfterChange = (
   }
 };
 
+// 添加一个方法来处理双击事件
+const handleDoubleClick = async (
+  event: MouseEvent,
+  coords: any,
+  td: HTMLTableCellElement,
+) => {
+  const columnIndex = coords.col;
+  const rowIndex = coords.row;
+
+  console.log('🖱️ [handleDoubleClick] 双击事件', {
+    rowIndex,
+    columnIndex,
+    detail: event.detail,
+  });
+
+  // 跳过表头和无效单元格
+  if (rowIndex < 0 || columnIndex < 0) {
+    console.log('⚠️ [handleDoubleClick] 跳过非数据单元格');
+    return;
+  }
+
+  const columnConfig = props.hotSettings.columns?.[columnIndex];
+  if (!columnConfig) {
+    console.warn('⚠️ [handleDoubleClick] 未找到列配置');
+    return;
+  }
+
+  const field = columnConfig.data;
+  console.log('🔵 [handleDoubleClick] 双击字段:', field);
+
+  // 检查是否是需要显示下拉框的字段
+  const fieldsWithDropdown = [
+    'feeCodeId',
+    'industryCategory',
+    'settlementId',
+    'currencyId',
+    'unit',
+  ];
+
+  if (fieldsWithDropdown.includes(field)) {
+    console.log('✅ [handleDoubleClick] 触发下拉', field);
+    event.preventDefault();
+    event.stopPropagation();
+
+    // 调用显示下拉框的方法
+    await showAntdSelect(event, td, rowIndex, field);
+  }
+};
+
 defineExpose({
   hotTableRef,
   showAntdSelect,
+  handleDoubleClick, // 暴露双击处理方法
 });
 </script>
 

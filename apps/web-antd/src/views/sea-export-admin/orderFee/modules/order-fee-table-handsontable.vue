@@ -1252,10 +1252,34 @@ const hotSettings = computed(() => ({
         openAuditHistoryModal(rowData as OrderFeeAdminApi.OrderFeeDto);
         return; // ✅ 双击事件处理完毕，不再执行后续逻辑
       } else {
-        console.log(
-          '❌ [afterOnCellMouseDown] 非费用状态列，不执行操作',
-          field,
-        );
+        // 检查是否是需要显示下拉框的字段
+        if (
+          [
+            'feeCodeId',
+            'industryCategory',
+            'settlementId',
+            'currencyId',
+            'unit',
+          ].includes(field)
+        ) {
+          console.log('✅ [afterOnCellMouseDown] 双击下拉字段', field);
+          event.preventDefault();
+          event.stopPropagation();
+
+          // 调用核心组件的方法显示下拉框
+          if (coreTableRef.value) {
+            console.log('🔄 [afterOnCellMouseDown] 调用 showAntdSelect');
+            (coreTableRef.value as any).showAntdSelect(event, td, rowIndex, field);
+          } else {
+            console.error('❌ [afterOnCellMouseDown] coreTableRef 不存在');
+          }
+          return;
+        } else {
+          console.log(
+            '❌ [afterOnCellMouseDown] 非费用状态列和下拉字段，不执行操作',
+            field,
+          );
+        }
       }
     }
 
@@ -1361,28 +1385,8 @@ const hotSettings = computed(() => ({
       columnIndex,
     });
 
-    // 对特定字段显示 Ant Design Vue Select
-    if (
-      [
-        'feeCodeId',
-        'industryCategory',
-        'settlementId',
-        'currencyId',
-        'unit',
-      ].includes(field)
-    ) {
-      console.log('✅ [afterOnCellMouseDown] 触发下拉', field);
-      event.preventDefault();
-      event.stopPropagation();
-
-      // 调用核心组件的方法
-      if (coreTableRef.value) {
-        console.log('🔄 [afterOnCellMouseDown] 调用 showAntdSelect');
-        (coreTableRef.value as any).showAntdSelect(event, td, rowIndex, field);
-      } else {
-        console.error('❌ [afterOnCellMouseDown] coreTableRef 不存在');
-      }
-    }
+    // 现在单击只执行选中单元格操作，不再触发下拉框
+    // 原有的下拉框逻辑已移到双击事件中
   },
   // ✅ 关键修复：添加 afterChange 钩子来触发字段联动逻辑
   afterChange: (changes: any, source: string) => {
