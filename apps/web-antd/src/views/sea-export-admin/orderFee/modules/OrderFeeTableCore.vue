@@ -3,7 +3,7 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
-import { computed, h, nextTick, ref } from 'vue';
+import { computed, h, nextTick, onUnmounted, ref } from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
 import { Select, message } from 'ant-design-vue';
@@ -44,6 +44,11 @@ const currentEditingCell = ref<{
   field: string;
   td: HTMLTableCellElement | null;
 } | null>(null);
+
+// ✅ 新增：存储当前的下拉框容器和关闭函数
+const currentSelectContainer = ref<HTMLElement | null>(null);
+const currentCloseHandler = ref<((e: MouseEvent) => void) | null>(null);
+const isClosed = ref(false); // ✅ 防止多次触发清理
 
 // ==================== 客户列表加载 ====================
 
@@ -268,6 +273,250 @@ const extractSettlementOptionsFromOrder = (
 };
 
 /**
+ * ✅ 新增：清理下拉框的统一函数
+ */
+const cleanupSelect = () => {
+  if (isClosed.value) {
+    console.log('ℹ️ [cleanupSelect] 已关闭，跳过清理');
+    return;
+  }
+
+  isClosed.value = true;
+
+  // 移除点击外部监听器
+  if (currentCloseHandler.value) {
+    document.removeEventListener('click', currentCloseHandler.value);
+    currentCloseHandler.value = null;
+  }
+
+  // 移除滚动监听器
+  removeScrollListener();
+
+  // 移除 DOM 容器
+  if (currentSelectContainer.value && currentSelectContainer.value.parentNode) {
+    console.log('🗑️ [cleanupSelect] 移除下拉框容器');
+    document.body.removeChild(currentSelectContainer.value);
+    currentSelectContainer.value = null;
+  }
+
+  currentEditingCell.value = null;
+  console.log('✅ [cleanupSelect] 清理完成');
+};
+
+/**
+ * ✅ 新增：滚动事件处理函数
+ */
+const handleScroll = () => {
+  console.log('📜 [handleScroll] 检测到滚动，销毁下拉框');
+  cleanupSelect();
+};
+
+/**
+ * ✅ 新增：添加滚动监听器
+ */
+const addScrollListener = () => {
+  // 延迟执行，确保DOM已完全渲染
+  setTimeout(() => {
+    console.log('🔍 [addScrollListener] 开始查找滚动容器...');
+
+    let scrollContainer: Element | null = null;
+
+    // 方法1: 直接查找 .wtHolder 元素（Handsontable 的实际滚动容器）
+    const wtHolders = document.querySelectorAll('.wtHolder');
+    console.log(
+      '🔍 [addScrollListener] 找到 .wtHolder 元素数量:',
+      wtHolders.length,
+    );
+
+    if (wtHolders.length > 0) {
+      // 使用第一个 .wtHolder（通常只有一个）
+      scrollContainer = wtHolders[0] || null;
+      console.log(
+        '✅ [addScrollListener] 使用 .wtHolder 作为滚动容器',
+      );
+    }
+
+    // 方法2: 如果没找到 .wtHolder，尝试查找 .handsontable-wrapper
+    if (!scrollContainer) {
+      const wrapper = document.querySelector('.handsontable-wrapper');
+      if (wrapper) {
+        const computedStyle = getComputedStyle(wrapper);
+        console.log('🔍 [addScrollListener] 检查 .handsontable-wrapper:', {
+          overflow: computedStyle.overflow,
+          overflowY: computedStyle.overflowY,
+          scrollHeight: wrapper.scrollHeight,
+          clientHeight: wrapper.clientHeight,
+          canScroll: wrapper.scrollHeight > wrapper.clientHeight,
+        });
+
+        if (
+          wrapper.scrollHeight > wrapper.clientHeight ||
+          computedStyle.overflow === 'auto' ||
+          computedStyle.overflow === 'scroll' ||
+          computedStyle.overflowY === 'auto' ||
+          computedStyle.overflowY === 'scroll'
+        ) {
+          console.log('✅ [addScrollListener] 使用 .handsontable-wrapper 作为滚动容器');
+          scrollContainer = wrapper;
+        }
+      }
+    }
+
+    // 方法3: 向上查找父容器
+    if (!scrollContainer) {
+      const wrapper = document.querySelector('.handsontable-wrapper');
+      if (wrapper) {
+        let parent = wrapper.parentElement;
+        let depth = 0;
+        const maxDepth = 5;
+
+        while (parent && depth < maxDepth) {
+          const computedStyle = getComputedStyle(parent);
+          console.log(`🔍 [addScrollListener] 检查父容器层级 ${depth + 1}:`, {
+            tagName: parent.tagName,
+            className: parent.className,
+            overflow: computedStyle.overflow,
+            overflowY: computedStyle.overflowY,
+            scrollHeight: parent.scrollHeight,
+            clientHeight: parent.clientHeight,
+            canScroll: parent.scrollHeight > parent.clientHeight,
+          });
+
+          if (
+            parent.scrollHeight > parent.clientHeight ||
+            computedStyle.overflow === 'auto' ||
+            computedStyle.overflow === 'scroll' ||
+            computedStyle.overflowY === 'auto' ||
+            computedStyle.overflowY === 'scroll'
+          ) {
+            console.log(
+              `✅ [addScrollListener] 找到父级滚动容器 (层级 ${depth + 1}):`,
+              parent.tagName,
+              parent.className,
+            );
+            scrollContainer = parent;
+            break;
+          }
+
+          parent = parent.parentElement;
+          depth++;
+        }
+      }
+    }
+
+    // 最终确定并添加监听器
+    if (scrollContainer) {
+      console.log('✅ [addScrollListener] 最终确定滚动容器，添加监听器');
+      console.log('📊 [addScrollListener] 容器信息:', {
+        tagName: scrollContainer.tagName,
+        className: scrollContainer.className,
+        scrollHeight: scrollContainer.scrollHeight,
+        clientHeight: scrollContainer.clientHeight,
+      });
+
+      // 添加滚动监听器
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+
+      // 验证监听器是否添加成功
+      console.log('✅ [addScrollListener] 监听器添加完成，请尝试滚动表格');
+    } else {
+      console.error('❌ [addScrollListener] 无法找到滚动容器');
+      console.log('💡 [addScrollListener] 提示: 请检查 Handsontable 是否正确渲染');
+
+      // 输出所有可能的容器信息用于调试
+      console.log('🔍 [addScrollListener] 调试信息 - 所有相关元素:');
+      const allElements = document.querySelectorAll(
+        '.handsontable-wrapper, .ht_master, .hot-table-container',
+      );
+      allElements.forEach((el, index) => {
+        const style = getComputedStyle(el);
+        console.log(`  元素 ${index} (${el.tagName}.${el.className}):`, {
+          overflow: style.overflow,
+          overflowY: style.overflowY,
+          scrollHeight: el.scrollHeight,
+          clientHeight: el.clientHeight,
+          canScroll: el.scrollHeight > el.clientHeight,
+        });
+      });
+    }
+  }, 200); // 增加延迟时间，确保Handsontable完全渲染
+};
+
+/**
+ * ✅ 新增：移除滚动监听器
+ */
+const removeScrollListener = () => {
+  console.log('🔍 [removeScrollListener] 开始移除滚动监听器...');
+
+  let removedCount = 0;
+
+  // 方法1: 从所有 .wtHolder 元素移除（优先）
+  const wtHolders = document.querySelectorAll('.wtHolder');
+  console.log(
+    '🔍 [removeScrollListener] 找到 .wtHolder 元素数量:',
+    wtHolders.length,
+  );
+
+  for (let i = 0; i < wtHolders.length; i++) {
+    const wtHolder = wtHolders[i];
+    if (!wtHolder) continue;
+    
+    try {
+      wtHolder.removeEventListener('scroll', handleScroll);
+      removedCount++;
+      console.log(`✅ [removeScrollListener] 从 .wtHolder[${i}] 移除监听器`);
+    } catch (error) {
+      console.warn(`⚠️ [removeScrollListener] 从 .wtHolder[${i}] 移除失败:`, error);
+    }
+  }
+
+  // 方法2: 从 .handsontable-wrapper 移除
+  const wrapper = document.querySelector('.handsontable-wrapper');
+  if (wrapper) {
+    try {
+      wrapper.removeEventListener('scroll', handleScroll);
+      removedCount++;
+      console.log('✅ [removeScrollListener] 从 .handsontable-wrapper 移除监听器');
+    } catch (error) {
+      console.warn('⚠️ [removeScrollListener] 从 wrapper 移除失败:', error);
+    }
+  }
+
+  // 方法3: 从 wrapper 的父容器中移除（最多5层）
+  if (wrapper) {
+    let parent = wrapper.parentElement;
+    let depth = 0;
+    const maxDepth = 5;
+
+    while (parent && depth < maxDepth) {
+      try {
+        parent.removeEventListener('scroll', handleScroll);
+        removedCount++;
+        console.log(
+          `✅ [removeScrollListener] 从父容器层级 ${depth + 1} 移除监听器`,
+        );
+      } catch (error) {
+        // 静默失败，继续检查其他层级
+      }
+      parent = parent.parentElement;
+      depth++;
+    }
+  }
+
+  console.log(
+    `✅ [removeScrollListener] 完成，共尝试移除 ${removedCount} 个监听器`,
+  );
+};
+
+/**
+ * ✅ 组件卸载时清理
+ */
+onUnmounted(() => {
+  console.log('🧹 [onUnmounted] 组件卸载，清理下拉框');
+  cleanupSelect();
+});
+
+/**
  * 显示 Ant Design Vue Select 组件
  */
 const showAntdSelect = async (
@@ -277,6 +526,15 @@ const showAntdSelect = async (
   field: string,
 ) => {
   console.log('🔵 [showAntdSelect] 被调用', { field, rowIndex });
+
+  // ✅ 重置关闭状态
+  isClosed.value = false;
+
+  // ✅ 如果已有打开的下拉框，先清理
+  if (currentSelectContainer.value) {
+    console.log('⚠️ [showAntdSelect] 检测到已有下拉框，先清理');
+    cleanupSelect();
+  }
 
   event.preventDefault();
   event.stopPropagation();
@@ -302,6 +560,9 @@ const showAntdSelect = async (
   container.style.width = `${rect.width}px`;
 
   document.body.appendChild(container);
+
+  // ✅ 保存当前容器引用
+  currentSelectContainer.value = container;
 
   // 根据字段类型获取选项
   let options: Array<{ label: string; value: any }> = [];
@@ -331,8 +592,7 @@ const showAntdSelect = async (
     if (!industryCategoryKey) {
       console.warn('⚠️ [showAntdSelect] 当前行没有行业类别，无法加载结算对象');
       message.warning('请先选择行业类别');
-      document.body.removeChild(container);
-      currentEditingCell.value = null;
+      cleanupSelect(); // ✅ 使用统一清理函数
       return;
     }
 
@@ -346,8 +606,7 @@ const showAntdSelect = async (
         '⚠️ [showAntdSelect] 无法转换行业类别:',
         industryCategoryKey,
       );
-      document.body.removeChild(container);
-      currentEditingCell.value = null;
+      cleanupSelect(); // ✅ 使用统一清理函数
       return;
     }
 
@@ -379,15 +638,13 @@ const showAntdSelect = async (
       if (!options.length) {
         console.warn('⚠️ [showAntdSelect] 该行业类别下没有客户');
         message.warning(`该行业类别（${industryCategoryValue}）下暂无客户`);
-        document.body.removeChild(container);
-        currentEditingCell.value = null;
+        cleanupSelect(); // ✅ 使用统一清理函数
         return;
       }
     } catch (error) {
       console.error('❌ [showAntdSelect] 加载客户列表失败:', error);
       message.error('加载客户列表失败');
-      document.body.removeChild(container);
-      currentEditingCell.value = null;
+      cleanupSelect(); // ✅ 使用统一清理函数
       return;
     }
   } else if (field === 'currencyId') {
@@ -398,14 +655,14 @@ const showAntdSelect = async (
     options = props.dropdownSources?.unitList || [];
   } else {
     console.warn('⚠️ [showAntdSelect] 未知字段:', field);
-    currentEditingCell.value = null;
+    cleanupSelect(); // ✅ 使用统一清理函数
     return;
   }
 
   // 如果没有选项，不显示下拉框
   if (!options.length) {
     console.warn('⚠️ [showAntdSelect] 没有可用的选项');
-    currentEditingCell.value = null;
+    cleanupSelect(); // ✅ 使用统一清理函数
     return;
   }
 
@@ -431,20 +688,22 @@ const showAntdSelect = async (
     render(selectComponent, container);
   });
 
-  // 点击外部关闭
+  // ✅ 点击外部关闭 - 使用统一的清理函数
   const closeSelect = (e: MouseEvent) => {
     if (!container.contains(e.target as Node)) {
-      // 安全检查：确保容器仍在 DOM 中
-      if (container.parentNode) {
-        document.body.removeChild(container);
-      }
-      document.removeEventListener('click', closeSelect);
-      currentEditingCell.value = null;
+      console.log('🖱️ [closeSelect] 点击外部，关闭下拉框');
+      cleanupSelect();
     }
   };
 
+  // ✅ 保存关闭处理器引用
+  currentCloseHandler.value = closeSelect;
+
   setTimeout(() => {
     document.addEventListener('click', closeSelect);
+    // ✅ 添加滚动监听器
+    addScrollListener();
+    console.log('✅ [showAntdSelect] 下拉框已显示，滚动监听器已添加');
   }, 100);
 };
 
@@ -517,12 +776,8 @@ const handleSelectChange = (
     }
   }
 
-  // 移除容器
-  if (container.parentNode) {
-    document.body.removeChild(container);
-  }
-
-  currentEditingCell.value = null;
+  // ✅ 使用统一的清理函数
+  cleanupSelect();
 };
 
 // 缓存当前加载的选项（用于 settlementId 显示名称）
