@@ -252,14 +252,10 @@ const updateUnitList = () => {
   // 添加固定单位选项
   const fixedUnits = [
     { label: '票', value: '票' },
-    { label: 'ORDER', value: 'ORDER' },
-    { label: '毛重', value: '毛重' },
-    { label: 'KGS', value: 'KGS' },
-    { label: '尺码', value: '尺码' },
-    { label: 'CBM', value: 'CBM' },
-    { label: '件数', value: '件数' },
-    { label: 'PKGS', value: 'PKGS' },
     { label: 'TEU', value: 'TEU' },
+    { label: '尺码', value: '尺码' },
+    { label: '毛重', value: '毛重' },
+    { label: '件数', value: '件数' },
   ];
 
   // 合并并去重
@@ -618,7 +614,7 @@ const sortableFieldsSet = computed(
       'invoicedAmount',
       'orderInvoiceAmount',
       'settledAmount',
-      'canInvoice',
+      'invoiceBlocked',
       'isConfidential',
       'remark',
       'dataEntryMethod',
@@ -761,15 +757,15 @@ const hotColumns = computed(() => {
     },
   };
 
-  // ✅ 新增:在第二列添加序号列
+  // ✅ 新增:在第二列添加序号+开票状态合并列
   const indexColumn: any = {
     data: null, // 不绑定到数据字段
-    title: '序号',
-    width: 60,
+    title: '开票状态',
+    width: 120,
     type: 'text',
     className: 'htCenter htMiddle', // 居中对齐
     readOnly: true, // 设置为只读
-    // ✅ 自定义渲染器:显示行号（从1开始）
+    // ✅ 自定义渲染器:显示行号 + 开票状态（带颜色和加粗）
     renderer: function (
       this: any,
       instance: any,
@@ -780,9 +776,25 @@ const hotColumns = computed(() => {
       value: any,
       cellProperties: any,
     ) {
-      td.innerHTML = `<span style="color: #262626;">${row + 1}</span>`;
-      td.style.textAlign = 'center';
-      td.style.verticalAlign = 'middle';
+      const rowData = dataSource.value[row];
+      const invoiceStatus = (rowData as any)?.invoiceStatus;
+      
+      // 获取开票状态标签
+      const statusLabel = getInvoiceStatusLabel(invoiceStatus);
+      
+      // 根据开票状态确定颜色
+      let statusColor = '#262626'; // 默认颜色（未开票）
+      if (invoiceStatus === 1) {
+        statusColor = '#faad14'; // 黄色 - 部分开票
+      } else if (invoiceStatus === 2) {
+        statusColor = '#52c41a'; // 绿色 - 已开票
+      }
+      
+      // 构建HTML：序号在左，开票状态在右（加粗+颜色）
+      td.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span style="color: #262626; font-size: 13px;">${row + 1}</span>
+          <span style="color: ${statusColor}; font-weight: bold; font-size: 12px;">${statusLabel || ''}</span>
+        </div>`;
       return td;
     },
   };
@@ -807,7 +819,7 @@ const hotColumns = computed(() => {
     'invoicedAmount',
     'orderInvoiceAmount',
     'settledAmount',
-    'canInvoice',
+    'invoiceBlocked',
     'isConfidential',
     'remark',
     'dataEntryMethod',
@@ -818,13 +830,15 @@ const hotColumns = computed(() => {
   // ✅ 将复选框列和序号列添加到最前面
   const columns = [checkboxColumn, indexColumn];
 
-  // 映射原有列
-  const mappedColumns = vxeColumns.map((col) => {
-    const hotCol: any = {
-      data: col.field,
-      title: col.title,
-      width: col.width || col.minWidth || 100,
-    };
+  // 映射原有列（跳过 invoiceStatus，因为它已合并到序号列）
+  const mappedColumns = vxeColumns
+    .filter((col) => col.field !== 'invoiceStatus') // ✅ 过滤掉开票状态列
+    .map((col) => {
+      const hotCol: any = {
+        data: col.field,
+        title: col.title,
+        width: col.width || col.minWidth || 100,
+      };
 
     // 添加排序图标到标题（如果该字段可排序）
     if (col.field && sortableFields.has(col.field)) {
@@ -922,24 +936,6 @@ const hotColumns = computed(() => {
           label || '请选择',
         );
         td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-        return td;
-      };
-    } else if (col.field === 'invoiceStatus') {
-      // 开票状态 - 显示中文标签（只读）
-      hotCol.type = 'text';
-      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
-      hotCol.renderer = function (
-        this: any,
-        instance: any,
-        td: HTMLTableCellElement,
-        row: number,
-        col: number,
-        prop: string,
-        value: any,
-        cellProperties: any,
-      ) {
-        const label = getInvoiceStatusLabel(value);
-        td.innerHTML = `<span style="color: #262626;">${label || ''}</span>`;
         return td;
       };
     } else if (col.field === 'combinedFeeStatus' || col.field === 'feeStatus') {
@@ -1043,7 +1039,7 @@ const hotColumns = computed(() => {
         pattern: '0.00',
         culture: 'en-US',
       };
-    } else if (col.field === 'canInvoice' || col.field === 'isConfidential') {
+    } else if (col.field === 'invoiceBlocked' || col.field === 'isConfidential') {
       hotCol.type = 'checkbox';
     } else if (
       [
@@ -1105,6 +1101,13 @@ const hotSettings = computed(() => ({
     const rowData = dataSource.value[row];
 
     if (rowData) {
+      // ✅ 关键修复：检查单元格是否处于编辑模式
+      // 如果正在编辑，跳过自定义渲染，避免原文本和输入框同时显示
+      // if (cellProperties?.instance?.getCellEditor(row, col)?.isOpened()) {
+      //   console.log('✏️ [afterRenderer] 单元格正在编辑，跳过自定义渲染');
+      //   return;
+      // }
+
       // 获取费用状态（优先使用 combinedFeeStatus，其次使用 feeStatus）
       const feeStatus =
         (rowData as any).combinedFeeStatus ?? (rowData as any).feeStatus;
@@ -1197,21 +1200,6 @@ const hotSettings = computed(() => ({
     // ✅ 修复：移除 afterSelection 中的选中逻辑，避免与复选框冲突
     // 不再在这里更新 selectedRowKeys，只通过复选框来控制选中状态
     console.log('ℹ️ [afterSelection] 跳过选中逻辑，仅由复选框控制');
-  },
-  afterChange: (changes: any, source: string) => {
-    // 调用联动逻辑处理
-    if (coreTableRef.value?.hotTableRef?.hotInstance) {
-      linkage.handleAfterChange(
-        changes,
-        source,
-        coreTableRef.value.hotTableRef.hotInstance,
-      );
-    }
-
-    // 同步费用
-    if (source !== 'loadData') {
-      syncFee();
-    }
   },
   afterOnCellMouseDown: (
     event: MouseEvent,
@@ -1395,6 +1383,26 @@ const hotSettings = computed(() => ({
         console.error('❌ [afterOnCellMouseDown] coreTableRef 不存在');
       }
     }
+  },
+  // ✅ 关键修复：添加 afterChange 钩子来触发字段联动逻辑
+  afterChange: (changes: any, source: string) => {
+    console.log('🔄 [afterChange] 数据变化，source:', source);
+    
+    // 跳过内部操作触发的变化
+    if (source === 'loadData' || source === 'updateData') {
+      console.log('ℹ️ [afterChange] 跳过 loadData/updateData 触发的变化');
+      return;
+    }
+    
+    // 获取 Handsontable 实例
+    const hotInstance = coreTableRef.value?.hotTableRef?.hotInstance;
+    if (!hotInstance) {
+      console.warn('⚠️ [afterChange] hotInstance 不存在');
+      return;
+    }
+    
+    // 调用 linkage 的 handleAfterChange 处理联动逻辑
+    linkage.handleAfterChange(changes, source, hotInstance);
   },
   observeDOMVisibility: true,
 }));

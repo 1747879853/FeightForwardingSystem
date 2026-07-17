@@ -206,7 +206,7 @@ const parseAndCompareFields = (
       unRqstPaymentAmount: '未申请金额',
       unSettledAmount: '未结算金额',
       unInvoicedAmount: '未开票金额',
-      canInvoice: '是否允许开票',
+      invoiceBlocked: '不允许开票',
       isConfidential: '是否机密',
       dataEntryMethod: '数据录入方式',
       remark: '备注',

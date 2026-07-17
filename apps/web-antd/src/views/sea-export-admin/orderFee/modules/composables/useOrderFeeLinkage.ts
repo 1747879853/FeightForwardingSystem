@@ -946,6 +946,15 @@ export function useOrderFeeLinkage(
 
   return {
     handleAfterChange,
+    // 导出所有联动处理函数供外部使用
+    handleFeeCodeChange,
+    handleIndustryCategoryChange,
+    handleCurrencyChange,
+    handleUnitChange,
+    handleUnitPriceChange,
+    handleQuantityChange,
+    handleTaxRateChange,
+    handleAmountChange,
     // 导出辅助函数供外部使用
     checkIfIsLocalCurrency,
     fillSettlementIdByIndustryCategory,

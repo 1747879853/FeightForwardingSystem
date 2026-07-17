@@ -363,8 +363,8 @@ const columns = [
       },
       {
         title: $t('seaExport.export.orderFee.canInvoice'),
-        dataIndex: 'canInvoice',
-        key: 'canInvoice',
+        dataIndex: 'invoiceBlocked',
+        key: 'invoiceBlocked',
         minWidth: 80,
       },
       {
@@ -462,7 +462,7 @@ onMounted(() => {
           }}</span>
         </template>
 
-        <template v-if="column.key === 'canInvoice'">
+        <template v-if="column.key === 'invoiceBlocked'">
           <span>{{
             record.industryCategory ? $t('common.yes') : $t('common.no')
           }}</span>

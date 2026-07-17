@@ -174,7 +174,7 @@ export namespace PaymentApplicationAdminApi {
     /** 未结算金额（计算得出） */
     unSettledAmount: number;
     /** 是否允许开票 */
-    canInvoice?: boolean;
+    invoiceBlocked?: boolean;
     /** 是否机密 */
     isConfidential?: boolean;
     /** 数据录入方式 */
@@ -448,7 +448,7 @@ export namespace PaymentApplicationAdminApi {
     invoicedAmount: number;
     orderInvoiceAmount: number;
     settledAmount: number;
-    canInvoice: boolean;
+    invoiceBlocked: boolean;
     isConfidential: boolean;
     dataEntryMethod: number;
     remark?: string;

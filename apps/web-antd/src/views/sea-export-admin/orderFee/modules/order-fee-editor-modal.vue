@@ -210,7 +210,7 @@ const [Modal, modalApi] = useVbenModal({
             'taxRate',
             'unitPrice',
             'amount',
-            'canInvoice',
+            'invoiceBlocked',
             'isConfidential',
             'remark',
           ];
@@ -1191,7 +1191,7 @@ function useOrderFeeFormSchema() {
 
     {
       component: 'Switch',
-      fieldName: 'canInvoice',
+      fieldName: 'invoiceBlocked',
       label: $t('seaExport.export.orderFee.canInvoice'),
       componentProps: {
         checkedChildren: '是',
@@ -1433,7 +1433,7 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
                 >{{ $t('seaExport.export.orderFee.canInvoice') }}:</span
               >
               <span class="font-medium">{{
-                originalFeeData?.canInvoice ? '是' : '否'
+                originalFeeData?.invoiceBlocked ? '是' : '否'
               }}</span>
             </div>
             <div class="flex">

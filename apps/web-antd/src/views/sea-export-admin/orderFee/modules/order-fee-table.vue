@@ -121,7 +121,7 @@ const ORDER_CTN_API_KEYS: Array<
   'invoicedAmount',
   'orderInvoiceAmount',
   'settledAmount',
-  'canInvoice',
+  'invoiceBlocked',
   'isConfidential',
   'dataEntryMethod',
   'remark',
@@ -465,7 +465,7 @@ const addRowData = () => {
     taxRate: 0,
     taskStatus: '',
     invoiceStatus: 0,
-    canInvoice: true,
+    invoiceBlocked: true,
     isConfidential: false,
     dataEntryMethod: 0,
   } as any);

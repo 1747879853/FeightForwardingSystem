@@ -278,6 +278,7 @@ export function useOrderFeeData(
       PaySide: props.type ?? 0,
       PageIndex: 1,
       PageSize: 999,
+      Sorting: 'creationTime asc',
     };
     const res = await getOrderFeePagedList(params);
     res.items.forEach((item) => {
@@ -451,7 +452,7 @@ export function useOrderFeeData(
       'invoicedAmount',
       'orderInvoiceAmount',
       'settledAmount',
-      'canInvoice',
+      'invoiceBlocked',
       'isConfidential',
       'dataEntryMethod',
       'remark',

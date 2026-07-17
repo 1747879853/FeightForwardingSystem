@@ -570,7 +570,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('seaExport.export.orderFee.canInvoice'),
 
-      field: 'canInvoice',
+      field: 'invoiceBlocked',
       minWidth: 90,
       cellRender: {
         name: 'CellTag',
@@ -944,17 +944,17 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.canInvoice'),
 
-      field: 'canInvoice',
+      field: 'invoiceBlocked',
       minWidth: 100,
       align: 'center',
       sortable: true,
       slots: {
         default: ({ row }: any) => {
           return h(Checkbox, {
-            checked: row.canInvoice === true,
+            checked: row.invoiceBlocked === true,
             disabled: !canEditFee(row.feeStatus),
             onChange: (e: any) => {
-              row.canInvoice = !e.target.checked;
+              row.invoiceBlocked = !e.target.checked;
             },
           });
         },
