@@ -1353,6 +1353,10 @@ const hotSettings = computed(() => ({
         // ✅ 对于下拉框字段，双击时触发Handsontable原生下拉框
         console.log('✅ [afterOnCellMouseDown] 双击下拉框字段:', field);
 
+        // ✅ 关键修复：立即清空单元格原文本，防止与编辑控件同时显示
+        td.innerHTML = '';
+        console.log('✏️ [afterOnCellMouseDown] 已清空单元格原文本');
+
         // 阻止默认行为，防止进入编辑模式
         event.preventDefault();
         event.stopPropagation();
@@ -1588,6 +1592,18 @@ const hotSettings = computed(() => ({
         }, 50);
 
         return; // ✅ 下拉框字段处理完毕，不再执行后续逻辑
+      } else if (
+        [
+          'exchangeRate',
+          'unitPrice',
+          'amount',
+          'quantity',
+          'taxRate',
+          'remark',
+        ].includes(field)
+      ) {
+        td.innerHTML = '';
+        console.log('✏️ [afterOnCellMouseDown] 已清空单元格原文本');
       }
     }
 

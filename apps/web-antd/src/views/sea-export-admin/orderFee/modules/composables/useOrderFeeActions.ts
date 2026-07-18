@@ -71,7 +71,7 @@ export function useOrderFeeActions(
       taxRate: 0,
       taskStatus: '',
       invoiceStatus: 0,
-      invoiceBlocked: true,
+      invoiceBlocked: false, // ✅ 修改：新增费用时，不开发票默认为false（允许开票）
       isConfidential: false,
       dataEntryMethod: 0,
     } as any;
