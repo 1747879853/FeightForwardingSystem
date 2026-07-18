@@ -208,7 +208,7 @@ export function useOrderFeeData(
   };
 
   /**
-   * 为 orderFees 每项添加 _rowKey
+   * 为 orderFees 每项添加 _rowKey 和 _value 字段
    */
   const normalizeOrderFeeWithRowKey = (
     items: OrderFeeAdminApi.OrderFeeDto[] | undefined,
@@ -230,12 +230,42 @@ export function useOrderFeeData(
         industryCategoryValue = option?.key;
       }
 
-      return {
+      // ✅ 初始化 _value 字段，用于存储实际的 value 值
+      const normalizedItem = {
         ...item,
         industryCategory: industryCategoryValue, // ✅ 存储数值ID
         _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
       };
-    }) as any[];
+
+      // ✅ 为下拉框字段初始化 _value 字段
+      // feeCodeId: 需要获取费用代码详情来获取 label
+      if (normalizedItem.feeCodeId) {
+        normalizedItem['feeCodeId_value'] = normalizedItem.feeCodeId;
+      }
+
+      // industryCategory: 已经存储的是数值ID
+      if (normalizedItem.industryCategory) {
+        normalizedItem['industryCategory_value'] =
+          normalizedItem.industryCategory;
+      }
+
+      // currencyId: 直接存储币别ID
+      if (normalizedItem.currencyId) {
+        normalizedItem['currencyId_value'] = normalizedItem.currencyId;
+      }
+
+      // unit: 单位本身就是字符串，_value 也存储相同的值
+      if (normalizedItem.unit) {
+        normalizedItem['unit_value'] = normalizedItem.unit;
+      }
+
+      // settlementId: 结算对象ID
+      if (normalizedItem.settlementId) {
+        normalizedItem['settlementId_value'] = normalizedItem.settlementId;
+      }
+
+      return normalizedItem as any[];
+    });
   };
 
   /**
@@ -438,7 +468,7 @@ export function useOrderFeeData(
   };
 
   /**
-   * 提交时移除 _rowKey 等非 API 字段
+   * 提交时移除 _rowKey 等非 API 字段，并使用 _value 字段的实际值
    */
   const sanitizeOrderFee = (
     items: any[] | undefined,
@@ -485,7 +515,9 @@ export function useOrderFeeData(
     return items.map((item) => {
       const dto: Record<string, any> = {};
       for (const key of ORDER_CTN_API_KEYS) {
-        const val = item[key];
+        // ✅ 关键修改：优先使用 _value 字段的值（如果存在）
+        let val =
+          item[`${key}_value`] !== undefined ? item[`${key}_value`] : item[key];
 
         if (val === undefined || val === null) continue;
         if (typeof val === 'string' && val === '') continue;

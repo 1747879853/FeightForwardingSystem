@@ -2,9 +2,8 @@
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
-
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import * as clientConstants from '#/views/client/base/data';
+import { computed, nextTick, onMounted, ref, watch, shallowRef } from 'vue';
 import dayjs from 'dayjs';
 import {
   Button,
@@ -23,8 +22,6 @@ import { IconifyIcon } from '@vben/icons';
 import { $t } from '#/locales';
 
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
-
-import * as feeConstants from '../data';
 
 // 从父组件导入必要的函数
 
@@ -84,6 +81,20 @@ const {
   sanitizeOrderFee,
 } = useOrderFeeData(props, emit as any);
 
+// 字段联动逻辑
+const linkage = useOrderFeeLinkage(
+  props,
+  {
+    dataSource,
+    editId,
+    orderBaseData,
+  },
+  () => ({
+    industryCategoryList: dropdownSources.value.industryCategoryList,
+    currencyList: dropdownSources.value.currencyList,
+  }),
+);
+
 // 操作逻辑
 const actions = useOrderFeeActions(
   props,
@@ -97,13 +108,6 @@ const actions = useOrderFeeActions(
   },
   emit as any,
 );
-
-// 字段联动逻辑
-const linkage = useOrderFeeLinkage(props, {
-  dataSource,
-  editId,
-  orderBaseData,
-});
 
 // ==================== 完结状态管理 ====================
 
@@ -148,11 +152,6 @@ const toggleFinishStatus = async () => {
       content: isFinished.value ? '已设置为已完结' : '已设置为未完结',
       key: 'action_process_msg',
     });
-
-    console.log(
-      '✅ [完结状态] 切换成功，当前状态:',
-      isFinished.value ? '已完结' : '未完结',
-    );
   } catch (error) {
     console.error('❌ [完结状态] 切换失败:', error);
   }
@@ -220,10 +219,6 @@ const initDropdownSources = async () => {
   try {
     // ✅ 修正：使用从 data.ts 导入的完整行业类别选项
     const industryOptions = getIndustryCategoryOptionsFromData();
-    console.log(
-      '🔍 [initDropdownSources] 原始行业类别选项:',
-      industryOptions.slice(0, 3),
-    );
 
     // ✅ 修正：使用 key（数值ID）作为存储值，value（字母代码）用于联动
     dropdownSources.value.industryCategoryList = industryOptions.map((opt) => ({
@@ -239,25 +234,6 @@ const initDropdownSources = async () => {
       label: opt.label,
       value: opt.value,
     }));
-
-    console.log(
-      '✅ [initDropdownSources] 行业类别数据:',
-      dropdownSources.value.industryCategoryList.length,
-      '条',
-    );
-    console.log(
-      '✅ [initDropdownSources] 币种数据:',
-      dropdownSources.value.currencyList.length,
-      '条',
-    );
-
-    // ✅ 添加调试日志，显示行业类别的映射关系
-    if (dropdownSources.value.industryCategoryList.length > 0) {
-      console.log(
-        '📋 [initDropdownSources] 行业类别完整列表:',
-        dropdownSources.value.industryCategoryList,
-      );
-    }
   } catch (error) {
     console.error('❌ [initDropdownSources] 初始化失败:', error);
   }
@@ -300,7 +276,7 @@ const updateUnitList = () => {
 const getFeeCodeLabel = (feeCodeId: any): string => {
   if (!feeCodeId) return '';
   const item = feeCodeList.value.find(
-    (f) => f.id === feeCodeId || String(f.id) === String(feeCodeId),
+    (f) => String(f.id) === String(feeCodeId),
   );
   if (!item) return '';
   const surLabel = item.cnName || item.enName || '';
@@ -313,7 +289,7 @@ const getFeeCodeLabel = (feeCodeId: any): string => {
 const getIndustryCategoryLabel = (industryCategory: any): string => {
   if (!industryCategory) return '';
   const option = dropdownSources.value.industryCategoryList.find(
-    (opt) => opt.value === industryCategory,
+    (opt) => String(opt.value) === String(industryCategory),
   );
   return option?.label || '';
 };
@@ -330,34 +306,18 @@ const getCurrencyLabel = (currencyId: any): string => {
     (opt) => String(opt.value) === currencyIdStr,
   );
 
-  console.log(
-    '🔍 [getCurrencyLabel] 查找币别:',
-    currencyId,
-    '→',
-    option?.label || '未找到',
-  );
   return option?.label || '';
 };
 
 /**
- * 根据结算对象ID获取显示标签
+ * 根据单位值获取显示标签
  */
-const getSettlementLabel = (settlementId: any): string => {
-  if (!settlementId) return '';
-
-  // 首先尝试从所有数据行中查找已缓存的客户信息
-  for (const row of dataSource.value) {
-    const rowAny = row as any;
-    if (String(rowAny.settlementId) === String(settlementId)) {
-      // 如果该行有缓存的客户名称，优先使用
-      if (rowAny.__settlementName) {
-        return rowAny.__settlementName;
-      }
-    }
-  }
-
-  // 如果没有缓存，返回 ID（fallback）
-  return String(settlementId);
+const getUnitLabel = (unit: any): string => {
+  if (!unit) return '';
+  const option = dropdownSources.value.unitList.find(
+    (opt) => opt.value === unit,
+  );
+  return option?.label || String(unit);
 };
 
 /**
@@ -423,11 +383,6 @@ const extractSettlementNameFromOrder = (settlementId: any): string | null => {
   const settlementIdStr = String(settlementId);
   const orderDetail = orderBaseData.value;
   const transportOrder = orderDetail.transportOrder;
-
-  console.log(
-    '🔍 [extractSettlementNameFromOrder] 查找结算对象:',
-    settlementIdStr,
-  );
 
   // 委托单位（主要客户）
   if (
@@ -815,7 +770,7 @@ const hotColumns = computed(() => {
       }
 
       // 构建HTML：序号在左，开票状态在右（加粗+颜色）
-      td.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+      td.innerHTML = `<div style="display: flex; align-items: flex-start; justify-content: flex-start; gap: 8px;">
           <span style="color: #262626; font-size: 13px;">${row + 1}</span>
           <span style="color: ${statusColor}; font-weight: bold; font-size: 12px;">${statusLabel || ''}</span>
         </div>`;
@@ -871,14 +826,35 @@ const hotColumns = computed(() => {
       }
 
       if (col.field === 'feeCodeId') {
-        hotCol.type = 'dropdown';
-        // ✅ 使用label作为source，这样下拉框会显示中文名称
-        hotCol.source = dropdownSources.value.feeCodeList.map(
-          (item) => item.label,
-        );
+        hotCol.type = 'autocomplete';
+        // ✅ 使用函数形式的 source 实现搜索过滤
+        hotCol.source = function (
+          query: string,
+          process: (items: string[]) => void,
+        ) {
+          const allOptions = dropdownSources.value.feeCodeList.map(
+            (item) => item.label,
+          );
+          if (!query) {
+            // 没有搜索词时返回所有选项
+            process(allOptions);
+            return;
+          }
+          // 统一转换为小写进行匹配（中文 toLowerCase() 不影响，英文支持大小写不敏感）
+          const searchLower = query.toLowerCase();
+          const filtered = allOptions.filter((option) => {
+            const optionLower =
+              typeof option === 'string' ? option.toLowerCase() : '';
+            return optionLower.includes(searchLower);
+          });
+
+          process(filtered);
+        };
         hotCol.strict = true;
         hotCol.allowInvalid = false;
-        // ✅ 添加visibleRows配置，确保下拉框可见
+        // ✅ 启用下拉框搜索过滤功能
+        hotCol.filteringCaseSensitive = false; // 不区分大小写
+        hotCol.trimDropdown = false; // 不裁剪下拉框宽度
         hotCol.visibleRows = 10;
         hotCol.renderer = function (
           this: any,
@@ -890,120 +866,266 @@ const hotColumns = computed(() => {
           value: any,
           cellProperties: any,
         ) {
-          const label = getFeeCodeLabel(value);
+          // ✅ 修复：现在主字段存储的是 label，直接显示即可
+          const label = value || '';
           td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
           return td;
         };
         // ✅ 添加editor配置，确保可以编辑
-        hotCol.editor = 'dropdown';
+        // hotCol.editor = 'dropdown';
       } else if (col.field === 'industryCategory') {
-        hotCol.type = 'dropdown';
-        hotCol.source = dropdownSources.value.industryCategoryList.map(
-          (item) => item.label,
-        );
-        hotCol.strict = true;
-        hotCol.allowInvalid = false;
-        hotCol.visibleRows = 10;
-        hotCol.renderer = function (
-          this: any,
-          instance: any,
-          td: HTMLTableCellElement,
-          row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
-        ) {
-          const label = getIndustryCategoryLabel(value);
-          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-          return td;
-        };
-        hotCol.editor = 'dropdown';
-      } else if (col.field === 'settlementId') {
-        hotCol.type = 'dropdown';
-        // settlementId的source会在双击时动态设置为label数组
-        hotCol.source = [];
-        hotCol.strict = true;
-        hotCol.allowInvalid = false;
-        hotCol.visibleRows = 10;
-        hotCol.renderer = function (
-          this: any,
-          instance: any,
-          td: HTMLTableCellElement,
-          row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
-        ) {
-          // ✅ 直接从当前行数据源中获取 __settlementName
-          const rowData = dataSource.value[row];
-          const settlementName =
-            (rowData as any)?.settlementName ||
-            (rowData as any)?.__settlementName;
+        hotCol.type = 'autocomplete';
 
-          let label = '';
-          if (settlementName) {
-            label = settlementName;
-            console.log(
-              '🎨 [settlementId renderer] 行',
-              row,
-              '显示名称:',
-              label,
-            );
-          } else if (value) {
-            // fallback：如果没有缓存，显示 ID
-            label = String(value);
-            console.warn(
-              '⚠️ [settlementId renderer] 行',
-              row,
-              '无__settlementName，显示ID:',
-              label,
-            );
-          }
-
-          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-          return td;
-        };
-        hotCol.editor = 'dropdown';
-      } else if (col.field === 'currencyId') {
-        hotCol.type = 'dropdown';
-        hotCol.source = dropdownSources.value.currencyList.map(
-          (item) => item.label,
-        );
-        hotCol.strict = true;
-        hotCol.allowInvalid = false;
-        hotCol.visibleRows = 10;
-        hotCol.renderer = function (
-          this: any,
-          instance: any,
-          td: HTMLTableCellElement,
-          row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
+        hotCol.source = function (
+          query: string,
+          process: (items: string[]) => void,
         ) {
-          const label = getCurrencyLabel(value);
-          console.log(
-            '🎨 [currencyId renderer] 行',
-            row,
-            '币别ID:',
-            value,
-            '→ 显示:',
-            label || '请选择',
+          const allOptions = dropdownSources.value.industryCategoryList.map(
+            (item) => item.label,
           );
+          if (!query) {
+            // 没有搜索词时返回所有选项
+            process(allOptions);
+            return;
+          }
+          // 统一转换为小写进行匹配（中文 toLowerCase() 不影响，英文支持大小写不敏感）
+          const searchLower = query.toLowerCase();
+          const filtered = allOptions.filter((option) => {
+            const optionLower =
+              typeof option === 'string' ? option.toLowerCase() : '';
+            return optionLower.includes(searchLower);
+          });
+
+          process(filtered);
+        };
+        hotCol.strict = true;
+        hotCol.allowInvalid = false;
+        // ✅ 启用下拉框搜索过滤功能
+        hotCol.filteringCaseSensitive = false; // 不区分大小写
+        hotCol.trimDropdown = false; // 不裁剪下拉框宽度
+        hotCol.visibleRows = 10;
+        hotCol.renderer = function (
+          this: any,
+          instance: any,
+          td: HTMLTableCellElement,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) {
+          // ✅ 修复：现在主字段存储的是 label，直接显示即可
+          const label = value || '';
           td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
           return td;
         };
-        hotCol.editor = 'dropdown';
+        // hotCol.editor = 'dropdown';
+      } else if (col.field === 'settlementId') {
+        hotCol.type = 'autocomplete';
+        // settlementId的source会在双击时动态设置为label数组
+        hotCol.strict = true;
+        hotCol.allowInvalid = false;
+        // ✅ 启用下拉框搜索过滤功能
+        hotCol.filteringCaseSensitive = false; // 不区分大小写
+        hotCol.trimDropdown = false; // 不裁剪下拉框宽度
+        hotCol.visibleRows = 10;
+        hotCol.renderer = function (
+          this: any,
+          instance: any,
+          td: HTMLTableCellElement,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) {
+          const label = value || '';
+          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
+          return td;
+        };
+        //hotCol.editor = 'dropdown';
+      } else if (col.field === 'currencyId') {
+        hotCol.type = 'autocomplete';
+
+        hotCol.source = function (
+          query: string,
+          process: (items: string[]) => void,
+        ) {
+          const allOptions = dropdownSources.value.currencyList.map(
+            (item) => item.label,
+          );
+          if (!query) {
+            // 没有搜索词时返回所有选项
+            process(allOptions);
+            return;
+          }
+          // 统一转换为小写进行匹配（中文 toLowerCase() 不影响，英文支持大小写不敏感）
+          const searchLower = query.toLowerCase();
+          const filtered = allOptions.filter((option) => {
+            const optionLower =
+              typeof option === 'string' ? option.toLowerCase() : '';
+            return optionLower.includes(searchLower);
+          });
+
+          process(filtered);
+        };
+        hotCol.strict = true;
+        hotCol.allowInvalid = false;
+        // ✅ 启用下拉框搜索过滤功能
+        hotCol.filteringCaseSensitive = false; // 不区分大小写
+        hotCol.trimDropdown = false; // 不裁剪下拉框宽度
+        hotCol.visibleRows = 10;
+        hotCol.renderer = function (
+          this: any,
+          instance: any,
+          td: HTMLTableCellElement,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) {
+          // ✅ 修复：现在主字段存储的是 label，直接显示即可
+          const label = value || '';
+          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
+          return td;
+        };
+        //hotCol.editor = 'dropdown';
       } else if (col.field === 'unit') {
-        hotCol.type = 'dropdown';
+        hotCol.type = 'autocomplete';
         // unit的source会在双击时动态设置为label数组
         hotCol.source = [];
         hotCol.strict = true;
         hotCol.allowInvalid = false;
+        hotCol.filteringCaseSensitive = false; // 不区分大小写
+        hotCol.trimDropdown = false; // 不裁剪下拉框宽度
         hotCol.visibleRows = 10;
+        hotCol.renderer = function (
+          this: any,
+          instance: any,
+          td: HTMLTableCellElement,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) {
+          // ✅ 修复：现在主字段存储的是 label，直接显示即可
+          const label = value || '';
+          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
+          return td;
+        };
+        //hotCol.editor = 'dropdown';
+      } else if (col.field === 'unitPrice') {
+        hotCol.type = 'numeric';
+        hotCol.format = '0,0.00';
+        hotCol.allowInvalid = false;
+        hotCol.renderer = function (
+          this: any,
+          instance: any,
+          td: HTMLTableCellElement,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) {
+          const label = value || '';
+          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0.00'}</span>`;
+          return td;
+        };
+      } else if (col.field === 'quantity') {
+        hotCol.type = 'numeric';
+        hotCol.format = '0,0';
+        hotCol.allowInvalid = false;
+        hotCol.renderer = function (
+          this: any,
+          instance: any,
+          td: HTMLTableCellElement,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) {
+          const label = value || '';
+          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0'}</span>`;
+          return td;
+        };
+      } else if (col.field === 'amount') {
+        hotCol.type = 'numeric';
+        hotCol.format = '0,0.00';
+        hotCol.allowInvalid = false;
+        hotCol.renderer = function (
+          this: any,
+          instance: any,
+          td: HTMLTableCellElement,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) {
+          const label = value || '';
+          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0.00'}</span>`;
+          return td;
+        };
+      } else if (col.field === 'taxRate') {
+        hotCol.type = 'numeric';
+        hotCol.format = '0.00%';
+        hotCol.allowInvalid = false;
+        hotCol.renderer = function (
+          this: any,
+          instance: any,
+          td: HTMLTableCellElement,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) {
+          const label = value || '';
+          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0.00%'}</span>`;
+          return td;
+        };
+      } else if (col.field === 'taxAmount') {
+        hotCol.type = 'numeric';
+        hotCol.format = '0,0.00';
+        hotCol.allowInvalid = false;
+        hotCol.renderer = function (
+          this: any,
+          instance: any,
+          td: HTMLTableCellElement,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) {
+          const label = value || '';
+          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0.00'}</span>`;
+          return td;
+        };
+      } else if (col.field === 'totalAmount') {
+        hotCol.type = 'numeric';
+        hotCol.format = '0,0.00';
+        hotCol.allowInvalid = false;
+        hotCol.renderer = function (
+          this: any,
+          instance: any,
+          td: HTMLTableCellElement,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) {
+          const label = value || '';
+          td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0.00'}</span>`;
+          return td;
+        };
+      } else if (col.field === 'remark') {
+        hotCol.type = 'text';
         hotCol.renderer = function (
           this: any,
           instance: any,
@@ -1163,8 +1285,9 @@ const hotColumns = computed(() => {
 
 // ==================== Handsontable 设置 ====================
 
-const hotSettings = computed(() => ({
+const hotSettings = shallowRef({
   data: dataSource.value,
+  imeFastEdit: true,
   columns: hotColumns.value,
   rowHeaders: false, // ✅ 隐藏默认行头,使用自定义复选框列
   colHeaders: true,
@@ -1190,13 +1313,6 @@ const hotSettings = computed(() => ({
     const rowData = dataSource.value[row];
 
     if (rowData) {
-      // ✅ 关键修复：检查单元格是否处于编辑模式
-      // 如果正在编辑，跳过自定义渲染，避免原文本和输入框同时显示
-      // if (cellProperties?.instance?.getCellEditor(row, col)?.isOpened()) {
-      //   console.log('✏️ [afterRenderer] 单元格正在编辑，跳过自定义渲染');
-      //   return;
-      // }
-
       // 获取费用状态（优先使用 combinedFeeStatus，其次使用 feeStatus）
       const feeStatus =
         (rowData as any).combinedFeeStatus ?? (rowData as any).feeStatus;
@@ -1221,8 +1337,6 @@ const hotSettings = computed(() => ({
   },
   // ✅ 添加 afterGetColHeader 事件来处理全选复选框
   afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
-    console.log('🔵 [afterGetColHeader] col:', col, 'TH:', TH);
-
     // 只在第一列（复选框列）的表头添加全选功能
     if (col === 0) {
       // 先清空表头内容
@@ -1299,16 +1413,8 @@ const hotSettings = computed(() => ({
     const columnIndex = coords.col;
     const rowIndex = coords.row;
 
-    console.log('🔵 [afterOnCellMouseDown] 点击事件', {
-      rowIndex,
-      columnIndex,
-      detail: event.detail, // ✅ 用于判断单击还是双击
-    });
-
     // ✅ 处理双击事件 - 当双击费用状态列时打开审核历史弹窗
     if (event.detail === 2 && rowIndex >= 0 && columnIndex >= 0) {
-      console.log('🖱️ [afterOnCellMouseDown] 检测到双击事件');
-
       const columnConfig = hotColumns.value[columnIndex];
       if (!columnConfig) {
         console.warn('⚠️ [afterOnCellMouseDown] 未找到列配置');
@@ -1316,28 +1422,15 @@ const hotSettings = computed(() => ({
       }
 
       const field = columnConfig.data;
-      console.log('🔵 [afterOnCellMouseDown] 双击字段:', field);
 
       // 检查是否是费用状态列
       if (field === 'combinedFeeStatus' || field === 'feeStatus') {
-        console.log(
-          '✅ [afterOnCellMouseDown] 双击费用状态列，准备打开审核历史弹窗',
-        );
-
         // 获取当前行数据
         const rowData = dataSource.value[rowIndex];
         if (!rowData) {
           console.warn('⚠️ [afterOnCellMouseDown] 行数据为空');
           return;
         }
-
-        console.log('📋 [afterOnCellMouseDown] 行数据:', {
-          id: rowData.id,
-          feeStatus: rowData.feeStatus,
-          combinedFeeStatus: rowData.combinedFeeStatus,
-          ModificationCount: rowData.ModificationCount,
-        });
-
         // 打开审核历史弹窗
         openAuditHistoryModal(rowData as OrderFeeAdminApi.OrderFeeDto);
         return; // ✅ 双击事件处理完毕，不再执行后续逻辑
@@ -1350,13 +1443,7 @@ const hotSettings = computed(() => ({
           'unit',
         ].includes(field)
       ) {
-        // ✅ 对于下拉框字段，双击时触发Handsontable原生下拉框
-        console.log('✅ [afterOnCellMouseDown] 双击下拉框字段:', field);
-
-        // ✅ 关键修复：立即清空单元格原文本，防止与编辑控件同时显示
         td.innerHTML = '';
-        console.log('✏️ [afterOnCellMouseDown] 已清空单元格原文本');
-
         // 阻止默认行为，防止进入编辑模式
         event.preventDefault();
         event.stopPropagation();
@@ -1365,18 +1452,8 @@ const hotSettings = computed(() => ({
         const hotInstance = coreTableRef.value?.hotTableRef?.hotInstance;
         if (!hotInstance) {
           console.warn('⚠️ [afterOnCellMouseDown] hotInstance 不存在');
-          console.log(
-            '🔍 [afterOnCellMouseDown] coreTableRef:',
-            coreTableRef.value,
-          );
-          console.log(
-            '🔍 [afterOnCellMouseDown] hotTableRef:',
-            coreTableRef.value?.hotTableRef,
-          );
           return;
         }
-
-        console.log('✅ [afterOnCellMouseDown] hotInstance 已获取');
         const colIndex = getColumnIndex(field);
 
         // ✅ 先设置正确的source选项（使用label作为显示值）
@@ -1384,51 +1461,25 @@ const hotSettings = computed(() => ({
           const source = dropdownSources.value.feeCodeList.map(
             (item) => item.label,
           );
-          console.log(
-            '📝 [feeCodeId] 准备设置source:',
-            source.length,
-            '个选项',
-          );
           hotInstance.setCellMeta(rowIndex, colIndex, 'source', source);
-          console.log(
-            '✅ [afterOnCellMouseDown] 设置费用名称source:',
-            source.length,
-            '个选项',
-          );
         } else if (field === 'industryCategory') {
           const source = dropdownSources.value.industryCategoryList.map(
             (item) => item.label,
           );
-          console.log(
-            '📝 [industryCategory] 准备设置source:',
-            source.length,
-            '个选项',
-          );
           hotInstance.setCellMeta(rowIndex, colIndex, 'source', source);
-          console.log(
-            '✅ [afterOnCellMouseDown] 设置行业类别source:',
-            source.length,
-            '个选项',
-          );
         } else if (field === 'currencyId') {
           const source = dropdownSources.value.currencyList.map(
             (item) => item.label,
           );
-          console.log(
-            '📝 [currencyId] 准备设置source:',
-            source.length,
-            '个选项',
-          );
           hotInstance.setCellMeta(rowIndex, colIndex, 'source', source);
-          console.log(
-            '✅ [afterOnCellMouseDown] 设置币别source:',
-            source.length,
-            '个选项',
-          );
         } else if (field === 'settlementId') {
           // 结算对象需要根据行业类别动态加载
           const currentRow = dataSource.value[rowIndex];
-          let industryCategoryValue = currentRow?.industryCategory;
+          // ✅ 使用 any 类型访问动态添加的 _value 字段
+          const currentRowAny = currentRow as any;
+          let industryCategoryValue = getSettlementIndustryCategory(
+            currentRowAny?.industryCategory_value,
+          );
 
           // ✅ 确保industryCategoryValue是字符串类型（字母代码）
           if (
@@ -1439,103 +1490,32 @@ const hotSettings = computed(() => ({
             return;
           }
 
-          console.log(
-            '🔄 [settlementId] 开始加载客户列表，行业类别:',
-            industryCategoryValue,
-          );
+          // ✅ 立即清空单元格原文本，防止异步加载期间显示旧值
+          td.innerHTML = '';
 
           // 根据行业类别加载客户列表（使用缓存）
           loadClientList(industryCategoryValue)
             .then((options: any[]) => {
-              console.log(
-                '✅ [settlementId] 客户列表加载完成:',
-                options.length,
-                '个选项',
-              );
-
               // ✅ 修正：重新获取 hotInstance
-              const hotInstance = coreTableRef.value?.hotTableRef?.hotInstance;
               if (!hotInstance) {
                 console.warn('⚠️ [settlementId] hotInstance 已失效');
                 return;
               }
-
-              console.log('✅ [settlementId] hotInstance 重新获取成功');
 
               // ✅ 缓存当前选项列表，用于后续label到value的转换
               currentOptionsCache.value = options;
 
               // ✅ 使用label作为source，这样下拉框会显示中文名称
               const source = options.map((opt: any) => opt.label);
-
-              console.log(
-                '📝 [settlementId] 设置source:',
-                source.slice(0, 3),
-                '...',
-              );
-
               // ✅ 先更新单元格的meta信息
               hotInstance.setCellMeta(rowIndex, colIndex, 'source', source);
-              hotInstance.setCellMeta(rowIndex, colIndex, 'type', 'dropdown');
-              hotInstance.setCellMeta(rowIndex, colIndex, 'editor', 'dropdown');
+              // hotInstance.setCellMeta(rowIndex, colIndex, 'type', 'dropdown');
+              // hotInstance.setCellMeta(rowIndex, colIndex, 'editor', 'dropdown');
 
               // ✅ 强制刷新单元格以确保meta生效
               hotInstance.render();
-
-              console.log('🎯 [settlementId] 准备打开下拉框');
-
-              // ✅ 加载完成后，触发下拉框显示
-              setTimeout(() => {
-                try {
-                  // 选中单元格
-                  hotInstance.selectCell(rowIndex, colIndex);
-                  hotInstance.listen();
-
-                  console.log('🔍 [settlementId] 获取编辑器...');
-
-                  // 获取编辑器并打开
-                  const editor = hotInstance.getCellEditor(rowIndex, colIndex);
-
-                  if (editor) {
-                    console.log('✅ [settlementId] 编辑器类型:', typeof editor);
-                    console.log(
-                      '✅ [settlementId] 编辑器方法:',
-                      Object.keys(editor),
-                    );
-
-                    if (typeof editor.open === 'function') {
-                      console.log('🚀 [settlementId] 调用 editor.open()');
-                      editor.open();
-                      console.log('✅ [settlementId] 下拉框已打开');
-                    } else {
-                      console.warn('⚠️ [settlementId] editor.open 不是函数');
-                      // 尝试其他方法
-                      if (typeof editor.prepare === 'function') {
-                        editor.prepare();
-                      }
-                      if (typeof editor.setValue === 'function') {
-                        // 尝试触发显示
-                        const cell = hotInstance.getCell(rowIndex, colIndex);
-                        if (cell) {
-                          cell.click();
-                        }
-                      }
-                    }
-                  } else {
-                    console.error(
-                      '❌ [settlementId] 编辑器为 null 或 undefined',
-                    );
-                  }
-                } catch (error) {
-                  console.error('❌ [settlementId] 打开下拉框失败:', error);
-                }
-              }, 150);
             })
             .catch((error: any) => {
-              console.error(
-                '❌ [afterOnCellMouseDown] 加载客户列表失败:',
-                error,
-              );
               message.error('加载客户列表失败');
             });
 
@@ -1547,11 +1527,6 @@ const hotSettings = computed(() => ({
             [];
           console.log('📝 [unit] 准备设置source:', source.length, '个选项');
           hotInstance.setCellMeta(rowIndex, colIndex, 'source', source);
-          console.log(
-            '✅ [afterOnCellMouseDown] 设置单位source:',
-            source.length,
-            '个选项',
-          );
         }
 
         // ✅ 触发Handsontable原生下拉框显示
@@ -1560,30 +1535,13 @@ const hotSettings = computed(() => ({
           try {
             hotInstance.listen();
             hotInstance.selectCell(rowIndex, colIndex);
-
-            console.log('🔍 [afterOnCellMouseDown] 获取编辑器...');
-
             // 使用Handsontable的内置方法触发下拉框
             const editor = hotInstance.getCellEditor(rowIndex, colIndex);
             if (editor && typeof editor.open === 'function') {
-              console.log(
-                '✅ [afterOnCellMouseDown] 编辑器已获取，调用 open()',
-              );
               editor.open();
               console.log('✅ [afterOnCellMouseDown] 下拉框已打开');
             } else {
-              console.warn(
-                '⚠️ [afterOnCellMouseDown] 编辑器不可用或没有open方法',
-              );
-              console.log(
-                '🔍 [afterOnCellMouseDown] 编辑器类型:',
-                typeof editor,
-              );
               if (editor) {
-                console.log(
-                  '🔍 [afterOnCellMouseDown] 编辑器方法:',
-                  Object.keys(editor),
-                );
               }
             }
           } catch (error) {
@@ -1609,8 +1567,6 @@ const hotSettings = computed(() => ({
 
     // ✅ 处理复选框列的点击（第一列，索引0）
     if (columnIndex === 0 && rowIndex >= 0) {
-      console.log('✅ [afterOnCellMouseDown] 点击复选框列');
-
       // ✅ 阻止事件冒泡和默认行为，防止 Handsontable 的默认选中逻辑
       event.stopPropagation();
       event.preventDefault();
@@ -1632,19 +1588,9 @@ const hotSettings = computed(() => ({
         if (index > -1) {
           selectedRowKeys.value.splice(index, 1);
         }
-        console.log(
-          '✅ [复选框] 取消选中，当前选中:',
-          selectedRowKeys.value.length,
-          '行',
-        );
       } else {
         // 添加到选中列表
         selectedRowKeys.value.push(rowKey);
-        console.log(
-          '✅ [复选框] 选中，当前选中:',
-          selectedRowKeys.value.length,
-          '行',
-        );
       }
 
       // ✅ 刷新表格以更新复选框状态
@@ -1703,11 +1649,6 @@ const hotSettings = computed(() => ({
     if (!columnConfig) return;
 
     const field = columnConfig.data;
-    console.log('🔵 [afterOnCellMouseDown] 单元格点击', {
-      field,
-      rowIndex,
-      columnIndex,
-    });
 
     // 现在单击只执行选中单元格操作，不再触发下拉框
     // 原有的下拉框逻辑已移到双击事件中
@@ -1716,17 +1657,17 @@ const hotSettings = computed(() => ({
   afterChange: (changes: any, source: string) => {
     console.log('🔄 [afterChange] 数据变化，source:', source);
 
-    // ✅ 跳过内部操作触发的变化（包括label到value的转换）
+    // ✅ 跳过内部操作触发的变化（包括_value赋值）
     if (
       source === 'loadData' ||
       source === 'updateData' ||
-      source === 'labelToValueConversion'
+      source === 'setValueConversion'
     ) {
       console.log('ℹ️ [afterChange] 跳过', source, '触发的变化');
       return;
     }
 
-    // ✅ 处理下拉框选择后的值转换（将label转换为value）
+    // ✅ 处理下拉框选择后的值转换（将label对应的value存储到_value字段）
     let processedChanges = changes; // 默认使用原始changes
 
     if (changes && Array.isArray(changes)) {
@@ -1736,22 +1677,21 @@ const hotSettings = computed(() => ({
         return;
       }
 
-      // ✅ 创建一个新的changes数组，将label转换为value
+      // ✅ 创建一个新的changes数组，将value存储到_value字段
       const convertedChanges = changes.map((change: any) => {
         const [row, prop, oldValue, newValue] = change;
 
-        console.log('📝 [afterChange] 检测到变化:', {
-          row,
-          prop,
-          oldValue,
-          newValue,
-        });
-
         // 只处理我们关心的下拉框字段
         if (
-          ['feeCodeId', 'industryCategory', 'currencyId', 'unit'].includes(prop)
+          [
+            'feeCodeId',
+            'industryCategory',
+            'currencyId',
+            'unit',
+            'settlementId',
+          ].includes(prop)
         ) {
-          // newValue 是用户选择的label，需要转换为value
+          // newValue 是用户选择的label，需要找到对应的value并存储到_value字段
           let sourceList: Array<{ label: string; value: any }> = [];
 
           if (prop === 'feeCodeId') {
@@ -1762,62 +1702,48 @@ const hotSettings = computed(() => ({
             sourceList = dropdownSources.value.currencyList;
           } else if (prop === 'unit') {
             sourceList = dropdownSources.value.unitList;
+          } else if (prop === 'settlementId') {
+            // 结算对象特殊处理：从缓存中查找
+            sourceList = currentOptionsCache.value || [];
           }
 
           // 查找对应的value
           const matchedItem = sourceList.find(
             (item) => item.label === newValue,
           );
-          if (matchedItem) {
-            console.log(
-              `✅ [afterChange] ${prop}: label "${newValue}" → value "${matchedItem.value}"`,
-            );
-
-            // ✅ 直接修改dataSource中的数据，而不是使用setDataAtCell
-            // 这样可以避免再次触发afterChange
-            if (dataSource.value[row]) {
-              (dataSource.value[row] as any)[prop] = matchedItem.value;
-              console.log(
-                `✅ [afterChange] 已更新dataSource[${row}].${prop} =`,
-                matchedItem.value,
-              );
-            }
-
-            // ✅ 返回转换后的change，供联动逻辑使用
-            return [row, prop, oldValue, matchedItem.value];
-          } else {
-            console.warn(
-              `⚠️ [afterChange] ${prop}: 未找到label "${newValue}" 对应的value`,
-            );
-            return change; // 返回原始change
-          }
-        } else if (prop === 'settlementId') {
-          // 结算对象特殊处理：需要将label转换为value，并缓存__settlementName
-          const sourceList = currentOptionsCache.value || [];
-          const matchedItem = sourceList.find(
-            (item: any) => item.label === newValue,
-          );
 
           if (matchedItem) {
             console.log(
-              `✅ [afterChange] settlementId: label "${newValue}" → value "${matchedItem.value}"`,
+              '✅ [afterChange] 字段:',
+              prop,
+              'label:',
+              newValue,
+              '-> value:',
+              matchedItem.value,
             );
 
-            // 直接修改dataSource中的数据
+            // ✅ 直接修改dataSource中的数据，将value存储到_value字段
             if (dataSource.value[row]) {
-              (dataSource.value[row] as any).settlementId = matchedItem.value;
-              (dataSource.value[row] as any).__settlementName = newValue;
-              console.log(
-                `✅ [afterChange] 已更新dataSource[${row}].settlementId =`,
-                matchedItem.value,
-              );
+              // 主字段保持label（用于显示）
+              (dataSource.value[row] as any)[prop] = newValue;
+              // _value字段存储实际value（用于联动和保存）
+              (dataSource.value[row] as any)[`${prop}_value`] =
+                matchedItem.value;
+
+              // 结算对象特殊处理：同时缓存__settlementName
+              // if (prop === 'settlementId') {
+              //   (dataSource.value[row] as any).__settlementName = newValue;
+              // }
             }
 
-            // ✅ 返回转换后的change，供联动逻辑使用
-            return [row, prop, oldValue, matchedItem.value];
+            // ✅ 返回转换后的change，供联动逻辑使用（使用_value）
+            return [row, prop, oldValue, newValue];
           } else {
             console.warn(
-              `⚠️ [afterChange] settlementId: 未找到label "${newValue}" 对应的value`,
+              '⚠️ [afterChange] 未找到匹配的选项，字段:',
+              prop,
+              'label:',
+              newValue,
             );
             return change; // 返回原始change
           }
@@ -1840,7 +1766,7 @@ const hotSettings = computed(() => ({
 
     // ✅ 关键修复：先执行联动逻辑，再刷新表格
     // 调用 linkage 的 handleAfterChange 处理联动逻辑
-    // ✅ 注意：此时processedChanges中的newValue已经是正确的value值（ID）
+    // ✅ 注意：此时processedChanges中的newValue已经是正确的label值，联动逻辑需要使用_value字段
     linkage.handleAfterChange(processedChanges, source, hotInstance);
 
     // ✅ 在联动逻辑执行完成后，刷新表格显示
@@ -1850,10 +1776,7 @@ const hotSettings = computed(() => ({
     }, 100);
   },
   observeDOMVisibility: true,
-}));
-
-// ==================== API 客户端导入 ====================
-import { requestClient } from '#/api/request';
+});
 
 // ==================== 模态框引用 ====================
 
@@ -1916,7 +1839,11 @@ const getColumnIndex = (field: string): number => {
   const index = hotColumns.value.findIndex((col) => col.data === field);
   return index >= 0 ? index : 0;
 };
-
+const getSettlementIndustryCategory = (industryCategory?: number) => {
+  return clientConstants
+    .getIndustryCategoryOptions()
+    .find((o) => o.key === industryCategory)?.value;
+};
 // ==================== 批量导入 ====================
 
 const openBatchImportModal = async () => {
@@ -1973,18 +1900,6 @@ const getFeeStatusOptions = () => {
   ];
 };
 
-/**
- * 获取行业类别选项
- * @returns 行业类别选项列表
- */
-const getIndustryCategoryOptions = () => {
-  return [
-    { key: 'shipping', value: 'S', label: '海运' },
-    { key: 'air', value: 'A', label: '空运' },
-    { key: 'land', value: 'L', label: '陆运' },
-  ];
-};
-
 // ==================== 审核历史 ====================
 
 const openAuditHistoryModal = (row: OrderFeeAdminApi.OrderFeeDto) => {
@@ -1992,15 +1907,6 @@ const openAuditHistoryModal = (row: OrderFeeAdminApi.OrderFeeDto) => {
   auditHistoryModalRef.value?.modalApi.setData(row);
   auditHistoryModalRef.value?.modalApi.open();
 };
-
-// ==================== 类型定义 ====================
-
-interface DropdownSources {
-  feeCodeIdList?: Array<{ value: string; label: string }>;
-  industryCategoryList?: Array<{ value: string; label: string }>;
-  currencyIdList?: Array<{ value: string; label: string }>;
-  unitList?: Array<{ value: string; label: string }>;
-}
 
 // ==================== 工具栏操作 ====================
 
@@ -2051,17 +1957,90 @@ const getFeeCodeList = async () => {
         value: item.id,
       };
     });
-
-    console.log(
-      '✅ [getFeeCodeList] 费用代码列表加载完成:',
-      dropdownSources.value.feeCodeList.length,
-      '条',
-    );
   } catch (error) {
     console.error('❌ [getFeeCodeList] 加载失败:', error);
   }
 };
+/**
+ * 将数据源中的ID字段转换为Label显示
+ */
+const convertIdsToLabels = () => {
+  if (!dataSource.value || dataSource.value.length === 0) return;
 
+  console.log(
+    '🔄 [convertIdsToLabels] 开始转换，数据行数:',
+    dataSource.value.length,
+  );
+  let convertedCount = 0;
+
+  dataSource.value.forEach((row: any, rowIndex: number) => {
+    // 费用代码ID -> label
+    if (row.feeCodeId && !row.feeCodeId_label_converted) {
+      const label = getFeeCodeLabel(row.feeCodeId);
+      if (label) {
+        row.feeCodeId_value = row.feeCodeId;
+        row.feeCodeId = label;
+        row.feeCodeId_label_converted = true;
+        convertedCount++;
+      }
+    }
+
+    // 行业类别ID -> label
+    if (
+      row.industryCategory !== undefined &&
+      row.industryCategory !== null &&
+      !row.industryCategory_label_converted
+    ) {
+      const label = getIndustryCategoryLabel(row.industryCategory);
+      if (label) {
+        row.industryCategory_value = row.industryCategory;
+        row.industryCategory = label;
+        row.industryCategory_label_converted = true;
+        convertedCount++;
+      }
+    }
+
+    // 币别ID -> label
+    if (row.currencyId && !row.currencyId_label_converted) {
+      const label = getCurrencyLabel(row.currencyId);
+      if (label) {
+        row.currencyId_value = row.currencyId;
+        row.currencyId = label;
+        row.currencyId_label_converted = true;
+        convertedCount++;
+      }
+    }
+
+    // 单位 -> label
+    if (row.unit && !row.unit_label_converted) {
+      const label = getUnitLabel(row.unit);
+      if (label) {
+        row.unit_value = row.unit;
+        row.unit = label;
+        row.unit_label_converted = true;
+        convertedCount++;
+      }
+    }
+
+    // 结算对象ID -> label
+    if (row.settlementId && !row.settlementId_label_converted) {
+      let label = row.settlementName;
+
+      if (label) {
+        row.settlementId_value = row.settlementId;
+        row.settlementId = label;
+        row.settlementId_label_converted = true;
+        convertedCount++;
+      }
+    }
+  });
+
+  console.log(
+    '✅ [convertIdsToLabels] 转换完成，共转换',
+    convertedCount,
+    '个字段',
+  );
+};
 watch(
   () => feeCodeList.value,
   (newList) => {
@@ -2101,126 +2080,84 @@ watch(
 );
 
 // ✅ 新增：监听 orderBaseData 变化，重新填充结算对象名称
+// watch(
+//   () => orderBaseData.value,
+//   (newOrderDetail) => {
+//     if (!newOrderDetail || !dataSource.value.length) {
+//       console.log('⚠️ [watch orderBaseData] 跳过填充，条件不满足', {
+//         hasOrderDetail: !!newOrderDetail,
+//         dataSourceLength: dataSource.value.length,
+//       });
+//       return;
+//     }
+
+//     let updatedCount = 0;
+//     // 为现有数据补充结算对象名称
+//     const enrichedData = dataSource.value.map((row: any) => {
+//       if (row.settlementId && !row.__settlementName) {
+//         const settlementName = extractSettlementNameFromOrder(row.settlementId);
+//         if (settlementName) {
+//           row.__settlementName = settlementName;
+//           updatedCount++;
+//         }
+//       }
+//       return row;
+//     });
+
+// 只有在有更新时才刷新表格
+//     if (updatedCount > 0) {
+//       dataSource.value = enrichedData;
+
+//       // 等待 Vue 更新后再刷新 Handsontable
+//       nextTick(() => {
+//         if (coreTableRef.value?.hotTableRef?.hotInstance) {
+//           coreTableRef.value.hotTableRef.hotInstance.loadData(enrichedData);
+
+//           nextTick(() => {
+//             coreTableRef.value?.hotTableRef?.hotInstance?.render();
+//             console.log('✅ [watch orderBaseData] 表格刷新完成');
+//           });
+//         }
+//       });
+//     }
+//   },
+//   { deep: true },
+// );
+// 监听 hotSettings 变化，同步到 Handsontable
 watch(
-  () => orderBaseData.value,
-  (newOrderDetail) => {
-    if (!newOrderDetail || !dataSource.value.length) {
-      console.log('⚠️ [watch orderBaseData] 跳过填充，条件不满足', {
-        hasOrderDetail: !!newOrderDetail,
-        dataSourceLength: dataSource.value.length,
-      });
-      return;
-    }
+  () => hotSettings.value,
+  (newSettings) => {
+    if (coreTableRef.value?.hotTableRef?.hotInstance) {
+      console.log('🔄 [watch hotSettings] 调用 hotInstance.updateSettings');
 
-    console.log('🔄 [watch orderBaseData] 订单详情变化，重新填充结算对象名称');
+      coreTableRef.value.hotTableRef.hotInstance.updateSettings(newSettings);
 
-    let updatedCount = 0;
-    // 为现有数据补充结算对象名称
-    const enrichedData = dataSource.value.map((row: any) => {
-      if (row.settlementId && !row.__settlementName) {
-        const settlementName = extractSettlementNameFromOrder(row.settlementId);
-        if (settlementName) {
-          row.__settlementName = settlementName;
-          updatedCount++;
-          console.log(
-            '✅ [watch orderBaseData] 补充结算对象名称:',
-            settlementName,
-          );
-        }
-      }
-      return row;
-    });
-
-    console.log(
-      '📊 [watch orderBaseData] 更新了',
-      updatedCount,
-      '行数据的结算对象名称',
-    );
-
-    // 只有在有更新时才刷新表格
-    if (updatedCount > 0) {
-      dataSource.value = enrichedData;
-
-      // 等待 Vue 更新后再刷新 Handsontable
+      // ✅ 额外渲染一次确保视图更新
       nextTick(() => {
-        if (coreTableRef.value?.hotTableRef?.hotInstance) {
-          console.log(
-            '🔄 [watch orderBaseData] 调用 hotInstance.loadData 刷新表格',
-          );
-          coreTableRef.value.hotTableRef.hotInstance.loadData(enrichedData);
-
-          nextTick(() => {
-            coreTableRef.value?.hotTableRef?.hotInstance?.render();
-            console.log('✅ [watch orderBaseData] 表格刷新完成');
-          });
-        }
+        coreTableRef.value?.hotTableRef?.hotInstance?.render();
+        console.log('✅ [watch hotSettings] 表格渲染完成');
       });
+    } else {
+      console.warn('⚠️ [watch hotSettings] hotInstance 不存在');
     }
   },
   { deep: true },
 );
-
 // 监听 dataSource 变化，同步到 Handsontable
 watch(
   () => dataSource.value,
   (newData) => {
-    console.log(
-      '📊 [watch dataSource] 数据源变化，行数:',
-      newData?.length || 0,
-    );
+    // ✅ 关键修复：在更新 hotSettings 之前，先将ID转换为Label
+    convertIdsToLabels();
+
+    // ✅ 更新 hotSettings 中的 data 引用
+    hotSettings.value.data = newData;
 
     nextTick(() => {
       if (coreTableRef.value?.hotTableRef?.hotInstance) {
         console.log('🔄 [watch dataSource] 调用 hotInstance.loadData');
 
-        // ✅ 关键修复：在 loadData 之前，确保所有行都有 __settlementName
-        const enrichedData = (newData || []).map((row: any) => {
-          if (row.settlementId && !row.__settlementName) {
-            console.log(
-              '⚠️ [watch dataSource] 发现缺失 __settlementName 的行，尝试补充',
-              {
-                settlementId: row.settlementId,
-                hasOrderBaseData: !!orderBaseData.value,
-              },
-            );
-
-            // 策略1：尝试从 orderBaseData 中提取结算对象名称
-            const settlementName = extractSettlementNameFromOrder(
-              row.settlementId,
-            );
-            if (settlementName) {
-              row.__settlementName = settlementName;
-              console.log(
-                '✅ [watch dataSource] 成功补充结算对象名称:',
-                settlementName,
-              );
-            } else {
-              // 策略2：降级 - 尝试从已加载的其他行中查找缓存的名称
-              for (const existingRow of dataSource.value) {
-                const existingRowAny = existingRow as any;
-                if (
-                  String(existingRowAny.settlementId) ===
-                    String(row.settlementId) &&
-                  existingRowAny.__settlementName
-                ) {
-                  row.__settlementName = existingRowAny.__settlementName;
-                  console.log(
-                    '✅ [watch dataSource] 从其他行缓存中获取结算对象名称:',
-                    existingRowAny.__settlementName,
-                  );
-                  break;
-                }
-              }
-            }
-          }
-          return row;
-        });
-
-        console.log(
-          '📦 [watch dataSource] 准备加载数据， enrichedData 行数:',
-          enrichedData.length,
-        );
-        coreTableRef.value.hotTableRef.hotInstance.loadData(enrichedData);
+        coreTableRef.value.hotTableRef.hotInstance.loadData(newData);
 
         // ✅ 额外渲染一次确保视图更新
         nextTick(() => {
@@ -2235,16 +2172,33 @@ watch(
   { deep: true },
 );
 
+// ✅ 新增：监听 hotColumns 变化，更新 hotSettings
+watch(
+  () => hotColumns.value,
+  (newColumns) => {
+    console.log(
+      '📊 [watch hotColumns] 列配置变化，列数:',
+      newColumns?.length || 0,
+    );
+
+    // ✅ 更新 hotSettings 中的 columns 引用
+    hotSettings.value.columns = newColumns;
+
+    // 重新渲染表格以应用新的列配置
+    nextTick(() => {
+      if (coreTableRef.value?.hotTableRef?.hotInstance) {
+        coreTableRef.value.hotTableRef.hotInstance.render();
+        console.log('✅ [watch hotColumns] 表格列配置更新完成');
+      }
+    });
+  },
+  { deep: true },
+);
+
 // ✅ 新增：监听 selectedRowKeys 变化，刷新表格以更新复选框状态
 watch(
   () => selectedRowKeys.value,
   () => {
-    console.log(
-      '🔵 [watch selectedRowKeys] 选中状态变化:',
-      selectedRowKeys.value.length,
-      '行',
-    );
-
     nextTick(() => {
       if (coreTableRef.value?.hotTableRef?.hotInstance) {
         // 重新渲染表格以更新复选框状态
