@@ -569,7 +569,10 @@ export function useOrderFeeLinkage(
         console.log('🔄 [handleFeeCodeChange] 已刷新表格数据');
       }
 
-      console.log('✅ [handleFeeCodeChange] 联动完成');
+      console.log(
+        '✅ [handleFeeCodeChange] 联动完成',
+        dataContext.dataSource.value,
+      );
     } catch (error) {
       console.error('❌ [handleFeeCodeChange] 处理失败:', error);
     }
