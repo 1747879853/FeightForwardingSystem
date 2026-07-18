@@ -8,7 +8,7 @@ import { message } from 'ant-design-vue';
 import { $t } from '#/locales';
 
 import * as feeConstants from '../../data';
-import { setOrderCtnList } from '../../data';
+import { setOrderCtnList, getIndustryCategoryOptions } from '../../data';
 
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 import { GetDetail } from '#/api/sea-export/change-order-admin';
@@ -21,7 +21,7 @@ const extractSettlementNameMap = (
   orderDetail: SeaExportAdminApi.SeaExportDto | null | undefined,
 ): Map<any, string> => {
   const nameMap = new Map<any, string>();
-  
+
   if (!orderDetail) return nameMap;
 
   const transportOrder = orderDetail.transportOrder;
@@ -215,12 +215,27 @@ export function useOrderFeeData(
   ) => {
     if (!items?.length) return [];
     let rowKeyCounter = 0;
-    return items.map((item, i) => ({
-      ...item,
-      industryCategory:
-        item.industryCategory === 0 ? undefined : item.industryCategory,
-      _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
-    })) as any[];
+    return items.map((item, i) => {
+      // ✅ 处理行业类别：优先使用 industryCategory（数值ID）
+      let industryCategoryValue: number | undefined;
+
+      if (item.industryCategory && item.industryCategory !== 0) {
+        // 直接使用后端返回的数值ID
+        industryCategoryValue = item.industryCategory;
+      } else if (item.industryCategories) {
+        // 回退：如果有字母代码，转换为数值ID
+        const option = getIndustryCategoryOptions().find(
+          (opt) => opt.value === item.industryCategories,
+        );
+        industryCategoryValue = option?.key;
+      }
+
+      return {
+        ...item,
+        industryCategory: industryCategoryValue, // ✅ 存储数值ID
+        _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
+      };
+    }) as any[];
   };
 
   /**
@@ -464,7 +479,6 @@ export function useOrderFeeData(
       'paySide',
       'feeStatus',
       'invoiceStatus',
-      'industryCategory',
       'dataEntryMethod',
     ]);
 
@@ -478,6 +492,25 @@ export function useOrderFeeData(
 
         if (numericFields.has(key)) {
           dto[key] = typeof val === 'number' ? val : Number(val);
+          continue;
+        }
+
+        // ✅ 特殊处理：将 industryCategory（数值ID）直接保存到大写的 IndustryCategory
+        if (key === 'industryCategory') {
+          const numericValue = typeof val === 'number' ? val : Number(val);
+          if (!isNaN(numericValue)) {
+            dto['IndustryCategory'] = numericValue;
+            console.log(
+              '✅ [sanitizeOrderFee] 保存 industryCategory:',
+              numericValue,
+              '(数值ID) → IndustryCategory',
+            );
+          } else {
+            console.warn(
+              '⚠️ [sanitizeOrderFee] industryCategory 不是有效数字:',
+              val,
+            );
+          }
           continue;
         }
 

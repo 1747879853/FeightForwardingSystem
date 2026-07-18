@@ -172,10 +172,15 @@ export function useOrderFeeLinkage(
           // 从订单详情中获取发货人名称
           if (orderDetail.transportOrder?.shipper) {
             const shipper = orderDetail.transportOrder.shipper as any;
-            console.log('📦 [fillSettlementIdByIndustryCategory] 发货人对象:', shipper);
+            console.log(
+              '📦 [fillSettlementIdByIndustryCategory] 发货人对象:',
+              shipper,
+            );
             settlementName = `${shipper.fullName || shipper.name}${shipper.code ? ` (${shipper.code})` : ''}`;
           } else {
-            console.warn('⚠️ [fillSettlementIdByIndustryCategory] 发货人对象不存在');
+            console.warn(
+              '⚠️ [fillSettlementIdByIndustryCategory] 发货人对象不存在',
+            );
           }
           break;
         case 'c': // 场站
@@ -264,7 +269,7 @@ export function useOrderFeeLinkage(
         if (settlementName) {
           // 使用 Vue.set 或直接赋值确保响应式更新
           row['__settlementName'] = settlementName;
-          
+
           console.log(
             '👤 [fillSettlementIdByIndustryCategory] 行业类别:',
             industryCategoryValue,
@@ -280,26 +285,30 @@ export function useOrderFeeLinkage(
             'settlementId:',
             settlementId,
           );
-          
+
           // 备用方案：尝试从 transportOrder 的其他字段获取名称
           const transportOrder = orderDetail.transportOrder;
           let fallbackName: string | undefined;
-          
+
           switch (industryCategoryValue.toLowerCase()) {
             case 'b': // 发货人
-              fallbackName = transportOrder?.shipperName || transportOrder?.shipperContent;
+              fallbackName =
+                transportOrder?.shipperName || transportOrder?.shipperContent;
               break;
             case 'c': // 场站
               fallbackName = orderDetail.yardName;
               break;
             case 'e': // 收货人
-              fallbackName = transportOrder?.consigneeName || transportOrder?.consigneeContent;
+              fallbackName =
+                transportOrder?.consigneeName ||
+                transportOrder?.consigneeContent;
               break;
             case 'f': // 报关行
               fallbackName = transportOrder?.custBrokerName;
               break;
             case 'h': // 通知人
-              fallbackName = transportOrder?.notifierName || transportOrder?.notifierContent;
+              fallbackName =
+                transportOrder?.notifierName || transportOrder?.notifierContent;
               break;
             case 'i': // 车队
               fallbackName = transportOrder?.teamName;
@@ -314,22 +323,34 @@ export function useOrderFeeLinkage(
               fallbackName = transportOrder?.insuranceName;
               break;
           }
-          
+
           if (fallbackName) {
             // 如果是 JSON 字符串，尝试解析
             try {
-              if (typeof fallbackName === 'string' && fallbackName.startsWith('{')) {
+              if (
+                typeof fallbackName === 'string' &&
+                fallbackName.startsWith('{')
+              ) {
                 const parsed = JSON.parse(fallbackName);
-                fallbackName = parsed.name || parsed.cnName || parsed.fullName || fallbackName;
+                fallbackName =
+                  parsed.name ||
+                  parsed.cnName ||
+                  parsed.fullName ||
+                  fallbackName;
               }
             } catch (e) {
               // 解析失败，使用原始值
             }
-            
+
             row['__settlementName'] = String(fallbackName);
-            console.log('✅ [fillSettlementIdByIndustryCategory] 使用备用名称:', fallbackName);
+            console.log(
+              '✅ [fillSettlementIdByIndustryCategory] 使用备用名称:',
+              fallbackName,
+            );
           } else {
-            console.warn('❌ [fillSettlementIdByIndustryCategory] 无法获取结算对象名称');
+            console.warn(
+              '❌ [fillSettlementIdByIndustryCategory] 无法获取结算对象名称',
+            );
           }
         }
       } else {
@@ -481,34 +502,67 @@ export function useOrderFeeLinkage(
         // 应收：使用 defaultDebitName（收费客户类型）
         const debitCategory = feeCodeDetail.defaultDebitName;
         if (debitCategory) {
-          row['industryCategory'] = getCategoryNumber(debitCategory);
-          console.log(
-            '📋 [handleFeeCodeChange] 应收-行业类别:',
-            debitCategory,
-            '→',
-            row['industryCategory'],
+          // ✅ 修正：将字母代码转换为数值ID后赋值给 industryCategory
+          const option = getIndustryCategoryOptions().find(
+            (opt) => opt.value === debitCategory,
           );
-          await fillSettlementIdByIndustryCategory(row, debitCategory);
+          const categoryKey = option?.key;
+
+          if (categoryKey) {
+            row['industryCategory'] = categoryKey;
+            console.log(
+              '📋 [handleFeeCodeChange] 应收-行业类别:',
+              debitCategory,
+              '(字母代码) →',
+              categoryKey,
+              '(数值ID)',
+            );
+            await fillSettlementIdByIndustryCategory(row, debitCategory);
+          } else {
+            console.warn(
+              '⚠️ [handleFeeCodeChange] 未找到字母代码对应的数值ID:',
+              debitCategory,
+            );
+          }
         }
       } else if (paySide === 1) {
         // 应付：使用 defaultCreditName（付费客户类型）
         const creditCategory = feeCodeDetail.defaultCreditName;
         if (creditCategory) {
-          row['industryCategory'] = getCategoryNumber(creditCategory);
-          console.log(
-            '📋 [handleFeeCodeChange] 应付-行业类别:',
-            creditCategory,
-            '→',
-            row['industryCategory'],
+          // ✅ 修正：将字母代码转换为数值ID后赋值给 industryCategory
+          const option = getIndustryCategoryOptions().find(
+            (opt) => opt.value === creditCategory,
           );
-          await fillSettlementIdByIndustryCategory(row, creditCategory);
+          const categoryKey = option?.key;
+
+          if (categoryKey) {
+            row['industryCategory'] = categoryKey;
+            console.log(
+              '📋 [handleFeeCodeChange] 应付-行业类别:',
+              creditCategory,
+              '(字母代码) →',
+              categoryKey,
+              '(数值ID)',
+            );
+            await fillSettlementIdByIndustryCategory(row, creditCategory);
+          } else {
+            console.warn(
+              '⚠️ [handleFeeCodeChange] 未找到字母代码对应的数值ID:',
+              creditCategory,
+            );
+          }
         }
       }
 
       // 自动填充币别
       if (feeCodeDetail.currencyId) {
         row['currencyId'] = feeCodeDetail.currencyId;
-        console.log('💰 [handleFeeCodeChange] 设置币别ID:', feeCodeDetail.currencyId, '类型:', typeof feeCodeDetail.currencyId);
+        console.log(
+          '💰 [handleFeeCodeChange] 设置币别ID:',
+          feeCodeDetail.currencyId,
+          '类型:',
+          typeof feeCodeDetail.currencyId,
+        );
 
         // 判断是否为本位币并设置汇率
         const currencyIdNum =
@@ -572,7 +626,7 @@ export function useOrderFeeLinkage(
           settlementName: (currentRow as any)?.__settlementName,
           currencyId: currentRow?.currencyId,
         });
-        
+
         // 使用 loadData 重新加载数据以确保响应式更新
         hotInstance.loadData(dataContext.dataSource.value);
         console.log('🔄 [handleFeeCodeChange] 已刷新表格数据');
@@ -601,13 +655,26 @@ export function useOrderFeeLinkage(
         industryCategory,
       );
 
-      // 将key转换为value（字母代码）
-      const industryCategoryValue = getIndustryCategoryOptions().find(
-        (item: any) => item.key === industryCategory,
-      )?.value;
+      // ✅ 修正：industryCategory 现在是数值ID，需要转换为字母代码用于联动
+      let industryCategoryCode: string | undefined;
 
-      if (industryCategoryValue) {
-        await fillSettlementIdByIndustryCategory(row, industryCategoryValue);
+      if (typeof industryCategory === 'number') {
+        // 通过数值ID查找对应的字母代码
+        const option = getIndustryCategoryOptions().find(
+          (opt) => opt.key === industryCategory,
+        );
+        industryCategoryCode = option?.value;
+      } else if (typeof industryCategory === 'string') {
+        // 如果已经是字母代码，直接使用
+        industryCategoryCode = industryCategory;
+      }
+
+      if (industryCategoryCode) {
+        console.log(
+          '🔵 [handleIndustryCategoryChange] 使用字母代码进行联动:',
+          industryCategoryCode,
+        );
+        await fillSettlementIdByIndustryCategory(row, industryCategoryCode);
 
         // ✅ 强制刷新表格，确保 __settlementName 的更新被正确渲染
         if (hotInstance) {
@@ -617,6 +684,11 @@ export function useOrderFeeLinkage(
         }
 
         console.log('✅ [handleIndustryCategoryChange] 联动完成');
+      } else {
+        console.warn(
+          '⚠️ [handleIndustryCategoryChange] 无法获取字母代码:',
+          industryCategory,
+        );
       }
     } catch (error) {
       console.error('❌ [handleIndustryCategoryChange] 处理失败:', error);
