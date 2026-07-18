@@ -742,7 +742,7 @@ const hotColumns = computed(() => {
     title: '开票状态',
     width: 120,
     type: 'text',
-    className: 'htCenter htMiddle', // 居中对齐
+    className: '', // 居中对齐
     readOnly: true, // 设置为只读
     // ✅ 自定义渲染器:显示行号 + 开票状态（带颜色和加粗）
     renderer: function (
