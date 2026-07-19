@@ -10,11 +10,16 @@ import { brandLogo } from '#/utils/brand-assets';
 export const overridesPreferences = defineOverridesPreferences({
   // overrides
   app: {
+    enablePreferences: true,
     name: import.meta.env.VITE_APP_TITLE,
     layout: 'header-sidebar-nav',
+    preferencesButtonPosition: 'header',
   },
   theme: {
     mode: 'light',
+  },
+  widget: {
+    themeToggle: false,
   },
 
   breadcrumb: {

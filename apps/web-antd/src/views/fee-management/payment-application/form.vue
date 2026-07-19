@@ -465,7 +465,24 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
     }
   }
 
-  feeDetailRows.value = [...feeDetailRows.value, ...newRows];
+  const nextRows = [...feeDetailRows.value, ...newRows];
+  let createdApplicationId: string | undefined;
+
+  if (!isEdit.value && newRows.length > 0) {
+    submitting.value = true;
+    try {
+      createdApplicationId = await addPaymentApplication(
+        buildSubmitData(PaymentApplicationStatus.Entering, nextRows),
+      );
+    } catch {
+      message.error('保存失败');
+      return;
+    } finally {
+      submitting.value = false;
+    }
+  }
+
+  feeDetailRows.value = nextRows;
   originalFeeDetailRows.value = [
     ...originalFeeDetailRows.value,
     ...newRows.map((r) => ({ ...r })),
@@ -473,6 +490,14 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
   nextTick(() => {
     expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
   });
+
+  if (createdApplicationId) {
+    message.success(t('addSuccess'));
+    markListShouldRefresh('PaymentApplicationList');
+    await router.replace(
+      `/fee-management/payment-application/${createdApplicationId}/edit`,
+    );
+  }
 }
 
 async function handleDeleteSelected() {
@@ -692,9 +717,10 @@ onMounted(() => {
 
 function buildSubmitData(
   status: PaymentApplicationStatus,
+  rows: FeeDetailRow[] = feeDetailRows.value,
 ): PaymentApplicationAdminApi.PaymentApplicationAddDto {
   const items: PaymentApplicationAdminApi.PaymentApplicationItemAddDto[] =
-    feeDetailRows.value.map((row) => ({
+    rows.map((row) => ({
       orderFeeId: row.feeId,
       rate: settlementCurrencyId.value === null ? null : (row.rate ?? null),
       appliedAmount: row.appliedAmount,
