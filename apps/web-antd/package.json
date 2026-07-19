@@ -69,11 +69,13 @@
     "json-bigint": "catalog:",
     "pinia": "catalog:",
     "pinyin-pro": "^3.28.1",
+    "three": "^0.183.2",
     "vue": "catalog:",
     "vue-router": "catalog:"
   },
   "devDependencies": {
     "@types/dompurify": "^3.2.0",
-    "@types/json-bigint": "catalog:"
+    "@types/json-bigint": "catalog:",
+    "@types/three": "^0.183.1"
   }
 }
