@@ -77,6 +77,7 @@ const fetchPropPermissionList = (params: Record<string, any>) => {
 const [Grid, gridApi] =
   useVbenVxeGrid<SystemPermissionApi.UserPropPermissionDto>({
     gridOptions: {
+      id: 'systemPermissionPropList',
       columns: usePropPermissionColumns(handleActionClick),
       height: 'auto',
       keepSource: true,
