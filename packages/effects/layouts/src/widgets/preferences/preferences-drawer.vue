@@ -9,7 +9,6 @@ import type {
   LayoutType,
   NavigationStyleType,
   PreferencesButtonPositionType,
-  ThemeModeType,
 } from '@vben/types';
 
 import type { SegmentedItem } from '@vben-core/shadcn-ui';
@@ -53,7 +52,6 @@ import {
   Radius,
   Sidebar,
   Tabbar,
-  Theme,
   Widget,
 } from './blocks';
 
@@ -84,11 +82,8 @@ const transitionEnable = defineModel<boolean>('transitionEnable');
 
 const themeColorPrimary = defineModel<string>('themeColorPrimary');
 const themeBuiltinType = defineModel<BuiltinThemeType>('themeBuiltinType');
-const themeMode = defineModel<ThemeModeType>('themeMode');
 const themeRadius = defineModel<string>('themeRadius');
 const themeFontSize = defineModel<number>('themeFontSize');
-const themeSemiDarkSidebar = defineModel<boolean>('themeSemiDarkSidebar');
-const themeSemiDarkHeader = defineModel<boolean>('themeSemiDarkHeader');
 
 const sidebarEnable = defineModel<boolean>('sidebarEnable');
 const sidebarWidth = defineModel<number>('sidebarWidth');
@@ -165,7 +160,6 @@ const widgetGlobalSearch = defineModel<boolean>('widgetGlobalSearch');
 const widgetFullscreen = defineModel<boolean>('widgetFullscreen');
 const widgetLanguageToggle = defineModel<boolean>('widgetLanguageToggle');
 const widgetNotification = defineModel<boolean>('widgetNotification');
-const widgetThemeToggle = defineModel<boolean>('widgetThemeToggle');
 const widgetSidebarToggle = defineModel<boolean>('widgetSidebarToggle');
 const widgetLockScreen = defineModel<boolean>('widgetLockScreen');
 const widgetRefresh = defineModel<boolean>('widgetRefresh');
@@ -313,13 +307,6 @@ async function handleReset() {
             </Block>
           </template>
           <template #appearance>
-            <Block :title="$t('preferences.theme.title')">
-              <Theme
-                v-model="themeMode"
-                v-model:theme-semi-dark-header="themeSemiDarkHeader"
-                v-model:theme-semi-dark-sidebar="themeSemiDarkSidebar"
-              />
-            </Block>
             <Block :title="$t('preferences.theme.builtin.title')">
               <BuiltinTheme
                 v-model="themeBuiltinType"
@@ -421,7 +408,6 @@ async function handleReset() {
                 v-model:widget-notification="widgetNotification"
                 v-model:widget-refresh="widgetRefresh"
                 v-model:widget-sidebar-toggle="widgetSidebarToggle"
-                v-model:widget-theme-toggle="widgetThemeToggle"
               />
             </Block>
             <Block :title="$t('preferences.footer.title')">
