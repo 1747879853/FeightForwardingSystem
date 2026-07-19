@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
-import { nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import {
   Button,
   Space,
@@ -202,6 +202,57 @@ const getSelectedRows = () => {
     )
     .filter(Boolean);
 };
+
+// ==================== 费用合计计算 ====================
+
+/**
+ * 计算选中行的费用合计（按币别分组）
+ */
+const feeSummary = computed(() => {
+  if (!selectedRowKeys.value.length || !dataSource.value.length) {
+    return null;
+  }
+
+  const summaryMap: Record<string, number> = {};
+
+  selectedRowKeys.value.forEach((key: string | number) => {
+    const row: any = dataSource.value.find((r: any) => r._rowKey === key);
+    if (row && row.amount) {
+      // ✅ 优先使用已转换的币别标签，其次使用币别ID转换，最后使用原始值
+      let currencyLabel = '';
+
+      if (row.currencyId_label_converted && row.currencyId) {
+        // 已经转换为label的情况
+        currencyLabel = row.currencyId;
+      } else if (row.currencyId_value) {
+        // 有保存的原始ID值
+        currencyLabel =
+          getCurrencyLabel(row.currencyId_value) ||
+          String(row.currencyId_value);
+      } else if (row.currencyId) {
+        // 直接使用currencyId尝试转换
+        currencyLabel =
+          getCurrencyLabel(row.currencyId) || String(row.currencyId);
+      } else {
+        currencyLabel = '未知';
+      }
+
+      if (!summaryMap[currencyLabel]) {
+        summaryMap[currencyLabel] = 0;
+      }
+      summaryMap[currencyLabel] =
+        (summaryMap[currencyLabel] || 0) + (Number(row.amount) || 0);
+    }
+  });
+
+  // 转换为数组格式，便于渲染
+  return Object.entries(summaryMap)
+    .filter(([_, amount]) => amount !== 0) // 过滤掉金额为0的币别
+    .map(([currency, amount]) => ({
+      currency,
+      amount: amount.toFixed(2),
+    }));
+});
 
 // ==================== Composables ====================
 
@@ -565,6 +616,22 @@ defineExpose({ getTableDate });
             @update:selected-row-keys="selectedRowKeys = $event"
             @column-sort="handleColumnSort"
           />
+
+          <!-- 费用合计显示 -->
+          <div v-if="feeSummary && feeSummary.length > 0" class="fee-summary">
+            <div class="fee-summary-content">
+              <span class="summary-label">费用合计：</span>
+              <Space :size="16">
+                <span
+                  v-for="(item, index) in feeSummary"
+                  :key="index"
+                  class="summary-item"
+                >
+                  {{ item.currency }}: {{ item.amount }}
+                </span>
+              </Space>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -670,6 +737,85 @@ defineExpose({ getTableDate });
 
     &:checked {
       accent-color: #1890ff;
+    }
+  }
+}
+
+// 费用合计样式
+.fee-summary {
+  position: absolute;
+  right: 17px; // ✅ 预留滚动条宽度（通常17px），避免遮挡滚动条
+  bottom: 30px; // ✅ 距离表格底部30px
+  left: 100px; // ✅ 左侧距离表格50px
+  z-index: 10;
+  max-width: calc(
+    100% - 167px
+  ); // ✅ 限制最大宽度（50px左边距 + 17px右边距 + 100px额外缩短）
+
+  padding: 12px 20px;
+  pointer-events: none; // ✅ 允许鼠标事件穿透，不影响滚动条操作
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 98%) 0%,
+    rgb(245 248 255 / 95%) 100%
+  );
+  border: 1px solid rgb(24 144 255 / 20%);
+  border-radius: 8px;
+  box-shadow:
+    0 4px 12px rgb(24 144 255 / 15%),
+    0 2px 4px rgb(0 0 0 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 80%);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    border-color: rgb(24 144 255 / 35%);
+    box-shadow:
+      0 6px 20px rgb(24 144 255 / 25%),
+      0 3px 8px rgb(0 0 0 / 12%),
+      inset 0 1px 0 rgb(255 255 255 / 90%);
+    transform: translateY(-2px);
+  }
+
+  .fee-summary-content {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 14px;
+    pointer-events: auto; // ✅ 恢复内容区域的鼠标事件
+
+    .summary-label {
+      padding: 0;
+      font-weight: 600;
+      color: #1f2937;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .summary-item {
+      padding: 4px 10px;
+      font-weight: 600;
+      color: #1890ff;
+      white-space: nowrap;
+      background: linear-gradient(
+        135deg,
+        rgb(24 144 255 / 8%) 0%,
+        rgb(24 144 255 / 4%) 100%
+      );
+      border: 1px solid rgb(24 144 255 / 15%);
+      border-radius: 4px;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: linear-gradient(
+          135deg,
+          rgb(24 144 255 / 15%) 0%,
+          rgb(24 144 255 / 8%) 100%
+        );
+        border-color: rgb(24 144 255 / 30%);
+        box-shadow: 0 2px 8px rgb(24 144 255 / 20%);
+        transform: scale(1.05);
+      }
     }
   }
 }
