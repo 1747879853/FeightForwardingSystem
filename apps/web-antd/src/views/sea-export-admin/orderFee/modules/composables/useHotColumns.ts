@@ -180,8 +180,14 @@ export function useHotColumns(
             cellProperties: any,
           ) {
             td.innerHTML = '';
-            const label = value || '';
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
+            // ✅ 关键修改：只显示"-"后面的字符串（费用名称）
+            let displayName = '';
+            if (value && typeof value === 'string') {
+              const parts = value.split('-');
+              // 如果有"-"，取后面的部分；否则使用原值
+              displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
+            }
+            td.innerHTML = `<span style="color: ${displayName ? '#262626' : '#999'}; cursor: pointer;">${displayName || '请选择'}</span>`;
             return td;
           };
         } else if (col.field === 'industryCategory') {
@@ -243,8 +249,14 @@ export function useHotColumns(
             cellProperties: any,
           ) {
             td.innerHTML = '';
-            const label = value || '';
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
+            // ✅ 关键修改：只显示"-"后面的字符串（客户名称）
+            let displayName = '';
+            if (value && typeof value === 'string') {
+              const parts = value.split('-');
+              // 如果有"-"，取后面的部分；否则使用原值
+              displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
+            }
+            td.innerHTML = `<span style="color: ${displayName ? '#262626' : '#999'}; cursor: pointer;">${displayName || '请选择'}</span>`;
             return td;
           };
         } else if (col.field === 'currencyId') {
