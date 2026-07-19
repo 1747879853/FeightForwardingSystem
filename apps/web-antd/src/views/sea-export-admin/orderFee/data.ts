@@ -481,7 +481,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
       title: $t('seaExport.export.orderFee.settlement'),
 
       field: 'settlementName',
-      minWidth: 110,
+      minWidth: 80,
     },
 
     {

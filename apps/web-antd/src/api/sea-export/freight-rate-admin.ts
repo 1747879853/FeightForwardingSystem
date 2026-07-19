@@ -1013,3 +1013,93 @@ export function GetCtnCodesByPriceIdsAsync(ids: string[]) {
     { ids },
   );
 }
+
+// ==================== AI识别运价相关接口 ====================
+
+/**
+ * Gemini AI识别运价（批量新建）
+ * 上传运价报价文件（PDF/图片等），调用gemini-3.5-flash模型识别运价数据
+ * @param file 运价报价文件（PDF、图片等）
+ * @returns AI识别的运价列表
+ */
+export function extractSeFreiPriceByGemini(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return requestClient.post<GeminiSeFreiPriceDto[]>(
+    '/services/app/GeminiAdmin/ExtractSeFreiPriceByPromptAsync',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+}
+
+/**
+ * 通义千问AI识别运价（批量新建）
+ * 上传运价报价文件（PDF/图片等），调用qwen-doc-turbo模型识别运价数据
+ * @param file 运价报价文件（PDF、图片等）
+ * @returns AI识别的运价列表
+ */
+export function extractSeFreiPriceByQwen(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return requestClient.post<GeminiSeFreiPriceDto[]>(
+    '/services/app/QwenAdmin/ExtractSeFreiPriceByPromptAsync',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+}
+
+// ==================== AI识别运价相关DTO ====================
+
+/**
+ * AI识别运价-箱型价格明细
+ */
+export interface SeFreiPriceCtnDto {
+  /** 箱型名称（原始文本） */
+  ctnName: string;
+  /** 箱型ID（匹配不到为-1） */
+  ctnCodeId: number;
+  /** 价格 */
+  price?: number;
+}
+
+/**
+ * AI识别运价结果DTO（Gemini/千问通用）
+ */
+export interface GeminiSeFreiPriceDto {
+  /** 目的港名称（原始文本） */
+  podName: string;
+  /** 目的港ID（匹配不到为-1） */
+  podId: number;
+  /** 是否直航 */
+  isDirect?: boolean;
+  /** 中转港1名称（原始文本，可空） */
+  pot1Name?: string;
+  /** 中转港1ID（名称为空则null；有名称但匹配不到为-1） */
+  pot1Id?: number;
+  /** 中转港2名称（原始文本，可空） */
+  pot2Name?: string;
+  /** 中转港2ID（名称为空则null；有名称但匹配不到为-1） */
+  pot2Id?: number;
+  /** 币别代码 */
+  currencyCode: string;
+  /** 币别ID（匹配不到为-1） */
+  currencyId: number;
+  /** 有效期开始（ISO 8601格式） */
+  validTimeStart?: string;
+  /** 有效期结束（ISO 8601格式） */
+  validTimeEnd?: string;
+  /** 备注 */
+  remark?: string;
+  /** 箱型价格明细列表 */
+  seFreiPriceCtns: SeFreiPriceCtnDto[];
+}

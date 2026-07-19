@@ -253,8 +253,8 @@ export function useOrderFeeData(
 
       // settlementId: 结算对象ID
       if (normalizedItem.settlementId) {
-        normalizedItem['settlementName'] =
-          `${normalizedItem.settlementCode}-${normalizedItem.settlementName}`;
+        // normalizedItem['settlementName'] =
+        //   `${normalizedItem.settlementCode}-${normalizedItem.settlementName}`;
         normalizedItem['settlementId_value'] = normalizedItem.settlementId;
       }
 
@@ -512,7 +512,9 @@ export function useOrderFeeData(
       for (const key of ORDER_CTN_API_KEYS) {
         // ✅ 关键修改：优先使用 _value 字段的值（如果存在）
         let val =
-          item[`${key}_value`] !== undefined ? item[`${key}_value`] : item[key];
+          item[`${key}_value`] !== undefined && key !== 'unit'
+            ? item[`${key}_value`]
+            : item[key];
 
         if (val === undefined || val === null) continue;
         if (typeof val === 'string' && val === '') continue;
