@@ -13,7 +13,7 @@ import {
 import { IconifyIcon } from '@vben/icons';
 import { $t } from '#/locales';
 import weiwanjie from '#/assets/img/base/weiwanjie.png';
-
+import yiwanjie from '#/assets/img/base/yiwanjie.png';
 // 导入拆分后的组件和 composables
 import OrderFeeTableCore from './OrderFeeTableCore.vue';
 import OrderFeeEditorModal from './order-fee-editor-modal.vue';
@@ -537,6 +537,9 @@ defineExpose({ getTableDate });
         alt="未完结"
         class="w-46 h-46"
       />
+    </div>
+    <div v-else class="finish-status-badge" title="业务未完结">
+      <img v-show="type === 0" :src="yiwanjie" alt="已完结" class="w-46 h-46" />
     </div>
 
     <div class="px-1">
