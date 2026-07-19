@@ -8,7 +8,7 @@ import { message } from 'ant-design-vue';
 import { $t } from '#/locales';
 
 import * as feeConstants from '../../data';
-import { setOrderCtnList } from '../../data';
+import { setOrderCtnList, getIndustryCategoryOptions } from '../../data';
 
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 import { GetDetail } from '#/api/sea-export/change-order-admin';
@@ -21,7 +21,7 @@ const extractSettlementNameMap = (
   orderDetail: SeaExportAdminApi.SeaExportDto | null | undefined,
 ): Map<any, string> => {
   const nameMap = new Map<any, string>();
-  
+
   if (!orderDetail) return nameMap;
 
   const transportOrder = orderDetail.transportOrder;
@@ -32,10 +32,9 @@ const extractSettlementNameMap = (
   }
 
   // 发货人
-  if (transportOrder?.shipperId && transportOrder.shipperContent) {
+  if (transportOrder?.shipperId) {
     try {
-      const shipperContent = JSON.parse(transportOrder.shipperContent);
-      const name = shipperContent.name || shipperContent.cnName;
+      const name = transportOrder.shipperName;
       if (name) {
         nameMap.set(transportOrder.shipperId, name);
       }
@@ -45,10 +44,9 @@ const extractSettlementNameMap = (
   }
 
   // 收货人
-  if (transportOrder?.consigneeId && transportOrder.consigneeContent) {
+  if (transportOrder?.consigneeId) {
     try {
-      const consigneeContent = JSON.parse(transportOrder.consigneeContent);
-      const name = consigneeContent.name || consigneeContent.cnName;
+      const name = transportOrder.consigneeName;
       if (name) {
         nameMap.set(transportOrder.consigneeId, name);
       }
@@ -58,10 +56,9 @@ const extractSettlementNameMap = (
   }
 
   // 通知人
-  if (transportOrder?.notifierId && transportOrder.notifierContent) {
+  if (transportOrder?.notifierId) {
     try {
-      const notifierContent = JSON.parse(transportOrder.notifierContent);
-      const name = notifierContent.name || notifierContent.cnName;
+      const name = transportOrder.notifierName;
       if (name) {
         nameMap.set(transportOrder.notifierId, name);
       }
@@ -70,29 +67,24 @@ const extractSettlementNameMap = (
     }
   }
 
-  // 第二通知人
-  if (orderDetail.secondNotifierId && orderDetail.secondNotifier?.name) {
-    nameMap.set(orderDetail.secondNotifierId, orderDetail.secondNotifier.name);
-  }
-
   // 目的港代理
-  if (orderDetail.podAgentId && orderDetail.podAgent?.name) {
-    nameMap.set(orderDetail.podAgentId, orderDetail.podAgent.name);
+  if (orderDetail.podAgentId && orderDetail.podAgentName) {
+    nameMap.set(orderDetail.podAgentId, orderDetail.podAgentName);
   }
 
   // 订舱代理
-  if (orderDetail.bookingAgentId && orderDetail.bookingAgent?.name) {
-    nameMap.set(orderDetail.bookingAgentId, orderDetail.bookingAgent.name);
+  if (orderDetail.bookingAgentId && orderDetail.bookingAgentName) {
+    nameMap.set(orderDetail.bookingAgentId, orderDetail.bookingAgentName);
   }
 
   // 船代
-  if (orderDetail.shipAgentId && orderDetail.shipAgent?.name) {
-    nameMap.set(orderDetail.shipAgentId, orderDetail.shipAgent.name);
+  if (orderDetail.shipAgentId && orderDetail.shipAgentName) {
+    nameMap.set(orderDetail.shipAgentId, orderDetail.shipAgentName);
   }
 
   // 场站
-  if (orderDetail.yardId && orderDetail.yard?.name) {
-    nameMap.set(orderDetail.yardId, orderDetail.yard.name);
+  if (orderDetail.yardId && orderDetail.yardName) {
+    nameMap.set(orderDetail.yardId, orderDetail.yardName);
   }
 
   // 车队
@@ -208,19 +200,64 @@ export function useOrderFeeData(
   };
 
   /**
-   * 为 orderFees 每项添加 _rowKey
+   * 为 orderFees 每项添加 _rowKey 和 _value 字段
    */
   const normalizeOrderFeeWithRowKey = (
     items: OrderFeeAdminApi.OrderFeeDto[] | undefined,
   ) => {
     if (!items?.length) return [];
     let rowKeyCounter = 0;
-    return items.map((item, i) => ({
-      ...item,
-      industryCategory:
-        item.industryCategory === 0 ? undefined : item.industryCategory,
-      _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
-    })) as any[];
+    return items.map((item, i) => {
+      // ✅ 处理行业类别：优先使用 industryCategory（数值ID）
+      let industryCategoryValue: number | undefined;
+
+      if (item.industryCategory && item.industryCategory !== 0) {
+        // 直接使用后端返回的数值ID
+        industryCategoryValue = item.industryCategory;
+      } else if (item.industryCategories) {
+        // 回退：如果有字母代码，转换为数值ID
+        const option = getIndustryCategoryOptions().find(
+          (opt) => opt.value === item.industryCategories,
+        );
+        industryCategoryValue = option?.key;
+      }
+
+      // ✅ 初始化 _value 字段，用于存储实际的 value 值
+      const normalizedItem = {
+        ...item,
+        industryCategory: industryCategoryValue, // ✅ 存储数值ID
+        _rowKey: `ofee_${++rowKeyCounter}_${Date.now()}`,
+      };
+
+      // ✅ 为下拉框字段初始化 _value 字段
+      // feeCodeId: 需要获取费用代码详情来获取 label
+      if (normalizedItem.feeCodeId) {
+        normalizedItem['feeCodeId_value'] = normalizedItem.feeCodeId;
+      }
+
+      // industryCategory: 已经存储的是数值ID
+      if (normalizedItem.industryCategory) {
+        normalizedItem['industryCategory_value'] =
+          normalizedItem.industryCategory;
+      }
+
+      // currencyId: 直接存储币别ID
+      if (normalizedItem.currencyId) {
+        normalizedItem['currencyId_value'] = normalizedItem.currencyId;
+      }
+
+      // unit: 单位本身就是字符串，_value 也存储相同的值
+      if (normalizedItem.unit) {
+        normalizedItem['unit_value'] = normalizedItem.unit;
+      }
+
+      // settlementId: 结算对象ID
+      if (normalizedItem.settlementId) {
+        normalizedItem['settlementId_value'] = normalizedItem.settlementId;
+      }
+
+      return normalizedItem as any[];
+    });
   };
 
   /**
@@ -278,6 +315,7 @@ export function useOrderFeeData(
       PaySide: props.type ?? 0,
       PageIndex: 1,
       PageSize: 999,
+      Sorting: 'creationTime asc',
     };
     const res = await getOrderFeePagedList(params);
     res.items.forEach((item) => {
@@ -422,7 +460,7 @@ export function useOrderFeeData(
   };
 
   /**
-   * 提交时移除 _rowKey 等非 API 字段
+   * 提交时移除 _rowKey 等非 API 字段，并使用 _value 字段的实际值
    */
   const sanitizeOrderFee = (
     items: any[] | undefined,
@@ -451,7 +489,7 @@ export function useOrderFeeData(
       'invoicedAmount',
       'orderInvoiceAmount',
       'settledAmount',
-      'canInvoice',
+      'invoiceBlocked',
       'isConfidential',
       'dataEntryMethod',
       'remark',
@@ -463,20 +501,41 @@ export function useOrderFeeData(
       'paySide',
       'feeStatus',
       'invoiceStatus',
-      'industryCategory',
       'dataEntryMethod',
     ]);
 
     return items.map((item) => {
+      //console.log("AAA", item)
       const dto: Record<string, any> = {};
       for (const key of ORDER_CTN_API_KEYS) {
-        const val = item[key];
+        // ✅ 关键修改：优先使用 _value 字段的值（如果存在）
+        let val =
+          item[`${key}_value`] !== undefined ? item[`${key}_value`] : item[key];
 
         if (val === undefined || val === null) continue;
         if (typeof val === 'string' && val === '') continue;
 
         if (numericFields.has(key)) {
           dto[key] = typeof val === 'number' ? val : Number(val);
+          continue;
+        }
+
+        // ✅ 特殊处理：将 industryCategory（数值ID）直接保存到大写的 IndustryCategory
+        if (key === 'industryCategory') {
+          const numericValue = typeof val === 'number' ? val : Number(val);
+          if (!isNaN(numericValue)) {
+            dto['IndustryCategory'] = numericValue;
+            console.log(
+              '✅ [sanitizeOrderFee] 保存 industryCategory:',
+              numericValue,
+              '(数值ID) → IndustryCategory',
+            );
+          } else {
+            console.warn(
+              '⚠️ [sanitizeOrderFee] industryCategory 不是有效数字:',
+              val,
+            );
+          }
           continue;
         }
 

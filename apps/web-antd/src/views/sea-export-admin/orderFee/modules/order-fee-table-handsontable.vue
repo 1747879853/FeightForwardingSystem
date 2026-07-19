@@ -1,11 +1,6 @@
 <script lang="ts" setup>
-import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
-
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import dayjs from 'dayjs';
 import {
   Button,
   Space,
@@ -13,33 +8,10 @@ import {
   DropdownButton,
   MenuItem,
   Menu,
-  Modal,
-  Textarea,
   Card,
 } from 'ant-design-vue';
-
 import { IconifyIcon } from '@vben/icons';
-
 import { $t } from '#/locales';
-
-import { PrintJsonType, usePrintFormat } from '#/components/print-format';
-
-import * as feeConstants from '../data';
-
-import { getFeeCodePagedList } from '#/api/system/base-data/fee-code-admin';
-import {
-  getIndustryCategoryOptions,
-  getCurrencyEnumOptions,
-  useOrderFeeColumns,
-  initOrderFeeEnumCache,
-  getInvoiceStatusOptions,
-  getFeeStatusOptions,
-  getDataEntryMethodOptions,
-} from '../data';
-import {
-  changeIsUnfinishedAsync,
-  getIsFinishedAsync,
-} from '#/api/sea-export/fee-lock-admin';
 import weiwanjie from '#/assets/img/base/weiwanjie.png';
 
 // 导入拆分后的组件和 composables
@@ -47,17 +19,25 @@ import OrderFeeTableCore from './OrderFeeTableCore.vue';
 import OrderFeeEditorModal from './order-fee-editor-modal.vue';
 import OrderFeeAuditHistoryModal from './order-fee-audit-history-modal.vue';
 import BatchImportFeeModal from './batch-import-fee-modal.vue';
-import { useOrderFeeData } from './composables/useOrderFeeData';
-import { useOrderFeeActions } from './composables/useOrderFeeActions';
-import { useOrderFeeLinkage } from './composables/useOrderFeeLinkage';
+import { useOrderFeeData } from './composables/useOrderFeeData.js';
+import { useOrderFeeActions } from './composables/useOrderFeeActions.js';
+import { useOrderFeeLinkage } from './composables/useOrderFeeLinkage.js';
+import { useFinishStatus } from './composables/useFinishStatus.js';
+import { useOrderFeePrint } from './composables/useOrderFeePrint.js';
+import { useDropdownSources } from './composables/useDropdownSources.js';
+import { useOrderFeeSort } from './composables/useOrderFeeSort.js';
+import { useHotColumns } from './composables/useHotColumns.js';
+import { useHotSettings } from './composables/useHotSettings.js';
+import { useModals } from './composables/useModals.js';
+import { initOrderFeeEnumCache } from '../data.js';
 
 const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
   mode?: string; // changeOrder 更改单
-  parentChangeOrderId?: string; //更改单Id
-  recAmountMap?: Record<string, any>; // 应收金额汇总
-  payAmountMap?: Record<string, any>; // 应付金额汇总
-  orderDetail?: SeaExportAdminApi.SeaExportDto | null; // 父组件传入的订单详情
+  parentChangeOrderId?: string;
+  recAmountMap?: Record<string, any>;
+  payAmountMap?: Record<string, any>;
+  orderDetail?: SeaExportAdminApi.SeaExportDto | null;
 }>();
 
 const emit = defineEmits([
@@ -74,12 +54,34 @@ const {
   selectedRowKeys,
   orderBaseData,
   orderCtnList,
-  changeOrderId,
   editId,
   getTableDate,
   syncFee,
   sanitizeOrderFee,
 } = useOrderFeeData(props, emit as any);
+
+// 下拉框数据源（需要先初始化）
+const {
+  dropdownSources,
+  currentOptionsCache,
+  allClientsByIndustry, // ✅ 新增：全量客户缓存
+  initDropdownSources,
+  updateUnitList,
+  getFeeCodeList,
+  loadAllClients, // ✅ 新增：一次性加载全部客户
+  loadClientList,
+  getSettlementIndustryCategory,
+} = useDropdownSources(orderCtnList);
+
+// 字段联动
+const linkage = useOrderFeeLinkage(
+  props,
+  { dataSource, editId, orderBaseData },
+  () => ({
+    industryCategoryList: dropdownSources.value.industryCategoryList,
+    currencyList: dropdownSources.value.currencyList,
+  }),
+);
 
 // 操作逻辑
 const actions = useOrderFeeActions(
@@ -95,196 +97,226 @@ const actions = useOrderFeeActions(
   emit as any,
 );
 
-// 字段联动逻辑
-const linkage = useOrderFeeLinkage(props, {
+// 完结状态
+const {
+  isFinished,
+  loadingFinishStatus,
+  loadFinishStatus,
+  toggleFinishStatus,
+} = useFinishStatus(editId);
+
+// 打印功能
+const { printing, handlePrint } = useOrderFeePrint();
+
+// 排序功能
+const { sortState, sortableFieldsSet, getSortIcon, handleColumnSort } =
+  useOrderFeeSort(getTableDate);
+
+// Handsontable 列配置
+const { hotColumns } = useHotColumns(
+  props,
+  dropdownSources,
   dataSource,
-  editId,
-  orderBaseData,
-});
+  selectedRowKeys,
+  sortableFieldsSet,
+  sortState,
+  getSortIcon,
+  currentOptionsCache,
+);
 
-// ==================== 完结状态管理 ====================
+// Core Table 引用（需要在 handleOpenDropdown 之前定义）
+const coreTableRef = ref<InstanceType<typeof OrderFeeTableCore>>();
 
-// 完结状态管理
-const isFinished = ref<boolean>(true); // true表示已完结，false表示未完结
-const loadingFinishStatus = ref(false);
+// 获取列索引的辅助函数（需要在 handleOpenDropdown 之前定义）
+const getColumnIndex = (field: string): number => {
+  const columns = hotColumns.value;
+  if (!columns || !Array.isArray(columns)) return -1;
+  return columns.findIndex((col: any) => col.data === field);
+};
+
+// 下拉框打开回调函数（需要在 useHotSettings 之前定义）
+const handleOpenDropdown = (
+  rowIndex: number,
+  colIndex: number,
+  field: string,
+  source: string[],
+) => {
+  const hotInstance = coreTableRef.value?.hotTableRef?.hotInstance;
+  if (!hotInstance) {
+    console.warn('⚠️ [handleOpenDropdown] hotInstance 不存在');
+    return;
+  }
+
+  // ✅ 关键修复：在打开下拉框前，先获取并保存原值
+  const originalValue = hotInstance.getDataAtCell(rowIndex, colIndex);
+  console.log(
+    `💾 [handleOpenDropdown] ${field} - 保存原值: "${originalValue}"`,
+  );
+
+  // 保存到单元格元数据中，以便用户取消编辑时可以恢复
+  hotInstance.setCellMeta(rowIndex, colIndex, 'originalValue', originalValue);
+
+  // ❌ 不要清空数据模型，这会导致单元格值也被清空
+  // 改为在 afterBeginEditing 中使用 setTimeout 延迟清空 TD 的 innerHTML
+
+  // ✅ 关键修复：设置单元格的 source，确保 autocomplete 编辑器有下拉列表
+  hotInstance.setCellMeta(rowIndex, colIndex, 'source', source);
+  console.log(
+    `✅ [handleOpenDropdown] 已设置 source，共 ${source.length} 个选项`,
+  );
+
+  // 强制刷新单元格以确保 meta 生效
+  hotInstance.render();
+};
+
+// Handsontable 设置
+const { hotSettings } = useHotSettings(
+  dataSource,
+  selectedRowKeys,
+  hotColumns,
+  sortableFieldsSet,
+  handleColumnSort,
+  linkage,
+  dropdownSources,
+  currentOptionsCache,
+  loadClientList,
+  getColumnIndex,
+  getSettlementIndustryCategory,
+  handleOpenDropdown,
+  getSortIcon, // ✅ 新增：传递排序图标函数
+);
+
+// 模态框管理
+const {
+  modifyModalRef,
+  auditHistoryModalRef,
+  batchImportModalRef,
+  openAuditHistoryModal,
+  handleModalConfirm,
+} = useModals();
+
+// 辅助函数：获取选中的行数据
+const getSelectedRows = () => {
+  return selectedRowKeys.value
+    .map((key: string | number) =>
+      dataSource.value.find((r: any) => r._rowKey === key),
+    )
+    .filter(Boolean);
+};
+
+// ==================== 费用合计计算 ====================
 
 /**
- * 获取完结状态
+ * 计算选中行的费用合计（按币别分组）
  */
-const loadFinishStatus = async () => {
-  if (!editId.value) return;
+const feeSummary = computed(() => {
+  if (!selectedRowKeys.value.length || !dataSource.value.length) {
+    return null;
+  }
 
-  loadingFinishStatus.value = true;
-  try {
-    const finished = await getIsFinishedAsync(editId.value);
-    isFinished.value = finished;
-    console.log('📊 [完结状态] 当前状态:', finished ? '已完结' : '未完结');
-  } catch (error) {
-    console.error('❌ [完结状态] 获取失败:', error);
-  } finally {
-    loadingFinishStatus.value = false;
+  const summaryMap: Record<string, number> = {};
+
+  selectedRowKeys.value.forEach((key: string | number) => {
+    const row: any = dataSource.value.find((r: any) => r._rowKey === key);
+    if (row && row.amount) {
+      // ✅ 优先使用已转换的币别标签，其次使用币别ID转换，最后使用原始值
+      let currencyLabel = '';
+
+      if (row.currencyId_label_converted && row.currencyId) {
+        // 已经转换为label的情况
+        currencyLabel = row.currencyId;
+      } else if (row.currencyId_value) {
+        // 有保存的原始ID值
+        currencyLabel =
+          getCurrencyLabel(row.currencyId_value) ||
+          String(row.currencyId_value);
+      } else if (row.currencyId) {
+        // 直接使用currencyId尝试转换
+        currencyLabel =
+          getCurrencyLabel(row.currencyId) || String(row.currencyId);
+      } else {
+        currencyLabel = '未知';
+      }
+
+      if (!summaryMap[currencyLabel]) {
+        summaryMap[currencyLabel] = 0;
+      }
+      summaryMap[currencyLabel] =
+        (summaryMap[currencyLabel] || 0) + (Number(row.amount) || 0);
+    }
+  });
+
+  // 转换为数组格式，便于渲染
+  return Object.entries(summaryMap)
+    .filter(([_, amount]) => amount !== 0) // 过滤掉金额为0的币别
+    .map(([currency, amount]) => ({
+      currency,
+      amount: amount.toFixed(2),
+    }));
+});
+
+// ==================== Composables ====================
+
+// ==================== 工具栏操作 ====================
+
+const ImportOther = async (e: any) => {
+  if (e.key === 'submit') {
+    actions.generateOppositeFees();
   }
 };
 
-/**
- * 切换完结/未完结状态
- */
-const toggleFinishStatus = async () => {
+const SubmittedOther = async (e: any) => {
+  switch (e.key) {
+    case 'modify':
+      actions.openModifyModal(modifyModalRef, orderBaseData);
+      break;
+    case 'delete':
+      actions.showDeleteWithRemark();
+      break;
+  }
+};
+
+const openBatchImportModal = async () => {
   if (!editId.value) {
     message.warning('请先保存业务信息');
     return;
   }
 
-  try {
-    const result = await changeIsUnfinishedAsync(editId.value);
-
-    // 切换成功后更新本地状态
-    isFinished.value = !isFinished.value;
-
-    message.success({
-      content: isFinished.value ? '已设置为已完结' : '已设置为未完结',
-      key: 'action_process_msg',
-    });
-
-    console.log(
-      '✅ [完结状态] 切换成功，当前状态:',
-      isFinished.value ? '已完结' : '未完结',
-    );
-  } catch (error) {
-    console.error('❌ [完结状态] 切换失败:', error);
-  }
-};
-
-// ==================== 打印功能 ====================
-
-const printing = ref(false);
-const { openPrint } = usePrintFormat();
-
-const handlePrint = async () => {
-  if (printing.value) return;
-
-  const selected = actions.getSelectedRows();
-  if (!selected.length) {
-    message.warning('请先勾选要打印的费用');
-    return;
-  }
-  if (selected.some((row) => !actions.isSavedOrderFee(row))) {
-    message.warning('请先保存费用后再打印');
+  const orderDetail = orderBaseData.value;
+  if (!orderDetail) {
+    message.warning('订单详情未加载');
     return;
   }
 
-  printing.value = true;
-  const hideLoading = message.loading('正在准备打印...', 0);
-  try {
-    const json = JSON.stringify(
-      selected.map((row) => {
-        const { _rowKey, ...fee } = row as OrderFeeAdminApi.OrderFeeDto & {
-          _rowKey?: string;
-        };
-        return fee;
-      }),
-    );
-    openPrint({
-      printJsonType:
-        props.type === 0
-          ? PrintJsonType.RecOrderFeeList
-          : PrintJsonType.PayOrderFeeList,
-      json,
-    });
-  } catch {
-    message.error('打印准备失败，请稍后重试');
-  } finally {
-    hideLoading();
-    printing.value = false;
-  }
+  batchImportModalRef.value?.modalApi.setData({
+    transportOrderId: editId.value,
+    paySide: props.type,
+    carrierId: orderDetail.carrierId,
+    polId: orderDetail.polId,
+    podId: orderDetail.podId,
+  });
+
+  batchImportModalRef.value?.modalApi.open();
 };
 
-// ==================== 下拉框数据源 ====================
-
-const dropdownSources = ref({
-  feeCodeList: [] as Array<{ label: string; value: any }>,
-  industryCategoryList: [] as Array<{ label: string; value: any }>,
-  currencyList: [] as Array<{ label: string; value: any }>,
-  unitList: [] as Array<{ label: string; value: any }>, // 单位列表
-});
-
-const initDropdownSources = async () => {
-  try {
-    const industryOptions = getIndustryCategoryOptions();
-    dropdownSources.value.industryCategoryList = industryOptions.map((opt) => ({
-      label: opt.label,
-      value: opt.key,
-    }));
-
-    const currencyOptions = getCurrencyEnumOptions().filter(
-      (opt) => opt.value !== 9999,
-    );
-    dropdownSources.value.currencyList = currencyOptions.map((opt) => ({
-      label: opt.label,
-      value: opt.value,
-    }));
-
-    console.log(
-      '✅ [initDropdownSources] 行业类别数据:',
-      dropdownSources.value.industryCategoryList.length,
-      '条',
-    );
-    console.log(
-      '✅ [initDropdownSources] 币种数据:',
-      dropdownSources.value.currencyList.length,
-      '条',
-    );
-  } catch (error) {
-    console.error('❌ [initDropdownSources] 初始化失败:', error);
-  }
+const handleBatchImportConfirm = () => {
+  getTableDate();
+  syncFee();
+  emit('refresh-opposite-table');
 };
 
-/**
- * 更新单位列表（根据订单箱型动态更新）
- */
-const updateUnitList = () => {
-  // 从 orderCtnList 获取箱型列表
-  const ctnUnits = orderCtnList.value.map((ctn) => ({
-    label: ctn.ctnCodeName,
-    value: ctn.ctnCodeName,
-  }));
-
-  // 添加固定单位选项
-  const fixedUnits = [
-    { label: '票', value: '票' },
-    { label: 'ORDER', value: 'ORDER' },
-    { label: '毛重', value: '毛重' },
-    { label: 'KGS', value: 'KGS' },
-    { label: '尺码', value: '尺码' },
-    { label: 'CBM', value: 'CBM' },
-    { label: '件数', value: '件数' },
-    { label: 'PKGS', value: 'PKGS' },
-    { label: 'TEU', value: 'TEU' },
-  ];
-
-  // 合并并去重
-  const allUnits = [...fixedUnits, ...ctnUnits];
-  const uniqueUnits = Array.from(
-    new Map(allUnits.map((item) => [item.value, item])).values(),
-  );
-
-  dropdownSources.value.unitList = uniqueUnits;
-  console.log('📏 [updateUnitList] 单位列表更新:', uniqueUnits.length, '条');
-};
-
-// ==================== 辅助函数 ====================
+// ==================== ID 到 Label 转换辅助函数 ====================
 
 /**
  * 根据费用代码ID获取显示标签
  */
 const getFeeCodeLabel = (feeCodeId: any): string => {
   if (!feeCodeId) return '';
-  const item = feeCodeList.value.find(
-    (f) => f.id === feeCodeId || String(f.id) === String(feeCodeId),
+  const item = dropdownSources.value.feeCodeList.find(
+    (f: any) => String(f.value) === String(feeCodeId),
   );
   if (!item) return '';
-  const surLabel = item.cnName || item.enName || '';
-  return item.code ? `${item.code}-${surLabel}` : surLabel;
+  return item.label || '';
 };
 
 /**
@@ -293,7 +325,7 @@ const getFeeCodeLabel = (feeCodeId: any): string => {
 const getIndustryCategoryLabel = (industryCategory: any): string => {
   if (!industryCategory) return '';
   const option = dropdownSources.value.industryCategoryList.find(
-    (opt) => opt.value === industryCategory,
+    (opt: any) => String(opt.value) === String(industryCategory),
   );
   return option?.label || '';
 };
@@ -303,1405 +335,143 @@ const getIndustryCategoryLabel = (industryCategory: any): string => {
  */
 const getCurrencyLabel = (currencyId: any): string => {
   if (!currencyId) return '';
-
-  // 确保类型一致进行比较
   const currencyIdStr = String(currencyId);
   const option = dropdownSources.value.currencyList.find(
-    (opt) => String(opt.value) === currencyIdStr,
-  );
-
-  console.log(
-    '🔍 [getCurrencyLabel] 查找币别:',
-    currencyId,
-    '→',
-    option?.label || '未找到',
+    (opt: any) => String(opt.value) === currencyIdStr,
   );
   return option?.label || '';
 };
 
 /**
- * 根据结算对象ID获取显示标签
+ * 根据单位值获取显示标签
  */
-const getSettlementLabel = (settlementId: any): string => {
-  if (!settlementId) return '';
-
-  // 首先尝试从所有数据行中查找已缓存的客户信息
-  for (const row of dataSource.value) {
-    const rowAny = row as any;
-    if (String(rowAny.settlementId) === String(settlementId)) {
-      // 如果该行有缓存的客户名称，优先使用
-      if (rowAny.__settlementName) {
-        return rowAny.__settlementName;
-      }
-    }
-  }
-
-  // 如果没有缓存，返回 ID（fallback）
-  return String(settlementId);
-};
-
-/**
- * 根据开票状态值获取显示标签
- */
-const getInvoiceStatusLabel = (invoiceStatus: any): string => {
-  if (invoiceStatus === undefined || invoiceStatus === null) return '';
-
-  const option = getInvoiceStatusOptions().find(
-    (opt) => opt.value === invoiceStatus,
+const getUnitLabel = (unit: any): string => {
+  if (!unit) return '';
+  const option = dropdownSources.value.unitList.find(
+    (opt: any) => opt.value === unit,
   );
-  return option?.label || String(invoiceStatus);
+  return option?.label || String(unit);
 };
 
 /**
- * 根据费用状态值获取显示标签
+ * 将数据源中的ID字段转换为Label显示
  */
-const getFeeStatusLabel = (feeStatus: any): string => {
-  if (feeStatus === undefined || feeStatus === null) return '';
-
-  const option = getFeeStatusOptions().find((opt) => opt.value === feeStatus);
-  return option?.label || String(feeStatus);
-};
-
-/**
- * 根据数据录入方式值获取显示标签
- */
-const getDataEntryMethodLabel = (dataEntryMethod: any): string => {
-  if (dataEntryMethod === undefined || dataEntryMethod === null) return '';
-
-  const option = getDataEntryMethodOptions().find(
-    (opt) => opt.value === dataEntryMethod,
-  );
-  return option?.label || String(dataEntryMethod);
-};
-
-/**
- * 格式化日期时间显示
- */
-const formatDateTime = (dateValue: any): string => {
-  if (!dateValue) return '';
-
-  try {
-    return dayjs(dateValue).format('YYYY-MM-DD HH:mm:ss');
-  } catch (error) {
-    console.warn('日期格式化失败:', error);
-    return String(dateValue);
-  }
-};
-
-/**
- * 从订单详情中提取结算对象名称（用于补充缺失的__settlementName）
- */
-const extractSettlementNameFromOrder = (settlementId: any): string | null => {
-  if (!settlementId || !orderBaseData.value) {
-    console.log('⚠️ [extractSettlementNameFromOrder] 缺少必要参数', {
-      settlementId,
-      hasOrderBaseData: !!orderBaseData.value,
-    });
-    return null;
-  }
-
-  const settlementIdStr = String(settlementId);
-  const orderDetail = orderBaseData.value;
-  const transportOrder = orderDetail.transportOrder;
-
-  console.log(
-    '🔍 [extractSettlementNameFromOrder] 查找结算对象:',
-    settlementIdStr,
-  );
-
-  // 委托单位（主要客户）
-  if (
-    transportOrder?.clientId &&
-    String(transportOrder.clientId) === settlementIdStr
-  ) {
-    const name = transportOrder.clientName || null;
-    console.log('✅ [extractSettlementNameFromOrder] 匹配委托单位:', name);
-    return name;
-  }
-
-  // 发货人
-  if (
-    transportOrder?.shipperId &&
-    String(transportOrder.shipperId) === settlementIdStr
-  ) {
-    try {
-      const shipperContent = JSON.parse(transportOrder.shipperContent || '{}');
-      const name = shipperContent.name || shipperContent.cnName || null;
-      console.log('✅ [extractSettlementNameFromOrder] 匹配发货人:', name);
-      return name;
-    } catch (e) {
-      console.warn('解析发货人信息失败:', e);
-    }
-  }
-
-  // 收货人
-  if (
-    transportOrder?.consigneeId &&
-    String(transportOrder.consigneeId) === settlementIdStr
-  ) {
-    try {
-      const consigneeContent = JSON.parse(
-        transportOrder.consigneeContent || '{}',
-      );
-      const name = consigneeContent.name || consigneeContent.cnName || null;
-      console.log('✅ [extractSettlementNameFromOrder] 匹配收货人:', name);
-      return name;
-    } catch (e) {
-      console.warn('解析收货人信息失败:', e);
-    }
-  }
-
-  // 通知人
-  if (
-    transportOrder?.notifierId &&
-    String(transportOrder.notifierId) === settlementIdStr
-  ) {
-    try {
-      const notifierContent = JSON.parse(
-        transportOrder.notifierContent || '{}',
-      );
-      const name = notifierContent.name || notifierContent.cnName || null;
-      console.log('✅ [extractSettlementNameFromOrder] 匹配通知人:', name);
-      return name;
-    } catch (e) {
-      console.warn('解析通知人信息失败:', e);
-    }
-  }
-
-  // 第二通知人
-  if (
-    orderDetail.secondNotifierId &&
-    String(orderDetail.secondNotifierId) === settlementIdStr
-  ) {
-    const name = orderDetail.secondNotifier?.name || null;
-    console.log('✅ [extractSettlementNameFromOrder] 匹配第二通知人:', name);
-    return name;
-  }
-
-  // 目的港代理
-  if (
-    orderDetail.podAgentId &&
-    String(orderDetail.podAgentId) === settlementIdStr
-  ) {
-    const name = orderDetail.podAgent?.name || null;
-    console.log('✅ [extractSettlementNameFromOrder] 匹配目的港代理:', name);
-    return name;
-  }
-
-  // 订舱代理
-  if (
-    orderDetail.bookingAgentId &&
-    String(orderDetail.bookingAgentId) === settlementIdStr
-  ) {
-    const name = orderDetail.bookingAgent?.name || null;
-    console.log('✅ [extractSettlementNameFromOrder] 匹配订舱代理:', name);
-    return name;
-  }
-
-  // 船代
-  if (
-    orderDetail.shipAgentId &&
-    String(orderDetail.shipAgentId) === settlementIdStr
-  ) {
-    const name = orderDetail.shipAgent?.name || null;
-    console.log('✅ [extractSettlementNameFromOrder] 匹配船代:', name);
-    return name;
-  }
-
-  // 场站
-  if (orderDetail.yardId && String(orderDetail.yardId) === settlementIdStr) {
-    const name = orderDetail.yard?.name || null;
-    console.log('✅ [extractSettlementNameFromOrder] 匹配场站:', name);
-    return name;
-  }
-
-  // 车队
-  if (
-    transportOrder?.teamId &&
-    String(transportOrder.teamId) === settlementIdStr
-  ) {
-    const name = transportOrder.teamName || null;
-    console.log('✅ [extractSettlementNameFromOrder] 匹配车队:', name);
-    return name;
-  }
-
-  // 报关行
-  if (
-    transportOrder?.custBrokerId &&
-    String(transportOrder.custBrokerId) === settlementIdStr
-  ) {
-    const name = transportOrder.custBrokerName || null;
-    console.log('✅ [extractSettlementNameFromOrder] 匹配报关行:', name);
-    return name;
-  }
-
-  // 仓库
-  if (
-    transportOrder?.warehouseId &&
-    String(transportOrder.warehouseId) === settlementIdStr
-  ) {
-    const name = transportOrder.warehouseName || null;
-    console.log('✅ [extractSettlementNameFromOrder] 匹配仓库:', name);
-    return name;
-  }
-
-  // 保险公司
-  if (
-    transportOrder?.insuranceId &&
-    String(transportOrder.insuranceId) === settlementIdStr
-  ) {
-    const name = transportOrder.insuranceName || null;
-    console.log('✅ [extractSettlementNameFromOrder] 匹配保险公司:', name);
-    return name;
-  }
-
-  console.warn(
-    '❌ [extractSettlementNameFromOrder] 未找到匹配的结算对象:',
-    settlementIdStr,
-  );
-  return null;
-};
-
-// ==================== 排序功能 ====================
-
-/**
- * 排序状态管理
- */
-const sortState = ref<{
-  field: string | null;
-  order: 'asc' | 'desc' | null;
-}>({
-  field: null,
-  order: null,
-});
-
-/**
- * 获取排序图标
- */
-const getSortIcon = (field: string) => {
-  if (sortState.value.field !== field) {
-    return '▼'; // 未排序状态
-  }
-
-  if (sortState.value.order === 'asc') {
-    return '▲'; // 升序
-  }
-
-  if (sortState.value.order === 'desc') {
-    return '▼'; // 降序
-  }
-
-  return '▼'; // 默认
-};
-
-/**
- * 可排序字段列表（计算属性）
- */
-const sortableFieldsSet = computed(
-  () =>
-    new Set([
-      'invoiceStatus',
-      'combinedFeeStatus',
-      'feeCodeId',
-      'industryCategory',
-      'settlementId',
-      'currencyId',
-      'exchangeRate',
-      'unitPrice',
-      'amount',
-      'unit',
-      'quantity',
-      'taxRate',
-      'noTaxUnitPrice',
-      'noTaxAmount',
-      'rqstPaymentAmount',
-      'invoicedAmount',
-      'orderInvoiceAmount',
-      'settledAmount',
-      'canInvoice',
-      'isConfidential',
-      'remark',
-      'dataEntryMethod',
-      'creatorUserName',
-      'creationTime',
-    ]),
-);
-
-/**
- * 处理列头点击排序
- */
-const handleColumnSort = (field: string) => {
-  if (!field) return;
-
-  let newOrder: 'asc' | 'desc' | null = 'asc';
-
-  // 如果当前列已经在排序，则切换顺序
-  if (sortState.value.field === field) {
-    if (sortState.value.order === 'asc') {
-      newOrder = 'desc';
-    } else if (sortState.value.order === 'desc') {
-      // 第三次点击取消排序
-      newOrder = null;
-    }
-  }
-
-  sortState.value = {
-    field: newOrder ? field : null,
-    order: newOrder,
-  };
-
-  // 执行排序
-  if (newOrder && field) {
-    sortDataSource(field, newOrder);
-  } else {
-    // 取消排序，恢复原始顺序
-    getTableDate();
-  }
-};
-
-/**
- * 对数据源进行排序
- */
-const sortDataSource = (field: string, order: 'asc' | 'desc') => {
+const convertIdsToLabels = () => {
   if (!dataSource.value || dataSource.value.length === 0) return;
 
-  const sorted = [...dataSource.value].sort((a: any, b: any) => {
-    let aValue = a[field];
-    let bValue = b[field];
+  let convertedCount = 0;
 
-    // 处理嵌套字段（如 task.creatorUserName）
-    if (field.includes('.')) {
-      const keys = field.split('.');
-      aValue = keys.reduce((obj: any, key: string) => obj?.[key], a);
-      bValue = keys.reduce((obj: any, key: string) => obj?.[key], b);
-    }
-
-    // 处理空值
-    if (aValue === null || aValue === undefined) aValue = '';
-    if (bValue === null || bValue === undefined) bValue = '';
-
-    // 数字类型排序
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return order === 'asc' ? aValue - bValue : bValue - aValue;
-    }
-
-    // 字符串类型排序
-    const aStr = String(aValue).toLowerCase();
-    const bStr = String(bValue).toLowerCase();
-
-    if (aStr < bStr) return order === 'asc' ? -1 : 1;
-    if (aStr > bStr) return order === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  dataSource.value = sorted;
-
-  console.log('📊 [排序] 字段:', field, '顺序:', order, '行数:', sorted.length);
-};
-
-/**
- * 转换vxe-table列配置为handsontable列配置
- */
-const hotColumns = computed(() => {
-  const vxeColumns = useOrderFeeColumns(props.type);
-
-  if (!vxeColumns || !Array.isArray(vxeColumns)) {
-    return [];
-  }
-
-  // ✅ 新增:在第一列添加复选框列
-  const checkboxColumn: any = {
-    data: '_isSelected', // 使用虚拟字段存储选中状态
-    title: '', // 表头由 afterGetColHeader 处理
-    width: 50,
-    type: 'text', // ✅ 修复：改为 text 类型，避免 Handsontable 默认 checkbox 行为
-    className: 'htCenter htMiddle', // 居中对齐
-    readOnly: true, // ✅ 设置为只读，防止 Handsontable 编辑
-    // ✅ 自定义渲染器:在数据行显示复选框
-    renderer: function (
-      this: any,
-      instance: any,
-      td: HTMLTableCellElement,
-      row: number,
-      col: number,
-      prop: string,
-      value: any,
-      cellProperties: any,
-    ) {
-      // 根据 selectedRowKeys 判断当前行是否应该被选中
-      const rowData = dataSource.value[row];
-      const rowKey = (rowData as any)?._rowKey;
-      const isSelected = rowKey && selectedRowKeys.value.includes(rowKey);
-
-      console.log(
-        '🔵 [checkbox renderer] 行:',
-        row,
-        'rowKey:',
-        rowKey,
-        'isSelected:',
-        isSelected,
-      );
-
-      // ✅ 手动创建复选框 DOM
-      td.innerHTML = '';
-      td.style.textAlign = 'center';
-      td.style.verticalAlign = 'middle';
-
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = !!isSelected;
-      checkbox.style.width = '16px';
-      checkbox.style.height = '16px';
-      checkbox.style.cursor = 'pointer';
-      checkbox.style.pointerEvents = 'none'; // ✅ 阻止复选框自身响应点击，由单元格事件处理
-
-      td.appendChild(checkbox);
-
-      return td;
-    },
-  };
-
-  // ✅ 新增:在第二列添加序号列
-  const indexColumn: any = {
-    data: null, // 不绑定到数据字段
-    title: '序号',
-    width: 60,
-    type: 'text',
-    className: 'htCenter htMiddle', // 居中对齐
-    readOnly: true, // 设置为只读
-    // ✅ 自定义渲染器:显示行号（从1开始）
-    renderer: function (
-      this: any,
-      instance: any,
-      td: HTMLTableCellElement,
-      row: number,
-      col: number,
-      prop: string,
-      value: any,
-      cellProperties: any,
-    ) {
-      td.innerHTML = `<span style="color: #262626;">${row + 1}</span>`;
-      td.style.textAlign = 'center';
-      td.style.verticalAlign = 'middle';
-      return td;
-    },
-  };
-
-  // 定义可排序的字段列表（参考 order-fee-table.vue）
-  const sortableFields = new Set([
-    'invoiceStatus',
-    'combinedFeeStatus',
-    'feeCodeId',
-    'industryCategory',
-    'settlementId',
-    'currencyId',
-    'exchangeRate',
-    'unitPrice',
-    'amount',
-    'unit',
-    'quantity',
-    'taxRate',
-    'noTaxUnitPrice',
-    'noTaxAmount',
-    'rqstPaymentAmount',
-    'invoicedAmount',
-    'orderInvoiceAmount',
-    'settledAmount',
-    'canInvoice',
-    'isConfidential',
-    'remark',
-    'dataEntryMethod',
-    'creatorUserName',
-    'creationTime',
-  ]);
-
-  // ✅ 将复选框列和序号列添加到最前面
-  const columns = [checkboxColumn, indexColumn];
-
-  // 映射原有列
-  const mappedColumns = vxeColumns.map((col) => {
-    const hotCol: any = {
-      data: col.field,
-      title: col.title,
-      width: col.width || col.minWidth || 100,
-    };
-
-    // 添加排序图标到标题（如果该字段可排序）
-    if (col.field && sortableFields.has(col.field)) {
-      const sortIcon = getSortIcon(col.field);
-      hotCol.title = `${col.title} ${sortIcon}`;
-    }
-
-    if (col.field === 'feeCodeId') {
-      hotCol.type = 'text';
-      hotCol.renderer = function (
-        this: any,
-        instance: any,
-        td: HTMLTableCellElement,
-        row: number,
-        col: number,
-        prop: string,
-        value: any,
-        cellProperties: any,
-      ) {
-        const label = getFeeCodeLabel(value);
-        td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-        return td;
-      };
-    } else if (col.field === 'industryCategory') {
-      hotCol.type = 'text';
-      hotCol.renderer = function (
-        this: any,
-        instance: any,
-        td: HTMLTableCellElement,
-        row: number,
-        col: number,
-        prop: string,
-        value: any,
-        cellProperties: any,
-      ) {
-        const label = getIndustryCategoryLabel(value);
-        td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-        return td;
-      };
-    } else if (col.field === 'settlementId') {
-      hotCol.type = 'text';
-      hotCol.renderer = function (
-        this: any,
-        instance: any,
-        td: HTMLTableCellElement,
-        row: number,
-        col: number,
-        prop: string,
-        value: any,
-        cellProperties: any,
-      ) {
-        // ✅ 直接从当前行数据源中获取 __settlementName
-        const rowData = dataSource.value[row];
-        const settlementName =
-          (rowData as any)?.settlementName ||
-          (rowData as any)?.__settlementName;
-
-        let label = '';
-        if (settlementName) {
-          label = settlementName;
-          console.log('🎨 [settlementId renderer] 行', row, '显示名称:', label);
-        } else if (value) {
-          // fallback：如果没有缓存，显示 ID
-          label = String(value);
-          console.warn(
-            '⚠️ [settlementId renderer] 行',
-            row,
-            '无__settlementName，显示ID:',
-            label,
-          );
-        }
-
-        td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-        return td;
-      };
-    } else if (col.field === 'currencyId') {
-      hotCol.type = 'text';
-      hotCol.renderer = function (
-        this: any,
-        instance: any,
-        td: HTMLTableCellElement,
-        row: number,
-        col: number,
-        prop: string,
-        value: any,
-        cellProperties: any,
-      ) {
-        const label = getCurrencyLabel(value);
-        console.log(
-          '🎨 [currencyId renderer] 行',
-          row,
-          '币别ID:',
-          value,
-          '→ 显示:',
-          label || '请选择',
-        );
-        td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-        return td;
-      };
-    } else if (col.field === 'invoiceStatus') {
-      // 开票状态 - 显示中文标签（只读）
-      hotCol.type = 'text';
-      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
-      hotCol.renderer = function (
-        this: any,
-        instance: any,
-        td: HTMLTableCellElement,
-        row: number,
-        col: number,
-        prop: string,
-        value: any,
-        cellProperties: any,
-      ) {
-        const label = getInvoiceStatusLabel(value);
-        td.innerHTML = `<span style="color: #262626;">${label || ''}</span>`;
-        return td;
-      };
-    } else if (col.field === 'combinedFeeStatus' || col.field === 'feeStatus') {
-      // 费用状态 - 显示中文标签(只读),支持修改次数显示和双击事件
-      hotCol.type = 'text';
-      hotCol.readOnly = true; // ✅ 设置为只读,不允许修改
-      hotCol.renderer = function (
-        this: any,
-        instance: any,
-        td: HTMLTableCellElement,
-        row: number,
-        col: number,
-        prop: string,
-        value: any,
-        cellProperties: any,
-      ) {
-        const rowData = dataSource.value[row] as any;
-        const label = getFeeStatusLabel(value);
-
-        // 兼容多种大小写的 ModificationCount 字段名
-        const modificationCount =
-          rowData?.ModificationCount ??
-          rowData?.modificationCount ??
-          rowData?.MODIFICATIONCOUNT ??
-          0;
-
-        // 如果有修改次数,显示 "状态 +N" 格式
-        if (modificationCount && modificationCount > 0) {
-          td.innerHTML = '';
-          td.style.display = 'inline-flex';
-          td.style.alignItems = 'center';
-          td.style.cursor = 'pointer';
-          td.title = `双击查看审核历史(共 ${modificationCount} 次修改)`;
-
-          // 创建状态标签容器
-          const statusSpan = document.createElement('span');
-          statusSpan.textContent = label || '';
-          statusSpan.style.color = '#262626';
-          statusSpan.style.marginRight = '0';
-          td.appendChild(statusSpan);
-
-          // 创建 +N 标记
-          const countSpan = document.createElement('span');
-          countSpan.textContent = `+${modificationCount}`;
-          countSpan.style.color = '#ff4d4f'; // 红色
-          countSpan.style.fontWeight = 'bold'; // 加粗
-          countSpan.style.marginLeft = '4px';
-          countSpan.style.cursor = 'pointer';
-          countSpan.title = `点击查看 ${modificationCount} 次修改记录`;
-          td.appendChild(countSpan);
-        } else {
-          // 否则只显示状态标签
-          td.innerHTML = `<span style="color: #262626; cursor: pointer;" title="双击查看审核历史">${label || ''}</span>`;
-        }
-
-        return td;
-      };
-    } else if (col.field === 'creationTime' || col.field === 'task.auditTime') {
-      // 录入时间和审核时间 - 格式化日期显示（只读）
-      hotCol.type = 'text';
-      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
-      hotCol.renderer = function (
-        this: any,
-        instance: any,
-        td: HTMLTableCellElement,
-        row: number,
-        col: number,
-        prop: string,
-        value: any,
-        cellProperties: any,
-      ) {
-        const formattedDate = formatDateTime(value);
-        td.innerHTML = `<span style="color: #262626;">${formattedDate}</span>`;
-        return td;
-      };
-    } else if (col.field === 'dataEntryMethod') {
-      // 数据录入方式 - 显示中文标签（只读）
-      hotCol.type = 'text';
-      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
-      hotCol.renderer = function (
-        this: any,
-        instance: any,
-        td: HTMLTableCellElement,
-        row: number,
-        col: number,
-        prop: string,
-        value: any,
-        cellProperties: any,
-      ) {
-        const label = getDataEntryMethodLabel(value);
-        td.innerHTML = `<span style="color: #262626;">${label || ''}</span>`;
-        return td;
-      };
-    } else if (
-      ['exchangeRate', 'unitPrice', 'amount', 'quantity', 'taxRate'].includes(
-        col.field || '',
-      )
-    ) {
-      hotCol.type = 'numeric';
-      hotCol.numericFormat = {
-        pattern: '0.00',
-        culture: 'en-US',
-      };
-    } else if (col.field === 'canInvoice' || col.field === 'isConfidential') {
-      hotCol.type = 'checkbox';
-    } else if (
-      [
-        'noTaxUnitPrice',
-        'noTaxAmount',
-        'rqstPaymentAmount',
-        'invoicedAmount',
-        'orderInvoiceAmount',
-        'settledAmount',
-      ].includes(col.field || '')
-    ) {
-      // ✅ 不含税单价、不含税金额、申请付款金额、已开票金额、开票申请金额、已结算金额 - 设置为只读
-      hotCol.type = 'numeric';
-      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
-      hotCol.numericFormat = {
-        pattern: '0.00',
-        culture: 'en-US',
-      };
-    } else if (col.field === 'creatorUserName') {
-      // ✅ 录入人 - 设置为只读
-      hotCol.type = 'text';
-      hotCol.readOnly = true; // ✅ 设置为只读，不允许修改
-    } else {
-      hotCol.type = 'text';
-    }
-
-    return hotCol;
-  });
-
-  return columns.concat(mappedColumns);
-});
-
-// ==================== Handsontable 设置 ====================
-
-const hotSettings = computed(() => ({
-  data: dataSource.value,
-  columns: hotColumns.value,
-  rowHeaders: false, // ✅ 隐藏默认行头,使用自定义复选框列
-  colHeaders: true,
-  height: 520, // ✅ 修复:减小高度以留出滚动条空间(原600)
-  licenseKey: 'non-commercial-and-evaluation',
-  contextMenu: true,
-  manualColumnResize: true,
-  manualRowMove: false,
-  stretchH: 'all',
-  autoWrapRow: true,
-  autoWrapCol: true,
-  // ✅ 新增：行渲染器 - 根据费用状态设置行背景色
-  // ✅ 新增：在渲染后设置行背景色 - 根据费用状态
-  afterRenderer: function (
-    this: any,
-    td: HTMLTableCellElement,
-    row: number,
-    col: number,
-    prop: string,
-    value: any,
-    cellProperties: any,
-  ) {
-    const rowData = dataSource.value[row];
-
-    if (rowData) {
-      // 获取费用状态（优先使用 combinedFeeStatus，其次使用 feeStatus）
-      const feeStatus =
-        (rowData as any).combinedFeeStatus ?? (rowData as any).feeStatus;
-
-      if (feeStatus !== undefined && feeStatus !== null) {
-        // 根据费用状态设置背景色
-        const statusOptions = getFeeStatusOptions();
-        const statusOption = statusOptions.find(
-          (opt) => opt.value === feeStatus,
-        );
-
-        if (statusOption?.color) {
-          // ✅ 使用 !important 确保背景色不被内联样式覆盖
-          td.style.setProperty(
-            'background-color',
-            statusOption.color + '30',
-            'important',
-          );
-        }
-      }
-    }
-  },
-  // ✅ 添加 afterGetColHeader 事件来处理全选复选框
-  afterGetColHeader: (col: number, TH: HTMLTableCellElement) => {
-    console.log('🔵 [afterGetColHeader] col:', col, 'TH:', TH);
-
-    // 只在第一列（复选框列）的表头添加全选功能
-    if (col === 0) {
-      // 先清空表头内容
-      TH.innerHTML = '';
-
-      // 创建复选框容器
-      const container = document.createElement('div');
-      container.style.display = 'flex';
-      container.style.alignItems = 'center';
-      container.style.justifyContent = 'center';
-      container.style.height = '100%';
-
-      // 创建全选复选框
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.className = 'select-all-checkbox';
-      checkbox.style.width = '16px';
-      checkbox.style.height = '16px';
-      checkbox.style.cursor = 'pointer';
-
-      // 设置初始状态
-      const allSelected =
-        selectedRowKeys.value.length > 0 &&
-        selectedRowKeys.value.length === dataSource.value.length;
-      checkbox.checked = allSelected;
-
-      container.appendChild(checkbox);
-      TH.appendChild(container);
-
-      console.log('✅ [afterGetColHeader] 已添加全选复选框');
-
-      // 添加点击事件
-      checkbox.onclick = (e) => {
-        e.stopPropagation();
-        const isChecked = checkbox.checked;
-
-        if (isChecked) {
-          // 全选
-          selectedRowKeys.value = dataSource.value.map(
-            (row: any) => row._rowKey,
-          );
-        } else {
-          // 取消全选
-          selectedRowKeys.value = [];
-        }
-
-        console.log('✅ [全选] 当前选中:', selectedRowKeys.value.length, '行');
-
-        // 刷新表格以更新所有行的复选框状态
-        nextTick(() => {
-          if (coreTableRef.value?.hotTableRef?.hotInstance) {
-            coreTableRef.value.hotTableRef.hotInstance.render();
-          }
-        });
-      };
-    }
-  },
-  afterSelection: (
-    row: number,
-    column: number,
-    row2: number,
-    column2: number,
-  ) => {
-    // ✅ 修复：移除 afterSelection 中的选中逻辑，避免与复选框冲突
-    // 不再在这里更新 selectedRowKeys，只通过复选框来控制选中状态
-    console.log('ℹ️ [afterSelection] 跳过选中逻辑，仅由复选框控制');
-  },
-  afterChange: (changes: any, source: string) => {
-    // 调用联动逻辑处理
-    if (coreTableRef.value?.hotTableRef?.hotInstance) {
-      linkage.handleAfterChange(
-        changes,
-        source,
-        coreTableRef.value.hotTableRef.hotInstance,
-      );
-    }
-
-    // 同步费用
-    if (source !== 'loadData') {
-      syncFee();
-    }
-  },
-  afterOnCellMouseDown: (
-    event: MouseEvent,
-    coords: any,
-    td: HTMLTableCellElement,
-  ) => {
-    const columnIndex = coords.col;
-    const rowIndex = coords.row;
-
-    console.log('🔵 [afterOnCellMouseDown] 点击事件', {
-      rowIndex,
-      columnIndex,
-      detail: event.detail, // ✅ 用于判断单击还是双击
-    });
-
-    // ✅ 处理双击事件 - 当双击费用状态列时打开审核历史弹窗
-    if (event.detail === 2 && rowIndex >= 0 && columnIndex >= 0) {
-      console.log('🖱️ [afterOnCellMouseDown] 检测到双击事件');
-
-      const columnConfig = hotColumns.value[columnIndex];
-      if (!columnConfig) {
-        console.warn('⚠️ [afterOnCellMouseDown] 未找到列配置');
-        return;
-      }
-
-      const field = columnConfig.data;
-      console.log('🔵 [afterOnCellMouseDown] 双击字段:', field);
-
-      // 检查是否是费用状态列
-      if (field === 'combinedFeeStatus' || field === 'feeStatus') {
-        console.log(
-          '✅ [afterOnCellMouseDown] 双击费用状态列，准备打开审核历史弹窗',
-        );
-
-        // 获取当前行数据
-        const rowData = dataSource.value[rowIndex];
-        if (!rowData) {
-          console.warn('⚠️ [afterOnCellMouseDown] 行数据为空');
-          return;
-        }
-
-        console.log('📋 [afterOnCellMouseDown] 行数据:', {
-          id: rowData.id,
-          feeStatus: rowData.feeStatus,
-          combinedFeeStatus: rowData.combinedFeeStatus,
-          ModificationCount: rowData.ModificationCount,
-        });
-
-        // 打开审核历史弹窗
-        openAuditHistoryModal(rowData as OrderFeeAdminApi.OrderFeeDto);
-        return; // ✅ 双击事件处理完毕，不再执行后续逻辑
-      } else {
-        console.log(
-          '❌ [afterOnCellMouseDown] 非费用状态列，不执行操作',
-          field,
-        );
+  dataSource.value.forEach((row: any, rowIndex: number) => {
+    // 费用代码ID -> label
+    if (row.feeCodeId && !row.feeCodeId_label_converted) {
+      const label = getFeeCodeLabel(row.feeCodeId);
+      if (label) {
+        row.feeCodeId_value = row.feeCodeId;
+        row.feeCodeId = label;
+        row.feeCodeId_label_converted = true;
+        convertedCount++;
       }
     }
 
-    // ✅ 处理复选框列的点击（第一列，索引0）
-    if (columnIndex === 0 && rowIndex >= 0) {
-      console.log('✅ [afterOnCellMouseDown] 点击复选框列');
-
-      // ✅ 阻止事件冒泡和默认行为，防止 Handsontable 的默认选中逻辑
-      event.stopPropagation();
-      event.preventDefault();
-
-      const rowData = dataSource.value[rowIndex];
-      const rowKey = (rowData as any)?._rowKey;
-
-      if (!rowKey) {
-        console.warn('⚠️ [afterOnCellMouseDown] 行数据缺少 _rowKey');
-        return;
-      }
-
-      // ✅ 根据当前选中状态切换
-      const isCurrentlySelected = selectedRowKeys.value.includes(rowKey);
-
-      if (isCurrentlySelected) {
-        // 从选中列表移除
-        const index = selectedRowKeys.value.indexOf(rowKey);
-        if (index > -1) {
-          selectedRowKeys.value.splice(index, 1);
-        }
-        console.log(
-          '✅ [复选框] 取消选中，当前选中:',
-          selectedRowKeys.value.length,
-          '行',
-        );
-      } else {
-        // 添加到选中列表
-        selectedRowKeys.value.push(rowKey);
-        console.log(
-          '✅ [复选框] 选中，当前选中:',
-          selectedRowKeys.value.length,
-          '行',
-        );
-      }
-
-      // ✅ 刷新表格以更新复选框状态
-      nextTick(() => {
-        if (coreTableRef.value?.hotTableRef?.hotInstance) {
-          coreTableRef.value.hotTableRef.hotInstance.render();
-        }
-      });
-
-      return;
-    }
-
-    // ✅ 跳过序号列（第二列，索引1），不触发任何操作
-    if (columnIndex === 1) {
-      console.log('ℹ️ [afterOnCellMouseDown] 点击序号列，跳过');
-      return;
-    }
-
-    // 处理表头点击（排序）
-    if (rowIndex === -1 && columnIndex >= 0) {
-      console.log('✅ [afterOnCellMouseDown] 检测到表头点击');
-
-      const columnConfig = hotColumns.value[columnIndex];
-      if (!columnConfig || !columnConfig.data) {
-        console.warn('⚠️ [afterOnCellMouseDown] 未找到列配置');
-        return;
-      }
-
-      const field = columnConfig.data;
-      console.log('✅ [afterOnCellMouseDown] 字段:', field);
-
-      // 检查该字段是否可排序
-      if (!sortableFieldsSet.value.has(field)) {
-        console.log('⚠️ [afterOnCellMouseDown] 字段不可排序:', field);
-        return;
-      }
-
-      console.log('🎯 [afterOnCellMouseDown] 触发排序');
-
-      // 阻止默认行为
-      event.preventDefault();
-      event.stopPropagation();
-
-      // 触发排序
-      handleColumnSort(field);
-      return;
-    }
-
-    // 处理数据行点击（跳过行头）
-    if (rowIndex < 0 || columnIndex < 0) {
-      console.log('⚠️ [afterOnCellMouseDown] 跳过非数据单元格');
-      return;
-    }
-
-    const columnConfig = hotColumns.value[columnIndex];
-    if (!columnConfig) return;
-
-    const field = columnConfig.data;
-    console.log('🔵 [afterOnCellMouseDown] 单元格点击', {
-      field,
-      rowIndex,
-      columnIndex,
-    });
-
-    // 对特定字段显示 Ant Design Vue Select
+    // 行业类别ID -> label
     if (
-      [
-        'feeCodeId',
-        'industryCategory',
-        'settlementId',
-        'currencyId',
-        'unit',
-      ].includes(field)
+      row.industryCategory !== undefined &&
+      row.industryCategory !== null &&
+      !row.industryCategory_label_converted
     ) {
-      console.log('✅ [afterOnCellMouseDown] 触发下拉', field);
-      event.preventDefault();
-      event.stopPropagation();
-
-      // 调用核心组件的方法
-      if (coreTableRef.value) {
-        console.log('🔄 [afterOnCellMouseDown] 调用 showAntdSelect');
-        (coreTableRef.value as any).showAntdSelect(event, td, rowIndex, field);
-      } else {
-        console.error('❌ [afterOnCellMouseDown] coreTableRef 不存在');
+      const label = getIndustryCategoryLabel(row.industryCategory);
+      if (label) {
+        row.industryCategory_value = row.industryCategory;
+        row.industryCategory = label;
+        row.industryCategory_label_converted = true;
+        convertedCount++;
       }
     }
-  },
-  observeDOMVisibility: true,
-}));
 
-// ==================== 模态框引用 ====================
-
-const modifyModalRef = ref<InstanceType<typeof OrderFeeEditorModal>>();
-const auditHistoryModalRef =
-  ref<InstanceType<typeof OrderFeeAuditHistoryModal>>();
-const batchImportModalRef = ref<InstanceType<typeof BatchImportFeeModal>>();
-const coreTableRef = ref<InstanceType<typeof OrderFeeTableCore>>();
-
-// ==================== 批量导入 ====================
-
-const openBatchImportModal = async () => {
-  console.log('🔍 [openBatchImportModal] 检查 editId:', editId.value);
-
-  if (!editId.value) {
-    console.warn('⚠️ [openBatchImportModal] editId 为空');
-    message.warning('请先保存业务信息');
-    return;
-  }
-
-  try {
-    const orderDetail = orderBaseData.value;
-
-    if (!orderDetail) {
-      message.warning('订单详情未加载');
-      return;
+    // 币别ID -> label
+    if (row.currencyId && !row.currencyId_label_converted) {
+      const label = getCurrencyLabel(row.currencyId);
+      if (label) {
+        row.currencyId_value = row.currencyId;
+        row.currencyId = label;
+        row.currencyId_label_converted = true;
+        convertedCount++;
+      }
     }
 
-    batchImportModalRef.value?.modalApi.setData({
-      transportOrderId: editId.value,
-      paySide: props.type,
-      carrierId: orderDetail?.carrierId,
-      polId: orderDetail?.polId,
-      podId: orderDetail?.podId,
-    });
-
-    batchImportModalRef.value?.modalApi.open();
-  } catch (error) {
-    console.error('❌ [openBatchImportModal] 获取订单详情失败:', error);
-    const errorMsg = error instanceof Error ? error.message : '请稍后重试';
-    message.error(`获取订单详情失败: ${errorMsg}`);
-  }
-};
-
-const handleBatchImportConfirm = () => {
-  getTableDate();
-  syncFee();
-  emit('refresh-opposite-table');
-};
-
-// ==================== 审核历史 ====================
-
-const openAuditHistoryModal = (row: OrderFeeAdminApi.OrderFeeDto) => {
-  if (!row) return;
-  auditHistoryModalRef.value?.modalApi.setData(row);
-  auditHistoryModalRef.value?.modalApi.open();
-};
-
-// ==================== 工具栏操作 ====================
-
-const ImportOther = async (e: any) => {
-  switch (e.key) {
-    case 'submit': {
-      actions.generateOppositeFees();
-      break;
+    // 单位 -> label
+    if (row.unit && !row.unit_label_converted) {
+      const label = getUnitLabel(row.unit);
+      if (label) {
+        row.unit_value = row.unit;
+        row.unit = label;
+        row.unit_label_converted = true;
+        convertedCount++;
+      }
     }
-  }
-};
 
-const SubmittedOther = async (e: any) => {
-  switch (e.key) {
-    case 'modify': {
-      actions.openModifyModal(modifyModalRef, orderBaseData);
-      break;
+    // 结算对象ID -> label
+    if (row.settlementId && !row.settlementId_label_converted) {
+      const label = row.settlementName;
+      if (label) {
+        //row.settlementId_value = row.settlementId;
+        row.settlementId = label;
+        row.settlementId_label_converted = true;
+        convertedCount++;
+      }
     }
-    case 'delete': {
-      actions.showDeleteWithRemark();
-      break;
-    }
-  }
-};
+  });
 
-const handleModalConfirm = (data: {
-  originalData: OrderFeeAdminApi.OrderFeeDto | null;
-  updatedData: OrderFeeAdminApi.OrderFeeDto | null;
-}) => {
-  actions.handleModalConfirm(data);
-};
-
-// ==================== 费用代码列表 ====================
-
-const feeCodeList = ref<FeeCodeAdminApi.FeeCodeDto[]>([]);
-
-const getFeeCodeList = async () => {
-  try {
-    let res =
-      (await getFeeCodePagedList({ PageIndex: 1, PageSize: 1000 })) || {};
-    feeCodeList.value = res.items || [];
-
-    dropdownSources.value.feeCodeList = feeCodeList.value.map((item) => {
-      const surLabel = item.cnName || item.enName || '';
-      const label = item.code ? `${item.code}-${surLabel}` : surLabel;
-      return {
-        label: label || item.cnName || item.enName || item.code || '',
-        value: item.id,
-      };
-    });
-
+  if (convertedCount > 0) {
     console.log(
-      '✅ [getFeeCodeList] 费用代码列表加载完成:',
-      dropdownSources.value.feeCodeList.length,
-      '条',
+      `✅ [convertIdsToLabels] 转换完成，共转换 ${convertedCount} 个字段`,
     );
-  } catch (error) {
-    console.error('❌ [getFeeCodeList] 加载失败:', error);
   }
 };
-
-watch(
-  () => feeCodeList.value,
-  (newList) => {
-    if (newList && newList.length > 0) {
-      dropdownSources.value.feeCodeList = newList.map((item) => {
-        const surLabel = item.cnName || item.enName || '';
-        const label = item.code ? `${item.code}-${surLabel}` : surLabel;
-        return {
-          label: label || item.cnName || item.enName || item.code || '',
-          value: item.id,
-        };
-      });
-    }
-  },
-  { deep: true },
-);
 
 // ==================== 生命周期 ====================
 
 onMounted(async () => {
   initOrderFeeEnumCache();
   await initDropdownSources();
+  await getFeeCodeList();
+  await loadAllClients(); // ✅ 新增：一次性加载全部客户数据到缓存
   getTableDate();
-  getFeeCodeList();
-
-  // 加载完结状态
   loadFinishStatus();
 });
 
-// 监听 orderCtnList 变化，更新单位列表
+// 监听器
 watch(
   () => orderCtnList.value,
-  () => {
-    updateUnitList();
-  },
+  () => updateUnitList(),
   { deep: true },
 );
 
-// ✅ 新增：监听 orderBaseData 变化，重新填充结算对象名称
-watch(
-  () => orderBaseData.value,
-  (newOrderDetail) => {
-    if (!newOrderDetail || !dataSource.value.length) {
-      console.log('⚠️ [watch orderBaseData] 跳过填充，条件不满足', {
-        hasOrderDetail: !!newOrderDetail,
-        dataSourceLength: dataSource.value.length,
-      });
-      return;
-    }
-
-    console.log('🔄 [watch orderBaseData] 订单详情变化，重新填充结算对象名称');
-
-    let updatedCount = 0;
-    // 为现有数据补充结算对象名称
-    const enrichedData = dataSource.value.map((row: any) => {
-      if (row.settlementId && !row.__settlementName) {
-        const settlementName = extractSettlementNameFromOrder(row.settlementId);
-        if (settlementName) {
-          row.__settlementName = settlementName;
-          updatedCount++;
-          console.log(
-            '✅ [watch orderBaseData] 补充结算对象名称:',
-            settlementName,
-          );
-        }
-      }
-      return row;
-    });
-
-    console.log(
-      '📊 [watch orderBaseData] 更新了',
-      updatedCount,
-      '行数据的结算对象名称',
-    );
-
-    // 只有在有更新时才刷新表格
-    if (updatedCount > 0) {
-      dataSource.value = enrichedData;
-
-      // 等待 Vue 更新后再刷新 Handsontable
-      nextTick(() => {
-        if (coreTableRef.value?.hotTableRef?.hotInstance) {
-          console.log(
-            '🔄 [watch orderBaseData] 调用 hotInstance.loadData 刷新表格',
-          );
-          coreTableRef.value.hotTableRef.hotInstance.loadData(enrichedData);
-
-          nextTick(() => {
-            coreTableRef.value?.hotTableRef?.hotInstance?.render();
-            console.log('✅ [watch orderBaseData] 表格刷新完成');
-          });
-        }
-      });
-    }
-  },
-  { deep: true },
-);
-
-// 监听 dataSource 变化，同步到 Handsontable
 watch(
   () => dataSource.value,
   (newData) => {
-    console.log(
-      '📊 [watch dataSource] 数据源变化，行数:',
-      newData?.length || 0,
-    );
+    // ✅ 关键修复：在更新 hotSettings 之前，先将ID转换为Label
+    convertIdsToLabels();
 
+    hotSettings.value.data = newData;
     nextTick(() => {
       if (coreTableRef.value?.hotTableRef?.hotInstance) {
-        console.log('🔄 [watch dataSource] 调用 hotInstance.loadData');
-
-        // ✅ 关键修复：在 loadData 之前，确保所有行都有 __settlementName
-        const enrichedData = (newData || []).map((row: any) => {
-          if (row.settlementId && !row.__settlementName) {
-            console.log(
-              '⚠️ [watch dataSource] 发现缺失 __settlementName 的行，尝试补充',
-              {
-                settlementId: row.settlementId,
-                hasOrderBaseData: !!orderBaseData.value,
-              },
-            );
-
-            // 策略1：尝试从 orderBaseData 中提取结算对象名称
-            const settlementName = extractSettlementNameFromOrder(
-              row.settlementId,
-            );
-            if (settlementName) {
-              row.__settlementName = settlementName;
-              console.log(
-                '✅ [watch dataSource] 成功补充结算对象名称:',
-                settlementName,
-              );
-            } else {
-              // 策略2：降级 - 尝试从已加载的其他行中查找缓存的名称
-              for (const existingRow of dataSource.value) {
-                const existingRowAny = existingRow as any;
-                if (
-                  String(existingRowAny.settlementId) ===
-                    String(row.settlementId) &&
-                  existingRowAny.__settlementName
-                ) {
-                  row.__settlementName = existingRowAny.__settlementName;
-                  console.log(
-                    '✅ [watch dataSource] 从其他行缓存中获取结算对象名称:',
-                    existingRowAny.__settlementName,
-                  );
-                  break;
-                }
-              }
-            }
-          }
-          return row;
-        });
-
-        console.log(
-          '📦 [watch dataSource] 准备加载数据， enrichedData 行数:',
-          enrichedData.length,
-        );
-        coreTableRef.value.hotTableRef.hotInstance.loadData(enrichedData);
-
-        // ✅ 额外渲染一次确保视图更新
+        coreTableRef.value.hotTableRef.hotInstance.loadData(newData);
         nextTick(() => {
           coreTableRef.value?.hotTableRef?.hotInstance?.render();
-          console.log('✅ [watch dataSource] 表格渲染完成');
         });
-      } else {
-        console.warn('⚠️ [watch dataSource] hotInstance 不存在');
       }
     });
   },
   { deep: true },
 );
 
-// ✅ 新增：监听 selectedRowKeys 变化，刷新表格以更新复选框状态
 watch(
-  () => selectedRowKeys.value,
-  () => {
-    console.log(
-      '🔵 [watch selectedRowKeys] 选中状态变化:',
-      selectedRowKeys.value.length,
-      '行',
-    );
-
+  () => hotColumns.value,
+  (newColumns) => {
+    hotSettings.value.columns = newColumns;
     nextTick(() => {
       if (coreTableRef.value?.hotTableRef?.hotInstance) {
-        // 重新渲染表格以更新复选框状态
         coreTableRef.value.hotTableRef.hotInstance.render();
       }
     });
@@ -1709,26 +479,32 @@ watch(
   { deep: true },
 );
 
-// 监听 editId 变化，重新加载完结状态
+watch(
+  () => selectedRowKeys.value,
+  () => {
+    nextTick(() => {
+      if (coreTableRef.value?.hotTableRef?.hotInstance) {
+        coreTableRef.value.hotTableRef.hotInstance.render();
+      }
+    });
+  },
+  { deep: true },
+);
+
 watch(
   () => editId.value,
   async (newEditId, oldEditId) => {
-    // 只在 editId 真正变化时才重新加载（排除初始化）
     if (newEditId && newEditId !== oldEditId) {
-      // 重新加载完结状态
       loadFinishStatus();
     }
   },
 );
 
-defineExpose({
-  getTableDate,
-});
+defineExpose({ getTableDate });
 </script>
 
 <template>
   <Card class="order-fee-card">
-    <!-- 右上角完结状态图片 -->
     <div v-if="!isFinished" class="finish-status-badge" title="业务未完结">
       <img
         v-show="type === 0"
@@ -1739,124 +515,137 @@ defineExpose({
     </div>
 
     <div class="px-1">
-      <div>
-        <div class="order-ctn-table">
-          <div class="handsontable-container">
-            <div class="table-header">
-              <span class="table-title">
-                {{
-                  type === 0
-                    ? $t('seaExport.export.orderFee.receivableCharges')
-                    : $t('seaExport.export.orderFee.payableCharges')
-                }}
-              </span>
-              <Space class="toolbar-actions">
-                <Button type="primary" @click="actions.addRow">
-                  {{ $t('common.create') }}
-                </Button>
-                <Button
-                  type="primary"
-                  @click="actions.saveRow"
-                  v-show="props.mode !== 'changeOrder'"
-                >
-                  {{ $t('common.save') }}
-                </Button>
-                <Button
-                  v-show="props.mode !== 'changeOrder'"
-                  :loading="printing"
-                  @click="handlePrint"
-                >
-                  <IconifyIcon
-                    icon="mdi:printer-outline"
-                    class="mr-1 inline-block size-3.5 align-middle"
-                  />
-                  打印
-                </Button>
-                <Button
-                  danger
-                  :disabled="!selectedRowKeys.length"
-                  @click="actions.removeSelectedRows"
-                >
-                  {{ $t('common.delete') }}
-                </Button>
+      <div class="order-ctn-table">
+        <div class="handsontable-container">
+          <div class="table-header">
+            <span class="table-title">
+              {{
+                type === 0
+                  ? $t('seaExport.export.orderFee.receivableCharges')
+                  : $t('seaExport.export.orderFee.payableCharges')
+              }}
+            </span>
+            <Space class="toolbar-actions">
+              <Button type="primary" @click="actions.addRow">{{
+                $t('common.create')
+              }}</Button>
+              <Button
+                type="primary"
+                @click="actions.saveRow"
+                v-show="props.mode !== 'changeOrder'"
+              >
+                {{ $t('common.save') }}
+              </Button>
+              <Button
+                v-show="props.mode !== 'changeOrder'"
+                :loading="printing"
+                @click="
+                  handlePrint(getSelectedRows(), type, actions.isSavedOrderFee)
+                "
+              >
+                <IconifyIcon
+                  icon="mdi:printer-outline"
+                  class="mr-1 inline-block size-3.5 align-middle"
+                />
+                打印
+              </Button>
+              <Button
+                danger
+                :disabled="!selectedRowKeys.length"
+                @click="actions.removeSelectedRows"
+              >
+                {{ $t('common.delete') }}
+              </Button>
 
-                <DropdownButton @click="openBatchImportModal" type="primary">
-                  {{ $t('seaExport.export.orderFee.batchImport') }}
-                  <template #overlay>
-                    <Menu @click="ImportOther">
-                      <MenuItem key="submit">
-                        {{ type === 0 ? '应收生成应付' : '应付生成应收' }}
-                      </MenuItem>
-                    </Menu>
-                  </template>
-                </DropdownButton>
+              <DropdownButton @click="openBatchImportModal" type="primary">
+                {{ $t('seaExport.export.orderFee.batchImport') }}
+                <template #overlay>
+                  <Menu @click="ImportOther">
+                    <MenuItem key="submit">{{
+                      type === 0 ? '应收生成应付' : '应付生成应收'
+                    }}</MenuItem>
+                  </Menu>
+                </template>
+              </DropdownButton>
 
-                <DropdownButton
-                  @click="actions.Submitted"
-                  type="primary"
-                  :disabled="!selectedRowKeys.length"
-                >
-                  {{ $t('auditApproval.status.Submitted') }}
-                  <template #overlay>
-                    <Menu @click="SubmittedOther">
-                      <MenuItem key="modify">
-                        {{ $t('auditApproval.ApplyModification') }}
-                      </MenuItem>
-                      <MenuItem key="delete">
-                        {{ $t('auditApproval.ApplyDeletion') }}
-                      </MenuItem>
-                    </Menu>
-                  </template>
-                </DropdownButton>
+              <DropdownButton
+                @click="actions.Submitted"
+                type="primary"
+                :disabled="!selectedRowKeys.length"
+              >
+                {{ $t('auditApproval.status.Submitted') }}
+                <template #overlay>
+                  <Menu @click="SubmittedOther">
+                    <MenuItem key="modify">{{
+                      $t('auditApproval.ApplyModification')
+                    }}</MenuItem>
+                    <MenuItem key="delete">{{
+                      $t('auditApproval.ApplyDeletion')
+                    }}</MenuItem>
+                  </Menu>
+                </template>
+              </DropdownButton>
 
-                <Button
-                  type="primary"
-                  :disabled="!selectedRowKeys.length"
-                  @click="actions.orderFeeWithdraw"
-                  >{{ $t('auditApproval.withdraw') }}</Button
-                >
+              <Button
+                type="primary"
+                :disabled="!selectedRowKeys.length"
+                @click="actions.orderFeeWithdraw"
+              >
+                {{ $t('auditApproval.withdraw') }}
+              </Button>
 
-                <Button
-                  v-show="type === 0"
-                  type="default"
-                  :loading="loadingFinishStatus"
-                  @click="toggleFinishStatus"
+              <Button
+                v-show="type === 0"
+                type="default"
+                :loading="loadingFinishStatus"
+                @click="toggleFinishStatus"
+              >
+                {{ isFinished ? '设为未完结' : '设为已完结' }}
+              </Button>
+            </Space>
+          </div>
+
+          <OrderFeeTableCore
+            ref="coreTableRef"
+            :data-source="dataSource"
+            :selected-row-keys="selectedRowKeys"
+            :hot-settings="hotSettings"
+            :dropdown-sources="dropdownSources"
+            :order-detail="orderBaseData"
+            :sortable-fields="sortableFieldsSet"
+            :sort-state="sortState"
+            @update:selected-row-keys="selectedRowKeys = $event"
+            @column-sort="handleColumnSort"
+          />
+
+          <!-- 费用合计显示 -->
+          <div v-if="feeSummary && feeSummary.length > 0" class="fee-summary">
+            <div class="fee-summary-content">
+              <span class="summary-label">费用合计：</span>
+              <Space :size="16">
+                <span
+                  v-for="(item, index) in feeSummary"
+                  :key="index"
+                  class="summary-item"
                 >
-                  {{ isFinished ? '设为未完结' : '设为已完结' }}
-                </Button>
+                  {{ item.currency }}: {{ item.amount }}
+                </span>
               </Space>
             </div>
-
-            <OrderFeeTableCore
-              ref="coreTableRef"
-              :data-source="dataSource"
-              :selected-row-keys="selectedRowKeys"
-              :hot-settings="hotSettings"
-              :dropdown-sources="dropdownSources"
-              :order-detail="orderBaseData"
-              :sortable-fields="sortableFieldsSet"
-              :sort-state="sortState"
-              @update:selected-row-keys="selectedRowKeys = $event"
-              @column-sort="handleColumnSort"
-            />
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 费用编辑模态框 -->
     <OrderFeeEditorModal
       ref="modifyModalRef"
       :rec-amount-map="recAmountMap || {}"
       :pay-amount-map="payAmountMap || {}"
-      :fee-code-list="feeCodeList"
       @confirm="handleModalConfirm"
     />
 
-    <!-- 审核历史模态框 -->
     <OrderFeeAuditHistoryModal ref="auditHistoryModalRef" />
 
-    <!-- 批量引入费用模态框 -->
     <BatchImportFeeModal
       ref="batchImportModalRef"
       @confirm="handleBatchImportConfirm"
@@ -1866,7 +655,7 @@ defineExpose({
 
 <style scoped lang="scss">
 .order-fee-card {
-  position: relative; // 为绝对定位的子元素提供定位上下文
+  position: relative;
 
   :deep(.ant-card-body) {
     padding: 0 20px 12px !important;
@@ -1875,14 +664,14 @@ defineExpose({
   .order-ctn-table {
     display: flex;
     flex-direction: column;
-    height: 575px; // ✅ 调整:增加高度以容纳表头和工具栏
+    height: 575px;
   }
 
   .handsontable-container {
     display: flex;
     flex-direction: column;
-    height: 100%; // ✅ 确保容器占满父元素高度
-    min-height: 570px; // ✅ 调整:与表格固定高度+表头高度保持一致(原600)
+    height: 100%;
+    min-height: 570px;
     overflow: hidden;
     border: 1px solid #e8e8e8;
     border-radius: 4px;
@@ -1890,7 +679,7 @@ defineExpose({
 
   .table-header {
     display: flex;
-    flex-shrink: 0; // ✅ 防止表头被压缩
+    flex-shrink: 0;
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
@@ -1910,7 +699,6 @@ defineExpose({
   }
 }
 
-// 完结状态徽章（右上角绝对定位）
 .finish-status-badge {
   position: absolute;
   top: 20px;
@@ -1925,15 +713,12 @@ defineExpose({
   }
 }
 
-// ✅ 新增:复选框列样式
 :deep(.handsontable) {
-  // 复选框列居中对齐
   td.htCenter {
     vertical-align: middle !important;
     text-align: center !important;
   }
 
-  // 表头复选框样式
   th .select-all-checkbox {
     cursor: pointer;
 
@@ -1942,7 +727,6 @@ defineExpose({
     }
   }
 
-  // 数据行复选框样式
   td input[type='checkbox'] {
     width: 16px;
     height: 16px;
@@ -1954,6 +738,85 @@ defineExpose({
 
     &:checked {
       accent-color: #1890ff;
+    }
+  }
+}
+
+// 费用合计样式
+.fee-summary {
+  position: absolute;
+  right: 17px; // ✅ 预留滚动条宽度（通常17px），避免遮挡滚动条
+  bottom: 30px; // ✅ 距离表格底部30px
+  left: 100px; // ✅ 左侧距离表格50px
+  z-index: 10;
+  max-width: calc(
+    100% - 167px
+  ); // ✅ 限制最大宽度（50px左边距 + 17px右边距 + 100px额外缩短）
+
+  padding: 12px 20px;
+  pointer-events: none; // ✅ 允许鼠标事件穿透，不影响滚动条操作
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 98%) 0%,
+    rgb(245 248 255 / 95%) 100%
+  );
+  border: 1px solid rgb(24 144 255 / 20%);
+  border-radius: 8px;
+  box-shadow:
+    0 4px 12px rgb(24 144 255 / 15%),
+    0 2px 4px rgb(0 0 0 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 80%);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    border-color: rgb(24 144 255 / 35%);
+    box-shadow:
+      0 6px 20px rgb(24 144 255 / 25%),
+      0 3px 8px rgb(0 0 0 / 12%),
+      inset 0 1px 0 rgb(255 255 255 / 90%);
+    transform: translateY(-2px);
+  }
+
+  .fee-summary-content {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 14px;
+    pointer-events: auto; // ✅ 恢复内容区域的鼠标事件
+
+    .summary-label {
+      padding: 0;
+      font-weight: 600;
+      color: #1f2937;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .summary-item {
+      padding: 4px 10px;
+      font-weight: 600;
+      color: #1890ff;
+      white-space: nowrap;
+      background: linear-gradient(
+        135deg,
+        rgb(24 144 255 / 8%) 0%,
+        rgb(24 144 255 / 4%) 100%
+      );
+      border: 1px solid rgb(24 144 255 / 15%);
+      border-radius: 4px;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: linear-gradient(
+          135deg,
+          rgb(24 144 255 / 15%) 0%,
+          rgb(24 144 255 / 8%) 100%
+        );
+        border-color: rgb(24 144 255 / 30%);
+        box-shadow: 0 2px 8px rgb(24 144 255 / 20%);
+        transform: scale(1.05);
+      }
     }
   }
 }

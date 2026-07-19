@@ -10,6 +10,7 @@ import {
   Input,
   InputNumber,
   message,
+  Modal,
   Select,
   Space,
   Spin,
@@ -19,6 +20,7 @@ import {
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
 import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
 import { getSubmittedApplicationList } from '#/api/Invoice/InvoiceIssue';
+import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
 import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-application/data';
@@ -87,6 +89,13 @@ const selectedAppRowKeys = ref<string[]>([]);
 
 // 发票汇率
 const invoiceExchangeRate = ref<number>(1.0);
+
+// 驳回原因
+const rejectReason = ref<string>('');
+
+// ✅ 驳回确认对话框框状态
+const rejectModalVisible = ref(false);
+const rejectApplications = ref<any[]>([]);
 
 /** 处理父级表格选择变化 */
 function handleParentSelectionChange(selectedRowKeys: any[]) {
@@ -608,6 +617,8 @@ function transformToTreeData(
       invoiceExchangeRate: app.invoiceExchangeRate || 1.0,
       // ✅ 删除了 pushEmail 字段
       totalAppliedAmount: app.totalAppliedAmount || 0, // 申请开票原币金额
+      // ✅ 开票金额 = 开票原币金额 * 开票汇率
+      invoiceAmount: (app.totalAppliedAmount || 0) * (app.invoiceExchangeRate || 1.0),
       checked: false,
       selectable: true, // ✅ 一级可选择
       invoiceApplicationItems: childrenList, // 使用 invoiceApplicationItems 作为子节点
@@ -739,9 +750,16 @@ const appParentColumns = computed(() => [
   },
 
   {
-    title: '申请开票金额',
+    title: '开票原币金额',
     dataIndex: 'totalAppliedAmount',
     key: 'totalAppliedAmount',
+    minWidth: 140,
+    align: 'right' as const,
+  },
+  {
+    title: '开票金额',
+    dataIndex: 'invoiceAmount',
+    key: 'invoiceAmount',
     minWidth: 140,
     align: 'right' as const,
   },
@@ -854,6 +872,67 @@ const appChildColumns = computed(() => [
     align: 'right' as const,
   },
 ]);
+
+/** 批量驳回开票申请 */
+async function handleBatchReject() {
+  const selectedApplications = getSelectedApplicationsFromTable();
+
+  if (selectedApplications.length === 0) {
+    message.warning('请至少选择一个申请进行驳回');
+    return;
+  }
+
+  // ✅ 保存选中的申请，并打开自定义 Modal
+  rejectApplications.value = selectedApplications;
+  rejectReason.value = '';
+  rejectModalVisible.value = true;
+}
+
+/** 确认驳回 */
+async function handleConfirmReject() {
+  // 验证驳回原因
+  if (!rejectReason.value || rejectReason.value.trim() === '') {
+    message.error('请输入驳回原因');
+    return;
+  }
+
+  try {
+    feeDrawerLoading.value = true;
+    
+    // 批量驳回所有选中的申请
+    const promises = rejectApplications.value.map((app: any) => {
+      return InvoiceApplicationApi.auditAsync({
+        id: app.id,
+        rejectReason: rejectReason.value.trim(),
+      });
+    });
+
+    await Promise.all(promises);
+    
+    message.success(`成功驳回 ${rejectApplications.value.length} 个开票申请`);
+    
+    // 关闭对话框
+    rejectModalVisible.value = false;
+    
+    // 清空选择状态
+    selectedAppRowKeys.value = [];
+    
+    // 重新加载数据
+    await loadApplicationGroupData();
+  } catch (error) {
+    console.error('❌ 驳回开票申请失败:', error);
+    message.error('驳回开票申请失败，请重试');
+  } finally {
+    feeDrawerLoading.value = false;
+  }
+}
+
+/** 取消驳回 */
+function handleCancelReject() {
+  rejectModalVisible.value = false;
+  rejectReason.value = '';
+  rejectApplications.value = [];
+}
 
 // 暴露方法给父组件
 defineExpose({
@@ -1057,10 +1136,45 @@ defineExpose({
 
         <!-- 右侧：操作按钮 -->
         <Space>
+          <Button 
+            danger
+            :disabled="selectedAppRowKeys.length === 0"
+            @click="handleBatchReject"
+          >
+            驳回
+          </Button>
           <Button @click="drawerVisible = false">取消</Button>
           <Button type="primary" @click="handleSaveFeeSelection">确定</Button>
         </Space>
       </div>
     </template>
   </Drawer>
+
+  <!-- ✅ 驳回确认对话框框 -->
+  <Modal
+    v-model:open="rejectModalVisible"
+    title="驳回开票申请"
+    :ok-text="'确定驳回'"
+    :cancel-text="'取消'"
+    ok-type="danger"
+    @ok="handleConfirmReject"
+    @cancel="handleCancelReject"
+  >
+    <div>
+      <p style="margin-bottom: 16px;">
+        确定要驳回选中的 {{ rejectApplications.length }} 个开票申请吗？
+      </p>
+      <div style="margin-top: 12px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: bold;">
+          驳回原因（必填）：
+        </label>
+        <Input.TextArea
+          v-model:value="rejectReason"
+          placeholder="请输入驳回原因"
+          :rows="4"
+          allow-clear
+        />
+      </div>
+    </div>
+  </Modal>
 </template>

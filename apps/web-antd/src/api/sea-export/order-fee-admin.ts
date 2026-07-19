@@ -82,7 +82,7 @@ export namespace OrderFeeAdminApi {
     settledAmount: number;
 
     /** 是否允许开票 */
-    canInvoice: boolean;
+    invoiceBlocked: boolean;
 
     /** 是否机密 配合机密权限控制读写 */
     isConfidential: boolean;
@@ -194,7 +194,7 @@ export namespace OrderFeeAdminApi {
     unSettledAmount: number;
 
     /** 是否允许开票 */
-    canInvoice: boolean;
+    invoiceBlocked: boolean;
 
     /** 是否机密 配合机密权限控制读写 */
     isConfidential: boolean;
@@ -374,7 +374,7 @@ export namespace OrderFeeAdminApi {
     /** 不含税金额 */
     noTaxAmount: number;
     /** 是否允许开票 */
-    canInvoice: boolean;
+    invoiceBlocked: boolean;
     /** 是否机密 */
     isConfidential: boolean;
     /** 备注 */

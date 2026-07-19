@@ -250,7 +250,7 @@
       "invoicedAmount": "已开票金额",
       "orderInvoiceAmount": "开票申请金额",
       "settledAmount": "已结算金额",
-      "canInvoice": "开发票",
+      "canInvoice": "不开发票",
       "isConfidential": "是否机密",
       "dataEntryMethod": "数据录入方式",
       "remark": "备注",

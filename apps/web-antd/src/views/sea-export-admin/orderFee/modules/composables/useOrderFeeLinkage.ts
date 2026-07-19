@@ -20,6 +20,10 @@ export function useOrderFeeLinkage(
     editId: any;
     orderBaseData: any;
   },
+  getDropdownSources: () => {
+    industryCategoryList: Array<{ label: string; value: any }>;
+    currencyList: Array<{ label: string; value: any }>;
+  },
 ) {
   // ==================== 缓存机制 ====================
 
@@ -158,113 +162,82 @@ export function useOrderFeeLinkage(
       let settlementId: string | number | undefined;
       let settlementName: string | undefined;
 
-      console.log('🔍 [fillSettlementIdByIndustryCategory] 订单详情:', {
-        transportOrder: orderDetail.transportOrder ? '存在' : '不存在',
-        yard: orderDetail.yard ? '存在' : '不存在',
-        shipAgent: orderDetail.shipAgent ? '存在' : '不存在',
-        bookingAgent: orderDetail.bookingAgent ? '存在' : '不存在',
-        podAgent: orderDetail.podAgent ? '存在' : '不存在',
-      });
+      console.log(
+        '🔍 [fillSettlementIdByIndustryCategory] 订单详情:',
+        {
+          transportOrder: orderDetail.transportOrder ? '存在' : '不存在',
+          yard: orderDetail.yard ? '存在' : '不存在',
+          shipAgent: orderDetail.shipAgent ? '存在' : '不存在',
+          bookingAgent: orderDetail.bookingAgent ? '存在' : '不存在',
+          podAgent: orderDetail.podAgent ? '存在' : '不存在',
+        },
+        orderDetail,
+      );
 
       switch (industryCategoryValue.toLowerCase()) {
         case 'b': // 发货人
           settlementId = orderDetail.transportOrder?.shipperId;
           // 从订单详情中获取发货人名称
-          if (orderDetail.transportOrder?.shipper) {
-            const shipper = orderDetail.transportOrder.shipper as any;
-            console.log('📦 [fillSettlementIdByIndustryCategory] 发货人对象:', shipper);
-            settlementName = `${shipper.fullName || shipper.name}${shipper.code ? ` (${shipper.code})` : ''}`;
-          } else {
-            console.warn('⚠️ [fillSettlementIdByIndustryCategory] 发货人对象不存在');
-          }
+          settlementName = `${orderDetail.transportOrder?.shipperName}` || '';
           break;
         case 'c': // 场站
           settlementId = orderDetail.yardId;
-          if (orderDetail.yard) {
-            const yard = orderDetail.yard as any;
-            settlementName = `${yard.fullName || yard.name}${yard.code ? ` (${yard.code})` : ''}`;
-          }
+          settlementName = orderDetail.yardName || '';
+
           break;
         case 'e': // 收货人
           settlementId = orderDetail.transportOrder?.consigneeId;
-          if (orderDetail.transportOrder?.consignee) {
-            const consignee = orderDetail.transportOrder.consignee as any;
-            settlementName = `${consignee.fullName || consignee.name}${consignee.code ? ` (${consignee.code})` : ''}`;
-          }
+          settlementName = `${orderDetail.transportOrder?.consigneeName}` || '';
           break;
         case 'f': // 报关行
           settlementId = orderDetail.transportOrder?.custBrokerId;
-          if (orderDetail.transportOrder?.custBroker) {
-            const custBroker = orderDetail.transportOrder.custBroker as any;
-            settlementName = `${custBroker.fullName || custBroker.name}${custBroker.code ? ` (${custBroker.code})` : ''}`;
-          }
+          settlementName =
+            `${orderDetail.transportOrder?.custBrokerName}` || '';
           break;
         case 'h': // 通知人
           settlementId = orderDetail.transportOrder?.notifierId;
-          if (orderDetail.transportOrder?.notifier) {
-            const notifier = orderDetail.transportOrder.notifier as any;
-            settlementName = `${notifier.fullName || notifier.name}${notifier.code ? ` (${notifier.code})` : ''}`;
-          }
+          settlementName = `${orderDetail.transportOrder?.notifierName}` || '';
           break;
         case 'i': // 车队
           settlementId = orderDetail.transportOrder?.teamId;
-          if (orderDetail.transportOrder?.team) {
-            const team = orderDetail.transportOrder.team as any;
-            settlementName = `${team.fullName || team.name}${team.code ? ` (${team.code})` : ''}`;
-          }
+          settlementName = `${orderDetail.transportOrder?.teamName}` || '';
           break;
         case 'n': // 船代
           settlementId = orderDetail.shipAgentId;
-          if (orderDetail.shipAgent) {
-            const shipAgent = orderDetail.shipAgent as any;
-            settlementName = `${shipAgent.fullName || shipAgent.name}${shipAgent.code ? ` (${shipAgent.code})` : ''}`;
-          }
+          settlementName = orderDetail.shipAgentName || '';
           break;
         case 'o': // 订舱代理
           settlementId = orderDetail.bookingAgentId;
-          if (orderDetail.bookingAgent) {
-            const bookingAgent = orderDetail.bookingAgent as any;
-            settlementName = `${bookingAgent.fullName || bookingAgent.name}${bookingAgent.code ? ` (${bookingAgent.code})` : ''}`;
-          }
+          settlementName = orderDetail.bookingAgentName || '';
           break;
         case 'p': // 委托单位
           settlementId = orderDetail.transportOrder?.clientId;
-          if (orderDetail.transportOrder?.client) {
-            const client = orderDetail.transportOrder.client as any;
-            settlementName = `${client.fullName || client.name}${client.code ? ` (${client.code})` : ''}`;
-          }
+          settlementName = `${orderDetail.transportOrder?.clientName}` || '';
           break;
         case 'q': // 仓库
           settlementId = orderDetail.transportOrder?.warehouseId;
-          if (orderDetail.transportOrder?.warehouse) {
-            const warehouse = orderDetail.transportOrder.warehouse as any;
-            settlementName = `${warehouse.fullName || warehouse.name}${warehouse.code ? ` (${warehouse.code})` : ''}`;
-          }
+          settlementName = `${orderDetail.transportOrder?.warehouseName}` || '';
           break;
         case 'r': // 保险公司
           settlementId = orderDetail.transportOrder?.insuranceId;
-          if (orderDetail.transportOrder?.insurance) {
-            const insurance = orderDetail.transportOrder.insurance as any;
-            settlementName = `${insurance.fullName || insurance.name}${insurance.code ? ` (${insurance.code})` : ''}`;
-          }
+          settlementName = `${orderDetail.transportOrder?.insuranceName}` || '';
           break;
         case 's': // 国外代理
           settlementId = orderDetail.podAgentId;
-          if (orderDetail.podAgent) {
-            const podAgent = orderDetail.podAgent as any;
-            settlementName = `${podAgent.fullName || podAgent.name}${podAgent.code ? ` (${podAgent.code})` : ''}`;
-          }
+          settlementName = orderDetail.podAgentName || '';
           break;
       }
 
       if (settlementId !== undefined && settlementId !== null) {
-        row['settlementId'] = String(settlementId);
-
         // ✅ 缓存客户名称到 __settlementName 字段
         if (settlementName) {
-          // 使用 Vue.set 或直接赋值确保响应式更新
-          row['__settlementName'] = settlementName;
-          
+          // 主字段存储 label（客户名称，用于显示）
+          row['settlementId'] = settlementName;
+          // _value 字段存储 ID（用于联动和保存）
+          row['settlementId_value'] = settlementId;
+          // __settlementName 也缓存一份（兼容旧代码）
+          row['settlementName'] = settlementName;
+
           console.log(
             '👤 [fillSettlementIdByIndustryCategory] 行业类别:',
             industryCategoryValue,
@@ -273,64 +246,6 @@ export function useOrderFeeLinkage(
             '名称:',
             settlementName,
           );
-        } else {
-          console.warn(
-            '⚠️ [fillSettlementIdByIndustryCategory] 未找到对应的结算对象名称，尝试从其他来源获取:',
-            industryCategoryValue,
-            'settlementId:',
-            settlementId,
-          );
-          
-          // 备用方案：尝试从 transportOrder 的其他字段获取名称
-          const transportOrder = orderDetail.transportOrder;
-          let fallbackName: string | undefined;
-          
-          switch (industryCategoryValue.toLowerCase()) {
-            case 'b': // 发货人
-              fallbackName = transportOrder?.shipperName || transportOrder?.shipperContent;
-              break;
-            case 'c': // 场站
-              fallbackName = orderDetail.yardName;
-              break;
-            case 'e': // 收货人
-              fallbackName = transportOrder?.consigneeName || transportOrder?.consigneeContent;
-              break;
-            case 'f': // 报关行
-              fallbackName = transportOrder?.custBrokerName;
-              break;
-            case 'h': // 通知人
-              fallbackName = transportOrder?.notifierName || transportOrder?.notifierContent;
-              break;
-            case 'i': // 车队
-              fallbackName = transportOrder?.teamName;
-              break;
-            case 'p': // 委托单位
-              fallbackName = transportOrder?.clientName;
-              break;
-            case 'q': // 仓库
-              fallbackName = transportOrder?.warehouseName;
-              break;
-            case 'r': // 保险公司
-              fallbackName = transportOrder?.insuranceName;
-              break;
-          }
-          
-          if (fallbackName) {
-            // 如果是 JSON 字符串，尝试解析
-            try {
-              if (typeof fallbackName === 'string' && fallbackName.startsWith('{')) {
-                const parsed = JSON.parse(fallbackName);
-                fallbackName = parsed.name || parsed.cnName || parsed.fullName || fallbackName;
-              }
-            } catch (e) {
-              // 解析失败，使用原始值
-            }
-            
-            row['__settlementName'] = String(fallbackName);
-            console.log('✅ [fillSettlementIdByIndustryCategory] 使用备用名称:', fallbackName);
-          } else {
-            console.warn('❌ [fillSettlementIdByIndustryCategory] 无法获取结算对象名称');
-          }
         }
       } else {
         console.warn(
@@ -466,6 +381,9 @@ export function useOrderFeeLinkage(
 
       console.log('🔵 [handleFeeCodeChange] 费用代码变化:', feeCodeId);
 
+      // ✅ 同步设置 _value 字段
+      row['feeCodeId_value'] = feeCodeId;
+
       // 获取费用代码详情
       const feeCodeDetail = await getFeeCodeDetail(feeCodeId);
       if (!feeCodeDetail) {
@@ -481,34 +399,105 @@ export function useOrderFeeLinkage(
         // 应收：使用 defaultDebitName（收费客户类型）
         const debitCategory = feeCodeDetail.defaultDebitName;
         if (debitCategory) {
-          row['industryCategory'] = getCategoryNumber(debitCategory);
-          console.log(
-            '📋 [handleFeeCodeChange] 应收-行业类别:',
-            debitCategory,
-            '→',
-            row['industryCategory'],
+          // ✅ 修正：将字母代码转换为数值ID
+          const option = getIndustryCategoryOptions().find(
+            (opt) => opt.value === debitCategory,
           );
-          await fillSettlementIdByIndustryCategory(row, debitCategory);
+          const categoryKey = option?.key;
+
+          if (categoryKey) {
+            // ✅ 从 dropdownSources 中查找对应的 label
+            const sources = getDropdownSources();
+            const industryOption = sources.industryCategoryList.find(
+              (opt: any) => opt.value === categoryKey,
+            );
+            const industryLabel = industryOption?.label || String(categoryKey);
+
+            // 主字段存储 label（用于显示）
+            row['industryCategory'] = industryLabel;
+            // _value 字段存储数值ID（用于联动和保存）
+            row['industryCategory_value'] = categoryKey;
+
+            console.log(
+              '📋 [handleFeeCodeChange] 应收-行业类别:',
+              debitCategory,
+              '(字母代码) →',
+              categoryKey,
+              '(数值ID) →',
+              industryLabel,
+              '(label)',
+            );
+            await fillSettlementIdByIndustryCategory(row, debitCategory);
+          } else {
+            console.warn(
+              '⚠️ [handleFeeCodeChange] 未找到字母代码对应的数值ID:',
+              debitCategory,
+            );
+          }
         }
       } else if (paySide === 1) {
         // 应付：使用 defaultCreditName（付费客户类型）
         const creditCategory = feeCodeDetail.defaultCreditName;
         if (creditCategory) {
-          row['industryCategory'] = getCategoryNumber(creditCategory);
-          console.log(
-            '📋 [handleFeeCodeChange] 应付-行业类别:',
-            creditCategory,
-            '→',
-            row['industryCategory'],
+          // ✅ 修正：将字母代码转换为数值ID
+          const option = getIndustryCategoryOptions().find(
+            (opt) => opt.value === creditCategory,
           );
-          await fillSettlementIdByIndustryCategory(row, creditCategory);
+          const categoryKey = option?.key;
+
+          if (categoryKey) {
+            // ✅ 使用 getIndustryCategoryOptions() getter 直接获取 label
+            const industryOption = getIndustryCategoryOptions().find(
+              (opt) => opt.key === categoryKey,
+            );
+            const industryLabel = industryOption?.label || String(categoryKey);
+
+            // 主字段存储 label（用于显示）
+            row['industryCategory'] = industryLabel;
+            // _value 字段存储数值ID（用于联动和保存）
+            row['industryCategory_value'] = categoryKey;
+
+            console.log(
+              '📋 [handleFeeCodeChange] 应付-行业类别:',
+              creditCategory,
+              '(字母代码) →',
+              categoryKey,
+              '(数值ID) →',
+              industryLabel,
+              '(label)',
+            );
+            await fillSettlementIdByIndustryCategory(row, creditCategory);
+          } else {
+            console.warn(
+              '⚠️ [handleFeeCodeChange] 未找到字母代码对应的数值ID:',
+              creditCategory,
+            );
+          }
         }
       }
 
       // 自动填充币别
       if (feeCodeDetail.currencyId) {
-        row['currencyId'] = feeCodeDetail.currencyId;
-        console.log('💰 [handleFeeCodeChange] 设置币别ID:', feeCodeDetail.currencyId, '类型:', typeof feeCodeDetail.currencyId);
+        // ✅ 使用 getDropdownSources() getter 获取货币选项并查找对应的 label
+        const currencyOptions = getDropdownSources().currencyList;
+        const currencyOption = currencyOptions.find(
+          (opt: any) => opt.value === feeCodeDetail.currencyId,
+        );
+        const currencyLabel =
+          currencyOption?.label || String(feeCodeDetail.currencyId);
+
+        // 主字段存储 label（用于显示）
+        row['currencyId'] = currencyLabel;
+        // _value 字段存储币别ID（用于联动和保存）
+        row['currencyId_value'] = feeCodeDetail.currencyId;
+
+        console.log(
+          '💰 [handleFeeCodeChange] 设置币别:',
+          feeCodeDetail.currencyId,
+          '(ID) →',
+          currencyLabel,
+          '(label)',
+        );
 
         // 判断是否为本位币并设置汇率
         const currencyIdNum =
@@ -549,6 +538,8 @@ export function useOrderFeeLinkage(
       const defaultUnitName = feeCodeDetail.defaultUnitName;
       if (defaultUnitName) {
         row['unit'] = defaultUnitName;
+        // ✅ 同步设置 _value 字段
+        row['unit_value'] = defaultUnitName;
         console.log('📏 [handleFeeCodeChange] 单位:', defaultUnitName);
 
         // 根据单位类型填充数量
@@ -572,13 +563,16 @@ export function useOrderFeeLinkage(
           settlementName: (currentRow as any)?.__settlementName,
           currencyId: currentRow?.currencyId,
         });
-        
+
         // 使用 loadData 重新加载数据以确保响应式更新
         hotInstance.loadData(dataContext.dataSource.value);
         console.log('🔄 [handleFeeCodeChange] 已刷新表格数据');
       }
 
-      console.log('✅ [handleFeeCodeChange] 联动完成');
+      console.log(
+        '✅ [handleFeeCodeChange] 联动完成',
+        dataContext.dataSource.value,
+      );
     } catch (error) {
       console.error('❌ [handleFeeCodeChange] 处理失败:', error);
     }
@@ -601,13 +595,38 @@ export function useOrderFeeLinkage(
         industryCategory,
       );
 
-      // 将key转换为value（字母代码）
-      const industryCategoryValue = getIndustryCategoryOptions().find(
-        (item: any) => item.key === industryCategory,
-      )?.value;
+      // ✅ 使用 getter 获取行业类别选项并查找对应的 label
+      const industryOptions = getIndustryCategoryOptions();
+      const industryOption = industryOptions.find(
+        (opt: any) => opt.key === industryCategory,
+      );
+      const industryLabel = industryOption?.label || String(industryCategory);
 
-      if (industryCategoryValue) {
-        await fillSettlementIdByIndustryCategory(row, industryCategoryValue);
+      // 主字段存储 label（用于显示）
+      row['industryCategory'] = industryLabel;
+      // _value 字段存储数值ID（用于联动和保存）
+      row['industryCategory_value'] = industryCategory;
+
+      // ✅ 修正：industryCategory 是数值ID，需要转换为字母代码用于联动
+      let industryCategoryCode: string | undefined;
+
+      if (typeof industryCategory === 'number') {
+        // 通过数值ID查找对应的字母代码
+        const option = getIndustryCategoryOptions().find(
+          (opt) => opt.key === industryCategory,
+        );
+        industryCategoryCode = option?.value;
+      } else if (typeof industryCategory === 'string') {
+        // 如果已经是字母代码，直接使用
+        industryCategoryCode = industryCategory;
+      }
+
+      if (industryCategoryCode) {
+        console.log(
+          '🔵 [handleIndustryCategoryChange] 使用字母代码进行联动:',
+          industryCategoryCode,
+        );
+        await fillSettlementIdByIndustryCategory(row, industryCategoryCode);
 
         // ✅ 强制刷新表格，确保 __settlementName 的更新被正确渲染
         if (hotInstance) {
@@ -617,6 +636,11 @@ export function useOrderFeeLinkage(
         }
 
         console.log('✅ [handleIndustryCategoryChange] 联动完成');
+      } else {
+        console.warn(
+          '⚠️ [handleIndustryCategoryChange] 无法获取字母代码:',
+          industryCategory,
+        );
       }
     } catch (error) {
       console.error('❌ [handleIndustryCategoryChange] 处理失败:', error);
@@ -636,6 +660,18 @@ export function useOrderFeeLinkage(
       if (!row) return;
 
       console.log('🔵 [handleCurrencyChange] 币别变化:', currencyId);
+
+      // ✅ 使用 getDropdownSources() getter 获取货币选项并查找对应的 label
+      const currencyOptions = getDropdownSources().currencyList;
+      const currencyOption = currencyOptions.find(
+        (opt: any) => opt.value === currencyId,
+      );
+      const currencyLabel = currencyOption?.label || String(currencyId);
+
+      // 主字段存储 label（用于显示）
+      row['currencyId'] = currencyLabel;
+      // _value 字段存储币别ID（用于联动和保存）
+      row['currencyId_value'] = currencyId;
 
       if (currencyId) {
         // 获取汇率详情
@@ -692,6 +728,10 @@ export function useOrderFeeLinkage(
       if (!row || !unitName) return;
 
       console.log('🔵 [handleUnitChange] 单位变化:', unitName);
+
+      // ✅ 单位的 label 和 value 相同，都存储到主字段和 _value 字段
+      row['unit'] = unitName;
+      row['unit_value'] = unitName;
 
       await fillQuantityByUnit(row, unitName);
 
@@ -909,21 +949,40 @@ export function useOrderFeeLinkage(
 
     // 处理数据变化时的联动逻辑
     changes.forEach(([rowIndex, prop, oldValue, newValue]: any[]) => {
-      // 费用代码变化
+      const row = dataContext.dataSource.value[rowIndex];
+      if (!row) return;
+
+      // 费用代码变化 - 使用 _value 字段
       if (prop === 'feeCodeId') {
-        handleFeeCodeChange(rowIndex, newValue, hotInstance);
+        const feeCodeValue = row['feeCodeId_value'] || newValue;
+        handleFeeCodeChange(rowIndex, feeCodeValue, hotInstance);
       }
-      // 行业类别变化
+      // 行业类别变化 - 使用 _value 字段
       else if (prop === 'industryCategory') {
-        handleIndustryCategoryChange(rowIndex, newValue, hotInstance);
+        const industryCategoryValue = row['industryCategory_value'] || newValue;
+        handleIndustryCategoryChange(
+          rowIndex,
+          industryCategoryValue,
+          hotInstance,
+        );
       }
-      // 币别变化
+      // 币别变化 - 使用 _value 字段
       else if (prop === 'currencyId') {
-        handleCurrencyChange(rowIndex, newValue, hotInstance);
+        const currencyValue = row['currencyId_value'] || newValue;
+        handleCurrencyChange(rowIndex, currencyValue, hotInstance);
       }
-      // 单位变化
+      // 单位变化 - 使用 _value 字段
       else if (prop === 'unit') {
-        handleUnitChange(rowIndex, newValue, hotInstance);
+        const unitValue = row['unit_value'] || newValue;
+        handleUnitChange(rowIndex, unitValue, hotInstance);
+      }
+      // 结算对象变化 - 使用 _value 字段
+      else if (prop === 'settlementId') {
+        // settlementId 的联动逻辑在 fillSettlementIdByIndustryCategory 中处理
+        console.log(
+          '👤 [handleAfterChange] 结算对象变化:',
+          row['settlementId_value'],
+        );
       }
       // 含税单价变化
       else if (prop === 'unitPrice') {
@@ -946,6 +1005,15 @@ export function useOrderFeeLinkage(
 
   return {
     handleAfterChange,
+    // 导出所有联动处理函数供外部使用
+    handleFeeCodeChange,
+    handleIndustryCategoryChange,
+    handleCurrencyChange,
+    handleUnitChange,
+    handleUnitPriceChange,
+    handleQuantityChange,
+    handleTaxRateChange,
+    handleAmountChange,
     // 导出辅助函数供外部使用
     checkIfIsLocalCurrency,
     fillSettlementIdByIndustryCategory,

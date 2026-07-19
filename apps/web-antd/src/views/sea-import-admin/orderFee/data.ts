@@ -442,7 +442,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('seaImport.import.orderFee.canInvoice'),
 
-      field: 'canInvoice',
+      field: 'invoiceBlocked',
       minWidth: 90,
       cellRender: {
         name: 'CellTag',

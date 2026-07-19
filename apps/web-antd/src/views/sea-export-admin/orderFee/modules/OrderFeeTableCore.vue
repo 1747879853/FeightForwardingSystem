@@ -3,10 +3,12 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
-import { computed, h, nextTick, ref } from 'vue';
+import { computed, h, nextTick, onUnmounted, ref } from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
-import { Select, message } from 'ant-design-vue';
+
+import { Select } from 'ant-design-vue';
+import { message } from 'ant-design-vue';
 
 import { getClientPagedList } from '#/api/sea-export/client-admin';
 import { getIndustryCategoryOptions } from '../data';
@@ -35,493 +37,105 @@ const emit = defineEmits(['update:selectedRowKeys', 'column-sort']);
 
 const hotTableRef = ref<any>(null);
 
-// ==================== 客户列表缓存 ====================
-
-// 用于存储当前编辑的单元格信息
+// ✅ 新增：添加缺失的状态变量
+const isClosed = ref(false);
+const currentSelectContainer = ref<HTMLElement | null>(null);
+const currentCloseHandler = ref<((e: MouseEvent) => void) | null>(null);
 const currentEditingCell = ref<{
   row: number;
   col: number;
   field: string;
-  td: HTMLTableCellElement | null;
+  td: HTMLTableCellElement;
 } | null>(null);
 
-// ==================== 客户列表加载 ====================
+// ==================== 数据缓存 ====================
 
-// 客户列表缓存（简化版，不依赖 Vue Query）
-const clientListCache = ref<Array<{ label: string; value: any }>>([]);
-const clientListLoading = ref(false);
+// 客户列表缓存（按行业类别分类）
+const clientListCache = ref<
+  Record<string, Array<{ label: string; value: any }>>
+>({});
+const clientListLoading = ref<Record<string, boolean>>({});
 
-/**
- * 加载客户列表（简化版，不使用 usePagedSelect）
- */
-const loadClientList = async (
-  keyword?: string,
-): Promise<Array<{ label: string; value: any }>> => {
-  if (clientListLoading.value) {
-    return clientListCache.value;
-  }
+// 费用代码列表缓存
+const feeCodeListCache = ref<Array<{ label: string; value: any }>>([]);
 
+// ✅ 新增：获取费用代码标签
+const getFeeCodeLabel = (value: any): string => {
+  if (!value) return '';
+  const option = props.dropdownSources?.feeCodeList?.find(
+    (item) => item.value === value,
+  );
+  return option?.label || String(value);
+};
+
+// ✅ 新增：获取行业类别标签
+const getIndustryCategoryLabel = (value: any): string => {
+  if (!value) return '';
+  const option = props.dropdownSources?.industryCategoryList?.find(
+    (item) => item.value === value,
+  );
+  return option?.label || String(value);
+};
+
+// ✅ 新增：获取币别标签
+const getCurrencyLabel = (value: any): string => {
+  if (!value) return '';
+  const option = props.dropdownSources?.currencyList?.find(
+    (item) => item.value === value,
+  );
+  return option?.label || String(value);
+};
+
+// ✅ 新增：获取费用状态标签
+const getFeeStatusLabel = (value: any): string => {
+  const statusMap: Record<number, string> = {
+    0: '未发生',
+    1: '已发生',
+    2: '待核销',
+    3: '已核销',
+  };
+  return statusMap[value] || '';
+};
+
+// ✅ 新增：获取开票状态标签
+const getInvoiceStatusLabel = (value: any): string => {
+  const statusMap: Record<number, string> = {
+    0: '未开票',
+    1: '部分开票',
+    2: '已开票',
+  };
+  return statusMap[value] || '';
+};
+
+// ✅ 新增：获取数据录入方式标签
+const getDataEntryMethodLabel = (value: any): string => {
+  const methodMap: Record<number, string> = {
+    0: '手工录入',
+    1: '模板导入',
+    2: '系统生成',
+  };
+  return methodMap[value] || '';
+};
+
+// ✅ 新增：格式化日期时间
+const formatDateTime = (value: any): string => {
+  if (!value) return '';
   try {
-    clientListLoading.value = true;
-    console.log(
-      '🔄 [loadClientList] 开始加载客户列表',
-      keyword ? `关键词: ${keyword}` : '',
-    );
-
-    const res = await getClientPagedList({
-      Keyword: keyword || '',
-      PageIndex: 1,
-      PageSize: 100, // 加载更多数据
-    });
-
-    const clients = (res.items || []).map(
-      (client: ClientAdminApi.ClientDto) => ({
-        label: `${client.name}${client.code ? ` (${client.code})` : ''}`,
-        value: client.id,
-      }),
-    );
-
-    clientListCache.value = clients;
-    console.log('✅ [loadClientList] 加载成功，共', clients.length, '条');
-
-    return clients;
+    return new Date(value).toLocaleString('zh-CN');
   } catch (error) {
-    console.error('❌ [loadClientList] 加载失败:', error);
-    return [];
-  } finally {
-    clientListLoading.value = false;
+    return String(value);
   }
 };
 
-/**
- * 从订单详情中提取所有可能的结算对象
- */
-const extractSettlementOptionsFromOrder = (
-  orderDetail: SeaExportAdminApi.SeaExportDto | null | undefined,
-): Array<{ label: string; value: any }> => {
-  if (!orderDetail) return [];
-
-  const allClients: Array<{ id: any; name?: string; code?: string }> = [];
-  const transportOrder = orderDetail.transportOrder;
-
-  // 添加委托单位（主要客户）- 从 transportOrder 中获取
-  if (transportOrder?.clientId && transportOrder.clientName) {
-    allClients.push({
-      id: transportOrder.clientId,
-      name: transportOrder.clientName,
-    });
+// ✅ 新增：获取排序图标
+const getSortIcon = (field: string): string => {
+  if (!props.sortState?.field || props.sortState.field !== field) {
+    return ''; // 未排序状态不显示箭头
   }
-
-  // 添加发货人 - 从 transportOrder 中获取
-  if (transportOrder?.shipperId) {
-    try {
-      const shipperContent = JSON.parse(transportOrder.shipperContent || '{}');
-      allClients.push({
-        id: transportOrder.shipperId,
-        name: shipperContent.name || shipperContent.cnName,
-        code: shipperContent.code,
-      });
-    } catch (e) {
-      console.warn(
-        '⚠️ [extractSettlementOptionsFromOrder] 解析发货人信息失败:',
-        e,
-      );
-    }
-  }
-
-  // 添加收货人 - 从 transportOrder 中获取
-  if (transportOrder?.consigneeId) {
-    try {
-      const consigneeContent = JSON.parse(
-        transportOrder.consigneeContent || '{}',
-      );
-      allClients.push({
-        id: transportOrder.consigneeId,
-        name: consigneeContent.name || consigneeContent.cnName,
-        code: consigneeContent.code,
-      });
-    } catch (e) {
-      console.warn(
-        '⚠️ [extractSettlementOptionsFromOrder] 解析收货人信息失败:',
-        e,
-      );
-    }
-  }
-
-  // 添加通知人 - 从 transportOrder 中获取
-  if (transportOrder?.notifierId) {
-    try {
-      const notifierContent = JSON.parse(
-        transportOrder.notifierContent || '{}',
-      );
-      allClients.push({
-        id: transportOrder.notifierId,
-        name: notifierContent.name || notifierContent.cnName,
-        code: notifierContent.code,
-      });
-    } catch (e) {
-      console.warn(
-        '⚠️ [extractSettlementOptionsFromOrder] 解析通知人信息失败:',
-        e,
-      );
-    }
-  }
-
-  // 添加第二通知人 - 从 SeaExportDto 直接字段获取
-  if (orderDetail.secondNotifierId && orderDetail.secondNotifier) {
-    allClients.push({
-      id: orderDetail.secondNotifierId,
-      name: orderDetail.secondNotifier.name,
-      code: orderDetail.secondNotifier.code,
-    });
-  }
-
-  // 添加目的港代理 - 从 SeaExportDto 直接字段获取
-  if (orderDetail.podAgentId && orderDetail.podAgent) {
-    allClients.push({
-      id: orderDetail.podAgentId,
-      name: orderDetail.podAgent.name,
-      code: orderDetail.podAgent.code,
-    });
-  }
-
-  // 添加订舱代理 - 从 SeaExportDto 直接字段获取
-  if (orderDetail.bookingAgentId && orderDetail.bookingAgent) {
-    allClients.push({
-      id: orderDetail.bookingAgentId,
-      name: orderDetail.bookingAgent.name,
-      code: orderDetail.bookingAgent.code,
-    });
-  }
-
-  // 添加船代 - 从 SeaExportDto 直接字段获取
-  if (orderDetail.shipAgentId && orderDetail.shipAgent) {
-    allClients.push({
-      id: orderDetail.shipAgentId,
-      name: orderDetail.shipAgent.name,
-      code: orderDetail.shipAgent.code,
-    });
-  }
-
-  // 添加场站 - 从 SeaExportDto 直接字段获取
-  if (orderDetail.yardId && orderDetail.yard) {
-    allClients.push({
-      id: orderDetail.yardId,
-      name: orderDetail.yard.name,
-      code: orderDetail.yard.code,
-    });
-  }
-
-  // 添加车队 - 从 transportOrder 中获取
-  if (transportOrder?.teamId && transportOrder.teamName) {
-    allClients.push({
-      id: transportOrder.teamId,
-      name: transportOrder.teamName,
-    });
-  }
-
-  // 添加报关行 - 从 transportOrder 中获取
-  if (transportOrder?.custBrokerId && transportOrder.custBrokerName) {
-    allClients.push({
-      id: transportOrder.custBrokerId,
-      name: transportOrder.custBrokerName,
-    });
-  }
-
-  // 添加仓库 - 从 transportOrder 中获取
-  if (transportOrder?.warehouseId && transportOrder.warehouseName) {
-    allClients.push({
-      id: transportOrder.warehouseId,
-      name: transportOrder.warehouseName,
-    });
-  }
-
-  // 添加保险公司 - 从 transportOrder 中获取
-  if (transportOrder?.insuranceId && transportOrder.insuranceName) {
-    allClients.push({
-      id: transportOrder.insuranceId,
-      name: transportOrder.insuranceName,
-    });
-  }
-
-  // 去重并格式化
-  const uniqueMap = new Map();
-  allClients.forEach((client) => {
-    if (client.id && !uniqueMap.has(client.id)) {
-      uniqueMap.set(client.id, {
-        label: client.name
-          ? `${client.name}${client.code ? ` (${client.code})` : ''}`
-          : String(client.id),
-        value: client.id,
-      });
-    }
-  });
-
-  const options = Array.from(uniqueMap.values());
-  console.log(
-    '👥 [extractSettlementOptionsFromOrder] 提取结算对象:',
-    options.length,
-    '个',
-  );
-
-  return options;
+  return props.sortState.order === 'asc'
+    ? '<span style="color: #1890ff; font-size: 12px;">▼</span>' // 升序显示向下箭头（实心三角形）
+    : '<span style="color: #1890ff; font-size: 12px;">▲</span>'; // 降序显示向上箭头（实心三角形）
 };
-
-/**
- * 显示 Ant Design Vue Select 组件
- */
-const showAntdSelect = async (
-  event: MouseEvent,
-  td: HTMLTableCellElement,
-  rowIndex: number,
-  field: string,
-) => {
-  console.log('🔵 [showAntdSelect] 被调用', { field, rowIndex });
-
-  event.preventDefault();
-  event.stopPropagation();
-
-  // 记录当前编辑的单元格
-  currentEditingCell.value = {
-    row: rowIndex,
-    col: 0,
-    field,
-    td,
-  };
-
-  // 创建容器
-  const container = document.createElement('div');
-  container.className = 'handsontable-select-container';
-  container.style.position = 'fixed';
-  container.style.zIndex = '9999';
-
-  // 获取单元格位置
-  const rect = td.getBoundingClientRect();
-  container.style.left = `${rect.left}px`;
-  container.style.top = `${rect.top}px`;
-  container.style.width = `${rect.width}px`;
-
-  document.body.appendChild(container);
-
-  // 根据字段类型获取选项
-  let options: Array<{ label: string; value: any }> = [];
-  const currentValue = (props.dataSource[rowIndex] as any)?.[field];
-  const currentRow = props.dataSource[rowIndex] as any;
-
-  console.log(
-    '🔵 [showAntdSelect] 当前值:',
-    currentValue,
-    '字段:',
-    field,
-    '当前行数据:',
-    currentRow,
-  );
-
-  if (field === 'feeCodeId') {
-    console.log('✅ [showAntdSelect] 使用费用代码列表');
-    options = props.dropdownSources?.feeCodeList || [];
-  } else if (field === 'industryCategory') {
-    console.log('✅ [showAntdSelect] 使用行业类别列表');
-    options = props.dropdownSources?.industryCategoryList || [];
-  } else if (field === 'settlementId') {
-    console.log('✅ [showAntdSelect] 加载结算对象列表');
-
-    // 获取当前行的行业类别
-    const industryCategoryKey = currentRow?.industryCategory;
-    if (!industryCategoryKey) {
-      console.warn('⚠️ [showAntdSelect] 当前行没有行业类别，无法加载结算对象');
-      message.warning('请先选择行业类别');
-      document.body.removeChild(container);
-      currentEditingCell.value = null;
-      return;
-    }
-
-    // 将行业类别 key 转换为 value（字母代码）
-    const industryCategoryValue = getIndustryCategoryOptions().find(
-      (item: any) => item.key === industryCategoryKey,
-    )?.value;
-
-    if (!industryCategoryValue) {
-      console.warn(
-        '⚠️ [showAntdSelect] 无法转换行业类别:',
-        industryCategoryKey,
-      );
-      document.body.removeChild(container);
-      currentEditingCell.value = null;
-      return;
-    }
-
-    console.log(
-      '👥 [showAntdSelect] 行业类别:',
-      industryCategoryValue,
-      '开始加载对应客户列表',
-    );
-
-    // 根据行业类别加载客户列表
-    try {
-      const res = await getClientPagedList({
-        Keyword: '',
-        IndustryCategory: industryCategoryValue, // 传递行业类别参数
-        PageIndex: 1,
-        PageSize: 100,
-      });
-
-      options = (res.items || []).map((client: ClientAdminApi.ClientDto) => ({
-        label: `${client.fullName || client.name}${client.code ? ` (${client.code})` : ''}`,
-        value: client.id,
-      }));
-
-      // 缓存当前选项，用于后续显示名称
-      currentOptionsCache.value = options;
-
-      console.log('✅ [showAntdSelect] 加载成功，共', options.length, '个客户');
-
-      if (!options.length) {
-        console.warn('⚠️ [showAntdSelect] 该行业类别下没有客户');
-        message.warning(`该行业类别（${industryCategoryValue}）下暂无客户`);
-        document.body.removeChild(container);
-        currentEditingCell.value = null;
-        return;
-      }
-    } catch (error) {
-      console.error('❌ [showAntdSelect] 加载客户列表失败:', error);
-      message.error('加载客户列表失败');
-      document.body.removeChild(container);
-      currentEditingCell.value = null;
-      return;
-    }
-  } else if (field === 'currencyId') {
-    console.log('✅ [showAntdSelect] 使用币别列表');
-    options = props.dropdownSources?.currencyList || [];
-  } else if (field === 'unit') {
-    console.log('✅ [showAntdSelect] 使用单位列表');
-    options = props.dropdownSources?.unitList || [];
-  } else {
-    console.warn('⚠️ [showAntdSelect] 未知字段:', field);
-    currentEditingCell.value = null;
-    return;
-  }
-
-  // 如果没有选项，不显示下拉框
-  if (!options.length) {
-    console.warn('⚠️ [showAntdSelect] 没有可用的选项');
-    currentEditingCell.value = null;
-    return;
-  }
-
-  // 渲染基础 Select 组件
-  const selectComponent = h(Select, {
-    value: currentValue,
-    options: options,
-    placeholder: `请选择${getFieldLabel(field)}`,
-    style: { width: '100%' },
-    onChange: (value: any) => {
-      handleSelectChange(value, field, rowIndex, container);
-    },
-  });
-
-  import('vue').then(({ render }) => {
-    render(selectComponent, container);
-  });
-
-  // 点击外部关闭
-  const closeSelect = (e: MouseEvent) => {
-    if (!container.contains(e.target as Node)) {
-      // 安全检查：确保容器仍在 DOM 中
-      if (container.parentNode) {
-        document.body.removeChild(container);
-      }
-      document.removeEventListener('click', closeSelect);
-      currentEditingCell.value = null;
-    }
-  };
-
-  setTimeout(() => {
-    document.addEventListener('click', closeSelect);
-  }, 100);
-};
-
-/**
- * 获取字段的中文标签
- */
-const getFieldLabel = (field: string): string => {
-  const labels: Record<string, string> = {
-    feeCodeId: '费用代码',
-    industryCategory: '行业类别',
-    settlementId: '结算对象',
-    currencyId: '币别',
-    unit: '单位',
-  };
-  return labels[field] || field;
-};
-
-/**
- * 根据字段名获取列索引
- */
-const getColumnIndex = (field: string): number => {
-  const index = props.hotSettings.columns?.findIndex(
-    (col: any) => col.data === field,
-  );
-  return index >= 0 ? index : 0;
-};
-
-/**
- * 处理选择变化
- */
-const handleSelectChange = (
-  value: any,
-  field: string,
-  rowIndex: number,
-  container: HTMLElement,
-) => {
-  console.log(`✅ [${field}] 已更新为:`, value);
-
-  // 如果是结算对象字段，需要缓存客户名称
-  if (field === 'settlementId' && value) {
-    // 从当前加载的选项中查找对应的客户信息
-    const selectedOption = currentOptionsCache.value?.find(
-      (opt: any) => opt.value === value,
-    );
-    if (selectedOption) {
-      console.log(
-        '👤 [handleSelectChange] 缓存结算对象名称:',
-        selectedOption.label,
-      );
-      // 将客户名称缓存到数据行中
-      if (props.dataSource[rowIndex]) {
-        (props.dataSource[rowIndex] as any).__settlementName =
-          selectedOption.label;
-      }
-    }
-  }
-
-  // 使用 hotInstance.setDataAtCell 触发 afterChange 事件，从而激活联动逻辑
-  if (hotTableRef.value?.hotInstance) {
-    console.log('🔄 [handleSelectChange] 调用 setDataAtCell 触发联动');
-    hotTableRef.value.hotInstance.setDataAtCell(
-      rowIndex,
-      getColumnIndex(field),
-      value,
-    );
-  } else {
-    // fallback：直接更新数据
-    if (props.dataSource[rowIndex]) {
-      (props.dataSource[rowIndex] as any)[field] = value;
-    }
-  }
-
-  // 移除容器
-  if (container.parentNode) {
-    document.body.removeChild(container);
-  }
-
-  currentEditingCell.value = null;
-};
-
-// 缓存当前加载的选项（用于 settlementId 显示名称）
-const currentOptionsCache = ref<Array<{ label: string; value: any }> | null>(
-  null,
-);
 
 /**
  * 处理行选择
@@ -552,7 +166,6 @@ const handleAfterChange = (
 
 defineExpose({
   hotTableRef,
-  showAntdSelect,
 });
 </script>
 
