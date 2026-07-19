@@ -538,9 +538,9 @@ defineExpose({ getTableDate });
         class="w-46 h-46"
       />
     </div>
-    <div v-else class="finish-status-badge" title="业务未完结">
+    <!-- <div v-else class="finish-status-badge" title="业务未完结">
       <img v-show="type === 0" :src="yiwanjie" alt="已完结" class="w-46 h-46" />
-    </div>
+    </div> -->
 
     <div class="px-1">
       <div class="order-ctn-table">
