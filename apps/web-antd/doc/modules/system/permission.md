@@ -2,7 +2,7 @@
 title: 权限管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-07-06
+last_updated: 2026-07-19
 ---
 
 # 1. 业务背景说明 (Background)
@@ -48,6 +48,7 @@ last_updated: 2026-07-06
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-19 | `Fix` | 数据/表级/字段权限三个列表分别声明 `gridOptions.id`，避免同路由下列持久化互相覆盖。 | id：`systemPermissionDataList` / `systemPermissionTableList` / `systemPermissionPropList`；适配器优先用 `gridOptions.id` 作 `columnPersist.tableId`。 |
 | 2026-07-06 | `Fix` | 按后端权限接口 `displayName` 同步 `zh-CN/auth.json`：更新 99 处文案、新增 16 个缺失键（自动费用模板、第三方接口、船期等）；`en-US` 补充新增键英文翻译。 | 权限树文案来源为 `buildPermissionTree` + `$t('auth.*')`；接口未返回的历史键仍保留以免缺文案。 |
 | 2026-07-02 | `Feature` | 数据权限对接统一子表接口：Add/Edit 携带 `entityIds`，列表/详情返回 `items`；移除 `UserDataPermissionItemAdmin` 独立调用；列表新增明细数列。 | 编辑子表增量维护下沉后端；`DetailAsync` 作 items 缺失回退；子表明细名称仍走用户/组织接口回显。 |
 | 2026-07-02 | `Feature` | 表级权限 Tab 对接 `UserTablePermissionAdmin` / `UserTablePermissionConditionAdmin`：主规则按模块配置，抽屉内维护条件子项，列表展示条件数；移除无效 `manageType`；分页改为 `pageIndex`/`pageSize`。 | 条件字段元数据前端维护（后端无字段列表接口）；编辑条件仅 `operator`/`value` 生效；`showName`/`showValue` 仅展示用。 |

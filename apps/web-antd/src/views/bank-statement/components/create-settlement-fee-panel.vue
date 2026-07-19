@@ -409,14 +409,11 @@ defineExpose({ reload });
     size="small"
     class="create-settlement-fee-panel"
   >
-    <div
-      class="fee-toolbar mb-3 flex flex-wrap items-center justify-between gap-3"
-    >
-      <div class="fee-toolbar__left flex flex-wrap items-center gap-3">
-        <div class="fee-toolbar__search">
-          <SearchForm />
-        </div>
-
+    <div class="fee-toolbar mb-3">
+      <div class="fee-toolbar__search">
+        <SearchForm />
+      </div>
+      <div class="fee-toolbar__actions">
         <Button @click="handleReset">重置</Button>
         <Button type="primary" @click="handleSearch">查询</Button>
       </div>
@@ -520,9 +517,25 @@ defineExpose({ reload });
 }
 
 .fee-toolbar__search {
+  flex: 1;
+  min-width: 0;
+
   :deep(.relative.flex.pb-2) {
     padding-bottom: 0;
   }
+}
+
+.fee-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.fee-toolbar__actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
 }
 
 .settlement-submit-bar {

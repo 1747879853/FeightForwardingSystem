@@ -184,6 +184,7 @@ const fetchTablePermissionList = async (params: Record<string, any>) => {
 
 const [Grid, gridApi] = useVbenVxeGrid<TablePermissionRow>({
   gridOptions: {
+    id: 'systemPermissionTableList',
     columns: useTablePermissionColumns(handleActionClick, (row) =>
       handleViewConditions(row as TablePermissionRow),
     ),

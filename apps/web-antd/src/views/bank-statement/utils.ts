@@ -53,17 +53,27 @@ export function mapReceiveSettlementInvoiceDetailItem(
   };
 }
 
-/** 按 operationId 解析操作人显示名（接口未带 operationName 时调用 GetUserAsync） */
+const operatorNameCache = new Map<number, string>();
+
+/** 按 operationId 解析操作人昵称；接口异常时回退到流水接口返回的名称 */
 export async function resolveOperatorName(
   operationId: number,
   operationName?: string | null,
 ): Promise<string> {
-  if (operationName) return operationName;
+  const cachedName = operatorNameCache.get(operationId);
+  if (cachedName) return cachedName;
+
   try {
     const user = await getUser(operationId);
-    return user.userName || user.nickName || '';
+    const displayName =
+      user.nickName?.trim() ||
+      operationName?.trim() ||
+      user.userName?.trim() ||
+      '';
+    if (displayName) operatorNameCache.set(operationId, displayName);
+    return displayName;
   } catch {
-    return '';
+    return operationName?.trim() || '';
   }
 }
 

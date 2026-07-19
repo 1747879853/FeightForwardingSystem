@@ -76,6 +76,7 @@ const [Grid, gridApi] =
       wrapperClass: 'grid-cols-6',
     },
     gridOptions: {
+      id: 'settlementBankStatementList',
       columns: useColumns(),
       height: 'auto',
       keepSource: true,

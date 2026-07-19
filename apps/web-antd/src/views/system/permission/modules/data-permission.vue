@@ -123,6 +123,7 @@ const fetchDataPermissionList = (params: Record<string, any>) => {
 const [Grid, gridApi] =
   useVbenVxeGrid<SystemPermissionApi.UserDataPermissionDto>({
     gridOptions: {
+      id: 'systemPermissionDataList',
       columns: useDataPermissionColumns(handleActionClick, (row) =>
         handleViewItems(row as SystemPermissionApi.UserDataPermissionDto),
       ),

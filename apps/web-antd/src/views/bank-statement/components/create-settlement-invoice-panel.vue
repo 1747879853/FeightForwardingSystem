@@ -11,7 +11,6 @@ import {
   InputNumber,
   message,
   Pagination,
-  Switch,
   Table,
   Tag,
 } from 'ant-design-vue';
@@ -65,7 +64,6 @@ const emit = defineEmits<{
 
 const loading = ref(false);
 const creating = ref(false);
-const onlySettleable = ref(true);
 const groupList = ref<ReceiveSettlementAdminApi.InvoiceAppSettleGroupDto[]>([]);
 const totalCount = ref(0);
 const currentPage = ref(1);
@@ -86,7 +84,7 @@ const [SearchForm, searchFormApi] = useVbenForm({
   showDefaultActions: false,
   submitOnChange: false,
   compact: true,
-  wrapperClass: 'grid-cols-2 gap-x-3',
+  wrapperClass: 'grid-cols-3 gap-x-3',
 });
 
 const tableRows = computed(() =>
@@ -272,7 +270,7 @@ async function fetchData(formValues?: Record<string, any>) {
       applyTimeEnd: applyTimeEnd
         ? dayjs(applyTimeEnd).toISOString()
         : undefined,
-      onlySettleable: onlySettleable.value,
+      onlySettleable: true,
       pageIndex: currentPage.value,
       pageSize: pageSize.value,
     });
@@ -304,14 +302,6 @@ async function handleReset() {
     invoiceNo: undefined,
     applyTimeRange: undefined,
   });
-}
-
-function handleToggleOnlySettleable(checked: boolean | number | string) {
-  onlySettleable.value = Boolean(checked);
-  if (props.settlementId) {
-    currentPage.value = 1;
-    fetchData();
-  }
 }
 
 async function handlePageChange(page: number, size: number) {
@@ -484,22 +474,11 @@ defineExpose({ reload });
     size="small"
     class="create-settlement-invoice-panel"
   >
-    <div
-      class="fee-toolbar mb-3 flex flex-wrap items-center justify-between gap-3"
-    >
-      <div class="fee-toolbar__left flex flex-wrap items-center gap-3">
-        <div class="fee-toolbar__search">
-          <SearchForm />
-        </div>
-
-        <div class="flex items-center gap-2">
-          <span class="text-xs text-gray-500">仅显示可结算</span>
-          <Switch
-            :checked="onlySettleable"
-            @change="handleToggleOnlySettleable"
-          />
-        </div>
-
+    <div class="fee-toolbar mb-3">
+      <div class="fee-toolbar__search">
+        <SearchForm />
+      </div>
+      <div class="fee-toolbar__actions">
         <Button @click="handleReset">重置</Button>
         <Button type="primary" @click="handleSearch">查询</Button>
       </div>
@@ -626,9 +605,25 @@ defineExpose({ reload });
 }
 
 .fee-toolbar__search {
+  flex: 1;
+  min-width: 0;
+
   :deep(.relative.flex.pb-2) {
     padding-bottom: 0;
   }
+}
+
+.fee-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.fee-toolbar__actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
 }
 
 .settlement-submit-bar {

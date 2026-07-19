@@ -78,6 +78,7 @@ const [Grid, gridApi] =
       wrapperClass: 'grid-cols-6',
     },
     gridOptions: {
+      id: 'settlementReceiveSettlementList',
       columns: useColumns(),
       height: 'auto',
       keepSource: true,
