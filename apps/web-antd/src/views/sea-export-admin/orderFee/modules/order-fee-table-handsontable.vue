@@ -38,6 +38,7 @@ const props = defineProps<{
   recAmountMap?: Record<string, any>;
   payAmountMap?: Record<string, any>;
   orderDetail?: SeaExportAdminApi.SeaExportDto | null;
+  allClientsByIndustry?: Record<string, Array<{ label: string; value: any }>>; // ✅ 新增：从父组件传入的客户缓存
 }>();
 
 const emit = defineEmits([
@@ -64,7 +65,7 @@ const {
 const {
   dropdownSources,
   currentOptionsCache,
-  allClientsByIndustry, // ✅ 新增：全量客户缓存
+  allClientsByIndustry: localAllClientsByIndustry, // ✅ 本地缓存
   initDropdownSources,
   updateUnitList,
   getFeeCodeList,
@@ -72,6 +73,19 @@ const {
   loadClientList,
   getSettlementIndustryCategory,
 } = useDropdownSources(orderCtnList);
+
+// ✅ 关键修改：如果父组件传入了客户缓存，则使用父组件的数据
+watch(
+  () => props.allClientsByIndustry,
+  (newVal) => {
+    if (newVal && Object.keys(newVal).length > 0) {
+      console.log('✅ [OrderFeeTable] 使用父组件传入的客户缓存');
+      // 将父组件的缓存赋值给本地的 allClientsByIndustry
+      Object.assign(localAllClientsByIndustry.value, newVal);
+    }
+  },
+  { immediate: true, deep: true },
+);
 
 // 字段联动
 const linkage = useOrderFeeLinkage(
@@ -435,7 +449,18 @@ onMounted(async () => {
   initOrderFeeEnumCache();
   await initDropdownSources();
   await getFeeCodeList();
-  await loadAllClients(); // ✅ 新增：一次性加载全部客户数据到缓存
+
+  // ✅ 关键修改：只有当父组件没有传入客户缓存时，才在子组件中加载
+  if (
+    !props.allClientsByIndustry ||
+    Object.keys(props.allClientsByIndustry).length === 0
+  ) {
+    console.log('⚠️ [OrderFeeTable] 父组件未传入客户缓存，将在子组件中加载');
+    await loadAllClients();
+  } else {
+    console.log('✅ [OrderFeeTable] 使用父组件传入的客户缓存，跳过加载');
+  }
+
   getTableDate();
   loadFinishStatus();
 });
@@ -658,20 +683,20 @@ defineExpose({ getTableDate });
   position: relative;
 
   :deep(.ant-card-body) {
-    padding: 0 20px 12px !important;
+    padding: 0 2px 12px !important;
   }
 
   .order-ctn-table {
     display: flex;
     flex-direction: column;
-    height: 575px;
+    height: 515px;
   }
 
   .handsontable-container {
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 570px;
+    min-height: 500px;
     overflow: hidden;
     border: 1px solid #e8e8e8;
     border-radius: 4px;
@@ -745,15 +770,12 @@ defineExpose({ getTableDate });
 // 费用合计样式
 .fee-summary {
   position: absolute;
-  right: 17px; // ✅ 预留滚动条宽度（通常17px），避免遮挡滚动条
-  bottom: 30px; // ✅ 距离表格底部30px
-  left: 100px; // ✅ 左侧距离表格50px
+  top: 8px;
+  right: 120px;
+  left: 120px;
   z-index: 10;
-  max-width: calc(
-    100% - 167px
-  ); // ✅ 限制最大宽度（50px左边距 + 17px右边距 + 100px额外缩短）
-
-  padding: 12px 20px;
+  max-width: 600px;
+  padding: 8px 20px;
   pointer-events: none; // ✅ 允许鼠标事件穿透，不影响滚动条操作
   background: linear-gradient(
     135deg,

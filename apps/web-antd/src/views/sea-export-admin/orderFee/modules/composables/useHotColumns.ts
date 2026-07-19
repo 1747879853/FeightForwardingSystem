@@ -87,9 +87,9 @@ export function useHotColumns(
     const indexColumn: any = {
       data: null,
       title: '开票状态',
-      width: 120,
+      width: 75,
       type: 'text',
-      className: 'htCenter htMiddle',
+      className: '',
       readOnly: true,
       renderer: function (
         this: any,
@@ -124,7 +124,7 @@ export function useHotColumns(
           statusColor = '#52c41a';
         }
 
-        td.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        td.innerHTML = `<div style="display: flex; align-items: left; justify-content: center; gap: 8px;">
           <span style="color: #262626; font-size: 13px;">${row + 1}</span>
           <span style="color: ${statusColor}; font-weight: bold; font-size: 12px;">${statusLabel || ''}</span>
         </div>`;

@@ -1,7 +1,8 @@
 import { ref } from 'vue';
 import { message } from 'ant-design-vue';
 import { getFeeCodePagedList } from '#/api/system/base-data/fee-code-admin';
-import { getClientPagedList } from '#/api/sea-export/client-admin';
+// ✅ 修改：使用通用客户API接口，数据量更少，效率更高
+import { getClientPagedList } from '#/api/common/client';
 import {
   getIndustryCategoryOptions as getIndustryCategoryOptionsFromData,
   getCurrencyEnumOptions,
@@ -116,16 +117,17 @@ export function useDropdownSources(orderCtnList: any) {
       // 并行加载所有行业类别的客户
       const loadPromises = industryValues.map(async (industryValue) => {
         try {
+          // ✅ 修改：使用小驼峰命名，与新API接口参数匹配
           const response = await getClientPagedList({
-            IndustryCategory: industryValue,
-            Keyword: '',
-            PageIndex: 1,
-            PageSize: 1000, // 增大 PageSize 以获取更多数据
+            industryCategory: industryValue,
+            keyword: '',
+            pageIndex: 1,
+            pageSize: 700, // 增大 PageSize 以获取更多数据
           });
 
           const items = response.items || [];
           const options = items.map((client: any) => ({
-            label: client.name,
+            label: `${client.code}-${client.name}`,
             value: client.id,
             ...client,
           }));
