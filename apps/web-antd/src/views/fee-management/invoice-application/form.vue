@@ -270,8 +270,13 @@ async function handleSubmit() {
         ],
       };
 
-      await addAsync(batchData);
+      const ids = await addAsync(batchData);
       message.success('创建成功');
+
+      // 创建成功后跳转到第一个申请的编辑页面
+      if (ids && ids.length > 0) {
+        router.push(`/fee-management/invoice-application/${ids[0]}/edit`);
+      }
     }
 
     // 保存后不关闭页面，保持当前状态
@@ -727,8 +732,13 @@ function handleOpenFeeDetailModal() {
 async function handleDeleteFee(feeIds: string | string[]) {
   // 将单个ID转换为数组，支持批量删除
   const idsToDelete = Array.isArray(feeIds) ? feeIds : [feeIds];
-  
-  console.log('🗑️ 开始批量删除费用 - 数量:', idsToDelete.length, 'IDs:', idsToDelete);
+
+  console.log(
+    '🗑️ 开始批量删除费用 - 数量:',
+    idsToDelete.length,
+    'IDs:',
+    idsToDelete,
+  );
 
   if (idsToDelete.length === 0) {
     message.warning('没有要删除的费用');
@@ -738,13 +748,15 @@ async function handleDeleteFee(feeIds: string | string[]) {
   // 1. 从 invoiceApplicationItems 中移除这些费用
   const items = formData.value.invoiceApplicationItems || [];
   const allFees = flattenTreeData(feeGroupsData.value);
-  
+
   // 找出所有需要删除的费用项
   const removedItems: any[] = [];
   idsToDelete.forEach((feeId) => {
     const fee = allFees.find((f: any) => f.id === feeId);
     if (fee) {
-      const removedItem = items.find((item: any) => item.orderFeeId === fee.orderFee?.id);
+      const removedItem = items.find(
+        (item: any) => item.orderFeeId === fee.orderFee?.id,
+      );
       if (removedItem) {
         removedItems.push(removedItem);
       }

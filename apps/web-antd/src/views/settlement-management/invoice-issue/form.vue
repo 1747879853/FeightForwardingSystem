@@ -207,15 +207,20 @@ async function handleSubmit() {
       } as InvoiceIssueApi.InvoiceIssueEditDto);
       message.success('修改成功');
     } else {
-      await addInvoiceIssue(submitData);
+      const newId = await addInvoiceIssue(submitData);
       message.success('创建成功');
+
+      // 创建成功后跳转到编辑页面
+      if (newId) {
+        router.push(`/settlement-management/invoice-issue/${newId}/edit`);
+      }
     }
 
     // 保存后不关闭页面，保持当前状态
     console.log('✅ 保存成功，保持在当前页面');
   } catch (error) {
     console.error('保存失败:', error);
-    message.error('保存失败');
+    //message.error('保存失败');
   } finally {
     submitLoading.value = false;
   }
