@@ -683,20 +683,20 @@ defineExpose({ getTableDate });
   position: relative;
 
   :deep(.ant-card-body) {
-    padding: 0 20px 12px !important;
+    padding: 0 2px 12px !important;
   }
 
   .order-ctn-table {
     display: flex;
     flex-direction: column;
-    height: 575px;
+    height: 515px;
   }
 
   .handsontable-container {
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 570px;
+    min-height: 500px;
     overflow: hidden;
     border: 1px solid #e8e8e8;
     border-radius: 4px;
@@ -774,7 +774,7 @@ defineExpose({ getTableDate });
   right: 120px;
   left: 120px;
   z-index: 10;
-  max-width: calc(100% - 1167px);
+  max-width: 600px;
   padding: 8px 20px;
   pointer-events: none; // ✅ 允许鼠标事件穿透，不影响滚动条操作
   background: linear-gradient(

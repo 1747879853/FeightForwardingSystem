@@ -253,6 +253,8 @@ export function useOrderFeeData(
 
       // settlementId: 结算对象ID
       if (normalizedItem.settlementId) {
+        normalizedItem['settlementName'] =
+          `${normalizedItem.settlementCode}-${normalizedItem.settlementName}`;
         normalizedItem['settlementId_value'] = normalizedItem.settlementId;
       }
 

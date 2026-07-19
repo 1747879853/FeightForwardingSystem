@@ -335,9 +335,9 @@ const transCurrency = (currencyId: number) => {
   const option = getCurrencyEnumOptions().find((o) => o.value === currencyId);
   return option ? option.label : currencyId;
 };
-const transCurrencySymbol = (currencyId: number) => {
+const transCurrencySymbol = (currencyId: number | string) => {
   const option = getCurrencyEnumSymbolOptions().find(
-    (o) => o.value === currencyId,
+    (o) => o.value === currencyId || o.key === currencyId,
   );
   return option ? option.label : currencyId;
 };
@@ -591,7 +591,7 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <Page>
+  <Page class="order-fee-page">
     <Spin :spinning="pageLoading || clientsLoading">
       <div class="mx-2 flex items-stretch gap-6">
         <!-- 垂直方向撑满 -->
@@ -688,6 +688,11 @@ onMounted(async () => {
   </Page>
 </template>
 <style scoped lang="scss">
+.order-fee-page {
+  height: 100%;
+  overflow: hidden;
+}
+
 .select-name {
   flex-direction: row-reverse;
 }

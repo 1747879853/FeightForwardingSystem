@@ -63,7 +63,7 @@ export function useHotSettings(
 
       return title;
     },
-    height: 520,
+    height: 458,
     licenseKey: 'non-commercial-and-evaluation',
     contextMenu: true,
     manualColumnResize: true,

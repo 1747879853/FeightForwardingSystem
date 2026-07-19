@@ -250,13 +250,13 @@ export const getCurrencyEnumOptions = () => [
 ];
 
 export const getCurrencyEnumSymbolOptions = () => [
-  { value: 9999, label: '￥' },
-  { value: 1, label: '￥' },
-  { value: 2, label: '$' },
-  { value: 3, label: '€' },
-  { value: 4, label: '₹' },
-  { value: 5, label: '¥' },
-  { value: 6, label: '₩' },
+  { value: 9999, key: 'RMB', label: '￥' },
+  { value: 1, key: 'RMB', label: '￥' },
+  { value: 2, key: 'USD', label: '$' },
+  { value: 3, key: 'EUR', label: '€' },
+  { value: 4, key: 'INR', label: '₹' },
+  { value: 5, key: 'JPY', label: '¥' },
+  { value: 6, key: 'KRW', label: '₩' },
 ];
 // --------------------------------------------------------
 // 费用类别
