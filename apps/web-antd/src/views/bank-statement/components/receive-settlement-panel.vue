@@ -31,7 +31,6 @@ import {
 const props = defineProps<{
   bankStatementId: string;
   canCreateSettlement?: boolean;
-  canEditSettlement?: boolean;
   currencyCode?: string;
   remainingAmount: number;
 }>();
@@ -118,12 +117,6 @@ const columns = [
     title: '备注',
     minWidth: 160,
     ellipsis: true,
-  },
-  {
-    key: 'action',
-    title: '操作',
-    width: 76,
-    fixed: 'right' as const,
   },
 ];
 
@@ -278,7 +271,8 @@ defineExpose({
       :pagination="tablePagination"
       :custom-row="
         (record) => ({
-          onClick: () => openSettlement(record),
+          onDblclick: () => openSettlement(record),
+          title: '双击查看或编辑核销单',
         })
       "
       row-key="id"
@@ -298,7 +292,7 @@ defineExpose({
           </Tag>
         </template>
         <template v-else-if="column.key === 'settlementNo'">
-          <Tooltip :title="record.settlementNo">
+          <Tooltip :title="`双击查看或编辑核销单 ${record.settlementNo || ''}`">
             <span class="settlement-no">{{ record.settlementNo || '-' }}</span>
           </Tooltip>
         </template>
@@ -315,16 +309,6 @@ defineExpose({
             <span class="ellipsis-cell">{{ record.remark }}</span>
           </Tooltip>
           <span v-else>-</span>
-        </template>
-        <template v-else-if="column.key === 'action'">
-          <Button
-            type="link"
-            size="small"
-            class="px-0"
-            @click.stop="openSettlement(record)"
-          >
-            {{ canEditSettlement ? '编辑' : '查看' }}
-          </Button>
         </template>
       </template>
     </Table>

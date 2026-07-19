@@ -411,6 +411,7 @@ async function handleFeeConfirm(fees: SelectedReceiveFee[]) {
       message.success('添加明细成功');
       await loadEditData();
       markReceiveSettlementRelatedListsShouldRefresh();
+      emit('changed');
     } catch (error: any) {
       message.error(error.message || '添加明细失败');
     } finally {
@@ -470,6 +471,7 @@ function handleDeleteSelectedItems() {
           selectedItemRowKeys.value = [];
           await loadEditData();
           markReceiveSettlementRelatedListsShouldRefresh();
+          emit('changed');
         } catch (error: any) {
           message.error(error.message || '删除明细失败');
         } finally {
@@ -617,6 +619,7 @@ function handleLock() {
         message.success('锁定成功');
         markReceiveSettlementRelatedListsShouldRefresh();
         await loadEditData();
+        emit('changed');
       } catch (error: any) {
         message.error(error.message || '锁定失败');
       } finally {
@@ -639,6 +642,7 @@ function handleUnlock() {
         message.success('解锁成功');
         markReceiveSettlementRelatedListsShouldRefresh();
         await loadEditData();
+        emit('changed');
       } catch (error: any) {
         message.error(error.message || '解锁失败');
       } finally {

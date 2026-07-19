@@ -11,11 +11,8 @@ import {
   Button,
   Card,
   DatePicker,
-  DropdownButton,
   Input,
   InputNumber,
-  Menu,
-  MenuItem,
   message,
   Modal,
   Progress,
@@ -120,9 +117,6 @@ const canEditStatement = computed(
 const canCreateSettlement = computed(
   () =>
     isEdit.value && canAddReceiveSettlement.value && remainingAmount.value > 0,
-);
-const canEditReceiveSettlement = computed(() =>
-  hasAccessByCodes([receiveSettlementPerm.edit]),
 );
 const isOverSettled = computed(() => remainingAmount.value < 0);
 const writeOffProgress = computed(() => {
@@ -310,10 +304,6 @@ function scrollToSettlementList() {
     behavior: 'smooth',
     block: 'start',
   });
-}
-
-function handleCreateMenu({ key }: { key: string | number }) {
-  requestCreateSettlement(String(key) === 'invoice' ? 'invoice' : 'fee');
 }
 
 function openEditSettlement(
@@ -513,21 +503,6 @@ onUnmounted(() => {
               <strong>{{ formatMoney(remainingAmount) }}</strong>
             </div>
           </div>
-
-          <DropdownButton
-            v-if="canCreateSettlement"
-            type="primary"
-            class="statement-overview__actions"
-            @click="requestCreateSettlement('fee')"
-          >
-            新建核销
-            <template #overlay>
-              <Menu @click="handleCreateMenu">
-                <MenuItem key="fee">按费用核销</MenuItem>
-                <MenuItem key="invoice">按开票申请核销</MenuItem>
-              </Menu>
-            </template>
-          </DropdownButton>
         </div>
 
         <div class="write-off-progress">
@@ -643,6 +618,7 @@ onUnmounted(() => {
                   v-model:value="amount"
                   :min="0"
                   :precision="2"
+                  :controls="false"
                   :disabled="!canEditStatement"
                   class="money-input w-full"
                   placeholder="请输入金额"
@@ -655,6 +631,7 @@ onUnmounted(() => {
                   v-model:value="transactionFee"
                   :min="0"
                   :precision="2"
+                  :controls="false"
                   :disabled="!canEditStatement"
                   class="money-input w-full"
                   placeholder="请输入手续费"
@@ -697,7 +674,23 @@ onUnmounted(() => {
           </section>
 
           <details class="supplementary-details">
-            <summary>补充信息</summary>
+            <summary>
+              <IconifyIcon
+                icon="mdi:chevron-right"
+                class="supplementary-details__chevron size-4"
+              />
+              <span>补充信息</span>
+              <span
+                class="supplementary-details__hint supplementary-details__hint--closed"
+              >
+                展开填写银行摘要、付款方留言和内部备注
+              </span>
+              <span
+                class="supplementary-details__hint supplementary-details__hint--open"
+              >
+                收起
+              </span>
+            </summary>
             <div class="supplementary-fields-grid">
               <div class="form-field">
                 <div class="form-label">银行交易摘要</div>
@@ -742,7 +735,6 @@ onUnmounted(() => {
           ref="settlementPanelRef"
           :bank-statement-id="editId || ''"
           :can-create-settlement="canCreateSettlement"
-          :can-edit-settlement="canEditReceiveSettlement"
           :currency-code="savedCurrencyCode"
           :remaining-amount="remainingAmount"
           @create="requestCreateSettlement"
@@ -801,7 +793,7 @@ onUnmounted(() => {
 
 .statement-overview {
   display: grid;
-  grid-template-columns: minmax(240px, 0.9fr) minmax(500px, 1.8fr) auto;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(500px, 1.8fr);
   gap: 24px;
   align-items: center;
 }
@@ -994,12 +986,61 @@ onUnmounted(() => {
 
   summary {
     display: inline-flex;
+    gap: 6px;
     align-items: center;
     min-height: 32px;
+    padding: 0 6px;
+    margin-left: -6px;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     color: #526070;
     cursor: pointer;
+    list-style: none;
+    border-radius: 6px;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &:hover {
+      color: #1677ff;
+      background: #f5f8fc;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #91caff;
+      outline-offset: 2px;
+    }
+  }
+}
+
+.supplementary-details__chevron {
+  flex: none;
+  color: #748194;
+  transition: transform 180ms ease-out;
+}
+
+.supplementary-details[open] .supplementary-details__chevron {
+  transform: rotate(90deg);
+}
+
+.supplementary-details__hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: #8a96a6;
+}
+
+.supplementary-details__hint--open {
+  display: none;
+}
+
+.supplementary-details[open] {
+  .supplementary-details__hint--closed {
+    display: none;
+  }
+
+  .supplementary-details__hint--open {
+    display: inline;
   }
 }
 
@@ -1030,7 +1071,7 @@ onUnmounted(() => {
 
 @media (max-width: 1180px) {
   .statement-overview {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr;
     gap: 16px;
   }
 
@@ -1060,10 +1101,6 @@ onUnmounted(() => {
   .statement-overview__metrics {
     grid-row: auto;
     grid-column: auto;
-  }
-
-  .statement-overview__actions {
-    justify-self: start;
   }
 
   .statement-metric,

@@ -9,7 +9,6 @@ import {
   InputNumber,
   message,
   Pagination,
-  Switch,
   Table,
   Tag,
 } from 'ant-design-vue';
@@ -39,7 +38,6 @@ const totalCount = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(20);
 const expandedRowKeys = ref<string[]>([]);
-const onlySettleable = ref(true);
 
 /** 已勾选的开票明细ID */
 const selectedItemIds = ref<string[]>([]);
@@ -141,7 +139,6 @@ function resetState() {
   totalCount.value = 0;
   currentPage.value = 1;
   expandedRowKeys.value = [];
-  onlySettleable.value = true;
   selectedItemIds.value = [];
   settledAmountMap.clear();
   remarkMap.clear();
@@ -179,7 +176,7 @@ async function fetchData() {
       applyTimeEnd: applyTimeEnd
         ? dayjs(applyTimeEnd).toISOString()
         : undefined,
-      onlySettleable: onlySettleable.value,
+      onlySettleable: true,
       pageIndex: currentPage.value,
       pageSize: pageSize.value,
     });
@@ -337,14 +334,6 @@ function handleConfirm() {
   open.value = false;
 }
 
-function handleToggleOnlySettleable(checked: boolean | number | string) {
-  onlySettleable.value = Boolean(checked);
-  if (drawerProps.value.settlementId) {
-    currentPage.value = 1;
-    fetchData();
-  }
-}
-
 defineExpose({ open: openDrawer });
 </script>
 
@@ -358,17 +347,8 @@ defineExpose({ open: openDrawer });
     <div class="mb-3">
       <SearchForm />
       <div class="drawer-actions">
-        <div class="drawer-actions__left">
-          <span class="drawer-actions__label">仅显示可结算</span>
-          <Switch
-            :checked="onlySettleable"
-            @change="handleToggleOnlySettleable"
-          />
-        </div>
-        <div class="drawer-actions__right">
-          <Button @click="handleSearch">查询</Button>
-          <Button type="primary" @click="handleConfirm">确认添加</Button>
-        </div>
+        <Button @click="handleSearch">查询</Button>
+        <Button type="primary" @click="handleConfirm">确认添加</Button>
       </div>
     </div>
 
@@ -458,24 +438,9 @@ defineExpose({ open: openDrawer });
 <style scoped lang="scss">
 .drawer-actions {
   display: flex;
+  gap: 8px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-top: 8px;
-}
-
-.drawer-actions__left {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.drawer-actions__label {
-  font-size: 13px;
-  color: #666;
-}
-
-.drawer-actions__right {
-  display: flex;
-  gap: 8px;
 }
 </style>
