@@ -127,7 +127,7 @@ export function useDropdownSources(orderCtnList: any) {
 
           const items = response.items || [];
           const options = items.map((client: any) => ({
-            label: client.name,
+            label: `${client.code}-${client.name}`,
             value: client.id,
             ...client,
           }));
