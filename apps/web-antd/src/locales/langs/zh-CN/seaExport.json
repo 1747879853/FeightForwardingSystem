@@ -252,7 +252,7 @@
       "settledAmount": "已结算金额",
       "canInvoice": "不开发票",
       "isConfidential": "是否机密",
-      "dataEntryMethod": "数据录入方式",
+      "dataEntryMethod": "录入方式",
       "remark": "备注",
       "editFee": "编辑费用",
       "originalFeeData": "原费用数据",

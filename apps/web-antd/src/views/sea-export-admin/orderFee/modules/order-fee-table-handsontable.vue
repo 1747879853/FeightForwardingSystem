@@ -745,15 +745,12 @@ defineExpose({ getTableDate });
 // 费用合计样式
 .fee-summary {
   position: absolute;
-  right: 17px; // ✅ 预留滚动条宽度（通常17px），避免遮挡滚动条
-  bottom: 30px; // ✅ 距离表格底部30px
-  left: 100px; // ✅ 左侧距离表格50px
+  top: 8px;
+  right: 120px;
+  left: 120px;
   z-index: 10;
-  max-width: calc(
-    100% - 167px
-  ); // ✅ 限制最大宽度（50px左边距 + 17px右边距 + 100px额外缩短）
-
-  padding: 12px 20px;
+  max-width: calc(100% - 1167px);
+  padding: 8px 20px;
   pointer-events: none; // ✅ 允许鼠标事件穿透，不影响滚动条操作
   background: linear-gradient(
     135deg,

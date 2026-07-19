@@ -681,7 +681,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.invoiceStatus'),
       field: 'invoiceStatus',
-      width: 100,
+      width: 65,
       sortable: true,
       cellRender: {
         name: 'CellTag',
@@ -692,7 +692,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.feeStatus'),
       align: 'center',
       field: 'combinedFeeStatus',
-      minWidth: 100,
+      width: 75,
       sortable: true,
       cellRender: {
         name: 'CellFeeStatusTag',
@@ -703,7 +703,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.feecodeName'),
 
       field: 'feeCodeId',
-      minWidth: 300,
+      width: 150,
       sortable: true,
       cellRender: {
         name: 'CellFeeCodeSelect',
@@ -717,7 +717,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.client.industryCategories'),
 
       field: 'industryCategory',
-      minWidth: 110,
+      width: 100,
       sortable: true,
       cellRender: {
         name: 'CellIndustryCategorySelect',
@@ -730,7 +730,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.settlement'),
 
       field: 'settlementId',
-      minWidth: 150,
+      width: 130,
       sortable: true,
       cellRender: {
         name: 'CellClientSelect',
@@ -745,7 +745,7 @@ export function useOrderFeeColumns(
 
       field: 'currencyId',
       align: 'center',
-      minWidth: 100,
+      width: 60,
       sortable: true,
       cellRender: {
         name: 'CurrencySelect',
@@ -759,7 +759,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.ExchangeRate'),
       field: 'exchangeRate',
       align: 'right',
-      width: 100,
+      width: 60,
       sortable: true,
       cellRender: {
         name: 'CellInput',
@@ -772,7 +772,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.unitPrice'),
       field: 'unitPrice',
-      width: 130,
+      width: 80,
       align: 'right',
       sortable: true,
       cellRender: {
@@ -785,7 +785,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.amount'),
       field: 'amount',
-      minWidth: 130,
+      width: 100,
       align: 'right',
       sortable: true,
       cellRender: {
@@ -798,7 +798,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.unitEmum'),
       field: 'unit',
-      minWidth: 100,
+      width: 70,
       sortable: true,
       cellRender: {
         name: 'CellUnitSelect',
@@ -820,7 +820,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.quantity'),
 
       field: 'quantity',
-      minWidth: 100,
+      width: 70,
       align: 'right',
       sortable: true,
       cellRender: {
@@ -834,7 +834,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.taxRate'),
 
       field: 'taxRate',
-      minWidth: 90,
+      width: 60,
       align: 'right',
       sortable: true,
       cellRender: {
@@ -847,7 +847,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
       field: 'noTaxUnitPrice',
-      minWidth: 120,
+      width: 90,
       align: 'right',
       sortable: true,
       formatter: ({ cellValue }: any) => {
@@ -863,7 +863,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.noTaxAmount'),
 
       field: 'noTaxAmount',
-      minWidth: 120,
+      width: 100,
       align: 'right',
       sortable: true,
       formatter: ({ cellValue }: any) => {
@@ -878,7 +878,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.rqstPaymentAmount'),
       field: 'rqstPaymentAmount',
-      minWidth: 120,
+      width: 105,
       align: 'right',
       sortable: true,
       formatter: ({ cellValue }: any) => {
@@ -899,7 +899,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.invoicedAmount'),
       field: 'invoicedAmount',
-      minWidth: 120,
+      width: 100,
       align: 'right',
       sortable: true,
       formatter: ({ cellValue }: any) => {
@@ -914,7 +914,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.orderInvoiceAmount'),
       field: 'orderInvoiceAmount',
-      minWidth: 120,
+      width: 105,
       align: 'right',
       sortable: true,
       formatter: ({ cellValue }: any) => {
@@ -929,7 +929,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.settledAmount'),
       field: 'settledAmount',
-      minWidth: 120,
+      width: 100,
       align: 'right',
       sortable: true,
       formatter: ({ cellValue }: any) => {
@@ -945,7 +945,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.canInvoice'),
 
       field: 'invoiceBlocked',
-      minWidth: 100,
+      width: 75,
       align: 'center',
       sortable: true,
       slots: {
@@ -964,7 +964,7 @@ export function useOrderFeeColumns(
       title: $t('seaExport.export.orderFee.isConfidential'),
 
       field: 'isConfidential',
-      minWidth: 100,
+      width: 75,
       align: 'center',
       sortable: true,
       slots: {
@@ -982,7 +982,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.remark'),
       field: 'remark',
-      minWidth: 150,
+      width: 120,
       sortable: true,
       cellRender: {
         name: 'CellInput',
@@ -994,7 +994,7 @@ export function useOrderFeeColumns(
     {
       title: $t('seaExport.export.orderFee.dataEntryMethod'),
       field: 'dataEntryMethod',
-      minWidth: 110,
+      width: 80,
       sortable: true,
       cellRender: {
         name: 'CellTag',
@@ -1005,13 +1005,13 @@ export function useOrderFeeColumns(
     {
       title: $t('auditApproval.task.creatorUserName'),
       field: 'creatorUserName',
-      width: 110,
+      width: 90,
       sortable: true,
     },
     {
       title: $t('auditApproval.task.createTime'),
       field: 'creationTime',
-      width: 150,
+      width: 155,
       sortable: true,
       formatter: 'formatDateTime',
     },
