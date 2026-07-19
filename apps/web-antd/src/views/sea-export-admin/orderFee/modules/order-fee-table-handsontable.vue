@@ -646,7 +646,7 @@ defineExpose({ getTableDate });
           <!-- 费用合计显示 -->
           <div v-if="feeSummary && feeSummary.length > 0" class="fee-summary">
             <div class="fee-summary-content">
-              <span class="summary-label">费用合计：</span>
+              <!-- <span class="summary-label">费用合计：</span> -->
               <Space :size="16">
                 <span
                   v-for="(item, index) in feeSummary"
@@ -770,35 +770,35 @@ defineExpose({ getTableDate });
 // 费用合计样式
 .fee-summary {
   position: absolute;
-  top: 8px;
+  top: 10px;
   right: 120px;
-  left: 120px;
+  left: 70px;
   z-index: 10;
   max-width: 600px;
   padding: 8px 20px;
   pointer-events: none; // ✅ 允许鼠标事件穿透，不影响滚动条操作
-  background: linear-gradient(
-    135deg,
-    rgb(255 255 255 / 98%) 0%,
-    rgb(245 248 255 / 95%) 100%
-  );
-  border: 1px solid rgb(24 144 255 / 20%);
+  // background: linear-gradient(
+  //   135deg,
+  //   rgb(255 255 255 / 98%) 0%,
+  //   rgb(245 248 255 / 95%) 100%
+  // );
+  //border: 1px solid rgb(24 144 255 / 20%);
   border-radius: 8px;
-  box-shadow:
-    0 4px 12px rgb(24 144 255 / 15%),
-    0 2px 4px rgb(0 0 0 / 8%),
-    inset 0 1px 0 rgb(255 255 255 / 80%);
-  backdrop-filter: blur(8px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  // box-shadow:
+  //   0 4px 12px rgb(24 144 255 / 15%),
+  //   0 2px 4px rgb(0 0 0 / 8%),
+  //   inset 0 1px 0 rgb(255 255 255 / 80%);
+  // backdrop-filter: blur(8px);
+  // transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  &:hover {
-    border-color: rgb(24 144 255 / 35%);
-    box-shadow:
-      0 6px 20px rgb(24 144 255 / 25%),
-      0 3px 8px rgb(0 0 0 / 12%),
-      inset 0 1px 0 rgb(255 255 255 / 90%);
-    transform: translateY(-2px);
-  }
+  // &:hover {
+  //   border-color: rgb(24 144 255 / 35%);
+  //   box-shadow:
+  //     0 6px 20px rgb(24 144 255 / 25%),
+  //     0 3px 8px rgb(0 0 0 / 12%),
+  //     inset 0 1px 0 rgb(255 255 255 / 90%);
+  //   transform: translateY(-2px);
+  // }
 
   .fee-summary-content {
     display: flex;
