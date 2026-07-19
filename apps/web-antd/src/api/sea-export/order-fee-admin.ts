@@ -154,6 +154,8 @@ export namespace OrderFeeAdminApi {
     /** 结算对象 id - 船公司是船公司表 其余是客户表 */
     settlementId?: string;
 
+    settlementCode?: string;
+
     /** 币别 id */
     currencyId?: number;
 
