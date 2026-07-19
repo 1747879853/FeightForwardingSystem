@@ -34,6 +34,8 @@ import DisplayFieldsConfigModal, {
 } from './modules/display-fields-config-modal.vue';
 import { useDisplayFieldConfig } from './composables/use-display-field-config';
 import { buildAttachmentUrl } from '#/utils';
+// ✅ 新增：导入下拉框数据源管理
+import { useDropdownSources } from './modules/composables/useDropdownSources';
 
 defineOptions({
   name: 'OrderFee',
@@ -60,6 +62,8 @@ const isEdit = computed(() => !!editId.value);
 const pageLoading = ref(false);
 const submitting = ref(false);
 const transportOrderId = ref<string>();
+// ✅ 新增：客户数据加载状态
+const clientsLoading = ref(false);
 
 /** ISO 字符串转正常日期格式 */
 const formatNormalDate = (
@@ -73,6 +77,11 @@ const formatNormalDate = (
 
 const formValues = ref<Record<string, any>>();
 const to = ref<Record<string, any>>();
+
+// ✅ 新增：使用下拉框数据源管理（用于加载客户数据）
+const orderCtnList = ref<any[]>([]); // 临时空数组，仅用于初始化
+const { allClientsByIndustry, loadAllClients } =
+  useDropdownSources(orderCtnList);
 
 // 所有可用的显示字段配置
 const allDisplayFields: DisplayFieldConfig[] = [
@@ -550,7 +559,7 @@ const handleAmountUpdate = (data: {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   console.log('\n========== 页面挂载开始 ==========');
   console.log(
     'displayFieldConfig.value.length:',
@@ -563,15 +572,27 @@ onMounted(() => {
   console.log('formValues.value:', formValues.value ? '有值' : 'undefined');
   console.log('to.value:', to.value ? '有值' : 'undefined');
 
+  // ✅ 新增：显示客户数据加载状态
+  clientsLoading.value = true;
+
   loadSeaExportData();
   getOrderFeeNumber();
+
+  try {
+    // ✅ 新增：在父组件中一次性加载全部客户数据
+    await loadAllClients();
+  } finally {
+    // ✅ 新增：加载完成后隐藏 loading
+    clientsLoading.value = false;
+    console.log('✅ [onMounted] 客户数据加载完成，已隐藏 loading');
+  }
 
   console.log('========== 页面挂载结束 ==========\n');
 });
 </script>
 <template>
   <Page>
-    <Spin :spinning="pageLoading">
+    <Spin :spinning="pageLoading || clientsLoading">
       <div class="mx-2 flex items-stretch gap-6">
         <!-- 垂直方向撑满 -->
         <Card class="flex w-[280px] shrink-0 flex-col">
@@ -623,6 +644,7 @@ onMounted(() => {
             :rec-amount-map="recAmountMap"
             :pay-amount-map="payAmountMap"
             :order-detail="formValues"
+            :all-clients-by-industry="allClientsByIndustry"
             @update-amount="handleAmountUpdate"
             @sync-fee="handleFeeSync"
             @refresh-opposite-table="() => handleRefreshOppositeTable(0)"
@@ -633,6 +655,7 @@ onMounted(() => {
             :rec-amount-map="recAmountMap"
             :pay-amount-map="payAmountMap"
             :order-detail="formValues"
+            :all-clients-by-industry="allClientsByIndustry"
             @update-amount="handleAmountUpdate"
             @sync-fee="handleFeeSync"
             @refresh-opposite-table="() => handleRefreshOppositeTable(1)"
