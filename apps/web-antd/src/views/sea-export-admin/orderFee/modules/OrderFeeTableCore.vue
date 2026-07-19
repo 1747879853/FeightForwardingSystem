@@ -130,11 +130,11 @@ const formatDateTime = (value: any): string => {
 // ✅ 新增：获取排序图标
 const getSortIcon = (field: string): string => {
   if (!props.sortState?.field || props.sortState.field !== field) {
-    return '<span style="color: #ccc;">↕</span>';
+    return ''; // 未排序状态不显示箭头
   }
   return props.sortState.order === 'asc'
-    ? '<span style="color: #1890ff;">↑</span>'
-    : '<span style="color: #1890ff;">↓</span>';
+    ? '<span style="color: #1890ff; font-size: 12px;">▼</span>' // 升序显示向下箭头（实心三角形）
+    : '<span style="color: #1890ff; font-size: 12px;">▲</span>'; // 降序显示向上箭头（实心三角形）
 };
 
 /**

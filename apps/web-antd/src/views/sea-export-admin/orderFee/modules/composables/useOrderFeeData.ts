@@ -32,10 +32,9 @@ const extractSettlementNameMap = (
   }
 
   // 发货人
-  if (transportOrder?.shipperId && transportOrder.shipperContent) {
+  if (transportOrder?.shipperId) {
     try {
-      const shipperContent = JSON.parse(transportOrder.shipperContent);
-      const name = shipperContent.name || shipperContent.cnName;
+      const name = transportOrder.shipperName;
       if (name) {
         nameMap.set(transportOrder.shipperId, name);
       }
@@ -45,10 +44,9 @@ const extractSettlementNameMap = (
   }
 
   // 收货人
-  if (transportOrder?.consigneeId && transportOrder.consigneeContent) {
+  if (transportOrder?.consigneeId) {
     try {
-      const consigneeContent = JSON.parse(transportOrder.consigneeContent);
-      const name = consigneeContent.name || consigneeContent.cnName;
+      const name = transportOrder.consigneeName;
       if (name) {
         nameMap.set(transportOrder.consigneeId, name);
       }
@@ -58,10 +56,9 @@ const extractSettlementNameMap = (
   }
 
   // 通知人
-  if (transportOrder?.notifierId && transportOrder.notifierContent) {
+  if (transportOrder?.notifierId) {
     try {
-      const notifierContent = JSON.parse(transportOrder.notifierContent);
-      const name = notifierContent.name || notifierContent.cnName;
+      const name = transportOrder.notifierName;
       if (name) {
         nameMap.set(transportOrder.notifierId, name);
       }
@@ -70,29 +67,24 @@ const extractSettlementNameMap = (
     }
   }
 
-  // 第二通知人
-  if (orderDetail.secondNotifierId && orderDetail.secondNotifier?.name) {
-    nameMap.set(orderDetail.secondNotifierId, orderDetail.secondNotifier.name);
-  }
-
   // 目的港代理
-  if (orderDetail.podAgentId && orderDetail.podAgent?.name) {
-    nameMap.set(orderDetail.podAgentId, orderDetail.podAgent.name);
+  if (orderDetail.podAgentId && orderDetail.podAgentName) {
+    nameMap.set(orderDetail.podAgentId, orderDetail.podAgentName);
   }
 
   // 订舱代理
-  if (orderDetail.bookingAgentId && orderDetail.bookingAgent?.name) {
-    nameMap.set(orderDetail.bookingAgentId, orderDetail.bookingAgent.name);
+  if (orderDetail.bookingAgentId && orderDetail.bookingAgentName) {
+    nameMap.set(orderDetail.bookingAgentId, orderDetail.bookingAgentName);
   }
 
   // 船代
-  if (orderDetail.shipAgentId && orderDetail.shipAgent?.name) {
-    nameMap.set(orderDetail.shipAgentId, orderDetail.shipAgent.name);
+  if (orderDetail.shipAgentId && orderDetail.shipAgentName) {
+    nameMap.set(orderDetail.shipAgentId, orderDetail.shipAgentName);
   }
 
   // 场站
-  if (orderDetail.yardId && orderDetail.yard?.name) {
-    nameMap.set(orderDetail.yardId, orderDetail.yard.name);
+  if (orderDetail.yardId && orderDetail.yardName) {
+    nameMap.set(orderDetail.yardId, orderDetail.yardName);
   }
 
   // 车队

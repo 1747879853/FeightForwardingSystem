@@ -47,12 +47,12 @@ export function useOrderFeeSort(getTableDate: () => void) {
    */
   const getSortIcon = (field: string) => {
     if (sortState.value.field !== field) {
-      return '▼';
+      return ''; // 未排序状态不显示箭头
     }
     if (sortState.value.order === 'asc') {
-      return '▲';
+      return '\u25BC'; // 升序显示向下箭头 ▼ (U+25BC)
     }
-    return '▼';
+    return '\u25B2'; // 降序显示向上箭头 ▲ (U+25B2)
   };
 
   /**

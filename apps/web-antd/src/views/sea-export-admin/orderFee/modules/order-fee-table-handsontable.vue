@@ -183,6 +183,7 @@ const { hotSettings } = useHotSettings(
   getColumnIndex,
   getSettlementIndustryCategory,
   handleOpenDropdown,
+  getSortIcon, // ✅ 新增：传递排序图标函数
 );
 
 // 模态框管理

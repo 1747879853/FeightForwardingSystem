@@ -143,11 +143,6 @@ export function useHotColumns(
           width: col.width || col.minWidth || 100,
         };
 
-        if (col.field && sortableFieldsSet.value.has(col.field)) {
-          const sortIcon = getSortIcon(col.field);
-          hotCol.title = `${col.title} ${sortIcon}`;
-        }
-
         if (col.field === 'feeCodeId') {
           hotCol.type = 'autocomplete';
           hotCol.source = function (
@@ -184,18 +179,9 @@ export function useHotColumns(
             value: any,
             cellProperties: any,
           ) {
-            console.log(
-              `🎨 [renderer:feeCodeId] 渲染 - row: ${row}, value: "${value}"`,
-            );
-
-            // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
-            console.log(
-              `🧹 [renderer:feeCodeId] 清空前 innerHTML: "${td.innerHTML.substring(0, 50)}..."`,
-            );
             td.innerHTML = '';
             const label = value || '';
             td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-            console.log(`✅ [renderer:feeCodeId] 渲染完成`);
             return td;
           };
         } else if (col.field === 'industryCategory') {
@@ -234,18 +220,9 @@ export function useHotColumns(
             value: any,
             cellProperties: any,
           ) {
-            console.log(
-              `🎨 [renderer:industryCategory] 渲染 - row: ${row}, value: "${value}"`,
-            );
-
-            // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
-            console.log(
-              `🧹 [renderer:industryCategory] 清空前 innerHTML: "${td.innerHTML.substring(0, 50)}..."`,
-            );
             td.innerHTML = '';
             const label = value || '';
             td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-            console.log(`✅ [renderer:industryCategory] 渲染完成`);
             return td;
           };
         } else if (col.field === 'settlementId') {
@@ -265,18 +242,9 @@ export function useHotColumns(
             value: any,
             cellProperties: any,
           ) {
-            console.log(
-              `🎨 [renderer:settlementId] 渲染 - row: ${row}, value: "${value}", type: ${typeof value}`,
-            );
-
-            // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
-            console.log(
-              `🧹 [renderer:settlementId] 清空前 innerHTML: "${td.innerHTML.substring(0, 50)}..."`,
-            );
             td.innerHTML = '';
             const label = value || '';
             td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-            console.log(`✅ [renderer:settlementId] 渲染完成: "${label}"`);
             return td;
           };
         } else if (col.field === 'currencyId') {
@@ -315,18 +283,9 @@ export function useHotColumns(
             value: any,
             cellProperties: any,
           ) {
-            console.log(
-              `🎨 [renderer:currencyId] 渲染 - row: ${row}, value: "${value}"`,
-            );
-
-            // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
-            console.log(
-              `🧹 [renderer:currencyId] 清空前 innerHTML: "${td.innerHTML.substring(0, 50)}..."`,
-            );
             td.innerHTML = '';
             const label = value || '';
             td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-            console.log(`✅ [renderer:currencyId] 渲染完成`);
             return td;
           };
         } else if (col.field === 'unit') {
@@ -347,14 +306,9 @@ export function useHotColumns(
             value: any,
             cellProperties: any,
           ) {
-            //  console.log(`🎨 [renderer:unit] 渲染 - row: ${row}, value: "${value}", type: ${typeof value}`);
-
-            // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
-            // console.log(`🧹 [renderer:unit] 清空前 innerHTML: "${td.innerHTML.substring(0, 50)}..."`);
             td.innerHTML = '';
             const label = value || '';
             td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
-            //  console.log(`✅ [renderer:unit] 渲染完成: "${label}"`);
             return td;
           };
         } else if (col.field === 'unitPrice') {
