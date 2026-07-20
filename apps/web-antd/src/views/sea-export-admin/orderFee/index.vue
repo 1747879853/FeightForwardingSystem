@@ -560,18 +560,7 @@ const handleAmountUpdate = (data: {
 };
 
 onMounted(async () => {
-  console.log('\n========== 页面挂载开始 ==========');
-  console.log(
-    'displayFieldConfig.value.length:',
-    displayFieldConfig.value.length,
-  );
-  console.log(
-    '可见字段数:',
-    displayFieldConfig.value.filter((f) => f.visible).length,
-  );
-  console.log('formValues.value:', formValues.value ? '有值' : 'undefined');
-  console.log('to.value:', to.value ? '有值' : 'undefined');
-
+  console.log('\n========== 费用页面挂载开始 ==========');
   // ✅ 新增：显示客户数据加载状态
   clientsLoading.value = true;
 

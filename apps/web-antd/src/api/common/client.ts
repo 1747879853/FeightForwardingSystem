@@ -25,6 +25,28 @@ export namespace ClientAppApi {
     fullName?: string;
     /** 客户英文名 */
     enName?: string;
+    /** 是否失信 */
+    isDishonest?: boolean;
+    /** 企业类型（前端自定义枚举） */
+    enterpriseType?: number;
+    /** 是否共享 */
+    isShared?: boolean;
+    /** 展示归属公司id */
+    showCompanyId?: number;
+    /** 展示归属公司对象 */
+    showCompany?: OrganizationUnitSimpleDto;
+  }
+
+  /** 组织机构简易DTO */
+  export interface OrganizationUnitSimpleDto {
+    /** 组织机构id */
+    id: number;
+    /** 显示名称 */
+    displayName?: string;
+    /** 简称 */
+    shortName?: string;
+    /** 英文名 */
+    enName?: string;
   }
 
   /** 分页列表响应 */
@@ -35,6 +57,14 @@ export namespace ClientAppApi {
     totalPages: number;
   }
 
+  /** 客户按行业类别分组项 */
+  export interface ClientIndustryCategoryGroupItem {
+    /** 单个行业类别字符（如 'p', 'a' 等） */
+    key: string;
+    /** 该行业类别下的客户简易列表 */
+    value: ClientSimpleDto[];
+  }
+
   /** 分页查询参数 */
   export interface ClientQueryDto {
     /** 关键字，模糊匹配客户简称、代码、全称、英文名、备注 */
@@ -43,10 +73,14 @@ export namespace ClientAppApi {
     industryCategory?: string;
     /** 业务来源id，为空不筛选 */
     codeSourceId?: number | string | null;
-    /** 客户合作状态多选，为空不筛选 */
-    clientCoopStatus?: CoopStatus[];
-    /** 供应商合作状态多选，为空不筛选 */
-    supplierCoopStatus?: CoopStatus[];
+    /** 是否失信，为空不筛选 */
+    isDishonest?: boolean;
+    /** 企业类型（前端自定义枚举），为空不筛选 */
+    enterpriseType?: number;
+    /** 是否共享，为空不筛选 */
+    isShared?: boolean;
+    /** 展示归属公司id，为空不筛选（不参与权限） */
+    showCompanyId?: number;
     /** 当前页码，从1开始，默认1 */
     pageIndex?: number;
     /** 每页条数，默认10，范围1~1000 */
@@ -68,5 +102,19 @@ export const getClientPagedList = (params: ClientAppApi.ClientQueryDto) => {
   return requestClient.get<ClientAppApi.PagedListOfClientSimpleDto>(
     `${API_PREFIX}/GetPagedListAsync`,
     { params },
+  );
+};
+
+/**
+ * 客户按行业类别分组
+ * 无入参，一次性返回按行业类别（单字符）分组的客户简易列表
+ * - 含委托单位(p)的客户走数据权限过滤
+ * - 不含 p 的全部返回
+ * - 按单字符分组返回 key/value
+ * 适用于按行业分组展示/选择客户
+ */
+export const getClientGroupedByIndustryCategory = () => {
+  return requestClient.get<ClientAppApi.ClientIndustryCategoryGroupItem[]>(
+    `${API_PREFIX}/GetGroupedByIndustryCategoryAsync`,
   );
 };

@@ -1,8 +1,8 @@
 import { ref } from 'vue';
 import { message } from 'ant-design-vue';
 import { getFeeCodePagedList } from '#/api/system/base-data/fee-code-admin';
-// ✅ 修改：使用通用客户API接口，数据量更少，效率更高
-import { getClientPagedList } from '#/api/common/client';
+// ✅ 修改：使用通用客户API接口，一次性按行业类别分组获取客户数据
+import { getClientGroupedByIndustryCategory } from '#/api/common/client';
 import {
   getIndustryCategoryOptions as getIndustryCategoryOptionsFromData,
   getCurrencyEnumOptions,
@@ -103,56 +103,38 @@ export function useDropdownSources(orderCtnList: any) {
 
   /**
    * ✅ 新增：一次性加载全部客户数据并按行业类别缓存
+   * 使用 getClientGroupedByIndustryCategory 接口，无需遍历行业类别
    */
   const loadAllClients = async () => {
     try {
       console.log('🔄 [loadAllClients] 开始加载全部客户数据...');
 
-      // 获取所有行业类别
-      const industryOptions = getIndustryCategoryOptionsFromData();
-      const industryValues = industryOptions
-        .map((opt) => opt.value)
-        .filter(Boolean);
+      // ✅ 调用新接口，一次性获取按行业类别分组的客户数据
+      const groupedData = await getClientGroupedByIndustryCategory();
 
-      // 并行加载所有行业类别的客户
-      const loadPromises = industryValues.map(async (industryValue) => {
-        try {
-          // ✅ 修改：使用小驼峰命名，与新API接口参数匹配
-          const response = await getClientPagedList({
-            industryCategory: industryValue,
-            keyword: '',
-            pageIndex: 1,
-            pageSize: 700, // 增大 PageSize 以获取更多数据
-          });
+      if (!groupedData || !Array.isArray(groupedData)) {
+        console.warn('⚠️ [loadAllClients] 返回数据格式不正确');
+        return;
+      }
 
-          const items = response.items || [];
-          const options = items.map((client: any) => ({
+      // 构建按行业类别分组的缓存
+      let totalClientCount = 0;
+      groupedData.forEach((group) => {
+        if (group.key && group.value && group.value.length > 0) {
+          // 转换为统一的格式：{label: "编码-名称", value: id, ...client}
+          const clients = group.value.map((client: any) => ({
             label: `${client.code}-${client.name}`,
             value: client.id,
             ...client,
           }));
 
-          return { industry: industryValue, clients: options };
-        } catch (error) {
-          console.error(
-            `❌ [loadAllClients] 加载行业类别 ${industryValue} 的客户失败:`,
-            error,
-          );
-          return { industry: industryValue, clients: [] };
-        }
-      });
-
-      const results = await Promise.all(loadPromises);
-
-      // 构建按行业类别分组的缓存
-      results.forEach(({ industry, clients }) => {
-        if (industry && clients.length > 0) {
-          allClientsByIndustry.value[industry] = clients;
+          allClientsByIndustry.value[group.key] = clients;
+          totalClientCount += clients.length;
         }
       });
 
       console.log(
-        `✅ [loadAllClients] 加载完成，共缓存 ${Object.keys(allClientsByIndustry.value).length} 个行业类别的客户数据`,
+        `✅ [loadAllClients] 加载完成，共缓存 ${Object.keys(allClientsByIndustry.value).length} 个行业类别，总计 ${totalClientCount} 个客户`,
       );
       Object.entries(allClientsByIndustry.value).forEach(
         ([industry, clients]) => {
