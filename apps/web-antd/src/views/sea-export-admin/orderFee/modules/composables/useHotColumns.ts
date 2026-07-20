@@ -87,7 +87,7 @@ export function useHotColumns(
     const indexColumn: any = {
       data: null,
       title: '开票状态',
-      width: 75,
+      width: 80,
       type: 'text',
       className: '',
       readOnly: true,

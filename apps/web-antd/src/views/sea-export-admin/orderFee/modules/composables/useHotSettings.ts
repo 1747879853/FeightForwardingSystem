@@ -714,13 +714,20 @@ export function useHotSettings(
           }
         }
 
-        // ✅ 关键修复：延迟清空 TD 的 innerHTML，让 autocomplete 编辑器正确显示
-        setTimeout(() => {
-          const td = this.getCell(row, col);
-          if (td) {
-            td.innerHTML = '';
-          }
-        }, 0);
+        // ✅ 关键修复：立即清空 TD 的 innerHTML，让编辑器完全接管显示
+        const td = this.getCell(row, col);
+        if (td) {
+          td.innerHTML = '';
+        }
+      }
+      
+      // ✅ 添加：对于普通输入字段，也确保单元格内容被正确处理
+      else {
+        // 对于非下拉字段，也要清空TD内容以避免输入时的重叠
+        const td = this.getCell(row, col);
+        if (td) {
+          td.innerHTML = '';
+        }
       }
     },
     // ✅ 简化：在按键按下前处理，确保键盘导航选择后按回车时也能清空原文本
@@ -784,6 +791,14 @@ export function useHotSettings(
             }
           }, 0);
         }
+      }
+    },
+    // ✅ 新增：在开始编辑前确保单元格内容被清空
+    beforeBeginEditing: function(this: any, row: number, col: number) {
+      // 在编辑开始前立即清空单元格的显示内容，防止重叠
+      const td = this.getCell(row, col);
+      if (td) {
+        td.innerHTML = '';
       }
     },
     observeDOMVisibility: true,
