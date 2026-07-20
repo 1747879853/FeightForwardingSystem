@@ -42,6 +42,14 @@ const emit = defineEmits<{
   success: [];
 }>();
 
+// 不再接收AI识别的数据作为props
+// const props = defineProps<{
+//   aiData?: any[];
+// }>();
+
+// 添加一个响应式变量存储AI数据
+const aiData = ref<any[] | undefined>(undefined);
+
 // 箱型列表（用于动态列）
 interface CtnTypeOption {
   ctnCodeId: number;
@@ -68,10 +76,22 @@ const selectedRowKeys = ref<(string | number)[]>([]);
 // 加载状态
 const loading = ref(false);
 
-// [Modal, modalApi] 由父组件通过 connectedComponent 注入
+// 定义模态框
 const [Modal, modalApi] = useVbenModal({
-  async onOpened() {
+  title: $t('seaExport.freightRate.batchAdd'),
+  confirmLoading: false,
+  width: 1300,
+  onConfirm: async () => {
+    await handleSubmit();
+  },
+  onCancel: () => {
+    modalApi.close();
+  },
+  onOpened: async () => {
     console.log('弹窗已打开');
+    const data = modalApi.getData<any>();
+    aiData.value = data.aiData;
+    console.log('当前AI数据:', aiData.value);
 
     // 确保默认箱型已加载
     if (allCtnOptions.value.length === 0) {
@@ -80,28 +100,88 @@ const [Modal, modalApi] = useVbenModal({
         '默认箱型加载完成，当前箱型数量:',
         addedCtnTypes.value.length,
       );
+    }
 
-      // 等待 watch 触发并完成列配置更新
+    // 如果有AI识别的数据，则使用AI数据填充表格
+    if (aiData.value && aiData.value.length > 0) {
+      console.log('检测到AI数据，开始处理:', aiData.value.length, '条记录');
+      // 处理AI数据中的箱型，添加到addedCtnTypes中
+      const aiCtnTypes = new Set<number>();
+      aiData.value.forEach((row: any) => {
+        if (row.seFreiPriceCtns && Array.isArray(row.seFreiPriceCtns)) {
+          row.seFreiPriceCtns.forEach((ctn: any) => {
+            if (ctn.ctnCodeId && ctn.ctnCodeId > 0) {
+              aiCtnTypes.add(ctn.ctnCodeId);
+            }
+          });
+        }
+      });
+
+      // 将AI数据中出现的有效箱型添加到addedCtnTypes中
+      const newAddedCtnTypes: CtnTypeOption[] = [];
+      aiCtnTypes.forEach((ctnCodeId) => {
+        // 检查是否已添加
+        if (!addedCtnTypes.value.some((ctn) => ctn.ctnCodeId === ctnCodeId)) {
+          // 查找箱型名称
+          const ctnOption = allCtnOptions.value.find(
+            (ctn) => ctn.ctnCodeId === ctnCodeId,
+          );
+          if (ctnOption) {
+            newAddedCtnTypes.push({
+              ctnCodeId: ctnOption.ctnCodeId,
+              ctnName: ctnOption.ctnName,
+            });
+          }
+        }
+      });
+
+      // 如果有新的箱型需要添加
+      if (newAddedCtnTypes.length > 0) {
+        addedCtnTypes.value.push(...newAddedCtnTypes);
+      }
+
+      // 无论是否有新箱型，都等待列配置更新
       await nextTick();
-      await nextTick(); // 多等待一个 tick 确保列配置完全应用
-    }
+      await nextTick();
 
-    // 弹窗打开时，如果表格为空则添加一行
-    const currentData = gridApi.grid?.getFullData() || [];
-    console.log('准备添加行，当前数据行数:', currentData.length);
-    if (currentData.length === 0) {
-      handleAddRow();
-      console.log('已添加第一行');
+      // 一次性加载AI识别的数据
+      gridApi.grid?.loadData(aiData.value);
+      message.success(`已加载 ${aiData.value.length} 条AI识别的数据`);
+    } else {
+      // 弹窗打开时，如果表格为空则添加一行
+      const currentData = gridApi.grid?.getFullData() || [];
+      console.log('准备添加行，当前数据行数:', currentData.length);
+      if (currentData.length === 0) {
+        handleAddRow();
+        console.log('已添加第一行');
+      }
     }
   },
-  onCancel() {
-    modalApi.close();
-  },
-  onConfirm() {
-    handleSubmit();
-  },
-  closeOnClickModal: false,
 });
+
+onMounted(async () => {
+  // 确保默认箱型已加载
+  if (allCtnOptions.value.length === 0) {
+    await loadSelectOptions();
+    console.log('默认箱型加载完成，当前箱型数量:', addedCtnTypes.value.length);
+  }
+});
+
+// 监听AI数据变化，当props.aiData更新时处理数据
+watch(
+  () => aiData.value,
+  (newAiData) => {
+    console.log('监听到AI数据变化:', newAiData);
+    if (newAiData && newAiData.length > 0) {
+      console.log('处理新的AI数据，共', newAiData.length, '条');
+      // 延迟处理，确保表格已初始化
+      setTimeout(() => {
+        handleAIData(newAiData);
+      }, 100); // 添加短暂延迟，确保组件完全初始化
+    }
+  },
+  { deep: true, immediate: true },
+);
 
 // 初始化下拉选项
 async function loadSelectOptions() {
@@ -737,18 +817,148 @@ watch(
   addedCtnTypes,
   async (newVal) => {
     console.log('箱型列表变化:', newVal);
+    // 等待 DOM 更新
     await nextTick();
     // 获取当前 Grid 中的数据，避免丢失
-    const currentData = gridApi.grid?.getFullData() || [];
+    const currentData = gridApi.grid?.getData() || []; // 使用getData()替代getFullData()
     console.log('更新列配置，当前数据行数:', currentData.length);
+
+    // 更新列配置
     gridApi.setGridOptions({
       columns: buildColumns(),
       data: currentData, // 保留当前数据
     });
+
     console.log('列配置已更新');
   },
   { deep: true },
 );
+
+// 处理AI数据的函数
+async function handleAIData(aiData: any[]) {
+  console.log('开始处理AI数据:', aiData);
+
+  // 确保下拉选项已加载
+  if (allCtnOptions.value.length === 0) {
+    await loadSelectOptions();
+  }
+
+  // 处理AI数据中的箱型，添加到addedCtnTypes中
+  const aiCtnTypes = new Set<number>();
+  aiData.forEach((row: any, index: number) => {
+    console.log(`处理第${index + 1}行AI数据:`, row);
+    if (row.seFreiPriceCtns && Array.isArray(row.seFreiPriceCtns)) {
+      console.log(
+        `第${index + 1}行包含${row.seFreiPriceCtns.length}个箱型数据`,
+      );
+      row.seFreiPriceCtns.forEach((ctn: any, ctnIndex: number) => {
+        console.log(`  第${ctnIndex + 1}个箱型数据:`, ctn);
+        if (ctn.ctnCodeId && ctn.ctnCodeId > 0) {
+          console.log(`    添加箱型ID:`, ctn.ctnCodeId);
+          aiCtnTypes.add(Number(ctn.ctnCodeId)); // 确保转换为数字类型
+        }
+      });
+    }
+  });
+
+  console.log('AI数据中发现的箱型ID集合:', Array.from(aiCtnTypes));
+
+  // 将AI数据中出现的有效箱型添加到addedCtnTypes中
+  const newAddedCtnTypes: CtnTypeOption[] = [];
+  aiCtnTypes.forEach((ctnCodeId) => {
+    // 检查是否已添加
+    const exists = addedCtnTypes.value.some(
+      (ctn) => ctn.ctnCodeId === ctnCodeId,
+    );
+    console.log(`箱型ID ${ctnCodeId} 是否已存在:`, exists);
+
+    if (!exists) {
+      // 查找箱型名称
+      const ctnOption = allCtnOptions.value.find(
+        (ctn) => ctn.ctnCodeId === ctnCodeId,
+      );
+      if (ctnOption) {
+        console.log(`找到箱型信息:`, ctnOption);
+        newAddedCtnTypes.push({
+          ctnCodeId: ctnOption.ctnCodeId,
+          ctnName: ctnOption.ctnName,
+        });
+      } else {
+        console.warn(`未找到箱型ID为 ${ctnCodeId} 的箱型信息`);
+      }
+    }
+  });
+
+  // 如果有新的箱型需要添加
+  if (newAddedCtnTypes.length > 0) {
+    console.log('添加新的箱型到addedCtnTypes:', newAddedCtnTypes);
+    addedCtnTypes.value.push(...newAddedCtnTypes);
+  } else {
+    console.log('没有新的箱型需要添加');
+  }
+
+  // 等待列配置更新
+  console.log('等待列配置更新...');
+  await nextTick();
+  await nextTick();
+
+  // 转换AI数据格式以适应表格结构
+  const transformedAiData = aiData.map((row, index) => {
+    // 为每行生成唯一_key
+    const transformedRow = {
+      _rowKey: generateRowKey(),
+      _isCopied: false,
+      recommend: row.recommend || false,
+      carrierId: row.carrierId || undefined,
+      polId: row.polId || undefined,
+      podId: row.podId ? Number(row.podId) : undefined, // 确保转换为数字类型
+      isDirect: row.isDirect ?? true,
+      poT1Id: row.poT1Id ? Number(row.poT1Id) : undefined,
+      poT2Id: row.poT2Id ? Number(row.poT2Id) : undefined,
+      polFreeDays: row.polFreeDays || undefined,
+      podFreeDays: row.podFreeDays || undefined,
+      poddem: row.poddem || undefined,
+      poddet: row.poddet || undefined,
+      voyage: row.voyage || '',
+      contractNo: row.contractNo || '',
+      etd: row.etd || '',
+      closeDocTime: row.closeDocTime || '',
+      closingTime: row.closingTime || '',
+      etdDayOfWeek: row.etdDayOfWeek,
+      etdDayTime: row.etdDayTime || '',
+      closeDocDayOfWeek: row.closeDocDayOfWeek,
+      closeDocDayTime: row.closeDocDayTime || '',
+      closingDayOfWeek: row.closingDayOfWeek,
+      closingDayTime: row.closingDayTime || '',
+      validTimeStart: row.validTimeStart || '',
+      validTimeEnd: row.validTimeEnd || '',
+      remark: row.remark || '',
+      currencyId: row.currencyId ? Number(row.currencyId) : undefined,
+      bookingAgentId: row.bookingAgentId || undefined,
+      seFreiPriceCtns: row.seFreiPriceCtns
+        ? row.seFreiPriceCtns.map((ctn: any) => ({
+            ctnCodeId: ctn.ctnCodeId ? Number(ctn.ctnCodeId) : undefined,
+            cost: ctn.price || undefined,
+          }))
+        : [],
+    };
+    return transformedRow;
+  });
+
+  console.log('转换后的AI数据:', transformedAiData);
+
+  console.log('准备加载AI数据到表格，数据量:', transformedAiData.length);
+  console.log('当前表格实例:', gridApi.grid);
+
+  // 一次性加载AI识别的数据，替换现有数据
+  if (gridApi.grid) {
+    gridApi.grid.reloadData(transformedAiData);
+    console.log(`已加载 ${transformedAiData.length} 条AI识别的数据到表格`);
+    message.success(`已加载 ${transformedAiData.length} 条AI识别的数据`);
+  } else {
+    console.error('表格实例不存在，无法加载数据');
+  }
+}
 
 // 验证表单
 function validateForm(): boolean {
@@ -916,6 +1126,33 @@ function resetForm() {
   // 清空编辑状态
   editingStates.value.clear();
 }
+
+// 暴露方法给父组件
+defineExpose({
+  open: () => {
+    console.log('打开模态框');
+    // 确保默认箱型已加载
+    if (allCtnOptions.value.length === 0) {
+      loadSelectOptions();
+    }
+    modalApi.open();
+  },
+  close: () => {
+    modalApi.close();
+  },
+  setData: (data: { aiData?: any[] }) => {
+    console.log('收到外部设置的AI数据:', data);
+    // 如果有AI数据，更新props中的aiData
+    if (data.aiData && data.aiData.length > 0) {
+      console.log('开始处理AI数据，共', data.aiData.length, '条记录');
+      // 将AI数据保存到响应式变量中
+      aiData.value = data.aiData;
+      console.log('将AI数据保存到响应式变量中', aiData.value);
+    } else {
+      console.log('没有AI数据需要处理');
+    }
+  },
+});
 </script>
 
 <template>
@@ -1564,7 +1801,7 @@ function resetForm() {
           <Input v-model:value="row.remark" placeholder="请输入" />
         </template>
 
-        <!-- 箱型列头 -->
+        <!-- �箱型列头 -->
         <template #ctnHeader="{ column }">
           <span>{{ column.title }}</span>
         </template>
