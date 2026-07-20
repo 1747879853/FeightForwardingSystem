@@ -40,6 +40,7 @@ import {
   getSeFreiPriceDetail,
   getSeFreiPriceList,
   getAllLaneCodes,
+  extractSeFreiPriceByQwen,
 } from '#/api/sea-export/freight-rate-admin';
 import { getUser } from '#/api/system/user-admin';
 import { $t } from '#/locales';
@@ -891,6 +892,93 @@ onUnmounted(() => {
   stopLaneTabScrollAnimation();
   laneTabResizeObserver?.disconnect();
 });
+
+/**
+ * AI识别批量新增运价
+ */
+async function onAIBatchAdd() {
+  if (!hasAddPermission.value) {
+    message.warning('您没有AI批量新增运价的权限');
+    return;
+  }
+
+  // 创建隐藏的文件输入元素
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.pdf,.jpg,.jpeg,.png,.doc,.docx'; // 支持的文件类型
+  fileInput.onchange = async (event: any) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      const hideLoading = message.loading({
+        content: '正在识别文件内容...',
+        duration: 0,
+        key: 'ai_recognition_msg',
+      });
+
+      // 调用千问AI识别接口
+      const recognitionResult = await extractSeFreiPriceByQwen(file);
+      console.log('识别结果:', recognitionResult);
+      hideLoading();
+
+      if (!recognitionResult || recognitionResult.length === 0) {
+        message.warning('未能从文件中识别出有效的运价数据');
+        return;
+      }
+
+      // 转换识别结果为批量新增弹窗所需的数据格式
+      const convertedData = recognitionResult.map((item, index) => ({
+        _rowKey: `ai_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`, // 生成唯一行键
+        _isCopied: false,
+        recommend: false, // 默认不推荐
+        carrierId: undefined, // 暂时设为undefined，让用户手动选择
+        polId: undefined, // 起运港需要手动匹配
+        podId: item.podId > 0 ? item.podId : undefined, // 如果识别到目的港ID且有效则使用
+        isDirect: item.isDirect ?? true, // 默认为直达
+        poT1Id: item.pot1Id && item.pot1Id > 0 ? item.pot1Id : undefined, // 中转港1
+        poT2Id: item.pot2Id && item.pot2Id > 0 ? item.pot2Id : undefined, // 中转港2
+        polFreeDays: undefined,
+        podFreeDays: undefined,
+        poddem: undefined,
+        poddet: undefined,
+        voyage: '',
+        contractNo: '',
+        etd: '',
+        closeDocTime: '',
+        closingTime: '',
+        etdDayOfWeek: undefined,
+        etdDayTime: '',
+        closeDocDayOfWeek: undefined,
+        closeDocDayTime: '',
+        closingDayOfWeek: undefined,
+        closingDayTime: '',
+        validTimeStart: item.validTimeStart || '',
+        validTimeEnd: item.validTimeEnd || '',
+        remark: item.remark || '',
+        currencyId: item.currencyId > 0 ? item.currencyId : undefined, // 币别ID
+        bookingAgentId: undefined,
+        seFreiPriceCtns: item.seFreiPriceCtns
+          ? item.seFreiPriceCtns
+              .map((ctn) => ({
+                ctnCodeId: ctn.ctnCodeId > 0 ? ctn.ctnCodeId : undefined, // 箱型ID
+                cost: ctn.price, // 价格作为成本
+              }))
+              .filter((ctn) => ctn.ctnCodeId && ctn.ctnCodeId > 0) // 只保留有效箱型ID的数据
+          : [],
+      }));
+      batchAddModalApi.setData({ aiData: convertedData }).open();
+      // 打开批量新增弹窗并传递识别的数据
+      // 使用setTimeout确保模态框完全打开后再设置数据
+    } catch (error) {
+      console.error('AI识别失败:', error);
+      message.error('文件识别失败，请稍后重试');
+    }
+  };
+
+  // 触发文件选择
+  fileInput.click();
+}
 </script>
 
 <template>
@@ -1160,6 +1248,17 @@ onUnmounted(() => {
             <Plus class="size-5" />
             {{ $t('ui.actionTitle.create') }}
           </Button>
+
+          <!-- AI批量新增按钮 -->
+          <!-- <Button
+            type="primary"
+            ghost
+            :disabled="!hasAddPermission"
+            @click="onAIBatchAdd"
+          >
+            <IconifyIcon icon="mdi:microphone-message" class="size-5" />
+            AI批量新增
+          </Button> -->
 
           <!-- 批量编辑按钮 -->
           <Button :disabled="!hasEditPermission" @click="onBatchEditModal">

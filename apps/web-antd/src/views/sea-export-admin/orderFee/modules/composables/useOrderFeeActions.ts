@@ -88,7 +88,7 @@ export function useOrderFeeActions(
     nextTick(() => {
       dataContext.syncFee();
       console.log('🔵 [addRow] 已同步费用');
-      
+
       // 执行回调函数，用于滚动到最后一条记录并选中费用名称单元格
       if (onAdded) {
         onAdded();
@@ -275,6 +275,17 @@ export function useOrderFeeActions(
           row.feeStatus === feeConstants.getFeeStatusValue.Rejected ||
           row.feeStatus === feeConstants.getFeeStatusValue.ApplyModify,
       );
+
+    // ✅ 如果没有符合条件的费用（录入状态、驳回状态、申请修改状态），给出提示
+    if (list.length === 0) {
+      message.warning({
+        content:
+          '只能选择"录入状态"、"驳回状态"或"申请修改状态"的费用进行提交审核',
+        key: 'action_process_msg',
+      });
+      return;
+    }
+
     let SubmitOrderFeeDto = {
       TransportOrderId: dataContext.editId.value,
       PaySide: props.type ?? 0,
