@@ -339,8 +339,21 @@ export function useHotColumns(
           ) {
             // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
             td.innerHTML = '';
-            const label = value || '';
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0.00'}</span>`;
+
+            // ✅ 新增：格式化数值，添加千位逗号分隔符
+            let displayValue = '0.00';
+            if (value !== null && value !== undefined && value !== '') {
+              const numValue = parseFloat(value);
+              if (!isNaN(numValue)) {
+                displayValue = numValue.toLocaleString('zh-CN', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                });
+              }
+            }
+
+            // ✅ 新增：右对齐样式
+            td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block;">${displayValue}</span>`;
             return td;
           };
         } else if (col.field === 'quantity') {
@@ -379,8 +392,21 @@ export function useHotColumns(
           ) {
             // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
             td.innerHTML = '';
-            const label = value || '';
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0.00'}</span>`;
+
+            // ✅ 新增：格式化数值，添加千位逗号分隔符
+            let displayValue = '0.00';
+            if (value !== null && value !== undefined && value !== '') {
+              const numValue = parseFloat(value);
+              if (!isNaN(numValue)) {
+                displayValue = numValue.toLocaleString('zh-CN', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                });
+              }
+            }
+
+            // ✅ 新增：右对齐样式
+            td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block;">${displayValue}</span>`;
             return td;
           };
         } else if (col.field === 'taxRate') {
@@ -623,6 +649,27 @@ export function useHotColumns(
           hotCol.numericFormat = {
             pattern: '0.00',
             culture: 'en-US',
+          };
+        } else if (col.field === 'statementNum') {
+          // 对账单号列 - 只读文本，不可编辑
+          hotCol.type = 'text';
+          hotCol.readOnly = true;
+          hotCol.renderer = function (
+            this: any,
+            instance: any,
+            td: HTMLTableCellElement,
+            row: number,
+            col: number,
+            prop: string,
+            value: any,
+            cellProperties: any,
+          ) {
+            td.innerHTML = '';
+            // 从 statement 对象中获取 statementNum
+            const rowData = actualDataSource[row] as any;
+            const statementNum = rowData?.statement?.statementNum || '';
+            td.innerHTML = `<span style="color: ${statementNum ? '#262626' : '#999'}; cursor: pointer;">${statementNum}</span>`;
+            return td;
           };
         } else if (col.field === 'creatorUserName') {
           hotCol.type = 'text';

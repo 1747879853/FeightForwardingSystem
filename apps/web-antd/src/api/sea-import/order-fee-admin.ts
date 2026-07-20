@@ -220,6 +220,17 @@ export namespace OrderFeeAdminApi {
     /** 不含税金额 (计算字段) */
     noTaxAmount: number;
 
+    /** 客户对账 id，为空代表未参与对账 */
+    statementId?: string | null;
+
+    /** 对账单简要信息；statementId 为空时为 null */
+    statement?: {
+      /** 对账 id */
+      id: string;
+      /** 对账单号 */
+      statementNum: string;
+    } | null;
+
     /** 是否已删除 */
     isDeleted: boolean;
 
@@ -271,6 +282,8 @@ export namespace OrderFeeAdminApi {
     CurrencyId?: number;
     /** 是否机密 配合机密权限控制读写 */
     IsConfidential?: boolean;
+    /** 按费用 id 列表过滤 */
+    Ids?: string[];
     /** 排序 默认是Id */
     Sorting?: string;
     /** 当前页码 */

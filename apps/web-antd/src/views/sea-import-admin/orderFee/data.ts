@@ -416,6 +416,18 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
       minWidth: 80,
     },
     {
+      title: '对账单号',
+      field: 'statementNum',
+      minWidth: 120,
+      formatter: ({ row }: any) => {
+        // 从 statement 对象中获取 statementNum
+        if (row.statement && row.statement.statementNum) {
+          return row.statement.statementNum;
+        }
+        return '';
+      },
+    },
+    {
       title: $t('seaImport.import.orderFee.rqstPaymentAmount'),
 
       field: 'rqstPaymentAmountStr',

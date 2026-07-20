@@ -113,12 +113,13 @@ export const GetPagedList = (
 };
 
 //更改单详情 带着费用
-export const GetDetail = (id: string) => {
+export const GetDetail = (id: string, ids?: string[]) => {
   return requestClient.get<ChangeOrderAdminApi.ChangeOrderDto>(
     `${API_PREFIX}/DetailAsync`,
     {
       params: {
         id,
+        ...(ids && ids.length > 0 ? { ids } : {}),
       },
     },
   );
