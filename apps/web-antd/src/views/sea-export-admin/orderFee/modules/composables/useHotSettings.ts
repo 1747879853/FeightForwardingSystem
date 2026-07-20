@@ -69,8 +69,9 @@ export function useHotSettings(
     manualColumnResize: true,
     manualRowMove: false,
     stretchH: 'all',
-    autoWrapRow: true,
-    autoWrapCol: true,
+    autoRowSize: false, // 关闭自动测算
+    autoColumnSize: false,
+    renderAllRows: false,
     // ✅ 新增：处理列头点击事件，触发排序
     afterOnCellMouseDown: function (
       this: any,

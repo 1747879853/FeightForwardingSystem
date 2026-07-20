@@ -269,8 +269,6 @@ const feeSummary = computed(() => {
     }));
 });
 
-// ==================== Composables ====================
-
 // ==================== 工具栏操作 ====================
 
 const ImportOther = async (e: any) => {
@@ -443,6 +441,78 @@ const convertIdsToLabels = () => {
   }
 };
 
+// ==================== 新增功能：滚动到最后一行并选中费用名称单元格 ====================
+
+/**
+ * 滚动到最后一行并选中费用名称单元格
+ */
+const scrollToLastAndSelectFeeName = async () => {
+  await nextTick(); // 等待DOM更新
+  
+  const hotInstance = coreTableRef.value?.hotTableRef?.hotInstance;
+  if (!hotInstance) {
+    console.warn('⚠️ [scrollToLastAndSelectFeeName] hotInstance 不存在');
+    return;
+  }
+
+  const rowCount = hotInstance.countRows();
+  if (rowCount <= 0) {
+    console.warn('⚠️ [scrollToLastAndSelectFeeName] 没有行数据');
+    return;
+  }
+
+  // 获取费用名称字段的列索引
+  const feeNameColIndex = getColumnIndex('feeCodeId');
+  if (feeNameColIndex === -1) {
+    console.warn('⚠️ [scrollToLastAndSelectFeeName] 未找到费用名称字段列');
+    return;
+  }
+
+  // 获取最后一行的索引（减去1因为索引从0开始）
+  const lastRowIndex = rowCount - 1;
+
+  // 滚动到最后一行
+  hotInstance.scrollViewportTo(lastRowIndex, 0);
+
+
+  // 确保表格处于监听状态
+  hotInstance.listen();
+    
+    
+  // 选中费用名称单元格
+  hotInstance.selectCell(lastRowIndex, feeNameColIndex);
+          
+  // 使用 setDataAtCell 并指定编辑模式
+  //hotInstance.setDataAtCell(lastRowIndex, feeNameColIndex, '', 'edit');
+  
+  // 获取单元格元素并尝试激活编辑
+  // const cell = hotInstance.getCell(lastRowIndex, feeNameColIndex);
+  // if (cell) {
+  //   // 通过模拟双击来激活编辑器
+  //   const dblClickEvent = new MouseEvent('dblclick', {
+  //     view: window,
+  //     bubbles: true,
+  //     cancelable: true
+  //   });
+  //   cell.dispatchEvent(dblClickEvent);
+  // }
+     
+  
+  
+};
+
+// 扩展 actions 对象，添加滚动和选中功能
+const extendedActions = {
+  ...actions,
+  addRow: async () => {
+    actions.addRow();
+    // 在添加新行后延迟执行滚动和选中操作
+    setTimeout(() => {
+      scrollToLastAndSelectFeeName();
+    }, 150);
+  }
+};
+
 // ==================== 生命周期 ====================
 
 onMounted(async () => {
@@ -554,7 +624,7 @@ defineExpose({ getTableDate });
               }}
             </span>
             <Space class="toolbar-actions">
-              <Button type="primary" @click="actions.addRow">{{
+              <Button type="primary" @click="extendedActions.addRow">{{
                 $t('common.create')
               }}</Button>
               <Button

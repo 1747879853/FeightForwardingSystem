@@ -52,7 +52,7 @@ export function useOrderFeeActions(
   /**
    * 添加新行
    */
-  const addRow = () => {
+  const addRow = (onAdded?: () => void) => {
     console.log('🔵 [addRow] 开始添加新行');
     console.log(
       '🔵 [addRow] 当前数据源长度:',
@@ -88,6 +88,11 @@ export function useOrderFeeActions(
     nextTick(() => {
       dataContext.syncFee();
       console.log('🔵 [addRow] 已同步费用');
+      
+      // 执行回调函数，用于滚动到最后一条记录并选中费用名称单元格
+      if (onAdded) {
+        onAdded();
+      }
     });
   };
 
