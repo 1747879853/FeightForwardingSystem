@@ -37,17 +37,36 @@ const emit = defineEmits(['update:selectedRowKeys', 'column-sort']);
 
 const hotTableRef = ref<any>(null);
 
+  // ✅ 新增：跟踪当前编辑的单元格
+const currentEditingCell = ref<{
+  row: number;
+  col: number;
+  td: HTMLElement | null;
+} | null>(null);
+
+// ✅ 新增：清除编辑状态的辅助函数
+const clearEditingState = () => {
+  if (currentEditingCell.value?.td) {
+    const td = currentEditingCell.value.td;
+    td.style.color = '';
+    td.style.opacity = '';
+    td.style.visibility = '';
+    
+    // 恢复文本节点的显示
+    const textNodes = Array.from(td.childNodes).filter(
+      node => node.nodeType === Node.TEXT_NODE
+    );
+    textNodes.forEach(node => {
+      (node as Text).textContent = (node as Text).textContent?.replace(/^\s*$/, '') || '';
+    });
+  }
+  currentEditingCell.value = null;
+};
+
 // ✅ 新增：添加缺失的状态变量
 const isClosed = ref(false);
 const currentSelectContainer = ref<HTMLElement | null>(null);
 const currentCloseHandler = ref<((e: MouseEvent) => void) | null>(null);
-const currentEditingCell = ref<{
-  row: number;
-  col: number;
-  field: string;
-  td: HTMLTableCellElement;
-} | null>(null);
-
 // ==================== 数据缓存 ====================
 
 // 客户列表缓存（按行业类别分类）
@@ -166,6 +185,7 @@ const handleAfterChange = (
 
 defineExpose({
   hotTableRef,
+   clearEditingState, // ✅ 暴露给父组件
 });
 </script>
 
@@ -248,4 +268,52 @@ defineExpose({
     outline-offset: -2px;
   }
 }
+
 </style>
+
+<style lang="scss" scoped  >
+:deep(.handsontable) {
+  /* 编辑器激活状态 */
+  td.ht__active_highlight {
+    color: transparent !important;
+    background-color: transparent !important;
+  }
+  
+  /* 确保编辑器完全覆盖 */
+  .handsontableEditor,
+  .htAutocompleteEditor {
+    background: white !important;
+    opacity: 1 !important;
+    z-index: 9999 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid #1890ff !important;
+  }
+  
+  /* 下拉列表 */
+  .htAutocompleteList {
+    z-index: 10000 !important;
+    background: white !important;
+    border: 1px solid #d9d9d9 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    
+    .htAutocompleteItem {
+      padding: 4px 11px;
+      
+      &.htAutocompleteActiveItem {
+        background-color: #e6f7ff;
+        color: #1890ff;
+      }
+    }
+  }
+  
+  /* 下拉箭头 */
+  .htAutocompleteArrow {
+    z-index: 10001;
+    color: rgba(0, 0, 0, 0.25);
+    
+    &:hover {
+      color: rgba(0, 0, 0, 0.45);
+    }
+  }
+} 
+</style>  

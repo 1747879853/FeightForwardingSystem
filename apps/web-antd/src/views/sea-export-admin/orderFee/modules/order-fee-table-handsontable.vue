@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch, shallowRef } from 'vue';
 import {
   Button,
   Space,
@@ -184,7 +184,7 @@ const handleOpenDropdown = (
 };
 
 // Handsontable 设置
-const { hotSettings } = useHotSettings(
+const { hotSettings: rawHotSettings } = useHotSettings(
   dataSource,
   selectedRowKeys,
   hotColumns,
@@ -199,6 +199,9 @@ const { hotSettings } = useHotSettings(
   handleOpenDropdown,
   getSortIcon, // ✅ 新增：传递排序图标函数
 );
+
+// 使用 shallowRef 包装 hotSettings，避免对大型配置对象进行深度响应式追踪
+const hotSettings = shallowRef(rawHotSettings.value);
 
 // 模态框管理
 const {
@@ -548,13 +551,13 @@ watch(
     // ✅ 关键修复：在更新 hotSettings 之前，先将ID转换为Label
     convertIdsToLabels();
 
+    // 直接修改 hotSettings.data 属性而不触发Vue深度响应
     hotSettings.value.data = newData;
+    
     nextTick(() => {
       if (coreTableRef.value?.hotTableRef?.hotInstance) {
+        // ✅ 优化：只调用 loadData，它会自动触发渲染，无需单独调用 render()
         coreTableRef.value.hotTableRef.hotInstance.loadData(newData);
-        nextTick(() => {
-          coreTableRef.value?.hotTableRef?.hotInstance?.render();
-        });
       }
     });
   },
@@ -564,10 +567,14 @@ watch(
 watch(
   () => hotColumns.value,
   (newColumns) => {
+    // 直接修改 hotSettings.columns 属性而不触发Vue深度响应
     hotSettings.value.columns = newColumns;
     nextTick(() => {
       if (coreTableRef.value?.hotTableRef?.hotInstance) {
-        coreTableRef.value.hotTableRef.hotInstance.render();
+        // 使用 updateSettings 更新列配置而不是重新渲染整个设置
+        coreTableRef.value.hotTableRef.hotInstance.updateSettings({
+          columns: newColumns
+        });
       }
     });
   },
