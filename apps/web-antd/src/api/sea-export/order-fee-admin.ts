@@ -428,11 +428,37 @@ export namespace OrderFeeAdminApi {
     importOriginalSettlement: boolean;
   }
 
-  /** 新增业务费用 */
-  export const addOrderFee = (data: OrderFeeAdminApi.OrderFeeAddDto) => {
-    return requestClient.post<number>(`${API_PREFIX}/AddAsync`, data);
+  /** 为某条业务批量引入费用 */
+  export const importOrderFeesToTransportOrder = (
+    data: OrderFeeAdminApi.ImportOrderFeesToTransportOrderInputDto,
+  ) => {
+    return requestClient.post<string[]>(
+      `${API_PREFIX}/ImportOrderFeesToTransportOrderAsync`,
+      data,
+    );
   };
+
+  // ==================== 业务费用数量统计相关DTO ====================
+
+  /** 业务费用数量统计查询参数 */
+  export interface OrderFeeCountQueryDto {
+    /** 业务id（TransportOrderId） */
+    transportOrderId: string;
+  }
+
+  /** 业务费用数量统计结果 */
+  export interface OrderFeeCountDto {
+    /** 应收费用数量（PaySide=收，即 0） */
+    receivableCount: number;
+    /** 应付费用数量（PaySide=付，即 1） */
+    payableCount: number;
+  }
 }
+
+/** 新增业务费用 */
+export const addOrderFee = (data: OrderFeeAdminApi.OrderFeeAddDto) => {
+  return requestClient.post<number>(`${API_PREFIX}/AddAsync`, data);
+};
 
 /** 编辑业务费用 */
 export const editOrderFee = (data: OrderFeeAdminApi.OrderFeeEditDto) => {
@@ -526,5 +552,15 @@ export const importOrderFeesToTransportOrder = (
   return requestClient.post<string[]>(
     `${API_PREFIX}/ImportOrderFeesToTransportOrderAsync`,
     data,
+  );
+};
+
+/** 根据业务id统计应收/应付费用数量 */
+export const getOrderFeeCount = (
+  params: OrderFeeAdminApi.OrderFeeCountQueryDto,
+) => {
+  return requestClient.get<OrderFeeAdminApi.OrderFeeCountDto>(
+    `${API_PREFIX}/GetOrderFeeCountAsync`,
+    { params },
   );
 };

@@ -145,7 +145,7 @@ export function useHotSettings(
           ].includes(field)
         ) {
           const colIndex = getColumnIndex(field);
-          
+
           if (field === 'feeCodeId') {
             const source = dropdownSources.value.feeCodeList.map(
               (item: any) => item.label,
@@ -207,18 +207,18 @@ export function useHotSettings(
 
       const field = columnConfig.data;
       const td = this.getCell(row, col);
-      
+
       if (!td) return;
 
       // 保存原始内容用于恢复
       td._originalHTML = td.innerHTML;
       td._originalColor = td.style.color;
       td._originalOpacity = td.style.opacity;
-      
+
       // 隐藏原始内容，但保留编辑器容器
       td.style.color = 'transparent';
       td.style.opacity = '0';
-      
+
       // 对于下拉字段，还需要特殊处理
       if (
         [
@@ -232,12 +232,12 @@ export function useHotSettings(
         // 保存原值
         const currentValue = this.getDataAtCell(row, col);
         this.setCellMeta(row, col, 'originalValue', currentValue);
-        
+
         // 清空文本内容，但保留结构
         const textNodes = Array.from(td.childNodes).filter(
-          node => node.nodeType === Node.TEXT_NODE
+          (node) => node.nodeType === Node.TEXT_NODE,
         );
-        textNodes.forEach(node => {
+        textNodes.forEach((node) => {
           node.textContent = '';
         });
       }
@@ -247,10 +247,10 @@ export function useHotSettings(
     afterBeginEditing: function (this: any, row: number, col: number) {
       const td = this.getCell(row, col);
       if (!td) return;
-      
+
       // 确保内容完全隐藏
       td.style.visibility = 'hidden';
-      
+
       // 延迟执行，确保编辑器已创建
       setTimeout(() => {
         const editor = this.getActiveEditor();
@@ -266,12 +266,12 @@ export function useHotSettings(
     afterEditCell: function (this: any, row: number, col: number) {
       const td = this.getCell(row, col);
       if (!td) return;
-      
+
       // 恢复原始样式
       td.style.color = td._originalColor || '';
       td.style.opacity = td._originalOpacity || '';
       td.style.visibility = '';
-      
+
       // 清理临时属性
       delete td._originalHTML;
       delete td._originalColor;
@@ -303,17 +303,17 @@ export function useHotSettings(
             ].includes(field)
           ) {
             const editor = this.getCellEditor(rowIndex, columnIndex);
-            
+
             if (editor && typeof editor.isOpened === 'function') {
               const isOpened = editor.isOpened();
-              
+
               if (isOpened && event.key === 'Escape') {
                 // ESC 取消编辑，恢复原值
                 const originalValue = this.getCellMeta(
                   rowIndex,
                   columnIndex,
                 )?.originalValue;
-                
+
                 if (originalValue !== undefined && originalValue !== null) {
                   this.setDataAtCell(
                     rowIndex,
@@ -322,12 +322,12 @@ export function useHotSettings(
                     'setValueConversion',
                   );
                 }
-                
+
                 // 恢复显示
                 td.style.color = '';
                 td.style.opacity = '';
                 td.style.visibility = '';
-                
+
                 // 清理元数据
                 this.removeCellMeta(rowIndex, columnIndex, 'originalValue');
               }
@@ -346,7 +346,7 @@ export function useHotSettings(
       value: any,
       cellProperties: any,
     ) {
-      // 费用状态着色
+      // 费用状态着色 - 使用 setProperty 确保优先级
       const actualDataSource = getDataSource();
       const rowData = actualDataSource[row];
       if (rowData) {
@@ -360,7 +360,12 @@ export function useHotSettings(
           );
 
           if (statusOption?.color) {
-            td.style.backgroundColor = `${statusOption.color}30`;
+            // ✅ 使用 setProperty 并添加 !important 确保样式不被覆盖
+            td.style.setProperty(
+              'background-color',
+              `${statusOption.color}30`,
+              'important',
+            );
           }
         }
       }
@@ -371,13 +376,14 @@ export function useHotSettings(
         TH.innerHTML = '';
 
         const container = document.createElement('div');
-        container.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;';
+        container.style.cssText =
+          'display:flex;align-items:center;justify-content:center;height:100%;';
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.className = 'select-all-checkbox';
         checkbox.style.cssText = 'width:16px;height:16px;cursor:pointer;';
-        
+
         const allSelected =
           getSelectedRowKeys().length > 0 &&
           getSelectedRowKeys().length === getDataSource().length;
@@ -386,10 +392,12 @@ export function useHotSettings(
         checkbox.onclick = (e) => {
           e.stopPropagation();
           const isChecked = checkbox.checked;
-          
+
           if (!Array.isArray(selectedRowKeys)) {
             if (isChecked) {
-              selectedRowKeys.value = getDataSource().map((row: any) => row._rowKey);
+              selectedRowKeys.value = getDataSource().map(
+                (row: any) => row._rowKey,
+              );
             } else {
               selectedRowKeys.value = [];
             }
