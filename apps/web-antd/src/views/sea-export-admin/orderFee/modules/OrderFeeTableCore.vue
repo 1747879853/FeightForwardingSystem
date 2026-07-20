@@ -1,18 +1,10 @@
 <script lang="ts" setup>
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
-import { computed, h, nextTick, onUnmounted, ref } from 'vue';
+import {  ref } from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
-
-import { Select } from 'ant-design-vue';
-import { message } from 'ant-design-vue';
-
-import { getClientPagedList } from '#/api/sea-export/client-admin';
-import { getIndustryCategoryOptions } from '../data';
-
 interface Props {
   dataSource: OrderFeeAdminApi.OrderFeeDto[];
   selectedRowKeys: (string | number)[];
