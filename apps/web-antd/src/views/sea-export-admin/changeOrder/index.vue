@@ -1124,7 +1124,6 @@ onBeforeUnmount(unbindGlobalListeners);
                   required
                   class="co-field co-field--reason"
                   :validate-status="showReasonError ? 'error' : ''"
-                  :help="showReasonError ? '请填写更改原因' : ''"
                 >
                   <AutoComplete
                     ref="reasonInputRef"
