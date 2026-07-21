@@ -159,7 +159,7 @@ export function useOrderFeeActions(
     // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额、申请付款金额全是0，才可以申请删除
     const invalidRows = list.filter((row) => {
       const isApproved =
-        row.feeStatus === feeConstants.getFeeStatusValue.Approved;
+        row.combinedFeeStatus === feeConstants.getFeeStatusValue.Approved;
       const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
       const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
       const hasSettledAmount = (row.settledAmount || 0) !== 0;
@@ -271,9 +271,8 @@ export function useOrderFeeActions(
       .filter((row) => keysSet.has((row as any)._rowKey))
       .filter(
         (row) =>
-          row.feeStatus === feeConstants.getFeeStatusValue.Entering ||
-          row.feeStatus === feeConstants.getFeeStatusValue.Rejected ||
-          row.feeStatus === feeConstants.getFeeStatusValue.ApplyModify,
+          row.combinedFeeStatus === feeConstants.getFeeStatusValue.Entering ||
+          row.combinedFeeStatus === feeConstants.getFeeStatusValue.Rejected 
       );
 
     // ✅ 如果没有符合条件的费用（录入状态、驳回状态、申请修改状态），给出提示
@@ -313,7 +312,7 @@ export function useOrderFeeActions(
 
     const invalidRows = list.filter((row) => {
       const isApproved =
-        row.feeStatus === feeConstants.getFeeStatusValue.Approved;
+        row.combinedFeeStatus === feeConstants.getFeeStatusValue.Approved;
       const hasInvoicedAmount = (row.invoicedAmount || 0) !== 0;
       const hasOrderInvoiceAmount = (row.orderInvoiceAmount || 0) !== 0;
       const hasSettledAmount = (row.settledAmount || 0) !== 0;
@@ -430,9 +429,8 @@ export function useOrderFeeActions(
   const saveRow = () => {
     const list = (dataContext.dataSource.value ?? []).filter(
       (row) =>
-        row.feeStatus === feeConstants.getFeeStatusValue.Entering ||
-        row.feeStatus === feeConstants.getFeeStatusValue.Rejected ||
-        row.feeStatus === feeConstants.getFeeStatusValue.ApplyModify,
+        row.combinedFeeStatus === feeConstants.getFeeStatusValue.Entering ||
+        row.combinedFeeStatus === feeConstants.getFeeStatusValue.Rejected 
     );
 
     const editList = dataContext.sanitizeOrderFee(list);
