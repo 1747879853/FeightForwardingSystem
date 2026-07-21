@@ -8,6 +8,14 @@ export namespace ClientContactAdminApi {
     ids?: number[];
   }
 
+  /** 客户联系人设置禁用DTO */
+  export interface ClientContactSetDisabledDto {
+    /** 联系人 id */
+    id: number;
+    /** `true`=禁用，`false`=启用 */
+    isDisabled: boolean;
+  }
+
   /** 新增联系人参数 */
   export interface ClientContactAddDto {
     /** 合作客户id */
@@ -20,6 +28,8 @@ export namespace ClientContactAdminApi {
     email?: string;
     /** 办公电话 */
     tel?: string;
+    /** 座机 */
+    landline?: string;
     /** 职位 */
     position?: string;
     /** 微信号 */
@@ -57,6 +67,8 @@ export namespace ClientContactAdminApi {
     email?: string;
     /** 办公电话 */
     tel?: string;
+    /** 座机 */
+    landline?: string;
     /** 职位 */
     position?: string;
     /** 微信号 */
@@ -85,12 +97,16 @@ export namespace ClientContactAdminApi {
     email?: string;
     /** 办公电话 */
     tel?: string;
+    /** 座机 */
+    landline?: string;
     /** 职位 */
     position?: string;
     /** 微信号 */
     weChat?: string;
     /** 是否默认 */
     isDefault: boolean;
+    /** 是否禁用*/
+    isDisabled: boolean;
     /** 备注 */
     remark?: string;
     /** qq */
@@ -145,6 +161,8 @@ export namespace ClientContactAdminApi {
     PageIndex?: number;
     /** 每页显示记录数 */
     PageSize?: number;
+    /** 是否禁用 */
+    IsDisabled?: boolean;
   }
 }
 
@@ -198,3 +216,13 @@ export const getClientContactDetail = (id: number) => {
     { params: { Id: id } },
   );
 };
+
+/**
+ * 启用/禁用联系人
+ */
+export const setClientContactDisabled = (
+  data: ClientContactAdminApi.ClientContactSetDisabledDto,
+) => {
+  return requestClient.put<boolean>(`${API_PREFIX}/SetDisabledAsync`, data);
+};
+

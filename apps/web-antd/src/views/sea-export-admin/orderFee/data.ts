@@ -31,7 +31,8 @@ export const canEditFee = (feeStatus: number): boolean => {
 export const getDataEntryMethodOptions = () => [
   { value: 0, label: '手动录入' },
   { value: 1, label: '历史引入' },
-  { value: 3, label: '收付引入' },
+  { value: 2, label: '应收引入' },
+  { value: 3, label: '应付引入' },
 ];
 
 // --------------------------------------------------------
@@ -873,6 +874,20 @@ export function useOrderFeeColumns(
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         });
+      },
+    },
+    {
+      title: '对账单号',
+      field: 'statementNum',
+      width: 120,
+      align: 'center',
+      sortable: false,
+      formatter: ({ row }: any) => {
+        // 从 statement 对象中获取 statementNum
+        if (row.statement && row.statement.statementNum) {
+          return row.statement.statementNum;
+        }
+        return '';
       },
     },
     {

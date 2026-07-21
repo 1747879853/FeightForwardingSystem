@@ -1,6 +1,9 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
-import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
+import {
+  getOrderFeePagedList,
+  getOrderFeeCount,
+} from '#/api/sea-export/order-fee-admin';
 import dayjs from 'dayjs';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -529,6 +532,36 @@ const getOrderFeeNumber = async () => {
   });
 };
 
+/**
+ * ✅ 新增：获取业务费用数量统计（应收/应付数量）
+ * 使用新的 getOrderFeeCount 接口，性能更优
+ */
+const getOrderFeeCountStats = async () => {
+  if (!editId.value) return;
+
+  try {
+    const result = await getOrderFeeCount({
+      transportOrderId: editId.value,
+    });
+
+    console.log('✅ [getOrderFeeCountStats] 费用数量统计:', result);
+
+    // 更新费用数量映射
+    feeCountMap.value = {
+      0: result.receivableCount, // 应收数量
+      1: result.payableCount, // 应付数量
+    };
+
+    // 触发父组件事件，同步费用数量
+    emit('fee-count-change', {
+      recCount: result.receivableCount,
+      payCount: result.payableCount,
+    });
+  } catch (error) {
+    console.error('❌ [getOrderFeeCountStats] 获取费用数量失败:', error);
+  }
+};
+
 // 各方向费用行数（0 应收 / 1 应付），用于同步父级 Tab 数字
 const feeCountMap = ref<Record<number, number>>({ 0: 0, 1: 0 });
 
@@ -560,23 +593,15 @@ const handleAmountUpdate = (data: {
 };
 
 onMounted(async () => {
-  console.log('\n========== 页面挂载开始 ==========');
-  console.log(
-    'displayFieldConfig.value.length:',
-    displayFieldConfig.value.length,
-  );
-  console.log(
-    '可见字段数:',
-    displayFieldConfig.value.filter((f) => f.visible).length,
-  );
-  console.log('formValues.value:', formValues.value ? '有值' : 'undefined');
-  console.log('to.value:', to.value ? '有值' : 'undefined');
-
+  console.log('\n========== 费用页面挂载开始 ==========');
   // ✅ 新增：显示客户数据加载状态
   clientsLoading.value = true;
 
   loadSeaExportData();
   getOrderFeeNumber();
+
+  // ✅ 新增：使用新接口获取费用数量统计
+  getOrderFeeCountStats();
 
   try {
     // ✅ 新增：在父组件中一次性加载全部客户数据

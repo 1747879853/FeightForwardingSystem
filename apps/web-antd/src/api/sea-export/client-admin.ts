@@ -1,16 +1,6 @@
 import { requestClient } from '#/api/request';
 
 export namespace ClientAdminApi {
-  /** 客户性质枚举 */
-  export enum ClientType {
-    /** 直客 */
-    DirectCustomer = 0,
-    /** 同行 */
-    Peer = 1,
-    /** 供应商 */
-    Supplier = 2,
-  }
-
   /** 合作状态枚举 */
   export enum CoopStatus {
     /** 潜在 */
@@ -65,10 +55,12 @@ export namespace ClientAdminApi {
   export interface AttachmentItemForItemInputDto {
     /** 附件id */
     attachmentId?: number;
+    /** 附件详细类型id（托书/提单/发票等） */
+    attachmentDtlTypeId?: number;
+    /** 客户是否可见 */
+    clientVisible?: boolean;
     /** 顺序 */
     displayOrder?: number;
-    /** 附件关联Id */
-    itemId?: string;
     /** 文件下载Url */
     url?: string;
     id?: number;
@@ -132,8 +124,6 @@ export namespace ClientAdminApi {
     mainProduct?: string;
     /** 是否有效 */
     enable?: boolean;
-    /** 客户性质 0-直客 1-同行 2-供应商 */
-    clientType?: ClientType;
     /** 行业类别 */
     industryCategories?: string;
     /** 备注 */
@@ -156,8 +146,6 @@ export namespace ClientAdminApi {
     businessTerm?: string;
     /** 是否客户 */
     isClient?: boolean;
-    /** 客户合作状态 */
-    clientCoopStatus?: CoopStatus;
     /** 客户等级 前端自定义枚举 */
     clientLevel?: number;
     /** 客户来源 前端自定义枚举 */
@@ -166,24 +154,14 @@ export namespace ClientAdminApi {
     cargoType?: CargoType;
     /** 客户结算币种id */
     clientCurrencyId?: number;
-    /** 客户首次合作时间 */
-    clientCoopSince?: string;
-    /** 客户最近交易时间 */
-    clientLastTxnTime?: string;
     /** 是否供应商 */
     isSupplier?: boolean;
-    /** 供应商合作状态 */
-    supplierCoopStatus?: CoopStatus;
     /** 供应商等级 前端自定义枚举 */
     supplierLevel?: number;
     /** 供应商结算币种id */
     supplierCurrencyId?: number;
     /** 优质航线Ids */
     laneIds?: number[];
-    /** 供应商首次合作时间 */
-    supplierCoopSince?: string;
-    /** 供应商最近交易时间 */
-    supplierLastTxnTime?: string;
     /** 多个附件 */
     attachments?: AttachmentItemForItemInputDto[];
     /** 干系人列表 */
@@ -198,6 +176,12 @@ export namespace ClientAdminApi {
     addresses?: ClientAddressAddDto[];
     /** 对账人用户ID列表 */
     reconcilerUserIds?: number[];
+    /** 企业类型（前端自定义枚举） */
+    enterpriseType?: number;
+    /** 是否共享 */
+    isShared?: boolean;
+    /** 展示归属公司id */
+    showCompanyId?: number;
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -270,8 +254,6 @@ export namespace ClientAdminApi {
     mainProduct?: string;
     /** 是否有效 */
     enable?: boolean;
-    /** 客户性质 0-直客 1-同行 2-供应商 */
-    clientType?: ClientType;
     /** 行业类别 */
     industryCategories?: string;
     /** 备注 */
@@ -296,8 +278,6 @@ export namespace ClientAdminApi {
     businessTerm?: string;
     /** 是否客户 */
     isClient?: boolean;
-    /** 客户合作状态 */
-    clientCoopStatus?: CoopStatus;
     /** 客户等级 前端自定义枚举 */
     clientLevel?: number;
     /** 客户来源 前端自定义枚举 */
@@ -306,24 +286,14 @@ export namespace ClientAdminApi {
     cargoType?: CargoType;
     /** 客户结算币种id */
     clientCurrencyId?: number;
-    /** 客户首次合作时间 */
-    clientCoopSince?: string;
-    /** 客户最近交易时间 */
-    clientLastTxnTime?: string;
     /** 是否供应商 */
     isSupplier?: boolean;
-    /** 供应商合作状态 */
-    supplierCoopStatus?: CoopStatus;
     /** 供应商等级 前端自定义枚举 */
     supplierLevel?: number;
     /** 供应商结算币种id */
     supplierCurrencyId?: number;
     /** 优质航线Ids */
     laneIds?: number[];
-    /** 供应商首次合作时间 */
-    supplierCoopSince?: string;
-    /** 供应商最近交易时间 */
-    supplierLastTxnTime?: string;
     /** 干系人列表 */
     sales?: ClientStakeholderEditDto[];
     /** 干系人列表 */
@@ -336,6 +306,12 @@ export namespace ClientAdminApi {
     addresses?: ClientAddressEditDto[];
     /** 对账人用户ID列表 */
     reconcilerUserIds?: number[];
+    /** 企业类型（前端自定义枚举） */
+    enterpriseType?: number;
+    /** 是否共享 */
+    isShared?: boolean;
+    /** 展示归属公司id */
+    showCompanyId?: number;
   }
 
   /** 简易币种DTO */
@@ -467,26 +443,32 @@ export namespace ClientAdminApi {
 
   /** 附件项DTO */
   export interface AttachmentItemDto {
-    /** 附件Id */
+    /** 关联id */
+    id?: number;
+    /** 附件id */
     attachmentId?: number;
-    /** 附件关联Id */
-    itemId?: string;
-    /** 附件关联的模块Id */
-    moduleTypeId?: string;
-    /** 是否优先展示 */
-    isFirstShow?: boolean;
+    /** 附件详细类型id */
+    attachmentDtlTypeId?: number;
+    /** 附件详细类型简易对象 */
+    attachmentDtlType?: any;
+    /** 客户是否可见 */
+    clientVisible?: boolean;
     /** 顺序 */
     displayOrder?: number;
-    /** 文件下载Url，通过计算获得 */
+    /** 下载地址 */
     url?: string;
+    /** 文件类型 */
     mediaType?: number;
-    /** 文件显示名称 */
+    /** 显示文件名 */
     friendlyFileName?: string;
-
-    fileLength: number;
-    creationTime: string;
-    creatorUserNickName: string;
-    id: number;
+    /** 文件大小 */
+    fileLength?: number;
+    /** 上传时间 */
+    creationTime?: string;
+    /** 上传人id */
+    creatorUserId?: number;
+    /** 上传人昵称 */
+    creatorUserName?: string;
   }
 
   /** 客户详情/列表输出 */
@@ -517,8 +499,6 @@ export namespace ClientAdminApi {
     codeSourceId?: number;
     /** 是否有效 */
     enable: boolean;
-    /** 客户性质 0-直客 1-同行 2-供应商 */
-    clientType: ClientType;
     /** 行业类别 */
     industryCategories?: string;
     /** 备注 */
@@ -541,8 +521,6 @@ export namespace ClientAdminApi {
     businessTerm?: string;
     /** 是否客户 */
     isClient: boolean;
-    /** 客户合作状态 */
-    clientCoopStatus: CoopStatus;
     /** 客户等级 前端自定义枚举 */
     clientLevel?: number;
     /** 客户来源 前端自定义枚举 */
@@ -555,14 +533,8 @@ export namespace ClientAdminApi {
     clientCurrency?: CurrencySimpleDto;
     /** 客户信用额度 不可修改 */
     clientAllowAmount?: number;
-    /** 客户首次合作时间 */
-    clientCoopSince?: string;
-    /** 客户最近交易时间 Txn 是 Transaction 的标准缩写 */
-    clientLastTxnTime?: string;
     /** 是否供应商 */
     isSupplier: boolean;
-    /** 供应商合作状态 */
-    supplierCoopStatus: CoopStatus;
     /** 供应商等级 前端自定义枚举 */
     supplierLevel?: number;
     /** 供应商结算币种id */
@@ -633,6 +605,30 @@ export namespace ClientAdminApi {
     SaleId?: number;
     /** 操作ID */
     OperationId?: number;
+    /** 业务来源ID */
+    CodeSourceId?: number;
+    /** 优质航线IDs */
+    LaneIds?: number[];
+    /** 客户等级 */
+    ClientLevel?: number;
+    /** 地址（模糊匹配，含地址子表） */
+    Address?: string;
+    /** 客户简称（模糊匹配） */
+    Name?: string;
+    /** 客户全称（模糊匹配） */
+    FullName?: string;
+    /** 客户代码（模糊匹配） */
+    Code?: string;
+    /** 客户英文全称（模糊匹配） */
+    EnFullName?: string;
+    /** 是否失信 */
+    IsDishonest?: boolean;
+    /** 企业类型 */
+    EnterpriseType?: number;
+    /** 是否共享 */
+    IsShared?: boolean;
+    /** 展示归属公司ID */
+    ShowCompanyId?: number;
     /** 排序 默认是Id */
     Sorting?: string;
     /** 当前页码 */
@@ -646,6 +642,45 @@ export namespace ClientAdminApi {
     id: string;
     /** 多个附件 */
     attachments?: AttachmentItemForItemInputDto[];
+  }
+
+  /** 获取客户附件分组列表响应 */
+  export interface ClientAttachmentGroupDto {
+    attachmentDtlTypeId?: number | null;
+    attachmentDtlType?: AttachmentDtlTypeSimpleDto | null;
+    items?: ClientAttachmentItemDto[] | null;
+  }
+
+  /** 客户附件项DTO（扩展版，包含详细信息） */
+  export interface ClientAttachmentItemDto extends AttachmentItemForItemInputDto {
+    moduleTypeId?: string | null;
+    attachmentDtlType?: AttachmentDtlTypeSimpleDto | null;
+    isFirstShow?: boolean;
+    mediaType?: number;
+    friendlyFileName?: string | null;
+    fileLength?: number | null;
+    creationTime?: string | null;
+    creatorUserId?: number | null;
+    creatorUserName?: string | null;
+  }
+
+  /** 添加客户附件参数 */
+  export interface ClientAttachmentsAddDto {
+    id: string;
+    attachments?: AttachmentItemForItemInputDto[] | null;
+  }
+
+  /** 删除客户附件参数 */
+  export interface ClientAttachmentsDeleteDto {
+    id: string;
+    attachmentIds?: number[] | null;
+  }
+
+  /** 附件详细类型简易DTO */
+  export interface AttachmentDtlTypeSimpleDto {
+    id: number;
+    name?: string | null;
+    sortId?: number;
   }
 }
 
@@ -724,4 +759,48 @@ export const EditAttachmentAsync = (
   data: ClientAdminApi.ClientEditAttachmentDto,
 ) => {
   return requestClient.put<boolean>(`${API_PREFIX}/EditAttachmentAsync`, data);
+};
+
+/**
+ * 获取客户附件分组列表
+ */
+export const getClientAttachments = (id: string) => {
+  return requestClient.get<ClientAdminApi.ClientAttachmentGroupDto[]>(
+    `${API_PREFIX}/GetAttachmentsAsync`,
+    { params: { Id: id } },
+  );
+};
+
+/**
+ * 添加客户附件
+ */
+export const addClientAttachments = (
+  data: ClientAdminApi.ClientAttachmentsAddDto,
+) => {
+  return requestClient.post<boolean>(`${API_PREFIX}/AddAttachmentsAsync`, data);
+};
+
+/**
+ * 删除客户附件
+ */
+export const deleteClientAttachments = (
+  data: ClientAdminApi.ClientAttachmentsDeleteDto,
+) => {
+  return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAttachmentsAsync`, {
+    data,
+  });
+};
+
+/**
+ * 加入失信
+ */
+export const addDishonest = (data: ClientAdminApi.GuidIdDto) => {
+  return requestClient.put<void>(`${API_PREFIX}/AddDishonestAsync`, data);
+};
+
+/**
+ * 取消失信
+ */
+export const cancelDishonest = (data: ClientAdminApi.GuidIdDto) => {
+  return requestClient.put<void>(`${API_PREFIX}/CancelDishonestAsync`, data);
 };

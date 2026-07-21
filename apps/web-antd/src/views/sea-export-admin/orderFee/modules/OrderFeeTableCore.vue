@@ -1,18 +1,10 @@
 <script lang="ts" setup>
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
-import { computed, h, nextTick, onUnmounted, ref } from 'vue';
+import { ref } from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
-
-import { Select } from 'ant-design-vue';
-import { message } from 'ant-design-vue';
-
-import { getClientPagedList } from '#/api/sea-export/client-admin';
-import { getIndustryCategoryOptions } from '../data';
-
 interface Props {
   dataSource: OrderFeeAdminApi.OrderFeeDto[];
   selectedRowKeys: (string | number)[];
@@ -37,17 +29,37 @@ const emit = defineEmits(['update:selectedRowKeys', 'column-sort']);
 
 const hotTableRef = ref<any>(null);
 
+// ✅ 新增：跟踪当前编辑的单元格
+const currentEditingCell = ref<{
+  row: number;
+  col: number;
+  td: HTMLElement | null;
+} | null>(null);
+
+// ✅ 新增：清除编辑状态的辅助函数
+const clearEditingState = () => {
+  if (currentEditingCell.value?.td) {
+    const td = currentEditingCell.value.td;
+    td.style.color = '';
+    td.style.opacity = '';
+    td.style.visibility = '';
+
+    // 恢复文本节点的显示
+    const textNodes = Array.from(td.childNodes).filter(
+      (node) => node.nodeType === Node.TEXT_NODE,
+    );
+    textNodes.forEach((node) => {
+      (node as Text).textContent =
+        (node as Text).textContent?.replace(/^\s*$/, '') || '';
+    });
+  }
+  currentEditingCell.value = null;
+};
+
 // ✅ 新增：添加缺失的状态变量
 const isClosed = ref(false);
 const currentSelectContainer = ref<HTMLElement | null>(null);
 const currentCloseHandler = ref<((e: MouseEvent) => void) | null>(null);
-const currentEditingCell = ref<{
-  row: number;
-  col: number;
-  field: string;
-  td: HTMLTableCellElement;
-} | null>(null);
-
 // ==================== 数据缓存 ====================
 
 // 客户列表缓存（按行业类别分类）
@@ -166,6 +178,7 @@ const handleAfterChange = (
 
 defineExpose({
   hotTableRef,
+  clearEditingState, // ✅ 暴露给父组件
 });
 </script>
 
@@ -246,6 +259,64 @@ defineExpose({
   .htCurrent {
     outline: 2px solid #1890ff !important;
     outline-offset: -2px;
+  }
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.handsontable) {
+  /* ✅ 确保只读单元格的背景色不被 Handsontable 默认样式覆盖 */
+  td.htReadOnly,
+  td.readOnly,
+  td[readonly],
+  .htCore td.readOnly,
+  .htCore td.htReadOnly,
+  td.htDimmed,
+  .htCore td.htDimmed {
+    /* 不设置 background，让 afterRenderer 设置的内联样式生效 */
+  }
+
+  /* 编辑器激活状态 */
+  td.ht__active_highlight {
+    color: transparent !important;
+    background-color: transparent !important;
+  }
+
+  /* 确保编辑器完全覆盖 */
+  .handsontableEditor,
+  .htAutocompleteEditor {
+    z-index: 9999 !important;
+    background: white !important;
+    border: 1px solid #1890ff !important;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 15%) !important;
+    opacity: 1 !important;
+  }
+
+  /* 下拉列表 */
+  .htAutocompleteList {
+    z-index: 10000 !important;
+    background: white !important;
+    border: 1px solid #d9d9d9 !important;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 15%) !important;
+
+    .htAutocompleteItem {
+      padding: 4px 11px;
+
+      &.htAutocompleteActiveItem {
+        color: #1890ff;
+        background-color: #e6f7ff;
+      }
+    }
+  }
+
+  /* 下拉箭头 */
+  .htAutocompleteArrow {
+    z-index: 10001;
+    color: rgb(0 0 0 / 25%);
+
+    &:hover {
+      color: rgb(0 0 0 / 45%);
+    }
   }
 }
 </style>

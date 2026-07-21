@@ -43,6 +43,8 @@ const formData = ref<{
   taxNum?: string;
   address?: string;
   tel?: string;
+  mobile?: string;
+  require?: string; // 添加开票要求字段
   isDefault?: boolean;
 } | null>(null);
 
@@ -94,6 +96,25 @@ const [InvoiceForm, invoiceFormApi] = useVbenForm({
       },
     },
     {
+      component: 'Input',
+      fieldName: 'mobile',
+      label: $t('client.invoice.mobile'),
+      componentProps: {
+        allowClear: true,
+        placeholder: $t('ui.placeholder.input'),
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'require',
+      label: '开票要求',
+      componentProps: {
+        allowClear: true,
+        placeholder: '请输入开票要求',
+        maxlength: 128, // 根据文档要求，开票要求字段长度限制为128
+      },
+    },
+    {
       component: 'Switch',
       fieldName: 'isDefault',
       label: $t('client.invoice.isDefault'),
@@ -109,6 +130,8 @@ const [InvoiceForm, invoiceFormApi] = useVbenForm({
       taxNum: values.taxNum,
       address: values.address,
       tel: values.tel,
+      mobile: values.mobile,
+      require: values.require,
       isDefault: values.isDefault,
     };
   },
@@ -193,6 +216,8 @@ const loadDetail = async () => {
       taxNum,
       address,
       tel,
+      mobile: '',
+      require: '',
       isDefault: false,
     });
 
@@ -210,6 +235,8 @@ const loadDetail = async () => {
       taxNum: detail.taxNum,
       address: detail.address,
       tel: detail.tel,
+      mobile: detail.mobile,
+      require: detail.require, // 添加require字段
       isDefault: detail.isDefault,
       sortId: detail.sortId,
     });
@@ -249,6 +276,8 @@ const getFormData = async (): Promise<
         taxNum: formData.taxNum,
         address: formData.address,
         tel: formData.tel,
+        mobile: formData.mobile,
+        require: formData.require, // 添加require字段
         isDefault: formData.isDefault ?? false,
         sortId: formData.sortId ?? 0,
         clientInvoiceBanks: processedBankList,
@@ -261,6 +290,8 @@ const getFormData = async (): Promise<
         taxNum: formData.taxNum,
         address: formData.address,
         tel: formData.tel,
+        mobile: formData.mobile,
+        require: formData.require, // 添加require字段
         isDefault: formData.isDefault ?? false,
         sortId: formData.sortId ?? 0,
         clientInvoiceBanks: processedBankList,

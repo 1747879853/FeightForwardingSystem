@@ -228,6 +228,17 @@ export namespace OrderFeeAdminApi {
     /** 不含税金额（后端直接返回数据库存储值） */
     noTaxAmount: number;
 
+    /** 客户对账 id，为空代表未参与对账 */
+    statementId?: string | null;
+
+    /** 对账单简要信息；statementId 为空时为 null */
+    statement?: {
+      /** 对账 id */
+      id: string;
+      /** 对账单号 */
+      statementNum: string;
+    } | null;
+
     /** 是否已删除 */
     isDeleted: boolean;
 
@@ -264,7 +275,7 @@ export namespace OrderFeeAdminApi {
     TransportOrderId?: string;
 
     /**收付类型 */
-    PaySide?: number;
+    PaySide: number;
 
     /** 费用状态 */
     FeeStatus?: number;
@@ -282,6 +293,8 @@ export namespace OrderFeeAdminApi {
     CurrencyId?: number;
     /** 是否机密 配合机密权限控制读写 */
     IsConfidential?: boolean;
+    /** 按费用 id 列表过滤 */
+    Ids?: string[];
     /** 排序 默认是Id */
     Sorting?: string;
     /** 当前页码 */
@@ -415,11 +428,37 @@ export namespace OrderFeeAdminApi {
     importOriginalSettlement: boolean;
   }
 
-  /** 新增业务费用 */
-  export const addOrderFee = (data: OrderFeeAdminApi.OrderFeeAddDto) => {
-    return requestClient.post<number>(`${API_PREFIX}/AddAsync`, data);
+  /** 为某条业务批量引入费用 */
+  export const importOrderFeesToTransportOrder = (
+    data: OrderFeeAdminApi.ImportOrderFeesToTransportOrderInputDto,
+  ) => {
+    return requestClient.post<string[]>(
+      `${API_PREFIX}/ImportOrderFeesToTransportOrderAsync`,
+      data,
+    );
   };
+
+  // ==================== 业务费用数量统计相关DTO ====================
+
+  /** 业务费用数量统计查询参数 */
+  export interface OrderFeeCountQueryDto {
+    /** 业务id（TransportOrderId） */
+    transportOrderId: string;
+  }
+
+  /** 业务费用数量统计结果 */
+  export interface OrderFeeCountDto {
+    /** 应收费用数量（PaySide=收，即 0） */
+    receivableCount: number;
+    /** 应付费用数量（PaySide=付，即 1） */
+    payableCount: number;
+  }
 }
+
+/** 新增业务费用 */
+export const addOrderFee = (data: OrderFeeAdminApi.OrderFeeAddDto) => {
+  return requestClient.post<number>(`${API_PREFIX}/AddAsync`, data);
+};
 
 /** 编辑业务费用 */
 export const editOrderFee = (data: OrderFeeAdminApi.OrderFeeEditDto) => {
@@ -513,5 +552,15 @@ export const importOrderFeesToTransportOrder = (
   return requestClient.post<string[]>(
     `${API_PREFIX}/ImportOrderFeesToTransportOrderAsync`,
     data,
+  );
+};
+
+/** 根据业务id统计应收/应付费用数量 */
+export const getOrderFeeCount = (
+  params: OrderFeeAdminApi.OrderFeeCountQueryDto,
+) => {
+  return requestClient.get<OrderFeeAdminApi.OrderFeeCountDto>(
+    `${API_PREFIX}/GetOrderFeeCountAsync`,
+    { params },
   );
 };

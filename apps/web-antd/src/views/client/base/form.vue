@@ -14,6 +14,7 @@ import {
   CheckboxGroup,
   Select,
   Tag,
+  Modal,
 } from 'ant-design-vue';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
@@ -42,6 +43,8 @@ import {
   addClient,
   editClient,
   getClientDetail,
+  addDishonest,
+  cancelDishonest,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
@@ -86,6 +89,8 @@ const clientTypeCoopStatus = ref<number>();
 const customerType = ref<string[]>();
 const supplierType = ref<string[]>();
 const supplierCoopStatus = ref<number>();
+const isDishonest = ref<boolean>(false); // 客户失信状态
+
 const getOrderUserRoleLabel = (userAttribute?: number) => {
   switch (userAttribute) {
     case UserAttribute.Sales:
@@ -166,7 +171,7 @@ const [ClientForm, clientFormApi] = useVbenForm({
   layout: 'vertical',
   schema: useClientFormSchema(),
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-2',
+  wrapperClass: 'grid-cols-3',
 });
 
 const [SupplierForm, supplierFormApi] = useVbenForm({
@@ -176,7 +181,7 @@ const [SupplierForm, supplierFormApi] = useVbenForm({
   wrapperClass: 'grid-cols-2',
 });
 
-const [Modal, modalApi] = useVbenModal({
+const [AddressModalComponent, modalApi] = useVbenModal({
   // 连接抽离的组件
   connectedComponent: AddressModal,
 });
@@ -557,6 +562,9 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   clientTypeCoopStatus.value = detail.clientCoopStatus;
   supplierCoopStatus.value = detail.supplierCoopStatus;
 
+  // 设置失信状态
+  isDishonest.value = (detail as any).isDishonest ?? false;
+
   // 设置行业类别
   if (isClient.value) {
     customerType.value = industryCategoriesArray;
@@ -616,6 +624,8 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     mobile: detail.mobile,
     email: detail.email,
     url: detail.url,
+    enterpriseType: detail.enterpriseType, // 添加企业类型字段
+    showCompanyId: detail.showCompanyId, // 添加归属公司字段
     remark: detail.remark,
     country: detail.countryId,
     areaId: areaIdPath,
@@ -635,6 +645,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     clientLevel: detail.clientLevel,
     source: detail.source,
     cargoType: detail.cargoType,
+    clientCurrencyId: detail.clientCurrencyId,
     clientCoopSince: toDayjs(detail.clientCoopSince),
     clientLastTxnTime: toDayjs(detail.clientLastTxnTime),
 
@@ -895,9 +906,11 @@ const handleSubmit = async () => {
         enAddress: baseValues.enAddress,
         mainProduct: baseValues.mainProduct,
         enable: baseValues.enable ?? true,
-        codeSourceId: baseValues.codeSourceId,
 
+        enterpriseType: baseValues.enterpriseType, // 企业类型字段
+        showCompanyId: baseValues.showCompanyId, // 归属公司字段
         industryCategories,
+        codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
         enFullName: baseValues.enFullName,
         taxNo: baseValues.taxNo,
@@ -994,6 +1007,7 @@ const handleSubmit = async () => {
         mainProduct: baseValues.mainProduct,
         enable: baseValues.enable ?? true,
 
+        enterpriseType: baseValues.enterpriseType, // 添加企业类型字段
         industryCategories,
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
@@ -1082,6 +1096,61 @@ const handleSubmit = async () => {
   } finally {
     submitting.value = false;
   }
+};
+
+/**
+ * 处理失信状态切换
+ */
+const handleDishonestToggle = async () => {
+  if (!editId.value) {
+    message.warning('请先保存客户信息');
+    return;
+  }
+
+  const action = isDishonest.value ? '取消失信' : '加入失信';
+  const actionVerb = isDishonest.value ? 'cancelDishonest' : 'addDishonest';
+
+  Modal.confirm({
+    title: `${action}`,
+    content: `确定要将此客户${action}吗？`,
+    okType: 'danger',
+    async onOk() {
+      const hideLoading = message.loading({
+        content: `正在将客户${action}...`,
+        duration: 0,
+        key: 'action_process_msg',
+      });
+
+      try {
+        if (isDishonest.value) {
+          // 当前是失信状态，执行取消失信
+          await cancelDishonest({
+            id: editId.value!,
+          });
+          message.success({
+            content: `成功将客户移出失信`,
+            key: 'action_process_msg',
+          });
+          isDishonest.value = false; // 更新本地状态
+        } else {
+          // 当前不是失信状态，执行加入失信
+          await addDishonest({
+            id: editId.value!,
+          });
+          message.success({
+            content: `成功将客户加入失信`,
+            key: 'action_process_msg',
+          });
+          isDishonest.value = true; // 更新本地状态
+        }
+      } catch (error) {
+        console.error(`${action}失败:`, error);
+        message.error(`${action}失败`);
+      } finally {
+        hideLoading();
+      }
+    },
+  });
 };
 
 /**
@@ -1231,6 +1300,13 @@ onMounted(() => {
               >
                 <Save class="mr-1 inline-block size-4 align-middle" />
                 <span class="align-middle">{{ $t('common.save') }}</span>
+              </Button>
+              <Button
+                :type="isDishonest ? 'default' : 'primary'"
+                :danger="!isDishonest"
+                @click="handleDishonestToggle"
+              >
+                {{ isDishonest ? '取消失信' : '加入失信' }}
               </Button>
             </Space>
           </div>
@@ -1394,8 +1470,11 @@ onMounted(() => {
                       (o) => o.value === item.isDefault,
                     )?.label
                   }}</tag>
-                  <tag 
-                    v-if="item.addressType !== undefined && item.addressType !== null"
+                  <tag
+                    v-if="
+                      item.addressType !== undefined &&
+                      item.addressType !== null
+                    "
                     color="green"
                     class="ml-2"
                   >
@@ -1600,9 +1679,3 @@ onMounted(() => {
   background: linear-gradient(to right, #1677ff18, #fff);
 }
 </style>
-
-
-
-
-
-

@@ -25,6 +25,16 @@ export function useColumns(
       minWidth: 150,
     },
     {
+      title: '办公电话',
+      field: 'tel',
+      minWidth: 150,
+    },
+    {
+      title: '座机',
+      field: 'landline',
+      minWidth: 150,
+    },
+    {
       title: $t('seaExport.client.contactPerson.email'),
       field: 'email',
       minWidth: 150,
@@ -80,7 +90,18 @@ export function useColumns(
         ],
       },
     },
-
+    {
+      title: '是否禁用',
+      field: 'isDisabled',
+      width: 100,
+      cellRender: {
+        name: 'CellTag',
+        options: [
+          { color: 'error', label: '是', value: true },
+          { color: 'success', label: '否', value: false },
+        ],
+      },
+    },
     {
       title: $t('auditApproval.task.createTime'),
       field: 'creationTime',
@@ -103,7 +124,7 @@ export function useColumns(
       headerAlign: 'center',
       showOverflow: false,
       title: $t('seaExport.client.operation'),
-      width: 150,
+      width: 200,
     },
   ];
 }
@@ -121,6 +142,18 @@ export function useAddFormSchema(): VbenFormSchema[] {
       component: 'Input',
       fieldName: 'mobile',
       label: $t('seaExport.client.contactPerson.mobile'),
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'Input',
+      fieldName: 'tel',
+      label: '办公电话',
+      componentProps: { allowClear: true },
+    },
+    {
+      component: 'Input',
+      fieldName: 'landline',
+      label: '座机',
       componentProps: { allowClear: true },
     },
     {

@@ -20,10 +20,10 @@ import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { IconifyIcon } from '@vben/icons';
 import { Page } from '@vben/common-ui';
-import { Button, Space, Card } from 'ant-design-vue';
-
+import { Button, Space, message } from 'ant-design-vue';
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
+import { Modal as AntModal } from 'ant-design-vue';
 
 const route = useRoute();
 
@@ -35,28 +35,78 @@ const editId = computed<string | undefined>(() => {
 
 const selectedRowKeys = ref<(string | number)[]>([]);
 
+/**
+ * 获取选中的行数据
+ */
+const getSelectedRows = () => {
+  const records = (gridApi.grid?.getCheckboxRecords?.() ??
+    []) as BillingPeriodAdminApi.ClientBillingPeriodForViewDto[];
+  return records;
+};
+
+/**
+ * 批量删除
+ */
+const handleBatchDelete = async () => {
+  const selectedRows = getSelectedRows();
+
+  if (selectedRows.length === 0) {
+    message.warning($t('common.selectAtLeastOne'));
+    return;
+  }
+
+  AntModal.confirm({
+    title: $t('common.confirmDelete'),
+    content: $t('common.confirmDeleteItems', [selectedRows.length]),
+    okText: $t('common.confirm'),
+    cancelText: $t('common.cancel'),
+    okType: 'danger',
+    onOk: async () => {
+      try {
+        // 批量删除，逐个调用删除接口
+        for (const row of selectedRows) {
+          await deleteBillingPeriod({ id: row.id });
+        }
+        message.success($t('common.deleteSuccess'));
+        gridApi.query();
+        selectedRowKeys.value = [];
+      } catch (error) {
+        console.error('批量删除失败:', error);
+        message.error($t('common.deleteFailed'));
+      }
+    },
+  });
+};
+
 const handleActionClick = ({
   code,
   row,
-}: OnActionClickParams<BillingPeriodAdminApi.ClientBillingPeriodDto>) => {
+}: OnActionClickParams<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>) => {
   switch (code) {
     case 'delete': {
       // row.id 可能是大数 string，原样透传，禁止 Number() 转换（丢精度）
       delContact({ id: row.id });
       break;
     }
-    case 'edit': {
-      // 将 ClientBillingPeriodDto 转换为 BillingPeriodEditDto
-      const editData: BillingPeriodAdminApi.BillingPeriodEditDto = {
-        ...row,
-        // bizTypes 在 DetailDto 中是 number[],在 EditDto 中是 number
-        // 这里取第一个值或保持原样
-        //bizTypes: Array.isArray(row.bizTypes) ? row.bizTypes[0] : row.bizTypes,
-      };
-      editContact(editData);
+    case 'manageAttachments': {
+      manageAttachments(row);
       break;
     }
   }
+};
+
+/**
+ * 管理附件
+ */
+const manageAttachments = (
+  row: BillingPeriodAdminApi.ClientBillingPeriodForViewDto,
+) => {
+  // 这里可以打开附件管理模态框或跳转到附件管理页面
+  console.log('Manage attachments for billing period:', row);
+  AntModal.info({
+    title: '附件管理',
+    content: `账期ID: ${row.id} 的附件管理功能待开发`,
+  });
 };
 
 /**
@@ -64,7 +114,7 @@ const handleActionClick = ({
  * 根据结算方式、月份、结算日等生成可读的周期字符串
  */
 const formatPeriod = (
-  row: BillingPeriodAdminApi.ClientBillingPeriodDto,
+  row: BillingPeriodAdminApi.ClientBillingPeriodForViewDto,
 ): string => {
   const settlementTypeText =
     SettlementTypeOptions.find((item) => item.value === row.settlementType)
@@ -144,27 +194,28 @@ const formatPayment = (row: BillingPeriodAdminApi.ClientBillingPeriodDto) => {
   newRow.period = formatPeriod(row);
   newRow.organizationUnitName = formatOrganizationUnitName(row.cbpOrgs);
   newRow.userName = formatUserNames(row.cbpUsers);
-  console.log('newRow', newRow);
   return newRow;
 };
 const fetchBillingPeriodPagedList = (params: Record<string, any>) =>
   getBillingPeriodPagedList({
     ...params,
-    clientId: editId.value,
+    ClientId: editId.value,
   });
 
 const [Grid, gridApi] =
   useVbenVxeGrid<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>({
     gridOptions: {
-      columns: useColumns(handleActionClick),
+      columns: useColumns(),
       height: 'auto',
       keepSource: true,
-      radioConfig: {
+      checkboxConfig: {
         highlight: true,
+        reserve: true,
         trigger: 'default',
       },
       rowConfig: {
         keyField: 'id',
+        isHover: true,
       },
       pagerConfig: {
         enabled: true,
@@ -172,10 +223,17 @@ const [Grid, gridApi] =
       proxyConfig: {
         ajax: {
           query: createPagedListQuery(fetchBillingPeriodPagedList, {
-            afterFetch: (res) => ({
-              ...res,
-              items: res.items.map((item) => formatPayment(item)),
-            }),
+            afterFetch: (res: any) => {
+              const items =
+                res.items?.map(
+                  (item: BillingPeriodAdminApi.ClientBillingPeriodDto) =>
+                    formatPayment(item),
+                ) || [];
+              return {
+                ...res,
+                items,
+              };
+            },
           }),
         },
       },
@@ -187,6 +245,23 @@ const [Grid, gridApi] =
       },
     },
     gridEvents: {
+      // 双击行事件 - 进入编辑页面
+      cellDblclick: ({
+        row,
+      }: {
+        row: BillingPeriodAdminApi.ClientBillingPeriodForViewDto;
+      }) => {
+        const editData: BillingPeriodAdminApi.BillingPeriodEditDto = {
+          ...row,
+          // bizTypes 在 DetailDto 中是 number[],在 EditDto 中是 number
+          // 这里取第一个值或保持原样
+          bizTypes: Array.isArray(row.bizTypes)
+            ? row.bizTypes[0]
+            : row.bizTypes,
+        };
+        editContact(editData);
+      },
+
       // 单行选择变化事件
       checkboxChange: () => {
         const records = (gridApi.grid?.getCheckboxRecords?.() ??
@@ -227,6 +302,7 @@ const [Grid, gridApi] =
 const [Modal, modalApi] = useVbenModal({
   // 连接抽离的组件
   connectedComponent: AddModal,
+  class: 'w-[1200px]', // ✅ 官方推荐的宽度入口
 });
 const addContactData = async (
   data: BillingPeriodAdminApi.BillingPeriodEditDto,
@@ -265,6 +341,10 @@ const delContact = async (data: BillingPeriodAdminApi.IdDto) => {
             <IconifyIcon icon="ant-design:plus-outlined" class="size-4" />
             {{ $t('common.create') }}
           </Button>
+          <Button danger @click="handleBatchDelete">
+            <IconifyIcon icon="ant-design:delete-outlined" class="size-4" />
+            {{ $t('common.batchDelete') }}
+          </Button>
         </Space>
       </template>
     </Grid>
@@ -289,4 +369,12 @@ const delContact = async (data: BillingPeriodAdminApi.IdDto) => {
 // .custom-table {
 //   min-height: 300px;
 // }
+
+.attachments-list {
+  .attachment-item {
+    &:not(:last-child) {
+      border-bottom: 1px solid #f0f0f0;
+    }
+  }
+}
 </style>

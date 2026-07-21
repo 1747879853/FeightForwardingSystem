@@ -34,7 +34,9 @@
     "uploadSuccess": "上传成功",
     "pleaseSelectData": "请选择数据",
     "selectRequired": "请先勾选需要操作的记录",
-    "confirmDeleteSelected": "确认删除所选数据吗？"
+    "confirmDeleteSelected": "确认删除所选数据吗？",
+    "confirmDeleteItems": "确定要删除选中的 {0} 条数据吗？",
+    "selectAtLeastOne": "请选择要删除的项"
   },
   "placeholder": {
     "input": "请输入",

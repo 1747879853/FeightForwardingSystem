@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch, shallowRef } from 'vue';
 import {
   Button,
   Space,
@@ -191,7 +191,7 @@ const handleOpenDropdown = (
 };
 
 // Handsontable 设置
-const { hotSettings } = useHotSettings(
+const { hotSettings: rawHotSettings } = useHotSettings(
   dataSource,
   selectedRowKeys,
   hotColumns,
@@ -206,6 +206,9 @@ const { hotSettings } = useHotSettings(
   handleOpenDropdown,
   getSortIcon, // ✅ 新增：传递排序图标函数
 );
+
+// 使用 shallowRef 包装 hotSettings，避免对大型配置对象进行深度响应式追踪
+const hotSettings = shallowRef(rawHotSettings.value);
 
 // 模态框管理
 const {
@@ -266,8 +269,6 @@ const feeSummary = computed(() => {
       amount: amount.toFixed(2),
     }));
 });
-
-// ==================== Composables ====================
 
 // ==================== 工具栏操作 ====================
 
@@ -441,6 +442,78 @@ const convertIdsToLabels = () => {
   }
 };
 
+// ==================== 新增功能：滚动到最后一行并选中费用名称单元格 ====================
+
+/**
+ * 滚动到最后一行并选中费用名称单元格
+ */
+const scrollToLastAndSelectFeeName = async () => {
+  await nextTick(); // 等待DOM更新
+  
+  const hotInstance = coreTableRef.value?.hotTableRef?.hotInstance;
+  if (!hotInstance) {
+    console.warn('⚠️ [scrollToLastAndSelectFeeName] hotInstance 不存在');
+    return;
+  }
+
+  const rowCount = hotInstance.countRows();
+  if (rowCount <= 0) {
+    console.warn('⚠️ [scrollToLastAndSelectFeeName] 没有行数据');
+    return;
+  }
+
+  // 获取费用名称字段的列索引
+  const feeNameColIndex = getColumnIndex('feeCodeId');
+  if (feeNameColIndex === -1) {
+    console.warn('⚠️ [scrollToLastAndSelectFeeName] 未找到费用名称字段列');
+    return;
+  }
+
+  // 获取最后一行的索引（减去1因为索引从0开始）
+  const lastRowIndex = rowCount - 1;
+
+  // 滚动到最后一行
+  hotInstance.scrollViewportTo(lastRowIndex, 0);
+
+
+  // 确保表格处于监听状态
+  hotInstance.listen();
+    
+    
+  // 选中费用名称单元格
+  hotInstance.selectCell(lastRowIndex, feeNameColIndex);
+          
+  // 使用 setDataAtCell 并指定编辑模式
+  //hotInstance.setDataAtCell(lastRowIndex, feeNameColIndex, '', 'edit');
+  
+  // 获取单元格元素并尝试激活编辑
+  // const cell = hotInstance.getCell(lastRowIndex, feeNameColIndex);
+  // if (cell) {
+  //   // 通过模拟双击来激活编辑器
+  //   const dblClickEvent = new MouseEvent('dblclick', {
+  //     view: window,
+  //     bubbles: true,
+  //     cancelable: true
+  //   });
+  //   cell.dispatchEvent(dblClickEvent);
+  // }
+     
+  
+  
+};
+
+// 扩展 actions 对象，添加滚动和选中功能
+const extendedActions = {
+  ...actions,
+  addRow: async () => {
+    actions.addRow();
+    // 在添加新行后延迟执行滚动和选中操作
+    setTimeout(() => {
+      scrollToLastAndSelectFeeName();
+    }, 150);
+  }
+};
+
 // ==================== 生命周期 ====================
 
 onMounted(async () => {
@@ -476,13 +549,13 @@ watch(
     // ✅ 关键修复：在更新 hotSettings 之前，先将ID转换为Label
     convertIdsToLabels();
 
+    // 直接修改 hotSettings.data 属性而不触发Vue深度响应
     hotSettings.value.data = newData;
+    
     nextTick(() => {
       if (coreTableRef.value?.hotTableRef?.hotInstance) {
+        // ✅ 优化：只调用 loadData，它会自动触发渲染，无需单独调用 render()
         coreTableRef.value.hotTableRef.hotInstance.loadData(newData);
-        nextTick(() => {
-          coreTableRef.value?.hotTableRef?.hotInstance?.render();
-        });
       }
     });
   },
@@ -492,10 +565,14 @@ watch(
 watch(
   () => hotColumns.value,
   (newColumns) => {
+    // 直接修改 hotSettings.columns 属性而不触发Vue深度响应
     hotSettings.value.columns = newColumns;
     nextTick(() => {
       if (coreTableRef.value?.hotTableRef?.hotInstance) {
-        coreTableRef.value.hotTableRef.hotInstance.render();
+        // 使用 updateSettings 更新列配置而不是重新渲染整个设置
+        coreTableRef.value.hotTableRef.hotInstance.updateSettings({
+          columns: newColumns
+        });
       }
     });
   },
@@ -552,7 +629,7 @@ defineExpose({ getTableDate });
               }}
             </span>
             <Space class="toolbar-actions">
-              <Button type="primary" @click="actions.addRow">{{
+              <Button type="primary" @click="extendedActions.addRow">{{
                 $t('common.create')
               }}</Button>
               <Button
@@ -612,6 +689,9 @@ defineExpose({ getTableDate });
                     }}</MenuItem>
                     <MenuItem key="delete">{{
                       $t('auditApproval.ApplyDeletion')
+                    }}</MenuItem>
+                    <MenuItem key="withdraw">{{
+                      $t('auditApproval.withdraw')
                     }}</MenuItem>
                   </Menu>
                 </template>

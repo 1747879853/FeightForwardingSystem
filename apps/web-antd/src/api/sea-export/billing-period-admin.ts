@@ -3,6 +3,62 @@ import { requestClient } from '#/api/request';
 const API_PREFIX = '/services/app/ClientBillingPeriodAdmin';
 
 export namespace BillingPeriodAdminApi {
+  /** 附件项输入DTO */
+  export interface AttachmentItemForItemInputDto {
+    /** 附件id */
+    attachmentId?: number;
+    /** 附件详细类型id（托书/提单/发票等） */
+    attachmentDtlTypeId?: number;
+    /** 客户是否可见 */
+    clientVisible?: boolean;
+    /** 顺序 */
+    displayOrder?: number;
+    /** 文件下载Url */
+    url?: string;
+  }
+
+  /** 附件项DTO */
+  export interface AttachmentItemDto {
+    /** 关联id */
+    id?: number;
+    /** 附件id */
+    attachmentId?: number;
+    /** 附件详细类型id */
+    attachmentDtlTypeId?: number;
+    /** 附件详细类型简易对象 */
+    attachmentDtlType?: any;
+    /** 客户是否可见 */
+    clientVisible?: boolean;
+    /** 顺序 */
+    displayOrder?: number;
+    /** 下载地址 */
+    url?: string;
+    /** 文件类型 */
+    mediaType?: number;
+    /** 显示文件名 */
+    friendlyFileName?: string;
+    /** 文件大小 */
+    fileLength?: number;
+    /** 上传时间 */
+    creationTime?: string;
+    /** 上传人id */
+    creatorUserId?: number;
+    /** 上传人昵称 */
+    creatorUserName?: string;
+  }
+
+  /** 币别简易对象 */
+  export interface CurrencySimpleDto {
+    /** 币别代码 */
+    code: string;
+    /** 中文名 */
+    cnName: string;
+    /** 英文名 */
+    enName: string;
+    /** 默认对人民币汇率 */
+    defaultRate: number;
+  }
+
   /** 新增账单期参数 */
   export interface BillingPeriodAddDto {
     /** 客户id */
@@ -31,7 +87,20 @@ export namespace BillingPeriodAdminApi {
     userIds?: number[];
     /**业务来源  */
     codeSourceIds?: number[];
+    /** 附件列表 */
+    attachments?: AttachmentItemForItemInputDto[];
+    /** 合同号 */
+    contractNo?: string;
+    /** 日期类型 */
+    dateType: number;
+    /** 授信币别 id */
+    creditCurrencyId?: number | null;
+    /** 授信额度 */
+    creditLimit?: number | null;
+    /** 预警额度 */
+    warningLimit?: number | null;
   }
+  
   /** 修改账单期参数 */
   export interface BillingPeriodEditDto extends BillingPeriodAddDto {
     id: number | string;
@@ -67,6 +136,20 @@ export namespace BillingPeriodAdminApi {
     userIds?: number[];
     /**业务来源  */
     codeSourceIds?: number[];
+    /** 附件列表 */
+    attachments?: AttachmentItemDto[];
+    /** 合同号 */
+    contractNo?: string;
+    /** 日期类型 */
+    dateType: number;
+    /** 授信币别 id */
+    creditCurrencyId?: number | null;
+    /** 授信币别简易对象 */
+    creditCurrency?: CurrencySimpleDto;
+    /** 授信额度 */
+    creditLimit?: number | null;
+    /** 预警额度 */
+    warningLimit?: number | null;
   }
 
   export interface CbpUserDto {
@@ -80,6 +163,7 @@ export namespace BillingPeriodAdminApi {
     organizationUnitId: number;
     organizationUnitName: string;
   }
+  
   export interface ClientBillingPeriodDto {
     /** id */
     id: number | string;
@@ -109,6 +193,20 @@ export namespace BillingPeriodAdminApi {
     userIds?: number[];
     /**业务来源  */
     codeSourceIds?: number[];
+    /** 附件列表 */
+    attachments?: AttachmentItemDto[];
+    /** 合同号 */
+    contractNo?: string;
+    /** 日期类型 */
+    dateType: number;
+    /** 授信币别 id */
+    creditCurrencyId?: number | null;
+    /** 授信币别简易对象 */
+    creditCurrency?: CurrencySimpleDto;
+    /** 授信额度 */
+    creditLimit?: number | null;
+    /** 预警额度 */
+    warningLimit?: number | null;
     /** 组织机构 */
     cbpOrgs: CbpOrgDto[];
 

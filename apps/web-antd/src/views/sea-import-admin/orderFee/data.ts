@@ -65,22 +65,22 @@ export const getFeeStatusOptions = () => [
   { value: 0, label: '录入状态', color: '#b8cdd7' },
   { value: 1, label: '提交审核', color: '#ffc107' },
   { value: 2, label: '审核通过', color: '#67c23a' },
-  { value: 3, label: '驳回', color: '#f56c6c' },
-  { value: 4, label: '申请修改', color: '#ff9900' },
-  { value: 5, label: '申请删除', color: '#ff9900' },
-  { value: 6, label: '部分结算', color: '#909399' },
-  { value: 7, label: '结算完毕', color: '#67c23a' },
+  { value: 3, label: '部分结算', color: '#909399' },
+  { value: 4, label: '结算完毕', color: '#67c23a' },
+  { value: 5, label: '驳回', color: '#f56c6c' },
+  { value: 6, label: '申请修改', color: '#ff9900' },
+  { value: 7, label: '申请删除', color: '#ff9900' },
 ];
 
 export const getFeeStatusValue = {
   Entering: 0,
   Submit: 1,
   Approved: 2,
-  Rejected: 3,
-  ApplyModify: 4,
-  ApplyDelete: 5,
-  PartialSettlement: 6,
-  Settled: 7,
+  PartialSettlement: 3,
+  Settled: 4,
+  Rejected: 5,
+  ApplyModify: 6,
+  ApplyDelete: 7,
 };
 
 // --------------------------------------------------------
@@ -414,6 +414,18 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
 
       field: 'noTaxAmountStr',
       minWidth: 80,
+    },
+    {
+      title: '对账单号',
+      field: 'statementNum',
+      minWidth: 120,
+      formatter: ({ row }: any) => {
+        // 从 statement 对象中获取 statementNum
+        if (row.statement && row.statement.statementNum) {
+          return row.statement.statementNum;
+        }
+        return '';
+      },
     },
     {
       title: $t('seaImport.import.orderFee.rqstPaymentAmount'),

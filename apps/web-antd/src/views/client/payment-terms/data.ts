@@ -7,7 +7,7 @@ import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
 import form from 'ant-design-vue/es/form';
 
-import { useVbenForm } from '#/adapter/form';
+import { useVbenForm, z } from '#/adapter/form';
 import {
   getMyPermissionCompanies,
   type SystemOrganizationUnitApi,
@@ -38,18 +38,31 @@ export const SettlementTypeOptions = [
     label: $t(
       'seaExport.client.paymentTerms.SettlementTypeOptions.ticketSettlement',
     ),
+    color: '#1890ff', // 蓝色 - 票结
   },
   {
     value: 1,
     label: $t(
       'seaExport.client.paymentTerms.SettlementTypeOptions.monthlySettlement',
     ),
+    color: '#52c41a', // 绿色 - 月结
   },
   {
     value: 2,
     label: $t(
       'seaExport.client.paymentTerms.SettlementTypeOptions.appointedDaySettlement',
     ),
+    color: '#fa8c16', // 橙色 - 指定日结
+  },
+];
+
+/**
+ * 日期类型枚举选项
+ */
+export const DateTypeOptions = [
+  {
+    value: 0,
+    label: $t('seaExport.client.paymentTerms.DateTypeOptions.shippingDate'),
   },
 ];
 
@@ -207,16 +220,51 @@ const PAYMENT_TERMS_USER_ATTRIBUTE_MASK = UserAttribute.Sales;
  */
 export function useBillFormSchema(): VbenFormSchema[] {
   return [
+    // 第一行：合同号、日期类型、生效时间、失效时间、长期有效
+    {
+      component: 'Input',
+      fieldName: 'contractNo',
+      label: $t('seaExport.client.paymentTerms.contractNo'),
+      formItemClass: 'col-span-1',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        class: 'w-full',
+        maxlength: 64,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'dateType',
+      label: $t('seaExport.client.paymentTerms.dateType'),
+      defaultValue: 0,
+      formItemClass: 'col-span-1',
+      rules: z
+        .number()
+        .min(
+          0,
+          $t('ui.formRules.required', [
+            $t('seaExport.client.paymentTerms.dateType'),
+          ]),
+        ),
+      componentProps: {
+        allowClear: false,
+        options: DateTypeOptions,
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
     {
       component: 'DatePicker',
       fieldName: 'effectiveTime',
       label: $t('seaExport.client.paymentTerms.effectiveTime'),
+      formItemClass: 'col-span-1',
       componentProps: { class: 'w-full' },
     },
     {
       component: 'DatePicker',
       fieldName: 'expiringTime',
       label: $t('seaExport.client.paymentTerms.expirationTime'),
+      formItemClass: 'col-span-1',
       componentProps: {
         class: 'w-full',
         disabled: false, // 默认不禁用，根据需要调整
@@ -227,11 +275,14 @@ export function useBillFormSchema(): VbenFormSchema[] {
       fieldName: 'permanent',
       label: $t('seaExport.client.paymentTerms.longTermValid'),
       defaultValue: false,
+      formItemClass: 'col-span-1',
     },
+    // 第二行：组织机构 、用户、业务类型
     {
       component: 'ApiTreeSelect',
       fieldName: 'organizationUnitIds',
       label: $t('seaExport.client.paymentTerms.orgs'),
+      formItemClass: 'col-span-2',
       componentProps: {
         api: async () => {
           // 调用接口获取有权限的公司列表
@@ -259,20 +310,10 @@ export function useBillFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'CodeSourceSelect',
-      fieldName: 'codeSourceIds',
-      label: $t('seaExport.client.paymentTerms.codeSource'),
-      componentProps: {
-        mode: 'multiple',
-        allowClear: true,
-        placeholder: $t('ui.placeholder.select'),
-        class: 'w-full',
-      },
-    },
-    {
       component: 'UserSelect',
       fieldName: 'userIds',
       label: $t('seaExport.client.paymentTerms.user'),
+      formItemClass: 'col-span-2',
       componentProps: {
         userAttribute: PAYMENT_TERMS_USER_ATTRIBUTE_MASK,
         mode: 'multiple',
@@ -286,6 +327,7 @@ export function useBillFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'bizTypes',
       label: $t('seaExport.client.paymentTerms.BizType'),
+      formItemClass: 'col-span-1',
       componentProps: {
         allowClear: true,
         options: BusinessTypeOptions,
@@ -295,11 +337,38 @@ export function useBillFormSchema(): VbenFormSchema[] {
       },
       defaultValue: [0],
     },
+    // 第三行：业务来源 、 备注
+    {
+      component: 'CodeSourceSelect',
+      fieldName: 'codeSourceIds',
+      label: $t('seaExport.client.paymentTerms.codeSource'),
+      formItemClass: 'col-span-2',
+      componentProps: {
+        mode: 'multiple',
+        allowClear: true,
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Textarea',
+      hide: false,
+      fieldName: 'remark',
+      label: $t('seaExport.client.paymentTerms.remark'),
+      formItemClass: 'col-span-3',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        class: 'w-full',
+        rows: 1,
+      },
+    },
+    // 第四行：结算方式 、间隔月份（动态显示）、结算日（动态显示）、天数（动态显示）
     {
       component: 'Select',
       fieldName: 'settlementType',
       label: $t('seaExport.client.paymentTerms.settlementType'),
       defaultValue: 0,
+      formItemClass: 'col-span-2',
       componentProps: {
         allowClear: true,
         options: SettlementTypeOptions,
@@ -314,11 +383,8 @@ export function useBillFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'months',
       label: $t('seaExport.client.paymentTerms.months'),
-      // show: (formData: any) => {
-      //   return formData.settlementType === 1;
-      // },
-      /** 是否隐藏表单项 */
-      hide: false,
+      hide: true,
+      formItemClass: 'col-span-1',
       componentProps: {
         allowClear: true,
         options: MonthsOptions,
@@ -330,7 +396,8 @@ export function useBillFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'settlementDay',
       label: $t('seaExport.client.paymentTerms.settlementDay'),
-      hide: false,
+      hide: true,
+      formItemClass: 'col-span-1',
       componentProps: {
         allowClear: true,
         options: SettlementDayOptions,
@@ -340,18 +407,51 @@ export function useBillFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'InputNumber',
-      hide: false,
+      hide: true,
       fieldName: 'days',
       label: $t('seaExport.client.paymentTerms.days'),
-    },
-    {
-      component: 'Textarea',
-      hide: false,
-      fieldName: 'remark',
-      label: $t('seaExport.client.paymentTerms.remark'),
+      formItemClass: 'col-span-1',
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
         class: 'w-full',
+        min: 0,
+        precision: 0,
+      },
+    },
+    // 第五行：授信币别、授信额度、预警额度（固定在最后一行）
+    {
+      component: 'CurrencySelect',
+      fieldName: 'creditCurrencyId',
+      label: $t('seaExport.client.paymentTerms.creditCurrency'),
+      formItemClass: 'col-span-2',
+      componentProps: {
+        allowClear: true,
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'creditLimit',
+      label: $t('seaExport.client.paymentTerms.creditLimit'),
+      formItemClass: 'col-span-1',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        class: 'w-full',
+        min: 0,
+        precision: 2,
+      },
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'warningLimit',
+      label: $t('seaExport.client.paymentTerms.warningLimit'),
+      formItemClass: 'col-span-2',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        class: 'w-full',
+        min: 0,
+        precision: 2,
       },
     },
   ];
@@ -361,10 +461,55 @@ export function useBillFormSchema(): VbenFormSchema[] {
  * 列表列配置（无操作列，第一列为 radio 单选列）
  */
 
-export function useColumns(
-  onActionClick?: OnActionClickFn<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>,
-): VxeTableGridOptions<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>['columns'] {
+export function useColumns(): VxeTableGridOptions<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>['columns'] {
   return [
+    {
+      type: 'checkbox',
+      width: 50,
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.contractNo'),
+      field: 'contractNo',
+      width: 150,
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.dateType'),
+      field: 'dateType',
+      width: 120,
+      cellRender: {
+        name: 'CellTag',
+        options: DateTypeOptions,
+      },
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.creditCurrency'),
+      field: 'creditCurrency',
+      width: 150,
+      formatter: (row) => {
+        return row.row.creditCurrency?.cnName || '';
+      },
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.creditLimit'),
+      field: 'creditLimit',
+      width: 120,
+      formatter: (row) => {
+        return row.row.creditLimit !== null && row.row.creditLimit !== undefined
+          ? row.row.creditLimit.toFixed(2)
+          : '';
+      },
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.warningLimit'),
+      field: 'warningLimit',
+      width: 120,
+      formatter: (row) => {
+        return row.row.warningLimit !== null &&
+          row.row.warningLimit !== undefined
+          ? row.row.warningLimit.toFixed(2)
+          : '';
+      },
+    },
     {
       title: $t('seaExport.client.paymentTerms.orgs'),
       field: 'organizationUnitName',
@@ -376,12 +521,14 @@ export function useColumns(
       minWidth: 150,
       formatter: (row) => {
         console.log('row', row);
-        return row.row.bizTypes
+        const labels = row.row.bizTypes
           ?.map((item) => {
             return BusinessTypeOptions.find((option) => option.value === item)
               ?.label;
           })
+          .filter(Boolean)
           .join(',');
+        return labels || '';
       },
     },
     {
@@ -435,22 +582,10 @@ export function useColumns(
       formatter: 'formatDateTime',
     },
     {
-      align: 'right',
-      cellRender: {
-        attrs: {
-          nameField: 'name',
-          nameTitle: $t('seaExport.client.name'),
-          onClick: onActionClick,
-        },
-        name: 'CellOperation',
-        options: ['edit', 'delete'],
-      },
-      field: 'operation',
-      fixed: 'right',
-      headerAlign: 'center',
-      showOverflow: false,
-      title: $t('seaExport.client.operation'),
+      title: $t('auditApproval.task.createTime'),
+      field: 'creationTime',
       width: 150,
+      formatter: 'formatDateTime',
     },
   ];
 }
