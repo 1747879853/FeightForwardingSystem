@@ -49,8 +49,12 @@ const selectedRows = ref<ClientAdminApi.ClientDto[]>([]);
 
 const canEdit = computed(() => selectedRows.value.length === 1);
 const canDelete = computed(() => selectedRows.value.length > 0);
-const canAddDishonest = computed(() => selectedRows.value.length === 1 && !selectedRows.value[0]?.isDishonest);
-const canCancelDishonest = computed(() => selectedRows.value.length === 1 && selectedRows.value[0]?.isDishonest);
+const canAddDishonest = computed(
+  () => selectedRows.value.length === 1 && !selectedRows.value[0]?.isDishonest,
+);
+const canCancelDishonest = computed(
+  () => selectedRows.value.length === 1 && selectedRows.value[0]?.isDishonest,
+);
 
 const syncSelectedRows = () => {
   selectedRows.value =
@@ -77,7 +81,7 @@ const handleEditSelected = () => {
 
 const handleDeleteSelected = () => {
   if (!canDelete.value) {
-    message.warning($t('seaExport.export.orderFee.pleaseSelectRecords'));
+    message.warning($t('seaExport.export.pleaseSelectOne'));
     return;
   }
 
@@ -196,8 +200,10 @@ const [Grid, gridApi] = useVbenVxeGrid<ClientAdminApi.ClientDto>({
   },
   formOptions: {
     schema: useGridFormSchema(),
+    collapsed: true,
     submitOnChange: true,
-    showCollapseButton: false,
+    showCollapseButton: true,
+    wrapperClass: 'grid-cols-6',
   },
   gridOptions: {
     columns: useColumns(),
@@ -240,11 +246,7 @@ useRefreshListOnFormReturn('ClientList', handleRefresh);
   <Page auto-content-height>
     <Grid :table-title="$t('seaExport.client.list')">
       <template #toolbar-tools>
-        <Button
-          v-if="canAddDishonest"
-          class="mr-2"
-          @click="handleAddDishonest"
-        >
+        <Button v-if="canAddDishonest" class="mr-2" @click="handleAddDishonest">
           加入失信
         </Button>
         <Button

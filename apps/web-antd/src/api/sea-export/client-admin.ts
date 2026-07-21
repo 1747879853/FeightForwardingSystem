@@ -643,6 +643,45 @@ export namespace ClientAdminApi {
     /** 多个附件 */
     attachments?: AttachmentItemForItemInputDto[];
   }
+
+  /** 获取客户附件分组列表响应 */
+  export interface ClientAttachmentGroupDto {
+    attachmentDtlTypeId?: number | null;
+    attachmentDtlType?: AttachmentDtlTypeSimpleDto | null;
+    items?: ClientAttachmentItemDto[] | null;
+  }
+
+  /** 客户附件项DTO（扩展版，包含详细信息） */
+  export interface ClientAttachmentItemDto extends AttachmentItemForItemInputDto {
+    moduleTypeId?: string | null;
+    attachmentDtlType?: AttachmentDtlTypeSimpleDto | null;
+    isFirstShow?: boolean;
+    mediaType?: number;
+    friendlyFileName?: string | null;
+    fileLength?: number | null;
+    creationTime?: string | null;
+    creatorUserId?: number | null;
+    creatorUserName?: string | null;
+  }
+
+  /** 添加客户附件参数 */
+  export interface ClientAttachmentsAddDto {
+    id: string;
+    attachments?: AttachmentItemForItemInputDto[] | null;
+  }
+
+  /** 删除客户附件参数 */
+  export interface ClientAttachmentsDeleteDto {
+    id: string;
+    attachmentIds?: number[] | null;
+  }
+
+  /** 附件详细类型简易DTO */
+  export interface AttachmentDtlTypeSimpleDto {
+    id: number;
+    name?: string | null;
+    sortId?: number;
+  }
 }
 
 const API_PREFIX = '/services/app/ClientAdmin';
@@ -720,6 +759,36 @@ export const EditAttachmentAsync = (
   data: ClientAdminApi.ClientEditAttachmentDto,
 ) => {
   return requestClient.put<boolean>(`${API_PREFIX}/EditAttachmentAsync`, data);
+};
+
+/**
+ * 获取客户附件分组列表
+ */
+export const getClientAttachments = (id: string) => {
+  return requestClient.get<ClientAdminApi.ClientAttachmentGroupDto[]>(
+    `${API_PREFIX}/GetAttachmentsAsync`,
+    { params: { Id: id } },
+  );
+};
+
+/**
+ * 添加客户附件
+ */
+export const addClientAttachments = (
+  data: ClientAdminApi.ClientAttachmentsAddDto,
+) => {
+  return requestClient.post<boolean>(`${API_PREFIX}/AddAttachmentsAsync`, data);
+};
+
+/**
+ * 删除客户附件
+ */
+export const deleteClientAttachments = (
+  data: ClientAdminApi.ClientAttachmentsDeleteDto,
+) => {
+  return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAttachmentsAsync`, {
+    data,
+  });
 };
 
 /**

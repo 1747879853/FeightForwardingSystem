@@ -171,7 +171,7 @@ const [ClientForm, clientFormApi] = useVbenForm({
   layout: 'vertical',
   schema: useClientFormSchema(),
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-2',
+  wrapperClass: 'grid-cols-3',
 });
 
 const [SupplierForm, supplierFormApi] = useVbenForm({
@@ -625,6 +625,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     email: detail.email,
     url: detail.url,
     enterpriseType: detail.enterpriseType, // 添加企业类型字段
+    showCompanyId: detail.showCompanyId, // 添加归属公司字段
     remark: detail.remark,
     country: detail.countryId,
     areaId: areaIdPath,
@@ -905,9 +906,9 @@ const handleSubmit = async () => {
         enAddress: baseValues.enAddress,
         mainProduct: baseValues.mainProduct,
         enable: baseValues.enable ?? true,
-        codeSourceId: baseValues.codeSourceId,
 
         enterpriseType: baseValues.enterpriseType, // 企业类型字段
+        showCompanyId: baseValues.showCompanyId, // 归属公司字段
         industryCategories,
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
@@ -1108,7 +1109,7 @@ const handleDishonestToggle = async () => {
 
   const action = isDishonest.value ? '取消失信' : '加入失信';
   const actionVerb = isDishonest.value ? 'cancelDishonest' : 'addDishonest';
-  
+
   Modal.confirm({
     title: `${action}`,
     content: `确定要将此客户${action}吗？`,
@@ -1469,8 +1470,11 @@ onMounted(() => {
                       (o) => o.value === item.isDefault,
                     )?.label
                   }}</tag>
-                  <tag 
-                    v-if="item.addressType !== undefined && item.addressType !== null"
+                  <tag
+                    v-if="
+                      item.addressType !== undefined &&
+                      item.addressType !== null
+                    "
                     color="green"
                     class="ml-2"
                   >
@@ -1675,54 +1679,3 @@ onMounted(() => {
   background: linear-gradient(to right, #1677ff18, #fff);
 }
 </style>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-</```
-
-
-

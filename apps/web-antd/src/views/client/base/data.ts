@@ -542,16 +542,6 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'OrganizationUnitSelect',
-      fieldName: 'ShowCompanyId',
-      label: '展示归属公司',
-      componentProps: {
-        allowClear: true,
-        isCompanyOnly: true,
-        placeholder: $t('ui.placeholder.select'),
-      },
-    },
-    {
       component: 'CodeSourceSelect',
       fieldName: 'CodeSourceId',
       label: $t('seaExport.client.codeSource'),
@@ -720,10 +710,22 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'OrganizationSelect',
+      fieldName: 'showCompanyId',
+      label: '归属公司',
+      componentProps: {
+        allowClear: true,
+        isCompanyOnly: true,
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
       component: 'Textarea',
       fieldName: 'remark',
       label: $t('seaExport.client.remark'),
-      componentProps: { allowClear: true, rows: 3 },
+      formItemClass: 'col-span-2',
+      componentProps: { allowClear: true, rows: 1 },
     },
   ];
 }
@@ -796,17 +798,14 @@ export function useClientFormSchema(): VbenFormSchema[] {
       fieldName: 'isShared',
       label: '是否共享',
       defaultValue: false,
+      formItemClass: 'col-span-2',
     },
     {
-      component: 'OrganizationUnitSelect',
-      fieldName: 'showCompanyId',
-      label: '展示归属公司',
-      componentProps: {
-        allowClear: true,
-        isCompanyOnly: true,
-        placeholder: $t('ui.placeholder.select'),
-        class: 'w-full',
-      },
+      component: 'Textarea',
+      fieldName: 'remark',
+      formItemClass: 'col-span-3',
+      label: $t('seaExport.client.remark'),
+      componentProps: { allowClear: true, rows: 1 },
     },
   ];
 }
@@ -1003,6 +1002,7 @@ export function useFormSchema(): VbenFormSchema[] {
       component: 'Textarea',
       fieldName: 'remark',
       label: $t('seaExport.client.remark'),
+      formItemClass: 'col-span-2',
       componentProps: { allowClear: true, rows: 3 },
     },
   ];
@@ -1070,11 +1070,16 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       minWidth: 100,
       formatter: ({ cellValue }) => {
         switch (cellValue) {
-          case 1: return '国有企业';
-          case 2: return '民营企业';
-          case 3: return '外资企业';
-          case 4: return '合资企业';
-          default: return '';
+          case 1:
+            return '国有企业';
+          case 2:
+            return '民营企业';
+          case 3:
+            return '外资企业';
+          case 4:
+            return '合资企业';
+          default:
+            return '';
         }
       },
     },
@@ -1092,7 +1097,7 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
     },
     {
       field: 'showCompany',
-      title: '展示归属公司',
+      title: '归属公司',
       minWidth: 150,
       formatter: ({ cellValue }) => cellValue?.displayName || '',
     },
@@ -1102,7 +1107,7 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       minWidth: 150,
       formatter: ({ cellValue }) => {
         if (!cellValue || !Array.isArray(cellValue)) return '';
-        return cellValue.map(lane => lane.laneName).join(', ');
+        return cellValue.map((lane) => lane.laneName).join(', ');
       },
     },
     {
@@ -1135,7 +1140,7 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
     {
       field: 'enable',
       title: $t('seaExport.client.enable'),
-      minWidth: 80,
+      minWidth: 100,
       cellRender: {
         name: 'CellTag',
         options: getEnableOptions(),

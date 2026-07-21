@@ -1,405 +1,888 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import type { UploadFile } from 'ant-design-vue';
+import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import type { OnActionClickParams } from '#/adapter/vxe-table';
-import { Page } from '@vben/common-ui';
-import { Button, message, Modal, Space } from 'ant-design-vue';
+
+import { useAccess } from '@vben/access';
 import { IconifyIcon } from '@vben/icons';
-import { $t } from '#/locales';
-import dayjs from 'dayjs';
+import { formatDateTime } from '@vben/utils';
+
 import {
-  EditAttachmentAsync,
-  getClientDetail,
-  type ClientAdminApi,
+  Button,
+  Card,
+  Checkbox,
+  Empty,
+  message,
+  Modal,
+  Select,
+  Spin,
+  Switch,
+  Tooltip,
+  Upload,
+} from 'ant-design-vue';
+
+import AttachmentViewerModal from '#/adapter/component/file-preview/attachment-viewer-modal.vue';
+import { resolveModuleTypeByLabel } from '#/api/common/lookup';
+import { mapResultToAttachment, uploadFile } from '#/api/common/upload';
+import {
+  addClientAttachments,
+  deleteClientAttachments,
+  getClientAttachments,
 } from '#/api/sea-export/client-admin';
-import PdfPreview from '#/adapter/component/file-preview/pdf-preview-modal.vue';
-import WordPreview from '#/adapter/component/file-preview/word-preview-modal.vue';
+import { updateAttachmentItemsClientVisible } from '#/api/system/attachment';
+import {
+  getAttachmentDtlTypeList,
+  getAttachmentDtlTypesByModuleTypes,
+} from '#/api/system/attachment-dtl-type';
+import { $t } from '#/locales';
 import { buildAttachmentUrl } from '#/utils';
-// 引入上传弹窗子组件
-import AttachmentUploadModal from './attachment-upload-modal.vue';
+import { createAbpPermission } from '#/utils/abp-permission';
 
-const route = useRoute();
-
-// 客户ID（从路由参数或query中获取）
-const clientId = computed(() => {
-  return (route.params.id || route.query.id) as string;
+defineOptions({
+  name: 'ClientAttachments',
 });
 
-// 附件列表数据
-const attachmentList = ref<ClientAdminApi.AttachmentItemForItemInputDto[]>([]);
-const submitting = ref(false);
+interface AttachmentTypeGroup {
+  attachmentDtlTypeId: number | null;
+  name: string;
+  sortId: number;
+  items: ClientAdminApi.ClientAttachmentItemDto[];
+}
 
-// 上传弹窗相关
-const uploadVisible = ref(false);
-// 上传弹窗组件引用
-const uploadModalRef = ref();
+const ALLOWED_TYPES = [
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ppt',
+  '.pptx',
+  '.csv',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.gif',
+  '.bmp',
+  '.webp',
+  '.svg',
+  '.tif',
+  '.tiff',
+  '.zip',
+  '.rar',
+];
 
-/**
- * 格式化文件大小
- */
-const formatFileSize = (bytes?: number): string => {
+/** 图片扩展名集合，用于卡片内展示缩略图 */
+const IMAGE_EXTENSIONS = new Set([
+  'bmp',
+  'gif',
+  'ico',
+  'jpeg',
+  'jpg',
+  'png',
+  'svg',
+  'tif',
+  'tiff',
+  'webp',
+]);
+
+const perm = createAbpPermission('Admin.Client');
+const { hasAccessByCodes } = useAccess();
+const route = useRoute();
+
+const loading = ref(false);
+const uploadingTypeId = ref<number | null | undefined>(undefined);
+const groups = ref<AttachmentTypeGroup[]>([]);
+const clientVisibleByTypeId = ref<Map<number | null, boolean>>(new Map());
+const allAttachmentTypes = ref<ClientAdminApi.AttachmentDtlTypeSimpleDto[]>([]);
+/** 用户手动添加的非默认展示类型 */
+const manualTypeIds = ref<number[]>([]);
+const addOtherTypeVisible = ref(false);
+const selectedOtherTypeId = ref<number | undefined>(undefined);
+
+const clientId = computed<string>(() => {
+  const id = route.params.id || route.query.id;
+  if (Array.isArray(id)) return id[0] || '';
+  return id ? String(id) : '';
+});
+
+const canEdit = computed(() => hasAccessByCodes([perm.edit]));
+
+const formatFileSize = (bytes?: number | null): string => {
   if (!bytes || bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+  return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`;
 };
 
-/**
- * 加载客户详情（包含附件信息）
- */
-const loadClientDetail = async () => {
+const getGroupKey = (typeId: number | null) =>
+  typeId === null ? 'null' : String(typeId);
+
+const getClientVisible = (typeId: number | null) =>
+  clientVisibleByTypeId.value.get(typeId) ?? false;
+
+const setClientVisible = (typeId: number | null, value: boolean) => {
+  clientVisibleByTypeId.value.set(typeId, value);
+};
+
+/** 单文件客户可见性更新中的 AttachmentItem id 集合 */
+const visibilityUpdatingItemIds = ref<Set<number>>(new Set());
+/** 类型批量更新中的 attachmentDtlTypeId 集合 */
+const visibilityUpdatingGroupIds = ref<Set<number | null>>(new Set());
+
+const isItemVisibilityUpdating = (
+  item: ClientAdminApi.ClientAttachmentItemDto,
+) =>
+  typeof item.id === 'number' && visibilityUpdatingItemIds.value.has(item.id);
+
+const isGroupVisibilityUpdating = (group: AttachmentTypeGroup) =>
+  visibilityUpdatingGroupIds.value.has(group.attachmentDtlTypeId);
+
+/** 类型头 Checkbox 选中态：有附件时反映「全部可见」，否则回退为上传默认值 */
+const getGroupVisibleChecked = (group: AttachmentTypeGroup) => {
+  if (group.items.length === 0) {
+    return getClientVisible(group.attachmentDtlTypeId);
+  }
+  return group.items.every((item) => item.clientVisible === true);
+};
+
+/** 类型头 Checkbox 半选态：部分附件可见 */
+const getGroupVisibleIndeterminate = (group: AttachmentTypeGroup) => {
+  if (group.items.length === 0) return false;
+  const visibleCount = group.items.filter(
+    (item) => item.clientVisible === true,
+  ).length;
+  return visibleCount > 0 && visibleCount < group.items.length;
+};
+
+/** 类型批量修改客户可见：同步上传默认值，并批量更新该类型下既有附件 */
+const handleGroupVisibleChange = async (
+  group: AttachmentTypeGroup,
+  value: boolean,
+) => {
+  setClientVisible(group.attachmentDtlTypeId, value);
+
+  const targets = group.items.filter(
+    (item) => typeof item.id === 'number' && item.id > 0,
+  );
+  if (targets.length === 0) return;
+
+  const groupId = group.attachmentDtlTypeId;
+  visibilityUpdatingGroupIds.value = new Set(
+    visibilityUpdatingGroupIds.value,
+  ).add(groupId);
+  try {
+    await updateAttachmentItemsClientVisible(
+      targets.map((item) => ({ id: item.id as number, clientVisible: value })),
+    );
+    for (const item of group.items) {
+      item.clientVisible = value;
+    }
+    message.success($t('client.attachment.visibilityUpdateSuccess'));
+  } catch (error) {
+    console.error('更新客户可见性失败:', error);
+    message.error($t('client.attachment.visibilityUpdateFailed'));
+  } finally {
+    const next = new Set(visibilityUpdatingGroupIds.value);
+    next.delete(groupId);
+    visibilityUpdatingGroupIds.value = next;
+  }
+};
+
+/** 单文件切换客户可见 */
+const handleItemVisibleChange = async (
+  item: ClientAdminApi.ClientAttachmentItemDto,
+  value: boolean,
+) => {
+  if (typeof item.id !== 'number' || item.id <= 0) return;
+
+  const itemId = item.id;
+  visibilityUpdatingItemIds.value = new Set(
+    visibilityUpdatingItemIds.value,
+  ).add(itemId);
+  try {
+    await updateAttachmentItemsClientVisible([
+      { id: itemId, clientVisible: value },
+    ]);
+    item.clientVisible = value;
+    message.success($t('client.attachment.visibilityUpdateSuccess'));
+  } catch (error) {
+    console.error('更新客户可见性失败:', error);
+    message.error($t('client.attachment.visibilityUpdateFailed'));
+  } finally {
+    const next = new Set(visibilityUpdatingItemIds.value);
+    next.delete(itemId);
+    visibilityUpdatingItemIds.value = next;
+  }
+};
+
+const resolveGroupName = (
+  typeId: number | null,
+  typeInfo?: ClientAdminApi.AttachmentDtlTypeSimpleDto | null,
+) => {
+  if (typeInfo?.name) return typeInfo.name;
+  if (typeId === null) {
+    return $t('client.attachment.uncategorized');
+  }
+  return String(typeId);
+};
+
+const mergeGroups = (
+  configuredTypes: ClientAdminApi.AttachmentDtlTypeSimpleDto[],
+  attachmentGroups: ClientAdminApi.ClientAttachmentGroupDto[],
+  extraTypeIds: number[] = [],
+  allTypes: ClientAdminApi.AttachmentDtlTypeSimpleDto[] = [],
+): AttachmentTypeGroup[] => {
+  const itemsByTypeId = new Map<
+    number | null,
+    ClientAdminApi.ClientAttachmentItemDto[]
+  >();
+  const typeInfoById = new Map<
+    number | null,
+    ClientAdminApi.AttachmentDtlTypeSimpleDto | null
+  >();
+
+  for (const group of attachmentGroups) {
+    const typeId = group.attachmentDtlTypeId ?? null;
+    itemsByTypeId.set(typeId, group.items ?? []);
+    typeInfoById.set(typeId, group.attachmentDtlType ?? null);
+  }
+
+  const merged: AttachmentTypeGroup[] = [];
+  const seenTypeIds = new Set<number>();
+
+  const sortedConfigured = [...configuredTypes].sort(
+    (a, b) => (a.sortId ?? 0) - (b.sortId ?? 0),
+  );
+
+  for (const type of sortedConfigured) {
+    seenTypeIds.add(type.id);
+    merged.push({
+      attachmentDtlTypeId: type.id,
+      name: resolveGroupName(type.id, type),
+      sortId: type.sortId ?? 0,
+      items: itemsByTypeId.get(type.id) ?? [],
+    });
+  }
+
+  for (const manualId of extraTypeIds) {
+    if (seenTypeIds.has(manualId)) continue;
+    const type =
+      allTypes.find((item) => item.id === manualId) ??
+      typeInfoById.get(manualId) ??
+      null;
+    seenTypeIds.add(manualId);
+    merged.push({
+      attachmentDtlTypeId: manualId,
+      name: resolveGroupName(manualId, type),
+      sortId: type?.sortId ?? 5000,
+      items: itemsByTypeId.get(manualId) ?? [],
+    });
+  }
+
+  for (const group of attachmentGroups) {
+    const typeId = group.attachmentDtlTypeId ?? null;
+    if (typeId !== null && seenTypeIds.has(typeId)) continue;
+    if (
+      typeId === null &&
+      merged.some((item) => item.attachmentDtlTypeId === null)
+    ) {
+      continue;
+    }
+
+    const typeInfo =
+      group.attachmentDtlType ?? typeInfoById.get(typeId) ?? null;
+    merged.push({
+      attachmentDtlTypeId: typeId,
+      name: resolveGroupName(typeId, typeInfo),
+      sortId: typeInfo?.sortId ?? 9999,
+      items: group.items ?? [],
+    });
+  }
+
+  return merged.sort((a, b) => a.sortId - b.sortId);
+};
+
+const displayedTypeIds = computed(() => {
+  const ids = new Set<number>();
+  for (const group of groups.value) {
+    if (group.attachmentDtlTypeId != null) {
+      ids.add(group.attachmentDtlTypeId);
+    }
+  }
+  return ids;
+});
+
+const availableOtherTypes = computed(() => {
+  return allAttachmentTypes.value.filter(
+    (item) => !displayedTypeIds.value.has(item.id),
+  );
+});
+
+const otherTypeOptions = computed(() =>
+  availableOtherTypes.value.map((item) => ({
+    label: item.name || String(item.id),
+    value: item.id,
+  })),
+);
+
+const openAddOtherTypeModal = () => {
+  selectedOtherTypeId.value = undefined;
+  addOtherTypeVisible.value = true;
+};
+
+const confirmAddOtherType = () => {
+  if (selectedOtherTypeId.value == null) {
+    message.warning($t('client.attachment.selectTypeRequired'));
+    return;
+  }
+  if (!manualTypeIds.value.includes(selectedOtherTypeId.value)) {
+    manualTypeIds.value.push(selectedOtherTypeId.value);
+  }
+  rebuildGroupsFromCache();
+  addOtherTypeVisible.value = false;
+  message.success($t('client.attachment.addOtherTypeSuccess'));
+};
+
+let cachedConfiguredTypes: ClientAdminApi.AttachmentDtlTypeSimpleDto[] = [];
+let cachedAttachmentGroups: ClientAdminApi.ClientAttachmentGroupDto[] = [];
+
+const rebuildGroupsFromCache = () => {
+  groups.value = mergeGroups(
+    cachedConfiguredTypes,
+    cachedAttachmentGroups,
+    manualTypeIds.value,
+    allAttachmentTypes.value,
+  );
+};
+
+const loadAttachments = async () => {
   if (!clientId.value) {
-    message.warning('缺少客户ID');
+    message.warning($t('client.attachment.noClientId'));
     return;
   }
 
+  loading.value = true;
   try {
-    const detail = await getClientDetail(clientId.value);
+    const moduleType = await resolveModuleTypeByLabel(
+      $t('system.permission.moduleClient'),
+    );
 
-    attachmentList.value =
-      detail.attachments?.map((item) => {
-        return {
-          ...item,
-          url: buildAttachmentUrl(item.url),
-          fileLength: formatFileSize(item.fileLength),
-        };
-      }) ?? [];
+    const [moduleTypeResult, attachmentGroups, allTypes] = await Promise.all([
+      moduleType == null
+        ? Promise.resolve([])
+        : getAttachmentDtlTypesByModuleTypes({ moduleTypes: [moduleType] }),
+      getClientAttachments(clientId.value),
+      getAttachmentDtlTypeList(),
+    ]);
+
+    allAttachmentTypes.value = allTypes ?? [];
+
+    const configuredTypes =
+      moduleTypeResult[0]?.attachmentDtlTypes?.filter(
+        (item): item is ClientAdminApi.AttachmentDtlTypeSimpleDto =>
+          typeof item.id === 'number',
+      ) ?? [];
+
+    cachedConfiguredTypes = configuredTypes;
+    cachedAttachmentGroups = attachmentGroups ?? [];
+
+    // 已有附件但不在默认配置中的类型，自动加入手动列表避免刷新后消失
+    for (const group of cachedAttachmentGroups) {
+      const typeId = group.attachmentDtlTypeId;
+      if (typeId == null) continue;
+      const isConfigured = configuredTypes.some((item) => item.id === typeId);
+      if (!isConfigured && !manualTypeIds.value.includes(typeId)) {
+        manualTypeIds.value.push(typeId);
+      }
+    }
+
+    rebuildGroupsFromCache();
   } catch (error) {
-    console.error('加载客户详情失败:', error);
-    //message.error($t('common.errorMessage'));
+    console.error('加载客户附件失败:', error);
+    message.error($t('client.attachment.loadFailed'));
+  } finally {
+    loading.value = false;
   }
 };
 
-/**
- * 获取文件类型显示文本
- */
-const getFileTypeText = (fileName?: string): string => {
-  if (!fileName) return '-';
-  const ext = fileName.split('.').pop()?.toLowerCase();
-  const typeMap: Record<string, string> = {
-    pdf: 'PDF',
-    doc: 'Word',
-    docx: 'Word',
-    xls: 'Excel',
-    xlsx: 'Excel',
-    jpg: '图片',
-    jpeg: '图片',
-    png: '图片',
-    gif: '图片',
-    bmp: '图片',
-    zip: '压缩包',
-    rar: '压缩包',
-  };
-  return typeMap[ext || ''] || ext?.toUpperCase() || '未知';
+const isAllowedType = (file: File): boolean => {
+  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  return ALLOWED_TYPES.some((allowed) => allowed.replace('.', '') === ext);
 };
 
-/**
- * 表格操作点击处理
- */
-const handleActionClick = ({
-  code,
-  row,
-}: OnActionClickParams<ClientAdminApi.AttachmentItemForItemInputDto>) => {
-  switch (code) {
-    case 'download': {
-      handleDownload(row);
-      break;
+const handleBeforeUpload = async (
+  file: UploadFile,
+  group: AttachmentTypeGroup,
+) => {
+  if (!canEdit.value || !clientId.value) return false;
+
+  const rawFile = file as unknown as File;
+  if (!isAllowedType(rawFile)) {
+    message.error($t('component.fileUpload.typeNotAllowed'));
+    return false;
+  }
+
+  const sizeMB = rawFile.size / 1024 / 1024;
+  if (sizeMB > 10) {
+    message.error($t('component.fileUpload.sizeExceeded', [10]));
+    return false;
+  }
+
+  uploadingTypeId.value = group.attachmentDtlTypeId;
+  try {
+    const formData = new FormData();
+    formData.append('file', rawFile);
+    const resultList = await uploadFile(formData);
+    if (!resultList?.length) {
+      throw new Error('upload empty');
     }
-    case 'delete': {
-      handleDelete(row);
-      break;
-    }
+
+    const uploaded = mapResultToAttachment(resultList[0]!);
+    await addClientAttachments({
+      id: clientId.value,
+      attachments: [
+        {
+          attachmentId: Number(uploaded.attachmentId),
+          attachmentDtlTypeId: group.attachmentDtlTypeId ?? undefined,
+          clientVisible: getClientVisible(group.attachmentDtlTypeId),
+          displayOrder: group.items.length,
+          url: uploaded.url,
+        },
+      ],
+    });
+
+    message.success($t('client.attachment.uploadSuccess'));
+    await loadAttachments();
+  } catch (error) {
+    console.error('上传附件失败:', error);
+    message.error($t('client.attachment.uploadFailed'));
+  } finally {
+    uploadingTypeId.value = undefined;
   }
+
+  return false;
 };
 
-/**
- * 下载文件
- */
-const handleDownload = (row: ClientAdminApi.AttachmentItemForItemInputDto) => {
-  if (row.url) {
-    window.open(row.url, '_blank');
-  } else {
-    message.warning('文件链接不存在');
+const handleDownload = (row: ClientAdminApi.ClientAttachmentItemDto) => {
+  const url = row.url ? buildAttachmentUrl(row.url) : '';
+  if (!url) {
+    message.warning($t('client.attachment.noFileUrl'));
+    return;
   }
+  window.open(url, '_blank');
 };
 
-/**
- * 删除附件
- */
-const handleDelete = (row: ClientAdminApi.AttachmentItemDto) => {
+const handleDelete = (row: ClientAdminApi.ClientAttachmentItemDto) => {
+  if (!canEdit.value || !clientId.value) return;
+
+  const fileName =
+    row.friendlyFileName?.split('/').pop() ||
+    $t('system.basicData.attachmentFallback');
+
   Modal.confirm({
-    title: $t('common.confirmDelete', [$t('client.attachment.fileName')]),
-    content: `确定要删除文件 "${row.friendlyFileName?.split('/').pop() || '未知文件'}" 吗？`,
+    title: $t('common.confirmDelete', [$t('client.attachment.title')]),
+    content: $t('client.attachment.deleteConfirm', [fileName]),
     okText: $t('common.confirm'),
     cancelText: $t('common.cancel'),
     okType: 'danger',
     onOk: async () => {
       try {
-        // 从列表中移除该附件
-        const updatedAttachments = attachmentList.value.filter(
-          (item) => item.attachmentId !== row.attachmentId,
-        );
-
-        await EditAttachmentAsync({
+        await deleteClientAttachments({
           id: clientId.value,
-          attachments: updatedAttachments,
+          attachmentIds: [row.attachmentId!],
         });
-
-        message.success($t('common.deleteSuccess'));
-        await loadClientDetail();
+        message.success($t('client.attachment.deleteSuccess'));
+        await loadAttachments();
       } catch (error) {
-        console.error('删除失败:', error);
-        message.error($t('common.deleteFailed'));
+        console.error('删除附件失败:', error);
+        message.error($t('client.attachment.deleteFailed'));
       }
     },
   });
 };
 
-/**
- * 打开上传弹窗
- */
-const handleUpload = () => {
-  uploadVisible.value = true;
+const getFileName = (row: ClientAdminApi.ClientAttachmentItemDto): string => {
+  const name = row.friendlyFileName || row.url || '';
+  return name.split('/').pop() || $t('system.basicData.attachmentFallback');
 };
 
-/**
- * 处理上传成功
- */
-const handleUploadSuccess = async () => {
-  try {
-    submitting.value = true;
-
-    // 从子组件获取新上传的附件
-    const newAttachments = uploadModalRef.value?.getAttachments() || [];
-
-    if (newAttachments.length === 0) {
-      message.warning('请选择要上传的文件');
-      return;
-    }
-
-    // 将新上传的附件转换为 AttachmentItemForItemInputDto 格式
-    const formattedAttachments: ClientAdminApi.AttachmentItemForItemInputDto[] =
-      newAttachments.map((file: any, index: number) => ({
-        attachmentId: file.attachmentId,
-        url: file.url,
-        itemId: clientId.value,
-        displayOrder: attachmentList.value.length + index + 1,
-      }));
-
-    // 合并现有附件和新附件
-    const allAttachments = [...attachmentList.value, ...formattedAttachments];
-
-    await EditAttachmentAsync({
-      id: clientId.value,
-      attachments: allAttachments,
-    });
-
-    message.success($t('common.uploadSuccess'));
-    await loadClientDetail();
-  } catch (error) {
-    console.error('上传失败:', error);
-    message.error($t('common.uploadFailed'));
-  } finally {
-    submitting.value = false;
-  }
+const getFileExtension = (
+  row: ClientAdminApi.ClientAttachmentItemDto,
+): string => {
+  const source = row.friendlyFileName || row.url || '';
+  const match = source.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
+  return match ? (match[1]?.toLowerCase() ?? '') : '';
 };
 
-/**
- * 列配置
- */
-const columns = [
-  {
-    field: 'friendlyFileName',
-    title: $t('client.attachment.fileName'),
-    minWidth: 200,
-  },
-  {
-    field: 'fileType',
-    title: $t('client.attachment.fileType'),
-    width: 120,
-  },
-  {
-    field: 'fileLength',
-    title: $t('client.attachment.fileSize'),
-    width: 120,
-  },
-  {
-    field: 'creationTime',
-    title: $t('client.attachment.uploadTime'),
-    width: 180,
-    formatter: 'formatDateTime',
-  },
-  {
-    field: 'creatorUserName',
-    title: $t('client.attachment.uploader'),
-    width: 150,
-  },
-  {
-    title: $t('seaExport.client.operation'),
-    width: 250,
-    fixed: 'right' as const,
-    slots: { default: 'action' },
-  },
-];
+const isImageFile = (row: ClientAdminApi.ClientAttachmentItemDto): boolean =>
+  IMAGE_EXTENSIONS.has(getFileExtension(row));
 
-const [Grid, gridApi] = useVbenVxeGrid<
-  ClientAdminApi.AttachmentItemForItemInputDto & {
-    friendlyFileName?: string;
-    fileType?: string;
-    fileSize?: string;
-    uploadTime?: string;
-    uploader?: string;
+const getFileIcon = (row: ClientAdminApi.ClientAttachmentItemDto): string => {
+  const ext = getFileExtension(row);
+  if (ext === 'pdf') return 'mdi:file-pdf-box';
+  if (['doc', 'docx'].includes(ext)) return 'mdi:file-word-box';
+  if (['csv', 'xls', 'xlsx'].includes(ext)) return 'mdi:file-excel-box';
+  if (['ppt', 'pptx'].includes(ext)) return 'mdi:file-powerpoint-box';
+  if (['rar', 'zip'].includes(ext)) return 'mdi:folder-zip-outline';
+  if (IMAGE_EXTENSIONS.has(ext)) return 'mdi:file-image-outline';
+  return 'mdi:file-document-outline';
+};
+
+const getFileIconColor = (
+  row: ClientAdminApi.ClientAttachmentItemDto,
+): string => {
+  const ext = getFileExtension(row);
+  if (ext === 'pdf') return '#e5252a';
+  if (['doc', 'docx'].includes(ext)) return '#2b579a';
+  if (['csv', 'xls', 'xlsx'].includes(ext)) return '#217346';
+  if (['ppt', 'pptx'].includes(ext)) return '#d24726';
+  if (IMAGE_EXTENSIONS.has(ext)) return '#8b5cf6';
+  return '#8c8c8c';
+};
+
+const previewOpen = ref(false);
+const previewUrl = ref('');
+const previewFileName = ref('');
+const previewUploader = ref('');
+const previewUploadTime = ref('');
+
+const handlePreview = (row: ClientAdminApi.ClientAttachmentItemDto) => {
+  if (!row.url) {
+    message.warning($t('client.attachment.noFileUrl'));
+    return;
   }
->({
-  gridOptions: {
-    columns,
-    data: [],
-    height: 'auto',
-    rowConfig: {
-      keyField: 'attachmentId',
-    },
-    pagerConfig: {
-      enabled: false,
-    },
-    toolbarConfig: {
-      custom: true,
-      export: false,
-      refresh: false,
-      zoom: true,
-    },
-  },
-});
-
-/**
- * 更新表格数据
- */
-const updateGridData = () => {
-  const tableData = attachmentList.value.map((item) => ({
-    ...item,
-    fileName: item.url ? item.url.split('/').pop() : '未知文件',
-    fileType: getFileTypeText(item.url),
-    fileSize: '-', // API 未返回文件大小，暂时显示 -
-    uploadTime: '-', // API 未返回上传时间，暂时显示 -
-    uploader: '-', // API 未返回上传人，暂时显示 -
-  }));
-
-  gridApi.grid?.loadData(tableData);
+  previewUrl.value = row.url;
+  previewFileName.value = getFileName(row);
+  previewUploader.value = row.creatorUserName ?? '';
+  previewUploadTime.value = row.creationTime
+    ? formatDateTime(row.creationTime)
+    : '';
+  previewOpen.value = true;
 };
 
 onMounted(() => {
-  loadClientDetail();
+  loadAttachments();
 });
-
-// 监听附件列表变化，更新表格
-watch(
-  () => attachmentList.value,
-  () => {
-    updateGridData();
-  },
-  { deep: true },
-);
-
-const previewVisible = ref(false);
-const currentPdfUrl = ref('');
-
-const openPdfPreview = (row: ClientAdminApi.AttachmentItemForItemInputDto) => {
-  // 根据pdfId获取对应的URL
-  // api.getPdfUrl(pdfId).then(res => {
-  //   currentPdfUrl.value = res.data.url;
-  //   previewVisible.value = true;
-  // });
-
-  currentPdfUrl.value = row.url || '';
-  previewVisible.value = true;
-};
-
-const handlePdfClose = () => {
-  console.log('PDF预览已关闭');
-};
-
-// 通用预览
-const officeVisible = ref(false);
-const currentFileUrl = ref('');
-const currentFileName = ref('');
-const currentFileTitle = ref('');
-// 显示Word预览
-const showWordPreview = () => {
-  currentFileUrl.value = buildAttachmentUrl(
-    '/Uploads/document/20260417/6391204290217497459137.doc',
-  );
-  currentFileName.value = '示例文档.docx';
-  currentFileTitle.value = 'Word文档预览';
-  officeVisible.value = true;
-};
 </script>
 
 <template>
-  <Page auto-content-height>
-    <!-- 表格 -->
-    <Grid :table-title="$t('client.attachment.title')">
-      <template #toolbar-tools>
-        <Space>
-          <Button type="primary" @click="handleUpload">
-            <IconifyIcon icon="mdi:upload" class="size-5" />
-            {{ $t('client.attachment.uploadTitle') }}
+  <div class="client-attachments p-4">
+    <Spin :spinning="loading">
+      <div v-if="groups.length === 0 && !loading" class="py-12">
+        <Empty :description="$t('client.attachment.empty')">
+          <Button
+            v-if="canEdit && availableOtherTypes.length > 0"
+            type="primary"
+            @click="openAddOtherTypeModal"
+          >
+            {{ $t('client.attachment.addOtherType') }}
           </Button>
-          <!-- <Button type="primary" @click="showWordPreview">
-            <IconifyIcon icon="mdi:upload" class="size-5" />
-            {{ $t('client.attachment.preview') }}
-          </Button> -->
-        </Space>
-      </template>
-      <template #fileName="{ row }">
-        <div class="flex items-center gap-2">
-          <IconifyIcon icon="mdi:file-document-outline" class="text-gray-400" />
-          <span>{{ row.friendlyFileName }}</span>
+        </Empty>
+      </div>
+
+      <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <Card
+          v-for="group in groups"
+          :key="getGroupKey(group.attachmentDtlTypeId)"
+          size="small"
+          class="attachment-card"
+        >
+          <template #title>
+            <div class="flex items-center gap-2">
+              <span class="truncate font-medium" :title="group.name">
+                {{ group.name }}
+              </span>
+              <span class="text-xs font-normal text-gray-400">
+                {{ $t('client.attachment.fileCount', [group.items.length]) }}
+              </span>
+            </div>
+          </template>
+
+          <template v-if="canEdit" #extra>
+            <div class="flex items-center gap-3">
+              <Checkbox
+                :checked="getGroupVisibleChecked(group)"
+                :indeterminate="getGroupVisibleIndeterminate(group)"
+                :disabled="isGroupVisibilityUpdating(group)"
+                @update:checked="
+                  (value) => handleGroupVisibleChange(group, !!value)
+                "
+              >
+                <span class="text-xs">
+                  {{ $t('client.attachment.clientVisible') }}
+                </span>
+              </Checkbox>
+
+              <Upload
+                :before-upload="(file) => handleBeforeUpload(file, group)"
+                :disabled="uploadingTypeId === group.attachmentDtlTypeId"
+                :show-upload-list="false"
+                multiple
+              >
+                <Button
+                  type="link"
+                  size="small"
+                  class="px-0"
+                  :loading="uploadingTypeId === group.attachmentDtlTypeId"
+                >
+                  <IconifyIcon icon="mdi:upload" class="mr-1 size-4" />
+                  {{ $t('client.attachment.upload') }}
+                </Button>
+              </Upload>
+            </div>
+          </template>
+
+          <div class="attachment-card-list">
+            <div
+              v-if="group.items.length === 0"
+              class="py-6 text-center text-xs text-gray-400"
+            >
+              {{ $t('client.attachment.emptyType') }}
+            </div>
+
+            <div
+              v-for="item in group.items"
+              :key="item.attachmentId"
+              class="attachment-file-item"
+              @click="handlePreview(item)"
+            >
+              <img
+                v-if="isImageFile(item) && item.url"
+                :src="buildAttachmentUrl(item.url)"
+                class="attachment-file-thumb"
+                alt=""
+              />
+              <IconifyIcon
+                v-else
+                :icon="getFileIcon(item)"
+                :style="{ color: getFileIconColor(item) }"
+                class="size-8 shrink-0"
+              />
+
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-sm" :title="getFileName(item)">
+                  {{ getFileName(item) }}
+                </div>
+                <div
+                  class="attachment-file-meta text-xs text-gray-400"
+                  :title="
+                    [
+                      formatFileSize(item.fileLength),
+                      item.creatorUserName
+                        ? `${$t('client.attachment.uploader')}：${item.creatorUserName}`
+                        : '',
+                      item.creationTime
+                        ? `${$t('client.attachment.uploadTime')}：${formatDateTime(item.creationTime)}`
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  "
+                >
+                  <span>{{ formatFileSize(item.fileLength) }}</span>
+                  <span v-if="item.creatorUserName">
+                    {{ $t('client.attachment.uploader') }}：{{
+                      item.creatorUserName
+                    }}
+                  </span>
+                  <span v-if="item.creationTime">
+                    {{ $t('client.attachment.uploadTime') }}：{{
+                      formatDateTime(item.creationTime)
+                    }}
+                  </span>
+                </div>
+              </div>
+
+              <span v-if="canEdit" class="shrink-0" @click.stop>
+                <Tooltip
+                  :title="
+                    item.clientVisible
+                      ? $t('client.attachment.clientVisibleTip')
+                      : $t('client.attachment.clientInvisibleTip')
+                  "
+                >
+                  <Switch
+                    size="small"
+                    :checked="!!item.clientVisible"
+                    :loading="isItemVisibilityUpdating(item)"
+                    @change="
+                      (checked) => handleItemVisibleChange(item, !!checked)
+                    "
+                  />
+                </Tooltip>
+              </span>
+
+              <div class="attachment-file-actions" @click.stop>
+                <Tooltip :title="$t('client.attachment.preview')">
+                  <Button type="text" size="small" @click="handlePreview(item)">
+                    <IconifyIcon icon="mdi:eye-outline" />
+                  </Button>
+                </Tooltip>
+                <Tooltip :title="$t('client.attachment.download')">
+                  <Button
+                    type="text"
+                    size="small"
+                    @click="handleDownload(item)"
+                  >
+                    <IconifyIcon icon="mdi:download" />
+                  </Button>
+                </Tooltip>
+                <Tooltip v-if="canEdit" :title="$t('common.delete')">
+                  <Button
+                    type="text"
+                    size="small"
+                    danger
+                    @click="handleDelete(item)"
+                  >
+                    <IconifyIcon icon="mdi:delete" />
+                  </Button>
+                </Tooltip>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <button
+          v-if="canEdit && availableOtherTypes.length > 0"
+          type="button"
+          class="attachment-add-card"
+          @click="openAddOtherTypeModal"
+        >
+          <IconifyIcon icon="mdi:plus" class="size-6" />
+          <span class="mt-1 text-sm">
+            {{ $t('client.attachment.addOtherType') }}
+          </span>
+        </button>
+      </div>
+    </Spin>
+
+    <Modal
+      v-model:open="addOtherTypeVisible"
+      :title="$t('client.attachment.addOtherType')"
+      :ok-text="$t('common.confirm')"
+      :cancel-text="$t('common.cancel')"
+      @ok="confirmAddOtherType"
+    >
+      <div class="py-2">
+        <div class="mb-2 text-sm text-gray-600">
+          {{ $t('client.attachment.addOtherTypeTip') }}
         </div>
-      </template>
+        <Select
+          v-model:value="selectedOtherTypeId"
+          :options="otherTypeOptions"
+          :placeholder="$t('client.attachment.selectTypePlaceholder')"
+          allow-clear
+          class="w-full"
+          show-search
+          :filter-option="
+            (input, option) =>
+              String(option?.label ?? '')
+                .toLowerCase()
+                .includes(input.toLowerCase())
+          "
+        />
+      </div>
+    </Modal>
 
-      <template #action="{ row }">
-        <Space>
-          <Button type="link" size="small" @click="handleDownload(row)">
-            <IconifyIcon icon="mdi:download" />
-            {{ $t('client.attachment.downloadTitle') }}
-          </Button>
-          <!-- <Button type="link" size="small" @click="openPdfPreview(row)">
-            <IconifyIcon icon="qlementine-icons:preview-16" />
-            {{ $t('client.attachment.preview') }}
-          </Button> -->
-          <Button type="link" size="small" danger @click="handleDelete(row)">
-            <IconifyIcon icon="mdi:delete" />
-            {{ $t('common.delete') }}
-          </Button>
-        </Space>
-      </template>
-    </Grid>
-
-    <!-- 上传弹窗 -->
-    <AttachmentUploadModal
-      ref="uploadModalRef"
-      v-model:visible="uploadVisible"
-      :client-id="clientId"
-      :max-count="20"
-      :max-size-m-b="10"
-      @success="handleUploadSuccess"
+    <AttachmentViewerModal
+      v-model:open="previewOpen"
+      :file-url="previewUrl"
+      :file-name="previewFileName"
+      :uploader="previewUploader"
+      :upload-time="previewUploadTime"
     />
-
-    <PdfPreview
-      v-model:value="previewVisible"
-      :src="currentPdfUrl"
-      title="文档预览"
-      @close="handlePdfClose"
-    />
-
-    <WordPreview
-      v-model:visible="officeVisible"
-      :file-url="currentFileUrl"
-      :fileName="currentFileName"
-      :title="currentFileTitle"
-    />
-  </Page>
+  </div>
 </template>
 
-<style scoped lang="scss"></style>
+<style scoped>
+.attachment-card :deep(.ant-card-body) {
+  padding: 12px;
+}
+
+.attachment-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 180px;
+  overflow-y: auto;
+}
+
+.attachment-file-item {
+  display: flex;
+  flex: 0 0 54px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+}
+
+.attachment-file-item:hover {
+  background-color: hsl(var(--accent));
+  border-color: hsl(var(--border));
+}
+
+.attachment-file-thumb {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.attachment-file-meta {
+  display: flex;
+  gap: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.attachment-file-meta > span {
+  flex-shrink: 0;
+}
+
+.attachment-file-meta > span + span::before {
+  margin: 0 4px;
+  content: '·';
+}
+
+.attachment-file-actions {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.attachment-file-item:hover .attachment-file-actions {
+  opacity: 1;
+}
+
+.attachment-add-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  background-color: transparent;
+  border: 1px dashed hsl(var(--border));
+  border-radius: 8px;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.attachment-add-card:hover {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+</style>
