@@ -22,4 +22,6 @@ export enum PrintJsonType {
   AirExportDetail = 5000,
   /** 空运进口详情 */
   AirImportDetail = 6000,
+  /** 客户对账详情 */
+  StatementDetail = 11000,
 }

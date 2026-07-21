@@ -121,6 +121,13 @@ const {
 
 // 打印功能
 const { printing, handlePrint } = useOrderFeePrint();
+const selectedFeeIds = computed(() => {
+  const selectedKeys = new Set(selectedRowKeys.value);
+  return dataSource.value
+    .filter((row) => selectedKeys.has((row as any)._rowKey))
+    .map((row) => row.id)
+    .filter((id): id is string => Boolean(id && String(id).trim()));
+});
 
 // 排序功能
 const { sortState, sortableFieldsSet, getSortIcon, handleColumnSort } =
@@ -208,15 +215,6 @@ const {
   openAuditHistoryModal,
   handleModalConfirm,
 } = useModals();
-
-// 辅助函数：获取选中的行数据
-const getSelectedRows = () => {
-  return selectedRowKeys.value
-    .map((key: string | number) =>
-      dataSource.value.find((r: any) => r._rowKey === key),
-    )
-    .filter(Boolean);
-};
 
 // ==================== 费用合计计算 ====================
 
@@ -568,7 +566,12 @@ defineExpose({ getTableDate });
                 v-show="props.mode !== 'changeOrder'"
                 :loading="printing"
                 @click="
-                  handlePrint(getSelectedRows(), type, actions.isSavedOrderFee)
+                  handlePrint({
+                    feeType: type,
+                    transportOrderId: editId,
+                    orderDetail: orderBaseData,
+                    selectedFeeIds,
+                  })
                 "
               >
                 <IconifyIcon

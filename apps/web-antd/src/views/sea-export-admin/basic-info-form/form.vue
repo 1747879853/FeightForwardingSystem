@@ -2384,8 +2384,8 @@ const confirmUnsavedPrint = () => {
 
     Modal.confirm({
       title: '存在未保存的修改',
-      content: '当前表单有未保存的修改，确认按当前内容打印吗？',
-      okText: '确认打印',
+      content: '当前表单有未保存的修改，打印将使用已保存的数据，是否继续？',
+      okText: '继续打印',
       cancelText: '取消',
       onOk: () => {
         settle(true);
@@ -2397,7 +2397,15 @@ const confirmUnsavedPrint = () => {
   });
 };
 
-const resolvePrintJson = async (): Promise<string | null> => {
+/**
+ * 解析打印所需的当票要素（签单方式/船公司/分公司）。
+ * 打印数据由后端按 id 取数，未保存的表单修改不会体现在打印结果中。
+ */
+const resolvePrintContext = async (): Promise<null | {
+  carrierId?: null | number;
+  codeIssueTypeId?: null | number;
+  orgId?: null | number;
+}> => {
   if (!isEdit.value || !editId.value) {
     message.warning('请先保存后再打印');
     return null;
@@ -2408,12 +2416,15 @@ const resolvePrintJson = async (): Promise<string | null> => {
     if (dirty) {
       const confirmed = await confirmUnsavedPrint();
       if (!confirmed) return null;
-      const values = await collectCurrentFormValues();
-      return JSON.stringify(buildDto(values));
     }
 
     const detail = await getSeaExportDetail(editId.value);
-    return JSON.stringify(detail);
+    return {
+      codeIssueTypeId:
+        (detail as any).codeIssueTypeId ?? (detail as any).issueType ?? null,
+      carrierId: detail.carrierId ?? null,
+      orgId: detail.companys?.[0]?.id ?? null,
+    };
   } catch {
     message.error('获取打印数据失败');
     return null;
@@ -2425,9 +2436,15 @@ const handlePrint = async () => {
   printing.value = true;
   const hideLoading = message.loading('正在准备打印...', 0);
   try {
-    const json = await resolvePrintJson();
-    if (!json) return;
-    openPrint({ printJsonType: PrintJsonType.SeaExportDetail, json });
+    const ctx = await resolvePrintContext();
+    if (!ctx) return;
+    openPrint({
+      printJsonType: PrintJsonType.SeaExportDetail,
+      codeIssueTypeId: ctx.codeIssueTypeId,
+      carrierId: ctx.carrierId,
+      orgId: ctx.orgId,
+      detailInput: { id: editId.value },
+    });
   } catch {
     message.error('打印准备失败，请稍后重试');
   } finally {

@@ -5,15 +5,14 @@ import { ref } from 'vue';
 import { message } from 'ant-design-vue';
 
 import {
-  getPrintFormatPagedList,
-  printFormatAsync,
+  getPrintAsync,
+  getPrintFormatList,
 } from '#/api/system/print-format-admin';
 import {
   PrintExportFormat,
   type PrintJsonType,
 } from '#/components/print-format/types';
 import { buildStaticFileUrl } from '#/utils/attachment-url';
-import { downloadFileByUrl } from '#/utils/download-file';
 
 const visible = ref(false);
 const loading = ref(false);
@@ -24,19 +23,49 @@ const selectedTemplateId = ref<string>();
 const exportFormat = ref<PrintExportFormat>(PrintExportFormat.Pdf);
 const previewUrl = ref('');
 const previewFilename = ref('');
-const pendingJson = ref('');
 const pendingPrintJsonType = ref<PrintJsonType>();
+/** 后端自动取数打印入参（不含 printFormatId / format，导出时再补齐） */
+const pendingInput = ref<{
+  detailInput?: PrintFormatAdminApi.GuidIdDto;
+  isChangeOrderPrint?: boolean;
+  orderFeeListInput?: PrintFormatAdminApi.OrderFeeQueryDto;
+}>({});
 
 export interface PrintFormatOpenParams {
+  /** 数据源类型，决定取数逻辑与所用入参字段 */
   printJsonType: PrintJsonType;
-  json: string;
+  /** 当票签单方式 id，用于筛选模板 */
+  codeIssueTypeId?: null | number;
+  /** 当票船公司 id，用于筛选模板 */
+  carrierId?: null | number;
+  /** 当票分公司/组织 id，用于筛选模板 */
+  orgId?: null | number;
+  /** 详情类/更改单类取数入参（GuidIdDto） */
+  detailInput?: PrintFormatAdminApi.GuidIdDto;
+  /** 费用列表类取数入参（OrderFeeQueryDto） */
+  orderFeeListInput?: PrintFormatAdminApi.OrderFeeQueryDto;
+  /** 是否更改单打印（仅费用列表类有效） */
+  isChangeOrderPrint?: boolean;
+}
+
+/**
+ * 清洗后端返回的文件名：
+ * 若文件名中含有 "-"，将 "-" 及其之后的内容删除，但保留扩展名。
+ * 例：`638881234567890123-海运出口.pdf` → `638881234567890123.pdf`
+ */
+function cleanReturnedFilename(filename: string) {
+  if (!filename) return filename;
+  const dashIndex = filename.indexOf('-');
+  if (dashIndex === -1) return filename;
+  const dotIndex = filename.lastIndexOf('.');
+  const ext = dotIndex > dashIndex ? filename.slice(dotIndex) : '';
+  return `${filename.slice(0, dashIndex)}${ext}`;
 }
 
 /** 将后端返回的文件名拼接为可访问的静态文件地址 */
 function resolvePrintFileUrl(filename: string) {
-  const path = filename.startsWith('/')
-    ? filename
-    : `/PrintTempFile/${filename}`;
+  const cleaned = cleanReturnedFilename(filename);
+  const path = cleaned.startsWith('/') ? cleaned : `/PrintTempFile/${cleaned}`;
   return buildStaticFileUrl(path);
 }
 
@@ -47,8 +76,23 @@ function close() {
   exportFormat.value = PrintExportFormat.Pdf;
   previewUrl.value = '';
   previewFilename.value = '';
-  pendingJson.value = '';
   pendingPrintJsonType.value = undefined;
+  pendingInput.value = {};
+}
+
+/** 组装后端自动取数打印入参 */
+function buildPrintDto(
+  printFormatId: string,
+  format: PrintExportFormat,
+): PrintFormatAdminApi.GetPrintDto {
+  return {
+    printFormatId,
+    printJsonType: pendingPrintJsonType.value as PrintJsonType,
+    detailInput: pendingInput.value.detailInput,
+    orderFeeListInput: pendingInput.value.orderFeeListInput,
+    isChangeOrderPrint: pendingInput.value.isChangeOrderPrint,
+    format,
+  };
 }
 
 /** 按当前模板拉取 PDF 并生成 iframe 预览地址 */
@@ -59,16 +103,14 @@ async function loadPreview() {
   previewUrl.value = '';
   previewFilename.value = '';
   try {
-    const filename = await printFormatAsync({
-      printFormatId: selectedTemplateId.value,
-      json: pendingJson.value,
-      format: PrintExportFormat.Pdf,
-    });
+    const filename = await getPrintAsync(
+      buildPrintDto(selectedTemplateId.value, PrintExportFormat.Pdf),
+    );
     if (!filename) {
       message.error('预览失败，未返回文件');
       return;
     }
-    previewFilename.value = filename;
+    previewFilename.value = cleanReturnedFilename(filename);
     previewUrl.value = resolvePrintFileUrl(filename);
   } catch {
     message.error('预览生成失败，请稍后重试');
@@ -77,11 +119,14 @@ async function loadPreview() {
   }
 }
 
-async function loadTemplates(printJsonType: PrintJsonType) {
+async function loadTemplates(params: PrintFormatOpenParams) {
   loading.value = true;
   try {
-    const result = await getPrintFormatPagedList({
-      printJsonType,
+    const result = await getPrintFormatList({
+      printJsonType: params.printJsonType,
+      codeIssueTypeId: params.codeIssueTypeId ?? undefined,
+      carrierId: params.carrierId ?? undefined,
+      orgId: params.orgId ?? undefined,
       pageIndex: 1,
       pageSize: 1000,
     });
@@ -104,19 +149,18 @@ async function loadTemplates(printJsonType: PrintJsonType) {
 }
 
 function openPrint(params: PrintFormatOpenParams) {
-  if (!params.json?.trim()) {
-    message.warning('打印数据不能为空');
-    return;
-  }
-
-  pendingJson.value = params.json;
   pendingPrintJsonType.value = params.printJsonType;
+  pendingInput.value = {
+    detailInput: params.detailInput,
+    orderFeeListInput: params.orderFeeListInput,
+    isChangeOrderPrint: params.isChangeOrderPrint,
+  };
   selectedTemplateId.value = undefined;
   exportFormat.value = PrintExportFormat.Pdf;
   previewUrl.value = '';
   previewFilename.value = '';
   visible.value = true;
-  void loadTemplates(params.printJsonType);
+  void loadTemplates(params);
 }
 
 /** 切换模板时重新拉取 PDF 预览 */
@@ -127,7 +171,7 @@ function handleTemplateChange(templateId: string) {
 
 /**
  * 导出当前模板：
- * - PDF：直接下载已生成的预览文件；
+ * - PDF：在新窗口打开已生成的预览文件；
  * - Excel/Word：重新按目标格式生成并在新窗口打开下载。
  * @param format 指定导出格式；不传则使用当前 exportFormat（默认 PDF）
  */
@@ -145,24 +189,22 @@ async function handleExport(format?: PrintExportFormat) {
   // PDF 复用已生成的预览文件，避免重复请求。
   if (targetFormat === PrintExportFormat.Pdf) {
     if (previewUrl.value) {
-      downloadFileByUrl(previewUrl.value, previewFilename.value);
+      window.open(previewUrl.value, '_blank', 'noopener');
       return;
     }
     // 预览缺失时兜底重新生成 PDF。
     await loadPreview();
     if (previewUrl.value) {
-      downloadFileByUrl(previewUrl.value, previewFilename.value);
+      window.open(previewUrl.value, '_blank', 'noopener');
     }
     return;
   }
 
   exporting.value = true;
   try {
-    const filename = await printFormatAsync({
-      printFormatId: selectedTemplateId.value,
-      json: pendingJson.value,
-      format: targetFormat,
-    });
+    const filename = await getPrintAsync(
+      buildPrintDto(selectedTemplateId.value, targetFormat),
+    );
     if (!filename) {
       message.error('导出失败，未返回文件');
       return;

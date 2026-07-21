@@ -45,6 +45,7 @@ import {
 
 import { $t } from '#/locales';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
 import {
   addStatement,
@@ -805,8 +806,18 @@ function handleExportMenuClick({ key }: { key: string }) {
   message.info(`导出: ${key}`);
 }
 
+const { openPrint } = usePrintFormat();
+
 function handlePrint() {
-  message.info('打印');
+  if (!isEdit.value || !editId.value) {
+    message.warning('请先保存后再打印');
+    return;
+  }
+  // 客户对账单打印：由后端按对账单 id 取数（StatementAdmin/DetailAsync）
+  openPrint({
+    printJsonType: PrintJsonType.StatementDetail,
+    detailInput: { id: editId.value },
+  });
 }
 
 function getPaySideLabel(val: number) {

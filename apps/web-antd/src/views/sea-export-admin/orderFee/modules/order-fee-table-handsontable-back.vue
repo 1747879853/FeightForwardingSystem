@@ -167,33 +167,36 @@ const { openPrint } = usePrintFormat();
 const handlePrint = async () => {
   if (printing.value) return;
 
-  const selected = actions.getSelectedRows();
-  if (!selected.length) {
-    message.warning('请先勾选要打印的费用');
+  if (!editId.value) {
+    message.warning('请先保存业务信息后再打印');
     return;
   }
-  if (selected.some((row) => !actions.isSavedOrderFee(row))) {
-    message.warning('请先保存费用后再打印');
-    return;
-  }
+
+  const orderDetail = orderBaseData.value;
+  const templateContext = {
+    codeIssueTypeId:
+      (orderDetail as any)?.codeIssueTypeId ??
+      (orderDetail as any)?.issueType ??
+      null,
+    carrierId: orderDetail?.carrierId ?? null,
+    orgId: orderDetail?.companys?.[0]?.id ?? null,
+  };
 
   printing.value = true;
   const hideLoading = message.loading('正在准备打印...', 0);
   try {
-    const json = JSON.stringify(
-      selected.map((row) => {
-        const { _rowKey, ...fee } = row as OrderFeeAdminApi.OrderFeeDto & {
-          _rowKey?: string;
-        };
-        return fee;
-      }),
-    );
     openPrint({
       printJsonType:
         props.type === 0
           ? PrintJsonType.RecOrderFeeList
           : PrintJsonType.PayOrderFeeList,
-      json,
+      ...templateContext,
+      orderFeeListInput: {
+        transportOrderId: editId.value,
+        pageIndex: 1,
+        // 打印整票费用：需后端放开 OrderFeeQueryDto.pageSize 上限（原为 1000）
+        pageSize: 9999,
+      },
     });
   } catch {
     message.error('打印准备失败，请稍后重试');

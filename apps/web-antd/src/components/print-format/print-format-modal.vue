@@ -3,7 +3,7 @@ import { computed } from 'vue';
 
 import {
   Button,
-  Dropdown,
+  DropdownButton,
   Empty,
   Menu,
   MenuItem,
@@ -47,7 +47,7 @@ const exportDisabled = computed(
 );
 
 const formatMenuItems = [
-  { key: PrintExportFormat.Pdf, label: '导出 PDF' },
+  { key: PrintExportFormat.Pdf, label: '打印 PDF' },
   { key: PrintExportFormat.Excel, label: '导出 Excel' },
   { key: PrintExportFormat.Word, label: '导出 Word' },
 ];
@@ -100,15 +100,13 @@ function onExportMenuClick(info: { key: number | string }) {
     <template #footer>
       <div class="flex items-center justify-end gap-2">
         <Button @click="close">关闭</Button>
-        <Dropdown :trigger="['hover']" placement="topRight">
-          <Button
-            type="primary"
-            :loading="exporting"
-            :disabled="exportDisabled"
-            @click="handleExport(PrintExportFormat.Pdf)"
-          >
-            导出
-          </Button>
+        <DropdownButton
+          type="primary"
+          :loading="exporting"
+          :disabled="exportDisabled"
+          @click="handleExport(PrintExportFormat.Pdf)"
+        >
+          打印
           <template #overlay>
             <Menu @click="onExportMenuClick">
               <MenuItem
@@ -120,7 +118,7 @@ function onExportMenuClick(info: { key: number | string }) {
               </MenuItem>
             </Menu>
           </template>
-        </Dropdown>
+        </DropdownButton>
       </div>
     </template>
   </Modal>

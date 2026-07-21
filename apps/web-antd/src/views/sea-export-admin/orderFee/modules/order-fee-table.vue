@@ -500,33 +500,66 @@ const isSavedOrderFee = (row: OrderFeeAdminApi.OrderFeeDto) =>
 const handlePrint = async () => {
   if (printing.value) return;
 
-  const selected = getSelectedRows();
-  if (!selected.length) {
-    message.warning('请先勾选要打印的费用');
-    return;
-  }
-  if (selected.some((row) => !isSavedOrderFee(row))) {
-    message.warning('请先保存费用后再打印');
-    return;
-  }
+  const isChangeOrder = props.mode === 'changeOrder';
+  const orderDetail = orderBaseData.value ?? props.orderDetail ?? null;
+  // 当票要素：用于按签单方式/船公司/分公司筛选可用模板
+  const templateContext = {
+    codeIssueTypeId:
+      (orderDetail as any)?.codeIssueTypeId ??
+      (orderDetail as any)?.issueType ??
+      null,
+    carrierId: orderDetail?.carrierId ?? null,
+    orgId: orderDetail?.companys?.[0]?.id ?? null,
+  };
+  const printJsonType =
+    props.type === 0
+      ? PrintJsonType.RecOrderFeeList
+      : PrintJsonType.PayOrderFeeList;
 
   printing.value = true;
   const hideLoading = message.loading('正在准备打印...', 0);
   try {
-    const json = JSON.stringify(
-      selected.map((row) => {
-        const { _rowKey, ...fee } = row as OrderFeeAdminApi.OrderFeeDto & {
-          _rowKey?: string;
-        };
-        return fee;
-      }),
-    );
+    // 更改单打印：按更改单 id 取费用，可选仅打印勾选的已保存费用
+    if (isChangeOrder) {
+      if (!changeOrderId.value) {
+        message.warning('未找到更改单，无法打印');
+        return;
+      }
+      const selectedIds = getSelectedRows()
+        .filter((row) => isSavedOrderFee(row))
+        .map((row) => row.id)
+        .filter(Boolean) as string[];
+      openPrint({
+        printJsonType,
+        ...templateContext,
+        isChangeOrderPrint: true,
+        detailInput: {
+          id: changeOrderId.value,
+          ids: selectedIds.length ? selectedIds : undefined,
+        },
+      });
+      return;
+    }
+
+    // 普通费用打印：由后端按业务 id 取费用；勾选已保存费用时仅打印勾选项
+    if (!editId.value) {
+      message.warning('请先保存业务信息后再打印');
+      return;
+    }
+    const selectedIds = getSelectedRows()
+      .filter((row) => isSavedOrderFee(row))
+      .map((row) => row.id)
+      .filter(Boolean) as string[];
     openPrint({
-      printJsonType:
-        props.type === 0
-          ? PrintJsonType.RecOrderFeeList
-          : PrintJsonType.PayOrderFeeList,
-      json,
+      printJsonType,
+      ...templateContext,
+      orderFeeListInput: {
+        transportOrderId: editId.value,
+        ids: selectedIds.length ? selectedIds : undefined,
+        pageIndex: 1,
+        // 打印整票费用：需后端放开 OrderFeeQueryDto.pageSize 上限（原为 1000）
+        pageSize: 9999,
+      },
     });
   } catch {
     message.error('打印准备失败，请稍后重试');
@@ -1193,11 +1226,7 @@ defineExpose({
                 >
                   {{ $t('common.save') }}
                 </Button>
-                <Button
-                  v-show="props.mode !== 'changeOrder'"
-                  :loading="printing"
-                  @click="handlePrint"
-                >
+                <Button :loading="printing" @click="handlePrint">
                   <IconifyIcon
                     icon="mdi:printer-outline"
                     class="mr-1 inline-block size-3.5 align-middle"
