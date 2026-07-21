@@ -45,7 +45,7 @@ last_updated: 2026-07-21
 - **订单费用处理：** 费用页基于运输单 ID 加载应收应付费用，字段覆盖费用代码、结算对象、币种、汇率、单价、金额、税率、开票/结算金额、可开票、机密、费用状态等；费用状态包括录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。应收/应付表工具栏「打印」：`printJsonType` 分别为 `1000`（应收）/ `1500`（应付）；由后端按 `transportOrderId` 取数，勾选已保存费用时传 `orderFeeListInput.ids` 仅打勾选项，未勾选则打整票。
 - **更改单处理：** 更改单页基于运输单 ID 管理变更原因、会计期间和关联费用，接口使用 `/services/app/ChangeOrderAdmin`；更改单 DTO 带 `feeLocked` 和费用锁定人/时间信息。
 - **派车处理：** 派车页按 `seaExportId` 分页加载派车记录，支持新增、编辑、删除，维护车队、要求时间、派车时间、工厂联系人、堆场、截关时间、工厂、区域地址、注意事项以及派车箱明细。
-- **分单处理：** 分单页按 `seaExportId` 分页加载分单记录，支持新增、编辑、删除，维护分单相关方、提单号、货物、签单、运费/服务代码以及分单箱明细。
+- **分单处理：** 分单弹窗按业务动线：身份+运费条款 → 船期港口（可折叠）→ 左收发通/国外代理｜右货物 → 装箱通栏 → 签单。**新增默认**只带主单条款与装箱，不带收发通/货描；「读入主单」才整包覆盖。主单只读字段仍展示但不提交。
 - **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；每张卡片的文件列表固定显示 3 个文件项，超出后卡片内纵向滚动；卡片标题行右侧合并「客户可见」勾选与「上传」；文件列表支持点击预览、下载、删除，且每个文件项带一个「客户可见」`Switch`（如实回显 `item.clientVisible`）；网格末尾虚线卡片可「添加其他类型」。每个文件项在文件名下方将「大小 · 上传人：{姓名} · 上传时间：{YYYY-MM-DD HH:mm:ss}」压缩到同一行（分别取 `creatorUserName` 与 `creationTime`，时间经 `@vben/utils` 的 `formatDateTime` 格式化，值为空则隐藏对应字段）。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`。**客户可见性可回改**：单文件切换 `Switch` 或点击卡片标题行「客户可见」`Checkbox`（该类型批量），均调用 `Attachment/UpdateAttachmentItemsClientVisibleAsync`（PUT，入参 `[{ id, clientVisible }]`，`id` 为 `AttachmentItem.id`）；标题行 `Checkbox` 由该类型下各文件可见态计算全选/半选，勾选即批量提交全部文件，同时作为新上传的默认值（**新上传仍默认客户不可见**）。无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局 `AttachmentViewerModal`：PDF 内嵌 iframe、Office 走微软在线预览、图片直接展示，工具栏同步展示上传人和上传时间。
 - **打印：** 顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0`，`detailInput={id}`，后端 `GetPrintAsync` 自动取数）；应收应付费用表打印用 `PrintJsonType=1000/1500` + `orderFeeListInput`。模板列表走非管理端接口并按当票签单方式/船公司/分公司筛选。打印弹窗：标题行选模板（默认不选），选中后 iframe 预览 PDF；底部为分裂式「打印」按钮（可见下拉箭头），主按钮打印 PDF 新窗口打开，下拉可导出 Excel/Word。返回文件名含 `-` 时截断保留扩展名后再拼静态地址。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」（后端按 id 取库）。
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
@@ -125,6 +125,15 @@ last_updated: 2026-07-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-21 | `Feature` | 分单弹窗按业务动线重组；新增默认仅带条款+箱，收发通/货描需手动「读入主单」。 | 船期港口默认折叠；付费地点归运费条款。详见 `changelogs/change-log-2026-07-21-separate-bill-workflow-layout.md`。 |
+| 2026-07-21 | `Style` | 国外代理（podAgent）从通知人标签中独立，置于通知人下方；文案用 `overseasAgent`。 | 字段仍为 `podAgentId`/`podAgentContent`。 |
+| 2026-07-21 | `Style` | 目的港代理并入左侧通知人同槽标签切换（通知人/第二通知人/目的港代理）。 | 对齐基础信息收发通交互。 |
+| 2026-07-21 | `Style` | 签单方式移入「签单信息」区，与签单日期/地点同组。 | 右上元数据区不再放签单方式。 |
+| 2026-07-21 | `Style` | 分单去掉「来自主单，只读」文案；只读字段改为纯文本展示，不再用禁用输入框。 | 详见 `changelogs/change-log-2026-07-21-separate-bill-readonly-display.md`。 |
+| 2026-07-21 | `Feature` | 分单通知人/第二通知人改为标签切换（默认通知人，第二通知人只读主单），对齐基础信息展示形式。 | 同槽位切换，不占双栏高度。 |
+| 2026-07-21 | `Feature` | 分单只读补齐订舱号/船公司/ATD/ETA/中转港/第二通知人；新增弹窗默认静默读入主单。 | 第二通知人仅展示不入库。详见 `changelogs/change-log-2026-07-21-separate-bill-master-readonly-expand.md`。 |
+| 2026-07-21 | `Feature` | 分单弹窗展示主单只读船期/港口/主提单号/提单份数；「读入主单」复制收发通、代理、条款、货物与装箱。 | 只读不写分单 DTO；截关用 `closingTime`。详见 `changelogs/change-log-2026-07-21-separate-bill-master-readonly.md`。 |
+| 2026-07-21 | `Feature` | 分单弹窗按截图重组：左收发通、右元数据+代理+装箱、中签单、下唛头/货描/件毛体；装箱「更新合计」回填件数/毛重/体积。 | 仅布局与本地合计；未接主提单号/船期港口/读入主单。详见 `changelogs/change-log-2026-07-21-separate-bill-modal-layout.md`。 |
 | 2026-07-21 | `Fix` | 内部备注与外部备注均读写 `TransportOrder`：`internalRemark` / `remark`；外部备注不再走海出根级 `remark`。 | 提交 `buildSeaExportDto`、详情 `flattenDetail`、AI 提取三处对齐；详见 `changelogs/change-log-2026-07-21-sea-export-remark-transport-order.md`。 |
 | 2026-07-21 | `Feature` | 普通费用打印支持勾选传 `orderFeeListInput.ids`（未勾选仍打整票）；打印弹窗底部改为分裂式「打印」按钮；点击打印 PDF 新窗口打开。 | Handsontable 费用表须显式传 `selectedFeeIds`，否则 `GetPrintAsync` 请求体无 `ids`；`DropdownButton` 替代悬停下拉；PDF 由 `downloadFileByUrl` 改为 `window.open`。 |
 | 2026-07-20 | `Feature` | 详情打印与应收/应付费用打印改为后端自动取数：详情打印传 `detailInput={id}`，费用打印按 `transportOrderId` 取数（可附 `ids`）；更改单 Tab 放开打印入口；模板列表按当票签单方式/船公司/分公司筛选；未保存修改仅提示「使用已保存数据」。 | 全局打印 `openPrint` 由 `{printJsonType,json}` 重构为 `{printJsonType,codeIssueTypeId,carrierId,orgId,detailInput,orderFeeListInput,isChangeOrderPrint}`；`loadTemplates` 走非管理端 `PrintFormat/GetPagedListAsync`，取数走 `PrintFormatAdmin/GetPrintAsync`；返回文件名含 `-` 时截断保留扩展名（`cleanReturnedFilename`）。详见 `changelogs/change-log-2026-07-20-print-format-backend-fetch-getprint.md`。 |

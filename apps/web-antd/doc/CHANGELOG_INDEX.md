@@ -13,6 +13,12 @@
 
 ## 2026-07
 
+- [2026-07-21 分单弹窗按业务动线重组 + 新增默认仅带条款与箱](./changelogs/change-log-2026-07-21-separate-bill-workflow-layout.md)
+- [2026-07-21 分单只读字段去提示文案并改为纯文本展示](./changelogs/change-log-2026-07-21-separate-bill-readonly-display.md)
+- [2026-07-21 分单通知人/第二通知人改为标签切换](./changelogs/change-log-2026-07-21-separate-bill-notifier-tab.md)
+- [2026-07-21 分单弹窗主单只读补齐 + 新增默认读入](./changelogs/change-log-2026-07-21-separate-bill-master-readonly-expand.md)
+- [2026-07-21 分单弹窗：主单船期/港口/主提单号只读 + 读入主单](./changelogs/change-log-2026-07-21-separate-bill-master-readonly.md)
+- [2026-07-21 分单弹窗表单布局对齐截图（收发通+装箱+货物三栏）](./changelogs/change-log-2026-07-21-separate-bill-modal-layout.md)
 - [2026-07-21 更改单：去冗余标题、费用表禁用排序、表格与表单对齐](./changelogs/change-log-2026-07-21-change-order-align-nosort.md)
 - [2026-07-21 更改单订单信息条样式精简（去配置入口）](./changelogs/change-log-2026-07-21-change-order-info-bar-style.md)
 - [2026-07-21 更改单布局精简：订单信息顶部通铺、隐藏新建、去更多、费用 Tab 入表头](./changelogs/change-log-2026-07-21-change-order-layout-toolbar.md)
