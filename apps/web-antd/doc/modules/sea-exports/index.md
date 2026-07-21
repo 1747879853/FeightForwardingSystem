@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-15
+last_updated: 2026-07-21
 ---
 
 # 1. 业务背景说明 (Background)
@@ -74,6 +74,7 @@ last_updated: 2026-07-15
 | **分组字段（GroupField）** | 分组统计维度，1~9 对应装运方式至签单方式。 | `GetGroupedListAsync` 入参 `GroupField`；枚举 `SeaExportGroupField` | **触发/依赖：** 与列表查询参数一致但不含分页；启用分组后对应搜索项被禁用。 | 同时只能启用一个；点击 Tab 追加 `paramKey` 到列表查询。 |
 | **分组项（GroupItem）** | 某一分组维度下的单个值及其条数。 | 接口返回 `{ id, name, count }` | **触发/依赖：** 点击 Tab 将 `id` 作为列表筛选值（如 `POLId`）；「全部」不追加筛选。 | `id`/`name` 可为 null（可空字段分组）。 |
 | **未填写筛选（\*Empty）** | 仅返回某可空字段为空的记录。 | `GetPagedListAsync` 参数 `CarrierIdEmpty`/`POLIdEmpty`/`PODIdEmpty`/`CodeFrtIdEmpty`/`CodeIssueTypeIdEmpty` | **触发/依赖：** 点击 id 为 null 的「未填写」分组项时由 `emptyParamKey` 追加 `true`。 | 仅传 `true` 生效；与同名 id 参数互斥（后端校验）。 |
+| **内部备注 / 外部备注** | 列表列展示与筛选均走运输单字段。 | 列：`transportOrder.internalRemark`、`transportOrder.remark`；筛：`InternalRemark`、`Remark` | **触发/依赖：** 与编辑页口径一致；勿读海出根级 `SeaExport.remark`。 | 模糊匹配；可清空。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -99,6 +100,7 @@ last_updated: 2026-07-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-21 | `Fix` | 列表内部/外部备注对齐 `TransportOrder`：补外部备注列；筛选拆分内部备注与外部备注。 | 列路径 `transportOrder.internalRemark` / `transportOrder.remark`；查询参数 `InternalRemark` / `Remark`。详见 `changelogs/change-log-2026-07-21-sea-export-remark-transport-order.md`。 |
 | 2026-07-15 | `Fix` | 海运出口列表顶部补充删除按钮；仅允许删除单条勾选记录，需二次确认并受删除权限控制，成功后清除选择并刷新。 | 删除接口 ID 类型由 `number` 扩为 `number \| string`，与列表 DTO 的 GUID/数字联合类型一致。 |
 | 2026-07-14 | `Style` | 修复工具栏新增、复制按钮图标与文本未垂直对齐。 | 图标改由 Ant Design Vue Button 的 `#icon` 插槽承载，并统一为 `size-4`。 |
 | 2026-07-14 | `Fix` | 搜索项持久化重排后，折叠态第一行不再错位留白，会按新字段顺序填满网格列（扣除按钮占位）。 | `useExpandable` 原仅 watch `schema.length`；`searchPersist` 异步 `applySearchFieldOrderToSchema` 后长度不变但顺序/显隐变，导致 `keepFormItemIndex` 基于旧 DOM 布局。改为「`fieldName:hide` 指纹」触发 `calculateRowMapping()` 重算。 |

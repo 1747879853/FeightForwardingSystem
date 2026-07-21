@@ -618,8 +618,17 @@ export function useGridFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Input',
+      fieldName: 'InternalRemark',
+      label: $t('seaExport.export.internalRemark'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
       fieldName: 'Remark',
-      label: $t('seaExport.export.remark'),
+      label: '外部备注',
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
         allowClear: true,
@@ -1001,6 +1010,12 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
     {
       field: 'transportOrder.internalRemark',
       title: $t('seaExport.export.internalRemark'),
+      minWidth: 160,
+      showOverflow: true,
+    },
+    {
+      field: 'transportOrder.remark',
+      title: '外部备注',
       minWidth: 160,
       showOverflow: true,
     },

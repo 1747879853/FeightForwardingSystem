@@ -103,6 +103,7 @@ last_updated: 2026-07-21
 | **货物类型 cargoId** | 普通货/冻柜/危险品/超限箱。 | `transportOrder.cargoId`；枚举 `CargoType`（S=0/R=1/D=2/O=3） | **触发/依赖：** 货物信息 Card 标题行内联选择；`R` 展示冻柜 7 项，`D` 展示危险品 11 项；切换离开对应类型清空扩展字段。 | 全部可选；扩展字段经 `transportOrder` 提交。 |
 | **危险品扩展字段** | 危品申报信息（等级、编号、联系人等）。 | `transportOrder.dgLevel` 等 11 项 | **触发/依赖：** 仅 `cargoId=2` 时展示与提交。 | 字符串最长 32；`dgMarinePollution` 三态 bool。 |
 | **冻柜扩展字段** | 冷藏温度、通风、湿度等。 | `transportOrder.reeferTemperature` 等 7 项 | **触发/依赖：** 仅 `cargoId=1` 时展示与提交；`reeferTemperatureUnit` 前端枚举 `0=℃/1=℉`。 | 全部可选；`reeferVentOpen` 三态 bool。 |
+| **内部备注 / 外部备注** | 收发通下方备注；内部仅内部可见，外部可对外展示。 | `transportOrder.internalRemark`、`transportOrder.remark` | **触发/依赖：** 详情回填、提交 DTO、AI 提取均读写运输单字段；勿用海出根级 `SeaExport.remark`。 | 可选文本；删空后脏检查按空值归一。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -124,6 +125,7 @@ last_updated: 2026-07-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-21 | `Fix` | 内部备注与外部备注均读写 `TransportOrder`：`internalRemark` / `remark`；外部备注不再走海出根级 `remark`。 | 提交 `buildSeaExportDto`、详情 `flattenDetail`、AI 提取三处对齐；详见 `changelogs/change-log-2026-07-21-sea-export-remark-transport-order.md`。 |
 | 2026-07-21 | `Feature` | 普通费用打印支持勾选传 `orderFeeListInput.ids`（未勾选仍打整票）；打印弹窗底部改为分裂式「打印」按钮；点击打印 PDF 新窗口打开。 | Handsontable 费用表须显式传 `selectedFeeIds`，否则 `GetPrintAsync` 请求体无 `ids`；`DropdownButton` 替代悬停下拉；PDF 由 `downloadFileByUrl` 改为 `window.open`。 |
 | 2026-07-20 | `Feature` | 详情打印与应收/应付费用打印改为后端自动取数：详情打印传 `detailInput={id}`，费用打印按 `transportOrderId` 取数（可附 `ids`）；更改单 Tab 放开打印入口；模板列表按当票签单方式/船公司/分公司筛选；未保存修改仅提示「使用已保存数据」。 | 全局打印 `openPrint` 由 `{printJsonType,json}` 重构为 `{printJsonType,codeIssueTypeId,carrierId,orgId,detailInput,orderFeeListInput,isChangeOrderPrint}`；`loadTemplates` 走非管理端 `PrintFormat/GetPagedListAsync`，取数走 `PrintFormatAdmin/GetPrintAsync`；返回文件名含 `-` 时截断保留扩展名（`cleanReturnedFilename`）。详见 `changelogs/change-log-2026-07-20-print-format-backend-fetch-getprint.md`。 |
 | 2026-07-14 | `Fix` | 销售/操作显示必填标识；截关日期不得晚于开船/实际开船；预付/到付自动覆盖为起运港/目的港；新增箱行默认复制总包装 ID 与文本。 | 总包装与箱行包装使用同一包装基础资料，但分别保存于 `transportOrder.codePackageId` 与 `orderCtns[].codePackageId`；选择组件通过 `change(value, option)` 提供文本，避免新增行再请求详情。 |

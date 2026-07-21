@@ -79,7 +79,6 @@ export const buildSeaExportDto = (
     deliverPortId: values.deliverPortId ?? undefined,
     deliverPortRemark: values.deliverPortRemark,
     sortId: values.sortId,
-    remark: values.remark,
     serviceTypes: ctx.serviceTypes,
   };
 
@@ -119,6 +118,7 @@ export const buildSeaExportDto = (
     kgs: values.kgs,
     cbm: values.cbm,
     internalRemark: values.internalRemark,
+    remark: values.remark,
     orderCodeGoodss: (values.orderCodeGoodss ?? [])
       .filter(
         (codeGoodsId: any) => codeGoodsId !== undefined && codeGoodsId !== null,

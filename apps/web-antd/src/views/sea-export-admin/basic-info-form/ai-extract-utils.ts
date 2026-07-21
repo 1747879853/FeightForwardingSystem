@@ -151,7 +151,6 @@ export function buildAiExtractFormPayload(
   assignScalar(formValues, 'polId', seaExport.polId);
   assignScalar(formValues, 'podId', seaExport.podId);
   assignScalar(formValues, 'deliverPortId', seaExport.deliverPortId);
-  assignScalar(formValues, 'remark', seaExport.remark);
 
   assignScalar(formValues, 'mblNum', transportOrder.mblNum);
   assignScalar(formValues, 'bookingNum', transportOrder.bookingNum);
@@ -174,6 +173,7 @@ export function buildAiExtractFormPayload(
   assignScalar(formValues, 'codeServiceId', transportOrder.codeServiceId);
   assignScalar(formValues, 'tradeTermsType', transportOrder.tradeTermsType);
   assignScalar(formValues, 'internalRemark', transportOrder.internalRemark);
+  assignScalar(formValues, 'remark', transportOrder.remark);
 
   const orderCtns = (transportOrder.orderCtns ?? []).filter(
     (item) => !isEmptyRecognizedValue(item?.ctnCodeId),

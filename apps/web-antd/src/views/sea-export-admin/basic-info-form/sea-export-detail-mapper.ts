@@ -79,7 +79,7 @@ export const flattenDetail = (
     closeManifestTime: toDayjs(detail.closeManifestTime),
     signingTime: toDayjs(detail.signingTime),
     sortId: detail.sortId,
-    remark: detail.remark,
+    remark: to?.remark,
     commissionNum: to?.commissionNum,
     mblNum: to?.mblNum,
     bookingNum: to?.bookingNum,

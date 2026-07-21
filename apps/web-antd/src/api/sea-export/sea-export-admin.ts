@@ -548,7 +548,10 @@ export namespace SeaExportAdminApi {
     AccountDateStart?: string;
     /** 会计期间止（<=） */
     AccountDateEnd?: string;
+    /** 外部备注（TransportOrder.Remark）模糊匹配 */
     Remark?: string;
+    /** 内部备注（TransportOrder.InternalRemark）模糊匹配 */
+    InternalRemark?: string;
     CargoId?: number;
     GoodsDes?: string;
     CodeSourceId?: number;
