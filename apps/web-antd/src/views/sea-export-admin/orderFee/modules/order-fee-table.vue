@@ -76,6 +76,7 @@ const props = defineProps<{
   type: number; // 收付类型 0 应收 1 应付
   mode?: string; // changeOrder 更改单
   parentChangeOrderId?: string; //更改单Id
+  readonly?: boolean; // 当前更改单费用锁定时统一只读
   recAmountMap?: Record<string, any>; // 应收金额汇总
   payAmountMap?: Record<string, any>; // 应付金额汇总
   orderDetail?: SeaExportAdminApi.SeaExportDto | null; // 父组件传入的订单详情，避免重复请求 DetailAsync
@@ -85,6 +86,7 @@ const emit = defineEmits([
   'sync-fee',
   'update-amount',
   'refresh-opposite-table',
+  'change',
 ]);
 
 const route = useRoute();
@@ -166,9 +168,7 @@ const setChangeOrderFee = async (id: string) => {
 const changeOrderId = ref('');
 
 const getTableDate = async (id = '') => {
-  if (id) {
-    changeOrderId.value = id;
-  }
+  changeOrderId.value = id;
   gridApi.query();
 };
 
@@ -361,15 +361,27 @@ const openAuditHistoryModal = (row: OrderFeeAdminApi.OrderFeeDto) => {
   console.log('✅ [openAuditHistoryModal] 已调用 open() 方法');
 };
 
+/** 更改单模式：关闭列头排序 */
+const disableColumnSort = (cols: any[] = []): any[] =>
+  cols.map((col) => ({
+    ...col,
+    sortable: false,
+    children: col.children ? disableColumnSort(col.children) : undefined,
+  }));
+
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
   gridOptions: {
     id:
       props.mode === 'changeOrder'
         ? `sea-export-change-order-fee-${props.type}`
         : `sea-export-order-fee-${props.type}`,
-    columns: useOrderFeeColumns(props.type),
-    height: '100%',
-    maxHeight: 700,
+    columns:
+      props.mode === 'changeOrder'
+        ? disableColumnSort(useOrderFeeColumns(props.type) as any[])
+        : useOrderFeeColumns(props.type),
+    height: props.mode === 'changeOrder' ? 'auto' : '100%',
+    minHeight: props.mode === 'changeOrder' ? 180 : undefined,
+    maxHeight: props.mode === 'changeOrder' ? 420 : 700,
     keepSource: true,
     radioConfig: {
       highlight: true,
@@ -378,10 +390,13 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeDto>({
     rowConfig: {
       keyField: '_rowKey',
     },
-    sortConfig: {
-      trigger: 'cell', // 点击单元格触发排序
-      remote: false, // 前端排序
-    },
+    sortConfig:
+      props.mode === 'changeOrder'
+        ? { enabled: false }
+        : {
+            trigger: 'cell', // 点击单元格触发排序
+            remote: false, // 前端排序
+          },
     pagerConfig: {
       enabled: false,
     },
@@ -475,6 +490,7 @@ const addRowData = () => {
   dataSource.value = list;
 };
 const addRow = () => {
+  if (props.readonly) return;
   tmpAdd.value = true;
   gridApi.query();
 };
@@ -1023,6 +1039,7 @@ const saveRow = () => {
   });
 };
 const removeSelectedRows = () => {
+  if (props.readonly) return;
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
   const list = (dataSource.value ?? []).filter(
@@ -1140,8 +1157,9 @@ watch(
     const keys = new Set((val ?? []).map((r) => (r as any)._rowKey));
     selectedRowKeys.value = selectedRowKeys.value.filter((k) => keys.has(k));
     syncFee();
+    emit('change');
   },
-  { immediate: true },
+  { deep: true, immediate: true },
 );
 
 // 监听 editId 变化，重新加载箱型数据
@@ -1193,7 +1211,10 @@ defineExpose({
 </script>
 
 <template>
-  <Card class="order-fee-card">
+  <Card
+    class="order-fee-card"
+    :class="{ 'change-order-fee-table': props.mode === 'changeOrder' }"
+  >
     <!-- 右上角完结状态图片 -->
     <div v-if="!isFinished" class="finish-status-badge" title="业务未完结">
       <img
@@ -1204,20 +1225,51 @@ defineExpose({
       />
     </div>
 
-    <div class="px-1">
+    <div :class="props.mode === 'changeOrder' ? undefined : 'px-1'">
       <div>
         <div class="order-ctn-table">
           <Grid
             :table-title="
-              type === 0
-                ? $t('seaExport.export.orderFee.receivableCharges')
-                : $t('seaExport.export.orderFee.payableCharges')
+              props.mode === 'changeOrder'
+                ? ''
+                : type === 0
+                  ? $t('seaExport.export.orderFee.receivableCharges')
+                  : $t('seaExport.export.orderFee.payableCharges')
             "
           >
+            <template v-if="props.mode === 'changeOrder'" #empty>
+              <div class="change-order-empty">
+                <p class="change-order-empty__title">
+                  暂无{{ type === 0 ? '应收' : '应付' }}费用
+                </p>
+                <p class="change-order-empty__desc">
+                  {{
+                    type === 0
+                      ? '添加本次变更产生的客户应收费用。'
+                      : '添加本次变更产生的供应商应付费用。'
+                  }}
+                </p>
+                <Button
+                  v-if="!props.readonly"
+                  type="primary"
+                  size="small"
+                  @click="addRow"
+                >
+                  新增{{ type === 0 ? '应收' : '应付' }}费用
+                </Button>
+              </div>
+            </template>
+            <template v-if="$slots['toolbar-actions']" #toolbar-actions>
+              <slot name="toolbar-actions" />
+            </template>
             <template #toolbar-tools>
               <Space>
-                <Button type="primary" @click="addRow">
-                  {{ $t('common.create') }}
+                <Button
+                  type="primary"
+                  :disabled="props.readonly"
+                  @click="addRow"
+                >
+                  新增{{ type === 0 ? '应收' : '应付' }}费用
                 </Button>
                 <Button
                   type="primary"
@@ -1235,13 +1287,17 @@ defineExpose({
                 </Button>
                 <Button
                   danger
-                  :disabled="!selectedRowKeys.length"
+                  :disabled="props.readonly || !selectedRowKeys.length"
                   @click="removeSelectedRows"
                 >
                   {{ $t('common.delete') }}
                 </Button>
 
-                <DropdownButton @click="openBatchImportModal" type="primary">
+                <DropdownButton
+                  v-if="props.mode !== 'changeOrder'"
+                  @click="openBatchImportModal"
+                  type="primary"
+                >
                   {{ $t('seaExport.export.orderFee.batchImport') }}
                   <template #overlay>
                     <Menu @click="ImportOther">
@@ -1253,6 +1309,7 @@ defineExpose({
                 </DropdownButton>
 
                 <DropdownButton
+                  v-if="props.mode !== 'changeOrder'"
                   @click="Submitted"
                   type="primary"
                   :disabled="!selectedRowKeys.length"
@@ -1271,6 +1328,7 @@ defineExpose({
                 </DropdownButton>
 
                 <Button
+                  v-if="props.mode !== 'changeOrder'"
                   type="primary"
                   :disabled="!selectedRowKeys.length"
                   @click="orderFeeWithdraw"
@@ -1278,7 +1336,7 @@ defineExpose({
                 >
 
                 <Button
-                  v-show="type === 0"
+                  v-if="props.mode !== 'changeOrder' && type === 0"
                   type="default"
                   :loading="loadingFinishStatus"
                   @click="toggleFinishStatus"
@@ -1288,6 +1346,11 @@ defineExpose({
               </Space>
             </template>
           </Grid>
+          <div
+            v-if="props.readonly"
+            class="readonly-fee-mask"
+            title="该更改单已锁定，费用仅可查看"
+          ></div>
         </div>
       </div>
     </div>
@@ -1313,14 +1376,88 @@ defineExpose({
 </template>
 
 <style scoped lang="scss">
+.change-order-fee-table {
+  border: 0;
+  box-shadow: none;
+
+  .order-ctn-table {
+    height: auto;
+    min-height: 180px;
+    max-height: 420px;
+  }
+
+  // 覆盖 vxe-grid 默认 p-2 的左右 padding，保留上下
+  :deep(.vxe-grid) {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  // 更改单模式下工具栏直接置于页签内容顶部，去掉多余标题占位
+  :deep(.vxe-toolbar) {
+    height: auto;
+    padding: 4px 0 8px;
+  }
+
+  // 可编辑单元格用浅底色，和只读结果区分
+  :deep(.vxe-body--column) {
+    .ant-input,
+    .ant-input-number,
+    .ant-select-selector {
+      background: #fafcff;
+      border-radius: 4px;
+    }
+
+    .ant-input::placeholder,
+    .ant-input-number-input::placeholder {
+      color: #bfbfbf;
+    }
+  }
+}
+
+.change-order-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  padding: 28px 16px;
+
+  .change-order-empty__title {
+    margin: 0;
+    font-weight: 500;
+    color: #262626;
+  }
+
+  .change-order-empty__desc {
+    margin: 0;
+    font-size: 13px;
+    color: #8c8c8c;
+  }
+}
+
+.readonly-fee-mask {
+  position: absolute;
+  inset: 44px 0 0;
+  z-index: 5;
+  cursor: not-allowed;
+  background: rgb(255 255 255 / 25%);
+}
+</style>
+
+<style scoped lang="scss">
 .order-fee-card {
   position: relative; // 为绝对定位的子元素提供定位上下文
 
-  :deep(.ant-card-body) {
+  // 主单费用保留左右 20px；更改单模式由下方规则清零，避免盖不住
+  &:not(.change-order-fee-table) :deep(.ant-card-body) {
     padding: 0 20px 12px !important;
   }
 
+  &.change-order-fee-table :deep(.ant-card-body) {
+    padding: 0 !important;
+  }
+
   .order-ctn-table {
+    position: relative;
     display: flex;
     flex-direction: column;
     height: 500px;

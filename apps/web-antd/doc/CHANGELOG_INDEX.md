@@ -13,6 +13,12 @@
 
 ## 2026-07
 
+- [2026-07-21 更改单：去冗余标题、费用表禁用排序、表格与表单对齐](./changelogs/change-log-2026-07-21-change-order-align-nosort.md)
+- [2026-07-21 更改单订单信息条样式精简（去配置入口）](./changelogs/change-log-2026-07-21-change-order-info-bar-style.md)
+- [2026-07-21 更改单布局精简：订单信息顶部通铺、隐藏新建、去更多、费用 Tab 入表头](./changelogs/change-log-2026-07-21-change-order-layout-toolbar.md)
+- [2026-07-21 更改单顶部改为当前更改单选择器 + 历史抽屉（去常驻列表）](./changelogs/change-log-2026-07-21-change-order-selector-drawer.md)
+- [2026-07-21 更改单页面信息密度与状态反馈优化（自适应高度/利润常驻/保存闭环）](./changelogs/change-log-2026-07-21-change-order-ui-density.md)
+- [2026-07-21 更改单编辑工作流重构（选择→编辑→确认利润→整体保存）](./changelogs/change-log-2026-07-21-change-order-workflow-refactor.md)
 - [2026-07-21 海运出口内外部备注统一走 TransportOrder](./changelogs/change-log-2026-07-21-sea-export-remark-transport-order.md)
 - [2026-07-20 打印改为后端自动取数（GetPrintAsync）+ 费用 ids 筛选 + 打印按钮新窗口](./changelogs/change-log-2026-07-20-print-format-backend-fetch-getprint.md)
 - [2026-07-19 同路由多表补齐列持久化独立 id](./changelogs/change-log-2026-07-19-vxe-grid-persist-id.md)
