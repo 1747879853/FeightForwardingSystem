@@ -748,6 +748,7 @@
     "dataPermissionTypeAll": "All",
     "module": "Module",
     "moduleSeaExport": "Sea Export",
+    "moduleClient": "Client",
     "moduleOrderFee": "Order Fee",
     "moduleTransportOrder": "Transport Order",
     "modulePaymentApplication": "Payment Application",

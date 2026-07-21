@@ -192,7 +192,10 @@ onMounted(() => {
     <Spin :spinning="loading">
       <div class="invoice-list-container">
         <!-- 操作栏 -->
-        <div class="mb-1 flex items-center justify-between">
+        <div
+          class="mb-1 flex items-center justify-between"
+          style="flex-direction: row-reverse"
+        >
           <Button type="primary" @click="handleAddInvoice">
             <Plus class="size-4" />
             {{ $t('common.create') }}
@@ -283,4 +286,3 @@ onMounted(() => {
   padding: 0 !important;
 }
 </style>
-

@@ -750,6 +750,7 @@
     "dataPermissionTypeAll": "全部",
     "module": "模块",
     "moduleSeaExport": "海运出口",
+    "moduleClient": "客户",
     "moduleOrderFee": "业务费用",
     "moduleTransportOrder": "业务表",
     "modulePaymentApplication": "付费申请",

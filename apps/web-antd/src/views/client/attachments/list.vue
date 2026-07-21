@@ -4,12 +4,10 @@ import { useRoute } from 'vue-router';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import type { OnActionClickParams } from '#/adapter/vxe-table';
 import { Page } from '@vben/common-ui';
-import { Button, message, Modal, Space, Upload } from 'ant-design-vue';
-import type { UploadProps } from 'ant-design-vue';
-import { Plus, IconifyIcon } from '@vben/icons';
+import { Button, message, Modal, Space } from 'ant-design-vue';
+import { IconifyIcon } from '@vben/icons';
 import { $t } from '#/locales';
 import dayjs from 'dayjs';
-import FileUploadInput from '#/adapter/component/file-upload/file-upload-input.vue';
 import {
   EditAttachmentAsync,
   getClientDetail,
@@ -18,6 +16,9 @@ import {
 import PdfPreview from '#/adapter/component/file-preview/pdf-preview-modal.vue';
 import WordPreview from '#/adapter/component/file-preview/word-preview-modal.vue';
 import { buildAttachmentUrl } from '#/utils';
+// 引入上传弹窗子组件
+import AttachmentUploadModal from './attachment-upload-modal.vue';
+
 const route = useRoute();
 
 // 客户ID（从路由参数或query中获取）
@@ -29,9 +30,11 @@ const clientId = computed(() => {
 const attachmentList = ref<ClientAdminApi.AttachmentItemForItemInputDto[]>([]);
 const submitting = ref(false);
 
-// 文件上传相关
+// 上传弹窗相关
 const uploadVisible = ref(false);
-const tempAttachments = ref<any[]>([]);
+// 上传弹窗组件引用
+const uploadModalRef = ref();
+
 /**
  * 格式化文件大小
  */
@@ -158,25 +161,27 @@ const handleDelete = (row: ClientAdminApi.AttachmentItemDto) => {
  * 打开上传弹窗
  */
 const handleUpload = () => {
-  tempAttachments.value = [];
   uploadVisible.value = true;
 };
 
 /**
- * 确认上传
+ * 处理上传成功
  */
-const handleUploadConfirm = async () => {
-  if (tempAttachments.value.length === 0) {
-    message.warning('请选择要上传的文件');
-    return;
-  }
-
+const handleUploadSuccess = async () => {
   try {
     submitting.value = true;
 
+    // 从子组件获取新上传的附件
+    const newAttachments = uploadModalRef.value?.getAttachments() || [];
+
+    if (newAttachments.length === 0) {
+      message.warning('请选择要上传的文件');
+      return;
+    }
+
     // 将新上传的附件转换为 AttachmentItemForItemInputDto 格式
-    const newAttachments: ClientAdminApi.AttachmentItemForItemInputDto[] =
-      tempAttachments.value.map((file, index) => ({
+    const formattedAttachments: ClientAdminApi.AttachmentItemForItemInputDto[] =
+      newAttachments.map((file: any, index: number) => ({
         attachmentId: file.attachmentId,
         url: file.url,
         itemId: clientId.value,
@@ -184,7 +189,7 @@ const handleUploadConfirm = async () => {
       }));
 
     // 合并现有附件和新附件
-    const allAttachments = [...attachmentList.value, ...newAttachments];
+    const allAttachments = [...attachmentList.value, ...formattedAttachments];
 
     await EditAttachmentAsync({
       id: clientId.value,
@@ -192,7 +197,6 @@ const handleUploadConfirm = async () => {
     });
 
     message.success($t('common.uploadSuccess'));
-    uploadVisible.value = false;
     await loadClientDetail();
   } catch (error) {
     console.error('上传失败:', error);
@@ -228,7 +232,7 @@ const columns = [
     formatter: 'formatDateTime',
   },
   {
-    field: 'creatorUserNickName',
+    field: 'creatorUserName',
     title: $t('client.attachment.uploader'),
     width: 150,
   },
@@ -373,36 +377,14 @@ const showWordPreview = () => {
     </Grid>
 
     <!-- 上传弹窗 -->
-    <Modal
-      v-model:open="uploadVisible"
-      :title="$t('client.attachment.uploadTitle')"
-      :confirm-loading="submitting"
-      @ok="handleUploadConfirm"
-      @cancel="uploadVisible = false"
-    >
-      <div class="py-4">
-        <FileUploadInput
-          v-model="tempAttachments"
-          :max-count="20"
-          :max-size-m-b="10"
-          :allowed-types="[
-            '.pdf',
-            '.doc',
-            '.docx',
-            '.xls',
-            '.xlsx',
-            '.jpg',
-            '.jpeg',
-            '.png',
-            '.gif',
-            '.bmp',
-          ]"
-        />
-        <div class="mt-2 text-xs text-gray-400">
-          {{ $t('client.attachment.uploadTip') }}
-        </div>
-      </div>
-    </Modal>
+    <AttachmentUploadModal
+      ref="uploadModalRef"
+      v-model:visible="uploadVisible"
+      :client-id="clientId"
+      :max-count="20"
+      :max-size-m-b="10"
+      @success="handleUploadSuccess"
+    />
 
     <PdfPreview
       v-model:value="previewVisible"
