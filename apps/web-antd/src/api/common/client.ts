@@ -13,6 +13,18 @@ export namespace ClientAppApi {
     Blacklist = 3,
   }
 
+  /** 组织机构简易DTO */
+  export interface OrganizationUnitSimpleDto {
+    /** 组织机构id */
+    id: number;
+    /** 显示名称 */
+    displayName?: string;
+    /** 简称 */
+    shortName?: string;
+    /** 英文名 */
+    enName?: string;
+  }
+
   /** 客户简易DTO（用于外键关联场景） */
   export interface ClientSimpleDto {
     /** 客户主键id */
@@ -37,24 +49,34 @@ export namespace ClientAppApi {
     showCompany?: OrganizationUnitSimpleDto;
   }
 
-  /** 组织机构简易DTO */
-  export interface OrganizationUnitSimpleDto {
-    /** 组织机构id */
+  /** 客户航线DTO */
+  export interface ClientLaneDto {
+    /** 航线id */
     id: number;
-    /** 显示名称 */
-    displayName?: string;
-    /** 简称 */
-    shortName?: string;
-    /** 英文名 */
-    enName?: string;
+    /** 航线中文名称 */
+    laneName?: string;
   }
 
-  /** 分页列表响应 */
-  export interface PagedListOfClientSimpleDto {
-    items: ClientSimpleDto[];
-    totalCount: number;
-    currentPage: number;
-    totalPages: number;
+  /** 干系人DTO */
+  export interface ClientStakeholderDto {
+    /** 合作客户id */
+    clientId: string;
+    /** 干系人 */
+    userId: number;
+    /** 是否默认 */
+    isDefault: boolean;
+    /** 用户属性 */
+    userAttribute?: number;
+    /** 干系人昵称 */
+    userNickName?: string;
+    isDeleted: boolean;
+    deleterUserId?: number;
+    deletionTime?: string;
+    lastModificationTime?: string;
+    lastModifierUserId?: number;
+    creationTime: string;
+    creatorUserId?: number;
+    id: number;
   }
 
   /** 客户按行业类别分组项 */
@@ -65,12 +87,20 @@ export namespace ClientAppApi {
     value: ClientSimpleDto[];
   }
 
+  /** 分页列表响应 */
+  export interface PagedListOfClientSimpleDto {
+    items: ClientSimpleDto[];
+    totalCount: number;
+    currentPage: number;
+    totalPages: number;
+  }
+
   /** 分页查询参数 */
   export interface ClientQueryDto {
     /** 关键字，模糊匹配客户简称、代码、全称、英文名、备注 */
     keyword?: string;
     /** 行业类别；传 'p' 时额外启用干系人数据权限过滤 */
-    industryCategory?: string;
+    industryCategory: string; // 修改为必填且只能1位
     /** 业务来源id，为空不筛选 */
     codeSourceId?: number | string | null;
     /** 是否失信，为空不筛选 */
@@ -118,3 +148,4 @@ export const getClientGroupedByIndustryCategory = () => {
     `${API_PREFIX}/GetGroupedByIndustryCategoryAsync`,
   );
 };
+

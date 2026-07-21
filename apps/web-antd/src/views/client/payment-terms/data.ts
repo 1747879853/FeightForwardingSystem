@@ -54,6 +54,16 @@ export const SettlementTypeOptions = [
 ];
 
 /**
+ * 日期类型枚举选项
+ */
+export const DateTypeOptions = [
+  {
+    value: 0,
+    label: $t('seaExport.client.paymentTerms.DateTypeOptions.shippingDate'),
+  },
+];
+
+/**
  * 间隔月份枚举选项
  */
 export const MonthsOptions = [
@@ -207,6 +217,61 @@ const PAYMENT_TERMS_USER_ATTRIBUTE_MASK = UserAttribute.Sales;
  */
 export function useBillFormSchema(): VbenFormSchema[] {
   return [
+    {
+      component: 'Input',
+      fieldName: 'contractNo',
+      label: $t('seaExport.client.paymentTerms.contractNo'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        class: 'w-full',
+        maxlength: 64,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'dateType',
+      label: $t('seaExport.client.paymentTerms.dateType'),
+      defaultValue: 0,
+      required: true,
+      componentProps: {
+        allowClear: false,
+        options: DateTypeOptions,
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'CurrencySelect',
+      fieldName: 'creditCurrencyId',
+      label: $t('seaExport.client.paymentTerms.creditCurrency'),
+      componentProps: {
+        allowClear: true,
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'creditLimit',
+      label: $t('seaExport.client.paymentTerms.creditLimit'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        class: 'w-full',
+        min: 0,
+        precision: 2,
+      },
+    },
+    {
+      component: 'InputNumber',
+      fieldName: 'warningLimit',
+      label: $t('seaExport.client.paymentTerms.warningLimit'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        class: 'w-full',
+        min: 0,
+        precision: 2,
+      },
+    },
     {
       component: 'DatePicker',
       fieldName: 'effectiveTime',
@@ -365,6 +430,48 @@ export function useColumns(
   onActionClick?: OnActionClickFn<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>,
 ): VxeTableGridOptions<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>['columns'] {
   return [
+    {
+      title: $t('seaExport.client.paymentTerms.contractNo'),
+      field: 'contractNo',
+      width: 150,
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.dateType'),
+      field: 'dateType',
+      width: 120,
+      cellRender: {
+        name: 'CellTag',
+        options: DateTypeOptions,
+      },
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.creditCurrency'),
+      field: 'creditCurrency',
+      width: 150,
+      formatter: (row) => {
+        return row.row.creditCurrency?.cnName || '';
+      },
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.creditLimit'),
+      field: 'creditLimit',
+      width: 120,
+      formatter: (row) => {
+        return row.row.creditLimit !== null && row.row.creditLimit !== undefined 
+          ? row.row.creditLimit.toFixed(2) 
+          : '';
+      },
+    },
+    {
+      title: $t('seaExport.client.paymentTerms.warningLimit'),
+      field: 'warningLimit',
+      width: 120,
+      formatter: (row) => {
+        return row.row.warningLimit !== null && row.row.warningLimit !== undefined 
+          ? row.row.warningLimit.toFixed(2) 
+          : '';
+      },
+    },
     {
       title: $t('seaExport.client.paymentTerms.orgs'),
       field: 'organizationUnitName',

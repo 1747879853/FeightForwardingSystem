@@ -687,6 +687,9 @@ defineExpose({ getTableDate });
                     <MenuItem key="delete">{{
                       $t('auditApproval.ApplyDeletion')
                     }}</MenuItem>
+                    <MenuItem key="withdraw">{{
+                      $t('auditApproval.withdraw')
+                    }}</MenuItem>
                   </Menu>
                 </template>
               </DropdownButton>

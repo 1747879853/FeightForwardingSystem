@@ -198,7 +198,7 @@ const resolvedTransportOrderId = computed(
 const resolvedEntityId = computed(
   () => props.entityId || String(route.params.entityId ?? ''),
 );
-const standaloneTableType = ref<string>('vertical');
+const standaloneTableType = ref<string>('horizontal');
 
 const totalFee = (
   dataSource: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],

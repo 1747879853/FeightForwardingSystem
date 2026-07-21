@@ -5,25 +5,6 @@ import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { getCargoTypeOptions } from '#/views/sea-export-admin/data';
 import { $t } from '#/locales';
 
-/** 客户性质枚举选项 */
-const getClientTypeOptions = () => [
-  {
-    value: 0,
-    label: $t('seaExport.client.clientTypeOptions.direct'),
-    color: 'processing',
-  },
-  {
-    value: 1,
-    label: $t('seaExport.client.clientTypeOptions.peer'),
-    color: 'warning',
-  },
-  {
-    value: 2,
-    label: $t('seaExport.client.clientTypeOptions.supplier'),
-    color: 'success',
-  },
-];
-
 /** 客户等级枚举选项 */
 const getClientLevelOptions = () => [
   {
@@ -331,6 +312,68 @@ const getEnableOptions = () => [
   },
 ];
 
+/** 客户合作状态枚举选项 */
+const getCustomerCoopStatusOptions = () => [
+  {
+    value: 0,
+    label: $t('seaExport.client.coopStatus.potential', [
+      $t('seaExport.client.clientTypeOptions.customer'),
+    ]),
+  },
+  {
+    value: 1,
+    label: $t('seaExport.client.coopStatus.formal', [
+      $t('seaExport.client.clientTypeOptions.customer'),
+    ]),
+  },
+  {
+    value: 2,
+    label: $t('seaExport.client.coopStatus.suspendCooperation'),
+  },
+  {
+    value: 3,
+    label: $t('seaExport.client.coopStatus.blacklist'),
+  },
+];
+
+/** 供应商合作状态枚举选项 */
+const getSupplierCoopStatusOptions = () => [
+  {
+    value: 0,
+    label: $t('seaExport.client.coopStatus.potential', [
+      $t('seaExport.client.clientTypeOptions.supplier'),
+    ]),
+  },
+  {
+    value: 1,
+    label: $t('seaExport.client.coopStatus.formal', [
+      $t('seaExport.client.clientTypeOptions.supplier'),
+    ]),
+  },
+  {
+    value: 2,
+    label: $t('seaExport.client.coopStatus.suspendCooperation'),
+  },
+  {
+    value: 3,
+    label: $t('seaExport.client.coopStatus.blacklist'),
+  },
+];
+
+/** 是否失信枚举选项 */
+const getIsDishonestOptions = () => [
+  {
+    value: true,
+    label: $t('seaExport.client.dishonestStatus.dishonest'),
+    color: 'error',
+  },
+  {
+    value: false,
+    label: $t('seaExport.client.dishonestStatus.honest'),
+    color: 'success',
+  },
+];
+
 /** 是否默认枚举选项 */
 const getDefaultOptions = () => [
   {
@@ -362,52 +405,6 @@ export const getAddressTypeOptions = () => [
   {
     value: 3,
     label: $t('seaExport.client.addressOptions.addressTypeOptions.other'),
-  },
-];
-
-const getCustomerCoopStatusOptions = () => [
-  {
-    value: 0,
-    label: $t('seaExport.client.coopStatus.potential', [
-      $t('seaExport.client.clientTypeOptions.customer'),
-    ]),
-  },
-  {
-    value: 1,
-    label: $t('seaExport.client.coopStatus.formal', [
-      $t('seaExport.client.clientTypeOptions.customer'),
-    ]),
-  },
-  {
-    value: 2,
-    label: $t('seaExport.client.coopStatus.suspendCooperation'),
-  },
-  {
-    value: 3,
-    label: $t('seaExport.client.coopStatus.blacklist'),
-  },
-];
-
-const getSupplierCoopStatusOptions = () => [
-  {
-    value: 0,
-    label: $t('seaExport.client.coopStatus.potential', [
-      $t('seaExport.client.clientTypeOptions.supplier'),
-    ]),
-  },
-  {
-    value: 1,
-    label: $t('seaExport.client.coopStatus.formal', [
-      $t('seaExport.client.clientTypeOptions.supplier'),
-    ]),
-  },
-  {
-    value: 2,
-    label: $t('seaExport.client.coopStatus.suspendCooperation'),
-  },
-  {
-    value: 3,
-    label: $t('seaExport.client.coopStatus.blacklist'),
   },
 ];
 
@@ -503,24 +500,130 @@ export function useGridFormSchema(): VbenFormSchema[] {
         placeholder: $t('ui.placeholder.select'),
       },
     },
-    // {
-    //   component: 'UserSelect',
-    //   fieldName: 'SaleId',
-    //   label: $t('system.user.userAttributeOptions.sales'),
-    //   componentProps: {
-    //     allowClear: true,
-    //     userAttribute: 16, // UserAttribute.Sale
-    //   },
-    // },
-    // {
-    //   component: 'UserSelect',
-    //   fieldName: 'OperationId',
-    //   label: $t('system.user.userAttributeOptions.operation'),
-    //   componentProps: {
-    //     allowClear: true,
-    //     userAttribute: 1, // UserAttribute.Operation
-    //   },
-    // },
+    {
+      component: 'Select',
+      fieldName: 'IsDishonest',
+      label: '是否失信',
+      componentProps: {
+        allowClear: true,
+        options: [
+          { label: '是', value: true },
+          { label: '否', value: false },
+        ],
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'EnterpriseType',
+      label: '企业类型',
+      componentProps: {
+        allowClear: true,
+        options: [
+          { label: '国有企业', value: 1 },
+          { label: '民营企业', value: 2 },
+          { label: '外资企业', value: 3 },
+          { label: '合资企业', value: 4 },
+        ],
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'IsShared',
+      label: '是否共享',
+      componentProps: {
+        allowClear: true,
+        options: [
+          { label: '是', value: true },
+          { label: '否', value: false },
+        ],
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'OrganizationUnitSelect',
+      fieldName: 'ShowCompanyId',
+      label: '展示归属公司',
+      componentProps: {
+        allowClear: true,
+        isCompanyOnly: true,
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'CodeSourceSelect',
+      fieldName: 'CodeSourceId',
+      label: $t('seaExport.client.codeSource'),
+      componentProps: {
+        allowClear: true,
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'LaneSelect',
+      fieldName: 'LaneIds',
+      label: '优质航线',
+      componentProps: {
+        mode: 'multiple',
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'ClientLevel',
+      label: '客户等级',
+      componentProps: {
+        allowClear: true,
+        options: getClientLevelOptions(),
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'Address',
+      label: '地址',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'Name',
+      label: '客户简称',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'FullName',
+      label: '客户全称',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'Code',
+      label: '客户代码',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'EnFullName',
+      label: '客户英文全称',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
   ];
 }
 
@@ -601,6 +704,22 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       componentProps: { allowClear: true },
     },
     {
+      component: 'Select',
+      fieldName: 'enterpriseType',
+      label: '企业类型',
+      componentProps: {
+        allowClear: true,
+        options: [
+          { label: '国有企业', value: 1 },
+          { label: '民营企业', value: 2 },
+          { label: '外资企业', value: 3 },
+          { label: '合资企业', value: 4 },
+        ],
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
       component: 'Textarea',
       fieldName: 'remark',
       label: $t('seaExport.client.remark'),
@@ -640,20 +759,6 @@ export function useClientFormSchema(): VbenFormSchema[] {
   return [
     {
       component: 'Select',
-      fieldName: 'clientType',
-      label: $t('seaExport.client.clientType'),
-      componentProps: {
-        allowClear: true,
-        class: 'w-full',
-        options: getClientTypeOptions().map(({ label, value }) => ({
-          label,
-          value,
-        })),
-        placeholder: $t('ui.placeholder.select'),
-      },
-    },
-    {
-      component: 'Select',
       fieldName: 'clientLevel',
       label: $t('seaExport.client.clientLevel'),
       componentProps: {
@@ -678,13 +783,30 @@ export function useClientFormSchema(): VbenFormSchema[] {
       component: 'DatePicker',
       fieldName: 'clientCoopSince',
       label: $t('seaExport.client.clientCoopSince'),
-      componentProps: { allowClear: true, class: 'w-full' },
+      componentProps: { allowClear: true, class: 'w-full', disabled: true },
     },
     {
       component: 'DatePicker',
       fieldName: 'clientLastTxnTime',
       label: $t('seaExport.client.clientLastTxnTime'),
-      componentProps: { allowClear: true, class: 'w-full' },
+      componentProps: { allowClear: true, class: 'w-full', disabled: true },
+    },
+    {
+      component: 'Switch',
+      fieldName: 'isShared',
+      label: '是否共享',
+      defaultValue: false,
+    },
+    {
+      component: 'OrganizationUnitSelect',
+      fieldName: 'showCompanyId',
+      label: '展示归属公司',
+      componentProps: {
+        allowClear: true,
+        isCompanyOnly: true,
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
     },
   ];
 }
@@ -708,8 +830,7 @@ export function useSupplierFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.client.yearTeu'),
       componentProps: {
         allowClear: true,
-        disabled: true,
-        defaultValue: '无需填写',
+        disabled: true, // 只读计算字段
       },
     },
     {
@@ -718,8 +839,7 @@ export function useSupplierFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.client.yearTicketCount'),
       componentProps: {
         allowClear: true,
-        disabled: true,
-        defaultValue: '无需填写',
+        disabled: true, // 只读计算字段
       },
     },
     {
@@ -825,10 +945,7 @@ export function useFormSchema(): VbenFormSchema[] {
       label: $t('seaExport.client.clientType'),
       componentProps: {
         allowClear: true,
-        options: getClientTypeOptions().map(({ label, value }) => ({
-          label,
-          value,
-        })),
+        options: [], // 移除clientType字段
         placeholder: $t('ui.placeholder.select'),
       },
     },
@@ -936,13 +1053,72 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
     //   formatter: ({ cellValue }) => formatStakeholders(cellValue),
     // },
     {
-      field: 'clientType',
-      title: $t('seaExport.client.clientType'),
+      field: 'isDishonest',
+      title: '是否失信',
       minWidth: 100,
       cellRender: {
         name: 'CellTag',
-        options: getClientTypeOptions(),
+        options: [
+          { value: true, label: '是', color: 'error' },
+          { value: false, label: '否', color: 'success' },
+        ],
       },
+    },
+    {
+      field: 'enterpriseType',
+      title: '企业类型',
+      minWidth: 100,
+      formatter: ({ cellValue }) => {
+        switch (cellValue) {
+          case 1: return '国有企业';
+          case 2: return '民营企业';
+          case 3: return '外资企业';
+          case 4: return '合资企业';
+          default: return '';
+        }
+      },
+    },
+    {
+      field: 'isShared',
+      title: '是否共享',
+      minWidth: 100,
+      cellRender: {
+        name: 'CellTag',
+        options: [
+          { value: true, label: '是', color: 'success' },
+          { value: false, label: '否', color: 'default' },
+        ],
+      },
+    },
+    {
+      field: 'showCompany',
+      title: '展示归属公司',
+      minWidth: 150,
+      formatter: ({ cellValue }) => cellValue?.displayName || '',
+    },
+    {
+      field: 'clientLaneCodes',
+      title: '优质航线',
+      minWidth: 150,
+      formatter: ({ cellValue }) => {
+        if (!cellValue || !Array.isArray(cellValue)) return '';
+        return cellValue.map(lane => lane.laneName).join(', ');
+      },
+    },
+    {
+      field: 'yearTeu',
+      title: '年TEU',
+      minWidth: 100,
+    },
+    {
+      field: 'yearTicketCount',
+      title: '年票数',
+      minWidth: 100,
+    },
+    {
+      field: 'creatorUserName',
+      title: '创建人',
+      minWidth: 100,
     },
     {
       field: 'industryCategories',
@@ -981,7 +1157,7 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
 }
 
 export {
-  getClientTypeOptions,
+  getClientLevelOptions,
   getEnableOptions,
   getDefaultOptions,
   getIndustryCategoryOptions,

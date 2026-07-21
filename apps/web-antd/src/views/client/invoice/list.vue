@@ -88,6 +88,8 @@ const handleAddInvoice = () => {
     taxNum: '',
     address: '',
     tel: '',
+    mobile: '',
+    require: '', // 添加require字段
     isDefault: false,
     sortId: invoiceList.value.length,
     clientInvoiceBanks: [],
@@ -281,3 +283,4 @@ onMounted(() => {
   padding: 0 !important;
 }
 </style>
+

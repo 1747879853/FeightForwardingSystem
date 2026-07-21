@@ -13,6 +13,7 @@ import {
   addBillingPeriod,
   editBillingPeriod,
   deleteBillingPeriod,
+  type BillingPeriodAdminApi,
 } from '#/api/sea-export/billing-period-admin';
 
 const route = useRoute();
@@ -36,9 +37,16 @@ interface Props {
     settlementDay?: number;
     days?: number;
     remark?: string;
-    cbpCodeSources?: Object[]; // 业务来源
-    cbpOrgs?: Object[];
-    cbpUsers?: Object[];
+    attachments?: BillingPeriodAdminApi.AttachmentItemDto[];
+    cbpCodeSources?: any[]; // 业务来源
+    cbpOrgs?: any[];
+    cbpUsers?: any[];
+    contractNo?: string;
+    dateType: number;
+    creditCurrencyId?: number | null;
+    creditCurrency?: any;
+    creditLimit?: number | null;
+    warningLimit?: number | null;
   };
 }
 
@@ -101,6 +109,11 @@ watch(
       // 编辑时加载数据到表单
       console.log('编辑时加载数据到表单', newVal);
       billFormApi.setValues({
+        contractNo: newVal.contractNo,
+        dateType: newVal.dateType ?? 0,
+        creditCurrencyId: newVal.creditCurrencyId,
+        creditLimit: newVal.creditLimit,
+        warningLimit: newVal.warningLimit,
         permanent: newVal.permanent,
         effectiveTime: toDayjs(newVal.effectiveTime),
         expiringTime: toDayjs(newVal.expiringTime),
@@ -111,10 +124,10 @@ watch(
         days: newVal.days,
         remark: newVal.remark,
         codeSourceIds:
-          newVal.cbpCodeSources?.map((item) => item?.codeSourceId) || [],
+          (newVal.cbpCodeSources as any[])?.map((item: any) => item?.codeSourceId) || [],
         organizationUnitIds:
-          newVal.cbpOrgs?.map((item) => item?.organizationUnitId) || [],
-        userIds: newVal.cbpUsers?.map((item) => item?.userId) || [],
+          (newVal.cbpOrgs as any[])?.map((item: any) => item?.organizationUnitId) || [],
+        userIds: (newVal.cbpUsers as any[])?.map((item: any) => item?.userId) || [],
       });
     } else {
       // 创建时重置表单
@@ -137,7 +150,17 @@ const handleSubmit = async () => {
       console.log('编辑账单提交的值', values);
       await editBillingPeriod({
         id: editId.value,
-        clientId: clientId.value,
+        clientId: clientId.value || '',
+        /** 合同号 */
+        contractNo: values.contractNo,
+        /** 日期类型 */
+        dateType: values.dateType ?? 0,
+        /** 授信币别 id */
+        creditCurrencyId: values.creditCurrencyId,
+        /** 授信额度 */
+        creditLimit: values.creditLimit,
+        /** 预警额度 */
+        warningLimit: values.warningLimit,
         /**长期有效  */
         permanent: values.permanent,
         /** 生效时间 */
@@ -156,6 +179,8 @@ const handleSubmit = async () => {
         days: values.days,
         /** 备注   */
         remark: values.remark,
+        /** 附件列表 */
+        attachments: props.billValue.attachments,
         /** 业务来源 */
         codeSourceIds: values.codeSourceIds || [],
         /** 组织id */
@@ -167,7 +192,17 @@ const handleSubmit = async () => {
     } else {
       console.log('新增账单提交的值', values);
       await addBillingPeriod({
-        clientId: clientId.value,
+        clientId: clientId.value || '',
+        /** 合同号 */
+        contractNo: values.contractNo,
+        /** 日期类型 */
+        dateType: values.dateType ?? 0,
+        /** 授信币别 id */
+        creditCurrencyId: values.creditCurrencyId,
+        /** 授信额度 */
+        creditLimit: values.creditLimit,
+        /** 预警额度 */
+        warningLimit: values.warningLimit,
         /**长期有效  */
         permanent: values.permanent,
         /** 生效时间 */
@@ -186,6 +221,8 @@ const handleSubmit = async () => {
         days: values.days,
         /** 备注   */
         remark: values.remark,
+        /** 附件列表 */
+        attachments: props.billValue.attachments,
         /** 业务来源 */
         codeSourceIds: values.codeSourceIds || [],
         /** 组织id */
@@ -203,7 +240,7 @@ const handleSubmit = async () => {
 /** 删除 */
 const handleDelete = () => {
   if (props.billValue.id) {
-    deleteBillingPeriod(props.billValue.id).then(() => {
+    deleteBillingPeriod({ id: props.billValue.id }).then(() => {
       message.success($t('ui.actionMessage.operationSuccess'));
       emit('updateBillFormList');
     });

@@ -309,7 +309,7 @@ const getSelectedRow = ():
   return grid?.getRadioRecord?.() ?? undefined;
 };
 
-const feeTableType = ref('vertical');
+const feeTableType = ref('horizontal');
 const changeTableType = (type: string) => {
   feeTableType.value = type;
 };

@@ -13,6 +13,8 @@ import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deleteClient,
   getClientPagedList,
+  addDishonest,
+  cancelDishonest,
 } from '#/api/sea-export/client-admin';
 import { $t } from '#/locales';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
@@ -47,6 +49,8 @@ const selectedRows = ref<ClientAdminApi.ClientDto[]>([]);
 
 const canEdit = computed(() => selectedRows.value.length === 1);
 const canDelete = computed(() => selectedRows.value.length > 0);
+const canAddDishonest = computed(() => selectedRows.value.length === 1 && !selectedRows.value[0]?.isDishonest);
+const canCancelDishonest = computed(() => selectedRows.value.length === 1 && selectedRows.value[0]?.isDishonest);
 
 const syncSelectedRows = () => {
   selectedRows.value =
@@ -97,6 +101,78 @@ const handleDeleteSelected = () => {
         });
         message.success({
           content: $t('ui.actionMessage.deleteSuccess', [displayName]),
+          key: 'action_process_msg',
+        });
+        handleRefresh();
+      } catch {
+        hideLoading();
+      }
+    },
+  });
+};
+
+const handleAddDishonest = async () => {
+  if (!canAddDishonest.value) {
+    message.warning($t('seaExport.export.pleaseSelectOne'));
+    return;
+  }
+
+  const row = selectedRows.value[0]!;
+  const displayName = getRowName(row);
+
+  Modal.confirm({
+    title: '加入失信',
+    content: `确定要将客户 "${displayName}" 加入失信名单吗？`,
+    okType: 'danger',
+    async onOk() {
+      const hideLoading = message.loading({
+        content: `正在将 "${displayName}" 加入失信...`,
+        duration: 0,
+        key: 'action_process_msg',
+      });
+
+      try {
+        await addDishonest({
+          id: row.id,
+        });
+        message.success({
+          content: `成功将 "${displayName}" 加入失信`,
+          key: 'action_process_msg',
+        });
+        handleRefresh();
+      } catch {
+        hideLoading();
+      }
+    },
+  });
+};
+
+const handleCancelDishonest = async () => {
+  if (!canCancelDishonest.value) {
+    message.warning($t('seaExport.export.pleaseSelectOne'));
+    return;
+  }
+
+  const row = selectedRows.value[0]!;
+  const displayName = getRowName(row);
+
+  Modal.confirm({
+    title: '取消失信',
+    content: `确定要将客户 "${displayName}" 从失信名单中移除吗？`,
+    okType: 'danger',
+    async onOk() {
+      const hideLoading = message.loading({
+        content: `正在将 "${displayName}" 移出失信...`,
+        duration: 0,
+        key: 'action_process_msg',
+      });
+
+      try {
+        await cancelDishonest({
+          id: row.id,
+        });
+        message.success({
+          content: `成功将 "${displayName}" 移出失信`,
           key: 'action_process_msg',
         });
         handleRefresh();
@@ -164,6 +240,20 @@ useRefreshListOnFormReturn('ClientList', handleRefresh);
   <Page auto-content-height>
     <Grid :table-title="$t('seaExport.client.list')">
       <template #toolbar-tools>
+        <Button
+          v-if="canAddDishonest"
+          class="mr-2"
+          @click="handleAddDishonest"
+        >
+          加入失信
+        </Button>
+        <Button
+          v-if="canCancelDishonest"
+          class="mr-2"
+          @click="handleCancelDishonest"
+        >
+          取消失信
+        </Button>
         <Button
           class="mr-2"
           :disabled="!canDelete"

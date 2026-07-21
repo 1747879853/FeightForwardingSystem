@@ -68,6 +68,8 @@ export namespace ClientInvoiceInfoAdminApi {
     tel?: string;
     /** 手机 */
     mobile?: string;
+    /** 开票要求 */
+    require?: string;
     /** 银行信息列表 */
     clientInvoiceBanks?: ClientInvoiceBankAddDto[];
     isDeleted?: boolean;
@@ -100,6 +102,8 @@ export namespace ClientInvoiceInfoAdminApi {
     tel?: string;
     /** 手机 */
     mobile?: string;
+    /** 开票要求 */
+    require?: string;
     /** 银行信息列表 */
     clientInvoiceBanks?: ClientInvoiceBankAddOrEditDto[];
   }
@@ -160,6 +164,8 @@ export namespace ClientInvoiceInfoAdminApi {
     tel?: string;
     /** 手机 */
     mobile?: string;
+    /** 开票要求 */
+    require?: string;
     /** 银行信息列表 */
     clientInvoiceBanks?: ClientInvoiceBankDto[];
     isDeleted: boolean;
@@ -240,3 +246,4 @@ export const getClientInvoiceInfoDetail = (id: string) => {
     { params: { Id: id } },
   );
 };
+

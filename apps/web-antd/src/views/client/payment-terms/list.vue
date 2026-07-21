@@ -20,10 +20,10 @@ import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { IconifyIcon } from '@vben/icons';
 import { Page } from '@vben/common-ui';
-import { Button, Space, Card } from 'ant-design-vue';
-
+import { Button, Space } from 'ant-design-vue';
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
+import { Modal as AntModal } from 'ant-design-vue';
 
 const route = useRoute();
 
@@ -38,7 +38,7 @@ const selectedRowKeys = ref<(string | number)[]>([]);
 const handleActionClick = ({
   code,
   row,
-}: OnActionClickParams<BillingPeriodAdminApi.ClientBillingPeriodDto>) => {
+}: OnActionClickParams<BillingPeriodAdminApi.ClientBillingPeriodForViewDto>) => {
   switch (code) {
     case 'delete': {
       // row.id 可能是大数 string，原样透传，禁止 Number() 转换（丢精度）
@@ -46,7 +46,7 @@ const handleActionClick = ({
       break;
     }
     case 'edit': {
-      // 将 ClientBillingPeriodDto 转换为 BillingPeriodEditDto
+      // 将 ClientBillingPeriodForViewDto 转换为 BillingPeriodEditDto
       const editData: BillingPeriodAdminApi.BillingPeriodEditDto = {
         ...row,
         // bizTypes 在 DetailDto 中是 number[],在 EditDto 中是 number
@@ -56,7 +56,23 @@ const handleActionClick = ({
       editContact(editData);
       break;
     }
+    case 'manageAttachments': {
+      manageAttachments(row);
+      break;
+    }
   }
+};
+
+/**
+ * 管理附件
+ */
+const manageAttachments = (row: BillingPeriodAdminApi.ClientBillingPeriodForViewDto) => {
+  // 这里可以打开附件管理模态框或跳转到附件管理页面
+  console.log('Manage attachments for billing period:', row);
+  AntModal.info({
+    title: '附件管理',
+    content: `账期ID: ${row.id} 的附件管理功能待开发`,
+  });
 };
 
 /**
@@ -64,7 +80,7 @@ const handleActionClick = ({
  * 根据结算方式、月份、结算日等生成可读的周期字符串
  */
 const formatPeriod = (
-  row: BillingPeriodAdminApi.ClientBillingPeriodDto,
+  row: BillingPeriodAdminApi.ClientBillingPeriodForViewDto,
 ): string => {
   const settlementTypeText =
     SettlementTypeOptions.find((item) => item.value === row.settlementType)
@@ -144,7 +160,6 @@ const formatPayment = (row: BillingPeriodAdminApi.ClientBillingPeriodDto) => {
   newRow.period = formatPeriod(row);
   newRow.organizationUnitName = formatOrganizationUnitName(row.cbpOrgs);
   newRow.userName = formatUserNames(row.cbpUsers);
-  console.log('newRow', newRow);
   return newRow;
 };
 const fetchBillingPeriodPagedList = (params: Record<string, any>) =>
@@ -227,6 +242,7 @@ const [Grid, gridApi] =
 const [Modal, modalApi] = useVbenModal({
   // 连接抽离的组件
   connectedComponent: AddModal,
+  class: 'w-[1200px]',   // ✅ 官方推荐的宽度入口
 });
 const addContactData = async (
   data: BillingPeriodAdminApi.BillingPeriodEditDto,
@@ -289,4 +305,12 @@ const delContact = async (data: BillingPeriodAdminApi.IdDto) => {
 // .custom-table {
 //   min-height: 300px;
 // }
+
+.attachments-list {
+  .attachment-item {
+    &:not(:last-child) {
+      border-bottom: 1px solid #f0f0f0;
+    }
+  }
+}
 </style>
