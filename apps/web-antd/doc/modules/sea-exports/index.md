@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-21
+last_updated: 2026-07-22
 ---
 
 # 1. 业务背景说明 (Background)
@@ -62,7 +62,8 @@ last_updated: 2026-07-21
 | **船名 / 航次** | 船期检索字段。 | `Vessel`、`InnerVoyno` | **触发/依赖：** 与编辑页船名航次输入保持同一字段口径。 | 文本可清空。 |
 | **船公司 / 订舱代理** | 承运与订舱服务主体。 | `CarrierSelect`、客户选择组件 `industryCategory: 'o'` | **触发/依赖：** 列表展示承运人 `carrierLogo + carrierCnShortName`（回退 `carrierName`）及订舱代理名称。 | 需选择有效基础资料或客户资料。 |
 | **业务人员** | 销售、操作、商务、客服、单证等订单人员。 | `UserSelect` + `USER_ATTRIBUTE` 枚举 | **触发/依赖：** 列表列从 `transportOrder.orderUsers` 按角色过滤并拼接姓名。 | 需选择符合对应用户属性的用户。 |
-| **所属组织** | 委托归属组织或收付款部门过滤条件。 | `OrganizationSelect` / `OrgId` | **触发/依赖：** 列表列展示 `companys[0].name`。 | 组织需来自系统组织树。 |
+| **所属公司（列表列）** | 委托所属公司名称（组织串首节点）。 | 列 `orgs`；i18n `seaExport.export.organizationUnits` | **触发/依赖：** `formatter` 取 `orgs?.[0]?.name`；勿与归属组织末端 `orgs.at(-1)` 混淆。 | 无则空串。 |
+| **所属组织（筛选）** | 委托归属组织过滤条件（直属组织）。 | `MyOrgSelect` / `OrgId` | **触发/依赖：** 查询入参 `orgId`。 | 须为本人直属组织。 |
 | **箱号** | 按箱号定位包含具体箱的委托。 | 查询参数 `CtnNo` | **触发/依赖：** 与订单箱型箱量明细相关。 | 文本可清空；匹配以后端为准。 |
 | **货物类型 / 品名** | 货物维度检索字段。 | `CargoId`、`GoodsDes`；货物类型枚举 `普通/冷藏/危险品/超限` | **触发/依赖：** 与编辑页货物信息字段一致。 | 货物类型需选择枚举值。 |
 | **来源 / 签单方式** | 业务来源与签单方式过滤条件。 | `CodeSourceSelect`、`CodeIssueTypeSelect` | **触发/依赖：** 列表展示 `codeSourceName`、`codeIssueTypeName`。 | 需选择有效代码资料。 |
@@ -100,6 +101,7 @@ last_updated: 2026-07-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-22 | `Fix` | 列表「所属公司」改为展示 `orgs[0].name`（公司节点），不再取组织串末端。 | 与多组织约定一致：首节点=所属公司，末端=`at(-1)`=归属组织。 |
 | 2026-07-21 | `Fix` | 列表内部/外部备注对齐 `TransportOrder`：补外部备注列；筛选拆分内部备注与外部备注。 | 列路径 `transportOrder.internalRemark` / `transportOrder.remark`；查询参数 `InternalRemark` / `Remark`。详见 `changelogs/change-log-2026-07-21-sea-export-remark-transport-order.md`。 |
 | 2026-07-15 | `Fix` | 海运出口列表顶部补充删除按钮；仅允许删除单条勾选记录，需二次确认并受删除权限控制，成功后清除选择并刷新。 | 删除接口 ID 类型由 `number` 扩为 `number \| string`，与列表 DTO 的 GUID/数字联合类型一致。 |
 | 2026-07-14 | `Style` | 修复工具栏新增、复制按钮图标与文本未垂直对齐。 | 图标改由 Ant Design Vue Button 的 `#icon` 插槽承载，并统一为 `size-4`。 |

@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-22 海运出口列表「所属公司」改为展示 orgs[0].name](./changelogs/change-log-2026-07-22-sea-export-list-orgs0-company-name.md)
 - [2026-07-22 多组织改造：company/companyId 前端全量迁移为 orgId/orgs](./changelogs/change-log-2026-07-22-multi-org-orgid-refactor.md)
 - [2026-07-21 分单弹窗按业务动线重组 + 新增默认仅带条款与箱](./changelogs/change-log-2026-07-21-separate-bill-workflow-layout.md)
 - [2026-07-21 分单只读字段去提示文案并改为纯文本展示](./changelogs/change-log-2026-07-21-separate-bill-readonly-display.md)

@@ -928,7 +928,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('seaExport.export.organizationUnits'),
       minWidth: 140,
       sortable: false,
-      formatter: ({ row }) => row.orgs?.at(-1)?.name || '',
+      formatter: ({ row }) => row.orgs?.[0]?.name || '',
       showOverflow: true,
     },
     {
