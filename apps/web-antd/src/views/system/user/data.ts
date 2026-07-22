@@ -374,11 +374,11 @@ export function useFormSchema(): VbenFormSchema[] {
       label: $t('system.user.idNumber'),
     },
 
-    {
-      component: 'ReadonlyText',
-      fieldName: 'companyName',
-      label: $t('system.user.company'),
-    },
+    // {
+    //   component: 'ReadonlyText',
+    //   fieldName: 'companyName',
+    //   label: $t('system.user.company'),
+    // },
     {
       component: 'Input',
       defaultValue: UserStatus.Passed,
