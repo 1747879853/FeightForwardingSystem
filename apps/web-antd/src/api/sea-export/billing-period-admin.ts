@@ -70,7 +70,7 @@ export namespace BillingPeriodAdminApi {
     /** 失效时间 */
     expiringTime?: string;
     /** 业务类型 */
-    bizTypes?: number;
+    bizTypes?: number[];
     /** 结算方式 */
     settlementType: number;
     /**间隔月份 */
@@ -100,7 +100,7 @@ export namespace BillingPeriodAdminApi {
     /** 预警额度 */
     warningLimit?: number | null;
   }
-  
+
   /** 修改账单期参数 */
   export interface BillingPeriodEditDto extends BillingPeriodAddDto {
     id: number | string;
@@ -163,7 +163,7 @@ export namespace BillingPeriodAdminApi {
     organizationUnitId: number;
     organizationUnitName: string;
   }
-  
+
   export interface ClientBillingPeriodDto {
     /** id */
     id: number | string;

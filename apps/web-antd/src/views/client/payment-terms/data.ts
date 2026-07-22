@@ -581,11 +581,5 @@ export function useColumns(): VxeTableGridOptions<BillingPeriodAdminApi.ClientBi
       width: 150,
       formatter: 'formatDateTime',
     },
-    {
-      title: $t('auditApproval.task.createTime'),
-      field: 'creationTime',
-      width: 150,
-      formatter: 'formatDateTime',
-    },
   ];
 }

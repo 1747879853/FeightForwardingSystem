@@ -1,9 +1,21 @@
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
-import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { getCargoTypeOptions } from '#/views/sea-export-admin/data';
 import { $t } from '#/locales';
+
+/** 客户类型枚举选项 */
+const getClientTypeOptions = () => [
+  {
+    value: ClientAdminApi.ClientType.Peer,
+    label: $t('seaExport.client.clientTypeOptions.peer'),
+  },
+  {
+    value: ClientAdminApi.ClientType.DirectCustomer,
+    label: $t('seaExport.client.clientTypeOptions.direct'),
+  },
+];
 
 /** 客户等级枚举选项 */
 const getClientLevelOptions = () => [
@@ -720,6 +732,17 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'Select',
+      fieldName: 'clientType',
+      label: $t('seaExport.client.clientType'),
+      componentProps: {
+        allowClear: true,
+        options: getClientTypeOptions(),
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
       component: 'Textarea',
       fieldName: 'remark',
       label: $t('seaExport.client.remark'),
@@ -1039,18 +1062,76 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       title: $t('seaExport.client.phone'),
       minWidth: 120,
     },
-    // {
-    //   field: 'sales',
-    //   title: $t('system.user.userAttributeOptions.sales'),
-    //   minWidth: 120,
-    //   formatter: ({ cellValue }) => formatStakeholders(cellValue),
-    // },
-    // {
-    //   field: 'operations',
-    //   title: $t('system.user.userAttributeOptions.operation'),
-    //   minWidth: 120,
-    //   formatter: ({ cellValue }) => formatStakeholders(cellValue),
-    // },
+    {
+      field: 'codeSource',
+      title: '业务来源',
+      minWidth: 120,
+      formatter: ({ cellValue }) => {
+        // 优先使用 codeSource.cnName，如果不存在则降级使用 codeSourceId
+        if (cellValue?.cnName) {
+          return cellValue.cnName;
+        }
+        return '';
+      },
+    },
+    {
+      field: 'clientLevel',
+      title: '客户等级',
+      minWidth: 100,
+      formatter: ({ cellValue }) => {
+        const levelMap = getClientLevelOptions();
+        const level = levelMap.find((item) => item.value === cellValue);
+        return level ? level.label : '';
+      },
+    },
+    {
+      field: 'clientLaneCodes',
+      title: '优质航线',
+      minWidth: 150,
+      formatter: ({ cellValue }) => {
+        if (!cellValue || !Array.isArray(cellValue)) return '';
+        return cellValue.map((lane) => lane.laneName).join(', ');
+      },
+    },
+    {
+      field: 'taxNo',
+      title: '纳税人识别号',
+      minWidth: 150,
+    },
+    {
+      field: 'sales',
+      title: '销售',
+      minWidth: 120,
+      formatter: ({ cellValue }) => formatStakeholders(cellValue),
+    },
+    {
+      field: 'operations',
+      title: '操作',
+      minWidth: 120,
+      formatter: ({ cellValue }) => formatStakeholders(cellValue),
+    },
+    {
+      field: 'creatorUserName',
+      title: '创建人',
+      minWidth: 100,
+    },
+    {
+      field: 'clientType',
+      title: '客户 / 供应商',
+      minWidth: 120,
+      formatter: ({ row }) => {
+        const isClient = row.isClient;
+        const isSupplier = row.isSupplier;
+        if (isClient && isSupplier) {
+          return '客户 + 供应商';
+        } else if (isClient) {
+          return '客户';
+        } else if (isSupplier) {
+          return '供应商';
+        }
+        return '';
+      },
+    },
     {
       field: 'isDishonest',
       title: '是否失信',
@@ -1098,6 +1179,7 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       field: 'orgs',
       title: '归属组织',
       minWidth: 150,
+
       formatter: ({ row }) => row.orgs?.at(-1)?.name || '',
     },
     {
@@ -1120,22 +1202,17 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       minWidth: 100,
     },
     {
-      field: 'creatorUserName',
-      title: '创建人',
-      minWidth: 100,
-    },
-    {
       field: 'industryCategories',
       title: $t('seaExport.client.industryCategories'),
       minWidth: 200,
       showOverflow: true,
       formatter: ({ cellValue }) => formatIndustryCategories(cellValue),
     },
-    {
-      field: 'country',
-      title: $t('seaExport.client.country'),
-      minWidth: 100,
-    },
+    //{
+    //   field: 'country',
+    //   title: $t('seaExport.client.country'),
+    //   minWidth: 100,
+    // },
     {
       field: 'enable',
       title: $t('seaExport.client.enable'),

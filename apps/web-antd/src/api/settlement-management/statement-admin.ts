@@ -18,6 +18,19 @@ export namespace StatementAdminApi {
     payAmount: number;
   }
 
+  /** 我司银行简易对象 */
+  export interface OrgBankAccountSimpleDto {
+    id: string;
+    organizationUnitId: number;
+    currencyId: number;
+    currencyCode?: string;
+    accountName?: string;
+    bankShortName?: string;
+    bankName?: string;
+    bankAccount?: string;
+    swiftCode?: string;
+  }
+
   /** 费用和海出 */
   export interface OrderFeeAndSeaExportDto {
     statementCurrencyGroup?: StatementCurrencyDto[];
@@ -55,6 +68,14 @@ export namespace StatementAdminApi {
     creatorUserId?: number;
     attachments?: AttachmentItemDto[];
     id: string;
+    // 新增字段：收付类型汇总（0=全部为收，1=全部为付，2=收付都有）
+    paySide?: number;
+    // 新增字段：开票状态汇总（0=未开票，1=部分开票，2=已开票）
+    invoiceStatus?: number;
+    // 新增字段：我司银行id
+    orgBankAccountId?: string | null;
+    // 新增字段：我司银行对象
+    orgBankAccount?: OrgBankAccountSimpleDto | null;
   }
 
   /** 附件项 DTO（详情输出） */
@@ -97,6 +118,8 @@ export namespace StatementAdminApi {
     creatorUserId?: number;
     id?: string;
     attachments?: AttachmentItemForItemInputDto[];
+    // 新增字段：我司银行id（非必填）
+    orgBankAccountId?: string | null;
   }
 
   /** 客户对账编辑Dto */
@@ -110,6 +133,8 @@ export namespace StatementAdminApi {
     description?: string;
     remark?: string;
     attachments?: AttachmentItemForItemInputDto[];
+    // 新增字段：我司银行id（非必填，传null表示清空）
+    orgBankAccountId?: string | null;
   }
 
   /** 客户对账编辑费用Dto */
@@ -149,6 +174,12 @@ export namespace StatementAdminApi {
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;
+    // 新增字段：收付类型筛选（0=全部为收，1=全部为付，2=收付都有）
+    PaySide?: number | null;
+    // 新增字段：开票状态筛选（0=未开票，1=部分开票，2=已开票）
+    InvoiceStatus?: number | null;
+    // 新增字段：我司银行id精确筛选
+    OrgBankAccountId?: string | null;
   }
 
   /** GetOrderFeeGroupAsync 查询参数 */
@@ -277,6 +308,11 @@ export const getStatementPagedList = async (params: Recordable<any>) => {
     Sorting: params.Sorting || 'Id desc',
     PageIndex: params.PageIndex || params.pageIndex || 1,
     PageSize: params.PageSize || params.pageSize || 10,
+    // 新增筛选参数
+    PaySide: params.PaySide !== undefined ? params.PaySide : null,
+    InvoiceStatus:
+      params.InvoiceStatus !== undefined ? params.InvoiceStatus : null,
+    OrgBankAccountId: params.OrgBankAccountId || null,
   };
 
   return requestClient.get<StatementAdminApi.PagedListOfStatementDto>(

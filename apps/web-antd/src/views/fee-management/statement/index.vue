@@ -139,6 +139,31 @@ useRefreshListOnFormReturn('StatementList', handleRefresh);
           {{ $t('common.delete') }}
         </Button>
       </template>
+
+      <!-- 收付类型列自定义渲染 -->
+      <template #paySide="{ row }">
+        <span v-if="row.paySide === 0">全部为收</span>
+        <span v-else-if="row.paySide === 1">全部为付</span>
+        <span v-else-if="row.paySide === 2">收付都有</span>
+        <span v-else>-</span>
+      </template>
+
+      <!-- 开票状态列自定义渲染 -->
+      <template #invoiceStatus="{ row }">
+        <span v-if="row.invoiceStatus === 0">未开票</span>
+        <span v-else-if="row.invoiceStatus === 1">部分开票</span>
+        <span v-else-if="row.invoiceStatus === 2">已开票</span>
+        <span v-else>-</span>
+      </template>
+
+      <!-- 我司银行列自定义渲染 -->
+      <template #orgBankAccount="{ row }">
+        <span v-if="row.orgBankAccount">
+          {{ row.orgBankAccount.bankShortName }} -
+          {{ row.orgBankAccount.accountName }}
+        </span>
+        <span v-else>-</span>
+      </template>
     </Grid>
   </Page>
 </template>

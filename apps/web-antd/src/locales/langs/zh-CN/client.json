@@ -1,5 +1,10 @@
 {
   "title": "客户管理",
+  "clientType": "客户类型",
+  "clientTypeOptions": {
+    "peer": "同行",
+    "directCustomer": "直客"
+  },
   "invoice": {
     "title": "开票信息",
     "basicInfo": "基本信息",
@@ -54,6 +59,7 @@
     "addOtherTypeTip": "选择未在默认展示中的附件类型，确认后将出现对应上传区域",
     "addOtherTypeSuccess": "已添加附件类型",
     "selectTypePlaceholder": "请选择附件类型",
-    "selectTypeRequired": "请选择附件类型"
+    "selectTypeRequired": "请选择附件类型",
+    "billingPeriodAttachments": "账期附件"
   }
 }

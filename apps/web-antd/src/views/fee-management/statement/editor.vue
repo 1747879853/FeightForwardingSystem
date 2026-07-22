@@ -46,7 +46,11 @@ import {
 import { $t } from '#/locales';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
-import { ClientSelect, CurrencySelect } from '#/adapter/component';
+import {
+  ClientSelect,
+  CurrencySelect,
+  OrgBankAccountSelect,
+} from '#/adapter/component';
 import {
   addStatement,
   getOrderFeeGroup,
@@ -106,6 +110,9 @@ const displayApplicationNo = computed(() =>
 
 const clientId = ref<string>('');
 const clientName = ref('');
+
+// 新增：我司银行id
+const orgBankAccountId = ref<string | undefined>(undefined);
 
 const statementDescription = ref('');
 const remark = ref('');
@@ -457,6 +464,9 @@ async function loadEditData() {
     clientId.value = detail.clientId ?? '';
     clientName.value = detail.clientName ?? '';
 
+    // 新增：加载我司银行id
+    orgBankAccountId.value = detail.orgBankAccountId || undefined;
+
     creationTime.value = detail.creationTime
       ? dayjs(detail.creationTime).format('YYYY-MM-DD HH:mm')
       : dayjs().format('YYYY-MM-DD HH:mm');
@@ -511,6 +521,8 @@ function buildSubmitData(): StatementAdminApi.StatementAddDto {
     remark: remark.value || undefined,
     orderFeeIds: orderFeeIds,
     attachments: attachmentItems.length > 0 ? attachmentItems : undefined,
+    // 新增：我司银行id
+    orgBankAccountId: orgBankAccountId.value || null,
   };
 }
 
@@ -537,6 +549,8 @@ async function saveEditMode() {
     description: statementDescription.value || undefined,
     remark: remark.value || undefined,
     attachments: attachmentItems.length > 0 ? attachmentItems : undefined,
+    // 新增：我司银行id
+    orgBankAccountId: orgBankAccountId.value || null,
   });
 
   const originalMap = new Map(
@@ -943,6 +957,17 @@ function formatMonth(val: string | undefined | null): string {
                     :placeholder="$t('ui.placeholder.input')"
                     size="small"
                     @update:value="(val) => (remark = val)"
+                  />
+                </div>
+                <!-- 新增：我司银行 -->
+                <div class="info-item">
+                  <span class="info-label">我司银行</span>
+                  <OrgBankAccountSelect
+                    :value="orgBankAccountId"
+                    placeholder="请选择我司银行"
+                    allow-clear
+                    size="small"
+                    @update:value="(val) => (orgBankAccountId = val)"
                   />
                 </div>
               </div>

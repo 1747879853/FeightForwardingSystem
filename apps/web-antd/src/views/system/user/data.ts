@@ -374,26 +374,11 @@ export function useFormSchema(): VbenFormSchema[] {
       label: $t('system.user.idNumber'),
     },
 
-    {
-      component: 'ReadonlyText',
-      fieldName: 'companyName',
-      label: $t('system.user.company'),
-    },
-    {
-      component: 'ApiTreeSelect',
-      componentProps: {
-        allowClear: true,
-        api: async () =>
-          withOrganizationTreeDisabled(await getOrganizationUnitTree()),
-        class: 'w-full',
-        labelField: 'displayName',
-        valueField: 'id',
-        childrenField: 'children',
-      },
-      fieldName: 'organizationId',
-      label: $t('system.user.department'),
-      rules: 'selectRequired',
-    },
+    // {
+    //   component: 'ReadonlyText',
+    //   fieldName: 'companyName',
+    //   label: $t('system.user.company'),
+    // },
     {
       component: 'Input',
       defaultValue: UserStatus.Passed,
@@ -554,6 +539,31 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       title: $t('system.user.organization'),
       minWidth: 200,
       formatter: ({ row, cellValue }) => {
+        // 优先使用新的organizations字段（多组织）
+        if (
+          row?.organizations &&
+          Array.isArray(row.organizations) &&
+          row.organizations.length > 0
+        ) {
+          // 将多个组织路径用逗号分隔显示
+          return row.organizations
+            .map((org: any) => {
+              if (
+                org.oneOrganizationPath &&
+                Array.isArray(org.oneOrganizationPath)
+              ) {
+                // 提取组织链中的名称并用/连接
+                const pathNames = org.oneOrganizationPath
+                  .map((item: any) => item?.name)
+                  .filter(Boolean);
+                return pathNames.join('/');
+              }
+              return '';
+            })
+            .filter(Boolean)
+            .join(', ');
+        }
+        // 兼容旧数据：使用organizationPath或organization字段
         if (Array.isArray(cellValue) && cellValue.length > 0) {
           return cellValue.map((item: any) => item?.name).join('/');
         }

@@ -164,6 +164,46 @@ export namespace ClientContactAdminApi {
     /** 是否禁用 */
     IsDisabled?: boolean;
   }
+
+  /** 批量保存联系人输入DTO */
+  export interface ClientContactBatchSaveDto {
+    /** 合作客户id */
+    clientId: string;
+    /** 联系人列表 */
+    contacts: ClientContactBatchItemDto[];
+  }
+
+  /** 批量保存联系人的单项DTO */
+  export interface ClientContactBatchItemDto {
+    /** 联系人id；为空/0/库中不存在=新增，大于0且存在=编辑 */
+    id?: number;
+    /** 名字 */
+    name?: string;
+    /** 手机 */
+    mobile?: string;
+    /** 邮箱 */
+    email?: string;
+    /** 办公电话 */
+    tel?: string;
+    /** 座机 */
+    landline?: string;
+    /** 职位 */
+    position?: string;
+    /** 微信号 */
+    weChat?: string;
+    /** 是否默认 */
+    isDefault?: boolean;
+    /** 备注 */
+    remark?: string;
+    /** qq */
+    qq?: string;
+    /** 发票可用 */
+    invoiceEnable?: boolean;
+    /** 对账可用 */
+    statementEnable?: boolean;
+    /** 是否禁用 */
+    isDisabled?: boolean;
+  }
 }
 
 const API_PREFIX = '/services/app/ClientContactAdmin';
@@ -226,3 +266,13 @@ export const setClientContactDisabled = (
   return requestClient.put<boolean>(`${API_PREFIX}/SetDisabledAsync`, data);
 };
 
+/**
+ * 批量保存联系人（新增或编辑）
+ * @param data 批量保存参数，包含客户ID和联系人列表
+ * @returns 按输入顺序返回保存后的联系人Id列表
+ */
+export const batchSaveClientContacts = (
+  data: ClientContactAdminApi.ClientContactBatchSaveDto,
+) => {
+  return requestClient.post<number[]>(`${API_PREFIX}/BatchSaveAsync`, data);
+};

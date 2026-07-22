@@ -187,7 +187,8 @@ export function useHotColumns(
               // 如果有"-"，取后面的部分；否则使用原值
               displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
             }
-            td.innerHTML = `<span style="color: ${displayName ? '#262626' : '#999'}; cursor: pointer;">${displayName || '请选择'}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${displayName ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayName || '请选择'}</span>`;
             return td;
           };
         } else if (col.field === 'industryCategory') {
@@ -228,7 +229,8 @@ export function useHotColumns(
           ) {
             td.innerHTML = '';
             const label = value || '';
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '请选择'}</span>`;
             return td;
           };
         } else if (col.field === 'settlementId') {
@@ -256,7 +258,8 @@ export function useHotColumns(
               // 如果有"-"，取后面的部分；否则使用原值
               displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
             }
-            td.innerHTML = `<span style="color: ${displayName ? '#262626' : '#999'}; cursor: pointer;">${displayName || '请选择'}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${displayName ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayName || '请选择'}</span>`;
             return td;
           };
         } else if (col.field === 'currencyId') {
@@ -297,7 +300,8 @@ export function useHotColumns(
           ) {
             td.innerHTML = '';
             const label = value || '';
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '请选择'}</span>`;
             return td;
           };
         } else if (col.field === 'unit') {
@@ -320,7 +324,8 @@ export function useHotColumns(
           ) {
             td.innerHTML = '';
             const label = value || '';
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '请选择'}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '请选择'}</span>`;
             return td;
           };
         } else if (col.field === 'unitPrice') {
@@ -352,8 +357,8 @@ export function useHotColumns(
               }
             }
 
-            // ✅ 新增：右对齐样式
-            td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block;">${displayValue}</span>`;
+            // ✅ 新增：右对齐样式 + 省略号
+            td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayValue}</span>`;
             return td;
           };
         } else if (col.field === 'quantity') {
@@ -373,7 +378,8 @@ export function useHotColumns(
             // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
             td.innerHTML = '';
             const label = value || '';
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0'}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '0'}</span>`;
             return td;
           };
         } else if (col.field === 'amount') {
@@ -405,8 +411,8 @@ export function useHotColumns(
               }
             }
 
-            // ✅ 新增：右对齐样式
-            td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block;">${displayValue}</span>`;
+            // ✅ 新增：右对齐样式 + 省略号
+            td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; text-align: right; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayValue}</span>`;
             return td;
           };
         } else if (col.field === 'taxRate') {
@@ -426,7 +432,8 @@ export function useHotColumns(
             // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
             td.innerHTML = '';
             const label = value || '';
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0.00%'}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || '0.00%'}</span>`;
             return td;
           };
         } else if (col.field === 'taxAmount') {
@@ -443,8 +450,8 @@ export function useHotColumns(
             value: any,
             cellProperties: any,
           ) {
-            const label = value || '';
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0.00'}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${value ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${value || '0.00'}</span>`;
             return td;
           };
         } else if (col.field === 'totalAmount') {
@@ -461,8 +468,8 @@ export function useHotColumns(
             value: any,
             cellProperties: any,
           ) {
-            const label = value || '';
-            td.innerHTML = `<span style="color: ${label ? '#262626' : '#999'}; cursor: pointer;">${label || '0.00'}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${value ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${value || '0.00'}</span>`;
             return td;
           };
         } else if (col.field === 'remark') {
@@ -479,7 +486,8 @@ export function useHotColumns(
           ) {
             // ✅ 关键修复：先清空单元格内容，防止与编辑器残留内容重叠
             td.innerHTML = '';
-            td.innerHTML = `<span style="color: ${value ? '#262626' : '#999'}; cursor: pointer;">${value || ''}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${value ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${value || ''}</span>`;
             return td;
           };
         } else if (
@@ -518,6 +526,10 @@ export function useHotColumns(
               statusSpan.textContent = label || '';
               statusSpan.style.color = '#262626';
               statusSpan.style.marginRight = '0';
+              // ✅ 新增：添加省略号样式
+              statusSpan.style.whiteSpace = 'nowrap';
+              statusSpan.style.overflow = 'hidden';
+              statusSpan.style.textOverflow = 'ellipsis';
               td.appendChild(statusSpan);
 
               const countSpan = document.createElement('span');
@@ -529,7 +541,8 @@ export function useHotColumns(
               countSpan.title = `点击查看 ${modificationCount} 次修改记录`;
               td.appendChild(countSpan);
             } else {
-              td.innerHTML = `<span style="color: #262626; cursor: pointer;" title="双击查看审核历史">${label || ''}</span>`;
+              // ✅ 新增：添加省略号样式
+              td.innerHTML = `<span style="color: #262626; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" title="双击查看审核历史">${label || ''}</span>`;
             }
 
             return td;
@@ -551,7 +564,8 @@ export function useHotColumns(
             cellProperties: any,
           ) {
             const formattedDate = formatDateTime(value);
-            td.innerHTML = `<span style="color: #262626;">${formattedDate}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: #262626; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${formattedDate}</span>`;
             return td;
           };
         } else if (col.field === 'dataEntryMethod') {
@@ -568,7 +582,8 @@ export function useHotColumns(
             cellProperties: any,
           ) {
             const label = getDataEntryMethodLabel(value);
-            td.innerHTML = `<span style="color: #262626;">${label || ''}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: #262626; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${label || ''}</span>`;
             return td;
           };
         } else if (
@@ -626,7 +641,8 @@ export function useHotColumns(
               }
             }
 
-            td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer;">${displayValue || '0'}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayValue || '0'}</span>`;
             return td;
           };
         } else if (
@@ -668,7 +684,8 @@ export function useHotColumns(
             // 从 statement 对象中获取 statementNum
             const rowData = actualDataSource[row] as any;
             const statementNum = rowData?.statement?.statementNum || '';
-            td.innerHTML = `<span style="color: ${statementNum ? '#262626' : '#999'}; cursor: pointer;">${statementNum}</span>`;
+            // ✅ 新增：添加省略号样式
+            td.innerHTML = `<span style="color: ${statementNum ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${statementNum}</span>`;
             return td;
           };
         } else if (col.field === 'creatorUserName') {

@@ -12,13 +12,11 @@ import { formatDateTime } from '@vben/utils';
 import {
   Button,
   Card,
-  Checkbox,
   Empty,
   message,
   Modal,
   Select,
   Spin,
-  Switch,
   Tooltip,
   Upload,
 } from 'ant-design-vue';
@@ -30,8 +28,8 @@ import {
   addClientAttachments,
   deleteClientAttachments,
   getClientAttachments,
+  getClientBillingPeriodAttachments,
 } from '#/api/sea-export/client-admin';
-import { updateAttachmentItemsClientVisible } from '#/api/system/attachment';
 import {
   getAttachmentDtlTypeList,
   getAttachmentDtlTypesByModuleTypes,
@@ -48,7 +46,23 @@ interface AttachmentTypeGroup {
   attachmentDtlTypeId: number | null;
   name: string;
   sortId: number;
-  items: ClientAdminApi.ClientAttachmentItemDto[];
+  items: Omit<ClientAdminApi.ClientAttachmentItemDto, 'clientVisible'>[];
+}
+
+/** 账期附件项DTO */
+interface BillingPeriodAttachmentItem {
+  id?: number;
+  attachmentId?: number;
+  attachmentDtlTypeId?: number;
+  attachmentDtlType?: ClientAdminApi.AttachmentDtlTypeSimpleDto | null;
+  displayOrder?: number;
+  url?: string;
+  mediaType?: number;
+  friendlyFileName?: string | null;
+  fileLength?: number | null;
+  creationTime?: string | null;
+  creatorUserId?: number | null;
+  creatorUserName?: string | null;
 }
 
 const ALLOWED_TYPES = [
@@ -94,12 +108,35 @@ const route = useRoute();
 const loading = ref(false);
 const uploadingTypeId = ref<number | null | undefined>(undefined);
 const groups = ref<AttachmentTypeGroup[]>([]);
-const clientVisibleByTypeId = ref<Map<number | null, boolean>>(new Map());
 const allAttachmentTypes = ref<ClientAdminApi.AttachmentDtlTypeSimpleDto[]>([]);
 /** 用户手动添加的非默认展示类型 */
 const manualTypeIds = ref<number[]>([]);
 const addOtherTypeVisible = ref(false);
 const selectedOtherTypeId = ref<number | undefined>(undefined);
+
+/** 账期附件列表 */
+const billingPeriodAttachments = ref<BillingPeriodAttachmentItem[]>([]);
+const billingPeriodLoading = ref(false);
+
+/** 账期附件分组 */
+const billingPeriodGroup = computed<AttachmentTypeGroup>(() => ({
+  attachmentDtlTypeId: null,
+  name: $t('client.attachment.billingPeriodAttachments'),
+  sortId: -1,
+  items: billingPeriodAttachments.value.map((item) => ({
+    id: item.id,
+    attachmentId: item.attachmentId,
+    attachmentDtlTypeId: item.attachmentDtlTypeId,
+    displayOrder: item.displayOrder ?? 0,
+    url: item.url,
+    mediaType: item.mediaType,
+    friendlyFileName: item.friendlyFileName,
+    fileLength: item.fileLength,
+    creationTime: item.creationTime,
+    creatorUserId: item.creatorUserId,
+    creatorUserName: item.creatorUserName,
+  })),
+}));
 
 const clientId = computed<string>(() => {
   const id = route.params.id || route.query.id;
@@ -119,104 +156,6 @@ const formatFileSize = (bytes?: number | null): string => {
 
 const getGroupKey = (typeId: number | null) =>
   typeId === null ? 'null' : String(typeId);
-
-const getClientVisible = (typeId: number | null) =>
-  clientVisibleByTypeId.value.get(typeId) ?? false;
-
-const setClientVisible = (typeId: number | null, value: boolean) => {
-  clientVisibleByTypeId.value.set(typeId, value);
-};
-
-/** 单文件客户可见性更新中的 AttachmentItem id 集合 */
-const visibilityUpdatingItemIds = ref<Set<number>>(new Set());
-/** 类型批量更新中的 attachmentDtlTypeId 集合 */
-const visibilityUpdatingGroupIds = ref<Set<number | null>>(new Set());
-
-const isItemVisibilityUpdating = (
-  item: ClientAdminApi.ClientAttachmentItemDto,
-) =>
-  typeof item.id === 'number' && visibilityUpdatingItemIds.value.has(item.id);
-
-const isGroupVisibilityUpdating = (group: AttachmentTypeGroup) =>
-  visibilityUpdatingGroupIds.value.has(group.attachmentDtlTypeId);
-
-/** 类型头 Checkbox 选中态：有附件时反映「全部可见」，否则回退为上传默认值 */
-const getGroupVisibleChecked = (group: AttachmentTypeGroup) => {
-  if (group.items.length === 0) {
-    return getClientVisible(group.attachmentDtlTypeId);
-  }
-  return group.items.every((item) => item.clientVisible === true);
-};
-
-/** 类型头 Checkbox 半选态：部分附件可见 */
-const getGroupVisibleIndeterminate = (group: AttachmentTypeGroup) => {
-  if (group.items.length === 0) return false;
-  const visibleCount = group.items.filter(
-    (item) => item.clientVisible === true,
-  ).length;
-  return visibleCount > 0 && visibleCount < group.items.length;
-};
-
-/** 类型批量修改客户可见：同步上传默认值，并批量更新该类型下既有附件 */
-const handleGroupVisibleChange = async (
-  group: AttachmentTypeGroup,
-  value: boolean,
-) => {
-  setClientVisible(group.attachmentDtlTypeId, value);
-
-  const targets = group.items.filter(
-    (item) => typeof item.id === 'number' && item.id > 0,
-  );
-  if (targets.length === 0) return;
-
-  const groupId = group.attachmentDtlTypeId;
-  visibilityUpdatingGroupIds.value = new Set(
-    visibilityUpdatingGroupIds.value,
-  ).add(groupId);
-  try {
-    await updateAttachmentItemsClientVisible(
-      targets.map((item) => ({ id: item.id as number, clientVisible: value })),
-    );
-    for (const item of group.items) {
-      item.clientVisible = value;
-    }
-    message.success($t('client.attachment.visibilityUpdateSuccess'));
-  } catch (error) {
-    console.error('更新客户可见性失败:', error);
-    message.error($t('client.attachment.visibilityUpdateFailed'));
-  } finally {
-    const next = new Set(visibilityUpdatingGroupIds.value);
-    next.delete(groupId);
-    visibilityUpdatingGroupIds.value = next;
-  }
-};
-
-/** 单文件切换客户可见 */
-const handleItemVisibleChange = async (
-  item: ClientAdminApi.ClientAttachmentItemDto,
-  value: boolean,
-) => {
-  if (typeof item.id !== 'number' || item.id <= 0) return;
-
-  const itemId = item.id;
-  visibilityUpdatingItemIds.value = new Set(
-    visibilityUpdatingItemIds.value,
-  ).add(itemId);
-  try {
-    await updateAttachmentItemsClientVisible([
-      { id: itemId, clientVisible: value },
-    ]);
-    item.clientVisible = value;
-    message.success($t('client.attachment.visibilityUpdateSuccess'));
-  } catch (error) {
-    console.error('更新客户可见性失败:', error);
-    message.error($t('client.attachment.visibilityUpdateFailed'));
-  } finally {
-    const next = new Set(visibilityUpdatingItemIds.value);
-    next.delete(itemId);
-    visibilityUpdatingItemIds.value = next;
-  }
-};
 
 const resolveGroupName = (
   typeId: number | null,
@@ -408,6 +347,22 @@ const loadAttachments = async () => {
   }
 };
 
+/** 加载账期附件列表 */
+const loadBillingPeriodAttachments = async () => {
+  if (!clientId.value) return;
+
+  billingPeriodLoading.value = true;
+  try {
+    const attachments = await getClientBillingPeriodAttachments(clientId.value);
+    billingPeriodAttachments.value = attachments ?? [];
+  } catch (error) {
+    console.error('加载账期附件失败:', error);
+    message.error($t('client.attachment.loadFailed'));
+  } finally {
+    billingPeriodLoading.value = false;
+  }
+};
+
 const isAllowedType = (file: File): boolean => {
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
   return ALLOWED_TYPES.some((allowed) => allowed.replace('.', '') === ext);
@@ -447,7 +402,6 @@ const handleBeforeUpload = async (
         {
           attachmentId: Number(uploaded.attachmentId),
           attachmentDtlTypeId: group.attachmentDtlTypeId ?? undefined,
-          clientVisible: getClientVisible(group.attachmentDtlTypeId),
           displayOrder: group.items.length,
           url: uploaded.url,
         },
@@ -543,6 +497,50 @@ const getFileIconColor = (
   return '#8c8c8c';
 };
 
+/** 获取账期附件文件名 */
+const getBillingPeriodFileName = (row: BillingPeriodAttachmentItem): string => {
+  const name = row.friendlyFileName || row.url || '';
+  return name.split('/').pop() || $t('system.basicData.attachmentFallback');
+};
+
+/** 获取账期附件文件扩展名 */
+const getBillingPeriodFileExtension = (
+  row: BillingPeriodAttachmentItem,
+): string => {
+  const source = row.friendlyFileName || row.url || '';
+  const match = source.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
+  return match ? (match[1]?.toLowerCase() ?? '') : '';
+};
+
+/** 判断账期附件是否为图片 */
+const isBillingPeriodImageFile = (row: BillingPeriodAttachmentItem): boolean =>
+  IMAGE_EXTENSIONS.has(getBillingPeriodFileExtension(row));
+
+/** 获取账期附件图标 */
+const getBillingPeriodFileIcon = (row: BillingPeriodAttachmentItem): string => {
+  const ext = getBillingPeriodFileExtension(row);
+  if (ext === 'pdf') return 'mdi:file-pdf-box';
+  if (['doc', 'docx'].includes(ext)) return 'mdi:file-word-box';
+  if (['csv', 'xls', 'xlsx'].includes(ext)) return 'mdi:file-excel-box';
+  if (['ppt', 'pptx'].includes(ext)) return 'mdi:file-powerpoint-box';
+  if (['rar', 'zip'].includes(ext)) return 'mdi:folder-zip-outline';
+  if (IMAGE_EXTENSIONS.has(ext)) return 'mdi:file-image-outline';
+  return 'mdi:file-document-outline';
+};
+
+/** 获取账期附件图标颜色 */
+const getBillingPeriodFileIconColor = (
+  row: BillingPeriodAttachmentItem,
+): string => {
+  const ext = getBillingPeriodFileExtension(row);
+  if (ext === 'pdf') return '#e5252a';
+  if (['doc', 'docx'].includes(ext)) return '#2b579a';
+  if (['csv', 'xls', 'xlsx'].includes(ext)) return '#217346';
+  if (['ppt', 'pptx'].includes(ext)) return '#d24726';
+  if (IMAGE_EXTENSIONS.has(ext)) return '#8b5cf6';
+  return '#8c8c8c';
+};
+
 const previewOpen = ref(false);
 const previewUrl = ref('');
 const previewFileName = ref('');
@@ -563,8 +561,24 @@ const handlePreview = (row: ClientAdminApi.ClientAttachmentItemDto) => {
   previewOpen.value = true;
 };
 
+/** 预览账期附件 */
+const handleBillingPeriodPreview = (row: BillingPeriodAttachmentItem) => {
+  if (!row.url) {
+    message.warning($t('client.attachment.noFileUrl'));
+    return;
+  }
+  previewUrl.value = row.url;
+  previewFileName.value = getBillingPeriodFileName(row);
+  previewUploader.value = row.creatorUserName ?? '';
+  previewUploadTime.value = row.creationTime
+    ? formatDateTime(row.creationTime)
+    : '';
+  previewOpen.value = true;
+};
+
 onMounted(() => {
   loadAttachments();
+  loadBillingPeriodAttachments();
 });
 </script>
 
@@ -584,6 +598,100 @@ onMounted(() => {
       </div>
 
       <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <!-- 账期附件卡片 -->
+        <Card
+          v-if="billingPeriodAttachments.length > 0"
+          :key="'billing-period'"
+          size="small"
+          class="attachment-card"
+        >
+          <template #title>
+            <div class="flex items-center gap-2">
+              <span class="font-medium">
+                {{ $t('client.attachment.billingPeriodAttachments') }}
+              </span>
+              <span class="text-xs font-normal text-gray-400">
+                {{
+                  $t('client.attachment.fileCount', [
+                    billingPeriodAttachments.length,
+                  ])
+                }}
+              </span>
+            </div>
+          </template>
+
+          <div class="attachment-card-list">
+            <div
+              v-for="item in billingPeriodAttachments"
+              :key="item.id"
+              class="attachment-file-item"
+              @click="handleBillingPeriodPreview(item)"
+            >
+              <img
+                v-if="isBillingPeriodImageFile(item) && item.url"
+                :src="buildAttachmentUrl(item.url)"
+                class="attachment-file-thumb"
+                alt=""
+              />
+              <IconifyIcon
+                v-else
+                :icon="getBillingPeriodFileIcon(item)"
+                :style="{ color: getBillingPeriodFileIconColor(item) }"
+                class="size-8 shrink-0"
+              />
+
+              <div class="min-w-0 flex-1">
+                <div
+                  class="truncate text-sm"
+                  :title="getBillingPeriodFileName(item)"
+                >
+                  {{ getBillingPeriodFileName(item) }}
+                </div>
+                <div
+                  class="attachment-file-meta text-xs text-gray-400"
+                  :title="
+                    [
+                      formatFileSize(item.fileLength),
+                      item.creatorUserName
+                        ? `${$t('client.attachment.uploader')}：${item.creatorUserName}`
+                        : '',
+                      item.creationTime
+                        ? `${$t('client.attachment.uploadTime')}：${formatDateTime(item.creationTime)}`
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  "
+                >
+                  <span>{{ formatFileSize(item.fileLength) }}</span>
+                  <span v-if="item.creatorUserName">
+                    {{ $t('client.attachment.uploader') }}：{{
+                      item.creatorUserName
+                    }}
+                  </span>
+                  <span v-if="item.creationTime">
+                    {{ $t('client.attachment.uploadTime') }}：{{
+                      formatDateTime(item.creationTime)
+                    }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="attachment-file-actions" @click.stop>
+                <Tooltip :title="$t('client.attachment.preview')">
+                  <Button
+                    type="text"
+                    size="small"
+                    @click="handleBillingPeriodPreview(item)"
+                  >
+                    <IconifyIcon icon="mdi:eye-outline" />
+                  </Button>
+                </Tooltip>
+              </div>
+            </div>
+          </div>
+        </Card>
+
         <Card
           v-for="group in groups"
           :key="getGroupKey(group.attachmentDtlTypeId)"
@@ -602,37 +710,22 @@ onMounted(() => {
           </template>
 
           <template v-if="canEdit" #extra>
-            <div class="flex items-center gap-3">
-              <Checkbox
-                :checked="getGroupVisibleChecked(group)"
-                :indeterminate="getGroupVisibleIndeterminate(group)"
-                :disabled="isGroupVisibilityUpdating(group)"
-                @update:checked="
-                  (value) => handleGroupVisibleChange(group, !!value)
-                "
+            <Upload
+              :before-upload="(file) => handleBeforeUpload(file, group)"
+              :disabled="uploadingTypeId === group.attachmentDtlTypeId"
+              :show-upload-list="false"
+              multiple
+            >
+              <Button
+                type="link"
+                size="small"
+                class="px-0"
+                :loading="uploadingTypeId === group.attachmentDtlTypeId"
               >
-                <span class="text-xs">
-                  {{ $t('client.attachment.clientVisible') }}
-                </span>
-              </Checkbox>
-
-              <Upload
-                :before-upload="(file) => handleBeforeUpload(file, group)"
-                :disabled="uploadingTypeId === group.attachmentDtlTypeId"
-                :show-upload-list="false"
-                multiple
-              >
-                <Button
-                  type="link"
-                  size="small"
-                  class="px-0"
-                  :loading="uploadingTypeId === group.attachmentDtlTypeId"
-                >
-                  <IconifyIcon icon="mdi:upload" class="mr-1 size-4" />
-                  {{ $t('client.attachment.upload') }}
-                </Button>
-              </Upload>
-            </div>
+                <IconifyIcon icon="mdi:upload" class="mr-1 size-4" />
+                {{ $t('client.attachment.upload') }}
+              </Button>
+            </Upload>
           </template>
 
           <div class="attachment-card-list">
@@ -695,25 +788,6 @@ onMounted(() => {
                   </span>
                 </div>
               </div>
-
-              <span v-if="canEdit" class="shrink-0" @click.stop>
-                <Tooltip
-                  :title="
-                    item.clientVisible
-                      ? $t('client.attachment.clientVisibleTip')
-                      : $t('client.attachment.clientInvisibleTip')
-                  "
-                >
-                  <Switch
-                    size="small"
-                    :checked="!!item.clientVisible"
-                    :loading="isItemVisibilityUpdating(item)"
-                    @change="
-                      (checked) => handleItemVisibleChange(item, !!checked)
-                    "
-                  />
-                </Tooltip>
-              </span>
 
               <div class="attachment-file-actions" @click.stop>
                 <Tooltip :title="$t('client.attachment.preview')">

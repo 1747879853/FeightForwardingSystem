@@ -67,7 +67,7 @@ export function useOrderFeeActions(
       paySide: props.type,
       currencyId: '',
       unit: '',
-      feeStatus: 0,
+      combinedFeeStatus: 0,
       taxRate: 0,
       taskStatus: '',
       invoiceStatus: 0,
@@ -272,7 +272,7 @@ export function useOrderFeeActions(
       .filter(
         (row) =>
           row.combinedFeeStatus === feeConstants.getFeeStatusValue.Entering ||
-          row.combinedFeeStatus === feeConstants.getFeeStatusValue.Rejected 
+          row.combinedFeeStatus === feeConstants.getFeeStatusValue.Rejected,
       );
 
     // ✅ 如果没有符合条件的费用（录入状态、驳回状态、申请修改状态），给出提示
@@ -430,7 +430,7 @@ export function useOrderFeeActions(
     const list = (dataContext.dataSource.value ?? []).filter(
       (row) =>
         row.combinedFeeStatus === feeConstants.getFeeStatusValue.Entering ||
-        row.combinedFeeStatus === feeConstants.getFeeStatusValue.Rejected 
+        row.combinedFeeStatus === feeConstants.getFeeStatusValue.Rejected,
     );
 
     const editList = dataContext.sanitizeOrderFee(list);

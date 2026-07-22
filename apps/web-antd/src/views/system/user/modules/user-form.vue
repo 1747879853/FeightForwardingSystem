@@ -1,13 +1,17 @@
 <script lang="ts" setup>
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
+import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
-import { message } from 'ant-design-vue';
+import { message, Tree, Radio, Tag } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
-import { createOrUpdateUser, getUserForEdit } from '#/api/system/user-admin';
+import {
+  createOrUpdateUserWithDataPermission,
+  getUserForEdit,
+} from '#/api/system/user-admin';
 import {
   getOrganizationUnitTree,
   resolveOrganizationCompanyName,
@@ -32,34 +36,329 @@ const id = ref<number>();
 const orgTreePromise = ref<ReturnType<typeof getOrganizationUnitTree> | null>(
   null,
 );
-const lastSyncedOrganizationId = ref<number | undefined>();
+
+// 多组织选择相关状态
+const selectedOrganizations = ref<
+  SystemUserAdminApi.UpdateUserOrganizationPathDto[]
+>([]);
+const organizationTreeData = ref<any[]>([]); // 使用any类型以兼容Tree组件的key字段要求
+const checkedOrgKeys = ref<number[]>([]); // Tree UI显示的选中keys
+const actualSelectedIds = ref<Set<number>>(new Set()); // 实际用户选中的节点IDs
+const expandedKeys = ref<number[]>([]);
+const disabledNodeIds = ref<Set<number>>(new Set()); // 需要禁用的节点IDs
 
 async function ensureOrgTree() {
   if (!orgTreePromise.value) {
     orgTreePromise.value = getOrganizationUnitTree();
   }
-  return orgTreePromise.value;
+  const tree = await orgTreePromise.value;
+
+  // 为Tree组件添加key字段（与id相同）
+  const addKeyToTree = (
+    nodes: SystemOrganizationUnitApi.OrganizationUnitTreeDto[],
+    disableIds: Set<number> = new Set(),
+  ): any[] => {
+    return nodes.map((node) => ({
+      ...node,
+      key: node.id,
+      disabled: disableIds.has(node.id), // 根据禁用集合设置disabled状态
+      children: node.children
+        ? addKeyToTree(node.children, disableIds)
+        : undefined,
+    }));
+  };
+
+  organizationTreeData.value = addKeyToTree(tree, disabledNodeIds.value);
+
+  // 不默认展开所有节点，让用户手动展开需要的组织
+  expandedKeys.value = [];
+  return tree;
 }
 
-async function syncCompanyName(
-  organizationId?: number | null,
-  apiCompanyName?: string | null,
-) {
-  const trimmedApiName = apiCompanyName?.trim();
-  if (trimmedApiName) {
-    await formApi.setFieldValue('companyName', trimmedApiName);
+// 处理树节点选中变化
+const handleTreeCheck = (checkedKeys: any, info: any) => {
+  const keys = Array.isArray(checkedKeys) ? checkedKeys : checkedKeys.checked;
+
+  // 直接使用用户选中的节点（不进行级联）
+  // 智能过滤：如果某节点的子节点也被选中，则移除该节点，只保留最深层的节点
+  const filterEffectiveNodes = (selectedIds: number[]): number[] => {
+    const idSet = new Set(selectedIds);
+    const effectiveNodes: number[] = [];
+
+    selectedIds.forEach((id) => {
+      // 查找该节点是否有子节点也被选中
+      const findNode = (nodes: any[], targetId: number): boolean => {
+        for (const node of nodes) {
+          if (node.id === targetId) {
+            // 找到目标节点，检查其子节点是否有被选中的
+            if (node.children && node.children.length > 0) {
+              return node.children.some((child: any) => idSet.has(child.id));
+            }
+            return false;
+          }
+          if (node.children && node.children.length > 0) {
+            if (findNode(node.children, targetId)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      const hasCheckedChild = findNode(organizationTreeData.value, id);
+
+      // 只有当没有子节点被选中时，才认为这是有效节点
+      if (!hasCheckedChild) {
+        effectiveNodes.push(id);
+      }
+    });
+
+    return effectiveNodes;
+  };
+
+  // 应用智能过滤，只保留每一级的最后一层组织
+  const effectiveSelectedIds = filterEffectiveNodes(keys);
+
+  // 更新实际选中的IDs集合
+  actualSelectedIds.value = new Set(effectiveSelectedIds);
+
+  // 更新selectedOrganizations，保留原有的default设置
+  const newOrgs = effectiveSelectedIds.map((id: number) => {
+    const existing = selectedOrganizations.value.find((org) => org.id === id);
+    return {
+      id,
+      default: existing?.default || false,
+    };
+  });
+
+  selectedOrganizations.value = newOrgs;
+
+  // UI显示与提交数据一致
+  checkedOrgKeys.value = effectiveSelectedIds;
+
+  // 更新禁用节点状态
+  updateDisabledNodes(effectiveSelectedIds);
+};
+
+// 设置默认组织
+const setDefaultOrg = (orgId: number) => {
+  // 验证是否为选中的节点
+  const isSelected = selectedOrganizations.value.some(
+    (org) => org.id === orgId,
+  );
+
+  if (!isSelected) {
+    message.warning('只能将已选中的组织设置为默认组织');
     return;
   }
 
-  if (organizationId === undefined || organizationId === null) {
+  // 直接设置默认组织，不进行复杂的叶子节点验证
+  // 因为用户已经通过树选择器选择了该节点
+  selectedOrganizations.value = selectedOrganizations.value.map((org) => ({
+    ...org,
+    default: org.id === orgId,
+  }));
+};
+
+// 查找节点的根节点ID
+const findRootNodeId = (nodes: any[], targetId: number): number | null => {
+  for (const node of nodes) {
+    if (node.children && node.children.length > 0) {
+      // 如果目标ID在当前节点的子树中，则当前节点就是根节点
+      if (findNodeInSubtree(node.children, targetId)) {
+        return node.id;
+      }
+    }
+  }
+  return null;
+};
+
+// 检查节点是否在子树中
+const findNodeInSubtree = (nodes: any[], targetId: number): boolean => {
+  for (const node of nodes) {
+    if (node.id === targetId) {
+      return true;
+    }
+    if (node.children && node.children.length > 0) {
+      if (findNodeInSubtree(node.children, targetId)) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+// 获取某个根节点下的所有节点IDs
+const getAllNodeIdsUnderRoot = (nodes: any[], rootId: number): number[] => {
+  const ids: number[] = [];
+
+  const collectIds = (nodeList: any[]) => {
+    for (const node of nodeList) {
+      ids.push(node.id);
+      if (node.children && node.children.length > 0) {
+        collectIds(node.children);
+      }
+    }
+  };
+
+  // 找到根节点并收集其下所有节点
+  const findRootAndCollect = (nodeList: any[]): boolean => {
+    for (const node of nodeList) {
+      if (node.id === rootId) {
+        collectIds([node]);
+        return true;
+      }
+      if (node.children && node.children.length > 0) {
+        if (findRootAndCollect(node.children)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  findRootAndCollect(nodes);
+  return ids;
+};
+
+// 更新禁用节点列表
+const updateDisabledNodes = (selectedIds: number[]) => {
+  const newDisabledIds = new Set<number>();
+
+  // 对于每个选中的节点，找到其根节点，并将该根节点下的其他所有节点禁用
+  selectedIds.forEach((selectedId) => {
+    const rootNodeId = findRootNodeId(organizationTreeData.value, selectedId);
+    if (rootNodeId !== null) {
+      // 获取该根节点下的所有节点IDs
+      const allNodeIdsUnderRoot = getAllNodeIdsUnderRoot(
+        organizationTreeData.value,
+        rootNodeId,
+      );
+
+      // 将除了选中节点之外的所有节点加入禁用集合
+      allNodeIdsUnderRoot.forEach((nodeId) => {
+        if (nodeId !== selectedId) {
+          newDisabledIds.add(nodeId);
+        }
+      });
+    }
+
+    // 对于每个选中的节点，递归禁用其所有子节点
+    const disableAllChildren = (nodes: any[], targetId: number) => {
+      for (const node of nodes) {
+        if (node.id === targetId) {
+          // 找到目标节点，将其所有子节点加入禁用集合
+          if (node.children && node.children.length > 0) {
+            const collectAllChildrenIds = (childNodes: any[]) => {
+              childNodes.forEach((child) => {
+                newDisabledIds.add(child.id);
+                if (child.children && child.children.length > 0) {
+                  collectAllChildrenIds(child.children);
+                }
+              });
+            };
+            collectAllChildrenIds(node.children);
+          }
+          return true;
+        }
+        if (node.children && node.children.length > 0) {
+          if (disableAllChildren(node.children, targetId)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    disableAllChildren(organizationTreeData.value, selectedId);
+  });
+
+  disabledNodeIds.value = newDisabledIds;
+
+  // 重新构建树数据，应用禁用状态
+  const rebuildTreeWithDisabled = (
+    nodes: SystemOrganizationUnitApi.OrganizationUnitTreeDto[],
+    disableIds: Set<number>,
+  ): any[] => {
+    return nodes.map((node) => ({
+      ...node,
+      key: node.id,
+      disabled: disableIds.has(node.id),
+      children: node.children
+        ? rebuildTreeWithDisabled(node.children, disableIds)
+        : undefined,
+    }));
+  };
+
+  organizationTreeData.value = rebuildTreeWithDisabled(
+    organizationTreeData.value,
+    disabledNodeIds.value,
+  );
+};
+
+// 移除组织
+const removeOrg = (orgId: number) => {
+  // 从实际选中IDs中移除
+  actualSelectedIds.value.delete(orgId);
+
+  // 从selectedOrganizations中移除
+  selectedOrganizations.value = selectedOrganizations.value.filter(
+    (org) => org.id !== orgId,
+  );
+
+  // 从checkedOrgKeys中移除（UI层面）
+  checkedOrgKeys.value = checkedOrgKeys.value.filter((id) => id !== orgId);
+
+  // 重新计算禁用节点列表
+  updateDisabledNodes(Array.from(actualSelectedIds.value));
+};
+
+// 获取组织显示名称
+const getOrgDisplayName = (orgId: number): string => {
+  const findNode = (
+    nodes: SystemOrganizationUnitApi.OrganizationUnitTreeDto[],
+    id: number,
+  ): SystemOrganizationUnitApi.OrganizationUnitTreeDto | null => {
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findNode(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const node = findNode(organizationTreeData.value, orgId);
+  return node?.displayName || `ID:${orgId}`;
+};
+
+// 同步公司名称（使用第一个选中的组织的公司）
+async function syncCompanyName() {
+  if (selectedOrganizations.value.length === 0) {
     await formApi.setFieldValue('companyName', '');
     return;
   }
 
   const tree = await ensureOrgTree();
-  const companyName = resolveOrganizationCompanyName(tree, organizationId);
+  const firstOrgId = selectedOrganizations.value[0]?.id;
+  if (!firstOrgId) {
+    await formApi.setFieldValue('companyName', '');
+    return;
+  }
+
+  const companyName = resolveOrganizationCompanyName(tree, firstOrgId);
   await formApi.setFieldValue('companyName', companyName);
 }
+
+// 监听组织选择变化
+watch(
+  () => selectedOrganizations.value,
+  () => {
+    void syncCompanyName();
+  },
+  { deep: true },
+);
 
 const [Form, formApi] = useVbenForm({
   commonConfig: {
@@ -71,13 +370,6 @@ const [Form, formApi] = useVbenForm({
   schema: useFormSchema(),
   showDefaultActions: false,
   wrapperClass: 'grid-cols-2',
-  handleValuesChange: (values) => {
-    if (values.organizationId === lastSyncedOrganizationId.value) {
-      return;
-    }
-    lastSyncedOrganizationId.value = values.organizationId;
-    void syncCompanyName(values.organizationId);
-  },
 });
 
 const [Modal, modalApi] = useVbenModal({
@@ -86,6 +378,27 @@ const [Modal, modalApi] = useVbenModal({
     if (!valid) return;
     const values = await formApi.getValues();
 
+    // 验证至少选择一个组织
+    if (selectedOrganizations.value.length === 0) {
+      message.error(
+        $t('system.user.organizationRequired') || '请至少选择一个组织',
+      );
+      return;
+    }
+
+    // 验证最多一个默认组织
+    const defaultCount = selectedOrganizations.value.filter(
+      (org) => org.default,
+    ).length;
+    if (defaultCount > 1) {
+      message.error(
+        $t('system.user.onlyOneDefaultOrganization') ||
+          '最多只能设置一个默认组织',
+      );
+      return;
+    }
+
+    // 构建提交数据
     const submitData: SystemUserAdminApi.UserInAdminInputDto = {
       userName: values.userName,
       nickName: values.nickName,
@@ -95,7 +408,7 @@ const [Modal, modalApi] = useVbenModal({
       status: values.status,
       roleIds: values.roleIds,
       avatar: normalizeAvatarSubmitValue(values.avatar, formData.value?.avatar),
-      organizationId: values.organizationId,
+      organizations: selectedOrganizations.value, // 使用新的organizations字段
       userAttribute: combineUserAttribute(values.userAttributeFlags ?? []),
       enName: values.enName || undefined,
       qq: values.qq || undefined,
@@ -109,6 +422,7 @@ const [Modal, modalApi] = useVbenModal({
       sendAddrPort: values.sendAddrPort || undefined,
       officeTel: values.officeTel || undefined,
       senderDisplayName: values.senderDisplayName || undefined,
+      shouldChangePasswordOnNextLogin: values.shouldChangePasswordOnNextLogin,
     };
 
     if (!id.value && values.password) {
@@ -120,7 +434,7 @@ const [Modal, modalApi] = useVbenModal({
     }
 
     modalApi.lock();
-    createOrUpdateUser(submitData)
+    createOrUpdateUserWithDataPermission(submitData)
       .then(() => {
         message.success($t('ui.actionMessage.operationSuccess'));
         emits('success');
@@ -137,16 +451,53 @@ const [Modal, modalApi] = useVbenModal({
         SystemUserAdminApi.SystemUser & { focusRoles?: boolean }
       >();
       formApi.resetForm();
-      lastSyncedOrganizationId.value = undefined;
       orgTreePromise.value = null;
+
+      // 重置多组织选择状态
+      selectedOrganizations.value = [];
+      checkedOrgKeys.value = [];
+      actualSelectedIds.value = new Set();
+      expandedKeys.value = [];
+      disabledNodeIds.value = new Set(); // 重置禁用节点集合
+
+      // 加载组织树
+      await ensureOrgTree();
 
       if (data?.id) {
         id.value = data.id;
         try {
           const userDetail = await getUserForEdit(data.id);
           formData.value = { ...data, ...userDetail };
-          const organizationId = userDetail.organizationId;
-          lastSyncedOrganizationId.value = organizationId;
+
+          // 处理organizations数据
+          if (userDetail.organizations && userDetail.organizations.length > 0) {
+            selectedOrganizations.value = userDetail.organizations.map(
+              (org) => ({
+                id:
+                  org.oneOrganizationPath[org.oneOrganizationPath.length - 1]
+                    ?.id || 0,
+                default: org.default,
+              }),
+            );
+
+            // 初始化实际选中的IDs
+            actualSelectedIds.value = new Set(
+              selectedOrganizations.value.map((org) => org.id),
+            );
+            checkedOrgKeys.value = Array.from(actualSelectedIds.value);
+
+            // 只展开已选组织的父节点路径
+            const parentIds = new Set<number>();
+            userDetail.organizations.forEach((org) => {
+              org.oneOrganizationPath.forEach((path) => {
+                parentIds.add(path.id);
+              });
+            });
+            expandedKeys.value = Array.from(parentIds);
+
+            // 计算并应用禁用节点
+            updateDisabledNodes(Array.from(actualSelectedIds.value));
+          }
 
           await nextTick();
           formApi.setValues({
@@ -158,7 +509,6 @@ const [Modal, modalApi] = useVbenModal({
             isActive: userDetail.isActive,
             status: userDetail.status,
             avatar: avatarUrlToFormValue(userDetail.avatar),
-            organizationId,
             userAttributeFlags: parseUserAttribute(userDetail.userAttribute),
             enName: userDetail.enName,
             qq: userDetail.qq,
@@ -175,8 +525,11 @@ const [Modal, modalApi] = useVbenModal({
             sendAddrPort: userDetail.sendAddrPort,
             officeTel: userDetail.officeTel,
             senderDisplayName: userDetail.senderDisplayName,
+            shouldChangePasswordOnNextLogin:
+              userDetail.shouldChangePasswordOnNextLogin,
           });
-          await syncCompanyName(organizationId, userDetail.companyName);
+
+          await syncCompanyName();
 
           if (data.focusRoles) {
             // 可以通过 formApi 实现聚焦逻辑
@@ -184,8 +537,35 @@ const [Modal, modalApi] = useVbenModal({
         } catch (error) {
           console.error('获取用户详情失败:', error);
           formData.value = data;
-          const organizationId = data.organizationId;
-          lastSyncedOrganizationId.value = organizationId;
+
+          // 降级处理
+          if (data.organizations && data.organizations.length > 0) {
+            selectedOrganizations.value = data.organizations.map((org) => ({
+              id:
+                org.oneOrganizationPath[org.oneOrganizationPath.length - 1]
+                  ?.id || 0,
+              default: org.default,
+            }));
+
+            // 初始化实际选中的IDs
+            actualSelectedIds.value = new Set(
+              selectedOrganizations.value.map((org) => org.id),
+            );
+            checkedOrgKeys.value = Array.from(actualSelectedIds.value);
+
+            // 只展开已选组织的父节点路径
+            const parentIds = new Set<number>();
+            data.organizations.forEach((org) => {
+              org.oneOrganizationPath.forEach((path) => {
+                parentIds.add(path.id);
+              });
+            });
+            expandedKeys.value = Array.from(parentIds);
+
+            // 计算并应用禁用节点
+            updateDisabledNodes(Array.from(actualSelectedIds.value));
+          }
+
           await nextTick();
           formApi.setValues({
             id: data.id,
@@ -196,7 +576,6 @@ const [Modal, modalApi] = useVbenModal({
             isActive: data.isActive,
             status: data.status,
             avatar: avatarUrlToFormValue(data.avatar),
-            organizationId,
             userAttributeFlags: parseUserAttribute(data.userAttribute),
             enName: data.enName,
             qq: data.qq,
@@ -212,7 +591,7 @@ const [Modal, modalApi] = useVbenModal({
             officeTel: data.officeTel,
             senderDisplayName: data.senderDisplayName,
           });
-          await syncCompanyName(organizationId);
+          await syncCompanyName();
         }
       } else {
         id.value = undefined;
@@ -230,7 +609,90 @@ const getModalTitle = computed(() => {
 </script>
 
 <template>
-  <Modal :title="getModalTitle" class="w-[800px]">
-    <Form class="mx-4" />
+  <Modal :title="getModalTitle" class="w-[900px]">
+    <div class="mx-4">
+      <Form />
+
+      <!-- 多组织选择区域 -->
+      <div class="mt-4 rounded border p-3">
+        <div class="mb-3 font-medium">
+          {{ $t('system.user.organizations') || '所属组织' }}
+        </div>
+
+        <!-- 已选组织展示 -->
+        <div v-if="selectedOrganizations.length > 0" class="mb-3">
+          <div class="mb-2 text-sm text-gray-600">
+            {{ $t('system.user.selectedOrganizations') || '已选组织' }}
+            <span class="ml-1 text-xs text-gray-400"
+              >（点击"设为默认"指定默认组织）</span
+            >
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <Tag
+              v-for="org in selectedOrganizations"
+              :key="org.id"
+              closable
+              :color="org.default ? 'blue' : 'default'"
+              @close="removeOrg(org.id)"
+            >
+              <div class="flex items-center gap-1">
+                <span>{{ getOrgDisplayName(org.id) }}</span>
+                <template v-if="!org.default">
+                  <Radio
+                    :checked="false"
+                    size="small"
+                    class="ml-1"
+                    @click.stop="setDefaultOrg(org.id)"
+                  >
+                    {{ $t('system.user.setDefault') || '设为默认' }}
+                  </Radio>
+                </template>
+                <span v-else class="ml-1 text-xs font-medium text-blue-600">
+                  ✓ {{ $t('system.user.isDefault') || '默认' }}
+                </span>
+              </div>
+            </Tag>
+          </div>
+        </div>
+
+        <!-- 组织树选择器 -->
+        <div
+          class="max-h-[400px] overflow-y-auto rounded border bg-gray-50 p-2"
+        >
+          <Tree
+            v-model:expanded-keys="expandedKeys"
+            :tree-data="organizationTreeData"
+            :field-names="{
+              title: 'displayName',
+              key: 'id',
+              children: 'children',
+            }"
+            checkable
+            :check-strictly="true"
+            :checked-keys="checkedOrgKeys"
+            block-node
+            @check="handleTreeCheck"
+          />
+        </div>
+
+        <!-- 提示信息 -->
+        <div class="mt-2 text-xs text-gray-500">
+          {{
+            $t('system.user.organizationSelectorTip') ||
+            '勾选组织进行选择，点击"设为默认"指定默认组织（最多一个）'
+          }}
+        </div>
+      </div>
+    </div>
   </Modal>
 </template>
+
+<style scoped>
+.border {
+  border: 1px solid #d9d9d9;
+}
+
+.rounded {
+  border-radius: 4px;
+}
+</style>
