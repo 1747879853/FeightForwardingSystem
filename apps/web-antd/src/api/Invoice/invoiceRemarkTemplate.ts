@@ -31,15 +31,29 @@ export namespace InvoiceRemarkTemplateApi {
   /**
    * 发票备注模板详情DTO
    */
+  /** 组织机构简易DTO（组织串 orgs 元素） */
+  export interface OrganizationUnitSimpleDto {
+    /** 组织id */
+    id: number;
+    /** 组织名 */
+    name?: string;
+    /** 本位币id，可空 */
+    localCurrencyId?: null | number;
+    /** 本位币编码，可空 */
+    localCurrencyCode?: null | string;
+  }
+
   export interface InvoiceRemarkTemDetailDto {
     id: string;
     name: string;
-    companyId: number;
+    /** 归属组织id（备注模板必填，恒为有效组织id） */
+    orgId: number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: null | OrganizationUnitSimpleDto[];
     currencyId: number;
     template: string;
     default: boolean;
     creatorUserName: string;
-    company: CompanySimpleDto;
     currency: CurrencySimpleDto;
   }
 
@@ -53,7 +67,8 @@ export namespace InvoiceRemarkTemplateApi {
    */
   export interface InvoiceRemarkTemAddDto {
     name: string;
-    companyId: number;
+    /** 归属组织id */
+    orgId: number;
     currencyId: number;
     template?: string;
     default: boolean;
@@ -77,7 +92,6 @@ export namespace InvoiceRemarkTemplateApi {
    * 查询参数DTO
    */
   export interface InvoiceRemarkTemQueryDto {
-    companyId?: number;
     name?: string;
     currencyId?: number;
     default?: boolean;

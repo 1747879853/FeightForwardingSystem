@@ -122,14 +122,17 @@ export function useOrderFeeLinkage(
 
       const orderDetail = await loadOrderDetailCached(transportOrderId);
 
-      if (orderDetail?.companys?.length > 0) {
-        const company = orderDetail.companys[0];
-        const isLocal = company?.localCurrencyId === currencyId;
+      const companyNode = orderDetail?.orgs?.find(
+        (node) =>
+          node?.localCurrencyId !== null && node?.localCurrencyId !== undefined,
+      );
+      if (companyNode) {
+        const isLocal = companyNode.localCurrencyId === currencyId;
         console.log(
           '💱 [checkIfLocalCurrency] 币别ID:',
           currencyId,
           '本位币ID:',
-          company?.localCurrencyId,
+          companyNode.localCurrencyId,
           '是否本位币:',
           isLocal,
         );

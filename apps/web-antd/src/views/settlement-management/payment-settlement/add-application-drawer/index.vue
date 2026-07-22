@@ -465,11 +465,11 @@ function getCurrencyGroupUnsettledTotal(
   return currencyStats.length > 0 ? currencyStats.join('  ') : '-';
 }
 
-// 获取公司名称
+// 获取归属组织名称（组织串末端）
 function getCompanyName(
   record: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto,
 ): string {
-  return record.companys?.[0]?.name || '-';
+  return record.orgs?.at(-1)?.name || '-';
 }
 
 // 表格列配置 - 第一层（付费申请）
@@ -537,7 +537,7 @@ const columns: ColumnsType<PaymentApplicationAdminApi.PaymentApplicationForSettl
       align: 'right',
     },
     {
-      title: '所属公司',
+      title: '归属组织',
       key: 'companyName',
       width: 150,
     },

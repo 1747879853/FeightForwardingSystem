@@ -104,6 +104,8 @@ export namespace InvoiceIssueApi {
 
   /** 新增发票开出DTO */
   export interface InvoiceIssueAddDto {
+    /** 归属组织id */
+    orgId: number;
     /** 发票开出方式 */
     invoiceIssueType: InvoiceIssueType;
     /** 发票号 */
@@ -160,12 +162,26 @@ export namespace InvoiceIssueApi {
     codeInvoice: CodeInvoiceSimpleDto;
   }
 
+  /** 组织机构简易DTO（组织串 orgs 元素） */
+  export interface OrganizationUnitSimpleDto {
+    /** 组织id */
+    id: number;
+    /** 组织名 */
+    name?: string;
+    /** 本位币id，可空 */
+    localCurrencyId?: null | number;
+    /** 本位币编码，可空 */
+    localCurrencyCode?: null | string;
+  }
+
   /** 发票开出详情DTO */
   export interface InvoiceIssueDetailDto {
     /** 主键ID */
     id: string;
-    /** 所属公司ID */
-    companyId: number;
+    /** 归属组织id */
+    orgId: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: null | OrganizationUnitSimpleDto[];
     /** 发票开出方式 */
     invoiceIssueType: InvoiceIssueType;
     /** 开出单号 */
@@ -219,7 +235,10 @@ export namespace InvoiceIssueApi {
   /** 发票开出列表项DTO */
   export interface InvoiceIssueListDto {
     id: string;
-    companyId: number;
+    /** 归属组织id */
+    orgId: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: null | OrganizationUnitSimpleDto[];
     invoiceIssueType: InvoiceIssueType;
     applicationNo: string;
     invoiceNo?: string;
@@ -401,6 +420,8 @@ export namespace InvoiceIssueApi {
     settlementName?: string;
     /** ✅ 所属公司名称 */
     companyName?: string;
+    /** 归属组织id */
+    orgId?: null | number;
     /** 币别代码 */
     currencyCode?: string;
     /** 发票汇率 */
@@ -473,7 +494,7 @@ async function editInvoiceIssue(data: InvoiceIssueApi.InvoiceIssueEditDto) {
 async function deleteInvoiceIssue(id: string) {
   return requestClient.delete<boolean>(
     '/services/app/InvoiceIssueAdmin/DeleteAsync',
-    { data: { id} },
+    { data: { id } },
   );
 }
 

@@ -410,7 +410,7 @@ function transformToTreeData(
           (o: any) => o.value === item.transportOrder?.bizType,
         )?.label || '-',
       carrier: item.seaExport?.carrierName || '-',
-      company: item.transportOrder.companys[0].name || '-',
+      company: item.transportOrder.orgs?.at(-1)?.name || '-',
       checked: false,
       feeDetails: childrenList, // ✅ 使用 feeDetails 而非 children，避免被 Table 识别为树形结构
     };

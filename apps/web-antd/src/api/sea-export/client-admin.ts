@@ -180,8 +180,8 @@ export namespace ClientAdminApi {
     enterpriseType?: number;
     /** 是否共享 */
     isShared?: boolean;
-    /** 展示归属公司id */
-    showCompanyId?: number;
+    /** 归属组织id（可选） */
+    orgId?: null | number;
     isDeleted?: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -310,8 +310,20 @@ export namespace ClientAdminApi {
     enterpriseType?: number;
     /** 是否共享 */
     isShared?: boolean;
-    /** 展示归属公司id */
-    showCompanyId?: number;
+    /** 归属组织id（可选） */
+    orgId?: null | number;
+  }
+
+  /** 组织机构简易DTO（组织串 orgs 元素） */
+  export interface OrganizationUnitSimpleDto {
+    /** 组织id */
+    id: number;
+    /** 组织名 */
+    name?: string;
+    /** 本位币id，可空 */
+    localCurrencyId?: null | number;
+    /** 本位币编码，可空 */
+    localCurrencyCode?: null | string;
   }
 
   /** 简易币种DTO */
@@ -569,6 +581,10 @@ export namespace ClientAdminApi {
     reconcilers?: ClientReconcilerDto[];
     /** 国家 */
     country?: CountryCodeDto;
+    /** 归属组织id（可空） */
+    orgId?: null | number;
+    /** 组织串（从最高级组织到该组织），可空 */
+    orgs?: null | OrganizationUnitSimpleDto[];
     isDeleted: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -627,8 +643,8 @@ export namespace ClientAdminApi {
     EnterpriseType?: number;
     /** 是否共享 */
     IsShared?: boolean;
-    /** 展示归属公司ID */
-    ShowCompanyId?: number;
+    /** 归属组织ID，为空不筛选 */
+    OrgId?: number;
     /** 排序 默认是Id */
     Sorting?: string;
     /** 当前页码 */

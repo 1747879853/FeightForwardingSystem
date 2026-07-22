@@ -225,7 +225,8 @@ export namespace SeaExportAdminApi {
   export interface OrganizationUnitSimpleDto {
     id: number;
     name?: string;
-    localCurrencyId?: number;
+    localCurrencyId?: null | number;
+    localCurrencyCode?: null | string;
   }
 
   export interface SeaExportServiceTaskUserDto {
@@ -301,7 +302,8 @@ export namespace SeaExportAdminApi {
     sortId?: number;
     remark?: string;
     serviceTypes?: SeaExportServiceItemDto[];
-    organizationUnits?: OrganizationUnitSimpleDto[];
+    /** 归属组织id（必填） */
+    orgId?: null | number;
     transportOrder?: TransportOrderAddDto;
   }
 
@@ -354,7 +356,8 @@ export namespace SeaExportAdminApi {
     sortId?: number;
     remark?: string;
     serviceTypes?: SeaExportServiceItemDto[];
-    organizationUnits?: OrganizationUnitSimpleDto[];
+    /** 归属组织id（必填） */
+    orgId?: null | number;
     transportOrder?: TransportOrderEditDto;
   }
 
@@ -445,8 +448,10 @@ export namespace SeaExportAdminApi {
     sortId?: number;
     remark?: string;
     seaExportServices?: SeaExportServiceDto[];
-    organizationUnits?: OrganizationUnitSimpleDto[];
-    companys?: OrganizationUnitSimpleDto[];
+    /** 归属组织id */
+    orgId?: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: null | OrganizationUnitSimpleDto[];
     transportOrder?: TransportOrderDto;
     /** 应付费用最小状态（该方向无费用时为 null） */
     feeStatusPay?: number | null;

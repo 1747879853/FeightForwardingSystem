@@ -12,7 +12,7 @@ import {
 } from 'ant-design-vue';
 import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 import { CurrencySelect } from '#/adapter/component';
-import { useUserStore } from '@vben/stores';
+import { getMyOrgOptions } from '#/composables/use-my-org';
 
 interface Props {
   visible: boolean;
@@ -64,7 +64,7 @@ const templateList = ref<InvoiceRemarkTemplateApi.InvoiceRemarkTemListDto[]>(
 // 新增/编辑表单数据
 const formData = ref<Partial<InvoiceRemarkTemplateApi.InvoiceRemarkTemAddDto>>({
   name: '',
-  companyId: undefined,
+  orgId: undefined,
   currencyId: undefined,
   template: '',
   default: false,
@@ -74,8 +74,8 @@ const formData = ref<Partial<InvoiceRemarkTemplateApi.InvoiceRemarkTemAddDto>>({
 const isEditMode = ref(false);
 const editingId = ref<string>('');
 
-// 公司列表 - 从用户信息中获取
-const companyList = ref<InvoiceRemarkTemplateApi.CompanySimpleDto[]>([]);
+// 归属组织列表 - 取本人直属组织
+const companyList = ref<{ displayName: string; id: number }[]>([]);
 
 // 选中的模板ID列表（用于批量操作）
 const selectedTemplateIds = ref<string[]>([]);
@@ -96,9 +96,6 @@ const availablePlaceholders = [
   { label: '销方银行', value: '[销方银行]', example: '工商银行' },
   { label: '销方账号', value: '[销方账号]', example: '987654321' },
 ];
-
-// 用户store
-const userStore = useUserStore();
 
 const updateSelectedCurrencyId = (value: number | undefined) => {
   formData.value.currencyId = value;
@@ -133,40 +130,12 @@ function generateExampleText(template: string): string {
   return result;
 }
 
-/** 从用户信息中提取公司列表 */
+/** 提取本人直属组织作为可选归属组织 */
 function extractCompanyFromUserInfo() {
-  const userInfo = userStore.userInfo as any;
-
-  // 尝试从用户信息中获取公司列表
-  if (userInfo?.companies && Array.isArray(userInfo.companies)) {
-    companyList.value = userInfo.companies.map((company: any) => ({
-      id: company.id,
-      code: company.code || '',
-      displayName: company.displayName || company.name || '',
-      shortName: company.shortName || '',
-      enName: company.enName || '',
-      isCompany: true,
-      localCurrencyId: company.localCurrencyId || 1,
-      unifiedSocialCreditCode: company.unifiedSocialCreditCode || '',
-    }));
-  } else if (userInfo?.company) {
-    // 如果只有一个公司
-    companyList.value = [
-      {
-        id: userInfo.company.id,
-        code: userInfo.company.code || '',
-        displayName:
-          userInfo.company.displayName || userInfo.company.name || '',
-        shortName: userInfo.company.shortName || '',
-        enName: userInfo.company.enName || '',
-        isCompany: true,
-        localCurrencyId: userInfo.company.localCurrencyId || 1,
-        unifiedSocialCreditCode: userInfo.company.unifiedSocialCreditCode || '',
-      },
-    ];
-  }
-
-  console.log('提取的公司列表:', companyList.value);
+  companyList.value = getMyOrgOptions().map((o) => ({
+    id: o.value,
+    displayName: o.label,
+  }));
 }
 
 /** 加载模板列表 */
@@ -179,7 +148,7 @@ async function loadTemplateList() {
     };
 
     if (filterCompanyId.value) {
-      params.companyId = filterCompanyId.value;
+      params.orgId = filterCompanyId.value;
     }
     if (filterCurrencyId.value) {
       params.currencyId = filterCurrencyId.value;
@@ -202,10 +171,10 @@ async function loadTemplateList() {
 
 /** 自动加载默认模板 */
 function autoLoadDefaultTemplate(settlementId: string, currencyId: number) {
-  // 查找匹配结算单位（companyId）和币别的默认模板
+  // 查找匹配结算单位（orgId）和币别的默认模板
   const defaultTemplate = templateList.value.find(
     (t) =>
-      t.companyId === Number(settlementId) &&
+      t.orgId === Number(settlementId) &&
       t.currencyId === currencyId &&
       t.default,
   );
@@ -214,18 +183,18 @@ function autoLoadDefaultTemplate(settlementId: string, currencyId: number) {
     // 自动填充表单
     formData.value = {
       name: defaultTemplate.name,
-      companyId: defaultTemplate.companyId,
+      orgId: defaultTemplate.orgId,
       currencyId: defaultTemplate.currencyId,
       template: defaultTemplate.template,
       default: defaultTemplate.default,
     };
 
     message.info(
-      `已自动加载默认模板：${defaultTemplate.company.displayName}-${defaultTemplate.currency.cnName}`,
+      `已自动加载默认模板：${defaultTemplate.orgs?.at(-1)?.name ?? ''}-${defaultTemplate.currency.cnName}`,
     );
   } else {
     // 如果没有找到默认模板，只填充公司和币别
-    formData.value.companyId = Number(settlementId);
+    formData.value.orgId = Number(settlementId);
     formData.value.currencyId = currencyId;
   }
 }
@@ -243,7 +212,7 @@ function handleAdd() {
   editingId.value = '';
   formData.value = {
     name: '',
-    companyId: undefined,
+    orgId: undefined,
     currencyId: undefined,
     template: '',
     default: false,
@@ -256,7 +225,7 @@ function handleEdit(record: InvoiceRemarkTemplateApi.InvoiceRemarkTemListDto) {
   editingId.value = record.id;
   formData.value = {
     name: record.name,
-    companyId: record.companyId,
+    orgId: record.orgId,
     currencyId: record.currencyId,
     template: record.template,
     default: record.default,
@@ -278,7 +247,7 @@ function handleDelete(
 ) {
   Modal.confirm({
     title: '确认删除',
-    content: `确定要删除模板"${record.company.displayName}-${record.currency.cnName}"吗？`,
+    content: `确定要删除模板"${record.orgs?.at(-1)?.name ?? ''}-${record.currency.cnName}"吗？`,
     okText: '确定',
     cancelText: '取消',
     onOk: async () => {
@@ -310,7 +279,7 @@ function handleSetDefault(
         // 先查询该组合是否已有默认模板
         const existingTemplates = templateList.value.filter(
           (t) =>
-            t.companyId === record.companyId &&
+            t.orgId === record.orgId &&
             t.currencyId === record.currencyId &&
             t.default,
         );
@@ -325,7 +294,7 @@ function handleSetDefault(
             await InvoiceRemarkTemplateApi.editAsync({
               id: firstTemplate.id,
               name: firstTemplate.name,
-              companyId: firstTemplate.companyId,
+              orgId: firstTemplate.orgId,
               currencyId: firstTemplate.currencyId,
               template: firstTemplate.template,
               default: false,
@@ -337,7 +306,7 @@ function handleSetDefault(
         await InvoiceRemarkTemplateApi.editAsync({
           id: record.id,
           name: record.name,
-          companyId: record.companyId,
+          orgId: record.orgId,
           currencyId: record.currencyId,
           template: record.template,
           default: true,
@@ -356,8 +325,8 @@ function handleSetDefault(
 /** 保存模板 */
 async function handleSave() {
   // 验证必填字段
-  if (!formData.value.companyId) {
-    message.warning('请选择所属公司');
+  if (!formData.value.orgId) {
+    message.warning('请选择归属组织');
     return;
   }
   if (!formData.value.currencyId) {
@@ -372,7 +341,7 @@ async function handleSave() {
       await InvoiceRemarkTemplateApi.editAsync({
         id: editingId.value,
         name: formData.value.name!,
-        companyId: formData.value.companyId!,
+        orgId: formData.value.orgId!,
         currencyId: formData.value.currencyId!,
         template: formData.value.template,
         default: formData.value.default || false,
@@ -382,7 +351,7 @@ async function handleSave() {
       // 新增模式 - 检查是否已存在相同组合的模板
       // const existingTemplate = templateList.value.find(
       //   (t) =>
-      //     t.companyId === formData.value.companyId &&
+      //     t.orgId === formData.value.orgId &&
       //     t.currencyId === formData.value.currencyId,
       // );
 
@@ -395,7 +364,7 @@ async function handleSave() {
 
       await InvoiceRemarkTemplateApi.addAsync({
         name: formData.value.name!,
-        companyId: formData.value.companyId!,
+        orgId: formData.value.orgId!,
         currencyId: formData.value.currencyId!,
         template: formData.value.template,
         default: formData.value.default || false,
@@ -467,7 +436,7 @@ function handleBatchSetDefault() {
           // 先查询该组合是否已有默认模板
           const existingTemplates = templateList.value.filter(
             (t) =>
-              t.companyId === template.companyId &&
+              t.orgId === template.orgId &&
               t.currencyId === template.currencyId &&
               t.default &&
               t.id !== id,
@@ -480,7 +449,7 @@ function handleBatchSetDefault() {
               await InvoiceRemarkTemplateApi.editAsync({
                 id: firstTemplate.id,
                 name: firstTemplate.name,
-                companyId: firstTemplate.companyId,
+                orgId: firstTemplate.orgId,
                 currencyId: firstTemplate.currencyId,
                 template: firstTemplate.template,
                 default: false,
@@ -492,7 +461,7 @@ function handleBatchSetDefault() {
           await InvoiceRemarkTemplateApi.editAsync({
             id: template.id,
             name: template.name,
-            companyId: template.companyId,
+            orgId: template.orgId,
             currencyId: template.currencyId,
             template: template.template,
             default: true,
@@ -558,7 +527,7 @@ onMounted(() => {
 
 /** 获取默认备注模板 */
 async function getDefaultRemarkTemplate(
-  companyId: number,
+  orgId: number,
   currencyId: number,
   templateData?: {
     commissionNum: string;
@@ -573,17 +542,12 @@ async function getDefaultRemarkTemplate(
   },
 ): Promise<string> {
   try {
-    console.log(
-      '🔍 查询默认备注模板 - 公司ID:',
-      companyId,
-      '币别ID:',
-      currencyId,
-    );
+    console.log('🔍 查询默认备注模板 - 公司ID:', orgId, '币别ID:', currencyId);
 
     const result = await InvoiceRemarkTemplateApi.getPagedListAsync({
       pageIndex: 1,
       pageSize: 1,
-      companyId,
+      orgId,
       currencyId,
       default: true, // 只查询默认模板
     });
@@ -929,7 +893,7 @@ defineExpose({
               >所属公司</label
             >
             <Select
-              v-model:value="formData.companyId"
+              v-model:value="formData.orgId"
               :options="
                 companyList.map((c) => ({ label: c.displayName, value: c.id }))
               "

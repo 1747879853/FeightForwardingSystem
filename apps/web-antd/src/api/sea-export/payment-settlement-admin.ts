@@ -67,6 +67,8 @@ export namespace PaymentSettlementAdminApi {
 
   /** 新增付费结算参数DTO */
   export interface PaymentSettlementAddDto {
+    /** 归属组织id */
+    orgId: number;
     /** 结算时间，默认当前时间可自定义 */
     settlementTime: string;
     /** 付款方式 */
@@ -95,6 +97,8 @@ export namespace PaymentSettlementAdminApi {
   export interface PaymentSettlementEditDto {
     /** 付费结算ID */
     id: string;
+    /** 归属组织id */
+    orgId?: number;
     /** 结算时间 */
     settlementTime: string;
     /** 付款方式 */
@@ -181,8 +185,12 @@ export namespace PaymentSettlementAdminApi {
     noTaxUnitPrice?: number;
     /** 不含税金额（后端直接返回数据库存储值） */
     noTaxAmount?: number;
-    /** 所属公司列表 */
-    companys?: import('#/api/settlement-management/payment-application-admin').PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
+    /** 归属组织id */
+    orgId?: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?:
+      | import('#/api/settlement-management/payment-application-admin').PaymentApplicationAdminApi.OrganizationUnitSimpleDto[]
+      | null;
   }
 
   /** 币别分组DTO（用于详情中的分组展示，包含结算信息） */
@@ -287,8 +295,12 @@ export namespace PaymentSettlementAdminApi {
     paymentApplications: PaymentApplicationForDetailDto[];
     /** 附件列表 */
     attachments: AttachmentItemDto[];
-    /** 公司 */
-    companys?: import('#/api/settlement-management/payment-application-admin').PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
+    /** 归属组织id */
+    orgId?: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?:
+      | import('#/api/settlement-management/payment-application-admin').PaymentApplicationAdminApi.OrganizationUnitSimpleDto[]
+      | null;
   }
 
   /** 分页查询参数DTO */

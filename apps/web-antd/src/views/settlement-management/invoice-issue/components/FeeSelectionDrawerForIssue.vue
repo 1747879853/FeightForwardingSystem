@@ -602,7 +602,7 @@ function transformToTreeData(
       // 一级字段
       // ✅ 使用后端返回的 companyName 作为所属公司名称
       companyName: app.companyName || '-',
-      companyId: app.companyId, // ✅ 所属公司ID（后端暂未返回，需要补充）
+      orgId: app.orgId, // ✅ 归属组织ID
       applicationNo: app.applicationNo || '-', // 申请单号
       // ✅ 使用 clientInvoiceInfo.header 作为发票抬头
       header: app.clientInvoiceInfo?.header || '-',
@@ -618,7 +618,8 @@ function transformToTreeData(
       // ✅ 删除了 pushEmail 字段
       totalAppliedAmount: app.totalAppliedAmount || 0, // 申请开票原币金额
       // ✅ 开票金额 = 开票原币金额 * 开票汇率
-      invoiceAmount: (app.totalAppliedAmount || 0) * (app.invoiceExchangeRate || 1.0),
+      invoiceAmount:
+        (app.totalAppliedAmount || 0) * (app.invoiceExchangeRate || 1.0),
       checked: false,
       selectable: true, // ✅ 一级可选择
       invoiceApplicationItems: childrenList, // 使用 invoiceApplicationItems 作为子节点
@@ -898,7 +899,7 @@ async function handleConfirmReject() {
 
   try {
     feeDrawerLoading.value = true;
-    
+
     // 批量驳回所有选中的申请
     const promises = rejectApplications.value.map((app: any) => {
       return InvoiceApplicationApi.auditAsync({
@@ -908,15 +909,15 @@ async function handleConfirmReject() {
     });
 
     await Promise.all(promises);
-    
+
     message.success(`成功驳回 ${rejectApplications.value.length} 个开票申请`);
-    
+
     // 关闭对话框
     rejectModalVisible.value = false;
-    
+
     // 清空选择状态
     selectedAppRowKeys.value = [];
-    
+
     // 重新加载数据
     await loadApplicationGroupData();
   } catch (error) {
@@ -1136,7 +1137,7 @@ defineExpose({
 
         <!-- 右侧：操作按钮 -->
         <Space>
-          <Button 
+          <Button
             danger
             :disabled="selectedAppRowKeys.length === 0"
             @click="handleBatchReject"
@@ -1161,11 +1162,11 @@ defineExpose({
     @cancel="handleCancelReject"
   >
     <div>
-      <p style="margin-bottom: 16px;">
+      <p style="margin-bottom: 16px">
         确定要驳回选中的 {{ rejectApplications.length }} 个开票申请吗？
       </p>
-      <div style="margin-top: 12px;">
-        <label style="display: block; margin-bottom: 8px; font-weight: bold;">
+      <div style="margin-top: 12px">
+        <label style="display: block; margin-bottom: 8px; font-weight: bold">
           驳回原因（必填）：
         </label>
         <Input.TextArea

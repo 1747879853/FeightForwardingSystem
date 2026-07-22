@@ -210,7 +210,8 @@ export namespace InvoiceApplicationAdminApi {
   /** 批量新增开票申请DTO */
   export interface InvoiceApplicationBatchAddDto {
     settlementId: string;
-    companyId: number;
+    /** 归属组织id */
+    orgId: number;
     require?: string;
     remark?: string;
     currencyGroups: InvoiceApplicationCurrencyGroupDto[];
@@ -220,7 +221,8 @@ export namespace InvoiceApplicationAdminApi {
   export interface InvoiceApplicationEditDto {
     id: string;
     settlementId: string;
-    companyId: number;
+    /** 归属组织id */
+    orgId: number;
     orgBankAccountId: string;
     clientInvoiceBankId: string;
     invoiceType?: InvoiceType;
@@ -242,6 +244,18 @@ export namespace InvoiceApplicationAdminApi {
     items: InvoiceApplicationItemOutputDto[];
   }
 
+  /** 组织机构简易DTO（组织串 orgs 元素） */
+  export interface OrganizationUnitSimpleDto {
+    /** 组织id */
+    id: number;
+    /** 组织名 */
+    name?: string;
+    /** 本位币id，可空 */
+    localCurrencyId?: null | number;
+    /** 本位币编码，可空 */
+    localCurrencyCode?: null | string;
+  }
+
   /** 开票申请详情DTO */
   export interface InvoiceApplicationDetailDto {
     id: string;
@@ -252,7 +266,12 @@ export namespace InvoiceApplicationAdminApi {
     currencyId: number;
     invoiceType?: InvoiceType;
     clientInvoiceBankId: string;
-    companyId: number;
+    /** 归属组织id */
+    orgId: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: null | OrganizationUnitSimpleDto[];
+    /** 组织名（便于直接展示） */
+    companyName?: string;
     orgBankAccountId: string;
     applyUserId?: number;
     applyTime?: string;

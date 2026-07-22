@@ -85,8 +85,9 @@ export const flattenDetail = (
     bookingNum: to?.bookingNum,
     accountDate: toDayjs(to?.accountDate),
     settlementDate: toDayjs(to?.settlementDate),
+    orgId: detail.orgId ?? undefined,
     organizationUnitsText:
-      detail.organizationUnits
+      detail.orgs
         ?.map((item) => item?.name)
         .filter((name): name is string => !!name)
         .join('、') || '-',

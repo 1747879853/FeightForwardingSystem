@@ -80,6 +80,7 @@ export const buildSeaExportDto = (
     deliverPortRemark: values.deliverPortRemark,
     sortId: values.sortId,
     serviceTypes: ctx.serviceTypes,
+    orgId: values.orgId ?? undefined,
   };
 
   const transportOrderFields: Record<string, any> = {

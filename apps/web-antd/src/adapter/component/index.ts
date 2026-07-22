@@ -525,6 +525,7 @@ export type ComponentType =
   | 'CurrencySelect'
   | 'LaneSelect'
   | 'OrganizationSelect'
+  | 'MyOrgSelect'
   | 'PortSelect'
   | 'CarrierSelect'
   | 'ClientSelect'
@@ -641,6 +642,9 @@ async function initComponentAdapter() {
     ),
     OrganizationSelect: defineAsyncComponent(
       () => import('./biz-select/organization-select.vue'),
+    ),
+    MyOrgSelect: defineAsyncComponent(
+      () => import('./biz-select/my-org-select.vue'),
     ),
     PortSelect: defineAsyncComponent(
       () => import('./biz-select/port-select.vue'),
@@ -761,6 +765,7 @@ export {
   ClientBankAccountSelect,
   CodeSourceSelect,
   CurrencySelect,
+  MyOrgSelect,
   OrganizationSelect,
   OrgBankAccountSelect,
   RoleSelect,

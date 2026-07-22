@@ -166,8 +166,8 @@ const parseAndCompareFields = (
       'modifyOrderFeeTasks', // 修改费用任务
       'deleteOrderFeeTasks', // 删除费用任务
       'userId', // 用户ID
-      'organizationUnits', // 组织单元
-      'companys', // 公司列表
+      'orgId', // 归属组织ID
+      'orgs', // 组织串
     ];
 
     const changes: Array<{

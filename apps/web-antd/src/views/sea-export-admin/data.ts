@@ -924,11 +924,11 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       showOverflow: true,
     },
     {
-      field: 'companys',
+      field: 'orgs',
       title: $t('seaExport.export.organizationUnits'),
       minWidth: 140,
       sortable: false,
-      formatter: ({ row }) => row.companys?.[0]?.name || '',
+      formatter: ({ row }) => row.orgs?.at(-1)?.name || '',
       showOverflow: true,
     },
     {
@@ -1141,6 +1141,16 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
         placeholder: isEdit
           ? ''
           : $t('seaExport.export.commissionNumAutoGenerate'),
+      },
+    },
+    {
+      component: 'MyOrgSelect',
+      fieldName: 'orgId',
+      label: '归属组织',
+      rules: 'selectRequired',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
       },
     },
     {

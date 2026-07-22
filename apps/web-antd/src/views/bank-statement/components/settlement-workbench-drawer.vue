@@ -15,6 +15,7 @@ const props = defineProps<{
   bankStatementId: string;
   currencyCode?: string;
   currencyId?: number;
+  orgId?: number;
   otherSettledAmount: number;
   settlementId?: string;
   settlementName?: string;
@@ -129,6 +130,7 @@ defineExpose({ openCreate, openEdit });
       v-if="action === 'create' && createMode === 'fee'"
       :bank-statement-id="bankStatementId"
       :bank-statement-amount="bankStatementAmount"
+      :org-id="orgId"
       :other-settled-amount="otherSettledAmount"
       :settlement-id="settlementId"
       :settlement-name="settlementName"
@@ -141,6 +143,7 @@ defineExpose({ openCreate, openEdit });
       v-else-if="action === 'create'"
       :bank-statement-id="bankStatementId"
       :bank-statement-amount="bankStatementAmount"
+      :org-id="orgId"
       :other-settled-amount="otherSettledAmount"
       :settlement-id="settlementId"
       :settlement-name="settlementName"

@@ -800,19 +800,17 @@ const setupFeeCodeChangeListener = async () => {
                     if (transportOrderId && orderBaseData.value) {
                       const orderDetail = orderBaseData.value;
 
+                      // 从组织串中取公司节点（第一个含本位币的节点）
+                      const companyNode = orderDetail.orgs?.find(
+                        (node) =>
+                          node?.localCurrencyId !== null &&
+                          node?.localCurrencyId !== undefined,
+                      );
                       if (
-                        orderDetail.companys &&
-                        orderDetail.companys.length > 0
+                        companyNode &&
+                        companyNode.localCurrencyId === feeCodeDetail.currencyId
                       ) {
-                        // 获取第一个所属公司（通常只有一个）
-                        const company = orderDetail.companys[0];
-
-                        // 检查该公司的本位币是否与当前选择的币别一致
-                        if (
-                          company?.localCurrencyId === feeCodeDetail.currencyId
-                        ) {
-                          isLocalCurrency = true;
-                        }
+                        isLocalCurrency = true;
                       }
                     }
 

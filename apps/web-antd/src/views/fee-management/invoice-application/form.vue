@@ -28,7 +28,11 @@ import {
 } from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
 
-import { ClientSelect, CurrencySelect } from '#/adapter/component';
+import { ClientSelect, CurrencySelect, MyOrgSelect } from '#/adapter/component';
+import {
+  getMyDefaultOrgId,
+  getMyOrgCompanyNode,
+} from '#/composables/use-my-org';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getClientDetail } from '#/api/sea-export/client-admin';
 import { getClientInvoiceInfoList } from '#/api/sea-export/clinet-invoice-admin';
@@ -90,7 +94,7 @@ const remarkTemplateModalRef = ref();
 // 表单数据
 const formData = ref<any>({
   settlementId: '',
-  companyId: 0,
+  orgId: 0,
   currencyId: null, // 默认人民币
   invoiceType: InvoiceApplicationApi.InvoiceType.NormalElectric,
   require: '',
@@ -227,8 +231,8 @@ async function handleSubmit() {
     message.warning('请选择结算对象');
     return;
   }
-  if (!formData.value.companyId) {
-    message.warning('请选择所属公司');
+  if (!formData.value.orgId) {
+    message.warning('请选择归属组织');
     return;
   }
 
@@ -243,7 +247,7 @@ async function handleSubmit() {
       // 新建需要按币别分组
       const batchData: InvoiceApplicationApi.InvoiceApplicationBatchAddDto = {
         settlementId: formData.value.settlementId!,
-        companyId: formData.value.companyId!,
+        orgId: formData.value.orgId!,
         require: formData.value.require,
         remark: formData.value.remark,
         currencyGroups: [
@@ -296,8 +300,8 @@ async function handleDirectSubmit() {
     message.warning('请选择结算对象');
     return;
   }
-  if (!formData.value.companyId) {
-    message.warning('请选择所属公司');
+  if (!formData.value.orgId) {
+    message.warning('请选择归属组织');
     return;
   }
 
@@ -316,7 +320,7 @@ async function handleDirectSubmit() {
     if (!isEdit.value) {
       const batchData: InvoiceApplicationApi.InvoiceApplicationBatchAddDto = {
         settlementId: formData.value.settlementId!,
-        companyId: formData.value.companyId!,
+        orgId: formData.value.orgId!,
         require: formData.value.require,
         remark: formData.value.remark,
         currencyGroups: [
@@ -380,8 +384,8 @@ async function handleSubmitForAudit() {
     message.warning('请选择结算对象');
     return;
   }
-  if (!formData.value.companyId) {
-    message.warning('请选择所属公司');
+  if (!formData.value.orgId) {
+    message.warning('请选择归属组织');
     return;
   }
 
@@ -399,7 +403,7 @@ async function handleSubmitForAudit() {
       // 先保存
       const batchData: InvoiceApplicationApi.InvoiceApplicationBatchAddDto = {
         settlementId: formData.value.settlementId!,
-        companyId: formData.value.companyId!,
+        orgId: formData.value.orgId!,
         require: formData.value.require,
         remark: formData.value.remark,
         currencyGroups: [
@@ -665,7 +669,7 @@ function handleOpenFeeDetailModal() {
                   (o: any) => o.value === parentFee.transportOrder?.bizType,
                 )?.label || '-',
               carrier: parentFee.seaExport?.carrierName || '-',
-              company: parentFee.transportOrder.companys[0].name || '-',
+              company: parentFee.transportOrder.orgs?.at(-1)?.name || '-',
               feeDetails: [] as any[], // ✅ 使用 feeDetails 而非 children，与 FeeDetailModal 保持一致
             };
 
@@ -942,17 +946,12 @@ async function handleFeeSelectionSave(data: {
     console.log('✅ 从费用选择抽屉中获取发票汇率:', rate);
   }
 
-  // ✅ 自动设置所属公司为当前登录用户的公司
-  if (applicantCompany.value) {
-    formData.value.companyId = applicantCompany.value;
-    console.log('✅ 自动设置所属公司:', formData.value.companyId);
-  } else {
-    // 如果用户信息中没有公司，尝试从费用中获取
-    const firstFee = selectedFees[0];
-    if (firstFee.transportOrder?.companyId) {
-      formData.value.companyId = firstFee.transportOrder.companyId;
-      console.log('⚠️ 从费用中获取所属公司:', formData.value.companyId);
-    }
+  // ✅ 自动设置归属组织：优先取费用所属组织，否则用当前用户默认组织
+  const firstFee = selectedFees[0];
+  if (firstFee?.transportOrder?.orgId) {
+    formData.value.orgId = firstFee.transportOrder.orgId;
+  } else if (!formData.value.orgId) {
+    formData.value.orgId = getMyDefaultOrgId() ?? 0;
   }
 
   // ✅ 根据币别自动选择销售方默认银行
@@ -1509,8 +1508,8 @@ async function loadClientInvoiceInfo(settlementId: string) {
 /** ✅ 新增：加载当前币别对应的默认备注模板 */
 async function loadDefaultRemarkTemplate() {
   // 检查是否有必要的参数
-  if (!formData.value.companyId || !formData.value.currencyId) {
-    console.log('⚠️ 缺少公司ID或币别ID，无法加载默认备注模板');
+  if (!formData.value.orgId || !formData.value.currencyId) {
+    console.log('⚠️ 缺少归属组织或币别ID，无法加载默认备注模板');
     return;
   }
 
@@ -1524,7 +1523,7 @@ async function loadDefaultRemarkTemplate() {
     // ✅ 直接调用 RemarkTemplateModal 组件的方法获取默认模板，并传入 templateData 进行占位符替换
     const template =
       await remarkTemplateModalRef.value?.getDefaultRemarkTemplate(
-        formData.value.companyId,
+        formData.value.orgId,
         formData.value.currencyId,
         remarkTemplateData.value, // ✅ 传入动态计算的模板数据
       );
@@ -1587,54 +1586,46 @@ function updateOrgBankByCurrency() {
   }
 }
 
+/** 根据选中的归属组织(orgId)填充开票公司信息（税号/开票地址/银行账户） */
+function applyOrgCompanyInfo() {
+  const companyNode = getMyOrgCompanyNode(formData.value.orgId);
+  if (companyNode) {
+    applicantCompany.value = companyNode.id;
+    applicantCompanyName.value = companyNode.displayName || '';
+    applicantCompanyId.value = companyNode.id;
+    applicantTaxNumber.value = companyNode.unifiedSocialCreditCode || '';
+    applicantAddress.value =
+      `${companyNode.invoiceAddress || ''} ${companyNode.invoiceTel || ''}`.trim();
+    orgBankAccounts.value = Array.isArray(companyNode.orgBankAccounts)
+      ? companyNode.orgBankAccounts
+      : [];
+  } else {
+    applicantCompany.value = 0;
+    applicantCompanyName.value = '';
+    applicantCompanyId.value = 0;
+    applicantTaxNumber.value = '';
+    applicantAddress.value = '';
+    orgBankAccounts.value = [];
+  }
+}
+
 /** 初始化申请人信息 */
 function initApplicantInfo() {
   const userInfo = userStore.userInfo;
-  console.log('当前登录用户信息:', userInfo);
-
   if (userInfo) {
-    // 设置申请人名称
     applicantName.value = userInfo.realName || userInfo.username || '';
-
-    // 从用户信息中获取公司ID（如果存在）
-    // 注意：userInfo 可能包含扩展字段，如 companyId
-    if ((userInfo as any).companyId) {
-      applicantCompany.value = (userInfo as any).companyId;
-      applicantCompanyName.value = (userInfo as any).companyName || '';
-      applicantCompanyId.value = (userInfo as any).companyId || '';
-      applicantTaxNumber.value =
-        (userInfo as any).company.unifiedSocialCreditCode || '';
-      applicantAddress.value =
-        `${(userInfo as any).company.invoiceAddress || ''} ${(userInfo as any).company.invoiceTel || ''}` ||
-        '';
-      console.log('✅ 从用户信息中获取公司ID:', applicantCompany.value);
-    } else {
-      console.warn('⚠️ 用户信息中未找到公司ID');
-    }
-
-    // 从用户信息中获取银行账号列表
-    if (
-      (userInfo as any).company.orgBankAccounts &&
-      Array.isArray((userInfo as any).company.orgBankAccounts)
-    ) {
-      orgBankAccounts.value = (userInfo as any).company.orgBankAccounts;
-      console.log(
-        '✅ 从用户信息中获取银行账号列表:',
-        orgBankAccounts.value.length,
-        '条',
-      );
-    } else {
-      console.warn('⚠️ 用户信息中未找到银行账号列表');
-    }
-
-    console.log('👤 申请人信息:', {
-      name: applicantName.value,
-      companyId: applicantCompany.value,
-      companyName: applicantCompanyName.value,
-      bankAccountsCount: orgBankAccounts.value.length,
-    });
   }
+  if (!formData.value.orgId) {
+    formData.value.orgId = getMyDefaultOrgId() ?? 0;
+  }
+  applyOrgCompanyInfo();
 }
+
+// 归属组织变化时，联动刷新开票公司信息
+watch(
+  () => formData.value.orgId,
+  () => applyOrgCompanyInfo(),
+);
 
 /** 获取与开票币种一致的银行列表 */
 const filteredClientBanks = computed(() => {
@@ -1955,7 +1946,7 @@ async function loadDetail() {
     formData.value = {
       id: detail.id,
       settlementId: detail.settlementId,
-      companyId: detail.companyId,
+      orgId: detail.orgId,
       currencyId: detail.currencyId || 1, // ✅ 使用详情中的币别
       invoiceType:
         detail.invoiceType || InvoiceApplicationApi.InvoiceType.NormalElectric,
@@ -2015,7 +2006,7 @@ async function loadDetail() {
               (o: any) => o.value === group.transportOrder?.bizType,
             )?.label || '-',
           carrier: group.seaExport?.carrierName || '-',
-          company: group.transportOrder?.companys?.[0]?.name || '-',
+          company: group.transportOrder?.orgs?.at(-1)?.name || '-',
           feeDetails: [] as any[], // ✅ 更新为 feeDetails，与 FeeSelectionDrawer 保持一致
         };
 
@@ -2147,11 +2138,19 @@ async function loadDetail() {
                 :label-col="{ span: 8 }"
                 :wrapper-col="{ span: 16 }"
               >
-                <Form.Item label="所属公司" required>
+                <Form.Item label="归属组织" required>
+                  <MyOrgSelect
+                    v-model="formData.orgId"
+                    placeholder="请选择归属组织"
+                    style="width: 100%"
+                  />
+                </Form.Item>
+
+                <Form.Item label="开票公司">
                   <Input
                     :value="applicantCompanyName || applicantCompany"
                     disabled
-                    placeholder="从当前登录用户自动获取"
+                    placeholder="根据归属组织自动获取"
                   />
                 </Form.Item>
 
@@ -2861,7 +2860,7 @@ async function loadDetail() {
     <!-- 选择备注模板弹窗 -->
     <SelectRemarkTemplateModal
       v-model:visible="selectRemarkTemplateModalVisible"
-      :settlement-id="applicantCompanyId"
+      :settlement-id="formData.orgId"
       :currency-id="formData.currencyId"
       :currency-code="selectedCurrencyCode"
       :fee-details="formData.invoiceApplicationItems"

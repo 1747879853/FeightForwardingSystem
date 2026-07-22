@@ -33,7 +33,11 @@ import {
 } from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
 
-import { ClientSelect, CurrencySelect } from '#/adapter/component';
+import { ClientSelect, CurrencySelect, MyOrgSelect } from '#/adapter/component';
+import {
+  getMyDefaultOrgId,
+  getMyOrgCompanyNode,
+} from '#/composables/use-my-org';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getClientDetail } from '#/api/sea-export/client-admin';
 import { getClientInvoiceInfoList } from '#/api/sea-export/clinet-invoice-admin';
@@ -80,7 +84,7 @@ const selectRemarkTemplateModalVisible = ref(false); // 选择备注模板弹窗
 // 表单数据
 const formData = ref<any>({
   settlementId: '',
-  companyId: 0,
+  orgId: 0,
   currencyId: null, // 默认人民币
   invoiceType: 'p', // 默认普通发票-电票
   invoiceIssueType: InvoiceIssueApi.InvoiceIssueType.NuonuoInterface, // 默认诺诺接口开票
@@ -170,14 +174,15 @@ async function handleSubmit() {
     message.warning('请选择结算对象');
     return;
   }
-  if (!formData.value.companyId) {
-    message.warning('请选择所属公司');
+  if (!formData.value.orgId) {
+    message.warning('请选择归属组织');
     return;
   }
 
   submitLoading.value = true;
   try {
     const submitData: InvoiceIssueApi.InvoiceIssueAddDto = {
+      orgId: formData.value.orgId,
       invoiceIssueType: formData.value.invoiceIssueType,
       invoiceNo: formData.value.invoiceNo,
       invoiceIssueTime: invoiceIssueTime.value,
@@ -522,10 +527,9 @@ async function handleFeeSelectionSave(data: {
     console.log('✅ 从费用选择抽屉中获取发票汇率:', rate);
   }
 
-  // ✅ 自动设置所属公司为当前登录用户的公司
-  if (applicantCompany.value) {
-    formData.value.companyId = applicantCompany.value;
-    console.log('✅ 自动设置所属公司:', formData.value.companyId);
+  // ✅ 自动设置归属组织为当前用户默认组织
+  if (!formData.value.orgId) {
+    formData.value.orgId = getMyDefaultOrgId() ?? 0;
   }
 
   // 加载客户开票信息
@@ -743,52 +747,44 @@ function handleUseRemarkTemplate(template: string) {
   //message.success('已应用备注模板');
 }
 
-/** 初始化申请人信息 */
-function initApplicantInfo() {
-  const userInfo = userStore.userInfo;
-  console.log('当前登录用户信息:', userInfo);
-
-  if (userInfo) {
-    // 设置申请人名称
-    applicantName.value = userInfo.realName || userInfo.username || '';
-
-    // 从用户信息中获取公司ID（如果存在）
-    if ((userInfo as any).companyId) {
-      applicantCompany.value = (userInfo as any).companyId;
-      applicantCompanyName.value = (userInfo as any).companyName || '';
-      applicantTaxNumber.value =
-        (userInfo as any).company.unifiedSocialCreditCode || '';
-      applicantAddress.value =
-        `${(userInfo as any).company.invoiceAddress || ''} ${(userInfo as any).company.invoiceTel || ''}` ||
-        '';
-      console.log('✅ 从用户信息中获取公司ID:', applicantCompany.value);
-    } else {
-      console.warn('⚠️ 用户信息中未找到公司ID');
-    }
-
-    // 从用户信息中获取银行账号列表
-    if (
-      (userInfo as any).company.orgBankAccounts &&
-      Array.isArray((userInfo as any).company.orgBankAccounts)
-    ) {
-      orgBankAccounts.value = (userInfo as any).company.orgBankAccounts;
-      console.log(
-        '✅ 从用户信息中获取银行账号列表:',
-        orgBankAccounts.value.length,
-        '条',
-      );
-    } else {
-      console.warn('⚠️ 用户信息中未找到银行账号列表');
-    }
-
-    console.log('👤 申请人信息:', {
-      name: applicantName.value,
-      companyId: applicantCompany.value,
-      companyName: applicantCompanyName.value,
-      bankAccountsCount: orgBankAccounts.value.length,
-    });
+/** 根据选中的归属组织(orgId)填充开票公司信息（税号/开票地址/银行账户） */
+function applyOrgCompanyInfo() {
+  const companyNode = getMyOrgCompanyNode(formData.value.orgId);
+  if (companyNode) {
+    applicantCompany.value = companyNode.id;
+    applicantCompanyName.value = companyNode.displayName || '';
+    applicantTaxNumber.value = companyNode.unifiedSocialCreditCode || '';
+    applicantAddress.value =
+      `${companyNode.invoiceAddress || ''} ${companyNode.invoiceTel || ''}`.trim();
+    orgBankAccounts.value = Array.isArray(companyNode.orgBankAccounts)
+      ? companyNode.orgBankAccounts
+      : [];
+  } else {
+    applicantCompany.value = 0;
+    applicantCompanyName.value = '';
+    applicantTaxNumber.value = '';
+    applicantAddress.value = '';
+    orgBankAccounts.value = [];
   }
 }
+
+/** 初始化开票人信息 */
+function initApplicantInfo() {
+  const userInfo = userStore.userInfo;
+  if (userInfo) {
+    applicantName.value = userInfo.realName || userInfo.username || '';
+  }
+  if (!formData.value.orgId) {
+    formData.value.orgId = getMyDefaultOrgId() ?? 0;
+  }
+  applyOrgCompanyInfo();
+}
+
+// 归属组织变化时，联动刷新开票公司信息
+watch(
+  () => formData.value.orgId,
+  () => applyOrgCompanyInfo(),
+);
 
 /** 发票抬头选项列表 */
 const clientInvoiceHeaderOptions = computed(() => {
@@ -1530,7 +1526,7 @@ async function loadDetail() {
     formData.value = {
       id: detail.id,
       settlementId: detail.settlementId,
-      companyId: detail.companyId,
+      orgId: detail.orgId,
       currencyId: detail.currencyId || 1,
       invoiceType: detail.invoiceType || 'p',
       invoiceIssueType: detail.invoiceIssueType,
@@ -1776,11 +1772,19 @@ onMounted(() => {
                 :label-col="{ span: 8 }"
                 :wrapper-col="{ span: 16 }"
               >
-                <Form.Item label="所属公司" required>
+                <Form.Item label="归属组织" required>
+                  <MyOrgSelect
+                    v-model="formData.orgId"
+                    placeholder="请选择归属组织"
+                    style="width: 100%"
+                  />
+                </Form.Item>
+
+                <Form.Item label="开票公司">
                   <Input
                     :value="applicantCompanyName || applicantCompany"
                     disabled
-                    placeholder="从当前登录用户自动获取"
+                    placeholder="根据归属组织自动获取"
                   />
                 </Form.Item>
 
@@ -2452,7 +2456,7 @@ onMounted(() => {
     <!-- 选择备注模板弹窗 -->
     <SelectRemarkTemplateModal
       v-model:visible="selectRemarkTemplateModalVisible"
-      :settlement-id="formData.companyId"
+      :settlement-id="formData.orgId"
       :currency-id="formData.currencyId"
       :fee-details="applicationGroupsData"
       :template-data="remarkTemplateData"

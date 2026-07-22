@@ -234,9 +234,9 @@ async function loadTemplateList() {
       pageSize: 1000,
     };
 
-    // 如果有传入结算单位和币别，进行筛选
+    // 如果有传入归属组织和币别，进行筛选
     if (props.settlementId) {
-      params.companyId = Number(props.settlementId);
+      params.orgId = Number(props.settlementId);
     }
     if (props.currencyId) {
       params.currencyId = props.currencyId;

@@ -43,7 +43,8 @@ import {
   returnToListWithRefresh,
 } from '#/utils/list-refresh-flag';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
-import { ClientSelect, CurrencySelect } from '#/adapter/component';
+import { ClientSelect, CurrencySelect, MyOrgSelect } from '#/adapter/component';
+import { getMyDefaultOrgId } from '#/composables/use-my-org';
 import {
   addPaymentApplication,
   editPaymentApplication,
@@ -117,6 +118,7 @@ const applicantName = computed(
 const submitTime = ref(dayjs().format('YYYY-MM-DD HH:mm'));
 const endTime = ref<string | undefined>(undefined);
 const companyName = ref('-');
+const orgId = ref<number | undefined>(getMyDefaultOrgId());
 const applicationNo = ref('');
 const displayApplicationNo = computed(() =>
   isEdit.value ? applicationNo.value : t('autoGenerate'),
@@ -678,8 +680,9 @@ async function loadEditData() {
     paymentRequire.value = detail.require ?? '';
     remark.value = detail.remark ?? '';
 
-    if (detail.companys && detail.companys.length > 0) {
-      companyName.value = detail.companys[0]!.name ?? '-';
+    orgId.value = detail.orgId ?? undefined;
+    if (detail.orgs && detail.orgs.length > 0) {
+      companyName.value = detail.orgs.at(-1)?.name ?? '-';
     }
 
     feeDetailRows.value = mapDetailToFeeRows(detail);
@@ -738,6 +741,7 @@ function buildSubmitData(
 
   return {
     id: editId.value || undefined,
+    orgId: (orgId.value ?? getMyDefaultOrgId())!,
     status,
     submitTime: dayjs().toISOString(),
     endTime: endTime.value ? dayjs(endTime.value).toISOString() : null,
@@ -765,6 +769,7 @@ async function saveEditMode() {
 
   await editPaymentApplication({
     id,
+    orgId: orgId.value ?? undefined,
     status: PaymentApplicationStatus.Entering,
     submitTime: dayjs().toISOString(),
     endTime: endTime.value ? dayjs(endTime.value).toISOString() : null,
@@ -1063,7 +1068,11 @@ function formatMonth(val: string | undefined | null): string {
                 </div>
                 <div class="info-item">
                   <span class="info-label">{{ t('company') }}</span>
-                  <span class="info-value">{{ companyName }}</span>
+                  <MyOrgSelect
+                    v-model="orgId"
+                    :disabled="isSettlementLocked"
+                    size="small"
+                  />
                 </div>
                 <div class="info-item">
                   <span class="info-label">{{ t('require') }}</span>

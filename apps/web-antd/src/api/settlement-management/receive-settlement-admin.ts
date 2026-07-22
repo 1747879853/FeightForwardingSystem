@@ -61,6 +61,8 @@ export namespace ReceiveSettlementAdminApi {
   }
 
   export interface ReceiveSettlementAddDto {
+    /** 归属组织id */
+    orgId: number;
     bankStatementId: string;
     settlementTime: string;
     remark?: string;
@@ -176,7 +178,8 @@ export namespace ReceiveSettlementAdminApi {
     invoiceNo?: string;
     settlementId?: string;
     currencyId?: number;
-    companyId?: number;
+    /** 归属组织id（含下属组织） */
+    orgId?: number;
     applyTimeStart?: string;
     applyTimeEnd?: string;
     onlySettleable?: boolean;
@@ -222,6 +225,8 @@ export namespace ReceiveSettlementAdminApi {
   }
 
   export interface ReceiveSettlementAddByInvoiceDto {
+    /** 归属组织id */
+    orgId: number;
     bankStatementId: string;
     settlementTime: string;
     remark?: string;

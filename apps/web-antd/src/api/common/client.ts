@@ -13,16 +13,16 @@ export namespace ClientAppApi {
     Blacklist = 3,
   }
 
-  /** 组织机构简易DTO */
+  /** 组织机构简易DTO（组织串 orgs 元素） */
   export interface OrganizationUnitSimpleDto {
-    /** 组织机构id */
+    /** 组织id */
     id: number;
-    /** 显示名称 */
-    displayName?: string;
-    /** 简称 */
-    shortName?: string;
-    /** 英文名 */
-    enName?: string;
+    /** 组织名 */
+    name?: string;
+    /** 本位币id，可空 */
+    localCurrencyId?: null | number;
+    /** 本位币编码，可空 */
+    localCurrencyCode?: null | string;
   }
 
   /** 客户简易DTO（用于外键关联场景） */
@@ -43,10 +43,10 @@ export namespace ClientAppApi {
     enterpriseType?: number;
     /** 是否共享 */
     isShared?: boolean;
-    /** 展示归属公司id */
-    showCompanyId?: number;
-    /** 展示归属公司对象 */
-    showCompany?: OrganizationUnitSimpleDto;
+    /** 归属组织id */
+    orgId?: null | number;
+    /** 组织串（从最高级组织到该组织），可空 */
+    orgs?: null | OrganizationUnitSimpleDto[];
   }
 
   /** 客户航线DTO */
@@ -109,8 +109,8 @@ export namespace ClientAppApi {
     enterpriseType?: number;
     /** 是否共享，为空不筛选 */
     isShared?: boolean;
-    /** 展示归属公司id，为空不筛选（不参与权限） */
-    showCompanyId?: number;
+    /** 归属组织id，为空不筛选 */
+    orgId?: null | number;
     /** 当前页码，从1开始，默认1 */
     pageIndex?: number;
     /** 每页条数，默认10，范围1~1000 */
@@ -148,4 +148,3 @@ export const getClientGroupedByIndustryCategory = () => {
     `${API_PREFIX}/GetGroupedByIndustryCategoryAsync`,
   );
 };
-

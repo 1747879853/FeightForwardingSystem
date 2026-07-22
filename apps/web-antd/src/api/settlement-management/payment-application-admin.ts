@@ -115,10 +115,10 @@ export namespace PaymentApplicationAdminApi {
     lastModifierUserId?: number;
     /** 所属用户权限ID */
     userId?: number;
-    /** 所属组织列表 */
-    organizationUnits?: OrganizationUnitSimpleDto[];
-    /** 所属公司列表 */
-    companys?: OrganizationUnitSimpleDto[];
+    /** 归属组织id */
+    orgId?: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: null | OrganizationUnitSimpleDto[];
     /** 业务ID */
     transportOrderId: string;
     /** 更改单ID */
@@ -260,11 +260,16 @@ export namespace PaymentApplicationAdminApi {
     paymentApplicationBank?: PaymentApplicationBankDto | null;
   }
 
-  /** 组织简要信息 */
+  /** 组织机构简易DTO（组织串 orgs 元素） */
   export interface OrganizationUnitSimpleDto {
+    /** 组织id */
     id: number;
+    /** 组织名 */
     name?: string;
-    localCurrencyId?: number;
+    /** 本位币id，可空 */
+    localCurrencyId?: null | number;
+    /** 本位币编码，可空 */
+    localCurrencyCode?: null | string;
   }
 
   /** 付费申请列表 DTO（通用） */
@@ -286,8 +291,10 @@ export namespace PaymentApplicationAdminApi {
     totalPayPrice?: number;
     totalReceivePrice?: number;
     userId: number;
-    organizationUnits?: OrganizationUnitSimpleDto[];
-    companys?: OrganizationUnitSimpleDto[];
+    /** 归属组织id */
+    orgId?: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: null | OrganizationUnitSimpleDto[];
     isDeleted: boolean;
     creationTime: string;
     creatorUserId?: number;
@@ -307,10 +314,10 @@ export namespace PaymentApplicationAdminApi {
     lastModifierUserId?: number;
     /** 所属用户权限ID */
     userId?: number;
-    /** 所属组织列表（最后一级，可能是部门或公司） */
-    organizationUnits?: OrganizationUnitSimpleDto[];
-    /** 所属公司列表（取第一个，兼容多公司） */
-    companys?: OrganizationUnitSimpleDto[];
+    /** 归属组织id */
+    orgId?: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: null | OrganizationUnitSimpleDto[];
     /** 申请单号 */
     applicationNo?: string;
     /** 申请状态：`3`=审核通过，`4`=部分结算 */
@@ -645,6 +652,8 @@ export namespace PaymentApplicationAdminApi {
   /** 付费申请新增 DTO */
   export interface PaymentApplicationAddDto {
     id?: string;
+    /** 归属组织id */
+    orgId: number;
     status?: PaymentApplicationStatus;
     submitTime?: string | null;
     endTime?: string | null;
@@ -660,6 +669,8 @@ export namespace PaymentApplicationAdminApi {
   /** 付费申请编辑 DTO（仅主表 + 银行全量替换） */
   export interface PaymentApplicationEditDto {
     id: string;
+    /** 归属组织id */
+    orgId?: number;
     status?: PaymentApplicationStatus;
     submitTime?: string | null;
     endTime?: string | null;

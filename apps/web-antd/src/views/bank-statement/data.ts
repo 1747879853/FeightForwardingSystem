@@ -88,12 +88,10 @@ const formatOperators = (
   );
 };
 
-/** 取第一个公司名称 */
-const formatCompany = (
-  companys: { displayName?: string }[] | undefined,
-): string => {
-  if (!companys || companys.length === 0) return '-';
-  return companys[0]?.displayName || '-';
+/** 取组织串末端（直属组织）名称 */
+const formatOrgs = (orgs: { name?: string }[] | null | undefined): string => {
+  if (!orgs || orgs.length === 0) return '-';
+  return orgs.at(-1)?.name || '-';
 };
 
 /** 列表表格列配置 */
@@ -168,10 +166,10 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       formatter: ({ cellValue }) => formatOperators(cellValue),
     },
     {
-      field: 'companys',
-      title: '所属公司',
+      field: 'orgs',
+      title: '归属组织',
       minWidth: 130,
-      formatter: ({ cellValue }) => formatCompany(cellValue),
+      formatter: ({ cellValue }) => formatOrgs(cellValue),
     },
     {
       field: 'creatorUserName',

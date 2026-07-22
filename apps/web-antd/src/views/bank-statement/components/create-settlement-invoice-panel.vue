@@ -52,6 +52,7 @@ const props = defineProps<{
   bankStatementId: string;
   currencyCode?: string;
   currencyId?: number;
+  orgId?: number;
   otherSettledAmount: number;
   settlementId?: string;
   settlementName?: string;
@@ -420,9 +421,15 @@ function validateSelection(): boolean {
 async function handleCreateSettlement() {
   if (!validateSelection()) return;
 
+  if (!props.orgId) {
+    message.warning('缺少归属组织，无法创建结算单');
+    return;
+  }
+
   creating.value = true;
   try {
     await addReceiveSettlementByInvoiceApplication({
+      orgId: props.orgId,
       bankStatementId: props.bankStatementId,
       settlementTime: dayjs().toISOString(),
       items: selectedItems.value.map((item) => ({

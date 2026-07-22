@@ -2423,7 +2423,7 @@ const resolvePrintContext = async (): Promise<null | {
       codeIssueTypeId:
         (detail as any).codeIssueTypeId ?? (detail as any).issueType ?? null,
       carrierId: detail.carrierId ?? null,
-      orgId: detail.companys?.[0]?.id ?? null,
+      orgId: detail.orgId ?? null,
     };
   } catch {
     message.error('获取打印数据失败');

@@ -34,7 +34,21 @@ export namespace BankStatementAdminApi {
   }
 
   /** 新增银行流水 DTO */
+  /** 组织机构简易DTO（组织串 orgs 元素） */
+  export interface OrganizationUnitSimpleDto {
+    /** 组织id */
+    id: number;
+    /** 组织名 */
+    name?: string;
+    /** 本位币id，可空 */
+    localCurrencyId?: null | number;
+    /** 本位币编码，可空 */
+    localCurrencyCode?: null | string;
+  }
+
   export interface BankStatementAddDto {
+    /** 归属组织id */
+    orgId: number;
     amount: number;
     currencyId: number;
     statementTime: string;
@@ -51,6 +65,8 @@ export namespace BankStatementAdminApi {
   /** 修改银行流水 DTO */
   export interface BankStatementEditDto {
     id: string;
+    /** 归属组织id */
+    orgId: number;
     amount: number;
     currencyId: number;
     statementTime: string;
@@ -89,6 +105,10 @@ export namespace BankStatementAdminApi {
     orgBankAccountName?: string;
     clientInvoiceBankName?: string;
     bankStatementUsers?: BankStatementUserDto[];
+    /** 归属组织id */
+    orgId?: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: null | OrganizationUnitSimpleDto[];
     /** 已结算金额（收为正、付为负） */
     settledAmount?: number;
     /** 核销状态 */
@@ -115,7 +135,10 @@ export namespace BankStatementAdminApi {
     orgBankAccountName?: string;
     bankStatementUsers?: BankStatementUserDto[];
     userId?: number;
-    companys?: { id: number; displayName?: string }[];
+    /** 归属组织id */
+    orgId?: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: null | OrganizationUnitSimpleDto[];
     creationTime: string;
     /** 已结算金额（收为正、付为负） */
     settledAmount?: number;

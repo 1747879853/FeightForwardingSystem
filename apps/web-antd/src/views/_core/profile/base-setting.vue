@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { VbenFormSchema } from '#/adapter/form';
+import type { UserAdminMyDto } from '#/api/core/user';
 
 import { computed, onMounted, ref } from 'vue';
 
@@ -17,7 +18,6 @@ const authStore = useAuthStore();
 const userStore = useUserStore();
 
 interface BaseSettingFormValues {
-  companyName: string;
   departmentDisplay: string;
   emailAddress: string;
   emailPwd: string;
@@ -41,11 +41,22 @@ function normalizeNullableText(value?: null | string) {
   return normalized ? normalized : null;
 }
 
-function buildDepartmentDisplay(companyName: string, departmentName: string) {
-  if (companyName && departmentName) {
-    return `${companyName}-${departmentName}`;
-  }
-  return companyName || departmentName || '';
+/** 由 GetMy 的 organizations 生成「组织」展示文案（默认组织追加标记，多组织以 ；分隔） */
+function buildOrganizationsDisplay(
+  organizations?: null | UserAdminMyDto['organizations'],
+) {
+  if (!organizations || organizations.length === 0) return '';
+  return organizations
+    .map((item) => {
+      const path = (item.oneOrganizationPath ?? [])
+        .map((node) => node.displayName?.trim())
+        .filter(Boolean)
+        .join('-');
+      if (!path) return '';
+      return item.default ? `${path}（默认）` : path;
+    })
+    .filter(Boolean)
+    .join('；');
 }
 
 const formSchema = computed((): VbenFormSchema[] => {
@@ -63,7 +74,7 @@ const formSchema = computed((): VbenFormSchema[] => {
     {
       fieldName: 'departmentDisplay',
       component: 'ReadonlyText',
-      label: '部门',
+      label: '组织',
     },
     {
       fieldName: 'employeeID',
@@ -156,8 +167,6 @@ async function loadMyInfo() {
   currentAvatar.value =
     normalizeNullableText(data.avatar) ||
     normalizeNullableText(userStore.userInfo?.avatar);
-  const companyName = toDisplayText(data.companyName);
-  const departmentName = toDisplayText(data.departmentName);
 
   const values: BaseSettingFormValues = {
     userName: toDisplayText(data.userName),
@@ -171,8 +180,7 @@ async function loadMyInfo() {
     idNumber: toDisplayText(data.idNumber),
     gender: data.gender === 1 || data.gender === 2 ? data.gender : undefined,
     emailPwd: toDisplayText(data.emailPwd),
-    companyName,
-    departmentDisplay: buildDepartmentDisplay(companyName, departmentName),
+    departmentDisplay: buildOrganizationsDisplay(data.organizations),
   };
 
   profileBaseSettingRef.value?.getFormApi?.().setValues(values);

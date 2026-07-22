@@ -140,8 +140,10 @@ export namespace OrderFeeAdminApi {
     /** 所属用户权限id 不要用CreatorUserId 创建是创建 所属人是所属人 */
     userId?: number;
 
-    /** 所属组织id(通过用户id算的) */
-    organizationUnits?: SeaExportAdminApi.OrganizationUnitSimpleDto[];
+    /** 归属组织id（由所属运输订单派生） */
+    orgId?: null | number;
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: null | SeaExportAdminApi.OrganizationUnitSimpleDto[];
 
     /** 费用代码 id - 费用名称从这里来 */
     feeCodeId?: number;

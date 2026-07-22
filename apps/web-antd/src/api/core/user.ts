@@ -1,5 +1,7 @@
 import type { UserInfo } from '@vben/types';
 
+import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
+
 import { requestClient } from '#/api/request';
 
 /** 修改我的密码 */
@@ -8,13 +10,21 @@ export interface MyPasswordInputDto {
   password: string;
 }
 
+/**
+ * 我的组织路径 DTO（GetMy 返回）
+ * oneOrganizationPath：一条组织路径，从最高级组织（公司）到该组织，
+ * 公司节点含本位币与公司银行账户 orgBankAccounts。
+ */
+export interface MyUserOrganizationPathDto {
+  /** 是否默认组织 */
+  default: boolean;
+  /** 组织路径（从顶到底，节点为完整的组织机构 DTO） */
+  oneOrganizationPath: SystemOrganizationUnitApi.OrganizationUnitDto[];
+}
+
 /** 获取我的信息 */
 export interface UserAdminMyDto {
   avatar?: null | string;
-  companyId?: null | number;
-  companyName?: null | string;
-  departmentId?: null | number;
-  departmentName?: null | string;
   emailAddress?: null | string;
   emailPwd?: null | string;
   employeeID?: null | string;
@@ -23,6 +33,8 @@ export interface UserAdminMyDto {
   idNumber?: null | string;
   nickName?: null | string;
   officeTel?: null | string;
+  /** 我所属的全部组织（含默认组织，节点为完整组织 DTO） */
+  organizations?: MyUserOrganizationPathDto[] | null;
   phoneNumber?: null | string;
   qq?: null | string;
   userName?: null | string;
@@ -89,10 +101,6 @@ function adaptUserInfo(
   return {
     // 基础用户信息
     userId: String(user.id),
-    username: userName,
-    realName: nickName,
-    avatar,
-    emailAddress,
     roles: [], // 根据实际情况填充角色信息，可能需要从其他接口获取
 
     // 扩展信息

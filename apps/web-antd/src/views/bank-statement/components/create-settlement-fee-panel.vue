@@ -47,6 +47,7 @@ const props = defineProps<{
   bankStatementId: string;
   currencyCode?: string;
   currencyId?: number;
+  orgId?: number;
   otherSettledAmount: number;
   settlementId?: string;
   settlementName?: string;
@@ -354,9 +355,15 @@ async function handleCreateSettlement() {
   const fees = buildSelectedFees();
   if (!validateSelection(fees)) return;
 
+  if (!props.orgId) {
+    message.warning('缺少归属组织，无法创建结算单');
+    return;
+  }
+
   creating.value = true;
   try {
     await addReceiveSettlement({
+      orgId: props.orgId,
       bankStatementId: props.bankStatementId,
       settlementTime: dayjs().toISOString(),
       receiveSettlementItems: fees.map((fee) => ({

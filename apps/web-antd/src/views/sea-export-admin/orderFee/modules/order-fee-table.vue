@@ -525,7 +525,7 @@ const handlePrint = async () => {
       (orderDetail as any)?.issueType ??
       null,
     carrierId: orderDetail?.carrierId ?? null,
-    orgId: orderDetail?.companys?.[0]?.id ?? null,
+    orgId: orderDetail?.orgId ?? null,
   };
   const printJsonType =
     props.type === 0

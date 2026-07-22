@@ -23,9 +23,11 @@ import {
 import {
   ClientSelect,
   CurrencySelect,
+  MyOrgSelect,
   OrgBankAccountSelect,
   ClientBankAccountSelect,
 } from '#/adapter/component';
+import { getMyDefaultOrgId } from '#/composables/use-my-org';
 import {
   BankStatementAdminApi,
   addBankStatement,
@@ -72,6 +74,7 @@ const statementRemark = ref('');
 const remark = ref('');
 const messageText = ref('');
 const orgBankAccountId = ref<string | undefined>(undefined);
+const orgId = ref<number | undefined>(getMyDefaultOrgId());
 const settlementId = ref<string>('');
 const clientInvoiceBankId = ref<string | undefined>(undefined);
 /** 已落库的流水快照，供底部选费区使用（不随未保存的表单编辑变化） */
@@ -80,6 +83,7 @@ const savedSettlementName = ref('');
 const savedCurrencyId = ref<number | undefined>(undefined);
 const savedCurrencyCode = ref('');
 const savedAmount = ref(0);
+const savedOrgId = ref<number | undefined>(undefined);
 const writeOffStatus = ref<
   BankStatementAdminApi.BankStatementWriteOffStatus | undefined
 >(undefined);
@@ -152,6 +156,7 @@ const formFingerprint = computed(() =>
         remark: row.remark || '',
       })),
     orgBankAccountId: orgBankAccountId.value ?? null,
+    orgId: orgId.value ?? null,
     remark: remark.value,
     settlementId: settlementId.value,
     statementRemark: statementRemark.value,
@@ -183,6 +188,7 @@ function applySavedBankStatementSnapshot(
   savedCurrencyId.value = detail.currencyId;
   savedCurrencyCode.value = detail.currencyCode || '';
   savedAmount.value = detail.amount ?? 0;
+  savedOrgId.value = detail.orgId ?? undefined;
 }
 
 watch(settlementId, (value, previousValue) => {
@@ -237,6 +243,7 @@ async function loadEditData() {
     remark.value = detail.remark || '';
     messageText.value = detail.message || '';
     orgBankAccountId.value = detail.orgBankAccountId;
+    orgId.value = detail.orgId ?? undefined;
     settlementId.value = detail.settlementId;
     clientInvoiceBankId.value = detail.clientInvoiceBankId;
     writeOffStatus.value = detail.writeOffStatus;
@@ -333,6 +340,10 @@ async function handleSave(): Promise<boolean> {
     message.warning('请选择付款方');
     return false;
   }
+  if (!orgId.value) {
+    message.warning('请选择归属组织');
+    return false;
+  }
 
   const bankStatementUsers = operatorRows.value
     .filter((row) => row.operationId)
@@ -346,6 +357,7 @@ async function handleSave(): Promise<boolean> {
     if (isEdit.value) {
       await editBankStatement({
         id: editId.value!,
+        orgId: orgId.value!,
         amount: amount.value!,
         currencyId: currencyId.value!,
         statementTime: statementTime.value.toISOString(),
@@ -363,6 +375,7 @@ async function handleSave(): Promise<boolean> {
       await loadEditData();
     } else {
       const newId = await addBankStatement({
+        orgId: orgId.value!,
         amount: amount.value!,
         currencyId: currencyId.value!,
         statementTime: statementTime.value.toISOString(),
@@ -599,6 +612,18 @@ onUnmounted(() => {
 
               <div class="form-field">
                 <div class="form-label">
+                  归属组织 <span class="text-red-500">*</span>
+                </div>
+                <MyOrgSelect
+                  v-model="orgId"
+                  :disabled="!canEditStatement"
+                  placeholder="请选择归属组织"
+                  class="w-full"
+                />
+              </div>
+
+              <div class="form-field">
+                <div class="form-label">
                   币别 <span class="text-red-500">*</span>
                 </div>
                 <CurrencySelect
@@ -747,6 +772,7 @@ onUnmounted(() => {
         ref="settlementDrawerRef"
         :bank-statement-id="editId"
         :bank-statement-amount="savedAmount"
+        :org-id="savedOrgId"
         :other-settled-amount="otherSettledAmount"
         :settlement-id="savedSettlementId"
         :settlement-name="savedSettlementName"

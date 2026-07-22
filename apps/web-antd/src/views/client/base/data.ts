@@ -711,11 +711,10 @@ export function useBaseFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'OrganizationSelect',
-      fieldName: 'showCompanyId',
-      label: '归属公司',
+      fieldName: 'orgId',
+      label: '归属组织',
       componentProps: {
         allowClear: true,
-        isCompanyOnly: true,
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
       },
@@ -1096,10 +1095,10 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       },
     },
     {
-      field: 'showCompany',
-      title: '归属公司',
+      field: 'orgs',
+      title: '归属组织',
       minWidth: 150,
-      formatter: ({ cellValue }) => cellValue?.displayName || '',
+      formatter: ({ row }) => row.orgs?.at(-1)?.name || '',
     },
     {
       field: 'clientLaneCodes',

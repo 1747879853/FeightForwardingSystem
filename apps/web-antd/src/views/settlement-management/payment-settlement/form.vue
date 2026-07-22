@@ -40,6 +40,7 @@ import {
   deleteItemsFromSettlement,
 } from '#/api/sea-export/payment-settlement-admin';
 import { getPaymentApplicationDetail } from '#/api/settlement-management/payment-application-admin';
+import { getMyDefaultOrgId } from '#/composables/use-my-org';
 
 import AddApplicationDrawer from './add-application-drawer/index.vue';
 import { formatAmount, payTypeOptions } from './form-data';
@@ -61,7 +62,7 @@ const submitting = ref(false);
 
 // 表单数据
 const settlementNo = ref(''); // 结算单号
-const companys = ref<Array<{ id: number; name?: string }>>([]); // 所属公司列表
+const orgs = ref<Array<{ id: number; name?: string }>>([]); // 归属组织串
 const settlementTime = ref(dayjs());
 const payType = ref<number | undefined>(undefined);
 const settlementId = ref<string>('');
@@ -671,7 +672,18 @@ async function handleSave() {
 
   submitting.value = true;
   try {
+    const derivedOrgId =
+      settlementItems.value.find((it) => it.application.orgId != null)
+        ?.application.orgId ??
+      orgs.value[0]?.id ??
+      getMyDefaultOrgId();
+    if (!derivedOrgId) {
+      message.error('缺少归属组织，无法保存');
+      submitting.value = false;
+      return;
+    }
     const data: PaymentSettlementAdminApi.PaymentSettlementAddDto = {
+      orgId: derivedOrgId,
       settlementTime: settlementTime.value.toISOString(),
       payType: payType.value,
       settlementId: settlementId.value,
@@ -765,7 +777,7 @@ async function loadEditData() {
     const detail = await getPaymentSettlementDetail(editId.value);
 
     settlementNo.value = detail.settlementNo || ''; // 加载结算单号
-    companys.value = detail.companys || []; // 加载所属公司
+    orgs.value = detail.orgs || []; // 加载归属组织
     settlementTime.value = dayjs(detail.settlementTime);
     payType.value = detail.payType;
     settlementId.value = detail.settlementId;
@@ -924,7 +936,7 @@ async function loadEditData() {
           );
           // 从第一个相关的结算明细中获取公司信息
 
-          const companys = detail?.companys || [];
+          const detailOrgs = detail?.orgs || [];
 
           // 构造完整的 application 对象
           const mockApplication: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto =
@@ -939,8 +951,9 @@ async function loadEditData() {
               creatorUserName: detail.creatorUserName,
               totalSettleablePriceUpperLimit: 0,
               totalSettleablePriceLowerLimit: 0,
-              // 从 paymentSettlementItems 中获取公司信息
-              companys: companys,
+              // 归属组织信息（组织串）
+              orgId: detail.orgId,
+              orgs: detailOrgs,
               // 关键：使用转换后的 currencyGroup，包含完整的费用明细
               currencyGroup: convertedCurrencyGroup as any,
             };
@@ -986,17 +999,17 @@ async function loadOrgBankOptions() {
   }
 
   try {
-    // 收集所有涉及的公司ID（从申请明细中的费用所属公司）
+    // 收集所有涉及的公司节点ID（组织串中带本位币的公司节点）
     const companyIds = new Set<number>();
 
     settlementItems.value.forEach((item) => {
-      // 从申请中获取公司信息
-      if (item.application.companys && item.application.companys.length > 0) {
-        item.application.companys.forEach((company) => {
-          companyIds.add(company.id);
-        });
+      const orgList = item.application.orgs;
+      if (orgList && orgList.length > 0) {
+        const companyNode =
+          orgList.find((n) => n.localCurrencyId != null) ?? orgList[0];
+        if (companyNode) companyIds.add(companyNode.id);
       } else {
-        console.warn(`申请 ${item.application.applicationNo} 没有公司信息`);
+        console.warn(`申请 ${item.application.applicationNo} 没有组织信息`);
       }
     });
 
@@ -1376,15 +1389,15 @@ onMounted(() => {
               <Input :value="settlementNo" disabled />
             </div>
 
-            <!-- 所属公司 -->
-            <div v-if="companys.length > 0">
+            <!-- 归属组织 -->
+            <div v-if="orgs.length > 0">
               <div style="margin-bottom: 4px; font-size: 12px; color: #666">
-                所属公司
+                归属组织
               </div>
               <Select
                 mode="multiple"
-                :value="companys.map((c) => c.id)"
-                :options="companys.map((c) => ({ label: c.name, value: c.id }))"
+                :value="orgs.map((c) => c.id)"
+                :options="orgs.map((c) => ({ label: c.name, value: c.id }))"
                 disabled
                 style="width: 100%"
               />

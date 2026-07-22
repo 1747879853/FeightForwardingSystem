@@ -2,7 +2,7 @@
 title: 业务选择组件
 module: shared
 author: 前端团队
-last_updated: 2026-07-12
+last_updated: 2026-07-22
 ---
 
 # 1. 业务背景说明 (Background)
@@ -14,6 +14,7 @@ last_updated: 2026-07-12
 - **可编辑选择：** 通过下拉检索、分页加载或级联选择维护业务字段。
 - **编辑回显：** 使用选项缓存、已选对象或详情接口，将业务 ID 还原为可读名称。
 - **禁用只读：** 组件整体 `disabled` 时保留名称解析能力，但以无边框、无箭头且垂直居中的纯文本外观展示。
+- **归属组织录入（`MyOrgSelect`）：** 数据权限单据录入 `orgId` 专用下拉，选项来自本人**直属组织**（`use-my-org` 从 `GetMy.organizations` 派生），挂载时未选值自动填默认组织；区别于 `OrganizationSelect`（全量组织树，用于筛选/系统管理）。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -29,6 +30,7 @@ last_updated: 2026-07-12
 | **modelValue/value** | 当前选中的业务主键或主键数组 | 各业务主数据接口 | 由 options、selectedItems 或详情接口解析显示名称 | 雪花主键经 json-bigint 为 **string**，表单校验与提交须原样透传，禁止 `Number()` |
 | **disabled** | 是否整体禁止编辑 | 页面权限或业务状态 | 为 `true` 时切换为只读文本外观 | 只控制交互和视觉，不替代后端权限 |
 | **selectedItems** | 编辑回显所需的完整业务对象 | 页面详情数据 | 已选项不在当前分页时补入选项缓存 | 分页选择组件按需传入 |
+| **orgId (MyOrgSelect)** | 数据权限单据的归属组织 id | `GetMy.organizations` → `use-my-org` 直属组织 | 选中后可经 `getMyOrgCompanyNode` 派生本位币/税号/开票公司/公司银行账户 | 除客户/自动费用模板外**必填**；须为本人直属组织（后端完全相等校验） |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -42,3 +44,4 @@ last_updated: 2026-07-12
 | :-- | :-- | :-- | :-- |
 | 2026-07-12 | `Fix` | 港口/费用代码/汇率/客户账期等页面统一大数 ID 字符串校验与透传约定。 | 与 `request.ts` json-bigint `storeAsString` 对齐；biz-select 内 `parseIdToSafeString` 仅用于缓存键，不意味着表单可 coerce 为 number。 |
 | 2026-07-12 | `Feature` | 所有 biz-select 在整体禁用时改为清晰的只读文本外观 | 保留底层 Select/Cascader 解析标签，统一通过 `biz-select` 样式标识收敛视觉行为 |
+| 2026-07-22 | `Feature` | 新增 `MyOrgSelect` 归属组织录入下拉；配套 `use-my-org` 组合式，供全站数据权限单据录入 `orgId`。 | 多组织改造：`company/companyId`→`orgId/orgs`。`MyOrgSelect` 须在 `#/adapter/component` 顶层 barrel 再导出；公司信息取 `orgs` 内 `isCompany` 公司节点，展示归属组织名用末端节点。详见 change-log-2026-07-22-multi-org-orgid-refactor。 |

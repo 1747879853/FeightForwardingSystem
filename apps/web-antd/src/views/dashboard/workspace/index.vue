@@ -648,8 +648,8 @@ function mapPaymentTaskToBusinessRow(
     etd: toDateText(item.submitTime),
     id: item.id,
     route:
-      item.companys
-        ?.map((company) => company.name)
+      item.orgs
+        ?.map((org) => org.name)
         .filter(Boolean)
         .join(' / ') ||
       item.settlementName ||

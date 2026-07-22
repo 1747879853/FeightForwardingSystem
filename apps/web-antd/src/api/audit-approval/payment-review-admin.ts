@@ -70,7 +70,8 @@ export namespace PaymentReviewAdminApi {
     currencyId?: number;
     currencyCode?: string;
     orgId?: number;
-    companys?: OrganizationUnitSimpleDto[];
+    /** 组织串（从最高级组织到该组织） */
+    orgs?: OrganizationUnitSimpleDto[];
     currencyGroup?: CurrencyGroupDto[];
     totalPayPrice?: number;
     totalReceivePrice?: number;

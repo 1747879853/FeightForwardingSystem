@@ -625,7 +625,7 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     email: detail.email,
     url: detail.url,
     enterpriseType: detail.enterpriseType, // 添加企业类型字段
-    showCompanyId: detail.showCompanyId, // 添加归属公司字段
+    orgId: detail.orgId, // 归属组织字段
     remark: detail.remark,
     country: detail.countryId,
     areaId: areaIdPath,
@@ -908,7 +908,7 @@ const handleSubmit = async () => {
         enable: baseValues.enable ?? true,
 
         enterpriseType: baseValues.enterpriseType, // 企业类型字段
-        showCompanyId: baseValues.showCompanyId, // 归属公司字段
+        orgId: baseValues.orgId, // 归属组织字段
         industryCategories,
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
@@ -1008,6 +1008,7 @@ const handleSubmit = async () => {
         enable: baseValues.enable ?? true,
 
         enterpriseType: baseValues.enterpriseType, // 添加企业类型字段
+        orgId: baseValues.orgId, // 归属组织字段
         industryCategories,
         codeSourceId: baseValues.codeSourceId,
         remark: baseValues.remark,
