@@ -30,6 +30,7 @@ import {
   addClientAttachments,
   deleteClientAttachments,
   getClientAttachments,
+  getClientBillingPeriodAttachments,
 } from '#/api/sea-export/client-admin';
 import { updateAttachmentItemsClientVisible } from '#/api/system/attachment';
 import {
@@ -49,6 +50,23 @@ interface AttachmentTypeGroup {
   name: string;
   sortId: number;
   items: ClientAdminApi.ClientAttachmentItemDto[];
+}
+
+/** 账期附件项DTO */
+interface BillingPeriodAttachmentItem {
+  id?: number;
+  attachmentId?: number;
+  attachmentDtlTypeId?: number;
+  attachmentDtlType?: ClientAdminApi.AttachmentDtlTypeSimpleDto | null;
+  clientVisible?: boolean;
+  displayOrder?: number;
+  url?: string;
+  mediaType?: number;
+  friendlyFileName?: string | null;
+  fileLength?: number | null;
+  creationTime?: string | null;
+  creatorUserId?: number | null;
+  creatorUserName?: string | null;
 }
 
 const ALLOWED_TYPES = [
@@ -100,6 +118,31 @@ const allAttachmentTypes = ref<ClientAdminApi.AttachmentDtlTypeSimpleDto[]>([]);
 const manualTypeIds = ref<number[]>([]);
 const addOtherTypeVisible = ref(false);
 const selectedOtherTypeId = ref<number | undefined>(undefined);
+
+/** 账期附件列表 */
+const billingPeriodAttachments = ref<BillingPeriodAttachmentItem[]>([]);
+const billingPeriodLoading = ref(false);
+
+/** 账期附件分组 */
+const billingPeriodGroup = computed<AttachmentTypeGroup>(() => ({
+  attachmentDtlTypeId: null,
+  name: $t('client.attachment.billingPeriodAttachments'),
+  sortId: -1,
+  items: billingPeriodAttachments.value.map(item => ({
+    id: item.id,
+    attachmentId: item.attachmentId,
+    attachmentDtlTypeId: item.attachmentDtlTypeId,
+    clientVisible: item.clientVisible ?? false,
+    displayOrder: item.displayOrder ?? 0,
+    url: item.url,
+    mediaType: item.mediaType,
+    friendlyFileName: item.friendlyFileName,
+    fileLength: item.fileLength,
+    creationTime: item.creationTime,
+    creatorUserId: item.creatorUserId,
+    creatorUserName: item.creatorUserName,
+  })),
+}));
 
 const clientId = computed<string>(() => {
   const id = route.params.id || route.query.id;
@@ -408,6 +451,22 @@ const loadAttachments = async () => {
   }
 };
 
+/** 加载账期附件列表 */
+const loadBillingPeriodAttachments = async () => {
+  if (!clientId.value) return;
+
+  billingPeriodLoading.value = true;
+  try {
+    const attachments = await getClientBillingPeriodAttachments(clientId.value);
+    billingPeriodAttachments.value = attachments ?? [];
+  } catch (error) {
+    console.error('加载账期附件失败:', error);
+    message.error($t('client.attachment.loadFailed'));
+  } finally {
+    billingPeriodLoading.value = false;
+  }
+};
+
 const isAllowedType = (file: File): boolean => {
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
   return ALLOWED_TYPES.some((allowed) => allowed.replace('.', '') === ext);
@@ -543,6 +602,50 @@ const getFileIconColor = (
   return '#8c8c8c';
 };
 
+/** 获取账期附件文件名 */
+const getBillingPeriodFileName = (row: BillingPeriodAttachmentItem): string => {
+  const name = row.friendlyFileName || row.url || '';
+  return name.split('/').pop() || $t('system.basicData.attachmentFallback');
+};
+
+/** 获取账期附件文件扩展名 */
+const getBillingPeriodFileExtension = (
+  row: BillingPeriodAttachmentItem,
+): string => {
+  const source = row.friendlyFileName || row.url || '';
+  const match = source.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
+  return match ? (match[1]?.toLowerCase() ?? '') : '';
+};
+
+/** 判断账期附件是否为图片 */
+const isBillingPeriodImageFile = (row: BillingPeriodAttachmentItem): boolean =>
+  IMAGE_EXTENSIONS.has(getBillingPeriodFileExtension(row));
+
+/** 获取账期附件图标 */
+const getBillingPeriodFileIcon = (row: BillingPeriodAttachmentItem): string => {
+  const ext = getBillingPeriodFileExtension(row);
+  if (ext === 'pdf') return 'mdi:file-pdf-box';
+  if (['doc', 'docx'].includes(ext)) return 'mdi:file-word-box';
+  if (['csv', 'xls', 'xlsx'].includes(ext)) return 'mdi:file-excel-box';
+  if (['ppt', 'pptx'].includes(ext)) return 'mdi:file-powerpoint-box';
+  if (['rar', 'zip'].includes(ext)) return 'mdi:folder-zip-outline';
+  if (IMAGE_EXTENSIONS.has(ext)) return 'mdi:file-image-outline';
+  return 'mdi:file-document-outline';
+};
+
+/** 获取账期附件图标颜色 */
+const getBillingPeriodFileIconColor = (
+  row: BillingPeriodAttachmentItem,
+): string => {
+  const ext = getBillingPeriodFileExtension(row);
+  if (ext === 'pdf') return '#e5252a';
+  if (['doc', 'docx'].includes(ext)) return '#2b579a';
+  if (['csv', 'xls', 'xlsx'].includes(ext)) return '#217346';
+  if (['ppt', 'pptx'].includes(ext)) return '#d24726';
+  if (IMAGE_EXTENSIONS.has(ext)) return '#8b5cf6';
+  return '#8c8c8c';
+};
+
 const previewOpen = ref(false);
 const previewUrl = ref('');
 const previewFileName = ref('');
@@ -563,8 +666,24 @@ const handlePreview = (row: ClientAdminApi.ClientAttachmentItemDto) => {
   previewOpen.value = true;
 };
 
+/** 预览账期附件 */
+const handleBillingPeriodPreview = (row: BillingPeriodAttachmentItem) => {
+  if (!row.url) {
+    message.warning($t('client.attachment.noFileUrl'));
+    return;
+  }
+  previewUrl.value = row.url;
+  previewFileName.value = getBillingPeriodFileName(row);
+  previewUploader.value = row.creatorUserName ?? '';
+  previewUploadTime.value = row.creationTime
+    ? formatDateTime(row.creationTime)
+    : '';
+  previewOpen.value = true;
+};
+
 onMounted(() => {
   loadAttachments();
+  loadBillingPeriodAttachments();
 });
 </script>
 
@@ -584,6 +703,89 @@ onMounted(() => {
       </div>
 
       <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <!-- 账期附件卡片 -->
+        <Card
+          v-if="billingPeriodAttachments.length > 0"
+          :key="'billing-period'"
+          size="small"
+          class="attachment-card"
+        >
+          <template #title>
+            <div class="flex items-center gap-2">
+              <span class="font-medium">
+                {{ $t('client.attachment.billingPeriodAttachments') }}
+              </span>
+              <span class="text-xs font-normal text-gray-400">
+                {{ $t('client.attachment.fileCount', [billingPeriodAttachments.length]) }}
+              </span>
+            </div>
+          </template>
+
+          <div class="attachment-card-list">
+            <div
+              v-for="item in billingPeriodAttachments"
+              :key="item.id"
+              class="attachment-file-item"
+              @click="handleBillingPeriodPreview(item)"
+            >
+              <img
+                v-if="isBillingPeriodImageFile(item) && item.url"
+                :src="buildAttachmentUrl(item.url)"
+                class="attachment-file-thumb"
+                alt=""
+              />
+              <IconifyIcon
+                v-else
+                :icon="getBillingPeriodFileIcon(item)"
+                :style="{ color: getBillingPeriodFileIconColor(item) }"
+                class="size-8 shrink-0"
+              />
+
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-sm" :title="getBillingPeriodFileName(item)">
+                  {{ getBillingPeriodFileName(item) }}
+                </div>
+                <div
+                  class="attachment-file-meta text-xs text-gray-400"
+                  :title="
+                    [
+                      formatFileSize(item.fileLength),
+                      item.creatorUserName
+                        ? `${$t('client.attachment.uploader')}：${item.creatorUserName}`
+                        : '',
+                      item.creationTime
+                        ? `${$t('client.attachment.uploadTime')}：${formatDateTime(item.creationTime)}`
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  "
+                >
+                  <span>{{ formatFileSize(item.fileLength) }}</span>
+                  <span v-if="item.creatorUserName">
+                    {{ $t('client.attachment.uploader') }}：{{
+                      item.creatorUserName
+                    }}
+                  </span>
+                  <span v-if="item.creationTime">
+                    {{ $t('client.attachment.uploadTime') }}：{{
+                      formatDateTime(item.creationTime)
+                    }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="attachment-file-actions" @click.stop>
+                <Tooltip :title="$t('client.attachment.preview')">
+                  <Button type="text" size="small" @click="handleBillingPeriodPreview(item)">
+                    <IconifyIcon icon="mdi:eye-outline" />
+                  </Button>
+                </Tooltip>
+              </div>
+            </div>
+          </div>
+        </Card>
+
         <Card
           v-for="group in groups"
           :key="getGroupKey(group.attachmentDtlTypeId)"

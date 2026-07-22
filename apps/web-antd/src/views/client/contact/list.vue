@@ -9,6 +9,7 @@ import {
   editClientContact,
   deleteClientContact,
   setClientContactDisabled,
+  batchSaveClientContacts,
 } from '#/api/sea-export/client-contact-admin';
 import { useVbenModal } from '@vben/common-ui';
 import AddModal from './add-modal.vue';
@@ -105,7 +106,7 @@ const handleActionClick = ({
 const fetchClientContactPagedList = (params: Record<string, any>) =>
   getClientContactPagedList({
     ...params,
-    clientId: editId.value,
+    ClientId: editId.value,
   });
 
 const [Modal, modalApi] = useVbenModal({
@@ -165,25 +166,21 @@ const toggleContactDisable = async (data: ClientContactAdminApi.ClientContactDto
   });
 };
 
-// 处理Handsontable保存事件
-const handleSaveContacts = async (contacts: any) => {
+// 处理Handsontable保存事件 - 统一处理批量保存逻辑
+const handleSaveContacts = async (contacts: ClientContactAdminApi.ClientContactDto[]) => {
   try {
-    // 检查contacts是否为undefined或null
-    if (contacts === undefined || contacts === null) {
-      console.warn('contacts参数为undefined或null，尝试从dataSource获取数据');
-      // 如果contacts为undefined，使用当前的dataSource
-      const currentContacts = dataSource.value || [];
-      await saveContacts(currentContacts);
-      return;
-    }
-    
-    // 验证contacts参数是否为数组
-    if (!Array.isArray(contacts)) {
+    // 验证contacts参数
+    if (!contacts || !Array.isArray(contacts)) {
       console.error('contacts参数不是有效的数组:', contacts);
       message.error('联系人数据格式错误');
       return;
     }
     
+    if (contacts.length === 0) {
+      message.warning('没有需要保存的联系人');
+      return;
+    }
+
     await saveContacts(contacts);
   } catch (error) {
     console.error('保存联系人失败:', error);
@@ -191,66 +188,59 @@ const handleSaveContacts = async (contacts: any) => {
   }
 };
 
-// 分离出保存联系人的具体逻辑
-const saveContacts = async (contactsToSave: any[]) => {
-  for (const contact of contactsToSave) {
-    if (!contact) continue; // 跳过空值
-    
-    // 确保clientId已设置
-    if (!contact.clientId) {
-      contact.clientId = editId.value || '';
-    }
-    
-    // 转换布尔值
-    const isDefault = contact.isDefault === true || contact.isDefault === '是' || contact.isDefault === 'true';
-    const invoiceEnable = contact.invoiceEnable === true || contact.invoiceEnable === '是' || contact.invoiceEnable === 'true';
-    const statementEnable = contact.statementEnable === true || contact.statementEnable === '是' || contact.statementEnable === 'true';
-    
-    if (!contact.id || contact.id === 0 || contact.id === '0' || contact.id === null || contact.id === undefined) {
-      // 新增联系人，id为0或undefined表示新记录
-      const newContact: ClientContactAdminApi.ClientContactAddDto = {
-        clientId: contact.clientId,
-        name: contact.name || '',
-        mobile: contact.mobile || '',
-        email: contact.email || '',
-        tel: contact.tel || '',
-        landline: contact.landline || '',
-        position: contact.position || '',
-        weChat: contact.weChat || '',
-        isDefault: isDefault,
-        remark: contact.remark || '',
-        qq: contact.qq || '',
-        invoiceEnable: invoiceEnable,
-        statementEnable: statementEnable,
-      };
-      
-      await addClientContact(newContact);
-    } else {
-      // 编辑联系人
-      const editContact: ClientContactAdminApi.ClientContactEditDto = {
-        id: typeof contact.id === 'string' ? parseInt(contact.id) : contact.id,
-        clientId: contact.clientId,
-        name: contact.name || '',
-        mobile: contact.mobile || '',
-        email: contact.email || '',
-        tel: contact.tel || '',
-        landline: contact.landline || '',
-        position: contact.position || '',
-        weChat: contact.weChat || '',
-        isDefault: isDefault,
-        remark: contact.remark || '',
-        qq: contact.qq || '',
-        invoiceEnable: invoiceEnable,
-        statementEnable: statementEnable,
-      };
-      
-      await editClientContact(editContact);
-    }
+// 分离出保存联系人的具体逻辑 - 使用批量保存接口
+const saveContacts = async (contactsToSave: ClientContactAdminApi.ClientContactDto[]) => {
+  if (!editId.value) {
+    message.error('缺少客户ID');
+    return;
   }
-  
-  message.success('联系人信息保存成功');
-  // 重新加载数据
-  queryTableData();
+
+  // 转换数据格式为批量保存项
+  const contacts: ClientContactAdminApi.ClientContactBatchItemDto[] = contactsToSave.map((contact) => {
+    // 构建批量保存项
+    const item: ClientContactAdminApi.ClientContactBatchItemDto = {
+      id:
+        !contact.id ||
+        contact.id === 0 ||
+        contact.id === null ||
+        contact.id === undefined
+          ? undefined
+          : contact.id,
+      name: contact.name || '',
+      mobile: contact.mobile || '',
+      email: contact.email || '',
+      tel: contact.tel || '',
+      landline: contact.landline || '',
+      position: contact.position || '',
+      weChat: contact.weChat || '',
+      isDefault: contact.isDefault,
+      remark: contact.remark || '',
+      qq: contact.qq || '',
+      invoiceEnable: contact.invoiceEnable,
+      statementEnable: contact.statementEnable,
+      isDisabled: contact.isDisabled,
+    };
+
+    return item;
+  });
+
+  try {
+    // 调用批量保存接口
+    const savedIds = await batchSaveClientContacts({
+      clientId: editId.value,
+      contacts: contacts,
+    });
+
+    console.log('批量保存成功，返回的ID列表:', savedIds);
+    message.success(`联系人信息保存成功（共${contacts.length}条）`);
+
+    // 重新加载数据
+    await queryTableData();
+  } catch (error) {
+    console.error('批量保存联系人失败:', error);
+    message.error('保存联系人失败');
+    throw error;
+  }
 };
 
 // 在组件挂载后自动加载数据

@@ -32,7 +32,7 @@ import { Button ,Modal,message} from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
 import type { ClientContactAdminApi } from '#/api/sea-export/client-contact-admin';
 import { $t } from '#/locales';
-import { setClientContactDisabled, deleteClientContact, saveClientContacts } from '#/api/sea-export/client-contact-admin';
+import { setClientContactDisabled, deleteClientContact } from '#/api/sea-export/client-contact-admin';
 
 
 interface Props {
@@ -42,7 +42,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: ClientContactAdminApi.ClientContactDto[]): void;
-  (e: 'save'): void;
+  (e: 'save', value: ClientContactAdminApi.ClientContactDto[]): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -62,6 +62,23 @@ const tableData = shallowRef<any[]>([]);
 const hotSettings = shallowRef({
   data: tableData.value,
   columns: [
+    {
+      data: 'isDisabled',
+      title: '状态',
+      type: 'dropdown',
+      source: ['启用', '禁用'],
+      width: 80,
+      renderer: function (instance: any, td: HTMLTableCellElement, row: number, col: number, prop: string, value: any, cellProperties: any) {
+        if (value === true || value === '禁用') {
+          td.innerHTML = '<span style="color: red;">禁用</span>';
+          td.style.backgroundColor = '#ffebee';
+        } else {
+          td.innerHTML = '<span style="color: green;">启用</span>';
+          td.style.backgroundColor = '#e8f5e8';
+        }
+        return td;
+      },
+    },
     {
       data: 'name',
       title: '姓名',
@@ -170,23 +187,7 @@ const hotSettings = shallowRef({
       type: 'text',
       width: 150,
     },
-    {
-      data: 'isDisabled',
-      title: '状态',
-      type: 'dropdown',
-      source: ['启用', '禁用'],
-      width: 80,
-      renderer: function (instance: any, td: HTMLTableCellElement, row: number, col: number, prop: string, value: any, cellProperties: any) {
-        if (value === true || value === '禁用') {
-          td.innerHTML = '<span style="color: red;">禁用</span>';
-          td.style.backgroundColor = '#ffebee';
-        } else {
-          td.innerHTML = '<span style="color: green;">启用</span>';
-          td.style.backgroundColor = '#e8f5e8';
-        }
-        return td;
-      },
-    },
+
     {
       title: '操作',
       type: 'text',
@@ -283,7 +284,7 @@ const hotSettings = shallowRef({
       },
     },
   ],
-  height: 400,
+  height: 800,
   width: '100%',
   rowHeaders: true,
   colHeaders: true,
@@ -447,7 +448,7 @@ const deleteRow = async (rowIndex: number) => {
   });
 };
 
-// 保存数据
+// 保存数据 - 只负责验证和通知父组件
 const saveData = async () => {
   if (saving.value) return; // 防止重复提交
   
@@ -462,17 +463,13 @@ const saveData = async () => {
       isDisabled: row.isDisabled === '禁用',
     }));
     
-    // 调用后端API保存所有联系人
-    await saveClientContacts(updatedData as ClientContactAdminApi.ClientContactDto[]);
+    // 通知父组件处理保存逻辑（传递转换后的数据）
+    emit('save', updatedData as ClientContactAdminApi.ClientContactDto[]);
     
-    emit('update:modelValue', updatedData as ClientContactAdminApi.ClientContactDto[]);
-    emit('save');
-    
-    //message.success('保存成功');
   } catch (error) {
-    console.error('保存联系人失败:', error);
+    console.error('准备保存数据失败:', error);
     const errorMessage = error instanceof Error ? error.message : '未知错误';
-   // message.error(`保存失败: ${errorMessage}`);
+    message.error(`数据验证失败: ${errorMessage}`);
   } finally {
     saving.value = false;
   }

@@ -320,6 +320,8 @@ const editContactData = async (
 };
 
 const addContact = () => {
+  // 清空之前设置的编辑数据，避免新增弹窗显示编辑数据
+  modalApi.setData(undefined);
   modalApi.open();
 };
 const editContact = (data: BillingPeriodAdminApi.BillingPeriodEditDto) => {

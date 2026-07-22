@@ -1,5 +1,10 @@
 {
   "title": "Client Management",
+  "clientType": "Client Type",
+  "clientTypeOptions": {
+    "peer": "Peer",
+    "directCustomer": "Direct Customer"
+  },
   "invoice": {
     "title": "Invoice Information",
     "basicInfo": "Basic Information",
@@ -54,6 +59,7 @@
     "addOtherTypeTip": "Select attachment types not in default display, upload area will appear after confirmation",
     "addOtherTypeSuccess": "Attachment type added",
     "selectTypePlaceholder": "Please select attachment type",
-    "selectTypeRequired": "Please select attachment type"
+    "selectTypeRequired": "Please select attachment type",
+    "billingPeriodAttachments": "Billing Period Attachments"
   }
 }

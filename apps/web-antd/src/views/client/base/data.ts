@@ -1,9 +1,21 @@
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 
 import type { VbenFormSchema } from '#/adapter/form';
-import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import { ClientAdminApi } from '#/api/sea-export/client-admin';
 import { getCargoTypeOptions } from '#/views/sea-export-admin/data';
 import { $t } from '#/locales';
+
+/** 客户类型枚举选项 */
+const getClientTypeOptions = () => [
+  {
+    value: ClientAdminApi.ClientType.Peer,
+    label: $t('seaExport.client.clientTypeOptions.peer'),
+  },
+  {
+    value: ClientAdminApi.ClientType.DirectCustomer,
+    label: $t('seaExport.client.clientTypeOptions.direct'),
+  },
+];
 
 /** 客户等级枚举选项 */
 const getClientLevelOptions = () => [
@@ -718,6 +730,17 @@ export function useBaseFormSchema(): VbenFormSchema[] {
         isCompanyOnly: true,
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'clientType',
+      label: $t('seaExport.client.clientType'),
+      componentProps: {
+        allowClear: true,
+        options: getClientTypeOptions(),
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
       },
     },
     {

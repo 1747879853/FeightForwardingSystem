@@ -1,6 +1,14 @@
 import { requestClient } from '#/api/request';
 
 export namespace ClientAdminApi {
+  /** 客户类型枚举 */
+  export enum ClientType {
+    /** 同行 */
+    Peer = 0,
+    /** 直客 */
+    DirectCustomer = 1,
+  }
+
   /** 合作状态枚举 */
   export enum CoopStatus {
     /** 潜在 */
@@ -124,6 +132,8 @@ export namespace ClientAdminApi {
     mainProduct?: string;
     /** 是否有效 */
     enable?: boolean;
+    /** 客户类型 0-同行 1-直客 */
+    clientType?: ClientType | null;
     /** 行业类别 */
     industryCategories?: string;
     /** 备注 */
@@ -254,6 +264,8 @@ export namespace ClientAdminApi {
     mainProduct?: string;
     /** 是否有效 */
     enable?: boolean;
+    /** 客户类型 0-同行 1-直客 */
+    clientType?: ClientType | null;
     /** 行业类别 */
     industryCategories?: string;
     /** 备注 */
@@ -499,6 +511,8 @@ export namespace ClientAdminApi {
     codeSourceId?: number;
     /** 是否有效 */
     enable: boolean;
+    /** 客户类型 0-同行 1-直客 */
+    clientType?: ClientType | null;
     /** 行业类别 */
     industryCategories?: string;
     /** 备注 */
@@ -629,6 +643,8 @@ export namespace ClientAdminApi {
     IsShared?: boolean;
     /** 展示归属公司ID */
     ShowCompanyId?: number;
+    /** 客户类型 0-同行 1-直客 */
+    ClientType?: ClientType | null;
     /** 排序 默认是Id */
     Sorting?: string;
     /** 当前页码 */
@@ -674,6 +690,36 @@ export namespace ClientAdminApi {
   export interface ClientAttachmentsDeleteDto {
     id: string;
     attachmentIds?: number[] | null;
+  }
+
+  /** 获取客户所有账期附件列表响应（扁平列表） */
+  export interface ClientBillingPeriodAttachmentDto {
+    /** 关联id */
+    id?: number;
+    /** 附件id */
+    attachmentId?: number;
+    /** 附件详细类型id */
+    attachmentDtlTypeId?: number;
+    /** 附件详细类型简易对象 */
+    attachmentDtlType?: AttachmentDtlTypeSimpleDto | null;
+    /** 客户是否可见 */
+    clientVisible?: boolean;
+    /** 顺序 */
+    displayOrder?: number;
+    /** 下载地址 */
+    url?: string;
+    /** 文件类型 */
+    mediaType?: number;
+    /** 显示文件名 */
+    friendlyFileName?: string | null;
+    /** 文件大小 */
+    fileLength?: number | null;
+    /** 上传时间 */
+    creationTime?: string | null;
+    /** 上传人id */
+    creatorUserId?: number | null;
+    /** 上传人昵称 */
+    creatorUserName?: string | null;
   }
 
   /** 附件详细类型简易DTO */
@@ -792,6 +838,17 @@ export const deleteClientAttachments = (
 };
 
 /**
+ * 获取客户所有账期的附件列表（不分组，扁平）
+ * @param id 客户Id
+ */
+export const getClientBillingPeriodAttachments = (id: string) => {
+  return requestClient.get<ClientAdminApi.ClientBillingPeriodAttachmentDto[]>(
+    `${API_PREFIX}/GetBillingPeriodAttachmentsAsync`,
+    { params: { Id: id } },
+  );
+};
+
+/**
  * 加入失信
  */
 export const addDishonest = (data: ClientAdminApi.GuidIdDto) => {
@@ -804,3 +861,17 @@ export const addDishonest = (data: ClientAdminApi.GuidIdDto) => {
 export const cancelDishonest = (data: ClientAdminApi.GuidIdDto) => {
   return requestClient.put<void>(`${API_PREFIX}/CancelDishonestAsync`, data);
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
