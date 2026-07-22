@@ -127,6 +127,19 @@ export namespace SystemUserAdminApi {
     id: number;
     name: string;
     isCompany: boolean;
+    localCurrencyId?: number | null; // 本位币id（新增）
+  }
+
+  /** 用户所属组织路径DTO */
+  export interface UserOrganizationPathDto {
+    default: boolean; // 是否默认组织
+    oneOrganizationPath: UserOrganizationPathItemDto[]; // 单条组织链，从顶级组织到当前组织
+  }
+
+  /** 更新用户组织路径DTO（用于创建/更新） */
+  export interface UpdateUserOrganizationPathDto {
+    id: number; // 组织id（须存在且启用）
+    default?: boolean; // 是否设为默认组织（最多一条为 true）
   }
 
   /** 用户列表项DTO */
@@ -143,8 +156,8 @@ export namespace SystemUserAdminApi {
     userAttribute?: UserAttribute;
     /** 所属部门名称（用户直接挂载的组织名称） */
     organization?: string;
-    /** 所属组织机构路径，从顶级组织到当前组织按层级排列 */
-    organizationPath?: UserOrganizationPathItemDto[];
+    /** 用户全部所属组织路径（一个用户可属多个组织，每条为一条从顶到底的组织链）；用户未挂组织时为空数组 */
+    organizations?: UserOrganizationPathDto[];
     creationTime: string;
     lastLoginTime?: string;
     roles?: string[];
@@ -173,20 +186,34 @@ export namespace SystemUserAdminApi {
 
   /** 用户查询参数 */
   export interface UserQueryParams {
-    KeyWords?: string;
-    IsActive?: boolean;
-
-    userAttribute?: UserAttribute;
-    IsPhoneNumberConfirmed?: boolean;
-    Status?: UserStatus;
-    RoleId?: number;
-    CreationTimeStart?: string;
-    CreationTimeEnd?: string;
-    LastLoginTimeStart?: string;
-    LastLoginTimeEnd?: string;
-    Sorting?: string;
-    PageIndex?: number;
-    PageSize?: number;
+    keyWords?: string; // 关键字(匹配邮箱、用户名、昵称、手机号)
+    KeyWords?: string; // 兼容旧代码
+    isActive?: boolean; // 是否已激活
+    IsActive?: boolean; // 兼容旧代码
+    isEmailConfirmed?: boolean; // 邮箱是否验证
+    IsEmailConfirmed?: boolean; // 兼容旧代码
+    isPhoneNumberConfirmed?: boolean; // 手机是否验证
+    IsPhoneNumberConfirmed?: boolean; // 兼容旧代码
+    status?: UserStatus; // 审核状态
+    Status?: UserStatus; // 兼容旧代码
+    roleId?: number; // 角色Id
+    RoleId?: number; // 兼容旧代码
+    userAttribute?: UserAttribute; // 用户属性(位掩码，精确匹配)
+    creationTimeStart?: string; // 创建时间起
+    CreationTimeStart?: string; // 兼容旧代码
+    creationTimeEnd?: string; // 创建时间止
+    CreationTimeEnd?: string; // 兼容旧代码
+    lastLoginTimeStart?: string; // 最后登录时间起
+    LastLoginTimeStart?: string; // 兼容旧代码
+    lastLoginTimeEnd?: string; // 最后登录时间止
+    LastLoginTimeEnd?: string; // 兼容旧代码
+    pageIndex?: number; // 当前页码，默认1
+    PageIndex?: number; // 兼容旧代码
+    page?: number; // 兼容旧代码
+    pageSize?: number; // 每页条数，默认10
+    PageSize?: number; // 兼容旧代码
+    sorting?: string; // 排序字段，默认 "Id DESC"
+    Sorting?: string; // 兼容旧代码
   }
 
   /** 用户详情DTO（用于编辑） */
@@ -218,19 +245,16 @@ export namespace SystemUserAdminApi {
     officeTel?: string;
     senderDisplayName?: string;
     userBankAccounts?: UserBankAccountDto[];
-    /** 所属部门组织 id */
-    organizationId?: number;
-    /** 所属公司 id（只读） */
-    companyId?: number | null;
-    /** 所属公司名称（只读） */
-    companyName?: string | null;
-    /** 所属部门名称（只读） */
-    departmentName?: string | null;
+    /** 下次登录是否需要改密码 */
+    shouldChangePasswordOnNextLogin?: boolean;
+    /** 用户全部所属组织路径，默认组织 default=true（替代原 organizationId/organizationName） */
+    organizations?: UserOrganizationPathDto[];
   }
 
   /** 用户编辑数据DTO（含数据权限） */
   export interface UserInAdminDataPermissionDto extends UserDto {
-    grantedOrganizationIds?: number[];
+    grantedOrganizationIds?: number[]; // 数据权限(可查看的部门Id列表)
+    dataPermissionType?: number; // 数据权限类型
   }
 
   /** 用户输入DTO */
@@ -245,7 +269,8 @@ export namespace SystemUserAdminApi {
     password?: string;
     avatar?: string;
     roleIds?: number[];
-    organizationId?: number;
+    /** 用户所属组织列表（替代原 organizationId/organizationName），据此重建多组织关系并设默认组织 */
+    organizations?: UpdateUserOrganizationPathDto[];
     userAttribute?: UserAttribute;
     enName?: string;
     qq?: string;
@@ -259,11 +284,14 @@ export namespace SystemUserAdminApi {
     sendAddrPort?: string;
     officeTel?: string;
     senderDisplayName?: string;
+    /** 下次登录是否需要改密码 */
+    shouldChangePasswordOnNextLogin?: boolean;
   }
 
   /** 用户输入DTO（含数据权限） */
   export interface UserInAdminDataPermissionInputDto extends UserInAdminInputDto {
-    grantedOrganizationIds?: number[];
+    grantedOrganizationIds?: number[]; // 数据权限(可查看的部门Id列表)
+    dataPermissionType?: number; // 数据权限类型
   }
 
   /** 用户角色分配DTO */

@@ -536,7 +536,14 @@
       "bankAccount": "银行账号",
       "confirmDelete": "确定要删除该银行账户吗？",
       "deleteSuccess": "银行账户删除成功"
-    }
+    },
+    "organizationRequired": "请选择所属组织",
+    "onlyOneDefaultOrganization": "只能设置一个默认组织",
+    "organizations": "所属组织",
+    "selectedOrganizations": "已选组织",
+    "setDefault": "设为默认组织",
+    "isDefault": "默认",
+    "organizationSelectorTip": "勾选组织进行选择，点击[设为默认]指定默认组织（最多一个）"
   },
   "workflow": {
     "basicInfo": "基本信息",

@@ -3,10 +3,8 @@ import { onMounted, ref, watch } from 'vue';
 
 import { Select } from 'ant-design-vue';
 
-import {
-  getMyPermissionCompanies,
-  getOrgBankAccountList,
-} from '#/api/system/organization-unit';
+import { getUserBankAccountList } from '#/api/system/user-admin';
+import { useUserStore } from '@vben/stores';
 
 interface BankAccountOption {
   id: string;
@@ -29,6 +27,7 @@ const emit = defineEmits<{
   change: [value: string | undefined, option: BankAccountOption | undefined];
 }>();
 
+const userStore = useUserStore();
 const loading = ref(false);
 const options = ref<BankAccountOption[]>([]);
 const selectedValue = ref<string | undefined>(props.value);
@@ -41,51 +40,31 @@ watch(
 );
 
 async function loadBankAccounts() {
+  const userId = userStore.userInfo?.userId;
+  console.log('加载银行信息的userId', userId);
+  if (!userId) return;
+
   loading.value = true;
   try {
-    // 获取当前用户有权限的公司列表
-    const companies = await getMyPermissionCompanies();
-
-    if (!companies || companies.length === 0) {
-      console.warn('当前用户没有关联的公司');
-      options.value = [];
-      return;
-    }
-
-    // 取第一个公司的ID获取银行列表
-    const firstCompany = companies[0];
-    if (!firstCompany) {
-      console.warn('无法获取公司信息');
-      options.value = [];
-      return;
-    }
-
-    const firstCompanyId = firstCompany.id;
-    console.log('加载银行信息的organizationUnitId', firstCompanyId);
-
-    const accounts = await getOrgBankAccountList(firstCompanyId);
+    const accounts = await getUserBankAccountList(userId);
     options.value = (accounts || []).map((account) => ({
       id: account.id,
       value: account.id,
-      label: `${account.bankShortName} - ${account.accountName ?? ''} (${account.currencyCode ?? ''})`,
-      bankName: account.bankName ?? '',
-      bankAccount: account.bankAccount ?? '',
-      currencyCode: account.currencyCode ?? '',
+      label: `${account.bankShortName} - ${account.accountName} (${account.currencyCode})`,
+      bankName: account.bankName,
+      bankAccount: account.bankAccount,
+      currencyCode: account.currencyCode,
     }));
-  } catch (error) {
-    console.error('加载组织银行列表失败:', error);
-    options.value = [];
   } finally {
     loading.value = false;
   }
 }
 
-function handleChange(value: any) {
-  const strValue = value != null ? String(value) : undefined;
-  selectedValue.value = strValue;
-  const option = options.value.find((opt) => opt.value === strValue);
-  emit('update:value', strValue);
-  emit('change', strValue, option);
+function handleChange(value: string | undefined) {
+  selectedValue.value = value;
+  const option = options.value.find((opt) => opt.value === value);
+  emit('update:value', value);
+  emit('change', value, option);
 }
 
 onMounted(() => {
