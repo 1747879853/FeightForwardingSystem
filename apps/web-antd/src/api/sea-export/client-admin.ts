@@ -583,6 +583,8 @@ export namespace ClientAdminApi {
     reconcilers?: ClientReconcilerDto[];
     /** 国家 */
     country?: CountryCodeDto;
+    /** 是否失信 */
+    isDishonest?: boolean;
     isDeleted: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -861,6 +863,8 @@ export const addDishonest = (data: ClientAdminApi.GuidIdDto) => {
 export const cancelDishonest = (data: ClientAdminApi.GuidIdDto) => {
   return requestClient.put<void>(`${API_PREFIX}/CancelDishonestAsync`, data);
 };
+
+
 
 
 

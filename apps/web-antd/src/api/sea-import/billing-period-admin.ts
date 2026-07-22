@@ -14,7 +14,7 @@ export namespace BillingPeriodAdminApi {
     /** 失效时间 */
     expiringTime?: string;
     /** 业务类型 */
-    bizTypes?: number;
+    bizTypes?: number[];
     /** 结算方式 */
     settlementType: number;
     /**间隔月份 */

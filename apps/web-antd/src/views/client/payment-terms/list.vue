@@ -253,11 +253,6 @@ const [Grid, gridApi] =
       }) => {
         const editData: BillingPeriodAdminApi.BillingPeriodEditDto = {
           ...row,
-          // bizTypes 在 DetailDto 中是 number[],在 EditDto 中是 number
-          // 这里取第一个值或保持原样
-          bizTypes: Array.isArray(row.bizTypes)
-            ? row.bizTypes[0]
-            : row.bizTypes,
         };
         editContact(editData);
       },
@@ -314,6 +309,7 @@ const addContactData = async (
 const editContactData = async (
   data: BillingPeriodAdminApi.BillingPeriodEditDto,
 ) => {
+  console.log('editContactData', data);
   data.clientId = editId.value || '';
   await editBillingPeriod(data);
   gridApi.query();
