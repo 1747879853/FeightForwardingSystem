@@ -12,13 +12,11 @@ import { formatDateTime } from '@vben/utils';
 import {
   Button,
   Card,
-  Checkbox,
   Empty,
   message,
   Modal,
   Select,
   Spin,
-  Switch,
   Tooltip,
   Upload,
 } from 'ant-design-vue';
@@ -32,7 +30,6 @@ import {
   getClientAttachments,
   getClientBillingPeriodAttachments,
 } from '#/api/sea-export/client-admin';
-import { updateAttachmentItemsClientVisible } from '#/api/system/attachment';
 import {
   getAttachmentDtlTypeList,
   getAttachmentDtlTypesByModuleTypes,
@@ -49,7 +46,7 @@ interface AttachmentTypeGroup {
   attachmentDtlTypeId: number | null;
   name: string;
   sortId: number;
-  items: ClientAdminApi.ClientAttachmentItemDto[];
+  items: Omit<ClientAdminApi.ClientAttachmentItemDto, 'clientVisible'>[];
 }
 
 /** 账期附件项DTO */
@@ -58,7 +55,6 @@ interface BillingPeriodAttachmentItem {
   attachmentId?: number;
   attachmentDtlTypeId?: number;
   attachmentDtlType?: ClientAdminApi.AttachmentDtlTypeSimpleDto | null;
-  clientVisible?: boolean;
   displayOrder?: number;
   url?: string;
   mediaType?: number;
@@ -112,7 +108,6 @@ const route = useRoute();
 const loading = ref(false);
 const uploadingTypeId = ref<number | null | undefined>(undefined);
 const groups = ref<AttachmentTypeGroup[]>([]);
-const clientVisibleByTypeId = ref<Map<number | null, boolean>>(new Map());
 const allAttachmentTypes = ref<ClientAdminApi.AttachmentDtlTypeSimpleDto[]>([]);
 /** 用户手动添加的非默认展示类型 */
 const manualTypeIds = ref<number[]>([]);
@@ -132,7 +127,6 @@ const billingPeriodGroup = computed<AttachmentTypeGroup>(() => ({
     id: item.id,
     attachmentId: item.attachmentId,
     attachmentDtlTypeId: item.attachmentDtlTypeId,
-    clientVisible: item.clientVisible ?? false,
     displayOrder: item.displayOrder ?? 0,
     url: item.url,
     mediaType: item.mediaType,
@@ -162,104 +156,6 @@ const formatFileSize = (bytes?: number | null): string => {
 
 const getGroupKey = (typeId: number | null) =>
   typeId === null ? 'null' : String(typeId);
-
-const getClientVisible = (typeId: number | null) =>
-  clientVisibleByTypeId.value.get(typeId) ?? false;
-
-const setClientVisible = (typeId: number | null, value: boolean) => {
-  clientVisibleByTypeId.value.set(typeId, value);
-};
-
-/** 单文件客户可见性更新中的 AttachmentItem id 集合 */
-const visibilityUpdatingItemIds = ref<Set<number>>(new Set());
-/** 类型批量更新中的 attachmentDtlTypeId 集合 */
-const visibilityUpdatingGroupIds = ref<Set<number | null>>(new Set());
-
-const isItemVisibilityUpdating = (
-  item: ClientAdminApi.ClientAttachmentItemDto,
-) =>
-  typeof item.id === 'number' && visibilityUpdatingItemIds.value.has(item.id);
-
-const isGroupVisibilityUpdating = (group: AttachmentTypeGroup) =>
-  visibilityUpdatingGroupIds.value.has(group.attachmentDtlTypeId);
-
-/** 类型头 Checkbox 选中态：有附件时反映「全部可见」，否则回退为上传默认值 */
-const getGroupVisibleChecked = (group: AttachmentTypeGroup) => {
-  if (group.items.length === 0) {
-    return getClientVisible(group.attachmentDtlTypeId);
-  }
-  return group.items.every((item) => item.clientVisible === true);
-};
-
-/** 类型头 Checkbox 半选态：部分附件可见 */
-const getGroupVisibleIndeterminate = (group: AttachmentTypeGroup) => {
-  if (group.items.length === 0) return false;
-  const visibleCount = group.items.filter(
-    (item) => item.clientVisible === true,
-  ).length;
-  return visibleCount > 0 && visibleCount < group.items.length;
-};
-
-/** 类型批量修改客户可见：同步上传默认值，并批量更新该类型下既有附件 */
-const handleGroupVisibleChange = async (
-  group: AttachmentTypeGroup,
-  value: boolean,
-) => {
-  setClientVisible(group.attachmentDtlTypeId, value);
-
-  const targets = group.items.filter(
-    (item) => typeof item.id === 'number' && item.id > 0,
-  );
-  if (targets.length === 0) return;
-
-  const groupId = group.attachmentDtlTypeId;
-  visibilityUpdatingGroupIds.value = new Set(
-    visibilityUpdatingGroupIds.value,
-  ).add(groupId);
-  try {
-    await updateAttachmentItemsClientVisible(
-      targets.map((item) => ({ id: item.id as number, clientVisible: value })),
-    );
-    for (const item of group.items) {
-      item.clientVisible = value;
-    }
-    message.success($t('client.attachment.visibilityUpdateSuccess'));
-  } catch (error) {
-    console.error('更新客户可见性失败:', error);
-    message.error($t('client.attachment.visibilityUpdateFailed'));
-  } finally {
-    const next = new Set(visibilityUpdatingGroupIds.value);
-    next.delete(groupId);
-    visibilityUpdatingGroupIds.value = next;
-  }
-};
-
-/** 单文件切换客户可见 */
-const handleItemVisibleChange = async (
-  item: ClientAdminApi.ClientAttachmentItemDto,
-  value: boolean,
-) => {
-  if (typeof item.id !== 'number' || item.id <= 0) return;
-
-  const itemId = item.id;
-  visibilityUpdatingItemIds.value = new Set(
-    visibilityUpdatingItemIds.value,
-  ).add(itemId);
-  try {
-    await updateAttachmentItemsClientVisible([
-      { id: itemId, clientVisible: value },
-    ]);
-    item.clientVisible = value;
-    message.success($t('client.attachment.visibilityUpdateSuccess'));
-  } catch (error) {
-    console.error('更新客户可见性失败:', error);
-    message.error($t('client.attachment.visibilityUpdateFailed'));
-  } finally {
-    const next = new Set(visibilityUpdatingItemIds.value);
-    next.delete(itemId);
-    visibilityUpdatingItemIds.value = next;
-  }
-};
 
 const resolveGroupName = (
   typeId: number | null,
@@ -506,7 +402,6 @@ const handleBeforeUpload = async (
         {
           attachmentId: Number(uploaded.attachmentId),
           attachmentDtlTypeId: group.attachmentDtlTypeId ?? undefined,
-          clientVisible: getClientVisible(group.attachmentDtlTypeId),
           displayOrder: group.items.length,
           url: uploaded.url,
         },
@@ -804,37 +699,22 @@ onMounted(() => {
           </template>
 
           <template v-if="canEdit" #extra>
-            <div class="flex items-center gap-3">
-              <Checkbox
-                :checked="getGroupVisibleChecked(group)"
-                :indeterminate="getGroupVisibleIndeterminate(group)"
-                :disabled="isGroupVisibilityUpdating(group)"
-                @update:checked="
-                  (value) => handleGroupVisibleChange(group, !!value)
-                "
+            <Upload
+              :before-upload="(file) => handleBeforeUpload(file, group)"
+              :disabled="uploadingTypeId === group.attachmentDtlTypeId"
+              :show-upload-list="false"
+              multiple
+            >
+              <Button
+                type="link"
+                size="small"
+                class="px-0"
+                :loading="uploadingTypeId === group.attachmentDtlTypeId"
               >
-                <span class="text-xs">
-                  {{ $t('client.attachment.clientVisible') }}
-                </span>
-              </Checkbox>
-
-              <Upload
-                :before-upload="(file) => handleBeforeUpload(file, group)"
-                :disabled="uploadingTypeId === group.attachmentDtlTypeId"
-                :show-upload-list="false"
-                multiple
-              >
-                <Button
-                  type="link"
-                  size="small"
-                  class="px-0"
-                  :loading="uploadingTypeId === group.attachmentDtlTypeId"
-                >
-                  <IconifyIcon icon="mdi:upload" class="mr-1 size-4" />
-                  {{ $t('client.attachment.upload') }}
-                </Button>
-              </Upload>
-            </div>
+                <IconifyIcon icon="mdi:upload" class="mr-1 size-4" />
+                {{ $t('client.attachment.upload') }}
+              </Button>
+            </Upload>
           </template>
 
           <div class="attachment-card-list">
@@ -897,25 +777,6 @@ onMounted(() => {
                   </span>
                 </div>
               </div>
-
-              <span v-if="canEdit" class="shrink-0" @click.stop>
-                <Tooltip
-                  :title="
-                    item.clientVisible
-                      ? $t('client.attachment.clientVisibleTip')
-                      : $t('client.attachment.clientInvisibleTip')
-                  "
-                >
-                  <Switch
-                    size="small"
-                    :checked="!!item.clientVisible"
-                    :loading="isItemVisibilityUpdating(item)"
-                    @change="
-                      (checked) => handleItemVisibleChange(item, !!checked)
-                    "
-                  />
-                </Tooltip>
-              </span>
 
               <div class="attachment-file-actions" @click.stop>
                 <Tooltip :title="$t('client.attachment.preview')">

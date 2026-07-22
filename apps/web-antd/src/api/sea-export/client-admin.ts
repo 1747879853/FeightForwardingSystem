@@ -262,6 +262,15 @@ export namespace ClientAdminApi {
     enAddress?: string;
     /** 主营产品 */
     mainProduct?: string;
+    /** 业务来源ID */
+    codeSourceId?: number;
+    /** 业务来源对象 */
+    codeSource?: {
+      id: number;
+      cnName?: string;
+      enName?: string;
+      code?: string;
+    };
     /** 是否有效 */
     enable?: boolean;
     /** 客户类型 0-同行 1-直客 */
@@ -272,8 +281,6 @@ export namespace ClientAdminApi {
     remark?: string;
     /** 客户英文全称 */
     enFullName?: string;
-    /** 业务来源 */
-    codeSourceId?: number;
     /** 纳税人识别号 */
     taxNo?: string;
     /** 邮箱 */
@@ -863,6 +870,26 @@ export const addDishonest = (data: ClientAdminApi.GuidIdDto) => {
 export const cancelDishonest = (data: ClientAdminApi.GuidIdDto) => {
   return requestClient.put<void>(`${API_PREFIX}/CancelDishonestAsync`, data);
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
