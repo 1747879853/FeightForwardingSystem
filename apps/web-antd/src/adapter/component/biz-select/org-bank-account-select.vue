@@ -40,7 +40,8 @@ watch(
 );
 
 async function loadBankAccounts() {
-  const userId = userStore.userInfo?.id;
+  const userId = userStore.userInfo?.userId;
+  console.log('加载银行信息的userId', userId);
   if (!userId) return;
 
   loading.value = true;
