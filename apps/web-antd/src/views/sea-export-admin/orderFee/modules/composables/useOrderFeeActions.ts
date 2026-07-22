@@ -67,7 +67,7 @@ export function useOrderFeeActions(
       paySide: props.type,
       currencyId: '',
       unit: '',
-      feeStatus: 0,
+      combinedFeeStatus: 0,
       taxRate: 0,
       taskStatus: '',
       invoiceStatus: 0,

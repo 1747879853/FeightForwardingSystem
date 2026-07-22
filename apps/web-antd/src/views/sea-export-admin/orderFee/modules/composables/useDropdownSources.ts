@@ -3,9 +3,10 @@ import { message } from 'ant-design-vue';
 import { getFeeCodePagedList } from '#/api/system/base-data/fee-code-admin';
 // ✅ 修改：使用通用客户API接口，一次性按行业类别分组获取客户数据
 import { getClientGroupedByIndustryCategory } from '#/api/common/client';
+// ✅ 新增：导入币别列表接口
+import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import {
   getIndustryCategoryOptions as getIndustryCategoryOptionsFromData,
-  getCurrencyEnumOptions,
 } from '../../data';
 import * as clientConstants from '#/views/client/base/data';
 
@@ -43,15 +44,41 @@ export function useDropdownSources(orderCtnList: any) {
         }),
       );
 
-      const currencyOptions = getCurrencyEnumOptions().filter(
-        (opt) => opt.value !== 9999,
-      );
-      dropdownSources.value.currencyList = currencyOptions.map((opt) => ({
-        label: opt.label,
-        value: opt.value,
-      }));
+      // ✅ 修改：从后端 API 获取币别列表
+      await loadCurrencyList();
     } catch (error) {
       console.error('❌ [initDropdownSources] 初始化失败:', error);
+    }
+  };
+
+  /**
+   * ✅ 新增：从后端 API 加载币别列表并缓存
+   */
+  const loadCurrencyList = async () => {
+    try {
+      console.log('🔄 [loadCurrencyList] 开始加载币别列表...');
+
+      const res = await getCurrencyPagedList({
+        PageIndex: 1,
+        PageSize: 100, // 获取足够多的币别数据
+      });
+
+      const currencyList = res.items || [];
+
+      // 过滤掉"合计"选项（如果后端返回的话），并转换为下拉框格式
+      dropdownSources.value.currencyList = currencyList
+        .filter((item) => item.id !== 9999) // 排除"合计"
+        .map((item) => ({
+          label: item.code || item.cnName || item.enName || String(item.id),
+          value: item.id,
+        }));
+
+      console.log(
+        `✅ [loadCurrencyList] 加载完成，共 ${dropdownSources.value.currencyList.length} 个币别`,
+      );
+    } catch (error) {
+      console.error('❌ [loadCurrencyList] 加载币别列表失败:', error);
+      message.error('加载币别列表失败');
     }
   };
 
@@ -205,7 +232,8 @@ export function useDropdownSources(orderCtnList: any) {
     initDropdownSources,
     updateUnitList,
     getFeeCodeList,
-    loadAllClients, // ✅ 导出一性加载方法
+    loadCurrencyList, // ✅ 新增：导出币别加载函数，用于手动刷新
+    loadAllClients, // ✅ 导出一次性加载方法
     loadClientList,
     getSettlementIndustryCategory,
   };
