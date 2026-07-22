@@ -89,10 +89,10 @@ function adaptUserInfo(
   return {
     // 基础用户信息
     userId: String(user.id),
-    username: userName,
-    realName: nickName,
-    avatar,
-    emailAddress,
+    //username: userName,
+    //realName: nickName,
+    //avatar,
+    //emailAddress,
     roles: [], // 根据实际情况填充角色信息，可能需要从其他接口获取
 
     // 扩展信息
@@ -104,8 +104,8 @@ function adaptUserInfo(
     ...safeMyInfo,
     avatar,
     emailAddress,
-    nickName: safeMyInfo.nickName ?? nickName,
-    userName: safeMyInfo.userName ?? userName,
+    //nickName: safeMyInfo.nickName ?? nickName,
+    //userName: safeMyInfo.userName ?? userName,
     username: userName,
     realName: nickName,
   };

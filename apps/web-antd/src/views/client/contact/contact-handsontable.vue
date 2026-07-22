@@ -6,13 +6,9 @@
           <IconifyIcon icon="ant-design:plus-outlined" class="size-4" />
           {{ $t('common.create') }}
         </Button>
-        <Button type="primary" @click="saveData" class="ml-2">
+        <Button type="primary" @click="saveData" class="ml-2" :loading="saving">
           <IconifyIcon icon="ant-design:save-outlined" class="size-4" />
           {{ $t('common.save') }}
-        </Button>
-        <Button @click="deleteSelectedRows" class="ml-2" :disabled="!hasSelectedRows">
-          <IconifyIcon icon="ant-design:delete-outlined" class="size-4" />
-          {{ $t('common.delete') }}
         </Button>
       </div>
     </div>
@@ -24,21 +20,19 @@
         @after-create-row="onAfterCreateRow"
         @after-remove-row="onAfterRemoveRow"
         @before-remove-row="onBeforeRemoveRow"
-        @after-selection="onAfterSelection"
-        @after-render="onAfterRender"
       />
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, shallowRef, onMounted, nextTick, watchEffect, computed } from 'vue';
+import { ref, shallowRef, onMounted, nextTick, watchEffect } from 'vue';
 import { HotTable } from '@handsontable/vue3';
 import { Button ,Modal,message} from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
 import type { ClientContactAdminApi } from '#/api/sea-export/client-contact-admin';
 import { $t } from '#/locales';
-import { setClientContactDisabled, deleteClientContact } from '#/api/sea-export/client-contact-admin';
+import { setClientContactDisabled, deleteClientContact, saveClientContacts } from '#/api/sea-export/client-contact-admin';
 
 
 interface Props {
@@ -59,10 +53,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>();
 
 const hotTableRef = ref();
-const selectedRowIndexes = ref<number[]>([]);
-
-// 计算属性：是否有选中的行
-const hasSelectedRows = computed(() => selectedRowIndexes.value.length > 0);
+const saving = ref(false); // 保存loading状态
 
 // 初始化数据
 const tableData = shallowRef<any[]>([]);
@@ -71,13 +62,6 @@ const tableData = shallowRef<any[]>([]);
 const hotSettings = shallowRef({
   data: tableData.value,
   columns: [
-    {
-      data: 'checkbox',
-      title: '<input type="checkbox" id="select-all-checkbox">',
-      type: 'checkbox',
-      width: 40,
-      className: 'htCenter htMiddle'
-    },
     {
       data: 'name',
       title: '姓名',
@@ -288,35 +272,7 @@ const hotSettings = shallowRef({
         deleteBtn.onclick = function(e) {
           e.preventDefault();
           e.stopPropagation();
-          
-          const rowData = instance.getSourceDataAtRow(row);
-          const contactId = rowData.id;
-
-          if (!contactId || contactId <= 0) {
-            // 如果是新增但尚未保存的记录，直接从表格中删除
-            instance.alter('remove_row', row, 1);
-            return;
-          }
-          
-          Modal.confirm({
-            title: '确定要删除这条联系人信息吗？',
-            okText: '确定',
-            cancelText: '取消',
-            onOk: async () => {
-              try {
-                // 调用后端API删除联系人
-                await deleteClientContact({ id: contactId });
-                
-                // 从表格中移除行
-                instance.alter('remove_row', row, 1);
-                
-                message.success('删除成功');
-              } catch (error) {
-                console.error('删除联系人失败:', error);
-                //message.error(`删除失败: ${error.message || '未知错误'}`);
-              }
-            }
-          });
+          deleteRow(row);
         };
         
         buttonContainer.appendChild(deleteBtn);
@@ -343,39 +299,33 @@ const hotSettings = shallowRef({
 
 // 添加 beforeOnCellMouseDown 钩子 - 在组件挂载后通过 hotInstance.addHook 添加
 onMounted(() => {
+  console.log('[Handsontable] onMounted 触发');
+  
   nextTick(() => {
     const hotInstance = hotTableRef.value?.hotInstance;
+    console.log('[Handsontable] 获取 hotInstance:', !!hotInstance);
+    
     if (hotInstance) {
-      hotInstance.addHook('beforeOnCellMouseDown', (event: MouseEvent, coords: any, td: HTMLElement) => {
-        const colIndex = coords.col;
-        
-        // 如果点击的是复选框列（索引0）
-        if (colIndex === 0) {
-          event.preventDefault();
-          event.stopPropagation();
-          
-          const rowIndex = coords.row;
-          const currentValue = hotInstance.getDataAtRowProp(rowIndex, 'checkbox');
-          const newValue = !currentValue;
-          
-          // 更新数据
-          hotInstance.setDataAtCell(rowIndex, colIndex, newValue);
-        }
-      });
+      console.log('[Handsontable] 钩子已注册');
+    } else {
+      console.error('[Handsontable] 无法获取 hotInstance，钩子注册失败');
     }
   });
 });
 
 // 更新表格数据
 const updateTableData = (contacts: ClientContactAdminApi.ClientContactDto[]) => {
+  console.log('[Handsontable] updateTableData 被调用 - 数据量:', contacts.length);
+  
   const mappedData = contacts.map(contact => ({
     ...contact,
-    checkbox: false, // 添加复选框状态
     isDefault: contact.isDefault ? '是' : '否',
     invoiceEnable: contact.invoiceEnable ? '是' : '否',
     statementEnable: contact.statementEnable ? '是' : '否',
     isDisabled: contact.isDisabled ? '禁用' : '启用',
   }));
+  
+  console.log('[Handsontable] 映射后的数据示例:', mappedData[0]);
   
   tableData.value = mappedData;
   
@@ -383,40 +333,32 @@ const updateTableData = (contacts: ClientContactAdminApi.ClientContactDto[]) => 
   nextTick(() => {
     const hotInstance = hotTableRef.value?.hotInstance;
     if (hotInstance) {
+      console.log('[Handsontable] 执行 loadData');
       hotInstance.loadData(tableData.value);
+    } else {
+      console.warn('[Handsontable] hotInstance 不存在，无法执行 loadData');
     }
   });
 };
 
 // 监听数据变化
 watchEffect(() => {
+  console.log('[Handsontable] watchEffect 触发 - modelValue 长度:', props.modelValue?.length);
   updateTableData(props.modelValue || []);
 });
 
 // 监听表格数据变化并同步到父组件
 const onAfterChange = (changes: any, source: string) => {
-  if (!changes || changes.length === 0) return;
+  console.log('[Handsontable] onAfterChange 触发 - source:', source);
   
-  // 更新 selectedRowIndexes
-  const newSelectedIndexes: number[] = [];
-  
-  // 先更新 tableData 中的 checkbox 值
-  for (const change of changes) {
-    const [row, prop, oldValue, newValue] = change;
-    if (prop === 'checkbox' && tableData.value[row]) {
-      tableData.value[row].checkbox = newValue;
-    }
+  if (!changes || changes.length === 0) {
+    console.log('[Handsontable] onAfterChange - 无变化数据');
+    return;
   }
   
-  // 重新计算选中索引 - 遍历所有行确保数据一致性
-  for (let i = 0; i < tableData.value.length; i++) {
-    if (tableData.value[i]?.checkbox) {
-      newSelectedIndexes.push(i);
-    }
-  }
-  
-  selectedRowIndexes.value = newSelectedIndexes;
-  
+  console.log('[Handsontable] onAfterChange - 变化数量:', changes.length);
+  console.log('[Handsontable] onAfterChange - 变化详情:', changes);
+
   // 同步数据到父组件（如果不是 loadData 操作）
   if (source !== 'loadData') {
     const updatedData = tableData.value.map(row => ({
@@ -427,6 +369,7 @@ const onAfterChange = (changes: any, source: string) => {
       isDisabled: row.isDisabled === '禁用',
     }));
     
+    console.log('[Handsontable] 同步数据到父组件');
     emit('update:modelValue', updatedData as ClientContactAdminApi.ClientContactDto[]);
   }
 };
@@ -464,55 +407,75 @@ const addRow = () => {
   });
 };
 
-// 删除选中行
-const deleteSelectedRows = async () => {
-  if (selectedRowIndexes.value.length === 0) return;
-  
-  // 获取选中行中已有ID的联系人(需要调用后端API删除的)
-  const rowsToDelete = tableData.value.filter((row, index) => 
-    selectedRowIndexes.value.includes(index) && row.id > 0
-  );
+// 删除指定行
+const deleteRow = async (rowIndex: number) => {
+  const rowData = tableData.value[rowIndex];
+  if (!rowData) return;
 
-  try {
-    // 批量删除选中的已有联系人
-    for (const row of rowsToDelete) {
-      await deleteClientContact({ id: row.id });
-    }
+  const contactId = rowData.id;
 
-    // 从表格中移除所有选中的行(包括新增但未保存的行)
-    const sortedIndexes = [...selectedRowIndexes.value].sort((a, b) => b - a);
-    for (const index of sortedIndexes) {
-      tableData.value.splice(index, 1);
-    }
-
-    // 更新表格数据
-    nextTick(() => {
-      const hotInstance = hotTableRef.value?.hotInstance;
-      if (hotInstance) {
-        hotInstance.loadData([...tableData.value]);
-        selectedRowIndexes.value = [];
+  Modal.confirm({
+    title: '确定要删除这条联系人信息吗？',
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        if (contactId && contactId > 0) {
+          // 调用后端API删除联系人
+          await deleteClientContact({ id: contactId });
+          message.success('删除成功');
+        } else {
+          message.success('已移除未保存的行');
+        }
+        
+        // 从表格中移除行
+        tableData.value.splice(rowIndex, 1);
+        
+        // 更新表格显示
+        nextTick(() => {
+          const hotInstance = hotTableRef.value?.hotInstance;
+          if (hotInstance) {
+            hotInstance.loadData([...tableData.value]);
+          }
+        });
+      } catch (error) {
+        console.error('删除联系人失败:', error);
+        const errorMessage = error instanceof Error ? error.message : '未知错误';
+        //message.error(`删除失败: ${errorMessage}`);
       }
-    });
-
-    message.success('删除成功');
-  } catch (error) {
-    console.error('删除联系人失败:', error);
-    //message.error(`删除失败: ${error.message || '未知错误'}`);
-  }
+    }
+  });
 };
 
 // 保存数据
-const saveData = () => {
-  const updatedData = tableData.value.map(row => ({
-    ...row,
-    isDefault: row.isDefault === '是',
-    invoiceEnable: row.invoiceEnable === '是',
-    statementEnable: row.statementEnable === '是',
-    isDisabled: row.isDisabled === '禁用',
-  }));
+const saveData = async () => {
+  if (saving.value) return; // 防止重复提交
   
-  emit('update:modelValue', updatedData as ClientContactAdminApi.ClientContactDto[]);
-  emit('save');
+  saving.value = true;
+  
+  try {
+    const updatedData = tableData.value.map(row => ({
+      ...row,
+      isDefault: row.isDefault === '是',
+      invoiceEnable: row.invoiceEnable === '是',
+      statementEnable: row.statementEnable === '是',
+      isDisabled: row.isDisabled === '禁用',
+    }));
+    
+    // 调用后端API保存所有联系人
+    await saveClientContacts(updatedData as ClientContactAdminApi.ClientContactDto[]);
+    
+    emit('update:modelValue', updatedData as ClientContactAdminApi.ClientContactDto[]);
+    emit('save');
+    
+    //message.success('保存成功');
+  } catch (error) {
+    console.error('保存联系人失败:', error);
+    const errorMessage = error instanceof Error ? error.message : '未知错误';
+   // message.error(`保存失败: ${errorMessage}`);
+  } finally {
+    saving.value = false;
+  }
 };
 
 // 行操作事件
@@ -522,92 +485,16 @@ const onAfterCreateRow = (index: number, amount: number) => {
 
 const onAfterRemoveRow = (index: number, amount: number) => {
   console.log(`Removed ${amount} row(s) starting from index ${index}`);
-  // 重新计算选中索引，确保删除行后状态正确
-  nextTick(() => {
-    const newSelectedIndexes: number[] = [];
-    for (let i = 0; i < tableData.value.length; i++) {
-      if (tableData.value[i]?.checkbox) {
-        newSelectedIndexes.push(i);
-      }
-    }
-    selectedRowIndexes.value = newSelectedIndexes;
-  });
 };
 
 const onBeforeRemoveRow = (index: number, amount: number) => {
   console.log(`About to remove ${amount} row(s) starting from index ${index}`);
 };
 
-// 表格渲染完成后设置全选功能
-const onAfterRender = () => {
-  // 使用微任务确保在DOM更新后执行
-  Promise.resolve().then(() => {
-    const headerCheckbox = document.querySelector('#select-all-checkbox') as HTMLInputElement;
-    if (headerCheckbox) {
-      // 检查是否已经绑定过事件
-      if (!(headerCheckbox as any).eventBound) {
-        (headerCheckbox as any).eventBound = true;
-        headerCheckbox.onclick = function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          const isChecked = (this as HTMLInputElement).checked;
-          const hotInstance = hotTableRef.value?.hotInstance;
-          if (hotInstance) {
-            // 使用 Handsontable 的批量操作来更新复选框状态
-            const changes: any[] = [];
-            for (let i = 0; i < tableData.value.length; i++) {
-              if (tableData.value[i].checkbox !== isChecked) {
-                changes.push([i, 'checkbox', tableData.value[i].checkbox, isChecked]);
-              }
-            }
-            
-            if (changes.length > 0) {
-              // 使用 batch 模式提高性能
-              hotInstance.batch(() => {
-                hotInstance.setDataAtRowProp(changes);
-              });
-            }
-          }
-        };
-      }
-      
-      // 更新全选复选框状态 - 更完善的逻辑
-      if (tableData.value.length > 0) {
-        const checkedCount = tableData.value.filter(row => row.checkbox).length;
-        const allChecked = checkedCount === tableData.value.length;
-        const partialChecked = checkedCount > 0 && checkedCount < tableData.value.length;
-        
-        headerCheckbox.checked = allChecked;
-        // 设置半选状态（如果浏览器支持）
-        if (partialChecked) {
-          headerCheckbox.indeterminate = true;
-        } else {
-          headerCheckbox.indeterminate = false;
-        }
-      } else {
-        headerCheckbox.checked = false;
-        headerCheckbox.indeterminate = false;
-      }
-    }
-  });
-};
-
-// 行选择事件 - 当用户点击行时也选中复选框
-const onAfterSelection = (row: number, col: number, row2: number, col2: number) => {
-  // 如果点击的是复选框列（索引0），不需要额外处理
-  if (col === 0 || col2 === 0) {
-    return;
-  }
-  
-  // 如果用户选择了单行，可以考虑自动选中该行的复选框
-  // 这里暂时不实现，保持原有的复选框交互方式
-};
-
 defineExpose({
   addRow,
   saveData,
-  deleteSelectedRows,
+  deleteRow,
   updateTableData,
 });
 </script>
@@ -629,12 +516,4 @@ defineExpose({
   border-radius: 4px;
   overflow: hidden;
 }
-
-/* 确保复选框样式正确 */
-.htCheckboxRendererInput {
-  margin: 0;
-  transform: scale(1.2);
-}
 </style>
-
-

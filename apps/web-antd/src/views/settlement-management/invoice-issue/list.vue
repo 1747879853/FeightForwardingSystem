@@ -34,6 +34,10 @@ function handleCheckboxChange({ records }: any) {
 const [Grid, gridApi] = useVbenVxeGrid({
   formOptions: {
     schema: searchFormSchema,
+    collapsed: true,
+    submitOnChange: true,
+    showCollapseButton: true,
+    wrapperClass: 'grid-cols-6',
   },
   gridOptions: {
     columns,

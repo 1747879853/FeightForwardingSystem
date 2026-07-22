@@ -1573,7 +1573,7 @@ onMounted(() => {
       </div>
     </Card>
 
-    <Modal @add="addAddressData" @edit="editAddressData" />
+    <AddressModalComponent @add="addAddressData" @edit="editAddressData" />
     <RiskbirdModal
       width="1200px"
       height="700px"

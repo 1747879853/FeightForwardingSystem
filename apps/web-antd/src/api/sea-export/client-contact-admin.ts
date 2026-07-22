@@ -226,3 +226,58 @@ export const setClientContactDisabled = (
   return requestClient.put<boolean>(`${API_PREFIX}/SetDisabledAsync`, data);
 };
 
+/**
+ * 批量保存联系人（新增或编辑）
+ */
+export const saveClientContacts = async (
+  contacts: ClientContactAdminApi.ClientContactDto[],
+) => {
+  const results = [];
+  
+  for (const contact of contacts) {
+    if (contact.id && contact.id > 0) {
+      // 已有ID，调用编辑接口
+      const editDto: ClientContactAdminApi.ClientContactEditDto = {
+        id: contact.id,
+        clientId: contact.clientId,
+        name: contact.name,
+        mobile: contact.mobile,
+        email: contact.email,
+        tel: contact.tel,
+        landline: contact.landline,
+        position: contact.position,
+        weChat: contact.weChat,
+        isDefault: contact.isDefault,
+        remark: contact.remark,
+        qq: contact.qq,
+        invoiceEnable: contact.invoiceEnable,
+        statementEnable: contact.statementEnable,
+      };
+      const result = await editClientContact(editDto);
+      results.push(result);
+    } else {
+      // 没有ID或ID为0，调用新增接口
+      const addDto: ClientContactAdminApi.ClientContactAddDto = {
+        clientId: contact.clientId,
+        name: contact.name,
+        mobile: contact.mobile,
+        email: contact.email,
+        tel: contact.tel,
+        landline: contact.landline,
+        position: contact.position,
+        weChat: contact.weChat,
+        isDefault: contact.isDefault,
+        remark: contact.remark,
+        qq: contact.qq,
+        invoiceEnable: contact.invoiceEnable,
+        statementEnable: contact.statementEnable,
+      };
+      const result = await addClientContact(addDto);
+      results.push(result);
+    }
+  }
+  
+  return results;
+};
+
+
