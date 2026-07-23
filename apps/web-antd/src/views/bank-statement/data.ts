@@ -107,17 +107,20 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       title: '流水号',
       minWidth: 160,
       fixed: 'left',
+      sortable: true,
     },
     {
       field: 'statementTime',
       title: '交易时间',
       width: 150,
       formatter: ({ cellValue }) => formatDateTime(cellValue),
+      sortable: true,
     },
     {
       field: 'settlementName',
       title: '付款方',
       minWidth: 150,
+      sortable: true,
     },
     {
       field: 'amount',
@@ -125,6 +128,7 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       width: 120,
       align: 'right',
       formatter: ({ cellValue }) => formatAmount(cellValue),
+      sortable: true,
     },
     {
       field: 'settledAmount',
@@ -132,22 +136,26 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       width: 120,
       align: 'right',
       formatter: ({ cellValue }) => formatAmount(cellValue),
+      sortable: true,
     },
     {
       field: 'writeOffStatus',
       title: '核销状态',
       width: 100,
       slots: { default: 'writeOffStatus' },
+      sortable: true,
     },
     {
       field: 'currencyCode',
       title: '币别',
       width: 80,
+      sortable: true,
     },
     {
       field: 'orgBankAccountName',
       title: '我司银行',
       minWidth: 150,
+      sortable: true,
     },
     {
       field: 'transactionFee',
@@ -158,35 +166,41 @@ export function useColumns(): VxeTableGridOptions['columns'] {
         cellValue !== undefined && cellValue !== null
           ? Number(cellValue).toFixed(2)
           : '-',
+      sortable: true,
     },
     {
       field: 'bankStatementUsers',
       title: '操作人',
       minWidth: 120,
       formatter: ({ cellValue }) => formatOperators(cellValue),
+      sortable: false,
     },
     {
       field: 'orgs',
       title: '归属组织',
       minWidth: 130,
       formatter: ({ cellValue }) => formatOrgs(cellValue),
+      sortable: false,
     },
     {
       field: 'creatorUserName',
       title: '创建人',
       width: 100,
+      sortable: true,
     },
     {
       field: 'creationTime',
       title: '创建时间',
       width: 150,
       formatter: ({ cellValue }) => formatDateTime(cellValue),
+      sortable: true,
     },
     {
       field: 'statementRemark',
       title: '交易备注',
       minWidth: 180,
       showOverflow: true,
+      sortable: true,
     },
   ];
 }

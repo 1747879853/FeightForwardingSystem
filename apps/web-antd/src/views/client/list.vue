@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 
-import { computed, ref } from 'vue';
+import { computed, h, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { Button, message, Modal } from 'ant-design-vue';
+import { Button, Form, FormItem, Input, message, Modal } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -124,11 +124,89 @@ const handleAddDishonest = async () => {
   const row = selectedRows.value[0]!;
   const displayName = getRowName(row);
 
+  // 创建表单引用和响应式数据
+  let formRef: any = null;
+  const formData = ref({
+    dishonestRemark: '',
+  });
+
   Modal.confirm({
     title: '加入失信',
-    content: `确定要将客户 "${displayName}" 加入失信名单吗？`,
+    width: 600,
+    content: h('div', { style: 'margin-top: 16px;' }, [
+      h(
+        'p',
+        {
+          style: 'margin-bottom: 16px; color: #595959;',
+        },
+        `确定要将客户 "${displayName}" 加入失信名单吗？`,
+      ),
+      h(
+        Form,
+        {
+          ref: (refInstance: any) => {
+            formRef = refInstance;
+          },
+          model: formData.value,
+          layout: 'vertical',
+        },
+        [
+          h(
+            FormItem,
+            {
+              label: '失信备注',
+              required: true,
+              rules: [
+                { required: true, message: '请输入失信备注', trigger: 'blur' },
+                {
+                  max: 1024,
+                  message: '失信备注长度不能超过1024个字符',
+                  trigger: 'blur',
+                },
+              ],
+            },
+            [
+              h(Input.TextArea, {
+                value: formData.value.dishonestRemark,
+                placeholder: '请输入失信原因或备注信息（必填，最多1024字符）',
+                rows: 4,
+                maxlength: 1024,
+                showCount: true,
+                onChange: (e: Event) => {
+                  formData.value.dishonestRemark = (
+                    e.target as HTMLTextAreaElement
+                  ).value;
+                },
+                style: 'width: 100%;',
+              }),
+            ],
+          ),
+        ],
+      ),
+    ]),
     okType: 'danger',
+    okText: '确定',
+    cancelText: '取消',
     async onOk() {
+      // 验证表单
+      try {
+        await formRef?.validate();
+      } catch (error) {
+        return Promise.reject();
+      }
+
+      // 二次验证：确保备注不为空且符合长度要求
+      const remark = formData.value.dishonestRemark?.trim();
+      if (!remark) {
+        message.error('失信备注不能为空');
+        return Promise.reject();
+      }
+
+      if (remark.length > 1024) {
+        message.error('失信备注长度不能超过1024');
+        return Promise.reject();
+      }
+
       const hideLoading = message.loading({
         content: `正在将 "${displayName}" 加入失信...`,
         duration: 0,
@@ -138,14 +216,16 @@ const handleAddDishonest = async () => {
       try {
         await addDishonest({
           id: row.id,
+          dishonestRemark: remark,
         });
         message.success({
           content: `成功将 "${displayName}" 加入失信`,
           key: 'action_process_msg',
         });
         handleRefresh();
-      } catch {
+      } catch (error) {
         hideLoading();
+        return Promise.reject();
       }
     },
   });

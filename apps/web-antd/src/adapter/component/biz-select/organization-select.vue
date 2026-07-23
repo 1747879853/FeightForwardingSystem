@@ -121,7 +121,7 @@ const bindProps = computed(() =>
 const loadData = async () => {
   loading.value = true;
   try {
-    list.value = await getOrganizationUnits(isCompanyRef.value);
+    list.value = await getOrganizationUnits({ isCompany: isCompanyRef.value });
   } finally {
     loading.value = false;
   }

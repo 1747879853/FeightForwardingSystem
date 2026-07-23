@@ -526,6 +526,15 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'Input',
+      fieldName: 'DishonestRemark',
+      label: '失信备注',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
       component: 'Select',
       fieldName: 'EnterpriseType',
       label: '企业类型',
@@ -729,6 +738,7 @@ export function useBaseFormSchema(): VbenFormSchema[] {
         allowClear: true,
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
+        isCompany: true,
       },
     },
     {
@@ -793,6 +803,16 @@ export function useClientFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'CurrencySelect',
+      fieldName: 'clientCurrencyId',
+      label: $t('seaExport.client.clientCurrencyId'),
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
       component: 'Select',
       fieldName: 'cargoType',
       label: $t('seaExport.client.cargoType'),
@@ -807,20 +827,37 @@ export function useClientFormSchema(): VbenFormSchema[] {
       component: 'DatePicker',
       fieldName: 'clientCoopSince',
       label: $t('seaExport.client.clientCoopSince'),
-      componentProps: { allowClear: true, class: 'w-full', disabled: true },
+      componentProps: { class: 'w-full', disabled: true },
     },
     {
       component: 'DatePicker',
       fieldName: 'clientLastTxnTime',
       label: $t('seaExport.client.clientLastTxnTime'),
-      componentProps: { allowClear: true, class: 'w-full', disabled: true },
+      componentProps: { class: 'w-full', disabled: true },
+    },
+    {
+      component: 'Input',
+      fieldName: 'clientYearTeu',
+      label: '客户年TEU',
+      componentProps: {
+        allowClear: true,
+        disabled: true, // 只读计算字段
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'clientYearTicketCount',
+      label: '客户年票数',
+      componentProps: {
+        allowClear: true,
+        disabled: true, // 只读计算字段
+      },
     },
     {
       component: 'Switch',
       fieldName: 'isShared',
       label: '是否共享',
       defaultValue: false,
-      formItemClass: 'col-span-2',
     },
     {
       component: 'Textarea',
@@ -846,9 +883,31 @@ export function useSupplierFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'CurrencySelect',
+      fieldName: 'supplierCurrencyId',
+      label: $t('seaExport.client.supplierCurrencyId'),
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'supplierCoopSince',
+      label: '供应商首次合作时间',
+      componentProps: { class: 'w-full', disabled: true },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'supplierLastTxnTime',
+      label: '供应商最近交易时间',
+      componentProps: { class: 'w-full', disabled: true },
+    },
+    {
       component: 'Input',
-      fieldName: 'yearTeu',
-      label: $t('seaExport.client.yearTeu'),
+      fieldName: 'supplierYearTeu',
+      label: '供应商年TEU',
       componentProps: {
         allowClear: true,
         disabled: true, // 只读计算字段
@@ -856,8 +915,8 @@ export function useSupplierFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Input',
-      fieldName: 'yearTicketCount',
-      label: $t('seaExport.client.yearTicketCount'),
+      fieldName: 'supplierYearTicketCount',
+      label: '供应商年票数',
       componentProps: {
         allowClear: true,
         disabled: true, // 只读计算字段
@@ -1145,6 +1204,12 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
       },
     },
     {
+      field: 'dishonestRemark',
+      title: '失信备注',
+      minWidth: 200,
+      showOverflow: true,
+    },
+    {
       field: 'enterpriseType',
       title: '企业类型',
       minWidth: 100,
@@ -1190,16 +1255,6 @@ export function useColumns(): VxeTableGridOptions<ClientAdminApi.ClientDto>['col
         if (!cellValue || !Array.isArray(cellValue)) return '';
         return cellValue.map((lane) => lane.laneName).join(', ');
       },
-    },
-    {
-      field: 'yearTeu',
-      title: '年TEU',
-      minWidth: 100,
-    },
-    {
-      field: 'yearTicketCount',
-      title: '年票数',
-      minWidth: 100,
     },
     {
       field: 'industryCategories',

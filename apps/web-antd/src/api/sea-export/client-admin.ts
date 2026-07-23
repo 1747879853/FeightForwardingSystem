@@ -532,6 +532,8 @@ export namespace ClientAdminApi {
     enable: boolean;
     /** 客户类型 0-同行 1-直客 */
     clientType?: ClientType | null;
+
+    enterpriseType?: number | null;
     /** 行业类别 */
     industryCategories?: string;
     /** 备注 */
@@ -566,6 +568,16 @@ export namespace ClientAdminApi {
     clientCurrency?: CurrencySimpleDto;
     /** 客户信用额度 不可修改 */
     clientAllowAmount?: number;
+
+    /** 委托单位首次合作时间（只读计算字段） */
+    clientCoopSince?: string;
+    /** 委托单位最近交易时间（只读计算字段） */
+    clientLastTxnTime?: string;
+    /** 委托单位年TEU（只读计算字段，原yearTeu更名） */
+    clientYearTeu?: number;
+    /** 委托单位年票数（只读计算字段，原yearTicketCount更名） */
+    clientYearTicketCount?: number;
+
     /** 是否供应商 */
     isSupplier: boolean;
     /** 供应商等级 前端自定义枚举 */
@@ -574,17 +586,17 @@ export namespace ClientAdminApi {
     supplierCurrencyId?: number;
     /** 供应商结算币种 */
     supplierCurrency?: CurrencySimpleDto;
-    /** 年TEU 不可修改 */
-    yearTeu?: number;
-    /** 年票数 不可修改 */
-    yearTicketCount?: number;
+    /** 供应商年TEU（只读计算字段，新增） */
+    supplierYearTeu?: number;
+    /** 供应商年票数（只读计算字段，新增） */
+    supplierYearTicketCount?: number;
     /** 优质航线 列表没有 详情有 */
     clientLaneCodes?: ClientLaneDto[];
     /** 供应商信用额度 不可修改 */
     supplierAllowAmount?: number;
-    /** 供应商首次合作时间 */
+    /** 供应商首次合作时间（只读计算字段） */
     supplierCoopSince?: string;
-    /** 供应商最近交易时间 Txn 是 Transaction 的标准缩写 */
+    /** 供应商最近交易时间 Txn 是 Transaction 的标准缩写（只读计算字段） */
     supplierLastTxnTime?: string;
     /** 多个附件 详情有 列表没有 */
     attachments?: AttachmentItemDto[];
@@ -610,6 +622,8 @@ export namespace ClientAdminApi {
 
     /** 是否失信 */
     isDishonest?: boolean;
+    /** 失信备注（只读） */
+    dishonestRemark?: string;
 
     isDeleted: boolean;
     deleterUserId?: number;
@@ -665,6 +679,8 @@ export namespace ClientAdminApi {
     EnFullName?: string;
     /** 是否失信 */
     IsDishonest?: boolean;
+    /** 失信备注（模糊匹配） */
+    DishonestRemark?: string;
     /** 企业类型 */
     EnterpriseType?: number;
     /** 是否共享 */
@@ -882,7 +898,7 @@ export const getClientBillingPeriodAttachments = (id: string) => {
 /**
  * 加入失信
  */
-export const addDishonest = (data: ClientAdminApi.GuidIdDto) => {
+export const addDishonest = (data: { id: string; dishonestRemark: string }) => {
   return requestClient.put<void>(`${API_PREFIX}/AddDishonestAsync`, data);
 };
 

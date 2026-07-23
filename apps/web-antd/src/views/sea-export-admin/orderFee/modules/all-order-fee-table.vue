@@ -196,7 +196,19 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
               (item) => item.paySide === props.type,
             ) || [];
           const modifyData = handleModifyTask(orderFeeTasks);
-          dataSource.value = normalizeOrderFeeWithRowKey(modifyData);
+
+          // 按照创建时间正序排序
+          const sortedData = modifyData.sort((a, b) => {
+            const timeA = a.creationTime
+              ? new Date(a.creationTime).getTime()
+              : 0;
+            const timeB = b.creationTime
+              ? new Date(b.creationTime).getTime()
+              : 0;
+            return timeA - timeB;
+          });
+
+          dataSource.value = normalizeOrderFeeWithRowKey(sortedData);
           emit('updateTableData', dataSource.value);
           console.log('dataSource.value', dataSource.value);
           return dataSource.value;

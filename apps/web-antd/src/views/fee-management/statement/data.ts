@@ -6,6 +6,24 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
 
 /**
+ * 开票状态选项（参考费用状态的颜色规范）
+ */
+export const getInvoiceStatusOptions = () => [
+  { value: 0, label: '未开票', color: '#b8cdd7' },
+  { value: 1, label: '部分开票', color: '#ffc107' },
+  { value: 2, label: '已开票', color: '#67c23a' },
+];
+
+/**
+ * 结算状态选项（参考费用状态的颜色规范）
+ */
+export const getSettlementStatusOptions = () => [
+  { value: 0, label: '未结算', color: '#b8cdd7' },
+  { value: 1, label: '部分结算', color: '#909399' },
+  { value: 2, label: '结算完毕', color: '#67c23a' },
+];
+
+/**
  * 列表搜索表单 schema
  */
 export function useGridFormSchema(): VbenFormSchema[] {
@@ -55,9 +73,9 @@ export function useGridFormSchema(): VbenFormSchema[] {
         placeholder: '请选择',
         allowClear: true,
         options: [
-          { label: '全部为收', value: 0 },
-          { label: '全部为付', value: 1 },
-          { label: '收付都有', value: 2 },
+          { label: '应收', value: 0 },
+          { label: '应付', value: 1 },
+          { label: '收付', value: 2 },
         ],
       },
     },
@@ -74,6 +92,20 @@ export function useGridFormSchema(): VbenFormSchema[] {
           { label: '部分开票', value: 1 },
           { label: '已开票', value: 2 },
         ],
+      },
+    },
+    // 新增：结算状态筛选
+    {
+      component: 'Select',
+      fieldName: 'SettlementStatus',
+      label: '结算状态',
+      componentProps: {
+        placeholder: '请选择',
+        allowClear: true,
+        options: getSettlementStatusOptions().map(({ label, value }) => ({
+          label,
+          value,
+        })),
       },
     },
     // 新增：我司银行筛选
@@ -112,23 +144,27 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'statementNum',
       title: $t('seaExport.export.statement.number'),
       minWidth: 140,
+      sortable: true,
     },
     {
       field: 'clientName',
       title: $t('seaExport.export.statement.clientName'),
       minWidth: 140,
+      sortable: true,
     },
     {
       field: 'startTime',
       title: $t('seaExport.export.statement.startTime'),
       minWidth: 140,
       formatter: 'formatDate',
+      sortable: true,
     },
     {
       field: 'endTime',
       title: $t('seaExport.export.statement.endTime'),
       minWidth: 140,
       formatter: 'formatDate',
+      sortable: true,
     },
     // 新增：收付类型汇总列
     {
@@ -136,13 +172,29 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: '收付类型',
       minWidth: 120,
       slots: { default: 'paySide' },
+      sortable: true,
     },
     // 新增：开票状态汇总列
     {
       field: 'invoiceStatus',
       title: '开票状态',
       minWidth: 120,
-      slots: { default: 'invoiceStatus' },
+      cellRender: {
+        name: 'CellTag',
+        options: getInvoiceStatusOptions(),
+      },
+      sortable: true,
+    },
+    // 新增：结算状态汇总列
+    {
+      field: 'settlementStatus',
+      title: '结算状态',
+      minWidth: 120,
+      cellRender: {
+        name: 'CellTag',
+        options: getSettlementStatusOptions(),
+      },
+      sortable: true,
     },
     // 新增：我司银行列
     {
@@ -150,33 +202,39 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: '我司银行',
       minWidth: 200,
       slots: { default: 'orgBankAccount' },
+      sortable: false,
     },
     {
       field: 'localCurrencyCode',
       title: $t('seaExport.export.statement.localCurrencyCode'),
       minWidth: 130,
+      sortable: true,
     },
     {
       field: 'localCurrencyReceiveAmount',
       title: $t('seaExport.export.statement.localCurrencyReceiveAmount'),
       minWidth: 100,
+      sortable: true,
     },
     {
       field: 'localCurrencyPayAmount',
       title: $t('seaExport.export.statement.localCurrencyPayAmount'),
       minWidth: 100,
+      sortable: true,
     },
     {
       field: 'description',
       title: $t('seaExport.export.statement.notes'),
       minWidth: 160,
       showOverflow: true,
+      sortable: true,
     },
     {
       field: 'creationTime',
       title: $t('seaExport.export.creationTime'),
       minWidth: 160,
       formatter: 'formatDateTime',
+      sortable: true,
     },
   ];
 }

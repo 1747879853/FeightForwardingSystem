@@ -7,6 +7,16 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 
 export namespace StatementAdminApi {
+  /** 结算状态枚举 */
+  export enum SettlementStatus {
+    /** 未结算 */
+    UnSettled = 0,
+    /** 部分结算 */
+    PartialSettlement = 1,
+    /** 结算完毕 */
+    Settlemented = 2,
+  }
+
   /** 费用币别分组输出 */
   export interface StatementCurrencyDto {
     currencyId: number;
@@ -72,6 +82,8 @@ export namespace StatementAdminApi {
     paySide?: number;
     // 新增字段：开票状态汇总（0=未开票，1=部分开票，2=已开票）
     invoiceStatus?: number;
+    // 新增字段：结算状态汇总（0=未结算，1=部分结算，2=结算完毕）
+    settlementStatus?: number;
     // 新增字段：我司银行id
     orgBankAccountId?: string | null;
     // 新增字段：我司银行对象
@@ -178,6 +190,8 @@ export namespace StatementAdminApi {
     PaySide?: number | null;
     // 新增字段：开票状态筛选（0=未开票，1=部分开票，2=已开票）
     InvoiceStatus?: number | null;
+    // 新增字段：结算状态筛选（0=未结算，1=部分结算，2=结算完毕）
+    SettlementStatus?: number | null;
     // 新增字段：我司银行id精确筛选
     OrgBankAccountId?: string | null;
   }
@@ -305,7 +319,8 @@ export const getStatementPagedList = async (params: Recordable<any>) => {
     MblNum: params.MblNum || params.mblNum,
     ETDStart: params.ETDStart || params.etdStart,
     ETDEnd: params.ETDEnd || params.etdEnd,
-    Sorting: params.Sorting || 'Id desc',
+    // 支持大写Sorting和小写sorting两种格式
+    Sorting: params.Sorting || params.sorting || 'Id desc',
     PageIndex: params.PageIndex || params.pageIndex || 1,
     PageSize: params.PageSize || params.pageSize || 10,
     // 新增筛选参数

@@ -7,14 +7,17 @@ import { Page } from '@vben/common-ui';
 import {
   Button,
   Card,
+  Form,
+  FormItem,
+  Input,
   message,
+  Modal,
   Space,
   Spin,
   Checkbox,
   CheckboxGroup,
   Select,
   Tag,
-  Modal,
 } from 'ant-design-vue';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
@@ -85,10 +88,8 @@ const isCustomerType = ref<number[]>();
 const isSupplierType = ref<number[]>();
 const isClient = ref<boolean>(false);
 const isSupplier = ref<boolean>(false);
-const clientTypeCoopStatus = ref<number>();
 const customerType = ref<string[]>();
 const supplierType = ref<string[]>();
-const supplierCoopStatus = ref<number>();
 const isDishonest = ref<boolean>(false); // 客户失信状态
 
 const getOrderUserRoleLabel = (userAttribute?: number) => {
@@ -171,14 +172,14 @@ const [ClientForm, clientFormApi] = useVbenForm({
   layout: 'vertical',
   schema: useClientFormSchema(),
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-3',
+  wrapperClass: 'grid-cols-4',
 });
 
 const [SupplierForm, supplierFormApi] = useVbenForm({
   layout: 'vertical',
   schema: useSupplierFormSchema(),
   showDefaultActions: false,
-  wrapperClass: 'grid-cols-2',
+  wrapperClass: 'grid-cols-3',
 });
 
 const [AddressModalComponent, modalApi] = useVbenModal({
@@ -558,10 +559,6 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
   isSupplier.value = detail.isSupplier;
   isSupplier.value ? (isSupplierType.value = [2]) : (isSupplierType.value = []);
 
-  // 设置合作状态
-  clientTypeCoopStatus.value = detail.clientCoopStatus;
-  supplierCoopStatus.value = detail.supplierCoopStatus;
-
   // 设置失信状态
   isDishonest.value = (detail as any).isDishonest ?? false;
 
@@ -646,17 +643,19 @@ const mapDetailToFormValues = async (detail: ClientAdminApi.ClientDto) => {
     source: detail.source,
     cargoType: detail.cargoType,
     clientCurrencyId: detail.clientCurrencyId,
+    clientYearTeu: detail.clientYearTeu?.toString(),
+    clientYearTicketCount: detail.clientYearTicketCount?.toString(),
     clientCoopSince: toDayjs(detail.clientCoopSince),
     clientLastTxnTime: toDayjs(detail.clientLastTxnTime),
 
     // 供应商信息表单
     supplierLevel: detail.supplierLevel,
-    yearTeu: detail.yearTeu?.toString(),
-    yearTicketCount: detail.yearTicketCount?.toString(),
+    supplierYearTeu: detail.supplierYearTeu?.toString(),
+    supplierYearTicketCount: detail.supplierYearTicketCount?.toString(),
     laneIds: detail.clientLaneCodes?.map((lane) => lane.id),
     supplierCurrencyId: detail.supplierCurrencyId,
-    supplierCoopSince: detail.supplierCoopSince,
-    supplierLastTxnTime: detail.supplierLastTxnTime,
+    supplierCoopSince: toDayjs(detail.supplierCoopSince),
+    supplierLastTxnTime: toDayjs(detail.supplierLastTxnTime),
   };
 };
 
@@ -699,33 +698,23 @@ const handleClientTypeChange = (checkedValues: any[]) => {
 const handleIsClientChange = (e: any) => {
   const checked = e.includes(1);
   isClient.value = checked;
-  if (checked) {
-    // 勾选客户类型时，默认设置为正式客户
-    clientTypeCoopStatus.value = 1;
-  } else {
-    // 取消客户类型时，清空客户的行业类别选择和合作状态
+  if (!checked) {
+    // 取消客户类型时，清空客户的行业类别选择
     customerType.value = [];
-    clientTypeCoopStatus.value = undefined;
   }
   console.log('isClient.value', isClient.value);
   console.log('customerType.value', customerType.value);
-  console.log('clientTypeCoopStatus.value', clientTypeCoopStatus.value);
 };
 
 const handleIsSupplierChange = (e: any) => {
   const checked = e.includes(2);
   isSupplier.value = checked;
-  if (checked) {
-    // 勾选供应商类型时，默认设置为正式供应商
-    supplierCoopStatus.value = 1;
-  } else {
-    // 取消供应商类型时，清空供应商的行业类别选择和合作状态
+  if (!checked) {
+    // 取消供应商类型时，清空供应商的行业类别选择
     supplierType.value = [];
-    supplierCoopStatus.value = undefined;
   }
   console.log('isSupplier.value', isSupplier.value);
   console.log('supplierType.value', supplierType.value);
-  console.log('supplierCoopStatus.value', supplierCoopStatus.value);
 };
 
 /**
@@ -916,6 +905,7 @@ const handleSubmit = async () => {
         taxNo: baseValues.taxNo,
         email: baseValues.email,
         url: baseValues.url,
+        clientType: baseValues.clientType,
 
         // 业务信息
         legalPerson: businessValues.legalPerson,
@@ -924,28 +914,24 @@ const handleSubmit = async () => {
         businessTerm: businessValues.businessTerm,
 
         // 客户相关信息
-        isClient: isCustomerType.value?.includes(1) ?? false,
-        clientCoopStatus: isCustomerType.value?.includes(1)
-          ? clientTypeCoopStatus.value
+        isClient: isClient.value,
+
+        clientLevel: isClient.value ? clientValues.clientLevel : undefined,
+        source: isClient.value ? clientValues.source : undefined,
+        cargoType: isClient.value ? clientValues.cargoType : undefined,
+        clientCurrencyId: isClient.value
+          ? clientValues.clientCurrencyId
           : undefined,
-        clientType: clientValues.clientType,
-        clientLevel: clientValues.clientLevel,
-        source: clientValues.source,
-        cargoType: clientValues.cargoType,
-        clientCurrencyId: clientValues.clientCurrencyId,
-        clientCoopSince: clientValues.clientCoopSince,
-        clientLastTxnTime: clientValues.clientLastTxnTime,
 
         // 供应商相关信息
-        isSupplier: isSupplierType.value?.includes(2) ?? false,
-        supplierCoopStatus: isSupplierType.value?.includes(2)
-          ? supplierCoopStatus.value
+        isSupplier: isSupplier.value,
+        supplierLevel: isSupplier.value
+          ? supplierValues.supplierLevel
           : undefined,
-        supplierLevel: supplierValues.supplierLevel,
-        supplierCurrencyId: supplierValues.supplierCurrencyId,
-        laneIds: supplierValues.laneIds,
-        supplierCoopSince: supplierValues.supplierCoopSince,
-        supplierLastTxnTime: supplierValues.supplierLastTxnTime,
+        supplierCurrencyId: isSupplier.value
+          ? supplierValues.supplierCurrencyId
+          : undefined,
+        laneIds: isSupplier.value ? supplierValues.laneIds : undefined,
 
         sales: salesEdit,
         customerServices: customerServicesEdit,
@@ -1016,6 +1002,7 @@ const handleSubmit = async () => {
         taxNo: baseValues.taxNo,
         email: baseValues.email,
         url: baseValues.url,
+        clientType: baseValues.clientType,
 
         // 业务信息
         legalPerson: businessValues.legalPerson,
@@ -1025,28 +1012,15 @@ const handleSubmit = async () => {
 
         // 客户相关信息
         isClient: isClient.value,
-        clientCoopStatus: isClient.value
-          ? clientTypeCoopStatus.value
-          : undefined,
-        clientType: isClient.value ? clientValues.clientType : undefined,
+
         clientLevel: isClient.value ? clientValues.clientLevel : undefined,
         source: isClient.value ? clientValues.source : undefined,
         cargoType: isClient.value ? clientValues.cargoType : undefined,
         clientCurrencyId: isClient.value
           ? clientValues.clientCurrencyId
           : undefined,
-        clientCoopSince: isClient.value
-          ? clientValues.clientCoopSince
-          : undefined,
-        clientLastTxnTime: isClient.value
-          ? clientValues.clientLastTxnTime
-          : undefined,
-
         // 供应商相关信息
         isSupplier: isSupplier.value,
-        supplierCoopStatus: isSupplier.value
-          ? supplierCoopStatus.value
-          : undefined,
         supplierLevel: isSupplier.value
           ? supplierValues.supplierLevel
           : undefined,
@@ -1054,12 +1028,6 @@ const handleSubmit = async () => {
           ? supplierValues.supplierCurrencyId
           : undefined,
         laneIds: isSupplier.value ? supplierValues.laneIds : undefined,
-        supplierCoopSince: isSupplier.value
-          ? supplierValues.supplierCoopSince
-          : undefined,
-        supplierLastTxnTime: isSupplier.value
-          ? supplierValues.supplierLastTxnTime
-          : undefined,
 
         sales: salesAdd,
         customerServices: customerServicesAdd,
@@ -1108,23 +1076,20 @@ const handleDishonestToggle = async () => {
     return;
   }
 
-  const action = isDishonest.value ? '取消失信' : '加入失信';
-  const actionVerb = isDishonest.value ? 'cancelDishonest' : 'addDishonest';
+  // 如果当前已经是失信状态，直接取消失信（不需要输入备注）
+  if (isDishonest.value) {
+    Modal.confirm({
+      title: '取消失信',
+      content: `确定要将此客户从失信名单中移除吗？`,
+      okType: 'danger',
+      async onOk() {
+        const hideLoading = message.loading({
+          content: `正在将客户移出失信...`,
+          duration: 0,
+          key: 'action_process_msg',
+        });
 
-  Modal.confirm({
-    title: `${action}`,
-    content: `确定要将此客户${action}吗？`,
-    okType: 'danger',
-    async onOk() {
-      const hideLoading = message.loading({
-        content: `正在将客户${action}...`,
-        duration: 0,
-        key: 'action_process_msg',
-      });
-
-      try {
-        if (isDishonest.value) {
-          // 当前是失信状态，执行取消失信
+        try {
           await cancelDishonest({
             id: editId.value!,
           });
@@ -1133,20 +1098,126 @@ const handleDishonestToggle = async () => {
             key: 'action_process_msg',
           });
           isDishonest.value = false; // 更新本地状态
-        } else {
-          // 当前不是失信状态，执行加入失信
-          await addDishonest({
-            id: editId.value!,
-          });
-          message.success({
-            content: `成功将客户加入失信`,
-            key: 'action_process_msg',
-          });
-          isDishonest.value = true; // 更新本地状态
+        } catch (error) {
+          console.error('取消失信失败:', error);
+          message.error('取消失信失败');
+        } finally {
+          hideLoading();
         }
+      },
+    });
+    return;
+  }
+
+  // 当前不是失信状态，需要加入失信并输入备注
+  const values = await baseFormApi.getValues();
+  const rowName = values.fullName || values.name || editId.value;
+
+  // 创建表单引用和响应式数据
+  let formRef: any = null;
+  const formData = ref({
+    dishonestRemark: '',
+  });
+
+  Modal.confirm({
+    title: '加入失信',
+    width: 600,
+    content: h('div', { style: 'margin-top: 16px;' }, [
+      h(
+        'p',
+        {
+          style: 'margin-bottom: 16px; color: #595959;',
+        },
+        `确定要将客户 "${rowName}" 加入失信名单吗？`,
+      ),
+      h(
+        Form,
+        {
+          ref: (refInstance: any) => {
+            formRef = refInstance;
+          },
+          model: formData.value,
+          layout: 'vertical',
+        },
+        [
+          h(
+            FormItem,
+            {
+              label: '失信备注',
+              required: true,
+              rules: [
+                { required: true, message: '请输入失信备注', trigger: 'blur' },
+                {
+                  max: 1024,
+                  message: '失信备注长度不能超过1024个字符',
+                  trigger: 'blur',
+                },
+              ],
+            },
+            () =>
+              h(Input.TextArea, {
+                value: formData.value.dishonestRemark,
+                placeholder: '请输入失信原因或备注信息（必填，最多1024字符）',
+                rows: 4,
+                maxlength: 1024,
+                showCount: true,
+                onChange: (e: any) => {
+                  // 使用 e.target.value 获取最新的值，兼容中文输入法
+                  formData.value.dishonestRemark = e.target?.value ?? '';
+                },
+                onInput: (e: any) => {
+                  // 同时监听 input 事件，确保中文输入也能正常更新
+                  formData.value.dishonestRemark = e.target?.value ?? '';
+                },
+                style: 'width: 100%;',
+              }),
+          ),
+        ],
+      ),
+    ]),
+    okType: 'danger',
+    okText: '确定',
+    cancelText: '取消',
+    async onOk() {
+      // 验证表单
+      try {
+        await formRef?.validate();
       } catch (error) {
-        console.error(`${action}失败:`, error);
-        message.error(`${action}失败`);
+        return Promise.reject();
+      }
+
+      // 二次验证：确保备注不为空且符合长度要求
+      const remark = formData.value.dishonestRemark?.trim();
+      if (!remark) {
+        message.error('失信备注不能为空');
+        return Promise.reject();
+      }
+
+      if (remark.length > 1024) {
+        message.error('失信备注长度不能超过1024');
+        return Promise.reject();
+      }
+
+      const hideLoading = message.loading({
+        content: `正在将客户 "${rowName}" 加入失信...`,
+        duration: 0,
+        key: 'action_process_msg',
+      });
+
+      try {
+        await addDishonest({
+          id: editId.value!,
+          dishonestRemark: remark,
+        });
+        message.success({
+          content: `成功将客户加入失信`,
+          key: 'action_process_msg',
+        });
+        isDishonest.value = true; // 更新本地状态
+      } catch (error) {
+        console.error('加入失信失败:', error);
+        message.error('加入失信失败');
+        return Promise.reject();
       } finally {
         hideLoading();
       }
@@ -1331,13 +1402,6 @@ onMounted(() => {
                   <Checkbox :value="1" class="lineheight-32">
                     {{ $t('seaExport.client.clientTypeOptions.customer') }}
                   </Checkbox>
-                  <Select
-                    v-model:value="clientTypeCoopStatus"
-                    :options="ClientConstants.getCustomerCoopStatusOptions()"
-                    allowClear
-                    class="ml-4 mr-5 min-w-[100px]"
-                    :placeholder="$t('ui.placeholder.select')"
-                  />
                 </CheckboxGroup>
                 <CheckboxGroup
                   name="CheckboxGroup"
@@ -1360,13 +1424,6 @@ onMounted(() => {
                   <Checkbox :value="2" class="lineheight-32">
                     {{ $t('seaExport.client.clientTypeOptions.supplier') }}
                   </Checkbox>
-                  <Select
-                    v-model:value="supplierCoopStatus"
-                    :options="ClientConstants.getSupplierCoopStatusOptions()"
-                    allowClear
-                    class="mr-3 min-w-[100px]"
-                    :placeholder="$t('ui.placeholder.select')"
-                  />
                 </CheckboxGroup>
                 <CheckboxGroup
                   name="CheckboxGroup"
