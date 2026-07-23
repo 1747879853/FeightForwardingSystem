@@ -2,6 +2,8 @@ import type { PrintFormatAdminApi } from '#/api/system/print-format-admin';
 
 import { ref } from 'vue';
 
+import { downloadFileFromBlob } from '@vben/utils';
+
 import { message } from 'ant-design-vue';
 
 import {
@@ -23,6 +25,8 @@ const selectedTemplateId = ref<string>();
 const exportFormat = ref<PrintExportFormat>(PrintExportFormat.Pdf);
 const previewUrl = ref('');
 const previewFilename = ref('');
+/** 预览生成的原始文件名（含时间戳），用于 PDF 导出时复用、避免重复请求 */
+const previewOriginalFilename = ref('');
 const pendingPrintJsonType = ref<PrintJsonType>();
 /** 后端自动取数打印入参（不含 printFormatId / format，导出时再补齐） */
 const pendingInput = ref<{
@@ -49,24 +53,76 @@ export interface PrintFormatOpenParams {
 }
 
 /**
- * 清洗后端返回的文件名：
- * 若文件名中含有 "-"，将 "-" 及其之后的内容删除，但保留扩展名。
- * 例：`638881234567890123-海运出口.pdf` → `638881234567890123.pdf`
+ * 清洗后端返回的文件名：去掉末尾的 `-<时间戳>` 段，保留扩展名。
+ * 仅当最后一个 "-" 之后是纯数字（后端时间戳/ticks）时才截断，避免误伤友好名里的 "-"。
+ * 例：`订舱委托书-101-639204489841449418.pdf` → `订舱委托书-101.pdf`
  */
 function cleanReturnedFilename(filename: string) {
   if (!filename) return filename;
-  const dashIndex = filename.indexOf('-');
-  if (dashIndex === -1) return filename;
   const dotIndex = filename.lastIndexOf('.');
-  const ext = dotIndex > dashIndex ? filename.slice(dotIndex) : '';
-  return `${filename.slice(0, dashIndex)}${ext}`;
+  const ext = dotIndex === -1 ? '' : filename.slice(dotIndex);
+  const base = dotIndex === -1 ? filename : filename.slice(0, dotIndex);
+  const dashIndex = base.lastIndexOf('-');
+  if (dashIndex === -1) return filename;
+  const tail = base.slice(dashIndex + 1);
+  if (!/^\d+$/.test(tail)) return filename;
+  return `${base.slice(0, dashIndex)}${ext}`;
 }
 
-/** 将后端返回的文件名拼接为可访问的静态文件地址 */
+/** 取文件名（去掉可能存在的路径前缀） */
+function baseName(filename: string) {
+  const slashIndex = filename.lastIndexOf('/');
+  return slashIndex === -1 ? filename : filename.slice(slashIndex + 1);
+}
+
+/** 将后端返回的原始文件名（保留时间戳）拼接为服务器真实文件地址 */
+function resolveRawPrintFileUrl(filename: string) {
+  const path = filename.startsWith('/')
+    ? filename
+    : `/PrintTempFile/${filename}`;
+  return buildStaticFileUrl(path);
+}
+
+/** 将后端返回的文件名拼接为可访问的静态文件地址（清洗后） */
 function resolvePrintFileUrl(filename: string) {
   const cleaned = cleanReturnedFilename(filename);
   const path = cleaned.startsWith('/') ? cleaned : `/PrintTempFile/${cleaned}`;
   return buildStaticFileUrl(path);
+}
+
+/**
+ * 导出下载：
+ * 1. 先用「原始文件名」（含时间戳）静默拉取服务器真实文件（fetch 为 blob，不弹新窗口）；
+ * 2. 再按现有逻辑去掉文件名后面的时间戳，作为 save-as 文件名触发浏览器下载。
+ * 原始地址取不到时兜底用清洗后的地址，兼容后端两种文件命名。
+ */
+async function downloadPrintFile(filename: string) {
+  const downloadName = cleanReturnedFilename(baseName(filename));
+  const candidateUrls = [
+    resolveRawPrintFileUrl(filename),
+    resolvePrintFileUrl(filename),
+  ];
+
+  let blob: Blob | undefined;
+  for (const url of candidateUrls) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const response = await fetch(url);
+      if (response.ok) {
+        // eslint-disable-next-line no-await-in-loop
+        blob = await response.blob();
+        break;
+      }
+    } catch {
+      // 尝试下一个候选地址
+    }
+  }
+
+  if (!blob) {
+    throw new Error('download failed');
+  }
+
+  downloadFileFromBlob({ source: blob, fileName: downloadName });
 }
 
 function close() {
@@ -76,6 +132,7 @@ function close() {
   exportFormat.value = PrintExportFormat.Pdf;
   previewUrl.value = '';
   previewFilename.value = '';
+  previewOriginalFilename.value = '';
   pendingPrintJsonType.value = undefined;
   pendingInput.value = {};
 }
@@ -102,6 +159,7 @@ async function loadPreview() {
   previewLoading.value = true;
   previewUrl.value = '';
   previewFilename.value = '';
+  previewOriginalFilename.value = '';
   try {
     const filename = await getPrintAsync(
       buildPrintDto(selectedTemplateId.value, PrintExportFormat.Pdf),
@@ -110,8 +168,9 @@ async function loadPreview() {
       message.error('预览失败，未返回文件');
       return;
     }
+    previewOriginalFilename.value = filename;
     previewFilename.value = cleanReturnedFilename(filename);
-    previewUrl.value = resolvePrintFileUrl(filename);
+    previewUrl.value = resolveRawPrintFileUrl(filename);
   } catch {
     message.error('预览生成失败，请稍后重试');
   } finally {
@@ -159,6 +218,7 @@ function openPrint(params: PrintFormatOpenParams) {
   exportFormat.value = PrintExportFormat.Pdf;
   previewUrl.value = '';
   previewFilename.value = '';
+  previewOriginalFilename.value = '';
   visible.value = true;
   void loadTemplates(params);
 }
@@ -170,9 +230,9 @@ function handleTemplateChange(templateId: string) {
 }
 
 /**
- * 导出当前模板：
- * - PDF：在新窗口打开已生成的预览文件；
- * - Excel/Word：重新按目标格式生成并在新窗口打开下载。
+ * 导出当前模板：所有格式（PDF/Excel/Word）统一用「原始文件名静默拉取 →
+ * 去掉时间戳后触发浏览器下载」，PDF 不再新窗口打开。
+ * PDF 复用预览已生成的原始文件名，避免重复请求。
  * @param format 指定导出格式；不传则使用当前 exportFormat（默认 PDF）
  */
 async function handleExport(format?: PrintExportFormat) {
@@ -186,31 +246,20 @@ async function handleExport(format?: PrintExportFormat) {
   }
   const targetFormat = exportFormat.value;
 
-  // PDF 复用已生成的预览文件，避免重复请求。
-  if (targetFormat === PrintExportFormat.Pdf) {
-    if (previewUrl.value) {
-      window.open(previewUrl.value, '_blank', 'noopener');
-      return;
-    }
-    // 预览缺失时兜底重新生成 PDF。
-    await loadPreview();
-    if (previewUrl.value) {
-      window.open(previewUrl.value, '_blank', 'noopener');
-    }
-    return;
-  }
-
   exporting.value = true;
   try {
-    const filename = await getPrintAsync(
-      buildPrintDto(selectedTemplateId.value, targetFormat),
-    );
+    const filename =
+      targetFormat === PrintExportFormat.Pdf && previewOriginalFilename.value
+        ? previewOriginalFilename.value
+        : await getPrintAsync(
+            buildPrintDto(selectedTemplateId.value, targetFormat),
+          );
     if (!filename) {
       message.error('导出失败，未返回文件');
       return;
     }
-    window.open(resolvePrintFileUrl(filename), '_blank', 'noopener');
-    message.success('导出文件已生成');
+    await downloadPrintFile(filename);
+    message.success('文件已下载');
   } catch {
     message.error('导出失败，请稍后重试');
   } finally {
