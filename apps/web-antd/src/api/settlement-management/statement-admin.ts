@@ -305,7 +305,8 @@ export const getStatementPagedList = async (params: Recordable<any>) => {
     MblNum: params.MblNum || params.mblNum,
     ETDStart: params.ETDStart || params.etdStart,
     ETDEnd: params.ETDEnd || params.etdEnd,
-    Sorting: params.Sorting || 'Id desc',
+    // 支持大写Sorting和小写sorting两种格式
+    Sorting: params.Sorting || params.sorting || 'Id desc',
     PageIndex: params.PageIndex || params.pageIndex || 1,
     PageSize: params.PageSize || params.pageSize || 10,
     // 新增筛选参数
@@ -330,3 +331,5 @@ export const getStatementDetail = (id: string) => {
     { params: { Id: id } },
   );
 };
+
+

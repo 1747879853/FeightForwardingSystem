@@ -1543,7 +1543,7 @@ async function loadDefaultRemarkTemplate() {
     // 静默失败，不影响主流程
   }
 }
-
+let first = true;
 /** 根据币别更新客户银行 */
 function updateClientBankByCurrency() {
   if (!selectedClientInvoiceInfo.value || !formData.value.currencyId) return;
@@ -1554,7 +1554,13 @@ function updateClientBankByCurrency() {
   );
 
   if (bank) {
-    formData.value.clientInvoiceBankId = bank.id;
+    if(first && isEdit.value && formData.value.clientInvoiceBankId){
+      console.log('编辑初始化，不要覆盖银行账号');
+      first = false;
+    }else{
+       formData.value.clientInvoiceBankId = bank.id;
+    }
+   
   } else {
     // 如果没有找到默认银行，清空选择
     formData.value.clientInvoiceBankId = undefined;
@@ -1563,7 +1569,10 @@ function updateClientBankByCurrency() {
 
 /** 根据币别更新销售方银行 */
 function updateOrgBankByCurrency() {
-  if (!orgBankAccounts.value.length || !formData.value.currencyId) return;
+  if (!orgBankAccounts.value.length || !formData.value.currencyId){
+     formData.value.orgBankAccountId = undefined;
+     return;
+  }
 
   const currencyId = formData.value.currencyId;
 
@@ -1624,7 +1633,10 @@ function initApplicantInfo() {
 // 归属组织变化时，联动刷新开票公司信息
 watch(
   () => formData.value.orgId,
-  () => applyOrgCompanyInfo(),
+  () => {
+    applyOrgCompanyInfo();
+    updateOrgBankByCurrency();
+  },
 );
 
 /** 获取与开票币种一致的银行列表 */
@@ -1635,9 +1647,9 @@ const filteredClientBanks = computed(() => {
 
   const currencyId = formData.value.currencyId;
   const banks = selectedClientInvoiceInfo.value.clientInvoiceBanks || [];
-
+  console.log('filteredClientBanks:', banks);
   // 只返回与开票币种一致的银行
-  return banks.filter((bank) => bank.currencyId === currencyId);
+  return banks.filter((bank) => bank.currencyId === currencyId).map((bank) => ({...bank, value: bank.id,label: `${bank.bankName}-${bank.bankAccount}`}));
 });
 
 /** 获取销售方与开票币种一致的银行列表 */
@@ -1914,7 +1926,8 @@ async function loadDetail() {
   loading.value = true;
   try {
     const detail = await detailAsync(editId.value);
-
+       // 加载客户开票信息
+    await loadClientInvoiceInfo(detail.settlementId);
     // 检查状态，只有录入或驳回状态可以编辑（只读模式除外）
     if (
       !isReadOnly.value &&
@@ -1926,7 +1939,7 @@ async function loadDetail() {
       router.back();
       return;
     }
-
+    selectedClientInvoiceInfo.value = detail.clientInvoiceInfo;
     // ✅ 从 feeGroups 中提取 invoiceApplicationItems
     const invoiceApplicationItems: any[] = [];
     if (detail.feeGroups && detail.feeGroups.length > 0) {
@@ -1965,8 +1978,7 @@ async function loadDetail() {
       : dayjs().format('YYYY-MM-DD');
 
     // 加载客户开票信息
-    // 加载客户开票信息
-    await loadClientInvoiceInfo(detail.settlementId);
+ 
 
     // 设置汇率
     invoiceExchangeRate.value = detail.invoiceExchangeRate || 1.0;
@@ -2351,13 +2363,8 @@ async function loadDetail() {
                           ><strong>开户行及账号:</strong></span
                         >
                         <Select
-                          v-model:value="formData.orgBankAccountId"
-                          :options="
-                            filteredOrgBanks.map((b) => ({
-                              label: `${b.bankName} - ${b.bankAccount}`,
-                              value: b.id,
-                            }))
-                          "
+                          v-model:value="formData.clientInvoiceBankId"
+                          :options="filteredClientBanks"
                           style="flex: 1"
                           size="small"
                           placeholder="请选择银行"

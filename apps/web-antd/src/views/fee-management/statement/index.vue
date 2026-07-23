@@ -61,7 +61,9 @@ const [Grid, gridApi] = useVbenVxeGrid<StatementAdminApi.StatementDto>({
     },
     proxyConfig: {
       ajax: {
-        query: createPagedListQuery(getStatementPagedList),
+        query: createPagedListQuery(getStatementPagedList, {
+          defaultSort: 'CreationTime DESC',
+        }),
       },
     },
     toolbarConfig: {

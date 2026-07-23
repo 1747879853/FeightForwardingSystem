@@ -112,23 +112,27 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'statementNum',
       title: $t('seaExport.export.statement.number'),
       minWidth: 140,
+      sortable: true,
     },
     {
       field: 'clientName',
       title: $t('seaExport.export.statement.clientName'),
       minWidth: 140,
+      sortable: true,
     },
     {
       field: 'startTime',
       title: $t('seaExport.export.statement.startTime'),
       minWidth: 140,
       formatter: 'formatDate',
+      sortable: true,
     },
     {
       field: 'endTime',
       title: $t('seaExport.export.statement.endTime'),
       minWidth: 140,
       formatter: 'formatDate',
+      sortable: true,
     },
     // 新增：收付类型汇总列
     {
@@ -136,6 +140,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: '收付类型',
       minWidth: 120,
       slots: { default: 'paySide' },
+      sortable: true,
     },
     // 新增：开票状态汇总列
     {
@@ -143,6 +148,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: '开票状态',
       minWidth: 120,
       slots: { default: 'invoiceStatus' },
+      sortable: true,
     },
     // 新增：我司银行列
     {
@@ -150,33 +156,39 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: '我司银行',
       minWidth: 200,
       slots: { default: 'orgBankAccount' },
+      sortable: false,
     },
     {
       field: 'localCurrencyCode',
       title: $t('seaExport.export.statement.localCurrencyCode'),
       minWidth: 130,
+      sortable: true,
     },
     {
       field: 'localCurrencyReceiveAmount',
       title: $t('seaExport.export.statement.localCurrencyReceiveAmount'),
       minWidth: 100,
+      sortable: true,
     },
     {
       field: 'localCurrencyPayAmount',
       title: $t('seaExport.export.statement.localCurrencyPayAmount'),
       minWidth: 100,
+      sortable: true,
     },
     {
       field: 'description',
       title: $t('seaExport.export.statement.notes'),
       minWidth: 160,
       showOverflow: true,
+      sortable: true,
     },
     {
       field: 'creationTime',
       title: $t('seaExport.export.creationTime'),
       minWidth: 160,
       formatter: 'formatDateTime',
+      sortable: true,
     },
   ];
 }

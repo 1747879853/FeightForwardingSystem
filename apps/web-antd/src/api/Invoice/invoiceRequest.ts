@@ -321,7 +321,67 @@ export namespace InvoiceApplicationApi {
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
   }
-
+    /** 客户开票银行 列表和详情输出 */
+  export interface ClientInvoiceBankDto {
+    /** 客户开票信息表id */
+    clientInvoiceInfoId: string;
+    /** 开户银行 */
+    bankName?: string;
+    /** 银行账号 */
+    bankAccount?: string;
+    /** 账户名称 */
+    accountName?: string;
+    /** 币别id */
+    currencyId: number;
+    /** SwiftCode */
+    swiftCode?: string;
+    /** 是否默认 每个币种都至多有一个默认银行账户 */
+    isDefault: boolean;
+    /** 排序id */
+    sortId: number;
+    /** 币别代码 */
+    currencyCode?: string;
+    isDeleted: boolean;
+    deleterUserId?: number;
+    deletionTime?: string;
+    lastModificationTime?: string;
+    lastModifierUserId?: number;
+    creationTime: string;
+    creatorUserId?: number;
+    id: string;
+  }
+    /** 客户开票信息 列表和详情输出 */
+  export interface ClientInvoiceInfoDto {
+    /** 客户id */
+    clientId: string;
+    /** 抬头 */
+    header?: string;
+    /** 是否默认 */
+    isDefault: boolean;
+    /** 排序id */
+    sortId: number;
+    /** 纳税人识别号 */
+    taxNum?: string;
+    /** 开票地址 */
+    address?: string;
+    /** 开票电话 */
+    tel?: string;
+    /** 手机 */
+    mobile?: string;
+    /** 开票要求 */
+    require?: string;
+    /** 银行信息列表 */
+    clientInvoiceBanks?: ClientInvoiceBankDto[];
+    isDeleted: boolean;
+    deleterUserId?: number;
+    deletionTime?: string;
+    lastModificationTime?: string;
+    lastModifierUserId?: number;
+    creationTime: string;
+    creatorUserId?: number;
+    id: string;
+  }
+  
   /** 开票申请详情DTO */
   export interface InvoiceApplicationDetailDto {
     id: string;
@@ -331,6 +391,7 @@ export namespace InvoiceApplicationApi {
     status: InvoiceApplicationStatus;
     currencyId: number;
     invoiceType?: InvoiceType;
+    clientInvoiceInfo: ClientInvoiceInfoDto;
     clientInvoiceBankId: string;
     /** 归属组织id */
     orgId: null | number;
