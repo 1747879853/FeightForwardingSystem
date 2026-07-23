@@ -127,6 +127,7 @@ last_updated: 2026-07-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-24 | `Fix` | 已选委托单位但无业务来源时改为纯文本「-」，不再渲染禁用下拉占宽。 | `showCodeSourceEmptyDash` 控制分支。详见 `changelogs/change-log-2026-07-24-sea-export-code-source-empty-dash.md`。 |
 | 2026-07-24 | `Fix` | 打印导出改为静默下载；文件名清洗仅去掉末尾纯数字时间戳，避免友好名含 `-` 时 404。 | PDF 复用预览原始文件名；`downloadFileFromBlob`。详见 `changelogs/change-log-2026-07-24-print-format-silent-download.md`。 |
 | 2026-07-24 | `Fix` | 委托单位带出业务来源时仅传 id，名称由 `CodeSourceSelect` 自拉取；头部来源下拉 placeholder 字号缩小。 | `applyClientCodeSource` 不再拼 `client.codeSource.cnName`。详见 `changelogs/change-log-2026-07-24-sea-export-code-source-self-fetch.md`。 |
 | 2026-07-24 | `Feature` | 基础信息新增合同号；头部「归属组织」改用按销售绑定的 `UserOrgSelect`；复制摘要含合同号。 | 字段挂 `transportOrder.contractNum`；`selectedItems` 兜底 `orgs` 路径回显。详见 `changelogs/change-log-2026-07-24-sea-export-contract-num.md`。 |

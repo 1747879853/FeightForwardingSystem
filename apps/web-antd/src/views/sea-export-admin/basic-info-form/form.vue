@@ -1043,6 +1043,14 @@ const normalizeIdForCompare = (value: unknown) =>
 let serviceTypeLinkageRequestId = 0;
 const linkedClientId = ref<unknown>(undefined);
 const linkedPolId = ref<unknown>(undefined);
+/** 未选委托单位时业务来源下拉占位（已选无来源走文本「-」，不占宽） */
+const headerCodeSourcePlaceholder = '按委托单位自动带出';
+/** 已选委托单位但客户未维护业务来源：仅展示「-」，不占下拉宽度 */
+const showCodeSourceEmptyDash = computed(
+  () =>
+    toOptionalQueryValue(linkedClientId.value) !== undefined &&
+    headerCodeSourceId.value == null,
+);
 const serviceTypeSyncLoading = ref(false);
 const polServiceConfigLoaded = ref(false);
 const polHasNoServiceConfig = computed(() => {
@@ -3110,13 +3118,20 @@ defineExpose({
                       <span class="basic-info-header__label">{{
                         $t('seaExport.export.codeSourceId')
                       }}</span>
+                      <span
+                        v-if="showCodeSourceEmptyDash"
+                        class="basic-info-header__value"
+                      >
+                        -
+                      </span>
                       <CodeSourceSelect
+                        v-else
                         :model-value="headerCodeSourceId"
                         :selected-items="headerCodeSourceSelectedItems"
                         disabled
                         size="small"
                         class="basic-info-header__select basic-info-header__select--source"
-                        placeholder="按委托单位自动带出"
+                        :placeholder="headerCodeSourcePlaceholder"
                         @update:model-value="handleHeaderCodeSourceChange"
                       />
                     </div>

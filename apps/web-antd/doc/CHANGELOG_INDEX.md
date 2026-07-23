@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-24 海运出口业务来源空值改短横线展示避免占宽](./changelogs/change-log-2026-07-24-sea-export-code-source-empty-dash.md)
 - [2026-07-24 打印导出改为静默下载并修正文件名清洗](./changelogs/change-log-2026-07-24-print-format-silent-download.md)
 - [2026-07-24 海运出口业务来源回显改由下拉自拉取](./changelogs/change-log-2026-07-24-sea-export-code-source-self-fetch.md)
 - [2026-07-24 海运出口对接合同号并完善归属组织选择](./changelogs/change-log-2026-07-24-sea-export-contract-num.md)
