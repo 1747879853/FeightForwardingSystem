@@ -91,14 +91,27 @@ function resolvePrintFileUrl(filename: string) {
 }
 
 /**
+ * 同源相对路径（用于 fetch 下载，规避跨域 CORS）：
+ * dev 由 vite `/PrintTempFile` 代理转发，生产由同源部署/网关代理。
+ */
+function resolvePrintFileProxyPath(filename: string) {
+  return filename.startsWith('/')
+    ? filename
+    : `/PrintTempFile/${baseName(filename)}`;
+}
+
+/**
  * 导出下载：
- * 1. 先用「原始文件名」（含时间戳）静默拉取服务器真实文件（fetch 为 blob，不弹新窗口）；
+ * 1. 用「原始文件名」（含时间戳）静默拉取服务器真实文件（fetch 为 blob，不弹新窗口）；
+ *    优先走同源相对路径规避 CORS，取不到再回退绝对静态地址（后端已放开 CORS 时可用）。
  * 2. 再按现有逻辑去掉文件名后面的时间戳，作为 save-as 文件名触发浏览器下载。
- * 原始地址取不到时兜底用清洗后的地址，兼容后端两种文件命名。
  */
 async function downloadPrintFile(filename: string) {
   const downloadName = cleanReturnedFilename(baseName(filename));
+  // 顺序：同源原始名 → 同源清洗名 → 绝对原始名 → 绝对清洗名
   const candidateUrls = [
+    resolvePrintFileProxyPath(filename),
+    resolvePrintFileProxyPath(cleanReturnedFilename(baseName(filename))),
     resolveRawPrintFileUrl(filename),
     resolvePrintFileUrl(filename),
   ];
@@ -114,7 +127,7 @@ async function downloadPrintFile(filename: string) {
         break;
       }
     } catch {
-      // 尝试下一个候选地址
+      // 跨域/网络失败，尝试下一个候选地址
     }
   }
 

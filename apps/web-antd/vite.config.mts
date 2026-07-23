@@ -119,6 +119,11 @@ export default defineConfig(async (config) => {
             target: `${apiTarget}/api`,
             ws: true,
           },
+          '/PrintTempFile': {
+            changeOrigin: true,
+            target: apiTarget,
+            ws: true,
+          },
           '/UserConfiguration': {
             changeOrigin: true,
             target: apiTarget,
