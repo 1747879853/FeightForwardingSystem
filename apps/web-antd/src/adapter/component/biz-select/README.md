@@ -25,6 +25,8 @@
 | `FeeNameSelect` | 费用名称选择 | `#/api/system/base-data/fee-name-admin` |
 | `LaneSelect` | 航线编码选择 | `#/api/system/base-data/lane-code-admin` |
 | `OrganizationSelect` | 组织/部门选择 | `#/api/system/organization-unit` |
+| `MyOrgSelect` | 当前登录用户「我的组织」选择 | `#/composables/use-my-org`（源自 `UserAdmin/GetMyAsync`） |
+| `UserOrgSelect` | 指定用户所属组织选择（如按所选销售取其组织） | `#/composables/use-all-user-org`（`UserAdmin/GetAllUserOrganizationsAsync`） |
 | `PortSelect` | 港口编码选择 | `#/api/system/base-data/port-code-admin` |
 | `RoleSelect` | 系统角色选择 | `#/api/system/role` |
 | `UserSelect` | 系统用户选择 | `#/api/system/user-admin` |
@@ -93,6 +95,28 @@
 ```vue
 <OrganizationSelect :is-company="true" />
 ```
+
+## UserOrgSelect 扩展参数
+
+`UserOrgSelect` 用于「先选人、再选该人所属组织」的业务录入场景（如海运出口选定销售后选择归属组织 `orgId`）。数据走 `UserAdmin/GetAllUserOrganizationsAsync` 全量用户组织缓存（模块级共享、并发合并，首次加载后命中缓存）。
+
+| 参数 | 类型 | 默认 | 说明 |
+| --- | --- | --- | --- |
+| `userId` | `number \| null` | — | 目标用户 id（如所选销售），据此取其所属组织范围 |
+| `autoDefault` | `boolean` | `true` | `userId` 变化或挂载后，若未选值则自动填充该用户默认组织 |
+| `clearOnUserChange` | `boolean` | `true` | `userId` 变化后，若已选值不在新用户组织范围内则清空 |
+| `placeholder` | `string` | — | 占位提示 |
+
+`v-model` 绑定值为「直属组织 id」（`orgId`）。
+
+示例：
+
+```vue
+<UserSelect v-model="form.salesUserId" :user-attribute="16" />
+<UserOrgSelect v-model="form.orgId" :user-id="form.salesUserId" />
+```
+
+如需在脚本中按 userId 直接取组织，可复用组合式 `useAllUserOrg`：`getUserOrgOptions(userId)`、`getUserDefaultOrgId(userId)`、`getUserOrgPath(userId, orgId)`、`getUserOrgCompanyNode(userId, orgId)`（后者含公司节点本位币与 `orgBankAccounts`）。
 
 ## 工具函数
 

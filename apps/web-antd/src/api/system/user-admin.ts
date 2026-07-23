@@ -1,5 +1,7 @@
 import type { Recordable } from '@vben/types';
 
+import type { MyUserOrganizationPathDto } from '#/api/core/user';
+
 import { requestClient } from '#/api/request';
 export enum UserStatus {
   /** 禁用 */
@@ -140,6 +142,18 @@ export namespace SystemUserAdminApi {
   export interface UpdateUserOrganizationPathDto {
     id: number; // 组织id（须存在且启用）
     default?: boolean; // 是否设为默认组织（最多一条为 true）
+  }
+
+  /**
+   * 单个用户的所属组织DTO（GetAllUserOrganizationsAsync 返回项）
+   * organizations 结构与 GetMyAsync.organizations 相同（含 default、oneOrganizationPath；
+   * 公司节点含本位币与 orgBankAccounts）。
+   */
+  export interface UserOrganizationsDto {
+    /** 用户id */
+    userId: number;
+    /** 该用户所属组织路径列表，无组织时为空数组 */
+    organizations: MyUserOrganizationPathDto[];
   }
 
   /** 用户列表项DTO */
@@ -619,6 +633,20 @@ async function deleteUserBankAccount(id: number): Promise<void> {
   );
 }
 
+/**
+ * 获取全部用户的所属组织
+ * @description 登录即可调用，返回当前租户下全部用户的组织路径（每人一条，无组织时 organizations 为空数组）。
+ * organizations 结构与 GetMyAsync.organizations 相同。
+ * 典型用途：业务录入（如海运出口）选定销售后，按其 userId 取对应 organizations 选择所属组织 orgId。
+ */
+async function getAllUserOrganizations(): Promise<
+  SystemUserAdminApi.UserOrganizationsDto[]
+> {
+  return requestClient.get<SystemUserAdminApi.UserOrganizationsDto[]>(
+    '/services/app/UserAdmin/GetAllUserOrganizationsAsync',
+  );
+}
+
 // ==================== 用户通用 API (UserAppService) 函数实现 ====================
 
 /**
@@ -696,6 +724,7 @@ export {
   createUserBankAccount,
   deleteUser,
   deleteUserBankAccount,
+  getAllUserOrganizations,
   getUser,
   getUserBankAccount,
   getUserBankAccountList,

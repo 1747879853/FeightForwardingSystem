@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-23 新增 UserOrgSelect：按指定用户取其所属组织](./changelogs/change-log-2026-07-23-user-org-select.md)
 - [2026-07-23 ClientSelect 迁移至通用 Client 接口（去 Admin）](./changelogs/change-log-2026-07-23-client-select-common-api.md)
 - [2026-07-22 海运出口列表「所属公司」改为展示 orgs[0].name](./changelogs/change-log-2026-07-22-sea-export-list-orgs0-company-name.md)
 - [2026-07-22 多组织改造：company/companyId 前端全量迁移为 orgId/orgs](./changelogs/change-log-2026-07-22-multi-org-orgid-refactor.md)
