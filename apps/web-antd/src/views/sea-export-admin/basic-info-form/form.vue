@@ -1214,7 +1214,10 @@ const queueSyncServiceTypesByPol = (args: {
     });
   }, 0);
 };
-/** 委托单位变更：按客户表维护的业务来源自动带出到「业务来源」（不可手动填写） */
+/**
+ * 委托单位变更：按客户表维护的业务来源自动带出到「业务来源」（不可手动填写）。
+ * 仅有 id 时，业务来源下拉组件会按 id 自行拉取详情回显名称。
+ */
 const applyClientCodeSource = (
   client: Awaited<ReturnType<typeof getClientDetail>> | undefined,
 ) => {
@@ -1222,7 +1225,7 @@ const applyClientCodeSource = (
   headerCodeSourceId.value = codeSourceId;
   headerCodeSourceSelectedItems.value = toSelectedItems(
     codeSourceId,
-    client?.codeSource?.cnName,
+    '',
     'cnName',
   );
   void basicInfoFormApi.setFieldValue('codeSourceId', codeSourceId);

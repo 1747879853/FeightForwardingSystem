@@ -80,6 +80,7 @@ last_updated: 2026-07-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-24 | `Fix` | 委托单位带出业务来源时仅传 id，名称由 `CodeSourceSelect` 自拉取；头部来源下拉 placeholder 字号缩小。 | `applyClientCodeSource` 不再拼 `client.codeSource.cnName`。详见 `changelogs/change-log-2026-07-24-sea-export-code-source-self-fetch.md`。 |
 | 2026-07-24 | `Feature` | 基础信息新增合同号；头部「归属组织」改用按销售绑定的 `UserOrgSelect`（完整路径回显）。 | `contractNum` 经 `flattenDetail`/`buildSeaExportDto` 挂 `transportOrder`；`clearOnUserChange` 仅切换用户时清空。详见 `changelogs/change-log-2026-07-24-sea-export-contract-num.md`。 |
 | 2026-07-14 | `Fix` | 销售/操作显示必填标识；截关日期不得晚于开船/实际开船；预付/到付自动带出起运港/目的港；新增箱行默认复制总包装 ID 与文本。 | 总包装与箱行包装共用 `CodePackageSelect` 数据源但分属订单级与箱行级字段；通过选择事件缓存文本，新增行无需再拉包装详情。 |
 | 2026-07-14 | `Fix` | 修复文本字段（收货人/发货人/通知人内容、各备注）「输入后又删空」恢复原状，切标签/跳转仍被误拦的问题。 | 脏检查比对由裸 `JSON.stringify` 改为经 `normalizeForDirtyCheck`（`undefined`/`null`/`''` 等价、递归 + 键排序）的 `stableDtoJson`；`syncFormSnapshot`/`isFormDirty` 共用，提交侧 `buildDto` 不变。详见 `changelogs/change-log-2026-07-14-sea-export-dirty-check-empty-value-normalize.md`。 |

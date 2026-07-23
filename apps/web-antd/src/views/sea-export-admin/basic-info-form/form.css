@@ -296,6 +296,10 @@
   width: 120px;
 }
 
+.basic-info-header__select--source :deep(.ant-select-selection-placeholder) {
+  font-size: 11px;
+}
+
 .basic-info-header__select--org {
   width: 168px;
 }
