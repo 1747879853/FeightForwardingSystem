@@ -87,6 +87,7 @@ export const buildSeaExportDto = (
     commissionNum: values.commissionNum,
     mblNum: values.mblNum,
     bookingNum: values.bookingNum,
+    contractNum: values.contractNum,
     accountDate: toDateString(values.accountDate),
     settlementDate: toDateString(values.settlementDate),
     codeSourceId: values.codeSourceId ?? undefined,

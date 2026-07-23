@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, toRef, useAttrs, watch } from 'vue';
+import { computed, toRef, useAttrs, watch } from 'vue';
 
 import { $t } from '@vben/locales';
 
@@ -18,8 +18,13 @@ interface Props {
   placeholder?: string;
   /** userId 变化或挂载后，若未选值是否自动填充该用户默认组织，默认 true */
   autoDefault?: boolean;
-  /** userId 变化后，若已选值不在新用户组织范围内是否清空，默认 true */
+  /** 从「另一个用户」切换过来时是否清空已选值（首次赋值/回显不清空），默认 true */
   clearOnUserChange?: boolean;
+  /**
+   * 回显兜底选项：value=末级组织id，label=完整公司名。
+   * 用于编辑回显（如详情 orgs 路径），在该用户组织加载完成前也能正确显示已选项。
+   */
+  selectedItems?: Array<{ label: string; value: number }>;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -27,6 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
   placeholder: undefined,
   autoDefault: true,
   clearOnUserChange: true,
+  selectedItems: () => [],
 });
 
 const modelValue = defineModel<null | number | undefined>();
@@ -40,12 +46,19 @@ const {
   loading,
 } = useAllUserOrg();
 
-const options = computed(() =>
-  getUserOrgOptions(userIdRef.value).map((item) => ({
-    label: item.label,
-    value: item.value,
-  })),
-);
+const options = computed(() => {
+  const map = new Map<number, { label: string; value: number }>();
+  for (const item of getUserOrgOptions(userIdRef.value)) {
+    map.set(item.value, { label: item.label, value: item.value });
+  }
+  // 回显兜底：仅补入当前已选值对应的选项，避免残留历史条目
+  for (const item of props.selectedItems) {
+    if (item.value === modelValue.value && !map.has(item.value)) {
+      map.set(item.value, { label: item.label, value: item.value });
+    }
+  }
+  return [...map.values()];
+});
 
 const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
@@ -69,24 +82,25 @@ const handleChange = (value: any) => {
   modelValue.value = value ?? null;
 };
 
-watch(userIdRef, async () => {
-  await loadAllUserOrganizations();
-  // 已选值不在新用户组织范围内时清空，避免脏数据
-  if (
-    props.clearOnUserChange &&
-    modelValue.value !== undefined &&
-    modelValue.value !== null &&
-    !options.value.some((o) => o.value === modelValue.value)
-  ) {
-    modelValue.value = null;
-  }
-  applyDefault();
-});
-
-onMounted(async () => {
-  await loadAllUserOrganizations();
-  applyDefault();
-});
+watch(
+  userIdRef,
+  async (newId, oldId) => {
+    await loadAllUserOrganizations();
+    // 仅在「从另一个用户切换过来」时清空；首次赋值（新建选人/编辑回显）不清空
+    const switchedFromAnotherUser =
+      oldId !== undefined && oldId !== null && newId !== oldId;
+    if (
+      props.clearOnUserChange &&
+      switchedFromAnotherUser &&
+      modelValue.value !== undefined &&
+      modelValue.value !== null
+    ) {
+      modelValue.value = null;
+    }
+    applyDefault();
+  },
+  { immediate: true },
+);
 </script>
 
 <template>

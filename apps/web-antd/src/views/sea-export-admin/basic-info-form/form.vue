@@ -55,11 +55,16 @@ defineOptions({
   name: 'SeaExportAdminForm',
 });
 const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
-import { CodeSourceSelect, UserSelect } from '#/adapter/component';
+import {
+  CodeSourceSelect,
+  UserOrgSelect,
+  UserSelect,
+} from '#/adapter/component';
 import { type VbenFormSchema, useVbenForm } from '#/adapter/form';
 import { getClientDetail } from '#/api/sea-export/client-admin';
 import { getCodeFrtDetail } from '#/api/system/base-data/code-frt-admin';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
+import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import {
   getServiceTypesByPOL,
   getSeaExportDetail,
@@ -242,6 +247,7 @@ const BASIC_INFO_HEADER_READONLY_FIELD_NAMES = [
   'settlementDate',
 ] as const;
 const BASIC_INFO_HEADER_SELECT_FIELD_NAMES = [
+  'orgId',
   'blType',
   'billType',
   'codeSourceId',
@@ -544,6 +550,8 @@ const [BasicInfoForm, basicInfoFormApi] = useVbenForm({
 
 const blTypeOptions = computed(() => getBlTypeOptions());
 const billTypeOptions = computed(() => getBillTypeOptions());
+const headerOrgId = ref<null | number | undefined>();
+const headerOrgSelectedItems = ref<Array<{ label: string; value: number }>>([]);
 const headerBlType = ref<number | undefined>();
 const headerBillType = ref<number | undefined>();
 const headerCodeSourceId = ref<number | undefined>();
@@ -551,9 +559,15 @@ const headerCodeSourceSelectedItems = ref<any[]>([]);
 
 const syncBasicInfoHeaderFields = async () => {
   const values = await basicInfoFormApi.getValues();
+  headerOrgId.value = values.orgId ?? undefined;
   headerBlType.value = values.blType;
   headerBillType.value = values.billType;
   headerCodeSourceId.value = values.codeSourceId;
+};
+
+const handleHeaderOrgChange = async (value: null | number | undefined) => {
+  headerOrgId.value = value ?? undefined;
+  await basicInfoFormApi.setFieldValue('orgId', value ?? undefined);
 };
 
 const handleHeaderBlTypeChange = async (value: number | undefined) => {
@@ -1200,20 +1214,38 @@ const queueSyncServiceTypesByPol = (args: {
     });
   }, 0);
 };
-/** 委托单位变更：按其已绑定干系人默认回填干系人面板（缺失操作/单证/客服兜底当前账号） */
+/** 委托单位变更：按客户表维护的业务来源自动带出到「业务来源」（不可手动填写） */
+const applyClientCodeSource = (
+  client: Awaited<ReturnType<typeof getClientDetail>> | undefined,
+) => {
+  const codeSourceId = client?.codeSourceId ?? undefined;
+  headerCodeSourceId.value = codeSourceId;
+  headerCodeSourceSelectedItems.value = toSelectedItems(
+    codeSourceId,
+    client?.codeSource?.cnName,
+    'cnName',
+  );
+  void basicInfoFormApi.setFieldValue('codeSourceId', codeSourceId);
+};
+/**
+ * 委托单位变更联动（仅拉取一次客户详情）：
+ * 1) 「业务来源」按客户维护值自动带出；
+ * 2) 新建态按其已绑定干系人默认回填干系人面板（缺失操作/单证/客服兜底当前账号）。
+ */
 const applyClientDefaultOrderUsersByClientId = async (value: unknown) => {
-  // 仅新建态按委托单位默认回填，避免覆盖编辑态已保存的干系人
-  if (isEdit.value || suppressServiceTypeLinkage.value) return;
   const clientId = toOptionalQueryValue(value);
-  if (clientId === undefined) {
-    applyClientDefaultOrderUsers(undefined);
-    return;
+  let client: Awaited<ReturnType<typeof getClientDetail>> | undefined;
+  if (clientId !== undefined) {
+    try {
+      client = await getClientDetail(String(clientId));
+    } catch {
+      client = undefined;
+    }
   }
-  try {
-    const client = await getClientDetail(String(clientId));
+  applyClientCodeSource(client);
+  // 仅新建态按委托单位默认回填干系人，避免覆盖编辑态已保存的干系人
+  if (!isEdit.value && !suppressServiceTypeLinkage.value) {
     applyClientDefaultOrderUsers(client);
-  } catch {
-    applyClientDefaultOrderUsers(undefined);
   }
 };
 const bindServiceTypeLinkageEvents = () => {
@@ -1586,6 +1618,7 @@ const notifierPartyTab = ref<'notifier' | 'podAgent' | 'secondNotifier'>(
 const notifierPartyLabelTarget = ref<HTMLElement | null>(null);
 const {
   orderUserRows,
+  salesUserId,
   orderUserRoleModalOpen,
   orderUserRoleModalSelected,
   availableOrderUserRoleOptions,
@@ -2169,6 +2202,11 @@ const loadEditData = async () => {
       (to as any)?.codeSourceName,
       'cnName',
     );
+    const detailOrgs = detail.orgs ?? [];
+    const detailOrgLast = detailOrgs[detailOrgs.length - 1];
+    headerOrgSelectedItems.value = detailOrgLast?.id
+      ? [{ value: detailOrgLast.id, label: formatOrgPathLabel(detailOrgs) }]
+      : [];
     await syncBasicInfoHeaderFields();
     await refreshSyncShipmentDateParams();
 
@@ -2369,6 +2407,7 @@ const handleCopySeaExport = async () => {
     commissionNum: entrustReadonlyInfo.value.commissionNum,
     mblNum: tabMblNum.value,
     bookingNum: String(basicValues.bookingNum ?? ''),
+    contractNum: String(basicValues.contractNum ?? ''),
     clientName: String(basicValues.clientName ?? ''),
   });
 };
@@ -3046,14 +3085,37 @@ defineExpose({
                         entrustReadonlyInfo.settlementDateText || '-'
                       }}</span>
                     </div>
-                    <div class="basic-info-header__item">
-                      <span class="basic-info-header__label">所属公司</span>
-                      <span
-                        class="basic-info-header__value basic-info-header__value--ellipsis"
-                        :title="entrustReadonlyInfo.organizationUnitsText"
-                      >
-                        {{ entrustReadonlyInfo.organizationUnitsText || '-' }}
-                      </span>
+                    <div
+                      class="basic-info-header__item basic-info-header__item--select"
+                    >
+                      <span class="basic-info-header__label">归属组织</span>
+                      <UserOrgSelect
+                        :model-value="headerOrgId"
+                        :user-id="salesUserId"
+                        :selected-items="headerOrgSelectedItems"
+                        :auto-default="true"
+                        allow-clear
+                        size="small"
+                        class="basic-info-header__select basic-info-header__select--org"
+                        :placeholder="$t('ui.placeholder.select')"
+                        @update:model-value="handleHeaderOrgChange"
+                      />
+                    </div>
+                    <div
+                      class="basic-info-header__item basic-info-header__item--select"
+                    >
+                      <span class="basic-info-header__label">{{
+                        $t('seaExport.export.codeSourceId')
+                      }}</span>
+                      <CodeSourceSelect
+                        :model-value="headerCodeSourceId"
+                        :selected-items="headerCodeSourceSelectedItems"
+                        disabled
+                        size="small"
+                        class="basic-info-header__select basic-info-header__select--source"
+                        placeholder="按委托单位自动带出"
+                        @update:model-value="handleHeaderCodeSourceChange"
+                      />
                     </div>
                     <div
                       class="basic-info-header__item basic-info-header__item--select"
@@ -3085,22 +3147,6 @@ defineExpose({
                         :options="billTypeOptions"
                         :placeholder="$t('ui.placeholder.select')"
                         @update:value="handleHeaderBillTypeChange"
-                      />
-                    </div>
-                    <div
-                      class="basic-info-header__item basic-info-header__item--select"
-                    >
-                      <span class="basic-info-header__label">{{
-                        $t('seaExport.export.codeSourceId')
-                      }}</span>
-                      <CodeSourceSelect
-                        :model-value="headerCodeSourceId"
-                        :selected-items="headerCodeSourceSelectedItems"
-                        allow-clear
-                        size="small"
-                        class="basic-info-header__select basic-info-header__select--source"
-                        :placeholder="$t('ui.placeholder.select')"
-                        @update:model-value="handleHeaderCodeSourceChange"
                       />
                     </div>
                   </div>

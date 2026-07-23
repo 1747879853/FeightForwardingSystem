@@ -204,6 +204,7 @@
     },
     "bookingAgentId": "Booking Agent",
     "bookingNum": "Booking No.",
+    "contractNum": "Contract No.",
     "cargoId": "Cargo Type",
     "cargoTypeOptions": {
       "dangerous": "Dangerous Goods",
@@ -311,7 +312,7 @@
       "warehouse": "Warehouse"
     },
     "keyword": "No.",
-    "keywordPlaceholder": "MBL No./Booking No./Commission No.",
+    "keywordPlaceholder": "MBL No./Booking No./Commission No./Contract No.",
     "kgs": "KGS",
     "laneName": "Lane",
     "list": "Sea Export List",

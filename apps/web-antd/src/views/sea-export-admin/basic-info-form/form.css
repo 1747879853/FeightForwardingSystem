@@ -296,6 +296,10 @@
   width: 120px;
 }
 
+.basic-info-header__select--org {
+  width: 168px;
+}
+
 .party-remark-row {
   margin-top: 12px;
 }

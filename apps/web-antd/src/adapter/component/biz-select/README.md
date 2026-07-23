@@ -104,7 +104,7 @@
 | --- | --- | --- | --- |
 | `userId` | `number \| null` | — | 目标用户 id（如所选销售），据此取其所属组织范围 |
 | `autoDefault` | `boolean` | `true` | `userId` 变化或挂载后，若未选值则自动填充该用户默认组织 |
-| `clearOnUserChange` | `boolean` | `true` | `userId` 变化后，若已选值不在新用户组织范围内则清空 |
+| `clearOnUserChange` | `boolean` | `true` | 从「另一个用户」切换过来时清空已选值；首次赋值（新建选人/编辑回显）不清空 |
 | `placeholder` | `string` | — | 占位提示 |
 
 `v-model` 绑定值为「直属组织 id」（`orgId`）。

@@ -373,6 +373,7 @@ const handleCopy = () => {
     commissionNum: row.transportOrder?.commissionNum,
     mblNum: row.transportOrder?.mblNum,
     bookingNum: row.transportOrder?.bookingNum,
+    contractNum: row.transportOrder?.contractNum,
     clientName: row.transportOrder?.clientName,
   });
 };

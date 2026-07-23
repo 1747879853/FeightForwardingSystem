@@ -130,6 +130,13 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
           .filter((item): item is number => item != null),
       ),
   );
+  /** 当前干系人中「销售」角色绑定的用户 id（无有效人员时为 undefined） */
+  const salesUserId = computed<number | undefined>(() => {
+    const row = orderUserRows.value.find(
+      (item) => item.userAttribute === UserAttribute.Sales,
+    );
+    return hasValidUserId(row?.userId) ? Number(row?.userId) : undefined;
+  });
   const availableOrderUserRoleOptions = computed(() =>
     orderUserRoleOptions.value.filter(
       (option) => !selectedOrderUserRoleSet.value.has(option.value),
@@ -598,6 +605,7 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
 
   return {
     orderUserRows,
+    salesUserId,
     orderUserRoleModalOpen,
     orderUserRoleModalSelected,
     availableOrderUserRoleOptions,

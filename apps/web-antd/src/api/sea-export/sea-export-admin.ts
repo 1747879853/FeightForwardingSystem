@@ -109,6 +109,8 @@ export namespace SeaExportAdminApi {
     feeLocked?: boolean;
     mblNum?: string;
     bookingNum?: string;
+    /** 合同号（可空，最长 64） */
+    contractNum?: string;
     codeFrtId?: number;
     prepareAtId?: number;
     codeServiceId?: number;
@@ -547,6 +549,8 @@ export namespace SeaExportAdminApi {
     TeamId?: string | number;
     CustBrokerId?: string | number;
     CtnNo?: string;
+    /** 合同号（TransportOrder.ContractNum）模糊匹配 */
+    ContractNum?: string;
     CloseDocTimeStart?: string;
     CloseDocTimeEnd?: string;
     /** 会计期间起（>=），一般为当月 1 号 */

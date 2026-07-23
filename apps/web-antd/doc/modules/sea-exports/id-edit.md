@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-21
+last_updated: 2026-07-24
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `modules/ai-extract-utils.ts`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`，行为不变。 -->
@@ -81,7 +81,9 @@ last_updated: 2026-07-21
 | :-- | :-- | :-- | :-- | :-- |
 | **海出 ID** | 工作台路由上下文主键。 | 路由动态段 `:id` / `SeaExportDto.id` | **触发/依赖：** 用于加载海出详情、派车、分单等子资源。 | 路由正则要求 36 位 GUID。 |
 | **运输单 ID** | 费用、更改单等公共业务的上下文主键。 | `detail.transportOrder.id` | **触发/依赖：** 费用统计、费用分页、更改单查询均依赖 `TransportOrderId`。 | 详情必须返回有效运输单 ID。 |
-| **委托编号 / 会计期间 / 应结日期 / 所属公司** | 基础信息标题行只读摘要。 | `transportOrder.commissionNum/accountDate/settlementDate`、`organizationUnits` | **触发/依赖：** 加载详情后刷新 `entrustReadonlyInfo`。 | 前端展示为只读。 |
+| **委托编号 / 会计期间 / 应结日期 / 所属公司** | 基础信息标题行只读摘要（所属公司文案）。 | `transportOrder.commissionNum/accountDate/settlementDate`、`orgs` | **触发/依赖：** 加载详情后刷新 `entrustReadonlyInfo`；归属组织已改为头部可编辑 `UserOrgSelect`，勿与只读所属公司文案混淆。 | 前端展示为只读（归属组织除外）。 |
+| **归属组织** | 委托直属组织（必填）；头部按干系人销售绑定可选范围。 | `orgId`；`UserOrgSelect` + `salesUserId` + `headerOrgSelectedItems`（`formatOrgPathLabel(orgs)`） | **触发/依赖：** 详情用 `orgs` 路径兜底回显；销售切换时仅「从另一用户切过来」清空已选。 | **必填项**；schema 隐藏载体保留校验。 |
+| **合同号** | 运输单合同号。 | `transportOrder.contractNum` | **触发/依赖：** `flattenDetail`/`buildSeaExportDto`；复制确认展示源票值，入库由后端置空。 | 可空；最长 64。 |
 | **场站联系人 / 邮箱 / 手机 / 电话** | 「场站」标签右侧展示联系人，悬浮后展示邮箱、手机、电话；保存时透传以防被空覆盖。 | `SeaExportDto` / `SeaExportEditDto` 的 `yardContact` / `yardEmail` / `yardMobile` / `yardTel` | **触发/依赖：** `flattenDetail` → `refreshEntrustReadonlyInfo`；与 `yardId` 选择解耦，当前不随改场站即时刷新；`collectCurrentFormValues` + `buildSeaExportDto` 写入提交 DTO。 | UI 只读；保存必须带回当前值；空值显示 `-`。 |
 | **业务锁定** | 业务资料是否已锁定。 | `transportOrder.isBusinessLocking` | **触发/依赖：** 编辑页以锁图标标签展示，保存时保留当前只读值。 | 不在当前表单中直接切换。 |
 | **费用锁定** | 费用是否允许继续变动。 | `transportOrder.feeLocked`、更改单 `feeLocked` | **触发/依赖：** 影响订单费用与更改单业务判断；费用锁定/解锁入口在费用管理模块。 | 当前页展示并随 DTO 带回，不直接切换。 |
@@ -125,6 +127,7 @@ last_updated: 2026-07-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-24 | `Feature` | 基础信息新增合同号；头部「归属组织」改用按销售绑定的 `UserOrgSelect`；复制摘要含合同号。 | 字段挂 `transportOrder.contractNum`；`selectedItems` 兜底 `orgs` 路径回显。详见 `changelogs/change-log-2026-07-24-sea-export-contract-num.md`。 |
 | 2026-07-21 | `Feature` | 分单弹窗按业务动线重组；新增默认仅带条款+箱，收发通/货描需手动「读入主单」。 | 船期港口默认折叠；付费地点归运费条款。详见 `changelogs/change-log-2026-07-21-separate-bill-workflow-layout.md`。 |
 | 2026-07-21 | `Style` | 国外代理（podAgent）从通知人标签中独立，置于通知人下方；文案用 `overseasAgent`。 | 字段仍为 `podAgentId`/`podAgentContent`。 |
 | 2026-07-21 | `Style` | 目的港代理并入左侧通知人同槽标签切换（通知人/第二通知人/目的港代理）。 | 对齐基础信息收发通交互。 |

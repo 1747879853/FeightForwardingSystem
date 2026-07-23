@@ -64,6 +64,23 @@ function pickDirectOrgNode(
 }
 
 /**
+ * 将组织路径拼接为「完整公司名」：父级 → 末级用 / 连接。
+ * 兼容 displayName（GetAll/GetMy）与 name（详情 orgs）两种节点结构。
+ */
+export function formatOrgPathLabel(
+  path:
+    | Array<{ displayName?: null | string; name?: null | string }>
+    | null
+    | undefined,
+): string {
+  if (!path?.length) return '';
+  return path
+    .map((node) => (node.displayName ?? node.name ?? '').trim())
+    .filter(Boolean)
+    .join('/');
+}
+
+/**
  * 某用户的「直属组织」下拉选项（value = 直属组织 id）。
  * 用于业务录入按所选销售取其所属组织范围。
  */
@@ -74,7 +91,10 @@ export function getUserOrgOptions(userId?: null | number): UserOrgOption[] {
       if (!node) return null;
       return {
         isDefault: !!item.default,
-        label: node.displayName ?? '',
+        label:
+          formatOrgPathLabel(item.oneOrganizationPath) ||
+          node.displayName ||
+          '',
         value: node.id,
       };
     })

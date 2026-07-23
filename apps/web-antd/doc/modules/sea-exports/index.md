@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-22
+last_updated: 2026-07-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -54,7 +54,8 @@ last_updated: 2026-07-22
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **关键字 / 编号** | 按主提单号 / 订舱编号 / 委托编号模糊检索。 | 查询 schema `Keyword`（组件 `TrimInput`）/ 接口参数 `Keyword` | **触发/依赖：** 输入/粘贴时自动去除前后空格；`submitOnChange` 触发表格查询；`normalizeQuery` 再 trim 兜底。 | 可清空；匹配范围以后端为准。 |
+| **关键字 / 编号** | 按主提单号 / 订舱编号 / 委托编号 / 合同号模糊检索。 | 查询 schema `Keyword`（组件 `TrimInput`）/ 接口参数 `Keyword` | **触发/依赖：** 输入/粘贴时自动去除前后空格；`submitOnChange` 触发表格查询；`normalizeQuery` 再 trim 兜底。 | 可清空；匹配范围以后端为准（含 `ContractNum`）。 |
+| **合同号** | 运输单合同号；列表列展示与独立模糊筛选。 | 列 `transportOrder.contractNum`；筛 `ContractNum`；i18n `seaExport.export.contractNum` | **触发/依赖：** 与表单/详情共用 `transportOrder.contractNum`；复制入库由后端置空。 | 可空；最长 64。 |
 | **开船日期** | 按运输单 ETD 时间过滤海出委托。 | `ETDRange` -> `ETDStart` / `ETDEnd` | **触发/依赖：** 前端拆分日期区间并转 ISO。 | RangePicker 可为空；开始/结束均可由组件约束。 |
 | **截单时间** | 按截单时间过滤委托。 | `CloseDocTimeRange` -> `CloseDocTimeStart` / `CloseDocTimeEnd` | **触发/依赖：** 支持时间选择，提交前转 ISO。 | 可清空；时间格式由日期组件控制。 |
 | **客户** | 委托关联的委托客户。 | `createClientSelectSchema({ industryCategory: 'p' })` / `ClientId` | **触发/依赖：** 影响列表定位和后续编辑页的结算对象、费用、对账链路。 | 需选择有效客户主数据。 |
@@ -101,6 +102,7 @@ last_updated: 2026-07-22
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-24 | `Feature` | 列表新增合同号列与 `ContractNum` 筛选；关键字占位追加合同号；复制确认摘要展示源票合同号。 | 字段挂 `transportOrder.contractNum`；复制清空由后端负责。详见 `changelogs/change-log-2026-07-24-sea-export-contract-num.md`。 |
 | 2026-07-22 | `Fix` | 列表「所属公司」改为展示 `orgs[0].name`（公司节点），不再取组织串末端。 | 与多组织约定一致：首节点=所属公司，末端=`at(-1)`=归属组织。 |
 | 2026-07-21 | `Fix` | 列表内部/外部备注对齐 `TransportOrder`：补外部备注列；筛选拆分内部备注与外部备注。 | 列路径 `transportOrder.internalRemark` / `transportOrder.remark`；查询参数 `InternalRemark` / `Remark`。详见 `changelogs/change-log-2026-07-21-sea-export-remark-transport-order.md`。 |
 | 2026-07-15 | `Fix` | 海运出口列表顶部补充删除按钮；仅允许删除单条勾选记录，需二次确认并受删除权限控制，成功后清除选择并刷新。 | 删除接口 ID 类型由 `number` 扩为 `number \| string`，与列表 DTO 的 GUID/数字联合类型一致。 |

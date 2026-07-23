@@ -605,6 +605,15 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'Input',
+      fieldName: 'ContractNum',
+      label: $t('seaExport.export.contractNum'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
       component: 'RangePicker',
       fieldName: 'CloseDocTimeRange',
       label: '截单时间',
@@ -756,6 +765,12 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'transportOrder.mblNum',
       title: $t('seaExport.export.mblNum'),
       minWidth: 140,
+    },
+    {
+      field: 'transportOrder.contractNum',
+      title: $t('seaExport.export.contractNum'),
+      minWidth: 140,
+      showOverflow: true,
     },
     {
       field: 'transportOrder.etd',
@@ -1144,11 +1159,14 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       },
     },
     {
-      component: 'MyOrgSelect',
+      // 归属组织实际交互在基础信息头部（按销售绑定组织的 UserOrgSelect）渲染，
+      // 此处仅作隐藏的表单值载体，保留必填校验。
+      component: 'UserOrgSelect',
       fieldName: 'orgId',
       label: '归属组织',
       rules: 'selectRequired',
       componentProps: {
+        autoDefault: false,
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
       },
@@ -1340,6 +1358,12 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       fieldName: 'bookingNum',
       label: $t('seaExport.export.bookingNum'),
       componentProps: { allowClear: true },
+    },
+    {
+      component: 'Input',
+      fieldName: 'contractNum',
+      label: $t('seaExport.export.contractNum'),
+      componentProps: { allowClear: true, maxlength: 64 },
     },
     createClientSelectSchema({
       fieldName: 'clientId',

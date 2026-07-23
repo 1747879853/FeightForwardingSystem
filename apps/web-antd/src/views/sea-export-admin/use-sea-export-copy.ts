@@ -12,6 +12,7 @@ export interface SeaExportCopySource {
   commissionNum?: null | string;
   mblNum?: null | string;
   bookingNum?: null | string;
+  contractNum?: null | string;
   clientName?: null | string;
 }
 
@@ -46,6 +47,11 @@ export function buildCopyConfirmSummary(source: SeaExportCopySource): string[] {
   );
   pushCopySummaryLine(lines, 'seaExport.export.mblNum', source.mblNum);
   pushCopySummaryLine(lines, 'seaExport.export.bookingNum', source.bookingNum);
+  pushCopySummaryLine(
+    lines,
+    'seaExport.export.contractNum',
+    source.contractNum,
+  );
   pushCopySummaryLine(lines, 'seaExport.export.clientId', source.clientName);
   if (lines.length === 0) {
     lines.push($t('seaExport.export.copyFallbackUnnamed'));
