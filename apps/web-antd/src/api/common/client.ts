@@ -99,8 +99,8 @@ export namespace ClientAppApi {
   export interface ClientQueryDto {
     /** 关键字，模糊匹配客户简称、代码、全称、英文名、备注 */
     keyword?: string;
-    /** 行业类别；传 'p' 时额外启用干系人数据权限过滤 */
-    industryCategory: string; // 修改为必填且只能1位
+    /** 行业类别（业务下拉场景建议必传，仅 1 位）；传 'p' 时额外启用干系人数据权限过滤 */
+    industryCategory: string;
     /** 业务来源id，为空不筛选 */
     codeSourceId?: number | string | null;
     /** 是否失信，为空不筛选 */

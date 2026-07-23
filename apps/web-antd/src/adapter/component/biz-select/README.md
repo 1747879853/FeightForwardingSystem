@@ -9,7 +9,7 @@
 | `AreaCascader` | 行政区划级联选择（省/市/区） | `#/api/common/area` |
 | `AreaLeafCascader` | 行政区划级联选择（省/市/区），对外只存最后一级 `areaId` | `#/api/common/area` |
 | `CarrierSelect` | 承运人选择 | `#/api/system/base-data/carrier-admin` |
-| `ClientSelect` | 客户选择 | `#/api/sea-export/client-admin` |
+| `ClientSelect` | 客户选择 | `#/api/common/client`（`Client/GetPagedListAsync`，非 Admin） |
 | `CodeFrtSelect` | 运费条款（FRT）编码选择 | `#/api/system/base-data/code-frt-admin` |
 | `CodeGoodsSelect` | 货物类型编码选择 | `#/api/system/base-data/code-goods-admin` |
 | `CodeInvoiceSelect` | 发票类型编码选择 | `#/api/system/base-data/code-invoice-admin` |
@@ -31,7 +31,7 @@
 
 ## ClientSelect 扩展参数
 
-`ClientSelect` 支持通过 `industryCategory` 过滤客户类型。该值会被透传到接口参数 `IndustryCategory`，用于限制下拉数据范围。
+`ClientSelect` 支持通过 `industryCategory` 过滤客户类型。该值会透传到通用接口参数 `industryCategory`（必填），用于限制下拉数据范围。编辑回显优先传 `selectedItems`（含 `id`/`name` 等简易字段）；通用接口无详情接口，不再调用 `ClientAdmin/DetailAsync`。
 
 示例：
 
