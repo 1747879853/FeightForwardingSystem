@@ -287,7 +287,7 @@ async function handleSubmit() {
     console.log('✅ 保存成功，保持在当前页面');
   } catch (error) {
     console.error('保存失败:', error);
-    message.error('保存失败');
+    //message.error('保存失败');
   } finally {
     submitLoading.value = false;
   }
@@ -726,7 +726,7 @@ function handleOpenFeeDetailModal() {
     feeDetailModalVisible.value = true;
   } catch (error) {
     console.error('❌ 加载费用明细失败:', error);
-    message.error('加载费用明细失败');
+    //message.error('加载费用明细失败');
   } finally {
     feeDetailModalLoading.value = false;
   }
@@ -1148,7 +1148,7 @@ function handleExtractRemark() {
     message.success(`已从 ${items.length} 条费用明细中提取备注信息`);
   } catch (error) {
     console.error('提取备注失败:', error);
-    message.error('提取备注失败');
+    //message.error('提取备注失败');
   }
 }
 
@@ -1192,7 +1192,7 @@ async function handleRefillGoodsDetails() {
     });
   } catch (error) {
     console.error('重新填充商品明细失败:', error);
-    message.error('重新填充商品明细失败');
+    //message.error('重新填充商品明细失败');
   }
 }
 
@@ -2089,7 +2089,7 @@ async function loadDetail() {
     }
   } catch (error) {
     console.error('加载详情失败:', error);
-    message.error('加载详情失败');
+    //('加载详情失败');
   } finally {
     loading.value = false;
   }
