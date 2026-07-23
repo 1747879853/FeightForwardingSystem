@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-24 权限树补齐缺失汉化（失信/业务基础/业务联系单等）](./changelogs/change-log-2026-07-24-permission-auth-i18n-missing-keys.md)
 - [2026-07-24 工作流审核人仅选用户属性时才提交 userAttribute](./changelogs/change-log-2026-07-24-workflow-auditor-user-attribute.md)
 - [2026-07-24 海运出口业务来源空值改短横线展示避免占宽](./changelogs/change-log-2026-07-24-sea-export-code-source-empty-dash.md)
 - [2026-07-24 打印导出改为静默下载并修正文件名清洗](./changelogs/change-log-2026-07-24-print-format-silent-download.md)
