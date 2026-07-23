@@ -2,7 +2,7 @@
 title: 工作流新建
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-07-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -45,4 +45,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-24 | `Fix` | 与编辑页共用转换器：审核人选用户/角色时不提交 `userAttribute: 0`。 | 同 `workflow-edit-id`：`buildAuditors` + `sanitizeAuditorForApi`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/system/workflow/create` 对应组件 `src/views/system/workflow/form.vue`，权限口径为 Admin / Admin.Get。 |

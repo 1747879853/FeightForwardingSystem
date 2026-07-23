@@ -277,7 +277,6 @@ function buildAuditors() {
       auditors.push({
         userId: uid,
         roleId: null,
-        userAttribute: 0,
         showText: userShowTexts.value[uid] || String(uid),
       });
     }
@@ -289,7 +288,6 @@ function buildAuditors() {
       auditors.push({
         userId: null,
         roleId: rid,
-        userAttribute: 0,
         showText: roleShowTexts.value[rid] || String(rid),
       });
     }

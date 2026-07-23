@@ -103,7 +103,6 @@ export function flattenSelectionsToAuditors(
     auditors.push({
       userId: uid,
       roleId: null,
-      userAttribute: 0,
       showText: userShowTexts[uid] || String(uid),
     });
   }
@@ -112,7 +111,6 @@ export function flattenSelectionsToAuditors(
     auditors.push({
       userId: null,
       roleId: rid,
-      userAttribute: 0,
       showText: roleShowTexts[rid] || String(rid),
     });
   }
@@ -213,9 +211,11 @@ export function uiNodeUserListToAuditors(node) {
         u.type === 2 ? null : u.targetId != null ? Number(u.targetId) : null,
       roleId:
         u.type === 2 ? (u.targetId != null ? Number(u.targetId) : null) : null,
-      userAttribute: u.userAttribute != null ? u.userAttribute : 0,
       showText: u.name || '',
     };
+    if (u.userAttribute != null && u.userAttribute !== 0) {
+      auditor.userAttribute = u.userAttribute;
+    }
     return auditor;
   });
 }
@@ -753,6 +753,18 @@ function defaultPromoterNode() {
   };
 }
 
+function sanitizeAuditorForApi(a) {
+  const auditor = {
+    userId: a.userId ?? null,
+    roleId: a.roleId ?? null,
+    showText: a.showText ?? null,
+  };
+  if (a.userAttribute != null && a.userAttribute !== 0) {
+    auditor.userAttribute = a.userAttribute;
+  }
+  return auditor;
+}
+
 function uiNodeToApiNode(uiNode) {
   const base = {
     id: uiNode.id,
@@ -766,23 +778,27 @@ function uiNodeToApiNode(uiNode) {
       uiNode.passMethod != null
         ? uiNode.passMethod
         : examineModeToPassMethod(uiNode.examineMode);
-    const auditors =
+    const rawAuditors =
       Array.isArray(uiNode.auditors) && uiNode.auditors.length > 0
         ? uiNode.auditors
         : uiNodeUserListToAuditors(uiNode);
-    return { ...base, passMethod: pm, auditors };
+    return {
+      ...base,
+      passMethod: pm,
+      auditors: rawAuditors.map(sanitizeAuditorForApi),
+    };
   }
   if (uiNode.type === 2) {
     return {
       ...base,
       passMethod: 0,
-      auditors: uiNodeUserListToAuditors(uiNode),
+      auditors: uiNodeUserListToAuditors(uiNode).map(sanitizeAuditorForApi),
     };
   }
   return {
     ...base,
     passMethod: examineModeToPassMethod(uiNode.examineMode),
-    auditors: uiNodeUserListToAuditors(uiNode),
+    auditors: uiNodeUserListToAuditors(uiNode).map(sanitizeAuditorForApi),
   };
 }
 
