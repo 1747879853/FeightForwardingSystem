@@ -6,6 +6,24 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import { $t } from '#/locales';
 
 /**
+ * 开票状态选项（参考费用状态的颜色规范）
+ */
+export const getInvoiceStatusOptions = () => [
+  { value: 0, label: '未开票', color: '#b8cdd7' },
+  { value: 1, label: '部分开票', color: '#ffc107' },
+  { value: 2, label: '已开票', color: '#67c23a' },
+];
+
+/**
+ * 结算状态选项（参考费用状态的颜色规范）
+ */
+export const getSettlementStatusOptions = () => [
+  { value: 0, label: '未结算', color: '#b8cdd7' },
+  { value: 1, label: '部分结算', color: '#909399' },
+  { value: 2, label: '结算完毕', color: '#67c23a' },
+];
+
+/**
  * 列表搜索表单 schema
  */
 export function useGridFormSchema(): VbenFormSchema[] {
@@ -55,9 +73,9 @@ export function useGridFormSchema(): VbenFormSchema[] {
         placeholder: '请选择',
         allowClear: true,
         options: [
-          { label: '全部为收', value: 0 },
-          { label: '全部为付', value: 1 },
-          { label: '收付都有', value: 2 },
+          { label: '应收', value: 0 },
+          { label: '应付', value: 1 },
+          { label: '收付', value: 2 },
         ],
       },
     },
@@ -74,6 +92,20 @@ export function useGridFormSchema(): VbenFormSchema[] {
           { label: '部分开票', value: 1 },
           { label: '已开票', value: 2 },
         ],
+      },
+    },
+    // 新增：结算状态筛选
+    {
+      component: 'Select',
+      fieldName: 'SettlementStatus',
+      label: '结算状态',
+      componentProps: {
+        placeholder: '请选择',
+        allowClear: true,
+        options: getSettlementStatusOptions().map(({ label, value }) => ({
+          label,
+          value,
+        })),
       },
     },
     // 新增：我司银行筛选
@@ -147,7 +179,21 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       field: 'invoiceStatus',
       title: '开票状态',
       minWidth: 120,
-      slots: { default: 'invoiceStatus' },
+      cellRender: {
+        name: 'CellTag',
+        options: getInvoiceStatusOptions(),
+      },
+      sortable: true,
+    },
+    // 新增：结算状态汇总列
+    {
+      field: 'settlementStatus',
+      title: '结算状态',
+      minWidth: 120,
+      cellRender: {
+        name: 'CellTag',
+        options: getSettlementStatusOptions(),
+      },
       sortable: true,
     },
     // 新增：我司银行列
