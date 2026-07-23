@@ -464,7 +464,7 @@ const feeParentColumns = computed(() => [
     ellipsis: true,
   },
   {
-    title: '结算单位',
+    title: '委托单位',
     dataIndex: 'clientName',
     key: 'clientName',
     minWidth: 180,
