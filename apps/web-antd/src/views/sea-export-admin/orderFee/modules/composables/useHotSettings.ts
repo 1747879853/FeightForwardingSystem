@@ -169,15 +169,13 @@ export function useHotSettings(
               currentRowAny?.industryCategory_value,
             );
 
-            if (
-              !industryCategoryValue ||
-              typeof industryCategoryValue !== 'string'
-            ) {
-              message.warning('请先选择行业类别');
-              return;
-            }
+            // ✅ 关键修改：允许不选择行业类别，此时加载全部客户
+            const categoryToLoad =
+              industryCategoryValue && typeof industryCategoryValue === 'string'
+                ? industryCategoryValue
+                : '';
 
-            loadClientList(industryCategoryValue)
+            loadClientList(categoryToLoad)
               .then((options: any[]) => {
                 currentOptionsCache.value = options;
                 const source = options.map((opt: any) => opt.label);

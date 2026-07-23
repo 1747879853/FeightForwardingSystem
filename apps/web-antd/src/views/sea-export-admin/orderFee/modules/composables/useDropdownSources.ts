@@ -174,17 +174,51 @@ export function useDropdownSources(orderCtnList: any) {
 
   /**
    * ✅ 修改：根据行业类别从缓存中获取客户列表（同步操作）
+   * 如果 industryCategory 为空，则返回所有行业类别的客户
    */
-  const loadClientList = async (industryCategory: string, keyword?: string) => {
+  const loadClientList = async (
+    industryCategory?: string,
+    keyword?: string,
+  ) => {
     try {
-      // 从缓存中获取对应行业类别的客户
-      const cachedClients = allClientsByIndustry.value[industryCategory] || [];
+      let cachedClients: Array<{ label: string; value: any }> = [];
 
-      if (!cachedClients || cachedClients.length === 0) {
-        console.warn(
-          `⚠️ [loadClientList] 行业类别 ${industryCategory} 没有缓存的客户数据`,
+      // ✅ 关键修改：如果没有指定行业类别，合并所有行业类别的客户
+      if (!industryCategory || industryCategory.trim() === '') {
+        console.log('🔄 [loadClientList] 未指定行业类别，加载全部客户');
+        // 合并所有行业类别的客户
+        const allIndustryKeys = Object.keys(allClientsByIndustry.value);
+        allIndustryKeys.forEach((key) => {
+          const clients = allClientsByIndustry.value[key] || [];
+          cachedClients = [...cachedClients, ...clients];
+        });
+
+        // 去重（基于value/id）
+        const uniqueMap = new Map();
+        cachedClients.forEach((client) => {
+          if (!uniqueMap.has(client.value)) {
+            uniqueMap.set(client.value, client);
+          }
+        });
+        cachedClients = Array.from(uniqueMap.values());
+
+        console.log(
+          `✅ [loadClientList] 加载全部客户完成，共 ${cachedClients.length} 个`,
         );
-        return [];
+      } else {
+        // 从缓存中获取对应行业类别的客户
+        cachedClients = allClientsByIndustry.value[industryCategory] || [];
+
+        if (!cachedClients || cachedClients.length === 0) {
+          console.warn(
+            `⚠️ [loadClientList] 行业类别 ${industryCategory} 没有缓存的客户数据`,
+          );
+          return [];
+        }
+
+        console.log(
+          `✅ [loadClientList] 从缓存获取行业类别 ${industryCategory} 的客户，共 ${cachedClients.length} 个`,
+        );
       }
 
       // 如果有搜索关键词，进行本地过滤
@@ -203,9 +237,6 @@ export function useDropdownSources(orderCtnList: any) {
         });
       }
 
-      console.log(
-        `✅ [loadClientList] 从缓存获取行业类别 ${industryCategory} 的客户，共 ${filteredClients.length} 个`,
-      );
       return filteredClients;
     } catch (error) {
       console.error('❌ [loadClientList] 处理失败:', error);

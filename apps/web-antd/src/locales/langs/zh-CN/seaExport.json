@@ -673,6 +673,8 @@
       "other": "其他"
     },
     "cargoType": "主要货类",
+    "clientCurrencyId": "结算币种",
+    "supplierCurrencyId": "结算币种",
     "clientCoopSince": "首次合作",
     "clientLastTxnTime": "最近交易",
     "supplierLevel": "资质等级",
