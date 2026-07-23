@@ -2,7 +2,7 @@
 title: 部门管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-07-15
+last_updated: 2026-07-23
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,6 +21,7 @@ last_updated: 2026-07-15
 
 # 2. 功能与操作说明 (Features & Operations)
 
+- **添加成员：** 打开弹窗后按当前组织 `organizationUnitId` 查询候选用户（排除已在本组织的用户），支持关键字与分页勾选后批量加入。
 - **列表/页面访问：** 通过 `/system/dept` 进入 `部门管理` 页面。
 - **新增组织：** 左侧树选中节点后，点击顶部「+」或右键「新增下级」，表单「上级组织」自动带出选中节点；未选中时上级组织留空。
 - **新增/编辑组织弹窗：** 不再包含「负责人」字段；组织详情与成员列表亦不展示负责人相关信息。
@@ -50,6 +51,7 @@ last_updated: 2026-07-15
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-23 | `Feature` | 「添加成员」候选用户查询必传 `organizationUnitId`，筛选不在本组织的用户。 | `getUserPagingListForOu` 增加 `OrganizationUnitId` Query；弹窗 `add-member-modal.vue` 打开时带入当前组织 Id。 |
 | 2026-07-15 | `Feature` | 公司节点同时展示本级人数与含下级总人数，普通组织保留本级人数；组织详情移除组织编码。 | `memberCountTotal` 的口径包含当前组织及其下级组织，并非仅下级人数。 |
 | 2026-06-27 | `Feature` | 组织管理全页移除负责人：弹窗、详情、成员列表均不再展示或维护负责人。 | 表单在 `data.ts`/`form.vue`；详情与成员列在 `list.vue`。 |
 | 2026-06-19 | `Feature` | 左侧树选中组织后点击「+」新增时，自动将选中节点作为上级组织带入表单。 | `onCreateOrg` 与 `onAppendOrg` 统一通过 `{ parentId }` 传参，由 `form.vue` 的 `onOpenChange` 写入 `parentId` 字段。 |

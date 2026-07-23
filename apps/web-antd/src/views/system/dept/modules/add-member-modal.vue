@@ -44,6 +44,7 @@ async function searchUsers() {
   try {
     const res = await getUserPagingListForOu({
       keyWords: searchKeyword.value || undefined,
+      organizationUnitId: organizationUnitId.value,
       pageIndex: currentPage.value,
       pageSize: pageSize.value,
     });

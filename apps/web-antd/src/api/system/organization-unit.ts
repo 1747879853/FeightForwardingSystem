@@ -116,11 +116,13 @@ export namespace SystemOrganizationUnitApi {
     newParentId?: number | null;
   }
 
-  /** 无组织用户分页查询DTO */
+  /** 添加组织成员候选用户分页查询DTO */
   export interface UsersForOuPagingQueryDto {
     pageIndex?: number;
     pageSize?: number;
     keyWords?: string | null;
+    /** 当前组织 Id，用于排除已在该组织的用户 */
+    organizationUnitId?: number;
   }
 
   /** NameValue DTO（用于无组织用户列表） */
@@ -488,15 +490,17 @@ async function getOrganizationUnitUsers(params: {
   );
 }
 
-/** 为添加组织成员查询用户（分页） */
+/** 为添加组织成员查询用户（分页，排除已在指定组织的用户） */
 async function getUserPagingListForOu(params: {
   keyWords?: string;
+  organizationUnitId: number;
   pageIndex?: number;
   pageSize?: number;
 }): Promise<PagingListOfOrganizationUnitUserOptionDto> {
   const queryParams = Object.fromEntries(
     Object.entries({
       KeyWords: params.keyWords,
+      OrganizationUnitId: params.organizationUnitId,
       PageIndex: params.pageIndex ?? 1,
       PageSize: params.pageSize ?? 10,
     }).filter(([_, value]) => value !== undefined && value !== ''),
