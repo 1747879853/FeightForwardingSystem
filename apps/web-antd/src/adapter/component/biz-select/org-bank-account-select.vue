@@ -24,6 +24,7 @@ const props = defineProps<{
   placeholder?: string;
   allowClear?: boolean;
   disabled?: boolean;
+  orgId?: number; // 公司ID，如果传入则只获取该公司的银行列表
 }>();
 
 const emit = defineEmits<{
@@ -42,10 +43,34 @@ watch(
   },
 );
 
+// 监听orgId变化，重新加载银行列表
+watch(
+  () => props.orgId,
+  () => {
+    loadBankAccounts();
+  },
+);
+
 async function loadBankAccounts() {
   loading.value = true;
   try {
-    // 获取当前用户有权限的公司列表
+    // 如果传入了orgId，则只获取指定公司的银行列表
+    if (props.orgId) {
+      console.log('✅ 获取指定公司的银行列表，公司ID:', props.orgId);
+      const accounts = await getOrgBankAccountList(props.orgId);
+      
+      options.value = (accounts || []).map((account) => ({
+        id: account.id,
+        value: account.id,
+        label: `${account.bankShortName} - ${account.accountName ?? ''} (${account.currencyCode ?? ''})`,
+        bankName: account.bankName ?? '',
+        bankAccount: account.bankAccount ?? '',
+        currencyCode: account.currencyCode ?? '',
+      }));
+      return;
+    }
+
+    // 未传入orgId，获取当前用户有权限的所有公司的银行列表
     const companies = await getMyPermissionCompanies();
     console.log('✅ 当前用户有权限的公司列表:', companies);
     if (!companies || companies.length === 0) {
