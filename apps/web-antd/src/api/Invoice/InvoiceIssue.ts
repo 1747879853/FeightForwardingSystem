@@ -309,6 +309,44 @@ export namespace InvoiceIssueApi {
     sorting?: string;
   }
 
+  /** 仅编辑主表DTO */
+  export interface InvoiceIssueEditMainDto {
+    /** 发票开出ID */
+    id: string;
+    /** 归属组织id */
+    orgId: number;
+    /** 发票开出方式 */
+    invoiceIssueType: InvoiceIssueType;
+    /** 发票号 */
+    invoiceNo?: string;
+    /** 开票时间 */
+    invoiceIssueTime: string;
+    /** 开票要求 */
+    require?: string;
+    /** 备注 */
+    remark?: string;
+  }
+
+  /** 新增多条开票申请DTO */
+  export interface InvoiceIssueAddApplicationsDto {
+    /** 发票开出ID */
+    id: string;
+    /** 新增的开票申请明细（至少一条） */
+    invoiceIssueItems: InvoiceIssueItemInputDto[];
+    /** 合并后全部申请对应的完整商品明细 */
+    invoiceIssueGoodsDtls: InvoiceIssueGoodsDtlInputDto[];
+  }
+
+  /** 移除多条开票申请DTO */
+  export interface InvoiceIssueRemoveApplicationsDto {
+    /** 发票开出ID */
+    id: string;
+    /** 要移除的开票申请ID列表（至少一条） */
+    invoiceApplicationIds: string[];
+    /** 剩余申请对应的完整商品明细 */
+    invoiceIssueGoodsDtls: InvoiceIssueGoodsDtlInputDto[];
+  }
+
   /** 运输订单简易信息 */
   export interface TransportOrderSimpleDto {
     id: string;
@@ -562,10 +600,46 @@ async function getSubmittedApplicationList(
   );
 }
 
+/**
+ * 仅编辑主表
+ * @param data 主表数据
+ */
+async function editInvoiceIssueMain(data: InvoiceIssueApi.InvoiceIssueEditMainDto) {
+  return requestClient.put<boolean>(
+    '/services/app/InvoiceIssueAdmin/EditMainAsync',
+    data,
+  );
+}
+
+/**
+ * 新增多条开票申请
+ * @param data 新增申请数据
+ */
+async function addApplicationsToInvoiceIssue(data: InvoiceIssueApi.InvoiceIssueAddApplicationsDto) {
+  return requestClient.post<boolean>(
+    '/services/app/InvoiceIssueAdmin/AddApplicationsAsync',
+    data,
+  );
+}
+
+/**
+ * 移除多条开票申请
+ * @param data 移除申请数据
+ */
+async function removeApplicationsFromInvoiceIssue(data: InvoiceIssueApi.InvoiceIssueRemoveApplicationsDto) {
+  return requestClient.put<boolean>(
+    '/services/app/InvoiceIssueAdmin/RemoveApplicationsAsync',
+    data,
+  );
+}
+
 export {
   addInvoiceIssue,
   deleteInvoiceIssue,
   editInvoiceIssue,
+  editInvoiceIssueMain,
+  addApplicationsToInvoiceIssue,
+  removeApplicationsFromInvoiceIssue,
   getInvoiceIssueDetail,
   getInvoiceIssuePagedList,
   getSubmittedApplicationList,

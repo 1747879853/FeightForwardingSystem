@@ -8,6 +8,8 @@ import {
   getOrgBankAccountList,
 } from '#/api/system/organization-unit';
 
+import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
+
 interface BankAccountOption {
   id: string;
   label: string;
@@ -45,26 +47,36 @@ async function loadBankAccounts() {
   try {
     // 获取当前用户有权限的公司列表
     const companies = await getMyPermissionCompanies();
-
+    console.log('✅ 当前用户有权限的公司列表:', companies);
     if (!companies || companies.length === 0) {
       console.warn('当前用户没有关联的公司');
       options.value = [];
       return;
     }
 
-    // 取第一个公司的ID获取银行列表
-    const firstCompany = companies[0];
-    if (!firstCompany) {
-      console.warn('无法获取公司信息');
-      options.value = [];
-      return;
+    // 遍历所有公司，获取每个公司的银行列表
+    const allAccounts: SystemOrganizationUnitApi.OrgBankAccountDto[] = [];
+    
+    for (const company of companies) {
+      try {
+        const accounts = await getOrgBankAccountList(company.id);
+        if (accounts && accounts.length > 0) {
+          allAccounts.push(...accounts);
+        }
+      } catch (error) {
+        console.error(`加载公司 ${company.name} 的银行列表失败:`, error);
+      }
     }
 
-    const firstCompanyId = firstCompany.id;
-    console.log('加载银行信息的organizationUnitId', firstCompanyId);
+    // 去重：根据 id 去重
+    const uniqueAccounts = allAccounts.filter(
+      (account, index, self) =>
+        index === self.findIndex((a) => a.id === account.id),
+    );
 
-    const accounts = await getOrgBankAccountList(firstCompanyId);
-    options.value = (accounts || []).map((account) => ({
+    console.log('✅ 合并后的银行列表（去重后）:', uniqueAccounts);
+
+    options.value = uniqueAccounts.map((account) => ({
       id: account.id,
       value: account.id,
       label: `${account.bankShortName} - ${account.accountName ?? ''} (${account.currencyCode ?? ''})`,
