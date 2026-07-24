@@ -48,6 +48,7 @@ import { $t } from '#/locales';
 import FeeSelectionDrawerForIssue from './components/FeeSelectionDrawerForIssue.vue';
 import RemarkTemplateModal from './components/RemarkTemplateModal.vue';
 import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vue';
+import InvoiceDetailModal from './components/InvoiceDetailModal.vue';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
 // ✅ 新增：导入开票申请详情API
 import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
@@ -80,6 +81,9 @@ const selectedGoodsRows = ref<string[]>([]); // 选中的商品明细行ID
 // 备注模板管理弹窗相关状态
 const remarkTemplateModalVisible = ref(false); // 备注模板管理弹窗显示状态
 const selectRemarkTemplateModalVisible = ref(false); // 选择备注模板弹窗显示状态
+
+// 查看发票明细弹窗相关状态
+const invoiceDetailModalVisible = ref(false); // 查看发票明细弹窗显示状态
 
 // 表单数据
 const formData = ref<any>({
@@ -234,6 +238,38 @@ async function handleSubmit() {
 /** 取消 */
 function handleCancel() {
   router.back();
+}
+
+/** 打开查看发票明细弹窗 */
+function handleOpenInvoiceDetailModal() {
+  if (applicationGroupsData.value.length === 0) {
+    message.warning('暂无已选择的发票数据');
+    return;
+  }
+  invoiceDetailModalVisible.value = true;
+}
+
+/** 处理删除选中的发票 */
+function handleDeleteSelectedInvoices(selectedIds: string[]) {
+  console.log('🗑️ 准备删除的发票ID:', selectedIds);
+
+  // 从 applicationGroupsData 中移除选中的申请组
+  applicationGroupsData.value = applicationGroupsData.value.filter(
+    (group: any) => !selectedIds.includes(String(group.id)),
+  );
+
+  // 从 formData.invoiceIssueItems 中移除对应的项
+  if (formData.value.invoiceIssueItems && formData.value.invoiceIssueItems.length > 0) {
+    formData.value.invoiceIssueItems = formData.value.invoiceIssueItems.filter(
+      (item: any) => !selectedIds.includes(String(item.invoiceApplicationId)),
+    );
+  }
+
+  // ✅ 关键修复：重新计算商品明细金额
+  recalculateGoodsDetails();
+
+  console.log('✅ 删除完成，剩余申请组数量:', applicationGroupsData.value.length);
+  console.log('✅ 剩余申请明细数量:', formData.value.invoiceIssueItems?.length || 0);
 }
 
 /** 商品明细 - 项目名称变化 */
@@ -1869,6 +1905,18 @@ onMounted(() => {
                     从开票申请导入费用
                   </Button>
                 </Form.Item>
+
+                <Form.Item v-if="applicationGroupsData.length > 0">
+                  <Button
+                    block
+                    @click="handleOpenInvoiceDetailModal"
+                  >
+                    <template #icon>
+                      <IconifyIcon icon="ant-design:eye-outlined" />
+                    </template>
+                    查看发票明细 ({{ applicationGroupsData.length }})
+                  </Button>
+                </Form.Item>
               </Form>
             </Card>
           </div>
@@ -2476,6 +2524,13 @@ onMounted(() => {
       :fee-details="applicationGroupsData"
       :template-data="remarkTemplateData"
       @use-template="handleUseRemarkTemplate"
+    />
+
+    <!-- 查看发票明细弹窗 -->
+    <InvoiceDetailModal
+      v-model:visible="invoiceDetailModalVisible"
+      :application-groups-data="applicationGroupsData"
+      @delete-selected="handleDeleteSelectedInvoices"
     />
   </Page>
 </template>

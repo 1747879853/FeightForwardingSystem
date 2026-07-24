@@ -77,10 +77,11 @@ const fetchPageAdapter = async (params: {
   PageSize: number;
   industryCategory?: string;
 }) => {
-  const industryCategory = params.industryCategory;
-  if (!industryCategory) {
-    return { items: [], total: 0 };
-  }
+  const industryCategory = params.industryCategory || '';
+  // if (!industryCategory) {
+  //   return { items: [], total: 0 };
+  // }
+  //console.log('getClientPagedList', industryCategory);
   const res = await getClientPagedList({
     keyword: params.KeyWords,
     industryCategory,

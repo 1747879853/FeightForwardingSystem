@@ -70,6 +70,7 @@ const filterClientId = ref<string>(''); // 新增：委托单位
 const filterEtdStart = ref<string>(''); // 新增：开船日期起
 const filterEtdEnd = ref<string>(''); // 新增：开船日期止
 const filterPaySide = ref<number>(0); // 新增：收付类型，默认应收(0)
+const filterBizType = ref<number | undefined>(undefined); // ✅ 新增：业务类型
 
 // ✅ 新增：用于 RangePicker 的日期范围状态
 const filterEtdRange = ref<[dayjs.Dayjs, dayjs.Dayjs] | undefined>(undefined);
@@ -77,7 +78,7 @@ const filterEtdRange = ref<[dayjs.Dayjs, dayjs.Dayjs] | undefined>(undefined);
 // 费用明细表格数据
 const feeGroupsData = ref<any[]>([]);
 
-// 选中的费用行 keys
+// 选中的费用行 keys（支持父级和子级）
 const selectedFeeRowKeys = ref<string[]>([]);
 
 // 发票汇率
@@ -102,6 +103,39 @@ async function handleChildSelectionChange(
       !record.feeDetails.some((child: any) => child.id === key),
   );
   selectedFeeRowKeys.value = [...currentSelected, ...selectedRowKeys];
+
+  await updateCurrencyFromSelectedFees();
+}
+
+/** 处理父级选择变化（按票选择） */
+async function handleParentSelectionChange(
+  record: any,
+  selected: boolean,
+) {
+  if (selected) {
+    // 选中父级时，自动选中所有未禁用的子级
+    if (record.feeDetails && record.feeDetails.length > 0) {
+      const selectableChildren = record.feeDetails
+        .filter((child: any) => !child.disabled && !child.alreadyAdded)
+        .map((child: any) => child.id);
+      
+      const currentSelected = selectedFeeRowKeys.value.filter(
+        (key) =>
+          !record.feeDetails ||
+          !record.feeDetails.some((child: any) => child.id === key),
+      );
+      
+      selectedFeeRowKeys.value = [...currentSelected, ...selectableChildren];
+    }
+  } else {
+    // 取消选中父级时，取消所有子级的选中
+    if (record.feeDetails && record.feeDetails.length > 0) {
+      selectedFeeRowKeys.value = selectedFeeRowKeys.value.filter(
+        (key) =>
+          !record.feeDetails.some((child: any) => child.id === key),
+      );
+    }
+  }
 
   await updateCurrencyFromSelectedFees();
 }
@@ -216,6 +250,7 @@ function handleResetFilter() {
   filterEtdEnd.value = '';
   filterEtdRange.value = undefined; // ✅ 重置日期范围
   filterPaySide.value = 0;
+  filterBizType.value = undefined; // ✅ 重置业务类型
   selectedFeeRowKeys.value = [];
   loadFeeGroupData();
 }
@@ -334,6 +369,11 @@ async function loadFeeGroupData() {
     // 新增：收付类型
     params.paySide = filterPaySide.value;
 
+    // ✅ 新增：业务类型
+    if (filterBizType.value !== undefined) {
+      params.bizType = filterBizType.value;
+    }
+
     if (props.invoiceApplicationId) {
       params.invoiceApplicationId = props.invoiceApplicationId;
     }
@@ -395,6 +435,10 @@ function transformToTreeData(
       });
     }
 
+    // ✅ 计算父级是否应该被禁用（所有子级都已添加）
+    const allChildrenDisabled = childrenList.length > 0 && 
+      childrenList.every((child: any) => child.disabled || child.alreadyAdded);
+
     const parentNode: any = {
       id: `parent_${item.transportOrder.id}`,
       parentId: null,
@@ -412,6 +456,7 @@ function transformToTreeData(
       carrier: item.seaExport?.carrierName || '-',
       company: item.transportOrder.orgs?.at(-1)?.name || '-',
       checked: false,
+      disabled: allChildrenDisabled, // ✅ 如果所有子级都已添加，则禁用父级复选框
       feeDetails: childrenList, // ✅ 使用 feeDetails 而非 children，避免被 Table 识别为树形结构
     };
 
@@ -581,8 +626,22 @@ defineExpose({
             >
             <Input
               v-model:value="keyWord"
-              placeholder="请输入委托编号或主提单号"
+              placeholder="请输入委托编号、主提单号或订舱编号"
               style="flex: 1"
+              allow-clear
+            />
+          </div>
+          <div
+            style="display: flex; gap: 8px; align-items: center; width: 305px"
+          >
+            <span style="min-width: 70px; font-size: 14px; color: #333"
+              >业务类型:</span
+            >
+            <Select
+              v-model:value="filterBizType"
+              style="flex: 1"
+              :options="getBizTypeOptions()"
+              placeholder="请选择业务类型"
               allow-clear
             />
           </div>
@@ -594,6 +653,7 @@ defineExpose({
             >
             <ClientSelect
               v-model:model-value="filterClientId"
+              :industry-category="'p'"
               placeholder="请选择委托单位"
               style="flex: 1"
               allow-clear
@@ -674,6 +734,38 @@ defineExpose({
           size="small"
           :expandable="{
             defaultExpandAllRows: true,
+          }"
+          :row-selection="{
+            type: 'checkbox',
+            selectedRowKeys: selectedFeeRowKeys.filter(key => key.startsWith('parent_')),
+            getCheckboxProps: (record) => ({
+              disabled: record.disabled,
+            }),
+            onChange: (selectedRowKeys, selectedRows) => {
+              // 处理父级选择
+              const currentParentKeys = selectedRowKeys.filter(k => k.startsWith('parent_'));
+              const prevParentKeys = selectedFeeRowKeys.value.filter(k => k.startsWith('parent_'));
+              
+              // 找出新选中和取消选中的父级
+              const newlySelectedParents = currentParentKeys.filter(k => !prevParentKeys.includes(k));
+              const deselectedParents = prevParentKeys.filter(k => !currentParentKeys.includes(k));
+              
+              // 处理新选中的父级
+              newlySelectedParents.forEach(parentKey => {
+                const parentRecord = feeGroupsData.value.find(r => r.id === parentKey);
+                if (parentRecord) {
+                  handleParentSelectionChange(parentRecord, true);
+                }
+              });
+              
+              // 处理取消选中的父级
+              deselectedParents.forEach(parentKey => {
+                const parentRecord = feeGroupsData.value.find(r => r.id === parentKey);
+                if (parentRecord) {
+                  handleParentSelectionChange(parentRecord, false);
+                }
+              });
+            },
           }"
           row-key="id"
           :scroll="{ y: 500 }"
