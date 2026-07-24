@@ -49,6 +49,7 @@ import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import {
   ClientSelect,
   CurrencySelect,
+  MyOrgSelect,
   OrgBankAccountSelect,
 } from '#/adapter/component';
 import {
@@ -110,6 +111,9 @@ const displayApplicationNo = computed(() =>
 
 const clientId = ref<string>('');
 const clientName = ref('');
+
+// 新增：所属组织id
+const orgId = ref<number | undefined>(undefined);
 
 // 新增：我司银行id
 const orgBankAccountId = ref<string | undefined>(undefined);
@@ -464,6 +468,9 @@ async function loadEditData() {
     clientId.value = detail.clientId ?? '';
     clientName.value = detail.clientName ?? '';
 
+    // 新增：加载所属组织id
+    orgId.value = detail.orgId || undefined;
+
     // 新增：加载我司银行id
     orgBankAccountId.value = detail.orgBankAccountId || undefined;
 
@@ -521,6 +528,8 @@ function buildSubmitData(): StatementAdminApi.StatementAddDto {
     remark: remark.value || undefined,
     orderFeeIds: orderFeeIds,
     attachments: attachmentItems.length > 0 ? attachmentItems : undefined,
+    // 新增：所属组织id
+    orgId: orgId.value || undefined,
     // 新增：我司银行id
     orgBankAccountId: orgBankAccountId.value || null,
   };
@@ -549,6 +558,8 @@ async function saveEditMode() {
     description: statementDescription.value || undefined,
     remark: remark.value || undefined,
     attachments: attachmentItems.length > 0 ? attachmentItems : undefined,
+    // 新增：所属组织id
+    orgId: orgId.value || undefined,
     // 新增：我司银行id
     orgBankAccountId: orgBankAccountId.value || null,
   });
@@ -959,11 +970,23 @@ function formatMonth(val: string | undefined | null): string {
                     @update:value="(val) => (remark = val)"
                   />
                 </div>
+                <!-- 新增：所属组织 -->
+                <div class="info-item">
+                  <span class="info-label">所属组织</span>
+                  <MyOrgSelect
+                    :value="orgId"
+                    placeholder="请选择所属组织"
+                    allow-clear
+                    size="small"
+                    @update:value="(val: number | undefined) => (orgId = val)"
+                  />
+                </div>
                 <!-- 新增：我司银行 -->
                 <div class="info-item">
                   <span class="info-label">我司银行</span>
                   <OrgBankAccountSelect
                     :value="orgBankAccountId"
+                    :org-id="orgId"
                     placeholder="请选择我司银行"
                     allow-clear
                     size="small"
