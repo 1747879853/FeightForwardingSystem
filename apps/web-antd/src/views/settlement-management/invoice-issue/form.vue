@@ -708,7 +708,11 @@ function updateClientBankByCurrency() {
 
 /** 根据币别更新销售方银行 */
 function updateOrgBankByCurrency() {
-  if (!orgBankAccounts.value.length || !formData.value.currencyId) return;
+  if (!orgBankAccounts.value.length || !formData.value.currencyId){
+     // ✅ 没有银行列表或币别时，清空选择
+     formData.value.orgBankAccountId = undefined;
+     return;
+  }
 
   const currencyId = formData.value.currencyId;
 
@@ -718,6 +722,7 @@ function updateOrgBankByCurrency() {
   );
 
   if (defaultBank) {
+    // ✅ 有默认银行，自动选择
     formData.value.orgBankAccountId = defaultBank.id;
     console.log(
       '✅ 自动选择销售方默认银行:',
@@ -725,9 +730,9 @@ function updateOrgBankByCurrency() {
       defaultBank.bankAccount,
     );
   } else {
-    // 如果没有默认银行，清空选择
+    // ✅ 没有默认银行，清空选择
     formData.value.orgBankAccountId = undefined;
-    console.log('⚠️ 未找到销售方默认银行');
+    console.log('⚠️ 未找到销售方默认银行，清空选择');
   }
 }
 
@@ -783,7 +788,17 @@ function initApplicantInfo() {
 // 归属组织变化时，联动刷新开票公司信息
 watch(
   () => formData.value.orgId,
-  () => applyOrgCompanyInfo(),
+  () => {
+    applyOrgCompanyInfo();
+    // ✅ 关键修复：归属组织变化后，立即更新银行选择（无论币别是否存在）
+    // 如果币别已存在，会自动选择匹配的默认银行；否则等待币别设置后再更新
+    if (formData.value.currencyId) {
+      updateOrgBankByCurrency();
+    } else {
+      // ✅ 币别不存在时，先清空银行选择，避免显示不匹配的银行
+      formData.value.orgBankAccountId = undefined;
+    }
+  },
 );
 
 /** 发票抬头选项列表 */

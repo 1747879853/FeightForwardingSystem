@@ -279,6 +279,7 @@ export namespace InvoiceIssueApi {
 
   /** 发票开出查询参数 */
   export interface InvoiceIssueQueryDto {
+    keyword?: string;
     /** 开出单号（模糊） */
     applicationNo?: string;
     /** 发票号（模糊） */
@@ -295,6 +296,7 @@ export namespace InvoiceIssueApi {
     invoiceIssueTimeStart?: string;
     /** 开票时间止 */
     invoiceIssueTimeEnd?: string;
+    remark?: string;
     /** 创建人ID */
     creatorUserId?: number;
     /** 组织ID（通过UserId查询） */
@@ -518,6 +520,7 @@ async function getInvoiceIssuePagedList(params: Recordable<any>): Promise<{
   totalCount: number;
 }> {
   const queryParams: InvoiceIssueApi.InvoiceIssueQueryDto = {
+    keyword: params.keyword,
     applicationNo: params.applicationNo,
     invoiceNo: params.invoiceNo,
     settlementId: params.settlementId,
@@ -527,6 +530,7 @@ async function getInvoiceIssuePagedList(params: Recordable<any>): Promise<{
     invoiceIssueTimeStart: params.invoiceIssueTimeStart,
     invoiceIssueTimeEnd: params.invoiceIssueTimeEnd,
     creatorUserId: params.creatorUserId,
+    remark: params.remark,
     orgId: params.orgId,
     pageIndex: params.pageIndex || params.page || 1,
     pageSize: params.pageSize || 10,

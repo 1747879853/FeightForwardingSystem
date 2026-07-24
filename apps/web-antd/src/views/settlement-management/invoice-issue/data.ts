@@ -148,11 +148,11 @@ export const columns: VxeTableGridOptions['columns'] = [
  */
 export const searchFormSchema = [
   {
-    fieldName: 'applicationNo',
-    label: '开出单号',
+    fieldName: 'keyword',
+    label: '关键字',
     component: 'Input',
     componentProps: {
-      placeholder: '请输入开出单号',
+      placeholder: '开出编号/委托编号/主提单号',
     },
   },
   {
@@ -180,11 +180,20 @@ export const searchFormSchema = [
     },
   },
   {
+    fieldName: 'creatorUserId',
+    label: '创建人',
+    component: 'UserSelect',
+    componentProps: {
+      placeholder: '请选择创建人',
+    },
+  },
+  {
     fieldName: 'invoiceIssueType',
     label: '开出方式',
     component: 'Select',
     componentProps: {
       placeholder: '请选择开出方式',
+      clearable: true,
       options: [
         {
           label: '诺诺接口开票',
@@ -203,6 +212,7 @@ export const searchFormSchema = [
     component: 'Select',
     componentProps: {
       placeholder: '请选择发票类型',
+      clearable: true,
       options: [
         { label: '普通发票(电票)', value: 'p' },
         { label: '普通发票(纸票)', value: 'c' },
@@ -211,9 +221,18 @@ export const searchFormSchema = [
     },
   },
   {
+    fieldName: 'Remark',
+    label: '备注',
+    component: 'Input',
+    componentProps: {
+      placeholder: '请输入备注',
+    },
+  },
+  {
     fieldName: 'invoiceIssueTimeStart',
     label: '开票时间起',
     component: 'DatePicker',
+     clearable: true,
     componentProps: {
       placeholder: '请选择开始日期',
       format: 'YYYY-MM-DD',
@@ -224,6 +243,7 @@ export const searchFormSchema = [
     fieldName: 'invoiceIssueTimeEnd',
     label: '开票时间止',
     component: 'DatePicker',
+     clearable: true,
     componentProps: {
       placeholder: '请选择结束日期',
       format: 'YYYY-MM-DD',
