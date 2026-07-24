@@ -211,12 +211,12 @@ const setDisplayList = () => {
   displayList.value.push(commissionNum);
   let clientName = {
     name: $t('seaExport.export.clientId'),
-    value: to.value?.clientName || '--',
+    value: to.value?.client?.name || '--',
   };
   displayList.value.push(clientName);
   let teamName = {
     name: $t('seaExport.export.teamId'),
-    value: to.value?.teamName || '--',
+    value: to.value?.team?.name || '--',
   };
   displayList.value.push(teamName);
   let vessel = {
@@ -232,7 +232,10 @@ const setDisplayList = () => {
   let carrier = {
     key: 'carrierName',
     name: $t('seaExport.export.carrierId'),
-    value: formValues.value?.carrierName || '--',
+    value:
+      formValues.value?.carrier?.cnShortName ||
+      formValues.value?.carrier?.cnName ||
+      '--',
   };
   displayList.value.push(carrier);
   let etd = {
@@ -387,7 +390,7 @@ onMounted(() => {
                     formValues?.carrierLogo?.url ||
                     formValues?.carrier?.logo?.url
                   "
-                  :alt="formValues?.carrierName || 'carrier-logo'"
+                  :alt="formValues?.carrier?.cnName || 'carrier-logo'"
                   class="h-8 w-8 rounded object-contain"
                 />
                 <span>{{ item.value || '--' }}</span>

@@ -668,7 +668,7 @@ function handleOpenFeeDetailModal() {
                 getBizTypeOptions().find(
                   (o: any) => o.value === parentFee.transportOrder?.bizType,
                 )?.label || '-',
-              carrier: parentFee.seaExport?.carrierName || '-',
+              carrier: parentFee.seaExport?.carrier?.cnName || '-',
               company: parentFee.transportOrder.orgs?.at(-1)?.name || '-',
               feeDetails: [] as any[], // ✅ 使用 feeDetails 而非 children，与 FeeDetailModal 保持一致
             };
@@ -1554,13 +1554,12 @@ function updateClientBankByCurrency() {
   );
 
   if (bank) {
-    if(first && isEdit.value && formData.value.clientInvoiceBankId){
+    if (first && isEdit.value && formData.value.clientInvoiceBankId) {
       console.log('编辑初始化，不要覆盖银行账号');
       first = false;
-    }else{
-       formData.value.clientInvoiceBankId = bank.id;
+    } else {
+      formData.value.clientInvoiceBankId = bank.id;
     }
-   
   } else {
     // 如果没有找到默认银行，清空选择
     formData.value.clientInvoiceBankId = undefined;
@@ -1569,10 +1568,10 @@ function updateClientBankByCurrency() {
 
 /** 根据币别更新销售方银行 */
 function updateOrgBankByCurrency() {
-  if (!orgBankAccounts.value.length || !formData.value.currencyId){
-     // ✅ 没有银行列表或币别时，清空选择
-     formData.value.orgBankAccountId = undefined;
-     return;
+  if (!orgBankAccounts.value.length || !formData.value.currencyId) {
+    // ✅ 没有银行列表或币别时，清空选择
+    formData.value.orgBankAccountId = undefined;
+    return;
   }
 
   const currencyId = formData.value.currencyId;
@@ -1658,7 +1657,13 @@ const filteredClientBanks = computed(() => {
   const banks = selectedClientInvoiceInfo.value.clientInvoiceBanks || [];
   console.log('filteredClientBanks:', banks);
   // 只返回与开票币种一致的银行
-  return banks.filter((bank) => bank.currencyId === currencyId).map((bank) => ({...bank, value: bank.id,label: `${bank.bankName}-${bank.bankAccount}`}));
+  return banks
+    .filter((bank) => bank.currencyId === currencyId)
+    .map((bank) => ({
+      ...bank,
+      value: bank.id,
+      label: `${bank.bankName}-${bank.bankAccount}`,
+    }));
 });
 
 /** 获取销售方与开票币种一致的银行列表 */
@@ -1935,7 +1940,7 @@ async function loadDetail() {
   loading.value = true;
   try {
     const detail = await detailAsync(editId.value);
-       // 加载客户开票信息
+    // 加载客户开票信息
     await loadClientInvoiceInfo(detail.settlementId);
     // 检查状态，只有录入或驳回状态可以编辑（只读模式除外）
     if (
@@ -1987,7 +1992,6 @@ async function loadDetail() {
       : dayjs().format('YYYY-MM-DD');
 
     // 加载客户开票信息
- 
 
     // 设置汇率
     invoiceExchangeRate.value = detail.invoiceExchangeRate || 1.0;
@@ -2026,7 +2030,7 @@ async function loadDetail() {
             getBizTypeOptions().find(
               (o: any) => o.value === group.transportOrder?.bizType,
             )?.label || '-',
-          carrier: group.seaExport?.carrierName || '-',
+          carrier: group.seaExport?.carrier?.cnName || '-',
           company: group.transportOrder?.orgs?.at(-1)?.name || '-',
           feeDetails: [] as any[], // ✅ 更新为 feeDetails，与 FeeSelectionDrawer 保持一致
         };

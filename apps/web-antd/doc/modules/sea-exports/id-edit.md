@@ -39,7 +39,7 @@ last_updated: 2026-07-24
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
 - **船期与付费联动：** 保存时校验截 VGM、截单、截舱单日期不得晚于开船日期或实际开船日期；详情回填或用户切换付费方式时，到付自动以目的港覆盖付费地点，预付自动以起运港覆盖付费地点。
 - **箱包装默认值：** 新增箱型箱量行时，从订单级总包装复制包装 ID 与显示文本，避免远程下拉只显示数字 ID；复制后箱行包装仍可单独修改。
-- **船公司选中回显：** 详情接口返回 `carrierLogo` 与 `carrierCnShortName` 后，编辑页在 `carrierId` 的 `selectedItems` 中拼接 `cnShortName`、`code`（若有）与 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + CODE(简称)”。
+- **船公司选中回显：** 详情接口返回同级 `carrierLogo` 与对象 `carrier`（含 `cnShortName`/`cnName`/`code`/`ediCode`）后，编辑页在 `carrierId` 的 `selectedItems` 中拼接 `carrier.cnShortName || carrier.cnName`、`code`（若有）与 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + CODE(简称)”。往来单位（委托单位/收发通/船代/订舱代理/场站/车队等）回显统一取 `*.name`。
 - **锁定状态展示：** 左侧委托信息显示委托编号、会计期间、应结日期、所属公司，并以标签展示“业务已/未锁定”和“费用已/未锁定”。保存时会把只读锁定状态带回 `transportOrder`。
 - **费用数量提示：** 工作台进入后调用 `getOrderFeePagedList({ TransportOrderId })`，统计应收 `paySide === 0` 与应付 `paySide === 1` 数量，将费用标签显示为“应收应付 x - y”，并每 60 秒刷新一次。
 - **订单费用处理：** 费用页基于运输单 ID 加载应收应付费用，字段覆盖费用代码、结算对象、币种、汇率、单价、金额、税率、开票/结算金额、可开票、机密、费用状态等；费用状态包括录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。应收/应付表工具栏「打印」：`printJsonType` 分别为 `1000`（应收）/ `1500`（应付）；由后端按 `transportOrderId` 取数，勾选已保存费用时传 `orderFeeListInput.ids` 仅打勾选项，未勾选则打整票。
@@ -89,7 +89,7 @@ last_updated: 2026-07-24
 | **费用锁定** | 费用是否允许继续变动。 | `transportOrder.feeLocked`、更改单 `feeLocked` | **触发/依赖：** 影响订单费用与更改单业务判断；费用锁定/解锁入口在费用管理模块。 | 当前页展示并随 DTO 带回，不直接切换。 |
 | **费用标签数量** | 应收与应付费用数量摘要。 | `getOrderFeePagedList` / `paySide` | **触发/依赖：** 每 60 秒按运输单 ID 统计一次，应收为 `paySide=0`，应付为 `paySide=1`。 | 仅作为提示，不代表金额汇总。 |
 | **船期时间（ETD/ATD/ETA）** | 预计开船、实际开船、预计到港时间。 | `transportOrder.etd/atd/eta` | **触发/依赖：** 编辑页详情回填到基础信息表单，费用页与更改单顶部摘要按同一字段显示。 | 允许为空，提交时统一转 ISO 字符串。 |
-| **carrierLogo / carrierId / carrierCnShortName** | 船公司主数据、简称与 Logo 回显。 | `SeaExportAdmin` 返回 `carrierCnShortName`、`carrierLogo`；`CarrierSelect` 默认 `labelKey=cnShortName` | **触发/依赖：** 编辑页回填 `selectedItems` 时使用 `cnShortName`（回退 `carrierName`）并附带 `logo`、`code`；列表与工作台优先展示简称。 | Logo 或简称缺失时回退全称/纯文本，不阻断保存。 |
+| **carrierLogo / carrierId / carrier** | 船公司主数据、简称与 Logo 回显。 | `SeaExportAdmin` 返回 `carrier`（`cnName`/`cnShortName`/`enName`/`code`英文简称/`ediCode`）与同级 `carrierLogo`；`CarrierSelect` 默认 `labelKey=cnShortName` | **触发/依赖：** 编辑页回填 `selectedItems` 用 `carrier.cnShortName \|\| carrier.cnName`，并附带 `logo`、`code`；列表/工作台/费用摘要优先展示简称。 | Logo 或对象缺失时回退全称/纯文本，不阻断保存。 |
 | **订单费用** | 应收应付明细。 | `OrderFeeAdminApi.OrderFeeDto` / `/services/app/OrderFeeAdmin` | **触发/依赖：** 费用状态进入审核、开票、付款、对账、结算链路。 | 费目、结算对象、币种、金额、税率等以后端校验为准。 |
 | **费用状态** | 费用生命周期状态。 | `getFeeStatusOptions` | **触发/依赖：** 录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。 | 不同状态下可编辑范围不同，需以后端和费用表格逻辑为准。 |
 | **更改单** | 业务变更记录及其关联费用。 | `ChangeOrderAdminApi.ChangeOrderDto` / `/services/app/ChangeOrderAdmin` | **触发/依赖：** 更改单携带 `accountDate`、`reason`、`orderFees` 和锁费信息。 | 必须保持同一 `transportOrderId`。 |
@@ -99,7 +99,7 @@ last_updated: 2026-07-24
 | **客户可见（clientVisible）** | 单个附件对客户端是否可见。 | `AttachmentItemDto.clientVisible` / `Attachment.UpdateAttachmentItemsClientVisibleAsync`（PUT） | **触发/依赖：** 文件项 `Switch` 单条切换；卡片标题行 `Checkbox` 按类型批量切换（全选/半选由各文件计算）；入参 `[{ id: AttachmentItem.id, clientVisible }]`。 | 需 `Admin.SeaExport.Edit`；`id<=0` 忽略，空集合不报错。 |
 | **显示字段配置** | 费用/更改单顶部摘要字段显示控制。 | `useDisplayFieldConfig` / localStorage key `order_fee_display_config` | **触发/依赖：** 费用页与更改单页共用同一配置缓存。 | 仅影响前端展示。 |
 | **港口备注（费用摘要）** | 收货地/起运港/中转港1/2/目的港/交货地备注。 | `SeaExportDto` 的 `receivePortRemark`、`polRemark`、`poT1Remark`、`poT2Remark`、`podRemark`、`deliverPortRemark` | **触发/依赖：** 应收应付与更改单顶部订单信息六段港口均展示备注字段，非 `*Name`。 | 备注为空显示 `--`。 |
-| **订舱代理** | 订舱服务执行方客户。 | `SeaExportDto.bookingAgentId` / `bookingAgentName`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与流水线节点解耦，始终展示；schema 自船期迁入基础信息（`BASIC_MODULE_EXTRA_FIELD_NAMES`）；编辑回显走 `basicInfoFormApi` 的 `selectedItems`。 | 可选；须为含订舱代理属性的客户。 |
+| **订舱代理** | 订舱服务执行方客户。 | `SeaExportDto.bookingAgentId` / `bookingAgent?.name`；`ClientSelect`（`industryCategory: 'o'`） | **触发/依赖：** 与流水线节点解耦，始终展示；schema 自船期迁入基础信息（`BASIC_MODULE_EXTRA_FIELD_NAMES`）；编辑回显走 `basicInfoFormApi` 的 `selectedItems`（名称取自 `bookingAgent?.name`）。 | 可选；须为含订舱代理属性的客户。 |
 | **委托单位 / 起运港** | 服务项目联动查询入参；委托单位亦为干系人默认来源。 | `transportOrder.clientId`、`polId`；`GetServiceTypesByPOLAsync`；`ClientAdmin.DetailAsync` | **触发/依赖：** 任一变更触发服务项联动；`polId` 为空清空勾选。`polId` 查询用于可见范围，`polId+clientId` 查询用于默认勾选。新建态 `clientId` 变更额外触发干系人默认回填。 | **必填项**（`selectRequired`）；与新建页同一套 `form.vue` 逻辑。 |
 | **服务项目 / serviceTypes** | POL 配置下的服务节点勾选结果（与执行方字段解耦）。 | `serviceTypeNodes`；提交字段 `serviceTypes: number[]` | **触发/依赖：** 节点范围与优先级来自 `GetServiceTypesByPOLAsync` / `seaExportServices`；label 与主流程标记来自 `ServiceType` 枚举，其中 `extra1=true` 表示主流程。配置弹窗按主/非主流程分组，任务顺序仍按 `sortId`。 | 勿再用执行方字段或 `organizationUnits` 推断节点勾选；缺失 `extra1` 按非主流程。 |
 | **货物类型 cargoId** | 普通货/冻柜/危险品/超限箱。 | `transportOrder.cargoId`；枚举 `CargoType`（S=0/R=1/D=2/O=3） | **触发/依赖：** 货物信息 Card 标题行内联选择；`R` 展示冻柜 7 项，`D` 展示危险品 11 项；切换离开对应类型清空扩展字段。 | 全部可选；扩展字段经 `transportOrder` 提交。 |
@@ -127,6 +127,7 @@ last_updated: 2026-07-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-24 | `Refactor` | 基础信息/分单/费用/更改单对接往来单位与船公司对象化；结算对象名称映射改读 `client?.name` 等。 | 扁平 `*Name` 已删；`carrierLogo` 仍同级。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-24 | `Fix` | 已选委托单位但无业务来源时改为纯文本「-」，不再渲染禁用下拉占宽。 | `showCodeSourceEmptyDash` 控制分支。详见 `changelogs/change-log-2026-07-24-sea-export-code-source-empty-dash.md`。 |
 | 2026-07-24 | `Fix` | 打印导出改为静默下载；文件名清洗仅去掉末尾纯数字时间戳，避免友好名含 `-` 时 404。 | PDF 复用预览原始文件名；`downloadFileFromBlob`。详见 `changelogs/change-log-2026-07-24-print-format-silent-download.md`。 |
 | 2026-07-24 | `Fix` | 委托单位带出业务来源时仅传 id，名称由 `CodeSourceSelect` 自拉取；头部来源下拉 placeholder 字号缩小。 | `applyClientCodeSource` 不再拼 `client.codeSource.cnName`。详见 `changelogs/change-log-2026-07-24-sea-export-code-source-self-fetch.md`。 |

@@ -360,10 +360,10 @@ const displayList = computed(() => {
         value = to.value?.commissionNum || '--';
         break;
       case 'clientName':
-        value = to.value?.clientName || '--';
+        value = to.value?.client?.name || '--';
         break;
       case 'teamName':
-        value = to.value?.teamName || '--';
+        value = to.value?.team?.name || '--';
         break;
       case 'vessel':
         value = formValues.value?.vessel || '--';
@@ -373,8 +373,8 @@ const displayList = computed(() => {
         break;
       case 'carrierName':
         value =
-          formValues.value?.carrierCnShortName ||
-          formValues.value?.carrierName ||
+          formValues.value?.carrier?.cnShortName ||
+          formValues.value?.carrier?.cnName ||
           '--';
         break;
       case 'etd':
@@ -891,7 +891,7 @@ onBeforeUnmount(unbindGlobalListeners);
                         formValues?.carrierLogo?.url ||
                         formValues?.carrier?.logo?.url
                       "
-                      :alt="formValues?.carrierName || 'carrier-logo'"
+                      :alt="formValues?.carrier?.cnName || 'carrier-logo'"
                       class="order-info-chip__logo"
                     />
                     {{ item.value || '--' }}
@@ -935,7 +935,7 @@ onBeforeUnmount(unbindGlobalListeners);
                       formValues?.carrierLogo?.url ||
                       formValues?.carrier?.logo?.url
                     "
-                    :alt="formValues?.carrierName || 'carrier-logo'"
+                    :alt="formValues?.carrier?.cnName || 'carrier-logo'"
                     class="order-info-chip__logo"
                   />
                   {{ item.value || '--' }}

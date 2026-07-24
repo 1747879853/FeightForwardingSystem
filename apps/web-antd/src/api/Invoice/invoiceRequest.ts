@@ -80,11 +80,30 @@ export namespace InvoiceApplicationApi {
     vessel?: string;
     innerVoyno?: string;
     polId?: number;
-    polName?: string;
+    /** 起运港（简易对象，无则为 null） */
+    pol?: {
+      id: number;
+      portName?: string;
+      cnName?: string;
+    } | null;
     podId?: number;
-    podName?: string;
+    /** 目的港（简易对象，无则为 null） */
+    pod?: {
+      id: number;
+      portName?: string;
+      cnName?: string;
+    } | null;
     carrierId?: number;
-    carrierName?: string;
+    /** 船公司（简易对象，无则为 null） */
+    carrier?: {
+      id: number;
+      cnName?: string;
+      cnShortName?: string;
+      enName?: string;
+      /** 英文简称 */
+      code?: string;
+      ediCode?: string;
+    } | null;
     [key: string]: any;
   }
 
@@ -321,7 +340,7 @@ export namespace InvoiceApplicationApi {
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
   }
-    /** 客户开票银行 列表和详情输出 */
+  /** 客户开票银行 列表和详情输出 */
   export interface ClientInvoiceBankDto {
     /** 客户开票信息表id */
     clientInvoiceInfoId: string;
@@ -350,7 +369,7 @@ export namespace InvoiceApplicationApi {
     creatorUserId?: number;
     id: string;
   }
-    /** 客户开票信息 列表和详情输出 */
+  /** 客户开票信息 列表和详情输出 */
   export interface ClientInvoiceInfoDto {
     /** 客户id */
     clientId: string;
@@ -381,7 +400,7 @@ export namespace InvoiceApplicationApi {
     creatorUserId?: number;
     id: string;
   }
-  
+
   /** 开票申请详情DTO */
   export interface InvoiceApplicationDetailDto {
     id: string;

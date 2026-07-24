@@ -258,10 +258,10 @@ const displayList = computed(() => {
         value = to.value?.commissionNum || '--';
         break;
       case 'clientName':
-        value = to.value?.clientName || '--';
+        value = to.value?.client?.name || '--';
         break;
       case 'teamName':
-        value = to.value?.teamName || '--';
+        value = to.value?.team?.name || '--';
         break;
       case 'vessel':
         value = formValues.value?.vessel || '--';
@@ -271,8 +271,8 @@ const displayList = computed(() => {
         break;
       case 'carrierName':
         value =
-          formValues.value?.carrierCnShortName ||
-          formValues.value?.carrierName ||
+          formValues.value?.carrier?.cnShortName ||
+          formValues.value?.carrier?.cnName ||
           '--';
         break;
       case 'etd':
@@ -653,7 +653,7 @@ onMounted(async () => {
                 <img
                   v-if="formValues?.carrierLogo?.url"
                   :src="buildAttachmentUrl(formValues?.carrierLogo?.url)"
-                  :alt="formValues?.carrierName || 'carrier-logo'"
+                  :alt="formValues?.carrier?.cnName || 'carrier-logo'"
                   class="h-8 w-8 rounded object-contain"
                 />
                 <span>{{ item.value || '--' }}</span>

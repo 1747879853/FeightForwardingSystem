@@ -137,7 +137,7 @@ export const extractSettlementNameFromOrder = (
     transportOrder?.clientId &&
     String(transportOrder.clientId) === settlementIdStr
   ) {
-    return transportOrder.clientName || null;
+    return transportOrder.client?.name || null;
   }
 
   // 发货人
@@ -225,7 +225,7 @@ export const extractSettlementNameFromOrder = (
     transportOrder?.teamId &&
     String(transportOrder.teamId) === settlementIdStr
   ) {
-    return transportOrder.teamName || null;
+    return transportOrder.team?.name || null;
   }
 
   // 报关行
@@ -233,7 +233,7 @@ export const extractSettlementNameFromOrder = (
     transportOrder?.custBrokerId &&
     String(transportOrder.custBrokerId) === settlementIdStr
   ) {
-    return transportOrder.custBrokerName || null;
+    return transportOrder.custBroker?.name || null;
   }
 
   // 仓库
@@ -241,7 +241,7 @@ export const extractSettlementNameFromOrder = (
     transportOrder?.warehouseId &&
     String(transportOrder.warehouseId) === settlementIdStr
   ) {
-    return transportOrder.warehouseName || null;
+    return transportOrder.warehouse?.name || null;
   }
 
   // 保险公司
@@ -249,7 +249,7 @@ export const extractSettlementNameFromOrder = (
     transportOrder?.insuranceId &&
     String(transportOrder.insuranceId) === settlementIdStr
   ) {
-    return transportOrder.insuranceName || null;
+    return transportOrder.insurance?.name || null;
   }
 
   return null;

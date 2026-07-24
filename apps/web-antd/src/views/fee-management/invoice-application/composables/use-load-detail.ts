@@ -46,8 +46,10 @@ export function useLoadDetail(
       // 检查状态，只有录入或驳回状态可以编辑（只读模式除外）
       if (
         !isReadOnly.value &&
-        detail.status !== InvoiceApplicationApi.InvoiceApplicationStatus.Entering &&
-        detail.status !== InvoiceApplicationApi.InvoiceApplicationStatus.Rejected
+        detail.status !==
+          InvoiceApplicationApi.InvoiceApplicationStatus.Entering &&
+        detail.status !==
+          InvoiceApplicationApi.InvoiceApplicationStatus.Rejected
       ) {
         message.error('当前状态的申请不可编辑');
         router.back();
@@ -78,7 +80,8 @@ export function useLoadDetail(
         orgId: detail.orgId,
         currencyId: detail.currencyId || 1,
         invoiceType:
-          detail.invoiceType || InvoiceApplicationApi.InvoiceType.NormalElectric,
+          detail.invoiceType ||
+          InvoiceApplicationApi.InvoiceType.NormalElectric,
         require: detail.require,
         remark: detail.remark,
         orgBankAccountId: detail.orgBankAccountId,
@@ -129,7 +132,7 @@ export function useLoadDetail(
               getBizTypeOptions().find(
                 (o: any) => o.value === group.transportOrder?.bizType,
               )?.label || '-',
-            carrier: group.seaExport?.carrierName || '-',
+            carrier: group.seaExport?.carrier?.cnName || '-',
             company: group.transportOrder?.orgs?.at(-1)?.name || '-',
             feeDetails: [] as any[],
           };
@@ -170,7 +173,9 @@ export function useLoadDetail(
         const newGoodsDetails = detail.invoiceApplicationGoodsDtls.map(
           (item: any, index: number) => ({
             ...item,
-            id: item.id ? String(item.id) : Date.now().toString() + index.toString(),
+            id: item.id
+              ? String(item.id)
+              : Date.now().toString() + index.toString(),
           }),
         );
 

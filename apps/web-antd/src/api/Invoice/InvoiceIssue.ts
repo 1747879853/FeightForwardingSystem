@@ -364,11 +364,30 @@ export namespace InvoiceIssueApi {
     vessel?: string;
     innerVoyno?: string;
     polId?: number;
-    polName?: string;
+    /** 起运港（简易对象，无则为 null） */
+    pol?: {
+      id: number;
+      portName?: string;
+      cnName?: string;
+    } | null;
     podId?: number;
-    podName?: string;
+    /** 目的港（简易对象，无则为 null） */
+    pod?: {
+      id: number;
+      portName?: string;
+      cnName?: string;
+    } | null;
     carrierId?: number;
-    carrierName?: string;
+    /** 船公司（简易对象，无则为 null） */
+    carrier?: {
+      id: number;
+      cnName?: string;
+      cnShortName?: string;
+      enName?: string;
+      /** 英文简称 */
+      code?: string;
+      ediCode?: string;
+    } | null;
     [key: string]: any;
   }
 
@@ -604,7 +623,9 @@ async function getSubmittedApplicationList(
  * 仅编辑主表
  * @param data 主表数据
  */
-async function editInvoiceIssueMain(data: InvoiceIssueApi.InvoiceIssueEditMainDto) {
+async function editInvoiceIssueMain(
+  data: InvoiceIssueApi.InvoiceIssueEditMainDto,
+) {
   return requestClient.put<boolean>(
     '/services/app/InvoiceIssueAdmin/EditMainAsync',
     data,
@@ -615,7 +636,9 @@ async function editInvoiceIssueMain(data: InvoiceIssueApi.InvoiceIssueEditMainDt
  * 新增多条开票申请
  * @param data 新增申请数据
  */
-async function addApplicationsToInvoiceIssue(data: InvoiceIssueApi.InvoiceIssueAddApplicationsDto) {
+async function addApplicationsToInvoiceIssue(
+  data: InvoiceIssueApi.InvoiceIssueAddApplicationsDto,
+) {
   return requestClient.post<boolean>(
     '/services/app/InvoiceIssueAdmin/AddApplicationsAsync',
     data,
@@ -626,7 +649,9 @@ async function addApplicationsToInvoiceIssue(data: InvoiceIssueApi.InvoiceIssueA
  * 移除多条开票申请
  * @param data 移除申请数据
  */
-async function removeApplicationsFromInvoiceIssue(data: InvoiceIssueApi.InvoiceIssueRemoveApplicationsDto) {
+async function removeApplicationsFromInvoiceIssue(
+  data: InvoiceIssueApi.InvoiceIssueRemoveApplicationsDto,
+) {
   return requestClient.put<boolean>(
     '/services/app/InvoiceIssueAdmin/RemoveApplicationsAsync',
     data,

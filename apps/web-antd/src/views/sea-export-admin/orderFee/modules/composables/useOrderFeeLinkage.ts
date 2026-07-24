@@ -181,53 +181,52 @@ export function useOrderFeeLinkage(
         case 'b': // 发货人
           settlementId = orderDetail.transportOrder?.shipperId;
           // 从订单详情中获取发货人名称
-          settlementName = `${orderDetail.transportOrder?.shipperName}` || '';
+          settlementName = orderDetail.transportOrder?.shipper?.name || '';
           break;
         case 'c': // 场站
           settlementId = orderDetail.yardId;
-          settlementName = orderDetail.yardName || '';
+          settlementName = orderDetail.yard?.name || '';
 
           break;
         case 'e': // 收货人
           settlementId = orderDetail.transportOrder?.consigneeId;
-          settlementName = `${orderDetail.transportOrder?.consigneeName}` || '';
+          settlementName = orderDetail.transportOrder?.consignee?.name || '';
           break;
         case 'f': // 报关行
           settlementId = orderDetail.transportOrder?.custBrokerId;
-          settlementName =
-            `${orderDetail.transportOrder?.custBrokerName}` || '';
+          settlementName = orderDetail.transportOrder?.custBroker?.name || '';
           break;
         case 'h': // 通知人
           settlementId = orderDetail.transportOrder?.notifierId;
-          settlementName = `${orderDetail.transportOrder?.notifierName}` || '';
+          settlementName = orderDetail.transportOrder?.notifier?.name || '';
           break;
         case 'i': // 车队
           settlementId = orderDetail.transportOrder?.teamId;
-          settlementName = `${orderDetail.transportOrder?.teamName}` || '';
+          settlementName = orderDetail.transportOrder?.team?.name || '';
           break;
         case 'n': // 船代
           settlementId = orderDetail.shipAgentId;
-          settlementName = orderDetail.shipAgentName || '';
+          settlementName = orderDetail.shipAgent?.name || '';
           break;
         case 'o': // 订舱代理
           settlementId = orderDetail.bookingAgentId;
-          settlementName = orderDetail.bookingAgentName || '';
+          settlementName = orderDetail.bookingAgent?.name || '';
           break;
         case 'p': // 委托单位
           settlementId = orderDetail.transportOrder?.clientId;
-          settlementName = `${orderDetail.transportOrder?.clientName}` || '';
+          settlementName = orderDetail.transportOrder?.client?.name || '';
           break;
         case 'q': // 仓库
           settlementId = orderDetail.transportOrder?.warehouseId;
-          settlementName = `${orderDetail.transportOrder?.warehouseName}` || '';
+          settlementName = orderDetail.transportOrder?.warehouse?.name || '';
           break;
         case 'r': // 保险公司
           settlementId = orderDetail.transportOrder?.insuranceId;
-          settlementName = `${orderDetail.transportOrder?.insuranceName}` || '';
+          settlementName = orderDetail.transportOrder?.insurance?.name || '';
           break;
         case 's': // 国外代理
           settlementId = orderDetail.podAgentId;
-          settlementName = orderDetail.podAgentName || '';
+          settlementName = orderDetail.podAgent?.name || '';
           break;
       }
 

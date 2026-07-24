@@ -2,7 +2,7 @@
 title: 工作台
 module: 驾驶舱
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-07-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -87,6 +87,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-24 | `Refactor` | 海出服务项业务列取值对接对象化：船公司/订舱代理/船代/场站/委托单位改读 `carrier`/`bookingAgent`/`shipAgent`/`yard`/`transportOrder.client`。 | `se-service-show-columns.ts` 与 `SeaExportDto` 对齐。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-12 | `Feature` | 海运出口服务筛选改为「编号」Keyword（可查主提单/订舱/委托），移除 MBL；业务列表仅 checkbox 选中；编号输入自动 trim；筛选下拉与 Input 同宽。 | 见 `change-log-2026-07-12-workspace-keyword-trim-checkbox.md`；Count/PagedList 共用 `Keyword`。 |
 | 2026-07-12 | `Feature` | 应收应付审核筛选对齐费用审核页；修复费用详情深链；审核筛选区 Grid 换行与按钮右对齐；审核表格间距/单元格 padding 调整。 | 见 `change-log-2026-07-12-workspace-review-filter-and-expense-detail.md`；跳转仍用 `transportOrderId::entityId`。 |
 | 2026-07-12 | `Style` | 侧边栏「工作台」一级菜单图标改为 `vscode-icons:file-type-go-work`。 | 与其它一级业务菜单同步更换语义化 Iconify 图标，见 `change-log-2026-07-12-sidebar-top-menu-icons.md`。 |

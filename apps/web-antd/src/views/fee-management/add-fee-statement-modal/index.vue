@@ -343,7 +343,7 @@ function getSelectedFees(): SelectedFeeItem[] {
           transportOrderId: fee.transportOrderId,
           commissionNum: order?.commissionNum,
           mblNum: order?.mblNum,
-          clientName: order?.clientName,
+          clientName: order?.client?.name,
           accountDate: order?.accountDate,
           etd: order?.etd,
           // polName: order?.polName,

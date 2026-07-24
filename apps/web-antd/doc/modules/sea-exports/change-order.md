@@ -2,8 +2,8 @@
 title: 更改单业务逻辑
 module: 海运出口 / 海运进口
 author: auto-doc-sync
-last_updated: 2026-07-21
-last_change: change-order-align-nosort
+last_updated: 2026-07-24
+last_change: sea-export-party-carrier-objectification
 ---
 
 # 1. 业务背景说明 (Background)
@@ -213,6 +213,7 @@ sequenceDiagram
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- |
+| 2026-07-24 | `Refactor` | 订单信息摘要委托单位/车队/船公司改读对象字段（`client?.name`、`team?.name`、`carrier?.cnShortName`）。 | 与 `SeaExportDto`/`TransportOrderDto` 对象化对齐。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-21 | `Fix` | 去掉编辑区冗余「更改单」标题；更改单费用表禁用列排序；表格左右与顶部表单统一 16px 对齐。详见 `changelogs/change-log-2026-07-21-change-order-align-nosort.md`。 | `mode=changeOrder` 关 `sortConfig` 并清列 `sortable`；去掉表内 `px-1`。 |
 | 2026-07-21 | `Feature` | 订单信息条样式精简：去右上角配置齿轮与配置弹窗；折叠为单行通栏摘要（竖线分隔、超长省略）。详见 `changelogs/change-log-2026-07-21-change-order-info-bar-style.md`。 | 仍只读 `useDisplayFieldConfig`；配置入口仅在应收应付页。 |
 | 2026-07-21 | `Feature` | 布局与操作精简：订单信息改顶部通铺（默认关键字段、可展开）；草稿态隐藏新建；删除「更多」菜单；应收/应付切换移入费用表 `toolbar-actions` 左侧。详见 `changelogs/change-log-2026-07-21-change-order-layout-toolbar.md`。 | `order-fee-table` 透传 `#toolbar-actions`；两表 `v-show` 保挂载；关键字段由 `KEY_ORDER_INFO_KEYS` 驱动。 |

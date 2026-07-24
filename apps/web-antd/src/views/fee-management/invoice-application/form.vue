@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import {computed, nextTick, onMounted, ref, watch  } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import {
   Button,
@@ -32,7 +32,6 @@ import RemarkTemplateModal from './components/RemarkTemplateModal.vue';
 import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vue';
 import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
 import FeeDetailModal from './components/FeeDetailModal.vue';
-
 
 import { ClientSelect, CurrencySelect, MyOrgSelect } from '#/adapter/component';
 import {
@@ -138,14 +137,15 @@ const {
   totalAppliedAmount,
   hasAmountDifference,
   foreignCurrencyAmount,
-} = useComputed(goodsDetails, formData, invoiceExchangeRate, selectedCurrencyCode);
-
-const { submitLoading, handleSubmit, handleDirectSubmit, handleCancel } = useSubmit(
-  formData,
+} = useComputed(
   goodsDetails,
-  isEdit,
-  editId,
+  formData,
+  invoiceExchangeRate,
+  selectedCurrencyCode,
 );
+
+const { submitLoading, handleSubmit, handleDirectSubmit, handleCancel } =
+  useSubmit(formData, goodsDetails, isEdit, editId);
 
 const { handleFeeSelectionSave } = useFeeSelectionSave(
   formData,
@@ -226,7 +226,7 @@ async function handleOpenFeeDetailModal() {
               bookingNum: parentFee.transportOrder.bookingNum || '-',
               clientName: parentFee.transportOrder.clientName,
               bizType: '-',
-              carrier: parentFee.seaExport?.carrierName || '-',
+              carrier: parentFee.seaExport?.carrier?.cnName || '-',
               company: parentFee.transportOrder.orgs?.at(-1)?.name || '-',
               feeDetails: [] as any[],
             };
@@ -243,7 +243,8 @@ async function handleOpenFeeDetailModal() {
             orderFee: fee.orderFee,
             appliedAmount: item.appliedAmount,
             settlementUnit: fee.orderFee.settlementName || '-',
-            payReceiveType: fee.orderFee.payReceiveType === 'AR' ? '应收' : '应付',
+            payReceiveType:
+              fee.orderFee.payReceiveType === 'AR' ? '应收' : '应付',
             feeName: fee.orderFee.feeCodeName || '-',
             amount: fee.orderFee.amount,
             currencyCode: fee.orderFee.currencyCode || '-',
@@ -297,13 +298,25 @@ onMounted(() => {
   <Page auto-content-height>
     <div style="margin-bottom: 16px; text-align: right">
       <Space>
-        <Button type="primary" :loading="submitLoading" @click="handleSubmit" :disabled="isReadOnly">
+        <Button
+          type="primary"
+          :loading="submitLoading"
+          @click="handleSubmit"
+          :disabled="isReadOnly"
+        >
           {{ isEdit ? '保存' : '创建' }}
         </Button>
-        <Button type="primary" :loading="submitLoading" @click="handleDirectSubmit" :disabled="isReadOnly">
+        <Button
+          type="primary"
+          :loading="submitLoading"
+          @click="handleDirectSubmit"
+          :disabled="isReadOnly"
+        >
           提交
         </Button>
-        <Button @click="handleCancel">{{ isReadOnly ? '关闭' : '取消' }}</Button>
+        <Button @click="handleCancel">{{
+          isReadOnly ? '关闭' : '取消'
+        }}</Button>
       </Space>
     </div>
 
@@ -314,12 +327,25 @@ onMounted(() => {
           <!-- 左侧基础配置 -->
           <div style="flex-shrink: 0; width: 400px">
             <Card title="基础配置" size="small">
-              <Form :model="formData" layout="vertical" :label-col="{ span: 8 }" :wrapper-col="{ span: 16 }">
+              <Form
+                :model="formData"
+                layout="vertical"
+                :label-col="{ span: 8 }"
+                :wrapper-col="{ span: 16 }"
+              >
                 <Form.Item label="归属组织" required>
-                  <MyOrgSelect v-model="formData.orgId" placeholder="请选择归属组织" style="width: 100%" />
+                  <MyOrgSelect
+                    v-model="formData.orgId"
+                    placeholder="请选择归属组织"
+                    style="width: 100%"
+                  />
                 </Form.Item>
                 <Form.Item label="开票公司">
-                  <Input :value="applicantCompanyName" disabled placeholder="根据归属组织自动获取" />
+                  <Input
+                    :value="applicantCompanyName"
+                    disabled
+                    placeholder="根据归属组织自动获取"
+                  />
                 </Form.Item>
                 <Form.Item label="开票申请人">
                   <Input :value="applicantName" disabled />
@@ -328,13 +354,31 @@ onMounted(() => {
                   <Input :value="applicationDate" disabled />
                 </Form.Item>
                 <Form.Item label="发票币别" required>
-                  <CurrencySelect v-model:value="formData.currencyId" placeholder="从费用中自动获取" style="width: 100%" disabled />
+                  <CurrencySelect
+                    v-model:value="formData.currencyId"
+                    placeholder="从费用中自动获取"
+                    style="width: 100%"
+                    disabled
+                  />
                 </Form.Item>
-                <Form.Item label="发票汇率" v-if="formData.currencyId && formData.currencyId !== 1">
-                  <InputNumber v-model:value="invoiceExchangeRate" disabled :precision="4" style="width: 100%" />
+                <Form.Item
+                  label="发票汇率"
+                  v-if="formData.currencyId && formData.currencyId !== 1"
+                >
+                  <InputNumber
+                    v-model:value="invoiceExchangeRate"
+                    disabled
+                    :precision="4"
+                    style="width: 100%"
+                  />
                 </Form.Item>
                 <Form.Item label="客户开票要求">
-                  <Input.TextArea v-model:value="formData.require" placeholder="请输入客户的特殊开票要求..." :rows="3" :disabled="isReadOnly" />
+                  <Input.TextArea
+                    v-model:value="formData.require"
+                    placeholder="请输入客户的特殊开票要求..."
+                    :rows="3"
+                    :disabled="isReadOnly"
+                  />
                 </Form.Item>
               </Form>
             </Card>

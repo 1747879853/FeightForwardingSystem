@@ -485,6 +485,19 @@ export namespace PaymentApplicationAdminApi {
     enName?: string;
   }
 
+  /** 业务单据用客户简易对象（往来单位对象化） */
+  export interface ClientSimpleDtoForOrder {
+    id: string;
+    /** 客户简称 */
+    name?: string;
+    /** 客户全称 */
+    fullName?: string;
+    /** 地址 */
+    address?: string;
+    /** 英文地址 */
+    enAddress?: string;
+  }
+
   /** 港口简要 DTO */
   export interface PortSimpleDto {
     portName?: string;
@@ -509,7 +522,8 @@ export namespace PaymentApplicationAdminApi {
     mblNum?: string;
     bookingNum?: string;
     clientId: string;
-    clientName?: string;
+    /** 委托单位（业务往来单位简易对象，无则为 null） */
+    client?: ClientSimpleDtoForOrder | null;
     polId?: number;
     polName?: string;
     pol?: PortSimpleDto;

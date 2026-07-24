@@ -61,7 +61,7 @@ last_updated: 2026-07-24
 | **客户** | 委托关联的委托客户。 | `createClientSelectSchema({ industryCategory: 'p' })` / `ClientId` | **触发/依赖：** 影响列表定位和后续编辑页的结算对象、费用、对账链路。 | 需选择有效客户主数据。 |
 | **起运港 / 目的港** | 航线节点筛选字段。 | `PortSelect` / `POLId`、`PODId` | **触发/依赖：** 与港口资料联动；列表六段港口列（收货地/起运港/中转港1/2/目的港/交货地）**单元格改为展示各自的备注字段**（`receivePortRemark` … `deliverPortRemark`，经 `formatter` 返回），但列 `field` 仍为 `*Name`，故**列头排序仍作用于各自港口字段**。 | 需选择有效港口资料。 |
 | **船名 / 航次** | 船期检索字段。 | `Vessel`、`InnerVoyno` | **触发/依赖：** 与编辑页船名航次输入保持同一字段口径。 | 文本可清空。 |
-| **船公司 / 订舱代理** | 承运与订舱服务主体。 | `CarrierSelect`、客户选择组件 `industryCategory: 'o'` | **触发/依赖：** 列表展示承运人 `carrierLogo + carrierCnShortName`（回退 `carrierName`）及订舱代理名称。 | 需选择有效基础资料或客户资料。 |
+| **船公司 / 订舱代理** | 承运与订舱服务主体。 | `CarrierSelect`、客户选择组件 `industryCategory: 'o'` | **触发/依赖：** 列表展示 `carrierLogo` + `carrier?.code`（英文简称）；订舱代理/场站/委托单位等走对象字段 `bookingAgent?.name`、`yard?.name`、`transportOrder.client?.name`（列 `field`/`fieldMap` 仍保留旧键名以便排序与列持久化）。 | 需选择有效基础资料或客户资料；对象为空显示 `--`。 |
 | **业务人员** | 销售、操作、商务、客服、单证等订单人员。 | `UserSelect` + `USER_ATTRIBUTE` 枚举 | **触发/依赖：** 列表列从 `transportOrder.orderUsers` 按角色过滤并拼接姓名。 | 需选择符合对应用户属性的用户。 |
 | **所属公司（列表列）** | 委托所属公司名称（组织串首节点）。 | 列 `orgs`；i18n `seaExport.export.organizationUnits` | **触发/依赖：** `formatter` 取 `orgs?.[0]?.name`；勿与归属组织末端 `orgs.at(-1)` 混淆。 | 无则空串。 |
 | **所属组织（筛选）** | 委托归属组织过滤条件（直属组织）。 | `MyOrgSelect` / `OrgId` | **触发/依赖：** 查询入参 `orgId`。 | 须为本人直属组织。 |
@@ -102,6 +102,7 @@ last_updated: 2026-07-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-24 | `Refactor` | 列表/复制摘要对接往来单位与船公司对象化：委托单位、订舱代理、场站、收发通、船公司改读对象字段。 | 列 `field`/`fieldMap` 保留旧键；展示用 `formatter`/`carrierWithLogo`。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-24 | `Feature` | 列表新增合同号列与 `ContractNum` 筛选；关键字占位追加合同号；复制确认摘要展示源票合同号。 | 字段挂 `transportOrder.contractNum`；复制清空由后端负责。详见 `changelogs/change-log-2026-07-24-sea-export-contract-num.md`。 |
 | 2026-07-22 | `Fix` | 列表「所属公司」改为展示 `orgs[0].name`（公司节点），不再取组织串末端。 | 与多组织约定一致：首节点=所属公司，末端=`at(-1)`=归属组织。 |
 | 2026-07-21 | `Fix` | 列表内部/外部备注对齐 `TransportOrder`：补外部备注列；筛选拆分内部备注与外部备注。 | 列路径 `transportOrder.internalRemark` / `transportOrder.remark`；查询参数 `InternalRemark` / `Remark`。详见 `changelogs/change-log-2026-07-21-sea-export-remark-transport-order.md`。 |

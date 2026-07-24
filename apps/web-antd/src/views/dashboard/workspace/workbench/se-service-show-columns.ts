@@ -57,14 +57,14 @@ const PROP_VALUE_RESOLVERS: Record<number, PropValueResolver> = {
   16: (seaExport) => formatDate(seaExport?.transportOrder?.etd),
   17: (seaExport) => formatId(seaExport?.transportOrder?.clientId),
   1001: (seaExport) =>
-    formatText(seaExport?.carrierCnShortName || seaExport?.carrierName),
+    formatText(seaExport?.carrier?.cnShortName || seaExport?.carrier?.cnName),
   1002: (seaExport) => formatText(seaExport?.polName),
   1003: (seaExport) => formatText(seaExport?.podName),
-  1010: (seaExport) => formatText(seaExport?.bookingAgentName),
-  1011: (seaExport) => formatText(seaExport?.shipAgentName),
-  1012: (seaExport) => formatText(seaExport?.yardName),
+  1010: (seaExport) => formatText(seaExport?.bookingAgent?.name),
+  1011: (seaExport) => formatText(seaExport?.shipAgent?.name),
+  1012: (seaExport) => formatText(seaExport?.yard?.name),
   1013: (seaExport) => formatText(seaExport?.codeIssueTypeName),
-  1017: (seaExport) => formatText(seaExport?.transportOrder?.clientName),
+  1017: (seaExport) => formatText(seaExport?.transportOrder?.client?.name),
 };
 
 function resolveRowValue(row: BusinessRow, propEnum: number): string {

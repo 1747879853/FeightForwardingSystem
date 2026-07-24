@@ -1872,30 +1872,21 @@ const loadEditData = async () => {
       {
         fieldName: 'shipperId',
         componentProps: {
-          selectedItems: toSelectedItems(
-            to?.shipperId,
-            (to as any)?.shipperName,
-          ),
+          selectedItems: toSelectedItems(to?.shipperId, to?.shipper?.name),
           size: 'small',
         },
       },
       {
         fieldName: 'consigneeId',
         componentProps: {
-          selectedItems: toSelectedItems(
-            to?.consigneeId,
-            (to as any)?.consigneeName,
-          ),
+          selectedItems: toSelectedItems(to?.consigneeId, to?.consignee?.name),
           size: 'small',
         },
       },
       {
         fieldName: 'notifierId',
         componentProps: {
-          selectedItems: toSelectedItems(
-            to?.notifierId,
-            (to as any)?.notifierName,
-          ),
+          selectedItems: toSelectedItems(to?.notifierId, to?.notifier?.name),
           size: 'small',
         },
       },
@@ -1904,7 +1895,7 @@ const loadEditData = async () => {
         componentProps: {
           selectedItems: toSelectedItems(
             detail.secondNotifierId,
-            detail.secondNotifierName,
+            detail.secondNotifier?.name,
           ),
           size: 'small',
         },
@@ -1914,7 +1905,7 @@ const loadEditData = async () => {
         componentProps: {
           selectedItems: toSelectedItems(
             detail.podAgentId,
-            detail.podAgentName,
+            detail.podAgent?.name,
           ),
           size: 'small',
         },
@@ -1925,7 +1916,7 @@ const loadEditData = async () => {
       {
         fieldName: 'clientId',
         componentProps: {
-          selectedItems: toSelectedItems(to?.clientId, (to as any)?.clientName),
+          selectedItems: toSelectedItems(to?.clientId, to?.client?.name),
           size: 'small',
         },
       },
@@ -1945,7 +1936,7 @@ const loadEditData = async () => {
         componentProps: {
           selectedItems: toSelectedItems(
             detail.carrierId,
-            detail.carrierCnShortName || detail.carrierName,
+            detail.carrier?.cnShortName || detail.carrier?.cnName,
             'cnShortName',
             {
               ...(detail.carrierLogo ? { logo: detail.carrierLogo } : {}),
@@ -1960,7 +1951,7 @@ const loadEditData = async () => {
         componentProps: {
           selectedItems: toSelectedItems(
             detail.shipAgentId,
-            detail.shipAgentName,
+            detail.shipAgent?.name,
           ),
           size: 'small',
         },
@@ -1970,7 +1961,7 @@ const loadEditData = async () => {
         componentProps: {
           selectedItems: toSelectedItems(
             detail.bookingAgentId,
-            detail.bookingAgentName,
+            detail.bookingAgent?.name,
           ),
           size: 'small',
         },
@@ -1979,7 +1970,7 @@ const loadEditData = async () => {
         fieldName: 'yardId',
         label: yardFieldLabelSchemaContent,
         componentProps: {
-          selectedItems: toSelectedItems(detail.yardId, detail.yardName),
+          selectedItems: toSelectedItems(detail.yardId, detail.yard?.name),
           size: 'small',
         },
       },
@@ -1999,7 +1990,7 @@ const loadEditData = async () => {
       {
         fieldName: 'teamId',
         componentProps: {
-          selectedItems: toSelectedItems(to?.teamId, (to as any)?.teamName),
+          selectedItems: toSelectedItems(to?.teamId, to?.team?.name),
           size: 'small',
         },
       },
@@ -2008,7 +1999,7 @@ const loadEditData = async () => {
         componentProps: {
           selectedItems: toSelectedItems(
             to?.custBrokerId,
-            (to as any)?.custBrokerName,
+            to?.custBroker?.name,
           ),
           size: 'small',
         },
@@ -2016,20 +2007,14 @@ const loadEditData = async () => {
       {
         fieldName: 'warehouseId',
         componentProps: {
-          selectedItems: toSelectedItems(
-            to?.warehouseId,
-            (to as any)?.warehouseName,
-          ),
+          selectedItems: toSelectedItems(to?.warehouseId, to?.warehouse?.name),
           size: 'small',
         },
       },
       {
         fieldName: 'insuranceId',
         componentProps: {
-          selectedItems: toSelectedItems(
-            to?.insuranceId,
-            (to as any)?.insuranceName,
-          ),
+          selectedItems: toSelectedItems(to?.insuranceId, to?.insurance?.name),
           size: 'small',
         },
       },

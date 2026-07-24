@@ -2,7 +2,7 @@
 title: 付款申请新增
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-07-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -51,6 +51,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-24 | `Refactor` | 添加费用抽屉业务行委托单位改读 `PayAppFeeGroupDto.client?.name`（已无扁平 `clientName`）。 | 与后端 `TransportOrderDto` 往来单位对象化对齐；`add-fee-modal`/`add-fee-statement-modal` 同步。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-12 | `Fix` | 「未结金额」改用 `unRqstPaymentAmount`；「本次结算」不得超过未结金额。 | 与编辑页共用 `add-fee-modal`；`InputNumber` 设 `max`，确认前 `validateAppliedAmounts`。 |
 | 2026-07-12 | `Fix` | 添加费用抽屉业务行父级全选不再勾选已禁选费用；组内费用均已添加时父级 Checkbox 禁用。 | `getSelectableGroupFees` 过滤 `disabledFeeIds`；`toggleGroup`/`isGroupChecked`/`isGroupIndeterminate` 仅基于可选费用。 |
 | 2026-06-28 | `Feature` | 费用合计每个币别新增结算银行下拉（来源开票信息 `GetListAsync`），默认选中默认账户、可切换、必填，选中展示开户行/账号/SWIFT；提交携带 `paymentApplicationBanks`，编辑全量替换。 | 复用 `getClientInvoiceInfoList` 扁平化 `clientInvoiceBanks`；`bankCurrencies` 区分原币/指定币别口径；`applyDefaultBankSelections` 补默认；`restoreBankSelectionsFromDetail` 从 `currencyGroup[].paymentApplicationBank` 回填；API 新增 `PaymentApplicationBank*` DTO 与 `CurrencyGroupDto.paymentApplicationBank`。 |

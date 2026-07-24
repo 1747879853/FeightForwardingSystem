@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-07-24
 ---
 
 # 1. 业务背景说明 (Background)
@@ -53,6 +53,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-24 | `Refactor` | 编辑页添加费用抽屉委托单位改读 `PayAppFeeGroupDto.client?.name`。 | 与新增页同源 `add-fee-modal`。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-12 | `Fix` | 「未结金额」改用 `unRqstPaymentAmount`；「本次结算」不得超过未结金额。 | `add-fee-modal` 列与默认值、`validateAppliedAmounts`；外侧明细 `form-data.ts` 同步字段。 |
 | 2026-07-12 | `Fix` | 外侧费用明细「本次申请金额」改为只读；编辑模式添加费用 `PayAppItemAddAsync` 成功后提示「保存成功」。 | 申请金额以抽屉 `appliedAmount` 为唯一编辑入口；移除 `onAppliedAmountChange`。 |
 | 2026-06-28 | `Feature` | 费用合计每个币别新增结算银行下拉（必填、默认选中默认账户、可切换、展示开户行/账号/SWIFT）；编辑保存经 `EditAsync` 全量替换 `paymentApplicationBanks`，详情按 `currencyGroup[].paymentApplicationBank` 回填。 | 与新增页共用 `form.vue`；`restoreBankSelectionsFromDetail` 区分原币（按币别 id）/指定币别（结算币别共享）回填；`saveEditMode` 携带银行编辑 DTO。 |

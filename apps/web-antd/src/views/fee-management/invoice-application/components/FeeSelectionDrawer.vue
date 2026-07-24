@@ -108,31 +108,27 @@ async function handleChildSelectionChange(
 }
 
 /** 处理父级选择变化（按票选择） */
-async function handleParentSelectionChange(
-  record: any,
-  selected: boolean,
-) {
+async function handleParentSelectionChange(record: any, selected: boolean) {
   if (selected) {
     // 选中父级时，自动选中所有未禁用的子级
     if (record.feeDetails && record.feeDetails.length > 0) {
       const selectableChildren = record.feeDetails
         .filter((child: any) => !child.disabled && !child.alreadyAdded)
         .map((child: any) => child.id);
-      
+
       const currentSelected = selectedFeeRowKeys.value.filter(
         (key) =>
           !record.feeDetails ||
           !record.feeDetails.some((child: any) => child.id === key),
       );
-      
+
       selectedFeeRowKeys.value = [...currentSelected, ...selectableChildren];
     }
   } else {
     // 取消选中父级时，取消所有子级的选中
     if (record.feeDetails && record.feeDetails.length > 0) {
       selectedFeeRowKeys.value = selectedFeeRowKeys.value.filter(
-        (key) =>
-          !record.feeDetails.some((child: any) => child.id === key),
+        (key) => !record.feeDetails.some((child: any) => child.id === key),
       );
     }
   }
@@ -436,7 +432,8 @@ function transformToTreeData(
     }
 
     // ✅ 计算父级是否应该被禁用（所有子级都已添加）
-    const allChildrenDisabled = childrenList.length > 0 && 
+    const allChildrenDisabled =
+      childrenList.length > 0 &&
       childrenList.every((child: any) => child.disabled || child.alreadyAdded);
 
     const parentNode: any = {
@@ -453,7 +450,7 @@ function transformToTreeData(
         getBizTypeOptions().find(
           (o: any) => o.value === item.transportOrder?.bizType,
         )?.label || '-',
-      carrier: item.seaExport?.carrierName || '-',
+      carrier: item.seaExport?.carrier?.cnName || '-',
       company: item.transportOrder.orgs?.at(-1)?.name || '-',
       checked: false,
       disabled: allChildrenDisabled, // ✅ 如果所有子级都已添加，则禁用父级复选框
@@ -737,30 +734,44 @@ defineExpose({
           }"
           :row-selection="{
             type: 'checkbox',
-            selectedRowKeys: selectedFeeRowKeys.filter(key => key.startsWith('parent_')),
+            selectedRowKeys: selectedFeeRowKeys.filter((key) =>
+              key.startsWith('parent_'),
+            ),
             getCheckboxProps: (record) => ({
               disabled: record.disabled,
             }),
             onChange: (selectedRowKeys, selectedRows) => {
               // 处理父级选择
-              const currentParentKeys = selectedRowKeys.filter(k => k.startsWith('parent_'));
-              const prevParentKeys = selectedFeeRowKeys.value.filter(k => k.startsWith('parent_'));
-              
+              const currentParentKeys = selectedRowKeys.filter((k) =>
+                k.startsWith('parent_'),
+              );
+              const prevParentKeys = selectedFeeRowKeys.value.filter((k) =>
+                k.startsWith('parent_'),
+              );
+
               // 找出新选中和取消选中的父级
-              const newlySelectedParents = currentParentKeys.filter(k => !prevParentKeys.includes(k));
-              const deselectedParents = prevParentKeys.filter(k => !currentParentKeys.includes(k));
-              
+              const newlySelectedParents = currentParentKeys.filter(
+                (k) => !prevParentKeys.includes(k),
+              );
+              const deselectedParents = prevParentKeys.filter(
+                (k) => !currentParentKeys.includes(k),
+              );
+
               // 处理新选中的父级
-              newlySelectedParents.forEach(parentKey => {
-                const parentRecord = feeGroupsData.value.find(r => r.id === parentKey);
+              newlySelectedParents.forEach((parentKey) => {
+                const parentRecord = feeGroupsData.value.find(
+                  (r) => r.id === parentKey,
+                );
                 if (parentRecord) {
                   handleParentSelectionChange(parentRecord, true);
                 }
               });
-              
+
               // 处理取消选中的父级
-              deselectedParents.forEach(parentKey => {
-                const parentRecord = feeGroupsData.value.find(r => r.id === parentKey);
+              deselectedParents.forEach((parentKey) => {
+                const parentRecord = feeGroupsData.value.find(
+                  (r) => r.id === parentKey,
+                );
                 if (parentRecord) {
                   handleParentSelectionChange(parentRecord, false);
                 }

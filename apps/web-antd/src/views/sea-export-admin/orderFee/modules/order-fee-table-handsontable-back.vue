@@ -392,7 +392,7 @@ const extractSettlementNameFromOrder = (settlementId: any): string | null => {
     transportOrder?.clientId &&
     String(transportOrder.clientId) === settlementIdStr
   ) {
-    const name = transportOrder.clientName || null;
+    const name = transportOrder.client?.name || null;
     console.log('✅ [extractSettlementNameFromOrder] 匹配委托单位:', name);
     return name;
   }
@@ -498,7 +498,7 @@ const extractSettlementNameFromOrder = (settlementId: any): string | null => {
     transportOrder?.teamId &&
     String(transportOrder.teamId) === settlementIdStr
   ) {
-    const name = transportOrder.teamName || null;
+    const name = transportOrder.team?.name || null;
     console.log('✅ [extractSettlementNameFromOrder] 匹配车队:', name);
     return name;
   }
@@ -508,7 +508,7 @@ const extractSettlementNameFromOrder = (settlementId: any): string | null => {
     transportOrder?.custBrokerId &&
     String(transportOrder.custBrokerId) === settlementIdStr
   ) {
-    const name = transportOrder.custBrokerName || null;
+    const name = transportOrder.custBroker?.name || null;
     console.log('✅ [extractSettlementNameFromOrder] 匹配报关行:', name);
     return name;
   }
@@ -518,7 +518,7 @@ const extractSettlementNameFromOrder = (settlementId: any): string | null => {
     transportOrder?.warehouseId &&
     String(transportOrder.warehouseId) === settlementIdStr
   ) {
-    const name = transportOrder.warehouseName || null;
+    const name = transportOrder.warehouse?.name || null;
     console.log('✅ [extractSettlementNameFromOrder] 匹配仓库:', name);
     return name;
   }
@@ -528,7 +528,7 @@ const extractSettlementNameFromOrder = (settlementId: any): string | null => {
     transportOrder?.insuranceId &&
     String(transportOrder.insuranceId) === settlementIdStr
   ) {
-    const name = transportOrder.insuranceName || null;
+    const name = transportOrder.insurance?.name || null;
     console.log('✅ [extractSettlementNameFromOrder] 匹配保险公司:', name);
     return name;
   }

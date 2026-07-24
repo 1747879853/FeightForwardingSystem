@@ -156,14 +156,6 @@ export namespace SeaExportAdminApi {
     codeSourceName?: string;
     codeFrtName?: string;
     codeServiceName?: string;
-    clientName?: string;
-    teamName?: string;
-    custBrokerName?: string;
-    warehouseName?: string;
-    insuranceName?: string;
-    consigneeName?: string;
-    shipperName?: string;
-    notifierName?: string;
     totalCtn?: string;
     teu?: number;
     codePackageName?: string;
@@ -211,6 +203,22 @@ export namespace SeaExportAdminApi {
 
   export interface TransportOrderDto extends TransportOrderAddDto {
     id: string;
+    /** 委托单位（业务往来单位简易对象，无则为 null） */
+    client?: ClientAdminApi.ClientDto | null;
+    /** 车队（业务往来单位简易对象，无则为 null） */
+    team?: ClientAdminApi.ClientDto | null;
+    /** 报关行（业务往来单位简易对象，无则为 null） */
+    custBroker?: ClientAdminApi.ClientDto | null;
+    /** 仓库（业务往来单位简易对象，无则为 null） */
+    warehouse?: ClientAdminApi.ClientDto | null;
+    /** 保险公司（业务往来单位简易对象，无则为 null） */
+    insurance?: ClientAdminApi.ClientDto | null;
+    /** 收货人（业务往来单位简易对象，无则为 null） */
+    consignee?: ClientAdminApi.ClientDto | null;
+    /** 发货人（业务往来单位简易对象，无则为 null） */
+    shipper?: ClientAdminApi.ClientDto | null;
+    /** 通知人（业务往来单位简易对象，无则为 null） */
+    notifier?: ClientAdminApi.ClientDto | null;
     orderUsers?: OrderUserDto[];
     bizType?: number;
     isDeleted?: boolean;
@@ -369,21 +377,21 @@ export namespace SeaExportAdminApi {
     billType?: number;
     secondNotifierId?: number;
     secondNotifierContent?: string;
-    secondNotifier?: ClientAdminApi.ClientDto;
-    secondNotifierName?: string;
+    /** 第二通知人（业务往来单位简易对象，无则为 null） */
+    secondNotifier?: ClientAdminApi.ClientDto | null;
     podAgentId?: number;
     podAgentContent?: string;
-    podAgent?: ClientAdminApi.ClientDto;
-    podAgentName?: string;
+    /** 目的港代理（业务往来单位简易对象，无则为 null） */
+    podAgent?: ClientAdminApi.ClientDto | null;
     bookingAgentId?: number;
-    bookingAgent?: ClientAdminApi.ClientDto;
-    bookingAgentName?: string;
+    /** 订舱代理（业务往来单位简易对象，无则为 null） */
+    bookingAgent?: ClientAdminApi.ClientDto | null;
     shipAgentId?: number;
-    shipAgent?: ClientAdminApi.ClientDto;
-    shipAgentName?: string;
+    /** 船代（业务往来单位简易对象，无则为 null） */
+    shipAgent?: ClientAdminApi.ClientDto | null;
     yardId?: number;
-    yard?: ClientAdminApi.ClientDto;
-    yardName?: string;
+    /** 场站（业务往来单位简易对象，无则为 null） */
+    yard?: ClientAdminApi.ClientDto | null;
     /** 场站联系人 */
     yardContact?: string;
     /** 场站邮箱 */
@@ -401,12 +409,11 @@ export namespace SeaExportAdminApi {
     vessel?: string;
     innerVoyno?: string;
     carrierId?: number;
-    carrier?: CarrierAdminApi.CarrierDto;
-    carrierName?: string;
-    /** 船公司代码 */
-    carrierCode?: string;
-    /** 船公司中文简称 */
-    carrierCnShortName?: string;
+    /**
+     * 船公司简易对象（无则为 null）。
+     * 含 cnName/cnShortName/enName/code（英文简称）/ediCode。
+     */
+    carrier?: CarrierAdminApi.CarrierDto | null;
     carrierLogo?: CarrierAdminApi.AttachmentItemDto | null;
     noBillEnum?: number;
     copyNoBillEnum?: number;

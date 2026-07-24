@@ -61,17 +61,44 @@ export namespace InvoiceApplicationAdminApi {
     etd?: string;
   }
 
+  /** 港口简易对象（PortCodeSimpleDto） */
+  export interface PortCodeSimpleDto {
+    id: number;
+    /** 英文名称 */
+    portName?: string;
+    /** 中文名称 */
+    cnName?: string;
+  }
+
+  /** 船公司简易对象（CarrierSimpleDto） */
+  export interface CarrierSimpleDto {
+    id: number;
+    /** 中文名称 */
+    cnName?: string;
+    /** 中文简称 */
+    cnShortName?: string;
+    /** 英文名称 */
+    enName?: string;
+    /** 英文简称 */
+    code?: string;
+    /** EDI 代码 */
+    ediCode?: string;
+  }
+
   /** 海运出口信息 */
   export interface SeaExportSimpleDto {
     id: string;
     vessel?: string;
     innerVoyno?: string;
     polId?: number;
-    polName?: string;
+    /** 起运港（简易对象，无则为 null） */
+    pol?: PortCodeSimpleDto | null;
     podId?: number;
-    podName?: string;
+    /** 目的港（简易对象，无则为 null） */
+    pod?: PortCodeSimpleDto | null;
     carrierId?: number;
-    carrierName?: string;
+    /** 船公司（简易对象，无则为 null） */
+    carrier?: CarrierSimpleDto | null;
   }
 
   /** 订单费用信息 */

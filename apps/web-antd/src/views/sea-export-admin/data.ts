@@ -783,6 +783,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('seaExport.export.clientId'),
       minWidth: 150,
       showOverflow: true,
+      formatter: ({ row }) => row.transportOrder?.client?.name ?? '',
     },
     {
       field: 'carrierCode',
@@ -795,12 +796,14 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       title: $t('seaExport.export.bookingAgentId'),
       minWidth: 120,
       showOverflow: true,
+      formatter: ({ row }) => row.bookingAgent?.name ?? '',
     },
     {
       field: 'yardName',
       title: $t('seaExport.export.yardId'),
       minWidth: 120,
       showOverflow: true,
+      formatter: ({ row }) => row.yard?.name ?? '',
     },
     {
       field: 'receivePortName',
@@ -959,7 +962,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       sortable: false,
       formatter: ({ row }) =>
         getPartyName(
-          row.transportOrder?.shipperName,
+          row.transportOrder?.shipper?.name,
           row.transportOrder?.shipperContent,
         ),
       showOverflow: true,
@@ -971,7 +974,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       sortable: false,
       formatter: ({ row }) =>
         getPartyName(
-          row.transportOrder?.consigneeName,
+          row.transportOrder?.consignee?.name,
           row.transportOrder?.consigneeContent,
         ),
       showOverflow: true,
@@ -983,7 +986,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       sortable: false,
       formatter: ({ row }) =>
         getPartyName(
-          row.transportOrder?.notifierName,
+          row.transportOrder?.notifier?.name,
           row.transportOrder?.notifierContent,
         ),
       showOverflow: true,
