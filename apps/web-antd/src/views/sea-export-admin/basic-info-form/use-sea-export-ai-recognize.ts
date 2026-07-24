@@ -3,13 +3,13 @@
  *
  * 负责选文件 → 调用识别接口 → 规范化 → 回填多个子表单 / 箱表 / Select 回显 /
  * 只读信息 / 服务项联动的整条链路。纯规范化策略见 ./ai-extract-utils.ts。
+ *
+ * 上传交互（弹窗拖拽）留在 `ai-extract-upload-modal.vue` / `form.vue`，
+ * 本 composable 只负责「拿到 File 之后」的识别 → 规范化 → 回填管线。
  */
 import type { ComputedRef, Ref } from 'vue';
 
 import { ref } from 'vue';
-
-// aiExtractFileInputRef / handleAiRecognize（点击隐藏 input 的 DOM 触发）留在 form.vue，
-// 本 composable 只负责「选中文件后」的识别 → 规范化 → 回填管线。
 
 import { message } from 'ant-design-vue';
 
@@ -212,18 +212,19 @@ export function useSeaExportAiRecognize(deps: UseSeaExportAiRecognizeDeps) {
     ]);
   };
 
-  const handleAiFileChange = async (event: Event) => {
-    const target = event.target as HTMLInputElement | null;
-    const file = target?.files?.[0];
-    if (!file) return;
-
+  /**
+   * 对单个文件执行 AI 识别并回填表单。
+   * @returns 是否识别并成功回填（无字段可回填视为 false）
+   */
+  const recognizeAiFile = async (file: File): Promise<boolean> => {
     if (!isAiExtractSupportedFile(file)) {
       message.warning(
         '请上传 PDF、图片（png/jpg/jpeg/bmp/tiff/webp）或 Office 文件（doc/docx/xls/xlsx/rtf）',
       );
-      if (target) target.value = '';
-      return;
+      return false;
     }
+
+    if (aiRecognizing.value) return false;
 
     aiRecognizing.value = true;
     const hideLoading = message.loading('AI识别中，请稍候...', 0);
@@ -231,7 +232,7 @@ export function useSeaExportAiRecognize(deps: UseSeaExportAiRecognizeDeps) {
       const result = await extractSeaExportToAddDto(file);
       if (result.extract?.code != null && result.extract.code !== 200) {
         message.error(result.extract.message || 'AI识别失败，请稍后重试');
-        return;
+        return false;
       }
 
       const payload = buildAiExtractFormPayload(result, {
@@ -241,7 +242,7 @@ export function useSeaExportAiRecognize(deps: UseSeaExportAiRecognizeDeps) {
       const recognizedFieldCount = payload.filledFields.length;
       if (recognizedFieldCount === 0) {
         message.warning('识别成功，但没有可回填的字段');
-        return;
+        return false;
       }
 
       applyAiExtractSelectedItems(
@@ -254,17 +255,18 @@ export function useSeaExportAiRecognize(deps: UseSeaExportAiRecognizeDeps) {
       });
 
       message.success(`AI识别完成，已回填 ${recognizedFieldCount} 个字段`);
+      return true;
     } catch {
       message.error('AI识别失败，请稍后重试');
+      return false;
     } finally {
       hideLoading();
       aiRecognizing.value = false;
-      if (target) target.value = '';
     }
   };
 
   return {
     aiRecognizing,
-    handleAiFileChange,
+    recognizeAiFile,
   };
 }

@@ -85,7 +85,7 @@ import {
   toPortSelectedItems,
   toSelectedItems,
 } from './sea-export-detail-mapper';
-import { AI_EXTRACT_ACCEPT } from './ai-extract-utils';
+import AiExtractUploadModal from './ai-extract-upload-modal.vue';
 import {
   CARGO_TYPE,
   createEmptyDgValues,
@@ -1827,7 +1827,7 @@ const updateActiveSectionByScroll = () => {
   }
 };
 
-const { aiRecognizing, handleAiFileChange } = useSeaExportAiRecognize({
+const { aiRecognizing, recognizeAiFile } = useSeaExportAiRecognize({
   formApis: {
     party: partyInfoFormApi,
     basic: basicInfoFormApi,
@@ -1849,10 +1849,14 @@ const { aiRecognizing, handleAiFileChange } = useSeaExportAiRecognize({
   syncServiceTypesByPol,
 });
 
-const aiExtractFileInputRef = ref<HTMLInputElement | null>(null);
+const aiExtractModalOpen = ref(false);
 const handleAiRecognize = () => {
   if (aiRecognizing.value) return;
-  aiExtractFileInputRef.value?.click();
+  aiExtractModalOpen.value = true;
+};
+const handleAiExtractFile = async (file: File) => {
+  const ok = await recognizeAiFile(file);
+  if (ok) aiExtractModalOpen.value = false;
 };
 
 const loadEditData = async () => {
@@ -3047,13 +3051,6 @@ defineExpose({
                       <span class="align-middle">{{ $t('common.save') }}</span>
                     </Button>
                   </Space>
-                  <input
-                    ref="aiExtractFileInputRef"
-                    type="file"
-                    :accept="AI_EXTRACT_ACCEPT"
-                    class="hidden"
-                    @change="handleAiFileChange"
-                  />
                 </div>
                 <div
                   class="content-section__header section-title-bar basic-info-header"
@@ -3628,6 +3625,11 @@ defineExpose({
         </div>
       </div>
     </Modal>
+    <AiExtractUploadModal
+      v-model:open="aiExtractModalOpen"
+      :recognizing="aiRecognizing"
+      @file="handleAiExtractFile"
+    />
     <ResultModal />
   </component>
 </template>
