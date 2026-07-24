@@ -17,7 +17,7 @@ import type {
   OrderGroupRow,
 } from './form-data';
 
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
@@ -50,7 +50,7 @@ import {
   ClientSelect,
   CurrencySelect,
   MyOrgSelect,
-  OrgBankAccountSelect,
+  OrgBankAccountLinkageSelect,
 } from '#/adapter/component';
 import {
   addStatement,
@@ -974,23 +974,21 @@ function formatMonth(val: string | undefined | null): string {
                 <div class="info-item">
                   <span class="info-label">所属组织</span>
                   <MyOrgSelect
-                    :value="orgId"
+                    v-model:model-value="orgId"
                     placeholder="请选择所属组织"
                     allow-clear
                     size="small"
-                    @update:value="(val: number | undefined) => (orgId = val)"
                   />
                 </div>
                 <!-- 新增：我司银行 -->
                 <div class="info-item">
                   <span class="info-label">我司银行</span>
-                  <OrgBankAccountSelect
-                    :value="orgBankAccountId"
+                  <OrgBankAccountLinkageSelect
+                    v-model:value="orgBankAccountId"
                     :org-id="orgId"
                     placeholder="请选择我司银行"
                     allow-clear
                     size="small"
-                    @update:value="(val) => (orgBankAccountId = val)"
                   />
                 </div>
               </div>

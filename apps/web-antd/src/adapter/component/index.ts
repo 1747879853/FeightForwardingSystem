@@ -704,6 +704,9 @@ async function initComponentAdapter() {
     OrgBankAccountSelect: defineAsyncComponent(
       () => import('./biz-select/org-bank-account-select.vue'),
     ),
+    OrgBankAccountLinkageSelect: defineAsyncComponent(
+      () => import('./biz-select/org-bank-account-linkage-select.vue'),
+    ),
     ClientBankAccountSelect: defineAsyncComponent(
       () => import('./biz-select/client-bank-account-select.vue'),
     ),
@@ -772,6 +775,7 @@ export {
   MyOrgSelect,
   OrganizationSelect,
   OrgBankAccountSelect,
+  OrgBankAccountLinkageSelect,
   RoleSelect,
   UserSelect,
   UserOrgSelect,
