@@ -16,6 +16,18 @@ export namespace StatementAdminApi {
     /** 结算完毕 */
     Settlemented = 2,
   }
+    /** 组织机构简易DTO（组织串 orgs 元素） */
+  export interface OrganizationUnitSimpleDto {
+    /** 组织id */
+    id: number;
+    /** 组织名 */
+    name?: string;
+    /** 本位币id，可空 */
+    localCurrencyId?: null | number;
+    /** 本位币编码，可空 */
+    localCurrencyCode?: null | string;
+  }
+
 
   /** 费用币别分组输出 */
   export interface StatementCurrencyDto {
@@ -88,6 +100,10 @@ export namespace StatementAdminApi {
     orgBankAccountId?: string | null;
     // 新增字段：我司银行对象
     orgBankAccount?: OrgBankAccountSimpleDto | null;
+
+    orgId?: number;
+
+    orgs?: OrganizationUnitSimpleDto[];
   }
 
   /** 附件项 DTO（详情输出） */
@@ -130,6 +146,7 @@ export namespace StatementAdminApi {
     creatorUserId?: number;
     id?: string;
     attachments?: AttachmentItemForItemInputDto[];
+    orgId?: number;
     // 新增字段：我司银行id（非必填）
     orgBankAccountId?: string | null;
   }
@@ -146,6 +163,7 @@ export namespace StatementAdminApi {
     remark?: string;
     attachments?: AttachmentItemForItemInputDto[];
     // 新增字段：我司银行id（非必填，传null表示清空）
+    orgId?: number;
     orgBankAccountId?: string | null;
   }
 
@@ -192,6 +210,7 @@ export namespace StatementAdminApi {
     InvoiceStatus?: number | null;
     // 新增字段：结算状态筛选（0=未结算，1=部分结算，2=结算完毕）
     SettlementStatus?: number | null;
+    orgId?: number;
     // 新增字段：我司银行id精确筛选
     OrgBankAccountId?: string | null;
   }
