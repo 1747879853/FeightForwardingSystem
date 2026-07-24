@@ -71,6 +71,8 @@ export namespace InvoiceApplicationApi {
     bookingNum?: string;
     clientName: string;
     etd?: string;
+    /** 海运出口信息（根据文档，现在挂在此处） */
+    seaExport?: SeaExportSimpleDto;
     [key: string]: any;
   }
 
@@ -129,7 +131,6 @@ export namespace InvoiceApplicationApi {
   /** 开票申请费用分组输出DTO */
   export interface InvoiceApplicationFeeGroupOutputDto {
     transportOrder: TransportOrderSimpleDto;
-    seaExport?: SeaExportSimpleDto;
     orderFees: OrderFeeSimpleDto[];
   }
 

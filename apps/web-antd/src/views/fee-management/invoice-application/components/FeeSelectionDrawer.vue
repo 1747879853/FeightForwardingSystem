@@ -440,7 +440,7 @@ function transformToTreeData(
       id: `parent_${item.transportOrder.id}`,
       parentId: null,
       transportOrder: item.transportOrder,
-      seaExport: item.seaExport,
+      seaExport: item.transportOrder?.seaExport,
       orderFees: item.orderFees,
       commissionNum: item.transportOrder.commissionNum,
       mblNum: item.transportOrder.mblNum || '-',
@@ -450,7 +450,7 @@ function transformToTreeData(
         getBizTypeOptions().find(
           (o: any) => o.value === item.transportOrder?.bizType,
         )?.label || '-',
-      carrier: item.seaExport?.carrier?.cnName || '-',
+      carrier: item.transportOrder?.seaExport?.carrier?.cnName || '-',
       company: item.transportOrder.orgs?.at(-1)?.name || '-',
       checked: false,
       disabled: allChildrenDisabled, // ✅ 如果所有子级都已添加，则禁用父级复选框
