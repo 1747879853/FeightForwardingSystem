@@ -59,6 +59,11 @@ const columns = [
     dataIndex: 'settlementName',
     title: '付款方',
     minWidth: 150,
+    customRender: ({
+      record,
+    }: {
+      record: BankStatementAdminApi.BankStatementListDto;
+    }) => record.settlement?.name || '-',
   },
   {
     dataIndex: 'creatorUserName',

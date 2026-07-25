@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { ClientAppApi } from '#/api/common/client';
 import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlement-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { Attachment } from '#/api/common/upload';
@@ -67,6 +68,8 @@ const settlementTime = ref(dayjs());
 const payType = ref<number | undefined>(undefined);
 const settlementId = ref<string>('');
 const settlementName = ref('');
+/** ClientSelect 编辑回显（详情 settlement） */
+const settlementSelectedItems = ref<ClientAppApi.ClientSimpleDto[]>([]);
 const currencyId = ref<number | undefined>(undefined);
 const currencyCode = ref('');
 const orgBankAccountId = ref<string | undefined>(undefined);
@@ -781,7 +784,16 @@ async function loadEditData() {
     settlementTime.value = dayjs(detail.settlementTime);
     payType.value = detail.payType;
     settlementId.value = detail.settlementId;
-    settlementName.value = detail.settlementName;
+    settlementName.value = detail.settlement?.name ?? '';
+    settlementSelectedItems.value = detail.settlement?.id
+      ? [
+          {
+            fullName: detail.settlement.fullName,
+            id: detail.settlement.id,
+            name: detail.settlement.name ?? '',
+          },
+        ]
+      : [];
     currencyId.value = detail.currencyId;
     currencyCode.value = detail.currencyCode || '';
     transactionFee.value = detail.transactionFee;
@@ -945,7 +957,7 @@ async function loadEditData() {
               applicationNo: app.applicationNo,
               status: 3, // 已审核通过
               settlementId: detail.settlementId,
-              clientName: detail.settlementName,
+              clientName: app.settlement?.name ?? detail.settlement?.name ?? '',
               currencyCode: app.currencyGroup?.[0]?.code || '',
               currencyId: app.currencyGroup?.[0]?.id, // 从 currencyGroup 中获取第一个币别的ID
               creatorUserName: detail.creatorUserName,
@@ -1296,13 +1308,21 @@ function convertCurrencyGroupForDetailToSettlement(
 /** 监听结算对象变化，更新名称并清空银行信息 */
 watch(settlementId, async (newVal) => {
   if (newVal) {
-    // 获取客户详情以获取名称
-    try {
-      const { getClientDetail } = await import('#/api/sea-export/client-admin');
-      const detail = await getClientDetail(newVal);
-      settlementName.value = detail.name || detail.fullName || '';
-    } catch (error) {
-      console.error('获取客户详情失败:', error);
+    // 详情已带回结算对象时无需再拉客户详情
+    const cached = settlementSelectedItems.value.find(
+      (item) => String(item.id) === String(newVal),
+    );
+    if (cached) {
+      settlementName.value = cached.name || cached.fullName || '';
+    } else {
+      try {
+        const { getClientDetail } =
+          await import('#/api/sea-export/client-admin');
+        const detail = await getClientDetail(newVal);
+        settlementName.value = detail.name || detail.fullName || '';
+      } catch (error) {
+        console.error('获取客户详情失败:', error);
+      }
     }
   } else {
     settlementName.value = '';
@@ -1447,6 +1467,7 @@ onMounted(() => {
                 </div>
                 <ClientSelect
                   v-model="settlementId"
+                  :selected-items="settlementSelectedItems"
                   placeholder="请选择结算对象"
                   allow-clear
                   disabled

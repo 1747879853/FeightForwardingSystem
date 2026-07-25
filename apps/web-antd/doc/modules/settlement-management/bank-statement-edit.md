@@ -2,7 +2,7 @@
 title: 银行流水编辑
 module: 结算管理
 author: Cursor Agent
-last_updated: 2026-07-19
+last_updated: 2026-07-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -35,7 +35,7 @@ last_updated: 2026-07-19
 | :-- | :-- | :-- | :-- | :-- |
 | **可核销操作人** | 指定除流水创建人外可执行核销的人员。 | **银行流水**<br/>`DetailAsync`、`EditAsync`<br/>**用户**<br/>`GetUserAsync` | 按 `operationId` 异步解析并优先展示 `nickName`，接口异常时回退到流水详情名称。 | 仅待核销状态可维护；最终授权由后端校验。 |
 | **核销状态** | 流水与收费结算金额匹配程度。 | **银行流水**<br/>`DetailAsync.writeOffStatus` | 编辑页流水号旁 Tag 只读展示。 | 只读。 |
-| **付款方** | 流水对应的结算对象（客户）。 | **银行流水**<br/>`DetailAsync` | 变更付款方时清空对方银行。 | 必填。 |
+| **付款方** | 流水对应的结算对象（客户）。 | **银行流水**<br/>`DetailAsync` → `settlement`（`id`/`name`/`fullName`/`address`） | 变更付款方时清空对方银行；编辑回显用详情 `settlement` 构造 `ClientSelect` 的 `selected-items`；顶部摘要与底部选费区的付款方均取 `settlement?.name` 快照。 | 必填；对象可能为 `null`，展示需兜底。 |
 | **关联收费结算** | 基于本流水创建的收费核销单。 | **银行流水**<br/>`GetReceiveSettlementPagedListAsync` | 双击按 `type` 打开对应编辑抽屉；抽屉内保存、增删明细、锁定、解锁或删除后刷新外层汇总与列表。 | 主界面只读。 |
 | **剩余可核销** | 流水金额减已核销净额。 | **银行流水详情 + 关联核销列表** | 核销抽屉发生变更后重新加载。 | 新建核销合计不能超过剩余可核销金额。 |
 
@@ -51,6 +51,7 @@ last_updated: 2026-07-19
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-25 | `Refactor` | 付款方改读结算对象对象化后的 `settlement`；编辑进入时下拉直接回显付款方，不再依赖分页命中。 | 详情 `settlementName` 已删除，`applySavedBankStatementSnapshot` 与顶部摘要统一取 `detail.settlement?.name`；`ClientSelect` 补 `selected-items`（通用 Client 接口无 Detail，回显必须外部传入）。 |
 | 2026-07-19 | `Fix` | 金额输入移除遮挡数字的步进箭头；补充信息增加明确的折叠提示；可核销操作人统一显示昵称；移除顶部重复的新建核销入口和关联列表操作列，改为双击行进入抽屉；抽屉修改结算后同步刷新外层数据；开票申请选择区默认仅查询可结算数据，并将查询、重置按钮与条件同行排列。 | 新建核销统一从关联核销单区域进入；操作人名称通过 `GetUserAsync` 解析并缓存昵称；嵌入式结算表单的保存、增删明细、锁定、解锁和删除统一向工作台发送变更事件；开票申请查询固定传 `onlySettleable: true`。 |
 | 2026-07-16 | `Feature` | 页面改为财务核销工作台：增加流水/已核销/剩余汇总；仅待核销可编辑流水；新增和编辑核销统一迁入抽屉；关联区收敛为核销单核心列表；操作人明确为可核销操作人。 | 收费核销与发票结算表单增加 `embeddedId`/`embedded` 复用模式；详情缺创建人 ID，创建财务的核销授权需后端最终校验。 |
 | 2026-07-14 | `Feature` | 关联收费核销支持展示/进入发票结算（type 列、按类型双击跳转、展开区按类型渲染明细、删除分流）；底部新增 `Segmented` 切换，可按开票申请创建发票结算。 | `bank-statement-admin.ReceiveSettlementListDto` 补 `type`；新增 `create-settlement-invoice-panel.vue`（复用 `add-invoice-application-drawer/data`）；`form-data` 增类型/收付 helper 与开票明细只读列；`utils` 增 `mapReceiveSettlementInvoiceDetailItem`；净额用 `toNetAmount` 计算。 |

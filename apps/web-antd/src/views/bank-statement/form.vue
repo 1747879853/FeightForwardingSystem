@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import type { ClientAppApi } from '#/api/common/client';
+
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
@@ -76,6 +78,8 @@ const messageText = ref('');
 const orgBankAccountId = ref<string | undefined>(undefined);
 const orgId = ref<number | undefined>(getMyDefaultOrgId());
 const settlementId = ref<string>('');
+/** ClientSelect 编辑回显（详情 settlement） */
+const settlementSelectedItems = ref<ClientAppApi.ClientSimpleDto[]>([]);
 const clientInvoiceBankId = ref<string | undefined>(undefined);
 /** 已落库的流水快照，供底部选费区使用（不随未保存的表单编辑变化） */
 const savedSettlementId = ref<string>('');
@@ -184,7 +188,7 @@ function applySavedBankStatementSnapshot(
   detail: BankStatementAdminApi.BankStatementDetailDto,
 ) {
   savedSettlementId.value = detail.settlementId;
-  savedSettlementName.value = detail.settlementName || '';
+  savedSettlementName.value = detail.settlement?.name || '';
   savedCurrencyId.value = detail.currencyId;
   savedCurrencyCode.value = detail.currencyCode || '';
   savedAmount.value = detail.amount ?? 0;
@@ -245,6 +249,15 @@ async function loadEditData() {
     orgBankAccountId.value = detail.orgBankAccountId;
     orgId.value = detail.orgId ?? undefined;
     settlementId.value = detail.settlementId;
+    settlementSelectedItems.value = detail.settlement?.id
+      ? [
+          {
+            fullName: detail.settlement.fullName,
+            id: detail.settlement.id,
+            name: detail.settlement.name ?? '',
+          },
+        ]
+      : [];
     clientInvoiceBankId.value = detail.clientInvoiceBankId;
     writeOffStatus.value = detail.writeOffStatus;
     basicInfoExpanded.value =
@@ -603,6 +616,7 @@ onUnmounted(() => {
                 </div>
                 <ClientSelect
                   v-model="settlementId"
+                  :selected-items="settlementSelectedItems"
                   :disabled="!canEditStatement"
                   placeholder="请选择付款方"
                   allow-clear

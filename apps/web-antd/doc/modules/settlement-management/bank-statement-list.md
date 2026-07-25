@@ -2,7 +2,7 @@
 title: 银行流水列表
 module: 财务管理
 author: Cursor Agent
-last_updated: 2026-07-11
+last_updated: 2026-07-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -27,7 +27,7 @@ last_updated: 2026-07-11
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **操作人** | 该流水的可见操作人，多人以 `/` 拼接展示。 | **银行流水**<br/>`GetPagedListAsync`<br/>**用户**<br/>`UserAdmin/GetUserAsync`（名称补齐） | 接口 `operationName` 为空时，列表查询后按 `operationId` 异步拉用户姓名写入行数据再渲染。 | 只读展示。 |
-| **付款方** | 流水对应的结算对象名称。 | `GetPagedListAsync` → `settlementName` | — | — |
+| **付款方** | 流水对应的结算对象（客户简易对象）。 | `GetPagedListAsync` → `settlement`（`id`/`name`/`fullName`/`address`） | 列 `field` 仍为 `settlementName`（保留排序与列持久化键），展示走 `formatter` 取 `settlement?.name`。 | 对象可能为 `null`，需空值兜底。 |
 | **已结算金额** | 该流水下所有收费结算的总结算金额（收为正、付为负）。 | `GetPagedListAsync` → `settledAmount` | 后端冗余字段，前端只读展示。 | — |
 | **核销状态** | 流水与收费结算的核销进度。 | `GetPagedListAsync` → `writeOffStatus`（枚举 `BankStatementWriteOffStatus`） | 0 待核销 / 1 部分核销 / 2 核销完成；列表以 Tag 展示，查询区可筛选。 | — |
 | **创建人** | 流水创建人姓名。 | `GetPagedListAsync` → `creatorUserName` | — | — |
@@ -40,6 +40,7 @@ last_updated: 2026-07-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-25 | `Refactor` | 「付款方」列改读结算对象对象化后的 `settlement.name`，接口不再返回 `settlementName`。 | 列 `field` 保留 `settlementName` 以维持排序字段映射与列配置持久化，取值改由 `formatter` 读 `row.settlement?.name`。 |
 | 2026-07-11 | `Refactor` | 侧边栏从独立顶级菜单迁入「财务管理」分组；路由定义移至 `settlement-management.ts`，path `/bank-statement` 不变。 | 删除独立 `bank-statement.ts` 模块文件，以嵌套子路由挂载在财务管理下。 |
 | 2026-06-29 | `Feature` | 列表新增「已结算金额」「核销状态」列；查询区支持按核销状态筛选。收费核销页「银行流水」Tab 同步展示与筛选。 | 列与筛选项定义在 `views/bank-statement/data.ts`，Admin 列表与权限过滤 Tab 共用；核销状态 Tag 通过 `#writeOffStatus` 插槽渲染。 |
 | 2026-06-20 | `Fix` | 列表「操作人」列改为展示用户姓名；接口缺 `operationName` 时异步补齐，与编辑页逻辑统一至 `utils.ts`。 | `enrichBankStatementListItems` 对当前页 `operationId` 去重后批量请求，避免 N 次重复 `GetUserAsync`。 |

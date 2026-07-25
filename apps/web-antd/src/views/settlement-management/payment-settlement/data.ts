@@ -109,6 +109,7 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       field: 'settlementName',
       title: '结算对象',
       minWidth: 150,
+      formatter: ({ row }) => row.settlement?.name || '-',
     },
     {
       field: 'currencyCode',
