@@ -40,6 +40,7 @@ import {
   unSubmitPreOrder,
 } from '#/api/pre-order/pre-order-admin';
 import { getClientDetail } from '#/api/sea-export/client-admin';
+import { getOrganizationUnit } from '#/api/system/organization-unit';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
@@ -68,6 +69,10 @@ import {
 import AuditModal from './modules/audit-modal.vue';
 import CtnTable from './modules/ctn-table.vue';
 import FeeTable from './modules/fee-table.vue';
+import {
+  checkPreOrderFees,
+  normalizePreOrderFeeUnit,
+} from './modules/fee-unit';
 import ServicePanel from './modules/service-panel.vue';
 import {
   applyClientDefaultPreOrderUsers,
@@ -176,6 +181,31 @@ const [PartyForm, partyFormApi] = useVbenForm({
 /** 服务候选依赖起运港与委托单位，需实时跟随表单值（对齐海出：字段 onChange 直传，不依赖 Form @change） */
 const currentPolId = ref<number | string | undefined>();
 const currentClientId = ref<string | undefined>();
+/** 收发通 id，费用「结算对象类别」带出结算对象时用 */
+const currentShipperId = ref<string | undefined>();
+const currentConsigneeId = ref<string | undefined>();
+const currentNotifierId = ref<string | undefined>();
+
+/** 费用表行业类别 → 结算对象映射上下文 */
+const feeParties = computed(() => ({
+  clientId: currentClientId.value,
+  shipperId: currentShipperId.value,
+  consigneeId: currentConsigneeId.value,
+  notifierId: currentNotifierId.value,
+}));
+
+/** 货物计量，费用单位=重量/体积时按此带出数量 */
+const feeCargo = ref<{
+  cbm?: null | number;
+  kgs?: null | number;
+}>({});
+/** 归属组织本位币，费用行币别命中时汇率锁 1 */
+const localCurrencyId = ref<null | number>(null);
+
+function toOptionalStringId(value: unknown): string | undefined {
+  if (value == null || value === '') return undefined;
+  return String(value);
+}
 
 function toOptionalId(value: unknown): number | string | undefined {
   if (value == null || value === '') return undefined;
@@ -320,9 +350,64 @@ function bindClientUserLinkage() {
       fieldName: 'clientId',
       componentProps: {
         onChange: (value: unknown) => {
-          currentClientId.value =
-            value == null || value === '' ? undefined : String(value);
+          currentClientId.value = toOptionalStringId(value);
           void applyClientDefaultUsersByClientId(value);
+        },
+      },
+    },
+  ]);
+}
+
+function toOptionalNumber(value: unknown): null | number {
+  if (value == null || value === '') return null;
+  const num = Number(value);
+  return Number.isNaN(num) ? null : num;
+}
+
+/** 毛重/体积变更：供费用按单位（重量/体积）带出数量 */
+function bindCargoMetricsLinkage() {
+  cargoFormApi.updateSchema(
+    (['kgs', 'cbm'] as const).map((fieldName) => ({
+      fieldName,
+      componentProps: {
+        onChange: (value: unknown) => {
+          feeCargo.value = {
+            ...feeCargo.value,
+            [fieldName]: toOptionalNumber(
+              (value as { target?: { value?: unknown } })?.target?.value ??
+                value,
+            ),
+          };
+        },
+      },
+    })),
+  );
+}
+
+/** 收发通变更：供费用结算对象按行业类别带出 */
+function bindPartySettlementLinkage() {
+  partyFormApi.updateSchema([
+    {
+      fieldName: 'shipperId',
+      componentProps: {
+        onChange: (value: unknown) => {
+          currentShipperId.value = toOptionalStringId(value);
+        },
+      },
+    },
+    {
+      fieldName: 'consigneeId',
+      componentProps: {
+        onChange: (value: unknown) => {
+          currentConsigneeId.value = toOptionalStringId(value);
+        },
+      },
+    },
+    {
+      fieldName: 'notifierId',
+      componentProps: {
+        onChange: (value: unknown) => {
+          currentNotifierId.value = toOptionalStringId(value);
         },
       },
     },
@@ -407,6 +492,7 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     kgs: dto.kgs,
     cbm: dto.cbm,
   });
+  feeCargo.value = { kgs: dto.kgs, cbm: dto.cbm };
   ctns.value = (dto.preOrderCtns ?? []).map((item) => ({
     ...item,
     rowKey: nextRowKey('ctn'),
@@ -425,11 +511,18 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
       serviceType: Number(item.serviceType),
       sortId: item.sortId,
     }));
+  // 历史数据可能存着海出口径的「毛重/尺码」，后端识别不了会算成 0，回显时先归一
   fees.value = (dto.preOrderFees ?? []).map((item) => ({
     ...item,
+    unit: normalizePreOrderFeeUnit(item.unit) || undefined,
     rowKey: nextRowKey('fee'),
   }));
-  currentClientId.value = dto.clientId;
+  currentClientId.value = dto.clientId ? String(dto.clientId) : undefined;
+  currentShipperId.value = dto.shipperId ? String(dto.shipperId) : undefined;
+  currentConsigneeId.value = dto.consigneeId
+    ? String(dto.consigneeId)
+    : undefined;
+  currentNotifierId.value = dto.notifierId ? String(dto.notifierId) : undefined;
   currentPolId.value = dto.polId ?? undefined;
 }
 
@@ -454,9 +547,29 @@ async function loadDetail() {
   }
 }
 
+/** 归属组织变化后解析其本位币，费用行币别命中时汇率锁 1 */
+watch(
+  headerOrgId,
+  async (orgId) => {
+    if (orgId == null) {
+      localCurrencyId.value = null;
+      return;
+    }
+    try {
+      const org = await getOrganizationUnit(Number(orgId));
+      localCurrencyId.value = org?.localCurrencyId ?? null;
+    } catch {
+      localCurrencyId.value = null;
+    }
+  },
+  { immediate: true },
+);
+
 onMounted(async () => {
   applyTransitPortTabSchema();
   bindClientUserLinkage();
+  bindPartySettlementLinkage();
+  bindCargoMetricsLinkage();
   const copyFrom = route.query.copyFrom ? String(route.query.copyFrom) : '';
   if (preOrderId.value) {
     await loadDetail();
@@ -550,6 +663,22 @@ function validateUsers(): boolean {
   return true;
 }
 
+/**
+ * 费用行体检：审核通过时后端只转换三要素齐全的行，并按单位重算数量金额，
+ * `strict` 用于提交审核前硬拦截，保存草稿时只提示。
+ */
+function validateFees(strict: boolean): boolean {
+  const ctnNames = ctns.value
+    .map((row) => row.ctnCodeName)
+    .filter((name): name is string => !!name);
+  const { errors, warnings } = checkPreOrderFees(fees.value, ctnNames);
+  // 条数可能很多，只提示前几条，避免刷屏
+  for (const text of warnings.slice(0, 3)) message.warning(text);
+  if (errors.length === 0) return true;
+  for (const text of errors.slice(0, 5)) message.error(text);
+  return !strict;
+}
+
 async function validateForms(): Promise<boolean> {
   if (!headerOrgId.value) {
     message.warning('请选择归属组织');
@@ -568,6 +697,7 @@ async function validateForms(): Promise<boolean> {
 async function handleSave() {
   if (!(await validateForms())) return;
   if (!validateUsers()) return;
+  validateFees(false);
   saving.value = true;
   try {
     const payload = await buildSubmitPayload();
@@ -604,6 +734,8 @@ async function runAction(action: () => Promise<unknown>, successText: string) {
 }
 
 function handleSubmitAudit() {
+  // 审核通过即按当前费用生成应收应付，缺三要素的行会被后端静默丢弃，先拦下来
+  if (!validateFees(true)) return;
   Modal.confirm({
     title: '提交审核',
     content: '提交后业务联系单将不可修改，确认提交？',
@@ -947,7 +1079,14 @@ const getContentTabStyle = (isActive: boolean) =>
                       </span>
                     </div>
                   </template>
-                  <FeeTable v-model="fees" :ctns="ctns" :readonly="readonly" />
+                  <FeeTable
+                    v-model="fees"
+                    :ctns="ctns"
+                    :parties="feeParties"
+                    :cargo="feeCargo"
+                    :local-currency-id="localCurrencyId"
+                    :readonly="readonly"
+                  />
                 </Card>
               </section>
             </div>

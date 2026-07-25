@@ -13,8 +13,12 @@
 
 ## 2026-07
 
+- [2026-07-25 业务联系单费用单位对齐后端重算契约](./changelogs/change-log-2026-07-25-pre-order-fee-unit-contract.md)
+- [2026-07-25 业务联系单费用逻辑对齐海运出口应收应付](./changelogs/change-log-2026-07-25-pre-order-fee-align-sea-export.md)
+- [2026-07-25 业务联系单费用补齐 PreOrderFeeAddDto 字段与联动](./changelogs/change-log-2026-07-25-pre-order-fee-dto-fields.md)
 - [2026-07-25 打印文件地址强制走后端端口](./changelogs/change-log-2026-07-25-print-format-backend-static-url.md)
 - [2026-07-25 付款申请编辑结算对象回显补 selectedItems](./changelogs/change-log-2026-07-25-payment-application-settlement-selected-items.md)
+- [2026-07-25 业务联系单费用新增默认 USD 与箱型卖价/箱量带出](./changelogs/change-log-2026-07-25-pre-order-fee-add-defaults.md)
 - [2026-07-25 业务联系单箱型箱量表去掉 scroll.y 修表头留白](./changelogs/change-log-2026-07-25-pre-order-ctn-table-header-align.md)
 - [2026-07-25 业务联系单服务项流水线改为未执行样式](./changelogs/change-log-2026-07-25-pre-order-service-pipeline-upcoming.md)
 - [2026-07-25 业务联系单归属组织取销售组织 + 委托单位带出干系人](./changelogs/change-log-2026-07-25-pre-order-org-and-client-users.md)
