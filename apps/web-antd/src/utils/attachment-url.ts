@@ -21,21 +21,38 @@ export function getApiRootUrl() {
 }
 
 /**
- * 获取静态文件（如打印生成的 PDF `/PrintTempFile`）的后端根地址。
- * - 生产环境：VITE_GLOB_API_URL 去掉 /api 后缀
- * - 开发环境：VITE_GLOB_STATIC_URL（不能用 localhost，需指向真实后端）
- * 未配置时返回空字符串。
+ * 解析可用的后端静态根地址（绝对 URL，不含末尾 /）。
+ * 禁止回退到前端 `window.location.origin`。
  */
-export function getStaticFileOrigin() {
-  if (import.meta.env.PROD) {
-    return removeApiSuffix(apiURL);
+function resolveBackendStaticOrigin() {
+  const candidates = [
+    // 开发优先显式静态根；生产/未配时用 API 根
+    import.meta.env.PROD
+      ? ''
+      : (import.meta.env.VITE_GLOB_STATIC_URL as string) || '',
+    apiURL,
+  ];
+  for (const candidate of candidates) {
+    const origin = removeApiSuffix(candidate);
+    if (origin && PROTOCOL_URL_REGEXP.test(origin)) {
+      return origin;
+    }
   }
-  const devStatic = (import.meta.env.VITE_GLOB_STATIC_URL as string) || '';
-  return devStatic ? removeApiSuffix(devStatic) : '';
+  return '';
 }
 
 /**
- * 拼接静态文件访问地址：优先使用后端静态根地址，避免开发环境落到 localhost。
+ * 获取静态文件（如打印生成的 PDF `/PrintTempFile`）的后端根地址。
+ * - 开发环境：优先 `VITE_GLOB_STATIC_URL`，否则从绝对 `VITE_GLOB_API_URL` 推导
+ * - 生产环境：`VITE_GLOB_API_URL` 去掉 `/api`
+ * 未得到绝对后端地址时返回空字符串（不会回退前端端口）。
+ */
+export function getStaticFileOrigin() {
+  return resolveBackendStaticOrigin();
+}
+
+/**
+ * 拼接静态文件访问地址：必须指向后端端口，禁止拼到前端 origin。
  */
 export function buildStaticFileUrl(url?: string) {
   if (!url) return '';
@@ -44,9 +61,8 @@ export function buildStaticFileUrl(url?: string) {
   }
   const origin = getStaticFileOrigin();
   const path = url.startsWith('/') ? url : `/${url}`;
-  return origin
-    ? `${trimTrailingSlash(origin)}${path}`
-    : buildAttachmentUrl(url);
+  // 无后端绝对根时仍返回相对 path，由调用方感知失败；切勿用前端端口冒充
+  return origin ? `${trimTrailingSlash(origin)}${path}` : path;
 }
 
 /**

@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-25 打印文件地址强制走后端端口](./changelogs/change-log-2026-07-25-print-format-backend-static-url.md)
 - [2026-07-25 付款申请编辑结算对象回显补 selectedItems](./changelogs/change-log-2026-07-25-payment-application-settlement-selected-items.md)
 - [2026-07-25 业务联系单箱型箱量表去掉 scroll.y 修表头留白](./changelogs/change-log-2026-07-25-pre-order-ctn-table-header-align.md)
 - [2026-07-25 业务联系单服务项流水线改为未执行样式](./changelogs/change-log-2026-07-25-pre-order-service-pipeline-upcoming.md)
