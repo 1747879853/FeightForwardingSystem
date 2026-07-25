@@ -168,10 +168,6 @@ const pageWrapperProps = computed(() =>
         contentClass: '!p-0',
       },
 );
-const emit = defineEmits<{
-  sectionChange: [key: SectionKey];
-}>();
-
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
   if (Array.isArray(id)) return id[0];
@@ -1633,7 +1629,6 @@ const sectionRefs = {
   cargo: ref<HTMLElement | null>(null),
   party: ref<HTMLElement | null>(null),
 } as const;
-const currentSection = ref<SectionKey>('basic');
 const refreshPortLabelTargets = () => {
   nextTick(() => {
     // 本页可被业务联系单内嵌，其港口区块结构相同，需限定在本组件的港口区块内查找
@@ -1772,27 +1767,6 @@ const scrollToSection = (key: SectionKey) => {
   if (!el) return;
   const top = el.getBoundingClientRect().top + window.scrollY - 150;
   window.scrollTo({ top, behavior: 'smooth' });
-  if (currentSection.value !== key) {
-    currentSection.value = key;
-    emit('sectionChange', key);
-  }
-};
-
-const updateActiveSectionByScroll = () => {
-  const order: SectionKey[] = ['basic', 'party', 'shipment', 'port', 'cargo'];
-  const offset = 190;
-  let current: SectionKey = 'basic';
-  for (const key of order) {
-    const el = sectionRefs[key].value;
-    if (!el) continue;
-    if (el.getBoundingClientRect().top <= offset) {
-      current = key;
-    }
-  }
-  if (currentSection.value !== current) {
-    currentSection.value = current;
-    emit('sectionChange', current);
-  }
 };
 
 const { aiRecognizing, recognizeAiFile } = useSeaExportAiRecognize({
@@ -2561,17 +2535,10 @@ onMounted(() => {
   applyNotifierPartyTabSchema();
   void initialize();
   scheduleCargoMainLayoutHeightSync();
-  nextTick(() => {
-    updateActiveSectionByScroll();
-  });
-  window.addEventListener('scroll', updateActiveSectionByScroll, {
-    passive: true,
-  });
   window.addEventListener('resize', syncCargoMainLayoutHeight);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('scroll', updateActiveSectionByScroll);
   window.removeEventListener('resize', syncCargoMainLayoutHeight);
   cargoLayoutResizeObserver?.disconnect();
   cargoLayoutResizeObserver = null;

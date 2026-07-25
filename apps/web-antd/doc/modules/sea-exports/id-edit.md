@@ -25,7 +25,7 @@ last_updated: 2026-07-25
 
 - **工作台标签导航：** `editor.vue` 维护顶部标签，当前可见：基础信息、应收应付、更改单、**附件**、派车、分单、运踪信息。已挂载组件的标签均可进入对应子页；**服务详情 / 单证信息 / 问题记录 / 修改历史** 暂从顶部导航隐藏（代码中注释保留，便于恢复）。「服务详情 / 单证信息」原为滚动定位到基础信息表单内船期/港口区块，隐藏页签后区块内容仍在「基础信息」页内可编辑。
 - **基础信息字段布局：** 船名/航次使用 `VesselVoyageInput`，海出侧比例 **3:2**；运输条款/贸易条款合并为 `ServiceTradeTermsInput`（内部 1:1，字段仍为 `codeServiceId` + `tradeTermsType`）；**订舱代理**（`bookingAgentId`）与船公司/船代/场站一并迁入基础信息区，排在船代之后、车队之前；**签单地点 / 签单日期** 表单 `hidden`（模型保留可提交）；应收应付与更改单左侧「海运出口信息」面板不再展示签单日期。
-- **工作台 Tab 记忆：** 切换顶部标签时，按当前委托 ID 将 `activeTab` 写入 `sessionStorage`（键经 `buildBrandStorageKey` 品牌隔离）；再次进入同一票编辑页时自动恢复离开前的 Tab。切换不同委托 ID 时各自独立记忆；关闭浏览器标签后会话清空，下次默认回到「基础信息」。
+- **工作台 Tab 记忆：** 切换顶部标签时，按当前委托 ID 将 `activeTab` 写入 `sessionStorage`（键经 `buildBrandStorageKey` 品牌隔离）；再次进入同一票编辑页时自动恢复离开前的 Tab。仅恢复当前可见且有对应面板的 Tab key；关闭浏览器标签后会话清空，下次默认回到「基础信息」。基础信息表单内滚动**不再**改写工作台 `activeTab`（已移除分区 Tab 双向联动）。
 - **浏览器标签栏标题：** 由嵌入的 `form.vue` 通过 `useSeaExportTabTitle` 动态设置：有主提单号显示「海运出口-{主提单号}」，否则显示「海运出口-{委托编号}」；主提单号录入或详情回填后实时更新。
 - **基础信息维护：** 基础信息标签内复用 `form.vue` 的编辑态，以 `embedded` 模式嵌入工作台；详情来自 `getSeaExportDetail`，保存调用 `editSeaExport`。
 - **AI 识别辅助：** 与新建页共用 `form.vue` 顶栏「AI识别」：点击弹出拖拽上传区，支持 PDF/图片/Word/Excel/RTF（doc/docx/xls/xlsx/rtf）；放入文件后自动对接 TextIn `ExtractSeaExportToAddDtoAsync`；识别结果覆盖回填（空值/0/空 Guid 跳过），成功后关窗。
@@ -66,7 +66,8 @@ last_updated: 2026-07-25
 | 基础信息编辑中 | 点击取消 | 返回列表 | 跳转 `/sea-exports`。 |
 | 基础信息编辑中 | 点击复制并确认 | 新票编辑页 | 若有未保存修改先警告；调 `CopyAsync` 后 `replace` 至 `/sea-exports/{newId}/edit`。 |
 | 任意工作台状态 | 切换顶部标签 | 写入 Tab 记忆 | `activeTab` 按委托 ID 存入 `sessionStorage`。 |
-| 再次进入编辑页 | 组件挂载 / `editId` 变化 | 恢复离开前 Tab | 读取有效 `TabKey`；无记录或非法值时回退「基础信息」。 |
+| 再次进入编辑页 | 组件挂载 / `editId` 变化 | 恢复离开前 Tab | 仅读取当前可见且有面板的 `TabKey`；无记录或非法/已隐藏值时回退「基础信息」。 |
+| 基础信息内滚动 | 用户滚动表单分区 | 停留当前 Tab | 不再通过 `sectionChange` 改写工作台 `activeTab`，避免切到已隐藏 key 导致空白页。 |
 | 任意工作台状态 | 切换到费用标签 | 费用列表加载 | `OrderFee` 以运输单 ID 查询费用明细，并可维护应收/应付。 |
 | 费用录入状态 | 提交审核 | 提交审核 | 费用状态由录入进入审核链路，审核结果在费用审核模块处理。 |
 | 费用提交审核 | 审核通过 | 审核通过 | 费用可进入后续开票、付款、对账、结算链路。 |
@@ -127,6 +128,7 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-25 | `Fix` | 移除基础信息滚动与顶部 Tab 联动；隐藏 Tab key 不再参与记忆恢复，避免空白页。 | 分区 Tab 隐藏后 `onSectionChange` 仍把 `shipment`/`port` 写入 `activeTab` 且无面板；表单侧 scroll 监听与 `sectionChange` 一并删除。详见 `changelogs/change-log-2026-07-25-sea-export-remove-section-tab-sync.md`。 |
 | 2026-07-25 | `Perf` | 箱型选择从 `CtnSelect` option 取名称写入行，选中时不再请求箱型详情 | 原路径：只写 `ctnCodeId` → `syncCtnNameMap` 缺名打 `DetailAsync`；现 `@change` 同步 `ctnCodeName` + 本地汇总 map |
 | 2026-07-25 | `Parsing` | 无 | 运踪订阅字段独立清单：请求仅 `seaExportIds`；编辑页行上下文仅结果展示。详见 [yundang-subscribe-fields.md](./yundang-subscribe-fields.md)。 |
 | 2026-07-24 | `Feature` | 「AI识别」改为点击弹窗拖拽上传，放入文件后自动开始识别，成功回填后关窗。 | 与新建页共用 `ai-extract-upload-modal.vue` + `recognizeAiFile`。详见 `changelogs/change-log-2026-07-24-sea-export-ai-extract-drag-upload-modal.md`。 |
