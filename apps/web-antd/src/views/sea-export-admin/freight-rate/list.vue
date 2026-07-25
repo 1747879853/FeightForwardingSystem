@@ -1306,7 +1306,7 @@ async function onAIBatchAdd() {
             @click="onAIBatchAdd"
           >
             <IconifyIcon icon="mdi:robot-outline" class="size-5" />
-            AI批量新增(Gemini)
+            AI批量新增
           </Button>
 
           <!-- 批量编辑按钮 -->
