@@ -1,7 +1,9 @@
 import type { VbenFormSchema } from '#/adapter/form';
+import type { PortFormSchemaOptions } from '#/views/sea-export-admin/data';
 
 import { $t } from '#/locales';
 import {
+  buildPortSelectProps,
   getCargoTypeOptions,
   getTradeTermsTypeOptions,
 } from '#/views/sea-export-admin/data';
@@ -65,18 +67,6 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'Select',
-      fieldName: 'cargoId',
-      label: '货物类型',
-      defaultValue: 0,
-      rules: 'selectRequired',
-      componentProps: {
-        options: getCargoTypeOptions(),
-        placeholder: $t('ui.placeholder.select'),
-        class: 'w-full',
-      },
-    },
-    {
       component: 'CodeServiceSelect',
       fieldName: 'codeServiceId',
       label: '运输条款',
@@ -120,46 +110,100 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
   ];
 }
 
-/** 港口与航线 */
-export function usePreOrderPortSchema(): VbenFormSchema[] {
+/** 港口备注字段名（与港口 id 字段一一对应，选中港口后自动回填） */
+export const PRE_ORDER_PORT_REMARK_FIELDS: Record<string, string> = {
+  receivePortId: 'receivePortRemark',
+  polId: 'polRemark',
+  pot1Id: 'pot1Remark',
+  pot2Id: 'pot2Remark',
+  podId: 'podRemark',
+  deliverPortId: 'deliverPortRemark',
+};
+
+/**
+ * 港口信息（对齐海运出口）
+ * 货物流转节点按顺序展示：收货地 -> 起运港 -> 中转港（Tab 切换 1/2） -> 目的港 -> 交货地，
+ * 每个节点下方带英文大写备注输入。
+ */
+export function usePreOrderPortSchema(
+  options?: PortFormSchemaOptions,
+): VbenFormSchema[] {
+  const { onPortChange } = options ?? {};
+  const remarkItem = (
+    fieldName: string,
+    formItemClass: string,
+  ): VbenFormSchema => ({
+    component: 'EnglishUpperTextarea',
+    fieldName,
+    label: '',
+    componentProps: { allowClear: true, rows: 1 },
+    formItemClass,
+  });
   return [
     {
       component: 'PortSelect',
       fieldName: 'receivePortId',
-      label: '收货地',
-      componentProps: { allowClear: true, class: 'w-full' },
+      label: $t('seaExport.export.receivePortId'),
+      componentProps: buildPortSelectProps('receivePortId', onPortChange),
+      formItemClass: 'port-flow-item port-flow-pos--receive',
     },
     {
       component: 'PortSelect',
       fieldName: 'polId',
-      label: '起运港',
+      label: $t('seaExport.export.polId'),
       rules: 'selectRequired',
-      componentProps: { allowClear: true, class: 'w-full' },
+      componentProps: buildPortSelectProps('polId', onPortChange),
+      formItemClass: 'port-flow-item port-flow-pos--pol',
     },
     {
       component: 'PortSelect',
       fieldName: 'pot1Id',
-      label: '中转港1',
-      componentProps: { allowClear: true, class: 'w-full' },
+      label: '',
+      componentProps: buildPortSelectProps('pot1Id', onPortChange),
+      formItemClass:
+        'port-flow-item port-flow-item--transit port-flow-pos--transit',
     },
     {
       component: 'PortSelect',
       fieldName: 'pot2Id',
-      label: '中转港2',
-      componentProps: { allowClear: true, class: 'w-full' },
+      label: '',
+      componentProps: buildPortSelectProps('pot2Id', onPortChange),
+      formItemClass:
+        'port-flow-item port-flow-item--transit port-flow-item--transit-secondary port-flow-pos--transit',
     },
     {
       component: 'PortSelect',
       fieldName: 'podId',
-      label: '目的港',
-      componentProps: { allowClear: true, class: 'w-full' },
+      label: $t('seaExport.export.podId'),
+      componentProps: buildPortSelectProps('podId', onPortChange),
+      formItemClass: 'port-flow-item port-flow-pos--pod',
     },
     {
       component: 'PortSelect',
       fieldName: 'deliverPortId',
-      label: '交货地',
-      componentProps: { allowClear: true, class: 'w-full' },
+      label: $t('seaExport.export.deliverPortId'),
+      componentProps: buildPortSelectProps('deliverPortId', onPortChange),
+      formItemClass:
+        'port-flow-item port-flow-item--last port-flow-pos--deliver',
     },
+    remarkItem(
+      'receivePortRemark',
+      'port-flow-remark port-flow-pos--receive-remark',
+    ),
+    remarkItem('polRemark', 'port-flow-remark port-flow-pos--pol-remark'),
+    remarkItem(
+      'pot1Remark',
+      'port-flow-remark port-flow-remark--transit port-flow-pos--transit-remark',
+    ),
+    remarkItem(
+      'pot2Remark',
+      'port-flow-remark port-flow-remark--transit port-flow-remark--transit-secondary port-flow-pos--transit-remark',
+    ),
+    remarkItem('podRemark', 'port-flow-remark port-flow-pos--pod-remark'),
+    remarkItem(
+      'deliverPortRemark',
+      'port-flow-remark port-flow-pos--deliver-remark',
+    ),
   ];
 }
 
@@ -194,32 +238,91 @@ export function usePreOrderPartySchema(): VbenFormSchema[] {
   ];
 }
 
-/** 货物计量（箱型箱量表在编辑页同卡片下挂载） */
+/**
+ * 货物类型 / 品名（对齐海运出口：挂在「货物与箱型」卡片标题栏内联展示）
+ * 表单内品名用 number[]（codeGoodsId），提交时再映射为 preOrderCodeGoodss
+ */
+export function usePreOrderCargoTypeInlineSchema(): VbenFormSchema[] {
+  return [
+    {
+      component: 'Select',
+      fieldName: 'cargoId',
+      label: '',
+      hideLabel: true,
+      defaultValue: 0,
+      rules: 'selectRequired',
+      formItemClass: 'cargo-type-inline-item cargo-type-inline-item--cargo',
+      componentProps: {
+        allowClear: true,
+        options: getCargoTypeOptions(),
+        placeholder: '请选择货物类型',
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'CodeGoodsSelect',
+      fieldName: 'orderCodeGoodss',
+      label: '',
+      hideLabel: true,
+      formItemClass: 'cargo-type-inline-item cargo-type-inline-item--goods',
+      componentProps: {
+        mode: 'multiple',
+        showNameWithHsCode: true,
+        placeholder: $t('seaExport.export.pleaseSelectGoods'),
+        allowClear: true,
+      },
+    },
+  ];
+}
+
+/**
+ * 货物计量（件数 / 包装 / 毛重 / 尺码）。
+ * 编辑页右侧垂直排列，对齐海运出口 cargo-metrics-wrap。
+ */
 export function usePreOrderCargoSchema(): VbenFormSchema[] {
   return [
     {
       component: 'InputNumber',
       fieldName: 'pkgs',
       label: '件数',
-      componentProps: { class: 'w-full', min: 0, precision: 0 },
+      formItemClass: 'cargo-metrics-item cargo-metrics-item--pkgs',
+      componentProps: {
+        class: 'w-full',
+        min: 0,
+        controls: false,
+        precision: 0,
+      },
     },
     {
       component: 'CodePackageSelect',
       fieldName: 'codePackageId',
       label: '包装',
+      formItemClass: 'cargo-metrics-item cargo-metrics-item--code-package',
       componentProps: { allowClear: true, class: 'w-full' },
     },
     {
       component: 'InputNumber',
       fieldName: 'kgs',
       label: '毛重(KGS)',
-      componentProps: { class: 'w-full', min: 0, precision: 3 },
+      formItemClass: 'cargo-metrics-item cargo-metrics-item--kgs',
+      componentProps: {
+        class: 'w-full',
+        min: 0,
+        controls: false,
+        precision: 3,
+      },
     },
     {
       component: 'InputNumber',
       fieldName: 'cbm',
       label: '尺码(CBM)',
-      componentProps: { class: 'w-full', min: 0, precision: 3 },
+      formItemClass: 'cargo-metrics-item cargo-metrics-item--cbm',
+      componentProps: {
+        class: 'w-full',
+        min: 0,
+        controls: false,
+        precision: 3,
+      },
     },
   ];
 }

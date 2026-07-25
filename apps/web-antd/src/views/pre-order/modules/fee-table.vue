@@ -15,6 +15,8 @@ import {
   Tooltip,
 } from 'ant-design-vue';
 
+import { IconifyIcon } from '@vben/icons';
+
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
 import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
@@ -146,12 +148,13 @@ function handlePaySideChange(row: PreOrderFeeRow, paySide: number) {
   recalcAmount(row);
 }
 
-function handleAdd(paySide: number) {
+/** 新增一行费用，默认应收；收付可在行内切换 */
+function handleAdd() {
   dataSource.value = [
     ...dataSource.value,
     {
       rowKey: createRowKey(),
-      paySide,
+      paySide: 0,
       unit: '票',
       quantity: 1,
       taxRate: 0,
@@ -197,19 +200,39 @@ const totals = computed(() => {
 
 <template>
   <div>
-    <Space v-if="!props.readonly" class="mb-2">
-      <Button size="small" type="primary" @click="handleAdd(0)">
-        添加应收
-      </Button>
-      <Button size="small" @click="handleAdd(1)">添加应付</Button>
-      <Button
-        size="small"
-        danger
-        :disabled="selectedRowKeys.length === 0"
-        @click="handleRemove"
-      >
-        删除
-      </Button>
+    <Space v-if="!props.readonly" class="mb-2" :size="8">
+      <Tooltip title="添加费用">
+        <Button
+          type="text"
+          size="small"
+          class="!flex !h-7 !w-7 !items-center !justify-center !rounded-md !bg-[#e6f4ff] !p-0 transition-all hover:scale-105 hover:!bg-[#bae0ff]"
+          @click="handleAdd"
+        >
+          <IconifyIcon icon="mdi:add-box" class="text-[18px] text-[#1677ff]" />
+        </Button>
+      </Tooltip>
+      <Tooltip title="删除">
+        <Button
+          type="text"
+          size="small"
+          :class="[
+            '!flex !h-7 !w-7 !items-center !justify-center !rounded-md !p-0 transition-all',
+            selectedRowKeys.length
+              ? '!bg-[#fff1f0] hover:scale-105 hover:!bg-[#ffccc7]'
+              : '!bg-[#f5f5f5]',
+          ]"
+          :disabled="selectedRowKeys.length === 0"
+          @click="handleRemove"
+        >
+          <IconifyIcon
+            icon="mdi:close-box"
+            :class="[
+              'text-[18px]',
+              selectedRowKeys.length ? 'text-[#ff4d4f]' : 'text-[#bfbfbf]',
+            ]"
+          />
+        </Button>
+      </Tooltip>
       <span class="text-xs text-gray-500">
         应收费用单位选箱型时，含税单价取该箱型卖价、数量取箱量，均不可修改
       </span>

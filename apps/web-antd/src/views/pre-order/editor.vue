@@ -6,7 +6,7 @@ import type { PreOrderFeeRow } from './modules/fee-table.vue';
 import type { PreOrderServiceRow } from './modules/service-panel.vue';
 import type { PreOrderUserRow } from './modules/user-defaults';
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
@@ -42,12 +42,18 @@ import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
-import { getBlTypeOptions } from '#/views/sea-export-admin/data';
+import {
+  formatSeaExportPortRemark,
+  getBlTypeOptions,
+  pickPortSelectOption,
+} from '#/views/sea-export-admin/data';
 import SeaExportEditor from '#/views/sea-export-admin/editor.vue';
 
 import {
+  PRE_ORDER_PORT_REMARK_FIELDS,
   usePreOrderBasicSchema,
   usePreOrderCargoSchema,
+  usePreOrderCargoTypeInlineSchema,
   usePreOrderPartySchema,
   usePreOrderPortSchema,
   USER_ATTRIBUTE,
@@ -141,20 +147,93 @@ const [PartyForm, partyFormApi] = useVbenForm({
   wrapperClass: 'party-flow-wrap form-controls-small grid-cols-3 gap-x-4',
 });
 
+/** PortSelect @change：把港口的 portName, countryEnName 回填到对应备注 */
+function handlePortSelectChange(
+  fieldName: string,
+  _value: unknown,
+  option: unknown,
+) {
+  const remarkField = PRE_ORDER_PORT_REMARK_FIELDS[fieldName];
+  if (!remarkField) return;
+  const remark = formatSeaExportPortRemark(pickPortSelectOption(option)?.raw);
+  if (!remark) return;
+  void portFormApi.setFieldValue(remarkField, remark);
+}
+
 const [PortForm, portFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
-  schema: usePreOrderPortSchema(),
+  schema: usePreOrderPortSchema({ onPortChange: handlePortSelectChange }),
   showDefaultActions: false,
-  wrapperClass: 'port-flow-wrap form-controls-small grid-cols-6 gap-x-4',
+  wrapperClass: 'port-flow-wrap form-controls-small grid-cols-5 gap-x-8',
 });
+
+/** 中转港 1/2 共用一列，通过 label 内联 Tab 切换（与海运出口一致） */
+const transitPortTab = ref<'pot1' | 'pot2'>('pot1');
+const transitPortLabelTarget = ref<HTMLElement | null>(null);
+
+function refreshTransitPortLabelTarget() {
+  void nextTick(() => {
+    transitPortLabelTarget.value = document.querySelector(
+      '.pre-order-port-section .port-flow-item--transit:not(.port-flow-item--hidden) > label',
+    ) as HTMLElement | null;
+  });
+}
+
+function applyTransitPortTabSchema() {
+  const isPot1Active = transitPortTab.value === 'pot1';
+  portFormApi.updateSchema([
+    {
+      fieldName: 'pot1Id',
+      formItemClass: `port-flow-item port-flow-item--transit port-flow-pos--transit${
+        isPot1Active ? '' : ' port-flow-item--hidden'
+      }`,
+    },
+    {
+      fieldName: 'pot2Id',
+      formItemClass: `port-flow-item port-flow-item--transit port-flow-item--transit-secondary port-flow-pos--transit${
+        isPot1Active ? ' port-flow-item--hidden' : ''
+      }`,
+    },
+    {
+      fieldName: 'pot1Remark',
+      formItemClass: `port-flow-remark port-flow-remark--transit port-flow-pos--transit-remark${
+        isPot1Active ? '' : ' port-flow-item--hidden'
+      }`,
+    },
+    {
+      fieldName: 'pot2Remark',
+      formItemClass: `port-flow-remark port-flow-remark--transit port-flow-remark--transit-secondary port-flow-pos--transit-remark${
+        isPot1Active ? ' port-flow-item--hidden' : ''
+      }`,
+    },
+  ]);
+  refreshTransitPortLabelTarget();
+}
+
+function switchTransitPortTab(tab: 'pot1' | 'pot2') {
+  if (transitPortTab.value === tab) return;
+  transitPortTab.value = tab;
+  applyTransitPortTabSchema();
+}
 
 const [CargoForm, cargoFormApi] = useVbenForm({
   layout: 'vertical',
   compact: true,
   schema: usePreOrderCargoSchema(),
   showDefaultActions: false,
-  wrapperClass: 'cargo-main-wrap form-controls-small grid-cols-4 gap-x-4',
+  /** 右侧竖排件数/包装/毛重/尺码，对齐海运出口 cargo-metrics */
+  wrapperClass: 'cargo-metrics-wrap form-controls-small grid-cols-1',
+});
+
+/** 货物类型 / 品名：对齐海运出口，挂在「货物与箱型」卡片标题栏 */
+const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
+  layout: 'horizontal',
+  compact: true,
+  schema: usePreOrderCargoTypeInlineSchema(),
+  showDefaultActions: false,
+  commonConfig: { labelWidth: 0 },
+  wrapperClass: 'form-controls-small grid-cols-2 gap-x-3',
 });
 
 /** 只读态同步到各表单 commonConfig.disabled */
@@ -166,6 +245,7 @@ watch(
     void partyFormApi.setState(state);
     void portFormApi.setState(state);
     void cargoFormApi.setState(state);
+    void cargoTypeInlineFormApi.setState(state);
   },
   { immediate: true },
 );
@@ -194,7 +274,6 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   void basicFormApi.setValues({
     clientId: dto.clientId,
     mblNum: dto.mblNum,
-    cargoId: dto.cargoId,
     codeServiceId: dto.codeServiceId,
     tradeTermsType: dto.tradeTermsType,
     codeFrtId: dto.codeFrtId,
@@ -210,11 +289,23 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   });
   void portFormApi.setValues({
     receivePortId: dto.receivePortId,
+    receivePortRemark: dto.receivePortRemark,
     polId: dto.polId,
+    polRemark: dto.polRemark,
     pot1Id: dto.pot1Id,
+    pot1Remark: dto.pot1Remark,
     pot2Id: dto.pot2Id,
+    pot2Remark: dto.pot2Remark,
     podId: dto.podId,
+    podRemark: dto.podRemark,
     deliverPortId: dto.deliverPortId,
+    deliverPortRemark: dto.deliverPortRemark,
+  });
+  void cargoTypeInlineFormApi.setValues({
+    cargoId: dto.cargoId ?? 0,
+    orderCodeGoodss: (dto.preOrderCodeGoodss ?? [])
+      .map((item) => item.codeGoodsId)
+      .filter((id): id is number => id != null),
   });
   void cargoFormApi.setValues({
     pkgs: dto.pkgs,
@@ -270,6 +361,7 @@ async function loadDetail() {
 }
 
 onMounted(async () => {
+  applyTransitPortTabSchema();
   const copyFrom = route.query.copyFrom ? String(route.query.copyFrom) : '';
   if (preOrderId.value) {
     await loadDetail();
@@ -288,23 +380,30 @@ onMounted(async () => {
 });
 
 async function buildSubmitPayload() {
-  const [basicValues, partyValues, portValues, cargoValues] = await Promise.all(
-    [
+  const [basicValues, partyValues, portValues, cargoValues, cargoTypeValues] =
+    await Promise.all([
       basicFormApi.getValues(),
       partyFormApi.getValues(),
       portFormApi.getValues(),
       cargoFormApi.getValues(),
-    ],
-  );
+      cargoTypeInlineFormApi.getValues(),
+    ]);
+  const orderCodeGoodss = (cargoTypeValues.orderCodeGoodss ?? []) as Array<
+    number | null | undefined
+  >;
   return {
     bizType: PreOrderBizType.SeaExport,
     ...basicValues,
     ...partyValues,
     ...portValues,
     ...cargoValues,
+    cargoId: cargoTypeValues.cargoId ?? 0,
     orgId: headerOrgId.value,
     blType: headerBlType.value ?? 0,
     preOrderNum: undefined,
+    preOrderCodeGoodss: orderCodeGoodss
+      .filter((id): id is number => id != null)
+      .map((codeGoodsId) => ({ codeGoodsId })),
     preOrderCtns: ctns.value.map(
       ({ rowKey, ctnCodeName, ctnCode, ...rest }) => ({
         ...rest,
@@ -366,6 +465,7 @@ async function validateForms(): Promise<boolean> {
     partyFormApi.validate(),
     portFormApi.validate(),
     cargoFormApi.validate(),
+    cargoTypeInlineFormApi.validate(),
   ]);
   return results.every((item) => item.valid);
 }
@@ -497,7 +597,7 @@ const getContentTabStyle = (isActive: boolean) =>
 
 <template>
   <Page auto-content-height content-class="!p-0">
-    <div class="flex min-w-0 flex-1 flex-col">
+    <div class="pre-order-editor-page flex min-h-0 min-w-0 flex-1 flex-col">
       <div class="content-tabs" :style="contentTabsStyle">
         <span
           class="content-tab"
@@ -518,8 +618,11 @@ const getContentTabStyle = (isActive: boolean) =>
         </span>
       </div>
 
-      <Spin :spinning="loading">
-        <div v-show="activeTab === 'basic'" class="sea-export-form-page">
+      <Spin :spinning="loading" class="pre-order-editor-spin">
+        <div
+          v-show="activeTab === 'basic'"
+          class="sea-export-form-page pre-order-basic-page"
+        >
           <div class="main-layout">
             <div class="center-column">
               <div class="content-column">
@@ -669,20 +772,51 @@ const getContentTabStyle = (isActive: boolean) =>
                   </div>
                 </section>
 
-                <section class="content-section">
+                <section class="content-section pre-order-port-section">
                   <div class="content-section__header section-title-bar">
                     <span class="card-title card-title--on-primary">
                       <MapPin class="size-4" />
-                      港口与航线
+                      港口信息
                     </span>
                   </div>
                   <div class="content-section__body">
                     <PortForm @change="syncServiceContext" />
+                    <Teleport
+                      v-if="transitPortLabelTarget"
+                      :to="transitPortLabelTarget"
+                    >
+                      <span
+                        class="transit-port-inline-switch transit-port-inline-switch--in-label"
+                      >
+                        <button
+                          type="button"
+                          class="transit-port-tabs__item"
+                          :class="{
+                            'transit-port-tabs__item--active':
+                              transitPortTab === 'pot1',
+                          }"
+                          @click.stop="switchTransitPortTab('pot1')"
+                        >
+                          中转港1
+                        </button>
+                        <button
+                          type="button"
+                          class="transit-port-tabs__item"
+                          :class="{
+                            'transit-port-tabs__item--active':
+                              transitPortTab === 'pot2',
+                          }"
+                          @click.stop="switchTransitPortTab('pot2')"
+                        >
+                          中转港2
+                        </button>
+                      </span>
+                    </Teleport>
                   </div>
                 </section>
               </div>
 
-              <section>
+              <section class="pre-order-cargo-section">
                 <Card class="cargo-container-card">
                   <template #title>
                     <div class="cargo-container-card__title section-title-bar">
@@ -690,16 +824,23 @@ const getContentTabStyle = (isActive: boolean) =>
                         <Package class="size-4" />
                         货物与箱型
                       </span>
+                      <div class="cargo-type-inline-wrap">
+                        <CargoTypeInlineForm />
+                      </div>
                     </div>
                   </template>
-                  <CargoForm />
-                  <div class="cargo-ctn-section">
-                    <CtnTable v-model="ctns" :readonly="readonly" />
+                  <div class="cargo-main-layout">
+                    <div class="cargo-main-layout__left">
+                      <CtnTable v-model="ctns" :readonly="readonly" />
+                    </div>
+                    <div class="cargo-main-layout__right">
+                      <CargoForm />
+                    </div>
                   </div>
                 </Card>
               </section>
 
-              <section>
+              <section class="pre-order-fee-section">
                 <Card class="cargo-container-card">
                   <template #title>
                     <div class="cargo-container-card__title section-title-bar">
@@ -740,3 +881,108 @@ const getContentTabStyle = (isActive: boolean) =>
 </template>
 
 <style scoped src="../sea-export-admin/basic-info-form/form.css"></style>
+
+<style scoped>
+/* 业务联系单：基础 Tab 占满 Page 高度，货物卡片吃掉费用区之上的剩余高度 */
+.pre-order-editor-page {
+  height: 100%;
+}
+
+.pre-order-editor-spin {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pre-order-editor-page :deep(.pre-order-editor-spin.ant-spin-nested-loading),
+.pre-order-editor-page :deep(.pre-order-editor-spin .ant-spin-container) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.pre-order-basic-page {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pre-order-basic-page :deep(.main-layout) {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pre-order-basic-page :deep(.center-column) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pre-order-basic-page :deep(.content-column) {
+  flex-shrink: 0;
+}
+
+.pre-order-cargo-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 220px;
+  overflow: hidden;
+}
+
+.pre-order-cargo-section :deep(.cargo-container-card) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.pre-order-cargo-section :deep(.ant-card-head) {
+  flex-shrink: 0;
+}
+
+.pre-order-cargo-section :deep(.ant-card-body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pre-order-cargo-section :deep(.cargo-main-layout) {
+  flex: 1;
+  align-items: stretch;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pre-order-cargo-section :deep(.cargo-main-layout__left) {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pre-order-cargo-section :deep(.cargo-main-layout__right) {
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.pre-order-fee-section {
+  flex-shrink: 0;
+}
+
+.pre-order-basic-page :deep(.right-column) {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+</style>

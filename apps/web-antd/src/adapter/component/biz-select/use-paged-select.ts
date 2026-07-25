@@ -49,6 +49,8 @@ export interface PagedSelectOptions<T = any> {
 export interface UsePagedSelectReturn {
   /** 提供给 ApiComponent 的 api 函数 */
   api: () => Promise<OptionItem[]>;
+  /** 从已加载缓存（含 pinned）中查找 option；命中说明无需再请求详情 */
+  findCachedOption: (value: number | string) => OptionItem | undefined;
   /** 是否还有更多数据 */
   hasMore: ComputedRef<boolean>;
   /** 处理下拉框滚动，用于加载下一页 */
@@ -417,6 +419,7 @@ export function usePagedSelect<T = any>(
 
   return {
     api,
+    findCachedOption,
     hasMore,
     handleDropdownVisibleChange,
     handlePopupScroll,

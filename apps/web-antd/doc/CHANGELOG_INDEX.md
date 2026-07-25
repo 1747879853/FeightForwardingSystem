@@ -13,6 +13,13 @@
 
 ## 2026-07
 
+- [2026-07-25 业务联系单箱型选择改为从 option 取名称](./changelogs/change-log-2026-07-25-pre-order-ctn-name-from-option.md)
+- [2026-07-25 业务联系单箱型箱量表格铺满剩余高度并内部滚动](./changelogs/change-log-2026-07-25-pre-order-ctn-table-fill-height.md)
+- [2026-07-25 业务联系单箱型箱量工具栏对齐费用区](./changelogs/change-log-2026-07-25-pre-order-ctn-toolbar-align-fee.md)
+- [2026-07-25 业务联系单港口信息对齐海运出口流转卡片展示](./changelogs/change-log-2026-07-25-pre-order-port-flow-layout.md)
+- [2026-07-25 业务联系单货物与箱型改为左右布局并对齐海出增删图标](./changelogs/change-log-2026-07-25-pre-order-cargo-ctn-layout.md)
+- [2026-07-25 业务联系单费用工具栏合并添加并改用海出 icon](./changelogs/change-log-2026-07-25-pre-order-fee-toolbar-icons.md)
+- [2026-07-25 业务联系单货物类型/品名对齐海运出口内联样式](./changelogs/change-log-2026-07-25-pre-order-cargo-type-inline.md)
 - [2026-07-25 业务联系单前端全量实现（列表/编辑/审核/工作台）](./changelogs/change-log-2026-07-25-pre-order-frontend.md)
 - [2026-07-25 更改单船公司 Logo 改用全局附件地址拼接](./changelogs/change-log-2026-07-25-change-order-carrier-logo-url.md)
 - [2026-07-24 海运出口 AI 识别改为弹窗拖拽上传](./changelogs/change-log-2026-07-24-sea-export-ai-extract-drag-upload-modal.md)

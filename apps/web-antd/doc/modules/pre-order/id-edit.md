@@ -14,7 +14,7 @@ last_updated: 2026-07-25
 # 2. 功能与操作说明 (Features & Operations)
 
 - **Tab 结构：** 顶部两个 Tab，样式与海运出口编辑器一致。
-  - **基础信息**：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题 meta 区展示业务编号/状态并内嵌「归属组织」「装运方式」选择器；主栏分区（基础信息 + 收发通 + 港口）+ 下方货物/箱型、费用卡片；右侧干系人默认五角色（销售/商务(航线)/操作/客服/单证），每行带用户头像。
+  - **基础信息**：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题 meta 区展示业务编号/状态并内嵌「归属组织」「装运方式」选择器；主栏分区（基础信息 + 收发通 + 港口信息，港口区为海出同款 5 列流转卡片：收货地 → 起运港 → 中转港（Tab 切 1/2） → 目的港 → 交货地，每个节点下方带备注）+ 下方「货物与箱型」（标题栏内联货物类型/品名；卡片内左右分栏：左箱型箱量表 + 右竖排件数/包装/毛重/尺码）、费用卡片；右侧干系人默认五角色（销售/商务(航线)/操作/客服/单证），每行带用户头像。
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现，内嵌完整可编辑的海运出口编辑器。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`。新增成功后 `replace` 到编辑路由并重新拉详情。
 - **提交审核：** 二次确认后调用 `SubmitAsync`，进入「待审核」，整单转只读。
@@ -24,6 +24,7 @@ last_updated: 2026-07-25
 - **审核流程：** 任意已保存单据可点「审核流程」，复用 `workflow-timeline`，`taskType = TaskType.PreOrder(8)`。
 - **复制预填：** 带 `?copyFrom=<id>` 进入新建页时拉源单详情预填，清掉单号与子表主键。
 - **按钮权限：** 保存 / 提交审核 / 撤回按 `Admin.PreOrder.Add`、`Admin.PreOrder.Edit` 控制；三个审核类按钮需要 `Admin.PreOrder.Audit`。
+- **费用工具栏：** 可编辑时提供单一「添加」与「删除」icon 按钮（样式对齐海运出口箱型箱量）；新增行默认应收，收付在行内切换；须先勾选行再删。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -44,7 +45,11 @@ last_updated: 2026-07-25
 | **归属组织** | 数据权限归属 | **组织**<br/>`UserOrgSelect`（位于标题 meta 区，不在表单内） | 默认取当前用户组织 | **必填**（保存前手动校验，非表单 rules） |
 | **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect` | **触发：** 变更后重算服务项候选池（客户排除项） | **必填** |
 | **起运港** | POL | **港口**<br/>`PortSelect` | **触发：** 变更后重算服务项候选池；为空时服务项区不可用 | **必填**（后端生成海运出口时也校验） |
-| **装运方式 / 货物类型** | 整箱拼箱、普货冻柜危品 | `getBlTypeOptions` / `getCargoTypeOptions`（复用海运出口） | —— | **必填** |
+| **中转港1 / 中转港2** | POT1 / POT2 | **港口**<br/>`PortSelect` | **展示：** 共用第 3 列，通过 label 内联 Tab 切换，隐藏的一侧仍保留已填值并随保存提交 | 非必填 |
+| **港口备注（6 个）** | 收货地/起运港/中转港1/中转港2/目的港/交货地备注 | 手填（`EnglishUpperTextarea`） | **触发：** 选中对应港口后自动回填 `PORTNAME, COUNTRYENNAME`；手工改过的值不会被再次覆盖 | 英文自动转半角 + 大写 |
+| **装运方式** | 整箱 / 拼箱等 | `getBlTypeOptions`（标题 meta 区选择器） | —— | **必填**（默认 0） |
+| **货物类型** | 普货 / 冻柜 / 危品等 | `getCargoTypeOptions`（复用海运出口） | **展示：** 「货物与箱型」卡片标题栏内联，与海出一致 | **必填**，默认 0（普通货） |
+| **品名** | 货物品名（可多选） | **基础数据**<br/>`CodeGoodsSelect`（`showNameWithHsCode`） | **展示：** 与货物类型同处标题栏内联；表单值为 `number[]`，提交映射为 `preOrderCodeGoodss` | 非必填 |
 | **干系人（销售）** | 业务归属销售 | **用户**<br/>`UserSelect` | —— | **必填且只能一人** |
 | **干系人（操作）** | 后续操作负责人 | **用户**<br/>`UserSelect` | **依赖：** 审核通过前必须存在，否则审核弹窗强制指派 | 每种角色最多 1 人 |
 | **箱型箱量.卖价** | 该箱型对客报价 | 手填 | **触发：** 变更后刷新所有「应收 + 单位=该箱型」的费用行含税单价 | 非负 |
@@ -76,6 +81,13 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-25 | `Perf`/`Fix` | 箱型选择从 `CtnSelect` option 取名称；修选中仍打 `DetailAsync`（根因是雪花 ID 被 `Number()` 丢精度导致 cell 重挂载后缓存失效） | `change(value, option)` + `selected-items` 有 id 即回传；`handleChange` 先 pin/merge；`ctnCodeId` 原样透传禁止 `Number()`；`ensureSelectedLoaded` 缓存/options 命中即跳过详情 |
+| 2026-07-25 | `Style` | 箱型箱量表格铺满「基础信息」与「费用」之间的剩余高度，行数超出时表体内滚动，费用区固定在下方 | `pre-order-cargo-section` `flex:1` + `ctn-table` `ResizeObserver` 驱动 `scroll.y`；高度链挂在 `pre-order-*` 类，不改海出共用 `form.css` |
+| 2026-07-25 | `Style` | 箱型箱量工具栏去掉「箱型箱量」标题条与背景色，改为与费用区相同的纯 icon 增删按钮 | 去掉本地 `order-ctn-table__title-bar` scoped 样式，工具栏改用 `Space` + `mb-2`，与 `fee-table` 对齐 |
+| 2026-07-25 | `Style` | 港口区块改名「港口信息」并按海运出口重做：5 列流转卡片 + 流向箭头、中转港 1/2 内联 Tab 共用一列、每个节点带英文大写备注且选港自动回填 | 港口 schema 与海出同构但字段名是 `pot1Id/pot2Id/pot1Remark/pot2Remark`（海出为 `poT1Id/poT2Id`）；备注格式化 `formatSeaExportPortRemark` / `pickPortSelectOption` / `buildPortSelectProps` 上移到 `sea-export-admin/data.ts` 共用；两页结构同构后，海出的中转港 Tab `Teleport` 目标查询改为限定在自身 section 内，避免被内嵌场景中 DOM 更靠前的业务联系单抢占 |
+| 2026-07-25 | `Style` | 费用区「添加应收/应付」合并为单一添加，添加/删除改用海出箱型表同款 icon | `handleAdd` 默认 `paySide=0`；icon 复刻 `order-ctn-table` 的 `mdi:add-box` / `mdi:close-box` |
+| 2026-07-25 | `Style` | 「货物与箱型」改为左右分栏（左箱型表 / 右竖排计量）；箱型增删改用海出同款 add-box/close-box 图标按钮 | 计量表单 `wrapperClass` 切到 `cargo-metrics-wrap grid-cols-1`；箱型标题栏本地 scoped，避免依赖海出 `cargo-ctn-section` 负边距通栏 |
+| 2026-07-25 | `Style` | 「货物与箱型」标题栏内联「货物类型」「品名」，对齐海运出口；品名补齐 `preOrderCodeGoodss` 读写 | 表单字段用 `orderCodeGoodss: number[]`，仅在详情回显 / 提交时与子表 DTO `preOrderCodeGoodss` 互转；样式类直接吃海出 `form.css` 的 `cargo-type-inline-*` |
 | 2026-07-25 | `Feature` | 新建编辑页：双 Tab 布局、三段表单 + 四个子表、保存 / 提交 / 撤回 / 审核 / 审核后驳回、审核时间轴、复制预填 | 内嵌海运出口编辑器能免传参工作，是因为 `PreOrder.Id === TransportOrder.Id === SeaExport.Id`，被嵌组件从同一个 `route.params.id` 取值；服务项候选池直接复用 `GetServiceTypesByPOLAsync`（已含客户排除项），避免前端重复拼接 `SeServiceConfig` 与 `ClientExceptService` |
 | 2026-07-25 | `Style` | 编辑页布局对齐海运出口：主栏分区标题条 + 右侧干系人面板；操作按钮进 `content-section__actions`；收发通与货物拆分；业务编号进标题 meta | 直接 `scoped src` 复用 `basic-info-form/form.css`，避免再抄一份分区/卡片样式 |
 | 2026-07-25 | `Style` | 二次对齐海运出口：右栏收窄回 180px；干系人卡片加用户头像、商务改显「商务(航线)」；「归属组织」「装运方式」从表单挪到标题 meta 区选择器 | meta 区选择器脱离 vben form，用独立 ref（`headerOrgId`/`headerBlType`）承载，提交时并入 payload；归属组织改为保存前手动校验；头像走 `getUser(id, { silent: true })` 懒加载 + 本组件内缓存，未选人显示系统默认头像 |

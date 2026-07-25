@@ -76,8 +76,6 @@ import {
 import { $t } from '#/locales';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import { createAbpPermission } from '#/utils/abp-permission';
-import { toEnglishUpperCase } from '#/utils/english-upper-case';
-
 import OrderCtnTable from '../modules/order-ctn-table.vue';
 import {
   flattenDetail,
@@ -90,9 +88,11 @@ import {
   CARGO_TYPE,
   createEmptyDgValues,
   createEmptyReeferValues,
+  formatSeaExportPortRemark,
   getBillTypeOptions,
   getBlTypeOptions,
   getTradeTermsTypeOptions,
+  pickPortSelectOption,
   useBasicInfoFormSchema,
   useCargoFormSchema,
   useDgFormSchema,
@@ -1296,45 +1296,6 @@ const PORT_ID_FIELD_TO_REMARK_FIELD: Record<string, string> = {
 
 const portFormApiRef = { current: null as any };
 
-const pickPortSelectOption = (option: unknown) => {
-  if (Array.isArray(option)) {
-    return option[0] as
-      | {
-          raw?: {
-            country?: { countryEnName?: string };
-            portName?: string;
-          };
-        }
-      | undefined;
-  }
-  return option as
-    | {
-        raw?: {
-          country?: { countryEnName?: string };
-          portName?: string;
-        };
-      }
-    | undefined;
-};
-
-/** 备注单段：去掉中文逗号及逗号后内容，避免与 country 重复拼接 */
-const normalizePortRemarkPart = (value: unknown) =>
-  (value ?? '').toString().replace(/，/g, ',').split(',')[0]?.trim() ?? '';
-
-/** 备注格式：portName, countryEnName（英文逗号 + 空格，联动时同步半角与大写） */
-const formatSeaExportPortRemark = (raw?: {
-  country?: { countryEnName?: string };
-  portName?: string;
-}) => {
-  const portName = normalizePortRemarkPart(raw?.portName);
-  const countryEnName = normalizePortRemarkPart(raw?.country?.countryEnName);
-  const remark =
-    portName && countryEnName
-      ? `${portName}, ${countryEnName}`
-      : portName || countryEnName || '';
-  return remark ? toEnglishUpperCase(remark) : undefined;
-};
-
 /** PortSelect @change：联动备注；起运港变更时同步服务项目 */
 const handlePortSelectChange = (
   fieldName: string,
@@ -1675,10 +1636,17 @@ const sectionRefs = {
 const currentSection = ref<SectionKey>('basic');
 const refreshPortLabelTargets = () => {
   nextTick(() => {
-    transitPortLabelTarget.value = document.querySelector(
+    // 本页可被业务联系单内嵌，其港口区块结构相同，需限定在本组件的港口区块内查找
+    const portSection = sectionRefs.port.value;
+    if (!portSection) {
+      transitPortLabelTarget.value = null;
+      podPortLabelTarget.value = null;
+      return;
+    }
+    transitPortLabelTarget.value = portSection.querySelector(
       '.port-flow-wrap .port-flow-item--transit:not(.port-flow-item--hidden) > label',
     ) as HTMLElement | null;
-    podPortLabelTarget.value = document.querySelector(
+    podPortLabelTarget.value = portSection.querySelector(
       '.port-flow-wrap .port-flow-pos--pod > label',
     ) as HTMLElement | null;
   });

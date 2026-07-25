@@ -6,6 +6,7 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import dayjs from 'dayjs';
 
 import { $t } from '#/locales';
+import { toEnglishUpperCase } from '#/utils/english-upper-case';
 
 import { createClientSelectSchema } from '../client/base/data';
 import { getSeaExportFeeStatusOptions } from './orderFee/data';
@@ -1708,7 +1709,41 @@ export type PortFormSchemaOptions = {
   onPortChange?: (fieldName: string, value: unknown, option: unknown) => void;
 };
 
-function buildPortSelectProps(
+/** PortSelect 的 `option` 可能是数组（多选）或单个对象 */
+export function pickPortSelectOption(option: unknown) {
+  const target = Array.isArray(option) ? option[0] : option;
+  return target as
+    | {
+        raw?: {
+          country?: { countryEnName?: string };
+          portName?: string;
+        };
+      }
+    | undefined;
+}
+
+/** 备注单段：去掉中文逗号及逗号后内容，避免与 country 重复拼接 */
+function normalizePortRemarkPart(value: unknown) {
+  return (
+    (value ?? '').toString().replace(/，/g, ',').split(',')[0]?.trim() ?? ''
+  );
+}
+
+/** 备注格式：portName, countryEnName（英文逗号 + 空格，联动时同步半角与大写） */
+export function formatSeaExportPortRemark(raw?: {
+  country?: { countryEnName?: string };
+  portName?: string;
+}) {
+  const portName = normalizePortRemarkPart(raw?.portName);
+  const countryEnName = normalizePortRemarkPart(raw?.country?.countryEnName);
+  const remark =
+    portName && countryEnName
+      ? `${portName}, ${countryEnName}`
+      : portName || countryEnName || '';
+  return remark ? toEnglishUpperCase(remark) : undefined;
+}
+
+export function buildPortSelectProps(
   fieldName: string,
   onPortChange?: PortFormSchemaOptions['onPortChange'],
 ) {
