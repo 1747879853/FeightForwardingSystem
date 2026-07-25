@@ -2,7 +2,7 @@
 title: 海运出口列表
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-24
+last_updated: 2026-07-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -27,7 +27,7 @@ last_updated: 2026-07-24
 - **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO，故 DTO 后填充的 `*Name` 列通过 `fieldMap` 映射到实体导航路径：船公司 `carrierCode → Carrier.CnName`、订舱代理 `bookingAgentName → BookingAgent.Name`、港口 `polName/podName/receivePortName/poT1Name/poT2Name/deliverPortName → {POL/POD/ReceivePort/POT1/POT2/DeliverPort}.PortName`、航线 `laneName → POD.Lane.LaneName`、业务来源/付费方式/签单方式 `codeSourceName/codeFrtName/codeIssueTypeName → TransportOrder.CodeSource.CnName / TransportOrder.CodeFrt.CnName / CodeIssueType.BillType`。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`companys`）、后填充列（`creatorUserNickName`、收发通名称、`codePackageName`）显式 `sortable: false`，避免点击后端反射报错回退。
 - **日期区间规范化：** 查询区的 `ETDRange` 会拆成 `ETDStart` / `ETDEnd`，`CloseDocTimeRange` 会拆成 `CloseDocTimeStart` / `CloseDocTimeEnd`，提交前统一转换为 ISO 字符串。
 - **多选行维护：** 列表第一列为 checkbox 多选，不设置行内操作列；**仅点击勾选框才选中**（`checkboxConfig.trigger: 'default'`），单击行不切换选中。删除/复制要求恰好选中 1 行，未满足时提示「请先选择一条记录」；双击行会勾选该行并进入编辑。选中行背景为全局主题色 15% 透明（`hsl(var(--primary) / 15%)`，由 `packages/effects/plugins/src/vxe-table/style.css` 中 checkbox 选中变量控制）。
-- **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示。
+- **运踪订阅（批量）：** 勾选 ≥1 票后点击「运踪订阅」（需 `Admin.ExternalApi.Use`）直接发起订阅，无二次确认；超过 30 票时 toast 提示后端分批；toast 汇总 + 结果 Modal 逐条展示。字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
 - **运踪状态（列表列）：** 「运踪状态」列优先展示列表 DTO `yundangShipmentOceanNode.stateDescCN`（当前海运节点中文描述）；否则按订阅状态回退（未订阅/订阅失败/等待推送），已包含是否订阅信息（原独立「运踪订阅」列已移除）。有 `Admin.ExternalApi.Get` 权限时点击 Tag 打开运踪详情弹窗（`GetOceanPushInfoAsync`）。
 - **新增委托：** 顶部主按钮跳转 `/sea-exports/create`，由新建页创建委托主记录；新增与复制按钮使用 Ant Design Vue 图标插槽，图标与文本垂直居中。
 - **复制委托：** 选中一条后点击「复制」（需 `Admin.SeaExport.Add` 权限），确认弹窗可选「同时复制费用」；成功后跳转新票编辑页 `/sea-exports/{newId}/edit`。
@@ -102,6 +102,7 @@ last_updated: 2026-07-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-25 | `Parsing` | 无 | 梳理运踪订阅字段并沉淀独立清单：请求仅 `seaExportIds`；行上下文仅结果展示；状态两字段组合。详见 [yundang-subscribe-fields.md](./yundang-subscribe-fields.md)。 |
 | 2026-07-24 | `Refactor` | 列表/复制摘要对接往来单位与船公司对象化：委托单位、订舱代理、场站、收发通、船公司改读对象字段。 | 列 `field`/`fieldMap` 保留旧键；展示用 `formatter`/`carrierWithLogo`。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-24 | `Feature` | 列表新增合同号列与 `ContractNum` 筛选；关键字占位追加合同号；复制确认摘要展示源票合同号。 | 字段挂 `transportOrder.contractNum`；复制清空由后端负责。详见 `changelogs/change-log-2026-07-24-sea-export-contract-num.md`。 |
 | 2026-07-22 | `Fix` | 列表「所属公司」改为展示 `orgs[0].name`（公司节点），不再取组织串末端。 | 与多组织约定一致：首节点=所属公司，末端=`at(-1)`=归属组织。 |

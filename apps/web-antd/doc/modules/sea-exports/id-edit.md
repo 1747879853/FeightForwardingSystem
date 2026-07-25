@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-24
+last_updated: 2026-07-25
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -49,7 +49,7 @@ last_updated: 2026-07-24
 - **附件管理：** 附件 Tab（位于单证信息之后）按附件详细类型以**卡片网格**展示（大屏一行 3 个）；每张卡片的文件列表固定显示 3 个文件项，超出后卡片内纵向滚动；卡片标题行右侧合并「客户可见」勾选与「上传」；文件列表支持点击预览、下载、删除，且每个文件项带一个「客户可见」`Switch`（如实回显 `item.clientVisible`）；网格末尾虚线卡片可「添加其他类型」。每个文件项在文件名下方将「大小 · 上传人：{姓名} · 上传时间：{YYYY-MM-DD HH:mm:ss}」压缩到同一行（分别取 `creatorUserName` 与 `creationTime`，时间经 `@vben/utils` 的 `formatDateTime` 格式化，值为空则隐藏对应字段）。上传/删除即时调用 `AddAttachmentsAsync`/`DeleteAttachmentsAsync`。**客户可见性可回改**：单文件切换 `Switch` 或点击卡片标题行「客户可见」`Checkbox`（该类型批量），均调用 `Attachment/UpdateAttachmentItemsClientVisibleAsync`（PUT，入参 `[{ id, clientVisible }]`，`id` 为 `AttachmentItem.id`）；标题行 `Checkbox` 由该类型下各文件可见态计算全选/半选，勾选即批量提交全部文件，同时作为新上传的默认值（**新上传仍默认客户不可见**）。无 `Admin.SeaExport.Edit` 时只读。点击文件打开全局 `AttachmentViewerModal`：PDF 内嵌 iframe、Office 走微软在线预览、图片直接展示，工具栏同步展示上传人和上传时间。
 - **打印：** 顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0`，`detailInput={id}`，后端 `GetPrintAsync` 自动取数）；应收应付费用表打印用 `PrintJsonType=1000/1500` + `orderFeeListInput`。模板列表走非管理端接口并按当票签单方式/船公司/分公司筛选。打印弹窗：标题行选模板（默认不选），选中后 iframe 预览 PDF（原始文件名地址）；底部为分裂式「打印」按钮，PDF/Excel/Word 统一静默拉取后浏览器下载（友好名仅去掉末尾纯数字时间戳）。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」（后端按 id 取库）。
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
-- **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。
+- **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。提交仅 `seaExportIds`，字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
 - **运踪信息：** 编辑工作台顶部「运踪信息」Tab 内直接查看（`Admin.ExternalApi.Get`）；调用 `GetOceanPushInfoAsync` 展示订阅概要、运单概要、里程碑、**航段**、集装箱轨迹；等待推送态自动轮询刷新；内容区 padding 12px。基础信息 Tab 顶栏不再提供「查看运踪」按钮。运单概要在船名航次/港口/ETD·ETA·ATA 外，按需补充 AIS 预计到港、首次预计到港、交货地及其 ETA/ATA、备注（有值才渲染）。**航段 Tab** 按 `sno` 升序表格展示 序号/类型（大船·驳船·陆运）/航线（港口中文名优先）/船名航次/ETD·ATD·ETA·ATA。**集装箱**补充件数/毛重/VGM、甩柜/异常 Tag 与「费用/免箱期」小表（费用类型/最后免费日 LFD/免费天数）。展示字段均以后端 `YundangShipmentInfoDto` 返回为准、判空后渲染。
 - **完成服务：** 编辑态服务流水线「完成服务」/「取消完成」成功后重新拉取详情，同步任务状态、勾选展示及只读摘要。「完成」仅 `seServiceTaskUsers` 处理人可操作；「取消完成」仅 `completionUserId` 对应完成人可操作；无权限时悬浮展示提示。
 - **已完成服务锁定字段只读：** 编辑态按「所有已完成任务对应服务项的 `seServiceLocks` 并集」将相关表单字段置为 `disabled`（`SeaExportPropEnum → 字段名` 映射，广播到基础/船期/港口表单）；取消完成或改港重写后自动解除。锁定字段虽 `disabled`，其值仍随 DTO 提交、由后端用库值覆盖。
@@ -127,6 +127,7 @@ last_updated: 2026-07-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-25 | `Parsing` | 无 | 运踪订阅字段独立清单：请求仅 `seaExportIds`；编辑页行上下文仅结果展示。详见 [yundang-subscribe-fields.md](./yundang-subscribe-fields.md)。 |
 | 2026-07-24 | `Feature` | 「AI识别」改为点击弹窗拖拽上传，放入文件后自动开始识别，成功回填后关窗。 | 与新建页共用 `ai-extract-upload-modal.vue` + `recognizeAiFile`。详见 `changelogs/change-log-2026-07-24-sea-export-ai-extract-drag-upload-modal.md`。 |
 | 2026-07-24 | `Refactor` | 基础信息/分单/费用/更改单对接往来单位与船公司对象化；结算对象名称映射改读 `client?.name` 等。 | 扁平 `*Name` 已删；`carrierLogo` 仍同级。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-24 | `Fix` | 已选委托单位但无业务来源时改为纯文本「-」，不再渲染禁用下拉占宽。 | `showCodeSourceEmptyDash` 控制分支。详见 `changelogs/change-log-2026-07-24-sea-export-code-source-empty-dash.md`。 |
