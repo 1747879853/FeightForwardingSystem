@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
+import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 
 import type { PreOrderCtnRow } from './ctn-table.vue';
 
@@ -27,6 +28,7 @@ import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
 import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
+import { getClientDetail } from '#/api/sea-export/client-admin';
 import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
 
 import { PAY_SIDE_OPTIONS } from '../form-data';
@@ -34,6 +36,10 @@ import { coercePreOrderFeeUnit, PRE_ORDER_GENERIC_UNITS } from './fee-unit';
 
 export interface PreOrderFeeRow extends PreOrderAdminApi.PreOrderFeeDto {
   rowKey: string;
+  /** 强制 ClientSelect 在类别/结算对象程序化变更后重挂载回显 */
+  settlementUiKey?: number;
+  /** 选费用代码时缓存列表行，切换收付复用，避免再打 DetailAsync */
+  feeCodeSnapshot?: FeeCodeAdminApi.FeeCodeDto;
 }
 
 /** 业务联系单上可映射到结算对象的往来单位（字母码 → id / 名称） */
@@ -64,6 +70,10 @@ const props = withDefaults(
     ctns?: PreOrderCtnRow[];
     /** 往来单位，用于行业类别 → 结算对象带出 */
     parties?: PreOrderFeeParties;
+    /**
+     * 切换收付/费用代码前由父组件从主表单现取往来单位（避免 onChange 漏同步导致带不出结算对象）
+     */
+    resolveParties?: () => Promise<null | PreOrderFeeParties | undefined>;
     /** 货物计量，单位=重量/体积时带出数量 */
     cargo?: PreOrderFeeCargo;
     /** 归属组织本位币 id，命中时汇率锁定为 1 */
@@ -73,6 +83,7 @@ const props = withDefaults(
   {
     ctns: () => [],
     parties: () => ({}),
+    resolveParties: undefined,
     cargo: () => ({}),
     localCurrencyId: null,
     readonly: false,
@@ -127,6 +138,28 @@ function industryKeyToLetter(key?: null | number) {
 function letterToIndustryKey(letter?: null | string) {
   if (!letter) return undefined;
   return getIndustryCategoryOptions().find((o) => o.value === letter)?.key;
+}
+
+/**
+ * 费用代码 defaultDebit/CreditName 可能是字母、数字 key 或中文名，统一收敛成字母码。
+ */
+function resolveIndustryLetter(
+  raw?: null | number | string,
+): string | undefined {
+  if (raw == null || raw === '') return undefined;
+  const text = String(raw).trim();
+  const options = getIndustryCategoryOptions();
+  const byValue = options.find(
+    (o) => o.value === text || o.value === text.toLowerCase(),
+  );
+  if (byValue) return byValue.value;
+  const asNum = Number(text);
+  if (!Number.isNaN(asNum)) {
+    const byKey = options.find((o) => o.key === asNum);
+    if (byKey) return byKey.value;
+  }
+  const byLabel = options.find((o) => o.label === text);
+  return byLabel?.value;
 }
 
 /** 金额与不含税单价随单价/数量/税率联动，口径与业务费用一致 */
@@ -194,10 +227,41 @@ async function fillQuantityByUnit(row: PreOrderFeeRow, unit?: null | string) {
   recalcAmount(row);
 }
 
+/** 结算对象带出时优先用 resolveParties 的最新值，否则退回 props.parties */
+const partiesSnapshot = ref<PreOrderFeeParties>({});
+
+async function refreshPartiesSnapshot() {
+  if (props.resolveParties) {
+    try {
+      const latest = await props.resolveParties();
+      if (latest) {
+        partiesSnapshot.value = { ...latest };
+        return partiesSnapshot.value;
+      }
+    } catch {
+      // 回退 props
+    }
+  }
+  partiesSnapshot.value = { ...(props.parties ?? {}) };
+  return partiesSnapshot.value;
+}
+
+watch(
+  () => props.parties,
+  (val) => {
+    partiesSnapshot.value = { ...(val ?? {}) };
+  },
+  { deep: true, immediate: true },
+);
+
 /** 按行业字母码从往来单位带出结算对象（同时写入名称，避免 Select 显示成 uuid） */
-function applySettlementByLetter(row: PreOrderFeeRow, letter?: string) {
-  if (!letter) return;
-  const p = props.parties ?? {};
+async function applySettlementByLetter(row: PreOrderFeeRow, letter?: string) {
+  if (!letter) {
+    row.settlementId = undefined;
+    row.settlement = undefined;
+    return;
+  }
+  const p = partiesSnapshot.value ?? {};
   const map: Record<string, { id?: null | string; name?: null | string }> = {
     b: { id: p.shipperId, name: p.shipperName },
     e: { id: p.consigneeId, name: p.consigneeName },
@@ -206,10 +270,56 @@ function applySettlementByLetter(row: PreOrderFeeRow, letter?: string) {
   };
   const hit = map[letter.toLowerCase()];
   const id = hit?.id;
-  if (id != null && id !== '') {
-    row.settlementId = String(id);
-    row.settlement = hit?.name ? { id: String(id), name: hit.name } : undefined;
+  if (id == null || id === '') {
+    // 类别对上了但本单还没填对应往来单位 → 清空，避免沿用上一收付类型的结算对象
+    row.settlementId = undefined;
+    row.settlement = undefined;
+    return;
   }
+  row.settlementId = String(id);
+  let name = hit?.name ? String(hit.name) : undefined;
+  if (!name) {
+    try {
+      const detail = await getClientDetail(String(id));
+      name = detail?.name || detail?.fullName || undefined;
+    } catch {
+      name = undefined;
+    }
+  }
+  row.settlement = name ? { id: String(id), name } : undefined;
+}
+
+/**
+ * 按当前收付类型，用费用代码重写结算对象类别、结算对象、税率。
+ * 应收看 defaultDebitName，应付看 defaultCreditName；税率取费用代码维护值。
+ */
+async function applyFeeCodeByPaySide(
+  row: PreOrderFeeRow,
+  detail: Awaited<ReturnType<typeof getFeeCodeDetail>>,
+  paySide: number,
+) {
+  if (!detail) return;
+  await refreshPartiesSnapshot();
+  const raw =
+    Number(paySide) === 1 ? detail.defaultCreditName : detail.defaultDebitName;
+  const letter = resolveIndustryLetter(raw);
+  if (letter) {
+    const key = letterToIndustryKey(letter);
+    if (key != null) {
+      row.industryCategory = key;
+      await applySettlementByLetter(row, letter);
+    } else {
+      row.industryCategory = undefined;
+      await applySettlementByLetter(row, undefined);
+    }
+  } else {
+    row.industryCategory = undefined;
+    await applySettlementByLetter(row, undefined);
+  }
+  if (detail.taxRate !== undefined && detail.taxRate !== null) {
+    row.taxRate = detail.taxRate;
+  }
+  recalcAmount(row);
 }
 
 /** 手工选择结算对象：把 option 标签写入 settlement，供 selectedItems 回显 */
@@ -356,36 +466,38 @@ async function handleUnitChange(row: PreOrderFeeRow, unit: string) {
 }
 
 async function handlePaySideChange(row: PreOrderFeeRow, paySide: number) {
-  row.paySide = paySide;
-  recalcAmount(row);
-  // 收付切换后：按应收/应付重取汇率；若已有费用代码则重带行业类别/结算对象
+  row.paySide = Number(paySide);
+  // 收付切换：重取汇率；已有费用代码则按应收/应付重写类别、结算对象、税率
   await applyExchangeRate(row);
-  if (row.feeCodeId != null) {
+  if (row.feeCodeId != null && String(row.feeCodeId) !== '') {
     try {
-      const detail = await getFeeCodeDetail(row.feeCodeId);
-      const letter =
-        paySide === 1 ? detail?.defaultCreditName : detail?.defaultDebitName;
-      if (letter) {
-        const key = letterToIndustryKey(letter);
-        if (key != null) {
-          row.industryCategory = key;
-          applySettlementByLetter(row, letter);
-        }
-      }
+      const detail =
+        row.feeCodeSnapshot &&
+        String(row.feeCodeSnapshot.id) === String(row.feeCodeId)
+          ? row.feeCodeSnapshot
+          : await getFeeCodeDetail(String(row.feeCodeId));
+      row.feeCodeSnapshot = detail;
+      await applyFeeCodeByPaySide(row, detail, row.paySide);
     } catch {
-      // 忽略，保留当前类别
+      recalcAmount(row);
     }
+  } else {
+    recalcAmount(row);
   }
+  // 换新引用 + 递增版本，强制结算对象 ClientSelect 按新类别/id 重挂载回显
+  row.settlementUiKey = (Number(row.settlementUiKey) || 0) + 1;
   touchDataSource();
 }
 
-function handleIndustryCategoryChange(
+async function handleIndustryCategoryChange(
   row: PreOrderFeeRow,
   key: null | number | undefined,
 ) {
   row.industryCategory = key ?? undefined;
+  await refreshPartiesSnapshot();
   const letter = industryKeyToLetter(key ?? undefined);
-  applySettlementByLetter(row, letter);
+  await applySettlementByLetter(row, letter);
+  row.settlementUiKey = (Number(row.settlementUiKey) || 0) + 1;
   touchDataSource();
 }
 
@@ -403,44 +515,44 @@ async function handleCurrencyChange(
 
 /**
  * 费用代码变更：带出行业类别/结算对象、币别/汇率、税率、默认单位，
- * 以及禁开票/机密（口径对齐海出费用代码联动）
+ * 以及禁开票/机密。优先用下拉 option.raw（列表已含字段），缺省再打详情。
  */
 async function handleFeeCodeChange(
   row: PreOrderFeeRow,
   feeCodeId: null | number | string | undefined,
+  option?: { raw?: FeeCodeAdminApi.FeeCodeDto } | null,
 ) {
   row.feeCodeId =
-    feeCodeId == null || feeCodeId === '' ? undefined : (feeCodeId as number);
+    feeCodeId == null || feeCodeId === ''
+      ? undefined
+      : (feeCodeId as PreOrderFeeRow['feeCodeId']);
   if (row.feeCodeId == null) {
+    row.feeCodeSnapshot = undefined;
     touchDataSource();
     return;
   }
   try {
-    const detail = await getFeeCodeDetail(row.feeCodeId);
+    let detail = option?.raw;
+    if (!detail || String(detail.id) !== String(row.feeCodeId)) {
+      detail = await getFeeCodeDetail(String(row.feeCodeId));
+    }
     if (!detail) {
       touchDataSource();
       return;
     }
+    row.feeCodeSnapshot = detail;
+    row.feeCode = {
+      id: detail.id,
+      name: detail.cnName || detail.enName || detail.code,
+      code: detail.code,
+    } as PreOrderFeeRow['feeCode'];
 
-    const letter =
-      Number(row.paySide) === 1
-        ? detail.defaultCreditName
-        : detail.defaultDebitName;
-    if (letter) {
-      const key = letterToIndustryKey(letter);
-      if (key != null) {
-        row.industryCategory = key;
-        applySettlementByLetter(row, letter);
-      }
-    }
+    await applyFeeCodeByPaySide(row, detail, Number(row.paySide ?? 0));
+    row.settlementUiKey = (Number(row.settlementUiKey) || 0) + 1;
 
     if (detail.currencyId != null && detail.currencyId !== '') {
       row.currencyId = detail.currencyId as number;
       await applyExchangeRate(row);
-    }
-
-    if (detail.taxRate !== undefined && detail.taxRate !== null) {
-      row.taxRate = detail.taxRate;
     }
 
     if (detail.isInvoiceProhibit != null) {
@@ -642,8 +754,9 @@ const totals = computed(() => {
             :disabled="props.readonly"
             size="small"
             :selected-items="feeCodeSelectedItems(asRow(record))"
-            @update:model-value="
-              (v: any) => handleFeeCodeChange(asRow(record), v)
+            @change="
+              (v: any, option: any) =>
+                handleFeeCodeChange(asRow(record), v, option)
             "
           />
         </template>
@@ -663,6 +776,7 @@ const totals = computed(() => {
         </template>
         <template v-else-if="column.dataIndex === 'settlementId'">
           <ClientSelect
+            :key="`${asRow(record).rowKey}-stl-${asRow(record).settlementUiKey ?? 0}-${asRow(record).industryCategory ?? ''}-${asRow(record).settlementId ?? ''}`"
             v-model="record.settlementId"
             :disabled="props.readonly"
             size="small"

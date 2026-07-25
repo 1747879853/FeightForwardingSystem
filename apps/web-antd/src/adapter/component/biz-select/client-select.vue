@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ClientAppApi } from '#/api/common/client';
 
-import { computed, ref, toRef } from 'vue';
+import { computed, ref, toRef, useAttrs } from 'vue';
 
 import { ApiComponent } from '@vben/common-ui';
 import { $t } from '@vben/locales';
@@ -43,12 +43,20 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: any];
+  'update:value': [value: any];
   change: [value: any, option: any | any[]];
 }>();
 
+const attrs = useAttrs();
 const modelValue = defineModel<any>();
 const selectedItemsRef = toRef(props, 'selectedItems');
 const industryCategoryRef = toRef(props, 'industryCategory');
+
+/** 透传时去掉 onChange，避免盖住内部选中逻辑；外部 onChange 在 handleSelectChange 末尾手动调用 */
+const forwardedAttrs = computed(() => {
+  const { onChange: _onChange, ...rest } = attrs as Record<string, unknown>;
+  return rest;
+});
 
 const mapClientToOption = (client: ClientAppApi.ClientSimpleDto) => {
   const clientAny = client as any;
@@ -78,10 +86,6 @@ const fetchPageAdapter = async (params: {
   industryCategory?: string;
 }) => {
   const industryCategory = params.industryCategory || '';
-  // if (!industryCategory) {
-  //   return { items: [], total: 0 };
-  // }
-  //console.log('getClientPagedList', industryCategory);
   const res = await getClientPagedList({
     keyword: params.KeyWords,
     industryCategory,
@@ -128,11 +132,22 @@ const handleChange = (value: any) => {
   pinSelectedFromOptions(value, options);
   modelValue.value = value;
   emit('update:modelValue', value);
+  // Vben Form baseModelPropName 为 value，需同步 update:value，否则表单值仍为空
+  emit('update:value', value);
+  const onUpdateValue = attrs['onUpdate:value'] as
+    | ((v: any) => void)
+    | undefined;
+  onUpdateValue?.(value);
 };
 
 const handleSelectChange = (value: any, option: any | any[]) => {
-  emit('change', value, option);
   handleChange(value);
+  emit('change', value, option);
+  // schema.componentProps.onChange（被从 attrs 抽掉，这里补调）
+  const externalOnChange = attrs.onChange as
+    | ((value: any, option: any) => void)
+    | undefined;
+  externalOnChange?.(value, option);
 };
 
 defineExpose({
@@ -145,6 +160,7 @@ defineExpose({
 <template>
   <ApiComponent
     ref="apiComponentRef"
+    v-bind="forwardedAttrs"
     :component="Select"
     :api="api"
     :params="params"
@@ -156,12 +172,11 @@ defineExpose({
     loading-slot="suffixIcon"
     model-prop-name="value"
     :search-value="searchValue"
+    class="biz-select w-full"
     @change="handleSelectChange"
     @dropdown-visible-change="handleDropdownVisibleChange"
     @search="handleSearch"
     @popup-scroll="handlePopupScroll"
-    v-bind="$attrs"
-    class="biz-select w-full"
   >
     <template v-for="(_, name) in $slots" #[name]="slotData">
       <slot :key="name" :name="name" v-bind="slotData || {}"></slot>

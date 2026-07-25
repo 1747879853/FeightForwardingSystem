@@ -200,6 +200,40 @@ const feeParties = computed(() => ({
   notifierName: currentNotifierName.value,
 }));
 
+/**
+ * 从主表单现取往来单位 id（名称尽量保留缓存），供费用表切换收付时带出结算对象。
+ * 仅靠 ClientSelect onChange 同步时，偶发漏写会导致应收切回来带不出委托单位。
+ */
+async function resolveFeeParties() {
+  const [basicValues, partyValues] = await Promise.all([
+    basicFormApi.getValues(),
+    partyFormApi.getValues(),
+  ]);
+  const nextClientId = toOptionalStringId(basicValues.clientId);
+  const nextShipperId = toOptionalStringId(partyValues.shipperId);
+  const nextConsigneeId = toOptionalStringId(partyValues.consigneeId);
+  const nextNotifierId = toOptionalStringId(partyValues.notifierId);
+
+  if (nextClientId !== currentClientId.value) {
+    currentClientId.value = nextClientId;
+    if (!nextClientId) currentClientName.value = undefined;
+  }
+  if (nextShipperId !== currentShipperId.value) {
+    currentShipperId.value = nextShipperId;
+    if (!nextShipperId) currentShipperName.value = undefined;
+  }
+  if (nextConsigneeId !== currentConsigneeId.value) {
+    currentConsigneeId.value = nextConsigneeId;
+    if (!nextConsigneeId) currentConsigneeName.value = undefined;
+  }
+  if (nextNotifierId !== currentNotifierId.value) {
+    currentNotifierId.value = nextNotifierId;
+    if (!nextNotifierId) currentNotifierName.value = undefined;
+  }
+
+  return feeParties.value;
+}
+
 /** 货物计量，费用单位=重量/体积时按此带出数量 */
 const feeCargo = ref<{
   cbm?: null | number;
@@ -370,7 +404,12 @@ function bindClientUserLinkage() {
       componentProps: {
         onChange: (value: unknown, option?: unknown) => {
           currentClientId.value = toOptionalStringId(value);
-          currentClientName.value = pickSelectOptionLabel(option);
+          if (!currentClientId.value) {
+            currentClientName.value = undefined;
+          } else {
+            const name = pickSelectOptionLabel(option);
+            if (name) currentClientName.value = name;
+          }
           void applyClientDefaultUsersByClientId(value);
         },
       },
@@ -412,7 +451,12 @@ function bindPartySettlementLinkage() {
       componentProps: {
         onChange: (value: unknown, option?: unknown) => {
           currentShipperId.value = toOptionalStringId(value);
-          currentShipperName.value = pickSelectOptionLabel(option);
+          if (!currentShipperId.value) {
+            currentShipperName.value = undefined;
+          } else {
+            const name = pickSelectOptionLabel(option);
+            if (name) currentShipperName.value = name;
+          }
         },
       },
     },
@@ -421,7 +465,12 @@ function bindPartySettlementLinkage() {
       componentProps: {
         onChange: (value: unknown, option?: unknown) => {
           currentConsigneeId.value = toOptionalStringId(value);
-          currentConsigneeName.value = pickSelectOptionLabel(option);
+          if (!currentConsigneeId.value) {
+            currentConsigneeName.value = undefined;
+          } else {
+            const name = pickSelectOptionLabel(option);
+            if (name) currentConsigneeName.value = name;
+          }
         },
       },
     },
@@ -430,7 +479,12 @@ function bindPartySettlementLinkage() {
       componentProps: {
         onChange: (value: unknown, option?: unknown) => {
           currentNotifierId.value = toOptionalStringId(value);
-          currentNotifierName.value = pickSelectOptionLabel(option);
+          if (!currentNotifierId.value) {
+            currentNotifierName.value = undefined;
+          } else {
+            const name = pickSelectOptionLabel(option);
+            if (name) currentNotifierName.value = name;
+          }
         },
       },
     },
@@ -652,7 +706,15 @@ async function buildSubmitPayload() {
       sortId: item.sortId ?? 0,
     })),
     preOrderFees: fees.value.map(
-      ({ rowKey, feeCode, settlement, currency, ...rest }) => ({
+      ({
+        rowKey,
+        feeCode,
+        settlement,
+        currency,
+        settlementUiKey,
+        feeCodeSnapshot,
+        ...rest
+      }) => ({
         ...rest,
         unit: coercePreOrderFeeUnit(rest.unit) || rest.unit,
       }),
@@ -1110,6 +1172,7 @@ const getContentTabStyle = (isActive: boolean) =>
                     v-model="fees"
                     :ctns="ctns"
                     :parties="feeParties"
+                    :resolve-parties="resolveFeeParties"
                     :cargo="feeCargo"
                     :local-currency-id="localCurrencyId"
                     :readonly="readonly"
