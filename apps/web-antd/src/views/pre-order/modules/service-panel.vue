@@ -29,6 +29,8 @@ export interface PreOrderServiceRow {
 }
 
 interface ServiceCandidate {
+  /** 接口返回的默认勾选标记（起运港 + 委托单位维度） */
+  defaultChecked: boolean;
   label: string;
   serviceType: number;
   sortId: number;
@@ -39,12 +41,15 @@ const props = withDefaults(
     clientId?: string;
     /** 详情返回的服务项对比标记（仅通过后有值） */
     compareList?: PreOrderAdminApi.PreOrderServiceDto[];
+    /** 编辑态：首次回显保留详情已选项，不用默认勾选覆盖 */
+    isEdit?: boolean;
     polId?: number | string;
     readonly?: boolean;
   }>(),
   {
     clientId: undefined,
     compareList: () => [],
+    isEdit: false,
     polId: undefined,
     readonly: false,
   },
@@ -54,10 +59,17 @@ const modelValue = defineModel<PreOrderServiceRow[]>({ default: () => [] });
 
 const loading = ref(false);
 const labelMap = ref<Map<number, string>>(new Map());
+/** ServiceType.extra1=true 的主流程标记，用于展示/回显双重闸门 */
+const processMap = ref<Map<number, boolean>>(new Map());
 /** 候选项：起运港服务项模板（已按委托单位排除）∩ 主流程服务 */
 const candidates = ref<ServiceCandidate[]>([]);
+/** 是否已完成首轮候选解析（用于区分「详情回显」与「用户主动改港/改客户」） */
+const hasResolvedInitial = ref(false);
 const modalOpen = ref(false);
 const modalDraft = ref<Map<number, boolean>>(new Map());
+
+const isMainProcess = (serviceType: number) =>
+  processMap.value.get(serviceType) === true;
 
 const checkedSet = computed(
   () =>
@@ -68,7 +80,10 @@ const compareMap = computed(() => {
   const map = new Map<number, PreOrderServiceCompareStatus>();
   for (const item of props.compareList ?? []) {
     if (item.serviceType == null) continue;
-    map.set(Number(item.serviceType), item.compareStatus ?? 0);
+    const serviceType = Number(item.serviceType);
+    // 非主流程不参与对比展示（审核通过后出口会自动带入非主流程，联系单侧不展示）
+    if (processMap.value.size > 0 && !isMainProcess(serviceType)) continue;
+    map.set(serviceType, item.compareStatus ?? 0);
   }
   return map;
 });
@@ -76,7 +91,11 @@ const compareMap = computed(() => {
 const labelOf = (serviceType: number) =>
   labelMap.value.get(serviceType) ?? `服务项${serviceType}`;
 
-/** 已勾选节点（含海运出口侧新增但不在候选内的） */
+/**
+ * 已勾选节点（仅主流程）。
+ * 含：联系单已勾选项；以及海运出口侧新增的主流程项（对比「新增」）。
+ * 非主流程一律不渲染，也不允许进入 model。
+ */
 const checkedNodes = computed(() => {
   const candidateMap = new Map(
     candidates.value.map((item) => [item.serviceType, item]),
@@ -91,13 +110,19 @@ const checkedNodes = computed(() => {
         sortId: Number(item.sortId ?? candidate?.sortId ?? 0),
       };
     })
-    .filter((item) => !Number.isNaN(item.serviceType));
+    .filter(
+      (item) =>
+        !Number.isNaN(item.serviceType) &&
+        // 候选未就绪时暂不按 processMap 拦截（避免首屏闪空）；就绪后只留主流程
+        (processMap.value.size === 0 || isMainProcess(item.serviceType)),
+    );
 
   const checkedTypes = new Set(fromChecked.map((item) => item.serviceType));
   for (const [serviceType, status] of compareMap.value.entries()) {
     if (
       status === PreOrderServiceCompareStatus.SeaExportAdded &&
-      !checkedTypes.has(serviceType)
+      !checkedTypes.has(serviceType) &&
+      isMainProcess(serviceType)
     ) {
       fromChecked.push({
         label: labelOf(serviceType),
@@ -195,13 +220,41 @@ function handleModalConfirm() {
   modalOpen.value = false;
 }
 
+/** 保留已勾选、仅剔除不在新候选池内 / 非主流程的服务项 */
+function keepAllowedChecked(allowed: Set<number>) {
+  const kept = (modelValue.value ?? []).filter((item) => {
+    const serviceType = Number(item.serviceType);
+    return allowed.has(serviceType) && isMainProcess(serviceType);
+  });
+  if (kept.length !== (modelValue.value ?? []).length) {
+    modelValue.value = kept;
+  }
+}
+
+/** 按接口默认勾选（checked）带出主流程服务项（candidates 已是主流程） */
+function applyDefaultChecked() {
+  modelValue.value = candidates.value
+    .filter((item) => item.defaultChecked)
+    .map((item) => ({ serviceType: item.serviceType, sortId: item.sortId }));
+}
+
 /**
  * 候选池 = 起运港服务项模板（接口已按委托单位排除）∩ ServiceType 主流程(extra1)。
  * 与后端「最大集合」口径一致，因此勾选结果天然满足「可少不可多」。
+ * 非主流程：不可进候选、不可勾选、不可在流水线展示（审核通过后由出口侧自动带入）。
+ *
+ * 勾选策略：
+ * - 首轮解析（详情回显 / 复制预填）：保留已有勾选，仅剔除越界项；
+ * - 用户主动选择或变更起运港 / 委托单位：按接口 `checked` 默认带出主流程服务项；
+ * - 编辑态首次进入不覆盖详情已选项。
  */
 async function loadCandidates() {
   if (!props.polId) {
     candidates.value = [];
+    // 清空起运港时同步清空已选服务，避免无港仍挂着旧勾选
+    if ((modelValue.value ?? []).length > 0) {
+      modelValue.value = [];
+    }
     return;
   }
   loading.value = true;
@@ -214,26 +267,38 @@ async function loadCandidates() {
       } as any),
     ]);
     labelMap.value = buildServiceTypeLabelMap(options);
-    const processMap = buildServiceTypeProcessMap(options);
+    processMap.value = buildServiceTypeProcessMap(options);
     candidates.value = (polNodes ?? [])
       .map((node) => {
         const serviceType = Number(node.serviceType);
         return {
+          defaultChecked: node.checked === true,
           label: labelMap.value.get(serviceType) ?? `服务项${serviceType}`,
           serviceType,
           sortId: Number(node.sortId ?? 0),
         };
       })
-      .filter((node) => processMap.get(node.serviceType) === true)
+      .filter((node) => isMainProcess(node.serviceType))
       .sort((a, b) => a.sortId - b.sortId || a.serviceType - b.serviceType);
 
     const allowed = new Set(candidates.value.map((item) => item.serviceType));
-    const kept = (modelValue.value ?? []).filter((item) =>
-      allowed.has(Number(item.serviceType)),
-    );
-    if (kept.length !== (modelValue.value ?? []).length) {
-      modelValue.value = kept;
+    const isInitial = !hasResolvedInitial.value;
+    hasResolvedInitial.value = true;
+
+    // 只读态或编辑态首次回显：始终保留详情已选项（仅主流程），绝不用默认值覆盖
+    if (props.readonly || (isInitial && props.isEdit)) {
+      keepAllowedChecked(allowed);
+      return;
     }
+
+    // 新建首轮且已有预填（复制场景）：保留预填项（剔除非主流程）
+    if (isInitial && (modelValue.value ?? []).length > 0) {
+      keepAllowedChecked(allowed);
+      return;
+    }
+
+    // 新建首次选港 / 变更起运港或委托单位：按默认勾选带出主流程服务项
+    applyDefaultChecked();
   } finally {
     loading.value = false;
   }

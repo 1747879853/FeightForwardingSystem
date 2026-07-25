@@ -14,7 +14,7 @@ last_updated: 2026-07-25
 # 2. 功能与操作说明 (Features & Operations)
 
 - **Tab 结构：** 顶部两个 Tab，样式与海运出口编辑器一致。
-  - **基础信息**：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题 meta 区展示业务编号/状态并内嵌「归属组织」「装运方式」选择器；主栏分区（基础信息 + 收发通 + 港口信息，港口区为海出同款 5 列流转卡片：收货地 → 起运港 → 中转港（Tab 切 1/2） → 目的港 → 交货地，每个节点下方带备注）+ 下方「货物与箱型」（标题栏内联货物类型/品名；卡片内左右分栏：左箱型箱量表 + 右竖排件数/包装/毛重/尺码）、费用卡片；右侧干系人默认五角色（销售/商务(航线)/操作/客服/单证），每行带用户头像。
+  - **基础信息**：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题 meta 区展示业务编号/状态并内嵌「归属组织」「装运方式」选择器；主栏分区（基础信息 + 收发通（发货人/收货人/通知人各一组 id + Content，布局对齐海出 party-flow）+ 港口信息，港口区为海出同款 5 列流转卡片：收货地 → 起运港 → 中转港（Tab 切 1/2） → 目的港 → 交货地，每个节点下方带备注）+ 下方「货物与箱型」（标题栏内联货物类型/品名；卡片内左右分栏：左箱型箱量表 + 右竖排件数/包装/毛重/尺码）、费用卡片；右侧干系人默认五角色（销售/商务(航线)/操作/客服/单证），每行带用户头像。
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现，内嵌完整可编辑的海运出口编辑器。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`。新增成功后 `replace` 到编辑路由并重新拉详情。
 - **提交审核：** 二次确认后调用 `SubmitAsync`，进入「待审核」，整单转只读。
@@ -42,8 +42,10 @@ last_updated: 2026-07-25
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **归属组织** | 数据权限归属 | **组织**<br/>`UserOrgSelect`（位于标题 meta 区，不在表单内） | 默认取当前用户组织 | **必填**（保存前手动校验，非表单 rules） |
-| **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect` | **触发：** 变更后重算服务项候选池（客户排除项） | **必填** |
+| **归属组织** | 数据权限归属 | **组织**<br/>`UserOrgSelect`（位于标题 meta 区，不在表单内） | **依赖：** 取干系人「销售」所属组织范围；选中销售后自动带其默认组织；更换销售时清空并重带默认；编辑回显用详情 `orgs` 路径兜底展示 | **必填**（保存前手动校验，非表单 rules） |
+| **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect` | **触发：** ① 变更后重算服务项候选池（客户排除项）；② 可编辑态按其维护的销售/客服/操作/单证默认回填干系人（无默认取列表第一个；操作/单证/客服未绑定时兜底当前登录账号；商务等未维护角色保持原值） | **必填** |
+| **发货人 / 收货人 / 通知人** | 收发通往来单位 | **客户**<br/>`ClientSelect`（行业类别 b / e / h） | **回显：** 详情 `shipper` / `consignee` / `notifier` 经 `selectedItems` 注入 | Guid?，非必填 |
+| **shipperContent / consigneeContent / notifierContent** | 对应往来单位提单内容文本 | 手填（`EnglishUpperTextarea`） | 与 id 成对提交；详情原样回填 | 最长 1024，英文自动半角大写 |
 | **起运港** | POL | **港口**<br/>`PortSelect` | **触发：** 变更后重算服务项候选池；为空时服务项区不可用 | **必填**（后端生成海运出口时也校验） |
 | **中转港1 / 中转港2** | POT1 / POT2 | **港口**<br/>`PortSelect` | **展示：** 共用第 3 列，通过 label 内联 Tab 切换，隐藏的一侧仍保留已填值并随保存提交 | 非必填 |
 | **港口备注（6 个）** | 收货地/起运港/中转港1/中转港2/目的港/交货地备注 | 手填（`EnglishUpperTextarea`） | **触发：** 选中对应港口后自动回填 `PORTNAME, COUNTRYENNAME`；手工改过的值不会被再次覆盖 | 英文自动转半角 + 大写 |
@@ -81,6 +83,8 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-25 | `Feature` | 归属组织改为取干系人「销售」所属组织；选择委托单位后按客户维护的销售/客服/操作/单证回填干系人（缺操作/单证/客服兜底当前账号） | `UserOrgSelect :user-id="salesUserId"` + `orgs` 回显兜底；`applyClientDefaultPreOrderUsers` 与海出 `applyClientDefaultOrderUsers` 同构，挂在 `clientId` `onChange` |
+| 2026-07-25 | `Feature` | 收发通补齐三组对称字段：往来单位 id + Content 文本；布局对齐海出 party-flow；详情回填 Content 与 SimpleDto 名称；`remark` 挪到基础信息船公司后 | schema 用 `createClientSelectSchema` + `EnglishUpperTextarea`；`fillFromDetail` 经 `toSelectedItems` 写 `selectedItems`；备注回填改走 `basicFormApi`；提交靠 spread 自然带上 |
 | 2026-07-25 | `Perf`/`Fix` | 箱型选择从 `CtnSelect` option 取名称；修选中仍打 `DetailAsync`（根因是雪花 ID 被 `Number()` 丢精度导致 cell 重挂载后缓存失效） | `change(value, option)` + `selected-items` 有 id 即回传；`handleChange` 先 pin/merge；`ctnCodeId` 原样透传禁止 `Number()`；`ensureSelectedLoaded` 缓存/options 命中即跳过详情 |
 | 2026-07-25 | `Style` | 箱型箱量表格铺满「基础信息」与「费用」之间的剩余高度，行数超出时表体内滚动，费用区固定在下方 | `pre-order-cargo-section` `flex:1` + `ctn-table` `ResizeObserver` 驱动 `scroll.y`；高度链挂在 `pre-order-*` 类，不改海出共用 `form.css` |
 | 2026-07-25 | `Style` | 箱型箱量工具栏去掉「箱型箱量」标题条与背景色，改为与费用区相同的纯 icon 增删按钮 | 去掉本地 `order-ctn-table__title-bar` scoped 样式，工具栏改用 `Space` + `mb-2`，与 `fee-table` 对齐 |

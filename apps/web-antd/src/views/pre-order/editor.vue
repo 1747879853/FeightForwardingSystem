@@ -12,6 +12,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAccess } from '@vben/access';
 import { Page } from '@vben/common-ui';
 import { FileText, MapPin, Package } from '@vben/icons';
+import { useUserStore } from '@vben/stores';
 
 import {
   Button,
@@ -38,10 +39,16 @@ import {
   submitPreOrder,
   unSubmitPreOrder,
 } from '#/api/pre-order/pre-order-admin';
+import { getClientDetail } from '#/api/sea-export/client-admin';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
+import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
+import {
+  hasValidUserId,
+  toSelectedItems,
+} from '#/views/sea-export-admin/basic-info-form/sea-export-detail-mapper';
 import {
   formatSeaExportPortRemark,
   getBlTypeOptions,
@@ -63,6 +70,7 @@ import CtnTable from './modules/ctn-table.vue';
 import FeeTable from './modules/fee-table.vue';
 import ServicePanel from './modules/service-panel.vue';
 import {
+  applyClientDefaultPreOrderUsers,
   createDefaultPreOrderUsers,
   mergeDefaultPreOrderUsers,
 } from './modules/user-defaults';
@@ -74,12 +82,21 @@ const perm = createAbpPermission('Admin.PreOrder');
 const auditCode = 'Admin.PreOrder.Audit';
 const route = useRoute();
 const router = useRouter();
+const userStore = useUserStore();
 const { hasAccessByCodes } = useAccess();
 const canAudit = computed(() => hasAccessByCodes([auditCode]));
 const { open: openWorkflowTimeline } = useWorkflowTimeline();
 
 const preOrderId = ref<string>(route.params.id ? String(route.params.id) : '');
 const isEdit = computed(() => !!preOrderId.value);
+const currentUserId = computed(() => {
+  const rawUserId = userStore.userInfo?.userId;
+  if (!rawUserId) return undefined;
+  const parsedUserId = Number(rawUserId);
+  return Number.isFinite(parsedUserId) && parsedUserId > 0
+    ? parsedUserId
+    : undefined;
+});
 
 const loading = ref(false);
 const saving = ref(false);
@@ -91,13 +108,22 @@ const auditSuccess = ref(true);
 const formSnapshot = ref('');
 
 /** 归属组织 / 装运方式对齐海运出口放在标题栏 meta 区，不进表单 */
-const headerOrgId = ref<number | undefined>();
+const headerOrgId = ref<null | number | undefined>();
+/** 编辑回显兜底选项：详情 orgs 路径拼完整公司名，组织加载完成前也能正确显示 */
+const headerOrgSelectedItems = ref<Array<{ label: string; value: number }>>([]);
 const headerBlType = ref<number>(0);
 const blTypeOptions = getBlTypeOptions();
 
 const ctns = ref<PreOrderCtnRow[]>([]);
 /** 新建态默认展示销售/商务/操作/客服/单证，与海运出口一致 */
 const users = ref<PreOrderUserRow[]>(createDefaultPreOrderUsers());
+/** 干系人中「销售」绑定的用户 id，归属组织下拉据此取该销售的组织范围（对齐海运出口） */
+const salesUserId = computed<number | undefined>(() => {
+  const row = users.value.find(
+    (item) => Number(item.userAttribute) === USER_ATTRIBUTE.Sale,
+  );
+  return hasValidUserId(row?.userId) ? Number(row?.userId) : undefined;
+});
 const services = ref<PreOrderServiceRow[]>([]);
 const fees = ref<PreOrderFeeRow[]>([]);
 
@@ -144,15 +170,27 @@ const [PartyForm, partyFormApi] = useVbenForm({
   compact: true,
   schema: usePreOrderPartySchema(),
   showDefaultActions: false,
-  wrapperClass: 'party-flow-wrap form-controls-small grid-cols-3 gap-x-4',
+  wrapperClass: 'party-flow-wrap form-controls-small grid-cols-6 gap-x-4',
 });
 
-/** PortSelect @change：把港口的 portName, countryEnName 回填到对应备注 */
+/** 服务候选依赖起运港与委托单位，需实时跟随表单值（对齐海出：字段 onChange 直传，不依赖 Form @change） */
+const currentPolId = ref<number | string | undefined>();
+const currentClientId = ref<string | undefined>();
+
+function toOptionalId(value: unknown): number | string | undefined {
+  if (value == null || value === '') return undefined;
+  return value as number | string;
+}
+
+/** PortSelect @change：起运港联动服务项；港口备注回填 */
 function handlePortSelectChange(
   fieldName: string,
-  _value: unknown,
+  value: unknown,
   option: unknown,
 ) {
+  if (fieldName === 'polId') {
+    currentPolId.value = toOptionalId(value);
+  }
   const remarkField = PRE_ORDER_PORT_REMARK_FIELDS[fieldName];
   if (!remarkField) return;
   const remark = formatSeaExportPortRemark(pickPortSelectOption(option)?.raw);
@@ -250,17 +288,45 @@ watch(
   { immediate: true },
 );
 
-/** 服务候选依赖起运港与委托单位，需实时跟随表单值 */
-const currentPolId = ref<number | string | undefined>();
-const currentClientId = ref<string | undefined>();
+/**
+ * 委托单位变更：按客户维护的干系人默认回填（销售/客服/操作/单证），
+ * 操作/单证/客服缺失时兜底当前登录账号。可编辑态用户主动切换时生效。
+ */
+async function applyClientDefaultUsersByClientId(value: unknown) {
+  if (readonly.value) return;
+  const clientId =
+    value === null || value === undefined || value === ''
+      ? undefined
+      : String(value);
+  let client: Awaited<ReturnType<typeof getClientDetail>> | undefined;
+  if (clientId) {
+    try {
+      client = await getClientDetail(clientId);
+    } catch {
+      client = undefined;
+    }
+  }
+  users.value = applyClientDefaultPreOrderUsers(
+    users.value,
+    client,
+    currentUserId.value,
+  );
+}
 
-async function syncServiceContext() {
-  const [basicValues, portValues] = await Promise.all([
-    basicFormApi.getValues(),
-    portFormApi.getValues(),
+/** 委托单位变更：同步服务项候选 + 干系人默认回填 */
+function bindClientUserLinkage() {
+  basicFormApi.updateSchema([
+    {
+      fieldName: 'clientId',
+      componentProps: {
+        onChange: (value: unknown) => {
+          currentClientId.value =
+            value == null || value === '' ? undefined : String(value);
+          void applyClientDefaultUsersByClientId(value);
+        },
+      },
+    },
   ]);
-  currentClientId.value = basicValues.clientId as string | undefined;
-  currentPolId.value = portValues.polId as number | string | undefined;
 }
 
 let rowSeed = 0;
@@ -270,6 +336,11 @@ const nextRowKey = (prefix: string) =>
 function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   detail.value = dto;
   headerOrgId.value = dto.orgId ?? undefined;
+  const detailOrgs = dto.orgs ?? [];
+  const detailOrgLast = detailOrgs.at(-1);
+  headerOrgSelectedItems.value = detailOrgLast?.id
+    ? [{ value: detailOrgLast.id, label: formatOrgPathLabel(detailOrgs) }]
+    : [];
   headerBlType.value = dto.blType ?? 0;
   void basicFormApi.setValues({
     clientId: dto.clientId,
@@ -280,12 +351,35 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     etd: dto.etd,
     goodsCompleteTime: dto.goodsCompleteTime,
     carrierId: dto.carrierId,
+    remark: dto.remark,
   });
+  partyFormApi.updateSchema([
+    {
+      fieldName: 'shipperId',
+      componentProps: {
+        selectedItems: toSelectedItems(dto.shipperId, dto.shipper?.name),
+      },
+    },
+    {
+      fieldName: 'consigneeId',
+      componentProps: {
+        selectedItems: toSelectedItems(dto.consigneeId, dto.consignee?.name),
+      },
+    },
+    {
+      fieldName: 'notifierId',
+      componentProps: {
+        selectedItems: toSelectedItems(dto.notifierId, dto.notifier?.name),
+      },
+    },
+  ]);
   void partyFormApi.setValues({
     shipperId: dto.shipperId,
+    shipperContent: dto.shipperContent,
     consigneeId: dto.consigneeId,
+    consigneeContent: dto.consigneeContent,
     notifierId: dto.notifierId,
-    remark: dto.remark,
+    notifierContent: dto.notifierContent,
   });
   void portFormApi.setValues({
     receivePortId: dto.receivePortId,
@@ -362,6 +456,7 @@ async function loadDetail() {
 
 onMounted(async () => {
   applyTransitPortTabSchema();
+  bindClientUserLinkage();
   const copyFrom = route.query.copyFrom ? String(route.query.copyFrom) : '';
   if (preOrderId.value) {
     await loadDetail();
@@ -634,6 +729,7 @@ const getContentTabStyle = (isActive: boolean) =>
                         :client-id="currentClientId"
                         :pol-id="currentPolId"
                         :readonly="readonly"
+                        :is-edit="isEdit"
                         :compare-list="detail?.preOrderServices ?? []"
                       />
                     </div>
@@ -727,6 +823,8 @@ const getContentTabStyle = (isActive: boolean) =>
                         <span class="basic-info-header__label">归属组织</span>
                         <UserOrgSelect
                           v-model="headerOrgId"
+                          :user-id="salesUserId"
+                          :selected-items="headerOrgSelectedItems"
                           :auto-default="true"
                           :disabled="readonly"
                           allow-clear
@@ -760,7 +858,7 @@ const getContentTabStyle = (isActive: boolean) =>
                   <div
                     class="content-section__body content-section__body--flush-bottom"
                   >
-                    <BasicForm @change="syncServiceContext" />
+                    <BasicForm />
                   </div>
                 </section>
 
@@ -780,7 +878,7 @@ const getContentTabStyle = (isActive: boolean) =>
                     </span>
                   </div>
                   <div class="content-section__body">
-                    <PortForm @change="syncServiceContext" />
+                    <PortForm />
                     <Teleport
                       v-if="transitPortLabelTarget"
                       :to="transitPortLabelTarget"

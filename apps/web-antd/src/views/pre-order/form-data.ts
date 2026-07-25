@@ -2,6 +2,7 @@ import type { VbenFormSchema } from '#/adapter/form';
 import type { PortFormSchemaOptions } from '#/views/sea-export-admin/data';
 
 import { $t } from '#/locales';
+import { createClientSelectSchema } from '#/views/client/base/data';
 import {
   buildPortSelectProps,
   getCargoTypeOptions,
@@ -107,6 +108,13 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       label: '船公司',
       componentProps: { allowClear: true, class: 'w-full' },
     },
+    {
+      component: 'Textarea',
+      fieldName: 'remark',
+      label: '备注',
+      formItemClass: 'col-span-4',
+      componentProps: { rows: 2, maxlength: 1024, showCount: true },
+    },
   ];
 }
 
@@ -207,33 +215,70 @@ export function usePreOrderPortSchema(
   ];
 }
 
-/** 收发通 */
+/**
+ * 收发通：三组对称字段（往来单位 id + 内容文本），布局对齐海运出口 party-flow。
+ * 详情回填时再通过 selectedItems 注入 SimpleDto 名称。
+ */
 export function usePreOrderPartySchema(): VbenFormSchema[] {
   return [
-    {
-      component: 'ClientSelect',
+    createClientSelectSchema({
       fieldName: 'shipperId',
+      industryCategory: 'b',
       label: '发货人',
-      componentProps: { allowClear: true, class: 'w-full' },
-    },
+      formItemClass: 'party-flow-item party-flow-pos--1',
+    }),
     {
-      component: 'ClientSelect',
+      component: 'EnglishUpperTextarea',
+      fieldName: 'shipperContent',
+      label: '',
+      componentProps: {
+        allowClear: true,
+        rows: 2,
+        maxlength: 1024,
+        showCount: true,
+        style: { minHeight: '110px' },
+      },
+      formItemClass: 'party-flow-content party-flow-content-pos--1',
+    },
+    createClientSelectSchema({
       fieldName: 'consigneeId',
+      industryCategory: 'e',
       label: '收货人',
-      componentProps: { allowClear: true, class: 'w-full' },
-    },
+      formItemClass: 'party-flow-item party-flow-pos--2',
+    }),
     {
-      component: 'ClientSelect',
+      component: 'EnglishUpperTextarea',
+      fieldName: 'consigneeContent',
+      label: '',
+      componentProps: {
+        allowClear: true,
+        rows: 2,
+        maxlength: 1024,
+        showCount: true,
+        style: { minHeight: '110px' },
+      },
+      formItemClass: 'party-flow-content party-flow-content-pos--2',
+    },
+    createClientSelectSchema({
       fieldName: 'notifierId',
+      industryCategory: 'h',
       label: '通知人',
-      componentProps: { allowClear: true, class: 'w-full' },
-    },
+      formItemClass:
+        'party-flow-item party-flow-item--notifier party-flow-pos--3',
+    }),
     {
-      component: 'Textarea',
-      fieldName: 'remark',
-      label: '备注',
-      formItemClass: 'col-span-3',
-      componentProps: { rows: 2, maxlength: 1024, showCount: true },
+      component: 'EnglishUpperTextarea',
+      fieldName: 'notifierContent',
+      label: '',
+      componentProps: {
+        allowClear: true,
+        rows: 2,
+        maxlength: 1024,
+        showCount: true,
+        style: { minHeight: '110px' },
+      },
+      formItemClass:
+        'party-flow-content party-flow-content--notifier party-flow-content-pos--3',
     },
   ];
 }
