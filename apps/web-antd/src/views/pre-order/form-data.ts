@@ -68,6 +68,24 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'DatePicker',
+      fieldName: 'goodsCompleteTime',
+      label: '货好时间',
+      componentProps: { class: 'w-full', valueFormat: 'YYYY-MM-DD HH:mm:ss' },
+    },
+    {
+      component: 'DatePicker',
+      fieldName: 'etd',
+      label: '开船日期',
+      componentProps: { class: 'w-full', valueFormat: 'YYYY-MM-DD HH:mm:ss' },
+    },
+    {
+      component: 'CarrierSelect',
+      fieldName: 'carrierId',
+      label: '船公司',
+      componentProps: { allowClear: true, class: 'w-full' },
+    },
+    {
       component: 'CodeServiceSelect',
       fieldName: 'codeServiceId',
       label: '运输条款',
@@ -88,25 +106,11 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       component: 'CodeFrtSelect',
       fieldName: 'codeFrtId',
       label: '付费方式',
-      componentProps: { allowClear: true, class: 'w-full' },
-    },
-    {
-      component: 'DatePicker',
-      fieldName: 'etd',
-      label: '开船日期',
-      componentProps: { class: 'w-full', valueFormat: 'YYYY-MM-DD HH:mm:ss' },
-    },
-    {
-      component: 'DatePicker',
-      fieldName: 'goodsCompleteTime',
-      label: '货好时间',
-      componentProps: { class: 'w-full', valueFormat: 'YYYY-MM-DD HH:mm:ss' },
-    },
-    {
-      component: 'CarrierSelect',
-      fieldName: 'carrierId',
-      label: '船公司',
-      componentProps: { allowClear: true, class: 'w-full' },
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
+      },
     },
     {
       component: 'Textarea',

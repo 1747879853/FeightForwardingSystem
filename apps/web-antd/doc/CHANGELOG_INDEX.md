@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-25 业务联系单船公司 Logo 与基础信息布局调整](./changelogs/change-log-2026-07-25-pre-order-basic-layout-carrier-logo.md)
 - [2026-07-25 业务联系单费用切换结算对象类别联动清空与回填](./changelogs/change-log-2026-07-25-pre-order-fee-industry-category-settlement.md)
 - [2026-07-25 业务联系单费用单位仅保留四项固定枚举](./changelogs/change-log-2026-07-25-pre-order-fee-unit-no-ctn.md)
 - [2026-07-25 业务联系单费用单位对齐后端重算契约](./changelogs/change-log-2026-07-25-pre-order-fee-unit-contract.md)

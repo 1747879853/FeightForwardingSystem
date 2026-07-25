@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
+import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 
 import type { PreOrderCtnRow } from './modules/ctn-table.vue';
 import type { PreOrderFeeRow } from './modules/fee-table.vue';
@@ -40,6 +41,7 @@ import {
   unSubmitPreOrder,
 } from '#/api/pre-order/pre-order-admin';
 import { getClientDetail } from '#/api/sea-export/client-admin';
+import { getCarrierDetail } from '#/api/system/base-data/carrier-admin';
 import { getOrganizationUnit } from '#/api/system/organization-unit';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { formatOrgPathLabel } from '#/composables/use-all-user-org';
@@ -520,6 +522,40 @@ let rowSeed = 0;
 const nextRowKey = (prefix: string) =>
   `${prefix}-${Date.now()}-${(rowSeed += 1)}`;
 
+/** 详情回显船公司时补齐 logo，口径与海运出口 CarrierSelect selectedItems 一致 */
+async function hydrateCarrierSelectedItem(dto: PreOrderAdminApi.PreOrderDto) {
+  if (dto.carrierId == null) {
+    basicFormApi.updateSchema([
+      { fieldName: 'carrierId', componentProps: { selectedItems: [] } },
+    ]);
+    return;
+  }
+
+  const raw = dto as PreOrderAdminApi.PreOrderDto & {
+    carrierLogo?: CarrierAdminApi.AttachmentItemDto | null;
+  };
+  let carrier: CarrierAdminApi.CarrierDto = {
+    id: dto.carrierId,
+    cnShortName: dto.carrier?.name,
+    code: dto.carrier?.code,
+    logo: raw.carrierLogo,
+  };
+  if (!carrier.logo?.url) {
+    try {
+      carrier = await getCarrierDetail(String(dto.carrierId));
+    } catch {
+      // 详情失败时仍用业务联系单返回的船公司名称回显
+    }
+  }
+  if (String(detail.value?.carrierId ?? '') !== String(dto.carrierId)) return;
+  basicFormApi.updateSchema([
+    {
+      fieldName: 'carrierId',
+      componentProps: { selectedItems: [carrier] },
+    },
+  ]);
+}
+
 function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   detail.value = dto;
   headerOrgId.value = dto.orgId ?? undefined;
@@ -540,6 +576,7 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     carrierId: dto.carrierId,
     remark: dto.remark,
   });
+  void hydrateCarrierSelectedItem(dto);
   partyFormApi.updateSchema([
     {
       fieldName: 'shipperId',
@@ -943,7 +980,7 @@ const getContentTabStyle = (isActive: boolean) =>
 <template>
   <Page auto-content-height content-class="!p-0">
     <div class="pre-order-editor-page flex min-h-0 min-w-0 flex-1 flex-col">
-      <div class="content-tabs" :style="contentTabsStyle">
+      <div v-if="isEdit" class="content-tabs" :style="contentTabsStyle">
         <span
           class="content-tab"
           :class="{ 'content-tab--active': activeTab === 'basic' }"
