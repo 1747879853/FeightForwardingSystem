@@ -731,14 +731,15 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'OrganizationSelect',
+      component: 'UserCompanySelect',
       fieldName: 'orgId',
-      label: '归属组织',
+      label: '所属公司',
       componentProps: {
         allowClear: true,
         placeholder: $t('ui.placeholder.select'),
         class: 'w-full',
-        isCompany: true,
+        autoDefault: true, // 启用自动默认值填充
+        // userId 会在 form.vue 中通过 updateSchema 动态设置
       },
     },
     {

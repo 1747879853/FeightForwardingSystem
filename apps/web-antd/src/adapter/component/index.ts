@@ -650,6 +650,9 @@ async function initComponentAdapter() {
     UserOrgSelect: defineAsyncComponent(
       () => import('./biz-select/user-org-select.vue'),
     ),
+    UserCompanySelect: defineAsyncComponent(
+      () => import('./biz-select/user-company-select.vue'),
+    ),
     PortSelect: defineAsyncComponent(
       () => import('./biz-select/port-select.vue'),
     ),
