@@ -122,7 +122,7 @@ export function useLoadDetail(
             id: group.transportOrder?.id || `order_${Date.now()}`,
             parentId: null,
             transportOrder: group.transportOrder,
-            seaExport: group.seaExport,
+            seaExport: group.transportOrder?.seaExport,
             orderFees: group.items?.map((item: any) => item.orderFee) || [],
             commissionNum: group.transportOrder?.commissionNum,
             mblNum: group.transportOrder?.mblNum || '-',
@@ -132,7 +132,7 @@ export function useLoadDetail(
               getBizTypeOptions().find(
                 (o: any) => o.value === group.transportOrder?.bizType,
               )?.label || '-',
-            carrier: group.seaExport?.carrier?.cnName || '-',
+            carrier: group.transportOrder?.seaExport?.carrier?.cnName || '-',
             company: group.transportOrder?.orgs?.at(-1)?.name || '-',
             feeDetails: [] as any[],
           };

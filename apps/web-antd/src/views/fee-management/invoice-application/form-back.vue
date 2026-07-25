@@ -658,7 +658,7 @@ function handleOpenFeeDetailModal() {
               id: parentFee.id,
               parentId: null,
               transportOrder: parentFee.transportOrder,
-              seaExport: parentFee.seaExport,
+              seaExport: parentFee.transportOrder?.seaExport,
               orderFees: parentFee.orderFees,
               commissionNum: parentFee.transportOrder.commissionNum,
               mblNum: parentFee.transportOrder.mblNum || '-',
@@ -668,7 +668,8 @@ function handleOpenFeeDetailModal() {
                 getBizTypeOptions().find(
                   (o: any) => o.value === parentFee.transportOrder?.bizType,
                 )?.label || '-',
-              carrier: parentFee.seaExport?.carrier?.cnName || '-',
+              carrier:
+                parentFee.transportOrder?.seaExport?.carrier?.cnName || '-',
               company: parentFee.transportOrder.orgs?.at(-1)?.name || '-',
               feeDetails: [] as any[], // ✅ 使用 feeDetails 而非 children，与 FeeDetailModal 保持一致
             };
@@ -2020,7 +2021,7 @@ async function loadDetail() {
           id: group.transportOrder?.id || `order_${Date.now()}`,
           parentId: null,
           transportOrder: group.transportOrder,
-          seaExport: group.seaExport,
+          seaExport: group.transportOrder?.seaExport,
           orderFees: group.items?.map((item: any) => item.orderFee) || [],
           commissionNum: group.transportOrder?.commissionNum,
           mblNum: group.transportOrder?.mblNum || '-',
@@ -2030,7 +2031,7 @@ async function loadDetail() {
             getBizTypeOptions().find(
               (o: any) => o.value === group.transportOrder?.bizType,
             )?.label || '-',
-          carrier: group.seaExport?.carrier?.cnName || '-',
+          carrier: group.transportOrder?.seaExport?.carrier?.cnName || '-',
           company: group.transportOrder?.orgs?.at(-1)?.name || '-',
           feeDetails: [] as any[], // ✅ 更新为 feeDetails，与 FeeSelectionDrawer 保持一致
         };

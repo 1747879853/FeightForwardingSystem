@@ -219,14 +219,15 @@ async function handleOpenFeeDetailModal() {
               id: parentFee.id,
               parentId: null,
               transportOrder: parentFee.transportOrder,
-              seaExport: parentFee.seaExport,
+              seaExport: parentFee.transportOrder?.seaExport,
               orderFees: parentFee.orderFees,
               commissionNum: parentFee.transportOrder.commissionNum,
               mblNum: parentFee.transportOrder.mblNum || '-',
               bookingNum: parentFee.transportOrder.bookingNum || '-',
               clientName: parentFee.transportOrder.clientName,
               bizType: '-',
-              carrier: parentFee.seaExport?.carrier?.cnName || '-',
+              carrier:
+                parentFee.transportOrder?.seaExport?.carrier?.cnName || '-',
               company: parentFee.transportOrder.orgs?.at(-1)?.name || '-',
               feeDetails: [] as any[],
             };
