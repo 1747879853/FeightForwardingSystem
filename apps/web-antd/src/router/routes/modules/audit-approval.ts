@@ -13,6 +13,7 @@ const routes: RouteRecordRaw[] = [
       authority: abpPageAuthority([
         'Admin.OrderFee.Audit',
         'Admin.PaymentApplication.Audit',
+        'Admin.PreOrder.Audit',
       ]),
     },
     name: 'AuditApproval',
@@ -42,6 +43,19 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/audit-approval/payment-review/index.vue'),
+      },
+      {
+        path: 'pre-order-review',
+        name: 'PreOrderReview',
+        meta: {
+          icon: 'mdi:file-document-check-outline',
+          keepAlive: true,
+          title: '业务联系单审核',
+          activePath: '/audit-approval/pre-order-review',
+          authority: abpPageAuthority('Admin.PreOrder.Audit'),
+        },
+        component: () =>
+          import('#/views/audit-approval/pre-order-review/index.vue'),
       },
       {
         path: 'expense-review/:id/expense-detail/:entityId',

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
+import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
 import type { SeServiceConfigAdminApi } from '#/api/system/base-data/se-service-config-admin';
 import type { SeServiceTaskAdminApi } from '#/api/sea-export/se-service-task-admin';
 import type { BusinessRow, PortTab, StageStep } from './workbench-data';
@@ -24,6 +25,7 @@ import {
   getPayAppTaskList,
   TaskStatus as PaymentTaskStatus,
 } from '#/api/audit-approval/payment-review-admin';
+import { getPreOrderTaskList } from '#/api/pre-order/pre-order-admin';
 import {
   completeSeServiceTask,
   getSeServiceTaskWorkbenchCount,
@@ -109,6 +111,17 @@ const paymentReviewFilterDefaults = {
   settlementId: undefined as string | undefined,
   submitTimeRange: null as [string, string] | [any, any] | null,
 };
+const preOrderReviewFilterDefaults = {
+  keyword: '',
+  clientId: undefined as string | undefined,
+  polId: undefined as number | undefined,
+  etdStart: null as any,
+  etdEnd: null as any,
+};
+const preOrderReviewFilterModel = reactive({ ...preOrderReviewFilterDefaults });
+const appliedPreOrderReviewFilterModel = reactive({
+  ...preOrderReviewFilterDefaults,
+});
 const arApReviewFilterModel = reactive({ ...arApReviewFilterDefaults });
 const appliedArApReviewFilterModel = reactive({ ...arApReviewFilterDefaults });
 const paymentReviewFilterModel = reactive({ ...paymentReviewFilterDefaults });
@@ -143,13 +156,27 @@ const transferUserId = ref<number>();
 const transferAssigneeRemark = ref('');
 const reviewRawRows = ref<BusinessRow[]>([]);
 
-const REVIEW_TAB_KEYS = new Set(['ar-ap-review', 'payment-review']);
+const REVIEW_TAB_KEYS = new Set([
+  'ar-ap-review',
+  'payment-review',
+  'pre-order-review',
+]);
 
 const isSeaExportTab = computed(() => activeServiceTab.value === 'sea-export');
 const isReviewTab = computed(() => REVIEW_TAB_KEYS.has(activeServiceTab.value));
-const reviewFilterMode = computed(() =>
-  activeServiceTab.value === 'ar-ap-review' ? 'ar-ap-review' : 'payment-review',
-);
+const reviewFilterMode = computed(() => {
+  if (activeServiceTab.value === 'ar-ap-review') return 'ar-ap-review';
+  if (activeServiceTab.value === 'pre-order-review') return 'pre-order-review';
+  return 'payment-review';
+});
+
+const activeReviewFilterModel = computed(() => {
+  if (activeServiceTab.value === 'ar-ap-review') return arApReviewFilterModel;
+  if (activeServiceTab.value === 'pre-order-review') {
+    return preOrderReviewFilterModel;
+  }
+  return paymentReviewFilterModel;
+});
 
 function toDateText(value?: string | null) {
   if (!value) return '--';
@@ -662,6 +689,26 @@ function mapPaymentTaskToBusinessRow(
   };
 }
 
+function mapPreOrderTaskToBusinessRow(
+  item: PreOrderAdminApi.PreOrderTaskItemDto,
+): BusinessRow {
+  const preOrder = item.preOrder;
+  return {
+    assigneeUserId: item.auditUserId ?? undefined,
+    assigneeUserName: item.auditUserName || '--',
+    bookingNo: preOrder?.preOrderNum || item.preOrderId || item.id,
+    containerInfo: preOrder?.mblNum || '--',
+    etd: toDateText(preOrder?.etd),
+    id: item.id,
+    route: `${preOrder?.polName || '--'} / ${preOrder?.podName || '--'}`,
+    seaExportId: item.preOrderId ?? item.entityId ?? '',
+    serviceTaskStatus: item.taskStatus === PaymentTaskStatus.Auditing ? 0 : 1,
+    status: 'pending',
+    taskUsersText: item.creatorUserName || '--',
+    vesselVoyage: preOrder?.clientName || '--',
+  };
+}
+
 function toIsoString(value: unknown): string | undefined {
   if (!value) return undefined;
   const parsed = dayjs(value as string | Date);
@@ -724,6 +771,25 @@ async function loadReviewWorkbench() {
         .map(mapPaymentTaskToBusinessRow);
       return;
     }
+    if (activeServiceTab.value === 'pre-order-review') {
+      const result = await getPreOrderTaskList({
+        Keyword: appliedPreOrderReviewFilterModel.keyword.trim() || undefined,
+        ClientId: appliedPreOrderReviewFilterModel.clientId,
+        POLId: appliedPreOrderReviewFilterModel.polId,
+        ETDStart: toIsoString(appliedPreOrderReviewFilterModel.etdStart),
+        ETDEnd: toIsoString(appliedPreOrderReviewFilterModel.etdEnd),
+        PageIndex: 1,
+        PageSize: 200,
+      });
+      reviewRawRows.value = (result.items ?? [])
+        .filter((item) =>
+          activeProcessingTab.value === 'processed'
+            ? item.taskStatus !== PaymentTaskStatus.Auditing
+            : item.taskStatus === PaymentTaskStatus.Auditing,
+        )
+        .map(mapPreOrderTaskToBusinessRow);
+      return;
+    }
     reviewRawRows.value = [];
   } finally {
     loading.value = false;
@@ -754,6 +820,8 @@ async function handleSearch() {
     Object.assign(appliedArApReviewFilterModel, arApReviewFilterModel);
   } else if (activeServiceTab.value === 'payment-review') {
     Object.assign(appliedPaymentReviewFilterModel, paymentReviewFilterModel);
+  } else if (activeServiceTab.value === 'pre-order-review') {
+    Object.assign(appliedPreOrderReviewFilterModel, preOrderReviewFilterModel);
   }
   selectedRowKeys.value = [];
   await loadWorkbench();
@@ -769,6 +837,12 @@ function handleReset() {
   } else if (activeServiceTab.value === 'payment-review') {
     Object.assign(paymentReviewFilterModel, paymentReviewFilterDefaults);
     Object.assign(appliedPaymentReviewFilterModel, paymentReviewFilterDefaults);
+  } else if (activeServiceTab.value === 'pre-order-review') {
+    Object.assign(preOrderReviewFilterModel, preOrderReviewFilterDefaults);
+    Object.assign(
+      appliedPreOrderReviewFilterModel,
+      preOrderReviewFilterDefaults,
+    );
   }
   selectedRowKeys.value = [];
   void loadWorkbench();
@@ -848,6 +922,10 @@ function handleOpenSeaExport(seaExportId: string) {
     });
     return;
   }
+  if (activeServiceTab.value === 'pre-order-review') {
+    void router.push({ name: 'PreOrderEdit', params: { id: seaExportId } });
+    return;
+  }
   void router.push({
     name: 'SeaExportEdit',
     params: { id: seaExportId },
@@ -891,18 +969,10 @@ onMounted(() => {
         v-else
         :active-processing-tab="activeProcessingTab"
         :mode="reviewFilterMode"
-        :model-value="
-          activeServiceTab === 'ar-ap-review'
-            ? arApReviewFilterModel
-            : paymentReviewFilterModel
-        "
+        :model-value="activeReviewFilterModel"
         :processing-tabs="processingTabs"
         @update:active-processing-tab="activeProcessingTab = $event"
-        @update:model-value="
-          activeServiceTab === 'ar-ap-review'
-            ? Object.assign(arApReviewFilterModel, $event)
-            : Object.assign(paymentReviewFilterModel, $event)
-        "
+        @update:model-value="Object.assign(activeReviewFilterModel, $event)"
         @reset="handleReset"
         @search="handleSearch"
       />
