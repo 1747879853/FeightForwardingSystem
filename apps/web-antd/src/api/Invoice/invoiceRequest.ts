@@ -309,6 +309,56 @@ export namespace InvoiceApplicationApi {
     id: string;
   }
 
+  /** 仅编辑主表DTO（不改动费用/商品明细） */
+  export interface InvoiceApplicationEditMainDto {
+    /** 主键ID */
+    id: string;
+    /** 结算对象ID */
+    settlementId: string;
+    /** 归属组织id */
+    orgId: number;
+    /** 我司银行ID */
+    orgBankAccountId: string;
+    /** 客户银行ID */
+    clientInvoiceBankId: string;
+    /** 发票类型（p=普通发票(电票)，c=普通发票(纸票)，s=专用发票） */
+    invoiceType?: InvoiceType;
+    /** 开票要求 */
+    require?: string;
+    /** 备注 */
+    remark?: string;
+  }
+
+  /** 新增多条费用明细DTO */
+  export interface InvoiceApplicationAddItemsDto {
+    /** 开票申请ID */
+    id: string;
+    /** 本次新增的费用明细；可空 */
+    invoiceApplicationItems?: InvoiceApplicationItemAddDto[];
+    /**
+     * 商品明细处理逻辑：
+     * - undefined/null = 不改商品
+     * - [] = 清空商品
+     * - 有值 = 全量替换
+     */
+    invoiceApplicationGoodsDtls?: InvoiceApplicationGoodsDtlAddDto[] | null;
+  }
+
+  /** 移除多条费用明细DTO */
+  export interface InvoiceApplicationRemoveItemsDto {
+    /** 开票申请ID */
+    id: string;
+    /** 明细主键，至少一条；允许删光 */
+    invoiceApplicationItemIds: string[];
+    /**
+     * 商品明细处理逻辑：
+     * - undefined/null = 不改商品
+     * - [] = 清空商品
+     * - 有值 = 全量替换
+     */
+    invoiceApplicationGoodsDtls?: InvoiceApplicationGoodsDtlAddDto[] | null;
+  }
+
   /** 开票申请审核DTO */
   export interface InvoiceApplicationAuditDto {
     /** 主键ID */
@@ -521,12 +571,45 @@ export namespace InvoiceApplicationApi {
   }
 
   /**
-   * 修改开票申请（单条）
+   * 修改开票申请（单条）- 全量替换（保留不变，建议使用拆分接口）
    * PUT services/app/InvoiceApplicationAdmin/EditAsync
    */
   export function editAsync(data: InvoiceApplicationEditDto) {
     return requestClient.put<boolean>(
       'services/app/InvoiceApplicationAdmin/EditAsync',
+      data,
+    );
+  }
+
+  /**
+   * 仅编辑主表（不改动费用/商品明细）
+   * PUT services/app/InvoiceApplicationAdmin/EditMainAsync
+   */
+  export function editMainAsync(data: InvoiceApplicationEditMainDto) {
+    return requestClient.put<boolean>(
+      'services/app/InvoiceApplicationAdmin/EditMainAsync',
+      data,
+    );
+  }
+
+  /**
+   * 新增多条费用明细
+   * POST services/app/InvoiceApplicationAdmin/AddItemsAsync
+   */
+  export function addItemsAsync(data: InvoiceApplicationAddItemsDto) {
+    return requestClient.post<boolean>(
+      'services/app/InvoiceApplicationAdmin/AddItemsAsync',
+      data,
+    );
+  }
+
+  /**
+   * 移除多条费用明细
+   * PUT services/app/InvoiceApplicationAdmin/RemoveItemsAsync
+   */
+  export function removeItemsAsync(data: InvoiceApplicationRemoveItemsDto) {
+    return requestClient.put<boolean>(
+      'services/app/InvoiceApplicationAdmin/RemoveItemsAsync',
       data,
     );
   }

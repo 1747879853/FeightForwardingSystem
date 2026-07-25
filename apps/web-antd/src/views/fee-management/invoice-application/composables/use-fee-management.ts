@@ -1,6 +1,7 @@
 import { message } from 'ant-design-vue';
 import type { Ref } from 'vue';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
+import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 /**
  * 费用管理相关逻辑
@@ -57,47 +58,49 @@ export function useFeeManagement(
    * 删除费用（支持批量删除）
    */
   async function handleDeleteFee(
-    feeIds: string | string[],
+    itemIds: string | string[], // ✅ 修改参数名：直接接收 invoiceApplicationItemId
     recalculateGoodsDetails: () => Promise<void>,
   ) {
-    const idsToDelete = Array.isArray(feeIds) ? feeIds : [feeIds];
+    const idsToDelete = Array.isArray(itemIds) ? itemIds : [itemIds];
 
     if (idsToDelete.length === 0) {
       message.warning('没有要删除的费用');
       return;
     }
 
-    const items = formData.value.invoiceApplicationItems || [];
-    const allFees = flattenTreeData(feeGroupsData.value);
-
-    // 找出需要删除的费用项
-    const removedItems: any[] = [];
-    idsToDelete.forEach((feeId) => {
-      const fee = allFees.find((f: any) => f.id === feeId);
-      if (fee) {
-        const removedItem = items.find(
-          (item: any) => item.orderFeeId === fee.orderFee?.id,
-        );
-        if (removedItem) {
-          removedItems.push(removedItem);
-        }
-      }
-    });
-
-    if (removedItems.length === 0) {
-      message.error('未找到要删除的费用');
+    // ✅ 检查是否有开票ID，只有在编辑状态下才能删除
+    if (!formData.value.id) {
+      message.error('请先保存开票申请后再删除费用');
       return;
     }
 
-    // 过滤掉这些费用
-    formData.value.invoiceApplicationItems = items.filter(
-      (item: any) => !removedItems.includes(item),
-    );
+    const items = formData.value.invoiceApplicationItems || [];
 
-    // 重新计算商品明细金额
-    await recalculateGoodsDetails();
+    // ✅ 直接通过 itemId 找到对应的 item
 
-    message.success(`成功删除 ${removedItems.length} 条费用，已重新计算金额`);
+    try {
+      // ✅ 调用removeItems接口删除费用明细
+      const removeData: InvoiceApplicationAdminApi.InvoiceApplicationRemoveItemsDto =
+        {
+          id: formData.value.id,
+          invoiceApplicationItemIds: idsToDelete, // ✅ 直接使用传入的 itemIds
+          // 不传商品明细，表示不改商品
+          invoiceApplicationGoodsDtls: undefined,
+        };
+
+      await InvoiceApplicationAdminApi.removeItems(removeData);
+      console.log('✅ 费用明细删除成功');
+
+      // 过滤掉这些费用（前端显示）
+
+      // 重新计算商品明细金额
+      await recalculateGoodsDetails();
+
+      message.success(`成功删除 ${idsToDelete.length} 条费用，已重新计算金额`);
+    } catch (error) {
+      console.error('❌ 删除费用明细失败:', error);
+      //message.error('删除费用明细失败');
+    }
   }
 
   /**

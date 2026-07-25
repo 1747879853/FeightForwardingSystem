@@ -1,9 +1,20 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
-import { Modal, Spin, Table, Button, message, Input, Select, DatePicker, Space } from 'ant-design-vue';
+import {
+  Modal,
+  Spin,
+  Table,
+  Button,
+  message,
+  Input,
+  Select,
+  DatePicker,
+  Space,
+} from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
 import dayjs from 'dayjs';
 import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
+import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
 
 interface FeeDetailItem {
   id: string;
@@ -32,17 +43,23 @@ interface FeeChildItem {
   amount?: number;
   currencyCode?: string;
   remainingInvoiceAmount?: number;
+  // ✅ 新增：invoiceApplicationItem 的 ID，用于删除操作
+  invoiceApplicationItemId?: string;
 }
 
 const props = defineProps<{
   visible: boolean;
   loading: boolean;
   feeDetails: FeeDetailItem[];
+  invoiceApplicationId?: string; // ✅ 新增：开票申请ID，用于删除操作
 }>();
 
 const emit = defineEmits<{
   (e: 'update:visible', value: boolean): void;
-  (e: 'delete-fee', feeIds: string[]): void; // ✅ 修改：支持批量删除，传入ID数组
+  // ✅ 修改：传递 invoiceApplicationItemId 数组，而不是 fee.id
+  (e: 'delete-fee', itemIds: string[]): void;
+  // ✅ 新增：刷新事件，通知父组件重新加载数据
+  (e: 'refresh'): void;
 }>();
 
 // 筛选条件
@@ -76,28 +93,32 @@ function applyFilter() {
       const commissionNum = parent.commissionNum?.toLowerCase() || '';
       const mblNum = parent.mblNum?.toLowerCase() || '';
       const bookingNum = parent.bookingNum?.toLowerCase() || '';
-      
+
       // 检查父节点是否匹配
-      const parentMatch = 
+      const parentMatch =
         commissionNum.includes(keyword) ||
         mblNum.includes(keyword) ||
         bookingNum.includes(keyword);
-      
+
       if (parentMatch) return true;
-      
+
       // 检查子节点是否有匹配的（如果父节点不匹配，但子节点有匹配的费用，也保留该父节点）
       if (parent.feeDetails && parent.feeDetails.length > 0) {
         return parent.feeDetails.some((child) => {
-          const childCommissionNum = child.orderFee?.commissionNum?.toLowerCase() || '';
+          const childCommissionNum =
+            child.orderFee?.commissionNum?.toLowerCase() || '';
           const childMblNum = child.orderFee?.mblNum?.toLowerCase() || '';
-          const childBookingNum = child.orderFee?.bookingNum?.toLowerCase() || '';
-          
-          return childCommissionNum.includes(keyword) ||
-                 childMblNum.includes(keyword) ||
-                 childBookingNum.includes(keyword);
+          const childBookingNum =
+            child.orderFee?.bookingNum?.toLowerCase() || '';
+
+          return (
+            childCommissionNum.includes(keyword) ||
+            childMblNum.includes(keyword) ||
+            childBookingNum.includes(keyword)
+          );
         });
       }
-      
+
       return false;
     });
   }
@@ -122,21 +143,21 @@ function applyFilter() {
   // 开船日期筛选
   if (filterEtdRange.value && filterEtdRange.value.length === 2) {
     const [etdStart, etdEnd] = filterEtdRange.value;
-    
+
     result = result.filter((parent) => {
       const etd = parent.transportOrder?.etd;
       if (!etd) return false;
-      
+
       const etdDate = dayjs(etd);
-      
+
       if (etdStart && etdDate.isBefore(etdStart, 'day')) {
         return false;
       }
-      
+
       if (etdEnd && etdDate.isAfter(etdEnd, 'day')) {
         return false;
       }
-      
+
       return true;
     });
   }
@@ -173,13 +194,16 @@ function handleClose() {
 function handleParentSelectionChange(selectedRowKeys: any[]) {
   // 清空之前的父节点选择
   selectedParentIds.value.clear();
-  
+
   // 添加新选中的父节点
   selectedRowKeys.forEach((key) => {
     selectedParentIds.value.add(String(key));
   });
-  
-  console.log('✅ 当前选中的父节点（票）ID列表:', Array.from(selectedParentIds.value));
+
+  console.log(
+    '✅ 当前选中的父节点（票）ID列表:',
+    Array.from(selectedParentIds.value),
+  );
 }
 
 /** 获取已选中的父节点keys */
@@ -188,20 +212,32 @@ function getParentSelectedKeys(): string[] {
 }
 
 /** 处理子表格选择变化 */
-function handleChildSelectionChange(parentRecord: FeeDetailItem, selectedRowKeys: any[]) {
+function handleChildSelectionChange(
+  parentRecord: FeeDetailItem,
+  selectedRowKeys: any[],
+) {
   // 清空当前父节点下所有子节点的选择
   if (parentRecord.feeDetails) {
     parentRecord.feeDetails.forEach((child) => {
       selectedFeeIds.value.delete(child.id);
     });
   }
-  
+
   // 添加新选中的子节点
   selectedRowKeys.forEach((key) => {
     selectedFeeIds.value.add(String(key));
   });
-  
+
   console.log('✅ 当前选中的费用ID列表:', Array.from(selectedFeeIds.value));
+  if (parentRecord.feeDetails) {
+    console.log(
+      '📋 子节点的ID示例:',
+      parentRecord.feeDetails.map((c) => ({
+        id: c.id,
+        orderFeeId: c.orderFee?.id,
+      })),
+    );
+  }
 }
 
 /** 获取已选中的子节点keys */
@@ -232,10 +268,10 @@ function handleSelectAllFees() {
 }
 
 /** 批量删除费用（支持按票和按费用） */
-function handleBatchDelete() {
+async function handleBatchDelete() {
   const parentCount = selectedParentIds.value.size;
   const childCount = selectedFeeIds.value.size;
-  
+
   if (parentCount === 0 && childCount === 0) {
     message.warning('请先选择要删除的费用或订单');
     return;
@@ -243,7 +279,7 @@ function handleBatchDelete() {
 
   // 计算总共要删除的费用数量
   let totalFeeCount = childCount;
-  
+
   // 如果选择了父节点（按票），需要计算这些票下的所有费用
   if (parentCount > 0) {
     filteredFeeDetails.value.forEach((parent) => {
@@ -259,28 +295,111 @@ function handleBatchDelete() {
     okText: '确定',
     cancelText: '取消',
     okType: 'danger',
-    onOk: () => {
-      // 收集所有要删除的费用ID
-      const allFeeIds: string[] = [];
-      
-      // 添加选中的子节点费用ID
-      allFeeIds.push(...Array.from(selectedFeeIds.value));
-      
-      // 添加选中父节点下的所有费用ID
+    onOk: async () => {
+      // ✅ 收集所有要删除的 invoiceApplicationItemId
+      const allItemIds: string[] = [];
+
+      console.log('🔍 开始收集 itemIds...');
+      console.log('selectedFeeIds:', Array.from(selectedFeeIds.value));
+      console.log('selectedParentIds:', Array.from(selectedParentIds.value));
+      console.log('filteredFeeDetails:', filteredFeeDetails.value);
+
+      // 添加选中的子节点对应的 itemId
+      selectedFeeIds.value.forEach((feeId) => {
+        console.log('处理选中的 feeId:', feeId);
+        // 在所有父节点的 feeDetails 中查找对应的子节点
+        filteredFeeDetails.value.forEach((parent) => {
+          if (parent.feeDetails) {
+            const child = parent.feeDetails.find((c) => c.id === feeId);
+            console.log('找到子节点:', child);
+            if (child) {
+              console.log('📋 子节点完整结构:', JSON.stringify(child, null, 2));
+              console.log(
+                '📋 child.invoiceApplicationItemId:',
+                child.invoiceApplicationItemId,
+              );
+              console.log('📋 child.id (费用ID):', child.id);
+            }
+            if (child) {
+              // ✅ 关键修复：必须使用 invoiceApplicationItemId 作为删除ID
+              if (!child.invoiceApplicationItemId) {
+                console.error('❌ 子节点缺少 invoiceApplicationItemId:', child);
+                return;
+              }
+              console.log(
+                '✅ 找到 invoiceApplicationItemId:',
+                child.invoiceApplicationItemId,
+              );
+              allItemIds.push(child.invoiceApplicationItemId);
+            } else {
+              console.warn('⚠️ 未找到子节点');
+            }
+          }
+        });
+      });
+
+      // 添加选中父节点下的所有费用对应的 itemId
       filteredFeeDetails.value.forEach((parent) => {
         if (selectedParentIds.value.has(parent.id) && parent.feeDetails) {
+          console.log('处理选中的父节点:', parent.id);
           parent.feeDetails.forEach((child) => {
-            allFeeIds.push(child.id);
+            console.log('父节点下的子节点:', child);
+            // ✅ 关键修复：必须使用 invoiceApplicationItemId 作为删除ID
+            if (!child.invoiceApplicationItemId) {
+              console.error('❌ 子节点缺少 invoiceApplicationItemId:', child);
+              return;
+            }
+            console.log(
+              '✅ 找到 invoiceApplicationItemId:',
+              child.invoiceApplicationItemId,
+            );
+            allItemIds.push(child.invoiceApplicationItemId);
           });
         }
       });
-      
-      emit('delete-fee', allFeeIds);
-      message.success(`成功删除 ${allFeeIds.length} 条费用`);
-      
-      // 清空选择状态
-      selectedFeeIds.value.clear();
-      selectedParentIds.value.clear();
+
+      console.log('收集到的所有 itemIds:', allItemIds);
+
+      // ✅ 去重
+      const uniqueItemIds = [...new Set(allItemIds)];
+      console.log('去重后的 itemIds:', uniqueItemIds);
+
+      if (uniqueItemIds.length === 0) {
+        message.error('未找到可删除的费用');
+        return;
+      }
+
+      // ✅ 关键修复：检查是否有开票申请ID
+      if (!props.invoiceApplicationId) {
+        message.error('开票申请ID不存在，无法删除费用');
+        return;
+      }
+
+      try {
+        // ✅ 调用删除API
+        const removeData: InvoiceApplicationAdminApi.InvoiceApplicationRemoveItemsDto =
+          {
+            id: props.invoiceApplicationId,
+            invoiceApplicationItemIds: uniqueItemIds,
+            invoiceApplicationGoodsDtls: undefined,
+          };
+
+        console.log('🗑️ 开始删除费用，参数:', removeData);
+        await InvoiceApplicationAdminApi.removeItems(removeData);
+        console.log('✅ 费用明细删除成功');
+
+        message.success(`成功删除 ${uniqueItemIds.length} 条费用`);
+
+        // 清空选择状态
+        selectedFeeIds.value.clear();
+        selectedParentIds.value.clear();
+
+        // ✅ 关键修复：等待删除完成后，再触发刷新事件
+        emit('refresh');
+      } catch (error) {
+        console.error('❌ 删除费用明细失败:', error);
+        message.error('删除费用明细失败');
+      }
     },
   });
 }
@@ -298,7 +417,7 @@ watch(
         childrenCount: detail.feeDetails?.length || 0, // ✅ 更新为 feeDetails
       });
     });
-    
+
     // 数据变化时重新应用筛选
     filteredFeeDetails.value = [...newVal];
   },
@@ -415,7 +534,6 @@ const childColumns = [
     align: 'right' as const,
   },
 ];
-
 </script>
 
 <template>
@@ -429,7 +547,14 @@ const childColumns = [
   >
     <Spin :spinning="loading">
       <!-- 筛选区域 -->
-      <div style="margin-bottom: 16px; padding: 16px; background: #fafafa; border-radius: 4px">
+      <div
+        style="
+          padding: 16px;
+          margin-bottom: 16px;
+          background: #fafafa;
+          border-radius: 4px;
+        "
+      >
         <Space wrap>
           <div>
             <span style="margin-right: 8px">编号：</span>
@@ -481,17 +606,29 @@ const childColumns = [
       </div>
 
       <!-- 操作按钮区域 -->
-      <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center">
+      <div
+        style="
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 12px;
+        "
+      >
         <div>
-          <span style="color: #666; font-size: 13px">
-            已选中 {{ selectedParentIds.size }} 个订单，{{ selectedFeeIds.size }} 条费用
+          <span style="font-size: 13px; color: #666">
+            已选中 {{ selectedParentIds.size }} 个订单，{{
+              selectedFeeIds.size
+            }}
+            条费用
           </span>
         </div>
         <Space>
-          <Button 
-            type="primary" 
-            danger 
-            :disabled="selectedParentIds.size === 0 && selectedFeeIds.size === 0"
+          <Button
+            type="primary"
+            danger
+            :disabled="
+              selectedParentIds.size === 0 && selectedFeeIds.size === 0
+            "
             @click="handleBatchDelete"
           >
             <template #icon>

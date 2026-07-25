@@ -742,17 +742,6 @@ export function useBaseFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'Select',
-      fieldName: 'clientType',
-      label: $t('seaExport.client.clientType'),
-      componentProps: {
-        allowClear: true,
-        options: getClientTypeOptions(),
-        class: 'w-full',
-        placeholder: $t('ui.placeholder.select'),
-      },
-    },
-    {
       component: 'Textarea',
       fieldName: 'remark',
       label: $t('seaExport.client.remark'),
@@ -791,6 +780,17 @@ export function useBusinessFormSchema(): VbenFormSchema[] {
 }
 export function useClientFormSchema(): VbenFormSchema[] {
   return [
+    {
+      component: 'Select',
+      fieldName: 'clientType',
+      label: $t('seaExport.client.clientType'),
+      componentProps: {
+        allowClear: true,
+        options: getClientTypeOptions(),
+        class: 'w-full',
+        placeholder: $t('ui.placeholder.select'),
+      },
+    },
     {
       component: 'Select',
       fieldName: 'clientLevel',

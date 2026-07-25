@@ -230,6 +230,8 @@ export namespace InvoiceIssueApi {
     invoiceIssueItems: InvoiceIssueItemDto[];
     /** 发票开出商品明细 */
     invoiceIssueGoodsDtls: InvoiceIssueGoodsDtlDto[];
+    /** ✅ 对应的开票申请列表（字段与 GetSubmittedApplicationListAsync 出参完全相同） */
+    invoiceIssueApplications?: InvoiceIssueApplicationDto[] | null;
   }
 
   /** 发票开出列表项DTO */

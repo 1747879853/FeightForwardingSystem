@@ -84,6 +84,18 @@ const selectedFeeRowKeys = ref<string[]>([]);
 // 发票汇率
 const invoiceExchangeRate = ref<number>(1.0);
 
+// ✅ 新增：监听 currencyId 变化，自动加载汇率
+watch(
+  () => props.currencyId,
+  async (newCurrencyId) => {
+    if (newCurrencyId && drawerVisible.value) {
+      console.log('🔄 检测到 currencyId 变化，加载对应汇率:', newCurrencyId);
+      await loadDefaultExchangeRate(newCurrencyId);
+    }
+  },
+  { immediate: false },
+);
+
 /** 获取子表格的选中 keys */
 function getChildSelectedKeys(record: any): string[] {
   if (!record.feeDetails) return [];
