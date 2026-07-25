@@ -188,6 +188,13 @@ const currentShipperName = ref<string | undefined>();
 const currentConsigneeName = ref<string | undefined>();
 const currentNotifierName = ref<string | undefined>();
 
+/** 往来单位 id → 名称，换单位时按 id 取名，避免沿用上一家的名称或重复拉详情 */
+const partyNameCache = new Map<string, string>();
+
+function rememberPartyName(id?: string, name?: string) {
+  if (id && name) partyNameCache.set(id, name);
+}
+
 /** 费用表行业类别 → 结算对象映射上下文 */
 const feeParties = computed(() => ({
   clientId: currentClientId.value,
@@ -214,21 +221,30 @@ async function resolveFeeParties() {
   const nextConsigneeId = toOptionalStringId(partyValues.consigneeId);
   const nextNotifierId = toOptionalStringId(partyValues.notifierId);
 
+  // id 变了就按新 id 取名，命中不了宁可留空，也不能把上一家的名称带过去
   if (nextClientId !== currentClientId.value) {
     currentClientId.value = nextClientId;
-    if (!nextClientId) currentClientName.value = undefined;
+    currentClientName.value = nextClientId
+      ? partyNameCache.get(nextClientId)
+      : undefined;
   }
   if (nextShipperId !== currentShipperId.value) {
     currentShipperId.value = nextShipperId;
-    if (!nextShipperId) currentShipperName.value = undefined;
+    currentShipperName.value = nextShipperId
+      ? partyNameCache.get(nextShipperId)
+      : undefined;
   }
   if (nextConsigneeId !== currentConsigneeId.value) {
     currentConsigneeId.value = nextConsigneeId;
-    if (!nextConsigneeId) currentConsigneeName.value = undefined;
+    currentConsigneeName.value = nextConsigneeId
+      ? partyNameCache.get(nextConsigneeId)
+      : undefined;
   }
   if (nextNotifierId !== currentNotifierId.value) {
     currentNotifierId.value = nextNotifierId;
-    if (!nextNotifierId) currentNotifierName.value = undefined;
+    currentNotifierName.value = nextNotifierId
+      ? partyNameCache.get(nextNotifierId)
+      : undefined;
   }
 
   return feeParties.value;
@@ -382,6 +398,7 @@ async function applyClientDefaultUsersByClientId(value: unknown) {
       client = await getClientDetail(clientId);
       if (client?.name) {
         currentClientName.value = client.name;
+        rememberPartyName(clientId, client.name);
       }
     } catch {
       client = undefined;
@@ -404,11 +421,13 @@ function bindClientUserLinkage() {
       componentProps: {
         onChange: (value: unknown, option?: unknown) => {
           currentClientId.value = toOptionalStringId(value);
-          if (!currentClientId.value) {
-            currentClientName.value = undefined;
-          } else {
+          if (currentClientId.value) {
             const name = pickSelectOptionLabel(option);
-            if (name) currentClientName.value = name;
+            currentClientName.value =
+              name ?? partyNameCache.get(currentClientId.value);
+            rememberPartyName(currentClientId.value, name);
+          } else {
+            currentClientName.value = undefined;
           }
           void applyClientDefaultUsersByClientId(value);
         },
@@ -451,11 +470,13 @@ function bindPartySettlementLinkage() {
       componentProps: {
         onChange: (value: unknown, option?: unknown) => {
           currentShipperId.value = toOptionalStringId(value);
-          if (!currentShipperId.value) {
-            currentShipperName.value = undefined;
-          } else {
+          if (currentShipperId.value) {
             const name = pickSelectOptionLabel(option);
-            if (name) currentShipperName.value = name;
+            currentShipperName.value =
+              name ?? partyNameCache.get(currentShipperId.value);
+            rememberPartyName(currentShipperId.value, name);
+          } else {
+            currentShipperName.value = undefined;
           }
         },
       },
@@ -465,11 +486,13 @@ function bindPartySettlementLinkage() {
       componentProps: {
         onChange: (value: unknown, option?: unknown) => {
           currentConsigneeId.value = toOptionalStringId(value);
-          if (!currentConsigneeId.value) {
-            currentConsigneeName.value = undefined;
-          } else {
+          if (currentConsigneeId.value) {
             const name = pickSelectOptionLabel(option);
-            if (name) currentConsigneeName.value = name;
+            currentConsigneeName.value =
+              name ?? partyNameCache.get(currentConsigneeId.value);
+            rememberPartyName(currentConsigneeId.value, name);
+          } else {
+            currentConsigneeName.value = undefined;
           }
         },
       },
@@ -479,11 +502,13 @@ function bindPartySettlementLinkage() {
       componentProps: {
         onChange: (value: unknown, option?: unknown) => {
           currentNotifierId.value = toOptionalStringId(value);
-          if (!currentNotifierId.value) {
-            currentNotifierName.value = undefined;
-          } else {
+          if (currentNotifierId.value) {
             const name = pickSelectOptionLabel(option);
-            if (name) currentNotifierName.value = name;
+            currentNotifierName.value =
+              name ?? partyNameCache.get(currentNotifierId.value);
+            rememberPartyName(currentNotifierId.value, name);
+          } else {
+            currentNotifierName.value = undefined;
           }
         },
       },
@@ -604,6 +629,10 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   currentConsigneeName.value = dto.consignee?.name || undefined;
   currentNotifierId.value = dto.notifierId ? String(dto.notifierId) : undefined;
   currentNotifierName.value = dto.notifier?.name || undefined;
+  rememberPartyName(currentClientId.value, currentClientName.value);
+  rememberPartyName(currentShipperId.value, currentShipperName.value);
+  rememberPartyName(currentConsigneeId.value, currentConsigneeName.value);
+  rememberPartyName(currentNotifierId.value, currentNotifierName.value);
   currentPolId.value = dto.polId ?? undefined;
 }
 

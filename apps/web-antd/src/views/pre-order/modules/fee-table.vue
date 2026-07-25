@@ -230,12 +230,29 @@ async function fillQuantityByUnit(row: PreOrderFeeRow, unit?: null | string) {
 /** 结算对象带出时优先用 resolveParties 的最新值，否则退回 props.parties */
 const partiesSnapshot = ref<PreOrderFeeParties>({});
 
+/** 客户 id → 名称，命中后不再打详情，直接喂给 ClientSelect 的 selectedItems */
+const clientNameCache = new Map<string, string>();
+
+function rememberClientName(id?: null | string, name?: null | string) {
+  if (id && name) clientNameCache.set(String(id), String(name));
+}
+
+/** 把本单往来单位名称灌进缓存，切换类别带出时优先用，避免二次拉详情 */
+function seedClientNameCacheFromParties(p?: PreOrderFeeParties | null) {
+  if (!p) return;
+  rememberClientName(p.clientId, p.clientName);
+  rememberClientName(p.shipperId, p.shipperName);
+  rememberClientName(p.consigneeId, p.consigneeName);
+  rememberClientName(p.notifierId, p.notifierName);
+}
+
 async function refreshPartiesSnapshot() {
   if (props.resolveParties) {
     try {
       const latest = await props.resolveParties();
       if (latest) {
         partiesSnapshot.value = { ...latest };
+        seedClientNameCacheFromParties(partiesSnapshot.value);
         return partiesSnapshot.value;
       }
     } catch {
@@ -243,6 +260,7 @@ async function refreshPartiesSnapshot() {
     }
   }
   partiesSnapshot.value = { ...(props.parties ?? {}) };
+  seedClientNameCacheFromParties(partiesSnapshot.value);
   return partiesSnapshot.value;
 }
 
@@ -250,17 +268,17 @@ watch(
   () => props.parties,
   (val) => {
     partiesSnapshot.value = { ...(val ?? {}) };
+    seedClientNameCacheFromParties(partiesSnapshot.value);
   },
   { deep: true, immediate: true },
 );
 
 /** 按行业字母码从往来单位带出结算对象（同时写入名称，避免 Select 显示成 uuid） */
 async function applySettlementByLetter(row: PreOrderFeeRow, letter?: string) {
-  if (!letter) {
-    row.settlementId = undefined;
-    row.settlement = undefined;
-    return;
-  }
+  // 类别一变先清空，回填不成功时也不能留着上一类别的结算对象
+  row.settlementId = undefined;
+  row.settlement = undefined;
+  if (!letter) return;
   const p = partiesSnapshot.value ?? {};
   const map: Record<string, { id?: null | string; name?: null | string }> = {
     b: { id: p.shipperId, name: p.shipperName },
@@ -270,23 +288,22 @@ async function applySettlementByLetter(row: PreOrderFeeRow, letter?: string) {
   };
   const hit = map[letter.toLowerCase()];
   const id = hit?.id;
-  if (id == null || id === '') {
-    // 类别对上了但本单还没填对应往来单位 → 清空，避免沿用上一收付类型的结算对象
-    row.settlementId = undefined;
-    row.settlement = undefined;
-    return;
-  }
-  row.settlementId = String(id);
-  let name = hit?.name ? String(hit.name) : undefined;
+  // 类别对上了但本单还没填对应往来单位 → 保持清空
+  if (id == null || id === '') return;
+  const settlementId = String(id);
+  rememberClientName(settlementId, hit?.name);
+  let name = clientNameCache.get(settlementId);
   if (!name) {
     try {
-      const detail = await getClientDetail(String(id));
+      const detail = await getClientDetail(settlementId);
       name = detail?.name || detail?.fullName || undefined;
+      rememberClientName(settlementId, name);
     } catch {
       name = undefined;
     }
   }
-  row.settlement = name ? { id: String(id), name } : undefined;
+  row.settlementId = settlementId;
+  row.settlement = name ? { id: settlementId, name } : undefined;
 }
 
 /**
@@ -334,6 +351,7 @@ function handleSettlementChange(
   } else {
     row.settlementId = String(value);
     const name = option?.label || option?.rawLabel;
+    rememberClientName(row.settlementId, name);
     row.settlement = name ? { id: row.settlementId, name } : undefined;
   }
   touchDataSource();
@@ -489,11 +507,18 @@ async function handlePaySideChange(row: PreOrderFeeRow, paySide: number) {
   touchDataSource();
 }
 
+/**
+ * 切换结算对象类别：先清空结算对象 → ClientSelect 按新字母码过滤 →
+ * 本单已录入对应往来单位则直接回填，并写 selectedItems（名称走缓存，不二次拉详情）
+ */
 async function handleIndustryCategoryChange(
   row: PreOrderFeeRow,
   key: null | number | undefined,
 ) {
   row.industryCategory = key ?? undefined;
+  // 立刻清掉旧结算对象，避免新类别过滤参数生效前短暂显示错户
+  row.settlementId = undefined;
+  row.settlement = undefined;
   await refreshPartiesSnapshot();
   const letter = industryKeyToLetter(key ?? undefined);
   await applySettlementByLetter(row, letter);
@@ -622,7 +647,8 @@ function handleRemove() {
 
 function settlementSelectedItems(row: PreOrderFeeRow) {
   if (!row.settlementId) return [];
-  const name = row.settlement?.name;
+  const name =
+    row.settlement?.name || clientNameCache.get(String(row.settlementId));
   // 无名称时只传 id，禁止用 uuid 当 label（会污染 ClientSelect 回显）
   if (!name) return [{ id: row.settlementId }];
   return [{ id: row.settlementId, name }];

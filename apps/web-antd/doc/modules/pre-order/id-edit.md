@@ -60,8 +60,8 @@ last_updated: 2026-07-25
 | **服务项目** | 本单要执行的主流程服务（无任务进度） | `SeaExportAdmin/GetServiceTypesByPOLAsync` ∩ `ServiceType.extra1` | **依赖：** 起运港 + 委托单位字段 `onChange` 直传；按接口 `checked` 默认带出；港口变更后不在候选池的已选项被自动剔除 | 只能是候选池子集（可少不可多）；流水线默认「未执行」样式，勿用海出「已完成」 |
 | **费用.收付类型** | 应收(0) / 应付(1) | 固定选项 | **触发：** 切换后按收付重取汇率；若已有费用代码则按应收 `defaultDebitName` / 应付 `defaultCreditName` **重写**结算对象类别与结算对象，并回写费用代码税率、重算不含税单价与金额 | —— |
 | **费用.费用代码** | 费用名称来源 | **基础数据**<br/>`FeeCodeSelect` | **触发：** 带出行业类别（应收 `defaultDebitName` / 应付 `defaultCreditName`）、结算对象、币别+汇率、税率、默认单位、禁开票/机密；默认单位为「箱型/CTN」或不在四项白名单时落到「票」并提示 | —— |
-| **费用.结算对象类别** | 行业类别 | `IndustryCategorySelect`（存数值 key） | **触发：** 按字母码过滤结算对象下拉；并从委托单位(p)/发货人(b)/收货人(e)/通知人(h) 带出结算对象 | —— |
-| **费用.结算对象** | 客户 | `ClientSelect` | **依赖：** `industryCategory` 字母码过滤 | —— |
+| **费用.结算对象类别** | 行业类别 | `IndustryCategorySelect`（存数值 key） | **触发：** 切换后先清空结算对象；`ClientSelect` 的 `industryCategory` 改为对应字母码重新过滤；若本单已录入委托单位(p)/发货人(b)/收货人(e)/通知人(h) 则直接回填，并用名称写 `selectedItems`（走往来单位名称缓存，避免二次拉详情） | —— |
+| **费用.结算对象** | 客户 | `ClientSelect` | **依赖：** `industryCategory` 字母码过滤；回显依赖 `selectedItems`（id+name） | —— |
 | **费用.币别** | 结算币别 | `CurrencySelect` | **默认：** 新增行默认 USD；**触发：** 变更后拉汇率 | 生成海出费用时缺币别会被跳过 |
 | **费用.汇率** | 对本位币汇率 | 手填或币别带出 | **依赖：** 币别命中归属组织本位币时**固定 1 且只读**；否则币别/收付变更后取 `getExchangeRateDetail`（应收 `crValue` / 应付 `drValue`），可再改；归属组织变更后全表重刷 | —— |
 | **费用.单位** | 计价单位 | 固定四项：`票` / `重量` / `体积` / `TEU`（`PRE_ORDER_GENERIC_UNITS`），**不含箱型名** | **默认：** 「票」；费用代码默认单位经 `coercePreOrderFeeUnit` 落到四项之一（历史箱型名→票）；**触发：** 按单位自动带出数量（见「费用.数量」） | 必须是四项之一，提交审核前校验；详情回显靠固定枚举，故不下发箱型 |
@@ -100,6 +100,7 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-25 | `Fix` | 切换结算对象类别：先清空结算对象；`ClientSelect` 按新字母码过滤；本单已有委托/发货/收货/通知人则直接回填，并写 `selectedItems`（名称缓存，避免二次拉详情） | `applySettlementByLetter` 开头强制清空；`clientNameCache` + 编辑页 `partyNameCache` 双向喂名；`settlementUiKey` 强制重挂载 |
 | 2026-07-25 | `Fix` | 切换收付时按费用代码重写结算对象类别、结算对象与税率（并重算不含税单价/金额）；对方往来单位未填时清空结算对象，避免沿用旧值 | 抽 `applyFeeCodeByPaySide`；应收 `defaultDebitName` / 应付 `defaultCreditName`；税率取费用代码 `taxRate` |
 | 2026-07-25 | `Fix` | 费用单位下拉去掉箱型名，仅保留票/重量/体积/TEU；新增默认「票」；历史箱型名回显强制落到「票」；含税单价恢复全程手填 | 箱型名无法作为 Select value 稳定回显（详情只有字符串、无箱型字典注入）；`coercePreOrderFeeUnit` 统一收敛；箱型表仍仅供 TEU 累加 |
 | 2026-07-25 | `Fix` | 费用单位按后端契约纠正为「票/重量/体积/TEU+箱型名」（去掉后端识别不了的毛重/尺码/件数），历史数据回显自动归一；数量改为只读并恒由单位派生，货物毛重/体积或箱型变化后全表重算；提交审核前拦截会被后端静默丢弃（缺收付/费用代码/币别）或算成 0（单位不可识别）的费用行 | 单位契约与体检抽到 `modules/fee-unit.ts`（`PRE_ORDER_GENERIC_UNITS` / `normalizePreOrderFeeUnit` / `checkPreOrderFees`），因 `<script setup>` 不能导出值；`fillQuantityByUnit` 与后端 `ResolveQuantityByUnit` 逐分支对齐且未知单位显式置 0；`syncCtnDrivenRows` 升级为 `syncDerivedRows`（不再只管箱型驱动行）；`PreOrderFeeCargo` 去掉 `pkgs`——联系单后端无件数分支 |
