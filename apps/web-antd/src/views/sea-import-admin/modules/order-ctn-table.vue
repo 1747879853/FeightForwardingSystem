@@ -139,9 +139,44 @@ const updateRow = (
   modelValue.value = list;
 };
 
+/** 箱型选择：从 option 取名称写入行，避免 syncCtnNameMap 再打详情 */
+const handleCtnCodeChange = (
+  index: number,
+  value: unknown,
+  option?: { label?: string; raw?: { ctnName?: string } },
+) => {
+  const list = [...(modelValue.value ?? [])];
+  if (!list[index]) {
+    list[index] = { _rowKey: `ctn_${++rowKeyCounter}_${Date.now()}` } as any;
+  }
+  // 雪花 ID 原样透传，禁止 Number()
+  const ctnCodeId =
+    value == null || value === ''
+      ? undefined
+      : (value as SeaImportAdminApi.OrderCtnAddDto['ctnCodeId']);
+  const nameFromOption =
+    option?.raw?.ctnName ||
+    (typeof option?.label === 'string' ? option.label : undefined);
+  const ctnCodeName =
+    ctnCodeId == null ? undefined : nameFromOption || undefined;
+  list[index] = {
+    ...list[index],
+    ctnCodeId,
+    ctnCodeName,
+  } as any;
+  if (ctnCodeId != null && ctnCodeName) {
+    ctnNameById.value = {
+      ...ctnNameById.value,
+      [String(ctnCodeId)]: String(ctnCodeName),
+    };
+  }
+  modelValue.value = list;
+};
+
 const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
-  if (id == null) return [];
-  return [{ id, [labelKey]: name || '' }] as any[];
+  if (id == null || id === '') return [];
+  if (name === undefined || name === null || name === '') return [];
+  return [{ id, [labelKey]: name }] as any[];
 };
 
 watch(
@@ -221,7 +256,9 @@ watch(
             "
             class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')"
-            @update:model-value="(v) => updateRow(index, 'ctnCodeId', v)"
+            @change="
+              (v: any, option: any) => handleCtnCodeChange(index, v, option)
+            "
           />
         </template>
         <template v-else-if="column.key === 'ctnNo'">

@@ -30,18 +30,15 @@ type FormExpose = {
   scrollToSection: (key: SectionKey) => void;
 };
 
+/** 仅含当前可见且有对应面板的 Tab；隐藏 key 不参与记忆恢复，避免空白页 */
 const VALID_TAB_KEYS: readonly TabKey[] = [
   'basic',
   'fee',
   'party',
-  'shipment',
-  'port',
   'attachments',
   'dispatch',
   'billInfo',
   'tracking',
-  'issueRecord',
-  'changeHistory',
 ] as const;
 
 const TAB_STORAGE_KEY_PREFIX = 'sea-export-edit-active-tab';
@@ -131,7 +128,7 @@ const onFeeCountChange = (payload: { recCount: number; payCount: number }) => {
 const tabs = ref<{ key: TabKey; label: string; sectionKey?: SectionKey }[]>([
   { key: 'basic', label: '基础信息', sectionKey: 'basic' },
   { key: 'fee', label: feeName.value },
-  { key: 'party', label: '更改单', sectionKey: 'party' },
+  { key: 'party', label: '更改单' },
   // 暂时隐藏：服务详情 / 单证信息 / 问题记录 / 修改历史
   // { key: 'shipment', label: '服务详情', sectionKey: 'shipment' },
   // { key: 'port', label: '单证信息', sectionKey: 'port' },
@@ -149,11 +146,6 @@ const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   nextTick(() => {
     formRef.value?.scrollToSection(tab.sectionKey as SectionKey);
   });
-};
-
-const onSectionChange = (sectionKey: SectionKey) => {
-  if (sectionKey === 'cargo') return;
-  activeTab.value = sectionKey;
 };
 
 // 编辑工作台未保存拦截：无论当前停留在哪个内部标签，离开路由时都基于基础信息表单的脏状态二次确认
@@ -243,12 +235,7 @@ const getContentTabStyle = (isActive: boolean) =>
             />
           </div>
           <KeepAlive include="SeaExportAdminForm">
-            <Form
-              v-if="activeTab === 'basic'"
-              ref="formRef"
-              embedded
-              @section-change="onSectionChange"
-            />
+            <Form v-if="activeTab === 'basic'" ref="formRef" embedded />
           </KeepAlive>
         </div>
       </div>

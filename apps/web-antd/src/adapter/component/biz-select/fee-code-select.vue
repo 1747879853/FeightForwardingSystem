@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 
-import { computed, ref, toRef, watch, h } from 'vue';
+import { computed, ref, toRef, watch } from 'vue';
 
 import { ApiComponent } from '@vben/common-ui';
 import { $t } from '@vben/locales';
@@ -41,6 +41,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: any];
+  change: [value: any, option: any];
 }>();
 
 const modelValue = defineModel<any>();
@@ -62,6 +63,8 @@ const mapItemToOption = (item: FeeCodeAdminApi.FeeCodeDto) => {
   return {
     disabled: item.enable === false,
     label,
+    /** 列表行完整数据，供业务侧带出税率/收付类别等，避免再打 DetailAsync */
+    raw: item,
     rowLabel: itemAny?.[props.labelKey],
     value: rawValue === undefined || rawValue === null ? '' : rawValue,
   };
@@ -90,6 +93,7 @@ const {
   handleSearch,
   mergeSelectedItems,
   params,
+  pinSelectedFromOptions,
   searchValue,
 } = usePagedSelect({
   fetchPage: fetchPageAdapter,
@@ -97,6 +101,7 @@ const {
   pageSize: props.pageSize,
   queryKey: ['fee-code'],
   selectedItemsRef,
+  selectedValuesRef: modelValue,
   valueKey: props.valueKey,
 });
 
@@ -105,6 +110,7 @@ const computedPlaceholder = computed(
 );
 
 const apiComponentRef = ref();
+const loadedSelectedIds = ref(new Set<string>());
 
 /** 解析为字符串 ID，避免大数精度丢失（JS Number 安全整数上限为 2^53-1） */
 const parseIdToSafeString = (value: unknown): string | null => {
@@ -113,7 +119,9 @@ const parseIdToSafeString = (value: unknown): string | null => {
   return String(value);
 };
 
-const handleChange = (value: any) => {
+const handleSelectChange = (value: any, option?: any) => {
+  const options = apiComponentRef.value?.getOptions?.() ?? [];
+  pinSelectedFromOptions(value, options);
   const values = Array.isArray(value) ? value : [value];
   for (const v of values) {
     const idStr = parseIdToSafeString(v);
@@ -121,18 +129,36 @@ const handleChange = (value: any) => {
       loadedSelectedIds.value.add(idStr);
     }
   }
+  // 选中项若来自列表，把 raw 合并进缓存，后续回显不再打详情
+  const matched =
+    option ??
+    options.find((item: any) => String(item?.value) === String(value));
+  if (matched?.raw) {
+    mergeSelectedItems([matched.raw]);
+  }
   modelValue.value = value;
   emit('update:modelValue', value);
+  emit('change', value, matched);
 };
 
 const ensureSelectedLoaded = async (rawValue: any) => {
   if (rawValue === undefined || rawValue === null || rawValue === '') return;
   const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+  const options = apiComponentRef.value?.getOptions?.() ?? [];
 
   for (const v of values) {
     const idStr = parseIdToSafeString(v);
     if (idStr === null) continue;
     if (loadedSelectedIds.value.has(idStr)) continue;
+    // 下拉列表里已有完整行时，不必再打 DetailAsync
+    const fromOptions = options.find(
+      (item: any) => String(item?.value) === idStr && item?.raw,
+    );
+    if (fromOptions?.raw) {
+      loadedSelectedIds.value.add(idStr);
+      mergeSelectedItems([fromOptions.raw]);
+      continue;
+    }
 
     loadedSelectedIds.value.add(idStr);
     try {
@@ -143,8 +169,6 @@ const ensureSelectedLoaded = async (rawValue: any) => {
     }
   }
 };
-
-const loadedSelectedIds = ref(new Set<string>());
 
 watch(
   selectedItemsRef,
@@ -190,7 +214,7 @@ defineExpose({
       loading-slot="suffixIcon"
       model-prop-name="value"
       :search-value="searchValue"
-      @update:model-value="handleChange"
+      @change="handleSelectChange"
       @dropdown-visible-change="handleDropdownVisibleChange"
       @search="handleSearch"
       @popup-scroll="handlePopupScroll"

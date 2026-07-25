@@ -273,8 +273,42 @@ const updateRow = (
   modelValue.value = list;
 };
 
+/** 箱型选择：从 option 取名称写入行，避免 syncCtnNameMap 再打详情 */
+const handleCtnCodeChange = (
+  index: number,
+  value: unknown,
+  option?: { label?: string; raw?: { ctnName?: string } },
+) => {
+  const list = [...(modelValue.value ?? [])];
+  if (!list[index]) {
+    list[index] = { _rowKey: `ctn_${++rowKeyCounter}_${Date.now()}` } as any;
+  }
+  // 雪花 ID 原样透传，禁止 Number()
+  const ctnCodeId =
+    value == null || value === ''
+      ? undefined
+      : (value as SeaExportAdminApi.OrderCtnAddDto['ctnCodeId']);
+  const nameFromOption =
+    option?.raw?.ctnName ||
+    (typeof option?.label === 'string' ? option.label : undefined);
+  const ctnCodeName =
+    ctnCodeId == null ? undefined : nameFromOption || undefined;
+  list[index] = {
+    ...list[index],
+    ctnCodeId,
+    ctnCodeName,
+  } as any;
+  if (ctnCodeId != null && ctnCodeName) {
+    ctnNameById.value = {
+      ...ctnNameById.value,
+      [String(ctnCodeId)]: String(ctnCodeName),
+    };
+  }
+  modelValue.value = list;
+};
+
 const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
-  if (id == null) return [];
+  if (id == null || id === '') return [];
   // 无名称时不传 selectedItems，交由 Select 按 id 拉取详情回显文案；
   // 若传 { id, name: '' }，会标记为已加载且标签为空，界面会退化成显示 id。
   if (name === undefined || name === null || name === '') return [];
@@ -382,7 +416,9 @@ watch(
             class="w-full min-w-0"
             size="small"
             :placeholder="$t('ui.placeholder.select')"
-            @update:model-value="(v) => updateRow(index, 'ctnCodeId', v)"
+            @change="
+              (v: any, option: any) => handleCtnCodeChange(index, v, option)
+            "
           />
         </template>
         <template v-else-if="column.key === 'ctnNo'">

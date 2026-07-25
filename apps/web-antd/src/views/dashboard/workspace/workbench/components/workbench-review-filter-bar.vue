@@ -12,6 +12,7 @@ import { computed } from 'vue';
 
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
+import PortSelect from '#/adapter/component/biz-select/port-select.vue';
 import UserSelect from '#/adapter/component/biz-select/user-select.vue';
 import { BusinessTypeOptions } from '#/views/client/payment-terms/data';
 
@@ -35,11 +36,22 @@ export interface PaymentReviewFilterModel {
   submitTimeRange: [string, string] | [any, any] | null;
 }
 
-type ReviewFilterModel = ArApReviewFilterModel | PaymentReviewFilterModel;
+export interface PreOrderReviewFilterModel {
+  keyword: string;
+  clientId?: string;
+  polId?: number;
+  etdStart?: any;
+  etdEnd?: any;
+}
+
+type ReviewFilterModel =
+  | ArApReviewFilterModel
+  | PaymentReviewFilterModel
+  | PreOrderReviewFilterModel;
 
 interface Props {
   activeProcessingTab: string;
-  mode: 'ar-ap-review' | 'payment-review';
+  mode: 'ar-ap-review' | 'payment-review' | 'pre-order-review';
   modelValue: ReviewFilterModel;
   processingTabs: ProcessingTab[];
 }
@@ -63,6 +75,10 @@ const arApModel = computed<ArApReviewFilterModel>(
 
 const paymentModel = computed<PaymentReviewFilterModel>(
   () => props.modelValue as PaymentReviewFilterModel,
+);
+
+const preOrderModel = computed<PreOrderReviewFilterModel>(
+  () => props.modelValue as PreOrderReviewFilterModel,
 );
 
 function patchValue(value: ReviewFilterModel) {
@@ -132,6 +148,27 @@ function onCreatorChange(value: unknown) {
 
 function onAuditUserChange(value: unknown) {
   patchPaymentField('auditUserId', (value as number | undefined) ?? undefined);
+}
+
+function patchPreOrderField<K extends keyof PreOrderReviewFilterModel>(
+  field: K,
+  value: PreOrderReviewFilterModel[K],
+) {
+  if (props.mode !== 'pre-order-review') return;
+  const current = props.modelValue as PreOrderReviewFilterModel;
+  patchValue({ ...current, [field]: value });
+}
+
+function onPreOrderClientChange(value: unknown) {
+  patchPreOrderField('clientId', (value as string | undefined) ?? undefined);
+}
+
+function onPreOrderPolChange(value: unknown) {
+  patchPreOrderField('polId', (value as number | undefined) ?? undefined);
+}
+
+function onPreOrderDateChange(field: 'etdEnd' | 'etdStart', value: unknown) {
+  patchPreOrderField(field, (value ?? null) as any);
 }
 </script>
 
@@ -289,6 +326,57 @@ function onAuditUserChange(value: unknown) {
             :selected-items="[]"
             placeholder="请选择审核人"
             @update:model-value="onAuditUserChange"
+          />
+        </label>
+      </template>
+
+      <template v-if="props.mode === 'pre-order-review'">
+        <label class="field">
+          <span class="field__label">业务编号:</span>
+          <Input
+            class="field__input"
+            :value="preOrderModel.keyword"
+            placeholder="业务编号/主提单号"
+            allow-clear
+            @update:value="patchPreOrderField('keyword', $event ?? '')"
+          />
+        </label>
+        <label class="field">
+          <span class="field__label">委托单位:</span>
+          <ClientSelect
+            class="field__input"
+            :model-value="preOrderModel.clientId"
+            :selected-items="[]"
+            placeholder="请选择委托单位"
+            @update:model-value="onPreOrderClientChange"
+          />
+        </label>
+        <label class="field">
+          <span class="field__label">起运港:</span>
+          <PortSelect
+            class="field__input"
+            :model-value="preOrderModel.polId"
+            :selected-items="[]"
+            placeholder="请选择起运港"
+            @update:model-value="onPreOrderPolChange"
+          />
+        </label>
+        <label class="field">
+          <span class="field__label">ETD:</span>
+          <DatePicker
+            class="field__input"
+            :value="preOrderModel.etdStart ?? undefined"
+            placeholder="请选择 ETD"
+            @update:value="onPreOrderDateChange('etdStart', $event)"
+          />
+        </label>
+        <label class="field">
+          <span class="field__label">截止日期:</span>
+          <DatePicker
+            class="field__input"
+            :value="preOrderModel.etdEnd ?? undefined"
+            placeholder="请选择截止日期"
+            @update:value="onPreOrderDateChange('etdEnd', $event)"
           />
         </label>
       </template>

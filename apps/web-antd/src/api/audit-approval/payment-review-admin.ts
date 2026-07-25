@@ -119,6 +119,8 @@ export enum TaskType {
   ModifyOrderFee = 1,
   DeleteOrderFee = 2,
   PaymentApplication = 3,
+  /** 业务联系单（与后端 FrightModule.PreOrder 同值） */
+  PreOrder = 8,
 }
 
 /** 工作流实例状态 */

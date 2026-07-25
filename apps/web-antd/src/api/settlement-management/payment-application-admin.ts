@@ -280,6 +280,8 @@ export namespace PaymentApplicationAdminApi {
     submitTime?: string;
     endTime?: string;
     settlementId: string;
+    /** 结算对象简易对象（编辑回显用） */
+    settlement?: ClientSimpleDtoForOrder | null;
     currencyId?: number;
     require?: string;
     remark?: string;

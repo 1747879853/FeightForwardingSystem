@@ -86,6 +86,7 @@ export const serviceTabs: ServiceTab[] = [
   { key: 'sea-export', label: '海运出口服务' },
   { key: 'ar-ap-review', label: '应收应付审核' },
   { key: 'payment-review', label: '付费申请审核' },
+  { key: 'pre-order-review', label: '业务联系单审核' },
 ];
 
 export const portTabs: PortTab[] = [];

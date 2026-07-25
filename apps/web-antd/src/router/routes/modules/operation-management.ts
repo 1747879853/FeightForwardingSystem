@@ -61,6 +61,50 @@ const routes: RouteRecordRaw[] = [
       },
       {
         meta: {
+          icon: 'mdi:file-document-edit-outline',
+          title: '业务联系单',
+          hideChildrenInMenu: true,
+          authority: abpPageAuthority('Admin.PreOrder'),
+        },
+        name: 'PreOrder',
+        path: '/pre-order',
+        children: [
+          {
+            path: '',
+            name: 'PreOrderList',
+            meta: {
+              keepAlive: true,
+              title: '业务联系单',
+              authority: abpPageAuthority('Admin.PreOrder'),
+            },
+            component: () => import('#/views/pre-order/list.vue'),
+          },
+          {
+            path: 'add',
+            name: 'PreOrderAdd',
+            meta: {
+              title: '业务联系单',
+              hideInMenu: true,
+              activePath: '/pre-order',
+              authority: abpPageAuthority('Admin.PreOrder.Add'),
+            },
+            component: () => import('#/views/pre-order/editor.vue'),
+          },
+          {
+            path: ':id([0-9a-fA-F-]{36})/edit',
+            name: 'PreOrderEdit',
+            meta: {
+              title: '业务联系单',
+              hideInMenu: true,
+              activePath: '/pre-order',
+              authority: abpPageAuthority('Admin.PreOrder'),
+            },
+            component: () => import('#/views/pre-order/editor.vue'),
+          },
+        ],
+      },
+      {
+        meta: {
           icon: 'mdi:ferry',
           title: $t('seaImport.import.title'),
           hideChildrenInMenu: true,

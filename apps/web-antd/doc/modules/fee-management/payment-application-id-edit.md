@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-07-24
+last_updated: 2026-07-25
 ---
 
 # 1. 业务背景说明 (Background)
@@ -39,7 +39,7 @@ last_updated: 2026-07-24
 | **申请单 ID** | 编辑上下文主键。 | 路由动态段 `:id` | **触发/依赖：** 用于加载付款申请详情。 | 必须有效。 |
 | **审核状态** | 控制是否可编辑。 | `PaymentApplicationStatus` | **触发/依赖：** 与付款审核页面联动。 | 审核中或已完成状态不应随意修改。 |
 
-| **结算对象** | 付款申请及费用明细的结算客户。 | `settlementId` / `clientName` / `settlementName` | **触发/依赖：** 主表选择后锁定添加费用抽屉筛选；费用内层列展示 `settlementName`。 | 已有费用时不可清空。 |
+| **结算对象** | 付款申请及费用明细的结算客户。 | `settlementId` / `settlement` / `clientName` | **触发/依赖：** 主表 `ClientSelect` 编辑回显传 `selected-items`（优先 `settlement`，兜底 `settlementId`+`clientName`）；选择后锁定添加费用抽屉筛选；费用内层列展示 `settlementName`。 | 已有费用时不可清空。 |
 
 | **费用分组** | 编辑页与选费抽屉外层列表的分组维度。 | `GetOrderFeeGroupAsync` / 本地 `groupFeesByOrder` | **触发/依赖：** 按「业务 + 结算对象」联合分组；`row-key` 为复合键。 | 同一业务可对应多行（不同结算对象）；底部统计为组数非票数。 |
 
@@ -53,6 +53,7 @@ last_updated: 2026-07-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-25 | `Fix` | 编辑页结算对象下拉正确回显客户简称（`测试正式客户简称` 等）。 | `ClientSelect` 注入 `selected-items`；详情优先用 `settlement` 对象，缺省用 `settlementId`+`clientName`。详见 `changelogs/change-log-2026-07-25-payment-application-settlement-selected-items.md`。 |
 | 2026-07-24 | `Refactor` | 编辑页添加费用抽屉委托单位改读 `PayAppFeeGroupDto.client?.name`。 | 与新增页同源 `add-fee-modal`。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-12 | `Fix` | 「未结金额」改用 `unRqstPaymentAmount`；「本次结算」不得超过未结金额。 | `add-fee-modal` 列与默认值、`validateAppliedAmounts`；外侧明细 `form-data.ts` 同步字段。 |
 | 2026-07-12 | `Fix` | 外侧费用明细「本次申请金额」改为只读；编辑模式添加费用 `PayAppItemAddAsync` 成功后提示「保存成功」。 | 申请金额以抽屉 `appliedAmount` 为唯一编辑入口；移除 `onAppliedAmountChange`。 |
