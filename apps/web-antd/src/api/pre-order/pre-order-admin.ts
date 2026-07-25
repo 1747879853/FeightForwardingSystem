@@ -129,7 +129,7 @@ export namespace PreOrderAdminApi {
     /** 不含税单价 */
     noTaxUnitPrice?: number | null;
     amount?: number | null;
-    /** 单位字符串（票/重量/体积/TEU/箱型名） */
+    /** 单位字符串（票/重量/体积/TEU） */
     unit?: string | null;
     quantity?: number | null;
     /** 税率(%) */

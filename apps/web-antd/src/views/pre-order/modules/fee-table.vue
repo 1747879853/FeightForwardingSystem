@@ -30,22 +30,26 @@ import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
 import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
 
 import { PAY_SIDE_OPTIONS } from '../form-data';
-import { normalizePreOrderFeeUnit, PRE_ORDER_GENERIC_UNITS } from './fee-unit';
+import { coercePreOrderFeeUnit, PRE_ORDER_GENERIC_UNITS } from './fee-unit';
 
 export interface PreOrderFeeRow extends PreOrderAdminApi.PreOrderFeeDto {
   rowKey: string;
 }
 
-/** 业务联系单上可映射到结算对象的往来单位（字母码 → id） */
+/** 业务联系单上可映射到结算对象的往来单位（字母码 → id / 名称） */
 export interface PreOrderFeeParties {
   /** p 委托单位 */
   clientId?: null | string;
+  clientName?: null | string;
   /** b 发货人 */
   shipperId?: null | string;
+  shipperName?: null | string;
   /** e 收货人 */
   consigneeId?: null | string;
+  consigneeName?: null | string;
   /** h 通知人 */
   notifierId?: null | string;
+  notifierName?: null | string;
 }
 
 /** 货物计量，单位=重量/体积时按此带出数量（对齐后端 ResolveQuantityByUnit） */
@@ -56,11 +60,11 @@ export interface PreOrderFeeCargo {
 
 const props = withDefaults(
   defineProps<{
-    /** 箱型箱量行，用于「应收 + 单位=箱型」带出卖价与箱量 */
+    /** 箱型箱量行，单位=TEU 时按各箱型 teu×箱量累加 */
     ctns?: PreOrderCtnRow[];
     /** 往来单位，用于行业类别 → 结算对象带出 */
     parties?: PreOrderFeeParties;
-    /** 货物计量，用于非箱型单位带出数量 */
+    /** 货物计量，单位=重量/体积时带出数量 */
     cargo?: PreOrderFeeCargo;
     /** 归属组织本位币 id，命中时汇率锁定为 1 */
     localCurrencyId?: null | number;
@@ -102,34 +106,11 @@ function touchDataSource() {
   dataSource.value = [...dataSource.value];
 }
 
-const unitOptions = computed(() => {
-  const ctnUnits = (props.ctns ?? [])
-    .map((row) => row.ctnCodeName)
-    .filter((name): name is string => !!name);
-  return [...new Set([...PRE_ORDER_GENERIC_UNITS, ...ctnUnits])].map(
-    (unit) => ({
-      label: unit,
-      value: unit,
-    }),
-  );
-});
-
-const findCtnByUnit = (unit?: null | string) => {
-  const name = (unit ?? '').trim();
-  if (name === '') return undefined;
-  return (props.ctns ?? []).find((row) => row.ctnCodeName === name);
-};
-
-/** 当前已选且带名称的箱型（用于新增费用默认单位） */
-const namedCtns = computed(() =>
-  (props.ctns ?? []).filter(
-    (row): row is PreOrderCtnRow & { ctnCodeName: string } => !!row.ctnCodeName,
-  ),
-);
-
-/** 应收 + 单位命中箱型时，含税单价由箱型卖价决定，禁止手改 */
-const isCtnDrivenRow = (row: PreOrderFeeRow) =>
-  Number(row.paySide) === 0 && !!findCtnByUnit(row.unit);
+/** 单位仅固定四项，不含箱型名（详情无法稳定回显） */
+const unitOptions = PRE_ORDER_GENERIC_UNITS.map((unit) => ({
+  label: unit,
+  value: unit,
+}));
 
 const round = (value: number, digits: number) => {
   const factor = 10 ** digits;
@@ -158,18 +139,6 @@ function recalcAmount(row: PreOrderFeeRow) {
   return row;
 }
 
-/**
- * 箱型单位带量：数量一律取箱量（对齐海出 fillCtnQuantity 不区分收付），
- * 卖价仅应收带出，应付保持手填。
- */
-function applyCtnPriceAndQty(row: PreOrderFeeRow, ctn: PreOrderCtnRow) {
-  if (Number(row.paySide) === 0) {
-    row.unitPrice = ctn.price ?? undefined;
-  }
-  row.quantity = ctn.count ?? 0;
-  recalcAmount(row);
-}
-
 /** 箱型 teu 缓存，避免同一箱型重复打详情 */
 const ctnTeuCache = new Map<string, number>();
 
@@ -194,11 +163,12 @@ async function sumCtnTeu() {
 }
 
 /**
- * 按单位带出数量，口径与后端 `ResolveQuantityByUnit` 逐条对齐：
- * 票=1、重量=kgs、体积=cbm、TEU=Σ(箱型 teu×箱量)、箱型名=箱量（应收另带卖价）、其余=0
+ * 按单位带出数量，口径与后端 `ResolveQuantityByUnit` 四项固定单位对齐：
+ * 票=1、重量=kgs、体积=cbm、TEU=Σ(箱型 teu×箱量)；非法单位（含历史箱型名）先落到「票」
  */
 async function fillQuantityByUnit(row: PreOrderFeeRow, unit?: null | string) {
-  const name = normalizePreOrderFeeUnit(unit);
+  const name = coercePreOrderFeeUnit(unit) || '票';
+  row.unit = name;
   const cargo = props.cargo ?? {};
   switch (name) {
     case 'TEU': {
@@ -218,33 +188,45 @@ async function fillQuantityByUnit(row: PreOrderFeeRow, unit?: null | string) {
       break;
     }
     default: {
-      const ctn = findCtnByUnit(name);
-      if (ctn) {
-        applyCtnPriceAndQty(row, ctn);
-        return;
-      }
-      // 后端匹配不到箱型名时按 0 落库，这里如实呈现而不是留着旧数量
       row.quantity = 0;
     }
   }
   recalcAmount(row);
 }
 
-/** 按行业字母码从往来单位带出结算对象 */
+/** 按行业字母码从往来单位带出结算对象（同时写入名称，避免 Select 显示成 uuid） */
 function applySettlementByLetter(row: PreOrderFeeRow, letter?: string) {
   if (!letter) return;
   const p = props.parties ?? {};
-  const map: Record<string, null | string | undefined> = {
-    b: p.shipperId,
-    e: p.consigneeId,
-    h: p.notifierId,
-    p: p.clientId,
+  const map: Record<string, { id?: null | string; name?: null | string }> = {
+    b: { id: p.shipperId, name: p.shipperName },
+    e: { id: p.consigneeId, name: p.consigneeName },
+    h: { id: p.notifierId, name: p.notifierName },
+    p: { id: p.clientId, name: p.clientName },
   };
-  const id = map[letter.toLowerCase()];
+  const hit = map[letter.toLowerCase()];
+  const id = hit?.id;
   if (id != null && id !== '') {
     row.settlementId = String(id);
-    row.settlement = undefined;
+    row.settlement = hit?.name ? { id: String(id), name: hit.name } : undefined;
   }
+}
+
+/** 手工选择结算对象：把 option 标签写入 settlement，供 selectedItems 回显 */
+function handleSettlementChange(
+  row: PreOrderFeeRow,
+  value: null | number | string | undefined,
+  option?: { label?: string; rawLabel?: string } | null,
+) {
+  if (value == null || value === '') {
+    row.settlementId = undefined;
+    row.settlement = undefined;
+  } else {
+    row.settlementId = String(value);
+    const name = option?.label || option?.rawLabel;
+    row.settlement = name ? { id: row.settlementId, name } : undefined;
+  }
+  touchDataSource();
 }
 
 /** 本位币行：币别等于归属组织本位币，汇率恒为 1 且不可改 */
@@ -330,10 +312,7 @@ watch(defaultUsdCurrencyId, async (id) => {
 });
 
 watch(
-  () =>
-    props.ctns
-      ?.map((row) => `${row.ctnCodeName}:${row.price}:${row.count}`)
-      .join('|'),
+  () => props.ctns?.map((row) => `${row.ctnCodeId}:${row.count}`).join('|'),
   () => {
     void syncDerivedRows();
   },
@@ -371,20 +350,14 @@ watch(
 );
 
 async function handleUnitChange(row: PreOrderFeeRow, unit: string) {
-  row.unit = normalizePreOrderFeeUnit(unit);
+  row.unit = coercePreOrderFeeUnit(unit) || '票';
   await fillQuantityByUnit(row, row.unit);
   touchDataSource();
 }
 
 async function handlePaySideChange(row: PreOrderFeeRow, paySide: number) {
   row.paySide = paySide;
-  // 切到应收且单位是箱型时立即带价；切到应付时保留当前值改为手填
-  const ctn = findCtnByUnit(row.unit);
-  if (paySide === 0 && ctn) {
-    applyCtnPriceAndQty(row, ctn);
-  } else {
-    recalcAmount(row);
-  }
+  recalcAmount(row);
   // 收付切换后：按应收/应付重取汇率；若已有费用代码则重带行业类别/结算对象
   await applyExchangeRate(row);
   if (row.feeCodeId != null) {
@@ -479,20 +452,26 @@ async function handleFeeCodeChange(
 
     const defaultUnit = detail.defaultUnitName?.trim();
     if (defaultUnit) {
-      // 「箱型/CTN」落到首个已选箱型名（无箱型时退回票）；其余归一到后端可识别单位
-      if (defaultUnit === '箱型' || defaultUnit.toUpperCase() === 'CTN') {
-        row.unit = namedCtns.value[0]?.ctnCodeName ?? '票';
-      } else {
-        const normalized = normalizePreOrderFeeUnit(defaultUnit);
-        const supported =
-          PRE_ORDER_GENERIC_UNITS.includes(normalized) ||
-          !!findCtnByUnit(normalized);
-        row.unit = supported ? normalized : '票';
-        if (!supported) {
-          message.warning(
-            `费用代码默认单位「${defaultUnit}」不在业务联系单可识别范围，已改按「票」计价`,
-          );
-        }
+      // 「箱型/CTN」及不在四项白名单内的默认单位一律落到「票」（不下发箱型名，避免详情无法回显）
+      const coerced = coercePreOrderFeeUnit(
+        defaultUnit === '箱型' || defaultUnit.toUpperCase() === 'CTN'
+          ? '票'
+          : defaultUnit,
+      );
+      row.unit = coerced || '票';
+      if (
+        defaultUnit !== row.unit &&
+        defaultUnit !== '箱型' &&
+        defaultUnit.toUpperCase() !== 'CTN'
+      ) {
+        message.warning(
+          `费用代码默认单位「${defaultUnit}」暂不支持，已改为「${row.unit}」`,
+        );
+      } else if (
+        defaultUnit === '箱型' ||
+        defaultUnit.toUpperCase() === 'CTN'
+      ) {
+        message.warning('费用代码默认单位为箱型，已改为按「票」计价');
       }
       await fillQuantityByUnit(row, row.unit);
     } else {
@@ -504,13 +483,13 @@ async function handleFeeCodeChange(
   touchDataSource();
 }
 
-/** 新增一行费用：默认应收、币别 USD；已有箱型时单位默认取首个箱型；数量/金额/汇率按单位带出 */
+/** 新增一行费用：默认应收、币别 USD、单位「票」；数量/金额/汇率按单位带出 */
 async function handleAdd() {
   const row = {
     rowKey: createRowKey(),
     paySide: 0,
     currencyId: defaultUsdCurrencyId.value ?? undefined,
-    unit: namedCtns.value[0]?.ctnCodeName ?? '票',
+    unit: '票',
     taxRate: 0,
     invoiceBlocked: false,
     isConfidential: false,
@@ -532,7 +511,9 @@ function handleRemove() {
 function settlementSelectedItems(row: PreOrderFeeRow) {
   if (!row.settlementId) return [];
   const name = row.settlement?.name;
-  return [{ id: row.settlementId, name: name || String(row.settlementId) }];
+  // 无名称时只传 id，禁止用 uuid 当 label（会污染 ClientSelect 回显）
+  if (!name) return [{ id: row.settlementId }];
+  return [{ id: row.settlementId, name }];
 }
 
 function feeCodeSelectedItems(row: PreOrderFeeRow) {
@@ -623,8 +604,8 @@ const totals = computed(() => {
         </Button>
       </Tooltip>
       <span class="text-xs text-gray-500">
-        新增默认币别 USD 并带汇率（本位币固定
-        1）；费用代码带出类别/结算/币别/税率/单位；数量由单位自动带出（票·重量·体积·TEU·箱型），审核通过后由后端按同口径重算
+        新增默认币别
+        USD；费用代码可带出结算对象、币别、税率等；数量按单位自动计算
       </span>
     </Space>
     <Table
@@ -689,6 +670,10 @@ const totals = computed(() => {
               industryKeyToLetter(asRow(record).industryCategory)
             "
             :selected-items="settlementSelectedItems(asRow(record))"
+            @change="
+              (v: any, option: any) =>
+                handleSettlementChange(asRow(record), v, option)
+            "
           />
         </template>
         <template v-else-if="column.dataIndex === 'currencyId'">
@@ -730,9 +715,7 @@ const totals = computed(() => {
           />
         </template>
         <template v-else-if="column.dataIndex === 'quantity'">
-          <Tooltip
-            title="数量由单位自动带出：审核通过时后端按单位重算并覆盖，手工修改不会生效"
-          >
+          <Tooltip title="数量按单位自动计算，不可手工修改">
             <InputNumber
               v-model:value="record.quantity"
               :disabled="true"
@@ -743,24 +726,20 @@ const totals = computed(() => {
           </Tooltip>
         </template>
         <template v-else-if="column.dataIndex === 'unitPrice'">
-          <Tooltip
-            :title="isCtnDrivenRow(asRow(record)) ? '含税单价取自箱型卖价' : ''"
-          >
-            <InputNumber
-              v-model:value="record.unitPrice"
-              :disabled="props.readonly || isCtnDrivenRow(asRow(record))"
-              size="small"
-              class="w-full"
-              :min="0"
-              :precision="2"
-              @change="
-                () => {
-                  recalcAmount(asRow(record));
-                  touchDataSource();
-                }
-              "
-            />
-          </Tooltip>
+          <InputNumber
+            v-model:value="record.unitPrice"
+            :disabled="props.readonly"
+            size="small"
+            class="w-full"
+            :min="0"
+            :precision="2"
+            @change="
+              () => {
+                recalcAmount(asRow(record));
+                touchDataSource();
+              }
+            "
+          />
         </template>
         <template v-else-if="column.dataIndex === 'taxRate'">
           <InputNumber

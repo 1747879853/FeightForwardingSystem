@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-25 业务联系单费用单位仅保留四项固定枚举](./changelogs/change-log-2026-07-25-pre-order-fee-unit-no-ctn.md)
 - [2026-07-25 业务联系单费用单位对齐后端重算契约](./changelogs/change-log-2026-07-25-pre-order-fee-unit-contract.md)
 - [2026-07-25 业务联系单费用逻辑对齐海运出口应收应付](./changelogs/change-log-2026-07-25-pre-order-fee-align-sea-export.md)
 - [2026-07-25 业务联系单费用补齐 PreOrderFeeAddDto 字段与联动](./changelogs/change-log-2026-07-25-pre-order-fee-dto-fields.md)

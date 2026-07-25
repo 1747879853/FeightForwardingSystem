@@ -69,10 +69,7 @@ import {
 import AuditModal from './modules/audit-modal.vue';
 import CtnTable from './modules/ctn-table.vue';
 import FeeTable from './modules/fee-table.vue';
-import {
-  checkPreOrderFees,
-  normalizePreOrderFeeUnit,
-} from './modules/fee-unit';
+import { checkPreOrderFees, coercePreOrderFeeUnit } from './modules/fee-unit';
 import ServicePanel from './modules/service-panel.vue';
 import {
   applyClientDefaultPreOrderUsers,
@@ -185,13 +182,22 @@ const currentClientId = ref<string | undefined>();
 const currentShipperId = ref<string | undefined>();
 const currentConsigneeId = ref<string | undefined>();
 const currentNotifierId = ref<string | undefined>();
+/** 往来单位名称，费用带出结算对象时写入 selectedItems，避免显示成 uuid */
+const currentClientName = ref<string | undefined>();
+const currentShipperName = ref<string | undefined>();
+const currentConsigneeName = ref<string | undefined>();
+const currentNotifierName = ref<string | undefined>();
 
 /** 费用表行业类别 → 结算对象映射上下文 */
 const feeParties = computed(() => ({
   clientId: currentClientId.value,
+  clientName: currentClientName.value,
   shipperId: currentShipperId.value,
+  shipperName: currentShipperName.value,
   consigneeId: currentConsigneeId.value,
+  consigneeName: currentConsigneeName.value,
   notifierId: currentNotifierId.value,
+  notifierName: currentNotifierName.value,
 }));
 
 /** 货物计量，费用单位=重量/体积时按此带出数量 */
@@ -205,6 +211,14 @@ const localCurrencyId = ref<null | number>(null);
 function toOptionalStringId(value: unknown): string | undefined {
   if (value == null || value === '') return undefined;
   return String(value);
+}
+
+/** 从 ClientSelect change 的 option 取展示名 */
+function pickSelectOptionLabel(option: unknown): string | undefined {
+  if (!option || typeof option !== 'object') return undefined;
+  const o = option as { label?: string; name?: string; rawLabel?: string };
+  const label = o.label || o.rawLabel || o.name;
+  return label ? String(label) : undefined;
 }
 
 function toOptionalId(value: unknown): number | string | undefined {
@@ -332,9 +346,14 @@ async function applyClientDefaultUsersByClientId(value: unknown) {
   if (clientId) {
     try {
       client = await getClientDetail(clientId);
+      if (client?.name) {
+        currentClientName.value = client.name;
+      }
     } catch {
       client = undefined;
     }
+  } else {
+    currentClientName.value = undefined;
   }
   users.value = applyClientDefaultPreOrderUsers(
     users.value,
@@ -349,8 +368,9 @@ function bindClientUserLinkage() {
     {
       fieldName: 'clientId',
       componentProps: {
-        onChange: (value: unknown) => {
+        onChange: (value: unknown, option?: unknown) => {
           currentClientId.value = toOptionalStringId(value);
+          currentClientName.value = pickSelectOptionLabel(option);
           void applyClientDefaultUsersByClientId(value);
         },
       },
@@ -390,24 +410,27 @@ function bindPartySettlementLinkage() {
     {
       fieldName: 'shipperId',
       componentProps: {
-        onChange: (value: unknown) => {
+        onChange: (value: unknown, option?: unknown) => {
           currentShipperId.value = toOptionalStringId(value);
+          currentShipperName.value = pickSelectOptionLabel(option);
         },
       },
     },
     {
       fieldName: 'consigneeId',
       componentProps: {
-        onChange: (value: unknown) => {
+        onChange: (value: unknown, option?: unknown) => {
           currentConsigneeId.value = toOptionalStringId(value);
+          currentConsigneeName.value = pickSelectOptionLabel(option);
         },
       },
     },
     {
       fieldName: 'notifierId',
       componentProps: {
-        onChange: (value: unknown) => {
+        onChange: (value: unknown, option?: unknown) => {
           currentNotifierId.value = toOptionalStringId(value);
+          currentNotifierName.value = pickSelectOptionLabel(option);
         },
       },
     },
@@ -511,18 +534,22 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
       serviceType: Number(item.serviceType),
       sortId: item.sortId,
     }));
-  // 历史数据可能存着海出口径的「毛重/尺码」，后端识别不了会算成 0，回显时先归一
+  // 历史数据可能存着海出口径或箱型名；前端单位仅四项固定值，回显时强制落到可选范围
   fees.value = (dto.preOrderFees ?? []).map((item) => ({
     ...item,
-    unit: normalizePreOrderFeeUnit(item.unit) || undefined,
+    unit: coercePreOrderFeeUnit(item.unit) || undefined,
     rowKey: nextRowKey('fee'),
   }));
   currentClientId.value = dto.clientId ? String(dto.clientId) : undefined;
+  currentClientName.value = dto.client?.name || undefined;
   currentShipperId.value = dto.shipperId ? String(dto.shipperId) : undefined;
+  currentShipperName.value = dto.shipper?.name || undefined;
   currentConsigneeId.value = dto.consigneeId
     ? String(dto.consigneeId)
     : undefined;
+  currentConsigneeName.value = dto.consignee?.name || undefined;
   currentNotifierId.value = dto.notifierId ? String(dto.notifierId) : undefined;
+  currentNotifierName.value = dto.notifier?.name || undefined;
   currentPolId.value = dto.polId ?? undefined;
 }
 
@@ -625,7 +652,10 @@ async function buildSubmitPayload() {
       sortId: item.sortId ?? 0,
     })),
     preOrderFees: fees.value.map(
-      ({ rowKey, feeCode, settlement, currency, ...rest }) => rest,
+      ({ rowKey, feeCode, settlement, currency, ...rest }) => ({
+        ...rest,
+        unit: coercePreOrderFeeUnit(rest.unit) || rest.unit,
+      }),
     ),
   } as PreOrderAdminApi.PreOrderAddDto;
 }
@@ -668,10 +698,7 @@ function validateUsers(): boolean {
  * `strict` 用于提交审核前硬拦截，保存草稿时只提示。
  */
 function validateFees(strict: boolean): boolean {
-  const ctnNames = ctns.value
-    .map((row) => row.ctnCodeName)
-    .filter((name): name is string => !!name);
-  const { errors, warnings } = checkPreOrderFees(fees.value, ctnNames);
+  const { errors, warnings } = checkPreOrderFees(fees.value);
   // 条数可能很多，只提示前几条，避免刷屏
   for (const text of warnings.slice(0, 3)) message.warning(text);
   if (errors.length === 0) return true;
