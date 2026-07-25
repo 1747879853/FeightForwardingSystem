@@ -33,6 +33,17 @@ export namespace BankStatementAdminApi {
     operationName?: string;
   }
 
+  /** 业务单据用客户简易对象（往来单位对象化） */
+  export interface ClientSimpleDtoForOrder {
+    id: string;
+    /** 客户简称 */
+    name?: string;
+    /** 客户全称 */
+    fullName?: string;
+    /** 默认地址 */
+    address?: string;
+  }
+
   /** 新增银行流水 DTO */
   /** 组织机构简易DTO（组织串 orgs 元素） */
   export interface OrganizationUnitSimpleDto {
@@ -99,7 +110,8 @@ export namespace BankStatementAdminApi {
     settlementId: string;
     clientInvoiceBankId?: string;
     message?: string;
-    settlementName?: string;
+    /** 结算对象（客户简易对象，无则为 null） */
+    settlement?: ClientSimpleDtoForOrder | null;
     currencyCode?: string;
     creatorUserName?: string;
     orgBankAccountName?: string;
@@ -129,7 +141,8 @@ export namespace BankStatementAdminApi {
     settlementId: string;
     clientInvoiceBankId?: string;
     message?: string;
-    settlementName?: string;
+    /** 结算对象（客户简易对象，无则为 null） */
+    settlement?: ClientSimpleDtoForOrder | null;
     currencyCode?: string;
     creatorUserName?: string;
     orgBankAccountName?: string;

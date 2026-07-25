@@ -213,6 +213,8 @@ export namespace PaymentSettlementAdminApi {
     id: string;
     /** 付费申请单号 */
     applicationNo: string;
+    /** 结算对象（客户简易对象，无则为 null） */
+    settlement?: null | PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
     /** 本条付费申请的总结算金额（结算币别）= 各币别 SettledPrice 之和 */
     totalSettledPrice?: number;
     /** 按币别分组的结算明细 */
@@ -281,8 +283,8 @@ export namespace PaymentSettlementAdminApi {
     transactionFee?: number;
     /** 备注 */
     remark?: string;
-    /** 结算对象名称 */
-    settlementName: string;
+    /** 结算对象（客户简易对象，无则为 null） */
+    settlement?: null | PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
     /** 结算币别代码 */
     currencyCode: string;
     /** 创建人名称 */
@@ -389,8 +391,8 @@ export namespace PaymentSettlementAdminApi {
     transactionFee?: number;
     /** 备注 */
     remark?: string;
-    /** 结算对象名称 */
-    settlementName: string;
+    /** 结算对象（客户简易对象，无则为 null） */
+    settlement?: null | PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
     /** 结算币别代码 */
     currencyCode: string;
     /** 创建人名称 */

@@ -298,7 +298,7 @@ async function loadBankStatementSummary(id: string) {
     bankStatementId.value = detail.id;
     bankStatementNo.value = detail.bankStatementNo || detail.id;
     bankStatementSettlementId.value = detail.settlementId;
-    bankStatementSettlementName.value = detail.settlementName || '';
+    bankStatementSettlementName.value = detail.settlement?.name || '';
     bankStatementDetail.value = detail;
     otherSettledAmount.value = (settlementRes.items ?? [])
       .filter((item) => item.id !== editId.value)
@@ -810,7 +810,7 @@ onMounted(() => {
                 <span v-else>-</span>
               </DescriptionsItem>
               <DescriptionsItem label="付款方">
-                {{ bankStatementDetail.settlementName || '-' }}
+                {{ bankStatementDetail.settlement?.name || '-' }}
               </DescriptionsItem>
               <DescriptionsItem label="我司银行">
                 {{ bankStatementDetail.orgBankAccountName || '-' }}

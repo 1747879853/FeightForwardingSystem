@@ -121,6 +121,7 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       title: '付款方',
       minWidth: 150,
       sortable: true,
+      formatter: ({ row }) => row.settlement?.name || '-',
     },
     {
       field: 'amount',
