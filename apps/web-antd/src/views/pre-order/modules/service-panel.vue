@@ -160,16 +160,19 @@ const compareTagOf = (serviceType: number) => {
   return null;
 };
 
+/**
+ * 业务联系单无服务任务进度：已勾选节点一律「未执行」样式。
+ * 仅对比标记：出口侧「新增」→ active，「删除」→ upcoming（淡化）。
+ * 切勿默认 done（绿勾已完成）——那是海运出口任务态，联系单侧会误导。
+ */
 const nodeState = (serviceType: number) => {
   const tag = compareTagOf(serviceType);
   if (tag?.text === '新增') return 'active';
-  if (tag?.text === '删除') return 'upcoming';
-  return 'done';
+  return 'upcoming';
 };
 
 const nodeIcon = (serviceType: number) => {
   const state = nodeState(serviceType);
-  if (state === 'done') return 'mdi:check-circle';
   if (state === 'active') return 'mdi:progress-clock';
   return 'mdi:schedule';
 };

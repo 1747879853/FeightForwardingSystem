@@ -56,7 +56,7 @@ last_updated: 2026-07-25
 | **干系人（操作）** | 后续操作负责人 | **用户**<br/>`UserSelect` | **依赖：** 审核通过前必须存在，否则审核弹窗强制指派 | 每种角色最多 1 人 |
 | **箱型箱量.卖价** | 该箱型对客报价 | 手填 | **触发：** 变更后刷新所有「应收 + 单位=该箱型」的费用行含税单价 | 非负 |
 | **箱型箱量.箱量** | 箱数 | 手填 | **触发：** 变更后刷新对应应收费用行数量 | 非负整数 |
-| **服务项目** | 本单要执行的主流程服务 | `SeaExportAdmin/GetServiceTypesByPOLAsync` ∩ `ServiceType.extra1` | **依赖：** 起运港 + 委托单位；港口变更后不在候选池的已选项被自动剔除 | 只能是候选池子集（可少不可多） |
+| **服务项目** | 本单要执行的主流程服务（无任务进度） | `SeaExportAdmin/GetServiceTypesByPOLAsync` ∩ `ServiceType.extra1` | **依赖：** 起运港 + 委托单位字段 `onChange` 直传；按接口 `checked` 默认带出；港口变更后不在候选池的已选项被自动剔除 | 只能是候选池子集（可少不可多）；流水线默认「未执行」样式，勿用海出「已完成」 |
 | **费用.收付类型** | 应收(0) / 应付(1) | 固定选项 | **触发：** 切到应收且单位是箱型时立即带出卖价与箱量 | —— |
 | **费用.单位** | 计价单位 | 通用单位（票/重量/体积/TEU）+ 已选箱型名 | **触发：** 选中箱型名后带出该箱型卖价与箱量 | —— |
 | **费用.含税单价** | 对客单价 | 手填或箱型卖价 | **依赖：** 应收 + 单位命中箱型时只读，取箱型卖价 | 非负 |
@@ -83,6 +83,7 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-25 | `Fix` | 服务项流水线去掉「已完成」绿勾，已勾选节点统一「未执行」灰底；仅出口对比「新增」用进行中样式 | 联系单无 `taskStatus`，`nodeState` 默认须为 `upcoming`，不可复用海出任务态默认 `done` |
 | 2026-07-25 | `Feature` | 归属组织改为取干系人「销售」所属组织；选择委托单位后按客户维护的销售/客服/操作/单证回填干系人（缺操作/单证/客服兜底当前账号） | `UserOrgSelect :user-id="salesUserId"` + `orgs` 回显兜底；`applyClientDefaultPreOrderUsers` 与海出 `applyClientDefaultOrderUsers` 同构，挂在 `clientId` `onChange` |
 | 2026-07-25 | `Feature` | 收发通补齐三组对称字段：往来单位 id + Content 文本；布局对齐海出 party-flow；详情回填 Content 与 SimpleDto 名称；`remark` 挪到基础信息船公司后 | schema 用 `createClientSelectSchema` + `EnglishUpperTextarea`；`fillFromDetail` 经 `toSelectedItems` 写 `selectedItems`；备注回填改走 `basicFormApi`；提交靠 spread 自然带上 |
 | 2026-07-25 | `Perf`/`Fix` | 箱型选择从 `CtnSelect` option 取名称；修选中仍打 `DetailAsync`（根因是雪花 ID 被 `Number()` 丢精度导致 cell 重挂载后缓存失效） | `change(value, option)` + `selected-items` 有 id 即回传；`handleChange` 先 pin/merge；`ctnCodeId` 原样透传禁止 `Number()`；`ensureSelectedLoaded` 缓存/options 命中即跳过详情 |

@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-25 业务联系单服务项流水线改为未执行样式](./changelogs/change-log-2026-07-25-pre-order-service-pipeline-upcoming.md)
 - [2026-07-25 业务联系单归属组织取销售组织 + 委托单位带出干系人](./changelogs/change-log-2026-07-25-pre-order-org-and-client-users.md)
 - [2026-07-25 海运出口编辑移除表单滚动与顶部 Tab 联动（防空白页）](./changelogs/change-log-2026-07-25-sea-export-remove-section-tab-sync.md)
 - [2026-07-25 业务联系单收发通补齐 id + Content 内容维护](./changelogs/change-log-2026-07-25-pre-order-party-content-fields.md)
