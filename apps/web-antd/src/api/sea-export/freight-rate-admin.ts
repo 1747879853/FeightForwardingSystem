@@ -348,7 +348,7 @@ export interface SeFreiPriceCtnFeeOutDto {
  */
 export interface SeFreiPriceCtnAddDto {
   /** 箱型ID */
-  ctnCodeId: number;
+  ctnCodeId: string | number;
   /** 成本 */
   cost: number;
   /** 备注 */
@@ -907,13 +907,13 @@ export interface SeFreiPriceSimpleAddDto {
   /** 起运港ID */
   polId: number;
   /** 目的港ID */
-  podId: number;
+  podId: string | number;
   /** 是否直达 */
   isDirect: boolean;
   /** 中转港1 ID */
-  poT1Id?: number;
+  poT1Id?: string | number;
   /** 中转港2 ID */
-  poT2Id?: number;
+  poT2Id?: string | number;
   /** 起运港免用箱天数 */
   polFreeDays?: number;
   /** 目的港免用箱天数 */
@@ -933,7 +933,7 @@ export interface SeFreiPriceSimpleAddDto {
   /** 备注 */
   remark?: string;
   /** 币别ID */
-  currencyId: number;
+  currencyId: string | number;
   /** 订舱代理ID（可空） */
   bookingAgentId?: string | null;
   /** 箱型报价列表 */
@@ -1079,21 +1079,21 @@ export interface GeminiSeFreiPriceDto {
   /** 目的港名称（原始文本） */
   podName: string;
   /** 目的港ID（匹配不到为-1） */
-  podId: number;
+  podId: string | number;
   /** 是否直航 */
   isDirect?: boolean;
   /** 中转港1名称（原始文本，可空） */
   pot1Name?: string;
   /** 中转港1ID（名称为空则null；有名称但匹配不到为-1） */
-  pot1Id?: number;
+  pot1Id?: string | number;
   /** 中转港2名称（原始文本，可空） */
   pot2Name?: string;
   /** 中转港2ID（名称为空则null；有名称但匹配不到为-1） */
-  pot2Id?: number;
+  pot2Id?: string | number;
   /** 币别代码 */
   currencyCode: string;
   /** 币别ID（匹配不到为-1） */
-  currencyId: number;
+  currencyId: string | number;
   /** 有效期开始（ISO 8601格式） */
   validTimeStart?: string;
   /** 有效期结束（ISO 8601格式） */

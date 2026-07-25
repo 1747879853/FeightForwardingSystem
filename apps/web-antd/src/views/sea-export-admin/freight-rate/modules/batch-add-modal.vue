@@ -4,7 +4,7 @@ import type {
   AddSeFreiPriceInput,
   SeFreiPriceCtnEditDto,
 } from '#/api/sea-export/freight-rate-admin';
-
+import dayjs from 'dayjs';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
@@ -35,8 +35,10 @@ import CurrencySelect from '#/adapter/component/biz-select/currency-select.vue';
 import ClientSelect from '#/adapter/component/biz-select/client-select.vue';
 import { getCtnCodePagedList as getBaseCtnCodes } from '#/api/system/base-data/ctn-code-admin';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
+import { getPortCodePagedList } from '#/api/system/base-data/port-code-admin';
 import { batchAddSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
 import { $t } from '#/locales';
+import type { st } from 'vue-router/dist/router-CWoNjPRp.mjs';
 
 const emit = defineEmits<{
   success: [];
@@ -52,7 +54,7 @@ const aiData = ref<any[] | undefined>(undefined);
 
 // 箱型列表（用于动态列）
 interface CtnTypeOption {
-  ctnCodeId: number;
+  ctnCodeId: string | number;
   ctnName: string;
 }
 
@@ -62,10 +64,10 @@ const addedCtnTypes = ref<CtnTypeOption[]>([]);
 const allCtnOptions = ref<CtnTypeOption[]>([]);
 
 // USD 币别 ID（默认值）
-const defaultCurrencyId = ref<number | undefined>(undefined);
+const defaultCurrencyId = ref<number | string | undefined>(undefined);
 
 // 当前选中的箱型ID（用于Select组件）
-const selectedCtnId = ref<number | undefined>(undefined);
+const selectedCtnId = ref<number | string | undefined>(undefined);
 
 // 表格数据 - 由 Grid 直接管理
 let rowKeyCounter = 0;
@@ -104,33 +106,70 @@ const [Modal, modalApi] = useVbenModal({
 
     // 如果有AI识别的数据，则使用AI数据填充表格
     if (aiData.value && aiData.value.length > 0) {
-      console.log('检测到AI数据，开始处理:', aiData.value.length, '条记录');
+      console.log('✅ 检测到AI数据，开始处理:', aiData.value.length, '条记录');
+      console.log(
+        '📦 AI数据结构示例:',
+        JSON.stringify(aiData.value[0], null, 2),
+      );
+
       // 处理AI数据中的箱型，添加到addedCtnTypes中
-      const aiCtnTypes = new Set<number>();
-      aiData.value.forEach((row: any) => {
+      const aiCtnTypes = new Set<string | number>();
+      let totalCtnCount = 0;
+
+      aiData.value.forEach((row: any, index: number) => {
+        console.log(`🔍 检查第${index + 1}条数据的箱型:`, row.seFreiPriceCtns);
         if (row.seFreiPriceCtns && Array.isArray(row.seFreiPriceCtns)) {
+          totalCtnCount += row.seFreiPriceCtns.length;
           row.seFreiPriceCtns.forEach((ctn: any) => {
-            if (ctn.ctnCodeId && ctn.ctnCodeId > 0) {
+            console.log(
+              `  - 箱型ID: ${ctn.ctnCodeId} (类型: ${typeof ctn.ctnCodeId}), 成本: ${ctn.cost}`,
+            );
+            if (ctn.ctnCodeId) {
+              // 支持字符串和数字类型的ID
               aiCtnTypes.add(ctn.ctnCodeId);
             }
           });
+        } else {
+          console.warn(`  ⚠️ 第${index + 1}条数据没有箱型信息或格式错误`);
         }
       });
+
+      console.log('📊 统计结果:');
+      console.log('  - 总箱型数量:', totalCtnCount);
+      console.log('  - 唯一箱型ID数量:', aiCtnTypes.size);
+      console.log('  - 唯一箱型IDs:', Array.from(aiCtnTypes));
 
       // 将AI数据中出现的有效箱型添加到addedCtnTypes中
       const newAddedCtnTypes: CtnTypeOption[] = [];
       aiCtnTypes.forEach((ctnCodeId) => {
-        // 检查是否已添加
-        if (!addedCtnTypes.value.some((ctn) => ctn.ctnCodeId === ctnCodeId)) {
-          // 查找箱型名称
-          const ctnOption = allCtnOptions.value.find(
-            (ctn) => ctn.ctnCodeId === ctnCodeId,
-          );
+        // 检查是否已添加（支持字符串和数字比较）
+        if (
+          !addedCtnTypes.value.some((ctn) => {
+            // 如果两者都是数字或都是字符串，直接比较
+            if (typeof ctn.ctnCodeId === typeof ctnCodeId) {
+              return ctn.ctnCodeId === ctnCodeId;
+            }
+            // 否则转换为字符串比较
+            return String(ctn.ctnCodeId) === String(ctnCodeId);
+          })
+        ) {
+          // 查找箱型名称（需要同时尝试数字和字符串匹配）
+          const ctnOption = allCtnOptions.value.find((ctn) => {
+            if (ctn.ctnCodeId === ctnCodeId) {
+              return true;
+            }
+            return false;
+          });
           if (ctnOption) {
+            console.log(
+              `✅ 找到箱型: ID=${ctnCodeId}, 名称=${ctnOption.ctnName}`,
+            );
             newAddedCtnTypes.push({
               ctnCodeId: ctnOption.ctnCodeId,
               ctnName: ctnOption.ctnName,
             });
+          } else {
+            console.warn(`⚠️ 未找到箱型ID ${ctnCodeId} 对应的名称`);
           }
         }
       });
@@ -138,6 +177,9 @@ const [Modal, modalApi] = useVbenModal({
       // 如果有新的箱型需要添加
       if (newAddedCtnTypes.length > 0) {
         addedCtnTypes.value.push(...newAddedCtnTypes);
+        console.log('✅ 添加了', newAddedCtnTypes.length, '个新箱型到列配置');
+      } else {
+        console.log('ℹ️ 没有新的箱型需要添加');
       }
 
       // 无论是否有新箱型，都等待列配置更新
@@ -145,8 +187,12 @@ const [Modal, modalApi] = useVbenModal({
       await nextTick();
 
       // 一次性加载AI识别的数据
+      console.log('🔄 开始加载数据到表格...');
       gridApi.grid?.loadData(aiData.value);
-      message.success(`已加载 ${aiData.value.length} 条AI识别的数据`);
+      console.log('✅ 数据加载完成');
+      message.success(
+        `已加载 ${aiData.value.length} 条AI识别的数据（共${totalCtnCount}个箱型）`,
+      );
     } else {
       // 弹窗打开时，如果表格为空则添加一行
       const currentData = gridApi.grid?.getFullData() || [];
@@ -232,6 +278,30 @@ async function loadSelectOptions() {
       }
     } catch (error) {
       console.error('加载币别列表失败:', error);
+    }
+
+    // 加载港口列表并缓存所有港口信息
+    try {
+      const ports = await getPortCodePagedList({
+        PageIndex: 1,
+        PageSize: 1000,
+      });
+
+      // 将所有港口信息存入缓存
+      ports?.items?.forEach((port) => {
+        if (port.id) {
+          const countryEnName = (port.country?.countryEnName ?? '')
+            .toString()
+            .trim();
+          // 优先使用中文名称，如果没有则使用英文名称
+          const portName = `${port.portName}/${countryEnName}`;
+          updateLabelCache('ports', port.id, portName);
+        }
+      });
+
+      console.log(`已缓存 ${ports?.items?.length || 0} 个港口信息`);
+    } catch (error) {
+      console.error('加载港口列表失败:', error);
     }
   } catch (error) {
     console.error('加载箱型选项失败:', error);
@@ -760,6 +830,7 @@ function getPortName(portId: number | string | undefined): string {
   // 使用字符串作为key查询，避免大数精度丢失
   const key = String(portId);
   const cachedName = labelCache.value.ports.get(key);
+  // 如果缓存中有名称则返回，否则显示"港口(ID)"格式
   return cachedName || `港口(${portId})`;
 }
 
@@ -844,7 +915,7 @@ async function handleAIData(aiData: any[]) {
   }
 
   // 处理AI数据中的箱型，添加到addedCtnTypes中
-  const aiCtnTypes = new Set<number>();
+  const aiCtnTypes = new Set<string>();
   aiData.forEach((row: any, index: number) => {
     console.log(`处理第${index + 1}行AI数据:`, row);
     if (row.seFreiPriceCtns && Array.isArray(row.seFreiPriceCtns)) {
@@ -855,7 +926,7 @@ async function handleAIData(aiData: any[]) {
         console.log(`  第${ctnIndex + 1}个箱型数据:`, ctn);
         if (ctn.ctnCodeId && ctn.ctnCodeId > 0) {
           console.log(`    添加箱型ID:`, ctn.ctnCodeId);
-          aiCtnTypes.add(Number(ctn.ctnCodeId)); // 确保转换为数字类型
+          aiCtnTypes.add(ctn.ctnCodeId); // 确保转换为数字类型
         }
       });
     }
@@ -911,10 +982,10 @@ async function handleAIData(aiData: any[]) {
       recommend: row.recommend || false,
       carrierId: row.carrierId || undefined,
       polId: row.polId || undefined,
-      podId: row.podId ? Number(row.podId) : undefined, // 确保转换为数字类型
+      podId: row.podId, // 确保转换为数字类型
       isDirect: row.isDirect ?? true,
-      poT1Id: row.poT1Id ? Number(row.poT1Id) : undefined,
-      poT2Id: row.poT2Id ? Number(row.poT2Id) : undefined,
+      poT1Id: row.poT1Id,
+      poT2Id: row.poT2Id,
       polFreeDays: row.polFreeDays || undefined,
       podFreeDays: row.podFreeDays || undefined,
       poddem: row.poddem || undefined,
@@ -922,23 +993,35 @@ async function handleAIData(aiData: any[]) {
       voyage: row.voyage || '',
       contractNo: row.contractNo || '',
       etd: row.etd || '',
-      closeDocTime: row.closeDocTime || '',
-      closingTime: row.closingTime || '',
+      closeDocTime: row.closeDocTime
+        ? dayjs(row.closeDocTime).format('YYYY-MM-DD')
+        : '',
+      closingTime: row.closingTime
+        ? dayjs(row.closingTime).format('YYYY-MM-DD')
+        : '',
       etdDayOfWeek: row.etdDayOfWeek,
       etdDayTime: row.etdDayTime || '',
       closeDocDayOfWeek: row.closeDocDayOfWeek,
-      closeDocDayTime: row.closeDocDayTime || '',
+      closeDocDayTime: row.closeDocDayTime
+        ? dayjs(row.closeDocDayTime).format('YYYY-MM-DD')
+        : '',
       closingDayOfWeek: row.closingDayOfWeek,
-      closingDayTime: row.closingDayTime || '',
-      validTimeStart: row.validTimeStart || '',
-      validTimeEnd: row.validTimeEnd || '',
+      closingDayTime: row.closingDayTime
+        ? dayjs(row.closingDayTime).format('YYYY-MM-DD')
+        : '',
+      validTimeStart: row.validTimeStart
+        ? dayjs(row.validTimeStart).format('YYYY-MM-DD')
+        : '',
+      validTimeEnd: row.validTimeEnd
+        ? dayjs(row.validTimeEnd).format('YYYY-MM-DD')
+        : '',
       remark: row.remark || '',
       currencyId: row.currencyId ? Number(row.currencyId) : undefined,
       bookingAgentId: row.bookingAgentId || undefined,
       seFreiPriceCtns: row.seFreiPriceCtns
         ? row.seFreiPriceCtns.map((ctn: any) => ({
-            ctnCodeId: ctn.ctnCodeId ? Number(ctn.ctnCodeId) : undefined,
-            cost: ctn.price || undefined,
+            ctnCodeId: ctn.ctnCodeId,
+            cost: ctn.cost || undefined,
           }))
         : [],
     };

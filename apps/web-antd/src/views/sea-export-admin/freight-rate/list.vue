@@ -928,48 +928,97 @@ async function onAIBatchAdd() {
       }
 
       // 转换识别结果为批量新增弹窗所需的数据格式
-      const convertedData = recognitionResult.map((item, index) => ({
-        _rowKey: `ai_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`, // 生成唯一行键
-        _isCopied: false,
-        recommend: false, // 默认不推荐
-        carrierId: undefined, // 暂时设为undefined，让用户手动选择
-        polId: undefined, // 起运港需要手动匹配
-        podId: item.podId > 0 ? item.podId : undefined, // 如果识别到目的港ID且有效则使用
-        isDirect: item.isDirect ?? true, // 默认为直达
-        poT1Id: item.pot1Id && item.pot1Id > 0 ? item.pot1Id : undefined, // 中转港1
-        poT2Id: item.pot2Id && item.pot2Id > 0 ? item.pot2Id : undefined, // 中转港2
-        polFreeDays: undefined,
-        podFreeDays: undefined,
-        poddem: undefined,
-        poddet: undefined,
-        voyage: '',
-        contractNo: '',
-        etd: '',
-        closeDocTime: '',
-        closingTime: '',
-        etdDayOfWeek: undefined,
-        etdDayTime: '',
-        closeDocDayOfWeek: undefined,
-        closeDocDayTime: '',
-        closingDayOfWeek: undefined,
-        closingDayTime: '',
-        validTimeStart: item.validTimeStart || '',
-        validTimeEnd: item.validTimeEnd || '',
-        remark: item.remark || '',
-        currencyId: item.currencyId > 0 ? item.currencyId : undefined, // 币别ID
-        bookingAgentId: undefined,
-        seFreiPriceCtns: item.seFreiPriceCtns
-          ? item.seFreiPriceCtns
-              .map((ctn) => ({
-                ctnCodeId: ctn.ctnCodeId > 0 ? ctn.ctnCodeId : undefined, // 箱型ID
-                cost: ctn.price, // 价格作为成本
-              }))
-              .filter((ctn) => ctn.ctnCodeId && ctn.ctnCodeId > 0) // 只保留有效箱型ID的数据
-          : [],
-      }));
+      const convertedData = recognitionResult.map((item, index) => {
+        // 将ID安全地转换为字符串，避免大数精度丢失
+        const safeIdToString = (
+          id: string | number | undefined,
+        ): string | undefined => {
+          if (id === undefined || id === null) return undefined;
+
+          // 如果已经是字符串类型，直接返回
+          if (typeof id === 'string') {
+            // 验证是否为有效的数字字符串
+            if (/^\d+$/.test(id)) {
+              return id;
+            }
+            console.warn(`[AI识别] ID字符串格式无效: ${id}`);
+            return undefined;
+          }
+
+          // 如果是数字类型，转换为字符串
+          if (typeof id === 'number') {
+            // 检查是否为有效数字
+            if (!isNaN(id) && isFinite(id)) {
+              return id.toString();
+            }
+            console.warn(`[AI识别] ID数值无效: ${id}`);
+            return undefined;
+          }
+
+          return undefined;
+        };
+
+        return {
+          _rowKey: `ai_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`, // 生成唯一行键
+          _isCopied: false,
+          recommend: false, // 默认不推荐
+          carrierId: undefined, // 暂时设为undefined，让用户手动选择
+          polId: undefined, // 起运港需要手动匹配
+          podId: safeIdToString(item.podId), // 目的港ID（字符串）
+          isDirect: item.isDirect ?? true, // 默认为直达
+          poT1Id: safeIdToString(item.pot1Id), // 中转港1（字符串）
+          poT2Id: safeIdToString(item.pot2Id), // 中转港2（字符串）
+          polFreeDays: undefined,
+          podFreeDays: undefined,
+          poddem: undefined,
+          poddet: undefined,
+          voyage: '',
+          contractNo: '',
+          etd: '',
+          closeDocTime: '',
+          closingTime: '',
+          etdDayOfWeek: undefined,
+          etdDayTime: '',
+          closeDocDayOfWeek: undefined,
+          closeDocDayTime: '',
+          closingDayOfWeek: undefined,
+          closingDayTime: '',
+          validTimeStart: item.validTimeStart || '',
+          validTimeEnd: item.validTimeEnd || '',
+          remark: item.remark || '',
+          currencyId: safeIdToString(item.currencyId), // 币别ID（字符串）
+          bookingAgentId: undefined,
+          seFreiPriceCtns: item.seFreiPriceCtns
+            ? item.seFreiPriceCtns
+                .map((ctn) => {
+                  // 将箱型ID转换为字符串，避免大数精度丢失
+                  const ctnCodeId = safeIdToString(ctn.ctnCodeId);
+                  // AI返回的是 price，但批量新增需要的是 cost
+                  const cost =
+                    ctn.price !== undefined && ctn.price !== null
+                      ? Number(ctn.price)
+                      : 0;
+
+                  return {
+                    ctnCodeId, // 箱型ID（字符串）
+                    cost, // 成本（从price转换）
+                  };
+                })
+                .filter((ctn) => ctn.ctnCodeId) // 只保留有效箱型ID的数据
+            : [],
+        };
+      });
+
+      // 调试日志：验证转换后的数据
+      console.log('[AI识别] 转换后的数据:', convertedData);
+      if (convertedData.length > 0 && convertedData[0]) {
+        console.log(
+          '[AI识别] 第一条数据的箱型信息:',
+          convertedData[0].seFreiPriceCtns,
+        );
+      }
+
       batchAddModalApi.setData({ aiData: convertedData }).open();
-      // 打开批量新增弹窗并传递识别的数据
-      // 使用setTimeout确保模态框完全打开后再设置数据
     } catch (error) {
       console.error('AI识别失败:', error);
       message.error('文件识别失败，请稍后重试');
@@ -1257,7 +1306,7 @@ async function onAIBatchAdd() {
             @click="onAIBatchAdd"
           >
             <IconifyIcon icon="mdi:robot-outline" class="size-5" />
-            AI批量新增(Gemini)
+            AI批量新增
           </Button>
 
           <!-- 批量编辑按钮 -->
