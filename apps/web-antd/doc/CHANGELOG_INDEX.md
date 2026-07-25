@@ -13,6 +13,8 @@
 
 ## 2026-07
 
+- [2026-07-25 新增演示环境开发与打包（后端端口 86）](./changelogs/change-log-2026-07-25-demo-env-port-86.md)
+- [2026-07-25 银行流水核销进度极小比例展示修正](./changelogs/change-log-2026-07-25-bank-statement-write-off-progress-precision.md)
 - [2026-07-25 付费结算与银行流水结算对象对象化](./changelogs/change-log-2026-07-25-payment-settlement-bank-statement-settlement-object.md)
 - [2026-07-25 业务联系单船公司 Logo 与基础信息布局调整](./changelogs/change-log-2026-07-25-pre-order-basic-layout-carrier-logo.md)
 - [2026-07-25 业务联系单费用切换结算对象类别联动清空与回填](./changelogs/change-log-2026-07-25-pre-order-fee-industry-category-settlement.md)
