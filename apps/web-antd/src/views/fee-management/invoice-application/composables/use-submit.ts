@@ -33,9 +33,38 @@ export function useSubmit(
   }
 
   /**
+   * 同步商品明细数据到 formData
+   */
+  function syncGoodsDetailsToFormData() {
+    // ✅ 关键修复：在保存前，将最新的 goodsDetails 同步到 formData
+    formData.value.invoiceApplicationGoodsDtls = goodsDetails.value.map(
+      (item) => ({
+        codeInvoiceId: item.codeInvoiceId,
+        specification: item.specification,
+        unit: item.unit,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        amount: item.amount,
+        noTaxAmount: item.noTaxAmount,
+        taxRate: item.taxRate,
+        taxAmount: item.taxAmount,
+        remark: item.remark,
+      }),
+    );
+    console.log(
+      '✅ 已同步商品明细数据到 formData:',
+      formData.value.invoiceApplicationGoodsDtls.length,
+      '条',
+    );
+  }
+
+  /**
    * 构建批次数据
    */
   function buildBatchData() {
+    // ✅ 先同步最新的商品明细
+    syncGoodsDetailsToFormData();
+
     return {
       settlementId: formData.value.settlementId!,
       orgId: formData.value.orgId!,
@@ -46,18 +75,8 @@ export function useSubmit(
           currencyId: formData.value.currencyId || 1,
           invoiceType: formData.value.invoiceType,
           invoiceApplicationItems: formData.value.invoiceApplicationItems || [],
-          invoiceApplicationGoodsDtls: goodsDetails.value.map((item) => ({
-            codeInvoiceId: item.codeInvoiceId,
-            specification: item.specification,
-            unit: item.unit,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            amount: item.amount,
-            noTaxAmount: item.noTaxAmount,
-            taxRate: item.taxRate,
-            taxAmount: item.taxAmount,
-            remark: item.remark,
-          })),
+          invoiceApplicationGoodsDtls:
+            formData.value.invoiceApplicationGoodsDtls || [],
           orgBankAccountId: formData.value.orgBankAccountId,
           clientInvoiceBankId: formData.value.clientInvoiceBankId,
         },
@@ -76,7 +95,12 @@ export function useSubmit(
     submitLoading.value = true;
     try {
       if (isEdit.value) {
-        await editAsync(formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto);
+        // ✅ 编辑模式下，先同步最新的商品明细
+        syncGoodsDetailsToFormData();
+
+        await editAsync(
+          formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto,
+        );
         message.success('修改成功');
       } else {
         const batchData = buildBatchData();
@@ -120,7 +144,12 @@ export function useSubmit(
           applicationId = ids[0];
         }
       } else {
-        await editAsync(formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto);
+        // ✅ 编辑模式下，先同步最新的商品明细
+        syncGoodsDetailsToFormData();
+
+        await editAsync(
+          formData.value as InvoiceApplicationApi.InvoiceApplicationEditDto,
+        );
         applicationId = editId.value;
       }
 
@@ -163,6 +192,9 @@ export function useSubmit(
           router.push('/fee-management/invoice-application');
         }
       } else {
+        // ✅ 编辑模式下，先同步最新的商品明细
+        syncGoodsDetailsToFormData();
+
         await submitAsync({ id: editId.value! });
         message.success('提交成功');
         router.push('/fee-management/invoice-application');

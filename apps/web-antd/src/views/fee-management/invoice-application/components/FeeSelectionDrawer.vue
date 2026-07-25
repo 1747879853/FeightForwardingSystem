@@ -752,41 +752,14 @@ defineExpose({
             getCheckboxProps: (record) => ({
               disabled: record.disabled,
             }),
-            onChange: (selectedRowKeys, selectedRows) => {
-              // 处理父级选择
-              const currentParentKeys = selectedRowKeys.filter((k) =>
-                k.startsWith('parent_'),
-              );
-              const prevParentKeys = selectedFeeRowKeys.value.filter((k) =>
-                k.startsWith('parent_'),
-              );
-
-              // 找出新选中和取消选中的父级
-              const newlySelectedParents = currentParentKeys.filter(
-                (k) => !prevParentKeys.includes(k),
-              );
-              const deselectedParents = prevParentKeys.filter(
-                (k) => !currentParentKeys.includes(k),
-              );
-
-              // 处理新选中的父级
-              newlySelectedParents.forEach((parentKey) => {
-                const parentRecord = feeGroupsData.value.find(
-                  (r) => r.id === parentKey,
-                );
-                if (parentRecord) {
-                  handleParentSelectionChange(parentRecord, true);
-                }
-              });
-
-              // 处理取消选中的父级
-              deselectedParents.forEach((parentKey) => {
-                const parentRecord = feeGroupsData.value.find(
-                  (r) => r.id === parentKey,
-                );
-                if (parentRecord) {
-                  handleParentSelectionChange(parentRecord, false);
-                }
+            onSelect: (record, selected) => {
+              // 单个父级选中/取消时触发
+              handleParentSelectionChange(record, selected);
+            },
+            onSelectAll: (selected, selectedRows, changeRows) => {
+              // 全选/取消全选时触发
+              changeRows.forEach((record) => {
+                handleParentSelectionChange(record, selected);
               });
             },
           }"

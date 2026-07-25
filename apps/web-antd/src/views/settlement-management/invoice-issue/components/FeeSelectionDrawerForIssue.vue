@@ -101,6 +101,35 @@ const rejectReason = ref<string>('');
 const rejectModalVisible = ref(false);
 const rejectApplications = ref<any[]>([]);
 
+/** 处理单个父级选择 */
+function handleSingleParentSelect(record: any, selected: boolean) {
+  const currentSelected = selectedAppRowKeys.value.filter(
+    (key) => key !== String(record.id),
+  );
+  if (selected) {
+    selectedAppRowKeys.value = [...currentSelected, String(record.id)];
+  } else {
+    selectedAppRowKeys.value = currentSelected;
+  }
+  updateCurrencyFromSelectedApplications();
+}
+
+/** 处理全选/取消全选 */
+function handleSelectAll(selected: boolean, changeRows: any[]) {
+  const otherKeys = selectedAppRowKeys.value.filter(
+    (key) => !changeRows.some((r) => String(r.id) === key),
+  );
+  if (selected) {
+    selectedAppRowKeys.value = [
+      ...otherKeys,
+      ...changeRows.map((r) => String(r.id)),
+    ];
+  } else {
+    selectedAppRowKeys.value = otherKeys;
+  }
+  updateCurrencyFromSelectedApplications();
+}
+
 /** 处理父级表格选择变化 */
 function handleParentSelectionChange(selectedRowKeys: any[]) {
   selectedAppRowKeys.value = selectedRowKeys.map((key) => String(key));
@@ -1243,6 +1272,12 @@ defineExpose({
             type: 'checkbox',
             selectedRowKeys: selectedAppRowKeys,
             onChange: handleParentSelectionChange,
+            onSelect: (record, selected) => {
+              handleSingleParentSelect(record, selected);
+            },
+            onSelectAll: (selected, selectedRows, changeRows) => {
+              handleSelectAll(selected, changeRows);
+            },
           }"
         >
           <template #bodyCell="{ column, record }">

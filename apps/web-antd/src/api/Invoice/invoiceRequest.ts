@@ -306,7 +306,8 @@ export namespace InvoiceApplicationApi {
   /** 开票申请删除DTO */
   export interface InvoiceApplicationDeleteDto {
     /** 主键ID */
-    id: string;
+    id?: string;
+    ids?: string[];
   }
 
   /** 仅编辑主表DTO（不改动费用/商品明细） */
