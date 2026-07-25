@@ -1,52 +1,35 @@
-import { message } from 'ant-design-vue';
-import type { Ref } from 'vue';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed } from 'vue';
 import { getClientInvoiceInfoList } from '#/api/sea-export/clinet-invoice-admin';
+import { message } from 'ant-design-vue';
 
 /**
- * 发票信息相关逻辑（客户、银行、税率等）
+ * 开票相关信息管理
  */
 export function useInvoiceInfo(
-  formData: Ref<any>,
-  clientInvoiceInfoList: Ref<any[]>,
-  selectedClientInvoiceInfo: Ref<any>,
-  orgBankAccounts: Ref<any[]>,
+  clientInvoiceInfoList: any,
+  selectedClientInvoiceInfo: any,
+  formData: any,
+  orgBankAccounts: any,
 ) {
   /**
    * 加载客户开票信息
    */
   async function loadClientInvoiceInfo(settlementId: string) {
-    if (!settlementId) {
-      console.warn('⚠️ settlementId 为空，无法加载客户开票信息');
-      return;
-    }
+    if (!settlementId) return;
 
     try {
-      console.log('📥 开始加载客户开票信息, settlementId:', settlementId);
       const list = await getClientInvoiceInfoList({ ClientId: settlementId });
       clientInvoiceInfoList.value = list;
-      console.log('✅ 客户开票信息加载成功，数量:', list.length);
 
       // 选择默认的开票信息
-      const defaultInfo = list.find((item) => item.isDefault);
+      const defaultInfo = list.find((item: any) => item.isDefault);
       selectedClientInvoiceInfo.value =
         defaultInfo || (list.length > 0 ? list[0] : undefined);
 
-      console.log('📋 选中的客户开票信息:', {
-        id: selectedClientInvoiceInfo.value?.id,
-        header: selectedClientInvoiceInfo.value?.header,
-        banks: selectedClientInvoiceInfo.value?.clientInvoiceBanks?.length || 0,
-      });
-
       // 根据币别选择银行
-      console.log(
-        '🔄 准备根据币别更新客户银行, currencyId:',
-        formData.value.currencyId,
-      );
       updateClientBankByCurrency();
-      console.log('✅ 客户银行ID已设置为:', formData.value.clientInvoiceBankId);
     } catch (error) {
-      console.error('❌ 加载客户开票信息失败:', error);
+      console.error('加载客户开票信息失败:', error);
     }
   }
 
@@ -72,12 +55,7 @@ export function useInvoiceInfo(
    * 根据币别更新销售方银行
    */
   function updateOrgBankByCurrency() {
-    console.log('🔄 开始更新销售方银行');
-    console.log('  - orgBankAccounts数量:', orgBankAccounts.value.length);
-    console.log('  - currencyId:', formData.value.currencyId);
-
     if (!orgBankAccounts.value.length || !formData.value.currencyId) {
-      console.warn('⚠️ 缺少银行列表或币别，清空销售方银行选择');
       formData.value.orgBankAccountId = undefined;
       return;
     }
@@ -91,15 +69,14 @@ export function useInvoiceInfo(
 
     if (defaultBank) {
       formData.value.orgBankAccountId = defaultBank.id;
-      console.log('✅ 找到默认银行:', {
-        id: defaultBank.id,
-        bankName: defaultBank.bankName,
-        bankAccount: defaultBank.bankAccount,
-        currencyId: defaultBank.currencyId,
-      });
+      console.log(
+        '✅ 自动选择销售方默认银行:',
+        defaultBank.bankName,
+        defaultBank.bankAccount,
+      );
     } else {
       formData.value.orgBankAccountId = undefined;
-      console.warn('⚠️ 未找到默认银行，清空选择');
+      console.log('⚠️ 未找到销售方默认银行，清空选择');
     }
   }
 
@@ -110,7 +87,7 @@ export function useInvoiceInfo(
     if (!headerId) return;
 
     const selectedInfo = clientInvoiceInfoList.value.find(
-      (info) => info.id === String(headerId),
+      (info: any) => info.id === String(headerId),
     );
 
     if (selectedInfo) {
@@ -131,6 +108,7 @@ export function useInvoiceInfo(
       );
 
     if (selectedBank) {
+      // 校验银行币种是否与开票币种一致
       if (selectedBank.currencyId !== formData.value.currencyId) {
         message.warning(
           `所选银行的币种（${selectedBank.currencyCode}）与开票币种不一致，请重新选择`,
@@ -142,7 +120,24 @@ export function useInvoiceInfo(
   }
 
   /**
-   * 获取与开票币种一致的银行列表（计算属性）
+   * 发票抬头选项列表
+   */
+  const clientInvoiceHeaderOptions = computed(() => {
+    if (
+      !clientInvoiceInfoList.value ||
+      clientInvoiceInfoList.value.length === 0
+    ) {
+      return [];
+    }
+
+    return clientInvoiceInfoList.value.map((info: any) => ({
+      label: info.header || '未命名抬头',
+      value: info.id,
+    }));
+  });
+
+  /**
+   * 获取与开票币种一致的银行列表（客户）
    */
   const filteredClientBanks = computed(() => {
     if (!selectedClientInvoiceInfo.value || !formData.value.currencyId) {
@@ -152,17 +147,11 @@ export function useInvoiceInfo(
     const currencyId = formData.value.currencyId;
     const banks = selectedClientInvoiceInfo.value.clientInvoiceBanks || [];
 
-    return banks
-      .filter((bank: any) => bank.currencyId === currencyId)
-      .map((bank: any) => ({
-        ...bank,
-        value: bank.id,
-        label: `${bank.bankName}-${bank.bankAccount}`,
-      }));
+    return banks.filter((bank: any) => bank.currencyId === currencyId);
   });
 
   /**
-   * 获取销售方与开票币种一致的银行列表（计算属性）
+   * 获取销售方与开票币种一致的银行列表
    */
   const filteredOrgBanks = computed(() => {
     if (!orgBankAccounts.value.length || !formData.value.currencyId) {
@@ -176,31 +165,14 @@ export function useInvoiceInfo(
     );
   });
 
-  /**
-   * 发票抬头选项列表（计算属性）
-   */
-  const clientInvoiceHeaderOptions = computed(() => {
-    if (
-      !clientInvoiceInfoList.value ||
-      clientInvoiceInfoList.value.length === 0
-    ) {
-      return [];
-    }
-
-    return clientInvoiceInfoList.value.map((info) => ({
-      label: info.header || '未命名抬头',
-      value: info.id,
-    }));
-  });
-
   return {
     loadClientInvoiceInfo,
     updateClientBankByCurrency,
     updateOrgBankByCurrency,
     handleClientInvoiceHeaderChange,
     handleClientBankChange,
+    clientInvoiceHeaderOptions,
     filteredClientBanks,
     filteredOrgBanks,
-    clientInvoiceHeaderOptions,
   };
 }

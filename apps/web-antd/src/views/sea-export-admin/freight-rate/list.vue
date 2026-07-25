@@ -40,7 +40,7 @@ import {
   getSeFreiPriceDetail,
   getSeFreiPriceList,
   getAllLaneCodes,
-  extractSeFreiPriceByQwen,
+  extractSeFreiPriceByGemini,
 } from '#/api/sea-export/freight-rate-admin';
 import { getUser } from '#/api/system/user-admin';
 import { $t } from '#/locales';
@@ -917,8 +917,8 @@ async function onAIBatchAdd() {
         key: 'ai_recognition_msg',
       });
 
-      // 调用千问AI识别接口
-      const recognitionResult = await extractSeFreiPriceByQwen(file);
+      // 调用 Gemini AI识别接口
+      const recognitionResult = await extractSeFreiPriceByGemini(file);
       console.log('识别结果:', recognitionResult);
       hideLoading();
 
@@ -1249,16 +1249,16 @@ async function onAIBatchAdd() {
             {{ $t('ui.actionTitle.create') }}
           </Button>
 
-          <!-- AI批量新增按钮 -->
-          <!-- <Button
+          <!-- AI批量新增按钮（Gemini） -->
+          <Button
             type="primary"
             ghost
             :disabled="!hasAddPermission"
             @click="onAIBatchAdd"
           >
-            <IconifyIcon icon="mdi:microphone-message" class="size-5" />
-            AI批量新增
-          </Button> -->
+            <IconifyIcon icon="mdi:robot-outline" class="size-5" />
+            AI批量新增(Gemini)
+          </Button>
 
           <!-- 批量编辑按钮 -->
           <Button :disabled="!hasEditPermission" @click="onBatchEditModal">

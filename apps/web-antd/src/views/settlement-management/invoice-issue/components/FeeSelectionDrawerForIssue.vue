@@ -27,10 +27,12 @@ import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-applicatio
 
 interface Props {
   visible: boolean;
-  settlementId?: string; // 已选择的结算单位（固定）
+  settlementId: string; // 已选择的结算单位（固定）
   currencyId?: number; // 已选择的币别（固定）
   headerId?: string; // 固定的发票抬头ID
   addedAppIds?: string[]; // 已添加的申请ID列表
+  fakeDeletedIds?: string[]; // ✅ 假删除申请ID列表
+  applicationGroupsData?: any[]; // ✅ 父组件传递的申请分组数据（包含假删的数据）
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -39,6 +41,8 @@ const props = withDefaults(defineProps<Props>(), {
   currencyId: undefined,
   headerId: '',
   addedAppIds: () => [],
+  fakeDeletedIds: () => [],
+  applicationGroupsData: () => [],
 });
 
 const emit = defineEmits<{
@@ -255,7 +259,29 @@ function handleApplyTimeRangeChange(
 
 /** 打开费用选择抽屉 */
 function handleOpenFeeDrawer() {
-  if (!props.settlementId) {
+  console.log('📂 打开费用选择抽屉');
+  console.log('  - settlementId:', props.settlementId);
+  console.log('  - currencyId:', props.currencyId);
+  console.log('  - headerId:', props.headerId);
+  console.log('  - addedAppIds:', props.addedAppIds);
+  console.log('  - fakeDeletedIds:', props.fakeDeletedIds);
+  console.log(
+    '  - applicationGroupsData (从父组件):',
+    props.applicationGroupsData?.length || 0,
+  );
+
+  // ✅ 重置筛选条件
+  keyWord.value = '';
+  filterApplyTimeStart.value = '';
+  filterApplyTimeEnd.value = '';
+  filterApplyTimeRange.value = undefined;
+  filterHeader.value = '';
+  filterCurrencyId.value = undefined;
+  filterApplyUserId.value = undefined;
+
+  // ✅ 设置已选择的值（用于显示）
+  if (!props.settlementId && !props.currencyId && !props.headerId) {
+    // 首次添加，清空所有选择
     selectedSettlementId.value = '';
     selectedCurrencyId.value = undefined;
     selectedHeaderId.value = '';
@@ -267,7 +293,10 @@ function handleOpenFeeDrawer() {
   }
 
   drawerVisible.value = true;
+
   nextTick(() => {
+    // ✅ 始终从接口加载数据（但不包含假删的数据）
+    console.log('🔄 从接口加载申请数据...');
     loadApplicationGroupData();
   });
 }
@@ -493,9 +522,138 @@ async function loadApplicationGroupData() {
 
     const result = await getSubmittedApplicationList(params);
 
-    // 转换为树状结构
-    const treeData = transformToTreeData(result || []);
-    applicationGroupsData.value = treeData;
+    console.log('📥 从接口加载的申请数据:', {
+      接口返回数量: result?.length || 0,
+      假删ID列表: props.fakeDeletedIds,
+    });
+
+    // ✅ 详细检查接口返回的数据结构
+    if (result && result.length > 0) {
+      const firstApp = result[0]!;
+      console.log('🔍 第一条申请的关键字段:', {
+        id: firstApp.id,
+        applicationNo: firstApp.applicationNo,
+        companyName: firstApp.companyName,
+        header: firstApp.clientInvoiceInfo?.header,
+        currencyCode: firstApp.currencyCode,
+        totalAppliedAmount: firstApp.totalAppliedAmount,
+        invoiceApplicationItems数量:
+          firstApp.invoiceApplicationItems?.length || 0,
+      });
+    }
+
+    // ✅ 转换为树状结构（接口返回的正常数据）
+    const apiData = transformToTreeData(result || []);
+
+    console.log('✅ 接口数据转换完成:', {
+      数量: apiData.length,
+    });
+
+    // ✅ 从父组件获取假删的数据（完整数据）
+    let fakeDeletedData: any[] = [];
+    if (
+      props.applicationGroupsData &&
+      props.applicationGroupsData.length > 0 &&
+      props.fakeDeletedIds &&
+      props.fakeDeletedIds.length > 0
+    ) {
+      const fakeDeletedIdsSet = new Set(props.fakeDeletedIds);
+
+      // 过滤出假删的申请
+      fakeDeletedData = props.applicationGroupsData.filter((group: any) =>
+        fakeDeletedIdsSet.has(String(group.id)),
+      );
+
+      console.log('📦 从父组件获取假删数据:', {
+        父组件总数量: props.applicationGroupsData.length,
+        假删数量: fakeDeletedData.length,
+        假删ID列表: Array.from(fakeDeletedIdsSet),
+      });
+
+      // 为假删数据添加标记
+      fakeDeletedData = fakeDeletedData.map((group: any) => ({
+        ...group,
+        isFakeDeleted: true,
+        invoiceApplicationItems: (group.invoiceApplicationItems || []).map(
+          (child: any) => ({
+            ...child,
+            isFakeDeleted: true,
+          }),
+        ),
+      }));
+    } else {
+      console.log('ℹ️ 没有假删数据需要合并');
+    }
+
+    // ✅ 合并两部分数据：接口返回的正常数据 + 父组件缓存的假删数据
+    const mergedData = [...apiData, ...fakeDeletedData];
+
+    console.log('✅ 数据合并完成:', {
+      接口数据数量: apiData.length,
+      假删数据数量: fakeDeletedData.length,
+      合并后总数量: mergedData.length,
+    });
+
+    // ✅ 验证假删数据的完整性
+    if (fakeDeletedData.length > 0) {
+      console.log('🔍 假删数据完整性检查:');
+      fakeDeletedData.forEach((item: any, index: number) => {
+        console.log(`  [${index + 1}] 申请 ${item.applicationNo}:`, {
+          id: item.id,
+          companyName: item.companyName,
+          header: item.header,
+          currencyCode: item.currencyCode,
+          totalAppliedAmount: item.totalAppliedAmount,
+          remark: item.remark,
+          require: item.require,
+          invoiceRemark: item.invoiceRemark,
+          applyUserName: item.applyUserName,
+          applyTime: item.applyTime,
+          invoiceType: item.invoiceType,
+          invoiceExchangeRate: item.invoiceExchangeRate,
+          invoiceAmount: item.invoiceAmount,
+          子节点数量: item.invoiceApplicationItems?.length || 0,
+          第一个子节点: item.invoiceApplicationItems?.[0]
+            ? {
+                commissionNum: item.invoiceApplicationItems[0].commissionNum,
+                mblNum: item.invoiceApplicationItems[0].mblNum,
+                hblNum: item.invoiceApplicationItems[0].hblNum,
+                clientName: item.invoiceApplicationItems[0].clientName,
+                etd: item.invoiceApplicationItems[0].etd,
+                feeName: item.invoiceApplicationItems[0].feeName,
+                payReceiveType: item.invoiceApplicationItems[0].payReceiveType,
+                currencyCode: item.invoiceApplicationItems[0].currencyCode,
+                amount: item.invoiceApplicationItems[0].amount,
+                exchangeRate: item.invoiceApplicationItems[0].exchangeRate,
+                salesPerson: item.invoiceApplicationItems[0].salesPerson,
+                invoiceCurrencyCode:
+                  item.invoiceApplicationItems[0].invoiceCurrencyCode,
+                appliedAmountOriginal:
+                  item.invoiceApplicationItems[0].appliedAmountOriginal,
+                settlementAmount:
+                  item.invoiceApplicationItems[0].settlementAmount,
+              }
+            : '无子节点',
+        });
+      });
+
+      // ✅ 对比接口数据的结构
+      if (apiData.length > 0) {
+        const apiFirst = apiData[0];
+        const fakeFirst = fakeDeletedData[0];
+        console.log('🔍 数据结构对比（接口 vs 假删）:', {
+          接口数据字段数: Object.keys(apiFirst).length,
+          假删数据字段数: Object.keys(fakeFirst).length,
+          接口数据所有字段: Object.keys(apiFirst).sort(),
+          假删数据所有字段: Object.keys(fakeFirst).sort(),
+          假删缺失的字段: Object.keys(apiFirst).filter(
+            (key) => !(key in fakeFirst),
+          ),
+        });
+      }
+    }
+
+    applicationGroupsData.value = mergedData;
   } catch (error) {
     console.error('❌ 加载申请数据失败:', error);
     message.error('加载申请数据失败');
@@ -516,8 +674,23 @@ function transformToTreeData(
 ): any[] {
   const treeData: any[] = [];
   const addedAppIds = getAddedAppIds();
+  // ✅ 获取假删除的申请ID列表
+  const fakeDeletedIdsSet = new Set(props.fakeDeletedIds || []);
+
+  console.log('📊 transformToTreeData 被调用:', {
+    总申请数量: applications.length,
+    假删ID列表: Array.from(fakeDeletedIdsSet),
+    'props.fakeDeletedIds': props.fakeDeletedIds,
+  });
 
   applications.forEach((app) => {
+    // ✅ 检查是否为假删除状态
+    const isFakeDeleted = fakeDeletedIdsSet.has(String(app.id));
+
+    if (isFakeDeleted) {
+      console.log('⚠️ 发现假删的申请:', app.applicationNo, '(但会显示并标记)');
+    }
+
     const childrenList: any[] = [];
 
     if (app.invoiceApplicationItems && app.invoiceApplicationItems.length > 0) {
@@ -532,6 +705,7 @@ function transformToTreeData(
           checked: false,
           disabled: true, // ✅ 二级数据禁用选择，只做展示
           alreadyAdded: isAlreadyAdded,
+          isFakeDeleted: isFakeDeleted, // ✅ 标记是否为假删除状态
           // 二级字段
           sequenceNumber: index + 1, // ✅ 序号从1开始
           commissionNum: item.orderFee?.transportOrder?.commissionNum || '-', // 委托编号
@@ -622,6 +796,7 @@ function transformToTreeData(
         (app.totalAppliedAmount || 0) * (app.invoiceExchangeRate || 1.0),
       checked: false,
       selectable: true, // ✅ 一级可选择
+      isFakeDeleted: isFakeDeleted, // ✅ 标记是否为假删除状态
       invoiceApplicationItems: childrenList, // 使用 invoiceApplicationItems 作为子节点
       // ✅ 保留商品明细数据（用于合并商品明细）
       invoiceApplicationGoodsDtls: app.invoiceApplicationGoodsDtls || [],
@@ -681,6 +856,13 @@ const appParentColumns = computed(() => [
     dataIndex: 'amountMatched',
     key: 'amountMatched',
     Width: 50,
+    align: 'center' as const,
+  },
+  {
+    title: '状态',
+    dataIndex: 'isFakeDeleted',
+    key: 'isFakeDeleted',
+    minWidth: 80,
     align: 'center' as const,
   },
   {
@@ -775,7 +957,13 @@ const appChildColumns = computed(() => [
     minWidth: 60,
     align: 'center' as const,
   },
-
+  {
+    title: '状态',
+    dataIndex: 'isFakeDeleted',
+    key: 'isFakeDeleted',
+    minWidth: 80,
+    align: 'center' as const,
+  },
   {
     title: '委托编号',
     dataIndex: 'commissionNum',
@@ -1068,6 +1256,17 @@ defineExpose({
                 {{ record.amountMatched ? '✓ 可开' : '✗ 不可开' }}
               </span>
             </template>
+            <template v-else-if="column.key === 'isFakeDeleted'">
+              <span
+                v-if="record.isFakeDeleted"
+                style="font-size: 12px; font-weight: bold; color: #ff4d4f"
+              >
+                🗑️ 待删除
+              </span>
+              <span v-else style="font-size: 12px; color: #52c41a">
+                ✓ 正常
+              </span>
+            </template>
             <template v-else-if="column.key === 'invoiceType'">
               <span>{{ getInvoiceTypeText(record.invoiceType) }}</span>
             </template>
@@ -1086,7 +1285,18 @@ defineExpose({
               row-key="id"
             >
               <template #bodyCell="{ column, record: childRecord }">
-                <template v-if="column.key === 'alreadyAdded'">
+                <template v-if="column.key === 'isFakeDeleted'">
+                  <span
+                    v-if="childRecord.isFakeDeleted"
+                    style="font-size: 12px; font-weight: bold; color: #ff4d4f"
+                  >
+                    🗑️ 待删除
+                  </span>
+                  <span v-else style="font-size: 12px; color: #52c41a">
+                    ✓ 正常
+                  </span>
+                </template>
+                <template v-else-if="column.key === 'alreadyAdded'">
                   <span
                     v-if="childRecord.alreadyAdded"
                     style="font-size: 12px; color: #999"

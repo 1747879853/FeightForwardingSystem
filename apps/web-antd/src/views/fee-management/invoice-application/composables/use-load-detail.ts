@@ -64,7 +64,15 @@ export function useLoadDetail(
         detail.feeGroups.forEach((group: any) => {
           if (group.items && group.items.length > 0) {
             group.items.forEach((item: any) => {
+              // ✅ 调试日志：检查 item 的结构
+              console.log('📋 useLoadDetail - 提取 invoiceApplicationItem:', {
+                id: item.id,
+                orderFeeId: item.orderFeeId,
+                appliedAmount: item.appliedAmount,
+              });
+
               invoiceApplicationItems.push({
+                id: item.id, // ✅ 关键修复：保存 invoiceApplicationItem 的 ID
                 orderFeeId: item.orderFeeId,
                 appliedAmount: item.appliedAmount,
                 remark: item.remark || '',
@@ -139,6 +147,13 @@ export function useLoadDetail(
 
           if (group.items && group.items.length > 0) {
             group.items.forEach((item: any) => {
+              // ✅ 调试日志：检查 item 的结构
+              console.log('📋 useLoadDetail - 构建 childNode, item:', {
+                id: item.id,
+                orderFeeId: item.orderFeeId,
+                appliedAmount: item.appliedAmount,
+              });
+
               const childNode: any = {
                 id: item.id,
                 parentId: parentNode.id,
@@ -154,6 +169,8 @@ export function useLoadDetail(
                 mblNum: group.transportOrder?.mblNum || '-',
                 bookingNum: group.transportOrder?.bookingNum || '-',
                 transportOrder: group.transportOrder,
+                // ✅ 新增：保存 invoiceApplicationItem 的 ID，用于删除操作
+                invoiceApplicationItemId: item.id,
               };
               parentNode.feeDetails.push(childNode);
             });

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { Page } from '@vben/common-ui';
+import { useRouter } from 'vue-router';
 import {
   Button,
   Card,
@@ -32,22 +33,11 @@ import RemarkTemplateModal from './components/RemarkTemplateModal.vue';
 import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vue';
 import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
 import FeeDetailModal from './components/FeeDetailModal.vue';
+import { Select } from 'ant-design-vue';
+import { CurrencySelect, MyOrgSelect } from '#/adapter/component';
+// ==================== 初始化路由 ====================
+const router = useRouter();
 
-import { ClientSelect, CurrencySelect, MyOrgSelect } from '#/adapter/component';
-import {
-  getMyDefaultOrgId,
-  getMyOrgCompanyNode,
-} from '#/composables/use-my-org';
-import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { getClientDetail } from '#/api/sea-export/client-admin';
-import { getClientInvoiceInfoList } from '#/api/sea-export/clinet-invoice-admin';
-import { getCodeInvoicePagedList } from '#/api/system/base-data/code-invoice-admin';
-import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
-import { DatePicker, Select } from 'ant-design-vue';
-import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
-import { $t } from '#/locales';
-import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
-import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 // ==================== 使用组合函数 ====================
 
 const {
@@ -92,7 +82,11 @@ const {
   flattenTreeData,
 );
 
-const { addSelectedFeesToForm, handleDeleteFee } = useFeeManagement(
+const {
+  addSelectedFeesToForm,
+  handleDeleteFee: deleteFeeBase,
+  recalculateGoodsDetails,
+} = useFeeManagement(
   formData,
   feeGroupsData,
   goodsDetails,
@@ -153,11 +147,22 @@ const { handleFeeSelectionSave } = useFeeSelectionSave(
   goodsDetails,
   invoiceExchangeRate,
   selectedCurrencyCode,
+  codeInvoiceList, // ✅ 传递发票商品编码列表
+  loadCodeInvoiceList, // ✅ 传递加载发票商品编码列表函数
   addSelectedFeesToForm,
   autoFillGoodsDetails,
   mergeAmountToExistingGoods,
   loadClientInvoiceInfo,
   updateOrgBankByCurrency,
+  loadDefaultRemarkTemplate, // ✅ 传递默认备注模板加载函数
+  (newId: string) => {
+    // ✅ 新增开票申请成功后的回调 - 跳转到编辑页面
+    console.log('✅ 开票申请创建成功，ID:', newId);
+    router.replace({
+      path: `/fee-management/invoice-application/${newId}/edit`,
+    });
+  },
+  handleFeeDetailRefresh, // ✅ 传递刷新数据的回调
 );
 
 const { loadDetail } = useLoadDetail(
@@ -176,6 +181,117 @@ const { loadDetail } = useLoadDetail(
   loadClientInvoiceInfo,
   updateOrgBankByCurrency,
 );
+
+// ✅ 新增：处理费用明细刷新（删除后重新加载）
+async function handleFeeDetailRefresh() {
+  console.log('🔄 费用明细已删除，重新加载数据...');
+  if (editId.value) {
+    // 先关闭弹窗
+    feeDetailModalVisible.value = false;
+
+    // 重新加载详情数据
+    await loadDetail();
+
+    // 重新构建费用明细数据
+    const items = formData.value.invoiceApplicationItems || [];
+    if (items.length > 0 && feeGroupsData.value.length > 0) {
+      try {
+        const allFees = flattenTreeData(feeGroupsData.value);
+        const selectedDetails: any[] = [];
+        const processedOrders = new Set<string>();
+
+        items.forEach((item: any) => {
+          // ✅ 修复：查找费用时，尝试多种ID格式（带前缀和不带前缀）
+          const fee = allFees.find((f: any) => {
+            // 尝试直接匹配 orderFee.id
+            if (f.orderFee?.id === item.orderFeeId) return true;
+
+            // 尝试匹配带 child_ 前缀的ID
+            if (f.id === `child_${item.orderFeeId}`) return true;
+
+            // 尝试从 f.id 中提取原始ID（如果 f.id 是 child_xxx 格式）
+            if (f.id && f.id.startsWith('child_')) {
+              const originalId = f.id.replace('child_', '');
+              if (originalId === String(item.orderFeeId)) return true;
+            }
+
+            return false;
+          });
+
+          if (fee) {
+            // ✅ 修复：获取 orderId 时也要处理前缀
+            let orderId = fee.parentId;
+            if (orderId && orderId.startsWith('parent_')) {
+              orderId = orderId.replace('parent_', '');
+            }
+
+            if (!processedOrders.has(orderId)) {
+              // ✅ 修复：查找父节点时也要处理前缀
+              const parentFee = allFees.find((f: any) => {
+                if (f.id === orderId) return true;
+                if (f.id === `parent_${orderId}`) return true;
+                return false;
+              });
+
+              if (parentFee) {
+                const parentNode: any = {
+                  id: parentFee.id,
+                  parentId: null,
+                  transportOrder: parentFee.transportOrder,
+                  seaExport: parentFee.transportOrder?.seaExport,
+                  orderFees: parentFee.orderFees,
+                  commissionNum: parentFee.transportOrder.commissionNum,
+                  mblNum: parentFee.transportOrder.mblNum || '-',
+                  bookingNum: parentFee.transportOrder.bookingNum || '-',
+                  clientName: parentFee.transportOrder.clientName,
+                  bizType: '-',
+                  carrier:
+                    parentFee.transportOrder?.seaExport?.carrier?.cnName || '-',
+                  company: parentFee.transportOrder.orgs?.at(-1)?.name || '-',
+                  feeDetails: [] as any[],
+                };
+                selectedDetails.push(parentNode);
+                processedOrders.add(orderId);
+              }
+            }
+
+            const parentNode = selectedDetails.find(
+              (p: any) => p.id === orderId || p.id === `parent_${orderId}`,
+            );
+            if (parentNode) {
+              parentNode.feeDetails.push({
+                // ✅ 关键修复：使用 fee.orderFee.id 作为子节点ID，确保与后端返回的ID一致
+                id: fee.orderFee?.id || fee.id.replace(/^child_/, ''),
+                parentId: orderId,
+                orderFee: fee.orderFee,
+                appliedAmount: item.appliedAmount,
+                settlementUnit: fee.orderFee.settlementName || '-',
+                payReceiveType:
+                  fee.orderFee.payReceiveType === 'AR' ? '应收' : '应付',
+                feeName: fee.orderFee.feeCodeName || '-',
+                amount: fee.orderFee.amount,
+                currencyCode: fee.orderFee.currencyCode || '-',
+                remainingInvoiceAmount: fee.orderFee.remainingInvoiceAmount,
+                invoiceApplicationItemId: item.id || item.Id || item.ID,
+              });
+            }
+          }
+        });
+
+        selectedFeeDetails.value = selectedDetails;
+
+        // 重新打开弹窗
+        feeDetailModalVisible.value = true;
+        message.success(`数据已刷新，当前共 ${items.length} 条费用`);
+      } catch (error) {
+        console.error('重新构建费用明细失败:', error);
+        message.error('刷新数据失败');
+      }
+    } else {
+      message.success('数据已刷新');
+    }
+  }
+}
 
 // ==================== UI 状态 ====================
 
@@ -209,11 +325,38 @@ async function handleOpenFeeDetailModal() {
     const processedOrders = new Set<string>();
 
     items.forEach((item: any) => {
-      const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
+      // ✅ 修复：查找费用时，尝试多种ID格式（带前缀和不带前缀）
+      const fee = allFees.find((f: any) => {
+        // 尝试直接匹配 orderFee.id
+        if (f.orderFee?.id === item.orderFeeId) return true;
+
+        // 尝试匹配带 child_ 前缀的ID
+        if (f.id === `child_${item.orderFeeId}`) return true;
+
+        // 尝试从 f.id 中提取原始ID（如果 f.id 是 child_xxx 格式）
+        if (f.id && f.id.startsWith('child_')) {
+          const originalId = f.id.replace('child_', '');
+          if (originalId === String(item.orderFeeId)) return true;
+        }
+
+        return false;
+      });
+
       if (fee) {
-        const orderId = fee.parentId;
+        // ✅ 修复：获取 orderId 时也要处理前缀
+        let orderId = fee.parentId;
+        if (orderId && orderId.startsWith('parent_')) {
+          orderId = orderId.replace('parent_', '');
+        }
+
         if (!processedOrders.has(orderId)) {
-          const parentFee = allFees.find((f: any) => f.id === orderId);
+          // ✅ 修复：查找父节点时也要处理前缀
+          const parentFee = allFees.find((f: any) => {
+            if (f.id === orderId) return true;
+            if (f.id === `parent_${orderId}`) return true;
+            return false;
+          });
+
           if (parentFee) {
             const parentNode: any = {
               id: parentFee.id,
@@ -236,10 +379,23 @@ async function handleOpenFeeDetailModal() {
           }
         }
 
-        const parentNode = selectedDetails.find((p: any) => p.id === orderId);
+        const parentNode = selectedDetails.find(
+          (p: any) => p.id === orderId || p.id === `parent_${orderId}`,
+        );
         if (parentNode) {
+          console.log(
+            '📋 构建 feeDetail - item 完整结构:',
+            JSON.stringify(item, null, 2),
+          );
+          console.log('📋 item.id:', item.id);
+          console.log('📋 item.Id:', item.Id);
+          console.log('📋 item.ID:', item.ID);
+          console.log('📋 fee.id (可能带前缀):', fee.id);
+          console.log('📋 fee.orderFee?.id (原始ID):', fee.orderFee?.id);
+
           parentNode.feeDetails.push({
-            id: fee.id,
+            // ✅ 关键修复：使用 fee.orderFee.id 作为子节点ID，确保与后端返回的ID一致
+            id: fee.orderFee?.id || fee.id.replace(/^child_/, ''),
             parentId: orderId,
             orderFee: fee.orderFee,
             appliedAmount: item.appliedAmount,
@@ -250,6 +406,8 @@ async function handleOpenFeeDetailModal() {
             amount: fee.orderFee.amount,
             currencyCode: fee.orderFee.currencyCode || '-',
             remainingInvoiceAmount: fee.orderFee.remainingInvoiceAmount,
+            // ✅ 新增：保存 invoiceApplicationItem 的 ID，用于删除操作
+            invoiceApplicationItemId: item.id || item.Id || item.ID,
           });
         }
       }
@@ -276,6 +434,45 @@ function handleOpenSelectRemarkTemplateModalWrapper() {
   const canOpen = handleOpenSelectRemarkTemplateModal();
   if (canOpen) {
     selectRemarkTemplateModalVisible.value = true;
+  }
+}
+
+// ✅ 新增：加载当前币别对应的默认备注模板
+async function loadDefaultRemarkTemplate() {
+  // 检查是否有必要的参数
+  if (!formData.value.orgId || !formData.value.currencyId) {
+    console.log('⚠️ 缺少归属组织或币别ID，无法加载默认备注模板');
+    return;
+  }
+
+  // 如果备注字段已经有内容，不覆盖用户已输入的内容
+  if (formData.value.remark && formData.value.remark.trim()) {
+    console.log('⚠️ 备注字段已有内容，跳过自动填充');
+    return;
+  }
+
+  try {
+    // ✅ 直接调用 RemarkTemplateModal 组件的方法获取默认模板，并传入 templateData 进行占位符替换
+    const template =
+      await remarkTemplateModalRef.value?.getDefaultRemarkTemplate(
+        formData.value.orgId,
+        formData.value.currencyId,
+        remarkTemplateData.value, // ✅ 传入动态计算的模板数据
+      );
+
+    if (template) {
+      formData.value.remark = template;
+      console.log(
+        '✅ 已自动加载并替换默认备注模板:',
+        template.substring(0, 50),
+      );
+      message.success('已自动应用默认备注模板');
+    } else {
+      console.log('ℹ️ 未找到默认备注模板');
+    }
+  } catch (error) {
+    console.error('加载默认备注模板失败:', error);
+    // 静默失败，不影响主流程
   }
 }
 
@@ -958,7 +1155,7 @@ onMounted(() => {
                           size="small"
                           type="primary"
                           ghost
-                          @click="handleOpenSelectRemarkTemplateModal"
+                          @click="handleOpenSelectRemarkTemplateModalWrapper"
                           :disabled="
                             (formData.invoiceApplicationItems || []).length ===
                               0 || isReadOnly
@@ -1007,7 +1204,8 @@ onMounted(() => {
       v-model:visible="feeDetailModalVisible"
       :loading="feeDetailModalLoading"
       :fee-details="selectedFeeDetails"
-      @delete-fee="handleDeleteFee"
+      :invoice-application-id="editId"
+      @refresh="handleFeeDetailRefresh"
     />
 
     <RemarkTemplateModal

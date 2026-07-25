@@ -265,6 +265,47 @@ export namespace InvoiceApplicationAdminApi {
     id: string;
   }
 
+  /** 仅编辑主表DTO（不改动费用/商品明细） */
+  export interface InvoiceApplicationEditMainDto {
+    id: string;
+    settlementId: string;
+    /** 归属组织id */
+    orgId: number;
+    orgBankAccountId: string;
+    clientInvoiceBankId: string;
+    invoiceType?: InvoiceType;
+    require?: string;
+    remark?: string;
+  }
+
+  /** 新增多条费用明细DTO */
+  export interface InvoiceApplicationAddItemsDto {
+    id: string;
+    /** 本次新增的费用明细；可空 */
+    invoiceApplicationItems?: InvoiceApplicationItemAddDto[];
+    /**
+     * 商品明细处理逻辑：
+     * - null = 不改商品
+     * - [] = 清空商品
+     * - 有值 = 全量替换
+     */
+    invoiceApplicationGoodsDtls?: InvoiceApplicationGoodsDtlAddDto[] | null;
+  }
+
+  /** 移除多条费用明细DTO */
+  export interface InvoiceApplicationRemoveItemsDto {
+    id: string;
+    /** 明细主键，至少一条；允许删光 */
+    invoiceApplicationItemIds: string[];
+    /**
+     * 商品明细处理逻辑：
+     * - null = 不改商品
+     * - [] = 清空商品
+     * - 有值 = 全量替换
+     */
+    invoiceApplicationGoodsDtls?: InvoiceApplicationGoodsDtlAddDto[] | null;
+  }
+
   /** 费用分组详情DTO */
   export interface InvoiceApplicationFeeGroupDetailDto {
     transportOrder: TransportOrderSimpleDto;
@@ -391,11 +432,35 @@ export namespace InvoiceApplicationAdminApi {
   }
 
   /**
-   * 修改开票申请（单条）
+   * 修改开票申请（单条）- 全量替换（保留不变，建议使用拆分接口）
    * @param data 修改DTO
    */
   export function edit(data: InvoiceApplicationEditDto) {
     return requestClient.put<boolean>(`${API_PREFIX}/EditAsync`, data);
+  }
+
+  /**
+   * 仅编辑主表（不改动费用/商品明细）
+   * @param data 编辑主表DTO
+   */
+  export function editMain(data: InvoiceApplicationEditMainDto) {
+    return requestClient.put<boolean>(`${API_PREFIX}/EditMainAsync`, data);
+  }
+
+  /**
+   * 新增多条费用明细
+   * @param data 新增明细DTO
+   */
+  export function addItems(data: InvoiceApplicationAddItemsDto) {
+    return requestClient.post<boolean>(`${API_PREFIX}/AddItemsAsync`, data);
+  }
+
+  /**
+   * 移除多条费用明细
+   * @param data 移除明细DTO
+   */
+  export function removeItems(data: InvoiceApplicationRemoveItemsDto) {
+    return requestClient.put<boolean>(`${API_PREFIX}/RemoveItemsAsync`, data);
   }
 
   /**

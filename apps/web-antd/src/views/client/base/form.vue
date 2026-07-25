@@ -905,7 +905,7 @@ const handleSubmit = async () => {
         taxNo: baseValues.taxNo,
         email: baseValues.email,
         url: baseValues.url,
-        clientType: baseValues.clientType,
+        clientType: isClient.value ? clientValues.clientType : undefined,
 
         // 业务信息
         legalPerson: businessValues.legalPerson,
