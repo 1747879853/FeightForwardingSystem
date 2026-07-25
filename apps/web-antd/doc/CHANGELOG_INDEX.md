@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-25 海运出口/进口箱型选择改为从 option 取名称](./changelogs/change-log-2026-07-25-sea-export-ctn-name-from-option.md)
 - [2026-07-25 业务联系单箱型选择改为从 option 取名称](./changelogs/change-log-2026-07-25-pre-order-ctn-name-from-option.md)
 - [2026-07-25 业务联系单箱型箱量表格铺满剩余高度并内部滚动](./changelogs/change-log-2026-07-25-pre-order-ctn-table-fill-height.md)
 - [2026-07-25 业务联系单箱型箱量工具栏对齐费用区](./changelogs/change-log-2026-07-25-pre-order-ctn-toolbar-align-fee.md)
