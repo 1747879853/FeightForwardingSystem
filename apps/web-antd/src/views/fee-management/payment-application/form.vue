@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { ClientAppApi } from '#/api/common/client';
 import type { ClientInvoiceInfoAdminApi } from '#/api/sea-export/clinet-invoice-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { Attachment } from '#/api/common/upload';
@@ -78,6 +79,27 @@ import {
   useOrderGroupColumns,
 } from './form-data';
 
+/** 从详情结算对象构建 ClientSelect 回显项 */
+function toSettlementSelectedItems(
+  settlement?: null | PaymentApplicationAdminApi.ClientSimpleDtoForOrder,
+  settlementId?: null | string,
+  clientName?: null | string,
+): ClientAppApi.ClientSimpleDto[] {
+  if (settlement?.id) {
+    return [
+      {
+        fullName: settlement.fullName,
+        id: settlement.id,
+        name: settlement.name ?? clientName ?? '',
+      },
+    ];
+  }
+  if (settlementId) {
+    return [{ id: settlementId, name: clientName ?? '' }];
+  }
+  return [];
+}
+
 const t = (key: string, args?: any[]) =>
   $t(`seaExport.export.paymentApplication.${key}`, args as any);
 
@@ -127,6 +149,8 @@ const displayApplicationNo = computed(() =>
 const currencySelectRef = ref<InstanceType<typeof CurrencySelect> | null>(null);
 const settlementId = ref<string>('');
 const settlementName = ref('');
+/** ClientSelect 编辑回显（详情 settlement / clientName） */
+const settlementSelectedItems = ref<ClientAppApi.ClientSimpleDto[]>([]);
 
 /** null = 按原票币, number = 指定币别 */
 const settlementCurrencyId = ref<null | number>(null);
@@ -489,6 +513,17 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
     ...originalFeeDetailRows.value,
     ...newRows.map((r) => ({ ...r })),
   ];
+
+  if (settlementId.value) {
+    const fee = nextRows.find((r) => r.settlementId === settlementId.value);
+    if (fee?.settlementName) {
+      settlementName.value = fee.settlementName;
+      settlementSelectedItems.value = [
+        { id: settlementId.value, name: fee.settlementName },
+      ];
+    }
+  }
+
   nextTick(() => {
     expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
   });
@@ -551,6 +586,7 @@ function onEndTimeChange(_date: any, dateStr: string | string[]) {
 function onSettlementChange(val: string | null | undefined) {
   settlementId.value = val ? String(val) : '';
   settlementName.value = '';
+  settlementSelectedItems.value = [];
   bankSelections.value = {};
   loadClientBanks(true);
 }
@@ -560,6 +596,13 @@ function onSettlementIdSync(val: string) {
     bankSelections.value = {};
   }
   settlementId.value = val;
+  const fee = feeDetailRows.value.find((r) => r.settlementId === val);
+  if (val && fee?.settlementName) {
+    settlementName.value = fee.settlementName;
+    settlementSelectedItems.value = [{ id: val, name: fee.settlementName }];
+  } else if (!val) {
+    settlementSelectedItems.value = [];
+  }
   loadClientBanks();
 }
 
@@ -668,7 +711,12 @@ async function loadEditData() {
     currentStatus.value = detail.status ?? PaymentApplicationStatus.Entering;
     applicationNo.value = detail.applicationNo ?? '';
     settlementId.value = detail.settlementId ?? '';
-    settlementName.value = detail.clientName ?? '';
+    settlementName.value = detail.settlement?.name ?? detail.clientName ?? '';
+    settlementSelectedItems.value = toSettlementSelectedItems(
+      detail.settlement,
+      detail.settlementId,
+      detail.clientName,
+    );
     settlementCurrencyId.value = detail.currencyId ?? null;
     settlementCurrencyName.value = detail.currencyCode ?? '';
     submitTime.value = detail.submitTime
@@ -1043,6 +1091,7 @@ function formatMonth(val: string | undefined | null): string {
                   <span class="info-label">{{ t('clientName') }}</span>
                   <ClientSelect
                     :model-value="settlementId"
+                    :selected-items="settlementSelectedItems"
                     :placeholder="$t('ui.placeholder.select')"
                     :disabled="isSettlementLocked"
                     size="small"
