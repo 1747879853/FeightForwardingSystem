@@ -56,6 +56,7 @@ import {
   GetDetail,
   GetPagedList,
 } from '#/api/sea-export/change-order-admin';
+import { buildAttachmentUrl } from '#/utils';
 
 defineOptions({
   name: 'ChangeOrder',
@@ -888,8 +889,10 @@ onBeforeUnmount(unbindGlobalListeners);
                           formValues?.carrier?.logo?.url)
                       "
                       :src="
-                        formValues?.carrierLogo?.url ||
-                        formValues?.carrier?.logo?.url
+                        buildAttachmentUrl(
+                          formValues?.carrierLogo?.url ||
+                            formValues?.carrier?.logo?.url,
+                        )
                       "
                       :alt="formValues?.carrier?.cnName || 'carrier-logo'"
                       class="order-info-chip__logo"
@@ -932,8 +935,10 @@ onBeforeUnmount(unbindGlobalListeners);
                         formValues?.carrier?.logo?.url)
                     "
                     :src="
-                      formValues?.carrierLogo?.url ||
-                      formValues?.carrier?.logo?.url
+                      buildAttachmentUrl(
+                        formValues?.carrierLogo?.url ||
+                          formValues?.carrier?.logo?.url,
+                      )
                     "
                     :alt="formValues?.carrier?.cnName || 'carrier-logo'"
                     class="order-info-chip__logo"
