@@ -2,8 +2,8 @@
 title: 更改单业务逻辑
 module: 海运出口 / 海运进口
 author: auto-doc-sync
-last_updated: 2026-07-24
-last_change: sea-export-party-carrier-objectification
+last_updated: 2026-07-25
+last_change: change-order-carrier-logo-url
 ---
 
 # 1. 业务背景说明 (Background)
@@ -213,6 +213,7 @@ sequenceDiagram
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- |
+| 2026-07-25 | `Fix` | 订单信息条船公司 Logo 经 `buildAttachmentUrl` 拼接，修复相对路径落到前端域名导致 404。详见 `changelogs/change-log-2026-07-25-change-order-carrier-logo-url.md`。 | 与 `orderFee/index.vue`、列表页一致；折叠/展开两处 `:src` 均需处理。 |
 | 2026-07-24 | `Refactor` | 订单信息摘要委托单位/车队/船公司改读对象字段（`client?.name`、`team?.name`、`carrier?.cnShortName`）。 | 与 `SeaExportDto`/`TransportOrderDto` 对象化对齐。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-21 | `Fix` | 去掉编辑区冗余「更改单」标题；更改单费用表禁用列排序；表格左右与顶部表单统一 16px 对齐。详见 `changelogs/change-log-2026-07-21-change-order-align-nosort.md`。 | `mode=changeOrder` 关 `sortConfig` 并清列 `sortable`；去掉表内 `px-1`。 |
 | 2026-07-21 | `Feature` | 订单信息条样式精简：去右上角配置齿轮与配置弹窗；折叠为单行通栏摘要（竖线分隔、超长省略）。详见 `changelogs/change-log-2026-07-21-change-order-info-bar-style.md`。 | 仍只读 `useDisplayFieldConfig`；配置入口仅在应收应付页。 |
