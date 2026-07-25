@@ -83,6 +83,7 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-25 | `Fix` | 箱型箱量表去掉 scroll.y，改外层滚动 + sticky 表头；列（含备注）固定宽并 table 铺满，消除右侧灰底留白 | scroll.y 拆两张表是根因；列宽/滚动条槽治标不治本 |
 | 2026-07-25 | `Fix` | 服务项流水线去掉「已完成」绿勾，已勾选节点统一「未执行」灰底；仅出口对比「新增」用进行中样式 | 联系单无 `taskStatus`，`nodeState` 默认须为 `upcoming`，不可复用海出任务态默认 `done` |
 | 2026-07-25 | `Feature` | 归属组织改为取干系人「销售」所属组织；选择委托单位后按客户维护的销售/客服/操作/单证回填干系人（缺操作/单证/客服兜底当前账号） | `UserOrgSelect :user-id="salesUserId"` + `orgs` 回显兜底；`applyClientDefaultPreOrderUsers` 与海出 `applyClientDefaultOrderUsers` 同构，挂在 `clientId` `onChange` |
 | 2026-07-25 | `Feature` | 收发通补齐三组对称字段：往来单位 id + Content 文本；布局对齐海出 party-flow；详情回填 Content 与 SimpleDto 名称；`remark` 挪到基础信息船公司后 | schema 用 `createClientSelectSchema` + `EnglishUpperTextarea`；`fillFromDetail` 经 `toSelectedItems` 写 `selectedItems`；备注回填改走 `basicFormApi`；提交靠 spread 自然带上 |

@@ -1,14 +1,7 @@
 <script lang="ts" setup>
 import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
 
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-} from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 
@@ -66,13 +59,17 @@ function ctnSelectedItems(row: PreOrderCtnRow) {
   return [{ id: row.ctnCodeId, ctnName: row.ctnCodeName }];
 }
 
+/**
+ * 不用 Table scroll.y：会拆成表头/表体两张表，列宽与滚动条占位极易错位。
+ * 改为外层滚动 + thead sticky，整表一张表，列天然对齐。
+ */
 const columns = computed(() => [
   { title: '箱型', dataIndex: 'ctnCodeId', width: 180 },
-  { title: '箱量', dataIndex: 'count', width: 110 },
-  { title: '货重', dataIndex: 'weight', width: 120 },
-  { title: '指导价', dataIndex: 'sugPrice', width: 130 },
-  { title: '卖价', dataIndex: 'price', width: 130 },
-  { title: '备注', dataIndex: 'remark' },
+  { title: '箱量', dataIndex: 'count', width: 100 },
+  { title: '货重', dataIndex: 'weight', width: 110 },
+  { title: '指导价', dataIndex: 'sugPrice', width: 110 },
+  { title: '卖价', dataIndex: 'price', width: 110 },
+  { title: '备注', dataIndex: 'remark', width: 160 },
 ]);
 
 function handleAdd() {
@@ -127,59 +124,6 @@ watch(
   },
   { immediate: true, deep: false },
 );
-
-/** 表格区域铺满父级剩余高度，body 超出后纵向滚动 */
-const tableWrapRef = ref<HTMLElement | null>(null);
-const scrollY = ref(160);
-let tableResizeObserver: null | ResizeObserver = null;
-
-function updateScrollY() {
-  const wrap = tableWrapRef.value;
-  if (!wrap) return;
-  const header =
-    wrap.querySelector<HTMLElement>('.ant-table-header') ??
-    wrap.querySelector<HTMLElement>('.ant-table-thead');
-  const headerHeight = Math.ceil(header?.getBoundingClientRect().height ?? 39);
-  const next = Math.floor(wrap.clientHeight - headerHeight);
-  scrollY.value = Math.max(next, 80);
-}
-
-function bindTableResizeObserver() {
-  tableResizeObserver?.disconnect();
-  tableResizeObserver = null;
-  const wrap = tableWrapRef.value;
-  if (!wrap || typeof ResizeObserver === 'undefined') {
-    updateScrollY();
-    return;
-  }
-  tableResizeObserver = new ResizeObserver(() => {
-    updateScrollY();
-  });
-  tableResizeObserver.observe(wrap);
-  updateScrollY();
-}
-
-onMounted(() => {
-  void nextTick(() => {
-    bindTableResizeObserver();
-    // 等表头渲染后再量一次，避免初次 thead 高度不准
-    requestAnimationFrame(() => updateScrollY());
-  });
-});
-
-onBeforeUnmount(() => {
-  tableResizeObserver?.disconnect();
-  tableResizeObserver = null;
-});
-
-watch(
-  () => props.readonly,
-  () => {
-    void nextTick(() => {
-      requestAnimationFrame(() => updateScrollY());
-    });
-  },
-);
 </script>
 
 <template>
@@ -222,14 +166,13 @@ watch(
         </Button>
       </Tooltip>
     </Space>
-    <div ref="tableWrapRef" class="pre-order-ctn-table__body">
+    <div class="pre-order-ctn-table__body">
       <Table
         size="small"
         :columns="columns"
         :data-source="dataSource"
         :pagination="false"
         row-key="rowKey"
-        :scroll="{ y: scrollY }"
         :row-selection="
           props.readonly
             ? undefined
@@ -324,13 +267,22 @@ watch(
 .pre-order-ctn-table__body {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 
-.pre-order-ctn-table__body :deep(.ant-table-wrapper),
-.pre-order-ctn-table__body :deep(.ant-spin-nested-loading),
-.pre-order-ctn-table__body :deep(.ant-spin-container),
+/* 单表铺满容器；行多时外层滚动，表头 sticky 保持可见 */
 .pre-order-ctn-table__body :deep(.ant-table) {
-  height: 100%;
+  width: 100%;
+}
+
+.pre-order-ctn-table__body :deep(.ant-table table) {
+  width: 100% !important;
+  table-layout: fixed;
+}
+
+.pre-order-ctn-table__body :deep(.ant-table-thead > tr > th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 </style>
