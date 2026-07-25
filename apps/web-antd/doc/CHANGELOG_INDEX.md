@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-25 更改单船公司 Logo 改用全局附件地址拼接](./changelogs/change-log-2026-07-25-change-order-carrier-logo-url.md)
 - [2026-07-24 海运出口 AI 识别改为弹窗拖拽上传](./changelogs/change-log-2026-07-24-sea-export-ai-extract-drag-upload-modal.md)
 - [2026-07-24 海运出口往来单位与船公司对象化前端对接](./changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md)
 - [2026-07-24 权限树补齐缺失汉化（失信/业务基础/业务联系单等）](./changelogs/change-log-2026-07-24-permission-auth-i18n-missing-keys.md)
