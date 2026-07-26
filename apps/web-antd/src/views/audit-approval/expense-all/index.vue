@@ -143,6 +143,16 @@ onMounted(() => {
 const transportOrderId = ref<string>('');
 const orderName = ref<string>('');
 const entityId = ref<string>('');
+
+/**
+ * 清空选中的订单信息
+ */
+const clearSelectedOrder = () => {
+  transportOrderId.value = '';
+  entityId.value = '';
+  orderName.value = '';
+};
+
 const handleRowDblclick = ({
   row,
 }: {
@@ -192,6 +202,10 @@ const [Grid, gridApi] =
         ajax: {
           query: createPagedListQuery(getOrderFeeTaskList, {
             mapParams: (formValues) => {
+              // 每次查询前清空选中状态，确保费用明细列表不会显示旧数据
+              console.log('📋 [费用任务列表查询] 查询前清空选中状态');
+              clearSelectedOrder();
+
               // 使用 grouping.decorateListParams 处理分组筛选条件
               const params = grouping.decorateListParams(formValues);
               console.log('📋 [费用任务列表查询] 查询参数:', params);
