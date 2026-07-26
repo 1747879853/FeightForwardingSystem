@@ -72,12 +72,14 @@
                 >
                   <label class="field-label">值</label>
                   <UserSelect
-                    v-if="
-                      item.taskTypeCondition ===
-                      TaskTypeCondition.PaymentApplicationUserId
-                    "
+                    v-if="isUserConditionField(item.taskTypeCondition)"
                     v-model="item.value"
-                    placeholder="请选择付费申请人"
+                    :placeholder="
+                      item.taskTypeCondition ===
+                      TaskTypeCondition.PreOrderUserId
+                        ? '请选择业务联系单申请人'
+                        : '请选择付费申请人'
+                    "
                     use-rich-option-label
                     option-label-prop="nickName"
                     :selected-items="buildUserSelectedItems(item)"
@@ -88,12 +90,13 @@
                     "
                   />
                   <OrganizationSelect
-                    v-else-if="
-                      item.taskTypeCondition ===
-                      TaskTypeCondition.PaymentApplicationOrgID
-                    "
+                    v-else-if="isOrgConditionField(item.taskTypeCondition)"
                     v-model="item.value"
-                    placeholder="请选择付费申请人组织"
+                    :placeholder="
+                      item.taskTypeCondition === TaskTypeCondition.PreOrderOrgID
+                        ? '请选择业务联系单申请人组织'
+                        : '请选择付费申请人组织'
+                    "
                     style="width: 100%"
                     :allow-clear="false"
                     @change="(val, opt) => onValueChange(item, val, opt, 'org')"
@@ -167,12 +170,14 @@
                 >
                   <label class="field-label">值</label>
                   <UserSelect
-                    v-if="
-                      item.taskTypeCondition ===
-                      TaskTypeCondition.PaymentApplicationUserId
-                    "
+                    v-if="isUserConditionField(item.taskTypeCondition)"
                     v-model="item.value"
-                    placeholder="请选择付费申请人"
+                    :placeholder="
+                      item.taskTypeCondition ===
+                      TaskTypeCondition.PreOrderUserId
+                        ? '请选择业务联系单申请人'
+                        : '请选择付费申请人'
+                    "
                     use-rich-option-label
                     option-label-prop="nickName"
                     :selected-items="buildUserSelectedItems(item)"
@@ -183,12 +188,13 @@
                     "
                   />
                   <OrganizationSelect
-                    v-else-if="
-                      item.taskTypeCondition ===
-                      TaskTypeCondition.PaymentApplicationOrgID
-                    "
+                    v-else-if="isOrgConditionField(item.taskTypeCondition)"
                     v-model="item.value"
-                    placeholder="请选择付费申请人组织"
+                    :placeholder="
+                      item.taskTypeCondition === TaskTypeCondition.PreOrderOrgID
+                        ? '请选择业务联系单申请人组织'
+                        : '请选择付费申请人组织'
+                    "
                     style="width: 100%"
                     :allow-clear="false"
                     @change="(val, opt) => onValueChange(item, val, opt, 'org')"
@@ -224,7 +230,11 @@ import {
 } from 'ant-design-vue';
 import { useWorkflowStore } from '../../store';
 import { UserSelect, OrganizationSelect } from '#/adapter/component';
-import { TaskTypeCondition, ShouldBe } from '#/api/system/workflow-admin';
+import {
+  TaskType,
+  TaskTypeCondition,
+  ShouldBe,
+} from '#/api/system/workflow-admin';
 
 const conditionsConfig = ref({ conditionNodes: [] });
 const conditionConfig = ref({
@@ -255,19 +265,51 @@ const availablePriorityLevels = computed(() => {
   return levels;
 });
 
-const taskTypeConditionOptions = [
-  { label: '付费申请人', value: TaskTypeCondition.PaymentApplicationUserId },
-  { label: '付费申请人组织', value: TaskTypeCondition.PaymentApplicationOrgID },
-];
+/** 条件字段：按当前工作流任务类型切换（付费申请 / 业务联系单） */
+const taskTypeConditionOptions = computed(() => {
+  if (store.taskType === TaskType.PreOrder) {
+    return [
+      {
+        label: '业务联系单申请人',
+        value: TaskTypeCondition.PreOrderUserId,
+      },
+      {
+        label: '业务联系单申请人组织',
+        value: TaskTypeCondition.PreOrderOrgID,
+      },
+    ];
+  }
+  return [
+    { label: '付费申请人', value: TaskTypeCondition.PaymentApplicationUserId },
+    {
+      label: '付费申请人组织',
+      value: TaskTypeCondition.PaymentApplicationOrgID,
+    },
+  ];
+});
+
+function isUserConditionField(taskTypeCondition) {
+  return (
+    taskTypeCondition === TaskTypeCondition.PaymentApplicationUserId ||
+    taskTypeCondition === TaskTypeCondition.PreOrderUserId
+  );
+}
+
+function isOrgConditionField(taskTypeCondition) {
+  return (
+    taskTypeCondition === TaskTypeCondition.PaymentApplicationOrgID ||
+    taskTypeCondition === TaskTypeCondition.PreOrderOrgID
+  );
+}
 
 function getShouldBeOptionsForField(taskTypeCondition) {
-  if (taskTypeCondition === TaskTypeCondition.PaymentApplicationUserId) {
+  if (isUserConditionField(taskTypeCondition)) {
     return [
       { label: '等于', value: ShouldBe.Equal },
       { label: '不等于', value: ShouldBe.NotEqual },
     ];
   }
-  if (taskTypeCondition === TaskTypeCondition.PaymentApplicationOrgID) {
+  if (isOrgConditionField(taskTypeCondition)) {
     return [
       { label: '属于', value: ShouldBe.In },
       { label: '不属于', value: ShouldBe.NotIn },
@@ -328,9 +370,9 @@ function onTaskTypeConditionChange(item, val) {
   item.value = undefined;
   item.valueText = undefined;
 
-  if (val === TaskTypeCondition.PaymentApplicationUserId) {
+  if (isUserConditionField(val)) {
     item.shouldBe = ShouldBe.Equal;
-  } else if (val === TaskTypeCondition.PaymentApplicationOrgID) {
+  } else if (isOrgConditionField(val)) {
     item.shouldBe = ShouldBe.In;
   }
 }
@@ -398,12 +440,12 @@ function removeOrCondition(index) {
 function buildConditionStr() {
   const andParts = [];
   const orParts = [];
+  const fieldOptions = taskTypeConditionOptions.value;
 
   for (const c of andList.value) {
     if (c.taskTypeCondition == null || c.shouldBe == null) continue;
     const fieldLabel =
-      taskTypeConditionOptions.find((o) => o.value === c.taskTypeCondition)
-        ?.label || '';
+      fieldOptions.find((o) => o.value === c.taskTypeCondition)?.label || '';
     const shouldBeLabel =
       getShouldBeOptionsForField(c.taskTypeCondition).find(
         (o) => o.value === c.shouldBe,
@@ -415,8 +457,7 @@ function buildConditionStr() {
   for (const c of orList.value) {
     if (c.taskTypeCondition == null || c.shouldBe == null) continue;
     const fieldLabel =
-      taskTypeConditionOptions.find((o) => o.value === c.taskTypeCondition)
-        ?.label || '';
+      fieldOptions.find((o) => o.value === c.taskTypeCondition)?.label || '';
     const shouldBeLabel =
       getShouldBeOptionsForField(c.taskTypeCondition).find(
         (o) => o.value === c.shouldBe,

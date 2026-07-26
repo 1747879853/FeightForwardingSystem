@@ -421,12 +421,13 @@ async function applyClientDefaultUsersByClientId(value: unknown) {
   );
 }
 
-/** 委托单位变更：同步服务项候选 + 干系人默认回填 */
-function bindClientUserLinkage() {
+/** 委托单位变更：同步服务项候选 + 干系人默认回填；详情回填时顺带注入 selectedItems */
+function bindClientUserLinkage(selectedItems?: any[]) {
   basicFormApi.updateSchema([
     {
       fieldName: 'clientId',
       componentProps: {
+        ...(selectedItems ? { selectedItems } : {}),
         onChange: (value: unknown, option?: unknown) => {
           currentClientId.value = toOptionalStringId(value);
           if (currentClientId.value) {
@@ -573,6 +574,8 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   headerBizType.value = dto.bizType ?? PreOrderBizType.SeaExport;
   headerBlType.value =
     dto.blType === null || dto.blType === undefined ? undefined : dto.blType;
+  // 详情已返回 client 对象：注入 selectedItems，避免委托单位回显成 Guid（对齐海出）
+  bindClientUserLinkage(toSelectedItems(dto.clientId, dto.client?.name));
   void basicFormApi.setValues({
     clientId: dto.clientId,
     mblNum: dto.mblNum,
@@ -1332,6 +1335,12 @@ const getContentTabStyle = (isActive: boolean) =>
 /* 业务联系单：基础 Tab 占满 Page 高度，货物卡片吃掉费用区之上的剩余高度 */
 .pre-order-editor-page {
   height: 100%;
+}
+
+/* 顶部 content-tabs 与海运出口一致：禁止被下方 flex 内容压扁 */
+.pre-order-editor-page > .content-tabs {
+  flex-shrink: 0;
+  min-height: 40px;
 }
 
 .pre-order-editor-spin {

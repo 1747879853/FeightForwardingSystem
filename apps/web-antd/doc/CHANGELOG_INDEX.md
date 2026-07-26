@@ -13,6 +13,9 @@
 
 ## 2026-07
 
+- [2026-07-26 工作流任务类型增加业务联系单 PreOrder=8](./changelogs/change-log-2026-07-26-workflow-pre-order-task-type.md)
+- [2026-07-26 业务联系单顶部 content-tabs 防压扁对齐海运出口](./changelogs/change-log-2026-07-26-pre-order-content-tabs-flex-shrink.md)
+- [2026-07-26 业务联系单委托单位详情回显补 selectedItems](./changelogs/change-log-2026-07-26-pre-order-client-selected-items.md)
 - [2026-07-26 业务联系单装运方式/箱量/业务类型必填](./changelogs/change-log-2026-07-26-pre-order-required-fields.md)
 - [2026-07-26 业务联系单干系人操作改为非必填](./changelogs/change-log-2026-07-26-pre-order-operation-optional.md)
 - [2026-07-26 业务联系单标题栏增加业务类型下拉](./changelogs/change-log-2026-07-26-pre-order-biz-type-select.md)

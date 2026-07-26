@@ -142,6 +142,8 @@ const func = {
     const fieldMap: Record<number, string> = {
       3001: '付费申请人',
       3002: '付费申请人组织',
+      8001: '业务联系单申请人',
+      8002: '业务联系单申请人组织',
     };
 
     let result = '';

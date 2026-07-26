@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Input, message, Select, Space, Spin, Switch } from 'ant-design-vue';
@@ -49,6 +49,14 @@ const tipVisible = ref(false);
 
 const taskTypeOptions = computed(() =>
   getTaskTypeOptions().map((o) => ({ label: o.label, value: o.value })),
+);
+
+watch(
+  taskType,
+  (val) => {
+    store.setTaskType(val);
+  },
+  { immediate: true },
 );
 
 function isFlatDetail(d) {

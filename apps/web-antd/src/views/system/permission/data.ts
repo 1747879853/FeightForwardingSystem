@@ -96,6 +96,7 @@ export const FrightModuleLabels: Record<FrightModule, string> = {
   [FrightModule.AirExport]: '空运出口',
   [FrightModule.AirImport]: '空运进口',
   [FrightModule.SeFreiPrice]: '运价',
+  [FrightModule.PreOrder]: '业务联系单',
 };
 
 export const OperatorLabels: Record<UserTablePermissionOperator, string> = {

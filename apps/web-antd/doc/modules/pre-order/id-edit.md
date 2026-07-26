@@ -44,7 +44,7 @@ last_updated: 2026-07-26
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **归属组织** | 数据权限归属 | **组织**<br/>`UserOrgSelect`（位于标题 meta 区，不在表单内） | **依赖：** 取干系人「销售」所属组织范围；选中销售后自动带其默认组织；更换销售时清空并重带默认；编辑回显用详情 `orgs` 路径兜底展示 | **必填**（保存前手动校验，非表单 rules） |
-| **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect` | **触发：** ① 变更后重算服务项候选池（客户排除项）；② 可编辑态按其维护的销售/客服/操作/单证默认回填干系人（无默认取列表第一个；操作/单证/客服未绑定时兜底当前登录账号；商务等未维护角色保持原值） | **必填** |
+| **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect` | **触发：** ① 变更后重算服务项候选池（客户排除项）；② 可编辑态按其维护的销售/客服/操作/单证默认回填干系人（无默认取列表第一个；操作/单证/客服未绑定时兜底当前登录账号；商务等未维护角色保持原值）<br/>**回显：** 详情 `client` 经 `toSelectedItems(clientId, client.name)` 注入 `selectedItems`，与收发通/海出口径一致 | **必填** |
 | **船公司** | 承运船公司 | **基础数据**<br/>`CarrierSelect` | **回显：** 优先复用详情 `carrierLogo`；缺少时补拉船公司详情，并把完整对象写入 `selectedItems`，与海运出口一致展示 Logo | 非必填 |
 | **贸易条款 / 付费方式** | 贸易责任与运费支付方式 | 贸易条款字典 / `CodeFrtSelect` | **展示：** 两项下移到基础信息末段、备注之前；空值统一显示「请选择」 | 非必填 |
 | **发货人 / 收货人 / 通知人** | 收发通往来单位 | **客户**<br/>`ClientSelect`（行业类别 b / e / h） | **回显：** 详情 `shipper` / `consignee` / `notifier` 经 `selectedItems` 注入 | Guid?，非必填 |
@@ -103,6 +103,8 @@ last_updated: 2026-07-26
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-26 | `Style`/`Fix` | 顶部「基础信息」content-tabs 不再被下方超高内容压扁，视觉对齐海运出口编辑器 Tab 条 | `pre-order-editor-page` 固定高度 + `min-h-0` 下未设 `flex-shrink:0` 的 sticky Tab 会被挤到 ~18px；补 `flex-shrink:0` + `min-height:40px` |
+| 2026-07-26 | `Fix` | 委托单位编辑/复制回显用详情 `client.name` 注入 `selectedItems`，不再显示 Guid | `fillFromDetail` → `bindClientUserLinkage(toSelectedItems(...))`，与 `onChange` 同次 updateSchema，对齐海出 `clientId` 回显 |
 | 2026-07-26 | `Fix` | 业务类型/装运方式/箱量改为必填：meta 与箱量表头加星标；装运方式新建默认空；保存校验拦截 | `validateForms` 校验 bizType/blType；`validateCtns` 要求至少一行且箱型+箱量>0；箱量 InputNumber `min=1` |
 | 2026-07-26 | `Fix` | 干系人「操作」改为非必填：去星标、可删除；保存不再因未选操作人拦截；未选人行提交时剔除 | 必选角色仅剩销售；审核通过仍经 `audit-modal` 强制指派操作（后端生成海出卡点不变） |
 | 2026-07-26 | `Feature` | 标题 meta「装运方式」前增加「业务类型」下拉；默认且当前仅「海运出口」；提交/回填走 `headerBizType` | 选项由 `PRE_ORDER_BIZ_TYPE_TEXT` / `getPreOrderBizTypeOptions` 驱动，枚举可有未开放值；与 `headerOrgId`/`headerBlType` 同属 meta 独立 ref |

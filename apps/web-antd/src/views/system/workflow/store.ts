@@ -14,6 +14,8 @@ export const useWorkflowStore = defineStore('workflow', {
     conditionsConfig1: {
       conditionNodes: [],
     } as any,
+    /** 当前编辑工作流的任务类型（条件抽屉按类型切换字段） */
+    taskType: undefined as number | undefined,
   }),
   actions: {
     setTableId(payload: number | string) {
@@ -21,6 +23,9 @@ export const useWorkflowStore = defineStore('workflow', {
     },
     setIsTried(payload: boolean) {
       this.isTried = payload;
+    },
+    setTaskType(payload: number | undefined) {
+      this.taskType = payload;
     },
     setPromoter(payload: boolean) {
       this.promoterDrawer = payload;

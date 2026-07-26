@@ -12,6 +12,8 @@ export enum TaskType {
   ModifyOrderFee = 1,
   DeleteOrderFee = 2,
   PaymentApplication = 3,
+  /** 业务联系单（与后端 FrightModule.PreOrder 同值） */
+  PreOrder = 8,
 }
 
 /** 通过方式 */
@@ -29,6 +31,10 @@ export enum TaskTypeCondition {
   PaymentApplication = 3000,
   PaymentApplicationUserId = 3001,
   PaymentApplicationOrgID = 3002,
+  /** 业务联系单申请人（仅等于/不等于） */
+  PreOrderUserId = 8001,
+  /** 业务联系单申请人组织（仅属于/不属于） */
+  PreOrderOrgID = 8002,
 }
 
 /** 条件介词 */
@@ -181,6 +187,7 @@ export function getTaskTypeOptions(): { label: string; value: TaskType }[] {
     { label: '费用修改', value: TaskType.ModifyOrderFee },
     { label: '费用删除', value: TaskType.DeleteOrderFee },
     { label: '付费申请', value: TaskType.PaymentApplication },
+    { label: '业务联系单', value: TaskType.PreOrder },
   ];
 }
 
@@ -220,6 +227,18 @@ export function getTaskTypeConditionOptions(
         {
           label: '付费申请人组织',
           value: TaskTypeCondition.PaymentApplicationOrgID,
+        },
+      ];
+    }
+    case TaskType.PreOrder: {
+      return [
+        {
+          label: '业务联系单申请人',
+          value: TaskTypeCondition.PreOrderUserId,
+        },
+        {
+          label: '业务联系单申请人组织',
+          value: TaskTypeCondition.PreOrderOrgID,
         },
       ];
     }
