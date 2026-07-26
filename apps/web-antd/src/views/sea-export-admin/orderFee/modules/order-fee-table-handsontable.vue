@@ -66,6 +66,9 @@ const {
   dropdownSources,
   currentOptionsCache,
   allClientsByIndustry: localAllClientsByIndustry, // ✅ 本地缓存
+  feeCodeDetailCache, // ✅ 新增：费用代码详情缓存
+  exchangeRateCache, // ✅ 新增：汇率缓存
+  getExchangeRateFromCache, // ✅ 新增：获取汇率的方法
   initDropdownSources,
   updateUnitList,
   getFeeCodeList,
@@ -94,6 +97,9 @@ const linkage = useOrderFeeLinkage(
   () => ({
     industryCategoryList: dropdownSources.value.industryCategoryList,
     currencyList: dropdownSources.value.currencyList,
+    feeCodeDetailCache: feeCodeDetailCache.value, // ✅ 直接使用解构出来的缓存
+    exchangeRateCache: exchangeRateCache.value, // ✅ 新增：传递汇率缓存
+    getExchangeRateFromCache, // ✅ 新增：传递获取汇率的方法
   }),
 );
 

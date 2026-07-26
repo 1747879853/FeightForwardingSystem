@@ -1,8 +1,9 @@
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 
-import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
-import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
+// ✅ 删除：不再需要单独调用 getFeeCodeDetail 和 getExchangeRateDetail
+// import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
+// import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
 import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { getIndustryCategoryOptions } from '../../data';
@@ -23,6 +24,12 @@ export function useOrderFeeLinkage(
   getDropdownSources: () => {
     industryCategoryList: Array<{ label: string; value: any }>;
     currencyList: Array<{ label: string; value: any }>;
+    feeCodeDetailCache?: Map<string, any>; // ✅ 新增：费用代码详情缓存
+    exchangeRateCache?: Map<string, any>; // ✅ 新增：汇率缓存
+    getExchangeRateFromCache?: (
+      currencyId: any,
+      paySide: number,
+    ) => number | undefined; // ✅ 新增：从缓存获取汇率的方法
   },
 ) {
   // ==================== 缓存机制 ====================
@@ -129,7 +136,7 @@ export function useOrderFeeLinkage(
       if (companyNode) {
         const isLocal = companyNode.localCurrencyId === currencyId;
         console.log(
-          '💱 [checkIfLocalCurrency] 币别ID:',
+          '💱 [checkIfIsLocalCurrency] 币别ID:',
           currencyId,
           '本位币ID:',
           companyNode.localCurrencyId,
@@ -140,8 +147,136 @@ export function useOrderFeeLinkage(
       }
       return false;
     } catch (error) {
-      console.error('❌ [checkIfLocalCurrency] 检查失败:', error);
+      console.error('❌ [checkIfIsLocalCurrency] 检查失败:', error);
       return false;
+    }
+  }
+
+  /**
+   * ✅ 新增：从汇率缓存中获取汇率（封装方法）
+   * @param currencyId 币别ID
+   * @param paySide 收付类型：0-应收（使用crValue），1-应付（使用drValue）
+   * @returns 汇率值，如果未找到则返回 undefined
+   */
+  function getExchangeRateFromCache(
+    currencyId: any,
+    paySide: number,
+  ): number | undefined {
+    try {
+      const sources = getDropdownSources();
+
+      // 优先使用 sources 中的 getExchangeRateFromCache 方法
+      if (sources.getExchangeRateFromCache) {
+        return sources.getExchangeRateFromCache(currencyId, paySide);
+      }
+
+      // 降级：直接从 exchangeRateCache 中获取
+      const exchangeRateCache = sources.exchangeRateCache;
+      if (!exchangeRateCache || !currencyId) {
+        console.warn('⚠️ [getExchangeRateFromCache] 汇率缓存不存在');
+        return undefined;
+      }
+
+      const currencyIdStr = String(currencyId);
+      const rate = exchangeRateCache.get(currencyIdStr);
+
+      if (!rate) {
+        console.warn(
+          '⚠️ [getExchangeRateFromCache] 未找到币别',
+          currencyId,
+          '的汇率缓存',
+        );
+        return undefined;
+      }
+
+      // 根据收付类型选择应收或应付汇率
+      // 注意：paySide === 0 是应收，应该用 crValue
+      // paySide === 1 是应付，应该用 drValue
+      const rateValue = paySide === 1 ? rate.drValue : rate.crValue;
+
+      if (rateValue === undefined || rateValue === null) {
+        console.warn(
+          '⚠️ [getExchangeRateFromCache] 币别',
+          currencyId,
+          '的汇率值为空',
+        );
+        return undefined;
+      }
+
+      console.log(
+        '💱 [getExchangeRateFromCache] 从缓存获取汇率 - 币别:',
+        rate.currencyCode || currencyId,
+        '收付类型:',
+        paySide === 1 ? '应付(drValue)' : '应收(crValue)',
+        '汇率:',
+        rateValue,
+      );
+
+      return rateValue;
+    } catch (error) {
+      console.error('❌ [getExchangeRateFromCache] 获取失败:', error);
+      return undefined;
+    }
+  }
+
+  /**
+   * ✅ 重构：从费用代码缓存中获取汇率信息，避免重复调用接口
+   * @param feeCodeId 费用代码ID
+   * @param currencyId 币别ID
+   * @returns 汇率值，如果未找到则返回 undefined
+   */
+  function getExchangeRateFromFeeCodeCache(
+    feeCodeId: any,
+    currencyId: any,
+  ): number | undefined {
+    try {
+      const sources = getDropdownSources();
+      const feeCodeCache = sources.feeCodeDetailCache;
+
+      if (!feeCodeCache || !feeCodeId) {
+        console.warn('⚠️ [getExchangeRateFromFeeCodeCache] 费用代码缓存不存在');
+        return undefined;
+      }
+
+      const feeCodeIdStr = String(feeCodeId);
+      const feeCodeDetail = feeCodeCache.get(feeCodeIdStr);
+
+      if (!feeCodeDetail) {
+        console.warn(
+          '⚠️ [getExchangeRateFromFeeCodeCache] 未找到费用代码详情:',
+          feeCodeId,
+        );
+        return undefined;
+      }
+
+      // ✅ 关键优化：直接从费用代码缓存中获取汇率信息
+      const exchangeRate = feeCodeDetail.exchangeRate;
+
+      if (!exchangeRate) {
+        console.warn(
+          '⚠️ [getExchangeRateFromFeeCodeCache] 费用代码无汇率信息:',
+          feeCodeId,
+        );
+        return undefined;
+      }
+
+      // 根据收付类型选择应收或应付汇率
+      const rateValue =
+        props.type === 1 ? exchangeRate.drValue : exchangeRate.crValue;
+
+      console.log(
+        '💱 [getExchangeRateFromFeeCodeCache] 从缓存获取汇率 - 费用代码:',
+        feeCodeId,
+        '币别:',
+        currencyId,
+        '汇率:',
+        rateValue,
+      );
+
+      return rateValue ?? undefined;
+    } catch (error) {
+      console.error('❌ [getExchangeRateFromFeeCodeCache] 获取失败:', error);
+      return undefined;
     }
   }
 
@@ -370,7 +505,7 @@ export function useOrderFeeLinkage(
   // ==================== 字段联动处理函数 ====================
 
   /**
-   * 处理费用代码变化
+   * ✅ 重构：处理费用代码变化 - 使用缓存而非API调用
    */
   async function handleFeeCodeChange(
     rowIndex: number,
@@ -386,14 +521,47 @@ export function useOrderFeeLinkage(
       // ✅ 同步设置 _value 字段
       row['feeCodeId_value'] = feeCodeId;
 
-      // 获取费用代码详情
-      const feeCodeDetail = await getFeeCodeDetail(feeCodeId);
-      if (!feeCodeDetail) {
-        console.warn('⚠️ [handleFeeCodeChange] 未获取到费用代码详情');
+      // ✅ 关键优化：从缓存中获取费用代码详情，而非调用API
+      const sources = getDropdownSources();
+
+      // 🔍 调试日志：检查 sources 对象
+      console.log('🔍 [handleFeeCodeChange] sources 对象:', {
+        hasIndustryCategoryList: !!sources.industryCategoryList,
+        industryCategoryListLength: sources.industryCategoryList?.length || 0,
+        hasCurrencyList: !!sources.currencyList,
+        currencyListLength: sources.currencyList?.length || 0,
+        hasFeeCodeDetailCache: !!sources.feeCodeDetailCache,
+        feeCodeDetailCacheSize: sources.feeCodeDetailCache?.size || 0,
+        feeCodeDetailCacheType: typeof sources.feeCodeDetailCache,
+      });
+
+      const feeCodeCache = sources.feeCodeDetailCache;
+
+      if (!feeCodeCache) {
+        console.error('❌ [handleFeeCodeChange] 费用代码缓存不存在！');
+        console.error('💡 请检查父组件是否正确传递了 feeCodeDetailCache');
         return;
       }
 
-      console.log('✅ [handleFeeCodeDetail] 费用代码详情:', feeCodeDetail);
+      const feeCodeIdStr = String(feeCodeId);
+      const feeCodeDetail = feeCodeCache.get(feeCodeIdStr);
+
+      if (!feeCodeDetail) {
+        console.warn('⚠️ [handleFeeCodeChange] 未找到费用代码详情:', feeCodeId);
+        console.warn('💡 缓存中的所有键:', Array.from(feeCodeCache.keys()));
+        return;
+      }
+
+      console.log('✅ [handleFeeCodeChange] 从缓存获取费用代码详情成功');
+      console.log('📋 [handleFeeCodeChange] 费用代码详情:', {
+        id: feeCodeDetail.id,
+        code: feeCodeDetail.code,
+        cnName: feeCodeDetail.cnName,
+        currencyId: feeCodeDetail.currencyId,
+        defaultUnitName: feeCodeDetail.defaultUnitName,
+        taxRate: feeCodeDetail.taxRate,
+        hasExchangeRate: !!feeCodeDetail.exchangeRate,
+      });
 
       // 根据收付类型自动填充行业类别和结算对象
       const paySide = props.type;
@@ -409,7 +577,6 @@ export function useOrderFeeLinkage(
 
           if (categoryKey) {
             // ✅ 从 dropdownSources 中查找对应的 label
-            const sources = getDropdownSources();
             const industryOption = sources.industryCategoryList.find(
               (opt: any) => opt.value === categoryKey,
             );
@@ -478,10 +645,10 @@ export function useOrderFeeLinkage(
         }
       }
 
-      // 自动填充币别
+      // ✅ 关键优化：自动填充币别和汇率（从缓存中获取）
       if (feeCodeDetail.currencyId) {
         // ✅ 使用 getDropdownSources() getter 获取货币选项并查找对应的 label
-        const currencyOptions = getDropdownSources().currencyList;
+        const currencyOptions = sources.currencyList;
         const currencyOption = currencyOptions.find(
           (opt: any) => opt.value === feeCodeDetail.currencyId,
         );
@@ -501,30 +668,32 @@ export function useOrderFeeLinkage(
           '(label)',
         );
 
-        // 判断是否为本位币并设置汇率
-        const currencyIdNum =
-          typeof feeCodeDetail.currencyId === 'number'
-            ? feeCodeDetail.currencyId
-            : Number(feeCodeDetail.currencyId);
-        const isLocalCurrency = await checkIfIsLocalCurrency(currencyIdNum);
-        if (isLocalCurrency) {
-          row['exchangeRate'] = 1;
-          row['__isLocalCurrency'] = true;
-          row['__editing_exchangeRate'] = false;
-          console.log('💱 [handleFeeCodeChange] 本位币，汇率设为1');
+        // ✅ 关键优化：从费用代码缓存中获取汇率，避免调用 getExchangeRateDetail API
+        const exchangeRate = getExchangeRateFromFeeCodeCache(
+          feeCodeId,
+          feeCodeDetail.currencyId,
+        );
+
+        if (exchangeRate !== undefined) {
+          row['exchangeRate'] = exchangeRate;
+          row['__isLocalCurrency'] = false;
+          console.log('💱 [handleFeeCodeChange] 从缓存获取汇率:', exchangeRate);
         } else {
-          // 获取汇率详情
-          const exchangeRateData = await getExchangeRateDetail(
-            feeCodeDetail.currencyId,
-          );
-          if (exchangeRateData) {
-            row['exchangeRate'] = props.type
-              ? exchangeRateData.drValue // 应付用drValue
-              : exchangeRateData.crValue; // 应收用crValue
-            row['__isLocalCurrency'] = false;
-            console.log(
-              '💱 [handleFeeCodeChange] 非本位币，汇率:',
-              row['exchangeRate'],
+          // 如果缓存中没有汇率，判断是否为本位币
+          const currencyIdNum =
+            typeof feeCodeDetail.currencyId === 'number'
+              ? feeCodeDetail.currencyId
+              : Number(feeCodeDetail.currencyId);
+          const isLocalCurrency = await checkIfIsLocalCurrency(currencyIdNum);
+
+          if (isLocalCurrency) {
+            row['exchangeRate'] = 1;
+            row['__isLocalCurrency'] = true;
+            row['__editing_exchangeRate'] = false;
+            console.log('💱 [handleFeeCodeChange] 本位币，汇率设为1');
+          } else {
+            console.warn(
+              '⚠️ [handleFeeCodeChange] 无法获取汇率，请检查费用代码配置',
             );
           }
         }
@@ -664,7 +833,8 @@ export function useOrderFeeLinkage(
       console.log('🔵 [handleCurrencyChange] 币别变化:', currencyId);
 
       // ✅ 使用 getDropdownSources() getter 获取货币选项并查找对应的 label
-      const currencyOptions = getDropdownSources().currencyList;
+      const sources = getDropdownSources();
+      const currencyOptions = sources.currencyList;
       const currencyOption = currencyOptions.find(
         (opt: any) => opt.value === currencyId,
       );
@@ -676,27 +846,61 @@ export function useOrderFeeLinkage(
       row['currencyId_value'] = currencyId;
 
       if (currencyId) {
-        // 获取汇率详情
-        const exchangeRateData = await getExchangeRateDetail(currencyId);
+        // ✅ 关键优化：优先从汇率缓存中获取汇率
+        const exchangeRate = getExchangeRateFromCache(currencyId, props.type);
 
-        // 判断是否为本位币
-        const isLocalCurrency = await checkIfIsLocalCurrency(currencyId);
-
-        if (isLocalCurrency) {
-          row['exchangeRate'] = 1;
-          row['__isLocalCurrency'] = true;
-          row['__editing_exchangeRate'] = false;
-          console.log('💱 [handleCurrencyChange] 本位币，汇率设为1');
+        if (exchangeRate !== undefined) {
+          row['exchangeRate'] = exchangeRate;
+          row['__isLocalCurrency'] = false;
+          console.log(
+            '💱 [handleCurrencyChange] 从汇率缓存获取汇率:',
+            exchangeRate,
+          );
         } else {
-          if (exchangeRateData) {
-            row['exchangeRate'] = props.type
-              ? exchangeRateData.drValue
-              : exchangeRateData.crValue;
-            row['__isLocalCurrency'] = false;
-            console.log(
-              '💱 [handleCurrencyChange] 非本位币，汇率:',
-              row['exchangeRate'],
+          // 如果汇率缓存中没有，尝试从费用代码缓存中获取
+          const feeCodeId = row['feeCodeId_value'];
+          if (feeCodeId) {
+            const feeCodeExchangeRate = getExchangeRateFromFeeCodeCache(
+              feeCodeId,
+              currencyId,
             );
+
+            if (feeCodeExchangeRate !== undefined) {
+              row['exchangeRate'] = feeCodeExchangeRate;
+              row['__isLocalCurrency'] = false;
+              console.log(
+                '💱 [handleCurrencyChange] 从费用代码缓存获取汇率:',
+                feeCodeExchangeRate,
+              );
+            } else {
+              // 如果两个缓存都没有，判断是否为本位币
+              const isLocalCurrency = await checkIfIsLocalCurrency(currencyId);
+
+              if (isLocalCurrency) {
+                row['exchangeRate'] = 1;
+                row['__isLocalCurrency'] = true;
+                row['__editing_exchangeRate'] = false;
+                console.log('💱 [handleCurrencyChange] 本位币，汇率设为1');
+              } else {
+                console.warn(
+                  '⚠️ [handleCurrencyChange] 无法从缓存获取汇率，请手动输入',
+                );
+              }
+            }
+          } else {
+            // 没有费用代码时，判断是否为本位币
+            const isLocalCurrency = await checkIfIsLocalCurrency(currencyId);
+
+            if (isLocalCurrency) {
+              row['exchangeRate'] = 1;
+              row['__isLocalCurrency'] = true;
+              row['__editing_exchangeRate'] = false;
+              console.log('💱 [handleCurrencyChange] 本位币，汇率设为1');
+            } else {
+              console.warn(
+                '⚠️ [handleCurrencyChange] 无费用代码，无法从缓存获取汇率',
+              );
+            }
           }
         }
       } else {
@@ -1020,5 +1224,8 @@ export function useOrderFeeLinkage(
     checkIfIsLocalCurrency,
     fillSettlementIdByIndustryCategory,
     fillQuantityByUnit,
+    // ✅ 新增：导出汇率缓存获取方法
+    getExchangeRateFromFeeCodeCache,
+    getExchangeRateFromCache,
   };
 }

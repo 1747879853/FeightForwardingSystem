@@ -103,9 +103,71 @@ export namespace FeeCodeAdminApi {
     PageIndex?: number;
     PageSize?: number;
   }
+
+  // ==================== 以下为新接口定义（来自 FeeCode 控制器，非 Admin）====================
+
+  /** 汇率简单DTO */
+  export interface ExchangeRateSimpleDto {
+    /** 汇率主键 */
+    id: number | string;
+    /** 应收汇率 */
+    drValue?: number | null;
+    /** 应付汇率 */
+    crValue?: number | null;
+  }
+
+  /** 费用代码简单DTO（仅返回已启用的费用代码） */
+  export interface FeeCodeSimpleDto {
+    /** 主键ID */
+    id: number | string;
+    /** 费用代码 */
+    code?: string;
+    /** 中文名称 */
+    cnName?: string;
+    /** 英文名称 */
+    enName?: string;
+    /** 默认币别ID */
+    currencyId?: number | string;
+    /** 默认计费标准代码 */
+    defaultUnit?: string;
+    /** 默认计费标准名称 */
+    defaultUnitName?: string;
+    /** 默认收费客户类型 */
+    defaultDebit?: string;
+    /** 默认收费客户类型名称（IndustryCategory 字母） */
+    defaultDebitName?: string;
+    /** 默认付费客户类型 */
+    defaultCredit?: string;
+    /** 默认付费客户类型名称（IndustryCategory 字母） */
+    defaultCreditName?: string;
+    /** 是否机密 */
+    isConfidential?: boolean;
+    /** 禁开发票 */
+    isInvoiceProhibit?: boolean;
+    /** 费用默认税率 */
+    taxRate?: number;
+    /** 默认币别当前有效汇率；无匹配则为 null */
+    exchangeRate?: ExchangeRateSimpleDto | null;
+  }
+
+  /** 获取费用代码列表查询参数（所有字段均为可选） */
+  export interface FeeCodeListQueryDto {
+    /** 海运相关；传 true/false 时精确匹配 */
+    isSea?: boolean | null;
+    /** 空运相关 */
+    isAir?: boolean | null;
+    /** 陆运相关 */
+    isTrucking?: boolean | null;
+    /** 是否陆运固定费用 */
+    isTruckingFixed?: boolean | null;
+    /** 仓储相关 */
+    isWms?: boolean | null;
+  }
 }
 
 const API_PREFIX = '/services/app/FeeCodeAdmin';
+// FeeCode 控制器（非 Admin）的前缀
+const FEE_CODE_API_PREFIX = '/services/app/FeeCode';
 
 /**
  * 获取费用代码分页列表
@@ -153,4 +215,27 @@ export const deleteFeeCode = (id: number | string) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data: { id },
   });
+};
+
+// ==================== 以下为新接口方法（来自 FeeCode 控制器，非 Admin）====================
+
+/**
+ * 获取已启用费用代码全量列表（无需业务权限，仅需登录）
+ *
+ * 说明：
+ * - 仅返回已启用的费用代码（Enable == true）
+ * - 支持按业务线筛选：isSea / isAir / isTrucking / isTruckingFixed / isWms
+ * - 排序：SortId 升序，再按 Code 升序
+ * - 包含默认币别的当前有效汇率信息
+ *
+ * @param params 查询参数（所有字段均为可选，不传则不过滤该条件）
+ * @returns 费用代码简单DTO列表
+ */
+export const getFeeCodeListAsync = (
+  params?: FeeCodeAdminApi.FeeCodeListQueryDto,
+) => {
+  return requestClient.get<FeeCodeAdminApi.FeeCodeSimpleDto[]>(
+    `${FEE_CODE_API_PREFIX}/GetListAsync`,
+    { params },
+  );
 };
