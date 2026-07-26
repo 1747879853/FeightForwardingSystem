@@ -13,6 +13,8 @@
 
 ## 2026-07
 
+- [2026-07-26 运价查询列表与批量弹窗补齐独立列持久化 gridOptions.id](./changelogs/change-log-2026-07-26-freight-rate-column-persist-table-id.md)
+- [2026-07-26 业务联系单品名多选高度对齐海运出口](./changelogs/change-log-2026-07-26-pre-order-goods-select-height.md)
 - [2026-07-25 新增演示环境开发与打包（后端端口 86）](./changelogs/change-log-2026-07-25-demo-env-port-86.md)
 - [2026-07-25 银行流水核销进度极小比例展示修正](./changelogs/change-log-2026-07-25-bank-statement-write-off-progress-precision.md)
 - [2026-07-25 付费结算与银行流水结算对象对象化](./changelogs/change-log-2026-07-25-payment-settlement-bank-statement-settlement-object.md)

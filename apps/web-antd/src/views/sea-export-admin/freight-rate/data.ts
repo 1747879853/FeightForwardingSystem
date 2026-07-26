@@ -7,6 +7,13 @@ import { editSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
 import { message } from 'ant-design-vue';
 import { FrightModule } from '#/api/system/permission';
 
+/** 运价列表列配置持久化 key（与 gridOptions.id 对应） */
+export const FREIGHT_RATE_LIST_TABLE_ID = 'FreightRateList';
+/** 批量编辑弹窗表格列配置持久化 key（与 gridOptions.id 对应） */
+export const FREIGHT_RATE_BATCH_EDIT_TABLE_ID = 'FreightRateBatchEdit';
+/** 批量新增弹窗表格列配置持久化 key（与 gridOptions.id 对应） */
+export const FREIGHT_RATE_BATCH_ADD_TABLE_ID = 'FreightRateBatchAdd';
+
 // 定义明确的接口类型
 interface FreightConditionItemOption {
   label: string;

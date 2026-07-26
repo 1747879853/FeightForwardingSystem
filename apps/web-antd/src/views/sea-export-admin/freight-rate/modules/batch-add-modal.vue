@@ -39,6 +39,7 @@ import { getPortCodePagedList } from '#/api/system/base-data/port-code-admin';
 import { batchAddSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
 import { $t } from '#/locales';
 import type { st } from 'vue-router/dist/router-CWoNjPRp.mjs';
+import { FREIGHT_RATE_BATCH_ADD_TABLE_ID } from '../data';
 
 const emit = defineEmits<{
   success: [];
@@ -753,6 +754,7 @@ function buildColumns(): VxeTableGridOptions['columns'] {
 // Grid 实例
 const [Grid, gridApi] = useVbenVxeGrid<any>({
   gridOptions: {
+    id: FREIGHT_RATE_BATCH_ADD_TABLE_ID,
     columns: buildColumns(),
     data: [], // 初始为空数组
     height: 400,

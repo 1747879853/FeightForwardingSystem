@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 操作管理 / 业务联系单
 author: 前端团队
-last_updated: 2026-07-25
+last_updated: 2026-07-26
 ---
 
 # 1. 业务背景说明 (Background)
@@ -102,6 +102,7 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-26 | `Fix` | 「货物与箱型」品名多选高度对齐海运出口（`size: 'small'`），选中后文字不再被裁切 | 海出靠 `mapSchemaWithSmallSize`；联系单内联 schema 原先漏了 `size: 'small'`，默认 tag 塞不进 24px selector |
 | 2026-07-25 | `Fix`/`Style` | 船公司回显补 Logo；新建态隐藏顶部单一「基础信息」Tab；贸易条款与付费方式下移到备注前，空值显示「请选择」 | 船公司 selectedItems 对齐海出，优先使用 `carrierLogo`，缺失才调用 `getCarrierDetail` |
 | 2026-07-25 | `Fix` | 切换结算对象类别：先清空结算对象；`ClientSelect` 按新字母码过滤；本单已有委托/发货/收货/通知人则直接回填，并写 `selectedItems`（名称缓存，避免二次拉详情） | `applySettlementByLetter` 开头强制清空；`clientNameCache` + 编辑页 `partyNameCache` 双向喂名；`settlementUiKey` 强制重挂载 |
 | 2026-07-25 | `Fix` | 切换收付时按费用代码重写结算对象类别、结算对象与税率（并重算不含税单价/金额）；对方往来单位未填时清空结算对象，避免沿用旧值 | 抽 `applyFeeCodeByPaySide`；应收 `defaultDebitName` / 应付 `defaultCreditName`；税率取费用代码 `taxRate` |
