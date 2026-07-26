@@ -974,6 +974,10 @@ function handleRejectAfterPass() {
 }
 
 function handleViewWorkflow() {
+  if (!preOrderId.value) {
+    message.warning('请先保存单据后再查看审核流程');
+    return;
+  }
   openWorkflowTimeline({
     entityId: preOrderId.value,
     taskType: TaskType.PreOrder,

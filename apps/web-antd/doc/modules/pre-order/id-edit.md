@@ -103,6 +103,7 @@ last_updated: 2026-07-26
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-26 | `Fix` | 「审核流程」弹窗加载中不再空白：有占位文案与最小高度，失败时展示 ABP 错误信息 | 根因是 `workflow-timeline-modal` 在 `loading && !data` 时三个 v-if 全 miss，Spin 无子节点高度塌缩；接口慢/超时时体感为“点了没显示” |
 | 2026-07-26 | `Style`/`Fix` | 顶部「基础信息」content-tabs 不再被下方超高内容压扁，视觉对齐海运出口编辑器 Tab 条 | `pre-order-editor-page` 固定高度 + `min-h-0` 下未设 `flex-shrink:0` 的 sticky Tab 会被挤到 ~18px；补 `flex-shrink:0` + `min-height:40px` |
 | 2026-07-26 | `Fix` | 委托单位编辑/复制回显用详情 `client.name` 注入 `selectedItems`，不再显示 Guid | `fillFromDetail` → `bindClientUserLinkage(toSelectedItems(...))`，与 `onChange` 同次 updateSchema，对齐海出 `clientId` 回显 |
 | 2026-07-26 | `Fix` | 业务类型/装运方式/箱量改为必填：meta 与箱量表头加星标；装运方式新建默认空；保存校验拦截 | `validateForms` 校验 bizType/blType；`validateCtns` 要求至少一行且箱型+箱量>0；箱量 InputNumber `min=1` |

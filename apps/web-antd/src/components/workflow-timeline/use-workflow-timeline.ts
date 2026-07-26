@@ -31,7 +31,11 @@ async function open(params: WorkflowTimelineOpenParams) {
     });
     instanceData.value = result;
   } catch (e: any) {
-    errorMsg.value = e?.message || '获取审批流程失败';
+    const abpMessage =
+      e?.response?.data?.error?.message ||
+      e?.response?.data?.error?.details ||
+      e?.message;
+    errorMsg.value = abpMessage || '获取审批流程失败';
   } finally {
     loading.value = false;
   }
