@@ -60,6 +60,8 @@ export function useHotSettings(
     },
     height: 458,
     licenseKey: 'non-commercial-and-evaluation',
+    // ✅ 新增：设置回车键移动方向为向右（row: 0, col: 1）
+    enterMoves: { row: 0, col: 1 },
     columnSorting: {
       indicator: false,
       headerAction: false,
@@ -281,6 +283,59 @@ export function useHotSettings(
       delete td._originalHTML;
       delete td._originalColor;
       delete td._originalOpacity;
+    },
+
+    // ✅ 新增：在最后一行按向下键时触发新增行（使用 beforeKeyDown 更可靠）
+    beforeKeyDown: function (this: any, event: KeyboardEvent) {
+      // 只处理 ArrowDown 键
+      if (event.key !== 'ArrowDown') {
+        return;
+      }
+
+      const selected = this.getSelected();
+      if (!selected || !Array.isArray(selected) || selected.length === 0) {
+        return;
+      }
+
+      // 获取当前选中的起始行
+      const [startRow] = selected[0];
+
+      // 检查是否在数据行中（不是表头）
+      if (startRow < 0) {
+        return;
+      }
+
+      const totalRows = this.countRows();
+
+      // 如果当前是最后一行
+      if (startRow === totalRows - 1) {
+        // ✅ 关键修复：检查是否正在编辑单元格，如果是则不触发新增行
+        const activeEditor = this.getActiveEditor();
+        if (activeEditor && activeEditor.isOpened && activeEditor.isOpened()) {
+          console.log('⚠️ [beforeKeyDown] 编辑器打开中，跳过新增行逻辑');
+          return;
+        }
+
+        // 阻止默认的向下移动行为
+        event.preventDefault();
+        event.stopPropagation();
+
+        console.log('⬇️ [beforeKeyDown] 检测到最后一行按向下键，准备新增行');
+
+        // 延迟执行，确保当前编辑完成
+        setTimeout(() => {
+          // 触发自定义事件，由父组件处理
+          const cell = this.getCell(startRow, 0);
+          if (cell) {
+            const customEvent = new CustomEvent('addNewRow', {
+              bubbles: true,
+              detail: { rowIndex: startRow, columnIndex: 0 },
+            });
+            cell.dispatchEvent(customEvent);
+            console.log('✅ [beforeKeyDown] 已触发 addNewRow 事件');
+          }
+        }, 50);
+      }
     },
 
     // ✅ 键盘事件处理

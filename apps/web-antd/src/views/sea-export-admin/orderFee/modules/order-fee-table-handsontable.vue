@@ -508,6 +508,7 @@ const scrollToLastAndSelectFeeName = async () => {
 const extendedActions = {
   ...actions,
   addRow: async () => {
+    console.log('🚀 [extendedActions.addRow] 开始执行新增行操作');
     actions.addRow();
     // 在添加新行后延迟执行滚动和选中操作
     setTimeout(() => {
@@ -729,6 +730,7 @@ defineExpose({ getTableDate });
             :sort-state="sortState"
             @update:selected-row-keys="selectedRowKeys = $event"
             @column-sort="handleColumnSort"
+            @add-new-row="extendedActions.addRow"
           />
 
           <!-- 费用合计显示 -->
