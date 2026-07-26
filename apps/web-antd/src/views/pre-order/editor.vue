@@ -33,6 +33,7 @@ import {
   addPreOrder,
   auditPreOrder,
   editPreOrder,
+  getPreOrderBizTypeOptions,
   getPreOrderDetail,
   PreOrderBizType,
   PreOrderStatus,
@@ -111,10 +112,12 @@ const auditSuccess = ref(true);
 /** 提交 DTO 的 JSON 快照，用于未保存拦截 */
 const formSnapshot = ref('');
 
-/** 归属组织 / 装运方式对齐海运出口放在标题栏 meta 区，不进表单 */
+/** 归属组织 / 业务类型 / 装运方式对齐海运出口放在标题栏 meta 区，不进表单 */
 const headerOrgId = ref<null | number | undefined>();
 /** 编辑回显兜底选项：详情 orgs 路径拼完整公司名，组织加载完成前也能正确显示 */
 const headerOrgSelectedItems = ref<Array<{ label: string; value: number }>>([]);
+const headerBizType = ref<PreOrderBizType>(PreOrderBizType.SeaExport);
+const bizTypeOptions = getPreOrderBizTypeOptions();
 const headerBlType = ref<number>(0);
 const blTypeOptions = getBlTypeOptions();
 
@@ -564,6 +567,7 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   headerOrgSelectedItems.value = detailOrgLast?.id
     ? [{ value: detailOrgLast.id, label: formatOrgPathLabel(detailOrgs) }]
     : [];
+  headerBizType.value = dto.bizType ?? PreOrderBizType.SeaExport;
   headerBlType.value = dto.blType ?? 0;
   void basicFormApi.setValues({
     clientId: dto.clientId,
@@ -747,7 +751,7 @@ async function buildSubmitPayload() {
     number | null | undefined
   >;
   return {
-    bizType: PreOrderBizType.SeaExport,
+    bizType: headerBizType.value,
     ...basicValues,
     ...partyValues,
     ...portValues,
@@ -1117,6 +1121,19 @@ const getContentTabStyle = (isActive: boolean) =>
                           allow-clear
                           size="small"
                           class="basic-info-header__select basic-info-header__select--org"
+                          placeholder="请选择"
+                        />
+                      </div>
+                      <div
+                        class="basic-info-header__item basic-info-header__item--select"
+                      >
+                        <span class="basic-info-header__label">业务类型</span>
+                        <Select
+                          v-model:value="headerBizType"
+                          :disabled="readonly"
+                          size="small"
+                          class="basic-info-header__select"
+                          :options="bizTypeOptions"
                           placeholder="请选择"
                         />
                       </div>
