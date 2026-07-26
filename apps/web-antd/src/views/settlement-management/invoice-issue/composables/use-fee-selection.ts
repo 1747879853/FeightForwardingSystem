@@ -82,6 +82,18 @@ export function useFeeSelection(
     formData.value.settlementId = settlementId;
     formData.value.currencyId = currencyId;
 
+    // ✅ 从第一个申请中获取结算单位名称（所有申请的结算单位应该相同）
+    if (
+      selectedApplications.length > 0 &&
+      selectedApplications[0].settlementName
+    ) {
+      formData.value.settlementName = selectedApplications[0].settlementName;
+      console.log(
+        '✅ 设置结算单位名称:',
+        selectedApplications[0].settlementName,
+      );
+    }
+
     // 设置发票抬头
     if (headerId) {
       if (!fixedHeaderId.value) {

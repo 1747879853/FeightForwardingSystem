@@ -30,6 +30,7 @@ export function useLoadDetail(
       formData.value = {
         id: detail.id,
         settlementId: detail.settlementId,
+        settlementName: detail.settlement?.name || '', // ✅ 从详情中获取结算单位名称
         orgId: detail.orgId,
         currencyId: detail.currencyId || 1,
         invoiceType: detail.invoiceType || 'p',

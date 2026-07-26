@@ -33,6 +33,7 @@ export function useFormData() {
   // 表单数据
   const formData = ref<any>({
     settlementId: '',
+    settlementName: '', // ✅ 新增：结算单位名称
     orgId: 0,
     currencyId: null,
     invoiceType: 'p', // 默认普通发票-电票

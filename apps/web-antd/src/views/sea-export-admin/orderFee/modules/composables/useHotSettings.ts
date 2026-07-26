@@ -24,6 +24,7 @@ export function useHotSettings(
     source: string[],
   ) => void,
   getSortIcon?: (field: string) => string,
+  onDoubleClickFeeStatus?: (row: any) => void, // ✅ 新增：双击费用状态的回调
 ) {
   const getDataSource = () =>
     Array.isArray(dataSource) ? dataSource : dataSource.value;
@@ -133,7 +134,13 @@ export function useHotSettings(
 
         const field = columnConfig.data;
 
+        // ✅ 修复：双击费用状态字段时打开审核历史
         if (field === 'combinedFeeStatus' || field === 'feeStatus') {
+          const actualDataSource = getDataSource();
+          const rowData = actualDataSource[rowIndex];
+          if (rowData && onDoubleClickFeeStatus) {
+            onDoubleClickFeeStatus(rowData);
+          }
           return;
         } else if (
           [
@@ -233,7 +240,7 @@ export function useHotSettings(
 
         // 清空文本内容，但保留结构
         const textNodes = Array.from(td.childNodes).filter(
-          (node) => node.nodeType === Node.TEXT_NODE,
+          (node): node is Text => node.nodeType === Node.TEXT_NODE,
         );
         textNodes.forEach((node) => {
           node.textContent = '';

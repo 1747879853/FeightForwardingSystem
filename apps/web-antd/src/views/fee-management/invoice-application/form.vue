@@ -513,7 +513,7 @@ onMounted(() => {
           提交
         </Button>
         <Button @click="handleCancel">{{
-          isReadOnly ? '关闭' : '取消'
+          isReadOnly ? '关闭' : '关闭'
         }}</Button>
       </Space>
     </div>

@@ -21,7 +21,9 @@ import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
+import { useBaseStore } from '#/store/base';
 
+const baseStore = useBaseStore();
 interface Props {
   visible: boolean;
   settlementId?: string; // 已选择的结算单位（固定）
@@ -60,6 +62,7 @@ const drawerVisible = computed({
 
 const feeDrawerLoading = ref(false);
 const selectedSettlementId = ref<string>('');
+const selectedSettlementName = ref<string>('');
 const selectedCurrencyId = ref<number | undefined>();
 const selectedCurrencyCode = ref<string>('');
 
@@ -165,7 +168,10 @@ async function updateCurrencyFromSelectedFees() {
     }
   }
 }
-
+const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
+  if (id == null) return [];
+  return [{ id, [labelKey]: name || '' }] as any[];
+};
 /** 加载默认汇率 */
 async function loadDefaultExchangeRate(currencyId: number) {
   try {
@@ -250,6 +256,7 @@ function getSelectedFeesFromTable(): any[] {
 /** 重置筛选条件 */
 function handleResetFilter() {
   selectedSettlementId.value = '';
+  selectedSettlementName.value = '';
   selectedCurrencyId.value = undefined;
   keyWord.value = '';
   filterMblNum.value = '';
@@ -288,15 +295,23 @@ function handleEtdRangeChange(
     filterEtdEnd.value = '';
   }
 }
+function setSettlementName() {
+  baseStore.fetchClients({ pageIndex: 1, pageSize: 1000 });
+  const clients = baseStore.clients;
 
+  selectedSettlementName.value =
+    clients.find((item) => item.id === selectedSettlementId.value)?.name || '';
+}
 /** 打开费用选择抽屉 */
 function handleOpenFeeDrawer() {
   if (!props.settlementId) {
     selectedSettlementId.value = '';
+    selectedSettlementName.value = '';
     selectedCurrencyId.value = undefined;
     selectedFeeRowKeys.value = [];
   } else {
     selectedSettlementId.value = props.settlementId;
+    setSettlementName();
     selectedCurrencyId.value = props.currencyId;
   }
 
@@ -481,6 +496,7 @@ watch(
   (newValue) => {
     if (newValue) {
       selectedSettlementId.value = newValue;
+      setSettlementName();
     }
   },
 );
@@ -711,6 +727,13 @@ defineExpose({
               style="flex: 1"
               :disabled="!!settlementId"
               @update:model-value="(v) => (selectedSettlementId = v as string)"
+              :selected-items="
+                toSelectedItems(
+                  selectedSettlementId,
+                  selectedSettlementName,
+                  'name',
+                )
+              "
             />
           </div>
           <div

@@ -296,7 +296,7 @@ onMounted(() => {
         <Button type="primary" :loading="submitLoading" @click="handleSubmit">
           {{ isEdit ? '保存' : '创建' }}
         </Button>
-        <Button @click="handleCancel">取消</Button>
+        <Button @click="handleCancel">关闭</Button>
       </Space>
     </div>
 
@@ -320,11 +320,11 @@ onMounted(() => {
                   />
                 </Form.Item>
 
-                <Form.Item label="开票公司">
+                <Form.Item label="结算单位">
                   <Input
-                    :value="applicantCompanyName"
+                    :value="formData.settlementName"
                     disabled
-                    placeholder="根据归属组织自动获取"
+                    placeholder="从申请发票中自动获取"
                   />
                 </Form.Item>
 
@@ -339,7 +339,7 @@ onMounted(() => {
                 <Form.Item label="发票币别" required>
                   <CurrencySelect
                     v-model:value="formData.currencyId"
-                    placeholder="从费用中自动获取"
+                    placeholder="从申请发票中自动获取"
                     style="width: 100%"
                     disabled
                   />
@@ -384,7 +384,7 @@ onMounted(() => {
                   />
                 </Form.Item>
 
-                <Form.Item>
+                <!-- <Form.Item>
                   <Button
                     type="primary"
                     block
@@ -402,7 +402,7 @@ onMounted(() => {
                     </template>
                     查看发票明细 ({{ applicationGroupsData.length }})
                   </Button>
-                </Form.Item>
+                </Form.Item> -->
               </Form>
             </Card>
           </div>
@@ -682,7 +682,7 @@ onMounted(() => {
                     <template #icon
                       ><IconifyIcon icon="ant-design:import-outlined"
                     /></template>
-                    导入费用
+                    导入发票
                   </Button>
                   <Button
                     size="small"

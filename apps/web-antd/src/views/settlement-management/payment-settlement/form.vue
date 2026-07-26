@@ -186,8 +186,8 @@ async function handleConfirmApplications(
     // 编辑模式：直接调用后端接口保存新增的费用项
     await handleAddAndSaveToSettlement(applications, selectedCurrencyId);
   } else {
-    // 新建模式：添加到列表，等待用户点击保存
-    await handleAddToExistingSettlement(applications, selectedCurrencyId);
+    // 新建模式：自动创建结算单并跳转到编辑页面
+    await handleCreateSettlementAndRedirect(applications, selectedCurrencyId);
   }
 }
 
@@ -383,6 +383,185 @@ async function handleAddAndSaveToSettlement(
     await loadEditData();
   } catch (error: any) {
     message.error(error.message || '保存失败');
+  } finally {
+    submitting.value = false;
+  }
+}
+
+/** 新建模式下：创建结算单并跳转到编辑页面 */
+async function handleCreateSettlementAndRedirect(
+  applications: Array<{
+    application: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
+    settledPrice?: number;
+    currencyItems?: Array<{
+      originalCurrencyId: number;
+      settledAmount: number;
+    }>;
+  }>,
+  selectedCurrencyId?: number,
+) {
+  if (!selectedCurrencyId) {
+    message.warning('请选择结算币别');
+    return;
+  }
+
+  // 获取第一个申请的结算对象和归属组织
+  const firstApp = applications[0]?.application;
+  if (!firstApp || !firstApp.settlementId) {
+    message.warning('无法获取结算对象信息');
+    return;
+  }
+
+  const derivedOrgId = firstApp.orgId ?? getMyDefaultOrgId();
+  if (!derivedOrgId) {
+    message.error('缺少归属组织，无法保存');
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    // 收集所有涉及的原币币别ID（只收集实际有结算金额的币别）
+    const originalCurrencyIds = new Set<number>();
+    applications.forEach((app) => {
+      if (app.application.currencyId) {
+        // 固定币别申请：添加申请的币别ID作为原币
+        originalCurrencyIds.add(app.application.currencyId);
+      } else if (app.currencyItems && app.currencyItems.length > 0) {
+        // 原币申请：只从实际有结算金额的currencyItems中收集原币ID
+        app.currencyItems.forEach((item) => {
+          originalCurrencyIds.add(item.originalCurrencyId);
+        });
+      }
+    });
+
+    // 构建完整的汇率列表
+    const allRates: PaymentSettlementAdminApi.PaymentSettlementRateAddDto[] =
+      [];
+
+    for (const originalCurrencyId of originalCurrencyIds) {
+      try {
+        const { getExchangeRatePagedList } =
+          await import('#/api/system/base-data/exchange-rate-admin');
+
+        const result = await getExchangeRatePagedList({
+          CurrencyId: originalCurrencyId,
+          PageIndex: 1,
+          PageSize: 1,
+        });
+
+        let rate = 1; // 默认值
+
+        if (result.items && result.items.length > 0) {
+          const rateData = result.items[0];
+          // 使用 calculateValue（核算汇率）
+          rate = rateData?.calculateValue ?? 1;
+
+          // 如果是同种币别，强制汇率为1
+          if (originalCurrencyId === selectedCurrencyId) {
+            rate = 1;
+          }
+        } else {
+          console.warn(
+            `未找到原币 ${originalCurrencyId} 到结算币别 ${selectedCurrencyId} 的汇率，使用默认值1`,
+          );
+        }
+
+        // 添加到汇率列表
+        allRates.push({
+          originalCurrencyId,
+          rate,
+        });
+      } catch (error) {
+        console.error(`获取原币 ${originalCurrencyId} 的汇率失败:`, error);
+
+        // 失败时使用默认值1
+        let rate = 1;
+        if (originalCurrencyId === selectedCurrencyId) {
+          rate = 1;
+        }
+
+        allRates.push({
+          originalCurrencyId,
+          rate,
+        });
+      }
+    }
+
+    // 转换为付费申请分组数据
+    const paymentApplicationGroups: PaymentSettlementAdminApi.PaymentSettlementAddItemGroupDto[] =
+      applications
+        .filter((app) => {
+          const isFixedCurrency = !!app.application.currencyId;
+
+          if (isFixedCurrency) {
+            // 固定币别申请：检查settledPrice是否有有效值（非0、非空）
+            return (
+              app.settledPrice !== undefined &&
+              app.settledPrice !== null &&
+              app.settledPrice !== 0
+            );
+          } else {
+            // 原币申请：检查currencyItems是否有有效数据
+            return app.currencyItems && app.currencyItems.length > 0;
+          }
+        })
+        .map((app) => {
+          const isFixedCurrency = !!app.application.currencyId;
+
+          if (isFixedCurrency) {
+            // 固定币别申请：只传settledPrice
+            return {
+              paymentApplicationId: app.application.id,
+              settledPrice: app.settledPrice || 0,
+            };
+          } else {
+            // 原币申请：传currencyItems指定各币别结算量
+            return {
+              paymentApplicationId: app.application.id,
+              currencyItems: app.currencyItems || [],
+            };
+          }
+        });
+
+    // 如果过滤后没有有效数据，提示用户
+    if (paymentApplicationGroups.length === 0) {
+      message.warning(
+        '所有申请的结算金额都为0或未填写，请至少填写一个非零的结算金额',
+      );
+      return;
+    }
+
+    // 构建结算单数据
+    const data: PaymentSettlementAdminApi.PaymentSettlementAddDto = {
+      orgId: derivedOrgId,
+      settlementTime: dayjs().toISOString(),
+      payType: undefined,
+      settlementId: firstApp.settlementId,
+      currencyId: selectedCurrencyId,
+      orgBankAccountId: undefined,
+      clientInvoiceBankId: undefined,
+      transactionFee: 0,
+      remark: '',
+      paymentSettlementRates: allRates,
+      paymentApplicationGroups,
+      attachments: [],
+    };
+
+    // 调用创建接口
+    const newId = await addPaymentSettlement(data);
+
+    message.success(
+      `成功创建结算单，已添加 ${paymentApplicationGroups.length} 个付费申请`,
+    );
+
+    // 跳转到编辑页面
+    if (newId) {
+      router.push(`/settlement-management/payment-settlement/edit/${newId}`);
+    } else {
+      console.error('创建成功后未返回ID');
+    }
+  } catch (error: any) {
+    message.error(error.message || '创建结算单失败');
   } finally {
     submitting.value = false;
   }
@@ -704,15 +883,16 @@ async function handleSave() {
     };
 
     if (isEdit.value && editId.value) {
+      // 编辑模式：保存后不关闭页面，停留在当前编辑页面
       await editPaymentSettlement({
         id: editId.value,
         ...data,
       } as any);
       message.success('保存成功');
-      returnToListWithRefresh('PaymentSettlementList', () => {
-        router.push('/settlement-management/payment-settlement');
-      });
+      // 重新加载详情数据以刷新页面显示
+      await loadEditData();
     } else {
+      // 新增模式（理论上不会走到这里，因为新增时会自动创建并跳转）
       await addPaymentSettlement(data);
       message.success('新建成功');
       returnToListWithRefresh('PaymentSettlementList', () => {
@@ -724,6 +904,13 @@ async function handleSave() {
   } finally {
     submitting.value = false;
   }
+}
+
+/** 返回列表页 */
+function handleBack() {
+  returnToListWithRefresh('PaymentSettlementList', () => {
+    router.push('/settlement-management/payment-settlement');
+  });
 }
 
 /** 构建付费申请分组数据 */
@@ -1381,7 +1568,7 @@ onMounted(() => {
   <Page :title="isEdit ? '编辑结算单' : '新建结算单'">
     <template #extra>
       <Space>
-        <Button @click="router.back()"> 返回 </Button>
+        <Button @click="handleBack"> 关闭 </Button>
         <Button type="primary" @click="handleSave" :loading="submitting">
           保存
         </Button>

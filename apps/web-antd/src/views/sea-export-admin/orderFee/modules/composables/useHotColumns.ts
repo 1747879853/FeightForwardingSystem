@@ -180,6 +180,14 @@ export function useHotColumns(
             cellProperties: any,
           ) {
             td.innerHTML = '';
+
+            // ✅ 获取当前行数据，判断是否为新增未保存的行
+            const actualDataSource = Array.isArray(dataSource)
+              ? dataSource
+              : dataSource.value;
+            const rowData = actualDataSource[row] as any;
+            const isNewRow = !rowData?.id || rowData.id === '';
+
             // ✅ 关键修改：只显示"-"后面的字符串（费用名称）
             let displayName = '';
             if (value && typeof value === 'string') {
@@ -187,8 +195,25 @@ export function useHotColumns(
               // 如果有"-"，取后面的部分；否则使用原值
               displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
             }
-            // ✅ 新增：添加省略号样式
-            td.innerHTML = `<span style="color: ${displayName ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayName || '请选择'}</span>`;
+
+            // ✅ 修复：直接设置单元格样式和内容，不使用额外的 div 容器
+            td.style.position = 'relative';
+
+            // ✅ 如果是未保存的新增行，添加小标签
+            if (isNewRow) {
+              const labelSpan = document.createElement('span');
+              labelSpan.textContent = '新';
+              labelSpan.style.cssText =
+                'position: absolute; top: 2px; right: 4px; background: #ff4d4f; color: white; font-size: 10px; padding: 1px 4px; border-radius: 2px; line-height: 1.2; z-index: 1; pointer-events: none;';
+              td.appendChild(labelSpan);
+            }
+
+            // ✅ 添加费用名称文本
+            const textSpan = document.createElement('span');
+            textSpan.textContent = displayName || '请选择';
+            textSpan.style.cssText = `color: ${displayName ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;`;
+            td.appendChild(textSpan);
+
             return td;
           };
         } else if (col.field === 'industryCategory') {

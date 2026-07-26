@@ -190,6 +190,15 @@ const handleOpenDropdown = (
   hotInstance.render();
 };
 
+// 模态框管理（需要在 useHotSettings 之前定义）
+const {
+  modifyModalRef,
+  auditHistoryModalRef,
+  batchImportModalRef,
+  openAuditHistoryModal,
+  handleModalConfirm,
+} = useModals();
+
 // Handsontable 设置
 const { hotSettings: rawHotSettings } = useHotSettings(
   dataSource,
@@ -205,19 +214,11 @@ const { hotSettings: rawHotSettings } = useHotSettings(
   getSettlementIndustryCategory,
   handleOpenDropdown,
   getSortIcon, // ✅ 新增：传递排序图标函数
+  openAuditHistoryModal, // ✅ 修复：传递双击费用状态的回调
 );
 
 // 使用 shallowRef 包装 hotSettings，避免对大型配置对象进行深度响应式追踪
 const hotSettings = shallowRef(rawHotSettings.value);
-
-// 模态框管理
-const {
-  modifyModalRef,
-  auditHistoryModalRef,
-  batchImportModalRef,
-  openAuditHistoryModal,
-  handleModalConfirm,
-} = useModals();
 
 // ==================== 费用合计计算 ====================
 
@@ -449,7 +450,7 @@ const convertIdsToLabels = () => {
  */
 const scrollToLastAndSelectFeeName = async () => {
   await nextTick(); // 等待DOM更新
-  
+
   const hotInstance = coreTableRef.value?.hotTableRef?.hotInstance;
   if (!hotInstance) {
     console.warn('⚠️ [scrollToLastAndSelectFeeName] hotInstance 不存在');
@@ -475,17 +476,15 @@ const scrollToLastAndSelectFeeName = async () => {
   // 滚动到最后一行
   hotInstance.scrollViewportTo(lastRowIndex, 0);
 
-
   // 确保表格处于监听状态
   hotInstance.listen();
-    
-    
+
   // 选中费用名称单元格
   hotInstance.selectCell(lastRowIndex, feeNameColIndex);
-          
+
   // 使用 setDataAtCell 并指定编辑模式
   //hotInstance.setDataAtCell(lastRowIndex, feeNameColIndex, '', 'edit');
-  
+
   // 获取单元格元素并尝试激活编辑
   // const cell = hotInstance.getCell(lastRowIndex, feeNameColIndex);
   // if (cell) {
@@ -497,9 +496,6 @@ const scrollToLastAndSelectFeeName = async () => {
   //   });
   //   cell.dispatchEvent(dblClickEvent);
   // }
-     
-  
-  
 };
 
 // 扩展 actions 对象，添加滚动和选中功能
@@ -511,7 +507,7 @@ const extendedActions = {
     setTimeout(() => {
       scrollToLastAndSelectFeeName();
     }, 150);
-  }
+  },
 };
 
 // ==================== 生命周期 ====================
@@ -551,7 +547,7 @@ watch(
 
     // 直接修改 hotSettings.data 属性而不触发Vue深度响应
     hotSettings.value.data = newData;
-    
+
     nextTick(() => {
       if (coreTableRef.value?.hotTableRef?.hotInstance) {
         // ✅ 优化：只调用 loadData，它会自动触发渲染，无需单独调用 render()
@@ -571,7 +567,7 @@ watch(
       if (coreTableRef.value?.hotTableRef?.hotInstance) {
         // 使用 updateSettings 更新列配置而不是重新渲染整个设置
         coreTableRef.value.hotTableRef.hotInstance.updateSettings({
-          columns: newColumns
+          columns: newColumns,
         });
       }
     });

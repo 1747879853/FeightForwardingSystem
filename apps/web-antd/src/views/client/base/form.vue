@@ -1398,6 +1398,7 @@ onMounted(() => {
                   name="CheckboxGroup"
                   v-model:value="isCustomerType"
                   :onChange="handleIsClientChange"
+                  class="mr-5"
                 >
                   <Checkbox :value="1" class="lineheight-32">
                     {{ $t('seaExport.client.clientTypeOptions.customer') }}
@@ -1418,6 +1419,7 @@ onMounted(() => {
                 }}</span>
                 <CheckboxGroup
                   name="CheckboxGroup"
+                  class="mr-1"
                   v-model:value="isSupplierType"
                   :onChange="handleIsSupplierChange"
                 >
@@ -1456,7 +1458,7 @@ onMounted(() => {
             </div>
           </section>
         </div>
-        <div class="content-column">
+        <div class="content-column" v-if="isClient">
           <section class="content-section">
             <div class="content-section__header">
               <span class="card-title">
