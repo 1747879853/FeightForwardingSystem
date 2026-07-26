@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-24
+last_updated: 2026-07-26
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-07-24
 
 - **AI 识别辅助：** 顶栏「AI识别」点击后弹出拖拽上传区（`ai-extract-upload-modal.vue`），支持 PDF、图片（png/jpg/jpeg/bmp/tiff/webp）与 Office（doc/docx/xls/xlsx/rtf）；拖入或点击选文件后自动调用 TextIn `ExtractSeaExportToAddDtoAsync`，由后端完成名称→id 匹配并回填表单；空值、`0`、空 Guid 不回填。识别成功自动关窗；失败可在弹窗内重试。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
-- **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。
+- **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。干系人展示信息与编辑页共用 `GetUserListByIdsAsync` 批量回显。
 - **右侧栏与场站联系人：** 右侧主卡片为「干系人」。场站联系人/邮箱/手机/电话与编辑页一致挂在「场站」标签旁只读展示（新建态通常为空显示 `-`）；保存时随 `SeaExportAddDto` 透传（新建多为空）。
 - **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护，并按 `ServiceType.extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
@@ -80,6 +80,7 @@ last_updated: 2026-07-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-26 | `Feature` | 干系人用户信息改为与编辑页共用的 `GetUserListByIdsAsync` 批量获取，不再逐个拉详情。 | 共用 `use-order-users.ts`；详见 `changelogs/change-log-2026-07-26-sea-export-order-users-batch-get.md`。 |
 | 2026-07-25 | `Perf` | 箱型选择从 option 取名称，选中时不再请求箱型详情 | 共用 `order-ctn-table`；`@change` 写 `ctnCodeName`，`syncCtnNameMap` 仅兜底回显 |
 | 2026-07-24 | `Feature` | 「AI识别」改为点击弹窗拖拽上传，放入文件后自动开始识别，成功回填后关窗。 | 新增 `ai-extract-upload-modal.vue`；`recognizeAiFile(File)` 替代隐藏 file input。详见 `changelogs/change-log-2026-07-24-sea-export-ai-extract-drag-upload-modal.md`。 |
 | 2026-07-24 | `Fix` | 已选委托单位但无业务来源时改为纯文本「-」，不再渲染禁用下拉占宽。 | `showCodeSourceEmptyDash` 控制分支。详见 `changelogs/change-log-2026-07-24-sea-export-code-source-empty-dash.md`。 |

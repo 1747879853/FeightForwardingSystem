@@ -1599,6 +1599,7 @@ const {
   getOrderUserDetail,
   isOrderUserDetailLoading,
   getOrderUserDetailText,
+  getOrderUserOrgText,
   getOrderUserStatusText,
   getOrderUserStatusClass,
   loadOrderUserDetail,
@@ -3373,9 +3374,9 @@ defineExpose({
                                   {{ getOrderUserDisplayName(row) || '-' }}
                                 </div>
                                 <div class="order-user-detail-card__sub-title">
-                                  账号：{{
+                                  组织：{{
                                     getOrderUserDetailText(
-                                      getOrderUserDetail(row.userId)?.userName,
+                                      getOrderUserOrgText(row.userId),
                                     )
                                   }}
                                 </div>

@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-26 海运出口干系人改为批量获取用户展示信息](./changelogs/change-log-2026-07-26-sea-export-order-users-batch-get.md)
 - [2026-07-26 业务联系单取消独立详情页按状态显隐保存](./changelogs/change-log-2026-07-26-pre-order-drop-detail-page.md)
 - [2026-07-26 业务联系单详情页改为纯文本展示](./changelogs/change-log-2026-07-26-pre-order-detail-readonly-view.md)
 - [2026-07-26 业务联系单待审核/通过走详情路由](./changelogs/change-log-2026-07-26-pre-order-detail-route.md)
