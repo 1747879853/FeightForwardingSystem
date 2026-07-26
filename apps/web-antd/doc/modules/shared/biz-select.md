@@ -2,7 +2,7 @@
 title: 业务选择组件
 module: shared
 author: 前端团队
-last_updated: 2026-07-23
+last_updated: 2026-07-26
 ---
 
 # 1. 业务背景说明 (Background)
@@ -13,7 +13,7 @@ last_updated: 2026-07-23
 
 - **可编辑选择：** 通过下拉检索、分页加载或级联选择维护业务字段。
 - **编辑回显：** 使用选项缓存、已选对象或详情接口，将业务 ID 还原为可读名称。
-- **禁用只读：** 组件整体 `disabled` 时保留名称解析能力，但以无边框、无箭头且垂直居中的纯文本外观展示。
+- **禁用只读：** 组件整体 `disabled` 时保留名称解析能力，但以无边框、无箭头且垂直居中的纯文本外观展示；无值时显示 `-` 而非 placeholder。
 - **归属组织录入（`MyOrgSelect`）：** 数据权限单据录入 `orgId` 专用下拉，选项来自本人**直属组织**（`use-my-org` 从 `GetMy.organizations` 派生），挂载时未选值自动填默认组织；区别于 `OrganizationSelect`（全量组织树，用于筛选/系统管理）。
 - **指定用户所属组织（`UserOrgSelect`）：** 「先选人、再选该人所属组织」场景（如海出选定销售后选 `orgId`）；数据来自 `GetAllUserOrganizationsAsync` 全量缓存（`use-all-user-org`）；`userId` 变化时选项刷新，默认填该用户默认组织，越范围旧值自动清空。
 
@@ -47,4 +47,5 @@ last_updated: 2026-07-23
 | 2026-07-12 | `Fix` | 港口/费用代码/汇率/客户账期等页面统一大数 ID 字符串校验与透传约定。 | 与 `request.ts` json-bigint `storeAsString` 对齐；biz-select 内 `parseIdToSafeString` 仅用于缓存键，不意味着表单可 coerce 为 number。 |
 | 2026-07-12 | `Feature` | 所有 biz-select 在整体禁用时改为清晰的只读文本外观 | 保留底层 Select/Cascader 解析标签，统一通过 `biz-select` 样式标识收敛视觉行为 |
 | 2026-07-22 | `Feature` | 新增 `MyOrgSelect` 归属组织录入下拉；配套 `use-my-org` 组合式，供全站数据权限单据录入 `orgId`。 | 多组织改造：`company/companyId`→`orgId/orgs`。`MyOrgSelect` 须在 `#/adapter/component` 顶层 barrel 再导出；公司信息取 `orgs` 内 `isCompany` 公司节点，展示归属组织名用末端节点。详见 change-log-2026-07-22-multi-org-orgid-refactor。 |
+| 2026-07-26 | `Fix` | 禁用且无值的 biz-select 只读态显示 `-`，不再展示「请选择」等编辑态引导文案。 | 纯样式收敛：`biz-select-readonly.css` 中对 `.ant-select-selection-placeholder` 用 `visibility: hidden` + 可见 `::before` 输出 `-`，无需逐个组件改 placeholder。 |
 | 2026-07-23 | `Feature` | 新增 `UserOrgSelect` + `use-all-user-org`：按指定用户取其所属组织下拉，对接 `GetAllUserOrganizationsAsync`。 | 与 `MyOrgSelect` 对称：本人组织走 userStore/`GetMy`，他人组织走全量用户组织缓存；组件须顶层 barrel 再导出。详见 change-log-2026-07-23-user-org-select。 |
