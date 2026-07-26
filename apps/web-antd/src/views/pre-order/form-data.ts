@@ -306,6 +306,7 @@ export function usePreOrderCargoTypeInlineSchema(): VbenFormSchema[] {
         options: getCargoTypeOptions(),
         placeholder: '请选择货物类型',
         class: 'w-full',
+        size: 'small',
       },
     },
     {
@@ -319,6 +320,7 @@ export function usePreOrderCargoTypeInlineSchema(): VbenFormSchema[] {
         showNameWithHsCode: true,
         placeholder: $t('seaExport.export.pleaseSelectGoods'),
         allowClear: true,
+        size: 'small',
       },
     },
   ];
