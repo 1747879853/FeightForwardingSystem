@@ -24,6 +24,7 @@ import {
 
 import {
   buildColumns,
+  getPreOrderFormPath,
   PRE_ORDER_LIST_TABLE_ID,
   useGridFormSchema,
 } from './data';
@@ -51,7 +52,8 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 const handleRowDblclick = ({ row }: { row: PreOrderAdminApi.PreOrderDto }) => {
   const grid = gridApi.grid as any;
   grid?.setRadioRow?.(row);
-  router.push(`/pre-order/${row.id}/edit`);
+  // 待审核 / 通过打开详情页，录入 / 驳回打开编辑页
+  router.push(getPreOrderFormPath(row.id, row.status));
 };
 
 const [Grid, gridApi] = useVbenVxeGrid<PreOrderAdminApi.PreOrderDto>({

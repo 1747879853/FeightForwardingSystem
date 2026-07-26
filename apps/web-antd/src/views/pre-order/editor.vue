@@ -60,6 +60,7 @@ import {
 } from '#/views/sea-export-admin/data';
 import SeaExportEditor from '#/views/sea-export-admin/editor.vue';
 
+import { getPreOrderFormPath } from './data';
 import {
   PRE_ORDER_PORT_REMARK_FIELDS,
   usePreOrderBasicSchema,
@@ -693,6 +694,17 @@ function fillFromCopySource(dto: PreOrderAdminApi.PreOrderDto) {
   fees.value = fees.value.map((row) => ({ ...row, id: undefined }));
 }
 
+/**
+ * 待审核 / 通过必须落在详情路由，录入 / 驳回落在编辑路由。
+ * 状态流转后（提交、撤回、审核）用 replace 对齐 URL，避免标签页语义错乱。
+ */
+async function syncRouteByStatus() {
+  if (!preOrderId.value) return;
+  const targetPath = getPreOrderFormPath(preOrderId.value, status.value);
+  if (route.path === targetPath) return;
+  await router.replace(targetPath);
+}
+
 async function loadDetail() {
   if (!preOrderId.value) return;
   loading.value = true;
@@ -700,6 +712,7 @@ async function loadDetail() {
     const dto = await getPreOrderDetail(preOrderId.value);
     fillFromDetail(dto);
     await syncFormSnapshot();
+    await syncRouteByStatus();
   } finally {
     loading.value = false;
   }
@@ -919,6 +932,7 @@ async function runAction(action: () => Promise<unknown>, successText: string) {
     await action();
     message.success(successText);
     markListShouldRefresh('PreOrderList');
+    // loadDetail 内会按最新状态把 /edit ↔ /detail 对齐
     await loadDetail();
   } finally {
     saving.value = false;

@@ -923,7 +923,7 @@ function handleOpenSeaExport(seaExportId: string) {
     return;
   }
   if (activeServiceTab.value === 'pre-order-review') {
-    void router.push({ name: 'PreOrderEdit', params: { id: seaExportId } });
+    void router.push({ name: 'PreOrderDetail', params: { id: seaExportId } });
     return;
   }
   void router.push({

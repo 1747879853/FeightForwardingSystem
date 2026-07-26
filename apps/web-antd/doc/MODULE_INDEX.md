@@ -2,7 +2,7 @@
 | --- | --- | --- | --- | --- | --- |
 | \_core | `/profile` | 账户与认证 | 当前用户维护个人资料、修改密码与头像；对接 `UserAdmin/GetMyAsync` 等接口，登录后合并信息至右上角展示。 | [个人中心](./modules/_core/profile.md) | 2026-06-03 |
 | dashboard | `/analytics` | 驾驶舱 | 用于展示系统分析类指标与运营概览，是登录后的高层数据观察入口之一。 | [分析看板](./modules/dashboard/analytics.md) | 2026-05-16 |
-| dashboard | `/workspace` | 驾驶舱 | 工作台：海运出口服务 + 应收应付/付费申请/业务联系单审核；审核筛选对齐费用审核页，支持费用详情深链与单据深链。 | [工作台](./modules/dashboard/workspace.md) | 2026-07-25 |
+| dashboard | `/workspace` | 驾驶舱 | 工作台：海运出口服务 + 应收应付/付费申请/业务联系单审核；审核筛选对齐费用审核页，支持费用详情深链与单据深链；业务联系单审核深链进详情。 | [工作台](./modules/dashboard/workspace.md) | 2026-07-26 |
 | dashboard | `/dashboard/sea-freight-globe` | 驾驶舱 | 用于以地球可视化方式展示海运相关数据，是 dashboard 分组下的专题看板。 | [海运 3D 地球看板](./modules/dashboard/sea-freight-globe.md) | 2026-05-16 |
 | clients | `/clients` | 客户管理 | 维护客户主数据列表，是客户新建、编辑、删除和业务选择的统一入口。 | [客户列表](./modules/clients/index.md) | 2026-07-12 |
 | clients | `/clients/create` | 客户管理 | 创建客户基础资料，为后续联系人、账期、发票、附件等客户子资料提供主记录。 | [客户新建](./modules/clients/create.md) | 2026-05-16 |
@@ -12,8 +12,9 @@
 | sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；场站联系人在标签旁展示，保存时透传防空覆盖。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-07-25 |
 | sea-exports | （运踪订阅字段） | 操作管理 / 海运出口 | 运踪订阅链路字段清单：请求仅 `seaExportIds`；后端按装运方式组装船公司+主提单/首箱；状态两字段与结果明细对照。 | [运踪订阅字段清单](./modules/sea-exports/yundang-subscribe-fields.md) | 2026-07-25 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表内切换应收应付并整体保存。 | [更改单](./modules/sea-exports/change-order.md) | 2026-07-25 |
-| pre-order | `/pre-order` | 操作管理 / 业务联系单 | 业务联系单列表：海运出口委托的前置单据检索入口，支持新建、按单复制、按状态限制的删除，双击进入编辑。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-07-25 |
-| pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 操作管理 / 业务联系单 | 业务联系单工作台：布局对齐海运出口（主栏分区 + 右侧干系人）；基础 meta 含业务类型/装运方式；收发通（id+Content 三组）/港口信息（海出同款流转卡片 + 港口备注）/货物箱型（标题栏内联货物类型+品名；左箱型表右竖排计量）/主流程服务/费用；提交、撤回、审核、审核后驳回与审核时间轴；通过后内嵌关联海运出口编辑器。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-07-26 |
+| pre-order | `/pre-order` | 操作管理 / 业务联系单 | 业务联系单列表：海运出口委托的前置单据检索入口，支持新建、按单复制、按状态限制的删除；双击按状态进编辑或详情。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-07-26 |
+| pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 操作管理 / 业务联系单 | 业务联系单工作台：布局对齐海运出口（主栏分区 + 右侧干系人）；基础 meta 含业务类型/装运方式；收发通（id+Content 三组）/港口信息（海出同款流转卡片 + 港口备注）/货物箱型（标题栏内联货物类型+品名；左箱型表右竖排计量）/主流程服务/费用；提交、撤回、审核、审核后驳回与审核时间轴；通过后内嵌关联海运出口编辑器；状态流转后与详情路由对齐。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-07-26 |
+| pre-order | `/pre-order/:id/detail` | 操作管理 / 业务联系单 | 业务联系单详情：布局对齐编辑页，字段纯文本展示（无表单控件）与审核入口；通过后可切关联海运出口。 | [业务联系单详情](./modules/pre-order/id-detail.md) | 2026-07-26 |
 | sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-07-12 |
 | sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-07-11 |
 | sea-imports | `/sea-imports/:id/edit` | 操作管理 / 海运进口 | 编辑页是海运进口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。 | [海运进口编辑工作台](./modules/sea-imports/id-edit.md) | 2026-07-25 |
@@ -32,7 +33,7 @@
 | settlement-management | `/settlement-management/fee-lock` | 财务管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/settlement-management/fee-lock.md) | 2026-07-12 |
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-07-12 |
 | audit-approval | `/audit-approval/payment-review` | 审核审批 | 处理付款申请审批任务；主从布局展示费用合计、附件与费用明细，支持审核全部与批量驳回。 | [付费审批](./modules/audit-approval/payment-review.md) | 2026-07-12 |
-| audit-approval | `/audit-approval/pre-order-review` | 审核审批 | 业务联系单审核任务列表；行上并列任务信息与单据信息，双击进单据详情执行审核，可查看审批时间轴。 | [业务联系单审核](./modules/audit-approval/pre-order-review.md) | 2026-07-25 |
+| audit-approval | `/audit-approval/pre-order-review` | 审核审批 | 业务联系单审核任务列表；行上并列任务信息与单据信息，双击进 `/pre-order/:id/detail` 执行审核，可查看审批时间轴。 | [业务联系单审核](./modules/audit-approval/pre-order-review.md) | 2026-07-26 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 费用审核详情：支持列表内嵌与独立路由深链（路由 props 映射 transportOrderId/entityId）。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-07-12 |
 | basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-05-30 |
 | basic-data | `/basic-data/code-invoice` | 基础资料 | 维护发票相关代码，支撑客户发票资料和结算开票口径。 | [发票代码](./modules/basic-data/code-invoice.md) | 2026-05-16 |

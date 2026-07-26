@@ -5,6 +5,21 @@ import { PreOrderStatus } from '#/api/pre-order/pre-order-admin';
 /** 列配置持久化 key */
 export const PRE_ORDER_LIST_TABLE_ID = 'PreOrderList';
 
+/** 待审核 / 通过走详情页（只读），录入 / 驳回走编辑页 */
+export function isPreOrderDetailStatus(status?: null | number) {
+  return status === PreOrderStatus.Auditing || status === PreOrderStatus.Passed;
+}
+
+/** 按单据状态拼编辑或详情路径 */
+export function getPreOrderFormPath(
+  id: number | string,
+  status?: null | number,
+) {
+  return isPreOrderDetailStatus(status)
+    ? `/pre-order/${id}/detail`
+    : `/pre-order/${id}/edit`;
+}
+
 /** 业务联系单状态选项（列表筛选与列标签共用） */
 export function getPreOrderStatusOptions() {
   return [

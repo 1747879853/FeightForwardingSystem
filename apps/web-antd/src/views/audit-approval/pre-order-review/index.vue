@@ -45,7 +45,7 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 function openPreOrder(row: PreOrderAdminApi.PreOrderTaskItemDto) {
   const id = row.preOrderId ?? row.entityId;
   if (!id) return;
-  router.push(`/pre-order/${id}/edit`);
+  router.push(`/pre-order/${id}/detail`);
 }
 
 const [Grid, gridApi] = useVbenVxeGrid<PreOrderAdminApi.PreOrderTaskItemDto>({

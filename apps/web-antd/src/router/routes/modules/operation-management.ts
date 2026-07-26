@@ -101,6 +101,17 @@ const routes: RouteRecordRaw[] = [
             },
             component: () => import('#/views/pre-order/editor.vue'),
           },
+          {
+            path: ':id([0-9a-fA-F-]{36})/detail',
+            name: 'PreOrderDetail',
+            meta: {
+              title: '业务联系单详情',
+              hideInMenu: true,
+              activePath: '/pre-order',
+              authority: abpPageAuthority('Admin.PreOrder'),
+            },
+            component: () => import('#/views/pre-order/detail.vue'),
+          },
         ],
       },
       {

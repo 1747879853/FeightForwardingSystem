@@ -13,6 +13,8 @@
 
 ## 2026-07
 
+- [2026-07-26 业务联系单详情页改为纯文本展示](./changelogs/change-log-2026-07-26-pre-order-detail-readonly-view.md)
+- [2026-07-26 业务联系单待审核/通过走详情路由](./changelogs/change-log-2026-07-26-pre-order-detail-route.md)
 - [2026-07-26 biz-select 禁用无值只读态显示「-」](./changelogs/change-log-2026-07-26-biz-select-disabled-empty-dash.md)
 - [2026-07-26 审批流程弹窗加载中空白修复](./changelogs/change-log-2026-07-26-workflow-timeline-loading-blank.md)
 - [2026-07-26 工作流任务类型增加业务联系单 PreOrder=8](./changelogs/change-log-2026-07-26-workflow-pre-order-task-type.md)

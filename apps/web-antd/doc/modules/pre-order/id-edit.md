@@ -9,7 +9,7 @@ last_updated: 2026-07-26
 
 **白话解释：** 这一页是业务联系单的全生命周期工作台。销售在这里录入意向业务的基础信息、干系人、箱型箱量、要做哪些服务、报价多少，然后提交审核；审核人在同一页做通过或驳回；通过后系统生成海运出口单，页面出现第二个 Tab，可以直接在里面编辑那张海运出口。
 
-`/pre-order/add`（新建）与 `/pre-order/:id/edit`（编辑）复用同一个组件，区别只在于有没有 `id`。
+`/pre-order/add`（新建）与 `/pre-order/:id/edit`（编辑）复用 `editor.vue`；待审核/通过走独立详情页 `detail.vue`（纯展示）。有无 `id` 区分新建；状态流转后 `syncRouteByStatus` 会把 URL 对齐到 edit/detail。
 
 # 2. 功能与操作说明 (Features & Operations)
 
@@ -17,8 +17,8 @@ last_updated: 2026-07-26
   - **基础信息**：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题 meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主栏分区（基础信息 + 收发通（发货人/收货人/通知人各一组 id + Content，布局对齐海出 party-flow）+ 港口信息，港口区为海出同款 5 列流转卡片：收货地 → 起运港 → 中转港（Tab 切 1/2） → 目的港 → 交货地，每个节点下方带备注）+ 下方「货物与箱型」（标题栏内联货物类型/品名；卡片内左右分栏：左箱型箱量表 + 右竖排件数/包装/毛重/尺码）、费用卡片；右侧干系人默认五角色（销售/商务(航线)/操作/客服/单证），每行带用户头像。
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现，内嵌完整可编辑的海运出口编辑器。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`。新增成功后 `replace` 到编辑路由并重新拉详情。
-- **提交审核：** 二次确认后调用 `SubmitAsync`，进入「待审核」，整单转只读。
-- **撤回：** 「待审核」状态下调用 `UnSubmitAsync` 回到「录入状态」。
+- **提交审核：** 二次确认后调用 `SubmitAsync`，进入「待审核」，整单转只读，并 `replace` 到 `/pre-order/:id/detail`。
+- **撤回：** 「待审核」状态下调用 `UnSubmitAsync` 回到「录入状态」，并 `replace` 回编辑路由。
 - **审核通过 / 审核驳回：** 「待审核」状态下弹窗填写意见；通过时若缺少「操作」干系人，弹窗强制先指派。
 - **审核后驳回：** 「通过」状态下可用，二次确认提示必须先删除关联海运出口。
 - **审核流程：** 任意已保存单据可点「审核流程」，复用 `workflow-timeline`，`taskType = TaskType.PreOrder(8)`。
@@ -103,6 +103,7 @@ last_updated: 2026-07-26
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-26 | `Feature` | 待审核/通过对齐 `/detail`（独立纯展示页），录入/驳回对齐 `/edit`；提交/撤回/审核后自动 `replace` | `syncRouteByStatus` + `getPreOrderFormPath`；详情不再复用本页禁用表单 |
 | 2026-07-26 | `Fix` | 「审核流程」弹窗加载中不再空白：有占位文案与最小高度，失败时展示 ABP 错误信息 | 根因是 `workflow-timeline-modal` 在 `loading && !data` 时三个 v-if 全 miss，Spin 无子节点高度塌缩；接口慢/超时时体感为“点了没显示” |
 | 2026-07-26 | `Style`/`Fix` | 顶部「基础信息」content-tabs 不再被下方超高内容压扁，视觉对齐海运出口编辑器 Tab 条 | `pre-order-editor-page` 固定高度 + `min-h-0` 下未设 `flex-shrink:0` 的 sticky Tab 会被挤到 ~18px；补 `flex-shrink:0` + `min-height:40px` |
 | 2026-07-26 | `Fix` | 委托单位编辑/复制回显用详情 `client.name` 注入 `selectedItems`，不再显示 Guid | `fillFromDetail` → `bindClientUserLinkage(toSelectedItems(...))`，与 `onChange` 同次 updateSchema，对齐海出 `clientId` 回显 |
