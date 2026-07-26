@@ -105,6 +105,21 @@ const [Modal, modalApi] = useVbenModal({
       );
     }
 
+    // 等待 DOM 和 Grid 完全初始化
+    await nextTick();
+    await nextTick();
+
+    // 强制刷新列配置，确保默认箱型列显示
+    if (addedCtnTypes.value.length > 0 && gridApi.grid) {
+      console.log('🔄 强制刷新列配置，箱型数量:', addedCtnTypes.value.length);
+      const currentData = gridApi.grid.getData() || [];
+      gridApi.setGridOptions({
+        columns: buildColumns(),
+        data: currentData,
+      });
+      console.log('✅ 列配置已刷新');
+    }
+
     // 如果有AI识别的数据，则使用AI数据填充表格
     if (aiData.value && aiData.value.length > 0) {
       console.log('✅ 检测到AI数据，开始处理:', aiData.value.length, '条记录');
@@ -833,7 +848,7 @@ function getPortName(portId: number | string | undefined): string {
   const key = String(portId);
   const cachedName = labelCache.value.ports.get(key);
   // 如果缓存中有名称则返回，否则显示"港口(ID)"格式
-  return cachedName || `港口(${portId})`;
+  return cachedName || `-`;
 }
 
 // 获取币别名称（从缓存或返回ID）

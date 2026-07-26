@@ -185,7 +185,11 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
     proxyConfig: {
       ajax: {
         query: async () => {
+          // 如果 transportOrderId 为空，清空数据并返回空数组
           if (props.transportOrderId === '') {
+            console.log('📋 OrderFeeTable: transportOrderId 为空，清空数据');
+            dataSource.value = [];
+            emit('updateTableData', dataSource.value);
             return [];
           }
           const detail = await OrderFeeTaskDetailAsync({
@@ -266,9 +270,15 @@ const emit = defineEmits(['updateTableData', 'updateSelectData']);
 // );
 watch(
   [() => props.transportOrderId, () => props.entityId],
-  ([newSubmissionId, newEntityId]) => {
-    if (newSubmissionId && newEntityId) {
-      console.log('newSubmissionId', newSubmissionId);
+  ([newSubmissionId, newEntityId], [oldSubmissionId, oldEntityId]) => {
+    // 当 ID 发生变化时（包括变为空），都重新加载数据
+    if (newSubmissionId !== oldSubmissionId || newEntityId !== oldEntityId) {
+      console.log('🔄 OrderFeeTable: transportOrderId 或 entityId 发生变化', {
+        newSubmissionId,
+        newEntityId,
+        oldSubmissionId,
+        oldEntityId,
+      });
       getTableDate();
     }
   },
