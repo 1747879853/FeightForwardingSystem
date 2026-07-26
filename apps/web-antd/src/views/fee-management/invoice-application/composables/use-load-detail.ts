@@ -84,6 +84,7 @@ export function useLoadDetail(
 
       formData.value = {
         id: detail.id,
+        applicationNo: detail.applicationNo, // ✅ 新增：申请单号
         settlementId: detail.settlementId,
         orgId: detail.orgId,
         currencyId: detail.currencyId || 1,

@@ -190,11 +190,13 @@ export function useFeeSelection(
       // 处理商品明细
       await mergeGoodsDetailsFromApplications(selectedApplications);
 
-      // 构建备注信息（从选择的发票信息中获取，多条用|分隔）
+      // 构建备注信息（从选择的发票信息中获取，多条用----------------------------------------分隔）
       const remarks = selectedApplications
         .map((app: any) => app.remark || '')
         .filter(Boolean);
-      const combinedRemark = remarks.join('|');
+      const combinedRemark = remarks.join(
+        '\n----------------------------------------\n',
+      );
 
       // 构建提交数据
       const submitData: InvoiceIssueApi.InvoiceIssueAddDto = {

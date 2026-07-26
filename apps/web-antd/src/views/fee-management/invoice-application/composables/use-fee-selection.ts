@@ -118,7 +118,16 @@ export function useFeeSelectionSave(
           remark: formData.value.remark,
         });
 
+        // ✅ 关键修复：先将费用添加到表单，确保 invoiceApplicationItems 有数据
+        // 这样 loadDefaultRemarkTemplate 才能从费用数据中提取主提单号和委托编号
+        addSelectedFeesToForm(selectedFees);
+        console.log(
+          '✅ 费用已添加到表单，invoiceApplicationItems 数量:',
+          formData.value.invoiceApplicationItems?.length || 0,
+        );
+
         // ✅ 在新增前，先加载默认备注模板（如果备注为空）
+        // 此时 invoiceApplicationItems 已有数据，可以正确提取主提单号和委托编号
         if (
           loadDefaultRemarkTemplate &&
           (!formData.value.remark || !formData.value.remark.trim())
@@ -369,11 +378,15 @@ export function useFeeSelectionSave(
       }
     }
 
-    // 添加费用到表单（用于前端显示）
-    addSelectedFeesToForm(selectedFees);
+    // ✅ 编辑状态下才需要在这里添加费用到表单
+    // 新增状态下已经在前面调用过 addSelectedFeesToForm 了
+    if (isEdit) {
+      addSelectedFeesToForm(selectedFees);
+    }
 
     // 自动加载当前币别对应的默认备注模板
-    if (loadDefaultRemarkTemplate) {
+    // 注意：新增状态下已经在前面调用过了，这里只在编辑状态下再次调用以更新数据
+    if (loadDefaultRemarkTemplate && isEdit) {
       await loadDefaultRemarkTemplate();
     }
 

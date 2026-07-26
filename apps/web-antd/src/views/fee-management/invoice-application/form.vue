@@ -64,6 +64,18 @@ const {
   flattenTreeData,
 } = useFormData();
 
+// ✅ 新增：计算属性 - 获取结算对象名称
+const settlementObjectName = computed(() => {
+  // 从 feeGroupsData 中获取第一个费用的结算单位名称
+  if (feeGroupsData.value && feeGroupsData.value.length > 0) {
+    const firstGroup = feeGroupsData.value[0];
+    if (firstGroup.feeDetails && firstGroup.feeDetails.length > 0) {
+      return firstGroup.feeDetails[0].settlementUnit || '-';
+    }
+  }
+  return '-';
+});
+
 const {
   handleGoodsNameChange,
   handleQuantityOrPriceChange,
@@ -312,7 +324,14 @@ function handleOpenFeeDrawer() {
 
 async function handleOpenFeeDetailModal() {
   const items = formData.value.invoiceApplicationItems || [];
-  if (items.length === 0) return;
+
+  // ✅ 修复：即使没有费用也允许打开弹窗，显示空状态
+  if (items.length === 0) {
+    selectedFeeDetails.value = [];
+    feeDetailModalVisible.value = true;
+    return;
+  }
+
   if (feeGroupsData.value.length === 0) {
     message.error('费用数据丢失，请重新添加费用');
     return;
@@ -531,6 +550,17 @@ onMounted(() => {
                 :label-col="{ span: 8 }"
                 :wrapper-col="{ span: 16 }"
               >
+                <!-- ✅ 新增：申请单号和结算对象 -->
+                <Form.Item label="申请单号">
+                  <span>{{ formData.applicationNo || '自动生成' }}</span>
+                </Form.Item>
+                <Form.Item label="结算对象">
+                  <Input
+                    :value="settlementObjectName"
+                    disabled
+                    placeholder="从费用中自动获取"
+                  />
+                </Form.Item>
                 <Form.Item label="归属组织" required>
                   <MyOrgSelect
                     v-model="formData.orgId"

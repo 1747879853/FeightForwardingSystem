@@ -600,16 +600,38 @@ function replacePlaceholders(
 ): string {
   if (!template) return '';
 
+  console.log('🔍 replacePlaceholders - 输入数据:', {
+    commissionNum: templateData.commissionNum,
+    mblNum: templateData.mblNum,
+    templateLength: template.length,
+  });
+
   let result = template;
 
-  // 委托编号
+  // 委托编号 - 使用字符串替换方法，避免正则转义问题
   if (templateData.commissionNum) {
-    result = result.replace(/\<委托编号\>/g, templateData.commissionNum);
+    const beforeReplace = result;
+    result = result.split('<委托编号>').join(templateData.commissionNum);
+    console.log('✅ 委托编号替换:', {
+      before: beforeReplace.includes('<委托编号>'),
+      after: result.includes('<委托编号>'),
+      value: templateData.commissionNum,
+    });
+  } else {
+    console.warn('⚠️ 委托编号为空，跳过替换');
   }
 
-  // 主提单号
+  // 主提单号 - 使用字符串替换方法，避免正则转义问题
   if (templateData.mblNum) {
-    result = result.replace(/<主提单号>/g, templateData.mblNum);
+    const beforeReplace = result;
+    result = result.split('<主提单号>').join(templateData.mblNum);
+    console.log('✅ 主提单号替换:', {
+      before: beforeReplace.includes('<主提单号>'),
+      after: result.includes('<主提单号>'),
+      value: templateData.mblNum,
+    });
+  } else {
+    console.warn('⚠️ 主提单号为空，跳过替换');
   }
 
   // 发票汇率

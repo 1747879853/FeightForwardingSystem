@@ -104,55 +104,84 @@ function generateExampleText(template: string): string {
 function generateRemarkFromFeeDetails(template: string): string {
   if (!template) return '';
 
+  console.log(
+    '🔍 SelectRemarkTemplateModal.generateRemarkFromFeeDetails - 输入:',
+    {
+      templateLength: template.length,
+      hasTemplateData: !!props.templateData,
+      feeDetailsCount: props.feeDetails?.length || 0,
+    },
+  );
+
   let result = template;
   const items = props.feeDetails || [];
 
   // 优先使用传入的 templateData（动态计算的数据）
   if (props.templateData) {
-    // 委托编号
+    console.log('✅ 使用 templateData:', {
+      commissionNum: props.templateData.commissionNum,
+      mblNum: props.templateData.mblNum,
+    });
+
+    // 委托编号 - 使用字符串替换方法，避免正则转义问题
     if (props.templateData.commissionNum) {
-      result = result.replace(
-        /\<委托编号\>/g,
-        props.templateData.commissionNum,
-      );
+      const beforeReplace = result;
+      result = result
+        .split('<委托编号>')
+        .join(props.templateData.commissionNum);
+      console.log('✅ 委托编号替换:', {
+        before: beforeReplace.includes('<委托编号>'),
+        after: result.includes('<委托编号>'),
+        value: props.templateData.commissionNum,
+      });
+    } else {
+      console.warn('⚠️ templateData.commissionNum 为空');
     }
 
-    // 主提单号
+    // 主提单号 - 使用字符串替换方法，避免正则转义问题
     if (props.templateData.mblNum) {
-      result = result.replace(/<主提单号>/g, props.templateData.mblNum);
+      const beforeReplace = result;
+      result = result.split('<主提单号>').join(props.templateData.mblNum);
+      console.log('✅ 主提单号替换:', {
+        before: beforeReplace.includes('<主提单号>'),
+        after: result.includes('<主提单号>'),
+        value: props.templateData.mblNum,
+      });
+    } else {
+      console.warn('⚠️ templateData.mblNum 为空');
     }
 
-    // 发票汇率
+    // 发票汇率 - 方括号需要转义
     result = result.replace(
       /\[折算汇率\]/g,
       String(props.templateData.invoiceExchangeRate),
     );
 
-    // 外币金额总计
+    // 外币金额总计 - 方括号和圆括号都需要转义
     result = result.replace(
       /\[外币金额\(总计\)\]/g,
       props.templateData.foreignCurrencyAmount,
     );
 
-    // 人民币金额总计
+    // 人民币金额总计 - 方括号和圆括号都需要转义
     result = result.replace(
       /\[人民币金额\(总计\)\]/g,
       props.templateData.rmbAmount,
     );
 
-    // 购方银行
+    // 购方银行 - 方括号需要转义
     result = result.replace(/\[购方银行\]/g, props.templateData.clientBankName);
 
-    // 购方账号
+    // 购方账号 - 方括号需要转义
     result = result.replace(
       /\[购方账号\]/g,
       props.templateData.clientBankAccount,
     );
 
-    // 销方银行
+    // 销方银行 - 方括号需要转义
     result = result.replace(/\[销方银行\]/g, props.templateData.orgBankName);
 
-    // 销方账号
+    // 销方账号 - 方括号需要转义
     result = result.replace(/\[销方账号\]/g, props.templateData.orgBankAccount);
 
     return result;
@@ -193,17 +222,16 @@ function generateRemarkFromFeeDetails(template: string): string {
   });
 
   // 替换占位符
-  // 委托编号
+  // 委托编号 - 使用字符串替换方法，避免正则转义问题
   if (commissionNums.size > 0) {
-    result = result.replace(
-      /\<委托编号\>/g,
-      Array.from(commissionNums).join('、'),
-    );
+    result = result
+      .split('<委托编号>')
+      .join(Array.from(commissionNums).join('、'));
   }
 
-  // 主提单号
+  // 主提单号 - 使用字符串替换方法，避免正则转义问题
   if (mblNums.size > 0) {
-    result = result.replace(/<主提单号>/g, Array.from(mblNums).join('、'));
+    result = result.split('<主提单号>').join(Array.from(mblNums).join('、'));
   }
 
   // 金额信息

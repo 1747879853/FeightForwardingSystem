@@ -37,7 +37,7 @@ export function useFormData() {
     orgId: 0,
     currencyId: null,
     invoiceType: 'p', // 默认普通发票-电票
-    invoiceIssueType: InvoiceIssueApi.InvoiceIssueType.NuonuoInterface,
+    invoiceIssueType: InvoiceIssueApi.InvoiceIssueType.ManualRecord, // 默认手动开票
     require: '',
     remark: '',
     orgBankAccountId: '',

@@ -210,10 +210,7 @@ function handleOpenFeeDrawer() {
 
 /** 打开查看发票明细弹窗 */
 function handleOpenInvoiceDetailModal() {
-  if (applicationGroupsData.value.length === 0) {
-    message.warning('暂无已选择的发票数据');
-    return;
-  }
+  // 无论是否有数据，都打开弹窗（空数据时表格显示为空）
   invoiceDetailModalVisible.value = true;
 }
 
@@ -367,7 +364,7 @@ onMounted(() => {
                         value: InvoiceIssueApi.InvoiceIssueType.NuonuoInterface,
                       },
                       {
-                        label: '手动记录',
+                        label: '手动开票',
                         value: InvoiceIssueApi.InvoiceIssueType.ManualRecord,
                       },
                     ]"
@@ -684,15 +681,11 @@ onMounted(() => {
                     /></template>
                     导入发票
                   </Button>
-                  <Button
-                    size="small"
-                    @click="handleOpenInvoiceDetailModal"
-                    :disabled="applicationGroupsData.length === 0"
-                  >
+                  <Button size="small" @click="handleOpenInvoiceDetailModal">
                     <template #icon
                       ><IconifyIcon icon="ant-design:eye-outlined"
                     /></template>
-                    查看发票明细 ({{ applicationGroupsData.length }})
+                    查看发票明细
                   </Button>
                 </Space>
               </div>
