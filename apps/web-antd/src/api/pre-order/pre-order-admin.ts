@@ -22,6 +22,19 @@ export enum PreOrderBizType {
   SeaImport = 1,
 }
 
+export const PRE_ORDER_BIZ_TYPE_TEXT: Partial<Record<PreOrderBizType, string>> =
+  {
+    [PreOrderBizType.SeaExport]: '海运出口',
+  };
+
+/** 标题栏业务类型下拉选项（本期仅开放已落地的类型） */
+export function getPreOrderBizTypeOptions() {
+  return Object.entries(PRE_ORDER_BIZ_TYPE_TEXT).map(([value, label]) => ({
+    label: label as string,
+    value: Number(value),
+  }));
+}
+
 /** 服务项与海运出口的对比结果 */
 export enum PreOrderServiceCompareStatus {
   /** 相同 */

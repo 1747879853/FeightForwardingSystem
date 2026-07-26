@@ -43,7 +43,7 @@ export const PAY_SIDE_OPTIONS = [
 
 /**
  * 基础信息（业务/单据属性）。
- * 业务编号/状态/归属组织/装运方式对齐海运出口展示在分区标题栏 meta 区，不进表单。
+ * 业务编号/状态/归属组织/业务类型/装运方式对齐海运出口展示在分区标题栏 meta 区，不进表单。
  */
 export function usePreOrderBasicSchema(): VbenFormSchema[] {
   return [

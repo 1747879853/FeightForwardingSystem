@@ -1,7 +1,7 @@
 /**
  * 海运出口「干系人（orderUsers）」面板逻辑。
  *
- * 封装干系人行的状态、角色增删、用户详情懒加载、头像/状态展示与三套保存校验，
+ * 封装干系人行的状态、角色增删、用户展示信息批量加载、头像/状态展示与三套保存校验，
  * 从 form.vue 抽出以收敛该域的认知负担；模板面板仍在 form.vue 中通过返回值渲染。
  */
 import type { ComputedRef, Ref } from 'vue';
@@ -16,9 +16,9 @@ import type { ClientAdminApi } from '#/api/sea-export/client-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
-import { getUser, UserAttribute } from '#/api/system/user-admin';
+import { getUserListByIds, UserAttribute } from '#/api/system/user-admin';
+import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import { $t } from '#/locales';
-import { buildAttachmentUrl } from '#/utils';
 import {
   formatDeletedUserFallback,
   resolveUserDisplayName,
@@ -84,11 +84,11 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
 
   const orderUserRows = ref<OrderUserEditorRow[]>([]);
   const orderUserNameMap = ref<Record<number, string>>({});
-  const orderUserDetailMap = ref<Record<number, SystemUserAdminApi.UserDto>>(
-    {},
-  );
+  const orderUserDetailMap = ref<
+    Record<number, SystemUserAdminApi.UserInfoDto>
+  >({});
   const orderUserDetailLoadingMap = ref<Record<number, boolean>>({});
-  /** 已确认 getUser 失败的用户，才展示「已删除」兜底 */
+  /** 已确认批量接口未命中（真删/错 id）的用户，才展示「已删除」兜底 */
   const orderUserLoadFailedSet = ref(new Set<number>());
   let orderUserRowKeyCounter = 0;
   const makeOrderUserRowKey = () =>
@@ -187,15 +187,13 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
     return [{ id: row.userId, nickName }];
   };
   const getOrderUserAvatarSrc = (userId?: number) => {
-    const avatar = getOrderUserDetail(userId)?.avatar?.trim();
-    if (avatar) return buildAttachmentUrl(avatar);
+    // UserInfoDto 不含头像，统一用默认头像
+    void userId;
     return preferences.app.defaultAvatar;
   };
   const getOrderUserAvatarText = (row: OrderUserEditorRow) => {
     const displayName =
-      getOrderUserDisplayName(row) ||
-      getOrderUserDetail(row.userId)?.nickName ||
-      getOrderUserDetail(row.userId)?.userName;
+      getOrderUserDisplayName(row) || getOrderUserDetail(row.userId)?.nickName;
     const normalized = displayName?.trim();
     if (normalized) return normalized.slice(0, 1);
     return '?';
@@ -205,23 +203,31 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
   const isOrderUserDetailLoading = (userId?: number) =>
     !!(userId && orderUserDetailLoadingMap.value[userId]);
   const getOrderUserDetailText = (value?: string) => value?.trim() || '-';
-  const getOrderUserStatusText = (detail?: SystemUserAdminApi.UserDto) => {
-    if (!detail) return '未知';
-    return detail.isActive ? '启用' : '禁用';
+  const getOrderUserOrgText = (userId?: number) => {
+    const orgs = getOrderUserDetail(userId)?.organizations;
+    if (!orgs?.length) return '';
+    const preferred = orgs.find((item) => item.default) ?? orgs[0];
+    return formatOrgPathLabel(preferred?.oneOrganizationPath);
   };
-  const getOrderUserStatusClass = (detail?: SystemUserAdminApi.UserDto) => {
-    if (!detail?.isActive) return 'order-user-detail-card__status--inactive';
+  const getOrderUserStatusText = (detail?: SystemUserAdminApi.UserInfoDto) => {
+    if (!detail) return '未知';
+    return detail.enable === false ? '禁用' : '启用';
+  };
+  const getOrderUserStatusClass = (detail?: SystemUserAdminApi.UserInfoDto) => {
+    if (!detail || detail.enable === false) {
+      return 'order-user-detail-card__status--inactive';
+    }
     return 'order-user-detail-card__status--active';
   };
   const syncOrderUserName = (userId: number, userName: string) => {
     orderUserNameMap.value = { ...orderUserNameMap.value, [userId]: userName };
   };
-  const syncOrderUserDetail = (detail: SystemUserAdminApi.UserDto) => {
+  const syncOrderUserDetail = (detail: SystemUserAdminApi.UserInfoDto) => {
     orderUserDetailMap.value = {
       ...orderUserDetailMap.value,
       [detail.id]: detail,
     };
-    const displayName = detail.nickName || detail.userName || String(detail.id);
+    const displayName = detail.nickName?.trim() || String(detail.id);
     syncOrderUserName(detail.id, displayName);
   };
   const setOrderUserNameForRow = (
@@ -236,52 +242,118 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
     });
     syncOrderUsersToForm();
   };
+  const markOrderUserLoadFailed = (userId: number) => {
+    orderUserLoadFailedSet.value = new Set([
+      ...orderUserLoadFailedSet.value,
+      userId,
+    ]);
+  };
+  const clearOrderUserLoadFailed = (userId: number) => {
+    if (!orderUserLoadFailedSet.value.has(userId)) return;
+    const next = new Set(orderUserLoadFailedSet.value);
+    next.delete(userId);
+    orderUserLoadFailedSet.value = next;
+  };
+  const applyOrderUserDetailToRows = (
+    userId: number,
+    displayName: string,
+    rowKeys?: string[],
+  ) => {
+    const targets =
+      rowKeys ??
+      orderUserRows.value
+        .filter((row) => row.userId === userId)
+        .map((row) => row._rowKey);
+    for (const rowKey of targets) {
+      setOrderUserNameForRow(rowKey, userId, displayName);
+    }
+  };
+  /**
+   * 按 id 批量拉取干系人展示信息（一次请求），写入 detail/name 缓存。
+   * 不存在的 id 静默记为失败并走「已删除」兜底，不抛错以免拖垮整页。
+   */
+  const loadOrderUserDetailsByIds = async (
+    userIds: number[],
+    rowKeyByUserId?: Map<number, string[]>,
+  ) => {
+    const uniqueIds = [...new Set(userIds.filter((id) => id > 0))];
+    const toLoad = uniqueIds.filter(
+      (id) =>
+        !orderUserDetailMap.value[id] && !orderUserDetailLoadingMap.value[id],
+    );
+    const applyCached = (id: number) => {
+      const cached = orderUserDetailMap.value[id];
+      if (!cached) return;
+      applyOrderUserDetailToRows(
+        id,
+        resolveUserDisplayName(id, undefined, cached),
+        rowKeyByUserId?.get(id),
+      );
+    };
+    for (const id of uniqueIds) {
+      if (!toLoad.includes(id)) applyCached(id);
+    }
+    if (!toLoad.length) return;
+
+    const loadingPatch: Record<number, boolean> = {};
+    for (const id of toLoad) loadingPatch[id] = true;
+    orderUserDetailLoadingMap.value = {
+      ...orderUserDetailLoadingMap.value,
+      ...loadingPatch,
+    };
+
+    try {
+      const list = await getUserListByIds(toLoad, { silent: true });
+      const foundIds = new Set(list.map((item) => item.id));
+      for (const detail of list) {
+        clearOrderUserLoadFailed(detail.id);
+        syncOrderUserDetail(detail);
+        applyOrderUserDetailToRows(
+          detail.id,
+          resolveUserDisplayName(detail.id, undefined, detail),
+          rowKeyByUserId?.get(detail.id),
+        );
+      }
+      for (const id of toLoad) {
+        if (foundIds.has(id)) continue;
+        const rowKey = rowKeyByUserId?.get(id)?.[0];
+        const row = rowKey
+          ? orderUserRows.value.find((item) => item._rowKey === rowKey)
+          : orderUserRows.value.find((item) => item.userId === id);
+        const fallback = resolveUserDisplayName(id, row?.userName);
+        markOrderUserLoadFailed(id);
+        syncOrderUserName(id, fallback);
+        applyOrderUserDetailToRows(id, fallback, rowKeyByUserId?.get(id));
+      }
+    } catch {
+      for (const id of toLoad) {
+        const rowKey = rowKeyByUserId?.get(id)?.[0];
+        const row = rowKey
+          ? orderUserRows.value.find((item) => item._rowKey === rowKey)
+          : orderUserRows.value.find((item) => item.userId === id);
+        const fallback = resolveUserDisplayName(id, row?.userName);
+        markOrderUserLoadFailed(id);
+        syncOrderUserName(id, fallback);
+        applyOrderUserDetailToRows(id, fallback, rowKeyByUserId?.get(id));
+      }
+    } finally {
+      const donePatch: Record<number, boolean> = {};
+      for (const id of toLoad) donePatch[id] = false;
+      orderUserDetailLoadingMap.value = {
+        ...orderUserDetailLoadingMap.value,
+        ...donePatch,
+      };
+    }
+  };
   const loadOrderUserDetail = async (
     userId: number | undefined,
     rowKey?: string,
   ) => {
     if (!userId) return;
-    const cachedDetail = orderUserDetailMap.value[userId];
-    if (cachedDetail) {
-      setOrderUserNameForRow(
-        rowKey,
-        userId,
-        resolveUserDisplayName(userId, undefined, cachedDetail),
-      );
-      return;
-    }
-    if (orderUserDetailLoadingMap.value[userId]) return;
-    orderUserDetailLoadingMap.value = {
-      ...orderUserDetailLoadingMap.value,
-      [userId]: true,
-    };
-    try {
-      const detail = await getUser(userId, { silent: true });
-      if (orderUserLoadFailedSet.value.has(userId)) {
-        const next = new Set(orderUserLoadFailedSet.value);
-        next.delete(userId);
-        orderUserLoadFailedSet.value = next;
-      }
-      syncOrderUserDetail(detail);
-      const displayName = resolveUserDisplayName(userId, undefined, detail);
-      setOrderUserNameForRow(rowKey, userId, displayName);
-    } catch {
-      const row = rowKey
-        ? orderUserRows.value.find((item) => item._rowKey === rowKey)
-        : undefined;
-      const fallback = resolveUserDisplayName(userId, row?.userName);
-      orderUserLoadFailedSet.value = new Set([
-        ...orderUserLoadFailedSet.value,
-        userId,
-      ]);
-      syncOrderUserName(userId, fallback);
-      setOrderUserNameForRow(rowKey, userId, fallback);
-    } finally {
-      orderUserDetailLoadingMap.value = {
-        ...orderUserDetailLoadingMap.value,
-        [userId]: false,
-      };
-    }
+    const rowKeyByUserId = rowKey
+      ? new Map<number, string[]>([[userId, [rowKey]]])
+      : undefined;
+    await loadOrderUserDetailsByIds([userId], rowKeyByUserId);
   };
   const withOrderUserSortId = (rows: OrderUserEditorRow[]) => {
     const total = rows.length;
@@ -373,13 +445,14 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
     });
   };
   const fillOrderUserNames = async (rows: OrderUserEditorRow[]) => {
-    const toLoadRows = rows.filter(
-      (row): row is OrderUserEditorRow & { userId: number } =>
-        row.userId != null && row.userId > 0,
-    );
-    await Promise.all(
-      toLoadRows.map((row) => loadOrderUserDetail(row.userId, row._rowKey)),
-    );
+    const rowKeyByUserId = new Map<number, string[]>();
+    for (const row of rows) {
+      if (row.userId == null || row.userId <= 0) continue;
+      const keys = rowKeyByUserId.get(row.userId) ?? [];
+      keys.push(row._rowKey);
+      rowKeyByUserId.set(row.userId, keys);
+    }
+    await loadOrderUserDetailsByIds([...rowKeyByUserId.keys()], rowKeyByUserId);
   };
   const initializeOrderUsersPanel = (
     items: SeaExportAdminApi.OrderUserAddDto[] | undefined,
@@ -618,6 +691,7 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
     getOrderUserDetail,
     isOrderUserDetailLoading,
     getOrderUserDetailText,
+    getOrderUserOrgText,
     getOrderUserStatusText,
     getOrderUserStatusClass,
     loadOrderUserDetail,

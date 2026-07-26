@@ -33,6 +33,7 @@ import {
   addPreOrder,
   auditPreOrder,
   editPreOrder,
+  getPreOrderBizTypeOptions,
   getPreOrderDetail,
   PreOrderBizType,
   PreOrderStatus,
@@ -111,11 +112,16 @@ const auditSuccess = ref(true);
 /** 提交 DTO 的 JSON 快照，用于未保存拦截 */
 const formSnapshot = ref('');
 
-/** 归属组织 / 装运方式对齐海运出口放在标题栏 meta 区，不进表单 */
+/** 归属组织 / 业务类型 / 装运方式对齐海运出口放在标题栏 meta 区，不进表单 */
 const headerOrgId = ref<null | number | undefined>();
 /** 编辑回显兜底选项：详情 orgs 路径拼完整公司名，组织加载完成前也能正确显示 */
 const headerOrgSelectedItems = ref<Array<{ label: string; value: number }>>([]);
-const headerBlType = ref<number>(0);
+const headerBizType = ref<PreOrderBizType | undefined>(
+  PreOrderBizType.SeaExport,
+);
+const bizTypeOptions = getPreOrderBizTypeOptions();
+/** 新建默认不选，保存前强制选择 */
+const headerBlType = ref<number | undefined>();
 const blTypeOptions = getBlTypeOptions();
 
 const ctns = ref<PreOrderCtnRow[]>([]);
@@ -132,12 +138,12 @@ const services = ref<PreOrderServiceRow[]>([]);
 const fees = ref<PreOrderFeeRow[]>([]);
 
 const status = computed(() => detail.value?.status ?? PreOrderStatus.Entering);
-/** 仅录入/驳回可编辑，其余状态整单只读 */
-const readonly = computed(
+/** 录入/驳回（含新建）显示保存与提交审核；表单本身不按状态禁用 */
+const canSave = computed(
   () =>
-    isEdit.value &&
-    status.value !== PreOrderStatus.Entering &&
-    status.value !== PreOrderStatus.Rejected,
+    !isEdit.value ||
+    status.value === PreOrderStatus.Entering ||
+    status.value === PreOrderStatus.Rejected,
 );
 const hasSeaExport = computed(
   () =>
@@ -370,26 +376,12 @@ const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
   wrapperClass: 'form-controls-small grid-cols-2 gap-x-3',
 });
 
-/** 只读态同步到各表单 commonConfig.disabled */
-watch(
-  readonly,
-  (value) => {
-    const state = { commonConfig: { disabled: value } };
-    void basicFormApi.setState(state);
-    void partyFormApi.setState(state);
-    void portFormApi.setState(state);
-    void cargoFormApi.setState(state);
-    void cargoTypeInlineFormApi.setState(state);
-  },
-  { immediate: true },
-);
-
 /**
  * 委托单位变更：按客户维护的干系人默认回填（销售/客服/操作/单证），
- * 操作/单证/客服缺失时兜底当前登录账号。可编辑态用户主动切换时生效。
+ * 操作/单证/客服缺失时兜底当前登录账号。可保存态用户主动切换时生效。
  */
 async function applyClientDefaultUsersByClientId(value: unknown) {
-  if (readonly.value) return;
+  if (!canSave.value) return;
   const clientId =
     value === null || value === undefined || value === ''
       ? undefined
@@ -415,12 +407,13 @@ async function applyClientDefaultUsersByClientId(value: unknown) {
   );
 }
 
-/** 委托单位变更：同步服务项候选 + 干系人默认回填 */
-function bindClientUserLinkage() {
+/** 委托单位变更：同步服务项候选 + 干系人默认回填；详情回填时顺带注入 selectedItems */
+function bindClientUserLinkage(selectedItems?: any[]) {
   basicFormApi.updateSchema([
     {
       fieldName: 'clientId',
       componentProps: {
+        ...(selectedItems ? { selectedItems } : {}),
         onChange: (value: unknown, option?: unknown) => {
           currentClientId.value = toOptionalStringId(value);
           if (currentClientId.value) {
@@ -564,7 +557,11 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   headerOrgSelectedItems.value = detailOrgLast?.id
     ? [{ value: detailOrgLast.id, label: formatOrgPathLabel(detailOrgs) }]
     : [];
-  headerBlType.value = dto.blType ?? 0;
+  headerBizType.value = dto.bizType ?? PreOrderBizType.SeaExport;
+  headerBlType.value =
+    dto.blType === null || dto.blType === undefined ? undefined : dto.blType;
+  // 详情已返回 client 对象：注入 selectedItems，避免委托单位回显成 Guid（对齐海出）
+  bindClientUserLinkage(toSelectedItems(dto.clientId, dto.client?.name));
   void basicFormApi.setValues({
     clientId: dto.clientId,
     mblNum: dto.mblNum,
@@ -747,14 +744,14 @@ async function buildSubmitPayload() {
     number | null | undefined
   >;
   return {
-    bizType: PreOrderBizType.SeaExport,
+    bizType: headerBizType.value,
     ...basicValues,
     ...partyValues,
     ...portValues,
     ...cargoValues,
     cargoId: cargoTypeValues.cargoId ?? 0,
     orgId: headerOrgId.value,
-    blType: headerBlType.value ?? 0,
+    blType: headerBlType.value,
     preOrderNum: undefined,
     preOrderCodeGoodss: orderCodeGoodss
       .filter((id): id is number => id != null)
@@ -766,7 +763,9 @@ async function buildSubmitPayload() {
         count: rest.count ?? 0,
       }),
     ),
-    preOrderUsers: users.value.map(({ rowKey, ...rest }) => rest),
+    preOrderUsers: users.value
+      .filter((row) => hasValidUserId(row.userId))
+      .map(({ rowKey, ...rest }) => rest),
     preOrderServices: services.value.map((item) => ({
       serviceType: item.serviceType,
       sortId: item.sortId ?? 0,
@@ -799,13 +798,14 @@ async function syncFormSnapshot() {
 }
 
 async function isFormDirty(): Promise<boolean> {
-  if (readonly.value || !formSnapshot.value) return false;
+  // 不可保存状态不拦截离开（改了也落不了库）
+  if (!canSave.value || !formSnapshot.value) return false;
   return (await buildSnapshot()) !== formSnapshot.value;
 }
 
 useUnsavedGuard({ isDirty: isFormDirty });
 
-/** 销售必填且唯一，与后端卡点保持一致，提前拦截以免白跑一次请求 */
+/** 销售必填且唯一；操作等其余角色可空，提交时剔除未选人的行 */
 function validateUsers(): boolean {
   const sales = users.value.filter(
     (row) => Number(row.userAttribute) === USER_ATTRIBUTE.Sale && row.userId,
@@ -814,9 +814,24 @@ function validateUsers(): boolean {
     message.warning('销售必填且只能指派一个用户');
     return false;
   }
-  if (users.value.some((row) => !row.userId)) {
-    message.warning('干系人存在未选择人员的行');
+  return true;
+}
+
+/** 箱型行箱量必填且须大于 0；有行时箱型也须选好 */
+function validateCtns(): boolean {
+  if (ctns.value.length === 0) {
+    message.warning('请至少添加一条箱型箱量');
     return false;
+  }
+  for (const [index, row] of ctns.value.entries()) {
+    if (row.ctnCodeId == null || row.ctnCodeId === '') {
+      message.warning(`第 ${index + 1} 行请选择箱型`);
+      return false;
+    }
+    if (row.count == null || Number(row.count) <= 0) {
+      message.warning(`第 ${index + 1} 行请填写箱量`);
+      return false;
+    }
   }
   return true;
 }
@@ -839,6 +854,14 @@ async function validateForms(): Promise<boolean> {
     message.warning('请选择归属组织');
     return false;
   }
+  if (headerBizType.value == null) {
+    message.warning('请选择业务类型');
+    return false;
+  }
+  if (headerBlType.value == null) {
+    message.warning('请选择装运方式');
+    return false;
+  }
   const results = await Promise.all([
     basicFormApi.validate(),
     partyFormApi.validate(),
@@ -850,8 +873,10 @@ async function validateForms(): Promise<boolean> {
 }
 
 async function handleSave() {
+  if (!canSave.value) return;
   if (!(await validateForms())) return;
   if (!validateUsers()) return;
+  if (!validateCtns()) return;
   validateFees(false);
   saving.value = true;
   try {
@@ -889,6 +914,7 @@ async function runAction(action: () => Promise<unknown>, successText: string) {
 }
 
 function handleSubmitAudit() {
+  if (!canSave.value) return;
   // 审核通过即按当前费用生成应收应付，缺三要素的行会被后端静默丢弃，先拦下来
   if (!validateFees(true)) return;
   Modal.confirm({
@@ -937,6 +963,10 @@ function handleRejectAfterPass() {
 }
 
 function handleViewWorkflow() {
+  if (!preOrderId.value) {
+    message.warning('请先保存单据后再查看审核流程');
+    return;
+  }
   openWorkflowTimeline({
     entityId: preOrderId.value,
     taskType: TaskType.PreOrder,
@@ -1015,7 +1045,6 @@ const getContentTabStyle = (isActive: boolean) =>
                         v-model="services"
                         :client-id="currentClientId"
                         :pol-id="currentPolId"
-                        :readonly="readonly"
                         :is-edit="isEdit"
                         :compare-list="detail?.preOrderServices ?? []"
                       />
@@ -1029,7 +1058,7 @@ const getContentTabStyle = (isActive: boolean) =>
                         审核流程
                       </Button>
                       <Button
-                        v-if="!readonly"
+                        v-if="canSave"
                         v-access:code="isEdit ? perm.edit : perm.add"
                         size="small"
                         type="primary"
@@ -1039,7 +1068,7 @@ const getContentTabStyle = (isActive: boolean) =>
                         保存
                       </Button>
                       <Button
-                        v-if="isEdit && !readonly"
+                        v-if="isEdit && canSave"
                         v-access:code="perm.edit"
                         size="small"
                         :loading="saving"
@@ -1113,7 +1142,6 @@ const getContentTabStyle = (isActive: boolean) =>
                           :user-id="salesUserId"
                           :selected-items="headerOrgSelectedItems"
                           :auto-default="true"
-                          :disabled="readonly"
                           allow-clear
                           size="small"
                           class="basic-info-header__select basic-info-header__select--org"
@@ -1123,10 +1151,27 @@ const getContentTabStyle = (isActive: boolean) =>
                       <div
                         class="basic-info-header__item basic-info-header__item--select"
                       >
-                        <span class="basic-info-header__label">装运方式</span>
+                        <span class="basic-info-header__label">
+                          <span class="order-user-panel__role-required">*</span>
+                          业务类型
+                        </span>
+                        <Select
+                          v-model:value="headerBizType"
+                          size="small"
+                          class="basic-info-header__select"
+                          :options="bizTypeOptions"
+                          placeholder="请选择"
+                        />
+                      </div>
+                      <div
+                        class="basic-info-header__item basic-info-header__item--select"
+                      >
+                        <span class="basic-info-header__label">
+                          <span class="order-user-panel__role-required">*</span>
+                          装运方式
+                        </span>
                         <Select
                           v-model:value="headerBlType"
-                          :disabled="readonly"
                           size="small"
                           class="basic-info-header__select"
                           :options="blTypeOptions"
@@ -1216,7 +1261,7 @@ const getContentTabStyle = (isActive: boolean) =>
                   </template>
                   <div class="cargo-main-layout">
                     <div class="cargo-main-layout__left">
-                      <CtnTable v-model="ctns" :readonly="readonly" />
+                      <CtnTable v-model="ctns" />
                     </div>
                     <div class="cargo-main-layout__right">
                       <CargoForm />
@@ -1241,7 +1286,6 @@ const getContentTabStyle = (isActive: boolean) =>
                     :resolve-parties="resolveFeeParties"
                     :cargo="feeCargo"
                     :local-currency-id="localCurrencyId"
-                    :readonly="readonly"
                   />
                 </Card>
               </section>
@@ -1252,7 +1296,7 @@ const getContentTabStyle = (isActive: boolean) =>
                 <template #title>
                   <span class="card-title">干系人</span>
                 </template>
-                <UserTable v-model="users" :readonly="readonly" />
+                <UserTable v-model="users" />
               </Card>
             </div>
           </div>
@@ -1279,6 +1323,12 @@ const getContentTabStyle = (isActive: boolean) =>
 /* 业务联系单：基础 Tab 占满 Page 高度，货物卡片吃掉费用区之上的剩余高度 */
 .pre-order-editor-page {
   height: 100%;
+}
+
+/* 顶部 content-tabs 与海运出口一致：禁止被下方 flex 内容压扁 */
+.pre-order-editor-page > .content-tabs {
+  flex-shrink: 0;
+  min-height: 40px;
 }
 
 .pre-order-editor-spin {

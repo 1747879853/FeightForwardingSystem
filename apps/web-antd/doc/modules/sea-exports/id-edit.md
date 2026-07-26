@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-25
+last_updated: 2026-07-26
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -34,7 +34,7 @@ last_updated: 2026-07-25
   - **编辑改起运港 / 改委托单位**：按新 `polId(+clientId)` 的 `checked` **重写勾选**（客户排除项默认不勾、可手动勾回），并**丢弃任务进度**，流水线回到「新建态」仅展示服务项、不显示待处理/已完成任务，直至保存成功后 `loadEditData` 恢复真实任务态。
 - **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，**完全按 `sortId` 分组**：同 `sortId` 节点在 Chevron 流中无缝咬合成一块：咬合位移下沉到 `item` 层（每个非组首节点重叠一个箭头宽），组内相邻节点稳定无缝、跨组仍保持箭头链流向，仅整条链全局首端左收圆、尾端右收圆；不同 `sortId` 组之间保留间距以区分分组。**视觉分组只看 `sortId`，不再区分待处理/已完成/还未到**（旧的「仅全『还未到』组才合并成单标签块」逻辑已移除）；组内每个服务仍各自渲染、单独完成/取消完成。组内服务为同一优先级，轮到该组时全部待处理节点同时显示「处理中」、展示处理人且均可操作，组内全部完成后才进入下一 `sortId` 组。**顶栏内联展示**：与 AI 识别等同处 `content-section__actions` 一行，左侧为「服务项目」标题、`...` 配置入口与紧凑流水线，右侧为操作按钮。节点增删在「配置服务」弹窗维护：按 `ServiceType` 枚举项 `extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序；**任意勾选变化**时编辑态点「确定」弹出二次确认后自动保存（弹窗内无常驻提示）。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
-- **干系人角色约束：** 面板始终固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；**编辑态订单未保存某默认角色时也会补一张空卡**（保存时无人员会被过滤，不写库），确保这五个岗位新建/编辑都不会缺卡；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，仅编辑态详情已有人员或手动「添加角色」后出现。新建态选择委托单位后按客户绑定干系人默认回填（`getClientDetail` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位不重写已保存干系人。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。
+- **干系人角色约束：** 面板始终固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；**编辑态订单未保存某默认角色时也会补一张空卡**（保存时无人员会被过滤，不写库），确保这五个岗位新建/编辑都不会缺卡；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，仅编辑态详情已有人员或手动「添加角色」后出现。新建态选择委托单位后按客户绑定干系人默认回填（`getClientDetail` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位不重写已保存干系人。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。干系人展示信息（昵称/启用态/手机/邮箱/组织路径）统一走 `User/GetUserListByIdsAsync` 按 id 批量获取，初始化与委托单位回填一次请求；未命中 id 展示「已删除」兜底，悬停卡片副标题为组织路径。
 - **场站联系方式展示与保存：** 编辑态在基础信息「场站」字段标签行最右侧展示 `yardContact`（场站联系人），与字段右边界对齐；悬浮联系人后展示 `yardEmail`（场站邮箱）、`yardMobile`（场站手机）、`yardTel`（场站电话）。值来自详情 `SeaExportDto`，经 `flattenDetail` 写入 `entrustReadonlyInfo`（UI 只读）；保存时由 `collectCurrentFormValues` 取出并经 `buildSeaExportDto` 写入 `EditAsync` 根字段，避免漏传被后端空覆盖。空值显示 `-`。右侧栏仅保留「干系人」卡片。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
 - **船期与付费联动：** 保存时校验截 VGM、截单、截舱单日期不得晚于开船日期或实际开船日期；详情回填或用户切换付费方式时，到付自动以目的港覆盖付费地点，预付自动以起运港覆盖付费地点。
@@ -128,6 +128,7 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-26 | `Feature` | 干系人用户信息改为 `User/GetUserListByIdsAsync` 一次批量获取；悬停卡片副标题改为组织路径；启停用读 `enable`；未命中 id 仍展示「已删除」兜底。 | `getUserListByIds` 使用 `paramsSerializer: 'repeat'`；`use-order-users` 以 `loadOrderUserDetailsByIds` 替代逐个 `getUser`；无有效 id 不发请求以免空 ids 拉全量。详见 `changelogs/change-log-2026-07-26-sea-export-order-users-batch-get.md`。 |
 | 2026-07-25 | `Fix` | 移除基础信息滚动与顶部 Tab 联动；隐藏 Tab key 不再参与记忆恢复，避免空白页。 | 分区 Tab 隐藏后 `onSectionChange` 仍把 `shipment`/`port` 写入 `activeTab` 且无面板；表单侧 scroll 监听与 `sectionChange` 一并删除。详见 `changelogs/change-log-2026-07-25-sea-export-remove-section-tab-sync.md`。 |
 | 2026-07-25 | `Perf` | 箱型选择从 `CtnSelect` option 取名称写入行，选中时不再请求箱型详情 | 原路径：只写 `ctnCodeId` → `syncCtnNameMap` 缺名打 `DetailAsync`；现 `@change` 同步 `ctnCodeName` + 本地汇总 map |
 | 2026-07-25 | `Parsing` | 无 | 运踪订阅字段独立清单：请求仅 `seaExportIds`；编辑页行上下文仅结果展示。详见 [yundang-subscribe-fields.md](./yundang-subscribe-fields.md)。 |

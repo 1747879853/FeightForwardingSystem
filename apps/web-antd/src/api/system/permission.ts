@@ -46,6 +46,8 @@ export enum FrightModule {
   AirImport = 6,
   /** 运价 */
   SeFreiPrice = 7,
+  /** 业务联系单（与 TaskType.PreOrder 同值） */
+  PreOrder = 8,
 }
 
 /** 权限条件的比较操作符 */
@@ -98,6 +100,7 @@ export const FrightModuleOptions = [
   { label: '空运出口', value: FrightModule.AirExport },
   { label: '空运进口', value: FrightModule.AirImport },
   { label: '运价', value: FrightModule.SeFreiPrice },
+  { label: '业务联系单', value: FrightModule.PreOrder },
 ];
 
 /** 操作符选项 */

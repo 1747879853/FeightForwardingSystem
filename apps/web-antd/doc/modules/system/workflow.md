@@ -45,4 +45,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-26 | `Feature` | 列表筛选/展示任务类型选项同步增加「业务联系单」(PreOrder=8) | 选项来自共用 `getTaskTypeOptions()`，与新建/编辑页一致 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/system/workflow` 对应组件 `src/views/system/workflow/list.vue`，权限口径为 Admin / Admin.Get。 |

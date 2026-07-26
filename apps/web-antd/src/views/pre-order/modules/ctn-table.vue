@@ -183,6 +183,13 @@ watch(
         "
         bordered
       >
+        <template #headerCell="{ column }">
+          <template v-if="column.dataIndex === 'count'">
+            <span class="pre-order-ctn-table__required">*</span>
+            箱量
+          </template>
+          <template v-else>{{ column.title }}</template>
+        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.dataIndex === 'ctnCodeId'">
             <CtnSelect
@@ -202,7 +209,7 @@ watch(
               :disabled="props.readonly"
               size="small"
               class="w-full"
-              :min="0"
+              :min="1"
               :precision="0"
               @change="emit('ctnChange')"
             />
@@ -262,6 +269,12 @@ watch(
 
 .pre-order-ctn-table__toolbar {
   flex-shrink: 0;
+}
+
+.pre-order-ctn-table__required {
+  margin-right: 2px;
+  font-family: SimSun, sans-serif;
+  color: #ff4d4f;
 }
 
 .pre-order-ctn-table__body {

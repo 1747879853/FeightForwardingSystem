@@ -13,6 +13,19 @@
 
 ## 2026-07
 
+- [2026-07-26 海运出口干系人改为批量获取用户展示信息](./changelogs/change-log-2026-07-26-sea-export-order-users-batch-get.md)
+- [2026-07-26 业务联系单取消独立详情页按状态显隐保存](./changelogs/change-log-2026-07-26-pre-order-drop-detail-page.md)
+- [2026-07-26 业务联系单详情页改为纯文本展示](./changelogs/change-log-2026-07-26-pre-order-detail-readonly-view.md)
+- [2026-07-26 业务联系单待审核/通过走详情路由](./changelogs/change-log-2026-07-26-pre-order-detail-route.md)
+- [2026-07-26 biz-select 禁用无值只读态显示「-」](./changelogs/change-log-2026-07-26-biz-select-disabled-empty-dash.md)
+- [2026-07-26 审批流程弹窗加载中空白修复](./changelogs/change-log-2026-07-26-workflow-timeline-loading-blank.md)
+- [2026-07-26 工作流任务类型增加业务联系单 PreOrder=8](./changelogs/change-log-2026-07-26-workflow-pre-order-task-type.md)
+- [2026-07-26 业务联系单顶部 content-tabs 防压扁对齐海运出口](./changelogs/change-log-2026-07-26-pre-order-content-tabs-flex-shrink.md)
+- [2026-07-26 业务联系单委托单位详情回显补 selectedItems](./changelogs/change-log-2026-07-26-pre-order-client-selected-items.md)
+- [2026-07-26 业务联系单装运方式/箱量/业务类型必填](./changelogs/change-log-2026-07-26-pre-order-required-fields.md)
+- [2026-07-26 业务联系单干系人操作改为非必填](./changelogs/change-log-2026-07-26-pre-order-operation-optional.md)
+- [2026-07-26 业务联系单标题栏增加业务类型下拉](./changelogs/change-log-2026-07-26-pre-order-biz-type-select.md)
+- [2026-07-26 津海通桌宠 GLB 改走 OSS 直链并删除本地模型](./changelogs/change-log-2026-07-26-jht-mascot-glb-oss.md)
 - [2026-07-26 运价查询列表与批量弹窗补齐独立列持久化 gridOptions.id](./changelogs/change-log-2026-07-26-freight-rate-column-persist-table-id.md)
 - [2026-07-26 业务联系单品名多选高度对齐海运出口](./changelogs/change-log-2026-07-26-pre-order-goods-select-height.md)
 - [2026-07-25 新增演示环境开发与打包（后端端口 86）](./changelogs/change-log-2026-07-25-demo-env-port-86.md)

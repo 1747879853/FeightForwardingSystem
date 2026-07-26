@@ -116,113 +116,136 @@ function getInstanceStatusTag() {
     @cancel="close"
   >
     <Spin :spinning="loading">
-      <div v-if="errorMsg" class="py-4">
-        <Alert :message="errorMsg" type="error" show-icon />
-      </div>
-
-      <div v-else-if="!loading && !instanceData" class="py-8">
-        <Empty description="暂无审批流程数据" />
-      </div>
-
-      <div v-else-if="instanceData" class="workflow-timeline">
-        <!-- 流程头部 -->
-        <div class="workflow-header">
-          <span class="workflow-header__title">审批流程</span>
-          <Tag :color="getInstanceStatusTag().color">
-            {{ getInstanceStatusTag().text }}
-          </Tag>
+      <!-- 加载中必须有占位高度，否则 Spin 无子节点时弹窗几乎空白 -->
+      <div class="workflow-timeline-modal__body">
+        <div v-if="errorMsg" class="py-4">
+          <Alert :message="errorMsg" type="error" show-icon />
         </div>
 
-        <!-- 时间轴 -->
-        <Timeline class="workflow-timeline__body">
-          <!-- 发起节点 -->
-          <TimelineItem color="green">
-            <div class="timeline-node">
-              <div class="timeline-node__title">发起申请</div>
-              <div class="timeline-node__desc">流程已发起</div>
-            </div>
-          </TimelineItem>
+        <div v-else-if="loading" class="workflow-timeline-modal__loading">
+          正在加载审批流程…
+        </div>
 
-          <!-- 审批节点（按 level 分组） -->
-          <TimelineItem
-            v-for="group in levelGroups"
-            :key="group.level"
-            :color="getTimelineColor(group)"
-          >
-            <div class="timeline-node">
-              <div class="timeline-node__header">
-                <span class="timeline-node__title">
-                  第 {{ group.level }} 级审批
-                </span>
-                <Tag
-                  v-if="group.passMethod !== WorkFlowPassMethod.Pass"
-                  :color="
-                    group.passMethod === WorkFlowPassMethod.Or
-                      ? 'orange'
-                      : 'purple'
-                  "
-                  size="small"
-                >
-                  {{ getPassMethodLabel(group.passMethod) }}
-                </Tag>
+        <div v-else-if="!instanceData" class="py-8">
+          <Empty description="暂无审批流程数据" />
+        </div>
+
+        <div v-else class="workflow-timeline">
+          <!-- 流程头部 -->
+          <div class="workflow-header">
+            <span class="workflow-header__title">审批流程</span>
+            <Tag :color="getInstanceStatusTag().color">
+              {{ getInstanceStatusTag().text }}
+            </Tag>
+          </div>
+
+          <!-- 时间轴 -->
+          <Timeline class="workflow-timeline__body">
+            <!-- 发起节点 -->
+            <TimelineItem color="green">
+              <div class="timeline-node">
+                <div class="timeline-node__title">发起申请</div>
+                <div class="timeline-node__desc">流程已发起</div>
               </div>
+            </TimelineItem>
 
-              <div class="timeline-node__auditors">
-                <div
-                  v-for="item in group.itemList"
-                  :key="item.id"
-                  class="auditor-item"
-                >
-                  <div class="auditor-item__main">
-                    <span class="auditor-item__name">
-                      {{ item.userNickName || `用户 ${item.userId}` }}
-                    </span>
-                    <Tag :color="getStatusColor(item.taskStatus)" size="small">
-                      {{ getStatusLabel(item.taskStatus) }}
-                    </Tag>
-                  </div>
-                  <div v-if="item.auditTime" class="auditor-item__time">
-                    {{ formatTime(item.auditTime) }}
-                  </div>
-                  <Tooltip v-if="item.comment" :title="item.comment">
-                    <div class="auditor-item__comment">
-                      {{ item.comment }}
+            <!-- 审批节点（按 level 分组） -->
+            <TimelineItem
+              v-for="group in levelGroups"
+              :key="group.level"
+              :color="getTimelineColor(group)"
+            >
+              <div class="timeline-node">
+                <div class="timeline-node__header">
+                  <span class="timeline-node__title">
+                    第 {{ group.level }} 级审批
+                  </span>
+                  <Tag
+                    v-if="group.passMethod !== WorkFlowPassMethod.Pass"
+                    :color="
+                      group.passMethod === WorkFlowPassMethod.Or
+                        ? 'orange'
+                        : 'purple'
+                    "
+                    size="small"
+                  >
+                    {{ getPassMethodLabel(group.passMethod) }}
+                  </Tag>
+                </div>
+
+                <div class="timeline-node__auditors">
+                  <div
+                    v-for="item in group.itemList"
+                    :key="item.id"
+                    class="auditor-item"
+                  >
+                    <div class="auditor-item__main">
+                      <span class="auditor-item__name">
+                        {{ item.userNickName || `用户 ${item.userId}` }}
+                      </span>
+                      <Tag
+                        :color="getStatusColor(item.taskStatus)"
+                        size="small"
+                      >
+                        {{ getStatusLabel(item.taskStatus) }}
+                      </Tag>
                     </div>
-                  </Tooltip>
+                    <div v-if="item.auditTime" class="auditor-item__time">
+                      {{ formatTime(item.auditTime) }}
+                    </div>
+                    <Tooltip v-if="item.comment" :title="item.comment">
+                      <div class="auditor-item__comment">
+                        {{ item.comment }}
+                      </div>
+                    </Tooltip>
+                  </div>
                 </div>
               </div>
-            </div>
-          </TimelineItem>
+            </TimelineItem>
 
-          <!-- 结束节点 -->
-          <TimelineItem
-            :color="
-              instanceStatus === WorkFlowInstanceStatus.Pass
-                ? 'green'
-                : instanceStatus === WorkFlowInstanceStatus.Reject
-                  ? 'red'
-                  : 'gray'
-            "
-          >
-            <div class="timeline-node">
-              <div class="timeline-node__title">
-                {{
-                  instanceStatus === WorkFlowInstanceStatus.Pass
-                    ? '审批完成'
-                    : instanceStatus === WorkFlowInstanceStatus.Reject
-                      ? '已驳回'
-                      : '等待审批完成'
-                }}
+            <!-- 结束节点 -->
+            <TimelineItem
+              :color="
+                instanceStatus === WorkFlowInstanceStatus.Pass
+                  ? 'green'
+                  : instanceStatus === WorkFlowInstanceStatus.Reject
+                    ? 'red'
+                    : 'gray'
+              "
+            >
+              <div class="timeline-node">
+                <div class="timeline-node__title">
+                  {{
+                    instanceStatus === WorkFlowInstanceStatus.Pass
+                      ? '审批完成'
+                      : instanceStatus === WorkFlowInstanceStatus.Reject
+                        ? '已驳回'
+                        : '等待审批完成'
+                  }}
+                </div>
               </div>
-            </div>
-          </TimelineItem>
-        </Timeline>
+            </TimelineItem>
+          </Timeline>
+        </div>
       </div>
     </Spin>
   </Modal>
 </template>
 
 <style scoped>
+.workflow-timeline-modal__body {
+  min-height: 160px;
+}
+
+.workflow-timeline-modal__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  font-size: 13px;
+  color: #8c8c8c;
+}
+
 .workflow-timeline {
   padding: 8px 0;
 }

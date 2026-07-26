@@ -24,6 +24,7 @@ import {
 
 import {
   buildColumns,
+  getPreOrderFormPath,
   PRE_ORDER_LIST_TABLE_ID,
   useGridFormSchema,
 } from './data';
@@ -51,7 +52,7 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 const handleRowDblclick = ({ row }: { row: PreOrderAdminApi.PreOrderDto }) => {
   const grid = gridApi.grid as any;
   grid?.setRadioRow?.(row);
-  router.push(`/pre-order/${row.id}/edit`);
+  router.push(getPreOrderFormPath(row.id));
 };
 
 const [Grid, gridApi] = useVbenVxeGrid<PreOrderAdminApi.PreOrderDto>({

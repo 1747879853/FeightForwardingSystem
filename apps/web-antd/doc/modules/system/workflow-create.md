@@ -2,12 +2,12 @@
 title: 工作流新建
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-07-24
+last_updated: 2026-07-26
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 创建审批工作流，配置任务类型、条件和审批节点。
+**白话解释：** 创建审批工作流，配置任务类型（含费用、付费申请、业务联系单）、条件和审批节点。
 
 **路由与源码定位：**
 
@@ -17,11 +17,13 @@ last_updated: 2026-07-24
 | 路由名称 | `SystemWorkflowCreate` |
 | 页面组件 | `src/views/system/workflow/form.vue` |
 | 权限口径 | Admin / Admin.Get |
-| 关键源码 | `src/router/routes/modules/system.ts`<br/>`src/views/system/workflow/form.vue`<br/>`src/api/system/*.ts` |
+| 关键源码 | `src/router/routes/modules/system.ts`<br/>`src/views/system/workflow/form.vue`<br/>`src/api/system/workflow-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
 - **列表/页面访问：** 通过 `/system/workflow/create` 进入 `工作流新建` 页面。
+- **任务类型：** 顶部可选费用提交/修改/删除、付费申请、**业务联系单（PreOrder=8）**。
+- **条件分支：** 任务类型为业务联系单时，条件字段为申请人(8001) / 申请人组织(8002)；付费申请仍为 3001/3002。
 - **系统配置维护：** 按页面职责维护用户、角色、组织、工作流、枚举或缓存信息。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -45,5 +47,6 @@ last_updated: 2026-07-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-26 | `Feature` | 任务类型增加「业务联系单」`TaskType.PreOrder=8`；条件抽屉支持申请人/组织（8001/8002） | 与编辑页共用 `form.vue` + `getTaskTypeOptions`；`store.taskType` 驱动条件字段；同值对齐 `FrightModule.PreOrder` |
 | 2026-07-24 | `Fix` | 与编辑页共用转换器：审核人选用户/角色时不提交 `userAttribute: 0`。 | 同 `workflow-edit-id`：`buildAuditors` + `sanitizeAuditorForApi`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/system/workflow/create` 对应组件 `src/views/system/workflow/form.vue`，权限口径为 Admin / Admin.Get。 |

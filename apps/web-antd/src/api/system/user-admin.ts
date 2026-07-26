@@ -124,6 +124,25 @@ export namespace SystemUserAdminApi {
     sorting?: string;
   }
 
+  /** 按 id 批量获取用户查询参数（空 ids 语义为返回全部用户，前端务必显式传 ids） */
+  export interface UserListByIdsQueryDto {
+    ids?: number[];
+  }
+
+  /**
+   * 用户展示信息 DTO（GetUserListByIdsAsync）
+   * 仅含回显所需字段，不含身份证号/邮箱密码等敏感信息；不按审核/激活状态过滤
+   */
+  export interface UserInfoDto {
+    id: number;
+    nickName?: string;
+    enable?: boolean;
+    phoneNumber?: string;
+    emailAddress?: string;
+    roles?: UserRoleDto[];
+    organizations?: UserOrganizationPathDto[];
+  }
+
   /** 用户所属组织机构路径项 */
   export interface UserOrganizationPathItemDto {
     id: number;
@@ -675,6 +694,36 @@ async function getUserSimplePagedList(
   });
 }
 
+type GetUserListByIdsOptions = {
+  /** 为 true 时不弹出全局错误提示 */
+  silent?: boolean;
+};
+
+/**
+ * 按 id 批量获取用户（不分页）
+ * @description 登录即可；不按审核/激活状态过滤，适合单据干系人回显。
+ * 必须用 `ids=1&ids=2`（paramsSerializer: repeat）；空 ids 会返回全部用户，故无 id 时不发请求。
+ * 不存在的 id 会被静默忽略，返回条数可能少于传入数量。
+ * @param ids 用户 id 列表
+ */
+async function getUserListByIds(
+  ids: number[],
+  options?: GetUserListByIdsOptions,
+): Promise<SystemUserAdminApi.UserInfoDto[]> {
+  const uniqueIds = [...new Set(ids.filter((id) => id > 0))];
+  if (!uniqueIds.length) return [];
+
+  return requestClient.get<SystemUserAdminApi.UserInfoDto[]>(
+    '/services/app/User/GetUserListByIdsAsync',
+    {
+      params: { ids: uniqueIds },
+      // ASP.NET Core [FromQuery] List 需 repeat：ids=1&ids=2，勿用 brackets/JSON
+      paramsSerializer: 'repeat',
+      ...(options?.silent ? { skipErrorMessage: true } : {}),
+    },
+  );
+}
+
 /**
  * 获取单个用户详细信息（通用接口）
  * @description 根据用户id获取完整用户信息，包含角色和用户资料
@@ -730,6 +779,7 @@ export {
   getUserBankAccountList,
   getUserById,
   getUserForEdit,
+  getUserListByIds,
   getUserPagedList,
   getUserPermissions,
   getUserPrint,

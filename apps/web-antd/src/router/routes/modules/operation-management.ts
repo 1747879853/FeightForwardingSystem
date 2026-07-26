@@ -101,6 +101,18 @@ const routes: RouteRecordRaw[] = [
             },
             component: () => import('#/views/pre-order/editor.vue'),
           },
+          {
+            // 兼容历史 /detail 书签，统一落到编辑页
+            path: ':id([0-9a-fA-F-]{36})/detail',
+            name: 'PreOrderDetail',
+            meta: {
+              title: '业务联系单',
+              hideInMenu: true,
+              activePath: '/pre-order',
+              authority: abpPageAuthority('Admin.PreOrder'),
+            },
+            redirect: (to) => `/pre-order/${to.params.id}/edit`,
+          },
         ],
       },
       {

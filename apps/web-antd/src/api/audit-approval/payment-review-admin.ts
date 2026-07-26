@@ -149,13 +149,20 @@ const API_PREFIX = '/services/app/PaymentApplicationAdmin';
 const WORKFLOW_INSTANCE_PREFIX = '/services/app/WorkFlowInstanceAdmin';
 
 /** 获取一个任务的审核流程详情 */
-export async function getWorkFlowInstanceDetail(params: {
-  TaskType?: TaskType;
-  EntityId?: string;
-}) {
+export async function getWorkFlowInstanceDetail(
+  params: {
+    TaskType?: TaskType;
+    EntityId?: string;
+  },
+  options?: { silent?: boolean },
+) {
   return requestClient.get<PaymentReviewAdminApi.WorkFlowInstanceDetailDto>(
     `${WORKFLOW_INSTANCE_PREFIX}/GetAsync`,
-    { params },
+    {
+      params,
+      // 弹窗内自行展示错误，避免再弹全局 toast 造成“没打开”的错觉
+      ...(options?.silent ? { skipErrorMessage: true } : {}),
+    },
   );
 }
 

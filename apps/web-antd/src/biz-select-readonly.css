@@ -22,8 +22,16 @@
   color: hsl(var(--foreground)) !important;
 }
 
+/* 禁用无值时以 "-" 占位，不暴露编辑态的 placeholder 引导文案 */
 .biz-select.ant-select-disabled .ant-select-selection-placeholder {
-  opacity: 0.45;
+  visibility: hidden;
+}
+
+.biz-select.ant-select-disabled .ant-select-selection-placeholder::before {
+  position: absolute;
+  inset-inline-start: 0;
+  visibility: visible;
+  content: '-';
 }
 
 .biz-select.ant-select-disabled.ant-select-single .ant-select-selection-item,

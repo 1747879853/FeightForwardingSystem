@@ -5,6 +5,11 @@ import { PreOrderStatus } from '#/api/pre-order/pre-order-admin';
 /** 列配置持久化 key */
 export const PRE_ORDER_LIST_TABLE_ID = 'PreOrderList';
 
+/** 业务联系单表单路径（统一编辑页，按钮显隐由状态控制） */
+export function getPreOrderFormPath(id: number | string) {
+  return `/pre-order/${id}/edit`;
+}
+
 /** 业务联系单状态选项（列表筛选与列标签共用） */
 export function getPreOrderStatusOptions() {
   return [

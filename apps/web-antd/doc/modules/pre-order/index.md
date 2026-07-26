@@ -2,7 +2,7 @@
 title: 业务联系单列表
 module: 操作管理 / 业务联系单
 author: 前端团队
-last_updated: 2026-07-25
+last_updated: 2026-07-26
 ---
 
 # 1. 业务背景说明 (Background)
@@ -15,7 +15,7 @@ last_updated: 2026-07-25
 - **新建：** 顶部「新建」跳转 `/pre-order/add`。
 - **复制：** 勾选一条后点「复制」，跳转 `/pre-order/add?copyFrom=<id>`，新建页拉取源单详情预填业务字段，不带单号与状态。
 - **删除：** 支持多选删除；仅「录入状态」与「驳回」可删，前端先拦截再请求。
-- **进入编辑：** 双击任意行进入 `/pre-order/:id/edit`。
+- **进入单据：** 双击行统一进入 `/pre-order/:id/edit`；是否显示「保存 / 提交审核」由单据状态决定。
 - **返回刷新：** 编辑页保存后回到列表会自动刷新（`useRefreshListOnFormReturn`），普通标签切换不重复请求。
 - **按钮权限：** 新建 / 复制需要 `Admin.PreOrder.Add`，删除需要 `Admin.PreOrder.Delete`。
 
@@ -47,4 +47,6 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-26 | `Feature` | 双击行统一进编辑页；取消按状态分流详情 | 与取消独立详情页一致，`getPreOrderFormPath` 恒为 `/edit` |
+| 2026-07-26 | `Feature` | 双击行按状态进编辑或详情：待审核/通过打开 `/detail`，录入/驳回仍进 `/edit` | （已废弃）曾用 `getPreOrderFormPath` 分流 |
 | 2026-07-25 | `Feature` | 新建列表页：检索、双击进编辑、新建 / 复制 / 删除；菜单挂在「操作管理」下 | 列表结构对齐付费申请列表（vxe-grid + `createPagedListQuery` + `columnPersist`），未使用海运出口的分组能力 |
