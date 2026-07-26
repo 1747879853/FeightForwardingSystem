@@ -33,7 +33,8 @@ const TAIL_SWAY_FACTOR = 5;
 const MASCOT_SIZE = { height: 218, width: 176 };
 const TAIL_BONE_NAMES = ['bone_28', 'bone_29', 'bone_30', 'bone_31', 'bone_32'];
 const storageKey = buildBrandStorageKey('jht-desktop-mascot:v2');
-const modelUrl = `${import.meta.env.BASE_URL}models/jht/fantasy_creature_desktop_pet.glb`;
+const modelUrl =
+  'https://oss.jiayuebetter.com/fantasy_creature_desktop_pet.glb';
 
 const containerRef = shallowRef<HTMLElement>();
 const canvasRef = shallowRef<HTMLCanvasElement>();

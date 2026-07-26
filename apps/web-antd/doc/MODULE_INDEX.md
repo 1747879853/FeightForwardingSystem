@@ -64,6 +64,7 @@
 | announcement | `/system/announcement` | 公告管理 | 维护系统公告（富文本与附件），登录后对具备查看权限的用户弹出未读公告；新增与批量删除入口按动作权限显示。独立顶级菜单。 | [公告管理](./modules/system/announcement.md) | 2026-07-14 |
 | system | `/system/cache` | 系统管理 | 查看或清理系统缓存，辅助排查字典、权限或配置刷新问题。 | [缓存管理](./modules/system/cache.md) | 2026-05-16 |
 | system | `/system/global-font` | 系统管理 | 统一前端页面与组件字体来源；hhyy/jiayue/jht 全部走固定 OSS 直连；本地 TTF 已移除且 SW 已停用。 | [全局字体配置](./modules/system/global-font.md) | 2026-06-03 |
+| shared | （全站根布局） | 共享能力 | 津海通品牌桌宠：Three.js 加载 OSS GLB，可拖拽/关闭并按品牌持久化。 | [津海通桌宠](./modules/shared/jht-mascot.md) | 2026-07-26 |
 | shared | （顶栏布局） | 共享能力 | 顶栏「进入会议」按品牌带入会议号：津海通 999999，hhyy/佳越 123456。 | [顶栏在线会议](./modules/shared/layout-meeting.md) | 2026-07-12 |
 | shared | （全站业务表单） | 共享能力 | 统一客户、港口、船公司、币别等业务选择组件的分页检索、标签回显与禁用只读展示；雪花 ID 禁止 Number 转换；`MyOrgSelect`（本人组织）与 `UserOrgSelect`（指定用户组织）均可录入多组织 `orgId`。 | [业务选择组件](./modules/shared/biz-select.md) | 2026-07-23 |
 | shared | （全站全局弹窗） | 共享能力 | 货物轨迹全局单例弹窗：`useTrackingMap().open({ mblNo })` 打开，iframe 内嵌 trackingeyes 地图；工具栏展示白标品牌 Logo；企业编号与地址收敛到 env；支持中英文切换（英文分享链接带 `lang=en`）；运踪信息/运踪详情弹窗已接入「查看轨迹地图」入口。 | [全局货物轨迹弹窗](./modules/shared/tracking-map-modal.md) | 2026-07-16 |
