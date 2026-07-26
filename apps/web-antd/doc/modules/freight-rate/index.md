@@ -2,7 +2,7 @@
 title: 运价查询
 module: 航线管理
 author: auto-doc-sync
-last_updated: 2026-07-16
+last_updated: 2026-07-26
 ---
 
 # 1. 业务背景说明 (Background)
@@ -18,11 +18,13 @@ last_updated: 2026-07-16
 | 页面组件 | `src/views/sea-export-admin/freight-rate/list.vue` |
 | 权限口径 | `Admin.SeFreiPrice` / `Admin.SeFreiPrice.Get`（父级另聚合 `Admin.Schedule`） |
 | 关键源码 | `src/router/routes/modules/freight-rate.ts`<br/>`src/views/sea-export-admin/freight-rate/list.vue`<br/>`src/views/sea-export-admin/freight-rate/data.ts`<br/>`src/api/sea-export/freight-rate-admin.ts` |
+| 列持久化 tableId | 列表 `FreightRateList`；批量编辑 `FreightRateBatchEdit`；批量新增 `FreightRateBatchAdd`（经 `gridOptions.id` 注入，常量见 `data.ts`） |
 
 # 2. 功能与操作说明 (Features & Operations)
 
 - **运价查询：** 按航线、港口、船公司、箱型等维度检索运价。
 - **搜索项设置：** 可通过列表工具栏入口调整搜索字段的显示与顺序，设置弹层显示在工具栏下方。
+- **列配置持久化：** 列表与批量新增/编辑弹窗表格各自在 `gridOptions.id` 声明独立 id，列显隐/顺序/固定/列宽互不覆盖。
 - **航线 Tab 筛选：** 列表工具栏左侧展示「全部 + 各航线」Tab；超出可视区域时可点击左右箭头平滑滚动浏览，并与右侧操作按钮保持固定间距。
 - **运价维护：** 通过运价表单或弹窗维护费率明细。
 - **批量新增：** 列表页打开批量新增弹窗，支持一次新增多行运价；新增/复制行采用批量 `loadData` 插入并显示 loading，减少多行插入卡顿。
@@ -50,6 +52,7 @@ last_updated: 2026-07-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-26 | `Fix` | 列表、批量编辑、批量新增三表分别声明 `gridOptions.id`，避免同路由下列配置互相覆盖。 | 此前均回退为路由名 `FreightRateList`；常量集中在 `data.ts`，由 adapter 写入 `columnPersist.tableId`。 |
 | 2026-07-16 | `Refactor` | 「航线管理」下并列「运价查询」「船期查询」；删除独立「船期管理」顶级菜单。 | 父级 `authority` 聚合 `Admin.SeFreiPrice`+`Admin.Schedule`；船期子路由绝对 path `/schedule`。 |
 | 2026-07-12 | `Fix` | 修复点击「搜索项设置」后弹层被工具栏裁剪、看似无响应的问题。 | 工具栏允许溢出显示，航线 Tab 仍由自身容器负责横向裁剪与滚动。 |
 | 2026-07-11 | `Refactor` | 侧边栏由独立「运价管理」改为「航线管理」分组下的「运价查询」子菜单；页面 path 与组件不变。 | `freight-rate.ts` 父级 `title` 为「航线管理」，`order: 190`；子路由 `FreightRateList` title 为「运价查询」。 |

@@ -43,6 +43,7 @@ import {
   batchEditSeFreiPrice,
   batchEditSimpleSeFreiPrice,
 } from '#/api/sea-export/freight-rate-admin';
+import { FREIGHT_RATE_BATCH_EDIT_TABLE_ID } from '../data';
 import { $t } from '#/locales';
 
 const emit = defineEmits<{
@@ -510,6 +511,7 @@ function buildColumns(): VxeTableGridOptions['columns'] {
 // Grid 实例
 const [Grid, gridApi] = useVbenVxeGrid<any>({
   gridOptions: {
+    id: FREIGHT_RATE_BATCH_EDIT_TABLE_ID,
     columns: buildColumns(),
     data: [], // 初始为空数组
     height: 400,

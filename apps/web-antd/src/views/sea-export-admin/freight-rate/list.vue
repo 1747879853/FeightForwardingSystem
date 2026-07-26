@@ -48,7 +48,12 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { useUserStore, useAccessStore } from '@vben/stores';
 import { editPropPermission } from '#/api/system/permission';
 
-import { useColumns, useGridFormSchema, formatSurchargeFees } from './data';
+import {
+  FREIGHT_RATE_LIST_TABLE_ID,
+  useColumns,
+  useGridFormSchema,
+  formatSurchargeFees,
+} from './data';
 import AddCtnModal from './modules/add-ctn-modal.vue';
 import Form from './modules/form.vue';
 import EditForm from './modules/editForm.vue';
@@ -300,6 +305,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     wrapperClass: 'grid-cols-5',
   },
   gridOptions: {
+    id: FREIGHT_RATE_LIST_TABLE_ID,
     columns: useColumns(onActionClick, []), // 初始化为空数组
     height: 'auto',
     keepSource: true,
