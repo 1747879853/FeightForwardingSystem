@@ -1,0 +1,397 @@
+import { computed } from 'vue';
+
+/**
+ * 批量新增运价 - Handsontable 列配置 Composable
+ */
+export function useBatchAddColumns(
+  addedCtnTypes: any,
+  dropdownSources: any,
+  dataSource: any,
+  selectedRowKeys: any,
+  sortableFieldsSet: Set<string>,
+  sortState: any,
+  getSortIcon: (field: string) => string,
+  currentOptionsCache: any,
+  dropdownSourceCache: any,
+  labelToIdMap: any,
+  getColumnIndex: (field: string) => number,
+  handleOpenDropdown: (
+    rowIndex: number,
+    colIndex: number,
+    field: string,
+    source: string[],
+  ) => void,
+  linkage: any,
+) {
+  /**
+   * 构建动态列配置
+   */
+  const hotColumns = computed(() => {
+    const columns: any[] = [
+      {
+        data: '_checkbox',
+        type: 'checkbox',
+        width: 50,
+        className: 'htCenter',
+      },
+      {
+        data: 'carrierId',
+        title: '船公司',
+        width: 180,
+        editor: 'autocomplete',
+        strict: false,
+        allowInvalid: true,
+        visibleRows: 10,
+        renderer: (
+          instance: any,
+          td: any,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) => {
+          // 显示 Label，空值显示为空字符串
+          const displayValue = value
+            ? dropdownSources.getCarrierName(value)
+            : '';
+          td.innerHTML = displayValue;
+          td.className = 'htLeft';
+          return td;
+        },
+      },
+      {
+        data: 'polId',
+        title: '起运港',
+        width: 200,
+        type: 'autocomplete',
+        strict: false,
+        allowInvalid: true,
+        visibleRows: 10,
+        source: dropdownSourceCache.value.ports || [],
+        renderer: (
+          instance: any,
+          td: any,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) => {
+          const displayValue = value ? dropdownSources.getPortName(value) : '';
+          td.innerHTML = displayValue;
+          td.className = 'htLeft';
+          return td;
+        },
+      },
+      {
+        data: 'podId',
+        title: '目的港',
+        width: 200,
+        type: 'autocomplete',
+        strict: false,
+        allowInvalid: true,
+        visibleRows: 10,
+        source: dropdownSourceCache.value.ports || [],
+        renderer: (
+          instance: any,
+          td: any,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) => {
+          const displayValue = value ? dropdownSources.getPortName(value) : '';
+          td.innerHTML = displayValue;
+          td.className = 'htLeft';
+          return td;
+        },
+      },
+      {
+        data: 'currencyId',
+        title: '币别',
+        width: 100,
+        type: 'autocomplete',
+        strict: false,
+        allowInvalid: true,
+        visibleRows: 10,
+        source: dropdownSourceCache.value.currencies || [],
+        renderer: (
+          instance: any,
+          td: any,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) => {
+          const displayValue = value
+            ? dropdownSources.getCurrencyName(value)
+            : '';
+          td.innerHTML = displayValue;
+          td.className = 'htCenter';
+          return td;
+        },
+      },
+      {
+        data: 'bookingAgentId',
+        title: '订舱代理',
+        width: 200,
+        type: 'autocomplete',
+        strict: false,
+        allowInvalid: true,
+        visibleRows: 10,
+        source: dropdownSourceCache.value.clients || [],
+        renderer: (
+          instance: any,
+          td: any,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) => {
+          const displayValue = value
+            ? dropdownSources.getClientName(value)
+            : '';
+          td.innerHTML = displayValue;
+          td.className = 'htLeft';
+          return td;
+        },
+      },
+      {
+        data: 'isDirect',
+        title: '是否直达',
+        width: 100,
+        type: 'dropdown',
+        source: ['是', '否'],
+        renderer: (
+          instance: any,
+          td: any,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) => {
+          td.innerHTML = value ? '是' : '否';
+          td.className = 'htCenter';
+          return td;
+        },
+        afterChange: function (this: any, changes: any, source: string) {
+          if (source === 'edit' && changes) {
+            changes.forEach(([row, prop, oldValue, newValue]: any) => {
+              if (prop === 'isDirect') {
+                // 如果设置为直达，清空中转港
+                if (newValue) {
+                  const hotInstance = this;
+                  hotInstance.setDataAtCell(
+                    row,
+                    getColumnIndex('poT1Id'),
+                    undefined,
+                  );
+                  hotInstance.setDataAtCell(
+                    row,
+                    getColumnIndex('poT2Id'),
+                    undefined,
+                  );
+                }
+              }
+            });
+          }
+        },
+      },
+      {
+        data: 'poT1Id',
+        title: '中转港1',
+        width: 200,
+        type: 'autocomplete',
+        strict: false,
+        allowInvalid: true,
+        visibleRows: 10,
+        source: dropdownSourceCache.value.ports || [],
+        renderer: (
+          instance: any,
+          td: any,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) => {
+          const rowData = instance.getDataAtRow(row);
+          const isDirect = rowData?.isDirect;
+
+          if (isDirect) {
+            td.innerHTML = '';
+            td.className = 'htCenter disabled-cell';
+          } else {
+            const displayValue = value
+              ? dropdownSources.getPortName(value)
+              : '';
+            td.innerHTML = displayValue;
+            td.className = 'htLeft';
+          }
+          return td;
+        },
+      },
+      {
+        data: 'poT2Id',
+        title: '中转港2',
+        width: 200,
+        type: 'autocomplete',
+        strict: false,
+        allowInvalid: true,
+        visibleRows: 10,
+        source: dropdownSourceCache.value.ports || [],
+        renderer: (
+          instance: any,
+          td: any,
+          row: number,
+          col: number,
+          prop: string,
+          value: any,
+          cellProperties: any,
+        ) => {
+          const rowData = instance.getDataAtRow(row);
+          const isDirect = rowData?.isDirect;
+
+          if (isDirect) {
+            td.innerHTML = '-';
+            td.className = 'htCenter disabled-cell';
+          } else {
+            const displayValue = dropdownSources.getPortName(value);
+            td.innerHTML = displayValue;
+            td.className = 'htLeft';
+          }
+          return td;
+        },
+      },
+      {
+        data: 'polFreeDays',
+        title: '起运港免用箱',
+        width: 120,
+        type: 'numeric',
+        numericFormat: {
+          pattern: '0',
+          culture: 'zh-CN',
+        },
+        className: 'htRight',
+      },
+      {
+        data: 'poddem',
+        title: 'DEM',
+        width: 80,
+        type: 'numeric',
+        numericFormat: {
+          pattern: '0',
+          culture: 'zh-CN',
+        },
+        className: 'htRight',
+      },
+      {
+        data: 'podFreeDays',
+        title: 'DET',
+        width: 80,
+        type: 'numeric',
+        numericFormat: {
+          pattern: '0',
+          culture: 'zh-CN',
+        },
+        className: 'htRight',
+      },
+      {
+        data: 'poddet',
+        title: '免箱使期',
+        width: 100,
+        type: 'numeric',
+        numericFormat: {
+          pattern: '0',
+          culture: 'zh-CN',
+        },
+        className: 'htRight',
+        readOnly: true, // 自动计算，只读
+      },
+      {
+        data: 'voyage',
+        title: '航程',
+        width: 120,
+        type: 'text',
+      },
+      {
+        data: 'contractNo',
+        title: '约号',
+        width: 150,
+        type: 'text',
+      },
+      {
+        data: 'etd',
+        title: '开船日期',
+        width: 120,
+        type: 'date',
+        dateFormat: 'YYYY-MM-DD',
+        correctFormat: true,
+      },
+      {
+        data: 'closeDocTime',
+        title: '截单时间',
+        width: 150,
+        type: 'date',
+        dateFormat: 'YYYY-MM-DD HH:mm',
+        correctFormat: true,
+      },
+      {
+        data: 'closingTime',
+        title: '截关时间',
+        width: 150,
+        type: 'date',
+        dateFormat: 'YYYY-MM-DD HH:mm',
+        correctFormat: true,
+      },
+      {
+        data: 'validTimeStart',
+        title: '有效起始日期',
+        width: 130,
+        type: 'date',
+        dateFormat: 'YYYY-MM-DD',
+        correctFormat: true,
+      },
+      {
+        data: 'validTimeEnd',
+        title: '有效截止日期',
+        width: 130,
+        type: 'date',
+        dateFormat: 'YYYY-MM-DD',
+        correctFormat: true,
+      },
+      {
+        data: 'remark',
+        title: '备注',
+        width: 300,
+        type: 'text',
+      },
+    ];
+
+    // 添加动态箱型列
+    addedCtnTypes.value.forEach((ctn: any) => {
+      columns.push({
+        data: `ctn_${String(ctn.ctnCodeId)}`,
+        title: ctn.ctnName,
+        width: 120,
+        type: 'numeric',
+        numericFormat: {
+          pattern: '0.00',
+          culture: 'zh-CN',
+        },
+        className: 'htRight',
+      });
+    });
+
+    return columns;
+  });
+
+  return {
+    hotColumns,
+  };
+}
