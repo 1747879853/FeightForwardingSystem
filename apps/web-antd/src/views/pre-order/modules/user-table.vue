@@ -24,11 +24,8 @@ import { buildAttachmentUrl } from '#/utils';
 
 import { PRE_ORDER_USER_ATTRIBUTE_LABELS, USER_ATTRIBUTE } from '../form-data';
 
-/** 必选且不可删除：销售、操作（对齐海运出口） */
-const REQUIRED_ROLES: number[] = [
-  USER_ATTRIBUTE.Sale,
-  USER_ATTRIBUTE.Operation,
-];
+/** 必选且不可删除：仅销售（操作改为非必填，审核通过时再强制指派） */
+const REQUIRED_ROLES: number[] = [USER_ATTRIBUTE.Sale];
 
 let rowSeed = 0;
 const createRowKey = () => `user-${Date.now()}-${(rowSeed += 1)}`;
@@ -138,7 +135,7 @@ function handleRoleModalConfirm() {
 function handleRemove(rowKey: string) {
   const row = dataSource.value.find((item) => item.rowKey === rowKey);
   if (row && isRequired(row)) {
-    message.warning('销售与操作角色不可删除');
+    message.warning('销售角色不可删除');
     return;
   }
   dataSource.value = dataSource.value.filter((item) => item.rowKey !== rowKey);

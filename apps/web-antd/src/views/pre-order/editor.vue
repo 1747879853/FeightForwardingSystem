@@ -116,9 +116,12 @@ const formSnapshot = ref('');
 const headerOrgId = ref<null | number | undefined>();
 /** 编辑回显兜底选项：详情 orgs 路径拼完整公司名，组织加载完成前也能正确显示 */
 const headerOrgSelectedItems = ref<Array<{ label: string; value: number }>>([]);
-const headerBizType = ref<PreOrderBizType>(PreOrderBizType.SeaExport);
+const headerBizType = ref<PreOrderBizType | undefined>(
+  PreOrderBizType.SeaExport,
+);
 const bizTypeOptions = getPreOrderBizTypeOptions();
-const headerBlType = ref<number>(0);
+/** 新建默认不选，保存前强制选择 */
+const headerBlType = ref<number | undefined>();
 const blTypeOptions = getBlTypeOptions();
 
 const ctns = ref<PreOrderCtnRow[]>([]);
@@ -568,7 +571,8 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     ? [{ value: detailOrgLast.id, label: formatOrgPathLabel(detailOrgs) }]
     : [];
   headerBizType.value = dto.bizType ?? PreOrderBizType.SeaExport;
-  headerBlType.value = dto.blType ?? 0;
+  headerBlType.value =
+    dto.blType === null || dto.blType === undefined ? undefined : dto.blType;
   void basicFormApi.setValues({
     clientId: dto.clientId,
     mblNum: dto.mblNum,
@@ -758,7 +762,7 @@ async function buildSubmitPayload() {
     ...cargoValues,
     cargoId: cargoTypeValues.cargoId ?? 0,
     orgId: headerOrgId.value,
-    blType: headerBlType.value ?? 0,
+    blType: headerBlType.value,
     preOrderNum: undefined,
     preOrderCodeGoodss: orderCodeGoodss
       .filter((id): id is number => id != null)
@@ -770,7 +774,9 @@ async function buildSubmitPayload() {
         count: rest.count ?? 0,
       }),
     ),
-    preOrderUsers: users.value.map(({ rowKey, ...rest }) => rest),
+    preOrderUsers: users.value
+      .filter((row) => hasValidUserId(row.userId))
+      .map(({ rowKey, ...rest }) => rest),
     preOrderServices: services.value.map((item) => ({
       serviceType: item.serviceType,
       sortId: item.sortId ?? 0,
@@ -809,7 +815,7 @@ async function isFormDirty(): Promise<boolean> {
 
 useUnsavedGuard({ isDirty: isFormDirty });
 
-/** 销售必填且唯一，与后端卡点保持一致，提前拦截以免白跑一次请求 */
+/** 销售必填且唯一；操作等其余角色可空，提交时剔除未选人的行 */
 function validateUsers(): boolean {
   const sales = users.value.filter(
     (row) => Number(row.userAttribute) === USER_ATTRIBUTE.Sale && row.userId,
@@ -818,9 +824,24 @@ function validateUsers(): boolean {
     message.warning('销售必填且只能指派一个用户');
     return false;
   }
-  if (users.value.some((row) => !row.userId)) {
-    message.warning('干系人存在未选择人员的行');
+  return true;
+}
+
+/** 箱型行箱量必填且须大于 0；有行时箱型也须选好 */
+function validateCtns(): boolean {
+  if (ctns.value.length === 0) {
+    message.warning('请至少添加一条箱型箱量');
     return false;
+  }
+  for (const [index, row] of ctns.value.entries()) {
+    if (row.ctnCodeId == null || row.ctnCodeId === '') {
+      message.warning(`第 ${index + 1} 行请选择箱型`);
+      return false;
+    }
+    if (row.count == null || Number(row.count) <= 0) {
+      message.warning(`第 ${index + 1} 行请填写箱量`);
+      return false;
+    }
   }
   return true;
 }
@@ -843,6 +864,14 @@ async function validateForms(): Promise<boolean> {
     message.warning('请选择归属组织');
     return false;
   }
+  if (headerBizType.value == null) {
+    message.warning('请选择业务类型');
+    return false;
+  }
+  if (headerBlType.value == null) {
+    message.warning('请选择装运方式');
+    return false;
+  }
   const results = await Promise.all([
     basicFormApi.validate(),
     partyFormApi.validate(),
@@ -856,6 +885,7 @@ async function validateForms(): Promise<boolean> {
 async function handleSave() {
   if (!(await validateForms())) return;
   if (!validateUsers()) return;
+  if (!validateCtns()) return;
   validateFees(false);
   saving.value = true;
   try {
@@ -1127,7 +1157,10 @@ const getContentTabStyle = (isActive: boolean) =>
                       <div
                         class="basic-info-header__item basic-info-header__item--select"
                       >
-                        <span class="basic-info-header__label">业务类型</span>
+                        <span class="basic-info-header__label">
+                          <span class="order-user-panel__role-required">*</span>
+                          业务类型
+                        </span>
                         <Select
                           v-model:value="headerBizType"
                           :disabled="readonly"
@@ -1140,7 +1173,10 @@ const getContentTabStyle = (isActive: boolean) =>
                       <div
                         class="basic-info-header__item basic-info-header__item--select"
                       >
-                        <span class="basic-info-header__label">装运方式</span>
+                        <span class="basic-info-header__label">
+                          <span class="order-user-panel__role-required">*</span>
+                          装运方式
+                        </span>
                         <Select
                           v-model:value="headerBlType"
                           :disabled="readonly"

@@ -13,6 +13,8 @@
 
 ## 2026-07
 
+- [2026-07-26 业务联系单装运方式/箱量/业务类型必填](./changelogs/change-log-2026-07-26-pre-order-required-fields.md)
+- [2026-07-26 业务联系单干系人操作改为非必填](./changelogs/change-log-2026-07-26-pre-order-operation-optional.md)
 - [2026-07-26 业务联系单标题栏增加业务类型下拉](./changelogs/change-log-2026-07-26-pre-order-biz-type-select.md)
 - [2026-07-26 津海通桌宠 GLB 改走 OSS 直链并删除本地模型](./changelogs/change-log-2026-07-26-jht-mascot-glb-oss.md)
 - [2026-07-26 运价查询列表与批量弹窗补齐独立列持久化 gridOptions.id](./changelogs/change-log-2026-07-26-freight-rate-column-persist-table-id.md)
