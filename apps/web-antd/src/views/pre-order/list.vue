@@ -52,8 +52,7 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
 const handleRowDblclick = ({ row }: { row: PreOrderAdminApi.PreOrderDto }) => {
   const grid = gridApi.grid as any;
   grid?.setRadioRow?.(row);
-  // 待审核 / 通过打开详情页，录入 / 驳回打开编辑页
-  router.push(getPreOrderFormPath(row.id, row.status));
+  router.push(getPreOrderFormPath(row.id));
 };
 
 const [Grid, gridApi] = useVbenVxeGrid<PreOrderAdminApi.PreOrderDto>({

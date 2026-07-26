@@ -60,7 +60,6 @@ import {
 } from '#/views/sea-export-admin/data';
 import SeaExportEditor from '#/views/sea-export-admin/editor.vue';
 
-import { getPreOrderFormPath } from './data';
 import {
   PRE_ORDER_PORT_REMARK_FIELDS,
   usePreOrderBasicSchema,
@@ -139,12 +138,12 @@ const services = ref<PreOrderServiceRow[]>([]);
 const fees = ref<PreOrderFeeRow[]>([]);
 
 const status = computed(() => detail.value?.status ?? PreOrderStatus.Entering);
-/** 仅录入/驳回可编辑，其余状态整单只读 */
-const readonly = computed(
+/** 录入/驳回（含新建）显示保存与提交审核；表单本身不按状态禁用 */
+const canSave = computed(
   () =>
-    isEdit.value &&
-    status.value !== PreOrderStatus.Entering &&
-    status.value !== PreOrderStatus.Rejected,
+    !isEdit.value ||
+    status.value === PreOrderStatus.Entering ||
+    status.value === PreOrderStatus.Rejected,
 );
 const hasSeaExport = computed(
   () =>
@@ -377,26 +376,12 @@ const [CargoTypeInlineForm, cargoTypeInlineFormApi] = useVbenForm({
   wrapperClass: 'form-controls-small grid-cols-2 gap-x-3',
 });
 
-/** 只读态同步到各表单 commonConfig.disabled */
-watch(
-  readonly,
-  (value) => {
-    const state = { commonConfig: { disabled: value } };
-    void basicFormApi.setState(state);
-    void partyFormApi.setState(state);
-    void portFormApi.setState(state);
-    void cargoFormApi.setState(state);
-    void cargoTypeInlineFormApi.setState(state);
-  },
-  { immediate: true },
-);
-
 /**
  * 委托单位变更：按客户维护的干系人默认回填（销售/客服/操作/单证），
- * 操作/单证/客服缺失时兜底当前登录账号。可编辑态用户主动切换时生效。
+ * 操作/单证/客服缺失时兜底当前登录账号。可保存态用户主动切换时生效。
  */
 async function applyClientDefaultUsersByClientId(value: unknown) {
-  if (readonly.value) return;
+  if (!canSave.value) return;
   const clientId =
     value === null || value === undefined || value === ''
       ? undefined
@@ -694,17 +679,6 @@ function fillFromCopySource(dto: PreOrderAdminApi.PreOrderDto) {
   fees.value = fees.value.map((row) => ({ ...row, id: undefined }));
 }
 
-/**
- * 待审核 / 通过必须落在详情路由，录入 / 驳回落在编辑路由。
- * 状态流转后（提交、撤回、审核）用 replace 对齐 URL，避免标签页语义错乱。
- */
-async function syncRouteByStatus() {
-  if (!preOrderId.value) return;
-  const targetPath = getPreOrderFormPath(preOrderId.value, status.value);
-  if (route.path === targetPath) return;
-  await router.replace(targetPath);
-}
-
 async function loadDetail() {
   if (!preOrderId.value) return;
   loading.value = true;
@@ -712,7 +686,6 @@ async function loadDetail() {
     const dto = await getPreOrderDetail(preOrderId.value);
     fillFromDetail(dto);
     await syncFormSnapshot();
-    await syncRouteByStatus();
   } finally {
     loading.value = false;
   }
@@ -825,7 +798,8 @@ async function syncFormSnapshot() {
 }
 
 async function isFormDirty(): Promise<boolean> {
-  if (readonly.value || !formSnapshot.value) return false;
+  // 不可保存状态不拦截离开（改了也落不了库）
+  if (!canSave.value || !formSnapshot.value) return false;
   return (await buildSnapshot()) !== formSnapshot.value;
 }
 
@@ -899,6 +873,7 @@ async function validateForms(): Promise<boolean> {
 }
 
 async function handleSave() {
+  if (!canSave.value) return;
   if (!(await validateForms())) return;
   if (!validateUsers()) return;
   if (!validateCtns()) return;
@@ -932,7 +907,6 @@ async function runAction(action: () => Promise<unknown>, successText: string) {
     await action();
     message.success(successText);
     markListShouldRefresh('PreOrderList');
-    // loadDetail 内会按最新状态把 /edit ↔ /detail 对齐
     await loadDetail();
   } finally {
     saving.value = false;
@@ -940,6 +914,7 @@ async function runAction(action: () => Promise<unknown>, successText: string) {
 }
 
 function handleSubmitAudit() {
+  if (!canSave.value) return;
   // 审核通过即按当前费用生成应收应付，缺三要素的行会被后端静默丢弃，先拦下来
   if (!validateFees(true)) return;
   Modal.confirm({
@@ -1070,7 +1045,6 @@ const getContentTabStyle = (isActive: boolean) =>
                         v-model="services"
                         :client-id="currentClientId"
                         :pol-id="currentPolId"
-                        :readonly="readonly"
                         :is-edit="isEdit"
                         :compare-list="detail?.preOrderServices ?? []"
                       />
@@ -1084,7 +1058,7 @@ const getContentTabStyle = (isActive: boolean) =>
                         审核流程
                       </Button>
                       <Button
-                        v-if="!readonly"
+                        v-if="canSave"
                         v-access:code="isEdit ? perm.edit : perm.add"
                         size="small"
                         type="primary"
@@ -1094,7 +1068,7 @@ const getContentTabStyle = (isActive: boolean) =>
                         保存
                       </Button>
                       <Button
-                        v-if="isEdit && !readonly"
+                        v-if="isEdit && canSave"
                         v-access:code="perm.edit"
                         size="small"
                         :loading="saving"
@@ -1168,7 +1142,6 @@ const getContentTabStyle = (isActive: boolean) =>
                           :user-id="salesUserId"
                           :selected-items="headerOrgSelectedItems"
                           :auto-default="true"
-                          :disabled="readonly"
                           allow-clear
                           size="small"
                           class="basic-info-header__select basic-info-header__select--org"
@@ -1184,7 +1157,6 @@ const getContentTabStyle = (isActive: boolean) =>
                         </span>
                         <Select
                           v-model:value="headerBizType"
-                          :disabled="readonly"
                           size="small"
                           class="basic-info-header__select"
                           :options="bizTypeOptions"
@@ -1200,7 +1172,6 @@ const getContentTabStyle = (isActive: boolean) =>
                         </span>
                         <Select
                           v-model:value="headerBlType"
-                          :disabled="readonly"
                           size="small"
                           class="basic-info-header__select"
                           :options="blTypeOptions"
@@ -1290,7 +1261,7 @@ const getContentTabStyle = (isActive: boolean) =>
                   </template>
                   <div class="cargo-main-layout">
                     <div class="cargo-main-layout__left">
-                      <CtnTable v-model="ctns" :readonly="readonly" />
+                      <CtnTable v-model="ctns" />
                     </div>
                     <div class="cargo-main-layout__right">
                       <CargoForm />
@@ -1315,7 +1286,6 @@ const getContentTabStyle = (isActive: boolean) =>
                     :resolve-parties="resolveFeeParties"
                     :cargo="feeCargo"
                     :local-currency-id="localCurrencyId"
-                    :readonly="readonly"
                   />
                 </Card>
               </section>
@@ -1326,7 +1296,7 @@ const getContentTabStyle = (isActive: boolean) =>
                 <template #title>
                   <span class="card-title">干系人</span>
                 </template>
-                <UserTable v-model="users" :readonly="readonly" />
+                <UserTable v-model="users" />
               </Card>
             </div>
           </div>
