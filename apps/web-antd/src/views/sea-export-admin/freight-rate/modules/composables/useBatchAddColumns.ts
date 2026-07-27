@@ -38,10 +38,11 @@ export function useBatchAddColumns(
         data: 'carrierId',
         title: '船公司',
         width: 180,
-        editor: 'autocomplete',
+        type: 'autocomplete',
         strict: false,
         allowInvalid: true,
         visibleRows: 10,
+        source: dropdownSourceCache.value.carriers || [],
         renderer: (
           instance: any,
           td: any,
@@ -69,20 +70,20 @@ export function useBatchAddColumns(
         allowInvalid: true,
         visibleRows: 10,
         source: dropdownSourceCache.value.ports || [],
-        renderer: (
-          instance: any,
-          td: any,
-          row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
-        ) => {
-          const displayValue = value ? dropdownSources.getPortName(value) : '';
-          td.innerHTML = displayValue;
-          td.className = 'htLeft';
-          return td;
-        },
+        // renderer: (
+        //   instance: any,
+        //   td: any,
+        //   row: number,
+        //   col: number,
+        //   prop: string,
+        //   value: any,
+        //   cellProperties: any,
+        // ) => {
+        //   const displayValue = value ? dropdownSources.getPortName(value) : '';
+        //   td.innerHTML = displayValue;
+        //   td.className = 'htLeft';
+        //   return td;
+        // },
       },
       {
         data: 'podId',
@@ -93,20 +94,20 @@ export function useBatchAddColumns(
         allowInvalid: true,
         visibleRows: 10,
         source: dropdownSourceCache.value.ports || [],
-        renderer: (
-          instance: any,
-          td: any,
-          row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
-        ) => {
-          const displayValue = value ? dropdownSources.getPortName(value) : '';
-          td.innerHTML = displayValue;
-          td.className = 'htLeft';
-          return td;
-        },
+        // renderer: (
+        //   instance: any,
+        //   td: any,
+        //   row: number,
+        //   col: number,
+        //   prop: string,
+        //   value: any,
+        //   cellProperties: any,
+        // ) => {
+        //   const displayValue = value ? dropdownSources.getPortName(value) : '';
+        //   td.innerHTML = displayValue;
+        //   td.className = 'htLeft';
+        //   return td;
+        // },
       },
       {
         data: 'currencyId',
@@ -117,22 +118,6 @@ export function useBatchAddColumns(
         allowInvalid: true,
         visibleRows: 10,
         source: dropdownSourceCache.value.currencies || [],
-        renderer: (
-          instance: any,
-          td: any,
-          row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
-        ) => {
-          const displayValue = value
-            ? dropdownSources.getCurrencyName(value)
-            : '';
-          td.innerHTML = displayValue;
-          td.className = 'htCenter';
-          return td;
-        },
       },
       {
         data: 'bookingAgentId',

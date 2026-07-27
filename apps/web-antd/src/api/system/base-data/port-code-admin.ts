@@ -1,5 +1,44 @@
 import { requestClient } from '#/api/request';
 import type { CountryCodeAdminApi } from '#/api/system/base-data/country-code-admin';
+
+// ==================== PortCode（非 Admin，只读接口）====================
+
+export namespace PortCodeApi {
+  /** 港口列表项（精简版，单字母字段以减小传输体积） */
+  export interface PortCodeListItemDto {
+    /** 主键ID */
+    i: number;
+    /** 港口英文名称/港口代码 */
+    p: string;
+    /** 港口中文名称 */
+    c: string;
+    /** 关联国家英文名称；无则为 null */
+    e: string | null;
+  }
+}
+
+const PORT_CODE_API_PREFIX = '/services/app/PortCode';
+
+/**
+ * 获取全部港口列表（无需业务权限，仅需登录）
+ *
+ * 说明：
+ * - 全量返回，不分页
+ * - 包含启用和禁用的港口（ABP 软删除过滤后的全部）
+ * - 按 PortName 升序，再按 Id 升序
+ * - 使用 ResponseCompression（gzip/brotli）压缩传输
+ * - 字段使用单字母命名以减小体积：i(id), p(portName), c(cnName), e(countryEnName)
+ *
+ * @returns 港口列表（精简版）
+ */
+export const getPortCodeList = () => {
+  return requestClient.get<PortCodeApi.PortCodeListItemDto[]>(
+    `${PORT_CODE_API_PREFIX}/GetListAsync`,
+  );
+};
+
+// ==================== PortCodeAdmin（管理接口，带权限）====================
+
 export namespace PortCodeAdminApi {
   /** 新增港口信息参数 */
   export interface PortCodeAddDto {

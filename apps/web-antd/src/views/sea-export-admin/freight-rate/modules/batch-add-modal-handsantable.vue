@@ -64,19 +64,19 @@ const actions = useBatchAddActions(
 );
 
 const currentOptionsCache = computed(() => ({
-  carriers: Object.entries(labelCache.value.carriers).map(([id, name]) => ({
+  carriers: Array.from(labelCache.value.carriers.entries()).map(([id, name]) => ({
     label: name,
     value: Number(id),
   })),
-  ports: Object.entries(labelCache.value.ports).map(([id, name]) => ({
+  ports: Array.from(labelCache.value.ports.entries()).map(([id, name]) => ({
     label: name,
     value: Number(id),
   })),
-  currencies: Object.entries(labelCache.value.currencies).map(([id, code]) => ({
+  currencies: Array.from(labelCache.value.currencies.entries()).map(([id, code]) => ({
     label: code,
     value: Number(id),
   })),
-  clients: Object.entries(labelCache.value.clients).map(([id, name]) => ({
+  clients: Array.from(labelCache.value.clients.entries()).map(([id, name]) => ({
     label: name,
     value: Number(id),
   })),
@@ -84,23 +84,47 @@ const currentOptionsCache = computed(() => ({
 
 // Handsontable 下拉框需要的字符串数组格式
 const dropdownSourceCache = computed(() => {
+  // Map 对象需要使用 Array.from() 或展开运算符转换为数组
   const result = {
-    carriers: Object.values(labelCache.value.carriers),
-    ports: Object.values(labelCache.value.ports),
-    currencies: Object.values(labelCache.value.currencies),
-    clients: Object.values(labelCache.value.clients),
+    carriers: Array.from(labelCache.value.carriers.values()),
+    ports: Array.from(labelCache.value.ports.values()),
+    currencies: Array.from(labelCache.value.currencies.values()),
+    clients: Array.from(labelCache.value.clients.values()),
   };
 
   // 调试日志：输出缓存数据
+  console.log('📦 [dropdownSourceCache] 计算属性被调用');
+  console.log('📦 [dropdownSourceCache] labelCache.carriers Map大小:', labelCache.value.carriers.size);
+  console.log('📦 [dropdownSourceCache] labelCache.ports Map大小:', labelCache.value.ports.size);
+  console.log('📦 [dropdownSourceCache] labelCache.currencies Map大小:', labelCache.value.currencies.size);
+  console.log('📦 [dropdownSourceCache] labelCache.clients Map大小:', labelCache.value.clients.size);
   console.log('📦 [dropdownSourceCache] 船公司数量:', result.carriers.length);
   console.log('📦 [dropdownSourceCache] 港口数量:', result.ports.length);
   console.log('📦 [dropdownSourceCache] 币别数量:', result.currencies.length);
-  console.log('📦 [dropdownSourceCache] 客户/国家数量:', result.clients.length);
+  console.log('📦 [dropdownSourceCache] 订舱代理数量:', result.clients.length);
 
   if (result.carriers.length > 0) {
     console.log(
       '📦 [dropdownSourceCache] 船公司示例:',
       result.carriers.slice(0, 3),
+    );
+  }
+  if (result.ports.length > 0) {
+    console.log(
+      '📦 [dropdownSourceCache] 港口示例:',
+      result.ports.slice(0, 3),
+    );
+  }
+  if (result.currencies.length > 0) {
+    console.log(
+      '📦 [dropdownSourceCache] 币别示例:',
+      result.currencies.slice(0, 3),
+    );
+  }
+  if (result.clients.length > 0) {
+    console.log(
+      '📦 [dropdownSourceCache] 订舱代理示例:',
+      result.clients.slice(0, 3),
     );
   }
 
@@ -109,28 +133,28 @@ const dropdownSourceCache = computed(() => {
 
 // Label 到 ID 的反向映射（用于将用户选择的 Label 转换回 ID）
 const labelToIdMap = computed(() => ({
-  carriers: new Map<string, number>(
-    Object.entries(labelCache.value.carriers).map(([id, name]) => [
+  carriers: new Map<string, string>(
+    Array.from(labelCache.value.carriers.entries()).map(([id, name]) => [
       name,
-      Number(id),
+      id,
     ]),
   ),
-  ports: new Map<string, number>(
-    Object.entries(labelCache.value.ports).map(([id, name]) => [
+  ports: new Map<string, string>(
+    Array.from(labelCache.value.ports.entries()).map(([id, name]) => [
       name,
-      Number(id),
+     id,
     ]),
   ),
-  currencies: new Map<string, number>(
-    Object.entries(labelCache.value.currencies).map(([id, code]) => [
+  currencies: new Map<string, string>(
+    Array.from(labelCache.value.currencies.entries()).map(([id, code]) => [
       code,
-      Number(id),
+      id,
     ]),
   ),
-  clients: new Map<string, number>(
-    Object.entries(labelCache.value.clients).map(([id, name]) => [
+  clients: new Map<string, string>(
+    Array.from(labelCache.value.clients.entries()).map(([id, name]) => [
       name,
-      Number(id),
+      id,
     ]),
   ),
 }));
@@ -266,7 +290,7 @@ const [Modal, modalApi] = useVbenModal({
   title: '批量新增运价',
   confirmLoading: false,
   onConfirm: async () => {
-    await actions.handleSubmit();
+    await actions.handleSubmit(labelToIdMap.value);
   },
   onCancel: () => {
     modalApi.close();
@@ -288,14 +312,30 @@ const [Modal, modalApi] = useVbenModal({
       const { defaultCtns } = await initDropdownSources(defaultCurrencyId);
       addedCtnTypes.value = defaultCtns;
       console.log('✅ [Modal] 初始化完成，默认箱型数量:', defaultCtns.length);
+      
+      // 等待 dropdownSourceCache 更新
+      
+      console.log('📊 [Modal] 初始化后缓存状态:');
+      console.log('  - carriers:', dropdownSourceCache.value.carriers.length);
+      console.log('  - ports:', dropdownSourceCache.value.ports.length);
+      console.log('  - currencies:', dropdownSourceCache.value.currencies.length);
+      console.log('  - clients:', dropdownSourceCache.value.clients.length);
     } else {
       console.log('⏭️ [Modal] 跳过初始化，数据已存在');
     }
 
     await nextTick();
-    await nextTick();
     if (dataSource.value.length === 0) {
       addRow(1);
+    }
+    
+    // 确保 Handsontable 使用最新的数据源
+    if (coreTableRef.value?.hotTableRef?.hotInstance) {
+      console.log('🔄 [Modal] 刷新 Handsontable 设置...');
+      coreTableRef.value.hotTableRef.hotInstance.updateSettings({
+        columns: hotColumns.value,
+      });
+      console.log('✅ [Modal] Handsontable 设置已更新');
     }
   },
 });
@@ -396,17 +436,6 @@ defineExpose({
         :hot-settings="hotSettings"
         :label-to-id-map="labelToIdMap"
       />
-
-      <div class="mt-4 text-sm text-gray-500">
-        <p>提示：</p>
-        <ul class="list-inside list-disc">
-          <li>点击"新增行"按钮添加新的运价记录</li>
-          <li>选中行后点击"复制选中行"可快速复制该行数据</li>
-          <li>勾选行后点击"删除选中行"可删除选中的记录</li>
-          <li>使用"添加箱型"下拉框动态添加箱型成本列</li>
-          <li>带 * 号的字段为必填项</li>
-        </ul>
-      </div>
     </div>
 
     <AntModal

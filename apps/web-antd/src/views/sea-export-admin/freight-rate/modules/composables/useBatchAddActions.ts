@@ -11,7 +11,12 @@ export function useBatchAddActions(
   addedCtnTypes: any,
   allCtnOptions: any,
   validateForm: () => boolean,
-  prepareSubmitData: () => any[],
+  prepareSubmitData: (labelToIdMap?: {
+    carriers: Map<string, number>;
+    ports: Map<string, number>;
+    currencies: Map<string, number>;
+    clients: Map<string, number>;
+  }) => any[],
   reset: () => void,
   emit: (event: 'success') => void,
 ) {
@@ -155,14 +160,19 @@ export function useBatchAddActions(
   /**
    * 提交表单
    */
-  async function handleSubmit() {
+  async function handleSubmit(labelToIdMap?: {
+    carriers: Map<string, number>;
+    ports: Map<string, number>;
+    currencies: Map<string, number>;
+    clients: Map<string, number>;
+  }) {
     if (!validateForm()) {
       return;
     }
 
     loading.value = true;
     try {
-      const submitData = prepareSubmitData();
+      const submitData = prepareSubmitData(labelToIdMap);
 
       console.log('提交数据:', submitData);
 

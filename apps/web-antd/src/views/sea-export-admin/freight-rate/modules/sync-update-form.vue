@@ -393,45 +393,26 @@ const [Form, formApi] = useVbenForm({
       formItemClass: 'w-full',
     },
     {
-      component: 'ApiSelect',
+      component: 'PortSelect',
       fieldName: 'polId',
       label: '起运港',
       componentProps: {
-        api: async () => {
-          const { getPortCodePagedList } =
-            await import('#/api/system/base-data/port-code-admin');
-          const res = await getPortCodePagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: `${item.cnName}(${item.portName})`,
-            value: item.id,
-          }));
-        },
-        showSearch: true,
-        filterOption: true,
         placeholder: '留空不修改',
         allowClear: true,
+        style: { width: '100%' },
       },
-      formItemClass: 'w-full',
+      rules: 'required',
     },
     {
-      component: 'ApiSelect',
+      component: 'PortSelect',
       fieldName: 'podId',
       label: '目的港',
       componentProps: {
-        api: async () => {
-          const { getPortCodePagedList } =
-            await import('#/api/system/base-data/port-code-admin');
-          const res = await getPortCodePagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: `${item.cnName}(${item.portName})`,
-            value: item.id,
-          }));
-        },
-        showSearch: true,
-        filterOption: true,
         placeholder: '留空不修改',
         allowClear: true,
+        style: { width: '100%' },
       },
+      rules: 'required',
     },
     {
       component: 'RadioGroup',
@@ -447,43 +428,23 @@ const [Form, formApi] = useVbenForm({
       },
     },
     {
-      component: 'ApiSelect',
+      component: 'PortSelect',
       fieldName: 'poT1Id',
       label: '中转港1',
       componentProps: {
-        api: async () => {
-          const { getPortCodePagedList } =
-            await import('#/api/system/base-data/port-code-admin');
-          const res = await getPortCodePagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: `${item.cnName}(${item.portName})`,
-            value: item.id,
-          }));
-        },
-        showSearch: true,
-        filterOption: true,
         placeholder: '留空不修改',
         allowClear: true,
+        style: { width: '100%' },
       },
     },
     {
-      component: 'ApiSelect',
+      component: 'PortSelect',
       fieldName: 'poT2Id',
       label: '中转港2',
       componentProps: {
-        api: async () => {
-          const { getPortCodePagedList } =
-            await import('#/api/system/base-data/port-code-admin');
-          const res = await getPortCodePagedList({ PageSize: 1000 });
-          return (res.items || []).map((item: any) => ({
-            label: `${item.cnName}(${item.portName})`,
-            value: item.id,
-          }));
-        },
-        showSearch: true,
-        filterOption: true,
         placeholder: '留空不修改',
         allowClear: true,
+        style: { width: '100%' },
       },
     },
     {

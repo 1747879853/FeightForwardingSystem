@@ -19,7 +19,7 @@ export function useBatchAddData() {
   const addedCtnTypes = ref<Array<{ ctnCodeId: number; ctnName: string }>>([]);
 
   // USD 币别 ID（默认值）
-  const defaultCurrencyId = ref<number | string | undefined>(undefined);
+  const defaultCurrencyId = ref<number | string | undefined>("USD");
 
   // 行 key 计数器
   let rowKeyCounter = 0;
@@ -178,8 +178,14 @@ export function useBatchAddData() {
 
   /**
    * 准备提交数据
+   * @param labelToIdMap - 标签到ID的映射表(可选)
    */
-  function prepareSubmitData(): AddSeFreiPriceInput[] {
+  function prepareSubmitData(labelToIdMap?: {
+    carriers: Map<string, number>;
+    ports: Map<string, number>;
+    currencies: Map<string, number>;
+    clients: Map<string, number>;
+  }): AddSeFreiPriceInput[] {
     return dataSource.value.map((row) => {
       // 构建箱型报价列表 - 只包含已录入运费的箱型
       const seFreiPriceCtns: SeFreiPriceCtnEditDto[] = row.seFreiPriceCtns
@@ -218,14 +224,39 @@ export function useBatchAddData() {
             ]
           : [];
 
+      // 辅助函数:将名称转换为ID
+      const convertNameToId = (
+        value: any,
+        map?: Map<string, number>,
+      ): number | undefined => {
+        // 如果已经是数字ID,直接返回
+        if (typeof value === 'number') {
+          return value;
+        }
+        // 如果是字符串名称,尝试从映射表中查找ID
+        if (typeof value === 'string' && map) {
+          return map.get(value);
+        }
+        return undefined;
+      };
+
+      // 转换所有需要ID的字段
+      const carrierId = convertNameToId(row.carrierId, labelToIdMap?.carriers);
+      const polId = convertNameToId(row.polId, labelToIdMap?.ports);
+      const podId = convertNameToId(row.podId, labelToIdMap?.ports);
+      const currencyId = convertNameToId(row.currencyId, labelToIdMap?.currencies);
+      const poT1Id = convertNameToId(row.poT1Id, labelToIdMap?.ports);
+      const poT2Id = convertNameToId(row.poT2Id, labelToIdMap?.ports);
+      const bookingAgentId = convertNameToId(row.bookingAgentId,labelToIdMap?.clients); // bookingAgentId 保持原值,不需要转换
+
       return {
         recommend: row.recommend || false,
-        carrierId: row.carrierId_value || row.carrierId,
-        polId: row.polId_value || row.polId,
-        podId: row.podId_value || row.podId,
+        carrierId: carrierId!,
+        polId: polId!,
+        podId: podId!,
         isDirect: row.isDirect,
-        poT1Id: row.poT1Id_value || row.poT1Id,
-        poT2Id: row.poT2Id_value || row.poT2Id,
+        poT1Id,
+        poT2Id,
         polFreeDays: row.polFreeDays,
         podFreeDays: row.podFreeDays,
         poddem: row.poddem,
@@ -235,8 +266,8 @@ export function useBatchAddData() {
         validTimeStart: row.validTimeStart,
         validTimeEnd: row.validTimeEnd,
         remark: row.remark,
-        currencyId: row.currencyId_value || row.currencyId,
-        bookingAgentId: row.bookingAgentId_value || row.bookingAgentId || null,
+        currencyId: currencyId!,
+        bookingAgentId: bookingAgentId || null,
         seFreiPriceCtns,
         seFreiPriceFees: [],
         seFreiPriceDays,

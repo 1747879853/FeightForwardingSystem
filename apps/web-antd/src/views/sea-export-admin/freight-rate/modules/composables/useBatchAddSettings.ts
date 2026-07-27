@@ -30,7 +30,7 @@ export function useBatchAddSettings(
     columns: hotColumns.value,
     rowHeaders: true,
     colHeaders: true,
-    height: 'auto',
+    height: '100%',
     width: '100%',
     stretchH: 'all',
     manualColumnResize: true,
@@ -124,10 +124,13 @@ export function useBatchAddSettings(
 
       // 为需要下拉框的字段设置 source
       if (prop === 'carrierId') {
-        cellProperties.source = dropdownSourceCache?.value?.carriers || [];
+        const carriers = dropdownSourceCache?.value?.carriers || [];
+        cellProperties.source = carriers;
         console.log(
           `🔧 [cells] ${prop} - 设置 source，数量:`,
-          cellProperties.source.length,
+          carriers.length,
+          '缓存Map大小:',
+          dropdownSourceCache?.value ? Object.keys(dropdownSourceCache.value).length : 0,
         );
       } else if (
         prop === 'polId' ||
@@ -135,11 +138,32 @@ export function useBatchAddSettings(
         prop === 'poT1Id' ||
         prop === 'poT2Id'
       ) {
-        cellProperties.source = dropdownSourceCache?.value?.ports || [];
+        const ports = dropdownSourceCache?.value?.ports || [];
+        cellProperties.source = ports;
+        if (row === 0) {
+          console.log(
+            `🔧 [cells] ${prop} - 设置 source，数量:`,
+            ports.length,
+          );
+        }
       } else if (prop === 'currencyId') {
-        cellProperties.source = dropdownSourceCache?.value?.currencies || [];
+        const currencies = dropdownSourceCache?.value?.currencies || [];
+        cellProperties.source = currencies;
+        if (row === 0) {
+          console.log(
+            `🔧 [cells] ${prop} - 设置 source，数量:`,
+            currencies.length,
+          );
+        }
       } else if (prop === 'bookingAgentId') {
-        cellProperties.source = dropdownSourceCache?.value?.clients || [];
+        const clients = dropdownSourceCache?.value?.clients || [];
+        cellProperties.source = clients;
+        if (row === 0) {
+          console.log(
+            `🔧 [cells] ${prop} - 设置 source，数量:`,
+            clients.length,
+          );
+        }
       }
 
       return cellProperties;
@@ -154,8 +178,17 @@ export function useBatchAddSettings(
       value: any,
       cellProperties: any,
     ) => {
-      // 默认渲染
-      Handsontable.renderers.TextRenderer.apply(this, arguments as any);
+      // 默认渲染 - 使用 call 代替 apply 避免 this 问题
+      Handsontable.renderers.TextRenderer.call(
+        undefined,
+        instance,
+        td,
+        row,
+        col,
+        prop,
+        value,
+        cellProperties,
+      );
 
       // 如果是复制的行，添加背景色
       const rowData = dataSource.value[row];
