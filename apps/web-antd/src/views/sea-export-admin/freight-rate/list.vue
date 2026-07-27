@@ -40,8 +40,8 @@ import {
   getSeFreiPriceDetail,
   getSeFreiPriceList,
   getAllLaneCodes,
-  extractSeFreiPriceByGemini,
 } from '#/api/sea-export/freight-rate-admin';
+import { extractSeFreiPriceByGemini } from '#/api/sea-export/gemini-admin';
 import { getUser } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
@@ -910,7 +910,8 @@ async function onAIBatchAdd() {
   // 创建隐藏的文件输入元素
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
-  fileInput.accept = '.pdf,.jpg,.jpeg,.png,.doc,.docx'; // 支持的文件类型
+  fileInput.accept =
+    '.pdf,.jpg,.jpeg,.png,.doc,.docx,.xlsx,.xls,.txt,.webp,.heic,.heif,.gif,.bmp'; // 支持的文件类型（根据文档更新）
   fileInput.onchange = async (event: any) => {
     const file = event.target.files[0];
     if (!file) return;

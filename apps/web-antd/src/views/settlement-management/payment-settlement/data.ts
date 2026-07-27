@@ -155,6 +155,15 @@ export function useGridFormSchema(): VbenFormSchema[] {
   return [
     {
       component: 'Input',
+      fieldName: 'keyword',
+      label: '编号',
+      componentProps: {
+        placeholder: '请输入主提单号或委托编号',
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
       fieldName: 'settlementNo',
       label: '结算单号',
       componentProps: {
@@ -183,7 +192,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'BankAccountSelect',
+      component: 'OrgBankAccountSelect',
       fieldName: 'orgBankAccountId',
       label: '我司银行',
       componentProps: {
@@ -202,15 +211,6 @@ export function useGridFormSchema(): VbenFormSchema[] {
         format: 'YYYY-MM-DD HH:mm',
         allowClear: true,
         class: 'w-full',
-      },
-    },
-    {
-      component: 'Input',
-      fieldName: 'mblNum',
-      label: '主提单号',
-      componentProps: {
-        placeholder: '请输入主提单号',
-        allowClear: true,
       },
     },
     {

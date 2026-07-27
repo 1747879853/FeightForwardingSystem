@@ -61,31 +61,70 @@ export namespace FeeCodeAdminApi {
   export interface FeeCodeDto {
     /** 费用代码Id（大数经 json-bigint 解析为 string） */
     id: number | string;
+    /** 费用代码 */
     code?: string;
+    /** 中文名称 */
     cnName?: string;
+    /** 英文名称 */
     enName?: string;
     /** 币别Id（大数经 json-bigint 解析为 string） */
     currencyId?: number | string;
-    defaultUnitName?: string;
-    defaultDebitName?: string;
-    defaultCreditName?: string;
-    isSea?: boolean;
-    isAir?: boolean;
-    isTrucking?: boolean;
-    isTruckingFixed?: boolean;
-    isWms?: boolean;
-    isAdvancedPay?: boolean;
-    isConfidential?: boolean;
-    isInvoiceProhibit?: boolean;
-    taxRate?: number;
-    goodName?: string;
-    checkingType?: string;
+    /** 默认币别代码 */
     defaultCurrency?: string;
+    /** 默认计费标准代码 */
+    defaultUnit?: string;
+    /** 默认计费标准名称 */
+    defaultUnitName?: string;
+    /** 默认收费客户类型 */
+    defaultDebit?: string;
+    /** 默认收费客户类型名称（IndustryCategory 字母） */
+    defaultDebitName?: string;
+    /** 默认付费客户类型 */
+    defaultCredit?: string;
+    /** 默认付费客户类型名称（IndustryCategory 字母） */
+    defaultCreditName?: string;
+    /** 海运相关 */
+    isSea?: boolean;
+    /** 空运相关 */
+    isAir?: boolean;
+    /** 陆运相关 */
+    isTrucking?: boolean;
+    /** 是否陆运固定费用 */
+    isTruckingFixed?: boolean;
+    /** 仓储相关 */
+    isWms?: boolean;
+    /** 垫付 */
+    isAdvancedPay?: boolean;
+    /** 机密 */
+    isConfidential?: boolean;
+    /** 禁开发票 */
+    isInvoiceProhibit?: boolean;
+    /** 费用分组 */
+    feeGroup?: string;
+    /** FRT */
+    feeFrt?: string;
+    /** 发票名 */
+    goodName?: string;
+    /** 对账类型 */
+    checkingType?: string;
+    /** 默认税率 */
+    taxRate?: number;
+    /** 是否启用 */
     enable?: boolean;
+    /** 排序 */
     sortId?: number;
+    /** 备注 */
     remark?: string;
+    /** 创建人Id */
+    creatorUserId?: number | null;
+    /** 创建人昵称 */
+    creatorUserName?: string;
+    /** 创建时间 */
     creationTime?: string;
-    lastModificationTime?: string;
+    /** 最后修改人Id */
+    lastModifierUserId?: number | null;
+    /** 最后修改时间 */
+    lastModificationTime?: string | null;
   }
 
   /** 分页列表响应 */

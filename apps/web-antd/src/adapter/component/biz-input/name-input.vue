@@ -70,7 +70,7 @@ watch(
     <Input
       :value="nameValue"
       :disabled="props.disabled"
-      :placeholder="$t('seaExport.export.vessel')"
+      :placeholder="$t('seaExport.client.fullName')"
       class="flex-1"
       allow-clear
       @update:value="(v) => emit('update:value', v)"

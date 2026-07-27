@@ -14,6 +14,7 @@ import {
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
 import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
+import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import { orderCtnListRef } from '../data';
 
 // 定义Props
@@ -193,6 +194,91 @@ const [Modal, modalApi] = useVbenModal({
             Object.keys(feeData),
           );
 
+          // ✅ 关键修复：确保currencyId和feeCodeId是ID而不是名称
+          const processedFeeData = { ...feeData };
+
+          // 处理currencyId：如果是对象，提取id；如果是字符串且看起来像名称，需要查询获取ID
+          if (
+            processedFeeData.currencyId !== undefined &&
+            processedFeeData.currencyId !== null
+          ) {
+            console.log(
+              '🔍 [数据预处理] currencyId原始值:',
+              processedFeeData.currencyId,
+              '类型:',
+              typeof processedFeeData.currencyId,
+            );
+
+            // 如果是对象，提取id或value字段
+            if (typeof processedFeeData.currencyId === 'object') {
+              const currencyObj = processedFeeData.currencyId as any;
+              processedFeeData.currencyId =
+                currencyObj.id || currencyObj.value || currencyObj.currencyId;
+              console.log(
+                '✅ [数据预处理] 从对象中提取currencyId:',
+                processedFeeData.currencyId,
+              );
+            }
+            // 如果是字符串，可能是名称，需要保持原样（后续通过监听器处理）
+            else if (typeof processedFeeData.currencyId === 'string') {
+              console.log(
+                '⚠️ [数据预处理] currencyId是字符串，可能是名称:',
+                processedFeeData.currencyId,
+              );
+              // 暂时保持原样，等待费用代码变化监听器会重新查询
+            }
+          }
+
+          // 处理feeCodeId：如果是对象，提取id
+          if (
+            processedFeeData.feeCodeId !== undefined &&
+            processedFeeData.feeCodeId !== null
+          ) {
+            console.log(
+              '🔍 [数据预处理] feeCodeId原始值:',
+              processedFeeData.feeCodeId,
+              '类型:',
+              typeof processedFeeData.feeCodeId,
+            );
+
+            // 如果是对象，提取id或value字段
+            if (typeof processedFeeData.feeCodeId === 'object') {
+              const feeCodeObj = processedFeeData.feeCodeId as any;
+              processedFeeData.feeCodeId =
+                feeCodeObj.id || feeCodeObj.value || feeCodeObj.feeCodeId;
+              console.log(
+                '✅ [数据预处理] 从对象中提取feeCodeId:',
+                processedFeeData.feeCodeId,
+              );
+            }
+          }
+
+          // 处理settlementId：如果是对象，提取id
+          if (
+            processedFeeData.settlementId !== undefined &&
+            processedFeeData.settlementId !== null
+          ) {
+            console.log(
+              '🔍 [数据预处理] settlementId原始值:',
+              processedFeeData.settlementId,
+              '类型:',
+              typeof processedFeeData.settlementId,
+            );
+
+            // 如果是对象，提取id或value字段
+            if (typeof processedFeeData.settlementId === 'object') {
+              const settlementObj = processedFeeData.settlementId as any;
+              processedFeeData.settlementId =
+                settlementObj.id ||
+                settlementObj.value ||
+                settlementObj.settlementId;
+              console.log(
+                '✅ [数据预处理] 从对象中提取settlementId:',
+                processedFeeData.settlementId,
+              );
+            }
+          }
+
           // 等待一小段时间确保组件完全渲染
           await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -217,11 +303,11 @@ const [Modal, modalApi] = useVbenModal({
 
           console.log('📊 [编辑模态框] 准备设置的字段值:');
           fieldsToSet.forEach((field) => {
-            console.log(`  - ${field}:`, feeData[field]);
+            console.log(`  - ${field}:`, processedFeeData[field]);
           });
 
-          // 设置表单值
-          await orderFeeFormApi.setValues(feeData);
+          // 设置表单值（使用处理后的数据）
+          await orderFeeFormApi.setValues(processedFeeData);
 
           // 验证表单值是否设置成功
           const formValues = await orderFeeFormApi.getValues();
@@ -230,6 +316,96 @@ const [Modal, modalApi] = useVbenModal({
             '📊 [编辑模态框] 表单字段列表:',
             Object.keys(formValues || {}),
           );
+
+          // ✅ 关键修复：如果currencyId或feeCodeId仍然是名称而非ID，需要手动触发onChange来重新查询
+          if (
+            processedFeeData.feeCodeId &&
+            typeof processedFeeData.feeCodeId === 'string'
+          ) {
+            console.log(
+              '⚠️ [编辑模态框] feeCodeId可能是名称，尝试通过onChange重新查询...',
+            );
+
+            // 获取费用代码详情，将其转换为ID
+            try {
+              // 尝试将字符串作为ID查询
+              const feeCodeDetail = await getFeeCodeDetail(
+                processedFeeData.feeCodeId,
+              );
+              if (feeCodeDetail && feeCodeDetail.id) {
+                console.log(
+                  '✅ [编辑模态框] 成功获取费用代码详情，ID:',
+                  feeCodeDetail.id,
+                );
+                // 更新为正确的ID
+                await orderFeeFormApi.setFieldValue(
+                  'feeCodeId',
+                  feeCodeDetail.id,
+                );
+
+                // 同时更新currencyId
+                if (feeCodeDetail.currencyId) {
+                  await orderFeeFormApi.setFieldValue(
+                    'currencyId',
+                    feeCodeDetail.currencyId,
+                  );
+                  console.log(
+                    '✅ [编辑模态框] 更新currencyId为:',
+                    feeCodeDetail.currencyId,
+                  );
+                }
+              } else {
+                console.warn('⚠️ [编辑模态框] 未能获取有效的费用代码详情');
+              }
+            } catch (error) {
+              console.error('❌ [编辑模态框] 查询费用代码详情失败:', error);
+            }
+          }
+
+          // 如果currencyId仍然是名称（字符串），尝试查询币别详情获取ID
+          if (
+            processedFeeData.currencyId &&
+            typeof processedFeeData.currencyId === 'string' &&
+            !processedFeeData.feeCodeId
+          ) {
+            console.log(
+              '⚠️ [编辑模态框] currencyId是名称且没有feeCodeId，尝试查询币别详情...',
+            );
+
+            try {
+              // 尝试根据名称查询币别列表
+              const currencyList = await getCurrencyPagedList({
+                Keyword: processedFeeData.currencyId,
+                PageIndex: 1,
+                PageSize: 10,
+              });
+
+              if (currencyList.items && currencyList.items.length > 0) {
+                // 查找完全匹配的币别
+                const matchedCurrency = currencyList.items.find(
+                  (item: any) =>
+                    item.code === processedFeeData.currencyId ||
+                    item.cnName === processedFeeData.currencyId ||
+                    item.enName === processedFeeData.currencyId,
+                );
+
+                if (matchedCurrency && matchedCurrency.id) {
+                  await orderFeeFormApi.setFieldValue(
+                    'currencyId',
+                    matchedCurrency.id,
+                  );
+                  console.log(
+                    '✅ [编辑模态框] 更新currencyId为ID:',
+                    matchedCurrency.id,
+                  );
+                } else {
+                  console.warn('⚠️ [编辑模态框] 未找到匹配的币别');
+                }
+              }
+            } catch (error) {
+              console.error('❌ [编辑模态框] 查询币别列表失败:', error);
+            }
+          }
 
           // 预加载订单详情（只加载一次，后续所有监听器共享）
           const transportOrderId =
@@ -724,20 +900,45 @@ const setupFeeCodeChangeListener = async () => {
         componentProps: {
           onChange: async (newVal: any) => {
             console.log('💰 [FeeCodeSelect.onChange] 费用代码变化:', newVal);
+            console.log(
+              '💰 [FeeCodeSelect.onChange] newVal类型:',
+              typeof newVal,
+            );
 
             if (!newVal) {
               return;
             }
 
             try {
+              // ✅ 关键修复：如果newVal是对象，提取其id字段；如果是字符串/数字，直接使用
+              let feeCodeId = newVal;
+              if (typeof newVal === 'object' && newVal !== null) {
+                feeCodeId = newVal.id || newVal.value;
+                console.log(
+                  '💰 [FeeCodeSelect.onChange] 从对象中提取ID:',
+                  feeCodeId,
+                );
+              }
+
+              console.log(
+                '💰 [FeeCodeSelect.onChange] 最终使用的费用代码ID:',
+                feeCodeId,
+              );
+
               // 获取费用代码详情
-              const feeCodeDetail = await getFeeCodeDetail(newVal);
+              const feeCodeDetail = await getFeeCodeDetail(feeCodeId);
               if (!feeCodeDetail) {
                 console.warn('未找到费用代码详情');
                 return;
               }
 
               console.log('费用代码详情:', feeCodeDetail);
+              console.log(
+                '费用代码详情中的currencyId:',
+                feeCodeDetail.currencyId,
+                '类型:',
+                typeof feeCodeDetail.currencyId,
+              );
 
               // 获取收付类型
               const paySide = originalFeeData.value?.paySide; // 0=应收, 1=应付
@@ -788,9 +989,37 @@ const setupFeeCodeChangeListener = async () => {
                 // 同时获取汇率
                 if (feeCodeDetail.currencyId) {
                   try {
+                    // ✅ 关键修复：确保传递的是ID而不是名称
+                    let currencyIdForApi: any = feeCodeDetail.currencyId;
+
+                    // 如果currencyId是对象，提取其id字段
+                    if (
+                      typeof currencyIdForApi === 'object' &&
+                      currencyIdForApi !== null
+                    ) {
+                      currencyIdForApi =
+                        (currencyIdForApi as any).id ||
+                        (currencyIdForApi as any).value;
+                      console.log(
+                        '✅ [汇率查询] 从对象中提取币别ID:',
+                        currencyIdForApi,
+                      );
+                    }
+
+                    console.log(
+                      '✅ [汇率查询] 即将调用 getExchangeRateDetail，参数:',
+                      currencyIdForApi,
+                      '类型:',
+                      typeof currencyIdForApi,
+                    );
+
                     // 先获取汇率详情
-                    const exchangeRateData = await getExchangeRateDetail(
-                      feeCodeDetail.currencyId,
+                    const exchangeRateData =
+                      await getExchangeRateDetail(currencyIdForApi);
+
+                    console.log(
+                      '✅ [汇率查询] 成功获取汇率详情:',
+                      exchangeRateData,
                     );
 
                     // 判断是否为本位币：需要查询订单所属公司的本位币
@@ -806,11 +1035,29 @@ const setupFeeCodeChangeListener = async () => {
                           node?.localCurrencyId !== null &&
                           node?.localCurrencyId !== undefined,
                       );
+
+                      // ✅ 关键修复：比较时也使用正确的ID
+                      let companyCurrencyId: any = companyNode?.localCurrencyId;
+                      if (
+                        typeof companyCurrencyId === 'object' &&
+                        companyCurrencyId !== null
+                      ) {
+                        companyCurrencyId =
+                          (companyCurrencyId as any).id ||
+                          (companyCurrencyId as any).value;
+                      }
+
                       if (
                         companyNode &&
-                        companyNode.localCurrencyId === feeCodeDetail.currencyId
+                        String(companyCurrencyId) === String(currencyIdForApi)
                       ) {
                         isLocalCurrency = true;
+                        console.log(
+                          '✅ [本位币判断] 检测到本位币，公司本位币ID:',
+                          companyCurrencyId,
+                          '费用币别ID:',
+                          currencyIdForApi,
+                        );
                       }
                     }
 
@@ -828,9 +1075,16 @@ const setupFeeCodeChangeListener = async () => {
                         'exchangeRate',
                         exchangeRate,
                       );
+                      console.log('✅ [汇率设置] 设置汇率为:', exchangeRate);
                     }
                   } catch (error) {
-                    console.error('获取汇率详情失败:', error);
+                    console.error('❌ [汇率查询] 获取汇率详情失败:', error);
+                    console.error('❌ [汇率查询] 错误详情:', {
+                      message:
+                        error instanceof Error ? error.message : '未知错误',
+                      currencyId: feeCodeDetail.currencyId,
+                      currencyIdType: typeof feeCodeDetail.currencyId,
+                    });
                   }
                 }
               }

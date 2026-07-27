@@ -310,6 +310,11 @@ export function useColumns(
       minWidth: 80,
     },
     {
+      field: 'creatorUserName',
+      title: $t('system.basicData.feeCode.creatorUserName'),
+      minWidth: 90,
+    },
+    {
       field: 'creationTime',
       title: $t('system.basicData.feeCode.creationTime'),
       minWidth: 160,
