@@ -296,13 +296,13 @@ const mapFreightRateParams = (
 const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
   formOptions: {
     schema: useGridFormSchema(),
-    showCollapseButton: false,
+    showCollapseButton: true,
     submitOnChange: true,
     collapsed: true,
     commonConfig: {
-      labelWidth: 72,
+      labelWidth: 86,
     },
-    wrapperClass: 'grid-cols-5',
+    wrapperClass: 'grid-cols-6',
   },
   gridOptions: {
     id: FREIGHT_RATE_LIST_TABLE_ID,
@@ -355,9 +355,8 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     toolbarConfig: {
       custom: true,
       export: false,
-      refresh: true,
-      search: true,
-      zoom: false,
+      refresh: { code: 'query' },
+      zoom: true,
     },
   },
   gridEvents: {

@@ -151,26 +151,28 @@ export function useBatchAddColumns(
         width: 100,
         type: 'dropdown',
         source: ['是', '否'],
-        renderer: (
-          instance: any,
-          td: any,
-          row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
-        ) => {
-          td.innerHTML = value ? '是' : '否';
-          td.className = 'htCenter';
-          return td;
-        },
+
         afterChange: function (this: any, changes: any, source: string) {
           if (source === 'edit' && changes) {
             changes.forEach(([row, prop, oldValue, newValue]: any) => {
               if (prop === 'isDirect') {
-                // 如果设置为直达，清空中转港
-                if (newValue) {
-                  const hotInstance = this;
+                const hotInstance = this;
+                
+                // ⚠️ 关键修复：将用户选择的"是"/"否"转换为布尔值
+                let booleanValue: boolean | undefined;
+                if (newValue === '是') {
+                  booleanValue = true;
+                } else if (newValue === '否') {
+                  booleanValue = false;
+                } else {
+                  booleanValue = undefined;
+                }
+                
+                // 更新单元格值为布尔值
+                //hotInstance.setDataAtCell(row, getColumnIndex('isDirect'), booleanValue);
+                
+                // 如果设置为直达（true），清空中转港
+                if (booleanValue === true) {
                   hotInstance.setDataAtCell(
                     row,
                     getColumnIndex('poT1Id'),

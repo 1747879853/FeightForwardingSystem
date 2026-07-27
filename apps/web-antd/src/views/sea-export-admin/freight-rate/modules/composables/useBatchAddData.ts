@@ -43,7 +43,7 @@ export function useBatchAddData() {
       carrierId: undefined,
       polId: undefined,
       podId: undefined,
-      isDirect: true,
+      isDirect: '是',
       poT1Id: undefined,
       poT2Id: undefined,
       polFreeDays: undefined,
@@ -272,12 +272,24 @@ export function useBatchAddData() {
 
       // ⚠️ 关键修复：直接传递字符串 ID，后端会自行处理类型转换
       // 避免前端使用 Number() 转换导致大数精度丢失
+      
+      // ⚠️ 关键修复：将 isDirect 的"是/否"文本转换为布尔值 true/false
+      let isDirectBoolean: boolean | undefined;
+      if (row.isDirect === '是') {
+        isDirectBoolean = true;
+      } else if (row.isDirect === '否') {
+        isDirectBoolean = false;
+      } else {
+        // 如果已经是布尔值，直接使用
+        isDirectBoolean = row.isDirect === true || row.isDirect === false ? row.isDirect : undefined;
+      }
+      
       return {
         recommend: row.recommend || false,
         carrierId: carrierId!,
         polId: polId!,
         podId: podId!,
-        isDirect: row.isDirect,
+        isDirect: isDirectBoolean,
         poT1Id,
         poT2Id,
         polFreeDays: row.polFreeDays,
