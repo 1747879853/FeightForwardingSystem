@@ -26,6 +26,8 @@ export function useBatchAddSettings(
    * Handsontable 配置
    */
   const hotSettings = computed(() => ({
+    // ⚠️ 关键修复：恢复 data 属性，让 Handsontable 直接使用 dataSource 作为数据源
+    // 这样用户编辑的值会自动同步到 dataSource.value[row][field]
     data: dataSource.value,
     columns: hotColumns.value,
     rowHeaders: true,
@@ -72,33 +74,33 @@ export function useBatchAddSettings(
       selectedRowKeys.value = selectedRows;
     },
 
-    afterChange: (changes: any, source: string) => {
+    afterChange: function (this: any, changes: any, source: string) {
       if (!changes || source === 'loadData') return;
+
+      // ️ 关键修复：获取 hotInstance，使用其 API 更新数据，避免触发 Vue 响应式
+      const hotInstance = this; // afterChange 中的 this 指向 hotInstance
 
       changes.forEach(([row, prop, oldValue, newValue]: any) => {
         // 处理 DEM + DET = 免箱使期 的自动计算
         if (prop === 'poddem' || prop === 'podFreeDays') {
-          const rowData = dataSource.value[row];
-          if (rowData) {
-            const dem = Number(rowData.poddem) || 0;
-            const det = Number(rowData.podFreeDays) || 0;
-            rowData.poddet = dem + det;
-          }
+          // 使用 hotInstance.getDataAtCell 获取当前值，而不是直接访问 dataSource
+          const dem = Number(hotInstance.getDataAtCell(row, hotInstance.propToCol('poddem'))) || 0;
+          const det = Number(hotInstance.getDataAtCell(row, hotInstance.propToCol('podFreeDays'))) || 0;
+          const poddet = dem + det;
+          
+          // 使用 setDataAtCell 更新，避免触发 Vue 响应式
+          hotInstance.setDataAtCell(row, hotInstance.propToCol('poddet'), poddet);
         }
 
         // 处理日期模式切换时的清空逻辑
         if (prop === 'etd' && newValue && oldValue !== newValue) {
-          const rowData = dataSource.value[row];
-          if (rowData) {
-            rowData.etdDayOfWeek = undefined;
-          }
+          // 使用 setDataAtCell 清空 etdDayOfWeek
+          hotInstance.setDataAtCell(row, hotInstance.propToCol('etdDayOfWeek'), undefined);
         }
 
         if (prop === 'etdDayOfWeek' && newValue !== undefined) {
-          const rowData = dataSource.value[row];
-          if (rowData) {
-            rowData.etd = '';
-          }
+          // 使用 setDataAtCell 清空 etd
+          hotInstance.setDataAtCell(row, hotInstance.propToCol('etd'), '');
         }
       });
     },
@@ -126,12 +128,6 @@ export function useBatchAddSettings(
       if (prop === 'carrierId') {
         const carriers = dropdownSourceCache?.value?.carriers || [];
         cellProperties.source = carriers;
-        console.log(
-          `🔧 [cells] ${prop} - 设置 source，数量:`,
-          carriers.length,
-          '缓存Map大小:',
-          dropdownSourceCache?.value ? Object.keys(dropdownSourceCache.value).length : 0,
-        );
       } else if (
         prop === 'polId' ||
         prop === 'podId' ||
@@ -140,30 +136,12 @@ export function useBatchAddSettings(
       ) {
         const ports = dropdownSourceCache?.value?.ports || [];
         cellProperties.source = ports;
-        if (row === 0) {
-          console.log(
-            `🔧 [cells] ${prop} - 设置 source，数量:`,
-            ports.length,
-          );
-        }
       } else if (prop === 'currencyId') {
         const currencies = dropdownSourceCache?.value?.currencies || [];
         cellProperties.source = currencies;
-        if (row === 0) {
-          console.log(
-            `🔧 [cells] ${prop} - 设置 source，数量:`,
-            currencies.length,
-          );
-        }
       } else if (prop === 'bookingAgentId') {
         const clients = dropdownSourceCache?.value?.clients || [];
         cellProperties.source = clients;
-        if (row === 0) {
-          console.log(
-            `🔧 [cells] ${prop} - 设置 source，数量:`,
-            clients.length,
-          );
-        }
       }
 
       return cellProperties;

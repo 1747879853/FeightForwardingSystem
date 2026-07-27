@@ -111,6 +111,19 @@ export default defineConfig(async (config) => {
     application: {},
     vite: {
       plugins: [createSyncLoadingLogoPlugin(mode)],
+      // build: {
+      //   minify: 'terser', // 明确指定使用 terser
+      //   terserOptions: {
+      //     compress: {
+      //       // 生产环境移除 console
+      //       drop_console: true,
+      //       // 可选：同时移除 debugger 语句
+      //       drop_debugger: true,
+      //       // 更精细的控制：只移除特定的 console 方法
+      //       pure_funcs: ['console.log', 'console.info', 'console.debug'],
+      //     },
+      //   },
+      // },
       server: {
         proxy: {
           '/api': {

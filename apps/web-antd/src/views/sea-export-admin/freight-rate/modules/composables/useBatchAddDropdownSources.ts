@@ -11,7 +11,7 @@ import { getClientGroupedByIndustryCategory } from '#/api/common/client';
  */
 export function useBatchAddDropdownSources() {
   // 所有箱型选项
-  const allCtnOptions = ref<Array<{ ctnCodeId: number; ctnName: string }>>([]);
+  const allCtnOptions = ref<Array<{ ctnCodeId: string | number; ctnName: string }>>([]);
 
   // Label 缓存
   const labelCache = ref({

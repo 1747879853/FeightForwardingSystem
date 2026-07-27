@@ -70,7 +70,7 @@ const currentOptionsCache = computed(() => ({
   })),
   ports: Array.from(labelCache.value.ports.entries()).map(([id, name]) => ({
     label: name,
-    value: Number(id),
+    value: id,
   })),
   currencies: Array.from(labelCache.value.currencies.entries()).map(([id, code]) => ({
     label: code,
@@ -92,42 +92,6 @@ const dropdownSourceCache = computed(() => {
     clients: Array.from(labelCache.value.clients.values()),
   };
 
-  // 调试日志：输出缓存数据
-  console.log('📦 [dropdownSourceCache] 计算属性被调用');
-  console.log('📦 [dropdownSourceCache] labelCache.carriers Map大小:', labelCache.value.carriers.size);
-  console.log('📦 [dropdownSourceCache] labelCache.ports Map大小:', labelCache.value.ports.size);
-  console.log('📦 [dropdownSourceCache] labelCache.currencies Map大小:', labelCache.value.currencies.size);
-  console.log('📦 [dropdownSourceCache] labelCache.clients Map大小:', labelCache.value.clients.size);
-  console.log('📦 [dropdownSourceCache] 船公司数量:', result.carriers.length);
-  console.log('📦 [dropdownSourceCache] 港口数量:', result.ports.length);
-  console.log('📦 [dropdownSourceCache] 币别数量:', result.currencies.length);
-  console.log('📦 [dropdownSourceCache] 订舱代理数量:', result.clients.length);
-
-  if (result.carriers.length > 0) {
-    console.log(
-      '📦 [dropdownSourceCache] 船公司示例:',
-      result.carriers.slice(0, 3),
-    );
-  }
-  if (result.ports.length > 0) {
-    console.log(
-      '📦 [dropdownSourceCache] 港口示例:',
-      result.ports.slice(0, 3),
-    );
-  }
-  if (result.currencies.length > 0) {
-    console.log(
-      '📦 [dropdownSourceCache] 币别示例:',
-      result.currencies.slice(0, 3),
-    );
-  }
-  if (result.clients.length > 0) {
-    console.log(
-      '📦 [dropdownSourceCache] 订舱代理示例:',
-      result.clients.slice(0, 3),
-    );
-  }
-
   return result;
 });
 
@@ -142,7 +106,7 @@ const labelToIdMap = computed(() => ({
   ports: new Map<string, string>(
     Array.from(labelCache.value.ports.entries()).map(([id, name]) => [
       name,
-     id,
+      id,
     ]),
   ),
   currencies: new Map<string, string>(
@@ -191,12 +155,6 @@ const handleOpenDropdown = (
   field: string,
   source: string[],
 ) => {
-  console.log(
-    `🔍 [handleOpenDropdown] 字段: ${field}, 选项数量: ${source.length}`,
-  );
-  if (source.length > 0 && source.length <= 5) {
-    console.log(`🔍 [handleOpenDropdown] 选项示例:`, source.slice(0, 5));
-  }
   coreTableRef.value?.handleOpenDropdown(rowIndex, colIndex, field, source);
 };
 
@@ -290,74 +248,79 @@ const [Modal, modalApi] = useVbenModal({
   title: '批量新增运价',
   confirmLoading: false,
   onConfirm: async () => {
+    // ⚠️ 关键修复：在提交前，先从 Handsontable 同步最新数据到 dataSource
+    // 因为使用了 shallowRef，Handsontable 内部的数据变化不会自动触发响应式更新
+    if (coreTableRef.value?.hotTableRef?.hotInstance) {
+      const hotInstance = coreTableRef.value.hotTableRef.hotInstance;
+      
+      // 获取 Handsontable 的最新数据（包含所有编辑后的值）
+      const hotData = hotInstance.getSourceData();
+      
+      if (hotData && hotData.length > 0) {
+        // 将二维数组转换为对象数组格式
+        // getSourceData() 返回的是 [[val1, val2], [val3, val4]]
+        // 我们需要 [{field1: val1, field2: val2}, {field1: val3, field2: val4}]
+        const columns = hotInstance.getSettings().columns;
+        const objectData = hotData.map((rowArray: any[]) => {
+          const rowObject: any = {};
+          columns.forEach((col: any, index: number) => {
+            if (rowArray[col.data]) {
+              rowObject[col.data] = rowArray[col.data];
+            }
+          });
+          return rowObject;
+        });
+        
+        // 更新 dataSource，触发浅响应式更新
+        dataSource.value = objectData;
+      }
+    }
+    
+    // 现在调用 handleSubmit，它会使用同步后的 dataSource
     await actions.handleSubmit(labelToIdMap.value);
   },
   onCancel: () => {
     modalApi.close();
   },
   onOpened: async () => {
-    console.log('📋 [Modal] 弹窗已打开');
-    console.log('📋 [Modal] allCtnOptions.length:', allCtnOptions.value.length);
-    console.log(
-      '📋 [Modal] labelCache.carriers.size:',
-      labelCache.value.carriers.size,
-    );
-    console.log(
-      '📋 [Modal] labelCache.ports.size:',
-      labelCache.value.ports.size,
-    );
-
     if (allCtnOptions.value.length === 0) {
-      console.log('🔄 [Modal] 开始初始化下拉框数据源...');
       const { defaultCtns } = await initDropdownSources(defaultCurrencyId);
+      
       addedCtnTypes.value = defaultCtns;
-      console.log('✅ [Modal] 初始化完成，默认箱型数量:', defaultCtns.length);
       
-      // 等待 dropdownSourceCache 更新
-      
-      console.log('📊 [Modal] 初始化后缓存状态:');
-      console.log('  - carriers:', dropdownSourceCache.value.carriers.length);
-      console.log('  - ports:', dropdownSourceCache.value.ports.length);
-      console.log('  - currencies:', dropdownSourceCache.value.currencies.length);
-      console.log('  - clients:', dropdownSourceCache.value.clients.length);
+      // ⚠️ 关键修复：等待 addedCtnTypes 变化触发 hotColumns 重新计算
+      await nextTick();
+      await nextTick(); // 多等待一个 tick，确保 computed 完全更新
     } else {
-      console.log('⏭️ [Modal] 跳过初始化，数据已存在');
+      // ⚠️ 关键修复：即使数据已存在，也要确保 hotColumns 是最新的
+      await nextTick();
     }
 
     await nextTick();
     if (dataSource.value.length === 0) {
       addRow(1);
+      await nextTick(); // 等待行数据添加完成
     }
     
-    // 确保 Handsontable 使用最新的数据源
+    // ⚠️ 关键修复：确保 Handsontable 使用最新的数据源和列配置
     if (coreTableRef.value?.hotTableRef?.hotInstance) {
-      console.log('🔄 [Modal] 刷新 Handsontable 设置...');
+      // ⚠️ 关键修复：直接更新列配置，Handsontable 会自动处理数据绑定
+      // 不要使用 getData/loadData，因为这会丢失行对象中的额外字段（如 _rowKey, seFreiPriceCtns 等）
       coreTableRef.value.hotTableRef.hotInstance.updateSettings({
         columns: hotColumns.value,
       });
-      console.log('✅ [Modal] Handsontable 设置已更新');
     }
   },
 });
 
-onMounted(async () => {
-  console.log('🚀 [Component] 组件已挂载');
-  if (allCtnOptions.value.length === 0) {
-    console.log('🔄 [Component] 开始初始化下拉框数据源...');
-    const { defaultCtns } = await initDropdownSources(defaultCurrencyId);
-    addedCtnTypes.value = defaultCtns;
-    console.log('✅ [Component] 初始化完成，默认箱型数量:', defaultCtns.length);
-  } else {
-    console.log('⏭️ [Component] 跳过初始化，数据已存在');
-  }
-});
-
 watch(
   addedCtnTypes,
-  async (newVal) => {
-    console.log('箱型列表变化:', newVal);
+  async (newVal, oldVal) => {
     await nextTick();
+    
     if (coreTableRef.value?.hotTableRef?.hotInstance) {
+      // ⚠️ 关键修复：直接更新列配置，Handsontable 会自动处理数据绑定
+      // 不要使用 getData/loadData，因为这会丢失行对象中的额外字段（如 _rowKey, seFreiPriceCtns 等）
       coreTableRef.value.hotTableRef.hotInstance.updateSettings({
         columns: hotColumns.value,
       });

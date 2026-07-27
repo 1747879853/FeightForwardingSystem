@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, shallowRef } from 'vue';
 import type {
   AddSeFreiPriceInput,
   SeFreiPriceCtnEditDto,
@@ -9,14 +9,15 @@ import { message } from 'ant-design-vue';
  * 批量新增运价 - 数据管理 Composable
  */
 export function useBatchAddData() {
-  // 表格数据源
-  const dataSource = ref<any[]>([]);
+  // ⚠️ 关键修复：使用 shallowRef 包裹 dataSource，避免深响应式导致的箱型列消失
+  // Handsontable 会直接修改行对象的属性，shallowRef 确保只有引用变化才触发更新
+  const dataSource = shallowRef<any[]>([]);
 
   // 选中的行 keys
   const selectedRowKeys = ref<(string | number)[]>([]);
 
   // 已添加的箱型列表
-  const addedCtnTypes = ref<Array<{ ctnCodeId: number; ctnName: string }>>([]);
+  const addedCtnTypes = ref<Array<{ ctnCodeId: string; ctnName: string }>>([]);
 
   // USD 币别 ID（默认值）
   const defaultCurrencyId = ref<number | string | undefined>("USD");
@@ -35,7 +36,7 @@ export function useBatchAddData() {
    * 创建默认行数据
    */
   function createDefaultRow(isCopied: boolean = false) {
-    return {
+    const row: any = {
       _rowKey: generateRowKey(),
       _isCopied: isCopied,
       recommend: false,
@@ -65,8 +66,24 @@ export function useBatchAddData() {
       remark: '',
       currencyId: defaultCurrencyId.value,
       bookingAgentId: undefined,
-      seFreiPriceCtns: [] as Array<{ ctnCodeId: number; cost?: number }>,
+      seFreiPriceCtns: [] as Array<{ ctnCodeId: string; cost?: number }>,
     };
+
+    // ⚠️ 关键修复：如果已经有添加的箱型，为新行初始化动态字段
+    if (addedCtnTypes.value.length > 0) {
+      addedCtnTypes.value.forEach((ctn) => {
+        const dynamicField = `ctn_${String(ctn.ctnCodeId)}`;
+        row[dynamicField] = undefined;
+      });
+      
+      // 同时初始化 seFreiPriceCtns
+      row.seFreiPriceCtns = addedCtnTypes.value.map((ctn) => ({
+        ctnCodeId: ctn.ctnCodeId,
+        cost: undefined,
+      }));
+    }
+
+    return row;
   }
 
   /**
@@ -77,19 +94,13 @@ export function useBatchAddData() {
 
     for (let i = 0; i < count; i++) {
       const newRow = createDefaultRow();
-
-      // 如果已经有添加的箱型，为新行初始化这些箱型的空数据
-      if (addedCtnTypes.value.length > 0) {
-        newRow.seFreiPriceCtns = addedCtnTypes.value.map((ctn) => ({
-          ctnCodeId: ctn.ctnCodeId,
-          cost: undefined,
-        }));
-      }
-
       newRows.push(newRow);
     }
 
-    dataSource.value.push(...newRows);
+    // ⚠️ 关键修复：使用新数组引用来触发 shallowRef 的响应式更新
+    // push() 不会改变引用，所以需要创建新数组
+    dataSource.value = [...dataSource.value, ...newRows];
+    
     message.success(`已新增 ${count} 行`);
   }
 
@@ -130,7 +141,9 @@ export function useBatchAddData() {
       _isCopied: true,
     }));
 
-    dataSource.value.push(...newRows);
+    // ⚠️ 关键修复：使用新数组引用来触发 shallowRef 的响应式更新
+    dataSource.value = [...dataSource.value, ...newRows];
+    
     message.success(`已复制 ${selectedRows.length} 行`);
   }
 
@@ -178,22 +191,34 @@ export function useBatchAddData() {
 
   /**
    * 准备提交数据
-   * @param labelToIdMap - 标签到ID的映射表(可选)
+   * @param labelToIdMap - 标签到ID的映射表(可选)，使用字符串类型避免大数精度丢失
    */
   function prepareSubmitData(labelToIdMap?: {
-    carriers: Map<string, number>;
-    ports: Map<string, number>;
-    currencies: Map<string, number>;
-    clients: Map<string, number>;
+    carriers: Map<string, string>;
+    ports: Map<string, string>;
+    currencies: Map<string, string>;
+    clients: Map<string, string>;
   }): AddSeFreiPriceInput[] {
     return dataSource.value.map((row) => {
-      // 构建箱型报价列表 - 只包含已录入运费的箱型
-      const seFreiPriceCtns: SeFreiPriceCtnEditDto[] = row.seFreiPriceCtns
-        .filter((ctn: any) => ctn.cost !== undefined && ctn.cost !== null)
-        .map((ctn: any) => ({
-          ctnCodeId: ctn.ctnCodeId,
-          cost: ctn.cost,
-        }));
+      // ⚠️ 关键修复：从行数据中提取箱型列的值（而不是从 seFreiPriceCtns）
+      // 因为 handleAfterChange 不再同步 seFreiPriceCtns，避免触发 Vue 响应式
+      const seFreiPriceCtns: SeFreiPriceCtnEditDto[] = [];
+      
+      // 遍历所有以 ctn_ 开头的字段，提取箱型费用
+      Object.keys(row).forEach((key) => {
+        if (key.startsWith('ctn_')) {
+          const ctnCodeId = key.replace('ctn_', '');
+          const cost = row[key];
+          
+          // 只包含有值的箱型
+          if (cost !== undefined && cost !== null && cost !== '') {
+            seFreiPriceCtns.push({
+              ctnCodeId,
+              cost: Number(cost),
+            });
+          }
+        }
+      });
 
       // 构建日期时间模式数据
       const seFreiPriceDays =
@@ -224,17 +249,13 @@ export function useBatchAddData() {
             ]
           : [];
 
-      // 辅助函数:将名称转换为ID
+      // 辅助函数:将名称转换为ID（保持字符串类型，避免大数精度丢失）
       const convertNameToId = (
         value: any,
-        map?: Map<string, number>,
-      ): number | undefined => {
-        // 如果已经是数字ID,直接返回
-        if (typeof value === 'number') {
-          return value;
-        }
-        // 如果是字符串名称,尝试从映射表中查找ID
-        if (typeof value === 'string' && map) {
+        map?: Map<string, string>,
+      ): string | undefined => {
+        // 如果是字符串名称，尝试从映射表中查找ID
+        if (map) {
           return map.get(value);
         }
         return undefined;
@@ -249,6 +270,8 @@ export function useBatchAddData() {
       const poT2Id = convertNameToId(row.poT2Id, labelToIdMap?.ports);
       const bookingAgentId = convertNameToId(row.bookingAgentId,labelToIdMap?.clients); // bookingAgentId 保持原值,不需要转换
 
+      // ⚠️ 关键修复：直接传递字符串 ID，后端会自行处理类型转换
+      // 避免前端使用 Number() 转换导致大数精度丢失
       return {
         recommend: row.recommend || false,
         carrierId: carrierId!,
@@ -272,7 +295,7 @@ export function useBatchAddData() {
         seFreiPriceFees: [],
         seFreiPriceDays,
         seFreiPriceWeekDays,
-      };
+      } as any; // 使用 as any 绕过 TypeScript 类型检查，因为后端支持字符串 ID
     });
   }
 

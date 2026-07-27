@@ -12,10 +12,10 @@ export function useBatchAddActions(
   allCtnOptions: any,
   validateForm: () => boolean,
   prepareSubmitData: (labelToIdMap?: {
-    carriers: Map<string, number>;
-    ports: Map<string, number>;
-    currencies: Map<string, number>;
-    clients: Map<string, number>;
+    carriers: Map<string, string>;
+    ports: Map<string, string>;
+    currencies: Map<string, string>;
+    clients: Map<string, string>;
   }) => any[],
   reset: () => void,
   emit: (event: 'success') => void,
@@ -122,13 +122,25 @@ export function useBatchAddActions(
 
     addedCtnTypes.value.push({ ...ctn });
 
-    // 为所有行添加该箱型的空值
-    dataSource.value.forEach((row: any) => {
+    // ⚠️ 关键修复：为所有行添加该箱型的空值，并创建新数组引用触发 shallowRef 响应式
+    const updatedDataSource = dataSource.value.map((row: any) => {
+      // 添加 seFreiPriceCtns 项
       row.seFreiPriceCtns.push({
         ctnCodeId: ctn.ctnCodeId,
         cost: undefined,
       });
+      
+      // 添加动态字段
+      const dynamicField = `ctn_${String(ctn.ctnCodeId)}`;
+      if (!(dynamicField in row)) {
+        row[dynamicField] = undefined;
+      }
+      
+      return row;
     });
+    
+    // 更新 dataSource 引用，触发 shallowRef 响应式
+    dataSource.value = updatedDataSource;
 
     // 清空选中的箱型ID
     selectedCtnId.value = undefined;
@@ -161,10 +173,10 @@ export function useBatchAddActions(
    * 提交表单
    */
   async function handleSubmit(labelToIdMap?: {
-    carriers: Map<string, number>;
-    ports: Map<string, number>;
-    currencies: Map<string, number>;
-    clients: Map<string, number>;
+    carriers: Map<string, string>;
+    ports: Map<string, string>;
+    currencies: Map<string, string>;
+    clients: Map<string, string>;
   }) {
     if (!validateForm()) {
       return;

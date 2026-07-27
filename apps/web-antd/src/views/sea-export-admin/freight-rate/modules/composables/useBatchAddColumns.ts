@@ -360,7 +360,7 @@ export function useBatchAddColumns(
 
     // 添加动态箱型列
     addedCtnTypes.value.forEach((ctn: any) => {
-      columns.push({
+      const colConfig = {
         data: `ctn_${String(ctn.ctnCodeId)}`,
         title: ctn.ctnName,
         width: 120,
@@ -370,7 +370,8 @@ export function useBatchAddColumns(
           culture: 'zh-CN',
         },
         className: 'htRight',
-      });
+      };
+      columns.push(colConfig);
     });
 
     return columns;
