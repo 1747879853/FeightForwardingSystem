@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue';
 import { useVbenModal } from '@vben/common-ui';
 import { Plus, Copy } from '@vben/icons';
+import dayjs from 'dayjs';
 import {
   Button,
   message,
@@ -41,6 +42,187 @@ const {
   reset,
 } = useBatchAddData();
 
+// ==================== AI 数据管理 ====================
+
+// 存储AI识别的数据
+const aiData = ref<any[] | undefined>(undefined);
+
+/**
+ * 生成唯一行 key
+ */
+function generateRowKey(): string {
+  return `freight_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * 处理 AI 识别的数据
+ */
+async function handleAIData(aiDataList: any[]) {
+  console.log('🤖 开始处理 AI 数据:', aiDataList);
+
+  // 确保下拉选项已加载
+  if (allCtnOptions.value.length === 0) {
+    await initDropdownSources(defaultCurrencyId);
+  }
+
+  // 收集 AI 数据中的所有箱型
+  const aiCtnTypes = new Set<string>();
+  aiDataList.forEach((row: any, index: number) => {
+    console.log(`🔍 检查第${index + 1}条数据的箱型:`, row.seFreiPriceCtns);
+    if (row.seFreiPriceCtns && Array.isArray(row.seFreiPriceCtns)) {
+      row.seFreiPriceCtns.forEach((ctn: any) => {
+        if (ctn.ctnCodeId) {
+          aiCtnTypes.add(String(ctn.ctnCodeId));
+        }
+      });
+    }
+  });
+
+  console.log('📊 AI 数据中发现的箱型 IDs:', Array.from(aiCtnTypes));
+
+  // 将 AI 数据中的箱型添加到 addedCtnTypes
+  const newAddedCtnTypes: Array<{ ctnCodeId: string; ctnName: string }> = [];
+  aiCtnTypes.forEach((ctnCodeId) => {
+    // 检查是否已添加
+    const exists = addedCtnTypes.value.some(
+      (ctn) => String(ctn.ctnCodeId) === String(ctnCodeId),
+    );
+
+    if (!exists) {
+      // 查找箱型名称
+      const ctnOption = allCtnOptions.value.find(
+        (c) => String(c.ctnCodeId) === String(ctnCodeId),
+      );
+      if (ctnOption) {
+        newAddedCtnTypes.push({
+          ctnCodeId: ctnOption.ctnCodeId,
+          ctnName: ctnOption.ctnName,
+        });
+      } else {
+        console.warn(`⚠️ 未找到箱型ID ${ctnCodeId} 对应的名称`);
+      }
+    }
+  });
+
+  // 如果有新的箱型需要添加
+  if (newAddedCtnTypes.length > 0) {
+    addedCtnTypes.value.push(...newAddedCtnTypes);
+    console.log('✅ 添加了', newAddedCtnTypes.length, '个新箱型到列配置');
+  }
+
+  // 等待列配置更新
+  await nextTick();
+  await nextTick();
+
+  // ⚠️ 关键修复：辅助函数 - 将 ID 转换为显示名称（用于 Handsontable 下拉框）
+  const convertIdToLabel = (
+    id: any,
+    type: 'carriers' | 'ports' | 'currencies' | 'clients',
+  ): string => {
+    if (!id) return '';
+    const key = String(id);
+
+    switch (type) {
+      case 'carriers':
+        return getCarrierName(id);
+      case 'ports':
+        return getPortName(id);
+      case 'currencies':
+        return getCurrencyName(id);
+      case 'clients':
+        return getClientName(id);
+      default:
+        return String(id);
+    }
+  };
+
+  // 转换 AI 数据格式以适应表格结构
+  const transformedAiData = aiDataList.map((row) => {
+    // ⚠️ 关键修复：将所有 ID 字段转换为对应的显示名称（Handsontable 下拉框需要名称而非 ID）
+    const carrierName = convertIdToLabel(row.carrierId, 'carriers');
+    const polName = convertIdToLabel(row.polId, 'ports');
+    const podName = convertIdToLabel(row.podId, 'ports');
+    const currencyName = convertIdToLabel(row.currencyId, 'currencies');
+    const bookingAgentName = convertIdToLabel(row.bookingAgentId, 'clients');
+    const poT1Name = convertIdToLabel(row.poT1Id, 'ports');
+    const poT2Name = convertIdToLabel(row.poT2Id, 'ports');
+
+    // 构建行对象，包含所有字段（使用名称而非 ID）
+    const transformedRow: any = {
+      _rowKey: generateRowKey(),
+      _isCopied: false,
+      recommend: row.recommend || false,
+      carrierId: carrierName, // ✅ 使用名称
+      polId: polName, // ✅ 使用名称
+      podId: podName, // ✅ 使用名称
+      isDirect: (row.isDirect ?? true) ? '是' : '否', // ✅ 转换为"是/否"文本
+      poT1Id: poT1Name, // ✅ 使用名称
+      poT2Id: poT2Name, // ✅ 使用名称
+      polFreeDays: row.polFreeDays,
+      podFreeDays: row.podFreeDays,
+      poddem: row.poddem,
+      poddet: row.poddet,
+      voyage: row.voyage || '',
+      contractNo: row.contractNo || '',
+      etd: row.etd || '',
+      closeDocTime: row.closeDocTime || '',
+      closingTime: row.closingTime || '',
+      etdDayOfWeek: row.etdDayOfWeek,
+      etdDayTime: row.etdDayTime || '',
+      closeDocDayOfWeek: row.closeDocDayOfWeek,
+      closeDocDayTime: row.closeDocDayTime || '',
+      closingDayOfWeek: row.closingDayOfWeek,
+      closingDayTime: row.closingDayTime || '',
+      validTimeStart: row.validTimeStart
+        ? dayjs(row.validTimeStart).format('YYYY-MM-DD')
+        : '',
+      validTimeEnd: row.validTimeEnd
+        ? dayjs(row.validTimeEnd).format('YYYY-MM-DD')
+        : '',
+      remark: row.remark || '',
+      currencyId: currencyName, // ✅ 使用名称
+      bookingAgentId: bookingAgentName, // ✅ 使用名称
+      seFreiPriceCtns: row.seFreiPriceCtns || [],
+    };
+
+    // ⚠️ 关键修复：为每个箱型设置动态字段值（Handsontable 使用这些字段）
+    if (row.seFreiPriceCtns && Array.isArray(row.seFreiPriceCtns)) {
+      row.seFreiPriceCtns.forEach((ctn: any) => {
+        const dynamicField = `ctn_${String(ctn.ctnCodeId)}`;
+        transformedRow[dynamicField] = ctn.cost;
+      });
+    }
+
+    return transformedRow;
+  });
+
+  console.log('🔄 转换后的 AI 数据:', transformedAiData);
+
+  // 替换 dataSource
+  dataSource.value = transformedAiData;
+
+  // 等待数据更新后，同步到 Handsontable
+  await nextTick();
+
+  if (coreTableRef.value?.hotTableRef?.hotInstance) {
+    const hotInstance = coreTableRef.value.hotTableRef.hotInstance;
+
+    // 更新 Handsontable 的数据和列配置
+    hotInstance.updateSettings({
+      data: transformedAiData,
+      columns: hotColumns.value,
+    });
+
+    console.log(
+      '✅ AI 数据已加载到 Handsontable，共',
+      transformedAiData.length,
+      '条记录',
+    );
+  }
+
+  message.success(`已加载 ${transformedAiData.length} 条AI识别的数据`);
+}
+
 const {
   allCtnOptions,
   labelCache,
@@ -64,18 +246,22 @@ const actions = useBatchAddActions(
 );
 
 const currentOptionsCache = computed(() => ({
-  carriers: Array.from(labelCache.value.carriers.entries()).map(([id, name]) => ({
-    label: name,
-    value: Number(id),
-  })),
+  carriers: Array.from(labelCache.value.carriers.entries()).map(
+    ([id, name]) => ({
+      label: name,
+      value: Number(id),
+    }),
+  ),
   ports: Array.from(labelCache.value.ports.entries()).map(([id, name]) => ({
     label: name,
     value: id,
   })),
-  currencies: Array.from(labelCache.value.currencies.entries()).map(([id, code]) => ({
-    label: code,
-    value: Number(id),
-  })),
+  currencies: Array.from(labelCache.value.currencies.entries()).map(
+    ([id, code]) => ({
+      label: code,
+      value: Number(id),
+    }),
+  ),
   clients: Array.from(labelCache.value.clients.entries()).map(([id, name]) => ({
     label: name,
     value: Number(id),
@@ -249,17 +435,12 @@ const [Modal, modalApi] = useVbenModal({
   confirmLoading: false,
   onConfirm: async () => {
     // ⚠️ 关键修复：在提交前，先从 Handsontable 同步最新数据到 dataSource
-    // 因为使用了 shallowRef，Handsontable 内部的数据变化不会自动触发响应式更新
     if (coreTableRef.value?.hotTableRef?.hotInstance) {
       const hotInstance = coreTableRef.value.hotTableRef.hotInstance;
-      
-      // 获取 Handsontable 的最新数据（包含所有编辑后的值）
+
       const hotData = hotInstance.getSourceData();
-      
+
       if (hotData && hotData.length > 0) {
-        // 将二维数组转换为对象数组格式
-        // getSourceData() 返回的是 [[val1, val2], [val3, val4]]
-        // 我们需要 [{field1: val1, field2: val2}, {field1: val3, field2: val4}]
         const columns = hotInstance.getSettings().columns;
         const objectData = hotData.map((rowArray: any[]) => {
           const rowObject: any = {};
@@ -270,42 +451,52 @@ const [Modal, modalApi] = useVbenModal({
           });
           return rowObject;
         });
-        
-        // 更新 dataSource，触发浅响应式更新
+
         dataSource.value = objectData;
       }
     }
-    
-    // 现在调用 handleSubmit，它会使用同步后的 dataSource
+
     await actions.handleSubmit(labelToIdMap.value);
   },
   onCancel: () => {
     modalApi.close();
   },
   onOpened: async () => {
+    console.log('📦 弹窗已打开');
+
+    // 获取传递的数据
+    const data = modalApi.getData<any>();
+    aiData.value = data.aiData;
+    console.log('当前 AI 数据:', aiData.value);
+
+    // 确保默认箱型已加载
     if (allCtnOptions.value.length === 0) {
       const { defaultCtns } = await initDropdownSources(defaultCurrencyId);
-      
       addedCtnTypes.value = defaultCtns;
-      
-      // ⚠️ 关键修复：等待 addedCtnTypes 变化触发 hotColumns 重新计算
-      await nextTick();
-      await nextTick(); // 多等待一个 tick，确保 computed 完全更新
-    } else {
-      // ⚠️ 关键修复：即使数据已存在，也要确保 hotColumns 是最新的
-      await nextTick();
     }
 
+    // 等待 DOM 和列配置完全初始化
     await nextTick();
-    if (dataSource.value.length === 0) {
-      addRow(1);
-      await nextTick(); // 等待行数据添加完成
+    await nextTick();
+
+    // 如果有 AI 数据，则处理并填充表格
+    if (aiData.value && aiData.value.length > 0) {
+      console.log(
+        '✅ 检测到 AI 数据，开始处理:',
+        aiData.value.length,
+        '条记录',
+      );
+      await handleAIData(aiData.value);
+    } else {
+      // 如果没有 AI 数据且表格为空，则添加一行空数据
+      if (dataSource.value.length === 0) {
+        addRow(1);
+        await nextTick();
+      }
     }
-    
-    // ⚠️ 关键修复：确保 Handsontable 使用最新的数据源和列配置
+
+    // 确保 Handsontable 使用最新的数据源和列配置
     if (coreTableRef.value?.hotTableRef?.hotInstance) {
-      // ⚠️ 关键修复：直接更新列配置，Handsontable 会自动处理数据绑定
-      // 不要使用 getData/loadData，因为这会丢失行对象中的额外字段（如 _rowKey, seFreiPriceCtns 等）
       coreTableRef.value.hotTableRef.hotInstance.updateSettings({
         columns: hotColumns.value,
       });
@@ -317,7 +508,7 @@ watch(
   addedCtnTypes,
   async (newVal, oldVal) => {
     await nextTick();
-    
+
     if (coreTableRef.value?.hotTableRef?.hotInstance) {
       // ⚠️ 关键修复：直接更新列配置，Handsontable 会自动处理数据绑定
       // 不要使用 getData/loadData，因为这会丢失行对象中的额外字段（如 _rowKey, seFreiPriceCtns 等）
@@ -341,6 +532,13 @@ defineExpose({
   },
   setData: (data: { aiData?: any[] }) => {
     console.log('收到外部设置的AI数据:', data);
+    if (data.aiData && data.aiData.length > 0) {
+      aiData.value = data.aiData;
+      // 如果模态框已经打开，立即处理 AI 数据
+      if (modalApi.isOpen()) {
+        handleAIData(data.aiData);
+      }
+    }
   },
 });
 </script>
