@@ -5,6 +5,8 @@ import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
 import { getClientPagedList } from '#/api/common/client';
 import { getOrganizationUnits } from '#/api/system/organization-unit';
+import type { isDef } from '@vueuse/core';
+import type { un } from 'vue-router/dist/router-CWoNjPRp.mjs';
 
 interface BaseState {
   /**
@@ -44,6 +46,43 @@ interface BaseState {
    * 公司组织数据加载状态
    */
   companyOrganizationsLoading: boolean;
+
+  // ==================== 运价批量新增下拉框数据缓存 ====================
+
+  /**
+   * 箱型列表缓存
+   * 数据来源: getBaseCtnCodes
+   */
+  ctnOptions: Array<{ ctnCodeId: string | number; ctnName: string; isDefault: boolean | undefined }>;
+
+  /**
+   * 船公司缓存（Map格式：id -> name）
+   * 数据来源: getCarrierPagedList
+   */
+  carriers: Map<string, string>;
+
+  /**
+   * 港口缓存（Map格式：id -> name）
+   * 数据来源: getPortCodeList
+   */
+  ports: Map<string, string>;
+
+  /**
+   * 币别缓存（Map格式：id -> code）
+   * 数据来源: getCurrencyPagedList
+   */
+  currencies: Map<string, string>;
+
+  /**
+   * 订舱代理缓存（Map格式：id -> name）
+   * 数据来源: getClientGroupedByIndustryCategory (行业类型为 'o')
+   */
+  bookingAgents: Map<string, string>;
+
+  /**
+   * 运价下拉框数据加载状态
+   */
+  freightRateDropdownLoading: boolean;
 }
 
 /**
@@ -154,6 +193,173 @@ export const useBaseStore = defineStore('core-base', {
       }
     },
 
+    // ==================== 运价批量新增下拉框数据缓存方法 ====================
+
+    /**
+     * 设置箱型列表缓存
+     * @param ctns 箱型列表数据
+     */
+    setCtnOptions(ctns: Array<{ ctnCodeId: string | number; ctnName: string ; isDefault: boolean }>) {
+      this.ctnOptions = ctns;
+    },
+
+    /**
+     * 设置船公司缓存
+     * @param carriers 船公司Map（id -> name）
+     */
+    setCarriers(carriers: Map<string, string>) {
+      this.carriers = new Map(carriers);
+    },
+
+    /**
+     * 设置港口缓存
+     * @param ports 港口Map（id -> name）
+     */
+    setPorts(ports: Map<string, string>) {
+      this.ports = new Map(ports);
+    },
+
+    /**
+     * 设置币别缓存
+     * @param currencies 币别Map（id -> code）
+     */
+    setCurrencies(currencies: Map<string, string>) {
+      this.currencies = new Map(currencies);
+    },
+
+    /**
+     * 设置订舱代理缓存
+     * @param bookingAgents 订舱代理Map（id -> name）
+     */
+    setBookingAgents(bookingAgents: Map<string, string>) {
+      this.bookingAgents = new Map(bookingAgents);
+    },
+
+    /**
+     * 从API获取并设置运价批量新增所需的所有下拉框数据
+     * 
+     * 使用示例:
+     * ```typescript
+     * const store = useBaseStore();
+     * await store.fetchFreightRateDropdownData();
+     * ```
+     */
+    async fetchFreightRateDropdownData() {
+      console.log('🚀 [fetchFreightRateDropdownData] 开始加载运价下拉框数据...');
+      this.freightRateDropdownLoading = true;
+
+      try {
+        // 动态导入 API 函数，避免循环依赖
+        const { getCtnCodePagedList } = await import('#/api/system/base-data/ctn-code-admin');
+        const { getCurrencyPagedList } = await import('#/api/system/base-data/currency-admin');
+        const { getPortCodeList } = await import('#/api/system/base-data/port-code-admin');
+        const { getCarrierPagedList } = await import('#/api/system/base-data/carrier-admin');
+        const { getClientGroupedByIndustryCategory } = await import('#/api/common/client');
+
+        // 1. 加载箱型列表
+        console.log('📦 [fetchFreightRateDropdownData] 正在加载箱型列表...');
+        const ctns = await getCtnCodePagedList({
+          PageIndex: 1,
+          PageSize: 1000,
+          Sorting: 'OrderNo',
+        });
+
+        const ctnOptions = ctns?.items?.map((item) => ({
+          ctnCodeId: item.id,
+          ctnName: item.ctnName || '',
+          isDefault: item.isDefault,
+        })) || [];
+        this.setCtnOptions(ctnOptions);
+        console.log(`✅ [fetchFreightRateDropdownData] 已缓存 ${ctnOptions.length} 个箱型`);
+
+        // 2. 加载币别列表
+        console.log('💰 [fetchFreightRateDropdownData] 正在加载币别列表...');
+        const currencies = await getCurrencyPagedList({
+          PageIndex: 1,
+          PageSize: 100,
+        });
+
+        const currencyMap = new Map<string, string>();
+        currencies.items?.forEach((currency) => {
+          if (currency.id) {
+            currencyMap.set(String(currency.id), currency.code || '');
+          }
+        });
+        this.setCurrencies(currencyMap);
+        console.log(`✅ [fetchFreightRateDropdownData] 已缓存 ${currencyMap.size} 个币别`);
+
+        // 3. 加载港口列表
+        console.log('🚢 [fetchFreightRateDropdownData] 正在加载港口列表...');
+        const ports = await getPortCodeList();
+
+        const portMap = new Map<string, string>();
+        ports?.forEach((port) => {
+          if (port.i) {
+            const countryEnName = (port.e ?? '').toString().trim();
+            const portName = `${port.p}/${countryEnName}`;
+            portMap.set(String(port.i), portName);
+          }
+        });
+        this.setPorts(portMap);
+        console.log(`✅ [fetchFreightRateDropdownData] 已缓存 ${portMap.size} 个港口`);
+
+        // 4. 加载船公司列表
+        console.log('🏢 [fetchFreightRateDropdownData] 正在加载船公司列表...');
+        const carriers = await getCarrierPagedList({
+          PageIndex: 1,
+          PageSize: 1000,
+        });
+
+        const carrierMap = new Map<string, string>();
+        carriers?.items?.forEach((carrier) => {
+          if (carrier.id) {
+            const code = carrier.code || '';
+            const cnShortName = carrier.cnShortName || carrier.cnName || carrier.enName || '';
+            const carrierName = code && cnShortName ? `${code}(${cnShortName})` : (cnShortName || code);
+            carrierMap.set(String(carrier.id), carrierName);
+          }
+        });
+        this.setCarriers(carrierMap);
+        console.log(`✅ [fetchFreightRateDropdownData] 已缓存 ${carrierMap.size} 个船公司`);
+
+        // 5. 加载订舱代理列表（行业类型为 'o' 的客户）
+        console.log('👥 [fetchFreightRateDropdownData] 正在加载订舱代理列表...');
+        const clientGroups = await getClientGroupedByIndustryCategory();
+
+        const bookingAgentMap = new Map<string, string>();
+        const bookingAgentGroup = clientGroups?.find(
+          (group) => group.key === 'o',
+        );
+
+        if (bookingAgentGroup && bookingAgentGroup.value) {
+          bookingAgentGroup.value.forEach((client) => {
+            if (client.id) {
+              const clientName = client.name || client.fullName || '';
+              bookingAgentMap.set(String(client.id), clientName);
+            }
+          });
+          console.log(`✅ [fetchFreightRateDropdownData] 已缓存 ${bookingAgentMap.size} 个订舱代理`);
+        } else {
+          console.warn('⚠️ [fetchFreightRateDropdownData] 未找到行业类型为 "o" 的订舱代理数据');
+        }
+        this.setBookingAgents(bookingAgentMap);
+
+        // 输出最终缓存统计
+        console.log('📊 [fetchFreightRateDropdownData] 缓存统计:');
+        console.log('  - 箱型:', this.ctnOptions.length);
+        console.log('  - 船公司:', this.carriers.size);
+        console.log('  - 港口:', this.ports.size);
+        console.log('  - 币别:', this.currencies.size);
+        console.log('  - 订舱代理:', this.bookingAgents.size);
+
+      } catch (error) {
+        console.error('❌ [fetchFreightRateDropdownData] 加载运价下拉框数据失败:', error);
+        throw error;
+      } finally {
+        this.freightRateDropdownLoading = false;
+      }
+    },
+
     /**
      * 清空所有缓存数据
      *
@@ -168,6 +374,14 @@ export const useBaseStore = defineStore('core-base', {
       this.companyOrganizations = [];
       this.clientsLoading = false;
       this.companyOrganizationsLoading = false;
+      
+      // 清空运价下拉框数据
+      this.ctnOptions = [];
+      this.carriers = new Map();
+      this.ports = new Map();
+      this.currencies = new Map();
+      this.bookingAgents = new Map();
+      this.freightRateDropdownLoading = false;
     },
   },
   state: (): BaseState => ({
@@ -175,6 +389,14 @@ export const useBaseStore = defineStore('core-base', {
     companyOrganizations: [],
     clientsLoading: false,
     companyOrganizationsLoading: false,
+    
+    // 运价批量新增下拉框数据初始值
+    ctnOptions: [],
+    carriers: new Map(),
+    ports: new Map(),
+    currencies: new Map(),
+    bookingAgents: new Map(),
+    freightRateDropdownLoading: false,
   }),
 });
 

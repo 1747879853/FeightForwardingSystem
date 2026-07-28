@@ -41,7 +41,7 @@ export function useBatchAddSettings(
     fixedColumnsLeft: 2, // 固定复选框和序号列
     contextMenu: ['row_above', 'row_below', 'remove_row'],
     licenseKey: 'non-commercial-and-evaluation',
-
+    enterMoves: { row: 0, col: 1 },
     // 选择配置
     selectionMode: 'multiple',
     outsideClickDeselects: false,
@@ -77,10 +77,30 @@ export function useBatchAddSettings(
     afterChange: function (this: any, changes: any, source: string) {
       if (!changes || source === 'loadData') return;
 
-      // ️ 关键修复：获取 hotInstance，使用其 API 更新数据，避免触发 Vue 响应式
+      // ⚠️ 关键修复：获取 hotInstance，使用其 API 更新数据，避免触发 Vue 响应式
       const hotInstance = this; // afterChange 中的 this 指向 hotInstance
 
       changes.forEach(([row, prop, oldValue, newValue]: any) => {
+        // ✅ 处理 isDirect 变化时的中转港单元格刷新
+        if (prop === 'isDirect') {
+          // 强制刷新中转港1和中转港2的单元格配置
+          const poT1ColIndex = hotInstance.propToCol('poT1Id');
+          const poT2ColIndex = hotInstance.propToCol('poT2Id');
+          
+          if (poT1ColIndex >= 0) {
+            hotInstance.setCellMeta(row, poT1ColIndex, 'readOnly', null);
+            hotInstance.setCellMeta(row, poT1ColIndex, 'className', null);
+          }
+          
+          if (poT2ColIndex >= 0) {
+            hotInstance.setCellMeta(row, poT2ColIndex, 'readOnly', null);
+            hotInstance.setCellMeta(row, poT2ColIndex, 'className', null);
+          }
+          
+          // 重新渲染这两个单元格，让 cells 函数重新应用配置
+          hotInstance.render();
+        }
+
         // 处理 DEM + DET = 免箱使期 的自动计算
         if (prop === 'poddem' || prop === 'podFreeDays') {
           // 使用 hotInstance.getDataAtCell 获取当前值，而不是直接访问 dataSource
@@ -118,8 +138,11 @@ export function useBatchAddSettings(
 
       if (!rowData) return cellProperties;
 
+      // ✅ 修复：明确判断是否为直达（字符串"是"或布尔值true）
+      const isDirectValue = rowData.isDirect === '是' || rowData.isDirect === true;
+
       // 根据是否直达禁用中转港编辑
-      if ((prop === 'poT1Id' || prop === 'poT2Id') && rowData.isDirect) {
+      if ((prop === 'poT1Id' || prop === 'poT2Id') && isDirectValue) {
         cellProperties.readOnly = true;
         cellProperties.className = 'disabled-cell';
       }

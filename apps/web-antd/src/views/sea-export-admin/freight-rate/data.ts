@@ -408,10 +408,11 @@ export function useColumns<T = SeFreiPriceOutDto>(
     },
 
     {
-      field: 'bookingAgentName',
+      field: 'bookingAgent.name',
       title: '订舱代理',
       width: 150,
       align: 'left',
+      slots: { default: 'bookingAgentId' },
       showOverflow: true,
       formatter: ({ row }) => {
         return row.bookingAgentName || '-';

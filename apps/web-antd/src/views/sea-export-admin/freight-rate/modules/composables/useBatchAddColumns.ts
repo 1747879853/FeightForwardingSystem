@@ -198,30 +198,33 @@ export function useBatchAddColumns(
         allowInvalid: true,
         visibleRows: 10,
         source: dropdownSourceCache.value.ports || [],
-        renderer: (
-          instance: any,
-          td: any,
-          row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
-        ) => {
-          const rowData = instance.getDataAtRow(row);
-          const isDirect = rowData?.isDirect;
+        // renderer: (
+        //   instance: any,
+        //   td: any,
+        //   row: number,
+        //   col: number,
+        //   prop: string,
+        //   value: any,
+        //   cellProperties: any,
+        // ) => {
+        //   const rowData = instance.getDataAtRow(row);
+        //   const isDirect = rowData?.isDirect;
 
-          if (isDirect) {
-            td.innerHTML = '';
-            td.className = 'htCenter disabled-cell';
-          } else {
-            const displayValue = value
-              ? dropdownSources.getPortName(value)
-              : '';
-            td.innerHTML = displayValue;
-            td.className = 'htLeft';
-          }
-          return td;
-        },
+        //   // ✅ 修复：明确判断是否为直达（字符串"是"或布尔值true）
+        //   const isDirectValue = isDirect === '是' || isDirect === true;
+
+        //   if (isDirectValue) {
+        //     td.innerHTML = '';
+        //     td.className = 'htCenter disabled-cell';
+        //   } else {
+        //     // const displayValue = value
+        //     //   ? dropdownSources.getPortName(value)
+        //     //   : '';
+        //     // td.innerHTML = displayValue;
+        //     // td.className = 'htLeft';
+        //   }
+        //   return td;
+        // },
       },
       {
         data: 'poT2Id',
@@ -232,28 +235,31 @@ export function useBatchAddColumns(
         allowInvalid: true,
         visibleRows: 10,
         source: dropdownSourceCache.value.ports || [],
-        renderer: (
-          instance: any,
-          td: any,
-          row: number,
-          col: number,
-          prop: string,
-          value: any,
-          cellProperties: any,
-        ) => {
-          const rowData = instance.getDataAtRow(row);
-          const isDirect = rowData?.isDirect;
+        // renderer: (
+        //   instance: any,
+        //   td: any,
+        //   row: number,
+        //   col: number,
+        //   prop: string,
+        //   value: any,
+        //   cellProperties: any,
+        // ) => {
+        //   const rowData = instance.getDataAtRow(row);
+        //   const isDirect = rowData?.isDirect;
 
-          if (isDirect) {
-            td.innerHTML = '-';
-            td.className = 'htCenter disabled-cell';
-          } else {
-            const displayValue = dropdownSources.getPortName(value);
-            td.innerHTML = displayValue;
-            td.className = 'htLeft';
-          }
-          return td;
-        },
+        //   // ✅ 修复：明确判断是否为直达（字符串"是"或布尔值true）
+        //   const isDirectValue = isDirect === '是' || isDirect === true;
+
+        //   if (isDirectValue) {
+        //     td.innerHTML = '';
+        //     td.className = 'htCenter disabled-cell';
+        //   } else {
+        //     // const displayValue = dropdownSources.getPortName(value);
+        //     // td.innerHTML = displayValue;
+        //     // td.className = 'htLeft';
+        //   }
+        //   return td;
+        // },
       },
       {
         data: 'polFreeDays',

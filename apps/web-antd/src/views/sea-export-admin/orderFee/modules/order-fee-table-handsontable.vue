@@ -100,6 +100,7 @@ const linkage = useOrderFeeLinkage(
     feeCodeDetailCache: feeCodeDetailCache.value, // ✅ 直接使用解构出来的缓存
     exchangeRateCache: exchangeRateCache.value, // ✅ 新增：传递汇率缓存
     getExchangeRateFromCache, // ✅ 新增：传递获取汇率的方法
+    allClientsByIndustry: localAllClientsByIndustry.value, // ✅ 新增：传递全量客户缓存
   }),
 );
 

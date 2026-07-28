@@ -166,6 +166,13 @@ watch(
   overflow: auto;
 
   :deep(.handsontable) {
+    // ✅ 所有单元格不换行，超出部分用省略号显示
+    td, th {
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
     .htCenter {
       vertical-align: middle !important;
       text-align: center !important;

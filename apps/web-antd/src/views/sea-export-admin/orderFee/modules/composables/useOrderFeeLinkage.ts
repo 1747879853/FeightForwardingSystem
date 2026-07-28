@@ -30,6 +30,7 @@ export function useOrderFeeLinkage(
       currencyId: any,
       paySide: number,
     ) => number | undefined; // ✅ 新增：从缓存获取汇率的方法
+    allClientsByIndustry?: Record<string, Array<{ label: string; value: any; name?: string; code?: string; id?: any }>>; // ✅ 新增：全量客户缓存
   },
 ) {
   // ==================== 缓存机制 ====================
@@ -1145,6 +1146,37 @@ export function useOrderFeeLinkage(
     }
   }
 
+  function getSettlementId(settlementName: any){
+    if (!settlementName) return undefined;
+    
+    const sources = getDropdownSources();
+    const allClientsByIndustry = sources.allClientsByIndustry;
+    
+    if (!allClientsByIndustry || Object.keys(allClientsByIndustry).length === 0) {
+      console.warn('⚠️ [getSettlementId] 客户缓存数据为空');
+      return undefined;
+    }
+    
+    // 遍历所有行业类别的客户列表，查找匹配的客户名称
+    for (const industry of Object.keys(allClientsByIndustry)) {
+      const clients = allClientsByIndustry[industry];
+      if (!clients || !Array.isArray(clients)) continue;
+      
+      // 查找匹配的客户（支持精确匹配 name 字段）
+      const matchedClient = clients.find(client => 
+        client.name === settlementName || 
+        client.label === settlementName
+      );
+      
+      if (matchedClient) {
+        console.log(`✅ [getSettlementId] 找到客户: ${settlementName}, ID: ${matchedClient.value}`);
+        return matchedClient.value;
+      }
+    }
+    
+    console.warn(`⚠️ [getSettlementId] 未找到客户: ${settlementName}`);
+    return undefined;
+  }
   /**
    * 统一的 afterChange 处理器
    */
@@ -1185,6 +1217,10 @@ export function useOrderFeeLinkage(
       // 结算对象变化 - 使用 _value 字段
       else if (prop === 'settlementId') {
         // settlementId 的联动逻辑在 fillSettlementIdByIndustryCategory 中处理
+        
+        if(!row['settlementId_value']){
+          row['settlementId_value'] =  getSettlementId(row['settlementId']);
+        }
         console.log(
           '👤 [handleAfterChange] 结算对象变化:',
           row['settlementId_value'],
@@ -1224,6 +1260,7 @@ export function useOrderFeeLinkage(
     checkIfIsLocalCurrency,
     fillSettlementIdByIndustryCategory,
     fillQuantityByUnit,
+    getSettlementId, // ✅ 新增：根据客户名称获取客户ID
     // ✅ 新增：导出汇率缓存获取方法
     getExchangeRateFromFeeCodeCache,
     getExchangeRateFromCache,
