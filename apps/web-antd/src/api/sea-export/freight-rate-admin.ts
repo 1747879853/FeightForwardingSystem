@@ -288,7 +288,7 @@ export enum FreiPriceOperatorType {
  */
 export interface SeFreiPriceCtnFeeAddDto {
   /** 箱型ID（新建时通过CtnCodeId关联对应的箱型） */
-  ctnCodeId: number;
+  ctnCodeId: string | number;
   /** 价格 */
   price: number;
   /** 条件类型 */
@@ -308,7 +308,7 @@ export interface SeFreiPriceCtnFeeEditDto {
   /** 子表主键ID（编辑时有值，新增时为空） */
   id?: string;
   /** 箱型ID（通过CtnCodeId关联对应的箱型） */
-  ctnCodeId: number;
+  ctnCodeId: string | number;
   /** 价格 */
   price: number;
   /** 条件类型 */
@@ -362,7 +362,7 @@ export interface SeFreiPriceCtnEditDto {
   /** 子表主键ID（编辑时有值，新增时为空） */
   id?: string;
   /** 箱型ID */
-  ctnCodeId: number;
+  ctnCodeId: string | number;
   /** 成本 */
   cost: number;
   /** 备注 */
@@ -378,7 +378,7 @@ export interface SeFreiPriceCtnOutDto {
   /** 运价主表ID */
   seFreiPriceId: string;
   /** 箱型ID */
-  ctnCodeId: number;
+  ctnCodeId: string | number;
   /** 成本 */
   cost: number;
   /** 备注 */
@@ -1067,7 +1067,7 @@ export interface SeFreiPriceCtnDto {
   /** 箱型名称（原始文本） */
   ctnName: string;
   /** 箱型ID（匹配不到为-1） */
-  ctnCodeId: number;
+  ctnCodeId: string | number;
   /** 价格 */
   price?: number;
 }

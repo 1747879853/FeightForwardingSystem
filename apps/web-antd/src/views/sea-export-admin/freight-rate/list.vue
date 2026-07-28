@@ -40,12 +40,13 @@ import {
   getSeFreiPriceDetail,
   getSeFreiPriceList,
   getAllLaneCodes,
-  extractSeFreiPriceByGemini,
 } from '#/api/sea-export/freight-rate-admin';
+import { extractSeFreiPriceByGemini } from '#/api/sea-export/gemini-admin';
 import { getUser } from '#/api/system/user-admin';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useUserStore, useAccessStore } from '@vben/stores';
+import { useBaseStore } from '#/store/base';
 import { editPropPermission } from '#/api/system/permission';
 
 import {
@@ -57,7 +58,7 @@ import {
 import AddCtnModal from './modules/add-ctn-modal.vue';
 import Form from './modules/form.vue';
 import EditForm from './modules/editForm.vue';
-import BatchAddModal from './modules/batch-add-modal.vue';
+import BatchAddModal from './modules/batch-add-modal-handsantable.vue';
 import BatchEditModal from './modules/batch-edit-modal.vue';
 import SyncUpdateForm from './modules/form.vue';
 import CtnEditableCell from './modules/ctn-editable-cell.vue';
@@ -72,6 +73,8 @@ const perm = createAbpPermission('Admin.SeFreiPrice');
 const userStore = useUserStore();
 // 获取权限store
 const accessStore = useAccessStore();
+// 获取基础数据 store
+const baseStore = useBaseStore();
 
 // 存储表格数据用于生成动态列
 const tableData = ref<SeFreiPriceOutDto[]>([]);
@@ -296,13 +299,13 @@ const mapFreightRateParams = (
 const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
   formOptions: {
     schema: useGridFormSchema(),
-    showCollapseButton: false,
+    showCollapseButton: true,
     submitOnChange: true,
     collapsed: true,
     commonConfig: {
-      labelWidth: 72,
+      labelWidth: 86,
     },
-    wrapperClass: 'grid-cols-5',
+    wrapperClass: 'grid-cols-6',
   },
   gridOptions: {
     id: FREIGHT_RATE_LIST_TABLE_ID,
@@ -355,9 +358,8 @@ const [Grid, gridApi] = useVbenVxeGrid<SeFreiPriceOutDto>({
     toolbarConfig: {
       custom: true,
       export: false,
-      refresh: true,
-      search: true,
-      zoom: false,
+      refresh: { code: 'query' },
+      zoom: true,
     },
   },
   gridEvents: {
@@ -582,10 +584,54 @@ function onBatchAdd() {
 function onBatchEditModal() {
   const records = getCheckboxRecords();
   if (records.length === 0) {
-    message.warning('请先选择要批量编辑的运价记录');
+    message.warning('请先选择要更新的运价');
     return;
   }
-  batchEditModalApi.setData({ rows: records }).open();
+  
+  // 将选中的数据传递给 batch-add-modal-handsantable 组件
+  // 需要将数据转换为 AI 数据的格式
+  const editData = records.map((row) => {
+    // 从子表读取日期时间数据（取第一项）
+    const dayData = row.seFreiPriceDays?.[0];
+    const weekDayData = row.seFreiPriceWeekDays?.[0];
+    
+    return {
+      id: row.id, // 保留 ID 用于编辑
+      recommend: row.recommend,
+      carrierId: row.carrierId,
+      polId: row.polId,
+      podId: row.podId,
+      isDirect: row.isDirect,
+      poT1Id: row.poT1Id,
+      poT2Id: row.poT2Id,
+      polFreeDays: row.polFreeDays,
+      podFreeDays: row.podFreeDays,
+      poddem: row.poddem,
+      poddet: row.poddet,
+      voyage: row.voyage || '',
+      contractNo: row.contractNo || '',
+      etd: dayData?.etd || '',
+      closeDocTime: dayData?.closeDocTime || '',
+      closingTime: dayData?.closingTime || '',
+      etdDayOfWeek: weekDayData?.etdDayOfWeek,
+      etdDayTime: weekDayData?.etdDayTime || '',
+      closeDocDayOfWeek: weekDayData?.closeDocDayOfWeek,
+      closeDocDayTime: weekDayData?.closeDocDayTime || '',
+      closingDayOfWeek: weekDayData?.closingDayOfWeek,
+      closingDayTime: weekDayData?.closingDayTime || '',
+      validTimeStart: row.validTimeStart || '',
+      validTimeEnd: row.validTimeEnd || '',
+      remark: row.remark || '',
+      currencyId: row.currencyId,
+      bookingAgentId: row.bookingAgentId,
+      seFreiPriceCtns: (row.seFreiPriceCtns || []).map((ctn) => ({
+        ctnCodeId: ctn.ctnCodeId,
+        cost: ctn.cost,
+      })),
+    };
+  });
+  
+  batchAddModalApi.setData({ aiData: editData, isEditMode: true }).open();
 }
 
 const lines = ref<LaneCodeDto[]>([]);
@@ -833,6 +879,15 @@ function getIsValidColor(row: SeFreiPriceOutDto): string {
 onMounted(async () => {
   getLines();
 
+  // 初始化运价批量新增所需的下拉框数据（缓存到 store）
+  try {
+    console.log('🚀 [list.vue] 开始初始化运价下拉框数据...');
+    await baseStore.fetchFreightRateDropdownData();
+    console.log('✅ [list.vue] 运价下拉框数据初始化完成');
+  } catch (error) {
+    console.error('❌ [list.vue] 运价下拉框数据初始化失败:', error);
+  }
+
   // 从 Pinia store 中获取当前用户的功能权限
   try {
     loadingPermissions.value = true;
@@ -911,7 +966,8 @@ async function onAIBatchAdd() {
   // 创建隐藏的文件输入元素
   const fileInput = document.createElement('input');
   fileInput.type = 'file';
-  fileInput.accept = '.pdf,.jpg,.jpeg,.png,.doc,.docx'; // 支持的文件类型
+  fileInput.accept =
+    '.pdf,.jpg,.jpeg,.png,.doc,.docx,.xlsx,.xls,.txt,.webp,.heic,.heif,.gif,.bmp'; // 支持的文件类型（根据文档更新）
   fileInput.onchange = async (event: any) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -1090,6 +1146,13 @@ async function onAIBatchAdd() {
       <template #currencyId="{ row }">
         <div class="px-2 py-1">
           {{ row.currency?.code || '-' }}
+        </div>
+      </template>
+
+       <!-- 币别自定义渲染插槽 -->
+      <template #bookingAgentId="{ row }">
+        <div class="px-2 py-1">
+          {{ row.bookingAgent?.name || '-' }}
         </div>
       </template>
 

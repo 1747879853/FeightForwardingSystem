@@ -338,6 +338,8 @@ export namespace OrderFeeAdminApi {
     clientId?: string;
     /** 船公司id（SeaExport.CarrierId） */
     carrierId?: number;
+    /** 订舱代理id（SeaExport.BookingAgentId） */
+    bookingAgentId?: string;
     /** 起运港id（SeaExport.POLId） */
     pOLId?: number;
     /** 目的港id（SeaExport.PODId） */

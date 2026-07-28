@@ -298,6 +298,7 @@
       "sortId": "排序",
       "remark": "备注",
       "keyword": "关键字",
+      "creatorUserName": "创建人",
       "creationTime": "创建时间"
     },
     "generateNum": {

@@ -321,7 +321,11 @@ export namespace PaymentSettlementAdminApi {
     currencyId?: number;
     /** 我司银行ID */
     orgBankAccountId?: string;
-    /** 费用对应业务的主提单号（模糊） */
+    /** 关键字：模糊匹配 TransportOrder.MblNum 或 TransportOrder.CommissionNum */
+    keyword?: string;
+    /** 委托编号（模糊匹配 TransportOrder.CommissionNum） */
+    commissionNum?: string;
+    /** 费用对应业务的主提单号（模糊）- 保留以兼容旧版本 */
     mblNum?: string;
     /** 组织ID */
     orgId?: number;

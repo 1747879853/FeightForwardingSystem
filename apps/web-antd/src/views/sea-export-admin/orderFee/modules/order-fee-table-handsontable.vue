@@ -66,6 +66,9 @@ const {
   dropdownSources,
   currentOptionsCache,
   allClientsByIndustry: localAllClientsByIndustry, // ✅ 本地缓存
+  feeCodeDetailCache, // ✅ 新增：费用代码详情缓存
+  exchangeRateCache, // ✅ 新增：汇率缓存
+  getExchangeRateFromCache, // ✅ 新增：获取汇率的方法
   initDropdownSources,
   updateUnitList,
   getFeeCodeList,
@@ -94,6 +97,10 @@ const linkage = useOrderFeeLinkage(
   () => ({
     industryCategoryList: dropdownSources.value.industryCategoryList,
     currencyList: dropdownSources.value.currencyList,
+    feeCodeDetailCache: feeCodeDetailCache.value, // ✅ 直接使用解构出来的缓存
+    exchangeRateCache: exchangeRateCache.value, // ✅ 新增：传递汇率缓存
+    getExchangeRateFromCache, // ✅ 新增：传递获取汇率的方法
+    allClientsByIndustry: localAllClientsByIndustry.value, // ✅ 新增：传递全量客户缓存
   }),
 );
 
@@ -287,6 +294,8 @@ const SubmittedOther = async (e: any) => {
     case 'delete':
       actions.showDeleteWithRemark();
       break;
+    case 'withdraw':
+      actions.orderFeeWithdraw();
   }
 };
 
@@ -502,6 +511,7 @@ const scrollToLastAndSelectFeeName = async () => {
 const extendedActions = {
   ...actions,
   addRow: async () => {
+    console.log('🚀 [extendedActions.addRow] 开始执行新增行操作');
     actions.addRow();
     // 在添加新行后延迟执行滚动和选中操作
     setTimeout(() => {
@@ -693,19 +703,20 @@ defineExpose({ getTableDate });
                 </template>
               </DropdownButton>
 
-              <Button
+              <!-- <Button
                 type="primary"
                 :disabled="!selectedRowKeys.length"
                 @click="actions.orderFeeWithdraw"
               >
                 {{ $t('auditApproval.withdraw') }}
-              </Button>
+              </Button> -->
 
               <Button
                 v-show="type === 0"
                 type="default"
                 :loading="loadingFinishStatus"
                 @click="toggleFinishStatus"
+                class="finish-status-btn"
               >
                 {{ isFinished ? '设为未完结' : '设为已完结' }}
               </Button>
@@ -723,6 +734,7 @@ defineExpose({ getTableDate });
             :sort-state="sortState"
             @update:selected-row-keys="selectedRowKeys = $event"
             @column-sort="handleColumnSort"
+            @add-new-row="extendedActions.addRow"
           />
 
           <!-- 费用合计显示 -->
@@ -802,6 +814,44 @@ defineExpose({ getTableDate });
     .toolbar-actions {
       display: flex;
       gap: 8px;
+
+      // ✅ 完结状态按钮特殊样式
+      :deep(.finish-status-btn) {
+        color: #faad14;
+        background: linear-gradient(
+          135deg,
+          rgb(250 173 20 / 8%) 0%,
+          rgb(250 173 20 / 4%) 100%
+        );
+        border-color: #faad14;
+
+        &:hover:not(:disabled) {
+          color: #ffc53d;
+          background: linear-gradient(
+            135deg,
+            rgb(250 173 20 / 15%) 0%,
+            rgb(250 173 20 / 8%) 100%
+          );
+          border-color: #ffc53d;
+          box-shadow: 0 2px 8px rgb(250 173 20 / 20%);
+        }
+
+        &:active:not(:disabled) {
+          color: #d48806;
+          background: linear-gradient(
+            135deg,
+            rgb(250 173 20 / 20%) 0%,
+            rgb(250 173 20 / 12%) 100%
+          );
+          border-color: #d48806;
+        }
+
+        &:disabled {
+          color: rgb(0 0 0 / 25%);
+          background: #f5f5f5;
+          border-color: #d9d9d9;
+        }
+      }
     }
   }
 }

@@ -2,7 +2,7 @@
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
-import { ref } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 
 import { HotTable } from '@handsontable/vue3';
 interface Props {
@@ -25,7 +25,11 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const emit = defineEmits(['update:selectedRowKeys', 'column-sort']);
+const emit = defineEmits([
+  'update:selectedRowKeys',
+  'column-sort',
+  'add-new-row',
+]);
 
 const hotTableRef = ref<any>(null);
 
@@ -175,6 +179,46 @@ const handleAfterChange = (
     syncFee();
   }
 };
+
+// ✅ 新增：处理自定义的新增行事件
+const handleAddNewRowEvent = (event: Event) => {
+  const customEvent = event as CustomEvent;
+  console.log('📍 [OrderFeeTableCore] 接收到新增行事件', customEvent.detail);
+  emit('add-new-row', customEvent.detail);
+};
+
+onMounted(() => {
+  // 延迟监听，确保 hotInstance 已完全初始化
+  setTimeout(() => {
+    if (hotTableRef.value?.hotInstance) {
+      const container = hotTableRef.value.hotInstance.rootElement;
+      if (container) {
+        container.addEventListener(
+          'addNewRow',
+          handleAddNewRowEvent as EventListener,
+        );
+        console.log('✅ [OrderFeeTableCore] 已添加 addNewRow 事件监听器');
+      } else {
+        console.warn('⚠️ [OrderFeeTableCore] rootElement 不存在');
+      }
+    } else {
+      console.warn('⚠️ [OrderFeeTableCore] hotInstance 不存在');
+    }
+  }, 100);
+});
+
+onBeforeUnmount(() => {
+  // 清理事件监听器
+  if (hotTableRef.value?.hotInstance) {
+    const container = hotTableRef.value.hotInstance.rootElement;
+    if (container) {
+      container.removeEventListener(
+        'addNewRow',
+        handleAddNewRowEvent as EventListener,
+      );
+    }
+  }
+});
 
 defineExpose({
   hotTableRef,

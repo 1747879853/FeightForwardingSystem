@@ -292,18 +292,17 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       title: $t('seaExport.export.orderCodeGoodss'),
       minWidth: 100,
     },
-
-    // {
-    //   field: 'remark',
-    //   title: $t('seaExport.export.remark'),
-    //   minWidth: 160,
-    //   showOverflow: true,
-    // },
-    // {
-    //   field: 'creatorUserName',
-    //   title: $t('auditApproval.creatorUserName'),
-    //   minWidth: 120,
-    // },
+    {
+      field: 'remark',
+      title: $t('seaExport.export.remark'),
+      minWidth: 160,
+      showOverflow: true,
+    },
+    {
+      field: 'creatorUserName',
+      title: $t('auditApproval.creatorUserName'),
+      minWidth: 120,
+    },
     {
       field: 'creationTime',
       title: $t('seaExport.export.creationTime'),
