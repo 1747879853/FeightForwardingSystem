@@ -121,11 +121,11 @@ export const getUserAttributeEnumOptions = () => [
 // --------------------------------------------------------
 /** 行业类别枚举选项（value 取字母，与 IndustryCategory 注释对应：a 船公司、b 发货人、c 场站…） */
 export const getIndustryCategoryOptions = () => [
-  {
-    key: 1,
-    value: 'a',
-    label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
-  },
+  // {
+  //   key: 1,
+  //   value: 'a',
+  //   label: $t('seaExport.client.industryCategoryOptions.shipCompany'),
+  // },
   {
     key: 2,
     value: 'b',
