@@ -99,6 +99,7 @@ export interface OrderGroupRow {
   transportOrderId: string;
   settlementId: string;
   settlementName: string;
+  clientId: string;
   commissionNum: string;
   mblNum: string;
   clientName: string;
@@ -156,7 +157,7 @@ export function buildAppliedAmountCurrencyColumns(
       title: `${label}申请合计`,
       dataIndex: field,
       key: field,
-      width: 85,
+      width: 105.4545,
       align: 'right' as const,
     };
   });
@@ -193,11 +194,12 @@ export function groupFeesByOrder(
         });
       }
     }
-    const row: OrderGroupRow & Record<string, number> = {
+    const row: OrderGroupRow = {
       key,
       transportOrderId: first.transportOrderId,
       settlementId: first.settlementId,
       settlementName: resolveFeeSettlementName(first),
+      clientId: first.clientId ?? '',
       commissionNum: first.commissionNum ?? '',
       mblNum: first.mblNum ?? '',
       clientName: first.clientName ?? first.settlementName ?? '',
@@ -213,10 +215,9 @@ export function groupFeesByOrder(
     };
 
     for (const c of currencies) {
-      row[appliedAmountFieldKey(c.currencyId)] = calcAppliedAmountByCurrency(
-        items,
-        c.currencyId,
-      );
+      (row as unknown as Record<string, number>)[
+        appliedAmountFieldKey(c.currencyId)
+      ] = calcAppliedAmountByCurrency(items, c.currencyId);
     }
 
     return row;
@@ -230,69 +231,69 @@ export function useOrderGroupColumns() {
       title: t('serialNumber'),
       dataIndex: 'seq',
       key: 'seq',
-      width: 56,
+      width: 105.4545,
     },
     {
       title: t('commissionNum'),
       dataIndex: 'commissionNum',
       key: 'commissionNum',
-      width: 150,
+      width: 105.4545,
       ellipsis: true,
     },
     {
       title: t('mblNum'),
       dataIndex: 'mblNum',
       key: 'mblNum',
-      width: 130,
+      width: 105.4545,
       ellipsis: true,
     },
     {
       title: t('orderClientName'),
       dataIndex: 'clientName',
       key: 'clientName',
-      width: 160,
+      width: 105.4545,
       ellipsis: true,
     },
     {
       title: t('settlementNameColumn'),
       dataIndex: 'settlementName',
       key: 'settlementName',
-      width: 110,
+      width: 105.4545,
       ellipsis: true,
     },
     {
       title: t('etd'),
       dataIndex: 'etd',
       key: 'etd',
-      width: 100,
+      width: 105.4545,
       ellipsis: true,
     },
     {
       title: t('accountDate'),
       dataIndex: 'accountDate',
       key: 'accountDate',
-      width: 85,
+      width: 105.4545,
       ellipsis: true,
     },
     {
       title: t('polName'),
       dataIndex: 'polName',
       key: 'polName',
-      width: 110,
+      width: 105.4545,
       ellipsis: true,
     },
     {
       title: t('podName'),
       dataIndex: 'podName',
       key: 'podName',
-      width: 110,
+      width: 105.4545,
       ellipsis: true,
     },
     {
       title: '销售',
       dataIndex: 'saleUserNames',
       key: 'saleUserNames',
-      width: 72,
+      width: 105.4545,
       ellipsis: true,
       className: 'user-role-column',
     },
@@ -300,7 +301,7 @@ export function useOrderGroupColumns() {
       title: '操作',
       dataIndex: 'operationUserNames',
       key: 'operationUserNames',
-      width: 72,
+      width: 105.4545,
       ellipsis: true,
       className: 'user-role-column',
     },
@@ -308,7 +309,7 @@ export function useOrderGroupColumns() {
       title: '客服',
       dataIndex: 'customerServiceUserNames',
       key: 'customerServiceUserNames',
-      width: 72,
+      width: 105.4545,
       ellipsis: true,
       className: 'user-role-column',
     },
@@ -318,8 +319,7 @@ export function useOrderGroupColumns() {
 /** 费用明细内层列（展开后显示），根据结算币别模式返回不同列 */
 export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
   const prefix = [
-    { title: '', dataIndex: 'checkbox', key: 'checkbox', width: 36 },
-    { title: t('serialNumber'), dataIndex: 'seq', key: 'seq', width: 44 },
+    { title: t('serialNumber'), dataIndex: 'seq', key: 'seq', width: 67 },
     {
       title: t('paySide'),
       dataIndex: 'paySide',

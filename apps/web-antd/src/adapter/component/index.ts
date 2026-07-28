@@ -775,6 +775,7 @@ export {
   ClientBankAccountSelect,
   CodeSourceSelect,
   CurrencySelect,
+  FeeNameSelect,
   MyOrgSelect,
   OrganizationSelect,
   OrgBankAccountSelect,

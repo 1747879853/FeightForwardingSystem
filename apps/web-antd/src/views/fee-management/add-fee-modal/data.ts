@@ -56,6 +56,7 @@ export interface SelectedFeeItem {
   transportOrderId: string;
   commissionNum?: string;
   mblNum?: string;
+  clientId?: string;
   clientName?: string;
   accountDate?: string;
   etd?: string;

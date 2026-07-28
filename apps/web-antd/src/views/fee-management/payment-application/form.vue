@@ -16,8 +16,14 @@ import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
 import { Page } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
 import { useUserStore } from '@vben/stores';
 
+import coinsHandSvg from '#/assets/images/payment-coins-hand.svg';
+import feePackageSvg from '#/assets/images/payment-fee-package.svg';
+import invoiceTicketSvg from '#/assets/images/payment-invoice-ticket.svg';
+import statusStampSvg from '#/assets/images/payment-application-status-stamp.svg';
+import workflowSvg from '#/assets/images/payment-workflow.svg';
 import {
   Button,
   Card,
@@ -32,7 +38,6 @@ import {
   Select,
   Space,
   Spin,
-  Table,
   Tag,
   Tooltip,
 } from 'ant-design-vue';
@@ -44,7 +49,13 @@ import {
   returnToListWithRefresh,
 } from '#/utils/list-refresh-flag';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
-import { ClientSelect, CurrencySelect, MyOrgSelect } from '#/adapter/component';
+import { NestedDataTable } from '#/components/nested-data-table';
+import {
+  ClientSelect,
+  CurrencySelect,
+  FeeNameSelect,
+  MyOrgSelect,
+} from '#/adapter/component';
 import { getMyDefaultOrgId } from '#/composables/use-my-org';
 import {
   addPaymentApplication,
@@ -66,7 +77,6 @@ import {
 import {
   buildAppliedAmountCurrencyColumns,
   calcConvertedApplied,
-  calcConvertedTotal,
   collectAppliedCurrencies,
   formatAmount,
   groupFeesByOrder,
@@ -120,6 +130,7 @@ const isEntering = computed(
 const isAuditing = computed(
   () => currentStatus.value === PaymentApplicationStatus.Auditing,
 );
+const workflowStep = computed(() => (isAuditing.value ? 2 : 1));
 const pageLoading = ref(false);
 const pageTitle = computed(() =>
   isEdit.value ? t('editTitle') : t('addTitle'),
@@ -184,32 +195,57 @@ const allOrderGroupColumns = computed(() => [
 const orderGroups = computed(() =>
   groupFeesByOrder(feeDetailRows.value, appliedCurrencies.value),
 );
+const feeFilterNo = ref('');
+const feeFilterName = ref<null | number | string>(null);
+const feeFilterClient = ref<null | string>(null);
+const feeFilterCurrency = ref<null | number | string>(null);
+const feeFilterEtd = ref('');
+const filteredOrderGroups = computed(() =>
+  orderGroups.value.filter((group) => {
+    const children = group.children ?? [];
+    const matchesNo =
+      !feeFilterNo.value ||
+      String(group.commissionNum ?? group.key)
+        .toLowerCase()
+        .includes(feeFilterNo.value.trim().toLowerCase());
+    const matchesClient =
+      feeFilterClient.value == null ||
+      feeFilterClient.value === '' ||
+      String(group.clientId) === String(feeFilterClient.value);
+    const matchesEtd =
+      !feeFilterEtd.value || formatDate(group.etd) === feeFilterEtd.value;
+    const matchesFee =
+      feeFilterName.value == null ||
+      feeFilterName.value === '' ||
+      children.some(
+        (fee) => String(fee.feeCodeId) === String(feeFilterName.value),
+      );
+    const matchesCurrency =
+      feeFilterCurrency.value == null ||
+      feeFilterCurrency.value === '' ||
+      children.some(
+        (fee) => String(fee.currencyId) === String(feeFilterCurrency.value),
+      );
+    return (
+      matchesNo && matchesClient && matchesEtd && matchesFee && matchesCurrency
+    );
+  }),
+);
 const expandedGroupKeys = ref<string[]>([]);
+
+function onFeeFilterDateChange(_value: unknown, dateString: string | string[]) {
+  feeFilterEtd.value = Array.isArray(dateString)
+    ? (dateString[0] ?? '')
+    : dateString;
+}
 
 const currencySummaries = computed<CurrencySummary[]>(() =>
   summarizeByCurrency(feeDetailRows.value),
 );
 
-const convertedTotal = computed(() => calcConvertedTotal(feeDetailRows.value));
-
 const currencyConversionSummaries = computed<CurrencyConversionSummary[]>(() =>
   summarizeByCurrencyWithConversion(feeDetailRows.value),
 );
-
-const grandConvertedTotal = computed(() =>
-  currencyConversionSummaries.value.reduce(
-    (sum, cs) => sum + cs.convertedTotal,
-    0,
-  ),
-);
-
-const payableSummaryText = computed(() => {
-  const total = feeDetailRows.value.reduce(
-    (sum, f) => sum + (f.appliedAmount ?? 0),
-    0,
-  );
-  return formatAmount(total);
-});
 
 const isSettlementLocked = computed(() => feeDetailRows.value.length > 0);
 
@@ -277,8 +313,9 @@ function getSelectedBank(
   return getBankById(bankSelections.value[currencyId]);
 }
 
-function onBankChange(currencyId: number, val: string | undefined) {
-  bankSelections.value = { ...bankSelections.value, [currencyId]: val };
+function onBankChange(currencyId: number, val: unknown) {
+  const bankId = typeof val === 'string' ? val : undefined;
+  bankSelections.value = { ...bankSelections.value, [currencyId]: bankId };
 }
 
 /** 指定币别结算模式下的银行选择（结算币别） */
@@ -297,7 +334,7 @@ const settlementSelectedBank = computed(() =>
     ? undefined
     : getSelectedBank(settlementCurrencyId.value),
 );
-function onSettlementBankChange(val: string | undefined) {
+function onSettlementBankChange(val: unknown) {
   if (settlementCurrencyId.value === null) return;
   onBankChange(settlementCurrencyId.value, val);
 }
@@ -569,9 +606,12 @@ function isOriginalFee(feeId: string): boolean {
   return isEdit.value && initialLoadFeeIds.value.has(feeId);
 }
 
-function onRateChange(feeId: string, val: number | null) {
+function onRateChange(feeId: string, val: unknown) {
   const row = feeDetailRows.value.find((r) => r.feeId === feeId);
-  if (row) row.rate = val ?? undefined;
+  if (!row) return;
+  const rate = Number(val);
+  row.rate =
+    val === null || val === undefined || Number.isNaN(rate) ? undefined : rate;
 }
 
 function onItemRemarkChange(feeId: string, val: string) {
@@ -583,8 +623,9 @@ function onEndTimeChange(_date: any, dateStr: string | string[]) {
   endTime.value = Array.isArray(dateStr) ? dateStr[0] : dateStr || undefined;
 }
 
-function onSettlementChange(val: string | null | undefined) {
-  settlementId.value = val ? String(val) : '';
+function onSettlementChange(val: unknown) {
+  settlementId.value =
+    typeof val === 'string' || typeof val === 'number' ? String(val) : '';
   settlementName.value = '';
   settlementSelectedItems.value = [];
   bankSelections.value = {};
@@ -616,11 +657,11 @@ function ensureSettlementSelected() {
 
 // --- Settlement currency ---
 
-function onSettlementCurrencyChange(val: number | string | null) {
+function onSettlementCurrencyChange(val: unknown) {
   if (val === 'original' || val === null || val === undefined) {
     settlementCurrencyId.value = null;
     settlementCurrencyName.value = '';
-  } else {
+  } else if (typeof val === 'number' || typeof val === 'string') {
     settlementCurrencyId.value = Number(val);
     nextTick(() => {
       const options = currencySelectRef.value?.getOptions?.() ?? [];
@@ -646,6 +687,7 @@ function mapDetailToFeeRows(
         transportOrderId: fee?.transportOrderId ?? order?.id ?? '',
         commissionNum: order?.commissionNum,
         mblNum: order?.mblNum,
+        clientId: order?.clientId,
         clientName: order?.clientName,
         accountDate: order?.accountDate,
         etd: order?.etd,
@@ -986,7 +1028,7 @@ function resetForm() {
   submitTime.value = dayjs().format('YYYY-MM-DD HH:mm');
 }
 
-function handleExportMenuClick({ key }: { key: string }) {
+function handleExportMenuClick({ key }: any) {
   message.info(`导出: ${key}`);
 }
 
@@ -1007,16 +1049,27 @@ function formatMonth(val: string | undefined | null): string {
   if (!val) return '';
   return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM') : '';
 }
+
+// Preserve the alternate add-page actions while the Figma edit layout keeps them hidden.
+void pageTitle;
+void onItemRemarkChange;
+void handleSubmit;
+void handleSubmitAndNew;
 </script>
 
 <template>
-  <Page auto-content-height>
+  <Page
+    auto-content-height
+    class="payment-application-page"
+    content-class="!h-auto !p-0"
+  >
     <Spin :spinning="pageLoading">
       <div class="payment-app-form">
         <!-- 顶部操作栏 -->
         <div class="action-bar">
           <div class="action-bar__left">
-            <span class="action-bar__title">{{ pageTitle }}</span>
+            <span class="action-bar__label">{{ t('applicationNo') }}：</span>
+            <span class="action-bar__title">{{ displayApplicationNo }}</span>
           </div>
           <div class="action-bar__right">
             <Space>
@@ -1045,15 +1098,17 @@ function formatMonth(val: string | undefined | null): string {
                 :loading="submitting"
                 @click="handleUnsubmitApplication"
               >
+                <IconifyIcon icon="mdi:file-undo-outline" />
                 撤销提交
               </Button>
               <Button v-if="isEdit && !isEntering" @click="handleViewWorkflow">
+                <IconifyIcon icon="mdi:source-branch" />
                 审批流程
               </Button>
               <Dropdown>
                 <Button>
+                  <IconifyIcon icon="mdi:file-export-outline" />
                   {{ t('export') }}
-                  <span class="ml-1">▾</span>
                 </Button>
                 <template #overlay>
                   <Menu @click="handleExportMenuClick">
@@ -1067,358 +1122,493 @@ function formatMonth(val: string | undefined | null): string {
                 </template>
               </Dropdown>
               <Button @click="handlePrint">
+                <IconifyIcon icon="mdi:printer-outline" />
                 {{ t('print') }}
               </Button>
             </Space>
           </div>
         </div>
 
-        <!-- 中间三栏布局 -->
-        <div class="main-layout">
-          <!-- 左侧：申请人信息 -->
-          <div class="left-column">
-            <Card size="small">
-              <div class="info-grid">
-                <div class="info-item">
-                  <span class="info-label">{{ t('applicationNo') }}</span>
-                  <Input
-                    :value="displayApplicationNo"
-                    :disabled="true"
-                    size="small"
-                  />
-                </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('clientName') }}</span>
-                  <ClientSelect
-                    :model-value="settlementId"
-                    :selected-items="settlementSelectedItems"
-                    :placeholder="$t('ui.placeholder.select')"
-                    :disabled="isSettlementLocked"
-                    size="small"
-                    @update:model-value="onSettlementChange"
-                  />
-                </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('applicant') }}</span>
-                  <span class="info-value">{{ applicantName }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('submitTime') }}</span>
-                  <span class="info-value">{{ submitTime }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('latestPaymentDate') }}</span>
-                  <DatePicker
-                    :value="endTime ? dayjs(endTime) : undefined"
-                    class="w-full"
-                    size="small"
-                    @change="onEndTimeChange"
-                  />
-                </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('company') }}</span>
-                  <MyOrgSelect
-                    v-model="orgId"
-                    :disabled="isSettlementLocked"
-                    size="small"
-                  />
-                </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('require') }}</span>
-                  <Input.TextArea
-                    :value="paymentRequire"
-                    :rows="2"
-                    :placeholder="$t('ui.placeholder.input')"
-                    size="small"
-                    @update:value="(val) => (paymentRequire = val)"
-                  />
-                </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('remark') }}</span>
-                  <Input.TextArea
-                    :value="remark"
-                    :rows="2"
-                    :placeholder="$t('ui.placeholder.input')"
-                    size="small"
-                    @update:value="(val) => (remark = val)"
-                  />
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <!-- 中部：费用合计 -->
-          <div class="center-column">
-            <Card size="small" class="h-full">
-              <template #title>
-                <div class="flex items-center gap-3">
-                  <span class="font-semibold">{{ t('feeSummary') }}</span>
-                  <span class="text-sm text-gray-500">{{
-                    t('settlementCurrency')
-                  }}</span>
-                  <CurrencySelect
-                    ref="currencySelectRef"
-                    :model-value="settlementCurrencyId"
-                    :extra-options="[
-                      { label: t('originalCurrency'), value: null },
-                    ]"
-                    :disabled="isSettlementCurrencyLocked"
-                    size="small"
-                    style="width: 160px"
-                    @update:model-value="onSettlementCurrencyChange"
-                  >
-                  </CurrencySelect>
-                </div>
-              </template>
-
-              <!-- 按票原币模式：显示各币别金额 -->
-              <template v-if="settlementCurrencyId === null">
-                <div
-                  v-if="currencySummaries.length === 0"
-                  class="py-4 text-center text-gray-400"
-                >
-                  {{ t('noFeeWarning') }}
-                </div>
-                <div v-else class="currency-cards">
-                  <div
-                    v-for="cs in currencySummaries"
-                    :key="cs.currencyId"
-                    class="currency-card"
-                  >
-                    <div class="currency-card__header">
-                      <Tag color="blue">{{
-                        cs.currencyCode || cs.currencyName
-                      }}</Tag>
-                      <span class="currency-card__amount">
-                        {{ formatAmount(cs.totalAmount) }}
+        <div class="payment-app-form__content">
+          <!-- 中间三栏布局 -->
+          <div class="main-layout">
+            <div class="main-column">
+              <!-- 左侧：结算单位 -->
+              <div class="left-column">
+                <Card size="small" class="settlement-unit-card">
+                  <template #title>
+                    <div class="settlement-unit-title">
+                      <span v-if="isEdit"
+                        >结算单位：{{ settlementName || '-' }}</span
+                      >
+                      <div v-else class="settlement-unit-title__select">
+                        <span>结算单位：</span>
+                        <ClientSelect
+                          :model-value="settlementId"
+                          :selected-items="settlementSelectedItems"
+                          :placeholder="$t('ui.placeholder.select')"
+                          :disabled="isSettlementLocked"
+                          @update:model-value="onSettlementChange"
+                        />
+                      </div>
+                    </div>
+                  </template>
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <span class="info-label info-label--required">{{
+                        t('company')
+                      }}</span>
+                      <MyOrgSelect
+                        v-if="!isEdit"
+                        v-model="orgId"
+                        :disabled="isSettlementLocked"
+                      />
+                      <span v-else class="info-value">
+                        {{ companyName || '-' }}
                       </span>
                     </div>
-                    <div class="bank-block">
-                      <span class="bank-block__label"> 结算银行 </span>
-                      <Select
-                        :value="bankSelections[cs.currencyId]"
-                        :options="getBankOptions(cs.currencyId)"
-                        :loading="bankLoading"
-                        :disabled="!canEditBank"
-                        size="small"
-                        class="w-full"
-                        placeholder="请选择结算银行"
-                        @update:value="(v) => onBankChange(cs.currencyId, v)"
+                    <div class="info-item info-item--payment-require">
+                      <span class="info-label">{{ t('require') }}</span>
+                      <Input.TextArea
+                        :value="paymentRequire"
+                        :rows="2"
+                        :placeholder="$t('ui.placeholder.input')"
+                        @update:value="(val) => (paymentRequire = val)"
                       />
-                      <div
-                        v-if="getSelectedBank(cs.currencyId)"
-                        class="bank-detail"
-                      >
-                        <div class="bank-detail__row">
-                          <span class="bank-detail__label">开户行</span>
-                          <span class="bank-detail__value">{{
-                            getSelectedBank(cs.currencyId)?.bankName || '-'
-                          }}</span>
-                        </div>
-                        <div class="bank-detail__row">
-                          <span class="bank-detail__label">账号</span>
-                          <span class="bank-detail__value">{{
-                            getSelectedBank(cs.currencyId)?.bankAccount || '-'
-                          }}</span>
-                        </div>
-                        <div class="bank-detail__row">
-                          <span class="bank-detail__label">SWIFT</span>
-                          <span class="bank-detail__value">{{
-                            getSelectedBank(cs.currencyId)?.swiftCode || '-'
-                          }}</span>
-                        </div>
-                      </div>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">{{
+                        t('latestPaymentDate')
+                      }}</span>
+                      <DatePicker
+                        :value="endTime ? dayjs(endTime) : undefined"
+                        class="w-full"
+                        @change="onEndTimeChange"
+                      />
                     </div>
                   </div>
-                </div>
-              </template>
-
-              <!-- 指定币别模式：展示各原始币别金额、汇率及折算汇总 -->
-              <template v-else>
-                <div
-                  v-if="currencyConversionSummaries.length === 0"
-                  class="py-4 text-center text-gray-400"
-                >
-                  {{ t('noFeeWarning') }}
-                </div>
-                <template v-else>
-                  <div class="conversion-cards">
-                    <div
-                      v-for="cs in currencyConversionSummaries"
-                      :key="`${cs.currencyId}_${cs.rate}`"
-                      class="conversion-card"
-                    >
-                      <div class="conversion-card__head">
-                        <Tag color="blue">{{
-                          cs.currencyCode || cs.currencyName
-                        }}</Tag>
-                        <span class="conversion-card__amount">
-                          {{ formatAmount(cs.originalTotal) }}
-                        </span>
-                      </div>
-                      <div class="conversion-card__foot">
-                        <span class="conversion-card__rate">
-                          {{ t('exchangeRate') }} {{ cs.rate.toFixed(4) }}
-                        </span>
-                        <span class="conversion-card__converted">
-                          ≈ {{ formatAmount(cs.convertedTotal) }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="conversion-total-bar">
-                    <span class="conversion-total-bar__label">
-                      {{ t('convertedTotal') }}
-                      <template v-if="settlementCurrencyName">
-                        ({{ settlementCurrencyName }})
-                      </template>
-                    </span>
-                    <span class="conversion-total-bar__amount">
-                      {{ formatAmount(grandConvertedTotal) }}
-                    </span>
-                  </div>
-                  <div
-                    v-if="settlementCurrencyId !== null"
-                    class="bank-block bank-block--inline"
-                  >
-                    <span class="bank-block__label">
-                      结算银行
-                      <template v-if="settlementCurrencyName">
-                        ({{ settlementCurrencyName }})
-                      </template>
-                    </span>
-                    <Select
-                      :value="settlementBankValue"
-                      :options="settlementBankOptions"
-                      :loading="bankLoading"
-                      :disabled="!canEditBank"
-                      size="small"
-                      style="width: 280px"
-                      placeholder="请选择结算银行"
-                      @update:value="onSettlementBankChange"
-                    />
-                    <div v-if="settlementSelectedBank" class="bank-detail">
-                      <div class="bank-detail__row">
-                        <span class="bank-detail__label">开户行</span>
-                        <span class="bank-detail__value">{{
-                          settlementSelectedBank?.bankName || '-'
-                        }}</span>
-                      </div>
-                      <div class="bank-detail__row">
-                        <span class="bank-detail__label">账号</span>
-                        <span class="bank-detail__value">{{
-                          settlementSelectedBank?.bankAccount || '-'
-                        }}</span>
-                      </div>
-                      <div class="bank-detail__row">
-                        <span class="bank-detail__label">SWIFT</span>
-                        <span class="bank-detail__value">{{
-                          settlementSelectedBank?.swiftCode || '-'
-                        }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </template>
-              </template>
-            </Card>
-          </div>
-
-          <!-- 右侧：附件上传 -->
-          <div class="right-column">
-            <Card size="small" class="h-full">
-              <template #title>
-                <span class="font-semibold">{{ t('attachment') }}</span>
-              </template>
-              <div class="attachment-area">
-                <FileUploadInput v-model="attachments" :max-count="20" />
+                </Card>
               </div>
-            </Card>
-          </div>
-        </div>
 
-        <!-- 费用明细表格 -->
-        <Card size="small">
-          <template #title>
-            <div class="flex items-center justify-between">
-              <span class="font-semibold">{{ t('feeDetail') }}</span>
-              <Space>
-                <Button type="primary" size="small" @click="handleOpenAddFee">
-                  {{ t('addFee') }}
-                </Button>
-                <Button
-                  danger
-                  size="small"
-                  :disabled="selectedRowKeys.length === 0"
-                  @click="handleDeleteSelected"
-                >
-                  {{ t('deleteFee') }}
-                </Button>
-              </Space>
+              <!-- 中部：费用合计 -->
+              <div class="center-column">
+                <Card size="small" class="settlement-currency-card">
+                  <template #title>
+                    <div class="settlement-currency-title">
+                      <div class="section-title">
+                        <span
+                          class="section-title__icon section-title__icon--green"
+                        >
+                          <img :src="coinsHandSvg" alt="" />
+                        </span>
+                        <span>结算币别</span>
+                      </div>
+                      <span
+                        v-if="isSettlementCurrencyLocked"
+                        class="settlement-currency-mode"
+                      >
+                        🔒 固定币别 · {{ settlementCurrencyName || 'RMB' }}
+                      </span>
+                      <CurrencySelect
+                        v-else
+                        ref="currencySelectRef"
+                        :model-value="settlementCurrencyId"
+                        :extra-options="[
+                          { label: t('originalCurrency'), value: null },
+                        ]"
+                        size="small"
+                        class="settlement-currency-select"
+                        @update:model-value="onSettlementCurrencyChange"
+                      />
+                    </div>
+                  </template>
+
+                  <!-- 按票原币模式：显示各币别金额 -->
+                  <template v-if="settlementCurrencyId === null">
+                    <div
+                      v-if="currencySummaries.length === 0"
+                      class="py-4 text-center text-gray-400"
+                    >
+                      {{ t('noFeeWarning') }}
+                    </div>
+                    <div v-else class="currency-table">
+                      <div class="currency-table__head">
+                        <span>支付币别</span>
+                        <span>付款金额</span>
+                        <span>结算银行</span>
+                        <span>银行账户</span>
+                      </div>
+                      <div class="currency-cards">
+                        <div
+                          v-for="cs in currencySummaries"
+                          :key="cs.currencyId"
+                          class="currency-card"
+                        >
+                          <div class="currency-card__header">
+                            <span class="currency-card__currency">{{
+                              cs.currencyCode || cs.currencyName
+                            }}</span>
+                            <span class="currency-card__amount">
+                              {{ formatAmount(cs.totalAmount) }}
+                            </span>
+                          </div>
+                          <div class="bank-block">
+                            <span class="bank-block__label"> 结算银行 </span>
+                            <div class="bank-block__content">
+                              <Select
+                                :value="bankSelections[cs.currencyId]"
+                                :options="getBankOptions(cs.currencyId)"
+                                :loading="bankLoading"
+                                :disabled="!canEditBank"
+                                size="small"
+                                class="bank-block__select"
+                                placeholder="请选择结算银行"
+                                @update:value="
+                                  (v) => onBankChange(cs.currencyId, v)
+                                "
+                              />
+                              <div
+                                v-if="getSelectedBank(cs.currencyId)"
+                                class="bank-detail"
+                              >
+                                <div class="bank-detail__row">
+                                  <span class="bank-detail__label">账号</span>
+                                  <span class="bank-detail__value">{{
+                                    getSelectedBank(cs.currencyId)
+                                      ?.bankAccount || '-'
+                                  }}</span>
+                                </div>
+                                <div class="bank-detail__row">
+                                  <span class="bank-detail__label">SWIFT</span>
+                                  <span class="bank-detail__value">{{
+                                    getSelectedBank(cs.currencyId)?.swiftCode ||
+                                    '-'
+                                  }}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- 指定币别模式：展示各原始币别金额、汇率及折算汇总 -->
+                  <template v-else>
+                    <div
+                      v-if="currencyConversionSummaries.length === 0"
+                      class="py-4 text-center text-gray-400"
+                    >
+                      {{ t('noFeeWarning') }}
+                    </div>
+                    <div v-else class="settlement-table">
+                      <table class="settlement-table__native">
+                        <colgroup>
+                          <col style="width: 97px" />
+                          <col style="width: 96px" />
+                          <col style="width: 97px" />
+                          <col style="width: 117px" />
+                          <col style="width: 118px" />
+                          <col style="width: 193px" />
+                          <col style="width: 118px" />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th>
+                              <span class="settlement-table__currency-head">
+                                <Checkbox />
+                                支付币别
+                              </span>
+                            </th>
+                            <th>付款金额</th>
+                            <th>实付金额</th>
+                            <th>结算方式</th>
+                            <th>收款银行</th>
+                            <th>银行账户</th>
+                            <th>银行账号</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="cs in currencyConversionSummaries"
+                            :key="`${cs.currencyId}_${cs.rate}`"
+                          >
+                            <td>
+                              <span class="settlement-table__currency-cell">
+                                <Checkbox />
+                                {{ cs.currencyCode || cs.currencyName }}
+                              </span>
+                            </td>
+                            <td>{{ formatAmount(cs.originalTotal) }}</td>
+                            <td>{{ formatAmount(cs.convertedTotal) }}</td>
+                            <td>
+                              <span class="settlement-table__control"
+                                >汇款⌄</span
+                              >
+                            </td>
+                            <td>
+                              <Select
+                                :value="settlementBankValue"
+                                :options="settlementBankOptions"
+                                :loading="bankLoading"
+                                :disabled="!canEditBank"
+                                size="small"
+                                placeholder="请选择"
+                                @update:value="onSettlementBankChange"
+                              />
+                            </td>
+                            <td>
+                              <span class="settlement-table__bank-name">
+                                {{
+                                  settlementSelectedBank?.bankName ||
+                                  settlementName ||
+                                  '请输入'
+                                }}
+                              </span>
+                            </td>
+                            <td>
+                              <span class="settlement-table__account">
+                                {{
+                                  settlementSelectedBank?.bankAccount ||
+                                  '请输入'
+                                }}
+                              </span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </template>
+                </Card>
+              </div>
             </div>
-          </template>
 
-          <div class="fee-group-table">
-            <Table
-              :columns="allOrderGroupColumns"
-              :data-source="orderGroups"
-              :pagination="false"
-              :scroll="{ x: 'max-content', y: 500 }"
-              :children-column-name="'_none'"
-              row-key="key"
-              size="small"
-              :expanded-row-keys="expandedGroupKeys"
-              @expanded-rows-change="(keys) => (expandedGroupKeys = [...keys])"
-            >
-              <template #bodyCell="{ column, record, index }">
-                <template v-if="column.key === 'seq'">
-                  {{ index + 1 }}
-                </template>
-                <template v-else-if="column.key === 'etd'">
-                  {{ formatDate(record.etd) }}
-                </template>
-                <template v-else-if="column.key === 'accountDate'">
-                  {{ formatMonth(record.accountDate) }}
-                </template>
-                <template v-else-if="isAppliedAmountColumnKey(column.key)">
-                  {{ getGroupAppliedAmountDisplay(record, column.key) }}
-                </template>
-                <template v-else-if="isUserRoleColumnKey(column.key)">
-                  <Tooltip
-                    v-if="
-                      getUserRoleCellTextFromRecord(record, column.dataIndex)
-                    "
-                    :title="
-                      getUserRoleCellTextFromRecord(record, column.dataIndex)
-                    "
-                  >
-                    <span class="ellipsis-cell">
-                      {{
-                        getUserRoleCellTextFromRecord(record, column.dataIndex)
-                      }}
+            <!-- 右侧：附件上传 -->
+            <div class="right-column">
+              <Card size="small" class="workflow-card">
+                <template #title>
+                  <div class="section-title">
+                    <span class="section-title__icon section-title__icon--blue">
+                      <img :src="workflowSvg" alt="" />
                     </span>
-                  </Tooltip>
+                    <span>审核流程</span>
+                  </div>
                 </template>
-                <template v-else>
-                  {{ column.dataIndex ? record[column.dataIndex] : '' }}
-                </template>
-              </template>
+                <div class="workflow-steps">
+                  <div
+                    v-for="(step, index) in [
+                      {
+                        title: '提交申请',
+                        detail: `${applicantName || '-'} · 提交时间：${dayjs(
+                          submitTime,
+                        ).format('MM-DD HH:mm')}`,
+                      },
+                      { title: '主管复核', detail: '待审核 · 进行中' },
+                      { title: '财务审核', detail: '财务部 · 未开始' },
+                      { title: '出纳付款', detail: '出纳 · 未开始' },
+                    ]"
+                    :key="step.title"
+                    class="workflow-step"
+                    :class="{
+                      'workflow-step--done': workflowStep > index,
+                      'workflow-step--active': workflowStep === index + 1,
+                    }"
+                  >
+                    <span class="workflow-step__dot">
+                      {{ workflowStep > index + 1 ? '✓' : index + 1 }}
+                    </span>
+                    <span class="workflow-step__line"></span>
+                    <span class="workflow-step__content">
+                      <strong>{{ step.title }}</strong>
+                      <small>{{ step.detail }}</small>
+                    </span>
+                  </div>
+                </div>
+                <div class="status-stamp">
+                  <img :src="statusStampSvg" alt="" />
+                  <strong>{{ isEntering ? '录入中' : '审核中' }}</strong>
+                </div>
+              </Card>
 
-              <template #expandColumnTitle>
-                <Checkbox
-                  :checked="isAllSelected"
-                  :indeterminate="isIndeterminate"
-                  @change="(e) => toggleAllSelection(e.target.checked)"
+              <Card size="small" class="invoice-card">
+                <template #title>
+                  <div class="section-title">
+                    <span
+                      class="section-title__icon section-title__icon--violet"
+                    >
+                      <img :src="invoiceTicketSvg" alt="" />
+                    </span>
+                    <span>发票制作</span>
+                  </div>
+                </template>
+                <div class="invoice-tabs">
+                  <span class="invoice-tab invoice-tab--active">先票后付</span>
+                  <span class="invoice-tab">先付后票</span>
+                  <span class="invoice-tab">不开票</span>
+                </div>
+                <div class="invoice-fields">
+                  <div class="invoice-field">
+                    <span>发票号</span>
+                    <span class="invoice-field__arrow">⌄</span>
+                  </div>
+                  <div class="invoice-field">
+                    <span>开票日期</span>
+                    <span class="invoice-field__arrow">⌄</span>
+                  </div>
+                </div>
+                <div class="invoice-documents">
+                  <div class="invoice-document invoice-document--upload">
+                    <span>发票文件</span>
+                    <FileUploadInput v-model="attachments" :max-count="20" />
+                  </div>
+                  <div class="invoice-document">
+                    <span>账单</span>
+                  </div>
+                  <div class="invoice-document">
+                    <span>付款水单</span>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+
+          <!-- 费用明细表格 -->
+          <Card size="small" class="fee-detail-card">
+            <template #title>
+              <div class="flex items-center justify-between">
+                <div class="section-title">
+                  <span class="section-title__icon section-title__icon--orange">
+                    <img :src="feePackageSvg" alt="" />
+                  </span>
+                  <span>{{ t('feeDetail') }}</span>
+                </div>
+                <div class="fee-detail-actions">
+                  <span class="fee-detail-status">
+                    共 {{ orderGroups.length }} 票 · 录入状态可增删
+                  </span>
+                  <Space>
+                    <Button size="small" @click="handleOpenAddFee">
+                      + {{ t('addFee') }}
+                    </Button>
+                    <Button
+                      v-if="selectedRowKeys.length > 0"
+                      danger
+                      size="small"
+                      @click="handleDeleteSelected"
+                    >
+                      {{ t('deleteFee') }}
+                    </Button>
+                  </Space>
+                </div>
+              </div>
+            </template>
+
+            <div class="fee-filter-bar">
+              <label class="fee-filter-field">
+                <span>编号</span>
+                <Input
+                  v-model:value="feeFilterNo"
+                  size="small"
+                  allow-clear
+                  placeholder="请选择"
                 />
-              </template>
-              <template #expandIcon="{ expanded, record, onExpand }">
-                <div class="flex items-center gap-1">
-                  <Checkbox
-                    :checked="isGroupAllSelected(record.key)"
-                    :indeterminate="isGroupIndeterminate(record.key)"
-                    @change="
-                      (e) => toggleGroupSelection(record, e.target.checked)
-                    "
-                  />
+              </label>
+              <label class="fee-filter-field">
+                <span>委托单位</span>
+                <ClientSelect v-model="feeFilterClient" placeholder="请选择" />
+              </label>
+              <label class="fee-filter-field">
+                <span>开船日期</span>
+                <DatePicker
+                  size="small"
+                  class="w-full"
+                  @change="onFeeFilterDateChange"
+                />
+              </label>
+              <label class="fee-filter-field">
+                <span>费用名称</span>
+                <FeeNameSelect v-model="feeFilterName" placeholder="请选择" />
+              </label>
+              <label class="fee-filter-field">
+                <span>币别检索</span>
+                <CurrencySelect
+                  v-model="feeFilterCurrency"
+                  placeholder="请选择"
+                />
+              </label>
+            </div>
+
+            <div class="fee-group-table">
+              <NestedDataTable
+                :columns="allOrderGroupColumns"
+                :data-source="filteredOrderGroups"
+                :inner-columns="feeInnerColumns"
+                inner-data-key="children"
+                inner-row-key="feeId"
+                :max-height="177"
+                row-key="key"
+                v-model:expanded-row-keys="expandedGroupKeys"
+              >
+                <template #outerHeaderCell="{ column }">
+                  <span v-if="column.key === 'seq'" class="table-sequence-cell">
+                    <Checkbox
+                      :checked="isAllSelected"
+                      :indeterminate="isIndeterminate"
+                      @change="(e) => toggleAllSelection(e.target.checked)"
+                    />
+                    {{ column.title }}
+                  </span>
+                  <template v-else>{{ column.title }}</template>
+                </template>
+
+                <template #outerBodyCell="{ column, record, index }">
+                  <template v-if="column.key === 'seq'">
+                    <span class="table-sequence-cell">
+                      <Checkbox
+                        :checked="isGroupAllSelected(record.key)"
+                        :indeterminate="isGroupIndeterminate(record.key)"
+                        @change="
+                          (e) => toggleGroupSelection(record, e.target.checked)
+                        "
+                      />
+                      {{ index + 1 }}
+                    </span>
+                  </template>
+                  <template v-else-if="column.key === 'etd'">
+                    {{ formatDate(record.etd) }}
+                  </template>
+                  <template v-else-if="column.key === 'accountDate'">
+                    {{ formatMonth(record.accountDate) }}
+                  </template>
+                  <template v-else-if="isAppliedAmountColumnKey(column.key)">
+                    {{ getGroupAppliedAmountDisplay(record, column.key) }}
+                  </template>
+                  <template v-else-if="isUserRoleColumnKey(column.key)">
+                    <Tooltip
+                      v-if="
+                        getUserRoleCellTextFromRecord(record, column.dataIndex)
+                      "
+                      :title="
+                        getUserRoleCellTextFromRecord(record, column.dataIndex)
+                      "
+                    >
+                      <span class="ellipsis-cell">
+                        {{
+                          getUserRoleCellTextFromRecord(
+                            record,
+                            column.dataIndex,
+                          )
+                        }}
+                      </span>
+                    </Tooltip>
+                  </template>
+                  <template v-else>
+                    {{ column.dataIndex ? record[column.dataIndex] : '' }}
+                  </template>
+                </template>
+
+                <template #expandColumnTitle></template>
+                <template #expandIcon="{ expanded, record, onExpand }">
                   <span
                     class="expand-toggle cursor-pointer"
                     :class="{ 'expand-toggle--expanded': expanded }"
@@ -1431,106 +1621,106 @@ function formatMonth(val: string | undefined | null): string {
                   >
                     &#9654;
                   </span>
-                </div>
-              </template>
+                </template>
 
-              <template #expandedRowRender="{ record: group }">
-                <div class="expanded-fee-table p-2">
-                  <Table
-                    :columns="feeInnerColumns"
-                    :data-source="group.children"
-                    :pagination="false"
-                    row-key="feeId"
-                    size="small"
-                  >
-                    <template #bodyCell="{ column, record, index }">
-                      <template v-if="column.key === 'checkbox'">
-                        <Checkbox
-                          :checked="isRowSelected(record.feeId)"
-                          @change="
-                            (e) =>
-                              toggleRowSelection(record.feeId, e.target.checked)
-                          "
-                        />
-                      </template>
-                      <template v-else-if="column.key === 'seq'">
-                        {{ index + 1 }}
-                      </template>
-                      <template v-else-if="column.key === 'paySide'">
-                        <Tag :color="record.paySide === 0 ? 'blue' : 'orange'">
-                          {{ getPaySideLabel(record.paySide) }}
-                        </Tag>
-                      </template>
-                      <template v-else-if="column.key === 'currencyCode'">
-                        {{ record.currencyCode || record.currencyName }}
-                      </template>
-                      <template v-else-if="column.key === 'amount'">
-                        {{ formatAmount(record.amount) }}
-                      </template>
-                      <template v-else-if="column.key === 'exchangeRate'">
-                        {{ record.exchangeRate }}
-                      </template>
-                      <template v-else-if="column.key === 'convertedApplied'">
-                        {{
-                          formatAmount(
-                            calcConvertedApplied(record.amount, record.rate),
-                          )
-                        }}
-                      </template>
-                      <template v-else-if="column.key === 'settledAmount'">
-                        {{ formatAmount(record.settledAmount) }}
-                      </template>
-                      <template
-                        v-else-if="column.key === 'unRqstPaymentAmount'"
-                      >
-                        {{ formatAmount(record.unRqstPaymentAmount) }}
-                      </template>
-                      <template v-else-if="column.key === 'appliedAmount'">
-                        <span class="fee-applied-amount-value">{{
-                          formatAmount(record.appliedAmount)
-                        }}</span>
-                      </template>
-                      <template v-else-if="column.key === 'rate'">
-                        <InputNumber
-                          v-if="!isOriginalFee(record.feeId)"
-                          :value="record.rate"
-                          :precision="6"
-                          :step="0.01"
-                          :min="0"
-                          size="small"
-                          class="w-full"
-                          @change="(val) => onRateChange(record.feeId, val)"
-                        />
-                        <span v-else>{{ record.rate }}</span>
-                      </template>
-                      <template v-else>
-                        {{ column.dataIndex ? record[column.dataIndex] : '' }}
-                      </template>
-                    </template>
-                  </Table>
-                </div>
-              </template>
-            </Table>
-          </div>
+                <template #innerHeaderCell="{ column }">
+                  <span v-if="column.key === 'seq'" class="table-sequence-cell">
+                    <Checkbox
+                      :checked="isAllSelected"
+                      :indeterminate="isIndeterminate"
+                      @change="(e) => toggleAllSelection(e.target.checked)"
+                    />
+                    {{ column.title }}
+                  </span>
+                  <template v-else>{{ column.title }}</template>
+                </template>
 
-          <div class="fee-footer">
-            <span>
-              {{ t('groupCount', [orderGroups.length]) }}
-            </span>
-            <div class="flex items-center gap-4">
-              <span
-                v-for="cs in currencySummaries"
-                :key="cs.currencyId"
-                class="flex items-center gap-1"
-              >
-                <Tag color="blue" size="small">{{
-                  cs.currencyCode || cs.currencyName
-                }}</Tag>
-                <strong>{{ formatAmount(cs.totalAmount) }}</strong>
-              </span>
+                <template #innerBodyCell="{ column, record, index }">
+                  <template v-if="column.key === 'seq'">
+                    <span class="table-sequence-cell">
+                      <Checkbox
+                        :checked="isRowSelected(record.feeId)"
+                        @change="
+                          (e) =>
+                            toggleRowSelection(record.feeId, e.target.checked)
+                        "
+                      />
+                      {{ index + 1 }}
+                    </span>
+                  </template>
+                  <template v-else-if="column.key === 'paySide'">
+                    <Tag :color="record.paySide === 0 ? 'blue' : 'orange'">
+                      {{ getPaySideLabel(record.paySide) }}
+                    </Tag>
+                  </template>
+                  <template v-else-if="column.key === 'currencyCode'">
+                    {{ record.currencyCode || record.currencyName }}
+                  </template>
+                  <template v-else-if="column.key === 'amount'">
+                    {{ formatAmount(record.amount) }}
+                  </template>
+                  <template v-else-if="column.key === 'exchangeRate'">
+                    {{ record.exchangeRate }}
+                  </template>
+                  <template v-else-if="column.key === 'convertedApplied'">
+                    {{
+                      formatAmount(
+                        calcConvertedApplied(record.amount, record.rate),
+                      )
+                    }}
+                  </template>
+                  <template v-else-if="column.key === 'settledAmount'">
+                    {{ formatAmount(record.settledAmount) }}
+                  </template>
+                  <template v-else-if="column.key === 'unRqstPaymentAmount'">
+                    {{ formatAmount(record.unRqstPaymentAmount) }}
+                  </template>
+                  <template v-else-if="column.key === 'appliedAmount'">
+                    <span class="fee-applied-amount-value">{{
+                      formatAmount(record.appliedAmount)
+                    }}</span>
+                  </template>
+                  <template v-else-if="column.key === 'rate'">
+                    <InputNumber
+                      v-if="!isOriginalFee(record.feeId)"
+                      :value="record.rate"
+                      :precision="6"
+                      :step="0.01"
+                      :min="0"
+                      size="small"
+                      class="w-full"
+                      @change="(val) => onRateChange(record.feeId, val)"
+                    />
+                    <span v-else>{{ record.rate }}</span>
+                  </template>
+                  <template v-else>
+                    {{ column.dataIndex ? record[column.dataIndex] : '' }}
+                  </template>
+                </template>
+              </NestedDataTable>
             </div>
-          </div>
-        </Card>
+
+            <div class="fee-detail-bottom">
+              <div class="fee-footer">
+                <span>
+                  {{ t('groupCount', [orderGroups.length]) }}
+                </span>
+                <div class="flex items-center gap-4">
+                  <span
+                    v-for="cs in currencySummaries"
+                    :key="cs.currencyId"
+                    class="flex items-center gap-1"
+                  >
+                    <Tag color="blue" size="small">{{
+                      cs.currencyCode || cs.currencyName
+                    }}</Tag>
+                    <strong>{{ formatAmount(cs.totalAmount) }}</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
 
       <!-- 添加费用抽屉 -->
@@ -1548,100 +1738,575 @@ function formatMonth(val: string | undefined | null): string {
 .payment-app-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  min-height: 100%;
+  padding-bottom: 10px;
+  color: #1f2937;
+  background: #f8f8f8;
+}
+
+.payment-app-form__content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 10px;
+}
+
+.payment-app-form :deep(.ant-card) {
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 0 0 10px rgb(0 0 0 / 2%);
+}
+
+.payment-app-form :deep(.ant-card-head) {
+  min-height: 42px;
+  padding: 0 14px;
+  border-bottom-color: #eef2f6;
+}
+
+.payment-app-form :deep(.ant-card-head-title) {
+  padding: 10px 0;
+  font-size: 13px;
+}
+
+.payment-app-form :deep(.ant-card-body) {
+  padding: 14px;
 }
 
 .action-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  min-height: 48px;
+  padding: 8px 14px;
   background: #fff;
-  border-radius: 6px;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+  border-bottom: 1px solid #edf0f3;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.action-bar__left {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.action-bar__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
 }
 
 .action-bar__title {
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 600;
+  color: #111827;
+}
+
+.action-bar :deep(.ant-btn) {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 13px;
+  font-size: 12px;
+  border-color: #d1d5dc;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.action-bar__right :deep(.ant-space) {
+  gap: 4px !important;
+}
+
+.action-bar :deep(.ant-btn .iconify) {
+  width: 12px;
+  height: 12px;
 }
 
 .main-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 356px;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.main-column {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
 }
 
 .left-column {
-  flex-shrink: 0;
-  width: 480px;
-}
-
-.center-column {
-  flex: 1;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
+.center-column {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
 .right-column {
-  flex-shrink: 0;
-  width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 356px;
+}
+
+.fee-detail-card {
+  min-width: 0;
+  height: 465px;
+}
+
+.fee-detail-card :deep(.ant-card-head) {
+  min-height: 60px;
+  padding: 0 16px;
+}
+
+.fee-detail-card :deep(.ant-card-body) {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 60px);
+  padding: 16px;
+  overflow: hidden;
+}
+
+.fee-detail-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.fee-detail-actions :deep(.ant-btn) {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  border-color: #d1d5dc;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.fee-detail-status {
+  font-size: 11px;
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+.settlement-unit-title,
+.settlement-currency-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.settlement-unit-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+  color: #111827;
+}
+
+.settlement-unit-title__select {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  width: 420px;
+}
+
+.settlement-unit-title__select :deep(.ant-select) {
+  flex: 1;
+}
+
+.settlement-unit-card :deep(.ant-card-body) {
+  padding: 12px 14px;
 }
 
 .info-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px 32px;
+  align-items: start;
 }
 
 .info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: 91px minmax(0, 1fr);
+  gap: 0;
+  align-items: center;
+  min-height: 32px;
 }
 
 .info-label {
-  font-size: 13px;
-  color: #8c8c8c;
+  font-size: 12px;
+  color: #7c8798;
   white-space: nowrap;
 }
 
+.info-label--required::after {
+  margin-left: 2px;
+  color: #ef4444;
+  content: '*';
+}
+
+.info-item--payment-require {
+  grid-template-columns: 71px minmax(0, 1fr);
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-items: start;
+}
+
 .info-value {
-  font-size: 13px;
-  color: #262626;
+  min-height: 28px;
+  font-size: 12px;
+  line-height: 28px;
+  color: #1f2937;
 }
 
-.currency-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+.info-item:not(.info-item--payment-require) :deep(.ant-input),
+.info-item :deep(.ant-input-affix-wrapper),
+.info-item :deep(.ant-picker),
+.info-item :deep(.ant-select-selector) {
+  font-size: 12px !important;
+  background: #fbfcfd !important;
+  border-color: #e4e8ee !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
 }
 
-.currency-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 240px;
-  padding: 10px 16px;
-  background: #f6f9ff;
-  border: 1px solid #e8eef6;
-  border-radius: 6px;
-}
-
-.currency-card__header {
+.section-title {
   display: flex;
   gap: 8px;
   align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.section-title__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+.section-title__icon img {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.section-title__icon--blue {
+  color: #4263eb;
+  background: #e9efff;
+}
+
+.section-title__icon--violet {
+  color: #7656d6;
+  background: #f0ecff;
+}
+
+.section-title__icon--orange {
+  color: #ff7a2f;
+  background: #fff0e7;
+}
+
+.section-title__icon--green {
+  color: #24a871;
+  background: #eaf9f1;
+}
+
+.settlement-currency-select {
+  width: 160px;
+}
+
+.settlement-currency-mode {
+  min-width: 132px;
+  padding: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 15px;
+  color: #1d4ed8;
+  text-align: center;
+  background: #eff6ff;
+  border-radius: 6px;
+}
+
+.settlement-currency-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+
+.settlement-currency-card :deep(.ant-card-head) {
+  flex-shrink: 0;
+}
+
+.settlement-currency-card :deep(.ant-card-body) {
+  flex: 1;
+  min-height: 0;
+  padding: 16px 10px 14px;
+}
+
+.workflow-card {
+  position: relative;
+  height: 296px;
+  overflow: hidden;
+}
+
+.workflow-steps {
+  display: flex;
+  flex-direction: column;
+  padding-right: 86px;
+}
+
+.workflow-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 48px;
+}
+
+.workflow-step__dot {
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  color: #9ca3af;
+  background: #fff;
+  border: 2px solid #d1d5db;
+  border-radius: 50%;
+}
+
+.workflow-step__line {
+  position: absolute;
+  top: 20px;
+  bottom: 0;
+  left: 9px;
+  width: 1px;
+  background: #d8dee7;
+}
+
+.workflow-step:last-child .workflow-step__line {
+  display: none;
+}
+
+.workflow-step__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 1px;
+}
+
+.workflow-step__content strong {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.workflow-step__content small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.workflow-step--done .workflow-step__dot {
+  color: #fff;
+  background: #16a34a;
+  border-color: #16a34a;
+}
+
+.workflow-step--active .workflow-step__dot {
+  color: #fff;
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.status-stamp {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 88px;
+  height: 88px;
+  color: #00a878;
+}
+
+.status-stamp img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.status-stamp strong {
+  position: absolute;
+  top: 41px;
+  left: 18px;
+  width: 52px;
+  font-size: 15px;
+  line-height: 24px;
+  text-align: center;
+  transform: rotate(-14deg);
+}
+
+.invoice-card {
+  height: 289px;
+}
+
+.invoice-card :deep(.ant-card-body) {
+  padding: 4px 16px 16px;
+}
+
+.invoice-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 3px;
+  margin-bottom: 8px;
+  background: #f7f8fa;
+  border-radius: 7px;
+}
+
+.invoice-tab {
+  padding: 4px 6px;
+  font-size: 11px;
+  color: #4b5563;
+  text-align: center;
+  border-radius: 5px;
+}
+
+.invoice-tab--active {
+  color: #111827;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+}
+
+.invoice-fields {
+  display: grid;
+  gap: 7px;
+}
+
+.invoice-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 11px;
+  font-size: 11px;
+  color: #4e5969;
+  background: #fbfcfd;
+  border: 1px solid #e5e9ef;
+  border-radius: 8px;
+}
+
+.invoice-field__arrow {
+  color: #9ca3af;
+}
+
+.invoice-documents {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.invoice-document {
+  height: 97px;
+  padding: 8px;
+  overflow: hidden;
+  font-size: 11px;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #e5e9ef;
+  border-radius: 8px;
+}
+
+.invoice-document--upload :deep(.file-upload-input) {
+  margin-top: 4px;
+  transform: scale(0.75);
+  transform-origin: top left;
+}
+
+.currency-table {
+  overflow: hidden;
+  border: 1px solid #edf1f5;
+  border-radius: 10px;
+}
+
+.currency-table__head,
+.currency-card {
+  display: grid;
+  grid-template-columns: 80px 100px 100px minmax(180px, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.currency-table__head {
+  height: 34px;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #657286;
+  background: #f2f7fc;
+  border-bottom: 1px solid #d4e4f4;
+}
+
+.currency-cards {
+  display: grid;
+  gap: 0;
+}
+
+.currency-card {
+  min-width: 0;
+  padding: 9px 12px;
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid #d4e4f4;
+  border-radius: 0;
+}
+
+.currency-card:last-child {
+  border-bottom: 0;
+}
+
+.currency-card__header {
+  display: contents;
+}
+
+.currency-card__currency {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  font-size: 12px;
+  line-height: 20px;
+  color: #1f2937;
 }
 
 .currency-card__amount {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1890ff;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1f2937;
 }
 
 .bank-block {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: contents;
 }
 
 .bank-block--inline {
@@ -1655,33 +2320,115 @@ function formatMonth(val: string | undefined | null): string {
   color: #8c8c8c;
 }
 
+.bank-block__content {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  min-width: 0;
+}
+
+.bank-block__select {
+  flex: 0 0 260px;
+  width: 260px;
+}
+
 .bank-detail {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
-  margin-top: 2px;
-  background: #fff;
-  border: 1px dashed #d9e2ec;
-  border-radius: 4px;
+  gap: 20px;
+  align-items: center;
+  min-width: 0;
+}
+
+.settlement-table {
+  overflow: auto;
+}
+
+.settlement-table__native {
+  width: 100%;
+  min-width: 837px;
+  table-layout: fixed;
+  border-spacing: 0;
+  border-collapse: separate;
+}
+
+.settlement-table__native th,
+.settlement-table__native td {
+  padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid #d4e4f4;
+}
+
+.settlement-table__native th {
+  height: 35px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  background: #f9fafb;
+}
+
+.settlement-table__native td {
+  height: 52px;
+  font-size: 12px;
+  color: #1f2937;
+}
+
+.settlement-table__native tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.settlement-table__currency-head,
+.settlement-table__currency-cell {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.settlement-table__control,
+.settlement-table__account {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  color: #4e5969;
+  background: #fbfcfd;
+  border: 1px solid #e4e8ee;
+  border-radius: 8px;
+}
+
+.settlement-table__account {
+  color: #9ca3af;
+}
+
+.settlement-table__bank-name {
+  color: #1f2937;
+}
+
+.settlement-table__native :deep(.ant-select) {
+  width: 100%;
 }
 
 .bank-detail__row {
   display: flex;
   gap: 6px;
+  align-items: center;
+  min-width: 0;
   font-size: 12px;
   line-height: 1.5;
 }
 
 .bank-detail__label {
   flex-shrink: 0;
-  width: 44px;
   color: #8c8c8c;
 }
 
 .bank-detail__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: #262626;
-  word-break: break-all;
+  white-space: nowrap;
 }
 
 .conversion-cards {
@@ -1761,18 +2508,79 @@ function formatMonth(val: string | undefined | null): string {
   width: 100%;
 }
 
-.fee-group-table :deep(.ant-table-container::before),
-.fee-group-table :deep(.ant-table-container::after) {
-  box-shadow: none !important;
+.fee-filter-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px 32px;
+  padding: 0 0 16px;
 }
 
-.fee-group-table :deep(.ant-table-expanded-row > td) {
-  padding: 4px 8px;
-  background: #fff;
+.fee-filter-field {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 0;
+  align-items: center;
+  min-width: 0;
+  min-height: 32px;
+  font-size: 12px;
+  color: #657286;
+}
+
+.fee-filter-field:nth-child(1),
+.fee-filter-field:nth-child(4) {
+  grid-template-columns: 54px minmax(0, 1fr);
+}
+
+.fee-filter-field :deep(.ant-input),
+.fee-filter-field :deep(.ant-input-affix-wrapper),
+.fee-filter-field :deep(.ant-picker),
+.fee-filter-field :deep(.ant-select-selector) {
+  min-height: 32px !important;
+  font-size: 12px !important;
+  background: #fbfcfd !important;
+  border-color: #e5e9ef !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
 }
 
 .fee-group-table :deep(.user-role-column) {
   max-width: 72px;
+}
+
+.fee-group-table {
+  flex: 0 0 177px;
+  height: 177px;
+  min-height: 177px;
+  overflow: hidden;
+}
+
+.fee-group-table :deep(.nested-data-table),
+.fee-group-table :deep(.nested-data-table__scroll) {
+  height: 100%;
+}
+
+.fee-group-table :deep(.nested-data-table__outer > thead > tr > th),
+.fee-group-table
+  :deep(.nested-data-table__outer > tbody > .nested-data-table__outer-row > td),
+.fee-group-table
+  :deep(
+    .nested-data-table__outer > tbody > .nested-data-table__expanded-row > td
+  ) {
+  border-bottom: 0;
+}
+
+.fee-group-table :deep(.nested-data-table__inner) {
+  --table-border: #d4e4f4;
+}
+
+.fee-group-table :deep(.nested-data-table__inner tbody tr:last-child td) {
+  border-bottom: 1px solid #d4e4f4;
+}
+
+.table-sequence-cell {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .fee-group-table .ellipsis-cell {
@@ -1783,25 +2591,7 @@ function formatMonth(val: string | undefined | null): string {
   white-space: nowrap;
 }
 
-.expanded-fee-table {
-  overflow-x: auto;
-}
-
-.expanded-fee-table :deep(.ant-table-wrapper) {
-  width: max-content;
-  max-width: none;
-}
-
-.expanded-fee-table :deep(.ant-table-container::before),
-.expanded-fee-table :deep(.ant-table-container::after) {
-  box-shadow: none !important;
-}
-
-.expanded-fee-table :deep(.ant-table-thead > tr > th) {
-  background: #fafafa;
-}
-
-.expanded-fee-table :deep(.fee-applied-amount-cell) {
+.fee-group-table :deep(.fee-applied-amount-cell) {
   padding-right: 8px !important;
 }
 
@@ -1810,16 +2600,16 @@ function formatMonth(val: string | undefined | null): string {
   color: #1677ff;
 }
 
-.expanded-fee-table :deep(.fee-applied-amount-input .ant-input-number-input) {
+.fee-detail-bottom {
+  margin-top: auto;
+}
+
+.fee-group-table :deep(.fee-applied-amount-input .ant-input-number-input) {
   font-weight: 600;
   color: #1677ff;
 }
 
-.expanded-fee-table :deep(.ant-table-tbody > tr > td) {
-  background: #fff;
-}
-
-.expanded-fee-table :deep(.ant-input-number-input) {
+.fee-group-table :deep(.ant-input-number-input) {
   text-align: right;
 }
 
@@ -1844,20 +2634,53 @@ function formatMonth(val: string | undefined | null): string {
   justify-content: space-between;
   padding: 8px 0;
   margin-top: 8px;
-  font-size: 13px;
-  color: #8c8c8c;
-  border-top: 1px solid #f0f0f0;
+  font-size: 12px;
+  color: #8792a2;
 }
 
 @media (max-width: 1200px) {
   .main-layout {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
   }
 
-  .left-column,
-  .center-column,
-  .right-column {
+  .main-column {
     width: 100%;
+  }
+
+  .center-column {
+    flex: none;
+  }
+
+  .settlement-currency-card {
+    flex: none;
+  }
+
+  .right-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .action-bar {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .right-column {
+    display: flex;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .info-item--payment-require {
+    grid-row: auto;
+    grid-column: 1;
   }
 }
 </style>
