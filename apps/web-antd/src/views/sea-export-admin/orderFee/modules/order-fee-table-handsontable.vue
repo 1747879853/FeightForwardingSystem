@@ -294,6 +294,8 @@ const SubmittedOther = async (e: any) => {
     case 'delete':
       actions.showDeleteWithRemark();
       break;
+    case 'withdraw':
+      actions.orderFeeWithdraw();
   }
 };
 
@@ -714,6 +716,7 @@ defineExpose({ getTableDate });
                 type="default"
                 :loading="loadingFinishStatus"
                 @click="toggleFinishStatus"
+                class="finish-status-btn"
               >
                 {{ isFinished ? '设为未完结' : '设为已完结' }}
               </Button>
@@ -811,6 +814,44 @@ defineExpose({ getTableDate });
     .toolbar-actions {
       display: flex;
       gap: 8px;
+
+      // ✅ 完结状态按钮特殊样式
+      :deep(.finish-status-btn) {
+        color: #faad14;
+        background: linear-gradient(
+          135deg,
+          rgb(250 173 20 / 8%) 0%,
+          rgb(250 173 20 / 4%) 100%
+        );
+        border-color: #faad14;
+
+        &:hover:not(:disabled) {
+          color: #ffc53d;
+          background: linear-gradient(
+            135deg,
+            rgb(250 173 20 / 15%) 0%,
+            rgb(250 173 20 / 8%) 100%
+          );
+          border-color: #ffc53d;
+          box-shadow: 0 2px 8px rgb(250 173 20 / 20%);
+        }
+
+        &:active:not(:disabled) {
+          color: #d48806;
+          background: linear-gradient(
+            135deg,
+            rgb(250 173 20 / 20%) 0%,
+            rgb(250 173 20 / 12%) 100%
+          );
+          border-color: #d48806;
+        }
+
+        &:disabled {
+          color: rgb(0 0 0 / 25%);
+          background: #f5f5f5;
+          border-color: #d9d9d9;
+        }
+      }
     }
   }
 }

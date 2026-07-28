@@ -9,7 +9,11 @@ import {
   getSeaExportFees,
   importOrderFeesToTransportOrder,
 } from '#/api/sea-export/order-fee-admin';
-import { CarrierSelect, PortSelect } from '#/adapter/component/biz-select';
+import {
+  CarrierSelect,
+  PortSelect,
+  ClientSelect,
+} from '#/adapter/component/biz-select';
 
 const emit = defineEmits(['confirm']);
 
@@ -58,6 +62,7 @@ const currentPaySide = ref<number>(0);
 const searchForm = ref<OrderFeeAdminApi.SeaExportFeeQueryInputDto>({
   clientId: undefined,
   carrierId: undefined,
+  bookingAgentId: undefined,
   pOLId: undefined,
   pODId: undefined,
   keyword: '',
@@ -193,11 +198,25 @@ const handleImport = async () => {
   }
 };
 
+// 重置搜索条件（不刷新数据）
+const handleReset = () => {
+  searchForm.value = {
+    clientId: undefined,
+    carrierId: undefined,
+    bookingAgentId: undefined,
+    pOLId: undefined,
+    pODId: undefined,
+    keyword: '',
+    paySide: undefined,
+  };
+};
+
 // 重置状态
 const resetState = () => {
   searchForm.value = {
     clientId: undefined,
     carrierId: undefined,
+    bookingAgentId: undefined,
     pOLId: undefined,
     pODId: undefined,
     keyword: '',
@@ -230,6 +249,26 @@ defineExpose({
             <CarrierSelect
               v-model="searchForm.carrierId"
               placeholder="请选择船公司"
+              style="width: 200px"
+              allow-clear
+            />
+          </div>
+
+          <div class="form-item">
+            <span class="label">委托单位:</span>
+            <ClientSelect
+              v-model="searchForm.clientId"
+              placeholder="请选择委托单位"
+              style="width: 200px"
+              allow-clear
+            />
+          </div>
+
+          <div class="form-item">
+            <span class="label">订舱代理:</span>
+            <ClientSelect
+              v-model="searchForm.bookingAgentId"
+              placeholder="请选择订舱代理"
               style="width: 200px"
               allow-clear
             />
@@ -270,6 +309,7 @@ defineExpose({
           <Button type="primary" @click="handleSearch" :loading="loading">
             查询
           </Button>
+          <Button @click="handleReset"> 重置 </Button>
         </Space>
       </div>
 
@@ -286,49 +326,63 @@ defineExpose({
               dataIndex: ['transportOrder', 'commissionNum'],
               key: 'commissionNum',
               width: 160,
+              ellipsis: true,
             },
             {
               title: '主提单号',
               dataIndex: ['transportOrder', 'mblNum'],
               key: 'mblNum',
               width: 160,
+              ellipsis: true,
             },
             {
               title: '委托单位',
               dataIndex: ['transportOrder', 'clientName'],
               key: 'clientName',
               width: 150,
+              ellipsis: true,
             },
             {
               title: '船公司',
               dataIndex: 'carrierName',
               key: 'carrierName',
               width: 170,
+              ellipsis: true,
             },
             {
               title: '起运港',
               dataIndex: 'pOLName',
               key: 'pOLName',
               width: 130,
+              ellipsis: true,
             },
             {
               title: '目的港',
               dataIndex: 'pODName',
               key: 'pODName',
               width: 130,
+              ellipsis: true,
             },
-            { title: '船名', dataIndex: 'vessel', key: 'vessel', width: 120 },
+            {
+              title: '船名',
+              dataIndex: 'vessel',
+              key: 'vessel',
+              width: 120,
+              ellipsis: true,
+            },
             {
               title: '航次',
               dataIndex: 'innerVoyno',
               key: 'innerVoyno',
               width: 110,
+              ellipsis: true,
             },
             {
               title: '箱型箱量',
               dataIndex: ['transportOrder', 'totalCtn'],
               key: 'totalCtn',
               width: 150,
+              ellipsis: true,
             },
           ]"
           :rowKey="(record) => record.id"
@@ -343,6 +397,7 @@ defineExpose({
               onClick: () => handleSelectSeaExport(record),
             })
           "
+          size="small"
         />
       </div>
 
@@ -392,44 +447,63 @@ defineExpose({
               dataIndex: 'feeCodeName',
               key: 'feeCodeName',
               width: 160,
+              ellipsis: true,
             },
             {
               title: '结算对象',
               dataIndex: 'settlementName',
               key: 'settlementName',
               width: 190,
+              ellipsis: true,
             },
             {
               title: '币别',
               dataIndex: 'currencyCode',
               key: 'currencyCode',
               width: 80,
+              ellipsis: true,
             },
             {
               title: '汇率',
               dataIndex: 'exchangeRate',
               key: 'exchangeRate',
               width: 80,
+              ellipsis: true,
             },
             {
               title: '含税单价',
               dataIndex: 'unitPrice',
               key: 'unitPrice',
               width: 100,
+              ellipsis: true,
             },
-            { title: '金额', dataIndex: 'amount', key: 'amount', width: 100 },
-            { title: '单位', dataIndex: 'unit', key: 'unit', width: 60 },
+            {
+              title: '金额',
+              dataIndex: 'amount',
+              key: 'amount',
+              width: 100,
+              ellipsis: true,
+            },
+            {
+              title: '单位',
+              dataIndex: 'unit',
+              key: 'unit',
+              width: 60,
+              ellipsis: true,
+            },
             {
               title: '数量',
               dataIndex: 'quantity',
               key: 'quantity',
               width: 80,
+              ellipsis: true,
             },
             {
               title: '税率(%)',
               dataIndex: 'taxRate',
               key: 'taxRate',
               width: 100,
+              ellipsis: true,
             },
             {
               title: '备注',
@@ -441,6 +515,7 @@ defineExpose({
           :rowKey="(record) => record.id"
           :pagination="false"
           :scroll="{ x: 1400, y: 350 }"
+          size="small"
         />
       </div>
     </div>
@@ -579,6 +654,7 @@ defineExpose({
   }
 
   .ant-table-thead > tr > th {
+    padding: 8px 12px !important;
     font-weight: 600;
     color: #374151;
     background: linear-gradient(to bottom, #fafafa, #f5f5f5);
@@ -586,7 +662,27 @@ defineExpose({
   }
 
   .ant-table-tbody > tr > td {
+    padding: 6px 12px !important;
     border-bottom: 1px solid #f0f0f0;
+  }
+
+  // 小尺寸表格的行高优化
+  &.ant-table-small {
+    .ant-table-thead > tr > th {
+      padding: 6px 8px !important;
+      font-size: 13px;
+    }
+
+    .ant-table-tbody > tr > td {
+      padding: 4px 8px !important;
+      font-size: 13px;
+    }
+
+    .ant-table-cell {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 
   // 复选框列样式优化
