@@ -13,7 +13,6 @@ import {
   Modal,
   message,
   Pagination,
-  Table,
   Tag,
   Tooltip,
 } from 'ant-design-vue';
@@ -21,6 +20,7 @@ import {
 import { CurrencySelect } from '#/adapter/component';
 import { useVbenForm } from '#/adapter/form';
 import { getOrderFeeGroupAsync } from '#/api/settlement-management/payment-application-admin';
+import { NestedDataTable } from '#/components/nested-data-table';
 import { $t } from '#/locales';
 
 import ExchangeRateModal from './exchange-rate-modal.vue';
@@ -149,7 +149,17 @@ const dynamicColumns = computed(() =>
   buildDynamicCurrencyColumns(currencies.value),
 );
 
-const allColumns = computed(() => [...fixedColumns, ...dynamicColumns.value]);
+const allColumns = computed(() =>
+  [...fixedColumns, ...dynamicColumns.value].map((column) => ({
+    ...column,
+    align:
+      'align' in column && column.align === 'right'
+        ? ('right' as const)
+        : ('left' as const),
+    dataIndex: 'field' in column ? column.field : undefined,
+    key: 'type' in column ? column.type : column.field,
+  })),
+);
 
 const disabledFeeIds = computed(
   () => new Set(drawerProps.value.selectedFeeIds ?? []),
@@ -353,6 +363,32 @@ function toggleGroup(groupKey: string, checked: boolean) {
   }
 }
 
+const selectablePageGroupKeys = computed(() =>
+  tableRows.value
+    .map((record) => String(record.groupKey))
+    .filter((groupKey) => !isGroupCheckboxDisabled(groupKey)),
+);
+
+const isAllPageGroupsChecked = computed(
+  () =>
+    selectablePageGroupKeys.value.length > 0 &&
+    selectablePageGroupKeys.value.every(isGroupChecked),
+);
+
+const isPageGroupsIndeterminate = computed(
+  () =>
+    !isAllPageGroupsChecked.value &&
+    selectablePageGroupKeys.value.some(
+      (groupKey) => isGroupChecked(groupKey) || isGroupIndeterminate(groupKey),
+    ),
+);
+
+function togglePageGroups(checked: boolean) {
+  for (const groupKey of selectablePageGroupKeys.value) {
+    toggleGroup(groupKey, checked);
+  }
+}
+
 function isFeeChecked(groupKey: string, feeId: string): boolean {
   return selectionMap.get(groupKey)?.has(feeId) ?? false;
 }
@@ -388,6 +424,13 @@ function getFeeRows(groupKey: string): FeeRowData[] {
     appliedAmount: resolveAppliedAmount(f.id, f.unRqstPaymentAmount) ?? 0,
   }));
 }
+
+const nestedTableRows = computed(() =>
+  tableRows.value.map((record) => ({
+    ...record,
+    feeRows: getFeeRows(record.groupKey),
+  })),
+);
 
 // --- 搜索条件变化清空选择 ---
 let lastSearchSnapshot = '';
@@ -685,6 +728,10 @@ function onGroupCheckChange(groupKey: string, e: any) {
   toggleGroup(groupKey, e.target.checked);
 }
 
+function onPageGroupCheckChange(e: any) {
+  togglePageGroups(e.target.checked);
+}
+
 function onExpandClick(record: any, e: Event, onExpand: Function) {
   e.stopPropagation();
   onExpand(record, e);
@@ -692,10 +739,6 @@ function onExpandClick(record: any, e: Event, onExpand: Function) {
 
 function onAppliedAmountChange(feeId: string, val: number | null) {
   setAppliedAmount(feeId, val);
-}
-
-function onExpandedRowsChange(keys: readonly string[]) {
-  expandedRowKeys.value = [...keys];
 }
 
 function onPageChange(page: number, size: number) {
@@ -736,21 +779,41 @@ defineExpose({ open: openDrawer });
 
     <!-- 主表格（业务列表） -->
     <div class="fee-order-table">
-      <Table
+      <NestedDataTable
         :columns="allColumns"
-        :data-source="tableRows"
+        :data-source="nestedTableRows"
+        :inner-columns="feeColumns"
+        inner-data-key="feeRows"
+        inner-row-key="id"
         :loading="loading"
-        :pagination="false"
-        :scroll="{ x: 'max-content', y: 500 }"
+        :max-height="500"
         row-key="groupKey"
-        size="small"
-        :expanded-row-keys="expandedRowKeys"
-        @expanded-rows-change="onExpandedRowsChange"
+        v-model:expanded-row-keys="expandedRowKeys"
       >
-        <!-- 序号列前加 checkbox -->
-        <template #bodyCell="{ column, record, index }">
+        <template #outerHeaderCell="{ column }">
+          <span v-if="column.type === 'seq'" class="table-sequence-cell">
+            <Checkbox
+              :checked="isAllPageGroupsChecked"
+              :disabled="selectablePageGroupKeys.length === 0"
+              :indeterminate="isPageGroupsIndeterminate"
+              @change="onPageGroupCheckChange"
+            />
+            {{ column.title }}
+          </span>
+          <template v-else>{{ column.title }}</template>
+        </template>
+
+        <template #outerBodyCell="{ column, record, index }">
           <template v-if="column.type === 'seq'">
-            {{ index + 1 + (currentPage - 1) * pageSize }}
+            <span class="table-sequence-cell">
+              <Checkbox
+                :checked="isGroupChecked(record.groupKey)"
+                :disabled="isGroupCheckboxDisabled(record.groupKey)"
+                :indeterminate="isGroupIndeterminate(record.groupKey)"
+                @change="(e) => onGroupCheckChange(record.groupKey, e)"
+              />
+              {{ index + 1 + (currentPage - 1) * pageSize }}
+            </span>
           </template>
           <template
             v-else-if="column.field && column.field.startsWith('currency_')"
@@ -785,86 +848,63 @@ defineExpose({ open: openDrawer });
         </template>
 
         <!-- 展开行内容：费用子表格 -->
-        <template #expandedRowRender="{ record }">
-          <div class="expanded-fee-table p-2">
-            <Table
-              :columns="feeColumns"
-              :data-source="getFeeRows(record.groupKey)"
-              :pagination="false"
-              row-key="id"
+        <template #innerBodyCell="{ column, record: feeRecord, parentRecord }">
+          <template v-if="column.key === 'checkbox'">
+            <Checkbox
+              :checked="isFeeChecked(parentRecord.groupKey, feeRecord.id)"
+              :disabled="disabledFeeIds.has(feeRecord.id)"
+              @change="
+                (e) => onFeeCheckChange(parentRecord.groupKey, feeRecord.id, e)
+              "
+            />
+          </template>
+          <template v-else-if="column.key === 'paySide'">
+            <Tag :color="feeRecord.paySide === 0 ? 'blue' : 'orange'">
+              {{ getPaySideLabel(feeRecord.paySide) }}
+            </Tag>
+          </template>
+          <template v-else-if="column.key === 'currencyCode'">
+            {{ feeRecord.currencyCode || feeRecord.currencyName }}
+          </template>
+          <template v-else-if="column.key === 'amount'">
+            {{ formatAmount(feeRecord.amount) }}
+          </template>
+          <template v-else-if="column.key === 'unRqstPaymentAmount'">
+            {{ formatAmount(feeRecord.unRqstPaymentAmount) }}
+          </template>
+          <template v-else-if="column.key === 'appliedAmount'">
+            <InputNumber
+              :value="
+                resolveAppliedAmount(
+                  feeRecord.id,
+                  feeRecord.unRqstPaymentAmount,
+                )
+              "
+              :disabled="disabledFeeIds.has(feeRecord.id)"
+              :min="0"
+              :max="feeRecord.unRqstPaymentAmount ?? 0"
+              :precision="2"
               size="small"
-            >
-              <template #bodyCell="{ column, record: feeRecord }">
-                <template v-if="column.key === 'checkbox'">
-                  <Checkbox
-                    :checked="isFeeChecked(record.groupKey, feeRecord.id)"
-                    :disabled="disabledFeeIds.has(feeRecord.id)"
-                    @change="
-                      (e) => onFeeCheckChange(record.groupKey, feeRecord.id, e)
-                    "
-                  />
-                </template>
-                <template v-else-if="column.key === 'paySide'">
-                  <Tag :color="feeRecord.paySide === 0 ? 'blue' : 'orange'">
-                    {{ getPaySideLabel(feeRecord.paySide) }}
-                  </Tag>
-                </template>
-                <template v-else-if="column.key === 'currencyCode'">
-                  {{ feeRecord.currencyCode || feeRecord.currencyName }}
-                </template>
-                <template v-else-if="column.key === 'amount'">
-                  {{ formatAmount(feeRecord.amount) }}
-                </template>
-                <template v-else-if="column.key === 'unRqstPaymentAmount'">
-                  {{ formatAmount(feeRecord.unRqstPaymentAmount) }}
-                </template>
-                <template v-else-if="column.key === 'appliedAmount'">
-                  <InputNumber
-                    :value="
-                      resolveAppliedAmount(
-                        feeRecord.id,
-                        feeRecord.unRqstPaymentAmount,
-                      )
-                    "
-                    :disabled="disabledFeeIds.has(feeRecord.id)"
-                    :min="0"
-                    :max="feeRecord.unRqstPaymentAmount ?? 0"
-                    :precision="2"
-                    size="small"
-                    class="fee-applied-amount-input w-full"
-                    @change="(val) => onAppliedAmountChange(feeRecord.id, val)"
-                  />
-                </template>
-                <template v-else>
-                  {{ feeRecord[column.dataIndex] }}
-                </template>
-              </template>
-            </Table>
-          </div>
+              class="fee-applied-amount-input w-full"
+              @change="(val) => onAppliedAmountChange(feeRecord.id, val)"
+            />
+          </template>
+          <template v-else>
+            {{ column.dataIndex ? feeRecord[column.dataIndex] : '' }}
+          </template>
         </template>
 
-        <!-- 展开图标列前加入 checkbox 列 -->
-        <template #expandColumnTitle>
-          <span />
-        </template>
+        <template #expandColumnTitle></template>
         <template #expandIcon="{ expanded, record, onExpand }">
-          <div class="flex items-center gap-1">
-            <Checkbox
-              :checked="isGroupChecked(record.groupKey)"
-              :disabled="isGroupCheckboxDisabled(record.groupKey)"
-              :indeterminate="isGroupIndeterminate(record.groupKey)"
-              @change="(e) => onGroupCheckChange(record.groupKey, e)"
-            />
-            <span
-              class="expand-toggle cursor-pointer"
-              :class="{ 'expand-toggle--expanded': expanded }"
-              @click="(e) => onExpandClick(record, e, onExpand)"
-            >
-              &#9654;
-            </span>
-          </div>
+          <span
+            class="expand-toggle cursor-pointer"
+            :class="{ 'expand-toggle--expanded': expanded }"
+            @click="(e) => onExpandClick(record, e, onExpand)"
+          >
+            &#9654;
+          </span>
         </template>
-      </Table>
+      </NestedDataTable>
 
       <!-- 分页 -->
       <div class="mt-2 flex justify-end">
@@ -901,16 +941,6 @@ defineExpose({ open: openDrawer });
 </template>
 
 <style scoped>
-.fee-order-table :deep(.ant-table-container::before),
-.fee-order-table :deep(.ant-table-container::after) {
-  box-shadow: none !important;
-}
-
-.fee-order-table :deep(.ant-table-expanded-row > td) {
-  padding: 4px 8px;
-  background: #fff;
-}
-
 .fee-order-table :deep(.user-role-column) {
   max-width: 72px;
 }
@@ -923,44 +953,23 @@ defineExpose({ open: openDrawer });
   white-space: nowrap;
 }
 
-.fee-order-table :deep(.ant-table-body) {
-  overflow-y: auto !important;
-  scrollbar-gutter: stable;
-}
-
-.expanded-fee-table {
-  overflow-x: auto;
-}
-
-.expanded-fee-table :deep(.ant-table-wrapper) {
-  width: max-content;
-  max-width: none;
-}
-
-.expanded-fee-table :deep(.ant-table-container::before),
-.expanded-fee-table :deep(.ant-table-container::after) {
-  box-shadow: none !important;
-}
-
-.expanded-fee-table :deep(.ant-table-thead > tr > th) {
-  background: #fafafa;
-}
-
-.expanded-fee-table :deep(.fee-applied-amount-cell) {
+.fee-order-table :deep(.fee-applied-amount-cell) {
   padding-right: 8px !important;
 }
 
-.expanded-fee-table :deep(.fee-applied-amount-input .ant-input-number-input) {
+.fee-order-table :deep(.fee-applied-amount-input .ant-input-number-input) {
   font-weight: 600;
   color: #1677ff;
 }
 
-.expanded-fee-table :deep(.ant-table-tbody > tr > td) {
-  background: #fff;
+.fee-order-table :deep(.nested-data-table__inner .ant-input-number-input) {
+  text-align: right;
 }
 
-.expanded-fee-table :deep(.ant-input-number-input) {
-  text-align: right;
+.table-sequence-cell {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .expand-toggle {

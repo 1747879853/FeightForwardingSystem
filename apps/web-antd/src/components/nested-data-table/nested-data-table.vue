@@ -8,9 +8,12 @@ type RowKeyGetter = ((record: any) => RowKey) | string;
 
 interface Column {
   align?: 'center' | 'left' | 'right';
+  className?: string;
   dataIndex?: string;
+  field?: string;
   key?: string;
   title?: string;
+  type?: string;
   width?: number | string;
 }
 
@@ -82,6 +85,10 @@ function columnWidth(width?: number | string) {
 function cellValue(record: any, column: Column) {
   return column.dataIndex ? record?.[column.dataIndex] : '';
 }
+
+function columnClass(column: Column) {
+  return [`is-${column.align || 'left'}`, column.className];
+}
 </script>
 
 <template>
@@ -104,7 +111,7 @@ function cellValue(record: any, column: Column) {
             <th
               v-for="column in columns"
               :key="column.key || column.dataIndex"
-              :class="`is-${column.align || 'left'}`"
+              :class="columnClass(column)"
             >
               <slot name="outerHeaderCell" :column="column">
                 {{ column.title }}
@@ -159,7 +166,7 @@ function cellValue(record: any, column: Column) {
               <td
                 v-for="column in columns"
                 :key="column.key || column.dataIndex"
-                :class="`is-${column.align || 'left'}`"
+                :class="columnClass(column)"
               >
                 <slot
                   name="outerBodyCell"
@@ -192,7 +199,7 @@ function cellValue(record: any, column: Column) {
                         <th
                           v-for="column in innerColumns"
                           :key="column.key || column.dataIndex"
-                          :class="`is-${column.align || 'left'}`"
+                          :class="columnClass(column)"
                         >
                           <slot name="innerHeaderCell" :column="column">
                             {{ column.title }}
@@ -210,7 +217,7 @@ function cellValue(record: any, column: Column) {
                         <td
                           v-for="column in innerColumns"
                           :key="column.key || column.dataIndex"
-                          :class="`is-${column.align || 'left'}`"
+                          :class="columnClass(column)"
                         >
                           <slot
                             name="innerBodyCell"
@@ -263,6 +270,7 @@ function cellValue(record: any, column: Column) {
 .nested-data-table__scroll {
   width: 100%;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .nested-data-table table {
@@ -296,6 +304,12 @@ function cellValue(record: any, column: Column) {
   background: #fff;
 }
 
+.nested-data-table__outer > thead > tr > th,
+.nested-data-table__outer > tbody > .nested-data-table__outer-row > td,
+.nested-data-table__outer > tbody > .nested-data-table__expanded-row > td {
+  border-bottom: 0;
+}
+
 .nested-data-table__outer-row:hover > td {
   background: #f8fbff;
 }
@@ -325,7 +339,7 @@ function cellValue(record: any, column: Column) {
 }
 
 .nested-data-table__expanded {
-  padding-left: 37px;
+  padding-left: 32px;
   overflow-x: auto;
 }
 
@@ -340,9 +354,8 @@ function cellValue(record: any, column: Column) {
   background: #fff;
 }
 
-.nested-data-table__inner tbody tr:last-child td,
-.nested-data-table__outer tbody:last-child tr:last-child > td {
-  border-bottom: 0;
+.nested-data-table__inner tbody tr:last-child td {
+  border-bottom: 1px solid var(--table-border);
 }
 
 .nested-data-table__state {

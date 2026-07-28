@@ -22,7 +22,6 @@ import { useUserStore } from '@vben/stores';
 import coinsHandSvg from '#/assets/images/payment-coins-hand.svg';
 import feePackageSvg from '#/assets/images/payment-fee-package.svg';
 import invoiceTicketSvg from '#/assets/images/payment-invoice-ticket.svg';
-import statusStampSvg from '#/assets/images/payment-application-status-stamp.svg';
 import workflowSvg from '#/assets/images/payment-workflow.svg';
 import {
   Button,
@@ -50,6 +49,7 @@ import {
 } from '#/utils/list-refresh-flag';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { NestedDataTable } from '#/components/nested-data-table';
+import { AuditStatusStamp } from '#/components/audit-status-stamp';
 import {
   ClientSelect,
   CurrencySelect,
@@ -1424,10 +1424,10 @@ void handleSubmitAndNew;
                     </span>
                   </div>
                 </div>
-                <div class="status-stamp">
-                  <img :src="statusStampSvg" alt="" />
-                  <strong>{{ isEntering ? '录入中' : '审核中' }}</strong>
-                </div>
+                <AuditStatusStamp
+                  class="status-stamp"
+                  :status="currentStatus"
+                />
               </Card>
 
               <Card size="small" class="invoice-card">
@@ -2142,28 +2142,6 @@ void handleSubmitAndNew;
   position: absolute;
   top: 18px;
   right: 18px;
-  width: 88px;
-  height: 88px;
-  color: #00a878;
-}
-
-.status-stamp img {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.status-stamp strong {
-  position: absolute;
-  top: 41px;
-  left: 18px;
-  width: 52px;
-  font-size: 15px;
-  line-height: 24px;
-  text-align: center;
-  transform: rotate(-14deg);
 }
 
 .invoice-card {
@@ -2557,24 +2535,6 @@ void handleSubmitAndNew;
 .fee-group-table :deep(.nested-data-table),
 .fee-group-table :deep(.nested-data-table__scroll) {
   height: 100%;
-}
-
-.fee-group-table :deep(.nested-data-table__outer > thead > tr > th),
-.fee-group-table
-  :deep(.nested-data-table__outer > tbody > .nested-data-table__outer-row > td),
-.fee-group-table
-  :deep(
-    .nested-data-table__outer > tbody > .nested-data-table__expanded-row > td
-  ) {
-  border-bottom: 0;
-}
-
-.fee-group-table :deep(.nested-data-table__inner) {
-  --table-border: #d4e4f4;
-}
-
-.fee-group-table :deep(.nested-data-table__inner tbody tr:last-child td) {
-  border-bottom: 1px solid #d4e4f4;
 }
 
 .table-sequence-cell {

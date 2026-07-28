@@ -264,7 +264,7 @@ export function useAddFeeSearchSchema(options?: {
 /** 主表格固定列（业务层） */
 export function useOrderFixedColumns() {
   return [
-    { type: 'seq' as const, width: 50, title: '序号' },
+    { type: 'seq' as const, width: 105.4545, title: '序号' },
     {
       field: 'commissionNum',
       title: '委托编号',
