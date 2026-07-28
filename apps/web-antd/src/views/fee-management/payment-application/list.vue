@@ -122,6 +122,9 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
     formValues.SubmitTimeRange,
   );
   const [endTimeStart, endTimeEnd] = getRangeValue(formValues.EndTimeRange);
+  const [invoiceDateStart, invoiceDateEnd] = getRangeValue(
+    formValues.InvoiceDateRange,
+  );
 
   return {
     ...formValues,
@@ -129,8 +132,11 @@ const normalizeQuery = (formValues: Record<string, unknown>) => {
     SubmitTimeEnd: toIsoString(submitTimeEnd),
     EndTimeStart: toIsoString(endTimeStart),
     EndTimeEnd: toIsoString(endTimeEnd),
+    InvoiceDateStart: toIsoString(invoiceDateStart),
+    InvoiceDateEnd: toIsoString(invoiceDateEnd),
     SubmitTimeRange: undefined,
     EndTimeRange: undefined,
+    InvoiceDateRange: undefined,
   };
 };
 

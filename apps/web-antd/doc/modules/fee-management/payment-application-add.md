@@ -22,10 +22,11 @@ last_updated: 2026-07-28
 # 2. 功能与操作说明 (Features & Operations)
 
 - **费用选择：** 从可申请费用中勾选生成付款申请；**新建时**进入页面后自动弹出添加费用抽屉（编辑模式不自动弹出）。抽屉内搜索区为五列布局，业务日期占两列，查询/重置按钮在币别条件同一行右侧；条件变更仍自动搜索。外层业务列表展示委托编号、**主提单号**（`mblNum`）、**箱型箱量**（`orderCtns` 按箱型汇总，如 `20GP*2`）等字段。列表查询 `GetOrderFeeGroupAsync` **不传**当前申请单 `Id`，已选费用由前端 `selectedFeeIds` 禁选；**业务行父级全选仅作用于可选费用**，组内全部已添加时父级 Checkbox 禁用；支持 **收付类型** 筛选（默认「付」，清空则收付均返回）。
-- **页面布局：** 按 Figma 重排为顶栏申请号/操作、申请人信息、费用合计与银行、费用明细与工作流分区；费用明细改用 `NestedDataTable`（外层订单组 + 内层费用行，可展开）。
+- **页面布局：** 按 Figma 重排为顶栏申请号/操作、申请人信息、费用合计与银行、费用明细与工作流分区；费用明细改用 `NestedDataTable`（`fillHeight`，外层订单组 + 内层费用行，可展开，卡片固定高度 650px）。
 - **费用页内筛选：** 已选费用明细支持按委托编号、费用名（`FeeNameSelect`）、委托单位（`clientId`）、币别、ETD 过滤展示（仅过滤本地 `orderGroups`，不重新请求选费接口）。
 - **金额汇总：** 根据费用明细计算申请金额；外层分组表在客服列后动态展示「{币别}申请合计」列（按 `currencyId` 升序，无该币别费用显示 `0.00`）。
 - **费用合计按币别绑定结算银行：** 费用合计区每个币别需绑定结算对象开票信息中维护的银行账户。银行来源 `ClientInvoiceInfoAdmin/GetListAsync`，按币别筛选；默认选中该币别默认账户（`isDefault`），多账户可下拉切换，选中后展示开户行 / 账号 / SWIFT Code。**原币结算**每种费用币别各需一条对应币别银行；**指定币别结算**仅需结算币别一条银行。银行为**必填**，提交/保存前校验。提交字段为 `paymentApplicationBanks`，编辑为全量替换。
+- **发票附件分组：** 发票制作区按附件明细类型分组上传；先通用上传得 `attachmentId`，新建随 `AddAsync.attachmentGroup` 一并绑定。关联结算附件不在本页维护。
 - **提交保存：** 保存后形成付款申请单，后续进入审核流程。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -53,6 +54,8 @@ last_updated: 2026-07-28
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-28 | `Fix` | 费用明细卡片固定高度 650px，表格在卡片内占满剩余空间并内部滚动。 | 与编辑页共用 `form.vue`；`fee-detail-card` + `NestedDataTable.fillHeight`；详见 `changelogs/change-log-2026-07-28-payment-application-fee-table-fill-height.md`。 |
+| 2026-07-28 | `Feature` | 发票附件按分组本地维护，随 `AddAsync.attachmentGroup` 一并绑定；结算附件不在申请侧维护。 | 上传只拿 `attachmentId`；详见 `changelogs/change-log-2026-07-28-payment-application-attachment-group-save.md`。 |
 | 2026-07-28 | `Feature` | 表单按 Figma 重排；费用明细改用 `NestedDataTable`；支持编号/费用名/委托单位/币别/ETD 页内筛选；选费透传 `clientId`。 | 新增/编辑共用 `form.vue`；`FeeNameSelect` 从 adapter 导出；详见 `changelogs/change-log-2026-07-28-payment-application-figma-layout-nested-table.md`。 |
 | 2026-07-24 | `Refactor` | 添加费用抽屉业务行委托单位改读 `PayAppFeeGroupDto.client?.name`（已无扁平 `clientName`）。 | 与后端 `TransportOrderDto` 往来单位对象化对齐；`add-fee-modal`/`add-fee-statement-modal` 同步。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-12 | `Fix` | 「未结金额」改用 `unRqstPaymentAmount`；「本次结算」不得超过未结金额。 | 与编辑页共用 `add-fee-modal`；`InputNumber` 设 `max`，确认前 `validateAppliedAmounts`。 |

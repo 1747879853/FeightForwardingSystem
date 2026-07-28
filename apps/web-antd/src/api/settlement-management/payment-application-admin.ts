@@ -50,6 +50,10 @@ export namespace PaymentApplicationAdminApi {
     EndTimeEnd?: string;
     CreatorUserId?: number;
     OrgId?: number;
+    InvoiceProcess?: number;
+    InvoiceNo?: string;
+    InvoiceDateStart?: string;
+    InvoiceDateEnd?: string;
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;
@@ -300,6 +304,10 @@ export namespace PaymentApplicationAdminApi {
     isDeleted: boolean;
     creationTime: string;
     creatorUserId?: number;
+    /** 发票流程：0=先票后付，1=先付后票，2=不开票 */
+    invoiceProcess?: number | null;
+    invoiceNo?: string | null;
+    invoiceDate?: string | null;
   }
 
   /** 付费申请列表 DTO（用于付费结算选择列表） */
@@ -559,6 +567,8 @@ export namespace PaymentApplicationAdminApi {
     url?: string;
     friendlyFileName?: string;
     id?: number;
+    attachmentDtlTypeId?: number | null;
+    clientVisible?: boolean;
   }
 
   /** 附件项 DTO（详情输出） */
@@ -572,6 +582,27 @@ export namespace PaymentApplicationAdminApi {
     mediaType?: number;
     friendlyFileName?: string;
     id: number;
+    attachmentDtlTypeId?: number | null;
+    clientVisible?: boolean;
+    creatorUserName?: string;
+    creationTime?: string;
+  }
+
+  /** 付费申请附件分组（详情输出） */
+  export interface AttachmentGroupDto {
+    attachmentDtlTypeId?: number | null;
+    attachmentDtlType?: {
+      id: number;
+      name?: string | null;
+      sortId?: number;
+    } | null;
+    items?: AttachmentItemDto[];
+  }
+
+  /** 付费申请附件分组（新增/编辑输入） */
+  export interface AttachmentGroupInputDto {
+    attachmentDtlTypeId?: number | null;
+    items?: AttachmentItemForItemInputDto[];
   }
 
   /** 运输单简要信息 */
@@ -643,7 +674,9 @@ export namespace PaymentApplicationAdminApi {
   /** 付费申请详情 DTO */
   export interface PaymentApplicationDetailDto extends PaymentApplicationDto {
     payAppFeeBySeaExportGroup?: PayAppFeeAndSeaExportDto[];
-    attachments?: AttachmentItemDto[];
+    attachmentGroup?: AttachmentGroupDto[];
+    /** 关联付费结算的只读附件 */
+    paymentSettlementAttachments?: AttachmentItemDto[];
   }
 
   /** 付费申请明细新增 DTO */
@@ -679,10 +712,13 @@ export namespace PaymentApplicationAdminApi {
     remark?: string;
     paymentApplicationItems?: PaymentApplicationItemAddDto[];
     paymentApplicationBanks?: PaymentApplicationBankAddDto[];
-    attachments?: AttachmentItemForItemInputDto[];
+    invoiceProcess?: number | null;
+    invoiceNo?: string | null;
+    invoiceDate?: string | null;
+    attachmentGroup?: AttachmentGroupInputDto[];
   }
 
-  /** 付费申请编辑 DTO（仅主表 + 银行全量替换） */
+  /** 付费申请编辑 DTO（主表 + 银行/附件全量替换） */
   export interface PaymentApplicationEditDto {
     id: string;
     /** 归属组织id */
@@ -693,7 +729,15 @@ export namespace PaymentApplicationAdminApi {
     require?: string;
     remark?: string;
     paymentApplicationBanks?: PaymentApplicationBankEditDto[];
-    attachments?: AttachmentItemForItemInputDto[];
+    invoiceProcess?: number | null;
+    invoiceNo?: string | null;
+    invoiceDate?: string | null;
+    attachmentGroup?: AttachmentGroupInputDto[];
+  }
+
+  export interface PaymentApplicationAddAttachmentsDto {
+    id: string;
+    attachments: AttachmentItemForItemInputDto[];
   }
 
   /** 添加费用关联 DTO */
@@ -724,6 +768,10 @@ export async function getPaymentApplicationPagedList(params: Recordable<any>) {
       EndTimeEnd: params.EndTimeEnd || params.endTimeEnd,
       CreatorUserId: params.CreatorUserId ?? params.creatorUserId,
       OrgId: params.OrgId ?? params.orgId,
+      InvoiceProcess: params.InvoiceProcess ?? params.invoiceProcess,
+      InvoiceNo: params.InvoiceNo || params.invoiceNo,
+      InvoiceDateStart: params.InvoiceDateStart || params.invoiceDateStart,
+      InvoiceDateEnd: params.InvoiceDateEnd || params.invoiceDateEnd,
       Sorting: params.Sorting || 'Id desc',
       PageIndex: params.PageIndex || params.pageIndex || 1,
       PageSize: params.PageSize || params.pageSize || 10,
@@ -814,4 +862,11 @@ export async function submitPaymentApplication(id: string) {
 /** 撤销提交付费申请 */
 export async function unsubmitPaymentApplication(id: string) {
   return requestClient.post(`${API_PREFIX}/UnSubmitAsync`, { id });
+}
+
+/** 追加入付费申请附件（不覆盖既有附件） */
+export async function addPaymentApplicationAttachments(
+  data: PaymentApplicationAdminApi.PaymentApplicationAddAttachmentsDto,
+) {
+  return requestClient.post<boolean>(`${API_PREFIX}/AddAttachments`, data);
 }

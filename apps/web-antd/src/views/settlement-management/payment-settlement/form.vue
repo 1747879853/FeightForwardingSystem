@@ -544,7 +544,10 @@ async function handleCreateSettlementAndRedirect(
       remark: '',
       paymentSettlementRates: allRates,
       paymentApplicationGroups,
-      attachments: [],
+      attachments: attachments.value.map((a, idx) => ({
+        attachmentId: Number(a.attachmentId),
+        displayOrder: idx,
+      })),
     };
 
     // 调用创建接口

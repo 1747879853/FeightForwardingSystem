@@ -13,6 +13,9 @@
 
 ## 2026-07
 
+- [2026-07-28 付款申请费用明细卡片固定高度 650px](./changelogs/change-log-2026-07-28-payment-application-fee-table-fill-height.md)
+- [2026-07-28 付费申请附件分组对齐 Add/Edit 全量与 AddAttachments 追加](./changelogs/change-log-2026-07-28-payment-application-attachment-group-save.md)
+- [2026-07-28 付款申请编辑页所属公司展示完整组织路径](./changelogs/change-log-2026-07-28-payment-application-org-path-display.md)
 - [2026-07-28 付款申请表单按 Figma 重排并引入 NestedDataTable](./changelogs/change-log-2026-07-28-payment-application-figma-layout-nested-table.md)
 - [2026-07-26 海运出口干系人改为批量获取用户展示信息](./changelogs/change-log-2026-07-26-sea-export-order-users-batch-get.md)
 - [2026-07-26 业务联系单取消独立详情页按状态显隐保存](./changelogs/change-log-2026-07-26-pre-order-drop-detail-page.md)

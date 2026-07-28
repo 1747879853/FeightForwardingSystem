@@ -198,6 +198,39 @@ export function useGridFormSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'Select',
+      fieldName: 'InvoiceProcess',
+      label: '发票流程',
+      componentProps: {
+        allowClear: true,
+        options: [
+          { label: '先票后付', value: 0 },
+          { label: '先付后票', value: 1 },
+          { label: '不开票', value: 2 },
+        ],
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'InvoiceNo',
+      label: '发票号',
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'RangePicker',
+      fieldName: 'InvoiceDateRange',
+      label: '开票日期',
+      componentProps: {
+        allowClear: true,
+        class: 'w-full',
+      },
+    },
+    {
       component: 'RangePicker',
       fieldName: 'SubmitTimeRange',
       label: $t('seaExport.export.paymentApplication.submitTime'),
@@ -266,6 +299,31 @@ function buildStaticColumns(): Array<Record<string, any>> {
       field: 'currencyCode',
       title: $t('seaExport.export.paymentApplication.currencyCode'),
       minWidth: 80,
+    },
+    {
+      field: 'invoiceProcess',
+      title: '发票流程',
+      minWidth: 110,
+      formatter: ({ cellValue }: { cellValue?: number | null }) =>
+        cellValue === 0
+          ? '先票后付'
+          : cellValue === 1
+            ? '先付后票'
+            : cellValue === 2
+              ? '不开票'
+              : '',
+    },
+    {
+      field: 'invoiceNo',
+      title: '发票号',
+      minWidth: 140,
+      showOverflow: true,
+    },
+    {
+      field: 'invoiceDate',
+      title: '开票日期',
+      minWidth: 120,
+      formatter: 'formatDate',
     },
     {
       field: 'totalPayPrice',

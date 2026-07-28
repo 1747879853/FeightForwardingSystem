@@ -2,7 +2,6 @@
 import type { ClientAppApi } from '#/api/common/client';
 import type { ClientInvoiceInfoAdminApi } from '#/api/sea-export/clinet-invoice-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
-import type { Attachment } from '#/api/common/upload';
 import type { SelectedFeeItem } from '../add-fee-modal/data';
 import type {
   CurrencyConversionSummary,
@@ -17,7 +16,6 @@ import dayjs from 'dayjs';
 
 import { Page } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
-import { useUserStore } from '@vben/stores';
 
 import coinsHandSvg from '#/assets/images/payment-coins-hand.svg';
 import feePackageSvg from '#/assets/images/payment-fee-package.svg';
@@ -47,7 +45,8 @@ import {
   markListShouldRefresh,
   returnToListWithRefresh,
 } from '#/utils/list-refresh-flag';
-import { useWorkflowTimeline } from '#/components/workflow-timeline';
+import { buildAttachmentUrl } from '#/utils';
+import { WorkflowTimeline } from '#/components/workflow-timeline';
 import { NestedDataTable } from '#/components/nested-data-table';
 import { AuditStatusStamp } from '#/components/audit-status-stamp';
 import {
@@ -56,6 +55,7 @@ import {
   FeeNameSelect,
   MyOrgSelect,
 } from '#/adapter/component';
+import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import { getMyDefaultOrgId } from '#/composables/use-my-org';
 import {
   addPaymentApplication,
@@ -67,10 +67,11 @@ import {
   submitPaymentApplication,
   unsubmitPaymentApplication,
 } from '#/api/settlement-management/payment-application-admin';
-import FileUploadInput from '../../../adapter/component/file-upload/file-upload-input.vue';
-
 import AddFeeDrawer from '../add-fee-modal/index.vue';
+import AttachmentGroups from './attachment-groups.vue';
 import {
+  isOriginalCurrencyApplication,
+  isSpecifiedCurrencyApplication,
   resolvePodPortDisplayName,
   resolvePolPortDisplayName,
 } from '../add-fee-modal/data';
@@ -115,7 +116,6 @@ const t = (key: string, args?: any[]) =>
 
 const route = useRoute();
 const router = useRouter();
-const userStore = useUserStore();
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -130,7 +130,9 @@ const isEntering = computed(
 const isAuditing = computed(
   () => currentStatus.value === PaymentApplicationStatus.Auditing,
 );
-const workflowStep = computed(() => (isAuditing.value ? 2 : 1));
+const isPassed = computed(
+  () => currentStatus.value === PaymentApplicationStatus.Passed,
+);
 const pageLoading = ref(false);
 const pageTitle = computed(() =>
   isEdit.value ? t('editTitle') : t('addTitle'),
@@ -138,16 +140,8 @@ const pageTitle = computed(() =>
 
 const submitting = ref(false);
 const addFeeDrawerRef = ref<InstanceType<typeof AddFeeDrawer> | null>(null);
-const { open: openWorkflowTimeline } = useWorkflowTimeline();
 
-function handleViewWorkflow() {
-  if (!editId.value) return;
-  openWorkflowTimeline({ entityId: editId.value });
-}
-
-const applicantName = computed(
-  () => userStore.userInfo?.realName ?? userStore.userInfo?.username ?? '',
-);
+const applicationCreatorName = ref('');
 const submitTime = ref(dayjs().format('YYYY-MM-DD HH:mm'));
 const endTime = ref<string | undefined>(undefined);
 const companyName = ref('-');
@@ -163,13 +157,56 @@ const settlementName = ref('');
 /** ClientSelect 编辑回显（详情 settlement / clientName） */
 const settlementSelectedItems = ref<ClientAppApi.ClientSimpleDto[]>([]);
 
-/** null = 按原票币, number = 指定币别 */
+/** 付费申请 `currencyId`：null=原币申请，有值=指定结算币别 */
 const settlementCurrencyId = ref<null | number>(null);
 const settlementCurrencyName = ref('');
 
 const paymentRequire = ref('');
 const remark = ref('');
-const attachments = ref<Attachment[]>([]);
+const invoiceProcess = ref<number | undefined>(undefined);
+const invoiceNo = ref('');
+const invoiceDate = ref<string | undefined>(undefined);
+/** 不开票 */
+const isNoInvoice = computed(() => invoiceProcess.value === 2);
+
+function onInvoiceProcessChange(value: number) {
+  invoiceProcess.value = value;
+  if (value === 2) {
+    invoiceNo.value = '';
+    invoiceDate.value = undefined;
+  }
+}
+const attachmentGroup = ref<
+  PaymentApplicationAdminApi.AttachmentGroupInputDto[]
+>([]);
+/** 关联付费结算附件（只读，申请侧不可增删） */
+const settlementAttachments = ref<
+  PaymentApplicationAdminApi.AttachmentItemDto[]
+>([]);
+
+/** 组装 Add/Edit 的 attachmentGroup（仅含有文件的分组） */
+function buildAttachmentGroupSubmit(): PaymentApplicationAdminApi.AttachmentGroupInputDto[] {
+  return (attachmentGroup.value ?? [])
+    .map((group) => ({
+      attachmentDtlTypeId: group.attachmentDtlTypeId ?? null,
+      items: (group.items ?? []).map((item, index) => ({
+        attachmentId: Number(item.attachmentId),
+        attachmentDtlTypeId:
+          item.attachmentDtlTypeId ?? group.attachmentDtlTypeId ?? null,
+        clientVisible: item.clientVisible ?? false,
+        displayOrder: item.displayOrder ?? index,
+        friendlyFileName: item.friendlyFileName,
+        url: item.url,
+      })),
+    }))
+    .filter((group) => (group.items?.length ?? 0) > 0);
+}
+
+function openSettlementAttachment(
+  item: PaymentApplicationAdminApi.AttachmentItemDto,
+) {
+  if (item.url) window.open(buildAttachmentUrl(item.url), '_blank');
+}
 
 const feeDetailRows = ref<FeeDetailRow[]>([]);
 const originalFeeDetailRows = ref<FeeDetailRow[]>([]);
@@ -178,7 +215,9 @@ const selectedRowKeys = ref<string[]>([]);
 
 const orderGroupColumns = useOrderGroupColumns();
 const feeInnerColumns = computed(() =>
-  useFeeInnerColumns(settlementCurrencyId.value !== null),
+  useFeeInnerColumns(
+    isSpecifiedCurrencyApplication(settlementCurrencyId.value),
+  ),
 );
 
 const appliedCurrencies = computed(() =>
@@ -253,6 +292,27 @@ const isSettlementCurrencyLocked = computed(
   () => feeDetailRows.value.length > 0,
 );
 
+const isOriginalSettlementCurrency = computed(() =>
+  isOriginalCurrencyApplication(settlementCurrencyId.value),
+);
+
+function resolveSettlementCurrencyNameFromSelect(id: number): string {
+  const options = currencySelectRef.value?.getOptions?.() ?? [];
+  const opt = options.find((o: any) => String(o.value) === String(id));
+  return opt?.label ?? '';
+}
+
+const settlementCurrencyLockedLabel = computed(() => {
+  if (!isSpecifiedCurrencyApplication(settlementCurrencyId.value)) {
+    return t('originalCurrency');
+  }
+  return (
+    settlementCurrencyName.value ||
+    resolveSettlementCurrencyNameFromSelect(settlementCurrencyId.value!) ||
+    'RMB'
+  );
+});
+
 // --- 结算对象银行账户 ---
 
 interface BankCurrencyRow {
@@ -269,13 +329,15 @@ const loadedBankClientId = ref<string>('');
 /** currencyId -> clientInvoiceBankId */
 const bankSelections = ref<Record<number, string | undefined>>({});
 
-/** 银行选择可编辑（新增模式或编辑且录入中） */
-const canEditBank = computed(() => !isEdit.value || isEntering.value);
+/** 银行选择可编辑（新增、录入中、审核通过） */
+const canEditBank = computed(
+  () => !isEdit.value || isEntering.value || isPassed.value,
+);
 
 /** 需要绑定银行的币别：原币结算=各费用币别；指定币别结算=结算币别 */
 const bankCurrencies = computed<BankCurrencyRow[]>(() => {
   if (feeDetailRows.value.length === 0) return [];
-  if (settlementCurrencyId.value === null) {
+  if (isOriginalCurrencyApplication(settlementCurrencyId.value)) {
     return currencySummaries.value.map((cs) => ({
       currencyId: cs.currencyId,
       currencyCode: cs.currencyCode ?? '',
@@ -320,23 +382,23 @@ function onBankChange(currencyId: number, val: unknown) {
 
 /** 指定币别结算模式下的银行选择（结算币别） */
 const settlementBankValue = computed(() =>
-  settlementCurrencyId.value === null
+  isOriginalCurrencyApplication(settlementCurrencyId.value)
     ? undefined
-    : bankSelections.value[settlementCurrencyId.value],
+    : bankSelections.value[settlementCurrencyId.value!],
 );
 const settlementBankOptions = computed(() =>
-  settlementCurrencyId.value === null
+  isOriginalCurrencyApplication(settlementCurrencyId.value)
     ? []
-    : getBankOptions(settlementCurrencyId.value),
+    : getBankOptions(settlementCurrencyId.value!),
 );
 const settlementSelectedBank = computed(() =>
-  settlementCurrencyId.value === null
+  isOriginalCurrencyApplication(settlementCurrencyId.value)
     ? undefined
-    : getSelectedBank(settlementCurrencyId.value),
+    : getSelectedBank(settlementCurrencyId.value!),
 );
 function onSettlementBankChange(val: unknown) {
-  if (settlementCurrencyId.value === null) return;
-  onBankChange(settlementCurrencyId.value, val);
+  if (isOriginalCurrencyApplication(settlementCurrencyId.value)) return;
+  onBankChange(settlementCurrencyId.value!, val);
 }
 
 /** 为缺失/失效的币别选择默认银行（已有有效选择则保留） */
@@ -465,9 +527,17 @@ function toggleGroupSelection(group: OrderGroupRow, checked: boolean) {
 // --- Add / Remove fee ---
 
 function handleOpenAddFee() {
+  const currencyId = settlementCurrencyId.value;
+  const currencyName =
+    settlementCurrencyName.value ||
+    (currencyId != null
+      ? resolveSettlementCurrencyNameFromSelect(currencyId)
+      : '');
   addFeeDrawerRef.value?.open({
     settlementId: settlementId.value || undefined,
-    settlementCurrencyId: settlementCurrencyId.value,
+    settlementName: settlementName.value || undefined,
+    settlementCurrencyId: currencyId,
+    settlementCurrencyName: currencyName || undefined,
     selectedFeeIds: feeDetailRows.value.map((r) => r.feeId),
     selectedAppliedAmounts: Object.fromEntries(
       feeDetailRows.value.map((r) => [r.feeId, r.appliedAmount ?? 0]),
@@ -513,10 +583,9 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
         id: editId.value,
         paymentApplicationItems: newRows.map((row) => ({
           orderFeeId: row.feeId,
-          rate:
-            settlementCurrencyId.value === null
-              ? undefined
-              : (row.rate ?? undefined),
+          rate: isOriginalCurrencyApplication(settlementCurrencyId.value)
+            ? undefined
+            : (row.rate ?? undefined),
           appliedAmount: row.appliedAmount,
           remark: row.itemRemark || undefined,
         })),
@@ -623,11 +692,21 @@ function onEndTimeChange(_date: any, dateStr: string | string[]) {
   endTime.value = Array.isArray(dateStr) ? dateStr[0] : dateStr || undefined;
 }
 
-function onSettlementChange(val: unknown) {
+function onSettlementChange(val: unknown, option?: unknown) {
   settlementId.value =
     typeof val === 'string' || typeof val === 'number' ? String(val) : '';
-  settlementName.value = '';
-  settlementSelectedItems.value = [];
+  const selectedOption = Array.isArray(option) ? option.at(-1) : option;
+  const selectedName =
+    selectedOption &&
+    typeof selectedOption === 'object' &&
+    typeof (selectedOption as { label?: unknown }).label === 'string'
+      ? (selectedOption as { label: string }).label
+      : '';
+  settlementName.value = selectedName;
+  settlementSelectedItems.value =
+    settlementId.value && selectedName
+      ? [{ id: settlementId.value, name: selectedName }]
+      : [];
   bankSelections.value = {};
   loadClientBanks(true);
 }
@@ -669,6 +748,19 @@ function onSettlementCurrencyChange(val: unknown) {
       settlementCurrencyName.value = opt?.label ?? '';
     });
   }
+}
+
+/** 添加费用抽屉改币别时同步；已有指定币别费用时不允许被改回按票原币 */
+function onSettlementCurrencyChangeFromDrawer(val: unknown) {
+  if (
+    feeDetailRows.value.length > 0 &&
+    isSpecifiedCurrencyApplication(settlementCurrencyId.value)
+  ) {
+    if (val === 'original' || val === null || val === undefined) {
+      return;
+    }
+  }
+  onSettlementCurrencyChange(val);
 }
 
 // --- Load detail for edit mode ---
@@ -727,7 +819,7 @@ function restoreBankSelectionsFromDetail(
 ) {
   const groups = detail.currencyGroup ?? [];
   const next: Record<number, string | undefined> = {};
-  if (settlementCurrencyId.value === null) {
+  if (isOriginalCurrencyApplication(settlementCurrencyId.value)) {
     // 原币结算：每个币别分组对应一条银行
     for (const g of groups) {
       const bankId = g.paymentApplicationBank?.clientInvoiceBankId;
@@ -752,6 +844,7 @@ async function loadEditData() {
 
     currentStatus.value = detail.status ?? PaymentApplicationStatus.Entering;
     applicationNo.value = detail.applicationNo ?? '';
+    applicationCreatorName.value = detail.creatorUserName ?? '';
     settlementId.value = detail.settlementId ?? '';
     settlementName.value = detail.settlement?.name ?? detail.clientName ?? '';
     settlementSelectedItems.value = toSettlementSelectedItems(
@@ -761,6 +854,7 @@ async function loadEditData() {
     );
     settlementCurrencyId.value = detail.currencyId ?? null;
     settlementCurrencyName.value = detail.currencyCode ?? '';
+
     submitTime.value = detail.submitTime
       ? dayjs(detail.submitTime).format('YYYY-MM-DD HH:mm')
       : dayjs().format('YYYY-MM-DD HH:mm');
@@ -771,8 +865,8 @@ async function loadEditData() {
     remark.value = detail.remark ?? '';
 
     orgId.value = detail.orgId ?? undefined;
-    if (detail.orgs && detail.orgs.length > 0) {
-      companyName.value = detail.orgs.at(-1)?.name ?? '-';
+    if (detail.orgs?.length) {
+      companyName.value = formatOrgPathLabel(detail.orgs) || '-';
     }
 
     feeDetailRows.value = mapDetailToFeeRows(detail);
@@ -782,11 +876,31 @@ async function loadEditData() {
     await loadClientBanks(true);
     restoreBankSelectionsFromDetail(detail);
 
-    attachments.value = (detail.attachments ?? []).map((a) => ({
-      attachmentId: a.attachmentId ?? a.id,
-      url: a.url ?? '',
-      fileName: a.friendlyFileName ?? '',
+    invoiceProcess.value = detail.invoiceProcess ?? undefined;
+    if (invoiceProcess.value === 2) {
+      invoiceNo.value = '';
+      invoiceDate.value = undefined;
+    } else {
+      invoiceNo.value = detail.invoiceNo ?? '';
+      invoiceDate.value = detail.invoiceDate
+        ? dayjs(detail.invoiceDate).format('YYYY-MM-DD')
+        : undefined;
+    }
+    attachmentGroup.value = (detail.attachmentGroup ?? []).map((group) => ({
+      attachmentDtlTypeId: group.attachmentDtlTypeId ?? null,
+      items: (group.items ?? []).map((item) => ({
+        attachmentId: item.attachmentId,
+        attachmentDtlTypeId:
+          item.attachmentDtlTypeId ?? group.attachmentDtlTypeId ?? null,
+        clientVisible: item.clientVisible ?? false,
+        displayOrder: item.displayOrder,
+        friendlyFileName: item.friendlyFileName,
+        url: item.url,
+      })),
     }));
+    settlementAttachments.value = [
+      ...(detail.paymentSettlementAttachments ?? []),
+    ];
 
     nextTick(() => {
       expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
@@ -815,16 +929,11 @@ function buildSubmitData(
   const items: PaymentApplicationAdminApi.PaymentApplicationItemAddDto[] =
     rows.map((row) => ({
       orderFeeId: row.feeId,
-      rate: settlementCurrencyId.value === null ? null : (row.rate ?? null),
+      rate: isOriginalCurrencyApplication(settlementCurrencyId.value)
+        ? null
+        : (row.rate ?? null),
       appliedAmount: row.appliedAmount,
       remark: row.itemRemark,
-    }));
-
-  const attachmentItems: PaymentApplicationAdminApi.AttachmentItemForItemInputDto[] =
-    attachments.value.map((a, idx) => ({
-      attachmentId: Number(a.attachmentId),
-      displayOrder: idx,
-      url: a.url,
     }));
 
   const banks = buildBankSubmitList();
@@ -839,21 +948,22 @@ function buildSubmitData(
     currencyId: settlementCurrencyId.value,
     require: paymentRequire.value || undefined,
     remark: remark.value || undefined,
+    invoiceProcess: invoiceProcess.value ?? null,
+    invoiceNo: invoiceNo.value || null,
+    invoiceDate: invoiceDate.value
+      ? dayjs(invoiceDate.value).toISOString()
+      : null,
     paymentApplicationItems: items,
     paymentApplicationBanks: banks.length > 0 ? banks : undefined,
-    attachments: attachmentItems.length > 0 ? attachmentItems : undefined,
+    attachmentGroup: (() => {
+      const groups = buildAttachmentGroupSubmit();
+      return groups.length > 0 ? groups : undefined;
+    })(),
   };
 }
 
 async function saveEditMode() {
   const id = editId.value!;
-
-  const attachmentItems: PaymentApplicationAdminApi.AttachmentItemForItemInputDto[] =
-    attachments.value.map((a, idx) => ({
-      attachmentId: Number(a.attachmentId),
-      displayOrder: idx,
-      url: a.url,
-    }));
 
   const banks = buildBankSubmitList();
 
@@ -865,11 +975,17 @@ async function saveEditMode() {
     endTime: endTime.value ? dayjs(endTime.value).toISOString() : null,
     require: paymentRequire.value || undefined,
     remark: remark.value || undefined,
+    invoiceProcess: invoiceProcess.value ?? null,
+    invoiceNo: invoiceNo.value || null,
+    invoiceDate: invoiceDate.value
+      ? dayjs(invoiceDate.value).toISOString()
+      : null,
     paymentApplicationBanks:
       banks.length > 0
         ? banks.map((b) => ({ clientInvoiceBankId: b.clientInvoiceBankId }))
         : undefined,
-    attachments: attachmentItems.length > 0 ? attachmentItems : undefined,
+    // 编辑全量覆盖：先删后建，始终传 attachmentGroup（可为空数组清空）
+    attachmentGroup: buildAttachmentGroupSubmit(),
   });
 
   const originalMap = new Map(
@@ -900,10 +1016,9 @@ async function saveEditMode() {
       id,
       paymentApplicationItems: modifiedAddFees.map((row) => ({
         orderFeeId: row.feeId,
-        rate:
-          settlementCurrencyId.value === null
-            ? undefined
-            : (row.rate ?? undefined),
+        rate: isOriginalCurrencyApplication(settlementCurrencyId.value)
+          ? undefined
+          : (row.rate ?? undefined),
         appliedAmount: row.appliedAmount,
         remark: row.itemRemark || undefined,
       })),
@@ -1023,8 +1138,13 @@ function resetForm() {
   feeDetailRows.value = [];
   selectedRowKeys.value = [];
   expandedGroupKeys.value = [];
-  attachments.value = [];
+  invoiceProcess.value = undefined;
+  invoiceNo.value = '';
+  invoiceDate.value = undefined;
+  attachmentGroup.value = [];
+  settlementAttachments.value = [];
   bankSelections.value = {};
+  applicationCreatorName.value = '';
   submitTime.value = dayjs().format('YYYY-MM-DD HH:mm');
 }
 
@@ -1101,10 +1221,6 @@ void handleSubmitAndNew;
                 <IconifyIcon icon="mdi:file-undo-outline" />
                 撤销提交
               </Button>
-              <Button v-if="isEdit && !isEntering" @click="handleViewWorkflow">
-                <IconifyIcon icon="mdi:source-branch" />
-                审批流程
-              </Button>
               <Dropdown>
                 <Button>
                   <IconifyIcon icon="mdi:file-export-outline" />
@@ -1148,7 +1264,8 @@ void handleSubmitAndNew;
                           :selected-items="settlementSelectedItems"
                           :placeholder="$t('ui.placeholder.select')"
                           :disabled="isSettlementLocked"
-                          @update:model-value="onSettlementChange"
+                          size="small"
+                          @change="onSettlementChange"
                         />
                       </div>
                     </div>
@@ -1167,16 +1284,7 @@ void handleSubmitAndNew;
                         {{ companyName || '-' }}
                       </span>
                     </div>
-                    <div class="info-item info-item--payment-require">
-                      <span class="info-label">{{ t('require') }}</span>
-                      <Input.TextArea
-                        :value="paymentRequire"
-                        :rows="2"
-                        :placeholder="$t('ui.placeholder.input')"
-                        @update:value="(val) => (paymentRequire = val)"
-                      />
-                    </div>
-                    <div class="info-item">
+                    <div class="info-item info-item--latest-payment">
                       <span class="info-label">{{
                         t('latestPaymentDate')
                       }}</span>
@@ -1184,6 +1292,17 @@ void handleSubmitAndNew;
                         :value="endTime ? dayjs(endTime) : undefined"
                         class="w-full"
                         @change="onEndTimeChange"
+                      />
+                    </div>
+                    <div class="info-item info-item--payment-require">
+                      <span class="info-label">{{ t('require') }}</span>
+                      <Input.TextArea
+                        :value="paymentRequire"
+                        :rows="2"
+                        :auto-size="false"
+                        class="info-payment-require-input"
+                        :placeholder="$t('ui.placeholder.input')"
+                        @update:value="(val) => (paymentRequire = val)"
                       />
                     </div>
                   </div>
@@ -1207,7 +1326,12 @@ void handleSubmitAndNew;
                         v-if="isSettlementCurrencyLocked"
                         class="settlement-currency-mode"
                       >
-                        🔒 固定币别 · {{ settlementCurrencyName || 'RMB' }}
+                        🔒
+                        {{
+                          isSpecifiedCurrencyApplication(settlementCurrencyId)
+                            ? `固定币别 · ${settlementCurrencyLockedLabel}`
+                            : settlementCurrencyLockedLabel
+                        }}
                       </span>
                       <CurrencySelect
                         v-else
@@ -1235,7 +1359,6 @@ void handleSubmitAndNew;
                       <div class="currency-table__head">
                         <span>支付币别</span>
                         <span>付款金额</span>
-                        <span>结算银行</span>
                         <span>银行账户</span>
                       </div>
                       <div class="currency-cards">
@@ -1253,7 +1376,6 @@ void handleSubmitAndNew;
                             </span>
                           </div>
                           <div class="bank-block">
-                            <span class="bank-block__label"> 结算银行 </span>
                             <div class="bank-block__content">
                               <Select
                                 :value="bankSelections[cs.currencyId]"
@@ -1262,7 +1384,7 @@ void handleSubmitAndNew;
                                 :disabled="!canEditBank"
                                 size="small"
                                 class="bank-block__select"
-                                placeholder="请选择结算银行"
+                                placeholder="请选择银行账户"
                                 @update:value="
                                   (v) => onBankChange(cs.currencyId, v)
                                 "
@@ -1271,6 +1393,13 @@ void handleSubmitAndNew;
                                 v-if="getSelectedBank(cs.currencyId)"
                                 class="bank-detail"
                               >
+                                <div class="bank-detail__row">
+                                  <span class="bank-detail__label">开户行</span>
+                                  <span class="bank-detail__value">{{
+                                    getSelectedBank(cs.currencyId)?.bankName ||
+                                    '-'
+                                  }}</span>
+                                </div>
                                 <div class="bank-detail__row">
                                   <span class="bank-detail__label">账号</span>
                                   <span class="bank-detail__value">{{
@@ -1308,7 +1437,6 @@ void handleSubmitAndNew;
                           <col style="width: 96px" />
                           <col style="width: 97px" />
                           <col style="width: 117px" />
-                          <col style="width: 118px" />
                           <col style="width: 193px" />
                           <col style="width: 118px" />
                         </colgroup>
@@ -1323,7 +1451,6 @@ void handleSubmitAndNew;
                             <th>付款金额</th>
                             <th>实付金额</th>
                             <th>结算方式</th>
-                            <th>收款银行</th>
                             <th>银行账户</th>
                             <th>银行账号</th>
                           </tr>
@@ -1346,25 +1473,32 @@ void handleSubmitAndNew;
                                 >汇款⌄</span
                               >
                             </td>
-                            <td>
-                              <Select
-                                :value="settlementBankValue"
-                                :options="settlementBankOptions"
-                                :loading="bankLoading"
-                                :disabled="!canEditBank"
-                                size="small"
-                                placeholder="请选择"
-                                @update:value="onSettlementBankChange"
-                              />
-                            </td>
-                            <td>
-                              <span class="settlement-table__bank-name">
-                                {{
-                                  settlementSelectedBank?.bankName ||
-                                  settlementName ||
-                                  '请输入'
-                                }}
-                              </span>
+                            <td class="settlement-table__bank-cell">
+                              <div class="settlement-table__bank-field">
+                                <Select
+                                  :value="settlementBankValue"
+                                  :options="settlementBankOptions"
+                                  :loading="bankLoading"
+                                  :disabled="!canEditBank"
+                                  size="small"
+                                  class="settlement-table__bank-select"
+                                  placeholder="请选择银行账户"
+                                  @update:value="onSettlementBankChange"
+                                />
+                                <div
+                                  v-if="settlementSelectedBank"
+                                  class="bank-detail"
+                                >
+                                  <div class="bank-detail__row">
+                                    <span class="bank-detail__label"
+                                      >开户行</span
+                                    >
+                                    <span class="bank-detail__value">{{
+                                      settlementSelectedBank.bankName || '-'
+                                    }}</span>
+                                  </div>
+                                </div>
+                              </div>
                             </td>
                             <td>
                               <span class="settlement-table__account">
@@ -1394,36 +1528,13 @@ void handleSubmitAndNew;
                     <span>审核流程</span>
                   </div>
                 </template>
-                <div class="workflow-steps">
-                  <div
-                    v-for="(step, index) in [
-                      {
-                        title: '提交申请',
-                        detail: `${applicantName || '-'} · 提交时间：${dayjs(
-                          submitTime,
-                        ).format('MM-DD HH:mm')}`,
-                      },
-                      { title: '主管复核', detail: '待审核 · 进行中' },
-                      { title: '财务审核', detail: '财务部 · 未开始' },
-                      { title: '出纳付款', detail: '出纳 · 未开始' },
-                    ]"
-                    :key="step.title"
-                    class="workflow-step"
-                    :class="{
-                      'workflow-step--done': workflowStep > index,
-                      'workflow-step--active': workflowStep === index + 1,
-                    }"
-                  >
-                    <span class="workflow-step__dot">
-                      {{ workflowStep > index + 1 ? '✓' : index + 1 }}
-                    </span>
-                    <span class="workflow-step__line"></span>
-                    <span class="workflow-step__content">
-                      <strong>{{ step.title }}</strong>
-                      <small>{{ step.detail }}</small>
-                    </span>
-                  </div>
-                </div>
+                <WorkflowTimeline
+                  class="payment-application-workflow"
+                  :applicant-name="applicationCreatorName"
+                  :application-time="submitTime"
+                  :entity-id="editId"
+                  :show-header="false"
+                />
                 <AuditStatusStamp
                   class="status-stamp"
                   :status="currentStatus"
@@ -1442,30 +1553,76 @@ void handleSubmitAndNew;
                   </div>
                 </template>
                 <div class="invoice-tabs">
-                  <span class="invoice-tab invoice-tab--active">先票后付</span>
-                  <span class="invoice-tab">先付后票</span>
-                  <span class="invoice-tab">不开票</span>
+                  <button
+                    v-for="option in [
+                      { label: '先票后付', value: 0 },
+                      { label: '先付后票', value: 1 },
+                      { label: '不开票', value: 2 },
+                    ]"
+                    :key="option.value"
+                    type="button"
+                    class="invoice-tab"
+                    :class="{
+                      'invoice-tab--active': invoiceProcess === option.value,
+                    }"
+                    :disabled="!isEntering"
+                    @click="onInvoiceProcessChange(option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
                 </div>
-                <div class="invoice-fields">
+                <div
+                  class="invoice-fields"
+                  :class="{ 'invoice-fields--collapsed': isNoInvoice }"
+                >
                   <div class="invoice-field">
-                    <span>发票号</span>
-                    <span class="invoice-field__arrow">⌄</span>
+                    <Input
+                      v-model:value="invoiceNo"
+                      :bordered="false"
+                      class="invoice-field__control"
+                      placeholder="发票号"
+                      :disabled="!isEntering || isNoInvoice"
+                    />
                   </div>
                   <div class="invoice-field">
-                    <span>开票日期</span>
-                    <span class="invoice-field__arrow">⌄</span>
+                    <DatePicker
+                      v-model:value="invoiceDate"
+                      :bordered="false"
+                      class="invoice-field__control"
+                      value-format="YYYY-MM-DD"
+                      placeholder="开票日期"
+                      :disabled="!isEntering || isNoInvoice"
+                    />
                   </div>
                 </div>
                 <div class="invoice-documents">
-                  <div class="invoice-document invoice-document--upload">
-                    <span>发票文件</span>
-                    <FileUploadInput v-model="attachments" :max-count="20" />
+                  <AttachmentGroups
+                    v-model="attachmentGroup"
+                    :application-id="editId"
+                    :disabled="isEdit && !isEntering"
+                  />
+                </div>
+                <div
+                  v-if="settlementAttachments.length > 0"
+                  class="settlement-attachments"
+                >
+                  <div class="settlement-attachments__title">
+                    结算附件（只读）
                   </div>
-                  <div class="invoice-document">
-                    <span>账单</span>
-                  </div>
-                  <div class="invoice-document">
-                    <span>付款水单</span>
+                  <div class="settlement-attachments__list">
+                    <button
+                      v-for="item in settlementAttachments"
+                      :key="item.id || item.attachmentId"
+                      type="button"
+                      class="settlement-attachments__item"
+                      :title="item.friendlyFileName || '附件'"
+                      @click="openSettlementAttachment(item)"
+                    >
+                      <IconifyIcon icon="mdi:file-outline" />
+                      <span class="settlement-attachments__name">{{
+                        item.friendlyFileName || '附件'
+                      }}</span>
+                    </button>
                   </div>
                 </div>
               </Card>
@@ -1542,10 +1699,10 @@ void handleSubmitAndNew;
               <NestedDataTable
                 :columns="allOrderGroupColumns"
                 :data-source="filteredOrderGroups"
+                fill-height
                 :inner-columns="feeInnerColumns"
                 inner-data-key="children"
                 inner-row-key="feeId"
-                :max-height="177"
                 row-key="key"
                 v-model:expanded-row-keys="expandedGroupKeys"
               >
@@ -1727,7 +1884,7 @@ void handleSubmitAndNew;
       <AddFeeDrawer
         ref="addFeeDrawerRef"
         @confirm="handleFeeConfirm"
-        @update:settlement-currency-id="onSettlementCurrencyChange"
+        @update:settlement-currency-id="onSettlementCurrencyChangeFromDrawer"
         @update:settlement-id="onSettlementIdSync"
       />
     </Spin>
@@ -1775,6 +1932,7 @@ void handleSubmitAndNew;
 
 .action-bar {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   min-height: 48px;
@@ -1860,19 +2018,25 @@ void handleSubmitAndNew;
 }
 
 .fee-detail-card {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  height: 465px;
+  height: 650px;
+  overflow: hidden;
 }
 
 .fee-detail-card :deep(.ant-card-head) {
+  flex-shrink: 0;
   min-height: 60px;
   padding: 0 16px;
 }
 
 .fee-detail-card :deep(.ant-card-body) {
   display: flex;
+  flex: 1;
   flex-direction: column;
   height: calc(100% - 60px);
+  min-height: 0;
   padding: 16px;
   overflow: hidden;
 }
@@ -1917,7 +2081,7 @@ void handleSubmitAndNew;
   display: flex;
   gap: 6px;
   align-items: center;
-  width: 420px;
+  width: 360px;
 }
 
 .settlement-unit-title__select :deep(.ant-select) {
@@ -1930,9 +2094,15 @@ void handleSubmitAndNew;
 
 .info-grid {
   display: grid;
+  grid-template-rows: auto auto;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px 32px;
-  align-items: start;
+  align-items: stretch;
+}
+
+.info-grid > .info-item:first-child {
+  grid-row: 1;
+  grid-column: 1;
 }
 
 .info-item {
@@ -1959,7 +2129,31 @@ void handleSubmitAndNew;
   grid-template-columns: 71px minmax(0, 1fr);
   grid-row: 1 / span 2;
   grid-column: 2;
-  align-items: start;
+  align-items: stretch;
+  align-self: stretch;
+  min-height: 0;
+}
+
+.info-item--payment-require :deep(.ant-input-textarea) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.info-item--payment-require :deep(textarea.info-payment-require-input) {
+  flex: 1;
+  height: 100% !important;
+  min-height: 72px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  line-height: 22px;
+  resize: none;
+  background: #fff !important;
+}
+
+.info-item--latest-payment {
+  grid-row: 2;
+  grid-column: 1;
 }
 
 .info-value {
@@ -1974,7 +2168,7 @@ void handleSubmitAndNew;
 .info-item :deep(.ant-picker),
 .info-item :deep(.ant-select-selector) {
   font-size: 12px !important;
-  background: #fbfcfd !important;
+  background: #fff !important;
   border-color: #e4e8ee !important;
   border-radius: 8px !important;
   box-shadow: none !important;
@@ -1984,7 +2178,7 @@ void handleSubmitAndNew;
   display: flex;
   gap: 8px;
   align-items: center;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: #1f2937;
 }
@@ -2065,77 +2259,13 @@ void handleSubmitAndNew;
   overflow: hidden;
 }
 
-.workflow-steps {
-  display: flex;
-  flex-direction: column;
-  padding-right: 86px;
+.workflow-card :deep(.ant-card-body) {
+  height: calc(100% - 48px);
+  overflow: auto;
 }
 
-.workflow-step {
-  position: relative;
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  gap: 8px;
-  min-height: 48px;
-}
-
-.workflow-step__dot {
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  font-size: 11px;
-  color: #9ca3af;
-  background: #fff;
-  border: 2px solid #d1d5db;
-  border-radius: 50%;
-}
-
-.workflow-step__line {
-  position: absolute;
-  top: 20px;
-  bottom: 0;
-  left: 9px;
-  width: 1px;
-  background: #d8dee7;
-}
-
-.workflow-step:last-child .workflow-step__line {
-  display: none;
-}
-
-.workflow-step__content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-top: 1px;
-}
-
-.workflow-step__content strong {
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.workflow-step__content small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 11px;
-  color: #9ca3af;
-  white-space: nowrap;
-}
-
-.workflow-step--done .workflow-step__dot {
-  color: #fff;
-  background: #16a34a;
-  border-color: #16a34a;
-}
-
-.workflow-step--active .workflow-step__dot {
-  color: #fff;
-  background: #3b82f6;
-  border-color: #3b82f6;
+.payment-application-workflow {
+  min-height: 100%;
 }
 
 .status-stamp {
@@ -2145,15 +2275,22 @@ void handleSubmitAndNew;
 }
 
 .invoice-card {
+  display: flex;
+  flex-direction: column;
   height: 289px;
 }
 
 .invoice-card :deep(.ant-card-body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
   padding: 4px 16px 16px;
 }
 
 .invoice-tabs {
   display: grid;
+  flex-shrink: 0;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   padding: 3px;
@@ -2167,7 +2304,14 @@ void handleSubmitAndNew;
   font-size: 11px;
   color: #4b5563;
   text-align: center;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
   border-radius: 5px;
+}
+
+.invoice-tab:disabled {
+  cursor: default;
 }
 
 .invoice-tab--active {
@@ -2178,31 +2322,119 @@ void handleSubmitAndNew;
 
 .invoice-fields {
   display: grid;
+  flex-shrink: 0;
   gap: 7px;
+  max-height: 80px;
+  margin-top: 0;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    max-height 0.28s ease,
+    opacity 0.2s ease,
+    margin-top 0.28s ease;
+}
+
+.invoice-fields--collapsed {
+  max-height: 0;
+  margin-top: 0;
+  pointer-events: none;
+  opacity: 0;
 }
 
 .invoice-field {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 32px;
-  padding: 0 11px;
-  font-size: 11px;
-  color: #4e5969;
-  background: #fbfcfd;
+  min-height: 32px;
+  font-size: 12px;
+  background: #fff;
   border: 1px solid #e5e9ef;
   border-radius: 8px;
+  box-shadow: none;
 }
 
-.invoice-field__arrow {
-  color: #9ca3af;
+.invoice-field__control {
+  width: 100%;
+  height: 30px;
+  font-size: 12px;
+}
+
+.invoice-field :deep(.ant-input),
+.invoice-field :deep(.ant-picker) {
+  height: 30px;
+  padding: 0 11px;
+  font-size: 12px;
+  color: #4e5969;
+  box-shadow: none;
 }
 
 .invoice-documents {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
   margin-top: 8px;
+}
+
+.invoice-documents :deep(.payment-attachment-groups),
+.invoice-documents :deep(.ant-spin-nested-loading),
+.invoice-documents :deep(.ant-spin-container) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.invoice-documents :deep(.attachment-type-grid) {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+}
+
+.invoice-documents :deep(.attachment-group) {
+  height: 100%;
+  min-height: 0;
+  transition: height 0.28s ease;
+}
+
+.settlement-attachments {
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+
+.settlement-attachments__title {
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #657286;
+}
+
+.settlement-attachments__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  max-height: 56px;
+  overflow-y: auto;
+}
+
+.settlement-attachments__item {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: #64748b;
+  cursor: pointer;
+  background: #f8fafc;
+  border: 1px solid #e5e9ef;
+  border-radius: 4px;
+}
+
+.settlement-attachments__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .invoice-document {
@@ -2231,7 +2463,7 @@ void handleSubmitAndNew;
 .currency-table__head,
 .currency-card {
   display: grid;
-  grid-template-columns: 80px 100px 100px minmax(180px, 1fr);
+  grid-template-columns: 80px 100px minmax(180px, 1fr);
   gap: 10px;
   align-items: center;
 }
@@ -2380,8 +2612,21 @@ void handleSubmitAndNew;
   color: #9ca3af;
 }
 
-.settlement-table__bank-name {
-  color: #1f2937;
+.settlement-table__bank-cell {
+  white-space: normal;
+}
+
+.settlement-table__bank-field {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  padding: 6px 0;
+}
+
+.settlement-table__bank-select {
+  flex: 1 1 120px;
+  min-width: 120px;
 }
 
 .settlement-table__native :deep(.ant-select) {
@@ -2488,6 +2733,7 @@ void handleSubmitAndNew;
 
 .fee-filter-bar {
   display: grid;
+  flex-shrink: 0;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 6px 32px;
   padding: 0 0 16px;
@@ -2515,7 +2761,7 @@ void handleSubmitAndNew;
 .fee-filter-field :deep(.ant-select-selector) {
   min-height: 32px !important;
   font-size: 12px !important;
-  background: #fbfcfd !important;
+  background: #fff !important;
   border-color: #e5e9ef !important;
   border-radius: 8px !important;
   box-shadow: none !important;
@@ -2526,15 +2772,9 @@ void handleSubmitAndNew;
 }
 
 .fee-group-table {
-  flex: 0 0 177px;
-  height: 177px;
-  min-height: 177px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
-}
-
-.fee-group-table :deep(.nested-data-table),
-.fee-group-table :deep(.nested-data-table__scroll) {
-  height: 100%;
 }
 
 .table-sequence-cell {
@@ -2561,6 +2801,7 @@ void handleSubmitAndNew;
 }
 
 .fee-detail-bottom {
+  flex-shrink: 0;
   margin-top: auto;
 }
 
@@ -2638,9 +2879,20 @@ void handleSubmitAndNew;
     grid-template-columns: 1fr;
   }
 
-  .info-item--payment-require {
+  .info-grid > .info-item:first-child {
+    grid-column: 1;
+  }
+
+  .info-grid > .info-item:first-child,
+  .info-item--payment-require,
+  .info-item--latest-payment {
     grid-row: auto;
     grid-column: 1;
+  }
+
+  .info-item--payment-require :deep(textarea.info-payment-require-input) {
+    height: auto !important;
+    min-height: 64px;
   }
 }
 </style>

@@ -35,6 +35,8 @@ import {
   type FeeRowData,
   getPaySideLabel,
   type SelectedFeeItem,
+  isOriginalCurrencyApplication,
+  isSpecifiedCurrencyApplication,
   resolveGroupSettlementName,
   resolvePolPortDisplayName,
   resolvePodPortDisplayName,
@@ -90,7 +92,7 @@ const throttledAutoSearch = useThrottleFn(
 const [SearchForm, searchFormApi] = useVbenForm({
   commonConfig: {
     componentProps: { class: 'w-full' },
-    labelWidth: 64,
+    labelWidth: 72,
   },
   layout: 'horizontal',
   schema: useAddFeeSearchSchema(),
@@ -167,6 +169,19 @@ const disabledFeeIds = computed(
 const isSettlementCurrencyLocked = computed(
   () => (drawerProps.value.selectedFeeIds?.length ?? 0) > 0,
 );
+const isSpecifiedSettlement = computed(() =>
+  isSpecifiedCurrencyApplication(drawerProps.value.settlementCurrencyId),
+);
+const lockedSettlementCurrencyText = computed(() => {
+  if (!isSpecifiedSettlement.value) {
+    return `🔒 ${$t('seaExport.export.paymentApplication.originalCurrency')}`;
+  }
+  const name =
+    drawerProps.value.settlementCurrencyName ||
+    resolveSettlementCurrencyName(drawerProps.value.settlementCurrencyId!) ||
+    'RMB';
+  return `🔒 固定币别 · ${name}`;
+});
 
 function isFeeDisabled(feeId: string): boolean {
   return disabledFeeIds.value.has(feeId);
@@ -198,27 +213,50 @@ function initDisabledFeeAppliedAmounts() {
 
 async function openDrawer(props: AddFeeDrawerProps = {}) {
   drawerProps.value = props;
+  settlementCurrencyName.value =
+    props.settlementCurrencyName ??
+    (isSpecifiedCurrencyApplication(props.settlementCurrencyId)
+      ? resolveSettlementCurrencyName(props.settlementCurrencyId!)
+      : '');
   open.value = true;
   resetState();
   await nextTick();
   await searchFormApi.resetForm();
   await nextTick();
-  searchFormApi.setValues({
-    PaySide: 1,
-    ...(props.settlementId ? { SettlementId: props.settlementId } : {}),
-  });
-  await nextTick();
+
   const hasFees = hasExistingFees();
+  // 先回显结算对象选项，再写表单值，避免首次 getValues 丢 SettlementId
   searchFormApi.updateSchema([
     {
       fieldName: 'SettlementId',
       rules: hasFees ? 'required' : undefined,
       componentProps: {
         disabled: hasFees,
+        selectedItems:
+          props.settlementId && props.settlementName
+            ? [
+                {
+                  fullName: props.settlementName,
+                  id: props.settlementId,
+                  name: props.settlementName,
+                },
+              ]
+            : [],
       },
     },
   ]);
-  await fetchData(await searchFormApi.getValues());
+  await nextTick();
+  searchFormApi.setValues({
+    PaySide: 1,
+    ...(props.settlementId ? { SettlementId: props.settlementId } : {}),
+  });
+  await nextTick();
+
+  const values = await searchFormApi.getValues();
+  await fetchData({
+    ...values,
+    ...(props.settlementId ? { SettlementId: props.settlementId } : {}),
+  });
   initDisabledFeeAppliedAmounts();
 }
 
@@ -584,7 +622,7 @@ function handleConfirm() {
   if (!validateAppliedAmounts(selected)) return;
 
   const curSettlementCurrencyId = drawerProps.value.settlementCurrencyId;
-  if (curSettlementCurrencyId != null) {
+  if (isSpecifiedCurrencyApplication(curSettlementCurrencyId)) {
     const diffCurrencies = new Map<number, string>();
     for (const fee of selected) {
       if (fee.currencyId !== curSettlementCurrencyId) {
@@ -765,12 +803,14 @@ defineExpose({ open: openDrawer });
     <!-- 主体区域 -->
     <div class="mb-2 flex items-center gap-3">
       <div class="text-base font-semibold">费用明细</div>
-      <span class="text-sm text-gray-500">结算币别</span>
+      <span v-if="isSettlementCurrencyLocked" class="settlement-currency-mode">
+        {{ lockedSettlementCurrencyText }}
+      </span>
       <CurrencySelect
+        v-else
         ref="currencySelectRef"
         :model-value="drawerProps.settlementCurrencyId"
         :extra-options="[{ label: '按原票币', value: null }]"
-        :disabled="isSettlementCurrencyLocked"
         size="small"
         style="width: 160px"
         @update:model-value="onSettlementCurrencyChange"
@@ -941,8 +981,24 @@ defineExpose({ open: openDrawer });
 </template>
 
 <style scoped>
+:deep(.ant-form-item-label > label) {
+  white-space: nowrap;
+}
+
 .fee-order-table :deep(.user-role-column) {
   max-width: 72px;
+}
+
+.settlement-currency-mode {
+  min-width: 132px;
+  padding: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 15px;
+  color: #1d4ed8;
+  text-align: center;
+  background: #eff6ff;
+  border-radius: 6px;
 }
 
 .fee-order-table .ellipsis-cell {
@@ -958,8 +1014,15 @@ defineExpose({ open: openDrawer });
 }
 
 .fee-order-table :deep(.fee-applied-amount-input .ant-input-number-input) {
+  padding-right: 28px;
   font-weight: 600;
   color: #1677ff;
+}
+
+.fee-order-table :deep(.nested-data-table__inner) {
+  width: 750px;
+  min-width: 750px;
+  max-width: 750px;
 }
 
 .fee-order-table :deep(.nested-data-table__inner .ant-input-number-input) {

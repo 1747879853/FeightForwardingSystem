@@ -23,8 +23,9 @@ last_updated: 2026-07-28
 
 - **加载申请单：** 按申请单 ID 加载主表与费用明细。
 - **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。
+- **发票附件：** 录入中本地增删，保存走 `EditAsync.attachmentGroup` **全量覆盖**；非录入可 `AddAttachments` 仅追加。详情 `paymentSettlementAttachments` 只读展示。
 - **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次结算」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。
-- **外侧费用明细：** 使用 `NestedDataTable` 展示；「本次申请金额」只读；支持编号/费用名/委托单位/币别/ETD 页内筛选。
+- **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；「本次申请金额」只读；支持编号/费用名/委托单位/币别/ETD 页内筛选。
 - **提交审核：** 进入付款申请审核链路。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -46,6 +47,8 @@ last_updated: 2026-07-28
 
 | **本次申请金额** | 单条费用本次申请付款金额。 | 添加费用抽屉 `appliedAmount` → `PayAppItemAddAsync` | **触发/依赖：** 仅在抽屉内编辑；外侧明细只读展示。 | 默认取 `unRqstPaymentAmount`；不得超过未结金额；编辑模式确认添加即落库。 |
 
+| **所属公司** | 申请单归属组织（编辑态只读）。 | 详情 `orgs` + `orgId` | **触发/依赖：** 编辑页用 `formatOrgPathLabel(orgs)` 拼接全路径（`/` 分隔）；新增页用 `MyOrgSelect`。 | 必填（提交带 `orgId`）。 |
+
 # 5. 核心业务卡点 (Business Blockers)
 
 > [!IMPORTANT] **[卡点 1：付款申请编辑一致性]** 编辑页必须尊重申请状态，不能绕过审核状态直接修改已进入流程的数据。
@@ -54,6 +57,9 @@ last_updated: 2026-07-28
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-28 | `Fix` | 费用明细卡片固定高度 650px，表格在卡片内占满剩余空间并内部滚动。 | `fee-detail-card` 固定高 + `NestedDataTable.fillHeight`；详见 `changelogs/change-log-2026-07-28-payment-application-fee-table-fill-height.md`。 |
+| 2026-07-28 | `Feature` | 录入中附件随 `EditAsync.attachmentGroup` 全量覆盖；非录入 `AddAttachments` 追加；结算附件只读。 | 编辑始终传 `attachmentGroup`（可空）；详见 `changelogs/change-log-2026-07-28-payment-application-attachment-group-save.md`。 |
+| 2026-07-28 | `Fix` | 编辑态「所属公司」展示 `orgs` 全路径（`/` 拼接），不再仅显示末端组织名。 | 复用 `formatOrgPathLabel`；详见 `changelogs/change-log-2026-07-28-payment-application-org-path-display.md`。 |
 | 2026-07-28 | `Feature` | 表单按 Figma 重排；费用明细改用 `NestedDataTable`；支持页内筛选；选费透传 `clientId`。 | 与新增页共用 `form.vue`；详见 `changelogs/change-log-2026-07-28-payment-application-figma-layout-nested-table.md`。 |
 | 2026-07-25 | `Fix` | 编辑页结算对象下拉正确回显客户简称（`测试正式客户简称` 等）。 | `ClientSelect` 注入 `selected-items`；详情优先用 `settlement` 对象，缺省用 `settlementId`+`clientName`。详见 `changelogs/change-log-2026-07-25-payment-application-settlement-selected-items.md`。 |
 | 2026-07-24 | `Refactor` | 编辑页添加费用抽屉委托单位改读 `PayAppFeeGroupDto.client?.name`。 | 与新增页同源 `add-fee-modal`。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |

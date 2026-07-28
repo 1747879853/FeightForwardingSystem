@@ -21,6 +21,8 @@ interface Props {
   columns: Column[];
   dataSource: any[];
   expandedRowKeys?: RowKey[];
+  /** 为 true 时占满父容器高度，由父级分配剩余空间；与 maxHeight 互斥优先 */
+  fillHeight?: boolean;
   innerColumns: Column[];
   innerDataKey?: string;
   innerRowKey?: RowKeyGetter;
@@ -31,6 +33,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   expandedRowKeys: () => [],
+  fillHeight: false,
   innerDataKey: 'children',
   innerRowKey: 'id',
   loading: false,
@@ -42,9 +45,12 @@ const emit = defineEmits<{
   'update:expandedRowKeys': [keys: RowKey[]];
 }>();
 
-const scrollStyle = computed(() => ({
-  maxHeight: `${props.maxHeight}px`,
-}));
+const scrollStyle = computed(() => {
+  if (props.fillHeight) return undefined;
+  return {
+    maxHeight: `${props.maxHeight}px`,
+  };
+});
 
 function getRowKey(record: any, index: number, getter: RowKeyGetter): RowKey {
   if (typeof getter === 'function') return getter(record);
@@ -92,7 +98,10 @@ function columnClass(column: Column) {
 </script>
 
 <template>
-  <div class="nested-data-table">
+  <div
+    class="nested-data-table"
+    :class="{ 'nested-data-table--fill': fillHeight }"
+  >
     <div class="nested-data-table__scroll" :style="scrollStyle">
       <table class="nested-data-table__outer">
         <colgroup>
@@ -267,6 +276,12 @@ function columnClass(column: Column) {
   background: #fff;
 }
 
+.nested-data-table--fill,
+.nested-data-table--fill .nested-data-table__scroll {
+  height: 100%;
+  min-height: 0;
+}
+
 .nested-data-table__scroll {
   width: 100%;
   overflow: auto;
@@ -279,6 +294,12 @@ function columnClass(column: Column) {
   table-layout: fixed;
   border-spacing: 0;
   border-collapse: separate;
+}
+
+.nested-data-table__inner {
+  width: max-content;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .nested-data-table th,

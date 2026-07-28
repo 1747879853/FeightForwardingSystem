@@ -38,12 +38,32 @@ export function resolvePodPortDisplayName(source: {
   );
 }
 
+/**
+ * 付费申请 `currencyId`：有值=指定结算币别申请；null/undefined=原币申请（按费用原币分列）。
+ * 付费结算单上的结算币别见 `PaymentSettlement.currencyId`。
+ */
+export function isOriginalCurrencyApplication(
+  currencyId: null | number | undefined,
+): boolean {
+  return currencyId === null || currencyId === undefined;
+}
+
+export function isSpecifiedCurrencyApplication(
+  currencyId: null | number | undefined,
+): boolean {
+  return !isOriginalCurrencyApplication(currencyId);
+}
+
 /** 组件 Props */
 export interface AddFeeDrawerProps {
   /** 结算对象 id（由外层表单传入） */
   settlementId?: string;
-  /** 结算币别id，null 表示原币结算 */
+  /** 结算对象名称（用于 ClientSelect 回显） */
+  settlementName?: string;
+  /** 对应付费申请 `currencyId`；null=原币申请 */
   settlementCurrencyId?: number | null;
+  /** 结算币别名称（锁定时展示，通常 `currencyCode`） */
+  settlementCurrencyName?: string;
   /** 已选费用 id 数组（不可编辑） */
   selectedFeeIds?: string[];
   /** 已选费用本次结算金额（禁选行展示，不传则不显示默认值） */
@@ -188,6 +208,7 @@ export function useAddFeeSearchSchema(options?: {
       label: '所属公司',
       componentProps: {
         isCompany: true,
+        required: false,
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
       },

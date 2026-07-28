@@ -3,6 +3,8 @@ import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
 import { useUserStore } from '@vben/stores';
 
+import { formatOrgPathLabel } from './use-all-user-org';
+
 export interface MyOrgOption {
   isDefault: boolean;
   label: string;
@@ -35,7 +37,10 @@ export function getMyOrgOptions(): MyOrgOption[] {
       if (!node) return null;
       return {
         isDefault: !!item.default,
-        label: node.displayName ?? '',
+        label:
+          formatOrgPathLabel(item.oneOrganizationPath) ||
+          node.displayName ||
+          '',
         value: node.id,
       };
     })
