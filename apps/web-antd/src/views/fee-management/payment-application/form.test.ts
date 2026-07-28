@@ -134,8 +134,9 @@ describe('payment application add form', () => {
         status: 0,
       }),
     );
-    expect(mocks.replace).toHaveBeenCalledWith(
-      '/fee-management/payment-application/application-1/edit',
-    );
+    expect(mocks.replace).toHaveBeenCalledWith({
+      path: '/fee-management/payment-application/application-1/edit',
+      query: { fromCreate: '1' },
+    });
   });
 });

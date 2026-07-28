@@ -13,6 +13,9 @@
 
 ## 2026-07
 
+- [2026-07-29 付款申请银行账户与发票制作取消状态禁用](./changelogs/change-log-2026-07-29-payment-application-bank-invoice-always-editable.md)
+- [2026-07-28 付款申请新增跳转编辑后延迟拉取审核流程](./changelogs/change-log-2026-07-28-payment-application-workflow-delay.md)
+- [2026-07-28 附件类型列表默认展示模块按枚举文本回显](./changelogs/change-log-2026-07-28-attachment-dtl-type-module-label-display.md)
 - [2026-07-28 付款申请费用明细卡片固定高度 650px](./changelogs/change-log-2026-07-28-payment-application-fee-table-fill-height.md)
 - [2026-07-28 付费申请附件分组对齐 Add/Edit 全量与 AddAttachments 追加](./changelogs/change-log-2026-07-28-payment-application-attachment-group-save.md)
 - [2026-07-28 付款申请编辑页所属公司展示完整组织路径](./changelogs/change-log-2026-07-28-payment-application-org-path-display.md)

@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-07-28
+last_updated: 2026-07-29
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,8 +22,10 @@ last_updated: 2026-07-28
 # 2. 功能与操作说明 (Features & Operations)
 
 - **加载申请单：** 按申请单 ID 加载主表与费用明细。
+- **审核流程：** 右侧 `WorkflowTimeline` 按 `entityId` 拉取工作流；若路由带 `fromCreate=1`（新增刚保存跳入），延迟 2 秒再请求，避免实例尚未创建。
 - **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。
-- **发票附件：** 录入中本地增删，保存走 `EditAsync.attachmentGroup` **全量覆盖**；非录入可 `AddAttachments` 仅追加。详情 `paymentSettlementAttachments` 只读展示。
+- **发票附件：** 任意状态本地增删，保存走 `EditAsync.attachmentGroup` **全量覆盖**；详情 `paymentSettlementAttachments` 只读展示。
+- **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。
 - **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次结算」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。
 - **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；「本次申请金额」只读；支持编号/费用名/委托单位/币别/ETD 页内筛选。
 - **提交审核：** 进入付款申请审核链路。
@@ -53,10 +55,14 @@ last_updated: 2026-07-28
 
 > [!IMPORTANT] **[卡点 1：付款申请编辑一致性]** 编辑页必须尊重申请状态，不能绕过审核状态直接修改已进入流程的数据。
 
+> [!IMPORTANT] **[卡点 2：新增跳入时工作流实例时序]** 新增保存后立即跳编辑时，工作流实例可能尚未落库；须带 `fromCreate=1` 并延迟 2s 再拉 `WorkflowTimeline`，否则会误显示「暂无审批流程数据」。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-29 | `Fix` | 银行账户与发票制作取消按状态禁用；编辑态任意状态可保存。 | 去掉 `canEditBank` / `!isEntering` 禁用；附件始终本地全量保存；详见 `changelogs/change-log-2026-07-29-payment-application-bank-invoice-always-editable.md`。 |
+| 2026-07-28 | `Fix` | 从新增跳入编辑时延迟 2s 再拉取审核流程，等待工作流实例创建。 | `query.fromCreate=1` + `WorkflowTimeline.loadDelayMs`；详见 `changelogs/change-log-2026-07-28-payment-application-workflow-delay.md`。 |
 | 2026-07-28 | `Fix` | 费用明细卡片固定高度 650px，表格在卡片内占满剩余空间并内部滚动。 | `fee-detail-card` 固定高 + `NestedDataTable.fillHeight`；详见 `changelogs/change-log-2026-07-28-payment-application-fee-table-fill-height.md`。 |
 | 2026-07-28 | `Feature` | 录入中附件随 `EditAsync.attachmentGroup` 全量覆盖；非录入 `AddAttachments` 追加；结算附件只读。 | 编辑始终传 `attachmentGroup`（可空）；详见 `changelogs/change-log-2026-07-28-payment-application-attachment-group-save.md`。 |
 | 2026-07-28 | `Fix` | 编辑态「所属公司」展示 `orgs` 全路径（`/` 拼接），不再仅显示末端组织名。 | 复用 `formatOrgPathLabel`；详见 `changelogs/change-log-2026-07-28-payment-application-org-path-display.md`。 |

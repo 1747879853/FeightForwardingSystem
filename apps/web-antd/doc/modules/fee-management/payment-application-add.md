@@ -27,7 +27,7 @@ last_updated: 2026-07-28
 - **金额汇总：** 根据费用明细计算申请金额；外层分组表在客服列后动态展示「{币别}申请合计」列（按 `currencyId` 升序，无该币别费用显示 `0.00`）。
 - **费用合计按币别绑定结算银行：** 费用合计区每个币别需绑定结算对象开票信息中维护的银行账户。银行来源 `ClientInvoiceInfoAdmin/GetListAsync`，按币别筛选；默认选中该币别默认账户（`isDefault`），多账户可下拉切换，选中后展示开户行 / 账号 / SWIFT Code。**原币结算**每种费用币别各需一条对应币别银行；**指定币别结算**仅需结算币别一条银行。银行为**必填**，提交/保存前校验。提交字段为 `paymentApplicationBanks`，编辑为全量替换。
 - **发票附件分组：** 发票制作区按附件明细类型分组上传；先通用上传得 `attachmentId`，新建随 `AddAsync.attachmentGroup` 一并绑定。关联结算附件不在本页维护。
-- **提交保存：** 保存后形成付款申请单，后续进入审核流程。
+- **提交保存：** 保存成功后跳转对应编辑页，并带 `query.fromCreate=1`，供编辑页延迟拉取审核流程。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -54,6 +54,7 @@ last_updated: 2026-07-28
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-28 | `Fix` | 新增保存成功跳编辑时带 `fromCreate=1`，编辑页延迟 2s 拉取审核流程。 | 与编辑页共用；详见 `changelogs/change-log-2026-07-28-payment-application-workflow-delay.md`。 |
 | 2026-07-28 | `Fix` | 费用明细卡片固定高度 650px，表格在卡片内占满剩余空间并内部滚动。 | 与编辑页共用 `form.vue`；`fee-detail-card` + `NestedDataTable.fillHeight`；详见 `changelogs/change-log-2026-07-28-payment-application-fee-table-fill-height.md`。 |
 | 2026-07-28 | `Feature` | 发票附件按分组本地维护，随 `AddAsync.attachmentGroup` 一并绑定；结算附件不在申请侧维护。 | 上传只拿 `attachmentId`；详见 `changelogs/change-log-2026-07-28-payment-application-attachment-group-save.md`。 |
 | 2026-07-28 | `Feature` | 表单按 Figma 重排；费用明细改用 `NestedDataTable`；支持编号/费用名/委托单位/币别/ETD 页内筛选；选费透传 `clientId`。 | 新增/编辑共用 `form.vue`；`FeeNameSelect` 从 adapter 导出；详见 `changelogs/change-log-2026-07-28-payment-application-figma-layout-nested-table.md`。 |

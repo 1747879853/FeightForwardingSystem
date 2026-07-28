@@ -123,15 +123,16 @@ const editId = computed<string | undefined>(() => {
   return id ? String(id) : undefined;
 });
 const isEdit = computed(() => !!editId.value);
+/** 新增刚保存跳转编辑时，工作流实例可能尚未创建，延迟拉取 */
+const workflowLoadDelayMs = computed(() =>
+  route.query.fromCreate === '1' ? 2000 : 0,
+);
 const currentStatus = ref<number>(PaymentApplicationStatus.Entering);
 const isEntering = computed(
   () => currentStatus.value === PaymentApplicationStatus.Entering,
 );
 const isAuditing = computed(
   () => currentStatus.value === PaymentApplicationStatus.Auditing,
-);
-const isPassed = computed(
-  () => currentStatus.value === PaymentApplicationStatus.Passed,
 );
 const pageLoading = ref(false);
 const pageTitle = computed(() =>
@@ -328,11 +329,6 @@ const bankLoading = ref(false);
 const loadedBankClientId = ref<string>('');
 /** currencyId -> clientInvoiceBankId */
 const bankSelections = ref<Record<number, string | undefined>>({});
-
-/** 银行选择可编辑（新增、录入中、审核通过） */
-const canEditBank = computed(
-  () => !isEdit.value || isEntering.value || isPassed.value,
-);
 
 /** 需要绑定银行的币别：原币结算=各费用币别；指定币别结算=结算币别 */
 const bankCurrencies = computed<BankCurrencyRow[]>(() => {
@@ -637,9 +633,10 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
   if (createdApplicationId) {
     message.success(t('addSuccess'));
     markListShouldRefresh('PaymentApplicationList');
-    await router.replace(
-      `/fee-management/payment-application/${createdApplicationId}/edit`,
-    );
+    await router.replace({
+      path: `/fee-management/payment-application/${createdApplicationId}/edit`,
+      query: { fromCreate: '1' },
+    });
   }
 }
 
@@ -1049,7 +1046,10 @@ async function handleSave() {
       );
       message.success(t('addSuccess'));
       markListShouldRefresh('PaymentApplicationList');
-      router.replace(`/fee-management/payment-application/${newId}/edit`);
+      router.replace({
+        path: `/fee-management/payment-application/${newId}/edit`,
+        query: { fromCreate: '1' },
+      });
     }
   } finally {
     submitting.value = false;
@@ -1199,12 +1199,13 @@ void handleSubmitAndNew;
                   {{ t('save') }}
                 </Button>
               </template>
-              <!-- 编辑模式 且 录入中：保存 + 提交（SubmitAsync） -->
-              <template v-if="isEdit && isEntering">
+              <!-- 编辑模式：始终可保存（银行/发票等）；录入中额外可提交 -->
+              <template v-if="isEdit">
                 <Button :loading="submitting" @click="handleSave">
                   {{ t('save') }}
                 </Button>
                 <Button
+                  v-if="isEntering"
                   type="primary"
                   :loading="submitting"
                   @click="handleSubmitApplication"
@@ -1381,7 +1382,6 @@ void handleSubmitAndNew;
                                 :value="bankSelections[cs.currencyId]"
                                 :options="getBankOptions(cs.currencyId)"
                                 :loading="bankLoading"
-                                :disabled="!canEditBank"
                                 size="small"
                                 class="bank-block__select"
                                 placeholder="请选择银行账户"
@@ -1479,7 +1479,6 @@ void handleSubmitAndNew;
                                   :value="settlementBankValue"
                                   :options="settlementBankOptions"
                                   :loading="bankLoading"
-                                  :disabled="!canEditBank"
                                   size="small"
                                   class="settlement-table__bank-select"
                                   placeholder="请选择银行账户"
@@ -1533,6 +1532,7 @@ void handleSubmitAndNew;
                   :applicant-name="applicationCreatorName"
                   :application-time="submitTime"
                   :entity-id="editId"
+                  :load-delay-ms="workflowLoadDelayMs"
                   :show-header="false"
                 />
                 <AuditStatusStamp
@@ -1565,7 +1565,6 @@ void handleSubmitAndNew;
                     :class="{
                       'invoice-tab--active': invoiceProcess === option.value,
                     }"
-                    :disabled="!isEntering"
                     @click="onInvoiceProcessChange(option.value)"
                   >
                     {{ option.label }}
@@ -1581,7 +1580,7 @@ void handleSubmitAndNew;
                       :bordered="false"
                       class="invoice-field__control"
                       placeholder="发票号"
-                      :disabled="!isEntering || isNoInvoice"
+                      :disabled="isNoInvoice"
                     />
                   </div>
                   <div class="invoice-field">
@@ -1591,7 +1590,7 @@ void handleSubmitAndNew;
                       class="invoice-field__control"
                       value-format="YYYY-MM-DD"
                       placeholder="开票日期"
-                      :disabled="!isEntering || isNoInvoice"
+                      :disabled="isNoInvoice"
                     />
                   </div>
                 </div>
@@ -1599,7 +1598,6 @@ void handleSubmitAndNew;
                   <AttachmentGroups
                     v-model="attachmentGroup"
                     :application-id="editId"
-                    :disabled="isEdit && !isEntering"
                   />
                 </div>
                 <div

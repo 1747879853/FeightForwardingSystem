@@ -2,7 +2,7 @@
 import type { OnActionClickParams } from '#/adapter/vxe-table';
 import type { AttachmentDtlTypeAdminApi } from '#/api/system/attachment-dtl-type-admin';
 
-import { onMounted, ref } from 'vue';
+import { onMounted } from 'vue';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
@@ -21,18 +21,14 @@ import { createPagedListQuery } from '#/utils/paged-list-query';
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
 
-const moduleTypeLabelMap = ref(new Map<number, string>());
+/** 可变 holder：列 formatter 每次读 .map，映射加载后无需重建列 */
+const moduleTypeLabelMapHolder = {
+  map: new Map<number, string>(),
+};
 
 const [FormModal, formModalApi] = useVbenModal({
   connectedComponent: Form,
   destroyOnClose: true,
-});
-
-onMounted(async () => {
-  moduleTypeLabelMap.value = await getModuleTypeLabelMap();
-  gridApi.setGridOptions({
-    columns: useColumns(moduleTypeLabelMap.value, handleActionClick),
-  });
 });
 
 const handleCreate = () => {
@@ -88,13 +84,14 @@ const [Grid, gridApi] =
       showCollapseButton: false,
     },
     gridOptions: {
-      columns: useColumns(moduleTypeLabelMap.value, handleActionClick),
+      columns: useColumns(moduleTypeLabelMapHolder, handleActionClick),
       height: 'auto',
       keepSource: true,
       pagerConfig: {
         enabled: true,
       },
       proxyConfig: {
+        autoLoad: false,
         ajax: {
           query: createPagedListQuery(getAttachmentDtlTypePagedList),
         },
@@ -111,6 +108,11 @@ const [Grid, gridApi] =
 const handleRefresh = () => {
   gridApi.query();
 };
+
+onMounted(async () => {
+  moduleTypeLabelMapHolder.map = await getModuleTypeLabelMap();
+  await gridApi.query();
+});
 </script>
 
 <template>

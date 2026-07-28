@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
 
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import { Empty, Spin, Tag } from 'ant-design-vue';
 
@@ -19,6 +19,8 @@ interface Props {
   applicantName?: string;
   applicationTime?: string;
   entityId?: string;
+  /** 延迟拉取毫秒数（如新增刚创建工作流实例尚未就绪） */
+  loadDelayMs?: number;
   showHeader?: boolean;
   taskType?: TaskType;
 }
@@ -27,6 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
   applicantName: '',
   applicationTime: '',
   entityId: undefined,
+  loadDelayMs: 0,
   showHeader: true,
   taskType: TaskType.PaymentApplication,
 });
@@ -35,6 +38,14 @@ const loading = ref(false);
 const instanceData =
   ref<PaymentReviewAdminApi.WorkFlowInstanceDetailDto | null>(null);
 const errorMsg = ref('');
+let loadDelayTimer: ReturnType<typeof setTimeout> | undefined;
+
+function clearLoadDelayTimer() {
+  if (loadDelayTimer) {
+    clearTimeout(loadDelayTimer);
+    loadDelayTimer = undefined;
+  }
+}
 
 const levelGroups = computed(() => {
   const groups = instanceData.value?.levelGroup;
@@ -195,7 +206,39 @@ function getInstanceStatusTag() {
   }
 }
 
-watch(() => [props.entityId, props.taskType], load, { immediate: true });
+function scheduleLoad() {
+  clearLoadDelayTimer();
+
+  if (!props.entityId) {
+    loading.value = false;
+    instanceData.value = null;
+    errorMsg.value = '';
+    return;
+  }
+
+  const delayMs = props.loadDelayMs > 0 ? props.loadDelayMs : 0;
+  if (delayMs <= 0) {
+    void load();
+    return;
+  }
+
+  // 等待工作流实例创建完成后再拉取
+  loading.value = true;
+  errorMsg.value = '';
+  instanceData.value = null;
+  loadDelayTimer = setTimeout(() => {
+    loadDelayTimer = undefined;
+    void load();
+  }, delayMs);
+}
+
+watch(() => [props.entityId, props.taskType, props.loadDelayMs], scheduleLoad, {
+  immediate: true,
+});
+
+onBeforeUnmount(() => {
+  clearLoadDelayTimer();
+});
 
 defineExpose({ reload: load });
 </script>

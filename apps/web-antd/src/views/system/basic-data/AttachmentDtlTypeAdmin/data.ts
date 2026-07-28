@@ -64,8 +64,13 @@ function formatDefaultModules(
     .join('、');
 }
 
+/** formatter 每次从 holder.map 读取，避免列闭包捕获空 Map */
+export type ModuleTypeLabelMapHolder = {
+  map: Map<number, string>;
+};
+
 export function useColumns(
-  moduleTypeLabelMap: Map<number, string>,
+  moduleTypeLabelMapHolder: ModuleTypeLabelMapHolder,
   onActionClick?: OnActionClickFn<AttachmentDtlTypeAdminApi.AttachmentDtlTypeDto>,
 ): VxeTableGridOptions<AttachmentDtlTypeAdminApi.AttachmentDtlTypeDto>['columns'] {
   return [
@@ -79,7 +84,10 @@ export function useColumns(
       title: $t('system.basicData.attachmentDtlType.defaultModules'),
       minWidth: 240,
       formatter: ({ row }) =>
-        formatDefaultModules(row.attachmentDefaultModules, moduleTypeLabelMap),
+        formatDefaultModules(
+          row.attachmentDefaultModules,
+          moduleTypeLabelMapHolder.map,
+        ),
     },
     {
       field: 'creatorUserName',
