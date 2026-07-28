@@ -701,13 +701,13 @@ defineExpose({ getTableDate });
                 </template>
               </DropdownButton>
 
-              <Button
+              <!-- <Button
                 type="primary"
                 :disabled="!selectedRowKeys.length"
                 @click="actions.orderFeeWithdraw"
               >
                 {{ $t('auditApproval.withdraw') }}
-              </Button>
+              </Button> -->
 
               <Button
                 v-show="type === 0"
