@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import type { Attachment } from '#/api/common/upload';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { FeeDetailRow } from '#/views/fee-management/payment-application/form-data';
 
 import { computed, ref, watch } from 'vue';
+
+import { IconifyIcon } from '@vben/icons';
 
 import dayjs from 'dayjs';
 
@@ -11,7 +12,7 @@ import { Card, Empty, Spin, Table, Tag, Tooltip } from 'ant-design-vue';
 
 import { getPaymentApplicationDetail } from '#/api/settlement-management/payment-application-admin';
 import { $t } from '#/locales';
-import FileUploadInput from '#/adapter/component/file-upload/file-upload-input.vue';
+import { buildAttachmentUrl } from '#/utils';
 import {
   resolvePodPortDisplayName,
   resolvePolPortDisplayName,
@@ -42,7 +43,40 @@ const loaded = ref(false);
 const settlementCurrencyId = ref<null | number>(null);
 const settlementCurrencyName = ref('');
 const feeDetailRows = ref<FeeDetailRow[]>([]);
-const attachments = ref<Attachment[]>([]);
+/** 发票附件（按类型分组，保留类型名） */
+const attachmentGroups = ref<PaymentApplicationAdminApi.AttachmentGroupDto[]>(
+  [],
+);
+/** 关联结算附件（只读） */
+const settlementAttachments = ref<
+  PaymentApplicationAdminApi.AttachmentItemDto[]
+>([]);
+
+/** 仅展示有文件的分组，并带上类型名称 */
+const visibleAttachmentGroups = computed(() =>
+  attachmentGroups.value
+    .map((group) => ({
+      key:
+        group.attachmentDtlTypeId == null
+          ? 'untyped'
+          : String(group.attachmentDtlTypeId),
+      name:
+        group.attachmentDtlType?.name ||
+        (group.attachmentDtlTypeId == null
+          ? '未分类'
+          : String(group.attachmentDtlTypeId)),
+      items: group.items ?? [],
+      sortId: group.attachmentDtlType?.sortId ?? 9999,
+    }))
+    .filter((group) => group.items.length > 0)
+    .sort((a, b) => a.sortId - b.sortId),
+);
+
+const hasAttachments = computed(
+  () =>
+    visibleAttachmentGroups.value.length > 0 ||
+    settlementAttachments.value.length > 0,
+);
 
 /** 币别 -> 已选结算银行（只读展示） */
 const bankByCurrency = ref<
@@ -57,6 +91,15 @@ const feeInnerColumns = computed(() =>
   useFeeInnerColumns(settlementCurrencyId.value !== null).filter(
     (col) => col.key !== 'checkbox',
   ),
+);
+
+/** 嵌套子表横向滚动宽度 = 列宽合计 + 100px */
+const feeInnerTableScrollX = computed(
+  () =>
+    feeInnerColumns.value.reduce(
+      (sum, col) => sum + (Number(col.width) || 0),
+      0,
+    ) + 100,
 );
 
 const appliedCurrencies = computed(() =>
@@ -183,7 +226,8 @@ function resetState() {
   settlementCurrencyId.value = null;
   settlementCurrencyName.value = '';
   feeDetailRows.value = [];
-  attachments.value = [];
+  attachmentGroups.value = [];
+  settlementAttachments.value = [];
   bankByCurrency.value = {};
   expandedGroupKeys.value = [];
   loaded.value = false;
@@ -201,11 +245,10 @@ async function loadDetail(id: string | undefined) {
     settlementCurrencyName.value = detail.currencyCode ?? '';
     feeDetailRows.value = mapDetailToFeeRows(detail);
     restoreBanksFromDetail(detail);
-    attachments.value = (detail.attachments ?? []).map((a) => ({
-      attachmentId: a.attachmentId ?? a.id,
-      url: a.url ?? '',
-      fileName: a.friendlyFileName ?? '',
-    }));
+    attachmentGroups.value = detail.attachmentGroup ?? [];
+    settlementAttachments.value = [
+      ...(detail.paymentSettlementAttachments ?? []),
+    ];
     expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
     loaded.value = true;
   } finally {
@@ -250,6 +293,16 @@ function formatDate(val: null | string | undefined): string {
 function formatMonth(val: null | string | undefined): string {
   if (!val) return '';
   return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM') : '';
+}
+
+function getAttachmentFileName(
+  item: PaymentApplicationAdminApi.AttachmentItemDto,
+) {
+  return item.friendlyFileName || item.url?.split('/').pop() || '附件';
+}
+
+function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
+  if (item.url) window.open(buildAttachmentUrl(item.url), '_blank');
 }
 </script>
 
@@ -312,31 +365,33 @@ function formatMonth(val: null | string | undefined): string {
                         {{ formatAmount(cs.totalAmount) }}
                       </span>
                     </div>
-                    <div
+                    <Tooltip
                       v-if="getSelectedBank(cs.currencyId)"
-                      class="bank-detail"
+                      :title="
+                        [
+                          `开户行 ${getSelectedBank(cs.currencyId)?.bankName || '-'}`,
+                          `账号 ${getSelectedBank(cs.currencyId)?.bankAccount || '-'}`,
+                          `SWIFT ${getSelectedBank(cs.currencyId)?.swiftCode || '-'}`,
+                        ].join(' · ')
+                      "
                     >
-                      <div class="bank-detail__row">
-                        <span class="bank-detail__label">开户行</span>
-                        <span class="bank-detail__value">
+                      <div class="bank-meta">
+                        <span class="bank-meta__item">
+                          <em>开户行</em>
                           {{ getSelectedBank(cs.currencyId)?.bankName || '-' }}
                         </span>
-                      </div>
-                      <div class="bank-detail__row">
-                        <span class="bank-detail__label">账号</span>
-                        <span class="bank-detail__value">
+                        <span class="bank-meta__item">
+                          <em>账号</em>
                           {{
                             getSelectedBank(cs.currencyId)?.bankAccount || '-'
                           }}
                         </span>
-                      </div>
-                      <div class="bank-detail__row">
-                        <span class="bank-detail__label">SWIFT</span>
-                        <span class="bank-detail__value">
+                        <span class="bank-meta__item">
+                          <em>SWIFT</em>
                           {{ getSelectedBank(cs.currencyId)?.swiftCode || '-' }}
                         </span>
                       </div>
-                    </div>
+                    </Tooltip>
                   </div>
                 </div>
               </template>
@@ -363,8 +418,6 @@ function formatMonth(val: null | string | undefined): string {
                         <span class="conversion-card__amount">
                           {{ formatAmount(cs.originalTotal) }}
                         </span>
-                      </div>
-                      <div class="conversion-card__foot">
                         <span class="conversion-card__rate">
                           {{ t('exchangeRate') }} {{ cs.rate.toFixed(4) }}
                         </span>
@@ -385,45 +438,89 @@ function formatMonth(val: null | string | undefined): string {
                       {{ formatAmount(grandConvertedTotal) }}
                     </span>
                   </div>
-                  <div
+                  <Tooltip
                     v-if="settlementSelectedBank"
-                    class="bank-detail bank-detail--inline"
+                    :title="
+                      [
+                        `开户行 ${settlementSelectedBank?.bankName || '-'}`,
+                        `账号 ${settlementSelectedBank?.bankAccount || '-'}`,
+                        `SWIFT ${settlementSelectedBank?.swiftCode || '-'}`,
+                      ].join(' · ')
+                    "
                   >
-                    <div class="bank-detail__row">
-                      <span class="bank-detail__label">开户行</span>
-                      <span class="bank-detail__value">
+                    <div class="bank-meta bank-meta--block">
+                      <span class="bank-meta__item">
+                        <em>开户行</em>
                         {{ settlementSelectedBank?.bankName || '-' }}
                       </span>
-                    </div>
-                    <div class="bank-detail__row">
-                      <span class="bank-detail__label">账号</span>
-                      <span class="bank-detail__value">
+                      <span class="bank-meta__item">
+                        <em>账号</em>
                         {{ settlementSelectedBank?.bankAccount || '-' }}
                       </span>
-                    </div>
-                    <div class="bank-detail__row">
-                      <span class="bank-detail__label">SWIFT</span>
-                      <span class="bank-detail__value">
+                      <span class="bank-meta__item">
+                        <em>SWIFT</em>
                         {{ settlementSelectedBank?.swiftCode || '-' }}
                       </span>
                     </div>
-                  </div>
+                  </Tooltip>
                 </template>
               </template>
             </Card>
 
-            <!-- 附件信息 -->
+            <!-- 附件信息（按类型分组） -->
             <Card size="small" class="attachment-card">
               <template #title>
                 <span class="font-semibold">{{ t('attachment') }}</span>
               </template>
               <div
-                v-if="attachments.length === 0"
+                v-if="!hasAttachments"
                 class="py-2 text-center text-gray-400"
               >
                 {{ $t('common.noData') }}
               </div>
-              <FileUploadInput v-else :model-value="attachments" disabled />
+              <div v-else class="review-attachments">
+                <section
+                  v-for="group in visibleAttachmentGroups"
+                  :key="group.key"
+                  class="review-attachment-group"
+                >
+                  <div class="review-attachment-group__title">
+                    {{ group.name }}
+                  </div>
+                  <div class="review-attachment-group__files">
+                    <button
+                      v-for="(item, index) in group.items"
+                      :key="`${item.attachmentId}-${index}`"
+                      type="button"
+                      class="review-attachment-file"
+                      :title="getAttachmentFileName(item)"
+                      @click="openAttachment(item)"
+                    >
+                      <IconifyIcon icon="mdi:file-outline" />
+                      <span>{{ getAttachmentFileName(item) }}</span>
+                    </button>
+                  </div>
+                </section>
+                <section
+                  v-if="settlementAttachments.length > 0"
+                  class="review-attachment-group"
+                >
+                  <div class="review-attachment-group__title">结算附件</div>
+                  <div class="review-attachment-group__files">
+                    <button
+                      v-for="item in settlementAttachments"
+                      :key="item.id || item.attachmentId"
+                      type="button"
+                      class="review-attachment-file"
+                      :title="getAttachmentFileName(item)"
+                      @click="openAttachment(item)"
+                    >
+                      <IconifyIcon icon="mdi:file-outline" />
+                      <span>{{ getAttachmentFileName(item) }}</span>
+                    </button>
+                  </div>
+                </section>
+              </div>
             </Card>
           </div>
         </Spin>
@@ -504,6 +601,7 @@ function formatMonth(val: null | string | undefined): string {
                       :columns="feeInnerColumns"
                       :data-source="group.children"
                       :pagination="false"
+                      :scroll="{ x: feeInnerTableScrollX }"
                       row-key="feeId"
                       size="small"
                     >
@@ -583,7 +681,7 @@ function formatMonth(val: null | string | undefined): string {
 <style scoped>
 @media (max-width: 1280px) {
   .review-layout__aside {
-    flex-basis: 320px;
+    flex-basis: 300px;
   }
 }
 
@@ -612,8 +710,8 @@ function formatMonth(val: null | string | undefined): string {
 }
 
 .review-layout__aside {
-  flex: 0 0 380px;
-  min-width: 0;
+  flex: 0 0 360px;
+  min-width: 280px;
   height: 100%;
   overflow: hidden;
 }
@@ -633,23 +731,73 @@ function formatMonth(val: null | string | undefined): string {
 
 .summary-card {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
 }
 
 .summary-card :deep(.ant-card-head) {
   flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 12px;
 }
 
 .summary-card :deep(.ant-card-body) {
   flex: 1;
   min-height: 0;
+  padding: 10px 12px;
   overflow-y: auto;
 }
 
 .attachment-card {
   flex-shrink: 0;
+}
+
+.attachment-card :deep(.ant-card-body) {
+  max-height: 180px;
+  padding: 10px 12px;
+  overflow-y: auto;
+}
+
+.review-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-attachment-group__title {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #595959;
+}
+
+.review-attachment-group__files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.review-attachment-file {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: #1677ff;
+  white-space: nowrap;
+  cursor: pointer;
+  background: #f5f8ff;
+  border: 1px solid #e8eef6;
+  border-radius: 4px;
+}
+
+.review-attachment-file:hover {
+  background: #eef4ff;
+  border-color: #c9dcff;
 }
 
 /* 下方通铺费用明细 */
@@ -694,101 +842,51 @@ function formatMonth(val: null | string | undefined): string {
   overflow: hidden;
 }
 
-.currency-cards {
+.currency-cards,
+.conversion-cards {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.currency-card {
-  display: flex;
-  flex: 1;
   flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-  padding: 10px 16px;
-  background: #f6f9ff;
+  overflow: hidden;
   border: 1px solid #e8eef6;
   border-radius: 6px;
 }
 
-.currency-card__header {
+.currency-card,
+.conversion-card {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  background: #f6f9ff;
+  border-bottom: 1px solid #e8eef6;
+}
+
+.currency-card:last-child,
+.conversion-card:last-child {
+  border-bottom: 0;
+}
+
+.currency-card__header,
+.conversion-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   align-items: center;
 }
 
 .currency-card__amount {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   color: #1890ff;
-}
-
-.bank-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
-  background: #fff;
-  border: 1px dashed #d9e2ec;
-  border-radius: 4px;
-}
-
-.bank-detail--inline {
-  margin-top: 10px;
-}
-
-.bank-detail__row {
-  display: flex;
-  gap: 6px;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.bank-detail__label {
-  flex-shrink: 0;
-  width: 44px;
-  color: #8c8c8c;
-}
-
-.bank-detail__value {
-  color: #262626;
-  word-break: break-all;
-}
-
-.conversion-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.conversion-card {
-  flex: 1;
-  min-width: 140px;
-  padding: 10px 14px;
-  background: #f6f9ff;
-  border: 1px solid #e8eef6;
-  border-radius: 6px;
-}
-
-.conversion-card__head {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 6px;
+  word-break: keep-all;
 }
 
 .conversion-card__amount {
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
   color: #262626;
-}
-
-.conversion-card__foot {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .conversion-card__rate {
@@ -797,27 +895,60 @@ function formatMonth(val: null | string | undefined): string {
 }
 
 .conversion-card__converted {
-  font-size: 13px;
+  margin-left: auto;
+  font-size: 12px;
   font-weight: 600;
   color: #1890ff;
+}
+
+.bank-meta {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #595959;
+}
+
+.bank-meta--block {
+  padding: 6px 8px;
+  margin-top: 8px;
+  background: #f6f9ff;
+  border: 1px dashed #d9e2ec;
+  border-radius: 4px;
+}
+
+.bank-meta__item {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bank-meta__item em {
+  margin-right: 4px;
+  font-style: normal;
+  color: #8c8c8c;
 }
 
 .conversion-total-bar {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding-top: 10px;
-  margin-top: 10px;
+  padding-top: 8px;
+  margin-top: 8px;
   border-top: 1px solid #e8eef6;
 }
 
 .conversion-total-bar__label {
-  font-size: 13px;
+  font-size: 12px;
   color: #8c8c8c;
 }
 
 .conversion-total-bar__amount {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: #1890ff;
 }
