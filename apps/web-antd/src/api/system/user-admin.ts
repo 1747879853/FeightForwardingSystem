@@ -528,13 +528,14 @@ async function setUserRoles(
 }
 
 /**
- * 获取用户权限
+ * 获取指定用户最终生效的权限名称列表（角色权限 + 用户级授权/禁止后的结果）
+ * @see GET /api/services/app/UserAdmin/GetUserPermissions
  */
-async function getUserPermissions(userId: number): Promise<string[]> {
+async function getUserPermissions(userId: number | string): Promise<string[]> {
   return requestClient.get<string[]>(
     '/services/app/UserAdmin/GetUserPermissionsAsync',
     {
-      params: { Id: userId },
+      params: { id: userId },
     },
   );
 }

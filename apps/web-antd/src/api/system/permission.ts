@@ -307,13 +307,13 @@ async function getRolePermissions(roleId: number) {
 }
 
 /**
- * 获取用户的权限名称集合
+ * 获取指定用户最终生效的权限名称集合（角色权限 + 用户级授权/禁止后的结果）
  * @param userId 用户ID
  */
-async function getUserPermissions(userId: number) {
+async function getUserPermissions(userId: number | string) {
   return requestClient.get<string[]>(
     '/services/app/UserAdmin/GetUserPermissionsAsync',
-    { params: { Id: userId } },
+    { params: { id: userId } },
   );
 }
 

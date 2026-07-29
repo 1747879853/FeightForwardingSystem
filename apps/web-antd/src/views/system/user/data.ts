@@ -633,6 +633,10 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
         options: [
           { code: 'edit', text: $t('common.edit') },
           { code: 'permission', text: $t('system.user.permission') },
+          {
+            code: 'viewPermissions',
+            text: $t('system.user.viewPermissions'),
+          },
           { code: 'setRoles', text: $t('system.user.setRoles') },
           {
             code: 'more',
@@ -654,7 +658,7 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       field: 'operation',
       fixed: 'right',
       title: $t('system.user.operation'),
-      width: 280,
+      width: 340,
     },
   ];
 }

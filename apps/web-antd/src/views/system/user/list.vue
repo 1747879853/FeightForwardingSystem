@@ -24,6 +24,7 @@ import PasswordModal from './modules/password-modal.vue';
 import ImportModal from './modules/import-modal.vue';
 import RoleAssignModal from './modules/role-assign-modal.vue';
 import BankAccountListModal from './modules/bank-account-list-modal.vue';
+import ViewPermissionsModal from './modules/view-permissions-modal.vue';
 
 const router = useRouter();
 
@@ -57,6 +58,12 @@ const [BankAccountListModalComponent, bankAccountListModalApi] = useVbenModal({
   destroyOnClose: true,
 });
 
+// 查看最终权限弹窗
+const [ViewPermissionsModalComponent, viewPermissionsModalApi] = useVbenModal({
+  connectedComponent: ViewPermissionsModal,
+  destroyOnClose: true,
+});
+
 /**
  * 操作列点击处理
  */
@@ -76,6 +83,10 @@ function onActionClick(e: OnActionClickParams<SystemUserAdminApi.SystemUser>) {
     }
     case 'permission': {
       onPermission(e.row);
+      break;
+    }
+    case 'viewPermissions': {
+      onViewPermissions(e.row);
       break;
     }
     case 'resetPermission': {
@@ -278,6 +289,13 @@ function onPermission(row: SystemUserAdminApi.SystemUser) {
 }
 
 /**
+ * 查看最终生效权限
+ */
+function onViewPermissions(row: SystemUserAdminApi.SystemUser) {
+  viewPermissionsModalApi.setData(row).open();
+}
+
+/**
  * 还原权限
  */
 async function onResetPermission(row: SystemUserAdminApi.SystemUser) {
@@ -348,6 +366,7 @@ function onRefresh() {
     <ImportModalComponent @success="onRefresh" />
     <RoleAssignModalComponent @success="onRefresh" />
     <BankAccountListModalComponent />
+    <ViewPermissionsModalComponent />
     <Grid :table-title="$t('system.user.list')">
       <template #toolbar-tools>
         <!-- <Button class="mr-2" danger @click="onBatchDelete">
