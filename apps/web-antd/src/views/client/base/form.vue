@@ -720,7 +720,7 @@ const handleIsSupplierChange = (e: any) => {
 /**
  * 更新干系人列表
  */
-const updateStakeholders = (
+const updateStakeholders = async (
   userAttribute: number | undefined,
   values: number[],
 ) => {
@@ -755,6 +755,38 @@ const updateStakeholders = (
       });
     }
   });
+
+  // 如果是销售角色且有选中值，取第一个人并更新所属公司
+  if (userAttribute === UserAttribute.Sales && values.length > 0) {
+    try {
+      const firstSalesUserId = values[0];
+      if (firstSalesUserId !== undefined) {
+        const userInfo = await getUser(firstSalesUserId, { silent: true });
+        
+        // 获取用户的默认组织（default=true的组织）
+        const defaultOrg = userInfo.organizations?.find(org => org.default);
+        
+        if (defaultOrg && defaultOrg.oneOrganizationPath && defaultOrg.oneOrganizationPath.length > 0) {
+          // 从组织路径中查找第一个公司（isCompany=true）
+          // 组织路径是从顶级到底级，公司通常在顶层
+          const companyOrg = defaultOrg.oneOrganizationPath.find(org => org.isCompany);
+          
+          if (companyOrg && companyOrg.id) {
+            // 更新基础信息表单中的所属公司字段
+            await baseFormApi.setValues({
+              orgId: companyOrg.id,
+            });
+            
+            console.log('✅ [销售联动] 已自动设置所属公司为:', companyOrg.name, '(ID:', companyOrg.id, ')');
+          } else {
+            console.warn('⚠️ [销售联动] 该销售人员的默认组织路径中未找到公司节点');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ [销售联动] 获取用户组织信息失败:', error);
+    }
+  }
 };
 
 /**
@@ -1739,3 +1771,9 @@ onMounted(() => {
   background: linear-gradient(to right, #1677ff18, #fff);
 }
 </style>
+
+
+
+
+
+

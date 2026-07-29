@@ -295,13 +295,35 @@ function handleEtdRangeChange(
     filterEtdEnd.value = '';
   }
 }
-function setSettlementName() {
-  baseStore.fetchClients({ pageIndex: 1, pageSize: 1000 });
-  const clients = baseStore.clients;
 
-  selectedSettlementName.value =
-    clients.find((item) => item.id === selectedSettlementId.value)?.name || '';
+/** ✅ 新增：根据 settlementId 自动更新 settlementName */
+async function updateSettlementNameById(settlementId: string) {
+  if (!settlementId) {
+    selectedSettlementName.value = '';
+    return;
+  }
+
+  try {
+    // 从 baseStore 中查找客户名称
+    const clients = baseStore.clients;
+    const client = clients.find((item) => item.id === settlementId);
+    
+    if (client) {
+      selectedSettlementName.value = client.name || '';
+    } else {
+      // 如果 store 中没有，尝试重新加载（可选）
+      await baseStore.fetchClients({ pageIndex: 1, pageSize: 1000 });
+      const updatedClient = baseStore.clients.find(
+        (item) => item.id === settlementId,
+      );
+      selectedSettlementName.value = updatedClient?.name || '';
+    }
+  } catch (error) {
+    console.error('更新结算单位名称失败:', error);
+    selectedSettlementName.value = '';
+  }
 }
+
 /** 打开费用选择抽屉 */
 function handleOpenFeeDrawer() {
   if (!props.settlementId) {
@@ -311,7 +333,7 @@ function handleOpenFeeDrawer() {
     selectedFeeRowKeys.value = [];
   } else {
     selectedSettlementId.value = props.settlementId;
-    setSettlementName();
+    updateSettlementNameById(props.settlementId);
     selectedCurrencyId.value = props.currencyId;
   }
 
@@ -327,6 +349,18 @@ async function handleSaveFeeSelection() {
 
   if (selectedFees.length === 0) {
     message.warning('请至少选择一个费用');
+    return;
+  }
+
+  // 检查所有选中的费用是否属于同一个结算对象
+  const settlementIds = selectedFees
+    .map((fee: any) => fee.orderFee?.settlementId)
+    .filter(Boolean); // 过滤掉 null/undefined 的 settlementId
+  
+  const uniqueSettlementIds = [...new Set(settlementIds)];
+  
+  if (uniqueSettlementIds.length > 1) {
+    message.error('不同结算对象的费用不能添加到同一个开票申请中，请确保所有选中的费用属于同一结算对象');
     return;
   }
 
@@ -496,7 +530,7 @@ watch(
   (newValue) => {
     if (newValue) {
       selectedSettlementId.value = newValue;
-      setSettlementName();
+      updateSettlementNameById(newValue);
     }
   },
 );
@@ -507,6 +541,14 @@ watch(
     if (newValue !== undefined) {
       selectedCurrencyId.value = newValue;
     }
+  },
+);
+
+// ✅ 新增：监听 selectedSettlementId 变化，自动更新名称
+watch(
+  () => selectedSettlementId.value,
+  (newValue) => {
+    updateSettlementNameById(newValue || '');
   },
 );
 

@@ -3,7 +3,6 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { useExpenseAllColumns } from '../data';
 import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
 import {
   Button,
@@ -24,6 +23,7 @@ import {
 } from 'ant-design-vue';
 import { $t } from '#/locales';
 import dayjs from 'dayjs';
+import { CircleHelp, IconifyIcon } from '@vben/icons';
 
 import * as feeConstants from '../data';
 
@@ -100,6 +100,145 @@ const transCurrencySymbol = (currencyId: number | undefined) => {
   return option ? option.label : String(currencyId);
 };
 
+/**
+ * 费用明细表格列定义（审核详情页专用）
+ */
+const useOrderFeeDetailColumns = () => {
+  return [
+    { type: 'checkbox', width: 48, fixed: 'left' },
+    {
+      title: $t('seaExport.export.orderFee.feeStatus'),
+      field: 'combinedFeeStatus',
+      width: 100,
+      align: 'center',
+      slots: {
+        default: ({ row }: any) => {
+          const task = row.task;
+
+          // 如果是删除申请且待审核状态，显示Tag和问号图标
+          if (task && task.taskType === 2 && task.taskStatus === 0) {
+            return h(
+              'div',
+              {
+                style:
+                  'display: flex; align-items: center; justify-content: center;',
+              },
+              [
+                h(
+                  Tag,
+                  {
+                    color:
+                      feeConstants
+                        .getFeeStatusOptions()
+                        .find((opt) => opt.value === row.combinedFeeStatus)
+                        ?.color || 'default',
+                  },
+                  () =>
+                    feeConstants
+                      .getFeeStatusOptions()
+                      .find((opt) => opt.value === row.combinedFeeStatus)
+                      ?.label || '--',
+                ),
+                h(IconifyIcon, {
+                  icon: 'ant-design:question-circle-outlined',
+                  style: 'cursor: pointer; color: #1890ff; font-size: 22px;',
+                  onClick: (e: Event) => {
+                    e.stopPropagation();
+                    showDeleteReason(row);
+                  },
+                }),
+              ],
+            );
+          }
+
+          // 其他情况正常显示费用状态Tag
+          return h(
+            Tag,
+            {
+              color:
+                feeConstants
+                  .getFeeStatusOptions()
+                  .find((opt) => opt.value === row.combinedFeeStatus)?.color ||
+                'default',
+            },
+            () =>
+              feeConstants
+                .getFeeStatusOptions()
+                .find((opt) => opt.value === row.combinedFeeStatus)?.label ||
+              '--',
+          );
+        },
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.feecodeName'),
+      field: 'feeCodeId',
+      width: 120,
+      formatter: ({ row }: any) => {
+        return row.feeCodeName || '--';
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.settlement'),
+      field: 'settlementId',
+      width: 120,
+      formatter: ({ row }: any) => {
+        return row.settlementName || '--';
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.currency'),
+      field: 'currencyId',
+      width: 70,
+      align: 'center',
+      formatter: ({ row }: any) => {
+        return row.currencyName || '--';
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.unitPrice'),
+      field: 'unitPriceStr',
+      width: 100,
+      align: 'right',
+    },
+    {
+      title: $t('seaExport.export.orderFee.amount'),
+      field: 'amountStr',
+      width: 100,
+      align: 'right',
+    },
+    {
+      title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
+      field: 'noTaxUnitPriceStr',
+      width: 110,
+      align: 'right',
+    },
+    {
+      title: $t('seaExport.export.orderFee.noTaxAmount'),
+      field: 'noTaxAmountStr',
+      width: 110,
+      align: 'right',
+    },
+    {
+      title: $t('seaExport.export.orderFee.remark'),
+      field: 'remark',
+      width: 150,
+      showOverflow: true,
+    },
+    {
+      title: $t('auditApproval.task.creatorUserName'),
+      field: 'creatorUserName',
+      width: 100,
+    },
+    {
+      title: $t('auditApproval.task.createTime'),
+      field: 'creationTime',
+      width: 155,
+      formatter: 'formatDateTime',
+    },
+  ];
+};
+
 const handleModifyTask = (
   orderFeeTasks: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
 ) => {
@@ -114,7 +253,7 @@ const handleModifyTask = (
     let modifyItem = item.task as ExpenseSubmissionAdminApi.TaskItemDto;
     let info = JSON.parse(modifyItem.info as string);
     Object.keys(info).forEach((key) => {
-      if (item[key] !== info[key]) {
+      if (item[key] !== info[key] && key !== 'combinedFeeStatus') {
         item[key] = `${item[key]} => [${info[key]}]`;
       }
     });
@@ -168,7 +307,7 @@ const normalizeOrderFeeWithRowKey = (
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
   gridOptions: {
     id: `sea-export-all-order-fee-${props.type}`,
-    columns: useExpenseAllColumns(),
+    columns: useOrderFeeDetailColumns(),
     height: '100%',
     minHeight: 200,
     keepSource: true,
@@ -293,6 +432,26 @@ onMounted(() => {
 defineExpose({
   getTableDate,
 });
+
+// 删除原因弹窗相关状态
+const deleteReasonModalVisible = ref<boolean>(false);
+const currentDeleteReason = ref<string>('');
+
+/**
+ * 显示删除原因弹窗
+ */
+const showDeleteReason = (row: any) => {
+  const task = row.task;
+  if (task && task.taskType === 2 && task.remark) {
+    currentDeleteReason.value = task.remark;
+    deleteReasonModalVisible.value = true;
+  } else if (task && task.taskType === 2) {
+    currentDeleteReason.value = '未填写删除原因';
+    deleteReasonModalVisible.value = true;
+  } else {
+    message.warning('该费用没有删除申请记录');
+  }
+};
 </script>
 
 <template>
@@ -314,6 +473,30 @@ defineExpose({
       </template>
     </Grid>
   </div>
+
+  <!-- 删除原因弹窗 -->
+  <Modal
+    v-model:open="deleteReasonModalVisible"
+    title="删除申请原因"
+    :footer="null"
+    width="500px"
+  >
+    <div style="padding: 16px 0">
+      <div style="margin-bottom: 8px; color: #666">删除原因：</div>
+      <div
+        style="
+          min-height: 60px;
+          padding: 12px;
+          word-wrap: break-word;
+          white-space: pre-wrap;
+          background: #f5f5f5;
+          border-radius: 4px;
+        "
+      >
+        {{ currentDeleteReason }}
+      </div>
+    </div>
+  </Modal>
 </template>
 
 <style scoped lang="scss">

@@ -563,9 +563,9 @@ const handlePrint = async () => {
       return;
     }
     const selectedIds = getSelectedRows()
-      .filter((row) => isSavedOrderFee(row))
-      .map((row) => row.id)
-      .filter(Boolean) as string[];
+        .filter((row) => isSavedOrderFee(row))
+        .map((row) => row.id)
+        .filter(Boolean) as string[];
     openPrint({
       printJsonType,
       ...templateContext,

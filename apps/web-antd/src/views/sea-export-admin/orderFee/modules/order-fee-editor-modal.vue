@@ -36,7 +36,10 @@ const orderBaseData = ref<SeaExportAdminApi.SeaExportDto | null>(null);
 
 // 订单详情加载状态标记（防止重复加载）
 const isLoadingOrderDetail = ref(false);
-
+const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
+  if (id == null) return [];
+  return [{ id, [labelKey]: name || '' }] as any[];
+};
 // 统一的订单详情加载函数（带缓存和防重复加载）
 const loadOrderDetailIfNeeded = async (transportOrderId: string) => {
   console.log(
@@ -305,7 +308,11 @@ const [Modal, modalApi] = useVbenModal({
           fieldsToSet.forEach((field) => {
             console.log(`  - ${field}:`, processedFeeData[field]);
           });
-
+          processedFeeData["feeCodeId"] = processedFeeData["feeCodeId_value"];
+          processedFeeData["currencyId"] = processedFeeData["currencyId_value"];
+          processedFeeData["settlementId"] = processedFeeData["settlementId_value"];
+          processedFeeData["unit"] = processedFeeData["unit_value"];
+          processedFeeData["industryCategory"] = processedFeeData["industryCategory_value"];
           // 设置表单值（使用处理后的数据）
           await orderFeeFormApi.setValues(processedFeeData);
 
@@ -317,95 +324,113 @@ const [Modal, modalApi] = useVbenModal({
             Object.keys(formValues || {}),
           );
 
-          // ✅ 关键修复：如果currencyId或feeCodeId仍然是名称而非ID，需要手动触发onChange来重新查询
-          if (
-            processedFeeData.feeCodeId &&
-            typeof processedFeeData.feeCodeId === 'string'
-          ) {
-            console.log(
-              '⚠️ [编辑模态框] feeCodeId可能是名称，尝试通过onChange重新查询...',
-            );
-
-            // 获取费用代码详情，将其转换为ID
-            try {
-              // 尝试将字符串作为ID查询
-              const feeCodeDetail = await getFeeCodeDetail(
-                processedFeeData.feeCodeId,
-              );
-              if (feeCodeDetail && feeCodeDetail.id) {
-                console.log(
-                  '✅ [编辑模态框] 成功获取费用代码详情，ID:',
-                  feeCodeDetail.id,
-                );
-                // 更新为正确的ID
-                await orderFeeFormApi.setFieldValue(
-                  'feeCodeId',
-                  feeCodeDetail.id,
-                );
-
-                // 同时更新currencyId
-                if (feeCodeDetail.currencyId) {
-                  await orderFeeFormApi.setFieldValue(
-                    'currencyId',
-                    feeCodeDetail.currencyId,
-                  );
-                  console.log(
-                    '✅ [编辑模态框] 更新currencyId为:',
-                    feeCodeDetail.currencyId,
-                  );
+          // ✅ 关键修复：动态更新ClientSelect的selectedItems，确保结算单位名称正确显示
+          if (currentFeeData.value) {
+            const settlementIdValue = (currentFeeData.value as any)?.settlementId_value || currentFeeData.value?.settlementId;
+            const settlementName = currentFeeData.value?.settlementName || currentFeeData.value?.settlementId || '';
+            
+            if (settlementIdValue != null) {
+              orderFeeFormApi.updateSchema([
+                {
+                  fieldName: 'settlementId',
+                  componentProps: {
+                    selectedItems: toSelectedItems(settlementIdValue, settlementName)
+                  }
                 }
-              } else {
-                console.warn('⚠️ [编辑模态框] 未能获取有效的费用代码详情');
-              }
-            } catch (error) {
-              console.error('❌ [编辑模态框] 查询费用代码详情失败:', error);
+              ]);
+              console.log('✅ [编辑模态框] 动态更新ClientSelect selectedItems:', { settlementIdValue, settlementName });
             }
           }
 
-          // 如果currencyId仍然是名称（字符串），尝试查询币别详情获取ID
-          if (
-            processedFeeData.currencyId &&
-            typeof processedFeeData.currencyId === 'string' &&
-            !processedFeeData.feeCodeId
-          ) {
-            console.log(
-              '⚠️ [编辑模态框] currencyId是名称且没有feeCodeId，尝试查询币别详情...',
-            );
+          // // ✅ 关键修复：如果currencyId或feeCodeId仍然是名称而非ID，需要手动触发onChange来重新查询
+          // if (
+          //   processedFeeData.feeCodeId &&
+          //   typeof processedFeeData.feeCodeId === 'string'
+          // ) {
+          //   console.log(
+          //     '⚠️ [编辑模态框] feeCodeId可能是名称，尝试通过onChange重新查询...',
+          //   );
 
-            try {
-              // 尝试根据名称查询币别列表
-              const currencyList = await getCurrencyPagedList({
-                Keyword: processedFeeData.currencyId,
-                PageIndex: 1,
-                PageSize: 10,
-              });
+          //   // 获取费用代码详情，将其转换为ID
+          //   try {
+          //     // 尝试将字符串作为ID查询
+          //     const feeCodeDetail = await getFeeCodeDetail(
+          //       processedFeeData.feeCodeId_value,
+          //     );
+          //     if (feeCodeDetail && feeCodeDetail.id) {
+          //       console.log(
+          //         '✅ [编辑模态框] 成功获取费用代码详情，ID:',
+          //         feeCodeDetail.id,
+          //       );
+          //       // 更新为正确的ID
+          //       await orderFeeFormApi.setFieldValue(
+          //         'feeCodeId',
+          //         feeCodeDetail.id,
+          //       );
 
-              if (currencyList.items && currencyList.items.length > 0) {
-                // 查找完全匹配的币别
-                const matchedCurrency = currencyList.items.find(
-                  (item: any) =>
-                    item.code === processedFeeData.currencyId ||
-                    item.cnName === processedFeeData.currencyId ||
-                    item.enName === processedFeeData.currencyId,
-                );
+          //       // 同时更新currencyId
+          //       if (feeCodeDetail.currencyId) {
+          //         await orderFeeFormApi.setFieldValue(
+          //           'currencyId',
+          //           feeCodeDetail.currencyId,
+          //         );
+          //         console.log(
+          //           '✅ [编辑模态框] 更新currencyId为:',
+          //           feeCodeDetail.currencyId,
+          //         );
+          //       }
+          //     } else {
+          //       console.warn('⚠️ [编辑模态框] 未能获取有效的费用代码详情');
+          //     }
+          //   } catch (error) {
+          //     console.error('❌ [编辑模态框] 查询费用代码详情失败:', error);
+          //   }
+          // }
 
-                if (matchedCurrency && matchedCurrency.id) {
-                  await orderFeeFormApi.setFieldValue(
-                    'currencyId',
-                    matchedCurrency.id,
-                  );
-                  console.log(
-                    '✅ [编辑模态框] 更新currencyId为ID:',
-                    matchedCurrency.id,
-                  );
-                } else {
-                  console.warn('⚠️ [编辑模态框] 未找到匹配的币别');
-                }
-              }
-            } catch (error) {
-              console.error('❌ [编辑模态框] 查询币别列表失败:', error);
-            }
-          }
+          // // 如果currencyId仍然是名称（字符串），尝试查询币别详情获取ID
+          // if (
+          //   processedFeeData.currencyId &&
+          //   typeof processedFeeData.currencyId === 'string' &&
+          //   !processedFeeData.feeCodeId
+          // ) {
+          //   console.log(
+          //     '⚠️ [编辑模态框] currencyId是名称且没有feeCodeId，尝试查询币别详情...',
+          //   );
+
+          //   try {
+          //     // 尝试根据名称查询币别列表
+          //     const currencyList = await getCurrencyPagedList({
+          //       Keyword: processedFeeData.currencyId,
+          //       PageIndex: 1,
+          //       PageSize: 10,
+          //     });
+
+          //     if (currencyList.items && currencyList.items.length > 0) {
+          //       // 查找完全匹配的币别
+          //       const matchedCurrency = currencyList.items.find(
+          //         (item: any) =>
+          //           item.code === processedFeeData.currencyId ||
+          //           item.cnName === processedFeeData.currencyId ||
+          //           item.enName === processedFeeData.currencyId,
+          //       );
+
+          //       if (matchedCurrency && matchedCurrency.id) {
+          //         await orderFeeFormApi.setFieldValue(
+          //           'currencyId',
+          //           matchedCurrency.id,
+          //         );
+          //         console.log(
+          //           '✅ [编辑模态框] 更新currencyId为ID:',
+          //           matchedCurrency.id,
+          //         );
+          //       } else {
+          //         console.warn('⚠️ [编辑模态框] 未找到匹配的币别');
+          //       }
+          //     }
+          //   } catch (error) {
+          //     console.error('❌ [编辑模态框] 查询币别列表失败:', error);
+          //   }
+          // }
 
           // 预加载订单详情（只加载一次，后续所有监听器共享）
           const transportOrderId =
@@ -1326,6 +1351,7 @@ function useOrderFeeFormSchema() {
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
+        selectedItems: toSelectedItems((currentFeeData.value as any)?.settlementId_value || currentFeeData.value?.settlementId, currentFeeData.value?.settlementName || currentFeeData.value?.settlementId)
       },
     },
     {

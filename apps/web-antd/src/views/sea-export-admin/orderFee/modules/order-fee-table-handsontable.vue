@@ -760,7 +760,7 @@ defineExpose({ getTableDate });
       ref="modifyModalRef"
       :rec-amount-map="recAmountMap || {}"
       :pay-amount-map="payAmountMap || {}"
-      @confirm="handleModalConfirm"
+      @confirm="actions.handleModalConfirm"
     />
 
     <OrderFeeAuditHistoryModal ref="auditHistoryModalRef" />

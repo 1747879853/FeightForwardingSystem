@@ -325,7 +325,7 @@ defineExpose({
               title: '委托编号',
               dataIndex: ['transportOrder', 'commissionNum'],
               key: 'commissionNum',
-              width: 160,
+              width: 100,
               ellipsis: true,
             },
             {
@@ -337,31 +337,48 @@ defineExpose({
             },
             {
               title: '委托单位',
-              dataIndex: ['transportOrder', 'clientName'],
               key: 'clientName',
               width: 150,
               ellipsis: true,
+              customRender: ({ record }) => {
+                return record.transportOrder?.client?.name || '--';
+              },
+            },
+            {
+              title: '订舱代理',
+              key: 'bookingAgentName',
+              width: 150,
+              ellipsis: true,
+              customRender: ({ record }) => {
+                return record.bookingAgent?.name || '--';
+              },
             },
             {
               title: '船公司',
-              dataIndex: 'carrierName',
               key: 'carrierName',
               width: 170,
               ellipsis: true,
+              customRender: ({ record }) => {
+                return record.carrier?.cnName || record.carrier?.enName || '--';
+              },
             },
             {
               title: '起运港',
-              dataIndex: 'pOLName',
-              key: 'pOLName',
+              key: 'polName',
               width: 130,
               ellipsis: true,
+              customRender: ({ record }) => {
+                return record.pol?.portName || record.pol?.cnName || '--';
+              },
             },
             {
               title: '目的港',
-              dataIndex: 'pODName',
-              key: 'pODName',
+              key: 'podName',
               width: 130,
               ellipsis: true,
+              customRender: ({ record }) => {
+                return record.pod?.portName || record.pod?.cnName || '--';
+              },
             },
             {
               title: '船名',
@@ -444,24 +461,30 @@ defineExpose({
             },
             {
               title: '费用名称',
-              dataIndex: 'feeCodeName',
               key: 'feeCodeName',
               width: 160,
               ellipsis: true,
+              customRender: ({ record }) => {
+                return record.feeCode?.cnName || '--';
+              },
             },
             {
               title: '结算对象',
-              dataIndex: 'settlementName',
               key: 'settlementName',
               width: 190,
               ellipsis: true,
+              customRender: ({ record }) => {
+                return record.settlement?.name || '--';
+              },
             },
             {
               title: '币别',
-              dataIndex: 'currencyCode',
               key: 'currencyCode',
               width: 80,
               ellipsis: true,
+              customRender: ({ record }) => {
+                return record.currency?.code || '--';
+              },
             },
             {
               title: '汇率',
