@@ -38,7 +38,7 @@ export function useBatchAddSettings(
     manualColumnResize: true,
     manualRowMove: false,
     fixedRowsTop: 0,
-    fixedColumnsLeft: 2, // 固定复选框和序号列
+    fixedColumnsLeft: 0, // 不默认固定任何列
     contextMenu: ['row_above', 'row_below', 'remove_row'],
     licenseKey: 'non-commercial-and-evaluation',
     enterMoves: { row: 0, col: 1 },

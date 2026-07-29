@@ -24,6 +24,8 @@ import { useBatchAddActions } from './composables/useBatchAddActions';
 
 // 导入核心表格组件
 import BatchAddTableCore from './BatchAddTableCore.vue';
+// 导入列配置组件
+import ColumnConfigModal from './ColumnConfigModal.vue';
 
 // 导入编辑接口
 import { batchEditSimpleSeFreiPrice } from '#/api/sea-export/freight-rate-admin';
@@ -408,7 +410,122 @@ const { hotSettings: rawHotSettings } = useBatchAddSettings(
   getSortIcon,
 );
 
+// ==================== 列配置管理 ====================
+
+// 列配置弹窗可见性
+const columnConfigVisible = ref(false);
+
+// 存储用户自定义的列配置
+const userColumnConfig = ref<Map<string, any>>(new Map());
+
+// 应用列配置到Handsontable
+const applyColumnConfig = (config: any[]) => {
+  // 更新用户配置
+  config.forEach(colConfig => {
+    userColumnConfig.value.set(colConfig.data, {
+      visible: colConfig.visible,
+      fixed: colConfig.fixed,
+      order: colConfig.order
+    });
+  });
+
+  // 获取当前的hotSettings值
+  const currentSettings = { ...rawHotSettings.value };
+  
+  // 过滤可见列
+  const visibleColumns = hotColumns.value.filter(col => {
+    const config = userColumnConfig.value.get(col.data);
+    return config ? config.visible !== false : true;
+  });
+
+  // 分离不同类型的列
+  const leftFixedColumns: any[] = [];
+  const rightFixedColumns: any[] = [];
+  const normalColumns: any[] = [];
+
+  visibleColumns.forEach(col => {
+    const config = userColumnConfig.value.get(col.data);
+    if (config?.fixed === 'left') {
+      leftFixedColumns.push(col);
+    } else if (config?.fixed === 'right') {
+      rightFixedColumns.push(col);
+    } else {
+      normalColumns.push(col);
+    }
+  });
+
+  // 按order排序每种类型的列
+  const sortColumnsByOrder = (cols: any[]) => {
+    return [...cols].sort((a, b) => {
+      const orderA = userColumnConfig.value.get(a.data)?.order ?? 999;
+      const orderB = userColumnConfig.value.get(b.data)?.order ?? 999;
+      return orderA - orderB;
+    });
+  };
+
+  const sortedLeftFixed = sortColumnsByOrder(leftFixedColumns);
+  const sortedNormal = sortColumnsByOrder(normalColumns);
+  const sortedRightFixed = sortColumnsByOrder(rightFixedColumns);
+
+  // 组合最终的列顺序：左侧固定 + 普通 + 右侧固定
+  const finalColumns = [...sortedLeftFixed, ...sortedNormal, ...sortedRightFixed];
+
+  // 计算固定列数量
+  const fixedColumnsLeft = sortedLeftFixed.length;
+  const fixedColumnsRight = sortedRightFixed.length;
+
+  // 创建新的hotSettings
+  const newHotSettings = {
+    ...currentSettings,
+    columns: finalColumns,
+    fixedColumnsLeft: fixedColumnsLeft,
+    fixedColumnsRight: fixedColumnsRight
+  };
+
+  // 更新shallowRef
+  hotSettings.value = newHotSettings;
+
+  // 更新Handsontable实例
+  if (coreTableRef.value?.hotTableRef?.hotInstance) {
+    coreTableRef.value.hotTableRef.hotInstance.updateSettings({
+      columns: finalColumns,
+      fixedColumnsLeft: fixedColumnsLeft,
+      fixedColumnsRight: fixedColumnsRight
+    });
+  }
+};
+
 const hotSettings = shallowRef(rawHotSettings.value);
+
+// 当前列配置（用于列配置弹窗）
+const currentColumnConfig = computed(() => {
+  return hotColumns.value.map((col: any, index: number) => {
+    const config = userColumnConfig.value.get(col.data) || {};
+    return {
+      data: col.data,
+      title: typeof col.title === 'function' ? col.title() : col.title,
+      visible: config.visible ?? true,
+      fixed: config.fixed ?? false,
+      order: config.order ?? index
+    };
+  });
+});
+
+// 保存列配置
+const saveColumnConfig = (config: any[]) => {
+  console.log('💾 保存列配置:', config);
+  
+  // 验证是否有可见列
+  const visibleCount = config.filter(col => col.visible).length;
+  if (visibleCount === 0) {
+    message.warning('至少需要保留一列可见');
+    return;
+  }
+  
+  applyColumnConfig(config);
+  columnConfigVisible.value = false;
+  message.success('列配置已保存');
+};
 
 // 定义 BatchAddTableCore 组件的类型
 interface BatchAddTableCoreInstance {
@@ -796,10 +913,25 @@ defineExpose({
             :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
             @change="actions.handleAddCtnType"
           />
+          <div class="column-config-container" style="position: relative;">
+            <Button 
+              shape="circle" 
+              @click="columnConfigVisible = !columnConfigVisible"
+              class="column-config-btn"
+              title="表格列配置"
+            >
+              <span class="icon-[ant-design--setting-outlined]"></span>
+            </Button>
+            <ColumnConfigModal
+              v-model="columnConfigVisible"
+              :columns="currentColumnConfig"
+              @save="saveColumnConfig"
+            />
+          </div>
         </Space>
       </div>
 
-      <!-- 编辑模式下只显示添加箱型 -->
+      <!-- 编辑模式下只显示添加箱型和列配置 -->
       <div v-else class="mb-4 flex items-center justify-end">
         <Space>
           <span class="text-gray-600">添加箱型：</span>
@@ -813,6 +945,16 @@ defineExpose({
             :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
             @change="actions.handleAddCtnType"
           />
+          <div class="column-config-container" style="position: relative;">
+            <Button @click="columnConfigVisible = !columnConfigVisible">
+              表格列配置
+            </Button>
+            <ColumnConfigModal
+              v-model="columnConfigVisible"
+              :columns="currentColumnConfig"
+              @save="saveColumnConfig"
+            />
+          </div>
         </Space>
       </div>
 
@@ -855,6 +997,27 @@ defineExpose({
   .handsontable-container {
     flex: 1;
     overflow: hidden;
+  }
+
+  .column-config-container {
+    display: inline-block;
+    
+    .column-config-btn {
+      //transition: all 0.3s ease;
+      
+      // &:hover {
+      //   transform: rotate(90deg);
+      //   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+      // }
+      
+      span[class^="icon-"] {
+        font-size: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 2px;
+      }
+    }
   }
 }
 </style>

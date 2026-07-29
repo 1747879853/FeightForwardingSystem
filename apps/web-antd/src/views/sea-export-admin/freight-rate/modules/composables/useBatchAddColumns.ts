@@ -28,12 +28,12 @@ export function useBatchAddColumns(
    */
   const hotColumns = computed(() => {
     const columns: any[] = [
-      {
-        data: '_checkbox',
-        type: 'checkbox',
-        width: 50,
-        className: 'htCenter',
-      },
+      // {
+      //   data: '_checkbox',
+      //   type: 'checkbox',
+      //   width: 50,
+      //   className: 'htCenter',
+      // },
       {
         data: 'carrierId',
         title: '船公司',
