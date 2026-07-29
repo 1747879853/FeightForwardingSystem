@@ -23,7 +23,7 @@ import {
 } from 'ant-design-vue';
 import { $t } from '#/locales';
 import dayjs from 'dayjs';
-import { CircleHelp } from '@vben/icons';
+import { CircleHelp, IconifyIcon } from '@vben/icons';
 
 import * as feeConstants from '../data';
 
@@ -109,47 +109,64 @@ const useOrderFeeDetailColumns = () => {
     {
       title: $t('seaExport.export.orderFee.feeStatus'),
       field: 'combinedFeeStatus',
-      width: 90,
-      align: 'center',
-      cellRender: {
-        name: 'CellTag',
-        options: feeConstants.getFeeStatusOptions(),
-      },
-    },
-    {
-      title: '任务状态',
-      field: 'taskStatus',
-      width: 150,
+      width: 100,
       align: 'center',
       slots: {
         default: ({ row }: any) => {
           const task = row.task;
-          let taskStatusText = '';
-          
-          if (task && task.taskType === 1 && task.taskStatus === 0) {
-            taskStatusText = $t('auditApproval.ApplyModification');
-          } else if (task && task.taskType === 2 && task.taskStatus === 0) {
-            taskStatusText = $t('auditApproval.ApplyDeletion');
-          }
-          
-          if (!taskStatusText) {
-            return h('span', '--');
-          }
-          
-          // 如果是删除申请,显示问号图标
+
+          // 如果是删除申请且待审核状态，显示Tag和问号图标
           if (task && task.taskType === 2 && task.taskStatus === 0) {
-            return h('div', { 
-              style: 'display: flex; align-items: center; justify-content: center; gap: 6px;' 
-            }, [
-              h('span', {}, taskStatusText),
-              h(CircleHelp, {
-                style: 'cursor: pointer; color: #1890ff; font-size: 16px;',
-                onClick: () => showDeleteReason(row),
-              }),
-            ]);
+            return h(
+              'div',
+              {
+                style:
+                  'display: flex; align-items: center; justify-content: center;',
+              },
+              [
+                h(
+                  Tag,
+                  {
+                    color:
+                      feeConstants
+                        .getFeeStatusOptions()
+                        .find((opt) => opt.value === row.combinedFeeStatus)
+                        ?.color || 'default',
+                  },
+                  () =>
+                    feeConstants
+                      .getFeeStatusOptions()
+                      .find((opt) => opt.value === row.combinedFeeStatus)
+                      ?.label || '--',
+                ),
+                h(IconifyIcon, {
+                  icon: 'ant-design:question-circle-outlined',
+                  style: 'cursor: pointer; color: #1890ff; font-size: 22px;',
+                  onClick: (e: Event) => {
+                    e.stopPropagation();
+                    showDeleteReason(row);
+                  },
+                }),
+              ],
+            );
           }
-          
-          return h('span', {}, taskStatusText);
+
+          // 其他情况正常显示费用状态Tag
+          return h(
+            Tag,
+            {
+              color:
+                feeConstants
+                  .getFeeStatusOptions()
+                  .find((opt) => opt.value === row.combinedFeeStatus)?.color ||
+                'default',
+            },
+            () =>
+              feeConstants
+                .getFeeStatusOptions()
+                .find((opt) => opt.value === row.combinedFeeStatus)?.label ||
+              '--',
+          );
         },
       },
     },
@@ -435,7 +452,6 @@ const showDeleteReason = (row: any) => {
     message.warning('该费用没有删除申请记录');
   }
 };
-
 </script>
 
 <template>
@@ -465,16 +481,16 @@ const showDeleteReason = (row: any) => {
     :footer="null"
     width="500px"
   >
-    <div style="padding: 16px 0;">
-      <div style="margin-bottom: 8px; color: #666;">删除原因：</div>
+    <div style="padding: 16px 0">
+      <div style="margin-bottom: 8px; color: #666">删除原因：</div>
       <div
         style="
+          min-height: 60px;
           padding: 12px;
+          word-wrap: break-word;
+          white-space: pre-wrap;
           background: #f5f5f5;
           border-radius: 4px;
-          min-height: 60px;
-          white-space: pre-wrap;
-          word-break: break-word;
         "
       >
         {{ currentDeleteReason }}

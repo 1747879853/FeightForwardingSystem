@@ -4,6 +4,46 @@ import type { SeaExportAdminApi } from './sea-export-admin';
 const API_PREFIX = '/services/app/OrderFeeAdmin';
 
 export namespace OrderFeeAdminApi {
+  // ==================== SimpleDto 类型定义（2026-07-29新增）====================
+
+  /** 港口代码简单信息 */
+  export interface PortCodeSimpleDto {
+    id?: number;
+    portName?: string | null;
+    cnName?: string | null;
+  }
+
+  /** 船公司简单信息 */
+  export interface CarrierSimpleDto {
+    id?: number;
+    code?: string | null;
+    cnName?: string | null;
+    cnShortName?: string | null;
+    enName?: string | null;
+    ediCode?: string | null;
+  }
+
+  /** 委托单位简单信息 */
+  export interface ClientSimpleDto {
+    id?: string;
+    name?: string | null;
+    code?: string | null;
+    fullName?: string | null;
+    enName?: string | null;
+  }
+
+  /** 费用代码简单信息 */
+  export interface FeeCodeSimpleDto {
+    id?: number;
+    cnName?: string | null;
+  }
+
+  /** 币别简单信息 */
+  export interface CurrencySimpleDto {
+    id?: number;
+    code?: string | null;
+  }
+
   /**
    * 字段说明（2026-06-02更新）：
    * - noTaxUnitPrice/noTaxAmount: 前端传入，后端直接存储并返回（不再后端计算）
@@ -336,10 +376,10 @@ export namespace OrderFeeAdminApi {
   export interface SeaExportFeeQueryInputDto {
     /** 委托单位id（TransportOrder.ClientId） */
     clientId?: string;
-    /** 船公司id（SeaExport.CarrierId） */
-    carrierId?: number;
     /** 订舱代理id（SeaExport.BookingAgentId） */
     bookingAgentId?: string;
+    /** 船公司id（SeaExport.CarrierId） */
+    carrierId?: number;
     /** 起运港id（SeaExport.POLId） */
     pOLId?: number;
     /** 目的港id（SeaExport.PODId） */
@@ -356,8 +396,8 @@ export namespace OrderFeeAdminApi {
     commissionNum?: string;
     /** 主提单号 */
     mblNum?: string;
-    /** 委托单位名称 */
-    clientName?: string;
+    /** 委托单位对象（2026-07-29更新：由 clientName 改为 client 对象） */
+    client?: ClientSimpleDto;
     /** 箱型箱量（按箱型名分组 "箱型*数量" 空格拼接） */
     totalCtn?: string;
   }
@@ -368,14 +408,14 @@ export namespace OrderFeeAdminApi {
     id: string;
     /** 收付类型 */
     paySide: number;
-    /** 费用名（费用代码名称） */
-    feeCodeName: string;
+    /** 费用代码对象（2026-07-29更新：由 feeCodeName 改为 feeCode 对象） */
+    feeCode?: FeeCodeSimpleDto;
     /** 结算对象类别（行业类别） */
     industryCategory: number;
-    /** 结算对象名称 */
-    settlementName: string;
-    /** 币别code */
-    currencyCode: string;
+    /** 结算对象对象（2026-07-29更新：由 settlementName 改为 settlement 对象，可空） */
+    settlement?: ClientSimpleDto;
+    /** 币别对象（2026-07-29更新：由 currencyCode 改为 currency 对象） */
+    currency?: CurrencySimpleDto;
     /** 汇率 */
     exchangeRate: number;
     /** 含税单价 */
@@ -404,12 +444,12 @@ export namespace OrderFeeAdminApi {
   export interface SeaExportFeeListDto {
     /** 海运出口id（即 TransportOrder.Id） */
     id: string;
-    /** 起运港名称 */
-    pOLName?: string;
-    /** 目的港名称 */
-    pODName?: string;
-    /** 船公司名称 */
-    carrierName?: string;
+    /** 起运港对象（2026-07-29更新：由 pOLName 改为 pol 对象） */
+    pol?: PortCodeSimpleDto;
+    /** 目的港对象（2026-07-29更新：由 pODName 改为 pod 对象） */
+    pod?: PortCodeSimpleDto;
+    /** 船公司对象（2026-07-29更新：由 carrierName 改为 carrier 对象） */
+    carrier?: CarrierSimpleDto;
     /** 船名 */
     vessel?: string;
     /** 航次 */
@@ -431,16 +471,6 @@ export namespace OrderFeeAdminApi {
     /** 是否引入原费用结算对象。true：保留源费用 SettlementId；false：将 SettlementId 改为目标业务的委托单位 ClientId */
     importOriginalSettlement: boolean;
   }
-
-  /** 为某条业务批量引入费用 */
-  export const importOrderFeesToTransportOrder = (
-    data: OrderFeeAdminApi.ImportOrderFeesToTransportOrderInputDto,
-  ) => {
-    return requestClient.post<string[]>(
-      `${API_PREFIX}/ImportOrderFeesToTransportOrderAsync`,
-      data,
-    );
-  };
 
   // ==================== 业务费用数量统计相关DTO ====================
 
