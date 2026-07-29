@@ -61,6 +61,7 @@ last_updated: 2026-07-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-29 | `Feature` | 添加费用抽屉启用发票制作方式选择；提交/保存前校验已选。 | 与新增页共用 `ensureInvoiceProcessSelected`；详见 `changelogs/change-log-2026-07-29-payment-application-invoice-process-in-add-fee.md`。 |
 | 2026-07-29 | `Fix` | 银行账户与发票制作取消按状态禁用；编辑态任意状态可保存。 | 去掉 `canEditBank` / `!isEntering` 禁用；附件始终本地全量保存；详见 `changelogs/change-log-2026-07-29-payment-application-bank-invoice-always-editable.md`。 |
 | 2026-07-28 | `Fix` | 从新增跳入编辑时延迟 2s 再拉取审核流程，等待工作流实例创建。 | `query.fromCreate=1` + `WorkflowTimeline.loadDelayMs`；详见 `changelogs/change-log-2026-07-28-payment-application-workflow-delay.md`。 |
 | 2026-07-28 | `Fix` | 费用明细卡片固定高度 650px，表格在卡片内占满剩余空间并内部滚动。 | `fee-detail-card` 固定高 + `NestedDataTable.fillHeight`；详见 `changelogs/change-log-2026-07-28-payment-application-fee-table-fill-height.md`。 |

@@ -530,6 +530,8 @@ function handleOpenAddFee() {
       ? resolveSettlementCurrencyNameFromSelect(currencyId)
       : '');
   addFeeDrawerRef.value?.open({
+    enableInvoiceProcess: true,
+    invoiceProcess: invoiceProcess.value,
     settlementId: settlementId.value || undefined,
     settlementName: settlementName.value || undefined,
     settlementCurrencyId: currencyId,
@@ -597,6 +599,10 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
   let createdApplicationId: string | undefined;
 
   if (!isEdit.value && newRows.length > 0) {
+    if (!ensureInvoiceProcessSelected()) {
+      feeDetailRows.value = nextRows;
+      return;
+    }
     submitting.value = true;
     try {
       createdApplicationId = await addPaymentApplication(
@@ -726,6 +732,15 @@ function onSettlementIdSync(val: string) {
 function ensureSettlementSelected() {
   if (!settlementId.value) {
     message.warning(t('noSettlementWarning'));
+    return false;
+  }
+  return true;
+}
+
+/** 新建付费申请必须明确选择发票制作方式；先付后票可在结算后补录票号和日期。 */
+function ensureInvoiceProcessSelected() {
+  if (invoiceProcess.value == null) {
+    message.warning('请选择发票制作方式');
     return false;
   }
   return true;
@@ -1029,6 +1044,9 @@ async function handleSave() {
   if (!ensureSettlementSelected()) {
     return;
   }
+  if (!isEdit.value && !ensureInvoiceProcessSelected()) {
+    return;
+  }
   if (feeDetailRows.value.length === 0) {
     message.warning(t('noFeeWarning'));
     return;
@@ -1060,6 +1078,9 @@ async function handleSubmit() {
   if (!ensureSettlementSelected()) {
     return;
   }
+  if (!ensureInvoiceProcessSelected()) {
+    return;
+  }
   if (feeDetailRows.value.length === 0) {
     message.warning(t('noFeeWarning'));
     return;
@@ -1082,6 +1103,9 @@ async function handleSubmitAndNew() {
   if (!ensureSettlementSelected()) {
     return;
   }
+  if (!ensureInvoiceProcessSelected()) {
+    return;
+  }
   if (feeDetailRows.value.length === 0) {
     message.warning(t('noFeeWarning'));
     return;
@@ -1102,6 +1126,7 @@ async function handleSubmitAndNew() {
 async function handleSubmitApplication() {
   if (!editId.value) return;
   if (!ensureSettlementSelected()) return;
+  if (!ensureInvoiceProcessSelected()) return;
   if (feeDetailRows.value.length === 0) {
     message.warning(t('noFeeWarning'));
     return;
@@ -1882,6 +1907,7 @@ void handleSubmitAndNew;
       <AddFeeDrawer
         ref="addFeeDrawerRef"
         @confirm="handleFeeConfirm"
+        @update:invoice-process="onInvoiceProcessChange"
         @update:settlement-currency-id="onSettlementCurrencyChangeFromDrawer"
         @update:settlement-id="onSettlementIdSync"
       />

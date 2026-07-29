@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: {} }),
+  useRoute: () => ({ params: {}, query: {} }),
   useRouter: () => ({ replace: mocks.replace }),
 }));
 
@@ -25,6 +25,7 @@ vi.mock('@vben/stores', () => ({
 vi.mock('#/locales', () => ({ $t: (key: string) => key }));
 
 vi.mock('#/components/workflow-timeline', () => ({
+  WorkflowTimeline: { render: () => null },
   useWorkflowTimeline: () => ({ open: vi.fn() }),
 }));
 
@@ -70,33 +71,53 @@ const SlotStub = defineComponent({
 });
 
 const AddFeeDrawerStub = defineComponent({
-  emits: ['confirm', 'update:settlement-currency-id', 'update:settlement-id'],
+  emits: [
+    'confirm',
+    'update:invoiceProcess',
+    'update:settlement-currency-id',
+    'update:settlement-id',
+  ],
   setup(_props, { emit, expose }) {
     expose({ open: vi.fn() });
+    const fees = [
+      {
+        amount: 100,
+        appliedAmount: 80,
+        currencyCode: 'USD',
+        currencyId: 1,
+        feeId: 'fee-1',
+        settlementId: 'client-1',
+        settledAmount: 0,
+        transportOrderId: 'order-1',
+        unRqstPaymentAmount: 100,
+      },
+    ];
+    const emitConfirm = () => {
+      emit('update:settlement-id', 'client-1');
+      emit('confirm', fees);
+    };
     return () =>
-      h(
-        'button',
-        {
-          'data-testid': 'confirm-fees',
-          onClick: () => {
-            emit('update:settlement-id', 'client-1');
-            emit('confirm', [
-              {
-                amount: 100,
-                appliedAmount: 80,
-                currencyCode: 'USD',
-                currencyId: 1,
-                feeId: 'fee-1',
-                settlementId: 'client-1',
-                settledAmount: 0,
-                transportOrderId: 'order-1',
-                unRqstPaymentAmount: 100,
-              },
-            ]);
+      h('div', [
+        h(
+          'button',
+          {
+            'data-testid': 'confirm-fees',
+            onClick: emitConfirm,
           },
-        },
-        'confirm fees',
-      );
+          'confirm fees',
+        ),
+        h(
+          'button',
+          {
+            'data-testid': 'confirm-fees-with-invoice',
+            onClick: () => {
+              emit('update:invoiceProcess', 1);
+              emitConfirm();
+            },
+          },
+          'confirm fees with invoice',
+        ),
+      ]);
   },
 });
 
@@ -107,12 +128,14 @@ describe('payment application add form', () => {
     mocks.getClientInvoiceInfoList.mockResolvedValue([]);
   });
 
-  it('saves selected fees as a draft and navigates to its edit page', async () => {
+  it('does not create an application until an invoice process is selected', async () => {
     const wrapper = shallowMount(PaymentApplicationForm, {
       global: {
         stubs: {
+          ACard: SlotStub,
           ASpin: SlotStub,
           AddFeeDrawer: AddFeeDrawerStub,
+          Card: SlotStub,
           Page: SlotStub,
           Spin: SlotStub,
         },
@@ -120,6 +143,28 @@ describe('payment application add form', () => {
     });
 
     await wrapper.get('[data-testid="confirm-fees"]').trigger('click');
+    await flushPromises();
+
+    expect(mocks.addPaymentApplication).not.toHaveBeenCalled();
+  });
+
+  it('saves selected fees using the invoice process selected in the fee drawer', async () => {
+    const wrapper = shallowMount(PaymentApplicationForm, {
+      global: {
+        stubs: {
+          ASpin: SlotStub,
+          AddFeeDrawer: AddFeeDrawerStub,
+          ACard: SlotStub,
+          Card: SlotStub,
+          Page: SlotStub,
+          Spin: SlotStub,
+        },
+      },
+    });
+
+    await wrapper
+      .get('[data-testid="confirm-fees-with-invoice"]')
+      .trigger('click');
     await flushPromises();
 
     expect(mocks.addPaymentApplication).toHaveBeenCalledWith(
@@ -132,6 +177,7 @@ describe('payment application add form', () => {
         ],
         settlementId: 'client-1',
         status: 0,
+        invoiceProcess: 1,
       }),
     );
     expect(mocks.replace).toHaveBeenCalledWith({

@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-29 付费申请添加费用抽屉必选发票制作方式](./changelogs/change-log-2026-07-29-payment-application-invoice-process-in-add-fee.md)
 - [2026-07-29 用户管理支持查看最终生效权限](./changelogs/change-log-2026-07-29-user-view-effective-permissions.md)
 - [2026-07-29 权限页顶部配置对象内容靠左](./changelogs/change-log-2026-07-29-permission-target-config-left-align.md)
 - [2026-07-29 付费审批右侧费用合计布局修复](./changelogs/change-log-2026-07-29-payment-review-fee-summary-layout.md)

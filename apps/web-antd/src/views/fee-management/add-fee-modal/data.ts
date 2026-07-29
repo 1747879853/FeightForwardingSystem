@@ -56,6 +56,10 @@ export function isSpecifiedCurrencyApplication(
 
 /** 组件 Props */
 export interface AddFeeDrawerProps {
+  /** 是否在抽屉内维护发票制作方式（仅付费申请场景启用） */
+  enableInvoiceProcess?: boolean;
+  /** 发票制作方式：0=先票后付，1=先付后票，2=不开票 */
+  invoiceProcess?: number;
   /** 结算对象 id（由外层表单传入） */
   settlementId?: string;
   /** 结算对象名称（用于 ClientSelect 回显） */
