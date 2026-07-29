@@ -1335,6 +1335,66 @@ void handleSubmitAndNew;
                 </Card>
               </div>
 
+              <Card size="small" class="invoice-card">
+                <template #title>
+                  <div class="invoice-card__title">
+                    <div class="section-title">
+                      <span
+                        class="section-title__icon section-title__icon--violet"
+                      >
+                        <img :src="invoiceTicketSvg" alt="" />
+                      </span>
+                      <span>发票制作</span>
+                    </div>
+                    <div class="invoice-tabs">
+                      <button
+                        v-for="option in [
+                          { label: '先票后付', value: 0 },
+                          { label: '先付后票', value: 1 },
+                          { label: '不开票', value: 2 },
+                        ]"
+                        :key="option.value"
+                        type="button"
+                        class="invoice-tab"
+                        :class="{
+                          'invoice-tab--active':
+                            invoiceProcess === option.value,
+                        }"
+                        @click="onInvoiceProcessChange(option.value)"
+                      >
+                        {{ option.label }}
+                      </button>
+                    </div>
+                  </div>
+                </template>
+                <div class="invoice-card__content">
+                  <div
+                    class="invoice-fields"
+                    :class="{ 'invoice-fields--collapsed': isNoInvoice }"
+                  >
+                    <div class="invoice-field">
+                      <Input
+                        v-model:value="invoiceNo"
+                        :bordered="false"
+                        class="invoice-field__control"
+                        placeholder="发票号"
+                        :disabled="isNoInvoice"
+                      />
+                    </div>
+                    <div class="invoice-field">
+                      <DatePicker
+                        v-model:value="invoiceDate"
+                        :bordered="false"
+                        class="invoice-field__control"
+                        value-format="YYYY-MM-DD"
+                        placeholder="开票日期"
+                        :disabled="isNoInvoice"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
               <!-- 中部：费用合计 -->
               <div class="center-column">
                 <Card size="small" class="settlement-currency-card">
@@ -1541,7 +1601,7 @@ void handleSubmitAndNew;
               </div>
             </div>
 
-            <!-- 右侧：附件上传 -->
+            <!-- 右侧：审核流程与附件 -->
             <div class="right-column">
               <Card size="small" class="workflow-card">
                 <template #title>
@@ -1566,60 +1626,16 @@ void handleSubmitAndNew;
                 />
               </Card>
 
-              <Card size="small" class="invoice-card">
+              <Card size="small" class="attachment-card">
                 <template #title>
                   <div class="section-title">
-                    <span
-                      class="section-title__icon section-title__icon--violet"
-                    >
-                      <img :src="invoiceTicketSvg" alt="" />
+                    <span class="section-title__icon section-title__icon--blue">
+                      <IconifyIcon icon="mdi:paperclip" />
                     </span>
-                    <span>发票制作</span>
+                    <span>附件</span>
                   </div>
                 </template>
-                <div class="invoice-tabs">
-                  <button
-                    v-for="option in [
-                      { label: '先票后付', value: 0 },
-                      { label: '先付后票', value: 1 },
-                      { label: '不开票', value: 2 },
-                    ]"
-                    :key="option.value"
-                    type="button"
-                    class="invoice-tab"
-                    :class="{
-                      'invoice-tab--active': invoiceProcess === option.value,
-                    }"
-                    @click="onInvoiceProcessChange(option.value)"
-                  >
-                    {{ option.label }}
-                  </button>
-                </div>
-                <div
-                  class="invoice-fields"
-                  :class="{ 'invoice-fields--collapsed': isNoInvoice }"
-                >
-                  <div class="invoice-field">
-                    <Input
-                      v-model:value="invoiceNo"
-                      :bordered="false"
-                      class="invoice-field__control"
-                      placeholder="发票号"
-                      :disabled="isNoInvoice"
-                    />
-                  </div>
-                  <div class="invoice-field">
-                    <DatePicker
-                      v-model:value="invoiceDate"
-                      :bordered="false"
-                      class="invoice-field__control"
-                      value-format="YYYY-MM-DD"
-                      placeholder="开票日期"
-                      :disabled="isNoInvoice"
-                    />
-                  </div>
-                </div>
-                <div class="invoice-documents">
+                <div class="attachment-card__content">
                   <AttachmentGroups
                     v-model="attachmentGroup"
                     :application-id="editId"
@@ -2299,26 +2315,30 @@ void handleSubmitAndNew;
 }
 
 .invoice-card {
-  display: flex;
-  flex-direction: column;
-  height: 289px;
+  min-width: 0;
 }
 
 .invoice-card :deep(.ant-card-body) {
+  padding: 12px 16px 16px;
+}
+
+.invoice-card__title {
   display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  padding: 4px 16px 16px;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+}
+
+.invoice-card__content {
+  display: block;
 }
 
 .invoice-tabs {
   display: grid;
-  flex-shrink: 0;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
+  width: min(100%, 360px);
   padding: 3px;
-  margin-bottom: 8px;
   background: #f7f8fa;
   border-radius: 7px;
 }
@@ -2346,8 +2366,8 @@ void handleSubmitAndNew;
 
 .invoice-fields {
   display: grid;
-  flex-shrink: 0;
-  gap: 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   max-height: 80px;
   margin-top: 0;
   overflow: hidden;
@@ -2356,6 +2376,22 @@ void handleSubmitAndNew;
     max-height 0.28s ease,
     opacity 0.2s ease,
     margin-top 0.28s ease;
+}
+
+@media (max-width: 640px) {
+  .invoice-card__title {
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .invoice-tabs {
+    flex: 1;
+    width: auto;
+  }
+
+  .invoice-fields {
+    grid-template-columns: 1fr;
+  }
 }
 
 .invoice-fields--collapsed {
@@ -2389,17 +2425,26 @@ void handleSubmitAndNew;
   box-shadow: none;
 }
 
-.invoice-documents {
+.attachment-card {
+  display: flex;
+  flex: 0 0 200px;
+  flex-direction: column;
+  height: 200px;
+  min-height: 0;
+}
+
+.attachment-card :deep(.ant-card-body) {
   display: flex;
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  margin-top: 8px;
+  padding: 4px 16px 16px;
 }
 
-.invoice-documents :deep(.payment-attachment-groups),
-.invoice-documents :deep(.ant-spin-nested-loading),
-.invoice-documents :deep(.ant-spin-container) {
+.attachment-card__content,
+.attachment-card__content :deep(.payment-attachment-groups),
+.attachment-card__content :deep(.ant-spin-nested-loading),
+.attachment-card__content :deep(.ant-spin-container) {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -2408,14 +2453,14 @@ void handleSubmitAndNew;
   min-height: 0;
 }
 
-.invoice-documents :deep(.attachment-type-grid) {
+.attachment-card__content :deep(.attachment-type-grid) {
   flex: 1;
   height: 100%;
   min-height: 0;
   max-height: none;
 }
 
-.invoice-documents :deep(.attachment-group) {
+.attachment-card__content :deep(.attachment-group) {
   height: 100%;
   min-height: 0;
   transition: height 0.28s ease;
