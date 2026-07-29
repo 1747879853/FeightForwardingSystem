@@ -262,7 +262,7 @@ export namespace InvoiceApplicationAdminApi {
 
   /** 删除开票申请DTO */
   export interface InvoiceApplicationDeleteDto {
-    id: string;
+    ids: string[];
   }
 
   /** 仅编辑主表DTO（不改动费用/商品明细） */

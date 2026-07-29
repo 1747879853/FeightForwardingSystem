@@ -292,10 +292,8 @@ function handleBatchDelete() {
     onOk: async () => {
       actionLoading.value = true;
       try {
-        // 注意：后端接口只支持单个删除，需要循环调用
-        for (const row of rows) {
-          await deleteInvoiceApplication({ id: row.id });
-        }
+        // 使用批量删除接口
+        await deleteInvoiceApplication({ ids: rows.map(row => row.id) });
         message.success('删除成功');
         handleRefresh();
       } catch (error) {

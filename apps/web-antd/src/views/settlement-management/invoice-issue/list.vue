@@ -95,7 +95,8 @@ function handleEdit(row: any) {
 /** 删除 */
 async function handleDelete(row: any) {
   try {
-    await deleteInvoiceIssue(row.id);
+    // 使用批量删除接口，传入单个ID的数组
+    await deleteInvoiceIssue([row.id]);
     message.success('删除成功');
     gridApi.query();
   } catch (error) {
@@ -118,16 +119,14 @@ async function handleBatchDelete() {
     cancelText: '取消',
     onOk: async () => {
       try {
-        // 逐个删除选中的记录
-        for (const row of selectedRows.value) {
-          await deleteInvoiceIssue(row.id);
-        }
+        // 使用批量删除接口，一次性传入所有ID
+        await deleteInvoiceIssue(selectedRows.value.map(row => row.id));
         message.success('批量删除成功');
         selectedRows.value = [];
         gridApi.query();
       } catch (error) {
         console.error('批量删除失败:', error);
-        //message.error('批量删除失败');
+        message.error('批量删除失败');
       }
     },
   });

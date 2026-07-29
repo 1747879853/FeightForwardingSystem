@@ -295,13 +295,35 @@ function handleEtdRangeChange(
     filterEtdEnd.value = '';
   }
 }
-function setSettlementName() {
-  baseStore.fetchClients({ pageIndex: 1, pageSize: 1000 });
-  const clients = baseStore.clients;
 
-  selectedSettlementName.value =
-    clients.find((item) => item.id === selectedSettlementId.value)?.name || '';
+/** ✅ 新增：根据 settlementId 自动更新 settlementName */
+async function updateSettlementNameById(settlementId: string) {
+  if (!settlementId) {
+    selectedSettlementName.value = '';
+    return;
+  }
+
+  try {
+    // 从 baseStore 中查找客户名称
+    const clients = baseStore.clients;
+    const client = clients.find((item) => item.id === settlementId);
+    
+    if (client) {
+      selectedSettlementName.value = client.name || '';
+    } else {
+      // 如果 store 中没有，尝试重新加载（可选）
+      await baseStore.fetchClients({ pageIndex: 1, pageSize: 1000 });
+      const updatedClient = baseStore.clients.find(
+        (item) => item.id === settlementId,
+      );
+      selectedSettlementName.value = updatedClient?.name || '';
+    }
+  } catch (error) {
+    console.error('更新结算单位名称失败:', error);
+    selectedSettlementName.value = '';
+  }
 }
+
 /** 打开费用选择抽屉 */
 function handleOpenFeeDrawer() {
   if (!props.settlementId) {
@@ -311,7 +333,7 @@ function handleOpenFeeDrawer() {
     selectedFeeRowKeys.value = [];
   } else {
     selectedSettlementId.value = props.settlementId;
-    setSettlementName();
+    updateSettlementNameById(props.settlementId);
     selectedCurrencyId.value = props.currencyId;
   }
 
@@ -496,7 +518,7 @@ watch(
   (newValue) => {
     if (newValue) {
       selectedSettlementId.value = newValue;
-      setSettlementName();
+      updateSettlementNameById(newValue);
     }
   },
 );
@@ -507,6 +529,14 @@ watch(
     if (newValue !== undefined) {
       selectedCurrencyId.value = newValue;
     }
+  },
+);
+
+// ✅ 新增：监听 selectedSettlementId 变化，自动更新名称
+watch(
+  () => selectedSettlementId.value,
+  (newValue) => {
+    updateSettlementNameById(newValue || '');
   },
 );
 

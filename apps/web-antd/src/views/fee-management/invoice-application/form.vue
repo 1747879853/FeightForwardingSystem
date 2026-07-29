@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router';
 import {
   Button,
   Card,
+  Dropdown,
   message,
   Form,
   Input,
@@ -617,6 +618,7 @@ onMounted(() => {
             <Card>
               <template #title>
                 <div style="width: 100%; text-align: center">
+                  <!-- ✅ 修复：添加 trigger 属性并正确绑定 disabled -->
                   <Dropdown :trigger="['click']" :disabled="isReadOnly">
                     <span
                       :style="{

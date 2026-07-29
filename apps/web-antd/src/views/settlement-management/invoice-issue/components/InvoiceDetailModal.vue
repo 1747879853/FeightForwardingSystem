@@ -133,7 +133,16 @@ function transformToTreeData(applications: any[]): any[] {
           mblNum: item.orderFee?.transportOrder?.mblNum || '-', // 主提单号
           hblNum: '-', // 分提单号（需要从其他地方获取）
           clientName: item.orderFee?.transportOrder?.clientName || '-', // 委托单位
-          etd: item.orderFee?.transportOrder?.etd || '-', // 开船日期
+          etd: (() => {
+            const etdValue = item.orderFee?.transportOrder?.etd;
+            if (!etdValue) return '-';
+            try {
+              return dayjs(etdValue).format('YYYY-MM-DD');
+            } catch (error) {
+              console.error('开船日期格式化失败:', error);
+              return etdValue;
+            }
+          })(), // 开船日期（只保留年月日）
           feeName: item.orderFee?.feeCodeName || '-', // 费用名称
           payReceiveType: item.orderFee?.paySide === 1 ? '应付' : '应收', // 收付
           currencyCode: item.orderFee?.currencyCode || '-', // 币别

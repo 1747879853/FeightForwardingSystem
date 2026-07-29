@@ -26,11 +26,11 @@ export function useComputed(
   const invoiceTypeOptions = [
     {
       label: '电子发票（普通发票）',
-      value: 'NormalElectric',
+      value: 'p', // ✅ 修复：使用后端API期望的枚举值 'p' (NormalElectric)
     },
     {
       label: '电子发票（增值税专用发票）',
-      value: 'Special',
+      value: 's', // ✅ 修复：使用后端API期望的枚举值 's' (Special)
     },
   ];
 
