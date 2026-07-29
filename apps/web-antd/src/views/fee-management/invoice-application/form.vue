@@ -569,13 +569,13 @@ onMounted(() => {
                     style="width: 100%"
                   />
                 </Form.Item>
-                <Form.Item label="开票公司">
+                <!-- <Form.Item label="开票公司">
                   <Input
                     :value="applicantCompanyName"
                     disabled
                     placeholder="根据归属组织自动获取"
                   />
-                </Form.Item>
+                </Form.Item> -->
                 <Form.Item label="开票申请人">
                   <Input :value="applicantName" disabled />
                 </Form.Item>

@@ -28,6 +28,15 @@ export function useGridFormSchema(): VbenFormSchema[] {
   return [
     {
       component: 'Input',
+      fieldName: 'keyword',
+      label: '关键字',
+       componentProps: {
+        placeholder: '主提单号/委托编号',
+        allowClear: true,
+      },
+    },
+    {
+      component: 'Input',
       fieldName: 'applicationNo',
       label: '申请单号',
       componentProps: {
@@ -114,6 +123,16 @@ export function useColumns(): VxeTableGridOptions<InvoiceApplicationApi.InvoiceA
     {
       field: 'invoiceNo',
       title: '发票号',
+      minWidth: 140,
+    },
+    {
+      field: 'mblNums',
+      title: '主提单号',
+      minWidth: 140,
+    },
+    {
+      field: 'commissionNums',
+      title: '委托编号',
       minWidth: 140,
     },
     {

@@ -352,6 +352,18 @@ async function handleSaveFeeSelection() {
     return;
   }
 
+  // 检查所有选中的费用是否属于同一个结算对象
+  const settlementIds = selectedFees
+    .map((fee: any) => fee.orderFee?.settlementId)
+    .filter(Boolean); // 过滤掉 null/undefined 的 settlementId
+  
+  const uniqueSettlementIds = [...new Set(settlementIds)];
+  
+  if (uniqueSettlementIds.length > 1) {
+    message.error('不同结算对象的费用不能添加到同一个开票申请中，请确保所有选中的费用属于同一结算对象');
+    return;
+  }
+
   const firstFee = selectedFees[0];
   const settlementId = firstFee.orderFee?.settlementId;
 

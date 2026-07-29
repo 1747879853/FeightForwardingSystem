@@ -114,7 +114,7 @@ const handleModifyTask = (
     let modifyItem = item.task as ExpenseSubmissionAdminApi.TaskItemDto;
     let info = JSON.parse(modifyItem.info as string);
     Object.keys(info).forEach((key) => {
-      if (item[key] !== info[key]) {
+      if (item[key] !== info[key] && key !== 'combinedFeeStatus') {
         item[key] = `${item[key]} => [${info[key]}]`;
       }
     });
