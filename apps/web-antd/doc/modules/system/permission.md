@@ -2,7 +2,7 @@
 title: 权限管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-07-24
+last_updated: 2026-07-29
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,6 +26,7 @@ last_updated: 2026-07-24
 - **数据权限说明：** 「自己」为系统默认行为，表单中不展示；子表由 `UserDataPermissionAdmin` 统一维护（不再调用 `UserDataPermissionItemAdmin`）；删除主规则会级联删除子表。
 - **模块权限文案：** 「模块权限」Tab 节点名称来自 `auth.json`（`auth.${权限码.replaceAll('.','_')}`），**以后端权限接口 `displayName` 为基准**；与左侧菜单 `meta.title` 不一致时，以接口返回为准（菜单文案可另行对齐）。
 - **模块权限搜索：** 在「模块权限」Tab 顶部输入关键词，按权限显示名称或权限码（如 `Admin.User.Get`）前端过滤树节点；保留命中节点的父级路径并自动展开；无匹配时提示「未找到匹配的权限」。切换角色/用户或 Tab 时搜索词自动清空。搜索仅影响树展示，保存时仍提交全量已选权限（含不可见节点）。
+- **配置对象区布局：** 顶部卡片占满整行；配置类型（角色/用户）与对象下拉横向靠左排列，下拉固定宽度，不随卡片拉满。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -48,6 +49,7 @@ last_updated: 2026-07-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-29 | `Style` | 顶部配置对象区卡片仍占满，内容改为横向 flex 靠左；角色/用户下拉固定 `w-56`。 | 去掉 `Row`/`Col` 满宽栅格，避免控件被拉满。 |
 | 2026-07-24 | `Fix` | 按最新权限接口补齐 13 个缺失 `auth.json` 键（客户失信、业务基础、业务联系单等）；`Admin.ReceiveSettlement` 文案改为「收费结算」。 | `Admin.PersonalSetting` 接口仍返回未本地化占位符，前端已有「个人设置」不改。 |
 | 2026-07-19 | `Fix` | 数据/表级/字段权限三个列表分别声明 `gridOptions.id`，避免同路由下列持久化互相覆盖。 | id：`systemPermissionDataList` / `systemPermissionTableList` / `systemPermissionPropList`；适配器优先用 `gridOptions.id` 作 `columnPersist.tableId`。 |
 | 2026-07-06 | `Fix` | 按后端权限接口 `displayName` 同步 `zh-CN/auth.json`：更新 99 处文案、新增 16 个缺失键（自动费用模板、第三方接口、船期等）；`en-US` 补充新增键英文翻译。 | 权限树文案来源为 `buildPermissionTree` + `$t('auth.*')`；接口未返回的历史键仍保留以免缺文案。 |

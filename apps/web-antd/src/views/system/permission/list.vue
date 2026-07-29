@@ -10,12 +10,10 @@ import {
   Alert,
   Button,
   Card,
-  Col,
   Input,
   message,
   Radio,
   RadioGroup,
-  Row,
   Select,
   Spin,
   TabPane,
@@ -402,64 +400,56 @@ onMounted(() => {
 <template>
   <Page auto-content-height>
     <div class="flex h-full flex-col gap-4">
-      <!-- 头部：选择配置对象 -->
+      <!-- 头部：选择配置对象（卡片占满，内容靠左） -->
       <Card size="small">
-        <Row :gutter="16" align="middle">
-          <Col :span="4">
-            <span class="font-medium"
-              >{{ $t('system.permission.targetType') }}:</span
-            >
-          </Col>
-          <Col :span="6">
-            <RadioGroup
-              v-model:value="targetType"
-              button-style="solid"
-              @change="handleTargetTypeChange"
-            >
-              <Radio value="role">{{
-                $t('system.permission.targetTypeRole')
-              }}</Radio>
-              <Radio value="user">{{
-                $t('system.permission.targetTypeUser')
-              }}</Radio>
-            </RadioGroup>
-          </Col>
-          <Col :span="4">
-            <span class="font-medium">
-              {{
-                targetType === 'role'
-                  ? $t('system.permission.selectRole')
-                  : $t('system.permission.selectUser')
-              }}:
-            </span>
-          </Col>
-          <Col :span="10">
-            <Select
-              v-if="targetType === 'role'"
-              v-model:value="selectedRoleId"
-              :loading="loadingOptions"
-              :options="roleOptions"
-              :placeholder="$t('system.permission.selectRole')"
-              allow-clear
-              show-search
-              option-filter-prop="label"
-              style="width: 100%"
-              @change="handleTargetChange"
-            />
-            <Select
-              v-else
-              v-model:value="selectedUserId"
-              :loading="loadingOptions"
-              :options="userOptions"
-              :placeholder="$t('system.permission.selectUser')"
-              allow-clear
-              show-search
-              option-filter-prop="label"
-              style="width: 100%"
-              @change="handleTargetChange"
-            />
-          </Col>
-        </Row>
+        <div class="flex flex-wrap items-center gap-4">
+          <span class="whitespace-nowrap font-medium"
+            >{{ $t('system.permission.targetType') }}:</span
+          >
+          <RadioGroup
+            v-model:value="targetType"
+            button-style="solid"
+            @change="handleTargetTypeChange"
+          >
+            <Radio value="role">{{
+              $t('system.permission.targetTypeRole')
+            }}</Radio>
+            <Radio value="user">{{
+              $t('system.permission.targetTypeUser')
+            }}</Radio>
+          </RadioGroup>
+          <span class="whitespace-nowrap font-medium">
+            {{
+              targetType === 'role'
+                ? $t('system.permission.selectRole')
+                : $t('system.permission.selectUser')
+            }}:
+          </span>
+          <Select
+            v-if="targetType === 'role'"
+            v-model:value="selectedRoleId"
+            :loading="loadingOptions"
+            :options="roleOptions"
+            :placeholder="$t('system.permission.selectRole')"
+            allow-clear
+            show-search
+            option-filter-prop="label"
+            class="w-56"
+            @change="handleTargetChange"
+          />
+          <Select
+            v-else
+            v-model:value="selectedUserId"
+            :loading="loadingOptions"
+            :options="userOptions"
+            :placeholder="$t('system.permission.selectUser')"
+            allow-clear
+            show-search
+            option-filter-prop="label"
+            class="w-56"
+            @change="handleTargetChange"
+          />
+        </div>
       </Card>
 
       <!-- 内容区：权限配置Tabs -->
