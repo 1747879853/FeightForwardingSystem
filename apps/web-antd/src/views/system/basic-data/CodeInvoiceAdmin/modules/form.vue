@@ -13,6 +13,7 @@ import {
   editCodeInvoice,
   getCodeInvoiceDetail,
 } from '#/api/system/base-data/code-invoice-admin';
+import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import { $t } from '#/locales';
 
 import { useFormSchema } from '../data';
@@ -31,6 +32,26 @@ const [Form, formApi] = useVbenForm({
   showDefaultActions: false,
   wrapperClass: 'grid-cols-2',
 });
+
+/**
+ * 历史数据仅保存币别代码。编辑时尽量将其转换为新的 CurrencyId；
+ * 找不到关联币别时保留为空，避免将代码误作为 ID 提交。
+ */
+const resolveLegacyCurrencyId = async (defaultCurrency?: string) => {
+  if (!defaultCurrency) {
+    return undefined;
+  }
+
+  const result = await getCurrencyPagedList({
+    Keyword: defaultCurrency,
+    PageIndex: 1,
+    PageSize: 100,
+  });
+  const currency = result.items.find(
+    (item) => item.code?.toLowerCase() === defaultCurrency.toLowerCase(),
+  );
+  return currency?.id;
+};
 
 const [Drawer, drawerApi] = useVbenDrawer({
   async onConfirm() {
@@ -62,7 +83,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
           hasPreferentialPolicy: values.hasPreferentialPolicy,
           preferentialPolicyDescription: values.preferentialPolicyDescription,
           isDefault: values.isDefault,
-          defaultCurrency: values.defaultCurrency,
+          currencyId: values.currencyId,
           specification: values.specification,
           unit: values.unit,
           enable: values.enable,
@@ -83,7 +104,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
           hasPreferentialPolicy: values.hasPreferentialPolicy,
           preferentialPolicyDescription: values.preferentialPolicyDescription,
           isDefault: values.isDefault,
-          defaultCurrency: values.defaultCurrency,
+          currencyId: values.currencyId,
           specification: values.specification,
           unit: values.unit,
           enable: values.enable,
@@ -110,6 +131,10 @@ const [Drawer, drawerApi] = useVbenDrawer({
       try {
         const detail = await getCodeInvoiceDetail(data.id);
         formData.value = detail;
+        const currencyId =
+          detail.currency?.id ??
+          detail.currencyId ??
+          (await resolveLegacyCurrencyId(detail.defaultCurrency));
         formApi.setValues({
           code: detail.code,
           name: detail.name,
@@ -122,7 +147,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
           hasPreferentialPolicy: detail.hasPreferentialPolicy,
           preferentialPolicyDescription: detail.preferentialPolicyDescription,
           isDefault: detail.isDefault,
-          defaultCurrency: detail.defaultCurrency,
+          currencyId,
           specification: detail.specification,
           unit: detail.unit,
           enable: detail.enable,
