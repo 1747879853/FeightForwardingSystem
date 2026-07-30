@@ -418,6 +418,31 @@
       "serviceItemCount": "Service Item Count",
       "userAttributeServiceOverview": "Overview",
       "noServiceConfigured": "Not configured"
+    },
+    "orderFeeTemplate": {
+      "title": "Order Fee Template",
+      "list": "Order Fee Template List",
+      "name": "Order Fee Template",
+      "templateName": "Template Name",
+      "businessType": "Business Type",
+      "paymentType": "Payment Type",
+      "isLongTerm": "Is Long Term",
+      "clientId": "Client",
+      "polId": "Port Of Loading",
+      "podId": "Port Of Discharge",
+      "serviceItemId": "Service Item",
+      "carrierId": "Carrier",
+      "bookingAgentId": "Booking Agent",
+      "currencyId": "Currency",
+      "feeCodeId": "Fee Code",
+      "settlementId": "Settlement",
+      "unitPrice": "Unit Price",
+      "quantity": "Quantity",
+      "totalAmount": "Total Amount",
+      "remark": "Remark",
+      "keyword": "Keyword",
+      "creationTime": "Creation Time",
+      "operation": "Operation"
     }
   },
   "user": {

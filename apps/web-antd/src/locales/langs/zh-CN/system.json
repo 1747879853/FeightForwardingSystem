@@ -420,6 +420,31 @@
       "serviceItemCount": "服务项数量",
       "userAttributeServiceOverview": "概览",
       "noServiceConfigured": "未配置"
+    },
+    "orderFeeTemplate": {
+      "title": "自动费用模板",
+      "list": "自动费用模板列表",
+      "name": "自动费用模板",
+      "templateName": "模板名称",
+      "businessType": "业务类型",
+      "paymentType": "收付类型",
+      "isLongTerm": "是否长期有效",
+      "clientId": "委托单位",
+      "polId": "起运港",
+      "podId": "目的港",
+      "serviceItemId": "服务项",
+      "carrierId": "船公司",
+      "bookingAgentId": "订舱代理",
+      "currencyId": "币别",
+      "feeCodeId": "费用代码",
+      "settlementId": "结算对象",
+      "unitPrice": "单价",
+      "quantity": "数量",
+      "totalAmount": "总金额",
+      "remark": "备注",
+      "keyword": "关键字",
+      "creationTime": "创建时间",
+      "operation": "操作"
     }
   },
   "user": {
