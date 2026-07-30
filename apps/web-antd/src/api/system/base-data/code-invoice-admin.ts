@@ -15,6 +15,14 @@ export enum ZeroTaxRateEnum {
 }
 
 export namespace CodeInvoiceAdminApi {
+  /** 币别简要信息 */
+  export interface CurrencySimpleDto {
+    id: number | string;
+    code?: string;
+    cnName?: string;
+    enName?: string;
+  }
+
   /** 新增发票商品编码参数 */
   export interface CodeInvoiceAddDto {
     code?: string;
@@ -28,7 +36,8 @@ export namespace CodeInvoiceAdminApi {
     hasPreferentialPolicy?: boolean;
     preferentialPolicyDescription?: string;
     isDefault?: boolean;
-    defaultCurrency?: string;
+    /** 默认币别 ID */
+    currencyId?: number | string;
     specification?: string;
     unit?: string;
     enable?: boolean;
@@ -50,7 +59,8 @@ export namespace CodeInvoiceAdminApi {
     hasPreferentialPolicy?: boolean;
     preferentialPolicyDescription?: string;
     isDefault?: boolean;
-    defaultCurrency?: string;
+    /** 默认币别 ID */
+    currencyId?: number | string;
     specification?: string;
     unit?: string;
     enable?: boolean;
@@ -72,6 +82,11 @@ export namespace CodeInvoiceAdminApi {
     hasPreferentialPolicy?: boolean;
     preferentialPolicyDescription?: string;
     isDefault?: boolean;
+    /** 默认币别 ID */
+    currencyId?: number | string;
+    /** 默认币别关联信息 */
+    currency?: CurrencySimpleDto;
+    /** 历史数据兼容字段 */
     defaultCurrency?: string;
     specification?: string;
     unit?: string;

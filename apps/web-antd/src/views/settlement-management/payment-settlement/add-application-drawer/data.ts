@@ -108,14 +108,26 @@ export function useApplicationColumns(): VxeTableGridOptions['columns'] {
       slots: { default: 'status' },
     },
     {
-      field: 'clientName',
+      field: 'settlement.name',
       title: '结算对象',
       minWidth: 120,
+      formatter: ({
+        row,
+      }: {
+        row: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
+      }) => row.settlement?.name ?? '',
     },
     {
-      field: 'currencyCode',
+      field: 'currency.code',
       title: '币别',
       width: 80,
+      formatter: ({
+        row,
+      }: {
+        row: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
+      }) =>
+        row.currency?.code ??
+        (row.currencyId == null || row.currencyId === 0 ? '原币' : ''),
     },
     {
       field: 'totalPayPrice',

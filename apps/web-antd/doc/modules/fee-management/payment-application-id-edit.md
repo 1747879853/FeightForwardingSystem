@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-07-29
+last_updated: 2026-07-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-07-29
 - **加载申请单：** 按申请单 ID 加载主表与费用明细。
 - **审核流程：** 右侧 `WorkflowTimeline` 按 `entityId` 拉取工作流；若路由带 `fromCreate=1`（新增刚保存跳入），延迟 2 秒再请求，避免实例尚未创建。
 - **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。
-- **发票附件：** 任意状态本地增删，保存走 `EditAsync.attachmentGroup` **全量覆盖**；详情 `paymentSettlementAttachments` 只读展示。
+- **发票附件：** 任意状态本地增删，保存走 `EditAsync.attachmentGroup` **全量覆盖**；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读展示（不再有平铺字段 `paymentSettlementAttachments`）。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。
 - **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次结算」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。
 - **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；「本次申请金额」只读；支持编号/费用名/委托单位/币别/ETD 页内筛选。
@@ -43,7 +43,9 @@ last_updated: 2026-07-29
 | **申请单 ID** | 编辑上下文主键。 | 路由动态段 `:id` | **触发/依赖：** 用于加载付款申请详情。 | 必须有效。 |
 | **审核状态** | 控制是否可编辑。 | `PaymentApplicationStatus` | **触发/依赖：** 与付款审核页面联动。 | 审核中或已完成状态不应随意修改。 |
 
-| **结算对象** | 付款申请及费用明细的结算客户。 | `settlementId` / `settlement` / `clientName` | **触发/依赖：** 主表 `ClientSelect` 编辑回显传 `selected-items`（优先 `settlement`，兜底 `settlementId`+`clientName`）；选择后锁定添加费用抽屉筛选；费用内层列展示 `settlementName`。 | 已有费用时不可清空。 |
+| **结算对象** | 付款申请及费用明细的结算客户。 | `settlementId` / `settlement`（`ClientSimpleDtoForOrder`） | **触发/依赖：** 主表 `ClientSelect` 编辑回显传 `selected-items`（用 `settlement`）；选择后锁定添加费用抽屉筛选；费用内层列展示 `settlementName`。 | 已有费用时不可清空；勿再读已删除的 `clientName`。 |
+
+| **结算币别** | 申请结算币别。 | `currencyId` / `currency`（`CurrencySimpleDto`） | **触发/依赖：** 展示名取 `currency.code`；原币申请时 `currency` 为 null。 | 勿再读已删除的 `currencyCode`。 |
 
 | **费用分组** | 编辑页与选费抽屉外层列表的分组维度。 | `GetOrderFeeGroupAsync` / 本地 `groupFeesByOrder` | **触发/依赖：** 按「业务 + 结算对象」联合分组；`row-key` 为复合键。 | 同一业务可对应多行（不同结算对象）；底部统计为组数非票数。 |
 
@@ -61,6 +63,8 @@ last_updated: 2026-07-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-30 | `Feature` | 详情结算对象/币别/结算附件改读对象化出参；结算附件从 `paymentSettlements[].attachments` 展平只读展示。 | 删除对 `clientName`/`currencyCode`/`paymentSettlementAttachments` 依赖。详见 `changelogs/change-log-2026-07-30-payment-application-settlement-objectified.md`。 |
+| 2026-07-29 | `Feature` | 添加费用抽屉启用发票制作方式选择；提交/保存前校验已选。 | 与新增页共用 `ensureInvoiceProcessSelected`；详见 `changelogs/change-log-2026-07-29-payment-application-invoice-process-in-add-fee.md`。 |
 | 2026-07-29 | `Fix` | 银行账户与发票制作取消按状态禁用；编辑态任意状态可保存。 | 去掉 `canEditBank` / `!isEntering` 禁用；附件始终本地全量保存；详见 `changelogs/change-log-2026-07-29-payment-application-bank-invoice-always-editable.md`。 |
 | 2026-07-28 | `Fix` | 从新增跳入编辑时延迟 2s 再拉取审核流程，等待工作流实例创建。 | `query.fromCreate=1` + `WorkflowTimeline.loadDelayMs`；详见 `changelogs/change-log-2026-07-28-payment-application-workflow-delay.md`。 |
 | 2026-07-28 | `Fix` | 费用明细卡片固定高度 650px，表格在卡片内占满剩余空间并内部滚动。 | `fee-detail-card` 固定高 + `NestedDataTable.fillHeight`；详见 `changelogs/change-log-2026-07-28-payment-application-fee-table-fill-height.md`。 |

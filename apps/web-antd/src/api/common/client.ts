@@ -118,6 +118,39 @@ export namespace ClientAppApi {
     /** 排序字段，默认 CreationTime DESC */
     sorting?: string;
   }
+
+  /** 业务来源简易输出（外键关联用） */
+  export interface CodeSourceSimpleDto {
+    /** 主键id */
+    id: number;
+    /** 代码 */
+    code?: null | string;
+    /** 中文名称 */
+    cnName?: null | string;
+    /** 英文名称 */
+    enName?: null | string;
+  }
+
+  /**
+   * 客户失信状态、业务来源与干系人（销售/客服/操作/单证）摘要
+   * 干系人分组逻辑与 ClientAdmin.DetailAsync 一致；数据权限与列表一致
+   */
+  export interface ClientDishonestStakeholderDto {
+    /** 客户id */
+    id: string;
+    /** 是否失信 */
+    isDishonest: boolean;
+    /** 业务来源 */
+    codeSource?: CodeSourceSimpleDto | null;
+    /** 干系人列表 销售 */
+    sales?: ClientStakeholderDto[] | null;
+    /** 干系人列表 客服 */
+    customerServices?: ClientStakeholderDto[] | null;
+    /** 干系人列表 操作 */
+    operations?: ClientStakeholderDto[] | null;
+    /** 干系人列表 单证 */
+    documentations?: ClientStakeholderDto[] | null;
+  }
 }
 
 const API_PREFIX = '/services/app/Client';
@@ -146,5 +179,18 @@ export const getClientPagedList = (params: ClientAppApi.ClientQueryDto) => {
 export const getClientGroupedByIndustryCategory = () => {
   return requestClient.get<ClientAppApi.ClientIndustryCategoryGroupItem[]>(
     `${API_PREFIX}/GetGroupedByIndustryCategoryAsync`,
+  );
+};
+
+/**
+ * 获取指定客户的失信状态、业务来源与干系人（销售/客服/操作/单证）
+ * 登录即可调用（非 ClientAdmin）；干系人分组与 Admin 详情一致
+ * 适用于业务页选择委托单位后带出业务来源与干系人
+ * @param id 客户id（Guid，建议传 string 避免精度丢失）
+ */
+export const getClientDishonestStakeholders = (id: string) => {
+  return requestClient.get<ClientAppApi.ClientDishonestStakeholderDto>(
+    `${API_PREFIX}/GetDishonestStakeholdersAsync`,
+    { params: { id } },
   );
 };

@@ -13,6 +13,7 @@ import {
   Modal,
   message,
   Pagination,
+  Select,
   Tag,
   Tooltip,
 } from 'ant-design-vue';
@@ -47,6 +48,7 @@ import {
 
 const emit = defineEmits<{
   confirm: [fees: SelectedFeeItem[]];
+  'update:invoiceProcess': [value: number | undefined];
   'update:settlementCurrencyId': [value: null | number];
   'update:settlementId': [value: string];
 }>();
@@ -613,6 +615,13 @@ function resolveSettlementCurrencyName(targetId: number): string {
 }
 
 function handleConfirm() {
+  if (
+    drawerProps.value.enableInvoiceProcess &&
+    drawerProps.value.invoiceProcess == null
+  ) {
+    message.warning('请选择发票制作方式');
+    return;
+  }
   const selected = getSelectedFees();
   if (selected.length === 0) {
     message.warning('请至少选择一条费用');
@@ -666,6 +675,9 @@ async function emitResult(fees: SelectedFeeItem[]) {
   if (settlementId) {
     emit('update:settlementId', String(settlementId));
   }
+  if (drawerProps.value.enableInvoiceProcess) {
+    emit('update:invoiceProcess', drawerProps.value.invoiceProcess);
+  }
   emit('confirm', fees);
   open.value = false;
 }
@@ -684,6 +696,14 @@ function onSettlementCurrencyChange(val: number | string | null) {
     settlementCurrencyId: nextValue,
   };
   emit('update:settlementCurrencyId', nextValue);
+}
+
+function onInvoiceProcessChange(value: number | undefined) {
+  drawerProps.value = {
+    ...drawerProps.value,
+    invoiceProcess: value,
+  };
+  emit('update:invoiceProcess', value);
 }
 
 const feeColumns = [
@@ -803,6 +823,24 @@ defineExpose({ open: openDrawer });
     <!-- 主体区域 -->
     <div class="mb-2 flex items-center gap-3">
       <div class="text-base font-semibold">费用明细</div>
+      <div
+        v-if="drawerProps.enableInvoiceProcess"
+        class="ml-auto flex items-center gap-2"
+      >
+        <span class="text-sm text-gray-600">发票制作方式</span>
+        <Select
+          :value="drawerProps.invoiceProcess"
+          :options="[
+            { label: '先票后付', value: 0 },
+            { label: '先付后票', value: 1 },
+            { label: '不开票', value: 2 },
+          ]"
+          placeholder="请选择"
+          size="small"
+          style="width: 140px"
+          @change="onInvoiceProcessChange"
+        />
+      </div>
       <span v-if="isSettlementCurrencyLocked" class="settlement-currency-mode">
         {{ lockedSettlementCurrencyText }}
       </span>

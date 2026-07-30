@@ -1147,8 +1147,13 @@ async function loadEditData() {
               applicationNo: app.applicationNo,
               status: 3, // 已审核通过
               settlementId: detail.settlementId,
-              clientName: app.settlement?.name ?? detail.settlement?.name ?? '',
-              currencyCode: app.currencyGroup?.[0]?.code || '',
+              settlement: app.settlement ?? detail.settlement ?? null,
+              currency: app.currencyGroup?.[0]?.code
+                ? {
+                    code: app.currencyGroup[0].code,
+                    defaultRate: 0,
+                  }
+                : null,
               currencyId: app.currencyGroup?.[0]?.id, // 从 currencyGroup 中获取第一个币别的ID
               creatorUserName: detail.creatorUserName,
               totalSettleablePriceUpperLimit: 0,
@@ -1935,10 +1940,12 @@ onMounted(() => {
               }}</a>
             </template>
             <template v-else-if="column.dataIndex === 'clientName'">
-              {{ record.application.clientName }}
+              {{ record.application.settlement?.name || '-' }}
             </template>
             <template v-else-if="column.dataIndex === 'currencyCode'">
-              <Tag color="red">{{ record.application.currencyCode }}</Tag>
+              <Tag color="red">{{
+                record.application.currency?.code || '原币'
+              }}</Tag>
             </template>
             <template v-else-if="column.dataIndex === 'settledPriceDisplay'">
               <!-- 固定币别申请：显示 userSettledPrice -->

@@ -946,8 +946,13 @@ defineExpose({
             @change="actions.handleAddCtnType"
           />
           <div class="column-config-container" style="position: relative;">
-            <Button @click="columnConfigVisible = !columnConfigVisible">
-              表格列配置
+            <Button 
+              shape="circle" 
+              @click="columnConfigVisible = !columnConfigVisible"
+              class="column-config-btn"
+              title="表格列配置"
+            >
+              <span class="icon-[ant-design--setting-outlined]"></span>
             </Button>
             <ColumnConfigModal
               v-model="columnConfigVisible"

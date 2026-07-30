@@ -13,6 +13,9 @@
 
 ## 2026-07
 
+- [2026-07-30 付费申请出参对象化与列表结算明细弹窗](./changelogs/change-log-2026-07-30-payment-application-settlement-objectified.md)
+- [2026-07-30 海运出口委托单位改走 Client 失信/干系人摘要接口](./changelogs/change-log-2026-07-30-sea-export-client-dishonest-stakeholders.md)
+- [2026-07-29 付费申请添加费用抽屉必选发票制作方式](./changelogs/change-log-2026-07-29-payment-application-invoice-process-in-add-fee.md)
 - [2026-07-29 用户管理支持查看最终生效权限](./changelogs/change-log-2026-07-29-user-view-effective-permissions.md)
 - [2026-07-29 权限页顶部配置对象内容靠左](./changelogs/change-log-2026-07-29-permission-target-config-left-align.md)
 - [2026-07-29 付费审批右侧费用合计布局修复](./changelogs/change-log-2026-07-29-payment-review-fee-summary-layout.md)

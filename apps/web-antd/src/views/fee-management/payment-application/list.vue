@@ -7,7 +7,7 @@ import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
-import { Button, message, Modal, Space } from 'ant-design-vue';
+import { Button, message, Modal, Space, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -16,6 +16,10 @@ import {
   PaymentApplicationStatus,
 } from '#/api/settlement-management/payment-application-admin';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
+import {
+  getPaymentApplicationStatusLabel,
+  resolvePaymentApplicationStatusTag,
+} from '#/constants/application-status';
 import { $t } from '#/locales';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import {
@@ -30,6 +34,7 @@ import {
   PAYMENT_APPLICATION_LIST_TABLE_ID,
   useGridFormSchema,
 } from './data';
+import SettlementDetailModal from './settlement-detail-modal.vue';
 
 const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
 
@@ -40,6 +45,41 @@ const { open: openWorkflowTimeline } = useWorkflowTimeline();
 const tableData = ref<PaymentApplicationAdminApi.PaymentApplicationDto[]>([]);
 /** 防止重建过程中的重入 */
 let rebuildingAppliedTotal = false;
+
+const settlementModalOpen = ref(false);
+const settlementModalApplicationNo = ref('');
+const settlementModalItems = ref<
+  PaymentApplicationAdminApi.PaymentSettlementForApplicationSimpleDto[]
+>([]);
+
+function canOpenSettlementDetail(status: number) {
+  return (
+    status === PaymentApplicationStatus.Partial ||
+    status === PaymentApplicationStatus.Settlemented
+  );
+}
+
+function getStatusTagProps(status: number) {
+  const {
+    label: _label,
+    value: _value,
+    ...tagProps
+  } = resolvePaymentApplicationStatusTag(status, (key) => $t(key));
+  return tagProps;
+}
+
+function getStatusLabel(status: number) {
+  return getPaymentApplicationStatusLabel(status, (key) => $t(key));
+}
+
+function handleStatusClick(
+  row: PaymentApplicationAdminApi.PaymentApplicationDto,
+) {
+  if (!canOpenSettlementDetail(row.status)) return;
+  settlementModalApplicationNo.value = row.applicationNo ?? '';
+  settlementModalItems.value = row.paymentSettlements ?? [];
+  settlementModalOpen.value = true;
+}
 
 /**
  * 重建「申请合计」相关列：以运行时锚点列状态为唯一数据源，
@@ -270,6 +310,17 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
       <template #appliedTotalAnchorHeader="{ column }">
         {{ column.params?.anchorHeader || column.title }}
       </template>
+      <template #status="{ row }">
+        <Tag
+          v-bind="getStatusTagProps(row.status)"
+          :class="{
+            'status-clickable': canOpenSettlementDetail(row.status),
+          }"
+          @click.stop="handleStatusClick(row)"
+        >
+          {{ getStatusLabel(row.status) }}
+        </Tag>
+      </template>
       <template #action="{ row }">
         <Button
           v-if="row.status !== PaymentApplicationStatus.Entering"
@@ -281,6 +332,12 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
         </Button>
       </template>
     </Grid>
+
+    <SettlementDetailModal
+      v-model:open="settlementModalOpen"
+      :application-no="settlementModalApplicationNo"
+      :settlements="settlementModalItems"
+    />
   </Page>
 </template>
 
@@ -289,5 +346,13 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
 :deep(.applied-total-currency-col .vxe-cell--title),
 :deep(.applied-total-currency-col .vxe-cell) {
   white-space: nowrap;
+}
+
+.status-clickable {
+  cursor: pointer;
+}
+
+.status-clickable:hover {
+  opacity: 0.85;
 }
 </style>
