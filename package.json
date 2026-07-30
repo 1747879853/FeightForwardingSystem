@@ -60,6 +60,7 @@
     "dev:tdesign": "pnpm -F @vben/web-tdesign run dev",
     "dev:play": "pnpm -F @vben/playground run dev",
     "deploy:antd": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/publish-web.ps1",
+    "deploy:antd:all": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/publish-all-web.ps1",
     "deploy:antd:demo": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/publish-web.ps1 -Environment demo",
     "deploy:antd:jiayue": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/publish-web.ps1 -Environment jiayue",
     "deploy:antd:jht": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/publish-web.ps1 -Environment jht",
