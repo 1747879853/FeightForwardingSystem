@@ -12,7 +12,7 @@ import { preferences } from '@vben/preferences';
 
 import { message } from 'ant-design-vue';
 
-import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import type { ClientAppApi } from '#/api/common/client';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
@@ -471,7 +471,7 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
   };
   /** 委托单位干系人角色 → 干系人面板角色（客户仅维护销售/客服/操作/单证四类） */
   const pickDefaultClientStakeholder = (
-    list?: ClientAdminApi.ClientStakeholderDto[],
+    list?: ClientAppApi.ClientStakeholderDto[] | null,
   ) => {
     if (!list?.length) return undefined;
     return list.find((item) => item.isDefault) ?? list[0];
@@ -482,15 +482,18 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
    * - 操作/单证/客服：客户未绑定时，兜底填当前登录账号
    * - 其余角色（商务/海外客服等）不在客户维度维护，保持原值不动
    * 仅在用户主动切换委托单位时调用，不改动商务等未绑定角色。
+   * 数据来自 Client/GetDishonestStakeholdersAsync（登录即可，非 Admin）。
    */
-  const applyClientDefaultOrderUsers = (client?: ClientAdminApi.ClientDto) => {
+  const applyClientDefaultOrderUsers = (
+    client?: ClientAppApi.ClientDishonestStakeholderDto,
+  ) => {
     const roleAssignment = new Map<
       number,
       { userId: number; userName?: string }
     >();
     const assignFromClient = (
       role: number,
-      list?: ClientAdminApi.ClientStakeholderDto[],
+      list?: ClientAppApi.ClientStakeholderDto[] | null,
     ) => {
       const picked = pickDefaultClientStakeholder(list);
       if (picked?.userId) {

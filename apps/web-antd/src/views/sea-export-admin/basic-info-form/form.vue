@@ -61,7 +61,7 @@ import {
   UserSelect,
 } from '#/adapter/component';
 import { type VbenFormSchema, useVbenForm } from '#/adapter/form';
-import { getClientDetail } from '#/api/sea-export/client-admin';
+import { getClientDishonestStakeholders } from '#/api/common/client';
 import { getCodeFrtDetail } from '#/api/system/base-data/code-frt-admin';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { formatOrgPathLabel } from '#/composables/use-all-user-org';
@@ -1220,31 +1220,36 @@ const queueSyncServiceTypesByPol = (args: {
 };
 /**
  * 委托单位变更：按客户表维护的业务来源自动带出到「业务来源」（不可手动填写）。
- * 仅有 id 时，业务来源下拉组件会按 id 自行拉取详情回显名称。
+ * 接口已返回 codeSource 简易对象，直接写入 selectedItems 回显名称，免二次详情请求。
  */
 const applyClientCodeSource = (
-  client: Awaited<ReturnType<typeof getClientDetail>> | undefined,
+  client:
+    | Awaited<ReturnType<typeof getClientDishonestStakeholders>>
+    | undefined,
 ) => {
-  const codeSourceId = client?.codeSourceId ?? undefined;
+  const codeSourceId = client?.codeSource?.id ?? undefined;
+  const codeSourceName = client?.codeSource?.cnName ?? '';
   headerCodeSourceId.value = codeSourceId;
   headerCodeSourceSelectedItems.value = toSelectedItems(
     codeSourceId,
-    '',
+    codeSourceName,
     'cnName',
   );
   void basicInfoFormApi.setFieldValue('codeSourceId', codeSourceId);
 };
 /**
- * 委托单位变更联动（仅拉取一次客户详情）：
+ * 委托单位变更联动（一次拉取失信/来源/干系人摘要，登录即可）：
  * 1) 「业务来源」按客户维护值自动带出；
  * 2) 新建态按其已绑定干系人默认回填干系人面板（缺失操作/单证/客服兜底当前账号）。
  */
 const applyClientDefaultOrderUsersByClientId = async (value: unknown) => {
   const clientId = toOptionalQueryValue(value);
-  let client: Awaited<ReturnType<typeof getClientDetail>> | undefined;
+  let client:
+    | Awaited<ReturnType<typeof getClientDishonestStakeholders>>
+    | undefined;
   if (clientId !== undefined) {
     try {
-      client = await getClientDetail(String(clientId));
+      client = await getClientDishonestStakeholders(String(clientId));
     } catch {
       client = undefined;
     }

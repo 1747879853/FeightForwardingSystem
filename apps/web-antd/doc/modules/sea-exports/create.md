@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-26
+last_updated: 2026-07-30
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-07-26
 
 - **AI 识别辅助：** 顶栏「AI识别」点击后弹出拖拽上传区（`ai-extract-upload-modal.vue`），支持 PDF、图片（png/jpg/jpeg/bmp/tiff/webp）与 Office（doc/docx/xls/xlsx/rtf）；拖入或点击选文件后自动调用 TextIn `ExtractSeaExportToAddDtoAsync`，由后端完成名称→id 匹配并回填表单；空值、`0`、空 Guid 不回填。识别成功自动关窗；失败可在弹窗内重试。
 - **品名选择交互：** “品名”改为可搜索的多选下拉，直接在主表单中完成选择，不再通过弹窗维护列表；下拉项与已选值展示为“品名-海关代码”，输入区宽度支持随内容自适应扩展（上限为父容器剩余宽度）。
-- **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。干系人展示信息与编辑页共用 `GetUserListByIdsAsync` 批量回显。
+- **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后调用 `Client/GetDishonestStakeholdersAsync`（登录即可）按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。干系人展示信息与编辑页共用 `GetUserListByIdsAsync` 批量回显。
 - **右侧栏与场站联系人：** 右侧主卡片为「干系人」。场站联系人/邮箱/手机/电话与编辑页一致挂在「场站」标签旁只读展示（新建态通常为空显示 `-`）；保存时随 `SeaExportAddDto` 透传（新建多为空）。
 - **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护，并按 `ServiceType.extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。
 - **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
@@ -41,14 +41,14 @@ last_updated: 2026-07-26
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **委托单位** | 委托客户，是运输单必填主体。 | `transportOrder.clientId`；`ClientSelect`（客户属性为委托单位）；`ClientAdmin.DetailAsync` | **触发/依赖：** 选择后参与服务项目联动查询（`clientId`）；并调用 `applyClientDefaultOrderUsers` 按客户绑定干系人回填，操作/单证/客服未绑定兜底当前账号。 | **必填项**（`selectRequired`）。 |
+| **委托单位** | 委托客户，是运输单必填主体。 | `transportOrder.clientId`；`ClientSelect`（客户属性为委托单位）；`Client/GetDishonestStakeholdersAsync` | **触发/依赖：** 选择后参与服务项目联动查询（`clientId`）；并调用 `applyClientDefaultOrderUsers` 按客户绑定干系人回填，操作/单证/客服未绑定兜底当前账号。 | **必填项**（`selectRequired`）。 |
 | **委托编号** | 业务委托号。 | `transportOrder.commissionNum`；按编号生成规则自动生成 |  | 前端禁用，不手工录入。 |
 | **会计期间** | 财务期间。 | `transportOrder.accountDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到月计算；无开船日期则取当前时间（到月）。 | 禁止手动修改。 |
 | **应结日期** | 结算日期。 | `transportOrder.settlementDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到天计算；无开船日期则取当前时间（到天），并结合委托单位账期规则。 | 禁止手动修改。 |
 | **所属公司** | 业务单所属公司。 | `organizationUnits` | **触发/依赖：** 新建、编辑保存后，后端根据干系人中销售所属公司自动生成。 | 禁止手动修改。 |
 | **归属组织** | 委托直属组织（必填）；头部按销售绑定可选范围。 | `orgId`；`UserOrgSelect`（`salesUserId` + `selectedItems` 回显） | **触发/依赖：** 干系人销售变化时选项范围切换；`formatOrgPathLabel` 展示完整路径；schema 隐藏载体保留 `selectRequired`。 | **必填项**。 |
 | **合同号** | 运输单合同号。 | `transportOrder.contractNum` | **触发/依赖：** 提交/回填走 `transportOrder`；复制入库由后端置空。 | 可空；`maxlength: 64`。 |
-| **业务来源** | 订单业务来源分类；头部只读，按委托单位客户表维护值带出。 | `transportOrder.codeSourceId`；客户 `codeSourceId`；`CodeSourceSelect` | **触发/依赖：** 选委托单位后 `applyClientCodeSource` 自动带出；不可手改。未选委托单位显示「按委托单位自动带出」；已选但无来源仅文本「-」不占下拉宽。 | 禁止手动修改。 |
+| **业务来源** | 订单业务来源分类；头部只读，按委托单位客户表维护值带出。 | `transportOrder.codeSourceId`；`Client/GetDishonestStakeholdersAsync` 的 `codeSource`；`CodeSourceSelect` | **触发/依赖：** 选委托单位后 `applyClientCodeSource` 用 `codeSource.id`/`cnName` 自动带出；不可手改。未选委托单位显示「按委托单位自动带出」；已选但无来源仅文本「-」不占下拉宽。 | 禁止手动修改。 |
 | **付费方式** | 运费付费方式。 | `transportOrder.codeFrtId`；与付费地点合并为 `FrtPrepareInput` | **触发/依赖：** 与 `prepareAtId` 同栏展示。 | - |
 | **付费地点** | 运费支付地点港口。 | `transportOrder.prepareAtId`；`PortSelect`（基础数据） | **触发/依赖：** 付费方式为预付时带出起运港（`polId`）；为到付时带出目的港（`podId`），带出后允许修改。 | - |
 | **运输条款 / 贸易条款** | 运输服务条款与贸易术语；视觉合并为一个表单项。 | `ServiceTradeTermsInput` -> `codeServiceId` + `tradeTermsType`（贸易条款枚举 CIF/FOB 等） | **触发/依赖：** 主字段 `codeServiceId`，第二字段经 `formContext` 写回 `tradeTermsType`；内部宽度 1:1。 | - |
@@ -80,6 +80,7 @@ last_updated: 2026-07-26
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-30 | `Refactor` | 选择委托单位后改走 `Client/GetDishonestStakeholdersAsync` 带出业务来源与干系人，不再调 `ClientAdmin/DetailAsync`。 | `getClientDishonestStakeholders` 入 `#/api/common/client`；`applyClientCodeSource` 读嵌套 `codeSource`；编辑态仍只更新来源、不重写干系人。详见 `changelogs/change-log-2026-07-30-sea-export-client-dishonest-stakeholders.md`。 |
 | 2026-07-26 | `Feature` | 干系人用户信息改为与编辑页共用的 `GetUserListByIdsAsync` 批量获取，不再逐个拉详情。 | 共用 `use-order-users.ts`；详见 `changelogs/change-log-2026-07-26-sea-export-order-users-batch-get.md`。 |
 | 2026-07-25 | `Perf` | 箱型选择从 option 取名称，选中时不再请求箱型详情 | 共用 `order-ctn-table`；`@change` 写 `ctnCodeName`，`syncCtnNameMap` 仅兜底回显 |
 | 2026-07-24 | `Feature` | 「AI识别」改为点击弹窗拖拽上传，放入文件后自动开始识别，成功回填后关窗。 | 新增 `ai-extract-upload-modal.vue`；`recognizeAiFile(File)` 替代隐藏 file input。详见 `changelogs/change-log-2026-07-24-sea-export-ai-extract-drag-upload-modal.md`。 |
