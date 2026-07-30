@@ -34,9 +34,19 @@ import {
   PAYMENT_APPLICATION_LIST_TABLE_ID,
   useGridFormSchema,
 } from './data';
+import InvoiceEditModal from './invoice-edit-modal.vue';
 import SettlementDetailModal from './settlement-detail-modal.vue';
 
 const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
+
+/** 发票流程：0=先票后付，1=先付后票，2=不开票 */
+const INVOICE_PROCESS_PAY_THEN_INVOICE = 1;
+
+const INVOICE_PROCESS_LABELS: Record<number, string> = {
+  0: '先票后付',
+  1: '先付后票',
+  2: '不开票',
+};
 
 const router = useRouter();
 const actionLoading = ref(false);
@@ -52,11 +62,25 @@ const settlementModalItems = ref<
   PaymentApplicationAdminApi.PaymentSettlementForApplicationSimpleDto[]
 >([]);
 
+const invoiceModalOpen = ref(false);
+const invoiceModalApplicationId = ref('');
+const invoiceModalApplicationNo = ref('');
+
 function canOpenSettlementDetail(status: number) {
   return (
     status === PaymentApplicationStatus.Partial ||
     status === PaymentApplicationStatus.Settlemented
   );
+}
+
+/** 仅「先付后票」可从列表点击维护发票信息（走 EditInvoiceAsync，不限 status） */
+function canOpenInvoiceEdit(invoiceProcess?: number | null) {
+  return invoiceProcess === INVOICE_PROCESS_PAY_THEN_INVOICE;
+}
+
+function getInvoiceProcessLabel(invoiceProcess?: number | null) {
+  if (invoiceProcess == null) return '';
+  return INVOICE_PROCESS_LABELS[invoiceProcess] ?? '';
 }
 
 function getStatusTagProps(status: number) {
@@ -79,6 +103,15 @@ function handleStatusClick(
   settlementModalApplicationNo.value = row.applicationNo ?? '';
   settlementModalItems.value = row.paymentSettlements ?? [];
   settlementModalOpen.value = true;
+}
+
+function handleInvoiceProcessClick(
+  row: PaymentApplicationAdminApi.PaymentApplicationDto,
+) {
+  if (!canOpenInvoiceEdit(row.invoiceProcess)) return;
+  invoiceModalApplicationId.value = row.id;
+  invoiceModalApplicationNo.value = row.applicationNo ?? '';
+  invoiceModalOpen.value = true;
 }
 
 /**
@@ -321,6 +354,17 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
           {{ getStatusLabel(row.status) }}
         </Tag>
       </template>
+      <template #invoiceProcess="{ row }">
+        <span
+          v-if="canOpenInvoiceEdit(row.invoiceProcess)"
+          class="invoice-process-clickable"
+          title="点击维护发票信息"
+          @click.stop="handleInvoiceProcessClick(row)"
+        >
+          {{ getInvoiceProcessLabel(row.invoiceProcess) }}
+        </span>
+        <span v-else>{{ getInvoiceProcessLabel(row.invoiceProcess) }}</span>
+      </template>
       <template #action="{ row }">
         <Button
           v-if="row.status !== PaymentApplicationStatus.Entering"
@@ -338,6 +382,13 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
       :application-no="settlementModalApplicationNo"
       :settlements="settlementModalItems"
     />
+
+    <InvoiceEditModal
+      v-model:open="invoiceModalOpen"
+      :application-id="invoiceModalApplicationId"
+      :application-no="invoiceModalApplicationNo"
+      @success="handleRefresh"
+    />
   </Page>
 </template>
 
@@ -354,5 +405,14 @@ useRefreshListOnFormReturn('PaymentApplicationList', handleRefresh);
 
 .status-clickable:hover {
   opacity: 0.85;
+}
+
+.invoice-process-clickable {
+  color: #1677ff;
+  cursor: pointer;
+}
+
+.invoice-process-clickable:hover {
+  text-decoration: underline;
 }
 </style>

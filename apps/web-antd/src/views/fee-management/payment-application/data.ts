@@ -313,14 +313,7 @@ function buildStaticColumns(): Array<Record<string, any>> {
       field: 'invoiceProcess',
       title: '发票流程',
       minWidth: 110,
-      formatter: ({ cellValue }: { cellValue?: number | null }) =>
-        cellValue === 0
-          ? '先票后付'
-          : cellValue === 1
-            ? '先付后票'
-            : cellValue === 2
-              ? '不开票'
-              : '',
+      slots: { default: 'invoiceProcess' },
     },
     {
       field: 'invoiceNo',

@@ -769,6 +769,19 @@ export namespace PaymentApplicationAdminApi {
     attachments: AttachmentItemForItemInputDto[];
   }
 
+  /**
+   * 仅编辑发票与附件（不判断 status）。
+   * attachmentGroup 全量覆盖，未带回的附件会被清空。
+   */
+  export interface PaymentApplicationInvoiceEditDto {
+    id: string;
+    /** 发票流程：0=先票后付，1=先付后票，2=不开票 */
+    invoiceProcess?: number | null;
+    invoiceNo?: string | null;
+    invoiceDate?: string | null;
+    attachmentGroup?: AttachmentGroupInputDto[] | null;
+  }
+
   /** 添加费用关联 DTO */
   export interface PaymentApplicationAddFeesDto {
     id: string;
@@ -867,6 +880,16 @@ export async function editPaymentApplication(
   data: PaymentApplicationAdminApi.PaymentApplicationEditDto,
 ) {
   return requestClient.put(`${API_PREFIX}/EditAsync`, data);
+}
+
+/**
+ * 仅编辑发票流程 / 发票号 / 开票日期 / 附件。
+ * 不判断 status；attachmentGroup 全量覆盖，须带回当前详情附件以免被清空。
+ */
+export async function editPaymentApplicationInvoice(
+  data: PaymentApplicationAdminApi.PaymentApplicationInvoiceEditDto,
+) {
+  return requestClient.put(`${API_PREFIX}/EditInvoiceAsync`, data);
 }
 
 /** 添加费用关联 */
