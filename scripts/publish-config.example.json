@@ -1,0 +1,34 @@
+{
+  "jht": {
+    "serverIp": "192.168.1.10",
+    "endpoint": "",
+    "siteName": "your-jht-site",
+    "userName": "deploy-user",
+    "password": "",
+    "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"
+  },
+  "jiayue": {
+    "serverIp": "192.168.1.11",
+    "endpoint": "",
+    "siteName": "your-jiayue-site",
+    "userName": "deploy-user",
+    "password": "",
+    "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"
+  },
+  "sjtd": {
+    "serverIp": "192.168.1.12",
+    "endpoint": "",
+    "siteName": "your-sjtd-site",
+    "userName": "deploy-user",
+    "password": "",
+    "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"
+  },
+  "demo": {
+    "serverIp": "192.168.1.13",
+    "endpoint": "",
+    "siteName": "your-demo-site",
+    "userName": "deploy-user",
+    "password": "",
+    "msDeployPath": "C:\\Program Files\\IIS\\Microsoft Web Deploy V3\\msdeploy.exe"
+  }
+}

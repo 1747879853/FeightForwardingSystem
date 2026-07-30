@@ -26,6 +26,8 @@ package-lock.json
 # local env files
 .env.local
 .env.*.local
+scripts/publish-config.local.json
+output/releases/
 .eslintcache
 
 logs
