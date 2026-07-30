@@ -32,9 +32,13 @@ export function useHotSettings(
       title: '费用代码',
       type: 'autocomplete',
       source: function (query: string, process: (items: string[]) => void) {
+        // ✅ 关键修复：每次调用时都动态获取最新的下拉数据
         const allOptions = dropdownSources.feeCodeList.value.map(
           (item: any) => item.label,
         );
+
+        console.log('🔍 [费用代码下拉] 当前选项数量:', allOptions.length);
+
         if (!query) {
           process(allOptions);
           return;

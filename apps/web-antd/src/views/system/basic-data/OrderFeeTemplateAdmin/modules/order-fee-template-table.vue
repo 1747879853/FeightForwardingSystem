@@ -7,14 +7,15 @@ import { useHotSettings } from './composables/useHotSettings';
 
 const props = defineProps<{
   dataSource: any[];
+  dropdownSources: any; // ✅ 新增：从父组件接收下拉数据源
 }>();
 
 const emit = defineEmits(['update:dataSource']);
 
 // ==================== Composables ====================
 
-// 下拉数据源管理
-const dropdownSources = useDropdownSources();
+// ✅ 使用父组件传递的dropdownSources，而不是自己创建
+const dropdownSources = props.dropdownSources;
 
 // 字段联动逻辑
 const linkage = useFieldLinkage(dropdownSources);

@@ -21,18 +21,21 @@ export function useFieldLinkage(dropdownSources: any) {
         (c: any) => c.value === feeDetail.currencyId,
       )?.label;
       if (currencyLabel) {
-        hotInstance.setDataAtCell(rowIndex, 'currencyId', currencyLabel);
+        // ✅ 修复：使用 setDataAtRowProp 而不是 setDataAtCell
+        hotInstance.setDataAtRowProp(rowIndex, 'currencyId', currencyLabel);
       }
     }
 
     // 自动填充单位
     if (feeDetail.unit) {
-      hotInstance.setDataAtCell(rowIndex, 'unit', feeDetail.unit);
+      // ✅ 修复：使用 setDataAtRowProp 而不是 setDataAtCell
+      hotInstance.setDataAtRowProp(rowIndex, 'unit', feeDetail.unit);
     }
 
     // 自动填充税率
     if (feeDetail.taxRate !== undefined && feeDetail.taxRate !== null) {
-      hotInstance.setDataAtCell(rowIndex, 'taxRate', feeDetail.taxRate);
+      // ✅ 修复：使用 setDataAtRowProp 而不是 setDataAtCell
+      hotInstance.setDataAtRowProp(rowIndex, 'taxRate', feeDetail.taxRate);
     }
   };
 
@@ -44,8 +47,8 @@ export function useFieldLinkage(dropdownSources: any) {
     industryCategory: string,
     hotInstance: any,
   ) => {
-    // 清空结算对象
-    hotInstance.setDataAtCell(rowIndex, 'settlementId', '');
+    // ✅ 修复：使用 setDataAtRowProp 而不是 setDataAtCell
+    hotInstance.setDataAtRowProp(rowIndex, 'settlementId', '');
 
     // 更新结算对象的下拉选项（在 afterBeginEditing 中处理）
   };
@@ -63,7 +66,8 @@ export function useFieldLinkage(dropdownSources: any) {
 
     // 计算不含税单价：不含税单价 = 含税单价 / (1 + 税率/100)
     const noTaxUnitPrice = unitPrice / (1 + taxRate / 100);
-    hotInstance.setDataAtCell(
+    // ✅ 修复：使用 setDataAtRowProp 而不是 setDataAtCell
+    hotInstance.setDataAtRowProp(
       rowIndex,
       'noTaxUnitPrice',
       parseFloat(noTaxUnitPrice.toFixed(2)),

@@ -318,6 +318,8 @@ async function loadDropdownData() {
 
     // ✅ 1. 加载费用代码列表（使用真实API）
     const feeCodeData = await getFeeCodeListAsync({ isSea: true });
+    console.log('📦 [loadDropdownData] API返回的原始数据:', feeCodeData);
+
     if (feeCodeData && Array.isArray(feeCodeData)) {
       dropdownSources.feeCodeList.value = feeCodeData.map((item: any) => {
         // ✅ 参考费用录入表格的格式：code-cnName
@@ -335,6 +337,15 @@ async function loadDropdownData() {
       });
       console.log(
         `✅ [loadDropdownData] 费用代码加载完成，共 ${dropdownSources.feeCodeList.value.length} 条`,
+      );
+      console.log(
+        '📋 [loadDropdownData] 前3条费用代码示例:',
+        dropdownSources.feeCodeList.value.slice(0, 3),
+      );
+    } else {
+      console.warn(
+        '⚠️ [loadDropdownData] 费用代码API返回数据异常:',
+        feeCodeData,
       );
     }
 
@@ -559,6 +570,7 @@ onMounted(() => {
         <OrderFeeTemplateTable
           ref="hotTableRef"
           v-model:data-source="feeItems"
+          :dropdown-sources="dropdownSources"
         />
         <div class="mt-2 text-xs text-gray-500">
           提示：右键点击表格可以添加/删除行
