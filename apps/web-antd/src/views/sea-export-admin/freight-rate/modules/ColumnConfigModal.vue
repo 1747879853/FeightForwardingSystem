@@ -100,6 +100,14 @@ const setColumnFixed = (data: string, position: 'left' | 'right' | false) => {
   }
 };
 
+// 取消列固定
+const unsetColumnFixed = (data: string) => {
+  const column = localColumns.value.find(col => col.data === data);
+  if (column) {
+    column.fixed = false;
+  }
+};
+
 // 上移列位置
 const moveColumnUp = (section: 'left' | 'normal' | 'right', index: number) => {
   let sectionColumns: ColumnConfig[] = [];
@@ -237,6 +245,17 @@ const handleClose = () => {
                 </svg>
               </span>
               <span 
+                class="pin-icon active"
+                :style="{ color: getPinColor(column.fixed) }"
+                @click="unsetColumnFixed(column.data)"
+                title="取消固定"
+              >
+                <!-- 取消固定图标 - 图钉带斜线 -->
+                <svg width="16" height="16" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/>
+                </svg>
+              </span>
+              <span 
                 class="pin-icon"
                 :style="{ color: getPinColor(column.fixed) }"
                 @click="setColumnFixed(column.data, 'right')"
@@ -298,6 +317,17 @@ const handleClose = () => {
                 </svg>
               </span>
               <span 
+                class="pin-icon active"
+                :style="{ color: getPinColor(column.fixed) }"
+                @click="unsetColumnFixed(column.data)"
+                title="取消固定"
+              >
+                <!-- 取消固定图标 - 图钉带斜线 -->
+                <svg width="16" height="16" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/>
+                </svg>
+              </span>
+              <span 
                 class="pin-icon"
                 :style="{ color: getPinColor(column.fixed) }"
                 @click="setColumnFixed(column.data, 'right')"
@@ -356,6 +386,17 @@ const handleClose = () => {
                 <!-- 左固定图标 - 向左箭头 -->
                 <svg width="16" height="16" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                </svg>
+              </span>
+              <span 
+                class="pin-icon active"
+                :style="{ color: getPinColor(column.fixed) }"
+                @click="unsetColumnFixed(column.data)"
+                title="取消固定"
+              >
+                <!-- 取消固定图标 - 图钉带斜线 -->
+                <svg width="16" height="16" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M16 9V4l1 0c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1l1 0v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/>
                 </svg>
               </span>
               <span 
