@@ -29,6 +29,7 @@ const routes: RouteRecordRaw[] = [
         'Admin.CountryCode',
         'Admin.GenerateNum',
         'Admin.ServiceConfig.SeServiceConfig',
+        'Admin.OrderFeeTemplate',
       ]),
     },
     name: 'BasicData',
@@ -249,6 +250,18 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/system/basic-data/SeServiceConfigAdmin/list.vue'),
+      },
+      {
+        path: '/basic-data/order-fee-template',
+        name: 'BasicDataOrderFeeTemplate',
+        meta: {
+          icon: 'mdi:receipt-text-outline',
+          keepAlive: true,
+          title: $t('system.basicData.orderFeeTemplate.title'),
+          authority: abpPageAuthority('Admin.OrderFeeTemplate'),
+        },
+        component: () =>
+          import('#/views/system/basic-data/OrderFeeTemplateAdmin/list.vue'),
       },
     ],
   },
