@@ -24,7 +24,7 @@ const routes: RouteRecordRaw[] = [
         path: 'statement',
         name: 'StatementList',
         meta: {
-          icon: 'mdi:cash-multiple',
+          icon: 'mdi:clipboard-text-outline',
           keepAlive: true,
           title: $t('seaExport.export.statement.title'),
           authority: abpPageAuthority('Admin.Statement'),
@@ -59,7 +59,7 @@ const routes: RouteRecordRaw[] = [
         path: 'invoice-application',
         name: 'InvoiceApplicationList',
         meta: {
-          icon: 'mdi:file-document-outline',
+          icon: 'mdi:receipt-text-outline',
           keepAlive: true,
           title: '开票申请',
           authority: abpPageAuthority('Admin.InvoiceApplication.Get'),
@@ -110,7 +110,7 @@ const routes: RouteRecordRaw[] = [
         path: 'payment-application',
         name: 'PaymentApplicationList',
         meta: {
-          icon: 'mdi:file-document-outline',
+          icon: 'mdi:cash-minus',
           keepAlive: true,
           title: $t('seaExport.export.paymentApplication.list'),
           authority: abpPageAuthority('Admin.PaymentApplication'),
@@ -148,7 +148,7 @@ const routes: RouteRecordRaw[] = [
         path: '/settlement-management/receive-settlement',
         name: 'ReceiveSettlementList',
         meta: {
-          icon: 'mdi:file-document-check-outline',
+          icon: 'mdi:cash-check',
           keepAlive: true,
           title: '收费核销',
           authority: abpPageAuthority('Admin.ReceiveSettlement.Get'),
