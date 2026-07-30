@@ -276,6 +276,35 @@ export namespace PaymentApplicationAdminApi {
     localCurrencyCode?: null | string;
   }
 
+  /** 币别简易对象（展示用） */
+  export interface CurrencySimpleDto {
+    /** 币别代码 */
+    code?: string;
+    /** 中文名称 */
+    cnName?: string;
+    /** 英文名称 */
+    enName?: string;
+    /** 默认对人民币汇率 */
+    defaultRate: number;
+  }
+
+  /** 本申请关联的付费结算简要（列表/详情） */
+  export interface PaymentSettlementForApplicationSimpleDto {
+    id: string;
+    /** 结算单号 */
+    settlementNo?: string;
+    /** 结算时间 */
+    settlementTime?: string;
+    /** 结算对象（结算单上的 SettlementId） */
+    settlement?: ClientSimpleDtoForOrder | null;
+    /** 结算币别（结算单上的 CurrencyId） */
+    currency?: CurrencySimpleDto | null;
+    /** 结算金额合计(结算币别)=SUM(SettledAmount * Rate)，整张结算单口径 */
+    totalSettledPrice?: number;
+    /** 该结算单附件（模块 PaymentSettlement）；无附件为空数组 */
+    attachments?: AttachmentItemDto[];
+  }
+
   /** 付费申请列表 DTO（通用） */
   export interface PaymentApplicationDto {
     id: string;
@@ -284,14 +313,14 @@ export namespace PaymentApplicationAdminApi {
     submitTime?: string;
     endTime?: string;
     settlementId: string;
-    /** 结算对象简易对象（编辑回显用） */
+    /** 结算对象；列表和详情都返回；客户不存在时为 null */
     settlement?: ClientSimpleDtoForOrder | null;
     currencyId?: number;
+    /** 申请结算币别；原币申请（无 currencyId）时为 null；列表和详情都返回 */
+    currency?: CurrencySimpleDto | null;
     require?: string;
     remark?: string;
     tenantId: number;
-    clientName?: string;
-    currencyCode?: string;
     creatorUserName?: string;
     currencyGroup?: CurrencyGroupDto[];
     totalPayPrice?: number;
@@ -308,6 +337,8 @@ export namespace PaymentApplicationAdminApi {
     invoiceProcess?: number | null;
     invoiceNo?: string | null;
     invoiceDate?: string | null;
+    /** 关联付费结算简要（含结算附件）；无关联时为空数组 */
+    paymentSettlements?: PaymentSettlementForApplicationSimpleDto[];
   }
 
   /** 付费申请列表 DTO（用于付费结算选择列表） */
@@ -338,18 +369,18 @@ export namespace PaymentApplicationAdminApi {
     endTime?: string;
     /** 结算对象ID */
     settlementId: string;
+    /** 结算对象 */
+    settlement?: ClientSimpleDtoForOrder | null;
     /** 币别ID（null=原币申请） */
     currencyId?: number;
+    /** 申请结算币别；原币申请时为 null */
+    currency?: CurrencySimpleDto | null;
     /** 支付要求 */
     require?: string;
     /** 备注 */
     remark?: string;
     /** 租户ID */
     tenantId?: number;
-    /** 结算对象名称 */
-    clientName?: string;
-    /** 币别代码 */
-    currencyCode?: string;
     /** 创建人名称 */
     creatorUserName?: string;
     /** 审核人ID */
@@ -675,8 +706,6 @@ export namespace PaymentApplicationAdminApi {
   export interface PaymentApplicationDetailDto extends PaymentApplicationDto {
     payAppFeeBySeaExportGroup?: PayAppFeeAndSeaExportDto[];
     attachmentGroup?: AttachmentGroupDto[];
-    /** 关联付费结算的只读附件 */
-    paymentSettlementAttachments?: AttachmentItemDto[];
   }
 
   /** 付费申请明细新增 DTO */

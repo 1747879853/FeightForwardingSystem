@@ -2,12 +2,12 @@
 title: 付款申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-07-30
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 付款申请列表用于查询、创建和进入付款申请单编辑，是应付费用付款流程入口。
+**白话解释：** 付款申请列表用于查询、创建和进入付款申请单编辑，是应付费用付款流程入口。对已部分结算/结算完毕的申请，可点击状态查看关联付费结算明细与附件。
 
 **路由与源码定位：**
 
@@ -17,38 +17,44 @@ last_updated: 2026-07-12
 | 路由名称 | `PaymentApplicationList` |
 | 页面组件 | `src/views/fee-management/payment-application/list.vue` |
 | 权限口径 | Admin.PaymentApplication / Admin.PaymentApplication.Get |
-| 关键源码 | `src/router/routes/modules/fee-management.ts`<br/>`src/views/fee-management/fee-lock/fee-lock-list.vue`<br/>`src/views/fee-management/fee-lock/fee-lock-data.ts`<br/>`src/views/fee-management/payment-application/list.vue`<br/>`src/views/fee-management/payment-application/form.vue`<br/>`src/views/fee-management/payment-application/data.ts`<br/>`src/views/fee-management/statement/index.vue`<br/>`src/views/fee-management/statement/editor.vue`<br/>`src/views/fee-management/statement/data.ts`<br/>`src/api/settlement-management/payment-application-admin.ts`<br/>`src/api/settlement-management/statement-admin.ts` |
+| 关键源码 | `src/router/routes/modules/fee-management.ts`<br/>`src/views/fee-management/payment-application/list.vue`<br/>`src/views/fee-management/payment-application/data.ts`<br/>`src/views/fee-management/payment-application/settlement-detail-modal.vue`<br/>`src/api/settlement-management/payment-application-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
 - **申请单查询：** 按申请状态、客户/供应商、时间等条件查询付款申请。
 - **创建申请：** 进入新增页选择可申请付款的费用。
-- **编辑申请：** 进入编辑页维护申请单明细。
+- **编辑申请：** 双击行进入编辑页维护申请单明细。
 - **申请合计列：** 列表按当前页数据动态展示各币别「{币别}申请合计」列（收+付原币合计）；列配置面板仅保留「申请合计」一项（可见锚点列，承载首个币别），像普通列一样可拖动、调宽、显隐并持久化，其余币别作为跟随列自动跟随锚点的显隐与顺序。
+- **结算明细弹窗：** 申请状态为「部分结算」「结算完毕」时，点击状态 Tag 弹出关联结算列表（单号/时间/结算对象/币别/金额/附件）；数据来自列表行 `paymentSettlements`，无需再请求详情。
 
 # 3. 状态流转说明 (Status Transitions)
 
-| 当前状态 | 触发人/动作  | 目标状态 | 状态说明                           |
-| :------- | :----------- | :------- | :--------------------------------- |
+| 当前状态 | 触发人/动作 | 目标状态 | 状态说明 |
+| :-- | :-- | :-- | :-- |
 | 页面初始 | 用户进入路由 | 页面可用 | 由动态路由与权限守卫完成组件挂载。 |
+| 部分结算 / 结算完毕 | 用户点击状态 Tag | 打开结算明细弹窗 | 其它状态不可点开结算明细。 |
 
 # 4. 核心字段说明 (Field Definitions)
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **申请状态** | 付款申请单当前处理阶段。 | `payment-application/data.ts` / `PaymentApplicationStatus` | **触发/依赖：** 影响编辑、提交和审核入口。 | 状态流转以后端枚举为准。 |
-| **申请金额** | 本次申请付款金额汇总。 | `form-data.ts` | **触发/依赖：** 由费用明细汇总而来。 | 不得超过可申请口径。 |
-
+| **申请状态** | 付款申请单当前处理阶段。 | `PaymentApplicationStatus` | **触发/依赖：** 部分结算/结算完毕可点击打开 `paymentSettlements` 弹窗。 | 状态流转以后端枚举为准。 |
+| **结算对象** | 申请结算客户简称。 | `settlement.name`（`ClientSimpleDtoForOrder`） | **触发/依赖：** 列表展示；勿再读已删除的 `clientName`。 | 客户不存在时为空。 |
+| **币别** | 申请结算币别代码。 | `currency.code`（`CurrencySimpleDto`） | **触发/依赖：** 原币申请（无 `currencyId`）展示「原币」。 | 只读。 |
+| **关联结算** | 本申请关联的付费结算简要。 | `paymentSettlements[]` | **触发/依赖：** 含结算附件 `attachments`；`totalSettledPrice` 为整单金额。 | 无关联时为空数组。 |
 | **{币别}申请合计** | 列表按币别展示的申请合计（原币）。 | `currencyGroup[].payAmount + receiveAmount` | **触发/依赖：** 当前页数据变化时动态生成列。 | 只读展示。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
 > [!IMPORTANT] **[卡点 1：付款申请列表一致性]** 付款申请需保证费用选择、申请金额和审核状态一致，避免重复申请或超额申请。
 
+> [!IMPORTANT] **[卡点 2：出参对象化破坏性变更]** 勿再兼容 `clientName` / `currencyCode` / `paymentSettlementAttachments`；结算附件仅在 `paymentSettlements[].attachments`，与申请自身 `attachmentGroup` 模块不同。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-30 | `Feature` | 列表结算对象/币别改读对象化字段；部分结算/结算完毕点击状态弹窗展示关联结算明细与附件。 | DTO 增 `currency`/`paymentSettlements`，删旧字符串与平铺附件；`settlement-detail-modal` 消费列表行数据。详见 `changelogs/change-log-2026-07-30-payment-application-settlement-objectified.md`。 |
 | 2026-07-12 | `Fix` | 「申请合计」改为可见锚点列，面板中可拖动/调宽/显隐并持久化，各币别跟随列自动跟随；修复取消勾选仍渲染、相邻「申请人」列无法调宽、拖动排序不生效。 | 锚点 `appliedTotal` 承载首个币别、`slots.header` 动态表头；`buildColumnsWithRuntime` 以 `grid.getFullColumns()` 运行时列为唯一数据源保留显隐/固定/宽/序；`visibleMethod` 隐藏跟随列；移除 `customChange` 中途重建。 |
 | 2026-07-12 | `Fix` | （已被同日方案取代）列配置「申请合计」曾用 0 宽隐藏锚点代理列。 | 旧 `syncAppliedTotalColumns` 方案与 Vxe 布局/拖拽冲突，已重构为可见锚点列。 |
 | 2026-07-12 | `Feature` | 列表按当前页币别动态生成「{币别}申请合计」列。 | `useColumns(rows)` + `watch(tableData)` 重建列；`calcRowAppliedTotal` 汇总 pay+receive。 |

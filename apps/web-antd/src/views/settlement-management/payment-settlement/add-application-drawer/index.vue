@@ -972,11 +972,19 @@ async function handleSecondLevelExpand(expanded: boolean, record: any) {
           }}
         </template>
 
+        <template v-else-if="column.key === 'clientName'">
+          {{
+            (
+              record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
+            ).settlement?.name || '-'
+          }}
+        </template>
+
         <template v-else-if="column.key === 'currencyCode'">
           {{
             (
               record as PaymentApplicationAdminApi.PaymentApplicationForSettlementDto
-            ).currencyCode || '原币'
+            ).currency?.code || '原币'
           }}
         </template>
 

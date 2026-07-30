@@ -94,19 +94,18 @@ import {
 function toSettlementSelectedItems(
   settlement?: null | PaymentApplicationAdminApi.ClientSimpleDtoForOrder,
   settlementId?: null | string,
-  clientName?: null | string,
 ): ClientAppApi.ClientSimpleDto[] {
   if (settlement?.id) {
     return [
       {
         fullName: settlement.fullName,
         id: settlement.id,
-        name: settlement.name ?? clientName ?? '',
+        name: settlement.name ?? '',
       },
     ];
   }
   if (settlementId) {
-    return [{ id: settlementId, name: clientName ?? '' }];
+    return [{ id: settlementId, name: settlement?.name ?? '' }];
   }
   return [];
 }
@@ -155,7 +154,7 @@ const displayApplicationNo = computed(() =>
 const currencySelectRef = ref<InstanceType<typeof CurrencySelect> | null>(null);
 const settlementId = ref<string>('');
 const settlementName = ref('');
-/** ClientSelect 编辑回显（详情 settlement / clientName） */
+/** ClientSelect 编辑回显（详情 settlement） */
 const settlementSelectedItems = ref<ClientAppApi.ClientSimpleDto[]>([]);
 
 /** 付费申请 `currencyId`：null=原币申请，有值=指定结算币别 */
@@ -780,7 +779,7 @@ function onSettlementCurrencyChangeFromDrawer(val: unknown) {
 function mapDetailToFeeRows(
   detail: PaymentApplicationAdminApi.PaymentApplicationDetailDto,
 ): FeeDetailRow[] {
-  const settlementShortName = detail.clientName ?? '';
+  const settlementShortName = detail.settlement?.name ?? '';
   const rows: FeeDetailRow[] = [];
   for (const group of detail.payAppFeeBySeaExportGroup ?? []) {
     const order = group.transportOrder;
@@ -858,14 +857,13 @@ async function loadEditData() {
     applicationNo.value = detail.applicationNo ?? '';
     applicationCreatorName.value = detail.creatorUserName ?? '';
     settlementId.value = detail.settlementId ?? '';
-    settlementName.value = detail.settlement?.name ?? detail.clientName ?? '';
+    settlementName.value = detail.settlement?.name ?? '';
     settlementSelectedItems.value = toSettlementSelectedItems(
       detail.settlement,
       detail.settlementId,
-      detail.clientName,
     );
     settlementCurrencyId.value = detail.currencyId ?? null;
-    settlementCurrencyName.value = detail.currencyCode ?? '';
+    settlementCurrencyName.value = detail.currency?.code ?? '';
 
     submitTime.value = detail.submitTime
       ? dayjs(detail.submitTime).format('YYYY-MM-DD HH:mm')
@@ -910,9 +908,9 @@ async function loadEditData() {
         url: item.url,
       })),
     }));
-    settlementAttachments.value = [
-      ...(detail.paymentSettlementAttachments ?? []),
-    ];
+    settlementAttachments.value = (detail.paymentSettlements ?? []).flatMap(
+      (ps) => ps.attachments ?? [],
+    );
 
     nextTick(() => {
       expandedGroupKeys.value = orderGroups.value.map((g) => g.key);

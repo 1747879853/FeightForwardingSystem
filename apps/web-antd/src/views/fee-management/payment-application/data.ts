@@ -284,21 +284,30 @@ function buildStaticColumns(): Array<Record<string, any>> {
       field: 'status',
       title: $t('seaExport.export.paymentApplication.status'),
       minWidth: 100,
-      cellRender: {
-        name: 'CellTag',
-        options: paymentApplicationStatusOptions(),
-      },
+      slots: { default: 'status' },
     },
     {
-      field: 'clientName',
+      field: 'settlement.name',
       title: $t('seaExport.export.paymentApplication.clientName'),
       minWidth: 160,
       showOverflow: true,
+      formatter: ({
+        row,
+      }: {
+        row: PaymentApplicationAdminApi.PaymentApplicationDto;
+      }) => row.settlement?.name ?? '',
     },
     {
-      field: 'currencyCode',
+      field: 'currency.code',
       title: $t('seaExport.export.paymentApplication.currencyCode'),
       minWidth: 80,
+      formatter: ({
+        row,
+      }: {
+        row: PaymentApplicationAdminApi.PaymentApplicationDto;
+      }) =>
+        row.currency?.code ??
+        (row.currencyId == null || row.currencyId === 0 ? '原币' : ''),
     },
     {
       field: 'invoiceProcess',

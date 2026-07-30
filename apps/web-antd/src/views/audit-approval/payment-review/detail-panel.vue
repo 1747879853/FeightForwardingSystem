@@ -144,7 +144,7 @@ const settlementSelectedBank = computed(() =>
 function mapDetailToFeeRows(
   detail: PaymentApplicationAdminApi.PaymentApplicationDetailDto,
 ): FeeDetailRow[] {
-  const settlementShortName = detail.clientName ?? '';
+  const settlementShortName = detail.settlement?.name ?? '';
   const rows: FeeDetailRow[] = [];
   for (const group of detail.payAppFeeBySeaExportGroup ?? []) {
     const order = group.transportOrder;
@@ -242,13 +242,13 @@ async function loadDetail(id: string | undefined) {
   try {
     const detail = await getPaymentApplicationDetail(id);
     settlementCurrencyId.value = detail.currencyId ?? null;
-    settlementCurrencyName.value = detail.currencyCode ?? '';
+    settlementCurrencyName.value = detail.currency?.code ?? '';
     feeDetailRows.value = mapDetailToFeeRows(detail);
     restoreBanksFromDetail(detail);
     attachmentGroups.value = detail.attachmentGroup ?? [];
-    settlementAttachments.value = [
-      ...(detail.paymentSettlementAttachments ?? []),
-    ];
+    settlementAttachments.value = (detail.paymentSettlements ?? []).flatMap(
+      (ps) => ps.attachments ?? [],
+    );
     expandedGroupKeys.value = orderGroups.value.map((g) => g.key);
     loaded.value = true;
   } finally {
