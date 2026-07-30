@@ -123,7 +123,7 @@ Get-Content dist/_app.config.js
 | --- | --- | --- |
 | jht | `jht-login-back.mp4` | `src/assets/img/jht/jht-login-back.mp4` |
 | hhyy | `hhyy-login-back.mp4` | `src/assets/img/hhyy/hhyy-login-back.mp4` |
-| jiayue | `login-back.mp4` | `src/assets/img/jiayue/login-back.mp4` |
+| jiayue / demo | `jht-login-back.mp4`（与 jht 共用；原 `login-back.mp4` 已从 OSS 下线） | — |
 
 全局字体 6 个字重同理，Key 为根路径文件名（如 `Alibaba_PuHuiTi_2.0_55_Regular_55_Regular.ttf`）。上传时请保持与代码中 `objectNames` 一致。
 
@@ -140,6 +140,7 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-07-30 | `Bugfix` | jiayue/demo 登录页背景视频改为与 jht 共用 `jht-login-back.mp4` | 原 `login-back.mp4` OSS 返回 404；demo 的 `VITE_APP_BRAND=jiayue`，改 jiayue 映射即可同时修好 demo |
 | 2026-07-25 | `Feature` | 新增演示环境（demo）开发与打包命令，后端 43.138.14.122:86 | 新增 `.env.demo`，`VITE_APP_BRAND=jiayue` 复用佳越 Logo 与素材，无需改 `brand-assets.ts` / `vite.config.mts`；独立 `VITE_APP_NAMESPACE=vben-web-antd-demo` 隔离缓存 |
 | 2026-07-16 | `Feature` | 新增津海通本地构建、MSDeploy 打包、预览与 IIS 发布命令 | 本地配置沿用 `IIS_JHT_*` 命名；产物 API 校验阻止错误 mode 上线 |
 | 2026-07-13 | `Fix` | 世纪通达（sjtd）品牌名称与生产 API 更正为 43.138.14.122:84 | `.env.sjtd` 与 `vite.config.mts` dev 代理同步 |

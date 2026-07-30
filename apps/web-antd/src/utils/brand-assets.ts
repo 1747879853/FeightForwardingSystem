@@ -57,11 +57,11 @@ export const brandLogoText = pickBrandAsset(
   jiayueLogoText,
 );
 
-/** 登录页背景视频 */
+/** 登录页背景视频（jiayue/demo 与 jht 共用 jht-login-back.mp4；原 login-back.mp4 已从 OSS 下线） */
 const defaultBrandLoginBackVideoOssUrl = pickBrandAsset(
   'https://oss.jiayuebetter.com/jht-login-back.mp4',
   'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
-  'https://oss.jiayuebetter.com/login-back.mp4',
+  'https://oss.jiayuebetter.com/jht-login-back.mp4',
   'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
   'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
 );

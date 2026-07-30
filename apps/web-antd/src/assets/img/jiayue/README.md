@@ -10,4 +10,4 @@
 
 素材来源：`@vbenjs/static-source` 的 `logo-v1.webp`。客户正式环境请使用 `pnpm dev:antd:hhyy` 或 `pnpm dev:antd:jht`。
 
-登录页背景视频改为固定 OSS 地址加载，不再使用本地 `login-back.mp4` 文件。
+登录页背景视频改为固定 OSS 地址加载，不再使用本地 `login-back.mp4` 文件；当前与 jht 共用 `jht-login-back.mp4`。
