@@ -766,6 +766,18 @@ export namespace PaymentApplicationAdminApi {
     attachmentGroup?: AttachmentGroupInputDto[];
   }
 
+  /** 提交/撤回付费申请DTO */
+  export interface PaymentApplicationSubmitDto {
+    id: string;
+  }
+
+  /** 按对账单新增付费申请DTO */
+  export interface PaymentApplicationAddByStatementDto {
+    /** 对账单ID */
+    statementId: string;
+  }
+
+  /** 付费申请附件新增 DTO */
   export interface PaymentApplicationAddAttachmentsDto {
     id: string;
     attachments: AttachmentItemForItemInputDto[];
@@ -924,3 +936,21 @@ export async function addPaymentApplicationAttachments(
 ) {
   return requestClient.post<boolean>(`${API_PREFIX}/AddAttachments`, data);
 }
+
+/**
+ * 按对账单新增付费申请
+ * @param data 按对账单新增DTO
+ * @returns 返回生成的所有PaymentApplication的ID列表（可能多个，因为会按币别拆分）
+ */
+export async function addByStatement(
+  data: PaymentApplicationAdminApi.PaymentApplicationAddByStatementDto,
+) {
+  return requestClient.post<string[]>(
+    `${API_PREFIX}/AddByStatementAsync`,
+    data,
+  );
+}
+
+
+
+

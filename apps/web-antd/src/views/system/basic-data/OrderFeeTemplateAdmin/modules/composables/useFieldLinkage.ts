@@ -62,10 +62,37 @@ export function useFieldLinkage(dropdownSources: any) {
     taxRate: number,
     hotInstance: any,
   ) => {
-    if (!unitPrice || !taxRate) return;
-
+    if (!unitPrice || isNaN(unitPrice)) return;
+    
+    // 税率为空或0时，不含税单价等于含税单价
+    const effectiveTaxRate = (taxRate !== null && taxRate !== undefined && !isNaN(taxRate)) ? taxRate : 0;
+    
     // 计算不含税单价：不含税单价 = 含税单价 / (1 + 税率/100)
-    const noTaxUnitPrice = unitPrice / (1 + taxRate / 100);
+    const noTaxUnitPrice = unitPrice / (1 + effectiveTaxRate / 100);
+    // ✅ 修复：使用 setDataAtRowProp 而不是 setDataAtCell
+    hotInstance.setDataAtRowProp(
+      rowIndex,
+      'noTaxUnitPrice',
+      parseFloat(noTaxUnitPrice.toFixed(2)),
+    );
+  };
+
+  /**
+   * ✅ 新增：税率变更后的联动处理
+   */
+  const onTaxRateChange = (
+    rowIndex: number,
+    unitPrice: number,
+    taxRate: number,
+    hotInstance: any,
+  ) => {
+    if (!unitPrice || isNaN(unitPrice)) return;
+    
+    // 税率为空或0时，不含税单价等于含税单价
+    const effectiveTaxRate = (taxRate !== null && taxRate !== undefined && !isNaN(taxRate)) ? taxRate : 0;
+    
+    // 计算不含税单价：不含税单价 = 含税单价 / (1 + 税率/100)
+    const noTaxUnitPrice = unitPrice / (1 + effectiveTaxRate / 100);
     // ✅ 修复：使用 setDataAtRowProp 而不是 setDataAtCell
     hotInstance.setDataAtRowProp(
       rowIndex,
@@ -78,5 +105,6 @@ export function useFieldLinkage(dropdownSources: any) {
     onFeeCodeChange,
     onIndustryCategoryChange,
     onUnitPriceChange,
+    onTaxRateChange, // ✅ 新增：导出税率变更处理函数
   };
 }

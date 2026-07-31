@@ -551,6 +551,7 @@ export function usePropPermissionFormSchema(): VbenFormSchema[] {
       componentProps: {
         options: FrightModuleOptions,
         placeholder: '请选择模块',
+        style: { minWidth: '200px' },
       },
       fieldName: 'frightModule',
       label: $t('system.permission.module'),
@@ -561,6 +562,7 @@ export function usePropPermissionFormSchema(): VbenFormSchema[] {
       componentProps: {
         options: FreightRateLabelOptions,
         placeholder: '请选择需要屏蔽的字段名称',
+        style: { minWidth: '200px' },
       },
       fieldName: 'propName',
       label: $t('system.permission.propName'),

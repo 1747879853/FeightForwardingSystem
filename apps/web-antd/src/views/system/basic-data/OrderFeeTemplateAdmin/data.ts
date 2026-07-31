@@ -18,6 +18,43 @@ const paySideOptions: Array<{ label: string; value: number }> = [
   { label: '应付', value: 1 },
 ];
 
+// 贸易条款枚举选项
+const tradeTermsTypeOptions: Array<{ label: string; value: number }> = [
+  { label: 'CIF', value: 0 },
+  { label: 'FOB', value: 1 },
+  { label: 'EXW', value: 2 },
+  { label: 'FCA', value: 3 },
+  { label: 'DDP', value: 4 },
+  { label: 'DDU', value: 5 },
+  { label: 'DAP', value: 6 },
+  { label: 'C&F', value: 7 },
+];
+
+// 货物类型枚举选项
+const cargoTypeOptions: Array<{ label: string; value: number }> = [
+  { label: '普通货', value: 0 },
+  { label: '冻柜', value: 1 },
+  { label: '危险品', value: 2 },
+  { label: '超限箱', value: 3 },
+];
+
+// 装运方式枚举选项
+const blTypeOptions: Array<{ label: string; value: number }> = [
+  { label: '整柜', value: 0 },
+  { label: '拼箱分票', value: 1 },
+  { label: '拼箱主票', value: 2 },
+];
+
+// 服务项枚举选项
+const serviceTypeOptions: Array<{ label: string; value: number }> = [
+  { label: '订舱', value: 0 },
+  { label: '拖车', value: 1 },
+  { label: '报关', value: 2 },
+  { label: '仓库', value: 3 },
+  { label: '保险', value: 4 },
+  { label: '代收支', value: 5 },
+];
+
 /**
  * 格式化业务类型显示
  */
@@ -39,6 +76,42 @@ function formatPaySide(paySide?: number): string {
  */
 function formatEfficient(efficient?: boolean): string {
   return efficient ? '是' : '否';
+}
+
+/**
+ * 格式化贸易条款显示
+ */
+function formatTradeTermsType(tradeTermsType?: number | null): string {
+  if (tradeTermsType === null || tradeTermsType === undefined) return '-';
+  const option = tradeTermsTypeOptions.find((opt) => opt.value === tradeTermsType);
+  return option?.label || String(tradeTermsType);
+}
+
+/**
+ * 格式化货物类型显示
+ */
+function formatCargoType(cargoId?: number | null): string {
+  if (cargoId === null || cargoId === undefined) return '-';
+  const option = cargoTypeOptions.find((opt) => opt.value === cargoId);
+  return option?.label || String(cargoId);
+}
+
+/**
+ * 格式化装运方式显示
+ */
+function formatBlType(blType?: number | null): string {
+  if (blType === null || blType === undefined) return '-';
+  const option = blTypeOptions.find((opt) => opt.value === blType);
+  return option?.label || String(blType);
+}
+
+/**
+ * 格式化服务项显示
+ */
+function formatServiceType(serviceType?: number | null): string {
+  if (serviceType === null || serviceType === undefined) return '-';
+  const option = serviceTypeOptions.find((opt) => opt.value === serviceType);
+  return option?.label || String(serviceType);
 }
 
 /**
@@ -93,7 +166,7 @@ export function useColumns(
       field: 'client',
       title: '委托单位',
       minWidth: 150,
-      formatter: ({ row }) => row.client?.clientName || '-',
+      formatter: ({ row }) => row.client?.name || '-',
     },
     {
       field: 'pol',
@@ -111,51 +184,37 @@ export function useColumns(
       field: 'carrier',
       title: '船公司',
       width: 120,
-      formatter: ({ row }) => row.carrier?.carrierName || '-',
+      formatter: ({ row }) => row.carrier?.cnName || '-',
     },
     {
       field: 'bookingAgent',
       title: '订舱代理',
       width: 120,
-      formatter: ({ row }) => row.bookingAgent?.clientName || '-',
+      formatter: ({ row }) => row.bookingAgent?.name || '-',
     },
     {
       field: 'tradeTermsType',
       title: '贸易条款',
       width: 100,
-      formatter: ({ row }) => {
-        if (row.tradeTermsType === null || row.tradeTermsType === undefined)
-          return '-';
-        return String(row.tradeTermsType);
-      },
+      formatter: ({ row }) => formatTradeTermsType(row.tradeTermsType),
     },
     {
       field: 'cargoId',
       title: '货物类型',
       width: 100,
-      formatter: ({ row }) => {
-        if (row.cargoId === null || row.cargoId === undefined) return '-';
-        return String(row.cargoId);
-      },
+      formatter: ({ row }) => formatCargoType(row.cargoId),
     },
     {
       field: 'blType',
       title: '装运方式',
       width: 100,
-      formatter: ({ row }) => {
-        if (row.blType === null || row.blType === undefined) return '-';
-        return String(row.blType);
-      },
+      formatter: ({ row }) => formatBlType(row.blType),
     },
     {
       field: 'serviceType',
       title: '服务项',
       width: 100,
-      formatter: ({ row }) => {
-        if (row.serviceType === null || row.serviceType === undefined)
-          return '-';
-        return String(row.serviceType);
-      },
+      formatter: ({ row }) => formatServiceType(row.serviceType),
     },
     {
       field: 'itemCount',

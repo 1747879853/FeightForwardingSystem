@@ -435,7 +435,7 @@ onUnmounted(() => {
 
 <template>
   <Page auto-content-height>
-    <Grid table-title="自动费用模板">
+    <Grid >
       <template #toolbar-actions>
         <div
           class="pol-tab-wrapper flex min-w-0 flex-1 items-center overflow-hidden"
@@ -449,7 +449,7 @@ onUnmounted(() => {
               class="pol-tab-track inline-flex flex-nowrap items-center gap-1"
             >
               <!-- 全部选项 -->
-              <div
+              <!-- <div
                 class="pol-tab-item cursor-pointer whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-all duration-200"
                 :class="
                   selectedPolId === undefined
@@ -459,7 +459,7 @@ onUnmounted(() => {
                 @click="handlePolGroupClick(undefined)"
               >
                 全部
-              </div>
+              </div> -->
 
               <!-- 起运港选项 -->
               <div
@@ -516,21 +516,22 @@ onUnmounted(() => {
       <template #toolbar-tools>
         <Space class="shrink-0">
           <Button
+            danger
+            :disabled="!hasDeletePermission"
+            @click="onBatchDelete"
+            class="mr-2"
+          >
+            删除
+          </Button>
+          <Button
             type="primary"
             :disabled="!hasAddPermission"
             @click="onCreate"
           >
-            <Plus class="mr-1" />
+            <Plus />
             新建
           </Button>
-          <Button
-            danger
-            :disabled="!hasDeletePermission"
-            @click="onBatchDelete"
-          >
-            <Trash2 class="mr-1" />
-            批量删除
-          </Button>
+          
         </Space>
       </template>
     </Grid>
