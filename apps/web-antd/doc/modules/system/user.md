@@ -2,7 +2,7 @@
 title: 用户管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-07-29
+last_updated: 2026-07-31
 ---
 
 # 1. 业务背景说明 (Background)
@@ -44,7 +44,7 @@ last_updated: 2026-07-29
 | **enable（账号启用）** | 标识账号是否允许登录和使用系统。 | `GET /services/app/UserAdmin/GetPagedListAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户离职（`isActive=false`）时前端联动将 `enable` 自动置为 `false`；列表仅展示该字段作为账号可用依据。 | 布尔值；建议与人员在职状态保持一致。 |
 | **organizationId（所属部门）** | 用户归属组织。 | `GET /services/app/OrganizationUnit/GetOrganizationUnitTreeAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗通过组织树选择。 | **必填项**，未选择时阻止保存。 |
 | **organizationPath / organization（所属组织）** | 列表展示用户组织层级路径或直接部门名。 | `GET /services/app/UserAdmin/GetUserPagedListAsync` 的 `organizationPath[]`（`id`/`name`/`isCompany`）与 `organization` | **触发/依赖：** 列 `formatter` 优先拼接路径名，否则回退部门名。 | 只读展示；未挂组织时路径为空数组。 |
-| **userAttributeFlags（用户属性）** | 用户业务角色位标志（可多选）。 | 前端 `getUserAttributeOptions()` 枚举 | **触发/依赖：** 提交前由 `combineUserAttribute` 合并为 `userAttribute` 整型掩码。 | **必填项**，至少勾选一项。 |
+| **userAttributeFlags（用户属性）** | 用户业务角色位标志（可多选）。 | 前端 `getUserAttributeOptions()` 枚举（含操作/客服/单证/商务/销售/财务/海外客服/人事/航线） | **触发/依赖：** 提交前由 `combineUserAttribute` 合并为 `userAttribute` 整型掩码。 | **必填项**，至少勾选一项。 |
 | **officeTel** | 用户办公电话。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `32`，可为空。 |
 | **senderDisplayName** | 邮件发件显示名。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗邮件配置区可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `64`，可为空。 |
 | **gender（性别）** | 用户性别。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗下拉选择；取值 `1` 男 / `2` 女，与个人中心一致；历史值 `0` 回显为空。 | 选填；可为 `null`。 |
@@ -61,6 +61,7 @@ last_updated: 2026-07-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-07-31 | `Feature` | 用户属性新增「航线」（`ShippingLine = 256`）；原「商务(航线)」更名为「商务」。 | 枚举与 `getUserAttributeOptions` 同步；海出专用 6 项角色未纳入航线。详见 [变更日志](../../changelogs/change-log-2026-07-31-user-attribute-shipping-line.md)。 |
 | 2026-07-29 | `Feature` | 用户列表新增「最终权限」按钮与只读弹窗，对接 `GetUserPermissions` 展示最终生效权限树。 | 弹窗组件 `view-permissions-modal.vue`；API 入参统一 `id`；操作列宽调至 `340`。详见 [变更日志](../../changelogs/change-log-2026-07-29-user-view-effective-permissions.md)。 |
 | 2026-07-16 | `Fix` | 用户列表操作列改为外露「修改 / 权限配置 / 分配角色」，其余收入「更多」；列宽 `280`。 | `CellOperation` 新增 `children`→Dropdown；删除在菜单内用 `Modal.confirm`。 |
 | 2026-07-14 | `Feature` | 用户列表新增「所属组织」列，展示 `organizationPath` 拼接路径（如 `世纪通达/操作部/操作一部`），无路径时回退 `organization`。 | `UserListDto` 补齐路径 DTO；列定义在 `user/data.ts` 的 `useColumns`。 |

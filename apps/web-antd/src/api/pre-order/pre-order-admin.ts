@@ -64,6 +64,8 @@ export namespace PreOrderAdminApi {
     Finance = 32,
     OverseasCustomerService = 64,
     HR = 128,
+    /** 航线 */
+    ShippingLine = 256,
   }
 
   export interface OrganizationUnitSimpleDto {

@@ -40,6 +40,8 @@ export namespace ClientAdminApi {
     Finance = 32,
     OverseasCustomerService = 64,
     HR = 128,
+    /** 航线 */
+    ShippingLine = 256,
   }
 
   /** 客户名称校验参数 */

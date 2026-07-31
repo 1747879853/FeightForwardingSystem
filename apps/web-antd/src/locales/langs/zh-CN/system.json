@@ -527,11 +527,12 @@
       "operation": "操作",
       "customerService": "客服",
       "documentation": "单证",
-      "business": "商务(航线)",
+      "business": "商务",
       "sales": "销售",
       "finance": "财务",
       "overseasCustomerService": "海外客服",
-      "hr": "人事"
+      "hr": "人事",
+      "shippingLine": "航线"
     },
     "enName": "英文名称",
     "qq": "QQ",

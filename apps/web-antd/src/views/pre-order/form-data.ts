@@ -19,6 +19,7 @@ export const USER_ATTRIBUTE = {
   Finance: 32,
   OverseasCustomerService: 64,
   HR: 128,
+  ShippingLine: 256,
 } as const;
 
 export const PRE_ORDER_USER_ATTRIBUTE_LABELS: {
@@ -29,10 +30,11 @@ export const PRE_ORDER_USER_ATTRIBUTE_LABELS: {
   { label: '操作', value: USER_ATTRIBUTE.Operation },
   { label: '客服', value: USER_ATTRIBUTE.CustomerService },
   { label: '单证', value: USER_ATTRIBUTE.Documentation },
-  { label: '商务(航线)', value: USER_ATTRIBUTE.Business },
+  { label: '商务', value: USER_ATTRIBUTE.Business },
   { label: '财务', value: USER_ATTRIBUTE.Finance },
   { label: '海外客服', value: USER_ATTRIBUTE.OverseasCustomerService },
   { label: '人事', value: USER_ATTRIBUTE.HR },
+  { label: '航线', value: USER_ATTRIBUTE.ShippingLine },
 ];
 
 /** 收付类型选项 */

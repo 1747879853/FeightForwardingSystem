@@ -19,6 +19,7 @@ const userAttributeValues = [
   UserAttribute.Finance,
   UserAttribute.OverseasCustomerService,
   UserAttribute.HR,
+  UserAttribute.ShippingLine,
 ];
 
 /** 海运出口订单用户角色（与海运出口单据一致，共 6 项） */
@@ -105,6 +106,10 @@ export function getUserAttributeOptions() {
     {
       label: $t('system.user.userAttributeOptions.hr'),
       value: UserAttribute.HR,
+    },
+    {
+      label: $t('system.user.userAttributeOptions.shippingLine'),
+      value: UserAttribute.ShippingLine,
     },
   ];
 }

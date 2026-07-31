@@ -529,7 +529,8 @@
       "sales": "Sales",
       "finance": "Finance",
       "overseasCustomerService": "Overseas Customer Service",
-      "hr": "HR"
+      "hr": "HR",
+      "shippingLine": "Shipping Line"
     },
     "enName": "English Name",
     "qq": "QQ",

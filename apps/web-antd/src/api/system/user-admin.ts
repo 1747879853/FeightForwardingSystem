@@ -23,6 +23,8 @@ export enum UserAttribute {
   Finance = 32,
   OverseasCustomerService = 64,
   HR = 128,
+  /** 航线 */
+  ShippingLine = 256,
 }
 
 // ==================== 用户管理 API (UserAdminAppService) ====================
