@@ -23,6 +23,8 @@ import { createPagedListQuery } from '#/utils/paged-list-query';
 import { useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
 import Detail from './modules/detail.vue';
+import ExportModal from './modules/export-modal.vue';
+import ImportModal from './modules/import-modal.vue';
 
 const perm = createAbpPermission('Admin.Enumeration');
 
@@ -33,6 +35,16 @@ const [FormModal, formModalApi] = useVbenModal({
 
 const [DetailModal, detailModalApi] = useVbenModal({
   connectedComponent: Detail,
+  destroyOnClose: true,
+});
+
+const [ConfigExportModal, configExportModalApi] = useVbenModal({
+  connectedComponent: ExportModal,
+  destroyOnClose: true,
+});
+
+const [ConfigImportModal, configImportModalApi] = useVbenModal({
+  connectedComponent: ImportModal,
   destroyOnClose: true,
 });
 
@@ -192,12 +204,22 @@ function handleFormSuccess() {
   clearEnumCache();
   onRefresh();
 }
+
+function onExportConfig() {
+  configExportModalApi.open();
+}
+
+function onImportConfig() {
+  configImportModalApi.open();
+}
 </script>
 
 <template>
   <Page auto-content-height>
     <FormModal @success="handleFormSuccess" />
     <DetailModal />
+    <ConfigExportModal />
+    <ConfigImportModal @success="handleFormSuccess" />
     <Grid :table-title="$t('system.enumeration.list')">
       <template #toolbar-tools>
         <!-- 新增按钮 -->
@@ -209,6 +231,13 @@ function handleFormSuccess() {
         >
           <Plus class="size-5" />
           {{ $t('ui.actionTitle.create') }}
+        </Button>
+        <!-- 配置迁移：导出成 JSON，在其他公司系统里导入 -->
+        <Button v-access:code="perm.get" class="mr-1" @click="onExportConfig">
+          {{ $t('system.enumeration.exportConfig') }}
+        </Button>
+        <Button v-access:code="perm.add" class="mr-1" @click="onImportConfig">
+          {{ $t('system.enumeration.importConfig') }}
         </Button>
         <!-- 批量删除按钮 -->
         <!-- <Button v-access:code="perm.delete" danger type="primary" @click="onBatchDelete">

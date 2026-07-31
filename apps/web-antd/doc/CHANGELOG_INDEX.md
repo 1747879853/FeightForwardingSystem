@@ -11,6 +11,10 @@
 - 同一天多条可在标题后加简短后缀区分
 - 无对应月份时先新增月份分组，再添加条目
 
+## 2026-08
+
+- [2026-08-01 枚举管理支持导入/导出配置跨公司迁移](./changelogs/change-log-2026-08-01-enumeration-config-transfer.md)
+
 ## 2026-07
 
 - [2026-07-31 干系人可选角色改由 system/enumeration 按业务类型配置](./changelogs/change-log-2026-07-31-order-user-role-enum.md)
