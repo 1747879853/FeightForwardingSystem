@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-31 干系人可选角色改由 system/enumeration 按业务类型配置](./changelogs/change-log-2026-07-31-order-user-role-enum.md)
 - [2026-07-31 用户属性新增「航线」并将「商务(航线)」更名为「商务」](./changelogs/change-log-2026-07-31-user-attribute-shipping-line.md)
 - [2026-07-31 业务联系单编辑页接入附件分组](./changelogs/change-log-2026-07-31-pre-order-attachment-group.md)
 - [2026-07-31 业务联系单编辑页「基础信息」改称「业务联系单」](./changelogs/change-log-2026-07-31-pre-order-basic-info-rename.md)

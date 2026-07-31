@@ -17,12 +17,14 @@ import {
 
 import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
 import type { SystemUserAdminApi } from '#/api/system/user-admin';
+import type { OrderUserRoleOption } from '#/composables/use-order-user-roles';
 
 import UserSelect from '#/adapter/component/biz-select/user-select.vue';
 import { getUser } from '#/api/system/user-admin';
+import { getUserAttributeLabel } from '#/composables/use-order-user-roles';
 import { buildAttachmentUrl } from '#/utils';
 
-import { PRE_ORDER_USER_ATTRIBUTE_LABELS, USER_ATTRIBUTE } from '../form-data';
+import { USER_ATTRIBUTE } from '../form-data';
 
 /** 必选且不可删除：仅销售（操作改为非必填，审核通过时再强制指派） */
 const REQUIRED_ROLES: number[] = [USER_ATTRIBUTE.Sale];
@@ -30,9 +32,13 @@ const REQUIRED_ROLES: number[] = [USER_ATTRIBUTE.Sale];
 let rowSeed = 0;
 const createRowKey = () => `user-${Date.now()}-${(rowSeed += 1)}`;
 
-const props = withDefaults(defineProps<{ readonly?: boolean }>(), {
-  readonly: false,
-});
+const props = withDefaults(
+  defineProps<{ readonly?: boolean; roles?: OrderUserRoleOption[] }>(),
+  {
+    readonly: false,
+    roles: () => [],
+  },
+);
 
 const modelValue = defineModel<PreOrderUserRow[]>({ default: () => [] });
 
@@ -86,8 +92,8 @@ function avatarText(row: PreOrderUserRow) {
 
 function roleLabel(value?: number) {
   return (
-    PRE_ORDER_USER_ATTRIBUTE_LABELS.find((item) => item.value === value)
-      ?.label ?? '角色'
+    props.roles.find((item) => item.value === value)?.label ??
+    getUserAttributeLabel(value)
   );
 }
 
@@ -100,9 +106,7 @@ const selectedRoleSet = computed(
 );
 
 const availableRoleOptions = computed(() =>
-  PRE_ORDER_USER_ATTRIBUTE_LABELS.filter(
-    (item) => !selectedRoleSet.value.has(item.value),
-  ),
+  props.roles.filter((item) => !selectedRoleSet.value.has(item.value)),
 );
 
 function openRoleModal() {

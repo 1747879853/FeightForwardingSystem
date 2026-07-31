@@ -22,21 +22,6 @@ export const USER_ATTRIBUTE = {
   ShippingLine: 256,
 } as const;
 
-export const PRE_ORDER_USER_ATTRIBUTE_LABELS: {
-  label: string;
-  value: number;
-}[] = [
-  { label: '销售', value: USER_ATTRIBUTE.Sale },
-  { label: '操作', value: USER_ATTRIBUTE.Operation },
-  { label: '客服', value: USER_ATTRIBUTE.CustomerService },
-  { label: '单证', value: USER_ATTRIBUTE.Documentation },
-  { label: '商务', value: USER_ATTRIBUTE.Business },
-  { label: '财务', value: USER_ATTRIBUTE.Finance },
-  { label: '海外客服', value: USER_ATTRIBUTE.OverseasCustomerService },
-  { label: '人事', value: USER_ATTRIBUTE.HR },
-  { label: '航线', value: USER_ATTRIBUTE.ShippingLine },
-];
-
 /** 收付类型选项 */
 export const PAY_SIDE_OPTIONS = [
   { label: '应收', value: 0 },

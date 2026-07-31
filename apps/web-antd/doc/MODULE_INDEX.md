@@ -9,11 +9,11 @@
 | clients | `/clients/:id/edit` | 客户管理 | 维护单个客户的完整资料，聚合基础信息、联系人、付款条件、发票与附件等子页面；账期删除大数 ID 原样透传。 | [客户编辑](./modules/clients/id-edit.md) | 2026-07-12 |
 | sea-exports | `/sea-exports` | 操作管理 / 海运出口 | 海运出口列表是委托单检索、进入新建和编辑的业务入口；支持多选后运踪批量订阅，并可按权限删除单条勾选委托。侧边栏收纳于「操作管理」分组。 | [海运出口列表](./modules/sea-exports/index.md) | 2026-07-25 |
 | sea-exports | `/sea-exports/create` | 操作管理 / 海运出口 | 创建新的海运出口委托单；保存成功后 replace 进入编辑工作台并关闭原新建页标签；未保存时切标签/跳转弹二次确认。 | [海运出口新建](./modules/sea-exports/create.md) | 2026-07-30 |
-| sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；场站联系人在标签旁展示，保存时透传防空覆盖。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-07-30 |
+| sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；场站联系人在标签旁展示，保存时透传防空覆盖；干系人可用角色由枚举 `SeaExportUserAttribute` 配置（销售/操作固定）。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-07-31 |
 | sea-exports | （运踪订阅字段） | 操作管理 / 海运出口 | 运踪订阅链路字段清单：请求仅 `seaExportIds`；后端按装运方式组装船公司+主提单/首箱；状态两字段与结果明细对照。 | [运踪订阅字段清单](./modules/sea-exports/yundang-subscribe-fields.md) | 2026-07-25 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表内切换应收应付并整体保存。 | [更改单](./modules/sea-exports/change-order.md) | 2026-07-25 |
 | pre-order | `/pre-order` | 操作管理 / 业务联系单 | 业务联系单列表：检索入口，支持分组统计（委托单位/船公司/港口/业务类型）、新建、复制、按状态限制删除；双击进编辑页。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-07-31 |
-| pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 操作管理 / 业务联系单 | 业务联系单工作台：布局对齐海运出口；顶部 Tab/分区标题为「业务联系单」；支持附件分组上传并随 Add/Edit 全量提交；表单不按状态禁用，录入/驳回显示保存与提交审核；待审核/通过仅审核按钮；通过后内嵌关联海运出口。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-07-31 |
+| pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 操作管理 / 业务联系单 | 业务联系单工作台：布局对齐海运出口；顶部 Tab/分区标题为「业务联系单」；支持附件分组上传并随 Add/Edit 全量提交；表单不按状态禁用，录入/驳回显示保存与提交审核；待审核/通过仅审核按钮；通过后内嵌关联海运出口；干系人可用角色按业务类型读枚举（仅销售固定）。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-07-31 |
 | pre-order | `/pre-order/:id/detail` | 操作管理 / 业务联系单 | 历史详情路由，重定向到 `/pre-order/:id/edit`。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-07-31 |
 | sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-07-12 |
 | sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-07-11 |
@@ -61,7 +61,7 @@
 | system | `/system/workflow` | 系统管理 | 维护审批工作流列表，支撑费用审核与付款申请审核等任务链路。 | [工作流列表](./modules/system/workflow.md) | 2026-05-16 |
 | system | `/system/workflow/create` | 系统管理 | 创建审批工作流，配置任务类型（含业务联系单 PreOrder=8）、条件和审批节点。 | [工作流新建](./modules/system/workflow-create.md) | 2026-07-26 |
 | system | `/system/workflow/edit/:id` | 系统管理 | 编辑已有审批工作流，维护节点、条件和适用任务类型（含业务联系单）。 | [工作流编辑](./modules/system/workflow-edit-id.md) | 2026-07-26 |
-| system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源；`ServiceType` 子项可维护业务流程标记 `extra1`。 | [枚举管理](./modules/system/enumeration.md) | 2026-07-12 |
+| system | `/system/enumeration` | 系统管理 | 维护系统枚举项，为前端字典、状态展示和业务选项提供数据来源；子项 `extra1` 按枚举名渲染勾选框（`ServiceType` = 是否业务流程，`SeaExportUserAttribute` / `SeaImportUserAttribute` = 干系人角色是否默认展示，后者的枚举值还改为用户属性下拉勾选）。 | [枚举管理](./modules/system/enumeration.md) | 2026-07-31 |
 | announcement | `/system/announcement` | 公告管理 | 维护系统公告（富文本与附件），登录后对具备查看权限的用户弹出未读公告；新增与批量删除入口按动作权限显示。独立顶级菜单。 | [公告管理](./modules/system/announcement.md) | 2026-07-14 |
 | system | `/system/cache` | 系统管理 | 查看或清理系统缓存，辅助排查字典、权限或配置刷新问题。 | [缓存管理](./modules/system/cache.md) | 2026-05-16 |
 | system | `/system/global-font` | 系统管理 | 统一前端页面与组件字体来源；hhyy/jiayue/jht 全部走固定 OSS 直连；本地 TTF 已移除且 SW 已停用。 | [全局字体配置](./modules/system/global-font.md) | 2026-06-03 |

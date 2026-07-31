@@ -34,7 +34,7 @@ last_updated: 2026-07-30
   - **编辑改起运港 / 改委托单位**：按新 `polId(+clientId)` 的 `checked` **重写勾选**（客户排除项默认不勾、可手动勾回），并**丢弃任务进度**，流水线回到「新建态」仅展示服务项、不显示待处理/已完成任务，直至保存成功后 `loadEditData` 恢复真实任务态。
 - **服务项目流水线（Chevron 三态）：** 仅展示已勾选节点，**完全按 `sortId` 分组**：同 `sortId` 节点在 Chevron 流中无缝咬合成一块：咬合位移下沉到 `item` 层（每个非组首节点重叠一个箭头宽），组内相邻节点稳定无缝、跨组仍保持箭头链流向，仅整条链全局首端左收圆、尾端右收圆；不同 `sortId` 组之间保留间距以区分分组。**视觉分组只看 `sortId`，不再区分待处理/已完成/还未到**（旧的「仅全『还未到』组才合并成单标签块」逻辑已移除）；组内每个服务仍各自渲染、单独完成/取消完成。组内服务为同一优先级，轮到该组时全部待处理节点同时显示「处理中」、展示处理人且均可操作，组内全部完成后才进入下一 `sortId` 组。**顶栏内联展示**：与 AI 识别等同处 `content-section__actions` 一行，左侧为「服务项目」标题、`...` 配置入口与紧凑流水线，右侧为操作按钮。节点增删在「配置服务」弹窗维护：按 `ServiceType` 枚举项 `extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序；**任意勾选变化**时编辑态点「确定」弹出二次确认后自动保存（弹窗内无常驻提示）。悬浮 Tooltip 可「完成服务」/「取消完成」。保存提交 `serviceTypes: number[]`。
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
-- **干系人角色约束：** 面板始终固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；**编辑态订单未保存某默认角色时也会补一张空卡**（保存时无人员会被过滤，不写库），确保这五个岗位新建/编辑都不会缺卡；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，仅编辑态详情已有人员或手动「添加角色」后出现。新建态选择委托单位后按客户绑定干系人默认回填（`Client/GetDishonestStakeholdersAsync` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位只更新业务来源，不重写已保存干系人。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。干系人展示信息（昵称/启用态/手机/邮箱/组织路径）统一走 `User/GetUserListByIdsAsync` 按 id 批量获取，初始化与委托单位回填一次请求；未命中 id 展示「已删除」兜底，悬停卡片副标题为组织路径。
+- **干系人角色约束：** 可选角色由「系统管理 → 枚举管理」的 `SeaExportUserAttribute` 枚举维护（子项 `value`=`UserAttribute` 位值、`displayName`=角色名、`enable`=是否可用、`extra1`=是否进页面即展示；子项顺序即面板顺序），前端不再写死 6 项。**销售、操作为固定角色**：无论枚举是否配置都展示、标签带红色必填标识、不可删除且必须已选人（销售必须且只能有一人）；枚举漏配时二者兜底补在最前。勾了 `extra1` 的角色进页面即渲染，**编辑态订单未保存该角色时也会补一张空卡**（保存时无人员会被过滤，不写库）；未勾 `extra1` 的角色（如海外客服）只在详情已有人员或手动「添加角色」后出现。枚举拉取失败/未配置时，面板只剩销售与操作，这是预期兜底。新建态选择委托单位后按客户绑定干系人默认回填（`Client/GetDishonestStakeholdersAsync` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位只更新业务来源，不重写已保存干系人。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。干系人展示信息（昵称/启用态/手机/邮箱/组织路径）统一走 `User/GetUserListByIdsAsync` 按 id 批量获取，初始化与委托单位回填一次请求；未命中 id 展示「已删除」兜底，悬停卡片副标题为组织路径。
 - **场站联系方式展示与保存：** 编辑态在基础信息「场站」字段标签行最右侧展示 `yardContact`（场站联系人），与字段右边界对齐；悬浮联系人后展示 `yardEmail`（场站邮箱）、`yardMobile`（场站手机）、`yardTel`（场站电话）。值来自详情 `SeaExportDto`，经 `flattenDetail` 写入 `entrustReadonlyInfo`（UI 只读）；保存时由 `collectCurrentFormValues` 取出并经 `buildSeaExportDto` 写入 `EditAsync` 根字段，避免漏传被后端空覆盖。空值显示 `-`。右侧栏仅保留「干系人」卡片。
 - **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
 - **船期与付费联动：** 保存时校验截 VGM、截单、截舱单日期不得晚于开船日期或实际开船日期；详情回填或用户切换付费方式时，到付自动以目的港覆盖付费地点，预付自动以起运港覆盖付费地点。
@@ -124,10 +124,13 @@ last_updated: 2026-07-30
 
 > [!IMPORTANT] **[卡点 7：编辑改起运港/委托单位会重写勾选并清空进度]** 编辑改 `polId` 或 `clientId` 会按新港+客户 `checked` 重写勾选、丢弃任务进度并回到「新建态」流水线；已完成任务锁定的字段（`seServiceLocks`）会被置只读，需先取消完成才能改。
 
+> [!IMPORTANT] **[卡点 8：干系人角色靠 `SeaExportUserAttribute` 枚举，`extra1` 决定默认展示]** 枚举名大小写敏感，写错或未配置时面板只剩销售与操作；角色加进枚举但未勾 `extra1` 时只能从「+ 添加角色」手动加，不会默认出现。服务项配置的用户属性下拉仍是固定 6 项，未随本次改动走枚举。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-07-31 | `Feature` | 干系人可选角色改由枚举 `SeaExportUserAttribute` 配置（`extra1` 控制是否默认展示），不再写死 6 项；销售/操作固定兜底且不可删。 | 新增共用 `composables/use-order-user-roles.ts`（枚举名按 bizType 映射、`syncOrderUserRows` 补行排序）；`use-order-users.ts` 删除 `orderUserRoleOptions`/`defaultOrderUsers`，「海外客服有人才显示」泛化为「非默认展示角色无人不显示」；角色异步到位后 watch 补行，快照前 `await whenOrderUserRolesReady()` 防误报未保存。详见 `changelogs/change-log-2026-07-31-order-user-role-enum.md`。 |
 | 2026-07-30 | `Refactor` | 委托单位变更改走 `Client/GetDishonestStakeholdersAsync` 带出业务来源（编辑态）/干系人（仅新建态），不再调 `ClientAdmin/DetailAsync`。 | 共用 `form.vue`/`use-order-users.ts`；详见 `changelogs/change-log-2026-07-30-sea-export-client-dishonest-stakeholders.md`。 |
 | 2026-07-26 | `Feature` | 干系人用户信息改为 `User/GetUserListByIdsAsync` 一次批量获取；悬停卡片副标题改为组织路径；启停用读 `enable`；未命中 id 仍展示「已删除」兜底。 | `getUserListByIds` 使用 `paramsSerializer: 'repeat'`；`use-order-users` 以 `loadOrderUserDetailsByIds` 替代逐个 `getUser`；无有效 id 不发请求以免空 ids 拉全量。详见 `changelogs/change-log-2026-07-26-sea-export-order-users-batch-get.md`。 |
 | 2026-07-25 | `Fix` | 移除基础信息滚动与顶部 Tab 联动；隐藏 Tab key 不再参与记忆恢复，避免空白页。 | 分区 Tab 隐藏后 `onSectionChange` 仍把 `shipment`/`port` 写入 `activeTab` 且无面板；表单侧 scroll 监听与 `sectionChange` 一并删除。详见 `changelogs/change-log-2026-07-25-sea-export-remove-section-tab-sync.md`。 |

@@ -255,6 +255,9 @@ async function getAllEnumNames(): Promise<string[]> {
     'FeeStatus',
     'ModuleType',
     'ServiceType',
+    // 干系人可用角色（按业务类型），见 composables/use-order-user-roles.ts
+    'SeaExportUserAttribute',
+    'SeaImportUserAttribute',
     // 'OrderStatus',
     // 'PaymentMethod',
     // 'ShippingType',

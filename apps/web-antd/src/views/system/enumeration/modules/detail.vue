@@ -8,6 +8,10 @@ import { useVbenModal } from '@vben/common-ui';
 import { Descriptions, Tag } from 'ant-design-vue';
 
 import { getEnumerationDetail } from '#/api/system/enum-admin';
+import {
+  getUserAttributeLabel,
+  isOrderUserRoleEnum,
+} from '#/composables/use-order-user-roles';
 import { $t } from '#/locales';
 
 import dayjs from 'dayjs';
@@ -52,6 +56,24 @@ function isColorValue(value: string): boolean {
     /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{8})$/;
   return colorRegex.test(value);
 }
+
+/** 子项 `extra1` 在各枚举下的语义，与编辑弹窗口径一致 */
+const EXTRA1_TAG_TEXT_BY_ENUM: Record<string, [string, string]> = {
+  SeaExportUserAttribute: ['默认展示', '手动添加'],
+  SeaImportUserAttribute: ['默认展示', '手动添加'],
+  ServiceType: ['主流程', '服务项目'],
+};
+
+const extra1TagText = computed(
+  () => EXTRA1_TAG_TEXT_BY_ENUM[enumDetail.value?.name?.trim() ?? ''],
+);
+
+/** 干系人角色枚举的 value 是 UserAttribute 位值，直接看数字无从判断配了谁 */
+const isUserRoleEnum = computed(() =>
+  isOrderUserRoleEnum(enumDetail.value?.name?.trim()),
+);
+const userAttributeLabelOf = (value: number) =>
+  `${getUserAttributeLabel(value)}（${value}）`;
 </script>
 
 <template>
@@ -93,20 +115,30 @@ function isColorValue(value: string): boolean {
           >
             <div class="mb-2 flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="font-medium"
-                  >{{ $t('system.enumeration.enumValue') }}:</span
-                >
-                <span>{{ item.value }}</span>
+                <span class="font-medium">
+                  {{
+                    isUserRoleEnum
+                      ? $t('system.user.userAttribute')
+                      : $t('system.enumeration.enumValue')
+                  }}:
+                </span>
+                <span>
+                  {{
+                    isUserRoleEnum
+                      ? userAttributeLabelOf(item.value)
+                      : item.value
+                  }}
+                </span>
                 <Tag :color="item.enable ? 'success' : 'default'">
                   {{
                     item.enable ? $t('common.enabled') : $t('common.disabled')
                   }}
                 </Tag>
                 <Tag
-                  v-if="enumDetail.name === 'ServiceType'"
+                  v-if="extra1TagText"
                   :color="item.extra1 ? 'processing' : 'default'"
                 >
-                  {{ item.extra1 ? '主流程' : '服务项目' }}
+                  {{ item.extra1 ? extra1TagText[0] : extra1TagText[1] }}
                 </Tag>
               </div>
             </div>

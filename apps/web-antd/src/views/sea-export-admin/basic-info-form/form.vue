@@ -130,7 +130,7 @@ import {
 } from './service-type-nodes';
 import { useSeaExportAiRecognize } from './use-sea-export-ai-recognize';
 import { useSeaExportSubmit } from './use-sea-export-submit';
-import { defaultOrderUsers, useOrderUsers } from './use-order-users';
+import { useOrderUsers } from './use-order-users';
 import { useSeaExportTabTitle } from '../use-sea-export-tab-title';
 import { useSeaExportCopy } from '../use-sea-export-copy';
 import { useYardRealQuery } from '../use-yard-real-query';
@@ -1618,6 +1618,7 @@ const {
   validateSalesRoleCount,
   validateRequiredOrderUserAssignee,
   validateServiceBoundOrderUsers,
+  whenOrderUserRolesReady,
 } = useOrderUsers({
   partyInfoFormApi,
   currentUserId,
@@ -2128,7 +2129,7 @@ const loadEditData = async () => {
       cargoReeferFormApi.setValues(formValues),
     ]);
     currentCargoId.value = formValues.cargoId as number | undefined;
-    initializeOrderUsersPanel(to?.orderUsers ?? []);
+    initializeOrderUsersPanel(to?.orderUsers ?? [], { fillCurrentUser: true });
     const { savedSet, savedSortIdMap, taskMap } =
       parseDetailServiceTypes(detail);
     editServiceSnapshot.value = {
@@ -2183,6 +2184,9 @@ const loadEditData = async () => {
       serviceTypeNodes.value = [];
       polServiceConfigLoaded.value = true;
     }
+    // 角色枚举异步到位后干系人行还会补齐，快照基线须等它稳定，否则误报未保存
+    await whenOrderUserRolesReady();
+    await nextTick();
     await syncFormSnapshot();
   } finally {
     suppressServiceTypeLinkage.value = false;
@@ -2527,12 +2531,14 @@ onMounted(() => {
     if (!isEdit.value) {
       void syncServiceTypesByPol();
       // 新建态记录初始空白快照，作为未保存拦截的脏检查基线
+      await whenOrderUserRolesReady();
+      await nextTick();
       await syncFormSnapshot();
     }
   };
   if (!isEdit.value) {
     editServiceSnapshot.value = null;
-    initializeOrderUsersPanel(defaultOrderUsers);
+    initializeOrderUsersPanel();
     refreshEntrustReadonlyInfo({});
     serviceTypeRequiredPropValues.value = new Map();
     void nextTick(() => syncBasicInfoHeaderFields());

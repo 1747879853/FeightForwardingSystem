@@ -6,7 +6,7 @@
  */
 import type { ComputedRef, Ref } from 'vue';
 
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { preferences } from '@vben/preferences';
 
@@ -18,7 +18,10 @@ import type { SystemUserAdminApi } from '#/api/system/user-admin';
 
 import { getUserListByIds, UserAttribute } from '#/api/system/user-admin';
 import { formatOrgPathLabel } from '#/composables/use-all-user-org';
-import { $t } from '#/locales';
+import {
+  syncOrderUserRows,
+  useOrderUserRoles,
+} from '#/composables/use-order-user-roles';
 import {
   formatDeletedUserFallback,
   resolveUserDisplayName,
@@ -27,18 +30,6 @@ import { parseSeaExportUserAttribute } from '#/views/system/user/data';
 
 import { hasValidUserId, toOptionalNumber } from './sea-export-detail-mapper';
 import type { ServiceTypeNode } from './service-type-nodes';
-
-/**
- * 新建态默认干系人角色（含默认优先级 sortId）。
- * 海外客服不默认展示（仅编辑态有值时才显示），故不在此列表内。
- */
-export const defaultOrderUsers: SeaExportAdminApi.OrderUserAddDto[] = [
-  { userAttribute: UserAttribute.Sales, sortId: 6 },
-  { userAttribute: UserAttribute.Business, sortId: 5 },
-  { userAttribute: UserAttribute.Operation, sortId: 4 },
-  { userAttribute: UserAttribute.CustomerService, sortId: 3 },
-  { userAttribute: UserAttribute.Documentation, sortId: 2 },
-];
 
 type OrderUserEditorRow = SeaExportAdminApi.OrderUserAddDto & {
   _rowKey: string;
@@ -70,11 +61,16 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
     latestAvailableServiceTypes,
   } = deps;
 
-  /** 必选且不可删除的角色 */
+  /** 必选且不可删除的角色（枚举未配置时也固定展示） */
   const requiredOrderUserRoles: number[] = [
     UserAttribute.Sales,
     UserAttribute.Operation,
   ];
+  const {
+    roleLabelOf,
+    roleOptions: orderUserRoleOptions,
+    whenRolesReady: whenOrderUserRolesReady,
+  } = useOrderUserRoles({ fixedRoles: requiredOrderUserRoles });
   /** 新建态默认带入当前登录用户的角色集合 */
   const defaultCurrentUserRoleSet = new Set([
     UserAttribute.Operation,
@@ -91,35 +87,11 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
   /** 已确认批量接口未命中（真删/错 id）的用户，才展示「已删除」兜底 */
   const orderUserLoadFailedSet = ref(new Set<number>());
   let orderUserRowKeyCounter = 0;
+  /** 面板未初始化前不响应角色配置变化，避免抢在详情回填之前铺行 */
+  let orderUsersPanelInitialized = false;
   const makeOrderUserRowKey = () =>
     `order_user_${++orderUserRowKeyCounter}_${Date.now()}`;
 
-  const orderUserRoleOptions = computed(() => [
-    {
-      label: $t('system.user.userAttributeOptions.sales'),
-      value: UserAttribute.Sales,
-    },
-    {
-      label: $t('system.user.userAttributeOptions.business'),
-      value: UserAttribute.Business,
-    },
-    {
-      label: $t('system.user.userAttributeOptions.operation'),
-      value: UserAttribute.Operation,
-    },
-    {
-      label: $t('system.user.userAttributeOptions.customerService'),
-      value: UserAttribute.CustomerService,
-    },
-    {
-      label: $t('system.user.userAttributeOptions.documentation'),
-      value: UserAttribute.Documentation,
-    },
-    {
-      label: $t('system.user.userAttributeOptions.overseasCustomerService'),
-      value: UserAttribute.OverseasCustomerService,
-    },
-  ]);
   const orderUserRoleModalOpen = ref(false);
   const orderUserRoleModalSelected = ref<number | undefined>();
   const selectedOrderUserRoleSet = computed(
@@ -142,24 +114,8 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
       (option) => !selectedOrderUserRoleSet.value.has(option.value),
     ),
   );
-  const getOrderUserRoleLabel = (userAttribute?: number) => {
-    switch (userAttribute) {
-      case UserAttribute.Sales:
-        return $t('system.user.userAttributeOptions.sales');
-      case UserAttribute.Business:
-        return $t('system.user.userAttributeOptions.business');
-      case UserAttribute.Operation:
-        return $t('system.user.userAttributeOptions.operation');
-      case UserAttribute.CustomerService:
-        return $t('system.user.userAttributeOptions.customerService');
-      case UserAttribute.Documentation:
-        return $t('system.user.userAttributeOptions.documentation');
-      case UserAttribute.OverseasCustomerService:
-        return $t('system.user.userAttributeOptions.overseasCustomerService');
-      default:
-        return '-';
-    }
-  };
+  const getOrderUserRoleLabel = (userAttribute?: number) =>
+    roleLabelOf(userAttribute);
   const getOrderUserResolvedName = (row: OrderUserEditorRow) => {
     if (!row.userId) return row.userName || '';
     const mappedName = orderUserNameMap.value[row.userId];
@@ -372,24 +328,37 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
     withOrderUserSortId(rows).map(({ _rowKey: _k, userName: _n, ...rest }) => ({
       ...rest,
     }));
+  const makeEmptyOrderUserRow = (
+    userAttribute: number,
+  ): OrderUserEditorRow => ({
+    _rowKey: makeOrderUserRowKey(),
+    userAttribute,
+  });
+  /** 按当前角色配置补齐默认展示行并排序（枚举外的角色保留在末尾） */
+  const alignOrderUserRowsWithRoles = (rows: OrderUserEditorRow[]) =>
+    syncOrderUserRows({
+      createRow: makeEmptyOrderUserRow,
+      getUserAttribute: (row) => row.userAttribute ?? undefined,
+      roles: orderUserRoleOptions.value,
+      rows,
+    });
+  const isDefaultVisibleRole = (userAttribute?: number) =>
+    orderUserRoleOptions.value.some(
+      (role) => role.value === userAttribute && role.defaultVisible,
+    );
   const createOrderUserRows = (
     items: SeaExportAdminApi.OrderUserAddDto[] | undefined,
+    options?: { fillCurrentUser?: boolean },
   ) => {
     if (!items?.length) {
-      return defaultOrderUsers.map((item) => {
-        const normalizedItem = normalizeOrderUserItem(item);
-        const shouldDefaultCurrentUser =
-          normalizedItem.userAttribute != null &&
-          defaultCurrentUserRoleSet.has(normalizedItem.userAttribute) &&
-          currentUserId.value != null;
-        return {
-          ...normalizedItem,
-          userId: shouldDefaultCurrentUser
-            ? currentUserId.value
-            : normalizedItem.userId,
-          _rowKey: makeOrderUserRowKey(),
-        };
-      });
+      const rows = alignOrderUserRowsWithRoles([]);
+      if (!options?.fillCurrentUser || currentUserId.value == null) return rows;
+      return rows.map((row) =>
+        row.userAttribute != null &&
+        defaultCurrentUserRoleSet.has(row.userAttribute)
+          ? { ...row, userId: currentUserId.value }
+          : row,
+      );
     }
     const mappedRows = items
       .map((item) => {
@@ -400,44 +369,14 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
           _rowKey: makeOrderUserRowKey(),
         };
       })
+      // 非默认展示的角色（如海外客服）仅在已分配人员时展示
       .filter(
         (row) =>
-          // 海外客服仅在已分配人员时展示，无值不显示
-          row.userAttribute !== UserAttribute.OverseasCustomerService ||
-          hasValidUserId(row.userId),
+          isDefaultVisibleRole(row.userAttribute) || hasValidUserId(row.userId),
       );
-    // 销售/商务/操作/客服/单证 五个默认角色始终展示：
-    // 编辑态若订单未保存某默认角色，补一张空卡（保存时无人员会被过滤，不会写库）。
-    const presentRoles = new Set(
-      mappedRows
-        .map((row) => row.userAttribute)
-        .filter((attr): attr is number => attr != null),
-    );
-    const missingDefaultRows = defaultOrderUsers
-      .filter(
-        (item) =>
-          item.userAttribute != null && !presentRoles.has(item.userAttribute),
-      )
-      .map((item) => ({
-        ...normalizeOrderUserItem(item),
-        _rowKey: makeOrderUserRowKey(),
-      }));
-    // 默认角色按 defaultOrderUsers 顺序在前，其余角色（如海外客服/手动新增）保持相对顺序在后
-    const roleDisplayOrder = new Map<number, number>(
-      defaultOrderUsers.reduce<[number, number][]>((acc, item, index) => {
-        if (item.userAttribute != null) acc.push([item.userAttribute, index]);
-        return acc;
-      }, []),
-    );
-    const getRoleDisplayOrder = (attr?: number) =>
-      attr != null && roleDisplayOrder.has(attr)
-        ? (roleDisplayOrder.get(attr) as number)
-        : defaultOrderUsers.length;
-    return [...mappedRows, ...missingDefaultRows].sort(
-      (a, b) =>
-        getRoleDisplayOrder(a.userAttribute) -
-        getRoleDisplayOrder(b.userAttribute),
-    );
+    // 默认展示角色始终占位：编辑态若订单未保存某角色，补一张空卡
+    // （保存时无人员会被过滤，不会写库）。
+    return alignOrderUserRowsWithRoles(mappedRows);
   };
   const syncOrderUsersToForm = () => {
     partyInfoFormApi.setValues({
@@ -454,10 +393,16 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
     }
     await loadOrderUserDetailsByIds([...rowKeyByUserId.keys()], rowKeyByUserId);
   };
+  /**
+   * @param items 已保存的干系人；为空表示仅铺角色配置里的默认展示行
+   * @param options.fillCurrentUser 空数据时操作/客服/单证兜底当前登录账号
+   */
   const initializeOrderUsersPanel = (
-    items: SeaExportAdminApi.OrderUserAddDto[] | undefined,
+    items?: SeaExportAdminApi.OrderUserAddDto[],
+    options?: { fillCurrentUser?: boolean },
   ) => {
-    orderUserRows.value = createOrderUserRows(items);
+    orderUsersPanelInitialized = true;
+    orderUserRows.value = createOrderUserRows(items, options);
     for (const row of orderUserRows.value) {
       if (row.userId && row.userName) {
         orderUserNameMap.value = {
@@ -469,6 +414,12 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
     syncOrderUsersToForm();
     void fillOrderUserNames(orderUserRows.value);
   };
+  // 角色枚举是异步拉取的，面板可能先于配置渲染：配置到位后补齐默认展示行
+  watch(orderUserRoleOptions, () => {
+    if (!orderUsersPanelInitialized) return;
+    orderUserRows.value = alignOrderUserRowsWithRoles(orderUserRows.value);
+    syncOrderUsersToForm();
+  });
   /** 委托单位干系人角色 → 干系人面板角色（客户仅维护销售/客服/操作/单证四类） */
   const pickDefaultClientStakeholder = (
     list?: ClientAppApi.ClientStakeholderDto[] | null,
@@ -708,5 +659,6 @@ export function useOrderUsers(deps: UseOrderUsersDeps) {
     validateSalesRoleCount,
     validateRequiredOrderUserAssignee,
     validateServiceBoundOrderUsers,
+    whenOrderUserRolesReady,
   };
 }

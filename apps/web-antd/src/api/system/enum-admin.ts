@@ -227,11 +227,15 @@ async function deleteEnumeration(id: string) {
 /**
  * 根据枚举名称获取所有枚举值列表（不分页，带缓存）
  * @param name 枚举名称
+ * @param options.silent 为 true 时不弹全局错误提示（枚举未配置属预期兜底的场景）
  */
-async function getItemsByName(name: string) {
+async function getItemsByName(name: string, options?: { silent?: boolean }) {
   return requestClient.get<EnumerationAdminApi.EnumerationItemDto[]>(
     '/services/app/EnumerationAdmin/GetItemsByNameAsync',
-    { params: { name } },
+    {
+      params: { name },
+      ...(options?.silent ? { skipErrorMessage: true } : {}),
+    },
   );
 }
 

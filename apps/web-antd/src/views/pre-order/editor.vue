@@ -46,6 +46,7 @@ import { getCarrierDetail } from '#/api/system/base-data/carrier-admin';
 import { getOrganizationUnit } from '#/api/system/organization-unit';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { formatOrgPathLabel } from '#/composables/use-all-user-org';
+import { useOrderUserRoles } from '#/composables/use-order-user-roles';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
@@ -77,8 +78,7 @@ import { checkPreOrderFees, coercePreOrderFeeUnit } from './modules/fee-unit';
 import ServicePanel from './modules/service-panel.vue';
 import {
   applyClientDefaultPreOrderUsers,
-  createDefaultPreOrderUsers,
-  mergeDefaultPreOrderUsers,
+  syncPreOrderUserRows,
 } from './modules/user-defaults';
 import UserTable from './modules/user-table.vue';
 
@@ -125,9 +125,18 @@ const bizTypeOptions = getPreOrderBizTypeOptions();
 const headerBlType = ref<number | undefined>();
 const blTypeOptions = getBlTypeOptions();
 
+/** 干系人可用角色由 system/enumeration 按业务类型配置，销售固定必填不可删 */
+const { roleOptions: userRoleOptions, whenRolesReady: whenUserRolesReady } =
+  useOrderUserRoles({
+    bizType: headerBizType,
+    fixedRoles: [USER_ATTRIBUTE.Sale],
+  });
+
 const ctns = ref<PreOrderCtnRow[]>([]);
-/** 新建态默认展示销售/商务/操作/客服/单证，与海运出口一致 */
-const users = ref<PreOrderUserRow[]>(createDefaultPreOrderUsers());
+/** 角色枚举到位前先铺固定角色，避免面板初始为空 */
+const users = ref<PreOrderUserRow[]>(
+  syncPreOrderUserRows([], userRoleOptions.value),
+);
 /** 干系人中「销售」绑定的用户 id，归属组织下拉据此取该销售的组织范围（对齐海运出口） */
 const salesUserId = computed<number | undefined>(() => {
   const row = users.value.find(
@@ -135,6 +144,21 @@ const salesUserId = computed<number | undefined>(() => {
   );
   return hasValidUserId(row?.userId) ? Number(row?.userId) : undefined;
 });
+/** 详情回填期间不按业务类型清理干系人，避免删掉历史角色行 */
+let skipBizTypeUserSync = false;
+/** 业务类型已切换、等新角色到位后再剔除不适用的角色行 */
+let pendingRoleCleanup = false;
+
+watch(userRoleOptions, (roles) => {
+  users.value = syncPreOrderUserRows(users.value, roles, pendingRoleCleanup);
+  pendingRoleCleanup = false;
+});
+
+watch(headerBizType, () => {
+  if (skipBizTypeUserSync) return;
+  pendingRoleCleanup = true;
+});
+
 const services = ref<PreOrderServiceRow[]>([]);
 const fees = ref<PreOrderFeeRow[]>([]);
 /** 附件分组：先 UploadFile 拿 attachmentId，再随 Add/Edit 的 attachmentGroup 全量提交 */
@@ -595,6 +619,10 @@ async function hydrateCarrierSelectedItem(dto: PreOrderAdminApi.PreOrderDto) {
 
 function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   detail.value = dto;
+  skipBizTypeUserSync = true;
+  void nextTick(() => {
+    skipBizTypeUserSync = false;
+  });
   headerOrgId.value = dto.orgId ?? undefined;
   const detailOrgs = dto.orgs ?? [];
   const detailOrgLast = detailOrgs.at(-1);
@@ -678,11 +706,12 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     rowKey: nextRowKey('ctn'),
     ctnCodeName: (item.ctnCode as any)?.ctnName,
   }));
-  users.value = mergeDefaultPreOrderUsers(
+  users.value = syncPreOrderUserRows(
     (dto.preOrderUsers ?? []).map((item) => ({
       ...item,
       rowKey: nextRowKey('user'),
     })),
+    userRoleOptions.value,
   );
   services.value = (dto.preOrderServices ?? [])
     // compareStatus=1 是海运出口侧新增，业务联系单本身并未勾选（后端以 id=0 追加）
@@ -841,6 +870,9 @@ async function buildSnapshot(): Promise<string> {
 }
 
 async function syncFormSnapshot() {
+  // 角色枚举异步到位后干系人行还会补齐，基线须等它稳定，否则误报未保存
+  await whenUserRolesReady();
+  await nextTick();
   formSnapshot.value = await buildSnapshot();
 }
 
@@ -1360,7 +1392,7 @@ const getContentTabStyle = (isActive: boolean) =>
                 <template #title>
                   <span class="card-title">干系人</span>
                 </template>
-                <UserTable v-model="users" />
+                <UserTable v-model="users" :roles="userRoleOptions" />
               </Card>
             </div>
           </div>
