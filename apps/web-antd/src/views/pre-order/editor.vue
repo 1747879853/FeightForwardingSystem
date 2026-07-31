@@ -12,7 +12,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { Page } from '@vben/common-ui';
-import { FileText, MapPin, Package } from '@vben/icons';
+import { FileText, IconifyIcon, MapPin, Package } from '@vben/icons';
 import { useUserStore } from '@vben/stores';
 
 import {
@@ -69,6 +69,7 @@ import {
   usePreOrderPortSchema,
   USER_ATTRIBUTE,
 } from './form-data';
+import AttachmentGroups from './modules/attachment-groups.vue';
 import AuditModal from './modules/audit-modal.vue';
 import CtnTable from './modules/ctn-table.vue';
 import FeeTable from './modules/fee-table.vue';
@@ -136,6 +137,8 @@ const salesUserId = computed<number | undefined>(() => {
 });
 const services = ref<PreOrderServiceRow[]>([]);
 const fees = ref<PreOrderFeeRow[]>([]);
+/** 附件分组：先 UploadFile 拿 attachmentId，再随 Add/Edit 的 attachmentGroup 全量提交 */
+const attachmentGroup = ref<PreOrderAdminApi.AttachmentGroupInputDto[]>([]);
 
 const status = computed(() => detail.value?.status ?? PreOrderStatus.Entering);
 /** 录入/驳回（含新建）显示保存与提交审核；表单本身不按状态禁用 */
@@ -515,6 +518,47 @@ let rowSeed = 0;
 const nextRowKey = (prefix: string) =>
   `${prefix}-${Date.now()}-${(rowSeed += 1)}`;
 
+/** 详情 attachmentGroup → 本地可编辑结构（保留 url/文件名供展示） */
+function mapAttachmentGroupFromDetail(
+  groups?: PreOrderAdminApi.PreOrderDto['attachmentGroup'],
+): PreOrderAdminApi.AttachmentGroupInputDto[] {
+  return (groups ?? []).map((group) => ({
+    attachmentDtlTypeId: group.attachmentDtlTypeId ?? null,
+    items: (group.items ?? []).map((item) => ({
+      attachmentId: item.attachmentId,
+      attachmentDtlTypeId:
+        item.attachmentDtlTypeId ?? group.attachmentDtlTypeId ?? null,
+      clientVisible: item.clientVisible ?? false,
+      displayOrder: item.displayOrder,
+      friendlyFileName: item.friendlyFileName,
+      url: item.url,
+    })),
+  }));
+}
+
+/** 组装 Add/Edit 的 attachmentGroup（仅含有效 attachmentId 的分组；编辑可传空数组清空） */
+function buildAttachmentGroupSubmit(): PreOrderAdminApi.AttachmentGroupInputDto[] {
+  return (attachmentGroup.value ?? [])
+    .map((group) => ({
+      attachmentDtlTypeId: group.attachmentDtlTypeId ?? null,
+      items: (group.items ?? [])
+        .filter((item) => {
+          const id = item.attachmentId;
+          if (id == null || id === '') return false;
+          const asNum = Number(id);
+          return Number.isFinite(asNum) ? asNum > 0 : String(id) !== '0';
+        })
+        .map((item, index) => ({
+          attachmentId: item.attachmentId,
+          attachmentDtlTypeId:
+            item.attachmentDtlTypeId ?? group.attachmentDtlTypeId ?? null,
+          clientVisible: item.clientVisible ?? false,
+          displayOrder: item.displayOrder ?? index,
+        })),
+    }))
+    .filter((group) => (group.items?.length ?? 0) > 0);
+}
+
 /** 详情回显船公司时补齐 logo，口径与海运出口 CarrierSelect selectedItems 一致 */
 async function hydrateCarrierSelectedItem(dto: PreOrderAdminApi.PreOrderDto) {
   if (dto.carrierId == null) {
@@ -653,6 +697,7 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     unit: coercePreOrderFeeUnit(item.unit) || undefined,
     rowKey: nextRowKey('fee'),
   }));
+  attachmentGroup.value = mapAttachmentGroupFromDetail(dto.attachmentGroup);
   currentClientId.value = dto.clientId ? String(dto.clientId) : undefined;
   currentClientName.value = dto.client?.name || undefined;
   currentShipperId.value = dto.shipperId ? String(dto.shipperId) : undefined;
@@ -784,6 +829,8 @@ async function buildSubmitPayload() {
         unit: coercePreOrderFeeUnit(rest.unit) || rest.unit,
       }),
     ),
+    // 编辑全量覆盖：始终传 attachmentGroup（可为空数组清空）
+    attachmentGroup: buildAttachmentGroupSubmit(),
   } as PreOrderAdminApi.PreOrderAddDto;
 }
 
@@ -1289,6 +1336,23 @@ const getContentTabStyle = (isActive: boolean) =>
                   />
                 </Card>
               </section>
+
+              <section class="pre-order-attachment-section">
+                <Card class="cargo-container-card">
+                  <template #title>
+                    <div class="cargo-container-card__title section-title-bar">
+                      <span class="card-title card-title--on-primary">
+                        <IconifyIcon icon="mdi:paperclip" class="size-4" />
+                        附件
+                      </span>
+                    </div>
+                  </template>
+                  <AttachmentGroups
+                    v-model="attachmentGroup"
+                    :disabled="!canSave"
+                  />
+                </Card>
+              </section>
             </div>
 
             <div class="right-column">
@@ -1420,6 +1484,10 @@ const getContentTabStyle = (isActive: boolean) =>
 }
 
 .pre-order-fee-section {
+  flex-shrink: 0;
+}
+
+.pre-order-attachment-section {
   flex-shrink: 0;
 }
 

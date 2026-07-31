@@ -4,6 +4,9 @@ import { requestClient } from '#/api/request';
 
 const API_PREFIX = '/services/app/PreOrderAdmin';
 
+/** 业务联系单 ModuleType（与后端 ModuleType.PreOrder 一致） */
+export const PRE_ORDER_MODULE_TYPE_ID = 160_050;
+
 /** 业务联系单状态 */
 export enum PreOrderStatus {
   /** 录入状态 */
@@ -281,14 +284,19 @@ export namespace PreOrderAdminApi {
     attachmentGroup?: AttachmentGroupInputDto[] | null;
   }
 
+  /** 附件项（新增/编辑入参；url/friendlyFileName 仅前端展示，后端可忽略） */
+  export interface AttachmentItemInputDto {
+    attachmentId: number | string;
+    attachmentDtlTypeId?: number | null;
+    clientVisible?: boolean;
+    displayOrder?: number;
+    friendlyFileName?: string | null;
+    url?: string | null;
+  }
+
   export interface AttachmentGroupInputDto {
     attachmentDtlTypeId?: number | null;
-    items?: {
-      attachmentId: number;
-      attachmentDtlTypeId?: number | null;
-      clientVisible?: boolean;
-      displayOrder?: number;
-    }[];
+    items?: AttachmentItemInputDto[];
   }
 
   export interface PreOrderEditDto extends PreOrderAddDto {
