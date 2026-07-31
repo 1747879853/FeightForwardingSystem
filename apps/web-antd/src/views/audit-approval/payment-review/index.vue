@@ -102,6 +102,8 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
       keepSource: true,
       checkboxConfig: {
         highlight: true,
+        // 点击整行即可勾选/取消，便于批量审核与驳回
+        trigger: 'row',
       },
       rowConfig: {
         keyField: 'id',

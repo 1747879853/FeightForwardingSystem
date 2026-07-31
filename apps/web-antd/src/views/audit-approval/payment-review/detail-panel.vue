@@ -39,6 +39,8 @@ const t = (key: string, args?: any[]) =>
 
 const loading = ref(false);
 const loaded = ref(false);
+/** 当前详情对应的申请单号（多选时便于对照正在看哪一单） */
+const applicationNo = ref('');
 
 const settlementCurrencyId = ref<null | number>(null);
 const settlementCurrencyName = ref('');
@@ -223,6 +225,7 @@ function restoreBanksFromDetail(
 }
 
 function resetState() {
+  applicationNo.value = '';
   settlementCurrencyId.value = null;
   settlementCurrencyName.value = '';
   feeDetailRows.value = [];
@@ -241,6 +244,7 @@ async function loadDetail(id: string | undefined) {
   loading.value = true;
   try {
     const detail = await getPaymentApplicationDetail(id);
+    applicationNo.value = detail.applicationNo ?? '';
     settlementCurrencyId.value = detail.currencyId ?? null;
     settlementCurrencyName.value = detail.currency?.code ?? '';
     feeDetailRows.value = mapDetailToFeeRows(detail);
@@ -531,7 +535,13 @@ function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
     <div class="review-layout__bottom">
       <Card size="small" class="fee-detail-card">
         <template #title>
-          <span class="font-semibold">{{ t('feeDetail') }}</span>
+          <div class="flex items-center gap-3">
+            <span class="font-semibold">{{ t('feeDetail') }}</span>
+            <span v-if="applicationNo" class="text-xs text-gray-500">
+              {{ t('applicationNo') }}：
+              <Tag color="blue">{{ applicationNo }}</Tag>
+            </span>
+          </div>
         </template>
 
         <Spin
