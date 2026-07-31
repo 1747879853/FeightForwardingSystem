@@ -293,6 +293,32 @@ export namespace PreOrderAdminApi {
     id: string;
   }
 
+  /** 业务联系单分组统计字段（与海运出口同名字段取值一致，11 为业务联系单专属） */
+  export enum PreOrderGroupField {
+    /** 委托单位 */
+    Client = 3,
+    /** 船公司 */
+    Carrier = 4,
+    /** 起运港 */
+    POL = 5,
+    /** 目的港 */
+    POD = 6,
+    /** 业务类型 */
+    BizType = 11,
+  }
+
+  /** 分组统计单项 */
+  export interface PreOrderGroupDto {
+    /** 分组值 id（无值为 null） */
+    id: null | number | string;
+    /** 分组名称（无值为 null） */
+    name: null | string;
+    /** 该分组数据总条数 */
+    count: number;
+    /** 分组项 logo 附件（仅船公司分组返回） */
+    logo?: SeaExportAdminApi.AttachmentItemDto | null;
+  }
+
   /** 列表查询参数 */
   export interface PreOrderQueryParams {
     Keyword?: string;
@@ -300,15 +326,27 @@ export namespace PreOrderAdminApi {
     BizType?: number;
     Status?: number;
     ClientId?: string;
+    CarrierId?: number | string;
     POLId?: number;
     PODId?: number;
     ETDStart?: string;
     ETDEnd?: string;
     CreatorUserId?: number;
     OrgId?: number;
+    /** 仅返回船公司未填写记录（与 CarrierId 互斥） */
+    CarrierIdEmpty?: boolean;
+    /** 仅返回起运港未填写记录（与 POLId 互斥） */
+    POLIdEmpty?: boolean;
+    /** 仅返回目的港未填写记录（与 PODId 互斥） */
+    PODIdEmpty?: boolean;
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;
+  }
+
+  /** 分组统计入参：列表查询参数 + 分组字段 */
+  export interface GetGroupedListParams extends PreOrderQueryParams {
+    GroupField: PreOrderGroupField;
   }
 
   export interface PagedListOfPreOrderDto {
@@ -407,6 +445,16 @@ export const getPreOrderPagedList = (
 ) => {
   return requestClient.get<PreOrderAdminApi.PagedListOfPreOrderDto>(
     `${API_PREFIX}/GetPagedListAsync`,
+    { params },
+  );
+};
+
+/** 业务联系单分组统计（筛选条件与列表一致，按 groupField 汇总） */
+export const getPreOrderGroupedList = (
+  params: PreOrderAdminApi.GetGroupedListParams,
+) => {
+  return requestClient.get<PreOrderAdminApi.PreOrderGroupDto[]>(
+    `${API_PREFIX}/GetGroupedListAsync`,
     { params },
   );
 };

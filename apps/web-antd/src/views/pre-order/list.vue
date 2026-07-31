@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
+import type { GroupFieldDef } from '#/components/list-grouping';
 
-import { ref } from 'vue';
+import { onActivated, onMounted, ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -12,9 +13,17 @@ import { Button, message, Modal, Space } from 'ant-design-vue';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deletePreOrder,
+  getPreOrderGroupedList,
   getPreOrderPagedList,
   PreOrderStatus,
 } from '#/api/pre-order/pre-order-admin';
+import {
+  GroupingSettings,
+  GroupingTabs,
+  useListGrouping,
+} from '#/components/list-grouping';
+import { useTableConfigStore } from '#/store/table-config';
+import { buildAttachmentUrl } from '#/utils';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import {
@@ -31,7 +40,56 @@ import {
 
 const perm = createAbpPermission('Admin.PreOrder');
 const router = useRouter();
+const tableConfigStore = useTableConfigStore();
 const actionLoading = ref(false);
+
+/** 分组设置持久化 key（与列表 listKey 对齐，路由名 PreOrderList） */
+const GROUP_CONFIG_NAME = 'group_config_PreOrderList';
+
+const loadGroupField = async (): Promise<number | undefined> => {
+  await tableConfigStore.loadGroupConfigsOnce();
+  const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
+  if (!hit?.setting) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(hit.setting) as { field?: null | number };
+    return typeof parsed?.field === 'number' ? parsed.field : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const saveGroupField = (fieldValue: number | undefined) => {
+  const setting = JSON.stringify({ field: fieldValue ?? null });
+  const hit = tableConfigStore.getGroupConfigByName(GROUP_CONFIG_NAME);
+  if (hit) {
+    void tableConfigStore.editGroupConfig({
+      id: hit.id,
+      name: GROUP_CONFIG_NAME,
+      setting,
+    });
+  } else {
+    void tableConfigStore.addGroupConfig({ name: GROUP_CONFIG_NAME, setting });
+  }
+};
+
+/**
+ * 业务联系单分组字段配置。
+ * value 对齐后端 PreOrderGroupField；paramKey 为点击分组项后追加的列表筛选参数。
+ */
+const PRE_ORDER_GROUP_FIELDS: GroupFieldDef[] = [
+  { value: 3, label: '委托单位', paramKey: 'ClientId' },
+  {
+    value: 4,
+    label: '船公司',
+    paramKey: 'CarrierId',
+    emptyParamKey: 'CarrierIdEmpty',
+  },
+  { value: 5, label: '起运港', paramKey: 'POLId', emptyParamKey: 'POLIdEmpty' },
+  { value: 6, label: '目的港', paramKey: 'PODId', emptyParamKey: 'PODIdEmpty' },
+  { value: 11, label: '业务类型', paramKey: 'BizType' },
+];
 
 const toIsoString = (value: unknown): string | undefined => {
   if (!value) return undefined;
@@ -39,14 +97,34 @@ const toIsoString = (value: unknown): string | undefined => {
   return parsed.isValid() ? parsed.toISOString() : undefined;
 };
 
+const grouping = useListGrouping({
+  fields: PRE_ORDER_GROUP_FIELDS,
+  getGridApi: () => gridApi,
+  fetchGroups: async (baseParams, field) => {
+    const items = await getPreOrderGroupedList({
+      ...baseParams,
+      GroupField: field,
+    } as PreOrderAdminApi.GetGroupedListParams);
+    return (items ?? []).map((item) => ({
+      ...item,
+      logoUrl: item.logo?.url ? buildAttachmentUrl(item.logo.url) : undefined,
+    }));
+  },
+  persist: {
+    load: loadGroupField,
+    save: saveGroupField,
+  },
+});
+
 const normalizeQuery = (formValues: Record<string, unknown>) => {
   const range = Array.isArray(formValues.ETDRange) ? formValues.ETDRange : [];
-  return {
+  const baseParams = {
     ...formValues,
     ETDStart: toIsoString(range[0]),
     ETDEnd: toIsoString(range[1]),
     ETDRange: undefined,
   };
+  return grouping.decorateListParams(baseParams);
 };
 
 const handleRowDblclick = ({ row }: { row: PreOrderAdminApi.PreOrderDto }) => {
@@ -76,6 +154,8 @@ const [Grid, gridApi] = useVbenVxeGrid<PreOrderAdminApi.PreOrderDto>({
     rowConfig: { keyField: 'id' },
     pagerConfig: { enabled: true },
     proxyConfig: {
+      // 关闭自动加载：先恢复持久化分组字段，再手动首查，避免与分组恢复竞态
+      autoLoad: false,
       ajax: {
         query: createPagedListQuery(getPreOrderPagedList, {
           mapParams: normalizeQuery,
@@ -89,6 +169,21 @@ const [Grid, gridApi] = useVbenVxeGrid<PreOrderAdminApi.PreOrderDto>({
       zoom: true,
     },
   },
+});
+
+onMounted(async () => {
+  await grouping.restorePersistedField();
+  await gridApi.formApi.submitForm();
+});
+
+// 列表页 keepAlive，分组统计不做缓存：每次重新进入列表都拉取一遍分组数据。
+let firstActivate = true;
+onActivated(() => {
+  if (firstActivate) {
+    firstActivate = false;
+    return;
+  }
+  grouping.refreshGroupData();
 });
 
 function getSelectedRows(): PreOrderAdminApi.PreOrderDto[] {
@@ -148,12 +243,30 @@ function handleDelete() {
   });
 }
 
+const onGroupFieldChange = (value: number | undefined) => {
+  if (value === undefined) {
+    grouping.disable();
+  } else {
+    grouping.enableField(value);
+  }
+};
+
 useRefreshListOnFormReturn('PreOrderList', handleRefresh);
 </script>
 
 <template>
   <Page auto-content-height>
-    <Grid table-title="业务联系单">
+    <Grid>
+      <template #toolbar-actions>
+        <GroupingTabs
+          v-if="grouping.isGrouping.value"
+          :items="grouping.groupItems.value"
+          :selected-id="grouping.selectedItemId.value"
+          :loading="grouping.loading.value"
+          @select="grouping.selectItem"
+        />
+        <div v-else class="mr-1 pl-1 text-[1rem]">业务联系单</div>
+      </template>
       <template #toolbar-tools>
         <Space>
           <Button v-access:code="perm.add" type="primary" @click="handleCreate">
@@ -168,6 +281,11 @@ useRefreshListOnFormReturn('PreOrderList', handleRefresh);
           >
             删除
           </Button>
+          <GroupingSettings
+            :fields="grouping.fields"
+            :value="grouping.enabledField.value?.value"
+            @change="onGroupFieldChange"
+          />
         </Space>
       </template>
     </Grid>

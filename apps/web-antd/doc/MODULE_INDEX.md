@@ -12,7 +12,7 @@
 | sea-exports | `/sea-exports/:id/edit` | 操作管理 / 海运出口 | 编辑页聚合基础信息、费用、更改单、附件及相关执行子模块；场站联系人在标签旁展示，保存时透传防空覆盖。 | [海运出口编辑工作台](./modules/sea-exports/id-edit.md) | 2026-07-30 |
 | sea-exports | （运踪订阅字段） | 操作管理 / 海运出口 | 运踪订阅链路字段清单：请求仅 `seaExportIds`；后端按装运方式组装船公司+主提单/首箱；状态两字段与结果明细对照。 | [运踪订阅字段清单](./modules/sea-exports/yundang-subscribe-fields.md) | 2026-07-25 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表内切换应收应付并整体保存。 | [更改单](./modules/sea-exports/change-order.md) | 2026-07-25 |
-| pre-order | `/pre-order` | 操作管理 / 业务联系单 | 业务联系单列表：海运出口委托的前置单据检索入口，支持新建、按单复制、按状态限制的删除；双击统一进编辑页。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-07-26 |
+| pre-order | `/pre-order` | 操作管理 / 业务联系单 | 业务联系单列表：检索入口，支持分组统计（委托单位/船公司/港口/业务类型）、新建、复制、按状态限制删除；双击进编辑页。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-07-31 |
 | pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 操作管理 / 业务联系单 | 业务联系单工作台：布局对齐海运出口；表单不按状态禁用，录入/驳回显示保存与提交审核；待审核/通过仅审核按钮；通过后内嵌关联海运出口。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-07-26 |
 | pre-order | `/pre-order/:id/detail` | 操作管理 / 业务联系单 | 历史详情路由，重定向到 `/pre-order/:id/edit`。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-07-26 |
 | sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-07-12 |
