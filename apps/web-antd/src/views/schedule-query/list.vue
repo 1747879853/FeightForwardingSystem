@@ -21,7 +21,7 @@ function validateQueryParams(
 ): null | Record<string, any> {
   const { polCode, podCode, etd, weeksOut } = formValues;
   if (!polCode || !podCode || !etd) {
-    message.warning('请填写起始港、目的港与预计离港日期');
+    message.warning('请填写起始港、目的港与预计离港');
     return null;
   }
   if (!weeksOut) {
@@ -58,7 +58,7 @@ const [Grid] = useVbenVxeGrid<FeituoScheduleItemDto>({
     submitOnChange: false,
     showCollapseButton: true,
     collapsed: true,
-    wrapperClass: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-6',
+    wrapperClass: 'grid-cols-5',
     commonConfig: {
       labelWidth: 92,
     },

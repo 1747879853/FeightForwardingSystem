@@ -67,7 +67,8 @@ export function useGridFormSchema(): VbenFormSchema[] {
         placeholder: '请选择起始港',
         // 查询接口以五字码（EDI 代码）为准，故 value 取 ediCode
         valueKey: 'ediCode',
-        labelKey: 'ediCode',
+        // 选中回显：CNTAO/QINGDAO,CHINA（仍用 ediCode 作 value）
+        labelKey: 'ediPortCountry',
         allowClear: true,
       },
     },
@@ -79,14 +80,14 @@ export function useGridFormSchema(): VbenFormSchema[] {
       componentProps: {
         placeholder: '请选择目的港',
         valueKey: 'ediCode',
-        labelKey: 'ediCode',
+        labelKey: 'ediPortCountry',
         allowClear: true,
       },
     },
     {
       component: 'DatePicker',
       fieldName: 'etd',
-      label: '预计离港日期',
+      label: '预计离港',
       rules: 'required',
       componentProps: {
         class: 'w-full',
@@ -125,7 +126,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
     {
       component: 'DatePicker',
       fieldName: 'eta',
-      label: '预计到港日期',
+      label: '预计到港',
       componentProps: {
         class: 'w-full',
         allowClear: true,
