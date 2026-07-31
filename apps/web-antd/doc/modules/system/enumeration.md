@@ -62,6 +62,7 @@ last_updated: 2026-08-01
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-01 | `Style` | 导入配置弹窗上传区图标水平居中。 | `IconifyIcon` 不走 `.anticon` 默认居中，需 `flex justify-center`。 |
 | 2026-08-01 | `Feature` | 列表工具栏新增「导出配置 / 导入配置」：JSON 跨公司移植枚举；同名可选覆盖或跳过；覆盖按子项 `value` 复用目标 Id，只同步勾选的枚举。 | 纯前端复用 `AddAsync`/`EditAsync`/`DetailAsync`，逻辑集中在 `config-transfer.ts`；导出并发拉详情、导入串行。详见 `changelogs/change-log-2026-08-01-enumeration-config-transfer.md`。 |
 | 2026-07-31 | `Feature` | 新增 `SeaExportUserAttribute` / `SeaImportUserAttribute` 两个消费方：按业务类型配置干系人可用角色。编辑这两个枚举时「枚举值」改为「用户属性」下拉勾选（去重、自动带名称、保存校验），并放开 `extra1`「默认展示」勾选框；详情弹窗显示属性名与「默认展示 / 手动添加」标签。 | 前端读取集中在 `composables/use-order-user-roles.ts`（含 `getUserAttributeRoleOptions` / `isOrderUserRoleEnum`，枚举管理页复用同一份角色口径），优先 `GetItemsByNameAsync` 取最新配置、失败才退回 localStorage 缓存；两个名称已加入 `init-enum.ts` 预热列表。子项编辑形态依赖 `handleValuesChange` 维护的枚举名 ref（`FormApi.form` 非响应式）。详见 `changelogs/change-log-2026-07-31-order-user-role-enum.md`。 |
 | 2026-07-12 | `Feature` | `ServiceType` 枚举子项支持维护并查看「是否业务流程」。 | 前端 DTO 对接 `extra1`；保存时缺省归一为 `false`，海运出口将其映射为 `isBusinessProcess`。 |

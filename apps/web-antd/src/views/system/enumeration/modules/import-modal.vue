@@ -159,9 +159,9 @@ const [Modal, modalApi] = useVbenModal({
         accept=".json"
         :before-upload="handleBeforeUpload"
       >
-        <p class="ant-upload-drag-icon">
+        <p class="ant-upload-drag-icon !mb-2 flex justify-center">
           <IconifyIcon
-            class="text-4xl text-blue-400"
+            class="size-12 text-blue-400"
             icon="ant-design:inbox-outlined"
           />
         </p>

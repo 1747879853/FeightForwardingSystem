@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-01 枚举导入弹窗上传图标居中](./changelogs/change-log-2026-08-01-enumeration-import-upload-icon-center.md)
 - [2026-08-01 枚举管理支持导入/导出配置跨公司迁移](./changelogs/change-log-2026-08-01-enumeration-config-transfer.md)
 
 ## 2026-07
