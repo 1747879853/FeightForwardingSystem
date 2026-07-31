@@ -29,8 +29,8 @@ export function useGridFormSchema(): VbenFormSchema[] {
     {
       component: 'Input',
       fieldName: 'keyword',
-      label: '关键字',
-       componentProps: {
+      label: '编号',
+      componentProps: {
         placeholder: '主提单号/委托编号',
         allowClear: true,
       },
