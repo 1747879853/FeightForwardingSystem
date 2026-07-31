@@ -330,6 +330,31 @@ function findClickedSortField(
 }
 
 /**
+ * 会话已是非默认排序时，VXE（尤其列重建后）常把 defaultSort 重新塞进 proxy。
+ * 剥掉「会话里没有的默认字段」，避免 SubmitTime + CreationTime 被错误叠加。
+ */
+function stripStaleDefaultSorts(
+  proxySortList: SortItem[],
+  sessionList: SortItem[],
+  defaultList: SortItem[],
+): SortItem[] {
+  if (sessionList.length === 0 || defaultList.length === 0) {
+    return proxySortList;
+  }
+  const defaultFields = new Set(defaultList.map((item) => item.field));
+  const sessionIsNonDefault = sessionList.some(
+    (item) => !defaultFields.has(item.field),
+  );
+  if (!sessionIsNonDefault) {
+    return proxySortList;
+  }
+  const sessionFields = new Set(sessionList.map((item) => item.field));
+  return proxySortList.filter(
+    (item) => sessionFields.has(item.field) || !defaultFields.has(item.field),
+  );
+}
+
+/**
  * vxe 在 sort-change 之前就 commitProxy，排序状态须在 query 内解析 params.sorts。
  */
 export function resolveEffectiveSortList(
@@ -338,15 +363,25 @@ export function resolveEffectiveSortList(
   defaultSort?: string,
 ): SortItem[] {
   const sessionList = listKey ? getSortSessionList(listKey) : [];
-  const proxySortList = parseVxeProxySorts(params);
+  const rawProxySortList = parseVxeProxySorts(params);
   const defaultList = parseAbpSorting(defaultSort);
+  const proxySortList = stripStaleDefaultSorts(
+    rawProxySortList,
+    sessionList,
+    defaultList,
+  );
 
-  // vxe 再次点击已激活箭头会 clearSort，proxy 不再携带 sorts，须清空会话
-  if (proxySortList.length === 0 && sessionList.length > 0) {
+  // vxe 再次点击已激活箭头会 clearSort，原始 proxy 不再携带 sorts，须清空会话
+  if (rawProxySortList.length === 0 && sessionList.length > 0) {
     if (listKey) {
       setSortSessionList(listKey, []);
     }
     return defaultList;
+  }
+
+  // 仅剩被剥掉的脏默认排序时，保留会话（常见于列重建后 VXE 只回灌 defaultSort）
+  if (proxySortList.length === 0 && sessionList.length > 0) {
+    return sessionList;
   }
 
   if (proxySortList.length > 0) {

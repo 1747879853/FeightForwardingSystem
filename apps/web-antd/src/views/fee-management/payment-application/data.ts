@@ -291,6 +291,8 @@ function buildStaticColumns(): Array<Record<string, any>> {
       title: $t('seaExport.export.paymentApplication.clientName'),
       minWidth: 160,
       showOverflow: true,
+      // 后端按 Settlement.Name 排序（见 PaymentApplication 排序对接文档）
+      sortField: 'Settlement.Name',
       formatter: ({
         row,
       }: {
@@ -301,6 +303,8 @@ function buildStaticColumns(): Array<Record<string, any>> {
       field: 'currency.code',
       title: $t('seaExport.export.paymentApplication.currencyCode'),
       minWidth: 80,
+      // DTO 展示 code，实体可排序字段为 CurrencyId
+      sortField: 'CurrencyId',
       formatter: ({
         row,
       }: {
@@ -332,17 +336,22 @@ function buildStaticColumns(): Array<Record<string, any>> {
       title: $t('seaExport.export.paymentApplication.totalPayPrice'),
       minWidth: 120,
       align: 'right',
+      // 列表聚合字段，服务端不支持 Sorting
+      sortable: false,
     },
     {
       field: 'totalReceivePrice',
       title: $t('seaExport.export.paymentApplication.totalReceivePrice'),
       minWidth: 120,
       align: 'right',
+      sortable: false,
     },
     {
       field: 'creatorUserName',
       title: $t('seaExport.export.paymentApplication.creatorUserName'),
       minWidth: 100,
+      // 昵称为后填 DTO 字段；实体仅 CreatorUserId，按姓名排序会报错
+      sortable: false,
     },
     {
       field: 'require',

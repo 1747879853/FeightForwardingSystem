@@ -828,7 +828,7 @@ export async function getPaymentApplicationPagedList(params: Recordable<any>) {
       InvoiceNo: params.InvoiceNo || params.invoiceNo,
       InvoiceDateStart: params.InvoiceDateStart || params.invoiceDateStart,
       InvoiceDateEnd: params.InvoiceDateEnd || params.invoiceDateEnd,
-      Sorting: params.Sorting || 'Id desc',
+      Sorting: params.Sorting || params.sorting || 'CreationTime DESC',
       PageIndex: params.PageIndex || params.pageIndex || 1,
       PageSize: params.PageSize || params.pageSize || 10,
     };
@@ -950,7 +950,3 @@ export async function addByStatement(
     data,
   );
 }
-
-
-
-

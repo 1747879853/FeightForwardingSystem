@@ -264,6 +264,22 @@ const [Grid, gridApi] =
       proxyConfig: {
         ajax: {
           query: createPagedListQuery(getPaymentApplicationPagedList, {
+            // 与后端 PagingAndSorting 默认及对接文档一致
+            defaultSort: 'CreationTime DESC',
+            fieldMap: {
+              applicationNo: 'ApplicationNo',
+              status: 'Status',
+              'settlement.name': 'Settlement.Name',
+              'currency.code': 'CurrencyId',
+              invoiceProcess: 'InvoiceProcess',
+              invoiceNo: 'InvoiceNo',
+              invoiceDate: 'InvoiceDate',
+              require: 'Require',
+              remark: 'Remark',
+              submitTime: 'SubmitTime',
+              endTime: 'EndTime',
+              creationTime: 'CreationTime',
+            },
             mapParams: normalizeQuery,
             afterFetch: (result: any) => {
               tableData.value = result?.items ?? [];
