@@ -13,6 +13,7 @@
 
 ## 2026-07
 
+- [2026-07-31 业务联系单编辑页「基础信息」改称「业务联系单」](./changelogs/change-log-2026-07-31-pre-order-basic-info-rename.md)
 - [2026-07-31 业务联系单列表接入分组统计](./changelogs/change-log-2026-07-31-pre-order-list-grouping.md)
 - [2026-07-30 jiayue/demo 登录背景视频改为共用 jht 资源](./changelogs/change-log-2026-07-30-jiayue-demo-login-video-use-jht.md)
 - [2026-07-30 付费申请列表对接 EditInvoiceAsync 先付后票补录发票](./changelogs/change-log-2026-07-30-payment-application-edit-invoice.md)

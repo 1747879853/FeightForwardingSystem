@@ -1017,7 +1017,7 @@ const getContentTabStyle = (isActive: boolean) =>
           :style="getContentTabStyle(activeTab === 'basic')"
           @click="activeTab = 'basic'"
         >
-          基础信息
+          业务联系单
         </span>
         <span
           v-if="hasSeaExport"
@@ -1118,7 +1118,7 @@ const getContentTabStyle = (isActive: boolean) =>
                   >
                     <span class="card-title card-title--on-primary">
                       <FileText class="size-4" />
-                      基础信息
+                      业务联系单
                     </span>
                     <div class="basic-info-header__meta">
                       <div class="basic-info-header__item">
