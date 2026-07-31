@@ -80,8 +80,8 @@ export namespace OrderFeeTemplateAdminApi {
   /** 委托单位简单信息 */
   export interface ClientSimpleDto {
     id?: string;
-    clientName?: string | null;
-    clientCode?: string | null;
+    name?: string | null;
+    code?: string | null;
   }
 
   /** 港口代码简单信息 */
@@ -109,8 +109,11 @@ export namespace OrderFeeTemplateAdminApi {
   /** 船公司简单信息 */
   export interface CarrierSimpleDto {
     id?: number;
-    carrierName?: string | null;
-    carrierCode?: string | null;
+    cnName?: string | null;
+    code?: string | null;
+    cnShortName?: string | null;
+    ediCode?: string | null;
+    enName?: string | null;
   }
 
   /** 费用代码简单信息 */

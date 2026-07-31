@@ -412,6 +412,12 @@ export namespace InvoiceApplicationAdminApi {
     id: string;
   }
 
+  /** 按对账单新增开票申请DTO */
+  export interface InvoiceApplicationAddByStatementDto {
+    /** 对账单ID */
+    statementId: string;
+  }
+
   // ==================== API方法 ====================
 
   /**
@@ -518,5 +524,17 @@ export namespace InvoiceApplicationAdminApi {
    */
   export function withdraw(data: InvoiceApplicationSubmitDto) {
     return requestClient.put<boolean>(`${API_PREFIX}/WithdrawAsync`, data);
+  }
+
+  /**
+   * 按对账单新增开票申请
+   * @param data 按对账单新增DTO
+   * @returns 返回生成的所有InvoiceApplication的ID列表（可能多个，因为会按币别拆分）
+   */
+  export function addByStatement(data: InvoiceApplicationAddByStatementDto) {
+    return requestClient.post<string[]>(
+      `${API_PREFIX}/AddByStatementAsync`,
+      data,
+    );
   }
 }

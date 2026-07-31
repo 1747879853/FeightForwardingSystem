@@ -12,7 +12,7 @@ import {
 // ✅ 新增：导入费用代码、币别和客户API
 import { getFeeCodeListAsync } from '#/api/system/base-data/fee-code-admin';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
-import { getClientPagedList } from '#/api/common/client';
+import { getClientPagedList, getClientGroupedByIndustryCategory } from '#/api/common/client';
 import { $t } from '#/locales';
 import { Button, message, Tabs, Card } from 'ant-design-vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
@@ -31,6 +31,10 @@ const emit = defineEmits(['success']);
 const mode = ref<'create' | 'edit'>('create');
 const templateId = ref<string>('');
 const loading = ref(false);
+const clientsLoading = ref(false); // ✅ 新增：客户数据加载状态
+
+// ✅ 关键修复：保存前的数据快照，用于失败时恢复
+const previousFeeItems = ref<OrderFeeTemplateAdminApi.OrderFeeTemplateItemAddDto[]>([]);
 
 // ✅ 使用 composables 管理下拉数据源
 const dropdownSources = useDropdownSources();
@@ -310,6 +314,200 @@ const [Modal, modalApi] = useVbenModal({
   },
 });
 
+// ==================== 表格操作函数 ====================
+
+/**
+ * 新增一行
+ */
+function handleAddRow() {
+  console.log('🔍 [handleAddRow] hotTableRef.value:', hotTableRef.value);
+  console.log('🔍 [handleAddRow] hotTableRef.value?.hotInstance:', hotTableRef.value?.hotInstance);
+  
+  if (!hotTableRef.value?.hotInstance) {
+    message.warning('表格未初始化');
+    return;
+  }
+
+  // ✅ 关键修复：hotInstance 是一个 ref，需要访问 .value
+  const hotInstanceRef = hotTableRef.value.hotInstance;
+  console.log('🔍 [handleAddRow] hotInstanceRef 类型:', typeof hotInstanceRef);
+  console.log('🔍 [handleAddRow] hotInstanceRef 是否是 ref 对象:', hotInstanceRef && typeof hotInstanceRef === 'object' && 'value' in hotInstanceRef);
+  
+  // 检查 hotInstanceRef 是否是 ref 对象
+  let hotInstance: any;
+  if (hotInstanceRef && typeof hotInstanceRef === 'object' && 'value' in hotInstanceRef) {
+    // 是 ref 对象，需要访问 .value
+    hotInstance = hotInstanceRef.value;
+    console.log('🔍 [handleAddRow] 从 ref.value 获取实例');
+  } else {
+    // 不是 ref 对象，直接使用
+    hotInstance = hotInstanceRef;
+    console.log('🔍 [handleAddRow] 直接使用实例');
+  }
+  
+  console.log('🔍 [handleAddRow] hotInstance:', hotInstance);
+  console.log('🔍 [handleAddRow] hotInstance 类型:', typeof hotInstance);
+  
+  // 检查实例是否有效
+  if (!hotInstance || typeof hotInstance !== 'object') {
+    console.error('❌ [handleAddRow] hotInstance 不是有效对象:', hotInstance);
+    message.warning('表格实例无效');
+    return;
+  }
+  
+  // 检查实例是否已被销毁
+  if (hotInstance.isDestroyed) {
+    console.warn('⚠️ [handleAddRow] Handsontable 实例已被销毁');
+    message.warning('表格实例已失效，请刷新页面');
+    return;
+  }
+  
+  try {
+    const rowCount = hotInstance.countRows();
+    console.log('📊 [handleAddRow] 当前行数:', rowCount);
+    
+    if (typeof hotInstance.alter === 'function') {
+      console.log('✅ [handleAddRow] 使用 alter 方法添加行');
+      
+      // ✅ 关键修复：如果表格为空，使用 insert_row_above(0) 而不是 insert_row_below(-1)
+      if (rowCount === 0) {
+        console.log('📝 [handleAddRow] 表格为空，在第一行插入');
+        hotInstance.alter('insert_row_above', 0, 1);
+      } else {
+        console.log('📝 [handleAddRow] 在最后一行下方插入');
+        hotInstance.alter('insert_row_below', rowCount - 1, 1);
+      }
+      
+      // ✅ 关键修复：验证行是否真的添加了
+      const newRowCount = hotInstance.countRows();
+      console.log('📊 [handleAddRow] 添加后行数:', newRowCount);
+      
+      if (newRowCount === rowCount) {
+        console.warn('⚠️ [handleAddRow] 行数没有变化，alter 可能失败');
+        message.warning('新增行失败，请重试');
+        return;
+      }
+      
+      // ✅ 新增：为新行的排序字段设置默认值（当前行总数）
+      const newRowIdx = newRowCount - 1; // 新行的索引
+      hotInstance.setDataAtRowProp(newRowIdx, 'sortId', newRowCount);
+      console.log('✅ [handleAddRow] 设置排序默认值:', newRowCount);
+    } else {
+      console.log('✅ [handleAddRow] 使用 loadData 方法添加行');
+      const currentData = hotInstance.getData();
+      console.log('📊 [handleAddRow] 当前数据行数:', currentData.length);
+      
+      const emptyRow = new Array(hotInstance.countCols()).fill(null);
+      currentData.push(emptyRow);
+      
+      hotInstance.loadData(currentData);
+      
+      // ✅ 关键修复：验证行是否真的添加了
+      const newData = hotInstance.getData();
+      console.log('📊 [handleAddRow] 添加后数据行数:', newData.length);
+      
+      // ✅ 新增：为新行的排序字段设置默认值（当前行总数）
+      const newRowIdx = newData.length - 1; // 新行的索引
+      hotInstance.setDataAtRowProp(newRowIdx, 'sortId', newData.length);
+      console.log('✅ [handleAddRow] 设置排序默认值:', newData.length);
+    }
+    
+    // ✅ 关键修复：新增行后需要同步数据到父组件
+    console.log('🔄 [handleAddRow] 开始同步数据到父组件...');
+    
+    // 检查实例是否仍然有效
+    if (hotInstance.isDestroyed) {
+      console.warn('⚠️ [handleAddRow] Handsontable 实例已被销毁，无法同步数据');
+      message.warning('表格实例已失效，请刷新页面');
+      return;
+    }
+    
+    hotTableRef.value.syncDataToParent();
+    
+    message.success('已新增一行');
+  } catch (error) {
+    console.error('❌ [handleAddRow] 添加行失败:', error);
+    message.error('添加行失败');
+  }
+}
+
+/**
+ * 删除选中的行
+ */
+function handleDeleteSelectedRows() {
+  console.log('🔍 [handleDeleteSelectedRows] hotTableRef.value:', hotTableRef.value);
+  
+  if (!hotTableRef.value?.selectedRows) {
+    message.warning('表格未初始化');
+    return;
+  }
+
+  // ✅ 关键修复：使用 selectedRows ref
+  const selectedRowsRef = hotTableRef.value.selectedRows;
+  const selectedRowsSet = selectedRowsRef as Set<number>;
+  
+  console.log('📊 [handleDeleteSelectedRows] 当前选中的行:', Array.from(selectedRowsSet));
+  
+  if (selectedRowsSet.size === 0) {
+    message.warning('请先选中要删除的行（点击行号或拖动选择）');
+    return;
+  }
+  
+  // 按降序排序，从后往前删除，避免索引变化
+  const sortedRows = Array.from(selectedRowsSet).sort((a, b) => b - a);
+  
+  console.log('🗑️ [handleDeleteSelectedRows] 待删除的行索引:', sortedRows);
+  
+  // 获取 Handsontable 实例
+  const hotInstanceRef = hotTableRef.value.hotInstance;
+  let hotInstance: any;
+  if (hotInstanceRef && typeof hotInstanceRef === 'object' && 'value' in hotInstanceRef) {
+    hotInstance = hotInstanceRef.value;
+  } else {
+    hotInstance = hotInstanceRef;
+  }
+  
+  // 检查实例是否有效
+  if (!hotInstance || typeof hotInstance !== 'object') {
+    console.error('❌ [handleDeleteSelectedRows] hotInstance 不是有效对象:', hotInstance);
+    message.warning('表格实例无效');
+    return;
+  }
+  
+  // 检查实例是否已被销毁
+  if (hotInstance.isDestroyed) {
+    console.warn('⚠️ [handleDeleteSelectedRows] Handsontable 实例已被销毁');
+    message.warning('表格实例已失效，请刷新页面');
+    return;
+  }
+  
+  try {
+    sortedRows.forEach((rowIndex) => {
+      // ✅ 关键修复：使用正确的API删除行
+      if (typeof hotInstance.alter === 'function') {
+        hotInstance.alter('remove_row', rowIndex, 1);
+      } else {
+        // 备用方法：直接操作数据源
+        const currentData = hotInstance.getData();
+        currentData.splice(rowIndex, 1);
+        hotInstance.loadData(currentData);
+      }
+    });
+    
+    // 清空选中的行
+    selectedRowsSet.clear();
+    
+    // ✅ 关键修复：删除行后需要同步数据到父组件
+    console.log('🔄 [handleDeleteSelectedRows] 开始同步数据到父组件...');
+    hotTableRef.value.syncDataToParent();
+    
+    message.success(`已删除 ${sortedRows.length} 行`);
+  } catch (error) {
+    console.error('❌ [handleDeleteSelectedRows] 删除行失败:', error);
+    message.error('删除行失败');
+  }
+}
+
 // ==================== 加载下拉数据源 ====================
 
 async function loadDropdownData() {
@@ -397,6 +595,11 @@ async function loadDropdownData() {
       );
     }
 
+    // ✅ 4. 一次性加载全部客户数据（用于结算对象下拉框）
+    console.log('🔄 [loadDropdownData] 开始加载全部客户缓存...');
+    await dropdownSources.loadAllClients();
+    console.log('✅ [loadDropdownData] 全部客户缓存加载完成');
+
     console.log('✅ [loadDropdownData] 所有下拉数据加载完成');
   } catch (error) {
     console.error('❌ [loadDropdownData] 加载失败:', error);
@@ -450,6 +653,9 @@ async function loadDetail() {
         remark: item.remark,
       })) || [];
 
+    // ✅ 关键修复：保存初始状态快照
+    previousFeeItems.value = JSON.parse(JSON.stringify(feeItems.value));
+
     // 在 nextTick 中更新表格数据
     await nextTick();
     hotTableRef.value?.updateData(feeItems.value);
@@ -471,6 +677,9 @@ async function handleSubmit() {
       message.warning('请填写必填项');
       return;
     }
+
+    // ✅ 关键修复：在同步数据前保存快照，用于失败时恢复
+    previousFeeItems.value = JSON.parse(JSON.stringify(feeItems.value));
 
     // ✅ 从子组件同步数据
     hotTableRef.value?.syncDataToParent();
@@ -540,6 +749,16 @@ async function handleSubmit() {
     modalApi.close();
     emit('success');
   } catch (error) {
+    // ✅ 关键修复：保存失败时恢复数据
+    console.error('❌ [handleSubmit] 保存失败，恢复之前的数据:', error);
+    
+    // 恢复费用明细数据
+    feeItems.value = JSON.parse(JSON.stringify(previousFeeItems.value));
+    
+    // ✅ 关键修复：恢复后需要重新渲染表格（将 ID 转换为 Label）
+    await nextTick();
+    hotTableRef.value?.updateData(feeItems.value);
+    
     message.error(mode.value === 'create' ? '新建失败' : '编辑失败');
     console.error(error);
   } finally {
@@ -557,24 +776,36 @@ onMounted(() => {
 <template>
   <Modal
     :title="mode === 'create' ? '新建自动费用模板' : '编辑自动费用模板'"
-    class="w-[1400px]"
+    class="w-[1400px] order-fee-template-modal"
   >
-    <div v-loading="loading" class="max-h-[70vh] overflow-y-auto">
+    <div v-loading="loading">
       <!-- 基础信息 -->
       <Card title="基础信息" class="mb-4">
         <Form />
       </Card>
 
       <!-- 费用明细 -->
-      <Card title="费用明细">
+      <Card>
+        <template #title>
+          <div class="flex items-center justify-between">
+            <span>费用明细</span>
+            <div class="space-x-2">
+              <Button size="small" type="primary" @click="handleAddRow">
+                新增行
+              </Button>
+              <Button size="small" danger @click="handleDeleteSelectedRows">
+                删除选中行
+              </Button>
+            </div>
+          </div>
+        </template>
         <OrderFeeTemplateTable
           ref="hotTableRef"
           v-model:data-source="feeItems"
           :dropdown-sources="dropdownSources"
+          :all-clients-by-industry="dropdownSources.allClientsByIndustry.value"
         />
-        <div class="mt-2 text-xs text-gray-500">
-          提示：右键点击表格可以添加/删除行
-        </div>
+      
       </Card>
     </div>
   </Modal>
@@ -582,6 +813,13 @@ onMounted(() => {
 
 <style scoped>
 :deep(.ant-card-body) {
-  padding: 16px;
+  padding: 12px;
+}
+
+/* ✅ 关键修复：移除弹窗body的滚动条 */
+:deep(.order-fee-template-modal .ant-modal-body) {
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 12px;
 }
 </style>

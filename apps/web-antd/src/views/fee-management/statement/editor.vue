@@ -35,6 +35,7 @@ import {
   Menu,
   MenuItem,
   message,
+  Modal,
   Select,
   SelectOption,
   Space,
@@ -63,6 +64,8 @@ import {
   removeStatementFees,
   getStatementPagedList,
 } from '#/api/settlement-management/statement-admin';
+import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
+import { addByStatement as addPaymentApplicationByStatement } from '#/api/settlement-management/payment-application-admin';
 import FileUploadInput from '../../../adapter/component/file-upload/file-upload-input.vue';
 
 import AddFeeDrawer from '../add-fee-statement-modal/index.vue';
@@ -97,6 +100,9 @@ const pageTitle = computed(() =>
 
 const submitting = ref(false);
 const addFeeDrawerRef = ref<InstanceType<typeof AddFeeDrawer> | null>(null);
+
+// 存储对账单详情，用于获取paySide
+const statementDetail = ref<StatementAdminApi.StatementDto | null>(null);
 
 const applicantName = computed(
   () => userStore.userInfo?.realName ?? userStore.userInfo?.username ?? '',
@@ -221,6 +227,17 @@ const currencySummaries = computed<CurrencySummary[]>(() =>
 );
 
 const isClientLocked = computed(() => feeDetailRows.value.length > 0);
+
+// --- 根据paySide判断是否显示生成按钮 ---
+const canGenerateInvoiceApplication = computed(() => {
+  // 只有编辑模式且全部为收（paySide === 0）时才显示
+  return isEdit.value && statementDetail.value?.paySide === 0;
+});
+
+const canGeneratePaymentApplication = computed(() => {
+  // 只有编辑模式且全部为付（paySide === 1）时才显示
+  return isEdit.value && statementDetail.value?.paySide === 1;
+});
 
 // --- Fee detail selection ---
 
@@ -463,6 +480,9 @@ async function loadEditData() {
   pageLoading.value = true;
   try {
     const detail = await getStatementDetail(editId.value);
+
+    // 保存对账单详情，用于获取paySide
+    statementDetail.value = detail;
 
     statementNum.value = detail.statementNum ?? '';
     clientId.value = detail.clientId ?? '';
@@ -845,6 +865,80 @@ function handlePrint() {
   });
 }
 
+// --- 生成开票申请 ---
+async function handleGenerateInvoiceApplication() {
+  if (!editId.value) {
+    message.warning('请先保存对账单');
+    return;
+  }
+
+  try {
+    Modal.confirm({
+      title: '确认生成开票申请',
+      content: '将根据对账单下的应收费用自动生成开票申请，是否继续？',
+      onOk: async () => {
+        try {
+          const applicationId = await InvoiceApplicationAdminApi.addByStatement({
+            statementId: editId.value!,
+          });
+          
+          if (applicationId) {
+            message.success(`成功生成开票申请`);
+            markListShouldRefresh('InvoiceApplicationList');
+            
+            // 跳转到第一个生成的开票申请编辑页
+            router.push(`/fee-management/invoice-application/${applicationId}/edit`);
+          } else {
+            message.warning('未生成任何开票申请');
+          }
+        } catch (error) {
+          console.error('生成开票申请失败:', error);
+          //message.error('生成开票申请失败');
+        }
+      },
+    });
+  } catch (error) {
+    console.error('显示确认框失败:', error);
+  }
+}
+
+// --- 生成付费申请 ---
+async function handleGeneratePaymentApplication() {
+  if (!editId.value) {
+    message.warning('请先保存对账单');
+    return;
+  }
+
+  try {
+    Modal.confirm({
+      title: '确认生成付费申请',
+      content: '将根据对账单下的应付费用自动生成付费申请，是否继续？',
+      onOk: async () => {
+        try {
+          const applicationId = await addPaymentApplicationByStatement({
+            statementId: editId.value!,
+          });
+          
+          if (applicationId ) {
+            message.success(`成功生成付费申请`);
+            markListShouldRefresh('PaymentApplicationList');
+            
+            // 跳转到第一个生成的付费申请编辑页
+            router.push(`/fee-management/payment-application/${applicationId}/edit`);
+          } else {
+            message.warning('未生成任何付费申请');
+          }
+        } catch (error) {
+          console.error('生成付费申请失败:', error);
+          //message.error('生成付费申请失败');
+        }
+      },
+    });
+  } catch (error) {
+    console.error('显示确认框失败:', error);
+  }
+}
+
 function getPaySideLabel(val: number) {
   return val === 0 ? '收' : '付';
 }
@@ -875,6 +969,24 @@ function formatMonth(val: string | undefined | null): string {
 
               <Button :loading="submitting" @click="handleSave">
                 {{ t('save') }}
+              </Button>
+
+              <!-- 生成开票申请按钮：仅在编辑模式且全部为收时显示 -->
+              <Button
+                v-if="canGenerateInvoiceApplication"
+                type="primary"
+                @click="handleGenerateInvoiceApplication"
+              >
+                生成开票申请
+              </Button>
+
+              <!-- 生成付费申请按钮：仅在编辑模式且全部为付时显示 -->
+              <Button
+                v-if="canGeneratePaymentApplication"
+                type="primary"
+                @click="handleGeneratePaymentApplication"
+              >
+                生成付费申请
               </Button>
 
               <Dropdown>

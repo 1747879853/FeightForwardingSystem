@@ -27,24 +27,47 @@ export function useInvoiceInfo(
       clientInvoiceInfoList.value = list;
       console.log('✅ 客户开票信息加载成功，数量:', list.length);
 
-      // 选择默认的开票信息
-      const defaultInfo = list.find((item) => item.isDefault);
-      selectedClientInvoiceInfo.value =
-        defaultInfo || (list.length > 0 ? list[0] : undefined);
+      // ✅ 修改：如果已有选中的开票信息，保持不变；否则选择默认或第一项
+      if (!selectedClientInvoiceInfo.value || !selectedClientInvoiceInfo.value.id) {
+        // 选择默认的开票信息，如果没有默认则选择第一项
+        const defaultInfo = list.find((item) => item.isDefault);
+        selectedClientInvoiceInfo.value =
+          defaultInfo || (list.length > 0 ? list[0] : undefined);
 
-      console.log('📋 选中的客户开票信息:', {
-        id: selectedClientInvoiceInfo.value?.id,
-        header: selectedClientInvoiceInfo.value?.header,
-        banks: selectedClientInvoiceInfo.value?.clientInvoiceBanks?.length || 0,
-      });
+        console.log('📋 自动选中客户开票信息:', {
+          id: selectedClientInvoiceInfo.value?.id,
+          header: selectedClientInvoiceInfo.value?.header,
+          isDefault: selectedClientInvoiceInfo.value?.isDefault,
+          banks: selectedClientInvoiceInfo.value?.clientInvoiceBanks?.length || 0,
+        });
+      } else {
+        console.log('📋 保持已选中的客户开票信息:', {
+          id: selectedClientInvoiceInfo.value?.id,
+          header: selectedClientInvoiceInfo.value?.header,
+        });
+      }
 
-      // 根据币别选择银行
-      console.log(
-        '🔄 准备根据币别更新客户银行, currencyId:',
-        formData.value.currencyId,
-      );
-      updateClientBankByCurrency();
-      console.log('✅ 客户银行ID已设置为:', formData.value.clientInvoiceBankId);
+      // ✅ 修改：如果购买方名称（header）未赋值，自动使用选中的开票信息
+      if (!formData.value.clientInvoiceBankId && selectedClientInvoiceInfo.value) {
+        // 根据币别选择银行
+        console.log(
+          '🔄 准备根据币别更新客户银行, currencyId:',
+          formData.value.currencyId,
+        );
+        updateClientBankByCurrency();
+        
+        // ✅ 新增：如果银行ID仍未赋值且有可用银行，自动选择第一个匹配的银行
+        if (!formData.value.clientInvoiceBankId && filteredClientBanks.value.length > 0) {
+          formData.value.clientInvoiceBankId = filteredClientBanks.value[0].value;
+          console.log('✅ 自动选择第一个客户银行:', {
+            id: formData.value.clientInvoiceBankId,
+            bankName: filteredClientBanks.value[0].bankName,
+            bankAccount: filteredClientBanks.value[0].bankAccount,
+          });
+        }
+        
+        console.log('✅ 客户银行ID已设置为:', formData.value.clientInvoiceBankId);
+      }
     } catch (error) {
       console.error('❌ 加载客户开票信息失败:', error);
     }
@@ -98,8 +121,23 @@ export function useInvoiceInfo(
         currencyId: defaultBank.currencyId,
       });
     } else {
-      formData.value.orgBankAccountId = undefined;
-      console.warn('⚠️ 未找到默认银行，清空选择');
+      // ✅ 修改：如果没有默认银行，自动选择第一个匹配的银行
+      const firstMatchedBank = orgBankAccounts.value.find(
+        (b: any) => b.currencyId === currencyId,
+      );
+      
+      if (firstMatchedBank) {
+        formData.value.orgBankAccountId = firstMatchedBank.id;
+        console.log('✅ 自动选择第一个销售方银行:', {
+          id: firstMatchedBank.id,
+          bankName: firstMatchedBank.bankName,
+          bankAccount: firstMatchedBank.bankAccount,
+          currencyId: firstMatchedBank.currencyId,
+        });
+      } else {
+        formData.value.orgBankAccountId = undefined;
+        console.warn('⚠️ 未找到匹配币别的银行，清空选择');
+      }
     }
   }
 
