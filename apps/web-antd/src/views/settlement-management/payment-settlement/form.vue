@@ -34,16 +34,19 @@ import {
 } from '#/adapter/component';
 import FileUploadInput from '#/adapter/component/file-upload/file-upload-input.vue';
 import {
-  addPaymentSettlement,
+  addPaymentSettlementByCurrency, // ✅ 使用新的按原币新增接口
   editPaymentSettlement,
-  getPaymentSettlementDetail,
-  addItemsToSettlement,
-  deleteItemsFromSettlement,
+  getPaymentSettlementDetailByCurrency, // ✅ 使用新的按原币详情接口
+  addItemsToSettlementByCurrency, // ✅ 使用新的按原币添加明细接口
+  deleteItemsFromSettlementByCurrency, // ✅ 使用新的按原币删除明细接口
 } from '#/api/sea-export/payment-settlement-admin';
 import { getPaymentApplicationDetail } from '#/api/settlement-management/payment-application-admin';
 import { getMyDefaultOrgId } from '#/composables/use-my-org';
+import { getOrgBankAccountList } from '#/api/system/organization-unit';
 
 import AddApplicationDrawer from './add-application-drawer/index.vue';
+import ApplicationItemsTable from './application-items-table.vue'; // ✅ 新增：申请明细表格子组件
+// import ExchangeRateModal from '#/views/fee-management/add-fee-modal/exchange-rate-modal.vue'; // ❌ 已移到抽屉组件中
 import { formatAmount, payTypeOptions } from './form-data';
 import { returnToListWithRefresh } from '#/utils/list-refresh-flag';
 
@@ -108,26 +111,30 @@ interface ClientBankOption {
 }
 const clientBankOptions = ref<ClientBankOption[]>([]);
 
-// 结算明细列表 (保持原始层级结构以支持树状表格)
-interface SettlementItem {
-  id: string;
-  application: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
-  // 用户输入的结算数据
-  userSettledPrice?: number; // 固定币别申请的结算总金额
-  userCurrencyItems?: Array<{
-    originalCurrencyId: number;
-    settledAmount: number;
-  }>; // 原币申请的各币别结算量
-}
-
-const settlementItems = ref<SettlementItem[]>([]);
+// ✅ 新增：申请明细列表（从详情接口的 paymentApplicationCurrencies 获取 - 新的二级结构）
+const applicationItems = ref<
+  PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyDto[]
+>([]);
 
 // 计算是否已有费用
-const hasExistingFees = computed(() => settlementItems.value.length > 0);
+const hasExistingFees = computed(() => applicationItems.value.length > 0);
 
-// 计算已存在的申请ID列表（用于在抽屉中禁用这些申请的输入）
-const existingApplicationIds = computed(() => {
-  return settlementItems.value.map((item) => item.application.id);
+// ✅ 计算结算总金额（所有申请明细的 settledPrice 总和）
+const totalSettledAmount = computed(() => {
+  const total = applicationItems.value.reduce((sum, item) => {
+    return sum + (item.settledPrice || 0);
+  }, 0);
+
+  console.log('💰 结算总金额计算:', {
+    申请明细数量: applicationItems.value.length,
+    '各项 settledPrice': applicationItems.value.map((item) => ({
+      applicationNo: item.applicationNo,
+      settledPrice: item.settledPrice,
+    })),
+    总金额: total,
+  });
+
+  return total;
 });
 
 // 抽屉引用
@@ -140,31 +147,9 @@ const currentUserName = computed(
   () => userStore.userInfo?.realName || userStore.userInfo?.username || '-',
 );
 
-// 计算结算总金额
-const totalSettlementAmount = computed(() => {
-  const itemsTotal = settlementItems.value.reduce(
-    (sum, item) =>
-      sum +
-      (item.userSettledPrice ||
-        calculateTotalFromCurrencyItems(item.userCurrencyItems)),
-    0,
-  );
-  return itemsTotal + (transactionFee.value || 0);
-});
-
-/** 从currencyItems计算总金额 */
-function calculateTotalFromCurrencyItems(
-  currencyItems:
-    | Array<{ originalCurrencyId: number; settledAmount: number }>
-    | undefined,
-): number {
-  if (!currencyItems || currencyItems.length === 0) return 0;
-  return currencyItems.reduce((sum, item) => sum + item.settledAmount, 0);
-}
-
 /** 打开选择付费申请抽屉 */
 function handleAddApplication() {
-  // 新建时不需要前置条件，编辑时如果有费用则锁定筛选条件
+  // ⚠️ TODO: 重新设计后的逻辑
   nextTick(() => {
     addApplicationDrawerRef.value?.openDrawer();
   });
@@ -173,20 +158,34 @@ function handleAddApplication() {
 /** 确认选择付费申请 */
 async function handleConfirmApplications(
   applications: Array<{
-    application: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
-    settledPrice?: number; // 固定币别申请的结算总金额
-    currencyItems?: Array<{
-      originalCurrencyId: number;
-      settledAmount: number;
-    }>; // 原币申请的各币别结算量
+    application: PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto;
+    settledAmount: number;
+    userEnteredRate?: number; // ✅ 用户输入的汇率（如果有）
   }>,
   selectedCurrencyId?: number, // 用户在抽屉中选择的结算币别ID
 ) {
+  console.log('=== 父组件接收到数据 ===');
+  console.log('选中的申请:', applications);
+  console.log('结算币别:', selectedCurrencyId);
+
+  // ✅ 打印每个申请的 userEnteredRate
+  applications.forEach((app, index) => {
+    console.log(`申请${index + 1}:`, {
+      applicationNo: app.application.applicationNo,
+      originalCurrencyId: app.application.originalCurrencyId,
+      userEnteredRate: app.userEnteredRate,
+    });
+  });
+
+  if (!selectedCurrencyId) {
+    message.warning('请选择结算币别');
+    return;
+  }
+
+  // ✅ 直接使用抽屉返回的数据执行保存
   if (isEdit.value) {
-    // 编辑模式：直接调用后端接口保存新增的费用项
     await handleAddAndSaveToSettlement(applications, selectedCurrencyId);
   } else {
-    // 新建模式：自动创建结算单并跳转到编辑页面
     await handleCreateSettlementAndRedirect(applications, selectedCurrencyId);
   }
 }
@@ -194,12 +193,9 @@ async function handleConfirmApplications(
 /** 编辑模式下：添加并立即保存到结算单 */
 async function handleAddAndSaveToSettlement(
   applications: Array<{
-    application: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
-    settledPrice?: number;
-    currencyItems?: Array<{
-      originalCurrencyId: number;
-      settledAmount: number;
-    }>;
+    application: PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto;
+    settledAmount: number;
+    userEnteredRate?: number; // ✅ 用户输入的汇率（如果有）
   }>,
   selectedCurrencyId?: number,
 ) {
@@ -215,25 +211,18 @@ async function handleAddAndSaveToSettlement(
 
   submitting.value = true;
   try {
-    // 收集所有涉及的原币币别ID（只收集实际有结算金额的币别）
+    // ✅ 收集所有涉及的原币币别ID
     const originalCurrencyIds = new Set<number>();
+
     applications.forEach((app) => {
-      if (app.application.currencyId) {
-        // 固定币别申请：添加申请的币别ID作为原币
-        originalCurrencyIds.add(app.application.currencyId);
-      } else if (app.currencyItems && app.currencyItems.length > 0) {
-        // 原币申请：只从实际有结算金额的currencyItems中收集原币ID
-        app.currencyItems.forEach((item) => {
-          originalCurrencyIds.add(item.originalCurrencyId);
-        });
-      }
+      originalCurrencyIds.add(app.application.originalCurrencyId);
     });
 
-    // 构建完整的汇率列表（包含所有已有的币别 + 新增的币别）
+    // ✅ 构建完整的汇率列表（优先使用用户输入的汇率）
     const allRates: PaymentSettlementAdminApi.PaymentSettlementRateAddDto[] =
       [];
 
-    // 首先添加所有已有的汇率
+    // 首先从 rateList 中添加所有已有的汇率
     rateList.value.forEach((existingRate) => {
       allRates.push({
         originalCurrencyId: existingRate.originalCurrencyId,
@@ -249,134 +238,118 @@ async function handleAddAndSaveToSettlement(
       );
 
       if (existingRateIndex === -1) {
-        // 新增币别：需要从汇率管理中查询
-        try {
-          const { getExchangeRatePagedList } =
-            await import('#/api/system/base-data/exchange-rate-admin');
+        // ✅ 先检查是否有用户输入的汇率
+        const appWithUserRate = applications.find(
+          (app) =>
+            app.application.originalCurrencyId === originalCurrencyId &&
+            app.userEnteredRate,
+        );
 
-          const result = await getExchangeRatePagedList({
-            CurrencyId: originalCurrencyId,
-            PageIndex: 1,
-            PageSize: 1,
-          });
+        console.log(`处理原币 ${originalCurrencyId}:`);
+        console.log(
+          '  找到带用户汇率的申请:',
+          appWithUserRate
+            ? {
+                applicationNo: appWithUserRate.application.applicationNo,
+                userEnteredRate: appWithUserRate.userEnteredRate,
+              }
+            : '无',
+        );
 
-          let rate = 1; // 默认值
+        let rate = 1; // 默认值
 
-          if (result.items && result.items.length > 0) {
-            const rateData = result.items[0];
-            // 使用 calculateValue（核算汇率）
-            rate = rateData?.calculateValue ?? 1;
-
-            // 如果是同种币别，强制汇率为1
-            if (originalCurrencyId === selectedCurrencyId) {
-              rate = 1;
-            }
-          } else {
-            console.warn(
-              `未找到原币 ${originalCurrencyId} 到结算币别 ${selectedCurrencyId} 的汇率，使用默认值1`,
-            );
-          }
-
-          // 添加到汇率列表
-          allRates.push({
-            originalCurrencyId,
-            rate,
-          });
-
-          // 同时更新本地的rateList（用于界面显示）
-          let currencyCode = '';
+        if (appWithUserRate && appWithUserRate.userEnteredRate) {
+          // 使用用户输入的汇率
+          rate = appWithUserRate.userEnteredRate;
+          console.log(`  ✅ 使用用户输入的汇率: ${rate}`);
+        } else {
+          // 没有用户输入的汇率，从汇率管理中查询
+          console.log(`  ⚠️ 没有用户输入的汇率，从系统查询`);
           try {
-            const { getCurrencyDetail } =
-              await import('#/api/system/base-data/currency-admin');
-            const currencyDetail = await getCurrencyDetail(
-              String(originalCurrencyId),
-            );
-            currencyCode = currencyDetail.code || '';
+            const { getExchangeRatePagedList } =
+              await import('#/api/system/base-data/exchange-rate-admin');
+
+            const result = await getExchangeRatePagedList({
+              CurrencyId: originalCurrencyId,
+              PageIndex: 1,
+              PageSize: 1,
+            });
+
+            if (result.items && result.items.length > 0) {
+              const rateData = result.items[0];
+              // 使用 calculateValue（核算汇率）
+              rate = rateData?.calculateValue ?? 1;
+              console.log(`  系统汇率: ${rate}`);
+            } else {
+              console.warn(
+                `未找到原币 ${originalCurrencyId} 到结算币别 ${selectedCurrencyId} 的汇率，使用默认值1`,
+              );
+            }
           } catch (error) {
-            console.error(`获取原币 ${originalCurrencyId} 代码失败:`, error);
+            console.error(`获取原币 ${originalCurrencyId} 的汇率失败:`, error);
           }
-
-          rateList.value.push({
-            originalCurrencyId,
-            rate,
-            currencyCode,
-          });
-        } catch (error) {
-          console.error(`获取原币 ${originalCurrencyId} 的汇率失败:`, error);
-
-          // 失败时使用默认值1
-          let rate = 1;
-          if (originalCurrencyId === selectedCurrencyId) {
-            rate = 1;
-          }
-
-          allRates.push({
-            originalCurrencyId,
-            rate,
-          });
-
-          rateList.value.push({
-            originalCurrencyId,
-            rate,
-            currencyCode: '',
-          });
         }
+
+        // 如果是同种币别，强制汇率为1
+        if (originalCurrencyId === selectedCurrencyId) {
+          console.log(`  ⚠️ 同种币别，强制汇率为1 (原: ${rate})`);
+          rate = 1;
+        }
+
+        console.log(`  最终汇率: ${rate}`);
+
+        // 添加到汇率列表
+        allRates.push({
+          originalCurrencyId,
+          rate,
+        });
+
+        // 同时更新本地的rateList（用于界面显示）
+        let currencyCode = '';
+        try {
+          const { getCurrencyDetail } =
+            await import('#/api/system/base-data/currency-admin');
+          const currencyDetail = await getCurrencyDetail(
+            String(originalCurrencyId),
+          );
+          currencyCode = currencyDetail.code || '';
+        } catch (error) {
+          console.error(`获取原币 ${originalCurrencyId} 代码失败:`, error);
+        }
+
+        rateList.value.push({
+          originalCurrencyId,
+          rate,
+          currencyCode,
+        });
       }
     }
 
-    // 转换为付费申请分组数据
-    const paymentApplicationGroups: PaymentSettlementAdminApi.PaymentSettlementAddItemGroupDto[] =
-      applications
-        .filter((app) => {
-          const isFixedCurrency = !!app.application.currencyId;
-
-          if (isFixedCurrency) {
-            // 固定币别申请：检查settledPrice是否有有效值（非0、非空）
-            return (
-              app.settledPrice !== undefined &&
-              app.settledPrice !== null &&
-              app.settledPrice !== 0
-            );
-          } else {
-            // 原币申请：检查currencyItems是否有有效数据
-            return app.currencyItems && app.currencyItems.length > 0;
-          }
-        })
-        .map((app) => {
-          const isFixedCurrency = !!app.application.currencyId;
-
-          if (isFixedCurrency) {
-            // 固定币别申请：只传settledPrice
-            return {
-              paymentApplicationId: app.application.id,
-              settledPrice: app.settledPrice || 0,
-            };
-          } else {
-            // 原币申请：传currencyItems指定各币别结算量
-            return {
-              paymentApplicationId: app.application.id,
-              currencyItems: app.currencyItems || [],
-            };
-          }
-        });
+    // ✅ 直接转换为扁平化的 paymentApplicationCurrencyItems（新的二级结构）
+    const paymentApplicationCurrencyItems: PaymentSettlementAdminApi.PaymentSettlementItemByCurrencyInputDto[] =
+      applications.map((app) => ({
+        paymentApplicationId: app.application.paymentApplicationId,
+        originalCurrencyId: app.application.originalCurrencyId,
+        settledAmount: app.settledAmount,
+      }));
 
     // 如果过滤后没有有效数据，提示用户
-    if (paymentApplicationGroups.length === 0) {
+    if (paymentApplicationCurrencyItems.length === 0) {
       message.warning(
         '所有申请的结算金额都为0或未填写，请至少填写一个非零的结算金额',
       );
       return;
     }
 
-    // 调用后端接口保存（使用包含所有币别的完整汇率列表）
-    await addItemsToSettlement({
+    // ✅ 调用新的按原币添加明细接口
+    await addItemsToSettlementByCurrency({
       id: editId.value,
-      paymentApplicationGroups,
+      paymentApplicationCurrencyItems, // ✅ 使用新的扁平化字段
       paymentSettlementRates: allRates,
     });
 
     message.success(
-      `已添加并保存 ${paymentApplicationGroups.length} 个付费申请`,
+      `已添加并保存 ${paymentApplicationCurrencyItems.length} 个「申请+原币」组合`,
     );
 
     // 重新加载详情数据以刷新列表
@@ -391,12 +364,9 @@ async function handleAddAndSaveToSettlement(
 /** 新建模式下：创建结算单并跳转到编辑页面 */
 async function handleCreateSettlementAndRedirect(
   applications: Array<{
-    application: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto;
-    settledPrice?: number;
-    currencyItems?: Array<{
-      originalCurrencyId: number;
-      settledAmount: number;
-    }>;
+    application: PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto;
+    settledAmount: number;
+    userEnteredRate?: number; // ✅ 用户输入的汇率（如果有）
   }>,
   selectedCurrencyId?: number,
 ) {
@@ -405,14 +375,16 @@ async function handleCreateSettlementAndRedirect(
     return;
   }
 
-  // 获取第一个申请的结算对象和归属组织
+  // 获取第一个申请的结算对象
   const firstApp = applications[0]?.application;
   if (!firstApp || !firstApp.settlementId) {
     message.warning('无法获取结算对象信息');
     return;
   }
 
-  const derivedOrgId = firstApp.orgId ?? getMyDefaultOrgId();
+  // ✅ 使用默认组织ID（因为选择列表接口不返回orgs信息）
+  const derivedOrgId = getMyDefaultOrgId();
+
   if (!derivedOrgId) {
     message.error('缺少归属组织，无法保存');
     return;
@@ -420,50 +392,77 @@ async function handleCreateSettlementAndRedirect(
 
   submitting.value = true;
   try {
-    // 收集所有涉及的原币币别ID（只收集实际有结算金额的币别）
+    // ✅ 收集所有涉及的原币币别ID
     const originalCurrencyIds = new Set<number>();
+
     applications.forEach((app) => {
-      if (app.application.currencyId) {
-        // 固定币别申请：添加申请的币别ID作为原币
-        originalCurrencyIds.add(app.application.currencyId);
-      } else if (app.currencyItems && app.currencyItems.length > 0) {
-        // 原币申请：只从实际有结算金额的currencyItems中收集原币ID
-        app.currencyItems.forEach((item) => {
-          originalCurrencyIds.add(item.originalCurrencyId);
-        });
-      }
+      originalCurrencyIds.add(app.application.originalCurrencyId);
     });
 
-    // 构建完整的汇率列表
+    // ✅ 构建完整的汇率列表（优先使用rateList中已有的汇率，即用户输入的汇率）
     const allRates: PaymentSettlementAdminApi.PaymentSettlementRateAddDto[] =
       [];
 
-    for (const originalCurrencyId of originalCurrencyIds) {
-      try {
-        const { getExchangeRatePagedList } =
-          await import('#/api/system/base-data/exchange-rate-admin');
+    // 首先从 rateList 中添加所有已有的汇率（这些是用户输入的汇率）
+    rateList.value.forEach((existingRate) => {
+      allRates.push({
+        originalCurrencyId: existingRate.originalCurrencyId,
+        rate: existingRate.rate,
+      });
+    });
 
-        const result = await getExchangeRatePagedList({
-          CurrencyId: originalCurrencyId,
-          PageIndex: 1,
-          PageSize: 1,
-        });
+    // 然后处理新增的币别
+    for (const originalCurrencyId of originalCurrencyIds) {
+      // 检查是否已存在该原币的汇率
+      const existingRateIndex = allRates.findIndex(
+        (r) => r.originalCurrencyId === originalCurrencyId,
+      );
+
+      if (existingRateIndex === -1) {
+        // ✅ 先检查是否有用户输入的汇率
+        const appWithUserRate = applications.find(
+          (app) =>
+            app.application.originalCurrencyId === originalCurrencyId &&
+            app.userEnteredRate,
+        );
 
         let rate = 1; // 默认值
 
-        if (result.items && result.items.length > 0) {
-          const rateData = result.items[0];
-          // 使用 calculateValue（核算汇率）
-          rate = rateData?.calculateValue ?? 1;
-
-          // 如果是同种币别，强制汇率为1
-          if (originalCurrencyId === selectedCurrencyId) {
-            rate = 1;
-          }
-        } else {
-          console.warn(
-            `未找到原币 ${originalCurrencyId} 到结算币别 ${selectedCurrencyId} 的汇率，使用默认值1`,
+        if (appWithUserRate && appWithUserRate.userEnteredRate) {
+          // 使用用户输入的汇率
+          rate = appWithUserRate.userEnteredRate;
+          console.log(
+            `使用用户输入的汇率: 原币${originalCurrencyId} -> ${rate}`,
           );
+        } else {
+          // 没有用户输入的汇率，从汇率管理中查询
+          try {
+            const { getExchangeRatePagedList } =
+              await import('#/api/system/base-data/exchange-rate-admin');
+
+            const result = await getExchangeRatePagedList({
+              CurrencyId: originalCurrencyId,
+              PageIndex: 1,
+              PageSize: 1,
+            });
+
+            if (result.items && result.items.length > 0) {
+              const rateData = result.items[0];
+              // 使用 calculateValue（核算汇率）
+              rate = rateData?.calculateValue ?? 1;
+            } else {
+              console.warn(
+                `未找到原币 ${originalCurrencyId} 到结算币别 ${selectedCurrencyId} 的汇率，使用默认值1`,
+              );
+            }
+          } catch (error) {
+            console.error(`获取原币 ${originalCurrencyId} 的汇率失败:`, error);
+          }
+        }
+
+        // 如果是同种币别，强制汇率为1
+        if (originalCurrencyId === selectedCurrencyId) {
+          rate = 1;
         }
 
         // 添加到汇率列表
@@ -471,68 +470,53 @@ async function handleCreateSettlementAndRedirect(
           originalCurrencyId,
           rate,
         });
-      } catch (error) {
-        console.error(`获取原币 ${originalCurrencyId} 的汇率失败:`, error);
 
-        // 失败时使用默认值1
-        let rate = 1;
-        if (originalCurrencyId === selectedCurrencyId) {
-          rate = 1;
+        // 同时更新本地的rateList（用于界面显示）
+        let currencyCode = '';
+        try {
+          const { getCurrencyDetail } =
+            await import('#/api/system/base-data/currency-admin');
+          const currencyDetail = await getCurrencyDetail(
+            String(originalCurrencyId),
+          );
+          currencyCode = currencyDetail.code || '';
+        } catch (error) {
+          console.error(`获取原币 ${originalCurrencyId} 代码失败:`, error);
         }
 
-        allRates.push({
+        rateList.value.push({
           originalCurrencyId,
           rate,
+          currencyCode,
         });
       }
     }
 
-    // 转换为付费申请分组数据
-    const paymentApplicationGroups: PaymentSettlementAdminApi.PaymentSettlementAddItemGroupDto[] =
-      applications
-        .filter((app) => {
-          const isFixedCurrency = !!app.application.currencyId;
+    // ✅ 确保同种币别的汇率为1
+    allRates.forEach((rateItem) => {
+      if (rateItem.originalCurrencyId === selectedCurrencyId) {
+        rateItem.rate = 1;
+      }
+    });
 
-          if (isFixedCurrency) {
-            // 固定币别申请：检查settledPrice是否有有效值（非0、非空）
-            return (
-              app.settledPrice !== undefined &&
-              app.settledPrice !== null &&
-              app.settledPrice !== 0
-            );
-          } else {
-            // 原币申请：检查currencyItems是否有有效数据
-            return app.currencyItems && app.currencyItems.length > 0;
-          }
-        })
-        .map((app) => {
-          const isFixedCurrency = !!app.application.currencyId;
-
-          if (isFixedCurrency) {
-            // 固定币别申请：只传settledPrice
-            return {
-              paymentApplicationId: app.application.id,
-              settledPrice: app.settledPrice || 0,
-            };
-          } else {
-            // 原币申请：传currencyItems指定各币别结算量
-            return {
-              paymentApplicationId: app.application.id,
-              currencyItems: app.currencyItems || [],
-            };
-          }
-        });
+    // ✅ 直接转换为扁平化的 paymentApplicationCurrencyItems（新的二级结构）
+    const paymentApplicationCurrencyItems: PaymentSettlementAdminApi.PaymentSettlementItemByCurrencyInputDto[] =
+      applications.map((app) => ({
+        paymentApplicationId: app.application.paymentApplicationId,
+        originalCurrencyId: app.application.originalCurrencyId,
+        settledAmount: app.settledAmount,
+      }));
 
     // 如果过滤后没有有效数据，提示用户
-    if (paymentApplicationGroups.length === 0) {
+    if (paymentApplicationCurrencyItems.length === 0) {
       message.warning(
         '所有申请的结算金额都为0或未填写，请至少填写一个非零的结算金额',
       );
       return;
     }
 
-    // 构建结算单数据
-    const data: PaymentSettlementAdminApi.PaymentSettlementAddDto = {
+    // ✅ 构建结算单数据（使用新的按原币接口）
+    const data: PaymentSettlementAdminApi.PaymentSettlementAddByCurrencyDto = {
       orgId: derivedOrgId,
       settlementTime: dayjs().toISOString(),
       payType: undefined,
@@ -543,18 +527,18 @@ async function handleCreateSettlementAndRedirect(
       transactionFee: 0,
       remark: '',
       paymentSettlementRates: allRates,
-      paymentApplicationGroups,
+      paymentApplicationCurrencyItems, // ✅ 使用新的扁平化字段
       attachments: attachments.value.map((a, idx) => ({
         attachmentId: Number(a.attachmentId),
         displayOrder: idx,
       })),
     };
 
-    // 调用创建接口
-    const newId = await addPaymentSettlement(data);
+    // ✅ 调用新的按原币新增接口
+    const newId = await addPaymentSettlementByCurrency(data);
 
     message.success(
-      `成功创建结算单，已添加 ${paymentApplicationGroups.length} 个付费申请`,
+      `成功创建结算单，已添加 ${paymentApplicationCurrencyItems.length} 个「申请+原币」组合`,
     );
 
     // 跳转到编辑页面
@@ -582,240 +566,51 @@ async function handleAddToExistingSettlement(
   }>,
   selectedCurrencyId?: number,
 ) {
-  if (!selectedCurrencyId) {
-    message.warning('请选择结算币别');
-    return;
-  }
-
-  // 获取第一个申请的结算对象
-  const firstApp = applications[0]?.application;
-  if (!firstApp || !firstApp.settlementId) {
-    message.warning('无法获取结算对象信息');
-    return;
-  }
-
-  try {
-    // 收集所有涉及的原币币别ID（只收集实际有结算金额的币别）
-    const originalCurrencyIds = new Set<number>();
-    applications.forEach((app) => {
-      if (app.application.currencyId) {
-        // 固定币别申请：添加申请的币别ID作为原币
-        originalCurrencyIds.add(app.application.currencyId);
-      } else if (app.currencyItems && app.currencyItems.length > 0) {
-        // 原币申请：只从实际有结算金额的currencyItems中收集原币ID
-        app.currencyItems.forEach((item) => {
-          originalCurrencyIds.add(item.originalCurrencyId);
-        });
-      }
-    });
-
-    // 获取汇率列表并更新rateList
-    if (originalCurrencyIds.size > 0) {
-      for (const originalCurrencyId of originalCurrencyIds) {
-        // 检查是否已存在该原币的汇率
-        const existingRate = rateList.value.find(
-          (r) => r.originalCurrencyId === originalCurrencyId,
-        );
-
-        if (!existingRate) {
-          try {
-            // 根据原币ID查询汇率
-            const { getExchangeRatePagedList } =
-              await import('#/api/system/base-data/exchange-rate-admin');
-            const { getCurrencyDetail } =
-              await import('#/api/system/base-data/currency-admin');
-
-            const result = await getExchangeRatePagedList({
-              CurrencyId: originalCurrencyId,
-              PageIndex: 1,
-              PageSize: 1,
-            });
-
-            // 获取原币代码
-            let currencyCode = '';
-            try {
-              const currencyDetail = await getCurrencyDetail(
-                String(originalCurrencyId),
-              );
-              currencyCode = currencyDetail.code || '';
-            } catch (error) {
-              console.error(`获取原币 ${originalCurrencyId} 代码失败:`, error);
-            }
-
-            if (result.items && result.items.length > 0) {
-              const rateData = result.items[0];
-              // 使用 calculateValue（计算汇率）
-              let rate = rateData?.calculateValue ?? 1;
-
-              // 如果是同种币别，强制汇率为1
-              if (originalCurrencyId === selectedCurrencyId) {
-                rate = 1;
-              }
-
-              rateList.value.push({
-                originalCurrencyId,
-                rate,
-                currencyCode,
-              });
-            } else {
-              // 如果没有找到汇率，使用默认值1
-              let rate = 1;
-
-              // 如果是同种币别，强制汇率为1
-              if (originalCurrencyId === selectedCurrencyId) {
-                rate = 1;
-              }
-
-              rateList.value.push({
-                originalCurrencyId,
-                rate,
-                currencyCode,
-              });
-              console.warn(
-                `未找到原币 ${originalCurrencyId} 到结算币别 ${selectedCurrencyId} 的汇率，使用默认值1`,
-              );
-            }
-          } catch (error) {
-            console.error(`获取原币 ${originalCurrencyId} 的汇率失败:`, error);
-
-            // 尝试获取原币代码
-            let currencyCode = '';
-            try {
-              const { getCurrencyDetail } =
-                await import('#/api/system/base-data/currency-admin');
-              const currencyDetail = await getCurrencyDetail(
-                String(originalCurrencyId),
-              );
-              currencyCode = currencyDetail.code || '';
-            } catch (e) {
-              // 忽略错误
-            }
-
-            // 失败时使用默认值1，如果是同种币别，强制汇率为1
-            let rate = 1;
-            if (originalCurrencyId === selectedCurrencyId) {
-              rate = 1;
-            }
-
-            rateList.value.push({
-              originalCurrencyId,
-              rate,
-              currencyCode,
-            });
-          }
-        }
-      }
-    }
-
-    // 转换为结算明细 (保持层级结构)，并过滤掉结算金额为0或空的申请
-    const newItems: SettlementItem[] = applications
-      .filter((app) => {
-        const isFixedCurrency = !!app.application.currencyId;
-
-        if (isFixedCurrency) {
-          // 固定币别申请：检查settledPrice是否有有效值（非0、非空）
-          return (
-            app.settledPrice !== undefined &&
-            app.settledPrice !== null &&
-            app.settledPrice !== 0
-          );
-        } else {
-          // 原币申请：检查currencyItems是否有有效数据（至少有一个币别填写了有效的结算金额）
-          return app.currencyItems && app.currencyItems.length > 0;
-        }
-      })
-      .map((app, index) => {
-        const isFixedCurrency = !!app.application.currencyId;
-
-        return {
-          id: `${Date.now()}-${index}`,
-          application: app.application,
-          // 保存用户输入的结算数据
-          userSettledPrice: isFixedCurrency ? app.settledPrice : undefined,
-          userCurrencyItems: !isFixedCurrency ? app.currencyItems : undefined,
-        };
-      });
-
-    // 如果过滤后没有有效数据，提示用户
-    if (newItems.length === 0) {
-      message.warning(
-        '所有申请的结算金额都为0或未填写，请至少填写一个非零的结算金额',
-      );
-      return;
-    }
-
-    // 添加到列表
-    settlementItems.value.push(...newItems);
-
-    // 如果是第一次添加，自动填充结算信息
-    if (settlementItems.value.length === newItems.length) {
-      settlementId.value = firstApp.settlementId;
-      currencyId.value = selectedCurrencyId;
-    }
-
-    message.success(`已添加 ${newItems.length} 个付费申请`);
-  } catch (error: any) {
-    message.error(error.message || '操作失败');
-  }
+  // ⚠️ TODO: 重新设计后的实现
+  console.warn('handleAddToExistingSettlement 待重新实现');
 }
 
 /** 删除结算明细 */
 async function handleDeleteItem(index: number) {
+  // ⚠️ TODO: 重新设计后的实现
+  console.warn('handleDeleteItem 待重新实现');
+}
+
+/** 删除申请明细 */
+async function handleDeleteApplicationItem(index: number) {
   if (!isEdit.value || !editId.value) {
     // 新建模式：直接从列表中移除
-    settlementItems.value.splice(index, 1);
+    applicationItems.value.splice(index, 1);
     return;
   }
 
   // 编辑模式：调用后端接口删除
-  const itemToDelete = settlementItems.value[index];
+  const itemToDelete = applicationItems.value[index];
   if (!itemToDelete) {
     message.error('未找到要删除的申请');
     return;
   }
 
   try {
-    // 使用 Modal.confirm 进行二次确认
-    await new Promise<void>((resolve, reject) => {
-      Modal.confirm({
-        title: '确认删除',
-        content: `确定要删除申请 ${itemToDelete.application.applicationNo} 吗？`,
-        okText: '确定',
-        cancelText: '取消',
-        onOk: () => {
-          resolve();
-        },
-        onCancel: () => {
-          reject(new Error('取消删除'));
-        },
-      });
-    });
-
     submitting.value = true;
 
-    // 1. 收集要删除的付费申请ID
-    const paymentApplicationIds = [itemToDelete.application.id];
+    // 1. 构建要删除的 key（paymentApplicationId + originalCurrencyId）
+    const paymentApplicationCurrencyKeys: PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyKeyDto[] =
+      [
+        {
+          paymentApplicationId: itemToDelete.paymentApplicationId,
+          originalCurrencyId: itemToDelete.originalCurrencyId,
+        },
+      ];
 
     // 2. 构建删除后剩余的汇率列表（从当前汇率列表中过滤）
     // 先获取删除后剩余的申请列表
-    const remainingItems = settlementItems.value.filter((_, i) => i !== index);
+    const remainingItems = applicationItems.value.filter((_, i) => i !== index);
 
     // 收集剩余申请涉及的所有原币币别ID
     const remainingOriginalCurrencyIds = new Set<number>();
-    console.log('remainingItems:', remainingItems);
     remainingItems.forEach((item) => {
-      if (item.application.currencyId) {
-        // 固定币别申请：添加申请的币别ID作为原币
-        remainingOriginalCurrencyIds.add(item.application.currencyId);
-      } else if (
-        item.application?.currencyGroup &&
-        item.application?.currencyGroup.length > 0
-      ) {
-        // 原币申请：从currencyItems中收集原币ID
-        item.application?.currencyGroup?.forEach((app) => {
-          remainingOriginalCurrencyIds.add(app.id);
-        });
-      }
+      remainingOriginalCurrencyIds.add(item.originalCurrencyId);
     });
 
     // 从当前汇率列表中过滤出剩余申请涉及的币别
@@ -829,10 +624,10 @@ async function handleDeleteItem(index: number) {
           rate: rate.rate,
         }));
 
-    // 3. 调用后端接口删除
-    await deleteItemsFromSettlement({
+    // 3. 调用新的按原币删除接口
+    await deleteItemsFromSettlementByCurrency({
       id: editId.value,
-      paymentApplicationIds,
+      paymentApplicationCurrencyKeys, // ✅ 使用新的扁平化字段
       paymentSettlementRates: remainingRates,
     });
 
@@ -841,9 +636,7 @@ async function handleDeleteItem(index: number) {
     // 4. 重新加载详情数据以刷新列表和汇率
     await loadEditData();
   } catch (error: any) {
-    if (error.message !== '取消删除') {
-      message.error(error.message || '删除失败');
-    }
+    message.error(error.message || '删除失败');
   } finally {
     submitting.value = false;
   }
@@ -857,50 +650,40 @@ async function handleSave() {
 
   submitting.value = true;
   try {
-    const derivedOrgId =
-      settlementItems.value.find((it) => it.application.orgId != null)
-        ?.application.orgId ??
-      orgs.value[0]?.id ??
-      getMyDefaultOrgId();
+    // ⚠️ TODO: 重新设计后的数据构建逻辑
+    const derivedOrgId = getMyDefaultOrgId();
     if (!derivedOrgId) {
       message.error('缺少归属组织，无法保存');
       submitting.value = false;
       return;
     }
-    const data: PaymentSettlementAdminApi.PaymentSettlementAddDto = {
-      orgId: derivedOrgId,
-      settlementTime: settlementTime.value.toISOString(),
-      payType: payType.value,
-      settlementId: settlementId.value,
-      currencyId: currencyId.value!,
-      orgBankAccountId: orgBankAccountId.value,
-      clientInvoiceBankId: clientInvoiceBankId.value,
-      transactionFee: transactionFee.value,
-      remark: remark.value,
-      paymentSettlementRates: rateList.value,
-      paymentApplicationGroups: buildPaymentApplicationGroups(),
-      attachments: attachments.value.map((a, idx) => ({
-        attachmentId: Number(a.attachmentId),
-        displayOrder: idx,
-      })),
-    };
 
+    // ✅ 编辑模式：只保存主表信息（不包含明细）
     if (isEdit.value && editId.value) {
-      // 编辑模式：保存后不关闭页面，停留在当前编辑页面
-      await editPaymentSettlement({
+      const data: PaymentSettlementAdminApi.PaymentSettlementEditDto = {
         id: editId.value,
-        ...data,
-      } as any);
+        orgId: derivedOrgId,
+        settlementTime: settlementTime.value.toISOString(),
+        payType: payType.value,
+        orgBankAccountId: orgBankAccountId.value,
+        clientInvoiceBankId: clientInvoiceBankId.value,
+        transactionFee: transactionFee.value,
+        remark: remark.value,
+        paymentSettlementRates: rateList.value,
+        attachments: attachments.value.map((a, idx) => ({
+          attachmentId: Number(a.attachmentId),
+          displayOrder: idx,
+        })),
+      };
+
+      // 编辑模式：保存后不关闭页面，停留在当前编辑页面
+      await editPaymentSettlement(data);
       message.success('保存成功');
       // 重新加载详情数据以刷新页面显示
       await loadEditData();
     } else {
       // 新增模式（理论上不会走到这里，因为新增时会自动创建并跳转）
-      await addPaymentSettlement(data);
-      message.success('新建成功');
-      returnToListWithRefresh('PaymentSettlementList', () => {
-        router.push('/settlement-management/payment-settlement');
-      });
+      message.warning('新建模式请使用"添加申请"按钮自动创建结算单');
     }
   } catch (error: any) {
     message.error(error.message || '操作失败');
@@ -916,34 +699,6 @@ function handleBack() {
   });
 }
 
-/** 构建付费申请分组数据 */
-function buildPaymentApplicationGroups(): PaymentSettlementAdminApi.PaymentSettlementAddItemGroupDto[] {
-  // 根据 settlementItems 构建分组数据
-  const groups: PaymentSettlementAdminApi.PaymentSettlementAddItemGroupDto[] =
-    [];
-  console.log('settlementItems:', settlementItems.value);
-  settlementItems.value.forEach((item) => {
-    const app = item.application;
-    const isFixedCurrency = !!app.currencyId;
-
-    if (isFixedCurrency) {
-      // 固定币别申请：只传settledPrice，后端自动分配
-      groups.push({
-        paymentApplicationId: app.id,
-        settledPrice: item.userSettledPrice || 0,
-      });
-    } else {
-      // 原币申请：传currencyItems指定各币别结算量
-      groups.push({
-        paymentApplicationId: app.id,
-        currencyItems: item.userCurrencyItems || [],
-      });
-    }
-  });
-
-  return groups;
-}
-
 /** 表单验证 */
 function validateForm(): boolean {
   if (!settlementId.value) {
@@ -954,10 +709,11 @@ function validateForm(): boolean {
     message.warning('请选择结算币别');
     return false;
   }
-  if (settlementItems.value.length === 0) {
-    message.warning('请至少添加一个付费申请');
-    return false;
-  }
+  // ⚠️ TODO: 重新设计后的验证逻辑
+  // if (settlementItems.value.length === 0) {
+  //   message.warning('请至少添加一个付费申请');
+  //   return false;
+  // }
   return true;
 }
 
@@ -967,7 +723,17 @@ async function loadEditData() {
 
   pageLoading.value = true;
   try {
-    const detail = await getPaymentSettlementDetail(editId.value);
+    console.log('=== 开始加载结算单详情 ===');
+    console.log('结算单ID:', editId.value);
+
+    // ✅ 使用新的按原币详情接口
+    const detail = await getPaymentSettlementDetailByCurrency(editId.value);
+
+    console.log('✅ 详情接口返回成功');
+    console.log(
+      'detail.paymentApplicationCurrencies 数量:',
+      detail.paymentApplicationCurrencies?.length || 0,
+    );
 
     settlementNo.value = detail.settlementNo || ''; // 加载结算单号
     orgs.value = detail.orgs || []; // 加载归属组织
@@ -989,281 +755,174 @@ async function loadEditData() {
     transactionFee.value = detail.transactionFee;
     remark.value = detail.remark || '';
 
+    console.log('✅ 基本信息赋值完成');
+    console.log('currencyId:', currencyId.value);
+    console.log('settlementId:', settlementId.value);
+
     // 加载汇率列表（包含currencyCode用于显示）
     const { getCurrencyDetail } =
       await import('#/api/system/base-data/currency-admin');
     rateList.value = await Promise.all(
-      detail.paymentSettlementRates.map(async (r) => {
-        let currencyCode = '';
-        try {
-          const currencyDetail = await getCurrencyDetail(
-            String(r.originalCurrencyId),
-          );
-          currencyCode = currencyDetail.code || '';
-        } catch (error) {
-          console.error(`获取原币 ${r.originalCurrencyId} 代码失败:`, error);
-        }
+      detail.paymentSettlementRates.map(
+        async (r: PaymentSettlementAdminApi.PaymentSettlementRateDto) => {
+          let currencyCode = '';
+          try {
+            const currencyDetail = await getCurrencyDetail(
+              String(r.originalCurrencyId),
+            );
+            currencyCode = currencyDetail.code || '';
+          } catch (error) {
+            console.error(`获取原币 ${r.originalCurrencyId} 代码失败:`, error);
+          }
 
-        // 如果是同种币别，强制汇率为1
-        let rate = r.rate;
-        if (r.originalCurrencyId === detail.currencyId) {
-          rate = 1;
-        }
+          // 如果是同种币别，强制汇率为1
+          let rate = r.rate;
+          if (r.originalCurrencyId === detail.currencyId) {
+            rate = 1;
+          }
 
-        return {
-          originalCurrencyId: r.originalCurrencyId,
-          rate,
-          currencyCode,
-        };
-      }),
+          return {
+            originalCurrencyId: r.originalCurrencyId,
+            rate,
+            currencyCode,
+          };
+        },
+      ),
     );
 
-    // 加载编辑数据时，直接使用详情接口返回的 paymentApplications 字段
-    // paymentApplications 的类型是 PaymentApplicationForDetailDto[]，包含本次结算的信息
-    const rebuiltItems: SettlementItem[] = [];
+    console.log('✅ 汇率列表加载完成，共', rateList.value.length, '个');
 
-    if (detail.paymentApplications && detail.paymentApplications.length > 0) {
-      // 🔍 调试：打印 paymentSettlementItems 的结构
-      console.log('paymentSettlementItems:', detail.paymentSettlementItems);
-      if (
-        detail.paymentSettlementItems &&
-        detail.paymentSettlementItems.length > 0
-      ) {
-        console.log(
-          '第一个 settlement item 的 orderFee:',
-          detail.paymentSettlementItems[0]?.orderFee,
-        );
-        console.log(
-          'orderFee 是否有 transportOrder:',
-          detail.paymentSettlementItems[0]?.orderFee
-            ? 'transportOrder' in detail.paymentSettlementItems[0].orderFee
-            : false,
-        );
-      }
+    // ✅ 从详情接口加载申请明细（新的二级结构：paymentApplicationCurrencies）
+    applicationItems.value = detail.paymentApplicationCurrencies || [];
 
-      for (const app of detail.paymentApplications) {
-        try {
-          // 从 currencyGroup 中提取用户输入的结算数据
-          let userSettledPrice: number | undefined;
-          let userCurrencyItems:
-            | Array<{ originalCurrencyId: number; settledAmount: number }>
-            | undefined;
+    console.log('✅ 申请明细赋值完成');
+    console.log('applicationItems 数量:', applicationItems.value.length);
 
-          // 判断是固定币别还是原币申请（通过检查 currencyGroup 是否有多个币别）
-          const isMultiCurrency =
-            app.currencyGroup && app.currencyGroup.length > 1;
+    // 🔍 详细打印第一个申请明细的结构
+    if (applicationItems.value.length > 0) {
+      const firstItem = applicationItems.value[0];
+      if (firstItem) {
+        console.log('📋 第一个申请明细详情:');
+        console.log('  paymentApplicationId:', firstItem.paymentApplicationId);
+        console.log('  originalCurrencyId:', firstItem.originalCurrencyId);
+        console.log('  orderFees 数量:', firstItem.orderFees?.length || 0);
 
-          if (
-            !isMultiCurrency &&
-            app.totalSettledPrice !== undefined &&
-            app.totalSettledPrice !== null
-          ) {
-            // 固定币别申请：使用 totalSettledPrice
-            userSettledPrice = app.totalSettledPrice;
-          } else {
-            // 原币申请：从 currencyGroup 中提取各币别的 settledAmount（保留所有有 settledAmount 字段的币别，包括值为0的）
-            if (app.currencyGroup && app.currencyGroup.length > 0) {
-              userCurrencyItems = app.currencyGroup
-                .filter((currency) => currency.settledAmount !== undefined)
-                .map((currency) => ({
-                  originalCurrencyId: currency.id,
-                  settledAmount: currency.settledAmount ?? 0,
-                }));
-            }
+        if (firstItem.orderFees && firstItem.orderFees.length > 0) {
+          const firstFee = firstItem.orderFees[0];
+          if (firstFee) {
+            console.log('  第一个费用详情:');
+            console.log('    id:', firstFee.id);
+            console.log('    orgId:', firstFee.orgId);
+            console.log('    amount:', firstFee.amount);
+            console.log('    所有字段:', Object.keys(firstFee));
           }
-
-          // 构造 application 对象用于展示
-          // 需要将详情接口的 CurrencyGroupForDetailDto 转换为 CurrencyGroupForSettlementDto 格式
-          const convertedCurrencyGroup: PaymentApplicationAdminApi.CurrencyGroupForSettlementDto[] &
-            { settledAmount?: number }[] = [];
-
-          if (app.currencyGroup && app.currencyGroup.length > 0) {
-            for (const detailCurrency of app.currencyGroup) {
-              // 使用通用转换函数（已优化为保留所有原始字段）
-              const convertedCurrency =
-                convertCurrencyGroupForDetailToSettlement(detailCurrency);
-
-              // 🔍 调试：打印转换后的 orderFees 结构
-              console.log(
-                `币别 ${detailCurrency.code} 的 orderFees:`,
-                convertedCurrency.orderFees,
-              );
-              if (
-                convertedCurrency.orderFees &&
-                convertedCurrency.orderFees.length > 0
-              ) {
-                const firstFee = convertedCurrency.orderFees[0];
-                console.log(
-                  `第一个费用的完整结构:`,
-                  JSON.stringify(firstFee, null, 2),
-                );
-                console.log(
-                  '是否有 transportOrder:',
-                  firstFee ? 'transportOrder' in firstFee : false,
-                );
-                console.log(
-                  '是否有 rqstPaymentAmount:',
-                  firstFee ? 'rqstPaymentAmount' in firstFee : false,
-                );
-                console.log(
-                  '是否有 unSettledAmount:',
-                  firstFee ? 'unSettledAmount' in firstFee : false,
-                );
-              }
-
-              // 关键修复：将已保存的结算金额覆盖到转换后的 currencyGroup 中
-              // 对于原币申请（有多个币别），使用 userCurrencyItems 中的值
-              if (isMultiCurrency && userCurrencyItems) {
-                const savedItem = userCurrencyItems.find(
-                  (item) => item.originalCurrencyId === convertedCurrency.id,
-                );
-                if (savedItem !== undefined) {
-                  convertedCurrency.settledAmount = savedItem.settledAmount;
-                }
-              }
-              // 对于固定币别申请，settledAmount 应该从 totalSettledPrice 获取（已在上面提取）
-              // 但由于固定币别只有一个币别，且第二层不显示输入框，这里不需要特殊处理
-
-              convertedCurrencyGroup.push(convertedCurrency);
-            }
-          }
-
-          // 从 paymentSettlementItems 中获取公司信息（根据 paymentApplicationId 匹配）
-          const relatedItems = detail.paymentSettlementItems?.filter(
-            (item) => item.paymentApplicationId === app.id,
-          );
-          console.log(
-            `应用 ${app.applicationNo} 相关的结算明细:`,
-            relatedItems,
-          );
-          // 从第一个相关的结算明细中获取公司信息
-
-          const detailOrgs = detail?.orgs || [];
-
-          // 构造完整的 application 对象
-          const mockApplication: PaymentApplicationAdminApi.PaymentApplicationForSettlementDto =
-            {
-              id: app.id,
-              applicationNo: app.applicationNo,
-              status: 3, // 已审核通过
-              settlementId: detail.settlementId,
-              settlement: app.settlement ?? detail.settlement ?? null,
-              currency: app.currencyGroup?.[0]?.code
-                ? {
-                    code: app.currencyGroup[0].code,
-                    defaultRate: 0,
-                  }
-                : null,
-              currencyId: app.currencyGroup?.[0]?.id, // 从 currencyGroup 中获取第一个币别的ID
-              creatorUserName: detail.creatorUserName,
-              totalSettleablePriceUpperLimit: 0,
-              totalSettleablePriceLowerLimit: 0,
-              // 归属组织信息（组织串）
-              orgId: detail.orgId,
-              orgs: detailOrgs,
-              // 关键：使用转换后的 currencyGroup，包含完整的费用明细
-              currencyGroup: convertedCurrencyGroup as any,
-            };
-
-          rebuiltItems.push({
-            id: app.id,
-            application: mockApplication,
-            userSettledPrice,
-            userCurrencyItems,
-          });
-        } catch (e) {
-          console.error(`Failed to process application ${app.id}:`, e);
         }
       }
     }
 
-    settlementItems.value = rebuiltItems;
-
-    attachments.value = (detail.attachments ?? []).map((a) => ({
+    attachments.value = (detail.attachments ?? []).map((a: any) => ({
       attachmentId: a.attachmentId,
       url: a.attachmentPath || '',
       fileName: a.friendlyFileName || '',
     }));
 
+    console.log('✅ 附件加载完成');
+
     // 先加载银行选项，再赋值选中值（确保选项存在后才能正确回显）
+    console.log('🏦 开始加载银行选项...');
     await loadOrgBankOptions();
     await loadClientBankOptions();
+    console.log('✅ 银行选项加载完成');
 
     // 在银行选项加载完成后，再设置选中值
     orgBankAccountId.value = detail.orgBankAccountId;
     clientInvoiceBankId.value = detail.clientInvoiceBankId;
+
+    console.log('=== 结算单详情加载完成 ===');
   } finally {
     pageLoading.value = false;
   }
 }
 
-/** 加载我司银行选项（根据申请明细中的费用所属公司） */
+/** 加载我司银行选项（根据基础信息中的归属组织） */
 async function loadOrgBankOptions() {
-  if (settlementItems.value.length === 0) {
-    console.warn('settlementItems为空，无法加载我司银行选项');
+  console.log('=== 开始加载我司银行选项 ===');
+  console.log('当前 currencyId:', currencyId.value);
+  console.log('当前 orgs:', orgs.value);
+
+  // 如果没有结算币别或归属组织，清空选项
+  if (!currencyId.value || orgs.value.length === 0) {
+    console.warn('❌ 缺少结算币别或归属组织，清空银行选项');
     orgBankOptions.value = [];
     return;
   }
 
   try {
-    // 收集所有涉及的公司节点ID（组织串中带本位币的公司节点）
-    const companyIds = new Set<number>();
+    // ✅ 从归属组织中提取所有组织ID
+    const orgIds = new Set<number>();
 
-    settlementItems.value.forEach((item) => {
-      const orgList = item.application.orgs;
-      if (orgList && orgList.length > 0) {
-        const companyNode =
-          orgList.find((n) => n.localCurrencyId != null) ?? orgList[0];
-        if (companyNode) companyIds.add(companyNode.id);
-      } else {
-        console.warn(`申请 ${item.application.applicationNo} 没有组织信息`);
+    orgs.value.forEach((org) => {
+      if (org.id) {
+        orgIds.add(org.id);
       }
     });
 
-    console.log('收集到的公司IDs:', Array.from(companyIds));
-
-    if (companyIds.size === 0) {
-      console.warn('未找到任何公司信息，无法加载我司银行选项');
+    // 如果没有找到任何组织ID，清空选项
+    if (orgIds.size === 0) {
+      console.warn('❌ 未从归属组织中找到有效的组织ID');
       orgBankOptions.value = [];
       return;
     }
 
-    // 为每个公司获取银行信息
+    console.log('✅ 找到的归属组织IDs:', Array.from(orgIds));
+
+    // ✅ 遍历所有组织ID，获取每个组织的银行列表
     const allBanks: OrgBankOption[] = [];
-    const { getOrganizationUnit } =
-      await import('#/api/system/organization-unit');
 
-    for (const companyId of companyIds) {
+    for (const orgId of orgIds) {
       try {
-        const companyDetail = await getOrganizationUnit(companyId);
+        console.log(`🏦 正在加载组织 ${orgId} 的银行列表...`);
+        const accounts = await getOrgBankAccountList(orgId);
+        console.log(`   返回账户数量: ${accounts?.length || 0}`);
 
-        if (
-          companyDetail.orgBankAccounts &&
-          companyDetail.orgBankAccounts.length > 0
-        ) {
+        if (accounts && accounts.length > 0) {
           // 根据结算币别过滤银行
-          const filteredBanks = companyDetail.orgBankAccounts.filter(
-            (bank: any) => bank.currencyId === currencyId.value && bank.enable,
+          const filteredAccounts = accounts.filter(
+            (account) => account.currencyId === currencyId.value,
+          );
+          console.log(
+            `   过滤后(${currencyId.value})账户数量: ${filteredAccounts.length}`,
           );
 
-          filteredBanks.forEach((bank: any) => {
+          filteredAccounts.forEach((account) => {
             allBanks.push({
-              id: bank.id,
-              label: `${bank.bankName || ''}(${bank.bankAccount || ''})`.trim(),
-              bankName: bank.bankName,
-              bankAccount: bank.bankAccount,
-              currencyId: bank.currencyId,
+              id: account.id,
+              label:
+                `${account.bankShortName || ''} - ${account.accountName || ''} (${account.currencyCode || ''})`.trim(),
+              bankName: account.bankName || undefined,
+              bankAccount: account.bankAccount || undefined,
+              currencyId: account.currencyId,
             });
           });
+        } else {
+          console.warn(`   ⚠️ 组织 ${orgId} 没有银行账户`);
         }
       } catch (error) {
-        console.error(`获取公司 ${companyId} 详情失败:`, error);
+        console.error(`❌ 加载组织 ${orgId} 的银行列表失败:`, error);
       }
     }
 
-    orgBankOptions.value = allBanks;
+    // ✅ 去重：根据 id 去重
+    const uniqueBanks = allBanks.filter(
+      (bank, index, self) => index === self.findIndex((b) => b.id === bank.id),
+    );
+
+    orgBankOptions.value = uniqueBanks;
+    console.log('✅ 加载我司银行选项完成，共', uniqueBanks.length, '个银行');
+    console.log('银行选项详情:', uniqueBanks);
   } catch (error) {
-    console.error('加载我司银行选项失败:', error);
+    console.error('❌ 加载我司银行选项失败:', error);
+    orgBankOptions.value = [];
   }
 }
 
@@ -1316,64 +975,6 @@ async function loadClientBankOptions() {
     clientBankOptions.value = allBanks;
   } catch (error) {
     console.error('加载结算银行选项失败:', error);
-  }
-}
-
-/** 获取指定币别的结算金额 */
-function getSettledAmountForCurrency(
-  currencyItems:
-    | Array<{ originalCurrencyId: number; settledAmount: number }>
-    | undefined,
-  currencyId: number,
-): number {
-  if (!currencyItems) return 0;
-  const item = currencyItems.find((i) => i.originalCurrencyId === currencyId);
-  return item ? item.settledAmount : 0;
-}
-
-/** 过滤出有有效结算金额的币别分组（用于表格显示） */
-function filterCurrencyGroupWithSettlement(
-  record: SettlementItem,
-): PaymentApplicationAdminApi.CurrencyGroupForSettlementDto[] {
-  if (!record.application.currencyGroup) return [];
-
-  // 原币申请：
-  // - 编辑模式：显示所有币别（包括结算金额为0的），方便用户查看完整信息
-  // - 新增模式：只显示用户填写了有效结算金额的币别
-  if (!record.application.currencyId) {
-    // 原币申请
-    if (isEdit.value) {
-      // 编辑模式：返回所有币别
-      return record.application.currencyGroup;
-    } else {
-      // 新增模式：只显示有有效结算金额的币别
-      return record.application.currencyGroup.filter((currency) => {
-        const settledAmount = getSettledAmountForCurrency(
-          record.userCurrencyItems,
-          currency.id,
-        );
-        return (
-          settledAmount !== undefined &&
-          settledAmount !== null &&
-          settledAmount !== 0
-        );
-      });
-    }
-  } else {
-    // 固定币别申请：也应该显示第二层（只有一个币别）
-    // 编辑模式：显示该币别
-    if (isEdit.value) {
-      return record.application.currencyGroup;
-    } else {
-      // 新增模式：检查是否有有效的结算金额
-      return record.application.currencyGroup.filter(() => {
-        return (
-          record.userSettledPrice !== undefined &&
-          record.userSettledPrice !== null &&
-          record.userSettledPrice !== 0
-        );
-      });
-    }
   }
 }
 
@@ -1546,9 +1147,9 @@ watch(currencyId, async (newVal) => {
   await loadClientBankOptions();
 });
 
-// 监听申请明细变化，重新加载我司银行选项
+// 监听归属组织变化，重新加载我司银行选项
 watch(
-  () => settlementItems.value.length,
+  () => orgs.value,
   async () => {
     await loadOrgBankOptions();
   },
@@ -1588,25 +1189,59 @@ onMounted(() => {
       <div
         style="
           display: grid;
-          grid-template-columns: 320px 1fr 240px;
+          grid-template-columns: 880px 1fr 280px;
           gap: 16px;
           margin-bottom: 16px;
         "
       >
         <!-- 左侧：结算信息 -->
-        <Card title="结算信息" :bordered="true" size="small">
-          <div style="display: flex; flex-direction: column; gap: 12px">
+        <Card :bordered="false" size="small" class="info-card">
+          <template #title>
+            <div style="display: flex; gap: 8px; align-items: center">
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  width: 32px;
+                  height: 32px;
+                  font-size: 16px;
+                  color: #1890ff;
+                  background: linear-gradient(135deg, #e6f4ff 0%, #bae0ff 100%);
+                  border-radius: 8px;
+                "
+              >
+                ¥
+              </div>
+              <span style="font-size: 16px; font-weight: 600; color: #1a1a1a">
+                结算信息
+              </span>
+            </div>
+          </template>
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 16px 12px;
+              padding-top: 8px;
+            "
+          >
             <!-- 结算单号（仅编辑时显示） -->
-            <div v-if="isEdit">
-              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
+            <div v-if="isEdit" style="grid-column: span 2">
+              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
                 结算单号
               </div>
-              <Input :value="settlementNo" disabled />
+              <Input
+                :value="settlementNo"
+                disabled
+                style="background: #f5f7fa"
+              />
             </div>
 
             <!-- 归属组织 -->
             <div v-if="orgs.length > 0">
-              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
+              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
                 归属组织
               </div>
               <Select
@@ -1614,83 +1249,81 @@ onMounted(() => {
                 :value="orgs.map((c) => c.id)"
                 :options="orgs.map((c) => ({ label: c.name, value: c.id }))"
                 disabled
+                style="width: 100%; background: #f5f7fa"
+              />
+            </div>
+
+            <!-- 结算人 -->
+            <div>
+              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
+                结算人
+              </div>
+              <Input
+                :value="currentUserName"
+                disabled
+                style="background: #f5f7fa"
+              />
+            </div>
+
+            <!-- 结算时间 -->
+            <div>
+              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
+                结算时间
+              </div>
+              <DatePicker
+                v-model:value="settlementTime"
+                show-time
+                format="YYYY-MM-DD HH:mm"
                 style="width: 100%"
               />
             </div>
 
-            <!-- 两列布局 -->
-            <div
-              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
-            >
-              <div>
-                <div style="margin-bottom: 4px; font-size: 12px; color: #666">
-                  结算人
-                </div>
-                <Input :value="currentUserName" disabled />
-              </div>
-              <div>
-                <div style="margin-bottom: 4px; font-size: 12px; color: #666">
-                  结算时间
-                </div>
-                <DatePicker
-                  v-model:value="settlementTime"
-                  show-time
-                  format="YYYY-MM-DD HH:mm"
-                  style="width: 100%"
-                />
-              </div>
-            </div>
-
-            <div
-              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
-            >
-              <div>
-                <div style="margin-bottom: 4px; font-size: 12px; color: #666">
-                  付款方式
-                </div>
-                <Select
-                  v-model:value="payType"
-                  :options="payTypeOptions"
-                  placeholder="请选择"
-                  allow-clear
-                  style="width: 100%"
-                />
-              </div>
-              <div>
-                <div style="margin-bottom: 4px; font-size: 12px; color: #666">
-                  结算对象
-                </div>
-                <ClientSelect
-                  v-model="settlementId"
-                  :selected-items="settlementSelectedItems"
-                  placeholder="请选择结算对象"
-                  allow-clear
-                  disabled
-                  style="width: 100%"
-                />
-              </div>
-            </div>
-
-            <div
-              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
-            >
-              <div>
-                <div style="margin-bottom: 4px; font-size: 12px; color: #666">
-                  结算币别
-                </div>
-                <CurrencySelect
-                  v-model="currencyId"
-                  placeholder="请选择"
-                  allow-clear
-                  disabled
-                  style="width: 100%"
-                />
-              </div>
-              <div></div>
-            </div>
-
+            <!-- 付款方式 -->
             <div>
-              <div style="margin-bottom: 4px; font-size: 12px; color: #666">
+              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
+                付款方式
+              </div>
+              <Select
+                v-model:value="payType"
+                :options="payTypeOptions"
+                placeholder="请选择"
+                allow-clear
+                style="width: 100%"
+              />
+            </div>
+
+            <!-- 结算对象 -->
+            <div>
+              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
+                结算对象
+              </div>
+              <ClientSelect
+                v-model="settlementId"
+                :selected-items="settlementSelectedItems"
+                placeholder="请选择结算对象"
+                allow-clear
+                disabled
+                style="width: 100%"
+              />
+            </div>
+
+            <!-- 结算币别 -->
+            <div>
+              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
+                结算币别
+              </div>
+              <CurrencySelect
+                v-model="currencyId"
+                placeholder="请选择"
+                allow-clear
+                disabled
+                style="width: 100%"
+              />
+            </div>
+
+            <!-- 备注 -->
+            <div style="grid-column: span 2">
+              <div style="margin-bottom: 6px; font-size: 13px; color: #666">
                 备注
               </div>
               <Input.TextArea
@@ -1703,25 +1336,76 @@ onMounted(() => {
         </Card>
 
         <!-- 中间：费用汇总 -->
-        <Card title="费用汇总" :bordered="true" size="small">
-          <div style="display: flex; flex-direction: column; gap: 12px">
-            <!-- 结算总金额 -->
+        <Card :bordered="false" size="small" class="info-card">
+          <template #title>
+            <div style="display: flex; gap: 8px; align-items: center">
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  width: 32px;
+                  height: 32px;
+                  font-size: 16px;
+                  color: #722ed1;
+                  background: linear-gradient(135deg, #f0e6ff 0%, #d9b3ff 100%);
+                  border-radius: 8px;
+                "
+              >
+                ￥
+              </div>
+              <span style="font-size: 16px; font-weight: 600; color: #1a1a1a">
+                费用汇总
+              </span>
+            </div>
+          </template>
+
+          <div style="display: flex; flex-direction: column; gap: 16px">
+            <!-- 结算总金额 - 渐变背景卡片 -->
             <div
               style="
-                padding: 12px;
-                text-align: center;
-                background: #f5f7fa;
-                border-radius: 4px;
+                position: relative;
+                padding: 16px 20px;
+                overflow: hidden;
+                background: linear-gradient(135deg, #e6f4ff 0%, #bae0ff 100%);
+                border-radius: 8px;
               "
             >
-              <div style="margin-bottom: 6px; font-size: 12px; color: #999">
-                结算总金额
+              <!-- 装饰性图标 -->
+              <div
+                style="
+                  position: absolute;
+                  top: 50%;
+                  right: 16px;
+                  font-size: 48px;
+                  opacity: 0.3;
+                  transform: translateY(-50%);
+                "
+              >
+                💰
               </div>
-              <div style="font-size: 20px; font-weight: bold; color: #1890ff">
-                ¥{{ formatAmount(totalSettlementAmount) }}
-              </div>
-              <div style="margin-top: 2px; font-size: 12px; color: #999">
-                {{ currencyCode || 'RMB' }}
+
+              <div style="position: relative; z-index: 1">
+                <div
+                  style="
+                    margin-bottom: 8px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #1890ff;
+                  "
+                >
+                  结算总金额
+                </div>
+                <div style="display: flex; gap: 8px; align-items: baseline">
+                  <span
+                    style="font-size: 28px; font-weight: bold; color: #1890ff"
+                  >
+                    ¥{{ formatAmount(totalSettledAmount) }}
+                  </span>
+                  <span style="font-size: 14px; color: #1890ff; opacity: 0.8">
+                    {{ currencyCode || 'RMB' }}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -1730,13 +1414,7 @@ onMounted(() => {
               style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
             >
               <!-- 我司银行 -->
-              <div
-                style="
-                  padding: 10px;
-                  border: 1px solid #e8e8e8;
-                  border-radius: 4px;
-                "
-              >
+              <div>
                 <div
                   style="
                     margin-bottom: 6px;
@@ -1757,19 +1435,13 @@ onMounted(() => {
                   "
                   placeholder="请先添加申请明细，然后选择我司银行"
                   allow-clear
-                  :disabled="settlementItems.length === 0"
+                  :disabled="applicationItems.length === 0"
                   style="width: 100%"
                 />
               </div>
 
               <!-- 对方银行 -->
-              <div
-                style="
-                  padding: 10px;
-                  border: 1px solid #e8e8e8;
-                  border-radius: 4px;
-                "
-              >
+              <div>
                 <div
                   style="
                     margin-bottom: 6px;
@@ -1796,45 +1468,100 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- 手续费 -->
-            <div style="display: flex; gap: 8px; align-items: center">
-              <span style="color: #fa8c16">手续费</span>
-              <InputNumber
-                v-model:value="transactionFee"
-                placeholder="0.00"
-                :min="0"
-                :precision="2"
-                style="width: 100px"
-              />
-              <span style="font-size: 12px; color: #999">RMB</span>
+            <!-- 手续费和汇率设置同行显示 -->
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            >
+              <!-- 手续费 -->
+              <div>
+                <div
+                  style="
+                    margin-bottom: 6px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    color: #fa8c16;
+                  "
+                >
+                  手续费
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center">
+                  <InputNumber
+                    v-model:value="transactionFee"
+                    placeholder="0.00"
+                    :min="0"
+                    :precision="2"
+                    style="flex: 1"
+                  />
+                  <span
+                    style="font-size: 12px; color: #999; white-space: nowrap"
+                    >RMB</span
+                  >
+                </div>
+              </div>
+
+              <!-- 汇率设置 -->
+              <div v-if="rateList.length > 0">
+                <div
+                  style="
+                    margin-bottom: 6px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    color: #1890ff;
+                  "
+                >
+                  汇率设置
+                  <span
+                    v-if="rateList.length === 1 && rateList[0].currencyCode"
+                    style="margin-left: 4px; font-weight: normal; color: #999"
+                  >
+                    {{ rateList[0].currencyCode }} → {{ currencyCode }}
+                  </span>
+                </div>
+                <div
+                  v-if="rateList.length === 1"
+                  style="display: flex; gap: 8px; align-items: center"
+                >
+                  <InputNumber
+                    v-model:value="rateList[0].rate"
+                    :min="0"
+                    :precision="6"
+                    :step="0.000001"
+                    placeholder="请输入汇率"
+                    :disabled="rateList[0].originalCurrencyId === currencyId"
+                    style="flex: 1"
+                  />
+                </div>
+                <div v-else style="font-size: 12px; color: #999">
+                  多币种汇率请在下方查看
+                </div>
+              </div>
             </div>
 
-            <!-- 汇率管理（动态显示） -->
+            <!-- 多币种汇率管理 -->
             <div
-              v-if="rateList.length > 0"
+              v-if="rateList.length > 1"
               style="
-                padding: 10px;
-                margin-top: 8px;
+                padding: 12px;
                 background: #fafafa;
-                border: 1px solid #d9d9d9;
-                border-radius: 4px;
+                border: 1px solid #e8e8e8;
+                border-radius: 6px;
               "
             >
               <div
                 style="
-                  margin-bottom: 8px;
+                  margin-bottom: 10px;
                   font-size: 13px;
                   font-weight: 500;
                   color: #1890ff;
                 "
               >
-                汇率设置
+                多币种汇率
               </div>
               <div
                 style="
                   display: grid;
-                  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                  gap: 8px;
+                  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                  gap: 10px;
                 "
               >
                 <div
@@ -1842,9 +1569,9 @@ onMounted(() => {
                   :key="rate.originalCurrencyId"
                   style="
                     display: flex;
-                    gap: 8px;
-                    align-items: center;
-                    padding: 6px;
+                    flex-direction: column;
+                    gap: 6px;
+                    padding: 8px;
                     background: white;
                     border: 1px solid #e8e8e8;
                     border-radius: 4px;
@@ -1863,7 +1590,7 @@ onMounted(() => {
                     :step="0.000001"
                     placeholder="请输入汇率"
                     :disabled="rate.originalCurrencyId === currencyId"
-                    style="flex: 1"
+                    style="width: 100%"
                   />
                 </div>
               </div>
@@ -1872,12 +1599,49 @@ onMounted(() => {
         </Card>
 
         <!-- 右侧：附件 -->
-        <Card title="附件" :bordered="true" size="small">
+        <Card :bordered="false" size="small" class="info-card">
+          <template #title>
+            <div style="display: flex; gap: 8px; align-items: center">
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  width: 32px;
+                  height: 32px;
+                  font-size: 16px;
+                  color: #1890ff;
+                  background: linear-gradient(135deg, #e6f7ff 0%, #91d5ff 100%);
+                  border-radius: 8px;
+                "
+              >
+                📎
+              </div>
+              <span style="font-size: 16px; font-weight: 600; color: #1a1a1a">
+                附件
+              </span>
+            </div>
+          </template>
+
           <FileUploadInput
             v-model="attachments"
             module-type-id="160011"
             :max-count="10"
           />
+
+          <div
+            style="
+              padding: 8px;
+              margin-top: 12px;
+              font-size: 12px;
+              color: #999;
+              text-align: center;
+              background: #f5f7fa;
+              border-radius: 4px;
+            "
+          >
+            最大大小: 20MB | 最多数量: 10
+          </div>
         </Card>
       </div>
 
@@ -1905,221 +1669,36 @@ onMounted(() => {
           </Space>
         </template>
 
-        <Table
-          :columns="[
-            {
-              dataIndex: 'applicationNo',
-              title: '申请单号',
-              minWidth: 140,
-              fixed: 'left',
-            },
-            { dataIndex: 'clientName', title: '结算对象', minWidth: 120 },
-            { dataIndex: 'currencyCode', title: '申请币别', width: 100 },
-            {
-              dataIndex: 'settledPriceDisplay',
-              title: '本次结算金额',
-              width: 150,
-              align: 'right',
-            },
-            { key: 'action', title: '操作', width: 100, fixed: 'right' },
-          ]"
-          :data-source="settlementItems"
-          :pagination="false"
-          bordered
-          size="small"
-          row-key="id"
-          :expandable="{
-            defaultExpandAllRows: false,
-            expandIconColumnIndex: 0,
-          }"
-        >
-          <template #bodyCell="{ column, record, index }">
-            <template v-if="column.dataIndex === 'applicationNo'">
-              <a style="color: #fa8c16">{{
-                record.application.applicationNo
-              }}</a>
-            </template>
-            <template v-else-if="column.dataIndex === 'clientName'">
-              {{ record.application.settlement?.name || '-' }}
-            </template>
-            <template v-else-if="column.dataIndex === 'currencyCode'">
-              <Tag color="red">{{
-                record.application.currency?.code || '原币'
-              }}</Tag>
-            </template>
-            <template v-else-if="column.dataIndex === 'settledPriceDisplay'">
-              <!-- 固定币别申请：显示 userSettledPrice -->
-              <span
-                v-if="record.application.currencyId"
-                style="font-weight: bold; color: #fa8c16"
-              >
-                ¥{{ formatAmount(record.userSettledPrice || 0) }}
-              </span>
-              <!-- 原币申请：计算所有币别的结算金额总和 -->
-              <span v-else style="font-weight: bold; color: #fa8c16">
-                ¥{{
-                  formatAmount(
-                    calculateTotalFromCurrencyItems(record.userCurrencyItems),
-                  )
-                }}
-              </span>
-            </template>
-            <template v-else-if="column.key === 'action'">
-              <Space>
-                <Button
-                  type="primary"
-                  size="small"
-                  danger
-                  @click="handleDeleteItem(index)"
-                >
-                  {{ $t('common.delete') }}
-                </Button>
-              </Space>
-            </template>
-          </template>
-
-          <!-- 第二层：币别分组 -->
-          <template #expandedRowRender="{ record }">
-            <Table
-              :columns="[
-                { dataIndex: 'code', title: '币别', width: 80 },
-                {
-                  dataIndex: 'receiveAmount',
-                  title: '应收金额',
-                  width: 120,
-                  align: 'right',
-                },
-                {
-                  dataIndex: 'payAmount',
-                  title: '应付金额',
-                  width: 120,
-                  align: 'right',
-                },
-                {
-                  dataIndex: 'unsettledRange',
-                  title: '未结算费用',
-                  width: 180,
-                  align: 'right',
-                },
-                {
-                  dataIndex: 'settledAmount',
-                  title: '本次结算金额',
-                  width: 150,
-                  align: 'right',
-                },
-              ]"
-              :data-source="filterCurrencyGroupWithSettlement(record)"
-              :pagination="false"
-              row-key="id"
-              bordered
-              size="small"
-              :expandable="{
-                defaultExpandAllRows: false,
-                expandIconColumnIndex: 0,
-              }"
-            >
-              <template #bodyCell="{ column, record: currencyRecord }">
-                <template v-if="column.dataIndex === 'unsettledRange'">
-                  {{ currencyRecord.totalUnSettledAmount }}
-                </template>
-
-                <template v-else-if="column.dataIndex === 'settledAmount'">
-                  <!-- 固定币别申请不显示第二级输入框，或者显示汇总 -->
-                  <span
-                    v-if="!record.application.currencyId"
-                    style="font-weight: bold; color: #1890ff"
-                  >
-                    {{ formatAmount(currencyRecord.settledAmount ?? 0) }}
-                  </span>
-                  <span v-else style="color: #999">-</span>
-                </template>
-              </template>
-
-              <!-- 第三层：费用明细 -->
-              <template #expandedRowRender="{ record: feeRecord }">
-                <Table
-                  :columns="[
-                    {
-                      dataIndex: 'commissionNum',
-                      title: '委托编号',
-                      width: 150,
-                    },
-                    { dataIndex: 'bizType', title: '业务类型', width: 100 },
-                    { dataIndex: 'mblNum', title: '主提单号', width: 150 },
-                    { dataIndex: 'feeCodeName', title: '费用名称', width: 120 },
-                    { dataIndex: 'currencyCode', title: '币别', width: 80 },
-                    {
-                      dataIndex: 'amount',
-                      title: '原始金额',
-                      width: 120,
-                      align: 'right',
-                    },
-                    {
-                      dataIndex: 'rqstPaymentAmount',
-                      title: '申请金额',
-                      width: 120,
-                      align: 'right',
-                    },
-                    {
-                      dataIndex: 'unInvoicedAmount',
-                      title: '未开票金额',
-                      width: 120,
-                      align: 'right',
-                    },
-                    {
-                      dataIndex: 'unSettledAmount',
-                      title: '未结算金额',
-                      width: 120,
-                      align: 'right',
-                    },
-                  ]"
-                  :data-source="feeRecord.orderFees || []"
-                  :pagination="false"
-                  row-key="id"
-                  bordered
-                  size="small"
-                >
-                  <template #bodyCell="{ column, record: feeItem }">
-                    <template v-if="column.dataIndex === 'commissionNum'">
-                      {{ feeItem.transportOrder?.commissionNum || '-' }}
-                    </template>
-
-                    <template v-else-if="column.dataIndex === 'bizType'">
-                      {{
-                        getBizTypeName(feeItem.transportOrder?.bizType) || '-'
-                      }}
-                    </template>
-
-                    <template v-else-if="column.dataIndex === 'mblNum'">
-                      {{ feeItem.transportOrder?.mblNum || '-' }}
-                    </template>
-
-                    <template v-else-if="column.dataIndex === 'paySide'">
-                      {{ feeItem.paySide === 0 ? '收' : '付' }}
-                    </template>
-                  </template>
-                </Table>
-              </template>
-            </Table>
-          </template>
-        </Table>
+        <!-- ✅ 使用新的申请明细表格组件 -->
+        <ApplicationItemsTable
+          :items="applicationItems"
+          :editable="isEdit"
+          @delete="handleDeleteApplicationItem"
+        />
       </Card>
-    </div>
 
-    <!-- 选择付费申请抽屉 -->
-    <AddApplicationDrawer
-      ref="addApplicationDrawerRef"
-      :payment-settlement-id="editId"
-      :settlement-id="settlementId"
-      :currency-id="currencyId"
-      :has-existing-fees="hasExistingFees"
-      :existing-application-ids="existingApplicationIds"
-      @confirm="handleConfirmApplications"
-    />
+      <!-- 选择付费申请抽屉 -->
+      <AddApplicationDrawer
+        ref="addApplicationDrawerRef"
+        :payment-settlement-id="editId"
+        :settlement-id="settlementId"
+        :currency-id="currencyId"
+        :has-existing-fees="hasExistingFees"
+        :existing-application-ids="[]"
+        @confirm="handleConfirmApplications"
+      />
+    </div>
   </Page>
 </template>
 
 <style scoped>
+/* 响应式调整 */
+@media (max-width: 1400px) {
+  :deep(.info-card) {
+    margin-bottom: 12px;
+  }
+}
+
 :deep(.ant-card-small .ant-card-head) {
   min-height: 36px;
   padding: 0 12px;
@@ -2127,5 +1706,84 @@ onMounted(() => {
 
 :deep(.ant-card-small .ant-card-body) {
   padding: 12px;
+}
+
+/* 信息卡片样式 */
+.info-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+  transition: all 0.3s ease;
+}
+
+.info-card:hover {
+  box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
+}
+
+/* 标题样式优化 */
+:deep(.info-card .ant-card-head-title) {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+/* 输入框和选择器统一样式 */
+:deep(.info-card .ant-input),
+:deep(.info-card .ant-select-selector),
+:deep(.info-card .ant-picker) {
+  border-color: #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+:deep(.info-card .ant-input:focus),
+:deep(.info-card .ant-select-focused .ant-select-selector),
+:deep(.info-card .ant-picker-focused) {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgb(24 144 255 / 10%);
+}
+
+/* 禁用状态样式 */
+:deep(.info-card .ant-input-disabled),
+:deep(.info-card .ant-select-disabled .ant-select-selector) {
+  color: #666;
+  background: #f5f7fa;
+}
+
+/* 标签文字样式 */
+:deep(.info-card label),
+:deep(.info-card div[style*='font-size: 13px']) {
+  font-weight: 500;
+}
+
+/* 金额数字样式 */
+:deep(.info-card [style*='font-size: 28px'] span) {
+  font-family: 'DIN Alternate', Roboto, sans-serif;
+  letter-spacing: -0.5px;
+}
+
+/* 渐变背景卡片 */
+:deep(.info-card [style*='linear-gradient']) {
+  position: relative;
+  overflow: hidden;
+}
+
+:deep(.info-card [style*='linear-gradient'])::before {
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  pointer-events: none;
+  content: '';
+  background: radial-gradient(
+    circle,
+    rgb(255 255 255 / 30%) 0%,
+    transparent 70%
+  );
+}
+
+/* 附件上传区域样式 */
+:deep(.info-card .file-upload-container) {
+  border-radius: 8px;
 }
 </style>
