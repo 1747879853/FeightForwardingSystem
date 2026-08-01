@@ -416,6 +416,221 @@ export namespace PaymentSettlementAdminApi {
     totalCount: number;
     items: T[];
   }
+
+  // ==================== 按原币和付费申请相关 DTO ====================
+
+  /** 简单DTO - 港口代码 */
+  export interface PortCodeSimpleDto {
+    id: number;
+    portName?: string;
+    cnName?: string;
+  }
+
+  /** 简单DTO - 船公司 */
+  export interface CarrierSimpleDto {
+    id: number;
+    code?: string;
+    cnName?: string;
+    cnShortName?: string;
+    enName?: string;
+    ediCode?: string;
+  }
+
+  /** 简单DTO - 委托单位 */
+  export interface ClientSimpleDto {
+    id: string;
+    name?: string;
+    code?: string;
+    fullName?: string;
+    enName?: string;
+  }
+
+  /** 简单DTO - 费用代码 */
+  export interface FeeCodeSimpleDto {
+    id: number;
+    cnName?: string;
+  }
+
+  /** 简单DTO - 币别 */
+  export interface CurrencySimpleDto {
+    id: number;
+    code?: string;
+    name?: string;
+  }
+
+  /** 运输订单简要DTO */
+  export interface TransportOrderSimplePrintDto {
+    id: string;
+    commissionNum?: string;
+    mblNum?: string;
+    bookingNum?: string;
+    clientName?: string;
+  }
+
+  /** 订单费用DTO（用于选择列表） */
+  export interface OrderFeeForSelectionDto {
+    id: string;
+    transportOrderId: string;
+    paySide: number;
+    feeCodeId: number;
+    feeCodeName?: string;
+    settlementId: string;
+    settlementName?: string;
+    currencyId: number;
+    currencyCode?: string;
+    exchangeRate: number;
+    amount: number;
+    unSettledAmount: number;
+    rqstPaymentAmount?: number;
+    unRqstPaymentAmount?: number;
+    settlementStatus: number;
+    localCurrencyCode?: string;
+    transportOrder?: TransportOrderSimplePrintDto;
+  }
+
+  /** 按原币的付费申请选择列表DTO */
+  export interface PaymentApplicationCurrencyForSettlementDto {
+    /** 行标识 */
+    id: string;
+    rowKey: string;
+    paymentApplicationId: string;
+
+    /** 付费申请维度 */
+    applicationNo: string;
+    status: number;
+    submitTime?: string;
+    endTime?: string;
+    settlementId: string;
+    currencyId?: number;
+    require?: string;
+    remark?: string;
+    invoiceProcess?: number;
+    invoiceNo?: string;
+    invoiceDate?: string;
+    tenantId: number;
+    settlement?: PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
+    currency?: CurrencySimpleDto;
+    creatorUserName?: string;
+    lastModifierUserName?: string;
+
+    /** 任务相关 */
+    auditUserId?: number;
+    auditUserNickName?: string;
+    auditTime?: string;
+
+    /** 原币币别维度 */
+    originalCurrencyId: number;
+    originalCurrencyCode: string;
+    rate?: number;
+    payAmount: number;
+    payPrice?: number;
+    receiveAmount: number;
+    receivePrice?: number;
+    totalUnSettledAmount: number;
+    settleableUpperLimit: number;
+    settleablePriceUpperLimit?: number;
+    settleableLowerLimit: number;
+    settleablePriceLowerLimit?: number;
+    orderFees: OrderFeeForSelectionDto[];
+  }
+
+  /** 按原币的结算行输入DTO */
+  export interface PaymentSettlementItemByCurrencyInputDto {
+    paymentApplicationId: string;
+    originalCurrencyId: number;
+    settledAmount: number;
+  }
+
+  /** 按原币的结算行定位键DTO */
+  export interface PaymentSettlementPayAppCurrencyKeyDto {
+    paymentApplicationId: string;
+    originalCurrencyId: number;
+  }
+
+  /** 新增付费结算参数DTO（按原币） */
+  export interface PaymentSettlementAddByCurrencyDto {
+    settlementTime: string;
+    payType?: number;
+    settlementId: string;
+    orgId: number;
+    currencyId: number;
+    orgBankAccountId?: string;
+    clientInvoiceBankId?: string;
+    transactionFee?: number;
+    remark?: string;
+    paymentSettlementRates: PaymentSettlementRateAddDto[];
+    paymentApplicationCurrencyItems: PaymentSettlementItemByCurrencyInputDto[];
+    attachments?: AttachmentItemForItemInputDto[];
+  }
+
+  /** 添加结算明细参数DTO（按原币） */
+  export interface PaymentSettlementAddItemsByCurrencyDto {
+    id: string;
+    paymentApplicationCurrencyItems: PaymentSettlementItemByCurrencyInputDto[];
+    paymentSettlementRates: PaymentSettlementRateAddDto[];
+  }
+
+  /** 删除结算明细参数DTO（按原币） */
+  export interface PaymentSettlementDeleteItemsByCurrencyDto {
+    id: string;
+    paymentApplicationCurrencyKeys: PaymentSettlementPayAppCurrencyKeyDto[];
+    paymentSettlementRates: PaymentSettlementRateAddDto[];
+  }
+
+  /** 按原币的结算行DTO（用于详情） */
+  export interface PaymentSettlementPayAppCurrencyDto {
+    id: string;
+    rowKey: string;
+    paymentApplicationId: string;
+    applicationNo: string;
+    userId: number;
+    orgId?: number;
+    orgs?: PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
+    settlementId: string;
+    settlement?: PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
+    currencyId?: number;
+    currency?: CurrencySimpleDto;
+    originalCurrencyId: number;
+    originalCurrencyCode: string;
+    rate: number;
+    settledAmount: number;
+    settledPrice: number;
+    orderFees: OrderFeeDto[];
+  }
+
+  /** 付费结算详情DTO（按原币） */
+  export interface PaymentSettlementDetailByCurrencyDto {
+    id: string;
+    creationTime: string;
+    creatorUserId?: number;
+    lastModificationTime?: string;
+    lastModifierUserId?: number;
+    userId: number;
+    orgId?: number;
+    orgs?: PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
+
+    settlementNo: string;
+    status: number;
+    settlementTime: string;
+    payType?: number;
+    locked: boolean;
+    lockeTime?: string;
+    settlementId: string;
+    currencyId: number;
+    orgBankAccountId?: string;
+    clientInvoiceBankId?: string;
+    transactionFee?: number;
+    remark?: string;
+
+    settlement?: PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
+    currencyCode: string;
+    creatorUserName?: string;
+    lastModifierUserName?: string;
+    paymentSettlementRates: PaymentSettlementRateDto[];
+    paymentApplicationCurrencies: PaymentSettlementPayAppCurrencyDto[];
+    totalSettledPrice: number;
+    attachments: AttachmentItemDto[];
+  }
 }
 
 // ==================== API 函数 ====================
@@ -486,4 +701,53 @@ export const unlockPaymentSettlement = (
   data: PaymentSettlementAdminApi.PaymentSettlementLockDto,
 ) => {
   return requestClient.put<boolean>(`${API_PREFIX}/UnLockAsync`, data);
+};
+
+// ==================== 按原币和付费申请相关 API ====================
+
+/** 获取按原币的付费申请选择列表 */
+export const getPaymentApplicationPagedListByCurrencyForSettlement = (
+  params: PaymentApplicationAdminApi.PaymentApplicationSettlementQueryParams,
+) => {
+  return requestClient.get<
+    PaymentSettlementAdminApi.PagedList<PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto>
+  >(
+    `${API_PREFIX.replace('PaymentSettlementAdmin', 'PaymentApplicationAdmin')}/GetPagedListByCurrencyForSettlementAsync`,
+    { params },
+  );
+};
+
+/** 新增付费结算（按原币） */
+export const addPaymentSettlementByCurrency = (
+  data: PaymentSettlementAdminApi.PaymentSettlementAddByCurrencyDto,
+) => {
+  return requestClient.post<string>(`${API_PREFIX}/AddByCurrencyAsync`, data);
+};
+
+/** 添加结算明细（按原币） */
+export const addItemsToSettlementByCurrency = (
+  data: PaymentSettlementAdminApi.PaymentSettlementAddItemsByCurrencyDto,
+) => {
+  return requestClient.post<boolean>(
+    `${API_PREFIX}/AddItemsByCurrencyAsync`,
+    data,
+  );
+};
+
+/** 删除结算明细（按原币） */
+export const deleteItemsFromSettlementByCurrency = (
+  data: PaymentSettlementAdminApi.PaymentSettlementDeleteItemsByCurrencyDto,
+) => {
+  return requestClient.post<boolean>(
+    `${API_PREFIX}/DeleteItemsByCurrencyAsync`,
+    data,
+  );
+};
+
+/** 获取付费结算详情（按原币） */
+export const getPaymentSettlementDetailByCurrency = (id: string) => {
+  return requestClient.get<PaymentSettlementAdminApi.PaymentSettlementDetailByCurrencyDto>(
+    `${API_PREFIX}/DetailByCurrencyAsync`,
+    { params: { id } },
+  );
 };

@@ -12,7 +12,10 @@ import {
 // ✅ 新增：导入费用代码、币别和客户API
 import { getFeeCodeListAsync } from '#/api/system/base-data/fee-code-admin';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
-import { getClientPagedList, getClientGroupedByIndustryCategory } from '#/api/common/client';
+import {
+  getClientPagedList,
+  getClientGroupedByIndustryCategory,
+} from '#/api/common/client';
 import { $t } from '#/locales';
 import { Button, message, Tabs, Card } from 'ant-design-vue';
 import PortSelect from '#/adapter/component/biz-select/port-select.vue';
@@ -34,7 +37,9 @@ const loading = ref(false);
 const clientsLoading = ref(false); // ✅ 新增：客户数据加载状态
 
 // ✅ 关键修复：保存前的数据快照，用于失败时恢复
-const previousFeeItems = ref<OrderFeeTemplateAdminApi.OrderFeeTemplateItemAddDto[]>([]);
+const previousFeeItems = ref<
+  OrderFeeTemplateAdminApi.OrderFeeTemplateItemAddDto[]
+>([]);
 
 // ✅ 使用 composables 管理下拉数据源
 const dropdownSources = useDropdownSources();
@@ -92,6 +97,7 @@ function createClientSelectSchema(options: {
     componentProps: {
       placeholder: `请选择${options.label}（留空表示所有）`,
       allowClear: true,
+      style: { width: '100%' },
       ...(options.industryCategory
         ? { industryCategory: options.industryCategory }
         : {}),
@@ -111,6 +117,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请输入模板名称',
         maxlength: 64,
+        style: { width: '100%' },
       },
     },
     {
@@ -122,6 +129,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请选择业务类型',
         options: bizTypeOptions,
+        style: { width: '100%' },
       },
     },
     {
@@ -133,6 +141,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请选择收付类型',
         options: paySideOptions,
+        style: { width: '100%' },
       },
     },
     {
@@ -156,6 +165,7 @@ const [Form, formApi] = useVbenForm({
         showTime: true,
         format: 'YYYY-MM-DD HH:mm:ss',
         valueFormat: 'YYYY-MM-DD HH:mm:ss',
+        style: { width: '100%' },
       },
     },
     {
@@ -173,6 +183,7 @@ const [Form, formApi] = useVbenForm({
         showTime: true,
         format: 'YYYY-MM-DD HH:mm:ss',
         valueFormat: 'YYYY-MM-DD HH:mm:ss',
+        style: { width: '100%' },
       },
     },
     createClientSelectSchema({
@@ -188,6 +199,7 @@ const [Form, formApi] = useVbenForm({
         placeholder: '请选择贸易条款（留空表示所有）',
         options: tradeTermsOptions,
         allowClear: true,
+        style: { width: '100%' },
       },
     },
     {
@@ -198,6 +210,7 @@ const [Form, formApi] = useVbenForm({
         placeholder: '请选择货物类型（留空表示所有）',
         options: cargoTypeOptions,
         allowClear: true,
+        style: { width: '100%' },
       },
     },
     {
@@ -207,6 +220,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请选择船公司（留空表示所有）',
         allowClear: true,
+        style: { width: '100%' },
       },
     },
     createClientSelectSchema({
@@ -221,6 +235,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请选择起运港（留空表示所有）',
         allowClear: true,
+        style: { width: '100%' },
       },
     },
     {
@@ -230,6 +245,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请选择目的港（留空表示所有）',
         allowClear: true,
+        style: { width: '100%' },
       },
     },
     {
@@ -240,6 +256,7 @@ const [Form, formApi] = useVbenForm({
         placeholder: '请选择装运方式（留空表示所有）',
         options: blTypeOptions,
         allowClear: true,
+        style: { width: '100%' },
       },
     },
     {
@@ -249,6 +266,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请输入服务项（留空表示所有）',
         min: 0,
+        style: { width: '100%' },
       },
     },
     {
@@ -259,6 +277,7 @@ const [Form, formApi] = useVbenForm({
       componentProps: {
         placeholder: '请输入排序号',
         min: 0,
+        style: { width: '100%' },
       },
     },
     {
@@ -269,6 +288,7 @@ const [Form, formApi] = useVbenForm({
         placeholder: '请输入备注',
         maxlength: 4096,
         rows: 1,
+        style: { width: '100%' },
       },
     },
   ],
@@ -321,8 +341,11 @@ const [Modal, modalApi] = useVbenModal({
  */
 function handleAddRow() {
   console.log('🔍 [handleAddRow] hotTableRef.value:', hotTableRef.value);
-  console.log('🔍 [handleAddRow] hotTableRef.value?.hotInstance:', hotTableRef.value?.hotInstance);
-  
+  console.log(
+    '🔍 [handleAddRow] hotTableRef.value?.hotInstance:',
+    hotTableRef.value?.hotInstance,
+  );
+
   if (!hotTableRef.value?.hotInstance) {
     message.warning('表格未初始化');
     return;
@@ -331,11 +354,20 @@ function handleAddRow() {
   // ✅ 关键修复：hotInstance 是一个 ref，需要访问 .value
   const hotInstanceRef = hotTableRef.value.hotInstance;
   console.log('🔍 [handleAddRow] hotInstanceRef 类型:', typeof hotInstanceRef);
-  console.log('🔍 [handleAddRow] hotInstanceRef 是否是 ref 对象:', hotInstanceRef && typeof hotInstanceRef === 'object' && 'value' in hotInstanceRef);
-  
+  console.log(
+    '🔍 [handleAddRow] hotInstanceRef 是否是 ref 对象:',
+    hotInstanceRef &&
+      typeof hotInstanceRef === 'object' &&
+      'value' in hotInstanceRef,
+  );
+
   // 检查 hotInstanceRef 是否是 ref 对象
   let hotInstance: any;
-  if (hotInstanceRef && typeof hotInstanceRef === 'object' && 'value' in hotInstanceRef) {
+  if (
+    hotInstanceRef &&
+    typeof hotInstanceRef === 'object' &&
+    'value' in hotInstanceRef
+  ) {
     // 是 ref 对象，需要访问 .value
     hotInstance = hotInstanceRef.value;
     console.log('🔍 [handleAddRow] 从 ref.value 获取实例');
@@ -344,31 +376,31 @@ function handleAddRow() {
     hotInstance = hotInstanceRef;
     console.log('🔍 [handleAddRow] 直接使用实例');
   }
-  
+
   console.log('🔍 [handleAddRow] hotInstance:', hotInstance);
   console.log('🔍 [handleAddRow] hotInstance 类型:', typeof hotInstance);
-  
+
   // 检查实例是否有效
   if (!hotInstance || typeof hotInstance !== 'object') {
     console.error('❌ [handleAddRow] hotInstance 不是有效对象:', hotInstance);
     message.warning('表格实例无效');
     return;
   }
-  
+
   // 检查实例是否已被销毁
   if (hotInstance.isDestroyed) {
     console.warn('⚠️ [handleAddRow] Handsontable 实例已被销毁');
     message.warning('表格实例已失效，请刷新页面');
     return;
   }
-  
+
   try {
     const rowCount = hotInstance.countRows();
     console.log('📊 [handleAddRow] 当前行数:', rowCount);
-    
+
     if (typeof hotInstance.alter === 'function') {
       console.log('✅ [handleAddRow] 使用 alter 方法添加行');
-      
+
       // ✅ 关键修复：如果表格为空，使用 insert_row_above(0) 而不是 insert_row_below(-1)
       if (rowCount === 0) {
         console.log('📝 [handleAddRow] 表格为空，在第一行插入');
@@ -377,17 +409,17 @@ function handleAddRow() {
         console.log('📝 [handleAddRow] 在最后一行下方插入');
         hotInstance.alter('insert_row_below', rowCount - 1, 1);
       }
-      
+
       // ✅ 关键修复：验证行是否真的添加了
       const newRowCount = hotInstance.countRows();
       console.log('📊 [handleAddRow] 添加后行数:', newRowCount);
-      
+
       if (newRowCount === rowCount) {
         console.warn('⚠️ [handleAddRow] 行数没有变化，alter 可能失败');
         message.warning('新增行失败，请重试');
         return;
       }
-      
+
       // ✅ 新增：为新行的排序字段设置默认值（当前行总数）
       const newRowIdx = newRowCount - 1; // 新行的索引
       hotInstance.setDataAtRowProp(newRowIdx, 'sortId', newRowCount);
@@ -396,34 +428,34 @@ function handleAddRow() {
       console.log('✅ [handleAddRow] 使用 loadData 方法添加行');
       const currentData = hotInstance.getData();
       console.log('📊 [handleAddRow] 当前数据行数:', currentData.length);
-      
+
       const emptyRow = new Array(hotInstance.countCols()).fill(null);
       currentData.push(emptyRow);
-      
+
       hotInstance.loadData(currentData);
-      
+
       // ✅ 关键修复：验证行是否真的添加了
       const newData = hotInstance.getData();
       console.log('📊 [handleAddRow] 添加后数据行数:', newData.length);
-      
+
       // ✅ 新增：为新行的排序字段设置默认值（当前行总数）
       const newRowIdx = newData.length - 1; // 新行的索引
       hotInstance.setDataAtRowProp(newRowIdx, 'sortId', newData.length);
       console.log('✅ [handleAddRow] 设置排序默认值:', newData.length);
     }
-    
+
     // ✅ 关键修复：新增行后需要同步数据到父组件
     console.log('🔄 [handleAddRow] 开始同步数据到父组件...');
-    
+
     // 检查实例是否仍然有效
     if (hotInstance.isDestroyed) {
       console.warn('⚠️ [handleAddRow] Handsontable 实例已被销毁，无法同步数据');
       message.warning('表格实例已失效，请刷新页面');
       return;
     }
-    
+
     hotTableRef.value.syncDataToParent();
-    
+
     message.success('已新增一行');
   } catch (error) {
     console.error('❌ [handleAddRow] 添加行失败:', error);
@@ -435,8 +467,11 @@ function handleAddRow() {
  * 删除选中的行
  */
 function handleDeleteSelectedRows() {
-  console.log('🔍 [handleDeleteSelectedRows] hotTableRef.value:', hotTableRef.value);
-  
+  console.log(
+    '🔍 [handleDeleteSelectedRows] hotTableRef.value:',
+    hotTableRef.value,
+  );
+
   if (!hotTableRef.value?.selectedRows) {
     message.warning('表格未初始化');
     return;
@@ -445,42 +480,52 @@ function handleDeleteSelectedRows() {
   // ✅ 关键修复：使用 selectedRows ref
   const selectedRowsRef = hotTableRef.value.selectedRows;
   const selectedRowsSet = selectedRowsRef as Set<number>;
-  
-  console.log('📊 [handleDeleteSelectedRows] 当前选中的行:', Array.from(selectedRowsSet));
-  
+
+  console.log(
+    '📊 [handleDeleteSelectedRows] 当前选中的行:',
+    Array.from(selectedRowsSet),
+  );
+
   if (selectedRowsSet.size === 0) {
     message.warning('请先选中要删除的行（点击行号或拖动选择）');
     return;
   }
-  
+
   // 按降序排序，从后往前删除，避免索引变化
   const sortedRows = Array.from(selectedRowsSet).sort((a, b) => b - a);
-  
+
   console.log('🗑️ [handleDeleteSelectedRows] 待删除的行索引:', sortedRows);
-  
+
   // 获取 Handsontable 实例
   const hotInstanceRef = hotTableRef.value.hotInstance;
   let hotInstance: any;
-  if (hotInstanceRef && typeof hotInstanceRef === 'object' && 'value' in hotInstanceRef) {
+  if (
+    hotInstanceRef &&
+    typeof hotInstanceRef === 'object' &&
+    'value' in hotInstanceRef
+  ) {
     hotInstance = hotInstanceRef.value;
   } else {
     hotInstance = hotInstanceRef;
   }
-  
+
   // 检查实例是否有效
   if (!hotInstance || typeof hotInstance !== 'object') {
-    console.error('❌ [handleDeleteSelectedRows] hotInstance 不是有效对象:', hotInstance);
+    console.error(
+      '❌ [handleDeleteSelectedRows] hotInstance 不是有效对象:',
+      hotInstance,
+    );
     message.warning('表格实例无效');
     return;
   }
-  
+
   // 检查实例是否已被销毁
   if (hotInstance.isDestroyed) {
     console.warn('⚠️ [handleDeleteSelectedRows] Handsontable 实例已被销毁');
     message.warning('表格实例已失效，请刷新页面');
     return;
   }
-  
+
   try {
     sortedRows.forEach((rowIndex) => {
       // ✅ 关键修复：使用正确的API删除行
@@ -493,14 +538,14 @@ function handleDeleteSelectedRows() {
         hotInstance.loadData(currentData);
       }
     });
-    
+
     // 清空选中的行
     selectedRowsSet.clear();
-    
+
     // ✅ 关键修复：删除行后需要同步数据到父组件
     console.log('🔄 [handleDeleteSelectedRows] 开始同步数据到父组件...');
     hotTableRef.value.syncDataToParent();
-    
+
     message.success(`已删除 ${sortedRows.length} 行`);
   } catch (error) {
     console.error('❌ [handleDeleteSelectedRows] 删除行失败:', error);
@@ -751,14 +796,14 @@ async function handleSubmit() {
   } catch (error) {
     // ✅ 关键修复：保存失败时恢复数据
     console.error('❌ [handleSubmit] 保存失败，恢复之前的数据:', error);
-    
+
     // 恢复费用明细数据
     feeItems.value = JSON.parse(JSON.stringify(previousFeeItems.value));
-    
+
     // ✅ 关键修复：恢复后需要重新渲染表格（将 ID 转换为 Label）
     await nextTick();
     hotTableRef.value?.updateData(feeItems.value);
-    
+
     message.error(mode.value === 'create' ? '新建失败' : '编辑失败');
     console.error(error);
   } finally {
@@ -776,7 +821,7 @@ onMounted(() => {
 <template>
   <Modal
     :title="mode === 'create' ? '新建自动费用模板' : '编辑自动费用模板'"
-    class="w-[1400px] order-fee-template-modal"
+    class="order-fee-template-modal w-[1400px]"
   >
     <div v-loading="loading">
       <!-- 基础信息 -->
@@ -805,7 +850,6 @@ onMounted(() => {
           :dropdown-sources="dropdownSources"
           :all-clients-by-industry="dropdownSources.allClientsByIndustry.value"
         />
-      
       </Card>
     </div>
   </Modal>
@@ -819,7 +863,7 @@ onMounted(() => {
 /* ✅ 关键修复：移除弹窗body的滚动条 */
 :deep(.order-fee-template-modal .ant-modal-body) {
   max-height: none !important;
-  overflow: visible !important;
   padding: 12px;
+  overflow: visible !important;
 }
 </style>
