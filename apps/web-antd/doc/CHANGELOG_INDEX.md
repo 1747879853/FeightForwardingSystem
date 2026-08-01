@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-01 暂停拉取未落地的 SeaImportUserAttribute 枚举](./changelogs/change-log-2026-08-01-skip-sea-import-user-attribute-enum.md)
 - [2026-08-01 编号规则新增业务联系单编号](./changelogs/change-log-2026-08-01-generate-num-pre-order-num.md)
 - [2026-08-01 枚举导入弹窗上传图标居中](./changelogs/change-log-2026-08-01-enumeration-import-upload-icon-center.md)
 - [2026-08-01 枚举管理支持导入/导出配置跨公司迁移](./changelogs/change-log-2026-08-01-enumeration-config-transfer.md)

@@ -60,7 +60,7 @@ function isColorValue(value: string): boolean {
 /** 子项 `extra1` 在各枚举下的语义，与编辑弹窗口径一致 */
 const EXTRA1_TAG_TEXT_BY_ENUM: Record<string, [string, string]> = {
   SeaExportUserAttribute: ['默认展示', '手动添加'],
-  SeaImportUserAttribute: ['默认展示', '手动添加'],
+  // SeaImportUserAttribute 暂未落地，见 ORDER_USER_ROLE_ENUM_NAMES
   ServiceType: ['主流程', '服务项目'],
 };
 

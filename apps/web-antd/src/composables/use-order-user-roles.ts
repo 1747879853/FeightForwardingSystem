@@ -19,7 +19,8 @@ import { getEnumItems } from '#/utils/init-enum';
 /** 业务类型 → system/enumeration 中维护干系人角色的枚举名称 */
 export const ORDER_USER_ROLE_ENUM_NAMES: Record<number, string> = {
   0: 'SeaExportUserAttribute',
-  1: 'SeaImportUserAttribute',
+  // 海运进口枚举暂未配置，用不到时勿映射，避免启动/切类型时拉取报「枚举不存在」
+  // 1: 'SeaImportUserAttribute',
 };
 
 export interface OrderUserRoleOption {

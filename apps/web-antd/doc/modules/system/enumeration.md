@@ -29,7 +29,7 @@ last_updated: 2026-08-01
 - **导出配置：** 工具栏「导出配置」勾选若干枚举，下载 JSON（不含 Id/租户/审计字段），便于带到其他公司系统。
 - **导入配置：** 工具栏「导入配置」上传上述 JSON；按 `name` 匹配，不存在则新增；同名可选「覆盖」（同步为文件内容，该枚举下文件没有的子项会删）或「跳过」。只影响勾选的枚举，不会清空整张表。成功后清枚举缓存并刷新列表。
 - **业务页面消费：** 使用 `getEnumItems('枚举名称')` 获取选项；详见 [使用指南](../../guides/enumeration-usage-in-pages.md)。
-- **干系人角色配置：** `SeaExportUserAttribute`（业务类型=海运出口）与 `SeaImportUserAttribute`（海运进口）决定海运出口编辑页与业务联系单编辑页干系人面板的可用角色。子项通过「用户属性」下拉勾选角色（存库仍是 `UserAttribute` 位值：操作=1、客服=2、单证=4、商务=8、销售=16、财务=32、海外客服=64、人事=128、航线=256），`displayName` 为面板显示的角色名，勾选右侧「默认展示」（即 `extra1`）表示进页面即渲染该角色卡，子项顺序即面板展示顺序。海运出口的操作/销售、业务联系单的销售为固定角色，枚举漏配也会兜底展示且不可删除。
+- **干系人角色配置：** 当前仅启用 `SeaExportUserAttribute`（业务类型=海运出口），决定海运出口编辑页与业务联系单编辑页干系人面板的可用角色。子项通过「用户属性」下拉勾选角色（存库仍是 `UserAttribute` 位值：操作=1、客服=2、单证=4、商务=8、销售=16、财务=32、海外客服=64、人事=128、航线=256），`displayName` 为面板显示的角色名，勾选右侧「默认展示」（即 `extra1`）表示进页面即渲染该角色卡，子项顺序即面板展示顺序。海运出口的操作/销售、业务联系单的销售为固定角色，枚举漏配也会兜底展示且不可删除。`SeaImportUserAttribute`（海运进口）暂未落地，前端不再预热/映射拉取。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -47,7 +47,7 @@ last_updated: 2026-08-01
 | **枚举值 value** | 存库与接口提交用的数字。 | 枚举子表 `EnumerationItemDto.value` | **触发/依赖：** 表单绑定 value，展示用 displayName；干系人角色枚举下改由「用户属性」下拉写入 `UserAttribute` 位值。 | 数值类型；干系人角色枚举须为有效用户属性位值且不重复（保存时校验）。 |
 | **展示文本 displayName** | 下拉、表格展示文案。 | 枚举子表 | **触发/依赖：** 映射为 Select 的 `label`。 | 展示层可选填，建议必填。 |
 | **是否启用 enable** | 该项是否作为有效选项。 | 枚举子表 | **触发/依赖：** 前端可过滤未启用项。 | 布尔。 |
-| **扩展标记 extra1** | `ServiceType` 中表示服务项目是否属于业务主流程；`SeaExportUserAttribute` / `SeaImportUserAttribute` 中表示该干系人角色是否进页面即展示。 | 枚举子表 `EnumerationItemDto.extra1` | **触发/依赖：** 海运出口配置服务项目弹窗据此分为「主流程 / 非主流程」；干系人面板据此决定默认渲染角色卡，未勾选的只出现在「+ 添加角色」候选中。 | 布尔；缺省为 `false`，其他枚举通常保持 `false`。 |
+| **扩展标记 extra1** | `ServiceType` 中表示服务项目是否属于业务主流程；`SeaExportUserAttribute` 中表示该干系人角色是否进页面即展示。 | 枚举子表 `EnumerationItemDto.extra1` | **触发/依赖：** 海运出口配置服务项目弹窗据此分为「主流程 / 非主流程」；干系人面板据此决定默认渲染角色卡，未勾选的只出现在「+ 添加角色」候选中。 | 布尔；缺省为 `false`，其他枚举通常保持 `false`。 |
 | **权限码** | 控制枚举管理页可见与访问。 | `src/router/routes/modules/system.ts` | **触发/依赖：** 经 `abpPageAuthority` 参与动态路由过滤。 | 用户须具备 Admin 相关权限。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -62,6 +62,7 @@ last_updated: 2026-08-01
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-01 | `Fix` | 暂停拉取不存在的 `SeaImportUserAttribute`：移出 `init-enum` 预热列表，并从 `ORDER_USER_ROLE_ENUM_NAMES` 去掉 `bizType=1` 映射。 | 海运进口干系人角色暂未落地；无映射时 `getOrderUserRoleOptions` 仅返回固定角色兜底。 |
 | 2026-08-01 | `Style` | 导入配置弹窗上传区图标水平居中。 | `IconifyIcon` 不走 `.anticon` 默认居中，需 `flex justify-center`。 |
 | 2026-08-01 | `Feature` | 列表工具栏新增「导出配置 / 导入配置」：JSON 跨公司移植枚举；同名可选覆盖或跳过；覆盖按子项 `value` 复用目标 Id，只同步勾选的枚举。 | 纯前端复用 `AddAsync`/`EditAsync`/`DetailAsync`，逻辑集中在 `config-transfer.ts`；导出并发拉详情、导入串行。详见 `changelogs/change-log-2026-08-01-enumeration-config-transfer.md`。 |
 | 2026-07-31 | `Feature` | 新增 `SeaExportUserAttribute` / `SeaImportUserAttribute` 两个消费方：按业务类型配置干系人可用角色。编辑这两个枚举时「枚举值」改为「用户属性」下拉勾选（去重、自动带名称、保存校验），并放开 `extra1`「默认展示」勾选框；详情弹窗显示属性名与「默认展示 / 手动添加」标签。 | 前端读取集中在 `composables/use-order-user-roles.ts`（含 `getUserAttributeRoleOptions` / `isOrderUserRoleEnum`，枚举管理页复用同一份角色口径），优先 `GetItemsByNameAsync` 取最新配置、失败才退回 localStorage 缓存；两个名称已加入 `init-enum.ts` 预热列表。子项编辑形态依赖 `handleValuesChange` 维护的枚举名 ref（`FormApi.form` 非响应式）。详见 `changelogs/change-log-2026-07-31-order-user-role-enum.md`。 |
