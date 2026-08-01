@@ -2,7 +2,7 @@
 title: 编号规则
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-07-14
+last_updated: 2026-08-01
 ---
 
 # 1. 业务背景说明 (Background)
@@ -39,7 +39,7 @@ last_updated: 2026-07-14
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **表名** | 编号规则绑定的业务实体字段。 | `GenerateNumAdmin/data.ts` 固定下拉 | 与后端 `Entity.Field` 一致，如 `InvoiceApplication.ApplicationNo`（开票申请编号）、`InvoiceIssue.ApplicationNo`（开票流水号）。 | 必选，预置 8 项。 |
+| **表名** | 编号规则绑定的业务实体字段。 | `GenerateNumAdmin/data.ts` 固定下拉 | 与后端 `Entity.Field` 一致，如 `InvoiceApplication.ApplicationNo`（开票申请编号）、`InvoiceIssue.ApplicationNo`（开票流水号）、`PreOrder.PreOrderNum`（业务联系单编号）。 | 必选，预置 9 项。 |
 | **适用范围** | 规则生效范围：全局 / 组织 / 用户。 | 表单 `applyScope` | 组织与用户互斥；选组织必填 `orgId`，选用户必选至少一人。 | 不可同时设组织与用户。 |
 | **生成类型 generateEnum** | 0 自增 / 1 固定文本 / 2 用户名 / 3 yyyyMMdd / 4 yyMMdd / 5 yyyyMM / 6 yyMM。 | 子规则卡片下拉 | 切换类型时清理无效字段；AutoNum 最多 1 条。 | 每条必选类型。 |
 | **固定字符串 text** | 固定前缀或中段文本。 | 子规则卡片 | **仅 Text(1) 展示与校验。** | Text 类型必填。 |
@@ -57,6 +57,7 @@ last_updated: 2026-07-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-01 | `Feature` | 编号规则类型新增 `PreOrder.PreOrderNum`（业务联系单编号）。 | 选项在 `data.ts` 的 `TABLE_NAME_VALUES` 维护，i18n 键为 `tableNameOptions.PreOrder.PreOrderNum`。 |
 | 2026-07-14 | `Feature` | `GenerateEnum` 新增 `5=yyyyMM`、`6=yyMM`；规则下拉、编号预览与中英文文案同步。 | 预览格式分别为 dayjs `YYYYMM` / `YYMM`；类型定义在 `generate-num-admin.ts`。 |
 | 2026-06-27 | `Fix` | 新增 `InvoiceApplication.ApplicationNo`（发票申请单号）；修正 `InvoiceIssue.ApplicationNo` 文案为发票开具单号（开票流水号）。 | 申请与开具分属不同实体字段，i18n 键分别为 `tableNameOptions.InvoiceApplication.ApplicationNo` 与 `InvoiceIssue.ApplicationNo`。 |
 | 2026-06-27 | `Feature` | 编号规则类型新增 `InvoiceIssue.ApplicationNo`（发票开具单号）。 | 选项在 `data.ts` 的 `TABLE_NAME_VALUES` 维护，i18n 键为 `tableNameOptions.InvoiceIssue.ApplicationNo`。 |

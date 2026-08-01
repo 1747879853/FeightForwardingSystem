@@ -111,6 +111,7 @@ const TABLE_NAME_VALUES = [
   'BankStatement.BankStatementNo',
   'InvoiceApplication.ApplicationNo',
   'InvoiceIssue.ApplicationNo',
+  'PreOrder.PreOrderNum',
 ] as const;
 
 type TableNameValue = (typeof TABLE_NAME_VALUES)[number];
