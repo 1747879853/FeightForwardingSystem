@@ -246,6 +246,8 @@
     "codeSourceId": "Biz Source",
     "commissionNum": "Commission No.",
     "commissionNumAutoGenerate": "Auto Generated",
+    "regenerateCommissionNum": "Regenerate Commission No.",
+    "regenerateCommissionNumSuccess": "Commission No. regenerated",
     "consigneeContent": "Consignee Content",
     "consigneeId": "Consignee",
     "copyNoBillEnum": "No. of Copy B/L",

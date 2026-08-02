@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-07-30
+last_updated: 2026-08-02
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -41,6 +41,7 @@ last_updated: 2026-07-30
 - **箱包装默认值：** 新增箱型箱量行时，从订单级总包装复制包装 ID 与显示文本，避免远程下拉只显示数字 ID；复制后箱行包装仍可单独修改。
 - **船公司选中回显：** 详情接口返回同级 `carrierLogo` 与对象 `carrier`（含 `cnShortName`/`cnName`/`code`/`ediCode`）后，编辑页在 `carrierId` 的 `selectedItems` 中拼接 `carrier.cnShortName || carrier.cnName`、`code`（若有）与 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + CODE(简称)”。往来单位（委托单位/收发通/船代/订舱代理/场站/车队等）回显统一取 `*.name`。
 - **锁定状态展示：** 左侧委托信息显示委托编号、会计期间、应结日期、所属公司，并以标签展示“业务已/未锁定”和“费用已/未锁定”。保存时会把只读锁定状态带回 `transportOrder`。
+- **委托编号重新生成：** 基础信息页头「委托编号」右侧的刷新图标（仅编辑态、需 `Admin.SeaExport.Edit`）调用 `UpdateCommissionNumAsync`（PUT，入参仅 `{ id }`），由后端按编号规则重新取号并写回同 Id 的 `TransportOrder.CommissionNum`；前端用返回的新编号即时替换页头展示并标记列表待刷新。该操作立即生效、不随「保存」提交；点击前若表单本无未保存修改会同步脏检查基线，避免误触发未保存拦截。
 - **费用数量提示：** 工作台进入后调用 `getOrderFeePagedList({ TransportOrderId })`，统计应收 `paySide === 0` 与应付 `paySide === 1` 数量，将费用标签显示为“应收应付 x - y”，并每 60 秒刷新一次。
 - **订单费用处理：** 费用页基于运输单 ID 加载应收应付费用，字段覆盖费用代码、结算对象、币种、汇率、单价、金额、税率、开票/结算金额、可开票、机密、费用状态等；费用状态包括录入、提交审核、审核通过、驳回、申请修改、申请删除、部分结算、结算完毕。应收/应付表工具栏「打印」：`printJsonType` 分别为 `1000`（应收）/ `1500`（应付）；由后端按 `transportOrderId` 取数，勾选已保存费用时传 `orderFeeListInput.ids` 仅打勾选项，未勾选则打整票。
 - **更改单处理：** 更改单页基于运输单 ID 管理变更原因、会计期间和关联费用，接口使用 `/services/app/ChangeOrderAdmin`；更改单 DTO 带 `feeLocked` 和费用锁定人/时间信息。
@@ -130,6 +131,7 @@ last_updated: 2026-07-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-02 | `Feature` | 页头委托编号旁新增刷新按钮，一键调 `UpdateCommissionNumAsync` 由后端重新生成并替换旧编号（仅编辑态、需编辑权限）。 | 新增 `updateSeaExportCommissionNum(id)`（PUT，仅传 id，出参为新编号）；`commissionNum` 属提交 DTO 字段，改写会污染脏检查快照，故仅在原本无未保存修改时 `syncFormSnapshot()` 重置基线；失败提示交由全局拦截器展示 ABP 报错。详见 `changelogs/change-log-2026-08-02-sea-export-regenerate-commission-num.md`。 |
 | 2026-07-31 | `Feature` | 干系人可选角色改由枚举 `SeaExportUserAttribute` 配置（`extra1` 控制是否默认展示），不再写死 6 项；销售/操作固定兜底且不可删。 | 新增共用 `composables/use-order-user-roles.ts`（枚举名按 bizType 映射、`syncOrderUserRows` 补行排序）；`use-order-users.ts` 删除 `orderUserRoleOptions`/`defaultOrderUsers`，「海外客服有人才显示」泛化为「非默认展示角色无人不显示」；角色异步到位后 watch 补行，快照前 `await whenOrderUserRolesReady()` 防误报未保存。详见 `changelogs/change-log-2026-07-31-order-user-role-enum.md`。 |
 | 2026-07-30 | `Refactor` | 委托单位变更改走 `Client/GetDishonestStakeholdersAsync` 带出业务来源（编辑态）/干系人（仅新建态），不再调 `ClientAdmin/DetailAsync`。 | 共用 `form.vue`/`use-order-users.ts`；详见 `changelogs/change-log-2026-07-30-sea-export-client-dishonest-stakeholders.md`。 |
 | 2026-07-26 | `Feature` | 干系人用户信息改为 `User/GetUserListByIdsAsync` 一次批量获取；悬停卡片副标题改为组织路径；启停用读 `enable`；未命中 id 仍展示「已删除」兜底。 | `getUserListByIds` 使用 `paramsSerializer: 'repeat'`；`use-order-users` 以 `loadOrderUserDetailsByIds` 替代逐个 `getUser`；无有效 id 不发请求以免空 ids 拉全量。详见 `changelogs/change-log-2026-07-26-sea-export-order-users-batch-get.md`。 |

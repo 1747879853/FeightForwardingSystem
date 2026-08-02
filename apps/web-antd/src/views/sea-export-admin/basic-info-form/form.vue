@@ -68,6 +68,7 @@ import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import {
   getServiceTypesByPOL,
   getSeaExportDetail,
+  updateSeaExportCommissionNum,
 } from '#/api/sea-export/sea-export-admin';
 import {
   cancelCompleteSeServiceTask,
@@ -76,6 +77,7 @@ import {
 import { $t } from '#/locales';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import { createAbpPermission } from '#/utils/abp-permission';
+import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import OrderCtnTable from '../modules/order-ctn-table.vue';
 import {
   flattenDetail,
@@ -2349,6 +2351,37 @@ const handleYundangSubscribe = async () => {
   await loadEditData();
 };
 
+/** 委托编号由后端按编号规则生成，新建态尚无单据可重新生成 */
+const regeneratingCommissionNum = ref(false);
+const canRegenerateCommissionNum = computed(
+  () => isEdit.value && !!editId.value && hasAccessByCodes([perm.edit]),
+);
+
+const handleRegenerateCommissionNum = async () => {
+  if (!canRegenerateCommissionNum.value || regeneratingCommissionNum.value) {
+    return;
+  }
+  regeneratingCommissionNum.value = true;
+  // 新编号会进入提交 DTO，若当前无未保存修改则同步基线，避免误触发未保存拦截
+  const dirtyBeforeRegenerate = await isFormDirty();
+  try {
+    const newCommissionNum = await updateSeaExportCommissionNum(editId.value!);
+    const nextCommissionNum = String(newCommissionNum ?? '').trim();
+    if (nextCommissionNum) {
+      entrustReadonlyInfo.value.commissionNum = nextCommissionNum;
+      if (!dirtyBeforeRegenerate) {
+        await syncFormSnapshot();
+      }
+      message.success($t('seaExport.export.regenerateCommissionNumSuccess'));
+      markListShouldRefresh('SeaExportList');
+    } else {
+      await loadEditData();
+    }
+  } finally {
+    regeneratingCommissionNum.value = false;
+  }
+};
+
 const handleCopySeaExport = async () => {
   if (!isEdit.value || !editId.value) {
     return;
@@ -3030,6 +3063,24 @@ defineExpose({
                       <span class="basic-info-header__value">{{
                         entrustReadonlyInfo.commissionNum || '-'
                       }}</span>
+                      <Tooltip
+                        v-if="canRegenerateCommissionNum"
+                        :title="$t('seaExport.export.regenerateCommissionNum')"
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          class="basic-info-header__icon-btn"
+                          :loading="regeneratingCommissionNum"
+                          @click="handleRegenerateCommissionNum"
+                        >
+                          <IconifyIcon
+                            v-if="!regeneratingCommissionNum"
+                            icon="mdi:refresh"
+                            class="size-3.5"
+                          />
+                        </Button>
+                      </Tooltip>
                     </div>
                     <div class="basic-info-header__item">
                       <span class="basic-info-header__label">会计期间</span>

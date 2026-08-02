@@ -86,6 +86,8 @@
     "remark": "备注",
     "commissionNum": "委托编号",
     "commissionNumAutoGenerate": "自动生成",
+    "regenerateCommissionNum": "重新生成委托编号",
+    "regenerateCommissionNumSuccess": "委托编号已重新生成",
     "accountDate": "会计期间",
     "settlementDate": "应结日期",
     "organizationUnits": "所属公司",

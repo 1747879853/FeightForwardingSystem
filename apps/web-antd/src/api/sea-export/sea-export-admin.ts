@@ -719,6 +719,13 @@ export const editSeaExport = (data: SeaExportAdminApi.SeaExportEditDto) => {
   return requestClient.put<boolean>(`${API_PREFIX}/EditAsync`, data);
 };
 
+/** 重新生成委托编号，返回后端按编号规则生成的新编号 */
+export const updateSeaExportCommissionNum = (id: number | string) => {
+  return requestClient.put<string>(`${API_PREFIX}/UpdateCommissionNumAsync`, {
+    id,
+  });
+};
+
 export const deleteSeaExport = (id: number | string) => {
   return requestClient.delete<boolean>(`${API_PREFIX}/DeleteAsync`, {
     data: { id },
