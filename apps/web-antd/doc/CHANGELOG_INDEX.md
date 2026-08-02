@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-02 海运出口列表重置清空会计期间且不自动查询](./changelogs/change-log-2026-08-02-sea-export-account-period-reset.md)
 - [2026-08-01 暂停拉取未落地的 SeaImportUserAttribute 枚举](./changelogs/change-log-2026-08-01-skip-sea-import-user-attribute-enum.md)
 - [2026-08-01 编号规则新增业务联系单编号](./changelogs/change-log-2026-08-01-generate-num-pre-order-num.md)
 - [2026-08-01 枚举导入弹窗上传图标居中](./changelogs/change-log-2026-08-01-enumeration-import-upload-icon-center.md)

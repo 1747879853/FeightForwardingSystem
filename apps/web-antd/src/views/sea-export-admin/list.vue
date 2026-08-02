@@ -2,7 +2,7 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
-import { computed, onActivated, onMounted, ref } from 'vue';
+import { computed, nextTick, onActivated, onMounted, ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
@@ -258,6 +258,19 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
       labelWidth: 86,
     },
     wrapperClass: 'grid-cols-6',
+    /**
+     * 重置：清空全部条件（含会计期间），且不自动查询。
+     * 因 submitOnChange 会在表单值变化约 300ms 后自动提交，重置期间临时关闭。
+     */
+    handleReset: async () => {
+      gridApi.formApi.setState({ submitOnChange: false });
+      await gridApi.formApi.resetForm();
+      // filterFields=false：避免 merge 把 undefined 盖回重置前的旧值
+      await gridApi.formApi.setValues({ AccountDateRange: undefined }, false);
+      await nextTick();
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      gridApi.formApi.setState({ submitOnChange: true });
+    },
   },
   gridEvents: {
     cellDblclick: handleRowDblclick,
