@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-02 运踪订阅失败原因完整展示并补充规则说明](./changelogs/change-log-2026-08-02-yundang-subscribe-error-and-rules.md)
 - [2026-08-02 付费申请添加费用「排除」模式生效](./changelogs/change-log-2026-08-02-payment-add-fee-exclude-params-serializer.md)
 - [2026-08-02 海运出口列表搜索改为手动点击查询](./changelogs/change-log-2026-08-02-sea-export-list-manual-search.md)
 - [2026-08-02 NestedDataTable 去掉 table min-width max-content](./changelogs/change-log-2026-08-02-nested-data-table-drop-min-width-max-content.md)

@@ -2933,30 +2933,48 @@ defineExpose({
                       <span class="align-middle">打印</span>
                     </Button>
                     <template v-if="isEdit">
-                      <Tooltip
-                        :title="
-                          yundangSubscribeDisabled
-                            ? $t('seaExport.yundang.alreadySubscribed')
-                            : ''
-                        "
+                      <span
+                        v-access:code="externalApiUseCode"
+                        class="inline-flex items-center gap-1"
                       >
-                        <Button
-                          v-access:code="externalApiUseCode"
-                          size="small"
-                          class="flex items-center justify-center"
-                          :loading="subscribing"
-                          :disabled="yundangSubscribeDisabled"
-                          @click="handleYundangSubscribe"
+                        <Tooltip
+                          :title="
+                            yundangSubscribeDisabled
+                              ? $t('seaExport.yundang.alreadySubscribed')
+                              : ''
+                          "
                         >
+                          <Button
+                            size="small"
+                            class="flex items-center justify-center"
+                            :loading="subscribing"
+                            :disabled="yundangSubscribeDisabled"
+                            @click="handleYundangSubscribe"
+                          >
+                            <IconifyIcon
+                              icon="mdi:radar"
+                              class="mr-1 inline-block size-3.5 align-middle"
+                            />
+                            <span class="align-middle">{{
+                              yundangSubscribeButtonText
+                            }}</span>
+                          </Button>
+                        </Tooltip>
+                        <Tooltip>
+                          <template #title>
+                            <div class="whitespace-pre-line text-left">
+                              {{ $t('seaExport.yundang.subscribeRules') }}
+                            </div>
+                          </template>
                           <IconifyIcon
-                            icon="mdi:radar"
-                            class="mr-1 inline-block size-3.5 align-middle"
+                            icon="ant-design:question-circle-outlined"
+                            class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+                            :aria-label="
+                              $t('seaExport.yundang.subscribeRulesTitle')
+                            "
                           />
-                          <span class="align-middle">{{
-                            yundangSubscribeButtonText
-                          }}</span>
-                        </Button>
-                      </Tooltip>
+                        </Tooltip>
+                      </span>
                     </template>
                     <DropdownButton
                       v-if="isEdit"

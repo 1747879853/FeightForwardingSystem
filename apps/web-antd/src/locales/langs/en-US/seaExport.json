@@ -694,6 +694,8 @@
   "yundang": {
     "subscribe": "Tracking Subscribe",
     "resubscribe": "Resubscribe",
+    "subscribeRulesTitle": "Tracking subscribe rules",
+    "subscribeRules": "Carrier: the shipment must be linked to a carrier with at least one usable code (primary code preferred).\nReference no.: FCL requires a master B/L number; LCL master/split requires at least one container number.",
     "alreadySubscribed": "This bill has already been subscribed successfully.",
     "batchHint": "More than {0} records selected; the server will submit in batches.",
     "subscribing": "Subscribing tracking…",

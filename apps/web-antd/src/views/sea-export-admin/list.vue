@@ -7,11 +7,17 @@ import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
-import { Copy, LockKeyhole, LockKeyholeOpen, Plus } from '@vben/icons';
+import {
+  Copy,
+  IconifyIcon,
+  LockKeyhole,
+  LockKeyholeOpen,
+  Plus,
+} from '@vben/icons';
 
 import { useAccess } from '@vben/access';
 
-import { Button, message, Modal, Tag } from 'ant-design-vue';
+import { Button, message, Modal, Tag, Tooltip } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -479,14 +485,26 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         </div>
       </template>
       <template #toolbar-tools>
-        <Button
+        <span
           v-access:code="externalApiUseCode"
-          class="mr-2"
-          :loading="subscribing"
-          @click="handleYundangSubscribe"
+          class="mr-2 inline-flex items-center gap-1"
         >
-          {{ $t('seaExport.yundang.subscribe') }}
-        </Button>
+          <Button :loading="subscribing" @click="handleYundangSubscribe">
+            {{ $t('seaExport.yundang.subscribe') }}
+          </Button>
+          <Tooltip>
+            <template #title>
+              <div class="whitespace-pre-line text-left">
+                {{ $t('seaExport.yundang.subscribeRules') }}
+              </div>
+            </template>
+            <IconifyIcon
+              icon="ant-design:question-circle-outlined"
+              class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+              :aria-label="$t('seaExport.yundang.subscribeRulesTitle')"
+            />
+          </Tooltip>
+        </span>
         <Button
           v-access:code="perm.delete"
           class="mr-2"
