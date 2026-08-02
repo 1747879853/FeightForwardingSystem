@@ -103,8 +103,8 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       component: 'Textarea',
       fieldName: 'remark',
       label: '备注',
-      formItemClass: 'col-span-4',
-      componentProps: { rows: 2, maxlength: 1024, showCount: true },
+      formItemClass: 'col-span-2',
+      componentProps: { rows: 1, maxlength: 1024 },
     },
   ];
 }

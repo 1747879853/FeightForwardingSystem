@@ -13,6 +13,8 @@
 
 ## 2026-08
 
+- [2026-08-02 业务联系单收发通支持展开折叠（默认折叠）](./changelogs/change-log-2026-08-02-pre-order-party-collapse.md)
+- [2026-08-02 业务联系单备注 textarea 默认 1 行](./changelogs/change-log-2026-08-02-pre-order-remark-textarea-rows.md)
 - [2026-08-02 NestedDataTable 展开列固定 32px](./changelogs/change-log-2026-08-02-nested-data-table-expand-col-width.md)
 - [2026-08-02 修复列持久化可能导致表格列大面积消失](./changelogs/change-log-2026-08-02-vxe-column-persist-hide-all-guard.md)
 - [2026-08-02 业务联系单改为一级菜单](./changelogs/change-log-2026-08-02-pre-order-top-level-menu.md)

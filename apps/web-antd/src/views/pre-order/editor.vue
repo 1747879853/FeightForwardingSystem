@@ -108,6 +108,8 @@ const loading = ref(false);
 const saving = ref(false);
 const detail = ref<PreOrderAdminApi.PreOrderDto | null>(null);
 const activeTab = ref<'basic' | 'seaExport'>('basic');
+/** 收发通区块默认折叠，点击标题栏展开/收起 */
+const partyExpanded = ref(false);
 const auditModalVisible = ref(false);
 const auditSuccess = ref(true);
 /** 提交 DTO 的 JSON 快照，用于未保存拦截 */
@@ -1266,17 +1268,40 @@ const getContentTabStyle = (isActive: boolean) =>
                       </div>
                     </div>
                   </div>
-                  <div
-                    class="content-section__body content-section__body--flush-bottom"
-                  >
+                  <div class="content-section__body">
                     <BasicForm />
                   </div>
                 </section>
 
                 <section class="content-section">
                   <div
-                    class="content-section__body content-section__body--flush-top"
+                    class="content-section__header section-title-bar pre-order-party-header"
+                    role="button"
+                    tabindex="0"
+                    @click="partyExpanded = !partyExpanded"
+                    @keydown.enter.prevent="partyExpanded = !partyExpanded"
+                    @keydown.space.prevent="partyExpanded = !partyExpanded"
                   >
+                    <span class="card-title card-title--on-primary">
+                      <IconifyIcon
+                        icon="mdi:account-group-outline"
+                        class="size-4"
+                      />
+                      收发通
+                    </span>
+                    <span class="pre-order-party-header__hint">
+                      {{ partyExpanded ? '收起' : '展开' }}
+                      <IconifyIcon
+                        icon="mdi:chevron-right"
+                        class="pre-order-party-header__chevron size-4"
+                        :class="{
+                          'pre-order-party-header__chevron--open':
+                            partyExpanded,
+                        }"
+                      />
+                    </span>
+                  </div>
+                  <div v-show="partyExpanded" class="content-section__body">
                     <PartyForm />
                   </div>
                 </section>
@@ -1527,5 +1552,28 @@ const getContentTabStyle = (isActive: boolean) =>
   height: 100%;
   min-height: 0;
   overflow: auto;
+}
+
+.pre-order-party-header {
+  gap: 8px;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.pre-order-party-header__chevron {
+  transition: transform 0.2s ease;
+}
+
+.pre-order-party-header__chevron--open {
+  transform: rotate(90deg);
+}
+
+.pre-order-party-header__hint {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 12px;
+  color: hsl(var(--foreground) / 55%);
 }
 </style>

@@ -14,7 +14,7 @@ last_updated: 2026-08-02
 # 2. 功能与操作说明 (Features & Operations)
 
 - **Tab 结构：** 编辑态顶部 Tab 样式与海运出口编辑器一致；新建态尚无关联海运出口，隐藏顶部仅有的「业务联系单」Tab。
-  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主栏分区（单据字段 + 收发通（发货人/收货人/通知人各一组 id + Content，布局对齐海出 party-flow）+ 港口信息，港口区为海出同款 5 列流转卡片：收货地 → 起运港 → 中转港（Tab 切 1/2） → 目的港 → 交货地，每个节点下方带备注）+ 下方「货物与箱型」（标题栏内联货物类型/品名；卡片内左右分栏：左箱型箱量表 + 右竖排件数/包装/毛重/尺码）、费用卡片、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像。
+  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主栏分区（单据字段 + **收发通**（发货人/收货人/通知人各一组 id + Content，布局对齐海出 party-flow；**可点击标题栏展开/折叠，默认折叠**）+ 港口信息，港口区为海出同款 5 列流转卡片：收货地 → 起运港 → 中转港（Tab 切 1/2） → 目的港 → 交货地，每个节点下方带备注）+ 下方「货物与箱型」（标题栏内联货物类型/品名；卡片内左右分栏：左箱型箱量表 + 右竖排件数/包装/毛重/尺码）、费用卡片、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像。
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现，内嵌完整可编辑的海运出口编辑器。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`（含 `attachmentGroup` 全量覆盖）。新增成功后 `replace` 到编辑路由并重新拉详情。
 - **附件：** 费用区下方「附件」卡片；先 `Upload/UploadFile` 拿 `attachmentId`，本地写入分组；保存时随 Add/Edit 提交。附件类型按 `ModuleTypeId=160050` 调 `AttachmentDtlType/GetListByModuleTypesAsync`。录入/驳回可增删；待审核/通过只读展示。
@@ -108,6 +108,8 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-02 | `Feature` | 收发通支持点击标题栏展开/折叠，默认折叠 | `partyExpanded` 默认 `false`；`v-show` 保留表单态；去掉与基础信息的 flush 贴合 |
+| 2026-08-02 | `Style` | 基础信息「备注」改为默认 1 行、占两列，并去掉字数统计 | `remark`：`rows: 1`、`col-span-2`、去掉 `showCount` |
 | 2026-08-02 | `Feature` | 所属菜单从「操作管理」提升为一级「业务联系单」；编辑/新建 path 不变 | 路由模块独立为 `pre-order.ts`，与列表共用同一顶层路由树 |
 | 2026-07-31 | `Feature` | 干系人可选角色改由枚举按业务类型配置（`SeaExportUserAttribute` / `SeaImportUserAttribute`，`extra1` 控制默认展示），不再写死 9 项；仅销售固定；切业务类型清理不适用角色行 | 复用新增的 `composables/use-order-user-roles.ts`；`user-defaults.ts` 以 `syncPreOrderUserRows` 取代 `DEFAULT_PRE_ORDER_USERS`/`mergeDefaultPreOrderUsers` 并重算 `sortId`；`UserTable` 改收 `roles` prop；`pendingRoleCleanup` 保证「等新角色到位再清理」，`skipBizTypeUserSync` 避免详情回填误删；`syncFormSnapshot` 前 `await whenRolesReady()` 防误报未保存。详见 `changelogs/change-log-2026-07-31-order-user-role-enum.md` |
 | 2026-07-31 | `Feature` | 费用区下方接入附件分组：两步上传 + Add/Edit `attachmentGroup` 全量保存；待审核/通过只读 | `modules/attachment-groups.vue` 对齐付费申请本地维护模式；模块常量 `PRE_ORDER_MODULE_TYPE_ID=160050`；脏检查含附件 |
