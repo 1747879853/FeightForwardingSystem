@@ -4,6 +4,17 @@ import type { EnumerationAdminApi } from '#/api/system/enum-admin';
 
 import { $t } from '#/locales';
 
+/** 按枚举值升序，便于服务项目等条目较多时查阅 */
+export function sortEnumerationItemsByValue<
+  T extends { value?: null | number | string },
+>(items: T[]): T[] {
+  const toNum = (value: null | number | string | undefined) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
+  return [...items].sort((a, b) => toNum(a.value) - toNum(b.value));
+}
+
 /**
  * 表单配置（新增/编辑枚举）
  */

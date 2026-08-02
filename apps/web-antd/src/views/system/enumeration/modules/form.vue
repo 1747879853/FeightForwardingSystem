@@ -21,13 +21,17 @@ import {
 } from '#/composables/use-order-user-roles';
 import { $t } from '#/locales';
 
-import { useFormSchema } from '../data';
+import { sortEnumerationItemsByValue, useFormSchema } from '../data';
 
 const emits = defineEmits(['success']);
 
 const formData = ref<EnumerationAdminApi.EnumerationDetailDto>();
 const enumerationItems = ref<EnumerationAdminApi.EnumerationItemEditDto[]>([]);
 
+/** 展示始终按枚举值升序（避免接口顺序 / key=index 导致看起来「没排序」） */
+const sortedEnumerationItems = computed(() =>
+  sortEnumerationItemsByValue(enumerationItems.value),
+);
 /**
  * 枚举名决定子项怎么编辑（`extra1` 勾选框、value 是否改为用户属性下拉）。
  * 新增态没有详情可读，须跟着表单输入实时更新；`formApi.form` 是普通属性，挂载后替换不触发响应。
@@ -58,11 +62,13 @@ const [Modal, modalApi] = useVbenModal({
       name: values.name,
       description: values.description,
       remark: values.remark,
-      enumerationItems: enumerationItems.value.map((item) => ({
-        ...item,
-        enable: item.enable ?? true,
-        extra1: item.extra1 ?? false,
-      })),
+      enumerationItems: sortEnumerationItemsByValue(enumerationItems.value).map(
+        (item) => ({
+          ...item,
+          enable: item.enable ?? true,
+          extra1: item.extra1 ?? false,
+        }),
+      ),
     };
 
     if (id.value) {
@@ -105,7 +111,18 @@ const [Modal, modalApi] = useVbenModal({
         try {
           const enumDetail = await getEnumerationDetail(data.id);
           formData.value = enumDetail;
-          enumerationItems.value = enumDetail.enumerationItems || [];
+          // 规范化 value 后再排序，避免字符串/异常值导致排序失效
+          enumerationItems.value = sortEnumerationItemsByValue(
+            (enumDetail.enumerationItems || []).map((item) => ({
+              id: item.id,
+              value: Number(item.value),
+              enable: item.enable,
+              extra1: item.extra1,
+              displayName: item.displayName,
+              description: item.description,
+              remark: item.remark,
+            })),
+          );
           // handleValuesChange 有防抖，先同步一次避免子项编辑区闪一下通用形态
           currentEnumName.value = enumDetail.name?.trim() ?? '';
 
@@ -235,10 +252,13 @@ function addEnumItem() {
 }
 
 /**
- * 删除枚举项
+ * 删除枚举项（按对象引用删，避免排序后 index 对不上）
  */
-function removeEnumItem(index: number) {
-  enumerationItems.value.splice(index, 1);
+function removeEnumItem(item: EnumerationAdminApi.EnumerationItemEditDto) {
+  const index = enumerationItems.value.indexOf(item);
+  if (index >= 0) {
+    enumerationItems.value.splice(index, 1);
+  }
 }
 
 /**
@@ -281,7 +301,7 @@ function getContrastColor(hexColor: string): string {
         </div>
 
         <div
-          v-if="enumerationItems.length === 0"
+          v-if="sortedEnumerationItems.length === 0"
           class="py-4 text-center text-gray-400"
         >
           {{ $t('common.noData') }}
@@ -289,8 +309,8 @@ function getContrastColor(hexColor: string): string {
 
         <div v-else class="space-y-2">
           <div
-            v-for="(item, index) in enumerationItems"
-            :key="index"
+            v-for="item in sortedEnumerationItems"
+            :key="String(item.id ?? item.value)"
             class="flex items-start gap-2 rounded border p-3 hover:bg-gray-50"
           >
             <div class="grid flex-1 grid-cols-2 gap-2">
@@ -381,7 +401,7 @@ function getContrastColor(hexColor: string): string {
                 class="mt-auto"
                 danger
                 size="small"
-                @click="removeEnumItem(index)"
+                @click="removeEnumItem(item)"
               >
                 {{ $t('common.delete') }}
               </Button>

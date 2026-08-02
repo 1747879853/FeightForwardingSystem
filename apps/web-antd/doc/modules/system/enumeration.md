@@ -2,7 +2,7 @@
 title: 枚举管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-08-01
+last_updated: 2026-08-02
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-08-01
 # 2. 功能与操作说明 (Features & Operations)
 
 - **列表/页面访问：** 通过 `/system/enumeration` 进入「枚举管理」页面。
-- **新建/编辑枚举：** 维护枚举名称（英文唯一）、描述及子表枚举值（`value`、`displayName`、`enable` 等）。子项 `extra1` 只在**有明确语义的枚举**下渲染勾选框：`ServiceType` 显示「是否业务流程」，干系人角色枚举显示「默认展示」（后者由 `ORDER_USER_ROLE_ENUM_NAMES` 派生，`ServiceType` 在 `modules/form.vue` 的 `EXTRA1_CONFIG_BY_ENUM` 登记）。
+- **新建/编辑枚举：** 维护枚举名称（英文唯一）、描述及子表枚举值（`value`、`displayName`、`enable` 等）。编辑/详情弹窗子项按 **枚举值升序** 展示；保存时亦按该顺序提交。子项 `extra1` 只在**有明确语义的枚举**下渲染勾选框：`ServiceType` 显示「是否业务流程」，干系人角色枚举显示「默认展示」（后者由 `ORDER_USER_ROLE_ENUM_NAMES` 派生，`ServiceType` 在 `modules/form.vue` 的 `EXTRA1_CONFIG_BY_ENUM` 登记）。
 - **子项编辑形态随枚举名变化：** 编辑干系人角色枚举时，「枚举值」输入框自动换成 **「用户属性」下拉**（位值由前端填、已占用项置灰、选完自动带出显示名称），保存前校验必选且不重复；其余枚举仍是手填数字。枚举名取自表单实时值，新建时输入名称即切换形态。
 - **导出配置：** 工具栏「导出配置」勾选若干枚举，下载 JSON（不含 Id/租户/审计字段），便于带到其他公司系统。
 - **导入配置：** 工具栏「导入配置」上传上述 JSON；按 `name` 匹配，不存在则新增；同名可选「覆盖」（同步为文件内容，该枚举下文件没有的子项会删）或「跳过」。只影响勾选的枚举，不会清空整张表。成功后清枚举缓存并刷新列表。
@@ -62,6 +62,7 @@ last_updated: 2026-08-01
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-02 | `Fix` | 编辑/详情弹窗子项按枚举值升序展示与保存（如 ServiceType）。 | `sortEnumerationItemsByValue` + 模板 computed；`:key` 用 `id`。详见 `changelogs/change-log-2026-08-02-enumeration-sort-by-value.md`。 |
 | 2026-08-01 | `Fix` | 暂停拉取不存在的 `SeaImportUserAttribute`：移出 `init-enum` 预热列表，并从 `ORDER_USER_ROLE_ENUM_NAMES` 去掉 `bizType=1` 映射。 | 海运进口干系人角色暂未落地；无映射时 `getOrderUserRoleOptions` 仅返回固定角色兜底。 |
 | 2026-08-01 | `Style` | 导入配置弹窗上传区图标水平居中。 | `IconifyIcon` 不走 `.anticon` 默认居中，需 `flex justify-center`。 |
 | 2026-08-01 | `Feature` | 列表工具栏新增「导出配置 / 导入配置」：JSON 跨公司移植枚举；同名可选覆盖或跳过；覆盖按子项 `value` 复用目标 Id，只同步勾选的枚举。 | 纯前端复用 `AddAsync`/`EditAsync`/`DetailAsync`，逻辑集中在 `config-transfer.ts`；导出并发拉详情、导入串行。详见 `changelogs/change-log-2026-08-01-enumeration-config-transfer.md`。 |
