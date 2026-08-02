@@ -290,7 +290,6 @@ function columnClass(column: Column) {
 
 .nested-data-table table {
   width: 100%;
-  min-width: max-content;
   table-layout: fixed;
   border-spacing: 0;
   border-collapse: separate;
