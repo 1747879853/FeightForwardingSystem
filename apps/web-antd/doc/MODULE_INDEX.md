@@ -71,5 +71,5 @@
 | shared | （全站全局弹窗） | 共享能力 | 货物轨迹全局单例弹窗：`useTrackingMap().open({ mblNo })` 打开，iframe 内嵌 trackingeyes 地图；工具栏展示白标品牌 Logo；企业编号与地址收敛到 env；支持中英文切换（英文分享链接带 `lang=en`）；运踪信息/运踪详情弹窗已接入「查看轨迹地图」入口。 | [全局货物轨迹弹窗](./modules/shared/tracking-map-modal.md) | 2026-07-16 |
 | shared | `/tracking-map/:mblNo?` | 共享能力 | 货物轨迹独立静态页：免登录、URL 传订阅号、iframe 内嵌轨迹地图、页头品牌 logo 随 VITE_APP_BRAND 自动切换；支持 `?lang=en` 英文分享；可分享给外部客户。 | [货物轨迹独立静态页](./modules/shared/tracking-map-page.md) | 2026-07-14 |
 | shared | （全站分页 vxe 列表） | 共享能力 | 分页列表列头远程多列排序，统一 `sorting` 参数与 `createPagedListQuery` 接入。 | [vxe 列表排序](./modules/shared/vxe-list-sorting.md) | 2026-06-21 |
-| shared | （全站 vxe 列表） | 共享能力 | 列显隐/顺序/固定/列宽按用户与 tableId 持久化，工具栏恢复默认一并重置；columns 引用稳定化避免无关重算重置列。 | [vxe 列配置持久化](./modules/shared/vxe-column-persist.md) | 2026-07-12 |
+| shared | （全站 vxe 列表） | 共享能力 | 列显隐/顺序/固定/列宽按用户与 tableId 持久化，工具栏恢复默认一并重置；columns 引用稳定化避免无关重算重置列；列键与下标解耦，认不出的列回退默认可见并自愈脏配置。 | [vxe 列配置持久化](./modules/shared/vxe-column-persist.md) | 2026-08-02 |
 | shared | （全站页面级表单） | 共享能力 | 未保存内容离开拦截：`useUnsavedGuard({ isDirty })` + 全局 `beforeEach`，切标签/菜单跳转/后退/关闭当前标签时二次确认；首个接入方为海运出口新建与编辑工作台。 | [未保存内容离开拦截](./modules/shared/unsaved-guard.md) | 2026-07-14 |
