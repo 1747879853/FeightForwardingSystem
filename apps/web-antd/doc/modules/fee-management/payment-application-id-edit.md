@@ -65,6 +65,7 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-02 | `Fix` | 费用明细 NestedDataTable 展开列固定 32px，宽容器下不再被撑开。 | 最后一列 `<col>` 不设宽吸收剩余空间；详见 `changelogs/change-log-2026-08-02-nested-data-table-expand-col-width.md`。 |
 | 2026-08-02 | `Fix` | 提交/撤销提交成功后延迟 2s 再刷新右侧审核流程。 | `workflowReloadKey` 重挂载 + `loadDelayMs=2000`；详见 `changelogs/change-log-2026-08-02-payment-application-submit-workflow-delay.md`。 |
 | 2026-07-30 | `Feature` | 详情结算对象/币别/结算附件改读对象化出参；结算附件从 `paymentSettlements[].attachments` 展平只读展示。 | 删除对 `clientName`/`currencyCode`/`paymentSettlementAttachments` 依赖。详见 `changelogs/change-log-2026-07-30-payment-application-settlement-objectified.md`。 |
 | 2026-07-29 | `Feature` | 添加费用抽屉启用发票制作方式选择；提交/保存前校验已选。 | 与新增页共用 `ensureInvoiceProcessSelected`；详见 `changelogs/change-log-2026-07-29-payment-application-invoice-process-in-add-fee.md`。 |

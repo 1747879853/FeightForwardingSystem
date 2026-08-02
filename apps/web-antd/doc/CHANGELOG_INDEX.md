@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-02 NestedDataTable 展开列固定 32px](./changelogs/change-log-2026-08-02-nested-data-table-expand-col-width.md)
 - [2026-08-02 修复列持久化可能导致表格列大面积消失](./changelogs/change-log-2026-08-02-vxe-column-persist-hide-all-guard.md)
 - [2026-08-02 业务联系单改为一级菜单](./changelogs/change-log-2026-08-02-pre-order-top-level-menu.md)
 - [2026-08-02 海运出口编辑页委托编号支持一键重新生成](./changelogs/change-log-2026-08-02-sea-export-regenerate-commission-num.md)
