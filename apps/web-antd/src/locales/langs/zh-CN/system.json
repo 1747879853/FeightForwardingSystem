@@ -334,7 +334,9 @@
         "yyyyMMdd": "日期(yyyyMMdd)",
         "yyMMdd": "日期(yyMMdd)",
         "yyyyMM": "日期(yyyyMM)",
-        "yyMM": "日期(yyMM)"
+        "yyMM": "日期(yyMM)",
+        "ETDyyyyMM": "业务日期(yyyyMM)",
+        "ETDyyMM": "业务日期(yyMM)"
       },
       "applyScopeOptions": {
         "none": "不限制",

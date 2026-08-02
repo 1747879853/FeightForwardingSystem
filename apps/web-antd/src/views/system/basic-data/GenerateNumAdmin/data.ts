@@ -25,6 +25,8 @@ export const GENERATE_ENUM = {
   yyMMdd: 4,
   yyyyMM: 5,
   yyMM: 6,
+  ETDyyyyMM: 7,
+  ETDyyMM: 8,
 } as const satisfies Record<string, GenerateEnum>;
 
 export type GenerateNumRulePreviewInput = {
@@ -75,10 +77,13 @@ export function buildGenerateNumRuleSegment(
       return dayjs().format('YYYYMMDD');
     case GENERATE_ENUM.yyMMdd:
       return dayjs().format('YYMMDD');
-    case GENERATE_ENUM.yyyyMM:
-      return dayjs().format('YYYYMM');
+    // 业务日期(ETD)规则生成时优先取开船日期，配置页无单据上下文，预览统一按当前时间回退
+    case GENERATE_ENUM.ETDyyMM:
     case GENERATE_ENUM.yyMM:
       return dayjs().format('YYMM');
+    case GENERATE_ENUM.ETDyyyyMM:
+    case GENERATE_ENUM.yyyyMM:
+      return dayjs().format('YYYYMM');
     default:
       return '';
   }

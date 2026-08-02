@@ -2,7 +2,7 @@
 title: 编号规则
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-08-01
+last_updated: 2026-08-02
 ---
 
 # 1. 业务背景说明 (Background)
@@ -41,7 +41,7 @@ last_updated: 2026-08-01
 | :-- | :-- | :-- | :-- | :-- |
 | **表名** | 编号规则绑定的业务实体字段。 | `GenerateNumAdmin/data.ts` 固定下拉 | 与后端 `Entity.Field` 一致，如 `InvoiceApplication.ApplicationNo`（开票申请编号）、`InvoiceIssue.ApplicationNo`（开票流水号）、`PreOrder.PreOrderNum`（业务联系单编号）。 | 必选，预置 9 项。 |
 | **适用范围** | 规则生效范围：全局 / 组织 / 用户。 | 表单 `applyScope` | 组织与用户互斥；选组织必填 `orgId`，选用户必选至少一人。 | 不可同时设组织与用户。 |
-| **生成类型 generateEnum** | 0 自增 / 1 固定文本 / 2 用户名 / 3 yyyyMMdd / 4 yyMMdd / 5 yyyyMM / 6 yyMM。 | 子规则卡片下拉 | 切换类型时清理无效字段；AutoNum 最多 1 条。 | 每条必选类型。 |
+| **生成类型 generateEnum** | 0 自增 / 1 固定文本 / 2 用户名 / 3 yyyyMMdd / 4 yyMMdd / 5 yyyyMM / 6 yyMM / 7 业务日期 yyyyMM / 8 业务日期 yyMM。 | 子规则卡片下拉 | 切换类型时清理无效字段；AutoNum 最多 1 条；7/8 由后端按单据 ETD（开船日期）取值，为空回退当前时间。 | 每条必选类型。 |
 | **固定字符串 text** | 固定前缀或中段文本。 | 子规则卡片 | **仅 Text(1) 展示与校验。** | Text 类型必填。 |
 | **长度 length** | 自增序号位数，如 4 → `0001`。 | 子规则卡片 | **仅 AutoNum(0) 展示与校验。** | AutoNum 时必填且 > 0。 |
 | **重置序号 reset** | 该段值变化时是否令 AutoNum 从 1 重新开始。 | 子规则卡片 Checkbox | **AutoNum 无效**；非 AutoNum 可配置。 | 提交时 AutoNum 固定 `false`。 |
@@ -53,10 +53,13 @@ last_updated: 2026-08-01
 
 > [!IMPORTANT] **[卡点 2：reset 与分组]** `reset=true` 的非 AutoNum 段参与分组键；该段值变化时 AutoNum 换组从 1 开始。`reset=false` 仍出现在编号中但不参与分组。
 
+> [!IMPORTANT] **[卡点 3：业务日期规则的取值来源]** `业务日期(yyyyMM)/(yyMM)` 取单据的开船日期 ETD，只有后端显式传 `ETD` 的场景（海运出口、海运进口、业务联系单审核通过生成出口委托编号）才生效；ETD 为空时回退系统当前时间。配置页预览无单据上下文，一律按当前时间展示，与实际生成结果可能不同。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-02 | `Feature` | 生成类型新增 `7=ETDyyyyMM`、`8=ETDyyMM`（业务日期年月，取开船日期 ETD，为空回退当前时间）；下拉、预览与中英文文案同步。 | `GenerateEnum` 类型扩为 `0-8`；`buildGenerateNumRuleSegment` 中 7/8 与 5/6 复用 `YYYYMM`/`YYMM` 预览格式；后端由 `GetGenerateTextDto.ETD` 传入业务日期。 |
 | 2026-08-01 | `Feature` | 编号规则类型新增 `PreOrder.PreOrderNum`（业务联系单编号）。 | 选项在 `data.ts` 的 `TABLE_NAME_VALUES` 维护，i18n 键为 `tableNameOptions.PreOrder.PreOrderNum`。 |
 | 2026-07-14 | `Feature` | `GenerateEnum` 新增 `5=yyyyMM`、`6=yyMM`；规则下拉、编号预览与中英文文案同步。 | 预览格式分别为 dayjs `YYYYMM` / `YYMM`；类型定义在 `generate-num-admin.ts`。 |
 | 2026-06-27 | `Fix` | 新增 `InvoiceApplication.ApplicationNo`（发票申请单号）；修正 `InvoiceIssue.ApplicationNo` 文案为发票开具单号（开票流水号）。 | 申请与开具分属不同实体字段，i18n 键分别为 `tableNameOptions.InvoiceApplication.ApplicationNo` 与 `InvoiceIssue.ApplicationNo`。 |

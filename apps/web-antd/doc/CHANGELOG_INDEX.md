@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-02 编号生成支持业务日期(ETD)年月规则](./changelogs/change-log-2026-08-02-generate-num-etd-year-month.md)
 - [2026-08-02 运踪订阅失败原因完整展示并补充规则说明](./changelogs/change-log-2026-08-02-yundang-subscribe-error-and-rules.md)
 - [2026-08-02 付费申请添加费用「排除」模式生效](./changelogs/change-log-2026-08-02-payment-add-fee-exclude-params-serializer.md)
 - [2026-08-02 海运出口列表搜索改为手动点击查询](./changelogs/change-log-2026-08-02-sea-export-list-manual-search.md)
