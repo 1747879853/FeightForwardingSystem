@@ -13,6 +13,8 @@
 
 ## 2026-08
 
+- [2026-08-02 NestedDataTable 去掉 table min-width max-content](./changelogs/change-log-2026-08-02-nested-data-table-drop-min-width-max-content.md)
+- [2026-08-02 开发模式登录页跳过滑动验证](./changelogs/change-log-2026-08-02-login-skip-captcha-in-dev.md)
 - [2026-08-02 枚举管理子项按枚举值升序展示](./changelogs/change-log-2026-08-02-enumeration-sort-by-value.md)
 - [2026-08-02 海运出口列表重置清空会计期间且不自动查询](./changelogs/change-log-2026-08-02-sea-export-account-period-reset.md)
 - [2026-08-01 暂停拉取未落地的 SeaImportUserAttribute 枚举](./changelogs/change-log-2026-08-01-skip-sea-import-user-attribute-enum.md)

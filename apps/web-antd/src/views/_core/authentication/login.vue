@@ -17,8 +17,11 @@ defineOptions({ name: 'Login' });
 
 const authStore = useAuthStore();
 
+/** 开发模式跳过滑动验证，方便本地联调 */
+const enableSliderCaptcha = !import.meta.env.DEV;
+
 const formSchema = computed((): VbenFormSchema[] => {
-  return [
+  const schema: VbenFormSchema[] = [
     {
       component: 'VbenInput',
       componentProps: {
@@ -37,14 +40,19 @@ const formSchema = computed((): VbenFormSchema[] => {
       label: $t('authentication.password'),
       rules: z.string().min(1, { message: $t('authentication.passwordTip') }),
     },
-    {
+  ];
+
+  if (enableSliderCaptcha) {
+    schema.push({
       component: markRaw(SliderCaptcha),
       fieldName: 'captcha',
       rules: z.boolean().refine((value) => value, {
         message: $t('authentication.verifyRequiredTip'),
       }),
-    },
-  ];
+    });
+  }
+
+  return schema;
 });
 </script>
 
