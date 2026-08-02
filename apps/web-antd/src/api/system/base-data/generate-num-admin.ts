@@ -1,7 +1,7 @@
 import { requestClient } from '#/api/request';
 
-/** 编号生成类型：0=AutoNum 1=Text 2=UserName 3=yyyyMMdd 4=yyMMdd 5=yyyyMM 6=yyMM */
-export type GenerateEnum = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+/** 编号生成类型：0=AutoNum 1=Text 2=UserName 3=yyyyMMdd 4=yyMMdd 5=yyyyMM 6=yyMM 7=ETDyyyyMM 8=ETDyyMM */
+export type GenerateEnum = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export namespace GenerateNumAdminApi {
   /** 规则明细 - 新增 */

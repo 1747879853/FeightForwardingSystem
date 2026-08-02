@@ -86,6 +86,8 @@
     "remark": "备注",
     "commissionNum": "委托编号",
     "commissionNumAutoGenerate": "自动生成",
+    "regenerateCommissionNum": "重新生成委托编号",
+    "regenerateCommissionNumSuccess": "委托编号已重新生成",
     "accountDate": "会计期间",
     "settlementDate": "应结日期",
     "organizationUnits": "所属公司",
@@ -921,6 +923,8 @@
   "yundang": {
     "subscribe": "运踪订阅",
     "resubscribe": "重新订阅",
+    "subscribeRulesTitle": "运踪订阅规则",
+    "subscribeRules": "船公司：业务须已关联船公司，且船公司至少维护了一个可用代码（优先用主代码）\n订阅单号：整柜须填写主提单号；拼箱主票/分票须至少有一个箱号",
     "alreadySubscribed": "该单号已成功订阅，无需重复订阅",
     "batchHint": "已选超过 {0} 票，后端将自动分批提交",
     "subscribing": "运踪订阅中…",

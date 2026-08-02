@@ -16,7 +16,14 @@ import { $t } from '#/locales';
 
 import dayjs from 'dayjs';
 
+import { sortEnumerationItemsByValue } from '../data';
+
 const enumDetail = ref<EnumerationAdminApi.EnumerationDetailDto>();
+
+/** 详情枚举项按 value 升序展示 */
+const sortedEnumerationItems = computed(() =>
+  sortEnumerationItemsByValue(enumDetail.value?.enumerationItems ?? []),
+);
 
 const [Modal, modalApi] = useVbenModal({
   async onConfirm() {
@@ -60,7 +67,7 @@ function isColorValue(value: string): boolean {
 /** 子项 `extra1` 在各枚举下的语义，与编辑弹窗口径一致 */
 const EXTRA1_TAG_TEXT_BY_ENUM: Record<string, [string, string]> = {
   SeaExportUserAttribute: ['默认展示', '手动添加'],
-  SeaImportUserAttribute: ['默认展示', '手动添加'],
+  // SeaImportUserAttribute 暂未落地，见 ORDER_USER_ROLE_ENUM_NAMES
   ServiceType: ['主流程', '服务项目'],
 };
 
@@ -99,17 +106,14 @@ const userAttributeLabelOf = (value: number) =>
           {{ $t('system.enumeration.enumItems') }}
         </h3>
         <div
-          v-if="
-            !enumDetail.enumerationItems ||
-            enumDetail.enumerationItems.length === 0
-          "
+          v-if="sortedEnumerationItems.length === 0"
           class="py-4 text-center text-gray-400"
         >
           {{ $t('common.noData') }}
         </div>
         <div v-else class="max-h-[400px] space-y-2 overflow-y-auto">
           <div
-            v-for="(item, index) in enumDetail.enumerationItems"
+            v-for="(item, index) in sortedEnumerationItems"
             :key="item.id || index"
             class="rounded border p-3 hover:bg-gray-50"
           >

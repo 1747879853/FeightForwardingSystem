@@ -67,6 +67,10 @@ const currencySelectRef = ref();
 const throttledAutoSearch = useThrottleFn(
   async (values: Record<string, any>) => {
     if (!values.SettlementId) return;
+    const feeCodeMode = values.feeCodeMode ?? 'include';
+    const feeCodeIds = values.FeeCodeIds;
+    const hasFeeCodes = Array.isArray(feeCodeIds) && feeCodeIds.length > 0;
+    if (feeCodeMode === 'exclude' && !hasFeeCodes) return;
     currentPage.value = 1;
     await checkSearchChanged();
     await fetchData(values);
@@ -162,6 +166,7 @@ async function fetchData(formValues?: Record<string, any>) {
 
   const feeCodeMode = values.feeCodeMode ?? 'include';
   const feeCodeIds = values.FeeCodeIds;
+  const hasFeeCodes = Array.isArray(feeCodeIds) && feeCodeIds.length > 0;
 
   const params: StatementAdminApi.OrderFeeGroupQueryParams = {
     SettlementId: values.SettlementId,
@@ -170,8 +175,10 @@ async function fetchData(formValues?: Record<string, any>) {
     ETDStart: etdStart ? dayjs(etdStart).toISOString() : undefined,
     ETDEnd: etdEnd ? dayjs(etdEnd).toISOString() : undefined,
     CurrencyId: values.CurrencyId,
-    FeeCodeIds: feeCodeMode === 'include' ? feeCodeIds : undefined,
-    ExceptFeeCodeIds: feeCodeMode === 'exclude' ? feeCodeIds : undefined,
+    FeeCodeIds:
+      feeCodeMode === 'include' && hasFeeCodes ? feeCodeIds : undefined,
+    ExceptFeeCodeIds:
+      feeCodeMode === 'exclude' && hasFeeCodes ? feeCodeIds : undefined,
     PageIndex: currentPage.value,
     PageSize: pageSize.value,
   };

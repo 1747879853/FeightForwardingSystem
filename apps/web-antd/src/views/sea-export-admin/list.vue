@@ -2,16 +2,22 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
-import { computed, onActivated, onMounted, ref } from 'vue';
+import { computed, nextTick, onActivated, onMounted, ref } from 'vue';
 import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
-import { Copy, LockKeyhole, LockKeyholeOpen, Plus } from '@vben/icons';
+import {
+  Copy,
+  IconifyIcon,
+  LockKeyhole,
+  LockKeyholeOpen,
+  Plus,
+} from '@vben/icons';
 
 import { useAccess } from '@vben/access';
 
-import { Button, message, Modal, Tag } from 'ant-design-vue';
+import { Button, message, Modal, Tag, Tooltip } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -251,13 +257,21 @@ const handleRowDblclick = ({
 const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
   formOptions: {
     schema: useGridFormSchema(),
-    submitOnChange: true,
+    // 搜索条件变更不自动查：需点「查询」；首屏 onMounted / 从表单返回刷新除外
+    submitOnChange: false,
     showCollapseButton: true,
     collapsed: true,
     commonConfig: {
       labelWidth: 86,
     },
     wrapperClass: 'grid-cols-6',
+    /** 重置：清空全部条件（含会计期间），不自动查询 */
+    handleReset: async () => {
+      await gridApi.formApi.resetForm();
+      // filterFields=false：避免 merge 把 undefined 盖回重置前的旧值
+      await gridApi.formApi.setValues({ AccountDateRange: undefined }, false);
+      await nextTick();
+    },
   },
   gridEvents: {
     cellDblclick: handleRowDblclick,
@@ -471,14 +485,26 @@ useRefreshListOnFormReturn('SeaExportList', handleRefresh);
         </div>
       </template>
       <template #toolbar-tools>
-        <Button
+        <span
           v-access:code="externalApiUseCode"
-          class="mr-2"
-          :loading="subscribing"
-          @click="handleYundangSubscribe"
+          class="mr-2 inline-flex items-center gap-1"
         >
-          {{ $t('seaExport.yundang.subscribe') }}
-        </Button>
+          <Button :loading="subscribing" @click="handleYundangSubscribe">
+            {{ $t('seaExport.yundang.subscribe') }}
+          </Button>
+          <Tooltip>
+            <template #title>
+              <div class="whitespace-pre-line text-left">
+                {{ $t('seaExport.yundang.subscribeRules') }}
+              </div>
+            </template>
+            <IconifyIcon
+              icon="ant-design:question-circle-outlined"
+              class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+              :aria-label="$t('seaExport.yundang.subscribeRulesTitle')"
+            />
+          </Tooltip>
+        </span>
         <Button
           v-access:code="perm.delete"
           class="mr-2"

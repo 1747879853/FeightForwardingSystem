@@ -860,7 +860,11 @@ export async function getOrderFeeGroupAsync(
 ) {
   return requestClient.get<PaymentApplicationAdminApi.PagedListOfPayAppFeeGroupDto>(
     `${API_PREFIX}/GetOrderFeeGroupAsync`,
-    { params },
+    {
+      params,
+      // ASP.NET Core [FromQuery] List 需 repeat：FeeCodeIds=1&FeeCodeIds=2，勿用 brackets
+      paramsSerializer: 'repeat',
+    },
   );
 }
 

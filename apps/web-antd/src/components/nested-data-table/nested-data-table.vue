@@ -88,6 +88,15 @@ function columnWidth(width?: number | string) {
   return width;
 }
 
+/**
+ * 最后一列不写死宽度：table width:100% + fixed 时，剩余宽度只进这一列，
+ * 展开列才能保持 32px（否则会按比例被撑开）。
+ */
+function outerColStyle(column: Column, index: number) {
+  if (index === props.columns.length - 1) return undefined;
+  return { width: columnWidth(column.width) };
+}
+
 function cellValue(record: any, column: Column) {
   return column.dataIndex ? record?.[column.dataIndex] : '';
 }
@@ -107,9 +116,9 @@ function columnClass(column: Column) {
         <colgroup>
           <col class="nested-data-table__expand-col" />
           <col
-            v-for="column in columns"
+            v-for="(column, colIndex) in columns"
             :key="column.key || column.dataIndex"
-            :style="{ width: columnWidth(column.width) }"
+            :style="outerColStyle(column, colIndex)"
           />
         </colgroup>
         <thead>
@@ -263,6 +272,12 @@ function columnClass(column: Column) {
 </template>
 
 <style scoped>
+@keyframes nested-table-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .nested-data-table {
   --table-border: #d4e4f4;
   --table-head: #f9fafb;
@@ -288,9 +303,8 @@ function columnClass(column: Column) {
   scrollbar-gutter: stable;
 }
 
-.nested-data-table table {
+.nested-data-table__outer {
   width: 100%;
-  min-width: max-content;
   table-layout: fixed;
   border-spacing: 0;
   border-collapse: separate;
@@ -300,6 +314,9 @@ function columnClass(column: Column) {
   width: max-content;
   min-width: 0;
   max-width: 100%;
+  table-layout: fixed;
+  border-spacing: 0;
+  border-collapse: separate;
 }
 
 .nested-data-table th,
@@ -335,11 +352,17 @@ function columnClass(column: Column) {
   background: #f8fbff;
 }
 
-.nested-data-table__expand-col,
+/* 展开列固定 32px；多余宽度由最后一列（无 width 的 col）吸收 */
+.nested-data-table__expand-col {
+  width: 32px;
+}
+
 .nested-data-table__expand-cell {
   width: 32px;
   min-width: 32px;
+  max-width: 32px;
   padding: 0 !important;
+  vertical-align: middle;
   text-align: center;
 }
 
@@ -412,11 +435,5 @@ function columnClass(column: Column) {
 
 .is-left {
   text-align: left;
-}
-
-@keyframes nested-table-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 </style>

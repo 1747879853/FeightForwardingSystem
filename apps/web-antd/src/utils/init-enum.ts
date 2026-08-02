@@ -257,7 +257,8 @@ async function getAllEnumNames(): Promise<string[]> {
     'ServiceType',
     // 干系人可用角色（按业务类型），见 composables/use-order-user-roles.ts
     'SeaExportUserAttribute',
-    'SeaImportUserAttribute',
+    // 海运进口干系人角色枚举暂未落地，勿预热以免「枚举不存在」报错
+    // 'SeaImportUserAttribute',
     // 'OrderStatus',
     // 'PaymentMethod',
     // 'ShippingType',

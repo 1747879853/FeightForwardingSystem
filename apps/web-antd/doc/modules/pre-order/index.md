@@ -1,8 +1,8 @@
 ---
 title: 业务联系单列表
-module: 操作管理 / 业务联系单
+module: 业务联系单
 author: 前端团队
-last_updated: 2026-07-31
+last_updated: 2026-08-02
 ---
 
 # 1. 业务背景说明 (Background)
@@ -52,6 +52,7 @@ last_updated: 2026-07-31
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-02 | `Feature` | 侧边栏从「操作管理」子项提升为一级菜单「业务联系单」 | 路由迁至独立模块 `router/routes/modules/pre-order.ts`，`order: 194`、`hideChildrenInMenu: true`；页面 path 不变 |
 | 2026-07-31 | `Feature` | 列表接入分组统计：委托单位/船公司/起运港/目的港/业务类型；船公司 Tab 可展示 Logo | 复用 `#/components/list-grouping`，对接 `GetGroupedListAsync`；持久化 `group_config_PreOrderList` |
 | 2026-07-26 | `Feature` | 双击行统一进编辑页；取消按状态分流详情 | 与取消独立详情页一致，`getPreOrderFormPath` 恒为 `/edit` |
 | 2026-07-26 | `Feature` | 双击行按状态进编辑或详情：待审核/通过打开 `/detail`，录入/驳回仍进 `/edit` | （已废弃）曾用 `getPreOrderFormPath` 分流 |

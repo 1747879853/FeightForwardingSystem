@@ -2,7 +2,7 @@
 title: vxe 列表列配置持久化
 module: 共享能力
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-08-02
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,10 +22,10 @@ last_updated: 2026-07-12
 
 ```json
 {
-  "visibleColumnKeys": ["col_0_orderNo", "col_1_clientName"],
-  "columnVisibility": { "col_0_orderNo": true },
-  "columnFixed": { "col_0_orderNo": "left" },
-  "columnWidths": { "col_1_clientName": 240 },
+  "visibleColumnKeys": ["type:checkbox", "field:orderNo", "field:clientName"],
+  "columnVisibility": { "field:orderNo": true },
+  "columnFixed": { "field:orderNo": "left" },
+  "columnWidths": { "field:clientName": 240 },
   "_debug": {
     "savedAt": "2026-07-05T12:00:00.000Z",
     "tableId": "sea-export-order-fee-0",
@@ -53,6 +53,12 @@ last_updated: 2026-07-12
 }
 ```
 
+### 列键规则（2026-08-02 起）
+
+列键由 `buildColumnIdentityKey` 生成，**不含列下标**：优先 `field:<字段名>`，无 `field` 时依次退到 `type:<类型>` / `title:<标题>` / `index:<下标>`；同名列按出现次序追加 `#1`、`#2`。
+
+旧格式 `col_<下标>_<字段名>` 保留在列对象的 `_columnLegacyKey` 上，**仅用于读取存量配置**；保存一律写新键，用户下次调整列时自动完成迁移。
+
 | 字段                | 说明                                   |
 | :------------------ | :------------------------------------- |
 | `visibleColumnKeys` | 可见列顺序                             |
@@ -79,12 +85,19 @@ last_updated: 2026-07-12
 
 > [!IMPORTANT] **动态换列页面** 运行时通过 `setGridOptions({ columns })` 整体换列时，v1 不会自动套用已保存列宽；用户需在新列集上重新拖拽。
 
+> [!IMPORTANT] **配置认不出的列必须回退默认可见** `applyColumnConfig` 里，配置中找不到对应键的列一律按 `_columnDefaultVisible` 回退，绝不能落回「不在 `visibleColumnKeys` 里就隐藏」的兼容分支——那条分支曾导致列定义一改动就整片列消失。兼容分支（`useVisibleKeysAsCompactVisibility`）只对确实命中配置的列生效。应用完成后还有一道兜底：全部列都被判隐藏时整体回退默认，默认也全隐藏则强制全部可见。
+
+> [!IMPORTANT] **脏配置自愈要覆盖本地兜底** 远端与本地兜底（`draggable_table_config_*` / `fallback_table_config_*`）两条加载路径都要走 `applyColumnConfig` 返回的 `invalid` 判断，命中即 `healColumnConfig` 用当前默认列覆盖远端并清本地缓存；远端已自愈时用 `hasHealed` 跳过本地兜底，避免刚修好又被盖回去。
+
+> [!IMPORTANT] **tableId 缺省会撞车** 未显式配置 `columnPersist.tableId` / `gridOptions.id` 时回退成路由名，同一路由上的两张不同列表会共用一份配置。多表页面必须显式给 `gridOptions.id`。
+
 > [!IMPORTANT] **columns 引用稳定化** `options` 计算属性用 `getBoundColumnsSignature`（`field/title/type/visible/fixed/width`）判断列定义是否变化：签名不变时复用同一 `columns` 数组引用，避免与列无关的响应式重算（如工具栏插槽读取分组 Tab 的 loading/items）改变 `columns` 引用触发 vxe `reloadColumn`，从而冲掉用户运行时的显隐/顺序/列宽。若新增会影响列渲染但未纳入签名的字段，需同步扩充签名。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 | 🤖 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-02 | Fix | 列定义调整、旧格式或异种配置不再导致表格列大面积（甚至全部）消失 | 三处改动：①列键改为与下标无关的 `field:xxx`，旧键留在 `_columnLegacyKey` 供读取存量配置；②`applyColumnConfig` 中配置认不出的列回退默认可见，并加「应用后无可见列」兜底，返回 `invalid`/`recovered`；③抽出 `healColumnConfig`，远端与本地兜底共用自愈判断，`hasHealed` 防止自愈后被本地配置盖回。见 `change-log-2026-08-02-vxe-column-persist-hide-all-guard.md` |
 | 2026-07-12 | Fix | 工具栏等与列无关的重算不再重置用户列设置（显隐/顺序/列宽） | 根因：`toolbarOptions` 调用插槽渲染读取分组 Tab 响应式状态 → `options` 重算生成新 `columns` 引用 → vxe `reloadColumn`。修复：`getBoundColumnsSignature` 稳定 `columns` 引用，签名变化才下发 |
 | 2026-07-12 | Style | vxe-grid 全局选中行（checkbox/radio/current）背景改为主题色 15% 透明 | 变量定义于 `packages/effects/plugins/src/vxe-table/style.css` `:root .vxe-grid`；与 antd Table 全局规则（`packages/styles/src/antd/index.css`）并列维护 |
 | 2026-07-05 | Feature | 列配置保存附带 `_debug` 排查快照，拦截保存时写入 localStorage | trigger/keyMapping/totals 便于对照 UserSetting 还原保存现场 |

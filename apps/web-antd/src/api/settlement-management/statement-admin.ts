@@ -16,7 +16,7 @@ export namespace StatementAdminApi {
     /** 结算完毕 */
     Settlemented = 2,
   }
-    /** 组织机构简易DTO（组织串 orgs 元素） */
+  /** 组织机构简易DTO（组织串 orgs 元素） */
   export interface OrganizationUnitSimpleDto {
     /** 组织id */
     id: number;
@@ -27,7 +27,6 @@ export namespace StatementAdminApi {
     /** 本位币编码，可空 */
     localCurrencyCode?: null | string;
   }
-
 
   /** 费用币别分组输出 */
   export interface StatementCurrencyDto {
@@ -262,7 +261,11 @@ export const getOrderFeeGroup = (
 ) => {
   return requestClient.get<StatementAdminApi.PagedListOfTransportOrderDto>(
     '/services/app/StatementAdmin/GetOrderFeeGroupAsync',
-    { params },
+    {
+      params,
+      // ASP.NET Core [FromQuery] List 需 repeat：FeeCodeIds=1&FeeCodeIds=2，勿用 brackets
+      paramsSerializer: 'repeat',
+    },
   );
 };
 

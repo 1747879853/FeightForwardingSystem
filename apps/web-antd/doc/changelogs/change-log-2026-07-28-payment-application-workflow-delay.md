@@ -14,4 +14,4 @@
 
 - 从列表进入编辑页不要带 `fromCreate`，应立即拉取。
 - 勿把延迟写死在所有编辑页加载路径上；仅「刚创建」场景需要等待实例就绪。
-- `reload()` 仍直接拉取，不受 `loadDelayMs` 影响。
+- 首次挂载的延迟由 `loadDelayMs` 控制；主动刷新可调用 `reload({ delayMs })`（提交/撤销提交场景见后续 changelog）。

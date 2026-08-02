@@ -1,8 +1,8 @@
 ---
 title: 业务联系单编辑（含新建与审核）
-module: 操作管理 / 业务联系单
+module: 业务联系单
 author: 前端团队
-last_updated: 2026-07-31
+last_updated: 2026-08-02
 ---
 
 # 1. 业务背景说明 (Background)
@@ -108,6 +108,7 @@ last_updated: 2026-07-31
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-02 | `Feature` | 所属菜单从「操作管理」提升为一级「业务联系单」；编辑/新建 path 不变 | 路由模块独立为 `pre-order.ts`，与列表共用同一顶层路由树 |
 | 2026-07-31 | `Feature` | 干系人可选角色改由枚举按业务类型配置（`SeaExportUserAttribute` / `SeaImportUserAttribute`，`extra1` 控制默认展示），不再写死 9 项；仅销售固定；切业务类型清理不适用角色行 | 复用新增的 `composables/use-order-user-roles.ts`；`user-defaults.ts` 以 `syncPreOrderUserRows` 取代 `DEFAULT_PRE_ORDER_USERS`/`mergeDefaultPreOrderUsers` 并重算 `sortId`；`UserTable` 改收 `roles` prop；`pendingRoleCleanup` 保证「等新角色到位再清理」，`skipBizTypeUserSync` 避免详情回填误删；`syncFormSnapshot` 前 `await whenRolesReady()` 防误报未保存。详见 `changelogs/change-log-2026-07-31-order-user-role-enum.md` |
 | 2026-07-31 | `Feature` | 费用区下方接入附件分组：两步上传 + Add/Edit `attachmentGroup` 全量保存；待审核/通过只读 | `modules/attachment-groups.vue` 对齐付费申请本地维护模式；模块常量 `PRE_ORDER_MODULE_TYPE_ID=160050`；脏检查含附件 |
 | 2026-07-31 | `Style` | 顶部 Tab 与主分区标题「基础信息」统一改为「业务联系单」 | 仅改展示文案；`activeTab === 'basic'` 等内部标识不变 |

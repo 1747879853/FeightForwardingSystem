@@ -332,7 +332,9 @@
         "yyyyMMdd": "Date (yyyyMMdd)",
         "yyMMdd": "Date (yyMMdd)",
         "yyyyMM": "Date (yyyyMM)",
-        "yyMM": "Date (yyMM)"
+        "yyMM": "Date (yyMM)",
+        "ETDyyyyMM": "Business Date (yyyyMM)",
+        "ETDyyMM": "Business Date (yyMM)"
       },
       "applyScopeOptions": {
         "none": "No Restriction",
@@ -364,6 +366,9 @@
         },
         "InvoiceIssue": {
           "ApplicationNo": "Invoice Issue No."
+        },
+        "PreOrder": {
+          "PreOrderNum": "Business Contact Form No."
         }
       }
     },

@@ -110,6 +110,8 @@ const persistTimer = ref<number>();
 const searchPersistTimer = ref<number>();
 const persistSaveTrigger = ref('unknown');
 const columnUniqueKeyField = '_columnUniqueKey';
+/** 旧版「下标 + 字段名」列键，仅用于读取存量配置 */
+const columnLegacyKeyField = '_columnLegacyKey';
 const columnDefaultVisibleField = '_columnDefaultVisible';
 const columnDefaultFixedField = '_columnDefaultFixed';
 const columnDefaultWidthField = '_columnDefaultWidth';
@@ -536,13 +538,41 @@ function prepareColumnResize(column: any) {
   }
 }
 
+/**
+ * 生成与列下标无关的稳定列键。
+ * 下标参与列键会让「在列定义中间插入/删除一列」导致其后所有列键平移，
+ * 存量配置随之失配，因此优先使用 field，其次 type / title，同名时按出现次数去重。
+ */
+function buildColumnIdentityKey(
+  column: any,
+  index: number,
+  usedKeyCounts: Map<string, number>,
+) {
+  const field = String(column?.field ?? '').trim();
+  const type = String(column?.type ?? '').trim();
+  const title = String(column?.title ?? '').trim();
+  let base = `index:${index}`;
+  if (field) {
+    base = `field:${field}`;
+  } else if (type) {
+    base = `type:${type}`;
+  } else if (title) {
+    base = `title:${title}`;
+  }
+  const seen = usedKeyCounts.get(base) ?? 0;
+  usedKeyCounts.set(base, seen + 1);
+  return seen === 0 ? base : `${base}#${seen}`;
+}
+
 function normalizeColumns(columns: any[]) {
   const leafColumns = getLeafColumns(columns);
+  const usedKeyCounts = new Map<string, number>();
   leafColumns.forEach((column, index) => {
     prepareColumnResize(column);
     const keyBase = column.field ?? column.title ?? column.type ?? 'column';
-    const uniqueKey = `col_${index}_${String(keyBase)}`;
+    const uniqueKey = buildColumnIdentityKey(column, index, usedKeyCounts);
     column[columnUniqueKeyField] = uniqueKey;
+    column[columnLegacyKeyField] = `col_${index}_${String(keyBase)}`;
     // 强制使用稳定 id，避免运行时随机 id 导致配置保存/加载 key 不一致
     column.id = uniqueKey;
     column[columnDefaultVisibleField] = column.visible !== false;
@@ -623,24 +653,57 @@ function applyColumnConfig(config: ColumnPersistConfig, columns: any[]) {
     visibilityValues.every((val) => val === true);
   let matchedVisibilityCount = 0;
   let matchedOrderCount = 0;
-  for (const column of leafColumns) {
-    const key = column[columnUniqueKeyField] ?? column.id;
-    if (!key) {
-      continue;
+  const registerColumnKey = (key: unknown, column: any) => {
+    const normalizedKey = String(key ?? '').trim();
+    if (!normalizedKey || columnMap.has(normalizedKey)) {
+      return;
     }
-    columnMap.set(key, column);
+    columnMap.set(normalizedKey, column);
+  };
+  for (const column of leafColumns) {
+    registerColumnKey(column[columnUniqueKeyField] ?? column.id, column);
+    registerColumnKey(column[columnLegacyKeyField], column);
   }
 
+  /** 依次用新版列键与旧版列键去配置里找，找不到说明配置不认识这一列 */
+  const resolveConfigKey = (column: any): string | undefined => {
+    const candidates = [
+      column[columnUniqueKeyField] ?? column.id,
+      column[columnLegacyKeyField],
+    ];
+    for (const candidate of candidates) {
+      const key = String(candidate ?? '').trim();
+      if (!key) {
+        continue;
+      }
+      if (
+        Object.prototype.hasOwnProperty.call(config.columnVisibility, key) ||
+        visibleKeySet.has(key)
+      ) {
+        return key;
+      }
+    }
+    return undefined;
+  };
+
+  const applyDefaultVisual = (column: any) => {
+    column.visible = column[columnDefaultVisibleField] !== false;
+    const defaultFixed = normalizeFixedValue(column[columnDefaultFixedField]);
+    column.fixed = defaultFixed || undefined;
+  };
+
   for (const column of leafColumns) {
-    const key = column[columnUniqueKeyField] ?? column.id;
-    if (!key) {
+    const key = resolveConfigKey(column);
+    // 配置里没有这一列（新增列、列定义调整、异种配置）：回退默认，绝不因为「不在已存可见列表里」而隐藏
+    if (key === undefined) {
+      applyDefaultVisual(column);
       continue;
     }
+    matchedVisibilityCount++;
     if (Object.prototype.hasOwnProperty.call(config.columnVisibility, key)) {
       column.visible = config.columnVisibility[key];
-      matchedVisibilityCount++;
     } else if (useVisibleKeysAsCompactVisibility) {
-      column.visible = visibleKeySet.has(String(key));
+      column.visible = visibleKeySet.has(key);
     } else {
       column.visible = column[columnDefaultVisibleField] !== false;
     }
@@ -665,21 +728,35 @@ function applyColumnConfig(config: ColumnPersistConfig, columns: any[]) {
     }
   }
 
+  // 最终兜底：无论配置怎么脏，都不允许应用后一列不剩
+  let recovered = false;
+  if (
+    leafColumns.length > 0 &&
+    leafColumns.every((column) => column.visible === false)
+  ) {
+    recovered = true;
+    leafColumns.forEach((column) => applyDefaultVisual(column));
+    if (leafColumns.every((column) => column.visible === false)) {
+      leafColumns.forEach((column) => {
+        column.visible = true;
+      });
+    }
+  }
+
   const orderedVisibleColumns: any[] = [];
-  const orderedKeys = new Set<string>();
+  const orderedColumns = new Set<any>();
   for (const key of config.visibleColumnKeys) {
-    const column = columnMap.get(key);
-    if (column && column.visible !== false) {
+    const column = columnMap.get(String(key ?? '').trim());
+    if (column && column.visible !== false && !orderedColumns.has(column)) {
       orderedVisibleColumns.push(column);
-      orderedKeys.add(key);
+      orderedColumns.add(column);
       matchedOrderCount++;
     }
   }
 
-  const appendedVisibleColumns = leafColumns.filter((column) => {
-    const key = column[columnUniqueKeyField] ?? column.id;
-    return column.visible !== false && key && !orderedKeys.has(key);
-  });
+  const appendedVisibleColumns = leafColumns.filter(
+    (column) => column.visible !== false && !orderedColumns.has(column),
+  );
   const hiddenColumns = leafColumns.filter(
     (column) => column.visible === false,
   );
@@ -696,12 +773,15 @@ function applyColumnConfig(config: ColumnPersistConfig, columns: any[]) {
   if (topLevelColumns.length === columns.length) {
     columns.splice(0, columns.length, ...finalColumns);
   }
+  const invalid = recovered || matchedVisibilityCount === 0;
   debugLog('列配置应用完成', {
     columnsAfterApply: summarizeColumns(columns),
+    invalid,
     matchedOrderCount,
     matchedVisibilityCount,
+    recovered,
   });
-  return { matchedOrderCount, matchedVisibilityCount };
+  return { invalid, matchedOrderCount, matchedVisibilityCount, recovered };
 }
 
 function collectColumnConfigFromGrid(
@@ -1076,6 +1156,38 @@ async function resetColumnConfig() {
   }
 }
 
+/**
+ * 用当前（已回退为默认的）列重建配置并覆盖远端，
+ * 让历史脏配置不会在每次进页面时反复生效。
+ */
+async function healColumnConfig(
+  columns: any[],
+  context: { reason: string; sourceConfig: ColumnPersistConfig },
+) {
+  debugLog(`${context.reason}，判定为脏配置，触发自愈`, {
+    sourceConfig: context.sourceConfig,
+    normalizedColumns: summarizeColumns(columns),
+  });
+  const healedConfig = buildColumnConfigFromColumns(columns);
+  healedConfig._debug = buildColumnPersistDebug(healedConfig, 'heal', {
+    getColumnsCount: getLeafColumns(props.api.grid?.getColumns?.() ?? [])
+      .length,
+    getFullColumnsCount: getLeafColumns(getRuntimeFullColumns()).length,
+    keyMapping: {
+      fullColumnsSignatureMatched: 0,
+      fullColumnsColumnKeyMatched: 0,
+      fullColumnsFallbackMatched: 0,
+      visibleKeysNotInStableColumns: 0,
+    },
+    suspicious: false,
+  });
+  await saveColumnConfig(healedConfig);
+  debugLog('已自愈覆盖远端配置', {
+    healedConfig,
+    userSettingId: userSettingId.value,
+  });
+}
+
 async function loadColumnConfig() {
   if (
     !isColumnPersistEnabled() ||
@@ -1107,6 +1219,7 @@ async function loadColumnConfig() {
   });
   originalColumns.value = cloneDeep(rawColumns);
   let hasApplied = false;
+  let hasHealed = false;
   const loadApi = columnPersist.value?.load;
   if (loadApi) {
     try {
@@ -1132,33 +1245,14 @@ async function loadColumnConfig() {
         const hasRemoteKeys =
           remoteConfig.visibleColumnKeys.length > 0 ||
           Object.keys(remoteConfig.columnVisibility).length > 0;
-        const isInvalidRemoteConfig =
-          hasRemoteKeys &&
-          applyResult.matchedOrderCount === 0 &&
-          applyResult.matchedVisibilityCount === 0;
-        if (isInvalidRemoteConfig) {
-          debugLog('远端配置键与当前列全部不匹配，判定为历史脏配置，触发自愈', {
-            remoteConfig,
-            normalizedColumns: summarizeColumns(rawColumns),
-          });
-          const healedConfig = buildColumnConfigFromColumns(rawColumns);
-          healedConfig._debug = buildColumnPersistDebug(healedConfig, 'heal', {
-            getColumnsCount: getLeafColumns(
-              props.api.grid?.getColumns?.() ?? [],
-            ).length,
-            getFullColumnsCount: getLeafColumns(getRuntimeFullColumns()).length,
-            keyMapping: {
-              fullColumnsSignatureMatched: 0,
-              fullColumnsColumnKeyMatched: 0,
-              fullColumnsFallbackMatched: 0,
-              visibleKeysNotInStableColumns: 0,
-            },
-            suspicious: false,
-          });
-          await saveColumnConfig(healedConfig);
-          debugLog('已自愈覆盖远端配置', {
-            healedConfig,
-            userSettingId: userSettingId.value,
+        if (hasRemoteKeys && applyResult.invalid) {
+          hasHealed = true;
+          clearLocalStorageCache();
+          await healColumnConfig(rawColumns, {
+            reason: applyResult.recovered
+              ? '远端配置应用后无可见列'
+              : '远端配置键与当前列全部不匹配',
+            sourceConfig: remoteConfig,
           });
         } else {
           hasApplied = true;
@@ -1177,7 +1271,8 @@ async function loadColumnConfig() {
     }
   }
 
-  if (!hasApplied) {
+  // 远端脏配置已自愈成 “当前默认列”，此时不能再让同样可疑的本地兜底覆盖回去
+  if (!hasApplied && !hasHealed) {
     const localRaw =
       localStorage.getItem(legacyStorageKey.value) ??
       localStorage.getItem(fallbackStorageKey.value) ??
@@ -1185,9 +1280,21 @@ async function loadColumnConfig() {
     const localConfig = parseColumnConfig(localRaw ?? '');
     if (localConfig) {
       debugLog('命中本地兜底配置', { localRaw, localConfig });
-      applyColumnConfig(localConfig, rawColumns);
+      const applyResult = applyColumnConfig(localConfig, rawColumns);
+      const hasLocalKeys =
+        localConfig.visibleColumnKeys.length > 0 ||
+        Object.keys(localConfig.columnVisibility).length > 0;
       hasApplied = true;
-      if (columnPersist.value?.add) {
+      // 本地兜底同样要校验，避免旧格式或异种配置被原样应用后再回写远端
+      if (hasLocalKeys && applyResult.invalid) {
+        clearLocalStorageCache();
+        await healColumnConfig(rawColumns, {
+          reason: applyResult.recovered
+            ? '本地兜底配置应用后无可见列'
+            : '本地兜底配置键与当前列全部不匹配',
+          sourceConfig: localConfig,
+        });
+      } else if (columnPersist.value?.add) {
         try {
           userSettingId.value = await columnPersist.value.add({
             name: userSettingKey.value,

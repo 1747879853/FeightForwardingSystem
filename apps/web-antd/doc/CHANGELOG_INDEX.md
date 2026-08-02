@@ -13,6 +13,21 @@
 
 ## 2026-08
 
+- [2026-08-02 NestedDataTable 展开列固定 32px](./changelogs/change-log-2026-08-02-nested-data-table-expand-col-width.md)
+- [2026-08-02 修复列持久化可能导致表格列大面积消失](./changelogs/change-log-2026-08-02-vxe-column-persist-hide-all-guard.md)
+- [2026-08-02 业务联系单改为一级菜单](./changelogs/change-log-2026-08-02-pre-order-top-level-menu.md)
+- [2026-08-02 海运出口编辑页委托编号支持一键重新生成](./changelogs/change-log-2026-08-02-sea-export-regenerate-commission-num.md)
+- [2026-08-02 付款申请提交/撤销提交后延迟拉取审核流程](./changelogs/change-log-2026-08-02-payment-application-submit-workflow-delay.md)
+- [2026-08-02 编号生成支持业务日期(ETD)年月规则](./changelogs/change-log-2026-08-02-generate-num-etd-year-month.md)
+- [2026-08-02 运踪订阅失败原因完整展示并补充规则说明](./changelogs/change-log-2026-08-02-yundang-subscribe-error-and-rules.md)
+- [2026-08-02 付费申请添加费用「排除」模式生效](./changelogs/change-log-2026-08-02-payment-add-fee-exclude-params-serializer.md)
+- [2026-08-02 海运出口列表搜索改为手动点击查询](./changelogs/change-log-2026-08-02-sea-export-list-manual-search.md)
+- [2026-08-02 NestedDataTable 去掉 table min-width max-content](./changelogs/change-log-2026-08-02-nested-data-table-drop-min-width-max-content.md)
+- [2026-08-02 开发模式登录页跳过滑动验证](./changelogs/change-log-2026-08-02-login-skip-captcha-in-dev.md)
+- [2026-08-02 枚举管理子项按枚举值升序展示](./changelogs/change-log-2026-08-02-enumeration-sort-by-value.md)
+- [2026-08-02 海运出口列表重置清空会计期间且不自动查询](./changelogs/change-log-2026-08-02-sea-export-account-period-reset.md)
+- [2026-08-01 暂停拉取未落地的 SeaImportUserAttribute 枚举](./changelogs/change-log-2026-08-01-skip-sea-import-user-attribute-enum.md)
+- [2026-08-01 编号规则新增业务联系单编号](./changelogs/change-log-2026-08-01-generate-num-pre-order-num.md)
 - [2026-08-01 枚举导入弹窗上传图标居中](./changelogs/change-log-2026-08-01-enumeration-import-upload-icon-center.md)
 - [2026-08-01 枚举管理支持导入/导出配置跨公司迁移](./changelogs/change-log-2026-08-01-enumeration-config-transfer.md)
 

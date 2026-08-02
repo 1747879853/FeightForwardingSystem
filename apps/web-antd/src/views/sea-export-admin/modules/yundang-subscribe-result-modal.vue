@@ -5,7 +5,7 @@ import { computed, ref } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
 
-import { Table, Tag } from 'ant-design-vue';
+import { Table, Tag, Tooltip } from 'ant-design-vue';
 
 import type { YundangAdminApi } from '#/api/yundang/yundang-admin';
 import { $t } from '#/locales';
@@ -55,7 +55,7 @@ const columns = computed(() => [
   {
     dataIndex: 'errorMessage',
     title: $t('seaExport.yundang.result.errorMessage'),
-    ellipsis: true,
+    minWidth: 280,
   },
 ]);
 
@@ -137,13 +137,22 @@ const [Modal, modalApi] = useVbenModal({
           </Tag>
         </template>
         <template v-else-if="column.dataIndex === 'errorMessage'">
-          <span
-            :class="
-              record.isSuccess ? 'text-[rgba(0,0,0,0.45)]' : 'text-[#ff4d4f]'
+          <Tooltip
+            :title="
+              record.errorMessage || record.resultType
+                ? String(record.errorMessage || record.resultType)
+                : undefined
             "
           >
-            {{ record.errorMessage || record.resultType || '--' }}
-          </span>
+            <span
+              class="inline-block max-w-full whitespace-normal break-words"
+              :class="
+                record.isSuccess ? 'text-[rgba(0,0,0,0.45)]' : 'text-[#ff4d4f]'
+              "
+            >
+              {{ record.errorMessage || record.resultType || '--' }}
+            </span>
+          </Tooltip>
         </template>
       </template>
     </Table>
