@@ -251,25 +251,20 @@ const handleRowDblclick = ({
 const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
   formOptions: {
     schema: useGridFormSchema(),
-    submitOnChange: true,
+    // 搜索条件变更不自动查：需点「查询」；首屏 onMounted / 从表单返回刷新除外
+    submitOnChange: false,
     showCollapseButton: true,
     collapsed: true,
     commonConfig: {
       labelWidth: 86,
     },
     wrapperClass: 'grid-cols-6',
-    /**
-     * 重置：清空全部条件（含会计期间），且不自动查询。
-     * 因 submitOnChange 会在表单值变化约 300ms 后自动提交，重置期间临时关闭。
-     */
+    /** 重置：清空全部条件（含会计期间），且不自动查询 */
     handleReset: async () => {
-      gridApi.formApi.setState({ submitOnChange: false });
       await gridApi.formApi.resetForm();
       // filterFields=false：避免 merge 把 undefined 盖回重置前的旧值
       await gridApi.formApi.setValues({ AccountDateRange: undefined }, false);
       await nextTick();
-      await new Promise((resolve) => setTimeout(resolve, 350));
-      gridApi.formApi.setState({ submitOnChange: true });
     },
   },
   gridEvents: {

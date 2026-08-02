@@ -21,7 +21,7 @@ last_updated: 2026-08-02
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'CreationTime DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按创建时间倒序。关闭 `autoLoad`，挂载后写入默认会计期间（当月）再 `submitForm` 首查；`normalizeQuery` 在默认值写入前对空会计期间按当月兜底，避免分组恢复抢先查询漏条件。**点「重置」清空全部条件（含会计期间）且不自动查询**（重置期间临时关闭 `submitOnChange`）；需用户再点查询才加载。
+- **分页检索：** 表格通过 `createPagedListQuery(getSeaExportPagedList, { defaultSort: 'CreationTime DESC', mapParams: normalizeQuery, fieldMap })` 调用 `/services/app/SeaExportAdmin/GetPagedListAsync`；支持列头远程多列排序，默认按创建时间倒序。关闭 `autoLoad`，挂载后写入默认会计期间（当月）再 `submitForm` 首查；`normalizeQuery` 在默认值写入前对空会计期间按当月兜底，避免分组恢复抢先查询漏条件。**搜索条件变更不自动查询**（`submitOnChange: false`），需点「查询」；例外：初次打开首查、从表单保存返回时 `useRefreshListOnFormReturn` 刷新。**点「重置」清空全部条件（含会计期间）且不自动查询**；需用户再点查询才加载。
 - **业务状态列：** 文案仍按服务项进度计算；展示按 `upcoming/active/done` 三态着色（文字色对齐详情页服务项目；背景为半透明 rgba，降低列表中的视觉抢眼度）。
 - **锁定列展示：** 「费用锁定」「业务锁定」仅显示图标（锁定红锁 / 未锁定灰开锁），不再用文案 Tag。
 - **列头排序字段映射：** `sorting` 作用于 `SeaExport` 实体而非 DTO，故 DTO 后填充的 `*Name` 列通过 `fieldMap` 映射到实体导航路径：船公司 `carrierCode → Carrier.CnName`、订舱代理 `bookingAgentName → BookingAgent.Name`、港口 `polName/podName/receivePortName/poT1Name/poT2Name/deliverPortName → {POL/POD/ReceivePort/POT1/POT2/DeliverPort}.PortName`、航线 `laneName → POD.Lane.LaneName`、业务来源/付费方式/签单方式 `codeSourceName/codeFrtName/codeIssueTypeName → TransportOrder.CodeSource.CnName / TransportOrder.CodeFrt.CnName / CodeIssueType.BillType`。计算列（`totalCtn`/`teu`）、集合派生列（业务人员、`companys`）、后填充列（`creatorUserNickName`、收发通名称、`codePackageName`）显式 `sortable: false`，避免点击后端反射报错回退。
@@ -54,7 +54,7 @@ last_updated: 2026-08-02
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **关键字 / 编号** | 按主提单号 / 订舱编号 / 委托编号 / 合同号模糊检索。 | 查询 schema `Keyword`（组件 `TrimInput`）/ 接口参数 `Keyword` | **触发/依赖：** 输入/粘贴时自动去除前后空格；`submitOnChange` 触发表格查询；`normalizeQuery` 再 trim 兜底。 | 可清空；匹配范围以后端为准（含 `ContractNum`）。 |
+| **关键字 / 编号** | 按主提单号 / 订舱编号 / 委托编号 / 合同号模糊检索。 | 查询 schema `Keyword`（组件 `TrimInput`）/ 接口参数 `Keyword` | **触发/依赖：** 输入/粘贴时自动去除前后空格；需点「查询」触发表格刷新；`normalizeQuery` 再 trim 兜底。 | 可清空；匹配范围以后端为准（含 `ContractNum`）。 |
 | **合同号** | 运输单合同号；列表列展示与独立模糊筛选。 | 列 `transportOrder.contractNum`；筛 `ContractNum`；i18n `seaExport.export.contractNum` | **触发/依赖：** 与表单/详情共用 `transportOrder.contractNum`；复制入库由后端置空。 | 可空；最长 64。 |
 | **开船日期** | 按运输单 ETD 时间过滤海出委托。 | `ETDRange` -> `ETDStart` / `ETDEnd` | **触发/依赖：** 前端拆分日期区间并转 ISO。 | RangePicker 可为空；开始/结束均可由组件约束。 |
 | **截单时间** | 按截单时间过滤委托。 | `CloseDocTimeRange` -> `CloseDocTimeStart` / `CloseDocTimeEnd` | **触发/依赖：** 支持时间选择，提交前转 ISO。 | 可清空；时间格式由日期组件控制。 |
@@ -70,7 +70,7 @@ last_updated: 2026-08-02
 | **来源 / 签单方式** | 业务来源与签单方式过滤条件。 | `CodeSourceSelect`、`CodeIssueTypeSelect` | **触发/依赖：** 列表展示 `codeSourceName`、`codeIssueTypeName`。 | 需选择有效代码资料。 |
 | **装运方式 / 贸易条款 / 订单类型** | 业务属性筛选条件。 | 前端枚举：装运方式 `整柜/拼箱分票/拼箱主票`，订单类型 `直单/分单`，贸易条款 `CIF/FOB/EXW/FCA/DDP/DDU/DAP/C&F` | **触发/依赖：** 列表用 tag 展示装运方式和订单类型。 | 需选择枚举值。 |
 | **费用锁定 / 业务锁定** | 控制订单费用或业务是否可继续变更。 | `transportOrder.feeLocked`、`transportOrder.isBusinessLocking` | **触发/依赖：** 列表列仅图标展示（锁定红色 `LockKeyhole` / 未锁定灰色 `LockKeyholeOpen`）；查询区仍可按是/否筛选；编辑页以锁定标签展示。 | 布尔值，是/否。 |
-| **会计期间（查询）** | 按运输单会计期间过滤委托；进入列表默认当月；重置后清空且不自动重查。 | `AccountDateRange` -> `AccountDateStart` / `AccountDateEnd`（整月起止 ISO） | **触发/依赖：** `autoLoad: false`，挂载后写入当月再 `submitForm` 首查；写入前的早期查询由 `accountDateDefaultApplied` 兜底当月。schema 不设 `defaultValue`，自定义 `handleReset` 清空期间并抑制 `submitOnChange`。 | Month RangePicker；可清空后重查（写入后不再兜底）。 |
+| **会计期间（查询）** | 按运输单会计期间过滤委托；进入列表默认当月；重置后清空且不自动重查。 | `AccountDateRange` -> `AccountDateStart` / `AccountDateEnd`（整月起止 ISO） | **触发/依赖：** `autoLoad: false`，挂载后写入当月再 `submitForm` 首查；写入前的早期查询由 `accountDateDefaultApplied` 兜底当月。schema 不设 `defaultValue`，自定义 `handleReset` 清空期间（`submitOnChange` 已为 false，无需临时关闭）。 | Month RangePicker；可清空后重查（写入后不再兜底）。 |
 | **业务状态** | 当前进行到的服务项名称，或「已完成」/「-」。 | 前端 `getSeaExportBusinessStatusMeta` 根据 `seaExportServices` 计算 | **触发/依赖：** 三态色 `SEA_EXPORT_BUSINESS_STATUS_COLORS` 文字色对齐详情页；背景为半透明 rgba。 | 无服务项显示 `-`；非空以色块展示。 |
 | **应收费用状态 / 应付费用状态** | 该委托下对应方向（含更改单）费用的组合流转状态；无费用时为 null。 | 接口 `receiveFeeStatus`、`payFeeStatus`；枚举 `getSeaExportFeeStatusOptions`（八态含结算/驳回/申请修改删除） | **触发/依赖：** 后端按优先级聚合判断，与单笔 `FeeStatus` 枚举值不同。 | 可空；0–7 为 `SeaExportFeeStatus` 有效值。 |
 | **分组字段（GroupField）** | 分组统计维度，1~9 对应装运方式至签单方式。 | `GetGroupedListAsync` 入参 `GroupField`；枚举 `SeaExportGroupField` | **触发/依赖：** 与列表查询参数一致但不含分页；启用分组后对应搜索项被禁用。 | 同时只能启用一个；点击 Tab 追加 `paramKey` 到列表查询。 |
@@ -92,7 +92,7 @@ last_updated: 2026-08-02
 >
 > **[卡点 4：分组与搜索互斥]** 启用某分组字段后，对应搜索项（如 `POLId`）会被禁用并清空；切换分组或关闭分组时恢复。勿在分组启用期间通过搜索项传入同维度条件，否则与分组 Tab 语义冲突。
 >
-> **[卡点 5：分组数据刷新时机]** 点击分组 Tab 只重查列表，不刷新分组统计；用户手动变更顶部搜索条件时会重新调用 `GetGroupedListAsync` 并重置 Tab 选中态。此外分组统计不做缓存：`onActivated` 每次重新进入列表都会 `refreshGroupData()` 刷新分组（跳过首次激活）。
+> **[卡点 5：分组数据刷新时机]** 点击分组 Tab 只重查列表，不刷新分组统计；用户点「查询」提交搜索条件时会重新调用 `GetGroupedListAsync` 并重置 Tab 选中态（条件变更本身不触发）。此外分组统计不做缓存：`onActivated` 每次重新进入列表都会 `refreshGroupData()` 刷新分组（跳过首次激活）。
 >
 > **[卡点 6：分组恢复必须先于首查且不自查]** 首屏恢复持久化分组字段用 `restorePersistedField()`（内部 `applyField(..., skipQuery: true)`）只设状态、不触发查询，首查统一由 `submitForm` 完成，确保首查即带分组维度并拉到分组数据。若让恢复自行 `query()` 会与首查竞速、重复请求，且可能出现分组只剩「全部」。`useListGrouping` 已移除内部自动 `onMounted` 恢复，新接入列表须在挂载时机显式调用 `restorePersistedField()`。
 >
@@ -102,6 +102,7 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-02 | `Fix` | 搜索表单改为手动点「查询」才请求；条件变更不再自动搜。初次打开与从表单返回仍自动刷新。 | `submitOnChange: false`；简化 `handleReset`（无需再临时开关）。详见 `changelogs/change-log-2026-08-02-sea-export-list-manual-search.md`。 |
 | 2026-08-02 | `Fix` | 点「重置」清空会计期间且不自动查询；首屏默认当月保留。 | schema 去掉 `AccountDateRange.defaultValue`；`handleReset` 临时关闭 `submitOnChange`。详见 `changelogs/change-log-2026-08-02-sea-export-account-period-reset.md`。 |
 | 2026-07-25 | `Parsing` | 无 | 梳理运踪订阅字段并沉淀独立清单：请求仅 `seaExportIds`；行上下文仅结果展示；状态两字段组合。详见 [yundang-subscribe-fields.md](./yundang-subscribe-fields.md)。 |
 | 2026-07-24 | `Refactor` | 列表/复制摘要对接往来单位与船公司对象化：委托单位、订舱代理、场站、收发通、船公司改读对象字段。 | 列 `field`/`fieldMap` 保留旧键；展示用 `formatter`/`carrierWithLogo`。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
