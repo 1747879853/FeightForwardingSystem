@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, h, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 
 import {
@@ -13,7 +13,10 @@ import {
 } from 'ant-design-vue';
 
 import { IconifyIcon } from '@vben/icons';
-import { getInvoiceIssueDetail } from '#/api/Invoice/InvoiceIssue';
+import {
+  getInvoiceIssueDetail,
+  removeApplicationsFromInvoiceIssue,
+} from '#/api/Invoice/InvoiceIssue';
 
 interface Props {
   visible: boolean;
@@ -27,8 +30,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   (e: 'update:visible', value: boolean): void;
-  (e: 'delete-selected', deletedIds: string[]): void; // 假删除的ID列表
   (e: 'refresh'): void; // 刷新事件
+  (e: 'update-goods-details', goodsDetails: any[]): void; // ✅ 新增：更新商品明细
 }>();
 
 // 弹窗显示状态
@@ -48,9 +51,6 @@ const selectedRowKeys = ref<string[]>([]);
 
 // 发票详情数据
 const invoiceDetailData = ref<any>(null);
-
-// ✅ 假删除的申请ID列表（由父组件传入并维护）
-const fakeDeletedIds = ref<Set<string>>(new Set());
 
 // 申请组数据（从 invoiceIssueApplications 转换而来）
 const applicationGroupsData = ref<any[]>([]);
@@ -229,15 +229,12 @@ function transformToTreeData(applications: any[]): any[] {
   return treeData;
 }
 
-/** 过滤后的数据（排除假删除的数据） */
+/** 过滤后的数据 */
 const filteredData = computed(() => {
-  // ✅ 先过滤掉假删除的申请组
-  const nonDeletedData = applicationGroupsData.value.filter(
-    (group) => !fakeDeletedIds.value.has(String(group.id)),
-  );
+  const data = applicationGroupsData.value;
 
   if (!searchKeyword.value) {
-    return nonDeletedData;
+    return data;
   }
 
   const keyword = searchKeyword.value.toLowerCase();
@@ -290,7 +287,7 @@ const filteredData = computed(() => {
       .filter(Boolean) as any[];
   }
 
-  return filterTree(nonDeletedData);
+  return filterTree(data);
 });
 
 /** 获取所有选中的申请ID（包括父节点和子节点） */
@@ -315,8 +312,126 @@ function getSelectedApplicationIds(): string[] {
   return Array.from(new Set(selectedIds));
 }
 
-/** 删除选中的发票（假删除） */
-function handleDeleteSelected() {
+/** 重新生成商品明细（基于剩余的申请） */
+async function regenerateGoodsDetails(appsToDelete: string[]): Promise<any[]> {
+  console.log('🔄 开始重新生成商品明细...');
+  console.log('  - 要删除的申请ID:', appsToDelete);
+  console.log('  - 当前申请总数:', applicationGroupsData.value.length);
+
+  // ✅ 过滤掉要删除的申请，获取剩余的申请
+  const remainingApps = applicationGroupsData.value.filter(
+    (app: any) => !appsToDelete.includes(String(app.id)),
+  );
+
+  console.log('  - 剩余申请数量:', remainingApps.length);
+
+  if (remainingApps.length === 0) {
+    // 如果没有剩余申请，返回空数组
+    console.log('✅ 无剩余申请，返回空商品明细');
+    return [];
+  }
+
+  // ✅ 关键修复：不再依赖申请中的 invoiceApplicationGoodsDtls，而是基于剩余申请的总金额重新计算
+  let totalAppliedAmount = 0; // 总申请金额（原币）
+  let totalRmbAmount = 0; // 总申请金额（人民币）
+
+  remainingApps.forEach((app: any) => {
+    // 累加申请金额（原币）
+    const appliedAmount = app.totalAppliedAmount || 0;
+    const invoiceExchangeRate = app.invoiceExchangeRate || 1;
+
+    totalAppliedAmount += appliedAmount;
+    // ✅ 修复：乘以开票汇率，转换为人民币金额
+    totalRmbAmount += appliedAmount * invoiceExchangeRate;
+  });
+
+  console.log('  - 剩余申请总金额（原币）:', totalAppliedAmount.toFixed(2));
+  console.log('  - 剩余申请总金额（人民币）:', totalRmbAmount.toFixed(2));
+
+  if (totalRmbAmount === 0) {
+    console.log('✅ 申请总金额为0，返回空商品明细');
+    return [];
+  }
+
+  // ✅ 基于剩余申请的总金额，生成一条商品明细
+  // 取第一个申请的商品明细作为模板（如果有的话）
+  let templateGoods: any = null;
+
+  for (const app of remainingApps) {
+    if (
+      app.invoiceApplicationGoodsDtls &&
+      app.invoiceApplicationGoodsDtls.length > 0
+    ) {
+      templateGoods = app.invoiceApplicationGoodsDtls[0];
+      break;
+    }
+  }
+
+  // 如果没有模板，使用默认值
+  if (!templateGoods) {
+    console.log('⚠️ 没有找到商品明细模板，使用默认值');
+    templateGoods = {
+      codeInvoiceId: null,
+      specification: '',
+      unit: '票',
+      quantity: 1,
+      taxRate: 0,
+    };
+  }
+
+  const taxRate = templateGoods.taxRate || 0;
+  const amount = totalRmbAmount; // ✅ 修复：商品明细金额 = 申请总金额（人民币）
+  const noTaxAmount = amount / (1 + taxRate / 100);
+  const taxAmount = noTaxAmount * (taxRate / 100);
+  const unitPrice = amount / (templateGoods.quantity || 1);
+
+  const result = [
+    {
+      codeInvoiceId: templateGoods.codeInvoiceId,
+      specification: templateGoods.specification || '',
+      unit: templateGoods.unit || '票',
+      quantity: templateGoods.quantity || 1,
+      unitPrice: unitPrice,
+      amount: amount,
+      noTaxAmount: noTaxAmount,
+      taxRate: taxRate,
+      taxAmount: taxAmount,
+      remark: '',
+    },
+  ];
+
+  console.log('✅ 基于申请总金额重新生成商品明细:', {
+    申请总金额原币: totalAppliedAmount.toFixed(2),
+    开票汇率: remainingApps[0]?.invoiceExchangeRate || 1,
+    申请总金额人民币: totalRmbAmount.toFixed(2),
+    商品明细金额: amount.toFixed(2),
+    税率: taxRate,
+    不含税金额: noTaxAmount.toFixed(2),
+    税额: taxAmount.toFixed(2),
+  });
+
+  // ✅ 验证：确保开票金额等于申请金额（人民币）
+  const invoiceAmount = result.reduce(
+    (sum, item) => sum + (item.amount || 0),
+    0,
+  );
+  const difference = Math.abs(invoiceAmount - totalRmbAmount);
+
+  if (difference > 0.01) {
+    console.warn('⚠️ 警告：开票金额与申请金额不一致！');
+    console.warn('  - 开票金额:', invoiceAmount.toFixed(2));
+    console.warn('  - 申请金额（人民币）:', totalRmbAmount.toFixed(2));
+    console.warn('  - 差异:', difference.toFixed(2));
+  } else {
+    console.log('✅ 验证通过：开票金额等于申请金额（人民币）');
+  }
+
+  console.log('✅ 商品明细重新生成完成，共', result.length, '条');
+  return result;
+}
+
+/** 删除选中的发票（真删除） */
+async function handleDeleteSelected() {
   const selectedIds = getSelectedApplicationIds();
 
   if (selectedIds.length === 0) {
@@ -326,22 +441,54 @@ function handleDeleteSelected() {
 
   Modal.confirm({
     title: '确认删除',
-    content: `确定要将选中的 ${selectedIds.length} 条发票标记为删除吗？（不会立即从数据库删除，保存时才会生效）`,
+    content: `确定要从发票中移除选中的 ${selectedIds.length} 条申请吗？此操作将立即生效。`,
     okText: '确定',
     cancelText: '取消',
-    onOk: () => {
-      // ✅ 将选中的ID添加到假删除列表
-      selectedIds.forEach((id) => {
-        fakeDeletedIds.value.add(id);
-      });
+    okType: 'danger',
+    onOk: async () => {
+      try {
+        loading.value = true;
 
-      message.success(`已将 ${selectedIds.length} 条发票标记为删除`);
+        // ✅ 先根据剩余申请重新生成商品明细
+        const newGoodsDetails = await regenerateGoodsDetails(selectedIds);
 
-      // 清空选中状态
-      selectedRowKeys.value = [];
+        console.log('📦 准备调用删除API:', {
+          invoiceIssueId: props.invoiceIssueId,
+          删除的申请数量: selectedIds.length,
+          剩余商品明细数量: newGoodsDetails.length,
+        });
 
-      // ✅ 通知父组件更新假删除列表
-      emit('delete-selected', Array.from(fakeDeletedIds.value));
+        // ✅ 调用真删除 API
+        await removeApplicationsFromInvoiceIssue({
+          id: props.invoiceIssueId,
+          invoiceApplicationIds: selectedIds,
+          invoiceIssueGoodsDtls: newGoodsDetails, // ✅ 传递剩余申请的商品明细
+        });
+
+        message.success(`已成功移除 ${selectedIds.length} 条申请`);
+
+        // 清空选中状态
+        selectedRowKeys.value = [];
+
+        // ✅ 通知父组件更新商品明细（使用删除时生成的新商品明细）
+        emit('update-goods-details', newGoodsDetails);
+        console.log(
+          '✅ 已通知父组件更新商品明细:',
+          newGoodsDetails.length,
+          '条',
+        );
+
+        // ✅ 重新加载数据（会自动更新 applicationGroupsData）
+        await loadInvoiceDetail();
+
+        // ✅ 通知父组件刷新
+        emit('refresh');
+      } catch (error) {
+        console.error('❌ 删除申请失败:', error);
+        message.error('删除申请失败，请重试');
+      } finally {
+        loading.value = false;
+      }
     },
   });
 }
@@ -358,21 +505,22 @@ const parentColumns = [
     title: '所属公司',
     dataIndex: 'companyName',
     key: 'companyName',
-    minWidth: 120,
+    minWidth: 100,
+    width: 100,
     ellipsis: true,
   },
   {
     title: '申请单号',
     dataIndex: 'applicationNo',
     key: 'applicationNo',
-    minWidth: 140,
+    width: 120,
     ellipsis: true,
   },
   {
     title: '发票抬头',
     dataIndex: 'header',
     key: 'header',
-    minWidth: 150,
+    width: 120,
     ellipsis: true,
   },
   {
@@ -380,58 +528,70 @@ const parentColumns = [
     dataIndex: 'currencyCode',
     key: 'currencyCode',
     minWidth: 60,
+    width: 60,
+    ellipsis: true,
   },
   {
     title: '备注',
     dataIndex: 'remark',
     key: 'remark',
-    minWidth: 100,
+    width: 80,
     ellipsis: true,
   },
   {
     title: '申请人',
     dataIndex: 'applyUserName',
     key: 'applyUserName',
-    minWidth: 80,
+    minWidth: 70,
+    width: 70,
+    ellipsis: true,
   },
   {
     title: '申请日期',
     dataIndex: 'applyTime',
     key: 'applyTime',
-    minWidth: 140,
+    minWidth: 130,
+    width: 130,
+    ellipsis: true,
   },
   {
     title: '开票要求',
     dataIndex: 'require',
     key: 'require',
-    minWidth: 100,
+    minWidth: 80,
+    width: 80,
     ellipsis: true,
   },
   {
     title: '发票类型',
     dataIndex: 'invoiceType',
     key: 'invoiceType',
-    minWidth: 110,
+    minWidth: 90,
+    width: 90,
+    ellipsis: true,
   },
   {
     title: '开票汇率',
     dataIndex: 'invoiceExchangeRate',
     key: 'invoiceExchangeRate',
-    minWidth: 80,
+    minWidth: 70,
+    width: 70,
     align: 'right' as const,
   },
   {
     title: '开票原币金额',
     dataIndex: 'totalAppliedAmount',
     key: 'totalAppliedAmount',
-    minWidth: 110,
+    minWidth: 95,
+    width: 95,
     align: 'right' as const,
   },
   {
     title: '开票金额',
     dataIndex: 'invoiceAmount',
     key: 'invoiceAmount',
-    minWidth: 100,
+    minWidth: 85,
+    width: 85,
     align: 'right' as const,
   },
 ];
@@ -442,103 +602,117 @@ const childColumns = [
     title: '序号',
     dataIndex: 'sequenceNumber',
     key: 'sequenceNumber',
-    minWidth: 50,
+    minWidth: 45,
+    width: 45,
     align: 'center' as const,
   },
   {
     title: '委托编号',
     dataIndex: 'commissionNum',
     key: 'commissionNum',
-    minWidth: 110,
+    width: 75,
     ellipsis: true,
   },
   {
     title: '主提单号',
     dataIndex: 'mblNum',
     key: 'mblNum',
-    minWidth: 110,
+    minWidth: 95,
+    width: 95,
     ellipsis: true,
   },
-  {
-    title: '分提单号',
-    dataIndex: 'hblNum',
-    key: 'hblNum',
-    minWidth: 110,
-    ellipsis: true,
-  },
+  // {
+  //   title: '分提单号',
+  //   dataIndex: 'hblNum',
+  //   key: 'hblNum',
+  //   minWidth: 95,
+  //   width: 95,
+  //   ellipsis: true,
+  // },
   {
     title: '委托单位',
     dataIndex: 'clientName',
     key: 'clientName',
-    minWidth: 130,
+    minWidth: 110,
+    width: 110,
     ellipsis: true,
   },
   {
     title: '开船日期',
     dataIndex: 'etd',
     key: 'etd',
-    minWidth: 100,
+    minWidth: 90,
+    width: 90,
+    ellipsis: true,
   },
   {
     title: '费用名称',
     dataIndex: 'feeName',
     key: 'feeName',
-    minWidth: 150,
+    width: 90,
     ellipsis: true,
   },
   {
     title: '收付',
     dataIndex: 'payReceiveType',
     key: 'payReceiveType',
-    minWidth: 60,
+    minWidth: 50,
+    width: 50,
     align: 'center' as const,
   },
   {
     title: '币别',
     dataIndex: 'currencyCode',
     key: 'currencyCode',
-    minWidth: 60,
+    minWidth: 55,
+    width: 55,
     align: 'center' as const,
   },
   {
     title: '金额',
     dataIndex: 'amount',
     key: 'amount',
-    minWidth: 90,
+    minWidth: 60,
+    width: 60,
     align: 'right' as const,
   },
   {
     title: '汇率',
     dataIndex: 'exchangeRate',
     key: 'exchangeRate',
-    minWidth: 60,
+    minWidth: 55,
+    width: 55,
     align: 'right' as const,
   },
+  // {
+  //   title: '销售',
+  //   dataIndex: 'salesPerson',
+  //   key: 'salesPerson',
+  //   minWidth: 70,
+  //   width: 70,
+  // },
+  // {
+  //   title: '发票币别',
+  //   dataIndex: 'invoiceCurrencyCode',
+  //   key: 'invoiceCurrencyCode',
+  //   minWidth: 70,
+  //   width: 70,
+  //   align: 'center' as const,
+  // },
   {
-    title: '销售',
-    dataIndex: 'salesPerson',
-    key: 'salesPerson',
-    minWidth: 80,
-  },
-  {
-    title: '发票币别',
-    dataIndex: 'invoiceCurrencyCode',
-    key: 'invoiceCurrencyCode',
-    minWidth: 80,
-    align: 'center' as const,
-  },
-  {
-    title: '开票申请金额',
+    title: '申请金额',
     dataIndex: 'appliedAmountOriginal',
     key: 'appliedAmountOriginal',
-    minWidth: 110,
+    minWidth: 80,
+    width: 80,
     align: 'right' as const,
   },
   {
     title: '结算金额',
     dataIndex: 'settlementAmount',
     key: 'settlementAmount',
-    minWidth: 90,
+    minWidth: 80,
+    width: 80,
     align: 'right' as const,
   },
 ];
@@ -566,7 +740,6 @@ watch(
 // ✅ 暴露方法给父组件
 defineExpose({
   loadInvoiceDetail,
-  getFakeDeletedIds: () => Array.from(fakeDeletedIds.value),
 });
 </script>
 
@@ -574,7 +747,7 @@ defineExpose({
   <Modal
     v-model:open="modalVisible"
     title="查看发票明细"
-    width="1000"
+    width="1600px"
     :footer="null"
     :body-style="{ padding: '16px', maxHeight: '70vh', overflow: 'auto' }"
   >
@@ -657,7 +830,7 @@ defineExpose({
           type: 'checkbox',
           preserveSelectedRowKeys: true,
         }"
-        :scroll="{ x: 1290, y: 400 }"
+        :scroll="{ x: 1075, y: 400 }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'invoiceType'">

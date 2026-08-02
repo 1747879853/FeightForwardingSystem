@@ -26,6 +26,8 @@ import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 // ✅ 新增：引入 Handsontable 组件和 composables
 import OrderFeeTemplateTable from './order-fee-template-table.vue';
 import { useDropdownSources } from './composables/useDropdownSources';
+// ✅ 新增：导入服务项枚举选项
+import { getServiceTypeOptions } from '#/views/sea-export-admin/orderFee/data';
 
 const emit = defineEmits(['success']);
 
@@ -43,6 +45,14 @@ const previousFeeItems = ref<
 
 // ✅ 使用 composables 管理下拉数据源
 const dropdownSources = useDropdownSources();
+
+// ✅ 新增：用于接收从父组件传递的下拉数据（与dropdownSources结构相同）
+const dropdownData = {
+  feeCodeList: dropdownSources.feeCodeList,
+  currencyList: dropdownSources.currencyList,
+  clientListByIndustry: dropdownSources.clientListByIndustry,
+  allClientsByIndustry: dropdownSources.allClientsByIndustry,
+};
 
 // 枚举选项（直接定义，不从后端获取）
 const bizTypeOptions: Array<{ label: string; value: number }> = [
@@ -262,10 +272,11 @@ const [Form, formApi] = useVbenForm({
     {
       fieldName: 'serviceType',
       label: '服务项',
-      component: 'InputNumber',
+      component: 'Select',
       componentProps: {
-        placeholder: '请输入服务项（留空表示所有）',
-        min: 0,
+        placeholder: '请选择服务项（留空表示所有）',
+        options: getServiceTypeOptions(),
+        allowClear: true,
         style: { width: '100%' },
       },
     },
@@ -310,11 +321,49 @@ const [Modal, modalApi] = useVbenModal({
       mode.value = data.mode;
       templateId.value = data.id || '';
 
+      // ✅ 关键修改：使用从列表页面传递的下拉数据，而不是重新加载
+      if (data.dropdownData) {
+        console.log('✅ [form.vue] 使用父组件传递的下拉数据');
+        dropdownData.feeCodeList.value = data.dropdownData.feeCodeList || [];
+        dropdownData.currencyList.value = data.dropdownData.currencyList || [];
+        dropdownData.clientListByIndustry.value =
+          data.dropdownData.clientListByIndustry || {};
+
+        // ✅ 关键修复：接收 allClientsByIndustry 数据（用于结算对象下拉框）
+        if (
+          data.dropdownData.allClientsByIndustry &&
+          Object.keys(data.dropdownData.allClientsByIndustry).length > 0
+        ) {
+          dropdownData.allClientsByIndustry.value =
+            data.dropdownData.allClientsByIndustry;
+          console.log(
+            `✅ [form.vue] 全部客户缓存加载完成，共 ${Object.keys(dropdownData.allClientsByIndustry.value).length} 个行业类别`,
+          );
+        } else {
+          console.warn('⚠️ [form.vue] 未接收到 allClientsByIndustry 数据');
+        }
+
+        console.log(
+          `📊 [form.vue] 费用代码数量: ${dropdownData.feeCodeList.value.length}`,
+        );
+        console.log(
+          `📊 [form.vue] 币别数量: ${dropdownData.currencyList.value.length}`,
+        );
+        console.log(
+          `📊 [form.vue] 客户行业类别:`,
+          Object.keys(dropdownData.clientListByIndustry.value),
+        );
+      } else {
+        console.warn('⚠️ [form.vue] 未接收到下拉数据，将尝试重新加载');
+        // 兜底：如果没有传递数据，则重新加载（理论上不应该发生）
+        await loadDropdownData();
+      }
+
       // 重置表单
       await formApi.resetForm();
 
-      // 加载下拉数据
-      await loadDropdownData();
+      // ✅ 删除：不再在弹窗中加载下拉数据
+      // await loadDropdownData();
 
       // 如果是编辑模式，加载详情
       if (mode.value === 'edit' && templateId.value) {
@@ -723,11 +772,11 @@ async function handleSubmit() {
       return;
     }
 
-    // ✅ 关键修复：在同步数据前保存快照，用于失败时恢复
-    previousFeeItems.value = JSON.parse(JSON.stringify(feeItems.value));
-
-    // ✅ 从子组件同步数据
+    // ✅ 从子组件同步数据（将 Label 转换为 ID）
     hotTableRef.value?.syncDataToParent();
+
+    // ✅ 关键修复：在同步数据后保存快照，此时 feeItems.value 中是 ID 格式
+    previousFeeItems.value = JSON.parse(JSON.stringify(feeItems.value));
 
     // 验证费用明细
     if (feeItems.value.length === 0) {

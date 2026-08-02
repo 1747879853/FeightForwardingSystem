@@ -28,21 +28,21 @@ import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-applicatio
 interface Props {
   visible: boolean;
   settlementId: string; // 已选择的结算单位（固定）
+  settlementName?: string; // ✅ 新增：结算单位名称（用于回显）
   currencyId?: number; // 已选择的币别（固定）
   headerId?: string; // 固定的发票抬头ID
+  headerName?: string; // ✅ 新增：发票抬头名称（用于回显）
   addedAppIds?: string[]; // 已添加的申请ID列表
-  fakeDeletedIds?: string[]; // ✅ 假删除申请ID列表
-  applicationGroupsData?: any[]; // ✅ 父组件传递的申请分组数据（包含假删的数据）
+  applicationGroupsData?: any[]; // ✅ 新增：申请分组数据（用于获取抬头名称）
 }
 
 const props = withDefaults(defineProps<Props>(), {
   visible: false,
   settlementId: '',
+  settlementName: '',
   currencyId: undefined,
   headerId: '',
   addedAppIds: () => [],
-  fakeDeletedIds: () => [],
-  applicationGroupsData: () => [],
 });
 
 const emit = defineEmits<{
@@ -71,6 +71,12 @@ const selectedSettlementId = ref<string>('');
 const selectedCurrencyId = ref<number | undefined>();
 const selectedHeaderId = ref<string>(''); // 选择的发票抬头ID
 const selectedCurrencyCode = ref<string>('');
+
+// ✅ 新增：标记是否已经选择了结算单位（用于控制禁用状态）
+const isSettlementFixed = ref<boolean>(false);
+
+// ✅ 新增：存储选中的结算单位对象（用于 ClientSelect 回显）
+const selectedSettlementItems = ref<any[]>([]);
 
 // 抽屉筛选条件
 const keyWord = ref<string>(''); // 编号（申请单号）
@@ -246,7 +252,10 @@ function getSelectedApplicationsFromTable(): any[] {
 
 /** 重置筛选条件 */
 function handleResetFilter() {
-  selectedSettlementId.value = '';
+  // ✅ 只在非固定状态下才重置结算单位
+  if (!isSettlementFixed.value) {
+    selectedSettlementId.value = '';
+  }
   selectedCurrencyId.value = undefined;
   selectedHeaderId.value = '';
   keyWord.value = '';
@@ -258,6 +267,31 @@ function handleResetFilter() {
   filterApplyUserId.value = undefined;
   selectedAppRowKeys.value = [];
   loadApplicationGroupData();
+}
+
+/** ✅ 处理结算单位选择变化 */
+function handleSettlementChange(value: string) {
+  console.log('🔄 结算单位变更:', value);
+  selectedSettlementId.value = value;
+
+  // ✅ 选择后立即固定，不允许再修改
+  if (value) {
+    isSettlementFixed.value = true;
+    console.log('✅ 结算单位已固定，不可再编辑');
+
+    // ✅ 清空之前的回显数据（用户新选择的值会在ClientSelect内部处理）
+    selectedSettlementItems.value = [];
+
+    // 清空之前的选择
+    selectedAppRowKeys.value = [];
+
+    // 重新加载数据
+    loadApplicationGroupData();
+  } else {
+    // 清空时重置
+    selectedSettlementItems.value = [];
+    isSettlementFixed.value = false;
+  }
 }
 
 /** 处理日期范围变化 */
@@ -287,17 +321,12 @@ function handleApplyTimeRangeChange(
 }
 
 /** 打开费用选择抽屉 */
-function handleOpenFeeDrawer() {
+async function handleOpenFeeDrawer() {
   console.log('📂 打开费用选择抽屉');
   console.log('  - settlementId:', props.settlementId);
   console.log('  - currencyId:', props.currencyId);
   console.log('  - headerId:', props.headerId);
   console.log('  - addedAppIds:', props.addedAppIds);
-  console.log('  - fakeDeletedIds:', props.fakeDeletedIds);
-  console.log(
-    '  - applicationGroupsData (从父组件):',
-    props.applicationGroupsData?.length || 0,
-  );
 
   // ✅ 重置筛选条件
   keyWord.value = '';
@@ -305,20 +334,94 @@ function handleOpenFeeDrawer() {
   filterApplyTimeEnd.value = '';
   filterApplyTimeRange.value = undefined;
   filterHeader.value = '';
-  filterCurrencyId.value = undefined;
   filterApplyUserId.value = undefined;
 
   // ✅ 设置已选择的值（用于显示）
   if (!props.settlementId && !props.currencyId && !props.headerId) {
-    // 首次添加，清空所有选择
+    // 首次添加，清空所有选择，允许用户选择结算单位
     selectedSettlementId.value = '';
     selectedCurrencyId.value = undefined;
     selectedHeaderId.value = '';
+    selectedSettlementItems.value = []; // ✅ 清空回显数据
+    isSettlementFixed.value = false; // ✅ 重置固定状态
     selectedAppRowKeys.value = [];
+    filterCurrencyId.value = undefined; // ✅ 首次添加时清空币别筛选
   } else {
+    // 非首次添加，固定已有的值
     selectedSettlementId.value = props.settlementId;
     selectedCurrencyId.value = props.currencyId;
     selectedHeaderId.value = props.headerId || '';
+    isSettlementFixed.value = true; // ✅ 设置为已固定
+
+    // ✅ 关键修复：将 props.currencyId 赋值给 filterCurrencyId，使筛选项显示正确的币别
+    filterCurrencyId.value = props.currencyId;
+    console.log('✅ 编辑模式：设置发票币别筛选', filterCurrencyId.value);
+
+    // ✅ 编辑模式：设置发票抬头筛选
+    if (props.headerId && props.headerName) {
+      // 优先使用传入的 headerName
+      filterHeader.value = props.headerName;
+      console.log('✅ 编辑模式：使用传入的发票抬头名称', filterHeader.value);
+    } else if (
+      props.headerId &&
+      props.applicationGroupsData &&
+      props.applicationGroupsData.length > 0
+    ) {
+      // 备用方案：从 applicationGroupsData 中获取抬头名称
+      const firstApp = props.applicationGroupsData[0];
+      const headerName =
+        firstApp?.header || firstApp?.clientInvoiceInfo?.header || '';
+      if (headerName) {
+        filterHeader.value = headerName;
+        console.log(
+          '✅ 编辑模式：从 applicationGroupsData 获取发票抬头名称',
+          filterHeader.value,
+        );
+      } else {
+        console.warn(
+          '⚠️ 编辑模式：无法从 applicationGroupsData 中获取抬头名称，将使用 headerId 进行筛选',
+        );
+        // 即使没有名称，也设置 selectedHeaderId，确保筛选正常工作
+        selectedHeaderId.value = props.headerId;
+      }
+    } else if (props.headerId) {
+      // 兜底方案：只有 headerId，没有名称
+      console.warn(
+        '⚠️ 编辑模式：缺少 headerName 和 applicationGroupsData，但 headerId 存在',
+        {
+          headerId: props.headerId,
+          headerName: props.headerName,
+          hasApplicationGroupsData: !!props.applicationGroupsData,
+        },
+      );
+      // 设置 selectedHeaderId 确保筛选正常工作
+      selectedHeaderId.value = props.headerId;
+    } else {
+      console.warn('⚠️ 编辑模式：完全没有抬头信息');
+    }
+
+    // ✅ 使用传入的 settlementName 构造回显数据（不需要调用API）
+    if (props.settlementId && props.settlementName) {
+      selectedSettlementItems.value = [
+        {
+          id: props.settlementId,
+          name: props.settlementName,
+        },
+      ];
+      console.log(
+        '✅ 编辑模式：使用传入的结算单位名称',
+        selectedSettlementItems.value,
+      );
+    } else if (props.settlementId) {
+      // 如果没有名称，至少保证ID正确
+      selectedSettlementItems.value = [
+        {
+          id: props.settlementId,
+          name: props.settlementId,
+        },
+      ];
+      console.warn('⚠️ 编辑模式：缺少 settlementName，仅显示ID');
+    }
   }
 
   drawerVisible.value = true;
@@ -332,6 +435,12 @@ function handleOpenFeeDrawer() {
 
 /** 保存费用选择 */
 async function handleSaveFeeSelection() {
+  // ✅ 校验0：确保已选择结算单位
+  // if (!selectedSettlementId.value) {
+  //   message.warning('请先选择结算单位');
+  //   return;
+  // }
+
   const selectedApplications = getSelectedApplicationsFromTable();
 
   if (selectedApplications.length === 0) {
@@ -375,28 +484,7 @@ async function handleSaveFeeSelection() {
     });
 
     if (inconsistentApps.length > 0) {
-      const errorMessages = inconsistentApps.map((app) => {
-        return `• 申请单号 ${app.applicationNo}：${app.reasons.join('；')}`;
-      });
-
-      message.error({
-        content: h('div', [
-          h(
-            'div',
-            { style: 'font-weight: bold; margin-bottom: 8px;' },
-            '所选申请的发票抬头或币别不一致：',
-          ),
-          ...errorMessages.map((msg) =>
-            h('div', { style: 'margin-left: 16px; margin-bottom: 4px;' }, msg),
-          ),
-          h(
-            'div',
-            { style: 'margin-top: 8px; color: #ff4d4f;' },
-            '请确保所有申请的发票抬头和币别保持一致。',
-          ),
-        ]),
-        duration: 5,
-      });
+      message.error('所选申请的发票抬头或币别不一致');
       console.error('❌ 校验失败，申请之间不一致:', inconsistentApps);
       return;
     }
@@ -405,7 +493,10 @@ async function handleSaveFeeSelection() {
   }
 
   // ✅ 校验2：仅当 props.headerId 或 props.currencyId 有值时（即非首次添加），才需要与首次选择的一致性校验
-  if (props.headerId !== '' || props.currencyId !== null) {
+  if (
+    (props.headerId && props.headerId !== '') ||
+    (props.currencyId !== undefined && props.currencyId !== null)
+  ) {
     // 收集不符合要求的申请
     const invalidApplications: any[] = [];
 
@@ -469,16 +560,17 @@ async function handleSaveFeeSelection() {
   }
 
   const firstApp = selectedApplications[0];
-  const settlementId = firstApp.settlementId;
+  // ✅ 使用用户选择的结算单位ID，而不是从申请中获取
+  const settlementId = selectedSettlementId.value || firstApp.settlementId;
   const currencyId = firstApp.currencyId;
   const headerId = selectedHeaderId.value || firstApp.clientInvoiceBankId;
 
-  // ✅ 从第一个选中的开票申请中获取开票汇率
+  // ✅ 优先使用用户手动输入的汇率，如果没有则使用申请中的默认汇率
   const appInvoiceExchangeRate =
-    firstApp.invoiceExchangeRate || invoiceExchangeRate.value;
+    invoiceExchangeRate.value || firstApp.invoiceExchangeRate || 1.0;
 
   if (!settlementId) {
-    message.warning('无法获取结算单位信息');
+    message.warning('请先选择结算单位');
     return;
   }
 
@@ -487,7 +579,7 @@ async function handleSaveFeeSelection() {
   console.log('  - 结算单位ID:', settlementId);
   console.log('  - 币别ID:', currencyId);
   console.log('  - 发票抬头ID:', headerId);
-  console.log('  - 开票汇率（从申请获取）:', appInvoiceExchangeRate);
+  console.log('  - 开票汇率（优先使用用户输入）:', appInvoiceExchangeRate);
   console.log(
     '  - applicationGroupsData 数量:',
     applicationGroupsData.value.length,
@@ -511,15 +603,18 @@ async function loadApplicationGroupData() {
   try {
     const params: InvoiceIssueApi.InvoiceIssueApplicationQueryDto = {};
 
+    // ✅ 使用 selectedSettlementId 作为筛选条件（用户选择的结算单位）
     if (selectedSettlementId.value) {
       params.settlementId = selectedSettlementId.value;
     }
     if (selectedCurrencyId.value !== undefined) {
       params.currencyId = selectedCurrencyId.value;
     }
-    if (selectedHeaderId.value) {
-      params.header = selectedHeaderId.value;
-    }
+    // ❌ 删除：header 参数应该是抬头名称的模糊搜索，而不是银行ID
+    // selectedHeaderId 存储的是 clientInvoiceBankId（购买方银行ID），不能用作 header 筛选
+    // if (selectedHeaderId.value) {
+    //   params.header = selectedHeaderId.value;
+    // }
 
     // 合并委托编号和主提单号到 keyword 参数
     if (keyWord.value) {
@@ -534,7 +629,7 @@ async function loadApplicationGroupData() {
       params.applyTimeEnd = filterApplyTimeEnd.value;
     }
 
-    // 发票抬头
+    // ✅ 发票抬头：使用 filterHeader（用户手动输入的抬头名称），而不是 selectedHeaderId（银行ID）
     if (filterHeader.value) {
       params.header = filterHeader.value;
     }
@@ -553,7 +648,6 @@ async function loadApplicationGroupData() {
 
     console.log('📥 从接口加载的申请数据:', {
       接口返回数量: result?.length || 0,
-      假删ID列表: props.fakeDeletedIds,
     });
 
     // ✅ 详细检查接口返回的数据结构
@@ -571,118 +665,14 @@ async function loadApplicationGroupData() {
       });
     }
 
-    // ✅ 转换为树状结构（接口返回的正常数据）
-    const apiData = transformToTreeData(result || []);
+    // ✅ 转换为树状结构
+    const treeData = transformToTreeData(result || []);
 
     console.log('✅ 接口数据转换完成:', {
-      数量: apiData.length,
+      数量: treeData.length,
     });
 
-    // ✅ 从父组件获取假删的数据（完整数据）
-    let fakeDeletedData: any[] = [];
-    if (
-      props.applicationGroupsData &&
-      props.applicationGroupsData.length > 0 &&
-      props.fakeDeletedIds &&
-      props.fakeDeletedIds.length > 0
-    ) {
-      const fakeDeletedIdsSet = new Set(props.fakeDeletedIds);
-
-      // 过滤出假删的申请
-      fakeDeletedData = props.applicationGroupsData.filter((group: any) =>
-        fakeDeletedIdsSet.has(String(group.id)),
-      );
-
-      console.log('📦 从父组件获取假删数据:', {
-        父组件总数量: props.applicationGroupsData.length,
-        假删数量: fakeDeletedData.length,
-        假删ID列表: Array.from(fakeDeletedIdsSet),
-      });
-
-      // 为假删数据添加标记
-      fakeDeletedData = fakeDeletedData.map((group: any) => ({
-        ...group,
-        isFakeDeleted: true,
-        invoiceApplicationItems: (group.invoiceApplicationItems || []).map(
-          (child: any) => ({
-            ...child,
-            isFakeDeleted: true,
-          }),
-        ),
-      }));
-    } else {
-      console.log('ℹ️ 没有假删数据需要合并');
-    }
-
-    // ✅ 合并两部分数据：接口返回的正常数据 + 父组件缓存的假删数据
-    const mergedData = [...apiData, ...fakeDeletedData];
-
-    console.log('✅ 数据合并完成:', {
-      接口数据数量: apiData.length,
-      假删数据数量: fakeDeletedData.length,
-      合并后总数量: mergedData.length,
-    });
-
-    // ✅ 验证假删数据的完整性
-    if (fakeDeletedData.length > 0) {
-      console.log('🔍 假删数据完整性检查:');
-      fakeDeletedData.forEach((item: any, index: number) => {
-        console.log(`  [${index + 1}] 申请 ${item.applicationNo}:`, {
-          id: item.id,
-          companyName: item.companyName,
-          header: item.header,
-          currencyCode: item.currencyCode,
-          totalAppliedAmount: item.totalAppliedAmount,
-          remark: item.remark,
-          require: item.require,
-          invoiceRemark: item.invoiceRemark,
-          applyUserName: item.applyUserName,
-          applyTime: item.applyTime,
-          invoiceType: item.invoiceType,
-          invoiceExchangeRate: item.invoiceExchangeRate,
-          invoiceAmount: item.invoiceAmount,
-          子节点数量: item.invoiceApplicationItems?.length || 0,
-          第一个子节点: item.invoiceApplicationItems?.[0]
-            ? {
-                commissionNum: item.invoiceApplicationItems[0].commissionNum,
-                mblNum: item.invoiceApplicationItems[0].mblNum,
-                hblNum: item.invoiceApplicationItems[0].hblNum,
-                clientName: item.invoiceApplicationItems[0].clientName,
-                etd: item.invoiceApplicationItems[0].etd,
-                feeName: item.invoiceApplicationItems[0].feeName,
-                payReceiveType: item.invoiceApplicationItems[0].payReceiveType,
-                currencyCode: item.invoiceApplicationItems[0].currencyCode,
-                amount: item.invoiceApplicationItems[0].amount,
-                exchangeRate: item.invoiceApplicationItems[0].exchangeRate,
-                salesPerson: item.invoiceApplicationItems[0].salesPerson,
-                invoiceCurrencyCode:
-                  item.invoiceApplicationItems[0].invoiceCurrencyCode,
-                appliedAmountOriginal:
-                  item.invoiceApplicationItems[0].appliedAmountOriginal,
-                settlementAmount:
-                  item.invoiceApplicationItems[0].settlementAmount,
-              }
-            : '无子节点',
-        });
-      });
-
-      // ✅ 对比接口数据的结构
-      if (apiData.length > 0) {
-        const apiFirst = apiData[0];
-        const fakeFirst = fakeDeletedData[0];
-        console.log('🔍 数据结构对比（接口 vs 假删）:', {
-          接口数据字段数: Object.keys(apiFirst).length,
-          假删数据字段数: Object.keys(fakeFirst).length,
-          接口数据所有字段: Object.keys(apiFirst).sort(),
-          假删数据所有字段: Object.keys(fakeFirst).sort(),
-          假删缺失的字段: Object.keys(apiFirst).filter(
-            (key) => !(key in fakeFirst),
-          ),
-        });
-      }
-    }
-
-    applicationGroupsData.value = mergedData;
+    applicationGroupsData.value = treeData;
   } catch (error) {
     console.error('❌ 加载申请数据失败:', error);
     message.error('加载申请数据失败');
@@ -703,23 +693,12 @@ function transformToTreeData(
 ): any[] {
   const treeData: any[] = [];
   const addedAppIds = getAddedAppIds();
-  // ✅ 获取假删除的申请ID列表
-  const fakeDeletedIdsSet = new Set(props.fakeDeletedIds || []);
 
   console.log('📊 transformToTreeData 被调用:', {
     总申请数量: applications.length,
-    假删ID列表: Array.from(fakeDeletedIdsSet),
-    'props.fakeDeletedIds': props.fakeDeletedIds,
   });
 
   applications.forEach((app) => {
-    // ✅ 检查是否为假删除状态
-    const isFakeDeleted = fakeDeletedIdsSet.has(String(app.id));
-
-    if (isFakeDeleted) {
-      console.log('⚠️ 发现假删的申请:', app.applicationNo, '(但会显示并标记)');
-    }
-
     const childrenList: any[] = [];
 
     if (app.invoiceApplicationItems && app.invoiceApplicationItems.length > 0) {
@@ -734,14 +713,22 @@ function transformToTreeData(
           checked: false,
           disabled: true, // ✅ 二级数据禁用选择，只做展示
           alreadyAdded: isAlreadyAdded,
-          isFakeDeleted: isFakeDeleted, // ✅ 标记是否为假删除状态
           // 二级字段
           sequenceNumber: index + 1, // ✅ 序号从1开始
           commissionNum: item.orderFee?.transportOrder?.commissionNum || '-', // 委托编号
           mblNum: item.orderFee?.transportOrder?.mblNum || '-', // 主提单号
           hblNum: '-', // 分提单号（需要从其他地方获取）
           clientName: item.orderFee?.transportOrder?.clientName || '-', // 委托单位
-          etd: item.orderFee?.transportOrder?.etd || '-', // 开船日期
+          etd: (() => {
+            const etdValue = item.orderFee?.transportOrder?.etd;
+            if (!etdValue) return '-';
+            try {
+              return dayjs(etdValue).format('YYYY-MM-DD');
+            } catch (error) {
+              console.error('开船日期格式化失败:', error);
+              return etdValue;
+            }
+          })(), // 开船日期（只保留年月日）
           feeName: item.orderFee?.feeCodeName || '-', // 费用名称
           payReceiveType: item.orderFee?.paySide === 1 ? '应付' : '应收', // 收付
           currencyCode: item.orderFee?.currencyCode || '-', // 币别
@@ -825,7 +812,6 @@ function transformToTreeData(
         (app.totalAppliedAmount || 0) * (app.invoiceExchangeRate || 1.0),
       checked: false,
       selectable: true, // ✅ 一级可选择
-      isFakeDeleted: isFakeDeleted, // ✅ 标记是否为假删除状态
       invoiceApplicationItems: childrenList, // 使用 invoiceApplicationItems 作为子节点
       // ✅ 保留商品明细数据（用于合并商品明细）
       invoiceApplicationGoodsDtls: app.invoiceApplicationGoodsDtls || [],
@@ -884,14 +870,7 @@ const appParentColumns = computed(() => [
     title: '可开票',
     dataIndex: 'amountMatched',
     key: 'amountMatched',
-    Width: 50,
-    align: 'center' as const,
-  },
-  {
-    title: '状态',
-    dataIndex: 'isFakeDeleted',
-    key: 'isFakeDeleted',
-    minWidth: 80,
+    width: 65,
     align: 'center' as const,
   },
   {
@@ -919,13 +898,13 @@ const appParentColumns = computed(() => [
     title: '币别',
     dataIndex: 'currencyCode',
     key: 'currencyCode',
-    minWidth: 80,
+    width: 80,
   },
   {
     title: '发票备注',
     dataIndex: 'remark',
     key: 'remark',
-    minWidth: 150,
+    width: 150,
     ellipsis: true,
   },
   {
@@ -933,12 +912,14 @@ const appParentColumns = computed(() => [
     dataIndex: 'applyUserName',
     key: 'applyUserName',
     minWidth: 100,
+    ellipsis: true,
   },
   {
     title: '申请日期',
     dataIndex: 'applyTime',
     key: 'applyTime',
-    minWidth: 280,
+    width: 170,
+    ellipsis: true,
   },
   {
     title: '开票要求',
@@ -952,27 +933,28 @@ const appParentColumns = computed(() => [
     dataIndex: 'invoiceType',
     key: 'invoiceType',
     minWidth: 160,
+    ellipsis: true,
   },
   {
     title: '开票汇率',
     dataIndex: 'invoiceExchangeRate',
     key: 'invoiceExchangeRate',
-    minWidth: 100,
+    width: 75,
     align: 'right' as const,
   },
 
   {
-    title: '开票原币金额',
+    title: '原币金额',
     dataIndex: 'totalAppliedAmount',
     key: 'totalAppliedAmount',
-    minWidth: 140,
+    width: 75,
     align: 'right' as const,
   },
   {
     title: '开票金额',
     dataIndex: 'invoiceAmount',
     key: 'invoiceAmount',
-    minWidth: 140,
+    width: 75,
     align: 'right' as const,
   },
 ]);
@@ -983,14 +965,7 @@ const appChildColumns = computed(() => [
     title: '序号',
     dataIndex: 'sequenceNumber',
     key: 'sequenceNumber',
-    minWidth: 60,
-    align: 'center' as const,
-  },
-  {
-    title: '状态',
-    dataIndex: 'isFakeDeleted',
-    key: 'isFakeDeleted',
-    minWidth: 80,
+    width: 60,
     align: 'center' as const,
   },
   {
@@ -1011,7 +986,7 @@ const appChildColumns = computed(() => [
     title: '分提单号',
     dataIndex: 'hblNum',
     key: 'hblNum',
-    minWidth: 140,
+    width: 100,
     ellipsis: true,
   },
   {
@@ -1025,68 +1000,69 @@ const appChildColumns = computed(() => [
     title: '开船日期',
     dataIndex: 'etd',
     key: 'etd',
-    minWidth: 120,
+    width: 100,
   },
   {
     title: '费用名称',
     dataIndex: 'feeName',
     key: 'feeName',
-    minWidth: 200,
+    width: 120,
     ellipsis: true,
   },
   {
     title: '收付',
     dataIndex: 'payReceiveType',
     key: 'payReceiveType',
-    minWidth: 80,
+    width: 60,
     align: 'center' as const,
   },
-  {
-    title: '币别',
-    dataIndex: 'currencyCode',
-    key: 'currencyCode',
-    minWidth: 80,
-    align: 'center' as const,
-  },
+  // {
+  //   title: '币别',
+  //   dataIndex: 'currencyCode',
+  //   key: 'currencyCode',
+  //   width: 80,
+  //   align: 'center' as const,
+  // },
   {
     title: '金额',
     dataIndex: 'amount',
     key: 'amount',
-    minWidth: 120,
+    width: 80,
     align: 'right' as const,
   },
   {
     title: '汇率',
     dataIndex: 'exchangeRate',
     key: 'exchangeRate',
-    minWidth: 80,
+    width: 60,
     align: 'right' as const,
   },
-  {
-    title: '销售',
-    dataIndex: 'salesPerson',
-    key: 'salesPerson',
-    minWidth: 100,
-  },
+  // {
+  //   title: '销售',
+  //   dataIndex: 'salesPerson',
+  //   key: 'salesPerson',
+  //   minWidth: 100,
+  //   ellipsis: true,
+  // },
   {
     title: '发票币别',
     dataIndex: 'invoiceCurrencyCode',
     key: 'invoiceCurrencyCode',
-    minWidth: 100,
+    width: 75,
     align: 'center' as const,
   },
   {
-    title: '开票申请金额',
+    title: '申请金额',
     dataIndex: 'appliedAmountOriginal',
     key: 'appliedAmountOriginal',
-    minWidth: 140,
+    width: 75,
     align: 'right' as const,
   },
   {
     title: '结算金额',
     dataIndex: 'settlementAmount',
     key: 'settlementAmount',
-    minWidth: 120,
+    width: 75,
     align: 'right' as const,
   },
 ]);
@@ -1180,6 +1156,22 @@ defineExpose({
         <div
           style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center"
         >
+          <!-- ✅ 新增：结算单位选择 -->
+          <div
+            style="display: flex; gap: 8px; align-items: center; width: 305px"
+          >
+            <span style="min-width: 70px; font-size: 14px; color: #333"
+              >结算单位:</span
+            >
+            <ClientSelect
+              v-model:model-value="selectedSettlementId"
+              :selected-items="selectedSettlementItems"
+              placeholder="请选择结算单位"
+              style="flex: 1"
+              :disabled="isSettlementFixed"
+              @change="handleSettlementChange"
+            />
+          </div>
           <div
             style="display: flex; gap: 8px; align-items: center; width: 305px"
           >
@@ -1218,7 +1210,11 @@ defineExpose({
               placeholder="请输入发票抬头"
               style="flex: 1"
               allow-clear
-              :disabled="!!selectedHeaderId"
+              :disabled="
+                props.headerId !== undefined &&
+                props.headerId !== null &&
+                props.headerId !== ''
+              "
             />
           </div>
           <div
@@ -1231,7 +1227,9 @@ defineExpose({
               v-model:model-value="filterCurrencyId"
               placeholder="请选择发票币别"
               style="flex: 1"
-              :disabled="!!selectedCurrencyId"
+              :disabled="
+                props.currencyId !== undefined && props.currencyId !== null
+              "
             />
           </div>
           <div
@@ -1267,7 +1265,7 @@ defineExpose({
             defaultExpandAllRows: true,
           }"
           row-key="id"
-          :scroll="{ y: 500 }"
+          :scroll="{ y: 800 }"
           :row-selection="{
             type: 'checkbox',
             selectedRowKeys: selectedAppRowKeys,
@@ -1291,17 +1289,6 @@ defineExpose({
                 {{ record.amountMatched ? '✓ 可开' : '✗ 不可开' }}
               </span>
             </template>
-            <template v-else-if="column.key === 'isFakeDeleted'">
-              <span
-                v-if="record.isFakeDeleted"
-                style="font-size: 12px; font-weight: bold; color: #ff4d4f"
-              >
-                🗑️ 待删除
-              </span>
-              <span v-else style="font-size: 12px; color: #52c41a">
-                ✓ 正常
-              </span>
-            </template>
             <template v-else-if="column.key === 'invoiceType'">
               <span>{{ getInvoiceTypeText(record.invoiceType) }}</span>
             </template>
@@ -1320,18 +1307,7 @@ defineExpose({
               row-key="id"
             >
               <template #bodyCell="{ column, record: childRecord }">
-                <template v-if="column.key === 'isFakeDeleted'">
-                  <span
-                    v-if="childRecord.isFakeDeleted"
-                    style="font-size: 12px; font-weight: bold; color: #ff4d4f"
-                  >
-                    🗑️ 待删除
-                  </span>
-                  <span v-else style="font-size: 12px; color: #52c41a">
-                    ✓ 正常
-                  </span>
-                </template>
-                <template v-else-if="column.key === 'alreadyAdded'">
+                <template v-if="column.key === 'alreadyAdded'">
                   <span
                     v-if="childRecord.alreadyAdded"
                     style="font-size: 12px; color: #999"
@@ -1371,7 +1347,6 @@ defineExpose({
                 :precision="4"
                 style="width: 150px"
                 placeholder="请输入汇率"
-                disabled
               />
             </Form.Item>
           </Form>

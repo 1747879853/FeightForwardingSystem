@@ -45,11 +45,6 @@ import InvoiceDetailModal from './components/InvoiceDetailModal.vue';
 const route = useRoute();
 const router = useRouter();
 
-// ==================== UI 状态（必须在所有composable之前声明）====================
-
-// ✅ 假删除的申请ID列表（由发票详情弹窗维护）
-const fakeDeletedIds = ref<string[]>([]);
-
 // ==================== 使用组合函数 ====================
 
 const {
@@ -75,6 +70,26 @@ const {
   getAddedAppIdsArray,
   flattenTreeData,
 } = useFormData();
+
+// ✅ 新增：计算发票抬头名称（从 clientInvoiceInfoList 中查找）
+const headerNameForDrawer = computed(() => {
+  if (!fixedHeaderId.value || !clientInvoiceInfoList.value) return '';
+
+  const info = clientInvoiceInfoList.value.find(
+    (item: any) => item.id === fixedHeaderId.value,
+  );
+
+  const name = info?.header || '';
+  console.log('🔍 计算 headerNameForDrawer:', {
+    fixedHeaderId: fixedHeaderId.value,
+    hasList: !!clientInvoiceInfoList.value,
+    listLength: clientInvoiceInfoList.value?.length || 0,
+    found: !!info,
+    header: name,
+  });
+
+  return name;
+});
 
 const {
   loadCodeInvoiceList,
@@ -149,7 +164,6 @@ const {
   invoiceExchangeRate,
   selectedClientInvoiceInfo,
   orgBankAccounts,
-  fakeDeletedIds, // ✅ 传递假删的申请ID列表
 );
 
 const { handleFeeSelectionSave } = useFeeSelection(
@@ -169,10 +183,9 @@ const { handleFeeSelectionSave } = useFeeSelection(
   editId,
   isEdit,
   invoiceIssueTime,
-  fakeDeletedIds, // ✅ 传递假删的申请ID列表
 );
 
-const { loadDetail } = useLoadDetail(
+const { loadDetail, loadDetailWithoutGoods } = useLoadDetail(
   editId,
   formData,
   goodsDetails,
@@ -182,6 +195,8 @@ const { loadDetail } = useLoadDetail(
   invoiceIssueTime,
   loadClientInvoiceInfo,
   updateOrgBankByCurrency,
+  fixedHeaderId, // ✅ 新增：传入 fixedHeaderId
+  fixedCurrencyId, // ✅ 新增：传入 fixedCurrencyId
 );
 
 // ==================== UI 状态 ====================
@@ -200,7 +215,6 @@ const { submitLoading, handleSubmit, handleCancel } = useSubmit(
   invoiceIssueTime,
   editId,
   isEdit,
-  fakeDeletedIds, // ✅ 传递假删除的申请ID列表
 );
 
 /** 打开费用选择抽屉 */
@@ -214,20 +228,32 @@ function handleOpenInvoiceDetailModal() {
   invoiceDetailModalVisible.value = true;
 }
 
-/** 处理发票明细删除（假删除） */
-function handleDeleteSelectedInvoices(deletedIds: string[]) {
-  console.log('🗑️ 收到假删除的发票ID:', deletedIds);
-  fakeDeletedIds.value = deletedIds;
-  message.success(`已将 ${deletedIds.length} 条发票标记为删除，保存时生效`);
-}
-
 /** 处理发票明细删除后的刷新 */
 async function handleInvoiceDetailRefresh() {
   console.log('🔄 发票明细已删除，重新加载数据...');
   if (editId.value) {
-    await loadDetail();
+    // ✅ 关键修复：删除后只重新加载 applicationGroupsData，不重新加载 goodsDetails
+    // 因为商品明细已经在 InvoiceDetailModal 中通过 regenerateGoodsDetails 重新生成并通过事件更新了
+    console.log(
+      '⚠️ 注意：商品明细已通过 update-goods-details 事件更新，不需要重新加载',
+    );
+
+    // 只重新加载表单基础数据和申请组数据
+    await loadDetailWithoutGoods();
     message.success('数据已刷新');
   }
+}
+
+/** 处理商品明细更新（删除时调用） */
+function handleUpdateGoodsDetails(newGoodsDetails: any[]) {
+  console.log('📦 收到新的商品明细数据:', newGoodsDetails.length, '条');
+
+  // ✅ 直接更新父组件的商品明细
+  goodsDetails.value = [];
+  nextTick(() => {
+    goodsDetails.value = newGoodsDetails;
+    console.log('✅ 商品明细已更新:', goodsDetails.value.length, '条');
+  });
 }
 
 /** 根据发票类型获取标题 */
@@ -1000,10 +1026,11 @@ onMounted(() => {
       ref="feeSelectionDrawerRef"
       v-model:visible="drawerVisible"
       :settlement-id="formData.settlementId"
+      :settlement-name="formData.settlementName"
       :currency-id="formData.currencyId"
       :header-id="fixedHeaderId"
+      :header-name="headerNameForDrawer"
       :added-app-ids="getAddedAppIdsArray()"
-      :fake-deleted-ids="fakeDeletedIds"
       :application-groups-data="applicationGroupsData"
       @save="handleFeeSelectionSave"
     />
@@ -1033,9 +1060,8 @@ onMounted(() => {
       v-model:visible="invoiceDetailModalVisible"
       :application-groups-data="applicationGroupsData"
       :invoice-issue-id="editId"
-      :fake-deleted-ids="fakeDeletedIds"
-      @delete-selected="handleDeleteSelectedInvoices"
       @refresh="handleInvoiceDetailRefresh"
+      @update-goods-details="handleUpdateGoodsDetails"
     />
   </Page>
 </template>

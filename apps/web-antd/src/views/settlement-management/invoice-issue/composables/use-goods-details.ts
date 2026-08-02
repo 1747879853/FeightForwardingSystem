@@ -229,6 +229,7 @@ export function useGoodsDetails(
     selectedApplications: any[],
   ) {
     console.log('🔄 开始合并商品明细，申请数量:', selectedApplications.length);
+    console.log('  - 当前商品明细数量:', goodsDetails.value.length);
 
     // 确保发票商品编码列表已加载
     if (codeInvoiceList.value.length === 0) {
@@ -262,10 +263,24 @@ export function useGoodsDetails(
       return;
     }
 
-    // 使用 Map 来存储合并后的商品明细
+    // ✅ 使用 Map 来存储合并后的商品明细（先放入原有的商品明细）
     const goodsMap = new Map<string, any>();
 
-    // 遍历所有选中的申请
+    // ✅ 第一步：将现有的商品明细放入 Map
+    goodsDetails.value.forEach((existingItem: any) => {
+      const goodsName = existingItem.codeInvoiceName || '未知商品';
+      const unit = existingItem.unit || '票';
+      const unitPrice = existingItem.unitPrice || 0;
+      const mergeKey = `${goodsName}_${unit}_${unitPrice}`;
+
+      goodsMap.set(mergeKey, {
+        ...existingItem,
+      });
+    });
+
+    console.log('  - 现有商品明细已放入 Map，数量:', goodsMap.size);
+
+    // ✅ 第二步：遍历所有选中的申请，合并新申请的商品明细
     selectedApplications.forEach((app: any) => {
       if (
         !app.invoiceApplicationGoodsDtls ||
@@ -285,14 +300,23 @@ export function useGoodsDetails(
         const mergeKey = `${goodsName}_${unit}_${unitPrice}`;
 
         if (goodsMap.has(mergeKey)) {
-          // 已存在相同商品，累加数量和金额
+          // ✅ 已存在相同商品，累加数量和金额
           const existing = goodsMap.get(mergeKey);
           existing.quantity += goods.quantity || 0;
           existing.amount += goods.amount || 0;
           existing.noTaxAmount += goods.noTaxAmount || 0;
           existing.taxAmount += goods.taxAmount || 0;
+
+          console.log('  - 合并相同商品:', goodsName, {
+            原数量: existing.quantity - (goods.quantity || 0),
+            新增数量: goods.quantity || 0,
+            累计数量: existing.quantity,
+            原金额: existing.amount - (goods.amount || 0),
+            新增金额: goods.amount || 0,
+            累计金额: existing.amount,
+          });
         } else {
-          // 新商品，添加到 Map
+          // ✅ 新商品，添加到 Map
           const codeInvoiceItem = codeInvoiceList.value.find(
             (item: any) =>
               item.name === goodsName || item.id === goods.codeInvoiceId,
@@ -316,15 +340,25 @@ export function useGoodsDetails(
           };
 
           goodsMap.set(mergeKey, newItem);
+          console.log('  - 新增商品:', goodsName, '金额:', goods.amount || 0);
         }
       });
     });
 
-    // 将 Map 转换为数组
+    // ✅ 第三步：将 Map 转换为数组
     const mergedGoodsDetails = Array.from(goodsMap.values());
+
+    console.log('  - 合并后商品明细数量:', mergedGoodsDetails.length);
+    console.log(
+      '  - 合并后总金额:',
+      mergedGoodsDetails
+        .reduce((sum, item) => sum + (item.amount || 0), 0)
+        .toFixed(2),
+    );
 
     if (mergedGoodsDetails.length > 0) {
       goodsDetails.value = mergedGoodsDetails;
+      console.log('✅ 商品明细合并完成');
     } else {
       console.warn('⚠️ 没有可合并的商品明细');
       message.warning('所选申请中没有商品明细数据');

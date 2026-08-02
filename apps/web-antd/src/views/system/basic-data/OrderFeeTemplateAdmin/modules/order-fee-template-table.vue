@@ -5,7 +5,10 @@ import { useDropdownSources } from './composables/useDropdownSources';
 import { useFieldLinkage } from './composables/useFieldLinkage';
 import { useHotSettings } from './composables/useHotSettings';
 import { getClientGroupedByIndustryCategory } from '#/api/common/client';
-import { getIndustryCategoryOptions, getServiceTypeOptions } from '#/views/sea-export-admin/orderFee/data';
+import {
+  getIndustryCategoryOptions,
+  getServiceTypeOptions,
+} from '#/views/sea-export-admin/orderFee/data';
 
 const props = defineProps<{
   dataSource: any[];
@@ -21,10 +24,14 @@ const emit = defineEmits(['update:dataSource']);
 const dropdownSources = props.dropdownSources;
 
 // ✅ 新增：本地客户缓存（如果父组件传入了则使用父组件的）
-const localAllClientsByIndustry = ref<Record<string, Array<{ label: string; value: any }>>>({});
+const localAllClientsByIndustry = ref<
+  Record<string, Array<{ label: string; value: any }>>
+>({});
 
 // ✅ 新增：服务项下拉选项（使用静态数据）
-const serviceTypeOptions = ref<Array<{ label: string; value: number }>>(getServiceTypeOptions());
+const serviceTypeOptions = ref<Array<{ label: string; value: number }>>(
+  getServiceTypeOptions(),
+);
 
 // ✅ 关键修改：如果父组件传入了客户缓存，则使用父组件的数据
 watch(
@@ -32,8 +39,12 @@ watch(
   (newVal) => {
     if (newVal && Object.keys(newVal).length > 0) {
       console.log('✅ [OrderFeeTemplateTable] 使用父组件传入的客户缓存');
-      // 将父组件的缓存赋值给本地的 allClientsByIndustry
+      // ✅ 关键修复：将父组件的缓存同时赋值给 dropdownSources.allClientsByIndustry 和 localAllClientsByIndustry
+      Object.assign(dropdownSources.allClientsByIndustry.value, newVal);
       Object.assign(localAllClientsByIndustry.value, newVal);
+      console.log(
+        `✅ [OrderFeeTemplateTable] allClientsByIndustry 已更新，共 ${Object.keys(dropdownSources.allClientsByIndustry.value).length} 个行业类别`,
+      );
     }
   },
   { immediate: true, deep: true },
@@ -71,28 +82,33 @@ function initHotTable() {
   hotInstance.value = new Handsontable(hotContainer.value, {
     ...hotSettings.value,
     data: props.dataSource,
-    
+
     // ✅ 新增：监听选中事件
-    afterSelectionEnd(row: number, column: number, row2: number, column2: number) {
+    afterSelectionEnd(
+      row: number,
+      column: number,
+      row2: number,
+      column2: number,
+    ) {
       //console.log('📍 [afterSelectionEnd] 选中区域:', { row, column, row2, column2 });
-      
+
       // 清空之前的选中
       selectedRows.value.clear();
-      
+
       // 计算选中的行范围
       const minRow = Math.min(row, row2);
       const maxRow = Math.max(row, row2);
-      
+
       // 添加到选中集合
       for (let i = minRow; i <= maxRow; i++) {
         selectedRows.value.add(i);
       }
-      
-     // console.log('✅ [afterSelectionEnd] 当前选中的行:', Array.from(selectedRows.value));
+
+      // console.log('✅ [afterSelectionEnd] 当前选中的行:', Array.from(selectedRows.value));
     },
   });
-  
- // console.log('✅ [initHotTable] Handsontable 初始化完成');
+
+  // console.log('✅ [initHotTable] Handsontable 初始化完成');
 }
 
 // ==================== 数据同步 ====================
@@ -107,13 +123,10 @@ function syncDataToParent() {
   }
 
   const data = hotInstance.value.getData();
-//  console.log('📊 [syncDataToParent] Handsontable 原始数据:', data);
- // console.log('📊 [syncDataToParent] 数据行数:', data.length);
-  
-  const columns = hotInstance.value.getSettings().columns as any[];
-  console.log('📋 [syncDataToParent] 列配置:', columns.map((col: any) => col.data));
 
-  // 将数组格式转换为对象格式，并将 Label 转换回 ID
+  const columns = hotInstance.value.getSettings().columns as any[];
+
+  // 将数组格式转换为对象格式，使用 _value 字段中的 ID
   const result = data.map((row: any[]) => {
     const obj: any = {};
     columns.forEach((col: any, index: number) => {
@@ -121,24 +134,28 @@ function syncDataToParent() {
 
       const value = row[index];
 
-      // ✅ 关键修复：根据字段类型进行 Label → ID 转换
+      // ✅ 关键修复：优先使用 _value 字段中的 ID，如果没有则尝试转换
       switch (col.data) {
         case 'serviceType': {
-          // ✅ 服务项：Label → 数值枚举值
-          if (value !== null && value !== undefined && value !== '') {
-            // 如果已经是数值类型，直接使用
+          // ✅ 服务项：优先使用 serviceType_value，否则从 Label 转换
+          const valueIndex = columns.findIndex(
+            (c: any) => c.data === 'serviceType_value',
+          );
+          if (
+            valueIndex >= 0 &&
+            row[valueIndex] !== undefined &&
+            row[valueIndex] !== null
+          ) {
+            obj[col.data] = row[valueIndex];
+          } else if (value !== null && value !== undefined && value !== '') {
+            // 如果没有 _value 字段，从 Label 转换
             if (typeof value === 'number') {
               obj[col.data] = value;
-              console.log('✅ [syncDataToParent] serviceType已是数值:', value);
             } else if (typeof value === 'string') {
-              // 如果是字符串Label，转换为数值枚举值
               const serviceTypeItem = serviceTypeOptions.value.find(
                 (item) => item.label === value,
               );
               obj[col.data] = serviceTypeItem?.value || null;
-              console.log('🔄 [syncDataToParent] serviceType字符串转数值:', value, '→', obj[col.data]);
-            } else {
-              obj[col.data] = null;
             }
           } else {
             obj[col.data] = null;
@@ -147,8 +164,18 @@ function syncDataToParent() {
         }
 
         case 'feeCodeId': {
-          // 费用代码：Label → ID
-          if (value) {
+          // 费用代码：优先使用 feeCodeId_value
+          const valueIndex = columns.findIndex(
+            (c: any) => c.data === 'feeCodeId_value',
+          );
+          if (
+            valueIndex >= 0 &&
+            row[valueIndex] !== undefined &&
+            row[valueIndex] !== null
+          ) {
+            obj[col.data] = row[valueIndex];
+          } else if (value) {
+            // 如果没有 _value 字段，从 Label 转换
             const feeCodeItem = dropdownSources.feeCodeList.value.find(
               (item: any) => item.label === value,
             );
@@ -160,23 +187,32 @@ function syncDataToParent() {
         }
 
         case 'industryCategory': {
-          // ✅ 关键修复：行业类别现在直接存储数值枚举值，无需转换
-          // 如果值是数值类型，直接使用；如果是字符串Label，才需要转换
-          if (value !== null && value !== undefined && value !== '') {
-            // 检查是否已经是数值类型
+          // ✅ 行业类别：优先使用 industryCategory_value，但需要转换为数字 key
+          const valueIndex = columns.findIndex(
+            (c: any) => c.data === 'industryCategory_value',
+          );
+          if (
+            valueIndex >= 0 &&
+            row[valueIndex] !== undefined &&
+            row[valueIndex] !== null
+          ) {
+            // ✅ 关键修复：industryCategory_value 是字符串（如 'b'），需要转换为数字 key（如 2）
+            const stringValue = row[valueIndex];
+            const industryOptions = getIndustryCategoryOptions();
+            const industryItem = industryOptions.find(
+              (item) => item.value === stringValue,
+            );
+            obj[col.data] = industryItem?.key || null; // 返回数字 key
+          } else if (value !== null && value !== undefined && value !== '') {
+            // 如果没有 _value 字段，从 Label 转换
             if (typeof value === 'number') {
               obj[col.data] = value;
-              console.log('✅ [syncDataToParent] industryCategory已是数值:', value);
             } else if (typeof value === 'string') {
-              // 如果是字符串，尝试转换为数值枚举值
               const industryOptions = getIndustryCategoryOptions();
               const industryItem = industryOptions.find(
                 (item) => item.label === value || item.value === value,
               );
-              obj[col.data] = industryItem?.key || null;
-              console.log('🔄 [syncDataToParent] industryCategory字符串转数值:', value, '→', obj[col.data]);
-            } else {
-              obj[col.data] = null;
+              obj[col.data] = industryItem?.key || null; // 返回数字 key
             }
           } else {
             obj[col.data] = null;
@@ -185,44 +221,45 @@ function syncDataToParent() {
         }
 
         case 'settlementId': {
-          // 结算对象：Label → ID（需要从对应的行业类别客户列表中查找）
-          if (value) {
+          // 结算对象：优先使用 settlementId_value
+          const valueIndex = columns.findIndex(
+            (c: any) => c.data === 'settlementId_value',
+          );
+          if (
+            valueIndex >= 0 &&
+            row[valueIndex] !== undefined &&
+            row[valueIndex] !== null
+          ) {
+            obj[col.data] = row[valueIndex];
+          } else if (value) {
+            // 如果没有 _value 字段，从 Label 转换
             const industryLabel = obj.industryCategory;
-            
-            // ✅ 关键修复：将行业类别Label转换为枚举值
+
             let industryValue = '';
             if (industryLabel) {
-              // 使用完整的行业类别选项列表
               const industryOptions = getIndustryCategoryOptions();
               const industryItem = industryOptions.find(
                 (item) => item.label === industryLabel,
               );
               industryValue = industryItem?.value || '';
             }
-            
+
             if (industryValue) {
-              // ✅ 关键修复：使用缓存的客户数据进行查找
-              const clientList = localAllClientsByIndustry.value[industryValue] || [];
-              console.log('🔍 [syncDataToParent] settlementId转换 - 行业类别:', industryLabel, '->', industryValue);
-              console.log('📊 [syncDataToParent] settlementId转换 - 客户列表数量:', clientList.length);
-              console.log(' [syncDataToParent] settlementId转换 - 查找label:', value);
-              
+              const clientList =
+                localAllClientsByIndustry.value[industryValue] || [];
               const clientItem = clientList.find(
                 (item: any) => item.label === value,
               );
-              
-              console.log('✅ [syncDataToParent] settlementId转换 - 找到的客户:', clientItem);
               obj[col.data] = clientItem?.value || null;
             } else {
-              // ✅ 如果行业类别为空或无法转换，在所有客户中查找
-              console.log('⚠️ [syncDataToParent] settlementId转换 - 行业类别为空，在所有客户中查找');
               let allClients: Array<{ label: string; value: any }> = [];
-              Object.values(localAllClientsByIndustry.value).forEach((clients) => {
-                if (Array.isArray(clients)) {
-                  allClients = [...allClients, ...clients];
-                }
-              });
-              // 去重
+              Object.values(localAllClientsByIndustry.value).forEach(
+                (clients) => {
+                  if (Array.isArray(clients)) {
+                    allClients = [...allClients, ...clients];
+                  }
+                },
+              );
               const uniqueMap = new Map();
               allClients.forEach((client) => {
                 if (!uniqueMap.has(client.value)) {
@@ -230,14 +267,10 @@ function syncDataToParent() {
                 }
               });
               allClients = Array.from(uniqueMap.values());
-              
-              console.log('📊 [syncDataToParent] settlementId转换 - 全部客户数量:', allClients.length);
-              
+
               const clientItem = allClients.find(
                 (item: any) => item.label === value,
               );
-              
-              console.log('✅ [syncDataToParent] settlementId转换 - 找到的客户:', clientItem);
               obj[col.data] = clientItem?.value || null;
             }
           } else {
@@ -247,8 +280,18 @@ function syncDataToParent() {
         }
 
         case 'currencyId': {
-          // 币别：Label → ID
-          if (value) {
+          // 币别：优先使用 currencyId_value
+          const valueIndex = columns.findIndex(
+            (c: any) => c.data === 'currencyId_value',
+          );
+          if (
+            valueIndex >= 0 &&
+            row[valueIndex] !== undefined &&
+            row[valueIndex] !== null
+          ) {
+            obj[col.data] = row[valueIndex];
+          } else if (value) {
+            // 如果没有 _value 字段，从 Label 转换
             const currencyItem = dropdownSources.currencyList.value.find(
               (item: any) => item.label === value,
             );
@@ -260,7 +303,7 @@ function syncDataToParent() {
         }
 
         default: {
-          // 其他字段直接使用原值
+          // 其他字段直接使用原值（包括 _value 字段）
           obj[col.data] = value;
         }
       }
@@ -269,11 +312,7 @@ function syncDataToParent() {
     return obj;
   });
 
-  //console.log('📤 [syncDataToParent] 转换后的数据:', result);
- // console.log('📤 [syncDataToParent] 数据行数:', result.length);
-  
   emit('update:dataSource', result);
- // console.log('✅ [syncDataToParent] 数据已emit到父组件');
 }
 
 // ==================== 监听器 ====================
@@ -283,18 +322,32 @@ watch(
   () => props.dataSource,
   (newData) => {
     //console.log('📥 [watch dataSource] 父组件数据变化:', newData);
-   // console.log('📥 [watch dataSource] 数据行数:', newData.length);
-    
+    //console.log('📥 [watch dataSource] 数据行数:', newData.length);
+
     // ✅ 关键修复：检查实例是否仍然有效
     if (hotInstance.value && !hotInstance.value.isDestroyed) {
+      // ✅ 重要修复：判断数据格式，防止 syncDataToParent 后 Label 被 ID 覆盖
+      // 如果第一个记录的 feeCodeId 是数字，说明是 ID 格式（来自父组件保存的数据）
+      const isIdFormat =
+        newData.length > 0 && typeof newData[0].feeCodeId === 'number';
+
+      // 如果是服务项字段为数字，也认为是 ID 格式
+      const isServiceTypeAsNumber =
+        newData.length > 0 && typeof newData[0].serviceType === 'number';
+
+      if (isIdFormat || isServiceTypeAsNumber) {
+        console.log(
+          '⚠️ [watch dataSource] 检测到 ID 格式数据，跳过 loadData，避免覆盖 Label',
+        );
+        // 不执行 loadData，保持当前 Handsontable 中的 Label 数据
+        return;
+      }
+
+      // 如果是 Label 格式（新建模式或从父组件传入的已转换数据），正常加载
       hotInstance.value.loadData(newData);
-  //    console.log('✅ [watch dataSource] 数据已加载到 Handsontable');
-      
-      // 验证数据是否真的加载了
-      const currentData = hotInstance.value.getData();
-     // console.log('📊 [watch dataSource] Handsontable 当前数据行数:', currentData.length);
+      //console.log('✅ [watch dataSource] Label 格式数据已加载到 Handsontable');
     } else {
-    //  console.warn('⚠️ [watch dataSource] hotInstance 未初始化或已被销毁');
+      //console.warn('⚠️ [watch dataSource] hotInstance 未初始化或已被销毁');
     }
   },
   { deep: true },
@@ -331,7 +384,7 @@ onUnmounted(() => {
 // ==================== 暴露方法 ====================
 
 /**
- * 更新表格数据（将 ID 转换为 Label 后显示）
+ * 更新表格数据（将 ID 转换为 Label 后显示，并保存 _value 字段）
  */
 function updateData(newData: any[]) {
   if (!hotInstance.value) return;
@@ -339,103 +392,112 @@ function updateData(newData: any[]) {
   // ✅ 关键修复：使用完整的行业类别选项列表
   const industryOptions = getIndustryCategoryOptions();
 
-  // ✅ 关键修复：先收集所有需要转换的行业类别枚举值，避免重复转换
+  // ✅ 关键修复：将 ID 转换为 Label，并保存 _value 字段
   const convertedData = newData.map((item: any) => {
     const converted = { ...item };
 
-    // ✅ 服务项数值枚举值 → Label
-    if (converted.serviceType !== null && converted.serviceType !== undefined && converted.serviceType !== '') {
+    // ✅ 服务项：保存枚举值到 serviceType_value，显示 Label
+    if (
+      converted.serviceType !== null &&
+      converted.serviceType !== undefined &&
+      converted.serviceType !== ''
+    ) {
       let displayLabel = '';
-      
-      // 如果已经是字符串Label，直接使用
+      let enumValue: number | undefined;
+
+      // 如果已经是字符串Label
       if (typeof converted.serviceType === 'string') {
         const serviceTypeItem = serviceTypeOptions.value.find(
-          (opt: any) => opt.label === converted.serviceType || opt.value === Number(converted.serviceType),
+          (opt: any) => opt.label === converted.serviceType,
         );
         displayLabel = serviceTypeItem?.label || converted.serviceType;
-      } 
-      // 如果是数值枚举值，转换为Label
+        enumValue = serviceTypeItem?.value;
+      }
+      // 如果是数值枚举值
       else if (typeof converted.serviceType === 'number') {
         const serviceTypeItem = serviceTypeOptions.value.find(
           (opt: any) => opt.value === converted.serviceType,
         );
         displayLabel = serviceTypeItem?.label || '';
+        enumValue = converted.serviceType;
       }
-      
+
       if (displayLabel) {
         converted.serviceType = displayLabel;
-        console.log('🔄 [updateData] serviceType转换:', converted.serviceType);
+        if (enumValue !== undefined) {
+          converted.serviceType_value = enumValue;
+        }
       }
     }
 
-    // 费用代码 ID → Label
+    // 费用代码：保存 ID 到 feeCodeId_value，显示 Label
     if (converted.feeCodeId) {
       const feeCodeItem = dropdownSources.feeCodeList.value.find(
         (f: any) => f.value === converted.feeCodeId,
       );
       if (feeCodeItem) {
-        converted.feeCodeId = feeCodeItem.label;
+        converted.feeCodeId_value = converted.feeCodeId; // 保存原始ID
+        converted.feeCodeId = feeCodeItem.label; // 显示Label
       }
     }
 
-    // ✅ 关键修复：行业类别枚举值 → Label（支持数值和字符串）
-    let industryValueForClient: string | undefined; // 保存用于查找客户的枚举值
-    
-    if (converted.industryCategory !== null && converted.industryCategory !== undefined && converted.industryCategory !== '') {
+    // ✅ 行业类别：保存枚举值到 industryCategory_value，显示 Label
+    if (
+      converted.industryCategory !== null &&
+      converted.industryCategory !== undefined &&
+      converted.industryCategory !== ''
+    ) {
       let displayLabel = '';
-      
-      // 如果已经是字符串Label，直接使用
+      let enumValue: string | undefined;
+
+      // 如果已经是字符串Label
       if (typeof converted.industryCategory === 'string') {
         const industryItem = industryOptions.find(
-          (opt: any) => opt.label === converted.industryCategory || opt.value === converted.industryCategory,
+          (opt: any) => opt.label === converted.industryCategory,
         );
         displayLabel = industryItem?.label || converted.industryCategory;
-        industryValueForClient = industryItem?.value; // 保存枚举值
-      } 
-      // 如果是数值枚举值，转换为Label
+        enumValue = industryItem?.value;
+      }
+      // 如果是数值枚举值（从后端获取的是数字，如 2, 3, 4）
       else if (typeof converted.industryCategory === 'number') {
+        // ✅ 关键修复：使用 key 字段匹配，而不是 value 字段
         const industryItem = industryOptions.find(
-          (opt: any) => opt.value === converted.industryCategory || opt.value === String(converted.industryCategory),
+          (opt: any) => opt.key === converted.industryCategory,
         );
         displayLabel = industryItem?.label || '';
-        industryValueForClient = industryItem?.value; // 保存枚举值
+        enumValue = industryItem?.value; // 使用 value 字段（字符串，如 'b', 'c', 'd'）
       }
-      
+
       if (displayLabel) {
         converted.industryCategory = displayLabel;
-        console.log('🔄 [updateData] industryCategory转换:', converted.industryCategory);
+        if (enumValue) {
+          converted.industryCategory_value = enumValue;
+        }
       }
     }
 
-    // 结算对象 ID → Label
+    // 结算对象：保存 ID 到 settlementId_value，显示 Label
     if (converted.settlementId) {
       let clientItem: any = null;
-      
-      // ✅ 关键修复：优先使用之前保存的行业类别枚举值
+      let industryValueForClient = converted.industryCategory_value;
+
+      // 优先使用行业类别枚举值查找客户
       if (industryValueForClient) {
-        const clientList = localAllClientsByIndustry.value[industryValueForClient] || [];
-        console.log('🔍 [updateData] settlementId转换 - 使用行业类别枚举值:', industryValueForClient);
-        console.log('📊 [updateData] settlementId转换 - 客户列表数量:', clientList.length);
-        
+        const clientList =
+          localAllClientsByIndustry.value[industryValueForClient] || [];
         clientItem = clientList.find(
           (c: any) => c.value === converted.settlementId,
         );
-        
-        if (clientItem) {
-          console.log('✅ [updateData] settlementId找到客户:', clientItem.label);
-        }
       }
-      
-      // ✅ 如果按行业类别没找到，尝试在所有客户中查找
+
+      // 如果按行业类别没找到，尝试在所有客户中查找
       if (!clientItem) {
-        console.log('⚠️ [updateData] settlementId转换 - 按行业类别未找到，在所有客户中查找');
         let allClients: Array<{ label: string; value: any }> = [];
         Object.values(localAllClientsByIndustry.value).forEach((clients) => {
           if (Array.isArray(clients)) {
             allClients = [...allClients, ...clients];
           }
         });
-        // 去重
         const uniqueMap = new Map();
         allClients.forEach((client) => {
           if (!uniqueMap.has(client.value)) {
@@ -443,31 +505,27 @@ function updateData(newData: any[]) {
           }
         });
         allClients = Array.from(uniqueMap.values());
-        
-        console.log('📊 [updateData] settlementId转换 - 全部客户数量:', allClients.length);
-        
+
         clientItem = allClients.find(
           (c: any) => c.value === converted.settlementId,
         );
-        
-        if (clientItem) {
-          console.log('✅ [updateData] settlementId在全部客户中找到:', clientItem.label);
-        }
       }
-      
-      // 设置结算对象的 Label
+
+      // 设置结算对象的 Label 和 _value
       if (clientItem) {
-        converted.settlementId = clientItem.label;
+        converted.settlementId_value = converted.settlementId; // 保存原始ID
+        converted.settlementId = clientItem.label; // 显示Label
       }
     }
 
-    // 币别 ID → Label
+    // 币别：保存 ID 到 currencyId_value，显示 Label
     if (converted.currencyId) {
       const currencyItem = dropdownSources.currencyList.value.find(
         (c: any) => c.value === converted.currencyId,
       );
       if (currencyItem) {
-        converted.currencyId = currencyItem.label;
+        converted.currencyId_value = converted.currencyId; // 保存原始ID
+        converted.currencyId = currencyItem.label; // 显示Label
       }
     }
 
@@ -481,9 +539,8 @@ defineExpose({
   syncDataToParent,
   updateData,
   hotInstance,
-  selectedRows,  // ✅ 暴露选中的行
+  selectedRows, // ✅ 暴露选中的行
 });
-
 </script>
 
 <template>
