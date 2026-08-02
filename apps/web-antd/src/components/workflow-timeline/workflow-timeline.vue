@@ -206,7 +206,7 @@ function getInstanceStatusTag() {
   }
 }
 
-function scheduleLoad() {
+function scheduleLoad(delayMs = props.loadDelayMs) {
   clearLoadDelayTimer();
 
   if (!props.entityId) {
@@ -216,31 +216,42 @@ function scheduleLoad() {
     return;
   }
 
-  const delayMs = props.loadDelayMs > 0 ? props.loadDelayMs : 0;
-  if (delayMs <= 0) {
+  const ms = delayMs > 0 ? delayMs : 0;
+  if (ms <= 0) {
     void load();
     return;
   }
 
-  // 等待工作流实例创建完成后再拉取
+  // 等待工作流实例创建/状态变更完成后再拉取
   loading.value = true;
   errorMsg.value = '';
   instanceData.value = null;
   loadDelayTimer = setTimeout(() => {
     loadDelayTimer = undefined;
     void load();
-  }, delayMs);
+  }, ms);
 }
 
-watch(() => [props.entityId, props.taskType, props.loadDelayMs], scheduleLoad, {
-  immediate: true,
-});
+watch(
+  () => [props.entityId, props.taskType, props.loadDelayMs],
+  () => {
+    scheduleLoad();
+  },
+  {
+    immediate: true,
+  },
+);
 
 onBeforeUnmount(() => {
   clearLoadDelayTimer();
 });
 
-defineExpose({ reload: load });
+/** 手动刷新；可传 delayMs 等待后端审核流落库后再拉取 */
+function reload(options?: { delayMs?: number }) {
+  scheduleLoad(options?.delayMs ?? 0);
+}
+
+defineExpose({ reload });
 </script>
 
 <template>

@@ -122,10 +122,24 @@ const editId = computed<string | undefined>(() => {
   return id ? String(id) : undefined;
 });
 const isEdit = computed(() => !!editId.value);
-/** 新增刚保存跳转编辑时，工作流实例可能尚未创建，延迟拉取 */
-const workflowLoadDelayMs = computed(() =>
-  route.query.fromCreate === '1' ? 2000 : 0,
-);
+/** 提交/撤销提交后后端审核流可能尚未更新，延迟再拉 */
+const WORKFLOW_STATUS_CHANGE_DELAY_MS = 2000;
+/** 递增以强制 WorkflowTimeline 重挂载并重新调度拉取 */
+const workflowReloadKey = ref(0);
+const workflowDelayAfterStatusChange = ref(false);
+
+/** 新增刚保存跳转，或提交/撤销后，工作流实例可能尚未就绪，延迟拉取 */
+const workflowLoadDelayMs = computed(() => {
+  if (workflowDelayAfterStatusChange.value) {
+    return WORKFLOW_STATUS_CHANGE_DELAY_MS;
+  }
+  return route.query.fromCreate === '1' ? WORKFLOW_STATUS_CHANGE_DELAY_MS : 0;
+});
+
+function reloadWorkflowAfterStatusChange() {
+  workflowDelayAfterStatusChange.value = true;
+  workflowReloadKey.value += 1;
+}
 const currentStatus = ref<number>(PaymentApplicationStatus.Entering);
 const isEntering = computed(
   () => currentStatus.value === PaymentApplicationStatus.Entering,
@@ -1136,6 +1150,7 @@ async function handleSubmitApplication() {
     message.success(t('submitSuccess'));
     markListShouldRefresh('PaymentApplicationList');
     await loadEditData();
+    reloadWorkflowAfterStatusChange();
   } finally {
     submitting.value = false;
   }
@@ -1149,6 +1164,7 @@ async function handleUnsubmitApplication() {
     message.success('撤销提交成功');
     currentStatus.value = PaymentApplicationStatus.Entering;
     await loadEditData();
+    reloadWorkflowAfterStatusChange();
   } finally {
     submitting.value = false;
   }
@@ -1611,6 +1627,7 @@ void handleSubmitAndNew;
                   </div>
                 </template>
                 <WorkflowTimeline
+                  :key="`workflow-${editId}-${workflowReloadKey}`"
                   class="payment-application-workflow"
                   :applicant-name="applicationCreatorName"
                   :application-time="submitTime"

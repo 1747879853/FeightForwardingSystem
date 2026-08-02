@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-07-30
+last_updated: 2026-08-02
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,7 +22,7 @@ last_updated: 2026-07-30
 # 2. 功能与操作说明 (Features & Operations)
 
 - **加载申请单：** 按申请单 ID 加载主表与费用明细。
-- **审核流程：** 右侧 `WorkflowTimeline` 按 `entityId` 拉取工作流；若路由带 `fromCreate=1`（新增刚保存跳入），延迟 2 秒再请求，避免实例尚未创建。
+- **审核流程：** 右侧 `WorkflowTimeline` 按 `entityId` 拉取工作流；若路由带 `fromCreate=1`（新增刚保存跳入），延迟 2 秒再请求，避免实例尚未创建。提交/撤销提交成功并刷新详情后，递增 `workflowReloadKey` 强制重挂载并带 `loadDelayMs=2000`，等待审核流状态落库。
 - **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。
 - **发票附件：** 任意状态本地增删，保存走 `EditAsync.attachmentGroup` **全量覆盖**；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读展示（不再有平铺字段 `paymentSettlementAttachments`）。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。
@@ -59,10 +59,13 @@ last_updated: 2026-07-30
 
 > [!IMPORTANT] **[卡点 2：新增跳入时工作流实例时序]** 新增保存后立即跳编辑时，工作流实例可能尚未落库；须带 `fromCreate=1` 并延迟 2s 再拉 `WorkflowTimeline`，否则会误显示「暂无审批流程数据」。
 
+> [!IMPORTANT] **[卡点 3：提交/撤销后审核流时序]** 提交或撤销提交后后端审核流可能尚未更新；须在详情刷新后通过递增 key 重挂载 `WorkflowTimeline` 并延迟 2s 再拉，避免读到旧流程。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-02 | `Fix` | 提交/撤销提交成功后延迟 2s 再刷新右侧审核流程。 | `workflowReloadKey` 重挂载 + `loadDelayMs=2000`；详见 `changelogs/change-log-2026-08-02-payment-application-submit-workflow-delay.md`。 |
 | 2026-07-30 | `Feature` | 详情结算对象/币别/结算附件改读对象化出参；结算附件从 `paymentSettlements[].attachments` 展平只读展示。 | 删除对 `clientName`/`currencyCode`/`paymentSettlementAttachments` 依赖。详见 `changelogs/change-log-2026-07-30-payment-application-settlement-objectified.md`。 |
 | 2026-07-29 | `Feature` | 添加费用抽屉启用发票制作方式选择；提交/保存前校验已选。 | 与新增页共用 `ensureInvoiceProcessSelected`；详见 `changelogs/change-log-2026-07-29-payment-application-invoice-process-in-add-fee.md`。 |
 | 2026-07-29 | `Fix` | 银行账户与发票制作取消按状态禁用；编辑态任意状态可保存。 | 去掉 `canEditBank` / `!isEntering` 禁用；附件始终本地全量保存；详见 `changelogs/change-log-2026-07-29-payment-application-bank-invoice-always-editable.md`。 |
