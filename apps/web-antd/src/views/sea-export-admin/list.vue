@@ -259,7 +259,7 @@ const [Grid, gridApi] = useVbenVxeGrid<SeaExportAdminApi.SeaExportDto>({
       labelWidth: 86,
     },
     wrapperClass: 'grid-cols-6',
-    /** 重置：清空全部条件（含会计期间），且不自动查询 */
+    /** 重置：清空全部条件（含会计期间），不自动查询 */
     handleReset: async () => {
       await gridApi.formApi.resetForm();
       // filterFields=false：避免 merge 把 undefined 盖回重置前的旧值
