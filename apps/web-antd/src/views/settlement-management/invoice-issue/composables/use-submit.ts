@@ -5,6 +5,7 @@ import {
   addInvoiceIssue,
   editInvoiceIssue,
   InvoiceIssueApi,
+  addApplicationsToInvoiceIssue,
 } from '#/api/Invoice/InvoiceIssue';
 
 /**
@@ -17,7 +18,6 @@ export function useSubmit(
   invoiceIssueTime: any,
   editId: any,
   isEdit: any,
-  fakeDeletedIds?: any,
 ) {
   const router = useRouter();
   const submitLoading = ref(false);
@@ -27,36 +27,17 @@ export function useSubmit(
    */
   async function handleSubmit() {
     // 基本验证
-    if (!formData.value.settlementId) {
-      message.warning('请选择结算对象');
+    if (formData.value.invoiceIssueItems.length === 0) {
+      message.warning('请选择开票申请');
       return;
     }
-    if (!formData.value.orgId) {
-      message.warning('请选择归属组织');
-      return;
-    }
+    // if (!formData.value.orgId) {
+    //   message.warning('请选择归属组织');
+    //   return;
+    // }
 
     submitLoading.value = true;
     try {
-      // ✅ 过滤掉假删除的发票项
-      let filteredInvoiceItems = formData.value.invoiceIssueItems || [];
-
-      if (
-        fakeDeletedIds &&
-        fakeDeletedIds.value &&
-        fakeDeletedIds.value.length > 0
-      ) {
-        const deletedIdsSet = new Set(fakeDeletedIds.value);
-        filteredInvoiceItems = filteredInvoiceItems.filter(
-          (item: any) => !deletedIdsSet.has(String(item.invoiceApplicationId)),
-        );
-        console.log('✅ 过滤假删除数据:', {
-          原始数量: formData.value.invoiceIssueItems?.length || 0,
-          假删除数量: fakeDeletedIds.value.length,
-          过滤后数量: filteredInvoiceItems.length,
-        });
-      }
-
       const submitData: InvoiceIssueApi.InvoiceIssueAddDto = {
         orgId: formData.value.orgId,
         invoiceIssueType: formData.value.invoiceIssueType,
@@ -65,7 +46,7 @@ export function useSubmit(
         invoiceExchangeRate: invoiceExchangeRate.value,
         require: formData.value.require,
         remark: formData.value.remark,
-        invoiceIssueItems: filteredInvoiceItems, // ✅ 使用过滤后的数据
+        invoiceIssueItems: formData.value.invoiceIssueItems || [], // 直接使用原始数据
         invoiceIssueGoodsDtls: goodsDetails.value.map((item: any) => ({
           codeInvoiceId: item.codeInvoiceId,
           specification: item.specification,

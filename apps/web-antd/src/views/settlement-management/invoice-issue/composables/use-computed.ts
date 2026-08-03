@@ -10,7 +10,6 @@ export function useComputed(
   invoiceExchangeRate: any,
   selectedClientInvoiceInfo: any,
   orgBankAccounts: any,
-  fakeDeletedIds?: any, // ✅ 新增：假删的申请ID列表
 ) {
   /**
    * 计算商品明细总金额（人民币）
@@ -38,19 +37,8 @@ export function useComputed(
   const totalAppliedAmountOriginal = computed(() => {
     const items = formData.value.invoiceIssueItems || [];
 
-    // ✅ 获取假删的ID集合
-    const deletedIdsSet =
-      fakeDeletedIds && fakeDeletedIds.value
-        ? new Set(fakeDeletedIds.value)
-        : new Set();
-
     let total = 0;
     items.forEach((item: any) => {
-      // ✅ 跳过假删的申请
-      if (deletedIdsSet.has(String(item.invoiceApplicationId))) {
-        return;
-      }
-
       const app = applicationGroupsData.value.find(
         (a: any) => a.id === item.invoiceApplicationId,
       );

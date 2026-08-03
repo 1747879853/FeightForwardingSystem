@@ -15,6 +15,9 @@ import {
   getOrderFeeTemplatePagedList,
   getPolGroupList,
 } from '#/api/sea-export/order-fee-template-admin';
+import { getFeeCodeListAsync } from '#/api/system/base-data/fee-code-admin';
+import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
+import { getClientPagedList } from '#/api/common/client';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { useUserStore, useAccessStore } from '@vben/stores';
@@ -58,6 +61,125 @@ const selectedPolId = ref<number | undefined>(undefined);
 const polGroupList = ref<
   OrderFeeTemplateAdminApi.OrderFeeTemplatePolGroupDto[]
 >([]);
+
+// ✅ 新增：下拉数据源（在列表页面加载一次）
+const dropdownData = ref({
+  feeCodeList: [] as Array<{
+    label: string;
+    value: number;
+    currencyId?: number;
+    unit?: string;
+    taxRate?: number;
+  }>,
+  currencyList: [] as Array<{ label: string; value: number }>,
+  clientListByIndustry: {} as Record<
+    string,
+    Array<{ label: string; value: any }>
+  >,
+  allClientsByIndustry: {} as Record<
+    string,
+    Array<{ label: string; value: any }>
+  >,
+});
+
+// ✅ 新增：加载下拉数据（只在列表页面加载一次）
+async function loadDropdownData() {
+  try {
+    console.log('🔄 [list.vue] 开始加载下拉数据...');
+
+    // 1. 加载费用代码列表
+    const feeCodeData = await getFeeCodeListAsync({ isSea: true });
+    if (feeCodeData && Array.isArray(feeCodeData)) {
+      dropdownData.value.feeCodeList = feeCodeData.map((item: any) => {
+        const surLabel = item.cnName || item.enName || '';
+        const label = item.code ? `${item.code}-${surLabel}` : surLabel;
+        return {
+          label: label || item.cnName || item.enName || item.code || '',
+          value: Number(item.id),
+          currencyId: item.currencyId ? Number(item.currencyId) : undefined,
+          unit: item.defaultUnit || undefined,
+          taxRate:
+            item.taxRate !== undefined ? Number(item.taxRate) : undefined,
+        };
+      });
+      console.log(
+        `✅ [list.vue] 费用代码加载完成，共 ${dropdownData.value.feeCodeList.length} 条`,
+      );
+    }
+
+    // 2. 加载币别列表
+    const currencyRes = await getCurrencyPagedList({
+      PageIndex: 1,
+      PageSize: 100,
+    });
+    if (currencyRes?.items) {
+      dropdownData.value.currencyList = currencyRes.items.map((item: any) => ({
+        label: item.code || item.cnName || item.enName || '',
+        value: Number(item.id),
+      }));
+      console.log(
+        `✅ [list.vue] 币别加载完成，共 ${dropdownData.value.currencyList.length} 条`,
+      );
+    }
+
+    // 3. 加载客户列表（按行业类别分组）
+    const clientDataP = await getClientPagedList({
+      pageSize: 1000,
+      pageIndex: 1,
+      industryCategory: 'p' as any,
+    });
+    if (clientDataP?.items) {
+      dropdownData.value.clientListByIndustry['p'] = clientDataP.items.map(
+        (item: any) => ({
+          label: item.name || item.clientName || '',
+          value: item.id,
+        }),
+      );
+    }
+
+    const clientDataO = await getClientPagedList({
+      pageSize: 1000,
+      pageIndex: 1,
+      industryCategory: 'o' as any,
+    });
+    if (clientDataO?.items) {
+      dropdownData.value.clientListByIndustry['o'] = clientDataO.items.map(
+        (item: any) => ({
+          label: item.name || item.clientName || '',
+          value: item.id,
+        }),
+      );
+    }
+
+    // 4. ✅ 关键修复：加载全部客户数据（用于结算对象下拉框）
+    const { getClientGroupedByIndustryCategory } =
+      await import('#/api/common/client');
+    const groupedData = await getClientGroupedByIndustryCategory();
+    if (groupedData && Array.isArray(groupedData)) {
+      let totalClientCount = 0;
+      groupedData.forEach((group) => {
+        if (group.key && group.value && group.value.length > 0) {
+          const clients = group.value.map((client: any) => ({
+            label: `${client.code}-${client.name}`,
+            value: client.id,
+            industryCategory: group.key,
+            ...client,
+          }));
+          dropdownData.value.allClientsByIndustry[group.key] = clients;
+          totalClientCount += clients.length;
+        }
+      });
+      console.log(
+        `✅ [list.vue] 全部客户缓存加载完成，共 ${Object.keys(dropdownData.value.allClientsByIndustry).length} 个行业类别，总计 ${totalClientCount} 个客户`,
+      );
+    }
+
+    console.log('✅ [list.vue] 所有下拉数据加载完成');
+  } catch (error) {
+    console.error('❌ [list.vue] 加载下拉数据失败:', error);
+    message.error('加载下拉数据失败');
+  }
+}
 
 // 加载起运港分组统计
 async function loadPolGroupList() {
@@ -105,7 +227,12 @@ function onCreate() {
     message.warning('您没有新建权限');
     return;
   }
-  formModalApi.setData({ mode: 'create' }).open();
+  formModalApi
+    .setData({
+      mode: 'create',
+      dropdownData: dropdownData.value,
+    })
+    .open();
 }
 
 /**
@@ -116,7 +243,13 @@ function onEdit(row: OrderFeeTemplateAdminApi.OrderFeeTemplateListDto) {
     message.warning('您没有编辑权限');
     return;
   }
-  formModalApi.setData({ mode: 'edit', id: row.id }).open();
+  formModalApi
+    .setData({
+      mode: 'edit',
+      id: row.id,
+      dropdownData: dropdownData.value,
+    })
+    .open();
 }
 
 /**
@@ -421,6 +554,7 @@ watch(
 onMounted(() => {
   initUserPermissions();
   loadPolGroupList();
+  loadDropdownData();
 });
 
 onUnmounted(() => {
@@ -435,7 +569,7 @@ onUnmounted(() => {
 
 <template>
   <Page auto-content-height>
-    <Grid >
+    <Grid>
       <template #toolbar-actions>
         <div
           class="pol-tab-wrapper flex min-w-0 flex-1 items-center overflow-hidden"
@@ -531,7 +665,6 @@ onUnmounted(() => {
             <Plus />
             新建
           </Button>
-          
         </Space>
       </template>
     </Grid>

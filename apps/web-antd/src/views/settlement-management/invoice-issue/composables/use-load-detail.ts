@@ -17,6 +17,8 @@ export function useLoadDetail(
   invoiceIssueTime: any,
   loadClientInvoiceInfo: (settlementId: string) => Promise<void>,
   updateOrgBankByCurrency: () => void,
+  fixedHeaderId: any, // ✅ 新增：发票抬头ID
+  fixedCurrencyId: any, // ✅ 新增：发票币别ID
 ) {
   /**
    * 加载详情数据
@@ -57,6 +59,16 @@ export function useLoadDetail(
       // 加载客户开票信息
       await loadClientInvoiceInfo(detail.settlementId);
 
+      // ✅ 编辑模式：初始化 fixedHeaderId 和 fixedCurrencyId（用于锁定发票抬头和币别）
+      if (detail.clientInvoiceBankId) {
+        fixedHeaderId.value = detail.clientInvoiceBankId;
+        fixedCurrencyId.value = detail.currencyId || undefined;
+        console.log('✅ 编辑模式：初始化 fixedHeaderId 和 fixedCurrencyId', {
+          fixedHeaderId: fixedHeaderId.value,
+          fixedCurrencyId: fixedCurrencyId.value,
+        });
+      }
+
       // 设置开票汇率
       invoiceExchangeRate.value = detail.invoiceExchangeRate || 1.0;
 
@@ -95,6 +107,78 @@ export function useLoadDetail(
       } else {
         console.log('⚠️ 详情中没有商品明细数据');
       }
+    } catch (error) {
+      console.error('加载详情失败:', error);
+      message.error('加载详情失败');
+    }
+  }
+
+  /**
+   * 加载详情数据（不包含商品明细，用于删除后刷新）
+   */
+  async function loadDetailWithoutGoods() {
+    if (!editId.value) return;
+
+    try {
+      const detail = await getInvoiceIssueDetail(editId.value);
+
+      // 只更新基础字段和 invoiceIssueItems，不更新 goodsDetails
+      formData.value = {
+        ...formData.value, // 保留现有的 goodsDetails
+        id: detail.id,
+        settlementId: detail.settlementId,
+        settlementName: detail.settlement?.name || '',
+        orgId: detail.orgId,
+        currencyId: detail.currencyId || 1,
+        invoiceType: detail.invoiceType || 'p',
+        invoiceIssueType: detail.invoiceIssueType,
+        invoiceNo: detail.invoiceNo,
+        require: detail.require,
+        remark: detail.remark,
+        orgBankAccountId: detail.orgBankAccountId,
+        clientInvoiceBankId: detail.clientInvoiceBankId,
+        invoiceIssueItems:
+          detail.invoiceIssueItems?.map((item: any) => ({
+            invoiceApplicationId: item.invoiceApplicationId,
+            remark: item.remark || '',
+          })) || [],
+        // ✅ 不更新 invoiceIssueGoodsDtls，保留之前通过事件更新的 goodsDetails
+      };
+
+      // 设置开票人和开票日期
+      applicantName.value = detail.applyUserName || '';
+      invoiceIssueTime.value = detail.invoiceIssueTime
+        ? dayjs(detail.invoiceIssueTime).format('YYYY-MM-DD')
+        : dayjs().format('YYYY-MM-DD');
+
+      // 加载客户开票信息
+      await loadClientInvoiceInfo(detail.settlementId);
+
+      // 设置开票汇率
+      invoiceExchangeRate.value = detail.invoiceExchangeRate || 1.0;
+
+      // 根据币别更新销售方银行
+      updateOrgBankByCurrency();
+
+      // 从 invoiceIssueItems 中构建 applicationGroupsData
+      if (detail.invoiceIssueItems && detail.invoiceIssueItems.length > 0) {
+        console.log(
+          '✅ 已加载申请明细:',
+          detail.invoiceIssueItems.length,
+          '条',
+        );
+        await loadFullApplicationData(detail.invoiceIssueItems);
+      } else {
+        // 如果没有申请明细，清空 applicationGroupsData
+        applicationGroupsData.value = [];
+        console.log('⚠️ 没有申请明细，已清空 applicationGroupsData');
+      }
+
+      console.log(
+        '✅ 基础数据已更新，商品明细保持不变:',
+        goodsDetails.value.length,
+        '条',
+      );
     } catch (error) {
       console.error('加载详情失败:', error);
       message.error('加载详情失败');
@@ -203,5 +287,6 @@ export function useLoadDetail(
 
   return {
     loadDetail,
+    loadDetailWithoutGoods, // ✅ 新增：不包含商品明细的加载方法
   };
 }
