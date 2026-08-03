@@ -331,103 +331,137 @@ async function regenerateGoodsDetails(appsToDelete: string[]): Promise<any[]> {
     return [];
   }
 
-  // ✅ 关键修复：不再依赖申请中的 invoiceApplicationGoodsDtls，而是基于剩余申请的总金额重新计算
-  let totalAppliedAmount = 0; // 总申请金额（原币）
-  let totalRmbAmount = 0; // 总申请金额（人民币）
+  // ✅ 使用 Map 来存储合并后的商品明细
+  const goodsMap = new Map<string, any>();
 
+  // ✅ 获取发票币别信息
+  const invoiceCurrencyId = invoiceDetailData.value?.currencyId || 1;
+  console.log('  - 发票币别ID:', invoiceCurrencyId);
+
+  // ✅ 遍历所有剩余的申请，处理商品明细
   remainingApps.forEach((app: any) => {
-    // 累加申请金额（原币）
-    const appliedAmount = app.totalAppliedAmount || 0;
-    const invoiceExchangeRate = app.invoiceExchangeRate || 1;
+    if (
+      !app.invoiceApplicationGoodsDtls ||
+      app.invoiceApplicationGoodsDtls.length === 0
+    ) {
+      console.warn('⚠️ 申请', app.applicationNo, '没有商品明细数据');
+      return;
+    }
 
-    totalAppliedAmount += appliedAmount;
-    // ✅ 修复：乘以开票汇率，转换为人民币金额
-    totalRmbAmount += appliedAmount * invoiceExchangeRate;
+    // 获取当前申请的币别和汇率信息
+    const appCurrencyId = app.currencyId;
+    const isAppForeignCurrency = appCurrencyId !== 1; // 1 是人民币
+    
+    // 遍历该申请的所有商品明细
+    app.invoiceApplicationGoodsDtls.forEach((goods: any) => {
+      const goodsName =
+        goods.codeInvoiceName || goods.goodsName || '未知商品';
+      const specification = goods.specification || '';
+      const unit = goods.unit || '票';
+      const quantity = goods.quantity || 0;
+      const taxRate = goods.taxRate || 0;
+
+      // ✅ 使用完整的五个字段作为合并键
+      const mergeKey = `${goodsName}_${specification}_${unit}_${quantity}_${taxRate}`;
+
+      // ✅ 计算转换后的金额（如果是外币申请，需要乘以汇率）
+      let convertedAmount = goods.amount || 0;
+      let convertedNoTaxAmount = goods.noTaxAmount || 0;
+      let convertedTaxAmount = goods.taxAmount || 0;
+      let convertedUnitPrice = goods.unitPrice || 0;
+
+      // 如果申请是外币且发票币别是人民币，需要乘以汇率转换为人民币
+      if (isAppForeignCurrency && invoiceCurrencyId === 1) {
+        // 申请是外币，发票是人民币：需要乘以汇率转换为人民币
+        const exchangeRate = app.invoiceExchangeRate || 1;
+        convertedAmount = (goods.amount || 0) * exchangeRate;
+        convertedNoTaxAmount = (goods.noTaxAmount || 0) * exchangeRate;
+        convertedTaxAmount = (goods.taxAmount || 0) * exchangeRate;
+        convertedUnitPrice = (goods.unitPrice || 0) * exchangeRate;
+        
+        console.log('💱 外币转人民币:', {
+          originalAmount: goods.amount,
+          exchangeRate: exchangeRate,
+          convertedAmount: convertedAmount,
+          appCurrencyId: appCurrencyId,
+          invoiceCurrencyId: invoiceCurrencyId
+        });
+      } else if (isAppForeignCurrency && invoiceCurrencyId !== 1 && appCurrencyId !== invoiceCurrencyId) {
+        // 申请是外币A，发票是外币B：这种情况理论上不应该出现
+        console.warn('⚠️ 不同外币之间转换，可能存在问题:', {
+          appCurrencyId: appCurrencyId,
+          invoiceCurrencyId: invoiceCurrencyId
+        });
+        // 这种情况暂时不处理，保持原值
+      }
+      // 其他情况（都是人民币，或者申请币别等于发票币别）：保持原值
+
+      if (goodsMap.has(mergeKey)) {
+        // ✅ 已存在完全相同的商品（五个字段都相同），累加金额并重新计算单价
+        const existing = goodsMap.get(mergeKey);
+        const originalAmount = existing.amount;
+        existing.amount += convertedAmount;
+        existing.noTaxAmount += convertedNoTaxAmount;
+        existing.taxAmount += convertedTaxAmount;
+        
+        // ✅ 重新计算单价：单价 = 金额 / 数量
+        // 注意：数量应该大于0，避免除零错误
+        if (existing.quantity > 0) {
+          existing.unitPrice = existing.amount / existing.quantity;
+        }
+
+        console.log('  - 合并相同商品:', goodsName, {
+          规格型号: specification,
+          单位: unit,
+          数量: quantity,
+          税率: taxRate,
+          原金额: originalAmount,
+          新增金额: convertedAmount,
+          累计金额: existing.amount,
+          原单价: originalAmount / (existing.quantity || 1),
+          新单价: existing.unitPrice,
+        });
+      } else {
+        // ✅ 商品不完全相同（至少有一个字段不同），添加为新商品
+        const newItem = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          codeInvoiceId: goods.codeInvoiceId,
+          codeInvoiceName: goodsName,
+          specification: specification,
+          unit: unit,
+          quantity: quantity,
+          unitPrice: convertedUnitPrice,
+          amount: convertedAmount,
+          noTaxAmount: convertedNoTaxAmount,
+          taxRate: taxRate,
+          taxAmount: convertedTaxAmount,
+          remark: goods.remark || '',
+        };
+
+        goodsMap.set(mergeKey, newItem);
+        console.log('  - 新增商品:', goodsName, '规格:', specification, '单位:', unit, '数量:', quantity, '税率:', taxRate, '金额:', convertedAmount);
+      }
+    });
   });
 
-  console.log('  - 剩余申请总金额（原币）:', totalAppliedAmount.toFixed(2));
-  console.log('  - 剩余申请总金额（人民币）:', totalRmbAmount.toFixed(2));
+  // ✅ 将 Map 转换为数组
+  const mergedGoodsDetails = Array.from(goodsMap.values());
 
-  if (totalRmbAmount === 0) {
-    console.log('✅ 申请总金额为0，返回空商品明细');
+  console.log('  - 合并后商品明细数量:', mergedGoodsDetails.length);
+  console.log(
+    '  - 合并后总金额:',
+    mergedGoodsDetails
+      .reduce((sum, item) => sum + (item.amount || 0), 0)
+      .toFixed(2),
+  );
+
+  if (mergedGoodsDetails.length > 0) {
+    console.log('✅ 商品明细重新生成完成');
+    return mergedGoodsDetails;
+  } else {
+    console.warn('⚠️ 没有可合并的商品明细');
     return [];
   }
-
-  // ✅ 基于剩余申请的总金额，生成一条商品明细
-  // 取第一个申请的商品明细作为模板（如果有的话）
-  let templateGoods: any = null;
-
-  for (const app of remainingApps) {
-    if (
-      app.invoiceApplicationGoodsDtls &&
-      app.invoiceApplicationGoodsDtls.length > 0
-    ) {
-      templateGoods = app.invoiceApplicationGoodsDtls[0];
-      break;
-    }
-  }
-
-  // 如果没有模板，使用默认值
-  if (!templateGoods) {
-    console.log('⚠️ 没有找到商品明细模板，使用默认值');
-    templateGoods = {
-      codeInvoiceId: null,
-      specification: '',
-      unit: '票',
-      quantity: 1,
-      taxRate: 0,
-    };
-  }
-
-  const taxRate = templateGoods.taxRate || 0;
-  const amount = totalRmbAmount; // ✅ 修复：商品明细金额 = 申请总金额（人民币）
-  const noTaxAmount = amount / (1 + taxRate / 100);
-  const taxAmount = noTaxAmount * (taxRate / 100);
-  const unitPrice = amount / (templateGoods.quantity || 1);
-
-  const result = [
-    {
-      codeInvoiceId: templateGoods.codeInvoiceId,
-      specification: templateGoods.specification || '',
-      unit: templateGoods.unit || '票',
-      quantity: templateGoods.quantity || 1,
-      unitPrice: unitPrice,
-      amount: amount,
-      noTaxAmount: noTaxAmount,
-      taxRate: taxRate,
-      taxAmount: taxAmount,
-      remark: '',
-    },
-  ];
-
-  console.log('✅ 基于申请总金额重新生成商品明细:', {
-    申请总金额原币: totalAppliedAmount.toFixed(2),
-    开票汇率: remainingApps[0]?.invoiceExchangeRate || 1,
-    申请总金额人民币: totalRmbAmount.toFixed(2),
-    商品明细金额: amount.toFixed(2),
-    税率: taxRate,
-    不含税金额: noTaxAmount.toFixed(2),
-    税额: taxAmount.toFixed(2),
-  });
-
-  // ✅ 验证：确保开票金额等于申请金额（人民币）
-  const invoiceAmount = result.reduce(
-    (sum, item) => sum + (item.amount || 0),
-    0,
-  );
-  const difference = Math.abs(invoiceAmount - totalRmbAmount);
-
-  if (difference > 0.01) {
-    console.warn('⚠️ 警告：开票金额与申请金额不一致！');
-    console.warn('  - 开票金额:', invoiceAmount.toFixed(2));
-    console.warn('  - 申请金额（人民币）:', totalRmbAmount.toFixed(2));
-    console.warn('  - 差异:', difference.toFixed(2));
-  } else {
-    console.log('✅ 验证通过：开票金额等于申请金额（人民币）');
-  }
-
-  console.log('✅ 商品明细重新生成完成，共', result.length, '条');
-  return result;
 }
 
 /** 删除选中的发票（真删除） */

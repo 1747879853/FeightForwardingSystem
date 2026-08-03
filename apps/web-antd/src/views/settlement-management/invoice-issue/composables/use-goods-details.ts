@@ -268,10 +268,13 @@ export function useGoodsDetails(
 
     // ✅ 第一步：将现有的商品明细放入 Map
     goodsDetails.value.forEach((existingItem: any) => {
-      const goodsName = existingItem.codeInvoiceName || '未知商品';
+      // ✅ 修改：使用货物或应税劳务名称、规格型号、单位、数量、税率作为合并键
+      const goodsName = existingItem.codeInvoice.name || '未知商品';
+      const specification = existingItem.specification || '';
       const unit = existingItem.unit || '票';
-      const unitPrice = existingItem.unitPrice || 0;
-      const mergeKey = `${goodsName}_${unit}_${unitPrice}`;
+      const quantity = existingItem.quantity || 0;
+      const taxRate = existingItem.taxRate || 0;
+      const mergeKey = `${goodsName}_${specification}_${unit}_${quantity}_${taxRate}`;
 
       goodsMap.set(mergeKey, {
         ...existingItem,
@@ -290,33 +293,82 @@ export function useGoodsDetails(
         return;
       }
 
+      // 获取当前申请的币别和汇率信息
+      const appCurrencyId = app.currencyId;
+      const isAppForeignCurrency = appCurrencyId !== 1; // 1 是人民币
+      
       // 遍历该申请的所有商品明细
       app.invoiceApplicationGoodsDtls.forEach((goods: any) => {
         const goodsName =
           goods.codeInvoiceName || goods.goodsName || '未知商品';
+        const specification = goods.specification || '';
         const unit = goods.unit || '票';
-        const unitPrice = goods.unitPrice || 0;
+        const quantity = goods.quantity || 0;
+        const taxRate = goods.taxRate || 0;
 
-        const mergeKey = `${goodsName}_${unit}_${unitPrice}`;
+        // ✅ 修改：使用完整的五个字段作为合并键
+        const mergeKey = `${goodsName}_${specification}_${unit}_${quantity}_${taxRate}`;
+
+        // ✅ 计算转换后的金额（如果是外币申请，需要乘以汇率）
+        let convertedAmount = goods.amount || 0;
+        let convertedNoTaxAmount = goods.noTaxAmount || 0;
+        let convertedTaxAmount = goods.taxAmount || 0;
+        let convertedUnitPrice = goods.unitPrice || 0;
+
+        // 如果申请是外币且发票币别不是人民币，或者申请是外币但发票是人民币，都需要转换
+        if (isAppForeignCurrency && invoiceCurrencyId === 1) {
+          // 申请是外币，发票是人民币：需要乘以汇率转换为人民币
+          const exchangeRate = invoiceExchangeRate.value || 1;
+          convertedAmount = (goods.amount || 0) * exchangeRate;
+          convertedNoTaxAmount = (goods.noTaxAmount || 0) * exchangeRate;
+          convertedTaxAmount = (goods.taxAmount || 0) * exchangeRate;
+          convertedUnitPrice = (goods.unitPrice || 0) * exchangeRate;
+          
+          console.log('💱 外币转人民币:', {
+            originalAmount: goods.amount,
+            exchangeRate: exchangeRate,
+            convertedAmount: convertedAmount,
+            appCurrencyId: appCurrencyId,
+            invoiceCurrencyId: invoiceCurrencyId
+          });
+        } else if (isAppForeignCurrency && invoiceCurrencyId !== 1 && appCurrencyId !== invoiceCurrencyId) {
+          // 申请是外币A，发票是外币B：这种情况理论上不应该出现，因为费用选择抽屉会按币别分组
+          // 但为了安全起见，这里也处理一下（实际上应该不会走到这里）
+          console.warn('⚠️ 不同外币之间转换，可能存在问题:', {
+            appCurrencyId: appCurrencyId,
+            invoiceCurrencyId: invoiceCurrencyId
+          });
+          // 这种情况暂时不处理，保持原值
+        }
+        // 其他情况（都是人民币，或者申请币别等于发票币别）：保持原值
 
         if (goodsMap.has(mergeKey)) {
-          // ✅ 已存在相同商品，累加数量和金额
+          // ✅ 已存在完全相同的商品（五个字段都相同），累加金额并重新计算单价
           const existing = goodsMap.get(mergeKey);
-          existing.quantity += goods.quantity || 0;
-          existing.amount += goods.amount || 0;
-          existing.noTaxAmount += goods.noTaxAmount || 0;
-          existing.taxAmount += goods.taxAmount || 0;
+          const originalAmount = existing.amount;
+          existing.amount += convertedAmount;
+          existing.noTaxAmount += convertedNoTaxAmount;
+          existing.taxAmount += convertedTaxAmount;
+          
+          // ✅ 重新计算单价：单价 = 金额 / 数量
+          // 注意：数量应该大于0，避免除零错误
+          if (existing.quantity > 0) {
+            existing.unitPrice = existing.amount / existing.quantity;
+          }
 
           console.log('  - 合并相同商品:', goodsName, {
-            原数量: existing.quantity - (goods.quantity || 0),
-            新增数量: goods.quantity || 0,
-            累计数量: existing.quantity,
-            原金额: existing.amount - (goods.amount || 0),
-            新增金额: goods.amount || 0,
+            规格型号: specification,
+            单位: unit,
+            数量: quantity,
+            税率: taxRate,
+            原金额: originalAmount,
+            新增金额: convertedAmount,
             累计金额: existing.amount,
+            原单价: originalAmount / (existing.quantity || 1),
+            新单价: existing.unitPrice,
           });
         } else {
-          // ✅ 新商品，添加到 Map
+          // ✅ 商品不完全相同（至少有一个字段不同），添加为新商品
           const codeInvoiceItem = codeInvoiceList.value.find(
             (item: any) =>
               item.name === goodsName || item.id === goods.codeInvoiceId,
@@ -328,19 +380,19 @@ export function useGoodsDetails(
               ? codeInvoiceItem.id
               : goods.codeInvoiceId,
             codeInvoiceName: goodsName,
-            specification: goods.specification || '',
+            specification: specification,
             unit: unit,
-            quantity: goods.quantity || 0,
-            unitPrice: unitPrice,
-            amount: goods.amount || 0,
-            noTaxAmount: goods.noTaxAmount || 0,
-            taxRate: goods.taxRate || 0,
-            taxAmount: goods.taxAmount || 0,
+            quantity: quantity,
+            unitPrice: convertedUnitPrice,
+            amount: convertedAmount,
+            noTaxAmount: convertedNoTaxAmount,
+            taxRate: taxRate,
+            taxAmount: convertedTaxAmount,
             remark: goods.remark || '',
           };
 
           goodsMap.set(mergeKey, newItem);
-          console.log('  - 新增商品:', goodsName, '金额:', goods.amount || 0);
+          console.log('  - 新增商品:', goodsName, '规格:', specification, '单位:', unit, '数量:', quantity, '税率:', taxRate, '金额:', convertedAmount);
         }
       });
     });

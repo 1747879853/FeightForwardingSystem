@@ -45,6 +45,20 @@ watch(
       console.log(
         `✅ [OrderFeeTemplateTable] allClientsByIndustry 已更新，共 ${Object.keys(dropdownSources.allClientsByIndustry.value).length} 个行业类别`,
       );
+      
+      // ✅ 新增：当客户缓存更新时，重新渲染表格以确保结算对象显示中文
+      // 直接使用父组件传递的dataSource，避免从表格中获取可能已被转换的数据
+      nextTick(() => {
+        if (hotInstance.value && !hotInstance.value.isDestroyed && props.dataSource?.length > 0) {
+          updateData(props.dataSource);
+          // ✅ 关键修复：添加延迟render调用，确保DOM和样式资源完全加载
+          setTimeout(() => {
+            if (hotInstance.value && !hotInstance.value.isDestroyed) {
+              hotInstance.value.render();
+            }
+          }, 100);
+        }
+      });
     }
   },
   { immediate: true, deep: true },
@@ -533,6 +547,13 @@ function updateData(newData: any[]) {
   });
 
   hotInstance.value.loadData(convertedData);
+  
+  // ✅ 关键修复：添加延迟render调用，确保DOM和样式资源完全加载
+  setTimeout(() => {
+    if (hotInstance.value && !hotInstance.value.isDestroyed) {
+      hotInstance.value.render();
+    }
+  }, 100);
 }
 
 defineExpose({
@@ -559,6 +580,21 @@ defineExpose({
       td {
         vertical-align: middle !important;
         text-align: center !important;
+        // ✅ 关键修复：添加行高和高度限制，防止内容影响行高
+        line-height: 3px !important;
+        height: 30px !important;
+        max-height: 30px !important;
+        min-height: 30px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+      }
+      
+      // ✅ 确保span元素不会影响行高
+      span {
+        display: block !important;
+        line-height: 30px !important;
+        height: 30px !important;
+        max-height: 30px !important;
       }
     }
   }

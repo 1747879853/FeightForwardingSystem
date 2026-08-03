@@ -34,6 +34,7 @@ interface Props {
   headerName?: string; // ✅ 新增：发票抬头名称（用于回显）
   addedAppIds?: string[]; // 已添加的申请ID列表
   applicationGroupsData?: any[]; // ✅ 新增：申请分组数据（用于获取抬头名称）
+  invoiceExchangeRate?: number; // ✅ 新增：外部传入的开票汇率（用于编辑态）
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -42,6 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
   settlementName: '',
   currencyId: undefined,
   headerId: '',
+  invoiceExchangeRate: undefined, // ✅ 设置默认值
   addedAppIds: () => [],
 });
 
@@ -327,6 +329,7 @@ async function handleOpenFeeDrawer() {
   console.log('  - currencyId:', props.currencyId);
   console.log('  - headerId:', props.headerId);
   console.log('  - addedAppIds:', props.addedAppIds);
+  console.log('  - invoiceExchangeRate (props):', props.invoiceExchangeRate);
 
   // ✅ 重置筛选条件
   keyWord.value = '';
@@ -346,8 +349,14 @@ async function handleOpenFeeDrawer() {
     isSettlementFixed.value = false; // ✅ 重置固定状态
     selectedAppRowKeys.value = [];
     filterCurrencyId.value = undefined; // ✅ 首次添加时清空币别筛选
+    
+    // ✅ 首次添加时，如果传入了汇率值，则使用该值，否则保持默认值1.0
+    if (props.invoiceExchangeRate !== undefined) {
+      invoiceExchangeRate.value = props.invoiceExchangeRate;
+      console.log('✅ 首次添加：使用传入的开票汇率', props.invoiceExchangeRate);
+    }
   } else {
-    // 非首次添加，固定已有的值
+    // 非首次添加（编辑态），固定已有的值
     selectedSettlementId.value = props.settlementId;
     selectedCurrencyId.value = props.currencyId;
     selectedHeaderId.value = props.headerId || '';
@@ -421,6 +430,15 @@ async function handleOpenFeeDrawer() {
         },
       ];
       console.warn('⚠️ 编辑模式：缺少 settlementName，仅显示ID');
+    }
+    
+    // ✅ 编辑模式：使用传入的开票汇率作为默认值
+    if (props.invoiceExchangeRate !== undefined) {
+      invoiceExchangeRate.value = props.invoiceExchangeRate;
+      console.log('✅ 编辑模式：使用传入的开票汇率', props.invoiceExchangeRate);
+    } else if (props.currencyId && props.currencyId !== 1) {
+      // 如果没有传入汇率值，但币别是外币，则加载默认汇率
+      await loadDefaultExchangeRate(props.currencyId);
     }
   }
 
