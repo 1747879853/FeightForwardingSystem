@@ -27,7 +27,10 @@ import IndustryCategorySelect from '#/adapter/component/biz-select/industry-cate
 import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
-import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
+import {
+  getFeeCodeDetail,
+  getFeeCodeListAsync,
+} from '#/api/system/base-data/fee-code-admin';
 import { getClientDetail } from '#/api/sea-export/client-admin';
 import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
 
@@ -117,11 +120,28 @@ function touchDataSource() {
   dataSource.value = [...dataSource.value];
 }
 
-/** 单位仅固定四项，不含箱型名（详情无法稳定回显） */
-const unitOptions = PRE_ORDER_GENERIC_UNITS.map((unit) => ({
-  label: unit,
-  value: unit,
-}));
+/** 本单出现过的箱型名（去重、保留箱型字典写法），可作为费用单位 */
+const ctnUnitNames = computed(() => {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  for (const row of props.ctns ?? []) {
+    const name = (row.ctnCodeName ?? '').trim();
+    if (name === '' || seen.has(name.toUpperCase())) continue;
+    seen.add(name.toUpperCase());
+    names.push(name);
+  }
+  return names;
+});
+
+/** 通用四项 + 本单箱型；箱型随箱型箱量表变化，删掉箱型后对应费用行会落回「票」 */
+const unitOptions = computed(() => [
+  ...PRE_ORDER_GENERIC_UNITS.map((unit) => ({ label: unit, value: unit })),
+  ...ctnUnitNames.value
+    .filter(
+      (name) => !(PRE_ORDER_GENERIC_UNITS as readonly string[]).includes(name),
+    )
+    .map((name) => ({ label: name, value: name })),
+]);
 
 const round = (value: number, digits: number) => {
   const factor = 10 ** digits;
@@ -195,12 +215,24 @@ async function sumCtnTeu() {
   return round(total, 2);
 }
 
+/** 单位=箱型名时的数量：同箱型的箱量合计 */
+function sumCtnCountByName(name: string) {
+  const target = name.trim().toUpperCase();
+  let total = 0;
+  for (const row of props.ctns ?? []) {
+    if ((row.ctnCodeName ?? '').trim().toUpperCase() !== target) continue;
+    total += Number(row.count ?? 0);
+  }
+  return total;
+}
+
 /**
- * 按单位带出数量，口径与后端 `ResolveQuantityByUnit` 四项固定单位对齐：
- * 票=1、重量=kgs、体积=cbm、TEU=Σ(箱型 teu×箱量)；非法单位（含历史箱型名）先落到「票」
+ * 按单位带出数量，口径与后端 `ResolveQuantityByUnit` 对齐：
+ * 票=1、重量=kgs、体积=cbm、TEU=Σ(箱型 teu×箱量)、箱型名=该箱型箱量合计；
+ * 非法单位（含已被删掉的箱型名）先落到「票」
  */
 async function fillQuantityByUnit(row: PreOrderFeeRow, unit?: null | string) {
-  const name = coercePreOrderFeeUnit(unit) || '票';
+  const name = coercePreOrderFeeUnit(unit, ctnUnitNames.value) || '票';
   row.unit = name;
   const cargo = props.cargo ?? {};
   switch (name) {
@@ -221,7 +253,7 @@ async function fillQuantityByUnit(row: PreOrderFeeRow, unit?: null | string) {
       break;
     }
     default: {
-      row.quantity = 0;
+      row.quantity = sumCtnCountByName(name);
     }
   }
   recalcAmount(row);
@@ -312,7 +344,11 @@ async function applySettlementByLetter(row: PreOrderFeeRow, letter?: string) {
  */
 async function applyFeeCodeByPaySide(
   row: PreOrderFeeRow,
-  detail: Awaited<ReturnType<typeof getFeeCodeDetail>>,
+  detail:
+    | FeeCodeAdminApi.FeeCodeDto
+    | FeeCodeAdminApi.FeeCodeSimpleDto
+    | null
+    | undefined,
   paySide: number,
 ) {
   if (!detail) return;
@@ -407,7 +443,7 @@ async function syncDerivedRows() {
   }
 }
 
-defineExpose({ syncDerivedRows });
+defineExpose({ generateOceanFreightFees, syncDerivedRows });
 
 onMounted(async () => {
   try {
@@ -440,7 +476,10 @@ watch(defaultUsdCurrencyId, async (id) => {
 });
 
 watch(
-  () => props.ctns?.map((row) => `${row.ctnCodeId}:${row.count}`).join('|'),
+  () =>
+    props.ctns
+      ?.map((row) => `${row.ctnCodeId}:${row.ctnCodeName}:${row.count}`)
+      .join('|'),
   () => {
     void syncDerivedRows();
   },
@@ -478,7 +517,7 @@ watch(
 );
 
 async function handleUnitChange(row: PreOrderFeeRow, unit: string) {
-  row.unit = coercePreOrderFeeUnit(unit) || '票';
+  row.unit = coercePreOrderFeeUnit(unit, ctnUnitNames.value) || '票';
   await fillQuantityByUnit(row, row.unit);
   touchDataSource();
 }
@@ -589,11 +628,13 @@ async function handleFeeCodeChange(
 
     const defaultUnit = detail.defaultUnitName?.trim();
     if (defaultUnit) {
-      // 「箱型/CTN」及不在四项白名单内的默认单位一律落到「票」（不下发箱型名，避免详情无法回显）
+      // 「箱型/CTN」是泛称而非具体箱型，无法定位箱量，仍落到「票」；
+      // 默认单位恰好等于本单某个箱型名时才保留
       const coerced = coercePreOrderFeeUnit(
         defaultUnit === '箱型' || defaultUnit.toUpperCase() === 'CTN'
           ? '票'
           : defaultUnit,
+        ctnUnitNames.value,
       );
       row.unit = coerced || '票';
       if (
@@ -634,6 +675,131 @@ async function handleAdd() {
   await fillQuantityByUnit(row, row.unit);
   await applyExchangeRate(row);
   dataSource.value = [...dataSource.value, row];
+}
+
+const OCEAN_FREIGHT_CN_NAME = '海运费';
+const OCEAN_FREIGHT_CODES = new Set([
+  'O/F',
+  'OCEAN FREIGHT',
+  'OCEANFREIGHT',
+  'OF',
+]);
+
+/** 海运费费用代码缓存；取不到时不写缓存，下次点击重试 */
+let oceanFreightFeeCode: FeeCodeAdminApi.FeeCodeSimpleDto | undefined;
+
+async function resolveOceanFreightFeeCode() {
+  if (oceanFreightFeeCode) return oceanFreightFeeCode;
+  let items: FeeCodeAdminApi.FeeCodeSimpleDto[] = [];
+  try {
+    items = (await getFeeCodeListAsync({ isSea: true })) ?? [];
+  } catch {
+    return undefined;
+  }
+  const hit =
+    items.find(
+      (item) => (item.cnName ?? '').trim() === OCEAN_FREIGHT_CN_NAME,
+    ) ??
+    items.find((item) =>
+      OCEAN_FREIGHT_CODES.has((item.code ?? '').trim().toUpperCase()),
+    ) ??
+    items.find((item) => (item.cnName ?? '').includes(OCEAN_FREIGHT_CN_NAME));
+  if (hit) oceanFreightFeeCode = hit;
+  return hit;
+}
+
+/** 同箱型合并成一条费用：箱量累加，卖价取首个填了的值 */
+function groupCtnsForOceanFreight() {
+  const groups = new Map<
+    string,
+    { count: number; name: string; price: null | number }
+  >();
+  for (const row of props.ctns ?? []) {
+    const name = (row.ctnCodeName ?? '').trim();
+    if (name === '') continue;
+    const price = row.price == null ? null : Number(row.price);
+    const hit = groups.get(name.toUpperCase());
+    if (hit) {
+      hit.count += Number(row.count ?? 0);
+      if (hit.price == null) hit.price = price;
+    } else {
+      groups.set(name.toUpperCase(), {
+        count: Number(row.count ?? 0),
+        name,
+        price,
+      });
+    }
+  }
+  return [...groups.values()];
+}
+
+/**
+ * 按箱型箱量表一键生成应收海运费：每个箱型一条，单位=箱型名、数量=箱量、含税单价=卖价。
+ * 重复点击按「应收 + 海运费 + 同箱型」覆盖旧行，避免累积重复费用。
+ */
+async function generateOceanFreightFees() {
+  if (props.readonly) return;
+  const groups = groupCtnsForOceanFreight();
+  if (groups.length === 0) {
+    message.warning('请先在箱型箱量表中选择箱型');
+    return;
+  }
+  const feeCode = await resolveOceanFreightFeeCode();
+  if (!feeCode) {
+    message.error('未找到「海运费」费用代码，请先在基础数据中维护');
+    return;
+  }
+  await refreshPartiesSnapshot();
+
+  const regenerating = new Set(groups.map((item) => item.name.toUpperCase()));
+  const kept = dataSource.value.filter(
+    (row) =>
+      !(
+        Number(row.paySide) === 0 &&
+        String(row.feeCodeId ?? '') === String(feeCode.id) &&
+        regenerating.has(
+          String(row.unit ?? '')
+            .trim()
+            .toUpperCase(),
+        )
+      ),
+  );
+
+  const generated: PreOrderFeeRow[] = [];
+  for (const group of groups) {
+    const row = {
+      rowKey: createRowKey(),
+      paySide: 0,
+      feeCodeId: feeCode.id as PreOrderFeeRow['feeCodeId'],
+      feeCode: {
+        id: feeCode.id,
+        name: feeCode.cnName || feeCode.enName || feeCode.code,
+        code: feeCode.code,
+      },
+      feeCodeSnapshot: feeCode as FeeCodeAdminApi.FeeCodeDto,
+      currencyId: (feeCode.currencyId ??
+        defaultUsdCurrencyId.value ??
+        undefined) as PreOrderFeeRow['currencyId'],
+      unit: group.name,
+      quantity: group.count,
+      unitPrice: group.price ?? 0,
+      taxRate: feeCode.taxRate ?? 0,
+      invoiceBlocked: !!feeCode.isInvoiceProhibit,
+      isConfidential: !!feeCode.isConfidential,
+    } as PreOrderFeeRow;
+    // 结算对象类别/结算对象/税率沿用费用代码口径，与手工选费用代码一致
+    await applyFeeCodeByPaySide(row, feeCode, 0);
+    await applyExchangeRate(row);
+    recalcAmount(row);
+    generated.push(row);
+  }
+
+  dataSource.value = [...kept, ...generated];
+  message.success(`已生成 ${generated.length} 条应收海运费`);
+  const missingPrice = groups.filter((item) => item.price == null).length;
+  if (missingPrice > 0) {
+    message.warning(`其中 ${missingPrice} 个箱型未填卖价，含税单价按 0 生成`);
+  }
 }
 
 function handleRemove() {

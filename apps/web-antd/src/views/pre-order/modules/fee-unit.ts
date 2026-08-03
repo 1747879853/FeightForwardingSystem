@@ -1,9 +1,12 @@
 import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
 
 /**
- * 业务联系单费用单位前端仅开放下列四项（固定下拉，便于详情回显）。
- * 审核通过生成应收应付时，后端 `ResolveQuantityByUnit` 精确匹配这些字面量；
- * 箱型名虽也能被后端识别，但费用表不下发箱型选项（详情无法稳定回显）。
+ * 业务联系单费用单位的通用四项。审核通过生成应收应付时，后端
+ * `ResolveQuantityByUnit` 精确匹配这些字面量。
+ *
+ * 除这四项外，还允许「本单箱型箱量表里出现过的箱型名」（如 20GP）作为单位，
+ * 数量取该箱型的箱量合计；箱型名同样能被后端识别。之所以敢开放，是因为箱型
+ * 与费用同属一份详情数据，回显时箱型名一定在手，不存在只剩字符串的情况。
  *
  * 注意：业务联系单不支持「件数」计价，海出侧的「毛重 / 尺码」在这里是「重量 / 体积」。
  */
@@ -28,17 +31,27 @@ export function normalizePreOrderFeeUnit(unit?: null | string) {
   return UNIT_ALIASES[raw] ?? UNIT_ALIASES[raw.toUpperCase()] ?? raw;
 }
 
+/** 命中本单箱型时返回箱型表里的原始写法（大小写以箱型字典为准） */
+function matchCtnUnit(unit: string, ctnNames?: readonly string[]) {
+  if (!ctnNames?.length) return undefined;
+  const target = unit.toUpperCase();
+  return ctnNames.find((name) => String(name).trim().toUpperCase() === target);
+}
+
 /**
- * 落到前端可选的四项之一：别名归一后若不在白名单（含历史箱型名），一律改「票」。
+ * 落到可选单位：通用四项直接放行，其次匹配本单箱型名，都不中则改「票」。
  * 空串保持为空，留给校验拦截。
  */
-export function coercePreOrderFeeUnit(unit?: null | string) {
+export function coercePreOrderFeeUnit(
+  unit?: null | string,
+  ctnNames?: readonly string[],
+) {
   const normalized = normalizePreOrderFeeUnit(unit);
   if (normalized === '') return '';
   if ((PRE_ORDER_GENERIC_UNITS as readonly string[]).includes(normalized)) {
     return normalized;
   }
-  return '票';
+  return matchCtnUnit(normalized, ctnNames) ?? '票';
 }
 
 type PreOrderFeeCheckRow = Pick<
@@ -55,12 +68,16 @@ export interface PreOrderFeeCheckResult {
 
 /**
  * 审核通过时后端只取 `feeCodeId + currencyId + paySide` 三者齐全的行（缺一即静默丢弃），
- * 并按 `unit` 重算数量与金额。前端单位仅允许四项固定值。
+ * 并按 `unit` 重算数量与金额。单位限通用四项或本单箱型名。
  */
 export function checkPreOrderFees(
   rows: PreOrderFeeCheckRow[],
+  ctnNames?: readonly string[],
 ): PreOrderFeeCheckResult {
-  const knownUnits = new Set<string>(PRE_ORDER_GENERIC_UNITS);
+  const knownUnits = new Set<string>([
+    ...PRE_ORDER_GENERIC_UNITS,
+    ...(ctnNames ?? []).map((name) => String(name).trim()).filter(Boolean),
+  ]);
   const errors: string[] = [];
   const warnings: string[] = [];
   rows.forEach((row, index) => {
@@ -68,9 +85,11 @@ export function checkPreOrderFees(
     if (row.paySide == null) errors.push(`${label}：未选择收付类型`);
     if (row.feeCodeId == null) errors.push(`${label}：未选择费用代码`);
     if (row.currencyId == null) errors.push(`${label}：未选择币别`);
-    const unit = coercePreOrderFeeUnit(row.unit);
+    const unit = coercePreOrderFeeUnit(row.unit, ctnNames);
     if (unit === '' || !knownUnits.has(unit)) {
-      errors.push(`${label}：未选择单位（可选：票 / 重量 / 体积 / TEU）`);
+      errors.push(
+        `${label}：未选择单位（可选：票 / 重量 / 体积 / TEU 或本单箱型）`,
+      );
     }
     if (Number(row.quantity ?? 0) === 0) {
       warnings.push(`${label}：数量为 0，请检查单位或货物信息`);

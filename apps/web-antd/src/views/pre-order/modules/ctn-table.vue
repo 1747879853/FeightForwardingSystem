@@ -32,7 +32,14 @@ const modelValue = defineModel<PreOrderCtnRow[]>({ default: () => [] });
 const emit = defineEmits<{
   /** 箱型/箱量/卖价变化后通知外部刷新应收费用 */
   ctnChange: [];
+  /** 按当前箱型/箱量/卖价一键生成应收海运费 */
+  generateFee: [];
 }>();
+
+/** 有箱型才谈得上生成费用 */
+const canGenerateFee = computed(() =>
+  (modelValue.value ?? []).some((row) => (row.ctnCodeName ?? '').trim() !== ''),
+);
 
 const selectedRowKeys = ref<string[]>([]);
 
@@ -163,6 +170,23 @@ watch(
               selectedRowKeys.length ? 'text-[#ff4d4f]' : 'text-[#bfbfbf]',
             ]"
           />
+        </Button>
+      </Tooltip>
+      <Tooltip title="按箱型生成应收海运费（单位=箱型，数量=箱量，单价=卖价）">
+        <Button
+          type="text"
+          size="small"
+          :class="[
+            '!flex !h-7 !items-center !justify-center !gap-1 !rounded-md !px-2 transition-all',
+            canGenerateFee
+              ? '!bg-[#f6ffed] !text-[#389e0d] hover:scale-105 hover:!bg-[#d9f7be]'
+              : '!bg-[#f5f5f5] !text-[#bfbfbf]',
+          ]"
+          :disabled="!canGenerateFee"
+          @click="emit('generateFee')"
+        >
+          <IconifyIcon icon="mdi:cash-plus" class="text-[18px]" />
+          <span class="text-xs">生成海运费</span>
         </Button>
       </Tooltip>
     </Space>

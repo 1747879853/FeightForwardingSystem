@@ -161,8 +161,19 @@ watch(headerBizType, () => {
   pendingRoleCleanup = true;
 });
 
+/** 本单箱型名，费用单位可取这些值（数量按对应箱量带出） */
+const ctnUnitNames = computed(() =>
+  ctns.value.map((row) => (row.ctnCodeName ?? '').trim()).filter(Boolean),
+);
+
 const services = ref<PreOrderServiceRow[]>([]);
 const fees = ref<PreOrderFeeRow[]>([]);
+const feeTableRef = ref<InstanceType<typeof FeeTable> | null>(null);
+
+/** 箱型表按钮：按箱型/箱量/卖价一键铺应收海运费 */
+async function handleGenerateOceanFreightFees() {
+  await feeTableRef.value?.generateOceanFreightFees();
+}
 /** 附件分组：先 UploadFile 拿 attachmentId，再随 Add/Edit 的 attachmentGroup 全量提交 */
 const attachmentGroup = ref<PreOrderAdminApi.AttachmentGroupInputDto[]>([]);
 
@@ -722,10 +733,13 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
       serviceType: Number(item.serviceType),
       sortId: item.sortId,
     }));
-  // 历史数据可能存着海出口径或箱型名；前端单位仅四项固定值，回显时强制落到可选范围
+  // 历史数据可能存着海出口径的单位；回显时强制落到通用四项或本单箱型名
+  const detailCtnNames = ctns.value
+    .map((row) => (row.ctnCodeName ?? '').trim())
+    .filter(Boolean);
   fees.value = (dto.preOrderFees ?? []).map((item) => ({
     ...item,
-    unit: coercePreOrderFeeUnit(item.unit) || undefined,
+    unit: coercePreOrderFeeUnit(item.unit, detailCtnNames) || undefined,
     rowKey: nextRowKey('fee'),
   }));
   attachmentGroup.value = mapAttachmentGroupFromDetail(dto.attachmentGroup);
@@ -857,7 +871,7 @@ async function buildSubmitPayload() {
         ...rest
       }) => ({
         ...rest,
-        unit: coercePreOrderFeeUnit(rest.unit) || rest.unit,
+        unit: coercePreOrderFeeUnit(rest.unit, ctnUnitNames.value) || rest.unit,
       }),
     ),
     // 编辑全量覆盖：始终传 attachmentGroup（可为空数组清空）
@@ -922,7 +936,10 @@ function validateCtns(): boolean {
  * `strict` 用于提交审核前硬拦截，保存草稿时只提示。
  */
 function validateFees(strict: boolean): boolean {
-  const { errors, warnings } = checkPreOrderFees(fees.value);
+  const { errors, warnings } = checkPreOrderFees(
+    fees.value,
+    ctnUnitNames.value,
+  );
   // 条数可能很多，只提示前几条，避免刷屏
   for (const text of warnings.slice(0, 3)) message.warning(text);
   if (errors.length === 0) return true;
@@ -1365,7 +1382,10 @@ const getContentTabStyle = (isActive: boolean) =>
                   </template>
                   <div class="cargo-main-layout">
                     <div class="cargo-main-layout__left">
-                      <CtnTable v-model="ctns" />
+                      <CtnTable
+                        v-model="ctns"
+                        @generate-fee="handleGenerateOceanFreightFees"
+                      />
                     </div>
                     <div class="cargo-main-layout__right">
                       <CargoForm />
@@ -1384,6 +1404,7 @@ const getContentTabStyle = (isActive: boolean) =>
                     </div>
                   </template>
                   <FeeTable
+                    ref="feeTableRef"
                     v-model="fees"
                     :ctns="ctns"
                     :parties="feeParties"
