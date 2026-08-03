@@ -83,7 +83,7 @@ const [SearchForm, searchFormApi] = useVbenForm({
   schema: useSearchSchema(),
   showDefaultActions: false,
   compact: true,
-  wrapperClass: 'grid-cols-3',
+  wrapperClass: 'grid-cols-4',
 });
 
 /** 打开抽屉 */
@@ -508,6 +508,12 @@ function formatDateTime(dateTime: string | undefined | null): string {
   return dayjs(dateTime).format('YYYY-MM-DD HH:mm:ss');
 }
 
+// 格式化日期（只到天）
+function formatDateOnly(dateTime: string | undefined | null): string {
+  if (!dateTime) return '-';
+  return dayjs(dateTime).format('YYYY-MM-DD');
+}
+
 // 获取付费申请状态 Tag 展示
 function resolveApplicationStatus(status: number) {
   return getStatusTagProps(status);
@@ -545,7 +551,7 @@ const columns: ColumnsType<PaymentSettlementAdminApi.PaymentApplicationCurrencyF
       title: '支付要求',
       dataIndex: 'require',
       key: 'require',
-      minWidth: 150,
+      width: 150,
     },
     {
       title: '申请币别',
@@ -575,19 +581,19 @@ const columns: ColumnsType<PaymentSettlementAdminApi.PaymentApplicationCurrencyF
     {
       title: '应付金额',
       key: 'payAmount',
-      width: 120,
+      width: 100,
       align: 'right',
     },
     {
       title: '应收金额',
       key: 'receiveAmount',
-      width: 120,
+      width: 100,
       align: 'right',
     },
     {
       title: '未结算费用',
       key: 'totalUnSettledAmount',
-      width: 120,
+      width: 100,
       align: 'right',
     },
     {
@@ -611,7 +617,7 @@ const columns: ColumnsType<PaymentSettlementAdminApi.PaymentApplicationCurrencyF
       title: '最晚付款时间',
       dataIndex: 'endTime',
       key: 'endTime',
-      width: 190,
+      width: 150,
     },
   ];
 
@@ -858,15 +864,15 @@ function destroyTableObserver() {
     width="90%"
     :footer-style="{ textAlign: 'right' }"
   >
-    <template #extra>
-      <Space>
-        <Button @click="handleReset">重置</Button>
-        <Button type="primary" @click="handleSearch">查询</Button>
-      </Space>
-    </template>
-
     <div style="margin-bottom: 16px">
       <SearchForm />
+      <!-- 查询和重置按钮放在查询条件后面 -->
+      <div style="margin-top: 16px; text-align: right">
+        <Space>
+          <Button @click="handleReset">重置</Button>
+          <Button type="primary" @click="handleSearch">查询</Button>
+        </Space>
+      </div>
     </div>
 
     <!-- 结算币别选择（独立于搜索表单，明显展示） -->
@@ -972,7 +978,7 @@ function destroyTableObserver() {
         </template>
 
         <template v-else-if="column.key === 'endTime'">
-          {{ formatDateTime(record.endTime) }}
+          {{ formatDateOnly(record.endTime) }}
         </template>
 
         <template v-else-if="column.key === 'clientName'">
