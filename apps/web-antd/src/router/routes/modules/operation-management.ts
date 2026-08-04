@@ -1,5 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
+import { SeaExportShipIcon, SeaImportShipIcon } from '@vben/icons';
+
 import { $t } from '#/locales';
 import { abpPageAuthority } from '#/router/abp-authority';
 
@@ -16,7 +18,7 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         meta: {
-          icon: 'mdi:ferry',
+          icon: SeaExportShipIcon,
           title: $t('seaExport.export.title'),
           hideChildrenInMenu: true,
           authority: abpPageAuthority('Admin.SeaExport'),
@@ -61,7 +63,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         meta: {
-          icon: 'mdi:ferry',
+          icon: SeaImportShipIcon,
           title: $t('seaImport.import.title'),
           hideChildrenInMenu: true,
           authority: abpPageAuthority('Admin.SeaImport'),

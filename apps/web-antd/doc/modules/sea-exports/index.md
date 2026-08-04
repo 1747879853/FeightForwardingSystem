@@ -102,6 +102,7 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-04 | `Style` | 侧栏菜单图标改为 `fluent-emoji-high-contrast:ship`（船头朝右），与进口水平翻转区分。 | 路由 `meta.icon` 使用 `SeaExportShipIcon`；`createIconifyIcon` 支持 `hFlip` 等 Iconify 属性。 |
 | 2026-08-02 | `Fix` | 运踪订阅失败原因完整展示；按钮旁补充业务规则说明。 | 见 `changelogs/change-log-2026-08-02-yundang-subscribe-error-and-rules.md`。 |
 | 2026-08-02 | `Fix` | 搜索表单改为手动点「查询」才请求；条件变更不再自动搜。初次打开与从表单返回仍自动刷新；「重置」只清空不查。 | `submitOnChange: false`；`handleReset` 清空不提交。详见 `changelogs/change-log-2026-08-02-sea-export-list-manual-search.md`。 |
 | 2026-08-02 | `Fix` | 点「重置」清空会计期间且不自动查询；首屏默认当月保留。 | schema 去掉 `AccountDateRange.defaultValue`；`handleReset` 临时关闭 `submitOnChange`。详见 `changelogs/change-log-2026-08-02-sea-export-account-period-reset.md`。 |
