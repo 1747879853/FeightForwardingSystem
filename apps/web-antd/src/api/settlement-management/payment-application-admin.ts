@@ -71,7 +71,7 @@ export namespace PaymentApplicationAdminApi {
     applicationNo?: string;
     /** 结算对象ID（客户） */
     settlementId?: string;
-    /** 币别ID。不传=搜全部；传 `0`=搜原币申请；传具体值=搜指定币别 */
+    /** 币别ID。不传=搜全部；传 `0`=只搜原币申请（申请币别为空）；传具体值=直接按行过滤，只返回原币币别=该值的行 */
     currencyId?: number;
     /** 提交时间起 */
     submitTimeStart?: string;
@@ -83,13 +83,13 @@ export namespace PaymentApplicationAdminApi {
     endTimeEnd?: string;
     /** 申请人ID */
     creatorUserId?: number;
-    /** 组织ID（数据权限过滤） */
+    /** 组织ID（数据权限过滤，含下级组织） */
     orgId?: number;
-    /** 跳过条数（分页） */
-    skipCount: number;
-    /** 每页条数（分页） */
-    maxResultCount: number;
-    /** 排序字段 */
+    /** 当前页码（从1开始），必填 */
+    pageIndex: number;
+    /** 每页条数，控制返回多少个「申请+币别」组合行，必填 */
+    pageSize: number;
+    /** 排序字段，作用于付费申请层 */
     sorting?: string;
   }
 
@@ -954,3 +954,5 @@ export async function addByStatement(
     data,
   );
 }
+
+

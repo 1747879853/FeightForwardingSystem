@@ -55,7 +55,7 @@ const selectedRowKeys = ref<string[]>([]);
 const dataSource = ref<any[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
-const pageSize = ref(20);
+const pageSize = ref(10);
 
 // 结算币别选择（独立于搜索表单）
 const selectedCurrencyId = ref<number | undefined>(undefined);
@@ -232,8 +232,8 @@ async function fetchData() {
           ? dayjs(endTimeStart).toISOString()
           : undefined,
         endTimeEnd: endTimeEnd ? dayjs(endTimeEnd).toISOString() : undefined,
-        skipCount: (currentPage.value - 1) * pageSize.value,
-        maxResultCount: pageSize.value,
+        pageIndex: currentPage.value,
+        pageSize: pageSize.value,
       };
 
     const result =
@@ -277,10 +277,14 @@ async function handleReset() {
 }
 
 /** 分页变化 */
-function handlePageChange(page: number, size: number) {
-  currentPage.value = page;
-  pageSize.value = size;
-  fetchData();
+async function handlePageChange(
+  pagination: any,
+  _filters: any,
+  _sorter: any,
+) {
+  currentPage.value = pagination.current;
+  pageSize.value = pagination.pageSize;
+  await fetchData();
 }
 
 /** 行选择变化 */
@@ -916,6 +920,7 @@ function destroyTableObserver() {
         showQuickJumper: true,
         showTotal: (total) => `共 ${total} 条`,
       }"
+      @change="handlePageChange"
       row-key="rowKey"
       :row-selection="{
         type: 'checkbox',
