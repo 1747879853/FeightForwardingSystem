@@ -30,9 +30,12 @@ export const canEditFee = (feeStatus: number): boolean => {
 // --------------------------------------------------------
 export const getDataEntryMethodOptions = () => [
   { value: 0, label: '手动录入' },
-  { value: 1, label: '历史引入' },
+  { value: 1, label: '历史费用引入' },
   { value: 2, label: '应收引入' },
   { value: 3, label: '应付引入' },
+  { value: 4, label: '费用模板生成' },
+  { value: 5, label: '业务复制引入' },
+  { value: 6, label: '业务联系单引入' },
 ];
 
 // --------------------------------------------------------
