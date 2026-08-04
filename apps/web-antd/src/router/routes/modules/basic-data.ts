@@ -25,6 +25,7 @@ const routes: RouteRecordRaw[] = [
         'Admin.FeeCode',
         'Admin.LaneCode',
         'Admin.PortCode',
+        'Admin.AirPort',
         'Admin.CtnCode',
         'Admin.CountryCode',
         'Admin.GenerateNum',
@@ -202,6 +203,18 @@ const routes: RouteRecordRaw[] = [
         },
         component: () =>
           import('#/views/system/basic-data/PortCodeAdmin/list.vue'),
+      },
+      {
+        path: '/basic-data/air-port',
+        name: 'BasicDataAirPort',
+        meta: {
+          icon: 'mdi:airplane-takeoff',
+          keepAlive: true,
+          title: $t('system.basicData.airPort.title'),
+          authority: abpPageAuthority('Admin.AirPort'),
+        },
+        component: () =>
+          import('#/views/system/basic-data/AirPortAdmin/list.vue'),
       },
       {
         path: '/basic-data/ctn-code',

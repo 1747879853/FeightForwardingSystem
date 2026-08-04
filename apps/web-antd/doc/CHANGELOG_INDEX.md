@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-05 新增空运港口基础资料与 AirPortSelect 业务下拉](./changelogs/change-log-2026-08-05-air-port-basic-data-and-select.md)
 - [2026-08-05 海运出口截关节点文案与顺序（截单/截港/截关）](./changelogs/change-log-2026-08-05-sea-export-cutoff-labels-order.md)
 - [2026-08-04 海运出口/进口菜单船图标朝向区分](./changelogs/change-log-2026-08-04-sea-export-import-menu-ship-icon.md)
 - [2026-08-04 编号规则新增海运进口/空运出口委托编号](./changelogs/change-log-2026-08-04-generate-num-sea-import-air-export-commission-num.md)
