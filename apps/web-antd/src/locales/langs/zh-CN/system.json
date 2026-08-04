@@ -348,6 +348,12 @@
         "SeaExport": {
           "CommissionNum": "海运出口委托编号"
         },
+        "SeaImport": {
+          "CommissionNum": "海运进口委托编号"
+        },
+        "AirExport": {
+          "CommissionNum": "空运出口委托编号"
+        },
         "Statement": {
           "StatementNum": "对账单号"
         },

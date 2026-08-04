@@ -346,6 +346,12 @@
         "SeaExport": {
           "CommissionNum": "Sea Export Commission No."
         },
+        "SeaImport": {
+          "CommissionNum": "Sea Import Commission No."
+        },
+        "AirExport": {
+          "CommissionNum": "Air Export Commission No."
+        },
         "Statement": {
           "StatementNum": "Statement No."
         },

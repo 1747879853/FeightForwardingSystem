@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-04 编号规则新增海运进口/空运出口委托编号](./changelogs/change-log-2026-08-04-generate-num-sea-import-air-export-commission-num.md)
 - [2026-08-04 附件类型列表业务联系单模块码回显中文名](./changelogs/change-log-2026-08-04-attachment-dtl-type-pre-order-module-label.md)
 - [2026-08-04 海运进口按海运出口版式重建表单与列表](./changelogs/change-log-2026-08-04-sea-import-admin-layout.md)
 - [2026-08-04 运踪里程碑改用 actualityTime 判断已完成](./changelogs/change-log-2026-08-04-yundang-ocean-node-completed-by-actuality-time.md)

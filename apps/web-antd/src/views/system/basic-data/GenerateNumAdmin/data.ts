@@ -77,7 +77,7 @@ export function buildGenerateNumRuleSegment(
       return dayjs().format('YYYYMMDD');
     case GENERATE_ENUM.yyMMdd:
       return dayjs().format('YYMMDD');
-    // 业务日期(ETD)规则生成时优先取开船日期，配置页无单据上下文，预览统一按当前时间回退
+    // 业务日期(ETD)由后端按业务传入：海出=开船、海进=到港、空出=起飞；空则当前时间。配置页无单据上下文，预览按当前时间
     case GENERATE_ENUM.ETDyyMM:
     case GENERATE_ENUM.yyMM:
       return dayjs().format('YYMM');
@@ -109,6 +109,8 @@ export function hasAutoNumRule(rules: GenerateNumRulePreviewInput[]) {
 /** 编号规则可选表名（Entity.Field） */
 const TABLE_NAME_VALUES = [
   'SeaExport.CommissionNum',
+  'SeaImport.CommissionNum',
+  'AirExport.CommissionNum',
   'Statement.StatementNum',
   'PaymentApplication.ApplicationNo',
   'PaymentSettlement.SettlementNo',
