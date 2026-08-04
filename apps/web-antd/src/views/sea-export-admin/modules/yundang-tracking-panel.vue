@@ -173,15 +173,6 @@ function resolveNodeTime(
 function getOceanNodeVisual(
   node: YundangAdminApi.YundangShipmentOceanNodeInfoDto,
 ): TimelineVisualMeta {
-  if (node.isCurrent) {
-    return {
-      state: 'current',
-      icon: 'ph:navigation-arrow-fill',
-      color: '#007aff',
-      bg: '#007aff',
-      label: $t('seaExport.yundang.tracking.nodeState.current'),
-    };
-  }
   if (node.actualityTime?.trim()) {
     return {
       state: 'completed',

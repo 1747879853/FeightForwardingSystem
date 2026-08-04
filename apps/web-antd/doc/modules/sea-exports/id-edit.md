@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-02
+last_updated: 2026-08-04
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -51,7 +51,7 @@ last_updated: 2026-08-02
 - **打印：** 顶栏「打印」调用全局 `usePrintFormat().openPrint`（`PrintJsonType=0`，`detailInput={id}`，后端 `GetPrintAsync` 自动取数）；应收应付费用表打印用 `PrintJsonType=1000/1500` + `orderFeeListInput`。模板列表走非管理端接口并按当票签单方式/船公司/分公司筛选。打印弹窗：标题行选模板（默认不选），选中后 iframe 预览 PDF（原始文件名地址）；底部为分裂式「打印」按钮，PDF/Excel/Word 统一静默拉取后浏览器下载（友好名仅去掉末尾纯数字时间戳）。新增模式禁止打印；有未保存修改仅提示「使用已保存数据」（后端按 id 取库）。
 - **保存 / 复制（合并按钮）：** 编辑页顶栏「保存」为 `Dropdown.Button`，主键点击保存；鼠标悬浮展开下拉「复制」（需 `Admin.SeaExport.Add`）。复制若表单有未保存修改先警告，确认后弹窗可选 `copyOrderFees`（默认不复制），`CopyAsync` 成功后 `replace` 至新票编辑页。新建态无复制项，退化为普通「保存」按钮。顶栏不再有「取消」按钮与订阅状态 Tag。
 - **运踪订阅：** 基础信息 Tab 顶栏「运踪订阅」（仅编辑态，需 `Admin.ExternalApi.Use`）；点击直接发起单票订阅，无二次确认；与列表共用 `useYundangOceanSubscribe`。提交仅 `seaExportIds`，字段明细见 [运踪订阅字段清单](./yundang-subscribe-fields.md)。
-- **运踪信息：** 编辑工作台顶部「运踪信息」Tab 内直接查看（`Admin.ExternalApi.Get`）；调用 `GetOceanPushInfoAsync` 展示订阅概要、运单概要、里程碑、**航段**、集装箱轨迹；等待推送态自动轮询刷新；内容区 padding 12px。基础信息 Tab 顶栏不再提供「查看运踪」按钮。运单概要在船名航次/港口/ETD·ETA·ATA 外，按需补充 AIS 预计到港、首次预计到港、交货地及其 ETA/ATA、备注（有值才渲染）。**航段 Tab** 按 `sno` 升序表格展示 序号/类型（大船·驳船·陆运）/航线（港口中文名优先）/船名航次/ETD·ATD·ETA·ATA。**集装箱**补充件数/毛重/VGM、甩柜/异常 Tag 与「费用/免箱期」小表（费用类型/最后免费日 LFD/免费天数）。展示字段均以后端 `YundangShipmentInfoDto` 返回为准、判空后渲染。
+- **运踪信息：** 编辑工作台顶部「运踪信息」Tab 内直接查看（`Admin.ExternalApi.Get`）；调用 `GetOceanPushInfoAsync` 展示订阅概要、运单概要、里程碑、**航段**、集装箱轨迹；等待推送态自动轮询刷新；内容区 padding 12px。基础信息 Tab 顶栏不再提供「查看运踪」按钮。运单概要在船名航次/港口/ETD·ETA·ATA 外，按需补充 AIS 预计到港、首次预计到港、交货地及其 ETA/ATA、备注（有值才渲染）。**里程碑**节点「已完成」仅看 `actualityTime` 是否有值，不再用 `isCurrent` 标「进行中」。**航段 Tab** 按 `sno` 升序表格展示 序号/类型（大船·驳船·陆运）/航线（港口中文名优先）/船名航次/ETD·ATD·ETA·ATA。**集装箱**补充件数/毛重/VGM、甩柜/异常 Tag 与「费用/免箱期」小表（费用类型/最后免费日 LFD/免费天数）。展示字段均以后端 `YundangShipmentInfoDto` 返回为准、判空后渲染。
 - **完成服务：** 编辑态服务流水线「完成服务」/「取消完成」成功后重新拉取详情，同步任务状态、勾选展示及只读摘要。「完成」仅 `seServiceTaskUsers` 处理人可操作；「取消完成」仅 `completionUserId` 对应完成人可操作；无权限时悬浮展示提示。
 - **已完成服务锁定字段只读：** 编辑态按「所有已完成任务对应服务项的 `seServiceLocks` 并集」将相关表单字段置为 `disabled`（`SeaExportPropEnum → 字段名` 映射，广播到基础/船期/港口表单）；取消完成或改港重写后自动解除。锁定字段虽 `disabled`，其值仍随 DTO 提交、由后端用库值覆盖。
 - **保存重建二次确认：** 编辑保存时，若 `polId` 或勾选 `serviceType` 集合相对详情发生变化，**且本票已存在任意服务任务**，弹确认「将清空全部服务任务进度并重新生成」，取消则中止保存。配置弹窗「确定」后直接应用勾选并保存，重建确认统一由保存流程处理。
@@ -131,6 +131,7 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-04 | `Fix` | 运踪里程碑「已完成」改仅用 `actualityTime` 判断，不再用 `isCurrent` 显示「进行中」。 | `getOceanNodeVisual` 去掉 `isCurrent` 优先分支；无实际时间时仍按预计/计划展示。详见 `changelogs/change-log-2026-08-04-yundang-ocean-node-completed-by-actuality-time.md`。 |
 | 2026-08-02 | `Feature` | 页头委托编号旁新增刷新按钮，一键调 `UpdateCommissionNumAsync` 由后端重新生成并替换旧编号（仅编辑态、需编辑权限）。 | 新增 `updateSeaExportCommissionNum(id)`（PUT，仅传 id，出参为新编号）；`commissionNum` 属提交 DTO 字段，改写会污染脏检查快照，故仅在原本无未保存修改时 `syncFormSnapshot()` 重置基线；失败提示交由全局拦截器展示 ABP 报错。详见 `changelogs/change-log-2026-08-02-sea-export-regenerate-commission-num.md`。 |
 | 2026-07-31 | `Feature` | 干系人可选角色改由枚举 `SeaExportUserAttribute` 配置（`extra1` 控制是否默认展示），不再写死 6 项；销售/操作固定兜底且不可删。 | 新增共用 `composables/use-order-user-roles.ts`（枚举名按 bizType 映射、`syncOrderUserRows` 补行排序）；`use-order-users.ts` 删除 `orderUserRoleOptions`/`defaultOrderUsers`，「海外客服有人才显示」泛化为「非默认展示角色无人不显示」；角色异步到位后 watch 补行，快照前 `await whenOrderUserRolesReady()` 防误报未保存。详见 `changelogs/change-log-2026-07-31-order-user-role-enum.md`。 |
 | 2026-07-30 | `Refactor` | 委托单位变更改走 `Client/GetDishonestStakeholdersAsync` 带出业务来源（编辑态）/干系人（仅新建态），不再调 `ClientAdmin/DetailAsync`。 | 共用 `form.vue`/`use-order-users.ts`；详见 `changelogs/change-log-2026-07-30-sea-export-client-dishonest-stakeholders.md`。 |

@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-04 运踪里程碑改用 actualityTime 判断已完成](./changelogs/change-log-2026-08-04-yundang-ocean-node-completed-by-actuality-time.md)
 - [2026-08-02 业务联系单按箱型一键生成应收海运费](./changelogs/change-log-2026-08-02-pre-order-generate-ocean-freight-fee.md)
 - [2026-08-02 业务联系单收发通支持展开折叠（默认折叠）](./changelogs/change-log-2026-08-02-pre-order-party-collapse.md)
 - [2026-08-02 业务联系单备注 textarea 默认 1 行](./changelogs/change-log-2026-08-02-pre-order-remark-textarea-rows.md)
