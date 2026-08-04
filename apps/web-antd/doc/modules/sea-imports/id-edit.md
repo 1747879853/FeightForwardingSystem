@@ -2,12 +2,12 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-06-07
+last_updated: 2026-08-04
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 编辑页是海运进口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块。
+**白话解释：** 编辑页是海运进口的核心业务容器，聚合基础信息、费用、更改单与附件；基础信息 Tab 版式对齐海运出口。
 
 **路由与源码定位：**
 
@@ -16,16 +16,16 @@ last_updated: 2026-06-07
 | 页面路由 | `/sea-imports/:id/edit` |
 | 路由名称 | `SeaImportEdit` |
 | 页面组件 | `src/views/sea-import-admin/editor.vue` |
-| 权限口径 | 未在路由中声明独立权限 |
-| 关键源码 | `src/router/routes/modules/sea-import.ts`<br/>`src/views/sea-import-admin/list.vue`<br/>`src/views/sea-import-admin/form.vue`<br/>`src/views/sea-import-admin/editor.vue`<br/>`src/views/sea-import-admin/data.ts`<br/>`src/views/sea-import-admin/orderFee/data.ts`<br/>`src/api/sea-import/sea-import-admin.ts`<br/>`src/api/sea-import/order-fee-admin.ts`<br/>`src/api/sea-import/change-order-admin.ts` |
+| 权限口径 | `Admin.SeaImport` |
+| 关键源码 | `src/router/routes/modules/operation-management.ts`<br/>`src/views/sea-import-admin/editor.vue`<br/>`src/views/sea-import-admin/basic-info-form/form.vue`<br/>`src/views/sea-import-admin/orderFee/`<br/>`src/views/sea-import-admin/changeOrder/`<br/>`src/views/sea-import-admin/attachments/` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **基础信息维护：** 加载并维护委托主数据与运输单字段。
-- **干系人角色约束：** 基础信息表单中的销售、商务、操作、客服、单证角色不可删除、不可重复；销售与操作必须指定人员。
-- **费用处理：** 在订单费用子模块维护应收应付、费用状态和提交审核。
-- **更改单处理：** 处理业务变更带来的费用或单据信息调整。
-- **业务子模块：** 出口侧包含派车、分单等扩展能力；进口侧以费用、更改单和单据信息为主。
+- **基础信息维护：** `KeepAlive` 嵌入 `basic-info-form/form.vue`，布局与新建页相同。
+- **费用 Tab：** 应收/应付费用；Tab 标签费用数量由 editor 直接查分页 `totalCount` 汇总。
+- **更改单 / 附件：** 进口侧子模块；左侧概要字段按进口 DTO（承运人 `cnShortName`、港口 `portName` 等）。
+- **委托编号：** 编辑态可一键重新生成。
+- **复制：** 保存下拉支持复制整单（可选复制费用）。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -50,6 +50,7 @@ last_updated: 2026-06-07
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-04 | `Feat` | 编辑工作台基础信息对齐出口版式；新增附件 Tab；费用数量由 editor 直查；概要字段改用进口 DTO 正确属性名。 | 基础信息组件为 `basic-info-form/form.vue`（`SeaImportAdminForm`），不再使用根目录 `form.vue`。 |
 | 2026-07-25 | `Perf` | 箱型选择从 option 取名称，选中时不再请求箱型详情 | 与海出同构的 `order-ctn-table`；`@change` 写 `ctnCodeName`，`syncCtnNameMap` 仅兜底回显 |
 | 2026-06-07 | `Refactor` | 编辑态服务项目值映射改为运行时读取 `ServiceType` 枚举，不再使用本地固定值常量。 | 详情回填与保存提交共用同一枚举映射，避免海运进口与海运出口在服务项值上出现偏差。 |
 | 2026-05-17 | `Fix` | 修复干系人补录场景：新增角色后角色下拉保持可用，仅禁用重复角色选项，支持在缺失角色中手动选择。 | 无 |

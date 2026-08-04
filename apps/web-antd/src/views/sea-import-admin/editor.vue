@@ -1,46 +1,136 @@
 <script lang="ts" setup>
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
+
 import { Page } from '@vben/common-ui';
 
-import Form from './form.vue';
-import orderFee from './orderFee/index.vue';
-import defaultInfo from './modules/default-info.vue';
-import changeOrder from '#/views/sea-import-admin/changeOrder/index.vue';
+import { getOrderFeePagedList } from '#/api/sea-import/order-fee-admin';
+import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
+import { $t } from '#/locales';
+import { buildBrandStorageKey } from '#/utils/brand-storage';
 
-type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
-type FormSectionTabKey = 'basic' | 'party' | 'shipment' | 'port';
-type TabKey =
-  | FormSectionTabKey
-  | 'fee'
-  | 'billInfo'
-  | 'issueRecord'
-  | 'changeHistory';
-type FormExpose = { scrollToSection: (key: SectionKey) => void };
+import attachments from './attachments/index.vue';
+import Form from './basic-info-form/form.vue';
+import changeOrder from './changeOrder/index.vue';
+import orderFee from './orderFee/index.vue';
+
+type SectionKey = 'basic' | 'cargo' | 'party' | 'port' | 'shipment';
+type TabKey = 'attachments' | 'basic' | 'changeOrder' | 'fee';
+type FormExpose = {
+  isFormDirty: () => boolean | Promise<boolean>;
+  scrollToSection: (key: SectionKey) => void;
+};
+
+const VALID_TAB_KEYS: readonly TabKey[] = [
+  'basic',
+  'fee',
+  'changeOrder',
+  'attachments',
+] as const;
+
+const TAB_STORAGE_KEY_PREFIX = 'sea-import-edit-active-tab';
+
+function isValidTabKey(key: string): key is TabKey {
+  return (VALID_TAB_KEYS as readonly string[]).includes(key);
+}
+
+function getTabStorageKey(id: string) {
+  return buildBrandStorageKey(`${TAB_STORAGE_KEY_PREFIX}:${id}`);
+}
+
+function readStoredTab(id: string | undefined): null | TabKey {
+  if (!id) return null;
+  try {
+    const raw = sessionStorage.getItem(getTabStorageKey(id));
+    if (raw && isValidTabKey(raw)) return raw;
+  } catch {
+    // sessionStorage 不可用时忽略
+  }
+  return null;
+}
+
+function writeStoredTab(id: string | undefined, tab: TabKey) {
+  if (!id) return;
+  try {
+    sessionStorage.setItem(getTabStorageKey(id), tab);
+  } catch {
+    // sessionStorage 不可用时忽略
+  }
+}
+
 const formRef = ref<FormExpose | null>(null);
-const activeTab = ref<TabKey>('basic');
-const tabs: Array<{ key: TabKey; label: string; sectionKey?: SectionKey }> = [
+const route = useRoute();
+
+const editId = computed<string | undefined>(() => {
+  const id = route.params.id;
+  if (Array.isArray(id)) return id[0];
+  return id ? String(id) : undefined;
+});
+
+/** 按委托 ID 记忆当前 Tab，离开后再进入时恢复 */
+const activeTab = ref<TabKey>(readStoredTab(editId.value) ?? 'basic');
+
+watch(editId, (id) => {
+  activeTab.value = readStoredTab(id) ?? 'basic';
+});
+
+watch(activeTab, (tab) => {
+  writeStoredTab(editId.value, tab);
+});
+
+const feeNumber = ref<string>('');
+const feeName = computed(() =>
+  feeNumber.value ? `应收应付 ${feeNumber.value}` : '应收应付',
+);
+
+const tabs = computed<
+  { key: TabKey; label: string; sectionKey?: SectionKey }[]
+>(() => [
   { key: 'basic', label: '基础信息', sectionKey: 'basic' },
-  { key: 'party', label: '更改单', sectionKey: 'party' },
-  { key: 'shipment', label: '服务详情', sectionKey: 'shipment' },
-  { key: 'port', label: '单证信息', sectionKey: 'port' },
-  { key: 'fee', label: '应收应付' },
-  { key: 'billInfo', label: '单据信息' },
-  { key: 'issueRecord', label: '问题记录' },
-  { key: 'changeHistory', label: '修改历史' },
-];
+  { key: 'fee', label: feeName.value },
+  { key: 'changeOrder', label: '更改单' },
+  { key: 'attachments', label: $t('seaImport.import.attachments.tabTitle') },
+]);
+
+const setFeeNumber = (recCount: number, payCount: number) => {
+  feeNumber.value = `${recCount} - ${payCount}`;
+};
+
+const loadOrderFeeNumber = async () => {
+  if (!editId.value) return;
+  try {
+    const [receive, pay] = await Promise.all(
+      [0, 1].map((paySide) =>
+        getOrderFeePagedList({
+          TransportOrderId: editId.value,
+          PaySide: paySide,
+          PageIndex: 1,
+          PageSize: 999,
+        }),
+      ),
+    );
+    setFeeNumber(receive?.totalCount ?? 0, pay?.totalCount ?? 0);
+  } catch {
+    // 费用数量仅用于 Tab 标签展示，失败时静默
+  }
+};
+loadOrderFeeNumber();
 
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
   if (!tab.sectionKey) return;
   nextTick(() => {
-    formRef.value?.scrollToSection(tab.sectionKey);
+    formRef.value?.scrollToSection(tab.sectionKey as SectionKey);
   });
 };
 
-const onSectionChange = (sectionKey: SectionKey) => {
-  if (sectionKey === 'cargo') return;
-  activeTab.value = sectionKey;
-};
+// 编辑工作台未保存拦截：无论当前停留在哪个内部标签，离开路由时都基于基础信息表单的脏状态二次确认
+useUnsavedGuard({
+  isDirty: async () => {
+    const check = formRef.value?.isFormDirty;
+    return check ? await check() : false;
+  },
+});
 
 const contentTabsStyle = {
   display: 'flex',
@@ -78,7 +168,7 @@ const getContentTabStyle = (isActive: boolean) =>
 
 <template>
   <Page auto-content-height content-class="!p-0">
-    <div class="flex min-w-0 flex-1 flex-col gap-2">
+    <div class="flex min-w-0 flex-1 flex-col">
       <div class="content-tabs" :style="contentTabsStyle">
         <span
           v-for="tab in tabs"
@@ -91,16 +181,20 @@ const getContentTabStyle = (isActive: boolean) =>
           {{ tab.label }}
         </span>
       </div>
-      <div class="flex items-stretch gap-3">
-        <changeOrder v-if="activeTab === 'party'" />
+      <div class="flex flex-1 items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
-          <orderFee v-if="activeTab === 'fee'" />
-          <Form
-            v-if="activeTab === 'basic'"
-            ref="formRef"
-            embedded
-            @section-change="onSectionChange"
-          />
+          <KeepAlive include="ChangeOrder">
+            <changeOrder v-if="activeTab === 'changeOrder'" />
+          </KeepAlive>
+          <KeepAlive include="OrderFee">
+            <orderFee v-if="activeTab === 'fee'" />
+          </KeepAlive>
+          <KeepAlive include="SeaImportAttachments">
+            <attachments v-if="activeTab === 'attachments'" />
+          </KeepAlive>
+          <KeepAlive include="SeaImportAdminForm">
+            <Form v-if="activeTab === 'basic'" ref="formRef" embedded />
+          </KeepAlive>
         </div>
       </div>
     </div>

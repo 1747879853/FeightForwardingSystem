@@ -13,7 +13,9 @@ import CodeGoodsSelect from '#/adapter/component/biz-select/code-goods-select.vu
 import CodePackageSelect from '#/adapter/component/biz-select/code-package-select.vue';
 import { $t } from '#/locales';
 
-const modelValue = defineModel<SeaImportAdminApi.OrderCtnAddDto[]>({
+import { calcCtnNetWeight } from '../basic-info-form/sea-import-detail-mapper';
+
+const modelValue = defineModel<SeaImportAdminApi.OrderCtnEditDto[]>({
   default: () => [],
 });
 
@@ -36,7 +38,7 @@ const ctnNameById = ref<Record<string, string>>({});
 const loadingCtnNameIds = new Set<string>();
 
 const syncCtnNameMap = async (
-  rows: SeaImportAdminApi.OrderCtnAddDto[] = [],
+  rows: SeaImportAdminApi.OrderCtnEditDto[] = [],
 ) => {
   for (const row of rows) {
     const anyRow = row as any;
@@ -72,6 +74,7 @@ const ctnSummary = computed(() => {
   const ctnTypeCounter = new Map<string, number>();
   let totalPkgs = 0;
   let totalGrossWeight = 0;
+  let totalNetWeight = 0;
 
   for (const row of list) {
     const anyRow = row as any;
@@ -87,8 +90,10 @@ const ctnSummary = computed(() => {
 
     const pkgsValue = Number(row.pkgs ?? 0);
     const grossWeightValue = Number(row.grossWeight ?? 0);
+    const netWeightValue = Number(row.netWeight ?? 0);
     if (Number.isFinite(pkgsValue)) totalPkgs += pkgsValue;
     if (Number.isFinite(grossWeightValue)) totalGrossWeight += grossWeightValue;
+    if (Number.isFinite(netWeightValue)) totalNetWeight += netWeightValue;
   }
 
   const ctnTypeText =
@@ -100,6 +105,7 @@ const ctnSummary = computed(() => {
     ctnTypeText,
     totalPkgs: formatSummaryNumber(totalPkgs),
     totalGrossWeight: formatSummaryNumber(totalGrossWeight),
+    totalNetWeight: formatSummaryNumber(totalNetWeight),
   };
 });
 
@@ -129,13 +135,21 @@ const removeSelectedRows = () => {
 
 const updateRow = (
   index: number,
-  field: keyof SeaImportAdminApi.OrderCtnAddDto,
+  field: keyof SeaImportAdminApi.OrderCtnEditDto,
   value: any,
 ) => {
   const list = [...(modelValue.value ?? [])];
   if (!list[index])
     list[index] = { _rowKey: `ctn_${++rowKeyCounter}_${Date.now()}` } as any;
-  list[index] = { ...list[index], [field]: value };
+  const next = { ...list[index], [field]: value };
+  // 净重由毛重/皮重带出，但仍允许手改：只在改毛重或皮重时重算
+  if (field === 'grossWeight' || field === 'tareWeight') {
+    const derived = calcCtnNetWeight(next.grossWeight, next.tareWeight);
+    if (derived !== undefined) {
+      next.netWeight = derived;
+    }
+  }
+  list[index] = next;
   modelValue.value = list;
 };
 
@@ -256,9 +270,7 @@ watch(
             "
             class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')"
-            @change="
-              (v: any, option: any) => handleCtnCodeChange(index, v, option)
-            "
+            @change="(v, option) => handleCtnCodeChange(index, v, option)"
           />
         </template>
         <template v-else-if="column.key === 'ctnNo'">
@@ -318,6 +330,33 @@ watch(
             :controls="false"
             :precision="2"
             @update:value="(v) => updateRow(index, 'tareWeight', v)"
+          />
+        </template>
+        <template v-else-if="column.key === 'netWeight'">
+          <InputNumber
+            :value="record.netWeight"
+            :placeholder="$t('seaImport.import.netWeight')"
+            class="w-full"
+            :min="0"
+            :controls="false"
+            :precision="2"
+            @update:value="(v) => updateRow(index, 'netWeight', v)"
+          />
+        </template>
+        <template v-else-if="column.key === 'model'">
+          <Input
+            :value="record.model"
+            :placeholder="$t('seaImport.import.model')"
+            allow-clear
+            @update:value="(v) => updateRow(index, 'model', v)"
+          />
+        </template>
+        <template v-else-if="column.key === 'specification'">
+          <Input
+            :value="record.specification"
+            :placeholder="$t('seaImport.import.specification')"
+            allow-clear
+            @update:value="(v) => updateRow(index, 'specification', v)"
           />
         </template>
         <template v-else-if="column.key === 'volume'">
@@ -387,9 +426,24 @@ watch(
         width="90"
       />
       <Table.Column
+        key="netWeight"
+        :title="$t('seaImport.import.netWeight')"
+        width="90"
+      />
+      <Table.Column
         key="volume"
         :title="$t('seaImport.import.volume')"
         width="90"
+      />
+      <Table.Column
+        key="model"
+        :title="$t('seaImport.import.model')"
+        width="110"
+      />
+      <Table.Column
+        key="specification"
+        :title="$t('seaImport.import.specification')"
+        width="110"
       />
       <Table.Column
         key="codeGoodsId"
@@ -399,7 +453,7 @@ watch(
       <Table.Column
         key="remark"
         :title="$t('seaImport.import.remark')"
-        min-width="100"
+        :min-width="100"
       />
     </Table>
     <div
@@ -417,6 +471,10 @@ watch(
       <span>
         {{ $t('seaImport.import.grossWeight') }}
         {{ ctnSummary.totalGrossWeight }}
+      </span>
+      <span>
+        {{ $t('seaImport.import.netWeight') }}
+        {{ ctnSummary.totalNetWeight }}
       </span>
     </div>
   </div>

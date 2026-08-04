@@ -1,230 +1,84 @@
 <script lang="ts" setup>
+import type { OrderFeeAdminApi } from '#/api/sea-import/order-fee-admin';
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
-import dayjs from 'dayjs';
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
+import { Users } from '@vben/icons';
 
-import {
-  ArrowLeft,
-  FileText,
-  MapPin,
-  Package,
-  Save,
-  Ship,
-  Users,
-} from '@vben/icons';
+import dayjs from 'dayjs';
 
 import { Button, Card, message, Space, Spin } from 'ant-design-vue';
 
-import * as feeConstants from '#/views/sea-import-admin/orderFee/data';
+import { EditAsync } from '#/api/sea-import/change-order-admin';
 import { getSeaImportDetail } from '#/api/sea-import/sea-import-admin';
-
 import { $t } from '#/locales';
-
 import OrderFeeTable from '#/views/sea-import-admin/orderFee/modules/order-fee-table.vue';
+
 import ChangeOrderTable from './table.vue';
 
-import type { OrderFeeAdminApi } from '#/api/sea-import/order-fee-admin';
-import type { ChangeOrderAdminApi } from '#/api/sea-import/change-order-admin';
-
-import { EditAsync } from '#/api/sea-import/change-order-admin';
+defineOptions({ name: 'ChangeOrder' });
 
 const route = useRoute();
-const router = useRouter();
 
 const editId = computed(() => {
   const id = route.params.id;
   return id ? String(id) : undefined;
 });
 
-// 创建 ref 引用
-const changeOrderTableRef = ref(null);
-
-const isEdit = computed(() => !!editId.value);
+const changeOrderTableRef = ref<any>(null);
 
 const pageLoading = ref(false);
-const submitting = ref(false);
 const transportOrderId = ref<string>();
 
-/** 左侧表单：相关方信息（发货人、收货人、通知人等） */
-// const [PartyInfoForm, partyInfoFormApi] = useVbenForm({
-//   layout: 'vertical',
-//   compact: true,
-//   schema: usePartyInfoFormSchema(),
-//   showDefaultActions: false,
-//   wrapperClass: 'flex flex-col',
-// });
-
-/** DatePicker 需要的 dayjs 对象，API 返回的是字符串 */
-const toDayjs = (val: string | null | undefined) =>
-  val && dayjs(val).isValid() ? dayjs(val) : undefined;
-
-/** 提交时 dayjs/日期 转回 ISO 字符串 */
-const toDateString = (val: unknown) => {
-  if (val == null) return undefined;
-  const d = dayjs(val as string | Date);
-  return d.isValid() ? d.toISOString() : undefined;
-};
-/** ISO 字符串转正常日期格式 */
+/** ISO 字符串转展示格式 */
 const formatNormalDate = (
-  val: string | null | undefined,
-  format = 'YYYY-MM-DD HH:mm:ss',
+  val: null | string | undefined,
+  format = 'YYYY-MM-DD',
 ) => {
   if (!val) return '--';
   const d = dayjs(val);
   return d.isValid() ? d.format(format) : '--';
 };
 
-const formValues = ref<Record<string, any>>();
-const to = ref<Record<string, any>>();
+const detailData = ref<SeaImportAdminApi.SeaImportDto>();
+const to = ref<SeaImportAdminApi.TransportOrderDto>();
 
-const displayList = ref<any[]>([]);
-
-const setDisplayList = () => {
-  let mbl = {
-    name: $t('seaImport.import.mblNum'),
-    value: to.value?.mblNum || '--',
-  };
-  displayList.value.push(mbl);
-  let bookingNum = {
-    name: $t('seaImport.import.bookingNum'),
-    value: to.value?.bookingNum || '--',
-  };
-  displayList.value.push(bookingNum);
-  let receivePort = {
-    name: $t('seaImport.import.receivePortId'),
-    value: formValues.value?.receivePortName || '--',
-  };
-  displayList.value.push(receivePort);
-  let pol = {
-    name: $t('seaImport.import.polId'),
-    value: formValues.value?.polName || '--',
-  };
-  displayList.value.push(pol);
-  let poT1 = {
-    name: $t('seaImport.import.poT1Id'),
-    value: formValues.value?.poT1Name || '--',
-  };
-  displayList.value.push(poT1);
-  let poT2 = {
-    name: $t('seaImport.import.poT2Id'),
-    value: formValues.value?.poT2Name || '--',
-  };
-  displayList.value.push(poT2);
-  let pod = {
-    name: $t('seaImport.import.podId'),
-    value: formValues.value?.podName || '--',
-  };
-  displayList.value.push(pod);
-  let deliverPort = {
-    name: $t('seaImport.import.deliverPortId'),
-    value: formValues.value?.deliverPortName || '--',
-  };
-  displayList.value.push(deliverPort);
-  let codeSource = {
-    name: $t('seaImport.import.codeSourceId'),
-    value: to.value?.codeSourceName || '--',
-  };
-  displayList.value.push(codeSource);
-  let commissionNum = {
-    name: $t('seaImport.import.commissionNum'),
-    value: to.value?.commissionNum || '--',
-  };
-  displayList.value.push(commissionNum);
-  let clientName = {
-    name: $t('seaImport.import.clientId'),
-    value: to.value?.clientName || '--',
-  };
-  displayList.value.push(clientName);
-  let teamName = {
-    name: $t('seaImport.import.teamId'),
-    value: to.value?.teamName || '--',
-  };
-  displayList.value.push(teamName);
-  let vessel = {
-    name: $t('seaImport.import.vessel'),
-    value: formValues.value?.vessel || '--',
-  };
-  displayList.value.push(vessel);
-  let innerVoyno = {
-    name: $t('seaImport.import.innerVoyno'),
-    value: formValues.value?.innerVoyno || '--',
-  };
-  displayList.value.push(innerVoyno);
-  let carrier = {
-    name: $t('seaImport.import.carrierId'),
-    value: formValues.value?.carrierName || '--',
-  };
-  displayList.value.push(carrier);
-  let etd = {
-    name: $t('seaImport.import.etd'),
-    value: formatNormalDate(formValues.value?.etd) || '--',
-  };
-  displayList.value.push(etd);
-  let eta = {
-    name: $t('seaImport.import.eta'),
-    value: formatNormalDate(formValues.value?.eta) || '--',
-  };
-  displayList.value.push(eta);
-  let closingTime = {
-    name: $t('seaImport.import.closingTime'),
-    value: formatNormalDate(formValues.value?.closingTime) || '--',
-  };
-  displayList.value.push(closingTime);
-  let closeVgmTime = {
-    name: $t('seaImport.import.closeVgmTime'),
-    value: formatNormalDate(formValues.value?.closeVgmTime) || '--',
-  };
-  displayList.value.push(closeVgmTime);
-  let closeDocTime = {
-    name: $t('seaImport.import.closeDocTime'),
-    value: formatNormalDate(formValues.value?.closeDocTime) || '--',
-  };
-  displayList.value.push(closeDocTime);
-  let closeManifestTime = {
-    name: $t('seaImport.import.closeManifestTime'),
-    value: formatNormalDate(formValues.value?.closeManifestTime) || '--',
-  };
-  displayList.value.push(closeManifestTime);
-  let signingTime = {
-    name: $t('seaImport.import.signingTime'),
-    value: formatNormalDate(formValues.value?.signingTime) || '--',
-  };
-  displayList.value.push(signingTime);
-  let codeServiceName = {
-    name: $t('seaImport.import.codeServiceId'),
-    value: formValues.value?.codeServiceName || '--',
-  };
-  displayList.value.push(codeServiceName);
-  let codeFrtName = {
-    name: $t('seaImport.import.codeFrtId'),
-    value: formValues.value?.codeFrtName || '--',
-  };
-  displayList.value.push(codeFrtName);
-  let noPkgs = {
-    name: $t('seaImport.import.noPkgs'),
-    value: to.value?.noPkgs || '--',
-  };
-  displayList.value.push(noPkgs);
-  let kgs = {
-    name: $t('seaImport.import.kgs'),
-    value: to.value?.kgs || '--',
-  };
-  displayList.value.push(kgs);
-  let cbm = {
-    name: $t('seaImport.import.cbm'),
-    value: to.value?.cbm || '--',
-  };
-  displayList.value.push(cbm);
-  let goodsDes = {
-    name: $t('seaImport.import.goodsDes'),
-    value: to.value?.goodsDes || '--',
-  };
-  displayList.value.push(goodsDes);
-};
+/** 左侧概要：海运进口关注的字段 */
+const displayList = computed(() => {
+  const data = detailData.value;
+  const order = to.value;
+  const t = (key: string) => $t(`seaImport.import.${key}`);
+  return [
+    { name: t('commissionNum'), value: order?.commissionNum },
+    { name: t('mblNum'), value: order?.mblNum },
+    { name: t('bookingNum'), value: order?.bookingNum },
+    { name: t('clientId'), value: order?.client?.name },
+    { name: t('teamId'), value: order?.team?.name },
+    { name: t('vessel'), value: data?.vessel },
+    { name: t('innerVoyno'), value: data?.innerVoyno },
+    { name: t('carrierId'), value: data?.carrier?.cnShortName },
+    { name: t('polId'), value: data?.pol?.portName },
+    { name: t('podId'), value: data?.pod?.portName },
+    { name: t('originCountryId'), value: data?.originCountry?.countryName },
+    { name: t('arrivalDate'), value: formatNormalDate(order?.etd) },
+    { name: t('invoiceNum'), value: data?.invoiceNum },
+    { name: t('batchNum'), value: data?.batchNum },
+    { name: t('totalCtn'), value: order?.totalCtn },
+    { name: t('pkgs'), value: order?.pkgs },
+    { name: t('kgs'), value: order?.kgs },
+    { name: t('cbm'), value: order?.cbm },
+    { name: t('goodsDes'), value: order?.goodsDes },
+  ].map((item) => ({
+    name: item.name,
+    value:
+      item.value === null || item.value === undefined || item.value === ''
+        ? '--'
+        : String(item.value),
+  }));
+});
 const changeOrder = ref<any>(null);
 
 const PayOrderFeeRef = ref<any>(null);
@@ -245,10 +99,8 @@ const loadSeaImportData = async () => {
   try {
     const detail = await getSeaImportDetail(editId.value);
     transportOrderId.value = detail.transportOrder?.id;
-    formValues.value = detail;
+    detailData.value = detail;
     to.value = detail.transportOrder;
-    console.log('detail', formValues.value);
-    setDisplayList();
   } finally {
     pageLoading.value = false;
   }
@@ -375,9 +227,17 @@ onMounted(() => {
                 {{ $t('seaImport.import.formCardInfo') }}
               </span>
             </template>
-            <div class="flex flex-1 px-1 py-1" v-for="item in displayList">
-              <span class="flex w-[85px]"> {{ `${item.name} : ` }}</span>
-              <span class="flex w-[145px]">{{ item.value || '--' }}</span>
+            <div
+              v-for="item in displayList"
+              :key="item.name"
+              class="flex flex-1 px-1 py-1"
+            >
+              <span class="flex w-[85px] shrink-0 text-gray-500">
+                {{ `${item.name}：` }}
+              </span>
+              <span class="flex min-w-0 flex-1 break-all">{{
+                item.value
+              }}</span>
             </div>
           </Card>
         </div>

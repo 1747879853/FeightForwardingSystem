@@ -2,7 +2,7 @@
 title: 海运进口列表
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-08-04
 ---
 
 # 1. 业务背景说明 (Background)
@@ -16,15 +16,16 @@ last_updated: 2026-05-16
 | 页面路由 | `/sea-imports` |
 | 路由名称 | `SeaImportList` |
 | 页面组件 | `src/views/sea-import-admin/list.vue` |
-| 权限口径 | 未在路由中声明独立权限 |
-| 关键源码 | `src/router/routes/modules/sea-import.ts`<br/>`src/views/sea-import-admin/list.vue`<br/>`src/views/sea-import-admin/form.vue`<br/>`src/views/sea-import-admin/editor.vue`<br/>`src/views/sea-import-admin/data.ts`<br/>`src/views/sea-import-admin/orderFee/data.ts`<br/>`src/api/sea-import/sea-import-admin.ts`<br/>`src/api/sea-import/order-fee-admin.ts`<br/>`src/api/sea-import/change-order-admin.ts` |
+| 权限口径 | `Admin.SeaImport` |
+| 关键源码 | `src/router/routes/modules/operation-management.ts`<br/>`src/views/sea-import-admin/list.vue`<br/>`src/views/sea-import-admin/data.ts`<br/>`src/views/sea-import-admin/use-sea-import-copy.ts`<br/>`src/api/sea-import/sea-import-admin.ts` |
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **委托检索：** 按查询区条件分页加载委托单。
-- **行选中：** 单选列表**仅点击 radio 才选中**（`radioConfig.trigger: 'default'`），单击行不切换选中。
-- **进入编辑：** 双击或选择记录后进入 `/sea-imports/:id/edit`。
-- **进入新建：** 通过新增动作进入 `/sea-imports/create`。
+- **委托检索：** 按查询区条件分页加载委托单（含进口特有筛选字段）。
+- **分组统计：** 支持列表分组 Tabs。
+- **复制 / 删除：** 工具栏复制（可选复制费用）、批量删除。
+- **进入编辑：** 进入 `/sea-imports/:id/edit`。
+- **进入新建：** 进入 `/sea-imports/create`。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -48,5 +49,6 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-04 | `Feat` | 列表按进口接口重建列与搜索；支持分组统计、复制、删除；权限 `Admin.SeaImport`。 | 复制逻辑抽至 `use-sea-import-copy.ts`。 |
 | 2026-07-12 | `Fix` | 列表仅点击 radio 才选中，单击行不再切换选中。 | `radioConfig.trigger` 由 `'row'` 改为 `'default'`；费用子表同步。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/sea-imports` 对应组件 `src/views/sea-import-admin/list.vue`，权限口径为 未在路由中声明独立权限。 |
