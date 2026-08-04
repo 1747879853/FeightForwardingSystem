@@ -160,8 +160,8 @@ const ORDER_INFO_PRIORITY_KEYS = [
   'poT1Name',
   'poT2Name',
   'closingTime',
-  'closeVgmTime',
   'closeDocTime',
+  'closeVgmTime',
   'closeManifestTime',
   'teamName',
   'codeSourceName',
@@ -276,13 +276,13 @@ const allDisplayFields: DisplayFieldConfig[] = [
     visible: true,
   },
   {
-    key: 'closeVgmTime',
-    label: $t('seaExport.export.closeVgmTime'),
+    key: 'closeDocTime',
+    label: $t('seaExport.export.closeDocTime'),
     visible: true,
   },
   {
-    key: 'closeDocTime',
-    label: $t('seaExport.export.closeDocTime'),
+    key: 'closeVgmTime',
+    label: $t('seaExport.export.closeVgmTime'),
     visible: true,
   },
   {

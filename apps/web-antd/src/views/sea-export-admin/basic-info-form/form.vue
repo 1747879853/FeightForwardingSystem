@@ -2197,14 +2197,14 @@ const loadEditData = async () => {
 };
 
 /**
- * 校验截关类时间（截VGM/截单/截舱单）需早于开船日期与实际开船。
+ * 校验截关类时间（截单/截港/截关）需早于开船日期与实际开船。
  * 任一截关时间晚于开船日期或实际开船（按日期比较）时提示并阻止保存。
  */
 const validateShipmentDates = async (): Promise<boolean> => {
   const values = await shipmentFormApi.getValues();
   const cutTimeFields = [
-    { field: 'closeVgmTime', labelKey: 'seaExport.export.closeVgmTime' },
     { field: 'closeDocTime', labelKey: 'seaExport.export.closeDocTime' },
+    { field: 'closeVgmTime', labelKey: 'seaExport.export.closeVgmTime' },
     {
       field: 'closeManifestTime',
       labelKey: 'seaExport.export.closeManifestTime',
