@@ -35,6 +35,21 @@ export namespace ExpenseSubmissionAdminApi {
     /** 费用列表 */
     orderFeeIds?: string[];
   }
+
+  /** 更改单简易信息 */
+  export interface ChangeOrderSimpleDto {
+    /** 更改单 id */
+    id: string;
+    /** 更改单会计期间（只取月的部分） */
+    accountDate: string;
+    /** 更改原因 */
+    reason?: string | null;
+    /** 排序 id */
+    sortId: number;
+    /** 该更改单是否已费用锁定 */
+    feeLocked: boolean;
+  }
+
   export interface TransportOrderSimpleDto {
     /** 货好时间 */
     goodsCompleteTime?: string | null;
@@ -195,9 +210,12 @@ export namespace ExpenseSubmissionAdminApi {
   export interface OrderFeeAuditListDto {
     id: string;
     entityId?: string;
+    /** 更改单 id，为 null 代表这条任务是主单的费用任务 */
+    changeOrderId?: string | null;
     remark?: string;
     transportOrder: TransportOrderSimpleDto;
     creatorUserName?: string;
+    /** 只统计本任务所属更改单的费用条数 */
     taskItemCount?: number;
     orderFeeTasks?: OrderFeeAndTaskDto[];
   }
@@ -352,6 +370,9 @@ export namespace ExpenseSubmissionAdminApi {
     /** 关联业务id 就是TransportOrder.Id */
     entityId?: string;
 
+    /** 更改单 id。有值代表这一行是该更改单的费用任务，为 null 代表这一行是主单的费用任务 */
+    changeOrderId?: string | null;
+
     /** 应付费用最小状态(没有就是空)*/
     feeStatusPay?: number;
 
@@ -362,15 +383,18 @@ export namespace ExpenseSubmissionAdminApi {
 
     transportOrder: TransportOrderSimpleDto;
 
+    /** 更改单信息，主单行为 null */
+    changeOrder?: ChangeOrderSimpleDto | null;
+
     creatorUserName?: string;
 
-    /** 本业务的费用提交待处理数量*/
+    /** 本行的费用提交待处理数量*/
     submitOrderFeeItemCount?: number;
 
-    /* 本业务的费用提交待处理数量 */
+    /* 本行的费用申请修改待处理数量 */
     modifyOrderFeeItemCount?: number;
 
-    /* 本业务的费用删除待处理数量 */
+    /* 本行的费用申请删除待处理数量 */
     deleteOrderFeeItemCount?: number;
 
     /** 一条费用一个子任务 子任务若有待处理的 则是最后一条待处理任务(待处理一般情况下只能有一条 所以最后一条是多余操作) 若无待处理的 则是最后一条审核完成的任务(因为最后一条审核完成的支持审核后驳回) 详情有这个字段*/
@@ -391,7 +415,7 @@ export namespace ExpenseSubmissionAdminApi {
     /** 最后修改人 ID */
     lastModifierUserId?: number;
 
-    /** 创建时间 */
+    /** 创建时间 - 本行(业务+更改单)最新一条任务的创建时间，也是列表的排序依据 */
     creationTime: string;
 
     /** 创建人 ID */
@@ -416,6 +440,14 @@ export namespace ExpenseSubmissionAdminApi {
     orderFeeIds: string[];
   }
 
+  /** 批量审核行项目DTO */
+  export interface OrderFeeTaskBatchAuditItemDto {
+    /** 业务 id，就是列表行的 entityId */
+    transportOrderId: string;
+    /** 更改单 id，就是列表行的 changeOrderId。不传代表审核该业务主单的费用任务 */
+    changeOrderId?: string | null;
+  }
+
   export interface OrderFeeTaskBatchAuditDto {
     /** 审核意见 是否通过 */
     success: boolean;
@@ -423,8 +455,11 @@ export namespace ExpenseSubmissionAdminApi {
     /** 备注 */
     remark?: string | null;
 
-    /** 业务id列表*/
+    /** 业务id列表（兼容字段，items 有值时本字段被忽略）*/
     transportOrderIds?: string[] | null;
+
+    /** 要审核的行列表，与列表行一一对应。推荐使用 */
+    items?: OrderFeeTaskBatchAuditItemDto[] | null;
   }
 
   export interface ModifyOrderFeeAuditDto {
@@ -542,6 +577,40 @@ export const submitOrderFeeDetailAsync = (params: { id: string }) => {
   );
 };
 
+/** 获取费用申请修改列表 */
+export const getModifyOrderFeeList = (
+  params: ExpenseSubmissionAdminApi.GetPagedListParams,
+) => {
+  return requestClient.get<ExpenseSubmissionAdminApi.PagedListOfOrderFeeAuditListDto>(
+    `${API_PREFIX}/ModifyOrderFeeListAsync`,
+    { params },
+  );
+};
+
+export const modifyOrderFeeDetailAsync = (params: { id: string }) => {
+  return requestClient.get<ExpenseSubmissionAdminApi.OrderFeeAuditListDto>(
+    `${API_PREFIX}/ModifyOrderFeeDetailAsync`,
+    { params },
+  );
+};
+
+/** 获取费用申请删除列表 */
+export const getDeleteOrderFeeList = (
+  params: ExpenseSubmissionAdminApi.GetPagedListParams,
+) => {
+  return requestClient.get<ExpenseSubmissionAdminApi.PagedListOfOrderFeeAuditListDto>(
+    `${API_PREFIX}/DeleteOrderFeeListAsync`,
+    { params },
+  );
+};
+
+export const deleteOrderFeeDetailAsync = (params: { id: string }) => {
+  return requestClient.get<ExpenseSubmissionAdminApi.OrderFeeAuditListDto>(
+    `${API_PREFIX}/DeleteOrderFeeDetailAsync`,
+    { params },
+  );
+};
+
 /** 获费用提交任务 审核 */
 export const submitOrderFeeAuditAsync = (
   data: ExpenseSubmissionAdminApi.SubmitOrderFeeAuditDto,
@@ -583,7 +652,10 @@ export const getOrderFeeTaskList = (
 };
 
 /** 费用所有任务 详情 费用包含了已删除费用 参数传关联业务id 就是TransportOrder的Id  */
-export const OrderFeeTaskDetailAsync = (params: { id: string }) => {
+export const OrderFeeTaskDetailAsync = (params: {
+  id: string;
+  changeOrderId?: string;
+}) => {
   return requestClient.get<ExpenseSubmissionAdminApi.OrderFeeTaskListDto>(
     `${API_PREFIX}/OrderFeeTaskDetailAsync`,
     { params },

@@ -170,20 +170,13 @@ const startHorizontalDrag = (e: MouseEvent) => {
   document.body.style.userSelect = 'none';
 };
 
-const props = withDefaults(
-  defineProps<{
-    orderName?: string;
-    transportOrderId?: string;
-    entityId?: string;
-    feeTableType?: string;
-  }>(),
-  {
-    orderName: '',
-    transportOrderId: '',
-    entityId: '',
-    feeTableType: '',
-  },
-);
+const props = defineProps<{
+  orderName?: string;
+  transportOrderId?: string;
+  entityId?: string;
+  feeTableType?: string;
+  changeOrderId?: string | null; // ✅ 新增：更改单 id，用于精确定位费用任务
+}>();
 
 const route = useRoute();
 const router = useRouter();
@@ -460,12 +453,12 @@ const changeStandaloneTableType = (type: string) => {
   standaloneTableType.value = type;
 };
 
-const getTableDate = () => {
+const getTableDate = (changeOrderId?: string | null) => {
   if (childRecRef.value) {
-    childRecRef.value.getTableDate();
+    childRecRef.value.getTableDate(changeOrderId || null);
   }
   if (childPayRef.value) {
-    childPayRef.value.getTableDate();
+    childPayRef.value.getTableDate(changeOrderId || null);
   }
 };
 const transCurrencySymbol = (currencyId: number) => {
@@ -772,6 +765,7 @@ onMounted(() => {
                 @update-select-data="handleReceivableTableSelect"
                 :transportOrderId="resolvedTransportOrderId"
                 :entityId="resolvedEntityId"
+                :changeOrderId="props.changeOrderId"
                 :type="0"
                 ref="childRecRef"
               />
@@ -818,6 +812,7 @@ onMounted(() => {
                 @update-select-data="handlePayableTableSelect"
                 :transportOrderId="resolvedTransportOrderId"
                 :entityId="resolvedEntityId"
+                :changeOrderId="props.changeOrderId"
                 :type="1"
                 ref="childPayRef"
               />
