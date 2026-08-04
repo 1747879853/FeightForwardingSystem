@@ -735,7 +735,7 @@ function transformToTreeData(
           sequenceNumber: index + 1, // ✅ 序号从1开始
           commissionNum: item.orderFee?.transportOrder?.commissionNum || '-', // 委托编号
           mblNum: item.orderFee?.transportOrder?.mblNum || '-', // 主提单号
-          hblNum: '-', // 分提单号（需要从其他地方获取）
+          //hblNum: '-', // 分提单号（需要从其他地方获取）
           clientName: item.orderFee?.transportOrder?.clientName || '-', // 委托单位
           etd: (() => {
             const etdValue = item.orderFee?.transportOrder?.etd;
@@ -752,7 +752,7 @@ function transformToTreeData(
           currencyCode: item.orderFee?.currencyCode || '-', // 币别
           amount: item.orderFee?.amount || 0, // 金额
           exchangeRate: 1, // 汇率
-          salesPerson: '-', // 销售
+          saleNames: item.orderFee?.transportOrder?.saleNames || '-', // 销售
           invoiceCurrencyCode: app.currencyCode || '-', // 发票币别
           appliedAmountOriginal: item.appliedAmount || 0, // 开票申请金额（原币）
           settlementAmount: 0, // 结算金额
@@ -1000,13 +1000,13 @@ const appChildColumns = computed(() => [
     minWidth: 140,
     ellipsis: true,
   },
-  {
-    title: '分提单号',
-    dataIndex: 'hblNum',
-    key: 'hblNum',
-    width: 100,
-    ellipsis: true,
-  },
+  // {
+  //   title: '分提单号',
+  //   dataIndex: 'hblNum',
+  //   key: 'hblNum',
+  //   width: 100,
+  //   ellipsis: true,
+  // },
   {
     title: '委托单位',
     dataIndex: 'clientName',
@@ -1055,13 +1055,13 @@ const appChildColumns = computed(() => [
     width: 60,
     align: 'right' as const,
   },
-  // {
-  //   title: '销售',
-  //   dataIndex: 'salesPerson',
-  //   key: 'salesPerson',
-  //   minWidth: 100,
-  //   ellipsis: true,
-  // },
+  {
+    title: '销售',
+    dataIndex: 'saleNames',
+    key: 'saleNames',
+    width: 100,
+    ellipsis: true,
+  },
   {
     title: '发票币别',
     dataIndex: 'invoiceCurrencyCode',

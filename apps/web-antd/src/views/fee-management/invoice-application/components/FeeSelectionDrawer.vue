@@ -552,6 +552,24 @@ watch(
   },
 );
 
+/** 计算按币别分组的选中费用合计 */
+const selectedFeesByCurrency = computed(() => {
+  const selectedFees = getSelectedFeesFromTable();
+  const currencyMap: Record<string, { total: number; currencyCode: string }> = {};
+  
+  selectedFees.forEach((fee: any) => {
+    const currencyCode = fee.currencyCode || '未知币别';
+    const appliedAmount = fee.appliedAmount || 0;
+    
+    if (!currencyMap[currencyCode]) {
+      currencyMap[currencyCode] = { total: 0, currencyCode };
+    }
+    currencyMap[currencyCode].total += appliedAmount;
+  });
+  
+  return Object.values(currencyMap);
+});
+
 // 费用表格列定义（一级 - 运输订单）
 const feeParentColumns = computed(() => [
   {
@@ -878,6 +896,33 @@ defineExpose({
           </template>
         </Table>
       </div>
+      
+      <!-- 勾选合计显示区域 -->
+      <div 
+        v-if="selectedFeesByCurrency.length > 0"
+        style="
+          margin-top: 16px;
+          padding: 12px;
+          background: #f5f5f5;
+          border: 1px solid #d9d9d9;
+          border-radius: 4px;
+        "
+      >
+        <div style="font-weight: bold; margin-bottom: 8px; color: #333">
+          勾选合计:
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+          <div 
+            v-for="currencyGroup in selectedFeesByCurrency" 
+            :key="currencyGroup.currencyCode"
+            style="display: flex; align-items: center; gap: 4px;"
+          >
+            <span style="font-weight: 600; color: #1890ff;">{{ currencyGroup.currencyCode }}:</span>
+            <span style="color: #ff4d4f; font-weight: bold;">{{ currencyGroup.total.toFixed(2) }}</span>
+          </div>
+        </div>
+      </div>
+
     </Spin>
 
     <template #footer>
