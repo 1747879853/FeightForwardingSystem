@@ -152,7 +152,7 @@ function getCreatorUserName(
   record: PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyDto,
 ): string {
   // TODO: 需要从详情中获取申请人信息，这里暂时返回占位符
-  return  record.settlement?.creatorUserName || '-';
+  return  record.userName || '-';
 }
 
 /**

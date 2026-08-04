@@ -596,6 +596,7 @@ export namespace PaymentSettlementAdminApi {
     settledAmount: number;
     settledPrice: number;
     orderFees: OrderFeeDto[];
+    userName?: string;
   }
 
   /** 付费结算详情DTO（按原币） */
