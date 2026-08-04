@@ -143,6 +143,7 @@ onMounted(() => {
 const transportOrderId = ref<string>('');
 const orderName = ref<string>('');
 const entityId = ref<string>('');
+const changeOrderId = ref<string | null>(null);
 
 /**
  * 清空选中的订单信息
@@ -151,6 +152,7 @@ const clearSelectedOrder = () => {
   transportOrderId.value = '';
   entityId.value = '';
   orderName.value = '';
+  changeOrderId.value = null;
 };
 
 const handleRowDblclick = ({
@@ -166,8 +168,14 @@ const handleRowDblclick = ({
   }
   transportOrderId.value = row.transportOrder.id || '';
   entityId.value = row.entityId || '';
+  changeOrderId.value = row.changeOrderId || null;
   const mblNum = row.transportOrder.mblNum || '--';
   orderName.value = `当前选中: ${mblNum}(${row.transportOrder.clientName})`;
+
+  // ✅ 关键变更：点行进详情时，必须把该行的 changeOrderId 原样回传
+  if (detailRef.value) {
+    detailRef.value.getTableDate(row.changeOrderId || null);
+  }
 };
 
 const [Grid, gridApi] =
@@ -193,7 +201,10 @@ const [Grid, gridApi] =
         trigger: 'default',
       },
       rowConfig: {
-        keyField: 'entityId',
+        // ✅ 关键变更：行 key 从 entityId 改为 entityId + changeOrderId 组合
+        // 同一票会出现多行（主单 + 各更改单），只用 entityId 会导致选中态串行、详情打开错行
+        keyField: 'entityId + changeOrderId',
+        isCurrent: true,
       },
       pagerConfig: {
         enabled: true,
@@ -237,18 +248,27 @@ const SubmittedOther = async (e: any) => {
 };
 
 const detailRef = ref<any>(null);
+
+/**
+ * ✅ 关键变更：批量审核改用 items 参数，按行精确审核
+ * @param approve - 是否通过
+ * @param modalRemark - 审核备注
+ * @param items - 要审核的行列表（包含 transportOrderId 和 changeOrderId）
+ */
 const OrderFeeAudit = (
   approve: boolean,
   modalRemark: string,
-  ids: string[],
+  items: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditItemDto[],
 ) => {
   let OrderFeeTaskBatchAuditDto: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditDto =
     {
       success: approve,
       remark: modalRemark,
-      transportOrderIds: ids,
+      items: items, // ✅ 使用 items 参数进行精确审核
     };
-  // console.log(OrderFeeAuditDto);
+
+  console.log('📋 [批量审核] 审核参数:', OrderFeeTaskBatchAuditDto);
+
   OrderFeeTaskBatchAudit(OrderFeeTaskBatchAuditDto).then(() => {
     message.success({
       content: $t('ui.actionMessage.operationSuccess'),
@@ -261,17 +281,41 @@ const OrderFeeAudit = (
   });
 };
 
+/**
+ * 审核选中的行
+ */
 const selectPass = (approve: boolean, modalRemark: string) => {
-  let list = gridApi?.grid.getCheckboxRecords();
+  let list =
+    gridApi?.grid.getCheckboxRecords() as ExpenseSubmissionAdminApi.OrderFeeTaskListDto[];
 
-  const ids = list.map((item) => item.transportOrder?.id);
-  OrderFeeAudit(approve, modalRemark, ids);
+  // ✅ 构建 items 数组，包含 entityId 和 changeOrderId
+  const items: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditItemDto[] =
+    list.map((item) => ({
+      transportOrderId: item.entityId || '',
+      changeOrderId: item.changeOrderId || null,
+    }));
+
+  console.log('📋 [选中审核] 选中的行:', items);
+  OrderFeeAudit(approve, modalRemark, items);
 };
 
+/**
+ * 审核所有行
+ */
 const allPass = (approve: boolean, modalRemark: string) => {
-  let tableData = gridApi.grid.getTableData().tableData;
-  const ids = (tableData ?? []).map((item) => item.transportOrder?.id);
-  OrderFeeAudit(approve, modalRemark, ids);
+  let tableData = gridApi.grid.getTableData()
+    .tableData as ExpenseSubmissionAdminApi.OrderFeeTaskListDto[];
+
+  // ✅ 构建 items 数组，包含 entityId 和 changeOrderId
+  const items: ExpenseSubmissionAdminApi.OrderFeeTaskBatchAuditItemDto[] = (
+    tableData ?? []
+  ).map((item) => ({
+    transportOrderId: item.entityId || '',
+    changeOrderId: item.changeOrderId || null,
+  }));
+
+  console.log('📋 [全部审核] 所有行:', items);
+  OrderFeeAudit(approve, modalRemark, items);
 };
 const showConfirmWithRemark = (approve: boolean = true, type: string = '') => {
   let modalRemark = '';
@@ -387,6 +431,7 @@ const changeTableType = (type: string) => {
       :orderName="orderName"
       :transportOrderId="transportOrderId"
       :entityId="entityId"
+      :changeOrderId="changeOrderId"
       ref="detailRef"
       :feeTableType="feeTableType"
     />

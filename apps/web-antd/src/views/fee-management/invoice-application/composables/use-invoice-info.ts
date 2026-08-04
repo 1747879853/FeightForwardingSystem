@@ -40,6 +40,11 @@ export function useInvoiceInfo(
           isDefault: selectedClientInvoiceInfo.value?.isDefault,
           banks: selectedClientInvoiceInfo.value?.clientInvoiceBanks?.length || 0,
         });
+        
+        // ✅ 新增：自动填充客户开票要求（仅当开票要求字段为空时）
+        if (selectedClientInvoiceInfo.value && (!formData.value.require || formData.value.require.trim() === '')) {
+          formData.value.require = selectedClientInvoiceInfo.value.require || '';
+        }
       } else {
         console.log('📋 保持已选中的客户开票信息:', {
           id: selectedClientInvoiceInfo.value?.id,
@@ -154,6 +159,11 @@ export function useInvoiceInfo(
     if (selectedInfo) {
       selectedClientInvoiceInfo.value = selectedInfo;
       updateClientBankByCurrency();
+      
+      // ✅ 新增：自动填充客户开票要求（仅当开票要求字段为空时）
+      if (!formData.value.require || formData.value.require.trim() === '') {
+        formData.value.require = selectedInfo.require || '';
+      }
     }
   }
 

@@ -22,7 +22,13 @@ import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import { useColumns, useGridFormSchema } from './base/data';
 
+// 添加权限检查相关导入
+import { useAccessStore } from '@vben/stores';
+
 const router = useRouter();
+
+// 获取权限存储
+const accessStore = useAccessStore();
 
 const handleCreate = () => {
   router.push('/clients/create');
@@ -42,7 +48,10 @@ const handleRowDblclick = ({
   if (column?.type === 'checkbox') {
     return;
   }
-  handleEdit(row);
+  // 只有有编辑权限时才允许双击编辑
+  if (hasEditPermission.value) {
+    handleEdit(row);
+  }
 };
 
 const selectedRows = ref<ClientAdminApi.ClientDto[]>([]);
@@ -55,6 +64,25 @@ const canAddDishonest = computed(
 const canCancelDishonest = computed(
   () => selectedRows.value.length === 1 && selectedRows.value[0]?.isDishonest,
 );
+
+// 添加新建权限检查
+const canCreate = computed(() => {
+  return accessStore.accessCodes.includes('Admin.Client.Add');
+});
+
+// 添加编辑权限检查
+const hasEditPermission = computed(() => {
+  return accessStore.accessCodes.includes('Admin.Client.Edit');
+});
+
+// 添加删除权限检查  
+const hasDeletePermission = computed(() => {
+  return accessStore.accessCodes.includes('Admin.Client.Delete');
+});
+
+// 更新编辑和删除的可用性计算属性
+const canEditWithPermission = computed(() => canEdit.value && hasEditPermission.value);
+const canDeleteWithPermission = computed(() => canDelete.value && hasDeletePermission.value);
 
 const syncSelectedRows = () => {
   selectedRows.value =
@@ -338,16 +366,20 @@ useRefreshListOnFormReturn('ClientList', handleRefresh);
         </Button>
         <Button
           class="mr-2"
-          :disabled="!canDelete"
+          :disabled="!canDeleteWithPermission"
           danger
           @click="handleDeleteSelected"
         >
           {{ $t('common.delete') }}
         </Button>
-        <Button class="mr-2" :disabled="!canEdit" @click="handleEditSelected">
+        <Button class="mr-2" :disabled="!canEditWithPermission" @click="handleEditSelected">
           {{ $t('common.edit') }}
         </Button>
-        <Button type="primary" @click="handleCreate">
+        <Button 
+          type="primary" 
+          :disabled="!canCreate"
+          @click="handleCreate"
+        >
           <Plus class="size-5" />
           {{ $t('ui.actionTitle.create') }}
         </Button>

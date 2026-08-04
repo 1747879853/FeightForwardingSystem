@@ -280,7 +280,7 @@ async function handleFeeDetailRefresh() {
                 appliedAmount: item.appliedAmount,
                 settlementUnit: fee.orderFee.settlementName || '-',
                 payReceiveType:
-                  fee.orderFee.payReceiveType === 'AR' ? '应收' : '应付',
+                  fee.orderFee.paySide === 0 ? '应收' : '应付',
                 feeName: fee.orderFee.feeCodeName || '-',
                 amount: fee.orderFee.amount,
                 currencyCode: fee.orderFee.currencyCode || '-',
@@ -421,7 +421,7 @@ async function handleOpenFeeDetailModal() {
             appliedAmount: item.appliedAmount,
             settlementUnit: fee.orderFee.settlementName || '-',
             payReceiveType:
-              fee.orderFee.payReceiveType === 'AR' ? '应收' : '应付',
+              fee.orderFee.paySide === 0 ? '应收' : '应付',
             feeName: fee.orderFee.feeCodeName || '-',
             amount: fee.orderFee.amount,
             currencyCode: fee.orderFee.currencyCode || '-',

@@ -38,6 +38,7 @@ const props = defineProps<{
   type?: number; // 收付类型 0 应收 1 应付
   transportOrderId: string;
   entityId: string;
+  changeOrderId?: string | null; // ✅ 新增：更改单 id，用于精确定位费用任务
 }>();
 
 // 币别符号映射表（从API获取）
@@ -303,6 +304,7 @@ const normalizeOrderFeeWithRowKey = (
     settledAmountStr: `${transCurrencySymbol(item.currencyId)}${item.settledAmount}`,
   })) as any[];
 };
+const selectChangeOrderId = ref<string | null>(null);
 
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
   gridOptions: {
@@ -333,7 +335,15 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
           }
           const detail = await OrderFeeTaskDetailAsync({
             id: props.transportOrderId,
+            changeOrderId: selectChangeOrderId.value || undefined,
           });
+
+          console.log('📋 [费用任务详情] 查询结果:', {
+            transportOrderId: props.transportOrderId,
+            changeOrderId: selectChangeOrderId.value,
+            orderFeeTasksCount: detail.orderFeeTasks?.length || 0,
+          });
+
           const orderFeeTasks =
             detail.orderFeeTasks?.filter(
               (item) => item.paySide === props.type,
@@ -390,7 +400,9 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
   },
 });
 
-const getTableDate = async () => {
+const getTableDate = async (changeOrderId?: string | null) => {
+  selectChangeOrderId.value = changeOrderId || null;
+  await nextTick();
   gridApi.query();
 };
 
@@ -408,17 +420,33 @@ const emit = defineEmits(['updateTableData', 'updateSelectData']);
 //   { immediate: true },
 // );
 watch(
-  [() => props.transportOrderId, () => props.entityId],
-  ([newSubmissionId, newEntityId], [oldSubmissionId, oldEntityId]) => {
+  [
+    () => props.transportOrderId,
+    () => props.entityId,
+    () => props.changeOrderId,
+  ],
+  (
+    [newSubmissionId, newEntityId, newChangeOrderId],
+    [oldSubmissionId, oldEntityId, oldChangeOrderId],
+  ) => {
     // 当 ID 发生变化时（包括变为空），都重新加载数据
-    if (newSubmissionId !== oldSubmissionId || newEntityId !== oldEntityId) {
-      console.log('🔄 OrderFeeTable: transportOrderId 或 entityId 发生变化', {
-        newSubmissionId,
-        newEntityId,
-        oldSubmissionId,
-        oldEntityId,
-      });
-      getTableDate();
+    if (
+      newSubmissionId !== oldSubmissionId ||
+      newEntityId !== oldEntityId ||
+      newChangeOrderId !== oldChangeOrderId
+    ) {
+      console.log(
+        '🔄 OrderFeeTable: transportOrderId、entityId 或 changeOrderId 发生变化',
+        {
+          newSubmissionId,
+          newEntityId,
+          newChangeOrderId,
+          oldSubmissionId,
+          oldEntityId,
+          oldChangeOrderId,
+        },
+      );
+      getTableDate(newChangeOrderId);
     }
   },
   { immediate: true },

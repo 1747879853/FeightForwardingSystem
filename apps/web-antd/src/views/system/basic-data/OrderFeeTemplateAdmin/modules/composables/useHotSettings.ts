@@ -59,8 +59,29 @@ export function useHotSettings(
       ) {
         td.innerHTML = '';
 
-        // 直接显示值，假设 value 已经是 label
-        const displayValue = value || '';
+        // ✅ 关键修复：如果值是数字（ID），需要从服务项选项中查找对应的Label
+        let displayValue = '';
+        
+        if (value !== null && value !== undefined && value !== '') {
+          // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
+          const numericValue = typeof value === 'number' ? value : Number(value);
+          
+          if (!isNaN(numericValue)) {
+            // 这是一个ID，需要在服务项选项中查找
+            const serviceTypeItem = serviceTypeOptions.find(
+              (item) => item.value === numericValue,
+            );
+            
+            if (serviceTypeItem) {
+              displayValue = serviceTypeItem.label;
+            } else {
+              displayValue = String(value);
+            }
+          } else if (typeof value === 'string') {
+            // 值已经是字符串（Label），直接使用
+            displayValue = value;
+          }
+        }
 
         td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayValue || '请选择'}</span>`;
         return td;
@@ -110,12 +131,39 @@ export function useHotSettings(
       ) {
         td.innerHTML = '';
 
-        // 只显示"-"后面的字符串（费用名称）
+        // ✅ 关键修复：如果值是数字（ID），需要从费用代码列表中查找对应的Label
         let displayName = '';
-        if (value && typeof value === 'string') {
-          const parts = value.split('-');
-          // 如果有"-"，取后面的部分；否则使用原值
-          displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
+        
+        if (value !== null && value !== undefined && value !== '') {
+          // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
+          const numericValue = typeof value === 'number' ? value : Number(value);
+          
+          if (!isNaN(numericValue)) {
+            // 这是一个ID，需要在费用代码列表中查找
+            const feeCodeItem = dropdownSources.feeCodeList.value.find(
+              (item: any) => item.value === numericValue,
+            );
+            
+            if (feeCodeItem) {
+              // 找到了对应的费用代码，使用其Label
+              const label = feeCodeItem.label;
+              // 只显示"-"后面的字符串（费用名称）
+              if (label && typeof label === 'string') {
+                const parts = label.split('-');
+                displayName = parts.length > 1 ? parts.slice(1).join('-') : label;
+              } else {
+                displayName = label || '';
+              }
+            } else {
+              // 没找到对应的费用代码，显示原始值
+              displayName = String(value);
+            }
+          } else if (typeof value === 'string') {
+            // 值已经是字符串（Label），直接处理
+            const parts = value.split('-');
+            // 如果有"-"，取后面的部分；否则使用原值
+            displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
+          }
         }
 
         // 设置单元格样式和内容
@@ -176,8 +224,29 @@ export function useHotSettings(
       ) {
         td.innerHTML = '';
 
-        // 直接显示值，假设 value 已经是 label
-        const displayValue = value || '';
+        // ✅ 关键修复：如果值是数字（ID），需要从行业类别选项中查找对应的Label
+        let displayValue = '';
+        
+        if (value !== null && value !== undefined && value !== '') {
+          // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
+          const numericValue = typeof value === 'number' ? value : Number(value);
+          
+          if (!isNaN(numericValue)) {
+            // 这是一个ID，需要在行业类别选项中查找
+            const industryItem = industryOptions.find(
+              (opt) => opt.key === numericValue,
+            );
+            
+            if (industryItem) {
+              displayValue = industryItem.label;
+            } else {
+              displayValue = String(value);
+            }
+          } else if (typeof value === 'string') {
+            // 值已经是字符串（Label），直接使用
+            displayValue = value;
+          }
+        }
 
         td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayValue || '请选择'}</span>`;
         return td;
@@ -202,15 +271,6 @@ export function useHotSettings(
         // 使用缓存的客户数据动态加载
         const hotInstance = this as any;
 
-        // 调试：检查数据源是否已加载
-        console.log(
-          '📊 [settlementId source] allClientsByIndustry keys:',
-          Object.keys(dropdownSources.allClientsByIndustry.value),
-        );
-        console.log(
-          '📊 [settlementId source] allClientsByIndustry 是否为空:',
-          Object.keys(dropdownSources.allClientsByIndustry.value).length === 0,
-        );
 
         if (
           Object.keys(dropdownSources.allClientsByIndustry.value).length === 0
@@ -381,13 +441,18 @@ export function useHotSettings(
         cellProperties: any,
       ) {
         td.innerHTML = '';
-        // 关键修改：只显示"-"后面的字符串（客户名称）
+        
+        // ✅ 关键修复：如果值是数字（ID），需要从客户列表中查找对应的Label
         let displayName = '';
-        if (value && typeof value === 'string') {
-          const parts = value.split('-');
-          // 如果有"-"，取后面的部分；否则使用原值
-          displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
-        }
+        
+         if (typeof value === 'string') {
+            // 值已经是字符串（Label），直接处理
+            const parts = value.split('-');
+            console.log('🔍 [settlementId source] 尝试从客户列表中查找 Label:', value);
+            // 如果有"-"，取后面的部分；否则使用原值
+            displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
+          }
+         
         // 新增：添加省略号样式
         td.innerHTML = `<span style="color: ${displayName ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayName || '请选择'}</span>`;
         return td;
@@ -409,6 +474,46 @@ export function useHotSettings(
       source: dropdownSources.currencyList.value.map((item: any) => item.label),
       width: 100,
       strict: true,
+      // ✅ 新增：自定义renderer，确保正确显示Label而不是ID
+      renderer: function (
+        this: any,
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) {
+        td.innerHTML = '';
+        
+        // ✅ 关键修复：如果值是数字（ID），需要从币别列表中查找对应的Label
+        let displayValue = '';
+        
+        if (value !== null && value !== undefined && value !== '') {
+          // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
+          const numericValue = typeof value === 'number' ? value : Number(value);
+          
+          if (!isNaN(numericValue)) {
+            // 这是一个ID，需要在币别列表中查找
+            const currencyItem = dropdownSources.currencyList.value.find(
+              (item: any) => item.value === numericValue,
+            );
+            
+            if (currencyItem) {
+              displayValue = currencyItem.label;
+            } else {
+              displayValue = String(value);
+            }
+          } else if (typeof value === 'string') {
+            // 值已经是字符串（Label），直接使用
+            displayValue = value;
+          }
+        }
+
+        td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayValue || '请选择'}</span>`;
+        return td;
+      },
     },
     {
       data: 'currencyId_value',
@@ -447,7 +552,7 @@ export function useHotSettings(
       source: function (query: string, process: (items: string[]) => void) {
         // ✅ 关键修复：使用订单箱型动态生成单位列表
         // 这里需要从父组件获取订单箱型数据，暂时使用固定列表
-        const fixedUnits = ['票', 'TEU', '尺码', '毛重', '件数'];
+        const fixedUnits = ['票', 'TEU', '尺码', '毛重', '件数', '箱型'];
 
         // TODO: 如果需要支持订单箱型作为单位，需要从父组件传递orderCtnList
         // const ctnUnits = orderCtnList?.value?.map((ctn: any) => ctn.ctnCodeName) || [];
@@ -476,6 +581,24 @@ export function useHotSettings(
       trimDropdown: false,
       visibleRows: 10,
       width: 100,
+            renderer: function (
+        this: any,
+        instance: any,
+        td: HTMLTableCellElement,
+        row: number,
+        col: number,
+        prop: string,
+        value: any,
+        cellProperties: any,
+      ) {
+        td.innerHTML = '';
+        
+        // ✅ 关键修复：如果值是数字（ID），需要从币别列表中查找对应的Label
+        let displayValue = value;
+        
+        td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayValue || '请选择'}</span>`;
+        return td;
+      },
     },
     {
       data: 'taxRate',
@@ -508,6 +631,7 @@ export function useHotSettings(
     rowHeaders: true,
     colHeaders: true,
     height: 300,
+    rowHeights: 30, // ✅ 新增：设置固定的行高，避免行高异常
     licenseKey: 'non-commercial-and-evaluation',
     contextMenu: ['row_above', 'row_below', 'remove_row'],
     minSpareRows: 0, // ✅ 修改为0，删除后不会自动新增行

@@ -242,7 +242,16 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       minWidth: 100,
       formatter: formatAccountDate,
     },
-
+    {
+      field: 'changeOrder.reason',
+      title: '更改原因',
+      minWidth: 150,
+      formatter: ({ row }: any) => {
+        // 主单行（changeOrderId 为 null）不显示更改原因
+        if (!row.changeOrderId && !row.changeOrder) return '--';
+        return row.changeOrder?.reason || '--';
+      },
+    },
     {
       field: 'transportOrder.saleNames',
       title: $t('system.user.userAttributeOptions.sales'),

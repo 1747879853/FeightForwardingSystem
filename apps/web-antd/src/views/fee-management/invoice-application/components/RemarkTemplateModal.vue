@@ -12,6 +12,7 @@ import {
 } from 'ant-design-vue';
 import { InvoiceRemarkTemplateApi } from '#/api/Invoice/invoiceRemarkTemplate';
 import { CurrencySelect } from '#/adapter/component';
+import { UserCompanySelect } from '#/adapter/component/biz-select';
 import { getMyOrgOptions } from '#/composables/use-my-org';
 
 interface Props {
@@ -146,7 +147,10 @@ async function loadTemplateList() {
       pageIndex: 1,
       pageSize: 1000,
     };
-
+    console.log('加载模板列表 - 筛选条件:', {
+      filterCompanyId: filterCompanyId.value,
+      filterCurrencyId: filterCurrencyId.value,
+    });
     if (filterCompanyId.value) {
       params.orgId = filterCompanyId.value;
     }
@@ -723,7 +727,7 @@ defineExpose({
               >已有模板 ({{ templateList.length }})</span
             >
             <span style="color: #999">筛选:</span>
-            <Select
+            <!-- <Select
               v-model:value="filterCompanyId"
               :options="
                 companyList.map((c) => ({ label: c.displayName, value: c.id }))
@@ -731,9 +735,15 @@ defineExpose({
               placeholder="全部公司"
               style="width: 150px"
               allow-clear
+            /> -->
+            <UserCompanySelect
+              v-model="filterCompanyId"
+              placeholder="全部公司"
+              style="width: 150px"
+              allow-clear
             />
             <CurrencySelect
-              v-model:value="filterCurrencyId"
+              v-model="filterCurrencyId"
               placeholder="全部币别"
               style="width: 150px"
               allow-clear
@@ -914,11 +924,8 @@ defineExpose({
             <label style="display: block; margin-bottom: 4px; font-weight: bold"
               >所属公司</label
             >
-            <Select
-              v-model:value="formData.orgId"
-              :options="
-                companyList.map((c) => ({ label: c.displayName, value: c.id }))
-              "
+            <UserCompanySelect
+              v-model="formData.orgId"
               placeholder="请选择所属公司"
               style="width: 100%"
             />

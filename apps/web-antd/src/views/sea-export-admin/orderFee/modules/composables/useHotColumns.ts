@@ -143,6 +143,11 @@ export function useHotColumns(
           width: col.width || col.minWidth || 100,
         };
 
+        // ✅ 录入方式列宽增加30px
+        if (col.field === 'dataEntryMethod') {
+          hotCol.width = (col.width || 100) + 50;
+        }
+
         if (col.field === 'feeCodeId') {
           hotCol.type = 'autocomplete';
           hotCol.source = function (

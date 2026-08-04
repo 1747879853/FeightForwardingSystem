@@ -3,6 +3,8 @@ import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlem
 
 import { computed, ref, watch } from 'vue';
 
+import dayjs from 'dayjs';
+
 import { Button, message, Modal, Table, Tag } from 'ant-design-vue';
 
 import { formatAmount } from './form-data';
@@ -92,7 +94,7 @@ const orderFeeColumns = [
   },
   {
     title: '开船日期',
-    key: 'sailingDate',
+    key: 'etd',
     width: 120,
   },
   {
@@ -150,7 +152,7 @@ function getCreatorUserName(
   record: PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyDto,
 ): string {
   // TODO: 需要从详情中获取申请人信息，这里暂时返回占位符
-  return '张三';
+  return  record.userName || '-';
 }
 
 /**
@@ -359,17 +361,19 @@ function getOrderFees(
           <template #bodyCell="{ column, record: feeRecord }">
             <!-- 委托编号 -->
             <span v-if="column.key === 'commissionNum'">{{
-              getCommissionNum(feeRecord)
+              feeRecord.transportOrder?.commissionNum || '-'
             }}</span>
 
             <!-- 开船日期 -->
-            <span v-else-if="column.key === 'sailingDate'">{{
-              getSailingDate(feeRecord)
+            <span v-else-if="column.key === 'etd'">{{
+              feeRecord.transportOrder?.etd
+                ? dayjs(feeRecord.transportOrder.etd).format('YYYY-MM-DD')
+                : '-'
             }}</span>
 
             <!-- 主提单号 -->
             <span v-else-if="column.key === 'mblNum'">{{
-              getMblNum(feeRecord)
+              feeRecord.transportOrder?.mblNum || '-'
             }}</span>
 
             <!-- 本次结算金额 -->

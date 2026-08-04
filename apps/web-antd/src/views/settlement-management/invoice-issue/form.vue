@@ -1032,6 +1032,7 @@ onMounted(() => {
       :header-name="headerNameForDrawer"
       :added-app-ids="getAddedAppIdsArray()"
       :application-groups-data="applicationGroupsData"
+      :invoice-exchange-rate="invoiceExchangeRate"
       @save="handleFeeSelectionSave"
     />
 

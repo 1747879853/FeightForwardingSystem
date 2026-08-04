@@ -20,6 +20,7 @@ const props = defineProps<{
   type?: number; // 收付类型 0 应收 1 应付
   transportOrderId: string;
   entityId: string;
+  changeOrderId?: string | null; // ✅ 新增：更改单 id，用于精确定位费用任务
 }>();
 
 const handleModifyTask = (
@@ -89,21 +90,41 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async () => {
+        query: async ({ page = {} } = {}) => {
           if (props.transportOrderId === '') {
+            dataSource.value = [];
+            emit('updateTableData', dataSource.value);
             return [];
           }
-          const detail = await OrderFeeTaskDetailAsync({
-            id: props.transportOrderId,
-          });
-          const orderFeeTasks =
-            detail.orderFeeTasks?.filter(
-              (item) => item.paySide === props.type,
-            ) || [];
-          const modifyData = handleModifyTask(orderFeeTasks);
-          dataSource.value = normalizeOrderFeeWithRowKey(modifyData);
-          emit('updateTableData', dataSource.value);
-          return dataSource.value;
+
+          try {
+            // ✅ 关键变更：调用 OrderFeeTaskDetailAsync 时传入 changeOrderId
+            const detail = await OrderFeeTaskDetailAsync({
+              id: props.transportOrderId,
+              changeOrderId: props.changeOrderId || undefined,
+            });
+
+            console.log('📋 [海运进口-费用任务详情] 查询结果:', {
+              transportOrderId: props.transportOrderId,
+              changeOrderId: props.changeOrderId,
+              orderFeeTasksCount: detail.orderFeeTasks?.length || 0,
+            });
+
+            const orderFeeTasks =
+              detail.orderFeeTasks?.filter(
+                (item) => item.paySide === props.type,
+              ) || [];
+            const modifyData = handleModifyTask(orderFeeTasks);
+            dataSource.value = normalizeOrderFeeWithRowKey(modifyData);
+            emit('updateTableData', dataSource.value);
+            return dataSource.value;
+          } catch (error) {
+            console.error('❌ [海运进口-费用任务详情] 查询失败:', error);
+            message.error('获取费用任务详情失败');
+            dataSource.value = [];
+            emit('updateTableData', dataSource.value);
+            return [];
+          }
         },
       },
     },

@@ -243,6 +243,112 @@ function flattenTreeData(data: any[]): any[] {
   return result;
 }
 
+/** 为表格添加列宽拖拽功能 */
+function enableColumnResize(tableElement: HTMLElement | null) {
+  if (!tableElement) return;
+
+  const headers = tableElement.querySelectorAll('th');
+
+  headers.forEach((header) => {
+    if (
+      header.classList.contains('ant-table-selection-column') ||
+      header.classList.contains('ant-table-expand-icon-th')
+    ) {
+      return;
+    }
+
+    if (header.querySelector('.column-resizer')) {
+      return;
+    }
+
+    const resizer = document.createElement('div');
+    resizer.className = 'column-resizer';
+    resizer.style.cssText = `
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+      cursor: col-resize;
+      background-color: transparent;
+      transition: background-color 0.2s;
+      z-index: 10;
+    `;
+
+    resizer.addEventListener('mouseenter', () => {
+      resizer.style.backgroundColor = '#d9d9d9';
+    });
+
+    resizer.addEventListener('mouseleave', () => {
+      resizer.style.backgroundColor = 'transparent';
+    });
+
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = header.offsetWidth;
+      resizer.style.backgroundColor = '#1890ff';
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      e.preventDefault();
+    });
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const diff = e.clientX - startX;
+      const newWidth = Math.max(80, startWidth + diff);
+      header.style.width = `${newWidth}px`;
+      header.style.minWidth = `${newWidth}px`;
+      header.style.maxWidth = `${newWidth}px`;
+    };
+
+    const handleMouseUp = () => {
+      isResizing = false;
+      resizer.style.backgroundColor = 'transparent';
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    header.style.position = 'relative';
+    header.appendChild(resizer);
+  });
+}
+
+/** 为所有可见的表格启用列宽拖拽 */
+function enableResizeForAllTables() {
+  // 等待 DOM 更新完成后再查找表格元素
+  nextTick(() => {
+    const tables = document.querySelectorAll('.fee-selection-table-wrapper .ant-table-wrapper');
+    tables.forEach((table) => {
+      enableColumnResize(table as HTMLElement);
+    });
+  });
+}
+
+// 在抽屉打开后启用列宽拖拽
+watch(drawerVisible, (visible) => {
+  if (visible) {
+    // 延迟执行以确保表格已渲染
+    setTimeout(() => {
+      enableResizeForAllTables();
+    }, 100);
+  }
+});
+
+// 在数据加载完成后也尝试启用列宽拖拽
+watch(feeGroupsData, () => {
+  if (drawerVisible.value) {
+    setTimeout(() => {
+      enableResizeForAllTables();
+    }, 50);
+  }
+});
+
 /** 从表格获取选中的费用 */
 function getSelectedFeesFromTable(): any[] {
   const allSelected = flattenTreeData(feeGroupsData.value);
@@ -552,6 +658,24 @@ watch(
   },
 );
 
+/** 计算按币别分组的选中费用合计 */
+const selectedFeesByCurrency = computed(() => {
+  const selectedFees = getSelectedFeesFromTable();
+  const currencyMap: Record<string, { total: number; currencyCode: string }> = {};
+  
+  selectedFees.forEach((fee: any) => {
+    const currencyCode = fee.currencyCode || '未知币别';
+    const appliedAmount = fee.appliedAmount || 0;
+    
+    if (!currencyMap[currencyCode]) {
+      currencyMap[currencyCode] = { total: 0, currencyCode };
+    }
+    currencyMap[currencyCode].total += appliedAmount;
+  });
+  
+  return Object.values(currencyMap);
+});
+
 // 费用表格列定义（一级 - 运输订单）
 const feeParentColumns = computed(() => [
   {
@@ -799,7 +923,7 @@ defineExpose({
       </div>
 
       <!-- 费用表格 -->
-      <div style="border: 1px solid #d9d9d9; border-radius: 4px">
+      <div class="fee-order-table">
         <Table
           :columns="feeParentColumns"
           :data-source="feeGroupsData"
@@ -868,16 +992,54 @@ defineExpose({
                     :min="0"
                     :max="childRecord.remainingInvoiceAmount"
                     :precision="2"
-                    style="width: 100%"
                     size="small"
+                    class="fee-applied-amount-input w-full"
                     :disabled="childRecord.alreadyAdded"
                   />
                 </template>
               </template>
             </Table>
           </template>
+          <template #expandIcon="props">
+            <span
+              v-if="props"
+              class="expand-toggle cursor-pointer"
+              :class="{ 'expand-toggle--expanded': props.expanded }"
+              @click="props.onExpand(props.record, $event)"
+            >
+              &#9654;
+            </span>
+            <span v-else class="expand-toggle cursor-pointer">&#9654;</span>
+          </template>
         </Table>
       </div>
+      
+      <!-- 勾选合计显示区域 -->
+      <div 
+        v-if="selectedFeesByCurrency.length > 0"
+        style="
+          margin-top: 16px;
+          padding: 12px;
+          background: #f5f5f5;
+          border: 1px solid #d9d9d9;
+          border-radius: 4px;
+        "
+      >
+        <div style="font-weight: bold; margin-bottom: 8px; color: #333">
+          勾选合计:
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+          <div 
+            v-for="currencyGroup in selectedFeesByCurrency" 
+            :key="currencyGroup.currencyCode"
+            style="display: flex; align-items: center; gap: 4px;"
+          >
+            <span style="font-weight: 600; color: #1890ff;">{{ currencyGroup.currencyCode }}:</span>
+            <span style="color: #ff4d4f; font-weight: bold;">{{ currencyGroup.total.toFixed(2) }}</span>
+          </div>
+        </div>
+      </div>
+
     </Spin>
 
     <template #footer>
@@ -923,3 +1085,213 @@ defineExpose({
     </template>
   </Drawer>
 </template>
+
+<style scoped>
+/* 列宽拖拽手柄样式 */
+.column-resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  background-color: transparent;
+  transition: background-color 0.2s;
+  z-index: 10;
+}
+
+.column-resizer:hover {
+  background-color: #d9d9d9;
+}
+
+/* 确保表头可以相对定位 */
+.fee-selection-table-wrapper :deep(th) {
+  position: relative;
+}
+
+/* 仿照 add-fee-modal 的样式 */
+.fee-order-table .ellipsis-cell {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fee-order-table :deep(.fee-applied-amount-cell) {
+  padding-right: 8px !important;
+}
+
+.fee-order-table :deep(.fee-applied-amount-input .ant-input-number-input) {
+  padding-right: 28px;
+  font-weight: 600;
+  color: #1677ff;
+}
+
+.fee-order-table :deep(.ant-input-number-input) {
+  text-align: right;
+}
+
+.table-sequence-cell {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.expand-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  min-width: 14px;
+  line-height: 1;
+  transform-origin: center;
+  transition: transform 0.15s ease;
+}
+
+.expand-toggle--expanded {
+  transform: rotate(90deg);
+}
+
+/* ========== 一级表格样式 ========== */
+.fee-order-table :deep(.ant-table) {
+  border: none;
+}
+
+/* 一级表格表头 */
+.fee-order-table :deep(.ant-table-thead > tr > th) {
+  height: 35px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  background: #fafafa;
+  border-bottom: 1px solid #e8e8e8;
+  border-right: 1px solid #e8e8e8;
+  padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fee-order-table :deep(.ant-table-thead > tr > th:last-child) {
+  border-right: none;
+}
+
+/* 一级表格表体单元格 */
+.fee-order-table :deep(.ant-table-tbody > tr > td) {
+  height: 46px;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  border-right: 1px solid #e8e8e8;
+  padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fee-order-table :deep(.ant-table-tbody > tr > td:last-child) {
+  border-right: none;
+}
+
+.fee-order-table :deep(.ant-table-tbody > tr:hover > td) {
+  background: #f8fbff;
+}
+
+/* 展开列样式 */
+.fee-order-table :deep(.ant-table-expand-icon-th),
+.fee-order-table :deep(.ant-table-row-expand-icon-cell) {
+  width: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  padding: 0 !important;
+  text-align: center;
+  border-right: 1px solid #e8e8e8;
+}
+
+.fee-order-table :deep(.ant-table-row-expand-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  font-size: 10px;
+  color: #4b5563;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+/* ========== 二级表格（展开行内部表格）样式 ========== */
+.fee-order-table :deep(.ant-table-expanded-row .ant-table) {
+  margin: 0;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+}
+
+/* 二级表格表头 */
+.fee-order-table :deep(.ant-table-expanded-row .ant-table-thead > tr > th) {
+  height: 32px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #657286;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e8e8e8;
+  border-right: 1px solid #e8e8e8;
+  padding: 0 10px;
+}
+
+.fee-order-table :deep(.ant-table-expanded-row .ant-table-thead > tr > th:last-child) {
+  border-right: none;
+}
+
+/* 二级表格表体单元格 */
+.fee-order-table :deep(.ant-table-expanded-row .ant-table-tbody > tr > td) {
+  height: 32px;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  border-right: 1px solid #e8e8e8;
+  padding: 0 10px;
+}
+
+.fee-order-table :deep(.ant-table-expanded-row .ant-table-tbody > tr > td:last-child) {
+  border-right: none;
+}
+
+.fee-order-table :deep(.ant-table-expanded-row .ant-table-tbody > tr:last-child > td) {
+  border-bottom: none;
+}
+
+/* 二级表格悬停效果 */
+.fee-order-table :deep(.ant-table-expanded-row .ant-table-tbody > tr:hover > td) {
+  background: #f8fbff;
+}
+
+/* 本次结算金额列特殊样式 */
+.fee-order-table :deep(.fee-applied-amount-input .ant-input-number-input) {
+  padding-right: 28px;
+  font-weight: 600;
+  color: #1677ff;
+  text-align: right;
+}
+
+/* 收付类型标签样式 */
+.fee-order-table :deep(.ant-tag) {
+  margin: 0;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.fee-order-table :deep(.ant-tag-orange) {
+  background: #fff7e6;
+  border-color: #ffd591;
+  color: #fa8c16;
+}
+
+.fee-order-table :deep(.ant-tag-blue) {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+  color: #1890ff;
+}
+</style>

@@ -223,68 +223,13 @@ export function useFeeSelection(
    */
   async function addApplicationsToExistingInvoice(selectedApplications: any[]) {
     try {
-      // ✅ 关键修改：编辑状态下，如果已有商品明细，直接将新增申请的金额累加到第一条
-      const hasExistingGoods = goodsDetails.value.length > 0;
-      let hasManuallyAdjusted = false; // 标记是否已手动调整过金额
+      // ✅ 编辑状态下，只处理新增的申请商品明细，避免重复添加
+      console.log('✅ 编辑状态：只处理新增申请的商品明细，数量:', selectedApplications.length);
 
-      if (hasExistingGoods) {
-        console.log('✅ 已有商品明细，将新增申请金额累加到第一条');
+      // ✅ 使用合并逻辑处理新增申请的商品明细
+      await mergeGoodsDetailsFromApplications(selectedApplications);
 
-        // 计算所有新申请的总金额（转换为人民币）
-        let newApplicationsTotalRmb = 0;
-        selectedApplications.forEach((app: any) => {
-          const appliedAmount = app.totalAppliedAmount || 0;
-          const appCurrencyId = app.currencyId;
-
-          if (appCurrencyId !== 1) {
-            // 外币转人民币
-            const convertedAmount =
-              appliedAmount * (invoiceExchangeRate.value || 1);
-            newApplicationsTotalRmb += convertedAmount;
-          } else {
-            // 人民币直接累加
-            newApplicationsTotalRmb += appliedAmount;
-          }
-        });
-
-        console.log(
-          '📊 新增申请总金额（人民币）:',
-          newApplicationsTotalRmb.toFixed(2),
-        );
-
-        // ✅ 将新增金额累加到第一条商品明细
-        const firstItem = goodsDetails.value[0];
-        const taxRate = firstItem.taxRate || 0;
-        const currentAmount = firstItem.amount || 0;
-        const newAmount = currentAmount + newApplicationsTotalRmb;
-
-        console.log('🔄 累加金额到第一条商品明细:', {
-          原金额: currentAmount,
-          新增金额: newApplicationsTotalRmb,
-          新金额: newAmount,
-          税率: taxRate,
-        });
-
-        // 更新第一条商品明细的金额相关字段
-        firstItem.amount = newAmount;
-        firstItem.unitPrice = newAmount / (firstItem.quantity || 1);
-        firstItem.noTaxAmount = newAmount / (1 + taxRate / 100);
-        firstItem.taxAmount =
-          (newAmount / (1 + taxRate / 100)) * (taxRate / 100);
-
-        message.success(
-          `已将新增申请金额 ${newApplicationsTotalRmb.toFixed(2)} 累加到第一条商品明细`,
-        );
-
-        // ✅ 标记已手动调整，避免后续重复调整
-        hasManuallyAdjusted = true;
-      } else {
-        // 没有商品明细，使用原有的合并逻辑
-        console.log('⚠️ 没有商品明细，使用合并逻辑');
-        await mergeGoodsDetailsFromApplications(selectedApplications);
-      }
-
-      // ✅ 关键修复：更新 invoiceIssueItems，确保合计中的申请金额正确显示
+      // ✅ 更新 invoiceIssueItems，确保合计中的申请金额正确显示
       console.log('🔄 更新 invoiceIssueItems...');
       addSelectedApplicationsToForm(selectedApplications);
       console.log(
@@ -292,104 +237,31 @@ export function useFeeSelection(
         formData.value.invoiceIssueItems?.length || 0,
       );
 
-      // ✅ 关键逻辑：编辑状态下，添加申请后需要确保发票金额等于申请金额
-      // ⚠️ 注意：如果已经手动调整过金额，则跳过此步骤，避免重复计算
-      if (!hasManuallyAdjusted) {
-        // 计算所有申请的总金额（转换为人民币）
-        const allApplications = [...applicationGroupsData.value];
-        let totalAppliedAmountRmb = 0;
-
-        allApplications.forEach((app: any) => {
-          const appliedAmount = app.totalAppliedAmount || 0;
-          const appCurrencyId = app.currencyId;
-
-          if (appCurrencyId !== 1) {
-            // 外币转人民币
-            const convertedAmount =
-              appliedAmount * (invoiceExchangeRate.value || 1);
-            totalAppliedAmountRmb += convertedAmount;
-          } else {
-            // 人民币直接累加
-            totalAppliedAmountRmb += appliedAmount;
+      // ✅ 合并申请组数据（包括已有的和新增的）
+      if (selectedApplications.length > 0) {
+        const existingAppIds = new Set<string>();
+        applicationGroupsData.value.forEach((group: any) => {
+          if (group.id) {
+            existingAppIds.add(String(group.id));
           }
         });
 
-        console.log(
-          '📊 申请总金额（人民币）:',
-          totalAppliedAmountRmb.toFixed(2),
-        );
+        const newGroups = selectedApplications.filter((group: any) => {
+          return group.id && !existingAppIds.has(String(group.id));
+        });
 
-        // ✅ 计算当前商品明细总金额
-        const currentGoodsTotal = goodsDetails.value.reduce(
-          (sum: number, item: any) => sum + (item.amount || 0),
-          0,
-        );
-
-        console.log('📊 当前商品明细总金额:', currentGoodsTotal.toFixed(2));
-
-        // ✅ 判断是否有差异（容差 0.01）
-        const hasDifference =
-          Math.abs(totalAppliedAmountRmb - currentGoodsTotal) > 0.01;
-
-        if (hasDifference) {
-          console.log('⚠️ 检测到金额差异，需要调整商品明细');
-          console.log('  - 申请总金额:', totalAppliedAmountRmb.toFixed(2));
-          console.log('  - 商品明细总金额:', currentGoodsTotal.toFixed(2));
+        if (newGroups.length > 0) {
+          applicationGroupsData.value = [
+            ...applicationGroupsData.value,
+            ...newGroups,
+          ];
           console.log(
-            '  - 差异:',
-            (totalAppliedAmountRmb - currentGoodsTotal).toFixed(2),
+            `✅ 已合并申请数据到 applicationGroupsData: 新增 ${newGroups.length} 个申请组`,
           );
-
-          // ✅ 如果有商品明细，调整第一条的金额使其等于申请金额
-          if (goodsDetails.value.length > 0) {
-            const firstItem = goodsDetails.value[0];
-            const taxRate = firstItem.taxRate || 0;
-
-            // 计算其他行的总金额（除第一条外）
-            const otherItemsTotal = goodsDetails.value
-              .slice(1)
-              .reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
-
-            // 第一条商品的金额 = 申请总金额 - 其他行总金额
-            const firstItemAmount = totalAppliedAmountRmb - otherItemsTotal;
-
-            console.log('🔄 调整第一条商品明细金额:', {
-              原金额: firstItem.amount,
-              新金额: firstItemAmount,
-              其他行总金额: otherItemsTotal,
-              税率: taxRate,
-            });
-
-            // 更新第一条商品明细的金额相关字段
-            firstItem.amount = firstItemAmount;
-            firstItem.unitPrice = firstItemAmount / (firstItem.quantity || 1);
-            firstItem.noTaxAmount = firstItemAmount / (1 + taxRate / 100);
-            firstItem.taxAmount =
-              (firstItemAmount / (1 + taxRate / 100)) * (taxRate / 100);
-
-            message.success(
-              `已自动调整第一条商品明细金额，使开票金额等于申请金额`,
-            );
-            console.log('✅ 调整后验证:', {
-              新的商品明细总金额: goodsDetails.value
-                .reduce((sum: number, item: any) => sum + (item.amount || 0), 0)
-                .toFixed(2),
-              申请总金额: totalAppliedAmountRmb.toFixed(2),
-            });
-          } else {
-            // 没有商品明细，无法调整
-            console.warn('⚠️ 没有商品明细，无法调整金额');
-            message.warning('请先添加商品明细');
-            return;
-          }
-        } else {
-          console.log('✅ 金额一致，无需调整');
         }
-      } else {
-        console.log('✅ 已手动调整过金额，跳过自动校验调整');
       }
 
-      // 构建添加申请数据（包含调整后的商品明细）
+      // 构建添加申请数据（包含合并后的商品明细）
       const addData: InvoiceIssueApi.InvoiceIssueAddApplicationsDto = {
         id: editId.value!,
         invoiceIssueItems: selectedApplications.map((app: any) => ({
@@ -410,20 +282,23 @@ export function useFeeSelection(
         })),
       };
 
-      console.log('📤 添加申请数据（含调整后的商品明细）:', addData);
+      console.log('📤 发送添加申请请求:', {
+        新增申请数量: selectedApplications.length,
+        商品明细数量: goodsDetails.value.length,
+        总金额: goodsDetails.value.reduce(
+          (sum: number, item: any) => sum + (item.amount || 0),
+          0,
+        ).toFixed(2),
+      });
 
       // 调用添加申请接口
-      const { addApplicationsToInvoiceIssue } =
-        await import('#/api/Invoice/InvoiceIssue');
       await addApplicationsToInvoiceIssue(addData);
+      message.success('申请添加成功');
 
-      // message.success(
-      //   `成功添加 ${selectedApplications.length} 条申请，并已同步更新商品明细`,
-      // );
-      console.log('✅ 申请添加成功，商品明细已保存');
+      console.log('✅ 申请添加成功');
     } catch (error) {
       console.error('❌ 添加申请失败:', error);
-      //message.error('添加申请失败');
+      message.error('添加申请失败');
       throw error;
     }
   }

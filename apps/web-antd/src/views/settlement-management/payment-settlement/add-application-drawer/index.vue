@@ -55,7 +55,7 @@ const selectedRowKeys = ref<string[]>([]);
 const dataSource = ref<any[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
-const pageSize = ref(20);
+const pageSize = ref(10);
 
 // 结算币别选择（独立于搜索表单）
 const selectedCurrencyId = ref<number | undefined>(undefined);
@@ -83,7 +83,7 @@ const [SearchForm, searchFormApi] = useVbenForm({
   schema: useSearchSchema(),
   showDefaultActions: false,
   compact: true,
-  wrapperClass: 'grid-cols-3',
+  wrapperClass: 'grid-cols-4',
 });
 
 /** 打开抽屉 */
@@ -232,8 +232,8 @@ async function fetchData() {
           ? dayjs(endTimeStart).toISOString()
           : undefined,
         endTimeEnd: endTimeEnd ? dayjs(endTimeEnd).toISOString() : undefined,
-        skipCount: (currentPage.value - 1) * pageSize.value,
-        maxResultCount: pageSize.value,
+        pageIndex: currentPage.value,
+        pageSize: pageSize.value,
       };
 
     const result =
@@ -277,10 +277,14 @@ async function handleReset() {
 }
 
 /** 分页变化 */
-function handlePageChange(page: number, size: number) {
-  currentPage.value = page;
-  pageSize.value = size;
-  fetchData();
+async function handlePageChange(
+  pagination: any,
+  _filters: any,
+  _sorter: any,
+) {
+  currentPage.value = pagination.current;
+  pageSize.value = pagination.pageSize;
+  await fetchData();
 }
 
 /** 行选择变化 */
@@ -508,6 +512,12 @@ function formatDateTime(dateTime: string | undefined | null): string {
   return dayjs(dateTime).format('YYYY-MM-DD HH:mm:ss');
 }
 
+// 格式化日期（只到天）
+function formatDateOnly(dateTime: string | undefined | null): string {
+  if (!dateTime) return '-';
+  return dayjs(dateTime).format('YYYY-MM-DD');
+}
+
 // 获取付费申请状态 Tag 展示
 function resolveApplicationStatus(status: number) {
   return getStatusTagProps(status);
@@ -545,7 +555,7 @@ const columns: ColumnsType<PaymentSettlementAdminApi.PaymentApplicationCurrencyF
       title: '支付要求',
       dataIndex: 'require',
       key: 'require',
-      minWidth: 150,
+      width: 150,
     },
     {
       title: '申请币别',
@@ -575,19 +585,19 @@ const columns: ColumnsType<PaymentSettlementAdminApi.PaymentApplicationCurrencyF
     {
       title: '应付金额',
       key: 'payAmount',
-      width: 120,
+      width: 100,
       align: 'right',
     },
     {
       title: '应收金额',
       key: 'receiveAmount',
-      width: 120,
+      width: 100,
       align: 'right',
     },
     {
       title: '未结算费用',
       key: 'totalUnSettledAmount',
-      width: 120,
+      width: 100,
       align: 'right',
     },
     {
@@ -611,7 +621,7 @@ const columns: ColumnsType<PaymentSettlementAdminApi.PaymentApplicationCurrencyF
       title: '最晚付款时间',
       dataIndex: 'endTime',
       key: 'endTime',
-      width: 190,
+      width: 150,
     },
   ];
 
@@ -858,15 +868,15 @@ function destroyTableObserver() {
     width="90%"
     :footer-style="{ textAlign: 'right' }"
   >
-    <template #extra>
-      <Space>
-        <Button @click="handleReset">重置</Button>
-        <Button type="primary" @click="handleSearch">查询</Button>
-      </Space>
-    </template>
-
     <div style="margin-bottom: 16px">
       <SearchForm />
+      <!-- 查询和重置按钮放在查询条件后面 -->
+      <div style="margin-top: 16px; text-align: right">
+        <Space>
+          <Button @click="handleReset">重置</Button>
+          <Button type="primary" @click="handleSearch">查询</Button>
+        </Space>
+      </div>
     </div>
 
     <!-- 结算币别选择（独立于搜索表单，明显展示） -->
@@ -910,6 +920,7 @@ function destroyTableObserver() {
         showQuickJumper: true,
         showTotal: (total) => `共 ${total} 条`,
       }"
+      @change="handlePageChange"
       row-key="rowKey"
       :row-selection="{
         type: 'checkbox',
@@ -972,7 +983,7 @@ function destroyTableObserver() {
         </template>
 
         <template v-else-if="column.key === 'endTime'">
-          {{ formatDateTime(record.endTime) }}
+          {{ formatDateOnly(record.endTime) }}
         </template>
 
         <template v-else-if="column.key === 'clientName'">
