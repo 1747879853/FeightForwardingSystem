@@ -27,6 +27,10 @@ export const BusinessTypeOptions = [
     value: 1,
     label: $t('seaExport.client.paymentTerms.BizTypeOptions.seaImport'),
   },
+  {
+    value: 2,
+    label: $t('seaExport.client.paymentTerms.BizTypeOptions.airExport'),
+  },
 ];
 
 /**

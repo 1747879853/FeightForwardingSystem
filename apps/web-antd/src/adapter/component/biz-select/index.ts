@@ -1,4 +1,5 @@
 export { default as BankStatementSelect } from './bank-statement-select.vue';
+export { default as AirPortSelect } from './air-port-select.vue';
 export { default as AreaCascader } from './area-cascader.vue';
 export { default as AreaLeafCascader } from './area-leaf-cascader.vue';
 export { default as CarrierSelect } from './carrier-select.vue';

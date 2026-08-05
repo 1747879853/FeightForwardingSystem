@@ -6,6 +6,7 @@
 
 | 组件 | 用途 | 数据来源 |
 | --- | --- | --- |
+| `AirPortSelect` | 空运港口（机场）选择 | `#/api/system/base-data/air-port-admin`（`AirPort/GetPagedListAsync`，非 Admin） |
 | `AreaCascader` | 行政区划级联选择（省/市/区） | `#/api/common/area` |
 | `AreaLeafCascader` | 行政区划级联选择（省/市/区），对外只存最后一级 `areaId` | `#/api/common/area` |
 | `CarrierSelect` | 承运人选择 | `#/api/system/base-data/carrier-admin` |
@@ -66,6 +67,23 @@
 | `s` | 目的港代理 |
 | `u` | 工厂       |
 
+## AirPortSelect 扩展参数
+
+`AirPortSelect` 走业务端接口 `AirPort/GetPagedListAsync`（仅需登录），**该接口不按状态过滤**，禁用的机场也会返回，组件将其置灰（`disabled`）而非隐藏。已选机场不在当前页时，按 id 走 `AirPortAdmin/DetailAsync` 补全回显。
+
+| 参数 | 类型 | 默认 | 说明 |
+| --- | --- | --- | --- |
+| `countryId` | `number \| string` | — | 国家 id 精确筛选；传入后未选国家的机场不会出现 |
+| `labelKey` | `string \| string[]` | `'iataEnName'` | 选中回显字段；`'iataEnName'` 为 `三字码/英文名称`，也可传字段名或点路径数组 |
+| `pageSize` | `number` | `20` | 每页数量 |
+| `selectedItems` | `AirPortSelectDto[]` | `[]` | 编辑回显用的已选机场对象 |
+
+示例：
+
+```vue
+<AirPortSelect v-model="form.polId" :country-id="form.countryId" />
+```
+
 ## AreaLeafCascader（推荐用于只存末级 areaId 场景）
 
 `AreaLeafCascader` 内部使用 `AreaCascader`，但对外 `v-model` 为**最后一级地区 code**（`string`）。  
@@ -122,6 +140,13 @@
 
 - `usePagedSelect`：分页选择逻辑封装，提供远程搜索、滚动加载、选中项合并等通用能力。
 
+## usePagedSelect 已选项与搜索（2026-08-05）
+
+- **关闭态回显：** `selectedItems` / pin 在无关键词时合并进 options，保证 label 可显示。
+- **搜索态：** 有关键词时不把 pinned / selectedItems 注入候选列表；搜索结果命中已选 id 时用接口完整数据升级 pin。
+- **完整性：** `mergeSelectedItems(items, { complete: true })` 标记详情/齐全数据；分页接口写入的 value 进入 `completeValues`，精简回显项不可覆盖。
+- **防抖：** `searchDebounce` 默认 300ms（传 `0` 关闭）；输入框即时更新，实际请求延迟；下拉关闭与组件卸载会取消挂起定时器。
+
 ## usePagedSelect 搜索竞态防护（2026-05-17）
 
 为避免“先请求旧关键词、后请求新关键词”时旧请求晚回包导致历史数据回灌，`usePagedSelect` 新增了查询版本控制机制：
@@ -141,6 +166,7 @@
 - `FeeCodeSelect`
 - `FeeNameSelect`
 - `PortSelect`
+- `AirPortSelect`
 - `CountrySelect`
 - `LaneSelect`
 - `ExchangeRateSelect`

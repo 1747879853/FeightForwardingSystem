@@ -14,3 +14,8 @@ export const SeaImportShipIcon = createIconifyIcon(
   'fluent-emoji-high-contrast:ship',
   { hFlip: true },
 );
+
+/** 空运出口：机头朝右上 */
+export const AirExportPlaneIcon = createIconifyIcon(
+  'fluent-emoji-high-contrast:airplane',
+);

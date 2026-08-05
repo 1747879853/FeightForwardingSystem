@@ -528,6 +528,7 @@ export type ComponentType =
   | 'MyOrgSelect'
   | 'UserOrgSelect'
   | 'PortSelect'
+  | 'AirPortSelect'
   | 'CarrierSelect'
   | 'ClientSelect'
   | 'CtnSelect'
@@ -655,6 +656,9 @@ async function initComponentAdapter() {
     ),
     PortSelect: defineAsyncComponent(
       () => import('./biz-select/port-select.vue'),
+    ),
+    AirPortSelect: defineAsyncComponent(
+      () => import('./biz-select/air-port-select.vue'),
     ),
     CarrierSelect: defineAsyncComponent(
       () => import('./biz-select/carrier-select.vue'),

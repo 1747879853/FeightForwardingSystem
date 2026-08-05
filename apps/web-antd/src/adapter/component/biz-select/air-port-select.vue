@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { PortCodeAdminApi } from '#/api/system/base-data/port-code-admin';
+import type { AirPortApi } from '#/api/system/base-data/air-port-admin';
 
 import { computed, ref, toRef, useSlots, watch } from 'vue';
 
@@ -9,31 +9,34 @@ import { $t } from '@vben/locales';
 import { Select } from 'ant-design-vue';
 
 import {
-  getPortCodeDetail,
-  getPortCodePagedList,
-} from '#/api/system/base-data/port-code-admin';
+  getAirPortDetail,
+  getAirPortPagedList,
+} from '#/api/system/base-data/air-port-admin';
 
 import { usePagedSelect } from './use-paged-select';
 
 interface Props {
+  /** 国家 id 精确筛选，传入后仅返回该国家的机场（未选国家的机场不会出现） */
+  countryId?: number | string;
   /**
-   * 选中后下拉框展示字段；支持单字段、点路径数组（多字段以 `, ` 拼接），
-   * 或特殊值 `'ediPortCountry'`（`EDI码/港口英文名,国家英文名`）。
-   * selectedItems 回显时尽量包含数组中的字段（缺字段则跳过，有 id 时会 lazy load 详情补全）。
+   * 选中后输入框展示字段；支持单字段、点路径数组（多字段以 `, ` 拼接），
+   * 或特殊值 `'iataEnName'`（`三字码/英文名称`，默认）、
+   * `'iataCnName'`（`三字码/中文名称`，空运业务用）
    */
   labelKey?: string | string[];
   /** 每页数量，默认 20 */
   pageSize?: number;
   /** placeholder */
   placeholder?: string;
-  /** 已选中的港口对象数组（用于编辑时回显） */
-  selectedItems?: PortCodeAdminApi.PortCodeDto[];
+  /** 已选中的机场对象数组（用于编辑时回显） */
+  selectedItems?: AirPortApi.AirPortSelectDto[];
   /** value 字段名，默认 'id' */
   valueKey?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  labelKey: () => ['portName', 'country.countryEnName'],
+  countryId: undefined,
+  labelKey: 'iataEnName',
   pageSize: 20,
   placeholder: undefined,
   selectedItems: () => [],
@@ -42,7 +45,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: any];
-  /** change 事件，option 含 `raw`（完整 PortCodeDto） */
+  /** change 事件，option 含 `raw`（完整 AirPortSelectDto） */
   change: [value: any, option: any | any[]];
 }>();
 
@@ -51,14 +54,14 @@ const selectedItemsRef = toRef(props, 'selectedItems');
 const slots = useSlots();
 /** 转发到 ApiComponent 的插槽（本组件用内置 #option，故排除） */
 const forwardSlotNames = computed(() =>
-  Object.keys(slots).filter((n) => n !== 'option'),
+  Object.keys(slots).filter((name) => name !== 'option'),
 );
 
 const getNestedValue = (obj: unknown, path: string): string => {
   const parts = path.split('.');
   let cur: unknown = obj;
   for (const part of parts) {
-    if (cur == null || typeof cur !== 'object') return '';
+    if (cur === null || typeof cur !== 'object') return '';
     cur = (cur as Record<string, unknown>)[part];
   }
   return (cur ?? '').toString().trim();
@@ -66,59 +69,56 @@ const getNestedValue = (obj: unknown, path: string): string => {
 
 /**
  * 选中回显文案。
+ * - `'iataEnName'`：`三字码/英文名称`（如 PVG/Shanghai Pudong International Airport）
+ * - `'iataCnName'`：`三字码/中文名称`（如 PVG/上海浦东国际机场）
  * - 普通字段 / 字段数组：按字段取值，多字段以 `, ` 拼接
- * - `'ediPortCountry'`：`EDI码/港口英文名,国家英文名`（如 CNTAO/QINGDAO,CHINA）
  */
-const resolveLabelKey = (
-  port: PortCodeAdminApi.PortCodeDto,
+const resolveLabel = (
+  airPort: AirPortApi.AirPortSelectDto,
   labelKey: string | string[],
 ): string => {
-  if (labelKey === 'ediPortCountry') {
-    const ediCode = (port.ediCode ?? '').toString().trim();
-    const portName = (port.portName ?? '').toString().trim();
-    const countryEnName = (port.country?.countryEnName ?? '').toString().trim();
-    const head =
-      ediCode && portName
-        ? `${ediCode}/${portName}`
-        : ediCode || portName || (port.cnName ?? '').toString().trim();
-    if (!head) return String((port as Record<string, unknown>).id ?? '');
-    return countryEnName ? `${head},${countryEnName}` : head;
+  const iataCode = (airPort.iataCode ?? '').toString().trim();
+  const enName = (airPort.enName ?? '').toString().trim();
+  const cnName = (airPort.cnName ?? '').toString().trim();
+  const fallback = iataCode || enName || cnName || String(airPort.id ?? '');
+
+  if (labelKey === 'iataEnName') {
+    return iataCode && enName ? `${iataCode}/${enName}` : fallback;
+  }
+
+  // 空运出口的空港一律展示成「三字码/中文名」，缺一项时只展示有的那一项
+  if (labelKey === 'iataCnName') {
+    if (iataCode && cnName) return `${iataCode}/${cnName}`;
+    return iataCode || cnName || fallback;
   }
 
   const keys = Array.isArray(labelKey) ? labelKey : [labelKey];
   const parts = keys
-    .map((key) => getNestedValue(port, key))
+    .map((key) => getNestedValue(airPort, key))
     .filter((value) => value !== '');
-  if (parts.length > 0) return parts.join(', ');
-
-  const portAny = port as Record<string, unknown>;
-  return (
-    (port.portName ?? '').toString().trim() ||
-    (port.cnName ?? '').toString().trim() ||
-    (port.ediCode ?? '').toString().trim() ||
-    String(portAny.id ?? '')
-  );
+  return parts.length > 0 ? parts.join(', ') : fallback;
 };
 
-const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
-  const portAny = port as Record<string, unknown>;
-  const ediCode = (port.ediCode ?? '').toString().trim();
-  const countryEnName = (port.country?.countryEnName ?? '').toString().trim();
-  const cnName = (port.cnName ?? '').toString().trim();
-  const portName = (port.portName ?? '').toString().trim();
-  const rawLabel = ediCode ? `${ediCode}(${portName})` : portName;
-  const rawValue = portAny?.[props.valueKey] as number | string | undefined;
+const mapAirPortToOption = (airPort: AirPortApi.AirPortSelectDto) => {
+  const airPortAny = airPort as unknown as Record<string, unknown>;
+  const iataCode = (airPort.iataCode ?? '').toString().trim();
+  const enName = (airPort.enName ?? '').toString().trim();
+  const cnName = (airPort.cnName ?? '').toString().trim();
+  const countryEnName = (airPort.country?.countryEnName ?? '')
+    .toString()
+    .trim();
+  const city = (airPort.city ?? '').toString().trim();
+  const rawValue = airPortAny?.[props.valueKey] as number | string | undefined;
+
   return {
-    disabled: port.status === 1,
-    /** 第一行：EDI代码/港口名称 */
-    line1: [ediCode, portName].filter(Boolean).join('/'),
-    /** 第二行：国家英文名 / 中文名称 */
-    line2: [countryEnName, cnName].filter(Boolean).join(' / '),
-    label: resolveLabelKey(port, props.labelKey),
-    /** 完整港口 DTO，供业务层 @change 使用 */
-    raw: port,
-    /** 外部 label 缓存（EDI 简洁格式） */
-    rawLabel,
+    disabled: airPort.status === 1,
+    /** 第一行：三字码/英文名称 */
+    line1: iataCode && enName ? `${iataCode}/${enName}` : iataCode || enName,
+    /** 第二行：国家英文名 / 城市 / 中文名称 */
+    line2: [countryEnName, city, cnName].filter(Boolean).join(' / '),
+    label: resolveLabel(airPort, props.labelKey),
+    /** 完整机场 DTO，供业务层 @change 使用 */
+    raw: airPort,
     value:
       rawValue === undefined || rawValue === null
         ? ''
@@ -126,12 +126,23 @@ const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
   };
 };
 
+/** countryId 变化时需重置分页并重新请求 */
+const extraParamsRef = computed(() => {
+  const extra: Record<string, any> = {};
+  if (props.countryId !== undefined && props.countryId !== '') {
+    extra.CountryId = props.countryId;
+  }
+  return extra;
+});
+
 const fetchPageAdapter = async (params: {
+  CountryId?: number | string;
   KeyWords?: string;
   PageIndex: number;
   PageSize: number;
 }) => {
-  const res = await getPortCodePagedList({
+  const res = await getAirPortPagedList({
+    CountryId: params.CountryId,
     Keyword: params.KeyWords,
     PageIndex: params.PageIndex,
     PageSize: params.PageSize,
@@ -151,10 +162,11 @@ const {
   params,
   searchValue,
 } = usePagedSelect({
+  extraParamsRef,
   fetchPage: fetchPageAdapter,
-  mapItemToOption: mapPortToOption,
+  mapItemToOption: mapAirPortToOption,
   pageSize: props.pageSize,
-  queryKey: ['port'],
+  queryKey: ['air-port'],
   selectedItemsRef,
   valueKey: props.valueKey,
 });
@@ -163,11 +175,21 @@ const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
 );
 
-// 处理值变化
+const apiComponentRef = ref();
+
+/** 解析为字符串 ID，避免大数精度丢失（JS Number 安全整数上限为 2^53-1） */
+const parseIdToSafeString = (value: unknown): null | string => {
+  if (value === undefined || value === null) return null;
+  if (value === '') return null;
+  return String(value);
+};
+
+const loadedSelectedIds = ref(new Set<string>());
+
 const handleChange = (value: any) => {
   const values = Array.isArray(value) ? value : [value];
-  for (const v of values) {
-    const idStr = parseIdToSafeString(v);
+  for (const item of values) {
+    const idStr = parseIdToSafeString(item);
     if (idStr !== null) {
       loadedSelectedIds.value.add(idStr);
     }
@@ -176,58 +198,40 @@ const handleChange = (value: any) => {
   emit('update:modelValue', value);
 };
 
-// 处理 change 事件（转发 value 与含 raw 的 option）
 const handleSelectChange = (value: any, option: any | any[]) => {
   emit('change', value, option);
   handleChange(value);
 };
 
-const apiComponentRef = ref();
-
-/** 解析为字符串 ID，避免大数精度丢失（JS Number 安全整数上限为 2^53-1） */
-const parseIdToSafeString = (value: unknown): string | null => {
-  if (value === undefined || value === null) return null;
-  if (value === '') return null;
-  return String(value);
-};
-
+/**
+ * 业务端列表按关键字分页返回，已选机场可能不在当前页，
+ * 回显时按 id 走管理端详情接口（仅需登录）补全 option
+ */
 const ensureSelectedLoaded = async (rawValue: any) => {
   if (rawValue === undefined || rawValue === null || rawValue === '') return;
   const values = Array.isArray(rawValue) ? rawValue : [rawValue];
 
-  for (const v of values) {
-    const idStr = parseIdToSafeString(v);
+  for (const item of values) {
+    const idStr = parseIdToSafeString(item);
     if (idStr === null) continue;
     if (loadedSelectedIds.value.has(idStr)) continue;
 
     loadedSelectedIds.value.add(idStr);
     try {
-      const detail = await getPortCodeDetail(idStr);
-      mergeSelectedItems([detail], { complete: true });
+      const detail = await getAirPortDetail(idStr);
+      mergeSelectedItems([detail]);
     } catch {
       loadedSelectedIds.value.delete(idStr);
     }
   }
 };
 
-const loadedSelectedIds = ref(new Set<string>());
-
-/** 下拉两行展示所需字段是否齐全，不齐时仍需拉详情补全 */
-const isDisplayComplete = (port: PortCodeAdminApi.PortCodeDto): boolean =>
-  Boolean(
-    (port.ediCode ?? '').toString().trim() &&
-    (port.portName ?? '').toString().trim() &&
-    (port.cnName ?? '').toString().trim() &&
-    (port.country?.countryEnName ?? '').toString().trim(),
-  );
-
 watch(
   selectedItemsRef,
   (items) => {
     for (const item of items) {
-      if (!isDisplayComplete(item)) continue;
       const idStr = parseIdToSafeString(
-        (item as Record<string, unknown>)[props.valueKey],
+        (item as unknown as Record<string, unknown>)[props.valueKey],
       );
       if (idStr !== null) {
         loadedSelectedIds.value.add(idStr);
