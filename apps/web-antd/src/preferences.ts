@@ -13,22 +13,35 @@ export const overridesPreferences = defineOverridesPreferences({
     enablePreferences: true,
     name: import.meta.env.VITE_APP_TITLE,
     layout: 'header-sidebar-nav',
-    preferencesButtonPosition: 'header',
+    preferencesButtonPosition: 'auto',
   },
   theme: {
     mode: 'light',
+    radius: '1',
   },
   widget: {
-    themeToggle: false,
+    globalSearch: false,
+    themeToggle: true,
   },
 
   breadcrumb: {
     enable: false,
     hideOnlyOne: true,
+    showHome: true,
     styleType: 'background',
   },
+  sidebar: {
+    collapsed: true,
+    collapsedButton: false,
+    collapsedShowTitle: true,
+    fixedButton: false,
+  },
   tabbar: {
-    showIcon: false,
+    middleClickToClose: true,
+    showIcon: true,
+  },
+  transition: {
+    name: 'fade',
   },
   logo: {
     source: brandLogo,
