@@ -47,6 +47,7 @@ import {
 import { $t } from '#/locales';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
+import { NestedDataTable } from '#/components/nested-data-table';
 import {
   ClientSelect,
   CurrencySelect,
@@ -69,6 +70,8 @@ import { addByStatement as addPaymentApplicationByStatement } from '#/api/settle
 import FileUploadInput from '../../../adapter/component/file-upload/file-upload-input.vue';
 
 import AddFeeDrawer from '../add-fee-statement-modal/index.vue';
+import FeeSummaryCard from './components/fee-summary-card.vue';
+import AttachmentUpload from './components/attachment-upload.vue';
 import {
   calcConvertedTotal,
   formatAmount,
@@ -221,10 +224,6 @@ const orderGroups = computed(() =>
   groupFeesByOrder(filteredFeeDetailRows.value, currencies.value),
 );
 const expandedGroupKeys = ref<string[]>([]);
-
-const currencySummaries = computed<CurrencySummary[]>(() =>
-  summarizeByCurrency(filteredFeeDetailRows.value),
-);
 
 const isClientLocked = computed(() => feeDetailRows.value.length > 0);
 
@@ -397,7 +396,7 @@ function onEndTimeChange(_date: any, dateStr: string | string[]) {
   endTime.value = Array.isArray(dateStr) ? dateStr[0] : dateStr || undefined;
 }
 
-function onClientChange(val: string | null | undefined) {
+function onClientChange(val: unknown) {
   clientId.value = val ? String(val) : '';
   clientName.value = '';
 }
@@ -446,16 +445,16 @@ function mapDetailToFeeRows(
       rows.push({
         feeId: fee.id,
         transportOrderId: fee?.transportOrderId ?? order?.id ?? '',
-        commissionNum: order?.commissionNum,
-        mblNum: order?.mblNum,
-        clientName: order?.clientName,
-        accountDate: order?.accountDate,
-        etd: order?.etd,
-        polName: order?.seaExportPOLCnName,
-        podName: order?.seaExportPODCnName,
+        commissionNum: order?.commissionNum ?? undefined,
+        mblNum: order?.mblNum ?? undefined,
+        clientName: order?.clientName ?? undefined,
+        accountDate: order?.accountDate ?? undefined,
+        etd: order?.etd ?? undefined,
+        polName: order?.seaExportPOLCnName ?? undefined,
+        podName: order?.seaExportPODCnName ?? undefined,
         saleUserNames: order?.saleNames?.join('、'),
         operationUserNames: order?.operatorNames?.join('、'),
-        customerServiceUserNames: order?.customerServiceNames?.join('、'),
+        customerServiceUserNames: undefined,
         paySide: fee?.paySide ?? 0,
         feeCodeId: fee?.feeCodeId ?? 0,
         feeCodeName: fee?.feeCodeName,
@@ -847,7 +846,7 @@ function clearFilters() {
   filterPaySide.value = undefined;
 }
 
-function handleExportMenuClick({ key }: { key: string }) {
+function handleExportMenuClick({ key }: { key: string | number }) {
   message.info(`导出: ${key}`);
 }
 
@@ -962,6 +961,9 @@ function formatMonth(val: string | undefined | null): string {
         <div class="action-bar">
           <div class="action-bar__left">
             <span class="action-bar__title">{{ pageTitle }}</span>
+            <span v-if="isEdit" class="action-bar__statement-num">
+              {{ t('statementNum') }}: {{ statementNum }}
+            </span>
           </div>
           <div class="action-bar__right">
             <Space>
@@ -1014,94 +1016,109 @@ function formatMonth(val: string | undefined | null): string {
 
         <!-- 中间三栏布局 -->
         <div class="main-layout">
-          <!-- 左侧：申请人信息 -->
+          <!-- 左侧：基础信息 -->
           <div class="left-column">
-            <Card size="small">
-              <div class="info-grid">
-                <div class="info-item">
-                  <span class="info-label">{{ t('statementNum') }}</span>
-                  <Input
-                    :value="displayApplicationNo"
-                    :disabled="true"
-                    size="small"
-                  />
+            <Card size="small" class="basic-info-card">
+              <template #title>
+                <div class="card-title-wrapper">
+                  <span class="title-indicator"></span>
+                  <span class="font-semibold text-lg">基础信息</span>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('clientName') }}</span>
-                  <ClientSelect
-                    :model-value="clientId"
-                    :placeholder="$t('ui.placeholder.select')"
-                    :disabled="isClientLocked"
-                    size="small"
-                    @update:model-value="onClientChange"
-                  />
+              </template>
+              
+              <div class="divider-line"></div>
+              
+              <div class="info-section">
+                <!-- 第一行：客户名称、对账人、创建时间 -->
+                <div class="info-row">
+                  <div class="info-field">
+                    <label class="field-label">{{ t('clientName') }}</label>
+                    <ClientSelect
+                      :model-value="clientId"
+                      :placeholder="$t('ui.placeholder.select')"
+                      :disabled="isClientLocked"
+                      size="middle"
+                      @update:model-value="onClientChange"
+                    />
+                  </div>
+                  <div class="info-field">
+                    <label class="field-label">{{ t('applicant') }}</label>
+                    <div class="field-value-text">{{ applicantName }}</div>
+                  </div>
+                  <div class="info-field">
+                    <label class="field-label">{{ t('creationTime') }}</label>
+                    <div class="field-value-text">{{ creationTime }}</div>
+                  </div>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('applicant') }}</span>
-                  <span class="info-value">{{ applicantName }}</span>
+
+                <!-- 第二行：对账开始时间、对账结束时间、对账说明 -->
+                <div class="info-row">
+                  <div class="info-field">
+                    <label class="field-label">{{ t('startTime') }}</label>
+                    <DatePicker
+                      :value="startTime ? dayjs(startTime) : undefined"
+                      class="w-full"
+                      size="middle"
+                      format="YYYY-MM-DD"
+                      value-format="YYYY-MM-DD"
+                      @change="onStartTimeChange"
+                    />
+                  </div>
+                  <div class="info-field">
+                    <label class="field-label">{{ t('endTime') }}</label>
+                    <DatePicker
+                      :value="endTime ? dayjs(endTime) : undefined"
+                      class="w-full"
+                      size="middle"
+                      format="YYYY-MM-DD"
+                      value-format="YYYY-MM-DD"
+                      @change="onEndTimeChange"
+                    />
+                  </div>
+                  <div class="info-field">
+                    <label class="field-label">{{ t('notes') }}</label>
+                    <Input
+                      :value="statementDescription"
+                      :placeholder="$t('ui.placeholder.input')"
+                      size="middle"
+                      @update:value="(val) => (statementDescription = val)"
+                    />
+                  </div>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('creationTime') }}</span>
-                  <span class="info-value">{{ creationTime }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('startTime') }}</span>
-                  <DatePicker
-                    :value="startTime ? dayjs(startTime) : undefined"
-                    class="w-full"
-                    size="small"
-                    @change="onStartTimeChange"
-                  />
-                </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('endTime') }}</span>
-                  <DatePicker
-                    :value="endTime ? dayjs(endTime) : undefined"
-                    class="w-full"
-                    size="small"
-                    @change="onEndTimeChange"
-                  />
-                </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('notes') }}</span>
-                  <Input.TextArea
-                    :value="statementDescription"
-                    :rows="2"
-                    :placeholder="$t('ui.placeholder.input')"
-                    size="small"
-                    @update:value="(val) => (statementDescription = val)"
-                  />
-                </div>
-                <div class="info-item">
-                  <span class="info-label">{{ t('remark') }}</span>
-                  <Input.TextArea
-                    :value="remark"
-                    :rows="2"
-                    :placeholder="$t('ui.placeholder.input')"
-                    size="small"
-                    @update:value="(val) => (remark = val)"
-                  />
-                </div>
-                <!-- 新增：所属组织 -->
-                <div class="info-item">
-                  <span class="info-label">所属组织</span>
-                  <MyOrgSelect
-                    v-model:model-value="orgId"
-                    placeholder="请选择所属组织"
-                    allow-clear
-                    size="small"
-                  />
-                </div>
-                <!-- 新增：我司银行 -->
-                <div class="info-item">
-                  <span class="info-label">我司银行</span>
-                  <OrgBankAccountLinkageSelect
-                    v-model:value="orgBankAccountId"
-                    :org-id="orgId"
-                    placeholder="请选择我司银行"
-                    allow-clear
-                    size="small"
-                  />
+
+                <!-- 第三行：备注、所属组织、我司银行 -->
+                <div class="info-row">
+                  <div class="info-field">
+                    <label class="field-label">{{ t('remark') }}</label>
+                    <Input.TextArea
+                      :value="remark"
+                      :rows="1"
+                      :placeholder="$t('ui.placeholder.input')"
+                      size="middle"
+                      @update:value="(val) => (remark = val)"
+                    />
+                  </div>
+                  <!-- 新增：所属组织 -->
+                  <div class="info-field">
+                    <label class="field-label">所属组织</label>
+                    <MyOrgSelect
+                      v-model:model-value="orgId"
+                      placeholder="请选择所属组织"
+                      allow-clear
+                      size="middle"
+                    />
+                  </div>
+                  <!-- 新增：我司银行 -->
+                  <div class="info-field">
+                    <label class="field-label">我司银行</label>
+                    <OrgBankAccountLinkageSelect
+                      v-model:value="orgBankAccountId"
+                      :org-id="orgId"
+                      placeholder="请选择我司银行"
+                      allow-clear
+                      size="middle"
+                    />
+                  </div>
                 </div>
               </div>
             </Card>
@@ -1109,129 +1126,65 @@ function formatMonth(val: string | undefined | null): string {
 
           <!-- 中部：费用合计 -->
           <div class="center-column">
-            <Card size="small" class="h-full">
+            <Card size="small" class="h-full fee-summary-card">
               <template #title>
-                <div class="flex items-center gap-3">
-                  <span class="font-semibold">{{ t('feeSummary') }}</span>
+                <div class="card-title-wrapper">
+                  <span class="title-indicator"></span>
+                  <span class="font-semibold text-lg">{{ t('feeSummary') }}</span>
                 </div>
               </template>
 
-              <!-- 按票原币模式：显示各币别金额 -->
+              <div class="divider-line"></div>
 
-              <div
-                v-if="currencySummaries.length === 0"
-                class="py-4 text-center text-gray-400"
-              >
-                {{ t('noFeeWarning') }}
-              </div>
-              <div v-else class="currency-cards">
-                <div
-                  v-for="cs in currencySummaries"
-                  :key="cs.currencyId"
-                  class="currency-card"
-                >
-                  <div class="currency-card__header">
-                    <Tag color="orange">
-                      {{
-                        getCurrencyEnumOptions().find(
-                          (o) => o.value === cs.currencyId,
-                        )?.label
-                      }}{{ t('payAmount') }}</Tag
-                    >
-                    <span class="currency-card__payamount">
-                      {{
-                        getCurrencyEnumSymbolOptions().find(
-                          (o) => o.value === cs.currencyId,
-                        )?.label
-                      }}{{ formatAmount(cs.payAmount) }}
-                    </span>
-                  </div>
-                  <div class="currency-card__header mt-1">
-                    <Tag color="orange"
-                      >{{
-                        getCurrencyEnumOptions().find(
-                          (o) => o.value === cs.currencyId,
-                        )?.label
-                      }}{{ t('payUnSettledAmount') }}</Tag
-                    >
-                    <span class="currency-card__payamount">
-                      {{
-                        getCurrencyEnumSymbolOptions().find(
-                          (o) => o.value === cs.currencyId,
-                        )?.label
-                      }}{{ formatAmount(cs.payUnSettledAmount) }}
-                    </span>
-                  </div>
-                  <div class="currency-card__header mt-1">
-                    <Tag color="blue"
-                      >{{
-                        getCurrencyEnumOptions().find(
-                          (o) => o.value === cs.currencyId,
-                        )?.label
-                      }}{{ t('receivableAmount') }}</Tag
-                    >
-                    <span class="currency-card__recamount">
-                      {{
-                        getCurrencyEnumSymbolOptions().find(
-                          (o) => o.value === cs.currencyId,
-                        )?.label
-                      }}{{ formatAmount(cs.receivableAmount) }}
-                    </span>
-                  </div>
-                  <div class="currency-card__header mt-1">
-                    <Tag color="blue"
-                      >{{
-                        getCurrencyEnumOptions().find(
-                          (o) => o.value === cs.currencyId,
-                        )?.label
-                      }}{{ t('receivableUnSettledAmount') }}</Tag
-                    >
-                    <span class="currency-card__recamount">
-                      {{
-                        getCurrencyEnumSymbolOptions().find(
-                          (o) => o.value === cs.currencyId,
-                        )?.label
-                      }}{{ formatAmount(cs.receivableUnSettledAmount) }}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <!-- 使用新的费用合计组件 -->
+              <FeeSummaryCard :fee-details="filteredFeeDetailRows" />
             </Card>
           </div>
 
           <!-- 右侧：附件上传 -->
           <div class="right-column">
-            <Card size="small" class="h-full">
+            <Card size="small" class="h-full attachment-card">
               <template #title>
-                <span class="font-semibold">{{ t('attachment') }}</span>
+                <div class="card-title-wrapper">
+                  <span class="title-indicator"></span>
+                  <span class="font-semibold text-lg">{{ t('attachment') }}</span>
+                </div>
               </template>
+              
+              <div class="divider-line"></div>
+              
               <div class="attachment-area">
-                <FileUploadInput v-model="attachments" :max-count="20" />
+                <AttachmentUpload v-model="attachments" :max-count="20" />
               </div>
             </Card>
           </div>
         </div>
 
         <!-- 费用明细表格 -->
-        <Card size="small" class="mt-3">
+        <Card size="small" class="mt-3 fee-detail-card">
           <template #title>
-            <div class="flex items-center justify-between">
-              <span class="font-semibold">{{ t('feeDetail') }}</span>
-              <Space>
-                <Button type="primary" size="small" @click="handleOpenAddFee">
-                  {{ t('addFee') }}
-                </Button>
-                <Button
-                  danger
-                  size="small"
-                  :disabled="selectedRowKeys.length === 0"
-                  @click="handleDeleteSelected"
-                >
-                  {{ t('deleteFee') }}
-                </Button>
-              </Space>
+            <div class="card-title-wrapper">
+              <span class="title-indicator"></span>
+              <span class="font-semibold text-lg">{{ t('feeDetail') }}</span>
             </div>
           </template>
+          
+          <template #extra>
+            <Space class="m-2">
+              <Button type="primary" @click="handleOpenAddFee">
+                {{ t('addFee') }}
+              </Button>
+              <Button
+                danger
+                :disabled="selectedRowKeys.length === 0"
+                @click="handleDeleteSelected"
+              >
+                {{ t('deleteFee') }}
+              </Button>
+            </Space>
+          </template>
+
+          <div class="divider-line"></div>
 
           <!-- 过滤条件 -->
           <div
@@ -1310,20 +1263,41 @@ function formatMonth(val: string | undefined | null): string {
           </div>
 
           <div class="fee-group-table">
-            <Table
+            <div class="h-[450px] overflow-auto">
+              <NestedDataTable
               :columns="allColumns"
               :data-source="orderGroups"
-              :pagination="false"
-              :scroll="{ x: 'max-content', y: 500 }"
-              :children-column-name="'_none'"
+              fill-height
+              :inner-columns="feeInnerColumns"
+              inner-data-key="children"
+              inner-row-key="feeId"
               row-key="key"
-              size="small"
-              :expanded-row-keys="expandedGroupKeys"
-              @expanded-rows-change="(keys) => (expandedGroupKeys = [...keys])"
+              v-model:expanded-row-keys="expandedGroupKeys"
             >
-              <template #bodyCell="{ column, record, index }">
+              <template #outerHeaderCell="{ column }">
+                <span v-if="column.key === 'seq'" class="table-sequence-cell">
+                  <Checkbox
+                    :checked="isAllSelected"
+                    :indeterminate="isIndeterminate"
+                    @change="(e) => toggleAllSelection(e.target.checked)"
+                  />
+                  {{ column.title }}
+                </span>
+                <template v-else>{{ column.title }}</template>
+              </template>
+
+              <template #outerBodyCell="{ column, record, index }">
                 <template v-if="column.key === 'seq'">
-                  {{ index + 1 }}
+                  <span class="table-sequence-cell">
+                    <Checkbox
+                      :checked="isGroupAllSelected(record.key)"
+                      :indeterminate="isGroupIndeterminate(record.key)"
+                      @change="
+                        (e) => toggleGroupSelection(record, e.target.checked)
+                      "
+                    />
+                    {{ index + 1 }}
+                  </span>
                 </template>
                 <template v-else-if="column.key === 'etd'">
                   {{ formatDate(record.etd) }}
@@ -1331,107 +1305,64 @@ function formatMonth(val: string | undefined | null): string {
                 <template v-else-if="column.key === 'accountDate'">
                   {{ formatMonth(record.accountDate) }}
                 </template>
-                <template v-else-if="column.key === 'currencySummaries'">
-                  <div class="flex flex-wrap gap-x-3 gap-y-1">
-                    <span
-                      v-for="(cs, idx) in record.currencySummaries"
-                      :key="idx"
-                      class="inline-flex items-center gap-1"
-                    >
-                      <Tag color="blue" :bordered="false" size="small">
-                        {{ cs.currencyName }}
-                      </Tag>
-                      <strong class="text-blue-600">
-                        {{ formatAmount(cs.amount) }}
-                      </strong>
-                    </span>
-                  </div>
-                </template>
                 <template v-else>
                   {{ column.dataIndex ? record[column.dataIndex] : '' }}
                 </template>
               </template>
 
-              <template #expandColumnTitle>
-                <Checkbox
-                  :checked="isAllSelected"
-                  :indeterminate="isIndeterminate"
-                  @change="(e) => toggleAllSelection(e.target.checked)"
-                />
-              </template>
+              <template #expandColumnTitle></template>
               <template #expandIcon="{ expanded, record, onExpand }">
-                <div class="flex items-center gap-1">
+                <span
+                  class="expand-toggle cursor-pointer"
+                  :class="{ 'expand-toggle--expanded': expanded }"
+                  @click="
+                    (e) => {
+                      e.stopPropagation();
+                      onExpand(record, e);
+                    }
+                  "
+                >
+                  &#9654;
+                </span>
+              </template>
+
+              <template #innerBodyCell="{ column, record, index }">
+                <template v-if="column.key === 'checkbox'">
                   <Checkbox
-                    :checked="isGroupAllSelected(record.key)"
-                    :indeterminate="isGroupIndeterminate(record.key)"
+                    :checked="isRowSelected(record.feeId)"
                     @change="
-                      (e) => toggleGroupSelection(record, e.target.checked)
+                      (e) =>
+                        toggleRowSelection(record.feeId, e.target.checked)
                     "
                   />
-                  <span
-                    class="expand-toggle cursor-pointer"
-                    :class="{ 'expand-toggle--expanded': expanded }"
-                    @click="
-                      (e) => {
-                        e.stopPropagation();
-                        onExpand(record, e);
-                      }
-                    "
-                  >
-                    &#9654;
-                  </span>
-                </div>
+                </template>
+                <template v-else-if="column.key === 'seq'">
+                  {{ index + 1 }}
+                </template>
+                <template v-else-if="column.key === 'paySide'">
+                  <Tag :color="record.paySide === 0 ? 'blue' : 'orange'">
+                    {{ getPaySideLabel(record.paySide) }}
+                  </Tag>
+                </template>
+                <template v-else-if="column.key === 'amount'">
+                  {{ formatAmount(record.amount) }}
+                </template>
+                <template v-else-if="column.key === 'exchangeRate'">
+                  {{ record.exchangeRate }}
+                </template>
+                <template v-else-if="column.key === 'settledAmount'">
+                  {{ formatAmount(record.settledAmount) }}
+                </template>
+                <template v-else-if="column.key === 'unSettledAmount'">
+                  {{ formatAmount(record.unSettledAmount) }}
+                </template>
+                <template v-else>
+                  {{ column.dataIndex ? record[column.dataIndex] : '' }}
+                </template>
               </template>
-
-              <template #expandedRowRender="{ record: group }">
-                <div class="expanded-fee-table bg-gray-50 p-2">
-                  <Table
-                    :columns="feeInnerColumns"
-                    :data-source="group.children"
-                    :pagination="false"
-                    :scroll="{ x: 'max-content' }"
-                    row-key="feeId"
-                    size="small"
-                  >
-                    <template #bodyCell="{ column, record, index }">
-                      <template v-if="column.key === 'checkbox'">
-                        <Checkbox
-                          :checked="isRowSelected(record.feeId)"
-                          @change="
-                            (e) =>
-                              toggleRowSelection(record.feeId, e.target.checked)
-                          "
-                        />
-                      </template>
-                      <template v-else-if="column.key === 'seq'">
-                        {{ index + 1 }}
-                      </template>
-                      <template v-else-if="column.key === 'paySide'">
-                        <Tag :color="record.paySide === 0 ? 'blue' : 'orange'">
-                          {{ getPaySideLabel(record.paySide) }}
-                        </Tag>
-                      </template>
-                      <template v-else-if="column.key === 'amount'">
-                        {{ formatAmount(record.amount) }}
-                      </template>
-                      <template v-else-if="column.key === 'exchangeRate'">
-                        {{ record.exchangeRate }}
-                      </template>
-
-                      <template v-else-if="column.key === 'settledAmount'">
-                        {{ formatAmount(record.settledAmount) }}
-                      </template>
-                      <template v-else-if="column.key === 'unSettledAmount'">
-                        {{ formatAmount(record.unSettledAmount) }}
-                      </template>
-                      <template v-else>
-                        {{ column.dataIndex ? record[column.dataIndex] : '' }}
-                      </template>
-                    </template>
-                  </Table>
-                </div>
-              </template>
-            </Table>
+            </NestedDataTable>
+            </div>
+ 
             <div class="total-amount flex rounded-md px-1 py-1 shadow">
               <div
                 v-for="(item, index) in totalAmount"
@@ -1449,21 +1380,6 @@ function formatMonth(val: string | undefined | null): string {
             </div>
           </div>
 
-          <!-- <div class="fee-footer">
-            <span>
-              {{ t('orderCount', [orderGroups.length]) }}
-            </span>
-            <div class="flex items-center gap-4">
-              <span
-                v-for="cs in currencySummaries"
-                :key="cs.currencyId"
-                class="flex items-center gap-1"
-              >
-                <Tag color="blue" size="small">{{ cs.currencyName }}</Tag>
-                <strong>{{ formatAmount(cs.totalAmount) }}</strong>
-              </span>
-            </div>
-          </div> -->
         </Card>
       </div>
 
@@ -1558,8 +1474,8 @@ function formatMonth(val: string | undefined | null): string {
 .payment-app-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  //padding: 12px;
 }
 
 .action-bar {
@@ -1577,14 +1493,21 @@ function formatMonth(val: string | undefined | null): string {
   font-weight: 600;
 }
 
+.action-bar__statement-num {
+  margin-left: 24px;
+  font-size: 14px;
+  color: #8c8c8c;
+  font-weight: normal;
+}
+
 .main-layout {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 
 .left-column {
   flex-shrink: 0;
-  width: 480px;
+  width: 720px;
 }
 
 .center-column {
@@ -1597,33 +1520,94 @@ function formatMonth(val: string | undefined | null): string {
   width: 240px;
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+.basic-info-card :deep(.ant-card-head) {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
-.info-item {
+.basic-info-card :deep(.ant-card-body) {
+  padding-top: 0;
+}
+
+.fee-summary-card :deep(.ant-card-head),
+.attachment-card :deep(.ant-card-head),
+.fee-detail-card :deep(.ant-card-head) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.fee-detail-card :deep(.ant-card-head-title) {
+  flex: 1;
+}
+
+.fee-detail-card :deep(.ant-card-extra) {
+  flex-shrink: 0;
+}
+
+.fee-summary-card :deep(.ant-card-body),
+.attachment-card :deep(.ant-card-body),
+.fee-detail-card :deep(.ant-card-body) {
+  padding-top: 0;
+}
+
+.divider-line {
+  width: calc(100% - 10px);
+  height: 1px;
+  background-color: #e8e8e8;
+  margin-left: 5px;
+  margin-right: 5px;
+}
+
+.card-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-indicator {
+  width: 4px;
+  height: 16px;
+  background: linear-gradient(180deg, #91caff 0%, #1890ff 100%);
+  border-radius: 2px;
+}
+
+.info-section {
+  padding-top: 10px;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.info-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.info-label {
+.field-label {
   font-size: 13px;
   color: #8c8c8c;
-  white-space: nowrap;
+  font-weight: normal;
 }
 
-.info-value {
-  font-size: 13px;
+.field-value-text {
+  font-size: 15px;
   color: #262626;
+  font-weight: 500;
+  padding: 6px 0;
 }
 
-.currency-cards {
+.attachment-area {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  align-items: flex-start;
+  justify-content: flex-start;
 }
 
 .currency-card {
@@ -1740,6 +1724,12 @@ function formatMonth(val: string | undefined | null): string {
 .expanded-fee-table {
   max-width: 100%;
   overflow-x: auto;
+}
+
+.table-sequence-cell {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .expand-toggle {

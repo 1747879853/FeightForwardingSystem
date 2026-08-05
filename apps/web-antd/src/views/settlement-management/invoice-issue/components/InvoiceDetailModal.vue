@@ -219,7 +219,7 @@ function transformToTreeData(applications: any[]): any[] {
       orgBankAccountId: app.orgBankAccountId,
       totalGoodsAmount: app.totalGoodsAmount,
       appliedAmountRmb: app.appliedAmountRmb,
-      amountMatched: app.amountMatched,
+      code: app.code,
       clientInvoiceInfo: app.clientInvoiceInfo,
     };
 
