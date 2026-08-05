@@ -379,13 +379,13 @@ const displayList = computed(() => {
           '--';
         break;
       case 'etd':
-        value = formatNormalDate(formValues.value?.etd);
+        value = formatNormalDate(to.value?.etd, 'YYYY-MM-DD');
         break;
       case 'atd':
-        value = formatNormalDate(formValues.value?.atd);
+        value = formatNormalDate(to.value?.atd, 'YYYY-MM-DD');
         break;
       case 'eta':
-        value = formatNormalDate(formValues.value?.eta);
+        value = formatNormalDate(to.value?.eta, 'YYYY-MM-DD');
         break;
       case 'closingTime':
         value = formatNormalDate(formValues.value?.closingTime);
@@ -419,7 +419,6 @@ const displayList = computed(() => {
         break;
       case 'goodsDes':
         value = to.value?.goodsDes || '--';
-        break;
     }
 
     result.push({
