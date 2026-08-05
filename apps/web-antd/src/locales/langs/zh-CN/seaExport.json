@@ -814,7 +814,8 @@
       "operation": "操作",
       "BizTypeOptions": {
         "seaExport": "海运出口",
-        "seaImport": "海运进口"
+        "seaImport": "海运进口",
+        "airExport": "空运出口"
       },
       "SettlementTypeOptions": {
         "ticketSettlement": "票结",

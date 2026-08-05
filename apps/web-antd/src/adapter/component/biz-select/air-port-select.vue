@@ -20,7 +20,8 @@ interface Props {
   countryId?: number | string;
   /**
    * 选中后输入框展示字段；支持单字段、点路径数组（多字段以 `, ` 拼接），
-   * 或特殊值 `'iataEnName'`（`三字码/英文名称`，默认）
+   * 或特殊值 `'iataEnName'`（`三字码/英文名称`，默认）、
+   * `'iataCnName'`（`三字码/中文名称`，空运业务用）
    */
   labelKey?: string | string[];
   /** 每页数量，默认 20 */
@@ -69,6 +70,7 @@ const getNestedValue = (obj: unknown, path: string): string => {
 /**
  * 选中回显文案。
  * - `'iataEnName'`：`三字码/英文名称`（如 PVG/Shanghai Pudong International Airport）
+ * - `'iataCnName'`：`三字码/中文名称`（如 PVG/上海浦东国际机场）
  * - 普通字段 / 字段数组：按字段取值，多字段以 `, ` 拼接
  */
 const resolveLabel = (
@@ -82,6 +84,12 @@ const resolveLabel = (
 
   if (labelKey === 'iataEnName') {
     return iataCode && enName ? `${iataCode}/${enName}` : fallback;
+  }
+
+  // 空运出口的空港一律展示成「三字码/中文名」，缺一项时只展示有的那一项
+  if (labelKey === 'iataCnName') {
+    if (iataCode && cnName) return `${iataCode}/${cnName}`;
+    return iataCode || cnName || fallback;
   }
 
   const keys = Array.isArray(labelKey) ? labelKey : [labelKey];

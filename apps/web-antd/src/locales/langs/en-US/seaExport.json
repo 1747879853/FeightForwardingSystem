@@ -89,7 +89,8 @@
       "operation": "Actions",
       "BizTypeOptions": {
         "seaExport": "Sea Export",
-        "seaImport": "Sea Import"
+        "seaImport": "Sea Import",
+        "airExport": "Air Export"
       },
       "SettlementTypeOptions": {
         "ticketSettlement": "Ticket Settlement",

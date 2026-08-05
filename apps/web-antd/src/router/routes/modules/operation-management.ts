@@ -1,6 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { SeaExportShipIcon, SeaImportShipIcon } from '@vben/icons';
+import {
+  AirExportPlaneIcon,
+  SeaExportShipIcon,
+  SeaImportShipIcon,
+} from '@vben/icons';
 
 import { $t } from '#/locales';
 import { abpPageAuthority } from '#/router/abp-authority';
@@ -103,6 +107,51 @@ const routes: RouteRecordRaw[] = [
               authority: abpPageAuthority('Admin.SeaImport'),
             },
             component: () => import('#/views/sea-import-admin/editor.vue'),
+          },
+        ],
+      },
+      {
+        meta: {
+          icon: AirExportPlaneIcon,
+          title: $t('airExport.export.title'),
+          hideChildrenInMenu: true,
+          authority: abpPageAuthority('Admin.AirExport'),
+        },
+        name: 'AirExport',
+        path: '/air-exports',
+        children: [
+          {
+            path: '',
+            name: 'AirExportList',
+            meta: {
+              keepAlive: true,
+              title: $t('airExport.export.title'),
+              authority: abpPageAuthority('Admin.AirExport'),
+            },
+            component: () => import('#/views/air-export-admin/list.vue'),
+          },
+          {
+            path: 'create',
+            name: 'AirExportCreate',
+            meta: {
+              title: $t('airExport.export.title'),
+              hideInMenu: true,
+              activePath: '/air-exports',
+              authority: abpPageAuthority('Admin.AirExport'),
+            },
+            component: () =>
+              import('#/views/air-export-admin/basic-info-form/form.vue'),
+          },
+          {
+            path: ':id([0-9a-fA-F-]{36})/edit',
+            name: 'AirExportEdit',
+            meta: {
+              title: $t('airExport.export.title'),
+              hideInMenu: true,
+              activePath: '/air-exports',
+              authority: abpPageAuthority('Admin.AirExport'),
+            },
+            component: () => import('#/views/air-export-admin/editor.vue'),
           },
         ],
       },

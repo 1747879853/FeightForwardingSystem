@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-05 新增空运出口模块（列表/表单/货物明细/只读费用/附件）](./changelogs/change-log-2026-08-05-air-export-module.md)
 - [2026-08-05 新增空运港口基础资料与 AirPortSelect 业务下拉](./changelogs/change-log-2026-08-05-air-port-basic-data-and-select.md)
 - [2026-08-05 海运出口截关节点文案与顺序（截单/截港/截关）](./changelogs/change-log-2026-08-05-sea-export-cutoff-labels-order.md)
 - [2026-08-04 海运出口/进口菜单船图标朝向区分](./changelogs/change-log-2026-08-04-sea-export-import-menu-ship-icon.md)
