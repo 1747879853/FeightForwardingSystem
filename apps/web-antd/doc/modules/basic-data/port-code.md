@@ -2,7 +2,7 @@
 title: 港口代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-08-05
 ---
 
 # 1. 业务背景说明 (Background)
@@ -50,6 +50,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-05 | `Fix` | `PortSelect`：精简 `selectedItems` 不再阻断详情补全；下拉两行缺字段时容错拼接；搜索不固定钉死已选项。 | 依赖公共 `usePagedSelect` 的 pin/搜索策略与 `complete` 合并；详见 change-log-2026-08-05-paged-select-pin-search-debounce。 |
 | 2026-07-12 | `Fix` | 修复编辑港口切换国家/航线时报 `Expected number, received string`，并避免大数 ID 经 `Number()` 丢精度。 | `countryId`/`laneId` 用 `requiredSelectIdRule`（preprocess→string）；`normalizeSelectId` 提交透传；DTO 标注 `number \| string`。 |
 | 2026-05-30 | `Feature` | 路由补充 `abpPageAuthority('Admin.PortCode')`，按模块权限控制页面访问。 | 与其他基础资料子路由一致，拥有模块或 `.Get` 权限即可进入。 |
 | 2026-05-21 | `Fix` | 修复港口分页下拉在 `modelValue` 对应数据不在第一页时，详情已返回但最终 options 未包含该港口的问题。 | `port-select.vue` 通过详情接口合并已选港口，公共 `usePagedSelect` 需同步触发 `ApiComponent` 刷新其内部 options。 |

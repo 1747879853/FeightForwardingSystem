@@ -140,6 +140,13 @@
 
 - `usePagedSelect`：分页选择逻辑封装，提供远程搜索、滚动加载、选中项合并等通用能力。
 
+## usePagedSelect 已选项与搜索（2026-08-05）
+
+- **关闭态回显：** `selectedItems` / pin 在无关键词时合并进 options，保证 label 可显示。
+- **搜索态：** 有关键词时不把 pinned / selectedItems 注入候选列表；搜索结果命中已选 id 时用接口完整数据升级 pin。
+- **完整性：** `mergeSelectedItems(items, { complete: true })` 标记详情/齐全数据；分页接口写入的 value 进入 `completeValues`，精简回显项不可覆盖。
+- **防抖：** `searchDebounce` 默认 300ms（传 `0` 关闭）；输入框即时更新，实际请求延迟；下拉关闭与组件卸载会取消挂起定时器。
+
 ## usePagedSelect 搜索竞态防护（2026-05-17）
 
 为避免“先请求旧关键词、后请求新关键词”时旧请求晚回包导致历史数据回灌，`usePagedSelect` 新增了查询版本控制机制：

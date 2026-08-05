@@ -111,9 +111,9 @@ const mapPortToOption = (port: PortCodeAdminApi.PortCodeDto) => {
   return {
     disabled: port.status === 1,
     /** 第一行：EDI代码/港口名称 */
-    line1: `${ediCode}/${portName}`,
+    line1: [ediCode, portName].filter(Boolean).join('/'),
     /** 第二行：国家英文名 / 中文名称 */
-    line2: `${countryEnName} / ${cnName}`,
+    line2: [countryEnName, cnName].filter(Boolean).join(' / '),
     label: resolveLabelKey(port, props.labelKey),
     /** 完整港口 DTO，供业务层 @change 使用 */
     raw: port,
@@ -203,7 +203,7 @@ const ensureSelectedLoaded = async (rawValue: any) => {
     loadedSelectedIds.value.add(idStr);
     try {
       const detail = await getPortCodeDetail(idStr);
-      mergeSelectedItems([detail]);
+      mergeSelectedItems([detail], { complete: true });
     } catch {
       loadedSelectedIds.value.delete(idStr);
     }
@@ -212,10 +212,20 @@ const ensureSelectedLoaded = async (rawValue: any) => {
 
 const loadedSelectedIds = ref(new Set<string>());
 
+/** 下拉两行展示所需字段是否齐全，不齐时仍需拉详情补全 */
+const isDisplayComplete = (port: PortCodeAdminApi.PortCodeDto): boolean =>
+  Boolean(
+    (port.ediCode ?? '').toString().trim() &&
+    (port.portName ?? '').toString().trim() &&
+    (port.cnName ?? '').toString().trim() &&
+    (port.country?.countryEnName ?? '').toString().trim(),
+  );
+
 watch(
   selectedItemsRef,
   (items) => {
     for (const item of items) {
+      if (!isDisplayComplete(item)) continue;
       const idStr = parseIdToSafeString(
         (item as Record<string, unknown>)[props.valueKey],
       );
