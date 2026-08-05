@@ -218,9 +218,10 @@ export function collectCurrencies(
 export function buildDynamicCurrencyColumns(currencies: CurrencyInfo[]) {
   const columns: Array<{
     field: string;
+    dataIndex?: string;
     title: string;
     width: number;
-    align: string;
+    align: 'left' | 'center' | 'right';
   }> = [];
   for (const c of currencies) {
     columns.push({
@@ -286,6 +287,11 @@ export function buildOrderRow(
     //   order.orderUsers,
     //   PaymentApplicationAdminApi.UserAttribute.CustomerService,
     // ),
+    // 添加嵌套的费用数据
+    _fees: (order.orderFees ?? []).map((fee) => ({
+      ...fee,
+      _orderId: order.id,
+    })),
   };
   for (const c of currencies) {
     row[`currency_${c.currencyId}_receive`] = calcCurrencySummary(

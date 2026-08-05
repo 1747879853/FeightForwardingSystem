@@ -14,11 +14,11 @@ import {
   InputNumber,
   message,
   Pagination,
-  Table,
   Tag,
 } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
+import { NestedDataTable } from '#/components/nested-data-table';
 
 import { getOrderFeeGroup } from '#/api/settlement-management/statement-admin';
 
@@ -60,6 +60,39 @@ const appliedAmountMap = reactive(new Map<string, number>());
 
 const expandedRowKeys = ref<string[]>([]);
 
+// 全选和半选状态计算
+const isAllSelected = computed(() => {
+  if (tableRows.value.length === 0) return false;
+  return tableRows.value.every((row) => isOrderChecked(row.id));
+});
+
+const isIndeterminate = computed(() => {
+  const checkedCount = tableRows.value.filter((row) => isOrderChecked(row.id)).length;
+  return checkedCount > 0 && checkedCount < tableRows.value.length;
+});
+
+function toggleAllOrders(checked: boolean) {
+  if (checked) {
+    // 全选所有订单的所有费用
+    for (const row of tableRows.value) {
+      const fees = row._fees || [];
+      const set = new Set<string>();
+      for (const fee of fees) {
+        if (!disabledFeeIds.value.has(fee.id)) {
+          set.add(fee.id);
+          if (!appliedAmountMap.has(fee.id)) {
+            appliedAmountMap.set(fee.id, fee.unSettledAmount ?? 0);
+          }
+        }
+      }
+      selectionMap.set(row.id, set);
+    }
+  } else {
+    // 取消全选
+    selectionMap.clear();
+  }
+}
+
 const pendingCurrencies = ref<CurrencyInfo[]>([]);
 const settlementCurrencyName = ref('');
 const currencySelectRef = ref();
@@ -100,6 +133,61 @@ const dynamicColumns = computed(() =>
 );
 
 const allColumns = computed(() => [...fixedColumns, ...dynamicColumns.value]);
+
+// 费用明细内层列定义
+const feeInnerColumnsForAddFee = [
+  { title: '', dataIndex: 'checkbox', key: 'checkbox', width: 40 },
+  {
+    title: '结算单位',
+    dataIndex: 'settlementName',
+    key: 'settlementName',
+    width: 140,
+  },
+  {
+    title: '收付类型',
+    dataIndex: 'paySide',
+    key: 'paySide',
+    width: 80,
+  },
+  {
+    title: '费用名称',
+    dataIndex: 'feeCodeName',
+    key: 'feeCodeName',
+    width: 120,
+  },
+  {
+    title: '币别',
+    dataIndex: 'currencyName',
+    key: 'currencyName',
+    width: 80,
+  },
+  {
+    title: '金额',
+    dataIndex: 'amount',
+    key: 'amount',
+    width: 100,
+    align: 'right' as const,
+  },
+  {
+    title: '未结金额',
+    dataIndex: 'unSettledAmount',
+    key: 'unSettledAmount',
+    width: 100,
+    align: 'right' as const,
+  },
+  {
+    title: '汇率',
+    dataIndex: 'exchangeRate',
+    key: 'exchangeRate',
+    width: 50,
+  },
+  {
+    title: '备注',
+    dataIndex: 'remark',
+    key: 'remark',
+    width: 120,
+  },
+];
 
 const disabledFeeIds = computed(
   () => new Set(drawerProps.value.selectedFeeIds ?? []),
@@ -283,13 +371,6 @@ function setAppliedAmount(feeId: string, value: number | null) {
   appliedAmountMap.set(feeId, value ?? 0);
 }
 
-function getFeeRows(orderId: string): FeeRowData[] {
-  const fees = getOrderFees(orderId);
-  return fees.map((f) => ({
-    ...f,
-    appliedAmount: appliedAmountMap.get(f.id) ?? f.unSettledAmount ?? 0,
-  }));
-}
 
 // --- 搜索条件变化清空选择 ---
 let lastSearchSnapshot = '';
@@ -415,66 +496,6 @@ function handleCancel() {
   open.value = false;
 }
 
-const feeColumns = [
-  {
-    title: '',
-    dataIndex: 'checkbox',
-    key: 'checkbox',
-    width: 40,
-  },
-  {
-    title: '结算单位',
-    dataIndex: 'settlementName',
-    key: 'settlementName',
-    width: 140,
-    ellipsis: true,
-  },
-  {
-    title: '收付类型',
-    dataIndex: 'paySide',
-    key: 'paySide',
-    width: 80,
-  },
-  {
-    title: '费用名称',
-    dataIndex: 'feeCodeName',
-    key: 'feeCodeName',
-    width: 120,
-  },
-  {
-    title: '币别',
-    dataIndex: 'currencyName',
-    key: 'currencyName',
-    width: 80,
-  },
-  {
-    title: '金额',
-    dataIndex: 'amount',
-    key: 'amount',
-    width: 100,
-    align: 'right' as const,
-  },
-  {
-    title: '未结金额',
-    dataIndex: 'unSettledAmount',
-    key: 'unSettledAmount',
-    width: 100,
-    align: 'right' as const,
-  },
-  {
-    title: '汇率',
-    dataIndex: 'exchangeRate',
-    key: 'exchangeRate',
-    width: 50,
-  },
-  {
-    title: '备注',
-    dataIndex: 'remark',
-    key: 'remark',
-    width: 120,
-  },
-];
-
 function formatAmount(val: number | undefined | null): string {
   if (val == null) return '';
   return Number(val).toFixed(2);
@@ -500,10 +521,6 @@ function onExpandClick(record: any, e: Event, onExpand: Function) {
 
 function onAppliedAmountChange(feeId: string, val: number | null) {
   setAppliedAmount(feeId, val);
-}
-
-function onExpandedRowsChange(keys: readonly string[]) {
-  expandedRowKeys.value = [...keys];
 }
 
 function onPageChange(page: number, size: number) {
@@ -539,21 +556,39 @@ defineExpose({ open: openDrawer });
 
     <!-- 主表格（业务列表） -->
     <div class="fee-order-table">
-      <Table
+      <NestedDataTable
         :columns="allColumns"
         :data-source="tableRows"
         :loading="loading"
-        :pagination="false"
-        :scroll="{ x: 'max-content', y: 500 }"
+        fill-height
+        :inner-columns="feeInnerColumnsForAddFee"
+        inner-data-key="_fees"
+        inner-row-key="id"
         row-key="id"
-        size="small"
-        :expanded-row-keys="expandedRowKeys"
-        @expanded-rows-change="onExpandedRowsChange"
+        v-model:expanded-row-keys="expandedRowKeys"
       >
-        <!-- 序号列前加 checkbox -->
-        <template #bodyCell="{ column, record, index }">
+        <template #outerHeaderCell="{ column }">
+          <span v-if="column.type === 'seq'" class="table-sequence-cell">
+            <Checkbox
+              :checked="isAllSelected"
+              :indeterminate="isIndeterminate"
+              @change="(e) => toggleAllOrders(e.target.checked)"
+            />
+            {{ column.title }}
+          </span>
+          <template v-else>{{ column.title }}</template>
+        </template>
+
+        <template #outerBodyCell="{ column, record, index }">
           <template v-if="column.type === 'seq'">
-            {{ index + 1 + (currentPage - 1) * pageSize }}
+            <span class="table-sequence-cell">
+              <Checkbox
+                :checked="isOrderChecked(record.id)"
+                :indeterminate="isOrderIndeterminate(record.id)"
+                @change="(e) => onOrderCheckChange(record.id, e)"
+              />
+              {{ index + 1 + (currentPage - 1) * pageSize }}
+            </span>
           </template>
           <template
             v-else-if="column.field && column.field.startsWith('currency_')"
@@ -568,67 +603,43 @@ defineExpose({ open: openDrawer });
           </template>
         </template>
 
-        <!-- 展开行内容：费用子表格 -->
-        <template #expandedRowRender="{ record }">
-          <div class="expanded-fee-table bg-gray-50 p-2">
-            <Table
-              :columns="feeColumns"
-              :data-source="getFeeRows(record.id)"
-              :pagination="false"
-              :scroll="{ x: 900 }"
-              row-key="id"
-              size="small"
-            >
-              <template #bodyCell="{ column, record: feeRecord }">
-                <template v-if="column.key === 'checkbox'">
-                  <Checkbox
-                    :checked="isFeeChecked(record.id, feeRecord.id)"
-                    :disabled="disabledFeeIds.has(feeRecord.id)"
-                    @change="
-                      (e) => onFeeCheckChange(record.id, feeRecord.id, e)
-                    "
-                  />
-                </template>
-                <template v-else-if="column.key === 'paySide'">
-                  <Tag :color="feeRecord.paySide === 0 ? 'blue' : 'orange'">
-                    {{ getPaySideLabel(feeRecord.paySide) }}
-                  </Tag>
-                </template>
-                <template v-else-if="column.key === 'amount'">
-                  {{ formatAmount(feeRecord.amount) }}
-                </template>
-                <template v-else-if="column.key === 'unSettledAmount'">
-                  {{ formatAmount(feeRecord.unSettledAmount) }}
-                </template>
-                <template v-else>
-                  {{ feeRecord[column.dataIndex] }}
-                </template>
-              </template>
-            </Table>
-          </div>
+        <template #expandColumnTitle></template>
+        <template #expandIcon="{ expanded, record, onExpand }">
+          <span
+            class="expand-toggle cursor-pointer"
+            :class="{ 'expand-toggle--expanded': expanded }"
+            @click="(e) => onExpandClick(record, e, onExpand)"
+          >
+            &#9654;
+          </span>
         </template>
 
-        <!-- 展开图标列前加入 checkbox 列 -->
-        <template #expandColumnTitle>
-          <span />
-        </template>
-        <template #expandIcon="{ expanded, record, onExpand }">
-          <div class="flex items-center gap-1">
+        <template #innerBodyCell="{ column, record: feeRecord }">
+          <template v-if="column.key === 'checkbox'">
             <Checkbox
-              :checked="isOrderChecked(record.id)"
-              :indeterminate="isOrderIndeterminate(record.id)"
-              @change="(e) => onOrderCheckChange(record.id, e)"
+              :checked="isFeeChecked(feeRecord._orderId, feeRecord.id)"
+              :disabled="disabledFeeIds.has(feeRecord.id)"
+              @change="
+                (e) => onFeeCheckChange(feeRecord._orderId, feeRecord.id, e)
+              "
             />
-            <span
-              class="expand-toggle cursor-pointer"
-              :class="{ 'expand-toggle--expanded': expanded }"
-              @click="(e) => onExpandClick(record, e, onExpand)"
-            >
-              &#9654;
-            </span>
-          </div>
+          </template>
+          <template v-else-if="column.key === 'paySide'">
+            <Tag :color="feeRecord.paySide === 0 ? 'blue' : 'orange'">
+              {{ getPaySideLabel(feeRecord.paySide) }}
+            </Tag>
+          </template>
+          <template v-else-if="column.key === 'amount'">
+            {{ formatAmount(feeRecord.amount) }}
+          </template>
+          <template v-else-if="column.key === 'unSettledAmount'">
+            {{ formatAmount(feeRecord.unSettledAmount) }}
+          </template>
+          <template v-else>
+            {{ column.dataIndex ? feeRecord[column.dataIndex] : '' }}
+          </template>
         </template>
-      </Table>
+      </NestedDataTable>
 
       <!-- 分页 -->
       <div class="mt-2 flex justify-end">
@@ -655,20 +666,6 @@ defineExpose({ open: openDrawer });
 </template>
 
 <style scoped>
-.fee-order-table :deep(.ant-table-expanded-row > td) {
-  padding: 4px 8px;
-}
-
-.fee-order-table :deep(.ant-table-body) {
-  overflow-y: auto !important;
-  scrollbar-gutter: stable;
-}
-
-.expanded-fee-table {
-  max-width: 100%;
-  overflow-x: auto;
-}
-
 .expand-toggle {
   display: inline-flex;
   align-items: center;
@@ -682,5 +679,11 @@ defineExpose({ open: openDrawer });
 
 .expand-toggle--expanded {
   transform: rotate(90deg);
+}
+
+.table-sequence-cell {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 </style>

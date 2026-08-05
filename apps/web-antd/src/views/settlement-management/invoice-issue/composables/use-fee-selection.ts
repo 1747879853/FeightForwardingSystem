@@ -202,10 +202,11 @@ export function useFeeSelection(
       console.log('📤 创建发票数据:', submitData);
 
       // 调用创建接口
-      const newId = await addInvoiceIssue(submitData);
+      const res = await addInvoiceIssue(submitData);
+      const newId = res.id; // 保存新创建的发票ID
       message.success('发票创建成功');
 
-      console.log('✅ 发票创建成功，ID:', newId);
+      console.log('✅ 发票创建成功，ID:', res.id);
 
       // 跳转到编辑页面
       if (newId) {

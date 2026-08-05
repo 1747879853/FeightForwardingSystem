@@ -2,6 +2,8 @@
 import { computed, h, nextTick, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 
+import { IconifyIcon } from '@vben/icons';
+
 import {
   Button,
   DatePicker,
@@ -18,7 +20,7 @@ import {
 } from 'ant-design-vue';
 
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
-import { InvoiceIssueApi } from '#/api/Invoice/InvoiceIssue';
+import { InvoiceIssueApi, syncApplicationGoodsDtlByExchangeRate } from '#/api/Invoice/InvoiceIssue';
 import { getSubmittedApplicationList } from '#/api/Invoice/InvoiceIssue';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
@@ -577,6 +579,93 @@ async function handleSaveFeeSelection() {
     console.log('✅ 首次添加，跳过与历史数据的一致性校验');
   }
 
+  // ✅ 校验3：检查所有选中申请的发票状态（code）
+  const needUpdateApps: any[] = []; // code=1，需要更新
+  const cannotInvoiceApps: any[] = []; // code=2，不可开票
+
+  selectedApplications.forEach((app: any) => {
+    if (app.code === 1) {
+      needUpdateApps.push({
+        applicationNo: app.applicationNo,
+        code: app.code,
+      });
+    } else if (app.code === 2) {
+      cannotInvoiceApps.push({
+        applicationNo: app.applicationNo,
+        code: app.code,
+      });
+    }
+  });
+
+  // 如果存在需要更新或不可开票的申请，阻止保存并提示用户
+  if (needUpdateApps.length > 0 || cannotInvoiceApps.length > 0) {
+    const errorMessages: string[] = [];
+
+    // 显示需要更新的申请
+    if (needUpdateApps.length > 0) {
+      errorMessages.push(`⚠️ 需要更新的申请（${needUpdateApps.length}个）：`);
+      needUpdateApps.forEach((app) => {
+        errorMessages.push(`• ${app.applicationNo}`);
+      });
+    }
+
+    // 显示不可开票的申请
+    if (cannotInvoiceApps.length > 0) {
+      errorMessages.push(`❌ 不可开票的申请（${cannotInvoiceApps.length}个）：`);
+      cannotInvoiceApps.forEach((app) => {
+        errorMessages.push(
+          `• ${app.applicationNo}`,
+        );
+      });
+    }
+
+    message.error({
+      content: h('div', [
+        h(
+          'div',
+          { style: 'font-weight: bold; margin-bottom: 12px; color: #ff4d4f;' },
+          '所选申请中存在状态异常的申请，无法继续开票：',
+        ),
+        ...errorMessages.map((msg) =>
+          h('div', { style: 'margin-left: 16px; margin-bottom: 4px;' }, msg),
+        ),
+        h(
+          'div',
+          {
+            style:
+              'margin-top: 12px; padding: 8px; background: #fffbe6; border: 1px solid #ffe58f; border-radius: 4px;',
+          },
+          [
+            h(
+              'div',
+              { style: 'color: #faad14; font-weight: bold;' },
+              '操作建议：',
+            ),
+            h(
+              'div',
+              { style: 'margin-top: 4px; color: #666;' },
+              '1. 点击"发票更新"按钮修正需要更新的申请',
+            ),
+            h(
+              'div',
+              { style: 'margin-top: 4px; color: #666;' },
+              '2. 对于不可开票的申请，请先驳回后重新处理',
+            ),
+          ],
+        ),
+      ]),
+      duration: 8,
+    });
+
+    console.error('❌ 校验失败，存在状态异常的申请:', {
+      needUpdateApps,
+      cannotInvoiceApps,
+    });
+    return;
+  }
+
+  console.log('✅ 所有选中申请的发票状态校验通过');
+
   const firstApp = selectedApplications[0];
   // ✅ 使用用户选择的结算单位ID，而不是从申请中获取
   const settlementId = selectedSettlementId.value || firstApp.settlementId;
@@ -625,13 +714,10 @@ async function loadApplicationGroupData() {
     if (selectedSettlementId.value) {
       params.settlementId = selectedSettlementId.value;
     }
-    if (selectedCurrencyId.value !== undefined) {
-      params.currencyId = selectedCurrencyId.value;
-    }
-    // ❌ 删除：header 参数应该是抬头名称的模糊搜索，而不是银行ID
-    // selectedHeaderId 存储的是 clientInvoiceBankId（购买方银行ID），不能用作 header 筛选
-    // if (selectedHeaderId.value) {
-    //   params.header = selectedHeaderId.value;
+    
+    // ❌ 删除：不再使用 selectedCurrencyId，因为它会被固定为首次选择的币别
+    // if (selectedCurrencyId.value !== undefined) {
+    //   params.currencyId = selectedCurrencyId.value;
     // }
 
     // 合并委托编号和主提单号到 keyword 参数
@@ -652,7 +738,7 @@ async function loadApplicationGroupData() {
       params.header = filterHeader.value;
     }
 
-    // 发票币别
+    // ✅ 发票币别：只使用筛选条件的币别（filterCurrencyId），不使用固定的 selectedCurrencyId
     if (filterCurrencyId.value !== undefined) {
       params.currencyId = filterCurrencyId.value;
     }
@@ -661,6 +747,13 @@ async function loadApplicationGroupData() {
     if (filterApplyUserId.value !== undefined) {
       params.applyUserId = filterApplyUserId.value;
     }
+
+    console.log('📥 查询参数:', {
+      settlementId: params.settlementId,
+      currencyId: params.currencyId,
+      filterCurrencyId: filterCurrencyId.value,
+      selectedCurrencyId: selectedCurrencyId.value,
+    });
 
     const result = await getSubmittedApplicationList(params);
 
@@ -843,7 +936,7 @@ function transformToTreeData(
       orgBankAccountId: app.orgBankAccountId,
       totalGoodsAmount: app.totalGoodsAmount,
       appliedAmountRmb: app.appliedAmountRmb,
-      amountMatched: app.amountMatched,
+      code: app.code,
       // ✅ 保留完整的 clientInvoiceInfo 对象（后续可能需要其他字段）
       clientInvoiceInfo: app.clientInvoiceInfo,
     };
@@ -886,9 +979,9 @@ watch(
 const appParentColumns = computed(() => [
   {
     title: '可开票',
-    dataIndex: 'amountMatched',
-    key: 'amountMatched',
-    width: 65,
+    dataIndex: 'code',
+    key: 'code',
+    width: 80,
     align: 'center' as const,
   },
   {
@@ -1146,6 +1239,57 @@ function handleCancelReject() {
   rejectApplications.value = [];
 }
 
+/** 发票更新 - 根据当前汇率修正选中申请的商品明细金额 */
+async function handleUpdateInvoice() {
+  const selectedIds = getSelectedApplicationsFromTable().map((app: any) => app.id);
+
+  if (selectedIds.length === 0) {
+    message.warning('请先选择要更新的发票');
+    return;
+  }
+
+  Modal.confirm({
+    title: '确认更新',
+    content: `确定要根据当前汇率更新选中的 ${selectedIds.length} 条申请的商品明细金额吗？`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        feeDrawerLoading.value = true;
+
+        console.log('🔄 开始更新发票商品明细:', {
+          更新的申请数量: selectedIds.length,
+        });
+
+        // ✅ 调用 syncApplicationGoodsDtlByExchangeRate 接口
+        const result = await syncApplicationGoodsDtlByExchangeRate({
+          invoiceApplicationIds: selectedIds,
+        });
+
+        console.log('✅ 发票更新成功:', {
+          实际修正的申请数量: result.updatedApplicationIds?.length || 0,
+          无需修正的申请数量: result.unchangedApplicationIds?.length || 0,
+        });
+
+        message.success(
+          `已成功更新 ${result.updatedApplicationIds?.length || 0} 个申请的商品明细金额`,
+        );
+
+        // 清空选中状态
+        selectedAppRowKeys.value = [];
+
+        // ✅ 重新加载数据（会自动更新 applicationGroupsData）
+        await loadApplicationGroupData();
+      } catch (error) {
+        console.error('❌ 发票更新失败:', error);
+        message.error('发票更新失败，请重试');
+      } finally {
+        feeDrawerLoading.value = false;
+      }
+    },
+  });
+}
+
 // 暴露方法给父组件
 defineExpose({
   handleOpenFeeDrawer,
@@ -1297,14 +1441,14 @@ defineExpose({
           }"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'amountMatched'">
+            <template v-if="column.key === 'code'">
               <span
                 :style="{
-                  color: record.amountMatched ? '#52c41a' : '#ff4d4f',
+                  color: record.code === 0 ? '#52c41a' : (record.code === 1 ? '#faad14' : '#ff4d4f'),
                   fontWeight: 'bold',
                 }"
               >
-                {{ record.amountMatched ? '✓ 可开' : '✗ 不可开' }}
+                {{ record.code === 0 ? '✓ 可开票' : (record.code === 1 ? '⚠ 需更新' : '✗ 不可开') }}
               </span>
             </template>
             <template v-else-if="column.key === 'invoiceType'">
@@ -1363,6 +1507,7 @@ defineExpose({
                 v-model:value="invoiceExchangeRate"
                 :min="0"
                 :precision="4"
+                disabled
                 style="width: 150px"
                 placeholder="请输入汇率"
               />
@@ -1375,6 +1520,16 @@ defineExpose({
 
         <!-- 右侧：操作按钮 -->
         <Space>
+          <Button
+            type="primary"
+            :disabled="selectedAppRowKeys.length === 0"
+            @click="handleUpdateInvoice"
+          >
+            <template #icon>
+              <IconifyIcon icon="ant-design:sync-outlined" />
+            </template>
+            发票更新 ({{ selectedAppRowKeys.length }})
+          </Button>
           <Button
             danger
             :disabled="selectedAppRowKeys.length === 0"

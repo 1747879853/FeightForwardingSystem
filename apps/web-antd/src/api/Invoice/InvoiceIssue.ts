@@ -349,6 +349,41 @@ export namespace InvoiceIssueApi {
     invoiceIssueGoodsDtls: InvoiceIssueGoodsDtlInputDto[];
   }
 
+  /** ✅ 新增：汇率校验结果DTO（用于AddAsync和AddApplicationsAsync的出参） */
+  export interface InvoiceIssueExchangeRateCheckDto {
+    /** 
+     * 校验码
+     * 0 = 正常，已执行成功
+     * 1 = 汇率已变动，且金额对不上的开票申请都只有一条商品明细（可调修正接口）
+     * 2 = 存在金额对不上且商品明细不止一条的开票申请（只能驳回）
+     */
+    code: number;
+    /** 金额对不上、且只有一条商品明细的开票申请ID列表 */
+    singleGoodsDtlApplicationIds: string[];
+    /** 金额对不上、且商品明细不止一条的开票申请ID列表 */
+    multiGoodsDtlApplicationIds: string[];
+  }
+
+  /** ✅ 新增：AddAsync的返回结果DTO */
+  export interface InvoiceIssueAddResultDto extends InvoiceIssueExchangeRateCheckDto {
+    /** 新建的发票开出ID；code不为0时为null */
+    id: string | null;
+  }
+
+  /** ✅ 新增：按汇率修正商品明细输入DTO */
+  export interface InvoiceIssueSyncApplicationGoodsDtlDto {
+    /** 待修正的开票申请ID列表（至少一条） */
+    invoiceApplicationIds: string[];
+  }
+
+  /** ✅ 新增：按汇率修正商品明细返回结果DTO */
+  export interface InvoiceIssueSyncApplicationGoodsDtlResultDto {
+    /** 实际修正了金额的开票申请ID列表 */
+    updatedApplicationIds: string[];
+    /** 金额本来就对得上、无需修正的开票申请ID列表 */
+    unchangedApplicationIds: string[];
+  }
+
   /** 运输订单简易信息 */
   export interface TransportOrderSimpleDto {
     id: string;
@@ -497,8 +532,13 @@ export namespace InvoiceIssueApi {
     totalGoodsAmount: number;
     /** 折算后的人民币金额（根据当前发票汇率计算） */
     appliedAmountRmb?: number;
-    /** 金额是否匹配（根据当前发票汇率判断） */
-    amountMatched: boolean;
+    /** 
+     * 校验码
+     * 0 = 金额匹配（totalGoodsAmount == appliedAmountRmb）
+     * 1 = 金额不匹配且商品明细恰好1条（可调修正接口）
+     * 2 = 金额不匹配且商品明细条数≠1，或无有效发票汇率（只能驳回）
+     */
+    code: number;
     /** 客户开票信息（根据ClientInvoiceBankId解析，无则null） */
     clientInvoiceInfo?: ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto | null;
   }
@@ -529,9 +569,10 @@ export namespace InvoiceIssueApi {
 /**
  * 新增发票开出
  * @param data 发票开出数据
+ * @returns 返回结果包含code、id和开票申请ID列表
  */
 async function addInvoiceIssue(data: InvoiceIssueApi.InvoiceIssueAddDto) {
-  return requestClient.post<string>(
+  return requestClient.post<InvoiceIssueApi.InvoiceIssueAddResultDto>(
     '/services/app/InvoiceIssueAdmin/AddAsync',
     data,
   );
@@ -637,11 +678,12 @@ async function editInvoiceIssueMain(
 /**
  * 新增多条开票申请
  * @param data 新增申请数据
+ * @returns 返回汇率校验结果，code=0表示加挂成功
  */
 async function addApplicationsToInvoiceIssue(
   data: InvoiceIssueApi.InvoiceIssueAddApplicationsDto,
 ) {
-  return requestClient.post<boolean>(
+  return requestClient.post<InvoiceIssueApi.InvoiceIssueExchangeRateCheckDto>(
     '/services/app/InvoiceIssueAdmin/AddApplicationsAsync',
     data,
   );
@@ -660,6 +702,20 @@ async function removeApplicationsFromInvoiceIssue(
   );
 }
 
+/**
+ * ✅ 新增：按当前发票汇率修正开票申请商品明细的金额
+ * @param data 待修正的开票申请ID列表
+ * @returns 返回实际修正和无需修正的申请ID列表
+ */
+async function syncApplicationGoodsDtlByExchangeRate(
+  data: InvoiceIssueApi.InvoiceIssueSyncApplicationGoodsDtlDto,
+) {
+  return requestClient.put<InvoiceIssueApi.InvoiceIssueSyncApplicationGoodsDtlResultDto>(
+    '/services/app/InvoiceIssueAdmin/SyncApplicationGoodsDtlByExchangeRateAsync',
+    data,
+  );
+}
+
 export {
   addInvoiceIssue,
   deleteInvoiceIssue,
@@ -667,6 +723,7 @@ export {
   editInvoiceIssueMain,
   addApplicationsToInvoiceIssue,
   removeApplicationsFromInvoiceIssue,
+  syncApplicationGoodsDtlByExchangeRate, // ✅ 新增导出
   getInvoiceIssueDetail,
   getInvoiceIssuePagedList,
   getSubmittedApplicationList,
