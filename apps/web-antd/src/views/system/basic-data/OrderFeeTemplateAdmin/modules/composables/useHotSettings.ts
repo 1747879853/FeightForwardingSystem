@@ -12,6 +12,7 @@ export function useHotSettings(
   dropdownSources: any,
   linkage: any,
   serviceTypeOptions: Array<{ label: string; value: number }>, // ✅ 新增：服务项选项参数
+  formApi?: any, // ✅ 新增：表单API，用于获取基础信息的收付类型
 ) {
   // 行业类别选项
   const industryOptions = getIndustryCategoryOptions();
@@ -749,8 +750,8 @@ export function useHotSettings(
             (item: any) => item.label === newValue,
           );
           if (feeCodeItem) {
-            // 保存原始ID到 _value 字段
-            hotInstance.setDataAtCell(
+            // ✅ 修复：使用 setDataAtRowProp 而不是 setDataAtCell
+            hotInstance.setDataAtRowProp(
               row,
               'feeCodeId_value',
               feeCodeItem.value,
@@ -762,8 +763,12 @@ export function useHotSettings(
               feeCodeItem.value,
             );
 
-            // 执行联动逻辑
-            linkage.onFeeCodeChange(row, feeCodeItem.value, hotInstance);
+            // ✅ 修复：传递 formApi 参数以获取基础信息的收付类型
+            // 使用 IIFE 处理异步调用
+            (async () => {
+              await linkage.onFeeCodeChange(row, feeCodeItem.value, hotInstance, formApi);
+            })();
+
           }
         }
 
@@ -774,7 +779,7 @@ export function useHotSettings(
           );
           if (industryItem) {
             // 保存原始枚举值到 _value 字段
-            hotInstance.setDataAtCell(
+            hotInstance.setDataAtRowProp(
               row,
               'industryCategory_value',
               industryItem.value,
@@ -812,7 +817,7 @@ export function useHotSettings(
 
           if (foundClient) {
             // 保存原始ID到 _value 字段
-            hotInstance.setDataAtCell(
+            hotInstance.setDataAtRowProp(
               row,
               'settlementId_value',
               foundClient.value,
@@ -855,7 +860,7 @@ export function useHotSettings(
                   'industryCategory',
                   industryItem.label,
                 );
-                hotInstance.setDataAtCell(
+                hotInstance.setDataAtRowProp(
                   row,
                   'industryCategory_value',
                   industryItem.value,
@@ -872,7 +877,7 @@ export function useHotSettings(
           );
           if (currencyItem) {
             // 保存原始ID到 _value 字段
-            hotInstance.setDataAtCell(
+            hotInstance.setDataAtRowProp(
               row,
               'currencyId_value',
               currencyItem.value,

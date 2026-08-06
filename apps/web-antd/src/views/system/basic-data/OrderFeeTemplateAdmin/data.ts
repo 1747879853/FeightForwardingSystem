@@ -151,6 +151,12 @@ export function useColumns(
       formatter: ({ row }) => formatEfficient(row.efficient),
     },
     {
+      field: 'enable',
+      title: '启用状态',
+      width: 100,
+      slots: { default: 'enable' },
+    },
+    {
       field: 'startTime',
       title: '生效开始时间',
       width: 160,

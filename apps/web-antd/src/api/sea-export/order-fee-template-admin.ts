@@ -257,6 +257,15 @@ export namespace OrderFeeTemplateAdminApi {
     orderFeeTemplateItems: OrderFeeTemplateItemEditDto[];
   }
 
+    /** 启用 DTO */
+  export interface OrderFeeTemplateSetEnableDto {
+    /** 模板ids */
+    ids: string[];
+    /** 是否启用   true=启用 false=禁用*/
+    enabled: boolean;
+  }
+
+
   /** 复制模板 DTO */
   export interface OrderFeeTemplateCopyDto {
     /** 要复制的模板id集合 */
@@ -347,6 +356,8 @@ export namespace OrderFeeTemplateAdminApi {
     serviceType?: number | null;
     sortId?: number;
     remark?: string | null;
+    /** 是否启用 */
+    enable?: boolean;
     /** 明细数量 */
     itemCount?: number;
     /** 创建人昵称 */
@@ -450,6 +461,18 @@ export const editOrderFeeTemplate = (
   data: OrderFeeTemplateAdminApi.OrderFeeTemplateEditDto,
 ) => {
   return requestClient.put<boolean>(`${API_PREFIX}/EditAsync`, data);
+};
+
+
+/**
+ * 设置自动费用模板启用状态
+ * @param data 设置启用状态 DTO
+ * @returns 是否成功
+ */
+export const setOrderFeeTemplateEnable = (
+  data: OrderFeeTemplateAdminApi.OrderFeeTemplateSetEnableDto,
+) => {
+  return requestClient.put<boolean>(`${API_PREFIX}/SetEnableAsync`, data);
 };
 
 /**

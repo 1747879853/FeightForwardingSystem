@@ -14,6 +14,7 @@ const props = defineProps<{
   dataSource: any[];
   dropdownSources: any; // ✅ 新增：从父组件接收下拉数据源
   allClientsByIndustry?: Record<string, Array<{ label: string; value: any }>>; // ✅ 新增：从父组件传入的客户缓存
+  formApi?: any; // ✅ 新增：表单API，用于获取基础信息的收付类型
 }>();
 
 const emit = defineEmits(['update:dataSource']);
@@ -73,6 +74,7 @@ const { hotSettings } = useHotSettings(
   dropdownSources,
   linkage,
   serviceTypeOptions.value, // ✅ 新增：传递服务项选项
+  props.formApi, // ✅ 新增：传递表单API
 );
 
 // Handsontable 实例引用

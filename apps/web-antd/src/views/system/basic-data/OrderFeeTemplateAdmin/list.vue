@@ -7,13 +7,15 @@ import { nextTick, ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { Page, useVbenModal } from '@vben/common-ui';
 import { Plus, Trash2, ChevronLeft, ChevronRight } from '@vben/icons';
 
-import { Button, message, Modal } from 'ant-design-vue';
+import { Button, message, Modal, Tag } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
   deleteOrderFeeTemplate,
   getOrderFeeTemplatePagedList,
   getPolGroupList,
+  copyOrderFeeTemplate,
+  setOrderFeeTemplateEnable,
 } from '#/api/sea-export/order-fee-template-admin';
 import { getFeeCodeListAsync } from '#/api/system/base-data/fee-code-admin';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
@@ -52,6 +54,14 @@ const hasEditPermission = computed(() =>
 
 const hasDeletePermission = computed(() =>
   userFunctionPermissions.value.includes('Admin.OrderFeeTemplate.Delete'),
+);
+
+const hasCopyPermission = computed(() =>
+  userFunctionPermissions.value.includes('Admin.OrderFeeTemplate.Add'),
+);
+
+const hasEnablePermission = computed(() =>
+  userFunctionPermissions.value.includes('Admin.OrderFeeTemplate.Add'),
 );
 
 // 当前选中的起运港ID（用于分组筛选）
@@ -97,9 +107,11 @@ async function loadDropdownData() {
           label: label || item.cnName || item.enName || item.code || '',
           value: Number(item.id),
           currencyId: item.currencyId ? Number(item.currencyId) : undefined,
-          unit: item.defaultUnit || undefined,
+          unit: item.defaultUnitName || undefined,
           taxRate:
             item.taxRate !== undefined ? Number(item.taxRate) : undefined,
+          defaultCreditName: item.defaultCreditName || undefined,  //默认应付的行业类别 ,值为 "a" 这种类型
+          defaultDebitName: item.defaultDebitName || undefined, //默认应收的行业类别 ,值为 "a" 这种类型
         };
       });
       console.log(
@@ -298,6 +310,96 @@ async function onBatchDelete() {
       } catch (error) {
         hideLoading();
         message.error('删除失败');
+        console.error(error);
+      }
+    },
+  });
+}
+
+/**
+ * 复制新建模板
+ */
+async function onCopyCreate() {
+  if (!hasCopyPermission.value) {
+    message.warning('您没有复制权限');
+    return;
+  }
+
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning('请先选择要复制的模板');
+    return;
+  }
+
+  Modal.confirm({
+    title: '复制模板',
+    content: `确定要复制选中的 ${records.length} 条模板吗？`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      const hideLoading = message.loading({
+        content: '正在复制...',
+        duration: 0,
+        key: 'action_process_msg',
+      });
+
+      try {
+        const ids = records.map((r) => r.id).filter(Boolean) as string[];
+        await copyOrderFeeTemplate({ ids, count: 1 });
+        message.success({
+          content: '复制成功',
+          key: 'action_process_msg',
+        });
+        handleRefresh();
+        loadPolGroupList();
+      } catch (error) {
+        hideLoading();
+        message.error('复制失败');
+        console.error(error);
+      }
+    },
+  });
+}
+
+/**
+ * 批量启用/停用
+ */
+async function onBatchToggleEnable(enabled: boolean) {
+  if (!hasEnablePermission.value) {
+    message.warning('您没有操作权限');
+    return;
+  }
+
+  const records = getCheckboxRecords();
+  if (records.length === 0) {
+    message.warning(`请先选择要${enabled ? '启用' : '停用'}的模板`);
+    return;
+  }
+
+  Modal.confirm({
+    title: `确认${enabled ? '启用' : '停用'}`,
+    content: `确定要${enabled ? '启用' : '停用'}选中的 ${records.length} 条模板吗？`,
+    okText: '确定',
+    cancelText: '取消',
+    onOk: async () => {
+      const hideLoading = message.loading({
+        content: `正在${enabled ? '启用' : '停用'}...`,
+        duration: 0,
+        key: 'action_process_msg',
+      });
+
+      try {
+        const ids = records.map((r) => r.id).filter(Boolean) as string[];
+        await setOrderFeeTemplateEnable({ ids,enable: enabled });
+        message.success({
+          content: `${enabled ? '启用' : '停用'}成功`,
+          key: 'action_process_msg',
+        });
+        handleRefresh();
+        loadPolGroupList();
+      } catch (error) {
+        hideLoading();
+        message.error(`${enabled ? '启用' : '停用'}失败`);
         console.error(error);
       }
     },
@@ -658,6 +760,29 @@ onUnmounted(() => {
             删除
           </Button>
           <Button
+            :disabled="!hasEnablePermission"
+            @click="onBatchToggleEnable(false)"
+            class="mr-2"
+          >
+            停用
+          </Button>
+          <Button
+            type="primary"
+            ghost
+            :disabled="!hasEnablePermission"
+            @click="onBatchToggleEnable(true)"
+            class="mr-2"
+          >
+            启用
+          </Button>
+          <Button
+            :disabled="!hasCopyPermission"
+            @click="onCopyCreate"
+            class="mr-2"
+          >
+            复制新建
+          </Button>
+          <Button
             type="primary"
             :disabled="!hasAddPermission"
             @click="onCreate"
@@ -666,6 +791,12 @@ onUnmounted(() => {
             新建
           </Button>
         </Space>
+      </template>
+
+      <template #enable="{ row }">
+        <Tag :color="row.enable ? 'success' : 'default'">
+          {{ row.enable ? '启用' : '停用' }}
+        </Tag>
       </template>
     </Grid>
 

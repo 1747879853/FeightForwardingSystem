@@ -8,6 +8,7 @@ OrderFeeTemplateAdmin/
 ├── data.ts                           # 表格列定义和查询配置
 └── modules/
     ├── form.vue                      # 新建/编辑表单弹窗（主组件）
+    ├── data.ts                       # ✨ 枚举定义和表单schema配置
     ├── order-fee-template-table.vue  # Handsontable 费用明细表格组件
     └── composables/                  # 组合式函数
         ├── useDropdownSources.ts     # 下拉数据源管理
@@ -24,9 +25,25 @@ OrderFeeTemplateAdmin/
 - **职责**：管理基础信息表单、模态框生命周期、数据提交
 - **特点**：
   - 使用 `useVbenForm` 创建基础信息表单
+  - 从 `./data.ts` 导入表单schema配置和枚举定义
   - 引入 `OrderFeeTemplateTable` 子组件管理费用明细
   - 通过 `v-model:dataSource` 实现双向数据绑定
   - 使用 composables 统一管理业务逻辑
+
+#### 数据配置文件 (modules/data.ts)
+
+- **职责**：集中管理枚举选项和表单schema配置
+- **导出内容**：
+  - `bizTypeOptions` - 业务类型枚举
+  - `paySideOptions` - 收付类型枚举
+  - `tradeTermsOptions` - 贸易条款枚举
+  - `cargoTypeOptions` - 货物类型枚举
+  - `blTypeOptions` - 提单类型枚举
+  - `getFormSchema()` - 表单schema配置函数
+- **优势**：
+  - 配置与视图分离，便于维护
+  - 枚举值集中管理，避免硬编码
+  - 支持复用和扩展
 
 #### Handsontable 组件 (order-fee-template-table.vue)
 
@@ -251,7 +268,7 @@ watch(() => props.dataSource, (newData) => {
 
 ### 在父组件中使用
 
-```vue
+```
 <script setup lang="ts">
 import OrderFeeTemplateTable from './order-fee-template-table.vue';
 
