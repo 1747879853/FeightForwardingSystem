@@ -193,7 +193,7 @@ const useOrderFeeDetailColumns = () => {
       width: 70,
       align: 'center',
       formatter: ({ row }: any) => {
-        return row.currencyName || '--';
+        return row.currencyCode || '--';
       },
     },
     {

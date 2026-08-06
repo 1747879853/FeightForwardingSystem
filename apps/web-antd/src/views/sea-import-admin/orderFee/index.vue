@@ -100,27 +100,7 @@ const allDisplayFields: DisplayFieldConfig[] = [
     visible: true,
   },
   { key: 'polName', label: $t('seaImport.import.polId'), visible: true },
-  {
-    key: 'poT1Name',
-    label: $t('seaImport.import.poT1Id'),
-    visible: true,
-  },
-  {
-    key: 'poT2Name',
-    label: $t('seaImport.import.poT2Id'),
-    visible: true,
-  },
   { key: 'podName', label: $t('seaImport.import.podId'), visible: true },
-  {
-    key: 'deliverPortName',
-    label: $t('seaImport.import.deliverPortId'),
-    visible: true,
-  },
-  {
-    key: 'codeSourceName',
-    label: $t('seaImport.import.codeSourceId'),
-    visible: true,
-  },
   {
     key: 'commissionNum',
     label: $t('seaImport.import.commissionNum'),
@@ -139,32 +119,39 @@ const allDisplayFields: DisplayFieldConfig[] = [
     label: $t('seaImport.import.carrierId'),
     visible: true,
   },
-  { key: 'etd', label: $t('seaImport.import.etd'), visible: true },
-  { key: 'atd', label: $t('seaExport.export.atd'), visible: true },
-  { key: 'eta', label: $t('seaImport.import.eta'), visible: true },
   {
-    key: 'closeDocTime',
-    label: $t('seaImport.import.closeDocTime'),
+    key: 'arrivalDate',
+    label: $t('seaImport.import.arrivalDate'),
     visible: true,
   },
   {
-    key: 'closeVgmTime',
-    label: $t('seaImport.import.closeVgmTime'),
+    key: 'exchangeBillDate',
+    label: $t('seaImport.import.exchangeBillDate'),
     visible: true,
   },
   {
-    key: 'closeManifestTime',
-    label: $t('seaImport.import.closeManifestTime'),
+    key: 'pickUpDate',
+    label: $t('seaImport.import.pickUpDate'),
     visible: true,
   },
   {
-    key: 'codeServiceName',
-    label: $t('seaImport.import.codeServiceId'),
+    key: 'customsDeclareDate',
+    label: $t('seaImport.import.customsDeclareDate'),
     visible: true,
   },
   {
-    key: 'codeFrtName',
-    label: $t('seaImport.import.codeFrtId'),
+    key: 'transferStationDate',
+    label: $t('seaImport.import.transferStationDate'),
+    visible: true,
+  },
+  {
+    key: 'ctnUseDate',
+    label: $t('seaImport.import.ctnUseDate'),
+    visible: true,
+  },
+  {
+    key: 'freeDays',
+    label: $t('seaImport.import.freeDays'),
     visible: true,
   },
   { key: 'noPkgs', label: $t('seaImport.import.noPkgs'), visible: true },
@@ -234,20 +221,8 @@ const displayList = computed(() => {
       case 'polName':
         value = formValues.value?.polRemark || '--';
         break;
-      case 'poT1Name':
-        value = formValues.value?.poT1Remark || '--';
-        break;
-      case 'poT2Name':
-        value = formValues.value?.poT2Remark || '--';
-        break;
       case 'podName':
         value = formValues.value?.podRemark || '--';
-        break;
-      case 'deliverPortName':
-        value = formValues.value?.deliverPortRemark || '--';
-        break;
-      case 'codeSourceName':
-        value = to.value?.codeSourceName || '--';
         break;
       case 'commissionNum':
         value = to.value?.commissionNum || '--';
@@ -270,29 +245,35 @@ const displayList = computed(() => {
           formValues.value?.carrier?.cnName ||
           '--';
         break;
-      case 'etd':
+      case 'arrivalDate':
         value = formatNormalDate(to.value?.etd, 'YYYY-MM-DD');
         break;
-      case 'atd':
-        value = formatNormalDate(to.value?.atd, 'YYYY-MM-DD');
+      case 'exchangeBillDate':
+        value = formatNormalDate(
+          formValues.value?.exchangeBillDate,
+          'YYYY-MM-DD',
+        );
         break;
-      case 'eta':
-        value = formatNormalDate(to.value?.eta, 'YYYY-MM-DD');
+      case 'pickUpDate':
+        value = formatNormalDate(formValues.value?.pickUpDate, 'YYYY-MM-DD');
         break;
-      case 'closeDocTime':
-        value = formatNormalDate(formValues.value?.closeDocTime);
+      case 'customsDeclareDate':
+        value = formatNormalDate(
+          formValues.value?.customsDeclareDate,
+          'YYYY-MM-DD',
+        );
         break;
-      case 'closeVgmTime':
-        value = formatNormalDate(formValues.value?.closeVgmTime);
+      case 'transferStationDate':
+        value = formatNormalDate(
+          formValues.value?.transferStationDate,
+          'YYYY-MM-DD',
+        );
         break;
-      case 'closeManifestTime':
-        value = formatNormalDate(formValues.value?.closeManifestTime);
+      case 'ctnUseDate':
+        value = formatNormalDate(formValues.value?.ctnUseDate, 'YYYY-MM-DD');
         break;
-      case 'codeServiceName':
-        value = formValues.value?.codeServiceName || '--';
-        break;
-      case 'codeFrtName':
-        value = formValues.value?.codeFrtName || '--';
+      case 'freeDays':
+        value = formValues.value?.freeDays ?? '--';
         break;
       case 'noPkgs':
         value = to.value?.noPkgs ?? '--';
