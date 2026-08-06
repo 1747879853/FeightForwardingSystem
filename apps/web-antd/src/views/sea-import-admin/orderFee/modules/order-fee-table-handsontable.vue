@@ -77,6 +77,9 @@ const {
   getSettlementIndustryCategory,
 } = useDropdownSources(orderCtnList);
 
+// ✅ 修复：添加标志位防止循环触发
+const isConvertingIds = ref(false);
+
 // ✅ 关键修改：如果父组件传入了客户缓存，则使用父组件的数据
 watch(
   () => props.allClientsByIndustry,
@@ -89,6 +92,13 @@ watch(
   },
   { immediate: true, deep: true },
 );
+
+// ✅ 新增：在组件挂载时初始化下拉框数据源
+onMounted(async () => {
+  console.log('🔄 [OrderFeeTable] 开始初始化下拉框数据源...');
+  await initDropdownSources();
+  console.log('✅ [OrderFeeTable] 下拉框数据源初始化完成');
+});
 
 // 字段联动
 const linkage = useOrderFeeLinkage(
@@ -552,8 +562,19 @@ watch(
 watch(
   () => dataSource.value,
   (newData) => {
+    // ✅ 修复：防止循环触发
+    if (isConvertingIds.value) {
+      console.log('⏭️ [watch dataSource] 正在转换ID，跳过本次触发');
+      return;
+    }
+
     // ✅ 关键修复：在更新 hotSettings 之前，先将ID转换为Label
-    convertIdsToLabels();
+    isConvertingIds.value = true;
+    try {
+      convertIdsToLabels();
+    } finally {
+      isConvertingIds.value = false;
+    }
 
     // 直接修改 hotSettings.data 属性而不触发Vue深度响应
     hotSettings.value.data = newData;

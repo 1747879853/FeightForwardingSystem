@@ -6,7 +6,6 @@ import { h, ref } from 'vue';
 import { Checkbox, Tag } from 'ant-design-vue';
 import { getEnumItems } from '#/utils/init-enum';
 
-
 // --------------------------------------------------------
 // 数据录入方式
 // --------------------------------------------------------
@@ -128,21 +127,101 @@ export const getUserAttributeEnumOptions = () => [
 // 行业类别
 // --------------------------------------------------------
 export const getIndustryCategoryOptions = () => [
-  { value: 0, label: '船公司' },
-  { value: 1, label: '发货人' },
-  { value: 2, label: '场站' },
-  { value: 3, label: '航空公司' },
-  { value: 4, label: '收货人' },
-  { value: 5, label: '报关行' },
-  { value: 6, label: '快递公司' },
-  { value: 7, label: '通知人' },
-  { value: 8, label: '车队' },
-  { value: 9, label: '贸易商' },
-  { value: 10, label: '代理' },
-  { value: 11, label: '其他' },
-  { value: 12, label: '供应商' },
-  { value: 13, label: '船代' },
-  { value: 14, label: '订舱代理' },
+  {
+    key: 2,
+    value: 'b',
+    label: $t('seaExport.client.industryCategoryOptions.shipper'),
+  },
+  {
+    key: 3,
+    value: 'c',
+    label: $t('seaExport.client.industryCategoryOptions.terminal'),
+  },
+  {
+    key: 4,
+    value: 'd',
+    label: $t('seaExport.client.industryCategoryOptions.airline'),
+  },
+  {
+    key: 5,
+    value: 'e',
+    label: $t('seaExport.client.industryCategoryOptions.consignee'),
+  },
+  {
+    key: 6,
+    value: 'f',
+    label: $t('seaExport.client.industryCategoryOptions.customsBroker'),
+  },
+  {
+    key: 7,
+    value: 'g',
+    label: $t('seaExport.client.industryCategoryOptions.expressCompany'),
+  },
+  {
+    key: 8,
+    value: 'h',
+    label: $t('seaExport.client.industryCategoryOptions.notifyParty'),
+  },
+  {
+    key: 9,
+    value: 'i',
+    label: $t('seaExport.client.industryCategoryOptions.fleet'),
+  },
+  {
+    key: 10,
+    value: 'j',
+    label: $t('seaExport.client.industryCategoryOptions.trader'),
+  },
+  {
+    key: 11,
+    value: 'k',
+    label: $t('seaExport.client.industryCategoryOptions.agent'),
+  },
+  {
+    key: 12,
+    value: 'l',
+    label: $t('seaExport.client.industryCategoryOptions.other'),
+  },
+  {
+    key: 13,
+    value: 'm',
+    label: $t('seaExport.client.industryCategoryOptions.supplier'),
+  },
+  {
+    key: 14,
+    value: 'n',
+    label: $t('seaExport.client.industryCategoryOptions.shippingAgent'),
+  },
+  {
+    key: 15,
+    value: 'o',
+    label: $t('seaExport.client.industryCategoryOptions.bookingAgent'),
+  },
+  {
+    key: 16,
+    value: 'p',
+    label: $t('seaExport.client.industryCategoryOptions.entrustingUnit'),
+  },
+  {
+    key: 17,
+    value: 'q',
+    label: $t('seaExport.client.industryCategoryOptions.warehouse'),
+  },
+  {
+    key: 18,
+    value: 'r',
+    label: $t('seaExport.client.industryCategoryOptions.insuranceCompany'),
+  },
+  {
+    key: 19,
+    value: 's',
+    label: $t('seaExport.client.industryCategoryOptions.destinationAgent'),
+  },
+  {
+    key: 20,
+    value: 'u',
+    label: $t('seaExport.client.industryCategoryOptions.factory'),
+  },
 ];
 
 // --------------------------------------------------------

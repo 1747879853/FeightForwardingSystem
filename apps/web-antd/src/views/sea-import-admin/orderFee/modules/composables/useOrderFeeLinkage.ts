@@ -1,10 +1,5 @@
-import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { OrderFeeAdminApi } from '#/api/sea-import/order-fee-admin';
 import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
-
-// ✅ 删除：不再需要单独调用 getFeeCodeDetail 和 getExchangeRateDetail
-// import { getFeeCodeDetail } from '#/api/system/base-data/fee-code-admin';
-// import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
 import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { getSeaImportDetail } from '#/api/sea-import/sea-import-admin';
 import { getIndustryCategoryOptions } from '../../data';
@@ -31,7 +26,16 @@ export function useOrderFeeLinkage(
       currencyId: any,
       paySide: number,
     ) => number | undefined; // ✅ 新增：从缓存获取汇率的方法
-    allClientsByIndustry?: Record<string, Array<{ label: string; value: any; name?: string; code?: string; id?: any }>>; // ✅ 新增：全量客户缓存
+    allClientsByIndustry?: Record<
+      string,
+      Array<{
+        label: string;
+        value: any;
+        name?: string;
+        code?: string;
+        id?: any;
+      }>
+    >; // ✅ 新增：全量客户缓存
   },
 ) {
   // ==================== 缓存机制 ====================
@@ -55,7 +59,8 @@ export function useOrderFeeLinkage(
       return await orderDetailLoading.get(transportOrderId);
     }
 
-    const loadingPromise = getSeaExportDetail(transportOrderId)
+    // ✅ 修复：使用海运进口的 API
+    const loadingPromise = getSeaImportDetail(transportOrderId)
       .then((detail) => {
         if (detail) {
           orderDetailCache.set(transportOrderId, detail);
@@ -122,7 +127,7 @@ export function useOrderFeeLinkage(
   }
 
   /**
-   * 判断是否为本位币
+   * 检查币别是否为本位币
    */
   async function checkIfIsLocalCurrency(currencyId: number): Promise<boolean> {
     try {
@@ -132,7 +137,7 @@ export function useOrderFeeLinkage(
       const orderDetail = await loadOrderDetailCached(transportOrderId);
 
       const companyNode = orderDetail?.orgs?.find(
-        (node) =>
+        (node: any) =>
           node?.localCurrencyId !== null && node?.localCurrencyId !== undefined,
       );
       if (companyNode) {
@@ -406,7 +411,7 @@ export function useOrderFeeLinkage(
       if (!transportOrderId) return;
 
       const orderDetail = await loadOrderDetailCached(transportOrderId);
-      const ctns = orderDetail.transportOrder?.orderCtns || [];
+      const ctns = orderDetail.orderCtns || [];
 
       if (ctns.length === 0) {
         console.log('📦 [fillCtnQuantity] 无箱型数据，设置单位为票，数量为1');
@@ -416,12 +421,12 @@ export function useOrderFeeLinkage(
       }
 
       // 填充第一个箱型的名称作为单位
-      const firstCtnName = ctns[0]?.ctnCodeName || '';
+      const firstCtnName = ctns[0]?.ctnCode.ctnName || '';
       row['unit'] = firstCtnName;
 
       // 计算相同箱型的数量
       const sameCtnCount = ctns.filter(
-        (ctn: any) => ctn.ctnCodeName === firstCtnName,
+        (ctn: any) => ctn.ctnCode.ctnName === firstCtnName,
       ).length;
 
       row['quantity'] = sameCtnCount;
@@ -1147,34 +1152,39 @@ export function useOrderFeeLinkage(
     }
   }
 
-  function getSettlementId(settlementName: any){
+  function getSettlementId(settlementName: any) {
     if (!settlementName) return undefined;
-    
+
     const sources = getDropdownSources();
     const allClientsByIndustry = sources.allClientsByIndustry;
-    
-    if (!allClientsByIndustry || Object.keys(allClientsByIndustry).length === 0) {
+
+    if (
+      !allClientsByIndustry ||
+      Object.keys(allClientsByIndustry).length === 0
+    ) {
       console.warn('⚠️ [getSettlementId] 客户缓存数据为空');
       return undefined;
     }
-    
+
     // 遍历所有行业类别的客户列表，查找匹配的客户名称
     for (const industry of Object.keys(allClientsByIndustry)) {
       const clients = allClientsByIndustry[industry];
       if (!clients || !Array.isArray(clients)) continue;
-      
+
       // 查找匹配的客户（支持精确匹配 name 字段）
-      const matchedClient = clients.find(client => 
-        client.name === settlementName || 
-        client.label === settlementName
+      const matchedClient = clients.find(
+        (client) =>
+          client.name === settlementName || client.label === settlementName,
       );
-      
+
       if (matchedClient) {
-        console.log(`✅ [getSettlementId] 找到客户: ${settlementName}, ID: ${matchedClient.value}`);
+        console.log(
+          `✅ [getSettlementId] 找到客户: ${settlementName}, ID: ${matchedClient.value}`,
+        );
         return matchedClient.value;
       }
     }
-    
+
     console.warn(`⚠️ [getSettlementId] 未找到客户: ${settlementName}`);
     return undefined;
   }
@@ -1218,9 +1228,9 @@ export function useOrderFeeLinkage(
       // 结算对象变化 - 使用 _value 字段
       else if (prop === 'settlementId') {
         // settlementId 的联动逻辑在 fillSettlementIdByIndustryCategory 中处理
-        
-        if(!row['settlementId_value']){
-          row['settlementId_value'] =  getSettlementId(row['settlementId']);
+
+        if (!row['settlementId_value']) {
+          row['settlementId_value'] = getSettlementId(row['settlementId']);
         }
         console.log(
           '👤 [handleAfterChange] 结算对象变化:',

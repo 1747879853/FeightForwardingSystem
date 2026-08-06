@@ -53,6 +53,9 @@ export function useDropdownSources(orderCtnList: any) {
         }),
       );
 
+      // ✅ 新增：加载费用代码列表并构建缓存
+      await getFeeCodeList();
+
       // ✅ 修改：从后端 API 获取币别列表
       await loadCurrencyList();
 

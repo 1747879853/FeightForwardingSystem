@@ -117,6 +117,11 @@ const allDisplayFields: DisplayFieldConfig[] = [
     visible: true,
   },
   {
+    key: 'codeSourceName',
+    label: $t('seaImport.import.codeSourceId'),
+    visible: true,
+  },
+  {
     key: 'commissionNum',
     label: $t('seaImport.import.commissionNum'),
     visible: true,
@@ -135,8 +140,33 @@ const allDisplayFields: DisplayFieldConfig[] = [
     visible: true,
   },
   { key: 'etd', label: $t('seaImport.import.etd'), visible: true },
-  { key: 'atd', label: $t('seaImport.import.atd'), visible: true },
+  { key: 'atd', label: $t('seaExport.export.atd'), visible: true },
   { key: 'eta', label: $t('seaImport.import.eta'), visible: true },
+  {
+    key: 'closeDocTime',
+    label: $t('seaImport.import.closeDocTime'),
+    visible: true,
+  },
+  {
+    key: 'closeVgmTime',
+    label: $t('seaImport.import.closeVgmTime'),
+    visible: true,
+  },
+  {
+    key: 'closeManifestTime',
+    label: $t('seaImport.import.closeManifestTime'),
+    visible: true,
+  },
+  {
+    key: 'codeServiceName',
+    label: $t('seaImport.import.codeServiceId'),
+    visible: true,
+  },
+  {
+    key: 'codeFrtName',
+    label: $t('seaImport.import.codeFrtId'),
+    visible: true,
+  },
   { key: 'noPkgs', label: $t('seaImport.import.noPkgs'), visible: true },
   { key: 'kgs', label: $t('seaImport.import.kgs'), visible: true },
   { key: 'cbm', label: $t('seaImport.import.cbm'), visible: true },
@@ -216,6 +246,9 @@ const displayList = computed(() => {
       case 'deliverPortName':
         value = formValues.value?.deliverPortRemark || '--';
         break;
+      case 'codeSourceName':
+        value = to.value?.codeSourceName || '--';
+        break;
       case 'commissionNum':
         value = to.value?.commissionNum || '--';
         break;
@@ -246,6 +279,21 @@ const displayList = computed(() => {
       case 'eta':
         value = formatNormalDate(to.value?.eta, 'YYYY-MM-DD');
         break;
+      case 'closeDocTime':
+        value = formatNormalDate(formValues.value?.closeDocTime);
+        break;
+      case 'closeVgmTime':
+        value = formatNormalDate(formValues.value?.closeVgmTime);
+        break;
+      case 'closeManifestTime':
+        value = formatNormalDate(formValues.value?.closeManifestTime);
+        break;
+      case 'codeServiceName':
+        value = formValues.value?.codeServiceName || '--';
+        break;
+      case 'codeFrtName':
+        value = formValues.value?.codeFrtName || '--';
+        break;
       case 'noPkgs':
         value = to.value?.noPkgs ?? '--';
         break;
@@ -265,7 +313,8 @@ const displayList = computed(() => {
     result.push({
       key: field.key,
       name: field.label,
-      value: value === null || value === undefined || value === '' ? '--' : value,
+      value:
+        value === null || value === undefined || value === '' ? '--' : value,
     });
   });
 
@@ -305,12 +354,12 @@ const payTableRef = ref();
 // 订单详情数据
 const orderDetail = ref<SeaImportAdminApi.SeaImportDto | null>(null);
 
-// 显示字段配置弹窗
-const displayFieldsModalVisible = ref(false);
+// 显示字段配置弹窗引用
+const configModalRef = ref<any>(null);
 
 // 打开显示字段配置
 const openDisplayFieldsConfig = () => {
-  displayFieldsModalVisible.value = true;
+  configModalRef.value?.open();
 };
 
 // 处理显示字段配置确认
@@ -387,10 +436,9 @@ const loadFeeCount = async () => {
   }
 };
 
-// 刷新费用表格
+// 修复：防止循环调用，只更新费用数量，不重新加载表格数据
 const refreshFeeTables = () => {
-  recTableRef.value?.getTableDate();
-  payTableRef.value?.getTableDate();
+  // 只更新费用数量统计，不调用 getTableDate() 避免循环
   loadFeeCount();
 };
 
@@ -406,122 +454,97 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Page auto-content-height>
-    <template #title>
-      <div class="flex items-center gap-2">
-        <Button type="text" @click="handleBack">
-          <ArrowLeft class="size-5" />
-        </Button>
-        <span>{{ $t('seaImport.import.orderFee') }}</span>
-      </div>
-    </template>
-
-    <template #extra>
-      <Space>
-        <Button @click="openDisplayFieldsConfig">
-          <Settings class="mr-1 size-4" />
-          {{ $t('common.displayConfig') }}
-        </Button>
-      </Space>
-    </template>
-
+  <Page auto-content-height class="order-fee-page">
     <Spin :spinning="pageLoading || clientsLoading">
       <div class="mx-2 flex items-stretch gap-6">
         <!-- 左侧信息卡片 -->
-        <Card class="flex w-[320px] shrink-0 flex-col">
+        <Card class="flex w-[280px] shrink-0 flex-col">
           <template #title>
-            <span class="flex items-center gap-2">
-              <Users class="size-4" />
-              {{ $t('common.basicInfo') }}
+            <span class="flex items-center justify-between gap-2">
+              <span class="flex items-center gap-2">
+                <Users class="size-4" />
+                {{ $t('seaExport.export.formCardInfo') }}
+              </span>
+              <Button
+                type="text"
+                size="small"
+                @click="openDisplayFieldsConfig"
+                class="text-gray-500 hover:text-blue-600"
+              >
+                <Settings class="size-4" />
+              </Button>
             </span>
           </template>
-
-          <div class="flex-1 overflow-y-auto">
-            <div class="space-y-2">
-              <div
-                v-for="item in displayList"
-                :key="item.key"
-                class="flex items-start justify-between py-1 text-sm"
+          <div
+            class="flex flex-1 px-1 py-1"
+            v-for="item in displayList"
+            :key="item.key"
+          >
+            <span class="flex w-[85px] font-semibold">
+              {{ `${item.name} : ` }}</span
+            >
+            <span class="flex w-[145px]">
+              <span
+                v-if="item.key === 'carrierName'"
+                class="inline-flex items-center gap-1"
               >
-                <span class="shrink-0 text-gray-500">{{ item.name }}</span>
-                <span class="ml-2 flex-1 truncate text-right font-medium">
-                  {{ item.value }}
-                </span>
-              </div>
-            </div>
+                <img
+                  v-if="formValues?.carrierLogo?.url"
+                  :src="buildAttachmentUrl(formValues?.carrierLogo?.url)"
+                  :alt="formValues?.carrier?.cnName || 'carrier-logo'"
+                  class="h-8 w-8 rounded object-contain"
+                />
+                <span>{{ item.value || '--' }}</span>
+              </span>
+              <span v-else>{{ item.value || '--' }}</span>
+            </span>
           </div>
         </Card>
 
         <!-- 右侧费用表格 -->
-        <Card class="flex-1">
-          <template #title>
-            <div class="flex items-center justify-between">
-              <span class="flex items-center gap-2">
-                <FileText class="size-4" />
-                {{ $t('seaImport.import.orderFee') }}
-              </span>
-              <Space>
-                <span class="text-sm text-gray-500">
-                  {{ $t('seaExport.export.orderFee.receivableCharges') }}:
-                  {{ recCount }}
-                </span>
-                <span class="text-sm text-gray-500">
-                  {{ $t('seaExport.export.orderFee.payableCharges') }}:
-                  {{ payCount }}
-                </span>
-              </Space>
-            </div>
-          </template>
+        <div class="flex min-w-0 flex-1 flex-col gap-2">
+          <!-- 应收费用表格 -->
+          <OrderFeeTable
+            ref="recTableRef"
+            :type="0"
+            :edit-id="editId"
+            :order-detail="orderDetail"
+            :all-clients-by-industry="allClientsByIndustry"
+            @sync-fee="refreshFeeTables"
+            @update-amount="(data) => (recAmountMap = data)"
+            @refresh-opposite-table="payTableRef?.getTableDate()"
+          />
 
-          <div class="flex flex-col gap-4">
-            <!-- 应收费用表格 -->
-            <div>
-              <h3 class="mb-2 text-base font-semibold">
-                {{ $t('seaExport.export.orderFee.receivableCharges') }}
-              </h3>
-              <OrderFeeTable
-                ref="recTableRef"
-                :type="0"
-                :edit-id="editId"
-                :order-detail="orderDetail"
-                :all-clients-by-industry="allClientsByIndustry"
-                @sync-fee="refreshFeeTables"
-                @update-amount="(data) => (recAmountMap = data)"
-                @refresh-opposite-table="payTableRef?.getTableDate()"
-              />
-            </div>
-
-            <!-- 应付费用表格 -->
-            <div>
-              <h3 class="mb-2 text-base font-semibold">
-                {{ $t('seaExport.export.orderFee.payableCharges') }}
-              </h3>
-              <OrderFeeTable
-                ref="payTableRef"
-                :type="1"
-                :edit-id="editId"
-                :order-detail="orderDetail"
-                :all-clients-by-industry="allClientsByIndustry"
-                @sync-fee="refreshFeeTables"
-                @update-amount="(data) => (payAmountMap = data)"
-                @refresh-opposite-table="recTableRef?.getTableDate()"
-              />
-            </div>
-          </div>
-        </Card>
+          <!-- 应付费用表格 -->
+          <OrderFeeTable
+            ref="payTableRef"
+            :type="1"
+            :edit-id="editId"
+            :order-detail="orderDetail"
+            :all-clients-by-industry="allClientsByIndustry"
+            @sync-fee="refreshFeeTables"
+            @update-amount="(data) => (payAmountMap = data)"
+            @refresh-opposite-table="recTableRef?.getTableDate()"
+          />
+        </div>
       </div>
     </Spin>
 
     <!-- 显示字段配置弹窗 -->
     <DisplayFieldsConfigModal
-      v-model:visible="displayFieldsModalVisible"
-      :fields="displayFieldConfig"
+      ref="configModalRef"
+      :available-fields="displayFieldConfig"
       @confirm="handleDisplayFieldsConfirm"
     />
   </Page>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+.order-fee-page {
+  height: 100%;
+  overflow: hidden;
+}
+
 /* 自定义滚动条样式 */
 .overflow-y-auto::-webkit-scrollbar {
   width: 6px;
