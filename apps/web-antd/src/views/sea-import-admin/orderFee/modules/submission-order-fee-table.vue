@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { OrderFeeAdminApi } from '#/api/sea-import/order-fee-admin';
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 
 import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
@@ -59,13 +59,11 @@ const submissionId = computed(() => {
 });
 
 const getTableDate = async () => {
-  const detail = await submitOrderFeeDetailAsync({ id: submissionId.value });
+  const detail = await submitOrderFeeDetailAsync({ id: String(submissionId.value) });
   const orderFeeTasks =
     detail.orderFeeTasks?.filter((item) => item.paySide === props.type) || [];
   dataSource.value = normalizeOrderFeeWithRowKey(orderFeeTasks);
 };
-
-// ... existing code ...
 
 const showConfirmWithRemark = (approve: boolean) => {
   let modalRemark = '';
@@ -136,7 +134,7 @@ const showRejectWithRemark = () => {
     },
   });
 };
-// ... existing code ...
+
 const Rejected = (modalRemark: string) => {
   if (!selectedRowKeys.value.length) return;
   const keysSet = new Set(selectedRowKeys.value);
@@ -145,7 +143,7 @@ const Rejected = (modalRemark: string) => {
   );
   let submitOrderFeeRejectedAsyncDto: ExpenseSubmissionAdminApi.SubmitOrderFeeRejectedDto =
     {
-      id: submissionId.value,
+      id: String(submissionId.value),
       remark: modalRemark,
       orderFeeIds: list.map((item) => item.id),
     };
@@ -165,7 +163,7 @@ const Submitted = (approve: boolean, modalRemark: string) => {
   );
   let submitOrderFeeAuditDto: ExpenseSubmissionAdminApi.SubmitOrderFeeAuditDto =
     {
-      id: submissionId.value,
+      id: String(submissionId.value),
       success: approve,
       remark: modalRemark,
       orderFeeIds: list.map((item) => item.id),
@@ -181,7 +179,7 @@ const Submitted = (approve: boolean, modalRemark: string) => {
 };
 /** 为 orderCtns 每项添加 _rowKey，供 Table 使用 */
 const normalizeOrderFeeWithRowKey = (
-  items: OrderFeeAdminApi.OrderFeeEditDto[] | undefined,
+  items: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[] | undefined,
 ) => {
   if (!items?.length) return [];
   return items.map((item, i) => ({
@@ -236,7 +234,7 @@ const columns = [
         title: $t('auditApproval.task.auditTime'),
         dataIndex: ['task', 'auditTime'],
         key: 'auditTime',
-        customRender: ({ text }) => {
+        customRender: ({ text }: { text?: any }) => {
           // 基本格式化
           return text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '';
         },
@@ -254,133 +252,133 @@ const columns = [
     title: $t('auditApproval.expenseName'),
     children: [
       {
-        title: $t('seaImport.import.orderFee.invoiceStatus'),
+        title: $t('seaExport.export.orderFee.invoiceStatus'),
         dataIndex: 'invoiceStatus',
         key: 'invoiceStatus',
         width: 80,
       },
       {
-        title: $t('seaImport.import.orderFee.feeStatus'),
+        title: $t('seaExport.export.orderFee.feeStatus'),
         dataIndex: 'feeStatus',
         key: 'feeStatus',
         width: 90,
       },
       {
-        title: $t('seaImport.import.orderFee.feecodeName'),
+        title: $t('seaExport.export.orderFee.feecodeName'),
         dataIndex: 'feeCodeName',
         key: 'feeCodeName',
         minWidth: 120,
       },
       {
-        title: $t('seaImport.client.industryCategories'),
+        title: $t('seaExport.client.industryCategories'),
         dataIndex: 'industryCategory',
         key: 'industryCategory',
         minWidth: 110,
       },
       {
-        title: $t('seaImport.import.orderFee.settlement'),
+        title: $t('seaExport.export.orderFee.settlement'),
         dataIndex: 'settlementName',
         key: 'settlementName',
         minWidth: 110,
       },
       {
-        title: $t('seaImport.import.orderFee.currency'),
+        title: $t('seaExport.export.orderFee.currency'),
         dataIndex: 'currencyName',
         key: 'currencyName',
         minWidth: 80,
       },
       {
-        title: $t('seaImport.import.orderFee.ExchangeRate'),
+        title: $t('seaExport.export.orderFee.ExchangeRate'),
         dataIndex: 'exchangeRate',
         key: 'exchangeRate',
         width: 85,
       },
       {
-        title: $t('seaImport.import.orderFee.unitPrice'),
+        title: $t('seaExport.export.orderFee.unitPrice'),
         dataIndex: 'unitPrice',
         key: 'unitPrice',
         minWidth: 50,
       },
       {
-        title: $t('seaImport.import.orderFee.amount'),
+        title: $t('seaExport.export.orderFee.amount'),
         dataIndex: 'amount',
         key: 'amount',
         minWidth: 80,
       },
       {
-        title: $t('seaImport.import.orderFee.unitEmum'),
+        title: $t('seaExport.export.orderFee.unitEmum'),
         dataIndex: 'unit',
         key: 'unit',
         minWidth: 90,
       },
       {
-        title: $t('seaImport.import.orderFee.quantity'),
+        title: $t('seaExport.export.orderFee.quantity'),
         dataIndex: 'quantity',
         key: 'quantity',
         minWidth: 50,
       },
       {
-        title: $t('seaImport.import.orderFee.taxRate'),
+        title: $t('seaExport.export.orderFee.taxRate'),
         dataIndex: 'taxRate',
         key: 'taxRate',
         minWidth: 50,
       },
       {
-        title: $t('seaImport.import.orderFee.noTaxUnitPrice'),
+        title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
         dataIndex: 'noTaxUnitPrice',
         key: 'noTaxUnitPrice',
         minWidth: 50,
       },
       {
-        title: $t('seaImport.import.orderFee.noTaxAmount'),
+        title: $t('seaExport.export.orderFee.noTaxAmount'),
         dataIndex: 'noTaxAmount',
         key: 'noTaxAmount',
         minWidth: 80,
       },
       {
-        title: $t('seaImport.import.orderFee.rqstPaymentAmount'),
+        title: $t('seaExport.export.orderFee.rqstPaymentAmount'),
         dataIndex: 'rqstPaymentAmount',
         key: 'rqstPaymentAmount',
         minWidth: 80,
       },
       {
-        title: $t('seaImport.import.orderFee.invoicedAmount'),
+        title: $t('seaExport.export.orderFee.invoicedAmount'),
         dataIndex: 'invoicedAmount',
         key: 'invoicedAmount',
         minWidth: 80,
       },
       {
-        title: $t('seaImport.import.orderFee.orderInvoiceAmount'),
+        title: $t('seaExport.export.orderFee.orderInvoiceAmount'),
         dataIndex: 'orderInvoiceAmount',
         key: 'orderInvoiceAmount',
         minWidth: 80,
       },
       {
-        title: $t('seaImport.import.orderFee.settledAmount'),
+        title: $t('seaExport.export.orderFee.settledAmount'),
         dataIndex: 'settledAmount',
         key: 'settledAmount',
         minWidth: 80,
       },
       {
-        title: $t('seaImport.import.orderFee.canInvoice'),
-        dataIndex: 'canInvoice',
-        key: 'canInvoice',
+        title: $t('seaExport.export.orderFee.canInvoice'),
+        dataIndex: 'invoiceBlocked',
+        key: 'invoiceBlocked',
         minWidth: 80,
       },
       {
-        title: $t('seaImport.import.orderFee.isConfidential'),
+        title: $t('seaExport.export.orderFee.isConfidential'),
         dataIndex: 'isConfidential',
         key: 'isConfidential',
         minWidth: 80,
       },
       {
-        title: $t('seaImport.import.orderFee.dataEntryMethod'),
+        title: $t('seaExport.export.orderFee.dataEntryMethod'),
         dataIndex: 'dataEntryMethod',
         key: 'dataEntryMethod',
         minWidth: 80,
       },
       {
-        title: $t('seaImport.import.orderFee.remark'),
+        title: $t('seaExport.export.orderFee.remark'),
         dataIndex: 'remark',
         key: 'feeRemark',
         minWidth: 150,
@@ -454,13 +452,15 @@ onMounted(() => {
 
         <template v-if="column.key === 'industryCategory'">
           <span>{{
-            feeConstants
-              .getIndustryCategoryOptions()
-              .find((o) => o.value === record.industryCategory)?.label
+            !record.industryCategory || record.industryCategory === 0
+              ? ''
+              : feeConstants
+                  .getIndustryCategoryOptions()
+                  .find((o) => o.value === record.industryCategory)?.label
           }}</span>
         </template>
 
-        <template v-if="column.key === 'canInvoice'">
+        <template v-if="column.key === 'invoiceBlocked'">
           <span>{{
             record.industryCategory ? $t('common.yes') : $t('common.no')
           }}</span>
