@@ -90,18 +90,6 @@ const { allClientsByIndustry, loadAllClients } =
 const allDisplayFields: DisplayFieldConfig[] = [
   { key: 'mblNum', label: $t('seaImport.import.mblNum'), visible: true },
   {
-    key: 'bookingNum',
-    label: $t('seaImport.import.bookingNum'),
-    visible: true,
-  },
-  {
-    key: 'receivePortName',
-    label: $t('seaImport.import.receivePortId'),
-    visible: true,
-  },
-  { key: 'polName', label: $t('seaImport.import.polId'), visible: true },
-  { key: 'podName', label: $t('seaImport.import.podId'), visible: true },
-  {
     key: 'commissionNum',
     label: $t('seaImport.import.commissionNum'),
     visible: true,
@@ -119,6 +107,8 @@ const allDisplayFields: DisplayFieldConfig[] = [
     label: $t('seaImport.import.carrierId'),
     visible: true,
   },
+  { key: 'polName', label: $t('seaImport.import.polId'), visible: true },
+  { key: 'podName', label: $t('seaImport.import.podId'), visible: true },
   {
     key: 'arrivalDate',
     label: $t('seaImport.import.arrivalDate'),
@@ -212,18 +202,6 @@ const displayList = computed(() => {
       case 'mblNum':
         value = to.value?.mblNum || '--';
         break;
-      case 'bookingNum':
-        value = to.value?.bookingNum || '--';
-        break;
-      case 'receivePortName':
-        value = formValues.value?.receivePortRemark || '--';
-        break;
-      case 'polName':
-        value = formValues.value?.polRemark || '--';
-        break;
-      case 'podName':
-        value = formValues.value?.podRemark || '--';
-        break;
       case 'commissionNum':
         value = to.value?.commissionNum || '--';
         break;
@@ -244,6 +222,12 @@ const displayList = computed(() => {
           formValues.value?.carrier?.cnShortName ||
           formValues.value?.carrier?.cnName ||
           '--';
+        break;
+      case 'polName':
+        value = formValues.value?.polRemark || '--';
+        break;
+      case 'podName':
+        value = formValues.value?.podRemark || '--';
         break;
       case 'arrivalDate':
         value = formatNormalDate(to.value?.etd, 'YYYY-MM-DD');
