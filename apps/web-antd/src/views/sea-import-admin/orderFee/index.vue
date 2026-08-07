@@ -24,7 +24,17 @@ import {
   Settings,
 } from '@vben/icons';
 
-import { Button, Card, message, Space, Spin } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  message,
+  Space,
+  Spin,
+  Dropdown,
+  Menu,
+  MenuItem,
+  DropdownButton,
+} from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
 import { getSeaImportDetail } from '#/api/sea-import/sea-import-admin';
@@ -39,6 +49,14 @@ import { useDisplayFieldConfig } from './composables/use-display-field-config';
 import { buildAttachmentUrl } from '#/utils';
 // ✅ 新增：导入下拉框数据源管理
 import { useDropdownSources } from './modules/composables/useDropdownSources';
+
+// 导入费用操作相关的 API
+import {
+  submitOrderFee,
+  modifyOrderFee,
+  deleteOrderFee,
+  OrderFeeTaskWithdraw,
+} from '#/api/audit-approval/expense-admin';
 
 defineOptions({
   name: 'OrderFee',
@@ -407,6 +425,248 @@ const refreshFeeTables = () => {
   loadFeeCount();
 };
 
+// ==================== 外层容器：选中的费用ID管理 ====================
+
+// 存储选中的费用ID（应收+应付）
+const selectedFeeIds = ref<string[]>([]);
+
+// 应收和应付表格的引用
+const recOrderFeeTableRef = ref();
+const payOrderFeeTableRef = ref();
+
+/**
+ * 收集两个表格选中的费用ID
+ */
+const collectSelectedFeeIds = (): string[] => {
+  const recIds = recOrderFeeTableRef.value?.getSelectedFeeIds() || [];
+  const payIds = payOrderFeeTableRef.value?.getSelectedFeeIds() || [];
+  selectedFeeIds.value = [...recIds, ...payIds];
+  return selectedFeeIds.value;
+};
+
+/**
+ * 处理表格选中变化事件
+ */
+const handleSelectionChange = (payload: {
+  type: number;
+  selectedIds: string[];
+}) => {
+  console.log('📋 收到选中变化事件:', payload);
+  collectSelectedFeeIds();
+};
+
+// ==================== 费用操作功能 ====================
+
+// 整票提交
+const handleSubmitAllFees = async () => {
+  const feeIds = collectSelectedFeeIds();
+  if (feeIds.length === 0) {
+    message.warning('请至少选择一条费用');
+    return;
+  }
+
+  try {
+    // 需要分别获取应收和应付的费用详情来构建提交参数
+    const recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
+    const payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
+
+    // 合并所有费用
+    const allFees = [...recFees, ...payFees];
+
+    if (allFees.length === 0) {
+      message.warning('没有可提交的费用');
+      return;
+    }
+
+    // 转换为OrderFeeEditDto格式，确保所有必需字段都有值
+    const editFees = allFees.map((fee) => ({
+      id: fee.id,
+      transportOrderId: fee.transportOrderId || editId.value || '',
+      paySide: fee.paySide ?? 0,
+      feeStatus: fee.feeStatus ?? 0,
+      invoiceStatus: fee.invoiceStatus ?? 0,
+      feeCodeId: fee.feeCodeId ?? 0,
+      settlementId: fee.settlementId || '',
+      currencyId: fee.currencyId ?? 0,
+      exchangeRate: fee.exchangeRate ?? 1,
+      unitPrice: fee.unitPrice ?? 0,
+      amount: fee.amount ?? 0,
+      unit: fee.unit || '',
+      quantity: fee.quantity ?? 0,
+      taxRate: fee.taxRate ?? 0,
+      noTaxUnitPrice: fee.noTaxUnitPrice ?? 0,
+      noTaxAmount: fee.noTaxAmount ?? 0,
+      rqstPaymentAmount: fee.rqstPaymentAmount ?? 0,
+      invoicedAmount: fee.invoicedAmount ?? 0,
+      orderInvoiceAmount: fee.orderInvoiceAmount ?? 0,
+      settledAmount: fee.settledAmount ?? 0,
+      invoiceBlocked: fee.invoiceBlocked ?? false,
+      isConfidential: fee.isConfidential ?? false,
+      dataEntryMethod: fee.dataEntryMethod ?? 0,
+      remark: fee.remark,
+      changeOrderId: fee.changeOrderId,
+      taskStatus: fee.taskStatus,
+      industryCategory: fee.industryCategory,
+      industryCategories: fee.industryCategories,
+      settlementCode: fee.settlementCode,
+    }));
+
+    // 构建提交参数 - 需要根据实际API要求构建
+    // 注意：submitOrderFee接口需要orderFees数组，包含完整的费用信息
+    await submitOrderFee({
+      transportOrderId: editId.value,
+      orderFees: editFees,
+    });
+
+    message.success('整票提交成功');
+    // 刷新两个表格
+    recOrderFeeTableRef.value?.getTableDate();
+    payOrderFeeTableRef.value?.getTableDate();
+    // 清空选中状态
+    selectedFeeIds.value = [];
+  } catch (error) {
+    console.error('整票提交失败:', error);
+    message.error('整票提交失败');
+  }
+};
+
+// 申请修改
+const handleApplyModify = async () => {
+  const feeIds = collectSelectedFeeIds();
+  if (feeIds.length === 0) {
+    message.warning('请至少选择一条费用');
+    return;
+  }
+
+  // TODO: 打开申请修改对话框，获取备注
+  // 暂时简化处理
+  try {
+    const recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
+    const payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
+    const allFees = [...recFees, ...payFees];
+
+    if (allFees.length === 0) {
+      message.warning('没有可申请修改的费用');
+      return;
+    }
+
+    // 转换为OrderFeeEditDto格式，确保所有必需字段都有值
+    const editFees = allFees.map((fee) => ({
+      id: fee.id,
+      transportOrderId: fee.transportOrderId || editId.value || '',
+      paySide: fee.paySide ?? 0,
+      feeStatus: fee.feeStatus ?? 0,
+      invoiceStatus: fee.invoiceStatus ?? 0,
+      feeCodeId: fee.feeCodeId ?? 0,
+      settlementId: fee.settlementId || '',
+      currencyId: fee.currencyId ?? 0,
+      exchangeRate: fee.exchangeRate ?? 1,
+      unitPrice: fee.unitPrice ?? 0,
+      amount: fee.amount ?? 0,
+      unit: fee.unit || '',
+      quantity: fee.quantity ?? 0,
+      taxRate: fee.taxRate ?? 0,
+      noTaxUnitPrice: fee.noTaxUnitPrice ?? 0,
+      noTaxAmount: fee.noTaxAmount ?? 0,
+      rqstPaymentAmount: fee.rqstPaymentAmount ?? 0,
+      invoicedAmount: fee.invoicedAmount ?? 0,
+      orderInvoiceAmount: fee.orderInvoiceAmount ?? 0,
+      settledAmount: fee.settledAmount ?? 0,
+      invoiceBlocked: fee.invoiceBlocked ?? false,
+      isConfidential: fee.isConfidential ?? false,
+      dataEntryMethod: fee.dataEntryMethod ?? 0,
+      remark: fee.remark,
+      changeOrderId: fee.changeOrderId,
+      taskStatus: fee.taskStatus,
+      industryCategory: fee.industryCategory,
+      industryCategories: fee.industryCategories,
+      settlementCode: fee.settlementCode,
+    }));
+
+    await modifyOrderFee({
+      remark: '', // TODO: 需要从对话框获取备注
+      transportOrderId: editId.value,
+      orderFees: editFees,
+    });
+
+    message.success('申请修改成功');
+    // 刷新两个表格
+    recOrderFeeTableRef.value?.getTableDate();
+    payOrderFeeTableRef.value?.getTableDate();
+    // 清空选中状态
+    selectedFeeIds.value = [];
+  } catch (error) {
+    console.error('申请修改失败:', error);
+    message.error('申请修改失败');
+  }
+};
+
+// 申请删除
+const handleApplyDelete = async () => {
+  const feeIds = collectSelectedFeeIds();
+  if (feeIds.length === 0) {
+    message.warning('请至少选择一条费用');
+    return;
+  }
+
+  try {
+    await deleteOrderFee({
+      ids: feeIds,
+    });
+
+    message.success('申请删除成功');
+    // 刷新两个表格
+    recOrderFeeTableRef.value?.getTableDate();
+    payOrderFeeTableRef.value?.getTableDate();
+    // 清空选中状态
+    selectedFeeIds.value = [];
+  } catch (error) {
+    console.error('申请删除失败:', error);
+    message.error('申请删除失败');
+  }
+};
+
+// 撤销提交
+const handleWithdraw = async () => {
+  const feeIds = collectSelectedFeeIds();
+  if (feeIds.length === 0) {
+    message.warning('请至少选择一条费用');
+    return;
+  }
+
+  try {
+    await OrderFeeTaskWithdraw({
+      ids: feeIds,
+    });
+
+    message.success('撤销提交成功');
+    // 刷新两个表格
+    recOrderFeeTableRef.value?.getTableDate();
+    payOrderFeeTableRef.value?.getTableDate();
+    // 清空选中状态
+    selectedFeeIds.value = [];
+  } catch (error) {
+    console.error('撤销提交失败:', error);
+    message.error('撤销提交失败');
+  }
+};
+
+// 下拉菜单操作
+const handleMenuClick = (info: any) => {
+  const key = info.key;
+  switch (key) {
+    case 'modify':
+      handleApplyModify();
+      break;
+    case 'delete':
+      handleApplyDelete();
+      break;
+    case 'withdraw':
+      handleWithdraw();
+      break;
+  }
+};
+
 // 返回列表
 const handleBack = () => {
   router.back();
@@ -466,30 +726,64 @@ onMounted(async () => {
           </div>
         </Card>
 
-        <!-- 右侧费用表格 -->
+        <!-- 外层容器：包含应收应付表格和操作按钮 -->
         <div class="flex min-w-0 flex-1 flex-col gap-2">
+          <!-- 右侧操作按钮区域 -->
+          <div class="flex justify-end gap-2 px-1">
+            <Space>
+              <!-- 调试信息 -->
+              <span class="text-sm text-gray-500">
+                已选中: {{ selectedFeeIds.length }} 条费用
+              </span>
+
+              <!-- 更多操作下拉菜单 -->
+              <DropdownButton
+                type="primary"
+                :disabled="selectedFeeIds.length === 0"
+                @click="handleSubmitAllFees"
+              >
+                整票提交
+                <template #overlay>
+                  <Menu @click="handleMenuClick">
+                    <MenuItem key="modify">{{
+                      $t('auditApproval.ApplyModification')
+                    }}</MenuItem>
+                    <MenuItem key="delete">{{
+                      $t('auditApproval.ApplyDeletion')
+                    }}</MenuItem>
+                    <MenuItem key="withdraw">{{
+                      $t('auditApproval.withdraw')
+                    }}</MenuItem>
+                  </Menu>
+                </template>
+              </DropdownButton>
+            </Space>
+          </div>
+
           <!-- 应收费用表格 -->
           <OrderFeeTable
-            ref="recTableRef"
+            ref="recOrderFeeTableRef"
             :type="0"
             :edit-id="editId"
             :order-detail="orderDetail"
             :all-clients-by-industry="allClientsByIndustry"
             @sync-fee="refreshFeeTables"
             @update-amount="(data) => (recAmountMap = data)"
-            @refresh-opposite-table="payTableRef?.getTableDate()"
+            @refresh-opposite-table="payOrderFeeTableRef?.getTableDate()"
+            @selection-change="handleSelectionChange"
           />
 
           <!-- 应付费用表格 -->
           <OrderFeeTable
-            ref="payTableRef"
+            ref="payOrderFeeTableRef"
             :type="1"
             :edit-id="editId"
             :order-detail="orderDetail"
             :all-clients-by-industry="allClientsByIndustry"
             @sync-fee="refreshFeeTables"
             @update-amount="(data) => (payAmountMap = data)"
-            @refresh-opposite-table="recTableRef?.getTableDate()"
+            @refresh-opposite-table="recOrderFeeTableRef?.getTableDate()"
+            @selection-change="handleSelectionChange"
           />
         </div>
       </div>

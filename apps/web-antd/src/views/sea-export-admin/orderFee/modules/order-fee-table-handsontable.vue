@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import { computed, nextTick, onMounted, ref, watch, shallowRef } from 'vue';
 import {
   Button,
@@ -45,6 +46,7 @@ const emit = defineEmits([
   'sync-fee',
   'update-amount',
   'refresh-opposite-table',
+  'selection-change',
 ]);
 
 // ==================== 使用 Composables ====================
@@ -289,18 +291,7 @@ const ImportOther = async (e: any) => {
   }
 };
 
-const SubmittedOther = async (e: any) => {
-  switch (e.key) {
-    case 'modify':
-      actions.openModifyModal(modifyModalRef, orderBaseData);
-      break;
-    case 'delete':
-      actions.showDeleteWithRemark();
-      break;
-    case 'withdraw':
-      actions.orderFeeWithdraw();
-  }
-};
+// ==================== 批量导入功能 ====================
 
 const openBatchImportModal = async () => {
   if (!editId.value) {
@@ -330,6 +321,80 @@ const handleBatchImportConfirm = () => {
   syncFee();
   emit('refresh-opposite-table');
 };
+
+// ==================== 暴露方法给父组件 ====================
+
+/**
+ * 获取选中费用的ID数组
+ */
+const getSelectedFeeIds = (): string[] => {
+  const selectedKeys = new Set(selectedRowKeys.value);
+  return dataSource.value
+    .filter((row) => selectedKeys.has((row as any)._rowKey))
+    .map((row) => row.id)
+    .filter((id): id is string => Boolean(id && String(id).trim()));
+};
+
+/**
+ * 获取选中费用的完整信息（将label转换回ID）
+ */
+const getSelectedFees = (): OrderFeeAdminApi.OrderFeeDto[] => {
+  const selectedKeys = new Set(selectedRowKeys.value);
+  const selectedRows = dataSource.value
+    .filter((row) => selectedKeys.has((row as any)._rowKey))
+    .filter((row) => row.id && String(row.id).trim());
+
+  // 需要将label转换回ID
+  return selectedRows.map((row: any) => {
+    const restoredRow = { ...row };
+
+    // 恢复费用代码ID
+    if (restoredRow.feeCodeId_value) {
+      restoredRow.feeCodeId = restoredRow.feeCodeId_value;
+    }
+
+    // 恢复行业类别
+    if (restoredRow.industryCategory_value !== undefined) {
+      restoredRow.industryCategory = restoredRow.industryCategory_value;
+    }
+
+    // 恢复币别ID
+    if (restoredRow.currencyId_value) {
+      restoredRow.currencyId = restoredRow.currencyId_value;
+    }
+
+    // 恢复单位
+    if (restoredRow.unit_value) {
+      restoredRow.unit = restoredRow.unit_value;
+    }
+
+    // 恢复结算对象ID
+    if (restoredRow.settlementId_value) {
+      restoredRow.settlementId = restoredRow.settlementId_value;
+    }
+
+    return restoredRow;
+  });
+};
+
+// 监听选中行变化，发射事件通知父组件
+watch(
+  () => selectedRowKeys.value,
+  (newKeys) => {
+    console.log('📋 [selectedRowKeys] 选中状态变化:', newKeys.length, '条');
+    emit('selection-change', {
+      type: props.type,
+      selectedIds: getSelectedFeeIds(),
+    });
+  },
+  { deep: true },
+);
+
+defineExpose({
+  getTableDate,
+  getSelectedFeeIds,
+  getSelectedFees,
+});
 
 // ==================== ID 到 Label 转换辅助函数 ====================
 
@@ -619,8 +684,6 @@ watch(
     }
   },
 );
-
-defineExpose({ getTableDate });
 </script>
 
 <template>
@@ -695,35 +758,6 @@ defineExpose({ getTableDate });
                   </Menu>
                 </template>
               </DropdownButton>
-
-              <DropdownButton
-                @click="actions.Submitted"
-                type="primary"
-                :disabled="!selectedRowKeys.length"
-              >
-                {{ $t('auditApproval.status.Submitted') }}
-                <template #overlay>
-                  <Menu @click="SubmittedOther">
-                    <MenuItem key="modify">{{
-                      $t('auditApproval.ApplyModification')
-                    }}</MenuItem>
-                    <MenuItem key="delete">{{
-                      $t('auditApproval.ApplyDeletion')
-                    }}</MenuItem>
-                    <MenuItem key="withdraw">{{
-                      $t('auditApproval.withdraw')
-                    }}</MenuItem>
-                  </Menu>
-                </template>
-              </DropdownButton>
-
-              <!-- <Button
-                type="primary"
-                :disabled="!selectedRowKeys.length"
-                @click="actions.orderFeeWithdraw"
-              >
-                {{ $t('auditApproval.withdraw') }}
-              </Button> -->
 
               <Button
                 v-show="type === 0"

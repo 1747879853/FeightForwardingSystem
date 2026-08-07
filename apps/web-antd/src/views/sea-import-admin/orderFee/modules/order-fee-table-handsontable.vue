@@ -45,6 +45,7 @@ const emit = defineEmits([
   'sync-fee',
   'update-amount',
   'refresh-opposite-table',
+  'selection-change',
 ]);
 
 // ==================== 使用 Composables ====================
@@ -627,7 +628,79 @@ watch(
   },
 );
 
-defineExpose({ getTableDate });
+// ==================== 暴露方法给父组件 ====================
+
+/**
+ * 获取选中费用的ID数组
+ */
+const getSelectedFeeIds = (): string[] => {
+  const selectedKeys = new Set(selectedRowKeys.value);
+  return dataSource.value
+    .filter((row) => selectedKeys.has((row as any)._rowKey))
+    .map((row) => row.id)
+    .filter((id): id is string => Boolean(id && String(id).trim()));
+};
+
+/**
+ * 获取选中费用的完整信息（将label转换回ID）
+ */
+const getSelectedFees = (): OrderFeeAdminApi.OrderFeeDto[] => {
+  const selectedKeys = new Set(selectedRowKeys.value);
+  const selectedRows = dataSource.value
+    .filter((row) => selectedKeys.has((row as any)._rowKey))
+    .filter((row) => row.id && String(row.id).trim());
+
+  // 需要将label转换回ID
+  return selectedRows.map((row: any) => {
+    const restoredRow = { ...row };
+
+    // 恢复费用代码ID
+    if (restoredRow.feeCodeId_value) {
+      restoredRow.feeCodeId = restoredRow.feeCodeId_value;
+    }
+
+    // 恢复行业类别
+    if (restoredRow.industryCategory_value !== undefined) {
+      restoredRow.industryCategory = restoredRow.industryCategory_value;
+    }
+
+    // 恢复币别ID
+    if (restoredRow.currencyId_value) {
+      restoredRow.currencyId = restoredRow.currencyId_value;
+    }
+
+    // 恢复单位
+    if (restoredRow.unit_value) {
+      restoredRow.unit = restoredRow.unit_value;
+    }
+
+    // 恢复结算对象ID
+    if (restoredRow.settlementId_value) {
+      restoredRow.settlementId = restoredRow.settlementId_value;
+    }
+
+    return restoredRow;
+  });
+};
+
+// 监听选中行变化，发射事件通知父组件
+watch(
+  () => selectedRowKeys.value,
+  (newKeys) => {
+    console.log('📋 [selectedRowKeys] 选中状态变化:', newKeys.length, '条');
+    emit('selection-change', {
+      type: props.type,
+      selectedIds: getSelectedFeeIds(),
+    });
+  },
+  { deep: true },
+);
+
+defineExpose({
+  getTableDate,
+  getSelectedFeeIds,
+  getSelectedFees,
+});
 </script>
 
 <template>
@@ -703,7 +776,7 @@ defineExpose({ getTableDate });
                 </template>
               </DropdownButton>
 
-              <DropdownButton
+              <!-- <DropdownButton
                 @click="actions.Submitted"
                 type="primary"
                 :disabled="!selectedRowKeys.length"
@@ -722,7 +795,7 @@ defineExpose({ getTableDate });
                     }}</MenuItem>
                   </Menu>
                 </template>
-              </DropdownButton>
+              </DropdownButton> -->
 
               <!-- <Button
                 type="primary"
