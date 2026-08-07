@@ -157,8 +157,8 @@ const feeInnerColumnsForAddFee = [
   },
   {
     title: '币别',
-    dataIndex: 'currencyName',
-    key: 'currencyName',
+    dataIndex: 'currencyCode',
+    key: 'currencyCode',
     width: 80,
   },
   {
@@ -180,6 +180,35 @@ const feeInnerColumnsForAddFee = [
     dataIndex: 'exchangeRate',
     key: 'exchangeRate',
     width: 50,
+  },
+  {
+    title: '费用状态',
+    dataIndex: 'feeStatus',
+    key: 'feeStatus',
+    width: 100,
+    customRender: ({ record }: any) => {
+      const statusMap: Record<number, string> = {
+        0: '录入状态',
+        1: '提交审核',
+        2: '审核通过',
+        3: '审核驳回',
+      };
+      return statusMap[record.feeStatus] || '-';
+    },
+  },
+  {
+    title: '结算状态',
+    dataIndex: 'settlementStatus',
+    key: 'settlementStatus',
+    width: 100,
+    customRender: ({ record }: any) => {
+      const statusMap: Record<number, string> = {
+        0: '未结算',
+        1: '部分结算',
+        2: '已结算',
+      };
+      return statusMap[record.settlementStatus] || '-';
+    },
   },
   {
     title: '备注',
@@ -256,6 +285,14 @@ async function fetchData(formValues?: Record<string, any>) {
   const feeCodeIds = values.FeeCodeIds;
   const hasFeeCodes = Array.isArray(feeCodeIds) && feeCodeIds.length > 0;
 
+  // 处理操作和销售的多选ID，取第一个作为主要筛选条件（后端可能需要调整支持多选）
+  const operatorIds = Array.isArray(values.OperatorIds) && values.OperatorIds.length > 0
+    ? values.OperatorIds
+    : undefined;
+  const saleIds = Array.isArray(values.SaleIds) && values.SaleIds.length > 0
+    ? values.SaleIds
+    : undefined;
+
   const params: StatementAdminApi.OrderFeeGroupQueryParams = {
     SettlementId: values.SettlementId,
     OrgId: values.OrgId,
@@ -267,6 +304,15 @@ async function fetchData(formValues?: Record<string, any>) {
       feeCodeMode === 'include' && hasFeeCodes ? feeCodeIds : undefined,
     ExceptFeeCodeIds:
       feeCodeMode === 'exclude' && hasFeeCodes ? feeCodeIds : undefined,
+    FeeStatus: values.FeeStatus !== null && values.FeeStatus !== undefined
+      ? values.FeeStatus
+      : undefined,
+    BizType: values.BizType,
+    OperatorIds: operatorIds,
+    SaleIds: saleIds,
+    SettlementStatus: values.SettlementStatus !== null && values.SettlementStatus !== undefined
+      ? values.SettlementStatus
+      : undefined,
     PageIndex: currentPage.value,
     PageSize: pageSize.value,
   };
@@ -506,6 +552,37 @@ function formatMonth(val: string | undefined | null): string {
   return dayjs(val).isValid() ? dayjs(val).format('YYYY-MM') : '';
 }
 
+function getBizTypeLabel(bizType: number | undefined): string {
+  const bizTypeMap: Record<number, string> = {
+    0: '海运出口',
+    1: '海运进口',
+    2: '空运出口',
+    3: '空运进口',
+    4: '陆运',
+    5: '仓储',
+  };
+  return bizTypeMap[bizType ?? -1] || '-';
+}
+
+function getFeeStatusLabel(feeStatus: number | undefined): string {
+  const statusMap: Record<number, string> = {
+    0: '录入状态',
+    1: '提交审核',
+    2: '审核通过',
+    3: '审核驳回',
+  };
+  return statusMap[feeStatus ?? -1] || '-';
+}
+
+function getSettlementStatusLabel(settlementStatus: number | undefined): string {
+  const statusMap: Record<number, string> = {
+    0: '未结算',
+    1: '部分结算',
+    2: '已结算',
+  };
+  return statusMap[settlementStatus ?? -1] || '-';
+}
+
 function onFeeCheckChange(transportOrderId: string, feeId: string, e: any) {
   toggleFee(transportOrderId, feeId, e.target.checked);
 }
@@ -538,6 +615,7 @@ defineExpose({ open: openDrawer });
     :destroy-on-close="true"
     placement="right"
     @close="handleCancel"
+    class="add-fee-drawer"
   >
     <!-- 搜索区域 -->
     <div class="mb-4">
@@ -555,7 +633,7 @@ defineExpose({ open: openDrawer });
     </div>
 
     <!-- 主表格（业务列表） -->
-    <div class="fee-order-table">
+    <div class="fee-order-table-container">
       <NestedDataTable
         :columns="allColumns"
         :data-source="tableRows"
@@ -598,6 +676,9 @@ defineExpose({ open: openDrawer });
           <template v-else-if="column.field === 'accountDate'">
             {{ formatMonth(record.accountDate) }}
           </template>
+          <template v-else-if="column.field === 'bizType'">
+            {{ getBizTypeLabel(record.bizType) }}
+          </template>
           <template v-else>
             {{ column.field ? record[column.field] : '' }}
           </template>
@@ -635,6 +716,12 @@ defineExpose({ open: openDrawer });
           <template v-else-if="column.key === 'unSettledAmount'">
             {{ formatAmount(feeRecord.unSettledAmount) }}
           </template>
+          <template v-else-if="column.key === 'feeStatus'">
+            {{ getFeeStatusLabel(feeRecord.feeStatus) }}
+          </template>
+          <template v-else-if="column.key === 'settlementStatus'">
+            {{ getSettlementStatusLabel(feeRecord.settlementStatus) }}
+          </template>
           <template v-else>
             {{ column.dataIndex ? feeRecord[column.dataIndex] : '' }}
           </template>
@@ -659,13 +746,54 @@ defineExpose({ open: openDrawer });
     <template #footer>
       <div class="flex justify-end gap-2">
         <Button @click="handleCancel">取消</Button>
-        <Button type="primary" @click="handleConfirm">添加到申请单</Button>
+        <Button type="primary" @click="handleConfirm">添加对账</Button>
       </div>
     </template>
   </Drawer>
 </template>
 
 <style scoped>
+/* Drawer内容区域使用flex布局 */
+:deep(.add-fee-drawer .ant-drawer-body) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  overflow: hidden;
+}
+
+/* 搜索区域不伸缩 */
+:deep(.add-fee-drawer .ant-drawer-body > div:first-child) {
+  flex-shrink: 0;
+}
+
+/* 标题区域不伸缩 */
+:deep(.add-fee-drawer .ant-drawer-body > div:nth-child(2)) {
+  flex-shrink: 0;
+}
+
+/* 表格容器占满剩余高度 */
+.fee-order-table-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  overflow: hidden;
+  height: calc(100% - 200px);
+}
+
+/* NestedDataTable占满容器 */
+.fee-order-table-container :deep(.nested-data-table) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.fee-order-table-container :deep(.nested-data-table__scroll) {
+  flex: 1;
+  min-height: 0;
+}
+
 .expand-toggle {
   display: inline-flex;
   align-items: center;

@@ -237,6 +237,9 @@ export namespace StatementAdminApi {
     SaleId?: number;
     OperatorId?: number;
     CustomerServiceId?: number;
+    // 新增：多选操作和销售ID（后端需要支持）
+    OperatorIds?: number[];
+    SaleIds?: number[];
     Sorting?: string;
     PageIndex?: number;
     PageSize?: number;
@@ -367,3 +370,5 @@ export const getStatementDetail = (id: string) => {
     { params: { Id: id } },
   );
 };
+
+

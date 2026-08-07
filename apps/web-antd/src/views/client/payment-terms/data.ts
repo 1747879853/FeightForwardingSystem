@@ -14,6 +14,7 @@ import {
 } from '#/api/system/organization-unit';
 import { UserAttribute } from '#/api/system/user-admin';
 import type { BillingPeriodAdminApi } from '#/api/sea-export/billing-period-admin';
+import { color } from 'three/tsl';
 
 /**
  * 业务类型枚举
@@ -22,14 +23,17 @@ export const BusinessTypeOptions = [
   {
     value: 0,
     label: $t('seaExport.client.paymentTerms.BizTypeOptions.seaExport'),
+    color: '#1890ff',
   },
   {
     value: 1,
     label: $t('seaExport.client.paymentTerms.BizTypeOptions.seaImport'),
+    color: '#52c41a',
   },
   {
     value: 2,
     label: $t('seaExport.client.paymentTerms.BizTypeOptions.airExport'),
+    color: '#fa8c16',
   },
 ];
 
