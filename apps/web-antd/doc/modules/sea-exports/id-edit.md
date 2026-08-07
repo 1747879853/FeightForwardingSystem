@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-05
+last_updated: 2026-08-07
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -36,7 +36,7 @@ last_updated: 2026-08-05
 - **执行方字段独立：** `bookingAgentId`/`teamId`/`custBrokerId`/`warehouseId`/`insuranceId` 与流水线节点完全解耦，始终全量显示，不随节点勾选状态联动。
 - **干系人角色约束：** 可选角色由「系统管理 → 枚举管理」的 `SeaExportUserAttribute` 枚举维护（子项 `value`=`UserAttribute` 位值、`displayName`=角色名、`enable`=是否可用、`extra1`=是否进页面即展示；子项顺序即面板顺序），前端不再写死 6 项。**销售、操作为固定角色**：无论枚举是否配置都展示、标签带红色必填标识、不可删除且必须已选人（销售必须且只能有一人）；枚举漏配时二者兜底补在最前。勾了 `extra1` 的角色进页面即渲染，**编辑态订单未保存该角色时也会补一张空卡**（保存时无人员会被过滤，不写库）；未勾 `extra1` 的角色（如海外客服）只在详情已有人员或手动「添加角色」后出现。枚举拉取失败/未配置时，面板只剩销售与操作，这是预期兜底。新建态选择委托单位后按客户绑定干系人默认回填（`Client/GetDishonestStakeholdersAsync` → `applyClientDefaultOrderUsers`）；操作/单证/客服若客户未绑定则兜底当前登录账号。编辑态改委托单位只更新业务来源，不重写已保存干系人。保存时另按当前勾选服务项的 `userAttribute` 动态校验（每服务至少一个绑定角色已选人）。干系人展示信息（昵称/启用态/手机/邮箱/组织路径）统一走 `User/GetUserListByIdsAsync` 按 id 批量获取，初始化与委托单位回填一次请求；未命中 id 展示「已删除」兜底，悬停卡片副标题为组织路径。
 - **场站联系方式展示与保存：** 编辑态在基础信息「场站」字段标签行最右侧展示 `yardContact`（场站联系人），与字段右边界对齐；悬浮联系人后展示 `yardEmail`（场站邮箱）、`yardMobile`（场站手机）、`yardTel`（场站电话）。值来自详情 `SeaExportDto`，经 `flattenDetail` 写入 `entrustReadonlyInfo`（UI 只读）；保存时由 `collectCurrentFormValues` 取出并经 `buildSeaExportDto` 写入 `EditAsync` 根字段，避免漏传被后端空覆盖。空值显示 `-`。右侧栏仅保留「干系人」卡片。
-- **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。
+- **详情回填：** `form.vue` 通过 `flattenDetail` 把 `SeaExportDto` 和内层 `transportOrder` 拉平成多个表单分区，同时通过 `selectedItems` 避免客户、港口、船公司等选择组件重复请求详情。港口字段已对象化（`pol`/`pod`/`pot1`/`pot2`/`receivePort`/`deliverPort`/`prepareAt`/`signingPort`），编辑回填用 `toPortObjectSelectedItems` 整对象注入；航线/国家取自目的港 `pod.lane` / `pod.country`。
 - **船期与付费联动：** 船期截关节点展示顺序为截单 → 截港 → 截关（字段仍为 `closeDocTime` / `closeVgmTime` / `closeManifestTime`）；保存时校验上述日期不得晚于开船日期或实际开船日期；详情回填或用户切换付费方式时，到付自动以目的港覆盖付费地点，预付自动以起运港覆盖付费地点。
 - **箱包装默认值：** 新增箱型箱量行时，从订单级总包装复制包装 ID 与显示文本，避免远程下拉只显示数字 ID；复制后箱行包装仍可单独修改。
 - **船公司选中回显：** 详情接口返回同级 `carrierLogo` 与对象 `carrier`（含 `cnShortName`/`cnName`/`code`/`ediCode`）后，编辑页在 `carrierId` 的 `selectedItems` 中拼接 `carrier.cnShortName || carrier.cnName`、`code`（若有）与 `logo`，确保 `CarrierSelect` 首屏即显示“Logo + CODE(简称)”。往来单位（委托单位/收发通/船代/订舱代理/场站/车队等）回显统一取 `*.name`。
@@ -131,6 +131,7 @@ last_updated: 2026-08-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-07 | `Feature` | 港口详情对接后端对象化；编辑回填整对象注入 PortSelect，航线/国家改读目的港嵌套字段。 | 新增 `PortCodeSimpleDtoForOrder` 与 `toPortObjectSelectedItems`；扁平 `*Name`/`*EdiCode` 标废弃。详见 `changelogs/change-log-2026-08-07-sea-export-port-objectification.md`。 |
 | 2026-08-05 | `Style` | 截 VGM→截港日期、截舱单→截关日期；船期时间轴右侧顺序改为截单→截港→截关。 | 仅改 i18n 与 `shipment-time-pos` 字段顺序；API 字段名不变。详见 `changelogs/change-log-2026-08-05-sea-export-cutoff-labels-order.md`。 |
 | 2026-08-04 | `Fix` | 运踪里程碑「已完成」改仅用 `actualityTime` 判断，不再用 `isCurrent` 显示「进行中」。 | `getOceanNodeVisual` 去掉 `isCurrent` 优先分支；无实际时间时仍按预计/计划展示。详见 `changelogs/change-log-2026-08-04-yundang-ocean-node-completed-by-actuality-time.md`。 |
 | 2026-08-02 | `Feature` | 页头委托编号旁新增刷新按钮，一键调 `UpdateCommissionNumAsync` 由后端重新生成并替换旧编号（仅编辑态、需编辑权限）。 | 新增 `updateSeaExportCommissionNum(id)`（PUT，仅传 id，出参为新编号）；`commissionNum` 属提交 DTO 字段，改写会污染脏检查快照，故仅在原本无未保存修改时 `syncFormSnapshot()` 重置基线；失败提示交由全局拦截器展示 ABP 报错。详见 `changelogs/change-log-2026-08-02-sea-export-regenerate-commission-num.md`。 |

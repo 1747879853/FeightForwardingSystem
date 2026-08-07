@@ -7,6 +7,39 @@ import type { YundangAdminApi } from '#/api/yundang/yundang-admin';
 import { requestClient } from '#/api/request';
 
 export namespace SeaExportAdminApi {
+  /** 后端 Long 主键，序列化为 JSON 后可能超 JS 安全整数，统一按 number | string 处理 */
+  export type LongId = number | string;
+
+  export interface CountrySimpleDto {
+    id: LongId;
+    code?: null | string;
+    countryName?: null | string;
+    countryEnName?: null | string;
+  }
+
+  export interface LaneSimpleDto {
+    id: LongId;
+    code?: null | string;
+    laneName?: null | string;
+    laneEnName?: null | string;
+    ediCode?: null | string;
+  }
+
+  /**
+   * 港口简易对象（后端 PortCodeSimpleDtoForOrder）。
+   * 列表/详情的港口均以该对象返回；海运出口界面航线/国家取自目的港：
+   * 航线读 `pod.lane.laneName`，国家读 `pod.country.countryName` / `pod.country.countryEnName`。
+   */
+  export interface PortCodeSimpleDtoForOrder {
+    id: LongId;
+    /** 港口代码（英文名） */
+    portName?: null | string;
+    cnName?: null | string;
+    ediCode?: null | string;
+    lane?: LaneSimpleDto | null;
+    country?: CountrySimpleDto | null;
+  }
+
   export interface ServiceTypeByPolDto {
     serviceType: number;
     sortId: number;
@@ -423,35 +456,68 @@ export namespace SeaExportAdminApi {
     closeManifestTime?: string;
     signingTime?: string;
     prepareAtId?: number;
+    /** 付费地点港口对象（无则为 null） */
+    prepareAt?: PortCodeSimpleDtoForOrder | null;
+    /** @deprecated 后端已对象化，请读 prepareAt.portName */
     prepareAtName?: string;
+    /** @deprecated 后端已对象化，请读 prepareAt.ediCode */
     prepareAtEdiCode?: string;
     signingPortId?: number;
+    /** 签单地点港口对象（无则为 null） */
+    signingPort?: PortCodeSimpleDtoForOrder | null;
+    /** @deprecated 后端已对象化，请读 signingPort.portName */
     signingPortName?: string;
+    /** @deprecated 后端已对象化，请读 signingPort.ediCode */
     signingPortEdiCode?: string;
     podId?: number;
+    /** 目的港对象（无则为 null）；航线/国家读 pod.lane / pod.country */
+    pod?: PortCodeSimpleDtoForOrder | null;
+    /** @deprecated 后端已对象化，请读 pod.portName */
     podName?: string;
+    /** @deprecated 后端已对象化，请读 pod.ediCode */
     podEdiCode?: string;
     podRemark?: string;
     polId?: number;
+    /** 起运港对象（无则为 null） */
+    pol?: PortCodeSimpleDtoForOrder | null;
+    /** @deprecated 后端已对象化，请读 pol.portName */
     polName?: string;
+    /** @deprecated 后端已对象化，请读 pol.ediCode */
     polEdiCode?: string;
     polRemark?: string;
     poT1Id?: number;
+    /** 中转港1对象（无则为 null） */
+    pot1?: PortCodeSimpleDtoForOrder | null;
+    /** @deprecated 后端已对象化，请读 pot1.portName */
     poT1Name?: string;
+    /** @deprecated 后端已对象化，请读 pot1.ediCode */
     poT1EdiCode?: string;
     poT1Remark?: string;
     poT2Id?: number;
+    /** 中转港2对象（无则为 null） */
+    pot2?: PortCodeSimpleDtoForOrder | null;
+    /** @deprecated 后端已对象化，请读 pot2.portName */
     poT2Name?: string;
+    /** @deprecated 后端已对象化，请读 pot2.ediCode */
     poT2EdiCode?: string;
     poT2Remark?: string;
     receivePortId?: number;
+    /** 收货地港口对象（无则为 null） */
+    receivePort?: PortCodeSimpleDtoForOrder | null;
+    /** @deprecated 后端已对象化，请读 receivePort.portName */
     receivePortName?: string;
+    /** @deprecated 后端已对象化，请读 receivePort.ediCode */
     receivePortEdiCode?: string;
     receivePortRemark?: string;
     deliverPortId?: number;
+    /** 交货地港口对象（无则为 null） */
+    deliverPort?: PortCodeSimpleDtoForOrder | null;
+    /** @deprecated 后端已对象化，请读 deliverPort.portName */
     deliverPortName?: string;
+    /** @deprecated 后端已对象化，请读 deliverPort.ediCode */
     deliverPortEdiCode?: string;
     deliverPortRemark?: string;
+    /** @deprecated 后端已对象化，请读 pod.lane.laneName */
     laneName?: string;
     creatorUserNickName?: string;
     sortId?: number;
