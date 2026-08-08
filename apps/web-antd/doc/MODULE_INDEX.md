@@ -15,9 +15,9 @@
 | pre-order | `/pre-order` | 业务联系单 | 业务联系单列表：侧边栏一级菜单；检索入口，支持分组统计（委托单位/船公司/港口/业务类型）、新建、复制、按状态限制删除；双击进编辑页。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-08-02 |
 | pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 业务联系单 | 业务联系单工作台：布局对齐海运出口；顶部 Tab/分区标题为「业务联系单」；支持附件分组上传并随 Add/Edit 全量提交；「货物与箱型」可一键按箱型生成应收海运费（单位=箱型/数量=箱量/单价=卖价）；表单不按状态禁用，录入/驳回显示保存与提交审核；待审核/通过仅审核按钮；通过后内嵌关联海运出口；干系人可用角色按业务类型读枚举（仅销售固定）。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-02 |
 | pre-order | `/pre-order/:id/detail` | 业务联系单 | 历史详情路由，重定向到 `/pre-order/:id/edit`。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-02 |
-| sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-07-12 |
-| sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单，提交成功后进入编辑工作台继续维护费用和子业务。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-07-11 |
-| sea-imports | `/sea-imports/:id/edit` | 操作管理 / 海运进口 | 编辑页是海运进口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块；基础信息保存成功后下发最新详情联动费用/更改单。 | [海运进口编辑工作台](./modules/sea-imports/id-edit.md) | 2026-08-08 |
+| sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-08-08 |
+| sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单，提交成功后进入编辑工作台继续维护费用和子业务；无订舱编号字段。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-08-08 |
+| sea-imports | `/sea-imports/:id/edit` | 操作管理 / 海运进口 | 编辑页是海运进口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块；基础信息保存成功后下发最新详情联动费用/更改单；无订舱编号展示。 | [海运进口编辑工作台](./modules/sea-imports/id-edit.md) | 2026-08-08 |
 | air-exports | `/air-exports` | 操作管理 / 空运出口 | 空运出口列表：关键字搜 5 字段、五个「未填写」开关、货物明细八个区间筛选（存在语义）、9 维分组统计、复制与删除；支持多选运踪批量订阅与「运踪状态」列。 | [空运出口列表](./modules/air-exports/index.md) | 2026-08-08 |
 | air-exports | `/air-exports/create` | 操作管理 / 空运出口 | 空运出口新建：三段航段（起运地/中转地/目的地）、货物明细可编辑表格、体积/体积重/计费重/泡比四个前端派生值。 | [空运出口新建](./modules/air-exports/create.md) | 2026-08-05 |
 | air-exports | `/air-exports/:id/edit` | 操作管理 / 空运出口 | 空运出口编辑：基础信息、只读应收应付、附件、运踪信息四个标签；支持重新生成委托编号、复制与运踪订阅；基础信息保存后联动刷新只读费用与收付徽标。 | [空运出口编辑](./modules/air-exports/id-edit.md) | 2026-08-08 |

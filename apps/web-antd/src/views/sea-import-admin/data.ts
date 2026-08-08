@@ -423,15 +423,6 @@ export function useGridFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Input',
-      fieldName: 'BookingNum',
-      label: $t('seaImport.import.bookingNum'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.input'),
-        allowClear: true,
-      },
-    },
-    {
-      component: 'Input',
       fieldName: 'ContractNum',
       label: $t('seaImport.import.contractNum'),
       componentProps: {
@@ -731,12 +722,6 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       field: 'transportOrder.mblNum',
       title: $t('seaImport.import.mblNum'),
       minWidth: 140,
-      showOverflow: true,
-    },
-    {
-      field: 'transportOrder.bookingNum',
-      title: $t('seaImport.import.bookingNum'),
-      minWidth: 130,
       showOverflow: true,
     },
     {
@@ -1226,12 +1211,6 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       component: 'Input',
       fieldName: 'mblNum',
       label: $t('seaImport.import.mblNum'),
-      componentProps: { allowClear: true, maxlength: 32 },
-    },
-    {
-      component: 'Input',
-      fieldName: 'bookingNum',
-      label: $t('seaImport.import.bookingNum'),
       componentProps: { allowClear: true, maxlength: 32 },
     },
     {

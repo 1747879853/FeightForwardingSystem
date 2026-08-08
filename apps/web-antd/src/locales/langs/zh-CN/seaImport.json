@@ -5,7 +5,7 @@
     "list": "海运进口列表",
     "name": "海运进口",
     "keyword": "关键字",
-    "keywordPlaceholder": "船名/航次/发票号/批次号/外部备注/主提单号/订舱编号/合同号/委托编号",
+    "keywordPlaceholder": "船名/航次/发票号/批次号/外部备注/主提单号/合同号/委托编号",
     "number": "单号",
     "attachments": {
       "tabTitle": "附件",
@@ -227,7 +227,7 @@
     "copyConfirmTitle": "复制海运进口",
     "copyConfirmIntro": "确定复制以下委托并新建吗？",
     "copyFallbackUnnamed": "当前选中的委托（暂无委托编号/单号）",
-    "copyScopeHint": "将复制基础资料、相关方、货物、集装箱等；发票号、批次号、主提单号、订舱编号、合同号会清空，委托编号重新生成；不复制附件与更改单。",
+    "copyScopeHint": "将复制基础资料、相关方、货物、集装箱等；发票号、批次号、主提单号、合同号会清空，委托编号重新生成；不复制附件与更改单。",
     "copyOrderFees": "同时复制费用（不含更改单费用）",
     "copyUnsavedTitle": "存在未保存的修改",
     "copyUnsavedContent": "当前有未保存修改，复制将基于已保存内容，是否继续？",

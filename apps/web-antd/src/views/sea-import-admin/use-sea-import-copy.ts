@@ -11,7 +11,6 @@ export interface SeaImportCopySource {
   id: number | string;
   commissionNum?: null | string;
   mblNum?: null | string;
-  bookingNum?: null | string;
   contractNum?: null | string;
   clientName?: null | string;
 }
@@ -47,7 +46,6 @@ export function buildCopyConfirmSummary(source: SeaImportCopySource): string[] {
     source.commissionNum,
   );
   pushCopySummaryLine(lines, 'seaImport.import.mblNum', source.mblNum);
-  pushCopySummaryLine(lines, 'seaImport.import.bookingNum', source.bookingNum);
   pushCopySummaryLine(
     lines,
     'seaImport.import.contractNum',
@@ -66,7 +64,6 @@ export function resolveSeaImportCopyDisplayName(
   return (
     source.commissionNum?.trim() ||
     source.mblNum?.trim() ||
-    source.bookingNum?.trim() ||
     source.clientName?.trim() ||
     $t('seaImport.import.copyFallbackUnnamed')
   );

@@ -59,7 +59,6 @@ const displayList = computed(() => {
   return [
     { name: t('commissionNum'), value: order?.commissionNum },
     { name: t('mblNum'), value: order?.mblNum },
-    { name: t('bookingNum'), value: order?.bookingNum },
     { name: t('clientId'), value: order?.client?.name },
     { name: t('teamId'), value: order?.team?.name },
     { name: t('vessel'), value: data?.vessel },

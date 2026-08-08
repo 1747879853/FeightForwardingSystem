@@ -51,6 +51,7 @@ last_updated: 2026-08-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-08 | `Fix` | 基础信息/列表/更改单/复制文案去掉订舱编号展示（进口无此字段）。 | UI 移除 `bookingNum`；DTO/提交仍保留兼容。详见 `changelogs/change-log-2026-08-08-sea-import-remove-booking-num.md`。 |
 | 2026-08-08 | `Fix` | 基础信息保存成功后，费用/更改单 Tab 用最新详情整体替换订单摘要与信息卡片。 | 与海出同构：`onSaved`/`emit('saved')`/`savedDetail`/`latest-detail`。详见 `changelogs/change-log-2026-08-08-edit-workspace-saved-detail-sync.md`。 |
 | 2026-08-04 | `Feat` | 编辑工作台基础信息对齐出口版式；新增附件 Tab；费用数量由 editor 直查；概要字段改用进口 DTO 正确属性名。 | 基础信息组件为 `basic-info-form/form.vue`（`SeaImportAdminForm`），不再使用根目录 `form.vue`。 |
 | 2026-07-25 | `Perf` | 箱型选择从 option 取名称，选中时不再请求箱型详情 | 与海出同构的 `order-ctn-table`；`@change` 写 `ctnCodeName`，`syncCtnNameMap` 仅兜底回显 |

@@ -185,7 +185,6 @@ const BASIC_INFO_FIELD_ORDER = [
   'warehouseId',
   'insuranceId',
   'mblNum',
-  'bookingNum',
   'contractNum',
   'invoiceNum',
   'batchNum',

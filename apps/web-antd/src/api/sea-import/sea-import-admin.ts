@@ -518,7 +518,7 @@ export namespace SeaImportAdminApi {
     PageSize?: number;
     Sorting?: string;
 
-    /** 模糊匹配船名/航次/发票号/批次号/外部备注/主提单号/订舱编号/合同号/委托编号 */
+    /** 模糊匹配船名/航次/发票号/批次号/外部备注/主提单号/合同号/委托编号 */
     Keyword?: string;
     /** 按所属组织筛，自动包含全部下级组织 */
     OrgId?: number;
