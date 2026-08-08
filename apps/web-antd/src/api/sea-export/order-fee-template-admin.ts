@@ -257,14 +257,13 @@ export namespace OrderFeeTemplateAdminApi {
     orderFeeTemplateItems: OrderFeeTemplateItemEditDto[];
   }
 
-    /** 启用 DTO */
+  /** 启用 DTO */
   export interface OrderFeeTemplateSetEnableDto {
     /** 模板ids */
     ids: string[];
     /** 是否启用   true=启用 false=禁用*/
     enabled: boolean;
   }
-
 
   /** 复制模板 DTO */
   export interface OrderFeeTemplateCopyDto {
@@ -462,7 +461,6 @@ export const editOrderFeeTemplate = (
 ) => {
   return requestClient.put<boolean>(`${API_PREFIX}/EditAsync`, data);
 };
-
 
 /**
  * 设置自动费用模板启用状态

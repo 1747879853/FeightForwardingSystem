@@ -67,7 +67,9 @@ const isAllSelected = computed(() => {
 });
 
 const isIndeterminate = computed(() => {
-  const checkedCount = tableRows.value.filter((row) => isOrderChecked(row.id)).length;
+  const checkedCount = tableRows.value.filter((row) =>
+    isOrderChecked(row.id),
+  ).length;
   return checkedCount > 0 && checkedCount < tableRows.value.length;
 });
 
@@ -286,12 +288,14 @@ async function fetchData(formValues?: Record<string, any>) {
   const hasFeeCodes = Array.isArray(feeCodeIds) && feeCodeIds.length > 0;
 
   // 处理操作和销售的多选ID，取第一个作为主要筛选条件（后端可能需要调整支持多选）
-  const operatorIds = Array.isArray(values.OperatorIds) && values.OperatorIds.length > 0
-    ? values.OperatorIds
-    : undefined;
-  const saleIds = Array.isArray(values.SaleIds) && values.SaleIds.length > 0
-    ? values.SaleIds
-    : undefined;
+  const operatorIds =
+    Array.isArray(values.OperatorIds) && values.OperatorIds.length > 0
+      ? values.OperatorIds
+      : undefined;
+  const saleIds =
+    Array.isArray(values.SaleIds) && values.SaleIds.length > 0
+      ? values.SaleIds
+      : undefined;
 
   const params: StatementAdminApi.OrderFeeGroupQueryParams = {
     SettlementId: values.SettlementId,
@@ -304,15 +308,17 @@ async function fetchData(formValues?: Record<string, any>) {
       feeCodeMode === 'include' && hasFeeCodes ? feeCodeIds : undefined,
     ExceptFeeCodeIds:
       feeCodeMode === 'exclude' && hasFeeCodes ? feeCodeIds : undefined,
-    FeeStatus: values.FeeStatus !== null && values.FeeStatus !== undefined
-      ? values.FeeStatus
-      : undefined,
+    FeeStatus:
+      values.FeeStatus !== null && values.FeeStatus !== undefined
+        ? values.FeeStatus
+        : undefined,
     BizType: values.BizType,
     OperatorIds: operatorIds,
     SaleIds: saleIds,
-    SettlementStatus: values.SettlementStatus !== null && values.SettlementStatus !== undefined
-      ? values.SettlementStatus
-      : undefined,
+    SettlementStatus:
+      values.SettlementStatus !== null && values.SettlementStatus !== undefined
+        ? values.SettlementStatus
+        : undefined,
     PageIndex: currentPage.value,
     PageSize: pageSize.value,
   };
@@ -416,7 +422,6 @@ function toggleFee(orderId: string, feeId: string, checked: boolean) {
 function setAppliedAmount(feeId: string, value: number | null) {
   appliedAmountMap.set(feeId, value ?? 0);
 }
-
 
 // --- 搜索条件变化清空选择 ---
 let lastSearchSnapshot = '';
@@ -574,7 +579,9 @@ function getFeeStatusLabel(feeStatus: number | undefined): string {
   return statusMap[feeStatus ?? -1] || '-';
 }
 
-function getSettlementStatusLabel(settlementStatus: number | undefined): string {
+function getSettlementStatusLabel(
+  settlementStatus: number | undefined,
+): string {
   const statusMap: Record<number, string> = {
     0: '未结算',
     1: '部分结算',
@@ -774,18 +781,18 @@ defineExpose({ open: openDrawer });
 
 /* 表格容器占满剩余高度 */
 .fee-order-table-container {
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
+  height: calc(100% - 200px);
   min-height: 200px;
   overflow: hidden;
-  height: calc(100% - 200px);
 }
 
 /* NestedDataTable占满容器 */
 .fee-order-table-container :deep(.nested-data-table) {
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
 }
 

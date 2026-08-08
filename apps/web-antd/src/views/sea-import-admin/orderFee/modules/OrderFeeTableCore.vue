@@ -17,7 +17,10 @@ interface Props {
     unitList: Array<{ label: string; value: any }>;
   };
   // ✅ 修复：支持海运进口和海运出口两种订单类型
-  orderDetail?: SeaExportAdminApi.SeaExportDto | SeaImportAdminApi.SeaImportDto | null;
+  orderDetail?:
+    | SeaExportAdminApi.SeaExportDto
+    | SeaImportAdminApi.SeaImportDto
+    | null;
   sortableFields?: Set<string>; // 可排序字段列表
   sortState?: {
     field: string | null;

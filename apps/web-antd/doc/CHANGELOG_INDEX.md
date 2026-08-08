@@ -13,6 +13,12 @@
 
 ## 2026-08
 
+- [2026-08-08 工作流条件字段对齐后端新枚举（费用类共用 9 个条件）](./changelogs/change-log-2026-08-08-workflow-order-fee-condition-fields.md)
+- [2026-08-08 工作流任务类型费用修改改名为费用变更](./changelogs/change-log-2026-08-08-workflow-rename-modify-order-fee-label.md)
+- [2026-08-08 工作流任务类型下拉移除费用删除](./changelogs/change-log-2026-08-08-workflow-remove-delete-order-fee-task-type.md)
+- [2026-08-08 空运出口运踪订阅前端对接](./changelogs/change-log-2026-08-08-air-export-yundang-subscribe.md)
+- [2026-08-08 编辑工作台基础信息保存后联动刷新费用/更改单](./changelogs/change-log-2026-08-08-edit-workspace-saved-detail-sync.md)
+- [2026-08-07 海运出口港口字段对接后端对象化并优化回显](./changelogs/change-log-2026-08-07-sea-export-port-objectification.md)
 - [2026-08-05 分页下拉已选项注入策略与搜索防抖](./changelogs/change-log-2026-08-05-paged-select-pin-search-debounce.md)
 - [2026-08-05 新增空运出口模块（列表/表单/货物明细/只读费用/附件）](./changelogs/change-log-2026-08-05-air-export-module.md)
 - [2026-08-05 新增空运港口基础资料与 AirPortSelect 业务下拉](./changelogs/change-log-2026-08-05-air-port-basic-data-and-select.md)

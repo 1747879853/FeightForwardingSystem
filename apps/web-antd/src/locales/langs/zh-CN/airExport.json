@@ -236,5 +236,85 @@
       "selectTypePlaceholder": "请选择附件类型",
       "selectTypeRequired": "请选择附件类型"
     }
+  },
+  "yundang": {
+    "subscribe": "运踪订阅",
+    "resubscribe": "重新订阅",
+    "subscribeRulesTitle": "运踪订阅规则",
+    "subscribeRules": "订阅单号：取主运单号（AWB），未填写主运单号的票会订阅失败\n航司：留空由系统自动识别\n起降机场：起运地/目的地三字码齐全时会一并上传（厦门航空 MF 必需）",
+    "alreadySubscribed": "该单号已成功订阅，无需重复订阅",
+    "batchHint": "已选超过 {0} 票，后端将自动分批提交",
+    "subscribing": "运踪订阅中…",
+    "pleaseSelectRecords": "请先勾选要订阅的空运出口",
+    "trackStatusColumn": "运踪状态",
+    "trackingInfo": "运踪信息",
+    "trackStatus": {
+      "notSubscribed": "未订阅",
+      "subscribeFailed": "订阅失败",
+      "waitingPush": "等待推送"
+    },
+    "tracking": {
+      "title": "运踪详情",
+      "titleWithOrder": "运踪详情 - {0}",
+      "close": "关闭",
+      "refresh": "刷新",
+      "loadFailed": "加载运踪信息失败",
+      "lastUpdated": "最后更新于 {0}",
+      "neverSubscribed": "尚未订阅运踪，请先使用「运踪订阅」",
+      "subscribeFailedTitle": "运踪订阅失败",
+      "waitingPushTitle": "已订阅，等待运踪数据推送",
+      "waitingPushDesc": "运单动态异步推送中，请稍后刷新或保持本窗口打开自动轮询",
+      "referenceNo": "订阅单号",
+      "carrier": "航司",
+      "subscribeTime": "订阅时间",
+      "trackStatus": "跟踪状态",
+      "flightNo": "航班号",
+      "orgDest": "起运地/目的地",
+      "currentStatus": "当前状态",
+      "nodeState": {
+        "completed": "已完成",
+        "estimated": "预计",
+        "planned": "计划中"
+      },
+      "emptyNodes": "暂无空运节点",
+      "emptyFlights": "暂无航段信息",
+      "emptyStatuses": "暂无状态轨迹",
+      "tabs": {
+        "nodes": "里程碑",
+        "flights": "航段",
+        "statuses": "状态轨迹"
+      },
+      "flight": {
+        "sno": "序号",
+        "flightNo": "航班号",
+        "flightDate": "航班日期",
+        "route": "航线",
+        "etd": "预计起飞",
+        "atd": "实际起飞",
+        "eta": "预计到达",
+        "ata": "实际到达"
+      }
+    },
+    "status": {
+      "notSubscribed": "未订阅",
+      "failed": "订阅失败",
+      "success": "订阅成功"
+    },
+    "result": {
+      "title": "运踪订阅结果",
+      "summary": "共 {0} 条，成功 {1} 条，失败 {2} 条",
+      "close": "知道了",
+      "orderLabel": "委托/单号",
+      "referenceNo": "订阅单号",
+      "carrierCd": "航司",
+      "status": "状态",
+      "resultType": "结果",
+      "errorMessage": "失败原因",
+      "success": "成功",
+      "failed": "失败",
+      "toastAllSuccess": "订阅完成：成功 {0}/{1} 条",
+      "toastAllFailed": "订阅失败：{0}/{1} 条均未成功",
+      "toastPartial": "订阅完成：成功 {0} 条，失败 {1} 条（共 {2} 条）"
+    }
   }
 }

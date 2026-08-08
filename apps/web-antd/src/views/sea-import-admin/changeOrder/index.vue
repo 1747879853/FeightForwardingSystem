@@ -2,7 +2,7 @@
 import type { OrderFeeAdminApi } from '#/api/sea-import/order-fee-admin';
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -22,6 +22,11 @@ import ChangeOrderTable from './table.vue';
 defineOptions({ name: 'ChangeOrder' });
 
 const route = useRoute();
+
+/** 编辑页保存成功后下发的最新详情：替换订单信息卡片数据 */
+const props = defineProps<{
+  latestDetail?: SeaImportAdminApi.SeaImportDto;
+}>();
 
 const editId = computed(() => {
   const id = route.params.id;
@@ -105,6 +110,17 @@ const loadSeaImportData = async () => {
     pageLoading.value = false;
   }
 };
+
+// 基础信息保存成功后，用最新详情整体替换（订单信息卡片联动）
+watch(
+  () => props.latestDetail,
+  (detail) => {
+    if (!detail) return;
+    transportOrderId.value = detail.transportOrder?.id;
+    detailData.value = detail;
+    to.value = detail.transportOrder;
+  },
+);
 const saveRow = async () => {
   let data = {
     id: changeOrder.value.id,

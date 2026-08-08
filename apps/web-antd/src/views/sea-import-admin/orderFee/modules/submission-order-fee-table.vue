@@ -59,7 +59,9 @@ const submissionId = computed(() => {
 });
 
 const getTableDate = async () => {
-  const detail = await submitOrderFeeDetailAsync({ id: String(submissionId.value) });
+  const detail = await submitOrderFeeDetailAsync({
+    id: String(submissionId.value),
+  });
   const orderFeeTasks =
     detail.orderFeeTasks?.filter((item) => item.paySide === props.type) || [];
   dataSource.value = normalizeOrderFeeWithRowKey(orderFeeTasks);

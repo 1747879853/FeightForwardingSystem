@@ -46,8 +46,9 @@ export const flattenDetail = (
   const to = detail.transportOrder;
   const prepareAtId = to?.prepareAtId ?? (detail as any)?.prepareAtId;
   return {
-    countryName: (detail as any).countryName,
-    laneName: (detail as any).laneName,
+    // 海运出口界面航线/国家取自目的港（与海运进口取自起运港不同）
+    countryName: detail.pod?.country?.countryName ?? '',
+    laneName: detail.pod?.lane?.laneName ?? '',
     blType: detail.blType,
     billType: detail.billType,
     codeIssueTypeId: (detail as any).codeIssueTypeId ?? detail.issueType,
@@ -258,4 +259,20 @@ export const toPortSelectedItems = (
     extra.country = { countryEnName: String(countryEnName).trim() };
   }
   return toSelectedItems(id, portName, 'portName', extra);
+};
+
+/**
+ * 由港口对象（PortCodeSimpleDtoForOrder）构建 PortSelect 的 selectedItems。
+ * 展开整个港口对象（含 portName/cnName/ediCode/country/lane），
+ * 回显字段齐全时 PortSelect 不再二次拉取港口详情。
+ * 无对象时退化为 id 占位项，仍由组件懒加载详情兜底。
+ */
+export const toPortObjectSelectedItems = <T extends { id?: unknown }>(
+  port: T | null | undefined,
+  fallbackId?: unknown,
+) => {
+  const id = port?.id ?? fallbackId;
+  if (id == null) return [];
+  if (!port) return [{ id, portName: '' }] as any[];
+  return [{ ...port, id }] as any[];
 };

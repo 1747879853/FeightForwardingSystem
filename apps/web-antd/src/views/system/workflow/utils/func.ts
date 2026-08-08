@@ -1,3 +1,9 @@
+import {
+  getConditionFieldLabel,
+  getConditionValueKind,
+  getShouldBeLabel,
+} from '#/api/system/workflow-admin';
+
 const func = {
   timer: null as ReturnType<typeof setTimeout> | null,
 
@@ -124,41 +130,21 @@ const func = {
         : '请设置条件';
     }
 
-    const shouldBeMap: Record<number, string> = {
-      0: '是',
-      1: '不是',
-      2: '包含',
-      3: '不包含',
-      4: '<',
-      5: '≤',
-      6: '>',
-      7: '≥',
-      8: '等于',
-      9: '不等于',
-      10: '属于',
-      11: '不属于',
-    };
-
-    const fieldMap: Record<number, string> = {
-      3001: '付费申请人',
-      3002: '付费申请人组织',
-      8001: '业务联系单申请人',
-      8002: '业务联系单申请人组织',
-    };
-
     let result = '';
     let partCount = 0;
     for (const c of conditionList) {
       if (c.taskTypeCondition == null || c.shouldBe == null) continue;
-      const fieldLabel =
-        fieldMap[c.taskTypeCondition] || String(c.taskTypeCondition);
-      const sbLabel = shouldBeMap[c.shouldBe] || String(c.shouldBe);
-      const valText = c.valueText || c.value || '';
+      const fieldLabel = getConditionFieldLabel(c.taskTypeCondition);
+      const sbLabel = getShouldBeLabel(c.shouldBe);
+      const valText =
+        getConditionValueKind(c.taskTypeCondition) === 'none'
+          ? ''
+          : c.valueText || c.value || '';
       if (partCount > 0) {
         const isOr = c.isOr === true || c.isOr === 1;
         result += isOr ? ' 或 ' : ' 且 ';
       }
-      result += `${fieldLabel} ${sbLabel} ${valText}`;
+      result += [fieldLabel, sbLabel, valText].filter(Boolean).join(' ');
       partCount++;
     }
 

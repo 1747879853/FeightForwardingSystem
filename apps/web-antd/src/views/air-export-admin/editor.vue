@@ -1,8 +1,10 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
+
+import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 
 import { getAirExportDetail } from '#/api/air-export/air-export-admin';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
@@ -11,17 +13,23 @@ import { buildBrandStorageKey } from '#/utils/brand-storage';
 
 import attachments from './attachments/index.vue';
 import Form from './basic-info-form/form.vue';
+import YundangAirTrackingPanel from './modules/yundang-air-tracking-panel.vue';
 import orderFee from './orderFee/index.vue';
 
 type SectionKey = 'basic' | 'cargo' | 'date' | 'leg' | 'party';
-type TabKey = 'attachments' | 'basic' | 'fee';
+type TabKey = 'attachments' | 'basic' | 'fee' | 'tracking';
 type FormExpose = {
   isFormDirty: () => boolean | Promise<boolean>;
   scrollToSection: (key: SectionKey) => void;
 };
 
-/** 空运出口本期不做更改单，标签只有基础信息、只读费用、附件三个 */
-const VALID_TAB_KEYS: readonly TabKey[] = ['basic', 'fee', 'attachments'];
+/** 空运出口本期不做更改单，标签只有基础信息、只读费用、附件、运踪四个 */
+const VALID_TAB_KEYS: readonly TabKey[] = [
+  'basic',
+  'fee',
+  'attachments',
+  'tracking',
+];
 
 const TAB_STORAGE_KEY_PREFIX = 'air-export-edit-active-tab';
 
@@ -55,6 +63,14 @@ function writeStoredTab(id: string | undefined, tab: TabKey) {
 
 const formRef = ref<FormExpose | null>(null);
 const route = useRoute();
+
+/** 编辑页对外暴露：基础信息保存成功后携带最新详情 DTO */
+const emit = defineEmits<{
+  saved: [detail: AirExportAdminApi.AirExportDto];
+}>();
+
+/** 最近一次保存成功后的最新详情，下发给只读费用 Tab 联动刷新 */
+const savedDetail = shallowRef<AirExportAdminApi.AirExportDto>();
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -90,22 +106,35 @@ const tabs = computed<
   },
   { key: 'fee', label: feeName.value },
   { key: 'attachments', label: $t('airExport.export.attachments.tabTitle') },
+  { key: 'tracking', label: $t('airExport.yundang.trackingInfo') },
 ]);
+
+/** 由详情计算费用 Tab 徽标上的收 - 付计数 */
+const updateFeeNumber = (detail: AirExportAdminApi.AirExportDto) => {
+  const fees = detail.transportOrder?.orderFees ?? [];
+  const receiveCount = fees.filter((item) => item.paySide === 0).length;
+  const payCount = fees.filter((item) => item.paySide === 1).length;
+  feeNumber.value = `${receiveCount} - ${payCount}`;
+};
 
 /** 详情已带回全部费用，标签上的收 - 付计数直接由它算，不再调费用接口 */
 const loadOrderFeeNumber = async () => {
   if (!editId.value) return;
   try {
     const detail = await getAirExportDetail(editId.value);
-    const fees = detail.transportOrder?.orderFees ?? [];
-    const receiveCount = fees.filter((item) => item.paySide === 0).length;
-    const payCount = fees.filter((item) => item.paySide === 1).length;
-    feeNumber.value = `${receiveCount} - ${payCount}`;
+    updateFeeNumber(detail);
   } catch {
     // 费用数量仅用于 Tab 标签展示，失败时静默
   }
 };
 loadOrderFeeNumber();
+
+const onFormSaved = (detail: AirExportAdminApi.AirExportDto) => {
+  savedDetail.value = detail;
+  // 顺带用最新详情刷新费用 Tab 徽标，不再重复拉详情接口
+  updateFeeNumber(detail);
+  emit('saved', detail);
+};
 
 const onTabClick = (tab: { key: TabKey; sectionKey?: SectionKey }) => {
   activeTab.value = tab.key;
@@ -175,13 +204,27 @@ const getContentTabStyle = (isActive: boolean) =>
       <div class="flex flex-1 items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
           <KeepAlive include="AirExportOrderFee">
-            <orderFee v-if="activeTab === 'fee'" />
+            <orderFee v-if="activeTab === 'fee'" :latest-detail="savedDetail" />
           </KeepAlive>
           <KeepAlive include="AirExportAttachments">
             <attachments v-if="activeTab === 'attachments'" />
           </KeepAlive>
+          <div
+            v-if="activeTab === 'tracking'"
+            class="m-3 flex flex-1 flex-col rounded-xl bg-white p-4"
+          >
+            <YundangAirTrackingPanel
+              :air-export-id="editId"
+              resolve-state-from-subscription
+            />
+          </div>
           <KeepAlive include="AirExportAdminForm">
-            <Form v-if="activeTab === 'basic'" ref="formRef" embedded />
+            <Form
+              v-if="activeTab === 'basic'"
+              ref="formRef"
+              embedded
+              @saved="onFormSaved"
+            />
           </KeepAlive>
         </div>
       </div>

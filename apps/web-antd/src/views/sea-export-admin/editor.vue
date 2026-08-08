@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import { Page } from '@vben/common-ui';
 import { useRoute } from 'vue-router';
 import Form from './basic-info-form/form.vue';
@@ -10,6 +10,8 @@ import dispatch from '#/views/sea-export-admin/dispatch/index.vue';
 import attachments from '#/views/sea-export-admin/attachments/index.vue';
 import YundangTrackingPanel from './modules/yundang-tracking-panel.vue';
 import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import { clearOrderDetailCache } from '#/views/sea-export-admin/orderFee/modules/composables/useOrderFeeLinkage';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
@@ -73,6 +75,21 @@ function writeStoredTab(id: string | undefined, tab: TabKey) {
 
 const formRef = ref<FormExpose | null>(null);
 const route = useRoute();
+
+/** 编辑页对外暴露：基础信息保存成功后携带最新详情 DTO */
+const emit = defineEmits<{
+  saved: [detail: SeaExportAdminApi.SeaExportDto];
+}>();
+
+/** 最近一次保存成功后的最新详情，下发给费用/更改单 Tab 联动刷新 */
+const savedDetail = shallowRef<SeaExportAdminApi.SeaExportDto>();
+
+const onFormSaved = (detail: SeaExportAdminApi.SeaExportDto) => {
+  savedDetail.value = detail;
+  // 清掉费用联动里永不过期的订单详情缓存，避免结算对象/箱型等沿用旧数据
+  clearOrderDetailCache(editId.value);
+  emit('saved', detail);
+};
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -208,11 +225,15 @@ const getContentTabStyle = (isActive: boolean) =>
       <div class="flex flex-1 items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
           <KeepAlive include="ChangeOrder">
-            <changeOrder v-if="activeTab === 'party'" />
+            <changeOrder
+              v-if="activeTab === 'party'"
+              :latest-detail="savedDetail"
+            />
           </KeepAlive>
           <KeepAlive include="OrderFee">
             <orderFee
               v-if="activeTab === 'fee'"
+              :latest-detail="savedDetail"
               @fee-count-change="onFeeCountChange"
             />
           </KeepAlive>
@@ -235,7 +256,12 @@ const getContentTabStyle = (isActive: boolean) =>
             />
           </div>
           <KeepAlive include="SeaExportAdminForm">
-            <Form v-if="activeTab === 'basic'" ref="formRef" embedded />
+            <Form
+              v-if="activeTab === 'basic'"
+              ref="formRef"
+              embedded
+              @saved="onFormSaved"
+            />
           </KeepAlive>
         </div>
       </div>

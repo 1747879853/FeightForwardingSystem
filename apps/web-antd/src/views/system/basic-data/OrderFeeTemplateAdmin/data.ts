@@ -83,7 +83,9 @@ function formatEfficient(efficient?: boolean): string {
  */
 function formatTradeTermsType(tradeTermsType?: number | null): string {
   if (tradeTermsType === null || tradeTermsType === undefined) return '-';
-  const option = tradeTermsTypeOptions.find((opt) => opt.value === tradeTermsType);
+  const option = tradeTermsTypeOptions.find(
+    (opt) => opt.value === tradeTermsType,
+  );
   return option?.label || String(tradeTermsType);
 }
 

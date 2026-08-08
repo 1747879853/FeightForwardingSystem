@@ -2,6 +2,8 @@
  * 工作流 flat API 结构 (nodes + transitions) 与 UI 树结构 (nodeConfig) 双向转换
  */
 
+import { getConditionValueKind } from '#/api/system/workflow-admin';
+
 const passMethodLabelMap = { 0: '直接通过', 1: '或签', 2: '会签' };
 
 export function generateUUID() {
@@ -323,14 +325,22 @@ export function apiConditionsToUi(conditionArr) {
     isOr: c.isOr === true || c.isOr === 1,
     taskTypeCondition: c.taskTypeCondition,
     shouldBe: c.shouldBe,
-    value:
-      c.value != null
-        ? isNaN(Number(c.value))
-          ? c.value
-          : Number(c.value)
-        : undefined,
+    value: apiConditionValueToUi(c.taskTypeCondition, c.value),
     valueText: c.valueText || '',
   }));
+}
+
+/**
+ * 条件值回显：枚举与数值转 number 以匹配下拉/输入框，
+ * 用户与组织 ID 保持字符串（雪花 ID 超出 JS 安全整数范围）
+ */
+function apiConditionValueToUi(taskTypeCondition, value) {
+  if (value == null || value === '') return undefined;
+  const kind = getConditionValueKind(taskTypeCondition);
+  if (kind === 'none') return undefined;
+  if (kind === 'org' || kind === 'user') return String(value);
+  const num = Number(value);
+  return isNaN(num) ? value : num;
 }
 
 /**

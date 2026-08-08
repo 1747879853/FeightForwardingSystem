@@ -82,7 +82,7 @@ import OrderCtnTable from '../modules/order-ctn-table.vue';
 import {
   flattenDetail,
   normalizeOrderCtnsWithRowKey,
-  toPortSelectedItems,
+  toPortObjectSelectedItems,
   toSelectedItems,
 } from './sea-export-detail-mapper';
 import AiExtractUploadModal from './ai-extract-upload-modal.vue';
@@ -161,6 +161,11 @@ const props = withDefaults(
     embedded: false,
   },
 );
+
+/** 编辑保存成功：上抛最新详情 DTO，供编辑工作台联动费用/更改单等 Tab */
+const emit = defineEmits<{
+  saved: [detail: SeaExportAdminApi.SeaExportDto];
+}>();
 const pageWrapperTag = computed(() => (props.embedded ? 'div' : Page));
 const pageWrapperProps = computed(() =>
   props.embedded
@@ -1810,8 +1815,10 @@ const handleAiExtractFile = async (file: File) => {
   if (ok) aiExtractModalOpen.value = false;
 };
 
-const loadEditData = async () => {
-  if (!editId.value) return;
+const loadEditData = async (): Promise<
+  SeaExportAdminApi.SeaExportDto | undefined
+> => {
+  if (!editId.value) return undefined;
 
   suppressServiceTypeLinkage.value = true;
   pageLoading.value = true;
@@ -1932,10 +1939,9 @@ const loadEditData = async () => {
       {
         fieldName: 'signingPortId',
         componentProps: {
-          selectedItems: toPortSelectedItems(
-            formValues.signingPortId,
-            detail.signingPortName,
-            detail.signingPortEdiCode,
+          selectedItems: toPortObjectSelectedItems(
+            detail.signingPort,
+            detail.signingPortId,
           ),
           size: 'small',
         },
@@ -1993,10 +1999,9 @@ const loadEditData = async () => {
           },
           prepareProps: {
             placeholder: $t('ui.placeholder.select'),
-            selectedItems: toPortSelectedItems(
+            selectedItems: toPortObjectSelectedItems(
+              detail.prepareAt ?? (to as any)?.prepareAt,
               formValues.prepareAtId,
-              detail.prepareAtName ?? (to as any)?.prepareAtName,
-              detail.prepareAtEdiCode ?? (to as any)?.prepareAtEdiCode,
             ),
             allowClear: true,
           },
@@ -2034,54 +2039,37 @@ const loadEditData = async () => {
       {
         fieldName: 'polId',
         componentProps: {
-          selectedItems: toPortSelectedItems(
-            formValues.polId,
-            detail.polName,
-            detail.polEdiCode,
-          ),
+          selectedItems: toPortObjectSelectedItems(detail.pol, detail.polId),
           size: 'small',
         },
       },
       {
         fieldName: 'podId',
         componentProps: {
-          selectedItems: toPortSelectedItems(
-            formValues.podId,
-            detail.podName,
-            detail.podEdiCode,
-          ),
+          selectedItems: toPortObjectSelectedItems(detail.pod, detail.podId),
           size: 'small',
         },
       },
       {
         fieldName: 'poT1Id',
         componentProps: {
-          selectedItems: toPortSelectedItems(
-            formValues.poT1Id,
-            detail.poT1Name,
-            detail.poT1EdiCode,
-          ),
+          selectedItems: toPortObjectSelectedItems(detail.pot1, detail.poT1Id),
           size: 'small',
         },
       },
       {
         fieldName: 'poT2Id',
         componentProps: {
-          selectedItems: toPortSelectedItems(
-            formValues.poT2Id,
-            detail.poT2Name,
-            detail.poT2EdiCode,
-          ),
+          selectedItems: toPortObjectSelectedItems(detail.pot2, detail.poT2Id),
           size: 'small',
         },
       },
       {
         fieldName: 'receivePortId',
         componentProps: {
-          selectedItems: toPortSelectedItems(
-            formValues.receivePortId,
-            detail.receivePortName,
-            detail.receivePortEdiCode,
+          selectedItems: toPortObjectSelectedItems(
+            detail.receivePort,
+            detail.receivePortId,
           ),
           size: 'small',
         },
@@ -2089,10 +2077,9 @@ const loadEditData = async () => {
       {
         fieldName: 'deliverPortId',
         componentProps: {
-          selectedItems: toPortSelectedItems(
-            formValues.deliverPortId,
-            detail.deliverPortName,
-            detail.deliverPortEdiCode,
+          selectedItems: toPortObjectSelectedItems(
+            detail.deliverPort,
+            detail.deliverPortId,
           ),
           size: 'small',
         },
@@ -2190,6 +2177,7 @@ const loadEditData = async () => {
     await whenOrderUserRolesReady();
     await nextTick();
     await syncFormSnapshot();
+    return detail;
   } finally {
     suppressServiceTypeLinkage.value = false;
     pageLoading.value = false;
@@ -2265,6 +2253,7 @@ const { submitting, buildDto, handleSubmit, syncFormSnapshot, isFormDirty } =
     validateServiceBoundOrderUsers,
     validateShipmentDates,
     loadEditData,
+    onSaved: (detail) => emit('saved', detail),
     closeTabByKey,
     getCurrentTabKey: () => route.fullPath,
     router,

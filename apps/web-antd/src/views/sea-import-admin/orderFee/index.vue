@@ -71,6 +71,11 @@ const emit = defineEmits<{
   ): void;
 }>();
 
+/** 编辑页保存成功后下发的最新详情：直接替换信息卡片与费用表 order-detail */
+const props = defineProps<{
+  latestDetail?: SeaImportAdminApi.SeaImportDto;
+}>();
+
 const route = useRoute();
 const router = useRouter();
 
@@ -685,6 +690,24 @@ onMounted(async () => {
   console.log('🚀 [OrderFee] 组件挂载');
   await loadSeaImportDetail();
 });
+
+// 基础信息保存成功后，用最新详情整体替换（信息卡片 + 费用表 order-detail 联动）
+watch(
+  () => props.latestDetail,
+  (detail) => {
+    if (!detail) return;
+    orderDetail.value = detail;
+    formValues.value = detail as any;
+    to.value = detail.transportOrder as any;
+    transportOrderId.value = detail.id;
+    if (detail.orderCtns && Array.isArray(detail.orderCtns)) {
+      orderCtnList.value = detail.orderCtns.map((ctn: any) => ({
+        ctnCodeId: ctn.ctnCodeId,
+        ctnCodeName: ctn.ctnCodeName,
+      }));
+    }
+  },
+);
 </script>
 
 <template>

@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
+
 import {
   computed,
   nextTick,
@@ -92,7 +94,9 @@ const props = withDefaults(defineProps<{ embedded?: boolean }>(), {
   embedded: false,
 });
 
+/** 编辑保存成功：上抛最新详情 DTO，供编辑工作台联动费用/更改单等 Tab */
 const emit = defineEmits<{
+  saved: [detail: SeaImportAdminApi.SeaImportDto];
   sectionChange: [key: SectionKey];
 }>();
 
@@ -672,9 +676,11 @@ const validateOrderCtns = () => {
 const validateOrderUsers = () =>
   validateSalesRoleCount() && validateRequiredOrderUserAssignee();
 
-const loadEditData = async () => {
+const loadEditData = async (): Promise<
+  SeaImportAdminApi.SeaImportDto | undefined
+> => {
   if (!editId.value) {
-    return;
+    return undefined;
   }
   pageLoading.value = true;
   netWeightAutoSyncSuspended.value = true;
@@ -853,6 +859,7 @@ const loadEditData = async () => {
     bindLinkages();
     refreshPortLabelTargets();
     await syncFormSnapshot();
+    return detail;
   } finally {
     pageLoading.value = false;
     await nextTick();
@@ -882,6 +889,7 @@ const { submitting, handleSubmit, syncFormSnapshot, isFormDirty } =
     validateSalesRoleCount: validateOrderUsers,
     validateOrderCtns,
     loadEditData,
+    onSaved: (detail) => emit('saved', detail),
     closeTabByKey,
     getCurrentTabKey: () => route.fullPath,
     router,

@@ -59,6 +59,31 @@ watch(
   { immediate: true },
 );
 
+/** 各任务类型的条件字段互不相通，切换后旧条件一律作废 */
+function clearBranchConditions(node) {
+  if (!node) return 0;
+  let cleared = 0;
+  if (Array.isArray(node.conditionNodes)) {
+    for (const cond of node.conditionNodes) {
+      if (!cond.isDefault && cond.conditionList?.length > 0) {
+        cond.conditionList = [];
+        cond._conditionDisplayStr = '请设置条件';
+        cond.error = true;
+        cleared++;
+      }
+      cleared += clearBranchConditions(cond.childNode);
+    }
+  }
+  return cleared + clearBranchConditions(node.childNode);
+}
+
+/** 仅用户手动切换任务类型时触发，避免详情加载阶段误清条件 */
+function onTaskTypeChange() {
+  if (clearBranchConditions(nodeConfig.value) > 0) {
+    message.warning('任务类型已切换，原有条件字段不再适用，请重新设置条件');
+  }
+}
+
 function isFlatDetail(d) {
   return d && Array.isArray(d.nodes) && Array.isArray(d.transitions);
 }
@@ -236,6 +261,7 @@ onMounted(() => {
             allow-clear
             style="min-width: 140px"
             size="small"
+            @change="onTaskTypeChange"
           />
           <span style="font-size: 13px; color: #fff">{{
             $t('system.workflow.enable')

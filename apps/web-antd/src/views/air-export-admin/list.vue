@@ -2,15 +2,23 @@
 import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 import type { GroupFieldDef } from '#/components/list-grouping';
 
-import { nextTick, onActivated, onMounted } from 'vue';
+import { computed, nextTick, onActivated, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
-import { Copy, LockKeyhole, LockKeyholeOpen, Plus } from '@vben/icons';
+import {
+  Copy,
+  IconifyIcon,
+  LockKeyhole,
+  LockKeyholeOpen,
+  Plus,
+} from '@vben/icons';
+
+import { useAccess } from '@vben/access';
 
 import dayjs from 'dayjs';
 
-import { Button, message, Modal } from 'ant-design-vue';
+import { Button, message, Modal, Tag, Tooltip } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -35,9 +43,28 @@ import {
   useGridFormSchema,
 } from './data';
 import { useAirExportCopy } from './use-air-export-copy';
+import {
+  buildAirExportSubscribeRow,
+  useYundangAirSubscribe,
+} from './use-yundang-air-subscribe';
+import {
+  buildYundangAirTrackRow,
+  getYundangAirTrackStatusColor,
+  getYundangAirTrackStatusLabel,
+  resolveAirOrderLabel,
+  useYundangAirTrack,
+} from './use-yundang-air-track';
 
 const perm = createAbpPermission('Admin.AirExport');
+const externalApiUseCode = 'Admin.ExternalApi.Use';
+const externalApiGetCode = 'Admin.ExternalApi.Get';
 const { copying, copyFrom } = useAirExportCopy();
+const { ResultModal, subscribe, subscribing } = useYundangAirSubscribe();
+const { TrackingModal, openTracking } = useYundangAirTrack();
+const { hasAccessByCodes } = useAccess();
+const canViewYundangTracking = computed(() =>
+  hasAccessByCodes([externalApiGetCode]),
+);
 
 const router = useRouter();
 const tableConfigStore = useTableConfigStore();
@@ -386,6 +413,24 @@ const handleRefresh = () => {
   gridApi.query();
 };
 
+const handleYundangSubscribe = async () => {
+  const rows = getCheckboxRecords();
+  await subscribe(rows.map((row) => buildAirExportSubscribeRow(row)));
+  if (rows.length > 0) {
+    gridApi.query();
+  }
+};
+
+const handleOpenYundangTracking = (row: AirExportAdminApi.AirExportDto) => {
+  const trackRow = buildYundangAirTrackRow(row);
+  openTracking({
+    airExportId: trackRow.id,
+    orderLabel: resolveAirOrderLabel(trackRow),
+    isYundangSubscribed: trackRow.isYundangSubscribed,
+    isYundangSubscribeSuccess: trackRow.isYundangSubscribeSuccess,
+  });
+};
+
 const handleDelete = () => {
   const row = requireExactlyOneRow();
   if (!row) {
@@ -457,6 +502,26 @@ useRefreshListOnFormReturn('AirExportList', handleRefresh);
         </div>
       </template>
       <template #toolbar-tools>
+        <span
+          v-access:code="externalApiUseCode"
+          class="mr-2 inline-flex items-center gap-1"
+        >
+          <Button :loading="subscribing" @click="handleYundangSubscribe">
+            {{ $t('airExport.yundang.subscribe') }}
+          </Button>
+          <Tooltip>
+            <template #title>
+              <div class="whitespace-pre-line text-left">
+                {{ $t('airExport.yundang.subscribeRules') }}
+              </div>
+            </template>
+            <IconifyIcon
+              icon="ant-design:question-circle-outlined"
+              class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+              :aria-label="$t('airExport.yundang.subscribeRulesTitle')"
+            />
+          </Tooltip>
+        </span>
         <Button
           v-access:code="perm.delete"
           class="mr-2"
@@ -507,7 +572,22 @@ useRefreshListOnFormReturn('AirExportList', handleRefresh);
         />
         <LockKeyholeOpen v-else class="mx-auto size-4 text-gray-300" />
       </template>
+      <template #yundangTrackStatus="{ row }">
+        <Tag
+          v-if="canViewYundangTracking"
+          class="cursor-pointer"
+          :color="getYundangAirTrackStatusColor(buildYundangAirTrackRow(row))"
+          @click.stop="handleOpenYundangTracking(row)"
+        >
+          {{ getYundangAirTrackStatusLabel(buildYundangAirTrackRow(row)) }}
+        </Tag>
+        <span v-else class="text-[rgba(0,0,0,0.65)]">
+          {{ getYundangAirTrackStatusLabel(buildYundangAirTrackRow(row)) }}
+        </span>
+      </template>
     </Grid>
+    <ResultModal />
+    <TrackingModal />
   </Page>
 </template>
 

@@ -38,6 +38,7 @@ import {
 } from 'ant-design-vue';
 
 import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import {
   getCurrencyEnumOptions,
   getCurrencyEnumSymbolOptions,
@@ -63,6 +64,11 @@ defineOptions({
 });
 
 const route = useRoute();
+
+/** 编辑页保存成功后下发的最新详情：替换订单信息卡片与费用表 order-detail */
+const props = defineProps<{
+  latestDetail?: SeaExportAdminApi.SeaExportDto;
+}>();
 
 const editId = computed(() => {
   const id = route.params.id;
@@ -584,6 +590,17 @@ const loadSeaExportData = async () => {
     pageLoading.value = false;
   }
 };
+
+// 基础信息保存成功后，用最新详情整体替换（订单信息卡片 + 费用表 order-detail 联动）
+watch(
+  () => props.latestDetail,
+  (detail) => {
+    if (!detail) return;
+    transportOrderId.value = detail.transportOrder?.id;
+    formValues.value = detail;
+    to.value = detail.transportOrder;
+  },
+);
 const saveRow = async (): Promise<boolean> => {
   if (!changeOrder.value) {
     message.warning('请先新建或选择一张更改单');

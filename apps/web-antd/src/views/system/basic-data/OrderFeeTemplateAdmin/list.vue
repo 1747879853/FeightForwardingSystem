@@ -110,7 +110,7 @@ async function loadDropdownData() {
           unit: item.defaultUnitName || undefined,
           taxRate:
             item.taxRate !== undefined ? Number(item.taxRate) : undefined,
-          defaultCreditName: item.defaultCreditName || undefined,  //默认应付的行业类别 ,值为 "a" 这种类型
+          defaultCreditName: item.defaultCreditName || undefined, //默认应付的行业类别 ,值为 "a" 这种类型
           defaultDebitName: item.defaultDebitName || undefined, //默认应收的行业类别 ,值为 "a" 这种类型
         };
       });
@@ -390,7 +390,7 @@ async function onBatchToggleEnable(enabled: boolean) {
 
       try {
         const ids = records.map((r) => r.id).filter(Boolean) as string[];
-        await setOrderFeeTemplateEnable({ ids,enable: enabled });
+        await setOrderFeeTemplateEnable({ ids, enable: enabled });
         message.success({
           content: `${enabled ? '启用' : '停用'}成功`,
           key: 'action_process_msg',
