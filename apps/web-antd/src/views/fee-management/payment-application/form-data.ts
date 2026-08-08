@@ -4,7 +4,11 @@ import type { PaymentApplicationAdminApi } from '#/api/settlement-management/pay
 
 import { $t } from '#/locales';
 
+import { toCurrencyDisplayCode } from '../utils/currency-display';
+
 const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
+
+export { toCurrencyDisplayCode };
 
 /** 解析费用原始币别 code（兼容 currencyCode 为空时从分组或 orderFee.currencyName 取值） */
 export function resolveFeeCurrencyCode(
@@ -14,11 +18,11 @@ export function resolveFeeCurrencyCode(
   >,
   currencyGroup?: PaymentApplicationAdminApi.CurrencyGroupDto[],
 ): string {
-  if (fee?.currencyCode) return fee.currencyCode;
   const fromGroup = currencyGroup?.find((c) => c.id === fee?.currencyId)?.code;
-  if (fromGroup) return fromGroup;
-  if (fee?.currencyName) return fee.currencyName;
-  return '';
+  return toCurrencyDisplayCode(
+    fee?.currencyCode || fromGroup,
+    fee?.currencyName,
+  );
 }
 
 /** 费用明细表格行（在 SelectedFeeItem 基础上增加业务展示字段） */
@@ -128,7 +132,7 @@ export function collectAppliedCurrencies(
     if (!map.has(fee.currencyId)) {
       map.set(fee.currencyId, {
         currencyId: fee.currencyId,
-        currencyCode: fee.currencyCode,
+        currencyCode: toCurrencyDisplayCode(fee.currencyCode, fee.currencyName),
         currencyName: fee.currencyName,
       });
     }
@@ -151,7 +155,7 @@ export function buildAppliedAmountCurrencyColumns(
   currencies: AppliedCurrencyInfo[],
 ) {
   return currencies.map((c) => {
-    const label = c.currencyCode || c.currencyName || '';
+    const label = toCurrencyDisplayCode(c.currencyCode, c.currencyName);
     const field = appliedAmountFieldKey(c.currencyId);
     return {
       title: `${label}申请合计`,
@@ -188,7 +192,7 @@ export function groupFeesByOrder(
         existing.amount += f.appliedAmount ?? 0;
       } else {
         cMap.set(f.currencyId, {
-          currencyCode: f.currencyCode ?? '',
+          currencyCode: toCurrencyDisplayCode(f.currencyCode, f.currencyName),
           currencyName: f.currencyName ?? '',
           amount: f.appliedAmount ?? 0,
         });
@@ -464,7 +468,7 @@ export function summarizeByCurrencyWithConversion(
     } else {
       map.set(key, {
         currencyId: fee.currencyId,
-        currencyCode: fee.currencyCode ?? '',
+        currencyCode: toCurrencyDisplayCode(fee.currencyCode, fee.currencyName),
         currencyName: fee.currencyName ?? '',
         rate,
         originalTotal: applied,
@@ -485,7 +489,7 @@ export function summarizeByCurrency(fees: FeeDetailRow[]): CurrencySummary[] {
     } else {
       map.set(fee.currencyId, {
         currencyId: fee.currencyId,
-        currencyCode: fee.currencyCode ?? '',
+        currencyCode: toCurrencyDisplayCode(fee.currencyCode, fee.currencyName),
         currencyName: fee.currencyName ?? '',
         totalAmount: fee.appliedAmount ?? 0,
       });

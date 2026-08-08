@@ -3,6 +3,8 @@ import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-
 
 import { $t } from '#/locales';
 
+import { toCurrencyDisplayCode } from '../utils/currency-display';
+
 /** 费用明细港口展示：仅英文 portName，不回退中文名 */
 export function resolvePolPortDisplayName(source: {
   pol?: PaymentApplicationAdminApi.PortSimpleDto;
@@ -157,7 +159,7 @@ function resolveCurrencyCode(fee: {
   currencyCode?: string;
   currencyName?: string;
 }): string {
-  return fee.currencyCode ?? fee.currencyName ?? '';
+  return toCurrencyDisplayCode(fee.currencyCode, fee.currencyName);
 }
 
 /** PaySide 枚举选项 */

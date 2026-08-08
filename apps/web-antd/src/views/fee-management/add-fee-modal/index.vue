@@ -45,6 +45,7 @@ import {
   useAddFeeSearchSchema,
   useOrderFixedColumns,
 } from './data';
+import { toCurrencyDisplayCode } from '../utils/currency-display';
 
 const emit = defineEmits<{
   confirm: [fees: SelectedFeeItem[]];
@@ -561,7 +562,10 @@ function getSelectedFees(): SelectedFeeItem[] {
           feeCodeId: fee.feeCodeId,
           feeCodeName: fee.feeCodeName,
           currencyId: fee.currencyId,
-          currencyCode: fee.currencyCode,
+          currencyCode: toCurrencyDisplayCode(
+            fee.currencyCode,
+            fee.currencyName,
+          ),
           currencyName: fee.currencyName,
           settlementId: fee.settlementId,
           settlementName: order
@@ -617,14 +621,14 @@ function resolveSettlementCurrencyName(targetId: number): string {
   for (const order of orderList.value) {
     for (const fee of order.orderFees ?? []) {
       if (fee.currencyId === targetId) {
-        return fee.currencyCode ?? fee.currencyName ?? '';
+        return toCurrencyDisplayCode(fee.currencyCode, fee.currencyName);
       }
     }
   }
   if (currencySelectRef.value) {
     const options = currencySelectRef.value.getOptions?.() ?? [];
     const opt = options.find((o: any) => o.value === targetId);
-    if (opt) return opt.label;
+    if (opt) return toCurrencyDisplayCode(opt.label, opt.label);
   }
   return '';
 }
@@ -957,7 +961,12 @@ defineExpose({ open: openDrawer });
             </Tag>
           </template>
           <template v-else-if="column.key === 'currencyCode'">
-            {{ feeRecord.currencyCode || feeRecord.currencyName }}
+            {{
+              toCurrencyDisplayCode(
+                feeRecord.currencyCode,
+                feeRecord.currencyName,
+              )
+            }}
           </template>
           <template v-else-if="column.key === 'amount'">
             {{ formatAmount(feeRecord.amount) }}

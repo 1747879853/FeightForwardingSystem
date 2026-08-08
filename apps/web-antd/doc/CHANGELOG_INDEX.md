@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-08 付费申请币别展示统一为英文代码](./changelogs/change-log-2026-08-08-payment-application-currency-display-code.md)
 - [2026-08-08 海运进口移除订舱编号展示](./changelogs/change-log-2026-08-08-sea-import-remove-booking-num.md)
 - [2026-08-08 工作流条件字段对齐后端新枚举（费用类共用 9 个条件）](./changelogs/change-log-2026-08-08-workflow-order-fee-condition-fields.md)
 - [2026-08-08 工作流任务类型费用修改改名为费用变更](./changelogs/change-log-2026-08-08-workflow-rename-modify-order-fee-label.md)

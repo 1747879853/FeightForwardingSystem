@@ -57,6 +57,7 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-08 | `Fix` | 原始币别及「{币别}未收/未付」等展示统一为英文代码（如 RMB/USD）。 | 新增 `toCurrencyDisplayCode`；详见 `changelogs/change-log-2026-08-08-payment-application-currency-display-code.md`。 |
 | 2026-08-02 | `Fix` | 费用明细 NestedDataTable 展开列固定 32px，宽容器下不再被撑开。 | 与编辑页共用组件；详见 `changelogs/change-log-2026-08-02-nested-data-table-expand-col-width.md`。 |
 | 2026-08-02 | `Fix` | 添加费用「排除」模式生效；未选费用名称时提示并阻断查询。 | `paramsSerializer: 'repeat'` 绑定 `ExceptFeeCodeIds`。详见 `changelogs/change-log-2026-08-02-payment-add-fee-exclude-params-serializer.md`。 |
 | 2026-07-29 | `Feature` | 添加费用抽屉内必选发票制作方式；未选不创建申请。 | `enableInvoiceProcess` + `ensureInvoiceProcessSelected`；详见 `changelogs/change-log-2026-07-29-payment-application-invoice-process-in-add-fee.md`。 |

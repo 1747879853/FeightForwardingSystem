@@ -86,6 +86,7 @@ import {
   resolveFeeCurrencyCode,
   summarizeByCurrency,
   summarizeByCurrencyWithConversion,
+  toCurrencyDisplayCode,
   useFeeInnerColumns,
   useOrderGroupColumns,
 } from './form-data';
@@ -770,7 +771,10 @@ function onSettlementCurrencyChange(val: unknown) {
     nextTick(() => {
       const options = currencySelectRef.value?.getOptions?.() ?? [];
       const opt = options.find((o: any) => String(o.value) === String(val));
-      settlementCurrencyName.value = opt?.label ?? '';
+      settlementCurrencyName.value = toCurrencyDisplayCode(
+        opt?.label,
+        opt?.label,
+      );
     });
   }
 }
@@ -1469,7 +1473,10 @@ void handleSubmitAndNew;
                         >
                           <div class="currency-card__header">
                             <span class="currency-card__currency">{{
-                              cs.currencyCode || cs.currencyName
+                              toCurrencyDisplayCode(
+                                cs.currencyCode,
+                                cs.currencyName,
+                              )
                             }}</span>
                             <span class="currency-card__amount">
                               {{ formatAmount(cs.totalAmount) }}
@@ -1562,7 +1569,12 @@ void handleSubmitAndNew;
                             <td>
                               <span class="settlement-table__currency-cell">
                                 <Checkbox />
-                                {{ cs.currencyCode || cs.currencyName }}
+                                {{
+                                  toCurrencyDisplayCode(
+                                    cs.currencyCode,
+                                    cs.currencyName,
+                                  )
+                                }}
                               </span>
                             </td>
                             <td>{{ formatAmount(cs.originalTotal) }}</td>
@@ -1865,7 +1877,12 @@ void handleSubmitAndNew;
                     </Tag>
                   </template>
                   <template v-else-if="column.key === 'currencyCode'">
-                    {{ record.currencyCode || record.currencyName }}
+                    {{
+                      toCurrencyDisplayCode(
+                        record.currencyCode,
+                        record.currencyName,
+                      )
+                    }}
                   </template>
                   <template v-else-if="column.key === 'amount'">
                     {{ formatAmount(record.amount) }}
@@ -1923,7 +1940,7 @@ void handleSubmitAndNew;
                     class="flex items-center gap-1"
                   >
                     <Tag color="blue" size="small">{{
-                      cs.currencyCode || cs.currencyName
+                      toCurrencyDisplayCode(cs.currencyCode, cs.currencyName)
                     }}</Tag>
                     <strong>{{ formatAmount(cs.totalAmount) }}</strong>
                   </span>
