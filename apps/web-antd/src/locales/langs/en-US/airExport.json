@@ -236,5 +236,85 @@
       "selectTypePlaceholder": "Please select attachment type",
       "selectTypeRequired": "Please select attachment type"
     }
+  },
+  "yundang": {
+    "subscribe": "Tracking Subscribe",
+    "resubscribe": "Resubscribe",
+    "subscribeRulesTitle": "Tracking subscribe rules",
+    "subscribeRules": "Reference no.: the master AWB number is used; bills without it will fail.\nCarrier: left empty and auto-detected by the system.\nAirports: origin/destination IATA codes are uploaded when both are present (required for XiamenAir MF).",
+    "alreadySubscribed": "This bill has already been subscribed successfully.",
+    "batchHint": "More than {0} records selected; the server will submit in batches.",
+    "subscribing": "Subscribing tracking…",
+    "pleaseSelectRecords": "Please select air export records to subscribe.",
+    "trackStatusColumn": "Track Status",
+    "trackingInfo": "Tracking Info",
+    "trackStatus": {
+      "notSubscribed": "Not Subscribed",
+      "subscribeFailed": "Subscribe Failed",
+      "waitingPush": "Waiting for Data"
+    },
+    "tracking": {
+      "title": "Tracking Details",
+      "titleWithOrder": "Tracking - {0}",
+      "close": "Close",
+      "refresh": "Refresh",
+      "loadFailed": "Failed to load tracking info",
+      "lastUpdated": "Last updated at {0}",
+      "neverSubscribed": "Not subscribed yet. Use Tracking Subscribe first.",
+      "subscribeFailedTitle": "Tracking subscription failed",
+      "waitingPushTitle": "Subscribed, waiting for tracking data",
+      "waitingPushDesc": "Tracking data is pushed asynchronously. Refresh later or keep this dialog open to poll.",
+      "referenceNo": "Reference No.",
+      "carrier": "Carrier",
+      "subscribeTime": "Subscribed At",
+      "trackStatus": "Track Status",
+      "flightNo": "Flight No.",
+      "orgDest": "Origin / Destination",
+      "currentStatus": "Current Status",
+      "nodeState": {
+        "completed": "Completed",
+        "estimated": "Estimated",
+        "planned": "Planned"
+      },
+      "emptyNodes": "No air nodes",
+      "emptyFlights": "No flight segments",
+      "emptyStatuses": "No status events",
+      "tabs": {
+        "nodes": "Milestones",
+        "flights": "Flights",
+        "statuses": "Status Events"
+      },
+      "flight": {
+        "sno": "No.",
+        "flightNo": "Flight No.",
+        "flightDate": "Flight Date",
+        "route": "Route",
+        "etd": "ETD",
+        "atd": "ATD",
+        "eta": "ETA",
+        "ata": "ATA"
+      }
+    },
+    "status": {
+      "notSubscribed": "Not Subscribed",
+      "failed": "Failed",
+      "success": "Subscribed"
+    },
+    "result": {
+      "title": "Tracking Subscribe Result",
+      "summary": "Total {0}, success {1}, failed {2}",
+      "close": "Close",
+      "orderLabel": "Order / No.",
+      "referenceNo": "Reference No.",
+      "carrierCd": "Carrier",
+      "status": "Status",
+      "resultType": "Result",
+      "errorMessage": "Error",
+      "success": "Success",
+      "failed": "Failed",
+      "toastAllSuccess": "Subscription done: {0}/{1} succeeded",
+      "toastAllFailed": "Subscription failed: {0}/{1} failed",
+      "toastPartial": "Subscription done: {0} succeeded, {1} failed (total {2})"
+    }
   }
 }

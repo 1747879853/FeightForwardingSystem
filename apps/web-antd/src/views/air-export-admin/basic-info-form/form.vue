@@ -67,6 +67,10 @@ import {
 import AirExportOrderCtnTable from '../modules/air-export-order-ctn-table.vue';
 import { useAirExportCopy } from '../use-air-export-copy';
 import {
+  getYundangAirSubscribeStatus,
+  useYundangAirSubscribe,
+} from '../use-yundang-air-subscribe';
+import {
   calcBubbleRatio,
   flattenDetail,
   normalizeOrderCtnsWithRowKey,
@@ -97,6 +101,7 @@ const router = useRouter();
 const userStore = useUserStore();
 const { closeTabByKey } = useTabs();
 const perm = createAbpPermission('Admin.AirExport');
+const externalApiUseCode = 'Admin.ExternalApi.Use';
 
 const pageWrapperTag = computed(() => (props.embedded ? 'div' : Page));
 const pageWrapperProps = computed(() =>
@@ -561,6 +566,8 @@ const loadEditData = async (): Promise<
     const detail = await getAirExportDetail(editId.value);
     const to = detail.transportOrder;
     transportOrderId.value = to?.id;
+    yundangSubscribed.value = detail.isYundangSubscribed ?? false;
+    yundangSubscribeSuccess.value = detail.isYundangSubscribeSuccess ?? false;
     const formValues = flattenDetail(detail);
     cargoType.value = to?.cargoId ?? undefined;
     orderCtns.value = normalizeOrderCtnsWithRowKey(detail.airExportOrderCtns);
@@ -761,6 +768,42 @@ const handleCopyAirExport = async () => {
   });
 };
 
+const { ResultModal, subscribe, subscribing } = useYundangAirSubscribe();
+
+/** 运踪订阅状态（随详情返回，订阅后重新加载详情刷新） */
+const yundangSubscribed = ref(false);
+const yundangSubscribeSuccess = ref(false);
+const yundangSubscribeStatus = computed(() =>
+  getYundangAirSubscribeStatus({
+    isYundangSubscribed: yundangSubscribed.value,
+    isYundangSubscribeSuccess: yundangSubscribeSuccess.value,
+  }),
+);
+/** 已成功订阅的同单号禁止重复批量订阅 */
+const yundangSubscribeDisabled = computed(
+  () => yundangSubscribeStatus.value === 'success',
+);
+const yundangSubscribeButtonText = computed(() =>
+  yundangSubscribeStatus.value === 'failed'
+    ? $t('airExport.yundang.resubscribe')
+    : $t('airExport.yundang.subscribe'),
+);
+
+const handleYundangSubscribe = async () => {
+  if (!isEdit.value || !editId.value || yundangSubscribeDisabled.value) {
+    return;
+  }
+  const basicValues = await basicInfoFormApi.getValues();
+  await subscribe([
+    {
+      id: editId.value,
+      commissionNum: entrustReadonlyInfo.value.commissionNum,
+      mblNum: String(basicValues.mblNum ?? ''),
+    },
+  ]);
+  await loadEditData();
+};
+
 /** 编辑态按最新规则重新生成委托编号，原编号不可恢复 */
 const regeneratingCommissionNum = ref(false);
 const canRegenerateCommissionNum = computed(() => isEdit.value);
@@ -924,6 +967,50 @@ watch(pageLoading, (loading) => {
                 <div class="content-section__actions">
                   <div class="content-section__actions-left"></div>
                   <Space class="content-section__actions-right">
+                    <template v-if="isEdit">
+                      <span
+                        v-access:code="externalApiUseCode"
+                        class="inline-flex items-center gap-1"
+                      >
+                        <Tooltip
+                          :title="
+                            yundangSubscribeDisabled
+                              ? $t('airExport.yundang.alreadySubscribed')
+                              : ''
+                          "
+                        >
+                          <Button
+                            size="small"
+                            class="flex items-center justify-center"
+                            :loading="subscribing"
+                            :disabled="yundangSubscribeDisabled"
+                            @click="handleYundangSubscribe"
+                          >
+                            <IconifyIcon
+                              icon="mdi:radar"
+                              class="mr-1 inline-block size-3.5 align-middle"
+                            />
+                            <span class="align-middle">{{
+                              yundangSubscribeButtonText
+                            }}</span>
+                          </Button>
+                        </Tooltip>
+                        <Tooltip>
+                          <template #title>
+                            <div class="whitespace-pre-line text-left">
+                              {{ $t('airExport.yundang.subscribeRules') }}
+                            </div>
+                          </template>
+                          <IconifyIcon
+                            icon="ant-design:question-circle-outlined"
+                            class="size-3.5 cursor-help text-[rgba(0,0,0,0.45)]"
+                            :aria-label="
+                              $t('airExport.yundang.subscribeRulesTitle')
+                            "
+                          />
+                        </Tooltip>
+                      </span>
+                    </template>
                     <DropdownButton
                       v-if="isEdit"
                       type="primary"
@@ -1358,6 +1445,7 @@ watch(pageLoading, (loading) => {
         </Radio>
       </Radio.Group>
     </Modal>
+    <ResultModal />
   </component>
 </template>
 

@@ -1305,6 +1305,13 @@ export function useColumns(): VxeTableGridOptions<AirExportAdminApi.AirExportDto
       },
     },
     {
+      field: 'yundangTrackStatus',
+      title: $t('airExport.yundang.trackStatusColumn'),
+      minWidth: 120,
+      sortable: false,
+      slots: { default: 'yundangTrackStatus' },
+    },
+    {
       field: 'creatorUserNickName',
       title: $t('airExport.export.creatorUserNickName'),
       minWidth: 120,

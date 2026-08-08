@@ -12,6 +12,7 @@
  *   `etd` / `atd` / `eta`，空运没有 `flightDate` 之类的字段。
  */
 import type { UserAttribute } from '#/api/system/user-admin';
+import type { YundangAirAdminApi } from '#/api/yundang/yundang-air-admin';
 
 import { requestClient } from '#/api/request';
 
@@ -439,6 +440,12 @@ export namespace AirExportAdminApi {
     payFeeStatus?: null | number;
     /** 应收方向组合费用状态 */
     receiveFeeStatus?: null | number;
+    /** 是否已发起过空运运单运踪订阅（存在订阅记录即为 true） */
+    isYundangSubscribed?: boolean;
+    /** 当前订阅记录是否订阅成功（对应订阅表 isSuccess） */
+    isYundangSubscribeSuccess?: boolean;
+    /** 运单当前空运节点（最后一个有实际时间的节点；无推送或无实际节点为 null） */
+    yundangAirShipmentNode?: null | YundangAirAdminApi.YundangAirShipmentNodeInfoDto;
     /** 货物明细，按 sortId 升序；无明细时 [] */
     airExportOrderCtns?: AirExportOrderCtnDto[];
     transportOrder?: TransportOrderDto;

@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-08 空运出口运踪订阅前端对接](./changelogs/change-log-2026-08-08-air-export-yundang-subscribe.md)
 - [2026-08-08 编辑工作台基础信息保存后联动刷新费用/更改单](./changelogs/change-log-2026-08-08-edit-workspace-saved-detail-sync.md)
 - [2026-08-07 海运出口港口字段对接后端对象化并优化回显](./changelogs/change-log-2026-08-07-sea-export-port-objectification.md)
 - [2026-08-05 分页下拉已选项注入策略与搜索防抖](./changelogs/change-log-2026-08-05-paged-select-pin-search-debounce.md)

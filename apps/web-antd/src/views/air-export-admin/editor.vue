@@ -13,17 +13,23 @@ import { buildBrandStorageKey } from '#/utils/brand-storage';
 
 import attachments from './attachments/index.vue';
 import Form from './basic-info-form/form.vue';
+import YundangAirTrackingPanel from './modules/yundang-air-tracking-panel.vue';
 import orderFee from './orderFee/index.vue';
 
 type SectionKey = 'basic' | 'cargo' | 'date' | 'leg' | 'party';
-type TabKey = 'attachments' | 'basic' | 'fee';
+type TabKey = 'attachments' | 'basic' | 'fee' | 'tracking';
 type FormExpose = {
   isFormDirty: () => boolean | Promise<boolean>;
   scrollToSection: (key: SectionKey) => void;
 };
 
-/** 空运出口本期不做更改单，标签只有基础信息、只读费用、附件三个 */
-const VALID_TAB_KEYS: readonly TabKey[] = ['basic', 'fee', 'attachments'];
+/** 空运出口本期不做更改单，标签只有基础信息、只读费用、附件、运踪四个 */
+const VALID_TAB_KEYS: readonly TabKey[] = [
+  'basic',
+  'fee',
+  'attachments',
+  'tracking',
+];
 
 const TAB_STORAGE_KEY_PREFIX = 'air-export-edit-active-tab';
 
@@ -100,6 +106,7 @@ const tabs = computed<
   },
   { key: 'fee', label: feeName.value },
   { key: 'attachments', label: $t('airExport.export.attachments.tabTitle') },
+  { key: 'tracking', label: $t('airExport.yundang.trackingInfo') },
 ]);
 
 /** 由详情计算费用 Tab 徽标上的收 - 付计数 */
@@ -202,6 +209,15 @@ const getContentTabStyle = (isActive: boolean) =>
           <KeepAlive include="AirExportAttachments">
             <attachments v-if="activeTab === 'attachments'" />
           </KeepAlive>
+          <div
+            v-if="activeTab === 'tracking'"
+            class="m-3 flex flex-1 flex-col rounded-xl bg-white p-4"
+          >
+            <YundangAirTrackingPanel
+              :air-export-id="editId"
+              resolve-state-from-subscription
+            />
+          </div>
           <KeepAlive include="AirExportAdminForm">
             <Form
               v-if="activeTab === 'basic'"
