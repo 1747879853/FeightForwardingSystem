@@ -132,6 +132,7 @@ last_updated: 2026-08-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-08 | `Fix` | 集装箱合计栏增加体积汇总。 | `ctnSummary` 累加 `volume`。详见 `changelogs/change-log-2026-08-08-sea-export-ctn-summary-volume.md`。 |
 | 2026-08-08 | `Fix` | 基础信息保存成功后，费用/更改单 Tab 用最新详情整体替换订单摘要；并清理费用联动订单详情缓存。 | `loadEditData` 返回 DTO → `onSaved`/`emit('saved')` → `editor.savedDetail` → `:latest-detail`；`clearOrderDetailCache` 同时清字符串/数字键。详见 `changelogs/change-log-2026-08-08-edit-workspace-saved-detail-sync.md`。 |
 | 2026-08-07 | `Feature` | 港口详情对接后端对象化；编辑回填整对象注入 PortSelect，航线/国家改读目的港嵌套字段。 | 新增 `PortCodeSimpleDtoForOrder` 与 `toPortObjectSelectedItems`；扁平 `*Name`/`*EdiCode` 标废弃。详见 `changelogs/change-log-2026-08-07-sea-export-port-objectification.md`。 |
 | 2026-08-05 | `Style` | 截 VGM→截港日期、截舱单→截关日期；船期时间轴右侧顺序改为截单→截港→截关。 | 仅改 i18n 与 `shipment-time-pos` 字段顺序；API 字段名不变。详见 `changelogs/change-log-2026-08-05-sea-export-cutoff-labels-order.md`。 |

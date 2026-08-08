@@ -111,6 +111,7 @@ const ctnSummary = computed(() => {
   const ctnTypeCounter = new Map<string, number>();
   let totalPkgs = 0;
   let totalGrossWeight = 0;
+  let totalVolume = 0;
 
   for (const row of list) {
     const anyRow = row as any;
@@ -126,8 +127,10 @@ const ctnSummary = computed(() => {
 
     const pkgsValue = Number(row.pkgs ?? 0);
     const grossWeightValue = Number(row.grossWeight ?? 0);
+    const volumeValue = Number(row.volume ?? 0);
     if (Number.isFinite(pkgsValue)) totalPkgs += pkgsValue;
     if (Number.isFinite(grossWeightValue)) totalGrossWeight += grossWeightValue;
+    if (Number.isFinite(volumeValue)) totalVolume += volumeValue;
   }
 
   const ctnTypeText =
@@ -139,6 +142,7 @@ const ctnSummary = computed(() => {
     ctnTypeText,
     totalPkgs: formatSummaryNumber(totalPkgs),
     totalGrossWeight: formatSummaryNumber(totalGrossWeight),
+    totalVolume: formatSummaryNumber(totalVolume),
   };
 });
 
@@ -540,6 +544,10 @@ watch(
       <span>
         {{ $t('seaExport.export.grossWeight') }}
         {{ ctnSummary.totalGrossWeight }}
+      </span>
+      <span>
+        {{ $t('seaExport.export.volume') }}
+        {{ ctnSummary.totalVolume }}
       </span>
     </div>
   </div>
