@@ -525,6 +525,7 @@ export function useHotColumns(
           col.field === 'feeStatus'
         ) {
           hotCol.type = 'text';
+          hotCol.width = 100;
           hotCol.readOnly = true;
           hotCol.renderer = function (
             this: any,
@@ -547,7 +548,7 @@ export function useHotColumns(
 
             if (modificationCount && modificationCount > 0) {
               td.innerHTML = '';
-              td.style.display = 'inline-flex';
+              //td.style.display = 'inline-flex';
               td.style.alignItems = 'center';
               td.style.cursor = 'pointer';
               td.title = `双击查看审核历史(共 ${modificationCount} 次修改)`;

@@ -148,6 +148,12 @@ const parseAndCompareFields = (
       'noTaxUnitPrice',
       'IsConfidential', // 是否机密
       'quantity',
+      'Unit',
+      'UnitPrice',
+      'statementId',
+      'settlementCode',
+      'statement',
+      'combinedFeeStatus',
 
       // 其他字段（包括各种大小写变体）
       'localCurrencyCode', // 本位币代码
