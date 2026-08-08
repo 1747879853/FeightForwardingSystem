@@ -226,6 +226,11 @@ async function handleFeeDetailRefresh() {
     // 重新加载详情数据
     await loadDetail();
 
+    // ✅ 关键修复：删除费用后，根据剩余的费用重新生成商品明细
+    console.log('🔄 开始重新计算商品明细...');
+    await recalculateGoodsDetails();
+    console.log('✅ 商品明细重新计算完成');
+
     // 重新构建费用明细数据
     const items = formData.value.invoiceApplicationItems || [];
     if (items.length > 0 && feeGroupsData.value.length > 0) {
