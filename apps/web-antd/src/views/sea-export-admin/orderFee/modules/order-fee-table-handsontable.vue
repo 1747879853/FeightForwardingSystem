@@ -208,6 +208,7 @@ const {
   auditHistoryModalRef,
   batchImportModalRef,
   openAuditHistoryModal,
+  openModifyModal,
   handleModalConfirm,
 } = useModals();
 
@@ -394,6 +395,7 @@ defineExpose({
   getTableDate,
   getSelectedFeeIds,
   getSelectedFees,
+  openModifyModal,
 });
 
 // ==================== ID 到 Label 转换辅助函数 ====================

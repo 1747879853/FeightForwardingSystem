@@ -127,15 +127,21 @@ const [Modal, modalApi] = useVbenModal({
     const formValues = await orderFeeFormApi.getValues();
     console.log('表单提交数据:', formValues);
 
+    // 获取修改理由（从modal data中）
+    const data = modalApi.getData<any>();
+    const remark = data?.remark || '';
+
     // 计算更改后的金额
     const updatedFeeData = {
       ...currentFeeData.value,
       ...formValues,
+      modifyRemark: remark, // 添加修改理由字段
     };
 
     emit('confirm', {
       originalData: originalFeeData.value,
       updatedData: updatedFeeData,
+      remark: remark, // 同时单独传递remark
     });
 
     modalApi.close();
@@ -308,11 +314,13 @@ const [Modal, modalApi] = useVbenModal({
           fieldsToSet.forEach((field) => {
             console.log(`  - ${field}:`, processedFeeData[field]);
           });
-          processedFeeData["feeCodeId"] = processedFeeData["feeCodeId_value"];
-          processedFeeData["currencyId"] = processedFeeData["currencyId_value"];
-          processedFeeData["settlementId"] = processedFeeData["settlementId_value"];
-          processedFeeData["unit"] = processedFeeData["unit_value"];
-          processedFeeData["industryCategory"] = processedFeeData["industryCategory_value"];
+          processedFeeData['feeCodeId'] = processedFeeData['feeCodeId_value'];
+          processedFeeData['currencyId'] = processedFeeData['currencyId_value'];
+          processedFeeData['settlementId'] =
+            processedFeeData['settlementId_value'];
+          processedFeeData['unit'] = processedFeeData['unit_value'];
+          processedFeeData['industryCategory'] =
+            processedFeeData['industryCategory_value'];
           // 设置表单值（使用处理后的数据）
           await orderFeeFormApi.setValues(processedFeeData);
 
@@ -326,19 +334,30 @@ const [Modal, modalApi] = useVbenModal({
 
           // ✅ 关键修复：动态更新ClientSelect的selectedItems，确保结算单位名称正确显示
           if (currentFeeData.value) {
-            const settlementIdValue = (currentFeeData.value as any)?.settlementId_value || currentFeeData.value?.settlementId;
-            const settlementName = currentFeeData.value?.settlementName || currentFeeData.value?.settlementId || '';
-            
+            const settlementIdValue =
+              (currentFeeData.value as any)?.settlementId_value ||
+              currentFeeData.value?.settlementId;
+            const settlementName =
+              currentFeeData.value?.settlementName ||
+              currentFeeData.value?.settlementId ||
+              '';
+
             if (settlementIdValue != null) {
               orderFeeFormApi.updateSchema([
                 {
                   fieldName: 'settlementId',
                   componentProps: {
-                    selectedItems: toSelectedItems(settlementIdValue, settlementName)
-                  }
-                }
+                    selectedItems: toSelectedItems(
+                      settlementIdValue,
+                      settlementName,
+                    ),
+                  },
+                },
               ]);
-              console.log('✅ [编辑模态框] 动态更新ClientSelect selectedItems:', { settlementIdValue, settlementName });
+              console.log(
+                '✅ [编辑模态框] 动态更新ClientSelect selectedItems:',
+                { settlementIdValue, settlementName },
+              );
             }
           }
 
@@ -1351,7 +1370,12 @@ function useOrderFeeFormSchema() {
       componentProps: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
-        selectedItems: toSelectedItems((currentFeeData.value as any)?.settlementId_value || currentFeeData.value?.settlementId, currentFeeData.value?.settlementName || currentFeeData.value?.settlementId)
+        selectedItems: toSelectedItems(
+          (currentFeeData.value as any)?.settlementId_value ||
+            currentFeeData.value?.settlementId,
+          currentFeeData.value?.settlementName ||
+            currentFeeData.value?.settlementId,
+        ),
       },
     },
     {

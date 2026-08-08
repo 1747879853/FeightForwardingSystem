@@ -23,6 +23,21 @@ export function useModals() {
   };
 
   /**
+   * 打开修改费用模态框
+   */
+  const openModifyModal = (
+    feeData: OrderFeeAdminApi.OrderFeeDto,
+    orderBaseData?: any,
+  ) => {
+    if (!feeData) return;
+    modifyModalRef.value?.modalApi.setData({
+      feeData: feeData,
+      orderBaseData: orderBaseData,
+    });
+    modifyModalRef.value?.modalApi.open();
+  };
+
+  /**
    * 处理模态框确认
    */
   const handleModalConfirm = (data: {
@@ -38,6 +53,7 @@ export function useModals() {
     auditHistoryModalRef,
     batchImportModalRef,
     openAuditHistoryModal,
+    openModifyModal,
     handleModalConfirm,
   };
 }

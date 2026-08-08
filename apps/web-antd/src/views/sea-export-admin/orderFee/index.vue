@@ -5,7 +5,7 @@ import {
   getOrderFeeCount,
 } from '#/api/sea-export/order-fee-admin';
 import dayjs from 'dayjs';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   getCurrencyEnumOptions,
@@ -34,6 +34,8 @@ import {
   Menu,
   MenuItem,
   DropdownButton,
+  Modal,
+  Textarea,
 } from 'ant-design-vue';
 
 import { useVbenForm } from '#/adapter/form';
@@ -713,72 +715,41 @@ const handleSubmitAllFees = async () => {
 
 // 申请修改
 const handleApplyModify = async () => {
-  const feeIds = collectSelectedFeeIds();
-  if (feeIds.length === 0) {
+  const recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
+  const payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
+  const allFees = [...recFees, ...payFees];
+
+  if (allFees.length === 0) {
     message.warning('请至少选择一条费用');
     return;
   }
 
-  // TODO: 打开申请修改对话框，获取备注
-  // 暂时简化处理
-  try {
-    const recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
-    const payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
-    const allFees = [...recFees, ...payFees];
+  if (allFees.length > 1) {
+    message.warning('只能选择一条费用进行修改');
+    return;
+  }
 
-    if (allFees.length === 0) {
-      message.warning('没有可申请修改的费用');
-      return;
-    }
+  // 获取选中的费用
+  const selectedFee = allFees[0];
 
-    // 转换为OrderFeeEditDto格式，确保所有必需字段都有值
-    const editFees = allFees.map((fee) => ({
-      id: fee.id,
-      transportOrderId: fee.transportOrderId || editId.value || '',
-      paySide: fee.paySide ?? 0,
-      feeStatus: fee.feeStatus ?? 0,
-      invoiceStatus: fee.invoiceStatus ?? 0,
-      feeCodeId: fee.feeCodeId ?? 0,
-      settlementId: fee.settlementId || '',
-      currencyId: fee.currencyId ?? 0,
-      exchangeRate: fee.exchangeRate ?? 1,
-      unitPrice: fee.unitPrice ?? 0,
-      amount: fee.amount ?? 0,
-      unit: fee.unit || '',
-      quantity: fee.quantity ?? 0,
-      taxRate: fee.taxRate ?? 0,
-      noTaxUnitPrice: fee.noTaxUnitPrice ?? 0,
-      noTaxAmount: fee.noTaxAmount ?? 0,
-      rqstPaymentAmount: fee.rqstPaymentAmount ?? 0,
-      invoicedAmount: fee.invoicedAmount ?? 0,
-      orderInvoiceAmount: fee.orderInvoiceAmount ?? 0,
-      settledAmount: fee.settledAmount ?? 0,
-      invoiceBlocked: fee.invoiceBlocked ?? false,
-      isConfidential: fee.isConfidential ?? false,
-      dataEntryMethod: fee.dataEntryMethod ?? 0,
-      remark: fee.remark,
-      changeOrderId: fee.changeOrderId,
-      taskStatus: fee.taskStatus,
-      industryCategory: fee.industryCategory,
-      industryCategories: fee.industryCategories,
-      settlementCode: fee.settlementCode,
-    }));
+  // 验证费用状态：只有审核通过的费用才能申请修改
+  if (selectedFee.feeStatus !== 2) {
+    // 假设 2 是审核通过的状态
+    message.warning('只能修改审核通过的费用');
+    return;
+  }
 
-    await modifyOrderFee({
-      remark: '', // TODO: 需要从对话框获取备注
-      transportOrderId: editId.value,
-      orderFees: editFees,
-    });
+  // 确定是哪个表格（应收还是应付）
+  const isRecFee = recFees.some((fee) => fee.id === selectedFee.id);
+  const tableRef = isRecFee
+    ? recOrderFeeTableRef.value
+    : payOrderFeeTableRef.value;
 
-    message.success('申请修改成功');
-    // 刷新两个表格
-    recOrderFeeTableRef.value?.getTableDate();
-    payOrderFeeTableRef.value?.getTableDate();
-    // 清空选中状态
-    selectedFeeIds.value = [];
-  } catch (error) {
-    console.error('申请修改失败:', error);
-    message.error('申请修改失败');
+  // 打开编辑模态框
+  if (tableRef?.openModifyModal) {
+    tableRef.openModifyModal(selectedFee, formValues.value);
+  } else {
+    message.error('无法打开编辑模态框');
   }
 };
 
@@ -790,24 +761,60 @@ const handleApplyDelete = async () => {
     return;
   }
 
-  // TODO: 打开申请删除对话框，获取备注
-  try {
-    await deleteOrderFee({
-      remark: '', // TODO: 需要从对话框获取备注
-      transportOrderId: editId.value,
-      orderFeeIds: feeIds,
-    });
+  // 创建一个临时的变量来获取用户输入
+  let inputValue = '';
 
-    message.success('申请删除成功');
-    // 刷新两个表格
-    recOrderFeeTableRef.value?.getTableDate();
-    payOrderFeeTableRef.value?.getTableDate();
-    // 清空选中状态
-    selectedFeeIds.value = [];
-  } catch (error) {
-    console.error('申请删除失败:', error);
-    message.error('申请删除失败');
-  }
+  // 弹出对话框让用户填写删除原因
+  const modal = Modal.confirm({
+    title: '申请删除',
+    content: h(
+      'div',
+      {
+        style: 'margin-top: 8px;',
+      },
+      [
+        h(Textarea, {
+          placeholder: '请输入删除原因（最多100字符）',
+          maxlength: 100,
+          rows: 3,
+          onChange: (e: any) => {
+            inputValue = e.target.value;
+          },
+        }),
+      ],
+    ),
+    icon: null,
+    width: 520,
+    centered: true,
+    okText: '确认',
+    cancelText: '取消',
+    async onOk() {
+      const remark = inputValue?.trim();
+
+      if (!remark || remark === '') {
+        message.warning('请填写删除原因');
+        return Promise.reject();
+      }
+
+      try {
+        await deleteOrderFee({
+          remark: remark,
+          transportOrderId: editId.value,
+          orderFeeIds: feeIds,
+        });
+
+        message.success('申请删除成功');
+        // 刷新两个表格
+        recOrderFeeTableRef.value?.getTableDate();
+        payOrderFeeTableRef.value?.getTableDate();
+        // 清空选中状态
+        selectedFeeIds.value = [];
+      } catch (error) {
+        console.error('申请删除失败:', error);
+        message.error('申请删除失败');
+      }
+    },
+  });
 };
 
 // 撤销提交

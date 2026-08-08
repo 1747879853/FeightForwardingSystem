@@ -214,6 +214,7 @@ const {
   auditHistoryModalRef,
   batchImportModalRef,
   openAuditHistoryModal,
+  openModifyModal,
   handleModalConfirm,
 } = useModals();
 
@@ -300,7 +301,7 @@ const ImportOther = async (e: any) => {
 const SubmittedOther = async (e: any) => {
   switch (e.key) {
     case 'modify':
-      actions.openModifyModal(modifyModalRef, orderBaseData);
+      actions.showModifyWithRemark();
       break;
     case 'delete':
       actions.showDeleteWithRemark();
@@ -700,6 +701,7 @@ defineExpose({
   getTableDate,
   getSelectedFeeIds,
   getSelectedFees,
+  openModifyModal,
 });
 </script>
 

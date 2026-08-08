@@ -87,7 +87,7 @@ export function useHotColumns(
     const indexColumn: any = {
       data: null,
       title: '开票状态',
-      width: 80,
+      width: 100,
       type: 'text',
       className: '',
       readOnly: true,
@@ -267,6 +267,7 @@ export function useHotColumns(
           hotCol.type = 'autocomplete';
           hotCol.strict = true;
           hotCol.allowInvalid = false;
+          hotCol.width = 120;
           hotCol.filteringCaseSensitive = false;
           hotCol.trimDropdown = false;
           hotCol.visibleRows = 10;
@@ -525,6 +526,7 @@ export function useHotColumns(
           col.field === 'feeStatus'
         ) {
           hotCol.type = 'text';
+          hotCol.width = 100;
           hotCol.readOnly = true;
           hotCol.renderer = function (
             this: any,
@@ -547,7 +549,7 @@ export function useHotColumns(
 
             if (modificationCount && modificationCount > 0) {
               td.innerHTML = '';
-              td.style.display = 'inline-flex';
+              //td.style.display = 'inline-flex';
               td.style.alignItems = 'center';
               td.style.cursor = 'pointer';
               td.title = `双击查看审核历史(共 ${modificationCount} 次修改)`;
