@@ -2,8 +2,8 @@
 title: 更改单业务逻辑
 module: 海运出口 / 海运进口
 author: auto-doc-sync
-last_updated: 2026-07-25
-last_change: change-order-carrier-logo-url
+last_updated: 2026-08-08
+last_change: edit-workspace-saved-detail-sync
 ---
 
 # 1. 业务背景说明 (Background)
@@ -53,6 +53,8 @@ last_change: change-order-carrier-logo-url
 ```
 
 选择器下拉与右侧「历史更改单」抽屉共用 `changeOrderList`；草稿态（无服务端 id）隐藏「新建」。
+
+**与编辑工作台联动：** 海出/海进 `editor` 在基础信息保存成功后，通过 `:latest-detail` 下发最新详情；更改单页 `watch` 后整体替换订单信息卡片与 `transportOrder`/`formValues`，避免 KeepAlive 下仍显示保存前摘要。
 
 ## 2.2 更改单 CRUD
 
@@ -213,6 +215,7 @@ sequenceDiagram
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- |
+| 2026-08-08 | `Fix` | 海出/海进更改单接收编辑页 `latest-detail`，保存基础信息后联动刷新订单信息卡片。 | 与费用 Tab 同构 props/`watch`；详见 `changelogs/change-log-2026-08-08-edit-workspace-saved-detail-sync.md`。 |
 | 2026-07-25 | `Fix` | 订单信息条船公司 Logo 经 `buildAttachmentUrl` 拼接，修复相对路径落到前端域名导致 404。详见 `changelogs/change-log-2026-07-25-change-order-carrier-logo-url.md`。 | 与 `orderFee/index.vue`、列表页一致；折叠/展开两处 `:src` 均需处理。 |
 | 2026-07-24 | `Refactor` | 订单信息摘要委托单位/车队/船公司改读对象字段（`client?.name`、`team?.name`、`carrier?.cnShortName`）。 | 与 `SeaExportDto`/`TransportOrderDto` 对象化对齐。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-21 | `Fix` | 去掉编辑区冗余「更改单」标题；更改单费用表禁用列排序；表格左右与顶部表单统一 16px 对齐。详见 `changelogs/change-log-2026-07-21-change-order-align-nosort.md`。 | `mode=changeOrder` 关 `sortConfig` 并清列 `sortable`；去掉表内 `px-1`。 |

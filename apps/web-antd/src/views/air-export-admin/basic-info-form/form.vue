@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
+
 import {
   computed,
   nextTick,
@@ -86,6 +88,8 @@ const props = withDefaults(defineProps<{ embedded?: boolean }>(), {
 
 const emit = defineEmits<{
   sectionChange: [key: SectionKey];
+  /** 编辑保存成功：上抛最新详情 DTO，供编辑工作台联动费用等 Tab */
+  saved: [detail: AirExportAdminApi.AirExportDto];
 }>();
 
 const route = useRoute();
@@ -546,9 +550,11 @@ const collectCurrentFormValues = async (): Promise<Record<string, any>> => {
 const validateOrderUsers = () =>
   validateSalesRoleCount() && validateRequiredOrderUserAssignee();
 
-const loadEditData = async () => {
+const loadEditData = async (): Promise<
+  AirExportAdminApi.AirExportDto | undefined
+> => {
   if (!editId.value) {
-    return;
+    return undefined;
   }
   pageLoading.value = true;
   try {
@@ -710,6 +716,7 @@ const loadEditData = async () => {
     await whenOrderUserRolesReady();
     initializeOrderUsersPanel(to?.orderUsers ?? []);
     await syncFormSnapshot();
+    return detail;
   } finally {
     pageLoading.value = false;
   }
@@ -736,6 +743,7 @@ const { submitting, handleSubmit, syncFormSnapshot, isFormDirty } =
     transportOrderId,
     validateOrderUsers,
     loadEditData,
+    onSaved: (detail) => emit('saved', detail),
     closeTabByKey,
     getCurrentTabKey: () => route.fullPath,
     router,

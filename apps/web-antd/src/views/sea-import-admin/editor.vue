@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { computed, nextTick, ref, watch } from 'vue';
+import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
+
+import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -60,6 +62,19 @@ function writeStoredTab(id: string | undefined, tab: TabKey) {
 
 const formRef = ref<FormExpose | null>(null);
 const route = useRoute();
+
+/** 编辑页对外暴露：基础信息保存成功后携带最新详情 DTO */
+const emit = defineEmits<{
+  saved: [detail: SeaImportAdminApi.SeaImportDto];
+}>();
+
+/** 最近一次保存成功后的最新详情，下发给费用/更改单 Tab 联动刷新 */
+const savedDetail = shallowRef<SeaImportAdminApi.SeaImportDto>();
+
+const onFormSaved = (detail: SeaImportAdminApi.SeaImportDto) => {
+  savedDetail.value = detail;
+  emit('saved', detail);
+};
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -184,16 +199,24 @@ const getContentTabStyle = (isActive: boolean) =>
       <div class="flex flex-1 items-stretch gap-3">
         <div class="flex min-w-0 flex-1 flex-col">
           <KeepAlive include="ChangeOrder">
-            <changeOrder v-if="activeTab === 'changeOrder'" />
+            <changeOrder
+              v-if="activeTab === 'changeOrder'"
+              :latest-detail="savedDetail"
+            />
           </KeepAlive>
           <KeepAlive include="OrderFee">
-            <orderFee v-if="activeTab === 'fee'" />
+            <orderFee v-if="activeTab === 'fee'" :latest-detail="savedDetail" />
           </KeepAlive>
           <KeepAlive include="SeaImportAttachments">
             <attachments v-if="activeTab === 'attachments'" />
           </KeepAlive>
           <KeepAlive include="SeaImportAdminForm">
-            <Form v-if="activeTab === 'basic'" ref="formRef" embedded />
+            <Form
+              v-if="activeTab === 'basic'"
+              ref="formRef"
+              embedded
+              @saved="onFormSaved"
+            />
           </KeepAlive>
         </div>
       </div>

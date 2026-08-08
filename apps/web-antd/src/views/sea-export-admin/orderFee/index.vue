@@ -51,6 +51,11 @@ const emit = defineEmits<{
   ): void;
 }>();
 
+/** 编辑页保存成功后下发的最新详情：直接替换信息卡片与费用表 order-detail */
+const props = defineProps<{
+  latestDetail?: SeaExportAdminApi.SeaExportDto;
+}>();
+
 const route = useRoute();
 const router = useRouter();
 
@@ -472,6 +477,17 @@ const loadSeaExportData = async () => {
     pageLoading.value = false;
   }
 };
+
+// 基础信息保存成功后，用最新详情整体替换（信息卡片 + 费用表 order-detail 联动）
+watch(
+  () => props.latestDetail,
+  (detail) => {
+    if (!detail) return;
+    transportOrderId.value = detail.transportOrder?.id;
+    formValues.value = detail;
+    to.value = detail.transportOrder;
+  },
+);
 
 const getOrderFeeNumber = async () => {
   let params = {

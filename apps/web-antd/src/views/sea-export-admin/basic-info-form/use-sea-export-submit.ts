@@ -236,7 +236,9 @@ export type UseSeaExportSubmitDeps = {
   validateRequiredOrderUserAssignee: () => boolean;
   validateServiceBoundOrderUsers: () => boolean;
   validateShipmentDates: () => Promise<boolean>;
-  loadEditData: () => Promise<void>;
+  loadEditData: () => Promise<SeaExportAdminApi.SeaExportDto | undefined>;
+  /** 编辑保存成功并重新加载详情后回调，入参为最新详情 DTO */
+  onSaved?: (detail: SeaExportAdminApi.SeaExportDto) => void;
   closeTabByKey: (key: string) => Promise<void>;
   getCurrentTabKey: () => string;
   router: { replace: (to: string) => unknown };
@@ -262,6 +264,7 @@ export function useSeaExportSubmit(deps: UseSeaExportSubmitDeps) {
     validateServiceBoundOrderUsers,
     validateShipmentDates,
     loadEditData,
+    onSaved,
     closeTabByKey,
     getCurrentTabKey,
     router,
@@ -336,7 +339,8 @@ export function useSeaExportSubmit(deps: UseSeaExportSubmitDeps) {
         message.success($t('ui.actionMessage.operationSuccess'));
         markListShouldRefresh('SeaExportList');
         markListShouldRefresh('Workspace');
-        await loadEditData();
+        const savedDetail = await loadEditData();
+        if (savedDetail) onSaved?.(savedDetail);
       } else {
         const createdId = await addSeaExport(
           dto as SeaExportAdminApi.SeaExportAddDto,

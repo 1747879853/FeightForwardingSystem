@@ -161,6 +161,11 @@ const props = withDefaults(
     embedded: false,
   },
 );
+
+/** 编辑保存成功：上抛最新详情 DTO，供编辑工作台联动费用/更改单等 Tab */
+const emit = defineEmits<{
+  saved: [detail: SeaExportAdminApi.SeaExportDto];
+}>();
 const pageWrapperTag = computed(() => (props.embedded ? 'div' : Page));
 const pageWrapperProps = computed(() =>
   props.embedded
@@ -1810,8 +1815,10 @@ const handleAiExtractFile = async (file: File) => {
   if (ok) aiExtractModalOpen.value = false;
 };
 
-const loadEditData = async () => {
-  if (!editId.value) return;
+const loadEditData = async (): Promise<
+  SeaExportAdminApi.SeaExportDto | undefined
+> => {
+  if (!editId.value) return undefined;
 
   suppressServiceTypeLinkage.value = true;
   pageLoading.value = true;
@@ -2170,6 +2177,7 @@ const loadEditData = async () => {
     await whenOrderUserRolesReady();
     await nextTick();
     await syncFormSnapshot();
+    return detail;
   } finally {
     suppressServiceTypeLinkage.value = false;
     pageLoading.value = false;
@@ -2245,6 +2253,7 @@ const { submitting, buildDto, handleSubmit, syncFormSnapshot, isFormDirty } =
     validateServiceBoundOrderUsers,
     validateShipmentDates,
     loadEditData,
+    onSaved: (detail) => emit('saved', detail),
     closeTabByKey,
     getCurrentTabKey: () => route.fullPath,
     router,

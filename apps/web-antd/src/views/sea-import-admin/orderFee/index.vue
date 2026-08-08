@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
@@ -19,6 +19,11 @@ import OrderFeeTable from './modules/order-fee-table.vue';
 defineOptions({ name: 'OrderFee' });
 
 const route = useRoute();
+
+/** 编辑页保存成功后下发的最新详情：直接替换信息卡片数据 */
+const props = defineProps<{
+  latestDetail?: SeaImportAdminApi.SeaImportDto;
+}>();
 
 const editId = computed<string | undefined>(() => {
   const id = route.params.id;
@@ -89,6 +94,15 @@ const loadSeaImportData = async () => {
 onMounted(() => {
   loadSeaImportData();
 });
+
+// 基础信息保存成功后，用最新详情整体替换信息卡片数据
+watch(
+  () => props.latestDetail,
+  (latest) => {
+    if (!latest) return;
+    detail.value = latest;
+  },
+);
 </script>
 
 <template>

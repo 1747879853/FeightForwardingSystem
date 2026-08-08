@@ -178,7 +178,9 @@ export type UseAirExportSubmitDeps = {
   editId: ComputedRef<string | undefined>;
   transportOrderId: Ref<string | undefined>;
   validateOrderUsers: () => boolean;
-  loadEditData: () => Promise<void>;
+  loadEditData: () => Promise<AirExportAdminApi.AirExportDto | undefined>;
+  /** 编辑保存成功并重新加载详情后回调，入参为最新详情 DTO */
+  onSaved?: (detail: AirExportAdminApi.AirExportDto) => void;
   closeTabByKey: (key: string) => Promise<void>;
   getCurrentTabKey: () => string;
   router: { replace: (to: string) => unknown };
@@ -194,6 +196,7 @@ export function useAirExportSubmit(deps: UseAirExportSubmitDeps) {
     transportOrderId,
     validateOrderUsers,
     loadEditData,
+    onSaved,
     closeTabByKey,
     getCurrentTabKey,
     router,
@@ -242,7 +245,8 @@ export function useAirExportSubmit(deps: UseAirExportSubmitDeps) {
         message.success($t('ui.actionMessage.operationSuccess'));
         markListShouldRefresh('AirExportList');
         markListShouldRefresh('Workspace');
-        await loadEditData();
+        const savedDetail = await loadEditData();
+        if (savedDetail) onSaved?.(savedDetail);
         return;
       }
 

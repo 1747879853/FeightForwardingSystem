@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { Alert, Empty, Spin, Table, Tag } from 'ant-design-vue';
@@ -16,6 +16,11 @@ import { $t } from '#/locales';
  * 所以这里直接复用详情结果分方向展示，不再单独调费用模块的接口。
  */
 defineOptions({ name: 'AirExportOrderFee' });
+
+/** 编辑页保存成功后下发的最新详情：直接整体替换费用列表 */
+const props = defineProps<{
+  latestDetail?: AirExportAdminApi.AirExportDto;
+}>();
 
 const PAY_SIDE = { receive: 0, pay: 1 } as const;
 
@@ -268,6 +273,15 @@ const loadFees = async () => {
     loading.value = false;
   }
 };
+
+// 基础信息保存成功后，用最新详情整体替换费用列表（与 loadFees 的取值逻辑一致）
+watch(
+  () => props.latestDetail,
+  (detail) => {
+    if (!detail) return;
+    fees.value = detail.transportOrder?.orderFees ?? [];
+  },
+);
 
 onMounted(loadFees);
 </script>

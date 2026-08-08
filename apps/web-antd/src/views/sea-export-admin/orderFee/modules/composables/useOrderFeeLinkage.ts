@@ -9,6 +9,25 @@ import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
 import { getIndustryCategoryOptions } from '../../data';
 
 /**
+ * 订单详情缓存提升到模块级：编辑页保存成功后可通过 clearOrderDetailCache
+ * 清掉永不过期的旧详情，避免费用联动（结算对象/箱型/数量）继续使用保存前的数据。
+ */
+const orderDetailCache = new Map<string, any>();
+const orderDetailLoading = new Map<string, Promise<any>>();
+
+/** 清除指定运输单的订单详情缓存（保存成功后由编辑工作台调用） */
+export function clearOrderDetailCache(
+  transportOrderId: number | string | undefined,
+) {
+  if (transportOrderId === undefined || transportOrderId === null) return;
+  // 缓存键可能为字符串（路由 id）或数字（费用行 transportOrderId），两种都清
+  orderDetailCache.delete(transportOrderId as any);
+  orderDetailCache.delete(String(transportOrderId));
+  orderDetailLoading.delete(transportOrderId as any);
+  orderDetailLoading.delete(String(transportOrderId));
+}
+
+/**
  * 订单费用字段联动逻辑 Composable
  * 负责费用代码、行业类别、币别等字段的联动和数据填充
  */
@@ -30,13 +49,20 @@ export function useOrderFeeLinkage(
       currencyId: any,
       paySide: number,
     ) => number | undefined; // ✅ 新增：从缓存获取汇率的方法
-    allClientsByIndustry?: Record<string, Array<{ label: string; value: any; name?: string; code?: string; id?: any }>>; // ✅ 新增：全量客户缓存
+    allClientsByIndustry?: Record<
+      string,
+      Array<{
+        label: string;
+        value: any;
+        name?: string;
+        code?: string;
+        id?: any;
+      }>
+    >; // ✅ 新增：全量客户缓存
   },
 ) {
   // ==================== 缓存机制 ====================
 
-  const orderDetailCache = new Map<string, any>();
-  const orderDetailLoading = new Map<string, Promise<any>>();
   const ctnCodeCache = new Map<number, any>();
   const ctnCodeLoading = new Map<number, Promise<any>>();
 
@@ -1146,34 +1172,39 @@ export function useOrderFeeLinkage(
     }
   }
 
-  function getSettlementId(settlementName: any){
+  function getSettlementId(settlementName: any) {
     if (!settlementName) return undefined;
-    
+
     const sources = getDropdownSources();
     const allClientsByIndustry = sources.allClientsByIndustry;
-    
-    if (!allClientsByIndustry || Object.keys(allClientsByIndustry).length === 0) {
+
+    if (
+      !allClientsByIndustry ||
+      Object.keys(allClientsByIndustry).length === 0
+    ) {
       console.warn('⚠️ [getSettlementId] 客户缓存数据为空');
       return undefined;
     }
-    
+
     // 遍历所有行业类别的客户列表，查找匹配的客户名称
     for (const industry of Object.keys(allClientsByIndustry)) {
       const clients = allClientsByIndustry[industry];
       if (!clients || !Array.isArray(clients)) continue;
-      
+
       // 查找匹配的客户（支持精确匹配 name 字段）
-      const matchedClient = clients.find(client => 
-        client.name === settlementName || 
-        client.label === settlementName
+      const matchedClient = clients.find(
+        (client) =>
+          client.name === settlementName || client.label === settlementName,
       );
-      
+
       if (matchedClient) {
-        console.log(`✅ [getSettlementId] 找到客户: ${settlementName}, ID: ${matchedClient.value}`);
+        console.log(
+          `✅ [getSettlementId] 找到客户: ${settlementName}, ID: ${matchedClient.value}`,
+        );
         return matchedClient.value;
       }
     }
-    
+
     console.warn(`⚠️ [getSettlementId] 未找到客户: ${settlementName}`);
     return undefined;
   }
@@ -1217,9 +1248,9 @@ export function useOrderFeeLinkage(
       // 结算对象变化 - 使用 _value 字段
       else if (prop === 'settlementId') {
         // settlementId 的联动逻辑在 fillSettlementIdByIndustryCategory 中处理
-        
-        if(!row['settlementId_value']){
-          row['settlementId_value'] =  getSettlementId(row['settlementId']);
+
+        if (!row['settlementId_value']) {
+          row['settlementId_value'] = getSettlementId(row['settlementId']);
         }
         console.log(
           '👤 [handleAfterChange] 结算对象变化:',

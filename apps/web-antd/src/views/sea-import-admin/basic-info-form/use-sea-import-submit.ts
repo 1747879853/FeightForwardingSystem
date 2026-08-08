@@ -179,7 +179,9 @@ export type UseSeaImportSubmitDeps = {
   transportOrderId: Ref<string | undefined>;
   validateSalesRoleCount: () => boolean;
   validateOrderCtns: () => boolean;
-  loadEditData: () => Promise<void>;
+  loadEditData: () => Promise<SeaImportAdminApi.SeaImportDto | undefined>;
+  /** 编辑保存成功并重新加载详情后回调，入参为最新详情 DTO */
+  onSaved?: (detail: SeaImportAdminApi.SeaImportDto) => void;
   closeTabByKey: (key: string) => Promise<void>;
   getCurrentTabKey: () => string;
   router: { replace: (to: string) => unknown };
@@ -196,6 +198,7 @@ export function useSeaImportSubmit(deps: UseSeaImportSubmitDeps) {
     validateSalesRoleCount,
     validateOrderCtns,
     loadEditData,
+    onSaved,
     closeTabByKey,
     getCurrentTabKey,
     router,
@@ -247,7 +250,8 @@ export function useSeaImportSubmit(deps: UseSeaImportSubmitDeps) {
         message.success($t('ui.actionMessage.operationSuccess'));
         markListShouldRefresh('SeaImportList');
         markListShouldRefresh('Workspace');
-        await loadEditData();
+        const savedDetail = await loadEditData();
+        if (savedDetail) onSaved?.(savedDetail);
         return;
       }
 

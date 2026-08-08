@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-04
+last_updated: 2026-08-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,6 +22,7 @@ last_updated: 2026-08-04
 # 2. 功能与操作说明 (Features & Operations)
 
 - **基础信息维护：** `KeepAlive` 嵌入 `basic-info-form/form.vue`，布局与新建页相同。
+- **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaImportDto`，经 `form` → `saved` → `editor.savedDetail` 以 `:latest-detail` 下发给费用/更改单；子 Tab `watch` 后整体替换本地详情与订单摘要，避免 KeepAlive 残留旧数据。
 - **费用 Tab：** 应收/应付费用；Tab 标签费用数量由 editor 直接查分页 `totalCount` 汇总。
 - **更改单 / 附件：** 进口侧子模块；左侧概要字段按进口 DTO（承运人 `cnShortName`、港口 `portName` 等）。
 - **委托编号：** 编辑态可一键重新生成。
@@ -50,6 +51,7 @@ last_updated: 2026-08-04
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-08 | `Fix` | 基础信息保存成功后，费用/更改单 Tab 用最新详情整体替换订单摘要与信息卡片。 | 与海出同构：`onSaved`/`emit('saved')`/`savedDetail`/`latest-detail`。详见 `changelogs/change-log-2026-08-08-edit-workspace-saved-detail-sync.md`。 |
 | 2026-08-04 | `Feat` | 编辑工作台基础信息对齐出口版式；新增附件 Tab；费用数量由 editor 直查；概要字段改用进口 DTO 正确属性名。 | 基础信息组件为 `basic-info-form/form.vue`（`SeaImportAdminForm`），不再使用根目录 `form.vue`。 |
 | 2026-07-25 | `Perf` | 箱型选择从 option 取名称，选中时不再请求箱型详情 | 与海出同构的 `order-ctn-table`；`@change` 写 `ctnCodeName`，`syncCtnNameMap` 仅兜底回显 |
 | 2026-06-07 | `Refactor` | 编辑态服务项目值映射改为运行时读取 `ServiceType` 枚举，不再使用本地固定值常量。 | 详情回填与保存提交共用同一枚举映射，避免海运进口与海运出口在服务项值上出现偏差。 |
