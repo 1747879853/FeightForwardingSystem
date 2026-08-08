@@ -168,12 +168,30 @@ const { handleFeeSelectionSave } = useFeeSelectionSave(
   loadClientInvoiceInfo,
   updateOrgBankByCurrency,
   loadDefaultRemarkTemplate, // ✅ 传递默认备注模板加载函数
-  (newId: string) => {
-    // ✅ 新增开票申请成功后的回调 - 跳转到编辑页面
-    console.log('✅ 开票申请创建成功，ID:', newId);
-    router.replace({
-      path: `/fee-management/invoice-application/${newId}/edit`,
-    });
+  (ids: string[]) => {
+    // ✅ 新增开票申请成功后的回调 - 打开所有开票申请的tab页
+    console.log('✅ 开票申请创建成功，IDs:', ids);
+
+    if (ids && ids.length > 0) {
+      // 第一个ID使用replace替换当前页面
+      const firstId = ids[0];
+      router.replace({
+        path: `/fee-management/invoice-application/${firstId}/edit`,
+      });
+
+      // 其他ID在新tab中打开
+      if (ids.length > 1) {
+        setTimeout(() => {
+          ids.slice(1).forEach((id) => {
+            // 使用router.push打开新tab
+            router.push({
+              path: `/fee-management/invoice-application/${id}/edit`,
+            });
+            console.log('📑 已打开开票申请tab:', id);
+          });
+        }, 300); // 延迟300ms，确保第一个tab已经打开
+      }
+    }
   },
   handleFeeDetailRefresh, // ✅ 传递刷新数据的回调
 );
@@ -279,8 +297,7 @@ async function handleFeeDetailRefresh() {
                 orderFee: fee.orderFee,
                 appliedAmount: item.appliedAmount,
                 settlementUnit: fee.orderFee.settlementName || '-',
-                payReceiveType:
-                  fee.orderFee.paySide === 0 ? '应收' : '应付',
+                payReceiveType: fee.orderFee.paySide === 0 ? '应收' : '应付',
                 feeName: fee.orderFee.feeCodeName || '-',
                 amount: fee.orderFee.amount,
                 currencyCode: fee.orderFee.currencyCode || '-',
@@ -420,8 +437,7 @@ async function handleOpenFeeDetailModal() {
             orderFee: fee.orderFee,
             appliedAmount: item.appliedAmount,
             settlementUnit: fee.orderFee.settlementName || '-',
-            payReceiveType:
-              fee.orderFee.paySide === 0 ? '应收' : '应付',
+            payReceiveType: fee.orderFee.paySide === 0 ? '应收' : '应付',
             feeName: fee.orderFee.feeCodeName || '-',
             amount: fee.orderFee.amount,
             currencyCode: fee.orderFee.currencyCode || '-',

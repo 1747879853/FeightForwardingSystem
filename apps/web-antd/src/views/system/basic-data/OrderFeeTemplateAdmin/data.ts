@@ -83,7 +83,9 @@ function formatEfficient(efficient?: boolean): string {
  */
 function formatTradeTermsType(tradeTermsType?: number | null): string {
   if (tradeTermsType === null || tradeTermsType === undefined) return '-';
-  const option = tradeTermsTypeOptions.find((opt) => opt.value === tradeTermsType);
+  const option = tradeTermsTypeOptions.find(
+    (opt) => opt.value === tradeTermsType,
+  );
   return option?.label || String(tradeTermsType);
 }
 
@@ -149,6 +151,12 @@ export function useColumns(
       title: '长期有效',
       width: 100,
       formatter: ({ row }) => formatEfficient(row.efficient),
+    },
+    {
+      field: 'enable',
+      title: '启用状态',
+      width: 100,
+      slots: { default: 'enable' },
     },
     {
       field: 'startTime',

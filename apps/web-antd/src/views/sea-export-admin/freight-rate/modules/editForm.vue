@@ -672,6 +672,17 @@ async function loadDetail(priceId: string) {
       ]);
     }
 
+    if (detail.bookingAgent) {
+      formApi.updateSchema([
+        {
+          fieldName: 'bookingAgentId',
+          componentProps: {
+            selectedItems: [detail.bookingAgent],
+          },
+        },
+      ]);
+    }
+
     await formApi.setValues({
       carrierId: detail.carrierId,
       currencyId: detail.currencyId,

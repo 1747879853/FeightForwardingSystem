@@ -57,6 +57,43 @@ export interface CurrencyInfo {
   currencyName: string;
 }
 
+/** 费用状态选项 */
+export const FeeStatusOptions = [
+  { label: '录入状态', value: 0 },
+  { label: '提交审核', value: 1 },
+  { label: '审核通过', value: 2 },
+  { label: '审核驳回', value: 3 },
+];
+
+/** 业务类型选项 */
+export const BizTypeOptions = [
+  { label: '海运出口', value: 0 },
+  { label: '海运进口', value: 1 },
+  { label: '空运出口', value: 2 },
+];
+
+/** 是否结算选项 */
+export const SettlementStatusOptions = [
+  { label: '已结算', value: 2 },
+  { label: '未结算', value: 0 },
+];
+
+/** 费用状态标签映射 */
+export const FeeStatusLabelMap: Record<number, string> = {
+  0: '录入状态',
+  1: '提交审核',
+  2: '审核通过',
+  3: '部分结算',
+  4: '结算完毕',
+};
+
+/** 结算状态标签映射 */
+export const SettlementStatusLabelMap: Record<number, string> = {
+  0: '未结算',
+  1: '部分结算',
+  2: '已结算',
+};
+
 /** 搜索表单 schema */
 export function useAddFeeSearchSchema(): VbenFormSchema[] {
   return [
@@ -135,13 +172,67 @@ export function useAddFeeSearchSchema(): VbenFormSchema[] {
         allowClear: true,
       },
     },
+    {
+      component: 'Select',
+      fieldName: 'FeeStatus',
+      label: '费用状态',
+      defaultValue: 2,
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        options: FeeStatusOptions,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'BizType',
+      label: '业务类型',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        options: BizTypeOptions,
+      },
+    },
+    {
+      component: 'UserSelect',
+      fieldName: 'OperatorIds',
+      label: '操作',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        mode: 'multiple',
+        maxTagCount: 2,
+      },
+    },
+    {
+      component: 'UserSelect',
+      fieldName: 'SaleIds',
+      label: '销售',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        mode: 'multiple',
+        maxTagCount: 2,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'SettlementStatus',
+      label: '是否结算',
+      defaultValue: 0,
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        options: SettlementStatusOptions,
+      },
+    },
   ];
 }
 
 /** 主表格固定列（业务层） */
 export function useOrderFixedColumns() {
   return [
-    { type: 'seq' as const, width: 50, title: '序号' },
+    { type: 'seq' as const, width: 80, title: '序号' },
     {
       field: 'commissionNum',
       title: '委托编号',
@@ -154,7 +245,34 @@ export function useOrderFixedColumns() {
       width: 200,
       ellipsis: true,
     },
-
+    {
+      field: 'bizType',
+      title: '业务类型',
+      width: 100,
+      customRender: ({ record }: any) => {
+        const bizTypeMap: Record<number, string> = {
+          0: '海运出口',
+          1: '海运进口',
+          2: '空运出口',
+          3: '空运进口',
+          4: '陆运',
+          5: '仓储',
+        };
+        return bizTypeMap[record.bizType] || '-';
+      },
+    },
+    {
+      field: 'operationUserNames',
+      title: '操作人员',
+      width: 120,
+      ellipsis: true,
+    },
+    {
+      field: 'saleUserNames',
+      title: '销售人员',
+      width: 120,
+      ellipsis: true,
+    },
     {
       field: 'accountDate',
       title: '会计日期',
@@ -275,14 +393,16 @@ export function buildOrderRow(
 ): Record<string, any> {
   const row: Record<string, any> = {
     ...order,
-    // saleUserNames: getOrderUserNamesByAttribute(
-    //   order.orderUsers,
-    //   PaymentApplicationAdminApi.UserAttribute.Sale,
-    // ),
-    // operationUserNames: getOrderUserNamesByAttribute(
-    //   order.orderUsers,
-    //   PaymentApplicationAdminApi.UserAttribute.Operation,
-    // ),
+    // 提取操作人员名称
+    operationUserNames: getOrderUserNamesByAttribute(
+      order.orderUsers,
+      PaymentApplicationAdminApi.UserAttribute.Operation,
+    ),
+    // 提取销售人员名称
+    saleUserNames: getOrderUserNamesByAttribute(
+      order.orderUsers,
+      PaymentApplicationAdminApi.UserAttribute.Sale,
+    ),
     // customerServiceUserNames: getOrderUserNamesByAttribute(
     //   order.orderUsers,
     //   PaymentApplicationAdminApi.UserAttribute.CustomerService,

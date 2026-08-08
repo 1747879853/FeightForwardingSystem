@@ -12,6 +12,7 @@ export function useHotSettings(
   dropdownSources: any,
   linkage: any,
   serviceTypeOptions: Array<{ label: string; value: number }>, // ✅ 新增：服务项选项参数
+  formApi?: any, // ✅ 新增：表单API，用于获取基础信息的收付类型
 ) {
   // 行业类别选项
   const industryOptions = getIndustryCategoryOptions();
@@ -61,17 +62,18 @@ export function useHotSettings(
 
         // ✅ 关键修复：如果值是数字（ID），需要从服务项选项中查找对应的Label
         let displayValue = '';
-        
+
         if (value !== null && value !== undefined && value !== '') {
           // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
-          const numericValue = typeof value === 'number' ? value : Number(value);
-          
+          const numericValue =
+            typeof value === 'number' ? value : Number(value);
+
           if (!isNaN(numericValue)) {
             // 这是一个ID，需要在服务项选项中查找
             const serviceTypeItem = serviceTypeOptions.find(
               (item) => item.value === numericValue,
             );
-            
+
             if (serviceTypeItem) {
               displayValue = serviceTypeItem.label;
             } else {
@@ -133,24 +135,26 @@ export function useHotSettings(
 
         // ✅ 关键修复：如果值是数字（ID），需要从费用代码列表中查找对应的Label
         let displayName = '';
-        
+
         if (value !== null && value !== undefined && value !== '') {
           // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
-          const numericValue = typeof value === 'number' ? value : Number(value);
-          
+          const numericValue =
+            typeof value === 'number' ? value : Number(value);
+
           if (!isNaN(numericValue)) {
             // 这是一个ID，需要在费用代码列表中查找
             const feeCodeItem = dropdownSources.feeCodeList.value.find(
               (item: any) => item.value === numericValue,
             );
-            
+
             if (feeCodeItem) {
               // 找到了对应的费用代码，使用其Label
               const label = feeCodeItem.label;
               // 只显示"-"后面的字符串（费用名称）
               if (label && typeof label === 'string') {
                 const parts = label.split('-');
-                displayName = parts.length > 1 ? parts.slice(1).join('-') : label;
+                displayName =
+                  parts.length > 1 ? parts.slice(1).join('-') : label;
               } else {
                 displayName = label || '';
               }
@@ -226,17 +230,18 @@ export function useHotSettings(
 
         // ✅ 关键修复：如果值是数字（ID），需要从行业类别选项中查找对应的Label
         let displayValue = '';
-        
+
         if (value !== null && value !== undefined && value !== '') {
           // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
-          const numericValue = typeof value === 'number' ? value : Number(value);
-          
+          const numericValue =
+            typeof value === 'number' ? value : Number(value);
+
           if (!isNaN(numericValue)) {
             // 这是一个ID，需要在行业类别选项中查找
             const industryItem = industryOptions.find(
               (opt) => opt.key === numericValue,
             );
-            
+
             if (industryItem) {
               displayValue = industryItem.label;
             } else {
@@ -270,7 +275,6 @@ export function useHotSettings(
 
         // 使用缓存的客户数据动态加载
         const hotInstance = this as any;
-
 
         if (
           Object.keys(dropdownSources.allClientsByIndustry.value).length === 0
@@ -441,18 +445,21 @@ export function useHotSettings(
         cellProperties: any,
       ) {
         td.innerHTML = '';
-        
+
         // ✅ 关键修复：如果值是数字（ID），需要从客户列表中查找对应的Label
         let displayName = '';
-        
-         if (typeof value === 'string') {
-            // 值已经是字符串（Label），直接处理
-            const parts = value.split('-');
-            console.log('🔍 [settlementId source] 尝试从客户列表中查找 Label:', value);
-            // 如果有"-"，取后面的部分；否则使用原值
-            displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
-          }
-         
+
+        if (typeof value === 'string') {
+          // 值已经是字符串（Label），直接处理
+          const parts = value.split('-');
+          console.log(
+            '🔍 [settlementId source] 尝试从客户列表中查找 Label:',
+            value,
+          );
+          // 如果有"-"，取后面的部分；否则使用原值
+          displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
+        }
+
         // 新增：添加省略号样式
         td.innerHTML = `<span style="color: ${displayName ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayName || '请选择'}</span>`;
         return td;
@@ -486,20 +493,21 @@ export function useHotSettings(
         cellProperties: any,
       ) {
         td.innerHTML = '';
-        
+
         // ✅ 关键修复：如果值是数字（ID），需要从币别列表中查找对应的Label
         let displayValue = '';
-        
+
         if (value !== null && value !== undefined && value !== '') {
           // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
-          const numericValue = typeof value === 'number' ? value : Number(value);
-          
+          const numericValue =
+            typeof value === 'number' ? value : Number(value);
+
           if (!isNaN(numericValue)) {
             // 这是一个ID，需要在币别列表中查找
             const currencyItem = dropdownSources.currencyList.value.find(
               (item: any) => item.value === numericValue,
             );
-            
+
             if (currencyItem) {
               displayValue = currencyItem.label;
             } else {
@@ -581,7 +589,7 @@ export function useHotSettings(
       trimDropdown: false,
       visibleRows: 10,
       width: 100,
-            renderer: function (
+      renderer: function (
         this: any,
         instance: any,
         td: HTMLTableCellElement,
@@ -592,10 +600,10 @@ export function useHotSettings(
         cellProperties: any,
       ) {
         td.innerHTML = '';
-        
+
         // ✅ 关键修复：如果值是数字（ID），需要从币别列表中查找对应的Label
         let displayValue = value;
-        
+
         td.innerHTML = `<span style="color: ${displayValue ? '#262626' : '#999'}; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${displayValue || '请选择'}</span>`;
         return td;
       },
@@ -749,8 +757,8 @@ export function useHotSettings(
             (item: any) => item.label === newValue,
           );
           if (feeCodeItem) {
-            // 保存原始ID到 _value 字段
-            hotInstance.setDataAtCell(
+            // ✅ 修复：使用 setDataAtRowProp 而不是 setDataAtCell
+            hotInstance.setDataAtRowProp(
               row,
               'feeCodeId_value',
               feeCodeItem.value,
@@ -762,8 +770,16 @@ export function useHotSettings(
               feeCodeItem.value,
             );
 
-            // 执行联动逻辑
-            linkage.onFeeCodeChange(row, feeCodeItem.value, hotInstance);
+            // ✅ 修复：传递 formApi 参数以获取基础信息的收付类型
+            // 使用 IIFE 处理异步调用
+            (async () => {
+              await linkage.onFeeCodeChange(
+                row,
+                feeCodeItem.value,
+                hotInstance,
+                formApi,
+              );
+            })();
           }
         }
 
@@ -774,7 +790,7 @@ export function useHotSettings(
           );
           if (industryItem) {
             // 保存原始枚举值到 _value 字段
-            hotInstance.setDataAtCell(
+            hotInstance.setDataAtRowProp(
               row,
               'industryCategory_value',
               industryItem.value,
@@ -812,7 +828,7 @@ export function useHotSettings(
 
           if (foundClient) {
             // 保存原始ID到 _value 字段
-            hotInstance.setDataAtCell(
+            hotInstance.setDataAtRowProp(
               row,
               'settlementId_value',
               foundClient.value,
@@ -855,7 +871,7 @@ export function useHotSettings(
                   'industryCategory',
                   industryItem.label,
                 );
-                hotInstance.setDataAtCell(
+                hotInstance.setDataAtRowProp(
                   row,
                   'industryCategory_value',
                   industryItem.value,
@@ -872,7 +888,7 @@ export function useHotSettings(
           );
           if (currencyItem) {
             // 保存原始ID到 _value 字段
-            hotInstance.setDataAtCell(
+            hotInstance.setDataAtRowProp(
               row,
               'currencyId_value',
               currencyItem.value,

@@ -121,6 +121,17 @@ const displayApplicationNo = computed(() =>
 const clientId = ref<string>('');
 const clientName = ref('');
 
+// 用于ClientSelect组件回显的selectedItems（从返回的数据中获取，不单独请求详情）
+const clientSelectedItems = computed(() => {
+  if (!clientId.value) return [];
+  return [
+    {
+      id: clientId.value,
+      name: clientName.value || '',
+    },
+  ];
+});
+
 // 新增：所属组织id
 const orgId = ref<number | undefined>(undefined);
 
@@ -877,16 +888,20 @@ async function handleGenerateInvoiceApplication() {
       content: '将根据对账单下的应收费用自动生成开票申请，是否继续？',
       onOk: async () => {
         try {
-          const applicationId = await InvoiceApplicationAdminApi.addByStatement({
-            statementId: editId.value!,
-          });
-          
+          const applicationId = await InvoiceApplicationAdminApi.addByStatement(
+            {
+              statementId: editId.value!,
+            },
+          );
+
           if (applicationId) {
             message.success(`成功生成开票申请`);
             markListShouldRefresh('InvoiceApplicationList');
-            
+
             // 跳转到第一个生成的开票申请编辑页
-            router.push(`/fee-management/invoice-application/${applicationId}/edit`);
+            router.push(
+              `/fee-management/invoice-application/${applicationId}/edit`,
+            );
           } else {
             message.warning('未生成任何开票申请');
           }
@@ -917,13 +932,15 @@ async function handleGeneratePaymentApplication() {
           const applicationId = await addPaymentApplicationByStatement({
             statementId: editId.value!,
           });
-          
-          if (applicationId ) {
+
+          if (applicationId) {
             message.success(`成功生成付费申请`);
             markListShouldRefresh('PaymentApplicationList');
-            
+
             // 跳转到第一个生成的付费申请编辑页
-            router.push(`/fee-management/payment-application/${applicationId}/edit`);
+            router.push(
+              `/fee-management/payment-application/${applicationId}/edit`,
+            );
           } else {
             message.warning('未生成任何付费申请');
           }
@@ -1022,12 +1039,12 @@ function formatMonth(val: string | undefined | null): string {
               <template #title>
                 <div class="card-title-wrapper">
                   <span class="title-indicator"></span>
-                  <span class="font-semibold text-lg">基础信息</span>
+                  <span class="text-lg font-semibold">基础信息</span>
                 </div>
               </template>
-              
+
               <div class="divider-line"></div>
-              
+
               <div class="info-section">
                 <!-- 第一行：客户名称、对账人、创建时间 -->
                 <div class="info-row">
@@ -1037,6 +1054,7 @@ function formatMonth(val: string | undefined | null): string {
                       :model-value="clientId"
                       :placeholder="$t('ui.placeholder.select')"
                       :disabled="isClientLocked"
+                      :selected-items="clientSelectedItems"
                       size="middle"
                       @update:model-value="onClientChange"
                     />
@@ -1126,11 +1144,13 @@ function formatMonth(val: string | undefined | null): string {
 
           <!-- 中部：费用合计 -->
           <div class="center-column">
-            <Card size="small" class="h-full fee-summary-card">
+            <Card size="small" class="fee-summary-card h-full">
               <template #title>
                 <div class="card-title-wrapper">
                   <span class="title-indicator"></span>
-                  <span class="font-semibold text-lg">{{ t('feeSummary') }}</span>
+                  <span class="text-lg font-semibold">{{
+                    t('feeSummary')
+                  }}</span>
                 </div>
               </template>
 
@@ -1143,16 +1163,18 @@ function formatMonth(val: string | undefined | null): string {
 
           <!-- 右侧：附件上传 -->
           <div class="right-column">
-            <Card size="small" class="h-full attachment-card">
+            <Card size="small" class="attachment-card h-full">
               <template #title>
                 <div class="card-title-wrapper">
                   <span class="title-indicator"></span>
-                  <span class="font-semibold text-lg">{{ t('attachment') }}</span>
+                  <span class="text-lg font-semibold">{{
+                    t('attachment')
+                  }}</span>
                 </div>
               </template>
-              
+
               <div class="divider-line"></div>
-              
+
               <div class="attachment-area">
                 <AttachmentUpload v-model="attachments" :max-count="20" />
               </div>
@@ -1161,14 +1183,14 @@ function formatMonth(val: string | undefined | null): string {
         </div>
 
         <!-- 费用明细表格 -->
-        <Card size="small" class="mt-3 fee-detail-card">
+        <Card size="small" class="fee-detail-card mt-3">
           <template #title>
             <div class="card-title-wrapper">
               <span class="title-indicator"></span>
-              <span class="font-semibold text-lg">{{ t('feeDetail') }}</span>
+              <span class="text-lg font-semibold">{{ t('feeDetail') }}</span>
             </div>
           </template>
-          
+
           <template #extra>
             <Space class="m-2">
               <Button type="primary" @click="handleOpenAddFee">
@@ -1263,106 +1285,106 @@ function formatMonth(val: string | undefined | null): string {
           </div>
 
           <div class="fee-group-table">
-            <div class="h-[450px] overflow-auto">
+            <div class="table-container">
               <NestedDataTable
-              :columns="allColumns"
-              :data-source="orderGroups"
-              fill-height
-              :inner-columns="feeInnerColumns"
-              inner-data-key="children"
-              inner-row-key="feeId"
-              row-key="key"
-              v-model:expanded-row-keys="expandedGroupKeys"
-            >
-              <template #outerHeaderCell="{ column }">
-                <span v-if="column.key === 'seq'" class="table-sequence-cell">
-                  <Checkbox
-                    :checked="isAllSelected"
-                    :indeterminate="isIndeterminate"
-                    @change="(e) => toggleAllSelection(e.target.checked)"
-                  />
-                  {{ column.title }}
-                </span>
-                <template v-else>{{ column.title }}</template>
-              </template>
-
-              <template #outerBodyCell="{ column, record, index }">
-                <template v-if="column.key === 'seq'">
-                  <span class="table-sequence-cell">
+                :columns="allColumns"
+                :data-source="orderGroups"
+                fill-height
+                :inner-columns="feeInnerColumns"
+                inner-data-key="children"
+                inner-row-key="feeId"
+                row-key="key"
+                v-model:expanded-row-keys="expandedGroupKeys"
+              >
+                <template #outerHeaderCell="{ column }">
+                  <span v-if="column.key === 'seq'" class="table-sequence-cell">
                     <Checkbox
-                      :checked="isGroupAllSelected(record.key)"
-                      :indeterminate="isGroupIndeterminate(record.key)"
-                      @change="
-                        (e) => toggleGroupSelection(record, e.target.checked)
-                      "
+                      :checked="isAllSelected"
+                      :indeterminate="isIndeterminate"
+                      @change="(e) => toggleAllSelection(e.target.checked)"
                     />
-                    {{ index + 1 }}
+                    {{ column.title }}
+                  </span>
+                  <template v-else>{{ column.title }}</template>
+                </template>
+
+                <template #outerBodyCell="{ column, record, index }">
+                  <template v-if="column.key === 'seq'">
+                    <span class="table-sequence-cell">
+                      <Checkbox
+                        :checked="isGroupAllSelected(record.key)"
+                        :indeterminate="isGroupIndeterminate(record.key)"
+                        @change="
+                          (e) => toggleGroupSelection(record, e.target.checked)
+                        "
+                      />
+                      {{ index + 1 }}
+                    </span>
+                  </template>
+                  <template v-else-if="column.key === 'etd'">
+                    {{ formatDate(record.etd) }}
+                  </template>
+                  <template v-else-if="column.key === 'accountDate'">
+                    {{ formatMonth(record.accountDate) }}
+                  </template>
+                  <template v-else>
+                    {{ column.dataIndex ? record[column.dataIndex] : '' }}
+                  </template>
+                </template>
+
+                <template #expandColumnTitle></template>
+                <template #expandIcon="{ expanded, record, onExpand }">
+                  <span
+                    class="expand-toggle cursor-pointer"
+                    :class="{ 'expand-toggle--expanded': expanded }"
+                    @click="
+                      (e) => {
+                        e.stopPropagation();
+                        onExpand(record, e);
+                      }
+                    "
+                  >
+                    &#9654;
                   </span>
                 </template>
-                <template v-else-if="column.key === 'etd'">
-                  {{ formatDate(record.etd) }}
-                </template>
-                <template v-else-if="column.key === 'accountDate'">
-                  {{ formatMonth(record.accountDate) }}
-                </template>
-                <template v-else>
-                  {{ column.dataIndex ? record[column.dataIndex] : '' }}
-                </template>
-              </template>
 
-              <template #expandColumnTitle></template>
-              <template #expandIcon="{ expanded, record, onExpand }">
-                <span
-                  class="expand-toggle cursor-pointer"
-                  :class="{ 'expand-toggle--expanded': expanded }"
-                  @click="
-                    (e) => {
-                      e.stopPropagation();
-                      onExpand(record, e);
-                    }
-                  "
-                >
-                  &#9654;
-                </span>
-              </template>
-
-              <template #innerBodyCell="{ column, record, index }">
-                <template v-if="column.key === 'checkbox'">
-                  <Checkbox
-                    :checked="isRowSelected(record.feeId)"
-                    @change="
-                      (e) =>
-                        toggleRowSelection(record.feeId, e.target.checked)
-                    "
-                  />
+                <template #innerBodyCell="{ column, record, index }">
+                  <template v-if="column.key === 'checkbox'">
+                    <Checkbox
+                      :checked="isRowSelected(record.feeId)"
+                      @change="
+                        (e) =>
+                          toggleRowSelection(record.feeId, e.target.checked)
+                      "
+                    />
+                  </template>
+                  <template v-else-if="column.key === 'seq'">
+                    {{ index + 1 }}
+                  </template>
+                  <template v-else-if="column.key === 'paySide'">
+                    <Tag :color="record.paySide === 0 ? 'blue' : 'orange'">
+                      {{ getPaySideLabel(record.paySide) }}
+                    </Tag>
+                  </template>
+                  <template v-else-if="column.key === 'amount'">
+                    {{ formatAmount(record.amount) }}
+                  </template>
+                  <template v-else-if="column.key === 'exchangeRate'">
+                    {{ record.exchangeRate }}
+                  </template>
+                  <template v-else-if="column.key === 'settledAmount'">
+                    {{ formatAmount(record.settledAmount) }}
+                  </template>
+                  <template v-else-if="column.key === 'unSettledAmount'">
+                    {{ formatAmount(record.unSettledAmount) }}
+                  </template>
+                  <template v-else>
+                    {{ column.dataIndex ? record[column.dataIndex] : '' }}
+                  </template>
                 </template>
-                <template v-else-if="column.key === 'seq'">
-                  {{ index + 1 }}
-                </template>
-                <template v-else-if="column.key === 'paySide'">
-                  <Tag :color="record.paySide === 0 ? 'blue' : 'orange'">
-                    {{ getPaySideLabel(record.paySide) }}
-                  </Tag>
-                </template>
-                <template v-else-if="column.key === 'amount'">
-                  {{ formatAmount(record.amount) }}
-                </template>
-                <template v-else-if="column.key === 'exchangeRate'">
-                  {{ record.exchangeRate }}
-                </template>
-                <template v-else-if="column.key === 'settledAmount'">
-                  {{ formatAmount(record.settledAmount) }}
-                </template>
-                <template v-else-if="column.key === 'unSettledAmount'">
-                  {{ formatAmount(record.unSettledAmount) }}
-                </template>
-                <template v-else>
-                  {{ column.dataIndex ? record[column.dataIndex] : '' }}
-                </template>
-              </template>
-            </NestedDataTable>
+              </NestedDataTable>
             </div>
- 
+
             <div class="total-amount flex rounded-md px-1 py-1 shadow">
               <div
                 v-for="(item, index) in totalAmount"
@@ -1379,7 +1401,6 @@ function formatMonth(val: string | undefined | null): string {
               </div>
             </div>
           </div>
-
         </Card>
       </div>
 
@@ -1475,11 +1496,14 @@ function formatMonth(val: string | undefined | null): string {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  //padding: 12px;
+  height: 100%; // 确保容器占满父元素高度
+  min-height: 0; // 关键：允许flex子元素正确计算高度
+  overflow: hidden; // 防止整体页面滚动
 }
 
 .action-bar {
   display: flex;
+  flex-shrink: 0; // 防止被压缩
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
@@ -1496,12 +1520,13 @@ function formatMonth(val: string | undefined | null): string {
 .action-bar__statement-num {
   margin-left: 24px;
   font-size: 14px;
-  color: #8c8c8c;
   font-weight: normal;
+  color: #8c8c8c;
 }
 
 .main-layout {
   display: flex;
+  flex-shrink: 0; // 防止被压缩
   gap: 8px;
 }
 
@@ -1520,23 +1545,41 @@ function formatMonth(val: string | undefined | null): string {
   width: 240px;
 }
 
+// 费用明细卡片样式 - 使其能够占满剩余空间
+.fee-detail-card {
+  display: flex;
+  flex: 1; // 占据剩余空间
+  flex-direction: column;
+  min-height: 0; // 允许flex子元素正确计算高度
+  overflow: hidden; // 关键：防止内容溢出导致页面滚动
+
+  :deep(.ant-card-body) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 12px; // 保持内边距
+    overflow: hidden; // 防止内容溢出
+  }
+}
+
 .basic-info-card :deep(.ant-card-head) {
-  border-bottom: none;
   padding-bottom: 0;
+  border-bottom: none;
 }
 
 .basic-info-card :deep(.ant-card-body) {
   padding-top: 0;
 }
 
-.fee-summary-card :deep(.ant-card-head),
+.fee-detail-card :deep(.ant-card-head),
 .attachment-card :deep(.ant-card-head),
-.fee-detail-card :deep(.ant-card-head) {
+.fee-summary-card :deep(.ant-card-head) {
   display: flex;
+  flex-shrink: 0; // 防止卡片头部被压缩
   align-items: center;
   justify-content: space-between;
-  border-bottom: none;
   padding-bottom: 0;
+  border-bottom: none;
 }
 
 .fee-detail-card :deep(.ant-card-head-title) {
@@ -1547,24 +1590,24 @@ function formatMonth(val: string | undefined | null): string {
   flex-shrink: 0;
 }
 
-.fee-summary-card :deep(.ant-card-body),
+.fee-detail-card :deep(.ant-card-body),
 .attachment-card :deep(.ant-card-body),
-.fee-detail-card :deep(.ant-card-body) {
+.fee-summary-card :deep(.ant-card-body) {
   padding-top: 0;
 }
 
 .divider-line {
   width: calc(100% - 10px);
   height: 1px;
-  background-color: #e8e8e8;
-  margin-left: 5px;
   margin-right: 5px;
+  margin-left: 5px;
+  background-color: #e8e8e8;
 }
 
 .card-title-wrapper {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
 
 .title-indicator {
@@ -1591,23 +1634,31 @@ function formatMonth(val: string | undefined | null): string {
   gap: 4px;
 }
 
+// 为输入框组件添加基于rem的宽度适配
+.info-field :deep(.ant-input),
+.info-field :deep(.ant-picker),
+.info-field :deep(.ant-select),
+.info-field :deep(.ant-input-textarea) {
+  width: 100%;
+  max-width: 15rem; // 使用rem单位，适配不同分辨率
+}
+
+// 对于TextArea，设置合适的宽度
+.info-field :deep(.ant-input-textarea) {
+  max-width: 20rem;
+}
+
 .field-label {
   font-size: 13px;
-  color: #8c8c8c;
   font-weight: normal;
+  color: #8c8c8c;
 }
 
 .field-value-text {
-  font-size: 15px;
-  color: #262626;
-  font-weight: 500;
   padding: 6px 0;
-}
-
-.attachment-area {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
+  font-size: 15px;
+  font-weight: 500;
+  color: #262626;
 }
 
 .currency-card {
@@ -1717,8 +1768,23 @@ function formatMonth(val: string | undefined | null): string {
   width: 100%;
 }
 
-.fee-group-table :deep(.ant-table-expanded-row > td) {
-  padding: 4px 8px;
+.fee-group-table {
+  display: flex;
+  flex: 1; // 占据父容器的剩余空间
+  flex-direction: column;
+  min-height: 0; // 允许flex子元素正确计算高度
+  overflow: hidden; // 关键：防止表格内容溢出
+
+  :deep(.ant-table-expanded-row > td) {
+    padding: 4px 8px;
+  }
+
+  // 表格滚动容器 - 使用flex布局自动填充剩余空间
+  .table-container {
+    flex: 1;
+    min-height: 0; // 允许flex子元素正确计算高度
+    overflow: auto; // 只在表格内部滚动
+  }
 }
 
 .expanded-fee-table {
@@ -1756,5 +1822,10 @@ function formatMonth(val: string | undefined | null): string {
   font-size: 13px;
   color: #8c8c8c;
   border-top: 1px solid #f0f0f0;
+}
+
+// 过滤栏样式 - 防止占用过多空间
+.filter-bar {
+  flex-shrink: 0; // 防止被压缩
 }
 </style>

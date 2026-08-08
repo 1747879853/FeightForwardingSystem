@@ -1,16 +1,34 @@
 <script lang="ts" setup>
-import type { OrderFeeAdminApi } from '#/api/sea-import/order-fee-admin';
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
+import type { CurrencyAdminApi } from '#/api/system/base-data/currency-admin';
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { useExpenseAllColumns } from '../data';
-import { computed, onMounted, ref, watch, h } from 'vue';
-
+import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
+import {
+  Button,
+  Input,
+  Select,
+  InputNumber,
+  Space,
+  Table,
+  Checkbox,
+  message,
+  DropdownButton,
+  MenuItem,
+  Menu,
+  Modal,
+  Textarea,
+  Tag,
+  Card,
+} from 'ant-design-vue';
 import { $t } from '#/locales';
 import dayjs from 'dayjs';
+import { CircleHelp, IconifyIcon } from '@vben/icons';
 
 import * as feeConstants from '../data';
 
 import { OrderFeeTaskDetailAsync } from '#/api/audit-approval/expense-admin';
+import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
 
 const dataSource = defineModel<ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[]>({
   default: () => [],
@@ -22,6 +40,205 @@ const props = defineProps<{
   entityId: string;
   changeOrderId?: string | null; // ✅ 新增：更改单 id，用于精确定位费用任务
 }>();
+
+// 币别符号映射表（从API获取）
+const currencySymbolMap = ref<Record<number, string>>({});
+
+/**
+ * 加载所有币别并构建符号映射表
+ */
+const loadCurrencySymbols = async () => {
+  try {
+    // 获取所有币别（使用较大的pageSize确保获取全部）
+    const result = await getCurrencyPagedList({
+      PageIndex: 1,
+      PageSize: 1000,
+    });
+
+    if (result && result.items) {
+      // 构建币别ID到符号的映射
+      const symbolMap: Record<number, string> = {};
+      result.items.forEach((currency: CurrencyAdminApi.CurrencyDto) => {
+        if (currency.id && currency.symbol) {
+          symbolMap[currency.id] = currency.symbol;
+        }
+      });
+      currencySymbolMap.value = symbolMap;
+      console.log('✅ 已加载币别符号映射:', symbolMap);
+    }
+  } catch (error) {
+    console.error('❌ 加载币别符号失败:', error);
+    // 失败时使用默认的硬编码映射
+    const defaultOptions = feeConstants.getCurrencyEnumSymbolOptions();
+    const symbolMap: Record<number, string> = {};
+    defaultOptions.forEach((opt) => {
+      symbolMap[opt.value] = opt.label;
+    });
+    currencySymbolMap.value = symbolMap;
+  }
+};
+
+/**
+ * 转换币别符号
+ * @param currencyId 币别ID
+ * @returns 币别符号
+ */
+const transCurrencySymbol = (currencyId: number | undefined) => {
+  // 如果 currencyId 为空，返回空字符串
+  if (currencyId === undefined || currencyId === null) {
+    return '';
+  }
+
+  // 优先从API获取的映射表中查找
+  if (currencySymbolMap.value[currencyId]) {
+    return currencySymbolMap.value[currencyId];
+  }
+
+  // 如果映射表中没有，则使用默认的硬编码选项
+  const option = feeConstants
+    .getCurrencyEnumSymbolOptions()
+    .find((o) => o.value === currencyId);
+  return option ? option.label : String(currencyId);
+};
+
+/**
+ * 费用明细表格列定义（审核详情页专用）
+ */
+const useOrderFeeDetailColumns = () => {
+  return [
+    { type: 'checkbox', width: 48, fixed: 'left' },
+    {
+      title: $t('seaExport.export.orderFee.feeStatus'),
+      field: 'combinedFeeStatus',
+      width: 100,
+      align: 'center',
+      slots: {
+        default: ({ row }: any) => {
+          const task = row.task;
+
+          // 如果是删除申请且待审核状态，显示Tag和问号图标
+          if (task && task.taskType === 2 && task.taskStatus === 0) {
+            return h(
+              'div',
+              {
+                style:
+                  'display: flex; align-items: center; justify-content: center;',
+              },
+              [
+                h(
+                  Tag,
+                  {
+                    color:
+                      feeConstants
+                        .getFeeStatusOptions()
+                        .find((opt) => opt.value === row.combinedFeeStatus)
+                        ?.color || 'default',
+                  },
+                  () =>
+                    feeConstants
+                      .getFeeStatusOptions()
+                      .find((opt) => opt.value === row.combinedFeeStatus)
+                      ?.label || '--',
+                ),
+                h(IconifyIcon, {
+                  icon: 'ant-design:question-circle-outlined',
+                  style: 'cursor: pointer; color: #1890ff; font-size: 22px;',
+                  onClick: (e: Event) => {
+                    e.stopPropagation();
+                    showDeleteReason(row);
+                  },
+                }),
+              ],
+            );
+          }
+
+          // 其他情况正常显示费用状态Tag
+          return h(
+            Tag,
+            {
+              color:
+                feeConstants
+                  .getFeeStatusOptions()
+                  .find((opt) => opt.value === row.combinedFeeStatus)?.color ||
+                'default',
+            },
+            () =>
+              feeConstants
+                .getFeeStatusOptions()
+                .find((opt) => opt.value === row.combinedFeeStatus)?.label ||
+              '--',
+          );
+        },
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.feecodeName'),
+      field: 'feeCodeId',
+      width: 120,
+      formatter: ({ row }: any) => {
+        return row.feeCodeName || '--';
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.settlement'),
+      field: 'settlementId',
+      width: 120,
+      formatter: ({ row }: any) => {
+        return row.settlementName || '--';
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.currency'),
+      field: 'currencyId',
+      width: 70,
+      align: 'center',
+      formatter: ({ row }: any) => {
+        return row.currencyName || '--';
+      },
+    },
+    {
+      title: $t('seaExport.export.orderFee.unitPrice'),
+      field: 'unitPriceStr',
+      width: 100,
+      align: 'right',
+    },
+    {
+      title: $t('seaExport.export.orderFee.amount'),
+      field: 'amountStr',
+      width: 100,
+      align: 'right',
+    },
+    {
+      title: $t('seaExport.export.orderFee.noTaxUnitPrice'),
+      field: 'noTaxUnitPriceStr',
+      width: 110,
+      align: 'right',
+    },
+    {
+      title: $t('seaExport.export.orderFee.noTaxAmount'),
+      field: 'noTaxAmountStr',
+      width: 110,
+      align: 'right',
+    },
+    {
+      title: $t('seaExport.export.orderFee.remark'),
+      field: 'remark',
+      width: 150,
+      showOverflow: true,
+    },
+    {
+      title: $t('auditApproval.task.creatorUserName'),
+      field: 'creatorUserName',
+      width: 100,
+    },
+    {
+      title: $t('auditApproval.task.createTime'),
+      field: 'creationTime',
+      width: 155,
+      formatter: 'formatDateTime',
+    },
+  ];
+};
 
 const handleModifyTask = (
   orderFeeTasks: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
@@ -37,7 +254,7 @@ const handleModifyTask = (
     let modifyItem = item.task as ExpenseSubmissionAdminApi.TaskItemDto;
     let info = JSON.parse(modifyItem.info as string);
     Object.keys(info).forEach((key) => {
-      if (item[key] !== info[key]) {
+      if (item[key] !== info[key] && key !== 'combinedFeeStatus') {
         item[key] = `${item[key]} => [${info[key]}]`;
       }
     });
@@ -46,6 +263,21 @@ const handleModifyTask = (
     };
   });
   tasks = tasks.concat(modifyData);
+  console.log('tasks', tasks);
+  tasks.forEach((item) => {
+    item.taskStatus = '';
+    if (item.task && item.task?.taskType === 1 && item.task?.taskStatus === 0) {
+      item.taskStatus = $t('auditApproval.ApplyModification');
+    } else if (
+      item.task &&
+      item.task?.taskType === 2 &&
+      item.task?.taskStatus === 0
+    ) {
+      item.taskStatus = $t('auditApproval.ApplyDeletion');
+    } else {
+      item.taskStatus = '';
+    }
+  });
   return tasks;
 };
 
@@ -59,24 +291,27 @@ const normalizeOrderFeeWithRowKey = (
     ...item,
     _rowKey: `ofee_${i}_${Date.now()}`,
     creationTime: dayjs(item.creationTime).format('YYYY-MM-DD HH:mm:ss'),
-    unitPriceStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.unitPrice}`,
-    amountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.amount}`,
-    noTaxUnitPriceStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.noTaxUnitPrice}`,
-    noTaxAmountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.noTaxAmount}`,
 
-    rqstPaymentAmountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.rqstPaymentAmount}`,
-    invoicedAmountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.invoicedAmount}`,
+    unitPriceStr: `${transCurrencySymbol(item.currencyId)}${item.unitPrice}`,
+    amountStr: `${transCurrencySymbol(item.currencyId)}${item.amount}`,
+    noTaxUnitPriceStr: `${transCurrencySymbol(item.currencyId)}${item.noTaxUnitPrice}`,
+    noTaxAmountStr: `${transCurrencySymbol(item.currencyId)}${item.noTaxAmount}`,
 
-    orderInvoiceAmountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.orderInvoiceAmount}`,
-    settledAmountStr: `${feeConstants.getCurrencyEnumSymbolOptions().find((o) => o.value === item.currencyId)?.label}${item.settledAmount}`,
+    rqstPaymentAmountStr: `${transCurrencySymbol(item.currencyId)}${item.rqstPaymentAmount}`,
+    invoicedAmountStr: `${transCurrencySymbol(item.currencyId)}${item.invoicedAmount}`,
+
+    orderInvoiceAmountStr: `${transCurrencySymbol(item.currencyId)}${item.orderInvoiceAmount}`,
+    settledAmountStr: `${transCurrencySymbol(item.currencyId)}${item.settledAmount}`,
   })) as any[];
 };
+const selectChangeOrderId = ref<string | null>(null);
 
 const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
   gridOptions: {
-    id: `sea-import-all-order-fee-${props.type}`,
-    columns: useExpenseAllColumns(),
-    height: '300px',
+    id: `sea-export-all-order-fee-${props.type}`,
+    columns: useOrderFeeDetailColumns(),
+    height: '100%',
+    minHeight: 200,
     keepSource: true,
     radioConfig: {
       highlight: true,
@@ -90,41 +325,46 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
     },
     proxyConfig: {
       ajax: {
-        query: async ({ page = {} } = {}) => {
+        query: async () => {
+          // 如果 transportOrderId 为空，清空数据并返回空数组
           if (props.transportOrderId === '') {
+            console.log('📋 OrderFeeTable: transportOrderId 为空，清空数据');
             dataSource.value = [];
             emit('updateTableData', dataSource.value);
             return [];
           }
+          const detail = await OrderFeeTaskDetailAsync({
+            id: props.transportOrderId,
+            changeOrderId: selectChangeOrderId.value || undefined,
+          });
 
-          try {
-            // ✅ 关键变更：调用 OrderFeeTaskDetailAsync 时传入 changeOrderId
-            const detail = await OrderFeeTaskDetailAsync({
-              id: props.transportOrderId,
-              changeOrderId: props.changeOrderId || undefined,
-            });
+          console.log('📋 [费用任务详情] 查询结果:', {
+            transportOrderId: props.transportOrderId,
+            changeOrderId: selectChangeOrderId.value,
+            orderFeeTasksCount: detail.orderFeeTasks?.length || 0,
+          });
 
-            console.log('📋 [海运进口-费用任务详情] 查询结果:', {
-              transportOrderId: props.transportOrderId,
-              changeOrderId: props.changeOrderId,
-              orderFeeTasksCount: detail.orderFeeTasks?.length || 0,
-            });
+          const orderFeeTasks =
+            detail.orderFeeTasks?.filter(
+              (item) => item.paySide === props.type,
+            ) || [];
+          const modifyData = handleModifyTask(orderFeeTasks);
 
-            const orderFeeTasks =
-              detail.orderFeeTasks?.filter(
-                (item) => item.paySide === props.type,
-              ) || [];
-            const modifyData = handleModifyTask(orderFeeTasks);
-            dataSource.value = normalizeOrderFeeWithRowKey(modifyData);
-            emit('updateTableData', dataSource.value);
-            return dataSource.value;
-          } catch (error) {
-            console.error('❌ [海运进口-费用任务详情] 查询失败:', error);
-            message.error('获取费用任务详情失败');
-            dataSource.value = [];
-            emit('updateTableData', dataSource.value);
-            return [];
-          }
+          // 按照创建时间正序排序
+          const sortedData = modifyData.sort((a, b) => {
+            const timeA = a.creationTime
+              ? new Date(a.creationTime).getTime()
+              : 0;
+            const timeB = b.creationTime
+              ? new Date(b.creationTime).getTime()
+              : 0;
+            return timeA - timeB;
+          });
+
+          dataSource.value = normalizeOrderFeeWithRowKey(sortedData);
+          emit('updateTableData', dataSource.value);
+          console.log('dataSource.value', dataSource.value);
+          return dataSource.value;
         },
       },
     },
@@ -137,7 +377,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
   },
   gridEvents: {
     // 单行选择变化事件
-    checkboxChange: ({ row, checked }) => {
+    checkboxChange: ({ checked }: any) => {
       const records = (gridApi.grid?.getCheckboxRecords?.() ?? []) as any;
 
       const ids = records.map((r: any) => r._rowKey);
@@ -146,7 +386,7 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
     },
 
     // 全选/取消全选事件
-    checkboxAll: ({ checked }) => {
+    checkboxAll: ({ checked }: any) => {
       const records = (gridApi.grid?.getCheckboxRecords?.() ?? []) as any;
 
       const ids = records.map((r: any) => r._rowKey);
@@ -154,13 +394,15 @@ const [Grid, gridApi] = useVbenVxeGrid<OrderFeeAdminApi.OrderFeeEditDto>({
     },
 
     // 单选模式下的选择事件（如果使用 radio 类型）
-    radioChange: ({ row }) => {
+    radioChange: ({ row }: any) => {
       console.log('单选选中:', row);
     },
   },
 });
 
-const getTableDate = async () => {
+const getTableDate = async (changeOrderId?: string | null) => {
+  selectChangeOrderId.value = changeOrderId || null;
+  await nextTick();
   gridApi.query();
 };
 
@@ -178,23 +420,66 @@ const emit = defineEmits(['updateTableData', 'updateSelectData']);
 //   { immediate: true },
 // );
 watch(
-  [() => props.transportOrderId, () => props.entityId],
-  ([newSubmissionId, newEntityId]) => {
-    if (newSubmissionId && newEntityId) {
-      console.log('newSubmissionId', newSubmissionId);
-      getTableDate();
+  [
+    () => props.transportOrderId,
+    () => props.entityId,
+    () => props.changeOrderId,
+  ],
+  (
+    [newSubmissionId, newEntityId, newChangeOrderId],
+    [oldSubmissionId, oldEntityId, oldChangeOrderId],
+  ) => {
+    // 当 ID 发生变化时（包括变为空），都重新加载数据
+    if (
+      newSubmissionId !== oldSubmissionId ||
+      newEntityId !== oldEntityId ||
+      newChangeOrderId !== oldChangeOrderId
+    ) {
+      console.log(
+        '🔄 OrderFeeTable: transportOrderId、entityId 或 changeOrderId 发生变化',
+        {
+          newSubmissionId,
+          newEntityId,
+          newChangeOrderId,
+          oldSubmissionId,
+          oldEntityId,
+          oldChangeOrderId,
+        },
+      );
+      getTableDate(newChangeOrderId);
     }
   },
   { immediate: true },
 );
 onMounted(() => {
-  //getTableDate();
+  // 组件挂载时加载币别符号
+  loadCurrencySymbols();
 });
 
 // 必须显式暴露
 defineExpose({
   getTableDate,
 });
+
+// 删除原因弹窗相关状态
+const deleteReasonModalVisible = ref<boolean>(false);
+const currentDeleteReason = ref<string>('');
+
+/**
+ * 显示删除原因弹窗
+ */
+const showDeleteReason = (row: any) => {
+  const task = row.task;
+  if (task && task.taskType === 2 && task.remark) {
+    currentDeleteReason.value = task.remark;
+    deleteReasonModalVisible.value = true;
+  } else if (task && task.taskType === 2) {
+    currentDeleteReason.value = '未填写删除原因';
+    deleteReasonModalVisible.value = true;
+  } else {
+    message.warning('该费用没有删除申请记录');
+  }
+};
 </script>
 
 <template>
@@ -205,8 +490,8 @@ defineExpose({
     <Grid
       :table-title="
         type === 0
-          ? $t('seaImport.import.orderFee.receivableCharges')
-          : $t('seaImport.import.orderFee.payableCharges')
+          ? $t('seaExport.export.orderFee.receivableCharges')
+          : $t('seaExport.export.orderFee.payableCharges')
       "
     >
       <template #toolbar-tools>
@@ -216,9 +501,55 @@ defineExpose({
       </template>
     </Grid>
   </div>
+
+  <!-- 删除原因弹窗 -->
+  <Modal
+    v-model:open="deleteReasonModalVisible"
+    title="删除申请原因"
+    :footer="null"
+    width="500px"
+  >
+    <div style="padding: 16px 0">
+      <div style="margin-bottom: 8px; color: #666">删除原因：</div>
+      <div
+        style="
+          min-height: 60px;
+          padding: 12px;
+          word-wrap: break-word;
+          white-space: pre-wrap;
+          background: #f5f5f5;
+          border-radius: 4px;
+        "
+      >
+        {{ currentDeleteReason }}
+      </div>
+    </div>
+  </Modal>
 </template>
 
 <style scoped lang="scss">
+.order-ctn-table {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+
+  :deep(.vben-vxe-grid) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  :deep(.vxe-table) {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+  }
+}
+
 .rec-table {
   border-left: 2px solid rgb(6 100 224);
 }
