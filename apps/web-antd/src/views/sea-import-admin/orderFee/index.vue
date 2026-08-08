@@ -585,7 +585,7 @@ const handleApplyDelete = async () => {
     return;
   }
 
-  // 创建一个临时的 textarea 元素来获取用户输入
+  // 创建一个临时的变量来获取用户输入
   let inputValue = '';
 
   // 弹出对话框让用户填写删除原因
@@ -622,7 +622,8 @@ const handleApplyDelete = async () => {
 
       try {
         await deleteOrderFee({
-          ids: feeIds,
+          transportOrderId: editId.value,
+          orderFeeIds: feeIds,
           remark: remark,
         });
 
@@ -650,7 +651,7 @@ const handleWithdraw = async () => {
 
   try {
     await OrderFeeTaskWithdraw({
-      ids: feeIds,
+      orderFeeIds: feeIds,
     });
 
     message.success('撤销提交成功');
