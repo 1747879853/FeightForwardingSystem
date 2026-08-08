@@ -7,6 +7,7 @@ import {
   Card,
   Dropdown,
   message,
+  Modal,
   Form,
   Input,
   InputNumber,
@@ -36,6 +37,8 @@ import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
 import FeeDetailModal from './components/FeeDetailModal.vue';
 import { Select } from 'ant-design-vue';
 import { CurrencySelect, MyOrgSelect } from '#/adapter/component';
+import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
+
 // ==================== 初始化路由 ====================
 const router = useRouter();
 
@@ -512,6 +515,31 @@ async function loadDefaultRemarkTemplate() {
   }
 }
 
+/**
+ * 撤回开票申请
+ */
+async function handleWithdraw() {
+  if (!editId.value) return;
+
+  Modal.confirm({
+    title: '确认撤回',
+    content: `确定要撤回申请单 "${formData.value.applicationNo}" 吗？`,
+    onOk: async () => {
+      try {
+        await InvoiceApplicationApi.withdrawAsync({ id: editId.value! });
+        message.success('撤回成功');
+        // 撤回后刷新详情
+        if (isEdit.value) {
+          loadDetail();
+        }
+      } catch (error) {
+        console.error('撤回失败:', error);
+        message.error('撤回失败');
+      }
+    },
+  });
+}
+
 // ==================== 生命周期 ====================
 
 onMounted(() => {
@@ -539,6 +567,19 @@ onMounted(() => {
           :disabled="isReadOnly"
         >
           {{ isEdit ? '保存' : '创建' }}
+        </Button>
+        <Button
+          v-if="
+            isEdit &&
+            !isReadOnly &&
+            formData.status ===
+              InvoiceApplicationApi.InvoiceApplicationStatus.Auditing
+          "
+          type="default"
+          :loading="submitLoading"
+          @click="handleWithdraw"
+        >
+          撤回
         </Button>
         <Button
           type="primary"
@@ -900,11 +941,7 @@ onMounted(() => {
                     /></template>
                     导入费用
                   </Button>
-                  <Button
-                    size="small"
-                    @click="handleOpenFeeDetailModal"
-                    :disabled="isReadOnly"
-                  >
+                  <Button size="small" @click="handleOpenFeeDetailModal">
                     <template #icon
                       ><IconifyIcon icon="ant-design:eye-outlined"
                     /></template>
