@@ -26,10 +26,7 @@ import {
 } from 'ant-design-vue';
 
 import { MyOrgSelect } from '#/adapter/component';
-import {
-  getBankStatementDetailByPermission,
-  getBankStatementReceiveSettlementPagedListByPermission,
-} from '#/api/settlement-management/bank-statement-admin';
+import { getBankStatementDetailByPermission } from '#/api/settlement-management/bank-statement-admin';
 import {
   addReceiveSettlement,
   addReceiveSettlementItems,
@@ -63,8 +60,19 @@ import {
   type ReceiveSettlementSelectedFee,
 } from './form-data';
 
-interface SettlementItem extends ReceiveSettlementSelectedFee {
+interface SettlementItem extends Omit<
+  ReceiveSettlementSelectedFee,
+  'remainingAmount'
+> {
   _key: string;
+  /** 是否属于当前正在编辑的核销单，只有本单明细可增删改 */
+  _isCurrent: boolean;
+  /** 所属核销单号，仅其他核销单的明细有值 */
+  _settlementNo?: string;
+  /** 所属核销单创建人，仅其他核销单的明细有值 */
+  _creatorUserName?: string;
+  /** 剩余额度仅本单明细的接口返回，其他核销单明细为空 */
+  remainingAmount?: number;
 }
 
 const route = useRoute();
@@ -184,17 +192,51 @@ function formatBankAmount(value: number | undefined | null) {
   return formatAmountWithCurrency(value, bankStatementCurrencyCode.value);
 }
 
+/** 同一银行流水下其他核销单的明细，只读展示便于核对流水已被谁核销 */
+const foreignItems = computed<SettlementItem[]>(() => {
+  const settlements = bankStatementDetail.value?.receiveSettlements ?? [];
+  return settlements
+    .filter((settlement) => settlement.id !== editId.value)
+    .flatMap((settlement) => {
+      const settlementNoText = settlement.settlementNo || settlement.id;
+      const creator =
+        settlement.creatorUserNickName || settlement.creatorUserName || '';
+      return [
+        ...(settlement.receiveSettlementItems ?? []),
+        ...(settlement.receiveSettlementInvoiceItems ?? []),
+      ].map((item) => mapForeignItem(item, settlementNoText, creator));
+    });
+});
+
+const tableItems = computed<SettlementItem[]>(() => [
+  ...items.value,
+  ...foreignItems.value,
+]);
+
 const itemRowSelection = computed(() => {
   if (!canManageItems.value) return undefined;
   return {
     selectedRowKeys: selectedItemRowKeys.value,
+    getCheckboxProps: (record: SettlementItem) => ({
+      disabled: !record._isCurrent,
+    }),
     onChange: (keys: (string | number)[]) => {
       selectedItemRowKeys.value = keys.map(String);
     },
   };
 });
 
+function itemRowClassName(record: SettlementItem) {
+  return record._isCurrent ? '' : 'settlement-row--foreign';
+}
+
 const columns = [
+  {
+    dataIndex: '_settlementNo',
+    key: 'ownerSettlementNo',
+    title: '核销单号',
+    width: 140,
+  },
   {
     dataIndex: 'commissionNum',
     title: '委托编号',
@@ -227,7 +269,10 @@ const columns = [
     title: '剩余额度',
     width: 120,
     align: 'right' as const,
-    customRender: ({ text }: { text: number }) => formatAmount(text),
+    customRender: ({ record }: { record: SettlementItem }) =>
+      record.remainingAmount === undefined
+        ? '-'
+        : formatAmount(record.remainingAmount),
   },
   {
     dataIndex: 'settledAmount',
@@ -241,6 +286,12 @@ const columns = [
     minWidth: 140,
   },
   {
+    dataIndex: '_creatorUserName',
+    key: 'ownerCreator',
+    title: '创建人',
+    width: 110,
+  },
+  {
     dataIndex: 'remark',
     key: 'remark',
     title: '备注',
@@ -251,23 +302,20 @@ const columns = [
 async function loadBankStatementSummary(id: string) {
   bankStatementSummaryLoading.value = true;
   try {
-    const [detail, settlementRes] = await Promise.all([
-      getBankStatementDetailByPermission(id),
-      getBankStatementReceiveSettlementPagedListByPermission({
-        bankStatementId: id,
-        pageIndex: 1,
-        pageSize: 500,
-      }),
-    ]);
+    const detail = await getBankStatementDetailByPermission(id);
 
     bankStatementId.value = detail.id;
     bankStatementNo.value = detail.bankStatementNo || detail.id;
     bankStatementSettlementId.value = detail.settlementId;
     bankStatementSettlementName.value = detail.settlement?.name || '';
     bankStatementDetail.value = detail;
-    otherSettledAmount.value = (settlementRes.items ?? [])
-      .filter((item) => item.id !== editId.value)
-      .reduce((sum, item) => sum + (item.totalSettledAmount || 0), 0);
+    // 与明细表的他单行同源，避免汇总数字和列表对不上
+    otherSettledAmount.value = (detail.receiveSettlements ?? [])
+      .filter((settlement) => settlement.id !== editId.value)
+      .reduce(
+        (sum, settlement) => sum + (settlement.totalSettledAmount || 0),
+        0,
+      );
   } finally {
     bankStatementSummaryLoading.value = false;
   }
@@ -314,6 +362,7 @@ function mapDetailItem(
   const order = item.transportOrder;
   return {
     _key: makeRowKey(),
+    _isCurrent: true,
     id: item.id,
     orderFeeId: item.orderFeeId,
     transportOrderId: order?.id,
@@ -331,9 +380,42 @@ function mapDetailItem(
   };
 }
 
+/** 其他核销单的明细行：主键稳定复用后端 id，避免 computed 重算时表格整片重挂载 */
+function mapForeignItem(
+  item:
+    | ReceiveSettlementAdminApi.ReceiveSettlementInvoiceItemDetailDto
+    | ReceiveSettlementAdminApi.ReceiveSettlementItemDetailDto,
+  settlementNoText: string,
+  creatorName: string,
+): SettlementItem {
+  const orderFee = item.orderFee;
+  const order = item.transportOrder;
+  return {
+    _key: `foreign_${item.id}`,
+    _isCurrent: false,
+    _settlementNo: settlementNoText,
+    _creatorUserName: creatorName,
+    id: item.id,
+    orderFeeId: item.orderFeeId,
+    transportOrderId: order?.id,
+    commissionNum: order?.commissionNum,
+    mblNum: order?.mblNum,
+    bookingNum: order?.bookingNum,
+    clientName: order?.clientName,
+    feeCodeName: orderFee?.feeCode?.cnName,
+    currencyCode: orderFee?.currency?.code,
+    amount: orderFee?.amount ?? 0,
+    remainingAmount: orderFee?.remainingAmount,
+    settlementName: orderFee?.settlement?.name,
+    settledAmount: item.settledAmount,
+    remark: item.remark || '',
+  };
+}
+
 function mapSelectedFee(fee: SelectedReceiveFee): SettlementItem {
   return {
     _key: makeRowKey(),
+    _isCurrent: true,
     orderFeeId: fee.orderFeeId,
     transportOrderId: fee.transportOrderId,
     commissionNum: fee.commissionNum,
@@ -527,7 +609,10 @@ function validateForm(): boolean {
   }
 
   const overLimitItem = items.value.find(
-    (item) => !item.id && item.settledAmount > item.remainingAmount,
+    (item) =>
+      !item.id &&
+      item.remainingAmount !== undefined &&
+      item.settledAmount > item.remainingAmount,
   );
   if (overLimitItem) {
     message.warning(
@@ -892,7 +977,15 @@ onMounted(() => {
         </Card>
       </div>
 
-      <Card title="结算明细" size="small" class="mt-3">
+      <Card size="small" class="mt-3">
+        <template #title>
+          <Space size="small">
+            <span>结算明细</span>
+            <span v-if="foreignItems.length > 0" class="settlement-items-hint">
+              含本流水下其他核销单明细 {{ foreignItems.length }} 条（只读）
+            </span>
+          </Space>
+        </template>
         <template v-if="canManageItems" #extra>
           <Space size="small">
             <Button size="small" @click="handleOpenAddFee">
@@ -913,22 +1006,36 @@ onMounted(() => {
 
         <Table
           :columns="columns"
-          :data-source="items"
+          :data-source="tableItems"
           :pagination="false"
           :row-key="(record) => record._key"
           :row-selection="itemRowSelection"
+          :row-class-name="itemRowClassName"
           size="small"
           bordered
-          :scroll="{ x: 1210 }"
+          :scroll="{ x: 1460 }"
         >
           <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'ownerSettlementNo'">
+              <Tag v-if="record._isCurrent" color="blue">本单</Tag>
+              <span v-else>{{ record._settlementNo || '-' }}</span>
+            </template>
+            <template v-if="column.key === 'ownerCreator'">
+              <span>
+                {{
+                  record._isCurrent
+                    ? creatorUserName || '-'
+                    : record._creatorUserName || '-'
+                }}
+              </span>
+            </template>
             <template v-if="column.dataIndex === 'currencyCode'">
               <Tag v-if="record.currencyCode">{{ record.currencyCode }}</Tag>
               <span v-else>-</span>
             </template>
             <template v-if="column.key === 'settledAmount'">
               <InputNumber
-                v-if="!record.id && !isReadonly"
+                v-if="record._isCurrent && !record.id && !isReadonly"
                 v-model:value="record.settledAmount"
                 :min="0"
                 :max="record.remainingAmount"
@@ -939,7 +1046,7 @@ onMounted(() => {
             </template>
             <template v-if="column.key === 'remark'">
               <Input
-                v-if="!record.id && !isReadonly"
+                v-if="record._isCurrent && !record.id && !isReadonly"
                 :value="record.remark"
                 placeholder="备注"
                 @change="
@@ -1050,6 +1157,17 @@ onMounted(() => {
   margin-right: 4px;
   font-size: 14px;
   vertical-align: -2px;
+}
+
+.settlement-items-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: #8c8c8c;
+}
+
+:deep(.settlement-row--foreign) > td {
+  color: #8c8c8c;
+  background: #fafafa;
 }
 
 .bank-input--clickable {

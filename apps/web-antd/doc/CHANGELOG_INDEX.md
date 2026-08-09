@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-09 收费核销明细展示同一流水下全部核销明细](./changelogs/change-log-2026-08-09-receive-settlement-show-all-bank-statement-items.md)
 - [2026-08-09 收费核销新建增加归属组织选择](./changelogs/change-log-2026-08-09-receive-settlement-org-select.md)
 - [2026-08-09 付费申请详情起运港/目的港读 seaExport.pol](./changelogs/change-log-2026-08-09-payment-application-detail-port-from-sea-export.md)
 - [2026-08-09 业务联系单内嵌海出禁用页签标题改写](./changelogs/change-log-2026-08-09-pre-order-embed-disable-sea-export-tab-title.md)

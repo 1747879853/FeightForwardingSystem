@@ -1,3 +1,5 @@
+import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
+
 import { requestClient } from '#/api/request';
 
 const API_ADMIN_PREFIX = '/services/app/BankStatementAdmin';
@@ -96,6 +98,33 @@ export namespace BankStatementAdminApi {
     id: string;
   }
 
+  /**
+   * 银行流水详情内嵌的收费核销单（含明细）。
+   * 与 `ReceiveSettlementListDto` 不同：不带 `itemCount`，但带两类明细子表，
+   * 且不受「仅本人创建」过滤，是同一流水下全部核销明细的唯一来源。
+   */
+  export interface BankStatementReceiveSettlementDto {
+    id: string;
+    bankStatementId: string;
+    settlementNo?: string;
+    status: number;
+    /** 结算类型 0 按费用(按业务) 1 按开票申请 */
+    type?: number;
+    settlementTime: string;
+    locked: boolean;
+    lockeTime?: string;
+    remark?: string;
+    creatorUserName?: string;
+    creatorUserNickName?: string;
+    bankStatementNo?: string;
+    totalSettledAmount: number;
+    userId?: number;
+    /** 归属组织id */
+    orgId?: null | number;
+    receiveSettlementItems?: ReceiveSettlementAdminApi.ReceiveSettlementItemDetailDto[];
+    receiveSettlementInvoiceItems?: ReceiveSettlementAdminApi.ReceiveSettlementInvoiceItemDetailDto[];
+  }
+
   /** 银行流水详情 DTO */
   export interface BankStatementDetailDto {
     id: string;
@@ -117,6 +146,8 @@ export namespace BankStatementAdminApi {
     orgBankAccountName?: string;
     clientInvoiceBankName?: string;
     bankStatementUsers?: BankStatementUserDto[];
+    /** 本流水下的全部收费核销单（含明细，不限创建人） */
+    receiveSettlements?: BankStatementReceiveSettlementDto[];
     /** 归属组织id */
     orgId?: null | number;
     /** 组织串（从最高级组织到该组织） */
