@@ -11,11 +11,9 @@ last_updated: 2026-08-08
 
 # 2. 核心逻辑变更 (Core Logic)
 
-1. 新增 `fee-management/utils/currency-display.ts`：`toCurrencyDisplayCode`，优先英文 code，中文名映射（如人民币→RMB）。
-2. 付费申请表单、添加费用抽屉在选费、汇总、表头、Tag 展示处统一走该函数。
-3. `resolveFeeCurrencyCode` 同样归一化，避免 code 为空时回退中文名。
+1. （历史）曾新增 `toCurrencyDisplayCode` 做中文名→代码硬编码映射。
+2. **已废弃（2026-08-09）**：删除该工具函数，改为直读接口 `currency.code`。见 `change-log-2026-08-09-payment-application-currency-code-from-api.md`。
 
 # 3. 避坑指南 (Pitfalls)
 
-- 映射表仅覆盖常见币别；未知中文名仍会原样展示，需补映射或保证后端返回 `code`。
-- 若后端已返回 `CNY`，会按英文代码原样展示，不会强转 `RMB`（仅「人民币」映射为 RMB）。
+- 勿再恢复中文名硬编码表；展示以币别主数据 `code` 为准。

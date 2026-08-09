@@ -81,7 +81,6 @@ import {
   isUserRoleColumnKey,
   resolveFeeCurrencyCode,
   summarizeByCurrency,
-  toCurrencyDisplayCode,
   useFeeInnerColumns,
   useOrderGroupColumns,
 } from './form-data';
@@ -336,7 +335,7 @@ const isOriginalSettlementCurrency = computed(() =>
 function resolveSettlementCurrencyNameFromSelect(id: number): string {
   const options = currencySelectRef.value?.getOptions?.() ?? [];
   const opt = options.find((o: any) => String(o.value) === String(id));
-  return opt?.label ?? '';
+  return opt?.raw?.code ?? opt?.label ?? '';
 }
 
 const settlementCurrencyLockedLabel = computed(() => {
@@ -794,10 +793,7 @@ function onSettlementCurrencyChange(val: unknown) {
     nextTick(() => {
       const options = currencySelectRef.value?.getOptions?.() ?? [];
       const opt = options.find((o: any) => String(o.value) === String(val));
-      settlementCurrencyName.value = toCurrencyDisplayCode(
-        opt?.label,
-        opt?.label,
-      );
+      settlementCurrencyName.value = opt?.raw?.code ?? opt?.label ?? '';
     });
   }
 }
@@ -1507,10 +1503,7 @@ void handleSubmitAndNew;
                         >
                           <div class="currency-card__header">
                             <span class="currency-card__currency">{{
-                              toCurrencyDisplayCode(
-                                cs.currencyCode,
-                                cs.currencyName,
-                              )
+                              cs.currencyCode
                             }}</span>
                             <span class="currency-card__amount">
                               {{ formatAmount(cs.totalAmount) }}
@@ -1915,12 +1908,7 @@ void handleSubmitAndNew;
                     </Tag>
                   </template>
                   <template v-else-if="column.key === 'currencyCode'">
-                    {{
-                      toCurrencyDisplayCode(
-                        record.currencyCode,
-                        record.currencyName,
-                      )
-                    }}
+                    {{ record.currencyCode }}
                   </template>
                   <template v-else-if="column.key === 'amount'">
                     {{ formatAmount(record.amount) }}
@@ -1980,9 +1968,7 @@ void handleSubmitAndNew;
                     :key="cs.currencyId"
                     class="flex items-center gap-1"
                   >
-                    <Tag color="blue" size="small">{{
-                      toCurrencyDisplayCode(cs.currencyCode, cs.currencyName)
-                    }}</Tag>
+                    <Tag color="blue" size="small">{{ cs.currencyCode }}</Tag>
                     <strong>{{ formatAmount(cs.totalAmount) }}</strong>
                   </span>
                 </div>

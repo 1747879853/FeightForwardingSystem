@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-09 付费申请币别展示改为直读接口 code](./changelogs/change-log-2026-08-09-payment-application-currency-code-from-api.md)
 - [2026-08-09 付费申请委托单位列回显 client.name](./changelogs/change-log-2026-08-09-payment-application-order-client-name-display.md)
 - [2026-08-09 业务联系单费用代码回显优先用 cnName](./changelogs/change-log-2026-08-09-pre-order-fee-code-selected-items-cnname.md)
 - [2026-08-09 添加费用抽屉按币别已选合计并修复跨页确认](./changelogs/change-log-2026-08-09-payment-add-fee-selected-currency-total.md)

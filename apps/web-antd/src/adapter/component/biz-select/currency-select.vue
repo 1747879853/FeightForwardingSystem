@@ -56,20 +56,23 @@ const selectedItemsRef = toRef(props, 'selectedItems');
 
 // 将币别数据转换为 Option
 const mapCurrencyToOption = (currency: CurrencyAdminApi.CurrencyDto) => {
-  // 优先使用指定的 labelKey，fallback 到 cnName
+  // labelKey=code 时只用后端 code，禁止回退中文名（避免「人民币」冒充代码）
   let label = (currency as any)[props.labelKey];
   if (!label && props.labelKey === 'enName') {
-    label = currency.cnName;
+    label = currency.enName || currency.cnName;
   }
-  if (!label && props.labelKey === 'code') {
-    label = currency.code;
+  if (props.labelKey === 'code') {
+    label = currency.code || '';
+  } else {
+    label = label || currency.cnName || currency.code || '';
   }
-  label = label || currency.cnName || currency.code;
 
   const rawValue = (currency as any)[props.valueKey];
   return {
     disabled: !currency.enable,
     label,
+    /** 列表行完整数据，供业务侧取 code 等字段 */
+    raw: currency,
     /** 用于懒加载缓存的label值 */
     rawLabel: label,
     value: rawValue === undefined || rawValue === null ? '' : rawValue,
