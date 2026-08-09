@@ -65,6 +65,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 详情费用分组起运港/目的港正确显示（读 `transportOrder.seaExport.pol/pod`）。 | `resolvePol/PodPortDisplayName` 优先嵌套 `seaExport`；「可申请金额」≠ `unSettledAmount`。详见 `changelogs/change-log-2026-08-09-payment-application-detail-port-from-sea-export.md`。 |
 | 2026-08-09 | `Fix` | 原始币别等展示改为直读接口 `currency.code`，删除前端中文名硬编码映射。 | 删除 `toCurrencyDisplayCode`；`CurrencySelect` 的 `labelKey=code` 不再回退中文名。详见 `changelogs/change-log-2026-08-09-payment-application-currency-code-from-api.md`。 |
 | 2026-08-09 | `Fix` | 添加费用抽屉与费用分组表「委托单位」正确显示客户简称。 | `buildOrderRow` / `mapDetailToFeeRows` 读 `client?.name`；详见 `changelogs/change-log-2026-08-09-payment-application-order-client-name-display.md`。 |
 | 2026-08-09 | `Feature` | 添加费用抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；翻页保留勾选，确认也读跨页缓存。 | 与新增页共用 `add-fee-modal`；详见 `changelogs/change-log-2026-08-09-payment-add-fee-selected-currency-total.md`。 |

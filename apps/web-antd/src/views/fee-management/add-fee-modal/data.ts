@@ -5,13 +5,15 @@ import { $t } from '#/locales';
 
 /** 费用明细港口展示：仅英文 portName，不回退中文名 */
 export function resolvePolPortDisplayName(source: {
-  pol?: PaymentApplicationAdminApi.PortSimpleDto;
+  pol?: PaymentApplicationAdminApi.PortSimpleDto | null;
   polName?: string;
-  seaExportPOL?: PaymentApplicationAdminApi.PortSimpleDto;
+  seaExport?: PaymentApplicationAdminApi.SeaExportSimpleForPayAppDto | null;
+  seaExportPOL?: PaymentApplicationAdminApi.PortSimpleDto | null;
   seaExportPOLName?: string;
   seaExportPOLPortName?: string;
 }): string {
   return (
+    source.seaExport?.pol?.portName ??
     source.seaExportPOLPortName ??
     source.pol?.portName ??
     source.seaExportPOL?.portName ??
@@ -22,13 +24,15 @@ export function resolvePolPortDisplayName(source: {
 }
 
 export function resolvePodPortDisplayName(source: {
-  pod?: PaymentApplicationAdminApi.PortSimpleDto;
+  pod?: PaymentApplicationAdminApi.PortSimpleDto | null;
   podName?: string;
-  seaExportPOD?: PaymentApplicationAdminApi.PortSimpleDto;
+  seaExport?: PaymentApplicationAdminApi.SeaExportSimpleForPayAppDto | null;
+  seaExportPOD?: PaymentApplicationAdminApi.PortSimpleDto | null;
   seaExportPODName?: string;
   seaExportPODPortName?: string;
 }): string {
   return (
+    source.seaExport?.pod?.portName ??
     source.seaExportPODPortName ??
     source.pod?.portName ??
     source.seaExportPOD?.portName ??

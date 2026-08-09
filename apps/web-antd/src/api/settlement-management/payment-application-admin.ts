@@ -573,8 +573,20 @@ export namespace PaymentApplicationAdminApi {
 
   /** 港口简要 DTO */
   export interface PortSimpleDto {
+    id?: number;
     portName?: string;
     cnName?: string;
+  }
+
+  /** 详情 transportOrder.seaExport 上的港口/船名简要 */
+  export interface SeaExportSimpleForPayAppDto {
+    id?: string;
+    vessel?: string | null;
+    innerVoyno?: string | null;
+    pol?: PortSimpleDto | null;
+    polRemark?: string | null;
+    pod?: PortSimpleDto | null;
+    podRemark?: string | null;
   }
 
   /** 箱型箱量简要 DTO */
@@ -691,6 +703,8 @@ export namespace PaymentApplicationAdminApi {
     seaExportPODPortName?: string;
     seaExportPODName?: string;
     seaExportPOD?: PortSimpleDto;
+    /** 详情接口港口在嵌套 seaExport.pol/pod，不再平铺 seaExportPOL* */
+    seaExport?: SeaExportSimpleForPayAppDto | null;
     seaExportVessel?: string;
     seaExportInnerVoyno?: string;
     bizType: number;

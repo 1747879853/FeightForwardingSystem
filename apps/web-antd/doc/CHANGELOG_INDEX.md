@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-09 付费申请详情起运港/目的港读 seaExport.pol](./changelogs/change-log-2026-08-09-payment-application-detail-port-from-sea-export.md)
 - [2026-08-09 业务联系单内嵌海出禁用页签标题改写](./changelogs/change-log-2026-08-09-pre-order-embed-disable-sea-export-tab-title.md)
 - [2026-08-09 付费申请币别展示改为直读接口 code](./changelogs/change-log-2026-08-09-payment-application-currency-code-from-api.md)
 - [2026-08-09 付费申请委托单位列回显 client.name](./changelogs/change-log-2026-08-09-payment-application-order-client-name-display.md)
