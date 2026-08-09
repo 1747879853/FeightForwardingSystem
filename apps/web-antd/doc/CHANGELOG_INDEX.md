@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-08 付费申请费用明细筛选改用货代费用下拉](./changelogs/change-log-2026-08-08-payment-application-fee-filter-fee-code-select.md)
 - [2026-08-08 海运出口集装箱合计增加体积](./changelogs/change-log-2026-08-08-sea-export-ctn-summary-volume.md)
 - [2026-08-08 付费申请币别展示统一为英文代码](./changelogs/change-log-2026-08-08-payment-application-currency-display-code.md)
 - [2026-08-08 海运进口移除订舱编号展示](./changelogs/change-log-2026-08-08-sea-import-remove-booking-num.md)

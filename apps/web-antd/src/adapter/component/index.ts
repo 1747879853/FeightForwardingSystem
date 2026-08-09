@@ -540,7 +540,6 @@ export type ComponentType =
   | 'CodeIssueTypeSelect'
   | 'CodeSourceSelect'
   | 'CodeFrtSelect'
-  | 'FeeNameSelect'
   | 'FeeCodeSelect'
   | 'ExchangeRateSelect'
   | 'VesselVoyageInput'
@@ -693,9 +692,6 @@ async function initComponentAdapter() {
     CodeFrtSelect: defineAsyncComponent(
       () => import('./biz-select/code-frt-select.vue'),
     ),
-    FeeNameSelect: defineAsyncComponent(
-      () => import('./biz-select/fee-name-select.vue'),
-    ),
     FeeCodeSelect: defineAsyncComponent(
       () => import('./biz-select/fee-code-select.vue'),
     ),
@@ -779,7 +775,7 @@ export {
   ClientBankAccountSelect,
   CodeSourceSelect,
   CurrencySelect,
-  FeeNameSelect,
+  FeeCodeSelect,
   MyOrgSelect,
   OrganizationSelect,
   OrgBankAccountSelect,

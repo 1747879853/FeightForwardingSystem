@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-02
+last_updated: 2026-08-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -27,7 +27,7 @@ last_updated: 2026-08-02
 - **发票附件：** 任意状态本地增删，保存走 `EditAsync.attachmentGroup` **全量覆盖**；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读展示（不再有平铺字段 `paymentSettlementAttachments`）。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。
 - **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次结算」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。
-- **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；「本次申请金额」只读；支持编号/费用名/委托单位/币别/ETD 页内筛选。
+- **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。
 - **提交审核：** 进入付款申请审核链路。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -65,6 +65,7 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-08 | `Fix` | 费用明细「费用名称」筛选改用 `FeeCodeSelect`（货代费用 API）；筛选栏 `label` 改为 `div`。 | 与新增页共用 `form.vue`；详见 `changelogs/change-log-2026-08-08-payment-application-fee-filter-fee-code-select.md`。 |
 | 2026-08-02 | `Fix` | 费用明细 NestedDataTable 展开列固定 32px，宽容器下不再被撑开。 | 最后一列 `<col>` 不设宽吸收剩余空间；详见 `changelogs/change-log-2026-08-02-nested-data-table-expand-col-width.md`。 |
 | 2026-08-02 | `Fix` | 提交/撤销提交成功后延迟 2s 再刷新右侧审核流程。 | `workflowReloadKey` 重挂载 + `loadDelayMs=2000`；详见 `changelogs/change-log-2026-08-02-payment-application-submit-workflow-delay.md`。 |
 | 2026-07-30 | `Feature` | 详情结算对象/币别/结算附件改读对象化出参；结算附件从 `paymentSettlements[].attachments` 展平只读展示。 | 删除对 `clientName`/`currencyCode`/`paymentSettlementAttachments` 依赖。详见 `changelogs/change-log-2026-07-30-payment-application-settlement-objectified.md`。 |

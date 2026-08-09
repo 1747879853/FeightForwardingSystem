@@ -52,7 +52,7 @@ import { AuditStatusStamp } from '#/components/audit-status-stamp';
 import {
   ClientSelect,
   CurrencySelect,
-  FeeNameSelect,
+  FeeCodeSelect,
   MyOrgSelect,
 } from '#/adapter/component';
 import { formatOrgPathLabel } from '#/composables/use-all-user-org';
@@ -1727,7 +1727,8 @@ void handleSubmitAndNew;
             </template>
 
             <div class="fee-filter-bar">
-              <label class="fee-filter-field">
+              <!-- 勿用 label 包裹 Select：会抢焦点并触发收起，清空远程搜索词 -->
+              <div class="fee-filter-field">
                 <span>编号</span>
                 <Input
                   v-model:value="feeFilterNo"
@@ -1735,30 +1736,30 @@ void handleSubmitAndNew;
                   allow-clear
                   placeholder="请选择"
                 />
-              </label>
-              <label class="fee-filter-field">
+              </div>
+              <div class="fee-filter-field">
                 <span>委托单位</span>
                 <ClientSelect v-model="feeFilterClient" placeholder="请选择" />
-              </label>
-              <label class="fee-filter-field">
+              </div>
+              <div class="fee-filter-field">
                 <span>开船日期</span>
                 <DatePicker
                   size="small"
                   class="w-full"
                   @change="onFeeFilterDateChange"
                 />
-              </label>
-              <label class="fee-filter-field">
+              </div>
+              <div class="fee-filter-field">
                 <span>费用名称</span>
-                <FeeNameSelect v-model="feeFilterName" placeholder="请选择" />
-              </label>
-              <label class="fee-filter-field">
+                <FeeCodeSelect v-model="feeFilterName" placeholder="请选择" />
+              </div>
+              <div class="fee-filter-field">
                 <span>币别检索</span>
                 <CurrencySelect
                   v-model="feeFilterCurrency"
                   placeholder="请选择"
                 />
-              </label>
+              </div>
             </div>
 
             <div class="fee-group-table">

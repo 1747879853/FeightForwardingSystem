@@ -23,7 +23,6 @@
 | `CurrencySelect` | 币种选择 | `#/api/system/base-data/currency-admin` |
 | `ExchangeRateSelect` | 汇率记录选择 | `#/api/system/base-data/exchange-rate-admin` |
 | `FeeCodeSelect` | 费用代码选择 | `#/api/system/base-data/fee-code-admin` |
-| `FeeNameSelect` | 费用名称选择 | `#/api/system/base-data/fee-name-admin` |
 | `LaneSelect` | 航线编码选择 | `#/api/system/base-data/lane-code-admin` |
 | `OrganizationSelect` | 组织/部门选择 | `#/api/system/organization-unit` |
 | `MyOrgSelect` | 当前登录用户「我的组织」选择 | `#/composables/use-my-org`（源自 `UserAdmin/GetMyAsync`） |
@@ -164,7 +163,6 @@
 - `CarrierSelect`
 - `CurrencySelect`
 - `FeeCodeSelect`
-- `FeeNameSelect`
 - `PortSelect`
 - `AirPortSelect`
 - `CountrySelect`

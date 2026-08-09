@@ -2,7 +2,7 @@
 title: 付款申请新增
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-02
+last_updated: 2026-08-08
 ---
 
 # 1. 业务背景说明 (Background)
@@ -23,7 +23,7 @@ last_updated: 2026-08-02
 
 - **费用选择：** 从可申请费用中勾选生成付款申请；**新建时**进入页面后自动弹出添加费用抽屉（编辑模式不自动弹出）。抽屉内搜索区为五列布局，业务日期占两列，查询/重置按钮在币别条件同一行右侧；条件变更仍自动搜索。费用匹配支持「匹配 / 排除」：`FeeCodeIds` / `ExceptFeeCodeIds` 以 `paramsSerializer: 'repeat'` 传给 `GetOrderFeeGroupAsync`；排除模式须先选费用名称。外层业务列表展示委托编号、**主提单号**（`mblNum`）、**箱型箱量**（`orderCtns` 按箱型汇总，如 `20GP*2`）等字段。列表查询 `GetOrderFeeGroupAsync` **不传**当前申请单 `Id`，已选费用由前端 `selectedFeeIds` 禁选；**业务行父级全选仅作用于可选费用**，组内全部已添加时父级 Checkbox 禁用；支持 **收付类型** 筛选（默认「付」，清空则收付均返回）。**付费申请场景**抽屉启用 `enableInvoiceProcess`，须在抽屉内选定「发票制作方式」后才可确认费用并创建申请。
 - **页面布局：** 按 Figma 重排为顶栏申请号/操作、申请人信息、费用合计与银行、费用明细与工作流分区；费用明细改用 `NestedDataTable`（`fillHeight`，外层订单组 + 内层费用行，可展开，卡片固定高度 650px）。
-- **费用页内筛选：** 已选费用明细支持按委托编号、费用名（`FeeNameSelect`）、委托单位（`clientId`）、币别、ETD 过滤展示（仅过滤本地 `orderGroups`，不重新请求选费接口）。
+- **费用页内筛选：** 已选费用明细支持按委托编号、费用名（`FeeCodeSelect` → `FeeCodeAdmin/GetPagedListAsync`，按 `feeCodeId`）、委托单位（`clientId`）、币别、ETD 过滤展示（仅过滤本地 `orderGroups`，不重新请求选费接口）。筛选栏勿用 `<label>` 包裹可搜索 Select，以免抢焦点清空远程搜索词。
 - **金额汇总：** 根据费用明细计算申请金额；外层分组表在客服列后动态展示「{币别}申请合计」列（按 `currencyId` 升序，无该币别费用显示 `0.00`）。
 - **费用合计按币别绑定结算银行：** 费用合计区每个币别需绑定结算对象开票信息中维护的银行账户。银行来源 `ClientInvoiceInfoAdmin/GetListAsync`，按币别筛选；默认选中该币别默认账户（`isDefault`），多账户可下拉切换，选中后展示开户行 / 账号 / SWIFT Code。**原币结算**每种费用币别各需一条对应币别银行；**指定币别结算**仅需结算币别一条银行。银行为**必填**，提交/保存前校验。提交字段为 `paymentApplicationBanks`，编辑为全量替换。
 - **发票附件分组：** 发票制作区按附件明细类型分组上传；先通用上传得 `attachmentId`，新建随 `AddAsync.attachmentGroup` 一并绑定。关联结算附件不在本页维护。
@@ -57,6 +57,7 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-08 | `Fix` | 费用明细「费用名称」改为货代费用下拉（`FeeCodeSelect`）；输入关键字可远程检索；筛选栏改为 `div` 包裹。 | 删除无引用的 `FeeNameSelect`。详见 `changelogs/change-log-2026-08-08-payment-application-fee-filter-fee-code-select.md`。 |
 | 2026-08-08 | `Fix` | 原始币别及「{币别}未收/未付」等展示统一为英文代码（如 RMB/USD）。 | 新增 `toCurrencyDisplayCode`；详见 `changelogs/change-log-2026-08-08-payment-application-currency-display-code.md`。 |
 | 2026-08-02 | `Fix` | 费用明细 NestedDataTable 展开列固定 32px，宽容器下不再被撑开。 | 与编辑页共用组件；详见 `changelogs/change-log-2026-08-02-nested-data-table-expand-col-width.md`。 |
 | 2026-08-02 | `Fix` | 添加费用「排除」模式生效；未选费用名称时提示并阻断查询。 | `paramsSerializer: 'repeat'` 绑定 `ExceptFeeCodeIds`。详见 `changelogs/change-log-2026-08-02-payment-add-fee-exclude-params-serializer.md`。 |
