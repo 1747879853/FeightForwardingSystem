@@ -265,6 +265,29 @@ export function useHotColumns(
           };
         } else if (col.field === 'settlementId') {
           hotCol.type = 'autocomplete';
+          // ✅ 关键修复：配置动态 source 函数，支持回车键触发下拉框
+          hotCol.source = function (
+            query: string,
+            process: (items: string[]) => void,
+          ) {
+            // ✅ 这个函数会在编辑器激活时被调用
+            // 实际的数据加载由 useHotSettings 中的 afterOnCellMouseDown 处理
+            // 这里返回当前缓存的数据，确保 autocomplete 编辑器有数据可显示
+            const cachedData = currentOptionsCache.value || [];
+            const allLabels = cachedData.map((item: any) => item.label);
+
+            if (!query) {
+              process(allLabels);
+              return;
+            }
+
+            // 支持搜索过滤
+            const searchLower = query.toLowerCase();
+            const filtered = allLabels.filter((label: string) => {
+              return label.toLowerCase().includes(searchLower);
+            });
+            process(filtered);
+          };
           hotCol.strict = true;
           hotCol.allowInvalid = false;
           hotCol.width = 120;
@@ -337,7 +360,27 @@ export function useHotColumns(
           };
         } else if (col.field === 'unit') {
           hotCol.type = 'autocomplete';
-          hotCol.source = [];
+          // ✅ 关键修复：将空数组改为动态 source 函数
+          hotCol.source = function (
+            query: string,
+            process: (items: string[]) => void,
+          ) {
+            // 从 dropdownSources 获取最新的单位列表
+            const allUnits = dropdownSources.value.unitList || [];
+            const allLabels = allUnits.map((item: any) => item.label);
+
+            if (!query) {
+              process(allLabels);
+              return;
+            }
+
+            // 支持搜索过滤
+            const searchLower = query.toLowerCase();
+            const filtered = allLabels.filter((label: string) => {
+              return label.toLowerCase().includes(searchLower);
+            });
+            process(filtered);
+          };
           hotCol.strict = true;
           hotCol.allowInvalid = false;
           hotCol.filteringCaseSensitive = false;

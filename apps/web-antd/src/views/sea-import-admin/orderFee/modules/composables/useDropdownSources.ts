@@ -243,10 +243,15 @@ export function useDropdownSources(orderCtnList: any) {
    * 更新单位列表（根据订单箱型动态更新）
    */
   const updateUnitList = () => {
+    console.log('🔄 [updateUnitList] 开始更新单位列表...');
+    console.log('📦 [updateUnitList] orderCtnList.value:', orderCtnList.value);
+
     const ctnUnits = orderCtnList.value.map((ctn: any) => ({
       label: ctn.ctnCodeName,
       value: ctn.ctnCodeName,
     }));
+
+    console.log('📦 [updateUnitList] 提取的箱型单位:', ctnUnits);
 
     const fixedUnits = [
       { label: '票', value: '票' },
@@ -262,6 +267,13 @@ export function useDropdownSources(orderCtnList: any) {
     );
 
     dropdownSources.value.unitList = uniqueUnits;
+
+    console.log(
+      '✅ [updateUnitList] 更新完成，共',
+      uniqueUnits.length,
+      '个单位选项',
+    );
+    console.log('✅ [updateUnitList] 单位列表详情:', uniqueUnits);
   };
 
   /**

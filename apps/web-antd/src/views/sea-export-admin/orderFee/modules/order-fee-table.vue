@@ -3,7 +3,7 @@ import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 
-import { computed, onMounted, ref, watch, h, nextTick } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch, h, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import {
   Button,
@@ -1194,6 +1194,27 @@ const getFeeCodeList = async () => {
   feeCodeList.value = res.items || [];
   //console.log('feeCodeList', feeCodeList.value);
 };
+
+/**
+ * 处理键盘快捷键 Ctrl+S 保存
+ */
+const handleKeyDown = (event: KeyboardEvent) => {
+  // 检查是否按下了 Ctrl+S (或 Cmd+S on Mac)
+  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+    event.preventDefault(); // 阻止浏览器默认的保存行为
+
+    // 只有在有选中行且不是只读模式时才执行保存
+    if (!props.readonly && selectedRowKeys.value.length > 0) {
+      console.log('⌨️ [键盘快捷键] 检测到 Ctrl+S，执行保存操作');
+      saveRow();
+    } else if (props.readonly) {
+      message.warning('当前为只读模式，无法保存');
+    } else {
+      message.warning('请先选择要保存的费用行');
+    }
+  }
+};
+
 onMounted(async () => {
   // 初始化枚举数据缓存
   initOrderFeeEnumCache();
@@ -1207,7 +1228,18 @@ onMounted(async () => {
 
   // 加载完结状态
   loadFinishStatus();
+
+  // 添加键盘事件监听器
+  document.addEventListener('keydown', handleKeyDown);
+  console.log('✅ [键盘快捷键] 已注册 Ctrl+S 保存快捷键');
 });
+
+onUnmounted(() => {
+  // 移除键盘事件监听器，防止内存泄漏
+  document.removeEventListener('keydown', handleKeyDown);
+  console.log('✅ [键盘快捷键] 已移除 Ctrl+S 保存快捷键');
+});
+
 defineExpose({
   getTableDate,
 });

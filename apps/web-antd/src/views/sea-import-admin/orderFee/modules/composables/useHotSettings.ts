@@ -247,6 +247,51 @@ export function useHotSettings(
         textNodes.forEach((node) => {
           node.textContent = '';
         });
+
+        // ✅ 关键修复：对于 settlementId 和 unit 列，在编辑器激活前预加载数据
+        // 这样 autocomplete 编辑器的 source 函数就能获取到最新数据
+        if (field === 'settlementId') {
+          const actualDataSource = getDataSource();
+          const currentRow = actualDataSource[row] as any;
+          let industryCategoryValue = getSettlementIndustryCategory(
+            currentRow?.industryCategory_value,
+          );
+
+          // ✅ 允许不选择行业类别，此时加载全部客户
+          const categoryToLoad =
+            industryCategoryValue && typeof industryCategoryValue === 'string'
+              ? industryCategoryValue
+              : '';
+
+          // 异步加载客户列表
+          loadClientList(categoryToLoad)
+            .then((options: any[]) => {
+              currentOptionsCache.value = options;
+              // ✅ 更新当前单元格的 source meta，确保 autocomplete 编辑器能看到新数据
+              this.setCellMeta(
+                row,
+                col,
+                'source',
+                options.map((opt: any) => opt.label),
+              );
+              console.log(
+                `✅ [beforeBeginEditing] settlementId 已加载 ${options.length} 个客户选项`,
+              );
+            })
+            .catch((error) => {
+              console.error('❌ [beforeBeginEditing] 加载客户列表失败:', error);
+              message.error('加载客户列表失败');
+            });
+        } else if (field === 'unit') {
+          // ✅ 对于 unit 列，确保 dropdownSources.unitList 是最新的
+          const source =
+            dropdownSources.value.unitList?.map((item: any) => item.label) ||
+            [];
+          this.setCellMeta(row, col, 'source', source);
+          console.log(
+            `✅ [beforeBeginEditing] unit 已设置 ${source.length} 个单位选项`,
+          );
+        }
       }
     },
 

@@ -1,7 +1,15 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
-import { computed, nextTick, onMounted, ref, watch, shallowRef } from 'vue';
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+  shallowRef,
+} from 'vue';
 import {
   Button,
   Space,
@@ -592,6 +600,27 @@ const extendedActions = {
 
 // ==================== 生命周期 ====================
 
+/**
+ * 处理键盘快捷键 Ctrl+S 保存
+ */
+const handleKeyDown = (event: KeyboardEvent) => {
+  // 检查是否按下了 Ctrl+S (或 Cmd+S on Mac)
+  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+    event.preventDefault(); // 阻止浏览器默认的保存行为
+    actions.saveRow();
+    // 只有在有选中行且不是只读模式时才执行保存
+    // const isReadonly = props.mode === 'changeOrder' && props.parentChangeOrderId;
+    // if (!isReadonly && selectedRowKeys.value.length > 0) {
+    //   console.log('⌨️ [键盘快捷键] 检测到 Ctrl+S，执行保存操作');
+    //   actions.saveRow();
+    // } else if (isReadonly) {
+    //   message.warning('当前为只读模式，无法保存');
+    // } else {
+    //   message.warning('请先选择要保存的费用行');
+    // }
+  }
+};
+
 onMounted(async () => {
   initOrderFeeEnumCache();
   await initDropdownSources();
@@ -608,8 +637,29 @@ onMounted(async () => {
     console.log('✅ [OrderFeeTable] 使用父组件传入的客户缓存，跳过加载');
   }
 
+  // ✅ 关键修复：初始化时也调用 updateUnitList，确保 unit 下拉框有数据
+  updateUnitList();
+  console.log(
+    `✅ [onMounted] 已初始化单位列表，共 ${dropdownSources.value.unitList.length} 个选项`,
+  );
+
   getTableDate();
   loadFinishStatus();
+
+  // 添加键盘事件监听器
+  document.addEventListener('keydown', handleKeyDown);
+  console.log('✅ [键盘快捷键] 已注册 Ctrl+S 保存快捷键');
+});
+
+onUnmounted(() => {
+  // 移除键盘事件监听器，防止内存泄漏
+  document.removeEventListener('keydown', handleKeyDown);
+  console.log('✅ [键盘快捷键] 已移除 Ctrl+S 保存快捷键');
+
+  console.log('🧹 [OrderFeeTable] 组件卸载，清理缓存');
+  localAllClientsByIndustry.value = {};
+  feeCodeDetailCache.value = {};
+  exchangeRateCache.value = {};
 });
 
 // 监听器
