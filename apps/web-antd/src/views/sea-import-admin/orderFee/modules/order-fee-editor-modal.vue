@@ -823,25 +823,48 @@ const handleFieldChange = async (fieldName: string) => {
     }
   }
 
-  // 3. 税率变化：同时更新含税单价、含税金额（基于不含税单价）
-  if (fieldName === 'taxRate' && taxRate !== 0) {
-    if (noTaxUnitPrice) {
-      // 根据不含税单价和税率计算含税单价
-      unitPrice = noTaxUnitPrice * (1 + taxRate / 100);
+  // 3. 税率变化：同时更新不含税单价、不含税金额、含税单价、含税金额
+  if (fieldName === 'taxRate') {
+    // 情况1：如果存在含税单价，基于含税单价重新计算不含税相关字段
+    if (unitPrice && unitPrice !== 0) {
+      // 不含税单价 = 含税单价 / (1 + 税率/100)
+      noTaxUnitPrice =
+        taxRate > 0 ? unitPrice / (1 + taxRate / 100) : unitPrice;
+      await orderFeeFormApi.setFieldValue(
+        'noTaxUnitPrice',
+        parseFloat(noTaxUnitPrice.toFixed(4)),
+      );
+
+      // 不含税金额 = 不含税单价 × 数量
+      if (quantity) {
+        noTaxAmount = noTaxUnitPrice * quantity;
+        await orderFeeFormApi.setFieldValue(
+          'noTaxAmount',
+          parseFloat(noTaxAmount.toFixed(2)),
+        );
+      }
+    }
+    // 情况2：如果存在不含税单价，基于不含税单价重新计算含税相关字段
+    else if (noTaxUnitPrice && noTaxUnitPrice !== 0) {
+      // 含税单价 = 不含税单价 × (1 + 税率/100)
+      unitPrice =
+        taxRate > 0 ? noTaxUnitPrice * (1 + taxRate / 100) : noTaxUnitPrice;
       await orderFeeFormApi.setFieldValue(
         'unitPrice',
         parseFloat(unitPrice.toFixed(4)),
       );
 
-      // 计算不含税金额
-      noTaxAmount = noTaxUnitPrice * quantity;
+      // 不含税金额 = 不含税单价 × 数量
+      if (quantity) {
+        noTaxAmount = noTaxUnitPrice * quantity;
 
-      // 根据不含税金额和税率计算含税金额
-      amount = noTaxAmount * (1 + taxRate / 100);
-      await orderFeeFormApi.setFieldValue(
-        'amount',
-        parseFloat(amount.toFixed(2)),
-      );
+        // 含税金额 = 不含税金额 × (1 + 税率/100)
+        amount = taxRate > 0 ? noTaxAmount * (1 + taxRate / 100) : noTaxAmount;
+        await orderFeeFormApi.setFieldValue(
+          'amount',
+          parseFloat(amount.toFixed(2)),
+        );
+      }
     }
   }
 
@@ -893,6 +916,35 @@ const handleFieldChange = async (fieldName: string) => {
         'amount',
         parseFloat(amount.toFixed(2)),
       );
+    }
+  }
+
+  // 6. 含税金额变化：反向计算含税单价、不含税单价、不含税金额
+  if (fieldName === 'amount' && amount !== 0) {
+    if (quantity && quantity !== 0) {
+      // 1. 计算含税单价 = 含税金额 / 数量
+      unitPrice = amount / quantity;
+      await orderFeeFormApi.setFieldValue(
+        'unitPrice',
+        parseFloat(unitPrice.toFixed(4)),
+      );
+
+      // 2. 如果存在税率，计算不含税单价和不含税金额
+      if (taxRate !== undefined && taxRate !== null && taxRate !== 0) {
+        // 不含税单价 = 含税单价 / (1 + 税率/100)
+        noTaxUnitPrice = unitPrice / (1 + taxRate / 100);
+        await orderFeeFormApi.setFieldValue(
+          'noTaxUnitPrice',
+          parseFloat(noTaxUnitPrice.toFixed(4)),
+        );
+
+        // 不含税金额 = 不含税单价 × 数量
+        noTaxAmount = noTaxUnitPrice * quantity;
+        await orderFeeFormApi.setFieldValue(
+          'noTaxAmount',
+          parseFloat(noTaxAmount.toFixed(2)),
+        );
+      }
     }
   }
 
@@ -1440,6 +1492,7 @@ function useOrderFeeFormSchema() {
       componentProps: {
         min: 0,
         precision: 4,
+        disabled: true,
         style: { width: '100%' },
         onChange: () => handleFieldChange('noTaxUnitPrice'),
       },
@@ -1451,6 +1504,7 @@ function useOrderFeeFormSchema() {
       componentProps: {
         min: 0,
         precision: 2,
+        disabled: true,
         style: { width: '100%' },
         onChange: () => handleFieldChange('noTaxAmount'),
       },
@@ -1475,8 +1529,8 @@ function useOrderFeeFormSchema() {
       componentProps: {
         min: 0,
         precision: 4,
-        disabled: true,
         style: { width: '100%' },
+        onChange: () => handleFieldChange('unitPrice'),
       },
     },
     {
@@ -1486,8 +1540,8 @@ function useOrderFeeFormSchema() {
       componentProps: {
         min: 0,
         precision: 2,
-        disabled: true,
         style: { width: '100%' },
+        onChange: () => handleFieldChange('amount'),
       },
     },
 

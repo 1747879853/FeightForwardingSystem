@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
+import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import {
   computed,
   nextTick,
@@ -748,6 +749,43 @@ const getSelectedFees = (): OrderFeeAdminApi.OrderFeeDto[] => {
   });
 };
 
+/**
+ * 获取所有费用数据（用于整票提交时获取未提交的费用）
+ */
+const getAllFees = (): OrderFeeAdminApi.OrderFeeDto[] => {
+  return dataSource.value
+    .filter((row) => row.id && String(row.id).trim())
+    .map((row: any) => {
+      const restoredRow = { ...row };
+
+      // 恢复费用代码ID
+      if (restoredRow.feeCodeId_value) {
+        restoredRow.feeCodeId = restoredRow.feeCodeId_value;
+      }
+
+      // 恢复行业类别
+      if (restoredRow.industryCategory_value !== undefined) {
+        restoredRow.industryCategory = restoredRow.industryCategory_value;
+      }
+
+      // 恢复币别ID
+      if (restoredRow.currencyId_value) {
+        restoredRow.currencyId = restoredRow.currencyId_value;
+      }
+
+      // 恢复单位
+      if (restoredRow.unit_value) {
+        restoredRow.unit = restoredRow.unit_value;
+      }
+
+      // 恢复结算对象ID
+      if (restoredRow.settlementId_value) {
+        restoredRow.settlementId = restoredRow.settlementId_value;
+      }
+      return restoredRow as OrderFeeAdminApi.OrderFeeDto;
+    });
+};
+
 // 监听选中行变化，发射事件通知父组件
 watch(
   () => selectedRowKeys.value,
@@ -765,6 +803,7 @@ defineExpose({
   getTableDate,
   getSelectedFeeIds,
   getSelectedFees,
+  getAllFees, // 新增：获取所有费用
   openModifyModal,
 });
 </script>
