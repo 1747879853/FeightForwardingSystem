@@ -201,24 +201,24 @@ export namespace YundangAirAdminApi {
 
   /**
    * 空运运单批量订阅
-   * POST services/app/YundangAirAdmin/BatchSubscribeAirBillAsync
+   * POST services/app/YundangAdmin/BatchSubscribeAirBillAsync
    */
   export const batchSubscribeAirBill = (
     data: YundangAirBatchSubscribeInputDto,
   ) => {
     return requestClient.post<YundangAirBatchSubscribeResultDto>(
-      'services/app/YundangAirAdmin/BatchSubscribeAirBillAsync',
+      'services/app/YundangAdmin/BatchSubscribeAirBillAsync',
       data,
     );
   };
 
   /**
    * 按空运出口 Id 查询运踪订阅记录与运单动态
-   * GET services/app/YundangAirAdmin/GetAirPushInfoAsync
+   * GET services/app/YundangAdmin/GetAirPushInfoAsync
    */
   export const getAirPushInfo = (airExportId: string) => {
     return requestClient.get<YundangAirPushInfoDto>(
-      'services/app/YundangAirAdmin/GetAirPushInfoAsync',
+      'services/app/YundangAdmin/GetAirPushInfoAsync',
       {
         params: { airExportId },
       },

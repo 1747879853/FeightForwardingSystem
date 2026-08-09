@@ -2,7 +2,7 @@
 title: 空运出口列表
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-08
+last_updated: 2026-08-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -62,5 +62,6 @@ last_updated: 2026-08-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Refactor` | 运踪批量订阅与运踪信息查询的接口地址迁移到合并后的云当服务，页面行为无变化。 | 后端云当空运 AppService 合并进 `YundangAdminAppService`；`yundang-air-admin.ts` 的两个地址由 `services/app/YundangAirAdmin/...` 改为 `services/app/YundangAdmin/...`，海运侧地址未变。详见 `changelogs/change-log-2026-08-09-feituo-yundang-appservice-merge-endpoints.md`。 |
 | 2026-08-08 | `Feature` | 列表工具栏运踪批量订阅 +「运踪状态」列 + 运踪详情 Modal。 | 镜像海运出口：`yundang-air-admin` + `use-yundang-air-subscribe/track`；详见 `changelogs/change-log-2026-08-08-air-export-yundang-subscribe.md`。 |
 | 2026-08-05 | `Feature` | 新建空运出口列表：关键字、「未填写」开关、明细区间筛选、9 维分组统计、复制与删除，权限 `Admin.AirExport`。 | 以 `sea-import-admin/list.vue` 为范式；分组字段改用 `AirExportGroupField`，分组结果无 `logo` 字段；报关/送仓日期区间单独按 `endOf('day')` 处理。 |

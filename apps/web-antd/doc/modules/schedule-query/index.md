@@ -2,7 +2,7 @@
 title: 船期查询
 module: 航线管理
 author: auto-doc-sync
-last_updated: 2026-07-16
+last_updated: 2026-08-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -56,6 +56,7 @@ last_updated: 2026-07-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Refactor` | 船期查询接口地址迁移到合并后的飞驼服务，页面功能与字段无变化。 | 后端 6 个飞驼 AppService 合并为 `FeituoAdminAppService`，ABP 按类名生成路由故地址随之变化；`feituo-schedule-admin.ts` 的 `API_PREFIX` 改为 `/services/app/FeituoAdmin`，方法名/入参/出参/权限点 `Admin.Schedule.Get` 均未变。详见 `changelogs/change-log-2026-08-09-feituo-yundang-appservice-merge-endpoints.md`。 |
 | 2026-07-16 | `Refactor` | 船期查询从独立「船期管理」顶级菜单并入「航线管理」；URL `/schedule` 不变。 | 删除 `schedule.ts`；子路由挂在 `freight-rate.ts`，父级权限聚合 `SeFreiPrice`+`Schedule`。 |
 | 2026-07-16 | `Feature` | 起始/目的港改为 PortSelect（EDI 五字码）；筛选一行 6 列、默认收起，中转标识紧邻范围(周)，labelWidth=92。 | 查询入参字段名仍为 `polCode`/`podCode`，仅组件与布局调整。 |
 | 2026-07-16 | `Feature` | 双击船期行弹窗，内嵌飞驼可视化船舶 AIS 定位 Iframe，按船名定位。 | 新增 `modules/vessel-ais-modal.vue` 与 `data.ts` 的 `AIS_IFRAME_CONFIG`/`buildAisIframeUrl`；`list.vue` 绑定 `gridEvents.cellDblclick`，`useVbenModal` 承载 Iframe。密钥 `key` 待读取环境变量。 |

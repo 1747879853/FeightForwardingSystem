@@ -18,11 +18,11 @@
 | sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-08-08 |
 | sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单，提交成功后进入编辑工作台继续维护费用和子业务；无订舱编号字段。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-08-08 |
 | sea-imports | `/sea-imports/:id/edit` | 操作管理 / 海运进口 | 编辑页是海运进口的核心业务容器，聚合基础信息、费用、更改单及相关执行子模块；基础信息保存成功后下发最新详情联动费用/更改单；无订舱编号展示。 | [海运进口编辑工作台](./modules/sea-imports/id-edit.md) | 2026-08-09 |
-| air-exports | `/air-exports` | 操作管理 / 空运出口 | 空运出口列表：关键字搜 5 字段、五个「未填写」开关、货物明细八个区间筛选（存在语义）、9 维分组统计、复制与删除；支持多选运踪批量订阅与「运踪状态」列。 | [空运出口列表](./modules/air-exports/index.md) | 2026-08-08 |
+| air-exports | `/air-exports` | 操作管理 / 空运出口 | 空运出口列表：关键字搜 5 字段、五个「未填写」开关、货物明细八个区间筛选（存在语义）、9 维分组统计、复制与删除；支持多选运踪批量订阅与「运踪状态」列。 | [空运出口列表](./modules/air-exports/index.md) | 2026-08-09 |
 | air-exports | `/air-exports/create` | 操作管理 / 空运出口 | 空运出口新建：三段航段（起运地/中转地/目的地）、货物明细可编辑表格、体积/体积重/计费重/泡比四个前端派生值。 | [空运出口新建](./modules/air-exports/create.md) | 2026-08-05 |
 | air-exports | `/air-exports/:id/edit` | 操作管理 / 空运出口 | 空运出口编辑：基础信息、只读应收应付、附件、运踪信息四个标签；支持重新生成委托编号、复制与运踪订阅；基础信息保存后联动刷新只读费用与收付徽标。 | [空运出口编辑](./modules/air-exports/id-edit.md) | 2026-08-09 |
 | freight-rate | `/freight-rate` | 航线管理 / 运价查询 | 维护海运运价信息，为委托费用测算和报价提供基础数据入口；侧边栏位于「航线管理」分组下。 | [运价查询](./modules/freight-rate/index.md) | 2026-07-26 |
-| schedule-query | `/schedule` | 航线管理 / 船期查询 | 船期实时查询；起始/目的港用 PortSelect（EDI）；筛选一行 6 列默认收起；双击行内嵌船舶 AIS 定位。 | [船期查询](./modules/schedule-query/index.md) | 2026-07-16 |
+| schedule-query | `/schedule` | 航线管理 / 船期查询 | 船期实时查询；起始/目的港用 PortSelect（EDI）；筛选一行 6 列默认收起；双击行内嵌船舶 AIS 定位。 | [船期查询](./modules/schedule-query/index.md) | 2026-08-09 |
 | fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建和进入付款申请单编辑，是应付费用付款流程入口；申请合计按付减收。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-08-09 |
 | fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；添加费用抽屉按币别展示已选合计，翻页保留勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-08-09 |
 | fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑付款申请；添加费用抽屉按币别展示已选合计，翻页保留勾选。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-08-09 |

@@ -2,7 +2,7 @@
 title: 空运出口编辑
 module: 空运出口
 author: auto-doc-sync
-last_updated: 2026-08-08
+last_updated: 2026-08-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -68,6 +68,7 @@ last_updated: 2026-08-08
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- |
 | 2026-08-09 | `Refactor` | 只读费用列表的费用名称/币别/结算对象列改读嵌套对象。 | `AirExportAdminApi.OrderFeeDto` 对象化；`dataIndex` 改数组路径，`sumByCurrency` 取 `item.currency?.cnName?.trim() |  | item.currency?.code?.trim()`。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
+| 2026-08-09 | `Refactor` | 「运踪信息」Tab 与工具栏订阅的接口地址迁移到合并后的云当服务，页面行为无变化。 | `GetAirPushInfoAsync` / `BatchSubscribeAirBillAsync` 前缀由 `YundangAirAdmin` 改为 `YundangAdmin`。详见 `changelogs/change-log-2026-08-09-feituo-yundang-appservice-merge-endpoints.md`。 |
 | 2026-08-08 | `Feature` | 基础信息工具栏运踪订阅/重新订阅；新增「运踪信息」Tab（里程碑/航段/状态轨迹）。 | 标签从三个扩为四个；面板复用 `GetAirPushInfoAsync`；详见 `changelogs/change-log-2026-08-08-air-export-yundang-subscribe.md`。 |
 | 2026-08-08 | `Fix` | 基础信息保存成功后，只读费用列表与 Tab「收 - 付」徽标用最新详情刷新。 | `onSaved`/`savedDetail`/`latest-detail`；徽标复用详情 `orderFees`，避免再调详情接口。详见 `changelogs/change-log-2026-08-08-edit-workspace-saved-detail-sync.md`。 |
 | 2026-08-05 | `Feature` | 新建空运出口编辑页：三标签容器、重新生成委托编号、复制、只读费用总览与附件维护。 | 本期不做更改单，标签只有三个；只读费用直接复用详情接口返回的 `orderFees`，不再单独调费用模块接口，标签计数也由它算出。 |

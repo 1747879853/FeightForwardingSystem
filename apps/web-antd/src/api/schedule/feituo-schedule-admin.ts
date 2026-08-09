@@ -216,11 +216,11 @@ export namespace FeituoScheduleAdminApi {
   }
 }
 
-const API_PREFIX = '/services/app/FeituoScheduleAdmin';
+const API_PREFIX = '/services/app/FeituoAdmin';
 
 /**
  * 飞驼船期查询（实时查询，不落库）
- * POST /services/app/FeituoScheduleAdmin/QueryScheduleAsync
+ * POST /services/app/FeituoAdmin/QueryScheduleAsync
  */
 export function queryScheduleAsync(
   params: FeituoScheduleAdminApi.FeituoScheduleQueryInputDto,
