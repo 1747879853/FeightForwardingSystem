@@ -181,16 +181,28 @@ const props = defineProps<{
 const route = useRoute();
 const router = useRouter();
 
-// 作为独立路由页打开时（工作台跳转），从路由参数兜底取值
-const isStandalone = computed(
-  () => !props.transportOrderId && Boolean(route.params.id),
-);
-const resolvedTransportOrderId = computed(
-  () => props.transportOrderId || String(route.params.id ?? ''),
-);
-const resolvedEntityId = computed(
-  () => props.entityId || String(route.params.entityId ?? ''),
-);
+/**
+ * 两种打开方式：
+ * 1) 嵌在费用审核列表下方：父组件传 transportOrderId / entityId
+ * 2) 独立路由 ExpenseDetail：从本页路由参数取 id / entityId
+ *
+ * 禁止：嵌套模式下用全局 route.params.id 兜底。
+ * keepAlive 的费用审核页在切到其它带 :id 的页面（如付费申请编辑）时，
+ * 若仍读当前路由 params，会把别人的 id 当成业务单 id 去请求。
+ */
+const isStandalone = computed(() => route.name === 'ExpenseDetail');
+const resolvedTransportOrderId = computed(() => {
+  if (isStandalone.value) {
+    return String(route.params.id ?? '');
+  }
+  return props.transportOrderId ? String(props.transportOrderId) : '';
+});
+const resolvedEntityId = computed(() => {
+  if (isStandalone.value) {
+    return String(route.params.entityId ?? '');
+  }
+  return props.entityId ? String(props.entityId) : '';
+});
 const standaloneTableType = ref<string>('horizontal');
 
 const totalFee = (

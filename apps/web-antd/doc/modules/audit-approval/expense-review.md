@@ -2,7 +2,7 @@
 title: 费用审核
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-07-12
+last_updated: 2026-08-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -48,6 +48,7 @@ last_updated: 2026-07-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 嵌套详情不再用全局 `route.params.id` 兜底，避免 keepAlive 切到付费申请编辑时误打 `OrderFeeTaskDetailAsync`。 | 仅 `route.name === 'ExpenseDetail'` 读路由参数。详见 `changelogs/change-log-2026-08-09-expense-detail-route-id-fallback.md`。 |
 | 2026-07-12 | `Fix` | 查询「单号」改为「编号」，placeholder 统一为「主提单号/订舱编号/委托编号」；改用 `TrimInput` 自动去空格。 | 见 `change-log-2026-07-12-workspace-keyword-trim-checkbox.md`。 |
 | 2026-07-12 | `Feature` | 工作台应收应付筛选对齐本页搜索条件；`GetPagedListParams` 补充业务筛选字段类型。 | 本页列表仍内嵌详情；工作台深链走独立 `ExpenseDetail` 路由，见 `change-log-2026-07-12-workspace-review-filter-and-expense-detail.md`。 |
 | 2026-07-12 | `Fix` | 费用审核/提交相关列表仅点击 radio 才选中，单击行不再切换选中。 | `radioConfig.trigger` 由 `'row'` 改为 `'default'`（`expense-all`、`expense-submission`）。 |
