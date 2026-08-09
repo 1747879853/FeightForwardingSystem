@@ -356,32 +356,10 @@ const sumCtnField = (
   return String(Number.parseFloat(total.toFixed(AIR_DECIMAL_PRECISION)));
 };
 
-/** 「未填写」开关与选值互斥：选了值禁开关，开了开关禁选值 */
-const createEmptySwitchSchema = (
-  fieldName: string,
-  valueFieldName: string,
-  label: string,
-): VbenFormSchema => ({
-  component: 'Switch',
-  fieldName,
-  label,
-  componentProps: (values: Record<string, any>) => ({
-    // 覆盖表格搜索表单 commonConfig 的 w-full，保持 Switch 自身宽度
-    class: 'w-auto',
-    disabled:
-      values?.[valueFieldName] !== undefined &&
-      values?.[valueFieldName] !== null &&
-      values?.[valueFieldName] !== '',
-  }),
-});
-
-const airPortSelectProps = (emptyFieldName: string) => {
-  return (values: Record<string, any>) => ({
-    allowClear: true,
-    labelKey: 'iataCnName',
-    placeholder: $t('ui.placeholder.select'),
-    disabled: !!values?.[emptyFieldName],
-  });
+const airPortSelectProps = {
+  allowClear: true,
+  labelKey: 'iataCnName',
+  placeholder: $t('ui.placeholder.select'),
 };
 
 /**
@@ -433,68 +411,34 @@ export function useGridFormSchema(): VbenFormSchema[] {
       component: 'Input',
       fieldName: 'FlightNo',
       label: $t('airExport.export.flightNo'),
-      componentProps: (values: Record<string, any>) => ({
+      componentProps: {
         placeholder: $t('ui.placeholder.input'),
         allowClear: true,
-        disabled: !!values?.FlightNoEmpty,
-      }),
+      },
     },
-    createEmptySwitchSchema(
-      'FlightNoEmpty',
-      'FlightNo',
-      $t('airExport.export.flightNoEmpty'),
-    ),
     {
       component: 'AirPortSelect',
       fieldName: 'POLId',
       label: $t('airExport.export.polId'),
-      componentProps: airPortSelectProps('POLIdEmpty'),
+      componentProps: airPortSelectProps,
     },
-    createEmptySwitchSchema(
-      'POLIdEmpty',
-      'POLId',
-      $t('airExport.export.polIdEmpty'),
-    ),
     {
       component: 'AirPortSelect',
       fieldName: 'POTId',
       label: $t('airExport.export.potId'),
-      componentProps: airPortSelectProps('POTIdEmpty'),
+      componentProps: airPortSelectProps,
     },
-    createEmptySwitchSchema(
-      'POTIdEmpty',
-      'POTId',
-      $t('airExport.export.potIdEmpty'),
-    ),
     {
       component: 'AirPortSelect',
       fieldName: 'PODId',
       label: $t('airExport.export.podId'),
-      componentProps: airPortSelectProps('PODIdEmpty'),
+      componentProps: airPortSelectProps,
     },
-    createEmptySwitchSchema(
-      'PODIdEmpty',
-      'PODId',
-      $t('airExport.export.podIdEmpty'),
-    ),
-    {
-      ...createClientSelectSchema({
-        fieldName: 'BookingAgentId',
-        industryCategory: 'o',
-        label: $t('airExport.export.bookingAgentId'),
-      }),
-      componentProps: (values: Record<string, any>) => ({
-        industryCategory: 'o',
-        allowClear: true,
-        placeholder: $t('ui.placeholder.select'),
-        disabled: !!values?.BookingAgentIdEmpty,
-      }),
-    },
-    createEmptySwitchSchema(
-      'BookingAgentIdEmpty',
-      'BookingAgentId',
-      $t('airExport.export.bookingAgentIdEmpty'),
-    ),
+    createClientSelectSchema({
+      fieldName: 'BookingAgentId',
+      industryCategory: 'o',
+      label: $t('airExport.export.bookingAgentId'),
+    }),
     {
       component: 'Input',
       fieldName: 'MblNum',
