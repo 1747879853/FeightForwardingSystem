@@ -2,7 +2,7 @@
 title: 付费审批
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-07-29
+last_updated: 2026-08-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -55,7 +55,7 @@ last_updated: 2026-07-29
 | **paymentApplicationId** | 付款申请主键，驱动详情加载。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 点击行 → `DetailAsync` | 无则详情区显示空态 |
 | **编号（Keyword）** | 按主提单号 / 订舱编号 / 委托编号检索。 | 查询 schema `Keyword`（`TrimInput`） | **触发/依赖：** 输入即时 trim；label「编号」，placeholder「主提单号/订舱编号/委托编号」。 | 可清空 |
 | **id（任务）** | 审核任务 ID，用于 Audit/Reject 接口。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 批量审核提交 | 列表为空时提示选择 |
-| **费用合计** | 各币别申请金额与结算银行。 | `DetailAsync` → `currencyGroup` | 原币/指定币别两种展示模式 | 只读 |
+| **费用合计** | 各币别申请净额（付 − 收）与结算银行。 | 前端按明细 `appliedAmount`+`paySide` 汇总（复用 `form-data`） | 原币/指定币别两种展示模式 | 只读 |
 | **附件** | 按附件明细类型分组展示文件；另含结算附件。 | `DetailAsync` → `attachmentGroup`（含 `attachmentDtlType`）/ `paymentSettlementAttachments` | 点击打开/预览 | 只读 |
 | **费用明细** | 按业务+结算对象分组的费用行。 | `DetailAsync` → `payAppFeeBySeaExportGroup` | 复用付费申请 `form-data` 分组逻辑 | 只读 |
 | **审核意见** | 通过或驳回备注。 | 审核弹窗输入 | 写入 `AuditAsync` / `RejectAsync` | 建议驳回时填写 |
@@ -70,6 +70,7 @@ last_updated: 2026-07-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 费用合计按付 − 收净额展示（与付费申请表单一致）。 | 复用 `payment-application/form-data` 的 `signedAppliedAmount` 汇总。详见 `changelogs/change-log-2026-08-09-payment-application-pay-minus-receive.md`。 |
 | 2026-07-29 | `Fix` | 右侧费用合计改为紧凑列表；附件按类型分组回显；嵌套费用子表宽度 +100px。 | 见 `change-log-2026-07-29-payment-review-fee-summary-layout.md`。 |
 | 2026-07-12 | `Fix` | 查询「单号」改为「编号」，placeholder 统一为「主提单号/订舱编号/委托编号」；改用 `TrimInput` 自动去空格。 | 见 `change-log-2026-07-12-workspace-keyword-trim-checkbox.md`。 |
 | 2026-07-11 | `Refactor` | 侧边栏菜单文案由「付费审核」更名为「付费审批」，路由 path 与审核逻辑不变。 | `auditApproval.json` 中 `paymentReview.title` 更新；`audit-approval.ts` `order` 调整为 210。 |

@@ -10,7 +10,7 @@ const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
 
 export { toCurrencyDisplayCode };
 
-/** 解析费用原始币别 code（兼容 currencyCode 为空时从分组或 orderFee.currencyName 取值） */
+/** 解析费用原始币别 code（兼任 currencyCode 为空时从分组或 orderFee.currencyName 取值） */
 export function resolveFeeCurrencyCode(
   fee?: Pick<
     PaymentApplicationAdminApi.OrderFeeDto,
@@ -140,14 +140,25 @@ export function collectAppliedCurrencies(
   return [...map.values()].sort((a, b) => a.currencyId - b.currencyId);
 }
 
-/** 计算分组内某原币别的本次申请金额合计 */
+/**
+ * 付费申请净额符号：付(+) / 收(-)。
+ * 付款金额、申请合计等汇总统一按「付 − 收」计算。
+ */
+export function signedAppliedAmount(
+  fee: Pick<FeeDetailRow, 'appliedAmount' | 'paySide'>,
+): number {
+  const amount = fee.appliedAmount ?? 0;
+  return fee.paySide === 0 ? -amount : amount;
+}
+
+/** 计算分组内某原币别的本次申请净额合计（付 − 收） */
 export function calcAppliedAmountByCurrency(
   items: FeeDetailRow[],
   currencyId: number,
 ): number {
   return items
     .filter((f) => f.currencyId === currencyId)
-    .reduce((sum, f) => sum + (f.appliedAmount ?? 0), 0);
+    .reduce((sum, f) => sum + signedAppliedAmount(f), 0);
 }
 
 /** 根据币别生成「{币别}申请合计」动态列 */
@@ -187,14 +198,15 @@ export function groupFeesByOrder(
     const first = items[0]!;
     const cMap = new Map<number, OrderCurrencyAmount>();
     for (const f of items) {
+      const signed = signedAppliedAmount(f);
       const existing = cMap.get(f.currencyId);
       if (existing) {
-        existing.amount += f.appliedAmount ?? 0;
+        existing.amount += signed;
       } else {
         cMap.set(f.currencyId, {
           currencyCode: toCurrencyDisplayCode(f.currencyCode, f.currencyName),
           currencyName: f.currencyName ?? '',
-          amount: f.appliedAmount ?? 0,
+          amount: signed,
         });
       }
     }
@@ -451,13 +463,13 @@ export interface CurrencyConversionSummary {
   convertedTotal: number;
 }
 
-/** 按币别+汇率分组汇总费用并计算折算金额（同一币别不同汇率分别展示） */
+/** 按币别+汇率分组汇总费用并计算折算金额（同一币别不同汇率分别展示；付 − 收） */
 export function summarizeByCurrencyWithConversion(
   fees: FeeDetailRow[],
 ): CurrencyConversionSummary[] {
   const map = new Map<string, CurrencyConversionSummary>();
   for (const fee of fees) {
-    const applied = fee.appliedAmount ?? 0;
+    const applied = signedAppliedAmount(fee);
     const rate = fee.rate ?? 1;
     const converted = Math.round(applied * rate * 100) / 100;
     const key = `${fee.currencyId}_${rate}`;
@@ -479,31 +491,33 @@ export function summarizeByCurrencyWithConversion(
   return [...map.values()];
 }
 
-/** 按币别分组汇总费用 */
+/** 按币别分组汇总费用（付 − 收） */
 export function summarizeByCurrency(fees: FeeDetailRow[]): CurrencySummary[] {
   const map = new Map<number, CurrencySummary>();
   for (const fee of fees) {
+    const signed = signedAppliedAmount(fee);
     const existing = map.get(fee.currencyId);
     if (existing) {
-      existing.totalAmount += fee.appliedAmount ?? 0;
+      existing.totalAmount += signed;
     } else {
       map.set(fee.currencyId, {
         currencyId: fee.currencyId,
         currencyCode: toCurrencyDisplayCode(fee.currencyCode, fee.currencyName),
         currencyName: fee.currencyName ?? '',
-        totalAmount: fee.appliedAmount ?? 0,
+        totalAmount: signed,
       });
     }
   }
   return [...map.values()];
 }
 
-/** 计算所有费用折算到结算币别的总额 */
+/** 计算所有费用折算到结算币别的净额总额（付 − 收） */
 export function calcConvertedTotal(fees: FeeDetailRow[]): number {
   let total = 0;
   for (const fee of fees) {
     const r = fee.rate ?? 1;
-    total += (fee.amount ?? 0) * r;
+    const signed = fee.paySide === 0 ? -(fee.amount ?? 0) : (fee.amount ?? 0);
+    total += signed * r;
   }
   return total;
 }

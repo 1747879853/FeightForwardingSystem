@@ -41,6 +41,7 @@ last_updated: 2026-08-09
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **费用明细** | 付款申请的数据来源。 | `payment-application/form-data.ts` | **触发/依赖：** 决定申请金额和供应商/客户口径。 | 需过滤不可申请或已申请费用。 |
+| **付款金额** | 结算币别卡片按币别展示的申请净额。 | 前端 `summarizeByCurrency`（`appliedAmount`，付 − 收） | **触发/依赖：** 随费用明细增删变化；指定币别时另有折算「实付金额」。 | 收为负向；明细提交仍为正数 `appliedAmount`。 |
 | **申请主体** | 付款对象与业务归属。 | `payment-application-admin.ts` | **触发/依赖：** 影响审核和后续结算。 | 不能为空。 |
 | **结算银行** | 费用合计每个币别绑定的收款银行账户。 | **客户开票信息**<br/>`ClientInvoiceInfoAdmin/GetListAsync` | **触发/依赖：** 选项随结算对象与币别筛选；结算对象变更清空重载；默认选中该币别 `isDefault` 账户。 | **必填项**，原币结算每种费用币别各一条、指定币别结算仅结算币别一条；银行须属当前结算对象且主数据含开户行/账号/SWIFT。 |
 | **发票方式** | 先票后付 / 先付后票 / 不开票。 | 表单 `invoiceProcess`；添加费用抽屉 `enableInvoiceProcess` | **触发/依赖：** 抽屉确认时回写外层；新建确认费用与保存/提交前校验；未选时 toast + 控件标红。 | **必填项**（新建创建申请前必须选定）。 |
@@ -57,6 +58,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 结算币别「付款金额」及费用「{币别}申请合计」按付 − 收汇总；收费用计入负向。 | `signedAppliedAmount` + `summarizeByCurrency*`；明细仍提交正数 `appliedAmount`。详见 `changelogs/change-log-2026-08-09-payment-application-pay-minus-receive.md`。 |
 | 2026-08-09 | `Fix` | 「发票制作方式」改名为「发票方式」并加必填 `*`；未选时 toast 提示；「+ 添加费用」改为 primary。 | 不在下拉旁插行内错误文案以免改布局。详见 `changelogs/change-log-2026-08-09-payment-application-invoice-process-label.md`。 |
 | 2026-08-08 | `Fix` | 费用明细「费用名称」改为货代费用下拉（`FeeCodeSelect`）；输入关键字可远程检索；筛选栏改为 `div` 包裹。 | 删除无引用的 `FeeNameSelect`。详见 `changelogs/change-log-2026-08-08-payment-application-fee-filter-fee-code-select.md`。 |
 | 2026-08-08 | `Fix` | 原始币别及「{币别}未收/未付」等展示统一为英文代码（如 RMB/USD）。 | 新增 `toCurrencyDisplayCode`；详见 `changelogs/change-log-2026-08-08-payment-application-currency-display-code.md`。 |

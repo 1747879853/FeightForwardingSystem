@@ -2,7 +2,7 @@
 title: 付款申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-07-30
+last_updated: 2026-08-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-07-30
 - **申请单查询：** 按申请状态、客户/供应商、时间等条件查询付款申请。
 - **创建申请：** 进入新增页选择可申请付款的费用。
 - **编辑申请：** 双击行进入编辑页维护申请单明细。
-- **申请合计列：** 列表按当前页数据动态展示各币别「{币别}申请合计」列（收+付原币合计）；列配置面板仅保留「申请合计」一项（可见锚点列，承载首个币别），像普通列一样可拖动、调宽、显隐并持久化，其余币别作为跟随列自动跟随锚点的显隐与顺序。
+- **申请合计列：** 列表按当前页数据动态展示各币别「{币别}申请合计」列（原币净额 = 付 − 收）；列配置面板仅保留「申请合计」一项（可见锚点列，承载首个币别），像普通列一样可拖动、调宽、显隐并持久化，其余币别作为跟随列自动跟随锚点的显隐与顺序。
 - **结算明细弹窗：** 申请状态为「部分结算」「结算完毕」时，点击状态 Tag 弹出关联结算列表（单号/时间/结算对象/币别/金额/附件）；数据来自列表行 `paymentSettlements`，无需再请求详情。
 - **补录发票弹窗：** 发票流程为「先付后票」时，点击「发票流程」打开维护弹窗（发票流程/发票号/开票日期/附件）；保存走 `EditInvoiceAsync`，不判断申请 status，适合审核通过后补录。
 
@@ -46,7 +46,7 @@ last_updated: 2026-07-30
 | **关联结算** | 本申请关联的付费结算简要。 | `paymentSettlements[]` | **触发/依赖：** 含结算附件 `attachments`；`totalSettledPrice` 为整单金额。 | 无关联时为空数组。 |
 | **发票流程** | 先票后付 / 先付后票 / 不开票。 | `invoiceProcess`（0/1/2） | **触发/依赖：** 值为 1（先付后票）时可点击打开发票维护弹窗。 | 补录保存走 `EditInvoiceAsync`。 |
 | **发票号 / 开票日期** | 发票信息；先付后票可后续补录。 | `invoiceNo` / `invoiceDate` | **触发/依赖：** 弹窗内可改；不开票时清空。 | 发票号最长 128。 |
-| **{币别}申请合计** | 列表按币别展示的申请合计（原币）。 | `currencyGroup[].payAmount + receiveAmount` | **触发/依赖：** 当前页数据变化时动态生成列。 | 只读展示。 |
+| **{币别}申请合计** | 列表按币别展示的申请净额（原币，付 − 收）。 | `currencyGroup[].payAmount - receiveAmount` | **触发/依赖：** 当前页数据变化时动态生成列。 | 只读展示。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -60,6 +60,7 @@ last_updated: 2026-07-30
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 「{币别}申请合计」改为付申请量 − 收申请量。 | `calcRowAppliedTotal`：`payAmount - receiveAmount`。详见 `changelogs/change-log-2026-08-09-payment-application-pay-minus-receive.md`。 |
 | 2026-07-30 | `Feature` | 列表「先付后票」可点击打开发票维护弹窗，对接 `EditInvoiceAsync` 补录发票/附件（不限 status）。 | 新增 `invoice-edit-modal` + `editPaymentApplicationInvoice`；附件全量覆盖须带回详情。详见 `changelogs/change-log-2026-07-30-payment-application-edit-invoice.md`。 |
 | 2026-07-30 | `Feature` | 列表结算对象/币别改读对象化字段；部分结算/结算完毕点击状态弹窗展示关联结算明细与附件。 | DTO 增 `currency`/`paymentSettlements`，删旧字符串与平铺附件；`settlement-detail-modal` 消费列表行数据。详见 `changelogs/change-log-2026-07-30-payment-application-settlement-objectified.md`。 |
 | 2026-07-12 | `Fix` | 「申请合计」改为可见锚点列，面板中可拖动/调宽/显隐并持久化，各币别跟随列自动跟随；修复取消勾选仍渲染、相邻「申请人」列无法调宽、拖动排序不生效。 | 锚点 `appliedTotal` 承载首个币别、`slots.header` 动态表头；`buildColumnsWithRuntime` 以 `grid.getFullColumns()` 运行时列为唯一数据源保留显隐/固定/宽/序；`visibleMethod` 隐藏跟随列；移除 `customChange` 中途重建。 |

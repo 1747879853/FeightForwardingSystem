@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-09 付费申请付款金额按付减收汇总](./changelogs/change-log-2026-08-09-payment-application-pay-minus-receive.md)
 - [2026-08-09 海运出口 AI 识别回填港口备注与港口 Id](./changelogs/change-log-2026-08-09-sea-export-ai-extract-port-remarks.md)
 - [2026-08-09 付费申请发票方式文案/必填与添加费用按钮醒目](./changelogs/change-log-2026-08-09-payment-application-invoice-process-label.md)
 - [2026-08-08 付费申请费用明细筛选改用货代费用下拉](./changelogs/change-log-2026-08-08-payment-application-fee-filter-fee-code-select.md)

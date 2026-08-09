@@ -57,14 +57,14 @@ function collectAppliedTotalCurrencies(
   return [...map.values()].sort((a, b) => a.currencyId - b.currencyId);
 }
 
-/** 计算某行某币别的申请合计（原币）= 收申请量 + 付申请量 */
+/** 计算某行某币别的申请合计（原币）= 付申请量 − 收申请量 */
 function calcRowAppliedTotal(
   row: PaymentApplicationAdminApi.PaymentApplicationDto,
   currencyId: number,
 ): number | undefined {
   const group = row.currencyGroup?.find((g) => g.id === currencyId);
   if (!group) return undefined;
-  return (group.payAmount ?? 0) + (group.receiveAmount ?? 0);
+  return (group.payAmount ?? 0) - (group.receiveAmount ?? 0);
 }
 
 /** 申请合计列（锚点列与币别跟随列）的公共属性 */

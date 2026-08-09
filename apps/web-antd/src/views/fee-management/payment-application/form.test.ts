@@ -86,6 +86,7 @@ const AddFeeDrawerStub = defineComponent({
         currencyCode: 'USD',
         currencyId: 1,
         feeId: 'fee-1',
+        paySide: 1,
         settlementId: 'client-1',
         settledAmount: 0,
         transportOrderId: 'order-1',
