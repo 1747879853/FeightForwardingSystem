@@ -656,19 +656,9 @@ const handleSelectionChange = (payload: {
   collectSelectedFeeIds();
 };
 
-// 整票提交
-const handleSubmitAllFees = async () => {
-  const feeIds = collectSelectedFeeIds();
-  if (feeIds.length === 0) {
-    message.warning('请至少选择一条费用');
-    return;
-  }
-
+// 提取提交费用的公共逻辑
+const submitFees = async (recFees: any[], payFees: any[]) => {
   try {
-    // 需要分别获取应收和应付的费用详情来构建提交参数
-    const recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
-    const payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
-
     // 合并所有费用
     const allFees = [...recFees, ...payFees];
 
@@ -725,6 +715,67 @@ const handleSubmitAllFees = async () => {
   } catch (error) {
     console.error('提交审核失败:', error);
     message.error('提交审核失败');
+  }
+};
+
+// 整票提交
+const handleSubmitAllFees = async () => {
+  // 先收集选中的费用ID
+  const selectedFeeIds = collectSelectedFeeIds();
+
+  let recFees: any[] = [];
+  let payFees: any[] = [];
+
+  if (selectedFeeIds.length === 0) {
+    // 如果没有勾选费用，则获取所有未提交的费用（录入状态0和驳回状态5）
+    console.log('⚠️ [整票提交] 未勾选任何费用，自动获取未提交的费用');
+
+    const allRecFees = recOrderFeeTableRef.value?.getAllFees() || [];
+    const allPayFees = payOrderFeeTableRef.value?.getAllFees() || [];
+
+    // 过滤出未提交的费用：录入状态(0) 和 驳回状态(5)
+    recFees = allRecFees.filter(
+      (fee) => fee.feeStatus === 0 || fee.feeStatus === 5,
+    );
+    payFees = allPayFees.filter(
+      (fee) => fee.feeStatus === 0 || fee.feeStatus === 5,
+    );
+
+    console.log('📊 [整票提交] 未提交费用统计:', {
+      应收未提交: recFees.length,
+      应付未提交: payFees.length,
+      合计: recFees.length + payFees.length,
+    });
+
+    if (recFees.length === 0 && payFees.length === 0) {
+      message.warning('没有未提交的费用（录入状态或驳回状态）');
+      return;
+    }
+
+    // 提示用户将提交哪些费用
+    const totalUnsubmitted = recFees.length + payFees.length;
+    Modal.confirm({
+      title: '整票提交确认',
+      content: `即将提交 ${totalUnsubmitted} 条未提交的费用（应收${recFees.length}条，应付${payFees.length}条），是否继续？`,
+      okText: '确认提交',
+      cancelText: '取消',
+      onOk: async () => {
+        await submitFees(recFees, payFees);
+      },
+    });
+  } else {
+    // 如果勾选了费用，则只提交勾选的费用
+    console.log('✅ [整票提交] 提交勾选的费用，数量:', selectedFeeIds.length);
+
+    recFees = recOrderFeeTableRef.value?.getSelectedFees() || [];
+    payFees = payOrderFeeTableRef.value?.getSelectedFees() || [];
+
+    if (recFees.length === 0 && payFees.length === 0) {
+      message.warning('没有可提交的费用');
+      return;
+    }
+
+    await submitFees(recFees, payFees);
   }
 };
 
@@ -958,11 +1009,7 @@ onMounted(async () => {
               </span>
 
               <!-- 更多操作下拉菜单 -->
-              <DropdownButton
-                type="primary"
-                :disabled="selectedFeeIds.length === 0"
-                @click="handleSubmitAllFees"
-              >
+              <DropdownButton type="primary" @click="handleSubmitAllFees">
                 整票提交
                 <template #overlay>
                   <Menu @click="handleMenuClick">
