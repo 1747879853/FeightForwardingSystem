@@ -822,22 +822,28 @@ function settlementSelectedItems(row: PreOrderFeeRow) {
 
 function feeCodeSelectedItems(row: PreOrderFeeRow) {
   if (!row.feeCodeId || !row.feeCode) return [];
+  // 详情 feeCode 回 cnName/enName，无 name；FeeCodeSelect 用 cnName 作 rowLabel
+  const cnName =
+    row.feeCode.cnName || row.feeCode.name || row.feeCode.enName || '';
   return [
     {
       id: row.feeCodeId,
-      cnName: row.feeCode.name,
+      cnName,
       code: row.feeCode.code,
+      enName: row.feeCode.enName,
     },
   ];
 }
 
 function currencySelectedItems(row: PreOrderFeeRow) {
   if (!row.currencyId || !row.currency) return [];
+  const cnName =
+    row.currency.cnName || row.currency.name || row.currency.enName || '';
   return [
     {
       id: row.currencyId,
-      code: row.currency.code || row.currency.name,
-      cnName: row.currency.name,
+      code: row.currency.code || cnName,
+      cnName,
     },
   ];
 }

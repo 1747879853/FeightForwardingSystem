@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-09 业务联系单费用代码回显优先用 cnName](./changelogs/change-log-2026-08-09-pre-order-fee-code-selected-items-cnname.md)
 - [2026-08-09 添加费用抽屉按币别已选合计并修复跨页确认](./changelogs/change-log-2026-08-09-payment-add-fee-selected-currency-total.md)
 - [2026-08-09 付费申请表单页增加底部间距](./changelogs/change-log-2026-08-09-payment-application-form-bottom-padding.md)
 - [2026-08-09 付费申请金额文案统一为申请/核销口径](./changelogs/change-log-2026-08-09-payment-application-amount-labels.md)

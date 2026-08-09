@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-02
+last_updated: 2026-08-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -109,6 +109,7 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 费用代码/币别保存后回显正确名称，不再露出数字 id | `feeCodeSelectedItems` / `currencySelectedItems` 优先读详情 `cnName`（接口无平铺 `name`）；`FeeCodeSelect` 用 `cnName` 作 `rowLabel`，空则露 value。详见 `changelogs/change-log-2026-08-09-pre-order-fee-code-selected-items-cnname.md` |
 | 2026-08-02 | `Feature` | 「货物与箱型」新增「生成海运费」按钮：按箱型铺应收海运费（单位=箱型、数量=箱量、单价=卖价），重复点击按同箱型覆盖；费用单位放宽为「四项 + 本单箱型名」 | 推翻 2026-07-25「不下发箱型名」的结论——箱型与费用同属一份详情 DTO，`unitOptions` 由 `props.ctns` 派生即可稳定回显；`coercePreOrderFeeUnit` / `checkPreOrderFees` 增加箱型白名单入参，回显与提交 payload 均需带上；海运费费用代码走 `getFeeCodeListAsync({isSea:true})` 三级兜底匹配并进程内缓存。详见 `changelogs/change-log-2026-08-02-pre-order-generate-ocean-freight-fee.md` |
 | 2026-08-02 | `Feature` | 收发通支持点击标题栏展开/折叠，默认折叠 | `partyExpanded` 默认 `false`；`v-show` 保留表单态；去掉与基础信息的 flush 贴合 |
 | 2026-08-02 | `Style` | 基础信息「备注」改为默认 1 行、占两列，并去掉字数统计 | `remark`：`rows: 1`、`col-span-2`、去掉 `showCount` |
