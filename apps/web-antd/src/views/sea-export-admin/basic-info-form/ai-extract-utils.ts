@@ -148,9 +148,18 @@ export function buildAiExtractFormPayload(
   assignScalar(formValues, 'shipAgentId', seaExport.shipAgentId);
   assignScalar(formValues, 'signingTime', seaExport.signingTime);
   assignScalar(formValues, 'signingPortId', seaExport.signingPortId);
+  assignScalar(formValues, 'receivePortId', seaExport.receivePortId);
+  assignScalar(formValues, 'receivePortRemark', seaExport.receivePortRemark);
   assignScalar(formValues, 'polId', seaExport.polId);
+  assignScalar(formValues, 'polRemark', seaExport.polRemark);
+  assignScalar(formValues, 'poT1Id', seaExport.poT1Id);
+  assignScalar(formValues, 'poT1Remark', seaExport.poT1Remark);
+  assignScalar(formValues, 'poT2Id', seaExport.poT2Id);
+  assignScalar(formValues, 'poT2Remark', seaExport.poT2Remark);
   assignScalar(formValues, 'podId', seaExport.podId);
+  assignScalar(formValues, 'podRemark', seaExport.podRemark);
   assignScalar(formValues, 'deliverPortId', seaExport.deliverPortId);
+  assignScalar(formValues, 'deliverPortRemark', seaExport.deliverPortRemark);
 
   assignScalar(formValues, 'mblNum', transportOrder.mblNum);
   assignScalar(formValues, 'bookingNum', transportOrder.bookingNum);
