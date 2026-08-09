@@ -1,6 +1,6 @@
-import type { ComputedRef, Ref } from 'vue';
+import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue';
 
-import { computed, onBeforeUnmount, watch } from 'vue';
+import { computed, onBeforeUnmount, toValue, watch } from 'vue';
 
 import { useTabs } from '@vben/hooks';
 
@@ -29,8 +29,17 @@ export function useSeaExportTabTitle(
   mblNum: ComputedRef<string | undefined> | Ref<string | undefined>,
   commissionNum: ComputedRef<string | undefined> | Ref<string | undefined>,
   isSaved: ComputedRef<boolean> | Ref<boolean>,
+  options?: {
+    /** false 时不改写/复位页签标题（业务联系单内嵌海出等场景） */
+    enabled?: MaybeRefOrGetter<boolean>;
+  },
 ) {
   const { resetTabTitle, setTabTitle } = useTabs();
+
+  const enabled = computed(() => {
+    if (options?.enabled === undefined) return true;
+    return toValue(options.enabled);
+  });
 
   const tabTitle = computed(() =>
     resolveSeaExportTabTitle({
@@ -41,14 +50,16 @@ export function useSeaExportTabTitle(
   );
 
   watch(
-    tabTitle,
-    (title) => {
+    [tabTitle, enabled],
+    ([title, isEnabled]) => {
+      if (!isEnabled) return;
       void setTabTitle(title);
     },
     { immediate: true },
   );
 
   onBeforeUnmount(() => {
+    if (!enabled.value) return;
     void resetTabTitle();
   });
 }

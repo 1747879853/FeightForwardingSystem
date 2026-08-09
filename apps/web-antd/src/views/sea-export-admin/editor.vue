@@ -76,6 +76,16 @@ function writeStoredTab(id: string | undefined, tab: TabKey) {
 const formRef = ref<FormExpose | null>(null);
 const route = useRoute();
 
+const props = withDefaults(
+  defineProps<{
+    /** 业务联系单等宿主内嵌时禁用海出页签标题改写 */
+    disableTabTitle?: boolean;
+  }>(),
+  {
+    disableTabTitle: false,
+  },
+);
+
 /** 编辑页对外暴露：基础信息保存成功后携带最新详情 DTO */
 const emit = defineEmits<{
   saved: [detail: SeaExportAdminApi.SeaExportDto];
@@ -258,8 +268,10 @@ const getContentTabStyle = (isActive: boolean) =>
           <KeepAlive include="SeaExportAdminForm">
             <Form
               v-if="activeTab === 'basic'"
+              :key="props.disableTabTitle ? 'embed-no-tab-title' : 'tab-title'"
               ref="formRef"
               embedded
+              :disable-tab-title="props.disableTabTitle"
               @saved="onFormSaved"
             />
           </KeepAlive>

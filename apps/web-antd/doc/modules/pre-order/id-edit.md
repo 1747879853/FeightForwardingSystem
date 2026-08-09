@@ -15,7 +15,7 @@ last_updated: 2026-08-09
 
 - **Tab 结构：** 编辑态顶部 Tab 样式与海运出口编辑器一致；新建态尚无关联海运出口，隐藏顶部仅有的「业务联系单」Tab。
   - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主栏分区（单据字段 + **收发通**（发货人/收货人/通知人各一组 id + Content，布局对齐海出 party-flow；**可点击标题栏展开/折叠，默认折叠**）+ 港口信息，港口区为海出同款 5 列流转卡片：收货地 → 起运港 → 中转港（Tab 切 1/2） → 目的港 → 交货地，每个节点下方带备注）+ 下方「货物与箱型」（标题栏内联货物类型/品名；卡片内左右分栏：左箱型箱量表 + 右竖排件数/包装/毛重/尺码）、费用卡片、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像。
-  - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现，内嵌完整可编辑的海运出口编辑器。
+  - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现；**切到该 Tab 才挂载**内嵌海出编辑器（避免列表进已通过单预挂载改页签）；内嵌传 `disable-tab-title`，不把浏览器多页签改成「海运出口-xxx」。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`（含 `attachmentGroup` 全量覆盖）。新增成功后 `replace` 到编辑路由并重新拉详情。
 - **附件：** 费用区下方「附件」卡片；先 `Upload/UploadFile` 拿 `attachmentId`，本地写入分组；保存时随 Add/Edit 提交。附件类型按 `ModuleTypeId=160050` 调 `AttachmentDtlType/GetListByModuleTypesAsync`。录入/驳回可增删；待审核/通过只读展示。
 - **提交审核：** 二次确认后调用 `SubmitAsync`，进入「待审核」后隐藏保存/提交按钮。
@@ -109,6 +109,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 审核通过/列表进已通过单，页签不再被改成「海运出口-xxx」。 | 懒挂载 + `disableTabTitle`；进页/`onActivated` 主动 `setTabTitle('业务联系单')` 覆盖 tabbar 保留的脏 `newTabTitle`。详见 `changelogs/change-log-2026-08-09-pre-order-embed-disable-sea-export-tab-title.md`。 |
 | 2026-08-09 | `Fix` | 费用代码/币别保存后回显正确名称，不再露出数字 id | `feeCodeSelectedItems` / `currencySelectedItems` 优先读详情 `cnName`（接口无平铺 `name`）；`FeeCodeSelect` 用 `cnName` 作 `rowLabel`，空则露 value。详见 `changelogs/change-log-2026-08-09-pre-order-fee-code-selected-items-cnname.md` |
 | 2026-08-02 | `Feature` | 「货物与箱型」新增「生成海运费」按钮：按箱型铺应收海运费（单位=箱型、数量=箱量、单价=卖价），重复点击按同箱型覆盖；费用单位放宽为「四项 + 本单箱型名」 | 推翻 2026-07-25「不下发箱型名」的结论——箱型与费用同属一份详情 DTO，`unitOptions` 由 `props.ctns` 派生即可稳定回显；`coercePreOrderFeeUnit` / `checkPreOrderFees` 增加箱型白名单入参，回显与提交 payload 均需带上；海运费费用代码走 `getFeeCodeListAsync({isSea:true})` 三级兜底匹配并进程内缓存。详见 `changelogs/change-log-2026-08-02-pre-order-generate-ocean-freight-fee.md` |
 | 2026-08-02 | `Feature` | 收发通支持点击标题栏展开/折叠，默认折叠 | `partyExpanded` 默认 `false`；`v-show` 保留表单态；去掉与基础信息的 flush 贴合 |

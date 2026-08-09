@@ -156,9 +156,12 @@ const userStore = useUserStore();
 const props = withDefaults(
   defineProps<{
     embedded?: boolean;
+    /** 为 true 时不改写浏览器多页签标题（如业务联系单内嵌海出） */
+    disableTabTitle?: boolean;
   }>(),
   {
     embedded: false,
+    disableTabTitle: false,
   },
 );
 
@@ -1561,7 +1564,10 @@ const tabCommissionNum = computed(
 );
 const isOrderSaved = computed(() => isEdit.value);
 
-useSeaExportTabTitle(tabMblNum, tabCommissionNum, isOrderSaved);
+const tabTitleEnabled = computed(() => !props.disableTabTitle);
+useSeaExportTabTitle(tabMblNum, tabCommissionNum, isOrderSaved, {
+  enabled: tabTitleEnabled,
+});
 
 const syncTabTitleFromValues = (values: Record<string, any>) => {
   tabMblNum.value = String(values.mblNum ?? '').trim();

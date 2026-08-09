@@ -7,11 +7,12 @@ import type { PreOrderFeeRow } from './modules/fee-table.vue';
 import type { PreOrderServiceRow } from './modules/service-panel.vue';
 import type { PreOrderUserRow } from './modules/user-defaults';
 
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onActivated, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useAccess } from '@vben/access';
 import { Page } from '@vben/common-ui';
+import { useTabs } from '@vben/hooks';
 import { FileText, IconifyIcon, MapPin, Package } from '@vben/icons';
 import { useUserStore } from '@vben/stores';
 
@@ -92,6 +93,13 @@ const userStore = useUserStore();
 const { hasAccessByCodes } = useAccess();
 const canAudit = computed(() => hasAccessByCodes([auditCode]));
 const { open: openWorkflowTimeline } = useWorkflowTimeline();
+const { setTabTitle } = useTabs();
+
+/** 页签标题由本页托管：tabbar 会保留历史 newTabTitle，需进页时主动写回 */
+const PRE_ORDER_TAB_TITLE = '业务联系单';
+function syncPreOrderTabTitle() {
+  void setTabTitle(PRE_ORDER_TAB_TITLE);
+}
 
 const preOrderId = ref<string>(route.params.id ? String(route.params.id) : '');
 const isEdit = computed(() => !!preOrderId.value);
@@ -800,6 +808,7 @@ watch(
 );
 
 onMounted(async () => {
+  syncPreOrderTabTitle();
   applyTransitPortTabSchema();
   bindClientUserLinkage();
   bindPartySettlementLinkage();
@@ -807,6 +816,7 @@ onMounted(async () => {
   const copyFrom = route.query.copyFrom ? String(route.query.copyFrom) : '';
   if (preOrderId.value) {
     await loadDetail();
+    syncPreOrderTabTitle();
     return;
   }
   if (copyFrom) {
@@ -819,6 +829,16 @@ onMounted(async () => {
     }
   }
   await syncFormSnapshot();
+  syncPreOrderTabTitle();
+});
+
+/** 多页签切回本页时，清掉历史被海出 Form 写脏的 newTabTitle */
+onActivated(() => {
+  syncPreOrderTabTitle();
+});
+
+watch(activeTab, (tab) => {
+  if (tab === 'basic') syncPreOrderTabTitle();
 });
 
 async function buildSubmitPayload() {
@@ -1444,8 +1464,12 @@ const getContentTabStyle = (isActive: boolean) =>
           </div>
         </div>
 
-        <div v-if="hasSeaExport" v-show="activeTab === 'seaExport'">
-          <SeaExportEditor :key="detail?.transportOrderId ?? ''" />
+        <!-- 仅切换到「关联海运出口」再挂载，避免一进已通过单据就跑海出 Form 改页签 -->
+        <div v-if="hasSeaExport && activeTab === 'seaExport'">
+          <SeaExportEditor
+            :key="detail?.transportOrderId ?? ''"
+            :disable-tab-title="true"
+          />
         </div>
       </Spin>
     </div>
