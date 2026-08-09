@@ -301,15 +301,17 @@ export function useOrderFeeActions(
   };
 
   /**
-   * 打开修改模态框
+   * 显示修改确认框（带备注）
    */
-  const openModifyModal = (modifyModalRef: any, orderBaseData: any) => {
+  const showModifyWithRemark = () => {
     if (!dataContext.selectedRowKeys.value.length) return;
+
     const keysSet = new Set(dataContext.selectedRowKeys.value);
     const list = (dataContext.dataSource.value ?? []).filter((row) =>
       keysSet.has((row as any)._rowKey),
     );
 
+    // 验证：只有费用状态是审核通过，并且已开票金额、发票申请金额、已结算金额、申请付款金额全是0，才可以申请修改
     const invalidRows = list.filter((row) => {
       const isApproved =
         row.combinedFeeStatus === feeConstants.getFeeStatusValue.Approved;
@@ -343,10 +345,52 @@ export function useOrderFeeActions(
       return;
     }
 
+    let modalRemark = '';
+    const modal = Modal.confirm({
+      title: $t('auditApproval.task.okModify'),
+      content: () =>
+        h('div', {}, [
+          h(Textarea, {
+            modelValue: modalRemark,
+            'onUpdate:modelValue': (val: string) => {
+              modalRemark = val;
+            },
+            rows: 3,
+            placeholder: $t('auditApproval.task.remarkModifyPlaceholder'),
+            maxlength: 100,
+            style: 'margin-top: 8px;',
+          }),
+        ]),
+      icon: null,
+      width: 520,
+      centered: true,
+      okText: $t('common.confirm'),
+      cancelText: $t('common.cancel'),
+      async onOk() {
+        await nextTick();
+        openModifyModal(modalRemark);
+      },
+      onCancel() {
+        modalRemark = '';
+      },
+    });
+  };
+
+  /**
+   * 打开修改模态框
+   */
+  const openModifyModal = (remark?: string) => {
+    if (!dataContext.selectedRowKeys.value.length) return;
+    const keysSet = new Set(dataContext.selectedRowKeys.value);
+    const list = (dataContext.dataSource.value ?? []).filter((row) =>
+      keysSet.has((row as any)._rowKey),
+    );
+
     const selectedFee = list[0];
     modifyModalRef.value?.modalApi.setData({
       feeData: selectedFee,
       orderBaseData: orderBaseData.value,
+      remark: remark,
     });
 
     modifyModalRef.value?.modalApi.open();
@@ -358,10 +402,11 @@ export function useOrderFeeActions(
   const handleModalConfirm = (data: {
     originalData: OrderFeeAdminApi.OrderFeeDto | null;
     updatedData: OrderFeeAdminApi.OrderFeeDto | null;
+    remark?: string;
   }) => {
     let list = [data.updatedData];
     let ModifyOrderFeeDto = {
-      remark: data.updatedData?.remark || '',
+      remark: data.remark || data.updatedData?.modifyRemark || '',
       TransportOrderId: dataContext.editId.value,
       orderFees: dataContext.sanitizeOrderFee([...(list ?? [])]),
     };
@@ -504,6 +549,7 @@ export function useOrderFeeActions(
     getSelectedRows,
     isSavedOrderFee,
     showDeleteWithRemark,
+    showModifyWithRemark,
     generateOppositeFees,
     Submitted,
     openModifyModal,

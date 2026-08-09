@@ -115,6 +115,21 @@ const linkage = useOrderFeeLinkage(
   }),
 );
 
+// ✅ 新增：watch 监听 orderDetail 的变化，一旦变化，重新更新 orderDetailCache 的缓存
+watch(
+  () => props.orderDetail,
+  (newDetail) => {
+    if (newDetail && newDetail.id) {
+      console.log(
+        '🔄 [OrderFeeTable] 检测到 orderDetail 变化，更新缓存:',
+        newDetail.id,
+      );
+      linkage.updateOrderDetailCache(newDetail.id, newDetail);
+    }
+  },
+  { immediate: true, deep: true },
+);
+
 // 操作逻辑
 const actions = useOrderFeeActions(
   props,
@@ -214,6 +229,7 @@ const {
   auditHistoryModalRef,
   batchImportModalRef,
   openAuditHistoryModal,
+  openModifyModal,
   handleModalConfirm,
 } = useModals();
 
@@ -300,7 +316,7 @@ const ImportOther = async (e: any) => {
 const SubmittedOther = async (e: any) => {
   switch (e.key) {
     case 'modify':
-      actions.openModifyModal(modifyModalRef, orderBaseData);
+      actions.showModifyWithRemark();
       break;
     case 'delete':
       actions.showDeleteWithRemark();
@@ -700,6 +716,7 @@ defineExpose({
   getTableDate,
   getSelectedFeeIds,
   getSelectedFees,
+  openModifyModal,
 });
 </script>
 

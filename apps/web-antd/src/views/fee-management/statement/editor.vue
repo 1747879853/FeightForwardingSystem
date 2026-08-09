@@ -777,28 +777,6 @@ const totalAmount = computed(() => {
       value: transCurrencySymbol(item.currencyId) + unPayAmount,
     });
     //totalPay += payAmount * item.exchangeRate;
-
-    let profitName = `${item.currencyName}利润:`;
-    let profitColor = 'blue';
-    let profitAmount =
-      transCurrencySymbol(item.currencyId) + (recAmount - payAmount).toFixed(2);
-    list.push({
-      name: profitName,
-      color: profitColor,
-      value: profitAmount,
-    });
-  });
-  list.push({
-    name: '合计利润:',
-    color: 'blue',
-    value: transCurrencySymbol(1) + (totalRec - totalPay).toFixed(2),
-  });
-  list.push({
-    name: '利润率:',
-    color: 'blue',
-    value: totalRec
-      ? (((totalRec - totalPay) / totalRec) * 100).toFixed(1) + '%'
-      : '--',
   });
   console.log(list);
   return list;

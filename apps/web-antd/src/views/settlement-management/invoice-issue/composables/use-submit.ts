@@ -126,26 +126,40 @@ export function useSubmit(
       };
 
       if (isEdit.value) {
-        // ✅ 编辑模式：调用 AddApplicationsAsync 加挂申请
-        const result = await addApplicationsToInvoiceIssue({
+        // ✅ 编辑模式：调用 editInvoiceIssue 方法进行数据的编辑保存
+        const editData: InvoiceIssueApi.InvoiceIssueEditDto = {
           id: editId.value!,
-          invoiceIssueItems: submitData.invoiceIssueItems,
-          invoiceIssueGoodsDtls: submitData.invoiceIssueGoodsDtls,
-        } as InvoiceIssueApi.InvoiceIssueAddApplicationsDto);
+          orgId: formData.value.orgId,
+          invoiceIssueType: formData.value.invoiceIssueType,
+          invoiceNo: formData.value.invoiceNo,
+          invoiceIssueTime: invoiceIssueTime.value,
+          invoiceExchangeRate: invoiceExchangeRate.value,
+          require: formData.value.require,
+          remark: formData.value.remark,
+          invoiceIssueItems: formData.value.invoiceIssueItems || [],
+          invoiceIssueGoodsDtls: goodsDetails.value.map((item: any) => ({
+            codeInvoiceId: item.codeInvoiceId,
+            specification: item.specification,
+            unit: item.unit,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            amount: item.amount,
+            noTaxAmount: item.noTaxAmount,
+            taxRate: item.taxRate,
+            taxAmount: item.taxAmount,
+            remark: item.remark,
+          })),
+        };
 
-        // ✅ 处理汇率校验结果
-        const shouldContinue = await handleExchangeRateCheck(result, false);
-
-        if (shouldContinue && result.code === 0) {
-          message.success('加挂申请成功');
-          console.log('✅ 加挂成功，保持在当前页面');
-        }
+        await editInvoiceIssue(editData);
+        message.success('保存成功');
+        router.back();
       } else {
         // ✅ 新增模式：调用 AddAsync
         const result = await addInvoiceIssue(submitData);
         console.log('✅ 创建成功，ID:', result);
         // ✅ 处理汇率校验结果
-       // const shouldContinue = await handleExchangeRateCheck(result, true);
+        // const shouldContinue = await handleExchangeRateCheck(result, true);
 
         if (result.code === 0) {
           message.success('创建成功');

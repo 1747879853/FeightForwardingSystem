@@ -87,6 +87,21 @@ export function useOrderFeeLinkage(
   }
 
   /**
+   * 更新订单详情缓存（用于 watch 监听外部传入的 orderDetail 变化）
+   */
+  function updateOrderDetailCache(transportOrderId: string, detail: any) {
+    if (transportOrderId && detail) {
+      orderDetailCache.set(transportOrderId, detail);
+      // 清除可能存在的加载状态
+      orderDetailLoading.delete(transportOrderId);
+      console.log(
+        '✅ [updateOrderDetailCache] 更新订单详情缓存:',
+        transportOrderId,
+      );
+    }
+  }
+
+  /**
    * 加载集装箱详情（带缓存）
    */
   async function loadCtnCodeCached(ctnCodeId: number) {
@@ -1275,5 +1290,7 @@ export function useOrderFeeLinkage(
     // ✅ 新增：导出汇率缓存获取方法
     getExchangeRateFromFeeCodeCache,
     getExchangeRateFromCache,
+    // ✅ 新增：导出更新订单详情缓存的方法
+    updateOrderDetailCache,
   };
 }

@@ -665,7 +665,7 @@ const SubmittedOther = async (e: any) => {
   //console.log('SubmittedOther', e);
   switch (e.key) {
     case 'modify': {
-      openModifyModal();
+      showModifyWithRemark();
       break;
     }
     case 'delete': {

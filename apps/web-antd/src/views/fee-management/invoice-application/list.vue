@@ -48,8 +48,8 @@ function handleEdit(row: InvoiceApplicationApi.InvoiceApplicationListDto) {
   }
   // 设置当前行为选中状态，显示选中色
   const grid = gridApi.grid as any;
-  if (grid && grid.setRadioRow) {
-    grid.setRadioRow(row);
+  if (grid && grid.setCheckboxRow) {
+    grid.setCheckboxRow(row, true);
   }
   router.push(`/fee-management/invoice-application/${row.id}/edit`);
 }
@@ -225,11 +225,15 @@ const [Grid, gridApi] =
       columns: useColumns(),
       height: 'auto',
       keepSource: true,
+      // 使用 checkboxConfig（多选），支持点击行选中
       checkboxConfig: {
         highlight: true,
+        trigger: 'row', // 点击行即可选中/取消选中复选框
+        reserve: true, // 跨页保留选中状态
       },
       rowConfig: {
         keyField: 'id',
+        isHover: true,
       },
       pagerConfig: {
         enabled: true,
@@ -263,7 +267,11 @@ useRefreshListOnFormReturn(
 
 /** 获取选中的行 */
 function getSelectedRows(): InvoiceApplicationApi.InvoiceApplicationListDto[] {
-  return (gridApi.grid?.getCheckboxRecords?.() ??
+  const grid = gridApi.grid as any;
+  if (!grid) return [];
+
+  // 使用复选框的获取方法，支持多选
+  return (grid.getCheckboxRecords?.() ??
     []) as InvoiceApplicationApi.InvoiceApplicationListDto[];
 }
 
@@ -293,7 +301,7 @@ function handleBatchDelete() {
       actionLoading.value = true;
       try {
         // 使用批量删除接口
-        await deleteInvoiceApplication({ ids: rows.map(row => row.id) });
+        await deleteInvoiceApplication({ ids: rows.map((row) => row.id) });
         message.success('删除成功');
         handleRefresh();
       } catch (error) {

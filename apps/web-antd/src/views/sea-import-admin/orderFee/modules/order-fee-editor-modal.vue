@@ -127,15 +127,21 @@ const [Modal, modalApi] = useVbenModal({
     const formValues = await orderFeeFormApi.getValues();
     console.log('表单提交数据:', formValues);
 
+    // 获取修改理由（从modal data中）
+    const data = modalApi.getData<any>();
+    const remark = data?.remark || '';
+
     // 计算更改后的金额
     const updatedFeeData = {
       ...currentFeeData.value,
       ...formValues,
+      modifyRemark: remark, // 添加修改理由字段
     };
 
     emit('confirm', {
       originalData: originalFeeData.value,
       updatedData: updatedFeeData,
+      remark: remark, // 同时单独传递remark
     });
 
     modalApi.close();

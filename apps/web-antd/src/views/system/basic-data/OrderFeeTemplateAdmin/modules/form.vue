@@ -545,6 +545,52 @@ async function handleSubmit() {
       return;
     }
 
+    // ✅ 新增：验证费用明细中的必填字段
+    // 服务项(serviceType)、行业类别(industryCategory)、结算对象(settlementId)、备注(remark)可以为空
+    // 其他字段：费用代码(feeCodeId)、币别(currencyId)、含税单价(unitPrice)、单位(unit)、税率(taxRate)为必填
+    for (let i = 0; i < feeItems.value.length; i++) {
+      const item = feeItems.value[i];
+      if (!item) continue; // 跳过未定义的行
+
+      const rowNum = i + 1;
+      const errors: string[] = [];
+
+      // 费用代码 - 必填
+      if (!item.feeCodeId) {
+        errors.push(`第${rowNum}行：费用代码不能为空`);
+      }
+
+      // 币别 - 必填
+      if (!item.currencyId) {
+        errors.push(`第${rowNum}行：币别不能为空`);
+      }
+
+      // 含税单价 - 必填
+      if (
+        item.unitPrice === null ||
+        item.unitPrice === undefined ||
+        item.unitPrice <= 0
+      ) {
+        errors.push(`第${rowNum}行：含税单价不能为空且必须大于0`);
+      }
+
+      // 单位 - 必填
+      if (!item.unit) {
+        errors.push(`第${rowNum}行：单位不能为空`);
+      }
+
+      // 税率 - 必填（可以为0，但不能为空）
+      if (item.taxRate === null || item.taxRate === undefined) {
+        errors.push(`第${rowNum}行：税率不能为空`);
+      }
+
+      // 如果有错误，显示第一个错误并返回
+      if (errors.length > 0) {
+        message.error(errors[0]);
+        return;
+      }
+    }
+
     // 获取表单值
     const formValues = await formApi.getValues();
 

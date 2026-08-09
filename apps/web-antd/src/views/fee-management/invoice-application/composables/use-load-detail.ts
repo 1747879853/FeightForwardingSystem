@@ -85,7 +85,9 @@ export function useLoadDetail(
 
       if (!defaultCodeInvoice) {
         console.warn(`未找到币别 ${currencyCode} 对应的默认商品编码`);
-        message.warning(`未找到币别 ${currencyCode} 对应的默认商品编码，请手动添加`);
+        message.warning(
+          `未找到币别 ${currencyCode} 对应的默认商品编码，请手动添加`,
+        );
         return;
       }
 
@@ -96,10 +98,10 @@ export function useLoadDetail(
 
       invoiceApplicationItems.forEach((item: any) => {
         const appliedAmount = item.appliedAmount || 0;
-        
+
         // 从 feeGroupsData 中找到对应的费用，获取其币别ID
         let feeCurrencyId = currencyId; // 默认使用发票币别
-        
+
         // 尝试从 feeGroupsData 中查找该费用的原始币别
         for (const group of feeGroupsData.value) {
           if (group.feeDetails) {
@@ -115,7 +117,8 @@ export function useLoadDetail(
 
         // 如果费用币别与人民币不同，需要进行汇率转换
         if (feeCurrencyId !== 1) {
-          const convertedAmount = appliedAmount * (invoiceExchangeRate.value || 1);
+          const convertedAmount =
+            appliedAmount * (invoiceExchangeRate.value || 1);
           totalRmbAmount += convertedAmount;
           console.log(
             `💰 外币转换: ${appliedAmount.toFixed(2)} × ${invoiceExchangeRate.value} = ${convertedAmount.toFixed(2)} RMB`,
@@ -175,10 +178,11 @@ export function useLoadDetail(
     try {
       const detail = await detailAsync(editId.value);
 
-      // ✅ 修改：先设置基本信息，包括currencyId，然后再加载客户开票信息
+      // ✅ 修改：先设置基本信息，包括currencyId和status，然后再加载客户开票信息
       formData.value = {
         id: detail.id,
         applicationNo: detail.applicationNo, // ✅ 新增：申请单号
+        status: detail.status, // ✅ 新增：状态
         settlementId: detail.settlementId,
         orgId: detail.orgId,
         currencyId: detail.currencyId || 1,
@@ -214,7 +218,10 @@ export function useLoadDetail(
       }
 
       // ✅ 修改：在设置currencyId之后，再加载客户开票信息
-      console.log('🔄 开始加载客户开票信息，此时currencyId已设置为:', formData.value.currencyId);
+      console.log(
+        '🔄 开始加载客户开票信息，此时currencyId已设置为:',
+        formData.value.currencyId,
+      );
       await loadClientInvoiceInfo(detail.settlementId);
 
       // 检查状态，只有录入或驳回状态可以编辑（只读模式除外）
@@ -231,7 +238,10 @@ export function useLoadDetail(
       }
 
       // ✅ 修改：只有在没有自动选中开票信息时，才使用后端返回的clientInvoiceInfo
-      if (!selectedClientInvoiceInfo.value || !selectedClientInvoiceInfo.value.id) {
+      if (
+        !selectedClientInvoiceInfo.value ||
+        !selectedClientInvoiceInfo.value.id
+      ) {
         selectedClientInvoiceInfo.value = detail.clientInvoiceInfo;
         console.log('📋 使用后端返回的客户开票信息:', {
           id: selectedClientInvoiceInfo.value?.id,
