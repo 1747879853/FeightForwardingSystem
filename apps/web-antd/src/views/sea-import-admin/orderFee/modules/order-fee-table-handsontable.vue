@@ -1,6 +1,14 @@
 <script lang="ts" setup>
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
-import { computed, nextTick, onMounted, ref, watch, shallowRef } from 'vue';
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+  shallowRef,
+} from 'vue';
 import {
   Button,
   Space,
@@ -549,6 +557,27 @@ const extendedActions = {
 
 // ==================== 生命周期 ====================
 
+/**
+ * 处理键盘快捷键 Ctrl+S 保存
+ */
+const handleKeyDown = (event: KeyboardEvent) => {
+  // 检查是否按下了 Ctrl+S (或 Cmd+S on Mac)
+  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+    event.preventDefault(); // 阻止浏览器默认的保存行为
+    actions.saveRow();
+    // 只有在有选中行且不是只读模式时才执行保存
+    // const isReadonly = props.mode === 'changeOrder' && props.parentChangeOrderId;
+    // if (!isReadonly && selectedRowKeys.value.length > 0) {
+    //   console.log('⌨️ [键盘快捷键] 检测到 Ctrl+S，执行保存操作');
+    //   actions.saveRow();
+    // } else if (isReadonly) {
+    //   message.warning('当前为只读模式，无法保存');
+    // } else {
+    //   message.warning('请先选择要保存的费用行');
+    // }
+  }
+};
+
 onMounted(async () => {
   initOrderFeeEnumCache();
   await initDropdownSources();
@@ -564,15 +593,35 @@ onMounted(async () => {
   } else {
     console.log('✅ [OrderFeeTable] 使用父组件传入的客户缓存，跳过加载');
   }
+  // ✅ 关键修复：初始化时也调用 updateUnitList，确保 unit 下拉框有数据
+  console.log('🚀 [onMounted] 开始初始化单位列表...');
+  console.log('📦 [onMounted] 当前 orderCtnList.value:', orderCtnList.value);
+  updateUnitList();
+  console.log(
+    `✅ [onMounted] 单位列表初始化完成，共 ${dropdownSources.value.unitList.length} 个选项`,
+  );
 
   getTableDate();
   loadFinishStatus();
+
+  // 添加键盘事件监听器
+  document.addEventListener('keydown', handleKeyDown);
+  console.log('✅ [键盘快捷键] 已注册 Ctrl+S 保存快捷键');
+});
+
+onUnmounted(() => {
+  // 移除键盘事件监听器，防止内存泄漏
+  document.removeEventListener('keydown', handleKeyDown);
+  console.log('✅ [键盘快捷键] 已移除 Ctrl+S 保存快捷键');
 });
 
 // 监听器
 watch(
   () => orderCtnList.value,
-  () => updateUnitList(),
+  (newVal) => {
+    console.log('👀 [watch orderCtnList] 检测到箱型列表变化:', newVal);
+    updateUnitList();
+  },
   { deep: true },
 );
 
