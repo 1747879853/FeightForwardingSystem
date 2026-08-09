@@ -152,6 +152,16 @@
   "export": {
     "accountDate": "Account Date",
     "addCtn": "Add Container",
+    "batchAddCtn": "Batch Add",
+    "batchAddCtnConfirm": "Confirm",
+    "batchAddCtnSelected": "Selected:{0}",
+    "batchAddCtnEmpty": "Enter quantity for at least one container type",
+    "batchAddCtnNoTypes": "No container types available",
+    "batchAddCtnNoMatch": "No matching container types",
+    "batchAddCtnSearchPlaceholder": "Search container type",
+    "batchAddCtnLoadFailed": "Failed to load container types",
+    "batchAddCtnMaxTotal": "You can add at most {0} containers at a time",
+    "batchAddCtnSuccess": "Added {0} containers",
     "addGoods": "Add Goods",
     "addOrderUser": "Add User",
     "attachments": {

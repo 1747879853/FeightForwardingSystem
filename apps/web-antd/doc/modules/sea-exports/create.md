@@ -30,6 +30,7 @@ last_updated: 2026-08-09
 - **船期时间校验：** 截关节点展示为截单 → 截港 → 截关；保存时逐项校验上述日期，任一晚于开船日期或实际开船日期时提示对应字段并阻止保存。
 - **付费地点联动：** 选择到付（中文名含“到付”或 EDI 代码 `CC`）时，付费地点自动带出目的港；选择预付（中文名含“预付”或 EDI 代码 `PP`）时，自动带出起运港，带出后仍可手动修改。
 - **箱包装默认值：** 新增箱型箱量行时，将货物信息中的订单级总包装 ID 与文本复制到箱行包装；箱行包装仍可独立修改。
+- **箱型箱量批量新增：** 标题栏「批量新增」打开 Popover，分页拉取全部启用箱型并可按名称搜索；按箱型填数量后确认，一次生成对应条数「一行一柜」记录（预填箱型，带出总包装默认值）；单条「+」添加仍保留。
 - **创建后跳转：** 新增成功后优先解析接口返回的记录 ID，以 `router.replace` 进入 `/sea-exports/{id}/edit`；若返回值无法解析，则 `replace` 回 `/sea-exports` 列表。跳转后关闭原新建页顶部标签，避免残留空白 Tab。
 - **顶部标签栏标题：** 浏览器标签栏标题随录入状态动态变化：未保存且无主提单号时为「海运出口」；录入主提单号后为「海运出口-{主提单号}」；保存后无主提单号时为「海运出口-{委托编号}」。主提单号优先于委托编号。
 
@@ -80,6 +81,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 共用 `order-ctn-table.vue`；对应 TAPD `#1161580498001000694`。详见 `changelogs/change-log-2026-08-09-sea-export-ctn-batch-add.md`。 |
 | 2026-08-09 | `Fix` | AI 识别回填六段港口备注及收货地/中转港 Id；后端 `seaExport.*Remark` 有值时写入港口表单。 | `buildAiExtractFormPayload` 此前只映射部分港口 Id、未 `assignScalar` 备注；白名单有字段仍会丢。对应 TAPD `#1161580498001000737`（1）。详见 `changelogs/change-log-2026-08-09-sea-export-ai-extract-port-remarks.md`。 |
 | 2026-08-05 | `Style` | 截 VGM→截港日期、截舱单→截关日期；船期时间轴右侧顺序改为截单→截港→截关。 | 与编辑页共用 `data.ts` 与 i18n；API 字段名不变。详见 `changelogs/change-log-2026-08-05-sea-export-cutoff-labels-order.md`。 |
 | 2026-07-30 | `Refactor` | 选择委托单位后改走 `Client/GetDishonestStakeholdersAsync` 带出业务来源与干系人，不再调 `ClientAdmin/DetailAsync`。 | `getClientDishonestStakeholders` 入 `#/api/common/client`；`applyClientCodeSource` 读嵌套 `codeSource`；编辑态仍只更新来源、不重写干系人。详见 `changelogs/change-log-2026-07-30-sea-export-client-dishonest-stakeholders.md`。 |

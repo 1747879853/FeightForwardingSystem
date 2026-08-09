@@ -1,18 +1,42 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import type { CtnCodeAdminApi } from '#/api/system/base-data/ctn-code-admin';
 
 import { computed, ref, watch } from 'vue';
 
-import { Button, Input, InputNumber, Table, Tooltip } from 'ant-design-vue';
+import {
+  Button,
+  Input,
+  InputNumber,
+  Popover,
+  Spin,
+  Table,
+  Tooltip,
+  message,
+} from 'ant-design-vue';
 
 import { IconifyIcon } from '@vben/icons';
 
-import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
+import {
+  getCtnCodeDetail,
+  getCtnCodePagedList,
+} from '#/api/system/base-data/ctn-code-admin';
 import CtnSelect from '#/adapter/component/biz-select/ctn-select.vue';
 import CodeGoodsSelect from '#/adapter/component/biz-select/code-goods-select.vue';
 import CodePackageSelect from '#/adapter/component/biz-select/code-package-select.vue';
 import { $t } from '#/locales';
 import { toEnglishUpperCase } from '#/utils/english-upper-case';
+
+/** 单箱型一次最多添加数量 */
+const BATCH_ADD_MAX_PER_TYPE = 99;
+/** 一次批量确认最多生成行数 */
+const BATCH_ADD_MAX_TOTAL = 200;
+
+type BatchAddItem = {
+  id: number | string;
+  ctnName: string;
+  qty: number;
+};
 
 const props = withDefaults(
   defineProps<{
@@ -229,8 +253,28 @@ const tableColumns = computed(() => [
 ]);
 
 let rowKeyCounter = 0;
-const addRow = async () => {
-  const list = [...(modelValue.value ?? [])];
+
+const batchAddOpen = ref(false);
+const batchAddLoading = ref(false);
+const batchAddKeyword = ref('');
+const batchAddItems = ref<BatchAddItem[]>([]);
+
+const batchAddSelectedSummary = computed(() => {
+  const parts = batchAddItems.value
+    .filter((item) => Number(item.qty) > 0)
+    .map((item) => `${Number(item.qty)}x${item.ctnName}`);
+  return parts.length ? parts.join('，') : '-';
+});
+
+const filteredBatchAddItems = computed(() => {
+  const keyword = batchAddKeyword.value.trim().toLowerCase();
+  if (!keyword) return batchAddItems.value;
+  return batchAddItems.value.filter((item) =>
+    item.ctnName.toLowerCase().includes(keyword),
+  );
+});
+
+const resolveDefaultPackageFields = async () => {
   const defaultPackage = props.getDefaultCodePackage
     ? await props.getDefaultCodePackage()
     : props.defaultCodePackageId != null && props.defaultCodePackageId !== ''
@@ -242,17 +286,130 @@ const addRow = async () => {
     defaultPackageId !== null &&
     defaultPackageId !== '';
   const codePackageName = defaultPackage?.name?.trim() || undefined;
+  if (!hasDefaultPackage) return {};
+  return {
+    codePackageId: defaultPackageId,
+    ...(codePackageName ? { codePackageName } : {}),
+  };
+};
 
-  list.push({
+const createEmptyCtnRow = (
+  defaults: Record<string, unknown> = {},
+  extra: Partial<SeaExportAdminApi.OrderCtnAddDto> & {
+    ctnCodeName?: string;
+  } = {},
+) =>
+  ({
     _rowKey: `ctn_${++rowKeyCounter}_${Date.now()}`,
-    ...(hasDefaultPackage
-      ? {
-          codePackageId: defaultPackageId,
-          ...(codePackageName ? { codePackageName } : {}),
-        }
-      : {}),
-  } as any);
+    ...defaults,
+    ...extra,
+  }) as any;
+
+const addRow = async () => {
+  const list = [...(modelValue.value ?? [])];
+  const defaults = await resolveDefaultPackageFields();
+  list.push(createEmptyCtnRow(defaults));
   modelValue.value = list;
+};
+
+const loadBatchAddCtnTypes = async () => {
+  batchAddLoading.value = true;
+  try {
+    const pageSize = 200;
+    let pageIndex = 1;
+    let totalCount = Number.POSITIVE_INFINITY;
+    const all: CtnCodeAdminApi.CtnCodeDto[] = [];
+
+    while (all.length < totalCount) {
+      const ctnRes = await getCtnCodePagedList({
+        PageIndex: pageIndex,
+        PageSize: pageSize,
+        Sorting: 'OrderNo ASC, Id DESC',
+      });
+      const items = (ctnRes.items || []) as CtnCodeAdminApi.CtnCodeDto[];
+      totalCount = Number(ctnRes.totalCount ?? items.length);
+      all.push(...items);
+      if (!items.length || items.length < pageSize) break;
+      pageIndex += 1;
+      // 防御：异常 total 时避免死循环
+      if (pageIndex > 50) break;
+    }
+
+    // 全量启用箱型，不按 isDefault 裁剪
+    const source = all.filter((item) => item.status === 0);
+    batchAddItems.value = source.map((item) => ({
+      id: item.id,
+      ctnName: item.ctnName || String(item.id),
+      qty: 0,
+    }));
+    if (batchAddItems.value.length) {
+      const nextNames = { ...ctnNameById.value };
+      for (const item of batchAddItems.value) {
+        nextNames[String(item.id)] = item.ctnName;
+      }
+      ctnNameById.value = nextNames;
+    }
+  } catch (error) {
+    console.error('加载批量新增箱型失败:', error);
+    batchAddItems.value = [];
+    message.error($t('seaExport.export.batchAddCtnLoadFailed'));
+  } finally {
+    batchAddLoading.value = false;
+  }
+};
+
+const handleBatchAddOpenChange = async (open: boolean) => {
+  batchAddOpen.value = open;
+  if (!open) {
+    batchAddKeyword.value = '';
+    return;
+  }
+  batchAddKeyword.value = '';
+  await loadBatchAddCtnTypes();
+};
+
+const confirmBatchAdd = async () => {
+  const selected = batchAddItems.value.filter((item) => {
+    const qty = Math.floor(Number(item.qty));
+    return Number.isFinite(qty) && qty > 0;
+  });
+  if (!selected.length) {
+    message.warning($t('seaExport.export.batchAddCtnEmpty'));
+    return;
+  }
+
+  let total = 0;
+  for (const item of selected) {
+    total += Math.min(Math.floor(Number(item.qty)), BATCH_ADD_MAX_PER_TYPE);
+  }
+  if (total > BATCH_ADD_MAX_TOTAL) {
+    message.warning(
+      $t('seaExport.export.batchAddCtnMaxTotal', [BATCH_ADD_MAX_TOTAL]),
+    );
+    return;
+  }
+
+  const defaults = await resolveDefaultPackageFields();
+  const list = [...(modelValue.value ?? [])];
+  const nextNames = { ...ctnNameById.value };
+
+  for (const item of selected) {
+    const qty = Math.min(Math.floor(Number(item.qty)), BATCH_ADD_MAX_PER_TYPE);
+    nextNames[String(item.id)] = item.ctnName;
+    for (let i = 0; i < qty; i++) {
+      list.push(
+        createEmptyCtnRow(defaults, {
+          ctnCodeId: item.id as SeaExportAdminApi.OrderCtnAddDto['ctnCodeId'],
+          ctnCodeName: item.ctnName,
+        }),
+      );
+    }
+  }
+
+  ctnNameById.value = nextNames;
+  modelValue.value = list;
+  batchAddOpen.value = false;
+  message.success($t('seaExport.export.batchAddCtnSuccess', [total]));
 };
 
 const removeSelectedRows = () => {
@@ -363,6 +520,78 @@ watch(
           }}</span>
         </Button>
       </Tooltip>
+      <Popover
+        v-model:open="batchAddOpen"
+        trigger="click"
+        placement="bottomLeft"
+        :overlay-inner-style="{ padding: '12px' }"
+        @open-change="handleBatchAddOpenChange"
+      >
+        <template #content>
+          <div class="order-ctn-batch-add">
+            <Input
+              v-model:value="batchAddKeyword"
+              allow-clear
+              size="small"
+              class="order-ctn-batch-add__search"
+              :placeholder="$t('seaExport.export.batchAddCtnSearchPlaceholder')"
+            />
+            <Spin :spinning="batchAddLoading">
+              <div
+                v-if="!batchAddLoading && !batchAddItems.length"
+                class="order-ctn-batch-add__empty"
+              >
+                {{ $t('seaExport.export.batchAddCtnNoTypes') }}
+              </div>
+              <div
+                v-else-if="!batchAddLoading && !filteredBatchAddItems.length"
+                class="order-ctn-batch-add__empty"
+              >
+                {{ $t('seaExport.export.batchAddCtnNoMatch') }}
+              </div>
+              <div v-else class="order-ctn-batch-add__list">
+                <div
+                  v-for="item in filteredBatchAddItems"
+                  :key="String(item.id)"
+                  class="order-ctn-batch-add__row"
+                >
+                  <span class="order-ctn-batch-add__name" :title="item.ctnName">
+                    {{ item.ctnName }}
+                  </span>
+                  <InputNumber
+                    v-model:value="item.qty"
+                    size="small"
+                    :min="0"
+                    :max="BATCH_ADD_MAX_PER_TYPE"
+                    :precision="0"
+                    class="order-ctn-batch-add__qty"
+                  />
+                </div>
+              </div>
+            </Spin>
+            <div class="order-ctn-batch-add__footer">
+              <span class="order-ctn-batch-add__summary">
+                {{
+                  $t('seaExport.export.batchAddCtnSelected', [
+                    batchAddSelectedSummary,
+                  ])
+                }}
+              </span>
+              <Button
+                type="primary"
+                size="small"
+                :disabled="!batchAddItems.some((i) => Number(i.qty) > 0)"
+                @click="confirmBatchAdd"
+              >
+                {{ $t('seaExport.export.batchAddCtnConfirm') }}
+              </Button>
+            </div>
+          </div>
+        </template>
+        <Button size="small" class="order-ctn-table__batch-add-btn">
+          {{ $t('seaExport.export.batchAddCtn') }}
+        </Button>
+      </Popover>
       <Tooltip :title="$t('seaExport.export.addCtn')">
         <Button
           type="text"
@@ -567,6 +796,86 @@ watch(
   font-size: 13px;
   font-weight: 600;
   color: hsl(var(--primary));
+}
+
+.order-ctn-table__batch-add-btn {
+  height: 28px;
+  padding-inline: 10px;
+  color: #1677ff;
+  background: #e6f4ff;
+  border-color: #91caff;
+}
+
+.order-ctn-table__batch-add-btn:hover {
+  color: #0958d9;
+  background: #bae0ff;
+  border-color: #69b1ff;
+}
+
+.order-ctn-batch-add {
+  width: 240px;
+}
+
+.order-ctn-batch-add__search {
+  margin-bottom: 10px;
+}
+
+.order-ctn-batch-add__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  padding-right: 2px;
+  overflow: auto;
+}
+
+.order-ctn-batch-add__row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.order-ctn-batch-add__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: #262626;
+  white-space: nowrap;
+}
+
+.order-ctn-batch-add__qty {
+  flex-shrink: 0;
+  width: 110px;
+}
+
+.order-ctn-batch-add__empty {
+  padding: 16px 0;
+  font-size: 13px;
+  color: #8c8c8c;
+  text-align: center;
+}
+
+.order-ctn-batch-add__footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  margin-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.order-ctn-batch-add__summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: #595959;
+  white-space: nowrap;
 }
 
 .order-ctn-table__yard-query-btn {
