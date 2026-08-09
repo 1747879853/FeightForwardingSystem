@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-09 空运列表未填写开关宽度与移除明细区间筛选](./changelogs/change-log-2026-08-09-air-export-list-search-switch-and-ctn-range.md)
 - [2026-08-09 默认主题圆角调整为 0.5](./changelogs/change-log-2026-08-09-theme-radius-0-5.md)
 - [2026-08-09 飞驼/云当外部对接服务合并导致接口地址变更](./changelogs/change-log-2026-08-09-feituo-yundang-appservice-merge-endpoints.md)
 - [2026-08-09 组织管理公司级支持 Logo 上传](./changelogs/change-log-2026-08-09-dept-company-logo-upload.md)

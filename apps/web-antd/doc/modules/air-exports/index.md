@@ -22,8 +22,7 @@ last_updated: 2026-08-09
 # 2. 功能与操作说明 (Features & Operations)
 
 - **委托检索：** 关键字一次模糊匹配航班、外部备注、主提单号、合同号、委托编号 5 个字段；会计期间默认当月。
-- **「未填写」开关：** 航班、订舱代理、起运地、中转地、目的地各带一个开关，与选值互斥（选了值禁开关，开了开关禁选值）。
-- **货物明细区间筛选：** 件数、重量、长、宽、高、体积、体积重、计费重各一个区间，语义是「该票存在满足条件的行」。
+- **「未填写」开关：** 航班、订舱代理、起运地、中转地、目的地各带一个开关，与选值互斥（选了值禁开关，开了开关禁选值）；Switch 使用 `w-auto`，不铺满搜索列宽。
 - **分组统计：** 支持 9 个分组维度（委托单位 3、起运地 5、目的地 6、仓库 12、车队 13、订舱代理 15、中转地 16、保险公司 17、报关行 18），分组设置按 `group_config_AirExportList` 持久化。
 - **复制 / 删除：** 工具栏复制（可选同时复制费用）、删除（该票有费用时前端先拦一层）。
 - **运踪订阅：** 工具栏「运踪订阅」（需 `Admin.ExternalApi.Use`），勾选后调 `BatchSubscribeAirBillAsync`；>30 票提示后端自动分批；结果 Modal 逐条展示成功/失败；规则 Tooltip 说明订阅单号=主运单号、航司系统自动识别。
@@ -52,16 +51,17 @@ last_updated: 2026-08-09
 
 > [!IMPORTANT] **[卡点 1：分组枚举与海运不通用]** 空运只接受 3/5/6/12/13/15/16/17/18 九个分组值，传海运的船公司 `4` 会报「不支持的分组字段」。
 
-> [!IMPORTANT] **[卡点 2：明细区间筛选是「存在」语义]** 「计费重 ≥ 1000」筛的是「至少有一行不低于 1000」，不是整票合计，搜索区已加说明文案。
+> [!IMPORTANT] **[卡点 2：报关/送仓日期带时分秒]** 这两个日期后端原样保存，筛选止端必须补到当天 23:59:59，否则漏掉当天数据。
 
-> [!IMPORTANT] **[卡点 3：报关/送仓日期带时分秒]** 这两个日期后端原样保存，筛选止端必须补到当天 23:59:59，否则漏掉当天数据。
+> [!IMPORTANT] **[卡点 3：运踪订阅依赖主运单号]** 订阅单号取 `transportOrder.mblNum`，未填主运单号的票后端直接判失败；用户可见文案不出现服务商名称。
 
-> [!IMPORTANT] **[卡点 4：运踪订阅依赖主运单号]** 订阅单号取 `transportOrder.mblNum`，未填主运单号的票后端直接判失败；用户可见文案不出现服务商名称。
+> [!IMPORTANT] **[卡点 4：搜索区 Switch 需覆盖 w-full]** Vxe 表格搜索表单默认给控件加 `w-full`，「未填写」Switch 必须在 schema 中设 `class: 'w-auto'`，否则会被拉满整列。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 「未填写」Switch 改为自身宽度；移除泡比/件数/重量等 ≥≤ 货物明细区间筛选。 | `createEmptySwitchSchema` 加 `w-auto`；删除 `createCtnRangeSchema` 及全部区间字段。详见 `changelogs/change-log-2026-08-09-air-export-list-search-switch-and-ctn-range.md`。 |
 | 2026-08-09 | `Refactor` | 运踪批量订阅与运踪信息查询的接口地址迁移到合并后的云当服务，页面行为无变化。 | 后端云当空运 AppService 合并进 `YundangAdminAppService`；`yundang-air-admin.ts` 的两个地址由 `services/app/YundangAirAdmin/...` 改为 `services/app/YundangAdmin/...`，海运侧地址未变。详见 `changelogs/change-log-2026-08-09-feituo-yundang-appservice-merge-endpoints.md`。 |
 | 2026-08-08 | `Feature` | 列表工具栏运踪批量订阅 +「运踪状态」列 + 运踪详情 Modal。 | 镜像海运出口：`yundang-air-admin` + `use-yundang-air-subscribe/track`；详见 `changelogs/change-log-2026-08-08-air-export-yundang-subscribe.md`。 |
 | 2026-08-05 | `Feature` | 新建空运出口列表：关键字、「未填写」开关、明细区间筛选、9 维分组统计、复制与删除，权限 `Admin.AirExport`。 | 以 `sea-import-admin/list.vue` 为范式；分组字段改用 `AirExportGroupField`，分组结果无 `logo` 字段；报关/送仓日期区间单独按 `endOf('day')` 处理。 |

@@ -356,38 +356,6 @@ const sumCtnField = (
   return String(Number.parseFloat(total.toFixed(AIR_DECIMAL_PRECISION)));
 };
 
-/** 明细区间筛选是「存在满足条件的行」语义，两端各自独立判断 */
-const createCtnRangeSchema = (
-  startField: string,
-  endField: string,
-  label: string,
-  precision = AIR_DECIMAL_PRECISION,
-): VbenFormSchema[] => [
-  {
-    component: 'InputNumber',
-    fieldName: startField,
-    label: `${label}≥`,
-    help: $t('airExport.export.ctnFilterExistsTip'),
-    componentProps: {
-      allowClear: true,
-      class: 'w-full',
-      controls: false,
-      precision,
-    },
-  },
-  {
-    component: 'InputNumber',
-    fieldName: endField,
-    label: `${label}≤`,
-    componentProps: {
-      allowClear: true,
-      class: 'w-full',
-      controls: false,
-      precision,
-    },
-  },
-];
-
 /** 「未填写」开关与选值互斥：选了值禁开关，开了开关禁选值 */
 const createEmptySwitchSchema = (
   fieldName: string,
@@ -398,6 +366,8 @@ const createEmptySwitchSchema = (
   fieldName,
   label,
   componentProps: (values: Record<string, any>) => ({
+    // 覆盖表格搜索表单 commonConfig 的 w-full，保持 Switch 自身宽度
+    class: 'w-auto',
     disabled:
       values?.[valueFieldName] !== undefined &&
       values?.[valueFieldName] !== null &&
@@ -885,52 +855,6 @@ export function useGridFormSchema(): VbenFormSchema[] {
         class: 'w-full',
       },
     },
-    ...createCtnRangeSchema(
-      'BubbleRatioStart',
-      'BubbleRatioEnd',
-      $t('airExport.export.bubbleRatio'),
-    ),
-    ...createCtnRangeSchema(
-      'CtnPKGSStart',
-      'CtnPKGSEnd',
-      $t('airExport.export.ctnPkgs'),
-      0,
-    ),
-    ...createCtnRangeSchema(
-      'CtnKGSStart',
-      'CtnKGSEnd',
-      $t('airExport.export.ctnKgs'),
-    ),
-    ...createCtnRangeSchema(
-      'CtnLengthStart',
-      'CtnLengthEnd',
-      $t('airExport.export.ctnLength'),
-    ),
-    ...createCtnRangeSchema(
-      'CtnWidthStart',
-      'CtnWidthEnd',
-      $t('airExport.export.ctnWidth'),
-    ),
-    ...createCtnRangeSchema(
-      'CtnHeightStart',
-      'CtnHeightEnd',
-      $t('airExport.export.ctnHeight'),
-    ),
-    ...createCtnRangeSchema(
-      'CtnCBMStart',
-      'CtnCBMEnd',
-      $t('airExport.export.ctnCbm'),
-    ),
-    ...createCtnRangeSchema(
-      'CtnVolumeWeightStart',
-      'CtnVolumeWeightEnd',
-      $t('airExport.export.ctnVolumeWeight'),
-    ),
-    ...createCtnRangeSchema(
-      'CtnChargeWeightStart',
-      'CtnChargeWeightEnd',
-      $t('airExport.export.ctnChargeWeight'),
-    ),
   ];
 }
 
