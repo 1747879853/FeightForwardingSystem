@@ -17,7 +17,7 @@ export const overridesPreferences = defineOverridesPreferences({
   },
   theme: {
     mode: 'light',
-    radius: '1',
+    radius: '0.5',
   },
   widget: {
     globalSearch: false,

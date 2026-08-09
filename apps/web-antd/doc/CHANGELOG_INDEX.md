@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-09 默认主题圆角调整为 0.5](./changelogs/change-log-2026-08-09-theme-radius-0-5.md)
 - [2026-08-09 飞驼/云当外部对接服务合并导致接口地址变更](./changelogs/change-log-2026-08-09-feituo-yundang-appservice-merge-endpoints.md)
 - [2026-08-09 组织管理公司级支持 Logo 上传](./changelogs/change-log-2026-08-09-dept-company-logo-upload.md)
 - [2026-08-09 收费核销明细展示同一流水下全部核销明细](./changelogs/change-log-2026-08-09-receive-settlement-show-all-bank-statement-items.md)
