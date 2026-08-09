@@ -262,6 +262,11 @@ export namespace PaymentApplicationAdminApi {
     payAmount: number;
     payPrice?: number;
     totalUnSettledAmount?: number;
+    /**
+     * 该币别已核销/已结算量（原币）。
+     * 付费申请详情最外层 currencyGroup 返回；无结算时为 0。
+     */
+    settledAmount?: number;
     /** 该币别对应的付费申请银行（仅最外层 currencyGroup 返回） */
     paymentApplicationBank?: PaymentApplicationBankDto | null;
   }

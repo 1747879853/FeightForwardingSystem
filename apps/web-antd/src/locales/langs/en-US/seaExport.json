@@ -472,6 +472,7 @@
       "company": "Company",
       "convertedAmount": "Converted Amount",
       "convertedApplied": "Converted Applied",
+      "appliedAmountConverted": "Converted Applied Amount",
       "convertedTotal": "Converted Total",
       "creationTime": "Creation Time",
       "creatorUserName": "Applicant",

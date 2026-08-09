@@ -3,12 +3,7 @@ import type { ClientAppApi } from '#/api/common/client';
 import type { ClientInvoiceInfoAdminApi } from '#/api/sea-export/clinet-invoice-admin';
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { SelectedFeeItem } from '../add-fee-modal/data';
-import type {
-  CurrencyConversionSummary,
-  CurrencySummary,
-  FeeDetailRow,
-  OrderGroupRow,
-} from './form-data';
+import type { CurrencySummary, FeeDetailRow, OrderGroupRow } from './form-data';
 
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -77,7 +72,8 @@ import {
 } from '../add-fee-modal/data';
 import {
   buildAppliedAmountCurrencyColumns,
-  calcConvertedApplied,
+  calcAppliedAmountConverted,
+  calcAppliedConvertedTotal,
   collectAppliedCurrencies,
   formatAmount,
   groupFeesByOrder,
@@ -85,7 +81,6 @@ import {
   isUserRoleColumnKey,
   resolveFeeCurrencyCode,
   summarizeByCurrency,
-  summarizeByCurrencyWithConversion,
   toCurrencyDisplayCode,
   useFeeInnerColumns,
   useOrderGroupColumns,
@@ -230,6 +225,22 @@ const feeDetailRows = ref<FeeDetailRow[]>([]);
 const originalFeeDetailRows = ref<FeeDetailRow[]>([]);
 const initialLoadFeeIds = ref<Set<string>>(new Set());
 const selectedRowKeys = ref<string[]>([]);
+/** 详情 currencyGroup 按币别的已核销量（原币） */
+const currencySettledAmountMap = ref<Record<number, number>>({});
+
+function getCurrencySettledAmount(currencyId: number): number {
+  return currencySettledAmountMap.value[currencyId] ?? 0;
+}
+
+function syncCurrencySettledAmounts(
+  groups?: PaymentApplicationAdminApi.CurrencyGroupDto[] | null,
+) {
+  const next: Record<number, number> = {};
+  for (const group of groups ?? []) {
+    next[group.id] = group.settledAmount ?? 0;
+  }
+  currencySettledAmountMap.value = next;
+}
 
 const orderGroupColumns = useOrderGroupColumns();
 const feeInnerColumns = computed(() =>
@@ -300,8 +311,16 @@ const currencySummaries = computed<CurrencySummary[]>(() =>
   summarizeByCurrency(feeDetailRows.value),
 );
 
-const currencyConversionSummaries = computed<CurrencyConversionSummary[]>(() =>
-  summarizeByCurrencyWithConversion(feeDetailRows.value),
+/** 指定结算币别时的申请金额合计（费用明细「申请金额折币」之和） */
+const settlementAppliedConvertedTotal = computed(() =>
+  calcAppliedConvertedTotal(feeDetailRows.value),
+);
+
+/** 指定结算币别时的已核销量（结算币别口径） */
+const settlementSettledAmount = computed(() =>
+  settlementCurrencyId.value == null
+    ? 0
+    : getCurrencySettledAmount(settlementCurrencyId.value),
 );
 
 const isSettlementLocked = computed(() => feeDetailRows.value.length > 0);
@@ -904,6 +923,7 @@ async function loadEditData() {
     feeDetailRows.value = mapDetailToFeeRows(detail);
     originalFeeDetailRows.value = feeDetailRows.value.map((r) => ({ ...r }));
     initialLoadFeeIds.value = new Set(feeDetailRows.value.map((r) => r.feeId));
+    syncCurrencySettledAmounts(detail.currencyGroup);
 
     await loadClientBanks(true);
     restoreBankSelectionsFromDetail(detail);
@@ -1193,6 +1213,7 @@ function resetForm() {
   attachmentGroup.value = [];
   settlementAttachments.value = [];
   bankSelections.value = {};
+  currencySettledAmountMap.value = {};
   applicationCreatorName.value = '';
   submitTime.value = dayjs().format('YYYY-MM-DD HH:mm');
 }
@@ -1474,7 +1495,8 @@ void handleSubmitAndNew;
                     <div v-else class="currency-table">
                       <div class="currency-table__head">
                         <span>支付币别</span>
-                        <span>付款金额</span>
+                        <span>申请金额</span>
+                        <span>已核销</span>
                         <span>银行账户</span>
                       </div>
                       <div class="currency-cards">
@@ -1492,6 +1514,13 @@ void handleSubmitAndNew;
                             }}</span>
                             <span class="currency-card__amount">
                               {{ formatAmount(cs.totalAmount) }}
+                            </span>
+                            <span class="currency-card__amount">
+                              {{
+                                formatAmount(
+                                  getCurrencySettledAmount(cs.currencyId),
+                                )
+                              }}
                             </span>
                           </div>
                           <div class="bank-block">
@@ -1540,10 +1569,10 @@ void handleSubmitAndNew;
                     </div>
                   </template>
 
-                  <!-- 指定币别模式：展示各原始币别金额、汇率及折算汇总 -->
+                  <!-- 指定币别模式：汇总为结算币别一行，金额取申请金额折币合计 -->
                   <template v-else>
                     <div
-                      v-if="currencyConversionSummaries.length === 0"
+                      v-if="feeDetailRows.length === 0"
                       class="py-4 text-center text-gray-400"
                     >
                       {{ t('noFeeWarning') }}
@@ -1552,6 +1581,7 @@ void handleSubmitAndNew;
                       <table class="settlement-table__native">
                         <colgroup>
                           <col style="width: 97px" />
+                          <col style="width: 96px" />
                           <col style="width: 96px" />
                           <col style="width: 193px" />
                           <col style="width: 118px" />
@@ -1564,28 +1594,28 @@ void handleSubmitAndNew;
                                 支付币别
                               </span>
                             </th>
-                            <th>付款金额</th>
+                            <th>申请金额</th>
+                            <th>已核销</th>
                             <th>银行账户</th>
                             <th>银行账号</th>
                           </tr>
                         </thead>
                         <tbody>
-                          <tr
-                            v-for="cs in currencyConversionSummaries"
-                            :key="`${cs.currencyId}_${cs.rate}`"
-                          >
+                          <tr>
                             <td>
                               <span class="settlement-table__currency-cell">
                                 <Checkbox />
-                                {{
-                                  toCurrencyDisplayCode(
-                                    cs.currencyCode,
-                                    cs.currencyName,
-                                  )
-                                }}
+                                {{ settlementCurrencyLockedLabel }}
                               </span>
                             </td>
-                            <td>{{ formatAmount(cs.originalTotal) }}</td>
+                            <td>
+                              {{
+                                formatAmount(settlementAppliedConvertedTotal)
+                              }}
+                            </td>
+                            <td>
+                              {{ formatAmount(settlementSettledAmount) }}
+                            </td>
                             <td class="settlement-table__bank-cell">
                               <div class="settlement-table__bank-field">
                                 <Select
@@ -1898,13 +1928,6 @@ void handleSubmitAndNew;
                   <template v-else-if="column.key === 'exchangeRate'">
                     {{ record.exchangeRate }}
                   </template>
-                  <template v-else-if="column.key === 'convertedApplied'">
-                    {{
-                      formatAmount(
-                        calcConvertedApplied(record.amount, record.rate),
-                      )
-                    }}
-                  </template>
                   <template v-else-if="column.key === 'settledAmount'">
                     {{ formatAmount(record.settledAmount) }}
                   </template>
@@ -1915,6 +1938,16 @@ void handleSubmitAndNew;
                     <span class="fee-applied-amount-value">{{
                       formatAmount(record.appliedAmount)
                     }}</span>
+                  </template>
+                  <template v-else-if="column.key === 'appliedAmountConverted'">
+                    {{
+                      formatAmount(
+                        calcAppliedAmountConverted(
+                          record.appliedAmount,
+                          record.rate,
+                        ),
+                      )
+                    }}
                   </template>
                   <template v-else-if="column.key === 'rate'">
                     <InputNumber
@@ -2597,7 +2630,7 @@ void handleSubmitAndNew;
 .currency-table__head,
 .currency-card {
   display: grid;
-  grid-template-columns: 80px 100px minmax(180px, 1fr);
+  grid-template-columns: 80px 100px 100px minmax(180px, 1fr);
   gap: 10px;
   align-items: center;
 }

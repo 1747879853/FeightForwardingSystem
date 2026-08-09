@@ -371,12 +371,6 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
         align: 'right' as const,
       },
       {
-        title: t('convertedApplied'),
-        key: 'convertedApplied',
-        width: 120,
-        align: 'right' as const,
-      },
-      {
         title: t('settledAmountLabel'),
         dataIndex: 'settledAmount',
         key: 'settledAmount',
@@ -404,6 +398,12 @@ export function useFeeInnerColumns(isSpecifiedCurrency: boolean) {
         width: 140,
         align: 'right' as const,
         className: 'fee-applied-amount-cell',
+      },
+      {
+        title: t('appliedAmountConverted'),
+        key: 'appliedAmountConverted',
+        width: 130,
+        align: 'right' as const,
       },
     ];
   }
@@ -519,12 +519,22 @@ export function calcConvertedTotal(fees: FeeDetailRow[]): number {
   return total;
 }
 
-/** 计算申请折币 = amount * rate，四舍五入保留两位小数 */
-export function calcConvertedApplied(
-  amount: number | undefined,
+/** 申请金额折币 = 本次申请金额 × 申请汇率，四舍五入两位小数 */
+export function calcAppliedAmountConverted(
+  appliedAmount: number | undefined,
   rate: number | undefined,
 ): number {
-  return Math.round((amount ?? 0) * (rate ?? 1) * 100) / 100;
+  return Math.round((appliedAmount ?? 0) * (rate ?? 1) * 100) / 100;
+}
+
+/** 指定结算币别时的申请金额合计＝各费用「申请金额折币」之和（付 − 收） */
+export function calcAppliedConvertedTotal(fees: FeeDetailRow[]): number {
+  const total = fees.reduce(
+    (sum, fee) =>
+      sum + calcAppliedAmountConverted(signedAppliedAmount(fee), fee.rate),
+    0,
+  );
+  return Math.round(total * 100) / 100;
 }
 
 export function formatAmount(val: number | undefined | null): string {

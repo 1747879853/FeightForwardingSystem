@@ -65,6 +65,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Feature` | 结算币别「付款金额」改「申请金额」并加「已核销」；固定币别合并为一行，申请金额取申请金额折币合计；费用明细改「申请金额折币」。 | 与新增页共用 `form.vue`/`form-data.ts`；详情 `syncCurrencySettledAmounts`。详见 `changelogs/change-log-2026-08-09-payment-application-settlement-applied-converted.md`。 |
 | 2026-08-09 | `Fix` | 指定币别结算表移除「实付金额」「结算方式」列。 | 与新增页共用 `form.vue`；详见 `changelogs/change-log-2026-08-09-payment-application-remove-settlement-columns.md`。 |
 | 2026-08-09 | `Refactor` | 费用明细行与添加费用抽屉的费用代码/币别/结算对象改读嵌套对象。 | `PaymentApplicationAdminApi.OrderFeeDto` 已对象化；`form.vue` 的 `mapDetailToFeeRows`、`form-data.ts` 的 `resolveFeeCurrencyCode`、`add-fee-modal` 同步改造。任务项自有的 `item.feeCodeName`/`feeSettlementName` 不在范围内。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-08-09 | `Fix` | 结算币别「付款金额」及费用「{币别}申请合计」按付 − 收汇总；收费用计入负向。 | 与新增页共用 `form-data.ts` 的 `signedAppliedAmount`。详见 `changelogs/change-log-2026-08-09-payment-application-pay-minus-receive.md`。 |

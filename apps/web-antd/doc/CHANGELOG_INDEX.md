@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-09 付费申请固定币别结算卡改为折币合计一行](./changelogs/change-log-2026-08-09-payment-application-settlement-applied-converted.md)
 - [2026-08-09 费用审核详情禁止用全局路由 id 兜底](./changelogs/change-log-2026-08-09-expense-detail-route-id-fallback.md)
 - [2026-08-09 付费申请指定币别表移除实付金额与结算方式列](./changelogs/change-log-2026-08-09-payment-application-remove-settlement-columns.md)
 - [2026-08-09 业务费用/客户对账外键改 SimpleDto 对象返回](./changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md)

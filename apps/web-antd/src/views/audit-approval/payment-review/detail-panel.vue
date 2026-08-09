@@ -19,7 +19,7 @@ import {
 } from '#/views/fee-management/add-fee-modal/data';
 import {
   buildAppliedAmountCurrencyColumns,
-  calcConvertedApplied,
+  calcAppliedAmountConverted,
   collectAppliedCurrencies,
   formatAmount,
   groupFeesByOrder,
@@ -635,13 +635,6 @@ function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
                         <template v-else-if="column.key === 'exchangeRate'">
                           {{ record.exchangeRate }}
                         </template>
-                        <template v-else-if="column.key === 'convertedApplied'">
-                          {{
-                            formatAmount(
-                              calcConvertedApplied(record.amount, record.rate),
-                            )
-                          }}
-                        </template>
                         <template v-else-if="column.key === 'settledAmount'">
                           {{ formatAmount(record.settledAmount) }}
                         </template>
@@ -652,6 +645,18 @@ function openAttachment(item: PaymentApplicationAdminApi.AttachmentItemDto) {
                           <span class="fee-applied-amount-value">
                             {{ formatAmount(record.appliedAmount) }}
                           </span>
+                        </template>
+                        <template
+                          v-else-if="column.key === 'appliedAmountConverted'"
+                        >
+                          {{
+                            formatAmount(
+                              calcAppliedAmountConverted(
+                                record.appliedAmount,
+                                record.rate,
+                              ),
+                            )
+                          }}
                         </template>
                         <template v-else-if="column.key === 'rate'">
                           {{ record.rate }}

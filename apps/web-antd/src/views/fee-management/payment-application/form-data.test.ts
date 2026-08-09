@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  calcAppliedConvertedTotal,
   signedAppliedAmount,
   summarizeByCurrency,
   summarizeByCurrencyWithConversion,
@@ -62,5 +63,20 @@ describe('payment application fee amount netting', () => {
         convertedTotal: 560,
       }),
     ]);
+  });
+
+  it('calcAppliedConvertedTotal: 跨币别按申请金额折币求和', () => {
+    const rows = [
+      fee({ feeId: 'a', paySide: 1, appliedAmount: 100, rate: 7.1 }),
+      fee({
+        feeId: 'b',
+        currencyId: 2,
+        paySide: 1,
+        appliedAmount: 50,
+        rate: 1,
+      }),
+      fee({ feeId: 'c', paySide: 0, appliedAmount: 20, rate: 7.1 }),
+    ];
+    expect(calcAppliedConvertedTotal(rows)).toBe(618);
   });
 });

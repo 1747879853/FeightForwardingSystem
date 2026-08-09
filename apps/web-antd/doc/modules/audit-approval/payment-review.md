@@ -70,6 +70,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Feature` | 费用明细删除「申请折币」，新增「申请金额折币」（本次申请金额 × 申请汇率）。 | 与付费申请共用 `calcAppliedAmountConverted`。详见 `changelogs/change-log-2026-08-09-payment-application-settlement-applied-converted.md`。 |
 | 2026-08-09 | `Refactor` | 审批详情面板费用明细行改读费用嵌套对象。 | `detail-panel.vue` 的 `mapDetailToFeeRows` 改走 `fee?.feeCode?.cnName` / `currency?.cnName` / `settlement?.name`；费用审核详情 `expense-all/modules/detail.vue` 币别汇总同步。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-08-09 | `Fix` | 费用合计按付 − 收净额展示（与付费申请表单一致）。 | 复用 `payment-application/form-data` 的 `signedAppliedAmount` 汇总。详见 `changelogs/change-log-2026-08-09-payment-application-pay-minus-receive.md`。 |
 | 2026-07-29 | `Fix` | 右侧费用合计改为紧凑列表；附件按类型分组回显；嵌套费用子表宽度 +100px。 | 见 `change-log-2026-07-29-payment-review-fee-summary-layout.md`。 |
