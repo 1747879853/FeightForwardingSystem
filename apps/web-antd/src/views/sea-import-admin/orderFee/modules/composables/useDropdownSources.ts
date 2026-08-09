@@ -208,7 +208,7 @@ export function useDropdownSources(orderCtnList: any) {
     }
 
     // 根据收付类型选择应收或应付汇率
-    const rateValue = paySide === 1 ? rate.drValue : rate.crValue;
+    const rateValue = paySide === 1 ? rate.crValue : rate.drValue;
 
     if (rateValue === undefined || rateValue === null) {
       console.warn(
