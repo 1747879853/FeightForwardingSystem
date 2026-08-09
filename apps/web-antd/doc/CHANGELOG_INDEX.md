@@ -13,6 +13,8 @@
 
 ## 2026-08
 
+- [2026-08-09 应收应付费用表汇率应收/应付取值取反修复](./changelogs/change-log-2026-08-09-order-fee-exchange-rate-dr-cr-fix.md)
+- [2026-08-09 业务联系单费用汇率改走汇率表生效记录](./changelogs/change-log-2026-08-09-pre-order-fee-exchange-rate-from-paged-list.md)
 - [2026-08-09 空运列表移除未填写开关与明细区间筛选](./changelogs/change-log-2026-08-09-air-export-list-search-switch-and-ctn-range.md)
 - [2026-08-09 默认主题圆角调整为 0.5](./changelogs/change-log-2026-08-09-theme-radius-0-5.md)
 - [2026-08-09 飞驼/云当外部对接服务合并导致接口地址变更](./changelogs/change-log-2026-08-09-feituo-yundang-appservice-merge-endpoints.md)

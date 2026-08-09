@@ -220,7 +220,7 @@ export function useDropdownSources(orderCtnList: any) {
       '💱 [getExchangeRateFromCache] 从缓存获取汇率 - 币别:',
       rate.currencyCode || currencyId,
       '收付类型:',
-      paySide === 1 ? '应收(drValue)' : '应付(crValue)',
+      paySide === 1 ? '应付(crValue)' : '应收(drValue)',
       '汇率:',
       rateValue,
     );

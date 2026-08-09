@@ -132,6 +132,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-09 | `Fix` | 费用表带汇率时应收/应付取反修复：应收取 `drValue`、应付取 `crValue`。 | `adapter/vxe-table.ts` 的 `FeeCodeSelect` / `CurrencySelect` 渲染器把 `props?.type`（0 应收 / 1 应付）当布尔用，0 落到 else 分支导致口径互换；改判 `Number(props?.type) === 1`。历史已录费用行不会自动纠正。详见 `changelogs/change-log-2026-08-09-order-fee-exchange-rate-dr-cr-fix.md`。 |
 | 2026-08-09 | `Refactor` | 费用 Tab 的费用代码/币别/结算对象列全部改读嵌套对象；更改单费用汇总同步。 | `OrderFeeDto` 删六个平铺外键新增 `feeCode`/`currency`/`settlement`：vxe 列 `field` 改点号路径、`all-order-fee-table` 的 `formatter`、`submission-order-fee-table` 的 `dataIndex` 数组路径、`useOrderFeeData` 币别聚合均同步。Handsontable 的结算对象缓存键由 `row.settlementName` 改为私有 `row.__settlementName`，读取顺序 `settlement?.name ?? __settlementName`。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-08-09 | `Fix` | AI 识别回填六段港口备注及收货地/中转港 Id（与新建页共用）。 | `buildAiExtractFormPayload` 补 `assignScalar`；对应 TAPD `#1161580498001000737`（1）。详见 `changelogs/change-log-2026-08-09-sea-export-ai-extract-port-remarks.md`。 |
 | 2026-08-08 | `Fix` | 集装箱合计栏增加体积汇总。 | `ctnSummary` 累加 `volume`。详见 `changelogs/change-log-2026-08-08-sea-export-ctn-summary-volume.md`。 |

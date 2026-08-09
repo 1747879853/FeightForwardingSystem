@@ -543,10 +543,11 @@ setupVbenVxeTable({
 
                     console.log('检测到本位币，汇率固定为1且不可修改');
                   } else {
-                    // 非本位币，使用正常汇率
-                    row['exchangeRate'] = props?.type
-                      ? exchangeRateData.drValue
-                      : exchangeRateData.crValue;
+                    // 非本位币，使用正常汇率：应收(type=0)取 drValue、应付(type=1)取 crValue
+                    row['exchangeRate'] =
+                      Number(props?.type) === 1
+                        ? exchangeRateData.crValue
+                        : exchangeRateData.drValue;
                     row['__isLocalCurrency'] = false;
                   }
                 } catch (error) {
@@ -1054,10 +1055,11 @@ setupVbenVxeTable({
 
                 console.log('检测到本位币，汇率固定为1且不可修改');
               } else {
-                // 非本位币，使用正常汇率
-                row['exchangeRate'] = props?.type
-                  ? exchangeRateData.drValue
-                  : exchangeRateData.crValue;
+                // 非本位币，使用正常汇率：应收(type=0)取 drValue、应付(type=1)取 crValue
+                row['exchangeRate'] =
+                  Number(props?.type) === 1
+                    ? exchangeRateData.crValue
+                    : exchangeRateData.drValue;
                 row['__isLocalCurrency'] = false;
               }
             } catch (error) {

@@ -888,6 +888,7 @@ async function buildSubmitPayload() {
         currency,
         settlementUiKey,
         feeCodeSnapshot,
+        __isLocalCurrency,
         ...rest
       }) => ({
         ...rest,

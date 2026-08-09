@@ -68,8 +68,8 @@ last_updated: 2026-08-09
 | **费用.费用代码** | 费用名称来源 | **基础数据**<br/>`FeeCodeSelect` | **触发：** 带出行业类别（应收 `defaultDebitName` / 应付 `defaultCreditName`）、结算对象、币别+汇率、税率、默认单位、禁开票/机密；默认单位为「箱型/CTN」或不在四项白名单时落到「票」并提示 | —— |
 | **费用.结算对象类别** | 行业类别 | `IndustryCategorySelect`（存数值 key） | **触发：** 切换后先清空结算对象；`ClientSelect` 的 `industryCategory` 改为对应字母码重新过滤；若本单已录入委托单位(p)/发货人(b)/收货人(e)/通知人(h) 则直接回填，并用名称写 `selectedItems`（走往来单位名称缓存，避免二次拉详情） | —— |
 | **费用.结算对象** | 客户 | `ClientSelect` | **依赖：** `industryCategory` 字母码过滤；回显依赖 `selectedItems`（id+name） | —— |
-| **费用.币别** | 结算币别 | `CurrencySelect` | **默认：** 新增行默认 USD；**触发：** 变更后拉汇率 | 生成海出费用时缺币别会被跳过 |
-| **费用.汇率** | 对本位币汇率 | 手填或币别带出 | **依赖：** 币别命中归属组织本位币时**固定 1 且只读**；否则币别/收付变更后取 `getExchangeRateDetail`（应收 `crValue` / 应付 `drValue`），可再改；归属组织变更后全表重刷 | —— |
+| **费用.币别** | 结算币别 | `CurrencySelect` | **默认：** 新增行默认 USD；**触发：** 变更后按汇率表生效记录重取汇率 | 生成海出费用时缺币别会被跳过 |
+| **费用.汇率** | 对本位币汇率 | **基础数据**<br/>`ExchangeRateAdmin/GetPagedListAsync`（进程内缓存 `utils/exchange-rate-cache`） | **触发：** 币别 / 收付变更后按「汇率表生效记录（应收 `drValue` / 应付 `crValue`）→ 本位币兜底 1 → 置空」三级取值，取到值后仍可手改；只有走本位币兜底的行（行标记 `__isLocalCurrency=true`，与应收应付费用表同口径，提交时剔除）**固定 1 且只读**；归属组织变更后全表重刷（只读态不改写） | 生效记录 = 已启用 且 当前时间在有效期内；同币别多条按 `sortId`、id 取大 |
 | **费用.单位** | 计价单位 | 通用四项 `票` / `重量` / `体积` / `TEU`（`PRE_ORDER_GENERIC_UNITS`） **+ 本单箱型名**（由箱型箱量表派生） | **默认：** 手工新增「票」，一键生成时=箱型名；费用代码默认单位经 `coercePreOrderFeeUnit` 落到白名单内（泛称「箱型/CTN」→票）；**触发：** 按单位自动带出数量（见「费用.数量」） | 必须是四项之一或本单已存在的箱型名，提交审核前校验；箱型行被删除后对应费用行单位落回「票」 |
 | **费用.含税单价** | 对客单价 | 手填 | —— | 非负 |
 | **费用.数量** | 计价数量 | 完全由单位派生，**始终只读**（后端审核通过时按单位重算并覆盖，手改无意义） | **触发：** 票=1；重量=货物 `kgs`；体积=`cbm`；TEU=各箱型 `teu×箱量` 累加；箱型名=该箱型的箱量合计。箱型、箱量、毛重/体积变更后全表重新带量 | 非负 |
@@ -109,6 +109,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 费用汇率改为优先取汇率表当前生效记录（应收 `drValue` / 应付 `crValue`），未维护时本位币锁 1、其余置空；只有本位币兜底行（`__isLocalCurrency`）的汇率只读；只读态不再被重刷 | 新增 `utils/exchange-rate-cache.ts`（`GetPagedListAsync` 全量拉取 + 启用/有效期筛选 + `sortId`·id 去重 + `shallowRef` 保证模板可响应），替代按币别 id 误调 `DetailAsync` 的写法；顺带纠正联系单侧 dr/cr 取反。详见 `changelogs/change-log-2026-08-09-pre-order-fee-exchange-rate-from-paged-list.md` |
 | 2026-08-09 | `Fix` | 审核通过/列表进已通过单，页签不再被改成「海运出口-xxx」。 | 懒挂载 + `disableTabTitle`；进页/`onActivated` 主动 `setTabTitle('业务联系单')` 覆盖 tabbar 保留的脏 `newTabTitle`。详见 `changelogs/change-log-2026-08-09-pre-order-embed-disable-sea-export-tab-title.md`。 |
 | 2026-08-09 | `Fix` | 费用代码/币别保存后回显正确名称，不再露出数字 id | `feeCodeSelectedItems` / `currencySelectedItems` 优先读详情 `cnName`（接口无平铺 `name`）；`FeeCodeSelect` 用 `cnName` 作 `rowLabel`，空则露 value。详见 `changelogs/change-log-2026-08-09-pre-order-fee-code-selected-items-cnname.md` |
 | 2026-08-02 | `Feature` | 「货物与箱型」新增「生成海运费」按钮：按箱型铺应收海运费（单位=箱型、数量=箱量、单价=卖价），重复点击按同箱型覆盖；费用单位放宽为「四项 + 本单箱型名」 | 推翻 2026-07-25「不下发箱型名」的结论——箱型与费用同属一份详情 DTO，`unitOptions` 由 `props.ctns` 派生即可稳定回显；`coercePreOrderFeeUnit` / `checkPreOrderFees` 增加箱型白名单入参，回显与提交 payload 均需带上；海运费费用代码走 `getFeeCodeListAsync({isSea:true})` 三级兜底匹配并进程内缓存。详见 `changelogs/change-log-2026-08-02-pre-order-generate-ocean-freight-fee.md` |

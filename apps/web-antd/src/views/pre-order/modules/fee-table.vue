@@ -26,12 +26,15 @@ import FeeCodeSelect from '#/adapter/component/biz-select/fee-code-select.vue';
 import IndustryCategorySelect from '#/adapter/component/biz-select/industry-category-select.vue';
 import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
-import { getExchangeRateDetail } from '#/api/system/base-data/exchange-rate-admin';
 import {
   getFeeCodeDetail,
   getFeeCodeListAsync,
 } from '#/api/system/base-data/fee-code-admin';
 import { getClientDetail } from '#/api/sea-export/client-admin';
+import {
+  ensureExchangeRateCache,
+  resolveExchangeRate,
+} from '#/utils/exchange-rate-cache';
 import { getIndustryCategoryOptions } from '#/views/sea-export-admin/orderFee/data';
 
 import { PAY_SIDE_OPTIONS } from '../form-data';
@@ -43,6 +46,8 @@ export interface PreOrderFeeRow extends PreOrderAdminApi.PreOrderFeeDto {
   settlementUiKey?: number;
   /** 选费用代码时缓存列表行，切换收付复用，避免再打 DetailAsync */
   feeCodeSnapshot?: FeeCodeAdminApi.FeeCodeDto;
+  /** 汇率表未维护、按本位币兜底为 1 的行，汇率只读（对齐应收应付费用表） */
+  __isLocalCurrency?: boolean;
 }
 
 /** 业务联系单上可映射到结算对象的往来单位（字母码 → id / 名称） */
@@ -393,7 +398,7 @@ function handleSettlementChange(
   touchDataSource();
 }
 
-/** 本位币行：币别等于归属组织本位币，汇率恒为 1 且不可改 */
+/** 币别等于归属组织本位币 */
 function isLocalCurrencyRow(row: PreOrderFeeRow) {
   if (props.localCurrencyId == null) return false;
   const currency = String(row.currencyId ?? '');
@@ -402,25 +407,25 @@ function isLocalCurrencyRow(row: PreOrderFeeRow) {
 }
 
 /**
- * 币别 → 汇率：本位币锁 1；其余应收取 crValue、应付取 drValue（与海出费用一致）
+ * 币别 → 汇率（与海出费用表一致）：优先取汇率表中当前生效的记录
+ *（应收 drValue / 应付 crValue）；未维护时本位币锁 1，其余置空由用户手填。
  */
 async function applyExchangeRate(row: PreOrderFeeRow) {
   const currencyId = String(row.currencyId ?? '');
   if (currencyId === '') {
     row.exchangeRate = undefined;
+    row.__isLocalCurrency = false;
     return;
   }
-  if (isLocalCurrencyRow(row)) {
-    row.exchangeRate = 1;
+  const rate = await resolveExchangeRate(currencyId, Number(row.paySide ?? 0));
+  if (rate === undefined) {
+    const isLocal = isLocalCurrencyRow(row);
+    row.exchangeRate = isLocal ? 1 : undefined;
+    row.__isLocalCurrency = isLocal;
     return;
   }
-  try {
-    const data = await getExchangeRateDetail(currencyId);
-    if (!data) return;
-    row.exchangeRate = Number(row.paySide) === 1 ? data.drValue : data.crValue;
-  } catch {
-    // 汇率拉取失败时保留原值，允许手填
-  }
+  row.exchangeRate = rate;
+  row.__isLocalCurrency = false;
 }
 
 /**
@@ -446,6 +451,8 @@ async function syncDerivedRows() {
 defineExpose({ generateOceanFreightFees, syncDerivedRows });
 
 onMounted(async () => {
+  // 本次进入编辑页重新拉一遍汇率，避免用到上一次会话缓存的旧汇率
+  void ensureExchangeRateCache(true);
   try {
     const res = await getCurrencyPagedList({
       Keyword: 'USD',
@@ -508,6 +515,8 @@ watch(
 watch(
   () => props.localCurrencyId,
   async () => {
+    // 只读态（待审核 / 通过）如实展示已落库的汇率，不做改写
+    if (props.readonly) return;
     if (dataSource.value.length === 0) return;
     for (const row of dataSource.value) {
       await applyExchangeRate(row);
@@ -1002,12 +1011,12 @@ const totals = computed(() => {
         <template v-else-if="column.dataIndex === 'exchangeRate'">
           <Tooltip
             :title="
-              isLocalCurrencyRow(asRow(record)) ? '本位币汇率固定为 1' : ''
+              record.__isLocalCurrency === true ? '本位币汇率固定为 1' : ''
             "
           >
             <InputNumber
               v-model:value="record.exchangeRate"
-              :disabled="props.readonly || isLocalCurrencyRow(asRow(record))"
+              :disabled="props.readonly || record.__isLocalCurrency === true"
               size="small"
               class="w-full"
               :min="0"
