@@ -1553,8 +1553,6 @@ void handleSubmitAndNew;
                         <colgroup>
                           <col style="width: 97px" />
                           <col style="width: 96px" />
-                          <col style="width: 97px" />
-                          <col style="width: 117px" />
                           <col style="width: 193px" />
                           <col style="width: 118px" />
                         </colgroup>
@@ -1567,8 +1565,6 @@ void handleSubmitAndNew;
                               </span>
                             </th>
                             <th>付款金额</th>
-                            <th>实付金额</th>
-                            <th>结算方式</th>
                             <th>银行账户</th>
                             <th>银行账号</th>
                           </tr>
@@ -1590,12 +1586,6 @@ void handleSubmitAndNew;
                               </span>
                             </td>
                             <td>{{ formatAmount(cs.originalTotal) }}</td>
-                            <td>{{ formatAmount(cs.convertedTotal) }}</td>
-                            <td>
-                              <span class="settlement-table__control"
-                                >汇款⌄</span
-                              >
-                            </td>
                             <td class="settlement-table__bank-cell">
                               <div class="settlement-table__bank-field">
                                 <Select
@@ -2740,20 +2730,15 @@ void handleSubmitAndNew;
   align-items: center;
 }
 
-.settlement-table__control,
 .settlement-table__account {
   display: flex;
   align-items: center;
   height: 30px;
   padding: 0 10px;
-  color: #4e5969;
+  color: #9ca3af;
   background: #fbfcfd;
   border: 1px solid #e4e8ee;
   border-radius: 8px;
-}
-
-.settlement-table__account {
-  color: #9ca3af;
 }
 
 .settlement-table__bank-cell {
