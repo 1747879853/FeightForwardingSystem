@@ -181,11 +181,14 @@ const remark = ref('');
 const invoiceProcess = ref<number | undefined>(undefined);
 const invoiceNo = ref('');
 const invoiceDate = ref<string | undefined>(undefined);
+/** 发票方式未选时标红 */
+const invoiceProcessError = ref(false);
 /** 不开票 */
 const isNoInvoice = computed(() => invoiceProcess.value === 2);
 
 function onInvoiceProcessChange(value: number) {
   invoiceProcess.value = value;
+  invoiceProcessError.value = false;
   if (value === 2) {
     invoiceNo.value = '';
     invoiceDate.value = undefined;
@@ -751,10 +754,11 @@ function ensureSettlementSelected() {
   return true;
 }
 
-/** 新建付费申请必须明确选择发票制作方式；先付后票可在结算后补录票号和日期。 */
+/** 新建付费申请必须明确选择发票方式；先付后票可在结算后补录票号和日期。 */
 function ensureInvoiceProcessSelected() {
   if (invoiceProcess.value == null) {
-    message.warning('请选择发票制作方式');
+    invoiceProcessError.value = true;
+    message.warning('请选择发票方式');
     return false;
   }
   return true;
@@ -905,6 +909,7 @@ async function loadEditData() {
     restoreBankSelectionsFromDetail(detail);
 
     invoiceProcess.value = detail.invoiceProcess ?? undefined;
+    invoiceProcessError.value = false;
     if (invoiceProcess.value === 2) {
       invoiceNo.value = '';
       invoiceDate.value = undefined;
@@ -1182,6 +1187,7 @@ function resetForm() {
   selectedRowKeys.value = [];
   expandedGroupKeys.value = [];
   invoiceProcess.value = undefined;
+  invoiceProcessError.value = false;
   invoiceNo.value = '';
   invoiceDate.value = undefined;
   attachmentGroup.value = [];
@@ -1362,9 +1368,15 @@ void handleSubmitAndNew;
                       >
                         <img :src="invoiceTicketSvg" alt="" />
                       </span>
-                      <span>发票制作</span>
+                      <span class="invoice-process-title">
+                        发票方式
+                        <span class="invoice-process-title__required">*</span>
+                      </span>
                     </div>
-                    <div class="invoice-tabs">
+                    <div
+                      class="invoice-tabs"
+                      :class="{ 'invoice-tabs--error': invoiceProcessError }"
+                    >
                       <button
                         v-for="option in [
                           { label: '先票后付', value: 0 },
@@ -1710,7 +1722,12 @@ void handleSubmitAndNew;
                     共 {{ orderGroups.length }} 票 · 录入状态可增删
                   </span>
                   <Space>
-                    <Button size="small" @click="handleOpenAddFee">
+                    <Button
+                      type="primary"
+                      size="small"
+                      class="fee-detail-add-btn"
+                      @click="handleOpenAddFee"
+                    >
                       + {{ t('addFee') }}
                     </Button>
                     <Button
@@ -2129,6 +2146,15 @@ void handleSubmitAndNew;
   box-shadow: none;
 }
 
+.fee-detail-actions :deep(.fee-detail-add-btn.ant-btn-primary) {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-color: #1677ff;
+  box-shadow: 0 1px 2px rgb(22 119 255 / 24%);
+}
+
 .fee-detail-status {
   font-size: 11px;
   font-weight: 400;
@@ -2366,6 +2392,16 @@ void handleSubmitAndNew;
   display: block;
 }
 
+.invoice-process-title {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.invoice-process-title__required {
+  color: #ef4444;
+}
+
 .invoice-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -2373,7 +2409,13 @@ void handleSubmitAndNew;
   width: min(100%, 360px);
   padding: 3px;
   background: #f7f8fa;
+  border: 1px solid transparent;
   border-radius: 7px;
+}
+
+.invoice-tabs--error {
+  background: #fef2f2;
+  border-color: #fca5a5;
 }
 
 .invoice-tab {

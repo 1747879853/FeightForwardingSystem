@@ -77,6 +77,8 @@ const exchangeRateModalVisible = ref(false);
 const pendingCurrencies = ref<CurrencyInfo[]>([]);
 const settlementCurrencyName = ref('');
 const currencySelectRef = ref();
+/** 发票方式未选时标红 */
+const invoiceProcessError = ref(false);
 
 function hasExistingFees(): boolean {
   return (drawerProps.value.selectedFeeIds?.length ?? 0) > 0;
@@ -284,6 +286,7 @@ function resetState() {
   selectionMap.clear();
   appliedAmountMap.clear();
   expandedRowKeys.value = [];
+  invoiceProcessError.value = false;
 }
 
 function clearSelection() {
@@ -638,7 +641,8 @@ function handleConfirm() {
     drawerProps.value.enableInvoiceProcess &&
     drawerProps.value.invoiceProcess == null
   ) {
-    message.warning('请选择发票制作方式');
+    invoiceProcessError.value = true;
+    message.warning('请选择发票方式');
     return;
   }
   const selected = getSelectedFees();
@@ -722,6 +726,9 @@ function onInvoiceProcessChange(value: number | undefined) {
     ...drawerProps.value,
     invoiceProcess: value,
   };
+  if (value != null) {
+    invoiceProcessError.value = false;
+  }
   emit('update:invoiceProcess', value);
 }
 
@@ -846,7 +853,10 @@ defineExpose({ open: openDrawer });
         v-if="drawerProps.enableInvoiceProcess"
         class="ml-auto flex items-center gap-2"
       >
-        <span class="text-sm text-gray-600">发票制作方式</span>
+        <span class="text-sm text-gray-600">
+          发票方式
+          <span class="text-red-500">*</span>
+        </span>
         <Select
           :value="drawerProps.invoiceProcess"
           :options="[
@@ -854,6 +864,7 @@ defineExpose({ open: openDrawer });
             { label: '先付后票', value: 1 },
             { label: '不开票', value: 2 },
           ]"
+          :status="invoiceProcessError ? 'error' : undefined"
           placeholder="请选择"
           size="small"
           style="width: 140px"

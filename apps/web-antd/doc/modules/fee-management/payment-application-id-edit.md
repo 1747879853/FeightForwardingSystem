@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-08
+last_updated: 2026-08-09
 ---
 
 # 1. 业务背景说明 (Background)
@@ -65,6 +65,7 @@ last_updated: 2026-08-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 「发票方式」文案与必填标红；未选 toast 提示；费用明细「+ 添加费用」改为 primary。 | 与新增页共用 `form.vue` / `add-fee-modal`。详见 `changelogs/change-log-2026-08-09-payment-application-invoice-process-label.md`。 |
 | 2026-08-08 | `Fix` | 费用明细「费用名称」筛选改用 `FeeCodeSelect`（货代费用 API）；筛选栏 `label` 改为 `div`。 | 与新增页共用 `form.vue`；详见 `changelogs/change-log-2026-08-08-payment-application-fee-filter-fee-code-select.md`。 |
 | 2026-08-02 | `Fix` | 费用明细 NestedDataTable 展开列固定 32px，宽容器下不再被撑开。 | 最后一列 `<col>` 不设宽吸收剩余空间；详见 `changelogs/change-log-2026-08-02-nested-data-table-expand-col-width.md`。 |
 | 2026-08-02 | `Fix` | 提交/撤销提交成功后延迟 2s 再刷新右侧审核流程。 | `workflowReloadKey` 重挂载 + `loadDelayMs=2000`；详见 `changelogs/change-log-2026-08-02-payment-application-submit-workflow-delay.md`。 |
