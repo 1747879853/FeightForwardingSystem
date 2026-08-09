@@ -570,7 +570,7 @@ const handleReceivableTableUpdate = (
       return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
     }, 0);
     let exchangeRate = list[0]?.exchangeRate;
-    let currencyName = list[0]?.currencyName;
+    let currencyName = list[0]?.currency?.cnName ?? list[0]?.currency?.code;
     let currencyId = list[0]?.currencyId;
     recAmountMap.value[item] = {
       totalRecAmount,
@@ -601,7 +601,7 @@ const handlePayableTableUpdate = (
       return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
     }, 0);
     let exchangeRate = list[0]?.exchangeRate;
-    let currencyName = list[0]?.currencyName;
+    let currencyName = list[0]?.currency?.cnName ?? list[0]?.currency?.code;
     payAmountMap.value[item] = {
       totalPayAmount,
       totalRMBPayAmount,

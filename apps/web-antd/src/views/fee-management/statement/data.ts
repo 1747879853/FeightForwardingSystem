@@ -147,7 +147,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       sortable: true,
     },
     {
-      field: 'clientName',
+      field: 'client.name',
       title: $t('seaExport.export.statement.clientName'),
       minWidth: 140,
       sortable: true,

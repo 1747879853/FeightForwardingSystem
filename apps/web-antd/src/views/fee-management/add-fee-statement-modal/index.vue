@@ -492,11 +492,11 @@ function getSelectedFees(): SelectedFeeItem[] {
           customerServiceUserNames,
           paySide: fee.paySide,
           feeCodeId: fee.feeCodeId,
-          feeCodeName: fee.feeCodeName,
+          feeCodeName: fee.feeCode?.cnName ?? undefined,
           currencyId: fee.currencyId,
-          currencyName: fee.currencyName,
+          currencyName: fee.currency?.cnName ?? fee.currency?.code ?? undefined,
           settlementId: fee.settlementId,
-          settlementName: fee.settlementName,
+          settlementName: fee.settlement?.name ?? undefined,
           amount: fee.amount,
           settledAmount: fee.settledAmount,
           unSettledAmount: fee.unSettledAmount,
@@ -514,7 +514,8 @@ function resolveSettlementCurrencyName(targetId: number): string {
   if (fromCurrencies) return fromCurrencies.currencyName;
   for (const order of orderList.value) {
     for (const fee of order.orderFees ?? []) {
-      if (fee.currencyId === targetId) return fee.currencyName ?? '';
+      if (fee.currencyId === targetId)
+        return fee.currency?.cnName ?? fee.currency?.code ?? '';
     }
   }
   if (currencySelectRef.value) {
@@ -728,6 +729,15 @@ defineExpose({ open: openDrawer });
           </template>
           <template v-else-if="column.key === 'settlementStatus'">
             {{ getSettlementStatusLabel(feeRecord.settlementStatus) }}
+          </template>
+          <template v-else-if="column.key === 'settlementName'">
+            {{ feeRecord.settlement?.name ?? '' }}
+          </template>
+          <template v-else-if="column.key === 'feeCodeName'">
+            {{ feeRecord.feeCode?.cnName ?? '' }}
+          </template>
+          <template v-else-if="column.key === 'currencyCode'">
+            {{ feeRecord.currency?.code ?? '' }}
           </template>
           <template v-else>
             {{ column.dataIndex ? feeRecord[column.dataIndex] : '' }}

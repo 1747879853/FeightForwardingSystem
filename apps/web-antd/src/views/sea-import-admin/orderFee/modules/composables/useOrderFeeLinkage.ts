@@ -394,8 +394,8 @@ export function useOrderFeeLinkage(
           row['settlementId'] = settlementName;
           // _value 字段存储 ID（用于联动和保存）
           row['settlementId_value'] = settlementId;
-          // __settlementName 也缓存一份（兼容旧代码）
-          row['settlementName'] = settlementName;
+          // __settlementName 缓存一份，供表格 label 回显
+          row['__settlementName'] = settlementName;
 
           console.log(
             '👤 [fillSettlementIdByIndustryCategory] 行业类别:',

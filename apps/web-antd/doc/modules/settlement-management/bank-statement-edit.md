@@ -51,6 +51,7 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Refactor` | 关联收费核销明细展开时，嵌套 `orderFee` 的费用名称/币别/结算对象改读对象路径。 | `bank-statement/utils.ts` 的 `mapReceiveSettlementDetailItem` / `mapReceiveSettlementInvoiceDetailItem` 改读 `orderFee?.feeCode?.cnName` 等；选费面板仍用 `ReceiveSettlementFeeDto`/`InvoiceAppSettleItemDto` 平铺。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-07-25 | `Refactor` | 付款方改读结算对象对象化后的 `settlement`；编辑进入时下拉直接回显付款方，不再依赖分页命中。 | 详情 `settlementName` 已删除，`applySavedBankStatementSnapshot` 与顶部摘要统一取 `detail.settlement?.name`；`ClientSelect` 补 `selected-items`（通用 Client 接口无 Detail，回显必须外部传入）。 |
 | 2026-07-19 | `Fix` | 金额输入移除遮挡数字的步进箭头；补充信息增加明确的折叠提示；可核销操作人统一显示昵称；移除顶部重复的新建核销入口和关联列表操作列，改为双击行进入抽屉；抽屉修改结算后同步刷新外层数据；开票申请选择区默认仅查询可结算数据，并将查询、重置按钮与条件同行排列。 | 新建核销统一从关联核销单区域进入；操作人名称通过 `GetUserAsync` 解析并缓存昵称；嵌入式结算表单的保存、增删明细、锁定、解锁和删除统一向工作台发送变更事件；开票申请查询固定传 `onlySettleable: true`。 |
 | 2026-07-16 | `Feature` | 页面改为财务核销工作台：增加流水/已核销/剩余汇总；仅待核销可编辑流水；新增和编辑核销统一迁入抽屉；关联区收敛为核销单核心列表；操作人明确为可核销操作人。 | 收费核销与发票结算表单增加 `embeddedId`/`embedded` 复用模式；详情缺创建人 ID，创建财务的核销授权需后端最终校验。 |

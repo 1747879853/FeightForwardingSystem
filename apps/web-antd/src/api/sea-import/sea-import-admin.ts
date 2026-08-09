@@ -162,6 +162,23 @@ export namespace SeaImportAdminApi {
     userNickName?: null | string;
   }
 
+  /** 费用代码简易对象 */
+  export interface FeeCodeSimpleDto {
+    id?: LongId;
+    code?: null | string;
+    cnName?: null | string;
+    enName?: null | string;
+  }
+
+  /** 币别简易对象 */
+  export interface CurrencySimpleDto {
+    id?: LongId;
+    code?: null | string;
+    cnName?: null | string;
+    enName?: null | string;
+    defaultRate?: number;
+  }
+
   /** 费用（只读概览，字段口径见接口文档 3.11） */
   export interface OrderFeeDto {
     id: string;
@@ -172,13 +189,16 @@ export namespace SeaImportAdminApi {
     settlementStatus?: number;
     invoiceStatus?: number;
     feeCodeId?: LongId;
-    feeCodeName?: null | string;
+    /** 费用代码对象（替代 feeCodeName / feeCodeCode） */
+    feeCode?: FeeCodeSimpleDto | null;
     industryCategory?: null | number;
     settlementId?: null | string;
-    settlementName?: null | string;
+    /** 结算对象（替代 settlementName / settlementCode） */
+    settlement?: ClientSimpleDto | null;
     statementId?: null | string;
     currencyId?: LongId;
-    currencyName?: null | string;
+    /** 币别对象（替代 currencyName / currencyCode） */
+    currency?: CurrencySimpleDto | null;
     exchangeRate?: number;
     unitPrice?: number;
     noTaxUnitPrice?: number;

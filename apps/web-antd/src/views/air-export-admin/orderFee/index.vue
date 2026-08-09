@@ -146,7 +146,8 @@ const sumByCurrency = (items: AirExportAdminApi.OrderFeeDto[]) => {
   for (const item of items) {
     const amount = Number(item.amount);
     if (!Number.isFinite(amount)) continue;
-    const currency = item.currencyName?.trim() || '-';
+    const currency =
+      item.currency?.cnName?.trim() || item.currency?.code?.trim() || '-';
     totals.set(currency, (totals.get(currency) ?? 0) + amount);
   }
   return [...totals.entries()].map(
@@ -160,21 +161,21 @@ const payableTotals = computed(() => sumByCurrency(payableFees.value));
 const columns = computed(() => [
   {
     key: 'feeCodeName',
-    dataIndex: 'feeCodeName',
+    dataIndex: ['feeCode', 'cnName'],
     title: $t('airExport.export.orderFee.feeCodeName'),
     width: 140,
     ellipsis: true,
   },
   {
     key: 'settlementName',
-    dataIndex: 'settlementName',
+    dataIndex: ['settlement', 'name'],
     title: $t('airExport.export.orderFee.settlementName'),
     width: 160,
     ellipsis: true,
   },
   {
     key: 'currencyName',
-    dataIndex: 'currencyName',
+    dataIndex: ['currency', 'cnName'],
     title: $t('airExport.export.orderFee.currencyName'),
     width: 80,
   },

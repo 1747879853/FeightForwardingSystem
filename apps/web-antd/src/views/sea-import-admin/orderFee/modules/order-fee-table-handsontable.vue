@@ -462,7 +462,7 @@ const convertIdsToLabels = () => {
 
     // 结算对象ID -> label
     if (row.settlementId && !row.settlementId_label_converted) {
-      const label = row.settlementName;
+      const label = row.settlement?.name ?? row.__settlementName;
       if (label) {
         //row.settlementId_value = row.settlementId;
         row.settlementId = label;

@@ -434,7 +434,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('seaImport.import.orderFee.feecodeName'),
 
-      field: 'feeCodeName',
+      field: 'feeCode.cnName',
       minWidth: 120,
     },
     {
@@ -450,13 +450,13 @@ export function useExpenseAllColumns(): VxeTableGridOptions<OrderFeeAdminApi.Ord
     {
       title: $t('seaImport.import.orderFee.settlement'),
 
-      field: 'settlementName',
+      field: 'settlement.name',
       minWidth: 110,
     },
     {
       title: $t('seaImport.import.orderFee.currency'),
 
-      field: 'currencyName',
+      field: 'currency.cnName',
       align: 'center',
       minWidth: 80,
     },

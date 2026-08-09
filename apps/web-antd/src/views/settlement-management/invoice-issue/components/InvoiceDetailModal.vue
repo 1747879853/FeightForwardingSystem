@@ -143,9 +143,9 @@ function transformToTreeData(applications: any[]): any[] {
               return etdValue;
             }
           })(), // 开船日期（只保留年月日）
-          feeName: item.orderFee?.feeCodeName || '-', // 费用名称
+          feeName: item.orderFee?.feeCode?.cnName || '-', // 费用名称
           payReceiveType: item.orderFee?.paySide === 1 ? '应付' : '应收', // 收付
-          currencyCode: item.orderFee?.currencyCode || '-', // 币别
+          currencyCode: item.orderFee?.currency?.code || '-', // 币别
           amount: item.orderFee?.amount || 0, // 金额
           exchangeRate: 1, // 汇率
           salesPerson: '-', // 销售
@@ -351,11 +351,10 @@ async function regenerateGoodsDetails(appsToDelete: string[]): Promise<any[]> {
     // 获取当前申请的币别和汇率信息
     const appCurrencyId = app.currencyId;
     const isAppForeignCurrency = appCurrencyId !== 1; // 1 是人民币
-    
+
     // 遍历该申请的所有商品明细
     app.invoiceApplicationGoodsDtls.forEach((goods: any) => {
-      const goodsName =
-        goods.codeInvoiceName || goods.goodsName || '未知商品';
+      const goodsName = goods.codeInvoiceName || goods.goodsName || '未知商品';
       const specification = goods.specification || '';
       const unit = goods.unit || '票';
       const quantity = goods.quantity || 0;
@@ -378,19 +377,23 @@ async function regenerateGoodsDetails(appsToDelete: string[]): Promise<any[]> {
         convertedNoTaxAmount = (goods.noTaxAmount || 0) * exchangeRate;
         convertedTaxAmount = (goods.taxAmount || 0) * exchangeRate;
         convertedUnitPrice = (goods.unitPrice || 0) * exchangeRate;
-        
+
         console.log('💱 外币转人民币:', {
           originalAmount: goods.amount,
           exchangeRate: exchangeRate,
           convertedAmount: convertedAmount,
           appCurrencyId: appCurrencyId,
-          invoiceCurrencyId: invoiceCurrencyId
+          invoiceCurrencyId: invoiceCurrencyId,
         });
-      } else if (isAppForeignCurrency && invoiceCurrencyId !== 1 && appCurrencyId !== invoiceCurrencyId) {
+      } else if (
+        isAppForeignCurrency &&
+        invoiceCurrencyId !== 1 &&
+        appCurrencyId !== invoiceCurrencyId
+      ) {
         // 申请是外币A，发票是外币B：这种情况理论上不应该出现
         console.warn('⚠️ 不同外币之间转换，可能存在问题:', {
           appCurrencyId: appCurrencyId,
-          invoiceCurrencyId: invoiceCurrencyId
+          invoiceCurrencyId: invoiceCurrencyId,
         });
         // 这种情况暂时不处理，保持原值
       }
@@ -403,7 +406,7 @@ async function regenerateGoodsDetails(appsToDelete: string[]): Promise<any[]> {
         existing.amount += convertedAmount;
         existing.noTaxAmount += convertedNoTaxAmount;
         existing.taxAmount += convertedTaxAmount;
-        
+
         // ✅ 重新计算单价：单价 = 金额 / 数量
         // 注意：数量应该大于0，避免除零错误
         if (existing.quantity > 0) {
@@ -439,7 +442,20 @@ async function regenerateGoodsDetails(appsToDelete: string[]): Promise<any[]> {
         };
 
         goodsMap.set(mergeKey, newItem);
-        console.log('  - 新增商品:', goodsName, '规格:', specification, '单位:', unit, '数量:', quantity, '税率:', taxRate, '金额:', convertedAmount);
+        console.log(
+          '  - 新增商品:',
+          goodsName,
+          '规格:',
+          specification,
+          '单位:',
+          unit,
+          '数量:',
+          quantity,
+          '税率:',
+          taxRate,
+          '金额:',
+          convertedAmount,
+        );
       }
     });
   });

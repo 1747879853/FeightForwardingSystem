@@ -47,4 +47,5 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Refactor` | 付费申请展开行、以及「添加付费申请」抽屉展开的费用明细，「费用名称」「币别」改读嵌套对象。 | `PaymentSettlementAdminApi.OrderFeeDto` 与 `OrderFeeForSelectionDto` 均已对象化——后者虽名字不同，但接口文档写明 `orderFees: List<OrderFeeDto>`，属同一后端 DTO。`application-items-table.vue` 与 `add-application-drawer/index.vue` 的内层 a-table `dataIndex` 改数组路径 `['feeCode','cnName']`/`['currency','code']`，`key` 保持不变以免影响既有 `#bodyCell` 分支。注意这两处列绑定是无类型的字符串，`vue-tsc` 查不出来，只能靠接口文档比对。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-07-25 | `Refactor` | 结算对象改读对象化后的 `settlement`；编辑进入时下拉直接回显结算对象，列表「结算对象」列同步取对象值。 | 详情/列表删除 `settlementName`，类型复用 `PaymentApplicationAdminApi.ClientSimpleDtoForOrder`；列 `field` 保留 `settlementName` 以维持列持久化与排序映射，展示走 `formatter`；`watch(settlementId)` 命中 `selected-items` 缓存时跳过 `getClientDetail`。 |

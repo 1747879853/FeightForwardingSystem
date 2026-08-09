@@ -427,7 +427,10 @@ export function useOrderFeeData(
       }, 0);
 
       const exchangeRate = currencyList[0]?.exchangeRate || 1;
-      const currencyName = currencyList[0]?.currencyName || '';
+      const currencyName =
+        currencyList[0]?.currency?.cnName ||
+        currencyList[0]?.currency?.code ||
+        '';
 
       if (currencyId !== undefined && currencyId !== null) {
         if (props.type === 0) {

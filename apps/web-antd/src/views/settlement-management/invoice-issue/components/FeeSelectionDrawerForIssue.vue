@@ -20,7 +20,10 @@ import {
 } from 'ant-design-vue';
 
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
-import { InvoiceIssueApi, syncApplicationGoodsDtlByExchangeRate } from '#/api/Invoice/InvoiceIssue';
+import {
+  InvoiceIssueApi,
+  syncApplicationGoodsDtlByExchangeRate,
+} from '#/api/Invoice/InvoiceIssue';
 import { getSubmittedApplicationList } from '#/api/Invoice/InvoiceIssue';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
@@ -351,7 +354,7 @@ async function handleOpenFeeDrawer() {
     isSettlementFixed.value = false; // ✅ 重置固定状态
     selectedAppRowKeys.value = [];
     filterCurrencyId.value = undefined; // ✅ 首次添加时清空币别筛选
-    
+
     // ✅ 首次添加时，如果传入了汇率值，则使用该值，否则保持默认值1.0
     if (props.invoiceExchangeRate !== undefined) {
       invoiceExchangeRate.value = props.invoiceExchangeRate;
@@ -433,7 +436,7 @@ async function handleOpenFeeDrawer() {
       ];
       console.warn('⚠️ 编辑模式：缺少 settlementName，仅显示ID');
     }
-    
+
     // ✅ 编辑模式：使用传入的开票汇率作为默认值
     if (props.invoiceExchangeRate !== undefined) {
       invoiceExchangeRate.value = props.invoiceExchangeRate;
@@ -611,11 +614,11 @@ async function handleSaveFeeSelection() {
 
     // 显示不可开票的申请
     if (cannotInvoiceApps.length > 0) {
-      errorMessages.push(`❌ 不可开票的申请（${cannotInvoiceApps.length}个）：`);
+      errorMessages.push(
+        `❌ 不可开票的申请（${cannotInvoiceApps.length}个）：`,
+      );
       cannotInvoiceApps.forEach((app) => {
-        errorMessages.push(
-          `• ${app.applicationNo}`,
-        );
+        errorMessages.push(`• ${app.applicationNo}`);
       });
     }
 
@@ -714,7 +717,7 @@ async function loadApplicationGroupData() {
     if (selectedSettlementId.value) {
       params.settlementId = selectedSettlementId.value;
     }
-    
+
     // ❌ 删除：不再使用 selectedCurrencyId，因为它会被固定为首次选择的币别
     // if (selectedCurrencyId.value !== undefined) {
     //   params.currencyId = selectedCurrencyId.value;
@@ -840,9 +843,9 @@ function transformToTreeData(
               return etdValue;
             }
           })(), // 开船日期（只保留年月日）
-          feeName: item.orderFee?.feeCodeName || '-', // 费用名称
+          feeName: item.orderFee?.feeCode?.cnName || '-', // 费用名称
           payReceiveType: item.orderFee?.paySide === 1 ? '应付' : '应收', // 收付
-          currencyCode: item.orderFee?.currencyCode || '-', // 币别
+          currencyCode: item.orderFee?.currency?.code || '-', // 币别
           amount: item.orderFee?.amount || 0, // 金额
           exchangeRate: 1, // 汇率
           saleNames: item.orderFee?.transportOrder?.saleNames || '-', // 销售
@@ -1241,7 +1244,9 @@ function handleCancelReject() {
 
 /** 发票更新 - 根据当前汇率修正选中申请的商品明细金额 */
 async function handleUpdateInvoice() {
-  const selectedIds = getSelectedApplicationsFromTable().map((app: any) => app.id);
+  const selectedIds = getSelectedApplicationsFromTable().map(
+    (app: any) => app.id,
+  );
 
   if (selectedIds.length === 0) {
     message.warning('请先选择要更新的发票');
@@ -1444,11 +1449,22 @@ defineExpose({
             <template v-if="column.key === 'code'">
               <span
                 :style="{
-                  color: record.code === 0 ? '#52c41a' : (record.code === 1 ? '#faad14' : '#ff4d4f'),
+                  color:
+                    record.code === 0
+                      ? '#52c41a'
+                      : record.code === 1
+                        ? '#faad14'
+                        : '#ff4d4f',
                   fontWeight: 'bold',
                 }"
               >
-                {{ record.code === 0 ? '✓ 可开票' : (record.code === 1 ? '⚠ 需更新' : '✗ 不可开') }}
+                {{
+                  record.code === 0
+                    ? '✓ 可开票'
+                    : record.code === 1
+                      ? '⚠ 需更新'
+                      : '✗ 不可开'
+                }}
               </span>
             </template>
             <template v-else-if="column.key === 'invoiceType'">

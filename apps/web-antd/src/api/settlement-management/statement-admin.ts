@@ -28,13 +28,29 @@ export namespace StatementAdminApi {
     localCurrencyCode?: null | string;
   }
 
+  /** 币别简要对象 */
+  export interface CurrencySimpleDto {
+    code?: string;
+    cnName?: string;
+    enName?: string;
+    defaultRate?: number;
+  }
+
+  /** 客户简要对象 */
+  export interface ClientSimpleDto {
+    id: string;
+    name?: string;
+    code?: string;
+    fullName?: string;
+    enName?: string;
+  }
+
   /** 费用币别分组输出 */
   export interface StatementCurrencyDto {
     currencyId: number;
     currencySortId: number;
-    currencyCode?: string;
-    currencyCnName?: string;
-    currencyEnName?: string;
+    /** 币别简要对象（替代 currencyCode / currencyCnName / currencyEnName） */
+    currency?: CurrencySimpleDto | null;
     receiveAmount: number;
     payAmount: number;
   }
@@ -70,8 +86,8 @@ export namespace StatementAdminApi {
     remark?: string;
     userId: number;
     tenantId: number;
-    clientName?: string;
-    clientCode?: string;
+    /** 客户简要对象（替代 clientName / clientCode） */
+    client?: ClientSimpleDto | null;
     creatorUserName?: string;
     mblNums?: string[];
     statementCurrencyGroup?: StatementCurrencyDto[];

@@ -362,10 +362,10 @@ function mapDetailItem(
     mblNum: order?.mblNum,
     bookingNum: order?.bookingNum,
     clientName: order?.clientName,
-    feeCodeName: orderFee?.feeCodeName,
-    currencyCode: orderFee?.currencyCode,
+    feeCodeName: orderFee?.feeCode?.cnName,
+    currencyCode: orderFee?.currency?.code,
     amount: orderFee?.amount ?? 0,
-    settlementName: orderFee?.settlementName,
+    settlementName: orderFee?.settlement?.name,
     settledAmount: item.settledAmount,
     remark: item.remark || '',
   };

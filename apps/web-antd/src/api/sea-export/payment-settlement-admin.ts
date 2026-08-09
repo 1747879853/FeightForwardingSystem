@@ -153,12 +153,12 @@ export namespace PaymentSettlementAdminApi {
   export interface OrderFeeDto {
     /** 费用ID */
     id: string;
-    /** 费用代码名称 */
-    feeCodeName?: string;
-    /** 币别代码 */
-    currencyCode?: string;
-    /** 结算对象名称 */
-    settlementName?: string;
+    /** 费用代码对象（替代 feeCodeName / feeCodeCode） */
+    feeCode?: FeeCodeSimpleDto | null;
+    /** 币别对象（替代 currencyName / currencyCode） */
+    currency?: CurrencySimpleDto | null;
+    /** 结算对象（替代 settlementName / settlementCode） */
+    settlement?: ClientSimpleDto | null;
     /** 含税单价 */
     unitPrice?: number;
     /** 金额 */
@@ -448,7 +448,9 @@ export namespace PaymentSettlementAdminApi {
   /** 简单DTO - 费用代码 */
   export interface FeeCodeSimpleDto {
     id: number;
+    code?: string;
     cnName?: string;
+    enName?: string;
   }
 
   /** 简单DTO - 币别 */
@@ -456,6 +458,9 @@ export namespace PaymentSettlementAdminApi {
     id: number;
     code?: string;
     name?: string;
+    cnName?: string;
+    enName?: string;
+    defaultRate?: number;
   }
 
   /** 运输订单简要DTO */
@@ -467,17 +472,22 @@ export namespace PaymentSettlementAdminApi {
     clientName?: string;
   }
 
-  /** 订单费用DTO（用于选择列表） */
+  /**
+   * 订单费用DTO（用于选择列表）
+   *
+   * 后端即通用 `OrderFeeDto`（见 `doc/付费结算/付费结算选择付费申请列表接口文档.md`），
+   * 外键已对象化，勿再读 feeCodeName / settlementName / currencyCode。
+   */
   export interface OrderFeeForSelectionDto {
     id: string;
     transportOrderId: string;
     paySide: number;
     feeCodeId: number;
-    feeCodeName?: string;
+    feeCode?: FeeCodeSimpleDto | null;
     settlementId: string;
-    settlementName?: string;
+    settlement?: ClientSimpleDto | null;
     currencyId: number;
-    currencyCode?: string;
+    currency?: CurrencySimpleDto | null;
     exchangeRate: number;
     amount: number;
     unSettledAmount: number;

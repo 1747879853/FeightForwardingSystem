@@ -93,14 +93,42 @@ export namespace ReceiveSettlementAdminApi {
     id: string;
   }
 
+  /** 费用代码简要对象 */
+  export interface FeeCodeSimpleDto {
+    id?: number;
+    code?: string;
+    cnName?: string;
+    enName?: string;
+  }
+
+  /** 币别简要对象 */
+  export interface CurrencySimpleDto {
+    id?: number;
+    code?: string;
+    cnName?: string;
+    enName?: string;
+  }
+
+  /** 客户简要对象 */
+  export interface ClientSimpleDto {
+    id?: string;
+    name?: string;
+    code?: string;
+    fullName?: string;
+    enName?: string;
+  }
+
   export interface OrderFeeDto {
     id: string;
-    feeCodeName?: string;
-    currencyCode?: string;
+    /** 费用代码对象（替代 feeCodeName / feeCodeCode） */
+    feeCode?: FeeCodeSimpleDto | null;
+    /** 币别对象（替代 currencyName / currencyCode） */
+    currency?: CurrencySimpleDto | null;
+    /** 结算对象（替代 settlementName / settlementCode） */
+    settlement?: ClientSimpleDto | null;
     paySide?: PaySide;
     amount?: number;
     remainingAmount?: number;
-    settlementName?: string;
     remark?: string;
   }
 

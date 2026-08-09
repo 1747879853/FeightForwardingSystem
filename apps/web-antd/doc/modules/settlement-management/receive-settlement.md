@@ -57,6 +57,7 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Refactor` | 详情回显的费用明细行改读费用嵌套对象；添加费用抽屉不受影响。 | `ReceiveSettlementAdminApi.OrderFeeDto` 已对象化，`form.vue` / `invoice-form.vue` 的 `mapDetailItem` 改走 `orderFee?.feeCode?.cnName` / `currency?.code` / `settlement?.name`；抽屉与银行流水面板用的是模块自有 `ReceiveSettlementFeeDto` / `InvoiceAppSettleItemDto`（仍平铺），两套 DTO 不可混用。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-07-25 | `Refactor` | 银行流水信息卡片与流水选择弹窗的「付款方」改读流水 `settlement.name`。 | 银行流水详情/列表删除 `settlementName`；`form.vue`、`invoice-form.vue` 的 `bankStatementSettlementName` 与 picker 列同步改为对象取值；费用明细列的 `orderFee.settlementName` 未变，两者不可混用。 |
 | 2026-07-19 | `Fix` | 收费核销与银行流水两个 Tab 列表补 `gridOptions.id`，避免同路由下列持久化互相覆盖。 | id：`settlementReceiveSettlementList` / `settlementBankStatementList`；此前仅依赖路由名回退，两表会共用同一持久化 key。 |
 | 2026-07-14 | `Feature` | 收费核销列表与「银行流水」Tab 的「新建」合并为悬浮下拉，可选费用结算/发票结算；银行流水 Tab 按类型跳 `/add` 或 `/add-by-invoice`。 | `Dropdown` hover 触发 + `Menu`；`bank-statement-grid` 抽 `getSingleSelectedRow`，`navigateToCreateReceiveSettlement(row, type)` 分流路由。 |

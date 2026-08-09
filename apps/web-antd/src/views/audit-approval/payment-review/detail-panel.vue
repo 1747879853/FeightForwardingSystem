@@ -167,15 +167,15 @@ function mapDetailToFeeRows(
         customerServiceUserNames: order?.customerServiceNames?.join('、'),
         paySide: fee?.paySide ?? 0,
         feeCodeId: fee?.feeCodeId ?? 0,
-        feeCodeName: item.feeCodeName ?? fee?.feeCodeName,
+        feeCodeName: item.feeCodeName ?? fee?.feeCode?.cnName,
         currencyId: fee?.currencyId ?? 0,
         currencyCode: resolveFeeCurrencyCode(fee, group.currencyGroup),
-        currencyName: item.feeCurrencyName ?? fee?.currencyName,
+        currencyName: item.feeCurrencyName ?? fee?.currency?.cnName,
         settlementId: fee?.settlementId ?? '',
         settlementName:
           settlementShortName ||
           item.feeSettlementName ||
-          fee?.settlementName ||
+          fee?.settlement?.name ||
           '',
         amount: fee?.amount ?? item.feeAmount ?? 0,
         settledAmount: fee?.settledAmount ?? 0,

@@ -58,6 +58,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Refactor` | 添加费用抽屉费用代码/币别/结算对象改读嵌套对象。 | `add-fee-modal` 映射与 `resolveCurrencyCode`/`resolveGroupSettlementName` 改走 `feeCode`/`currency`/`settlement`；`NestedDataTable` 兜底不支持数组 `dataIndex`，「费用名称」用显式 `column.key` 分支。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-08-09 | `Fix` | 结算币别「付款金额」及费用「{币别}申请合计」按付 − 收汇总；收费用计入负向。 | `signedAppliedAmount` + `summarizeByCurrency*`；明细仍提交正数 `appliedAmount`。详见 `changelogs/change-log-2026-08-09-payment-application-pay-minus-receive.md`。 |
 | 2026-08-09 | `Fix` | 「发票制作方式」改名为「发票方式」并加必填 `*`；未选时 toast 提示；「+ 添加费用」改为 primary。 | 不在下拉旁插行内错误文案以免改布局。详见 `changelogs/change-log-2026-08-09-payment-application-invoice-process-label.md`。 |
 | 2026-08-08 | `Fix` | 费用明细「费用名称」改为货代费用下拉（`FeeCodeSelect`）；输入关键字可远程检索；筛选栏改为 `div` 包裹。 | 删除无引用的 `FeeNameSelect`。详见 `changelogs/change-log-2026-08-08-payment-application-fee-filter-fee-code-select.md`。 |

@@ -10,18 +10,15 @@ const t = (key: string) => $t(`seaExport.export.paymentApplication.${key}`);
 
 export { toCurrencyDisplayCode };
 
-/** 解析费用原始币别 code（兼任 currencyCode 为空时从分组或 orderFee.currencyName 取值） */
+/** 解析费用原始币别 code（费用上 currency 为空时回落到币别分组） */
 export function resolveFeeCurrencyCode(
-  fee?: Pick<
-    PaymentApplicationAdminApi.OrderFeeDto,
-    'currencyId' | 'currencyCode' | 'currencyName'
-  >,
+  fee?: Pick<PaymentApplicationAdminApi.OrderFeeDto, 'currencyId' | 'currency'>,
   currencyGroup?: PaymentApplicationAdminApi.CurrencyGroupDto[],
 ): string {
   const fromGroup = currencyGroup?.find((c) => c.id === fee?.currencyId)?.code;
   return toCurrencyDisplayCode(
-    fee?.currencyCode || fromGroup,
-    fee?.currencyName,
+    fee?.currency?.code || fromGroup,
+    fee?.currency?.cnName,
   );
 }
 

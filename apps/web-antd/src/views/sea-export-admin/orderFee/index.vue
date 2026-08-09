@@ -529,7 +529,7 @@ const getOrderFeeNumber = async () => {
       return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
     }, 0);
     let exchangeRate = list[0]?.exchangeRate;
-    let currencyName = list[0]?.currencyName;
+    let currencyName = list[0]?.currency?.cnName ?? list[0]?.currency?.code;
     let currencyId = list[0]?.currencyId;
     if (currencyId !== undefined) {
       recAmountMap.value[currencyId] = {
@@ -558,7 +558,7 @@ const getOrderFeeNumber = async () => {
       return acc + (cur.amount || 0) * (cur.exchangeRate || 1);
     }, 0);
     let exchangeRate = list[0]?.exchangeRate;
-    let currencyName = list[0]?.currencyName;
+    let currencyName = list[0]?.currency?.cnName ?? list[0]?.currency?.code;
     let currencyId = list[0]?.currencyId;
     if (currencyId !== undefined) {
       payAmountMap.value[currencyId] = {
@@ -707,7 +707,6 @@ const handleSubmitAllFees = async () => {
       taskStatus: fee.taskStatus,
       industryCategory: fee.industryCategory,
       industryCategories: fee.industryCategories,
-      settlementCode: fee.settlementCode,
     }));
 
     // 构建提交参数 - 需要根据实际API要求构建

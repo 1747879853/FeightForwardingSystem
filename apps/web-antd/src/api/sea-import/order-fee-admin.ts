@@ -35,19 +35,36 @@ export namespace OrderFeeAdminApi {
   /** 费用代码简单信息 */
   export interface FeeCodeSimpleDto {
     id?: number;
+    code?: string | null;
     cnName?: string | null;
+    enName?: string | null;
+    /** 默认币别id */
+    currencyId?: number;
+    /** 默认计费标准 */
+    defaultUnit?: string | null;
+    defaultUnitName?: string | null;
+    /** 是否机密 */
+    isConfidential?: boolean;
+    /** 禁开发票 */
+    isInvoiceProhibit?: boolean;
+    /** 默认税率 */
+    taxRate?: number;
   }
 
   /** 币别简单信息 */
   export interface CurrencySimpleDto {
     id?: number;
     code?: string | null;
+    cnName?: string | null;
+    enName?: string | null;
+    /** 默认汇率 */
+    defaultRate?: number;
   }
 
   /**
-   * 新增字段说明：
+   * 新增字段说明（2026-08-09更新）：
   分类 字段  说明
-  展示字段  feeCodeName、currencyName、settlementName         关联表的名称展示
+  展示字段  feeCode、currency、settlement     关联表的简要对象（原平铺 feeCodeName / currencyName / settlementName 等已删除）
   计算字段  unInvoicedAmount、noTaxUnitPrice、noTaxAmount     服务端计算返回
   审计字段  isDeleted、creationTime、lastModificationTime 等   ABP 框架标准审计属性
 
@@ -180,6 +197,9 @@ export namespace OrderFeeAdminApi {
     /** 费用代码 id - 费用名称从这里来 */
     feeCodeId: number;
 
+    /** 费用代码简要对象（替代 feeCodeName / feeCodeCode） */
+    feeCode?: FeeCodeSimpleDto | null;
+
     /** 行业类别  数值*/
     IndustryCategory?: number;
     /** 行业类别 字母 */
@@ -188,8 +208,14 @@ export namespace OrderFeeAdminApi {
     /** 结算对象 id - 船公司是船公司表 其余是客户表 */
     settlementId: string;
 
+    /** 结算对象简要对象（替代 settlementName / settlementCode） */
+    settlement?: ClientSimpleDto | null;
+
     /** 币别 id */
     currencyId: number;
+
+    /** 币别简要对象（替代 currencyName / currencyCode） */
+    currency?: CurrencySimpleDto | null;
 
     /** 汇率 - 从币别拉出默认汇率 可以修改 */
     exchangeRate: number;
@@ -242,14 +268,8 @@ export namespace OrderFeeAdminApi {
     /** 本位币code */
     localCurrencyCode: string;
 
-    /** 费用代码名称 */
-    feeCodeName?: string;
-
-    /** 币别名称 */
-    currencyName?: string;
-
-    /** 结算对象名称 */
-    settlementName?: string;
+    /** 创建人昵称（仍平铺返回） */
+    creatorUserName?: string;
 
     /** 未开票金额 (计算字段) */
     unInvoicedAmount: number;

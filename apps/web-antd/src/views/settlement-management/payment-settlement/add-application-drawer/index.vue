@@ -277,11 +277,7 @@ async function handleReset() {
 }
 
 /** 分页变化 */
-async function handlePageChange(
-  pagination: any,
-  _filters: any,
-  _sorter: any,
-) {
+async function handlePageChange(pagination: any, _filters: any, _sorter: any) {
   currentPage.value = pagination.current;
   pageSize.value = pagination.pageSize;
   await fetchData();
@@ -652,13 +648,13 @@ const orderFeeColumns: ColumnsType<PaymentSettlementAdminApi.OrderFeeForSelectio
     },
     {
       title: '费用名称',
-      dataIndex: 'feeCodeName',
+      dataIndex: ['feeCode', 'cnName'],
       key: 'feeCodeName',
       width: 120,
     },
     {
       title: '币别',
-      dataIndex: 'currencyCode',
+      dataIndex: ['currency', 'code'],
       key: 'currencyCode',
       width: 80,
     },

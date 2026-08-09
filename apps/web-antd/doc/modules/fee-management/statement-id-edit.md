@@ -45,6 +45,7 @@ last_updated: 2026-07-21
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Refactor` | 对账单头客户、币别汇总卡片、费用明细行的费用代码/币别/结算对象全部改读嵌套对象。 | `clientName` 取自 `detail.client?.name`；`collectCurrenciesByFeeConfirm` / `collectCurrenciesByInit` / `fee-summary-card` 统一用 `fee.currency?.cnName ?? fee.currency?.code`；`mapDetailToFeeRows` 改读 `feeCode?.cnName` / `currency?.cnName` / `settlement?.name`。打印占位符改绑 `Client.Name`/`Client.FullName`。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-07-21 | `Feature` | 全局打印弹窗底部改为分裂式「打印」按钮；打印 PDF 新窗口打开（对账单打印复用）。 | 与海出共用 `print-format-modal` / `use-print-format`：`DropdownButton` + `window.open`。 |
 | 2026-07-20 | `Feature` | 顶栏「打印」由占位 `message.info` 接入全局打印：按对账单 id 由后端取数生成 PDF/Excel/Word 预览与导出；未保存时提示先保存。 | `handlePrint` 调用全局 `usePrintFormat().openPrint({ printJsonType: StatementDetail(11000), detailInput: { id: editId } })`，取数走 `PrintFormatAdmin/GetPrintAsync` → `StatementAdmin/DetailAsync`；对账单跨票无单一签单方式/船公司/分公司，模板筛选三要素留空（命中"相等或为空"的通用模板）。详见 `changelogs/change-log-2026-07-20-print-format-backend-fetch-getprint.md`。 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/fee-management/statement/:id/edit` 对应组件 `src/views/fee-management/statement/editor.vue`，权限口径为 Admin.Statement / Admin.Statement.Get。 |

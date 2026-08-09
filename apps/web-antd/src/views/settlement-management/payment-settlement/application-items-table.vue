@@ -104,13 +104,13 @@ const orderFeeColumns = [
   },
   {
     title: '费用名称',
-    dataIndex: 'feeCodeName',
+    dataIndex: ['feeCode', 'cnName'],
     key: 'feeCodeName',
     width: 150,
   },
   {
     title: '原始币别',
-    dataIndex: 'currencyCode',
+    dataIndex: ['currency', 'code'],
     key: 'currencyCode',
     width: 100,
   },
@@ -152,7 +152,7 @@ function getCreatorUserName(
   record: PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyDto,
 ): string {
   // TODO: 需要从详情中获取申请人信息，这里暂时返回占位符
-  return  record.userName || '-';
+  return record.userName || '-';
 }
 
 /**

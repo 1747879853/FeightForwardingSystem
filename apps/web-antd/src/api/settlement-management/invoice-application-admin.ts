@@ -103,16 +103,44 @@ export namespace InvoiceApplicationAdminApi {
     carrier?: CarrierSimpleDto | null;
   }
 
+  /** 费用代码简要对象 */
+  export interface FeeCodeSimpleDto {
+    id?: number;
+    code?: string;
+    cnName?: string;
+    enName?: string;
+  }
+
+  /** 币别简要对象 */
+  export interface CurrencySimpleDto {
+    id?: number;
+    code?: string;
+    cnName?: string;
+    enName?: string;
+  }
+
+  /** 客户简要对象 */
+  export interface ClientSimpleDto {
+    id?: string;
+    name?: string;
+    code?: string;
+    fullName?: string;
+    enName?: string;
+  }
+
   /** 订单费用信息 */
   export interface OrderFeeDto {
     id: string;
-    feeCodeName?: string;
+    /** 费用代码对象（替代 feeCodeName / feeCodeCode） */
+    feeCode?: FeeCodeSimpleDto | null;
     currencyId: number;
-    currencyCode?: string;
+    /** 币别对象（替代 currencyName / currencyCode） */
+    currency?: CurrencySimpleDto | null;
     amount: number;
     invoicedAmount: number;
     remainingInvoiceAmount: number;
-    settlementName?: string;
+    /** 结算对象（替代 settlementName / settlementCode） */
+    settlement?: ClientSimpleDto | null;
     settlementId: string;
     feeStatus: FeeStatus;
     paySide: PaySide;

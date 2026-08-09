@@ -431,8 +431,9 @@ function collectCurrenciesByInit(
   const map = new Map<number, string>();
   for (const order of items) {
     for (const fee of order.orderFees ?? []) {
-      if (fee.currencyId && fee.currencyName && !map.has(fee.currencyId)) {
-        map.set(fee.currencyId, fee.currencyName);
+      const name = fee.currency?.cnName ?? fee.currency?.code;
+      if (fee.currencyId && name && !map.has(fee.currencyId)) {
+        map.set(fee.currencyId, name);
       }
     }
   }
@@ -468,11 +469,11 @@ function mapDetailToFeeRows(
         customerServiceUserNames: undefined,
         paySide: fee?.paySide ?? 0,
         feeCodeId: fee?.feeCodeId ?? 0,
-        feeCodeName: fee?.feeCodeName,
+        feeCodeName: fee?.feeCode?.cnName ?? undefined,
         currencyId: fee?.currencyId ?? 0,
-        currencyName: fee?.currencyName,
+        currencyName: fee?.currency?.cnName ?? fee?.currency?.code ?? undefined,
         settlementId: fee?.settlementId ?? '',
-        settlementName: fee?.settlementName,
+        settlementName: fee?.settlement?.name ?? undefined,
         amount: fee?.amount ?? 0,
         settledAmount: fee?.settledAmount ?? 0,
         unSettledAmount: fee?.unSettledAmount ?? 0,
@@ -496,7 +497,7 @@ async function loadEditData() {
 
     statementNum.value = detail.statementNum ?? '';
     clientId.value = detail.clientId ?? '';
-    clientName.value = detail.clientName ?? '';
+    clientName.value = detail.client?.name ?? '';
 
     // 新增：加载所属组织id
     orgId.value = detail.orgId || undefined;

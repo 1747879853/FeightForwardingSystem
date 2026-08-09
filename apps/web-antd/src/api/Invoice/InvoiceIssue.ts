@@ -24,6 +24,8 @@ export namespace InvoiceIssueApi {
     id: number;
     code: string;
     name: string;
+    cnName?: string;
+    enName?: string;
     [key: string]: any;
   }
 
@@ -351,7 +353,7 @@ export namespace InvoiceIssueApi {
 
   /** ✅ 新增：汇率校验结果DTO（用于AddAsync和AddApplicationsAsync的出参） */
   export interface InvoiceIssueExchangeRateCheckDto {
-    /** 
+    /**
      * 校验码
      * 0 = 正常，已执行成功
      * 1 = 汇率已变动，且金额对不上的开票申请都只有一条商品明细（可调修正接口）
@@ -428,16 +430,28 @@ export namespace InvoiceIssueApi {
     [key: string]: any;
   }
 
+  /** 费用代码简易信息 */
+  export interface FeeCodeSimpleDto {
+    id?: number;
+    code?: string;
+    cnName?: string;
+    enName?: string;
+    [key: string]: any;
+  }
+
   /** 订单费用信息（扩展版，包含SeaExport） */
   export interface OrderFeeDto {
     id: string;
-    feeCodeName?: string;
+    /** 费用代码对象（替代 feeCodeName / feeCodeCode） */
+    feeCode?: FeeCodeSimpleDto | null;
     currencyId: number;
-    currencyCode?: string;
+    /** 币别对象（替代 currencyName / currencyCode） */
+    currency?: CurrencySimpleDto | null;
     amount: number;
     invoicedAmount: number;
     remainingInvoiceAmount: number;
-    settlementName?: string;
+    /** 结算对象（替代 settlementName / settlementCode） */
+    settlement?: ClientSimpleDto | null;
     settlementId: string;
     feeStatus: number;
     paySide: number;
@@ -532,7 +546,7 @@ export namespace InvoiceIssueApi {
     totalGoodsAmount: number;
     /** 折算后的人民币金额（根据当前发票汇率计算） */
     appliedAmountRmb?: number;
-    /** 
+    /**
      * 校验码
      * 0 = 金额匹配（totalGoodsAmount == appliedAmountRmb）
      * 1 = 金额不匹配且商品明细恰好1条（可调修正接口）

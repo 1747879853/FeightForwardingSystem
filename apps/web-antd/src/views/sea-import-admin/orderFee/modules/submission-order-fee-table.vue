@@ -267,7 +267,7 @@ const columns = [
       },
       {
         title: $t('seaExport.export.orderFee.feecodeName'),
-        dataIndex: 'feeCodeName',
+        dataIndex: ['feeCode', 'cnName'],
         key: 'feeCodeName',
         minWidth: 120,
       },
@@ -279,13 +279,13 @@ const columns = [
       },
       {
         title: $t('seaExport.export.orderFee.settlement'),
-        dataIndex: 'settlementName',
+        dataIndex: ['settlement', 'name'],
         key: 'settlementName',
         minWidth: 110,
       },
       {
         title: $t('seaExport.export.orderFee.currency'),
-        dataIndex: 'currencyName',
+        dataIndex: ['currency', 'cnName'],
         key: 'currencyName',
         minWidth: 80,
       },

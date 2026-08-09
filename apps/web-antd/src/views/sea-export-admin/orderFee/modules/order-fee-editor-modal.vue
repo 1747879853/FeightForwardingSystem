@@ -338,7 +338,7 @@ const [Modal, modalApi] = useVbenModal({
               (currentFeeData.value as any)?.settlementId_value ||
               currentFeeData.value?.settlementId;
             const settlementName =
-              currentFeeData.value?.settlementName ||
+              currentFeeData.value?.settlement?.name ||
               currentFeeData.value?.settlementId ||
               '';
 
@@ -1373,7 +1373,7 @@ function useOrderFeeFormSchema() {
         selectedItems: toSelectedItems(
           (currentFeeData.value as any)?.settlementId_value ||
             currentFeeData.value?.settlementId,
-          currentFeeData.value?.settlementName ||
+          currentFeeData.value?.settlement?.name ||
             currentFeeData.value?.settlementId,
         ),
       },
@@ -1603,7 +1603,7 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
                 >{{ $t('seaExport.export.orderFee.feecodeName') }}:</span
               >
               <span class="font-medium">{{
-                originalFeeData?.feeCodeName || '--'
+                originalFeeData?.feeCode?.cnName || '--'
               }}</span>
             </div>
             <div class="flex">
@@ -1623,7 +1623,7 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
                 >{{ $t('seaExport.export.orderFee.settlement') }}:</span
               >
               <span class="font-medium">{{
-                originalFeeData?.settlementName || '--'
+                originalFeeData?.settlement?.name || '--'
               }}</span>
             </div>
             <div class="flex">
@@ -1631,7 +1631,7 @@ const formatCurrency = (amount: number, currencyId: number = 1) => {
                 >{{ $t('seaExport.export.orderFee.currency') }}:</span
               >
               <span class="font-medium">{{
-                originalFeeData?.currencyName || '--'
+                originalFeeData?.currency?.cnName || '--'
               }}</span>
             </div>
             <div class="flex">

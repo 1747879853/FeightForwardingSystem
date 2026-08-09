@@ -240,7 +240,7 @@ export function useOrderFixedColumns() {
       ellipsis: true,
     },
     {
-      field: 'clientName',
+      field: 'client.name',
       title: '委托单位',
       width: 200,
       ellipsis: true,
@@ -321,8 +321,9 @@ export function collectCurrencies(
   const map = new Map<number, string>();
   for (const order of items) {
     for (const fee of order.orderFees ?? []) {
-      if (fee.currencyId && fee.currencyName && !map.has(fee.currencyId)) {
-        map.set(fee.currencyId, fee.currencyName);
+      const name = fee.currency?.cnName ?? fee.currency?.code;
+      if (fee.currencyId && name && !map.has(fee.currencyId)) {
+        map.set(fee.currencyId, name);
       }
     }
   }

@@ -176,7 +176,7 @@ const useOrderFeeDetailColumns = () => {
       field: 'feeCodeId',
       width: 120,
       formatter: ({ row }: any) => {
-        return row.feeCodeName || '--';
+        return row.feeCode?.cnName || '--';
       },
     },
     {
@@ -184,7 +184,7 @@ const useOrderFeeDetailColumns = () => {
       field: 'settlementId',
       width: 120,
       formatter: ({ row }: any) => {
-        return row.settlementName || '--';
+        return row.settlement?.name || '--';
       },
     },
     {
@@ -193,7 +193,7 @@ const useOrderFeeDetailColumns = () => {
       width: 70,
       align: 'center',
       formatter: ({ row }: any) => {
-        return row.currencyCode || '--';
+        return row.currency?.code || '--';
       },
     },
     {

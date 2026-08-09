@@ -515,7 +515,6 @@ const handleSubmitAllFees = async () => {
       taskStatus: fee.taskStatus,
       industryCategory: fee.industryCategory,
       industryCategories: fee.industryCategories,
-      settlementCode: fee.settlementCode,
     }));
 
     // 构建提交参数 - 需要根据实际API要求构建

@@ -290,6 +290,28 @@ export namespace PaymentApplicationAdminApi {
     defaultRate: number;
   }
 
+  /** 费用代码简易对象（展示用） */
+  export interface FeeCodeSimpleDto {
+    id?: number;
+    /** 费用代码 */
+    code?: string;
+    /** 中文名称 */
+    cnName?: string;
+    /** 英文名称 */
+    enName?: string;
+    /** 默认币别id */
+    currencyId?: number;
+    /** 默认计费标准 */
+    defaultUnit?: string;
+    defaultUnitName?: string;
+    /** 是否机密 */
+    isConfidential?: boolean;
+    /** 禁开发票 */
+    isInvoiceProhibit?: boolean;
+    /** 默认税率 */
+    taxRate?: number;
+  }
+
   /** 本申请关联的付费结算简要（列表/详情） */
   export interface PaymentSettlementForApplicationSimpleDto {
     id: string;
@@ -486,8 +508,14 @@ export namespace PaymentApplicationAdminApi {
     settlementStatus: number;
     invoiceStatus: number;
     feeCodeId: number;
+    /** 费用代码对象（替代 feeCodeName / feeCodeCode） */
+    feeCode?: FeeCodeSimpleDto | null;
     settlementId: string;
+    /** 结算对象（替代 settlementName / settlementCode） */
+    settlement?: ClientSimpleDto | null;
     currencyId: number;
+    /** 币别对象（替代 currencyName / currencyCode） */
+    currency?: CurrencySimpleDto | null;
     exchangeRate: number;
     unitPrice: number;
     amount: number;
@@ -506,11 +534,8 @@ export namespace PaymentApplicationAdminApi {
     rqstPaymentAmount: number;
     unRqstPaymentAmount: number;
     unSettledAmount: number;
-    feeCodeName?: string;
-    /** 币别代码 */
-    currencyCode?: string;
-    currencyName?: string;
-    settlementName?: string;
+    /** 创建人昵称（仍平铺返回） */
+    creatorUserName?: string;
     unInvoicedAmount: number;
     noTaxUnitPrice: number;
     noTaxAmount: number;
@@ -954,5 +979,3 @@ export async function addByStatement(
     data,
   );
 }
-
-

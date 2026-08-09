@@ -91,7 +91,7 @@ const handleDelete = () => {
     return;
   }
 
-  const name = rows[0]?.clientName ?? `${rows[0]?.id}`;
+  const name = rows[0]?.client?.name ?? `${rows[0]?.id}`;
 
   Modal.confirm({
     title: $t('ui.actionTitle.delete', [

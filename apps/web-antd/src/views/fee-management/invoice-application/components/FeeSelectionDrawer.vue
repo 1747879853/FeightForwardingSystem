@@ -323,7 +323,9 @@ function enableColumnResize(tableElement: HTMLElement | null) {
 function enableResizeForAllTables() {
   // 等待 DOM 更新完成后再查找表格元素
   nextTick(() => {
-    const tables = document.querySelectorAll('.fee-selection-table-wrapper .ant-table-wrapper');
+    const tables = document.querySelectorAll(
+      '.fee-selection-table-wrapper .ant-table-wrapper',
+    );
     tables.forEach((table) => {
       enableColumnResize(table as HTMLElement);
     });
@@ -413,7 +415,7 @@ async function updateSettlementNameById(settlementId: string) {
     // 从 baseStore 中查找客户名称
     const clients = baseStore.clients;
     const client = clients.find((item) => item.id === settlementId);
-    
+
     if (client) {
       selectedSettlementName.value = client.name || '';
     } else {
@@ -462,11 +464,13 @@ async function handleSaveFeeSelection() {
   const settlementIds = selectedFees
     .map((fee: any) => fee.orderFee?.settlementId)
     .filter(Boolean); // 过滤掉 null/undefined 的 settlementId
-  
+
   const uniqueSettlementIds = [...new Set(settlementIds)];
-  
+
   if (uniqueSettlementIds.length > 1) {
-    message.error('不同结算对象的费用不能添加到同一个开票申请中，请确保所有选中的费用属于同一结算对象');
+    message.error(
+      '不同结算对象的费用不能添加到同一个开票申请中，请确保所有选中的费用属于同一结算对象',
+    );
     return;
   }
 
@@ -581,11 +585,11 @@ function transformToTreeData(
           checked: false,
           disabled: isAlreadyAdded,
           alreadyAdded: isAlreadyAdded,
-          settlementUnit: fee.settlementName || '-',
+          settlementUnit: fee.settlement?.name || '-',
           payReceiveType: fee.paySide === 1 ? '应付' : '应收',
-          feeName: fee.feeCodeName || '-',
+          feeName: fee.feeCode?.cnName || '-',
           amount: fee.amount,
-          currencyCode: fee.currencyCode || '-',
+          currencyCode: fee.currency?.code || '-',
           remainingInvoiceAmount: fee.remainingInvoiceAmount,
           // ✅ 关键修复：在子节点中也保存委托编号和主提单号
           commissionNum: item.transportOrder.commissionNum,
@@ -661,18 +665,19 @@ watch(
 /** 计算按币别分组的选中费用合计 */
 const selectedFeesByCurrency = computed(() => {
   const selectedFees = getSelectedFeesFromTable();
-  const currencyMap: Record<string, { total: number; currencyCode: string }> = {};
-  
+  const currencyMap: Record<string, { total: number; currencyCode: string }> =
+    {};
+
   selectedFees.forEach((fee: any) => {
     const currencyCode = fee.currencyCode || '未知币别';
     const appliedAmount = fee.appliedAmount || 0;
-    
+
     if (!currencyMap[currencyCode]) {
       currencyMap[currencyCode] = { total: 0, currencyCode };
     }
     currencyMap[currencyCode].total += appliedAmount;
   });
-  
+
   return Object.values(currencyMap);
 });
 
@@ -1013,33 +1018,36 @@ defineExpose({
           </template>
         </Table>
       </div>
-      
+
       <!-- 勾选合计显示区域 -->
-      <div 
+      <div
         v-if="selectedFeesByCurrency.length > 0"
         style="
-          margin-top: 16px;
           padding: 12px;
+          margin-top: 16px;
           background: #f5f5f5;
           border: 1px solid #d9d9d9;
           border-radius: 4px;
         "
       >
-        <div style="font-weight: bold; margin-bottom: 8px; color: #333">
+        <div style="margin-bottom: 8px; font-weight: bold; color: #333">
           勾选合计:
         </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-          <div 
-            v-for="currencyGroup in selectedFeesByCurrency" 
+        <div style="display: flex; flex-wrap: wrap; gap: 16px">
+          <div
+            v-for="currencyGroup in selectedFeesByCurrency"
             :key="currencyGroup.currencyCode"
-            style="display: flex; align-items: center; gap: 4px;"
+            style="display: flex; gap: 4px; align-items: center"
           >
-            <span style="font-weight: 600; color: #1890ff;">{{ currencyGroup.currencyCode }}:</span>
-            <span style="color: #ff4d4f; font-weight: bold;">{{ currencyGroup.total.toFixed(2) }}</span>
+            <span style="font-weight: 600; color: #1890ff"
+              >{{ currencyGroup.currencyCode }}:</span
+            >
+            <span style="font-weight: bold; color: #ff4d4f">{{
+              currencyGroup.total.toFixed(2)
+            }}</span>
           </div>
         </div>
       </div>
-
     </Spin>
 
     <template #footer>
@@ -1090,14 +1098,14 @@ defineExpose({
 /* 列宽拖拽手柄样式 */
 .column-resizer {
   position: absolute;
-  right: 0;
   top: 0;
+  right: 0;
   bottom: 0;
+  z-index: 10;
   width: 5px;
   cursor: col-resize;
   background-color: transparent;
   transition: background-color 0.2s;
-  z-index: 10;
 }
 
 .column-resizer:hover {
@@ -1126,6 +1134,7 @@ defineExpose({
   padding-right: 28px;
   font-weight: 600;
   color: #1677ff;
+  text-align: right;
 }
 
 .fee-order-table :deep(.ant-input-number-input) {
@@ -1161,16 +1170,16 @@ defineExpose({
 /* 一级表格表头 */
 .fee-order-table :deep(.ant-table-thead > tr > th) {
   height: 35px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #6b7280;
-  background: #fafafa;
-  border-bottom: 1px solid #e8e8e8;
-  border-right: 1px solid #e8e8e8;
   padding: 0 10px;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
   white-space: nowrap;
+  background: #fafafa;
+  border-right: 1px solid #e8e8e8;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .fee-order-table :deep(.ant-table-thead > tr > th:last-child) {
@@ -1180,13 +1189,13 @@ defineExpose({
 /* 一级表格表体单元格 */
 .fee-order-table :deep(.ant-table-tbody > tr > td) {
   height: 46px;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
-  border-right: 1px solid #e8e8e8;
   padding: 0 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  background: #fff;
+  border-right: 1px solid #e8e8e8;
+  border-bottom: 1px solid #e8e8e8;
 }
 
 .fee-order-table :deep(.ant-table-tbody > tr > td:last-child) {
@@ -1232,66 +1241,62 @@ defineExpose({
 /* 二级表格表头 */
 .fee-order-table :deep(.ant-table-expanded-row .ant-table-thead > tr > th) {
   height: 32px;
+  padding: 0 10px;
   font-size: 11px;
   font-weight: 700;
   color: #657286;
   background: #f5f5f5;
-  border-bottom: 1px solid #e8e8e8;
   border-right: 1px solid #e8e8e8;
-  padding: 0 10px;
+  border-bottom: 1px solid #e8e8e8;
 }
 
-.fee-order-table :deep(.ant-table-expanded-row .ant-table-thead > tr > th:last-child) {
+.fee-order-table
+  :deep(.ant-table-expanded-row .ant-table-thead > tr > th:last-child) {
   border-right: none;
 }
 
 /* 二级表格表体单元格 */
 .fee-order-table :deep(.ant-table-expanded-row .ant-table-tbody > tr > td) {
   height: 32px;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
-  border-right: 1px solid #e8e8e8;
   padding: 0 10px;
+  background: #fff;
+  border-right: 1px solid #e8e8e8;
+  border-bottom: 1px solid #e8e8e8;
 }
 
-.fee-order-table :deep(.ant-table-expanded-row .ant-table-tbody > tr > td:last-child) {
+.fee-order-table
+  :deep(.ant-table-expanded-row .ant-table-tbody > tr > td:last-child) {
   border-right: none;
 }
 
-.fee-order-table :deep(.ant-table-expanded-row .ant-table-tbody > tr:last-child > td) {
+.fee-order-table
+  :deep(.ant-table-expanded-row .ant-table-tbody > tr:last-child > td) {
   border-bottom: none;
 }
 
 /* 二级表格悬停效果 */
-.fee-order-table :deep(.ant-table-expanded-row .ant-table-tbody > tr:hover > td) {
+.fee-order-table
+  :deep(.ant-table-expanded-row .ant-table-tbody > tr:hover > td) {
   background: #f8fbff;
-}
-
-/* 本次结算金额列特殊样式 */
-.fee-order-table :deep(.fee-applied-amount-input .ant-input-number-input) {
-  padding-right: 28px;
-  font-weight: 600;
-  color: #1677ff;
-  text-align: right;
 }
 
 /* 收付类型标签样式 */
 .fee-order-table :deep(.ant-tag) {
-  margin: 0;
   padding: 2px 8px;
+  margin: 0;
   font-size: 12px;
   line-height: 1.5;
 }
 
 .fee-order-table :deep(.ant-tag-orange) {
+  color: #fa8c16;
   background: #fff7e6;
   border-color: #ffd591;
-  color: #fa8c16;
 }
 
 .fee-order-table :deep(.ant-tag-blue) {
+  color: #1890ff;
   background: #e6f7ff;
   border-color: #91d5ff;
-  color: #1890ff;
 }
 </style>

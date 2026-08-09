@@ -130,14 +130,14 @@ export function buildFeeGroupKey(
   return `${transportOrderId}_${settlementId}`;
 }
 
-/** 解析分组结算对象展示名：简称 name → 费用 settlementName → fullName */
+/** 解析分组结算对象展示名：简称 name → 费用 settlement.name → fullName */
 export function resolveGroupSettlementName(
   group: PaymentApplicationAdminApi.PayAppFeeGroupDto,
 ): string {
   const settlement = group.settlement;
   if (settlement?.name) return settlement.name;
   const firstFee = group.orderFees?.[0];
-  if (firstFee?.settlementName) return firstFee.settlementName;
+  if (firstFee?.settlement?.name) return firstFee.settlement.name;
   if (settlement?.fullName) return settlement.fullName;
   return '';
 }
@@ -155,11 +155,10 @@ export function isUserRoleColumnField(field: string | undefined): boolean {
   );
 }
 
-function resolveCurrencyCode(fee: {
-  currencyCode?: string;
-  currencyName?: string;
-}): string {
-  return toCurrencyDisplayCode(fee.currencyCode, fee.currencyName);
+function resolveCurrencyCode(
+  fee: Pick<PaymentApplicationAdminApi.OrderFeeDto, 'currency'>,
+): string {
+  return toCurrencyDisplayCode(fee.currency?.code, fee.currency?.cnName);
 }
 
 /** PaySide 枚举选项 */
