@@ -699,6 +699,8 @@
     "unifiedSocialCreditCodePlaceholder": "Please enter unified social credit code",
     "invoiceAddress": "Invoice Address",
     "invoiceTel": "Invoice Phone",
+    "logo": "Company Logo",
+    "logoHelp": "Used for printing; transparent PNG recommended",
     "orgInfo": "Organization Info",
     "orgCode": "Organization Code",
     "memberCount": "Member Count",

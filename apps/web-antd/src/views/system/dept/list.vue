@@ -40,6 +40,7 @@ import {
   removeUserFromOrganizationUnit,
 } from '#/api/system/organization-unit';
 import { $t } from '#/locales';
+import { buildAttachmentUrl } from '#/utils';
 
 import Form from './modules/form.vue';
 import AddMemberModal from './modules/add-member-modal.vue';
@@ -535,8 +536,19 @@ loadTree();
             <!-- 组织信息 Tab -->
             <TabPane key="orgInfo" :tab="$t('system.dept.orgInfo')">
               <div class="mb-3 flex items-center justify-between">
-                <span class="text-base font-medium">
-                  {{ selectedOrg.displayName }}
+                <span
+                  class="flex min-w-0 items-center gap-2 text-base font-medium"
+                >
+                  <img
+                    v-if="
+                      selectedOrgDetail?.isCompany &&
+                      selectedOrgDetail?.logo?.url
+                    "
+                    :src="buildAttachmentUrl(selectedOrgDetail.logo.url)"
+                    :alt="selectedOrg.displayName || 'company-logo'"
+                    class="h-8 w-8 shrink-0 rounded object-contain"
+                  />
+                  <span class="truncate">{{ selectedOrg.displayName }}</span>
                 </span>
                 <div class="flex gap-2">
                   <Button
@@ -585,7 +597,18 @@ loadTree();
                 :column="2"
               >
                 <DescriptionsItem :label="$t('system.dept.deptName')">
-                  {{ selectedOrgDetail.displayName }}
+                  <span class="inline-flex items-center gap-2">
+                    <img
+                      v-if="
+                        selectedOrgDetail.isCompany &&
+                        selectedOrgDetail.logo?.url
+                      "
+                      :src="buildAttachmentUrl(selectedOrgDetail.logo.url)"
+                      :alt="selectedOrgDetail.displayName || 'company-logo'"
+                      class="h-6 w-6 shrink-0 rounded object-contain"
+                    />
+                    <span>{{ selectedOrgDetail.displayName }}</span>
+                  </span>
                 </DescriptionsItem>
                 <DescriptionsItem :label="$t('system.dept.orgType')">
                   <Tag :color="selectedOrgDetail.isCompany ? 'blue' : 'green'">
@@ -629,7 +652,6 @@ loadTree();
                 <template v-if="selectedOrgDetail.isCompany">
                   <DescriptionsItem
                     :label="$t('system.dept.unifiedSocialCreditCode')"
-                    :span="2"
                   >
                     {{ selectedOrgDetail.unifiedSocialCreditCode || '-' }}
                   </DescriptionsItem>

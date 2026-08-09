@@ -159,6 +159,22 @@ export function useSchema(): VbenFormSchema[] {
         show: (values) => values.isCompany === true,
       },
     },
+    {
+      component: 'FileUploadInput',
+      fieldName: 'logo',
+      label: $t('system.dept.logo'),
+      help: $t('system.dept.logoHelp'),
+      componentProps: {
+        allowedTypes: ['png', 'jpg', 'jpeg', 'webp', 'svg'],
+        listType: 'picture-card',
+        maxCount: 1,
+        maxSizeMB: 5,
+      },
+      dependencies: {
+        triggerFields: ['isCompany'],
+        show: (values) => values.isCompany === true,
+      },
+    },
   ];
 }
 

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { Attachment } from '#/api/common/upload';
 import type { SystemOrganizationUnitApi } from '#/api/system/organization-unit';
 
 import { computed, ref } from 'vue';
@@ -40,6 +41,35 @@ function resetForm() {
   }
 }
 
+function mapLogoFormValue(
+  logo?: null | SystemOrganizationUnitApi.AttachmentItemDto,
+): Attachment[] {
+  if (!logo?.attachmentId) {
+    return [];
+  }
+  return [
+    {
+      attachmentId: logo.attachmentId,
+      fileName: logo.friendlyFileName || 'logo',
+      filePath: undefined,
+      url: logo.url || '',
+    },
+  ];
+}
+
+function buildLogoPayload(
+  logoValue?: Attachment[],
+): null | SystemOrganizationUnitApi.AttachmentItemForItemInputDto {
+  const firstAttachment = logoValue?.[0];
+  if (!firstAttachment?.attachmentId) {
+    return null;
+  }
+  return {
+    attachmentId: Number(firstAttachment.attachmentId),
+    displayOrder: 0,
+  };
+}
+
 function mapDtoToFormValues(
   data: Partial<SystemOrganizationUnitApi.OrganizationUnitDto>,
 ) {
@@ -58,13 +88,15 @@ function mapDtoToFormValues(
     unifiedSocialCreditCode: data.unifiedSocialCreditCode ?? undefined,
     invoiceAddress: data.invoiceAddress ?? undefined,
     invoiceTel: data.invoiceTel ?? undefined,
+    logo: mapLogoFormValue(data.logo),
   };
 }
 
 function collectSubmitData(values: Record<string, any>) {
+  const isCompany = values.isCompany ?? false;
   return {
     displayName: values.displayName,
-    isCompany: values.isCompany ?? false,
+    isCompany,
     localCurrencyId: values.localCurrencyId || null,
     shortName: values.shortName || null,
     enName: values.enName || null,
@@ -76,6 +108,8 @@ function collectSubmitData(values: Record<string, any>) {
     unifiedSocialCreditCode: values.unifiedSocialCreditCode || null,
     invoiceAddress: values.invoiceAddress || null,
     invoiceTel: values.invoiceTel || null,
+    // 仅公司提交 logo；部门或清空时传 null，避免残留旧附件
+    logo: isCompany ? buildLogoPayload(values.logo) : null,
   };
 }
 

@@ -1,6 +1,29 @@
 import { requestClient } from '#/api/request';
 
 export namespace SystemOrganizationUnitApi {
+  /** 附件关联提交（创建/更新时传 logo） */
+  export interface AttachmentItemForItemInputDto {
+    attachmentId: number;
+    displayOrder?: number;
+  }
+
+  /** 附件关联详情（详情/列表回显 logo） */
+  export interface AttachmentItemDto {
+    id: number;
+    attachmentId: number;
+    itemId?: string;
+    moduleTypeId?: string;
+    isFirstShow?: boolean;
+    displayOrder?: number;
+    url?: string;
+    mediaType?: number;
+    friendlyFileName?: string;
+    fileLength?: null | number;
+    creationTime?: null | string;
+    creatorUserId?: null | number;
+    creatorUserNickName?: string;
+  }
+
   /** 组织单元树节点DTO */
   export interface OrganizationUnitTreeDto {
     id: number;
@@ -39,6 +62,8 @@ export namespace SystemOrganizationUnitApi {
     invoiceAddress?: string | null;
     invoiceTel?: string | null;
     orgBankAccounts?: OrgBankAccountDto[] | null;
+    /** 公司 Logo（附件模块 OrganizationUnitLogo） */
+    logo?: AttachmentItemDto | null;
   }
 
   /** 公司简易返回模型（用于数据权限公司列表） */
@@ -89,6 +114,8 @@ export namespace SystemOrganizationUnitApi {
     unifiedSocialCreditCode?: string | null;
     invoiceAddress?: string | null;
     invoiceTel?: string | null;
+    /** 公司 Logo；无值传 null 可清空 */
+    logo?: AttachmentItemForItemInputDto | null;
   }
 
   /** 更新组织单元输入DTO */
@@ -108,6 +135,8 @@ export namespace SystemOrganizationUnitApi {
     unifiedSocialCreditCode?: string | null;
     invoiceAddress?: string | null;
     invoiceTel?: string | null;
+    /** 公司 Logo；无值传 null 可清空 */
+    logo?: AttachmentItemForItemInputDto | null;
   }
 
   /** 移动组织单元输入DTO */

@@ -708,6 +708,8 @@
     "unifiedSocialCreditCodePlaceholder": "请输入统一社会信用代码",
     "invoiceAddress": "开票地址",
     "invoiceTel": "开票电话",
+    "logo": "公司 Logo",
+    "logoHelp": "用于打印等场景，建议上传透明底 PNG",
     "orgInfo": "组织信息",
     "orgCode": "组织编码",
     "memberCount": "成员数",

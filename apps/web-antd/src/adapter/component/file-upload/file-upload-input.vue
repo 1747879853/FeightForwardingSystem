@@ -46,6 +46,12 @@ interface Props {
   fieldName?: string;
   /** 友好文件名（仅供 UI 显示使用） */
   friendlyFileName?: string;
+  /**
+   * 列表展示样式：
+   * - text：按钮 + 文件名列表（默认，附件场景）
+   * - picture / picture-card：缩略图预览（Logo/头像等）
+   */
+  listType?: UploadProps['listType'];
   /** 最大文件数量 */
   maxCount?: number;
   /** 最大文件大小（MB） */
@@ -59,6 +65,7 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
   fieldName: 'file',
   friendlyFileName: '',
+  listType: 'text',
   maxCount: Number.POSITIVE_INFINITY,
   maxSizeMB: 20,
   modelValue: undefined,
@@ -87,16 +94,23 @@ const isUploading = computed(() => uploadingUids.value.size > 0);
 /** 是否达到最大数量 */
 const isMaxCount = computed(() => innerValue.value.length >= props.maxCount);
 
+/** 是否以缩略图卡片形式展示（Logo/头像） */
+const isPictureCard = computed(() => props.listType === 'picture-card');
+
 /** 用于 Upload 组件展示的 fileList */
-const fileList = computed<UploadProps['fileList']>(
-  () =>
-    console.log('innerValue', innerValue.value) ||
-    innerValue.value.map((attachment) => ({
+const fileList = computed<UploadProps['fileList']>(() =>
+  innerValue.value.map((attachment) => {
+    const fullUrl = attachment.url
+      ? buildAttachmentUrl(attachment.url)
+      : undefined;
+    return {
       uid: String(attachment.attachmentId),
       name: attachment.fileName || attachment.friendlyFileName,
       status: 'done' as const,
-      url: attachment.url,
-    })),
+      url: fullUrl,
+      thumbUrl: fullUrl,
+    };
+  }),
 );
 
 /** 初始化/同步 modelValue */
@@ -277,9 +291,13 @@ defineExpose({
 </script>
 
 <template>
-  <div class="file-upload-input">
+  <div
+    class="file-upload-input"
+    :class="{ 'file-upload-input--card': isPictureCard }"
+  >
     <Upload
       :file-list="fileList"
+      :list-type="listType"
       :disabled="disabled"
       :before-upload="handleBeforeUpload"
       :show-upload-list="{
@@ -291,8 +309,20 @@ defineExpose({
       @remove="handleRemove"
       @preview="handlePreview"
     >
+      <div
+        v-if="isPictureCard && !isMaxCount && !disabled"
+        class="file-upload-card-trigger"
+      >
+        <Spin v-if="isUploading" size="small" />
+        <template v-else>
+          <IconifyIcon icon="ant-design:plus-outlined" class="size-5" />
+          <div class="mt-1 text-xs">
+            {{ $t('component.fileUpload.selectFile') }}
+          </div>
+        </template>
+      </div>
       <Tooltip
-        v-if="isMaxCount && !disabled"
+        v-else-if="!isPictureCard && isMaxCount && !disabled"
         :title="$t('component.fileUpload.maxCountReached')"
       >
         <Button :disabled="true">
@@ -302,7 +332,7 @@ defineExpose({
           {{ $t('component.fileUpload.selectFile') }}
         </Button>
       </Tooltip>
-      <Button v-else-if="!disabled" :loading="isUploading">
+      <Button v-else-if="!isPictureCard && !disabled" :loading="isUploading">
         <template #icon>
           <Spin v-if="isUploading" size="small" />
           <IconifyIcon
@@ -352,5 +382,21 @@ defineExpose({
 <style scoped>
 .file-upload-input {
   width: 100%;
+}
+
+.file-upload-input--card :deep(.ant-upload-select-picture-card),
+.file-upload-input--card :deep(.ant-upload-list-item-container) {
+  width: 104px;
+  height: 104px;
+  margin-block: 0 8px;
+  margin-inline: 0 8px;
+}
+
+.file-upload-card-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #8c8c8c;
 }
 </style>

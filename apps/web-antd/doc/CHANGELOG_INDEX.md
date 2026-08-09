@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-09 组织管理公司级支持 Logo 上传](./changelogs/change-log-2026-08-09-dept-company-logo-upload.md)
 - [2026-08-09 收费核销明细展示同一流水下全部核销明细](./changelogs/change-log-2026-08-09-receive-settlement-show-all-bank-statement-items.md)
 - [2026-08-09 收费核销新建增加归属组织选择](./changelogs/change-log-2026-08-09-receive-settlement-org-select.md)
 - [2026-08-09 付费申请详情起运港/目的港读 seaExport.pol](./changelogs/change-log-2026-08-09-payment-application-detail-port-from-sea-export.md)
