@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 
 import {
   Button,
+  Checkbox,
   DatePicker,
   Drawer,
   Form,
@@ -13,8 +14,9 @@ import {
   Select,
   Space,
   Spin,
-  Table,
 } from 'ant-design-vue';
+
+import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
 import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
@@ -84,6 +86,22 @@ const feeGroupsData = ref<any[]>([]);
 // 选中的费用行 keys（支持父级和子级）
 const selectedFeeRowKeys = ref<string[]>([]);
 
+// NestedDataTable 展开的行 keys
+const expandedRowKeys = ref<string[]>([]);
+
+// 监听费用数据变化，自动展开所有行
+watch(
+  feeGroupsData,
+  (newData) => {
+    if (newData && newData.length > 0) {
+      expandedRowKeys.value = newData.map((item) => item.id);
+    } else {
+      expandedRowKeys.value = [];
+    }
+  },
+  { immediate: true },
+);
+
 // 发票汇率
 const invoiceExchangeRate = ref<number>(1.0);
 
@@ -99,32 +117,98 @@ watch(
   { immediate: false },
 );
 
-/** 获取子表格的选中 keys */
-function getChildSelectedKeys(record: any): string[] {
-  if (!record.feeDetails) return [];
-  return selectedFeeRowKeys.value.filter((key) =>
-    record.feeDetails.some((child: any) => child.id === key),
+/** 从选中的费用中更新币别 */
+async function updateCurrencyFromSelectedFees() {
+  const allSelected = flattenTreeData(feeGroupsData.value);
+  const selectedFees = allSelected.filter(
+    (item: any) => item.orderFee && selectedFeeRowKeys.value.includes(item.id),
   );
+
+  if (selectedFees.length > 0) {
+    const firstFee = selectedFees[0];
+    const currencyId = firstFee.orderFee?.currencyId;
+
+    if (currencyId && currencyId !== selectedCurrencyId.value) {
+      selectedCurrencyId.value = currencyId;
+      await loadDefaultExchangeRate(currencyId);
+    }
+  }
 }
 
-/** 处理子表格选择变化 */
-async function handleChildSelectionChange(
-  record: any,
-  selectedRowKeys: string[],
-) {
-  const currentSelected = selectedFeeRowKeys.value.filter(
-    (key) =>
-      !record.feeDetails ||
-      !record.feeDetails.some((child: any) => child.id === key),
-  );
-  selectedFeeRowKeys.value = [...currentSelected, ...selectedRowKeys];
+/** 检查父级是否全部选中 */
+const isAllParentSelected = computed(() => {
+  if (feeGroupsData.value.length === 0) return false;
+  return feeGroupsData.value.every((record) => isParentSelected(record.id));
+});
 
+/** 检查父级是否部分选中（用于indeterminate状态） */
+const isIndeterminate = computed(() => {
+  if (feeGroupsData.value.length === 0) return false;
+  const selectedCount = feeGroupsData.value.filter((record) =>
+    isParentSelected(record.id),
+  ).length;
+  return selectedCount > 0 && selectedCount < feeGroupsData.value.length;
+});
+
+/** 切换所有父级选择 */
+async function toggleAllParentSelection(checked: boolean) {
+  if (checked) {
+    // 全选所有父级（及其可选子级）
+    const allChildIds: string[] = [];
+    feeGroupsData.value.forEach((record) => {
+      if (record.feeDetails && record.feeDetails.length > 0) {
+        const selectableChildren = record.feeDetails
+          .filter((child: any) => !child.disabled && !child.alreadyAdded)
+          .map((child: any) => child.id);
+        allChildIds.push(...selectableChildren);
+      }
+    });
+    selectedFeeRowKeys.value = allChildIds;
+  } else {
+    // 取消全选
+    selectedFeeRowKeys.value = [];
+  }
   await updateCurrencyFromSelectedFees();
 }
 
-/** 处理父级选择变化（按票选择） */
-async function handleParentSelectionChange(record: any, selected: boolean) {
-  if (selected) {
+/** 检查单个父级是否选中 */
+function isParentSelected(parentId: string): boolean {
+  const parent = feeGroupsData.value.find((item) => item.id === parentId);
+  if (!parent || !parent.feeDetails) return false;
+
+  // 父级选中当且仅当所有可选子级都被选中
+  const selectableChildren = parent.feeDetails.filter(
+    (child: any) => !child.disabled && !child.alreadyAdded,
+  );
+
+  if (selectableChildren.length === 0) return false;
+
+  return selectableChildren.every((child: any) =>
+    selectedFeeRowKeys.value.includes(child.id),
+  );
+}
+
+/** 检查单个父级是否部分选中 */
+function isParentIndeterminate(parentId: string): boolean {
+  const parent = feeGroupsData.value.find((item) => item.id === parentId);
+  if (!parent || !parent.feeDetails) return false;
+
+  const selectableChildren = parent.feeDetails.filter(
+    (child: any) => !child.disabled && !child.alreadyAdded,
+  );
+
+  if (selectableChildren.length === 0) return false;
+
+  const selectedCount = selectableChildren.filter((child: any) =>
+    selectedFeeRowKeys.value.includes(child.id),
+  ).length;
+
+  return selectedCount > 0 && selectedCount < selectableChildren.length;
+}
+
+/** 切换单个父级选择 */
+async function toggleParentSelection(record: any, checked: boolean) {
+  if (checked) {
     // 选中父级时，自动选中所有未禁用的子级
     if (record.feeDetails && record.feeDetails.length > 0) {
       const selectableChildren = record.feeDetails
@@ -151,23 +235,25 @@ async function handleParentSelectionChange(record: any, selected: boolean) {
   await updateCurrencyFromSelectedFees();
 }
 
-/** 从选中的费用中更新币别 */
-async function updateCurrencyFromSelectedFees() {
-  const allSelected = flattenTreeData(feeGroupsData.value);
-  const selectedFees = allSelected.filter(
-    (item: any) => item.orderFee && selectedFeeRowKeys.value.includes(item.id),
-  );
-
-  if (selectedFees.length > 0) {
-    const firstFee = selectedFees[0];
-    const currencyId = firstFee.orderFee?.currencyId;
-
-    if (currencyId && currencyId !== selectedCurrencyId.value) {
-      selectedCurrencyId.value = currencyId;
-      await loadDefaultExchangeRate(currencyId);
-    }
-  }
+/** 检查子级是否选中 */
+function isChildSelected(childId: string): boolean {
+  return selectedFeeRowKeys.value.includes(childId);
 }
+
+/** 切换单个子级选择 */
+async function toggleChildSelection(record: any, checked: boolean) {
+  if (checked) {
+    if (!selectedFeeRowKeys.value.includes(record.id)) {
+      selectedFeeRowKeys.value = [...selectedFeeRowKeys.value, record.id];
+    }
+  } else {
+    selectedFeeRowKeys.value = selectedFeeRowKeys.value.filter(
+      (key) => key !== record.id,
+    );
+  }
+  await updateCurrencyFromSelectedFees();
+}
+
 const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
   if (id == null) return [];
   return [{ id, [labelKey]: name || '' }] as any[];
@@ -681,107 +767,117 @@ const selectedFeesByCurrency = computed(() => {
   return Object.values(currencyMap);
 });
 
-// 费用表格列定义（一级 - 运输订单）
-const feeParentColumns = computed(() => [
+// NestedDataTable 外层列定义（订单分组）
+const feeOuterColumns = computed(() => [
+  {
+    title: '',
+    key: 'seq',
+    width: 50,
+  },
   {
     title: '委托编号',
     dataIndex: 'commissionNum',
     key: 'commissionNum',
-    minWidth: 140,
+    width: 140,
     ellipsis: true,
   },
   {
     title: '主提单号',
     dataIndex: 'mblNum',
     key: 'mblNum',
-    minWidth: 140,
+    width: 140,
     ellipsis: true,
   },
   {
     title: '订舱编号',
     dataIndex: 'bookingNum',
     key: 'bookingNum',
-    minWidth: 140,
+    width: 140,
     ellipsis: true,
   },
   {
     title: '委托单位',
     dataIndex: 'clientName',
     key: 'clientName',
-    minWidth: 180,
+    width: 180,
     ellipsis: true,
   },
   {
     title: '业务类型',
     dataIndex: 'bizType',
     key: 'bizType',
-    minWidth: 100,
+    width: 100,
   },
   {
     title: '船公司',
     dataIndex: 'carrier',
     key: 'carrier',
-    minWidth: 120,
+    width: 120,
     ellipsis: true,
   },
   {
     title: '所属公司',
     dataIndex: 'company',
     key: 'company',
-    minWidth: 150,
+    width: 150,
     ellipsis: true,
   },
 ]);
 
-// 费用表格列定义（二级 - 费用明细）
-const feeChildColumns = computed(() => [
+// NestedDataTable 内层列定义（费用明细）
+const feeInnerColumns = computed(() => [
+  {
+    title: '',
+    key: 'seq',
+    width: 50,
+  },
   {
     title: '结算单位',
     dataIndex: 'settlementUnit',
     key: 'settlementUnit',
-    minWidth: 180,
+    width: 180,
     ellipsis: true,
   },
   {
     title: '收付类型',
     dataIndex: 'payReceiveType',
     key: 'payReceiveType',
-    minWidth: 80,
+    width: 80,
     align: 'center' as const,
   },
   {
     title: '费用名称',
     dataIndex: 'feeName',
     key: 'feeName',
-    minWidth: 200,
+    width: 200,
     ellipsis: true,
   },
   {
     title: '金额',
     dataIndex: 'amount',
     key: 'amount',
-    minWidth: 120,
+    width: 120,
     align: 'right' as const,
   },
   {
     title: '币别',
     dataIndex: 'currencyCode',
     key: 'currencyCode',
-    minWidth: 80,
+    width: 80,
     align: 'center' as const,
   },
   {
     title: '未开票金额',
     dataIndex: 'remainingInvoiceAmount',
     key: 'remainingInvoiceAmount',
-    minWidth: 120,
+    width: 120,
     align: 'right' as const,
   },
   {
     title: '本次申请金额',
     dataIndex: 'appliedAmount',
     key: 'appliedAmount',
-    minWidth: 180,
+    width: 180,
     align: 'right' as const,
   },
 ]);
@@ -928,95 +1024,108 @@ defineExpose({
       </div>
 
       <!-- 费用表格 -->
-      <div class="fee-order-table">
-        <Table
-          :columns="feeParentColumns"
+      <div class="fee-order-table fee-selection-table-wrapper">
+        <NestedDataTable
+          :columns="feeOuterColumns"
           :data-source="feeGroupsData"
-          :pagination="false"
-          bordered
-          size="small"
-          :expandable="{
-            defaultExpandAllRows: true,
-          }"
-          :row-selection="{
-            type: 'checkbox',
-            selectedRowKeys: selectedFeeRowKeys.filter((key) =>
-              key.startsWith('parent_'),
-            ),
-            getCheckboxProps: (record) => ({
-              disabled: record.disabled,
-            }),
-            onSelect: (record, selected) => {
-              // 单个父级选中/取消时触发
-              handleParentSelectionChange(record, selected);
-            },
-            onSelectAll: (selected, selectedRows, changeRows) => {
-              // 全选/取消全选时触发
-              changeRows.forEach((record) => {
-                handleParentSelectionChange(record, selected);
-              });
-            },
-          }"
+          fill-height
+          :inner-columns="feeInnerColumns"
+          inner-data-key="feeDetails"
+          inner-row-key="id"
           row-key="id"
-          :scroll="{ y: 500 }"
+          v-model:expanded-row-keys="expandedRowKeys"
         >
-          <template #expandedRowRender="{ record }">
-            <Table
-              v-if="record.feeDetails && record.feeDetails.length > 0"
-              :columns="feeChildColumns"
-              :data-source="record.feeDetails"
-              :pagination="false"
-              bordered
-              size="small"
-              row-key="id"
-              :row-selection="{
-                type: 'checkbox',
-                selectedRowKeys: getChildSelectedKeys(record),
-                getCheckboxProps: (childRecord) => ({
-                  disabled: childRecord.disabled || childRecord.alreadyAdded,
-                }),
-                onChange: (selectedRowKeys) =>
-                  handleChildSelectionChange(
-                    record,
-                    selectedRowKeys.map((key) => String(key)),
-                  ),
-              }"
-            >
-              <template #bodyCell="{ column, record: childRecord }">
-                <template v-if="column.key === 'alreadyAdded'">
-                  <span
-                    v-if="childRecord.alreadyAdded"
-                    style="font-size: 12px; color: #999"
-                  >
-                    ✓ 已添加
-                  </span>
-                </template>
-                <template v-else-if="column.key === 'appliedAmount'">
-                  <InputNumber
-                    v-model:value="childRecord.appliedAmount"
-                    :min="0"
-                    :max="childRecord.remainingInvoiceAmount"
-                    :precision="2"
-                    size="small"
-                    class="fee-applied-amount-input w-full"
-                    :disabled="childRecord.alreadyAdded"
-                  />
-                </template>
-              </template>
-            </Table>
+          <template #outerHeaderCell="{ column }">
+            <span v-if="column.key === 'seq'" class="table-sequence-cell">
+              <Checkbox
+                :checked="isAllParentSelected"
+                :indeterminate="isIndeterminate"
+                @change="(e) => toggleAllParentSelection(e.target.checked)"
+              />
+              {{ column.title }}
+            </span>
+            <template v-else>{{ column.title }}</template>
           </template>
-          <template #expandIcon="props">
+
+          <template #outerBodyCell="{ column, record, index }">
+            <template v-if="column.key === 'seq'">
+              <span class="table-sequence-cell">
+                <Checkbox
+                  :checked="isParentSelected(record.id)"
+                  :indeterminate="isParentIndeterminate(record.id)"
+                  :disabled="record.disabled"
+                  @change="
+                    (e) => toggleParentSelection(record, e.target.checked)
+                  "
+                />
+                {{ index + 1 }}
+              </span>
+            </template>
+            <template v-else>
+              {{ column.dataIndex ? record[column.dataIndex] : '' }}
+            </template>
+          </template>
+
+          <template #expandColumnTitle></template>
+          <template #expandIcon="{ expanded, record, onExpand }">
             <span
-              v-if="props"
               class="expand-toggle cursor-pointer"
-              :class="{ 'expand-toggle--expanded': props.expanded }"
-              @click="props.onExpand(props.record, $event)"
+              :class="{ 'expand-toggle--expanded': expanded }"
+              @click="
+                (e) => {
+                  e.stopPropagation();
+                  onExpand(record, e);
+                }
+              "
             >
               &#9654;
             </span>
-            <span v-else class="expand-toggle cursor-pointer">&#9654;</span>
           </template>
-        </Table>
+
+          <template #innerHeaderCell="{ column }">
+            <span v-if="column.key === 'seq'" class="table-sequence-cell">
+              {{ column.title }}
+            </span>
+            <template v-else>{{ column.title }}</template>
+          </template>
+
+          <template #innerBodyCell="{ column, record, index }">
+            <template v-if="column.key === 'seq'">
+              <span class="table-sequence-cell">
+                <Checkbox
+                  :checked="isChildSelected(record.id)"
+                  :disabled="record.disabled || record.alreadyAdded"
+                  @change="
+                    (e) => toggleChildSelection(record, e.target.checked)
+                  "
+                />
+                {{ index + 1 }}
+              </span>
+            </template>
+            <template v-else-if="column.key === 'alreadyAdded'">
+              <span
+                v-if="record.alreadyAdded"
+                style="font-size: 12px; color: #999"
+              >
+                ✓ 已添加
+              </span>
+            </template>
+            <template v-else-if="column.key === 'appliedAmount'">
+              <InputNumber
+                v-model:value="record.appliedAmount"
+                :min="0"
+                :max="record.remainingInvoiceAmount"
+                :precision="2"
+                size="small"
+                class="fee-applied-amount-input w-full"
+                :disabled="record.alreadyAdded"
+              />
+            </template>
+            <template v-else>
+              {{ column.dataIndex ? record[column.dataIndex] : '' }}
+            </template>
+          </template>
+        </NestedDataTable>
       </div>
 
       <!-- 勾选合计显示区域 -->

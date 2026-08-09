@@ -11,8 +11,9 @@ import {
   message,
   Space,
   Tag,
-  Table,
   InputNumber,
+  Checkbox,
+  Pagination,
 } from 'ant-design-vue';
 import type { ColumnsType } from 'ant-design-vue/es/table';
 
@@ -20,6 +21,7 @@ import { useVbenForm } from '#/adapter/form';
 import { CurrencySelect } from '#/adapter/component';
 import { getPaymentApplicationPagedListByCurrencyForSettlement } from '#/api/sea-export/payment-settlement-admin';
 import ExchangeRateModal from '#/views/fee-management/add-fee-modal/exchange-rate-modal.vue'; // ✅ 新增：汇率录入框
+import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 
 import { useSearchSchema, getStatusTagProps } from './data';
 
@@ -56,6 +58,8 @@ const dataSource = ref<any[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(10);
+// ✅ NestedDataTable 展开行控制
+const expandedRowKeys = ref<(string | number)[]>([]);
 
 // 结算币别选择（独立于搜索表单）
 const selectedCurrencyId = ref<number | undefined>(undefined);
@@ -240,7 +244,7 @@ async function fetchData() {
       await getPaymentApplicationPagedListByCurrencyForSettlement(params);
 
     // ✅ 新接口返回的是扁平化的「申请+原币」组合，直接赋值
-    dataSource.value = (result.items || []).map((row: any) => {
+    dataSource.value = (result.items || []).map((row: any, index: number) => {
       // ✅ 初始化 settledAmount 字段（前端临时字段，用于用户输入）
       // 用户输入的是申请币别金额，所以需要将原币的未结算费用转换为申请币别金额
       const unsettledAmountOriginal =
@@ -258,6 +262,21 @@ async function fetchData() {
       if (row.currency == null) {
         row.currency = { code: row.originalCurrencyCode };
       }
+
+      // ✅ 设置rowKey用于NestedDataTable的行标识
+      row.rowKey = row.paymentApplicationId || row.id || `row_${index}`;
+
+      // ✅ 确保orderFees字段存在（即使为空数组）
+      if (!row.orderFees) {
+        row.orderFees = [];
+      }
+
+      console.log('✅ 数据行:', {
+        rowKey: row.rowKey,
+        applicationNo: row.applicationNo,
+        hasOrderFees: Array.isArray(row.orderFees),
+        orderFeesLength: row.orderFees?.length || 0,
+      });
 
       return row;
     });
@@ -287,13 +306,6 @@ async function handleSearch() {
 async function handleReset() {
   await searchFormApi.resetForm();
   currentPage.value = 1;
-  await fetchData();
-}
-
-/** 分页变化 */
-async function handlePageChange(pagination: any, _filters: any, _sorter: any) {
-  currentPage.value = pagination.current;
-  pageSize.value = pagination.pageSize;
   await fetchData();
 }
 
@@ -659,262 +671,251 @@ function formatOriginalAmount(record: any): string {
   return formatAmount(originalAmount);
 }
 
-// ✅ 表格列配置 - 第一层（付费申请+原币组合）
-const columns: ColumnsType<PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto> =
-  [
-    {
-      title: '申请单号',
-      dataIndex: 'applicationNo',
-      key: 'applicationNo',
-      width: 100,
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-    },
+// ✅ 获取币别显示文本
+function getCurrencyCodeDisplay(record: any): string {
+  // 如果申请币别是原币（currencyId为null），显示原币的币别code
+  if (!record.currencyId) {
+    return record.originalCurrencyCode || '-';
+  }
+  // 否则显示申请币别的code
+  return record.currency?.code || '-';
+}
 
-    {
-      title: '结算对象',
-      dataIndex: 'clientName',
-      key: 'clientName',
-      width: 130,
-    },
-    {
-      title: '支付要求',
-      dataIndex: 'require',
-      key: 'require',
-      width: 150,
-    },
-    {
-      title: '申请币别',
-      key: 'currencyCode',
-      width: 100,
-      customRender: ({ record }) => {
-        // 如果申请币别是原币（currencyId为null），显示原币的币别code
-        if (!record.currencyId) {
-          return record.originalCurrencyCode || '-';
-        }
-        // 否则显示申请币别的code
-        return record.currency?.code || '-';
-      },
-    },
-    {
-      title: '原币币别',
-      dataIndex: 'originalCurrencyCode',
-      key: 'originalCurrencyCode',
-      width: 100,
-    },
-    {
-      title: '汇率',
-      dataIndex: 'rate',
-      key: 'rate',
-      width: 80,
-      align: 'right',
-    },
-    {
-      title: '申请人',
-      dataIndex: 'auditUserNickName',
-      key: 'auditUserNickName',
-      width: 120,
-    },
-    {
-      title: '应付金额',
-      key: 'payAmount',
-      width: 100,
-      align: 'right',
-      customRender: ({ record }) => {
-        // 如果申请币别是原币（currencyId为null），直接显示原币金额
-        if (!record.currencyId) {
-          return formatAmount(record.payAmount);
-        }
-        // 否则转换为申请币别金额：原币金额 × 汇率
-        const convertedAmount = (record.payAmount || 0) * (record.rate || 1);
-        const formattedAmount = formatAmount(convertedAmount);
-        console.log(
-          `✅ 转换原币金额 - ${record.originalCurrencyCode}: ${record.payAmount.toFixed(
-            2,
-          )} × ${record.rate} = ${formattedAmount}`,
-        );
-        return formattedAmount;
-      },
-    },
-    {
-      title: '应收金额',
-      key: 'receiveAmount',
-      width: 100,
-      align: 'right',
-      customRender: ({ record }) => {
-        // 如果申请币别是原币（currencyId为null），直接显示原币金额
-        if (!record.currencyId) {
-          return formatAmount(record.receiveAmount);
-        }
-        // 否则转换为申请币别金额：原币金额 × 汇率
-        const convertedAmount =
-          (record.receiveAmount || 0) * (record.rate || 1);
-        return formatAmount(convertedAmount);
-      },
-    },
-    {
-      title: '未结算费用',
-      key: 'totalUnSettledAmount',
-      width: 100,
-      align: 'right',
-      customRender: ({ record }) => {
-        // 如果申请币别是原币（currencyId为null），直接显示原币金额
-        if (!record.currencyId) {
-          return formatAmount(record.totalUnSettledAmount);
-        }
-        // 否则转换为申请币别金额：原币金额 × 汇率
-        const convertedAmount =
-          (record.totalUnSettledAmount || 0) * (record.rate || 1);
-        return formatAmount(convertedAmount);
-      },
-    },
-    {
-      title: '本次结算金额',
-      key: 'settledAmount',
-      width: 120,
-      align: 'right',
-      customRender: ({ record }) => {
-        // settledAmount是前端临时字段，用于用户输入
-        const settledAmount = (record as any).settledAmount || 0;
+// ✅ 全选状态计算
+const isAllSelected = computed(() => {
+  return (
+    dataSource.value.length > 0 &&
+    dataSource.value.every((item) =>
+      selectedRowKeys.value.includes(item.rowKey),
+    )
+  );
+});
 
-        // 如果申请币别是原币（currencyId为null），直接显示原币金额
-        if (!record.currencyId) {
-          return formatAmount(settledAmount);
-        }
-        // 否则转换为申请币别金额：原币金额 × 汇率
-        const convertedAmount = settledAmount * (record.rate || 1);
-        return formatAmount(convertedAmount);
-      },
-    },
-    {
-      title: '归属组织',
-      key: 'companyName',
-      width: 130,
-    },
-    {
-      title: '提交时间',
-      dataIndex: 'submitTime',
-      key: 'submitTime',
-      width: 190,
-    },
-    {
-      title: '最晚付款时间',
-      dataIndex: 'endTime',
-      key: 'endTime',
-      width: 150,
-    },
-  ];
+// ✅ 半选状态计算
+const isIndeterminate = computed(() => {
+  const selectedCount = dataSource.value.filter((item) =>
+    selectedRowKeys.value.includes(item.rowKey),
+  ).length;
+  return selectedCount > 0 && selectedCount < dataSource.value.length;
+});
 
-// ✅ 第二层列配置（费用明细 orderFees）
-const orderFeeColumns: ColumnsType<PaymentSettlementAdminApi.OrderFeeForSelectionDto> =
-  [
-    {
-      title: '委托编号',
-      key: 'commissionNum',
-      width: 150,
-      customRender: ({ record }) => {
-        return record.transportOrder?.commissionNum || '-';
-      },
-    },
-    {
-      title: '主提单号',
-      key: 'mblNum',
-      width: 150,
-      customRender: ({ record }) => {
-        return record.transportOrder?.mblNum || '-';
-      },
-    },
-    {
-      title: '收付类型',
-      dataIndex: 'paySide',
-      key: 'paySide',
-      width: 100,
-    },
-    {
-      title: '费用名称',
-      dataIndex: ['feeCode', 'cnName'],
-      key: 'feeCodeName',
-      width: 120,
-    },
-    {
-      title: '币别',
-      dataIndex: ['currency', 'code'],
-      key: 'currencyCode',
-      width: 80,
-    },
-    {
-      title: '单位',
-      dataIndex: 'unit',
-      key: 'unit',
-      width: 80,
-    },
-    {
-      title: '数量',
-      dataIndex: 'quantity',
-      key: 'quantity',
-      width: 80,
-      align: 'right',
-    },
-    {
-      title: '单价',
-      dataIndex: 'unitPrice',
-      key: 'unitPrice',
-      width: 100,
-      align: 'right',
-    },
-    {
-      title: '金额',
-      dataIndex: 'amount',
-      key: 'amount',
-      width: 120,
-      align: 'right',
-    },
-    {
-      title: '未开票金额',
-      dataIndex: 'unInvoicedAmount',
-      key: 'unInvoicedAmount',
-      width: 120,
-      align: 'right',
-    },
-    {
-      title: '已开票金额',
-      dataIndex: 'invoicedAmount',
-      key: 'invoicedAmount',
-      width: 120,
-      align: 'right',
-    },
-    {
-      title: '已结算金额',
-      dataIndex: 'settledAmount',
-      key: 'settledAmount',
-      width: 120,
-      align: 'right',
-    },
-    {
-      title: '未结算金额',
-      dataIndex: 'unSettledAmount',
-      key: 'unSettledAmount',
-      width: 120,
-      align: 'right',
-    },
-    {
-      title: '已付费申请',
-      dataIndex: 'rqstPaymentAmount',
-      key: 'rqstPaymentAmount',
-      width: 120,
-    },
-    {
-      title: '未付费申请',
-      dataIndex: 'unRqstPaymentAmount',
-      key: 'unRqstPaymentAmount',
-      width: 120,
-      align: 'right',
-    },
-  ];
+// ✅ 全选/取消全选
+function toggleAllSelection(checked: boolean) {
+  if (checked) {
+    selectedRowKeys.value = dataSource.value.map((item) => item.rowKey);
+  } else {
+    selectedRowKeys.value = [];
+  }
+}
+
+// ✅ 切换单行选中状态
+function toggleRowSelection(rowKey: string, checked: boolean) {
+  if (checked) {
+    if (!selectedRowKeys.value.includes(rowKey)) {
+      selectedRowKeys.value.push(rowKey);
+    }
+  } else {
+    selectedRowKeys.value = selectedRowKeys.value.filter(
+      (key) => key !== rowKey,
+    );
+  }
+}
+
+// ✅ 分页变化处理（适配Pagination组件）
+function handlePageChange(page: number, size: number) {
+  currentPage.value = page;
+  pageSize.value = size;
+  fetchData();
+}
+
+// ✅ NestedDataTable 外层列定义（付费申请+原币组合）
+const outerColumns = [
+  {
+    title: '序号',
+    key: 'seq',
+    width: 50,
+  },
+  {
+    title: '申请单号',
+    dataIndex: 'applicationNo',
+    key: 'applicationNo',
+    width: 120,
+    ellipsis: true,
+  },
+  {
+    title: '状态',
+    dataIndex: 'status',
+    key: 'status',
+    width: 100,
+  },
+  {
+    title: '结算对象',
+    dataIndex: 'clientName',
+    key: 'clientName',
+    width: 130,
+    ellipsis: true,
+  },
+  {
+    title: '支付要求',
+    dataIndex: 'require',
+    key: 'require',
+    width: 150,
+    ellipsis: true,
+  },
+  {
+    title: '申请币别',
+    key: 'currencyCode',
+    width: 100,
+  },
+  {
+    title: '原币币别',
+    dataIndex: 'originalCurrencyCode',
+    key: 'originalCurrencyCode',
+    width: 100,
+  },
+  {
+    title: '汇率',
+    dataIndex: 'rate',
+    key: 'rate',
+    width: 80,
+    align: 'right' as const,
+  },
+  {
+    title: '申请人',
+    dataIndex: 'auditUserNickName',
+    key: 'auditUserNickName',
+    width: 120,
+    ellipsis: true,
+  },
+  {
+    title: '应付金额',
+    key: 'payAmount',
+    width: 100,
+    align: 'right' as const,
+  },
+  {
+    title: '应收金额',
+    key: 'receiveAmount',
+    width: 100,
+    align: 'right' as const,
+  },
+  {
+    title: '未结算费用',
+    key: 'totalUnSettledAmount',
+    width: 100,
+    align: 'right' as const,
+  },
+  {
+    title: '本次结算金额',
+    key: 'settledAmount',
+    width: 140,
+    align: 'right' as const,
+  },
+  {
+    title: '归属组织',
+    key: 'companyName',
+    width: 130,
+    ellipsis: true,
+  },
+  {
+    title: '提交时间',
+    dataIndex: 'submitTime',
+    key: 'submitTime',
+    width: 160,
+  },
+  {
+    title: '最晚付款时间',
+    dataIndex: 'endTime',
+    key: 'endTime',
+    width: 130,
+  },
+];
+
+// ✅ NestedDataTable 内层列定义（费用明细 orderFees）
+const innerColumns = [
+  {
+    title: '委托编号',
+    key: 'commissionNum',
+    width: 150,
+  },
+  {
+    title: '主提单号',
+    key: 'mblNum',
+    width: 150,
+  },
+  {
+    title: '收付类型',
+    dataIndex: 'paySide',
+    key: 'paySide',
+    width: 100,
+  },
+  {
+    title: '费用名称',
+    key: 'feeCodeName',
+    width: 120,
+    ellipsis: true,
+  },
+  {
+    title: '币别',
+    key: 'currencyCode',
+    width: 80,
+  },
+  {
+    title: '单位',
+    dataIndex: 'unit',
+    key: 'unit',
+    width: 80,
+  },
+  {
+    title: '数量',
+    dataIndex: 'quantity',
+    key: 'quantity',
+    width: 80,
+    align: 'right' as const,
+  },
+  {
+    title: '单价',
+    dataIndex: 'unitPrice',
+    key: 'unitPrice',
+    width: 100,
+    align: 'right' as const,
+  },
+  {
+    title: '金额',
+    dataIndex: 'amount',
+    key: 'amount',
+    width: 120,
+    align: 'right' as const,
+  },
+  {
+    title: '未开票金额',
+    dataIndex: 'unInvoicedAmount',
+    key: 'unInvoicedAmount',
+    width: 120,
+    align: 'right' as const,
+  },
+  {
+    title: '已开票金额',
+    dataIndex: 'invoicedAmount',
+    key: 'invoicedAmount',
+    width: 120,
+    align: 'right' as const,
+  },
+  {
+    title: '已结算金额',
+    dataIndex: 'settledAmount',
+    key: 'settledAmount',
+    width: 120,
+    align: 'right' as const,
+  },
+  {
+    title: '未结算金额',
+    dataIndex: 'unSettledAmount',
+    key: 'unSettledAmount',
+    width: 120,
+    align: 'right' as const,
+  },
+];
 
 /** 为表格添加列宽拖拽功能 */
 function enableColumnResize(tableElement: HTMLElement | null) {
@@ -1091,55 +1092,42 @@ function destroyTableObserver() {
       </div>
     </div>
 
-    <Table
-      :columns="columns"
+    <NestedDataTable
+      :columns="outerColumns"
       :data-source="dataSource"
-      :loading="loading"
-      size="small"
-      :pagination="{
-        current: currentPage,
-        pageSize: pageSize,
-        total: total,
-        showSizeChanger: true,
-        showQuickJumper: true,
-        showTotal: (total) => `共 ${total} 条`,
-      }"
-      @change="handlePageChange"
+      fill-height
+      :inner-columns="innerColumns"
+      inner-data-key="orderFees"
+      inner-row-key="id"
       row-key="rowKey"
-      :row-selection="{
-        type: 'checkbox',
-        selectedRowKeys: selectedRowKeys,
-        onChange: handleRowSelectionChange,
-      }"
-      bordered
-      :expandable="{
-        defaultExpandAllRows: false,
-        expandIconColumnIndex: 0,
-      }"
+      :loading="loading"
+      v-model:expanded-row-keys="expandedRowKeys"
     >
-      <!-- ✅ 展开行渲染 - 显示费用明细 -->
-      <template #expandedRowRender="{ record }">
-        <div
-          v-if="!record.orderFees || record.orderFees.length === 0"
-          style="padding: 16px; color: #999"
-        >
-          暂无费用明细
-        </div>
-        <Table
-          v-else
-          :columns="orderFeeColumns"
-          :data-source="record.orderFees"
-          row-key="id"
-          :pagination="false"
-          size="small"
-          bordered
-          :scroll="{ x: 1200 }"
-        />
+      <template #outerHeaderCell="{ column }">
+        <span v-if="column.key === 'seq'" class="table-sequence-cell">
+          <Checkbox
+            :checked="isAllSelected"
+            :indeterminate="isIndeterminate"
+            @change="(e) => toggleAllSelection(e.target.checked)"
+          />
+          {{ column.title }}
+        </span>
+        <template v-else>{{ column.title }}</template>
       </template>
 
-      <!-- 第一层：付费申请+原币组合 -->
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'applicationNo'">
+      <template #outerBodyCell="{ column, record, index }">
+        <template v-if="column.key === 'seq'">
+          <span class="table-sequence-cell">
+            <Checkbox
+              :checked="selectedRowKeys.includes(record.rowKey)"
+              @change="
+                (e) => toggleRowSelection(record.rowKey, e.target.checked)
+              "
+            />
+            {{ index + 1 + (currentPage - 1) * pageSize }}
+          </span>
+        </template>
+        <template v-else-if="column.key === 'applicationNo'">
           <div style="display: flex; gap: 4px; align-items: center">
             <a>{{ record.applicationNo }}</a>
             <Tag
@@ -1155,57 +1143,44 @@ function destroyTableObserver() {
             </Tag>
           </div>
         </template>
-
         <template v-else-if="column.key === 'status'">
           <Tag v-bind="resolveApplicationStatus(record.status).tagProps">
             {{ resolveApplicationStatus(record.status).label }}
           </Tag>
         </template>
-
         <template v-else-if="column.key === 'submitTime'">
           {{ formatDateTime(record.submitTime) }}
         </template>
-
         <template v-else-if="column.key === 'endTime'">
           {{ formatDateOnly(record.endTime) }}
         </template>
-
         <template v-else-if="column.key === 'clientName'">
           {{ record.settlement?.name || '-' }}
         </template>
-
         <template v-else-if="column.key === 'require'">
           {{ record.require || '-' }}
         </template>
-
         <template v-else-if="column.key === 'currencyCode'">
-          {{ record.currency?.code || '原币' }}
+          {{ getCurrencyCodeDisplay(record) }}
         </template>
-
         <template v-else-if="column.key === 'originalCurrencyCode'">
           {{ record.originalCurrencyCode }}
         </template>
-
         <template v-else-if="column.key === 'rate'">
           {{ record.rate ? record.rate.toFixed(4) : '-' }}
         </template>
-
         <template v-else-if="column.key === 'auditUserNickName'">
           {{ record.auditUserNickName || '-' }}
         </template>
-
         <template v-else-if="column.key === 'payAmount'">
           {{ formatAmountWithConversion(record) }}
         </template>
-
         <template v-else-if="column.key === 'receiveAmount'">
           {{ formatAmountWithConversion(record, 'receiveAmount') }}
         </template>
-
         <template v-else-if="column.key === 'totalUnSettledAmount'">
           {{ formatAmountWithConversion(record, 'totalUnSettledAmount') }}
         </template>
-
         <template v-else-if="column.key === 'settledAmount'">
           <InputNumber
             v-model:value="record.settledAmount"
@@ -1231,12 +1206,97 @@ function destroyTableObserver() {
             原币金额: {{ formatOriginalAmount(record) }}
           </div>
         </template>
-
         <template v-else-if="column.key === 'companyName'">
           {{ record.orgs?.at(-1)?.name || '-' }}
         </template>
+        <template v-else>
+          {{ column.dataIndex ? record[column.dataIndex] : '' }}
+        </template>
       </template>
-    </Table>
+
+      <template #expandColumnTitle></template>
+      <template #expandIcon="{ expanded, record, onExpand }">
+        <span
+          class="expand-toggle cursor-pointer"
+          :class="{ 'expand-toggle--expanded': expanded }"
+          @click="
+            (e) => {
+              e.stopPropagation();
+              console.log('🔍 点击展开图标:', {
+                rowKey: record.rowKey,
+                applicationNo: record.applicationNo,
+                hasOrderFees: Array.isArray(record.orderFees),
+                orderFeesLength: record.orderFees?.length || 0,
+                expanded: expanded,
+              });
+              onExpand(record, e);
+            }
+          "
+        >
+          &#9654;
+        </span>
+      </template>
+
+      <template #innerBodyCell="{ column, record: feeRecord }">
+        <template v-if="column.key === 'commissionNum'">
+          {{ feeRecord.transportOrder?.commissionNum || '-' }}
+        </template>
+        <template v-else-if="column.key === 'mblNum'">
+          {{ feeRecord.transportOrder?.mblNum || '-' }}
+        </template>
+        <template v-else-if="column.key === 'paySide'">
+          <Tag :color="feeRecord.paySide === 0 ? 'blue' : 'orange'">
+            {{ feeRecord.paySide === 0 ? '付' : '收' }}
+          </Tag>
+        </template>
+        <template v-else-if="column.key === 'feeCodeName'">
+          {{ feeRecord.feeCode?.cnName || '-' }}
+        </template>
+        <template v-else-if="column.key === 'currencyCode'">
+          {{ feeRecord.currency?.code || '-' }}
+        </template>
+        <template v-else-if="column.key === 'unit'">
+          {{ feeRecord.unit || '-' }}
+        </template>
+        <template v-else-if="column.key === 'quantity'">
+          {{ formatAmount(feeRecord.quantity) }}
+        </template>
+        <template v-else-if="column.key === 'unitPrice'">
+          {{ formatAmount(feeRecord.unitPrice) }}
+        </template>
+        <template v-else-if="column.key === 'amount'">
+          {{ formatAmount(feeRecord.amount) }}
+        </template>
+        <template v-else-if="column.key === 'unInvoicedAmount'">
+          {{ formatAmount(feeRecord.unInvoicedAmount) }}
+        </template>
+        <template v-else-if="column.key === 'invoicedAmount'">
+          {{ formatAmount(feeRecord.invoicedAmount) }}
+        </template>
+        <template v-else-if="column.key === 'settledAmount'">
+          {{ formatAmount(feeRecord.settledAmount) }}
+        </template>
+        <template v-else-if="column.key === 'unSettledAmount'">
+          {{ formatAmount(feeRecord.unSettledAmount) }}
+        </template>
+        <template v-else>
+          {{ column.dataIndex ? feeRecord[column.dataIndex] : '' }}
+        </template>
+      </template>
+    </NestedDataTable>
+
+    <!-- 分页器 -->
+    <div style="display: flex; justify-content: flex-end; margin-top: 16px">
+      <Pagination
+        v-model:current="currentPage"
+        v-model:page-size="pageSize"
+        :total="total"
+        show-size-changer
+        show-quick-jumper
+        :show-total="(total: number) => `共 ${total} 条`"
+        @change="handlePageChange"
+      />
+    </div>
 
     <template #footer>
       <Space>
@@ -1260,25 +1320,20 @@ function destroyTableObserver() {
 </template>
 
 <style scoped>
-/* 列宽拖拽手柄样式 */
-:deep(.column-resizer) {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10;
-  width: 5px;
-  cursor: col-resize;
-  background-color: transparent;
-  transition: background-color 0.2s;
+/* 展开图标样式 */
+.expand-toggle {
+  display: inline-block;
+  font-size: 12px;
+  transition: transform 0.2s;
 }
 
-:deep(.column-resizer:hover) {
-  background-color: #d9d9d9;
+.expand-toggle--expanded {
+  transform: rotate(90deg);
 }
 
-:deep(th) {
-  position: relative;
-  user-select: none;
+.table-sequence-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 </style>
