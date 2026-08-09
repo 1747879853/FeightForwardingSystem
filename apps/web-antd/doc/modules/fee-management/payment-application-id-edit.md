@@ -26,7 +26,7 @@ last_updated: 2026-08-09
 - **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。
 - **发票附件：** 任意状态本地增删，保存走 `EditAsync.attachmentGroup` **全量覆盖**；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读展示（不再有平铺字段 `paymentSettlementAttachments`）。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。
-- **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次结算」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。
+- **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。
 - **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。
 - **提交审核：** 进入付款申请审核链路。
 
@@ -65,6 +65,8 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Feature` | 添加费用抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；翻页保留勾选，确认也读跨页缓存。 | 与新增页共用 `add-fee-modal`；详见 `changelogs/change-log-2026-08-09-payment-add-fee-selected-currency-total.md`。 |
+| 2026-08-09 | `Style` | 表单容器底部间距由 10px 调整为 48px，避免滚到底贴边。 | 与新增页共用 `.payment-app-form`；详见 `changelogs/change-log-2026-08-09-payment-application-form-bottom-padding.md`。 |
 | 2026-08-09 | `Style` | 费用明细「结算金额」→「已核销金额」；`unRqstPaymentAmount` 展示「可申请金额」；添加费用抽屉「本次结算」→「本次申请」。 | 详见 `changelogs/change-log-2026-08-09-payment-application-amount-labels.md`。 |
 | 2026-08-09 | `Feature` | 结算币别「付款金额」改「申请金额」并加「已核销」；固定币别合并为一行，申请金额取申请金额折币合计；费用明细改「申请金额折币」。 | 与新增页共用 `form.vue`/`form-data.ts`；详情 `syncCurrencySettledAmounts`。详见 `changelogs/change-log-2026-08-09-payment-application-settlement-applied-converted.md`。 |
 | 2026-08-09 | `Fix` | 指定币别结算表移除「实付金额」「结算方式」列。 | 与新增页共用 `form.vue`；详见 `changelogs/change-log-2026-08-09-payment-application-remove-settlement-columns.md`。 |

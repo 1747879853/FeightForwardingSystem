@@ -2010,7 +2010,7 @@ void handleSubmitAndNew;
   flex-direction: column;
   gap: 10px;
   min-height: 100%;
-  padding-bottom: 10px;
+  padding-bottom: 48px;
   color: #1f2937;
   background: #f8f8f8;
 }

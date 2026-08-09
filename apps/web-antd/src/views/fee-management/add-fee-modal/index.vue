@@ -70,6 +70,13 @@ const tableRows = ref<Record<string, any>[]>([]);
 const selectionMap = reactive(new Map<string, Set<string>>());
 /** 费用输入金额：feeId -> appliedAmount */
 const appliedAmountMap = reactive(new Map<string, number>());
+/**
+ * 跨页勾选缓存：feeId -> SelectedFeeItem。
+ * 翻页后当前页 orderList 不含其他页费用，确认/合计需依赖此缓存。
+ */
+const selectedFeeCache = reactive(new Map<string, SelectedFeeItem>());
+/** 选择/金额变更计数，驱动合计 computed */
+const selectionEpoch = ref(0);
 
 const expandedRowKeys = ref<string[]>([]);
 
@@ -277,6 +284,10 @@ async function openDrawer(props: AddFeeDrawerProps = {}) {
   initDisabledFeeAppliedAmounts();
 }
 
+function bumpSelectionEpoch() {
+  selectionEpoch.value += 1;
+}
+
 function resetState() {
   orderList.value = [];
   totalCount.value = 0;
@@ -285,6 +296,8 @@ function resetState() {
   tableRows.value = [];
   selectionMap.clear();
   appliedAmountMap.clear();
+  selectedFeeCache.clear();
+  bumpSelectionEpoch();
   expandedRowKeys.value = [];
   invoiceProcessError.value = false;
 }
@@ -292,6 +305,8 @@ function resetState() {
 function clearSelection() {
   selectionMap.clear();
   appliedAmountMap.clear();
+  selectedFeeCache.clear();
+  bumpSelectionEpoch();
 }
 
 async function fetchData(formValues?: Record<string, any>) {
@@ -405,6 +420,7 @@ function toggleGroup(groupKey: string, checked: boolean) {
       if (!appliedAmountMap.has(fee.id)) {
         appliedAmountMap.set(fee.id, fee.unRqstPaymentAmount ?? 0);
       }
+      cacheSelectedFee(groupKey, fee);
     }
     selectionMap.set(groupKey, set);
   } else {
@@ -413,6 +429,7 @@ function toggleGroup(groupKey: string, checked: boolean) {
     const set = new Set(existing);
     for (const fee of fees) {
       set.delete(fee.id);
+      uncacheSelectedFee(fee.id);
     }
     if (set.size > 0) {
       selectionMap.set(groupKey, set);
@@ -420,6 +437,7 @@ function toggleGroup(groupKey: string, checked: boolean) {
       selectionMap.delete(groupKey);
     }
   }
+  bumpSelectionEpoch();
 }
 
 const selectablePageGroupKeys = computed(() =>
@@ -452,6 +470,19 @@ function isFeeChecked(groupKey: string, feeId: string): boolean {
   return selectionMap.get(groupKey)?.has(feeId) ?? false;
 }
 
+function cacheSelectedFee(
+  groupKey: string,
+  fee: PaymentApplicationAdminApi.OrderFeeDto,
+) {
+  const item = buildSelectedFeeItem(groupKey, fee);
+  if (!item) return;
+  selectedFeeCache.set(fee.id, item);
+}
+
+function uncacheSelectedFee(feeId: string) {
+  selectedFeeCache.delete(feeId);
+}
+
 function toggleFee(groupKey: string, feeId: string, checked: boolean) {
   if (isFeeDisabled(feeId)) return;
   if (!selectionMap.has(groupKey)) {
@@ -461,19 +492,29 @@ function toggleFee(groupKey: string, feeId: string, checked: boolean) {
   if (checked) {
     set.add(feeId);
     const fee = getGroupFees(groupKey).find((f) => f.id === feeId);
-    if (fee && !isFeeDisabled(feeId) && !appliedAmountMap.has(feeId)) {
-      appliedAmountMap.set(feeId, fee.unRqstPaymentAmount ?? 0);
+    if (fee && !isFeeDisabled(feeId)) {
+      if (!appliedAmountMap.has(feeId)) {
+        appliedAmountMap.set(feeId, fee.unRqstPaymentAmount ?? 0);
+      }
+      cacheSelectedFee(groupKey, fee);
     }
   } else {
     set.delete(feeId);
+    uncacheSelectedFee(feeId);
     if (set.size === 0) {
       selectionMap.delete(groupKey);
     }
   }
+  bumpSelectionEpoch();
 }
 
 function setAppliedAmount(feeId: string, value: number | null) {
   appliedAmountMap.set(feeId, value ?? 0);
+  const cached = selectedFeeCache.get(feeId);
+  if (cached) {
+    cached.appliedAmount = value ?? 0;
+  }
+  bumpSelectionEpoch();
 }
 
 function getFeeRows(groupKey: string): FeeRowData[] {
@@ -512,79 +553,122 @@ async function checkSearchChanged() {
 
 // --- 汇总选中费用 ---
 
-function getSelectedFees(): SelectedFeeItem[] {
-  const result: SelectedFeeItem[] = [];
-  const disabled = disabledFeeIds.value;
-  const seen = new Set<string>();
-  const hasUserAttribute = (
-    userAttribute: number | undefined,
-    target: PaymentApplicationAdminApi.UserAttribute,
-  ) => typeof userAttribute === 'number' && (userAttribute & target) === target;
-  const getOrderUserNamesByAttribute = (
-    orderUsers: PaymentApplicationAdminApi.OrderUserDto[] | undefined,
-    target: PaymentApplicationAdminApi.UserAttribute,
-  ) =>
-    (orderUsers ?? [])
-      .filter((user) => hasUserAttribute(user.userAttribute, target))
-      .map((user) => user.userNickName)
-      .filter((name): name is string => Boolean(name))
-      .join('、');
-  for (const [groupKey, feeIds] of selectionMap.entries()) {
-    const order = findGroupByKey(groupKey);
-    const saleUserNames = getOrderUserNamesByAttribute(
+function hasUserAttribute(
+  userAttribute: number | undefined,
+  target: PaymentApplicationAdminApi.UserAttribute,
+) {
+  return (
+    typeof userAttribute === 'number' && (userAttribute & target) === target
+  );
+}
+
+function getOrderUserNamesByAttribute(
+  orderUsers: PaymentApplicationAdminApi.OrderUserDto[] | undefined,
+  target: PaymentApplicationAdminApi.UserAttribute,
+) {
+  return (orderUsers ?? [])
+    .filter((user) => hasUserAttribute(user.userAttribute, target))
+    .map((user) => user.userNickName)
+    .filter((name): name is string => Boolean(name))
+    .join('、');
+}
+
+/** 勾选时写入跨页缓存；翻页后仍可确认/合计 */
+function buildSelectedFeeItem(
+  groupKey: string,
+  fee: PaymentApplicationAdminApi.OrderFeeDto,
+): null | SelectedFeeItem {
+  const order = findGroupByKey(groupKey);
+  return {
+    feeId: fee.id,
+    transportOrderId: fee.transportOrderId,
+    commissionNum: order?.commissionNum,
+    mblNum: order?.mblNum,
+    clientId: order?.clientId,
+    clientName: order?.client?.name,
+    accountDate: order?.accountDate,
+    etd: order?.etd,
+    polName: order ? resolvePolPortDisplayName(order) : '',
+    podName: order ? resolvePodPortDisplayName(order) : '',
+    saleUserNames: getOrderUserNamesByAttribute(
       order?.orderUsers,
       PaymentApplicationAdminApi.UserAttribute.Sale,
-    );
-    const operationUserNames = getOrderUserNamesByAttribute(
+    ),
+    operationUserNames: getOrderUserNamesByAttribute(
       order?.orderUsers,
       PaymentApplicationAdminApi.UserAttribute.Operation,
-    );
-    const customerServiceUserNames = getOrderUserNamesByAttribute(
+    ),
+    customerServiceUserNames: getOrderUserNamesByAttribute(
       order?.orderUsers,
       PaymentApplicationAdminApi.UserAttribute.CustomerService,
-    );
-    const fees = getGroupFees(groupKey);
-    for (const fee of fees) {
-      if (feeIds.has(fee.id) && !disabled.has(fee.id) && !seen.has(fee.id)) {
-        seen.add(fee.id);
-        result.push({
-          feeId: fee.id,
-          transportOrderId: fee.transportOrderId,
-          commissionNum: order?.commissionNum,
-          mblNum: order?.mblNum,
-          clientId: order?.clientId,
-          clientName: order?.client?.name,
-          accountDate: order?.accountDate,
-          etd: order?.etd,
-          polName: order ? resolvePolPortDisplayName(order) : '',
-          podName: order ? resolvePodPortDisplayName(order) : '',
-          saleUserNames,
-          operationUserNames,
-          customerServiceUserNames,
-          paySide: fee.paySide,
-          feeCodeId: fee.feeCodeId,
-          feeCodeName: fee.feeCode?.cnName,
-          currencyId: fee.currencyId,
-          currencyCode: toCurrencyDisplayCode(
-            fee.currency?.code,
-            fee.currency?.cnName,
-          ),
-          currencyName: fee.currency?.cnName,
-          settlementId: fee.settlementId,
-          settlementName: order
-            ? resolveGroupSettlementName(order)
-            : (fee.settlement?.name ?? ''),
-          amount: fee.amount,
-          settledAmount: fee.settledAmount,
-          unRqstPaymentAmount: fee.unRqstPaymentAmount ?? 0,
-          appliedAmount:
-            resolveAppliedAmount(fee.id, fee.unRqstPaymentAmount) ?? 0,
-        });
-      }
-    }
+    ),
+    paySide: fee.paySide,
+    feeCodeId: fee.feeCodeId,
+    feeCodeName: fee.feeCode?.cnName,
+    currencyId: fee.currencyId,
+    currencyCode: toCurrencyDisplayCode(
+      fee.currency?.code,
+      fee.currency?.cnName,
+    ),
+    currencyName: fee.currency?.cnName,
+    settlementId: fee.settlementId,
+    settlementName: order
+      ? resolveGroupSettlementName(order)
+      : (fee.settlement?.name ?? ''),
+    amount: fee.amount,
+    settledAmount: fee.settledAmount,
+    unRqstPaymentAmount: fee.unRqstPaymentAmount ?? 0,
+    appliedAmount: resolveAppliedAmount(fee.id, fee.unRqstPaymentAmount) ?? 0,
+  };
+}
+
+function getSelectedFees(): SelectedFeeItem[] {
+  const disabled = disabledFeeIds.value;
+  const result: SelectedFeeItem[] = [];
+  for (const [feeId, fee] of selectedFeeCache.entries()) {
+    if (disabled.has(feeId)) continue;
+    result.push({
+      ...fee,
+      appliedAmount: resolveAppliedAmount(feeId, fee.unRqstPaymentAmount) ?? 0,
+    });
   }
   return result;
 }
+
+/** 已选费用按币别汇总本次申请净额（付 − 收），含跨页勾选 */
+const selectedCurrencyTotals = computed(() => {
+  void selectionEpoch.value;
+  const disabled = disabledFeeIds.value;
+  const map = new Map<
+    string,
+    { amount: number; count: number; currencyCode: string }
+  >();
+  for (const [feeId, fee] of selectedFeeCache.entries()) {
+    if (disabled.has(feeId)) continue;
+    const applied = resolveAppliedAmount(feeId, fee.unRqstPaymentAmount) ?? 0;
+    const signed = fee.paySide === 0 ? -applied : applied;
+    const currencyCode = fee.currencyCode || '未知';
+    const key = String(fee.currencyId ?? currencyCode);
+    const prev = map.get(key);
+    if (prev) {
+      prev.amount += signed;
+      prev.count += 1;
+    } else {
+      map.set(key, { amount: signed, count: 1, currencyCode });
+    }
+  }
+  return [...map.values()];
+});
+
+const selectedFeeCount = computed(() => {
+  void selectionEpoch.value;
+  const disabled = disabledFeeIds.value;
+  let count = 0;
+  for (const feeId of selectedFeeCache.keys()) {
+    if (!disabled.has(feeId)) count += 1;
+  }
+  return count;
+});
 
 function validateAppliedAmounts(selected: SelectedFeeItem[]): boolean {
   for (const fee of selected) {
@@ -848,41 +932,63 @@ defineExpose({ open: openDrawer });
 
     <!-- 主体区域 -->
     <div class="mb-2 flex items-center gap-3">
-      <div class="text-base font-semibold">费用明细</div>
+      <div class="shrink-0 text-base font-semibold">费用明细</div>
       <div
-        v-if="drawerProps.enableInvoiceProcess"
-        class="ml-auto flex items-center gap-2"
+        v-if="selectedFeeCount > 0"
+        class="selected-fee-summary min-w-0 flex-1"
       >
-        <span class="text-sm text-gray-600">
-          发票方式
-          <span class="text-red-500">*</span>
+        <span class="selected-fee-summary__label">
+          已选 {{ selectedFeeCount }} 笔
         </span>
-        <Select
-          :value="drawerProps.invoiceProcess"
-          :options="[
-            { label: '先票后付', value: 0 },
-            { label: '先付后票', value: 1 },
-            { label: '不开票', value: 2 },
-          ]"
-          :status="invoiceProcessError ? 'error' : undefined"
-          placeholder="请选择"
+        <span
+          v-for="item in selectedCurrencyTotals"
+          :key="item.currencyCode"
+          class="selected-fee-summary__item"
+        >
+          <span class="selected-fee-summary__code">{{
+            item.currencyCode
+          }}</span>
+          <span class="selected-fee-summary__amount">{{
+            formatAmount(item.amount)
+          }}</span>
+        </span>
+      </div>
+      <div class="ml-auto flex shrink-0 items-center gap-2">
+        <template v-if="drawerProps.enableInvoiceProcess">
+          <span class="text-sm text-gray-600">
+            发票方式
+            <span class="text-red-500">*</span>
+          </span>
+          <Select
+            :value="drawerProps.invoiceProcess"
+            :options="[
+              { label: '先票后付', value: 0 },
+              { label: '先付后票', value: 1 },
+              { label: '不开票', value: 2 },
+            ]"
+            :status="invoiceProcessError ? 'error' : undefined"
+            placeholder="请选择"
+            size="small"
+            style="width: 140px"
+            @change="onInvoiceProcessChange"
+          />
+        </template>
+        <span
+          v-if="isSettlementCurrencyLocked"
+          class="settlement-currency-mode"
+        >
+          {{ lockedSettlementCurrencyText }}
+        </span>
+        <CurrencySelect
+          v-else
+          ref="currencySelectRef"
+          :model-value="drawerProps.settlementCurrencyId"
+          :extra-options="[{ label: '按原票币', value: null }]"
           size="small"
-          style="width: 140px"
-          @change="onInvoiceProcessChange"
+          style="width: 160px"
+          @update:model-value="onSettlementCurrencyChange"
         />
       </div>
-      <span v-if="isSettlementCurrencyLocked" class="settlement-currency-mode">
-        {{ lockedSettlementCurrencyText }}
-      </span>
-      <CurrencySelect
-        v-else
-        ref="currencySelectRef"
-        :model-value="drawerProps.settlementCurrencyId"
-        :extra-options="[{ label: '按原票币', value: null }]"
-        size="small"
-        style="width: 160px"
-        @update:model-value="onSettlementCurrencyChange"
-      />
     </div>
 
     <!-- 主表格（业务列表） -->
@@ -1075,6 +1181,40 @@ defineExpose({ open: openDrawer });
   text-align: center;
   background: #eff6ff;
   border-radius: 6px;
+}
+
+.selected-fee-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #657286;
+}
+
+.selected-fee-summary__label {
+  font-weight: 600;
+  color: #334155;
+}
+
+.selected-fee-summary__item {
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+  padding: 2px 8px;
+  background: #f0f7ff;
+  border-radius: 6px;
+}
+
+.selected-fee-summary__code {
+  font-weight: 600;
+  color: #475569;
+}
+
+.selected-fee-summary__amount {
+  font-weight: 700;
+  color: #1677ff;
 }
 
 .fee-order-table .ellipsis-cell {
