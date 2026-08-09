@@ -212,9 +212,9 @@ export function useOrderFeeLinkage(
       }
 
       // 根据收付类型选择应收或应付汇率
-      // 注意：paySide === 0 是应收，应该用 crValue
-      // paySide === 1 是应付，应该用 drValue
-      const rateValue = paySide === 1 ? rate.drValue : rate.crValue;
+      // 注意：paySide === 0 是应收，应该用 drValue
+      // paySide === 1 是应付，应该用 crValue
+      const rateValue = paySide === 1 ? rate.crValue : rate.drValue;
 
       if (rateValue === undefined || rateValue === null) {
         console.warn(
@@ -229,7 +229,7 @@ export function useOrderFeeLinkage(
         '💱 [getExchangeRateFromCache] 从缓存获取汇率 - 币别:',
         rate.currencyCode || currencyId,
         '收付类型:',
-        paySide === 1 ? '应付(drValue)' : '应收(crValue)',
+        paySide === 1 ? '应付(crValue)' : '应收(drValue)',
         '汇率:',
         rateValue,
       );
@@ -284,7 +284,7 @@ export function useOrderFeeLinkage(
 
       // 根据收付类型选择应收或应付汇率
       const rateValue =
-        props.type === 1 ? exchangeRate.drValue : exchangeRate.crValue;
+        props.type === 0 ? exchangeRate.drValue : exchangeRate.crValue;
 
       console.log(
         '💱 [getExchangeRateFromFeeCodeCache] 从缓存获取汇率 - 费用代码:',
