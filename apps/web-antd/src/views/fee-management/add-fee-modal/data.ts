@@ -448,6 +448,8 @@ export function buildOrderRow(
   const row: Record<string, any> = {
     ...order,
     groupKey: buildFeeGroupKey(order.id, settlementId),
+    // 接口仅回 client 对象，列 field 仍是 clientName
+    clientName: order.client?.name ?? '',
     settlementName: resolveGroupSettlementName(order),
     polName: resolvePolPortDisplayName(order),
     podName: resolvePodPortDisplayName(order),

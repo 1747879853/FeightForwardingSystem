@@ -695,7 +695,10 @@ export namespace PaymentApplicationAdminApi {
     seaExportInnerVoyno?: string;
     bizType: number;
     clientId: string;
+    /** @deprecated 委托单位改走 client 对象 */
     clientName?: string;
+    /** 委托单位（业务往来单位简易对象） */
+    client?: ClientSimpleDtoForOrder | null;
     saleNames?: string[];
     operatorNames?: string[];
     customerServiceNames?: string[];

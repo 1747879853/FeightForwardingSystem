@@ -63,6 +63,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 添加费用抽屉与费用分组表「委托单位」正确显示客户简称。 | `buildOrderRow` / `mapDetailToFeeRows` 读 `client?.name`；详见 `changelogs/change-log-2026-08-09-payment-application-order-client-name-display.md`。 |
 | 2026-08-09 | `Feature` | 添加费用抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；翻页保留勾选，确认也读跨页缓存。 | `selectedFeeCache` + `getSelectedFees`；详见 `changelogs/change-log-2026-08-09-payment-add-fee-selected-currency-total.md`。 |
 | 2026-08-09 | `Style` | 表单容器底部间距由 10px 调整为 48px，避免滚到底贴边。 | 与编辑页共用 `.payment-app-form`；详见 `changelogs/change-log-2026-08-09-payment-application-form-bottom-padding.md`。 |
 | 2026-08-09 | `Style` | 费用明细「结算金额」→「已核销金额」；`unRqstPaymentAmount` 展示「可申请金额」；添加费用抽屉「本次结算」→「本次申请」。 | 详见 `changelogs/change-log-2026-08-09-payment-application-amount-labels.md`。 |
