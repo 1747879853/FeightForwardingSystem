@@ -161,6 +161,8 @@ export namespace ReceiveSettlementAdminApi {
   export interface ReceiveSettlementDetailDto {
     id: string;
     bankStatementId: string;
+    /** 归属组织id */
+    orgId?: null | number;
     settlementNo?: string;
     status: number;
     /** 结算类型 0 按费用(按业务) 1 按开票申请 */

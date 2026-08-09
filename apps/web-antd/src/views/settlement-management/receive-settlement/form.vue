@@ -25,6 +25,7 @@ import {
   Tag,
 } from 'ant-design-vue';
 
+import { MyOrgSelect } from '#/adapter/component';
 import {
   getBankStatementDetailByPermission,
   getBankStatementReceiveSettlementPagedListByPermission,
@@ -39,6 +40,8 @@ import {
   lockReceiveSettlement,
   unlockReceiveSettlement,
 } from '#/api/settlement-management/receive-settlement-admin';
+import { formatOrgPathLabel } from '#/composables/use-all-user-org';
+import { getMyDefaultOrgId, getMyOrgPath } from '#/composables/use-my-org';
 import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
@@ -108,10 +111,15 @@ const status = ref(0);
 const locked = ref(false);
 const lockeTime = ref<string>();
 const creatorUserName = ref('');
+const orgId = ref<number | undefined>(getMyDefaultOrgId());
 const settlementTime = ref<Dayjs>(dayjs());
 const remark = ref('');
 const items = ref<SettlementItem[]>([]);
 const selectedItemRowKeys = ref<string[]>([]);
+
+const orgDisplayName = computed(
+  () => formatOrgPathLabel(getMyOrgPath(orgId.value)) || '-',
+);
 
 let rowKeyCounter = 0;
 const makeRowKey = () => `receive_fee_${++rowKeyCounter}_${Date.now()}`;
@@ -277,6 +285,7 @@ async function loadEditData() {
     locked.value = detail.locked;
     lockeTime.value = detail.lockeTime;
     creatorUserName.value = detail.creatorUserName || '';
+    orgId.value = detail.orgId ?? undefined;
     settlementTime.value = detail.settlementTime
       ? dayjs(detail.settlementTime)
       : dayjs();
@@ -494,6 +503,10 @@ function validateForm(): boolean {
     message.warning('请选择银行流水');
     return false;
   }
+  if (!isEdit.value && (!orgId.value || orgId.value <= 0)) {
+    message.warning('请选择归属组织');
+    return false;
+  }
   if (!settlementTime.value) {
     message.warning('请选择结算时间');
     return false;
@@ -554,6 +567,7 @@ async function handleSave() {
     }
 
     const id = await addReceiveSettlement({
+      orgId: orgId.value!,
       bankStatementId: bankStatementId.value,
       settlementTime: settlementTime.value.toISOString(),
       remark: remark.value || undefined,
@@ -805,6 +819,19 @@ onMounted(() => {
                   :class="{ 'bank-input--clickable': !isEdit && !isReadonly }"
                   @click="handleOpenBankPicker"
                 />
+              </div>
+            </div>
+            <div class="form-item">
+              <div class="form-label">
+                归属组织 <span v-if="!isEdit" class="text-red-500">*</span>
+              </div>
+              <div class="form-control">
+                <MyOrgSelect
+                  v-if="!isEdit"
+                  v-model="orgId"
+                  placeholder="请选择归属组织"
+                />
+                <span v-else class="form-text">{{ orgDisplayName }}</span>
               </div>
             </div>
             <div class="form-item">
