@@ -1,5 +1,5 @@
 ---
-title: 付费审批
+title: 付费申请审批
 module: 审核审批
 author: auto-doc-sync
 last_updated: 2026-08-09
@@ -7,7 +7,7 @@ last_updated: 2026-08-09
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 财务或审批人集中处理付款申请审批任务。选中列表中的申请后，可在同页查看费用合计、附件与费用明细，再执行「审核全部」或「批量驳回」。菜单文案由「付费审核」更名为「付费审批」。
+**白话解释：** 财务或审批人集中处理付款申请审批任务。选中列表中的申请后，可在同页查看费用合计、附件与费用明细，再执行「审核全部」或「批量驳回」。菜单文案现为「付费申请审批」。
 
 **路由与源码定位：**
 
@@ -70,6 +70,8 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Style` | 费用明细「结算金额」→「已核销金额」；`unRqstPaymentAmount` 展示「可申请金额」。 | 详见 `changelogs/change-log-2026-08-09-payment-application-amount-labels.md`。 |
+| 2026-08-09 | `Style` | 侧边栏/页标题由「付费审批」改为「付费申请审批」。 | 详见同 changelog。 |
 | 2026-08-09 | `Feature` | 费用明细删除「申请折币」，新增「申请金额折币」（本次申请金额 × 申请汇率）。 | 与付费申请共用 `calcAppliedAmountConverted`。详见 `changelogs/change-log-2026-08-09-payment-application-settlement-applied-converted.md`。 |
 | 2026-08-09 | `Refactor` | 审批详情面板费用明细行改读费用嵌套对象。 | `detail-panel.vue` 的 `mapDetailToFeeRows` 改走 `fee?.feeCode?.cnName` / `currency?.cnName` / `settlement?.name`；费用审核详情 `expense-all/modules/detail.vue` 币别汇总同步。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-08-09 | `Fix` | 费用合计按付 − 收净额展示（与付费申请表单一致）。 | 复用 `payment-application/form-data` 的 `signedAppliedAmount` 汇总。详见 `changelogs/change-log-2026-08-09-payment-application-pay-minus-receive.md`。 |

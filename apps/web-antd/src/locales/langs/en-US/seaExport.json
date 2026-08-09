@@ -517,7 +517,7 @@
       "require": "Payment Requirement",
       "save": "Save",
       "serialNumber": "No.",
-      "settledAmountLabel": "Settled Amount",
+      "settledAmountLabel": "Written-off Amount",
       "settlementCurrency": "Settlement Currency",
       "settlementNameColumn": "Settlement Party",
       "status": "Status",
@@ -532,7 +532,7 @@
       "settlemented": "Settled",
       "totalPayPrice": "Total Payable",
       "totalReceivePrice": "Total Receivable",
-      "unSettledAmountLabel": "Unsettled Amount"
+      "unSettledAmountLabel": "Available to Apply"
     },
     "invoiceApplication": {
       "status": "Status",

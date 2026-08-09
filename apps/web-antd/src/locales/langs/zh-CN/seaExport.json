@@ -455,8 +455,8 @@
       "originalExchangeRate": "原始汇率",
       "convertedApplied": "申请折币",
       "appliedAmountConverted": "申请金额折币",
-      "settledAmountLabel": "结算金额",
-      "unSettledAmountLabel": "未结金额",
+      "settledAmountLabel": "已核销金额",
+      "unSettledAmountLabel": "可申请金额",
       "applicationRate": "申请汇率",
       "convertedTotal": "折算合计",
       "serialNumber": "序号"

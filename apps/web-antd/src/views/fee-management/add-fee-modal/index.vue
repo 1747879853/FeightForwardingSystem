@@ -591,12 +591,12 @@ function validateAppliedAmounts(selected: SelectedFeeItem[]): boolean {
     const maxAmount = fee.unRqstPaymentAmount ?? 0;
     const applied = fee.appliedAmount ?? 0;
     if (applied <= 0) {
-      message.warning('本次结算必须大于 0');
+      message.warning('本次申请必须大于 0');
       return false;
     }
     if (applied > maxAmount) {
       message.warning(
-        `费用「${fee.feeCodeName ?? ''}」本次结算不能超过未结金额 ${formatAmount(maxAmount)}`,
+        `费用「${fee.feeCodeName ?? ''}」本次申请不能超过可申请金额 ${formatAmount(maxAmount)}`,
       );
       return false;
     }
@@ -765,14 +765,14 @@ const feeColumns = [
     align: 'right' as const,
   },
   {
-    title: '未结金额',
+    title: '可申请金额',
     dataIndex: 'unRqstPaymentAmount',
     key: 'unRqstPaymentAmount',
     width: 100,
     align: 'right' as const,
   },
   {
-    title: '本次结算',
+    title: '本次申请',
     dataIndex: 'appliedAmount',
     key: 'appliedAmount',
     width: 130,

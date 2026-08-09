@@ -49,7 +49,7 @@ last_updated: 2026-08-09
 
 | **费用分组** | 编辑页与选费抽屉外层列表的分组维度。 | `GetOrderFeeGroupAsync` / 本地 `groupFeesByOrder` | **触发/依赖：** 按「业务 + 结算对象」联合分组；`row-key` 为复合键。 | 同一业务可对应多行（不同结算对象）；底部统计为组数非票数。 |
 
-| **本次申请金额** | 单条费用本次申请付款金额。 | 添加费用抽屉 `appliedAmount` → `PayAppItemAddAsync` | **触发/依赖：** 仅在抽屉内编辑；外侧明细只读展示。 | 默认取 `unRqstPaymentAmount`；不得超过未结金额；编辑模式确认添加即落库。 |
+| **本次申请金额** | 单条费用本次申请付款金额（抽屉列「本次申请」）。 | 添加费用抽屉 `appliedAmount` → `PayAppItemAddAsync` | **触发/依赖：** 仅在抽屉内编辑；外侧明细只读展示。 | 默认取 `unRqstPaymentAmount`（可申请金额）；不得超过可申请金额；编辑模式确认添加即落库。 |
 
 | **所属公司** | 申请单归属组织（编辑态只读）。 | 详情 `orgs` + `orgId` | **触发/依赖：** 编辑页用 `formatOrgPathLabel(orgs)` 拼接全路径（`/` 分隔）；新增页用 `MyOrgSelect`。 | 必填（提交带 `orgId`）。 |
 
@@ -65,6 +65,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Style` | 费用明细「结算金额」→「已核销金额」；`unRqstPaymentAmount` 展示「可申请金额」；添加费用抽屉「本次结算」→「本次申请」。 | 详见 `changelogs/change-log-2026-08-09-payment-application-amount-labels.md`。 |
 | 2026-08-09 | `Feature` | 结算币别「付款金额」改「申请金额」并加「已核销」；固定币别合并为一行，申请金额取申请金额折币合计；费用明细改「申请金额折币」。 | 与新增页共用 `form.vue`/`form-data.ts`；详情 `syncCurrencySettledAmounts`。详见 `changelogs/change-log-2026-08-09-payment-application-settlement-applied-converted.md`。 |
 | 2026-08-09 | `Fix` | 指定币别结算表移除「实付金额」「结算方式」列。 | 与新增页共用 `form.vue`；详见 `changelogs/change-log-2026-08-09-payment-application-remove-settlement-columns.md`。 |
 | 2026-08-09 | `Refactor` | 费用明细行与添加费用抽屉的费用代码/币别/结算对象改读嵌套对象。 | `PaymentApplicationAdminApi.OrderFeeDto` 已对象化；`form.vue` 的 `mapDetailToFeeRows`、`form-data.ts` 的 `resolveFeeCurrencyCode`、`add-fee-modal` 同步改造。任务项自有的 `item.feeCodeName`/`feeSettlementName` 不在范围内。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |

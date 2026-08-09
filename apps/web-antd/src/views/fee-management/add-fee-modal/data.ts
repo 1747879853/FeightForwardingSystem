@@ -72,7 +72,7 @@ export interface AddFeeDrawerProps {
   settlementCurrencyName?: string;
   /** 已选费用 id 数组（不可编辑） */
   selectedFeeIds?: string[];
-  /** 已选费用本次结算金额（禁选行展示，不传则不显示默认值） */
+  /** 已选费用本次申请金额（禁选行展示，不传则不显示默认值） */
   selectedAppliedAmounts?: Record<string, number>;
 }
 
@@ -104,7 +104,7 @@ export interface SelectedFeeItem {
   settledAmount: number;
   /** 未付费申请金额（原币） */
   unRqstPaymentAmount: number;
-  /** 本次结算金额（用户输入） */
+  /** 本次申请金额（用户输入） */
   appliedAmount: number;
   /** 原始汇率 */
   exchangeRate?: number;
@@ -112,7 +112,7 @@ export interface SelectedFeeItem {
 
 /** 费用行数据（展开子表格行） */
 export interface FeeRowData extends PaymentApplicationAdminApi.OrderFeeDto {
-  /** 本次结算金额 */
+  /** 本次申请金额 */
   appliedAmount: number;
 }
 
