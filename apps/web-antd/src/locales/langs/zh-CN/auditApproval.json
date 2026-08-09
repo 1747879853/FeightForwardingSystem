@@ -74,10 +74,14 @@
     "remark": "备注",
     "myStatus": "我的审核状态",
     "keywordPlaceholder": "提单号/订舱号/委托编号",
-    "auditPass": "审核",
-    "batchReject": "批量驳回",
-    "selectReject": "驳回选中",
-    "rejectConfirmTitle": "确认驳回"
+    "auditPass": "通过",
+    "batchReject": "驳回",
+    "selectReject": "驳回",
+    "rejectConfirmTitle": "确认驳回",
+    "passReject": "审核后驳回",
+    "passRejectConfirmTitle": "确认审核后驳回",
+    "noPendingAudit": "请选择待审核的任务",
+    "noPassRejectable": "请选择已通过、或本人节点已通过的任务"
   },
   "expenseSubmission": {
     "title": "费用提交审核",

@@ -35,7 +35,7 @@
 | settlement-management | `/bank-statement/edit/:id` | 财务管理 | 财务核销工作台：汇总流水、已核销和剩余金额；仅待核销可改流水；收费核销新增、查看与编辑统一在抽屉完成。 | [银行流水编辑](./modules/settlement-management/bank-statement-edit.md) | 2026-08-09 |
 | settlement-management | `/settlement-management/fee-lock` | 财务管理 | 按运输单维度执行费用锁定或解锁，控制订单费用是否可继续变更。 | [费用锁定](./modules/settlement-management/fee-lock.md) | 2026-07-12 |
 | audit-approval | `/audit-approval/expense-review` | 审核审批 | 集中处理订单费用新增、修改、删除等提交任务的审核；嵌套详情不用全局路由 id 兜底。 | [费用审核](./modules/audit-approval/expense-review.md) | 2026-08-09 |
-| audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；费用明细已核销金额/可申请金额文案；申请金额折币；费用合计付减收。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-08-09 |
+| audit-approval | `/audit-approval/payment-review` | 审核审批 | 付费申请审批；通过/驳回走 AuditAsync、审核后驳回走 RejectAsync；费用明细已核销金额/可申请金额文案。 | [付费申请审批](./modules/audit-approval/payment-review.md) | 2026-08-09 |
 | audit-approval | `/audit-approval/pre-order-review` | 审核审批 | 业务联系单审核任务列表；行上并列任务信息与单据信息，双击进 `/pre-order/:id/edit` 执行审核，可查看审批时间轴。 | [业务联系单审核](./modules/audit-approval/pre-order-review.md) | 2026-07-26 |
 | audit-approval | `/audit-approval/expense-review/:id/expense-detail/:entityId` | 审核审批 | 费用审核详情：支持列表内嵌与独立路由深链（路由 props 映射 transportOrderId/entityId）。 | [费用审核详情](./modules/audit-approval/expense-review-id-expense-detail-entityId.md) | 2026-07-12 |
 | basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-05-30 |

@@ -101,14 +101,19 @@ export namespace PaymentReviewAdminApi {
     totalPages: number;
   }
 
+  /** 待审任务上通过/驳回（AuditAsync） */
   export interface TaskItemAuditDto {
+    /** true=通过，false=驳回（审核中点「不通过」） */
     success: boolean;
     remark?: string;
+    /** 审核任务 id 列表 */
     ids?: string[];
   }
 
+  /** 审核通过后反悔驳回（RejectAsync，非审核中「不通过」） */
   export interface TaskItemRejectAuditDto {
     remark?: string;
+    /** 审核任务 id 列表；任务须为 Passed，或 Auditing 且本人节点已通过 */
     ids?: string[];
   }
 }
@@ -182,14 +187,25 @@ export async function getPayAppTaskList(
   };
 }
 
-/** 审核 */
+/**
+ * 审核通过 / 驳回（待审任务）
+ * POST PaymentApplicationAdmin/AuditAsync
+ * - success=true → 通过；success=false → 驳回
+ * - 前置：任务状态 = 待审核；权限 Admin.PaymentApplication.Audit
+ */
 export async function payAppAudit(
   data: PaymentReviewAdminApi.TaskItemAuditDto,
 ) {
   return requestClient.post(`${API_PREFIX}/AuditAsync`, data);
 }
 
-/** 审核通过后驳回 */
+/**
+ * 审核通过后反悔驳回
+ * POST PaymentApplicationAdmin/RejectAsync
+ * - 入参：任务 id 列表 + 驳回备注（无 success 字段）
+ * - 前置：任务已是 Passed，或 Auditing（本人节点已过、整单还在审）
+ * - 与 AuditAsync(false) 不同：后者是审核中点「不通过」
+ */
 export async function payAppReject(
   data: PaymentReviewAdminApi.TaskItemRejectAuditDto,
 ) {

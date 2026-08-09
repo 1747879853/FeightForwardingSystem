@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-09 付费申请审批通过/驳回/审核后驳回接口对齐](./changelogs/change-log-2026-08-09-payment-review-audit-reject-api-align.md)
 - [2026-08-09 应收应付费用表汇率应收/应付取值取反修复](./changelogs/change-log-2026-08-09-order-fee-exchange-rate-dr-cr-fix.md)
 - [2026-08-09 业务联系单费用汇率改走汇率表生效记录](./changelogs/change-log-2026-08-09-pre-order-fee-exchange-rate-from-paged-list.md)
 - [2026-08-09 空运列表移除未填写开关与明细区间筛选](./changelogs/change-log-2026-08-09-air-export-list-search-switch-and-ctn-range.md)

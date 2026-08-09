@@ -7,7 +7,7 @@ last_updated: 2026-08-09
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 财务或审批人集中处理付款申请审批任务。选中列表中的申请后，可在同页查看费用合计、附件与费用明细，再执行「审核全部」或「批量驳回」。菜单文案现为「付费申请审批」。
+**白话解释：** 财务或审批人集中处理付款申请审批任务。选中列表中的申请后，可在同页查看费用合计、附件与费用明细，再执行「通过」「驳回」或「审核后驳回」。菜单文案现为「付费申请审批」。
 
 **路由与源码定位：**
 
@@ -25,8 +25,9 @@ last_updated: 2026-08-09
 - **付款审核查询：** 按编号（主提单号/订舱编号/委托编号，`TrimInput`）、申请单号、结算对象、币别、提交/审核时间等条件查询审核任务列表。
 - **选中查看详情：** 点击列表行，右侧展示该付款申请的费用合计与结算银行（只读），下方通铺费用明细分组表（只读），附件区展示已上传文件（只读预览）。
 - **费用合计展示：** 原币多币别时以紧凑列表展示（币别+金额一行，银行信息单行缩略，悬停看全量）；合计区按内容限高，避免挤占附件区。
-- **审核全部：** 对当前列表页全部任务弹出备注框后批量通过（`payAppAudit`，`success: true`）。
-- **批量驳回：** 对当前列表页全部任务弹出备注框后批量驳回（`payAppReject`）。
+- **通过：** 对勾选中的**待审**任务弹出备注框后批量通过（`payAppAudit` → `AuditAsync`，`success: true`）。
+- **驳回：** 对勾选中的**待审**任务弹出备注框后批量驳回（`payAppAudit` → `AuditAsync`，`success: false`；审核中点「不通过」）。
+- **审核后驳回：** 对已通过（或整单仍在审、本人节点已过）的任务反悔驳回（`payAppReject` → `RejectAsync`，无 `success` 字段）。
 
 **页面布局：**
 
@@ -44,8 +45,9 @@ last_updated: 2026-08-09
 
 | 当前状态 | 触发人/动作 | 目标状态 | 状态说明 |
 | :-- | :-- | :-- | :-- |
-| 审核中 | 审核人点击「审核全部」 | 已通过/部分通过 | 任务 `taskStatus` 由后端工作流更新 |
-| 审核中 | 审核人点击「批量驳回」 | 已驳回 | 需填写备注 |
+| 审核中（待审） | 审核人点击「通过」 | 已通过/部分通过/仍审核中 | `AuditAsync(success:true)`；若还有下一步，整单可能暂不落终态 |
+| 审核中（待审） | 审核人点击「驳回」 | 已驳回 | `AuditAsync(success:false)`，审核中不通过 |
+| 已通过，或 Auditing 且本人节点已过 | 审核人点击「审核后驳回」 | 已驳回 | `RejectAsync`，通过后再反悔；须当前用户为该任务审核人 |
 | 任意 | 点击列表行 | 详情已加载 | 按 `paymentApplicationId` 拉取 `DetailAsync` |
 
 # 4. 核心字段说明 (Field Definitions)
@@ -54,7 +56,7 @@ last_updated: 2026-08-09
 | :-- | :-- | :-- | :-- | :-- |
 | **paymentApplicationId** | 付款申请主键，驱动详情加载。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 点击行 → `DetailAsync` | 无则详情区显示空态 |
 | **编号（Keyword）** | 按主提单号 / 订舱编号 / 委托编号检索。 | 查询 schema `Keyword`（`TrimInput`） | **触发/依赖：** 输入即时 trim；label「编号」，placeholder「主提单号/订舱编号/委托编号」。 | 可清空 |
-| **id（任务）** | 审核任务 ID，用于 Audit/Reject 接口。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 批量审核提交 | 列表为空时提示选择 |
+| **id（任务）** | 审核任务 ID，用于 Audit/Reject 接口。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 批量审核提交 | 无合法状态行时提示，不发请求 |
 | **费用合计** | 各币别申请净额（付 − 收）与结算银行。 | 前端按明细 `appliedAmount`+`paySide` 汇总（复用 `form-data`） | 原币/指定币别两种展示模式 | 只读 |
 | **附件** | 按附件明细类型分组展示文件；另含结算附件。 | `DetailAsync` → `attachmentGroup`（含 `attachmentDtlType`）/ `paymentSettlementAttachments` | 点击打开/预览 | 只读 |
 | **费用明细** | 按业务+结算对象分组的费用行。 | `DetailAsync` → `payAppFeeBySeaExportGroup` | 复用付费申请 `form-data` 分组逻辑 | 只读 |
@@ -64,12 +66,15 @@ last_updated: 2026-08-09
 
 > [!IMPORTANT] **[卡点 1：任务 ID 与申请 ID 不可混用]** 详情接口使用 `paymentApplicationId`；审核接口使用任务行 `id`，批量操作时勿传错字段。
 
-> [!IMPORTANT] **[卡点 2：批量操作范围为当前页]** 「审核全部」「批量驳回」取 `grid.getTableData().tableData`，仅覆盖当前分页数据，非全库全选。
+> [!IMPORTANT] **[卡点 2：AuditAsync 与 RejectAsync 不可混用]** 「驳回」= 审核中不通过 → `AuditAsync(success:false)`；「审核后驳回」= 通过后再反悔 → `RejectAsync`。前者要求任务待审，后者要求已通过（或本人节点已过）。
+
+> [!IMPORTANT] **[卡点 3：批量范围为勾选行且按状态过滤]** 工具栏操作只提交当前勾选且状态合法的任务 id，不是整页全量。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-09 | `Fix` | 工具栏改为「通过 / 驳回 / 审核后驳回」：前两者走 `AuditAsync`（`success` 区分），后者走 `RejectAsync`；按任务状态启用与过滤提交。 | 原先「驳回」误调 `RejectAsync`。详见 `changelogs/change-log-2026-08-09-payment-review-audit-reject-api-align.md`。 |
 | 2026-08-09 | `Style` | 费用明细「结算金额」→「已核销金额」；`unRqstPaymentAmount` 展示「可申请金额」。 | 详见 `changelogs/change-log-2026-08-09-payment-application-amount-labels.md`。 |
 | 2026-08-09 | `Style` | 侧边栏/页标题由「付费审批」改为「付费申请审批」。 | 详见同 changelog。 |
 | 2026-08-09 | `Feature` | 费用明细删除「申请折币」，新增「申请金额折币」（本次申请金额 × 申请汇率）。 | 与付费申请共用 `calcAppliedAmountConverted`。详见 `changelogs/change-log-2026-08-09-payment-application-settlement-applied-converted.md`。 |

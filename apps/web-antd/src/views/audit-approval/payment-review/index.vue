@@ -14,6 +14,7 @@ import {
   getPayAppTaskList,
   payAppAudit,
   payAppReject,
+  TaskStatus,
 } from '#/api/audit-approval/payment-review-admin';
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
@@ -22,6 +23,19 @@ import DetailPanel from './detail-panel.vue';
 import { usePaymentReviewColumns, usePaymentReviewFormSchema } from './data';
 
 const t = (key: string) => $t(`auditApproval.paymentReview.${key}`);
+
+/** AuditAsync：待审任务；RejectAsync：已通过（或整单仍在审、本人节点已过） */
+function isPendingAudit(row: PaymentReviewAdminApi.PayAppTaskItemDto) {
+  return row.taskStatus === TaskStatus.Auditing;
+}
+
+function canRejectAfterPass(row: PaymentReviewAdminApi.PayAppTaskItemDto) {
+  return (
+    row.taskStatus === TaskStatus.Passed ||
+    (row.taskStatus === TaskStatus.Auditing &&
+      row.myStatus === TaskStatus.Passed)
+  );
+}
 
 /** 当前选中行对应的付费申请ID（驱动右侧详情渲染） */
 const selectedPaymentApplicationId = ref<string | undefined>(undefined);
@@ -79,7 +93,12 @@ const syncSelectedRows = () => {
   selectedRows.value = getCheckboxRecords();
 };
 
-const hasSelection = computed(() => selectedRows.value.length > 0);
+const hasPendingAuditSelection = computed(() =>
+  selectedRows.value.some(isPendingAudit),
+);
+const hasPassRejectSelection = computed(() =>
+  selectedRows.value.some(canRejectAfterPass),
+);
 
 const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
   {
@@ -156,14 +175,16 @@ const doReject = async (remark: string, ids: string[]) => {
   await reloadGrid();
 };
 
-const showAuditConfirm = () => {
-  if (!hasSelection.value) {
-    message.warning($t('ui.actionMessage.selectRequired'));
-    return;
-  }
+const openRemarkConfirm = (options: {
+  title: string;
+  danger?: boolean;
+  onConfirm: (remark: string, ids: string[]) => Promise<void>;
+  pickRows: () => PaymentReviewAdminApi.PayAppTaskItemDto[];
+  emptyMessage: string;
+}) => {
   let modalRemark = '';
   Modal.confirm({
-    title: $t('auditApproval.task.okPass'),
+    title: options.title,
     content: () =>
       h('div', {}, [
         h(Textarea, {
@@ -182,54 +203,62 @@ const showAuditConfirm = () => {
     centered: true,
     okText: $t('common.confirm'),
     cancelText: $t('common.cancel'),
+    okButtonProps: options.danger ? { danger: true } : undefined,
     async onOk() {
-      const rows = getSelectedRows();
+      const rows = options.pickRows();
       if (rows.length === 0) {
-        message.warning($t('ui.actionMessage.selectRequired'));
-        return;
+        message.warning(options.emptyMessage);
+        return Promise.reject(new Error(options.emptyMessage));
       }
-      const ids = rows.map((r) => r.id);
-      await doAudit(true, modalRemark, ids);
+      await options.onConfirm(
+        modalRemark,
+        rows.map((r) => r.id),
+      );
     },
   });
 };
 
-const showRejectConfirm = () => {
-  if (!hasSelection.value) {
-    message.warning($t('ui.actionMessage.selectRequired'));
+/** 通过 → AuditAsync(success: true)，仅待审任务 */
+const showAuditConfirm = () => {
+  if (!hasPendingAuditSelection.value) {
+    message.warning(t('noPendingAudit'));
     return;
   }
-  let modalRemark = '';
-  Modal.confirm({
+  openRemarkConfirm({
+    title: $t('auditApproval.task.okPass'),
+    pickRows: () => getSelectedRows().filter(isPendingAudit),
+    emptyMessage: t('noPendingAudit'),
+    onConfirm: (remark, ids) => doAudit(true, remark, ids),
+  });
+};
+
+/** 驳回 → AuditAsync(success: false)，审核中点「不通过」 */
+const showRejectConfirm = () => {
+  if (!hasPendingAuditSelection.value) {
+    message.warning(t('noPendingAudit'));
+    return;
+  }
+  openRemarkConfirm({
     title: t('rejectConfirmTitle'),
-    content: () =>
-      h('div', {}, [
-        h(Textarea, {
-          modelValue: modalRemark,
-          onChange: (val: any) => {
-            modalRemark = val.target?.value || val;
-          },
-          rows: 3,
-          placeholder: $t('auditApproval.task.remarkPlaceholder'),
-          maxlength: 100,
-          style: 'margin-top: 8px;',
-        }),
-      ]),
-    icon: null,
-    width: 520,
-    centered: true,
-    okText: $t('common.confirm'),
-    cancelText: $t('common.cancel'),
-    okButtonProps: { danger: true },
-    async onOk() {
-      const rows = getSelectedRows();
-      if (rows.length === 0) {
-        message.warning($t('ui.actionMessage.selectRequired'));
-        return;
-      }
-      const ids = rows.map((r) => r.id);
-      await doReject(modalRemark, ids);
-    },
+    danger: true,
+    pickRows: () => getSelectedRows().filter(isPendingAudit),
+    emptyMessage: t('noPendingAudit'),
+    onConfirm: (remark, ids) => doAudit(false, remark, ids),
+  });
+};
+
+/** 审核后驳回 → RejectAsync，通过后再反悔 */
+const showPassRejectConfirm = () => {
+  if (!hasPassRejectSelection.value) {
+    message.warning(t('noPassRejectable'));
+    return;
+  }
+  openRemarkConfirm({
+    title: t('passRejectConfirmTitle'),
+    danger: true,
+    pickRows: () => getSelectedRows().filter(canRejectAfterPass),
+    emptyMessage: t('noPassRejectable'),
+    onConfirm: (remark, ids) => doReject(remark, ids),
   });
 };
 </script>
@@ -243,17 +272,25 @@ const showRejectConfirm = () => {
             <Space>
               <Button
                 type="primary"
-                :disabled="!hasSelection"
+                :disabled="!hasPendingAuditSelection"
                 @click="showAuditConfirm"
               >
                 {{ t('auditPass') }}
               </Button>
               <Button
                 danger
-                :disabled="!hasSelection"
+                :disabled="!hasPendingAuditSelection"
                 @click="showRejectConfirm"
               >
                 {{ t('selectReject') }}
+              </Button>
+              <Button
+                danger
+                ghost
+                :disabled="!hasPassRejectSelection"
+                @click="showPassRejectConfirm"
+              >
+                {{ t('passReject') }}
               </Button>
             </Space>
           </template>
