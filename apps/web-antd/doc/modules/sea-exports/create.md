@@ -2,7 +2,7 @@
 title: 海运出口新建
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-09
+last_updated: 2026-08-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -26,7 +26,7 @@ last_updated: 2026-08-09
 - **干系人角色约束：** 面板默认固定展示销售、商务、操作、客服、单证五个岗位（无人员时岗位行仍保留）；销售、操作标签显示红色必填标识，不可删除且必须已选人（销售必须且只能有一人）；海外客服不默认展示，需通过「+ 添加角色」手动添加。选择委托单位后调用 `Client/GetDishonestStakeholdersAsync`（登录即可）按客户绑定干系人默认回填；操作/单证/客服若客户未绑定则兜底当前登录账号。保存时另按**当前勾选服务项**的 `userAttribute` 动态校验：每个服务至少需一个绑定角色在干系人中且已选人。干系人展示信息与编辑页共用 `GetUserListByIdsAsync` 批量回显。
 - **右侧栏与场站联系人：** 右侧主卡片为「干系人」。场站联系人/邮箱/手机/电话与编辑页一致挂在「场站」标签旁只读展示（新建态通常为空显示 `-`）；保存时随 `SeaExportAddDto` 透传（新建多为空）。
 - **服务项目联动（Chevron 三态流水线）：** 选择起运港后查询 POL 服务节点；流水线仅展示已勾选节点，按顺序呈现已完成/处理中/还未到三态。节点勾选在「配置服务」弹窗维护，并按 `ServiceType.extra1` 分为「主流程 / 非主流程」，组内仍按 `sortId` 排序。未选起运港提示先选起运港；POL 无配置时展示空态；无勾选节点时提示「去配置」。
-- **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。
+- **提交创建：** 保存时并行校验多个表单分区，构造 `SeaExportAddDto`，调用 `/services/app/SeaExportAdmin/AddAsync`。校验失败时 toast 点名缺失必填字段（如「请完善必填项：归属组织」）；头部归属组织带红色 `*`。
 - **船期时间校验：** 截关节点展示为截单 → 截港 → 截关；保存时逐项校验上述日期，任一晚于开船日期或实际开船日期时提示对应字段并阻止保存。
 - **付费地点联动：** 选择到付（中文名含“到付”或 EDI 代码 `CC`）时，付费地点自动带出目的港；选择预付（中文名含“预付”或 EDI 代码 `PP`）时，自动带出起运港，带出后仍可手动修改。
 - **箱包装默认值：** 新增箱型箱量行时，将货物信息中的订单级总包装 ID 与文本复制到箱行包装；箱行包装仍可独立修改。
@@ -47,7 +47,7 @@ last_updated: 2026-08-09
 | **会计期间** | 财务期间。 | `transportOrder.accountDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到月计算；无开船日期则取当前时间（到月）。 | 禁止手动修改。 |
 | **应结日期** | 结算日期。 | `transportOrder.settlementDate` | **触发/依赖：** 新建、编辑保存后，后端按开船日期精度到天计算；无开船日期则取当前时间（到天），并结合委托单位账期规则。 | 禁止手动修改。 |
 | **所属公司** | 业务单所属公司。 | `organizationUnits` | **触发/依赖：** 新建、编辑保存后，后端根据干系人中销售所属公司自动生成。 | 禁止手动修改。 |
-| **归属组织** | 委托直属组织（必填）；头部按销售绑定可选范围。 | `orgId`；`UserOrgSelect`（`salesUserId` + `selectedItems` 回显） | **触发/依赖：** 干系人销售变化时选项范围切换；`formatOrgPathLabel` 展示完整路径；schema 隐藏载体保留 `selectRequired`。 | **必填项**。 |
+| **归属组织** | 委托直属组织（必填）；头部按销售绑定可选范围，标签带 `*`。 | `orgId`；`UserOrgSelect`（`salesUserId` + `selectedItems` 回显） | **触发/依赖：** 干系人销售变化时选项范围切换；`formatOrgPathLabel` 展示完整路径；schema 隐藏载体保留 `selectRequired`；缺值时 toast 点名。 | **必填项**。 |
 | **合同号** | 运输单合同号。 | `transportOrder.contractNum` | **触发/依赖：** 提交/回填走 `transportOrder`；复制入库由后端置空。 | 可空；`maxlength: 64`。 |
 | **业务来源** | 订单业务来源分类；头部只读，按委托单位客户表维护值带出。 | `transportOrder.codeSourceId`；`Client/GetDishonestStakeholdersAsync` 的 `codeSource`；`CodeSourceSelect` | **触发/依赖：** 选委托单位后 `applyClientCodeSource` 用 `codeSource.id`/`cnName` 自动带出；不可手改。未选委托单位显示「按委托单位自动带出」；已选但无来源仅文本「-」不占下拉宽。 | 禁止手动修改。 |
 | **付费方式** | 运费付费方式。 | `transportOrder.codeFrtId`；与付费地点合并为 `FrtPrepareInput` | **触发/依赖：** 与 `prepareAtId` 同栏展示。 | - |
@@ -81,6 +81,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-10 | `Fix` | 保存必填失败时 toast 点名缺失字段；头部归属组织补 `*`；换销售带出组织防竞态。 | `collectInvalidFieldLabels`；`UserOrgSelect` 换人一次写入；详见 `changelogs/change-log-2026-08-10-sea-export-required-field-toast.md`。 |
 | 2026-08-09 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 共用 `order-ctn-table.vue`；对应 TAPD `#1161580498001000694`。详见 `changelogs/change-log-2026-08-09-sea-export-ctn-batch-add.md`。 |
 | 2026-08-09 | `Fix` | AI 识别回填六段港口备注及收货地/中转港 Id；后端 `seaExport.*Remark` 有值时写入港口表单。 | `buildAiExtractFormPayload` 此前只映射部分港口 Id、未 `assignScalar` 备注；白名单有字段仍会丢。对应 TAPD `#1161580498001000737`（1）。详见 `changelogs/change-log-2026-08-09-sea-export-ai-extract-port-remarks.md`。 |
 | 2026-08-05 | `Style` | 截 VGM→截港日期、截舱单→截关日期；船期时间轴右侧顺序改为截单→截港→截关。 | 与编辑页共用 `data.ts` 与 i18n；API 字段名不变。详见 `changelogs/change-log-2026-08-05-sea-export-cutoff-labels-order.md`。 |

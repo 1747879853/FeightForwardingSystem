@@ -204,8 +204,50 @@ const stableDtoJson = (dto: Record<string, any>): string =>
   JSON.stringify(normalizeForDirtyCheck(dto) ?? {});
 
 type SubmitFormApi = {
-  validate: () => Promise<{ valid: boolean }>;
+  validate: () => Promise<{
+    valid: boolean;
+    errors?: Record<string, unknown>;
+  }>;
+  getState?: () => { schema?: Array<{ fieldName?: string; label?: unknown }> };
 };
+
+function resolveSchemaLabel(label: unknown): string {
+  if (typeof label === 'string') return label.trim();
+  return '';
+}
+
+/** 从多表单校验 errors 收集可读字段名，便于 toast 点名缺项 */
+function collectInvalidFieldLabels(
+  results: Array<{ valid?: boolean; errors?: Record<string, unknown> }>,
+  apis: SubmitFormApi[],
+): string[] {
+  const labelByField = new Map<string, string>();
+  for (const api of apis) {
+    const schema = api.getState?.()?.schema;
+    if (!Array.isArray(schema)) continue;
+    for (const item of schema) {
+      const fieldName = item?.fieldName;
+      if (typeof fieldName !== 'string' || !fieldName) continue;
+      const text = resolveSchemaLabel(item.label);
+      if (text) labelByField.set(fieldName, text);
+    }
+  }
+  // 归属组织在头部渲染，schema 有 label；兜底避免空文案
+  if (!labelByField.has('orgId')) labelByField.set('orgId', '归属组织');
+
+  const labels: string[] = [];
+  const seen = new Set<string>();
+  for (const result of results) {
+    if (result.valid) continue;
+    for (const rawKey of Object.keys(result.errors ?? {})) {
+      const field = rawKey.split(/[.\[]/)[0] ?? rawKey;
+      if (!field || seen.has(field)) continue;
+      seen.add(field);
+      labels.push(labelByField.get(field) ?? field);
+    }
+  }
+  return labels;
+}
 
 export type UseSeaExportSubmitDeps = {
   formApis: {
@@ -283,20 +325,26 @@ export function useSeaExportSubmit(deps: UseSeaExportSubmitDeps) {
     });
 
   const handleSubmit = async () => {
-    const results = await Promise.all([
-      formApis.party.validate(),
-      formApis.basic.validate(),
-      formApis.shipment.validate(),
-      formApis.port.validate(),
-      formApis.cargoTypeInline.validate(),
-      formApis.cargoMain.validate(),
-      formApis.cargoMetrics.validate(),
-      formApis.cargoRemark.validate(),
-      formApis.cargoDg.validate(),
-      formApis.cargoReefer.validate(),
-    ]);
+    const orderedApis = [
+      formApis.party,
+      formApis.basic,
+      formApis.shipment,
+      formApis.port,
+      formApis.cargoTypeInline,
+      formApis.cargoMain,
+      formApis.cargoMetrics,
+      formApis.cargoRemark,
+      formApis.cargoDg,
+      formApis.cargoReefer,
+    ];
+    const results = await Promise.all(orderedApis.map((api) => api.validate()));
     if (!results.every((result) => result.valid)) {
-      message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
+      const labels = collectInvalidFieldLabels(results, orderedApis);
+      message.warning(
+        labels.length > 0
+          ? `请完善必填项：${labels.slice(0, 8).join('、')}`
+          : $t('ui.formRules.pleaseCompleteRequiredFields'),
+      );
       return;
     }
     if (!validateSalesRoleCount()) {

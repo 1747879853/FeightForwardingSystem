@@ -488,19 +488,32 @@ const showCodeSourceEmptyDash = computed(
   () => isEdit.value && headerCodeSourceId.value == null,
 );
 
+/** 归属组织写入序号：防止与 UserOrgSelect autoDefault 异步 setFieldValue 乱序 */
+let headerOrgWriteSeq = 0;
+
 const syncBasicInfoHeaderFields = async () => {
+  const seqAtStart = headerOrgWriteSeq;
   const [basic, shipment] = await Promise.all([
     basicInfoFormApi.getValues(),
     shipmentFormApi.getValues(),
   ]);
-  headerOrgId.value = basic.orgId ?? undefined;
+  if (seqAtStart === headerOrgWriteSeq) {
+    headerOrgId.value = basic.orgId ?? undefined;
+  }
   headerCodeSourceId.value = basic.codeSourceId;
   headerFreeDays.value = shipment.freeDays ?? undefined;
 };
 
 const handleHeaderOrgChange = async (value: null | number | undefined) => {
+  const seq = ++headerOrgWriteSeq;
   headerOrgId.value = value ?? undefined;
   await basicInfoFormApi.setFieldValue('orgId', value ?? undefined);
+  if (seq !== headerOrgWriteSeq) {
+    await basicInfoFormApi.setFieldValue(
+      'orgId',
+      headerOrgId.value ?? undefined,
+    );
+  }
 };
 
 const {

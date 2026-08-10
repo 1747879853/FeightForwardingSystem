@@ -86,7 +86,7 @@ last_updated: 2026-08-10
 | **海出 ID** | 工作台路由上下文主键。 | 路由动态段 `:id` / `SeaExportDto.id` | **触发/依赖：** 用于加载海出详情、派车、分单等子资源。 | 路由正则要求 36 位 GUID。 |
 | **运输单 ID** | 费用、更改单等公共业务的上下文主键。 | `detail.transportOrder.id` | **触发/依赖：** 费用统计、费用分页、更改单查询均依赖 `TransportOrderId`。 | 详情必须返回有效运输单 ID。 |
 | **委托编号 / 会计期间 / 应结日期 / 所属公司** | 基础信息标题行只读摘要（所属公司文案）。 | `transportOrder.commissionNum/accountDate/settlementDate`、`orgs` | **触发/依赖：** 加载详情后刷新 `entrustReadonlyInfo`；归属组织已改为头部可编辑 `UserOrgSelect`，勿与只读所属公司文案混淆。 | 前端展示为只读（归属组织除外）。 |
-| **归属组织** | 委托直属组织（必填）；头部按干系人销售绑定可选范围。 | `orgId`；`UserOrgSelect` + `salesUserId` + `headerOrgSelectedItems`（`formatOrgPathLabel(orgs)`） | **触发/依赖：** 详情用 `orgs` 路径兜底回显；销售切换时仅「从另一用户切过来」清空已选。 | **必填项**；schema 隐藏载体保留校验。 |
+| **归属组织** | 委托直属组织（必填）；头部按干系人销售绑定可选范围，标签带 `*`。 | `orgId`；`UserOrgSelect` + `salesUserId` + `headerOrgSelectedItems`（`formatOrgPathLabel(orgs)`） | **触发/依赖：** 详情用 `orgs` 路径兜底回显；销售切换时仅「从另一用户切过来」清空已选；缺值时 toast 点名。 | **必填项**；schema 隐藏载体保留校验。 |
 | **合同号** | 运输单合同号。 | `transportOrder.contractNum` | **触发/依赖：** `flattenDetail`/`buildSeaExportDto`；复制确认展示源票值，入库由后端置空。 | 可空；最长 64。 |
 | **场站联系人 / 邮箱 / 手机 / 电话** | 「场站」标签右侧展示联系人，悬浮后展示邮箱、手机、电话；保存时透传以防被空覆盖。 | `SeaExportDto` / `SeaExportEditDto` 的 `yardContact` / `yardEmail` / `yardMobile` / `yardTel` | **触发/依赖：** `flattenDetail` → `refreshEntrustReadonlyInfo`；与 `yardId` 选择解耦，当前不随改场站即时刷新；`collectCurrentFormValues` + `buildSeaExportDto` 写入提交 DTO。 | UI 只读；保存必须带回当前值；空值显示 `-`。 |
 | **业务锁定** | 业务资料是否已锁定。 | `transportOrder.isBusinessLocking` | **触发/依赖：** 编辑页以锁图标标签展示，保存时保留当前只读值。 | 不在当前表单中直接切换。 |
@@ -133,6 +133,7 @@ last_updated: 2026-08-10
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-10 | `Fix` | 保存必填失败时 toast 点名缺失字段；头部归属组织补 `*`；换销售带出组织防竞态。 | 新建/编辑共用 `use-sea-export-submit`；`UserOrgSelect` 一次写入。详见 `changelogs/change-log-2026-08-10-sea-export-required-field-toast.md`。 |
 | 2026-08-10 | `Refactor` | 业务字典/签单方式/分单往来与港口/派车车队改读 SimpleDto；费用箱型名读 `ctnCode.ctnName`。 | 契约去掉平铺 Name；分单编辑将对象拍平为表单展示名。详见 `changelogs/change-log-2026-08-10-foreign-key-simple-dto-alignment.md`。 |
 | 2026-08-09 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 共用 `order-ctn-table.vue`；对应 TAPD `#1161580498001000694`。详见 `changelogs/change-log-2026-08-09-sea-export-ctn-batch-add.md`。 |
 | 2026-08-09 | `Fix` | 费用表带汇率时应收/应付取反修复：应收取 `drValue`、应付取 `crValue`。 | `adapter/vxe-table.ts` 的 `FeeCodeSelect` / `CurrencySelect` 渲染器把 `props?.type`（0 应收 / 1 应付）当布尔用，0 落到 else 分支导致口径互换；改判 `Number(props?.type) === 1`。历史已录费用行不会自动纠正。详见 `changelogs/change-log-2026-08-09-order-fee-exchange-rate-dr-cr-fix.md`。 |

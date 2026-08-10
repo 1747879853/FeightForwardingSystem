@@ -457,15 +457,28 @@ const showCodeSourceEmptyDash = computed(
   () => isEdit.value && headerCodeSourceId.value == null,
 );
 
+/** 归属组织写入序号：防止与 UserOrgSelect autoDefault 异步 setFieldValue 乱序 */
+let headerOrgWriteSeq = 0;
+
 const syncBasicInfoHeaderFields = async () => {
+  const seqAtStart = headerOrgWriteSeq;
   const basic = await basicInfoFormApi.getValues();
-  headerOrgId.value = basic.orgId ?? undefined;
+  if (seqAtStart === headerOrgWriteSeq) {
+    headerOrgId.value = basic.orgId ?? undefined;
+  }
   headerCodeSourceId.value = basic.codeSourceId;
 };
 
 const handleHeaderOrgChange = async (value: null | number | undefined) => {
+  const seq = ++headerOrgWriteSeq;
   headerOrgId.value = value ?? undefined;
   await basicInfoFormApi.setFieldValue('orgId', value ?? undefined);
+  if (seq !== headerOrgWriteSeq) {
+    await basicInfoFormApi.setFieldValue(
+      'orgId',
+      headerOrgId.value ?? undefined,
+    );
+  }
 };
 
 const {
@@ -502,15 +515,12 @@ const {
 });
 
 /**
- * 换销售会连带影响所属组织：所属组织必须是该销售的**直属**组织（父组织不算），
- * 这里清掉不在新销售组织列表内的旧选择，避免保存时才撞上后端校验。
+ * 换销售后清空回显兜底项；归属组织的清空/默认带出由 UserOrgSelect
+ *（clearOnUserChange + autoDefault）统一处理，勿在此异步清 orgId，以免与 autoDefault 竞态。
  */
-watch(salesUserId, async (nextSalesUserId, prevSalesUserId) => {
+watch(salesUserId, (nextSalesUserId, prevSalesUserId) => {
   if (nextSalesUserId === prevSalesUserId) return;
-  if (!nextSalesUserId) return;
   headerOrgSelectedItems.value = [];
-  headerOrgId.value = undefined;
-  await basicInfoFormApi.setFieldValue('orgId', undefined);
 });
 
 const sectionRefs = {

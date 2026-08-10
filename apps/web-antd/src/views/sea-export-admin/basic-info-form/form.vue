@@ -563,17 +563,32 @@ const headerBillType = ref<number | undefined>();
 const headerCodeSourceId = ref<number | undefined>();
 const headerCodeSourceSelectedItems = ref<any[]>([]);
 
+/** 归属组织写入序号：防止 clear/default 或 sync 与 setFieldValue 乱序把表单 orgId 写空 */
+let headerOrgWriteSeq = 0;
+
 const syncBasicInfoHeaderFields = async () => {
+  const seqAtStart = headerOrgWriteSeq;
   const values = await basicInfoFormApi.getValues();
-  headerOrgId.value = values.orgId ?? undefined;
+  // 读取期间若头部已被 UserOrgSelect / 用户改过，勿用过期表单快照覆盖头部
+  if (seqAtStart === headerOrgWriteSeq) {
+    headerOrgId.value = values.orgId ?? undefined;
+  }
   headerBlType.value = values.blType;
   headerBillType.value = values.billType;
   headerCodeSourceId.value = values.codeSourceId;
 };
 
 const handleHeaderOrgChange = async (value: null | number | undefined) => {
+  const seq = ++headerOrgWriteSeq;
   headerOrgId.value = value ?? undefined;
   await basicInfoFormApi.setFieldValue('orgId', value ?? undefined);
+  // 若期间又有更新，以当前头部为准回写表单，避免先发出的 null 后完成覆盖默认值
+  if (seq !== headerOrgWriteSeq) {
+    await basicInfoFormApi.setFieldValue(
+      'orgId',
+      headerOrgId.value ?? undefined,
+    );
+  }
 };
 
 const handleHeaderBlTypeChange = async (value: number | undefined) => {
@@ -3092,7 +3107,10 @@ defineExpose({
                     <div
                       class="basic-info-header__item basic-info-header__item--select"
                     >
-                      <span class="basic-info-header__label">归属组织</span>
+                      <span class="basic-info-header__label">
+                        <span class="order-user-panel__role-required">*</span>
+                        归属组织
+                      </span>
                       <UserOrgSelect
                         :model-value="headerOrgId"
                         :user-id="salesUserId"

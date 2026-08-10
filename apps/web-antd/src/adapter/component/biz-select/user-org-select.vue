@@ -68,11 +68,15 @@ const bindProps = computed(() =>
   objectOmit(attrs, ['value', 'onUpdate:value']),
 );
 
+const resolveDefaultOrgId = (userId?: null | number) => {
+  if (!props.autoDefault) return undefined;
+  if (userId === undefined || userId === null) return undefined;
+  return getUserDefaultOrgId(userId);
+};
+
 const applyDefault = () => {
-  if (!props.autoDefault) return;
-  if (userIdRef.value === undefined || userIdRef.value === null) return;
   if (modelValue.value !== undefined && modelValue.value !== null) return;
-  const defaultId = getUserDefaultOrgId(userIdRef.value);
+  const defaultId = resolveDefaultOrgId(userIdRef.value);
   if (defaultId !== undefined) {
     modelValue.value = defaultId;
   }
@@ -86,16 +90,15 @@ watch(
   userIdRef,
   async (newId, oldId) => {
     await loadAllUserOrganizations();
-    // 仅在「从另一个用户切换过来」时清空；首次赋值（新建选人/编辑回显）不清空
+    // 仅在「从另一个用户切换过来」时重置；首次赋值（新建选人/编辑回显）保留已选
     const switchedFromAnotherUser =
       oldId !== undefined && oldId !== null && newId !== oldId;
-    if (
-      props.clearOnUserChange &&
-      switchedFromAnotherUser &&
-      modelValue.value !== undefined &&
-      modelValue.value !== null
-    ) {
-      modelValue.value = null;
+    if (props.clearOnUserChange && switchedFromAnotherUser) {
+      // 一次写入最终值：有默认组织则直接带出，否则清空。
+      // 禁止先 emit null 再 emit 默认值，避免父级两次异步 setFieldValue 乱序把表单 orgId 写空。
+      const defaultId = resolveDefaultOrgId(newId);
+      modelValue.value = defaultId ?? null;
+      return;
     }
     applyDefault();
   },
