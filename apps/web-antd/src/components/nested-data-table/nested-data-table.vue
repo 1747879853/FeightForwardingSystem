@@ -323,7 +323,11 @@ watch(
                           :key="column.key || column.dataIndex"
                           :class="columnClass(column)"
                         >
-                          <slot name="innerHeaderCell" :column="column">
+                          <slot
+                            name="innerHeaderCell"
+                            :column="column"
+                            :parent-record="record"
+                          >
                             {{ column.title }}
                           </slot>
                           <span

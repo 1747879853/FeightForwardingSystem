@@ -5,24 +5,30 @@ import { computed, nextTick, reactive, ref } from 'vue';
 
 import {
   Button,
+  Checkbox,
   Drawer,
   InputNumber,
   message,
   Pagination,
-  Table,
   Tag,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
 import { useVbenForm } from '#/adapter/form';
 import { getInvoiceApplicationGroupForSettlement } from '#/api/settlement-management/receive-settlement-admin';
-import { useAntTableColumnResize } from '#/utils/table-column-resize';
+import { NestedDataTable } from '#/components/nested-data-table';
 
-import { formatAmount, getPaySideColor, getPaySideLabel } from '../form-data';
+import {
+  formatAmount,
+  getPaySideColor,
+  getPaySideLabel,
+  toNetAmount,
+} from '../form-data';
 import {
   type AddInvoiceDrawerProps,
   buildInvoiceGroupRow,
   invoiceGroupColumns,
+  invoiceItemColumns,
   type SelectedInvoiceFee,
   useAddInvoiceSearchSchema,
 } from './data';
@@ -40,12 +46,6 @@ const currentPage = ref(1);
 const pageSize = ref(20);
 const expandedRowKeys = ref<string[]>([]);
 
-useAntTableColumnResize({
-  containerSelector: '.receive-settlement-add-invoice-drawer',
-  enabled: open,
-  dataVersion: groupList,
-});
-
 /** 已勾选的开票明细ID */
 const selectedItemIds = ref<string[]>([]);
 const settledAmountMap = reactive(new Map<string, number>());
@@ -54,7 +54,7 @@ const remarkMap = reactive(new Map<string, string>());
 const [SearchForm, searchFormApi] = useVbenForm({
   commonConfig: {
     componentProps: { class: 'w-full' },
-    labelWidth: 72,
+    labelWidth: 96,
   },
   layout: 'horizontal',
   schema: useAddInvoiceSearchSchema(),
@@ -70,61 +70,37 @@ const disabledItemIdSet = computed(
   () => new Set(drawerProps.value.selectedItemIds ?? []),
 );
 
-const itemColumns = [
-  {
-    dataIndex: 'commissionNum',
-    title: '委托编号',
-    width: 140,
-  },
-  {
-    dataIndex: 'mblNum',
-    title: '主提单号',
-    width: 140,
-  },
-  {
-    dataIndex: 'feeCodeName',
-    title: '费用名称',
-    minWidth: 140,
-  },
-  {
-    dataIndex: 'paySide',
-    key: 'paySide',
-    title: '收付',
-    width: 80,
-  },
-  {
-    dataIndex: 'currencyCode',
-    title: '币别',
-    width: 80,
-  },
-  {
-    dataIndex: 'amount',
-    title: '费用总额',
-    width: 110,
-    align: 'right' as const,
-    customRender: ({ text }: { text: number }) => formatAmount(text),
-  },
-  {
-    dataIndex: 'appliedAmount',
-    title: '本单开票额',
-    width: 110,
-    align: 'right' as const,
-    customRender: ({ text }: { text: number }) => formatAmount(text),
-  },
-  {
-    dataIndex: 'invoiceSettleableAmount',
-    title: '发票可结算余额',
-    width: 130,
-    align: 'right' as const,
-    customRender: ({ text }: { text: number }) => formatAmount(text),
-  },
-  {
-    dataIndex: 'settledAmount',
-    key: 'settledAmount',
-    title: '本次结算金额',
-    width: 150,
-  },
-];
+const selectedFeeCount = computed(() => selectedItemIds.value.length);
+
+/** 已选费用按币别汇总本次结算净额（应收为正、应付为负） */
+const selectedCurrencyTotals = computed(() => {
+  const selectedSet = new Set(selectedItemIds.value);
+  const map = new Map<
+    string,
+    { amount: number; count: number; currencyCode: string }
+  >();
+
+  for (const group of groupList.value) {
+    for (const item of group.items ?? []) {
+      if (!selectedSet.has(item.invoiceApplicationItemId)) continue;
+      const settled =
+        settledAmountMap.get(item.invoiceApplicationItemId) ??
+        item.invoiceSettleableAmount ??
+        0;
+      const signed = toNetAmount(item.paySide, settled);
+      const currencyCode = item.currency?.code || '未知';
+      const prev = map.get(currencyCode);
+      if (prev) {
+        prev.amount += signed;
+        prev.count += 1;
+      } else {
+        map.set(currencyCode, { amount: signed, count: 1, currencyCode });
+      }
+    }
+  }
+
+  return [...map.values()];
+});
 
 async function openDrawer(props: AddInvoiceDrawerProps = {}) {
   drawerProps.value = props;
@@ -156,6 +132,21 @@ async function handleSearch() {
     message.warning('银行流水未关联结算对象');
     return;
   }
+  currentPage.value = 1;
+  await fetchData();
+}
+
+async function handleReset() {
+  await searchFormApi.resetForm();
+  if (drawerProps.value.settlementId) {
+    searchFormApi.setValues({
+      settlementName: drawerProps.value.settlementName || '',
+      currencyId: drawerProps.value.currencyId,
+    });
+  }
+  selectedItemIds.value = [];
+  settledAmountMap.clear();
+  remarkMap.clear();
   currentPage.value = 1;
   await fetchData();
 }
@@ -203,17 +194,46 @@ async function handlePageChange(page: number, size: number) {
   await fetchData();
 }
 
-function getGroup(applicationId: string) {
-  return groupList.value.find(
-    (group) => group.invoiceApplicationId === applicationId,
+function isItemDisabled(
+  item: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto,
+) {
+  return disabledItemIdSet.value.has(item.invoiceApplicationItemId);
+}
+
+function isItemChecked(
+  item: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto,
+) {
+  return selectedItemIds.value.includes(item.invoiceApplicationItemId);
+}
+
+function getSelectableItems(
+  items: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto[],
+) {
+  return items.filter((item) => !isItemDisabled(item));
+}
+
+function isGroupAllChecked(
+  items: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto[],
+) {
+  const selectable = getSelectableItems(items);
+  return (
+    selectable.length > 0 && selectable.every((item) => isItemChecked(item))
   );
+}
+
+function isGroupIndeterminate(
+  items: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto[],
+) {
+  const selectable = getSelectableItems(items);
+  const checkedCount = selectable.filter((item) => isItemChecked(item)).length;
+  return checkedCount > 0 && checkedCount < selectable.length;
 }
 
 function handleSelectItem(
   item: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto,
   selected: boolean,
 ) {
-  if (disabledItemIdSet.value.has(item.invoiceApplicationItemId)) return;
+  if (isItemDisabled(item)) return;
 
   if (selected) {
     selectedItemIds.value = [
@@ -234,11 +254,11 @@ function handleSelectItem(
   }
 }
 
-function handleSelectAllItems(
+function handleSelectGroupItems(
   selected: boolean,
-  rows: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto[],
+  items: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto[],
 ) {
-  for (const item of rows) {
+  for (const item of getSelectableItems(items)) {
     handleSelectItem(item, selected);
   }
 }
@@ -247,7 +267,7 @@ function updateSettledAmount(
   item: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto,
   value: unknown,
 ) {
-  if (disabledItemIdSet.value.has(item.invoiceApplicationItemId)) return;
+  if (isItemDisabled(item)) return;
 
   const numericValue = Number(value ?? 0);
   settledAmountMap.set(
@@ -341,6 +361,11 @@ function handleConfirm() {
   open.value = false;
 }
 
+function formatApplyTime(value?: string) {
+  if (!value) return '-';
+  return dayjs(value).format('YYYY-MM-DD HH:mm');
+}
+
 defineExpose({ open: openDrawer });
 </script>
 
@@ -350,89 +375,146 @@ defineExpose({ open: openDrawer });
     title="添加开票结算明细"
     width="1200px"
     destroy-on-close
+    class="receive-settlement-add-invoice-drawer"
   >
-    <div class="receive-settlement-add-invoice-drawer">
-      <div class="mb-3">
+    <div class="add-invoice-drawer-body">
+      <div class="add-invoice-drawer-body__search">
         <SearchForm />
-        <div class="drawer-actions">
-          <Button @click="handleSearch">查询</Button>
-          <Button type="primary" @click="handleConfirm">确认添加</Button>
+        <div class="search-actions">
+          <Button @click="handleReset">重置</Button>
+          <Button type="primary" :loading="loading" @click="handleSearch">
+            查询
+          </Button>
         </div>
       </div>
 
-      <Table
-        :columns="invoiceGroupColumns"
-        :data-source="tableRows"
-        :loading="loading"
-        :pagination="false"
-        :row-key="(record) => record.id"
-        v-model:expanded-row-keys="expandedRowKeys"
-        size="small"
-        bordered
-        :scroll="{ x: 950 }"
-      >
-        <template #expandedRowRender="{ record }">
-          <Table
-            :columns="itemColumns"
-            :data-source="getGroup(record.id)?.items ?? []"
-            :pagination="false"
-            :row-key="(item) => item.invoiceApplicationItemId"
-            :row-selection="{
-              selectedRowKeys: selectedItemIds,
-              getCheckboxProps: (item) => ({
-                disabled: disabledItemIdSet.has(item.invoiceApplicationItemId),
-              }),
-              onSelect: handleSelectItem,
-              onSelectAll: handleSelectAllItems,
-            }"
-            size="small"
-            bordered
+      <div class="mb-2 flex items-center gap-3">
+        <div class="shrink-0 text-base font-semibold">开票费用明细</div>
+        <div
+          v-if="selectedFeeCount > 0"
+          class="selected-fee-summary min-w-0 flex-1"
+        >
+          <span class="selected-fee-summary__label">
+            已选 {{ selectedFeeCount }} 笔
+          </span>
+          <span
+            v-for="item in selectedCurrencyTotals"
+            :key="item.currencyCode"
+            class="selected-fee-summary__item"
           >
-            <template #bodyCell="{ column, record: item }">
-              <template v-if="column.dataIndex === 'commissionNum'">
-                {{ item.transportOrder?.commissionNum || '-' }}
-              </template>
-              <template v-else-if="column.dataIndex === 'mblNum'">
-                {{ item.transportOrder?.mblNum || '-' }}
-              </template>
-              <template v-else-if="column.key === 'paySide'">
-                <Tag :color="getPaySideColor(item.paySide)">
-                  {{ getPaySideLabel(item.paySide) }}
-                </Tag>
-              </template>
-              <template v-else-if="column.dataIndex === 'currencyCode'">
-                <Tag v-if="item.currencyCode">{{ item.currencyCode }}</Tag>
-                <span v-else>-</span>
-              </template>
-              <template v-else-if="column.key === 'settledAmount'">
-                <InputNumber
-                  :value="
-                    settledAmountMap.get(item.invoiceApplicationItemId) ??
-                    item.invoiceSettleableAmount ??
-                    0
-                  "
-                  :min="0"
-                  :max="item.invoiceSettleableAmount"
-                  :precision="2"
-                  :disabled="
-                    disabledItemIdSet.has(item.invoiceApplicationItemId)
-                  "
-                  style="width: 130px"
-                  @change="
-                    (value) =>
-                      updateSettledAmount(
-                        item as ReceiveSettlementAdminApi.InvoiceAppSettleItemDto,
-                        value,
-                      )
-                  "
-                />
-              </template>
-            </template>
-          </Table>
-        </template>
-      </Table>
+            <span class="selected-fee-summary__code">{{
+              item.currencyCode
+            }}</span>
+            <span class="selected-fee-summary__amount">{{
+              formatAmount(item.amount)
+            }}</span>
+          </span>
+        </div>
+      </div>
 
-      <div class="mt-3 flex justify-end">
+      <div class="add-invoice-drawer-body__table">
+        <NestedDataTable
+          :columns="invoiceGroupColumns"
+          :data-source="tableRows"
+          :loading="loading"
+          fill-height
+          :inner-columns="invoiceItemColumns"
+          inner-data-key="items"
+          :inner-row-key="(record) => record.invoiceApplicationItemId"
+          row-key="id"
+          v-model:expanded-row-keys="expandedRowKeys"
+        >
+          <template #outerBodyCell="{ column, record, text }">
+            <template v-if="column.key === 'applyTime'">
+              {{ formatApplyTime(record.applyTime) }}
+            </template>
+            <template v-else-if="column.key === 'currencyCode'">
+              <Tag v-if="record.currencyCode">{{ record.currencyCode }}</Tag>
+              <span v-else>-</span>
+            </template>
+            <template v-else-if="column.key === 'totalSettleableAmount'">
+              {{ formatAmount(record.totalSettleableAmount) }}
+            </template>
+            <template v-else>
+              {{ text || '-' }}
+            </template>
+          </template>
+
+          <template #innerHeaderCell="{ column, parentRecord }">
+            <template v-if="column.key === 'checkbox'">
+              <Checkbox
+                :checked="isGroupAllChecked(parentRecord?.items ?? [])"
+                :indeterminate="isGroupIndeterminate(parentRecord?.items ?? [])"
+                @change="
+                  (e) =>
+                    handleSelectGroupItems(
+                      e.target.checked,
+                      parentRecord?.items ?? [],
+                    )
+                "
+              />
+            </template>
+            <template v-else>{{ column.title }}</template>
+          </template>
+
+          <template #innerBodyCell="{ column, record: item }">
+            <template v-if="column.key === 'checkbox'">
+              <Checkbox
+                :checked="isItemChecked(item)"
+                :disabled="isItemDisabled(item)"
+                @change="(e) => handleSelectItem(item, e.target.checked)"
+              />
+            </template>
+            <template v-else-if="column.key === 'commissionNum'">
+              {{ item.transportOrder?.commissionNum || '-' }}
+            </template>
+            <template v-else-if="column.key === 'mblNum'">
+              {{ item.transportOrder?.mblNum || '-' }}
+            </template>
+            <template v-else-if="column.key === 'feeCodeName'">
+              {{ item.feeCode?.cnName || '-' }}
+            </template>
+            <template v-else-if="column.key === 'paySide'">
+              <Tag :color="getPaySideColor(item.paySide)">
+                {{ getPaySideLabel(item.paySide) }}
+              </Tag>
+            </template>
+            <template v-else-if="column.key === 'currencyCode'">
+              <Tag v-if="item.currency?.code">{{ item.currency.code }}</Tag>
+              <span v-else>-</span>
+            </template>
+            <template v-else-if="column.key === 'amount'">
+              {{ formatAmount(item.amount) }}
+            </template>
+            <template v-else-if="column.key === 'appliedAmount'">
+              {{ formatAmount(item.appliedAmount) }}
+            </template>
+            <template v-else-if="column.key === 'invoiceSettleableAmount'">
+              {{ formatAmount(item.invoiceSettleableAmount) }}
+            </template>
+            <template v-else-if="column.key === 'settledAmount'">
+              <InputNumber
+                :value="
+                  settledAmountMap.get(item.invoiceApplicationItemId) ??
+                  item.invoiceSettleableAmount ??
+                  0
+                "
+                :min="0"
+                :max="item.invoiceSettleableAmount"
+                :precision="2"
+                :disabled="isItemDisabled(item)"
+                style="width: 130px"
+                @change="(value) => updateSettledAmount(item, value)"
+              />
+            </template>
+            <template v-else>
+              {{ column.dataIndex ? item[column.dataIndex] : '' }}
+            </template>
+          </template>
+        </NestedDataTable>
+      </div>
+
+      <div class="add-invoice-drawer-body__pagination">
         <Pagination
           :current="currentPage"
           :page-size="pageSize"
@@ -443,15 +525,108 @@ defineExpose({ open: openDrawer });
         />
       </div>
     </div>
+
+    <template #footer>
+      <div class="drawer-footer">
+        <Button type="primary" @click="handleConfirm">确认添加</Button>
+      </div>
+    </template>
   </Drawer>
 </template>
 
 <style scoped lang="scss">
-.drawer-actions {
+.receive-settlement-add-invoice-drawer {
+  :deep(.ant-drawer-body) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 16px;
+    overflow: hidden;
+  }
+}
+
+.add-invoice-drawer-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+
+  &__search {
+    flex-shrink: 0;
+    margin-bottom: 12px;
+  }
+
+  &__table {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 200px;
+    overflow: hidden;
+
+    :deep(.nested-data-table) {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+    }
+
+    :deep(.nested-data-table__scroll) {
+      flex: 1;
+      min-height: 0;
+    }
+  }
+
+  &__pagination {
+    display: flex;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+}
+
+.search-actions {
   display: flex;
   gap: 8px;
-  align-items: center;
   justify-content: flex-end;
   margin-top: 8px;
+}
+
+.selected-fee-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #657286;
+}
+
+.selected-fee-summary__label {
+  font-weight: 600;
+  color: #334155;
+}
+
+.selected-fee-summary__item {
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+  padding: 2px 8px;
+  background: #f0f7ff;
+  border-radius: 6px;
+}
+
+.selected-fee-summary__code {
+  font-weight: 600;
+  color: #475569;
+}
+
+.selected-fee-summary__amount {
+  font-weight: 700;
+  color: #1677ff;
+}
+
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

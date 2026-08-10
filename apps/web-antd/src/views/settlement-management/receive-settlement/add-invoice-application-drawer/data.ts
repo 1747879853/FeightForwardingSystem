@@ -1,7 +1,7 @@
 import type { VbenFormSchema } from '#/adapter/form';
 import type { ReceiveSettlementAdminApi } from '#/api/settlement-management/receive-settlement-admin';
 
-import { formatAmount, formatDateTime } from '../form-data';
+import { formatAmount } from '../form-data';
 
 export interface AddInvoiceDrawerProps {
   /** 收费核销ID（追加时传入，排除已关联的开票明细） */
@@ -44,8 +44,10 @@ export interface SelectedInvoiceFee {
 
 export type InvoiceGroup = ReceiveSettlementAdminApi.InvoiceAppSettleGroupDto;
 
+/** 搜索区标签加宽，避免「开票申请单号」换行 */
 const searchFieldCommon = {
-  labelWidth: 72,
+  labelWidth: 96,
+  labelClass: 'whitespace-nowrap',
 } as const;
 
 export function useAddInvoiceSearchSchema(): VbenFormSchema[] {
@@ -120,47 +122,124 @@ export function buildInvoiceGroupRow(group: InvoiceGroup) {
       (sum, item) => sum + (item.invoiceSettleableAmount || 0),
       0,
     ),
+    /** NestedDataTable 内层数据 */
+    items: group.items ?? [],
   };
 }
 
+/** NestedDataTable 外层列（开票申请） */
 export const invoiceGroupColumns = [
   {
     dataIndex: 'applicationNo',
+    key: 'applicationNo',
     title: '开票申请单号',
     width: 170,
   },
   {
     dataIndex: 'invoiceNo',
+    key: 'invoiceNo',
     title: '发票号',
     width: 150,
   },
   {
     dataIndex: 'settlementName',
+    key: 'settlementName',
     title: '结算对象',
-    minWidth: 150,
+    width: 150,
   },
   {
     dataIndex: 'currencyCode',
+    key: 'currencyCode',
     title: '币别',
     width: 80,
   },
   {
     dataIndex: 'applyTime',
+    key: 'applyTime',
     title: '申请时间',
     width: 160,
-    customRender: ({ text }: { text: string }) => formatDateTime(text),
   },
   {
     dataIndex: 'itemCount',
+    key: 'itemCount',
     title: '明细数',
     width: 80,
     align: 'right' as const,
   },
   {
     dataIndex: 'totalSettleableAmount',
+    key: 'totalSettleableAmount',
     title: '可结算余额合计',
     width: 140,
     align: 'right' as const,
-    customRender: ({ text }: { text: number }) => formatAmount(text),
   },
 ];
+
+/** NestedDataTable 内层列（开票费用明细） */
+export const invoiceItemColumns = [
+  {
+    key: 'checkbox',
+    title: '',
+    width: 48,
+    align: 'center' as const,
+  },
+  {
+    dataIndex: 'commissionNum',
+    key: 'commissionNum',
+    title: '委托编号',
+    width: 140,
+  },
+  {
+    dataIndex: 'mblNum',
+    key: 'mblNum',
+    title: '主提单号',
+    width: 140,
+  },
+  {
+    dataIndex: 'feeCodeName',
+    key: 'feeCodeName',
+    title: '费用名称',
+    width: 140,
+  },
+  {
+    dataIndex: 'paySide',
+    key: 'paySide',
+    title: '收付',
+    width: 80,
+  },
+  {
+    dataIndex: 'currencyCode',
+    key: 'currencyCode',
+    title: '币别',
+    width: 80,
+  },
+  {
+    dataIndex: 'amount',
+    key: 'amount',
+    title: '费用总额',
+    width: 110,
+    align: 'right' as const,
+  },
+  {
+    dataIndex: 'appliedAmount',
+    key: 'appliedAmount',
+    title: '本单开票额',
+    width: 110,
+    align: 'right' as const,
+  },
+  {
+    dataIndex: 'invoiceSettleableAmount',
+    key: 'invoiceSettleableAmount',
+    title: '发票可结算余额',
+    width: 130,
+    align: 'right' as const,
+  },
+  {
+    dataIndex: 'settledAmount',
+    key: 'settledAmount',
+    title: '本次结算金额',
+    width: 150,
+  },
+];
+
+export { formatAmount };
