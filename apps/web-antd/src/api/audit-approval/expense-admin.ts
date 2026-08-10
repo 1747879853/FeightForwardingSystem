@@ -162,6 +162,75 @@ export namespace ExpenseSubmissionAdminApi {
 
     /** 主键 ID */
     id: string;
+
+    // === 新增：按业务类型挂载的 SimpleDto 对象 ===
+    /** 海运出口简易对象（仅 bizType=0 时有值） */
+    seaExport?: SeaExportSimpleDto | null;
+    /** 海运进口简易对象（仅 bizType=1 时有值） */
+    seaImport?: SeaImportSimpleDto | null;
+    /** 空运出口简易对象（仅 bizType=2 时有值） */
+    airExport?: AirExportSimpleDto | null;
+  }
+
+  /** 港口简易对象 */
+  export interface PortCodeSimpleDto {
+    id: number;
+    portName?: string | null;
+    cnName?: string | null;
+  }
+
+  /** 船公司简易对象 */
+  export interface CarrierSimpleDto {
+    id: number;
+    code?: string | null;
+    cnName?: string | null;
+    cnShortName?: string | null;
+    enName?: string | null;
+    ediCode?: string | null;
+  }
+
+  /** 空港简易对象 */
+  export interface AirPortSimpleDto {
+    id: number;
+    iataCode?: string | null;
+    enName?: string | null;
+    cnName?: string | null;
+  }
+
+  /** 海运出口简易对象 */
+  export interface SeaExportSimpleDto {
+    id: string;
+    vessel?: string | null;
+    innerVoyno?: string | null;
+    pol?: PortCodeSimpleDto | null;
+    polRemark?: string | null;
+    pod?: PortCodeSimpleDto | null;
+    podRemark?: string | null;
+    carrier?: CarrierSimpleDto | null;
+  }
+
+  /** 海运进口简易对象 */
+  export interface SeaImportSimpleDto {
+    id: string;
+    vessel?: string | null;
+    innerVoyno?: string | null;
+    pol?: PortCodeSimpleDto | null;
+    polRemark?: string | null;
+    pod?: PortCodeSimpleDto | null;
+    podRemark?: string | null;
+    carrier?: CarrierSimpleDto | null;
+  }
+
+  /** 空运出口简易对象 */
+  export interface AirExportSimpleDto {
+    id: string;
+    flightNo?: string | null;
+    pol?: AirPortSimpleDto | null;
+    polRemark?: string | null;
+    pot?: AirPortSimpleDto | null;
+    potRemark?: string | null;
+    pod?: AirPortSimpleDto | null;
+    podRemark?: string | null;
   }
 
   /** 	任务明细 */

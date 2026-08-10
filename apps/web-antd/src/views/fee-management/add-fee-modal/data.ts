@@ -13,13 +13,14 @@ export function resolvePolPortDisplayName(source: {
   seaExportPOLPortName?: string;
 }): string {
   return (
-    source.seaExport?.pol?.portName ??
+    source.seaExport?.pol?.cnName ??
+    source.seaImport?.pol?.cnName ??
     source.seaExportPOLPortName ??
-    source.pol?.portName ??
-    source.seaExportPOL?.portName ??
+    source.pol?.cnName ??
+    source.seaExportPOL?.cnName ??
     source.seaExportPOLName ??
     source.polName ??
-    ''
+    '123'
   );
 }
 
@@ -32,13 +33,13 @@ export function resolvePodPortDisplayName(source: {
   seaExportPODPortName?: string;
 }): string {
   return (
-    source.seaExport?.pod?.portName ??
-    source.seaExportPODPortName ??
-    source.pod?.portName ??
-    source.seaExportPOD?.portName ??
+    source.seaExport?.pod?.cnName ??
+    source.seaImport?.pod?.cnName ??
+    source.pod?.cnName ??
+    source.seaExportPOD?.cnName ??
     source.seaExportPODName ??
     source.podName ??
-    ''
+    '123'
   );
 }
 

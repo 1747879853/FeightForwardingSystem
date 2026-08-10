@@ -68,7 +68,11 @@ import {
   type FeeDetailRow,
   type OrderGroupRow,
 } from './form-data';
-import { buildDynamicCurrencyColumns, type SelectedFeeItem, type CurrencyInfo } from '../add-fee-statement-modal/data';
+import {
+  buildDynamicCurrencyColumns,
+  type SelectedFeeItem,
+  type CurrencyInfo,
+} from '../add-fee-statement-modal/data';
 import { getCurrencyEnumSymbolOptions } from '#/views/sea-export-admin/orderFee/data';
 
 const t = (key: string, args?: any[]) =>
@@ -440,6 +444,9 @@ function mapDetailToFeeRows(
   for (const group of detail.orderFeeGroups ?? []) {
     const order = group.transportOrder;
 
+    // 根据 bizType 获取对应的业务类型对象
+    const bizInfo = getBizTypeInfo(order);
+
     for (const item of group.orderFees ?? []) {
       const fee = item;
       console.log('mapDetailToFeeRows fee', fee);
@@ -451,8 +458,8 @@ function mapDetailToFeeRows(
         clientName: order?.clientName ?? undefined,
         accountDate: order?.accountDate ?? undefined,
         etd: order?.etd ?? undefined,
-        polName: order?.seaExportPOLCnName ?? undefined,
-        podName: order?.seaExportPODCnName ?? undefined,
+        polName: bizInfo.polName ?? order?.seaExportPOLCnName ?? undefined,
+        podName: bizInfo.podName ?? order?.seaExportPODCnName ?? undefined,
         saleUserNames: order?.saleNames?.join('、'),
         operationUserNames: order?.operatorNames?.join('、'),
         customerServiceUserNames: undefined,
@@ -472,6 +479,38 @@ function mapDetailToFeeRows(
     }
   }
   return rows;
+}
+
+/**
+ * 根据 bizType 从 TransportOrderSimpleDto 中获取对应的业务类型信息
+ * @param order 运输订单简易对象
+ * @returns 包含 polName 和 podName 的对象
+ */
+function getBizTypeInfo(order: any): { polName?: string; podName?: string } {
+  if (!order) return {};
+
+  const bizType = order.bizType;
+
+  // bizType: 0=海运出口, 1=海运进口, 2=空运出口
+  if (bizType === 0 && order.seaExport) {
+    return {
+      polName: order.seaExport.pol?.cnName ?? order.seaExport.pol?.portName,
+      podName: order.seaExport.pod?.cnName ?? order.seaExport.pod?.portName,
+    };
+  } else if (bizType === 1 && order.seaImport) {
+    return {
+      polName: order.seaImport.pol?.cnName ?? order.seaImport.pol?.portName,
+      podName: order.seaImport.pod?.cnName ?? order.seaImport.pod?.portName,
+    };
+  } else if (bizType === 2 && order.airExport) {
+    return {
+      polName: order.airExport.pol?.cnName ?? order.airExport.pol?.iataCode,
+      podName: order.airExport.pod?.cnName ?? order.airExport.pod?.iataCode,
+    };
+  }
+
+  // 如果没有 SimpleDto 对象，返回空对象，兼容旧逻辑
+  return {};
 }
 
 async function loadEditData() {

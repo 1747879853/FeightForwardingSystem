@@ -7,6 +7,67 @@ import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 
 export namespace StatementAdminApi {
+  /** 港口简易对象 */
+  export interface PortCodeSimpleDto {
+    id: number;
+    portName?: string | null;
+    cnName?: string | null;
+  }
+
+  /** 船公司简易对象 */
+  export interface CarrierSimpleDto {
+    id: number;
+    code?: string | null;
+    cnName?: string | null;
+    cnShortName?: string | null;
+    enName?: string | null;
+    ediCode?: string | null;
+  }
+
+  /** 空港简易对象 */
+  export interface AirPortSimpleDto {
+    id: number;
+    iataCode?: string | null;
+    enName?: string | null;
+    cnName?: string | null;
+  }
+
+  /** 海运出口简易对象 */
+  export interface SeaExportSimpleDto {
+    id: string;
+    vessel?: string | null;
+    innerVoyno?: string | null;
+    pol?: PortCodeSimpleDto | null;
+    polRemark?: string | null;
+    pod?: PortCodeSimpleDto | null;
+    podRemark?: string | null;
+    carrier?: CarrierSimpleDto | null;
+  }
+
+  /** 海运进口简易对象 */
+  export interface SeaImportSimpleDto {
+    id: string;
+    vessel?: string | null;
+    innerVoyno?: string | null;
+    pol?: PortCodeSimpleDto | null;
+    polRemark?: string | null;
+    pod?: PortCodeSimpleDto | null;
+    podRemark?: string | null;
+    carrier?: CarrierSimpleDto | null;
+  }
+
+  /** 空运出口简易对象 */
+  export interface AirExportSimpleDto {
+    id: string;
+    flightNo?: string | null;
+    pol?: AirPortSimpleDto | null;
+    polRemark?: string | null;
+    pot?: AirPortSimpleDto | null;
+    potRemark?: string | null;
+    pod?: AirPortSimpleDto | null;
+    podRemark?: string | null;
+  }
+
   /** 结算状态枚举 */
   export enum SettlementStatus {
     /** 未结算 */
