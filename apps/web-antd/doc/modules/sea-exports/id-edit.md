@@ -133,6 +133,7 @@ last_updated: 2026-08-10
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-10 | `Fix` | 头部业务来源改为固定宽只读文案，消除带出/回显时布局抖动。 | 回填改读 `codeSource.cnName`（不再用已删除的 `codeSourceName`）。详见 `changelogs/change-log-2026-08-10-sea-export-code-source-layout-jitter.md`。 |
 | 2026-08-10 | `Fix` | 保存必填失败时 toast 点名缺失字段；头部归属组织补 `*`；换销售带出组织防竞态。 | 新建/编辑共用 `use-sea-export-submit`；`UserOrgSelect` 一次写入。详见 `changelogs/change-log-2026-08-10-sea-export-required-field-toast.md`。 |
 | 2026-08-10 | `Refactor` | 业务字典/签单方式/分单往来与港口/派车车队改读 SimpleDto；费用箱型名读 `ctnCode.ctnName`。 | 契约去掉平铺 Name；分单编辑将对象拍平为表单展示名。详见 `changelogs/change-log-2026-08-10-foreign-key-simple-dto-alignment.md`。 |
 | 2026-08-09 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 共用 `order-ctn-table.vue`；对应 TAPD `#1161580498001000694`。详见 `changelogs/change-log-2026-08-09-sea-export-ctn-batch-add.md`。 |

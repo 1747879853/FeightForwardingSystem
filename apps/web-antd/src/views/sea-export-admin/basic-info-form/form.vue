@@ -55,11 +55,7 @@ defineOptions({
   name: 'SeaExportAdminForm',
 });
 const emptySimpleImage = Empty.PRESENTED_IMAGE_SIMPLE;
-import {
-  CodeSourceSelect,
-  UserOrgSelect,
-  UserSelect,
-} from '#/adapter/component';
+import { UserOrgSelect, UserSelect } from '#/adapter/component';
 import { type VbenFormSchema, useVbenForm } from '#/adapter/form';
 import { getClientDishonestStakeholders } from '#/api/common/client';
 import { getCodeFrtDetail } from '#/api/system/base-data/code-frt-admin';
@@ -601,11 +597,6 @@ const handleHeaderBillTypeChange = async (value: number | undefined) => {
   await basicInfoFormApi.setFieldValue('billType', value);
 };
 
-const handleHeaderCodeSourceChange = async (value: number | undefined) => {
-  headerCodeSourceId.value = value;
-  await basicInfoFormApi.setFieldValue('codeSourceId', value);
-};
-
 /** 右侧表单：船期信息 */
 const [ShipmentForm, shipmentFormApi] = useVbenForm({
   layout: 'vertical',
@@ -1064,13 +1055,30 @@ const normalizeIdForCompare = (value: unknown) =>
 let serviceTypeLinkageRequestId = 0;
 const linkedClientId = ref<unknown>(undefined);
 const linkedPolId = ref<unknown>(undefined);
-/** 未选委托单位时业务来源下拉占位（已选无来源走文本「-」，不占宽） */
+/** 未选委托单位时业务来源占位文案 */
 const headerCodeSourcePlaceholder = '按委托单位自动带出';
-/** 已选委托单位但客户未维护业务来源：仅展示「-」，不占下拉宽度 */
-const showCodeSourceEmptyDash = computed(
+/**
+ * 头部业务来源只读展示（固定宽度，避免 CodeSourceSelect 挂载/异步回显与「-」切换造成布局抖动）。
+ * 名称来自 selectedItems（详情 codeSource / 客户带出），不二次请求详情。
+ */
+const headerCodeSourceDisplay = computed(() => {
+  if (headerCodeSourceId.value != null) {
+    const item = headerCodeSourceSelectedItems.value?.[0] as
+      | Record<string, unknown>
+      | undefined;
+    const name = item?.cnName ?? item?.label ?? item?.name;
+    return name == null || name === '' ? '' : String(name);
+  }
+  if (toOptionalQueryValue(linkedClientId.value) !== undefined) {
+    return '-';
+  }
+  return headerCodeSourcePlaceholder;
+});
+const headerCodeSourceMuted = computed(
   () =>
-    toOptionalQueryValue(linkedClientId.value) !== undefined &&
-    headerCodeSourceId.value == null,
+    headerCodeSourceId.value == null ||
+    headerCodeSourceDisplay.value === '-' ||
+    headerCodeSourceDisplay.value === headerCodeSourcePlaceholder,
 );
 const serviceTypeSyncLoading = ref(false);
 const polServiceConfigLoaded = ref(false);
@@ -2157,8 +2165,8 @@ const loadEditData = async (): Promise<
     refreshEntrustReadonlyInfo(formValues);
     syncTabTitleFromValues(formValues);
     headerCodeSourceSelectedItems.value = toSelectedItems(
-      to?.codeSourceId,
-      (to as any)?.codeSourceName,
+      to?.codeSourceId ?? to?.codeSource?.id,
+      to?.codeSource?.cnName,
       'cnName',
     );
     const detailOrgs = detail.orgs ?? [];
@@ -3130,21 +3138,15 @@ defineExpose({
                         $t('seaExport.export.codeSourceId')
                       }}</span>
                       <span
-                        v-if="showCodeSourceEmptyDash"
-                        class="basic-info-header__value"
+                        class="basic-info-header__value basic-info-header__value--source"
+                        :class="{
+                          'basic-info-header__value--source-muted':
+                            headerCodeSourceMuted,
+                        }"
+                        :title="headerCodeSourceDisplay"
                       >
-                        -
+                        {{ headerCodeSourceDisplay }}
                       </span>
-                      <CodeSourceSelect
-                        v-else
-                        :model-value="headerCodeSourceId"
-                        :selected-items="headerCodeSourceSelectedItems"
-                        disabled
-                        size="small"
-                        class="basic-info-header__select basic-info-header__select--source"
-                        :placeholder="headerCodeSourcePlaceholder"
-                        @update:model-value="handleHeaderCodeSourceChange"
-                      />
                     </div>
                     <div
                       class="basic-info-header__item basic-info-header__item--select"

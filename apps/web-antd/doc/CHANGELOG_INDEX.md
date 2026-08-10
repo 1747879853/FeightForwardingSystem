@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-10 海运出口业务来源展示消除布局抖动](./changelogs/change-log-2026-08-10-sea-export-code-source-layout-jitter.md)
 - [2026-08-10 海运出口必填校验 toast 点名缺项](./changelogs/change-log-2026-08-10-sea-export-required-field-toast.md)
 - [2026-08-10 付费申请驳回后可再次提交](./changelogs/change-log-2026-08-10-payment-application-reject-resubmit.md)
 - [2026-08-10 申请/结算抽屉表格支持拖拽调列宽](./changelogs/change-log-2026-08-10-drawer-table-column-resize.md)

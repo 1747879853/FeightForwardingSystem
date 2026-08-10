@@ -49,7 +49,7 @@ last_updated: 2026-08-10
 | **所属公司** | 业务单所属公司。 | `organizationUnits` | **触发/依赖：** 新建、编辑保存后，后端根据干系人中销售所属公司自动生成。 | 禁止手动修改。 |
 | **归属组织** | 委托直属组织（必填）；头部按销售绑定可选范围，标签带 `*`。 | `orgId`；`UserOrgSelect`（`salesUserId` + `selectedItems` 回显） | **触发/依赖：** 干系人销售变化时选项范围切换；`formatOrgPathLabel` 展示完整路径；schema 隐藏载体保留 `selectRequired`；缺值时 toast 点名。 | **必填项**。 |
 | **合同号** | 运输单合同号。 | `transportOrder.contractNum` | **触发/依赖：** 提交/回填走 `transportOrder`；复制入库由后端置空。 | 可空；`maxlength: 64`。 |
-| **业务来源** | 订单业务来源分类；头部只读，按委托单位客户表维护值带出。 | `transportOrder.codeSourceId`；`Client/GetDishonestStakeholdersAsync` 的 `codeSource`；`CodeSourceSelect` | **触发/依赖：** 选委托单位后 `applyClientCodeSource` 用 `codeSource.id`/`cnName` 自动带出；不可手改。未选委托单位显示「按委托单位自动带出」；已选但无来源仅文本「-」不占下拉宽。 | 禁止手动修改。 |
+| **业务来源** | 订单业务来源分类；头部只读，按委托单位客户表维护值带出。 | `transportOrder.codeSourceId` / `codeSource`；`Client/GetDishonestStakeholdersAsync` 的 `codeSource` | **触发/依赖：** 选委托单位后 `applyClientCodeSource` 用 `codeSource.id`/`cnName` 自动带出；不可手改。头部为固定 120px 只读文案（有名显示名、已选无来源「-」、未选委托单位占位「按委托单位自动带出」），不挂 Select。 | 禁止手动修改。 |
 | **付费方式** | 运费付费方式。 | `transportOrder.codeFrtId`；与付费地点合并为 `FrtPrepareInput` | **触发/依赖：** 与 `prepareAtId` 同栏展示。 | - |
 | **付费地点** | 运费支付地点港口。 | `transportOrder.prepareAtId`；`PortSelect`（基础数据） | **触发/依赖：** 付费方式为预付时带出起运港（`polId`）；为到付时带出目的港（`podId`），带出后允许修改。 | - |
 | **运输条款 / 贸易条款** | 运输服务条款与贸易术语；视觉合并为一个表单项。 | `ServiceTradeTermsInput` -> `codeServiceId` + `tradeTermsType`（贸易条款枚举 CIF/FOB 等） | **触发/依赖：** 主字段 `codeServiceId`，第二字段经 `formContext` 写回 `tradeTermsType`；内部宽度 1:1。 | - |
@@ -81,6 +81,7 @@ last_updated: 2026-08-10
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-10 | `Fix` | 头部业务来源改为固定宽只读文案，消除带出/回显时布局抖动。 | 去掉 `CodeSourceSelect` 与「-」互切；回填读 `codeSource.cnName`。详见 `changelogs/change-log-2026-08-10-sea-export-code-source-layout-jitter.md`。 |
 | 2026-08-10 | `Fix` | 保存必填失败时 toast 点名缺失字段；头部归属组织补 `*`；换销售带出组织防竞态。 | `collectInvalidFieldLabels`；`UserOrgSelect` 换人一次写入；详见 `changelogs/change-log-2026-08-10-sea-export-required-field-toast.md`。 |
 | 2026-08-09 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 共用 `order-ctn-table.vue`；对应 TAPD `#1161580498001000694`。详见 `changelogs/change-log-2026-08-09-sea-export-ctn-batch-add.md`。 |
 | 2026-08-09 | `Fix` | AI 识别回填六段港口备注及收货地/中转港 Id；后端 `seaExport.*Remark` 有值时写入港口表单。 | `buildAiExtractFormPayload` 此前只映射部分港口 Id、未 `assignScalar` 备注；白名单有字段仍会丢。对应 TAPD `#1161580498001000737`（1）。详见 `changelogs/change-log-2026-08-09-sea-export-ai-extract-port-remarks.md`。 |

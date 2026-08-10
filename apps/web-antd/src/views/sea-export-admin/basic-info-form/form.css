@@ -311,6 +311,26 @@
   font-size: 11px;
 }
 
+/** 业务来源只读：固定槽位，避免文案长短/组件切换挤动标题行 */
+.basic-info-header__value--source {
+  box-sizing: border-box;
+  display: inline-block;
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 24px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.basic-info-header__value--source-muted {
+  font-size: 11px;
+  color: rgb(0 0 0 / 25%);
+}
+
 .basic-info-header__select--org {
   width: 168px;
 }
