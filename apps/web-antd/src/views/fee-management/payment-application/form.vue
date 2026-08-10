@@ -136,8 +136,11 @@ function reloadWorkflowAfterStatusChange() {
   workflowReloadKey.value += 1;
 }
 const currentStatus = ref<number>(PaymentApplicationStatus.Entering);
-const isEntering = computed(
-  () => currentStatus.value === PaymentApplicationStatus.Entering,
+/** 录入中或已驳回均可再次提交审核 */
+const canSubmit = computed(
+  () =>
+    currentStatus.value === PaymentApplicationStatus.Entering ||
+    currentStatus.value === PaymentApplicationStatus.Rejected,
 );
 const isAuditing = computed(
   () => currentStatus.value === PaymentApplicationStatus.Auditing,
@@ -1261,13 +1264,13 @@ void handleSubmitAndNew;
                   {{ t('save') }}
                 </Button>
               </template>
-              <!-- 编辑模式：始终可保存（银行/发票等）；录入中额外可提交 -->
+              <!-- 编辑模式：始终可保存（银行/发票等）；录入中/已驳回可提交 -->
               <template v-if="isEdit">
                 <Button :loading="submitting" @click="handleSave">
                   {{ t('save') }}
                 </Button>
                 <Button
-                  v-if="isEntering"
+                  v-if="canSubmit"
                   type="primary"
                   :loading="submitting"
                   @click="handleSubmitApplication"
