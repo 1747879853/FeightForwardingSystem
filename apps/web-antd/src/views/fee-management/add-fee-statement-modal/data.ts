@@ -355,6 +355,7 @@ export function buildDynamicCurrencyColumns(currencies: CurrencyInfo[]) {
   const columns: Array<{
     field: string;
     dataIndex?: string;
+    key?: string;
     title: string;
     width: number;
     align: 'left' | 'center' | 'right';
@@ -363,29 +364,33 @@ export function buildDynamicCurrencyColumns(currencies: CurrencyInfo[]) {
     columns.push({
       field: `currency_${c.currencyId}_receive`,
       dataIndex: `currency_${c.currencyId}_receive`,
+      key: `currency_${c.currencyId}_receive`,
       title: `${c.currencyName}应收`,
-      width: 120,
+      width: 80,
       align: 'right',
     });
     columns.push({
       field: `currency_${c.currencyId}_pay`,
       dataIndex: `currency_${c.currencyId}_pay`,
+      key: `currency_${c.currencyId}_pay`,
       title: `${c.currencyName}应付`,
-      width: 120,
+      width: 80,
       align: 'right',
     });
     columns.push({
       field: `currency_${c.currencyId}_un_receive`,
       dataIndex: `currency_${c.currencyId}_un_receive`,
+      key: `currency_${c.currencyId}_un_receive`,
       title: `${c.currencyName}未收`,
-      width: 120,
+      width: 80,
       align: 'right',
     });
     columns.push({
       field: `currency_${c.currencyId}_un_pay`,
       dataIndex: `currency_${c.currencyId}_un_pay`,
+      key: `currency_${c.currencyId}_un_pay`,
       title: `${c.currencyName}未付`,
-      width: 120,
+      width: 80,
       align: 'right',
     });
   }
@@ -398,10 +403,19 @@ export function calcCurrencySummary(
   currencyId: number,
   paySide: number,
 ): number {
-  console.log('calcCurrencySummary', orderFees, currencyId, paySide);
   return orderFees
     .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
-    .reduce((sum, f) => sum + (f.unSettledAmount ?? 0), 0);
+    .reduce((sum, f) => sum + (f.amount ?? 0), 0);
+}
+
+export function calcCurrencyUnSummary(
+  orderFees: OrderFeeAdminApi.OrderFeeDto[],
+  currencyId: number,
+  paySide: number,
+): number {
+  return orderFees
+    .filter((f) => f.currencyId === currencyId && f.paySide === paySide)
+    .reduce((sum, f) => sum + (f.amount - f.settledAmount), 0);
 }
 
 /** 将订单数据转为表格行（含动态币别字段） */
@@ -437,7 +451,19 @@ export function buildOrderRow(
       c.currencyId,
       0,
     );
+    row[`currency_${c.currencyId}_un_receive`] = calcCurrencyUnSummary(
+      order.orderFees ?? [],
+      c.currencyId,
+      0,
+    );
+
     row[`currency_${c.currencyId}_pay`] = calcCurrencySummary(
+      order.orderFees ?? [],
+      c.currencyId,
+      1,
+    );
+
+    row[`currency_${c.currencyId}_un_pay`] = calcCurrencyUnSummary(
       order.orderFees ?? [],
       c.currencyId,
       1,

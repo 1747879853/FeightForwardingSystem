@@ -93,7 +93,11 @@ function columnWidth(width?: number | string) {
  * 展开列才能保持 32px（否则会按比例被撑开）。
  */
 function outerColStyle(column: Column, index: number) {
-  if (index === props.columns.length - 1) return undefined;
+  // 修复：即使是最有一列，也应当给予明确宽度，防止在宽表（多币种）滚动时渲染丢失
+  // 如果希望最后一列自适应，可以保留 undefined，但建议给一个最小宽度
+  if (index === props.columns.length - 1) {
+    return { width: columnWidth(column.width || 120) };
+  }
   return { width: columnWidth(column.width) };
 }
 
