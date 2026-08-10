@@ -236,14 +236,23 @@ export function useOrderFixedColumns() {
     {
       field: 'commissionNum',
       title: '委托编号',
-      width: 180,
+      width: 110,
+      ellipsis: true,
+    },
+    {
+      field: 'mblNum',
+      title: '主提单号',
+      width: 140,
       ellipsis: true,
     },
     {
       field: 'client.name',
       title: '委托单位',
-      width: 200,
+      width: 140,
       ellipsis: true,
+      customRender: ({ record }: any) => {
+        return record.client?.name || '-';
+      },
     },
     {
       field: 'bizType',
@@ -263,13 +272,13 @@ export function useOrderFixedColumns() {
     },
     {
       field: 'operationUserNames',
-      title: '操作人员',
+      title: '操作',
       width: 120,
       ellipsis: true,
     },
     {
       field: 'saleUserNames',
-      title: '销售人员',
+      title: '销售',
       width: 120,
       ellipsis: true,
     },
@@ -284,12 +293,20 @@ export function useOrderFixedColumns() {
       title: '起运港',
       width: 140,
       ellipsis: true,
+      customRender: ({ record }: any) => {
+        // 优先从 seaExport.pol.portName 获取，其次从 polName 获取
+        return record.seaExport?.pol?.portName || record.polName || '-';
+      },
     },
     {
       field: 'podName',
       title: '目的港',
       width: 140,
       ellipsis: true,
+      customRender: ({ record }: any) => {
+        // 优先从 seaExport.pod.portName 获取，其次从 podName 获取
+        return record.seaExport?.pod?.portName || record.podName || '-';
+      },
     },
   ];
 }

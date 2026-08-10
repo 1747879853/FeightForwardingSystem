@@ -333,6 +333,7 @@ async function fetchData(formValues?: Record<string, any>) {
     tableRows.value = orderList.value.map((order) =>
       buildOrderRow(order, currencies.value),
     );
+    console.log('Fetched order fee group data:', tableRows.value);
     expandedRowKeys.value = [];
   } finally {
     loading.value = false;
@@ -485,8 +486,8 @@ function getSelectedFees(): SelectedFeeItem[] {
           clientName: order?.client?.name,
           accountDate: order?.accountDate,
           etd: order?.etd,
-          // polName: order?.polName,
-          // podName: order?.podName,
+          polName: order?.seaExport?.pol?.portName || order?.polName,
+          podName: order?.seaExport?.pod?.portName || order?.podName,
           saleUserNames,
           operationUserNames,
           customerServiceUserNames,
@@ -680,6 +681,9 @@ defineExpose({ open: openDrawer });
             v-else-if="column.field && column.field.startsWith('currency_')"
           >
             {{ formatAmount(record[column.field]) }}
+          </template>
+            <template v-else-if="column.field === 'client.name'">
+            {{ record.client?.name || '-' }}
           </template>
           <template v-else-if="column.field === 'accountDate'">
             {{ formatMonth(record.accountDate) }}

@@ -543,7 +543,7 @@
       "exchangeRate": "汇率",
       "appliedAmount": "本次申请金额",
       "commissionNum": "委托编号",
-      "mblNum": "票据编号",
+      "mblNum": "主提单号",
       "accountDate": "会计日期",
       "etd": "开船日期",
       "polName": "起运港",

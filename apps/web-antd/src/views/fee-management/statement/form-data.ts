@@ -214,13 +214,13 @@ export function useOrderGroupColumns() {
       width: 120,
     },
     {
-      title: '销售',
+      title: '销售', // 使用国际化的"销售"
       dataIndex: 'saleUserNames',
       key: 'saleUserNames',
       width: 80,
     },
     {
-      title: '操作',
+      title: '操作', // 使用国际化的"操作"
       dataIndex: 'operationUserNames',
       key: 'operationUserNames',
       width: 80,

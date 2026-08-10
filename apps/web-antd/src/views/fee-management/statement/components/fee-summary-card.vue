@@ -60,9 +60,9 @@ const currencySummaries = computed<CurrencySummaryCard[]>(() => {
   // 计算合计
   return Array.from(map.values()).map((summary) => ({
     ...summary,
-    totalAmount: summary.receivableAmount + summary.payAmount,
+    totalAmount: summary.receivableAmount - summary.payAmount,
     unsettledTotal:
-      summary.receivableUnSettledAmount + summary.payUnSettledAmount,
+      summary.receivableUnSettledAmount - summary.payUnSettledAmount,
   }));
 });
 
