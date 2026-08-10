@@ -2,7 +2,7 @@
 title: 银行流水编辑
 module: 结算管理
 author: Cursor Agent
-last_updated: 2026-07-25
+last_updated: 2026-08-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -15,7 +15,7 @@ last_updated: 2026-07-25
 - **编辑银行流水：** 顶部展示流水号、核销状态、创建人、付款方，以及流水金额、已核销和剩余可核销；左侧维护流水信息，右侧只展示关联核销单。
 - **流水状态锁定：** 仅 `PendingWriteOff`（待核销）状态且具备 `Admin.BankStatement.Edit` 权限时允许修改流水信息和可核销操作人；部分核销、核销完成状态隐藏保存并禁用字段。
 - **关联收费核销（含发票结算）：** 列表展示核销单核心信息且不设操作列；双击行后，按 `type` 在抽屉打开费用核销或发票核销表单。
-- **可核销操作人：** Tag 展示额外指定的核销人，Popover 内增删人员与备注；流水创建财务仍可核销，最终操作授权由后端校验。
+- **可核销操作人：** Tag 展示额外指定的核销人，Popover 内增删人员与备注；流水创建财务仍可核销，最终操作授权由后端校验。新建/更换付款方时，自动带出该客户在客户管理绑定的「操作」干系人（可再手工增删）；编辑回填已保存流水时不覆盖。
 - **抽屉新增核销：** 从「关联核销单」区域的新建按钮打开宽抽屉，可切换按费用或按开票申请核销；创建成功关闭抽屉并刷新金额汇总与关联核销单。
 - **抽屉编辑核销：** 复用收费核销独立表单的嵌入模式，支持保存、锁定、解锁、删除及明细维护；原独立路由继续保留。
 
@@ -33,9 +33,9 @@ last_updated: 2026-07-25
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **可核销操作人** | 指定除流水创建人外可执行核销的人员。 | **银行流水**<br/>`DetailAsync`、`EditAsync`<br/>**用户**<br/>`GetUserAsync` | 按 `operationId` 异步解析并优先展示 `nickName`，接口异常时回退到流水详情名称。 | 仅待核销状态可维护；最终授权由后端校验。 |
+| **可核销操作人** | 指定除流水创建人外可执行核销的人员。 | **银行流水**<br/>`DetailAsync`、`EditAsync`<br/>**用户**<br/>`GetUserAsync`<br/>**客户干系人**<br/>`GetDishonestStakeholdersAsync.operations` | 按 `operationId` 异步解析昵称；用户选择/更换付款方时按客户绑定「操作」默认填充（可再改）；详情回填不覆盖。 | 仅待核销状态可维护；最终授权由后端校验。 |
 | **核销状态** | 流水与收费结算金额匹配程度。 | **银行流水**<br/>`DetailAsync.writeOffStatus` | 编辑页流水号旁 Tag 只读展示。 | 只读。 |
-| **付款方** | 流水对应的结算对象（客户）。 | **银行流水**<br/>`DetailAsync` → `settlement`（`id`/`name`/`fullName`/`address`） | 变更付款方时清空对方银行；编辑回显用详情 `settlement` 构造 `ClientSelect` 的 `selected-items`；顶部摘要与底部选费区的付款方均取 `settlement?.name` 快照。 | 必填；对象可能为 `null`，展示需兜底。 |
+| **付款方** | 流水对应的结算对象（客户）。 | **银行流水**<br/>`DetailAsync` → `settlement`（`id`/`name`/`fullName`/`address`） | 变更付款方时清空对方银行，并默认带出客户绑定操作人；编辑回显用详情 `settlement` 构造 `ClientSelect` 的 `selected-items`。 | 必填；对象可能为 `null`，展示需兜底。 |
 | **关联收费结算** | 基于本流水创建的收费核销单。 | **银行流水**<br/>`GetReceiveSettlementPagedListAsync` | 双击按 `type` 打开对应编辑抽屉；抽屉内保存、增删明细、锁定、解锁或删除后刷新外层汇总与列表。 | 主界面只读。 |
 | **剩余可核销** | 流水金额减已核销净额。 | **银行流水详情 + 关联核销列表** | 核销抽屉发生变更后重新加载。 | 新建核销合计不能超过剩余可核销金额。 |
 
@@ -51,6 +51,7 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-10 | `Fix` | 选择/更换付款方后，可核销操作人默认带出客户管理绑定的「操作」干系人；编辑回填不覆盖已保存操作人。 | `GetDishonestStakeholdersAsync` + `buildOperatorRowsFromClientOperations`；`pageLoading` 与序号防串。详见 `changelogs/change-log-2026-08-10-bank-statement-default-operators-from-client.md`。 |
 | 2026-08-09 | `Refactor` | 关联收费核销明细展开时，嵌套 `orderFee` 的费用名称/币别/结算对象改读对象路径。 | `bank-statement/utils.ts` 的 `mapReceiveSettlementDetailItem` / `mapReceiveSettlementInvoiceDetailItem` 改读 `orderFee?.feeCode?.cnName` 等；选费面板仍用 `ReceiveSettlementFeeDto`/`InvoiceAppSettleItemDto` 平铺。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-07-25 | `Refactor` | 付款方改读结算对象对象化后的 `settlement`；编辑进入时下拉直接回显付款方，不再依赖分页命中。 | 详情 `settlementName` 已删除，`applySavedBankStatementSnapshot` 与顶部摘要统一取 `detail.settlement?.name`；`ClientSelect` 补 `selected-items`（通用 Client 接口无 Detail，回显必须外部传入）。 |
 | 2026-07-19 | `Fix` | 金额输入移除遮挡数字的步进箭头；补充信息增加明确的折叠提示；可核销操作人统一显示昵称；移除顶部重复的新建核销入口和关联列表操作列，改为双击行进入抽屉；抽屉修改结算后同步刷新外层数据；开票申请选择区默认仅查询可结算数据，并将查询、重置按钮与条件同行排列。 | 新建核销统一从关联核销单区域进入；操作人名称通过 `GetUserAsync` 解析并缓存昵称；嵌入式结算表单的保存、增删明细、锁定、解锁和删除统一向工作台发送变更事件；开票申请查询固定传 `onlySettleable: true`。 |

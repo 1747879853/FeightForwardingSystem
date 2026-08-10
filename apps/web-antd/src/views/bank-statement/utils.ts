@@ -122,3 +122,37 @@ export async function buildOperatorRows(
     })),
   );
 }
+
+/** 客户干系人「操作」→ 流水可核销操作人行（按 userId 去重，默认干系人靠前） */
+export async function buildOperatorRowsFromClientOperations(
+  operations:
+    | Array<{
+        isDefault?: boolean;
+        userId: number;
+        userNickName?: string;
+      }>
+    | null
+    | undefined,
+  makeRowKey: () => string,
+): Promise<BankStatementOperatorRow[]> {
+  const seen = new Set<number>();
+  const unique: Array<{
+    isDefault?: boolean;
+    userId: number;
+    userNickName?: string;
+  }> = [];
+  for (const item of operations ?? []) {
+    if (item.userId == null || seen.has(item.userId)) continue;
+    seen.add(item.userId);
+    unique.push(item);
+  }
+  unique.sort((a, b) => Number(!!b.isDefault) - Number(!!a.isDefault));
+
+  return Promise.all(
+    unique.map(async (item) => ({
+      _key: makeRowKey(),
+      operationId: item.userId,
+      operationName: await resolveOperatorName(item.userId, item.userNickName),
+    })),
+  );
+}

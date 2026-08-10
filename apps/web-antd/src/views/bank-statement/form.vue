@@ -30,6 +30,7 @@ import {
   ClientBankAccountSelect,
 } from '#/adapter/component';
 import { getMyDefaultOrgId } from '#/composables/use-my-org';
+import { getClientDishonestStakeholders } from '#/api/common/client';
 import {
   BankStatementAdminApi,
   addBankStatement,
@@ -44,7 +45,11 @@ import OperatorTitleBar from './components/operator-title-bar.vue';
 import ReceiveSettlementPanel from './components/receive-settlement-panel.vue';
 import SettlementWorkbenchDrawer from './components/settlement-workbench-drawer.vue';
 import { getBankStatementWriteOffStatusInfo } from './data';
-import { type BankStatementOperatorRow, buildOperatorRows } from './utils';
+import {
+  type BankStatementOperatorRow,
+  buildOperatorRows,
+  buildOperatorRowsFromClientOperations,
+} from './utils';
 
 const perm = createAbpPermission('Admin.BankStatement');
 const receiveSettlementPerm = createAbpPermission('Admin.ReceiveSettlement');
@@ -195,19 +200,39 @@ function applySavedBankStatementSnapshot(
   savedOrgId.value = detail.orgId ?? undefined;
 }
 
+/** 付款方切换时异步带出操作人的序号，避免快速连选串数据 */
+let settlementOperatorSeq = 0;
+
+/**
+ * 按付款方（客户）绑定的「操作」干系人默认填充可核销操作人。
+ * - 编辑回填详情时 pageLoading=true，跳过，避免覆盖已保存操作人
+ * - 用户主动选择/更换付款方时覆盖为该客户当前绑定的操作人员
+ */
+async function applyOperatorsFromSettlement(clientId: string) {
+  const seq = ++settlementOperatorSeq;
+  try {
+    const client = await getClientDishonestStakeholders(String(clientId));
+    if (seq !== settlementOperatorSeq) return;
+    operatorRows.value = await buildOperatorRowsFromClientOperations(
+      client.operations,
+      makeRowKey,
+    );
+  } catch {
+    // 干系人接口失败时保留当前操作人，不打断选付款方
+  }
+}
+
 watch(settlementId, (value, previousValue) => {
-  if (
-    pageLoading.value ||
-    !previousValue ||
-    previousValue === value ||
-    !clientInvoiceBankId.value
-  ) {
-    return;
+  if (pageLoading.value || previousValue === value) return;
+
+  if (previousValue && clientInvoiceBankId.value) {
+    clientInvoiceBankId.value = undefined;
+    counterpartyBankNotice.value = true;
+    message.info('付款方已变更，对方银行已清空，请重新选择');
   }
 
-  clientInvoiceBankId.value = undefined;
-  counterpartyBankNotice.value = true;
-  message.info('付款方已变更，对方银行已清空，请重新选择');
+  if (!canEditStatement.value || !value) return;
+  void applyOperatorsFromSettlement(String(value));
 });
 
 watch(clientInvoiceBankId, (value) => {
