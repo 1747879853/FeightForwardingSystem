@@ -618,7 +618,7 @@ defineExpose({ open: openDrawer });
   <Drawer
     :open="open"
     title="添加费用"
-    :width="1200"
+    :width="1600"
     :destroy-on-close="true"
     placement="right"
     @close="handleCancel"
@@ -730,7 +730,7 @@ defineExpose({ open: openDrawer });
             {{ formatAmount(feeRecord.amount) }}
           </template>
           <template v-else-if="column.key === 'unSettledAmount'">
-            {{ formatAmount(feeRecord.unSettledAmount) }}
+            {{ formatAmount(feeRecord.amount - feeRecord.settledAmount) }}
           </template>
           <template v-else-if="column.key === 'feeStatus'">
             {{ getFeeStatusLabel(feeRecord.feeStatus) }}
