@@ -13,6 +13,8 @@
 
 ## 2026-08
 
+- [2026-08-11 银行流水编辑页基础信息与核销进度左右分栏](./changelogs/change-log-2026-08-11-bank-statement-edit-split-layout.md)
+- [2026-08-11 银行流水新建核销嵌套表改用 NestedDataTable](./changelogs/change-log-2026-08-11-create-settlement-nested-table.md)
 - [2026-08-10 添加开票结算明细抽屉改用 NestedDataTable](./changelogs/change-log-2026-08-10-add-invoice-drawer-nested-table.md)
 - [2026-08-10 收费核销 EditAsync 补传 orgId](./changelogs/change-log-2026-08-10-receive-settlement-edit-orgid.md)
 - [2026-08-10 银行流水按开票申请核销文案改为按发票核销](./changelogs/change-log-2026-08-10-bank-statement-invoice-writeoff-label.md)

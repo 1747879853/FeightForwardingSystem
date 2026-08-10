@@ -14,5 +14,5 @@
 
 ## 避坑指南
 
+- 银行流水页内嵌的「选择开票申请并创建发票结算」面板已同步改用 `NestedDataTable`（见 `change-log-2026-08-11-create-settlement-nested-table.md`）。
 - 已存在于本单的开票明细仍禁用勾选（`selectedItemIds`）。
-- 银行流水页内嵌的「选择开票申请并创建发票结算」面板未同步改版，勿混用预期。

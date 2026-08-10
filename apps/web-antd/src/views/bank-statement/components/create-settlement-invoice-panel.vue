@@ -8,10 +8,10 @@ import dayjs from 'dayjs';
 import {
   Button,
   Card,
+  Checkbox,
   InputNumber,
   message,
   Pagination,
-  Table,
   Tag,
 } from 'ant-design-vue';
 
@@ -20,11 +20,13 @@ import {
   addReceiveSettlementByInvoiceApplication,
   getInvoiceApplicationGroupForSettlement,
 } from '#/api/settlement-management/receive-settlement-admin';
+import { NestedDataTable } from '#/components/nested-data-table';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import {
   buildInvoiceGroupRow,
   invoiceGroupColumns,
+  invoiceItemColumns,
   useAddInvoiceSearchSchema,
 } from '../../settlement-management/receive-settlement/add-invoice-application-drawer/data';
 import {
@@ -78,7 +80,7 @@ const [SearchForm, searchFormApi] = useVbenForm({
   commonConfig: {
     componentProps: { class: 'w-full' },
     labelClass: 'text-xs text-gray-500 !justify-start',
-    labelWidth: 72,
+    labelWidth: 96,
   },
   layout: 'horizontal',
   schema: useBankStatementInvoiceSearchSchema(),
@@ -147,68 +149,17 @@ const remainingSettleAmount = computed(
 
 const isRemainingOverLimit = computed(() => remainingSettleAmount.value < 0);
 
-const itemColumns = [
-  {
-    dataIndex: 'commissionNum',
-    title: '委托编号',
-    width: 140,
-  },
-  {
-    dataIndex: 'mblNum',
-    title: '主提单号',
-    width: 140,
-  },
-  {
-    dataIndex: 'feeCodeName',
-    title: '费用名称',
-    minWidth: 140,
-  },
-  {
-    dataIndex: 'paySide',
-    key: 'paySide',
-    title: '收付',
-    width: 80,
-  },
-  {
-    dataIndex: 'currencyCode',
-    title: '币别',
-    width: 80,
-  },
-  {
-    dataIndex: 'amount',
-    title: '费用总额',
-    width: 110,
-    align: 'right' as const,
-    customRender: ({ text }: { text: number }) => formatAmount(text),
-  },
-  {
-    dataIndex: 'appliedAmount',
-    title: '本单开票额',
-    width: 110,
-    align: 'right' as const,
-    customRender: ({ text }: { text: number }) => formatAmount(text),
-  },
-  {
-    dataIndex: 'invoiceSettleableAmount',
-    title: '发票可结算余额',
-    width: 130,
-    align: 'right' as const,
-    customRender: ({ text }: { text: number }) => formatAmount(text),
-  },
-  {
-    dataIndex: 'settledAmount',
-    key: 'settledAmount',
-    title: '本次结算金额',
-    width: 150,
-  },
-];
-
 function formatBankAmount(value: number | undefined | null) {
   if (value === undefined || value === null) return '-';
   const amountText = formatAmount(value);
   return props.currencyCode
     ? `${amountText} ${props.currencyCode}`
     : amountText;
+}
+
+function formatApplyTime(value?: string) {
+  if (!value) return '-';
+  return dayjs(value).format('YYYY-MM-DD HH:mm');
 }
 
 function resetSelection() {
@@ -311,10 +262,23 @@ async function handlePageChange(page: number, size: number) {
   await fetchData();
 }
 
-function getGroup(applicationId: string) {
-  return groupList.value.find(
-    (group) => group.invoiceApplicationId === applicationId,
-  );
+function isItemChecked(
+  item: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto,
+) {
+  return selectedItemIds.value.includes(item.invoiceApplicationItemId);
+}
+
+function isGroupAllChecked(
+  items: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto[],
+) {
+  return items.length > 0 && items.every((item) => isItemChecked(item));
+}
+
+function isGroupIndeterminate(
+  items: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto[],
+) {
+  const checkedCount = items.filter((item) => isItemChecked(item)).length;
+  return checkedCount > 0 && checkedCount < items.length;
 }
 
 function handleSelectItem(
@@ -339,11 +303,11 @@ function handleSelectItem(
   }
 }
 
-function handleSelectAllItems(
+function handleSelectGroupItems(
   selected: boolean,
-  rows: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto[],
+  items: ReceiveSettlementAdminApi.InvoiceAppSettleItemDto[],
 ) {
-  for (const item of rows) {
+  for (const item of items) {
     handleSelectItem(item, selected);
   }
 }
@@ -491,71 +455,104 @@ defineExpose({ reload });
       </div>
     </div>
 
-    <Table
+    <NestedDataTable
       :columns="invoiceGroupColumns"
       :data-source="tableRows"
       :loading="loading"
-      :pagination="false"
-      :row-key="(record) => record.id"
+      :max-height="480"
+      :inner-columns="invoiceItemColumns"
+      inner-data-key="items"
+      :inner-row-key="(record) => record.invoiceApplicationItemId"
+      row-key="id"
       v-model:expanded-row-keys="expandedRowKeys"
-      size="small"
-      bordered
-      :scroll="{ x: 950 }"
     >
-      <template #expandedRowRender="{ record }">
-        <Table
-          :columns="itemColumns"
-          :data-source="getGroup(record.id)?.items ?? []"
-          :pagination="false"
-          :row-key="(item) => item.invoiceApplicationItemId"
-          :row-selection="{
-            selectedRowKeys: selectedItemIds,
-            onSelect: handleSelectItem,
-            onSelectAll: handleSelectAllItems,
-          }"
-          size="small"
-          bordered
-        >
-          <template #bodyCell="{ column, record: item }">
-            <template v-if="column.dataIndex === 'commissionNum'">
-              {{ item.transportOrder?.commissionNum || '-' }}
-            </template>
-            <template v-else-if="column.dataIndex === 'mblNum'">
-              {{ item.transportOrder?.mblNum || '-' }}
-            </template>
-            <template v-else-if="column.key === 'paySide'">
-              <Tag :color="getPaySideColor(item.paySide)">
-                {{ getPaySideLabel(item.paySide) }}
-              </Tag>
-            </template>
-            <template v-else-if="column.dataIndex === 'currencyCode'">
-              <Tag v-if="item.currencyCode">{{ item.currencyCode }}</Tag>
-              <span v-else>-</span>
-            </template>
-            <template v-else-if="column.key === 'settledAmount'">
-              <InputNumber
-                :value="
-                  settledAmountMap.get(item.invoiceApplicationItemId) ??
-                  item.invoiceSettleableAmount ??
-                  0
-                "
-                :min="0"
-                :max="item.invoiceSettleableAmount"
-                :precision="2"
-                style="width: 130px"
-                @change="
-                  (value) =>
-                    updateSettledAmount(
-                      item as ReceiveSettlementAdminApi.InvoiceAppSettleItemDto,
-                      value,
-                    )
-                "
-              />
-            </template>
-          </template>
-        </Table>
+      <template #outerBodyCell="{ column, record, text }">
+        <template v-if="column.key === 'applyTime'">
+          {{ formatApplyTime(record.applyTime) }}
+        </template>
+        <template v-else-if="column.key === 'currencyCode'">
+          <Tag v-if="record.currencyCode">{{ record.currencyCode }}</Tag>
+          <span v-else>-</span>
+        </template>
+        <template v-else-if="column.key === 'totalSettleableAmount'">
+          {{ formatAmount(record.totalSettleableAmount) }}
+        </template>
+        <template v-else>
+          {{ text || '-' }}
+        </template>
       </template>
-    </Table>
+
+      <template #innerHeaderCell="{ column, parentRecord }">
+        <template v-if="column.key === 'checkbox'">
+          <Checkbox
+            :checked="isGroupAllChecked(parentRecord?.items ?? [])"
+            :indeterminate="isGroupIndeterminate(parentRecord?.items ?? [])"
+            @change="
+              (e) =>
+                handleSelectGroupItems(
+                  e.target.checked,
+                  parentRecord?.items ?? [],
+                )
+            "
+          />
+        </template>
+        <template v-else>{{ column.title }}</template>
+      </template>
+
+      <template #innerBodyCell="{ column, record: item }">
+        <template v-if="column.key === 'checkbox'">
+          <Checkbox
+            :checked="isItemChecked(item)"
+            @change="(e) => handleSelectItem(item, e.target.checked)"
+          />
+        </template>
+        <template v-else-if="column.key === 'commissionNum'">
+          {{ item.transportOrder?.commissionNum || '-' }}
+        </template>
+        <template v-else-if="column.key === 'mblNum'">
+          {{ item.transportOrder?.mblNum || '-' }}
+        </template>
+        <template v-else-if="column.key === 'feeCodeName'">
+          {{ item.feeCode?.cnName || '-' }}
+        </template>
+        <template v-else-if="column.key === 'paySide'">
+          <Tag :color="getPaySideColor(item.paySide)">
+            {{ getPaySideLabel(item.paySide) }}
+          </Tag>
+        </template>
+        <template v-else-if="column.key === 'currencyCode'">
+          <Tag v-if="item.currency?.code">{{ item.currency.code }}</Tag>
+          <span v-else>-</span>
+        </template>
+        <template v-else-if="column.key === 'amount'">
+          {{ formatAmount(item.amount) }}
+        </template>
+        <template v-else-if="column.key === 'appliedAmount'">
+          {{ formatAmount(item.appliedAmount) }}
+        </template>
+        <template v-else-if="column.key === 'invoiceSettleableAmount'">
+          {{ formatAmount(item.invoiceSettleableAmount) }}
+        </template>
+        <template v-else-if="column.key === 'settledAmount'">
+          <InputNumber
+            size="small"
+            :value="
+              settledAmountMap.get(item.invoiceApplicationItemId) ??
+              item.invoiceSettleableAmount ??
+              0
+            "
+            :min="0"
+            :max="item.invoiceSettleableAmount"
+            :precision="2"
+            style="width: 130px"
+            @change="(value) => updateSettledAmount(item, value)"
+          />
+        </template>
+        <template v-else>
+          {{ column.dataIndex ? item[column.dataIndex] : '' }}
+        </template>
+      </template>
+    </NestedDataTable>
 
     <div class="mt-3 flex justify-end">
       <Pagination

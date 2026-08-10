@@ -494,6 +494,7 @@ defineExpose({ open: openDrawer });
             </template>
             <template v-else-if="column.key === 'settledAmount'">
               <InputNumber
+                size="small"
                 :value="
                   settledAmountMap.get(item.invoiceApplicationItemId) ??
                   item.invoiceSettleableAmount ??

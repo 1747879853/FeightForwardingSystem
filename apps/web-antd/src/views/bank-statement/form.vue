@@ -30,6 +30,7 @@ import {
   ClientBankAccountSelect,
 } from '#/adapter/component';
 import { getMyDefaultOrgId } from '#/composables/use-my-org';
+import { formatOrgPathLabel } from '#/composables/use-all-user-org';
 import { getClientDishonestStakeholders } from '#/api/common/client';
 import {
   BankStatementAdminApi,
@@ -107,9 +108,13 @@ const settlementPanelRef = ref<InstanceType<typeof ReceiveSettlementPanel>>();
 const settlementDrawerRef =
   ref<InstanceType<typeof SettlementWorkbenchDrawer>>();
 const settlementSectionRef = ref<HTMLElement>();
-const basicInfoExpanded = ref(true);
 const counterpartyBankNotice = ref(false);
 const savedFormFingerprint = ref('');
+
+/** 锁定态只读文案（来自详情对象） */
+const orgDisplayName = ref('-');
+const orgBankAccountDisplay = ref('-');
+const clientInvoiceBankDisplay = ref('-');
 
 const writeOffStatusInfo = computed(() =>
   getBankStatementWriteOffStatusInfo(writeOffStatus.value),
@@ -188,6 +193,32 @@ function formatMoney(value: number) {
   });
   return savedCurrencyCode.value ? `${text} ${savedCurrencyCode.value}` : text;
 }
+
+function formatPlainAmount(value: number | undefined | null) {
+  if (value === undefined || value === null) return '-';
+  return value.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatBankLabel(
+  bank?:
+    | BankStatementAdminApi.ClientInvoiceBankSimpleDto
+    | BankStatementAdminApi.OrgBankAccountSimpleDto
+    | null,
+) {
+  if (!bank) return '-';
+  const parts = [bank.bankName, bank.bankAccount].filter(Boolean);
+  return parts.join(' ') || bank.accountName || '-';
+}
+
+const settlementDisplayName = computed(
+  () =>
+    savedSettlementName.value || settlementSelectedItems.value[0]?.name || '-',
+);
+
+const currencyDisplayName = computed(() => savedCurrencyCode.value || '-');
 
 function applySavedBankStatementSnapshot(
   detail: BankStatementAdminApi.BankStatementDetailDto,
@@ -285,11 +316,11 @@ async function loadEditData() {
       : [];
     clientInvoiceBankId.value = detail.clientInvoiceBankId;
     writeOffStatus.value = detail.writeOffStatus;
-    basicInfoExpanded.value =
-      detail.writeOffStatus ===
-      BankStatementAdminApi.BankStatementWriteOffStatus.PendingWriteOff;
     settledAmount.value = detail.settledAmount ?? 0;
     creatorUserName.value = detail.creatorUserName || '';
+    orgDisplayName.value = formatOrgPathLabel(detail.orgs) || '-';
+    orgBankAccountDisplay.value = formatBankLabel(detail.orgBankAccount);
+    clientInvoiceBankDisplay.value = formatBankLabel(detail.clientInvoiceBank);
     applySavedBankStatementSnapshot(detail);
 
     operatorRows.value = await buildOperatorRows(
@@ -484,7 +515,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Page content-class="!p-3">
+  <Page auto-content-height content-class="!overflow-hidden !p-3">
     <template #title>
       <div class="page-identity">
         <div class="page-identity__title">
@@ -522,273 +553,265 @@ onUnmounted(() => {
 
     <div
       v-loading="pageLoading"
-      class="bank-statement-page flex flex-col gap-3"
+      class="bank-statement-page"
+      :class="{ 'bank-statement-page--edit': isEdit }"
     >
-      <Card v-if="isEdit" size="small" class="statement-overview-card">
-        <div class="statement-overview">
-          <div class="statement-overview__access">
-            <div class="statement-creator">
-              <IconifyIcon icon="mdi:account-circle-outline" class="size-4" />
-              <span>创建人：{{ creatorUserName || '-' }}</span>
+      <div class="top-panels" :class="{ 'top-panels--split': isEdit }">
+        <Card size="small" class="form-panel-card">
+          <template #title>
+            <div class="form-panel-card__title">
+              <span>流水基础信息</span>
+              <span v-if="isEdit && !canEditStatement" class="locked-state">
+                <IconifyIcon icon="mdi:lock-outline" class="size-4" />
+                已锁定
+              </span>
             </div>
-            <OperatorTitleBar
-              v-model:rows="operatorRows"
-              :disabled="!canEditStatement"
-            />
-          </div>
+          </template>
+          <template v-if="!isEdit" #extra>
+            <OperatorTitleBar v-model:rows="operatorRows" :disabled="false" />
+          </template>
 
-          <div class="statement-overview__metrics">
-            <div class="statement-metric">
-              <span>流水金额</span>
-              <strong>{{ formatMoney(savedAmount) }}</strong>
-            </div>
-            <div class="statement-metric statement-metric--settled">
-              <span>已核销</span>
-              <strong>{{ formatMoney(otherSettledAmount) }}</strong>
-            </div>
-            <div
-              class="statement-metric"
-              :class="{ 'statement-metric--danger': remainingAmount < 0 }"
-            >
-              <span>剩余可核销</span>
-              <strong>{{ formatMoney(remainingAmount) }}</strong>
-            </div>
-          </div>
-        </div>
-
-        <div class="write-off-progress">
-          <div class="write-off-progress__label">
-            <span>核销进度</span>
-            <strong>{{ progressLabel }}</strong>
-          </div>
-          <Progress
-            :percent="progressPercent"
-            :show-info="false"
-            :stroke-color="progressStrokeColor"
-            size="small"
-          />
-        </div>
-
-        <div v-if="isOverSettled" class="statement-risk-notice">
-          <div>
-            <strong>已发生超核销</strong>
-            <span>请先检查或调整已有核销单，暂不建议继续新建核销。</span>
-          </div>
-          <Button
-            type="link"
-            danger
-            size="small"
-            @click="scrollToSettlementList"
-          >
-            查看异常核销单
-          </Button>
-        </div>
-      </Card>
-
-      <Card size="small" class="form-panel-card">
-        <template #title>
-          <div class="form-panel-card__title">
-            <span>流水基础信息</span>
-            <span v-if="isEdit && !canEditStatement" class="locked-state">
-              <IconifyIcon icon="mdi:lock-outline" class="size-4" />
-              已锁定
-            </span>
-          </div>
-        </template>
-        <template #extra>
-          <div class="form-panel-card__extra">
-            <OperatorTitleBar
-              v-if="!isEdit"
-              v-model:rows="operatorRows"
-              :disabled="false"
-            />
-            <Button
-              type="text"
-              size="small"
-              @click="basicInfoExpanded = !basicInfoExpanded"
-            >
-              {{ basicInfoExpanded ? '收起' : '展开' }}
-              <IconifyIcon
-                :icon="
-                  basicInfoExpanded ? 'mdi:chevron-up' : 'mdi:chevron-down'
-                "
-                class="ml-1 size-4"
-              />
-            </Button>
-          </div>
-        </template>
-
-        <div v-show="basicInfoExpanded" class="bank-statement-form">
-          <section class="form-group">
-            <h3>核心到账信息</h3>
+          <div class="bank-statement-form">
             <div class="core-fields-grid">
               <div class="form-field">
                 <div class="form-label">
-                  交易时间 <span class="text-red-500">*</span>
+                  交易时间
+                  <span v-if="canEditStatement" class="text-red-500">*</span>
                 </div>
                 <DatePicker
+                  v-if="canEditStatement"
                   v-model:value="statementTime"
                   :show-time="false"
                   format="YYYY-MM-DD"
-                  :disabled="!canEditStatement"
                   class="w-full"
                 />
+                <span v-else class="form-text">{{ statementDateText }}</span>
               </div>
 
-              <div class="form-field form-field--payer">
+              <div class="form-field">
                 <div class="form-label">
-                  付款方 <span class="text-red-500">*</span>
+                  付款方
+                  <span v-if="canEditStatement" class="text-red-500">*</span>
                 </div>
                 <ClientSelect
+                  v-if="canEditStatement"
                   v-model="settlementId"
                   :selected-items="settlementSelectedItems"
-                  :disabled="!canEditStatement"
                   placeholder="请选择付款方"
                   allow-clear
                   class="w-full"
                 />
+                <span v-else class="form-text">{{
+                  settlementDisplayName
+                }}</span>
               </div>
 
               <div class="form-field">
                 <div class="form-label">
-                  归属组织 <span class="text-red-500">*</span>
+                  归属组织
+                  <span v-if="canEditStatement" class="text-red-500">*</span>
                 </div>
                 <MyOrgSelect
+                  v-if="canEditStatement"
                   v-model="orgId"
-                  :disabled="!canEditStatement"
                   placeholder="请选择归属组织"
                   class="w-full"
                 />
+                <span v-else class="form-text">{{ orgDisplayName }}</span>
               </div>
 
               <div class="form-field">
                 <div class="form-label">
-                  币别 <span class="text-red-500">*</span>
+                  币别
+                  <span v-if="canEditStatement" class="text-red-500">*</span>
                 </div>
                 <CurrencySelect
+                  v-if="canEditStatement"
                   v-model="currencyId"
-                  :disabled="!canEditStatement"
                   placeholder="请选择币别"
                   allow-clear
                   class="w-full"
                 />
+                <span v-else class="form-text">{{ currencyDisplayName }}</span>
               </div>
 
               <div class="form-field form-field--money">
                 <div class="form-label">
-                  总金额 <span class="text-red-500">*</span>
+                  总金额
+                  <span v-if="canEditStatement" class="text-red-500">*</span>
                 </div>
                 <InputNumber
+                  v-if="canEditStatement"
                   v-model:value="amount"
                   :min="0"
                   :precision="2"
                   :controls="false"
-                  :disabled="!canEditStatement"
                   class="money-input w-full"
                   placeholder="请输入金额"
                 />
+                <span v-else class="form-text form-text--money">{{
+                  formatPlainAmount(amount)
+                }}</span>
               </div>
 
               <div class="form-field">
                 <div class="form-label">手续费</div>
                 <InputNumber
+                  v-if="canEditStatement"
                   v-model:value="transactionFee"
                   :min="0"
                   :precision="2"
                   :controls="false"
-                  :disabled="!canEditStatement"
                   class="money-input w-full"
                   placeholder="请输入手续费"
                 />
+                <span v-else class="form-text form-text--money">{{
+                  formatPlainAmount(transactionFee)
+                }}</span>
               </div>
-            </div>
-          </section>
 
-          <section class="form-group form-group--divided">
-            <h3>银行信息</h3>
-            <div class="bank-fields-grid">
               <div class="form-field">
                 <div class="form-label">我司银行</div>
                 <OrgBankAccountSelect
+                  v-if="canEditStatement"
                   :value="orgBankAccountId"
-                  :disabled="!canEditStatement"
                   placeholder="请选择我司银行"
                   allow-clear
                   class="w-full"
                   @update:value="(v) => (orgBankAccountId = v)"
                 />
+                <span v-else class="form-text">{{
+                  orgBankAccountDisplay
+                }}</span>
               </div>
 
               <div class="form-field">
                 <div class="form-label">对方银行</div>
                 <ClientBankAccountSelect
+                  v-if="canEditStatement"
                   :value="clientInvoiceBankId"
                   :client-id="settlementId"
-                  :disabled="!canEditStatement || !settlementId"
+                  :disabled="!settlementId"
                   placeholder="请先选择付款方"
                   allow-clear
                   class="w-full"
                   @update:value="(v) => (clientInvoiceBankId = v)"
                 />
-                <div v-if="counterpartyBankNotice" class="field-notice">
+                <span v-else class="form-text">{{
+                  clientInvoiceBankDisplay
+                }}</span>
+                <div
+                  v-if="canEditStatement && counterpartyBankNotice"
+                  class="field-notice"
+                >
                   付款方已变更，请重新选择对方银行。
                 </div>
               </div>
-            </div>
-          </section>
 
-          <details class="supplementary-details">
-            <summary>
-              <IconifyIcon
-                icon="mdi:chevron-right"
-                class="supplementary-details__chevron size-4"
-              />
-              <span>补充信息</span>
-              <span
-                class="supplementary-details__hint supplementary-details__hint--closed"
-              >
-                展开填写银行摘要、付款方留言和内部备注
-              </span>
-              <span
-                class="supplementary-details__hint supplementary-details__hint--open"
-              >
-                收起
-              </span>
-            </summary>
-            <div class="supplementary-fields-grid">
               <div class="form-field">
                 <div class="form-label">银行交易摘要</div>
                 <Input
+                  v-if="canEditStatement"
                   v-model:value="statementRemark"
-                  :disabled="!canEditStatement"
                   placeholder="银行回单或交易摘要"
                   allow-clear
                 />
+                <span v-else class="form-text">{{
+                  statementRemark || '-'
+                }}</span>
               </div>
 
               <div class="form-field">
                 <div class="form-label">付款方留言</div>
                 <Input
+                  v-if="canEditStatement"
                   v-model:value="messageText"
-                  :disabled="!canEditStatement"
                   placeholder="付款方随交易附带的留言"
                   allow-clear
                 />
+                <span v-else class="form-text">{{ messageText || '-' }}</span>
               </div>
 
-              <div class="form-field">
+              <div class="form-field form-field--span-2">
                 <div class="form-label">内部备注</div>
                 <Input
+                  v-if="canEditStatement"
                   v-model:value="remark"
-                  :disabled="!canEditStatement"
                   placeholder="仅供内部协作查看"
                   allow-clear
                 />
+                <span v-else class="form-text">{{ remark || '-' }}</span>
               </div>
             </div>
-          </details>
-        </div>
-      </Card>
+          </div>
+        </Card>
+
+        <Card v-if="isEdit" size="small" class="statement-overview-card">
+          <template #title>
+            <div class="form-panel-card__title">
+              <span>核销进度</span>
+              <strong class="write-off-progress__percent">{{
+                progressLabel
+              }}</strong>
+            </div>
+          </template>
+
+          <div class="statement-overview">
+            <div class="statement-overview__access">
+              <div class="statement-creator">
+                <IconifyIcon icon="mdi:account-circle-outline" class="size-4" />
+                <span>创建人：{{ creatorUserName || '-' }}</span>
+              </div>
+              <OperatorTitleBar
+                v-model:rows="operatorRows"
+                :disabled="!canEditStatement"
+              />
+            </div>
+
+            <div class="statement-overview__metrics">
+              <div class="statement-metric">
+                <span>流水金额</span>
+                <strong>{{ formatMoney(savedAmount) }}</strong>
+              </div>
+              <div class="statement-metric statement-metric--settled">
+                <span>已核销</span>
+                <strong>{{ formatMoney(otherSettledAmount) }}</strong>
+              </div>
+              <div
+                class="statement-metric"
+                :class="{ 'statement-metric--danger': remainingAmount < 0 }"
+              >
+                <span>剩余可核销</span>
+                <strong>{{ formatMoney(remainingAmount) }}</strong>
+              </div>
+            </div>
+
+            <div class="write-off-progress">
+              <Progress
+                :percent="progressPercent"
+                :show-info="false"
+                :stroke-color="progressStrokeColor"
+                size="small"
+              />
+            </div>
+
+            <div v-if="isOverSettled" class="statement-risk-notice">
+              <div>
+                <strong>已发生超核销</strong>
+                <span>请先检查或调整已有核销单，暂不建议继续新建核销。</span>
+              </div>
+              <Button
+                type="link"
+                danger
+                size="small"
+                @click="scrollToSettlementList"
+              >
+                查看异常核销单
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       <section
         v-if="isEdit"
@@ -848,31 +871,62 @@ onUnmounted(() => {
   color: #748194;
 }
 
+.top-panels {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.top-panels--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.65fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
 .statement-overview-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
   border-color: #e3e8ef;
 
+  :deep(.ant-card-head) {
+    min-height: 36px;
+    padding: 0 14px;
+  }
+
+  :deep(.ant-card-head-title) {
+    padding: 8px 0;
+  }
+
   :deep(.ant-card-body) {
-    padding: 18px 20px 14px;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 10px 14px 12px;
   }
 }
 
 .statement-overview {
-  display: grid;
-  grid-template-columns: minmax(240px, 0.9fr) minmax(500px, 1.8fr);
-  gap: 24px;
-  align-items: center;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .statement-overview__access {
   display: flex;
-  flex-direction: column;
-  gap: 7px;
-  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
 }
 
 .statement-creator {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
   font-size: 12px;
   color: #748194;
@@ -880,24 +934,26 @@ onUnmounted(() => {
 
 .statement-overview__metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(120px, 1fr));
-  gap: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .statement-metric {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 4px 20px;
-  border-left: 1px solid #e3e8ef;
+  gap: 1px;
+  padding: 6px 8px;
+  background: #f7f9fc;
+  border-radius: 6px;
 
   span {
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.2;
     color: #748194;
   }
 
   strong {
-    font-size: 20px;
+    font-size: 14px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     line-height: 1.25;
@@ -910,10 +966,7 @@ onUnmounted(() => {
 }
 
 .statement-metric:last-child {
-  margin-left: 8px;
   background: #fff7e8;
-  border-left: 0;
-  border-radius: 8px;
 
   strong {
     color: #b75b06;
@@ -929,36 +982,23 @@ onUnmounted(() => {
 }
 
 .write-off-progress {
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 16px;
-  align-items: center;
-  padding-top: 14px;
-  margin-top: 14px;
-  border-top: 1px solid #edf0f4;
+  padding-top: 2px;
+  margin-top: auto;
 }
 
-.write-off-progress__label {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
+.write-off-progress__percent {
   font-size: 12px;
-  color: #748194;
-
-  strong {
-    font-variant-numeric: tabular-nums;
-    color: #344153;
-  }
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #344153;
 }
 
 .statement-risk-notice {
   display: flex;
-  gap: 16px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 12px;
-  margin-top: 12px;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  padding: 6px 8px;
   font-size: 12px;
   color: #a61d24;
   background: #fff1f0;
@@ -967,22 +1007,38 @@ onUnmounted(() => {
 
   div {
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  :deep(.ant-btn) {
+    height: auto;
+    padding-inline: 0;
   }
 }
 
 .form-panel-card {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  height: 100%;
   border-color: #e3e8ef;
 
   :deep(.ant-card-head) {
-    min-height: 48px;
-    padding-inline: 20px;
+    min-height: 36px;
+    padding: 0 14px;
+  }
+
+  :deep(.ant-card-head-title),
+  :deep(.ant-card-extra) {
+    padding: 8px 0;
   }
 
   :deep(.ant-card-body) {
-    padding: 18px 20px 20px;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 10px 14px 12px;
   }
 }
 
@@ -995,6 +1051,9 @@ onUnmounted(() => {
 }
 
 .form-panel-card__title {
+  justify-content: space-between;
+  width: 100%;
+  font-size: 14px;
   font-weight: 600;
   color: #202936;
 }
@@ -1005,122 +1064,67 @@ onUnmounted(() => {
   color: #748194;
 }
 
-.form-group h3 {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #465365;
-}
-
-.form-group--divided {
-  padding-top: 18px;
-  margin-top: 18px;
-  border-top: 1px solid #edf0f4;
-}
-
 .core-fields-grid {
   display: grid;
-  grid-template-columns:
-    minmax(150px, 1fr) minmax(280px, 2fr) minmax(120px, 0.75fr)
-    minmax(170px, 1.1fr) minmax(150px, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px 12px;
 }
 
-.bank-fields-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(280px, 1fr));
-  gap: 16px;
+.form-field--span-2 {
+  grid-column: span 2;
 }
 
 .form-label {
-  margin-bottom: 5px;
+  margin-bottom: 2px;
   font-size: 12px;
+  line-height: 1.2;
   color: #667487;
 }
 
+.form-text {
+  display: block;
+  min-height: 32px;
+  font-size: 14px;
+  line-height: 32px;
+  color: #202936;
+  overflow-wrap: anywhere;
+}
+
+.form-text--money {
+  font-variant-numeric: tabular-nums;
+}
+
 .field-notice {
-  margin-top: 4px;
+  margin-top: 2px;
   font-size: 12px;
+  line-height: 1.3;
   color: #d46b08;
 }
 
-.supplementary-details {
-  padding-top: 14px;
-  margin-top: 18px;
-  border-top: 1px solid #edf0f4;
-
-  summary {
-    display: inline-flex;
-    gap: 6px;
-    align-items: center;
-    min-height: 32px;
-    padding: 0 6px;
-    margin-left: -6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #526070;
-    cursor: pointer;
-    list-style: none;
-    border-radius: 6px;
-
-    &::-webkit-details-marker {
-      display: none;
-    }
-
-    &:hover {
-      color: #1677ff;
-      background: #f5f8fc;
-    }
-
-    &:focus-visible {
-      outline: 2px solid #91caff;
-      outline-offset: 2px;
-    }
-  }
-}
-
-.supplementary-details__chevron {
-  flex: none;
-  color: #748194;
-  transition: transform 180ms ease-out;
-}
-
-.supplementary-details[open] .supplementary-details__chevron {
-  transform: rotate(90deg);
-}
-
-.supplementary-details__hint {
-  font-size: 12px;
-  font-weight: 400;
-  color: #8a96a6;
-}
-
-.supplementary-details__hint--open {
-  display: none;
-}
-
-.supplementary-details[open] {
-  .supplementary-details__hint--closed {
-    display: none;
-  }
-
-  .supplementary-details__hint--open {
-    display: inline;
-  }
-}
-
-.supplementary-fields-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(220px, 1fr));
-  gap: 16px;
-  padding-top: 10px;
-}
-
 .bank-statement-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+
   :deep(.ant-picker),
   :deep(.ant-input-number),
-  :deep(.ant-select) {
+  :deep(.ant-select),
+  :deep(.ant-input) {
     width: 100%;
+    height: 32px;
+  }
+
+  :deep(.ant-select-selector),
+  :deep(.ant-picker),
+  :deep(.ant-input-number),
+  :deep(.ant-input) {
+    min-height: 32px;
+  }
+
+  :deep(.ant-input-number-input),
+  :deep(.ant-select-selection-item),
+  :deep(.ant-select-selection-placeholder) {
+    line-height: 30px;
   }
 
   :deep(.money-input input) {
@@ -1129,62 +1133,54 @@ onUnmounted(() => {
   }
 }
 
-.settlement-section {
+.bank-statement-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   min-width: 0;
+}
+
+.bank-statement-page--edit {
+  height: 100%;
+  min-height: 0;
+}
+
+.settlement-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
   scroll-margin-top: 12px;
 }
 
 @media (max-width: 1180px) {
-  .statement-overview {
+  .top-panels--split {
     grid-template-columns: 1fr;
-    gap: 16px;
   }
 
-  .statement-overview__metrics {
-    grid-row: 2;
-    grid-column: 1 / -1;
+  .form-panel-card,
+  .statement-overview-card {
+    height: auto;
   }
 
   .core-fields-grid {
-    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .form-field--payer {
-    grid-column: span 2;
+  .statement-overview__metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 720px) {
-  .statement-overview,
-  .statement-overview__metrics,
   .core-fields-grid,
-  .bank-fields-grid,
-  .supplementary-fields-grid {
-    grid-template-columns: 1fr;
-  }
-
   .statement-overview__metrics {
-    grid-row: auto;
-    grid-column: auto;
-  }
-
-  .statement-metric,
-  .statement-metric:last-child {
-    padding: 10px 0;
-    margin-left: 0;
-    background: transparent;
-    border-bottom: 1px solid #edf0f4;
-    border-left: 0;
-    border-radius: 0;
-  }
-
-  .form-field--payer {
-    grid-column: auto;
-  }
-
-  .write-off-progress {
     grid-template-columns: 1fr;
-    gap: 6px;
+  }
+
+  .form-field--span-2 {
+    grid-column: auto;
   }
 }
 </style>

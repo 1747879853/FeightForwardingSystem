@@ -8,10 +8,10 @@ import dayjs from 'dayjs';
 import {
   Button,
   Card,
+  Checkbox,
   InputNumber,
   message,
   Pagination,
-  Table,
   Tag,
 } from 'ant-design-vue';
 
@@ -20,10 +20,12 @@ import {
   addReceiveSettlement,
   getOrderFeeGroupForReceiveSettlement,
 } from '#/api/settlement-management/receive-settlement-admin';
+import { NestedDataTable } from '#/components/nested-data-table';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import {
   buildOrderRow,
+  feeItemColumns,
   orderColumns,
   type SelectedReceiveFee,
   useAddFeeSearchSchema,
@@ -104,44 +106,6 @@ const remainingSettleAmount = computed(
 );
 
 const isRemainingOverLimit = computed(() => remainingSettleAmount.value < 0);
-
-const feeColumns = [
-  {
-    dataIndex: 'feeCodeName',
-    title: '费用名称',
-    minWidth: 160,
-  },
-  {
-    dataIndex: 'currencyCode',
-    title: '币别',
-    width: 90,
-  },
-  {
-    dataIndex: 'amount',
-    title: '费用总额',
-    width: 120,
-    align: 'right' as const,
-    customRender: ({ text }: { text: number }) => formatAmount(text),
-  },
-  {
-    dataIndex: 'remainingAmount',
-    title: '剩余额度',
-    width: 120,
-    align: 'right' as const,
-    customRender: ({ text }: { text: number }) => formatAmount(text),
-  },
-  {
-    dataIndex: 'settlementName',
-    title: '结算对象',
-    minWidth: 140,
-  },
-  {
-    dataIndex: 'settledAmount',
-    key: 'settledAmount',
-    title: '本次结算金额',
-    width: 160,
-  },
-];
 
 function formatBankAmount(value: number | undefined | null) {
   if (value === undefined || value === null) return '-';
@@ -242,8 +206,21 @@ async function handlePageChange(page: number, size: number) {
   await fetchData();
 }
 
-function getGroup(orderId: string) {
-  return orderList.value.find((group) => group.transportOrder.id === orderId);
+function isFeeChecked(fee: ReceiveSettlementAdminApi.ReceiveSettlementFeeDto) {
+  return selectedFeeIds.value.includes(fee.id);
+}
+
+function isGroupAllChecked(
+  fees: ReceiveSettlementAdminApi.ReceiveSettlementFeeDto[],
+) {
+  return fees.length > 0 && fees.every((fee) => isFeeChecked(fee));
+}
+
+function isGroupIndeterminate(
+  fees: ReceiveSettlementAdminApi.ReceiveSettlementFeeDto[],
+) {
+  const checkedCount = fees.filter((fee) => isFeeChecked(fee)).length;
+  return checkedCount > 0 && checkedCount < fees.length;
 }
 
 function handleSelectFee(
@@ -261,11 +238,11 @@ function handleSelectFee(
   }
 }
 
-function handleSelectAllFees(
+function handleSelectGroupFees(
   selected: boolean,
-  rows: ReceiveSettlementAdminApi.ReceiveSettlementFeeDto[],
+  fees: ReceiveSettlementAdminApi.ReceiveSettlementFeeDto[],
 ) {
-  for (const fee of rows) {
+  for (const fee of fees) {
     handleSelectFee(fee, selected);
   }
 }
@@ -426,58 +403,82 @@ defineExpose({ reload });
       </div>
     </div>
 
-    <Table
+    <NestedDataTable
       :columns="orderColumns"
       :data-source="tableRows"
       :loading="loading"
-      :pagination="false"
-      :row-key="(record) => record.id"
+      :max-height="480"
+      :inner-columns="feeItemColumns"
+      inner-data-key="orderFees"
+      :inner-row-key="(record) => record.id"
+      row-key="id"
       v-model:expanded-row-keys="expandedRowKeys"
-      size="small"
-      bordered
-      :scroll="{ x: 900 }"
     >
-      <template #expandedRowRender="{ record }">
-        <Table
-          :columns="feeColumns"
-          :data-source="getGroup(record.id)?.orderFees ?? []"
-          :pagination="false"
-          :row-key="(fee) => fee.id"
-          :row-selection="{
-            selectedRowKeys: selectedFeeIds,
-            onSelect: handleSelectFee,
-            onSelectAll: handleSelectAllFees,
-          }"
-          size="small"
-          bordered
-        >
-          <template #bodyCell="{ column, record: fee }">
-            <template v-if="column.dataIndex === 'currencyCode'">
-              <Tag v-if="fee.currencyCode">{{ fee.currencyCode }}</Tag>
-              <span v-else>-</span>
-            </template>
-            <template v-if="column.key === 'settledAmount'">
-              <InputNumber
-                :value="
-                  settledAmountMap.get(fee.id) ?? fee.remainingAmount ?? 0
-                "
-                :min="0"
-                :max="fee.remainingAmount"
-                :precision="2"
-                style="width: 130px"
-                @change="
-                  (value) =>
-                    updateSettledAmount(
-                      fee as ReceiveSettlementAdminApi.ReceiveSettlementFeeDto,
-                      value,
-                    )
-                "
-              />
-            </template>
-          </template>
-        </Table>
+      <template #outerBodyCell="{ column, record, text }">
+        <template v-if="column.key === 'totalRemainingAmount'">
+          {{ formatAmount(record.totalRemainingAmount) }}
+        </template>
+        <template v-else>
+          {{ text || '-' }}
+        </template>
       </template>
-    </Table>
+
+      <template #innerHeaderCell="{ column, parentRecord }">
+        <template v-if="column.key === 'checkbox'">
+          <Checkbox
+            :checked="isGroupAllChecked(parentRecord?.orderFees ?? [])"
+            :indeterminate="isGroupIndeterminate(parentRecord?.orderFees ?? [])"
+            @change="
+              (e) =>
+                handleSelectGroupFees(
+                  e.target.checked,
+                  parentRecord?.orderFees ?? [],
+                )
+            "
+          />
+        </template>
+        <template v-else>{{ column.title }}</template>
+      </template>
+
+      <template #innerBodyCell="{ column, record: fee }">
+        <template v-if="column.key === 'checkbox'">
+          <Checkbox
+            :checked="isFeeChecked(fee)"
+            @change="(e) => handleSelectFee(fee, e.target.checked)"
+          />
+        </template>
+        <template v-else-if="column.key === 'feeCodeName'">
+          {{ fee.feeCode?.cnName || '-' }}
+        </template>
+        <template v-else-if="column.key === 'currencyCode'">
+          <Tag v-if="fee.currency?.code">{{ fee.currency.code }}</Tag>
+          <span v-else>-</span>
+        </template>
+        <template v-else-if="column.key === 'amount'">
+          {{ formatAmount(fee.amount) }}
+        </template>
+        <template v-else-if="column.key === 'remainingAmount'">
+          {{ formatAmount(fee.remainingAmount) }}
+        </template>
+        <template v-else-if="column.key === 'settlementName'">
+          {{ fee.settlement?.name || '-' }}
+        </template>
+        <template v-else-if="column.key === 'settledAmount'">
+          <InputNumber
+            size="small"
+            :value="settledAmountMap.get(fee.id) ?? fee.remainingAmount ?? 0"
+            :min="0"
+            :max="fee.remainingAmount"
+            :precision="2"
+            style="width: 130px"
+            @change="(value) => updateSettledAmount(fee, value)"
+          />
+        </template>
+        <template v-else>
+          {{ column.dataIndex ? fee[column.dataIndex] : '' }}
+        </template>
+      </template>
+    </NestedDataTable>
 
     <div class="mt-3 flex justify-end">
       <Pagination

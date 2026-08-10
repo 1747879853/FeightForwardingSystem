@@ -95,41 +95,101 @@ export function buildOrderRow(group: OrderGroup) {
       (sum, fee) => sum + (fee.remainingAmount || 0),
       0,
     ),
+    /** NestedDataTable 内层数据 */
+    orderFees: group.orderFees ?? [],
   };
 }
 
+/** NestedDataTable 外层列（业务） */
 export const orderColumns = [
   {
     dataIndex: 'commissionNum',
+    key: 'commissionNum',
     title: '委托编号',
     width: 160,
   },
   {
     dataIndex: 'mblNum',
+    key: 'mblNum',
     title: '主提单号',
     width: 160,
   },
   {
     dataIndex: 'bookingNum',
+    key: 'bookingNum',
     title: '订舱号',
     width: 150,
   },
   {
     dataIndex: 'clientName',
+    key: 'clientName',
     title: '客户',
-    minWidth: 160,
+    width: 160,
   },
   {
     dataIndex: 'feeCount',
+    key: 'feeCount',
     title: '费用数',
     width: 90,
     align: 'right' as const,
   },
   {
     dataIndex: 'totalRemainingAmount',
+    key: 'totalRemainingAmount',
     title: '剩余额度合计',
     width: 140,
     align: 'right' as const,
+    /** Ant Table 用；NestedDataTable 走 outerBodyCell */
     customRender: ({ text }: { text: number }) => formatAmount(text),
   },
 ];
+
+/** NestedDataTable 内层列（费用明细） */
+export const feeItemColumns = [
+  {
+    key: 'checkbox',
+    title: '',
+    width: 48,
+    align: 'center' as const,
+  },
+  {
+    dataIndex: 'feeCodeName',
+    key: 'feeCodeName',
+    title: '费用名称',
+    width: 160,
+  },
+  {
+    dataIndex: 'currencyCode',
+    key: 'currencyCode',
+    title: '币别',
+    width: 90,
+  },
+  {
+    dataIndex: 'amount',
+    key: 'amount',
+    title: '费用总额',
+    width: 120,
+    align: 'right' as const,
+  },
+  {
+    dataIndex: 'remainingAmount',
+    key: 'remainingAmount',
+    title: '剩余额度',
+    width: 120,
+    align: 'right' as const,
+  },
+  {
+    dataIndex: 'settlementName',
+    key: 'settlementName',
+    title: '结算对象',
+    width: 140,
+  },
+  {
+    dataIndex: 'settledAmount',
+    key: 'settledAmount',
+    title: '本次结算金额',
+    width: 160,
+  },
+];
+
+export { formatAmount };

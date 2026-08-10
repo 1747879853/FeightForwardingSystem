@@ -536,6 +536,15 @@ watch(
   background: #fff;
 }
 
+/* 内层行高紧凑，small 输入框对齐 32px 单元格 */
+.nested-data-table__inner :deep(.ant-input-number-sm) {
+  height: 24px;
+}
+
+.nested-data-table__inner :deep(.ant-input-number-sm input) {
+  height: 22px;
+}
+
 .nested-data-table__inner tbody tr:last-child td {
   border-bottom: 1px solid var(--table-border);
 }

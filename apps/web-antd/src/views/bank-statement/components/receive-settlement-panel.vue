@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { BankStatementAdminApi } from '#/api/settlement-management/bank-statement-admin';
 
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 
@@ -48,6 +48,8 @@ const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(10);
 const settlementNoFilter = ref('');
+const tableBodyHeight = ref(240);
+const tableWrapRef = ref<HTMLElement>();
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 const isFiltering = computed(() => Boolean(settlementNoFilter.value.trim()));
@@ -62,6 +64,10 @@ const tablePagination = computed(() => {
     onChange: handlePageChange,
   };
 });
+const tableScroll = computed(() => ({
+  x: 1150,
+  y: Math.max(tableBodyHeight.value, 120),
+}));
 
 const columns = [
   {
@@ -127,6 +133,21 @@ function formatSettlementAmount(value: number | undefined | null) {
     : amountText;
 }
 
+function updateTableBodyHeight() {
+  const wrap = tableWrapRef.value;
+  if (!wrap) return;
+  const header = wrap.querySelector('.ant-table-thead') as HTMLElement | null;
+  const pagination = wrap.querySelector(
+    '.ant-table-pagination',
+  ) as HTMLElement | null;
+  const headerHeight = header?.offsetHeight ?? 39;
+  const paginationHeight = pagination ? pagination.offsetHeight + 16 : 0;
+  tableBodyHeight.value = Math.max(
+    wrap.clientHeight - headerHeight - paginationHeight,
+    120,
+  );
+}
+
 async function loadReceiveSettlements() {
   if (!props.bankStatementId) return;
   loading.value = true;
@@ -141,6 +162,8 @@ async function loadReceiveSettlements() {
     total.value = result.totalCount ?? 0;
   } finally {
     loading.value = false;
+    await nextTick();
+    updateTableBodyHeight();
   }
 }
 
@@ -177,7 +200,22 @@ watch(settlementNoFilter, () => {
   searchTimer = setTimeout(handleSearch, 300);
 });
 
-onMounted(loadReceiveSettlements);
+onMounted(() => {
+  loadReceiveSettlements();
+});
+
+watch(
+  tableWrapRef,
+  (el, _prev, onCleanup) => {
+    if (!el) return;
+    const observer = new ResizeObserver(() => updateTableBodyHeight());
+    observer.observe(el);
+    nextTick(updateTableBodyHeight);
+    onCleanup(() => observer.disconnect());
+  },
+  { flush: 'post' },
+);
+
 onUnmounted(() => {
   if (searchTimer) clearTimeout(searchTimer);
 });
@@ -263,70 +301,84 @@ defineExpose({
       </div>
     </div>
 
-    <Table
-      v-else
-      :columns="columns"
-      :data-source="settlementList"
-      :loading="loading"
-      :pagination="tablePagination"
-      :custom-row="
-        (record) => ({
-          onDblclick: () => openSettlement(record),
-          title: '双击查看或编辑核销单',
-        })
-      "
-      row-key="id"
-      size="small"
-      :scroll="{ x: 1150 }"
-      class="settlement-table"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'type'">
-          <Tag :color="getReceiveSettlementTypeColor(record.type)">
-            {{ getReceiveSettlementTypeLabel(record.type) }}
-          </Tag>
+    <div v-else ref="tableWrapRef" class="settlement-table-wrap">
+      <Table
+        :columns="columns"
+        :data-source="settlementList"
+        :loading="loading"
+        :pagination="tablePagination"
+        :custom-row="
+          (record) => ({
+            onDblclick: () => openSettlement(record),
+            title: '双击查看或编辑核销单',
+          })
+        "
+        row-key="id"
+        size="small"
+        :scroll="tableScroll"
+        class="settlement-table"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'type'">
+            <Tag :color="getReceiveSettlementTypeColor(record.type)">
+              {{ getReceiveSettlementTypeLabel(record.type) }}
+            </Tag>
+          </template>
+          <template v-else-if="column.key === 'status'">
+            <Tag :color="getReceiveSettlementStatusColor(record.status)">
+              {{ getReceiveSettlementStatusLabel(record.status) }}
+            </Tag>
+          </template>
+          <template v-else-if="column.key === 'settlementNo'">
+            <Tooltip
+              :title="`双击查看或编辑核销单 ${record.settlementNo || ''}`"
+            >
+              <span class="settlement-no">{{
+                record.settlementNo || '-'
+              }}</span>
+            </Tooltip>
+          </template>
+          <template v-else-if="column.key === 'totalSettledAmount'">
+            <span class="settlement-amount">
+              {{ formatSettlementAmount(record.totalSettledAmount) }}
+            </span>
+          </template>
+          <template v-else-if="column.key === 'itemCount'">
+            {{ record.itemCount ?? 0 }} 条
+          </template>
+          <template v-else-if="column.key === 'remark'">
+            <Tooltip v-if="record.remark" :title="record.remark">
+              <span class="ellipsis-cell">{{ record.remark }}</span>
+            </Tooltip>
+            <span v-else>-</span>
+          </template>
         </template>
-        <template v-else-if="column.key === 'status'">
-          <Tag :color="getReceiveSettlementStatusColor(record.status)">
-            {{ getReceiveSettlementStatusLabel(record.status) }}
-          </Tag>
-        </template>
-        <template v-else-if="column.key === 'settlementNo'">
-          <Tooltip :title="`双击查看或编辑核销单 ${record.settlementNo || ''}`">
-            <span class="settlement-no">{{ record.settlementNo || '-' }}</span>
-          </Tooltip>
-        </template>
-        <template v-else-if="column.key === 'totalSettledAmount'">
-          <span class="settlement-amount">
-            {{ formatSettlementAmount(record.totalSettledAmount) }}
-          </span>
-        </template>
-        <template v-else-if="column.key === 'itemCount'">
-          {{ record.itemCount ?? 0 }} 条
-        </template>
-        <template v-else-if="column.key === 'remark'">
-          <Tooltip v-if="record.remark" :title="record.remark">
-            <span class="ellipsis-cell">{{ record.remark }}</span>
-          </Tooltip>
-          <span v-else>-</span>
-        </template>
-      </template>
-    </Table>
+      </Table>
+    </div>
   </Card>
 </template>
 
 <style scoped lang="scss">
 .settlement-card {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  height: 100%;
+  min-height: 0;
   border-color: #e3e8ef;
 
   :deep(.ant-card-head) {
-    min-height: 56px;
-    padding-inline: 20px;
+    flex: none;
+    min-height: 48px;
+    padding-inline: 16px;
     background: #fbfcfe;
   }
 
   :deep(.ant-card-body) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
     padding: 0;
   }
 }
@@ -365,11 +417,12 @@ defineExpose({
 
 .settlement-empty {
   display: flex;
+  flex: 1;
   gap: 16px;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  min-height: 220px;
-  padding: 52px 24px;
+  min-height: 160px;
+  padding: 32px 24px;
   color: #5d6b7c;
 }
 
@@ -410,6 +463,12 @@ defineExpose({
   margin-top: 14px;
 }
 
+.settlement-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .settlement-table {
   :deep(.ant-table-thead > tr > th) {
     color: #667487;
@@ -421,7 +480,7 @@ defineExpose({
   }
 
   :deep(.ant-table-pagination) {
-    margin-inline: 20px;
+    margin: 8px 16px;
   }
 }
 
