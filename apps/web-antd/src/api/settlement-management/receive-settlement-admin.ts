@@ -85,6 +85,8 @@ export namespace ReceiveSettlementAdminApi {
 
   export interface ReceiveSettlementEditDto {
     id: string;
+    /** 归属组织id */
+    orgId: number;
     settlementTime: string;
     remark?: string;
   }

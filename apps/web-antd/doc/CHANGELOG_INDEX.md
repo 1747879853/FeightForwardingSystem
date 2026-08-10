@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-10 收费核销 EditAsync 补传 orgId](./changelogs/change-log-2026-08-10-receive-settlement-edit-orgid.md)
 - [2026-08-10 银行流水按开票申请核销文案改为按发票核销](./changelogs/change-log-2026-08-10-bank-statement-invoice-writeoff-label.md)
 - [2026-08-10 海运出口业务来源展示消除布局抖动](./changelogs/change-log-2026-08-10-sea-export-code-source-layout-jitter.md)
 - [2026-08-10 海运出口必填校验 toast 点名缺项](./changelogs/change-log-2026-08-10-sea-export-required-field-toast.md)

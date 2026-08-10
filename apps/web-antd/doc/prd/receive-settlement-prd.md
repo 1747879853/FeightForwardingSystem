@@ -149,7 +149,7 @@ reference: apps/web-antd/doc/modules/settlement-management/receive-settlement.md
 | 结算状态 / 锁定 | —           | Tag  | Tag  | 只读展示             |
 | 备注            | 可改        | 可改 | 只读 |                      |
 
-编辑保存主表仅 `EditAsync`：`settlementTime` + `remark`。
+编辑保存主表仅 `EditAsync`：`id` + `orgId` + `settlementTime` + `remark`（`orgId` 只读回传）。
 
 ### 5.3 锁定
 
@@ -301,7 +301,7 @@ flowchart LR
 | `ReceiveSettlementAdmin/DetailAsync` | 详情（含 `type`、两套子表） |
 | `ReceiveSettlementAdmin/AddAsync` | 按费用新建 |
 | `ReceiveSettlementAdmin/AddByInvoiceApplicationAsync` | 按开票新建 |
-| `ReceiveSettlementAdmin/EditAsync` | 改结算时间/备注 |
+| `ReceiveSettlementAdmin/EditAsync` | 改结算时间/备注，并回传 `orgId` |
 | `ReceiveSettlementAdmin/AddItemsAsync` / `DeleteItemsAsync` | 费用明细增删 |
 | `ReceiveSettlementAdmin/AddItemsByInvoiceApplicationAsync` / `DeleteInvoiceItemsAsync` | 开票明细增删 |
 | `ReceiveSettlementAdmin/LockAsync` / `UnLockAsync` / `DeleteAsync` | 锁定/解锁/删单 |

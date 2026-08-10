@@ -585,8 +585,10 @@ function validateForm(): boolean {
     message.warning('请选择银行流水');
     return false;
   }
-  if (!isEdit.value && (!orgId.value || orgId.value <= 0)) {
-    message.warning('请选择归属组织');
+  if (!orgId.value || orgId.value <= 0) {
+    message.warning(
+      isEdit.value ? '归属组织缺失，请刷新后重试' : '请选择归属组织',
+    );
     return false;
   }
   if (!settlementTime.value) {
@@ -641,6 +643,7 @@ async function handleSave() {
     if (isEdit.value && editId.value) {
       await editReceiveSettlement({
         id: editId.value,
+        orgId: orgId.value!,
         settlementTime: settlementTime.value.toISOString(),
         remark: remark.value || undefined,
       });
