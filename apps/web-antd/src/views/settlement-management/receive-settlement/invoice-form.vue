@@ -849,7 +849,7 @@ onMounted(() => {
   <Page :title="pageTitle">
     <template #extra>
       <Space>
-        <Button @click="handleBack">{{ embedded ? '关闭' : '返回' }}</Button>
+        <Button v-if="!embedded" @click="handleBack">返回</Button>
         <Button
           v-if="canSave"
           type="primary"
