@@ -19,6 +19,8 @@ import {
 } from '#/api/sea-export/order-fee-template-admin';
 import { getFeeCodeListAsync } from '#/api/system/base-data/fee-code-admin';
 import { getCurrencyPagedList } from '#/api/system/base-data/currency-admin';
+// ✅ 新增：导入箱型代码API
+import { getCtnCodePagedList } from '#/api/system/base-data/ctn-code-admin';
 import { getClientPagedList } from '#/api/common/client';
 import { $t } from '#/locales';
 import { createAbpPermission } from '#/utils/abp-permission';
@@ -82,6 +84,7 @@ const dropdownData = ref({
     taxRate?: number;
   }>,
   currencyList: [] as Array<{ label: string; value: number }>,
+  ctnCodeList: [] as Array<{ label: string; value: string }>, // ✅ 新增：箱型列表
   clientListByIndustry: {} as Record<
     string,
     Array<{ label: string; value: any }>
@@ -183,6 +186,22 @@ async function loadDropdownData() {
       });
       console.log(
         `✅ [list.vue] 全部客户缓存加载完成，共 ${Object.keys(dropdownData.value.allClientsByIndustry).length} 个行业类别，总计 ${totalClientCount} 个客户`,
+      );
+    }
+
+    // 5. ✅ 新增：加载箱型代码列表（用于单位下拉框）
+    const ctnCodeRes = await getCtnCodePagedList({
+      Status: 0, // 只加载启用的箱型
+      PageIndex: 1,
+      PageSize: 1000,
+    });
+    if (ctnCodeRes?.items) {
+      dropdownData.value.ctnCodeList = ctnCodeRes.items.map((item: any) => ({
+        label: item.ctnName || '',
+        value: item.ctnName || '',
+      }));
+      console.log(
+        `✅ [list.vue] 箱型代码加载完成，共 ${dropdownData.value.ctnCodeList.length} 条`,
       );
     }
 

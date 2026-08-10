@@ -1,6 +1,8 @@
 import { ref } from 'vue';
 import type { OrderFeeTemplateAdminApi } from '#/api/sea-export/order-fee-template-admin';
 import { getClientGroupedByIndustryCategory } from '#/api/common/client';
+// ✅ 新增：导入箱型代码API
+import { getCtnCodePagedList } from '#/api/system/base-data/ctn-code-admin';
 import { message } from 'ant-design-vue';
 
 /**
@@ -21,6 +23,9 @@ export function useDropdownSources() {
   // 币别列表
   const currencyList = ref<Array<{ label: string; value: number }>>([]);
 
+  // ✅ 新增：箱型列表（用于单位下拉框）
+  const ctnCodeList = ref<Array<{ label: string; value: string }>>([]);
+
   // 客户列表（按行业类别分组）
   const clientListByIndustry = ref<
     Record<string, Array<{ label: string; value: number }>>
@@ -30,6 +35,40 @@ export function useDropdownSources() {
   const allClientsByIndustry = ref<
     Record<string, Array<{ label: string; value: any }>>
   >({});
+
+  /**
+   * ✅ 新增：加载所有启用的箱型代码
+   */
+  const loadCtnCodeList = async () => {
+    try {
+      console.log('🔄 [loadCtnCodeList] 开始加载箱型代码列表...');
+
+      // 获取所有启用的箱型代码（Status=0表示启用）
+      const result = await getCtnCodePagedList({
+        Status: 0,
+        PageIndex: 1,
+        PageSize: 1000, // 获取足够多的数据
+      });
+
+      if (!result || !result.items) {
+        console.warn('⚠️ [loadCtnCodeList] 返回数据格式不正确');
+        return;
+      }
+
+      // 转换为下拉框格式，使用ctnName作为显示值和存储值
+      ctnCodeList.value = result.items.map((item) => ({
+        label: item.ctnName || '',
+        value: item.ctnName || '',
+      }));
+
+      console.log(
+        `✅ [loadCtnCodeList] 加载完成，共 ${ctnCodeList.value.length} 个箱型`,
+      );
+    } catch (error) {
+      console.error('❌ [loadCtnCodeList] 加载箱型代码失败:', error);
+      // 不显示错误消息，避免影响用户体验
+    }
+  };
 
   /**
    * ✅ 新增：一次性加载全部客户数据并按行业类别缓存
@@ -168,11 +207,13 @@ export function useDropdownSources() {
   return {
     feeCodeList,
     currencyList,
+    ctnCodeList, // ✅ 新增：导出箱型列表
     clientListByIndustry,
     allClientsByIndustry, // ✅ 新增：导出全量客户缓存
     getSettlementList,
     getFeeCodeDetail,
     loadAllClients, // ✅ 新增：导出一次性加载方法
     loadClientList, // ✅ 新增：导出从缓存获取客户列表的方法
+    loadCtnCodeList, // ✅ 新增：导出加载箱型列表的方法
   };
 }

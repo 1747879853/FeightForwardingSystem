@@ -11,6 +11,7 @@ export function useGoodsDetails(
   formData: Ref<any>,
   invoiceExchangeRate: Ref<number>,
   flattenTreeData: (data: any[]) => any[],
+  feeGroupsData?: Ref<any[]>, // ✅ 新增：费用组数据
 ) {
   /**
    * 项目名称变化
@@ -202,7 +203,8 @@ export function useGoodsDetails(
   }
 
   /**
-   * 将新费用金额合并到现有商品明细
+   * ✅ 修改：将新费用金额合并到现有商品明细
+   * 注意：这个函数现在改为基于所有费用重新计算，而不是累加
    */
   async function mergeAmountToExistingGoods(selectedFees: any[]) {
     if (goodsDetails.value.length !== 1) {
@@ -243,18 +245,23 @@ export function useGoodsDetails(
       return;
     }
 
-    // 计算所有选中费用的总金额（转换为人民币）
+    // ✅ 关键修改：从 formData.invoiceApplicationItems 中获取所有费用，而不是只计算新费用
+    const items = formData.value.invoiceApplicationItems || [];
     let totalRmbAmount = 0;
+    const allFees = flattenTreeData(feeGroupsData.value);
 
-    selectedFees.forEach((fee: any) => {
-      const appliedAmount = fee.appliedAmount || 0;
-      const feeCurrencyId = fee.orderFee.currencyId;
+    items.forEach((item: any) => {
+      const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
+      if (fee) {
+        const appliedAmount = item.appliedAmount || 0;
+        const feeCurrencyId = fee.orderFee.currencyId;
 
-      if (feeCurrencyId !== 1) {
-        const convertedAmount = appliedAmount * (invoiceExchangeRate.value || 1);
-        totalRmbAmount += convertedAmount;
-      } else {
-        totalRmbAmount += appliedAmount;
+        if (feeCurrencyId !== 1) {
+          const convertedAmount = appliedAmount * (invoiceExchangeRate.value || 1);
+          totalRmbAmount += convertedAmount;
+        } else {
+          totalRmbAmount += appliedAmount;
+        }
       }
     });
 
@@ -266,13 +273,19 @@ export function useGoodsDetails(
     }
 
     const taxRate = existingItem.taxRate || defaultCodeInvoice.taxRate || 0;
-    const currentAmount = existingItem.amount || 0;
-    const newAmount = currentAmount + totalRmbAmount;
 
-    existingItem.amount = newAmount;
-    existingItem.unitPrice = newAmount;
-    existingItem.noTaxAmount = newAmount / (1 + taxRate / 100);
-    existingItem.taxAmount = (newAmount / (1 + taxRate / 100)) * (taxRate / 100);
+    // ✅ 关键修改：直接设置总金额，不是累加
+    existingItem.amount = totalRmbAmount;
+    existingItem.unitPrice = totalRmbAmount;
+    existingItem.noTaxAmount = totalRmbAmount / (1 + taxRate / 100);
+    existingItem.taxAmount = (totalRmbAmount / (1 + taxRate / 100)) * (taxRate / 100);
+    
+    console.log('✅ 商品明细金额已重新计算（基于所有费用）:', {
+      totalRmbAmount,
+      taxRate,
+      noTaxAmount: existingItem.noTaxAmount,
+      taxAmount: existingItem.taxAmount,
+    });
   }
 
   /**

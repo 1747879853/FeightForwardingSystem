@@ -99,6 +99,7 @@ const {
   formData,
   invoiceExchangeRate,
   flattenTreeData,
+  feeGroupsData, // ✅ 传递费用组数据
 );
 
 const {
@@ -173,6 +174,7 @@ const { handleFeeSelectionSave } = useFeeSelectionSave(
   mergeAmountToExistingGoods,
   loadClientInvoiceInfo,
   updateOrgBankByCurrency,
+  flattenTreeData, // ✅ 传递扁平化树形数据函数
   loadDefaultRemarkTemplate, // ✅ 传递默认备注模板加载函数
   (ids: string[]) => {
     // ✅ 新增开票申请成功后的回调 - 打开所有开票申请的tab页
@@ -938,7 +940,7 @@ onMounted(() => {
                   </Button>
                   <Button size="small" @click="handleOpenFeeDetailModal">
                     <template #icon
-                      ><IconifyIcon icon="ant-design:eye-outiped"
+                      ><IconifyIcon icon="ant-design:eye-outlined"
                     /></template>
                     查看费用明细
                   </Button>
@@ -1285,6 +1287,7 @@ onMounted(() => {
       :loading="feeDetailModalLoading"
       :fee-details="selectedFeeDetails"
       :invoice-application-id="editId"
+      :invoice-exchange-rate="invoiceExchangeRate"
       @refresh="handleFeeDetailRefresh"
     />
 

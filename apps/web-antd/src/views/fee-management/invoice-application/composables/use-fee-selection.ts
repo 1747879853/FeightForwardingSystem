@@ -20,10 +20,98 @@ export function useFeeSelectionSave(
   mergeAmountToExistingGoods: (selectedFees: any[]) => Promise<void>,
   loadClientInvoiceInfo: (settlementId: string) => Promise<void>,
   updateOrgBankByCurrency: () => void,
+  flattenTreeData: (data: any[]) => any[], // ✅ 新增：扁平化树形数据函数
   loadDefaultRemarkTemplate?: () => Promise<void>,
   onCreated?: (ids: string[]) => void, // ✅ 修改：接收多个开票申请ID数组
   onRefresh?: () => Promise<void>, // ✅ 新增：刷新数据的回调
 ) {
+  /**
+   * ✅ 新增：基于所有费用重新计算商品明细金额（不是累加）
+   */
+  async function recalculateGoodsAmountFromAllFees() {
+    if (goodsDetails.value.length !== 1) {
+      return;
+    }
+
+    const items = formData.value.invoiceApplicationItems || [];
+    if (items.length === 0) {
+      goodsDetails.value = [];
+      return;
+    }
+
+    if (codeInvoiceList.value.length === 0) {
+      await loadCodeInvoiceList();
+    }
+
+    const invoiceCurrencyId = formData.value.currencyId;
+    if (!invoiceCurrencyId) {
+      return;
+    }
+
+    let currencyCode = '';
+    try {
+      const currencyDetail = await getCurrencyDetail(invoiceCurrencyId);
+      currencyCode = currencyDetail.code || '';
+    } catch (error) {
+      console.error('获取币别详情失败:', error);
+      return;
+    }
+
+    if (!currencyCode) {
+      return;
+    }
+
+    const defaultCodeInvoice = codeInvoiceList.value.find(
+      (item) => item.isDefault && item.defaultCurrency === currencyCode,
+    );
+
+    if (!defaultCodeInvoice) {
+      return;
+    }
+
+    // ✅ 关键：从 formData.invoiceApplicationItems 中获取所有费用，计算总金额
+    let totalRmbAmount = 0;
+    const allFees = flattenTreeData(feeGroupsData.value);
+
+    items.forEach((item: any) => {
+      const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
+      if (fee) {
+        const appliedAmount = item.appliedAmount || 0;
+        const feeCurrencyId = fee.orderFee.currencyId;
+
+        if (feeCurrencyId !== 1) {
+          // 外币转人民币
+          totalRmbAmount += appliedAmount * (invoiceExchangeRate.value || 1);
+        } else {
+          // 人民币直接累加
+          totalRmbAmount += appliedAmount;
+        }
+      }
+    });
+
+    // 更新唯一的一行商品明细
+    const existingItem = goodsDetails.value[0];
+
+    if (existingItem.codeInvoiceId === defaultCodeInvoice.id) {
+      const taxRate = existingItem.taxRate || defaultCodeInvoice.taxRate || 0;
+
+      existingItem.amount = totalRmbAmount;
+      existingItem.unitPrice = totalRmbAmount;
+      existingItem.noTaxAmount = totalRmbAmount / (1 + taxRate / 100);
+      existingItem.taxAmount =
+        (totalRmbAmount / (1 + taxRate / 100)) * (taxRate / 100);
+      
+      console.log('✅ 商品明细金额已重新计算:', {
+        totalRmbAmount,
+        taxRate,
+        noTaxAmount: existingItem.noTaxAmount,
+        taxAmount: existingItem.taxAmount,
+      });
+    } else {
+      message.warning('商品明细与当前币别不匹配，请手动调整或重新填充');
+    }
+  }
+
   /**
    * 处理费用选择保存
    */
@@ -379,7 +467,8 @@ export function useFeeSelectionSave(
                 fee.appliedAmount || fee.orderFee.remainingInvoiceAmount,
               remark: '',
             })),
-            // 不传商品明细，表示不改商品
+            // ✅ 关键修改：不传商品明细，表示不改商品（由后端保持原样）
+            // 商品明细的金额会在后续通过 recalculateGoodsDetails 重新计算
             invoiceApplicationGoodsDtls: undefined,
           };
 
@@ -411,11 +500,23 @@ export function useFeeSelectionSave(
       await loadDefaultRemarkTemplate();
     }
 
-    // 根据商品明细数量决定处理方式
+    // ✅ 关键修复：无论是新增还是编辑状态，都应该基于所有费用重新计算商品明细
+    // 而不是累加新费用的金额
     if (goodsDetails.value.length === 0) {
-      await autoFillGoodsDetails(newFees);
+      // 没有商品明细时，自动填充
+      await autoFillGoodsDetails(
+        isEdit 
+          ? (formData.value.invoiceApplicationItems || []).map((item: any) => {
+              // 从 feeGroupsData 中找到对应的费用
+              const allFees = flattenTreeData(feeGroupsData.value);
+              const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
+              return fee || { orderFee: item.orderFeeId, appliedAmount: item.appliedAmount };
+            })
+          : newFees
+      );
     } else if (goodsDetails.value.length === 1) {
-      await mergeAmountToExistingGoods(newFees);
+      // ✅ 关键修改：只有一行商品明细时，重新计算总金额（不是累加）
+      await recalculateGoodsAmountFromAllFees();
     } else {
       message.warning(
         '当前存在多行商品明细，系统无法自动合并金额。建议：\n' +

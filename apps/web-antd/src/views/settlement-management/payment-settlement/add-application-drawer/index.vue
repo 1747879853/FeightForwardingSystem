@@ -263,8 +263,15 @@ async function fetchData() {
         row.currency = { code: row.originalCurrencyCode };
       }
 
-      // ✅ 设置rowKey用于NestedDataTable的行标识
-      row.rowKey = row.paymentApplicationId || row.id || `row_${index}`;
+      // ✅ 设置rowKey用于NestedDataTable的行标识 - 使用组合键确保唯一性
+      // 格式：paymentApplicationId_currencyId_originalCurrencyId
+      // 这样可以区分同一个申请的不同币别组合
+      const uniqueKey = [
+        row.paymentApplicationId,
+        row.currencyId ?? 'null',
+        row.originalCurrencyId ?? 'null',
+      ].join('_');
+      row.rowKey = uniqueKey;
 
       // ✅ 确保orderFees字段存在（即使为空数组）
       if (!row.orderFees) {

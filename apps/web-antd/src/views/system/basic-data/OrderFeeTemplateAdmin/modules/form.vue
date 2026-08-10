@@ -50,6 +50,7 @@ const dropdownSources = useDropdownSources();
 const dropdownData = {
   feeCodeList: dropdownSources.feeCodeList,
   currencyList: dropdownSources.currencyList,
+  ctnCodeList: dropdownSources.ctnCodeList, // ✅ 新增：箱型列表
   clientListByIndustry: dropdownSources.clientListByIndustry,
   allClientsByIndustry: dropdownSources.allClientsByIndustry,
 };
@@ -87,6 +88,7 @@ const [Modal, modalApi] = useVbenModal({
         console.log('✅ [form.vue] 使用父组件传递的下拉数据');
         dropdownData.feeCodeList.value = data.dropdownData.feeCodeList || [];
         dropdownData.currencyList.value = data.dropdownData.currencyList || [];
+        dropdownData.ctnCodeList.value = data.dropdownData.ctnCodeList || []; // ✅ 新增：接收箱型列表
         dropdownData.clientListByIndustry.value =
           data.dropdownData.clientListByIndustry || {};
 
@@ -109,6 +111,9 @@ const [Modal, modalApi] = useVbenModal({
         );
         console.log(
           `📊 [form.vue] 币别数量: ${dropdownData.currencyList.value.length}`,
+        );
+        console.log(
+          `📦 [form.vue] 箱型数量: ${dropdownData.ctnCodeList.value.length}`,
         );
         console.log(
           `📊 [form.vue] 客户行业类别:`,
@@ -647,7 +652,6 @@ async function handleSubmit() {
       message.success('编辑成功');
     }
 
-    modalApi.close();
     emit('success');
   } catch (error) {
     // ✅ 关键修复：保存失败时恢复数据

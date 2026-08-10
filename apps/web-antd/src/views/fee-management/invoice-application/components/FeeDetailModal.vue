@@ -1,20 +1,21 @@
 <script lang="ts" setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import {
   Modal,
   Spin,
-  Table,
   Button,
   message,
   Input,
   Select,
   DatePicker,
   Space,
+  Checkbox,
 } from 'ant-design-vue';
 import { IconifyIcon } from '@vben/icons';
 import dayjs from 'dayjs';
 import { getBizTypeOptions } from '#/views/sea-export-admin/orderFee/data';
 import { InvoiceApplicationAdminApi } from '#/api/settlement-management/invoice-application-admin';
+import { NestedDataTable } from '#/components/nested-data-table';
 
 interface FeeDetailItem {
   id: string;
@@ -52,6 +53,7 @@ const props = defineProps<{
   loading: boolean;
   feeDetails: FeeDetailItem[];
   invoiceApplicationId?: string; // ✅ 新增：开票申请ID，用于删除操作
+  invoiceExchangeRate?: number; // ✅ 新增：发票汇率，用于计算人民币金额
 }>();
 
 const emit = defineEmits<{
@@ -76,6 +78,9 @@ const selectedFeeIds = ref<Set<string>>(new Set());
 
 // 选中的父节点ID列表（按票）
 const selectedParentIds = ref<Set<string>>(new Set());
+
+// 展开的行keys
+const expandedRowKeys = ref<string[]>([]);
 
 /** 应用筛选 */
 function applyFilter() {
@@ -420,6 +425,9 @@ watch(
 
     // 数据变化时重新应用筛选
     filteredFeeDetails.value = [...newVal];
+    
+    // 默认展开所有行
+    expandedRowKeys.value = newVal.map(item => item.id);
   },
   { deep: true },
 );
@@ -430,110 +438,211 @@ function getBizTypeLabel(value: string | number): string {
   return option ? option.label : '-';
 }
 
-// 费用明细弹窗表格列定义（一级 - 运输订单）
-const parentColumns = [
+/** 将原币金额转换为人民币 */
+function convertToRMB(amount: number, currencyCode: string): number {
+  // 如果已经是人民币，直接返回
+  if (currencyCode === 'CNY' || currencyCode === 'RMB') {
+    return amount;
+  }
+  
+  // 使用发票汇率转换
+  const rate = props.invoiceExchangeRate || 1.0;
+  return Math.round(amount * rate * 100) / 100; // 保留两位小数
+}
+
+// 外层表格列定义（运输订单）
+const outerColumns = [
+  {
+    title: '序号',
+    dataIndex: 'seq',
+    key: 'seq',
+    width: 60,
+    align: 'center' as const,
+  },
   {
     title: '委托编号',
     dataIndex: 'commissionNum',
     key: 'commissionNum',
-    minWidth: 140,
+    width: 140,
     ellipsis: true,
   },
   {
     title: '主提单号',
     dataIndex: 'mblNum',
     key: 'mblNum',
-    minWidth: 140,
+    width: 140,
     ellipsis: true,
   },
   {
     title: '订舱编号',
     dataIndex: 'bookingNum',
     key: 'bookingNum',
-    minWidth: 140,
+    width: 140,
     ellipsis: true,
   },
   {
     title: '委托单位',
     dataIndex: 'clientName',
     key: 'clientName',
-    minWidth: 180,
+    width: 180,
     ellipsis: true,
   },
   {
     title: '业务类型',
     dataIndex: 'bizType',
     key: 'bizType',
-    minWidth: 100,
+    width: 100,
   },
   {
     title: '船公司',
     dataIndex: 'carrier',
     key: 'carrier',
-    minWidth: 120,
+    width: 120,
     ellipsis: true,
   },
   {
     title: '所属公司',
     dataIndex: 'company',
     key: 'company',
-    minWidth: 150,
+    width: 150,
     ellipsis: true,
   },
 ];
 
-// 费用明细弹窗表格列定义（二级 - 费用明细）
-const childColumns = [
+// 内层表格列定义（费用明细）
+const innerColumns = [
+  {
+    title: '序号',
+    dataIndex: 'seq',
+    key: 'seq',
+    width: 60,
+    align: 'center' as const,
+  },
   {
     title: '结算单位',
     dataIndex: 'settlementUnit',
     key: 'settlementUnit',
-    minWidth: 180,
+    width: 180,
     ellipsis: true,
   },
   {
     title: '收付类型',
     dataIndex: 'payReceiveType',
     key: 'payReceiveType',
-    minWidth: 80,
+    width: 80,
     align: 'center' as const,
   },
   {
     title: '费用名称',
     dataIndex: 'feeName',
     key: 'feeName',
-    minWidth: 200,
+    width: 200,
     ellipsis: true,
   },
   {
     title: '金额',
     dataIndex: 'amount',
     key: 'amount',
-    minWidth: 120,
+    width: 120,
     align: 'right' as const,
   },
   {
     title: '币别',
     dataIndex: 'currencyCode',
     key: 'currencyCode',
-    minWidth: 80,
+    width: 80,
     align: 'center' as const,
   },
   {
     title: '未开票金额',
     dataIndex: 'remainingInvoiceAmount',
     key: 'remainingInvoiceAmount',
-    minWidth: 120,
+    width: 120,
     align: 'right' as const,
   },
   {
     title: '本次开票金额',
     dataIndex: 'appliedAmount',
     key: 'appliedAmount',
-    minWidth: 150,
+    width: 150,
     align: 'right' as const,
   },
 ];
+
+/** 判断父节点是否全选 */
+function isParentChecked(parent: FeeDetailItem): boolean {
+  if (!parent.feeDetails || parent.feeDetails.length === 0) return false;
+  return parent.feeDetails.every((child) => selectedFeeIds.value.has(child.id));
+}
+
+/** 判断父节点是否半选 */
+function isParentIndeterminate(parent: FeeDetailItem): boolean {
+  if (!parent.feeDetails || parent.feeDetails.length === 0) return false;
+  const count = parent.feeDetails.filter((child) => selectedFeeIds.value.has(child.id)).length;
+  return count > 0 && count < parent.feeDetails.length;
+}
+
+/** 切换父节点选择 */
+function toggleParentCheck(parent: FeeDetailItem, checked: boolean) {
+  if (checked) {
+    selectedParentIds.value.add(parent.id);
+    if (parent.feeDetails) {
+      parent.feeDetails.forEach((child) => {
+        selectedFeeIds.value.add(child.id);
+      });
+    }
+  } else {
+    selectedParentIds.value.delete(parent.id);
+    if (parent.feeDetails) {
+      parent.feeDetails.forEach((child) => {
+        selectedFeeIds.value.delete(child.id);
+      });
+    }
+  }
+}
+
+/** 切换子节点选择 */
+function toggleChildCheck(child: FeeChildItem, checked: boolean) {
+  if (checked) {
+    selectedFeeIds.value.add(child.id);
+  } else {
+    selectedFeeIds.value.delete(child.id);
+    // 如果取消选中了子节点，父节点也应该取消选中
+    if (child.parentId) {
+      selectedParentIds.value.delete(child.parentId);
+    }
+  }
+}
+
+/** 全选/取消全选 */
+function toggleSelectAll(checked: boolean) {
+  if (checked) {
+    filteredFeeDetails.value.forEach((parent) => {
+      selectedParentIds.value.add(parent.id);
+      if (parent.feeDetails) {
+        parent.feeDetails.forEach((child) => {
+          selectedFeeIds.value.add(child.id);
+        });
+      }
+    });
+  } else {
+    selectedParentIds.value.clear();
+    selectedFeeIds.value.clear();
+  }
+}
+
+/** 是否全选 */
+const isAllSelected = computed(() => {
+  if (filteredFeeDetails.value.length === 0) return false;
+  return filteredFeeDetails.value.every((parent) => isParentChecked(parent));
+});
+
+/** 是否半选 */
+const isIndeterminate = computed(() => {
+  const totalChildren = filteredFeeDetails.value.reduce((sum, p) => sum + (p.feeDetails?.length || 0), 0);
+  const selectedCount = selectedFeeIds.value.size;
+  return selectedCount > 0 && selectedCount < totalChildren;
+});
 </script>
 
 <template>
@@ -640,52 +749,73 @@ const childColumns = [
       </div>
 
       <div style="border: 1px solid #d9d9d9; border-radius: 4px">
-        <Table
-          :columns="parentColumns"
+        <NestedDataTable
+          :columns="outerColumns"
           :data-source="filteredFeeDetails"
-          :pagination="false"
-          bordered
-          size="small"
-          :expandable="{
-            defaultExpandAllRows: true,
-          }"
+          :inner-columns="innerColumns"
+          inner-data-key="feeDetails"
+          inner-row-key="id"
           row-key="id"
-          :scroll="{ y: 500 }"
-          :row-selection="{
-            type: 'checkbox',
-            selectedRowKeys: getParentSelectedKeys(),
-            onChange: handleParentSelectionChange,
-          }"
+          fill-height
+          v-model:expanded-row-keys="expandedRowKeys"
         >
-          <template #expandedRowRender="{ record }">
-            <Table
-              v-if="record.feeDetails && record.feeDetails.length > 0"
-              :columns="childColumns"
-              :data-source="record.feeDetails"
-              :pagination="false"
-              bordered
-              size="small"
-              row-key="id"
-              :row-selection="{
-                type: 'checkbox',
-                selectedRowKeys: getChildSelectedKeys(record),
-                onChange: (selectedRowKeys) =>
-                  handleChildSelectionChange(record, selectedRowKeys),
-              }"
-            >
-              <template #bodyCell="{ column, record: childRecord }">
-                <template v-if="column.dataIndex === 'appliedAmount'">
-                  <span
-                    style="font-size: 14px; font-weight: bold; color: #ff4d4f"
-                  >
-                    {{ childRecord.appliedAmount?.toFixed(2) || '0.00' }}
-                    {{ childRecord.currencyCode }}
-                  </span>
-                </template>
-              </template>
-            </Table>
+          <template #outerHeaderCell="{ column }">
+            <template v-if="column.key === 'seq'">
+              <Checkbox
+                :checked="isAllSelected"
+                :indeterminate="isIndeterminate"
+                @change="(e: any) => toggleSelectAll(e.target.checked)"
+              />
+            </template>
+            <template v-else>
+              {{ column.title }}
+            </template>
           </template>
-        </Table>
+
+          <template #outerBodyCell="{ column, record, index }">
+            <template v-if="column.key === 'seq'">
+              <Checkbox
+                :checked="isParentChecked(record)"
+                :indeterminate="isParentIndeterminate(record)"
+                @change="(e: any) => toggleParentCheck(record, e.target.checked)"
+              />
+            </template>
+            <template v-else-if="column.dataIndex === 'bizType'">
+              {{ getBizTypeLabel(record.bizType) }}
+            </template>
+            <template v-else>
+              {{ record[column.dataIndex] }}
+            </template>
+          </template>
+
+          <template #innerHeaderCell="{ column }">
+            <template v-if="column.key === 'seq'">
+              {{ column.title }}
+            </template>
+            <template v-else>
+              {{ column.title }}
+            </template>
+          </template>
+
+          <template #innerBodyCell="{ column, record, index }">
+            <template v-if="column.key === 'seq'">
+              <Checkbox
+                :checked="selectedFeeIds.has(record.id)"
+                @change="(e: any) => toggleChildCheck(record, e.target.checked)"
+              />
+            </template>
+            <template v-else-if="column.dataIndex === 'appliedAmount'">
+              <span
+                style="font-size: 14px; font-weight: bold; color: #ff4d4f"
+              >
+                {{ convertToRMB(record.appliedAmount || 0, record.currencyCode || '').toFixed(2) }}
+              </span>
+            </template>
+            <template v-else>
+              {{ record[column.dataIndex] }}
+            </template>
+          </template>
+        </NestedDataTable>
       </div>
     </Spin>
   </Modal>

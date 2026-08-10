@@ -1,23 +1,7 @@
 <script lang="ts" setup>
 import type { StatementAdminApi } from '#/api/settlement-management/statement-admin';
-import type { Attachment } from '#/api/common/upload';
-import {
-  type SelectedFeeItem,
-  type CurrencyInfo,
-  buildDynamicCurrencyColumns,
-} from '../add-fee-statement-modal/data';
-import {
-  getCurrencyEnumOptions,
-  getCurrencyEnumSymbolOptions,
-} from '#/views/sea-export-admin/orderFee/data';
-import type {
-  CurrencyConversionSummary,
-  CurrencySummary,
-  FeeDetailRow,
-  OrderGroupRow,
-} from './form-data';
 
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 
@@ -48,6 +32,7 @@ import { $t } from '#/locales';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import { PrintJsonType, usePrintFormat } from '#/components/print-format';
 import { NestedDataTable } from '#/components/nested-data-table';
+import type { Attachment } from '#/api/common/upload';
 import {
   ClientSelect,
   CurrencySelect,
@@ -80,7 +65,11 @@ import {
   summarizeByCurrencyWithConversion,
   useFeeInnerColumns,
   useOrderGroupColumns,
+  type FeeDetailRow,
+  type OrderGroupRow,
 } from './form-data';
+import { buildDynamicCurrencyColumns, type SelectedFeeItem, type CurrencyInfo } from '../add-fee-statement-modal/data';
+import { getCurrencyEnumSymbolOptions } from '#/views/sea-export-admin/orderFee/data';
 
 const t = (key: string, args?: any[]) =>
   $t(`seaExport.export.statement.${key}`, args as any);
@@ -536,7 +525,14 @@ async function loadEditData() {
 }
 
 onMounted(() => {
-  loadEditData();
+  if (isEdit.value) {
+    loadEditData();
+  } else {
+    // 新建时自动打开抽屉，让用户选择客户和费用
+    nextTick(() => {
+      handleOpenAddFee();
+    });
+  }
 });
 
 // --- Submit ---
@@ -835,6 +831,17 @@ function clearFilters() {
   filterEtdEnd.value = '';
   filterPaySide.value = undefined;
 }
+
+onMounted(() => {
+  if (isEdit.value) {
+    loadEditData();
+  } else {
+    // 新建时自动打开抽屉，让用户选择客户和费用
+    nextTick(() => {
+      handleOpenAddFee();
+    });
+  }
+});
 
 function handleExportMenuClick({ key }: { key: string | number }) {
   message.info(`导出: ${key}`);

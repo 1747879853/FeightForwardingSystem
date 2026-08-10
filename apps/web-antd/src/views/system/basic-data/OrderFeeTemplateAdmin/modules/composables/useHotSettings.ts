@@ -558,16 +558,22 @@ export function useHotSettings(
       title: '单位',
       type: 'autocomplete',
       source: function (query: string, process: (items: string[]) => void) {
-        // ✅ 关键修复：使用订单箱型动态生成单位列表
-        // 这里需要从父组件获取订单箱型数据，暂时使用固定列表
-        const fixedUnits = ['票', 'TEU', '尺码', '毛重', '件数', '箱型'];
+        // ✅ 关键修复：使用固定单位 + 所有箱型代码动态生成单位列表
+        const fixedUnits = ['票', 'TEU', '尺码', '毛重', '件数'];
 
-        // TODO: 如果需要支持订单箱型作为单位，需要从父组件传递orderCtnList
-        // const ctnUnits = orderCtnList?.value?.map((ctn: any) => ctn.ctnCodeName) || [];
-        // const allUnits = [...fixedUnits, ...ctnUnits];
-        // const uniqueUnits = Array.from(new Set(allUnits));
+        // ✅ 从 dropdownSources 获取所有箱型代码
+        const ctnUnits = dropdownSources.ctnCodeList.value.map(
+          (item: any) => item.value,
+        );
 
-        const allOptions = fixedUnits;
+        // 合并固定单位和箱型单位，并去重
+        const allOptions = Array.from(new Set([...fixedUnits, ...ctnUnits]));
+
+        console.log('📦 [单位下拉框] 当前选项:', {
+          固定单位: fixedUnits.length,
+          箱型单位: ctnUnits.length,
+          总计: allOptions.length,
+        });
 
         if (!query) {
           process(allOptions);
