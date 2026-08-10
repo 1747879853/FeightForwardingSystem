@@ -449,15 +449,51 @@ export function useHotSettings(
         // ✅ 关键修复：如果值是数字（ID），需要从客户列表中查找对应的Label
         let displayName = '';
 
-        if (typeof value === 'string') {
-          // 值已经是字符串（Label），直接处理
-          const parts = value.split('-');
-          console.log(
-            '🔍 [settlementId source] 尝试从客户列表中查找 Label:',
-            value,
-          );
-          // 如果有"-"，取后面的部分；否则使用原值
-          displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
+        if (value !== null && value !== undefined && value !== '') {
+          // 如果值是数字或可以转换为数字，说明是ID，需要查找对应的Label
+          const numericValue =
+            typeof value === 'number' ? value : Number(value);
+
+          if (!isNaN(numericValue)) {
+            // 这是一个ID，需要在所有客户列表中查找对应的Label
+            let foundClient: any = null;
+            Object.values(dropdownSources.allClientsByIndustry.value).forEach(
+              (clients: any) => {
+                if (Array.isArray(clients) && !foundClient) {
+                  const client = clients.find(
+                    (c: any) => c.value === numericValue,
+                  );
+                  if (client) {
+                    foundClient = client;
+                  }
+                }
+              },
+            );
+
+            if (foundClient) {
+              // 找到了对应的客户，使用其Label
+              const label = foundClient.label;
+              // 只显示"-"后面的字符串（客户名称）
+              if (label && typeof label === 'string') {
+                const parts = label.split('-');
+                displayName = parts.length > 1 ? parts.slice(1).join('-') : label;
+              } else {
+                displayName = label || '';
+              }
+            } else {
+              // 没找到对应的客户，显示原始值
+              displayName = String(value);
+            }
+          } else if (typeof value === 'string') {
+            // 值已经是字符串（Label），直接处理
+            const parts = value.split('-');
+            console.log(
+              '🔍 [settlementId source] 尝试从客户列表中查找 Label:',
+              value,
+            );
+            // 如果有"-"，取后面的部分；否则使用原值
+            displayName = parts.length > 1 ? parts.slice(1).join('-') : value;
+          }
         }
 
         // 新增：添加省略号样式
@@ -846,44 +882,8 @@ export function useHotSettings(
               foundClient.value,
             );
 
-            // 从客户ID反查行业类别
-            let industryValue = '';
-            for (const [category, clients] of Object.entries(
-              dropdownSources.allClientsByIndustry.value,
-            )) {
-              if (Array.isArray(clients)) {
-                const client = clients.find(
-                  (c: any) => c.value === foundClient.value,
-                );
-                if (client) {
-                  industryValue = category;
-                  break;
-                }
-              }
-            }
-
-            if (industryValue) {
-              const industryItem = industryOptions.find(
-                (opt) => opt.value === industryValue,
-              );
-
-              if (industryItem) {
-                console.log(
-                  '✅ [afterChange] 自动设置行业类别:',
-                  industryItem.label,
-                );
-                hotInstance.setDataAtRowProp(
-                  row,
-                  'industryCategory',
-                  industryItem.label,
-                );
-                hotInstance.setDataAtRowProp(
-                  row,
-                  'industryCategory_value',
-                  industryItem.value,
-                );
-              }
-            }
+            // ✅ 已移除：不再根据结算对象自动联动赋值行业类别
+            // 原因：用户要求不需要联动行业类别赋值
           }
         }
 

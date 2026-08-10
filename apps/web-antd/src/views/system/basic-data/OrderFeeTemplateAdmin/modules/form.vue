@@ -269,8 +269,23 @@ function handleAddRow() {
       return;
     }
 
+    // ✅ 关键修复：先获取当前表格中的Label数据（在转换之前）
+    const currentData = hotInstance.getData();
+    console.log('📊 [handleAddRow] 同步前表格数据行数:', currentData.length);
+
+    // 同步数据到父组件（会将Label转换为ID）
     hotTableRef.value.syncDataToParent();
 
+    // ✅ 关键修复：同步后，需要重新渲染表格以确保显示正确
+    // 因为syncDataToParent会发出update:dataSource事件，父组件更新后可能会触发watch
+    // 虽然watch会跳过ID格式数据的loadData，但为了确保renderer正确显示，我们手动触发render
+    setTimeout(() => {
+      if (hotInstance && !hotInstance.isDestroyed) {
+        console.log('🔄 [handleAddRow] 重新渲染表格以确保显示正确');
+        hotInstance.render();
+      }
+    }, 50);
+    
     message.success('已新增一行');
   } catch (error) {
     console.error('❌ [handleAddRow] 添加行失败:', error);
@@ -360,6 +375,26 @@ function handleDeleteSelectedRows() {
     // ✅ 关键修复：删除行后需要同步数据到父组件
     console.log('🔄 [handleDeleteSelectedRows] 开始同步数据到父组件...');
     hotTableRef.value.syncDataToParent();
+
+    // ✅ 关键修复：同步后，需要重新渲染表格以确保显示正确
+    setTimeout(() => {
+      const hotInstanceRef = hotTableRef.value.hotInstance;
+      let hotInstanceToRender: any;
+      if (
+        hotInstanceRef &&
+        typeof hotInstanceRef === 'object' &&
+        'value' in hotInstanceRef
+      ) {
+        hotInstanceToRender = hotInstanceRef.value;
+      } else {
+        hotInstanceToRender = hotInstanceRef;
+      }
+
+      if (hotInstanceToRender && !hotInstanceToRender.isDestroyed) {
+        console.log('🔄 [handleDeleteSelectedRows] 重新渲染表格以确保显示正确');
+        hotInstanceToRender.render();
+      }
+    }, 50);
 
     message.success(`已删除 ${sortedRows.length} 行`);
   } catch (error) {
