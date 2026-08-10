@@ -486,8 +486,6 @@ function getSelectedFees(): SelectedFeeItem[] {
           clientName: order?.client?.name,
           accountDate: order?.accountDate,
           etd: order?.etd,
-          polName: order?.seaExport?.pol?.portName || order?.polName,
-          podName: order?.seaExport?.pod?.portName || order?.podName,
           saleUserNames,
           operationUserNames,
           customerServiceUserNames,
@@ -682,7 +680,7 @@ defineExpose({ open: openDrawer });
           >
             {{ formatAmount(record[column.field]) }}
           </template>
-            <template v-else-if="column.field === 'client.name'">
+          <template v-else-if="column.field === 'client.name'">
             {{ record.client?.name || '-' }}
           </template>
           <template v-else-if="column.field === 'accountDate'">
@@ -690,6 +688,12 @@ defineExpose({ open: openDrawer });
           </template>
           <template v-else-if="column.field === 'bizType'">
             {{ getBizTypeLabel(record.bizType) }}
+          </template>
+          <template v-else-if="column.field === 'polName'">
+            {{ record.seaExport?.pol?.portName || '-' }}
+          </template>
+          <template v-else-if="column.field === 'podName'">
+            {{ record.seaExport?.pod?.portName || '-' }}
           </template>
           <template v-else>
             {{ column.field ? record[column.field] : '' }}
