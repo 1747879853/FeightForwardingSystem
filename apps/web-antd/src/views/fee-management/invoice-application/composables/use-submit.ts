@@ -3,6 +3,9 @@ import type { Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
+// ✅ 新增：导入刷新标记工具函数
+import { markListShouldRefresh, returnToListWithRefresh } from '#/utils/list-refresh-flag';
+
 /**
  * 提交和保存相关逻辑
  */
@@ -156,11 +159,13 @@ export function useSubmit(
       if (applicationId) {
         await submitAsync({ id: applicationId });
         message.success('提交成功');
-        router.push('/fee-management/invoice-application');
+        // ✅ 设置刷新标记并返回列表页面（使用路由名称）
+        returnToListWithRefresh('InvoiceApplicationList', () => {
+          router.push('/fee-management/invoice-application');
+        });
       }
     } catch (error) {
       console.error('提交失败:', error);
-      message.error('提交失败');
     } finally {
       submitLoading.value = false;
     }
@@ -189,7 +194,10 @@ export function useSubmit(
         if (ids && ids.length > 0) {
           await submitAsync({ id: ids[0]! });
           message.success('创建并提交成功');
-          router.push('/fee-management/invoice-application');
+          // ✅ 设置刷新标记并返回列表页面（使用路由名称）
+          returnToListWithRefresh('InvoiceApplicationList', () => {
+            router.push('/fee-management/invoice-application');
+          });
         }
       } else {
         // ✅ 编辑模式下，先同步最新的商品明细
@@ -197,7 +205,10 @@ export function useSubmit(
 
         await submitAsync({ id: editId.value! });
         message.success('提交成功');
-        router.push('/fee-management/invoice-application');
+        // ✅ 设置刷新标记并返回列表页面（使用路由名称）
+        returnToListWithRefresh('InvoiceApplicationList', () => {
+          router.push('/fee-management/invoice-application');
+        });
       }
     } catch (error) {
       console.error('提交失败:', error);

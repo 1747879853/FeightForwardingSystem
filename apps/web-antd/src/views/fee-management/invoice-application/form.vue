@@ -30,6 +30,9 @@ import { useFeeSelectionSave } from './composables/use-fee-selection';
 import { useComputed } from './composables/use-computed';
 import { useLoadDetail } from './composables/use-load-detail';
 
+// ✅ 新增：导入刷新标记工具函数
+import { markListShouldRefresh, returnToListWithRefresh } from '#/utils/list-refresh-flag';
+
 // 导入子组件
 import RemarkTemplateModal from './components/RemarkTemplateModal.vue';
 import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vue';
@@ -428,15 +431,7 @@ async function handleOpenFeeDetailModal() {
           (p: any) => p.id === orderId || p.id === `parent_${orderId}`,
         );
         if (parentNode) {
-          console.log(
-            '📋 构建 feeDetail - item 完整结构:',
-            JSON.stringify(item, null, 2),
-          );
-          console.log('📋 item.id:', item.id);
-          console.log('📋 item.Id:', item.Id);
-          console.log('📋 item.ID:', item.ID);
-          console.log('📋 fee.id (可能带前缀):', fee.id);
-          console.log('📋 fee.orderFee?.id (原始ID):', fee.orderFee?.id);
+
 
           parentNode.feeDetails.push({
             // ✅ 关键修复：使用 fee.orderFee.id 作为子节点ID，确保与后端返回的ID一致
@@ -506,10 +501,6 @@ async function loadDefaultRemarkTemplate() {
 
     if (template) {
       formData.value.remark = template;
-      console.log(
-        '✅ 已自动加载并替换默认备注模板:',
-        template.substring(0, 50),
-      );
       message.success('已自动应用默认备注模板');
     } else {
       console.log('ℹ️ 未找到默认备注模板');
@@ -539,7 +530,6 @@ async function handleWithdraw() {
         }
       } catch (error) {
         console.error('撤回失败:', error);
-        message.error('撤回失败');
       }
     },
   });
@@ -948,7 +938,7 @@ onMounted(() => {
                   </Button>
                   <Button size="small" @click="handleOpenFeeDetailModal">
                     <template #icon
-                      ><IconifyIcon icon="ant-design:eye-outlined"
+                      ><IconifyIcon icon="ant-design:eye-outiped"
                     /></template>
                     查看费用明细
                   </Button>

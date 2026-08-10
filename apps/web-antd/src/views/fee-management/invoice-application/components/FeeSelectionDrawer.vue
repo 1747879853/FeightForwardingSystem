@@ -785,21 +785,21 @@ const feeOuterColumns = computed(() => [
     title: '主提单号',
     dataIndex: 'mblNum',
     key: 'mblNum',
-    width: 140,
+    width: 100,
     ellipsis: true,
   },
   {
     title: '订舱编号',
     dataIndex: 'bookingNum',
     key: 'bookingNum',
-    width: 140,
+    width: 100,
     ellipsis: true,
   },
   {
     title: '委托单位',
     dataIndex: 'clientName',
     key: 'clientName',
-    width: 180,
+    width: 140,
     ellipsis: true,
   },
   {
@@ -902,29 +902,26 @@ defineExpose({
         style="
           padding: 10px 5px;
           margin-bottom: 16px;
-          background: #fafafa;
-          border: 1px solid #d9d9d9;
-          border-radius: 4px;
         "
       >
         <div
           style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center"
         >
           <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
+            style="display: flex; gap: 8px; align-items: center; width: 290px"
           >
             <span style="min-width: 70px; font-size: 14px; color: #333"
               >编号:</span
             >
             <Input
               v-model:value="keyWord"
-              placeholder="请输入委托编号、主提单号或订舱编号"
+              placeholder="委托编号/主提单号/订舱编号"
               style="flex: 1"
               allow-clear
             />
           </div>
           <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
+            style="display: flex; gap: 8px; align-items: center; width: 290px"
           >
             <span style="min-width: 70px; font-size: 14px; color: #333"
               >业务类型:</span
@@ -938,7 +935,7 @@ defineExpose({
             />
           </div>
           <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
+            style="display: flex; gap: 8px; align-items: center; width: 290px"
           >
             <span style="min-width: 70px; font-size: 14px; color: #333"
               >委托单位:</span
@@ -952,7 +949,7 @@ defineExpose({
             />
           </div>
           <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
+            style="display: flex; gap: 8px; align-items: center; width: 290px"
           >
             <span style="min-width: 70px; font-size: 14px; color: #333"
               >开船日期:</span
@@ -966,7 +963,7 @@ defineExpose({
             />
           </div>
           <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
+            style="display: flex; gap: 8px; align-items: center; width: 290px"
           >
             <span style="min-width: 70px; font-size: 14px; color: #333"
               >收付类型:</span
@@ -983,7 +980,7 @@ defineExpose({
             />
           </div>
           <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
+            style="display: flex; gap: 8px; align-items: center; width: 290px"
           >
             <span style="min-width: 70px; font-size: 14px; color: #333"
               >结算单位:</span
@@ -1004,7 +1001,7 @@ defineExpose({
             />
           </div>
           <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
+            style="display: flex; gap: 8px; align-items: center; width: 290px"
           >
             <span style="min-width: 70px; font-size: 14px; color: #333"
               >币别:</span
