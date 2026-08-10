@@ -129,6 +129,8 @@ export namespace PortCodeAdminApi {
     lastModifierUserId?: number;
     creationTime?: string;
     creatorUserId?: number;
+    /** 创建人昵称 */
+    creatorUserName?: string;
     /** 港口Id（大数经 json-bigint 解析为 string） */
     id: number | string;
   }
@@ -145,8 +147,14 @@ export namespace PortCodeAdminApi {
 
   /** 分页查询参数 */
   export interface GetPagedListParams {
-    /** 关键字 模糊匹配 */
+    /** 港口查询（模糊匹配港口英文/中文名称） */
     Keyword?: string;
+    /** 航线Id */
+    LaneId?: number | string;
+    /** EDI代码（模糊匹配） */
+    EdiCode?: string;
+    /** 国家Id */
+    CountryId?: number | string;
     /** 状态 0启用 1禁用 */
     Status?: number;
     /** 排序 默认是Id */

@@ -40,11 +40,32 @@ export function useGridFormSchema(): VbenFormSchema[] {
     {
       component: 'Input',
       fieldName: 'Keyword',
-      label: $t('system.basicData.portCode.keyword'),
+      label: $t('system.basicData.portCode.portQuery'),
+      componentProps: {
+        placeholder: $t('system.basicData.portCode.portQueryPlaceholder'),
+        allowClear: true,
+      },
+    },
+    {
+      component: 'LaneSelect',
+      fieldName: 'LaneId',
+      label: $t('system.basicData.portCode.laneName'),
+      defaultValue: undefined,
+    },
+    {
+      component: 'Input',
+      fieldName: 'EdiCode',
+      label: $t('system.basicData.portCode.ediCode'),
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
         allowClear: true,
       },
+    },
+    {
+      component: 'CountrySelect',
+      fieldName: 'CountryId',
+      label: $t('system.basicData.portCode.countryName'),
+      defaultValue: undefined,
     },
     {
       component: 'Select',
@@ -222,6 +243,12 @@ export function useColumns(
         name: 'CellTag',
         options: getStatusOptions(),
       },
+    },
+    {
+      field: 'creatorUserName',
+      title: $t('system.basicData.portCode.creatorUserName'),
+      minWidth: 100,
+      formatter: ({ row }) => row.creatorUserName ?? '',
     },
     {
       field: 'creationTime',

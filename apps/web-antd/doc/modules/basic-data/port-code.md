@@ -2,7 +2,7 @@
 title: 港口代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-08-05
+last_updated: 2026-08-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,7 +21,7 @@ last_updated: 2026-08-05
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **列表维护：** 在 `港口代码` 页面查询、创建、编辑和删除基础资料。
+- **列表维护：** 在 `港口代码` 页面查询、创建、编辑和删除基础资料。检索支持港口查询（中英文名）、航线中文名、EDI 代码、国家名称与状态；列表展示创建人。
 - **弹窗表单：** 多数基础资料通过 `PortCodeAdmin/modules/form.vue` 维护明细。
 - **业务复用：** 基础资料作为业务下拉、字典或校验来源被其他模块引用。
 
@@ -35,7 +35,9 @@ last_updated: 2026-08-05
 
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
-| **countryId / laneId** | 港口所属国家与航线。 | `CountrySelect` / `LaneSelect`<br/>`country-code-admin` / `lane-code-admin` | **触发/依赖：** 列表大洲列取自关联国家 `country.chau`。 | **必填**；大数 ID 经 json-bigint 为 string，校验与提交均原样透传，禁止 `Number()`。 |
+| **countryId / laneId** | 港口所属国家与航线。 | `CountrySelect` / `LaneSelect`<br/>`country-code-admin` / `lane-code-admin` | **触发/依赖：** 列表大洲列取自关联国家 `country.chau`；检索区亦可按国家/航线筛选。 | **必填**（表单）；大数 ID 经 json-bigint 为 string，校验与提交均原样透传，禁止 `Number()`。 |
+| **港口查询 Keyword** | 按港口中英文名称模糊检索。 | `PortCodeAdmin/GetPagedListAsync` | 文案为「港口查询」；参数名仍为 `Keyword`。 | 可选。 |
+| **创建人** | 资料创建人昵称。 | 列表 `creatorUserName` | 依赖后端列表 DTO 回填。 | 只读。 |
 | **编码** | 基础资料唯一或半唯一识别字段。 | `src/views/system/basic-data/PortCodeAdmin/data.ts` | **触发/依赖：** 被业务单据或下拉组件引用。 | 唯一性和格式以后端为准。 |
 | **名称** | 给业务用户识别的显示值。 | `src/views/system/basic-data/PortCodeAdmin/data.ts` | **触发/依赖：** 列表、表单、下拉组件共同展示。 | 通常不能为空。 |
 | **启用状态** | 控制资料是否可被业务选择。 | `src/api/system/base-data/*.ts` | **触发/依赖：** 禁用后不应继续作为新业务选择项。 | 历史单据展示需兼容旧值。 |
@@ -50,6 +52,7 @@ last_updated: 2026-08-05
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-10 | `Feature` | 列表检索改为「港口查询」并增加航线/EDI/国家筛选；列表增加创建人列。 | 查询传 `Keyword`/`LaneId`/`EdiCode`/`CountryId`/`Status`；展示 `creatorUserName`。后端对齐见 `backend-tasks/port-code-admin-港口列表检索条件与创建人.md`。 |
 | 2026-08-05 | `Fix` | `PortSelect`：精简 `selectedItems` 不再阻断详情补全；下拉两行缺字段时容错拼接；搜索不固定钉死已选项。 | 依赖公共 `usePagedSelect` 的 pin/搜索策略与 `complete` 合并；详见 change-log-2026-08-05-paged-select-pin-search-debounce。 |
 | 2026-07-12 | `Fix` | 修复编辑港口切换国家/航线时报 `Expected number, received string`，并避免大数 ID 经 `Number()` 丢精度。 | `countryId`/`laneId` 用 `requiredSelectIdRule`（preprocess→string）；`normalizeSelectId` 提交透传；DTO 标注 `number \| string`。 |
 | 2026-05-30 | `Feature` | 路由补充 `abpPageAuthority('Admin.PortCode')`，按模块权限控制页面访问。 | 与其他基础资料子路由一致，拥有模块或 `.Get` 权限即可进入。 |

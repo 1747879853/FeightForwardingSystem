@@ -74,7 +74,7 @@ const [Grid, gridApi] = useVbenVxeGrid<PortCodeAdminApi.PortCodeDto>({
   formOptions: {
     schema: useGridFormSchema(),
     submitOnChange: true,
-    showCollapseButton: false,
+    showCollapseButton: true,
   },
   gridOptions: {
     columns: useColumns(handleActionClick),

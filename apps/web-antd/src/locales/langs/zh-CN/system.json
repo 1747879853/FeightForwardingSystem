@@ -55,6 +55,9 @@
       "statisticalArea": "统计区域",
       "status": "状态",
       "keyword": "关键字",
+      "portQuery": "港口查询",
+      "portQueryPlaceholder": "支持港口英文名称、港口中文名称",
+      "creatorUserName": "创建人",
       "creationTime": "创建时间"
     },
     "airPort": {

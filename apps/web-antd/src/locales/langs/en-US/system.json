@@ -55,6 +55,9 @@
       "statisticalArea": "Statistical Area",
       "status": "Status",
       "keyword": "Keyword",
+      "portQuery": "Port Search",
+      "portQueryPlaceholder": "Supports port English / Chinese name",
+      "creatorUserName": "Creator",
       "creationTime": "Creation Time"
     },
     "airPort": {
