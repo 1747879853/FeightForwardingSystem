@@ -26,8 +26,8 @@ export namespace PaymentSettlementAdminApi {
     id: string;
     /** 付费结算ID */
     paymentSettlementId: string;
-    /** 原币币别代码 */
-    originalCurrencyCode: string;
+    /** 原币币别对象（替代 originalCurrencyCode，编码读 code） */
+    originalCurrency?: CurrencySimpleDto | null;
   }
 
   /** 币别结算项DTO */
@@ -243,8 +243,8 @@ export namespace PaymentSettlementAdminApi {
     remark?: string;
     /** 结算币别金额 = settledAmount × rate */
     settledPrice: number;
-    /** 原币币别代码 */
-    originalCurrencyCode: string;
+    /** 原币币别对象（替代 originalCurrencyCode，编码读 code） */
+    originalCurrency?: CurrencySimpleDto | null;
     /** 付费申请单号 */
     applicationNo: string;
     /** 该付费申请明细剩余申请量（原币） */
@@ -285,8 +285,8 @@ export namespace PaymentSettlementAdminApi {
     remark?: string;
     /** 结算对象（客户简易对象，无则为 null） */
     settlement?: null | PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
-    /** 结算币别代码 */
-    currencyCode: string;
+    /** 结算币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     /** 创建人名称 */
     creatorUserName: string;
     /** 汇率明细 */
@@ -341,8 +341,8 @@ export namespace PaymentSettlementAdminApi {
   export interface CurrencySumDto {
     /** 原币币别ID */
     originalCurrencyId: number;
-    /** 原币币别代码 */
-    originalCurrencyCode: string;
+    /** 原币币别对象（替代 originalCurrencyCode，编码读 code） */
+    originalCurrency?: CurrencySimpleDto | null;
     /** 该币别结算量合计（原币） */
     totalSettledAmount: number;
     /** 汇率 */
@@ -397,8 +397,8 @@ export namespace PaymentSettlementAdminApi {
     remark?: string;
     /** 结算对象（客户简易对象，无则为 null） */
     settlement?: null | PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
-    /** 结算币别代码 */
-    currencyCode: string;
+    /** 结算币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     /** 创建人名称 */
     creatorUserName: string;
     /** 结算金额合计（结算币别）= SUM(settledAmount × rate) */
@@ -469,7 +469,8 @@ export namespace PaymentSettlementAdminApi {
     commissionNum?: string;
     mblNum?: string;
     bookingNum?: string;
-    clientName?: string;
+    /** 委托单位对象（替代 clientName） */
+    client?: ClientSimpleDto | null;
   }
 
   /**
@@ -494,7 +495,9 @@ export namespace PaymentSettlementAdminApi {
     rqstPaymentAmount?: number;
     unRqstPaymentAmount?: number;
     settlementStatus: number;
-    localCurrencyCode?: string;
+    localCurrencyId?: number;
+    /** 本位币对象（替代 localCurrencyCode，编码读 code） */
+    localCurrency?: CurrencySimpleDto | null;
     transportOrder?: TransportOrderSimplePrintDto;
   }
 
@@ -530,7 +533,8 @@ export namespace PaymentSettlementAdminApi {
 
     /** 原币币别维度 */
     originalCurrencyId: number;
-    originalCurrencyCode: string;
+    /** 原币币别对象（替代 originalCurrencyCode，编码读 code） */
+    originalCurrency?: CurrencySimpleDto | null;
     rate?: number;
     payAmount: number;
     payPrice?: number;
@@ -601,7 +605,8 @@ export namespace PaymentSettlementAdminApi {
     currencyId?: number;
     currency?: CurrencySimpleDto;
     originalCurrencyId: number;
-    originalCurrencyCode: string;
+    /** 原币币别对象（替代 originalCurrencyCode，编码读 code） */
+    originalCurrency?: CurrencySimpleDto | null;
     rate: number;
     settledAmount: number;
     settledPrice: number;
@@ -634,7 +639,8 @@ export namespace PaymentSettlementAdminApi {
     remark?: string;
 
     settlement?: PaymentApplicationAdminApi.ClientSimpleDtoForOrder;
-    currencyCode: string;
+    /** 结算币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     creatorUserName?: string;
     lastModifierUserName?: string;
     paymentSettlementRates: PaymentSettlementRateDto[];

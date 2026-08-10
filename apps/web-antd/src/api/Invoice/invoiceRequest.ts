@@ -63,13 +63,53 @@ export namespace InvoiceApplicationApi {
 
   // ==================== DTO 定义 ====================
 
+  /** 客户简易对象 */
+  export interface ClientSimpleDto {
+    id?: string;
+    name?: string;
+    code?: string;
+    fullName?: string;
+    enName?: string;
+  }
+
+  /** 币别简易对象 */
+  export interface CurrencySimpleDto {
+    code?: string;
+    cnName?: string;
+    enName?: string;
+    defaultRate?: number;
+  }
+
+  /** 费用代码简易对象 */
+  export interface FeeCodeSimpleDto {
+    id?: number;
+    code?: string;
+    cnName?: string;
+    enName?: string;
+  }
+
+  /** 组织（公司）简易对象 */
+  export interface CompanySimpleDto {
+    id?: number | string;
+    name?: string;
+  }
+
+  /** 开票商品简易对象 */
+  export interface CodeInvoiceSimpleDto {
+    id?: number | string;
+    code?: string;
+    name?: string;
+    enName?: string;
+  }
+
   /** 运输订单简易信息 */
   export interface TransportOrderSimpleDto {
     id: string;
     commissionNum: string;
     mblNum?: string;
     bookingNum?: string;
-    clientName: string;
+    /** 委托单位对象（替代 clientName） */
+    client?: ClientSimpleDto | null;
     etd?: string;
     /** 海运出口信息（根据文档，现在挂在此处） */
     seaExport?: SeaExportSimpleDto;
@@ -112,13 +152,16 @@ export namespace InvoiceApplicationApi {
   /** 订单费用简易信息 */
   export interface OrderFeeSimpleDto {
     id: string;
-    feeCodeName: string;
+    /** 费用代码对象（替代 feeCodeName，名称读 cnName） */
+    feeCode?: FeeCodeSimpleDto | null;
     currencyId: number;
-    currencyCode: string;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     amount: number;
     invoicedAmount: number;
     remainingInvoiceAmount: number;
-    settlementName: string;
+    /** 结算对象（替代 settlementName） */
+    settlement?: ClientSimpleDto | null;
     settlementId: string;
     feeStatus: FeeStatus;
     paySide: PaySide;
@@ -228,7 +271,8 @@ export namespace InvoiceApplicationApi {
   export interface InvoiceApplicationGoodsDtlDetailDto extends InvoiceApplicationGoodsDtlAddDto {
     id: string;
     invoiceApplicationId: string;
-    codeInvoiceName: string;
+    /** 开票商品对象（替代 codeInvoiceName） */
+    codeInvoice?: CodeInvoiceSimpleDto | null;
   }
 
   /** 开票申请费用明细添加DTO */
@@ -410,8 +454,8 @@ export namespace InvoiceApplicationApi {
     isDefault: boolean;
     /** 排序id */
     sortId: number;
-    /** 币别代码 */
-    currencyCode?: string;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     isDeleted: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -468,8 +512,8 @@ export namespace InvoiceApplicationApi {
     orgId: null | number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
-    /** 组织名（便于直接展示） */
-    companyName?: string;
+    /** 组织（公司）对象（替代 companyName） */
+    company?: CompanySimpleDto | null;
     orgBankAccountId: string;
     applyUserId: number;
     applyTime: string;
@@ -479,8 +523,10 @@ export namespace InvoiceApplicationApi {
     rejectReason?: string;
     remark?: string;
     creatorUserName: string;
-    settlementName: string;
-    currencyCode: string;
+    /** 结算对象（替代 settlementName） */
+    settlement?: ClientSimpleDto | null;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     applyUserName: string;
     rejectUserNickName?: string;
     invoiceExchangeRate?: number;
@@ -523,8 +569,8 @@ export namespace InvoiceApplicationApi {
     orgId: null | number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
-    /** 组织名（便于直接展示） */
-    companyName?: string;
+    /** 组织（公司）对象（替代 companyName） */
+    company?: CompanySimpleDto | null;
     applicationNo: string;
     invoiceNo?: string;
     settlementId: string;
@@ -537,8 +583,10 @@ export namespace InvoiceApplicationApi {
     rejectTime?: string;
     rejectReason?: string;
     creatorUserName: string;
-    settlementName: string;
-    currencyCode: string;
+    /** 结算对象（替代 settlementName） */
+    settlement?: ClientSimpleDto | null;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     applyUserName: string;
     rejectUserNickName?: string;
     totalAppliedAmount: number;

@@ -181,7 +181,7 @@ defineExpose({ open: show });
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.dataIndex === 'currencyCode'">
-          <Tag v-if="record.currencyCode">{{ record.currencyCode }}</Tag>
+          <Tag v-if="record.currency?.code">{{ record.currency?.code }}</Tag>
           <span v-else>-</span>
         </template>
       </template>

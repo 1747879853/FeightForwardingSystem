@@ -46,6 +46,34 @@ export namespace BankStatementAdminApi {
     address?: string;
   }
 
+  /** 币别简易对象（无 id，外层保留 currencyId） */
+  export interface CurrencySimpleDto {
+    code?: string;
+    cnName?: string;
+    enName?: string;
+    defaultRate?: number;
+  }
+
+  /** 公司银行账户简易对象 */
+  export interface OrgBankAccountSimpleDto {
+    id?: string;
+    bankName?: string;
+    bankAccount?: string;
+    accountName?: string;
+    currencyId?: number;
+    swiftCode?: string;
+  }
+
+  /** 客户开票银行简易对象 */
+  export interface ClientInvoiceBankSimpleDto {
+    id?: string;
+    bankName?: string;
+    bankAccount?: string;
+    accountName?: string;
+    currencyId?: number;
+    swiftCode?: string;
+  }
+
   /** 新增银行流水 DTO */
   /** 组织机构简易DTO（组织串 orgs 元素） */
   export interface OrganizationUnitSimpleDto {
@@ -141,10 +169,13 @@ export namespace BankStatementAdminApi {
     message?: string;
     /** 结算对象（客户简易对象，无则为 null） */
     settlement?: ClientSimpleDtoForOrder | null;
-    currencyCode?: string;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     creatorUserName?: string;
-    orgBankAccountName?: string;
-    clientInvoiceBankName?: string;
+    /** 公司银行账户对象（替代 orgBankAccountName） */
+    orgBankAccount?: OrgBankAccountSimpleDto | null;
+    /** 客户开票银行对象（替代 clientInvoiceBankName） */
+    clientInvoiceBank?: ClientInvoiceBankSimpleDto | null;
     bankStatementUsers?: BankStatementUserDto[];
     /** 本流水下的全部收费核销单（含明细，不限创建人） */
     receiveSettlements?: BankStatementReceiveSettlementDto[];
@@ -174,9 +205,13 @@ export namespace BankStatementAdminApi {
     message?: string;
     /** 结算对象（客户简易对象，无则为 null） */
     settlement?: ClientSimpleDtoForOrder | null;
-    currencyCode?: string;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     creatorUserName?: string;
-    orgBankAccountName?: string;
+    /** 公司银行账户对象（替代 orgBankAccountName） */
+    orgBankAccount?: OrgBankAccountSimpleDto | null;
+    /** 客户开票银行对象（替代 clientInvoiceBankName） */
+    clientInvoiceBank?: ClientInvoiceBankSimpleDto | null;
     bankStatementUsers?: BankStatementUserDto[];
     userId?: number;
     /** 归属组织id */

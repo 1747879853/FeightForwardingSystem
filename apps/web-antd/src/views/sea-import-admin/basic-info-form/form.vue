@@ -804,7 +804,7 @@ const loadEditData = async (): Promise<
         componentProps: {
           selectedItems: toSelectedItems(
             to?.codePackageId,
-            to?.codePackageName,
+            to?.codePackage?.name,
           ),
         },
       },
@@ -818,8 +818,8 @@ const loadEditData = async (): Promise<
           allowClear: true,
           selectedItems: (to?.orderCodeGoodss ?? []).map((item) => ({
             id: item.codeGoodsId,
-            name: item.codeGoodsName,
-            hsCode: item.codeGoodsHSCode,
+            name: item.codeGoods?.name,
+            hsCode: item.codeGoods?.hsCode,
           })),
         },
       },
@@ -841,7 +841,7 @@ const loadEditData = async (): Promise<
     refreshEntrustReadonlyInfo(formValues);
     headerCodeSourceSelectedItems.value = toSelectedItems(
       to?.codeSourceId,
-      to?.codeSourceName,
+      to?.codeSource?.cnName,
     );
     headerOrgSelectedItems.value = detail.orgs?.length
       ? [

@@ -276,8 +276,11 @@ export namespace OrderFeeAdminApi {
     /** 备注 */
     remark?: string;
 
-    /** 本位币code */
-    localCurrencyCode: string;
+    /** 本位币id */
+    localCurrencyId?: number;
+
+    /** 本位币对象（替代 localCurrencyCode，编码读 code） */
+    localCurrency?: CurrencySimpleDto | null;
 
     /** 创建人昵称（仍平铺返回） */
     creatorUserName?: string;

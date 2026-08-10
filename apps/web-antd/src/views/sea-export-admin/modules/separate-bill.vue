@@ -44,8 +44,16 @@ defineOptions({
   name: 'SeaExportSeparateBill',
 });
 
-type CtnEditRow = SeaExportSeparateAdminApi.SeparateCtnDto & {
+/** 装箱编辑行：对象字段拍平为展示名，供表格内下拉回显 */
+type CtnEditRow = Omit<
+  SeaExportSeparateAdminApi.SeparateCtnDto,
+  'codeGoods' | 'codePackage' | 'ctnCode'
+> & {
   _rowKey: string;
+  codeGoodsHSCode?: null | string;
+  codeGoodsName?: null | string;
+  codePackageName?: null | string;
+  ctnCodeName?: null | string;
 };
 
 const route = useRoute();
@@ -94,6 +102,11 @@ const displayText = (val: null | string | undefined) =>
 const portDisplay = (name?: null | string, remark?: null | string) =>
   displayText(name || remark);
 
+/** 港口对象展示名，优先英文港口名，回退中文名 */
+const portName = (
+  port?: { cnName?: null | string; portName?: null | string } | null,
+) => port?.portName || port?.cnName;
+
 /** 弹窗内只读主单摘要 */
 const masterReadonly = computed(() => {
   const se = masterDetail.value;
@@ -108,12 +121,12 @@ const masterReadonly = computed(() => {
     closingTime: formatDate(se?.closingTime, 'YYYY-MM-DD'),
     vessel: displayText(se?.vessel),
     innerVoyno: displayText(se?.innerVoyno),
-    receivePort: portDisplay(se?.receivePortName, se?.receivePortRemark),
-    pol: portDisplay(se?.polName, se?.polRemark),
-    pod: portDisplay(se?.podName, se?.podRemark),
-    deliverPort: portDisplay(se?.deliverPortName, se?.deliverPortRemark),
-    pot1: portDisplay(se?.poT1Name, se?.poT1Remark),
-    pot2: portDisplay(se?.poT2Name, se?.poT2Remark),
+    receivePort: portDisplay(portName(se?.receivePort), se?.receivePortRemark),
+    pol: portDisplay(portName(se?.pol), se?.polRemark),
+    pod: portDisplay(portName(se?.pod), se?.podRemark),
+    deliverPort: portDisplay(portName(se?.deliverPort), se?.deliverPortRemark),
+    pot1: portDisplay(portName(se?.pot1), se?.poT1Remark),
+    pot2: portDisplay(portName(se?.pot2), se?.poT2Remark),
     noBillEnum: se?.noBillEnum == null ? '--' : String(se.noBillEnum),
     secondNotifierName: displayText(se?.secondNotifier?.name),
     secondNotifierContent: displayText(se?.secondNotifierContent),
@@ -195,16 +208,16 @@ const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
 };
 
 const mapMasterCtns = (
-  orderCtns?: SeaExportAdminApi.OrderCtnAddDto[] | null,
+  orderCtns?: SeaExportAdminApi.OrderCtnDto[] | null,
 ): CtnEditRow[] =>
   (orderCtns || []).map((ctn) => ({
     ctnCodeId: ctn.ctnCodeId,
-    ctnCodeName: ctn.ctnCodeName,
+    ctnCodeName: ctn.ctnCode?.ctnName,
     ctnNo: ctn.ctnNo,
     sealNo: ctn.sealNo,
     pkgs: ctn.pkgs,
     codePackageId: ctn.codePackageId,
-    codePackageName: (ctn as { codePackageName?: string }).codePackageName,
+    codePackageName: ctn.codePackage?.name,
     grossWeight: ctn.grossWeight,
     tareWeight: ctn.tareWeight,
     overLength: ctn.overLength,
@@ -212,7 +225,8 @@ const mapMasterCtns = (
     overHeight: ctn.overHeight,
     volume: ctn.volume,
     codeGoodsId: ctn.codeGoodsId,
-    codeGoodsName: (ctn as { codeGoodsName?: string }).codeGoodsName,
+    codeGoodsName: ctn.codeGoods?.name,
+    codeGoodsHSCode: ctn.codeGoods?.hsCode,
     bookingNo: ctn.bookingNo,
     remark: ctn.remark,
     _rowKey: `ctn_${++ctnRowKeyCounter}_${Date.now()}`,
@@ -238,15 +252,15 @@ const applyMasterToForm = (
 
   const terms = {
     codeIssueTypeId: se.codeIssueTypeId,
-    codeIssueTypeName: se.codeIssueTypeName,
+    codeIssueTypeName: se.codeIssueType?.billType,
     codeFrtId: to.codeFrtId,
-    codeFrtName: to.codeFrtName,
+    codeFrtName: to.codeFrt?.cnName,
     codeServiceId: to.codeServiceId,
-    codeServiceName: to.codeServiceName,
+    codeServiceName: to.codeService?.cnName,
     prepareAtId: se.prepareAtId,
-    prepareAtName: se.prepareAtName,
+    prepareAtName: portName(se.prepareAt),
     signingPortId: se.signingPortId,
-    signingPortName: se.signingPortName,
+    signingPortName: portName(se.signingPort),
     signingTime: toDayjs(se.signingTime),
   };
 
@@ -272,7 +286,7 @@ const applyMasterToForm = (
       goodsDes: to.goodsDes,
       pkgs: to.pkgs,
       codePackageId: to.codePackageId,
-      codePackageName: to.codePackageName,
+      codePackageName: to.codePackage?.name,
       kgs: to.kgs,
       cbm: to.cbm,
     };
@@ -316,41 +330,48 @@ const openEditModal = (record: SeaExportSeparateAdminApi.SeparateDto) => {
   masterVoyageExpanded.value = false;
   formData.value = {
     consigneeId: record.consigneeId,
-    consigneeName: record.consigneeName,
+    consigneeName: record.consignee?.name,
     consigneeContent: record.consigneeContent,
     shipperId: record.shipperId,
-    shipperName: record.shipperName,
+    shipperName: record.shipper?.name,
     shipperContent: record.shipperContent,
     notifierId: record.notifierId,
-    notifierName: record.notifierName,
+    notifierName: record.notifier?.name,
     notifierContent: record.notifierContent,
     podAgentId: record.podAgentId,
-    podAgentName: record.podAgentName,
+    podAgentName: record.podAgent?.name,
     podAgentContent: record.podAgentContent,
     blNum: record.blNum,
     marks: record.marks,
     pkgs: record.pkgs,
     codePackageId: record.codePackageId,
-    codePackageName: record.codePackageName,
+    codePackageName: record.codePackage?.name,
     kgs: record.kgs,
     cbm: record.cbm,
     goodsDes: record.goodsDes,
     codeIssueTypeId: record.codeIssueTypeId,
-    codeIssueTypeName: record.codeIssueTypeName,
+    codeIssueTypeName: record.codeIssueType?.billType,
     signingPortId: record.signingPortId,
-    signingPortName: record.signingPortName,
+    signingPortName: portName(record.signingPort),
     signingTime: toDayjs(record.signingTime),
     codeFrtId: record.codeFrtId,
-    codeFrtName: record.codeFrtName,
+    codeFrtName: record.codeFrt?.cnName,
     prepareAtId: record.prepareAtId,
-    prepareAtName: record.prepareAtName,
+    prepareAtName: portName(record.prepareAt),
     codeServiceId: record.codeServiceId,
-    codeServiceName: record.codeServiceName,
+    codeServiceName: record.codeService?.cnName,
   };
-  ctnList.value = (record.seaExportSeparateCtns || []).map((ctn) => ({
-    ...ctn,
-    _rowKey: `ctn_${++ctnRowKeyCounter}_${Date.now()}`,
-  }));
+  ctnList.value = (record.seaExportSeparateCtns || []).map((ctn) => {
+    const { codeGoods, codePackage, ctnCode, ...rest } = ctn;
+    return {
+      ...rest,
+      ctnCodeName: ctnCode?.ctnName,
+      codePackageName: codePackage?.name,
+      codeGoodsName: codeGoods?.name,
+      codeGoodsHSCode: codeGoods?.hsCode,
+      _rowKey: `ctn_${++ctnRowKeyCounter}_${Date.now()}`,
+    };
+  });
   selectedCtnKeys.value = [];
   modalVisible.value = true;
 };

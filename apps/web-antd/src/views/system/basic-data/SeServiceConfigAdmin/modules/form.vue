@@ -723,7 +723,7 @@ const [Modal, modalApi] = useVbenModal({
             id: fee.id,
             paySide: Number(fee.paySide),
             feeCodeId: fee.feeCodeId,
-            feeCodeName: fee.feeCodeName,
+            feeCodeName: fee.feeCode?.cnName,
           }));
 
           return {

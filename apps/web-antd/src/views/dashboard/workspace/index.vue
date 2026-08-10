@@ -363,7 +363,9 @@ function mapWorkbenchItemToBusinessRow(
       ? dayjs(seaExport.transportOrder.etd).format('YYYY-MM-DD')
       : '--',
     id: task.id,
-    route: `${seaExport?.polName || '--'} / ${seaExport?.podName || '--'}`,
+    route: `${seaExport?.pol?.portName || seaExport?.pol?.cnName || '--'} / ${
+      seaExport?.pod?.portName || seaExport?.pod?.cnName || '--'
+    }`,
     seaExport,
     seaExportId: String(task.seaExportId),
     serviceTaskStatus: task.serviceTaskStatus,
@@ -669,8 +671,8 @@ function mapPaymentTaskToBusinessRow(
     assigneeUserName: item.auditUserName || '--',
     bookingNo: item.applicationNo || item.id,
     containerInfo:
-      item.currencyCode && item.totalPayPrice != null
-        ? `${item.currencyCode} ${item.totalPayPrice}`
+      item.currency?.code && item.totalPayPrice != null
+        ? `${item.currency.code} ${item.totalPayPrice}`
         : '--',
     etd: toDateText(item.submitTime),
     id: item.id,
@@ -679,13 +681,13 @@ function mapPaymentTaskToBusinessRow(
         ?.map((org) => org.name)
         .filter(Boolean)
         .join(' / ') ||
-      item.settlementName ||
+      item.settlement?.name ||
       '--',
     seaExportId: item.paymentApplicationId,
     serviceTaskStatus: item.taskStatus === PaymentTaskStatus.Auditing ? 0 : 1,
     status: 'pending',
     taskUsersText: item.creatorUserName || '--',
-    vesselVoyage: item.settlementName || '--',
+    vesselVoyage: item.settlement?.name || '--',
   };
 }
 
@@ -700,12 +702,14 @@ function mapPreOrderTaskToBusinessRow(
     containerInfo: preOrder?.mblNum || '--',
     etd: toDateText(preOrder?.etd),
     id: item.id,
-    route: `${preOrder?.polName || '--'} / ${preOrder?.podName || '--'}`,
+    route: `${preOrder?.pol?.portName || preOrder?.pol?.cnName || '--'} / ${
+      preOrder?.pod?.portName || preOrder?.pod?.cnName || '--'
+    }`,
     seaExportId: item.preOrderId ?? item.entityId ?? '',
     serviceTaskStatus: item.taskStatus === PaymentTaskStatus.Auditing ? 0 : 1,
     status: 'pending',
     taskUsersText: item.creatorUserName || '--',
-    vesselVoyage: preOrder?.clientName || '--',
+    vesselVoyage: preOrder?.client?.name || '--',
   };
 }
 

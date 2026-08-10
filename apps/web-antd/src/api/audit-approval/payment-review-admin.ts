@@ -31,6 +31,23 @@ export namespace PaymentReviewAdminApi {
     localCurrencyId?: number;
   }
 
+  /** 结算对象简易对象（业务往来单位） */
+  export interface ClientSimpleDtoForOrder {
+    id: string;
+    /** 客户简称 */
+    name?: string;
+    /** 客户全称 */
+    fullName?: string;
+  }
+
+  /** 币别简易对象（无 id，外层保留 currencyId） */
+  export interface CurrencySimpleDto {
+    code?: string;
+    cnName?: string;
+    enName?: string;
+    defaultRate?: number;
+  }
+
   export interface CurrencyGroupDto {
     id: number;
     code?: string;
@@ -38,6 +55,15 @@ export namespace PaymentReviewAdminApi {
     receivePrice?: number;
     payAmount: number;
     payPrice?: number;
+  }
+
+  /** 应收结算币别分组 */
+  export interface SettlementReceivableGroupDto {
+    currencyId?: number;
+    /** 币别对象（替代 currencyCode） */
+    currency?: CurrencySimpleDto | null;
+    receiveAmount?: number;
+    receivePrice?: number;
   }
 
   export interface WorkFlowInstanceItemDetailDto {
@@ -64,15 +90,19 @@ export namespace PaymentReviewAdminApi {
   export interface PayAppTaskItemDto {
     paymentApplicationId: string;
     applicationNo?: string;
-    settlementName?: string;
+    /** 结算对象（替代 settlementName） */
+    settlement?: ClientSimpleDtoForOrder | null;
     submitTime?: string;
     endTime?: string;
     currencyId?: number;
-    currencyCode?: string;
+    /** 申请结算币别（替代 currencyCode）；原币申请为 null */
+    currency?: CurrencySimpleDto | null;
     orgId?: number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: OrganizationUnitSimpleDto[];
     currencyGroup?: CurrencyGroupDto[];
+    /** 应收结算币别分组 */
+    settlementReceivableGroup?: SettlementReceivableGroupDto[];
     totalPayPrice?: number;
     totalReceivePrice?: number;
     id: string;

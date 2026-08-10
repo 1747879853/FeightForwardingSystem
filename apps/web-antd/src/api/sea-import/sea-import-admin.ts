@@ -87,6 +87,22 @@ export namespace SeaImportAdminApi {
     ediCode?: null | string;
   }
 
+  /** 货源地简易对象 */
+  export interface CodeSourceSimpleDto {
+    id: LongId;
+    code?: null | string;
+    cnName?: null | string;
+    enName?: null | string;
+  }
+
+  /** 运输条款简易对象 */
+  export interface CodeServiceSimpleDto {
+    id: LongId;
+    cnName?: null | string;
+    enName?: null | string;
+    ediCode?: null | string;
+  }
+
   export interface CodeGoodsSimpleDto {
     id: LongId;
     code?: null | string;
@@ -142,8 +158,8 @@ export namespace SeaImportAdminApi {
 
   export interface OrderCodeGoodsDto extends OrderCodeGoodsAddDto {
     transportOrderId?: string;
-    codeGoodsName?: null | string;
-    codeGoodsHSCode?: null | string;
+    /** 品名对象（替代 codeGoodsName / codeGoodsHSCode） */
+    codeGoods?: CodeGoodsSimpleDto | null;
     /** 该商品关联箱子的 TEU 合计；列表接口恒为 0 */
     teu?: number;
   }
@@ -295,9 +311,11 @@ export namespace SeaImportAdminApi {
     /** 后端计算，界面只读 */
     settlementDate?: null | string;
     codeSourceId?: LongId | null;
-    codeSourceName?: null | string;
+    /** 货源地对象（替代 codeSourceName） */
+    codeSource?: CodeSourceSimpleDto | null;
     codeServiceId?: LongId | null;
-    codeServiceName?: null | string;
+    /** 运输条款对象（替代 codeServiceName） */
+    codeService?: CodeServiceSimpleDto | null;
     isBusinessLocking?: boolean;
     isUnfinished?: boolean;
     mblNum?: null | string;
@@ -311,7 +329,8 @@ export namespace SeaImportAdminApi {
     /** 件数大写；列表接口恒为 null */
     upperPKGS?: null | string;
     codePackageId?: LongId | null;
-    codePackageName?: null | string;
+    /** 包装对象（替代 codePackageName） */
+    codePackage?: CodePackageSimpleDto | null;
     kgs?: null | number;
     cbm?: null | number;
     cargoId?: number;

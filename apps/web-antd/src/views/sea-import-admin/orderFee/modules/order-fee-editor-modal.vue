@@ -737,7 +737,7 @@ const fillQuantityByUnit = async (unitName: string) => {
       // 箱型：查询订单的箱型列表数量
       if (transportOrder.orderCtns && transportOrder.orderCtns.length > 0) {
         quantity = transportOrder.orderCtns.filter(
-          (ctn: any) => ctn.ctnCodeName === unitName,
+          (ctn: any) => (ctn.ctnCode?.ctnName ?? ctn.ctnCodeName) === unitName,
         ).length;
         console.log('✅ [fillQuantityByUnit] 箱型数量:', quantity);
       } else {
@@ -1343,11 +1343,15 @@ const fillCtnQuantityForFeeCode = async () => {
     }
 
     // 填充单位为第一个箱型名称
-    await orderFeeFormApi.setFieldValue('unit', ctns[0]?.ctnCodeName || '');
+    await orderFeeFormApi.setFieldValue(
+      'unit',
+      ctns[0]?.ctnCode?.ctnName || '',
+    );
 
     // 计算箱型数量（有多少条箱型数据）
+    const firstCtnName = ctns[0]?.ctnCode?.ctnName;
     const quantity = ctns.filter(
-      (ctn) => ctn.ctnCodeName === ctns[0]?.ctnCodeName,
+      (ctn) => ctn.ctnCode?.ctnName === firstCtnName,
     ).length;
     await orderFeeFormApi.setFieldValue('quantity', quantity);
   } catch (error) {

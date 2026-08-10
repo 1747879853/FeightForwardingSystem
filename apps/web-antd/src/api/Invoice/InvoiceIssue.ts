@@ -29,6 +29,13 @@ export namespace InvoiceIssueApi {
     [key: string]: any;
   }
 
+  /** 所属公司（组织）简易信息 */
+  export interface CompanySimpleDto {
+    id: number | string;
+    name?: string;
+    [key: string]: any;
+  }
+
   /** 客户银行简易信息 */
   export interface ClientInvoiceBankSimpleDto {
     id: string;
@@ -214,8 +221,8 @@ export namespace InvoiceIssueApi {
     creatorUserName: string;
     /** 申请人名称 */
     applyUserName: string;
-    /** 所属公司名称 */
-    companyName: string;
+    /** 所属公司对象（替代 companyName） */
+    company?: CompanySimpleDto | null;
     /** 结算对象简易信息 */
     settlement: ClientSimpleDto;
     /** 币别简易信息 */
@@ -258,7 +265,8 @@ export namespace InvoiceIssueApi {
     remark?: string;
     creatorUserName: string;
     applyUserName: string;
-    companyName: string;
+    /** 所属公司对象（替代 companyName） */
+    company?: CompanySimpleDto | null;
     settlement: ClientSimpleDto;
     currency: CurrencySimpleDto;
     clientInvoiceBank: ClientInvoiceBankSimpleDto;
@@ -392,7 +400,8 @@ export namespace InvoiceIssueApi {
     commissionNum?: string;
     mblNum?: string;
     bookingNum?: string;
-    clientName?: string;
+    /** 委托单位对象（替代 clientName） */
+    client?: ClientSimpleDto | null;
     etd?: string;
     [key: string]: any;
   }
@@ -482,7 +491,8 @@ export namespace InvoiceIssueApi {
     id: string;
     invoiceApplicationId: string;
     codeInvoiceId: number;
-    codeInvoiceName?: string;
+    /** 开票商品对象（替代 codeInvoiceName） */
+    codeInvoice?: CodeInvoiceSimpleDto | null;
     specification?: string;
     unit?: string;
     quantity: number;
@@ -526,14 +536,14 @@ export namespace InvoiceIssueApi {
     creatorUserName?: string;
     /** 申请人名称 */
     applyUserName?: string;
-    /** 结算对象名称 */
-    settlementName?: string;
-    /** ✅ 所属公司名称 */
-    companyName?: string;
+    /** 结算对象（替代 settlementName） */
+    settlement?: ClientSimpleDto | null;
+    /** 所属公司对象（替代 companyName） */
+    company?: CompanySimpleDto | null;
     /** 归属组织id */
     orgId?: null | number;
-    /** 币别代码 */
-    currencyCode?: string;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     /** 发票汇率 */
     invoiceExchangeRate?: number;
     /** 开票申请费用明细列表（扁平化，不按运输订单分组） */

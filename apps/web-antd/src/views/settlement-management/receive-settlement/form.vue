@@ -172,7 +172,7 @@ const selectedFeeIds = computed(() =>
 );
 
 const bankStatementCurrencyCode = computed(
-  () => bankStatementDetail.value?.currencyCode || '',
+  () => bankStatementDetail.value?.currency?.code || '',
 );
 
 const currentSettlementTotal = computed(() =>
@@ -369,7 +369,7 @@ function mapDetailItem(
     commissionNum: order?.commissionNum,
     mblNum: order?.mblNum,
     bookingNum: order?.bookingNum,
-    clientName: order?.clientName,
+    clientName: order?.client?.name,
     feeCodeName: orderFee?.feeCode?.cnName,
     currencyCode: orderFee?.currency?.code,
     amount: orderFee?.amount ?? 0,
@@ -401,7 +401,7 @@ function mapForeignItem(
     commissionNum: order?.commissionNum,
     mblNum: order?.mblNum,
     bookingNum: order?.bookingNum,
-    clientName: order?.clientName,
+    clientName: order?.client?.name,
     feeCodeName: orderFee?.feeCode?.cnName,
     currencyCode: orderFee?.currency?.code,
     amount: orderFee?.amount ?? 0,
@@ -475,7 +475,7 @@ function handleOpenAddFee() {
     settlementId: bankStatementSettlementId.value,
     settlementName: bankStatementSettlementName.value,
     currencyId,
-    currencyCode: bankStatementDetail.value?.currencyCode,
+    currencyCode: bankStatementDetail.value?.currency?.code,
     selectedFeeIds: selectedFeeIds.value,
   });
 }
@@ -834,8 +834,8 @@ onMounted(() => {
                 </span>
               </DescriptionsItem>
               <DescriptionsItem label="币别">
-                <Tag v-if="bankStatementDetail.currencyCode">
-                  {{ bankStatementDetail.currencyCode }}
+                <Tag v-if="bankStatementDetail.currency?.code">
+                  {{ bankStatementDetail.currency?.code }}
                 </Tag>
                 <span v-else>-</span>
               </DescriptionsItem>
@@ -843,7 +843,11 @@ onMounted(() => {
                 {{ bankStatementDetail.settlement?.name || '-' }}
               </DescriptionsItem>
               <DescriptionsItem label="我司银行">
-                {{ bankStatementDetail.orgBankAccountName || '-' }}
+                {{
+                  bankStatementDetail.orgBankAccount?.bankName ||
+                  bankStatementDetail.orgBankAccount?.accountName ||
+                  '-'
+                }}
               </DescriptionsItem>
               <DescriptionsItem label="交易备注" :span="2">
                 {{ bankStatementDetail.statementRemark || '-' }}

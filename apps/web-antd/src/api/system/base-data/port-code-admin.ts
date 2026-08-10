@@ -1,5 +1,6 @@
 import { requestClient } from '#/api/request';
 import type { CountryCodeAdminApi } from '#/api/system/base-data/country-code-admin';
+import type { LaneCodeAdminApi } from '#/api/system/base-data/lane-code-admin';
 
 // ==================== PortCode（非 Admin，只读接口）====================
 
@@ -101,9 +102,8 @@ export namespace PortCodeAdminApi {
     /** 港口中文名称 */
     cnName?: string;
 
+    /** 国家对象（替代 countryName / countryEnName） */
     country?: CountryCodeAdminApi.CountryCodeDto;
-    /** 国家名称 */
-    countryName?: string;
     /** 所在大洲（列表展示用，取自关联国家 `country.chau`，港口本身不维护该字段） */
     chau?: string;
     /** 说明 */
@@ -114,12 +114,8 @@ export namespace PortCodeAdminApi {
     countryId?: number | string;
     /** 航线Id（大数经 json-bigint 解析为 string） */
     laneId?: number | string;
-    /** 航线代码 */
-    laneCode?: string;
-    /** 航线中文名称 */
-    laneName?: string;
-    /** 航线 */
-    lane?: string;
+    /** 航线对象（替代 laneCode / laneName） */
+    lane?: LaneCodeAdminApi.LaneCodeDto;
     /** EDI代码 */
     ediCode?: string;
     /** 统计区域 */

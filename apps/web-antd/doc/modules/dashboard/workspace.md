@@ -2,7 +2,7 @@
 title: 工作台
 module: 驾驶舱
 author: auto-doc-sync
-last_updated: 2026-07-24
+last_updated: 2026-08-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -87,6 +87,7 @@ last_updated: 2026-07-24
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-10 | `Refactor` | 工作台航线/付费任务/预报任务改读港口与结算币别对象。 | `pol/pod.portName`、`currency.code`、`settlement.name`、`preOrder.client.name`；服务列签单方式读 `codeIssueType.billType`。详见 `changelogs/change-log-2026-08-10-foreign-key-simple-dto-alignment.md`。 |
 | 2026-07-25 | `Feature` | 新增「业务联系单审核」Tab：复用审核 Tab 行结构与处理状态切换，双击行深链到 `/pre-order/:id/edit`。 | 筛选栏新增 `pre-order-review` 模式（业务编号/委托单位/起运港/ETD 区间）；数据源 `PreOrderAdmin/PreOrderTaskListAsync`，与审核中心页共用。详见 `changelogs/change-log-2026-07-25-pre-order-frontend.md`。 |
 | 2026-07-24 | `Refactor` | 海出服务项业务列取值对接对象化：船公司/订舱代理/船代/场站/委托单位改读 `carrier`/`bookingAgent`/`shipAgent`/`yard`/`transportOrder.client`。 | `se-service-show-columns.ts` 与 `SeaExportDto` 对齐。详见 `changelogs/change-log-2026-07-24-sea-export-party-carrier-objectification.md`。 |
 | 2026-07-12 | `Feature` | 海运出口服务筛选改为「编号」Keyword（可查主提单/订舱/委托），移除 MBL；业务列表仅 checkbox 选中；编号输入自动 trim；筛选下拉与 Input 同宽。 | 见 `change-log-2026-07-12-workspace-keyword-trim-checkbox.md`；Count/PagedList 共用 `Keyword`。 |

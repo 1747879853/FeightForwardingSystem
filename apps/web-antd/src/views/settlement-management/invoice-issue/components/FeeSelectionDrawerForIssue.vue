@@ -770,9 +770,9 @@ async function loadApplicationGroupData() {
       console.log('🔍 第一条申请的关键字段:', {
         id: firstApp.id,
         applicationNo: firstApp.applicationNo,
-        companyName: firstApp.companyName,
+        companyName: firstApp.company?.name,
         header: firstApp.clientInvoiceInfo?.header,
-        currencyCode: firstApp.currencyCode,
+        currencyCode: firstApp.currency?.code,
         totalAppliedAmount: firstApp.totalAppliedAmount,
         invoiceApplicationItems数量:
           firstApp.invoiceApplicationItems?.length || 0,
@@ -832,7 +832,7 @@ function transformToTreeData(
           commissionNum: item.orderFee?.transportOrder?.commissionNum || '-', // 委托编号
           mblNum: item.orderFee?.transportOrder?.mblNum || '-', // 主提单号
           //hblNum: '-', // 分提单号（需要从其他地方获取）
-          clientName: item.orderFee?.transportOrder?.clientName || '-', // 委托单位
+          clientName: item.orderFee?.transportOrder?.client?.name || '-', // 委托单位
           etd: (() => {
             const etdValue = item.orderFee?.transportOrder?.etd;
             if (!etdValue) return '-';
@@ -849,7 +849,7 @@ function transformToTreeData(
           amount: item.orderFee?.amount || 0, // 金额
           exchangeRate: 1, // 汇率
           saleNames: item.orderFee?.transportOrder?.saleNames || '-', // 销售
-          invoiceCurrencyCode: app.currencyCode || '-', // 发票币别
+          invoiceCurrencyCode: app.currency?.code || '-', // 发票币别
           appliedAmountOriginal: item.appliedAmount || 0, // 开票申请金额（原币）
           settlementAmount: 0, // 结算金额
         };
@@ -904,13 +904,13 @@ function transformToTreeData(
       id: app.id,
       parentId: null,
       // 一级字段
-      // ✅ 使用后端返回的 companyName 作为所属公司名称
-      companyName: app.companyName || '-',
+      // ✅ 使用后端返回的 company 对象作为所属公司名称
+      companyName: app.company?.name || '-',
       orgId: app.orgId, // ✅ 归属组织ID
       applicationNo: app.applicationNo || '-', // 申请单号
       // ✅ 使用 clientInvoiceInfo.header 作为发票抬头
       header: app.clientInvoiceInfo?.header || '-',
-      currencyCode: app.currencyCode || '-', // 币别
+      currencyCode: app.currency?.code || '-', // 币别
       remark: app.remark || '-', // 备注
       applyUserName: app.applyUserName || '-', // 申请人
       applyTime: formattedApplyTime, // ✅ 格式化后的申请日期

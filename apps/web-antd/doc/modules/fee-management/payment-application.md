@@ -2,7 +2,7 @@
 title: 付款申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-09
+last_updated: 2026-08-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -60,6 +60,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-10 | `Refactor` | 外联平铺字段改读 SimpleDto：选费港口/字典、详情明细费用名、任务列表结算与币别。 | 港口读对象；明细 `orderFee.feeCode/currency/settlement`；任务 `settlement.name` / `currency.code`。详见 `changelogs/change-log-2026-08-10-foreign-key-simple-dto-alignment.md`。 |
 | 2026-08-09 | `Fix` | 「{币别}申请合计」改为付申请量 − 收申请量。 | `calcRowAppliedTotal`：`payAmount - receiveAmount`。详见 `changelogs/change-log-2026-08-09-payment-application-pay-minus-receive.md`。 |
 | 2026-07-30 | `Feature` | 列表「先付后票」可点击打开发票维护弹窗，对接 `EditInvoiceAsync` 补录发票/附件（不限 status）。 | 新增 `invoice-edit-modal` + `editPaymentApplicationInvoice`；附件全量覆盖须带回详情。详见 `changelogs/change-log-2026-07-30-payment-application-edit-invoice.md`。 |
 | 2026-07-30 | `Feature` | 列表结算对象/币别改读对象化字段；部分结算/结算完毕点击状态弹窗展示关联结算明细与附件。 | DTO 增 `currency`/`paymentSettlements`，删旧字符串与平铺附件；`settlement-detail-modal` 消费列表行数据。详见 `changelogs/change-log-2026-07-30-payment-application-settlement-objectified.md`。 |

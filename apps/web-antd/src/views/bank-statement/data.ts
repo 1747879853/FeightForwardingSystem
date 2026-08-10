@@ -147,13 +147,13 @@ export function useColumns(): VxeTableGridOptions['columns'] {
       sortable: true,
     },
     {
-      field: 'currencyCode',
+      field: 'currency.code',
       title: '币别',
       width: 80,
       sortable: true,
     },
     {
-      field: 'orgBankAccountName',
+      field: 'orgBankAccount.bankName',
       title: '我司银行',
       minWidth: 150,
       sortable: true,

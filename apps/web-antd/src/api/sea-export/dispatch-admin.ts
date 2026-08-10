@@ -1,3 +1,6 @@
+import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+
 import { requestClient } from '#/api/request';
 
 export namespace SeaExportDispatchAdminApi {
@@ -24,10 +27,12 @@ export namespace SeaExportDispatchAdminApi {
 
   export interface DispatchCtnDto extends DispatchCtnEditDto {
     seaExportDispatchId?: string;
-    ctnCodeName?: string;
-    codePackageName?: string;
-    codeGoodsName?: string;
-    codeGoodsHSCode?: string;
+    /** 箱型对象（替代 ctnCodeName） */
+    ctnCode?: SeaExportAdminApi.CtnCodeSimpleDto | null;
+    /** 包装对象（替代 codePackageName） */
+    codePackage?: SeaExportAdminApi.CodePackageSimpleDto | null;
+    /** 品名对象（替代 codeGoodsName / codeGoodsHSCode） */
+    codeGoods?: SeaExportAdminApi.CodeGoodsSimpleDto | null;
   }
 
   export interface DispatchAddDto {
@@ -57,16 +62,19 @@ export namespace SeaExportDispatchAdminApi {
     id: string;
     seaExportId: string;
     teamId?: string;
-    teamName?: string;
+    /** 车队对象（替代 teamName） */
+    team?: ClientAdminApi.ClientDto | null;
     requiredTime?: string;
     dispatchTime?: string;
     factoryContact?: string;
     factoryTel?: string;
     yardId?: string;
-    yardName?: string;
+    /** 场站对象（替代 yardName） */
+    yard?: ClientAdminApi.ClientDto | null;
     closingTime?: string;
     factoryId?: string;
-    factoryName?: string;
+    /** 工厂对象（替代 factoryName） */
+    factory?: ClientAdminApi.ClientDto | null;
     areaId?: string;
     address?: string;
     precautions?: string;

@@ -161,7 +161,8 @@ export namespace BillingPeriodAdminApi {
   export interface CbpOrgDto {
     id: number;
     organizationUnitId: number;
-    organizationUnitName: string;
+    /** 组织对象（替代 organizationUnitName） */
+    organizationUnit?: { id?: number | string; name?: string } | null;
   }
 
   export interface ClientBillingPeriodDto {

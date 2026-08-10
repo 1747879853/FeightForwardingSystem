@@ -1,6 +1,14 @@
 import { requestClient } from '#/api/request';
 
 export namespace SeServiceConfigAdminApi {
+  /** 费用代码简易对象 */
+  export interface FeeCodeSimpleDto {
+    id?: number | string;
+    code?: string;
+    cnName?: string;
+    enName?: string;
+  }
+
   export interface SeaExportPropRefDto {
     id?: string;
     seaExportPropEnum: number;
@@ -24,7 +32,8 @@ export namespace SeServiceConfigAdminApi {
     id?: string;
     paySide: number;
     feeCodeId: number | string;
-    feeCodeName?: string;
+    /** 费用代码对象（替代 feeCodeName，名称读 cnName） */
+    feeCode?: FeeCodeSimpleDto | null;
   }
 
   export interface SeServiceConfigItemAddDto {

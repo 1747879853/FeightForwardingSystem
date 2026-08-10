@@ -205,7 +205,7 @@ export function useColumns(): VxeTableGridOptions<SeaExportAdminApi.SeaExportDto
       sortable: false,
     },
     {
-      field: 'localCurrencyCode',
+      field: 'localCurrency.code',
       title: $t('seaExport.export.statement.localCurrencyCode'),
       minWidth: 130,
       sortable: true,

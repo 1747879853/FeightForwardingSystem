@@ -182,7 +182,7 @@ export function formatOrderCtnsDisplay(
 
   const ctnTypeCounter = new Map<string, number>();
   for (const ctn of orderCtns) {
-    const label = ctn.ctnCodeName?.trim();
+    const label = ctn.ctnCode?.ctnName?.trim();
     if (!label) continue;
     ctnTypeCounter.set(label, (ctnTypeCounter.get(label) ?? 0) + 1);
   }

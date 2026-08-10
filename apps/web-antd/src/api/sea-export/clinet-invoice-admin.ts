@@ -134,8 +134,12 @@ export namespace ClientInvoiceInfoAdminApi {
     isDefault: boolean;
     /** 排序id */
     sortId: number;
-    /** 币别代码 */
-    currencyCode?: string;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: {
+      cnName?: string;
+      code?: string;
+      enName?: string;
+    } | null;
     isDeleted: boolean;
     deleterUserId?: number;
     deletionTime?: string;
@@ -246,4 +250,3 @@ export const getClientInvoiceInfoDetail = (id: string) => {
     { params: { Id: id } },
   );
 };
-

@@ -1,3 +1,6 @@
+import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+
 import { requestClient } from '#/api/request';
 
 export namespace SeaExportSeparateAdminApi {
@@ -24,10 +27,12 @@ export namespace SeaExportSeparateAdminApi {
 
   export interface SeparateCtnDto extends SeparateCtnEditDto {
     seaExportSeparateId?: string;
-    ctnCodeName?: string;
-    codePackageName?: string;
-    codeGoodsName?: string;
-    codeGoodsHSCode?: string;
+    /** 箱型对象（替代 ctnCodeName） */
+    ctnCode?: SeaExportAdminApi.CtnCodeSimpleDto | null;
+    /** 包装对象（替代 codePackageName） */
+    codePackage?: SeaExportAdminApi.CodePackageSimpleDto | null;
+    /** 品名对象（替代 codeGoodsName / codeGoodsHSCode） */
+    codeGoods?: SeaExportAdminApi.CodeGoodsSimpleDto | null;
   }
 
   export interface SeparateAddDto {
@@ -66,35 +71,45 @@ export namespace SeaExportSeparateAdminApi {
     seaExportId: string;
     consigneeId?: string;
     consigneeContent?: string;
-    consigneeName?: string;
+    /** 收货人对象（替代 consigneeName） */
+    consignee?: ClientAdminApi.ClientDto | null;
     shipperId?: string;
     shipperContent?: string;
-    shipperName?: string;
+    /** 发货人对象（替代 shipperName） */
+    shipper?: ClientAdminApi.ClientDto | null;
     notifierId?: string;
     notifierContent?: string;
-    notifierName?: string;
+    /** 通知人对象（替代 notifierName） */
+    notifier?: ClientAdminApi.ClientDto | null;
     podAgentId?: string;
     podAgentContent?: string;
-    podAgentName?: string;
+    /** 目的港代理对象（替代 podAgentName） */
+    podAgent?: ClientAdminApi.ClientDto | null;
     blNum?: string;
     marks?: string;
     pkgs?: number;
     codePackageId?: number;
-    codePackageName?: string;
+    /** 包装对象（替代 codePackageName） */
+    codePackage?: SeaExportAdminApi.CodePackageSimpleDto | null;
     kgs?: number;
     cbm?: number;
     goodsDes?: string;
     codeIssueTypeId?: number;
-    codeIssueTypeName?: string;
+    /** 签单方式对象（替代 codeIssueTypeName，名称读 billType） */
+    codeIssueType?: SeaExportAdminApi.CodeIssueTypeSimpleDto | null;
     signingPortId?: number;
-    signingPortName?: string;
+    /** 签单地点港口对象（替代 signingPortName / signingPortCountryEnName） */
+    signingPort?: SeaExportAdminApi.PortCodeSimpleDtoForOrder | null;
     signingTime?: string;
     codeFrtId?: number;
-    codeFrtName?: string;
+    /** 付费方式对象（替代 codeFrtName） */
+    codeFrt?: SeaExportAdminApi.CodeFrtSimpleDto | null;
     prepareAtId?: number;
-    prepareAtName?: string;
+    /** 付费地点港口对象（替代 prepareAtName / prepareAtCountryEnName） */
+    prepareAt?: SeaExportAdminApi.PortCodeSimpleDtoForOrder | null;
     codeServiceId?: number;
-    codeServiceName?: string;
+    /** 运输条款对象（替代 codeServiceName） */
+    codeService?: SeaExportAdminApi.CodeServiceSimpleDto | null;
     creationTime?: string;
     creatorUserId?: number;
     lastModificationTime?: string;

@@ -225,7 +225,7 @@ export function useLoadDetail(
                 commissionNum: group.transportOrder?.commissionNum || '',
                 mblNum: group.transportOrder?.mblNum || '',
                 currencyId: appDetail.currencyId,
-                currencyCode: appDetail.currencyCode,
+                currencyCode: appDetail.currency?.code,
                 totalAppliedAmount: item.appliedAmount,
               });
 
@@ -242,7 +242,7 @@ export function useLoadDetail(
             settlementId: appDetail.settlementId,
             status: appDetail.status,
             currencyId: appDetail.currencyId,
-            currencyCode: appDetail.currencyCode,
+            currencyCode: appDetail.currency?.code,
             invoiceType: appDetail.invoiceType,
             clientInvoiceBankId: appDetail.clientInvoiceBankId,
             orgBankAccountId: appDetail.orgBankAccountId,
@@ -252,7 +252,7 @@ export function useLoadDetail(
             remark: appDetail.remark,
             creatorUserName: appDetail.creatorUserName,
             applyUserName: appDetail.applyUserName,
-            settlementName: appDetail.settlementName,
+            settlementName: appDetail.settlement?.name,
             companyName: undefined,
             invoiceExchangeRate: appDetail.invoiceExchangeRate,
             commissionNum: firstItem?.commissionNum || '',

@@ -112,8 +112,8 @@ export function buildInvoiceGroupRow(group: InvoiceGroup) {
     id: group.invoiceApplicationId,
     applicationNo: group.applicationNo,
     invoiceNo: group.invoiceNo,
-    settlementName: group.settlementName,
-    currencyCode: group.currencyCode,
+    settlementName: group.settlement?.name,
+    currencyCode: group.currency?.code,
     applyTime: group.applyTime,
     itemCount: group.items?.length ?? 0,
     totalSettleableAmount: (group.items ?? []).reduce(

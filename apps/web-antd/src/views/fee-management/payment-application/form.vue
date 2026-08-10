@@ -828,7 +828,7 @@ function mapDetailToFeeRows(
         commissionNum: order?.commissionNum,
         mblNum: order?.mblNum,
         clientId: order?.clientId ?? order?.client?.id,
-        clientName: order?.client?.name ?? order?.clientName,
+        clientName: order?.client?.name,
         accountDate: order?.accountDate,
         etd: order?.etd,
         polName: order ? resolvePolPortDisplayName(order) : '',
@@ -838,16 +838,12 @@ function mapDetailToFeeRows(
         customerServiceUserNames: order?.customerServiceNames?.join('、'),
         paySide: fee?.paySide ?? 0,
         feeCodeId: fee?.feeCodeId ?? 0,
-        feeCodeName: item.feeCodeName ?? fee?.feeCode?.cnName,
+        feeCodeName: fee?.feeCode?.cnName,
         currencyId: fee?.currencyId ?? 0,
         currencyCode: resolveFeeCurrencyCode(fee, group.currencyGroup),
-        currencyName: item.feeCurrencyName ?? fee?.currency?.cnName,
+        currencyName: fee?.currency?.cnName,
         settlementId: fee?.settlementId ?? '',
-        settlementName:
-          settlementShortName ||
-          item.feeSettlementName ||
-          fee?.settlement?.name ||
-          '',
+        settlementName: settlementShortName || fee?.settlement?.name || '',
         amount: fee?.amount ?? item.feeAmount ?? 0,
         settledAmount: fee?.settledAmount ?? 0,
         unRqstPaymentAmount: fee?.unRqstPaymentAmount ?? 0,

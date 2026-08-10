@@ -165,7 +165,7 @@ const formatOrganizationUnitName = (
   // TODO: 如果需要从 ID 转换为名称,需要调用 API
   // 目前假设后端已经在 ClientBillingPeriodForViewDto 中返回了 organizationUnitName
   // 这里暂时返回 ID 列表,实际使用时应该从 row.organizationUnitName 获取
-  return cbpOrgs.map((item) => item.organizationUnitName).join(', ');
+  return cbpOrgs.map((item) => item.organizationUnit?.name ?? '').join(', ');
 };
 
 /**

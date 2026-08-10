@@ -142,14 +142,21 @@ const openEditModal = (record: SeaExportDispatchAdminApi.DispatchDto) => {
     precautions: record.precautions,
     sortId: record.sortId,
     remark: record.remark,
-    teamName: record.teamName,
-    yardName: record.yardName,
-    factoryName: record.factoryName,
+    teamName: record.team?.name,
+    yardName: record.yard?.name,
+    factoryName: record.factory?.name,
   };
-  ctnList.value = (record.seaExportDispatchCtns || []).map((ctn) => ({
-    ...ctn,
-    _rowKey: `ctn_${++ctnRowKeyCounter}_${Date.now()}`,
-  })) as any[];
+  ctnList.value = (record.seaExportDispatchCtns || []).map((ctn) => {
+    const { codeGoods, codePackage, ctnCode, ...rest } = ctn;
+    return {
+      ...rest,
+      ctnCodeName: ctnCode?.ctnName,
+      codePackageName: codePackage?.name,
+      codeGoodsName: codeGoods?.name,
+      codeGoodsHSCode: codeGoods?.hsCode,
+      _rowKey: `ctn_${++ctnRowKeyCounter}_${Date.now()}`,
+    };
+  }) as any[];
   selectedCtnKeys.value = [];
   modalVisible.value = true;
 };

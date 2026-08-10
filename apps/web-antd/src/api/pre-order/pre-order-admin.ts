@@ -83,6 +83,8 @@ export namespace PreOrderAdminApi {
     code?: string;
     enName?: string;
     cnName?: string;
+    /** 港口对象的英文港口名 */
+    portName?: string;
   }
 
   /** 品名子表 */
@@ -203,10 +205,6 @@ export namespace PreOrderAdminApi {
     codePackageId?: number | null;
     kgs?: number | null;
     cbm?: number | null;
-    clientName?: string | null;
-    carrierName?: string | null;
-    polName?: string | null;
-    podName?: string | null;
     creatorUserName?: string | null;
     creationTime?: string | null;
     creatorUserId?: number | null;

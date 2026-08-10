@@ -181,8 +181,9 @@ export function useOrderFeeData(
     if (orderCtns?.length) {
       const ctnMap = new Map<number, string>();
       orderCtns.forEach((ctn: any) => {
-        if (ctn.ctnCodeId && ctn.ctnCodeName) {
-          ctnMap.set(ctn.ctnCodeId, ctn.ctnCodeName);
+        const ctnName = ctn.ctnCode?.ctnName ?? ctn.ctnCodeName;
+        if (ctn.ctnCodeId && ctnName) {
+          ctnMap.set(ctn.ctnCodeId, ctnName);
         }
       });
 

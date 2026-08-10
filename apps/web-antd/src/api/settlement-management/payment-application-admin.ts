@@ -535,7 +535,9 @@ export namespace PaymentApplicationAdminApi {
     isConfidential: boolean;
     dataEntryMethod: number;
     remark?: string;
-    localCurrencyCode?: string;
+    localCurrencyId?: number;
+    /** 本位币对象（替代 localCurrencyCode，编码读 code） */
+    localCurrency?: CurrencySimpleDto | null;
     rqstPaymentAmount: number;
     unRqstPaymentAmount: number;
     unSettledAmount: number;
@@ -571,11 +573,78 @@ export namespace PaymentApplicationAdminApi {
     enAddress?: string;
   }
 
-  /** 港口简要 DTO */
+  /** 国家简易对象 */
+  export interface CountryCodeSimpleDto {
+    id?: number | string;
+    code?: string;
+    countryName?: string;
+    countryEnName?: string;
+  }
+
+  /** 航线简易对象 */
+  export interface LaneCodeSimpleDto {
+    id?: number | string;
+    code?: string;
+    laneName?: string;
+    laneEnName?: string;
+  }
+
+  /** 港口简要 DTO；国家/航线挂在港口下（country / lane） */
   export interface PortSimpleDto {
     id?: number;
     portName?: string;
     cnName?: string;
+    ediCode?: string;
+    country?: CountryCodeSimpleDto | null;
+    lane?: LaneCodeSimpleDto | null;
+  }
+
+  /** 箱型简易对象 */
+  export interface CtnCodeSimpleDto {
+    id?: number | string;
+    ctnName?: string;
+    ctnSize?: string;
+    ctnType?: string;
+    teu?: number;
+  }
+
+  /** 包装简易对象 */
+  export interface CodePackageSimpleDto {
+    id?: number | string;
+    name?: string;
+    ediCode?: string;
+  }
+
+  /** 品名简易对象 */
+  export interface CodeGoodsSimpleDto {
+    id?: number | string;
+    code?: string;
+    name?: string;
+    enName?: string;
+    hsCode?: string;
+  }
+
+  /** 货源地简易对象 */
+  export interface CodeSourceSimpleDto {
+    id?: number | string;
+    code?: string;
+    cnName?: string;
+    enName?: string;
+  }
+
+  /** 付费方式简易对象 */
+  export interface CodeFrtSimpleDto {
+    id?: number | string;
+    cnName?: string;
+    enName?: string;
+  }
+
+  /** 运输条款简易对象 */
+  export interface CodeServiceSimpleDto {
+    id?: number | string;
+    cnName?: string;
+    enName?: string;
+    ediCode?: string;
   }
 
   /** 详情 transportOrder.seaExport 上的港口/船名简要 */
@@ -592,7 +661,14 @@ export namespace PaymentApplicationAdminApi {
   /** 箱型箱量简要 DTO */
   export interface OrderCtnSimpleDto {
     ctnCodeId?: number;
-    ctnCodeName?: string;
+    /** 箱型对象（替代 ctnCodeName，名称读 ctnName） */
+    ctnCode?: CtnCodeSimpleDto | null;
+    codePackageId?: number;
+    /** 包装对象（替代 codePackageName） */
+    codePackage?: CodePackageSimpleDto | null;
+    codeGoodsId?: number;
+    /** 品名对象（替代 codeGoodsName / codeGoodsHSCode） */
+    codeGoods?: CodeGoodsSimpleDto | null;
   }
 
   /** 业务 + 结算对象分组 DTO */
@@ -609,12 +685,32 @@ export namespace PaymentApplicationAdminApi {
     clientId: string;
     /** 委托单位（业务往来单位简易对象，无则为 null） */
     client?: ClientSimpleDtoForOrder | null;
-    polId?: number;
-    polName?: string;
-    pol?: PortSimpleDto;
-    podId?: number;
-    podName?: string;
-    pod?: PortSimpleDto;
+    /** 起运港对象（替代 polId / polName） */
+    pol?: PortSimpleDto | null;
+    /** 目的港对象（替代 podId / podName）；国家/航线读 pod.country / pod.lane */
+    pod?: PortSimpleDto | null;
+    /** 付费地点港口对象（替代 prepareAtId / prepareAtName） */
+    prepareAt?: PortSimpleDto | null;
+    /** 签单地点港口对象（替代 signingPortId / signingPortName） */
+    signingPort?: PortSimpleDto | null;
+    /** 中转港1对象 */
+    pot1?: PortSimpleDto | null;
+    /** 中转港2对象 */
+    pot2?: PortSimpleDto | null;
+    /** 收货地港口对象 */
+    receivePort?: PortSimpleDto | null;
+    /** 交货地港口对象 */
+    deliverPort?: PortSimpleDto | null;
+    podRemark?: string;
+    polRemark?: string;
+    /** 货源地对象（替代 codeSourceName） */
+    codeSource?: CodeSourceSimpleDto | null;
+    /** 付费方式对象（替代 codeFrtName） */
+    codeFrt?: CodeFrtSimpleDto | null;
+    /** 运输条款对象（替代 codeServiceName） */
+    codeService?: CodeServiceSimpleDto | null;
+    /** 包装对象（替代 codePackageName） */
+    codePackage?: CodePackageSimpleDto | null;
     etd?: string;
     eta?: string;
     orderUsers?: OrderUserDto[];
@@ -709,9 +805,7 @@ export namespace PaymentApplicationAdminApi {
     seaExportInnerVoyno?: string;
     bizType: number;
     clientId: string;
-    /** @deprecated 委托单位改走 client 对象 */
-    clientName?: string;
-    /** 委托单位（业务往来单位简易对象） */
+    /** 委托单位（业务往来单位简易对象，替代 clientName） */
     client?: ClientSimpleDtoForOrder | null;
     saleNames?: string[];
     operatorNames?: string[];
@@ -732,10 +826,11 @@ export namespace PaymentApplicationAdminApi {
     rate?: number;
     appliedAmount: number;
     remark?: string;
-    feeCodeName?: string;
-    feeCurrencyName?: string;
     feeAmount: number;
-    feeSettlementName?: string;
+    /**
+     * 关联费用。费用名称/币别/结算对象改读
+     * `orderFee.feeCode.cnName` / `orderFee.currency.cnName` / `orderFee.settlement.name`
+     */
     orderFee?: OrderFeeDto;
     isDeleted: boolean;
     creationTime: string;

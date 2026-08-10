@@ -379,7 +379,7 @@ function validateSelection(): boolean {
   });
   if (invalidItem) {
     message.warning(
-      `费用「${invalidItem.feeCodeName || '-'}」结算金额必须大于0`,
+      `费用「${invalidItem.feeCode?.cnName || '-'}」结算金额必须大于0`,
     );
     return false;
   }
@@ -400,7 +400,7 @@ function validateSelection(): boolean {
     if (consumed > settleable + 1e-6) {
       const item = items.find((i) => i.orderFeeId === orderFeeId);
       message.warning(
-        `费用「${item?.feeCodeName || '-'}」发票口径可结算余额不足，可用额度 ${formatAmount(settleable)}`,
+        `费用「${item?.feeCode?.cnName || '-'}」发票口径可结算余额不足，可用额度 ${formatAmount(settleable)}`,
       );
       return false;
     }

@@ -299,12 +299,12 @@ function buildSelectedFees(): SelectedReceiveFee[] {
         commissionNum: group.transportOrder.commissionNum,
         mblNum: group.transportOrder.mblNum,
         bookingNum: group.transportOrder.bookingNum,
-        clientName: group.transportOrder.clientName,
-        feeCodeName: fee.feeCodeName,
-        currencyCode: fee.currencyCode,
+        clientName: group.transportOrder.client?.name,
+        feeCodeName: fee.feeCode?.cnName,
+        currencyCode: fee.currency?.code,
         amount: fee.amount,
         remainingAmount: fee.remainingAmount,
-        settlementName: fee.settlementName,
+        settlementName: fee.settlement?.name,
         settledAmount,
       });
     }

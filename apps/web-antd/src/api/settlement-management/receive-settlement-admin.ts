@@ -25,17 +25,21 @@ export namespace ReceiveSettlementAdminApi {
     commissionNum?: string;
     mblNum?: string;
     bookingNum?: string;
-    clientName?: string;
+    /** 委托单位对象（替代 clientName） */
+    client?: ClientSimpleDto | null;
   }
 
   export interface ReceiveSettlementFeeDto {
     id: string;
-    feeCodeName?: string;
-    currencyCode?: string;
+    /** 费用代码对象（替代 feeCodeName，名称读 cnName） */
+    feeCode?: FeeCodeSimpleDto | null;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     paySide?: PaySide;
     amount: number;
     remainingAmount: number;
-    settlementName?: string;
+    /** 结算对象（替代 settlementName） */
+    settlement?: ClientSimpleDto | null;
   }
 
   export interface ReceiveSettlementFeeGroupDto {
@@ -222,15 +226,18 @@ export namespace ReceiveSettlementAdminApi {
   export interface InvoiceAppSettleItemDto {
     invoiceApplicationItemId: string;
     orderFeeId: string;
-    feeCodeName?: string;
-    currencyCode?: string;
+    /** 费用代码对象（替代 feeCodeName，名称读 cnName） */
+    feeCode?: FeeCodeSimpleDto | null;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     paySide: PaySide;
     amount: number;
     appliedAmount: number;
     invoicedAmount: number;
     settledAmount: number;
     invoiceSettleableAmount: number;
-    settlementName?: string;
+    /** 结算对象（替代 settlementName） */
+    settlement?: ClientSimpleDto | null;
     transportOrder?: TransportOrderSimpleDto;
   }
 
@@ -240,9 +247,11 @@ export namespace ReceiveSettlementAdminApi {
     applicationNo?: string;
     invoiceNo?: string;
     settlementId: string;
-    settlementName?: string;
+    /** 结算对象（替代 settlementName） */
+    settlement?: ClientSimpleDto | null;
     currencyId: number;
-    currencyCode?: string;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     applyTime: string;
     items: InvoiceAppSettleItemDto[];
   }

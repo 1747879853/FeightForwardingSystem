@@ -190,7 +190,7 @@ function applySavedBankStatementSnapshot(
   savedSettlementId.value = detail.settlementId;
   savedSettlementName.value = detail.settlement?.name || '';
   savedCurrencyId.value = detail.currencyId;
-  savedCurrencyCode.value = detail.currencyCode || '';
+  savedCurrencyCode.value = detail.currency?.code || '';
   savedAmount.value = detail.amount ?? 0;
   savedOrgId.value = detail.orgId ?? undefined;
 }

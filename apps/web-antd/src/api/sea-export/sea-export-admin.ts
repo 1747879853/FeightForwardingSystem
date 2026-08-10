@@ -40,6 +40,62 @@ export namespace SeaExportAdminApi {
     country?: CountrySimpleDto | null;
   }
 
+  /** 货源地简易对象（后端 CodeSourceSimpleDto） */
+  export interface CodeSourceSimpleDto {
+    id: LongId;
+    code?: null | string;
+    cnName?: null | string;
+    enName?: null | string;
+  }
+
+  /** 付费方式简易对象（后端 CodeFrtSimpleDto） */
+  export interface CodeFrtSimpleDto {
+    id: LongId;
+    cnName?: null | string;
+    enName?: null | string;
+  }
+
+  /** 运输条款简易对象（后端 CodeServiceSimpleDto） */
+  export interface CodeServiceSimpleDto {
+    id: LongId;
+    cnName?: null | string;
+    enName?: null | string;
+    ediCode?: null | string;
+  }
+
+  /** 包装简易对象（后端 CodePackageSimpleDto） */
+  export interface CodePackageSimpleDto {
+    id: LongId;
+    name?: null | string;
+    ediCode?: null | string;
+  }
+
+  /** 箱型简易对象（后端 CtnCodeSimpleDto） */
+  export interface CtnCodeSimpleDto {
+    id: LongId;
+    ctnName?: null | string;
+    ctnSize?: null | string;
+    ctnType?: null | string;
+    teu?: null | number;
+  }
+
+  /** 品名简易对象（后端 CodeGoodsSimpleDto） */
+  export interface CodeGoodsSimpleDto {
+    id: LongId;
+    code?: null | string;
+    name?: null | string;
+    enName?: null | string;
+    hsCode?: null | string;
+  }
+
+  /** 签单方式简易对象（后端 CodeIssueTypeSimpleDto） */
+  export interface CodeIssueTypeSimpleDto {
+    id: LongId;
+    /** 签单方式名称 */
+    billType?: null | string;
+    enName?: null | string;
+  }
+
   export interface ServiceTypeByPolDto {
     serviceType: number;
     sortId: number;
@@ -74,7 +130,6 @@ export namespace SeaExportAdminApi {
     /** 箱型id */
     ctnCodeId?: number;
 
-    ctnCodeName?: string;
     /** 箱号 */
     ctnNo?: string;
     /** 封号 */
@@ -103,10 +158,28 @@ export namespace SeaExportAdminApi {
     remark?: string;
   }
 
+  /** 业务箱型输出（关联字典以对象返回） */
+  export interface OrderCtnDto extends OrderCtnAddDto {
+    id?: number;
+    /** 箱型对象（替代 ctnCodeName） */
+    ctnCode?: CtnCodeSimpleDto | null;
+    /** 包装对象（替代 codePackageName） */
+    codePackage?: CodePackageSimpleDto | null;
+    /** 品名对象（替代 codeGoodsName / codeGoodsHSCode） */
+    codeGoods?: CodeGoodsSimpleDto | null;
+  }
+
   /** 业务商品信息新增输入 */
   export interface OrderCodeGoodsAddDto {
     /** 商品信息id */
     codeGoodsId?: number;
+  }
+
+  /** 业务商品信息输出（关联字典以对象返回） */
+  export interface OrderCodeGoodsDto extends OrderCodeGoodsAddDto {
+    id?: number;
+    /** 品名对象（替代 codeGoodsName / codeGoodsHSCode） */
+    codeGoods?: CodeGoodsSimpleDto | null;
   }
 
   /** 业务相关用户新增输入 */
@@ -186,12 +259,8 @@ export namespace SeaExportAdminApi {
     feeLockedTime?: string;
     feeUnLockedUserId?: number;
     feeUnLockedTime?: string;
-    codeSourceName?: string;
-    codeFrtName?: string;
-    codeServiceName?: string;
     totalCtn?: string;
     teu?: number;
-    codePackageName?: string;
     /** 危品等级 */
     dgLevel?: string;
     /** 危品编号 */
@@ -252,6 +321,18 @@ export namespace SeaExportAdminApi {
     shipper?: ClientAdminApi.ClientDto | null;
     /** 通知人（业务往来单位简易对象，无则为 null） */
     notifier?: ClientAdminApi.ClientDto | null;
+    /** 货源地对象（替代 codeSourceName） */
+    codeSource?: CodeSourceSimpleDto | null;
+    /** 付费方式对象（替代 codeFrtName） */
+    codeFrt?: CodeFrtSimpleDto | null;
+    /** 运输条款对象（替代 codeServiceName） */
+    codeService?: CodeServiceSimpleDto | null;
+    /** 包装对象（替代 codePackageName） */
+    codePackage?: CodePackageSimpleDto | null;
+    /** 箱型箱量列表（字典以对象返回） */
+    orderCtns?: OrderCtnDto[];
+    /** 品名列表（字典以对象返回） */
+    orderCodeGoodss?: OrderCodeGoodsDto[];
     orderUsers?: OrderUserDto[];
     bizType?: number;
     isDeleted?: boolean;
@@ -435,8 +516,8 @@ export namespace SeaExportAdminApi {
     yardTel?: string;
     /** 签单方式id（新版字段） */
     codeIssueTypeId?: number;
-    /** 签单方式名称（新版字段） */
-    codeIssueTypeName?: string;
+    /** 签单方式对象（替代 codeIssueTypeName，名称读 billType） */
+    codeIssueType?: CodeIssueTypeSimpleDto | null;
     /** 签单方式id（旧字段，兼容） */
     issueType?: number;
     vessel?: string;
@@ -458,67 +539,33 @@ export namespace SeaExportAdminApi {
     prepareAtId?: number;
     /** 付费地点港口对象（无则为 null） */
     prepareAt?: PortCodeSimpleDtoForOrder | null;
-    /** @deprecated 后端已对象化，请读 prepareAt.portName */
-    prepareAtName?: string;
-    /** @deprecated 后端已对象化，请读 prepareAt.ediCode */
-    prepareAtEdiCode?: string;
     signingPortId?: number;
     /** 签单地点港口对象（无则为 null） */
     signingPort?: PortCodeSimpleDtoForOrder | null;
-    /** @deprecated 后端已对象化，请读 signingPort.portName */
-    signingPortName?: string;
-    /** @deprecated 后端已对象化，请读 signingPort.ediCode */
-    signingPortEdiCode?: string;
     podId?: number;
     /** 目的港对象（无则为 null）；航线/国家读 pod.lane / pod.country */
     pod?: PortCodeSimpleDtoForOrder | null;
-    /** @deprecated 后端已对象化，请读 pod.portName */
-    podName?: string;
-    /** @deprecated 后端已对象化，请读 pod.ediCode */
-    podEdiCode?: string;
     podRemark?: string;
     polId?: number;
     /** 起运港对象（无则为 null） */
     pol?: PortCodeSimpleDtoForOrder | null;
-    /** @deprecated 后端已对象化，请读 pol.portName */
-    polName?: string;
-    /** @deprecated 后端已对象化，请读 pol.ediCode */
-    polEdiCode?: string;
     polRemark?: string;
     poT1Id?: number;
     /** 中转港1对象（无则为 null） */
     pot1?: PortCodeSimpleDtoForOrder | null;
-    /** @deprecated 后端已对象化，请读 pot1.portName */
-    poT1Name?: string;
-    /** @deprecated 后端已对象化，请读 pot1.ediCode */
-    poT1EdiCode?: string;
     poT1Remark?: string;
     poT2Id?: number;
     /** 中转港2对象（无则为 null） */
     pot2?: PortCodeSimpleDtoForOrder | null;
-    /** @deprecated 后端已对象化，请读 pot2.portName */
-    poT2Name?: string;
-    /** @deprecated 后端已对象化，请读 pot2.ediCode */
-    poT2EdiCode?: string;
     poT2Remark?: string;
     receivePortId?: number;
     /** 收货地港口对象（无则为 null） */
     receivePort?: PortCodeSimpleDtoForOrder | null;
-    /** @deprecated 后端已对象化，请读 receivePort.portName */
-    receivePortName?: string;
-    /** @deprecated 后端已对象化，请读 receivePort.ediCode */
-    receivePortEdiCode?: string;
     receivePortRemark?: string;
     deliverPortId?: number;
     /** 交货地港口对象（无则为 null） */
     deliverPort?: PortCodeSimpleDtoForOrder | null;
-    /** @deprecated 后端已对象化，请读 deliverPort.portName */
-    deliverPortName?: string;
-    /** @deprecated 后端已对象化，请读 deliverPort.ediCode */
-    deliverPortEdiCode?: string;
     deliverPortRemark?: string;
-    /** @deprecated 后端已对象化，请读 pod.lane.laneName */
-    laneName?: string;
     creatorUserNickName?: string;
     sortId?: number;
     remark?: string;

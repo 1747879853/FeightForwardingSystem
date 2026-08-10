@@ -236,7 +236,7 @@ async function handleDelete(index: number) {
     await new Promise<void>((resolve, reject) => {
       Modal.confirm({
         title: '确认删除',
-        content: `确定要删除申请 ${item.applicationNo} (${item.originalCurrencyCode}) 吗？`,
+        content: `确定要删除申请 ${item.applicationNo} (${item.originalCurrency?.code ?? ''}) 吗？`,
         okText: '确定',
         cancelText: '取消',
         onOk: () => {
@@ -304,7 +304,7 @@ function getOrderFees(
 
       <!-- 原币币别 -->
       <template v-else-if="column.key === 'originalCurrencyCode'">
-        <Tag color="blue">{{ record.originalCurrencyCode }}</Tag>
+        <Tag color="blue">{{ record.originalCurrency?.code }}</Tag>
       </template>
 
       <!-- 本次结算金额（原币） -->
@@ -347,7 +347,7 @@ function getOrderFees(
         <!-- 调试信息 -->
         <div class="debug-info">
           费用数量: {{ getOrderFees(record).length }} | 原币:
-          {{ record.originalCurrencyCode }} | 汇率: {{ record.rate }}
+          {{ record.originalCurrency?.code }} | 汇率: {{ record.rate }}
         </div>
         <Table
           :columns="orderFeeColumns"

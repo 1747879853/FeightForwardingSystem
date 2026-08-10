@@ -2,7 +2,7 @@
 title: 海运出口编辑工作台
 module: 海运出口
 author: auto-doc-sync
-last_updated: 2026-08-09
+last_updated: 2026-08-10
 ---
 
 <!-- 说明：本页复用 `basic-info-form/form.vue`，其脚本已按批次拆分为 `sea-export-detail-mapper.ts`（映射）、`service-type-nodes.ts`（服务项纯逻辑）、`use-order-users.ts`（干系人）、`use-sea-export-ai-recognize.ts` + `ai-extract-utils.ts` + `ai-extract-upload-modal.vue`（AI 识别）、`use-sea-export-submit.ts`（保存提交/脏检查）等模块，样式外链至 `form.css`。 -->
@@ -133,6 +133,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- | --- | --- | --- | --- |
+| 2026-08-10 | `Refactor` | 业务字典/签单方式/分单往来与港口/派车车队改读 SimpleDto；费用箱型名读 `ctnCode.ctnName`。 | 契约去掉平铺 Name；分单编辑将对象拍平为表单展示名。详见 `changelogs/change-log-2026-08-10-foreign-key-simple-dto-alignment.md`。 |
 | 2026-08-09 | `Feature` | 箱型箱量支持「批量新增」：全量启用箱型 + 搜索 + 按数量一次生成多行。 | 共用 `order-ctn-table.vue`；对应 TAPD `#1161580498001000694`。详见 `changelogs/change-log-2026-08-09-sea-export-ctn-batch-add.md`。 |
 | 2026-08-09 | `Fix` | 费用表带汇率时应收/应付取反修复：应收取 `drValue`、应付取 `crValue`。 | `adapter/vxe-table.ts` 的 `FeeCodeSelect` / `CurrencySelect` 渲染器把 `props?.type`（0 应收 / 1 应付）当布尔用，0 落到 else 分支导致口径互换；改判 `Number(props?.type) === 1`。历史已录费用行不会自动纠正。详见 `changelogs/change-log-2026-08-09-order-fee-exchange-rate-dr-cr-fix.md`。 |
 | 2026-08-09 | `Refactor` | 费用 Tab 的费用代码/币别/结算对象列全部改读嵌套对象；更改单费用汇总同步。 | `OrderFeeDto` 删六个平铺外键新增 `feeCode`/`currency`/`settlement`：vxe 列 `field` 改点号路径、`all-order-fee-table` 的 `formatter`、`submission-order-fee-table` 的 `dataIndex` 数组路径、`useOrderFeeData` 币别聚合均同步。Handsontable 的结算对象缓存键由 `row.settlementName` 改为私有 `row.__settlementName`，读取顺序 `settlement?.name ?? __settlementName`。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |

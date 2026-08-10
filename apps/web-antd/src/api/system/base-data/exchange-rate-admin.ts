@@ -1,6 +1,15 @@
 import { requestClient } from '#/api/request';
 
 export namespace ExchangeRateAdminApi {
+  /** 币别简易对象 */
+  export interface CurrencySimpleDto {
+    id?: number | string;
+    code?: string;
+    cnName?: string;
+    enName?: string;
+    defaultRate?: number;
+  }
+
   /** 新增汇率参数 */
   export interface ExchangeRateAddDto {
     /** 币别Id（大数经 json-bigint 解析为 string，需原样透传） */
@@ -42,7 +51,8 @@ export namespace ExchangeRateAdminApi {
     /** 汇率Id（大数经 json-bigint 解析为 string） */
     id: number | string;
     currencyId?: number | string;
-    currencyCode?: string;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     drValue?: number;
     crValue?: number;
     customValue?: number;

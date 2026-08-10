@@ -58,10 +58,10 @@ watch(
           bankOptions.push({
             id: bank.id,
             value: bank.id,
-            label: `${bank.bankName} - ${bank.accountName} (${bank.currencyCode})`,
+            label: `${bank.bankName} - ${bank.accountName} (${bank.currency?.code})`,
             bankName: bank.bankName || '',
             bankAccount: bank.bankAccount || '',
-            currencyCode: bank.currencyCode || '',
+            currencyCode: bank.currency?.code || '',
           });
         });
       });

@@ -170,7 +170,7 @@ const handleRowDblclick = ({
   entityId.value = row.entityId || '';
   changeOrderId.value = row.changeOrderId || null;
   const mblNum = row.transportOrder.mblNum || '--';
-  orderName.value = `当前选中: ${mblNum}(${row.transportOrder.clientName})`;
+  orderName.value = `当前选中: ${mblNum}(${row.transportOrder.client?.name ?? ''})`;
 
   // ✅ 关键变更：点行进详情时，必须把该行的 changeOrderId 原样回传
   if (detailRef.value) {

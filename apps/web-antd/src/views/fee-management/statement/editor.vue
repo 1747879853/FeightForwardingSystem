@@ -455,7 +455,7 @@ function mapDetailToFeeRows(
         transportOrderId: fee?.transportOrderId ?? order?.id ?? '',
         commissionNum: order?.commissionNum ?? undefined,
         mblNum: order?.mblNum ?? undefined,
-        clientName: order?.clientName ?? undefined,
+        clientName: order?.client?.name ?? undefined,
         accountDate: order?.accountDate ?? undefined,
         etd: order?.etd ?? undefined,
         polName: bizInfo.polName ?? order?.seaExportPOLCnName ?? undefined,

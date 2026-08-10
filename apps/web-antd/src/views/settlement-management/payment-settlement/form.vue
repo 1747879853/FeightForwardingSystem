@@ -751,7 +751,7 @@ async function loadEditData() {
         ]
       : [];
     currencyId.value = detail.currencyId;
-    currencyCode.value = detail.currencyCode || '';
+    currencyCode.value = detail.currency?.code || '';
     transactionFee.value = detail.transactionFee;
     remark.value = detail.remark || '';
 

@@ -57,7 +57,8 @@ export namespace InvoiceApplicationAdminApi {
     commissionNum?: string;
     mblNum?: string;
     bookingNum?: string;
-    clientName?: string;
+    /** 委托单位对象（替代 clientName） */
+    client?: ClientSimpleDto | null;
     etd?: string;
     /** 海运出口信息（根据文档，现在挂在此处） */
     seaExport?: SeaExportSimpleDto;
@@ -125,6 +126,20 @@ export namespace InvoiceApplicationAdminApi {
     name?: string;
     code?: string;
     fullName?: string;
+    enName?: string;
+  }
+
+  /** 组织（公司）简要对象 */
+  export interface CompanySimpleDto {
+    id?: number | string;
+    name?: string;
+  }
+
+  /** 开票商品简要对象 */
+  export interface CodeInvoiceSimpleDto {
+    id?: number | string;
+    code?: string;
+    name?: string;
     enName?: string;
   }
 
@@ -223,7 +238,8 @@ export namespace InvoiceApplicationAdminApi {
     id: string;
     invoiceApplicationId: string;
     codeInvoiceId: number;
-    codeInvoiceName?: string;
+    /** 开票商品对象（替代 codeInvoiceName） */
+    codeInvoice?: CodeInvoiceSimpleDto | null;
     specification?: string;
     unit?: string;
     quantity: number;
@@ -366,8 +382,8 @@ export namespace InvoiceApplicationAdminApi {
     orgId: null | number;
     /** 组织串（从最高级组织到该组织） */
     orgs?: null | OrganizationUnitSimpleDto[];
-    /** 组织名（便于直接展示） */
-    companyName?: string;
+    /** 组织（公司）对象（替代 companyName） */
+    company?: CompanySimpleDto | null;
     orgBankAccountId: string;
     applyUserId?: number;
     applyTime?: string;
@@ -377,8 +393,10 @@ export namespace InvoiceApplicationAdminApi {
     rejectReason?: string;
     remark?: string;
     creatorUserName?: string;
-    settlementName?: string;
-    currencyCode?: string;
+    /** 结算对象（替代 settlementName） */
+    settlement?: ClientSimpleDto | null;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     applyUserName?: string;
     rejectUserNickName?: string;
     feeGroups: InvoiceApplicationFeeGroupDetailDto[];
@@ -418,8 +436,10 @@ export namespace InvoiceApplicationAdminApi {
     rejectTime?: string;
     rejectReason?: string;
     creatorUserName?: string;
-    settlementName?: string;
-    currencyCode?: string;
+    /** 结算对象（替代 settlementName） */
+    settlement?: ClientSimpleDto | null;
+    /** 币别对象（替代 currencyCode，编码读 code） */
+    currency?: CurrencySimpleDto | null;
     applyUserName?: string;
     rejectUserNickName?: string;
     totalAppliedAmount: number;

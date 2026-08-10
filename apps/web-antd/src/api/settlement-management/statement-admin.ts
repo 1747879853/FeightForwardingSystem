@@ -154,7 +154,8 @@ export namespace StatementAdminApi {
     statementCurrencyGroup?: StatementCurrencyDto[];
     orderFeeGroups?: OrderFeeAndSeaExportDto[];
     localCurrencyId?: number;
-    localCurrencyCode?: string;
+    /** 本位币对象（替代 localCurrencyCode，编码读 code） */
+    localCurrency?: CurrencySimpleDto | null;
     localCurrencyReceiveAmount: number;
     localCurrencyPayAmount: number;
     isDeleted: boolean;

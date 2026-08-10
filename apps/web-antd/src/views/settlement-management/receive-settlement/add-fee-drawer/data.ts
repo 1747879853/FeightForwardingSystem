@@ -89,7 +89,7 @@ export function buildOrderRow(group: OrderGroup) {
     commissionNum: order.commissionNum,
     mblNum: order.mblNum,
     bookingNum: order.bookingNum,
-    clientName: order.clientName,
+    clientName: order.client?.name,
     feeCount: group.orderFees?.length ?? 0,
     totalRemainingAmount: (group.orderFees ?? []).reduce(
       (sum, fee) => sum + (fee.remainingAmount || 0),

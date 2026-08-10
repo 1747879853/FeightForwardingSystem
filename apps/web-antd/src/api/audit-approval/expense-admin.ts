@@ -1,3 +1,6 @@
+import type { ClientAdminApi } from '#/api/sea-export/client-admin';
+import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+
 import { requestClient } from '#/api/request';
 
 import type { OrderFeeAdminApi } from '../sea-export/order-fee-admin';
@@ -124,8 +127,8 @@ export namespace ExpenseSubmissionAdminApi {
     /** 包装 id */
     codePackageId?: number | null;
 
-    /** 包装名 */
-    codePackageName?: string | null;
+    /** 包装对象（替代 codePackageName） */
+    codePackage?: SeaExportAdminApi.CodePackageSimpleDto | null;
 
     /** 毛重 */
     grossWeight?: number | null;
@@ -136,8 +139,8 @@ export namespace ExpenseSubmissionAdminApi {
     /** 备注 */
     remark?: string | null;
 
-    /** 委托单位名 */
-    clientName?: string | null;
+    /** 委托单位对象（替代 clientName） */
+    client?: ClientAdminApi.ClientDto | null;
 
     /** 是否已删除 */
     isDeleted: boolean;
