@@ -2,7 +2,7 @@
 import type { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-application-admin';
 import type { PaymentSettlementAdminApi } from '#/api/sea-export/payment-settlement-admin';
 
-import { computed, ref, onMounted, nextTick, onUnmounted, h } from 'vue';
+import { computed, ref, h } from 'vue';
 import dayjs from 'dayjs';
 
 import {
@@ -15,7 +15,6 @@ import {
   Checkbox,
   Pagination,
 } from 'ant-design-vue';
-import type { ColumnsType } from 'ant-design-vue/es/table';
 
 import { useVbenForm } from '#/adapter/form';
 import { CurrencySelect } from '#/adapter/component';
@@ -24,7 +23,6 @@ import ExchangeRateModal from '#/views/fee-management/add-fee-modal/exchange-rat
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 
 import { useSearchSchema, getStatusTagProps } from './data';
-
 interface Props {
   /** 付费结算ID（编辑时传入，用于排除已选择的申请） */
   paymentSettlementId?: string;
@@ -74,9 +72,6 @@ const pendingCurrencies = ref<
   Array<{ currencyId: number; currencyCode: string }>
 >([]);
 const settlementCurrencyName = ref('');
-
-// MutationObserver 实例
-let tableObserver: MutationObserver | null = null;
 
 // 查询表单
 const [SearchForm, searchFormApi] = useVbenForm({
@@ -195,19 +190,11 @@ async function openDrawer() {
   }
 
   await fetchData();
-
-  // 初始化 MutationObserver
-  await nextTick();
-  setTimeout(() => {
-    initTableObserver();
-  }, 200);
 }
 
 /** 关闭抽屉 */
 function closeDrawer() {
   visible.value = false;
-  // 销毁 Observer
-  destroyTableObserver();
 }
 
 /** 获取数据 */
@@ -289,13 +276,6 @@ async function fetchData() {
     });
 
     total.value = result.totalCount || 0;
-
-    // 数据加载完成后，启用列宽拖拽
-    await nextTick();
-    const tables = document.querySelectorAll('.ant-table-wrapper');
-    tables.forEach((table) => {
-      enableColumnResize(table as HTMLElement);
-    });
   } catch (error: any) {
     message.error(error.message || '获取数据失败');
   } finally {
@@ -923,134 +903,6 @@ const innerColumns = [
     align: 'right' as const,
   },
 ];
-
-/** 为表格添加列宽拖拽功能 */
-function enableColumnResize(tableElement: HTMLElement | null) {
-  if (!tableElement) return;
-
-  const headers = tableElement.querySelectorAll('th');
-
-  headers.forEach((header) => {
-    if (
-      header.classList.contains('ant-table-selection-column') ||
-      header.classList.contains('ant-table-expand-icon-th')
-    ) {
-      return;
-    }
-
-    if (header.querySelector('.column-resizer')) {
-      return;
-    }
-
-    const resizer = document.createElement('div');
-    resizer.className = 'column-resizer';
-    resizer.style.cssText = `
-      position: absolute;
-      right: 0;
-      top: 0;
-      bottom: 0;
-      width: 5px;
-      cursor: col-resize;
-      background-color: transparent;
-      transition: background-color 0.2s;
-      z-index: 10;
-    `;
-
-    resizer.addEventListener('mouseenter', () => {
-      resizer.style.backgroundColor = '#d9d9d9';
-    });
-
-    resizer.addEventListener('mouseleave', () => {
-      resizer.style.backgroundColor = 'transparent';
-    });
-
-    let isResizing = false;
-    let startX = 0;
-    let startWidth = 0;
-
-    resizer.addEventListener('mousedown', (e) => {
-      isResizing = true;
-      startX = e.clientX;
-      startWidth = header.offsetWidth;
-      resizer.style.backgroundColor = '#1890ff';
-
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      e.preventDefault();
-    });
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      const diff = e.clientX - startX;
-      const newWidth = Math.max(80, startWidth + diff);
-      header.style.width = `${newWidth}px`;
-      header.style.minWidth = `${newWidth}px`;
-      header.style.maxWidth = `${newWidth}px`;
-    };
-
-    const handleMouseUp = () => {
-      isResizing = false;
-      resizer.style.backgroundColor = 'transparent';
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    header.style.position = 'relative';
-    header.appendChild(resizer);
-  });
-}
-
-/** 为所有可见的表格启用列宽拖拽 */
-function enableResizeForAllTables() {
-  const tables = document.querySelectorAll('.ant-table-wrapper');
-  tables.forEach((table) => {
-    enableColumnResize(table as HTMLElement);
-  });
-}
-
-/** 初始化 MutationObserver 监听表格变化 */
-function initTableObserver() {
-  if (tableObserver) return;
-
-  tableObserver = new MutationObserver((mutations) => {
-    let hasNewTable = false;
-
-    mutations.forEach((mutation) => {
-      mutation.addedNodes.forEach((node) => {
-        if (node instanceof HTMLElement) {
-          if (
-            node.classList?.contains('ant-table-wrapper') ||
-            node.querySelector?.('.ant-table-wrapper')
-          ) {
-            hasNewTable = true;
-          }
-        }
-      });
-    });
-
-    if (hasNewTable) {
-      setTimeout(() => {
-        enableResizeForAllTables();
-      }, 50);
-    }
-  });
-
-  const drawerContent = document.querySelector('.ant-drawer-body');
-  if (drawerContent) {
-    tableObserver.observe(drawerContent, {
-      childList: true,
-      subtree: true,
-    });
-  }
-}
-
-/** 销毁 MutationObserver */
-function destroyTableObserver() {
-  if (tableObserver) {
-    tableObserver.disconnect();
-    tableObserver = null;
-  }
-}
 </script>
 
 <template>

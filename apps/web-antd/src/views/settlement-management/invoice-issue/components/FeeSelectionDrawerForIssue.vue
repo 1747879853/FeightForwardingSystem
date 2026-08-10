@@ -28,6 +28,7 @@ import { getSubmittedApplicationList } from '#/api/Invoice/InvoiceIssue';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
+import { useAntTableColumnResize } from '#/utils/table-column-resize';
 import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-application/data';
 
 interface Props {
@@ -100,6 +101,12 @@ const filterApplyTimeRange = ref<[dayjs.Dayjs, dayjs.Dayjs] | undefined>(
 
 // 申请分组数据
 const applicationGroupsData = ref<any[]>([]);
+
+useAntTableColumnResize({
+  containerSelector: '.invoice-issue-fee-selection-drawer',
+  enabled: drawerVisible,
+  dataVersion: applicationGroupsData,
+});
 
 // 选中的申请行 keys
 const selectedAppRowKeys = ref<string[]>([]);
@@ -1309,196 +1316,203 @@ defineExpose({
     width="1600"
     :footer-style="{ textAlign: 'right' }"
   >
-    <Spin :spinning="feeDrawerLoading">
-      <!-- 筛选条件 -->
-      <div
-        style="
-          padding: 10px 5px;
-          margin-bottom: 16px;
-          background: #fafafa;
-          border: 1px solid #d9d9d9;
-          border-radius: 4px;
-        "
-      >
+    <div class="invoice-issue-fee-selection-drawer">
+      <Spin :spinning="feeDrawerLoading">
+        <!-- 筛选条件 -->
         <div
-          style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center"
+          style="
+            padding: 10px 5px;
+            margin-bottom: 16px;
+            background: #fafafa;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+          "
         >
-          <!-- ✅ 新增：结算单位选择 -->
           <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 12px;
+              align-items: center;
+            "
           >
-            <span style="min-width: 70px; font-size: 14px; color: #333"
-              >结算单位:</span
+            <!-- ✅ 新增：结算单位选择 -->
+            <div
+              style="display: flex; gap: 8px; align-items: center; width: 305px"
             >
-            <ClientSelect
-              v-model:model-value="selectedSettlementId"
-              :selected-items="selectedSettlementItems"
-              placeholder="请选择结算单位"
-              style="flex: 1"
-              :disabled="isSettlementFixed"
-              @change="handleSettlementChange"
-            />
-          </div>
-          <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
-          >
-            <span style="min-width: 70px; font-size: 14px; color: #333"
-              >编号:</span
+              <span style="min-width: 70px; font-size: 14px; color: #333"
+                >结算单位:</span
+              >
+              <ClientSelect
+                v-model:model-value="selectedSettlementId"
+                :selected-items="selectedSettlementItems"
+                placeholder="请选择结算单位"
+                style="flex: 1"
+                :disabled="isSettlementFixed"
+                @change="handleSettlementChange"
+              />
+            </div>
+            <div
+              style="display: flex; gap: 8px; align-items: center; width: 305px"
             >
-            <Input
-              v-model:value="keyWord"
-              placeholder="请输入申请单号"
-              style="flex: 1"
-              allow-clear
-            />
-          </div>
-          <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
-          >
-            <span style="min-width: 70px; font-size: 14px; color: #333"
-              >申请日期:</span
+              <span style="min-width: 70px; font-size: 14px; color: #333"
+                >编号:</span
+              >
+              <Input
+                v-model:value="keyWord"
+                placeholder="请输入申请单号"
+                style="flex: 1"
+                allow-clear
+              />
+            </div>
+            <div
+              style="display: flex; gap: 8px; align-items: center; width: 305px"
             >
-            <DatePicker.RangePicker
-              v-model:value="filterApplyTimeRange"
-              @update:value="handleApplyTimeRangeChange"
-              style="flex: 1"
-              format="YYYY-MM-DD"
-              :placeholder="['开始日期', '结束日期']"
-            />
-          </div>
-          <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
-          >
-            <span style="min-width: 70px; font-size: 14px; color: #333"
-              >发票抬头:</span
+              <span style="min-width: 70px; font-size: 14px; color: #333"
+                >申请日期:</span
+              >
+              <DatePicker.RangePicker
+                v-model:value="filterApplyTimeRange"
+                @update:value="handleApplyTimeRangeChange"
+                style="flex: 1"
+                format="YYYY-MM-DD"
+                :placeholder="['开始日期', '结束日期']"
+              />
+            </div>
+            <div
+              style="display: flex; gap: 8px; align-items: center; width: 305px"
             >
-            <Input
-              v-model:value="filterHeader"
-              placeholder="请输入发票抬头"
-              style="flex: 1"
-              allow-clear
-              :disabled="
-                props.headerId !== undefined &&
-                props.headerId !== null &&
-                props.headerId !== ''
-              "
-            />
-          </div>
-          <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
-          >
-            <span style="min-width: 70px; font-size: 14px; color: #333"
-              >发票币别:</span
+              <span style="min-width: 70px; font-size: 14px; color: #333"
+                >发票抬头:</span
+              >
+              <Input
+                v-model:value="filterHeader"
+                placeholder="请输入发票抬头"
+                style="flex: 1"
+                allow-clear
+                :disabled="
+                  props.headerId !== undefined &&
+                  props.headerId !== null &&
+                  props.headerId !== ''
+                "
+              />
+            </div>
+            <div
+              style="display: flex; gap: 8px; align-items: center; width: 305px"
             >
-            <CurrencySelect
-              v-model:model-value="filterCurrencyId"
-              placeholder="请选择发票币别"
-              style="flex: 1"
-              :disabled="
-                props.currencyId !== undefined && props.currencyId !== null
-              "
-            />
-          </div>
-          <div
-            style="display: flex; gap: 8px; align-items: center; width: 305px"
-          >
-            <span style="min-width: 70px; font-size: 14px; color: #333"
-              >申请人:</span
+              <span style="min-width: 70px; font-size: 14px; color: #333"
+                >发票币别:</span
+              >
+              <CurrencySelect
+                v-model:model-value="filterCurrencyId"
+                placeholder="请选择发票币别"
+                style="flex: 1"
+                :disabled="
+                  props.currencyId !== undefined && props.currencyId !== null
+                "
+              />
+            </div>
+            <div
+              style="display: flex; gap: 8px; align-items: center; width: 305px"
             >
-            <Input
-              v-model:value="filterApplyUserId"
-              placeholder="请输入申请人"
-              style="flex: 1"
-              allow-clear
-            />
-          </div>
-          <div style="display: flex; flex: 1; justify-content: flex-end">
-            <Button type="primary" @click="loadApplicationGroupData"
-              >查询</Button
-            >
+              <span style="min-width: 70px; font-size: 14px; color: #333"
+                >申请人:</span
+              >
+              <Input
+                v-model:value="filterApplyUserId"
+                placeholder="请输入申请人"
+                style="flex: 1"
+                allow-clear
+              />
+            </div>
+            <div style="display: flex; flex: 1; justify-content: flex-end">
+              <Button type="primary" @click="loadApplicationGroupData"
+                >查询</Button
+              >
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- 申请表格 -->
-      <div style="border: 1px solid #d9d9d9; border-radius: 4px">
-        <Table
-          :columns="appParentColumns"
-          :data-source="applicationGroupsData"
-          :pagination="false"
-          bordered
-          size="small"
-          :expandable="{
-            defaultExpandAllRows: true,
-          }"
-          row-key="id"
-          :scroll="{ y: 800 }"
-          :row-selection="{
-            type: 'checkbox',
-            selectedRowKeys: selectedAppRowKeys,
-            onChange: handleParentSelectionChange,
-            onSelect: (record, selected) => {
-              handleSingleParentSelect(record, selected);
-            },
-            onSelectAll: (selected, selectedRows, changeRows) => {
-              handleSelectAll(selected, changeRows);
-            },
-          }"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'code'">
-              <span
-                :style="{
-                  color:
+        <!-- 申请表格 -->
+        <div style="border: 1px solid #d9d9d9; border-radius: 4px">
+          <Table
+            :columns="appParentColumns"
+            :data-source="applicationGroupsData"
+            :pagination="false"
+            bordered
+            size="small"
+            :expandable="{
+              defaultExpandAllRows: true,
+            }"
+            row-key="id"
+            :scroll="{ y: 800 }"
+            :row-selection="{
+              type: 'checkbox',
+              selectedRowKeys: selectedAppRowKeys,
+              onChange: handleParentSelectionChange,
+              onSelect: (record, selected) => {
+                handleSingleParentSelect(record, selected);
+              },
+              onSelectAll: (selected, selectedRows, changeRows) => {
+                handleSelectAll(selected, changeRows);
+              },
+            }"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'code'">
+                <span
+                  :style="{
+                    color:
+                      record.code === 0
+                        ? '#52c41a'
+                        : record.code === 1
+                          ? '#faad14'
+                          : '#ff4d4f',
+                    fontWeight: 'bold',
+                  }"
+                >
+                  {{
                     record.code === 0
-                      ? '#52c41a'
+                      ? '✓ 可开票'
                       : record.code === 1
-                        ? '#faad14'
-                        : '#ff4d4f',
-                  fontWeight: 'bold',
-                }"
-              >
-                {{
-                  record.code === 0
-                    ? '✓ 可开票'
-                    : record.code === 1
-                      ? '⚠ 需更新'
-                      : '✗ 不可开'
-                }}
-              </span>
-            </template>
-            <template v-else-if="column.key === 'invoiceType'">
-              <span>{{ getInvoiceTypeText(record.invoiceType) }}</span>
-            </template>
-          </template>
-          <template #expandedRowRender="{ record }">
-            <Table
-              v-if="
-                record.invoiceApplicationItems &&
-                record.invoiceApplicationItems.length > 0
-              "
-              :columns="appChildColumns"
-              :data-source="record.invoiceApplicationItems"
-              :pagination="false"
-              bordered
-              size="small"
-              row-key="id"
-            >
-              <template #bodyCell="{ column, record: childRecord }">
-                <template v-if="column.key === 'alreadyAdded'">
-                  <span
-                    v-if="childRecord.alreadyAdded"
-                    style="font-size: 12px; color: #999"
-                  >
-                    ✓ 已添加
-                  </span>
-                </template>
+                        ? '⚠ 需更新'
+                        : '✗ 不可开'
+                  }}
+                </span>
               </template>
-            </Table>
-          </template>
-        </Table>
-      </div>
-    </Spin>
+              <template v-else-if="column.key === 'invoiceType'">
+                <span>{{ getInvoiceTypeText(record.invoiceType) }}</span>
+              </template>
+            </template>
+            <template #expandedRowRender="{ record }">
+              <Table
+                v-if="
+                  record.invoiceApplicationItems &&
+                  record.invoiceApplicationItems.length > 0
+                "
+                :columns="appChildColumns"
+                :data-source="record.invoiceApplicationItems"
+                :pagination="false"
+                bordered
+                size="small"
+                row-key="id"
+              >
+                <template #bodyCell="{ column, record: childRecord }">
+                  <template v-if="column.key === 'alreadyAdded'">
+                    <span
+                      v-if="childRecord.alreadyAdded"
+                      style="font-size: 12px; color: #999"
+                    >
+                      ✓ 已添加
+                    </span>
+                  </template>
+                </template>
+              </Table>
+            </template>
+          </Table>
+        </div>
+      </Spin>
+    </div>
 
     <template #footer>
       <div

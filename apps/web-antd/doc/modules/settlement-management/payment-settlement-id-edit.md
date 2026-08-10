@@ -2,7 +2,7 @@
 title: 付费结算编辑
 module: 财务管理
 author: auto-doc-sync
-last_updated: 2026-07-25
+last_updated: 2026-08-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -11,7 +11,7 @@ last_updated: 2026-07-25
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **新建结算：** `/settlement-management/payment-settlement/add`，先通过「选择付费申请」抽屉挑选审核通过的申请；首次添加后自动带出结算对象与结算币别。
+- **新建结算：** `/settlement-management/payment-settlement/add`，先通过「选择付费申请」抽屉挑选审核通过的申请；首次添加后自动带出结算对象与结算币别。抽屉内外层/内层表格支持表头拖拽调列宽（`NestedDataTable` 内置）。
 - **编辑结算：** `/settlement-management/payment-settlement/edit/:id`，`DetailAsync` 回填主信息、汇率明细与 `paymentApplications` 分组；结算对象下拉只读并按详情 `settlement` 回显。
 - **汇率维护：** 按涉及的原币币别维护汇率快照，原币与结算币别相同时强制为 1。
 - **金额结算：** 第二层按币别展示本次结算量与结算金额，第三层展示费用明细及剩余可结算额度。
@@ -47,5 +47,6 @@ last_updated: 2026-07-25
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-10 | `Fix` | 「选择付费申请」抽屉表格支持拖拽调列宽。 | 依赖 `NestedDataTable` 内置 `resizable`；删除抽屉内无效的 `enableColumnResize`。详见 `changelogs/change-log-2026-08-10-drawer-table-column-resize.md`。 |
 | 2026-08-09 | `Refactor` | 付费申请展开行、以及「添加付费申请」抽屉展开的费用明细，「费用名称」「币别」改读嵌套对象。 | `PaymentSettlementAdminApi.OrderFeeDto` 与 `OrderFeeForSelectionDto` 均已对象化——后者虽名字不同，但接口文档写明 `orderFees: List<OrderFeeDto>`，属同一后端 DTO。`application-items-table.vue` 与 `add-application-drawer/index.vue` 的内层 a-table `dataIndex` 改数组路径 `['feeCode','cnName']`/`['currency','code']`，`key` 保持不变以免影响既有 `#bodyCell` 分支。注意这两处列绑定是无类型的字符串，`vue-tsc` 查不出来，只能靠接口文档比对。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-07-25 | `Refactor` | 结算对象改读对象化后的 `settlement`；编辑进入时下拉直接回显结算对象，列表「结算对象」列同步取对象值。 | 详情/列表删除 `settlementName`，类型复用 `PaymentApplicationAdminApi.ClientSimpleDtoForOrder`；列 `field` 保留 `settlementName` 以维持列持久化与排序映射，展示走 `formatter`；`watch(settlementId)` 命中 `selected-items` 缓存时跳过 `getClientDetail`。 |

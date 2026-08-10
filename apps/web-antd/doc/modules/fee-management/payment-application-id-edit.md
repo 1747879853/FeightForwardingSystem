@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-09
+last_updated: 2026-08-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -27,7 +27,7 @@ last_updated: 2026-08-09
 - **发票附件：** 任意状态本地增删，保存走 `EditAsync.attachmentGroup` **全量覆盖**；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读展示（不再有平铺字段 `paymentSettlementAttachments`）。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。
 - **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。
-- **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。
+- **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；表头可拖拽调列宽；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。
 - **提交审核：** 进入付款申请审核链路。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -65,6 +65,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-10 | `Fix` | 添加费用抽屉与页内费用明细表支持拖拽调列宽。 | `NestedDataTable` 默认 `resizable`；详见 `changelogs/change-log-2026-08-10-drawer-table-column-resize.md`。 |
 | 2026-08-09 | `Fix` | 详情费用分组起运港/目的港正确显示（读 `transportOrder.seaExport.pol/pod`）。 | `resolvePol/PodPortDisplayName` 优先嵌套 `seaExport`；「可申请金额」≠ `unSettledAmount`。详见 `changelogs/change-log-2026-08-09-payment-application-detail-port-from-sea-export.md`。 |
 | 2026-08-09 | `Fix` | 原始币别等展示改为直读接口 `currency.code`，删除前端中文名硬编码映射。 | 删除 `toCurrencyDisplayCode`；`CurrencySelect` 的 `labelKey=code` 不再回退中文名。详见 `changelogs/change-log-2026-08-09-payment-application-currency-code-from-api.md`。 |
 | 2026-08-09 | `Fix` | 添加费用抽屉与费用分组表「委托单位」正确显示客户简称。 | `buildOrderRow` / `mapDetailToFeeRows` 读 `client?.name`；详见 `changelogs/change-log-2026-08-09-payment-application-order-client-name-display.md`。 |

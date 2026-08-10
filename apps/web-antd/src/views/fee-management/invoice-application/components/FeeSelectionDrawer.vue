@@ -329,114 +329,6 @@ function flattenTreeData(data: any[]): any[] {
   return result;
 }
 
-/** 为表格添加列宽拖拽功能 */
-function enableColumnResize(tableElement: HTMLElement | null) {
-  if (!tableElement) return;
-
-  const headers = tableElement.querySelectorAll('th');
-
-  headers.forEach((header) => {
-    if (
-      header.classList.contains('ant-table-selection-column') ||
-      header.classList.contains('ant-table-expand-icon-th')
-    ) {
-      return;
-    }
-
-    if (header.querySelector('.column-resizer')) {
-      return;
-    }
-
-    const resizer = document.createElement('div');
-    resizer.className = 'column-resizer';
-    resizer.style.cssText = `
-      position: absolute;
-      right: 0;
-      top: 0;
-      bottom: 0;
-      width: 5px;
-      cursor: col-resize;
-      background-color: transparent;
-      transition: background-color 0.2s;
-      z-index: 10;
-    `;
-
-    resizer.addEventListener('mouseenter', () => {
-      resizer.style.backgroundColor = '#d9d9d9';
-    });
-
-    resizer.addEventListener('mouseleave', () => {
-      resizer.style.backgroundColor = 'transparent';
-    });
-
-    let isResizing = false;
-    let startX = 0;
-    let startWidth = 0;
-
-    resizer.addEventListener('mousedown', (e) => {
-      isResizing = true;
-      startX = e.clientX;
-      startWidth = header.offsetWidth;
-      resizer.style.backgroundColor = '#1890ff';
-
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      e.preventDefault();
-    });
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      const diff = e.clientX - startX;
-      const newWidth = Math.max(80, startWidth + diff);
-      header.style.width = `${newWidth}px`;
-      header.style.minWidth = `${newWidth}px`;
-      header.style.maxWidth = `${newWidth}px`;
-    };
-
-    const handleMouseUp = () => {
-      isResizing = false;
-      resizer.style.backgroundColor = 'transparent';
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    header.style.position = 'relative';
-    header.appendChild(resizer);
-  });
-}
-
-/** 为所有可见的表格启用列宽拖拽 */
-function enableResizeForAllTables() {
-  // 等待 DOM 更新完成后再查找表格元素
-  nextTick(() => {
-    const tables = document.querySelectorAll(
-      '.fee-selection-table-wrapper .ant-table-wrapper',
-    );
-    tables.forEach((table) => {
-      enableColumnResize(table as HTMLElement);
-    });
-  });
-}
-
-// 在抽屉打开后启用列宽拖拽
-watch(drawerVisible, (visible) => {
-  if (visible) {
-    // 延迟执行以确保表格已渲染
-    setTimeout(() => {
-      enableResizeForAllTables();
-    }, 100);
-  }
-});
-
-// 在数据加载完成后也尝试启用列宽拖拽
-watch(feeGroupsData, () => {
-  if (drawerVisible.value) {
-    setTimeout(() => {
-      enableResizeForAllTables();
-    }, 50);
-  }
-});
-
 /** 从表格获取选中的费用 */
 function getSelectedFeesFromTable(): any[] {
   const allSelected = flattenTreeData(feeGroupsData.value);
@@ -898,12 +790,7 @@ defineExpose({
   >
     <Spin :spinning="feeDrawerLoading">
       <!-- 筛选条件 -->
-      <div
-        style="
-          padding: 10px 5px;
-          margin-bottom: 16px;
-        "
-      >
+      <div style="padding: 10px 5px; margin-bottom: 16px">
         <div
           style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center"
         >
@@ -1201,28 +1088,6 @@ defineExpose({
 </template>
 
 <style scoped>
-/* 列宽拖拽手柄样式 */
-.column-resizer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10;
-  width: 5px;
-  cursor: col-resize;
-  background-color: transparent;
-  transition: background-color 0.2s;
-}
-
-.column-resizer:hover {
-  background-color: #d9d9d9;
-}
-
-/* 确保表头可以相对定位 */
-.fee-selection-table-wrapper :deep(th) {
-  position: relative;
-}
-
 /* 仿照 add-fee-modal 的样式 */
 .fee-order-table .ellipsis-cell {
   display: block;

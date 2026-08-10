@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, reactive, watch } from 'vue';
 
 defineOptions({ name: 'NestedDataTable' });
 
@@ -28,6 +28,8 @@ interface Props {
   innerRowKey?: RowKeyGetter;
   loading?: boolean;
   maxHeight?: number;
+  /** 表头拖拽调列宽，默认开启 */
+  resizable?: boolean;
   rowKey?: RowKeyGetter;
 }
 
@@ -38,12 +40,20 @@ const props = withDefaults(defineProps<Props>(), {
   innerRowKey: 'id',
   loading: false,
   maxHeight: 500,
+  resizable: true,
   rowKey: 'id',
 });
 
 const emit = defineEmits<{
   'update:expandedRowKeys': [keys: RowKey[]];
 }>();
+
+const MIN_COL_WIDTH = 60;
+
+/** 用户拖拽后的外层列宽（px），按列 key 存 */
+const outerWidths = reactive<Record<string, number>>({});
+/** 用户拖拽后的内层列宽（px） */
+const innerWidths = reactive<Record<string, number>>({});
 
 const scrollStyle = computed(() => {
   if (props.fillHeight) return undefined;
@@ -83,6 +93,19 @@ function toggleExpanded(record: any, index: number, event?: Event) {
   emit('update:expandedRowKeys', keys);
 }
 
+function columnKey(column: Column, index: number) {
+  return String(column.key || column.dataIndex || index);
+}
+
+function parseWidth(width?: number | string): number | undefined {
+  if (typeof width === 'number' && Number.isFinite(width)) return width;
+  if (typeof width === 'string') {
+    const n = Number.parseFloat(width);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
 function columnWidth(width?: number | string) {
   if (typeof width === 'number') return `${width}px`;
   return width;
@@ -91,10 +114,60 @@ function columnWidth(width?: number | string) {
 /**
  * 最后一列不写死宽度：table width:100% + fixed 时，剩余宽度只进这一列，
  * 展开列才能保持 32px（否则会按比例被撑开）。
+ * 用户拖过该列后写入 outerWidths，则固定为拖拽宽度。
  */
 function outerColStyle(column: Column, index: number) {
+  const key = columnKey(column, index);
+  const dragged = outerWidths[key];
+  if (dragged != null) return { width: `${dragged}px` };
   if (index === props.columns.length - 1) return undefined;
   return { width: columnWidth(column.width) };
+}
+
+function innerColStyle(column: Column, index: number) {
+  const key = columnKey(column, index);
+  const dragged = innerWidths[key];
+  if (dragged != null) return { width: `${dragged}px` };
+  return { width: columnWidth(column.width) };
+}
+
+function resolveStartWidth(
+  column: Column,
+  index: number,
+  widths: Record<string, number>,
+  th: HTMLElement,
+) {
+  const key = columnKey(column, index);
+  return widths[key] ?? parseWidth(column.width) ?? th.offsetWidth;
+}
+
+function startColumnResize(
+  event: MouseEvent,
+  column: Column,
+  index: number,
+  widths: Record<string, number>,
+) {
+  if (!props.resizable) return;
+  event.preventDefault();
+  event.stopPropagation();
+
+  const th = event.currentTarget as HTMLElement | null;
+  const header = th?.closest('th') as HTMLElement | null;
+  if (!header) return;
+
+  const key = columnKey(column, index);
+  const startX = event.clientX;
+  const startWidth = resolveStartWidth(column, index, widths, header);
+
+  const onMove = (e: MouseEvent) => {
+    widths[key] = Math.max(MIN_COL_WIDTH, startWidth + (e.clientX - startX));
+  };
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 }
 
 function cellValue(record: any, column: Column) {
@@ -104,12 +177,36 @@ function cellValue(record: any, column: Column) {
 function columnClass(column: Column) {
   return [`is-${column.align || 'left'}`, column.className];
 }
+
+/** 列定义变更时清掉已不存在的拖拽宽度，避免 key 泄漏 */
+watch(
+  () => props.columns.map((c, i) => columnKey(c, i)).join('|'),
+  (keys) => {
+    const set = new Set(keys.split('|'));
+    for (const key of Object.keys(outerWidths)) {
+      if (!set.has(key)) delete outerWidths[key];
+    }
+  },
+);
+
+watch(
+  () => props.innerColumns.map((c, i) => columnKey(c, i)).join('|'),
+  (keys) => {
+    const set = new Set(keys.split('|'));
+    for (const key of Object.keys(innerWidths)) {
+      if (!set.has(key)) delete innerWidths[key];
+    }
+  },
+);
 </script>
 
 <template>
   <div
     class="nested-data-table"
-    :class="{ 'nested-data-table--fill': fillHeight }"
+    :class="{
+      'nested-data-table--fill': fillHeight,
+      'nested-data-table--resizable': resizable,
+    }"
   >
     <div class="nested-data-table__scroll" :style="scrollStyle">
       <table class="nested-data-table__outer">
@@ -127,13 +224,20 @@ function columnClass(column: Column) {
               <slot name="expandColumnTitle" />
             </th>
             <th
-              v-for="column in columns"
+              v-for="(column, colIndex) in columns"
               :key="column.key || column.dataIndex"
               :class="columnClass(column)"
             >
               <slot name="outerHeaderCell" :column="column">
                 {{ column.title }}
               </slot>
+              <span
+                v-if="resizable"
+                class="nested-data-table__resizer"
+                @mousedown="
+                  startColumnResize($event, column, colIndex, outerWidths)
+                "
+              />
             </th>
           </tr>
         </thead>
@@ -207,21 +311,33 @@ function columnClass(column: Column) {
                   <table class="nested-data-table__inner">
                     <colgroup>
                       <col
-                        v-for="column in innerColumns"
+                        v-for="(column, colIndex) in innerColumns"
                         :key="column.key || column.dataIndex"
-                        :style="{ width: columnWidth(column.width) }"
+                        :style="innerColStyle(column, colIndex)"
                       />
                     </colgroup>
                     <thead>
                       <tr>
                         <th
-                          v-for="column in innerColumns"
+                          v-for="(column, colIndex) in innerColumns"
                           :key="column.key || column.dataIndex"
                           :class="columnClass(column)"
                         >
                           <slot name="innerHeaderCell" :column="column">
                             {{ column.title }}
                           </slot>
+                          <span
+                            v-if="resizable"
+                            class="nested-data-table__resizer"
+                            @mousedown="
+                              startColumnResize(
+                                $event,
+                                column,
+                                colIndex,
+                                innerWidths,
+                              )
+                            "
+                          />
                         </th>
                       </tr>
                     </thead>
@@ -330,11 +446,29 @@ function columnClass(column: Column) {
 }
 
 .nested-data-table th {
+  position: relative;
   height: 35px;
   font-size: 11px;
   font-weight: 700;
   color: #6b7280;
   background: var(--table-head);
+}
+
+.nested-data-table__resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  background: transparent;
+}
+
+.nested-data-table__resizer:hover,
+.nested-data-table__resizer:active {
+  background: #91caff;
 }
 
 .nested-data-table__outer-row > td {

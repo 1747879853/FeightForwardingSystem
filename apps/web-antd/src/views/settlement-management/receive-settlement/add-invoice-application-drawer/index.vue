@@ -16,6 +16,7 @@ import dayjs from 'dayjs';
 
 import { useVbenForm } from '#/adapter/form';
 import { getInvoiceApplicationGroupForSettlement } from '#/api/settlement-management/receive-settlement-admin';
+import { useAntTableColumnResize } from '#/utils/table-column-resize';
 
 import { formatAmount, getPaySideColor, getPaySideLabel } from '../form-data';
 import {
@@ -38,6 +39,12 @@ const totalCount = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(20);
 const expandedRowKeys = ref<string[]>([]);
+
+useAntTableColumnResize({
+  containerSelector: '.receive-settlement-add-invoice-drawer',
+  enabled: open,
+  dataVersion: groupList,
+});
 
 /** 已勾选的开票明细ID */
 const selectedItemIds = ref<string[]>([]);
@@ -344,93 +351,97 @@ defineExpose({ open: openDrawer });
     width="1200px"
     destroy-on-close
   >
-    <div class="mb-3">
-      <SearchForm />
-      <div class="drawer-actions">
-        <Button @click="handleSearch">查询</Button>
-        <Button type="primary" @click="handleConfirm">确认添加</Button>
+    <div class="receive-settlement-add-invoice-drawer">
+      <div class="mb-3">
+        <SearchForm />
+        <div class="drawer-actions">
+          <Button @click="handleSearch">查询</Button>
+          <Button type="primary" @click="handleConfirm">确认添加</Button>
+        </div>
       </div>
-    </div>
 
-    <Table
-      :columns="invoiceGroupColumns"
-      :data-source="tableRows"
-      :loading="loading"
-      :pagination="false"
-      :row-key="(record) => record.id"
-      v-model:expanded-row-keys="expandedRowKeys"
-      size="small"
-      bordered
-      :scroll="{ x: 950 }"
-    >
-      <template #expandedRowRender="{ record }">
-        <Table
-          :columns="itemColumns"
-          :data-source="getGroup(record.id)?.items ?? []"
-          :pagination="false"
-          :row-key="(item) => item.invoiceApplicationItemId"
-          :row-selection="{
-            selectedRowKeys: selectedItemIds,
-            getCheckboxProps: (item) => ({
-              disabled: disabledItemIdSet.has(item.invoiceApplicationItemId),
-            }),
-            onSelect: handleSelectItem,
-            onSelectAll: handleSelectAllItems,
-          }"
-          size="small"
-          bordered
-        >
-          <template #bodyCell="{ column, record: item }">
-            <template v-if="column.dataIndex === 'commissionNum'">
-              {{ item.transportOrder?.commissionNum || '-' }}
+      <Table
+        :columns="invoiceGroupColumns"
+        :data-source="tableRows"
+        :loading="loading"
+        :pagination="false"
+        :row-key="(record) => record.id"
+        v-model:expanded-row-keys="expandedRowKeys"
+        size="small"
+        bordered
+        :scroll="{ x: 950 }"
+      >
+        <template #expandedRowRender="{ record }">
+          <Table
+            :columns="itemColumns"
+            :data-source="getGroup(record.id)?.items ?? []"
+            :pagination="false"
+            :row-key="(item) => item.invoiceApplicationItemId"
+            :row-selection="{
+              selectedRowKeys: selectedItemIds,
+              getCheckboxProps: (item) => ({
+                disabled: disabledItemIdSet.has(item.invoiceApplicationItemId),
+              }),
+              onSelect: handleSelectItem,
+              onSelectAll: handleSelectAllItems,
+            }"
+            size="small"
+            bordered
+          >
+            <template #bodyCell="{ column, record: item }">
+              <template v-if="column.dataIndex === 'commissionNum'">
+                {{ item.transportOrder?.commissionNum || '-' }}
+              </template>
+              <template v-else-if="column.dataIndex === 'mblNum'">
+                {{ item.transportOrder?.mblNum || '-' }}
+              </template>
+              <template v-else-if="column.key === 'paySide'">
+                <Tag :color="getPaySideColor(item.paySide)">
+                  {{ getPaySideLabel(item.paySide) }}
+                </Tag>
+              </template>
+              <template v-else-if="column.dataIndex === 'currencyCode'">
+                <Tag v-if="item.currencyCode">{{ item.currencyCode }}</Tag>
+                <span v-else>-</span>
+              </template>
+              <template v-else-if="column.key === 'settledAmount'">
+                <InputNumber
+                  :value="
+                    settledAmountMap.get(item.invoiceApplicationItemId) ??
+                    item.invoiceSettleableAmount ??
+                    0
+                  "
+                  :min="0"
+                  :max="item.invoiceSettleableAmount"
+                  :precision="2"
+                  :disabled="
+                    disabledItemIdSet.has(item.invoiceApplicationItemId)
+                  "
+                  style="width: 130px"
+                  @change="
+                    (value) =>
+                      updateSettledAmount(
+                        item as ReceiveSettlementAdminApi.InvoiceAppSettleItemDto,
+                        value,
+                      )
+                  "
+                />
+              </template>
             </template>
-            <template v-else-if="column.dataIndex === 'mblNum'">
-              {{ item.transportOrder?.mblNum || '-' }}
-            </template>
-            <template v-else-if="column.key === 'paySide'">
-              <Tag :color="getPaySideColor(item.paySide)">
-                {{ getPaySideLabel(item.paySide) }}
-              </Tag>
-            </template>
-            <template v-else-if="column.dataIndex === 'currencyCode'">
-              <Tag v-if="item.currencyCode">{{ item.currencyCode }}</Tag>
-              <span v-else>-</span>
-            </template>
-            <template v-else-if="column.key === 'settledAmount'">
-              <InputNumber
-                :value="
-                  settledAmountMap.get(item.invoiceApplicationItemId) ??
-                  item.invoiceSettleableAmount ??
-                  0
-                "
-                :min="0"
-                :max="item.invoiceSettleableAmount"
-                :precision="2"
-                :disabled="disabledItemIdSet.has(item.invoiceApplicationItemId)"
-                style="width: 130px"
-                @change="
-                  (value) =>
-                    updateSettledAmount(
-                      item as ReceiveSettlementAdminApi.InvoiceAppSettleItemDto,
-                      value,
-                    )
-                "
-              />
-            </template>
-          </template>
-        </Table>
-      </template>
-    </Table>
+          </Table>
+        </template>
+      </Table>
 
-    <div class="mt-3 flex justify-end">
-      <Pagination
-        :current="currentPage"
-        :page-size="pageSize"
-        :total="totalCount"
-        show-size-changer
-        :show-total="(total) => `共 ${total} 张开票申请`"
-        @change="handlePageChange"
-      />
+      <div class="mt-3 flex justify-end">
+        <Pagination
+          :current="currentPage"
+          :page-size="pageSize"
+          :total="totalCount"
+          show-size-changer
+          :show-total="(total) => `共 ${total} 张开票申请`"
+          @change="handlePageChange"
+        />
+      </div>
     </div>
   </Drawer>
 </template>

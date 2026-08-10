@@ -15,6 +15,7 @@ import {
 
 import { useVbenForm } from '#/adapter/form';
 import { getOrderFeeGroupForReceiveSettlement } from '#/api/settlement-management/receive-settlement-admin';
+import { useAntTableColumnResize } from '#/utils/table-column-resize';
 
 import { formatAmount } from '../form-data';
 import {
@@ -39,6 +40,12 @@ const totalCount = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(20);
 const expandedRowKeys = ref<string[]>([]);
+
+useAntTableColumnResize({
+  containerSelector: '.receive-settlement-add-fee-drawer',
+  enabled: open,
+  dataVersion: orderList,
+});
 
 const selectedFeeIds = ref<string[]>([]);
 const settledAmountMap = reactive(new Map<string, number>());
@@ -297,75 +304,77 @@ defineExpose({ open: openDrawer });
     width="1100px"
     destroy-on-close
   >
-    <div class="mb-3">
-      <SearchForm>
-        <template #expand-after>
-          <Button @click="handleSearch">查询</Button>
-          <Button type="primary" @click="handleConfirm">确认添加</Button>
-        </template>
-      </SearchForm>
-    </div>
-
-    <Table
-      :columns="orderColumns"
-      :data-source="tableRows"
-      :loading="loading"
-      :pagination="false"
-      :row-key="(record) => record.id"
-      v-model:expanded-row-keys="expandedRowKeys"
-      size="small"
-      bordered
-      :scroll="{ x: 900 }"
-    >
-      <template #expandedRowRender="{ record }">
-        <Table
-          :columns="feeColumns"
-          :data-source="getGroup(record.id)?.orderFees ?? []"
-          :pagination="false"
-          :row-key="(fee) => fee.id"
-          :row-selection="{
-            selectedRowKeys: selectedFeeIds,
-            getCheckboxProps: (fee) => ({
-              disabled: disabledFeeIdSet.has(fee.id),
-            }),
-            onSelect: handleSelectFee,
-            onSelectAll: handleSelectAllFees,
-          }"
-          size="small"
-          bordered
-        >
-          <template #bodyCell="{ column, record: fee }">
-            <template v-if="column.dataIndex === 'currencyCode'">
-              <Tag v-if="fee.currencyCode">{{ fee.currencyCode }}</Tag>
-              <span v-else>-</span>
-            </template>
-            <template v-if="column.key === 'settledAmount'">
-              <InputNumber
-                :value="
-                  settledAmountMap.get(fee.id) ?? fee.remainingAmount ?? 0
-                "
-                :min="0"
-                :max="fee.remainingAmount"
-                :precision="2"
-                :disabled="disabledFeeIdSet.has(fee.id)"
-                style="width: 130px"
-                @change="(value) => updateSettledAmount(fee, value)"
-              />
-            </template>
+    <div class="receive-settlement-add-fee-drawer">
+      <div class="mb-3">
+        <SearchForm>
+          <template #expand-after>
+            <Button @click="handleSearch">查询</Button>
+            <Button type="primary" @click="handleConfirm">确认添加</Button>
           </template>
-        </Table>
-      </template>
-    </Table>
+        </SearchForm>
+      </div>
 
-    <div class="mt-3 flex justify-end">
-      <Pagination
-        :current="currentPage"
-        :page-size="pageSize"
-        :total="totalCount"
-        show-size-changer
-        :show-total="(total) => `共 ${total} 条业务`"
-        @change="handlePageChange"
-      />
+      <Table
+        :columns="orderColumns"
+        :data-source="tableRows"
+        :loading="loading"
+        :pagination="false"
+        :row-key="(record) => record.id"
+        v-model:expanded-row-keys="expandedRowKeys"
+        size="small"
+        bordered
+        :scroll="{ x: 900 }"
+      >
+        <template #expandedRowRender="{ record }">
+          <Table
+            :columns="feeColumns"
+            :data-source="getGroup(record.id)?.orderFees ?? []"
+            :pagination="false"
+            :row-key="(fee) => fee.id"
+            :row-selection="{
+              selectedRowKeys: selectedFeeIds,
+              getCheckboxProps: (fee) => ({
+                disabled: disabledFeeIdSet.has(fee.id),
+              }),
+              onSelect: handleSelectFee,
+              onSelectAll: handleSelectAllFees,
+            }"
+            size="small"
+            bordered
+          >
+            <template #bodyCell="{ column, record: fee }">
+              <template v-if="column.dataIndex === 'currencyCode'">
+                <Tag v-if="fee.currencyCode">{{ fee.currencyCode }}</Tag>
+                <span v-else>-</span>
+              </template>
+              <template v-if="column.key === 'settledAmount'">
+                <InputNumber
+                  :value="
+                    settledAmountMap.get(fee.id) ?? fee.remainingAmount ?? 0
+                  "
+                  :min="0"
+                  :max="fee.remainingAmount"
+                  :precision="2"
+                  :disabled="disabledFeeIdSet.has(fee.id)"
+                  style="width: 130px"
+                  @change="(value) => updateSettledAmount(fee, value)"
+                />
+              </template>
+            </template>
+          </Table>
+        </template>
+      </Table>
+
+      <div class="mt-3 flex justify-end">
+        <Pagination
+          :current="currentPage"
+          :page-size="pageSize"
+          :total="totalCount"
+          show-size-changer
+          :show-total="(total) => `共 ${total} 条业务`"
+          @change="handlePageChange"
+        />
+      </div>
     </div>
   </Drawer>
 </template>
