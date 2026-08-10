@@ -2,7 +2,7 @@
 title: 权限管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-07-29
+last_updated: 2026-08-10
 ---
 
 # 1. 业务背景说明 (Background)
@@ -49,6 +49,7 @@ last_updated: 2026-07-29
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-10 | `Fix` | 表级/字段权限模块下拉同步「客户管理」`FrightModule.Client=9`，与后端枚举对齐。 | 仅补枚举与选项/标签；Client 暂无 `TablePermissionFieldMetaMap` 字段元数据，条件字段待后端确认后再补。 |
 | 2026-07-29 | `Style` | 顶部配置对象区卡片仍占满，内容改为横向 flex 靠左；角色/用户下拉固定 `w-56`。 | 去掉 `Row`/`Col` 满宽栅格，避免控件被拉满。 |
 | 2026-07-24 | `Fix` | 按最新权限接口补齐 13 个缺失 `auth.json` 键（客户失信、业务基础、业务联系单等）；`Admin.ReceiveSettlement` 文案改为「收费结算」。 | `Admin.PersonalSetting` 接口仍返回未本地化占位符，前端已有「个人设置」不改。 |
 | 2026-07-19 | `Fix` | 数据/表级/字段权限三个列表分别声明 `gridOptions.id`，避免同路由下列持久化互相覆盖。 | id：`systemPermissionDataList` / `systemPermissionTableList` / `systemPermissionPropList`；适配器优先用 `gridOptions.id` 作 `columnPersist.tableId`。 |

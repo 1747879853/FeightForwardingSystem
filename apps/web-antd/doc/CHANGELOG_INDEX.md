@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-10 权限模块枚举同步客户管理](./changelogs/change-log-2026-08-10-permission-fright-module-client.md)
 - [2026-08-10 外联平铺字段改读 SimpleDto 前端对接](./changelogs/change-log-2026-08-10-foreign-key-simple-dto-alignment.md)
 - [2026-08-09 海运出口箱型箱量支持批量新增](./changelogs/change-log-2026-08-09-sea-export-ctn-batch-add.md)
 - [2026-08-09 付费申请审批通过/驳回/审核后驳回接口对齐](./changelogs/change-log-2026-08-09-payment-review-audit-reject-api-align.md)
