@@ -16,7 +16,7 @@ last_updated: 2026-08-10
 - **流水状态锁定：** 仅 `PendingWriteOff`（待核销）状态且具备 `Admin.BankStatement.Edit` 权限时允许修改流水信息和可核销操作人；部分核销、核销完成状态隐藏保存并禁用字段。
 - **关联收费核销（含发票结算）：** 列表展示核销单核心信息且不设操作列；双击行后，按 `type` 在抽屉打开费用核销或发票核销表单。
 - **可核销操作人：** Tag 展示额外指定的核销人，Popover 内增删人员与备注；流水创建财务仍可核销，最终操作授权由后端校验。新建/更换付款方时，自动带出该客户在客户管理绑定的「操作」干系人（可再手工增删）；编辑回填已保存流水时不覆盖。
-- **抽屉新增核销：** 从「关联核销单」区域的新建按钮打开宽抽屉，可切换按费用或按开票申请核销；创建成功关闭抽屉并刷新金额汇总与关联核销单。
+- **抽屉新增核销：** 从「关联核销单」区域的新建按钮打开宽抽屉，可切换按费用核销或按发票核销；创建成功关闭抽屉并刷新金额汇总与关联核销单。
 - **抽屉编辑核销：** 复用收费核销独立表单的嵌入模式，支持保存、锁定、解锁、删除及明细维护；原独立路由继续保留。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -51,6 +51,7 @@ last_updated: 2026-08-10
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-10 | `Fix` | 新建核销入口与抽屉标题文案由「按开票申请核销 / 按开票申请」统一为「按发票核销 / 按发票」。 | 仅改 `receive-settlement-panel`、`settlement-workbench-drawer` 展示文案；`type=1` 与选开票申请数据源不变。详见 `changelogs/change-log-2026-08-10-bank-statement-invoice-writeoff-label.md`。 |
 | 2026-08-10 | `Fix` | 选择/更换付款方后，可核销操作人默认带出客户管理绑定的「操作」干系人；编辑回填不覆盖已保存操作人。 | `GetDishonestStakeholdersAsync` + `buildOperatorRowsFromClientOperations`；`pageLoading` 与序号防串。详见 `changelogs/change-log-2026-08-10-bank-statement-default-operators-from-client.md`。 |
 | 2026-08-09 | `Refactor` | 关联收费核销明细展开时，嵌套 `orderFee` 的费用名称/币别/结算对象改读对象路径。 | `bank-statement/utils.ts` 的 `mapReceiveSettlementDetailItem` / `mapReceiveSettlementInvoiceDetailItem` 改读 `orderFee?.feeCode?.cnName` 等；选费面板仍用 `ReceiveSettlementFeeDto`/`InvoiceAppSettleItemDto` 平铺。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-07-25 | `Refactor` | 付款方改读结算对象对象化后的 `settlement`；编辑进入时下拉直接回显付款方，不再依赖分页命中。 | 详情 `settlementName` 已删除，`applySavedBankStatementSnapshot` 与顶部摘要统一取 `detail.settlement?.name`；`ClientSelect` 补 `selected-items`（通用 Client 接口无 Detail，回显必须外部传入）。 |

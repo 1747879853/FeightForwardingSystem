@@ -219,7 +219,7 @@ defineExpose({
           <template #overlay>
             <Menu @click="handleCreateMenu">
               <MenuItem key="fee">按费用核销</MenuItem>
-              <MenuItem key="invoice">按开票申请核销</MenuItem>
+              <MenuItem key="invoice">按发票核销</MenuItem>
             </Menu>
           </template>
         </DropdownButton>
@@ -256,7 +256,7 @@ defineExpose({
               按费用核销
             </Button>
             <Button size="small" @click="requestCreate('invoice')">
-              按开票申请核销
+              按发票核销
             </Button>
           </template>
         </div>

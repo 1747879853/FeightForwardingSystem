@@ -36,7 +36,7 @@ const drawerTitle = computed(() => {
   if (action.value === 'create') {
     return createMode.value === 'fee'
       ? '新建核销 · 按费用'
-      : '新建核销 · 按开票申请';
+      : '新建核销 · 按发票';
   }
   return editingRow.value?.settlementNo
     ? `收费核销 · ${editingRow.value.settlementNo}`
@@ -48,7 +48,7 @@ const remainingAmount = computed(
   () => props.bankStatementAmount - props.otherSettledAmount,
 );
 const switchModeText = computed(() =>
-  createMode.value === 'fee' ? '切换为按开票申请' : '切换为按费用',
+  createMode.value === 'fee' ? '切换为按发票' : '切换为按费用',
 );
 
 function formatMoney(value: number) {
