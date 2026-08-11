@@ -104,7 +104,7 @@ export namespace PortCodeAdminApi {
 
     /** 国家对象（替代 countryName / countryEnName） */
     country?: CountryCodeAdminApi.CountryCodeDto;
-    /** 所在大洲（列表展示用，取自关联国家 `country.chau`，港口本身不维护该字段） */
+    /** 所在大洲（列表 GetPagedListAsync 由 MapPortCodeDto 从实体 Chau 带出） */
     chau?: string;
     /** 说明 */
     explain?: string;

@@ -199,12 +199,14 @@ export function useColumns(
       field: 'countryName',
       title: $t('system.basicData.portCode.countryName'),
       minWidth: 140,
+      formatter: ({ row }) => row.country?.countryName ?? '',
     },
     {
       field: 'chau',
       title: $t('system.basicData.portCode.chau'),
       minWidth: 120,
-      formatter: ({ row }) => row.country?.chau ?? '',
+      // GetPagedListAsync 的 PortCodeDto 直接带 Chau（MapPortCodeDto 从实体映射）
+      formatter: ({ row }) => row.chau ?? row.country?.chau ?? '',
     },
     {
       field: 'portType',
@@ -219,11 +221,13 @@ export function useColumns(
       field: 'laneCode',
       title: $t('system.basicData.portCode.laneCode'),
       minWidth: 120,
+      formatter: ({ row }) => row.lane?.code ?? '',
     },
     {
       field: 'laneName',
       title: $t('system.basicData.portCode.laneName'),
       minWidth: 140,
+      formatter: ({ row }) => row.lane?.laneName ?? '',
     },
     {
       field: 'ediCode',
