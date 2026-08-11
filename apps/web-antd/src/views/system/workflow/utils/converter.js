@@ -346,13 +346,17 @@ function apiConditionValueToUi(taskTypeCondition, value) {
 /**
  * UI conditionList -> API conditions
  * Now the UI format matches API directly
+ *
+ * isOr 表示条件所属分组（false=且组，true=或组），与所在下标无关：
+ * 若按下标把首条强制成「且」，全或条件保存后会被吞掉一条，
+ * 再次打开时该条就落进「且条件」区域。
  */
 export function uiConditionsToApi(conditionList, nodeUserList) {
   if (!conditionList || !conditionList.length) return [];
   return conditionList
     .filter((item) => item.taskTypeCondition != null && item.shouldBe != null)
-    .map((item, i) => ({
-      isOr: i === 0 ? false : item.isOr === true || item.isOr === 1,
+    .map((item) => ({
+      isOr: item.isOr === true || item.isOr === 1,
       taskTypeCondition: item.taskTypeCondition,
       shouldBe: item.shouldBe,
       value: item.value != null ? String(item.value) : null,

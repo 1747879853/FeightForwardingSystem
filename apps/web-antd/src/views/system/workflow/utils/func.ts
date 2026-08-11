@@ -130,8 +130,8 @@ const func = {
         : '请设置条件';
     }
 
-    let result = '';
-    let partCount = 0;
+    const andParts: string[] = [];
+    const orParts: string[] = [];
     for (const c of conditionList) {
       if (c.taskTypeCondition == null || c.shouldBe == null) continue;
       const fieldLabel = getConditionFieldLabel(c.taskTypeCondition);
@@ -140,15 +140,27 @@ const func = {
         getConditionValueKind(c.taskTypeCondition) === 'none'
           ? ''
           : c.valueText || c.value || '';
-      if (partCount > 0) {
-        const isOr = c.isOr === true || c.isOr === 1;
-        result += isOr ? ' 或 ' : ' 且 ';
+      const text = [fieldLabel, sbLabel, valText].filter(Boolean).join(' ');
+      if (c.isOr === true || c.isOr === 1) {
+        orParts.push(text);
+      } else {
+        andParts.push(text);
       }
-      result += [fieldLabel, sbLabel, valText].filter(Boolean).join(' ');
-      partCount++;
     }
 
-    return result || '请设置条件';
+    const parts: string[] = [];
+    if (andParts.length > 0) {
+      parts.push(
+        andParts.length === 1 ? andParts[0]! : `(${andParts.join(' 且 ')})`,
+      );
+    }
+    if (orParts.length > 0) {
+      parts.push(
+        orParts.length === 1 ? orParts[0]! : `(${orParts.join(' 或 ')})`,
+      );
+    }
+
+    return parts.join(' 且 ') || '请设置条件';
   },
 
   copyerStr(nodeConfig: any) {

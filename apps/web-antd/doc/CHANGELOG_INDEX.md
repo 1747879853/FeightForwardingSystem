@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-11 工作流「或条件」保存后被逐条转成「且条件」](./changelogs/change-log-2026-08-11-workflow-or-condition-lost.md)
 - [2026-08-11 业务联系单中转港字段名对齐 poT1Id](./changelogs/change-log-2026-08-11-pre-order-transit-port-field-case.md)
 - [2026-08-11 付费申请附件分组支持拖拽上传](./changelogs/change-log-2026-08-11-payment-application-attachment-drag-upload.md)
 - [2026-08-11 付费申请费用明细港口展示港口备注](./changelogs/change-log-2026-08-11-payment-application-fee-port-remark.md)

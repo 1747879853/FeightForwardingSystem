@@ -2,7 +2,7 @@
 title: 工作流新建
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-08-08
+last_updated: 2026-08-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -53,6 +53,7 @@ last_updated: 2026-08-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Fix` | 与编辑页共用转换器：只配「或条件」的分支保存后不再有一条被改判为「且条件」；画布条件文案改为分组写法 | 同 `workflow-edit-id`：`converter.uiConditionsToApi` 去掉按下标强制首条 `isOr: false`，`func.conditionStr` 按 `isOr` 分组拼串 |
 | 2026-08-08 | `Feature` | 条件字段对齐后端新枚举：费用提交/费用变更共用 9 个费用条件（所属人、所属组织、收付类型、业务类型、利润、利润率%、三类应收应付费用名判断），值输入按字段自动切换；切换任务类型会清空旧条件 | 新增 `getConditionValueKind` / `getConditionEnumOptions` / `getShouldBeOptionsForCondition` 等元数据函数；抽屉值区抽为 `condition-value-input.vue`；`converter` 回显时用户/组织 ID 保持字符串；`form.vue` 用 Select 的 `@change`（而非 watch）做条件清理以避开详情加载 |
 | 2026-08-08 | `Feature` | 「费用修改」展示名改为「费用变更」 | 仅改 `getTaskTypeOptions` / `getTaskTypeConditionOptions` 文案，枚举值不变 |
 | 2026-08-08 | `Feature` | 任务类型下拉移除「费用删除」；枚举值保留兼容历史数据 | `getTaskTypeOptions` / `getTaskTypeConditionOptions` 同步去掉 DeleteOrderFee 可选项 |
