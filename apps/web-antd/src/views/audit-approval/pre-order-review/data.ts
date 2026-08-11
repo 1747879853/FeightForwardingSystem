@@ -25,6 +25,8 @@ export function usePreOrderReviewFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'MyStatus',
       label: '我的审核状态',
+      /** 默认审核中(0)，首屏只看待办；重置也回到该值 */
+      defaultValue: 0,
       componentProps: {
         allowClear: true,
         class: 'w-full',
