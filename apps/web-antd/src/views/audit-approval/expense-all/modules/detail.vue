@@ -290,10 +290,60 @@ const showConfirmWithRemark = (approve: boolean = true, type: string = '') => {
 };
 
 const showRejectWithRemark = () => {
+  // 检查是否有选中的费用
+  if (!selectedRowKeys.value.length) {
+    message.warning({
+      content: $t('auditApproval.task.noPassSelect'),
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
+  const keysSet = new Set(selectedRowKeys.value);
+  const selectedList = (dataSource.value ?? []).filter((row) =>
+    keysSet.has((row as any)._rowKey),
+  );
+
+  // 检查选中的费用是否包含已审核通过的费用
+  const hasPassedFees = selectedList.some(
+    (item) => item.combinedFeeStatus === getFeeStatusValueByLabel('Passed'),
+  );
+
+  // 检查选中的费用是否包含待审核的费用
+  const hasPendingFees = selectedList.some(
+    (item) =>
+      item.combinedFeeStatus === getFeeStatusValueByLabel('Submitted') ||
+      item.combinedFeeStatus === getFeeStatusValueByLabel('Modification') ||
+      item.combinedFeeStatus === getFeeStatusValueByLabel('Deletion'),
+  );
+
+  // 如果同时包含已审核和待审核的费用，提示用户不能混合操作
+  if (hasPassedFees && hasPendingFees) {
+    message.warning({
+      content: '不能同时驳回已审核和待审核的费用，请分别选择',
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
+  // 如果没有任何可驳回的费用
+  if (!hasPassedFees && !hasPendingFees) {
+    message.warning({
+      content: '选中的费用中没有可驳回的费用',
+      key: 'action_process_msg',
+    });
+    return;
+  }
+
   let modalRemark = '';
+
+  // 根据费用状态确定驳回类型和使用的接口
+  const rejectType = hasPassedFees ? '审核后驳回' : '费用驳回';
+  const useRejectApi = hasPassedFees; // true: 使用OrderFeeRejectedAsync, false: 使用OrderFeeAuditAsync
+
   // 创建弹窗实例
   const modal = Modal.confirm({
-    title: $t('auditApproval.task.okReject'),
+    title: `${rejectType}`,
     content: () =>
       h('div', {}, [
         h(Textarea, {
@@ -316,7 +366,14 @@ const showRejectWithRemark = () => {
     async onOk() {
       await nextTick(); // 等待 Vue 响应式更新完成
 
-      Rejected(modalRemark);
+      // 根据费用状态调用不同的接口
+      if (useRejectApi) {
+        // 已审核通过的费用，使用OrderFeeRejectedAsync接口（审核后驳回）
+        Rejected(modalRemark, selectedList);
+      } else {
+        // 待审核的费用，使用OrderFeeAuditAsync接口（费用驳回）
+        RejectPending(modalRemark, selectedList);
+      }
     },
     onCancel() {
       modalRemark = '';
@@ -324,17 +381,33 @@ const showRejectWithRemark = () => {
   });
 };
 
-const Rejected = (modalRemark: string) => {
-  if (!selectedRowKeys.value.length) return;
-  const keysSet = new Set(selectedRowKeys.value);
-  const list = (dataSource.value ?? []).filter((row) =>
-    keysSet.has((row as any)._rowKey),
-  );
-  let OrderFeeRejectedAsyncDto: ExpenseSubmissionAdminApi.OrderFeeTaskRejectedDto =
+/**
+ * 审核后驳回（针对已审核通过的费用）
+ * 调用 OrderFeeRejectedAsync 接口
+ */
+const Rejected = (
+  modalRemark: string,
+  selectedList?: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
+) => {
+  // 如果没有传入选中的列表，则从 selectedRowKeys 中获取
+  const list =
+    selectedList ||
+    (() => {
+      if (!selectedRowKeys.value.length) return [];
+      const keysSet = new Set(selectedRowKeys.value);
+      return (dataSource.value ?? []).filter((row) =>
+        keysSet.has((row as any)._rowKey),
+      );
+    })();
+
+  if (!list.length) return;
+
+  const OrderFeeRejectedAsyncDto: ExpenseSubmissionAdminApi.OrderFeeTaskRejectedDto =
     {
       remark: modalRemark,
       orderFeeIds: list.map((item) => item.id),
     };
+
   OrderFeeRejectedAsync(OrderFeeRejectedAsyncDto).then(() => {
     message.success({
       content: $t('ui.actionMessage.operationSuccess'),
@@ -342,6 +415,33 @@ const Rejected = (modalRemark: string) => {
     });
     getTableDate();
   });
+};
+
+/**
+ * 费用驳回（针对待审核的费用）
+ * 调用 OrderFeeAuditAsync 接口，传入 success=false
+ */
+const RejectPending = (
+  modalRemark: string,
+  selectedList?: ExpenseSubmissionAdminApi.OrderFeeAndTaskDto[],
+) => {
+  // 如果没有传入选中的列表，则从 selectedRowKeys 中获取
+  const list =
+    selectedList ||
+    (() => {
+      if (!selectedRowKeys.value.length) return [];
+      const keysSet = new Set(selectedRowKeys.value);
+      return (dataSource.value ?? []).filter((row) =>
+        keysSet.has((row as any)._rowKey),
+      );
+    })();
+
+  if (!list.length) return;
+
+  const ids = list.map((item) => item.id);
+
+  // 调用统一的审核接口，传入 success=false 表示驳回
+  OrderFeeAuditByStatus(false, modalRemark, ids);
 };
 
 /**
@@ -735,19 +835,12 @@ onMounted(() => {
                     </template>
                   </DropdownButton>
                   <Button
-                    class="yellow-btn"
-                    size="small"
-                    :disabled="!selectedRowKeys.length"
-                    @click="showConfirmWithRemark(false, 'selectPass')"
-                    >{{ $t('auditApproval.task.noPass') }}</Button
-                  >
-                  <Button
                     danger
                     size="small"
                     :disabled="!selectedRowKeys.length"
                     @click="showRejectWithRemark"
                   >
-                    {{ $t('auditApproval.task.passReject') }}
+                    {{ $t('auditApproval.Rejected') }}
                   </Button>
                 </Space>
               </div>

@@ -425,9 +425,9 @@ watch(
 
     // 数据变化时重新应用筛选
     filteredFeeDetails.value = [...newVal];
-    
+
     // 默认展开所有行
-    expandedRowKeys.value = newVal.map(item => item.id);
+    expandedRowKeys.value = newVal.map((item) => item.id);
   },
   { deep: true },
 );
@@ -444,7 +444,7 @@ function convertToRMB(amount: number, currencyCode: string): number {
   if (currencyCode === 'CNY' || currencyCode === 'RMB') {
     return amount;
   }
-  
+
   // 使用发票汇率转换
   const rate = props.invoiceExchangeRate || 1.0;
   return Math.round(amount * rate * 100) / 100; // 保留两位小数
@@ -511,13 +511,13 @@ const outerColumns = [
 
 // 内层表格列定义（费用明细）
 const innerColumns = [
-  // {
-  //   title: '序号',
-  //   dataIndex: 'seq',
-  //   key: 'seq',
-  //   width: 60,
-  //   align: 'center' as const,
-  // },
+  {
+    title: '',
+    dataIndex: 'seq',
+    key: 'seq',
+    width: 60,
+    align: 'center' as const,
+  },
   {
     title: '结算单位',
     dataIndex: 'settlementUnit',
@@ -578,7 +578,9 @@ function isParentChecked(parent: FeeDetailItem): boolean {
 /** 判断父节点是否半选 */
 function isParentIndeterminate(parent: FeeDetailItem): boolean {
   if (!parent.feeDetails || parent.feeDetails.length === 0) return false;
-  const count = parent.feeDetails.filter((child) => selectedFeeIds.value.has(child.id)).length;
+  const count = parent.feeDetails.filter((child) =>
+    selectedFeeIds.value.has(child.id),
+  ).length;
   return count > 0 && count < parent.feeDetails.length;
 }
 
@@ -639,7 +641,10 @@ const isAllSelected = computed(() => {
 
 /** 是否半选 */
 const isIndeterminate = computed(() => {
-  const totalChildren = filteredFeeDetails.value.reduce((sum, p) => sum + (p.feeDetails?.length || 0), 0);
+  const totalChildren = filteredFeeDetails.value.reduce(
+    (sum, p) => sum + (p.feeDetails?.length || 0),
+    0,
+  );
   const selectedCount = selectedFeeIds.value.size;
   return selectedCount > 0 && selectedCount < totalChildren;
 });
@@ -777,7 +782,9 @@ const isIndeterminate = computed(() => {
               <Checkbox
                 :checked="isParentChecked(record)"
                 :indeterminate="isParentIndeterminate(record)"
-                @change="(e: any) => toggleParentCheck(record, e.target.checked)"
+                @change="
+                  (e: any) => toggleParentCheck(record, e.target.checked)
+                "
               />
             </template>
             <template v-else-if="column.dataIndex === 'bizType'">
@@ -805,10 +812,13 @@ const isIndeterminate = computed(() => {
               />
             </template>
             <template v-else-if="column.dataIndex === 'appliedAmount'">
-              <span
-                style="font-size: 14px; font-weight: bold; color: #ff4d4f"
-              >
-                {{ convertToRMB(record.appliedAmount || 0, record.currencyCode || '').toFixed(2) }}
+              <span style="font-size: 14px; font-weight: bold; color: #ff4d4f">
+                {{
+                  convertToRMB(
+                    record.appliedAmount || 0,
+                    record.currencyCode || '',
+                  ).toFixed(2)
+                }}
               </span>
             </template>
             <template v-else>

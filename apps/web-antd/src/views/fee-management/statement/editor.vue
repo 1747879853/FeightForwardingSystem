@@ -37,6 +37,7 @@ import {
   ClientSelect,
   CurrencySelect,
   MyOrgSelect,
+  UserCompanySelect,
   OrgBankAccountLinkageSelect,
 } from '#/adapter/component';
 import {
@@ -527,11 +528,18 @@ async function loadEditData() {
     clientId.value = detail.clientId ?? '';
     clientName.value = detail.client?.name ?? '';
 
-    // 新增：加载所属组织id
-    orgId.value = detail.orgId || undefined;
+    console.log('📋 加载对账单详情:', {
+      orgId: detail.orgId,
+      orgBankAccountId: detail.orgBankAccountId,
+    });
 
-    // 新增：加载我司银行id
+    // 新增：先加载所属组织id
+    orgId.value = detail.orgId || undefined;
+    console.log('✅ 设置 orgId:', orgId.value);
+
+    // 新增：再加载我司银行id（组件会在 orgId 变化后重新加载银行列表，然后自动匹配该值）
     orgBankAccountId.value = detail.orgBankAccountId || undefined;
+    console.log('✅ 设置 orgBankAccountId:', orgBankAccountId.value);
 
     creationTime.value = detail.creationTime
       ? dayjs(detail.creationTime).format('YYYY-MM-DD HH:mm')
@@ -1144,9 +1152,9 @@ function formatMonth(val: string | undefined | null): string {
                   <!-- 新增：所属组织 -->
                   <div class="info-field">
                     <label class="field-label">所属组织</label>
-                    <MyOrgSelect
+                    <UserCompanySelect
                       v-model:model-value="orgId"
-                      placeholder="请选择所属组织"
+                      placeholder="请选择所属公司"
                       allow-clear
                       size="middle"
                     />
