@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-11 新增龙山（longshan）独立打包与开发环境](./changelogs/change-log-2026-08-11-longshan-brand-pack.md)
 - [2026-08-11 汇率管理列表币别改读 currency SimpleDto](./changelogs/change-log-2026-08-11-exchange-rate-currency-simple-dto.md)
 - [2026-08-11 业务联系单审核默认筛选我的审核状态为审核中](./changelogs/change-log-2026-08-11-pre-order-review-default-my-status-auditing.md)
 - [2026-08-11 业务联系单新建装运方式默认整柜](./changelogs/change-log-2026-08-11-pre-order-default-bl-type-fcl.md)

@@ -2,7 +2,7 @@
 title: 货物轨迹独立静态页
 module: 共享能力
 author: 自动生成
-last_updated: 2026-07-14
+last_updated: 2026-08-11
 route: /tracking-map/:mblNo?
 ---
 
@@ -16,7 +16,7 @@ route: /tracking-map/:mblNo?
 - **免登录：** 未登录也可直接访问（`meta.ignoreAccess: true`），适合分享给外部客户。
 - **英文分享：** 链接带 `?lang=en`（如 `/tracking-map/MBL123?lang=en`）时，**页头文案 + 空态 + 地图内嵌页**均为英文；缺省或非 `en` 按中文。
 - **空态：** 不带订阅号（`/tracking-map`）时按语言展示对应空态提示。
-- **品牌自适应：** 页头 logo 随打包品牌 `VITE_APP_BRAND` 自动切换（hhyy/jht/sjtd/jiayue）。
+- **品牌自适应：** 页头 logo 随打包品牌 `VITE_APP_BRAND` 自动切换（hhyy/jht/sjtd/jiayue/longshan）。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -46,6 +46,7 @@ route: /tracking-map/:mblNo?
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Feature` | 品牌列表补充龙山（longshan），页头 Logo 随新打包环境切换 | `brand-assets.ts` 注册 longshan 素材；详见 `changelogs/change-log-2026-08-11-longshan-brand-pack.md` |
 | 2026-07-13 | `Feature` | 新增可分享的货物轨迹独立静态页（免登录、URL 传订阅号、iframe 内嵌、页头品牌 logo）。 | 启用 external 路由 + `ignoreAccess`；抽 `buildTrackingMapSrc` 供弹窗与静态页复用；logo 用 brand-assets 随品牌切换。已用 chrome-devtools 实测带号渲染与空态。 |
 | 2026-07-14 | `Feature` | 支持英文分享链接：`?lang=en` 时地图以英文渲染，便于分享给看英文的客户。 | 从 `route.query.lang` 解析语言传入 `buildTrackingMapSrc(referenceNo, lang)`；`en` 生效其余默认中文。 |
 | 2026-07-14 | `Fix` | 页头「货物轨迹查询」与空态文案跟随 `?lang=`，英文显示 `Cargo Tracking`。 | 本地 `pageText` 映射，不依赖全局 i18n（分享页免登录也正确）。 |

@@ -12,6 +12,7 @@ const BRAND_IMG_BY_APP_BRAND: Record<string, string> = {
   hhyy: 'hhyy',
   jht: 'jht',
   jiayue: 'jiayue',
+  longshan: 'longshan',
   sjtd: 'sjtd',
 };
 
@@ -65,6 +66,9 @@ function resolveApiTarget(mode: string) {
   }
   if (brand === 'sjtd') {
     return 'http://43.138.14.122:84';
+  }
+  if (brand === 'longshan') {
+    return 'http://175.178.101.30:86';
   }
   return 'http://118.190.1.4:82';
 }

@@ -10,6 +10,7 @@
 | 浩瀚远洋 | `pnpm dev:antd:hhyy` | `pnpm build:antd:hhyy` | `hhyy` | `src/assets/img/hhyy/` |
 | 津海通 | `pnpm dev:antd:jht` | `pnpm build:antd:jht` | `jht` | `src/assets/img/jht/` |
 | 世纪通达 | `pnpm dev:antd:sjtd` | `pnpm build:antd:sjtd` | `sjtd` | `src/assets/img/sjtd/` |
+| 龙山 | `pnpm dev:antd:longshan` | `pnpm build:antd:longshan` | `longshan` | `src/assets/img/longshan/` |
 | 演示环境 | `pnpm dev:antd:demo` | `pnpm build:antd:demo` | `demo` | `src/assets/img/jiayue/`（复用佳越素材） |
 
 `pnpm build:antd` 与 `pnpm build:antd:hhyy` 等价（浩瀚远洋）。
@@ -80,6 +81,7 @@ pnpm deploy:antd:jht
 | `.env.hhyy`        | 浩瀚远洋                                          |
 | `.env.jht`         | 津海通                                            |
 | `.env.sjtd`        | 世纪通达                                          |
+| `.env.longshan`    | 龙山                                              |
 | `.env.demo`        | 演示环境（`VITE_APP_BRAND=jiayue`，复用佳越素材） |
 | `.env.production`  | 与 `hhyy` 保持一致（兼容旧 `production` mode）    |
 
@@ -90,6 +92,7 @@ pnpm deploy:antd:jht
 | 津海通 (jht) | `.env.jht` | `http://43.138.14.122:82/api` |
 | 浩瀚远洋 (hhyy) | `.env.hhyy` / `.env.production` | `http://118.190.1.4:82/api` |
 | 世纪通达 (sjtd) | `.env.sjtd` | `http://43.138.14.122:84/api` |
+| 龙山 (longshan) | `.env.longshan` | `http://175.178.101.30:86/api` |
 | 演示环境 (demo) | `.env.demo` | `http://43.138.14.122:86/api` |
 
 运行时生产环境通过 `dist/_app.config.js` 注入 API（`useAppConfig` → `window._VBEN_ADMIN_PRO_APP_CONF_`），**不是** `import.meta.env`。打包后可用以下命令校验：
@@ -140,6 +143,7 @@ Get-Content dist/_app.config.js
 
 | 日期 | 变更类型 | 业务功能变动 | 代码解析与架构洞察 |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Feature` | 新增龙山（longshan）独立开发与打包命令，后端 175.178.101.30:86 | 新增 `.env.longshan`、`build:longshan`/`dev:longshan`；`brand-assets.ts` 与 `vite.config.mts` 注册 `longshan` 素材目录 |
 | 2026-07-30 | `Bugfix` | jiayue/demo 登录页背景视频改为与 jht 共用 `jht-login-back.mp4` | 原 `login-back.mp4` OSS 返回 404；demo 的 `VITE_APP_BRAND=jiayue`，改 jiayue 映射即可同时修好 demo |
 | 2026-07-25 | `Feature` | 新增演示环境（demo）开发与打包命令，后端 43.138.14.122:86 | 新增 `.env.demo`，`VITE_APP_BRAND=jiayue` 复用佳越 Logo 与素材，无需改 `brand-assets.ts` / `vite.config.mts`；独立 `VITE_APP_NAMESPACE=vben-web-antd-demo` 隔离缓存 |
 | 2026-07-16 | `Feature` | 新增津海通本地构建、MSDeploy 打包、预览与 IIS 发布命令 | 本地配置沿用 `IIS_JHT_*` 命名；产物 API 校验阻止错误 mode 上线 |
