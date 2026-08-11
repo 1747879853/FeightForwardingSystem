@@ -131,7 +131,7 @@ const logoSrc = computed(() => {
 }
 
 .login-background-mask--dimmed {
-  background: rgb(3 10 24 / 48%);
+  background: rgb(3 10 24 / 24%);
 }
 
 .auth-form-bg {

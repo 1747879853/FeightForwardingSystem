@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-11 龙山登录页视频蒙层调亮](./changelogs/change-log-2026-08-11-longshan-login-video-mask-brighter.md)
 - [2026-08-11 工作流「或条件」保存后被逐条转成「且条件」](./changelogs/change-log-2026-08-11-workflow-or-condition-lost.md)
 - [2026-08-11 业务联系单中转港字段名对齐 poT1Id](./changelogs/change-log-2026-08-11-pre-order-transit-port-field-case.md)
 - [2026-08-11 付费申请附件分组支持拖拽上传](./changelogs/change-log-2026-08-11-payment-application-attachment-drag-upload.md)

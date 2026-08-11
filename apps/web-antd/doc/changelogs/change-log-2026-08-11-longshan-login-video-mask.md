@@ -7,7 +7,7 @@
 ## 核心逻辑变更
 
 - `AuthPageLayout` 新增可选 prop：`loginBackgroundDimmed`
-- 启用时为已有 `.login-background-mask` 增加 `--dimmed` 样式：`rgb(3 10 24 / 48%)`
+- 启用时为已有 `.login-background-mask` 增加 `--dimmed` 样式（初值 `48%`，后续已调亮为 `24%`，见同日调亮变更）
 - `apps/web-antd/src/layouts/auth.vue` 仅在 `isLongshanBrand` 时传入 `true`，其他品牌不受影响
 
 ## 避坑指南

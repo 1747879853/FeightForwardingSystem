@@ -25,7 +25,7 @@ last_updated: 2026-08-11
 - **滑动验证：** 非开发构建下展示 `SliderCaptcha`，未通过不可提交。
 - **开发模式跳过验证：** `import.meta.env.DEV === true` 时不渲染滑动验证字段，可直接账号密码登录。
 - **记住我：** 按品牌维度使用独立 storage key 持久化。
-- **背景视频压暗：** 龙山品牌（`isLongshanBrand`）启用 `loginBackgroundDimmed`，在背景视频上叠加半透明蒙层。
+- **背景视频压暗：** 龙山品牌（`isLongshanBrand`）启用 `loginBackgroundDimmed`，在背景视频上叠加半透明蒙层（当前 `rgb(3 10 24 / 24%)`）。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -52,5 +52,6 @@ last_updated: 2026-08-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Style` | 龙山登录页视频蒙层调亮（48% → 24%） | 仅改 `.login-background-mask--dimmed` 透明度 |
 | 2026-08-11 | `Feature` | 龙山登录页背景视频增加压暗蒙层 | `auth.vue` 传 `loginBackgroundDimmed=isLongshanBrand`；蒙层样式在 `authentication.vue` |
 | 2026-08-02 | `Feature` | 开发模式登录页不再展示/校验滑动验证，生产构建保持原样 | `enableSliderCaptcha = !import.meta.env.DEV`；captcha 不参与 `loginApi` 入参 |
