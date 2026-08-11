@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-11 品牌 Logo 启动时强制覆盖缓存 URL](./changelogs/change-log-2026-08-11-brand-logo-prefer-overrides.md)
 - [2026-08-11 用户列表列头排序对齐后端白名单](./changelogs/change-log-2026-08-11-user-list-sortable-whitelist.md)
 - [2026-08-11 用户列表修改所属组织后列不刷新](./changelogs/change-log-2026-08-11-user-list-org-column-refresh.md)
 - [2026-08-11 更新龙山品牌 Logo 资源](./changelogs/change-log-2026-08-11-longshan-logo-asset.md)

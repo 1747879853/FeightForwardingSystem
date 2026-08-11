@@ -59,6 +59,21 @@ function resolveFaviconSrc(brandImgDir: string) {
   return null;
 }
 
+/** 侧栏/偏好 Logo：同步到 public 稳定文件名，避免 preferences 缓存 vite hash 路径跨包 404 */
+function resolveSidebarLogoSrc(brandImgDir: string) {
+  const candidates = [
+    { file: 'logo.png', dest: 'logo.png' },
+    { file: 'logo.webp', dest: 'logo.webp' },
+  ] as const;
+  for (const { file, dest } of candidates) {
+    const filePath = join(brandImgDir, file);
+    if (existsSync(filePath)) {
+      return { filePath, dest };
+    }
+  }
+  return null;
+}
+
 function resolveApiTarget(mode: string) {
   const brand = resolveAppBrand(mode);
   if (brand === 'jht') {
@@ -89,6 +104,10 @@ function createSyncLoadingLogoPlugin(mode: string) {
       const brandFavicon = resolveFaviconSrc(brandImgDir);
       if (brandFavicon) {
         copyFileSync(brandFavicon, join(appRoot, 'public/favicon.png'));
+      }
+      const sidebarLogo = resolveSidebarLogoSrc(brandImgDir);
+      if (sidebarLogo) {
+        copyFileSync(sidebarLogo.filePath, join(appRoot, 'public', sidebarLogo.dest));
       }
     },
     transformIndexHtml: {

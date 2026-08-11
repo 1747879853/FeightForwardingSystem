@@ -1,16 +1,11 @@
-import hhyyLogo from '#/assets/img/hhyy/logo.png';
 import hhyyLogoText from '#/assets/img/hhyy/logo-text.png';
 import hhyyLoginLogo from '#/assets/img/hhyy/logo-login.png';
-import jiayueLogo from '#/assets/img/jiayue/logo.webp';
 import jiayueLogoText from '#/assets/img/jiayue/logo-text.webp';
 import jiayueLoginLogo from '#/assets/img/jiayue/logo-login.webp';
-import jhtLogo from '#/assets/img/jht/logo.png';
 import jhtLogoText from '#/assets/img/jht/logo-text.png';
 import jhtLoginLogo from '#/assets/img/jht/logo-login.png';
-import longshanLogo from '#/assets/img/longshan/logo.png';
 import longshanLogoText from '#/assets/img/longshan/logo-text.png';
 import longshanLoginLogo from '#/assets/img/longshan/logo-login.png';
-import sjtdLogo from '#/assets/img/sjtd/logo.png';
 import sjtdLogoText from '#/assets/img/sjtd/logo-text.png';
 import sjtdLoginLogo from '#/assets/img/sjtd/logo-login.png';
 
@@ -47,14 +42,18 @@ function pickBrandAsset<T>(
   return fallback;
 }
 
-/** 侧栏 / 偏好设置等使用的方形 Logo */
+/**
+ * 侧栏 / 偏好设置等使用的方形 Logo。
+ * 使用 public 稳定路径（由 vite sync-loading-logo 从品牌目录拷贝），
+ * 避免 preferences 缓存 `/png/logo-<hash>.png` 后换包 404。
+ */
 export const brandLogo = pickBrandAsset(
-  jhtLogo,
-  hhyyLogo,
-  jiayueLogo,
-  sjtdLogo,
-  longshanLogo,
-  jiayueLogo,
+  '/logo.png',
+  '/logo.png',
+  '/logo.webp',
+  '/logo.png',
+  '/logo.png',
+  '/logo.webp',
 );
 
 /** 首屏与路由 Loading 使用的横版文字 Logo */

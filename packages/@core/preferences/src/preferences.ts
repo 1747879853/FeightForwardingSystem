@@ -87,6 +87,19 @@ class PreferenceManager {
       this.initialPreferences,
     );
 
+    // 构建期 Logo（vite 带 content hash）不得被 localStorage 旧 URL 粘住，
+    // 否则换品牌包/更新 logo.png 后侧栏与偏好 Logo 会 404 不显示。
+    if (overrides?.logo) {
+      const { source, sourceDark, fit, enable } = overrides.logo;
+      mergedPreference.logo = {
+        ...mergedPreference.logo,
+        ...(source === undefined ? {} : { source }),
+        ...(sourceDark === undefined ? {} : { sourceDark }),
+        ...(fit === undefined ? {} : { fit }),
+        ...(enable === undefined ? {} : { enable }),
+      };
+    }
+
     // 更新偏好设置
     this.updatePreferences(mergedPreference);
 
