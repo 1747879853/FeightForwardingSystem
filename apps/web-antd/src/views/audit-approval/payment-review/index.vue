@@ -135,6 +135,15 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
       proxyConfig: {
         ajax: {
           query: createPagedListQuery(getPayAppTaskList, {
+            // 与后端任务实体可排序字段对齐；默认 CreationTime
+            defaultSort: 'CreationTime DESC',
+            fieldMap: {
+              taskStatus: 'TaskStatus',
+              auditTime: 'AuditTime',
+              auditUserName: 'AuditUserId',
+              creatorUserName: 'CreatorUserId',
+              remark: 'Remark',
+            },
             mapParams: normalizeQuery,
           }),
         },

@@ -137,29 +137,37 @@ export function usePaymentReviewColumns(): VxeTableGridOptions<PaymentReviewAdmi
       title: t('applicationNo'),
       minWidth: 160,
       fixed: 'left',
+      // 后端任务列表不支持按 ApplicationNo 排序
+      sortable: false,
     },
     {
       field: 'settlementName',
       title: t('settlementName'),
       minWidth: 160,
       showOverflow: true,
+      sortable: false,
+      formatter: ({ row }) => row.settlement?.name ?? '',
     },
     {
       field: 'currencyCode',
       title: t('currencyCode'),
       minWidth: 80,
+      sortable: false,
+      formatter: ({ row }) => row.currency?.code ?? '',
     },
     {
       field: 'totalPayPrice',
       title: t('totalPayPrice'),
       minWidth: 120,
       align: 'right',
+      sortable: false,
     },
     {
       field: 'totalReceivePrice',
       title: t('totalReceivePrice'),
       minWidth: 120,
       align: 'right',
+      sortable: false,
     },
     {
       field: 'taskStatus',
@@ -174,6 +182,8 @@ export function usePaymentReviewColumns(): VxeTableGridOptions<PaymentReviewAdmi
       field: 'myStatus',
       title: t('myStatus'),
       minWidth: 100,
+      // 后端无 MyStatus 排序字段
+      sortable: false,
       cellRender: {
         name: 'CellTag',
         options: getTaskStatusOptions(),
@@ -184,22 +194,26 @@ export function usePaymentReviewColumns(): VxeTableGridOptions<PaymentReviewAdmi
       title: t('submitTime'),
       minWidth: 160,
       formatter: 'formatDateTime',
+      sortable: false,
     },
     {
       field: 'endTime',
       title: t('endTime'),
       minWidth: 160,
       formatter: 'formatDateTime',
+      sortable: false,
     },
     {
       field: 'creatorUserName',
       title: t('creatorUserName'),
       minWidth: 100,
+      // 按 CreatorUserId 排序（后端不支持昵称字段）
     },
     {
       field: 'auditUserName',
       title: t('auditUserName'),
       minWidth: 100,
+      // 按 AuditUserId 排序
     },
     {
       field: 'auditTime',
