@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-11 付费申请附件分组支持拖拽上传](./changelogs/change-log-2026-08-11-payment-application-attachment-drag-upload.md)
 - [2026-08-11 付费申请费用明细港口展示港口备注](./changelogs/change-log-2026-08-11-payment-application-fee-port-remark.md)
 - [2026-08-11 付费申请费用明细按费用名称筛选应只显示命中费用](./changelogs/change-log-2026-08-11-payment-application-fee-name-filter-children.md)
 - [2026-08-11 付费申请新增跳转编辑后银行账户空白](./changelogs/change-log-2026-08-11-payment-application-create-bank-missing.md)
