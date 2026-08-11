@@ -511,13 +511,13 @@ const outerColumns = [
 
 // 内层表格列定义（费用明细）
 const innerColumns = [
-  {
-    title: '序号',
-    dataIndex: 'seq',
-    key: 'seq',
-    width: 60,
-    align: 'center' as const,
-  },
+  // {
+  //   title: '序号',
+  //   dataIndex: 'seq',
+  //   key: 'seq',
+  //   width: 60,
+  //   align: 'center' as const,
+  // },
   {
     title: '结算单位',
     dataIndex: 'settlementUnit',

@@ -594,7 +594,7 @@ function transformToTreeData(
       commissionNum: item.transportOrder.commissionNum,
       mblNum: item.transportOrder.mblNum || '-',
       bookingNum: item.transportOrder.bookingNum || '-',
-      clientName: item.transportOrder.clientName,
+      clientName: item.transportOrder.client?.name,
       bizType:
         getBizTypeOptions().find(
           (o: any) => o.value === item.transportOrder?.bizType,
@@ -727,7 +727,7 @@ const feeInnerColumns = computed(() => [
     title: '结算单位',
     dataIndex: 'settlementUnit',
     key: 'settlementUnit',
-    width: 180,
+    width: 130,
     ellipsis: true,
   },
   {
@@ -741,14 +741,14 @@ const feeInnerColumns = computed(() => [
     title: '费用名称',
     dataIndex: 'feeName',
     key: 'feeName',
-    width: 200,
+    width: 120,
     ellipsis: true,
   },
   {
     title: '金额',
     dataIndex: 'amount',
     key: 'amount',
-    width: 120,
+    width: 100,
     align: 'right' as const,
   },
   {
@@ -762,14 +762,14 @@ const feeInnerColumns = computed(() => [
     title: '未开票金额',
     dataIndex: 'remainingInvoiceAmount',
     key: 'remainingInvoiceAmount',
-    width: 120,
+    width: 100,
     align: 'right' as const,
   },
   {
     title: '本次申请金额',
     dataIndex: 'appliedAmount',
     key: 'appliedAmount',
-    width: 180,
+    width: 140,
     align: 'right' as const,
   },
 ]);
@@ -785,7 +785,7 @@ defineExpose({
   <Drawer
     v-model:open="drawerVisible"
     title="选择剩余未开票费用"
-    width="1000"
+    width="1050"
     :footer-style="{ textAlign: 'right' }"
   >
     <Spin :spinning="feeDrawerLoading">

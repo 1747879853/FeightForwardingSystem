@@ -424,7 +424,7 @@ function collectCurrenciesByInit(
   const map = new Map<number, string>();
   for (const order of items) {
     for (const fee of order.orderFees ?? []) {
-      const name = fee.currency?.cnName ?? fee.currency?.code;
+      const name = fee.currency?.code ?? fee.currency?.cnName ?? '';
       if (fee.currencyId && name && !map.has(fee.currencyId)) {
         map.set(fee.currencyId, name);
       }
@@ -467,7 +467,7 @@ function mapDetailToFeeRows(
         feeCodeId: fee?.feeCodeId ?? 0,
         feeCodeName: fee?.feeCode?.cnName ?? undefined,
         currencyId: fee?.currencyId ?? 0,
-        currencyName: fee?.currency?.cnName ?? fee?.currency?.code ?? undefined,
+        currencyName: fee?.currency?.code ?? fee?.currency?.cnName ?? undefined,
         settlementId: fee?.settlementId ?? '',
         settlementName: fee?.settlement?.name ?? undefined,
         amount: fee?.amount ?? 0,
@@ -1401,7 +1401,7 @@ function formatMonth(val: string | undefined | null): string {
                     {{ formatAmount(record.settledAmount) }}
                   </template>
                   <template v-else-if="column.key === 'unSettledAmount'">
-                    {{ formatAmount(record.unSettledAmount) }}
+                    {{ formatAmount(record.amount - record.settledAmount) }}
                   </template>
                   <template v-else>
                     {{ column.dataIndex ? record[column.dataIndex] : '' }}
