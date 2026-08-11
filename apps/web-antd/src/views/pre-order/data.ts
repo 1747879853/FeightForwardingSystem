@@ -122,9 +122,8 @@ export function buildColumns(): Array<Record<string, any>> {
     {
       field: 'carrierName',
       title: '船公司',
-      minWidth: 140,
-      showOverflow: true,
-      formatter: ({ row }) => row.carrier?.name ?? '',
+      minWidth: 120,
+      slots: { default: 'carrierWithLogo' },
     },
     {
       field: 'etd',

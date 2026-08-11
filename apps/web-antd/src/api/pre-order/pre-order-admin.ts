@@ -1,4 +1,5 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 
 import { requestClient } from '#/api/request';
 
@@ -178,6 +179,8 @@ export namespace PreOrderAdminApi {
     goodsCompleteTime?: string | null;
     etd?: string | null;
     carrierId?: number | null;
+    /** 船公司 Logo（列表展示，对齐海运出口） */
+    carrierLogo?: CarrierAdminApi.AttachmentItemDto | null;
     receivePortId?: number | null;
     receivePortRemark?: string | null;
     polId?: number | null;
