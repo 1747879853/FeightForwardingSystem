@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-11 港口服务项配置隐藏自动完成并恒传否](./changelogs/change-log-2026-08-11-se-service-config-hide-auto-complete.md)
 - [2026-08-11 商品信息移除法定计量单位 RuleUnit1/2](./changelogs/change-log-2026-08-11-code-goods-remove-rule-unit1-2.md)
 - [2026-08-11 龙山工作台隐藏紧急处理与异常业务 mock 面板](./changelogs/change-log-2026-08-11-longshan-hide-workbench-mock-panels.md)
 - [2026-08-11 新增龙山（longshan）独立打包与开发环境](./changelogs/change-log-2026-08-11-longshan-brand-pack.md)

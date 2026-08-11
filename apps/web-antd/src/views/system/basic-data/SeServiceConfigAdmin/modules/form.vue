@@ -443,7 +443,8 @@ const toPayloadItemsForAdd =
     return itemRows.value.map((row) => ({
       serviceType: Number(row.serviceType),
       userAttribute: combineUserAttribute(row.userAttributeFlags),
-      autoComplete: row.autoComplete,
+      // 自动完成逻辑未实现，UI 已隐藏，提交恒为 false
+      autoComplete: false,
       manualAllowed: row.manualAllowed,
       reminder: row.reminder,
       requireFee: row.requireFee,
@@ -468,7 +469,8 @@ const toPayloadItemsForEdit =
       id: row.id,
       serviceType: Number(row.serviceType),
       userAttribute: combineUserAttribute(row.userAttributeFlags),
-      autoComplete: row.autoComplete,
+      // 自动完成逻辑未实现，UI 已隐藏，提交恒为 false
+      autoComplete: false,
       manualAllowed: row.manualAllowed,
       reminder: row.reminder,
       requireFee: row.requireFee,
@@ -734,7 +736,7 @@ const [Modal, modalApi] = useVbenModal({
             userAttributeFlags: parseSeaExportUserAttribute(
               Number(item.userAttribute || 0),
             ),
-            autoComplete: Boolean(item.autoComplete),
+            autoComplete: false,
             manualAllowed: Boolean(item.manualAllowed),
             reminder: Boolean(item.reminder),
             requireFee: Boolean(item.requireFee),
@@ -911,14 +913,6 @@ const [Modal, modalApi] = useVbenModal({
                   :placeholder="$t('ui.placeholder.select')"
                   :options="serviceTypeOptions"
                 />
-              </FormItem>
-              <FormItem
-                class="service-item-inline-field shrink-0"
-                :label="$t('system.basicData.seServiceConfig.autoComplete')"
-                :label-col="itemInlineLabelCol"
-                :wrapper-col="itemInlineWrapperCol"
-              >
-                <Switch v-model:checked="row.autoComplete" />
               </FormItem>
               <FormItem
                 class="service-item-inline-field shrink-0"
