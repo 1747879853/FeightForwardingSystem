@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
 
-import { computed, h, ref } from 'vue';
+import { computed, h, nextTick, ref, watch } from 'vue';
 
 import dayjs from 'dayjs';
 
@@ -20,7 +20,13 @@ import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
 import DetailPanel from './detail-panel.vue';
-import { usePaymentReviewColumns, usePaymentReviewFormSchema } from './data';
+import {
+  buildColumns,
+  buildColumnsWithRuntime,
+  isAppliedTotalChildField,
+  PAYMENT_REVIEW_LIST_TABLE_ID,
+  usePaymentReviewFormSchema,
+} from './data';
 
 const t = (key: string) => $t(`auditApproval.paymentReview.${key}`);
 
@@ -39,6 +45,9 @@ function canRejectAfterPass(row: PaymentReviewAdminApi.PayAppTaskItemDto) {
 
 /** 当前选中行对应的付费申请ID（驱动右侧详情渲染） */
 const selectedPaymentApplicationId = ref<string | undefined>(undefined);
+const tableData = ref<PaymentReviewAdminApi.PayAppTaskItemDto[]>([]);
+/** 防止重建过程中的重入 */
+let rebuildingAppliedTotal = false;
 
 function handleRowClick({
   row,
@@ -48,6 +57,42 @@ function handleRowClick({
   selectedPaymentApplicationId.value = row.paymentApplicationId;
   const grid = gridApi.grid as any;
   grid?.setCurrentRow?.(row);
+}
+
+/**
+ * 重建「申请合计」相关列：以运行时锚点列状态为唯一数据源，
+ * 保留静态列的显隐/固定/列宽/顺序，再按当前页数据重挂各币别列。
+ */
+async function rebuildAppliedTotalColumns() {
+  if (rebuildingAppliedTotal) return;
+  rebuildingAppliedTotal = true;
+  try {
+    await nextTick();
+    await nextTick();
+    const grid = gridApi.grid as any;
+    const runtimeColumns =
+      grid?.getFullColumns?.() ?? grid?.getFullColumn?.() ?? [];
+    gridApi.setGridOptions({
+      columns: buildColumnsWithRuntime(tableData.value, runtimeColumns),
+    });
+  } finally {
+    rebuildingAppliedTotal = false;
+  }
+}
+
+/** 恢复默认：用默认列重建（申请合计回到默认位置并全部显示） */
+async function rebuildDefaultColumns() {
+  if (rebuildingAppliedTotal) return;
+  rebuildingAppliedTotal = true;
+  try {
+    await nextTick();
+    await nextTick();
+    gridApi.setGridOptions({
+      columns: buildColumns(tableData.value),
+    });
+  } finally {
+    rebuildingAppliedTotal = false;
+  }
 }
 
 const toIsoString = (value: unknown): string | undefined => {
@@ -102,6 +147,7 @@ const hasPassRejectSelection = computed(() =>
 
 const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
   {
+    columnPersist: { tableId: PAYMENT_REVIEW_LIST_TABLE_ID },
     formOptions: {
       schema: usePaymentReviewFormSchema(),
       submitOnChange: true,
@@ -114,11 +160,30 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
       cellClick: handleRowClick,
       checkboxAll: syncSelectedRows,
       checkboxChange: syncSelectedRows,
+      custom: (params: { type?: string }) => {
+        const type = params?.type;
+        if (type && ['cancel', 'close', 'open'].includes(type)) return;
+        if (type === 'reset') {
+          void rebuildDefaultColumns();
+          return;
+        }
+        void rebuildAppliedTotalColumns();
+      },
+      customReset: () => {
+        void rebuildDefaultColumns();
+      },
+      columnDropEnd: () => {
+        void rebuildAppliedTotalColumns();
+      },
     },
     gridOptions: {
-      columns: usePaymentReviewColumns(),
+      columns: buildColumns(),
       height: 'auto',
       keepSource: true,
+      customConfig: {
+        visibleMethod: ({ column }: { column: { field?: string } }) =>
+          !isAppliedTotalChildField(column?.field),
+      },
       checkboxConfig: {
         highlight: true,
         // 点击整行即可勾选/取消，便于批量审核与驳回
@@ -145,6 +210,10 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
               remark: 'Remark',
             },
             mapParams: normalizeQuery,
+            afterFetch: (result: any) => {
+              tableData.value = result?.items ?? [];
+              return result;
+            },
           }),
         },
       },
@@ -156,6 +225,14 @@ const [Grid, gridApi] = useVbenVxeGrid<PaymentReviewAdminApi.PayAppTaskItemDto>(
       },
     },
   },
+);
+
+watch(
+  tableData,
+  () => {
+    void rebuildAppliedTotalColumns();
+  },
+  { deep: true },
 );
 
 function getCheckboxRecords(): PaymentReviewAdminApi.PayAppTaskItemDto[] {
@@ -303,8 +380,19 @@ const showPassRejectConfirm = () => {
               </Button>
             </Space>
           </template>
+          <template #appliedTotalAnchorHeader="{ column }">
+            {{ column.params?.anchorHeader || column.title }}
+          </template>
         </Grid>
       </template>
     </DetailPanel>
   </Page>
 </template>
+
+<style scoped>
+/* 各币别申请合计列：表头不换行，超出显示 tooltip */
+:deep(.applied-total-currency-col .vxe-cell--title),
+:deep(.applied-total-currency-col .vxe-cell) {
+  white-space: nowrap;
+}
+</style>

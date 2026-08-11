@@ -2,7 +2,7 @@
 title: 付费申请审批
 module: 审核审批
 author: auto-doc-sync
-last_updated: 2026-08-09
+last_updated: 2026-08-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -22,7 +22,8 @@ last_updated: 2026-08-09
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **付款审核查询：** 按编号（主提单号/订舱编号/委托编号，`TrimInput`）、申请单号、结算对象、币别、提交/审核时间等条件查询审核任务列表。
+- **付款审核查询：** 按编号（主提单号/订舱编号/委托编号，`TrimInput`）、申请单号、结算对象、结算币别、提交/审核时间等条件查询审核任务列表。
+- **申请合计列：** 列表按当前页 `currencyGroup` 动态展示「{币别}申请合计」（原币/固定币别分口径，与付款申请列表一致）；默认插在「结算对象」后；列配置仅暴露「申请合计」锚点。
 - **选中查看详情：** 点击列表行，右侧展示该付款申请的费用合计与结算银行（只读），下方通铺费用明细分组表（只读），附件区展示已上传文件（只读预览）。
 - **费用合计展示：** 原币多币别时以紧凑列表展示（币别+金额一行，银行信息单行缩略，悬停看全量）；合计区按内容限高，避免挤占附件区。
 - **通过：** 对勾选中的**待审**任务弹出备注框后批量通过（`payAppAudit` → `AuditAsync`，`success: true`）。
@@ -57,6 +58,7 @@ last_updated: 2026-08-09
 | **paymentApplicationId** | 付款申请主键，驱动详情加载。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 点击行 → `DetailAsync` | 无则详情区显示空态 |
 | **编号（Keyword）** | 按主提单号 / 订舱编号 / 委托编号检索。 | 查询 schema `Keyword`（`TrimInput`） | **触发/依赖：** 输入即时 trim；label「编号」，placeholder「主提单号/订舱编号/委托编号」。 | 可清空 |
 | **id（任务）** | 审核任务 ID，用于 Audit/Reject 接口。 | 列表 `PayAppTaskListAsync` | **触发/依赖：** 批量审核提交 | 无合法状态行时提示，不发请求 |
+| **{币别}申请合计** | 列表按币别展示的申请净额（付 − 收）。 | **原币：** `currencyGroup[].payAmount − receiveAmount`<br/>**固定币别：** 仅结算币别列 `totalPayPrice − totalReceivePrice` | **触发/依赖：** 当前页数据变化时动态生成列；模式由 `currencyId`（空/`0`=原币）判定。 | 固定币别其它币别列留空；两侧总额都空留空。 |
 | **费用合计** | 各币别申请净额（付 − 收）与结算银行。 | 前端按明细 `appliedAmount`+`paySide` 汇总（复用 `form-data`） | 原币/指定币别两种展示模式 | 只读 |
 | **附件** | 按附件明细类型分组展示文件；另含结算附件。 | `DetailAsync` → `attachmentGroup`（含 `attachmentDtlType`）/ `paymentSettlementAttachments` | 点击打开/预览 | 只读 |
 | **费用明细** | 按业务+结算对象分组的费用行。 | `DetailAsync` → `payAppFeeBySeaExportGroup` | 复用付费申请 `form-data` 分组逻辑 | 只读 |
@@ -70,10 +72,13 @@ last_updated: 2026-08-09
 
 > [!IMPORTANT] **[卡点 3：批量范围为勾选行且按状态过滤]** 工具栏操作只提交当前勾选且状态合法的任务 id，不是整页全量。
 
+> [!IMPORTANT] **[卡点 4：申请合计分口径]** 列表不要用前端重算汇率；原币读 `currencyGroup` 原币量，固定币别读整单 `totalPayPrice/totalReceivePrice`，且只填本单结算币别列。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Feature` | 列表删除结算币别/应付总金额/应收总金额列；申请合计按原币与固定币别分口径，默认插在结算对象后。 | `calcRowAppliedTotal` + 动态锚点列；详见 `changelogs/change-log-2026-08-11-payment-review-list-applied-total-settlement.md`。 |
 | 2026-08-09 | `Fix` | 工具栏改为「通过 / 驳回 / 审核后驳回」：前两者走 `AuditAsync`（`success` 区分），后者走 `RejectAsync`；按任务状态启用与过滤提交。 | 原先「驳回」误调 `RejectAsync`。详见 `changelogs/change-log-2026-08-09-payment-review-audit-reject-api-align.md`。 |
 | 2026-08-09 | `Style` | 费用明细「结算金额」→「已核销金额」；`unRqstPaymentAmount` 展示「可申请金额」。 | 详见 `changelogs/change-log-2026-08-09-payment-application-amount-labels.md`。 |
 | 2026-08-09 | `Style` | 侧边栏/页标题由「付费审批」改为「付费申请审批」。 | 详见同 changelog。 |

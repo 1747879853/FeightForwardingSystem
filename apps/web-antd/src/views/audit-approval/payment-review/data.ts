@@ -3,10 +3,149 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import type { VbenFormSchema } from '#/adapter/form';
 import type { PaymentReviewAdminApi } from '#/api/audit-approval/payment-review-admin';
 
-import { getTaskStatusOptions } from '#/views/audit-approval/data';
 import { $t } from '#/locales';
+import { getTaskStatusOptions } from '#/views/audit-approval/data';
+import { isSpecifiedCurrencyApplication } from '#/views/fee-management/add-fee-modal/data';
 
 const t = (key: string) => $t(`auditApproval.paymentReview.${key}`);
+
+/** 列配置持久化 key（与 columnPersist.tableId 对应） */
+export const PAYMENT_REVIEW_LIST_TABLE_ID = 'PaymentReviewList';
+
+/** 「申请合计」锚点列字段：列配置中唯一可见/可持久化的代理项 */
+export const APPLIED_TOTAL_ANCHOR_FIELD = 'appliedTotal';
+/** 各币别申请合计列字段前缀（表格中真实渲染，但在列配置面板中隐藏） */
+const APPLIED_TOTAL_FIELD_PREFIX = 'appliedTotal_';
+
+function appliedTotalFieldKey(currencyId: number): string {
+  return `${APPLIED_TOTAL_FIELD_PREFIX}${currencyId}`;
+}
+
+/** 是否为币别申请合计列（面板隐藏、显隐与顺序跟随锚点列） */
+export function isAppliedTotalChildField(
+  field: string | undefined | null,
+): boolean {
+  return !!field && field.startsWith(APPLIED_TOTAL_FIELD_PREFIX);
+}
+
+/** 是否为「申请合计」锚点代理列 */
+export function isAppliedTotalAnchorField(
+  field: string | undefined | null,
+): boolean {
+  return field === APPLIED_TOTAL_ANCHOR_FIELD;
+}
+
+interface AppliedTotalCurrency {
+  currencyId: number;
+  currencyCode: string;
+}
+
+/** 从当前页数据收集出现的币别（按 currencyId 升序去重） */
+function collectAppliedTotalCurrencies(
+  rows: PaymentReviewAdminApi.PayAppTaskItemDto[],
+): AppliedTotalCurrency[] {
+  const map = new Map<number, AppliedTotalCurrency>();
+  for (const row of rows) {
+    for (const group of row.currencyGroup ?? []) {
+      if (group.id != null && !map.has(group.id)) {
+        map.set(group.id, {
+          currencyId: group.id,
+          currencyCode: group.code ?? '',
+        });
+      }
+    }
+  }
+  return [...map.values()].sort((a, b) => a.currencyId - b.currencyId);
+}
+
+/**
+ * 计算某行某币别的申请合计（后端已算好，前端只做付 − 收）：
+ * - 原币：`currencyGroup` 对应币别 `payAmount − receiveAmount`
+ * - 固定币别：仅结算币别列填 `totalPayPrice − totalReceivePrice`，其它币别列留空；
+ *   两侧总额都空也留空
+ */
+function calcRowAppliedTotal(
+  row: PaymentReviewAdminApi.PayAppTaskItemDto,
+  currencyId: number,
+): number | undefined {
+  if (isSpecifiedCurrencyApplication(row.currencyId)) {
+    if (Number(row.currencyId) !== Number(currencyId)) {
+      return undefined;
+    }
+    const pay = row.totalPayPrice;
+    const receive = row.totalReceivePrice;
+    if (pay == null && receive == null) {
+      return undefined;
+    }
+    return (pay ?? 0) - (receive ?? 0);
+  }
+  const group = row.currencyGroup?.find((g) => g.id === currencyId);
+  if (!group) return undefined;
+  return (group.payAmount ?? 0) - (group.receiveAmount ?? 0);
+}
+
+function appliedTotalColumnBase() {
+  return {
+    minWidth: 120,
+    align: 'right' as const,
+    sortable: false,
+    showHeaderOverflow: 'title' as const,
+    headerClassName: 'applied-total-currency-col',
+    className: 'applied-total-currency-col',
+  };
+}
+
+function appliedTotalFormatter(currencyId: number) {
+  return ({ row }: { row: PaymentReviewAdminApi.PayAppTaskItemDto }) => {
+    const val = calcRowAppliedTotal(row, currencyId);
+    return val == null ? '' : val.toFixed(2);
+  };
+}
+
+function buildAppliedTotalAnchorColumn(
+  currencies: AppliedTotalCurrency[],
+  visible: boolean,
+) {
+  const suffix = $t('seaExport.export.paymentApplication.appliedTotal');
+  const first = currencies[0];
+  const headerLabel = first
+    ? `${first.currencyCode || first.currencyId}${suffix}`
+    : suffix;
+  return {
+    ...appliedTotalColumnBase(),
+    field: APPLIED_TOTAL_ANCHOR_FIELD,
+    title: suffix,
+    visible,
+    params: { anchorHeader: headerLabel },
+    slots: { header: 'appliedTotalAnchorHeader' },
+    formatter: first ? appliedTotalFormatter(first.currencyId) : () => '',
+  };
+}
+
+function buildAppliedTotalFollowerColumns(
+  currencies: AppliedTotalCurrency[],
+  visible: boolean,
+) {
+  const suffix = $t('seaExport.export.paymentApplication.appliedTotal');
+  return currencies.slice(1).map((c) => ({
+    ...appliedTotalColumnBase(),
+    field: appliedTotalFieldKey(c.currencyId),
+    title: `${c.currencyCode || c.currencyId}${suffix}`,
+    visible,
+    formatter: appliedTotalFormatter(c.currencyId),
+  }));
+}
+
+/** 将申请合计列组插入到某静态列之后（默认在「结算对象」后） */
+function insertAppliedTotalGroup<T extends Record<string, any>>(
+  columns: T[],
+  afterField: string,
+  group: T[],
+): T[] {
+  const index = columns.findIndex((col) => col.field === afterField);
+  const at = index >= 0 ? index + 1 : columns.length;
+  return [...columns.slice(0, at), ...group, ...columns.slice(at)];
+}
 
 export function usePaymentReviewFormSchema(): VbenFormSchema[] {
   return [
@@ -129,7 +268,8 @@ export function usePaymentReviewFormSchema(): VbenFormSchema[] {
   ];
 }
 
-export function usePaymentReviewColumns(): VxeTableGridOptions<PaymentReviewAdminApi.PayAppTaskItemDto>['columns'] {
+/** 静态列（不含申请合计组），申请合计组默认插入在「结算对象」之后 */
+function buildStaticColumns(): Array<Record<string, any>> {
   return [
     { type: 'checkbox', width: 50, fixed: 'left' },
     {
@@ -146,28 +286,8 @@ export function usePaymentReviewColumns(): VxeTableGridOptions<PaymentReviewAdmi
       minWidth: 160,
       showOverflow: true,
       sortable: false,
-      formatter: ({ row }) => row.settlement?.name ?? '',
-    },
-    {
-      field: 'currencyCode',
-      title: t('currencyCode'),
-      minWidth: 80,
-      sortable: false,
-      formatter: ({ row }) => row.currency?.code ?? '',
-    },
-    {
-      field: 'totalPayPrice',
-      title: t('totalPayPrice'),
-      minWidth: 120,
-      align: 'right',
-      sortable: false,
-    },
-    {
-      field: 'totalReceivePrice',
-      title: t('totalReceivePrice'),
-      minWidth: 120,
-      align: 'right',
-      sortable: false,
+      formatter: ({ row }: { row: PaymentReviewAdminApi.PayAppTaskItemDto }) =>
+        row.settlement?.name ?? '',
     },
     {
       field: 'taskStatus',
@@ -228,4 +348,103 @@ export function usePaymentReviewColumns(): VxeTableGridOptions<PaymentReviewAdmi
       showOverflow: true,
     },
   ];
+}
+
+const APPLIED_TOTAL_DEFAULT_AFTER_FIELD = 'settlementName';
+
+/** 首次渲染列（申请合计组在默认位置，锚点承载首个币别） */
+export function buildColumns(
+  rows: PaymentReviewAdminApi.PayAppTaskItemDto[] = [],
+): VxeTableGridOptions<PaymentReviewAdminApi.PayAppTaskItemDto>['columns'] {
+  const currencies = collectAppliedTotalCurrencies(rows);
+  const group = [
+    buildAppliedTotalAnchorColumn(currencies, true),
+    ...buildAppliedTotalFollowerColumns(currencies, true),
+  ];
+  return insertAppliedTotalGroup(
+    buildStaticColumns(),
+    APPLIED_TOTAL_DEFAULT_AFTER_FIELD,
+    group,
+  ) as NonNullable<
+    VxeTableGridOptions<PaymentReviewAdminApi.PayAppTaskItemDto>['columns']
+  >;
+}
+
+/**
+ * 结合运行时列状态重建列：
+ * - 静态列与锚点列沿用运行时的显隐、固定、列宽与顺序
+ * - 其余币别作为跟随列，显隐跟随锚点、整体紧跟在锚点之后
+ */
+export function buildColumnsWithRuntime(
+  rows: PaymentReviewAdminApi.PayAppTaskItemDto[] = [],
+  runtimeColumns: Array<Record<string, any>> = [],
+): NonNullable<
+  VxeTableGridOptions<PaymentReviewAdminApi.PayAppTaskItemDto>['columns']
+> {
+  const currencies = collectAppliedTotalCurrencies(rows);
+  const rtList = Array.isArray(runtimeColumns) ? runtimeColumns : [];
+
+  const rtByKey = new Map<
+    string,
+    { col: Record<string, any>; order: number }
+  >();
+  rtList.forEach((col, index) => {
+    const key = col?.field ?? col?.type;
+    if (key != null && !rtByKey.has(String(key))) {
+      rtByKey.set(String(key), { col, order: index });
+    }
+  });
+
+  const anchorRt = rtByKey.get(APPLIED_TOTAL_ANCHOR_FIELD);
+  const anchorVisible = anchorRt ? anchorRt.col.visible !== false : true;
+
+  const anchorColumn = buildAppliedTotalAnchorColumn(currencies, anchorVisible);
+  const followerColumns = buildAppliedTotalFollowerColumns(
+    currencies,
+    anchorVisible,
+  );
+
+  const orderables = insertAppliedTotalGroup(
+    buildStaticColumns(),
+    APPLIED_TOTAL_DEFAULT_AFTER_FIELD,
+    [anchorColumn],
+  );
+
+  const merged = orderables.map((col, index) => {
+    const key = col.field ?? col.type;
+    const rt = key == null ? undefined : rtByKey.get(String(key));
+    const nextCol: Record<string, any> = { ...col };
+    let order = index;
+    if (rt) {
+      order = rt.order;
+      if (!isAppliedTotalAnchorField(col.field)) {
+        nextCol.visible = rt.col.visible !== false;
+      }
+      const fixed = rt.col.fixed;
+      if (fixed === 'left' || fixed === 'right') {
+        nextCol.fixed = fixed;
+      }
+      const resizeWidth = Number(rt.col.resizeWidth);
+      if (Number.isFinite(resizeWidth) && resizeWidth > 0) {
+        nextCol.width = resizeWidth;
+      }
+    }
+    return { col: nextCol, order, index };
+  });
+
+  merged.sort((a, b) => a.order - b.order || a.index - b.index);
+  const ordered = merged.map((item) => item.col);
+
+  const anchorIndex = ordered.findIndex((col) =>
+    isAppliedTotalAnchorField(col.field),
+  );
+  const insertAt = anchorIndex >= 0 ? anchorIndex + 1 : ordered.length;
+
+  return [
+    ...ordered.slice(0, insertAt),
+    ...followerColumns,
+    ...ordered.slice(insertAt),
+  ] as NonNullable<
+    VxeTableGridOptions<PaymentReviewAdminApi.PayAppTaskItemDto>['columns']
+  >;
 }
