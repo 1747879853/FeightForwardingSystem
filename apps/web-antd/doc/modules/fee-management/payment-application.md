@@ -2,7 +2,7 @@
 title: 付款申请列表
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-10
+last_updated: 2026-08-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -21,10 +21,10 @@ last_updated: 2026-08-10
 
 # 2. 功能与操作说明 (Features & Operations)
 
-- **申请单查询：** 按申请状态、客户/供应商、时间等条件查询付款申请。
+- **申请单查询：** 按申请状态、客户/供应商、币别、时间等条件查询付款申请（筛选项「币别」保留）。
 - **创建申请：** 进入新增页选择可申请付款的费用。
 - **编辑申请：** 双击行进入编辑页维护申请单明细。
-- **申请合计列：** 列表按当前页数据动态展示各币别「{币别}申请合计」列（原币净额 = 付 − 收）；列配置面板仅保留「申请合计」一项（可见锚点列，承载首个币别），像普通列一样可拖动、调宽、显隐并持久化，其余币别作为跟随列自动跟随锚点的显隐与顺序。
+- **申请合计列：** 列表按当前页 `currencyGroup` 动态展示各币别「{币别}申请合计」列，承接编辑页结算币别卡片的汇总口径；列配置面板仅保留「申请合计」锚点项，其余币别跟随列自动跟随显隐与顺序。默认插在「开票日期」之后。
 - **结算明细弹窗：** 申请状态为「部分结算」「结算完毕」时，点击状态 Tag 弹出关联结算列表（单号/时间/结算对象/币别/金额/附件）；数据来自列表行 `paymentSettlements`，无需再请求详情。
 - **补录发票弹窗：** 发票流程为「先付后票」时，点击「发票流程」打开维护弹窗（发票流程/发票号/开票日期/附件）；保存走 `EditInvoiceAsync`，不判断申请 status，适合审核通过后补录。
 
@@ -42,11 +42,10 @@ last_updated: 2026-08-10
 | :-- | :-- | :-- | :-- | :-- |
 | **申请状态** | 付款申请单当前处理阶段。 | `PaymentApplicationStatus` | **触发/依赖：** 部分结算/结算完毕可点击打开 `paymentSettlements` 弹窗。 | 状态流转以后端枚举为准。 |
 | **结算对象** | 申请结算客户简称。 | `settlement.name`（`ClientSimpleDtoForOrder`） | **触发/依赖：** 列表展示；勿再读已删除的 `clientName`。 | 客户不存在时为空。 |
-| **币别** | 申请结算币别代码。 | `currency.code`（`CurrencySimpleDto`） | **触发/依赖：** 原币申请（无 `currencyId`）展示「原币」。 | 只读。 |
 | **关联结算** | 本申请关联的付费结算简要。 | `paymentSettlements[]` | **触发/依赖：** 含结算附件 `attachments`；`totalSettledPrice` 为整单金额。 | 无关联时为空数组。 |
 | **发票流程** | 先票后付 / 先付后票 / 不开票。 | `invoiceProcess`（0/1/2） | **触发/依赖：** 值为 1（先付后票）时可点击打开发票维护弹窗。 | 补录保存走 `EditInvoiceAsync`。 |
 | **发票号 / 开票日期** | 发票信息；先付后票可后续补录。 | `invoiceNo` / `invoiceDate` | **触发/依赖：** 弹窗内可改；不开票时清空。 | 发票号最长 128。 |
-| **{币别}申请合计** | 列表按币别展示的申请净额（原币，付 − 收）。 | `currencyGroup[].payAmount - receiveAmount` | **触发/依赖：** 当前页数据变化时动态生成列。 | 只读展示。 |
+| **{币别}申请合计** | 列表按币别展示的申请净额（付 − 收）。 | **原币：** `currencyGroup[].payAmount − receiveAmount`<br/>**固定币别：** 仅结算币别列 `totalPayPrice − totalReceivePrice` | **触发/依赖：** 当前页数据变化时动态生成列；模式由 `currencyId`（空/`0`=原币）判定。 | 固定币别其它币别列留空；两侧总额都空留空。 |
 
 # 5. 核心业务卡点 (Business Blockers)
 
@@ -56,10 +55,13 @@ last_updated: 2026-08-10
 
 > [!IMPORTANT] **[卡点 3：EditInvoice 附件全量覆盖]** 保存发票信息时须带回详情当前 `attachmentGroup`，否则附件会被清空；勿与仅录入/驳回可用的 `EditAsync` 混用预期。
 
+> [!IMPORTANT] **[卡点 4：申请合计分口径]** 列表不要用前端重算汇率；原币读 `currencyGroup` 原币量，固定币别读整单 `totalPayPrice/totalReceivePrice`，且只填本单结算币别列。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Feature` | 列表删除币别/应付总额/应收总额列；申请合计按原币与固定币别分口径，默认插在开票日期后。 | `calcRowAppliedTotal` + `isSpecifiedCurrencyApplication`；详见 `changelogs/change-log-2026-08-11-payment-application-list-applied-total-settlement.md`。 |
 | 2026-08-10 | `Refactor` | 外联平铺字段改读 SimpleDto：选费港口/字典、详情明细费用名、任务列表结算与币别。 | 港口读对象；明细 `orderFee.feeCode/currency/settlement`；任务 `settlement.name` / `currency.code`。详见 `changelogs/change-log-2026-08-10-foreign-key-simple-dto-alignment.md`。 |
 | 2026-08-09 | `Fix` | 「{币别}申请合计」改为付申请量 − 收申请量。 | `calcRowAppliedTotal`：`payAmount - receiveAmount`。详见 `changelogs/change-log-2026-08-09-payment-application-pay-minus-receive.md`。 |
 | 2026-07-30 | `Feature` | 列表「先付后票」可点击打开发票维护弹窗，对接 `EditInvoiceAsync` 补录发票/附件（不限 status）。 | 新增 `invoice-edit-modal` + `editPaymentApplicationInvoice`；附件全量覆盖须带回详情。详见 `changelogs/change-log-2026-07-30-payment-application-edit-invoice.md`。 |

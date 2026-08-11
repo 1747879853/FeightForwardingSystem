@@ -270,7 +270,6 @@ const [Grid, gridApi] =
               applicationNo: 'ApplicationNo',
               status: 'Status',
               'settlement.name': 'Settlement.Name',
-              'currency.code': 'CurrencyId',
               invoiceProcess: 'InvoiceProcess',
               invoiceNo: 'InvoiceNo',
               invoiceDate: 'InvoiceDate',

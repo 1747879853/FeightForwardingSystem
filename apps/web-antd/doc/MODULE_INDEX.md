@@ -23,7 +23,7 @@
 | air-exports | `/air-exports/:id/edit` | 操作管理 / 空运出口 | 空运出口编辑：基础信息、只读应收应付、附件、运踪信息四个标签；支持重新生成委托编号、复制与运踪订阅；基础信息保存后联动刷新只读费用与收付徽标。 | [空运出口编辑](./modules/air-exports/id-edit.md) | 2026-08-09 |
 | freight-rate | `/freight-rate` | 航线管理 / 运价查询 | 维护海运运价信息，为委托费用测算和报价提供基础数据入口；侧边栏位于「航线管理」分组下。 | [运价查询](./modules/freight-rate/index.md) | 2026-07-26 |
 | schedule-query | `/schedule` | 航线管理 / 船期查询 | 船期实时查询；起始/目的港用 PortSelect（EDI）；筛选一行 6 列默认收起；双击行内嵌船舶 AIS 定位。 | [船期查询](./modules/schedule-query/index.md) | 2026-08-09 |
-| fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建和进入付款申请单编辑，是应付费用付款流程入口；申请合计按付减收。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-08-10 |
+| fee-management | `/fee-management/payment-application` | 费用管理 | 付款申请列表用于查询、创建和进入付款申请单编辑；申请合计按原币/固定币别分口径展示。 | [付款申请列表](./modules/fee-management/payment-application.md) | 2026-08-11 |
 | fee-management | `/fee-management/payment-application/add` | 费用管理 | 创建付款申请；附件分组支持拖拽上传；添加费用抽屉按币别展示已选合计，翻页保留勾选。 | [付款申请新增](./modules/fee-management/payment-application-add.md) | 2026-08-11 |
 | fee-management | `/fee-management/payment-application/:id/edit` | 费用管理 | 编辑付款申请；附件分组支持拖拽上传；添加费用抽屉按币别展示已选合计，翻页保留勾选；驳回后可再次提交。 | [付款申请编辑](./modules/fee-management/payment-application-id-edit.md) | 2026-08-11 |
 | fee-management | `/fee-management/statement` | 费用管理 | 对账单列表用于管理客户或供应商对账单，是结算确认的入口。 | [对账单列表](./modules/fee-management/statement.md) | 2026-08-09 |

@@ -26,13 +26,13 @@ export function resolvePodPortDisplayName(source: {
 }
 
 /**
- * 付费申请 `currencyId`：有值=指定结算币别申请；null/undefined=原币申请（按费用原币分列）。
+ * 付费申请 `currencyId`：有值=指定结算币别申请；null/undefined/0=原币申请（按费用原币分列）。
  * 付费结算单上的结算币别见 `PaymentSettlement.currencyId`。
  */
 export function isOriginalCurrencyApplication(
   currencyId: null | number | undefined,
 ): boolean {
-  return currencyId === null || currencyId === undefined;
+  return currencyId === null || currencyId === undefined || currencyId === 0;
 }
 
 export function isSpecifiedCurrencyApplication(

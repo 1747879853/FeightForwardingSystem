@@ -5,6 +5,8 @@ import type { PaymentApplicationAdminApi } from '#/api/settlement-management/pay
 import { getPaymentApplicationStatusOptions } from '#/constants/application-status';
 import { $t } from '#/locales';
 
+import { isSpecifiedCurrencyApplication } from '../add-fee-modal/data';
+
 const paymentApplicationStatusOptions = () =>
   getPaymentApplicationStatusOptions((key) => $t(key));
 
@@ -57,11 +59,27 @@ function collectAppliedTotalCurrencies(
   return [...map.values()].sort((a, b) => a.currencyId - b.currencyId);
 }
 
-/** 计算某行某币别的申请合计（原币）= 付申请量 − 收申请量 */
+/**
+ * 计算某行某币别的申请合计（后端已算好，前端只做付 − 收）：
+ * - 原币：`currencyGroup` 对应币别 `payAmount − receiveAmount`
+ * - 固定币别：仅结算币别列填 `totalPayPrice − totalReceivePrice`，其它币别列留空；
+ *   两侧总额都空也留空
+ */
 function calcRowAppliedTotal(
   row: PaymentApplicationAdminApi.PaymentApplicationDto,
   currencyId: number,
 ): number | undefined {
+  if (isSpecifiedCurrencyApplication(row.currencyId)) {
+    if (Number(row.currencyId) !== Number(currencyId)) {
+      return undefined;
+    }
+    const pay = row.totalPayPrice;
+    const receive = row.totalReceivePrice;
+    if (pay == null && receive == null) {
+      return undefined;
+    }
+    return (pay ?? 0) - (receive ?? 0);
+  }
   const group = row.currencyGroup?.find((g) => g.id === currencyId);
   if (!group) return undefined;
   return (group.payAmount ?? 0) - (group.receiveAmount ?? 0);
@@ -130,7 +148,7 @@ function buildAppliedTotalFollowerColumns(
   }));
 }
 
-/** 将申请合计列组插入到某静态列之后（默认在「应收总额」后） */
+/** 将申请合计列组插入到某静态列之后（默认在「开票日期」后） */
 function insertAppliedTotalGroup<T extends Record<string, any>>(
   columns: T[],
   afterField: string,
@@ -269,7 +287,7 @@ export function useGridFormSchema(): VbenFormSchema[] {
   ];
 }
 
-/** 静态列（不含申请合计组），申请合计组默认插入在「应收总额」之后 */
+/** 静态列（不含申请合计组），申请合计组默认插入在「开票日期」之后 */
 function buildStaticColumns(): Array<Record<string, any>> {
   return [
     { type: 'checkbox', width: 50, fixed: 'left' },
@@ -300,20 +318,6 @@ function buildStaticColumns(): Array<Record<string, any>> {
       }) => row.settlement?.name ?? '',
     },
     {
-      field: 'currency.code',
-      title: $t('seaExport.export.paymentApplication.currencyCode'),
-      minWidth: 80,
-      // DTO 展示 code，实体可排序字段为 CurrencyId
-      sortField: 'CurrencyId',
-      formatter: ({
-        row,
-      }: {
-        row: PaymentApplicationAdminApi.PaymentApplicationDto;
-      }) =>
-        row.currency?.code ??
-        (row.currencyId == null || row.currencyId === 0 ? '原币' : ''),
-    },
-    {
       field: 'invoiceProcess',
       title: '发票流程',
       minWidth: 110,
@@ -330,21 +334,6 @@ function buildStaticColumns(): Array<Record<string, any>> {
       title: '开票日期',
       minWidth: 120,
       formatter: 'formatDate',
-    },
-    {
-      field: 'totalPayPrice',
-      title: $t('seaExport.export.paymentApplication.totalPayPrice'),
-      minWidth: 120,
-      align: 'right',
-      // 列表聚合字段，服务端不支持 Sorting
-      sortable: false,
-    },
-    {
-      field: 'totalReceivePrice',
-      title: $t('seaExport.export.paymentApplication.totalReceivePrice'),
-      minWidth: 120,
-      align: 'right',
-      sortable: false,
     },
     {
       field: 'creatorUserName',
@@ -386,7 +375,7 @@ function buildStaticColumns(): Array<Record<string, any>> {
   ];
 }
 
-const APPLIED_TOTAL_DEFAULT_AFTER_FIELD = 'totalReceivePrice';
+const APPLIED_TOTAL_DEFAULT_AFTER_FIELD = 'invoiceDate';
 
 /** 首次渲染列（申请合计组在默认位置，锚点承载首个币别） */
 export function buildColumns(
