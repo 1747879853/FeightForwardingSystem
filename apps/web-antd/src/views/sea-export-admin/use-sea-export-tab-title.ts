@@ -32,6 +32,11 @@ export function useSeaExportTabTitle(
   options?: {
     /** false 时不改写/复位页签标题（业务联系单内嵌海出等场景） */
     enabled?: MaybeRefOrGetter<boolean>;
+    /**
+     * 卸载时是否复位页签标题。
+     * 编辑工作台 Form 随内部 Tab 卸载时切勿复位，否则会丢掉「海运出口-编号」。
+     */
+    resetOnUnmount?: MaybeRefOrGetter<boolean>;
   },
 ) {
   const { resetTabTitle, setTabTitle } = useTabs();
@@ -39,6 +44,11 @@ export function useSeaExportTabTitle(
   const enabled = computed(() => {
     if (options?.enabled === undefined) return true;
     return toValue(options.enabled);
+  });
+
+  const shouldResetOnUnmount = computed(() => {
+    if (options?.resetOnUnmount === undefined) return true;
+    return toValue(options.resetOnUnmount);
   });
 
   const tabTitle = computed(() =>
@@ -50,16 +60,24 @@ export function useSeaExportTabTitle(
   );
 
   watch(
-    [tabTitle, enabled],
-    ([title, isEnabled]) => {
-      if (!isEnabled) return;
-      void setTabTitle(title);
+    [tabTitle, enabled, mblNum, commissionNum, isSaved],
+    () => {
+      if (!enabled.value) return;
+      // 编辑态尚未回填主提单号/委托编号时跳过，避免把已设好的动态标题冲成「海运出口」
+      if (
+        isSaved.value &&
+        !String(mblNum.value ?? '').trim() &&
+        !String(commissionNum.value ?? '').trim()
+      ) {
+        return;
+      }
+      void setTabTitle(tabTitle.value);
     },
     { immediate: true },
   );
 
   onBeforeUnmount(() => {
-    if (!enabled.value) return;
+    if (!enabled.value || !shouldResetOnUnmount.value) return;
     void resetTabTitle();
   });
 }

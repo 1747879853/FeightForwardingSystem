@@ -9,12 +9,15 @@ import changeOrder from '#/views/sea-export-admin/changeOrder/index.vue';
 import dispatch from '#/views/sea-export-admin/dispatch/index.vue';
 import attachments from '#/views/sea-export-admin/attachments/index.vue';
 import YundangTrackingPanel from './modules/yundang-tracking-panel.vue';
-import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import { getSeaExportDetail } from '#/api/sea-export/sea-export-admin';
+import { getOrderFeePagedList } from '#/api/sea-export/order-fee-admin';
 import { clearOrderDetailCache } from '#/views/sea-export-admin/orderFee/modules/composables/useOrderFeeLinkage';
 import { useUnsavedGuard } from '#/composables/use-unsaved-guard';
 import { $t } from '#/locales';
 import { buildBrandStorageKey } from '#/utils/brand-storage';
+
+import { useSeaExportTabTitle } from './use-sea-export-tab-title';
 
 type SectionKey = 'basic' | 'party' | 'shipment' | 'port' | 'cargo';
 type FormSectionTabKey = 'basic' | 'party' | 'shipment' | 'port';
@@ -94,8 +97,23 @@ const emit = defineEmits<{
 /** 最近一次保存成功后的最新详情，下发给费用/更改单 Tab 联动刷新 */
 const savedDetail = shallowRef<SeaExportAdminApi.SeaExportDto>();
 
+/** 工作台级页签标题：不依赖基础信息 Form 是否挂载（记忆 Tab 可能落在费用等） */
+const tabMblNum = ref<string | undefined>();
+const tabCommissionNum = ref<string | undefined>();
+const tabTitleEnabled = computed(() => !props.disableTabTitle);
+const isOrderSaved = computed(() => !!editId.value);
+
+function applyTabTitleFromDetail(
+  detail: SeaExportAdminApi.SeaExportDto | null | undefined,
+) {
+  const to = detail?.transportOrder;
+  tabMblNum.value = to?.mblNum?.trim() || undefined;
+  tabCommissionNum.value = to?.commissionNum?.trim() || undefined;
+}
+
 const onFormSaved = (detail: SeaExportAdminApi.SeaExportDto) => {
   savedDetail.value = detail;
+  applyTabTitleFromDetail(detail);
   // 清掉费用联动里永不过期的订单详情缓存，避免结算对象/箱型等沿用旧数据
   clearOrderDetailCache(editId.value);
   emit('saved', detail);
@@ -107,12 +125,39 @@ const editId = computed<string | undefined>(() => {
   return id ? String(id) : undefined;
 });
 
+useSeaExportTabTitle(tabMblNum, tabCommissionNum, isOrderSaved, {
+  enabled: tabTitleEnabled,
+  // 关闭工作台时由路由/页签关闭清理；勿在此处随子 Form 卸载复位
+  resetOnUnmount: true,
+});
+
+async function syncTabTitleFromOrder(id: string | undefined) {
+  if (!id || props.disableTabTitle) {
+    tabMblNum.value = undefined;
+    tabCommissionNum.value = undefined;
+    return;
+  }
+  try {
+    const detail = await getSeaExportDetail(id);
+    // 切单过程中以最新 editId 为准，避免慢请求回写旧票
+    if (String(editId.value ?? '') !== String(id)) return;
+    applyTabTitleFromDetail(detail);
+  } catch {
+    // 详情失败时保留路由默认「海运出口」，不阻断进页
+  }
+}
+
 /** 按委托 ID 记忆当前 Tab，离开后再进入时恢复 */
 const activeTab = ref<TabKey>(readStoredTab(editId.value) ?? 'basic');
 
-watch(editId, (id) => {
-  activeTab.value = readStoredTab(id) ?? 'basic';
-});
+watch(
+  editId,
+  (id) => {
+    activeTab.value = readStoredTab(id) ?? 'basic';
+    void syncTabTitleFromOrder(id);
+  },
+  { immediate: true },
+);
 
 watch(activeTab, (tab) => {
   writeStoredTab(editId.value, tab);

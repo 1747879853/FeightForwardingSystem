@@ -1590,6 +1590,8 @@ const isOrderSaved = computed(() => isEdit.value);
 const tabTitleEnabled = computed(() => !props.disableTabTitle);
 useSeaExportTabTitle(tabMblNum, tabCommissionNum, isOrderSaved, {
   enabled: tabTitleEnabled,
+  // 工作台内嵌：切费用等 Tab 会卸载 Form，不能复位页签标题
+  resetOnUnmount: () => !props.embedded,
 });
 
 const syncTabTitleFromValues = (values: Record<string, any>) => {
