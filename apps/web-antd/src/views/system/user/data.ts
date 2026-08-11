@@ -540,26 +540,32 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       minWidth: 100,
     },
     {
-      field: 'organizationPath',
+      // field 必须与真实数据源 organizations 对齐：
+      // vxe 会按 field 对应 cellValue 缓存 formatter 结果；若绑 organizationPath，
+      // 修改所属组织后 organizations 已变但 organizationPath 不变，列表会继续显示旧缓存。
+      field: 'organizations',
       title: $t('system.user.organization'),
       minWidth: 200,
       formatter: ({ row, cellValue }) => {
-        // 优先使用新的organizations字段（多组织）
-        if (
-          row?.organizations &&
+        // 优先使用新的 organizations 字段（多组织）
+        const orgs =
+          (Array.isArray(cellValue) && cellValue.length > 0
+            ? cellValue
+            : null) ||
+          (row?.organizations &&
           Array.isArray(row.organizations) &&
           row.organizations.length > 0
-        ) {
-          // 将多个组织路径用逗号分隔显示
-          return row.organizations
+            ? row.organizations
+            : null);
+        if (orgs) {
+          return orgs
             .map((org: any) => {
               if (
                 org.oneOrganizationPath &&
                 Array.isArray(org.oneOrganizationPath)
               ) {
-                // 提取组织链中的名称并用/连接
                 const pathNames = org.oneOrganizationPath
-                  .map((item: any) => item?.name)
+                  .map((item: any) => item?.displayName || item?.name || '')
                   .filter(Boolean);
                 return pathNames.join('/');
               }
@@ -568,9 +574,15 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
             .filter(Boolean)
             .join(', ');
         }
-        // 兼容旧数据：使用organizationPath或organization字段
-        if (Array.isArray(cellValue) && cellValue.length > 0) {
-          return cellValue.map((item: any) => item?.name).join('/');
+        // 兼容旧数据：organizationPath / organization
+        if (
+          Array.isArray(row?.organizationPath) &&
+          row.organizationPath.length > 0
+        ) {
+          return row.organizationPath
+            .map((item: any) => item?.displayName || item?.name)
+            .filter(Boolean)
+            .join('/');
         }
         return row?.organization || '-';
       },

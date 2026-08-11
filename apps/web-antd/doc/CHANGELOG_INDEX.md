@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-11 用户列表修改所属组织后列不刷新](./changelogs/change-log-2026-08-11-user-list-org-column-refresh.md)
 - [2026-08-11 更新龙山品牌 Logo 资源](./changelogs/change-log-2026-08-11-longshan-logo-asset.md)
 - [2026-08-11 侧边栏折叠态 Logo 取消水平居中改为靠左](./changelogs/change-log-2026-08-11-sidebar-logo-left-align.md)
 - [2026-08-11 港口服务项配置隐藏自动完成并恒传否](./changelogs/change-log-2026-08-11-se-service-config-hide-auto-complete.md)

@@ -2,7 +2,7 @@
 title: 用户管理
 module: 系统管理
 author: auto-doc-sync
-last_updated: 2026-07-31
+last_updated: 2026-08-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -24,7 +24,7 @@ last_updated: 2026-07-31
 - **列表/页面访问：** 通过 `/system/user` 进入 `用户管理` 页面。
 - **系统配置维护：** 按页面职责维护用户、角色、组织、工作流、枚举或缓存信息。
 - **账号可用判断口径：** 列表仅保留「账号启用」字段用于判断是否可使用系统，不再展示「账号状态」列。
-- **所属组织路径：** 列表「所属组织」列优先用 `organizationPath` 按层级拼接（如 `世纪通达/操作部/操作一部`）；无路径时回退 `organization`。
+- **所属组织路径：** 列表「所属组织」列 `field` 绑定 `organizations`，按多组织路径拼接（如 `世纪通达/操作部/操作一部`，多组织逗号分隔）；无路径时回退旧字段 `organizationPath` / `organization`。
 - **行内操作：** 操作列固定右侧；外露「修改 / 权限配置 / 最终权限 / 分配角色」，「银行账户 / 修改密码 / 删除」收入「更多」下拉；默认列宽 `340`。
 - **最终权限诊断：** 点击「最终权限」打开只读弹窗，调用 `GET /services/app/UserAdmin/GetUserPermissionsAsync?id=` 展示该用户最终生效权限树（角色 + 用户级授权/禁止合并结果）；默认仅显示已拥有分支，可搜索。
 - **权限配置：** 点击「权限配置」跳转 `/system/permission`，用于编辑用户级模块/数据/表/字段权限，与「最终权限」只读诊断分离。
@@ -43,7 +43,7 @@ last_updated: 2026-07-31
 | **页面数据** | 系统管理页面的列表、表单或配置对象。 | src/views/system/user/data.ts | **触发/依赖：** 与系统 API 契约联动。 | 字段校验以后端接口为准。 |
 | **enable（账号启用）** | 标识账号是否允许登录和使用系统。 | `GET /services/app/UserAdmin/GetPagedListAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户离职（`isActive=false`）时前端联动将 `enable` 自动置为 `false`；列表仅展示该字段作为账号可用依据。 | 布尔值；建议与人员在职状态保持一致。 |
 | **organizationId（所属部门）** | 用户归属组织。 | `GET /services/app/OrganizationUnit/GetOrganizationUnitTreeAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗通过组织树选择。 | **必填项**，未选择时阻止保存。 |
-| **organizationPath / organization（所属组织）** | 列表展示用户组织层级路径或直接部门名。 | `GET /services/app/UserAdmin/GetUserPagedListAsync` 的 `organizationPath[]`（`id`/`name`/`isCompany`）与 `organization` | **触发/依赖：** 列 `formatter` 优先拼接路径名，否则回退部门名。 | 只读展示；未挂组织时路径为空数组。 |
+| **organizations（所属组织）** | 列表展示用户全部所属组织层级路径。 | `GET /services/app/UserAdmin/GetUserPagedListAsync` 的 `organizations[]`（含 `default`、`oneOrganizationPath`） | **触发/依赖：** 列 `field` 必须为 `organizations`（避免 vxe formatter 按旧 `organizationPath` 缓存导致改组织后不刷新）；`formatter` 拼接路径名，回退 `organizationPath` / `organization`。 | 只读展示；未挂组织时为空数组。 |
 | **userAttributeFlags（用户属性）** | 用户业务角色位标志（可多选）。 | 前端 `getUserAttributeOptions()` 枚举（含操作/客服/单证/商务/销售/财务/海外客服/人事/航线） | **触发/依赖：** 提交前由 `combineUserAttribute` 合并为 `userAttribute` 整型掩码。 | **必填项**，至少勾选一项。 |
 | **officeTel** | 用户办公电话。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `32`，可为空。 |
 | **senderDisplayName** | 邮件发件显示名。 | `GET /services/app/UserAdmin/GetUserForEditAsync`<br/>`POST /services/app/UserAdmin/CreateOrUpdateUserAsync` | **触发/依赖：** 用户编辑弹窗邮件配置区可编辑；保存时随 `UserInAdminInputDto` 提交。 | 最大长度 `64`，可为空。 |
@@ -61,6 +61,7 @@ last_updated: 2026-07-31
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Fix` | 修复编辑用户修改所属组织后，列表「所属组织」列仍显示旧值的问题。 | 根因是 vxe `getCellLabel` 按列 `field` 的 cellValue 缓存 formatter；列绑了不存在的 `organizationPath`，`organizations` 变了也不重算。已改为 `field: 'organizations'`。详见 [变更日志](../../changelogs/change-log-2026-08-11-user-list-org-column-refresh.md)。 |
 | 2026-07-31 | `Feature` | 用户属性新增「航线」（`ShippingLine = 256`）；原「商务(航线)」更名为「商务」。 | 枚举与 `getUserAttributeOptions` 同步；海出专用 6 项角色未纳入航线。详见 [变更日志](../../changelogs/change-log-2026-07-31-user-attribute-shipping-line.md)。 |
 | 2026-07-29 | `Feature` | 用户列表新增「最终权限」按钮与只读弹窗，对接 `GetUserPermissions` 展示最终生效权限树。 | 弹窗组件 `view-permissions-modal.vue`；API 入参统一 `id`；操作列宽调至 `340`。详见 [变更日志](../../changelogs/change-log-2026-07-29-user-view-effective-permissions.md)。 |
 | 2026-07-16 | `Fix` | 用户列表操作列改为外露「修改 / 权限配置 / 分配角色」，其余收入「更多」；列宽 `280`。 | `CellOperation` 新增 `children`→Dropdown；删除在菜单内用 `Modal.confirm`。 |
