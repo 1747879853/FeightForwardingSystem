@@ -84,13 +84,6 @@ const transactionFee = ref<number | undefined>(undefined);
 const remark = ref('');
 const attachments = ref<Attachment[]>([]);
 
-// 汇率列表（扩展类型以包含currencyCode用于显示）
-interface RateListItem
-  extends PaymentSettlementAdminApi.PaymentSettlementRateAddDto {
-  currencyCode?: string;
-}
-const rateList = ref<RateListItem[]>([]);
-
 // 我司银行选项（根据申请明细中的费用所属公司动态加载）
 interface OrgBankOption {
   id: string;
@@ -121,7 +114,7 @@ const hasExistingFees = computed(() => applicationItems.value.length > 0);
 
 // ✅ 计算结算总金额（所有申请明细的 settledPrice 总和）
 const totalSettledAmount = computed(() => {
-  const total = applicationItems.value.reduce((sum, item) => {
+  let total = applicationItems.value.reduce((sum, item) => {
     return sum + (item.settledPrice || 0);
   }, 0);
 
@@ -133,7 +126,7 @@ const totalSettledAmount = computed(() => {
     })),
     总金额: total,
   });
-
+  total = total + (transactionFee.value ?? 0);
   return total;
 });
 
@@ -159,7 +152,7 @@ function handleAddApplication() {
 async function handleConfirmApplications(
   applications: Array<{
     application: PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto;
-    settledAmount: number;
+    settledPrice: number;
     userEnteredRate?: number; // ✅ 用户输入的汇率（如果有）
   }>,
   selectedCurrencyId?: number, // 用户在抽屉中选择的结算币别ID
@@ -194,7 +187,7 @@ async function handleConfirmApplications(
 async function handleAddAndSaveToSettlement(
   applications: Array<{
     application: PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto;
-    settledAmount: number;
+    settledPrice: number;
     userEnteredRate?: number; // ✅ 用户输入的汇率（如果有）
   }>,
   selectedCurrencyId?: number,
@@ -211,126 +204,14 @@ async function handleAddAndSaveToSettlement(
 
   submitting.value = true;
   try {
-    // ✅ 收集所有涉及的原币币别ID
-    const originalCurrencyIds = new Set<number>();
-
-    applications.forEach((app) => {
-      originalCurrencyIds.add(app.application.originalCurrencyId);
-    });
-
-    // ✅ 构建完整的汇率列表（优先使用用户输入的汇率）
-    const allRates: PaymentSettlementAdminApi.PaymentSettlementRateAddDto[] =
-      [];
-
-    // 首先从 rateList 中添加所有已有的汇率
-    rateList.value.forEach((existingRate) => {
-      allRates.push({
-        originalCurrencyId: existingRate.originalCurrencyId,
-        rate: existingRate.rate,
-      });
-    });
-
-    // 然后处理新增的币别
-    for (const originalCurrencyId of originalCurrencyIds) {
-      // 检查是否已存在该原币的汇率
-      const existingRateIndex = allRates.findIndex(
-        (r) => r.originalCurrencyId === originalCurrencyId,
-      );
-
-      if (existingRateIndex === -1) {
-        // ✅ 先检查是否有用户输入的汇率
-        const appWithUserRate = applications.find(
-          (app) =>
-            app.application.originalCurrencyId === originalCurrencyId &&
-            app.userEnteredRate,
-        );
-
-        console.log(`处理原币 ${originalCurrencyId}:`);
-        console.log(
-          '  找到带用户汇率的申请:',
-          appWithUserRate
-            ? {
-                applicationNo: appWithUserRate.application.applicationNo,
-                userEnteredRate: appWithUserRate.userEnteredRate,
-              }
-            : '无',
-        );
-
-        let rate = 1; // 默认值
-
-        if (appWithUserRate && appWithUserRate.userEnteredRate) {
-          // 使用用户输入的汇率
-          rate = appWithUserRate.userEnteredRate;
-          console.log(`  ✅ 使用用户输入的汇率: ${rate}`);
-        } else {
-          // 没有用户输入的汇率，从汇率管理中查询
-          console.log(`  ⚠️ 没有用户输入的汇率，从系统查询`);
-          try {
-            const { getExchangeRatePagedList } =
-              await import('#/api/system/base-data/exchange-rate-admin');
-
-            const result = await getExchangeRatePagedList({
-              CurrencyId: originalCurrencyId,
-              PageIndex: 1,
-              PageSize: 1,
-            });
-
-            if (result.items && result.items.length > 0) {
-              const rateData = result.items[0];
-              // 使用 calculateValue（核算汇率）
-              rate = rateData?.calculateValue ?? 1;
-              console.log(`  系统汇率: ${rate}`);
-            } else {
-              console.warn(
-                `未找到原币 ${originalCurrencyId} 到结算币别 ${selectedCurrencyId} 的汇率，使用默认值1`,
-              );
-            }
-          } catch (error) {
-            console.error(`获取原币 ${originalCurrencyId} 的汇率失败:`, error);
-          }
-        }
-
-        // 如果是同种币别，强制汇率为1
-        if (originalCurrencyId === selectedCurrencyId) {
-          console.log(`  ⚠️ 同种币别，强制汇率为1 (原: ${rate})`);
-          rate = 1;
-        }
-
-        console.log(`  最终汇率: ${rate}`);
-
-        // 添加到汇率列表
-        allRates.push({
-          originalCurrencyId,
-          rate,
-        });
-
-        // 同时更新本地的rateList（用于界面显示）
-        let currencyCode = '';
-        try {
-          const { getCurrencyDetail } =
-            await import('#/api/system/base-data/currency-admin');
-          const currencyDetail = await getCurrencyDetail(
-            String(originalCurrencyId),
-          );
-          currencyCode = currencyDetail.code || '';
-        } catch (error) {
-          console.error(`获取原币 ${originalCurrencyId} 代码失败:`, error);
-        }
-
-        rateList.value.push({
-          originalCurrencyId,
-          rate,
-          currencyCode,
-        });
-      }
-    }
-
     // ✅ 直接转换为扁平化的 paymentApplicationCurrencyItems（新的二级结构）
+    // 注意：现在使用 settledPrice（结算币别金额）而不是 settledAmount（原币金额）
     const paymentApplicationCurrencyItems: PaymentSettlementAdminApi.PaymentSettlementItemByCurrencyInputDto[] =
       applications.map((app) => ({
         paymentApplicationId: app.application.paymentApplicationId,
         originalCurrencyId: app.application.originalCurrencyId,
-        settledAmount: app.settledAmount,
+        settledPrice: app.settledPrice, // ✅ 这里传入的是结算币别金额
+        // settledAmount 已废弃，不再使用
       }));
 
     // 如果过滤后没有有效数据，提示用户
@@ -341,11 +222,15 @@ async function handleAddAndSaveToSettlement(
       return;
     }
 
-    // ✅ 调用新的按原币添加明细接口
+    console.log('📤 调用添加明细接口:', {
+      id: editId.value,
+      items: paymentApplicationCurrencyItems,
+    });
+
+    // ✅ 调用新的按原币添加明细接口（不再传 paymentSettlementRates）
     await addItemsToSettlementByCurrency({
       id: editId.value,
-      paymentApplicationCurrencyItems, // ✅ 使用新的扁平化字段
-      paymentSettlementRates: allRates,
+      paymentApplicationCurrencyItems, // ✅ 使用新的扁平化字段，包含 settledPrice
     });
 
     message.success(
@@ -365,7 +250,7 @@ async function handleAddAndSaveToSettlement(
 async function handleCreateSettlementAndRedirect(
   applications: Array<{
     application: PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto;
-    settledAmount: number;
+    settledPrice: number;
     userEnteredRate?: number; // ✅ 用户输入的汇率（如果有）
   }>,
   selectedCurrencyId?: number,
@@ -392,119 +277,14 @@ async function handleCreateSettlementAndRedirect(
 
   submitting.value = true;
   try {
-    // ✅ 收集所有涉及的原币币别ID
-    const originalCurrencyIds = new Set<number>();
-
-    applications.forEach((app) => {
-      originalCurrencyIds.add(app.application.originalCurrencyId);
-    });
-
-    // ✅ 构建完整的汇率列表（优先使用rateList中已有的汇率，即用户输入的汇率）
-    const allRates: PaymentSettlementAdminApi.PaymentSettlementRateAddDto[] =
-      [];
-
-    // 首先从 rateList 中添加所有已有的汇率（这些是用户输入的汇率）
-    rateList.value.forEach((existingRate) => {
-      allRates.push({
-        originalCurrencyId: existingRate.originalCurrencyId,
-        rate: existingRate.rate,
-      });
-    });
-
-    // 然后处理新增的币别
-    for (const originalCurrencyId of originalCurrencyIds) {
-      // 检查是否已存在该原币的汇率
-      const existingRateIndex = allRates.findIndex(
-        (r) => r.originalCurrencyId === originalCurrencyId,
-      );
-
-      if (existingRateIndex === -1) {
-        // ✅ 先检查是否有用户输入的汇率
-        const appWithUserRate = applications.find(
-          (app) =>
-            app.application.originalCurrencyId === originalCurrencyId &&
-            app.userEnteredRate,
-        );
-
-        let rate = 1; // 默认值
-
-        if (appWithUserRate && appWithUserRate.userEnteredRate) {
-          // 使用用户输入的汇率
-          rate = appWithUserRate.userEnteredRate;
-          console.log(
-            `使用用户输入的汇率: 原币${originalCurrencyId} -> ${rate}`,
-          );
-        } else {
-          // 没有用户输入的汇率，从汇率管理中查询
-          try {
-            const { getExchangeRatePagedList } =
-              await import('#/api/system/base-data/exchange-rate-admin');
-
-            const result = await getExchangeRatePagedList({
-              CurrencyId: originalCurrencyId,
-              PageIndex: 1,
-              PageSize: 1,
-            });
-
-            if (result.items && result.items.length > 0) {
-              const rateData = result.items[0];
-              // 使用 calculateValue（核算汇率）
-              rate = rateData?.calculateValue ?? 1;
-            } else {
-              console.warn(
-                `未找到原币 ${originalCurrencyId} 到结算币别 ${selectedCurrencyId} 的汇率，使用默认值1`,
-              );
-            }
-          } catch (error) {
-            console.error(`获取原币 ${originalCurrencyId} 的汇率失败:`, error);
-          }
-        }
-
-        // 如果是同种币别，强制汇率为1
-        if (originalCurrencyId === selectedCurrencyId) {
-          rate = 1;
-        }
-
-        // 添加到汇率列表
-        allRates.push({
-          originalCurrencyId,
-          rate,
-        });
-
-        // 同时更新本地的rateList（用于界面显示）
-        let currencyCode = '';
-        try {
-          const { getCurrencyDetail } =
-            await import('#/api/system/base-data/currency-admin');
-          const currencyDetail = await getCurrencyDetail(
-            String(originalCurrencyId),
-          );
-          currencyCode = currencyDetail.code || '';
-        } catch (error) {
-          console.error(`获取原币 ${originalCurrencyId} 代码失败:`, error);
-        }
-
-        rateList.value.push({
-          originalCurrencyId,
-          rate,
-          currencyCode,
-        });
-      }
-    }
-
-    // ✅ 确保同种币别的汇率为1
-    allRates.forEach((rateItem) => {
-      if (rateItem.originalCurrencyId === selectedCurrencyId) {
-        rateItem.rate = 1;
-      }
-    });
-
     // ✅ 直接转换为扁平化的 paymentApplicationCurrencyItems（新的二级结构）
+    // 注意：现在使用 settledPrice（结算币别金额）而不是 settledAmount（原币金额）
     const paymentApplicationCurrencyItems: PaymentSettlementAdminApi.PaymentSettlementItemByCurrencyInputDto[] =
       applications.map((app) => ({
         paymentApplicationId: app.application.paymentApplicationId,
         originalCurrencyId: app.application.originalCurrencyId,
-        settledAmount: app.settledAmount,
+        settledPrice: app.settledPrice, // ✅ 这里传入的是结算币别金额
+        // settledAmount 已废弃，不再使用
       }));
 
     // 如果过滤后没有有效数据，提示用户
@@ -515,7 +295,13 @@ async function handleCreateSettlementAndRedirect(
       return;
     }
 
-    // ✅ 构建结算单数据（使用新的按原币接口）
+    console.log('📤 调用新建结算单接口:', {
+      settlementId: firstApp.settlementId,
+      currencyId: selectedCurrencyId,
+      items: paymentApplicationCurrencyItems,
+    });
+
+    // ✅ 构建结算单数据（使用新的按原币接口，不再传 paymentSettlementRates）
     const data: PaymentSettlementAdminApi.PaymentSettlementAddByCurrencyDto = {
       orgId: derivedOrgId,
       settlementTime: dayjs().toISOString(),
@@ -526,8 +312,7 @@ async function handleCreateSettlementAndRedirect(
       clientInvoiceBankId: undefined,
       transactionFee: 0,
       remark: '',
-      paymentSettlementRates: allRates,
-      paymentApplicationCurrencyItems, // ✅ 使用新的扁平化字段
+      paymentApplicationCurrencyItems, // ✅ 使用新的扁平化字段，包含 settledPrice
       attachments: attachments.value.map((a, idx) => ({
         attachmentId: Number(a.attachmentId),
         displayOrder: idx,
@@ -561,7 +346,7 @@ async function handleAddToExistingSettlement(
     settledPrice?: number;
     currencyItems?: Array<{
       originalCurrencyId: number;
-      settledAmount: number;
+      settledPrice: number;
     }>;
   }>,
   selectedCurrencyId?: number,
@@ -603,37 +388,20 @@ async function handleDeleteApplicationItem(index: number) {
         },
       ];
 
-    // 2. 构建删除后剩余的汇率列表（从当前汇率列表中过滤）
-    // 先获取删除后剩余的申请列表
-    const remainingItems = applicationItems.value.filter((_, i) => i !== index);
-
-    // 收集剩余申请涉及的所有原币币别ID
-    const remainingOriginalCurrencyIds = new Set<number>();
-    remainingItems.forEach((item) => {
-      remainingOriginalCurrencyIds.add(item.originalCurrencyId);
+    console.log('📤 调用删除明细接口:', {
+      id: editId.value,
+      keys: paymentApplicationCurrencyKeys,
     });
 
-    // 从当前汇率列表中过滤出剩余申请涉及的币别
-    const remainingRates: PaymentSettlementAdminApi.PaymentSettlementRateAddDto[] =
-      rateList.value
-        .filter((rate) =>
-          remainingOriginalCurrencyIds.has(rate.originalCurrencyId),
-        )
-        .map((rate) => ({
-          originalCurrencyId: rate.originalCurrencyId,
-          rate: rate.rate,
-        }));
-
-    // 3. 调用新的按原币删除接口
+    // 2. 调用新的按原币删除接口（不再传 paymentSettlementRates）
     await deleteItemsFromSettlementByCurrency({
       id: editId.value,
       paymentApplicationCurrencyKeys, // ✅ 使用新的扁平化字段
-      paymentSettlementRates: remainingRates,
     });
 
     message.success('删除成功');
 
-    // 4. 重新加载详情数据以刷新列表和汇率
+    // 3. 重新加载详情数据以刷新列表
     await loadEditData();
   } catch (error: any) {
     message.error(error.message || '删除失败');
@@ -669,7 +437,7 @@ async function handleSave() {
         clientInvoiceBankId: clientInvoiceBankId.value,
         transactionFee: transactionFee.value,
         remark: remark.value,
-        paymentSettlementRates: rateList.value,
+        // paymentSettlementRates 已删除，汇率由后端从付费申请获取
         attachments: attachments.value.map((a, idx) => ({
           attachmentId: Number(a.attachmentId),
           displayOrder: idx,
@@ -759,38 +527,9 @@ async function loadEditData() {
     console.log('currencyId:', currencyId.value);
     console.log('settlementId:', settlementId.value);
 
-    // 加载汇率列表（包含currencyCode用于显示）
-    const { getCurrencyDetail } =
-      await import('#/api/system/base-data/currency-admin');
-    rateList.value = await Promise.all(
-      detail.paymentSettlementRates.map(
-        async (r: PaymentSettlementAdminApi.PaymentSettlementRateDto) => {
-          let currencyCode = '';
-          try {
-            const currencyDetail = await getCurrencyDetail(
-              String(r.originalCurrencyId),
-            );
-            currencyCode = currencyDetail.code || '';
-          } catch (error) {
-            console.error(`获取原币 ${r.originalCurrencyId} 代码失败:`, error);
-          }
-
-          // 如果是同种币别，强制汇率为1
-          let rate = r.rate;
-          if (r.originalCurrencyId === detail.currencyId) {
-            rate = 1;
-          }
-
-          return {
-            originalCurrencyId: r.originalCurrencyId,
-            rate,
-            currencyCode,
-          };
-        },
-      ),
-    );
-
-    console.log('✅ 汇率列表加载完成，共', rateList.value.length, '个');
+    // ✅ 注意：2026-08-10 起，汇率不再由结算单维护，而是从付费申请明细获取
+    // detail.paymentSettlementRates 已删除，汇率信息现在在每个 paymentApplicationCurrencies 行的 rate 字段中
+    // rateList 已不再使用，无需清空
 
     // ✅ 从详情接口加载申请明细（新的二级结构：paymentApplicationCurrencies）
     applicationItems.value = detail.paymentApplicationCurrencies || [];
@@ -805,6 +544,9 @@ async function loadEditData() {
         console.log('📋 第一个申请明细详情:');
         console.log('  paymentApplicationId:', firstItem.paymentApplicationId);
         console.log('  originalCurrencyId:', firstItem.originalCurrencyId);
+        console.log('  rate:', firstItem.rate); // ✅ 汇率现在在这里
+        console.log('  settledAmount:', firstItem.settledAmount);
+        console.log('  settledPrice:', firstItem.settledPrice);
         console.log('  orderFees 数量:', firstItem.orderFees?.length || 0);
 
         if (firstItem.orderFees && firstItem.orderFees.length > 0) {
@@ -978,128 +720,12 @@ async function loadClientBankOptions() {
   }
 }
 
-/** 格式化业务类型 */
-function getBizTypeName(bizType: number): string {
-  const bizTypeMap: Record<number, string> = {
-    1: '海运出口',
-    2: '海运进口',
-    3: '空运出口',
-    4: '空运进口',
-    5: '陆运',
-  };
-  return bizTypeMap[bizType] || '未知';
-}
 
-/** 获取状态颜色 */
-function getStatusColor(status: number): string {
-  const statusColorMap: Record<number, string> = {
-    0: 'default',
-    1: 'processing',
-    2: 'success',
-    3: 'error',
-    4: 'warning',
-  };
-  return statusColorMap[status] || 'default';
-}
 
-/** 获取状态文本 */
-function getStatusText(status: number): string {
-  const statusTextMap: Record<number, string> = {
-    0: '草稿',
-    1: '待审核',
-    2: '已通过',
-    3: '已拒绝',
-    4: '已取消',
-  };
-  return statusTextMap[status] || '未知';
-}
 
-/** 格式化未结算费用范围 */
-function formatUnsettledRange(upperLimit: number, lowerLimit: number): string {
-  if (upperLimit === 0 && lowerLimit === 0) return '-';
-  return `[${formatAmount(lowerLimit)} ~ ${formatAmount(upperLimit)}]`;
-}
 
-/** 将详情接口的币别分组转换为选择列表格式 */
-function convertCurrencyGroupForDetailToSettlement(
-  detailCurrency: PaymentSettlementAdminApi.CurrencyGroupForDetailDto,
-): PaymentApplicationAdminApi.CurrencyGroupForSettlementDto & {
-  settledAmount?: number;
-} {
-  // 从 orderFees 中计算汇总数据
-  const orderFees = detailCurrency.orderFees || [];
 
-  // 🔍 调试：打印原始 orderFees 的第一个元素
-  if (orderFees.length > 0) {
-    const firstFee = orderFees[0];
-    console.log(`币别 ${detailCurrency.code} 的原始 orderFees[0]:`, firstFee);
-    console.log(
-      '是否有 transportOrder:',
-      firstFee ? 'transportOrder' in firstFee : false,
-    );
-    console.log(
-      '是否有 rqstPaymentAmount:',
-      firstFee ? 'rqstPaymentAmount' in firstFee : false,
-    );
-    console.log(
-      '是否有 unSettledAmount:',
-      firstFee ? 'unSettledAmount' in firstFee : false,
-    );
-    console.log('所有字段名:', firstFee ? Object.keys(firstFee) : []);
-  }
 
-  // 计算应收/应付金额（根据 paySide 区分）
-  let receiveAmount = 0;
-  let payAmount = 0;
-
-  orderFees.forEach((fee) => {
-    if (fee.paySide === 0) {
-      // 收
-      receiveAmount += fee.amount || 0;
-    } else {
-      // 付
-      payAmount += fee.amount || 0;
-    }
-  });
-
-  // 计算未结算金额
-  const totalUnSettledAmount = orderFees.reduce((sum, fee) => {
-    return sum + (fee.unSettledAmount || 0);
-  }, 0);
-
-  // 计算可结算上下限
-  let settleableUpperLimit = 0;
-  let settleableLowerLimit = 0;
-
-  orderFees.forEach((fee) => {
-    const unSettled = fee.unSettledAmount || 0;
-    if (unSettled > 0) {
-      settleableUpperLimit += unSettled;
-    } else if (unSettled < 0) {
-      settleableLowerLimit += unSettled;
-    }
-  });
-
-  // ✅ 关键修复：直接使用原始 orderFees，保留后端返回的所有字段（包括 transportOrder、rqstPaymentAmount 等）
-  // 不要做任何过滤或修改，让后端返回什么就显示什么
-  const convertedOrderFees = [...orderFees] as any;
-
-  return {
-    id: detailCurrency.id,
-    code: detailCurrency.code,
-    receiveAmount,
-    receivePrice: undefined,
-    payAmount,
-    payPrice: undefined,
-    totalUnSettledAmount,
-    settleableUpperLimit,
-    settleablePriceUpperLimit: undefined,
-    settleableLowerLimit,
-    settleablePriceLowerLimit: undefined,
-    settledAmount: detailCurrency.settledAmount, // 保留已保存的结算金额
-    orderFees: convertedOrderFees,
-  } as any;
-}
 
 /** 监听结算对象变化，更新名称并清空银行信息 */
 watch(settlementId, async (newVal) => {
@@ -1468,131 +1094,30 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- 手续费和汇率设置同行显示 -->
-            <div
-              style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
-            >
-              <!-- 手续费 -->
-              <div>
-                <div
-                  style="
-                    margin-bottom: 6px;
-                    font-size: 13px;
-                    font-weight: 500;
-                    color: #fa8c16;
-                  "
-                >
-                  手续费
-                </div>
-                <div style="display: flex; gap: 8px; align-items: center">
-                  <InputNumber
-                    v-model:value="transactionFee"
-                    placeholder="0.00"
-                    :min="0"
-                    :precision="2"
-                    style="flex: 1"
-                  />
-                  <span
-                    style="font-size: 12px; color: #999; white-space: nowrap"
-                    >RMB</span
-                  >
-                </div>
-              </div>
-
-              <!-- 汇率设置 -->
-              <div v-if="rateList.length > 0">
-                <div
-                  style="
-                    margin-bottom: 6px;
-                    font-size: 13px;
-                    font-weight: 500;
-                    color: #1890ff;
-                  "
-                >
-                  汇率设置
-                  <span
-                    v-if="rateList.length === 1 && rateList[0].currencyCode"
-                    style="margin-left: 4px; font-weight: normal; color: #999"
-                  >
-                    {{ rateList[0].currencyCode }} → {{ currencyCode }}
-                  </span>
-                </div>
-                <div
-                  v-if="rateList.length === 1"
-                  style="display: flex; gap: 8px; align-items: center"
-                >
-                  <InputNumber
-                    v-model:value="rateList[0].rate"
-                    :min="0"
-                    :precision="6"
-                    :step="0.000001"
-                    placeholder="请输入汇率"
-                    :disabled="rateList[0].originalCurrencyId === currencyId"
-                    style="flex: 1"
-                  />
-                </div>
-                <div v-else style="font-size: 12px; color: #999">
-                  多币种汇率请在下方查看
-                </div>
-              </div>
-            </div>
-
-            <!-- 多币种汇率管理 -->
-            <div
-              v-if="rateList.length > 1"
-              style="
-                padding: 12px;
-                background: #fafafa;
-                border: 1px solid #e8e8e8;
-                border-radius: 6px;
-              "
-            >
+            <!-- 手续费（汇率设置已移除：2026-08-10起，汇率由后端从付费申请自动获取） -->
+            <div>
               <div
                 style="
-                  margin-bottom: 10px;
+                  margin-bottom: 6px;
                   font-size: 13px;
                   font-weight: 500;
-                  color: #1890ff;
+                  color: #fa8c16;
                 "
               >
-                多币种汇率
+                手续费
               </div>
-              <div
-                style="
-                  display: grid;
-                  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-                  gap: 10px;
-                "
-              >
-                <div
-                  v-for="rate in rateList"
-                  :key="rate.originalCurrencyId"
-                  style="
-                    display: flex;
-                    flex-direction: column;
-                    gap: 6px;
-                    padding: 8px;
-                    background: white;
-                    border: 1px solid #e8e8e8;
-                    border-radius: 4px;
-                  "
+              <div style="display: flex; gap: 8px; align-items: center">
+                <InputNumber
+                  v-model:value="transactionFee"
+                  placeholder="0.00"
+                  :min="0"
+                  :precision="2"
+                  style="flex: 1"
+                />
+                <span
+                  style="font-size: 12px; color: #999; white-space: nowrap"
+                  >RMB</span
                 >
-                  <span
-                    style="font-size: 12px; color: #666; white-space: nowrap"
-                  >
-                    {{ rate.currencyCode || `币别${rate.originalCurrencyId}` }}
-                    → {{ currencyCode }}
-                  </span>
-                  <InputNumber
-                    v-model:value="rate.rate"
-                    :min="0"
-                    :precision="6"
-                    :step="0.000001"
-                    placeholder="请输入汇率"
-                    :disabled="rate.originalCurrencyId === currencyId"
-                    style="width: 100%"
-                  />
-                </div>
               </div>
             </div>
           </div>

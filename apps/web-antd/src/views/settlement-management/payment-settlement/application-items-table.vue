@@ -92,11 +92,11 @@ const orderFeeColumns = [
     key: 'commissionNum',
     width: 150,
   },
-  {
-    title: '开船日期',
-    key: 'etd',
-    width: 120,
-  },
+  // {
+  //   title: '开船日期',
+  //   key: 'etd',
+  //   width: 120,
+  // },
   {
     title: '主提单号',
     key: 'mblNum',
@@ -115,6 +115,13 @@ const orderFeeColumns = [
     width: 100,
   },
   {
+    title: '汇率',
+    dataIndex: 'exchangeRate',
+    key: 'exchangeRate',
+    width: 80,
+    align: 'right' as const,
+  },
+  {
     title: '原始金额',
     dataIndex: 'amount',
     key: 'amount',
@@ -128,12 +135,12 @@ const orderFeeColumns = [
     width: 130,
     align: 'right' as const,
   },
-  {
-    title: '申请金额',
-    key: 'appliedAmount',
-    width: 130,
-    align: 'right' as const,
-  },
+  // {
+  //   title: '申请金额',
+  //   key: 'appliedAmount',
+  //   width: 130,
+  //   align: 'right' as const,
+  // },
 ];
 
 /**
@@ -153,76 +160,6 @@ function getCreatorUserName(
 ): string {
   // TODO: 需要从详情中获取申请人信息，这里暂时返回占位符
   return record.userName || '-';
-}
-
-/**
- * 计算费用的申请金额
- */
-function getAppliedAmount(fee: PaymentSettlementAdminApi.OrderFeeDto): number {
-  // TODO: 需要根据业务逻辑计算申请金额
-  // 这里暂时返回未结算金额作为示例
-  return fee.unSettledAmount || 0;
-}
-
-/**
- * 获取费用的委托编号
- */
-function getCommissionNum(fee: PaymentSettlementAdminApi.OrderFeeDto): string {
-  // TODO: OrderFeeDto 中没有 transportOrder 字段，需要从其他地方获取
-  // 根据实际接口返回结构调整
-  return '-';
-}
-
-/**
- * 获取费用的开船日期
- */
-function getSailingDate(fee: PaymentSettlementAdminApi.OrderFeeDto): string {
-  // TODO: OrderFeeDto 中没有开船日期字段，需要从其他地方获取
-  // 根据实际接口返回结构调整
-  return '-';
-}
-
-/**
- * 获取费用的主提单号
- */
-function getMblNum(fee: PaymentSettlementAdminApi.OrderFeeDto): string {
-  // TODO: OrderFeeDto 中没有 transportOrder 字段，需要从其他地方获取
-  // 根据实际接口返回结构调整
-  return '-';
-}
-
-/**
- * 处理展开行
- */
-function handleExpand(
-  expanded: boolean,
-  record: PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyDto,
-) {
-  console.log(
-    '[handleExpand] 被调用！expanded:',
-    expanded,
-    'record.rowKey:',
-    record.rowKey,
-  );
-
-  if (expanded) {
-    if (!expandedRowKeys.value.includes(record.rowKey)) {
-      expandedRowKeys.value.push(record.rowKey);
-      console.log(
-        '[handleExpand] 添加到 expandedRowKeys:',
-        expandedRowKeys.value,
-      );
-    }
-  } else {
-    const index = expandedRowKeys.value.indexOf(record.rowKey);
-    if (index > -1) {
-      expandedRowKeys.value.splice(index, 1);
-      console.log(
-        '[handleExpand] 从 expandedRowKeys 移除:',
-        expandedRowKeys.value,
-      );
-    }
-  }
 }
 
 /**
@@ -344,11 +281,6 @@ function getOrderFees(
         暂无费用明细
       </div>
       <div v-else>
-        <!-- 调试信息 -->
-        <div class="debug-info">
-          费用数量: {{ getOrderFees(record).length }} | 原币:
-          {{ record.originalCurrency?.code }} | 汇率: {{ record.rate }}
-        </div>
         <Table
           :columns="orderFeeColumns"
           :data-source="getOrderFees(record)"
@@ -381,13 +313,13 @@ function getOrderFees(
               v-else-if="column.key === 'thisSettledAmount'"
               style="color: #1890ff"
             >
-              {{ formatAmount(feeRecord.thisSettledAmount || 0) }}
+              {{ formatAmount(feeRecord.thisSettledAmount  * feeRecord.exchangeRate || 0) }}
             </span>
 
             <!-- 申请金额 -->
-            <span v-else-if="column.key === 'appliedAmount'">
+            <!-- <span v-else-if="column.key === 'appliedAmount'">
               {{ formatAmount(getAppliedAmount(feeRecord)) }}
-            </span>
+            </span> -->
           </template>
         </Table>
       </div>

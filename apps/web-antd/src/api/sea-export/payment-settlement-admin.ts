@@ -8,27 +8,12 @@ export namespace PaymentSettlementAdminApi {
    * 付费结算模块接口定义
    *
    * 所有接口均需要登录认证
+   * 
+   * 注意：2026-08-10 起，付费结算不再录入汇率，汇率一律从付费申请取。
+   * 所有写接口的 paymentSettlementRates 入参已删除，App_PaymentSettlementRates 表已废弃。
    */
 
   // ==================== DTO 定义 ====================
-
-  /** 汇率添加DTO */
-  export interface PaymentSettlementRateAddDto {
-    /** 原币币别ID */
-    originalCurrencyId: number;
-    /** 汇率（原币对结算币别） */
-    rate: number;
-  }
-
-  /** 汇率DTO */
-  export interface PaymentSettlementRateDto extends PaymentSettlementRateAddDto {
-    /** 汇率ID */
-    id: string;
-    /** 付费结算ID */
-    paymentSettlementId: string;
-    /** 原币币别对象（替代 originalCurrencyCode，编码读 code） */
-    originalCurrency?: CurrencySimpleDto | null;
-  }
 
   /** 币别结算项DTO */
   export interface PaymentSettlementAddItemCurrencyDto {
@@ -85,8 +70,6 @@ export namespace PaymentSettlementAdminApi {
     transactionFee?: number;
     /** 备注 */
     remark?: string;
-    /** 汇率列表 */
-    paymentSettlementRates: PaymentSettlementRateAddDto[];
     /** 付费申请结算列表 */
     paymentApplicationGroups: PaymentSettlementAddItemGroupDto[];
     /** 附件列表 */
@@ -111,8 +94,6 @@ export namespace PaymentSettlementAdminApi {
     transactionFee?: number;
     /** 备注 */
     remark?: string;
-    /** 汇率列表（全量替换） */
-    paymentSettlementRates: PaymentSettlementRateAddDto[];
     /** 附件列表（全量替换） */
     attachments?: AttachmentItemForItemInputDto[];
   }
@@ -123,8 +104,6 @@ export namespace PaymentSettlementAdminApi {
     id: string;
     /** 新增的付费申请结算列表 */
     paymentApplicationGroups: PaymentSettlementAddItemGroupDto[];
-    /** 汇率列表（全量替换，需包含新增后所有币别） */
-    paymentSettlementRates: PaymentSettlementRateAddDto[];
   }
 
   /** 删除结算明细参数DTO */
@@ -133,8 +112,6 @@ export namespace PaymentSettlementAdminApi {
     id: string;
     /** 要删除的付费申请ID列表（删除该结算单中属于这些付费申请的所有结算明细） */
     paymentApplicationIds: string[];
-    /** 汇率列表（全量替换，需包含删除后剩余的所有币别） */
-    paymentSettlementRates: PaymentSettlementRateAddDto[];
   }
 
   /** 删除付费结算参数DTO */
@@ -289,8 +266,10 @@ export namespace PaymentSettlementAdminApi {
     currency?: CurrencySimpleDto | null;
     /** 创建人名称 */
     creatorUserName: string;
-    /** 汇率明细 */
-    paymentSettlementRates: PaymentSettlementRateDto[];
+    /** 申请人昵称（userId 对应用户的 nickName） */
+    userName?: string;
+    /** 最后修改人昵称 */
+    lastModifierUserName?: string;
     /** 结算明细（扁平列表） */
     paymentSettlementItems: PaymentSettlementItemDetailDto[];
     /** 按付费申请分组的结算明细 */
@@ -345,9 +324,7 @@ export namespace PaymentSettlementAdminApi {
     originalCurrency?: CurrencySimpleDto | null;
     /** 该币别结算量合计（原币） */
     totalSettledAmount: number;
-    /** 汇率 */
-    rate: number;
-    /** 该币别结算金额合计（结算币别） */
+    /** 该币别结算金额合计（结算币别）= 该币别下各条明细 settledAmount × rate 之和 */
     totalSettledPrice: number;
   }
 
@@ -401,6 +378,8 @@ export namespace PaymentSettlementAdminApi {
     currency?: CurrencySimpleDto | null;
     /** 创建人名称 */
     creatorUserName: string;
+    /** 申请人昵称（userId 对应用户的 nickName） */
+    userName?: string;
     /** 结算金额合计（结算币别）= SUM(settledAmount × rate) */
     totalSettledPrice: number;
     /** 原始币别汇总列表 */
@@ -535,7 +514,6 @@ export namespace PaymentSettlementAdminApi {
     originalCurrencyId: number;
     /** 原币币别对象（替代 originalCurrencyCode，编码读 code） */
     originalCurrency?: CurrencySimpleDto | null;
-    rate?: number;
     payAmount: number;
     payPrice?: number;
     receiveAmount: number;
@@ -552,7 +530,10 @@ export namespace PaymentSettlementAdminApi {
   export interface PaymentSettlementItemByCurrencyInputDto {
     paymentApplicationId: string;
     originalCurrencyId: number;
-    settledAmount: number;
+    /** 本行结算的净额（结算币别），需落在该行的 [settleablePriceLowerLimit, settleablePriceUpperLimit] 内。后端按本行汇率倒算回原币再落库 */
+    settledPrice?: number;
+    /** 已废弃，后端不再读取，保留仅为兼容旧调用方 */
+    settledAmount?: number;
   }
 
   /** 按原币的结算行定位键DTO */
@@ -572,7 +553,6 @@ export namespace PaymentSettlementAdminApi {
     clientInvoiceBankId?: string;
     transactionFee?: number;
     remark?: string;
-    paymentSettlementRates: PaymentSettlementRateAddDto[];
     paymentApplicationCurrencyItems: PaymentSettlementItemByCurrencyInputDto[];
     attachments?: AttachmentItemForItemInputDto[];
   }
@@ -581,14 +561,12 @@ export namespace PaymentSettlementAdminApi {
   export interface PaymentSettlementAddItemsByCurrencyDto {
     id: string;
     paymentApplicationCurrencyItems: PaymentSettlementItemByCurrencyInputDto[];
-    paymentSettlementRates: PaymentSettlementRateAddDto[];
   }
 
   /** 删除结算明细参数DTO（按原币） */
   export interface PaymentSettlementDeleteItemsByCurrencyDto {
     id: string;
     paymentApplicationCurrencyKeys: PaymentSettlementPayAppCurrencyKeyDto[];
-    paymentSettlementRates: PaymentSettlementRateAddDto[];
   }
 
   /** 按原币的结算行DTO（用于详情） */
@@ -598,6 +576,7 @@ export namespace PaymentSettlementAdminApi {
     paymentApplicationId: string;
     applicationNo: string;
     userId: number;
+    userName?: string;
     orgId?: number;
     orgs?: PaymentApplicationAdminApi.OrganizationUnitSimpleDto[];
     settlementId: string;
@@ -611,7 +590,6 @@ export namespace PaymentSettlementAdminApi {
     settledAmount: number;
     settledPrice: number;
     orderFees: OrderFeeDto[];
-    userName?: string;
   }
 
   /** 付费结算详情DTO（按原币） */
@@ -643,7 +621,7 @@ export namespace PaymentSettlementAdminApi {
     currency?: CurrencySimpleDto | null;
     creatorUserName?: string;
     lastModifierUserName?: string;
-    paymentSettlementRates: PaymentSettlementRateDto[];
+    userName?: string;
     paymentApplicationCurrencies: PaymentSettlementPayAppCurrencyDto[];
     totalSettledPrice: number;
     attachments: AttachmentItemDto[];

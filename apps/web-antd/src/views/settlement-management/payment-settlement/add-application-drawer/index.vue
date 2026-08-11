@@ -19,7 +19,7 @@ import {
 import { useVbenForm } from '#/adapter/form';
 import { CurrencySelect } from '#/adapter/component';
 import { getPaymentApplicationPagedListByCurrencyForSettlement } from '#/api/sea-export/payment-settlement-admin';
-import ExchangeRateModal from '#/views/fee-management/add-fee-modal/exchange-rate-modal.vue'; // ✅ 新增：汇率录入框
+// ❌ 已删除：2026-08-10起，不再需要汇率录入弹窗，汇率由后端从付费申请自动获取
 import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 
 import { useSearchSchema, getStatusTagProps } from './data';
@@ -42,7 +42,7 @@ const emit = defineEmits<{
   confirm: [
     applications: Array<{
       application: PaymentSettlementAdminApi.PaymentApplicationCurrencyForSettlementDto;
-      settledAmount: number; // 本行结算的净额（原币）
+      settledPrice: number; // 本行结算的净额（原币）
     }>,
     selectedCurrencyId?: number, // 用户在抽屉中选择的结算币别ID
   ];
@@ -51,7 +51,7 @@ const emit = defineEmits<{
 const visible = ref(false);
 const loading = ref(false);
 const selectedRowKeys = ref<string[]>([]);
-// ✅ 使用any类型数组，因为需要添加前端临时字段settledAmount
+// ✅ 使用any类型数组，因为需要添加前端临时字段settledPrice
 const dataSource = ref<any[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
@@ -64,14 +64,6 @@ const selectedCurrencyId = ref<number | undefined>(undefined);
 
 // ✅ 新增：结算对象选中项（用于 ClientSelect 回显）
 const settlementSelectedItems = ref<any[]>([]);
-
-// ✅ 新增：汇率录入框相关状态
-const exchangeRateModalOpen = ref(false);
-const pendingApplications = ref<any[]>([]);
-const pendingCurrencies = ref<
-  Array<{ currencyId: number; currencyCode: string }>
->([]);
-const settlementCurrencyName = ref('');
 
 // 查询表单
 const [SearchForm, searchFormApi] = useVbenForm({
@@ -205,13 +197,19 @@ async function fetchData() {
     const [submitTimeStart, submitTimeEnd] = formValues.submitTimeRange || [];
     const [endTimeStart, endTimeEnd] = formValues.endTimeRange || [];
 
+    // ✅ 确定结算币别：优先使用用户选择的，如果没有则使用props传入的
+    const settlementCurrencyId = selectedCurrencyId.value ?? props.currencyId;
+
+    
+
     const params: PaymentApplicationAdminApi.PaymentApplicationSettlementQueryParams =
       {
         paymentSettlementId: props.paymentSettlementId,
         keyword: formValues.keyword,
         applicationNo: formValues.applicationNo,
         settlementId: formValues.settlementId,
-        currencyId: formValues.currencyId,
+        settlementCurrencyId: formValues.currencyId,
+        //settlementCurrencyId: settlementCurrencyId, // ✅ 可选：如果未传则不过滤结算币别
         creatorUserId: formValues.creatorUserId,
         submitTimeStart: submitTimeStart
           ? dayjs(submitTimeStart).toISOString()
@@ -227,35 +225,43 @@ async function fetchData() {
         pageSize: pageSize.value,
       };
 
+    console.log('📤 调用选择付费申请列表接口:', {
+      settlementCurrencyId: settlementCurrencyId ?? '未设置（显示所有）',
+      params,
+    });
+
     const result =
       await getPaymentApplicationPagedListByCurrencyForSettlement(params);
 
     // ✅ 新接口返回的是扁平化的「申请+原币」组合，直接赋值
     dataSource.value = (result.items || []).map((row: any, index: number) => {
-      // ✅ 初始化 settledAmount 字段（前端临时字段，用于用户输入）
-      // 用户输入的是申请币别金额，所以需要将原币的未结算费用转换为申请币别金额
-      const unsettledAmountOriginal =
-        (row.settleableUpperLimit ?? 0) + (row.settleableLowerLimit ?? 0);
+      console.log('📋 处理数据行:', {
+        index,
+        rowKey: row.rowKey,
+        applicationNo: row.applicationNo,
+        originalCurrencyId: row.originalCurrencyId,
+        currencyId: row.currencyId,
+        settleableUpperLimit: row.settleableUpperLimit,
+        settleableLowerLimit: row.settleableLowerLimit,
+        settleablePriceUpperLimit: row.settleablePriceUpperLimit,
+        settleablePriceLowerLimit: row.settleablePriceLowerLimit,
+      });
 
-      // 如果是固定币别申请，需要转换为申请币别金额
-      if (row.currencyId) {
-        row.settledAmount = unsettledAmountOriginal * (row.rate || 1);
-      } else {
-        // 原币申请，直接使用原币金额
-        row.settledAmount = unsettledAmountOriginal;
-      }
-
+      // ✅ 初始化 settledPrice 字段（前端临时字段，用于用户输入）
+      // 注意：2026-08-10起，用户输入的是结算币别金额（settledPrice），不是原币金额
+      // 这里初始化为可结算上限和下限的总和（结算币别口径）
+      const totalUnSettledPrice = row.totalUnSettledPrice ?? 0;     
+      row.settledPrice = totalUnSettledPrice;
       // ✅ 如果currency.code是"原币"，则用originalCurrencyCode替代
       if (row.currency == null) {
         row.currency = { code: row.originalCurrencyCode };
       }
 
       // ✅ 设置rowKey用于NestedDataTable的行标识 - 使用组合键确保唯一性
-      // 格式：paymentApplicationId_currencyId_originalCurrencyId
-      // 这样可以区分同一个申请的不同币别组合
+      // 格式：paymentApplicationId_originalCurrencyId
+      // 这样可以区分同一个申请的不同原币组合
       const uniqueKey = [
         row.paymentApplicationId,
-        row.currencyId ?? 'null',
         row.originalCurrencyId ?? 'null',
       ].join('_');
       row.rowKey = uniqueKey;
@@ -307,13 +313,13 @@ function getSelectedRows() {
     selectedRowKeys.value.includes(item.rowKey),
   );
 
-  // ✅ 调试：打印选中行的settledAmount值
+  // ✅ 调试：打印选中行的settledPrice值
   console.log('=== getSelectedRows 返回的数据 ===');
   selected.forEach((row, index) => {
     console.log(`行${index + 1}:`, {
       rowKey: row.rowKey,
-      settledAmount: row.settledAmount,
-      settledAmountType: typeof row.settledAmount,
+      settledPrice: row.settledPrice,
+      settledPriceType: typeof row.settledPrice,
       applicationNo: row.applicationNo,
     });
   });
@@ -407,50 +413,9 @@ async function handleConfirm() {
     );
   }
 
-  // ✅ 收集所有涉及的原币币别（排除与结算币别相同的）
-  const originalCurrencyIds = new Set<number>();
-  selectedRows.forEach((row) => {
-    if (row.originalCurrencyId !== selectedCurrencyId.value) {
-      originalCurrencyIds.add(row.originalCurrencyId);
-    }
-  });
-
-  // 如果有不同的原币币别，需要先录入汇率
-  if (originalCurrencyIds.size > 0) {
-    // 暂存数据
-    pendingApplications.value = selectedRows;
-
-    // 获取币别信息用于显示
-    try {
-      const { getCurrencyDetail } =
-        await import('#/api/system/base-data/currency-admin');
-
-      pendingCurrencies.value = await Promise.all(
-        Array.from(originalCurrencyIds).map(async (currencyId) => {
-          const detail = await getCurrencyDetail(String(currencyId));
-          return {
-            currencyId,
-            currencyCode: detail.code || `币别${currencyId}`,
-          };
-        }),
-      );
-
-      // 获取结算币别名称
-      const settlementCurrencyDetail = await getCurrencyDetail(
-        String(selectedCurrencyId.value),
-      );
-      settlementCurrencyName.value = settlementCurrencyDetail.code || '';
-
-      // 打开汇率录入框
-      exchangeRateModalOpen.value = true;
-    } catch (error) {
-      console.error('获取币别信息失败:', error);
-      message.error('获取币别信息失败');
-    }
-  } else {
-    // 所有币别都与结算币别相同，直接返回
-    returnSelectedApplications(selectedRows);
-  }
+  // ✅ 2026-08-10起，不再需要汇率录入，直接返回选中的申请
+  // 汇率由后端从付费申请明细自动获取
+  returnSelectedApplications(selectedRows);
 }
 
 /** 返回选中的申请给父组件 */
@@ -462,8 +427,7 @@ function returnSelectedApplications(selectedRows: any[]) {
       rowKey: row.rowKey,
       applicationNo: row.applicationNo,
       originalCurrencyCode: row.originalCurrencyCode,
-      settledAmount: row.settledAmount,
-      userEnteredRate: row.userEnteredRate, // ✅ 打印用户输入的汇率
+      settledPrice: row.settledPrice,
       settleableUpperLimit: row.settleableUpperLimit,
       settleableLowerLimit: row.settleableLowerLimit,
     });
@@ -471,28 +435,16 @@ function returnSelectedApplications(selectedRows: any[]) {
 
   // 构造返回数据，并过滤掉结算金额为0的行
   const mappedData = selectedRows.map((row) => {
-    // ✅ 确保 settledAmount 是数字类型（用户输入的是申请币别金额）
-    const settledAmountInSettlementCurrency = Number(row.settledAmount) || 0;
-
-    // ✅ 将申请币别金额转换为原币金额（用于后端存储）
-    let settledAmountInOriginalCurrency = 0;
-    if (row.currencyId) {
-      // 固定币别申请：申请币别金额 ÷ 汇率 = 原币金额
-      settledAmountInOriginalCurrency =
-        settledAmountInSettlementCurrency / (row.rate || 1);
-    } else {
-      // 原币申请：直接使用
-      settledAmountInOriginalCurrency = settledAmountInSettlementCurrency;
-    }
+    // ✅ 确保 settledPrice 是数字类型（用户输入的是结算币别金额）
+    const settledPriceInSettlementCurrency = Number(row.settledPrice) || 0;
 
     console.log(
-      `映射行: rowKey=${row.rowKey}, 申请币别金额=${settledAmountInSettlementCurrency}, 汇率=${row.rate}, 原币金额=${settledAmountInOriginalCurrency}, userEnteredRate=${row.userEnteredRate}`,
+      `映射行: rowKey=${row.rowKey}, 结算币别金额=${settledPriceInSettlementCurrency}`,
     );
 
     return {
       application: row,
-      settledAmount: settledAmountInOriginalCurrency, // ✅ 提交给后端的是原币金额
-      userEnteredRate: row.userEnteredRate, // ✅ 保留用户输入的汇率
+      settledPrice: settledPriceInSettlementCurrency, // ✅ 提交给后端的是结算币别金额
     };
   });
 
@@ -500,9 +452,9 @@ function returnSelectedApplications(selectedRows: any[]) {
 
   const result = mappedData.filter((item) => {
     // 过滤掉结算金额为0或未填写的行
-    const shouldKeep = item.settledAmount !== 0 && !isNaN(item.settledAmount);
+    const shouldKeep = item.settledPrice !== 0 && !isNaN(item.settledPrice);
     console.log(
-      `过滤检查: settledAmount=${item.settledAmount}, shouldKeep=${shouldKeep}`,
+      `过滤检查: settledPrice=${item.settledPrice}, shouldKeep=${shouldKeep}`,
     );
     return shouldKeep;
   });
@@ -513,12 +465,12 @@ function returnSelectedApplications(selectedRows: any[]) {
   if (result.length === 0) {
     // ✅ 提供更详细的错误提示
     const zeroAmountRows = selectedRows.filter(
-      (row) => !row.settledAmount || Number(row.settledAmount) === 0,
+      (row) => !row.settledPrice || Number(row.settledPrice) === 0,
     );
     const rowDetails = zeroAmountRows
       .map(
         (row) =>
-          `${row.applicationNo} (${row.originalCurrencyCode}): ${row.settledAmount || '未填写'}`,
+          `${row.applicationNo} (${row.originalCurrencyCode}): ${row.settledPrice || '未填写'}`,
       )
       .join('、');
 
@@ -533,45 +485,6 @@ function returnSelectedApplications(selectedRows: any[]) {
   closeDrawer();
 }
 
-/** 汇率录入框确认 */
-async function handleExchangeRateConfirm(rateMap: Map<number, number>) {
-  exchangeRateModalOpen.value = false;
-
-  console.log('=== 汇率录入框确认 ===');
-  console.log('rateMap:', rateMap);
-  console.log('pendingApplications:', pendingApplications.value);
-
-  // ✅ 将汇率信息附加到选中的应用数据上
-  const applicationsWithRates = pendingApplications.value.map((row) => {
-    const userRate = rateMap.get(row.originalCurrencyId);
-    console.log(
-      `应用 ${row.applicationNo}, 原币ID: ${row.originalCurrencyId}, 用户输入汇率: ${userRate}`,
-    );
-
-    return {
-      ...row,
-      userEnteredRate: userRate, // 用户输入的汇率
-    };
-  });
-
-  console.log('applicationsWithRates:', applicationsWithRates);
-
-  // 返回带汇率的申请数据
-  returnSelectedApplications(applicationsWithRates);
-
-  // 清空暂存数据
-  pendingApplications.value = [];
-  pendingCurrencies.value = [];
-  settlementCurrencyName.value = '';
-}
-
-/** 汇率录入框取消 */
-function handleExchangeRateCancel() {
-  exchangeRateModalOpen.value = false;
-  pendingApplications.value = [];
-  pendingCurrencies.value = [];
-  settlementCurrencyName.value = '';
-}
 
 /** 暴露方法给父组件 */
 defineExpose({
@@ -602,67 +515,41 @@ function formatAmount(value: number | undefined | null): string {
   return value.toFixed(2);
 }
 
-// ✅ 根据申请币别转换并格式化金额
+// ✅ 根据结算币别口径获取金额（不再需要汇率转换）
 function formatAmountWithConversion(
   record: any,
   fieldName:
-    | 'payAmount'
-    | 'receiveAmount'
-    | 'totalUnSettledAmount'
-    | 'settledAmount' = 'payAmount',
+    | 'pay'
+    | 'receive'
+    | 'totalUnSettled'
+    | 'settled',
 ): string {
-  const amount = record[fieldName];
+  const amount = record[`${fieldName}Price`] ?? record[`${fieldName}Amount`];
   if (amount === undefined || amount === null) return '-';
-
-  // 如果申请币别是原币（currencyId为null），直接显示原币金额
-  if (!record.currencyId) {
-    return formatAmount(amount);
-  }
-
-  // 否则转换为申请币别金额：原币金额 × 汇率
-  const convertedAmount = amount * (record.rate || 1);
-  return formatAmount(convertedAmount);
+  return formatAmount(amount);
 }
 
-// ✅ 获取本次结算金额的最小值（申请币别）
-function getSettledAmountMin(record: any): number {
-  const minOriginal = record.settleableLowerLimit || 0;
-  // 如果是原币申请，直接返回原币最小值
-  if (!record.currencyId) {
-    return minOriginal;
-  }
-  // 否则转换为申请币别最小值
-  return minOriginal * (record.rate || 1);
+// ✅ 获取本次结算金额的最小值（结算币别口径）
+function getsettledPriceMin(record: any): number {
+  return record.settleablePriceLowerLimit ?? record.settleableLowerLimit ?? 0;
 }
 
-// ✅ 获取本次结算金额的最大值（申请币别）
-function getSettledAmountMax(record: any): number {
-  const maxOriginal = record.settleableUpperLimit || 0;
-  // 如果是原币申请，直接返回原币最大值
-  if (!record.currencyId) {
-    return maxOriginal;
-  }
-  // 否则转换为申请币别最大值
-  return maxOriginal * (record.rate || 1);
+// ✅ 获取本次结算金额的最大值（结算币别口径）
+function getsettledPriceMax(record: any): number {
+  return record.settleablePriceUpperLimit ?? record.settleableUpperLimit ?? 0;
 }
 
-// ✅ 格式化原币金额（用于提示）
+// ✅ 格式化原币金额（用于提示，现在直接使用settleablePrice字段）
 function formatOriginalAmount(record: any): string {
-  const settledAmount = (record as any).settledAmount || 0;
-  // 如果是原币申请，直接返回
-  if (!record.currencyId) {
-    return formatAmount(settledAmount);
-  }
-  // 否则转换回原币金额：申请币别金额 ÷ 汇率
-  const originalAmount = settledAmount / (record.rate || 1);
-  return formatAmount(originalAmount);
+  const settledPrice = (record as any).settledPrice || 0;
+  return formatAmount(settledPrice);
 }
 
 // ✅ 获取币别显示文本
 function getCurrencyCodeDisplay(record: any): string {
   // 如果申请币别是原币（currencyId为null），显示原币的币别code
   if (!record.currencyId) {
-    return record.originalCurrencyCode || '-';
+    return record.originalCurrency?.code || '-';
   }
   // 否则显示申请币别的code
   return record.currency?.code || '-';
@@ -720,7 +607,7 @@ const outerColumns = [
   {
     title: '序号',
     key: 'seq',
-    width: 50,
+    width: 80,
   },
   {
     title: '申请单号',
@@ -761,13 +648,6 @@ const outerColumns = [
     width: 100,
   },
   {
-    title: '汇率',
-    dataIndex: 'rate',
-    key: 'rate',
-    width: 80,
-    align: 'right' as const,
-  },
-  {
     title: '申请人',
     dataIndex: 'auditUserNickName',
     key: 'auditUserNickName',
@@ -776,25 +656,25 @@ const outerColumns = [
   },
   {
     title: '应付金额',
-    key: 'payAmount',
+    key: 'pay',
     width: 100,
     align: 'right' as const,
   },
   {
     title: '应收金额',
-    key: 'receiveAmount',
+    key: 'receive',
     width: 100,
     align: 'right' as const,
   },
   {
     title: '未结算费用',
-    key: 'totalUnSettledAmount',
+    key: 'totalUnSettled',
     width: 100,
     align: 'right' as const,
   },
   {
     title: '本次结算金额',
-    key: 'settledAmount',
+    key: 'settledPrice',
     width: 140,
     align: 'right' as const,
   },
@@ -908,7 +788,7 @@ const innerColumns = [
 <template>
   <Drawer
     v-model:open="visible"
-    title="选择付费申请（按原币）"
+    title="选择付费申请"
     width="90%"
     :footer-style="{ textAlign: 'right' }"
   >
@@ -924,7 +804,7 @@ const innerColumns = [
     </div>
 
     <!-- 结算币别选择（独立于搜索表单，明显展示） -->
-    <div
+    <!-- <div
       style="
         padding: 12px 16px;
         margin-bottom: 16px;
@@ -935,21 +815,20 @@ const innerColumns = [
     >
       <div style="display: flex; gap: 12px; align-items: center">
         <span style="font-weight: 500; color: #1890ff; white-space: nowrap">
-          <span style="margin-right: 4px; color: #ff4d4f">*</span>
           结算币别：
         </span>
         <CurrencySelect
           v-model="selectedCurrencyId"
-          placeholder="请先选择费用，结算币别将自动设置"
+          placeholder="请选择结算币别（可选）"
           allow-clear
-          disabled
+          :disabled="props.hasExistingFees"
           style="width: 200px"
         />
         <span style="font-size: 12px; color: #999">
-          结算币别固定与申请币别一致，不可修改
+          结算币别可选，如果不选择将显示所有符合条件的申请
         </span>
       </div>
-    </div>
+    </div> -->
 
     <NestedDataTable
       :columns="outerColumns"
@@ -1023,28 +902,25 @@ const innerColumns = [
           {{ getCurrencyCodeDisplay(record) }}
         </template>
         <template v-else-if="column.key === 'originalCurrencyCode'">
-          {{ record.originalCurrencyCode }}
-        </template>
-        <template v-else-if="column.key === 'rate'">
-          {{ record.rate ? record.rate.toFixed(4) : '-' }}
+          {{ record.originalCurrency.code || '-' }}
         </template>
         <template v-else-if="column.key === 'auditUserNickName'">
           {{ record.auditUserNickName || '-' }}
         </template>
-        <template v-else-if="column.key === 'payAmount'">
-          {{ formatAmountWithConversion(record) }}
+        <template v-else-if="column.key === 'pay'">
+          {{ formatAmountWithConversion(record, 'pay') }}
         </template>
-        <template v-else-if="column.key === 'receiveAmount'">
-          {{ formatAmountWithConversion(record, 'receiveAmount') }}
+        <template v-else-if="column.key === 'receive'">
+          {{ formatAmountWithConversion(record, 'receive') }}
         </template>
-        <template v-else-if="column.key === 'totalUnSettledAmount'">
-          {{ formatAmountWithConversion(record, 'totalUnSettledAmount') }}
+        <template v-else-if="column.key === 'totalUnSettled'">
+          {{ formatAmountWithConversion(record, 'totalUnSettled') }}
         </template>
-        <template v-else-if="column.key === 'settledAmount'">
+        <template v-else-if="column.key === 'settledPrice'">
           <InputNumber
-            v-model:value="record.settledAmount"
-            :min="getSettledAmountMin(record)"
-            :max="getSettledAmountMax(record)"
+            v-model:value="record.settledPrice"
+            :min="getsettledPriceMin(record)"
+            :max="getsettledPriceMax(record)"
             :precision="2"
             placeholder="请输入"
             style="width: 100%"
@@ -1058,12 +934,6 @@ const innerColumns = [
                 false)
             "
           />
-          <div
-            v-if="record.currencyId"
-            style="margin-top: 2px; font-size: 12px; color: #999"
-          >
-            原币金额: {{ formatOriginalAmount(record) }}
-          </div>
         </template>
         <template v-else-if="column.key === 'companyName'">
           {{ record.orgs?.at(-1)?.name || '-' }}
@@ -1081,13 +951,6 @@ const innerColumns = [
           @click="
             (e) => {
               e.stopPropagation();
-              console.log('🔍 点击展开图标:', {
-                rowKey: record.rowKey,
-                applicationNo: record.applicationNo,
-                hasOrderFees: Array.isArray(record.orderFees),
-                orderFeesLength: record.orderFees?.length || 0,
-                expanded: expanded,
-              });
               onExpand(record, e);
             }
           "
@@ -1166,15 +1029,6 @@ const innerColumns = [
       </Space>
     </template>
 
-    <!-- ✅ 汇率录入框 -->
-    <ExchangeRateModal
-      v-model:open="exchangeRateModalOpen"
-      :currencies="pendingCurrencies"
-      :settlement-currency-id="selectedCurrencyId"
-      :settlement-currency-name="settlementCurrencyName"
-      @confirm="handleExchangeRateConfirm"
-      @cancel="handleExchangeRateCancel"
-    />
   </Drawer>
 </template>
 
