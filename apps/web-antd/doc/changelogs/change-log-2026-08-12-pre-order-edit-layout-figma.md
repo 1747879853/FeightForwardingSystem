@@ -7,7 +7,7 @@
 ## 核心逻辑变更
 
 - `form-data.ts`：基础 schema 增加 `polId`/`podId`，并用 `pre-order-basic-field--N` + CSS `order` 固定字段顺序（首行 6 项，次行起运港/目的港/条款/备注）
-- `editor.vue`：收发通改为主表内 24px 折叠条（默认折叠）；原独立「收发通」「港口信息」分区 `v-if="false"` 暂隐；货物区去掉 flex 铺满高度
+- `editor.vue`：收发通改为主表内 24px 折叠条（默认折叠）；原独立「收发通」「港口信息」分区暂隐（港口分区后续改为 `hidden` 保留表单，见同日 `pre-order-basic-port-remark-sync`）；货物区去掉 flex 铺满高度
 - `fee-table.vue`：列表隐藏金额、禁开票、机密、不含税单价、备注列（行数据仍保留）；横向滚动宽度收窄
 - `ctn-table.vue`：表格高度改为 `auto`，随内容伸展
 

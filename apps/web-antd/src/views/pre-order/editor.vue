@@ -335,9 +335,14 @@ function toOptionalId(value: unknown): number | string | undefined {
   return value as number | string;
 }
 
-/** 主表中的起运地驱动服务项目候选项；港口不再另占一个分区。 */
-function handleBasicPolChange(value: unknown) {
-  currentPolId.value = toOptionalId(value);
+/** 主表隐藏港口的备注仍须随选择自动带出并随单据保存。 */
+function handleBasicPortChange(
+  fieldName: string,
+  value: unknown,
+  option: unknown,
+) {
+  void portFormApi.setFieldValue(fieldName, value);
+  handlePortSelectChange(fieldName, value, option);
 }
 
 function bindBasicPortLinkage() {
@@ -345,9 +350,13 @@ function bindBasicPortLinkage() {
     {
       fieldName: 'polId',
       componentProps: {
-        ...buildPortSelectProps('polId', (_, value) =>
-          handleBasicPolChange(value),
-        ),
+        ...buildPortSelectProps('polId', handleBasicPortChange),
+      },
+    },
+    {
+      fieldName: 'podId',
+      componentProps: {
+        ...buildPortSelectProps('podId', handleBasicPortChange),
       },
     },
   ]);
@@ -696,16 +705,14 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     {
       fieldName: 'polId',
       componentProps: {
-        ...buildPortSelectProps('polId', (_, value) =>
-          handleBasicPolChange(value),
-        ),
+        ...buildPortSelectProps('polId', handleBasicPortChange),
         selectedItems: toPortObjectSelectedItems(dto.pol, dto.polId),
       },
     },
     {
       fieldName: 'podId',
       componentProps: {
-        ...buildPortSelectProps('podId'),
+        ...buildPortSelectProps('podId', handleBasicPortChange),
         selectedItems: toPortObjectSelectedItems(dto.pod, dto.podId),
       },
     },
@@ -1472,10 +1479,7 @@ const getContentTabStyle = (isActive: boolean) =>
                   </div>
                 </section>
 
-                <section
-                  v-if="false"
-                  class="content-section pre-order-port-section"
-                >
+                <section class="content-section pre-order-port-section hidden">
                   <div class="content-section__header section-title-bar">
                     <span class="card-title card-title--on-primary">
                       <MapPin class="size-4" />
