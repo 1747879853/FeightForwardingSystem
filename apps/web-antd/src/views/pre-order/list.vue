@@ -296,12 +296,7 @@ useRefreshListOnFormReturn('PreOrderList', handleRefresh);
             :alt="row?.carrier?.code || 'carrier-logo'"
             class="h-8 w-8 rounded object-contain"
           />
-          <span>{{
-            row?.carrier?.code ||
-            row?.carrier?.name ||
-            row?.carrier?.cnName ||
-            '--'
-          }}</span>
+          <span>{{ row?.carrier?.code || '--' }}</span>
         </span>
       </template>
     </Grid>
