@@ -186,4 +186,49 @@ describe('payment application add form', () => {
       query: { fromCreate: '1' },
     });
   });
+
+  it('includes default bank accounts when auto-saving on first fee confirm', async () => {
+    mocks.getClientInvoiceInfoList.mockResolvedValue([
+      {
+        clientInvoiceBanks: [
+          {
+            accountName: 'Acc',
+            bankAccount: '6222',
+            bankName: 'ICBC',
+            currencyId: 1,
+            id: 'bank-usd-1',
+            isDefault: true,
+          },
+        ],
+      },
+    ]);
+
+    const wrapper = shallowMount(PaymentApplicationForm, {
+      global: {
+        stubs: {
+          ASpin: SlotStub,
+          AddFeeDrawer: AddFeeDrawerStub,
+          ACard: SlotStub,
+          Card: SlotStub,
+          Page: SlotStub,
+          Spin: SlotStub,
+        },
+      },
+    });
+
+    await wrapper
+      .get('[data-testid="confirm-fees-with-invoice"]')
+      .trigger('click');
+    await flushPromises();
+
+    expect(mocks.getClientInvoiceInfoList).toHaveBeenCalledWith({
+      ClientId: 'client-1',
+    });
+    expect(mocks.addPaymentApplication).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentApplicationBanks: [{ clientInvoiceBankId: 'bank-usd-1' }],
+        settlementId: 'client-1',
+      }),
+    );
+  });
 });

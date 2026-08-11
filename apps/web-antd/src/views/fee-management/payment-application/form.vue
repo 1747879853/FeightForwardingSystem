@@ -368,11 +368,14 @@ const loadedBankClientId = ref<string>('');
 /** currencyId -> clientInvoiceBankId */
 const bankSelections = ref<Record<number, string | undefined>>({});
 
-/** 需要绑定银行的币别：原币结算=各费用币别；指定币别结算=结算币别 */
-const bankCurrencies = computed<BankCurrencyRow[]>(() => {
-  if (feeDetailRows.value.length === 0) return [];
+/**
+ * 按费用行解析需绑定银行的币别。
+ * 新增自动保存时 feeDetailRows 尚未写入 nextRows，必须用入参 rows 计算，否则银行会漏提交。
+ */
+function resolveBankCurrencies(rows: FeeDetailRow[]): BankCurrencyRow[] {
+  if (rows.length === 0) return [];
   if (isOriginalCurrencyApplication(settlementCurrencyId.value)) {
-    return currencySummaries.value.map((cs) => ({
+    return summarizeByCurrency(rows).map((cs) => ({
       currencyId: cs.currencyId,
       currencyCode: cs.currencyCode ?? '',
       currencyName: cs.currencyName ?? '',
@@ -380,16 +383,21 @@ const bankCurrencies = computed<BankCurrencyRow[]>(() => {
   }
   return [
     {
-      currencyId: settlementCurrencyId.value,
+      currencyId: settlementCurrencyId.value!,
       currencyCode: settlementCurrencyName.value,
       currencyName: settlementCurrencyName.value,
     },
   ];
-});
+}
+
+/** 需要绑定银行的币别：原币结算=各费用币别；指定币别结算=结算币别 */
+const bankCurrencies = computed<BankCurrencyRow[]>(() =>
+  resolveBankCurrencies(feeDetailRows.value),
+);
 
 function getBankOptions(currencyId: number) {
   return clientBanks.value
-    .filter((b) => b.currencyId === currencyId)
+    .filter((b) => Number(b.currencyId) === Number(currencyId))
     .map((b) => ({
       value: b.id,
       label: `${b.bankName || '-'} / ${b.accountName || '-'}`,
@@ -436,11 +444,13 @@ function onSettlementBankChange(val: unknown) {
 }
 
 /** 为缺失/失效的币别选择默认银行（已有有效选择则保留） */
-function applyDefaultBankSelections() {
+function applyDefaultBankSelections(
+  currencies: BankCurrencyRow[] = bankCurrencies.value,
+) {
   const next: Record<number, string | undefined> = { ...bankSelections.value };
-  for (const c of bankCurrencies.value) {
+  for (const c of currencies) {
     const optionsForCur = clientBanks.value.filter(
-      (b) => b.currencyId === c.currencyId,
+      (b) => Number(b.currencyId) === Number(c.currencyId),
     );
     const current = next[c.currencyId];
     if (current && optionsForCur.some((b) => b.id === current)) continue;
@@ -479,9 +489,11 @@ watch(bankCurrencies, () => {
   applyDefaultBankSelections();
 });
 
-/** 构造提交用银行列表 */
-function buildBankSubmitList(): PaymentApplicationAdminApi.PaymentApplicationBankAddDto[] {
-  return bankCurrencies.value
+/** 构造提交用银行列表（可按即将写入的费用行币别构造，避免新增时漏带银行） */
+function buildBankSubmitList(
+  currencies: BankCurrencyRow[] = bankCurrencies.value,
+): PaymentApplicationAdminApi.PaymentApplicationBankAddDto[] {
+  return currencies
     .map((c) => bankSelections.value[c.currencyId])
     .filter((id): id is string => !!id)
     .map((id) => ({ clientInvoiceBankId: id }));
@@ -643,6 +655,17 @@ async function handleFeeConfirm(fees: SelectedFeeItem[]) {
     }
     submitting.value = true;
     try {
+      // 首次添加费用即创建申请：自动带出结算对象开票默认银行，并随 Add 一并保存
+      const feeSettlementId =
+        settlementId.value ||
+        nextRows.find((r) => r.settlementId)?.settlementId ||
+        '';
+      if (feeSettlementId) {
+        settlementId.value = String(feeSettlementId);
+      }
+      await loadClientBanks(true);
+      const currencies = resolveBankCurrencies(nextRows);
+      applyDefaultBankSelections(currencies);
       createdApplicationId = await addPaymentApplication(
         buildSubmitData(PaymentApplicationStatus.Entering, nextRows),
       );
@@ -922,6 +945,8 @@ async function loadEditData() {
 
     await loadClientBanks(true);
     restoreBankSelectionsFromDetail(detail);
+    // 详情未带银行（如新增漏提交）时，用开票信息默认账户补齐，避免编辑页银行空白
+    applyDefaultBankSelections();
 
     invoiceProcess.value = detail.invoiceProcess ?? undefined;
     invoiceProcessError.value = false;
@@ -984,7 +1009,8 @@ function buildSubmitData(
       remark: row.itemRemark,
     }));
 
-  const banks = buildBankSubmitList();
+  // 必须按入参 rows 解析币别：新增自动保存时 feeDetailRows 可能仍为空
+  const banks = buildBankSubmitList(resolveBankCurrencies(rows));
 
   return {
     id: editId.value || undefined,

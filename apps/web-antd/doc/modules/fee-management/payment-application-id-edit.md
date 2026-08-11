@@ -25,7 +25,7 @@ last_updated: 2026-08-10
 - **审核流程：** 右侧 `WorkflowTimeline` 按 `entityId` 拉取工作流；若路由带 `fromCreate=1`（新增刚保存跳入），延迟 2 秒再请求，避免实例尚未创建。提交/撤销提交成功并刷新详情后，递增 `workflowReloadKey` 强制重挂载并带 `loadDelayMs=2000`，等待审核流状态落库。
 - **页面布局：** 与新增页共用 `form.vue` 的 Figma 布局（顶栏申请号、状态章、费用合计/银行、`NestedDataTable` 费用明细与工作流分区）。
 - **发票附件：** 任意状态本地增删，保存走 `EditAsync.attachmentGroup` **全量覆盖**；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读展示（不再有平铺字段 `paymentSettlementAttachments`）。
-- **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。
+- **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。详情加载时先回填 `currencyGroup[].paymentApplicationBank`，再 `applyDefaultBankSelections` 补齐缺失币别（兼容新增漏带银行的历史单）。
 - **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。
 - **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；表头可拖拽调列宽；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。
 - **提交审核：** 录入中（`Entering`）或已驳回（`Rejected`）时顶部显示「提交」，调用 `SubmitAsync` 重新进入审核链路。
@@ -68,6 +68,7 @@ last_updated: 2026-08-10
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Fix` | 新增跳转编辑后银行账户不再空白；详情无银行时用开票默认账户补齐。 | `restoreBankSelectionsFromDetail` 后再次 `applyDefaultBankSelections`；详见 `changelogs/change-log-2026-08-11-payment-application-create-bank-missing.md`。 |
 | 2026-08-10 | `Fix` | 已驳回申请编辑页恢复「提交」按钮，可再次送审。 | `canSubmit = Entering \| Rejected`；详见 `changelogs/change-log-2026-08-10-payment-application-reject-resubmit.md`。 |
 | 2026-08-10 | `Fix` | 添加费用抽屉与页内费用明细表支持拖拽调列宽。 | `NestedDataTable` 默认 `resizable`；详见 `changelogs/change-log-2026-08-10-drawer-table-column-resize.md`。 |
 | 2026-08-09 | `Fix` | 详情费用分组起运港/目的港正确显示（读 `transportOrder.seaExport.pol/pod`）。 | `resolvePol/PodPortDisplayName` 优先嵌套 `seaExport`；「可申请金额」≠ `unSettledAmount`。详见 `changelogs/change-log-2026-08-09-payment-application-detail-port-from-sea-export.md`。 |

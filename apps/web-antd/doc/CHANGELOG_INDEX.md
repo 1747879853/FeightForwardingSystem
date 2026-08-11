@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-11 付费申请新增跳转编辑后银行账户空白](./changelogs/change-log-2026-08-11-payment-application-create-bank-missing.md)
 - [2026-08-11 龙山登录页背景视频增加压暗蒙层](./changelogs/change-log-2026-08-11-longshan-login-video-mask.md)
 - [2026-08-11 品牌 Logo 启动时强制覆盖缓存 URL](./changelogs/change-log-2026-08-11-brand-logo-prefer-overrides.md)
 - [2026-08-11 用户列表列头排序对齐后端白名单](./changelogs/change-log-2026-08-11-user-list-sortable-whitelist.md)
