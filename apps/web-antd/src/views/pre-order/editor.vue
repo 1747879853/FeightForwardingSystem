@@ -186,6 +186,7 @@ async function handleGenerateOceanFreightFees() {
 }
 /** 附件分组：先 UploadFile 拿 attachmentId，再随 Add/Edit 的 attachmentGroup 全量提交 */
 const attachmentGroup = ref<PreOrderAdminApi.AttachmentGroupInputDto[]>([]);
+const attachmentVisible = ref(false);
 
 const status = computed(() => detail.value?.status ?? PreOrderStatus.Entering);
 /** 录入/驳回（含新建）显示保存与提交审核；表单本身不按状态禁用 */
@@ -334,6 +335,24 @@ function toOptionalId(value: unknown): number | string | undefined {
   return value as number | string;
 }
 
+/** 主表中的起运地驱动服务项目候选项；港口不再另占一个分区。 */
+function handleBasicPolChange(value: unknown) {
+  currentPolId.value = toOptionalId(value);
+}
+
+function bindBasicPortLinkage() {
+  basicFormApi.updateSchema([
+    {
+      fieldName: 'polId',
+      componentProps: {
+        ...buildPortSelectProps('polId', (_, value) =>
+          handleBasicPolChange(value),
+        ),
+      },
+    },
+  ]);
+}
+
 /** PortSelect @change：起运港联动服务项；港口备注回填 */
 function handlePortSelectChange(
   fieldName: string,
@@ -463,6 +482,8 @@ function bindClientUserLinkage(selectedItems?: any[]) {
     {
       fieldName: 'clientId',
       componentProps: {
+        // 与初始 schema 同传 p，避免 updateSchema 合并时冲掉 industryCategory
+        industryCategory: 'p',
         ...(selectedItems ? { selectedItems } : {}),
         onChange: (value: unknown, option?: unknown) => {
           currentClientId.value = toOptionalStringId(value);
@@ -660,6 +681,8 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   void basicFormApi.setValues({
     clientId: dto.clientId,
     mblNum: dto.mblNum,
+    polId: dto.polId,
+    podId: dto.podId,
     codeServiceId: dto.codeServiceId,
     tradeTermsType: dto.tradeTermsType,
     codeFrtId: dto.codeFrtId,
@@ -668,6 +691,24 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     carrierId: dto.carrierId,
     remark: dto.remark,
   });
+  basicFormApi.updateSchema([
+    {
+      fieldName: 'polId',
+      componentProps: {
+        ...buildPortSelectProps('polId', (_, value) =>
+          handleBasicPolChange(value),
+        ),
+        selectedItems: toPortObjectSelectedItems(dto.pol, dto.polId),
+      },
+    },
+    {
+      fieldName: 'podId',
+      componentProps: {
+        ...buildPortSelectProps('podId'),
+        selectedItems: toPortObjectSelectedItems(dto.pod, dto.podId),
+      },
+    },
+  ]);
   void hydrateCarrierSelectedItem(dto);
   partyFormApi.updateSchema([
     {
@@ -865,6 +906,7 @@ onMounted(async () => {
   syncPreOrderTabTitle();
   applyTransitPortTabSchema();
   bindClientUserLinkage();
+  bindBasicPortLinkage();
   bindPartySettlementLinkage();
   bindCargoMetricsLinkage();
   const copyFrom = route.query.copyFrom ? String(route.query.copyFrom) : '';
@@ -909,9 +951,11 @@ async function buildSubmitPayload() {
   >;
   return {
     bizType: headerBizType.value,
-    ...basicValues,
     ...partyValues,
     ...portValues,
+    // 主表中的起运地/目的地是设计稿唯一可编辑的港口字段，必须覆盖
+    // 历史隐藏字段，避免旧值把用户新选择的值写回去。
+    ...basicValues,
     ...cargoValues,
     cargoId: cargoTypeValues.cargoId ?? 0,
     orgId: headerOrgId.value,
@@ -1037,8 +1081,6 @@ async function validateForms(): Promise<boolean> {
   }
   const results = await Promise.all([
     basicFormApi.validate(),
-    partyFormApi.validate(),
-    portFormApi.validate(),
     cargoFormApi.validate(),
     cargoTypeInlineFormApi.validate(),
   ]);
@@ -1224,6 +1266,13 @@ const getContentTabStyle = (isActive: boolean) =>
                     </div>
                     <Space class="content-section__actions-right">
                       <Button
+                        v-if="canSave"
+                        size="small"
+                        @click="attachmentVisible = true"
+                      >
+                        上传附件
+                      </Button>
+                      <Button
                         v-if="isEdit"
                         size="small"
                         @click="handleViewWorkflow"
@@ -1365,7 +1414,7 @@ const getContentTabStyle = (isActive: boolean) =>
                   </div>
                 </section>
 
-                <section class="content-section">
+                <section v-if="false" class="content-section">
                   <div
                     class="content-section__header section-title-bar pre-order-party-header"
                     role="button"
@@ -1398,7 +1447,10 @@ const getContentTabStyle = (isActive: boolean) =>
                   </div>
                 </section>
 
-                <section class="content-section pre-order-port-section">
+                <section
+                  v-if="false"
+                  class="content-section pre-order-port-section"
+                >
                   <div class="content-section__header section-title-bar">
                     <span class="card-title card-title--on-primary">
                       <MapPin class="size-4" />
@@ -1490,7 +1542,7 @@ const getContentTabStyle = (isActive: boolean) =>
                 </Card>
               </section>
 
-              <section class="pre-order-attachment-section">
+              <section v-if="false" class="pre-order-attachment-section">
                 <Card class="cargo-container-card">
                   <template #title>
                     <div class="cargo-container-card__title section-title-bar">
@@ -1528,6 +1580,16 @@ const getContentTabStyle = (isActive: boolean) =>
         </div>
       </Spin>
     </div>
+
+    <Modal
+      v-model:open="attachmentVisible"
+      title="上传附件"
+      width="960px"
+      :footer="null"
+      destroy-on-close
+    >
+      <AttachmentGroups v-model="attachmentGroup" :disabled="!canSave" />
+    </Modal>
 
     <AuditModal
       v-model:visible="auditModalVisible"

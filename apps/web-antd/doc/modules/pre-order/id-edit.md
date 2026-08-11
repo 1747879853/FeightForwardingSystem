@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-11
+last_updated: 2026-08-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -46,7 +46,7 @@ last_updated: 2026-08-11
 | 字段名 | 📖 字段含义说明 | 🔌 数据来源 (接口/字典) | 🔗 联动规则 (依赖与触发) | 🛡️ 校验限制 (Validation) |
 | :-- | :-- | :-- | :-- | :-- |
 | **归属组织** | 数据权限归属 | **组织**<br/>`UserOrgSelect`（位于标题 meta 区，不在表单内） | **依赖：** 取干系人「销售」所属组织范围；选中销售后自动带其默认组织；更换销售时清空并重带默认；编辑回显用详情 `orgs` 路径兜底展示 | **必填**（保存前手动校验，非表单 rules） |
-| **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect` | **触发：** ① 变更后重算服务项候选池（客户排除项）；② 可编辑态按其维护的销售/客服/操作/单证默认回填干系人（无默认取列表第一个；操作/单证/客服未绑定时兜底当前登录账号；商务等未维护角色保持原值）<br/>**回显：** 详情 `client` 经 `toSelectedItems(clientId, client.name)` 注入 `selectedItems`，与收发通/海出口径一致 | **必填** |
+| **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect`（`industryCategory: 'p'`，与海出一致） | **触发：** ① 变更后重算服务项候选池（客户排除项）；② 可编辑态按其维护的销售/客服/操作/单证默认回填干系人（无默认取列表第一个；操作/单证/客服未绑定时兜底当前登录账号；商务等未维护角色保持原值）<br/>**回显：** 详情 `client` 经 `toSelectedItems(clientId, client.name)` 注入 `selectedItems`，与收发通/海出口径一致；`bindClientUserLinkage` 的 `updateSchema` 须保留 `industryCategory: 'p'` | **必填** |
 | **船公司** | 承运船公司 | **基础数据**<br/>`CarrierSelect` | **回显：** 优先复用详情 `carrierLogo`；缺少时补拉船公司详情，并把完整对象写入 `selectedItems`，与海运出口一致展示 Logo | 非必填 |
 | **贸易条款 / 付费方式** | 贸易责任与运费支付方式 | 贸易条款字典 / `CodeFrtSelect` | **展示：** 两项下移到基础信息末段、备注之前；空值统一显示「请选择」 | 非必填 |
 | **发货人 / 收货人 / 通知人** | 收发通往来单位 | **客户**<br/>`ClientSelect`（行业类别 b / e / h） | **回显：** 详情 `shipper` / `consignee` / `notifier` 经 `selectedItems` 注入 | Guid?，非必填 |
@@ -109,6 +109,7 @@ last_updated: 2026-08-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-12 | `Fix` | 委托单位补齐 `industryCategory: 'p'`，与海运出口一致；列表筛选同步 | 根因是 `usePreOrderBasicSchema` 用了裸 `ClientSelect` 未传类别；通用接口空类别不下发。`bindClientUserLinkage` 的 `updateSchema` 也显式保留 `p`。详见 `changelogs/change-log-2026-08-12-pre-order-client-industry-category-p.md` |
 | 2026-08-11 | `Fix` | 中转港选完保存后不再丢失：表单/DTO 字段改为与接口一致的 `poT1Id`/`poT2Id`/`poT1Remark`/`poT2Remark`；详情回填补港口 `selectedItems` | 根因是 JS 大小写敏感，详情 JSON 为 `poT1Id` 而前端读 `pot1Id`；保存后 `loadDetail` 用 `undefined` 冲掉已选值。对应 TAPD `#1161580498001000680`。详见 `changelogs/change-log-2026-08-11-pre-order-transit-port-field-case.md` |
 | 2026-08-11 | `Fix` | 新建业务联系单时装运方式默认「整柜」 | `headerBlType` 初始值改为 `0`；编辑回显仍覆盖。详见 `changelogs/change-log-2026-08-11-pre-order-default-bl-type-fcl.md` |
 | 2026-08-09 | `Fix` | 费用汇率改为优先取汇率表当前生效记录（应收 `drValue` / 应付 `crValue`），未维护时本位币锁 1、其余置空；只有本位币兜底行（`__isLocalCurrency`）的汇率只读；只读态不再被重刷 | 新增 `utils/exchange-rate-cache.ts`（`GetPagedListAsync` 全量拉取 + 启用/有效期筛选 + `sortId`·id 去重 + `shallowRef` 保证模板可响应），替代按币别 id 误调 `DetailAsync` 的写法；顺带纠正联系单侧 dr/cr 取反。详见 `changelogs/change-log-2026-08-09-pre-order-fee-exchange-rate-from-paged-list.md` |

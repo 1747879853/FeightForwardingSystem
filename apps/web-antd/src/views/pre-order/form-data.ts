@@ -34,17 +34,12 @@ export const PAY_SIDE_OPTIONS = [
  */
 export function usePreOrderBasicSchema(): VbenFormSchema[] {
   return [
-    {
-      component: 'ClientSelect',
+    createClientSelectSchema({
       fieldName: 'clientId',
+      industryCategory: 'p',
       label: '委托单位',
       rules: 'selectRequired',
-      componentProps: {
-        placeholder: $t('ui.placeholder.select'),
-        allowClear: true,
-        class: 'w-full',
-      },
-    },
+    }),
     {
       component: 'Input',
       fieldName: 'mblNum',

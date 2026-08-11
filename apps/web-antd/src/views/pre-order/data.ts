@@ -1,6 +1,7 @@
 import type { VbenFormSchema } from '#/adapter/form';
 
 import { PreOrderStatus } from '#/api/pre-order/pre-order-admin';
+import { createClientSelectSchema } from '#/views/client/base/data';
 
 /** 列配置持久化 key */
 export const PRE_ORDER_LIST_TABLE_ID = 'PreOrderList';
@@ -44,12 +45,11 @@ export function useGridFormSchema(): VbenFormSchema[] {
         })),
       },
     },
-    {
-      component: 'ClientSelect',
+    createClientSelectSchema({
       fieldName: 'ClientId',
+      industryCategory: 'p',
       label: '委托单位',
-      componentProps: { allowClear: true, class: 'w-full' },
-    },
+    }),
     {
       component: 'PortSelect',
       fieldName: 'POLId',

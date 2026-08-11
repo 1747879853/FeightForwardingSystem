@@ -2,7 +2,7 @@
 title: 业务联系单列表
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-02
+last_updated: 2026-08-12
 ---
 
 # 1. 业务背景说明 (Background)
@@ -34,7 +34,7 @@ last_updated: 2026-08-02
 | :-- | :-- | :-- | :-- | :-- |
 | **业务编号** | 单据唯一编号 | `PreOrderAdmin/GetPagedListAsync` 的 `preOrderNum` | 保存时后端生成 | 只读 |
 | **状态** | 单据生命周期 | `PreOrderStatus` 枚举 | 决定删除是否可用 | 只读，以 Tag 呈现 |
-| **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect` | 同时是服务项候选池的过滤条件 | 筛选项非必填 |
+| **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect`（`industryCategory: 'p'`） | 同时是服务项候选池的过滤条件；筛选与新建页同传 `p` | 筛选项非必填 |
 | **起运港 / 目的港** | 航段两端 | **港口**<br/>`PortSelect` | 起运港决定服务项候选池；可作为分组维度 | 筛选项非必填 |
 | **开船日期** | ETD | `ETDStart` / `ETDEnd` | 前端把区间拆成两个 ISO 时间参数 | 筛选项非必填 |
 | **分组字段（GroupField）** | 分组统计维度 | `GetGroupedListAsync` 入参；`PreOrderGroupField`：3 委托单位 / 4 船公司 / 5 起运港 / 6 目的港 / 11 业务类型 | 启用后对应搜索项禁用；点击 Tab 追加 `paramKey` | 同时只能启用一个 |
@@ -52,6 +52,7 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-12 | `Fix` | 列表委托单位筛选补齐 `industryCategory: 'p'` | 与新建页、海出列表对齐；空类别时通用客户接口不下发。详见 `changelogs/change-log-2026-08-12-pre-order-client-industry-category-p.md` |
 | 2026-08-02 | `Feature` | 侧边栏从「操作管理」子项提升为一级菜单「业务联系单」 | 路由迁至独立模块 `router/routes/modules/pre-order.ts`，`order: 194`、`hideChildrenInMenu: true`；页面 path 不变 |
 | 2026-07-31 | `Feature` | 列表接入分组统计：委托单位/船公司/起运港/目的港/业务类型；船公司 Tab 可展示 Logo | 复用 `#/components/list-grouping`，对接 `GetGroupedListAsync`；持久化 `group_config_PreOrderList` |
 | 2026-07-26 | `Feature` | 双击行统一进编辑页；取消按状态分流详情 | 与取消独立详情页一致，`getPreOrderFormPath` 恒为 `/edit` |
