@@ -14,7 +14,7 @@ last_updated: 2026-08-12
 # 2. 功能与操作说明 (Features & Operations)
 
 - **Tab 结构：** 编辑态顶部 Tab 样式与海运出口编辑器一致；新建态尚无关联海运出口，隐藏顶部仅有的「业务联系单」Tab。
-  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主栏分区（单据字段 + **收发通**（发货人/收货人/通知人各一组 id + Content，布局对齐海出 party-flow；**可点击标题栏展开/折叠，默认折叠**）+ 港口信息，港口区为海出同款 5 列流转卡片：收货地 → 起运港 → 中转港（Tab 切 1/2） → 目的港 → 交货地，每个节点下方带备注）+ 下方「货物与箱型」（标题栏内联货物类型/品名；卡片内左右分栏：左箱型箱量表 + 右竖排件数/包装/毛重/尺码）、费用卡片、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像。
+  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主表分区内为单据字段（含起运港/目的港，按设计稿 CSS `order` 排位）+ **收发通**折叠条（24px，默认折叠，展开后为发货人/收货人/通知人各一组 id + Content）；独立「港口信息」5 列流转卡片暂隐（`v-if="false"`，表单实例与回填仍保留）；下方「货物与箱型」按内容高度自适应（标题栏内联货物类型/品名；左箱型表 + 右计量 2 列）、费用卡片（仅展示计价必需列）、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像。
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现；**切到该 Tab 才挂载**内嵌海出编辑器（避免列表进已通过单预挂载改页签）；内嵌传 `disable-tab-title`，不把浏览器多页签改成「海运出口-xxx」。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`（含 `attachmentGroup` 全量覆盖）。新增成功后 `replace` 到编辑路由并重新拉详情。
 - **附件：** 费用区下方「附件」卡片；先 `Upload/UploadFile` 拿 `attachmentId`，本地写入分组；保存时随 Add/Edit 提交。附件类型按 `ModuleTypeId=160050` 调 `AttachmentDtlType/GetListByModuleTypesAsync`。录入/驳回可增删；待审核/通过只读展示。
@@ -48,10 +48,11 @@ last_updated: 2026-08-12
 | **归属组织** | 数据权限归属 | **组织**<br/>`UserOrgSelect`（位于标题 meta 区，不在表单内） | **依赖：** 取干系人「销售」所属组织范围；选中销售后自动带其默认组织；更换销售时清空并重带默认；编辑回显用详情 `orgs` 路径兜底展示 | **必填**（保存前手动校验，非表单 rules） |
 | **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect`（`industryCategory: 'p'`，与海出一致） | **触发：** ① 变更后重算服务项候选池（客户排除项）；② 可编辑态按其维护的销售/客服/操作/单证默认回填干系人（无默认取列表第一个；操作/单证/客服未绑定时兜底当前登录账号；商务等未维护角色保持原值）<br/>**回显：** 详情 `client` 经 `toSelectedItems(clientId, client.name)` 注入 `selectedItems`，与收发通/海出口径一致；`bindClientUserLinkage` 的 `updateSchema` 须保留 `industryCategory: 'p'` | **必填** |
 | **船公司** | 承运船公司 | **基础数据**<br/>`CarrierSelect` | **回显：** 优先复用详情 `carrierLogo`；缺少时补拉船公司详情，并把完整对象写入 `selectedItems`，与海运出口一致展示 Logo | 非必填 |
-| **贸易条款 / 付费方式** | 贸易责任与运费支付方式 | 贸易条款字典 / `CodeFrtSelect` | **展示：** 两项下移到基础信息末段、备注之前；空值统一显示「请选择」 | 非必填 |
+| **贸易条款 / 付费方式** | 贸易责任与运费支付方式 | 贸易条款字典 / `CodeFrtSelect` | **展示：** 主表字段顺序由 `pre-order-basic-field--N` 控制；空值统一显示「请选择」 | 非必填 |
 | **发货人 / 收货人 / 通知人** | 收发通往来单位 | **客户**<br/>`ClientSelect`（行业类别 b / e / h） | **回显：** 详情 `shipper` / `consignee` / `notifier` 经 `selectedItems` 注入 | Guid?，非必填 |
 | **shipperContent / consigneeContent / notifierContent** | 对应往来单位提单内容文本 | 手填（`EnglishUpperTextarea`） | 与 id 成对提交；详情原样回填 | 最长 1024，英文自动半角大写 |
-| **起运港** | POL | **港口**<br/>`PortSelect` | **触发：** 变更后重算服务项候选池；为空时服务项区不可用 | **必填**（后端生成海运出口时也校验） |
+| **起运港** | POL | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 与目的港一同进入主表次行；**触发：** 变更后重算服务项候选池；为空时服务项区不可用 | **必填**（后端生成海运出口时也校验） |
+| **目的港** | POD | **港口**<br/>`PortSelect`（现挂在基础 schema） | **展示：** 主表次行；完整港口流转（收货地/中转/交货地）分区暂隐但仍由 `PortForm` 回填提交 | 非必填 |
 | **中转港1 / 中转港2** | POT1 / POT2 | **港口**<br/>`PortSelect` | **展示：** 共用第 3 列，通过 label 内联 Tab 切换，隐藏的一侧仍保留已填值并随保存提交<br/>**字段名：** 与海出一致为 `poT1Id`/`poT2Id`/`poT1Remark`/`poT2Remark`（勿写成 `pot1Id`）；关联对象仍为 `pot1`/`pot2`<br/>**回显：** 详情对象经 `toPortObjectSelectedItems` 注入 `selectedItems` | 非必填 |
 | **港口备注（6 个）** | 收货地/起运港/中转港1/中转港2/目的港/交货地备注 | 手填（`EnglishUpperTextarea`） | **触发：** 选中对应港口后自动回填 `PORTNAME, COUNTRYENNAME`；手工改过的值不会被再次覆盖；字段为 `receivePortRemark`/`polRemark`/`poT1Remark`/`poT2Remark`/`podRemark`/`deliverPortRemark` | 英文自动转半角 + 大写 |
 | **业务类型** | 业务联系单业务线（本期仅海运出口） | `getPreOrderBizTypeOptions`（标题 meta 区，装运方式前） | 提交写入 `bizType`；详情回填 | **必填**，默认海运出口(0)；选项表本期仅一项 |
@@ -74,11 +75,11 @@ last_updated: 2026-08-12
 | **费用.含税单价** | 对客单价 | 手填 | —— | 非负 |
 | **费用.数量** | 计价数量 | 完全由单位派生，**始终只读**（后端审核通过时按单位重算并覆盖，手改无意义） | **触发：** 票=1；重量=货物 `kgs`；体积=`cbm`；TEU=各箱型 `teu×箱量` 累加；箱型名=该箱型的箱量合计。箱型、箱量、毛重/体积变更后全表重新带量 | 非负 |
 | **费用.税率(%)** | 税率 | 手填或费用代码带出 | **触发：** 重算不含税单价 | —— |
-| **费用.不含税单价** | 去税单价 | 计算列 | `unitPrice / (1 + taxRate/100)`，只读 | —— |
-| **费用.金额** | 含税金额 | 计算列 | **触发：** 新增行即按含税单价 × 数量重算；之后单价/税率变更、单位/收付切换、TEU 依赖的箱量同步时同步重算 | 始终只读 |
-| **费用.禁开票** | 是否禁开发票 | Checkbox | **默认：** false；费用代码 `isInvoiceProhibit` 可带出 | —— |
-| **费用.机密** | 是否机密 | Checkbox | **默认：** false；费用代码 `isConfidential` 可带出 | —— |
-| **费用.备注** | 行备注 | 手填 | —— | 最长 4096 |
+| **费用.不含税单价** | 去税单价 | 计算列 | `unitPrice / (1 + taxRate/100)`，只读；**设计稿表格列隐藏** | —— |
+| **费用.金额** | 含税金额 | 计算列 | **触发：** 新增行即按含税单价 × 数量重算；之后单价/税率变更、单位/收付切换、TEU 依赖的箱量同步时同步重算；**设计稿表格列隐藏**，行数据仍保留 | 始终只读 |
+| **费用.禁开票** | 是否禁开发票 | Checkbox | **默认：** false；费用代码 `isInvoiceProhibit` 可带出；**设计稿表格列隐藏** | —— |
+| **费用.机密** | 是否机密 | Checkbox | **默认：** false；费用代码 `isConfidential` 可带出；**设计稿表格列隐藏** | —— |
+| **费用.备注** | 行备注 | 手填 | **设计稿表格列隐藏**，提交仍带出 | 最长 4096 |
 | **附件分组** | 按附件详细类型分组的文件列表 | **上传** `Upload/UploadFile` + **类型** `AttachmentDtlType/GetListByModuleTypesAsync`（`ModuleTypeId=160050`）；详情 `attachmentGroup` | **提交流程：** 先上传拿 `attachmentId`，再随 `AddAsync`/`EditAsync` 的 `attachmentGroup` 全量提交（编辑先删后建） | `attachmentId<=0` 忽略；录入/驳回可增删，待审核/通过只读 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -109,6 +110,7 @@ last_updated: 2026-08-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-12 | `Feature`/`Style` | 主表按设计稿重整：收发通内嵌折叠条；起运/目的港进基础 schema 并用 CSS order 排位；独立港口分区暂隐；货物区内容高度自适应；费用表隐藏金额/禁开票/机密/不含税单价/备注列 | `polId`/`podId` 写入 `basicFormApi` 后勿在恢复 `PortForm` 时重复挂载；隐藏费用列仍参与计算与提交。详见 `changelogs/change-log-2026-08-12-pre-order-edit-layout-figma.md` |
 | 2026-08-12 | `Fix` | 委托单位补齐 `industryCategory: 'p'`，与海运出口一致；列表筛选同步 | 根因是 `usePreOrderBasicSchema` 用了裸 `ClientSelect` 未传类别；通用接口空类别不下发。`bindClientUserLinkage` 的 `updateSchema` 也显式保留 `p`。详见 `changelogs/change-log-2026-08-12-pre-order-client-industry-category-p.md` |
 | 2026-08-11 | `Fix` | 中转港选完保存后不再丢失：表单/DTO 字段改为与接口一致的 `poT1Id`/`poT2Id`/`poT1Remark`/`poT2Remark`；详情回填补港口 `selectedItems` | 根因是 JS 大小写敏感，详情 JSON 为 `poT1Id` 而前端读 `pot1Id`；保存后 `loadDetail` 用 `undefined` 冲掉已选值。对应 TAPD `#1161580498001000680`。详见 `changelogs/change-log-2026-08-11-pre-order-transit-port-field-case.md` |
 | 2026-08-11 | `Fix` | 新建业务联系单时装运方式默认「整柜」 | `headerBlType` 初始值改为 `0`；编辑回显仍覆盖。详见 `changelogs/change-log-2026-08-11-pre-order-default-bl-type-fcl.md` |

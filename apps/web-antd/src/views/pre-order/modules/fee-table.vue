@@ -875,6 +875,18 @@ const columns = [
   { title: '备注', dataIndex: 'remark', width: 160 },
 ];
 
+/** 设计稿只展示计价必需字段；计算结果与后台控制字段仍保留在行数据中。 */
+const visibleColumns = columns.filter(
+  ({ dataIndex }) =>
+    ![
+      'amount',
+      'invoiceBlocked',
+      'isConfidential',
+      'noTaxUnitPrice',
+      'remark',
+    ].includes(dataIndex),
+);
+
 const totals = computed(() => {
   let receive = 0;
   let pay = 0;
@@ -929,11 +941,11 @@ const totals = computed(() => {
     </Space>
     <Table
       size="small"
-      :columns="columns"
+      :columns="visibleColumns"
       :data-source="dataSource"
       :pagination="false"
       row-key="rowKey"
-      :scroll="{ x: 1900 }"
+      :scroll="{ x: 1220 }"
       :row-selection="
         props.readonly
           ? undefined

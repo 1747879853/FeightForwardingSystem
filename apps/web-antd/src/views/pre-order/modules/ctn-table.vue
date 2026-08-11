@@ -287,7 +287,7 @@ watch(
 .pre-order-ctn-table {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
   min-height: 0;
 }
 
@@ -302,7 +302,7 @@ watch(
 }
 
 .pre-order-ctn-table__body {
-  flex: 1;
+  flex: none;
   min-height: 0;
   overflow: auto;
 }

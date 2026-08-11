@@ -13,7 +13,7 @@
 | sea-exports | （运踪订阅字段） | 操作管理 / 海运出口 | 运踪订阅链路字段清单：请求仅 `seaExportIds`；后端按装运方式组装船公司+主提单/首箱；状态两字段与结果明细对照。 | [运踪订阅字段清单](./modules/sea-exports/yundang-subscribe-fields.md) | 2026-07-25 |
 | sea-exports | `/sea-exports/:id/edit` Tab「更改单」 | 操作管理 / 海运出口 | 更改单选择器+历史抽屉；订单信息顶部通铺；费用表内切换应收应付并整体保存；可接收编辑页保存后的最新详情联动刷新。 | [更改单](./modules/sea-exports/change-order.md) | 2026-08-08 |
 | pre-order | `/pre-order` | 业务联系单 | 业务联系单列表：侧边栏一级菜单；检索入口，支持分组统计（委托单位/船公司/港口/业务类型）、新建、复制、按状态限制删除；双击进编辑页；委托单位筛选 `industryCategory=p`。 | [业务联系单列表](./modules/pre-order/index.md) | 2026-08-12 |
-| pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 业务联系单 | 业务联系单工作台：布局对齐海运出口；顶部 Tab/分区标题为「业务联系单」；支持附件分组上传并随 Add/Edit 全量提交；「货物与箱型」可一键按箱型生成应收海运费（单位=箱型/数量=箱量/单价=卖价）；表单不按状态禁用，录入/驳回显示保存与提交审核；待审核/通过仅审核按钮；通过后内嵌关联海运出口；干系人可用角色按业务类型读枚举（仅销售固定）；中转港字段与海出一致为 `poT1Id`/`poT2Id`；委托单位 `industryCategory=p`。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-12 |
+| pre-order | `/pre-order/add`、`/pre-order/:id/edit` | 业务联系单 | 业务联系单工作台：主表按设计稿排位（起运/目的港进基础字段、收发通内嵌折叠）；港口 5 列分区暂隐；货物区内容高度自适应；费用表仅展示计价列；附件分组随 Add/Edit 全量提交；可一键生成应收海运费；录入/驳回可保存提交，待审核/通过仅审核；通过后内嵌海出；干系人角色按业务类型枚举；中转港 `poT1Id`/`poT2Id`；委托单位 `industryCategory=p`。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-12 |
 | pre-order | `/pre-order/:id/detail` | 业务联系单 | 历史详情路由，重定向到 `/pre-order/:id/edit`。 | [业务联系单编辑](./modules/pre-order/id-edit.md) | 2026-08-02 |
 | sea-imports | `/sea-imports` | 操作管理 / 海运进口 | 海运进口列表是委托单检索、进入新建和编辑的业务入口。侧边栏收纳于「操作管理」分组。 | [海运进口列表](./modules/sea-imports/index.md) | 2026-08-08 |
 | sea-imports | `/sea-imports/create` | 操作管理 / 海运进口 | 创建新的海运进口委托单，提交成功后进入编辑工作台继续维护费用和子业务；无订舱编号字段。 | [海运进口新建](./modules/sea-imports/create.md) | 2026-08-08 |

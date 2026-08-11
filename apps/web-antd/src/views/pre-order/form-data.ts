@@ -36,6 +36,7 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
   return [
     createClientSelectSchema({
       fieldName: 'clientId',
+      formItemClass: 'pre-order-basic-field--1',
       industryCategory: 'p',
       label: '委托单位',
       rules: 'selectRequired',
@@ -43,6 +44,7 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
     {
       component: 'Input',
       fieldName: 'mblNum',
+      formItemClass: 'pre-order-basic-field--2',
       label: '主提单号',
       componentProps: {
         allowClear: true,
@@ -52,30 +54,35 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
     {
       component: 'DatePicker',
       fieldName: 'goodsCompleteTime',
+      formItemClass: 'pre-order-basic-field--3',
       label: '货好时间',
       componentProps: { class: 'w-full', valueFormat: 'YYYY-MM-DD HH:mm:ss' },
     },
     {
       component: 'DatePicker',
       fieldName: 'etd',
+      formItemClass: 'pre-order-basic-field--4',
       label: '开船日期',
       componentProps: { class: 'w-full', valueFormat: 'YYYY-MM-DD HH:mm:ss' },
     },
     {
       component: 'CarrierSelect',
       fieldName: 'carrierId',
+      formItemClass: 'pre-order-basic-field--5',
       label: '船公司',
       componentProps: { allowClear: true, class: 'w-full' },
     },
     {
       component: 'CodeServiceSelect',
       fieldName: 'codeServiceId',
+      formItemClass: 'pre-order-basic-field--9',
       label: '运输条款',
       componentProps: { allowClear: true, class: 'w-full' },
     },
     {
       component: 'Select',
       fieldName: 'tradeTermsType',
+      formItemClass: 'pre-order-basic-field--10',
       label: '贸易条款',
       componentProps: {
         allowClear: true,
@@ -87,6 +94,7 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
     {
       component: 'CodeFrtSelect',
       fieldName: 'codeFrtId',
+      formItemClass: 'pre-order-basic-field--6',
       label: '付费方式',
       componentProps: {
         allowClear: true,
@@ -95,10 +103,25 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       },
     },
     {
+      component: 'PortSelect',
+      fieldName: 'polId',
+      formItemClass: 'pre-order-basic-field--7',
+      label: '起运港',
+      rules: 'selectRequired',
+      componentProps: buildPortSelectProps('polId'),
+    },
+    {
+      component: 'PortSelect',
+      fieldName: 'podId',
+      formItemClass: 'pre-order-basic-field--8',
+      label: '目的港',
+      componentProps: buildPortSelectProps('podId'),
+    },
+    {
       component: 'Textarea',
       fieldName: 'remark',
       label: '备注',
-      formItemClass: 'col-span-2',
+      formItemClass: 'col-span-2 pre-order-basic-field--11',
       componentProps: { rows: 1, maxlength: 1024 },
     },
   ];

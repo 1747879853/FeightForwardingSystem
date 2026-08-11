@@ -432,7 +432,8 @@ const [CargoForm, cargoFormApi] = useVbenForm({
   schema: usePreOrderCargoSchema(),
   showDefaultActions: false,
   /** 右侧竖排件数/包装/毛重/尺码，对齐海运出口 cargo-metrics */
-  wrapperClass: 'cargo-metrics-wrap form-controls-small grid-cols-1',
+  wrapperClass:
+    'cargo-metrics-wrap form-controls-small grid-cols-2 gap-x-4 gap-y-0',
 });
 
 /** 货物类型 / 品名：对齐海运出口，挂在「货物与箱型」卡片标题栏 */
@@ -1411,6 +1412,30 @@ const getContentTabStyle = (isActive: boolean) =>
                   </div>
                   <div class="content-section__body">
                     <BasicForm />
+                    <div
+                      class="pre-order-party-collapse"
+                      role="button"
+                      tabindex="0"
+                      @click="partyExpanded = !partyExpanded"
+                      @keydown.enter.prevent="partyExpanded = !partyExpanded"
+                      @keydown.space.prevent="partyExpanded = !partyExpanded"
+                    >
+                      <span>收发通</span>
+                      <IconifyIcon
+                        icon="mdi:chevron-up"
+                        class="pre-order-party-collapse__chevron"
+                        :class="{
+                          'pre-order-party-collapse__chevron--closed':
+                            !partyExpanded,
+                        }"
+                      />
+                    </div>
+                    <div
+                      v-show="partyExpanded"
+                      class="pre-order-party-collapse__content"
+                    >
+                      <PartyForm />
+                    </div>
                   </div>
                 </section>
 
@@ -1655,18 +1680,15 @@ const getContentTabStyle = (isActive: boolean) =>
 }
 
 .pre-order-cargo-section {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 220px;
-  overflow: hidden;
+  flex: none;
+  min-height: 0;
+  overflow: visible;
 }
 
 .pre-order-cargo-section :deep(.cargo-container-card) {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  height: 100%;
+  display: block;
+  flex: none;
+  height: auto;
   min-height: 0;
 }
 
@@ -1675,31 +1697,32 @@ const getContentTabStyle = (isActive: boolean) =>
 }
 
 .pre-order-cargo-section :deep(.ant-card-body) {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
+  display: block;
+  flex: none;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .pre-order-cargo-section :deep(.cargo-main-layout) {
-  flex: 1;
-  align-items: stretch;
+  flex: none;
+  align-items: flex-start;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .pre-order-cargo-section :deep(.cargo-main-layout__left) {
-  display: flex;
-  flex-direction: column;
+  display: block;
   height: auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .pre-order-cargo-section :deep(.cargo-main-layout__right) {
   flex-shrink: 0;
   align-self: flex-start;
+
+  /* 左侧工具栏 28px + 8px 下间距，右侧首行标签与表头基线对齐。 */
+  margin-top: 36px;
 }
 
 .pre-order-fee-section {
@@ -1737,5 +1760,79 @@ const getContentTabStyle = (isActive: boolean) =>
   align-items: center;
   font-size: 12px;
   color: hsl(var(--foreground) / 55%);
+}
+
+/* Figma 1:323：主表内的收发通折叠条为 24px 高、左右各 12px。 */
+.pre-order-party-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 24px;
+  color: rgb(0 0 0 / 65%);
+  cursor: pointer;
+  user-select: none;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.pre-order-party-collapse__chevron {
+  margin-left: 4px;
+  transition: transform 0.2s ease;
+}
+
+.pre-order-party-collapse__chevron--closed {
+  transform: rotate(180deg);
+}
+
+.pre-order-party-collapse__content {
+  padding-top: 12px;
+}
+
+/* 主表按设计稿固定为：第一行 6 项，第二行起运港、目的港、条款、备注。 */
+.pre-order-basic-page :deep(.pre-order-basic-field--1) {
+  order: 1;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--2) {
+  order: 2;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--3) {
+  order: 3;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--4) {
+  order: 4;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--5) {
+  order: 5;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--6) {
+  order: 6;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--7) {
+  order: 7;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--8) {
+  order: 8;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--9) {
+  order: 9;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--10) {
+  order: 10;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--11) {
+  order: 11;
 }
 </style>
