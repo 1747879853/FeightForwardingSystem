@@ -36,7 +36,7 @@ import {
   getSeServiceConfigDetail,
   getSeServiceConfigPagedList,
 } from '#/api/system/base-data/se-service-config-admin';
-import { isJhtBrand } from '#/utils/brand-assets';
+import { isJhtBrand, isLongshanBrand } from '#/utils/brand-assets';
 import { useRefreshListOnFormReturn } from '#/utils/list-refresh-flag';
 import {
   buildServiceTypeLabelMap,
@@ -58,6 +58,9 @@ import {
   buildDynamicColumns,
   loadSeaExportPropLabelMap,
 } from './workbench/se-service-show-columns';
+
+/** 津海通 / 龙山：隐藏紧急处理任务与异常业务 mock 面板 */
+const hideWorkbenchMockSidePanels = isJhtBrand || isLongshanBrand;
 
 const WorkbenchTopNav = defineAsyncComponent(
   () => import('./workbench/components/workbench-top-nav.vue'),
@@ -992,7 +995,10 @@ onMounted(() => {
     <div class="workbench-layout">
       <template v-if="isSeaExportTab">
         <main class="workbench-main">
-          <WorkbenchEmergencyQueue v-if="!isJhtBrand" :tasks="emergencyTasks" />
+          <WorkbenchEmergencyQueue
+            v-if="!hideWorkbenchMockSidePanels"
+            :tasks="emergencyTasks"
+          />
           <WorkbenchBusinessTable
             :enable-task-actions="true"
             :dynamic-columns="seaExportDynamicColumns"
@@ -1013,7 +1019,7 @@ onMounted(() => {
           />
         </main>
         <WorkbenchExceptionPanel
-          v-if="!isJhtBrand"
+          v-if="!hideWorkbenchMockSidePanels"
           :summary="exceptionSummary"
         />
       </template>

@@ -73,7 +73,7 @@ const defaultBrandLoginBackVideoOssUrl = pickBrandAsset(
   'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
   'https://oss.jiayuebetter.com/jht-login-back.mp4',
   'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
-  'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
+  'https://oss.jiayuebetter.com/longshan.mp4',
   'https://oss.jiayuebetter.com/hhyy-login-back.mp4',
 );
 
