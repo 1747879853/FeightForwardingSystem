@@ -16,6 +16,8 @@ interface Props {
   logoDark?: string;
   /** 登录页背景视频（各品牌 img 目录下的 login-back.mp4） */
   loginBackgroundVideo?: string;
+  /** 背景视频压暗蒙层（视频过亮时启用，如龙山） */
+  loginBackgroundDimmed?: boolean;
   pageTitle?: string;
   pageDescription?: string;
   sloganImage?: string;
@@ -31,6 +33,7 @@ const props = withDefaults(defineProps<Props>(), {
   logo: '',
   logoDark: '',
   loginBackgroundVideo: '',
+  loginBackgroundDimmed: false,
   pageDescription: '',
   pageTitle: '',
   sloganImage: '',
@@ -79,7 +82,10 @@ const logoSrc = computed(() => {
           playsinline
           preload="auto"
         ></video>
-        <div class="login-background-mask"></div>
+        <div
+          class="login-background-mask"
+          :class="{ 'login-background-mask--dimmed': loginBackgroundDimmed }"
+        ></div>
       </div>
       <AuthenticationFormView
         class="auth-form-bg shadow-primary/5 shadow-float w-full max-w-[430px] rounded-[18px]"
@@ -121,21 +127,11 @@ const logoSrc = computed(() => {
 .login-background-mask {
   position: absolute;
   inset: 0;
+  pointer-events: none;
+}
 
-  /* background:
-    radial-gradient(
-      circle at 72% 48%,
-      rgb(65 110 190 / 18%),
-      transparent 34%
-    ),
-    linear-gradient(
-      90deg,
-      rgb(5 12 28 / 55%),
-      rgb(5 12 28 / 30%) 42%,
-      rgb(5 12 28 / 70%)
-    ),
-    rgb(3 10 24 / 28%);
-  backdrop-filter: blur(1px); */
+.login-background-mask--dimmed {
+  background: rgb(3 10 24 / 48%);
 }
 
 .auth-form-bg {

@@ -2,7 +2,7 @@
 title: 登录页
 module: 账户与认证
 author: auto-doc-sync
-last_updated: 2026-08-02
+last_updated: 2026-08-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -15,6 +15,7 @@ last_updated: 2026-08-02
 | :------- | :---------------------------------------------------------- |
 | 页面路由 | `/auth/login`（hash 模式为 `#/auth/login`）                 |
 | 页面组件 | `src/views/_core/authentication/login.vue`                  |
+| 登录布局 | `src/layouts/auth.vue` → `@vben/layouts` `AuthPageLayout`   |
 | 登录逻辑 | `src/store/auth.ts` → `authLogin` → `loginApi`              |
 | 品牌资源 | `src/utils/brand-assets.ts`、`getBrandRememberMeStorageKey` |
 
@@ -24,6 +25,7 @@ last_updated: 2026-08-02
 - **滑动验证：** 非开发构建下展示 `SliderCaptcha`，未通过不可提交。
 - **开发模式跳过验证：** `import.meta.env.DEV === true` 时不渲染滑动验证字段，可直接账号密码登录。
 - **记住我：** 按品牌维度使用独立 storage key 持久化。
+- **背景视频压暗：** 龙山品牌（`isLongshanBrand`）启用 `loginBackgroundDimmed`，在背景视频上叠加半透明蒙层。
 
 # 3. 状态流转说明 (Status Transitions)
 
@@ -50,4 +52,5 @@ last_updated: 2026-08-02
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Feature` | 龙山登录页背景视频增加压暗蒙层 | `auth.vue` 传 `loginBackgroundDimmed=isLongshanBrand`；蒙层样式在 `authentication.vue` |
 | 2026-08-02 | `Feature` | 开发模式登录页不再展示/校验滑动验证，生产构建保持原样 | `enableSliderCaptcha = !import.meta.env.DEV`；captcha 不参与 `loginApi` 入参 |
