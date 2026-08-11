@@ -515,6 +515,7 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       field: 'avatar',
       title: $t('system.user.avatar'),
       width: 72,
+      sortable: false,
       cellRender: {
         name: 'CellAvatar',
       },
@@ -543,9 +544,11 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       // field 必须与真实数据源 organizations 对齐：
       // vxe 会按 field 对应 cellValue 缓存 formatter 结果；若绑 organizationPath，
       // 修改所属组织后 organizations 已变但 organizationPath 不变，列表会继续显示旧缓存。
+      // 后端排序白名单仅有 DefaultOrgId，无 organizations 聚合字段，禁止列头排序。
       field: 'organizations',
       title: $t('system.user.organization'),
       minWidth: 200,
+      sortable: false,
       formatter: ({ row, cellValue }) => {
         // 优先使用新的 organizations 字段（多组织）
         const orgs =
@@ -601,6 +604,7 @@ export function useColumns<T = SystemUserAdminApi.SystemUser>(
       field: 'roles',
       title: $t('system.user.roles'),
       minWidth: 150,
+      sortable: false,
       formatter: ({ cellValue }) => {
         if (Array.isArray(cellValue)) {
           return cellValue.join(', ');

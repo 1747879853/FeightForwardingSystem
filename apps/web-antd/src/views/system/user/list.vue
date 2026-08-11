@@ -151,6 +151,8 @@ const [Grid, gridApi] = useVbenVxeGrid<SystemUserAdminApi.SystemUser>({
     proxyConfig: {
       ajax: {
         query: createPagedListQuery(getUserPagedList, {
+          // 与后端 GetUserPagedListAsync 默认排序一致
+          defaultSort: 'CreationTime DESC',
           mapParams: (formValues) => {
             const userAttributeFlags = Array.isArray(
               formValues.UserAttributeFlags,

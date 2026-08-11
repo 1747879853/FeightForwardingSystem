@@ -415,7 +415,7 @@ async function getUserPagedList(
     CreationTimeEnd: params.CreationTimeEnd ?? params.creationTimeEnd,
     LastLoginTimeStart: params.LastLoginTimeStart ?? params.lastLoginTimeStart,
     LastLoginTimeEnd: params.LastLoginTimeEnd ?? params.lastLoginTimeEnd,
-    Sorting: params.Sorting ?? params.sorting ?? 'Id desc',
+    Sorting: params.Sorting ?? params.sorting ?? 'CreationTime DESC',
     PageIndex: params.page || params.pageIndex || params.PageIndex || 1,
     PageSize: params.pageSize || params.PageSize || 10,
   };

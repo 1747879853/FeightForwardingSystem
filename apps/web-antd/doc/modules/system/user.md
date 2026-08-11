@@ -25,6 +25,7 @@ last_updated: 2026-08-11
 - **系统配置维护：** 按页面职责维护用户、角色、组织、工作流、枚举或缓存信息。
 - **账号可用判断口径：** 列表仅保留「账号启用」字段用于判断是否可使用系统，不再展示「账号状态」列。
 - **所属组织路径：** 列表「所属组织」列 `field` 绑定 `organizations`，按多组织路径拼接（如 `世纪通达/操作部/操作一部`，多组织逗号分隔）；无路径时回退旧字段 `organizationPath` / `organization`。
+- **列头排序：** 仅后端白名单字段可排；`avatar` / `organizations` / `roles` 为 `sortable: false`；默认 `CreationTime DESC`。
 - **行内操作：** 操作列固定右侧；外露「修改 / 权限配置 / 最终权限 / 分配角色」，「银行账户 / 修改密码 / 删除」收入「更多」下拉；默认列宽 `340`。
 - **最终权限诊断：** 点击「最终权限」打开只读弹窗，调用 `GET /services/app/UserAdmin/GetUserPermissionsAsync?id=` 展示该用户最终生效权限树（角色 + 用户级授权/禁止合并结果）；默认仅显示已拥有分支，可搜索。
 - **权限配置：** 点击「权限配置」跳转 `/system/permission`，用于编辑用户级模块/数据/表/字段权限，与「最终权限」只读诊断分离。
@@ -61,6 +62,7 @@ last_updated: 2026-08-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Fix` | 用户列表去掉后端不支持的列头排序（头像/所属组织/角色），默认排序改为创建时间降序。 | 白名单见 `GetUserPagedListAsync`；`applyDefaultSortable` 下须显式 `sortable: false`。详见 [变更日志](../../changelogs/change-log-2026-08-11-user-list-sortable-whitelist.md)。 |
 | 2026-08-11 | `Fix` | 修复编辑用户修改所属组织后，列表「所属组织」列仍显示旧值的问题。 | 根因是 vxe `getCellLabel` 按列 `field` 的 cellValue 缓存 formatter；列绑了不存在的 `organizationPath`，`organizations` 变了也不重算。已改为 `field: 'organizations'`。详见 [变更日志](../../changelogs/change-log-2026-08-11-user-list-org-column-refresh.md)。 |
 | 2026-07-31 | `Feature` | 用户属性新增「航线」（`ShippingLine = 256`）；原「商务(航线)」更名为「商务」。 | 枚举与 `getUserAttributeOptions` 同步；海出专用 6 项角色未纳入航线。详见 [变更日志](../../changelogs/change-log-2026-07-31-user-attribute-shipping-line.md)。 |
 | 2026-07-29 | `Feature` | 用户列表新增「最终权限」按钮与只读弹窗，对接 `GetUserPermissions` 展示最终生效权限树。 | 弹窗组件 `view-permissions-modal.vue`；API 入参统一 `id`；操作列宽调至 `340`。详见 [变更日志](../../changelogs/change-log-2026-07-29-user-view-effective-permissions.md)。 |
