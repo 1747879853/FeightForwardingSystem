@@ -155,6 +155,15 @@ const parseAndCompareFields = (
       'statement',
       'combinedFeeStatus',
 
+      'Settlement',
+      'FeeCode',
+      'feeCode',
+      'Currency',
+      'localCurrencyId',
+      'localCurrency',
+      'currency',
+      'settlement',
+
       // 其他字段（包括各种大小写变体）
       'localCurrencyCode', // 本位币代码
       'Remark',

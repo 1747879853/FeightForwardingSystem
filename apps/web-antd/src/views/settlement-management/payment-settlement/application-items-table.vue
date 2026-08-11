@@ -101,12 +101,12 @@ const columns = computed(() => [
   //     return formatAmount(total);
   //   },
   // },
-  // {
-  //   title: '申请金额（原币）',
-  //   key: 'settledAmount',
-  //   width: 130,
-  //   align: 'right' as const,
-  // },
+  {
+    title: '申请金额',
+    key: 'payAppPrice',
+    width: 130,
+    align: 'right' as const,
+  },
   {
     title: '本次结算金额',
     key: 'settledPrice',
@@ -321,16 +321,22 @@ function getOrderFees(
       <template v-else-if="column.key === 'creatorUserName'">
         {{ getCreatorUserName(record) }}
       </template>
+      <!-- 申请金额 -->
+      <template v-else-if="column.key === 'payAppPrice'">
+        <span style="font-weight: bold; color: #1890ff">
+          {{ formatAmount(record.payAppPrice || 0) }}
+        </span>
+      </template>
       <!-- 本次结算金额 -->
       <template v-else-if="column.key === 'settledPrice'">
-        <span style="font-weight: bold; color: #1890ff">
+        <span style="font-weight: bold; color: #fa8c16">
           {{ formatAmount(record.settledPrice || 0) }}
         </span>
       </template>
 
       <!-- 本次结算金额 -->
       <!-- <template v-else-if="column.key === 'thisSettledPrice'">
-        <span style="font-weight: bold; color: #fa8c16">
+        <span style="font-weight: bold; color: #1890ff">
           {{ formatAmount(record.thisSettledPrice || 0) }}
         </span>
       </template> -->
