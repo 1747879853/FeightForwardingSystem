@@ -855,7 +855,7 @@ function transformToTreeData(
           currencyCode: item.orderFee?.currency?.code || '-', // 币别
           amount: item.orderFee?.amount || 0, // 金额
           exchangeRate: 1, // 汇率
-          saleNames: item.orderFee?.transportOrder?.saleNames || '-', // 销售
+          saleNames: item.orderFee?.transportOrder?.saleNames?.join('、') || '-', // 销售
           invoiceCurrencyCode: app.currency?.code || '-', // 发票币别
           appliedAmountOriginal: item.appliedAmount || 0, // 开票申请金额（原币）
           settlementAmount: 0, // 结算金额
@@ -912,7 +912,7 @@ function transformToTreeData(
       parentId: null,
       // 一级字段
       // ✅ 使用后端返回的 company 对象作为所属公司名称
-      companyName: app.company?.name || '-',
+      companyName: app.company?.displayName || '-',
       orgId: app.orgId, // ✅ 归属组织ID
       applicationNo: app.applicationNo || '-', // 申请单号
       // ✅ 使用 clientInvoiceInfo.header 作为发票抬头

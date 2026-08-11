@@ -527,9 +527,9 @@ async function handleWithdraw() {
         await InvoiceApplicationApi.withdrawAsync({ id: editId.value! });
         message.success('撤回成功');
         // 撤回后刷新详情
-        if (isEdit.value) {
-          loadDetail();
-        }
+       router.push(`/fee-management/invoice-application/${editId.value}/edit`);
+        // ✅ 新增：标记列表需要刷新
+        markListShouldRefresh('invoice-application-list');
       } catch (error) {
         console.error('撤回失败:', error);
       }
@@ -561,14 +561,13 @@ onMounted(() => {
           type="primary"
           :loading="submitLoading"
           @click="handleSubmit"
-          :disabled="isReadOnly"
+          v-if="!isReadOnly"
         >
           {{ isEdit ? '保存' : '创建' }}
         </Button>
         <Button
           v-if="
             isEdit &&
-            !isReadOnly &&
             formData.status ===
               InvoiceApplicationApi.InvoiceApplicationStatus.Auditing
           "
@@ -582,13 +581,13 @@ onMounted(() => {
           type="primary"
           :loading="submitLoading"
           @click="handleDirectSubmit"
-          :disabled="isReadOnly"
+          v-if="!isReadOnly"
         >
           提交
         </Button>
-        <Button @click="handleCancel">{{
+        <!-- <Button @click="handleCancel">{{
           isReadOnly ? '关闭' : '关闭'
-        }}</Button>
+        }}</Button> -->
       </Space>
     </div>
 
