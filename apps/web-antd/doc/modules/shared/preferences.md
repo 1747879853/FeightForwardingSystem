@@ -35,5 +35,6 @@ last_updated: 2026-08-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Chore` | 更新龙山品牌资源 `assets/img/longshan/logo.png` | — |
 | 2026-08-11 | `Style` | 折叠侧边栏且显示标题时 Logo 由 `mx-auto` 改为 `mr-auto`，靠左对齐并保留 `px-3` | 类名来自 `layouts` 的 `logoClass`，经 `$attrs.class` 落到 `VbenLogo` 的 `<a>` |
 | 2026-08-09 | `Style` | 默认 `theme.radius` 由 `1` 调整为 `0.5` | — |
