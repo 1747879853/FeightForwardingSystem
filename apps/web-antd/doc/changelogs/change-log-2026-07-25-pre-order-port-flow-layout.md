@@ -33,5 +33,5 @@
 ## 三、避坑指南
 
 - **内嵌场景的 DOM 抢占**：业务联系单「通过」后会在第二个 Tab 内嵌整个海运出口编辑器。两页现在都有 `.port-flow-wrap .port-flow-item--transit` 结构，且业务联系单的 DOM 在前，海出原来的全局 `document.querySelector` 会把自己的中转港 Tab 传送到业务联系单的 label 上。因此海出改为在自身港口 section 内查询，业务联系单则用 `.pre-order-port-section` 前缀限定；后续任何复刻港口流转卡片的页面都必须自带作用域前缀。
-- **字段大小写**：海运出口是 `poT1Id/poT2Id/poT1Remark/poT2Remark`，业务联系单 DTO 是 `pot1Id/pot2Id/pot1Remark/pot2Remark`。schema 不能直接复用海出的，否则提交字段名对不上后端。
+- **字段大小写**：业务联系单与海运出口均为 `poT1Id/poT2Id/poT1Remark/poT2Remark`（C# `PoT1Id` 的 camelCase）。早期曾误用 `pot1Id`，会导致保存后回填读不到，已于 2026-08-11 纠正。
 - **备注只在「选择港口」时联动**，手工改过的备注不会被覆盖（仅 `onChange` 时写入），与海出行为一致。

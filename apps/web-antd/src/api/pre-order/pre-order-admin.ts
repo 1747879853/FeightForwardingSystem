@@ -185,10 +185,11 @@ export namespace PreOrderAdminApi {
     receivePortRemark?: string | null;
     polId?: number | null;
     polRemark?: string | null;
-    pot1Id?: number | null;
-    pot1Remark?: string | null;
-    pot2Id?: number | null;
-    pot2Remark?: string | null;
+    /** 中转港1 ID（JSON 字段名为 poT1Id，与海运出口一致） */
+    poT1Id?: number | null;
+    poT1Remark?: string | null;
+    poT2Id?: number | null;
+    poT2Remark?: string | null;
     podId?: number | null;
     podRemark?: string | null;
     deliverPortId?: number | null;
@@ -251,10 +252,11 @@ export namespace PreOrderAdminApi {
     receivePortRemark?: string | null;
     polId?: number | null;
     polRemark?: string | null;
-    pot1Id?: number | null;
-    pot1Remark?: string | null;
-    pot2Id?: number | null;
-    pot2Remark?: string | null;
+    /** 中转港1 ID（JSON 字段名为 poT1Id，与海运出口一致） */
+    poT1Id?: number | null;
+    poT1Remark?: string | null;
+    poT2Id?: number | null;
+    poT2Remark?: string | null;
     podId?: number | null;
     podRemark?: string | null;
     deliverPortId?: number | null;

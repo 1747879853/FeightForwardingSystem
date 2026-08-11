@@ -52,8 +52,8 @@ last_updated: 2026-08-11
 | **发货人 / 收货人 / 通知人** | 收发通往来单位 | **客户**<br/>`ClientSelect`（行业类别 b / e / h） | **回显：** 详情 `shipper` / `consignee` / `notifier` 经 `selectedItems` 注入 | Guid?，非必填 |
 | **shipperContent / consigneeContent / notifierContent** | 对应往来单位提单内容文本 | 手填（`EnglishUpperTextarea`） | 与 id 成对提交；详情原样回填 | 最长 1024，英文自动半角大写 |
 | **起运港** | POL | **港口**<br/>`PortSelect` | **触发：** 变更后重算服务项候选池；为空时服务项区不可用 | **必填**（后端生成海运出口时也校验） |
-| **中转港1 / 中转港2** | POT1 / POT2 | **港口**<br/>`PortSelect` | **展示：** 共用第 3 列，通过 label 内联 Tab 切换，隐藏的一侧仍保留已填值并随保存提交 | 非必填 |
-| **港口备注（6 个）** | 收货地/起运港/中转港1/中转港2/目的港/交货地备注 | 手填（`EnglishUpperTextarea`） | **触发：** 选中对应港口后自动回填 `PORTNAME, COUNTRYENNAME`；手工改过的值不会被再次覆盖 | 英文自动转半角 + 大写 |
+| **中转港1 / 中转港2** | POT1 / POT2 | **港口**<br/>`PortSelect` | **展示：** 共用第 3 列，通过 label 内联 Tab 切换，隐藏的一侧仍保留已填值并随保存提交<br/>**字段名：** 与海出一致为 `poT1Id`/`poT2Id`/`poT1Remark`/`poT2Remark`（勿写成 `pot1Id`）；关联对象仍为 `pot1`/`pot2`<br/>**回显：** 详情对象经 `toPortObjectSelectedItems` 注入 `selectedItems` | 非必填 |
+| **港口备注（6 个）** | 收货地/起运港/中转港1/中转港2/目的港/交货地备注 | 手填（`EnglishUpperTextarea`） | **触发：** 选中对应港口后自动回填 `PORTNAME, COUNTRYENNAME`；手工改过的值不会被再次覆盖；字段为 `receivePortRemark`/`polRemark`/`poT1Remark`/`poT2Remark`/`podRemark`/`deliverPortRemark` | 英文自动转半角 + 大写 |
 | **业务类型** | 业务联系单业务线（本期仅海运出口） | `getPreOrderBizTypeOptions`（标题 meta 区，装运方式前） | 提交写入 `bizType`；详情回填 | **必填**，默认海运出口(0)；选项表本期仅一项 |
 | **装运方式** | 整箱 / 拼箱等 | `getBlTypeOptions`（标题 meta 区选择器） | —— | **必填**；新建默认整柜(`0`)，保存前须有值；编辑回显以详情为准 |
 | **货物类型** | 普货 / 冻柜 / 危品等 | `getCargoTypeOptions`（复用海运出口） | **展示：** 「货物与箱型」卡片标题栏内联，与海出一致 | **必填**，默认 0（普通货） |
@@ -109,6 +109,7 @@ last_updated: 2026-08-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Fix` | 中转港选完保存后不再丢失：表单/DTO 字段改为与接口一致的 `poT1Id`/`poT2Id`/`poT1Remark`/`poT2Remark`；详情回填补港口 `selectedItems` | 根因是 JS 大小写敏感，详情 JSON 为 `poT1Id` 而前端读 `pot1Id`；保存后 `loadDetail` 用 `undefined` 冲掉已选值。对应 TAPD `#1161580498001000680`。详见 `changelogs/change-log-2026-08-11-pre-order-transit-port-field-case.md` |
 | 2026-08-11 | `Fix` | 新建业务联系单时装运方式默认「整柜」 | `headerBlType` 初始值改为 `0`；编辑回显仍覆盖。详见 `changelogs/change-log-2026-08-11-pre-order-default-bl-type-fcl.md` |
 | 2026-08-09 | `Fix` | 费用汇率改为优先取汇率表当前生效记录（应收 `drValue` / 应付 `crValue`），未维护时本位币锁 1、其余置空；只有本位币兜底行（`__isLocalCurrency`）的汇率只读；只读态不再被重刷 | 新增 `utils/exchange-rate-cache.ts`（`GetPagedListAsync` 全量拉取 + 启用/有效期筛选 + `sortId`·id 去重 + `shallowRef` 保证模板可响应），替代按币别 id 误调 `DetailAsync` 的写法；顺带纠正联系单侧 dr/cr 取反。详见 `changelogs/change-log-2026-08-09-pre-order-fee-exchange-rate-from-paged-list.md` |
 | 2026-08-09 | `Fix` | 审核通过/列表进已通过单，页签不再被改成「海运出口-xxx」。 | 懒挂载 + `disableTabTitle`；进页/`onActivated` 主动 `setTabTitle('业务联系单')` 覆盖 tabbar 保留的脏 `newTabTitle`。详见 `changelogs/change-log-2026-08-09-pre-order-embed-disable-sea-export-tab-title.md`。 |
@@ -144,7 +145,7 @@ last_updated: 2026-08-11
 | 2026-07-25 | `Perf`/`Fix` | 箱型选择从 `CtnSelect` option 取名称；修选中仍打 `DetailAsync`（根因是雪花 ID 被 `Number()` 丢精度导致 cell 重挂载后缓存失效） | `change(value, option)` + `selected-items` 有 id 即回传；`handleChange` 先 pin/merge；`ctnCodeId` 原样透传禁止 `Number()`；`ensureSelectedLoaded` 缓存/options 命中即跳过详情 |
 | 2026-07-25 | `Style` | 箱型箱量表格铺满「基础信息」与「费用」之间的剩余高度，行数超出时表体内滚动，费用区固定在下方 | `pre-order-cargo-section` `flex:1` + `ctn-table` `ResizeObserver` 驱动 `scroll.y`；高度链挂在 `pre-order-*` 类，不改海出共用 `form.css` |
 | 2026-07-25 | `Style` | 箱型箱量工具栏去掉「箱型箱量」标题条与背景色，改为与费用区相同的纯 icon 增删按钮 | 去掉本地 `order-ctn-table__title-bar` scoped 样式，工具栏改用 `Space` + `mb-2`，与 `fee-table` 对齐 |
-| 2026-07-25 | `Style` | 港口区块改名「港口信息」并按海运出口重做：5 列流转卡片 + 流向箭头、中转港 1/2 内联 Tab 共用一列、每个节点带英文大写备注且选港自动回填 | 港口 schema 与海出同构但字段名是 `pot1Id/pot2Id/pot1Remark/pot2Remark`（海出为 `poT1Id/poT2Id`）；备注格式化 `formatSeaExportPortRemark` / `pickPortSelectOption` / `buildPortSelectProps` 上移到 `sea-export-admin/data.ts` 共用；两页结构同构后，海出的中转港 Tab `Teleport` 目标查询改为限定在自身 section 内，避免被内嵌场景中 DOM 更靠前的业务联系单抢占 |
+| 2026-07-25 | `Style` | 港口区块改名「港口信息」并按海运出口重做：5 列流转卡片 + 流向箭头、中转港 1/2 内联 Tab 共用一列、每个节点带英文大写备注且选港自动回填 | 港口 schema 与海出同构；**字段名后已统一为 `poT1Id/poT2Id`（2026-08-11 纠正，早期误写 pot1Id）**；备注格式化共用 `sea-export-admin/data.ts`；中转港 Tab Teleport 须带 section 作用域 |
 | 2026-07-25 | `Style` | 费用区「添加应收/应付」合并为单一添加，添加/删除改用海出箱型表同款 icon | `handleAdd` 默认 `paySide=0`；icon 复刻 `order-ctn-table` 的 `mdi:add-box` / `mdi:close-box` |
 | 2026-07-25 | `Style` | 「货物与箱型」改为左右分栏（左箱型表 / 右竖排计量）；箱型增删改用海出同款 add-box/close-box 图标按钮 | 计量表单 `wrapperClass` 切到 `cargo-metrics-wrap grid-cols-1`；箱型标题栏本地 scoped，避免依赖海出 `cargo-ctn-section` 负边距通栏 |
 | 2026-07-25 | `Style` | 「货物与箱型」标题栏内联「货物类型」「品名」，对齐海运出口；品名补齐 `preOrderCodeGoodss` 读写 | 表单字段用 `orderCodeGoodss: number[]`，仅在详情回显 / 提交时与子表 DTO `preOrderCodeGoodss` 互转；样式类直接吃海出 `form.css` 的 `cargo-type-inline-*` |

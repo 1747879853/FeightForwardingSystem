@@ -53,9 +53,11 @@ import { createAbpPermission } from '#/utils/abp-permission';
 import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 import {
   hasValidUserId,
+  toPortObjectSelectedItems,
   toSelectedItems,
 } from '#/views/sea-export-admin/basic-info-form/sea-export-detail-mapper';
 import {
+  buildPortSelectProps,
   formatSeaExportPortRemark,
   getBlTypeOptions,
   pickPortSelectOption,
@@ -357,7 +359,7 @@ const [PortForm, portFormApi] = useVbenForm({
 });
 
 /** 中转港 1/2 共用一列，通过 label 内联 Tab 切换（与海运出口一致） */
-const transitPortTab = ref<'pot1' | 'pot2'>('pot1');
+const transitPortTab = ref<'poT1' | 'poT2'>('poT1');
 const transitPortLabelTarget = ref<HTMLElement | null>(null);
 
 function refreshTransitPortLabelTarget() {
@@ -369,37 +371,37 @@ function refreshTransitPortLabelTarget() {
 }
 
 function applyTransitPortTabSchema() {
-  const isPot1Active = transitPortTab.value === 'pot1';
+  const isPoT1Active = transitPortTab.value === 'poT1';
   portFormApi.updateSchema([
     {
-      fieldName: 'pot1Id',
+      fieldName: 'poT1Id',
       formItemClass: `port-flow-item port-flow-item--transit port-flow-pos--transit${
-        isPot1Active ? '' : ' port-flow-item--hidden'
+        isPoT1Active ? '' : ' port-flow-item--hidden'
       }`,
     },
     {
-      fieldName: 'pot2Id',
+      fieldName: 'poT2Id',
       formItemClass: `port-flow-item port-flow-item--transit port-flow-item--transit-secondary port-flow-pos--transit${
-        isPot1Active ? ' port-flow-item--hidden' : ''
+        isPoT1Active ? ' port-flow-item--hidden' : ''
       }`,
     },
     {
-      fieldName: 'pot1Remark',
+      fieldName: 'poT1Remark',
       formItemClass: `port-flow-remark port-flow-remark--transit port-flow-pos--transit-remark${
-        isPot1Active ? '' : ' port-flow-item--hidden'
+        isPoT1Active ? '' : ' port-flow-item--hidden'
       }`,
     },
     {
-      fieldName: 'pot2Remark',
+      fieldName: 'poT2Remark',
       formItemClass: `port-flow-remark port-flow-remark--transit port-flow-remark--transit-secondary port-flow-pos--transit-remark${
-        isPot1Active ? ' port-flow-item--hidden' : ''
+        isPoT1Active ? ' port-flow-item--hidden' : ''
       }`,
     },
   ]);
   refreshTransitPortLabelTarget();
 }
 
-function switchTransitPortTab(tab: 'pot1' | 'pot2') {
+function switchTransitPortTab(tab: 'poT1' | 'poT2') {
   if (transitPortTab.value === tab) return;
   transitPortTab.value = tab;
   applyTransitPortTabSchema();
@@ -695,20 +697,72 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     notifierId: dto.notifierId,
     notifierContent: dto.notifierContent,
   });
+  // 港口 Id 字段名与海出一致为 poT1Id/poT2Id（勿写成 pot1Id，详情 JSON 读不到）
+  // selectedItems 与 onChange 同次 updateSchema，避免冲掉选港备注联动
+  const portSelectProps = (fieldName: string, selectedItems: unknown[]) => ({
+    ...buildPortSelectProps(fieldName, handlePortSelectChange),
+    selectedItems,
+  });
+  portFormApi.updateSchema([
+    {
+      fieldName: 'receivePortId',
+      componentProps: portSelectProps(
+        'receivePortId',
+        toPortObjectSelectedItems(dto.receivePort, dto.receivePortId),
+      ),
+    },
+    {
+      fieldName: 'polId',
+      componentProps: portSelectProps(
+        'polId',
+        toPortObjectSelectedItems(dto.pol, dto.polId),
+      ),
+    },
+    {
+      fieldName: 'poT1Id',
+      componentProps: portSelectProps(
+        'poT1Id',
+        toPortObjectSelectedItems(dto.pot1, dto.poT1Id),
+      ),
+    },
+    {
+      fieldName: 'poT2Id',
+      componentProps: portSelectProps(
+        'poT2Id',
+        toPortObjectSelectedItems(dto.pot2, dto.poT2Id),
+      ),
+    },
+    {
+      fieldName: 'podId',
+      componentProps: portSelectProps(
+        'podId',
+        toPortObjectSelectedItems(dto.pod, dto.podId),
+      ),
+    },
+    {
+      fieldName: 'deliverPortId',
+      componentProps: portSelectProps(
+        'deliverPortId',
+        toPortObjectSelectedItems(dto.deliverPort, dto.deliverPortId),
+      ),
+    },
+  ]);
   void portFormApi.setValues({
     receivePortId: dto.receivePortId,
     receivePortRemark: dto.receivePortRemark,
     polId: dto.polId,
     polRemark: dto.polRemark,
-    pot1Id: dto.pot1Id,
-    pot1Remark: dto.pot1Remark,
-    pot2Id: dto.pot2Id,
-    pot2Remark: dto.pot2Remark,
+    poT1Id: dto.poT1Id,
+    poT1Remark: dto.poT1Remark,
+    poT2Id: dto.poT2Id,
+    poT2Remark: dto.poT2Remark,
     podId: dto.podId,
     podRemark: dto.podRemark,
     deliverPortId: dto.deliverPortId,
     deliverPortRemark: dto.deliverPortRemark,
   });
+  // 回填后重挂中转港 Tab 显隐，避免 updateSchema 后 Teleport 目标失效
+  applyTransitPortTabSchema();
   void cargoTypeInlineFormApi.setValues({
     cargoId: dto.cargoId ?? 0,
     orderCodeGoodss: (dto.preOrderCodeGoodss ?? [])
@@ -1365,9 +1419,9 @@ const getContentTabStyle = (isActive: boolean) =>
                           class="transit-port-tabs__item"
                           :class="{
                             'transit-port-tabs__item--active':
-                              transitPortTab === 'pot1',
+                              transitPortTab === 'poT1',
                           }"
-                          @click.stop="switchTransitPortTab('pot1')"
+                          @click.stop="switchTransitPortTab('poT1')"
                         >
                           中转港1
                         </button>
@@ -1376,9 +1430,9 @@ const getContentTabStyle = (isActive: boolean) =>
                           class="transit-port-tabs__item"
                           :class="{
                             'transit-port-tabs__item--active':
-                              transitPortTab === 'pot2',
+                              transitPortTab === 'poT2',
                           }"
-                          @click.stop="switchTransitPortTab('pot2')"
+                          @click.stop="switchTransitPortTab('poT2')"
                         >
                           中转港2
                         </button>

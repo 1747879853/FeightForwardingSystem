@@ -113,8 +113,8 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
 export const PRE_ORDER_PORT_REMARK_FIELDS: Record<string, string> = {
   receivePortId: 'receivePortRemark',
   polId: 'polRemark',
-  pot1Id: 'pot1Remark',
-  pot2Id: 'pot2Remark',
+  poT1Id: 'poT1Remark',
+  poT2Id: 'poT2Remark',
   podId: 'podRemark',
   deliverPortId: 'deliverPortRemark',
 };
@@ -156,17 +156,17 @@ export function usePreOrderPortSchema(
     },
     {
       component: 'PortSelect',
-      fieldName: 'pot1Id',
+      fieldName: 'poT1Id',
       label: '',
-      componentProps: buildPortSelectProps('pot1Id', onPortChange),
+      componentProps: buildPortSelectProps('poT1Id', onPortChange),
       formItemClass:
         'port-flow-item port-flow-item--transit port-flow-pos--transit',
     },
     {
       component: 'PortSelect',
-      fieldName: 'pot2Id',
+      fieldName: 'poT2Id',
       label: '',
-      componentProps: buildPortSelectProps('pot2Id', onPortChange),
+      componentProps: buildPortSelectProps('poT2Id', onPortChange),
       formItemClass:
         'port-flow-item port-flow-item--transit port-flow-item--transit-secondary port-flow-pos--transit',
     },
@@ -191,11 +191,11 @@ export function usePreOrderPortSchema(
     ),
     remarkItem('polRemark', 'port-flow-remark port-flow-pos--pol-remark'),
     remarkItem(
-      'pot1Remark',
+      'poT1Remark',
       'port-flow-remark port-flow-remark--transit port-flow-pos--transit-remark',
     ),
     remarkItem(
-      'pot2Remark',
+      'poT2Remark',
       'port-flow-remark port-flow-remark--transit port-flow-remark--transit-secondary port-flow-pos--transit-remark',
     ),
     remarkItem('podRemark', 'port-flow-remark port-flow-pos--pod-remark'),
