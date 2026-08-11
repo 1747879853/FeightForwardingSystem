@@ -85,7 +85,9 @@ const [Grid, gridApi] = useVbenVxeGrid<PortCodeAdminApi.PortCodeDto>({
     },
     proxyConfig: {
       ajax: {
-        query: createPagedListQuery(getPortCodePagedList),
+        query: createPagedListQuery(getPortCodePagedList, {
+          defaultSort: 'Country.CountryName ASC',
+        }),
       },
     },
     toolbarConfig: {

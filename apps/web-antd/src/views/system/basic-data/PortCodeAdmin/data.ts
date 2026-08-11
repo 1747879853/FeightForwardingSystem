@@ -184,6 +184,7 @@ export function useFormSchema(): VbenFormSchema[] {
 export function useColumns(
   onActionClick?: OnActionClickFn<PortCodeAdminApi.PortCodeDto>,
 ): VxeTableGridOptions<PortCodeAdminApi.PortCodeDto>['columns'] {
+  // sorting 作用于 PortCode 实体及 Country/Lane 导航属性，非 DTO 后填充字段
   return [
     {
       field: 'cnName',
@@ -196,16 +197,19 @@ export function useColumns(
       minWidth: 160,
     },
     {
-      field: 'countryName',
+      // 与 defaultSort「Country.CountryName」解析后的 field 对齐，便于列头高亮
+      field: 'country.countryName',
       title: $t('system.basicData.portCode.countryName'),
       minWidth: 140,
+      sortField: 'Country.CountryName',
       formatter: ({ row }) => row.country?.countryName ?? '',
     },
     {
       field: 'chau',
       title: $t('system.basicData.portCode.chau'),
       minWidth: 120,
-      // GetPagedListAsync 的 PortCodeDto 直接带 Chau（MapPortCodeDto 从实体映射）
+      // 大洲属 Country；列表 DTO 的 chau 由 MapPortCodeDto 从关联国家带出
+      sortField: 'Country.Chau',
       formatter: ({ row }) => row.chau ?? row.country?.chau ?? '',
     },
     {
@@ -221,12 +225,14 @@ export function useColumns(
       field: 'laneCode',
       title: $t('system.basicData.portCode.laneCode'),
       minWidth: 120,
+      sortField: 'Lane.Code',
       formatter: ({ row }) => row.lane?.code ?? '',
     },
     {
       field: 'laneName',
       title: $t('system.basicData.portCode.laneName'),
       minWidth: 140,
+      sortField: 'Lane.LaneName',
       formatter: ({ row }) => row.lane?.laneName ?? '',
     },
     {
@@ -252,6 +258,8 @@ export function useColumns(
       field: 'creatorUserName',
       title: $t('system.basicData.portCode.creatorUserName'),
       minWidth: 100,
+      // 后端仅有 CreatorUserId，昵称为后填充，不可排序
+      sortable: false,
       formatter: ({ row }) => row.creatorUserName ?? '',
     },
     {

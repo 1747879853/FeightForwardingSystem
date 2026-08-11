@@ -157,7 +157,7 @@ export namespace PortCodeAdminApi {
     CountryId?: number | string;
     /** 状态 0启用 1禁用 */
     Status?: number;
-    /** 排序 默认是Id */
+    /** 排序，前端默认 Country.CountryName ASC；可排本表字段及 Country / Lane 导航属性 */
     Sorting?: string;
     /** 当前页码 */
     PageIndex?: number;

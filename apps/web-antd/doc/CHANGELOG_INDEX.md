@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-12 港口代码列表列头排序对齐后端可排字段](./changelogs/change-log-2026-08-12-port-code-list-sortable-fields.md)
 - [2026-08-11 付费申请审批列表申请合计按原币/固定币别分口径](./changelogs/change-log-2026-08-11-payment-review-list-applied-total-settlement.md)
 - [2026-08-11 付款申请列表申请合计按原币/固定币别分口径](./changelogs/change-log-2026-08-11-payment-application-list-applied-total-settlement.md)
 - [2026-08-11 龙山登录页视频蒙层调亮](./changelogs/change-log-2026-08-11-longshan-login-video-mask-brighter.md)
