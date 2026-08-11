@@ -3,44 +3,26 @@ import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-
 
 import { $t } from '#/locales';
 
-/** 费用明细港口展示：仅英文 portName，不回退中文名 */
+/**
+ * 费用明细起运港展示：港口备注（与海运出口应收应付口径一致）。
+ * 详情读 `seaExport.polRemark`；选费列表读平铺 `polRemark`；备注为空不回退港口名。
+ */
 export function resolvePolPortDisplayName(source: {
-  pol?: PaymentApplicationAdminApi.PortSimpleDto | null;
-  polName?: string;
+  polRemark?: string | null;
   seaExport?: PaymentApplicationAdminApi.SeaExportSimpleForPayAppDto | null;
-  seaExportPOL?: PaymentApplicationAdminApi.PortSimpleDto | null;
-  seaExportPOLName?: string;
-  seaExportPOLPortName?: string;
 }): string {
-  return (
-    source.seaExport?.pol?.cnName ??
-    source.seaImport?.pol?.cnName ??
-    source.seaExportPOLPortName ??
-    source.pol?.cnName ??
-    source.seaExportPOL?.cnName ??
-    source.seaExportPOLName ??
-    source.polName ??
-    '123'
-  );
+  return source.seaExport?.polRemark ?? source.polRemark ?? '';
 }
 
+/**
+ * 费用明细目的港展示：港口备注。
+ * 详情读 `seaExport.podRemark`；选费列表读平铺 `podRemark`；备注为空不回退港口名。
+ */
 export function resolvePodPortDisplayName(source: {
-  pod?: PaymentApplicationAdminApi.PortSimpleDto | null;
-  podName?: string;
+  podRemark?: string | null;
   seaExport?: PaymentApplicationAdminApi.SeaExportSimpleForPayAppDto | null;
-  seaExportPOD?: PaymentApplicationAdminApi.PortSimpleDto | null;
-  seaExportPODName?: string;
-  seaExportPODPortName?: string;
 }): string {
-  return (
-    source.seaExport?.pod?.cnName ??
-    source.seaImport?.pod?.cnName ??
-    source.pod?.cnName ??
-    source.seaExportPOD?.cnName ??
-    source.seaExportPODName ??
-    source.podName ??
-    '123'
-  );
+  return source.seaExport?.podRemark ?? source.podRemark ?? '';
 }
 
 /**

@@ -52,6 +52,8 @@ last_updated: 2026-08-11
 
 | **费用分组** | 编辑页与选费抽屉外层列表的分组维度。 | `GetOrderFeeGroupAsync` / 本地 `groupFeesByOrder` | **触发/依赖：** 按「业务 + 结算对象」联合分组；`row-key` 为复合键。 | 同一业务可对应多行（不同结算对象）；底部统计为组数非票数。 |
 
+| **起运港 / 目的港** | 费用分组外层港口列展示值。 | 详情 `transportOrder.seaExport.polRemark/podRemark`；选费 `PayAppFeeGroupDto.polRemark/podRemark` | **触发/依赖：** 经 `resolvePol/PodPortDisplayName` 写入行上 `polName`/`podName`（列名不变）。 | 备注为空不回退港口名称。 |
+
 | **本次申请金额** | 单条费用本次申请付款金额（抽屉列「本次申请」）。 | 添加费用抽屉 `appliedAmount` → `PayAppItemAddAsync` | **触发/依赖：** 仅在抽屉内编辑；外侧明细只读展示。 | 默认取 `unRqstPaymentAmount`（可申请金额）；不得超过可申请金额；编辑模式确认添加即落库。 |
 
 | **所属公司** | 申请单归属组织（编辑态只读）。 | 详情 `orgs` + `orgId` | **触发/依赖：** 编辑页用 `formatOrgPathLabel(orgs)` 拼接全路径（`/` 分隔）；新增页用 `MyOrgSelect`。 | 必填（提交带 `orgId`）。 |
@@ -68,6 +70,7 @@ last_updated: 2026-08-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Fix` | 添加费用抽屉与底部费用明细起运港/目的港改为展示港口备注。 | `resolvePol/PodPortDisplayName` 读 `seaExport.*Remark` / 平铺 `*Remark`；空备注不回退港口名。详见 `changelogs/change-log-2026-08-11-payment-application-fee-port-remark.md`。 |
 | 2026-08-11 | `Fix` | 费用明细按费用名称/币别筛选后，内层只显示命中费用，同组其他费用隐藏。 | `filterOrderGroups` 裁剪 `children` 并重算申请合计；详见 `changelogs/change-log-2026-08-11-payment-application-fee-name-filter-children.md`。 |
 | 2026-08-11 | `Fix` | 新增跳转编辑后银行账户不再空白；详情无银行时用开票默认账户补齐。 | `restoreBankSelectionsFromDetail` 后再次 `applyDefaultBankSelections`；详见 `changelogs/change-log-2026-08-11-payment-application-create-bank-missing.md`。 |
 | 2026-08-10 | `Fix` | 已驳回申请编辑页恢复「提交」按钮，可再次送审。 | `canSubmit = Entering \| Rejected`；详见 `changelogs/change-log-2026-08-10-payment-application-reject-resubmit.md`。 |

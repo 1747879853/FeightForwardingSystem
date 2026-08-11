@@ -63,6 +63,7 @@ last_updated: 2026-08-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Fix` | 添加费用抽屉与底部费用明细起运港/目的港改为展示港口备注。 | `resolvePol/PodPortDisplayName` 读 `seaExport.*Remark` / 平铺 `*Remark`；空备注不回退港口名。详见 `changelogs/change-log-2026-08-11-payment-application-fee-port-remark.md`。 |
 | 2026-08-11 | `Fix` | 费用明细按费用名称/币别筛选后，内层只显示命中费用，同组其他费用隐藏。 | `filterOrderGroups` 裁剪 `children` 并重算申请合计；详见 `changelogs/change-log-2026-08-11-payment-application-fee-name-filter-children.md`。 |
 | 2026-08-11 | `Fix` | 新建确认费用自动创建后跳转编辑页，银行账户可正确默认回显。 | `resolveBankCurrencies(nextRows)` + 创建前补默认银行；详见 `changelogs/change-log-2026-08-11-payment-application-create-bank-missing.md`。 |
 | 2026-08-10 | `Fix` | 添加费用抽屉与页内费用明细表支持拖拽调列宽。 | `NestedDataTable` 默认 `resizable`；详见 `changelogs/change-log-2026-08-10-drawer-table-column-resize.md`。 |
