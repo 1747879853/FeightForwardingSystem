@@ -70,7 +70,7 @@ const logoClass = computed(() => {
   const classes: string[] = [];
 
   if (collapsedShowTitle && sidebarCollapsed.value && !isMixedNav.value) {
-    classes.push('mx-auto');
+    classes.push('mr-auto');
   }
 
   if (isSideMixedNav.value) {
