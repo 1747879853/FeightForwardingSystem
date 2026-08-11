@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-10
+last_updated: 2026-08-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -27,7 +27,7 @@ last_updated: 2026-08-10
 - **发票附件：** 任意状态本地增删，保存走 `EditAsync.attachmentGroup` **全量覆盖**；关联结算附件从详情 `paymentSettlements[].attachments` 展平后只读展示（不再有平铺字段 `paymentSettlementAttachments`）。
 - **结算银行 / 发票制作：** 不随申请状态禁用；编辑态任意状态可点「保存」落库。详情加载时先回填 `currencyGroup[].paymentApplicationBank`，再 `applyDefaultBankSelections` 补齐缺失币别（兼容新增漏带银行的历史单）。
 - **维护明细：** 在状态允许时通过「添加费用」抽屉增删费用；申请金额在抽屉「本次申请」列填写，确认后编辑模式立即调用 `PayAppItemAddAsync` 保存并提示「保存成功」。抽屉「费用明细」旁展示已选笔数与按币别本次申请合计；勾选跨页保留，确认读 `selectedFeeCache`。
-- **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；表头可拖拽调列宽；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。
+- **外侧费用明细：** 使用 `NestedDataTable`（`fillHeight`）展示，费用明细卡片固定高度 `650px`，表格占满卡片内剩余空间并内部滚动；表头可拖拽调列宽；「本次申请金额」只读；支持编号/费用名（`FeeCodeSelect`）、委托单位/币别/ETD 页内筛选。费用名/币别筛选会裁剪组内费用行（`filterOrderGroups`），同组未命中费用不显示，外层申请合计按可见行重算。
 - **提交审核：** 录入中（`Entering`）或已驳回（`Rejected`）时顶部显示「提交」，调用 `SubmitAsync` 重新进入审核链路。
 
 # 3. 状态流转说明 (Status Transitions)
@@ -68,6 +68,7 @@ last_updated: 2026-08-10
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Fix` | 费用明细按费用名称/币别筛选后，内层只显示命中费用，同组其他费用隐藏。 | `filterOrderGroups` 裁剪 `children` 并重算申请合计；详见 `changelogs/change-log-2026-08-11-payment-application-fee-name-filter-children.md`。 |
 | 2026-08-11 | `Fix` | 新增跳转编辑后银行账户不再空白；详情无银行时用开票默认账户补齐。 | `restoreBankSelectionsFromDetail` 后再次 `applyDefaultBankSelections`；详见 `changelogs/change-log-2026-08-11-payment-application-create-bank-missing.md`。 |
 | 2026-08-10 | `Fix` | 已驳回申请编辑页恢复「提交」按钮，可再次送审。 | `canSubmit = Entering \| Rejected`；详见 `changelogs/change-log-2026-08-10-payment-application-reject-resubmit.md`。 |
 | 2026-08-10 | `Fix` | 添加费用抽屉与页内费用明细表支持拖拽调列宽。 | `NestedDataTable` 默认 `resizable`；详见 `changelogs/change-log-2026-08-10-drawer-table-column-resize.md`。 |

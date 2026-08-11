@@ -168,6 +168,102 @@ export function buildAppliedAmountCurrencyColumns(
   });
 }
 
+/** 费用明细页内筛选条件 */
+export interface OrderGroupFilter {
+  /** 委托编号（模糊） */
+  no?: string;
+  /** 委托单位 clientId */
+  clientId?: null | string;
+  /** 开船日期 YYYY-MM-DD */
+  etd?: string;
+  /** 费用名称 feeCodeId */
+  feeCodeId?: null | number | string;
+  /** 币别 currencyId */
+  currencyId?: null | number | string;
+  /** 将分组 etd 格式化为与筛选值可比的字符串 */
+  formatEtd?: (etd: string) => string;
+}
+
+function hasFilterValue(value: null | number | string | undefined): boolean {
+  return value != null && value !== '';
+}
+
+/** 按筛选条件过滤订单分组；费用名/币别会裁剪组内 children，仅保留命中行 */
+export function filterOrderGroups(
+  groups: OrderGroupRow[],
+  filter: OrderGroupFilter,
+  currencies: AppliedCurrencyInfo[] = [],
+): OrderGroupRow[] {
+  const no = filter.no?.trim().toLowerCase() ?? '';
+  const hasFeeFilter = hasFilterValue(filter.feeCodeId);
+  const hasCurrencyFilter = hasFilterValue(filter.currencyId);
+  const formatEtd = filter.formatEtd ?? ((etd: string) => etd);
+
+  const result: OrderGroupRow[] = [];
+  for (const group of groups) {
+    const matchesNo =
+      !no ||
+      String(group.commissionNum ?? group.key)
+        .toLowerCase()
+        .includes(no);
+    const matchesClient =
+      !hasFilterValue(filter.clientId) ||
+      String(group.clientId) === String(filter.clientId);
+    const matchesEtd = !filter.etd || formatEtd(group.etd) === filter.etd;
+    if (!matchesNo || !matchesClient || !matchesEtd) continue;
+
+    let children = group.children ?? [];
+    if (hasFeeFilter) {
+      children = children.filter(
+        (fee) => String(fee.feeCodeId) === String(filter.feeCodeId),
+      );
+    }
+    if (hasCurrencyFilter) {
+      children = children.filter(
+        (fee) => String(fee.currencyId) === String(filter.currencyId),
+      );
+    }
+    if (children.length === 0) continue;
+
+    if (
+      !hasFeeFilter &&
+      !hasCurrencyFilter &&
+      children.length === (group.children?.length ?? 0)
+    ) {
+      result.push(group);
+      continue;
+    }
+
+    const cMap = new Map<number, OrderCurrencyAmount>();
+    for (const f of children) {
+      const signed = signedAppliedAmount(f);
+      const existing = cMap.get(f.currencyId);
+      if (existing) {
+        existing.amount += signed;
+      } else {
+        cMap.set(f.currencyId, {
+          currencyCode: f.currencyCode ?? '',
+          currencyName: f.currencyName ?? '',
+          amount: signed,
+        });
+      }
+    }
+
+    const next: OrderGroupRow = {
+      ...group,
+      children,
+      currencySummaries: [...cMap.values()],
+    };
+    for (const c of currencies) {
+      (next as unknown as Record<string, number>)[
+        appliedAmountFieldKey(c.currencyId)
+      ] = calcAppliedAmountByCurrency(children, c.currencyId);
+    }
+    result.push(next);
+  }
+  return result;
+}
+
 /** 按业务 + 结算对象分组费用，计算各币别汇总 */
 export function groupFeesByOrder(
   fees: FeeDetailRow[],

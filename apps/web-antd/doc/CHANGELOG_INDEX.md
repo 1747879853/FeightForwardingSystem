@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-11 付费申请费用明细按费用名称筛选应只显示命中费用](./changelogs/change-log-2026-08-11-payment-application-fee-name-filter-children.md)
 - [2026-08-11 付费申请新增跳转编辑后银行账户空白](./changelogs/change-log-2026-08-11-payment-application-create-bank-missing.md)
 - [2026-08-11 龙山登录页背景视频增加压暗蒙层](./changelogs/change-log-2026-08-11-longshan-login-video-mask.md)
 - [2026-08-11 品牌 Logo 启动时强制覆盖缓存 URL](./changelogs/change-log-2026-08-11-brand-logo-prefer-overrides.md)

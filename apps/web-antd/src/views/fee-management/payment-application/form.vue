@@ -75,6 +75,7 @@ import {
   calcAppliedAmountConverted,
   calcAppliedConvertedTotal,
   collectAppliedCurrencies,
+  filterOrderGroups,
   formatAmount,
   groupFeesByOrder,
   isAppliedAmountColumnKey,
@@ -271,35 +272,18 @@ const feeFilterClient = ref<null | string>(null);
 const feeFilterCurrency = ref<null | number | string>(null);
 const feeFilterEtd = ref('');
 const filteredOrderGroups = computed(() =>
-  orderGroups.value.filter((group) => {
-    const children = group.children ?? [];
-    const matchesNo =
-      !feeFilterNo.value ||
-      String(group.commissionNum ?? group.key)
-        .toLowerCase()
-        .includes(feeFilterNo.value.trim().toLowerCase());
-    const matchesClient =
-      feeFilterClient.value == null ||
-      feeFilterClient.value === '' ||
-      String(group.clientId) === String(feeFilterClient.value);
-    const matchesEtd =
-      !feeFilterEtd.value || formatDate(group.etd) === feeFilterEtd.value;
-    const matchesFee =
-      feeFilterName.value == null ||
-      feeFilterName.value === '' ||
-      children.some(
-        (fee) => String(fee.feeCodeId) === String(feeFilterName.value),
-      );
-    const matchesCurrency =
-      feeFilterCurrency.value == null ||
-      feeFilterCurrency.value === '' ||
-      children.some(
-        (fee) => String(fee.currencyId) === String(feeFilterCurrency.value),
-      );
-    return (
-      matchesNo && matchesClient && matchesEtd && matchesFee && matchesCurrency
-    );
-  }),
+  filterOrderGroups(
+    orderGroups.value,
+    {
+      no: feeFilterNo.value,
+      clientId: feeFilterClient.value,
+      etd: feeFilterEtd.value,
+      feeCodeId: feeFilterName.value,
+      currencyId: feeFilterCurrency.value,
+      formatEtd: formatDate,
+    },
+    appliedCurrencies.value,
+  ),
 );
 const expandedGroupKeys = ref<string[]>([]);
 
@@ -538,7 +522,7 @@ const isIndeterminate = computed(
 // --- Group selection ---
 
 function getGroupByKey(key: string): OrderGroupRow | undefined {
-  return orderGroups.value.find((g) => g.key === key);
+  return filteredOrderGroups.value.find((g) => g.key === key);
 }
 
 function isGroupAllSelected(groupKey: string): boolean {
