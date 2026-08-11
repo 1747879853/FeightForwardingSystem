@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-11 业务联系单新建装运方式默认整柜](./changelogs/change-log-2026-08-11-pre-order-default-bl-type-fcl.md)
 - [2026-08-11 银行流水编辑页基础信息与核销进度左右分栏](./changelogs/change-log-2026-08-11-bank-statement-edit-split-layout.md)
 - [2026-08-11 银行流水新建核销嵌套表改用 NestedDataTable](./changelogs/change-log-2026-08-11-create-settlement-nested-table.md)
 - [2026-08-10 添加开票结算明细抽屉改用 NestedDataTable](./changelogs/change-log-2026-08-10-add-invoice-drawer-nested-table.md)

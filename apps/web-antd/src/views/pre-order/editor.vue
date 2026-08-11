@@ -131,8 +131,8 @@ const headerBizType = ref<PreOrderBizType | undefined>(
   PreOrderBizType.SeaExport,
 );
 const bizTypeOptions = getPreOrderBizTypeOptions();
-/** 新建默认不选，保存前强制选择 */
-const headerBlType = ref<number | undefined>();
+/** 新建默认整柜（0）；编辑回显仍以详情为准 */
+const headerBlType = ref<number | undefined>(0);
 const blTypeOptions = getBlTypeOptions();
 
 /** 干系人可用角色由 system/enumeration 按业务类型配置，销售固定必填不可删 */

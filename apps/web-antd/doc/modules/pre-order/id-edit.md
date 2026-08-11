@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-09
+last_updated: 2026-08-11
 ---
 
 # 1. 业务背景说明 (Background)
@@ -55,7 +55,7 @@ last_updated: 2026-08-09
 | **中转港1 / 中转港2** | POT1 / POT2 | **港口**<br/>`PortSelect` | **展示：** 共用第 3 列，通过 label 内联 Tab 切换，隐藏的一侧仍保留已填值并随保存提交 | 非必填 |
 | **港口备注（6 个）** | 收货地/起运港/中转港1/中转港2/目的港/交货地备注 | 手填（`EnglishUpperTextarea`） | **触发：** 选中对应港口后自动回填 `PORTNAME, COUNTRYENNAME`；手工改过的值不会被再次覆盖 | 英文自动转半角 + 大写 |
 | **业务类型** | 业务联系单业务线（本期仅海运出口） | `getPreOrderBizTypeOptions`（标题 meta 区，装运方式前） | 提交写入 `bizType`；详情回填 | **必填**，默认海运出口(0)；选项表本期仅一项 |
-| **装运方式** | 整箱 / 拼箱等 | `getBlTypeOptions`（标题 meta 区选择器） | —— | **必填**；新建默认空，保存前须选择 |
+| **装运方式** | 整箱 / 拼箱等 | `getBlTypeOptions`（标题 meta 区选择器） | —— | **必填**；新建默认整柜(`0`)，保存前须有值；编辑回显以详情为准 |
 | **货物类型** | 普货 / 冻柜 / 危品等 | `getCargoTypeOptions`（复用海运出口） | **展示：** 「货物与箱型」卡片标题栏内联，与海出一致 | **必填**，默认 0（普通货） |
 | **品名** | 货物品名（可多选） | **基础数据**<br/>`CodeGoodsSelect`（`showNameWithHsCode`） | **展示：** 与货物类型同处标题栏内联；表单值为 `number[]`，提交映射为 `preOrderCodeGoodss` | 非必填 |
 | **干系人（角色清单）** | 面板上有哪些角色卡、「+ 添加角色」能选什么 | **枚举**<br/>按业务类型取 `SeaExportUserAttribute`（`bizType=0`）/ `SeaImportUserAttribute`（`bizType=1`）；子项 `value`=`UserAttribute` 位值、`displayName`=角色名、`enable`=是否可用、`extra1`=是否默认展示，子项顺序即面板顺序 | **触发/依赖：** 切换「业务类型」后重新拉取；新枚举里不存在的角色行（含已选人员）会被清掉，销售除外；详情回填**不触发**清理，历史角色保留在末尾 | 枚举未配置/拉取失败时只剩销售，属预期兜底 |
@@ -109,6 +109,7 @@ last_updated: 2026-08-09
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Fix` | 新建业务联系单时装运方式默认「整柜」 | `headerBlType` 初始值改为 `0`；编辑回显仍覆盖。详见 `changelogs/change-log-2026-08-11-pre-order-default-bl-type-fcl.md` |
 | 2026-08-09 | `Fix` | 费用汇率改为优先取汇率表当前生效记录（应收 `drValue` / 应付 `crValue`），未维护时本位币锁 1、其余置空；只有本位币兜底行（`__isLocalCurrency`）的汇率只读；只读态不再被重刷 | 新增 `utils/exchange-rate-cache.ts`（`GetPagedListAsync` 全量拉取 + 启用/有效期筛选 + `sortId`·id 去重 + `shallowRef` 保证模板可响应），替代按币别 id 误调 `DetailAsync` 的写法；顺带纠正联系单侧 dr/cr 取反。详见 `changelogs/change-log-2026-08-09-pre-order-fee-exchange-rate-from-paged-list.md` |
 | 2026-08-09 | `Fix` | 审核通过/列表进已通过单，页签不再被改成「海运出口-xxx」。 | 懒挂载 + `disableTabTitle`；进页/`onActivated` 主动 `setTabTitle('业务联系单')` 覆盖 tabbar 保留的脏 `newTabTitle`。详见 `changelogs/change-log-2026-08-09-pre-order-embed-disable-sea-export-tab-title.md`。 |
 | 2026-08-09 | `Fix` | 费用代码/币别保存后回显正确名称，不再露出数字 id | `feeCodeSelectedItems` / `currencySelectedItems` 优先读详情 `cnName`（接口无平铺 `name`）；`FeeCodeSelect` 用 `cnName` 作 `rowLabel`，空则露 value。详见 `changelogs/change-log-2026-08-09-pre-order-fee-code-selected-items-cnname.md` |
