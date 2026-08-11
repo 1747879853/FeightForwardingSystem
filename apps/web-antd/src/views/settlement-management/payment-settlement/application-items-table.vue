@@ -108,17 +108,17 @@ const columns = computed(() => [
   //   align: 'right' as const,
   // },
   {
-    title: '申请金额',
+    title: '本次结算金额',
     key: 'settledPrice',
     width: 130,
     align: 'right' as const,
   },
-  {
-    title: '本次结算金额',
-    key: 'thisSettledPrice',
-    width: 130,
-    align: 'right' as const,
-  },
+  // {
+  //   title: '本次结算金额',
+  //   key: 'thisSettledPrice',
+  //   width: 130,
+  //   align: 'right' as const,
+  // },
   {
     title: '归属组织',
     key: 'orgName',
@@ -329,11 +329,11 @@ function getOrderFees(
       </template>
 
       <!-- 本次结算金额 -->
-      <template v-else-if="column.key === 'thisSettledPrice'">
+      <!-- <template v-else-if="column.key === 'thisSettledPrice'">
         <span style="font-weight: bold; color: #fa8c16">
           {{ formatAmount(record.thisSettledPrice || 0) }}
         </span>
-      </template>
+      </template> -->
 
       <!-- 操作 -->
       <template v-else-if="column.key === 'action'">
