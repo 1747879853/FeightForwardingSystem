@@ -200,8 +200,6 @@ async function fetchData() {
     // ✅ 确定结算币别：优先使用用户选择的，如果没有则使用props传入的
     const settlementCurrencyId = selectedCurrencyId.value ?? props.currencyId;
 
-    
-
     const params: PaymentApplicationAdminApi.PaymentApplicationSettlementQueryParams =
       {
         paymentSettlementId: props.paymentSettlementId,
@@ -250,7 +248,7 @@ async function fetchData() {
       // ✅ 初始化 settledPrice 字段（前端临时字段，用于用户输入）
       // 注意：2026-08-10起，用户输入的是结算币别金额（settledPrice），不是原币金额
       // 这里初始化为可结算上限和下限的总和（结算币别口径）
-      const totalUnSettledPrice = row.totalUnSettledPrice ?? 0;     
+      const totalUnSettledPrice = row.totalUnSettledPrice ?? 0;
       row.settledPrice = totalUnSettledPrice;
       // ✅ 如果currency.code是"原币"，则用originalCurrencyCode替代
       if (row.currency == null) {
@@ -485,7 +483,6 @@ function returnSelectedApplications(selectedRows: any[]) {
   closeDrawer();
 }
 
-
 /** 暴露方法给父组件 */
 defineExpose({
   openDrawer,
@@ -518,11 +515,7 @@ function formatAmount(value: number | undefined | null): string {
 // ✅ 根据结算币别口径获取金额（不再需要汇率转换）
 function formatAmountWithConversion(
   record: any,
-  fieldName:
-    | 'pay'
-    | 'receive'
-    | 'totalUnSettled'
-    | 'settled',
+  fieldName: 'pay' | 'receive' | 'totalUnSettled' | 'settled',
 ): string {
   const amount = record[`${fieldName}Price`] ?? record[`${fieldName}Amount`];
   if (amount === undefined || amount === null) return '-';
@@ -641,12 +634,12 @@ const outerColumns = [
     key: 'currencyCode',
     width: 100,
   },
-  {
-    title: '原币币别',
-    dataIndex: 'originalCurrencyCode',
-    key: 'originalCurrencyCode',
-    width: 100,
-  },
+  // {
+  //   title: '原币币别',
+  //   dataIndex: 'originalCurrencyCode',
+  //   key: 'originalCurrencyCode',
+  //   width: 100,
+  // },
   {
     title: '申请人',
     dataIndex: 'auditUserNickName',
@@ -690,12 +683,12 @@ const outerColumns = [
     key: 'submitTime',
     width: 160,
   },
-  {
-    title: '最晚付款时间',
-    dataIndex: 'endTime',
-    key: 'endTime',
-    width: 130,
-  },
+  // {
+  //   title: '最晚付款时间',
+  //   dataIndex: 'endTime',
+  //   key: 'endTime',
+  //   width: 130,
+  // },
 ];
 
 // ✅ NestedDataTable 内层列定义（费用明细 orderFees）
@@ -723,62 +716,42 @@ const innerColumns = [
     ellipsis: true,
   },
   {
-    title: '币别',
+    title: '原始币别',
     key: 'currencyCode',
     width: 80,
   },
+  // {
+  //   title: '单位',
+  //   dataIndex: 'unit',
+  //   key: 'unit',
+  //   width: 80,
+  // },
+  // {
+  //   title: '数量',
+  //   dataIndex: 'quantity',
+  //   key: 'quantity',
+  //   width: 80,
+  //   align: 'right' as const,
+  // },
+  // {
+  //   title: '单价',
+  //   dataIndex: 'unitPrice',
+  //   key: 'unitPrice',
+  //   width: 100,
+  //   align: 'right' as const,
+  // },
   {
-    title: '单位',
-    dataIndex: 'unit',
-    key: 'unit',
-    width: 80,
-  },
-  {
-    title: '数量',
-    dataIndex: 'quantity',
-    key: 'quantity',
-    width: 80,
-    align: 'right' as const,
-  },
-  {
-    title: '单价',
-    dataIndex: 'unitPrice',
-    key: 'unitPrice',
-    width: 100,
-    align: 'right' as const,
-  },
-  {
-    title: '金额',
+    title: '原始金额',
     dataIndex: 'amount',
     key: 'amount',
     width: 120,
     align: 'right' as const,
   },
+
   {
-    title: '未开票金额',
-    dataIndex: 'unInvoicedAmount',
-    key: 'unInvoicedAmount',
-    width: 120,
-    align: 'right' as const,
-  },
-  {
-    title: '已开票金额',
-    dataIndex: 'invoicedAmount',
-    key: 'invoicedAmount',
-    width: 120,
-    align: 'right' as const,
-  },
-  {
-    title: '已结算金额',
-    dataIndex: 'settledAmount',
-    key: 'settledAmount',
-    width: 120,
-    align: 'right' as const,
-  },
-  {
-    title: '未结算金额',
-    dataIndex: 'unSettledAmount',
-    key: 'unSettledAmount',
+    title: '申请付款金额',
+    dataIndex: 'settledPrice',
+    key: 'settledPrice',
     width: 120,
     align: 'right' as const,
   },
@@ -789,7 +762,7 @@ const innerColumns = [
   <Drawer
     v-model:open="visible"
     title="选择付费申请"
-    width="90%"
+    width="65%"
     :footer-style="{ textAlign: 'right' }"
   >
     <div style="margin-bottom: 16px">
@@ -1028,7 +1001,6 @@ const innerColumns = [
         </Button>
       </Space>
     </template>
-
   </Drawer>
 </template>
 

@@ -46,9 +46,12 @@ watch(
 // 监听orgId变化，重新加载银行列表
 watch(
   () => props.orgId,
-  () => {
-    selectedValue.value = undefined;
-    loadBankAccounts();
+  async (newVal, oldVal) => {
+    // 只有在 orgId 真正改变时才清空选中值（排除初始化情况）
+    if (oldVal !== undefined && newVal !== oldVal) {
+      selectedValue.value = undefined;
+    }
+    await loadBankAccounts();
   },
 );
 
@@ -59,8 +62,9 @@ async function loadBankAccounts() {
     if (props.orgId) {
       console.log('✅ 获取指定公司的银行列表，公司ID:', props.orgId);
       const accounts = await getOrgBankAccountList(props.orgId);
+      console.log('📋 银行列表原始数据:', accounts);
 
-      options.value = (accounts || []).map((account) => ({
+      const newOptions = (accounts || []).map((account) => ({
         id: account.id,
         value: account.id,
         label: `${account.bankShortName} - ${account.accountName ?? ''} (${account.currencyCode ?? ''})`,
@@ -68,9 +72,41 @@ async function loadBankAccounts() {
         bankAccount: account.bankAccount ?? '',
         currencyCode: account.currencyCode ?? '',
       }));
+
+      console.log('📋 转换后的银行选项:', newOptions);
+      console.log('📌 当前选中的值 (selectedValue):', selectedValue.value);
+
+      options.value = newOptions;
+
+      // 如果当前有选中值，但该值不在新加载的选项中，则清空选中值
+      // 注意：这个检查必须在 options 更新之后进行
+      if (selectedValue.value) {
+        const found = newOptions.find(
+          (opt) => opt.value === selectedValue.value,
+        );
+        console.log('🔍 查找选中的值:', {
+          selectedValue: selectedValue.value,
+          found: found,
+        });
+
+        if (!found) {
+          console.warn('⚠️ 选中的值不在银行列表中，将被清空');
+          selectedValue.value = undefined;
+          emit('update:value', undefined);
+          emit('change', undefined, undefined);
+        } else {
+          console.log('✅ 选中的值在银行列表中，将正确显示');
+        }
+      }
       return;
     } else {
       options.value = [];
+      // 如果没有orgId，清空选项和选中值
+      if (selectedValue.value) {
+        selectedValue.value = undefined;
+        emit('update:value', undefined);
+        emit('change', undefined, undefined);
+      }
     }
   } catch (error) {
     console.error('加载组织银行列表失败:', error);

@@ -527,6 +527,7 @@ export type ComponentType =
   | 'OrganizationSelect'
   | 'MyOrgSelect'
   | 'UserOrgSelect'
+  | 'UserCompanySelect'
   | 'PortSelect'
   | 'AirPortSelect'
   | 'CarrierSelect'
@@ -650,9 +651,6 @@ async function initComponentAdapter() {
     UserOrgSelect: defineAsyncComponent(
       () => import('./biz-select/user-org-select.vue'),
     ),
-    UserCompanySelect: defineAsyncComponent(
-      () => import('./biz-select/user-company-select.vue'),
-    ),
     PortSelect: defineAsyncComponent(
       () => import('./biz-select/port-select.vue'),
     ),
@@ -719,6 +717,9 @@ async function initComponentAdapter() {
     OrderUsersButton: defineAsyncComponent(
       () => import('./biz-form/order-users-button.vue'),
     ),
+    UserCompanySelect: defineAsyncComponent(
+      () => import('./biz-select/user-company-select.vue'),
+    ),
     VesselVoyageInput: defineAsyncComponent(
       () => import('./vessel-voyage-input.vue'),
     ),
@@ -783,4 +784,5 @@ export {
   RoleSelect,
   UserSelect,
   UserOrgSelect,
+  UserCompanySelect,
 } from './biz-select';

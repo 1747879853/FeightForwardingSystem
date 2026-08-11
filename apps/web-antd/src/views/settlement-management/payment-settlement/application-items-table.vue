@@ -73,19 +73,6 @@ const columns = computed(() => [
     width: 120,
   },
   {
-    title: '支付要求',
-    key: 'require',
-    width: 120,
-    customRender: ({ record }: any) => {
-      // 从 orderFees 中获取第一个费用的 transportOrder 的 require
-      if (record.orderFees && record.orderFees.length > 0) {
-        const firstFee = record.orderFees[0];
-        return firstFee.transportOrder?.require || '-';
-      }
-      return '-';
-    },
-  },
-  {
     title: '申请币别',
     key: 'currencyCode',
     width: 100,
@@ -98,34 +85,6 @@ const columns = computed(() => [
     title: '申请人',
     key: 'creatorUserName',
     width: 100,
-  },
-  {
-    title: '应付金额',
-    key: 'payAmount',
-    width: 120,
-    align: 'right' as const,
-    customRender: ({ record }: any) => {
-      if (!record.orderFees || record.orderFees.length === 0) return '0.00';
-      // 应付金额 = 所有 paySide === 1 的费用的 amount 之和
-      const total = record.orderFees
-        .filter((fee: any) => fee.paySide === 1)
-        .reduce((sum: number, fee: any) => sum + (fee.amount || 0), 0);
-      return formatAmount(total);
-    },
-  },
-  {
-    title: '应收金额',
-    key: 'receiveAmount',
-    width: 120,
-    align: 'right' as const,
-    customRender: ({ record }: any) => {
-      if (!record.orderFees || record.orderFees.length === 0) return '0.00';
-      // 应收金额 = 所有 paySide === 0 的费用的 amount 之和
-      const total = record.orderFees
-        .filter((fee: any) => fee.paySide === 0)
-        .reduce((sum: number, fee: any) => sum + (fee.amount || 0), 0);
-      return formatAmount(total);
-    },
   },
   // {
   //   title: '未结算费用',
@@ -142,9 +101,21 @@ const columns = computed(() => [
   //     return formatAmount(total);
   //   },
   // },
+  // {
+  //   title: '申请金额（原币）',
+  //   key: 'settledAmount',
+  //   width: 130,
+  //   align: 'right' as const,
+  // },
+  {
+    title: '申请金额',
+    key: 'settledPrice',
+    width: 130,
+    align: 'right' as const,
+  },
   {
     title: '本次结算金额',
-    key: 'settledPrice',
+    key: 'thisSettledPrice',
     width: 130,
     align: 'right' as const,
   },
@@ -156,21 +127,6 @@ const columns = computed(() => [
       if (record.orgs && record.orgs.length > 0) {
         // 返回最后一个组织的名称（最下级组织）
         return record.orgs[record.orgs.length - 1].name || '-';
-      }
-      return '-';
-    },
-  },
-  {
-    title: '提交时间',
-    key: 'submitTime',
-    width: 120,
-    customRender: ({ record }: any) => {
-      // 从 orderFees 中获取第一个费用的创建时间
-      if (record.orderFees && record.orderFees.length > 0) {
-        const firstFee = record.orderFees[0];
-        if (firstFee.creationTime) {
-          return dayjs(firstFee.creationTime).format('YYYY-MM-DD HH:mm');
-        }
       }
       return '-';
     },
@@ -229,12 +185,12 @@ const orderFeeColumns = [
     key: 'feeCodeName',
     width: 150,
   },
-  {
-    title: '原始币别',
-    dataIndex: ['currency', 'code'],
-    key: 'currencyCode',
-    width: 100,
-  },
+  // {
+  //   title: '原始币别',
+  //   dataIndex: ['currency', 'code'],
+  //   key: 'currencyCode',
+  //   width: 100,
+  // },
   // {
   //   title: '汇率',
   //   dataIndex: 'exchangeRate',
@@ -244,18 +200,18 @@ const orderFeeColumns = [
   // },
   {
     title: '申请金额',
-    dataIndex: 'settledAmount',
-    key: 'settledAmount',
-    width: 120,
-    align: 'right' as const,
-  },
-  {
-    title: '付款金额(折币)',
     dataIndex: 'settledPrice',
     key: 'settledPrice',
     width: 120,
     align: 'right' as const,
   },
+  // {
+  //   title: '付款金额(折币)',
+  //   dataIndex: 'settledPrice',
+  //   key: 'settledPrice',
+  //   width: 120,
+  //   align: 'right' as const,
+  // },
   {
     title: '本次结算金额',
     dataIndex: 'thisSettledPrice',
@@ -365,11 +321,17 @@ function getOrderFees(
       <template v-else-if="column.key === 'creatorUserName'">
         {{ getCreatorUserName(record) }}
       </template>
-
       <!-- 本次结算金额 -->
       <template v-else-if="column.key === 'settledPrice'">
-        <span style="font-weight: bold; color: #fa8c16">
+        <span style="font-weight: bold; color: #1890ff">
           {{ formatAmount(record.settledPrice || 0) }}
+        </span>
+      </template>
+
+      <!-- 本次结算金额 -->
+      <template v-else-if="column.key === 'thisSettledPrice'">
+        <span style="font-weight: bold; color: #fa8c16">
+          {{ formatAmount(record.thisSettledPrice || 0) }}
         </span>
       </template>
 
