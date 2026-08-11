@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-11 汇率管理列表币别改读 currency SimpleDto](./changelogs/change-log-2026-08-11-exchange-rate-currency-simple-dto.md)
 - [2026-08-11 业务联系单审核默认筛选我的审核状态为审核中](./changelogs/change-log-2026-08-11-pre-order-review-default-my-status-auditing.md)
 - [2026-08-11 业务联系单新建装运方式默认整柜](./changelogs/change-log-2026-08-11-pre-order-default-bl-type-fcl.md)
 - [2026-08-11 银行流水编辑页基础信息与核销进度左右分栏](./changelogs/change-log-2026-08-11-bank-statement-edit-split-layout.md)

@@ -40,19 +40,34 @@ export async function initCurrencyCache() {
 
 /**
  * 根据 currencyId 获取币种名称（同步访问）
- * @param currencyId 币种ID
+ * @param currencyId 币种ID（大数可能为 string）
  * @returns 币种名称，如果未找到则返回 ID 本身
  */
-export function formatCurrencyName(currencyId: number | undefined): string {
-  if (!currencyId) return '-';
+export function formatCurrencyName(
+  currencyId: number | string | undefined,
+): string {
+  if (currencyId === undefined || currencyId === null || currencyId === '') {
+    return '-';
+  }
 
-  // 优先从缓存获取
-  if (currencyCache && currencyCache.has(currencyId)) {
-    return currencyCache.get(currencyId)!;
+  // 优先从缓存获取（key 与拉币种时 id 一致，比较时统一 String）
+  if (currencyCache) {
+    for (const [id, name] of currencyCache) {
+      if (String(id) === String(currencyId)) return name;
+    }
   }
 
   // 缓存未加载时返回 ID
   return String(currencyId);
+}
+
+/** 列表/详情展示币别：优先 SimpleDto，再兜底缓存 */
+export function formatExchangeRateCurrency(
+  row: ExchangeRateAdminApi.ExchangeRateDto,
+): string {
+  const fromDto = row.currency?.code || row.currency?.cnName;
+  if (fromDto) return fromDto;
+  return formatCurrencyName(row.currencyId);
 }
 
 /**
@@ -237,9 +252,10 @@ export function useColumns(
 ): VxeTableGridOptions<ExchangeRateAdminApi.ExchangeRateDto>['columns'] {
   return [
     {
-      field: 'currencyCode',
+      field: 'currencyId',
       title: $t('system.basicData.exchangeRate.currencyId'),
       minWidth: 100,
+      formatter: ({ row }) => formatExchangeRateCurrency(row),
     },
     {
       field: 'drValue',

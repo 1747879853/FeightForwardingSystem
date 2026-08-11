@@ -16,12 +16,7 @@ import {
 import { $t } from '#/locales';
 import { createPagedListQuery } from '#/utils/paged-list-query';
 
-import {
-  initCurrencyCache,
-  useColumns,
-  useGridFormSchema,
-  formatCurrencyName,
-} from './data';
+import { initCurrencyCache, useColumns, useGridFormSchema } from './data';
 import Form from './modules/form.vue';
 
 // 初始化币种缓存
