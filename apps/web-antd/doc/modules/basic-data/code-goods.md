@@ -2,12 +2,12 @@
 title: 货物代码
 module: 基础资料
 author: auto-doc-sync
-last_updated: 2026-05-16
+last_updated: 2026-08-11
 ---
 
 # 1. 业务背景说明 (Background)
 
-**白话解释：** 维护货物类型代码，支撑委托货物信息录入。
+**白话解释：** 维护商品/货物代码，支撑委托与业务单据的品名选择与海关信息录入。
 
 **路由与源码定位：**
 
@@ -37,6 +37,7 @@ last_updated: 2026-05-16
 | :-- | :-- | :-- | :-- | :-- |
 | **编码** | 基础资料唯一或半唯一识别字段。 | `src/views/system/basic-data/CodeGoodsAdmin/data.ts` | **触发/依赖：** 被业务单据或下拉组件引用。 | 唯一性和格式以后端为准。 |
 | **名称** | 给业务用户识别的显示值。 | `src/views/system/basic-data/CodeGoodsAdmin/data.ts` | **触发/依赖：** 列表、表单、下拉组件共同展示。 | 通常不能为空。 |
+| **申报计量单位** | 海关申报用计量单位（`ruleUnit`）。 | `CodeGoodsAdmin` 增删改查 DTO | **触发/依赖：** 仅表单维护，列表不展示。 | 非必填，最长 50。 |
 | **启用状态** | 控制资料是否可被业务选择。 | `src/api/system/base-data/*.ts` | **触发/依赖：** 禁用后不应继续作为新业务选择项。 | 历史单据展示需兼容旧值。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -47,4 +48,5 @@ last_updated: 2026-05-16
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-11 | `Fix` | 删除表单与 DTO 中的法定第一/第二计量单位（`ruleUnit1`/`ruleUnit2`），仅保留申报计量单位 `ruleUnit` | 无 |
 | 2026-05-16 | `Parsing` | 无 | 按 `src/router/routes/modules` 动态路由与页面源码重建文档；页面 `/basic-data/code-goods` 对应组件 `src/views/system/basic-data/CodeGoodsAdmin/list.vue`，权限口径为 Admin.CodeGoods / Admin.CodeGoods.Get。 |

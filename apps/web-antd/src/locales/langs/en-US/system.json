@@ -183,8 +183,6 @@
       "description": "Description",
       "hsCode": "HS Code",
       "ruleUnit": "Declare Unit",
-      "ruleUnit1": "Legal Unit 1",
-      "ruleUnit2": "Legal Unit 2",
       "enable": "Status",
       "sortId": "Sort Order",
       "remark": "Remark",

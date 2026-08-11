@@ -10,8 +10,6 @@ export namespace CodeGoodsAdminApi {
     description?: string;
     hsCode?: string;
     ruleUnit?: string;
-    ruleUnit1?: string;
-    ruleUnit2?: string;
     enable?: boolean;
     sortId?: number;
     remark?: string;
@@ -27,8 +25,6 @@ export namespace CodeGoodsAdminApi {
     description?: string;
     hsCode?: string;
     ruleUnit?: string;
-    ruleUnit1?: string;
-    ruleUnit2?: string;
     enable?: boolean;
     sortId?: number;
     remark?: string;
@@ -44,8 +40,6 @@ export namespace CodeGoodsAdminApi {
     description?: string;
     hsCode?: string;
     ruleUnit?: string;
-    ruleUnit1?: string;
-    ruleUnit2?: string;
     enable?: boolean;
     sortId?: number;
     remark?: string;

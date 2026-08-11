@@ -132,22 +132,6 @@ export function useFormSchema(): VbenFormSchema[] {
       },
     },
     {
-      component: 'Input',
-      fieldName: 'ruleUnit1',
-      label: $t('system.basicData.codeGoods.ruleUnit1'),
-      componentProps: {
-        maxLength: 50,
-      },
-    },
-    {
-      component: 'Input',
-      fieldName: 'ruleUnit2',
-      label: $t('system.basicData.codeGoods.ruleUnit2'),
-      componentProps: {
-        maxLength: 50,
-      },
-    },
-    {
       component: 'Switch',
       fieldName: 'enable',
       label: $t('system.basicData.codeGoods.enable'),

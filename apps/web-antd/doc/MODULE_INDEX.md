@@ -41,7 +41,7 @@
 | basic-data | `/basic-data/carrier` | 基础资料 | 船公司/承运人基础资料，为委托和运价提供承运主体。 | [船公司资料](./modules/basic-data/carrier.md) | 2026-05-30 |
 | basic-data | `/basic-data/code-invoice` | 基础资料 | 维护发票相关代码，支撑客户发票资料和结算开票口径。 | [发票代码](./modules/basic-data/code-invoice.md) | 2026-05-16 |
 | basic-data | `/basic-data/code-service` | 基础资料 | 维护服务项目代码，支撑委托服务项与费用识别。 | [服务代码](./modules/basic-data/code-service.md) | 2026-05-16 |
-| basic-data | `/basic-data/code-goods` | 基础资料 | 维护货物类型代码，支撑委托货物信息录入。 | [货物代码](./modules/basic-data/code-goods.md) | 2026-05-16 |
+| basic-data | `/basic-data/code-goods` | 基础资料 | 维护货物类型代码，支撑委托货物信息录入。 | [货物代码](./modules/basic-data/code-goods.md) | 2026-08-11 |
 | basic-data | `/basic-data/code-package` | 基础资料 | 维护包装类型代码，支撑件数、包装等货物字段。 | [包装代码](./modules/basic-data/code-package.md) | 2026-05-16 |
 | basic-data | `/basic-data/code-issue-type` | 基础资料 | 维护问题或异常类型，支撑业务问题记录分类。 | [问题类型代码](./modules/basic-data/code-issue-type.md) | 2026-05-16 |
 | basic-data | `/basic-data/attachment-dtl-type` | 基础资料 | 维护附件详细类型及默认展示模块，支撑业务附件分类与客户可见性配置。 | [附件类型](./modules/basic-data/attachment-dtl-type.md) | 2026-08-04 |

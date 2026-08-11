@@ -183,8 +183,6 @@
       "description": "商品描述",
       "hsCode": "海关代码",
       "ruleUnit": "申报计量单位",
-      "ruleUnit1": "法定第一计量单位",
-      "ruleUnit2": "法定第二计量单位",
       "enable": "启用状态",
       "sortId": "排序",
       "remark": "备注",
