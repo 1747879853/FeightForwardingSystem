@@ -9,7 +9,7 @@ import {
   Modal,
   Space,
   Spin,
-  Table,
+  Checkbox,
 } from 'ant-design-vue';
 
 import { IconifyIcon } from '@vben/icons';
@@ -17,6 +17,7 @@ import {
   getInvoiceIssueDetail,
   removeApplicationsFromInvoiceIssue,
 } from '#/api/Invoice/InvoiceIssue';
+import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 
 interface Props {
   visible: boolean;
@@ -49,6 +50,9 @@ const searchKeyword = ref<string>(''); // 搜索关键词（申请单号/委托�
 // 选中的行 keys
 const selectedRowKeys = ref<string[]>([]);
 
+// ✅ NestedDataTable 展开行控制
+const expandedRowKeys = ref<(string | number)[]>([]);
+
 // 发票详情数据
 const invoiceDetailData = ref<any>(null);
 
@@ -74,6 +78,42 @@ function flattenTreeData(data: any[]): any[] {
   flatten(data);
   return result;
 }
+
+/** ✅ 新增：切换单行选择状态 */
+function toggleRowSelection(rowKey: string, checked: boolean) {
+  if (checked) {
+    if (!selectedRowKeys.value.includes(rowKey)) {
+      selectedRowKeys.value = [...selectedRowKeys.value, rowKey];
+    }
+  } else {
+    selectedRowKeys.value = selectedRowKeys.value.filter(
+      (key) => key !== rowKey,
+    );
+  }
+}
+
+/** ✅ 新增：切换全选状态 */
+function toggleAllSelection(checked: boolean) {
+  if (checked) {
+    selectedRowKeys.value = filteredData.value.map((record) => record.rowKey);
+  } else {
+    selectedRowKeys.value = [];
+  }
+}
+
+/** ✅ 新增：是否全选 */
+const isAllSelected = computed(() => {
+  if (filteredData.value.length === 0) return false;
+  return filteredData.value.every((record) =>
+    selectedRowKeys.value.includes(record.rowKey),
+  );
+});
+
+/** ✅ 新增：是否半选 */
+const isIndeterminate = computed(() => {
+  const selectedCount = selectedRowKeys.value.length;
+  return selectedCount > 0 && selectedCount < filteredData.value.length;
+});
 
 /** 加载发票详情数据 */
 async function loadInvoiceDetail() {
@@ -189,6 +229,7 @@ function transformToTreeData(applications: any[]): any[] {
 
     const parentNode: any = {
       id: app.id,
+      rowKey: String(app.id), // NestedDataTable 需要的 rowKey
       parentId: null,
       // 一级字段
       companyName: app.companyName || '-',
@@ -552,6 +593,12 @@ function handleResetSearch() {
 // 表格列定义（一级 - 开票申请）
 const parentColumns = [
   {
+    title: '',
+    key: 'seq',
+    width: 50,
+    align: 'center' as const,
+  },
+  {
     title: '所属公司',
     dataIndex: 'companyName',
     key: 'companyName',
@@ -793,6 +840,29 @@ defineExpose({
 });
 </script>
 
+<style scoped>
+.table-sequence-cell {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.expand-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  min-width: 14px;
+  line-height: 1;
+  transform-origin: center;
+  transition: transform 0.15s ease;
+}
+
+.expand-toggle--expanded {
+  transform: rotate(90deg);
+}
+</style>
+
 <template>
   <Modal
     v-model:open="modalVisible"
@@ -864,26 +934,43 @@ defineExpose({
       </div>
 
       <!-- 树状表格 -->
-      <Table
+      <NestedDataTable
         v-else
         :columns="parentColumns"
         :data-source="filteredData"
-        :pagination="false"
-        bordered
-        size="small"
-        row-key="id"
-        :row-selection="{
-          selectedRowKeys: selectedRowKeys,
-          onChange: (keys) => {
-            selectedRowKeys = keys.map(String);
-          },
-          type: 'checkbox',
-          preserveSelectedRowKeys: true,
-        }"
-        :scroll="{ x: 1075, y: 400 }"
+        fill-height
+        :inner-columns="childColumns"
+        inner-data-key="invoiceApplicationItems"
+        inner-row-key="id"
+        row-key="rowKey"
+        :loading="loading"
+        v-model:expanded-row-keys="expandedRowKeys"
       >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'invoiceType'">
+        <template #outerHeaderCell="{ column }">
+          <span v-if="column.key === 'seq'" class="table-sequence-cell">
+            <Checkbox
+              :checked="isAllSelected"
+              :indeterminate="isIndeterminate"
+              @change="(e) => toggleAllSelection(e.target.checked)"
+            />
+            {{ column.title }}
+          </span>
+          <template v-else>{{ column.title }}</template>
+        </template>
+
+        <template #outerBodyCell="{ column, record, index }">
+          <template v-if="column.key === 'seq'">
+            <span class="table-sequence-cell">
+              <Checkbox
+                :checked="selectedRowKeys.includes(record.rowKey)"
+                @change="
+                  (e) => toggleRowSelection(record.rowKey, e.target.checked)
+                "
+              />
+              {{ index + 1 }}
+            </span>
+          </template>
+          <template v-else-if="column.key === 'invoiceType'">
             {{ getInvoiceTypeText(record.invoiceType) }}
           </template>
           <template v-else-if="column.key === 'applyTime'">
@@ -898,43 +985,45 @@ defineExpose({
           <template v-else-if="column.key === 'invoiceExchangeRate'">
             {{ record.invoiceExchangeRate || 1.0 }}
           </template>
+          <template v-else>
+            {{ column.dataIndex ? record[column.dataIndex] : '' }}
+          </template>
         </template>
 
-        <!-- 展开行模板（二级费用明细） -->
-        <template #expandedRowRender="{ record }">
-          <Table
-            v-if="
-              record.invoiceApplicationItems &&
-              record.invoiceApplicationItems.length > 0
+        <template #expandColumnTitle></template>
+        <template #expandIcon="{ expanded, record, onExpand }">
+          <span
+            class="expand-toggle cursor-pointer"
+            :class="{ 'expand-toggle--expanded': expanded }"
+            @click="
+              (e) => {
+                e.stopPropagation();
+                onExpand(record, e);
+              }
             "
-            :columns="childColumns"
-            :data-source="record.invoiceApplicationItems"
-            :pagination="false"
-            bordered
-            size="small"
-            row-key="id"
-            :show-header="true"
           >
-            <template #bodyCell="{ column, record: childRecord }">
-              <template v-if="column.key === 'payReceiveType'">
-                {{ childRecord.payReceiveType || '-' }}
-              </template>
-              <template v-else-if="column.key === 'amount'">
-                {{ (childRecord.amount || 0).toFixed(2) }}
-              </template>
-              <template v-else-if="column.key === 'appliedAmountOriginal'">
-                {{ (childRecord.appliedAmountOriginal || 0).toFixed(2) }}
-              </template>
-              <template v-else-if="column.key === 'settlementAmount'">
-                {{ (childRecord.settlementAmount || 0).toFixed(2) }}
-              </template>
-            </template>
-          </Table>
-          <div v-else style="padding: 20px; color: #999; text-align: center">
-            暂无费用明细
-          </div>
+            &#9654;
+          </span>
         </template>
-      </Table>
+
+        <template #innerBodyCell="{ column, record: childRecord }">
+          <template v-if="column.key === 'payReceiveType'">
+            {{ childRecord.payReceiveType || '-' }}
+          </template>
+          <template v-else-if="column.key === 'amount'">
+            {{ (childRecord.amount || 0).toFixed(2) }}
+          </template>
+          <template v-else-if="column.key === 'appliedAmountOriginal'">
+            {{ (childRecord.appliedAmountOriginal || 0).toFixed(2) }}
+          </template>
+          <template v-else-if="column.key === 'settlementAmount'">
+            {{ (childRecord.settlementAmount || 0).toFixed(2) }}
+          </template>
+          <template v-else>
+            {{ column.dataIndex ? childRecord[column.dataIndex] : '' }}
+          </template>
+        </template>
+      </NestedDataTable>
 
       <!-- 底部统计信息 -->
       <div

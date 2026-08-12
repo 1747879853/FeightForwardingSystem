@@ -109,6 +109,9 @@ const applicationItems = ref<
   PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyDto[]
 >([]);
 
+// ✅ 选中的行 keys（用于批量删除）
+const selectedRowKeys = ref<string[]>([]);
+
 // 计算是否已有费用
 const hasExistingFees = computed(() => applicationItems.value.length > 0);
 
@@ -405,6 +408,93 @@ async function handleDeleteApplicationItem(index: number) {
     await loadEditData();
   } catch (error: any) {
     message.error(error.message || '删除失败');
+  } finally {
+    submitting.value = false;
+  }
+}
+
+/** 批量删除申请明细 */
+async function handleBatchDeleteApplications() {
+  if (selectedRowKeys.value.length === 0) {
+    message.warning('请至少选择一个申请');
+    return;
+  }
+
+  // 根据 rowKey 找到对应的申请项
+  const itemsToDelete = applicationItems.value.filter((item) =>
+    selectedRowKeys.value.includes(item.rowKey || ''),
+  );
+
+  if (itemsToDelete.length === 0) {
+    message.error('未找到要删除的申请');
+    return;
+  }
+
+  // 确认删除
+  try {
+    await new Promise<void>((resolve, reject) => {
+      Modal.confirm({
+        title: '确认删除',
+        content: `确定要删除选中的 ${itemsToDelete.length} 个申请吗？`,
+        okText: '确定',
+        cancelText: '取消',
+        onOk: () => {
+          resolve();
+        },
+        onCancel: () => {
+          reject(new Error('取消删除'));
+        },
+      });
+    });
+  } catch (error: any) {
+    if (error.message !== '取消删除') {
+      return;
+    }
+  }
+
+  if (!isEdit.value || !editId.value) {
+    // 新建模式：直接从列表中移除
+    const keysToRemove = new Set(selectedRowKeys.value);
+    applicationItems.value = applicationItems.value.filter(
+      (item) => !keysToRemove.has(item.rowKey || ''),
+    );
+    selectedRowKeys.value = [];
+    message.success(`已删除 ${itemsToDelete.length} 个申请`);
+    return;
+  }
+
+  // 编辑模式：调用后端接口批量删除
+  try {
+    submitting.value = true;
+
+    // 1. 构建要删除的 keys 列表
+    const paymentApplicationCurrencyKeys: PaymentSettlementAdminApi.PaymentSettlementPayAppCurrencyKeyDto[] =
+      itemsToDelete.map((item) => ({
+        paymentApplicationId: item.paymentApplicationId,
+        originalCurrencyId: item.originalCurrencyId,
+      }));
+
+    console.log('📤 调用批量删除明细接口:', {
+      id: editId.value,
+      keys: paymentApplicationCurrencyKeys,
+      count: paymentApplicationCurrencyKeys.length,
+    });
+
+    // 2. 调用新的按原币删除接口
+    await deleteItemsFromSettlementByCurrency({
+      id: editId.value,
+      paymentApplicationCurrencyKeys,
+    });
+
+    message.success(`已成功删除 ${itemsToDelete.length} 个申请`);
+
+    // 3. 清空选中状态
+    selectedRowKeys.value = [];
+
+    // 4. 重新加载详情数据以刷新列表
+    await loadEditData();
+  } catch (error: any) {
+    message.error(error.message || '批量删除失败');
   } finally {
     submitting.value = false;
   }
@@ -1191,6 +1281,15 @@ onMounted(() => {
             <Button type="primary" size="small" @click="handleAddApplication">
               + 添加申请
             </Button>
+            <Button
+              :disabled="isEdit && selectedRowKeys.length === 0"
+              danger
+              size="small"
+              :loading="submitting"
+              @click="handleBatchDeleteApplications"
+            >
+              删除选中 ({{ selectedRowKeys.length }})
+            </Button>
           </Space>
         </template>
 
@@ -1198,7 +1297,7 @@ onMounted(() => {
         <ApplicationItemsTable
           :items="applicationItems"
           :editable="isEdit"
-          @delete="handleDeleteApplicationItem"
+          v-model:selected-row-keys="selectedRowKeys"
         />
       </Card>
 
