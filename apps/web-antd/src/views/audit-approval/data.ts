@@ -226,7 +226,7 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       minWidth: 100,
     },
     {
-      field: 'transportOrder.clientName',
+      field: 'transportOrder.client.name',
       title: $t('seaExport.client.industryCategoryOptions.entrustingUnit'),
       minWidth: 100,
     },
@@ -264,27 +264,43 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       minWidth: 90,
     },
     {
-      field: 'transportOrder.seaExportPOLPortName',
+      field: 'transportOrder.POLPortName',
       title: $t('seaExport.export.polId'),
       minWidth: 100,
       formatter: ({ cellValue, row }: any) => {
-        // 优先使用 seaExportPOLPortName，如果为空则使用 seaExportPOLCnName
-        return cellValue || row.transportOrder?.seaExportPOLCnName || '--';
+        // ✅ 关键变更：根据 bizType 动态读取对应的业务类型简要对象中的港口信息
+        const to = row.transportOrder;
+        if (to?.bizType === 0) return to.seaExport?.pol?.portName || '--';
+        if (to?.bizType === 1) return to.seaImport?.pol?.portName || '--';
+        if (to?.bizType === 2) return to.airExport?.pol?.cnName || '--';
+        return '--';
       },
     },
     {
-      field: 'transportOrder.seaExportPODPortName',
+      field: 'transportOrder.PODPortName',
       title: $t('seaExport.export.podId'),
       minWidth: 100,
       formatter: ({ cellValue, row }: any) => {
-        // 优先使用 seaExportPODPortName，如果为空则使用 seaExportPODCnName
-        return cellValue || row.transportOrder?.seaExportPODCnName || '--';
+        // ✅ 关键变更：根据 bizType 动态读取对应的业务类型简要对象中的港口信息
+        const to = row.transportOrder;
+        if (to?.bizType === 0) return to.seaExport?.pod?.portName || '--';
+        if (to?.bizType === 1) return to.seaImport?.pod?.portName || '--';
+        if (to?.bizType === 2) return to.airExport?.pod?.cnName || '--';
+        return '--';
       },
     },
     {
       field: 'transportOrder.seaExportVessel',
       title: $t('seaExport.export.vessel'),
       minWidth: 100,
+      formatter: ({ cellValue, row }: any) => {
+        // ✅ 关键变更：根据 bizType 动态读取船名/航班号
+        const to = row.transportOrder;
+        if (to?.bizType === 0) return to.seaExport?.carrier?.code || '--';
+        if (to?.bizType === 1) return to.seaImport?.carrier?.code || '--';
+        if (to?.bizType === 2) return to.airExport?.flightNo || '--';
+        return '--';
+      },
     },
     {
       field: 'transportOrder.pkgs',
@@ -300,13 +316,16 @@ export function useExpenseAllColumns(): VxeTableGridOptions<ExpenseSubmissionAdm
       field: 'transportOrder.codePackageName',
       title: $t('seaExport.export.orderCodeGoodss'),
       minWidth: 100,
+      formatter: ({ cellValue, row }: any) => {
+        return row.transportOrder?.codePackage?.name || '--';
+      },
     },
-    {
-      field: 'remark',
-      title: $t('seaExport.export.remark'),
-      minWidth: 160,
-      showOverflow: true,
-    },
+    // {
+    //   field: 'remark',
+    //   title: $t('seaExport.export.remark'),
+    //   minWidth: 160,
+    //   showOverflow: true,
+    // },
     {
       field: 'creatorUserName',
       title: $t('auditApproval.creatorUserName'),
