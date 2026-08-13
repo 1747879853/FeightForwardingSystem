@@ -49,6 +49,8 @@ import { useUserStore, useAccessStore } from '@vben/stores';
 import { useBaseStore } from '#/store/base';
 import { editPropPermission } from '#/api/system/permission';
 
+import FreightRateAiUploadModal from './modules/freight-rate-ai-upload-modal.vue';
+
 import {
   FREIGHT_RATE_LIST_TABLE_ID,
   useColumns,
@@ -105,6 +107,10 @@ const hasEditPermission = computed(() =>
 const hasDeletePermission = computed(() =>
   userFunctionPermissions.value.includes('Admin.SeFreiPrice.Delete'),
 );
+
+// AI批量新增上传弹窗相关状态
+const aiExtractModalOpen = ref(false);
+const aiRecognizing = ref(false);
 
 // 获取费用名称
 function getFeeName(fee: any): string {
@@ -955,140 +961,148 @@ onUnmounted(() => {
 });
 
 /**
- * AI识别批量新增运价
+ * AI识别批量新增运价 - 打开上传弹窗
  */
-async function onAIBatchAdd() {
+function onAIBatchAdd() {
   if (!hasAddPermission.value) {
     message.warning('您没有AI批量新增运价的权限');
     return;
   }
 
-  // 创建隐藏的文件输入元素
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.accept =
-    '.pdf,.jpg,.jpeg,.png,.doc,.docx,.xlsx,.xls,.txt,.webp,.heic,.heif,.gif,.bmp'; // 支持的文件类型（根据文档更新）
-  fileInput.onchange = async (event: any) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  // 打开AI上传弹窗
+  aiExtractModalOpen.value = true;
+}
 
-    try {
-      const hideLoading = message.loading({
-        content: '正在识别文件内容...',
-        duration: 0,
-        key: 'ai_recognition_msg',
-      });
+/**
+ * 处理AI上传的文件并进行识别
+ */
+async function handleAiExtractFile(file: File) {
+  if (aiRecognizing.value) return;
 
-      // 调用 Gemini AI识别接口
-      const recognitionResult = await extractSeFreiPriceByGemini(file);
-      console.log('识别结果:', recognitionResult);
-      hideLoading();
+  aiRecognizing.value = true;
 
-      if (!recognitionResult || recognitionResult.length === 0) {
-        message.warning('未能从文件中识别出有效的运价数据');
-        return;
-      }
+  try {
+    const hideLoading = message.loading({
+      content: '正在识别文件内容...',
+      duration: 0,
+      key: 'ai_recognition_msg',
+    });
 
-      // 转换识别结果为批量新增弹窗所需的数据格式
-      const convertedData = recognitionResult.map((item, index) => {
-        // 将ID安全地转换为字符串，避免大数精度丢失
-        const safeIdToString = (
-          id: string | number | undefined,
-        ): string | undefined => {
-          if (id === undefined || id === null) return undefined;
+    // 调用 Gemini AI识别接口
+    const recognitionResult = await extractSeFreiPriceByGemini(file);
+    console.log('识别结果:', recognitionResult);
+    hideLoading();
 
-          // 如果已经是字符串类型，直接返回
-          if (typeof id === 'string') {
-            // 验证是否为有效的数字字符串
-            if (/^\d+$/.test(id)) {
-              return id;
-            }
-            console.warn(`[AI识别] ID字符串格式无效: ${id}`);
-            return undefined;
-          }
-
-          // 如果是数字类型，转换为字符串
-          if (typeof id === 'number') {
-            // 检查是否为有效数字
-            if (!isNaN(id) && isFinite(id)) {
-              return id.toString();
-            }
-            console.warn(`[AI识别] ID数值无效: ${id}`);
-            return undefined;
-          }
-
-          return undefined;
-        };
-
-        return {
-          _rowKey: `ai_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`, // 生成唯一行键
-          _isCopied: false,
-          recommend: false, // 默认不推荐
-          carrierId: undefined, // 暂时设为undefined，让用户手动选择
-          polId: undefined, // 起运港需要手动匹配
-          podId: safeIdToString(item.podId), // 目的港ID（字符串）
-          isDirect: item.isDirect ?? true, // 默认为直达
-          poT1Id: safeIdToString(item.pot1Id), // 中转港1（字符串）
-          poT2Id: safeIdToString(item.pot2Id), // 中转港2（字符串）
-          polFreeDays: undefined,
-          podFreeDays: undefined,
-          poddem: undefined,
-          poddet: undefined,
-          voyage: '',
-          contractNo: '',
-          etd: '',
-          closeDocTime: '',
-          closingTime: '',
-          etdDayOfWeek: undefined,
-          etdDayTime: '',
-          closeDocDayOfWeek: undefined,
-          closeDocDayTime: '',
-          closingDayOfWeek: undefined,
-          closingDayTime: '',
-          validTimeStart: item.validTimeStart || '',
-          validTimeEnd: item.validTimeEnd || '',
-          remark: item.remark || '',
-          currencyId: safeIdToString(item.currencyId), // 币别ID（字符串）
-          bookingAgentId: undefined,
-          seFreiPriceCtns: item.seFreiPriceCtns
-            ? item.seFreiPriceCtns
-                .map((ctn) => {
-                  // 将箱型ID转换为字符串，避免大数精度丢失
-                  const ctnCodeId = safeIdToString(ctn.ctnCodeId);
-                  // AI返回的是 price，但批量新增需要的是 cost
-                  const cost =
-                    ctn.price !== undefined && ctn.price !== null
-                      ? Number(ctn.price)
-                      : 0;
-
-                  return {
-                    ctnCodeId, // 箱型ID（字符串）
-                    cost, // 成本（从price转换）
-                  };
-                })
-                .filter((ctn) => ctn.ctnCodeId) // 只保留有效箱型ID的数据
-            : [],
-        };
-      });
-
-      // 调试日志：验证转换后的数据
-      console.log('[AI识别] 转换后的数据:', convertedData);
-      if (convertedData.length > 0 && convertedData[0]) {
-        console.log(
-          '[AI识别] 第一条数据的箱型信息:',
-          convertedData[0].seFreiPriceCtns,
-        );
-      }
-
-      batchAddModalApi.setData({ aiData: convertedData }).open();
-    } catch (error) {
-      console.error('AI识别失败:', error);
-      message.error('文件识别失败，请稍后重试');
+    if (!recognitionResult || recognitionResult.length === 0) {
+      message.warning('未能从文件中识别出有效的运价数据');
+      aiRecognizing.value = false;
+      return;
     }
-  };
 
-  // 触发文件选择
-  fileInput.click();
+    // 转换识别结果为批量新增弹窗所需的数据格式
+    const convertedData = recognitionResult.map((item, index) => {
+      // 将ID安全地转换为字符串，避免大数精度丢失
+      const safeIdToString = (
+        id: string | number | undefined,
+      ): string | undefined => {
+        if (id === undefined || id === null) return undefined;
+
+        // 如果已经是字符串类型，直接返回
+        if (typeof id === 'string') {
+          // 验证是否为有效的数字字符串
+          if (/^\d+$/.test(id)) {
+            return id;
+          }
+          console.warn(`[AI识别] ID字符串格式无效: ${id}`);
+          return undefined;
+        }
+
+        // 如果是数字类型，转换为字符串
+        if (typeof id === 'number') {
+          // 检查是否为有效数字
+          if (!isNaN(id) && isFinite(id)) {
+            return id.toString();
+          }
+          console.warn(`[AI识别] ID数值无效: ${id}`);
+          return undefined;
+        }
+
+        return undefined;
+      };
+
+      return {
+        _rowKey: `ai_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`, // 生成唯一行键
+        _isCopied: false,
+        recommend: false, // 默认不推荐
+        carrierId: undefined, // 暂时设为undefined，让用户手动选择
+        polId: undefined, // 起运港需要手动匹配
+        podId: safeIdToString(item.podId), // 目的港ID（字符串）
+        isDirect: item.isDirect ?? true, // 默认为直达
+        poT1Id: safeIdToString(item.pot1Id), // 中转港1（字符串）
+        poT2Id: safeIdToString(item.pot2Id), // 中转港2（字符串）
+        polFreeDays: undefined,
+        podFreeDays: undefined,
+        poddem: undefined,
+        poddet: undefined,
+        voyage: '',
+        contractNo: '',
+        etd: '',
+        closeDocTime: '',
+        closingTime: '',
+        etdDayOfWeek: undefined,
+        etdDayTime: '',
+        closeDocDayOfWeek: undefined,
+        closeDocDayTime: '',
+        closingDayOfWeek: undefined,
+        closingDayTime: '',
+        validTimeStart: item.validTimeStart || '',
+        validTimeEnd: item.validTimeEnd || '',
+        remark: item.remark || '',
+        currencyId: safeIdToString(item.currencyId), // 币别ID（字符串）
+        bookingAgentId: undefined,
+        seFreiPriceCtns: item.seFreiPriceCtns
+          ? item.seFreiPriceCtns
+              .map((ctn) => {
+                // 将箱型ID转换为字符串，避免大数精度丢失
+                const ctnCodeId = safeIdToString(ctn.ctnCodeId);
+                // AI返回的是 price，但批量新增需要的是 cost
+                const cost =
+                  ctn.price !== undefined && ctn.price !== null
+                    ? Number(ctn.price)
+                    : 0;
+
+                return {
+                  ctnCodeId, // 箱型ID（字符串）
+                  cost, // 成本（从price转换）
+                };
+              })
+              .filter((ctn) => ctn.ctnCodeId) // 只保留有效箱型ID的数据
+          : [],
+      };
+    });
+
+    // 调试日志：验证转换后的数据
+    console.log('[AI识别] 转换后的数据:', convertedData);
+    if (convertedData.length > 0 && convertedData[0]) {
+      console.log(
+        '[AI识别] 第一条数据的箱型信息:',
+        convertedData[0].seFreiPriceCtns,
+      );
+    }
+
+    // 关闭上传弹窗并打开批量新增模态框
+    aiExtractModalOpen.value = false;
+    batchAddModalApi.setData({ aiData: convertedData }).open();
+
+    message.success(
+      `AI识别完成，共识别出 ${recognitionResult.length} 条运价数据`,
+    );
+  } catch (error) {
+    console.error('AI识别失败:', error);
+    message.error('文件识别失败，请稍后重试');
+  } finally {
+    aiRecognizing.value = false;
+  }
 }
 </script>
 
@@ -1478,6 +1492,13 @@ async function onAIBatchAdd() {
 
     <!-- 批量编辑弹窗 -->
     <BatchEditModalComponent @success="onRefresh" />
+
+    <!-- AI批量新增上传弹窗 -->
+    <FreightRateAiUploadModal
+      v-model:open="aiExtractModalOpen"
+      :recognizing="aiRecognizing"
+      @file="handleAiExtractFile"
+    />
   </Page>
 </template>
 
