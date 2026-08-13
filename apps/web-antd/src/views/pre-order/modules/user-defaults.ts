@@ -87,6 +87,8 @@ export function applyClientDefaultPreOrderUsers(
     if (row.userAttribute == null) return row;
     const targetUserId = roleAssignment.get(Number(row.userAttribute));
     if (targetUserId == null) return row;
-    return { ...row, userId: targetUserId };
+    if (Number(row.userId) === targetUserId) return row;
+    // 换人后详情带来的 user 快照失效，清掉避免头像/回显停留在上一个人
+    return { ...row, userId: targetUserId, user: undefined };
   });
 }

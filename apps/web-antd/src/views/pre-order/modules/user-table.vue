@@ -25,6 +25,7 @@ import { getUserAttributeLabel } from '#/composables/use-order-user-roles';
 import { buildAttachmentUrl } from '#/utils';
 
 import { USER_ATTRIBUTE } from '../form-data';
+import { toUserSelectedItems } from './detail-selected-items';
 
 /** 必选且不可删除：仅销售（操作改为非必填，审核通过时再强制指派） */
 const REQUIRED_ROLES: number[] = [USER_ATTRIBUTE.Sale];
@@ -52,8 +53,10 @@ const dataSource = computed({
 const roleModalOpen = ref(false);
 const roleModalSelected = ref<number | undefined>();
 
-/** 用户详情缓存，仅用于头像与首字符展示 */
-const userDetailMap = ref<Record<number, SystemUserAdminApi.UserDto>>({});
+/** 用户详情缓存，仅用于头像与首字符展示；详情已带 user 的行不再请求 */
+const userDetailMap = ref<
+  Record<number, PreOrderAdminApi.UserSimpleDto | SystemUserAdminApi.UserDto>
+>({});
 const loadingUserIds = new Set<number>();
 
 function loadUserDetail(userId?: number) {
@@ -71,23 +74,58 @@ function loadUserDetail(userId?: number) {
 }
 
 watch(
-  () => dataSource.value.map((row) => row.userId),
-  (ids) => {
-    for (const id of ids) loadUserDetail(id as number | undefined);
+  dataSource,
+  (rows) => {
+    // 业务联系单详情已返回 user（含昵称与头像），只有本地新选的人才需要补详情
+    const fromDetail: Record<number, PreOrderAdminApi.UserSimpleDto> = {};
+    for (const row of rows) {
+      const id = Number(row.userId);
+      if (!id || !row.user || userDetailMap.value[id]) continue;
+      fromDetail[id] = row.user;
+    }
+    if (Object.keys(fromDetail).length > 0) {
+      userDetailMap.value = { ...userDetailMap.value, ...fromDetail };
+    }
+    for (const row of rows) loadUserDetail(row.userId as number | undefined);
   },
-  { immediate: true },
+  { deep: true, immediate: true },
 );
 
+/** 按行缓存回显项，避免每次渲染都新建数组触发 UserSelect 重新合并 */
+const userSelectedItemsMap = computed(() => {
+  const map: Record<string, any[]> = {};
+  for (const row of dataSource.value) {
+    map[row.rowKey] = toUserSelectedItems(row);
+  }
+  return map;
+});
+
+function userDetailOf(row: PreOrderUserRow) {
+  if (!row.userId) return null;
+  return row.user ?? userDetailMap.value[Number(row.userId)] ?? null;
+}
+
 function avatarSrc(row: PreOrderUserRow) {
-  const detail = row.userId ? userDetailMap.value[Number(row.userId)] : null;
-  const avatar = detail?.avatar?.trim();
+  const avatar = userDetailOf(row)?.avatar?.trim();
   return avatar ? buildAttachmentUrl(avatar) : preferences.app.defaultAvatar;
 }
 
 function avatarText(row: PreOrderUserRow) {
-  const detail = row.userId ? userDetailMap.value[Number(row.userId)] : null;
-  const name = (detail?.nickName || detail?.userName || '').trim();
+  const detail = userDetailOf(row);
+  const name = (
+    detail?.nickName ||
+    (detail as SystemUserAdminApi.UserDto)?.userName ||
+    row.userNickName ||
+    ''
+  ).trim();
   return name ? name.slice(0, 1) : '?';
+}
+
+/** 换人后详情带来的 user 快照即失效，清掉后由 loadUserDetail 拉新头像 */
+function handleUserChange(row: PreOrderUserRow, userId: unknown) {
+  row.userId = userId == null || userId === '' ? undefined : Number(userId);
+  row.user = undefined;
+  loadUserDetail(row.userId);
 }
 
 function roleLabel(value?: number) {
@@ -173,10 +211,12 @@ function handleRemove(rowKey: string) {
           </Avatar>
         </div>
         <UserSelect
-          v-model="row.userId"
+          :model-value="row.userId"
+          :selected-items="userSelectedItemsMap[row.rowKey] ?? []"
           :disabled="props.readonly"
           size="small"
           class="order-user-panel__select"
+          @update:model-value="(value: unknown) => handleUserChange(row, value)"
         />
       </div>
       <Button

@@ -60,7 +60,7 @@ const asRow = (record: unknown) => record as PreOrderCtnRow;
  * 回显用：只要有 id 就塞给 CtnSelect。
  * 表格 cell 重挂载时靠这个把 id 记入 loadedSelectedIds，避免再打详情。
  */
-function ctnSelectedItems(row: PreOrderCtnRow) {
+function ctnSelectedItems(row: PreOrderCtnRow): any[] {
   if (row.ctnCodeId == null || row.ctnCodeId === '') return [];
   if (row.ctnCode) return [row.ctnCode];
   return [{ id: row.ctnCodeId, ctnName: row.ctnCodeName }];
@@ -96,24 +96,26 @@ function handleRemove() {
   emit('ctnChange');
 }
 
-/** 箱型选择后从 option 取名称，供费用行按单位匹配（不再打详情接口） */
+/** 箱型选择后从 option 取名称与箱型对象（含 teu），供费用行按单位/TEU 计量，不再打详情接口 */
 function handleCtnChange(
   row: PreOrderCtnRow,
   value: unknown,
-  option?: { label?: string; raw?: { ctnName?: string } },
+  option?: {
+    label?: string;
+    raw?: PreOrderAdminApi.CtnCodeSimpleDto;
+  },
 ) {
   // 雪花 ID 可能超出 Number 安全整数，json-bigint 已是 string，禁止 Number() 转丢精度
   row.ctnCodeId =
     value == null || value === ''
       ? undefined
       : (value as PreOrderCtnRow['ctnCodeId']);
+  const cleared = row.ctnCodeId == null || row.ctnCodeId === '';
   const nameFromOption =
     option?.raw?.ctnName ||
     (typeof option?.label === 'string' ? option.label : undefined);
-  row.ctnCodeName =
-    row.ctnCodeId == null || row.ctnCodeId === ''
-      ? undefined
-      : nameFromOption || undefined;
+  row.ctnCodeName = cleared ? undefined : nameFromOption || undefined;
+  row.ctnCode = cleared ? undefined : (option?.raw ?? undefined);
   emit('ctnChange');
 }
 

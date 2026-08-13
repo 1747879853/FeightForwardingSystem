@@ -44,8 +44,13 @@ export interface PreOrderFeeRow extends PreOrderAdminApi.PreOrderFeeDto {
   rowKey: string;
   /** 强制 ClientSelect 在类别/结算对象程序化变更后重挂载回显 */
   settlementUiKey?: number;
-  /** 选费用代码时缓存列表行，切换收付复用，避免再打 DetailAsync */
-  feeCodeSnapshot?: FeeCodeAdminApi.FeeCodeDto;
+  /**
+   * 费用代码快照（选择时的下拉行 / 详情返回的 feeCode），
+   * 切换收付时复用，避免再打 DetailAsync
+   */
+  feeCodeSnapshot?:
+    | FeeCodeAdminApi.FeeCodeDto
+    | FeeCodeAdminApi.FeeCodeSimpleDto;
   /** 汇率表未维护、按本位币兜底为 1 的行，汇率只读（对齐应收应付费用表） */
   __isLocalCurrency?: boolean;
 }
@@ -209,6 +214,11 @@ async function sumCtnTeu() {
     const key = String(row.ctnCodeId ?? '');
     if (key === '') continue;
     let teu = ctnTeuCache.get(key);
+    // 详情/下拉已带 teu 时直接用，只有本地新增又缺 teu 的行才回查箱型详情
+    if (teu === undefined && row.ctnCode?.teu != null) {
+      teu = Number(row.ctnCode.teu);
+      ctnTeuCache.set(key, teu);
+    }
     if (teu === undefined) {
       try {
         const detail = await getCtnCodeDetail(key);

@@ -1,5 +1,6 @@
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
 import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
+import type { FeeCodeAdminApi } from '#/api/system/base-data/fee-code-admin';
 
 import { requestClient } from '#/api/request';
 
@@ -84,8 +85,38 @@ export namespace PreOrderAdminApi {
     code?: string;
     enName?: string;
     cnName?: string;
+    ediCode?: string;
     /** 港口对象的英文港口名 */
     portName?: string;
+  }
+
+  /** 船公司（详情返回，字段够 CarrierSelect 直接回显，无需再拉详情） */
+  export interface CarrierSimpleDto {
+    id?: number | string;
+    cnName?: string;
+    cnShortName?: string;
+    enName?: string;
+    code?: string;
+    ediCode?: string;
+  }
+
+  /** 箱型（详情返回，teu 供费用按 TEU 计量，避免逐箱拉详情） */
+  export interface CtnCodeSimpleDto {
+    id?: number | string;
+    ctnName?: string;
+    ctnSize?: string;
+    ctnType?: string;
+    teu?: number;
+  }
+
+  /** 用户（详情返回，供干系人下拉与头像回显） */
+  export interface UserSimpleDto {
+    id?: number;
+    nickName?: string | null;
+    enName?: string | null;
+    employeeID?: null | string;
+    avatar?: null | string;
+    organization?: null | string;
   }
 
   /** 品名子表 */
@@ -110,7 +141,7 @@ export namespace PreOrderAdminApi {
     /** 货重 */
     weight?: number | null;
     remark?: string | null;
-    ctnCode?: SimpleNamedDto | null;
+    ctnCode?: CtnCodeSimpleDto | null;
   }
 
   /** 干系人子表 */
@@ -122,6 +153,7 @@ export namespace PreOrderAdminApi {
     userAttribute?: UserAttribute;
     sortId?: number;
     remark?: string | null;
+    user?: null | UserSimpleDto;
   }
 
   /** 服务项子表 */
@@ -158,10 +190,16 @@ export namespace PreOrderAdminApi {
     invoiceBlocked?: boolean;
     isConfidential?: boolean;
     remark?: string | null;
-    feeCode?: SimpleNamedDto | null;
+    /** 费用代码（字段与费用代码列表一致，可直接当作带出税率/类别的快照） */
+    feeCode?: null | PreOrderFeeCodeDto;
     settlement?: SimpleNamedDto | null;
     currency?: SimpleNamedDto | null;
   }
+
+  /** 详情返回的费用代码；name 为前端手工选择后写入的展示名 */
+  export type PreOrderFeeCodeDto = FeeCodeAdminApi.FeeCodeSimpleDto & {
+    name?: string;
+  };
 
   /** 业务联系单（列表不含子表，详情含全部子表） */
   export interface PreOrderDto {
@@ -221,7 +259,7 @@ export namespace PreOrderAdminApi {
     userId?: number;
     orgs?: OrganizationUnitSimpleDto[] | null;
     client?: SimpleNamedDto | null;
-    carrier?: SimpleNamedDto | null;
+    carrier?: CarrierSimpleDto | null;
     receivePort?: SimpleNamedDto | null;
     pol?: SimpleNamedDto | null;
     pot1?: SimpleNamedDto | null;

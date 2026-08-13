@@ -47,7 +47,7 @@ last_updated: 2026-08-13
 | :-- | :-- | :-- | :-- | :-- |
 | **归属组织** | 数据权限归属 | **组织**<br/>`UserOrgSelect`（位于标题 meta 区，不在表单内） | **依赖：** 取干系人「销售」所属组织范围；选中销售后自动带其默认组织；更换销售时清空并重带默认；编辑回显用详情 `orgs` 路径兜底展示 | **必填**（保存前手动校验，非表单 rules） |
 | **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect`（`industryCategory: 'p'`，与海出一致） | **触发：** ① 变更后重算服务项候选池（客户排除项）；② 可编辑态按其维护的销售/客服/操作/单证默认回填干系人（无默认取列表第一个；操作/单证/客服未绑定时兜底当前登录账号；商务等未维护角色保持原值）<br/>**回显：** 详情 `client` 经 `toSelectedItems(clientId, client.name)` 注入 `selectedItems`，与收发通/海出口径一致；`bindClientUserLinkage` 的 `updateSchema` 须保留 `industryCategory: 'p'` | **必填** |
-| **船公司** | 承运船公司 | **基础数据**<br/>`CarrierSelect` | **回显：** 优先复用详情 `carrierLogo`；缺少时补拉船公司详情，并把完整对象写入 `selectedItems`，与海运出口一致展示 Logo | 非必填 |
+| **船公司** | 承运船公司 | **基础数据**<br/>`CarrierSelect` | **回显：** 用详情 `carrier`（`cnShortName`/`code`，注意**不是** `name`）+ 根节点 `carrierLogo` 拼 `selectedItems`，与海运出口一致展示 Logo；不再回拉船公司详情 | 非必填 |
 | **订舱代理** | 国内订舱代理（往来单位） | **客户**<br/>`ClientSelect`（`industryCategory: 'o'`）；字段 `bookingAgentId` | **展示：** 主表首行末项（`pre-order-basic-field--6`，船公司后）；**回显：** 详情 `bookingAgent` 经 `toSelectedItems` 注入；**触发：** 变更后同步费用表 `parties.bookingAgentId`，结算对象类别为订舱代理(o) 时可自动带出；审核通过时后端写入 `SeaExport.BookingAgentId` | 可选；须为含订舱代理属性的客户；仅出口业务有此字段 |
 | **贸易条款 / 付费方式** | 贸易责任与运费支付方式 | 贸易条款字典 / `CodeFrtSelect` | **展示：** 主表字段顺序由 `pre-order-basic-field--N` 控制；空值统一显示「请选择」 | 非必填 |
 | **发货人 / 收货人 / 通知人** | 收发通往来单位 | **客户**<br/>`ClientSelect`（行业类别 b / e / h） | **回显：** 详情 `shipper` / `consignee` / `notifier` 经 `selectedItems` 注入 | Guid?，非必填 |
@@ -105,12 +105,15 @@ last_updated: 2026-08-13
 
 > [!IMPORTANT] **[卡点 11：切业务类型会清掉不适用的干系人角色]** 角色清单来自业务类型对应的枚举（`SeaExportUserAttribute` / `SeaImportUserAttribute`），用户主动切换业务类型后，新枚举里没有的角色行会被清掉（含已选人员），只有销售固定保留；详情回填时不清理，历史角色原样保留在末尾。枚举名大小写敏感，写错或未配置时面板只剩销售，属预期兜底；角色未勾 `extra1` 时只能从「+ 添加角色」手动加。
 
+> [!IMPORTANT] **[卡点 12：回显一律吃详情返回的外键对象]** 详情已带 `carrier`/`carrierLogo`、`codeFrt`、`codeService`、`codePackage`、`codeGoods`、`ctnCode`（含 `teu`）、`user`、`feeCode`，编辑页统一经 `modules/detail-selected-items.ts` 拼 `selectedItems`，各下拉不再按 id 回打详情。两条硬约束：① 详情没给名称时 builder 必须返回 `[]`，否则组件把 id 记进 `loadedSelectedIds` 跳过兜底、下拉永久空白；② 回显项要补 `enable: true`，否则 `disabled: !item.enable` 会把它判成禁用项（品名多选下标签删不掉）。
+
 > [!IMPORTANT] **[卡点 10：服务项对比标记]** 状态为「通过」后，详情返回的服务项带 `compareStatus`：`1` 显示绿色「海运出口新增」，`2` 显示红色「海运出口删除」。其中 `compareStatus = 1` 的记录由后端以 `id = 0` 追加，回显时必须过滤掉，否则会把海运出口侧新增的服务项误写回业务联系单。
 
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-13 | `Perf`/`Fix` | 打开编辑页不再逐个下拉回拉详情：付费方式/运输条款/包装/品名/船公司/干系人（含头像）/费用代码/箱型 TEU 全部用详情已返回的外键对象回显 | 新增 `modules/detail-selected-items.ts` 按各 biz-select 的 `mapItemToOption` 口径拼项；名称为空时返回 `[]` 保留组件兜底，回显项补 `enable: true` 避免被判禁用；干系人行新增 `user` 字段须在 `buildSubmitPayload` 解构剔除；详情 `feeCode` 直接当 `feeCodeSnapshot`。详见 `changelogs/change-log-2026-08-13-pre-order-detail-selected-items.md` |
 | 2026-08-13 | `Feature` | 主表新增「订舱代理」`bookingAgentId`（`ClientSelect` / `industryCategory=o`）；详情回显；费用结算对象类别 o 可自动带出；审核通过由后端写入海出 | 字段挂基础 schema 首行末项；`bindBookingAgentLinkage` 与委托单位同套路；列表接口不回 `bookingAgent` 对象故列表暂不展示列。详见 `changelogs/change-log-2026-08-13-pre-order-booking-agent.md` |
 | 2026-08-12 | `Fix` | 主表选起运/目的港时同步写入隐藏 `PortForm` 并自动带出港口备注，保存不再丢备注 | 港口分区改 `hidden` 保留表单实例；勿用 `v-if="false"`。详见 `changelogs/change-log-2026-08-12-pre-order-basic-port-remark-sync.md` |
 | 2026-08-12 | `Feature`/`Style` | 主表按设计稿重整：收发通内嵌折叠条；起运/目的港进基础 schema 并用 CSS order 排位；独立港口分区暂隐；货物区内容高度自适应；费用表隐藏金额/禁开票/机密/不含税单价/备注列 | `polId`/`podId` 写入 `basicFormApi` 后勿在恢复 `PortForm` 时重复挂载；隐藏费用列仍参与计算与提交。详见 `changelogs/change-log-2026-08-12-pre-order-edit-layout-figma.md` |

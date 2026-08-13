@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import type { PreOrderAdminApi } from '#/api/pre-order/pre-order-admin';
-import type { CarrierAdminApi } from '#/api/system/base-data/carrier-admin';
 
 import type { PreOrderCtnRow } from './modules/ctn-table.vue';
 import type { PreOrderFeeRow } from './modules/fee-table.vue';
@@ -43,7 +42,6 @@ import {
   unSubmitPreOrder,
 } from '#/api/pre-order/pre-order-admin';
 import { getClientDetail } from '#/api/sea-export/client-admin';
-import { getCarrierDetail } from '#/api/system/base-data/carrier-admin';
 import { getOrganizationUnit } from '#/api/system/organization-unit';
 import { useWorkflowTimeline } from '#/components/workflow-timeline';
 import { formatOrgPathLabel } from '#/composables/use-all-user-org';
@@ -76,6 +74,12 @@ import {
 import AttachmentGroups from './modules/attachment-groups.vue';
 import AuditModal from './modules/audit-modal.vue';
 import CtnTable from './modules/ctn-table.vue';
+import {
+  toCarrierSelectedItems,
+  toCodeGoodsSelectedItems,
+  toCodeNamedSelectedItems,
+  toCodePackageSelectedItems,
+} from './modules/detail-selected-items';
 import FeeTable from './modules/fee-table.vue';
 import { checkPreOrderFees, coercePreOrderFeeUnit } from './modules/fee-unit';
 import ServicePanel from './modules/service-panel.vue';
@@ -672,40 +676,6 @@ function buildAttachmentGroupSubmit(): PreOrderAdminApi.AttachmentGroupInputDto[
     .filter((group) => (group.items?.length ?? 0) > 0);
 }
 
-/** 详情回显船公司时补齐 logo，口径与海运出口 CarrierSelect selectedItems 一致 */
-async function hydrateCarrierSelectedItem(dto: PreOrderAdminApi.PreOrderDto) {
-  if (dto.carrierId == null) {
-    basicFormApi.updateSchema([
-      { fieldName: 'carrierId', componentProps: { selectedItems: [] } },
-    ]);
-    return;
-  }
-
-  const raw = dto as PreOrderAdminApi.PreOrderDto & {
-    carrierLogo?: CarrierAdminApi.AttachmentItemDto | null;
-  };
-  let carrier: CarrierAdminApi.CarrierDto = {
-    id: dto.carrierId,
-    cnShortName: dto.carrier?.name,
-    code: dto.carrier?.code,
-    logo: raw.carrierLogo,
-  };
-  if (!carrier.logo?.url) {
-    try {
-      carrier = await getCarrierDetail(String(dto.carrierId));
-    } catch {
-      // 详情失败时仍用业务联系单返回的船公司名称回显
-    }
-  }
-  if (String(detail.value?.carrierId ?? '') !== String(dto.carrierId)) return;
-  basicFormApi.updateSchema([
-    {
-      fieldName: 'carrierId',
-      componentProps: { selectedItems: [carrier] },
-    },
-  ]);
-}
-
 function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   detail.value = dto;
   skipBizTypeUserSync = true;
@@ -740,6 +710,7 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     bookingAgentId: dto.bookingAgentId,
     remark: dto.remark,
   });
+  // 详情已返回各外键对象：一次性拼好 selectedItems，各下拉不再按 id 回拉详情
   basicFormApi.updateSchema([
     {
       fieldName: 'polId',
@@ -755,8 +726,32 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
         selectedItems: toPortObjectSelectedItems(dto.pod, dto.podId),
       },
     },
+    {
+      fieldName: 'carrierId',
+      componentProps: {
+        selectedItems: toCarrierSelectedItems(
+          dto.carrierId,
+          dto.carrier,
+          dto.carrierLogo,
+        ),
+      },
+    },
+    {
+      fieldName: 'codeFrtId',
+      componentProps: {
+        selectedItems: toCodeNamedSelectedItems(dto.codeFrtId, dto.codeFrt),
+      },
+    },
+    {
+      fieldName: 'codeServiceId',
+      componentProps: {
+        selectedItems: toCodeNamedSelectedItems(
+          dto.codeServiceId,
+          dto.codeService,
+        ),
+      },
+    },
   ]);
-  void hydrateCarrierSelectedItem(dto);
   partyFormApi.updateSchema([
     {
       fieldName: 'shipperId',
@@ -851,12 +846,31 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   });
   // 回填后重挂中转港 Tab 显隐，避免 updateSchema 后 Teleport 目标失效
   applyTransitPortTabSchema();
+  cargoTypeInlineFormApi.updateSchema([
+    {
+      fieldName: 'orderCodeGoodss',
+      componentProps: {
+        selectedItems: toCodeGoodsSelectedItems(dto.preOrderCodeGoodss),
+      },
+    },
+  ]);
   void cargoTypeInlineFormApi.setValues({
     cargoId: dto.cargoId ?? 0,
     orderCodeGoodss: (dto.preOrderCodeGoodss ?? [])
       .map((item) => item.codeGoodsId)
       .filter((id): id is number => id != null),
   });
+  cargoFormApi.updateSchema([
+    {
+      fieldName: 'codePackageId',
+      componentProps: {
+        selectedItems: toCodePackageSelectedItems(
+          dto.codePackageId,
+          dto.codePackage,
+        ),
+      },
+    },
+  ]);
   void cargoFormApi.setValues({
     pkgs: dto.pkgs,
     codePackageId: dto.codePackageId,
@@ -867,7 +881,7 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   ctns.value = (dto.preOrderCtns ?? []).map((item) => ({
     ...item,
     rowKey: nextRowKey('ctn'),
-    ctnCodeName: (item.ctnCode as any)?.ctnName,
+    ctnCodeName: item.ctnCode?.ctnName,
   }));
   users.value = syncPreOrderUserRows(
     (dto.preOrderUsers ?? []).map((item) => ({
@@ -890,6 +904,8 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   fees.value = (dto.preOrderFees ?? []).map((item) => ({
     ...item,
     unit: coercePreOrderFeeUnit(item.unit, detailCtnNames) || undefined,
+    // 详情的 feeCode 字段与费用代码列表一致，直接当快照用，切换收付时无需再拉详情
+    feeCodeSnapshot: item.feeCode ?? undefined,
     rowKey: nextRowKey('fee'),
   }));
   attachmentGroup.value = mapAttachmentGroupFromDetail(dto.attachmentGroup);
@@ -1026,7 +1042,7 @@ async function buildSubmitPayload() {
     ),
     preOrderUsers: users.value
       .filter((row) => hasValidUserId(row.userId))
-      .map(({ rowKey, ...rest }) => rest),
+      .map(({ rowKey, user, ...rest }) => rest),
     preOrderServices: services.value.map((item) => ({
       serviceType: item.serviceType,
       sortId: item.sortId ?? 0,
