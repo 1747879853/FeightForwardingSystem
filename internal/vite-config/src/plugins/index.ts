@@ -18,6 +18,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import viteVueDevTools from 'vite-plugin-vue-devtools';
 
 import { viteArchiverPlugin } from './archiver';
+import { viteEmitVersionJsonPlugin } from './emit-version-json';
 import { viteExtraAppConfigPlugin } from './extra-app-config';
 import { viteImportMapPlugin } from './importmap';
 import { viteInjectAppLoadingPlugin } from './inject-app-loading';
@@ -200,6 +201,10 @@ async function loadApplicationPlugins(
       plugins: () => {
         return [viteImportMapPlugin(importmapOptions)];
       },
+    },
+    {
+      condition: isBuild,
+      plugins: () => [viteEmitVersionJsonPlugin()],
     },
     {
       condition: isBuild && extraAppConfig,

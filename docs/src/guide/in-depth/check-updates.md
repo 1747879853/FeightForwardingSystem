@@ -4,6 +4,8 @@
 
 当网站有更新时，您可能需要检查更新。框架提供了这一功能，通过定时检查更新，您可以在应用的 preferences.ts 文件中配置 `checkUpdatesInterval`和 `enableCheckUpdates` 字段，以开启和设置检查更新的时间间隔（单位：分钟）。
 
+默认会请求构建产物 `version.json`（约几十字节），比对其中的资源指纹 `id`（由本次构建的 js/css 文件名算出）。不要用首页 `HEAD` 的 `etag`：IIS 静态/动态压缩切换时 etag 和体积会变，但页面并未发版。`localhost` / `127.0.0.1` 不检测。
+
 ```ts
 import { defineOverridesPreferences } from '@vben/preferences';
 
@@ -29,21 +31,13 @@ export const overridesPreferences = defineOverridesPreferences({
 如果需要通过其他方式检查更新，例如通过接口来更灵活地控制更新逻辑（如强制刷新、显示更新内容等），你可以通过修改 `@vben/layouts` 下面的 `src/widgets/check-updates/check-updates.vue`文件来实现。
 
 ```ts
-// 这里可以替换为你的检查更新逻辑
+// 默认已改为拉取 version.json；如需接口控制可替换此处
 async function getVersionTag() {
-  try {
-    const response = await fetch('/', {
-      cache: 'no-cache',
-      method: 'HEAD',
-    });
-
-    return (
-      response.headers.get('etag') || response.headers.get('last-modified')
-    );
-  } catch {
-    console.error('Failed to fetch version tag');
-    return null;
-  }
+  const response = await fetch(`/version.json?_t=${Date.now()}`, {
+    cache: 'no-cache',
+  });
+  const data = await response.json();
+  return data.id || data.entry || null;
 }
 ```
 

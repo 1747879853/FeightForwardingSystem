@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-13 检查更新改为比对构建产物 version.json](./changelogs/change-log-2026-08-13-check-updates-version-json.md)
 - [2026-08-12 业务联系单主表选港同步备注并写入港口表单](./changelogs/change-log-2026-08-12-pre-order-basic-port-remark-sync.md)
 - [2026-08-12 业务联系单编辑页按设计稿重整主表布局](./changelogs/change-log-2026-08-12-pre-order-edit-layout-figma.md)
 - [2026-08-12 业务联系单委托单位补齐 industryCategory=p](./changelogs/change-log-2026-08-12-pre-order-client-industry-category-p.md)

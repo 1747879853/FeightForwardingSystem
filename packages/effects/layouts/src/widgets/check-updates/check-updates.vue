@@ -35,6 +35,13 @@ const [UpdateNoticeModal, modalApi] = useVbenModal({
   },
 });
 
+function resolveVersionJsonUrl() {
+  const base = props.checkUpdateUrl.endsWith('/')
+    ? props.checkUpdateUrl
+    : `${props.checkUpdateUrl}/`;
+  return `${base}version.json?_t=${Date.now()}`;
+}
+
 async function getVersionTag() {
   try {
     if (
@@ -43,15 +50,14 @@ async function getVersionTag() {
     ) {
       return null;
     }
-    const response = await fetch(props.checkUpdateUrl, {
+    const response = await fetch(resolveVersionJsonUrl(), {
       cache: 'no-cache',
-      method: 'HEAD',
-      redirect: 'manual',
     });
-
-    return (
-      response.headers.get('etag') || response.headers.get('last-modified')
-    );
+    if (!response.ok) {
+      return null;
+    }
+    const data = (await response.json()) as { entry?: string; id?: string };
+    return data.id || data.entry || null;
   } catch {
     console.error('Failed to fetch version tag');
     return null;
