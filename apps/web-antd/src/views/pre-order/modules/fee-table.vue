@@ -64,6 +64,9 @@ export interface PreOrderFeeParties {
   /** h 通知人 */
   notifierId?: null | string;
   notifierName?: null | string;
+  /** o 订舱代理 */
+  bookingAgentId?: null | string;
+  bookingAgentName?: null | string;
 }
 
 /** 货物计量，单位=重量/体积时按此带出数量（对齐后端 ResolveQuantityByUnit） */
@@ -281,6 +284,7 @@ function seedClientNameCacheFromParties(p?: PreOrderFeeParties | null) {
   rememberClientName(p.shipperId, p.shipperName);
   rememberClientName(p.consigneeId, p.consigneeName);
   rememberClientName(p.notifierId, p.notifierName);
+  rememberClientName(p.bookingAgentId, p.bookingAgentName);
 }
 
 async function refreshPartiesSnapshot() {
@@ -321,6 +325,7 @@ async function applySettlementByLetter(row: PreOrderFeeRow, letter?: string) {
     b: { id: p.shipperId, name: p.shipperName },
     e: { id: p.consigneeId, name: p.consigneeName },
     h: { id: p.notifierId, name: p.notifierName },
+    o: { id: p.bookingAgentId, name: p.bookingAgentName },
     p: { id: p.clientId, name: p.clientName },
   };
   const hit = map[letter.toLowerCase()];

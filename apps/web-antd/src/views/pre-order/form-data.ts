@@ -72,17 +72,23 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       label: '船公司',
       componentProps: { allowClear: true, class: 'w-full' },
     },
+    createClientSelectSchema({
+      fieldName: 'bookingAgentId',
+      formItemClass: 'pre-order-basic-field--6',
+      industryCategory: 'o',
+      label: '订舱代理',
+    }),
     {
       component: 'CodeServiceSelect',
       fieldName: 'codeServiceId',
-      formItemClass: 'pre-order-basic-field--9',
+      formItemClass: 'pre-order-basic-field--10',
       label: '运输条款',
       componentProps: { allowClear: true, class: 'w-full' },
     },
     {
       component: 'Select',
       fieldName: 'tradeTermsType',
-      formItemClass: 'pre-order-basic-field--10',
+      formItemClass: 'pre-order-basic-field--11',
       label: '贸易条款',
       componentProps: {
         allowClear: true,
@@ -94,7 +100,7 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
     {
       component: 'CodeFrtSelect',
       fieldName: 'codeFrtId',
-      formItemClass: 'pre-order-basic-field--6',
+      formItemClass: 'pre-order-basic-field--7',
       label: '付费方式',
       componentProps: {
         allowClear: true,
@@ -105,7 +111,7 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
     {
       component: 'PortSelect',
       fieldName: 'polId',
-      formItemClass: 'pre-order-basic-field--7',
+      formItemClass: 'pre-order-basic-field--8',
       label: '起运港',
       rules: 'selectRequired',
       componentProps: buildPortSelectProps('polId'),
@@ -113,7 +119,7 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
     {
       component: 'PortSelect',
       fieldName: 'podId',
-      formItemClass: 'pre-order-basic-field--8',
+      formItemClass: 'pre-order-basic-field--9',
       label: '目的港',
       componentProps: buildPortSelectProps('podId'),
     },
@@ -121,7 +127,7 @@ export function usePreOrderBasicSchema(): VbenFormSchema[] {
       component: 'Textarea',
       fieldName: 'remark',
       label: '备注',
-      formItemClass: 'col-span-2 pre-order-basic-field--11',
+      formItemClass: 'col-span-2 pre-order-basic-field--12',
       componentProps: { rows: 1, maxlength: 1024 },
     },
   ];

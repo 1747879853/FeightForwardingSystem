@@ -204,6 +204,10 @@ export namespace PreOrderAdminApi {
     shipperContent?: string | null;
     notifierId?: string | null;
     notifierContent?: string | null;
+    /**
+     * 订舱代理id（国内代理）。仅海运出口/空运出口有；审核通过写入 SeaExport.BookingAgentId
+     */
+    bookingAgentId?: string | null;
     cargoId?: number;
     pkgs?: number | null;
     codePackageId?: number | null;
@@ -230,6 +234,8 @@ export namespace PreOrderAdminApi {
     consignee?: SimpleNamedDto | null;
     shipper?: SimpleNamedDto | null;
     notifier?: SimpleNamedDto | null;
+    /** 订舱代理（仅详情返回；列表只返回 bookingAgentId） */
+    bookingAgent?: SimpleNamedDto | null;
     preOrderCodeGoodss?: PreOrderCodeGoodsDto[] | null;
     preOrderCtns?: PreOrderCtnDto[] | null;
     preOrderUsers?: PreOrderUserDto[] | null;
@@ -271,6 +277,8 @@ export namespace PreOrderAdminApi {
     shipperContent?: string | null;
     notifierId?: string | null;
     notifierContent?: string | null;
+    /** 订舱代理id（国内代理）；仅出口业务有，进口无此字段 */
+    bookingAgentId?: string | null;
     cargoId?: number;
     pkgs?: number | null;
     codePackageId?: number | null;

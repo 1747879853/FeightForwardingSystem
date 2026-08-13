@@ -2,7 +2,7 @@
 title: 业务联系单编辑（含新建与审核）
 module: 业务联系单
 author: 前端团队
-last_updated: 2026-08-12
+last_updated: 2026-08-13
 ---
 
 # 1. 业务背景说明 (Background)
@@ -14,7 +14,7 @@ last_updated: 2026-08-12
 # 2. 功能与操作说明 (Features & Operations)
 
 - **Tab 结构：** 编辑态顶部 Tab 样式与海运出口编辑器一致；新建态尚无关联海运出口，隐藏顶部仅有的「业务联系单」Tab。
-  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主表分区内为单据字段（含起运港/目的港，按设计稿 CSS `order` 排位）+ **收发通**折叠条（24px，默认折叠，展开后为发货人/收货人/通知人各一组 id + Content）；独立「港口信息」5 列流转卡片用 `hidden` 暂隐（保留 `PortForm` 实例，主表选港会同步写入并自动带备注）；下方「货物与箱型」按内容高度自适应（标题栏内联货物类型/品名；左箱型表 + 右计量 2 列）、费用卡片（仅展示计价必需列）、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像。
+  - **业务联系单**（内部 `activeTab = 'basic'`）：布局对齐海运出口基础信息页——顶部左侧服务项目 chevron 流水线（配置弹窗勾选主流程），右侧操作按钮；分区标题文案为「业务联系单」，meta 区展示业务编号/状态并内嵌「归属组织」「业务类型」「装运方式」选择器；主表分区内为单据字段（含**订舱代理**、起运港/目的港，按设计稿 CSS `order` 排位：首行末项为订舱代理）+ **收发通**折叠条（24px，默认折叠，展开后为发货人/收货人/通知人各一组 id + Content）；独立「港口信息」5 列流转卡片用 `hidden` 暂隐（保留 `PortForm` 实例，主表选港会同步写入并自动带备注）；下方「货物与箱型」按内容高度自适应（标题栏内联货物类型/品名；左箱型表 + 右计量 2 列）、费用卡片（仅展示计价必需列）、附件卡片；右侧干系人角色按所选业务类型从枚举读取（销售固定），每行带用户头像。
   - **关联海运出口**：仅在状态为「通过」且存在 `transportOrderId` 时出现；**切到该 Tab 才挂载**内嵌海出编辑器（避免列表进已通过单预挂载改页签）；内嵌传 `disable-tab-title`，不把浏览器多页签改成「海运出口-xxx」。
 - **保存：** 校验四段表单（基础 / 收发通 / 港口 / 货物）+ 干系人规则后调用 `AddAsync` / `EditAsync`（含 `attachmentGroup` 全量覆盖）。新增成功后 `replace` 到编辑路由并重新拉详情。
 - **附件：** 费用区下方「附件」卡片；先 `Upload/UploadFile` 拿 `attachmentId`，本地写入分组；保存时随 Add/Edit 提交。附件类型按 `ModuleTypeId=160050` 调 `AttachmentDtlType/GetListByModuleTypesAsync`。录入/驳回可增删；待审核/通过只读展示。
@@ -48,6 +48,7 @@ last_updated: 2026-08-12
 | **归属组织** | 数据权限归属 | **组织**<br/>`UserOrgSelect`（位于标题 meta 区，不在表单内） | **依赖：** 取干系人「销售」所属组织范围；选中销售后自动带其默认组织；更换销售时清空并重带默认；编辑回显用详情 `orgs` 路径兜底展示 | **必填**（保存前手动校验，非表单 rules） |
 | **委托单位** | 业务委托方 | **客户**<br/>`ClientSelect`（`industryCategory: 'p'`，与海出一致） | **触发：** ① 变更后重算服务项候选池（客户排除项）；② 可编辑态按其维护的销售/客服/操作/单证默认回填干系人（无默认取列表第一个；操作/单证/客服未绑定时兜底当前登录账号；商务等未维护角色保持原值）<br/>**回显：** 详情 `client` 经 `toSelectedItems(clientId, client.name)` 注入 `selectedItems`，与收发通/海出口径一致；`bindClientUserLinkage` 的 `updateSchema` 须保留 `industryCategory: 'p'` | **必填** |
 | **船公司** | 承运船公司 | **基础数据**<br/>`CarrierSelect` | **回显：** 优先复用详情 `carrierLogo`；缺少时补拉船公司详情，并把完整对象写入 `selectedItems`，与海运出口一致展示 Logo | 非必填 |
+| **订舱代理** | 国内订舱代理（往来单位） | **客户**<br/>`ClientSelect`（`industryCategory: 'o'`）；字段 `bookingAgentId` | **展示：** 主表首行末项（`pre-order-basic-field--6`，船公司后）；**回显：** 详情 `bookingAgent` 经 `toSelectedItems` 注入；**触发：** 变更后同步费用表 `parties.bookingAgentId`，结算对象类别为订舱代理(o) 时可自动带出；审核通过时后端写入 `SeaExport.BookingAgentId` | 可选；须为含订舱代理属性的客户；仅出口业务有此字段 |
 | **贸易条款 / 付费方式** | 贸易责任与运费支付方式 | 贸易条款字典 / `CodeFrtSelect` | **展示：** 主表字段顺序由 `pre-order-basic-field--N` 控制；空值统一显示「请选择」 | 非必填 |
 | **发货人 / 收货人 / 通知人** | 收发通往来单位 | **客户**<br/>`ClientSelect`（行业类别 b / e / h） | **回显：** 详情 `shipper` / `consignee` / `notifier` 经 `selectedItems` 注入 | Guid?，非必填 |
 | **shipperContent / consigneeContent / notifierContent** | 对应往来单位提单内容文本 | 手填（`EnglishUpperTextarea`） | 与 id 成对提交；详情原样回填 | 最长 1024，英文自动半角大写 |
@@ -67,7 +68,7 @@ last_updated: 2026-08-12
 | **服务项目** | 本单要执行的主流程服务（无任务进度） | `SeaExportAdmin/GetServiceTypesByPOLAsync` ∩ `ServiceType.extra1` | **依赖：** 起运港 + 委托单位字段 `onChange` 直传；按接口 `checked` 默认带出；港口变更后不在候选池的已选项被自动剔除 | 只能是候选池子集（可少不可多）；流水线默认「未执行」样式，勿用海出「已完成」 |
 | **费用.收付类型** | 应收(0) / 应付(1) | 固定选项 | **触发：** 切换后按收付重取汇率；若已有费用代码则按应收 `defaultDebitName` / 应付 `defaultCreditName` **重写**结算对象类别与结算对象，并回写费用代码税率、重算不含税单价与金额 | —— |
 | **费用.费用代码** | 费用名称来源 | **基础数据**<br/>`FeeCodeSelect` | **触发：** 带出行业类别（应收 `defaultDebitName` / 应付 `defaultCreditName`）、结算对象、币别+汇率、税率、默认单位、禁开票/机密；默认单位为「箱型/CTN」或不在四项白名单时落到「票」并提示 | —— |
-| **费用.结算对象类别** | 行业类别 | `IndustryCategorySelect`（存数值 key） | **触发：** 切换后先清空结算对象；`ClientSelect` 的 `industryCategory` 改为对应字母码重新过滤；若本单已录入委托单位(p)/发货人(b)/收货人(e)/通知人(h) 则直接回填，并用名称写 `selectedItems`（走往来单位名称缓存，避免二次拉详情） | —— |
+| **费用.结算对象类别** | 行业类别 | `IndustryCategorySelect`（存数值 key） | **触发：** 切换后先清空结算对象；`ClientSelect` 的 `industryCategory` 改为对应字母码重新过滤；若本单已录入委托单位(p)/发货人(b)/收货人(e)/通知人(h)/订舱代理(o) 则直接回填，并用名称写 `selectedItems`（走往来单位名称缓存，避免二次拉详情） | —— |
 | **费用.结算对象** | 客户 | `ClientSelect` | **依赖：** `industryCategory` 字母码过滤；回显依赖 `selectedItems`（id+name） | —— |
 | **费用.币别** | 结算币别 | `CurrencySelect` | **默认：** 新增行默认 USD；**触发：** 变更后按汇率表生效记录重取汇率 | 生成海出费用时缺币别会被跳过 |
 | **费用.汇率** | 对本位币汇率 | **基础数据**<br/>`ExchangeRateAdmin/GetPagedListAsync`（进程内缓存 `utils/exchange-rate-cache`） | **触发：** 币别 / 收付变更后按「汇率表生效记录（应收 `drValue` / 应付 `crValue`）→ 本位币兜底 1 → 置空」三级取值，取到值后仍可手改；只有走本位币兜底的行（行标记 `__isLocalCurrency=true`，与应收应付费用表同口径，提交时剔除）**固定 1 且只读**；归属组织变更后全表重刷（只读态不改写） | 生效记录 = 已启用 且 当前时间在有效期内；同币别多条按 `sortId`、id 取大 |
@@ -110,6 +111,7 @@ last_updated: 2026-08-12
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-13 | `Feature` | 主表新增「订舱代理」`bookingAgentId`（`ClientSelect` / `industryCategory=o`）；详情回显；费用结算对象类别 o 可自动带出；审核通过由后端写入海出 | 字段挂基础 schema 首行末项；`bindBookingAgentLinkage` 与委托单位同套路；列表接口不回 `bookingAgent` 对象故列表暂不展示列。详见 `changelogs/change-log-2026-08-13-pre-order-booking-agent.md` |
 | 2026-08-12 | `Fix` | 主表选起运/目的港时同步写入隐藏 `PortForm` 并自动带出港口备注，保存不再丢备注 | 港口分区改 `hidden` 保留表单实例；勿用 `v-if="false"`。详见 `changelogs/change-log-2026-08-12-pre-order-basic-port-remark-sync.md` |
 | 2026-08-12 | `Feature`/`Style` | 主表按设计稿重整：收发通内嵌折叠条；起运/目的港进基础 schema 并用 CSS order 排位；独立港口分区暂隐；货物区内容高度自适应；费用表隐藏金额/禁开票/机密/不含税单价/备注列 | `polId`/`podId` 写入 `basicFormApi` 后勿在恢复 `PortForm` 时重复挂载；隐藏费用列仍参与计算与提交。详见 `changelogs/change-log-2026-08-12-pre-order-edit-layout-figma.md` |
 | 2026-08-12 | `Fix` | 委托单位补齐 `industryCategory: 'p'`，与海运出口一致；列表筛选同步 | 根因是 `usePreOrderBasicSchema` 用了裸 `ClientSelect` 未传类别；通用接口空类别不下发。`bindClientUserLinkage` 的 `updateSchema` 也显式保留 `p`。详见 `changelogs/change-log-2026-08-12-pre-order-client-industry-category-p.md` |

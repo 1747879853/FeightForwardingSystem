@@ -237,15 +237,17 @@ const [PartyForm, partyFormApi] = useVbenForm({
 /** 服务候选依赖起运港与委托单位，需实时跟随表单值（对齐海出：字段 onChange 直传，不依赖 Form @change） */
 const currentPolId = ref<number | string | undefined>();
 const currentClientId = ref<string | undefined>();
-/** 收发通 id，费用「结算对象类别」带出结算对象时用 */
+/** 收发通 / 订舱代理 id，费用「结算对象类别」带出结算对象时用 */
 const currentShipperId = ref<string | undefined>();
 const currentConsigneeId = ref<string | undefined>();
 const currentNotifierId = ref<string | undefined>();
+const currentBookingAgentId = ref<string | undefined>();
 /** 往来单位名称，费用带出结算对象时写入 selectedItems，避免显示成 uuid */
 const currentClientName = ref<string | undefined>();
 const currentShipperName = ref<string | undefined>();
 const currentConsigneeName = ref<string | undefined>();
 const currentNotifierName = ref<string | undefined>();
+const currentBookingAgentName = ref<string | undefined>();
 
 /** 往来单位 id → 名称，换单位时按 id 取名，避免沿用上一家的名称或重复拉详情 */
 const partyNameCache = new Map<string, string>();
@@ -264,6 +266,8 @@ const feeParties = computed(() => ({
   consigneeName: currentConsigneeName.value,
   notifierId: currentNotifierId.value,
   notifierName: currentNotifierName.value,
+  bookingAgentId: currentBookingAgentId.value,
+  bookingAgentName: currentBookingAgentName.value,
 }));
 
 /**
@@ -279,6 +283,7 @@ async function resolveFeeParties() {
   const nextShipperId = toOptionalStringId(partyValues.shipperId);
   const nextConsigneeId = toOptionalStringId(partyValues.consigneeId);
   const nextNotifierId = toOptionalStringId(partyValues.notifierId);
+  const nextBookingAgentId = toOptionalStringId(basicValues.bookingAgentId);
 
   // id 变了就按新 id 取名，命中不了宁可留空，也不能把上一家的名称带过去
   if (nextClientId !== currentClientId.value) {
@@ -303,6 +308,12 @@ async function resolveFeeParties() {
     currentNotifierId.value = nextNotifierId;
     currentNotifierName.value = nextNotifierId
       ? partyNameCache.get(nextNotifierId)
+      : undefined;
+  }
+  if (nextBookingAgentId !== currentBookingAgentId.value) {
+    currentBookingAgentId.value = nextBookingAgentId;
+    currentBookingAgentName.value = nextBookingAgentId
+      ? partyNameCache.get(nextBookingAgentId)
       : undefined;
   }
 
@@ -512,6 +523,30 @@ function bindClientUserLinkage(selectedItems?: any[]) {
   ]);
 }
 
+/** 订舱代理变更：供费用结算对象按行业类别 o 带出；详情回填注入 selectedItems */
+function bindBookingAgentLinkage(selectedItems?: any[]) {
+  basicFormApi.updateSchema([
+    {
+      fieldName: 'bookingAgentId',
+      componentProps: {
+        industryCategory: 'o',
+        ...(selectedItems ? { selectedItems } : {}),
+        onChange: (value: unknown, option?: unknown) => {
+          currentBookingAgentId.value = toOptionalStringId(value);
+          if (currentBookingAgentId.value) {
+            const name = pickSelectOptionLabel(option);
+            currentBookingAgentName.value =
+              name ?? partyNameCache.get(currentBookingAgentId.value);
+            rememberPartyName(currentBookingAgentId.value, name);
+          } else {
+            currentBookingAgentName.value = undefined;
+          }
+        },
+      },
+    },
+  ]);
+}
+
 function toOptionalNumber(value: unknown): null | number {
   if (value == null || value === '') return null;
   const num = Number(value);
@@ -688,6 +723,9 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     dto.blType === null || dto.blType === undefined ? undefined : dto.blType;
   // 详情已返回 client 对象：注入 selectedItems，避免委托单位回显成 Guid（对齐海出）
   bindClientUserLinkage(toSelectedItems(dto.clientId, dto.client?.name));
+  bindBookingAgentLinkage(
+    toSelectedItems(dto.bookingAgentId, dto.bookingAgent?.name),
+  );
   void basicFormApi.setValues({
     clientId: dto.clientId,
     mblNum: dto.mblNum,
@@ -699,6 +737,7 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
     etd: dto.etd,
     goodsCompleteTime: dto.goodsCompleteTime,
     carrierId: dto.carrierId,
+    bookingAgentId: dto.bookingAgentId,
     remark: dto.remark,
   });
   basicFormApi.updateSchema([
@@ -864,10 +903,15 @@ function fillFromDetail(dto: PreOrderAdminApi.PreOrderDto) {
   currentConsigneeName.value = dto.consignee?.name || undefined;
   currentNotifierId.value = dto.notifierId ? String(dto.notifierId) : undefined;
   currentNotifierName.value = dto.notifier?.name || undefined;
+  currentBookingAgentId.value = dto.bookingAgentId
+    ? String(dto.bookingAgentId)
+    : undefined;
+  currentBookingAgentName.value = dto.bookingAgent?.name || undefined;
   rememberPartyName(currentClientId.value, currentClientName.value);
   rememberPartyName(currentShipperId.value, currentShipperName.value);
   rememberPartyName(currentConsigneeId.value, currentConsigneeName.value);
   rememberPartyName(currentNotifierId.value, currentNotifierName.value);
+  rememberPartyName(currentBookingAgentId.value, currentBookingAgentName.value);
   currentPolId.value = dto.polId ?? undefined;
 }
 
@@ -914,6 +958,7 @@ onMounted(async () => {
   syncPreOrderTabTitle();
   applyTransitPortTabSchema();
   bindClientUserLinkage();
+  bindBookingAgentLinkage();
   bindBasicPortLinkage();
   bindPartySettlementLinkage();
   bindCargoMetricsLinkage();
@@ -1795,7 +1840,7 @@ const getContentTabStyle = (isActive: boolean) =>
   padding-top: 12px;
 }
 
-/* 主表按设计稿固定为：第一行 6 项，第二行起运港、目的港、条款、备注。 */
+/* 主表按设计稿固定为：第一行 6 项（末项为订舱代理），第二行付费方式起运港目的港条款备注。 */
 .pre-order-basic-page :deep(.pre-order-basic-field--1) {
   order: 1;
 }
@@ -1838,5 +1883,9 @@ const getContentTabStyle = (isActive: boolean) =>
 
 .pre-order-basic-page :deep(.pre-order-basic-field--11) {
   order: 11;
+}
+
+.pre-order-basic-page :deep(.pre-order-basic-field--12) {
+  order: 12;
 }
 </style>
