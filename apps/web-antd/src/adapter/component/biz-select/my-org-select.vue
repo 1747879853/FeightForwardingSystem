@@ -7,7 +7,10 @@ import { objectOmit } from '@vueuse/core';
 
 import { Select } from 'ant-design-vue';
 
-import { getMyDefaultOrgId, getMyOrgOptions } from '#/composables/use-my-org';
+import {
+  getMyDefaultOrgId,
+  getMyCompanyOptions,
+} from '#/composables/use-my-org';
 
 defineOptions({ inheritAttrs: false });
 
@@ -27,7 +30,7 @@ const modelValue = defineModel<null | number | undefined>();
 const attrs = useAttrs();
 
 const options = computed(() =>
-  getMyOrgOptions().map((item) => ({
+  getMyCompanyOptions().map((item) => ({
     label: item.label,
     value: item.value,
   })),
