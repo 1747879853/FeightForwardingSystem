@@ -417,6 +417,45 @@ export function useOrderFeeLinkage(
     }
   }
 
+    /**
+   * 填充箱型数量
+   */
+  async function fillOnlyCtnQuantity(row: any) {
+    try {
+      const transportOrderId = row['transportOrderId'];
+      if (!transportOrderId) return;
+
+      const orderDetail = await loadOrderDetailCached(transportOrderId);
+      const ctns = orderDetail.transportOrder?.orderCtns || [];
+
+      if (ctns.length === 0) {
+        console.log('📦 [fillOnlyCtnQuantity] 无箱型数据，设置单位为票，数量为1');
+        row['unit'] = '票';
+        row['quantity'] = 1;
+        return;
+      }
+
+      // 填充第一个箱型的名称作为单位
+      const firstCtnName = row['unit_value'] || '';
+      //row['unit'] = firstCtnName;
+
+      // 计算相同箱型的数量
+      const sameCtnCount = ctns.filter(
+        (ctn: any) => ctn.ctnCode?.ctnName === firstCtnName,
+      ).length;
+
+      row['quantity'] = sameCtnCount;
+      console.log(
+        '📦 [fillOnlyCtnQuantity] 箱型:',
+        firstCtnName,
+        '数量:',
+        sameCtnCount,
+      );
+    } catch (error) {
+      console.error('❌ [fillOnlyCtnQuantity] 填充失败:', error);
+    }
+  }
+
   /**
    * 填充箱型数量
    */
@@ -520,7 +559,7 @@ export function useOrderFeeLinkage(
       await fillOrderQuantity(row, unitName);
     } else {
       // 箱型：统计该箱型的数量
-      await fillCtnQuantity(row);
+      await fillOnlyCtnQuantity(row);
     }
   }
 
