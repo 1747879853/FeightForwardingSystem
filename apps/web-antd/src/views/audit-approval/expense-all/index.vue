@@ -122,7 +122,19 @@ const grouping = useListGrouping({
 
     const items = await getOrderFeeTaskGroupedList(groupParams);
     console.log('📊 [费用任务分组统计] 返回结果:', items);
-    return items ?? [];
+
+    // ✅ 关键变更：处理港口分组的 isSea 字段，生成组合 Key
+    return (items ?? []).map((item) => ({
+      ...item,
+      // 如果是港口分组且 isSea 有值，则使用 isSea_id 作为 id，防止海港和空港 ID 冲突
+      id:
+        (field === ExpenseSubmissionAdminApi.SeaExportGroupField.POL ||
+          field === ExpenseSubmissionAdminApi.SeaExportGroupField.POD) &&
+        item.isSea !== null &&
+        item.isSea !== undefined
+          ? `${item.isSea}_${item.id}`
+          : item.id,
+    }));
   },
 });
 
@@ -218,7 +230,35 @@ const [Grid, gridApi] =
               clearSelectedOrder();
 
               // 使用 grouping.decorateListParams 处理分组筛选条件
-              const params = grouping.decorateListParams(formValues);
+              let params = grouping.decorateListParams(formValues);
+
+              // ✅ 关键变更：处理港口分组的 isSea 参数回传
+              const field = grouping.enabledField.value;
+              if (
+                field &&
+                (field.value ===
+                  ExpenseSubmissionAdminApi.SeaExportGroupField.POL ||
+                  field.value ===
+                    ExpenseSubmissionAdminApi.SeaExportGroupField.POD)
+              ) {
+                const selectedId = grouping.selectedItemId.value;
+                if (selectedId !== undefined && selectedId !== null) {
+                  const parts = String(selectedId).split('_');
+                  if (parts.length === 2) {
+                    const isSea = parts[0] === 'true';
+                    const realId = parts[1];
+                    params = {
+                      ...params,
+                      IsSea: isSea,
+                      [field.paramKey]: realId,
+                    };
+                    // 移除原始的 paramKey（如果 decorateListParams 已经添加了）
+                    delete params[field.paramKey];
+                    params[field.paramKey] = realId;
+                  }
+                }
+              }
+
               console.log('📋 [费用任务列表查询] 查询参数:', params);
               return params;
             },

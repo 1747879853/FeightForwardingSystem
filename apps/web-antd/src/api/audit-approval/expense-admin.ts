@@ -333,8 +333,14 @@ export namespace ExpenseSubmissionAdminApi {
     BillTypeEmpty?: boolean;
     /** 船公司未填写 */
     CarrierIdEmpty?: boolean;
+    /** 港口类型，配合 polId/podId 使用。true 只搜海港（海出+海进），false 只搜空港（空运），不传则三种业务都搜 */
+    IsSea?: boolean | null;
+    /** 起运港 id */
+    POLId?: number;
     /** 起运港未填写 */
     POLIdEmpty?: boolean;
+    /** 目的港 id */
+    PODId?: number;
     /** 目的港未填写 */
     PODIdEmpty?: boolean;
     /** 付费方式未填写 */
@@ -550,27 +556,41 @@ export namespace ExpenseSubmissionAdminApi {
 
   // ==================== 分组统计相关DTO ====================
 
+  /** 分组统计结果DTO */
+  export interface OrderFeeTaskGroupDto {
+    /** 分组值id。枚举类为枚举数值字符串；委托单位、场站为Guid字符串；船名为船名字符串本身；船公司/港口/付费方式/签单方式为long类型id字符串；无值时为null */
+    id: string | null;
+    /** 新增：港口类型，true 海港、false 空港。仅按起运港/目的港分组时有值，其余分组维度恒为 null */
+    isSea?: boolean | null;
+    /** 分组名称。无值时为null */
+    name: string | null;
+    /** 该分组下的业务单总条数（TransportOrderId去重后计数） */
+    count: number;
+    /** 船公司logo（仅groupField=4时有值，其余分组为null） */
+    logo: AttachmentItemDto | null;
+  }
+
   /** 分组字段枚举（SeaExportGroupField） */
   export enum SeaExportGroupField {
-    /** 装运方式 */
+    /** 装运方式 (仅海运出口) */
     BLType = 1,
-    /** 订单类型 */
+    /** 订单类型 (仅海运出口) */
     BillType = 2,
-    /** 委托单位 */
+    /** 委托单位 (三种全部) */
     Client = 3,
-    /** 船公司 */
+    /** 船公司 (海运出口 + 海运进口) */
     Carrier = 4,
-    /** 起运港 */
+    /** 起运港 (三种全部) */
     POL = 5,
-    /** 目的港 */
+    /** 目的港 (三种全部) */
     POD = 6,
-    /** 船名 */
+    /** 船名 (海运出口 + 海运进口) */
     Vessel = 7,
-    /** 付费方式 */
+    /** 付费方式 (三种全部) */
     CodeFrt = 8,
-    /** 签单方式 */
+    /** 签单方式 (仅海运出口) */
     CodeIssueType = 9,
-    /** 场站 */
+    /** 场站 (仅海运出口) */
     Yard = 10,
   }
 
@@ -590,22 +610,12 @@ export namespace ExpenseSubmissionAdminApi {
     friendlyFileName: string;
   }
 
-  /** 分组统计结果DTO */
-  export interface OrderFeeTaskGroupDto {
-    /** 分组值id。枚举类为枚举数值字符串；委托单位、场站为Guid字符串；船名为船名字符串本身；船公司/港口/付费方式/签单方式为long类型id字符串；无值时为null */
-    id: string | null;
-    /** 分组名称。无值时为null */
-    name: string | null;
-    /** 该分组下的业务单总条数（TransportOrderId去重后计数） */
-    count: number;
-    /** 船公司logo（仅groupField=4时有值，其余分组为null） */
-    logo: AttachmentItemDto | null;
-  }
-
-  /** 分组统计查询参数（继承GetPagedListParams，新增groupField） */
+  /** 分组统计查询参数（继承GetPagedListParams，新增groupField和isSea） */
   export interface OrderFeeTaskGroupQueryDto extends GetPagedListParams {
     /** 分组字段枚举值（必填） */
     groupField: SeaExportGroupField;
+    /** 新增：港口类型，配合 polId/podId 使用。true 只搜海港（海出+海进），false 只搜空港（空运），不传则三种业务都搜 */
+    isSea?: boolean | null;
   }
 }
 
