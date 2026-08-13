@@ -587,14 +587,14 @@ function onBatchEditModal() {
     message.warning('请先选择要更新的运价');
     return;
   }
-  
+
   // 将选中的数据传递给 batch-add-modal-handsantable 组件
   // 需要将数据转换为 AI 数据的格式
   const editData = records.map((row) => {
     // 从子表读取日期时间数据（取第一项）
     const dayData = row.seFreiPriceDays?.[0];
     const weekDayData = row.seFreiPriceWeekDays?.[0];
-    
+
     return {
       id: row.id, // 保留 ID 用于编辑
       recommend: row.recommend,
@@ -630,7 +630,7 @@ function onBatchEditModal() {
       })),
     };
   });
-  
+
   batchAddModalApi.setData({ aiData: editData, isEditMode: true }).open();
 }
 
@@ -1149,7 +1149,7 @@ async function onAIBatchAdd() {
         </div>
       </template>
 
-       <!-- 币别自定义渲染插槽 -->
+      <!-- 币别自定义渲染插槽 -->
       <template #bookingAgentId="{ row }">
         <div class="px-2 py-1">
           {{ row.bookingAgent?.name || '-' }}
@@ -1259,8 +1259,8 @@ async function onAIBatchAdd() {
       </template>
 
       <!-- 目的港免箱使天数列头插槽 -->
-      <template #podFreeDaysCombinedHeader>
-        <div class="flex items-center gap-1">
+      <!-- <template #podFreeDaysCombinedHeader>
+        <div class="flex">
           <span>目的港免箱使天数</span>
           <Tooltip title="免堆期 (DEM) + 免用箱期 (DET) = 免箱使期">
             <IconifyIcon
@@ -1269,7 +1269,7 @@ async function onAIBatchAdd() {
             />
           </Tooltip>
         </div>
-      </template>
+      </template> -->
 
       <!-- 是否有效自定义渲染插槽 -->
       <template #isValid="{ row }">

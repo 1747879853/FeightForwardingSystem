@@ -86,17 +86,17 @@ export function useBatchAddSettings(
           // 强制刷新中转港1和中转港2的单元格配置
           const poT1ColIndex = hotInstance.propToCol('poT1Id');
           const poT2ColIndex = hotInstance.propToCol('poT2Id');
-          
+
           if (poT1ColIndex >= 0) {
             hotInstance.setCellMeta(row, poT1ColIndex, 'readOnly', null);
             hotInstance.setCellMeta(row, poT1ColIndex, 'className', null);
           }
-          
+
           if (poT2ColIndex >= 0) {
             hotInstance.setCellMeta(row, poT2ColIndex, 'readOnly', null);
             hotInstance.setCellMeta(row, poT2ColIndex, 'className', null);
           }
-          
+
           // 重新渲染这两个单元格，让 cells 函数重新应用配置
           hotInstance.render();
         }
@@ -104,23 +104,105 @@ export function useBatchAddSettings(
         // 处理 DEM + DET = 免箱使期 的自动计算
         if (prop === 'poddem' || prop === 'podFreeDays') {
           // 使用 hotInstance.getDataAtCell 获取当前值，而不是直接访问 dataSource
-          const dem = Number(hotInstance.getDataAtCell(row, hotInstance.propToCol('poddem'))) || 0;
-          const det = Number(hotInstance.getDataAtCell(row, hotInstance.propToCol('podFreeDays'))) || 0;
+          const dem =
+            Number(
+              hotInstance.getDataAtCell(row, hotInstance.propToCol('poddem')),
+            ) || 0;
+          const det =
+            Number(
+              hotInstance.getDataAtCell(
+                row,
+                hotInstance.propToCol('podFreeDays'),
+              ),
+            ) || 0;
           const poddet = dem + det;
-          
+
           // 使用 setDataAtCell 更新，避免触发 Vue 响应式
-          hotInstance.setDataAtCell(row, hotInstance.propToCol('poddet'), poddet);
+          hotInstance.setDataAtCell(
+            row,
+            hotInstance.propToCol('poddet'),
+            poddet,
+          );
         }
 
         // 处理日期模式切换时的清空逻辑
-        if (prop === 'etd' && newValue && oldValue !== newValue) {
-          // 使用 setDataAtCell 清空 etdDayOfWeek
-          hotInstance.setDataAtCell(row, hotInstance.propToCol('etdDayOfWeek'), undefined);
+        if (prop === 'etd' && newValue) {
+          // 使用 setDataAtCell 清空开船星期和时间点
+          hotInstance.setDataAtCell(
+            row,
+            hotInstance.propToCol('etdDayOfWeek'),
+            undefined,
+          );
+          hotInstance.setDataAtCell(
+            row,
+            hotInstance.propToCol('etdDayTime'),
+            undefined,
+          );
         }
 
         if (prop === 'etdDayOfWeek' && newValue !== undefined) {
-          // 使用 setDataAtCell 清空 etd
+          // 使用 setDataAtCell 清空开船日期
           hotInstance.setDataAtCell(row, hotInstance.propToCol('etd'), '');
+        } else if (prop === 'etdDayTime' && newValue) {
+          // 如果输入了开船时间点，也视为切换到星期模式（如果需要互斥）
+          // 这里假设只要输入了星期或时间点中的任何一个，都清空具体日期
+          hotInstance.setDataAtCell(row, hotInstance.propToCol('etd'), '');
+        }
+
+        // 截单时间互斥逻辑
+        if (prop === 'closeDocTime' && newValue) {
+          hotInstance.setDataAtCell(
+            row,
+            hotInstance.propToCol('closeDocDayOfWeek'),
+            undefined,
+          );
+          hotInstance.setDataAtCell(
+            row,
+            hotInstance.propToCol('closeDocDayTime'),
+            undefined,
+          );
+        }
+
+        if (prop === 'closeDocDayOfWeek' && newValue !== undefined) {
+          hotInstance.setDataAtCell(
+            row,
+            hotInstance.propToCol('closeDocTime'),
+            '',
+          );
+        } else if (prop === 'closeDocDayTime' && newValue) {
+          hotInstance.setDataAtCell(
+            row,
+            hotInstance.propToCol('closeDocTime'),
+            '',
+          );
+        }
+
+        // 截关时间互斥逻辑
+        if (prop === 'closingTime' && newValue) {
+          hotInstance.setDataAtCell(
+            row,
+            hotInstance.propToCol('closingDayOfWeek'),
+            undefined,
+          );
+          hotInstance.setDataAtCell(
+            row,
+            hotInstance.propToCol('closingDayTime'),
+            undefined,
+          );
+        }
+
+        if (prop === 'closingDayOfWeek' && newValue !== undefined) {
+          hotInstance.setDataAtCell(
+            row,
+            hotInstance.propToCol('closingTime'),
+            '',
+          );
+        } else if (prop === 'closingDayTime' && newValue) {
+          hotInstance.setDataAtCell(
+            row,
+            hotInstance.propToCol('closingTime'),
+            '',
+          );
         }
       });
     },
@@ -139,7 +221,8 @@ export function useBatchAddSettings(
       if (!rowData) return cellProperties;
 
       // ✅ 修复：明确判断是否为直达（字符串"是"或布尔值true）
-      const isDirectValue = rowData.isDirect === '是' || rowData.isDirect === true;
+      const isDirectValue =
+        rowData.isDirect === '是' || rowData.isDirect === true;
 
       // 根据是否直达禁用中转港编辑
       if ((prop === 'poT1Id' || prop === 'poT2Id') && isDirectValue) {

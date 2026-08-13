@@ -157,7 +157,7 @@ export function useBatchAddColumns(
             changes.forEach(([row, prop, oldValue, newValue]: any) => {
               if (prop === 'isDirect') {
                 const hotInstance = this;
-                
+
                 // ⚠️ 关键修复：将用户选择的"是"/"否"转换为布尔值
                 let booleanValue: boolean | undefined;
                 if (newValue === '是') {
@@ -167,10 +167,10 @@ export function useBatchAddColumns(
                 } else {
                   booleanValue = undefined;
                 }
-                
+
                 // 更新单元格值为布尔值
                 //hotInstance.setDataAtCell(row, getColumnIndex('isDirect'), booleanValue);
-                
+
                 // 如果设置为直达（true），清空中转港
                 if (booleanValue === true) {
                   hotInstance.setDataAtCell(
@@ -327,6 +327,29 @@ export function useBatchAddColumns(
         correctFormat: true,
       },
       {
+        data: 'etdDayOfWeek',
+        title: '开船星期',
+        width: 100,
+        type: 'dropdown',
+        source: [
+          '星期一',
+          '星期二',
+          '星期三',
+          '星期四',
+          '星期五',
+          '星期六',
+          '星期日',
+        ],
+      },
+      {
+        data: 'etdDayTime',
+        title: '开船时间点',
+        width: 120,
+        type: 'time',
+        timeFormat: 'HH:mm',
+        correctFormat: true,
+      },
+      {
         data: 'closeDocTime',
         title: '截单时间',
         width: 150,
@@ -335,11 +358,57 @@ export function useBatchAddColumns(
         correctFormat: true,
       },
       {
+        data: 'closeDocDayOfWeek',
+        title: '截单星期',
+        width: 100,
+        type: 'dropdown',
+        source: [
+          '星期一',
+          '星期二',
+          '星期三',
+          '星期四',
+          '星期五',
+          '星期六',
+          '星期日',
+        ],
+      },
+      {
+        data: 'closeDocDayTime',
+        title: '截单时间点',
+        width: 120,
+        type: 'time',
+        timeFormat: 'HH:mm',
+        correctFormat: true,
+      },
+      {
         data: 'closingTime',
         title: '截关时间',
         width: 150,
         type: 'date',
         dateFormat: 'YYYY-MM-DD HH:mm',
+        correctFormat: true,
+      },
+      {
+        data: 'closingDayOfWeek',
+        title: '截关星期',
+        width: 100,
+        type: 'dropdown',
+        source: [
+          '星期一',
+          '星期二',
+          '星期三',
+          '星期四',
+          '星期五',
+          '星期六',
+          '星期日',
+        ],
+      },
+      {
+        data: 'closingDayTime',
+        title: '截关时间点',
+        width: 120,
+        type: 'time',
+        timeFormat: 'HH:mm',
         correctFormat: true,
       },
       {

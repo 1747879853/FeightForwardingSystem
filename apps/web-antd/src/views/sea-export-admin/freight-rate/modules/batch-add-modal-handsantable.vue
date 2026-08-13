@@ -151,8 +151,11 @@ async function handleAIData(aiDataList: any[]) {
 
   // 转换 AI 数据格式以适应表格结构
   const transformedAiData = aiDataList.map((row, index) => {
-    console.log(`🔍 转换第 ${index + 1} 条数据:`, { id: row.id, carrierId: row.carrierId });
-    
+    console.log(`🔍 转换第 ${index + 1} 条数据:`, {
+      id: row.id,
+      carrierId: row.carrierId,
+    });
+
     // ⚠️ 关键修复：将所有 ID 字段转换为对应的显示名称（Handsontable 下拉框需要名称而非 ID）
     const carrierName = convertIdToLabel(row.carrierId, 'carriers');
     const polName = convertIdToLabel(row.polId, 'ports');
@@ -209,7 +212,10 @@ async function handleAIData(aiDataList: any[]) {
       });
     }
 
-    console.log(`✅ 转换后的第 ${index + 1} 条数据 _originalId:`, transformedRow._originalId);
+    console.log(
+      `✅ 转换后的第 ${index + 1} 条数据 _originalId:`,
+      transformedRow._originalId,
+    );
     return transformedRow;
   });
 
@@ -370,8 +376,11 @@ const linkage = {
   },
   handleSwitchToDateTimeMode: (row: any) => {
     row.etdDayOfWeek = undefined;
+    row.etdDayTime = undefined;
     row.closeDocDayOfWeek = undefined;
+    row.closeDocDayTime = undefined;
     row.closingDayOfWeek = undefined;
+    row.closingDayTime = undefined;
   },
   handleSwitchToWeekMode: (row: any) => {
     row.etd = '';
@@ -421,19 +430,19 @@ const userColumnConfig = ref<Map<string, any>>(new Map());
 // 应用列配置到Handsontable
 const applyColumnConfig = (config: any[]) => {
   // 更新用户配置
-  config.forEach(colConfig => {
+  config.forEach((colConfig) => {
     userColumnConfig.value.set(colConfig.data, {
       visible: colConfig.visible,
       fixed: colConfig.fixed,
-      order: colConfig.order
+      order: colConfig.order,
     });
   });
 
   // 获取当前的hotSettings值
   const currentSettings = { ...rawHotSettings.value };
-  
+
   // 过滤可见列
-  const visibleColumns = hotColumns.value.filter(col => {
+  const visibleColumns = hotColumns.value.filter((col) => {
     const config = userColumnConfig.value.get(col.data);
     return config ? config.visible !== false : true;
   });
@@ -443,7 +452,7 @@ const applyColumnConfig = (config: any[]) => {
   const rightFixedColumns: any[] = [];
   const normalColumns: any[] = [];
 
-  visibleColumns.forEach(col => {
+  visibleColumns.forEach((col) => {
     const config = userColumnConfig.value.get(col.data);
     if (config?.fixed === 'left') {
       leftFixedColumns.push(col);
@@ -468,7 +477,11 @@ const applyColumnConfig = (config: any[]) => {
   const sortedRightFixed = sortColumnsByOrder(rightFixedColumns);
 
   // 组合最终的列顺序：左侧固定 + 普通 + 右侧固定
-  const finalColumns = [...sortedLeftFixed, ...sortedNormal, ...sortedRightFixed];
+  const finalColumns = [
+    ...sortedLeftFixed,
+    ...sortedNormal,
+    ...sortedRightFixed,
+  ];
 
   // 计算固定列数量
   const fixedColumnsLeft = sortedLeftFixed.length;
@@ -479,7 +492,7 @@ const applyColumnConfig = (config: any[]) => {
     ...currentSettings,
     columns: finalColumns,
     fixedColumnsLeft: fixedColumnsLeft,
-    fixedColumnsRight: fixedColumnsRight
+    fixedColumnsRight: fixedColumnsRight,
   };
 
   // 更新shallowRef
@@ -490,7 +503,7 @@ const applyColumnConfig = (config: any[]) => {
     coreTableRef.value.hotTableRef.hotInstance.updateSettings({
       columns: finalColumns,
       fixedColumnsLeft: fixedColumnsLeft,
-      fixedColumnsRight: fixedColumnsRight
+      fixedColumnsRight: fixedColumnsRight,
     });
   }
 };
@@ -506,7 +519,7 @@ const currentColumnConfig = computed(() => {
       title: typeof col.title === 'function' ? col.title() : col.title,
       visible: config.visible ?? true,
       fixed: config.fixed ?? false,
-      order: config.order ?? index
+      order: config.order ?? index,
     };
   });
 });
@@ -514,14 +527,14 @@ const currentColumnConfig = computed(() => {
 // 保存列配置
 const saveColumnConfig = (config: any[]) => {
   console.log('💾 保存列配置:', config);
-  
+
   // 验证是否有可见列
-  const visibleCount = config.filter(col => col.visible).length;
+  const visibleCount = config.filter((col) => col.visible).length;
   if (visibleCount === 0) {
     message.warning('至少需要保留一列可见');
     return;
   }
-  
+
   applyColumnConfig(config);
   columnConfigVisible.value = false;
   message.success('列配置已保存');
@@ -571,14 +584,18 @@ const [Modal, modalApi] = useVbenModal({
       const hotInstance = coreTableRef.value.hotTableRef.hotInstance;
 
       const hotData = hotInstance.getSourceData();
-      console.log('🔍 Handsontable getSourceData() 返回的数据类型:', Array.isArray(hotData) ? '数组' : '其他', hotData);
-      
+      console.log(
+        '🔍 Handsontable getSourceData() 返回的数据类型:',
+        Array.isArray(hotData) ? '数组' : '其他',
+        hotData,
+      );
+
       if (hotData && hotData.length > 0) {
         // ⚠️ 关键修复：getSourceData() 返回的是对象数组，不是二维数组
         // 直接使用这些数据，但需要保留额外字段
         const objectData = hotData.map((hotRow: any, rowIndex: number) => {
           const rowObject: any = {};
-          
+
           // 如果 hotRow 已经是对象，直接复制所有字段
           if (typeof hotRow === 'object' && !Array.isArray(hotRow)) {
             Object.assign(rowObject, hotRow);
@@ -591,7 +608,7 @@ const [Modal, modalApi] = useVbenModal({
               }
             });
           }
-          
+
           // ⚠️ 关键修复：从 dataSource 中保留额外字段（如 _originalId, _rowKey, seFreiPriceCtns 等）
           const originalRow = dataSource.value[rowIndex];
           if (originalRow) {
@@ -602,26 +619,30 @@ const [Modal, modalApi] = useVbenModal({
             if (originalRow._rowKey && !rowObject._rowKey) {
               rowObject._rowKey = originalRow._rowKey;
             }
-            if (originalRow._isCopied !== undefined && rowObject._isCopied === undefined) {
+            if (
+              originalRow._isCopied !== undefined &&
+              rowObject._isCopied === undefined
+            ) {
               rowObject._isCopied = originalRow._isCopied;
             }
             if (originalRow.seFreiPriceCtns && !rowObject.seFreiPriceCtns) {
               rowObject.seFreiPriceCtns = originalRow.seFreiPriceCtns;
             }
           }
-          
+
           return rowObject;
         });
 
-        console.log('📊 同步后的数据（检查 _originalId 和其他字段）:', 
-          objectData.map((row: any) => ({ 
-            _originalId: row._originalId, 
+        console.log(
+          '📊 同步后的数据（检查 _originalId 和其他字段）:',
+          objectData.map((row: any) => ({
+            _originalId: row._originalId,
             carrierId: row.carrierId,
             polId: row.polId,
-            podId: row.podId
-          }))
+            podId: row.podId,
+          })),
         );
-        
+
         dataSource.value = objectData;
       }
     }
@@ -659,11 +680,13 @@ const [Modal, modalApi] = useVbenModal({
     if (addedCtnTypes.value.length === 0 && allCtnOptions.value.length > 0) {
       // 尝试从 baseStore 获取原始箱型数据以筛选默认箱型
       const baseStore = useBaseStore();
-      const defaultCtns = baseStore.ctnOptions.filter(ctn => ctn.isDefault === true).map(ctn => ({
-        ctnCodeId: String(ctn.ctnCodeId),
-        ctnName: ctn.ctnName,
-      }));
-      
+      const defaultCtns = baseStore.ctnOptions
+        .filter((ctn) => ctn.isDefault === true)
+        .map((ctn) => ({
+          ctnCodeId: String(ctn.ctnCodeId),
+          ctnName: ctn.ctnName,
+        }));
+
       addedCtnTypes.value = defaultCtns;
       console.log('✅ 已初始化默认箱型:', addedCtnTypes.value.length, '个');
     }
@@ -737,12 +760,12 @@ async function handleEditSubmit(labelToIdMapValue: any) {
       const submitData: any = {
         id: row._originalId,
         recommend: row.recommend,
-        carrierId: carrierId ,
-        polId: polId ,
-        podId: podId ,
+        carrierId: carrierId,
+        polId: polId,
+        podId: podId,
         isDirect: row.isDirect === '是',
-        poT1Id: poT1Id ,
-        poT2Id: poT2Id ,
+        poT1Id: poT1Id,
+        poT2Id: poT2Id,
         polFreeDays: row.polFreeDays,
         podFreeDays: row.podFreeDays,
         poddem: row.poddem,
@@ -752,8 +775,26 @@ async function handleEditSubmit(labelToIdMapValue: any) {
         validTimeStart: row.validTimeStart || undefined,
         validTimeEnd: row.validTimeEnd || undefined,
         remark: row.remark || undefined,
-        currencyId: currencyId ,
+        currencyId: currencyId,
         bookingAgentId: bookingAgentId || null,
+      };
+
+      // 辅助函数：将星期字符串转换为数字 (DayOfWeek 枚举)
+      const convertDayOfWeekToNumber = (dayStr: any): number | undefined => {
+        if (dayStr === undefined || dayStr === null || dayStr === '')
+          return undefined;
+
+        const dayMap: Record<string, number> = {
+          星期日: 0,
+          星期一: 1,
+          星期二: 2,
+          星期三: 3,
+          星期四: 4,
+          星期五: 5,
+          星期六: 6,
+        };
+
+        return dayMap[dayStr];
       };
 
       // 处理日期时间模式
@@ -767,7 +808,7 @@ async function handleEditSubmit(labelToIdMapValue: any) {
         ];
       }
 
-      // 处理星期模式
+      // 处理星期模式（转换星期为数字）
       if (
         row.etdDayOfWeek !== undefined ||
         row.closeDocDayOfWeek !== undefined ||
@@ -775,11 +816,11 @@ async function handleEditSubmit(labelToIdMapValue: any) {
       ) {
         submitData.seFreiPriceWeekDays = [
           {
-            etdDayOfWeek: row.etdDayOfWeek,
+            etdDayOfWeek: convertDayOfWeekToNumber(row.etdDayOfWeek),
             etdDayTime: row.etdDayTime || undefined,
-            closeDocDayOfWeek: row.closeDocDayOfWeek,
+            closeDocDayOfWeek: convertDayOfWeekToNumber(row.closeDocDayOfWeek),
             closeDocDayTime: row.closeDocDayTime || undefined,
-            closingDayOfWeek: row.closingDayOfWeek,
+            closingDayOfWeek: convertDayOfWeekToNumber(row.closingDayOfWeek),
             closingDayTime: row.closingDayTime || undefined,
           },
         ];
@@ -789,7 +830,7 @@ async function handleEditSubmit(labelToIdMapValue: any) {
       const seFreiPriceCtns: any[] = [];
       Object.keys(row).forEach((key) => {
         if (key.startsWith('ctn_')) {
-          const ctnCodeId =key.replace('ctn_', '');
+          const ctnCodeId = key.replace('ctn_', '');
           const cost = row[key];
 
           if (cost !== undefined && cost !== null && cost !== '') {
@@ -869,7 +910,11 @@ defineExpose({
 </script>
 
 <template>
-  <Modal :title="isEditMode ? '编辑数据' : '批量新增运价'" class="w-[1400px]" :confirm-loading="loading">
+  <Modal
+    :title="isEditMode ? '编辑数据' : '批量新增运价'"
+    class="w-[1400px]"
+    :confirm-loading="loading"
+  >
     <div class="batch-add-container">
       <!-- 仅在新增模式下显示操作按钮 -->
       <div v-if="!isEditMode" class="mb-4 flex items-center justify-between">
@@ -913,9 +958,9 @@ defineExpose({
             :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
             @change="actions.handleAddCtnType"
           />
-          <div class="column-config-container" style="position: relative;">
-            <Button 
-              shape="circle" 
+          <div class="column-config-container" style="position: relative">
+            <Button
+              shape="circle"
               @click="columnConfigVisible = !columnConfigVisible"
               class="column-config-btn"
               title="表格列配置"
@@ -945,9 +990,9 @@ defineExpose({
             :field-names="{ label: 'ctnName', value: 'ctnCodeId' }"
             @change="actions.handleAddCtnType"
           />
-          <div class="column-config-container" style="position: relative;">
-            <Button 
-              shape="circle" 
+          <div class="column-config-container" style="position: relative">
+            <Button
+              shape="circle"
               @click="columnConfigVisible = !columnConfigVisible"
               class="column-config-btn"
               title="表格列配置"
@@ -1006,21 +1051,21 @@ defineExpose({
 
   .column-config-container {
     display: inline-block;
-    
+
     .column-config-btn {
       //transition: all 0.3s ease;
-      
+
       // &:hover {
       //   transform: rotate(90deg);
       //   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
       // }
-      
-      span[class^="icon-"] {
-        font-size: 18px;
+
+      span[class^='icon-'] {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         margin-top: 2px;
+        font-size: 18px;
       }
     }
   }
