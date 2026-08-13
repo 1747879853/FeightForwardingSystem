@@ -296,7 +296,7 @@ export function useGoodsDetails(
       // 获取当前申请的币别和汇率信息
       const appCurrencyId = app.currencyId;
       const isAppForeignCurrency = appCurrencyId !== 1; // 1 是人民币
-      
+
       // 遍历该申请的所有商品明细
       app.invoiceApplicationGoodsDtls.forEach((goods: any) => {
         const goodsName =
@@ -323,20 +323,24 @@ export function useGoodsDetails(
           convertedNoTaxAmount = (goods.noTaxAmount || 0) * exchangeRate;
           convertedTaxAmount = (goods.taxAmount || 0) * exchangeRate;
           convertedUnitPrice = (goods.unitPrice || 0) * exchangeRate;
-          
+
           console.log('💱 外币转人民币:', {
             originalAmount: goods.amount,
             exchangeRate: exchangeRate,
             convertedAmount: convertedAmount,
             appCurrencyId: appCurrencyId,
-            invoiceCurrencyId: invoiceCurrencyId
+            invoiceCurrencyId: invoiceCurrencyId,
           });
-        } else if (isAppForeignCurrency && invoiceCurrencyId !== 1 && appCurrencyId !== invoiceCurrencyId) {
+        } else if (
+          isAppForeignCurrency &&
+          invoiceCurrencyId !== 1 &&
+          appCurrencyId !== invoiceCurrencyId
+        ) {
           // 申请是外币A，发票是外币B：这种情况理论上不应该出现，因为费用选择抽屉会按币别分组
           // 但为了安全起见，这里也处理一下（实际上应该不会走到这里）
           console.warn('⚠️ 不同外币之间转换，可能存在问题:', {
             appCurrencyId: appCurrencyId,
-            invoiceCurrencyId: invoiceCurrencyId
+            invoiceCurrencyId: invoiceCurrencyId,
           });
           // 这种情况暂时不处理，保持原值
         }
@@ -349,7 +353,7 @@ export function useGoodsDetails(
           existing.amount += convertedAmount;
           existing.noTaxAmount += convertedNoTaxAmount;
           existing.taxAmount += convertedTaxAmount;
-          
+
           // ✅ 重新计算单价：单价 = 金额 / 数量
           // 注意：数量应该大于0，避免除零错误
           if (existing.quantity > 0) {
@@ -392,7 +396,20 @@ export function useGoodsDetails(
           };
 
           goodsMap.set(mergeKey, newItem);
-          console.log('  - 新增商品:', goodsName, '规格:', specification, '单位:', unit, '数量:', quantity, '税率:', taxRate, '金额:', convertedAmount);
+          console.log(
+            '  - 新增商品:',
+            goodsName,
+            '规格:',
+            specification,
+            '单位:',
+            unit,
+            '数量:',
+            quantity,
+            '税率:',
+            taxRate,
+            '金额:',
+            convertedAmount,
+          );
         }
       });
     });
@@ -458,7 +475,7 @@ export function useGoodsDetails(
 
     // 查找默认商品编码
     const defaultCodeInvoice = codeInvoiceList.value.find(
-      (item: any) => item.isDefault && item.defaultCurrency === currencyCode,
+      (item: any) => item.isDefault && item.currency?.code === currencyCode,
     );
 
     if (!defaultCodeInvoice) {
