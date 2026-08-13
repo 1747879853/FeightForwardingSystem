@@ -160,7 +160,7 @@ export function useGoodsDetails(
     }
 
     const defaultCodeInvoice = codeInvoiceList.value.find(
-      (item) => item.isDefault && item.currencyId === currencyCode,
+      (item) => item.isDefault && item.currency?.code === currencyCode,
     );
 
     if (!defaultCodeInvoice) {
@@ -240,7 +240,7 @@ export function useGoodsDetails(
     }
 
     const defaultCodeInvoice = codeInvoiceList.value.find(
-      (item) => item.isDefault && item.currencyId === currencyCode,
+      (item) => item.isDefault && item.currency?.code === currencyCode,
     );
 
     if (!defaultCodeInvoice) {

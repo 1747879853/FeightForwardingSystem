@@ -136,7 +136,7 @@ export function useFeeManagement(
     }
 
     const defaultCodeInvoice = codeInvoiceList.value.find(
-      (item) => item.isDefault && item.currencyId === currencyCode,
+      (item) => item.isDefault && item.currency?.code === currencyCode,
     );
 
     if (!defaultCodeInvoice) {

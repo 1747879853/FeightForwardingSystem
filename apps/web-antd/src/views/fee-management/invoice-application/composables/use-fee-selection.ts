@@ -62,7 +62,7 @@ export function useFeeSelectionSave(
     }
 
     const defaultCodeInvoice = codeInvoiceList.value.find(
-      (item) => item.isDefault && item.currencyId === currencyCode,
+      (item) => item.isDefault && item.currency?.code === currencyCode,
     );
 
     if (!defaultCodeInvoice) {
@@ -142,12 +142,14 @@ export function useFeeSelectionSave(
     }
 
     // 自动设置归属组织
-    const firstFee = selectedFees[0];
-    if (firstFee?.transportOrder?.orgId) {
-      formData.value.orgId = firstFee.transportOrder.orgId;
-    } else if (!formData.value.orgId) {
-      formData.value.orgId = getMyDefaultOrgId() ?? 0;
-    }
+    // const firstFee = selectedFees[0];
+    // if (firstFee?.transportOrder?.orgId) {
+    //   formData.value.orgId = firstFee.transportOrder.orgId;
+    // } else if (!formData.value.orgId) {
+    //   formData.value.orgId = getMyDefaultOrgId() ?? 0;
+    // }
+
+    //formData.value.orgId = getMyDefaultOrgId() ?? 0;
 
     // 根据币别自动选择销售方默认银行
     updateOrgBankByCurrency();
@@ -293,7 +295,7 @@ export function useFeeSelectionSave(
 
           // 查找该币别的默认发票商品编码
           const defaultCodeInvoice = codeInvoiceList.value.find(
-            (item) => item.isDefault && item.currencyId === currencyCode,
+            (item) => item.isDefault && item.currency?.code === currencyCode,
           );
 
           if (!defaultCodeInvoice) {

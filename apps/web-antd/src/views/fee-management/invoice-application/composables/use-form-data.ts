@@ -5,7 +5,10 @@ import { useUserStore } from '@vben/stores';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
 import type { ClientInvoiceInfoAdminApi } from '#/api/sea-export/clinet-invoice-admin';
 import type { CodeInvoiceAdminApi } from '#/api/system/base-data/code-invoice-admin';
-import { getMyDefaultOrgId, getMyOrgCompanyNode } from '#/composables/use-my-org';
+import {
+  getMyDefaultOrgId,
+  getMyOrgCompanyNode,
+} from '#/composables/use-my-org';
 
 /**
  * 表单数据和基础状态管理
@@ -55,8 +58,11 @@ export function useFormData() {
   const orgBankAccounts = ref<any[]>([]);
 
   // 客户开票信息
-  const clientInvoiceInfoList = ref<ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto[]>([]);
-  const selectedClientInvoiceInfo = ref<ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto>();
+  const clientInvoiceInfoList = ref<
+    ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto[]
+  >([]);
+  const selectedClientInvoiceInfo =
+    ref<ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto>();
 
   // 发票商品编码列表
   const codeInvoiceList = ref<CodeInvoiceAdminApi.CodeInvoiceDto[]>([]);
@@ -89,6 +95,7 @@ export function useFormData() {
     }
     if (!formData.value.orgId) {
       formData.value.orgId = getMyDefaultOrgId() ?? 0;
+      console.log('getMyDefaultOrgId', getMyDefaultOrgId());
     }
     applyOrgCompanyInfo();
   }
@@ -103,7 +110,8 @@ export function useFormData() {
       applicantCompanyName.value = companyNode.displayName || '';
       applicantCompanyId.value = companyNode.id;
       applicantTaxNumber.value = companyNode.unifiedSocialCreditCode || '';
-      applicantAddress.value = `${companyNode.invoiceAddress || ''} ${companyNode.invoiceTel || ''}`.trim();
+      applicantAddress.value =
+        `${companyNode.invoiceAddress || ''} ${companyNode.invoiceTel || ''}`.trim();
       orgBankAccounts.value = Array.isArray(companyNode.orgBankAccounts)
         ? companyNode.orgBankAccounts
         : [];
