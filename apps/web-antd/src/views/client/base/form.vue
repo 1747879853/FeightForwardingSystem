@@ -762,24 +762,38 @@ const updateStakeholders = async (
       const firstSalesUserId = values[0];
       if (firstSalesUserId !== undefined) {
         const userInfo = await getUser(firstSalesUserId, { silent: true });
-        
+
         // 获取用户的默认组织（default=true的组织）
-        const defaultOrg = userInfo.organizations?.find(org => org.default);
-        
-        if (defaultOrg && defaultOrg.oneOrganizationPath && defaultOrg.oneOrganizationPath.length > 0) {
+        const defaultOrg = userInfo.organizations?.find((org) => org.default);
+
+        if (
+          defaultOrg &&
+          defaultOrg.oneOrganizationPath &&
+          defaultOrg.oneOrganizationPath.length > 0
+        ) {
           // 从组织路径中查找第一个公司（isCompany=true）
           // 组织路径是从顶级到底级，公司通常在顶层
-          const companyOrg = defaultOrg.oneOrganizationPath.find(org => org.isCompany);
-          
+          const companyOrg = defaultOrg.oneOrganizationPath.find(
+            (org) => org.isCompany,
+          );
+
           if (companyOrg && companyOrg.id) {
             // 更新基础信息表单中的所属公司字段
             await baseFormApi.setValues({
               orgId: companyOrg.id,
             });
-            
-            console.log('✅ [销售联动] 已自动设置所属公司为:', companyOrg.name, '(ID:', companyOrg.id, ')');
+
+            console.log(
+              '✅ [销售联动] 已自动设置所属公司为:',
+              companyOrg.name,
+              '(ID:',
+              companyOrg.id,
+              ')',
+            );
           } else {
-            console.warn('⚠️ [销售联动] 该销售人员的默认组织路径中未找到公司节点');
+            console.warn(
+              '⚠️ [销售联动] 该销售人员的默认组织路径中未找到公司节点',
+            );
           }
         }
       }
@@ -804,15 +818,76 @@ const handleSubmit = async () => {
     submitting.value = true;
 
     // 验证所有表单
-    const [baseValid, businessValid, clientValid, supplierValid] =
-      await Promise.all([
-        baseFormApi.validate(),
-        businessFormApi.validate(),
-        isClient.value ? clientFormApi.validate() : Promise.resolve(),
-        isSupplier.value ? supplierFormApi.validate() : Promise.resolve(),
-      ]);
+    let baseValid = true;
+    let businessValid = true;
+    let clientValid = true;
+    let supplierValid = true;
+
+    try {
+      await baseFormApi.validate();
+    } catch (error) {
+      baseValid = false;
+      console.warn('基础表单验证失败:', error);
+    }
+
+    try {
+      await businessFormApi.validate();
+    } catch (error) {
+      businessValid = false;
+      console.warn('业务表单验证失败:', error);
+    }
+
+    if (isClient.value) {
+      try {
+        await clientFormApi.validate();
+      } catch (error) {
+        clientValid = false;
+        console.warn('客户表单验证失败:', error);
+      }
+    }
+
+    if (isSupplier.value) {
+      try {
+        await supplierFormApi.validate();
+      } catch (error) {
+        supplierValid = false;
+        console.warn('供应商表单验证失败:', error);
+      }
+    }
 
     if (!baseValid || !businessValid) {
+      message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
+      return;
+    }
+
+    // 如果是客户类型，额外校验客户性质是否已选择
+    if (isClient.value) {
+      const clientValuesCheck = await clientFormApi.getValues();
+      console.log('🔍 客户表单值:', clientValuesCheck);
+      console.log(
+        '🔍 clientType 值:',
+        clientValuesCheck.clientType,
+        '类型:',
+        typeof clientValuesCheck.clientType,
+      );
+
+      if (
+        clientValuesCheck.clientType === undefined ||
+        clientValuesCheck.clientType === null
+      ) {
+        console.warn('❌ 客户性质未选择，阻止保存');
+        Modal.warning({
+          title: '提示',
+          content: '请选择客户性质（同行/直客）',
+          okText: '确定',
+        });
+        return;
+      }
+      console.log('✅ 客户性质已选择:', clientValuesCheck.clientType);
+    }
+
+    // 如果是供应商类型，校验供应商表单
+    if (isSupplier.value && !supplierValid) {
       message.warning($t('ui.formRules.pleaseCompleteRequiredFields'));
       return;
     }
@@ -824,6 +899,15 @@ const handleSubmit = async () => {
     const supplierValues = isSupplier.value
       ? await supplierFormApi.getValues()
       : {};
+
+    console.log('📋 表单值汇总:', {
+      baseValues,
+      businessValues,
+      clientValues,
+      supplierValues,
+      isClient: isClient.value,
+      isSupplier: isSupplier.value,
+    });
 
     let createdId: any;
 
@@ -1034,7 +1118,7 @@ const handleSubmit = async () => {
         taxNo: baseValues.taxNo,
         email: baseValues.email,
         url: baseValues.url,
-        clientType: baseValues.clientType,
+        clientType: isClient.value ? clientValues.clientType : undefined,
 
         // 业务信息
         legalPerson: businessValues.legalPerson,
@@ -1070,6 +1154,14 @@ const handleSubmit = async () => {
         // 对账人用户ID列表
         reconcilerUserIds: reconcilerUserIds.value,
       };
+
+      console.log('📤 新增模式提交数据:', {
+        clientType: addData.clientType,
+        isClient: addData.isClient,
+        name: addData.name,
+        fullName: addData.fullName,
+      });
+
       createdId = await addClient(addData);
       const resolvedCreatedId =
         (createdId as any)?.id ?? (createdId as any)?.result ?? createdId;
@@ -1771,9 +1863,3 @@ onMounted(() => {
   background: linear-gradient(to right, #1677ff18, #fff);
 }
 </style>
-
-
-
-
-
-
