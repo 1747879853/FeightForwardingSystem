@@ -90,17 +90,17 @@ const selectedFeeRowKeys = ref<string[]>([]);
 const expandedRowKeys = ref<string[]>([]);
 
 // 监听费用数据变化，自动展开所有行
-watch(
-  feeGroupsData,
-  (newData) => {
-    if (newData && newData.length > 0) {
-      expandedRowKeys.value = newData.map((item) => item.id);
-    } else {
-      expandedRowKeys.value = [];
-    }
-  },
-  { immediate: true },
-);
+// watch(
+//   feeGroupsData,
+//   (newData) => {
+//     if (newData && newData.length > 0) {
+//       expandedRowKeys.value = newData.map((item) => item.id);
+//     } else {
+//       expandedRowKeys.value = [];
+//     }
+//   },
+//   { immediate: true },
+// );
 
 // 发票汇率
 const invoiceExchangeRate = ref<number>(1.0);
@@ -599,8 +599,8 @@ function transformToTreeData(
         getBizTypeOptions().find(
           (o: any) => o.value === item.transportOrder?.bizType,
         )?.label || '-',
-      carrier: item.transportOrder?.seaExport?.carrier?.cnName || '-',
-      company: item.transportOrder.orgs?.at(-1)?.name || '-',
+      carrier: item.transportOrder?.seaExport?.carrier?.code || '-',
+      company: item.transportOrder.orgs?.at(0)?.name || '-',
       checked: false,
       disabled: allChildrenDisabled, // ✅ 如果所有子级都已添加，则禁用父级复选框
       feeDetails: childrenList, // ✅ 使用 feeDetails 而非 children，避免被 Table 识别为树形结构

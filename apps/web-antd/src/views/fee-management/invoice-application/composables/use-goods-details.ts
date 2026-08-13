@@ -160,11 +160,13 @@ export function useGoodsDetails(
     }
 
     const defaultCodeInvoice = codeInvoiceList.value.find(
-      (item) => item.isDefault && item.defaultCurrency === currencyCode,
+      (item) => item.isDefault && item.currencyId === currencyCode,
     );
 
     if (!defaultCodeInvoice) {
-      message.warning(`未找到币别 ${currencyCode} 对应的默认商品编码，请手动添加`);
+      message.warning(
+        `未找到币别 ${currencyCode} 对应的默认商品编码，请手动添加`,
+      );
       return;
     }
 
@@ -176,7 +178,8 @@ export function useGoodsDetails(
       const feeCurrencyId = fee.orderFee.currencyId;
 
       if (feeCurrencyId !== 1) {
-        const convertedAmount = appliedAmount * (invoiceExchangeRate.value || 1);
+        const convertedAmount =
+          appliedAmount * (invoiceExchangeRate.value || 1);
         totalRmbAmount += convertedAmount;
       } else {
         totalRmbAmount += appliedAmount;
@@ -237,11 +240,13 @@ export function useGoodsDetails(
     }
 
     const defaultCodeInvoice = codeInvoiceList.value.find(
-      (item) => item.isDefault && item.defaultCurrency === currencyCode,
+      (item) => item.isDefault && item.currencyId === currencyCode,
     );
 
     if (!defaultCodeInvoice) {
-      message.warning(`未找到币别 ${currencyCode} 对应的默认商品编码，无法合并`);
+      message.warning(
+        `未找到币别 ${currencyCode} 对应的默认商品编码，无法合并`,
+      );
       return;
     }
 
@@ -257,7 +262,8 @@ export function useGoodsDetails(
         const feeCurrencyId = fee.orderFee.currencyId;
 
         if (feeCurrencyId !== 1) {
-          const convertedAmount = appliedAmount * (invoiceExchangeRate.value || 1);
+          const convertedAmount =
+            appliedAmount * (invoiceExchangeRate.value || 1);
           totalRmbAmount += convertedAmount;
         } else {
           totalRmbAmount += appliedAmount;
@@ -278,8 +284,9 @@ export function useGoodsDetails(
     existingItem.amount = totalRmbAmount;
     existingItem.unitPrice = totalRmbAmount;
     existingItem.noTaxAmount = totalRmbAmount / (1 + taxRate / 100);
-    existingItem.taxAmount = (totalRmbAmount / (1 + taxRate / 100)) * (taxRate / 100);
-    
+    existingItem.taxAmount =
+      (totalRmbAmount / (1 + taxRate / 100)) * (taxRate / 100);
+
     console.log('✅ 商品明细金额已重新计算（基于所有费用）:', {
       totalRmbAmount,
       taxRate,
@@ -304,7 +311,9 @@ export function useGoodsDetails(
 
       const currentFees: any[] = [];
       items.forEach((item: any) => {
-        const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
+        const fee = allFees.find(
+          (f: any) => f.orderFee?.id === item.orderFeeId,
+        );
         if (fee) {
           currentFees.push(fee);
         }
@@ -334,9 +343,8 @@ export function useGoodsDetails(
    */
   async function loadCodeInvoiceList() {
     try {
-      const { getCodeInvoicePagedList } = await import(
-        '#/api/system/base-data/code-invoice-admin'
-      );
+      const { getCodeInvoicePagedList } =
+        await import('#/api/system/base-data/code-invoice-admin');
       const result = await getCodeInvoicePagedList({
         PageIndex: 1,
         PageSize: 1000,

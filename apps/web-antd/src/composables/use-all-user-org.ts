@@ -80,6 +80,16 @@ export function formatOrgPathLabel(
     .join('/');
 }
 
+export function formatCompanyPathLabel(
+  path:
+    | Array<{ displayName?: null | string; name?: null | string }>
+    | null
+    | undefined,
+): string {
+  if (!path?.length) return '';
+  return path.at(0)?.displayName ?? path.at(0)?.name ?? '';
+}
+
 /**
  * 某用户的「直属组织」下拉选项（value = 直属组织 id）。
  * 用于业务录入按所选销售取其所属组织范围。

@@ -785,6 +785,7 @@ export function useClientFormSchema(): VbenFormSchema[] {
       component: 'Select',
       fieldName: 'clientType',
       label: $t('seaExport.client.clientType'),
+      rules: 'selectRequired',
       componentProps: {
         allowClear: true,
         options: getClientTypeOptions(),

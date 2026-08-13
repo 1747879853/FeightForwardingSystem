@@ -1030,6 +1030,7 @@ export function extractSeFreiPriceByGemini(file: File) {
     '/services/app/GeminiAdmin/ExtractSeFreiPriceByPromptAsync',
     formData,
     {
+      timeout: 100_000,
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -1051,6 +1052,7 @@ export function extractSeFreiPriceByQwen(file: File) {
     '/services/app/QwenAdmin/ExtractSeFreiPriceByPromptAsync',
     formData,
     {
+      timeout: 100_000,
       headers: {
         'Content-Type': 'multipart/form-data',
       },

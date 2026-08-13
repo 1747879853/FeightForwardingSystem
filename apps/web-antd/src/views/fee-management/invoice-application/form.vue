@@ -291,7 +291,7 @@ async function handleFeeDetailRefresh() {
                   bizType: '-',
                   carrier:
                     parentFee.transportOrder?.seaExport?.carrier?.cnName || '-',
-                  company: parentFee.transportOrder.orgs?.at(-1)?.name || '-',
+                  company: parentFee.transportOrder.orgs?.at(0)?.name || '-',
                   feeDetails: [] as any[],
                 };
                 selectedDetails.push(parentNode);
@@ -421,7 +421,7 @@ async function handleOpenFeeDetailModal() {
               bizType: '-',
               carrier:
                 parentFee.transportOrder?.seaExport?.carrier?.cnName || '-',
-              company: parentFee.transportOrder.orgs?.at(-1)?.name || '-',
+              company: parentFee.transportOrder.orgs?.at(0)?.name || '-',
               feeDetails: [] as any[],
             };
             selectedDetails.push(parentNode);

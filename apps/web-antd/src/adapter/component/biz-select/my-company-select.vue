@@ -7,17 +7,14 @@ import { objectOmit } from '@vueuse/core';
 
 import { Select } from 'ant-design-vue';
 
-import {
-  getMyDefaultOrgId,
-  getMyCompanyOptions,
-} from '#/composables/use-my-org';
+import { getMyOrgOptions, getMyDefaultOrgId, getMyOrgCompanyNode } from '#/composables/use-my-org';
 
 defineOptions({ inheritAttrs: false });
 
 interface Props {
   /** placeholder */
   placeholder?: string;
-  /** 挂载时若未选值，是否自动填充默认组织，默认 true */
+  /** 挂载时若未选值，是否自动填充默认公司，默认 true */
   autoDefault?: boolean;
 }
 
@@ -29,12 +26,30 @@ const props = withDefaults(defineProps<Props>(), {
 const modelValue = defineModel<null | number | undefined>();
 const attrs = useAttrs();
 
-const options = computed(() =>
-  getMyCompanyOptions().map((item) => ({
-    label: item.label,
-    value: item.value,
-  })),
-);
+/**
+ * 获取我的公司选项。
+ * 遍历用户的 organizations，提取每条路径对应的公司节点（第一级 isCompany 或路径首个节点）。
+ */
+const options = computed(() => {
+  const orgOptions = getMyOrgOptions();
+  const companyMap = new Map<number, { label: string; value: number }>();
+
+  orgOptions.forEach((orgOption) => {
+    // 获取该组织对应的公司节点
+    const companyNode = getMyOrgCompanyNode(orgOption.value);
+    
+    if (companyNode && !companyMap.has(companyNode.id)) {
+      // 使用公司节点的 displayName 作为标签
+      const label = companyNode.displayName || '';
+      companyMap.set(companyNode.id, {
+        label,
+        value: companyNode.id,
+      });
+    }
+  });
+
+  return Array.from(companyMap.values());
+});
 
 const computedPlaceholder = computed(
   () => props.placeholder || $t('ui.placeholder.select'),
@@ -48,12 +63,24 @@ const handleChange = (value: any) => {
   modelValue.value = value ?? null;
 };
 
+/**
+ * 获取默认公司 ID。
+ * 基于默认组织的公司节点。
+ */
+const getDefaultCompanyId = (): number | undefined => {
+  const defaultOrgId = getMyDefaultOrgId();
+  if (!defaultOrgId) return undefined;
+  
+  const companyNode = getMyOrgCompanyNode(defaultOrgId);
+  return companyNode?.id;
+};
+
 onMounted(() => {
   if (
     props.autoDefault &&
     (modelValue.value === undefined || modelValue.value === null)
   ) {
-    const defaultId = getMyDefaultOrgId();
+    const defaultId = getDefaultCompanyId();
     if (defaultId !== undefined) {
       modelValue.value = defaultId;
     }

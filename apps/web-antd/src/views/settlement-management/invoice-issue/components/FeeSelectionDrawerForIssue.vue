@@ -16,7 +16,8 @@ import {
   Select,
   Space,
   Spin,
-  Table,
+  Checkbox,
+  Tag,
 } from 'ant-design-vue';
 
 import { ClientSelect, CurrencySelect } from '#/adapter/component';
@@ -30,6 +31,7 @@ import { getCurrencyDetail } from '#/api/system/base-data/currency-admin';
 import { getExchangeRatePagedList } from '#/api/system/base-data/exchange-rate-admin';
 import { useAntTableColumnResize } from '#/utils/table-column-resize';
 import { getInvoiceTypeOptions } from '#/views/fee-management/invoice-application/data';
+import NestedDataTable from '#/components/nested-data-table/nested-data-table.vue';
 
 interface Props {
   visible: boolean;
@@ -111,6 +113,9 @@ useAntTableColumnResize({
 // 选中的申请行 keys
 const selectedAppRowKeys = ref<string[]>([]);
 
+// ✅ NestedDataTable 展开行控制
+const expandedRowKeys = ref<(string | number)[]>([]);
+
 // 发票汇率
 const invoiceExchangeRate = ref<number>(1.0);
 
@@ -154,6 +159,46 @@ function handleSelectAll(selected: boolean, changeRows: any[]) {
 function handleParentSelectionChange(selectedRowKeys: any[]) {
   selectedAppRowKeys.value = selectedRowKeys.map((key) => String(key));
 }
+
+/** ✅ 新增：切换单行选择状态 */
+function toggleRowSelection(rowKey: string, checked: boolean) {
+  if (checked) {
+    if (!selectedAppRowKeys.value.includes(rowKey)) {
+      selectedAppRowKeys.value = [...selectedAppRowKeys.value, rowKey];
+    }
+  } else {
+    selectedAppRowKeys.value = selectedAppRowKeys.value.filter(
+      (key) => key !== rowKey,
+    );
+  }
+  updateCurrencyFromSelectedApplications();
+}
+
+/** ✅ 新增：切换全选状态 */
+function toggleAllSelection(checked: boolean) {
+  if (checked) {
+    selectedAppRowKeys.value = applicationGroupsData.value.map(
+      (record) => record.rowKey,
+    );
+  } else {
+    selectedAppRowKeys.value = [];
+  }
+  updateCurrencyFromSelectedApplications();
+}
+
+/** ✅ 新增：是否全选 */
+const isAllSelected = computed(() => {
+  if (applicationGroupsData.value.length === 0) return false;
+  return applicationGroupsData.value.every((record) =>
+    selectedAppRowKeys.value.includes(record.rowKey),
+  );
+});
+
+/** ✅ 新增：是否半选 */
+const isIndeterminate = computed(() => {
+  const selectedCount = selectedAppRowKeys.value.length;
+  return selectedCount > 0 && selectedCount < applicationGroupsData.value.length;
+});
 
 /** 从选中的申请中更新币别 */
 async function updateCurrencyFromSelectedApplications() {
@@ -838,7 +883,6 @@ function transformToTreeData(
           sequenceNumber: index + 1, // ✅ 序号从1开始
           commissionNum: item.orderFee?.transportOrder?.commissionNum || '-', // 委托编号
           mblNum: item.orderFee?.transportOrder?.mblNum || '-', // 主提单号
-          //hblNum: '-', // 分提单号（需要从其他地方获取）
           clientName: item.orderFee?.transportOrder?.client?.name || '-', // 委托单位
           etd: (() => {
             const etdValue = item.orderFee?.transportOrder?.etd;
@@ -850,7 +894,7 @@ function transformToTreeData(
               return etdValue;
             }
           })(), // 开船日期（只保留年月日）
-          feeName: item.orderFee?.feeCode?.cnName || '-', // 费用名称
+          feeCodeName: item.orderFee?.feeCode?.cnName || '-', // 费用名称
           payReceiveType: item.orderFee?.paySide === 1 ? '应付' : '应收', // 收付
           currencyCode: item.orderFee?.currency?.code || '-', // 币别
           amount: item.orderFee?.amount || 0, // 金额
@@ -894,52 +938,32 @@ function transformToTreeData(
       });
     }
 
-    console.log(
-      '📋 申请',
-      app.applicationNo,
-      '提取的委托编号:',
-      Array.from(commissionNums),
-    );
-    console.log(
-      '📋 申请',
-      app.applicationNo,
-      '提取的主提单号:',
-      Array.from(mblNums),
-    );
-
     const parentNode: any = {
       id: app.id,
+      rowKey: String(app.id), // NestedDataTable 需要的 rowKey
       parentId: null,
       // 一级字段
-      // ✅ 使用后端返回的 company 对象作为所属公司名称
       companyName: app.company?.displayName || '-',
-      orgId: app.orgId, // ✅ 归属组织ID
-      applicationNo: app.applicationNo || '-', // 申请单号
-      // ✅ 使用 clientInvoiceInfo.header 作为发票抬头
+      orgId: app.orgId,
+      applicationNo: app.applicationNo || '-',
       header: app.clientInvoiceInfo?.header || '-',
-      currencyCode: app.currency?.code || '-', // 币别
-      remark: app.remark || '-', // 备注
-      applyUserName: app.applyUserName || '-', // 申请人
-      applyTime: formattedApplyTime, // ✅ 格式化后的申请日期
-      require: app.require || '-', // 开票要求
-      invoiceRemark: '-', // 发票备注
-      invoiceType: app.invoiceType || '-', // 发票类型
-      // ✅ 开票汇率（从申请中获取）
+      currencyCode: app.currency?.code || '-',
+      remark: app.remark || '-',
+      applyUserName: app.applyUserName || '-',
+      applyTime: formattedApplyTime,
+      require: app.require || '-',
+      invoiceRemark: '-',
+      invoiceType: app.invoiceType || '-',
       invoiceExchangeRate: app.invoiceExchangeRate || 1.0,
-      // ✅ 删除了 pushEmail 字段
-      totalAppliedAmount: app.totalAppliedAmount || 0, // 申请开票原币金额
-      // ✅ 开票金额 = 开票原币金额 * 开票汇率
+      totalAppliedAmount: app.totalAppliedAmount || 0,
       invoiceAmount:
         (app.totalAppliedAmount || 0) * (app.invoiceExchangeRate || 1.0),
       checked: false,
-      selectable: true, // ✅ 一级可选择
-      invoiceApplicationItems: childrenList, // 使用 invoiceApplicationItems 作为子节点
-      // ✅ 保留商品明细数据（用于合并商品明细）
+      selectable: true,
+      invoiceApplicationItems: childrenList,
       invoiceApplicationGoodsDtls: app.invoiceApplicationGoodsDtls || [],
-      // ✅ 新增：委托编号和主提单号（从子节点提取，多个用、分隔）
       commissionNum: Array.from(commissionNums).join('、') || '-',
       mblNum: Array.from(mblNums).join('、') || '-',
-      // 保留原始数据
       settlementId: app.settlementId,
       currencyId: app.currencyId,
       clientInvoiceBankId: app.clientInvoiceBankId,
@@ -947,7 +971,6 @@ function transformToTreeData(
       totalGoodsAmount: app.totalGoodsAmount,
       appliedAmountRmb: app.appliedAmountRmb,
       code: app.code,
-      // ✅ 保留完整的 clientInvoiceInfo 对象（后续可能需要其他字段）
       clientInvoiceInfo: app.clientInvoiceInfo,
     };
 
@@ -986,7 +1009,13 @@ watch(
 );
 
 // 申请表格列定义（一级 - 开票申请）
-const appParentColumns = computed(() => [
+const appParentColumns = [
+  {
+    title: '',
+    key: 'seq',
+    width: 50,
+    align: 'center' as const,
+  },
   {
     title: '可开票',
     dataIndex: 'code',
@@ -1063,7 +1092,6 @@ const appParentColumns = computed(() => [
     width: 75,
     align: 'right' as const,
   },
-
   {
     title: '原币金额',
     dataIndex: 'totalAppliedAmount',
@@ -1078,10 +1106,10 @@ const appParentColumns = computed(() => [
     width: 75,
     align: 'right' as const,
   },
-]);
+];
 
 // 申请表格列定义（二级 - 费用明细）
-const appChildColumns = computed(() => [
+const appChildColumns = [
   {
     title: '序号',
     dataIndex: 'sequenceNumber',
@@ -1103,13 +1131,6 @@ const appChildColumns = computed(() => [
     minWidth: 140,
     ellipsis: true,
   },
-  // {
-  //   title: '分提单号',
-  //   dataIndex: 'hblNum',
-  //   key: 'hblNum',
-  //   width: 100,
-  //   ellipsis: true,
-  // },
   {
     title: '委托单位',
     dataIndex: 'clientName',
@@ -1125,8 +1146,8 @@ const appChildColumns = computed(() => [
   },
   {
     title: '费用名称',
-    dataIndex: 'feeName',
-    key: 'feeName',
+    dataIndex: 'feeCodeName',
+    key: 'feeCodeName',
     width: 120,
     ellipsis: true,
   },
@@ -1137,13 +1158,6 @@ const appChildColumns = computed(() => [
     width: 60,
     align: 'center' as const,
   },
-  // {
-  //   title: '币别',
-  //   dataIndex: 'currencyCode',
-  //   key: 'currencyCode',
-  //   width: 80,
-  //   align: 'center' as const,
-  // },
   {
     title: '金额',
     dataIndex: 'amount',
@@ -1186,7 +1200,7 @@ const appChildColumns = computed(() => [
     width: 75,
     align: 'right' as const,
   },
-]);
+];
 
 /** 批量驳回开票申请 */
 async function handleBatchReject() {
@@ -1435,31 +1449,42 @@ defineExpose({
 
         <!-- 申请表格 -->
         <div style="border: 1px solid #d9d9d9; border-radius: 4px">
-          <Table
+          <NestedDataTable
             :columns="appParentColumns"
             :data-source="applicationGroupsData"
-            :pagination="false"
-            bordered
-            size="small"
-            :expandable="{
-              defaultExpandAllRows: true,
-            }"
-            row-key="id"
-            :scroll="{ y: 800 }"
-            :row-selection="{
-              type: 'checkbox',
-              selectedRowKeys: selectedAppRowKeys,
-              onChange: handleParentSelectionChange,
-              onSelect: (record, selected) => {
-                handleSingleParentSelect(record, selected);
-              },
-              onSelectAll: (selected, selectedRows, changeRows) => {
-                handleSelectAll(selected, changeRows);
-              },
-            }"
+            fill-height
+            :inner-columns="appChildColumns"
+            inner-data-key="invoiceApplicationItems"
+            inner-row-key="id"
+            row-key="rowKey"
+            :loading="feeDrawerLoading"
+            v-model:expanded-row-keys="expandedRowKeys"
           >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'code'">
+            <template #outerHeaderCell="{ column }">
+              <span v-if="column.key === 'seq'" class="table-sequence-cell">
+                <Checkbox
+                  :checked="isAllSelected"
+                  :indeterminate="isIndeterminate"
+                  @change="(e) => toggleAllSelection(e.target.checked)"
+                />
+                {{ column.title }}
+              </span>
+              <template v-else>{{ column.title }}</template>
+            </template>
+
+            <template #outerBodyCell="{ column, record, index }">
+              <template v-if="column.key === 'seq'">
+                <span class="table-sequence-cell">
+                  <Checkbox
+                    :checked="selectedAppRowKeys.includes(record.rowKey)"
+                    @change="
+                      (e) => toggleRowSelection(record.rowKey, e.target.checked)
+                    "
+                  />
+                  {{ index + 1 }}
+                </span>
+              </template>
+              <template v-else-if="column.key === 'code'">
                 <span
                   :style="{
                     color:
@@ -1483,33 +1508,41 @@ defineExpose({
               <template v-else-if="column.key === 'invoiceType'">
                 <span>{{ getInvoiceTypeText(record.invoiceType) }}</span>
               </template>
+              <template v-else>
+                {{ column.dataIndex ? record[column.dataIndex] : '' }}
+              </template>
             </template>
-            <template #expandedRowRender="{ record }">
-              <Table
-                v-if="
-                  record.invoiceApplicationItems &&
-                  record.invoiceApplicationItems.length > 0
+
+            <template #expandColumnTitle></template>
+            <template #expandIcon="{ expanded, record, onExpand }">
+              <span
+                class="expand-toggle cursor-pointer"
+                :class="{ 'expand-toggle--expanded': expanded }"
+                @click="
+                  (e) => {
+                    e.stopPropagation();
+                    onExpand(record, e);
+                  }
                 "
-                :columns="appChildColumns"
-                :data-source="record.invoiceApplicationItems"
-                :pagination="false"
-                bordered
-                size="small"
-                row-key="id"
               >
-                <template #bodyCell="{ column, record: childRecord }">
-                  <template v-if="column.key === 'alreadyAdded'">
-                    <span
-                      v-if="childRecord.alreadyAdded"
-                      style="font-size: 12px; color: #999"
-                    >
-                      ✓ 已添加
-                    </span>
-                  </template>
-                </template>
-              </Table>
+                &#9654;
+              </span>
             </template>
-          </Table>
+
+            <template #innerBodyCell="{ column, record: childRecord }">
+              <template v-if="column.key === 'alreadyAdded'">
+                <span
+                  v-if="childRecord.alreadyAdded"
+                  style="font-size: 12px; color: #999"
+                >
+                  ✓ 已添加
+                </span>
+              </template>
+              <template v-else>
+                {{ column.dataIndex ? childRecord[column.dataIndex] : '' }}
+              </template>
+            </template>
+          </NestedDataTable>
         </div>
       </Spin>
     </div>
@@ -1602,3 +1635,26 @@ defineExpose({
     </div>
   </Modal>
 </template>
+
+<style scoped>
+.table-sequence-cell {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.expand-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  min-width: 14px;
+  line-height: 1;
+  transform-origin: center;
+  transition: transform 0.15s ease;
+}
+
+.expand-toggle--expanded {
+  transform: rotate(90deg);
+}
+</style>

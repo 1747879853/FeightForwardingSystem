@@ -20,7 +20,7 @@ export function useBatchAddData() {
   const addedCtnTypes = ref<Array<{ ctnCodeId: string; ctnName: string }>>([]);
 
   // USD 币别 ID（默认值）
-  const defaultCurrencyId = ref<number | string | undefined>("USD");
+  const defaultCurrencyId = ref<number | string | undefined>('USD');
 
   // 行 key 计数器
   let rowKeyCounter = 0;
@@ -75,7 +75,7 @@ export function useBatchAddData() {
         const dynamicField = `ctn_${String(ctn.ctnCodeId)}`;
         row[dynamicField] = undefined;
       });
-      
+
       // 同时初始化 seFreiPriceCtns
       row.seFreiPriceCtns = addedCtnTypes.value.map((ctn) => ({
         ctnCodeId: ctn.ctnCodeId,
@@ -100,7 +100,7 @@ export function useBatchAddData() {
     // ⚠️ 关键修复：使用新数组引用来触发 shallowRef 的响应式更新
     // push() 不会改变引用，所以需要创建新数组
     dataSource.value = [...dataSource.value, ...newRows];
-    
+
     message.success(`已新增 ${count} 行`);
   }
 
@@ -143,7 +143,7 @@ export function useBatchAddData() {
 
     // ⚠️ 关键修复：使用新数组引用来触发 shallowRef 的响应式更新
     dataSource.value = [...dataSource.value, ...newRows];
-    
+
     message.success(`已复制 ${selectedRows.length} 行`);
   }
 
@@ -203,13 +203,13 @@ export function useBatchAddData() {
       // ⚠️ 关键修复：从行数据中提取箱型列的值（而不是从 seFreiPriceCtns）
       // 因为 handleAfterChange 不再同步 seFreiPriceCtns，避免触发 Vue 响应式
       const seFreiPriceCtns: SeFreiPriceCtnEditDto[] = [];
-      
+
       // 遍历所有以 ctn_ 开头的字段，提取箱型费用
       Object.keys(row).forEach((key) => {
         if (key.startsWith('ctn_')) {
           const ctnCodeId = key.replace('ctn_', '');
           const cost = row[key];
-          
+
           // 只包含有值的箱型
           if (cost !== undefined && cost !== null && cost !== '') {
             seFreiPriceCtns.push({
@@ -219,6 +219,24 @@ export function useBatchAddData() {
           }
         }
       });
+
+      // 辅助函数：将星期字符串转换为数字 (DayOfWeek 枚举)
+      const convertDayOfWeekToNumber = (dayStr: any): number | undefined => {
+        if (dayStr === undefined || dayStr === null || dayStr === '')
+          return undefined;
+
+        const dayMap: Record<string, number> = {
+          星期日: 0,
+          星期一: 1,
+          星期二: 2,
+          星期三: 3,
+          星期四: 4,
+          星期五: 5,
+          星期六: 6,
+        };
+
+        return dayMap[dayStr];
+      };
 
       // 构建日期时间模式数据
       const seFreiPriceDays =
@@ -232,18 +250,22 @@ export function useBatchAddData() {
             ]
           : [];
 
-      // 构建星期模式数据
+      // 构建星期模式数据（转换星期为数字）
       const seFreiPriceWeekDays =
         row.etdDayOfWeek !== undefined ||
         row.closeDocDayOfWeek !== undefined ||
         row.closingDayOfWeek !== undefined
           ? [
               {
-                etdDayOfWeek: row.etdDayOfWeek,
+                etdDayOfWeek: convertDayOfWeekToNumber(row.etdDayOfWeek),
                 etdDayTime: row.etdDayTime || undefined,
-                closeDocDayOfWeek: row.closeDocDayOfWeek,
+                closeDocDayOfWeek: convertDayOfWeekToNumber(
+                  row.closeDocDayOfWeek,
+                ),
                 closeDocDayTime: row.closeDocDayTime || undefined,
-                closingDayOfWeek: row.closingDayOfWeek,
+                closingDayOfWeek: convertDayOfWeekToNumber(
+                  row.closingDayOfWeek,
+                ),
                 closingDayTime: row.closingDayTime || undefined,
               },
             ]
@@ -265,14 +287,20 @@ export function useBatchAddData() {
       const carrierId = convertNameToId(row.carrierId, labelToIdMap?.carriers);
       const polId = convertNameToId(row.polId, labelToIdMap?.ports);
       const podId = convertNameToId(row.podId, labelToIdMap?.ports);
-      const currencyId = convertNameToId(row.currencyId, labelToIdMap?.currencies);
+      const currencyId = convertNameToId(
+        row.currencyId,
+        labelToIdMap?.currencies,
+      );
       const poT1Id = convertNameToId(row.poT1Id, labelToIdMap?.ports);
       const poT2Id = convertNameToId(row.poT2Id, labelToIdMap?.ports);
-      const bookingAgentId = convertNameToId(row.bookingAgentId,labelToIdMap?.clients); // bookingAgentId 保持原值,不需要转换
+      const bookingAgentId = convertNameToId(
+        row.bookingAgentId,
+        labelToIdMap?.clients,
+      ); // bookingAgentId 保持原值,不需要转换
 
       // ⚠️ 关键修复：直接传递字符串 ID，后端会自行处理类型转换
       // 避免前端使用 Number() 转换导致大数精度丢失
-      
+
       // ⚠️ 关键修复：将 isDirect 的"是/否"文本转换为布尔值 true/false
       let isDirectBoolean: boolean | undefined;
       if (row.isDirect === '是') {
@@ -281,9 +309,12 @@ export function useBatchAddData() {
         isDirectBoolean = false;
       } else {
         // 如果已经是布尔值，直接使用
-        isDirectBoolean = row.isDirect === true || row.isDirect === false ? row.isDirect : undefined;
+        isDirectBoolean =
+          row.isDirect === true || row.isDirect === false
+            ? row.isDirect
+            : undefined;
       }
-      
+
       return {
         recommend: row.recommend || false,
         carrierId: carrierId!,

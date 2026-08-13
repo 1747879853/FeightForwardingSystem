@@ -741,11 +741,11 @@ export function useColumns<T = SeFreiPriceOutDto>(
       field: 'podFreeDaysCombined',
       title: '目的港免箱使天数',
       width: 280,
-      align: 'center',
-      slots: {
-        default: 'podFreeDaysCombined',
-        header: 'podFreeDaysCombinedHeader',
-      },
+      align: 'left',
+      // slots: {
+      //   default: 'podFreeDaysCombined',
+      //   header: 'podFreeDaysCombinedHeader',
+      // },
     },
     {
       field: 'remark',

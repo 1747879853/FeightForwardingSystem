@@ -62,7 +62,7 @@ export function useFeeSelectionSave(
     }
 
     const defaultCodeInvoice = codeInvoiceList.value.find(
-      (item) => item.isDefault && item.defaultCurrency === currencyCode,
+      (item) => item.isDefault && item.currencyId === currencyCode,
     );
 
     if (!defaultCodeInvoice) {
@@ -100,7 +100,7 @@ export function useFeeSelectionSave(
       existingItem.noTaxAmount = totalRmbAmount / (1 + taxRate / 100);
       existingItem.taxAmount =
         (totalRmbAmount / (1 + taxRate / 100)) * (taxRate / 100);
-      
+
       console.log('✅ 商品明细金额已重新计算:', {
         totalRmbAmount,
         taxRate,
@@ -293,7 +293,7 @@ export function useFeeSelectionSave(
 
           // 查找该币别的默认发票商品编码
           const defaultCodeInvoice = codeInvoiceList.value.find(
-            (item) => item.isDefault && item.defaultCurrency === currencyCode,
+            (item) => item.isDefault && item.currencyId === currencyCode,
           );
 
           if (!defaultCodeInvoice) {
@@ -505,14 +505,21 @@ export function useFeeSelectionSave(
     if (goodsDetails.value.length === 0) {
       // 没有商品明细时，自动填充
       await autoFillGoodsDetails(
-        isEdit 
+        isEdit
           ? (formData.value.invoiceApplicationItems || []).map((item: any) => {
               // 从 feeGroupsData 中找到对应的费用
               const allFees = flattenTreeData(feeGroupsData.value);
-              const fee = allFees.find((f: any) => f.orderFee?.id === item.orderFeeId);
-              return fee || { orderFee: item.orderFeeId, appliedAmount: item.appliedAmount };
+              const fee = allFees.find(
+                (f: any) => f.orderFee?.id === item.orderFeeId,
+              );
+              return (
+                fee || {
+                  orderFee: item.orderFeeId,
+                  appliedAmount: item.appliedAmount,
+                }
+              );
             })
-          : newFees
+          : newFees,
       );
     } else if (goodsDetails.value.length === 1) {
       // ✅ 关键修改：只有一行商品明细时，重新计算总金额（不是累加）

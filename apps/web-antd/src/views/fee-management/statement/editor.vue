@@ -37,6 +37,7 @@ import {
   ClientSelect,
   CurrencySelect,
   MyOrgSelect,
+  MyCompanySelect,
   UserCompanySelect,
   OrgBankAccountLinkageSelect,
 } from '#/adapter/component';
@@ -1152,7 +1153,7 @@ function formatMonth(val: string | undefined | null): string {
                   <!-- 新增：所属组织 -->
                   <div class="info-field">
                     <label class="field-label">所属组织</label>
-                    <UserCompanySelect
+                    <MyCompanySelect
                       v-model:model-value="orgId"
                       placeholder="请选择所属公司"
                       allow-clear
