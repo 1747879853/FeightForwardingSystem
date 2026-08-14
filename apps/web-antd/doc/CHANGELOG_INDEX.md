@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-14 海运进口对接 TextIn 智能抽取](./changelogs/change-log-2026-08-14-sea-import-textin-ai-extract.md)
 - [2026-08-14 业务联系单对接 TextIn 智能抽取](./changelogs/change-log-2026-08-14-pre-order-textin-ai-extract.md)
 - [2026-08-14 集装箱信息新增柜型字段](./changelogs/change-log-2026-08-14-ctn-code-cabinet-type.md)
 - [2026-08-14 更新 public 默认 favicon 与 logo 资源](./changelogs/change-log-2026-08-14-public-favicon-logo-asset.md)

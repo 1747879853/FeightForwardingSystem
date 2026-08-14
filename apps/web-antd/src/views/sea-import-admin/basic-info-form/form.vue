@@ -74,6 +74,7 @@ import {
 } from '../data';
 import OrderCtnTable from '../modules/order-ctn-table.vue';
 import { useSeaImportCopy } from '../use-sea-import-copy';
+import AiExtractUploadModal from './ai-extract-upload-modal.vue';
 import {
   flattenDetail,
   normalizeOrderCtnsWithRowKey,
@@ -84,6 +85,7 @@ import {
   toSelectedItems,
 } from './sea-import-detail-mapper';
 import { useOrderUsers } from './use-order-users';
+import { useSeaImportAiRecognize } from './use-sea-import-ai-recognize';
 import { useSeaImportSubmit } from './use-sea-import-submit';
 
 type SectionKey = 'basic' | 'cargo' | 'party' | 'port' | 'shipment';
@@ -935,6 +937,36 @@ const { copying: copyingSeaImport, copyFrom } = useSeaImportCopy({
   checkDirty: isFormDirty,
 });
 
+const { aiRecognizing, recognizeAiFile } = useSeaImportAiRecognize({
+  formApis: {
+    party: partyInfoFormApi,
+    basic: basicInfoFormApi,
+    shipment: shipmentFormApi,
+    port: portFormApi,
+    cargoTypeInline: cargoTypeInlineFormApi,
+    cargoMain: cargoMainFormApi,
+    cargoMetrics: cargoMetricsFormApi,
+    cargoRemark: cargoRemarkFormApi,
+    cargoDg: cargoDgFormApi,
+    cargoReefer: cargoReeferFormApi,
+  },
+  orderCtns,
+  entrustReadonlyInfo,
+  refreshEntrustReadonlyInfo,
+  syncBasicInfoHeaderFields,
+  recalcDerivedDates,
+});
+
+const aiExtractModalOpen = ref(false);
+const handleAiRecognize = () => {
+  if (aiRecognizing.value) return;
+  aiExtractModalOpen.value = true;
+};
+const handleAiExtractFile = async (file: File) => {
+  const ok = await recognizeAiFile(file);
+  if (ok) aiExtractModalOpen.value = false;
+};
+
 const handleCopySeaImport = async () => {
   if (!editId.value) return;
   await copyFrom({
@@ -1108,6 +1140,18 @@ watch(pageLoading, (loading) => {
                 <div class="content-section__actions">
                   <div class="content-section__actions-left"></div>
                   <Space class="content-section__actions-right">
+                    <Button
+                      size="small"
+                      class="flex items-center justify-center"
+                      :loading="aiRecognizing"
+                      @click="handleAiRecognize"
+                    >
+                      <IconifyIcon
+                        icon="mdi:robot-outline"
+                        class="mr-1 inline-block size-3.5 align-middle"
+                      />
+                      <span class="align-middle">AI识别</span>
+                    </Button>
                     <DropdownButton
                       v-if="isEdit"
                       type="primary"
@@ -1580,6 +1624,11 @@ watch(pageLoading, (loading) => {
         </Radio>
       </Radio.Group>
     </Modal>
+    <AiExtractUploadModal
+      v-model:open="aiExtractModalOpen"
+      :recognizing="aiRecognizing"
+      @file="handleAiExtractFile"
+    />
   </component>
 </template>
 

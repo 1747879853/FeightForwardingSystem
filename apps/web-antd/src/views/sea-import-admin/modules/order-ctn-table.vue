@@ -378,7 +378,11 @@ watch(
               )
             "
             class="w-full min-w-[100px]"
-            :placeholder="$t('ui.placeholder.select')"
+            :placeholder="
+              !record.ctnCodeId && resolveCtnDisplayName(record)
+                ? resolveCtnDisplayName(record)
+                : $t('ui.placeholder.select')
+            "
             @change="(v, option) => handleCtnCodeChange(index, v, option)"
           />
         </template>
@@ -418,7 +422,11 @@ watch(
               )
             "
             class="w-full min-w-[90px]"
-            :placeholder="$t('ui.placeholder.select')"
+            :placeholder="
+              !record.codePackageId && resolvePackageDisplayName(record)
+                ? resolvePackageDisplayName(record)
+                : $t('ui.placeholder.select')
+            "
             @update:model-value="(v) => updateRow(index, 'codePackageId', v)"
           />
         </template>

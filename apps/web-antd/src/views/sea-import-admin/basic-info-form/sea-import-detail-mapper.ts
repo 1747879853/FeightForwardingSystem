@@ -148,18 +148,36 @@ export const flattenDetail = (
 
 /** 为 orderCtns 每项添加 _rowKey，供 Table 使用；并把关联对象名摊平到本地回显字段 */
 export const normalizeOrderCtnsWithRowKey = (
-  items: SeaImportAdminApi.OrderCtnDto[] | undefined,
+  items:
+    | Array<
+        SeaImportAdminApi.OrderCtnDto & {
+          codePackageName?: null | string;
+          ctnCodeName?: null | string;
+        }
+      >
+    | SeaImportAdminApi.OrderCtnDto[]
+    | undefined,
 ) => {
   if (!items?.length) return [];
-  return items.map((item, i) => ({
-    ...item,
-    ctnCodeName: item.ctnCode?.ctnName,
-    codePackageName: item.codePackage?.name,
-    codeGoodsName: item.codeGoods?.name,
-    codeGoodsSpecName: item.codeGoodsSpec?.name,
-    codeGoodsModelName: item.codeGoodsModel?.name,
-    _rowKey: `ctn_${i}_${Date.now()}`,
-  })) as any[];
+  return items.map((item, i) => {
+    const local = item as SeaImportAdminApi.OrderCtnDto & {
+      codeGoodsModelName?: null | string;
+      codeGoodsName?: null | string;
+      codeGoodsSpecName?: null | string;
+      codePackageName?: null | string;
+      ctnCodeName?: null | string;
+    };
+    return {
+      ...item,
+      // AI 抽取可能只带本地名、无关联对象；详情回填优先对象名
+      ctnCodeName: item.ctnCode?.ctnName || local.ctnCodeName,
+      codePackageName: item.codePackage?.name || local.codePackageName,
+      codeGoodsName: item.codeGoods?.name || local.codeGoodsName,
+      codeGoodsSpecName: item.codeGoodsSpec?.name || local.codeGoodsSpecName,
+      codeGoodsModelName: item.codeGoodsModel?.name || local.codeGoodsModelName,
+      _rowKey: `ctn_${i}_${Date.now()}`,
+    };
+  }) as any[];
 };
 
 /** 编辑时带上 id 表示更新，进口比出口多 codeGoodsSpecId / codeGoodsModelId / netWeight */

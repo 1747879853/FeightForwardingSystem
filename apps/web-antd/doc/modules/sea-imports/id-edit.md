@@ -22,6 +22,7 @@ last_updated: 2026-08-14
 # 2. 功能与操作说明 (Features & Operations)
 
 - **基础信息维护：** `KeepAlive` 嵌入 `basic-info-form/form.vue`，布局与新建页相同。
+- **AI 识别辅助：** 与新建页共用顶栏「AI识别」，对接 TextIn `ExtractSeaImportToAddDtoAsync`，结果覆盖回填（含进口层箱子与到港日期）。
 - **保存后跨 Tab 联动：** 编辑保存成功后 `loadEditData` 返回最新 `SeaImportDto`，经 `form` → `saved` → `editor.savedDetail` 以 `:latest-detail` 下发给费用/更改单；子 Tab `watch` 后整体替换本地详情与订单摘要，避免 KeepAlive 残留旧数据。
 - **费用 Tab：** 应收/应付费用；Tab 标签费用数量由 editor 直接查分页 `totalCount` 汇总。
 - **更改单 / 附件：** 进口侧子模块；左侧概要字段按进口 DTO（承运人 `cnShortName`、港口 `portName` 等）。
@@ -51,6 +52,7 @@ last_updated: 2026-08-14
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-14 | `Feat` | 基础信息 Tab 接入 TextIn AI 识别（与新建共用）。 | 详见 `changelogs/change-log-2026-08-14-sea-import-textin-ai-extract.md`。 |
 | 2026-08-14 | `Feat` | 编辑保存对齐最新接口：码头对象化、规格/型号 id、联运/分单/贸易方式；人员与商品子表回传行 id。 | 详见 `changelogs/change-log-2026-08-14-sea-import-api-doc-align.md`。 |
 | 2026-08-09 | `Fix` | 费用表带汇率时应收/应付取反修复：应收取 `drValue`、应付取 `crValue`（与海出同一处渲染器）。 | `adapter/vxe-table.ts` 两处 `props?.type` 当布尔用导致口径互换，改判 `Number(props?.type) === 1`。详见 `changelogs/change-log-2026-08-09-order-fee-exchange-rate-dr-cr-fix.md`。 |
 | 2026-08-09 | `Refactor` | 费用 Tab 的费用代码/币别/结算对象列改读嵌套对象（与海出同构）。 | `SeaImportOrderFeeAdminApi.OrderFeeDto` 对象化；列定义、`formatter`、`dataIndex`、币别聚合、Handsontable 的 `__settlementName` 缓存键与海出保持一致。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |

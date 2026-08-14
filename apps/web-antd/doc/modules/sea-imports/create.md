@@ -22,6 +22,7 @@ last_updated: 2026-08-14
 # 2. 功能与操作说明 (Features & Operations)
 
 - **基础信息录入：** 中间主表单按出口骨架分区（基础信息 / 相关方 / 船期 / 港口 / 货物），右侧干系人面板。
+- **AI 识别辅助：** 顶栏「AI识别」弹出拖拽上传区，支持 PDF/图片/Word/Excel/OFD；调用 TextIn `ExtractSeaImportToAddDtoAsync`，回填 `seaImport`（箱子在进口层 `orderCtns`，到港日期→`etd`）；未匹配箱型保留识别原文供补选。
 - **进口作业日期：** 到港日期可改；转站、箱使为只读文本，由到港日期与免箱期推算；免箱期在船期标题旁编辑。
 - **干系人：** 销售角色必填且唯一；右侧卡片式增删角色，与归属组织联动。
 - **提交创建：** 校验通过后调用新增接口，成功跳转编辑页。
@@ -50,10 +51,13 @@ last_updated: 2026-08-14
 
 > [!IMPORTANT] **[卡点 1：海运进口新建一致性]** 新建页只负责建立业务主记录，不应承载编辑态才可进行的费用审核、锁费和结算动作。
 
+> [!IMPORTANT] **[卡点 2：AI 识别只是预填]** TextIn 结果需人工核对后再提交；箱子在 `seaImport.orderCtns`；未匹配的 `ctnCodeId`/`clientId` 不报错，需手动补录。
+
 # 6. 变更与解析日志 (Changelog & Insights)
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-14 | `Feat` | 新建/编辑共用表单接入 TextIn AI 识别：上传单证回填新建 Dto；箱子挂 `seaImport.orderCtns`；到港日期写 `etd` 并重算转站/箱使。 | 详见 `changelogs/change-log-2026-08-14-sea-import-textin-ai-extract.md`。 |
 | 2026-08-14 | `Feat` | 新建表单：码头改为往来单位下拉；补联运单号、分单号、贸易方式；集装箱规格/型号改为品名下拉。 | 详见 `changelogs/change-log-2026-08-14-sea-import-api-doc-align.md`。 |
 | 2026-08-08 | `Fix` | 新建表单去掉订舱编号字段。 | 与编辑页同源 Schema；详见 `changelogs/change-log-2026-08-08-sea-import-remove-booking-num.md`。 |
 | 2026-08-04 | `Feat` | 按海运出口版式重建新建表单：流程条布局、转站/箱使只读推算、免箱期标题旁编辑、原产国入基础信息、净重随箱型合计、唛头货描与右侧 CBM 底对齐。 | 组件迁至 `basic-info-form/form.vue`；进口无服务项目流水线，干系人复用出口面板逻辑并去掉服务绑定校验。 |
