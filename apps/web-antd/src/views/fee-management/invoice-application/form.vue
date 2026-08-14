@@ -31,13 +31,17 @@ import { useComputed } from './composables/use-computed';
 import { useLoadDetail } from './composables/use-load-detail';
 
 // ✅ 新增：导入刷新标记工具函数
-import { markListShouldRefresh, returnToListWithRefresh } from '#/utils/list-refresh-flag';
+import {
+  markListShouldRefresh,
+  returnToListWithRefresh,
+} from '#/utils/list-refresh-flag';
 
 // 导入子组件
 import RemarkTemplateModal from './components/RemarkTemplateModal.vue';
 import SelectRemarkTemplateModal from './components/SelectRemarkTemplateModal.vue';
 import FeeSelectionDrawer from './components/FeeSelectionDrawer.vue';
 import FeeDetailModal from './components/FeeDetailModal.vue';
+import ClientInvoiceInfoSelector from './components/ClientInvoiceInfoSelector.vue';
 import { Select } from 'ant-design-vue';
 import { CurrencySelect, MyOrgSelect } from '#/adapter/component';
 import { InvoiceApplicationApi } from '#/api/Invoice/invoiceRequest';
@@ -118,7 +122,9 @@ const {
 const {
   loadClientInvoiceInfo,
   updateOrgBankByCurrency,
+  handleClientInvoiceInfoChange,
   handleClientInvoiceHeaderChange,
+  handleClientBankChange,
   filteredClientBanks,
   filteredOrgBanks,
   clientInvoiceHeaderOptions,
@@ -433,8 +439,6 @@ async function handleOpenFeeDetailModal() {
           (p: any) => p.id === orderId || p.id === `parent_${orderId}`,
         );
         if (parentNode) {
-
-
           parentNode.feeDetails.push({
             // ✅ 关键修复：使用 fee.orderFee.id 作为子节点ID，确保与后端返回的ID一致
             id: fee.orderFee?.id || fee.id.replace(/^child_/, ''),
@@ -527,7 +531,7 @@ async function handleWithdraw() {
         await InvoiceApplicationApi.withdrawAsync({ id: editId.value! });
         message.success('撤回成功');
         // 撤回后刷新详情
-       router.push(`/fee-management/invoice-application/${editId.value}/edit`);
+        router.push(`/fee-management/invoice-application/${editId.value}/edit`);
         // ✅ 新增：标记列表需要刷新
         markListShouldRefresh('invoice-application-list');
       } catch (error) {
@@ -712,12 +716,13 @@ onMounted(() => {
                 <div
                   style="
                     flex: 1;
-                    height: 130px;
+                    height: 180px;
+                    overflow: hidden;
                     border: 1px solid #c41e3a;
                     border-radius: 4px;
                   "
                 >
-                  <div style="display: flex; gap: 12px">
+                  <div style="display: flex; gap: 12px; height: 100%">
                     <div
                       style="
                         display: flex;
@@ -734,79 +739,24 @@ onMounted(() => {
                     >
                       购买方信息
                     </div>
-                    <div style="flex: 1; padding: 8px; font-size: 13px">
-                      <div
-                        style="display: flex; align-items: center; height: 28px"
-                      >
-                        <span
-                          style="
-                            min-width: 80px;
-                            margin-right: 8px;
-                            color: #666;
-                          "
-                          ><strong>名 称:</strong></span
-                        >
-                        <Select
-                          :value="selectedClientInvoiceInfo?.id"
-                          :options="clientInvoiceHeaderOptions"
-                          style="flex: 1"
-                          size="small"
-                          placeholder="请选择发票抬头"
-                          @change="handleClientInvoiceHeaderChange"
-                          :disabled="isReadOnly"
-                        />
-                      </div>
-                      <div
-                        style="display: flex; align-items: center; height: 28px"
-                      >
-                        <span
-                          style="
-                            min-width: 80px;
-                            margin-right: 8px;
-                            color: #666;
-                          "
-                          ><strong>纳税人识别号:</strong></span
-                        >
-                        <span style="flex: 1">{{
-                          selectedClientInvoiceInfo?.taxNum || '(选填)'
-                        }}</span>
-                      </div>
-                      <div
-                        style="display: flex; align-items: center; height: 28px"
-                      >
-                        <span
-                          style="
-                            min-width: 80px;
-                            margin-right: 8px;
-                            color: #666;
-                          "
-                          ><strong>地址、电话:</strong></span
-                        >
-                        <span style="flex: 1"
-                          >{{ selectedClientInvoiceInfo?.address || '(选填)' }}
-                          {{ selectedClientInvoiceInfo?.tel || '' }}</span
-                        >
-                      </div>
-                      <div
-                        style="display: flex; align-items: center; height: 28px"
-                      >
-                        <span
-                          style="
-                            min-width: 80px;
-                            margin-right: 8px;
-                            color: #666;
-                          "
-                          ><strong>开户行及账号:</strong></span
-                        >
-                        <Select
-                          v-model:value="formData.clientInvoiceBankId"
-                          :options="filteredClientBanks"
-                          style="flex: 1"
-                          size="small"
-                          placeholder="请选择银行"
-                          :disabled="isReadOnly"
-                        />
-                      </div>
+                    <div style="flex: 1; padding: 12px; overflow-y: auto">
+                      <ClientInvoiceInfoSelector
+                        :client-id="formData.settlementId"
+                        :value="selectedClientInvoiceInfo?.id || ''"
+                        :currency-id="formData.currencyId"
+                        :bank-id="formData.clientInvoiceBankId || ''"
+                        :disabled="isReadOnly || !formData.settlementId"
+                        @update:value="
+                          (val) => {
+                            // 由 handleClientInvoiceInfoChange 处理
+                          }
+                        "
+                        @update:bank-id="
+                          (val) => (formData.clientInvoiceBankId = val)
+                        "
+                        @change="handleClientInvoiceInfoChange"
+                        @bank-change="handleClientBankChange"
+                      />
                     </div>
                   </div>
                 </div>
@@ -814,12 +764,13 @@ onMounted(() => {
                 <div
                   style="
                     flex: 1;
-                    height: 130px;
+                    height: 180px;
+                    overflow: hidden;
                     border: 1px solid #c41e3a;
                     border-radius: 4px;
                   "
                 >
-                  <div style="display: flex; gap: 12px">
+                  <div style="display: flex; gap: 12px; height: 100%">
                     <div
                       style="
                         display: flex;
@@ -836,9 +787,21 @@ onMounted(() => {
                     >
                       销售方信息
                     </div>
-                    <div style="flex: 1; padding: 8px; font-size: 13px">
+                    <div
+                      style="
+                        flex: 1;
+                        padding: 12px;
+                        overflow-y: auto;
+                        font-size: 13px;
+                      "
+                    >
                       <div
-                        style="display: flex; align-items: center; height: 28px"
+                        style="
+                          display: flex;
+                          align-items: center;
+                          height: 28px;
+                          margin-bottom: 4px;
+                        "
                       >
                         <span
                           style="
@@ -853,7 +816,12 @@ onMounted(() => {
                         }}</span>
                       </div>
                       <div
-                        style="display: flex; align-items: center; height: 28px"
+                        style="
+                          display: flex;
+                          align-items: center;
+                          height: 28px;
+                          margin-bottom: 4px;
+                        "
                       >
                         <span
                           style="
@@ -868,7 +836,12 @@ onMounted(() => {
                         }}</span>
                       </div>
                       <div
-                        style="display: flex; align-items: center; height: 28px"
+                        style="
+                          display: flex;
+                          align-items: center;
+                          height: 28px;
+                          margin-bottom: 4px;
+                        "
                       >
                         <span
                           style="

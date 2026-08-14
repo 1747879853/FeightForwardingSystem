@@ -187,7 +187,6 @@ async function handleAIData(aiDataList: any[]) {
       closeDocTime: row.closeDocTime || '',
       closingTime: row.closingTime || '',
       etdDayOfWeek: row.etdDayOfWeek,
-      etdDayTime: row.etdDayTime || '',
       closeDocDayOfWeek: row.closeDocDayOfWeek,
       closeDocDayTime: row.closeDocDayTime || '',
       closingDayOfWeek: row.closingDayOfWeek,
@@ -376,7 +375,6 @@ const linkage = {
   },
   handleSwitchToDateTimeMode: (row: any) => {
     row.etdDayOfWeek = undefined;
-    row.etdDayTime = undefined;
     row.closeDocDayOfWeek = undefined;
     row.closeDocDayTime = undefined;
     row.closingDayOfWeek = undefined;

@@ -129,7 +129,6 @@ const etdDayList = ref<
   Array<{
     id?: string;
     etdDayOfWeek?: number; // 开船星期
-    etdDayTime?: string; // 开船时间点
     closeDocDayOfWeek?: number; // 截单星期
     closeDocDayTime?: string; // 截单时间点
     closingDayOfWeek?: number; // 截关星期
@@ -807,7 +806,6 @@ async function loadDetail(priceId: string) {
       etdDayList.value = detail.seFreiPriceWeekDays.map((weekDay) => ({
         id: weekDay.id,
         etdDayOfWeek: weekDay.etdDayOfWeek,
-        etdDayTime: weekDay.etdDayTime,
         closeDocDayOfWeek: weekDay.closeDocDayOfWeek,
         closeDocDayTime: weekDay.closeDocDayTime,
         closingDayOfWeek: weekDay.closingDayOfWeek,
@@ -1191,7 +1189,6 @@ function addDateGroup() {
   } else {
     etdDayList.value.push({
       etdDayOfWeek: undefined,
-      etdDayTime: undefined,
       closeDocDayOfWeek: undefined,
       closeDocDayTime: undefined,
       closingDayOfWeek: undefined,
@@ -1375,7 +1372,6 @@ async function handleSubmit() {
               .map((weekDay) => ({
                 ...(weekDay.id ? { id: weekDay.id } : {}),
                 etdDayOfWeek: weekDay.etdDayOfWeek,
-                etdDayTime: weekDay.etdDayTime,
                 closeDocDayOfWeek: weekDay.closeDocDayOfWeek,
                 closeDocDayTime: weekDay.closeDocDayTime,
                 closingDayOfWeek: weekDay.closingDayOfWeek,
@@ -1616,6 +1612,10 @@ onMounted(() => {
                       ]"
                     />
                   </div>
+                </div>
+
+                <!-- 截单星期组 -->
+                <div class="week-pair">
                   <div class="week-field">
                     <label class="field-label">
                       <IconifyIcon

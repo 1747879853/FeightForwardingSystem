@@ -342,14 +342,6 @@ export function useBatchAddColumns(
         ],
       },
       {
-        data: 'etdDayTime',
-        title: '开船时间点',
-        width: 120,
-        type: 'time',
-        timeFormat: 'HH:mm',
-        correctFormat: true,
-      },
-      {
         data: 'closeDocTime',
         title: '截单时间',
         width: 150,

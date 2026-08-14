@@ -2,7 +2,7 @@
 title: Gemini 对接 - 前端对接
 module: 外部Api对接 / Gemini
 author: 系统
-last_updated: 2026-07-25
+last_updated: 2026-08-13
 ---
 
 # 1. 说明
@@ -12,12 +12,14 @@ last_updated: 2026-07-25
 > **重要：本次后端把"访问 Gemini"的出站请求拆到了独立的外网服务器(`Freight.GlobalServer`)，但接口地址、入参、出参对前端完全没有变化，前端无需做任何改动。** 密钥保管、境外网络、转发、超时等全部由后端处理。
 >
 > 后端架构说明见：`Gemini对接-外网服务器拆分-2026-07-25.md`、`Gemini模块总逻辑文档.md`
+>
+> **2026-08-13 更新：** 海运报价解析新增可选文字入参 `text`，前端可让用户"上传文件"或"直接粘贴文字"二选一，原有文件上传调用**不受影响、无需改动**。详见「3.2」与 `Gemini对接-报价解析支持文字输入-2026-08-13.md`。
 
 # 2. 接口清单
 
 | 接口 | 用途 | 章节 |
 | :-- | :-- | :-- |
-| `ExtractSeFreiPriceByPromptAsync` | 上传海运报价文件，解析为多行价格数据并回填港口/币别/箱型Id | 见「3」 |
+| `ExtractSeFreiPriceByPromptAsync` | 上传海运报价文件**或直接传报价文字**，解析为多行价格数据并回填港口/币别/箱型Id | 见「3」 |
 | `ExtractBillDataAsync` | 上传提单PDF，提取提单字段（gemini-3.5-flash） | 见「4」 |
 | `ExtractBillDataBy31FlashLiteAsync` | 上传提单PDF，提取提单字段（gemini-3.1-flash-lite，效果对比用） | 见「5」 |
 
@@ -26,7 +28,7 @@ last_updated: 2026-07-25
 | 项目 | 内容 |
 | :-- | :-- |
 | 方法 | `POST` |
-| 请求格式 | `multipart/form-data`，**取第一个文件**（文件字段名不限） |
+| 请求格式 | `multipart/form-data`，**取第一个文件**（文件字段名不限）；`ExtractSeFreiPriceByPromptAsync` 另支持只传文字，见「3.2」 |
 | 权限 | 需登录（类级 `[AbpAuthorize]`，无额外权限点） |
 | 返回包装 | ABP 统一包一层 `result` |
 | 失败 | 统一抛 `UserFriendlyException`，前端按常规错误提示展示即可 |
@@ -38,18 +40,41 @@ last_updated: 2026-07-25
 
 ## 3.1 接口
 
-| 项目   | 内容                                                            |
-| :----- | :-------------------------------------------------------------- |
-| 方法   | `POST`                                                          |
-| 地址   | `/api/services/app/GeminiAdmin/ExtractSeFreiPriceByPromptAsync` |
-| 请求体 | `multipart/form-data`，单个文件                                 |
-| 返回   | `GeminiSeFreiPriceDto[]`，见「3.3」                             |
+| 项目 | 内容 |
+| :-- | :-- |
+| 方法 | `POST` |
+| 地址 | `/api/services/app/GeminiAdmin/ExtractSeFreiPriceByPromptAsync` |
+| 请求体 | `multipart/form-data`，**单个文件** 或 **文字字段 `text`**（二选一，见「3.2」） |
+| 返回 | `GeminiSeFreiPriceDto[]`，见「3.3」 |
 
 ## 3.2 请求参数
 
+**文件与文字二选一，传了文字就用文字解析、不再读文件；两者都不传报「请上传文件或输入需要解析的文字」。**
+
 | 字段名 | 类型 | 含义 | 必填 | 说明 |
 | :-- | :-- | :-- | :-- | :-- |
-| **（文件）** | File | 待解析的报价文件 | 是 | 支持 pdf / png / jpg / jpeg / webp / heic / heif / gif / bmp / txt / **xlsx / xls**；Excel 会在后端转为 HTML 表格(保留合并单元格)再识别；未上传报「请上传文件」 |
+| **text** | string | 待解析的报价**文字内容** | 否 | 直接粘贴的报价文本。**非空白时优先使用，此时上传的文件被忽略**；只传空格/换行等空白等同于没传 |
+| **（文件）** | File | 待解析的报价**文件** | 否 | 未传 `text` 时必传。支持 pdf / png / jpg / jpeg / webp / heic / heif / gif / bmp / txt / **xlsx / xls**；Excel 会在后端转为 HTML 表格(保留合并单元格)再识别 |
+
+**`text` 的传参方式（重要）：**
+
+| 方式 | 是否支持 | 示例 |
+| :-- | :-- | :-- |
+| `multipart/form-data` 表单字段（推荐，可与文件同一请求） | ✅ | `formData.append('text', '上海到洛杉矶 20GP 1200 40HC 2300 ...')` |
+| `application/x-www-form-urlencoded` 表单字段 | ✅ | `text=上海到洛杉矶...` |
+| URL query 参数 | ✅ | `...ExtractSeFreiPriceByPromptAsync?text=xxx`（文字长建议改用表单） |
+| JSON 请求体 `{"text":"..."}` | ❌ **不支持** | 后端绑不到值，会当作没传文字并报错 |
+
+**只传文字的最小示例：**
+
+```javascript
+const formData = new FormData();
+formData.append('text', pastedText);
+await axios.post(
+  '/api/services/app/GeminiAdmin/ExtractSeFreiPriceByPromptAsync',
+  formData,
+);
+```
 
 ## 3.3 返回结构 (GeminiSeFreiPriceDto)
 
@@ -78,6 +103,8 @@ last_updated: 2026-07-25
 | **price** | decimal? | 价格 | 可能为空 |
 
 > **前端处理要点：** 所有 `xxId` 为 `-1` 表示"模型识别到了名称，但系统基础资料里没匹配上"，应在录入界面把该行/该字段标红并要求用户手工选择；名称字段(`podName`/`currencyCode`/`ctnName`)始终返回，可直接展示给用户参考。解析结果为空数组表示模型未识别出任何行。
+>
+> **文字识别提示：** 纯文字没有表格版面信息，识别准确率通常低于文件/Excel。表格型报价建议引导用户上传原文件；若用户坚持粘贴文字，提示其"每个目的港一行、各列用空格或制表符对齐"。
 
 ## 3.5 返回示例
 

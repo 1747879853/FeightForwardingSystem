@@ -977,24 +977,41 @@ function onAIBatchAdd() {
  * 处理AI上传的文件并进行识别
  */
 async function handleAiExtractFile(file: File) {
+  await performAiRecognition({ file });
+}
+
+/**
+ * 处理AI粘贴的文本并进行识别
+ */
+async function handleAiExtractText(text: string) {
+  await performAiRecognition({ text });
+}
+
+/**
+ * 执行 AI 识别逻辑（支持文件或文本）
+ */
+async function performAiRecognition(params: { file?: File; text?: string }) {
   if (aiRecognizing.value) return;
 
   aiRecognizing.value = true;
 
   try {
     const hideLoading = message.loading({
-      content: '正在识别文件内容...',
+      content: '正在识别内容...',
       duration: 0,
       key: 'ai_recognition_msg',
     });
 
-    // 调用 Gemini AI识别接口
-    const recognitionResult = await extractSeFreiPriceByGemini(file);
+    // 调用 Gemini AI识别接口（支持文件或文本）
+    const recognitionResult = await extractSeFreiPriceByGemini(
+      params.file,
+      params.text,
+    );
     console.log('识别结果:', recognitionResult);
     hideLoading();
 
     if (!recognitionResult || recognitionResult.length === 0) {
-      message.warning('未能从文件中识别出有效的运价数据');
+      message.warning('未能从内容中识别出有效的运价数据');
       aiRecognizing.value = false;
       return;
     }
@@ -1099,7 +1116,7 @@ async function handleAiExtractFile(file: File) {
     );
   } catch (error) {
     console.error('AI识别失败:', error);
-    message.error('文件识别失败，请稍后重试');
+    message.error('AI识别失败，请稍后重试');
   } finally {
     aiRecognizing.value = false;
   }
@@ -1498,6 +1515,7 @@ async function handleAiExtractFile(file: File) {
       v-model:open="aiExtractModalOpen"
       :recognizing="aiRecognizing"
       @file="handleAiExtractFile"
+      @text="handleAiExtractText"
     />
   </Page>
 </template>

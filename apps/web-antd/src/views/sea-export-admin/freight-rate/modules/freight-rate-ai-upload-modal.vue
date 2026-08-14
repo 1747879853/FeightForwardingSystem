@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import { IconifyIcon } from '@vben/icons';
 
-import { Modal, Spin, UploadDragger } from 'ant-design-vue';
+import { Modal, Spin, UploadDragger, Input, Divider } from 'ant-design-vue';
 
 // 支持的文件类型：PDF、图片、Office文档
 const AI_EXTRACT_ACCEPT = [
@@ -36,12 +36,16 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean];
   file: [file: File];
+  text: [text: string];
 }>();
 
 const openProxy = computed({
   get: () => props.open,
   set: (value: boolean) => emit('update:open', value),
 });
+
+const activeTab = ref<'upload' | 'text'>('upload');
+const inputText = ref('');
 
 /** 仅拦截自动上传；选中/拖入后立刻交给父组件识别 */
 function handleBeforeUpload(file: File) {
@@ -53,6 +57,17 @@ function handleBeforeUpload(file: File) {
 function handleCancel() {
   if (props.recognizing) return;
   openProxy.value = false;
+  // 重置状态
+  activeTab.value = 'upload';
+  inputText.value = '';
+}
+
+function handleTextConfirm() {
+  if (!inputText.value.trim()) {
+    return;
+  }
+  if (props.recognizing) return;
+  emit('text', inputText.value.trim());
 }
 </script>
 
@@ -66,30 +81,86 @@ function handleCancel() {
     :keyboard="!recognizing"
     destroy-on-close
     centered
-    width="440px"
+    width="720px"
     class="freight-rate-ai-upload-modal"
     @cancel="handleCancel"
   >
     <Spin :spinning="!!recognizing" tip="AI识别中，请稍候...">
-      <UploadDragger
-        :accept="AI_EXTRACT_ACCEPT"
-        :disabled="!!recognizing"
-        :multiple="false"
-        :show-upload-list="false"
-        :before-upload="handleBeforeUpload"
-        class="freight-rate-ai-upload-dragger"
-      >
-        <div class="freight-rate-ai-upload-body">
-          <div class="freight-rate-ai-upload-icon" aria-hidden="true">
-            <IconifyIcon icon="mdi:file-document-plus-outline" />
-          </div>
-          <p class="freight-rate-ai-upload-title">点击或拖拽文件到此处</p>
-          <p class="freight-rate-ai-upload-desc">放入后自动开始识别</p>
-          <p class="freight-rate-ai-upload-formats">
-            PDF · 图片 · Word / Excel / RTF
-          </p>
+      <div class="freight-rate-ai-upload-content flex flex-col gap-4">
+        <!-- 切换标签 -->
+        <div class="flex border-b border-gray-200 dark:border-gray-700">
+          <button
+            class="relative flex-1 py-3 text-sm font-medium transition-colors"
+            :class="
+              activeTab === 'upload'
+                ? '-mb-[1px] border-b-2 border-primary text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            "
+            :disabled="recognizing"
+            @click="activeTab = 'upload'"
+          >
+            上传文件
+          </button>
+          <button
+            class="relative flex-1 py-3 text-sm font-medium transition-colors"
+            :class="
+              activeTab === 'text'
+                ? '-mb-[1px] border-b-2 border-primary text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            "
+            :disabled="recognizing"
+            @click="activeTab = 'text'"
+          >
+            粘贴文本
+          </button>
         </div>
-      </UploadDragger>
+
+        <!-- 内容区域容器，固定高度以确保弹窗不跳动 -->
+        <div class="freight-rate-ai-upload-area min-h-[320px]">
+          <!-- 上传文件区域 -->
+          <div v-show="activeTab === 'upload'" class="h-[95%]">
+            <UploadDragger
+              :accept="AI_EXTRACT_ACCEPT"
+              :disabled="!!recognizing"
+              :multiple="false"
+              :show-upload-list="false"
+              :before-upload="handleBeforeUpload"
+              class="freight-rate-ai-upload-dragger h-full"
+            >
+              <div class="freight-rate-ai-upload-body">
+                <div class="freight-rate-ai-upload-icon" aria-hidden="true">
+                  <IconifyIcon icon="mdi:file-document-plus-outline" />
+                </div>
+                <p class="freight-rate-ai-upload-title">点击或拖拽文件到此处</p>
+                <p class="freight-rate-ai-upload-desc">放入后自动开始识别</p>
+                <p class="freight-rate-ai-upload-formats">
+                  PDF · 图片 · Word / Excel / RTF
+                </p>
+              </div>
+            </UploadDragger>
+          </div>
+
+          <!-- 粘贴文本区域 -->
+          <div v-show="activeTab === 'text'" class="flex h-[95%] flex-col pt-2">
+            <Input.TextArea
+              v-model:value="inputText"
+              placeholder="请在此处粘贴运价报价文字内容...&#10;建议格式：每行一个目的港，各列之间用空格或制表符对齐"
+              :rows="8"
+              :disabled="recognizing"
+              class="flex-grow resize-none"
+            />
+            <div class="mt-4 flex shrink-0 justify-end">
+              <button
+                class="rounded-md bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="!inputText.trim() || recognizing"
+                @click="handleTextConfirm"
+              >
+                开始识别
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </Spin>
   </Modal>
 </template>
@@ -202,5 +273,13 @@ function handleCancel() {
   letter-spacing: 0.02em;
   background: hsl(var(--primary) / 8%);
   border-radius: 8px;
+}
+
+.freight-rate-ai-upload-content {
+  height: 360px; /* 固定内容区总高度 */
+}
+
+.freight-rate-ai-upload-area {
+  /* 确保内部组件撑开或保持最小高度 */
 }
 </style>
