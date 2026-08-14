@@ -17,6 +17,8 @@ interface Props {
   value?: string;
   /** 当前申请的币别ID */
   currencyId?: number;
+  /** 当前选中的银行ID */
+  bankId?: string;
   /** 是否禁用 */
   disabled?: boolean;
 }
@@ -25,15 +27,18 @@ const props = withDefaults(defineProps<Props>(), {
   clientId: '',
   value: '',
   currencyId: undefined,
+  bankId: '',
   disabled: false,
 });
 
 const emit = defineEmits<{
   'update:value': [value: string];
+  'update:bankId': [bankId: string];
   change: [
     value: string,
     info: ClientInvoiceInfoAdminApi.ClientInvoiceInfoDto | null,
   ];
+  bankChange: [bankId: string];
 }>();
 
 // 状态管理
@@ -115,6 +120,10 @@ function handleSelectChange(value: SelectValue) {
   emit('update:value', value);
   const selected = invoiceInfoList.value.find((item) => item.id === value);
   emit('change', value, selected || null);
+
+  // 清空银行选择
+  emit('update:bankId', '');
+  emit('bankChange', '');
 }
 
 /**
@@ -226,6 +235,40 @@ async function handleSave() {
 }
 
 /**
+ * 处理银行选择变化
+ */
+function handleBankChange(bankId: SelectValue) {
+  if (!bankId || typeof bankId !== 'string') return;
+
+  emit('update:bankId', bankId);
+  emit('bankChange', bankId);
+}
+
+/**
+ * 获取当前选中开票信息下，与币别匹配的银行列表
+ */
+const filteredBanks = computed(() => {
+  if (!props.value || !props.currencyId) {
+    return [];
+  }
+
+  const selectedInfo = invoiceInfoList.value.find(
+    (item) => item.id === props.value,
+  );
+
+  if (!selectedInfo || !selectedInfo.clientInvoiceBanks) {
+    return [];
+  }
+
+  return selectedInfo.clientInvoiceBanks
+    .filter((bank) => bank.currencyId === props.currencyId)
+    .map((bank) => ({
+      label: `${bank.bankName} - ${bank.bankAccount}`,
+      value: bank.id,
+    }));
+});
+
+/**
  * 暴露方法供父组件调用
  */
 defineExpose({
@@ -247,6 +290,7 @@ defineExpose({
         :disabled="disabled"
         placeholder="请选择购买方开票信息"
         style="flex: 1"
+        size="small"
         @change="handleSelectChange"
       >
         <template #notFoundContent>
@@ -308,23 +352,26 @@ defineExpose({
       </span>
     </div>
 
-    <!-- 第四行：开户行及账号 -->
+    <!-- 第四行：开户行及账号（改为下拉框） -->
     <div style="display: flex; align-items: center; height: 28px">
       <span style="min-width: 80px; margin-right: 8px; color: #666">
         <strong>开户行及账号:</strong>
       </span>
-      <span style="flex: 1; font-size: 13px">
-        <template v-if="value">
-          {{
-            invoiceInfoList.find((item) => item.id === value)
-              ?.clientInvoiceBanks?.[0]?.bankName || ''
-          }}
-          {{
-            invoiceInfoList.find((item) => item.id === value)
-              ?.clientInvoiceBanks?.[0]?.bankAccount || ''
-          }}
+      <Select
+        :value="bankId"
+        :options="filteredBanks"
+        :disabled="disabled || !value"
+        placeholder="请选择银行"
+        style="flex: 1"
+        size="small"
+        @change="handleBankChange"
+      >
+        <template #notFoundContent>
+          <div style="padding: 8px; color: #999; text-align: center">
+            {{ !value ? '请先选择开票信息' : '该币别下暂无银行账户' }}
+          </div>
         </template>
-      </span>
+      </Select>
     </div>
 
     <!-- 新建开票信息弹窗 -->

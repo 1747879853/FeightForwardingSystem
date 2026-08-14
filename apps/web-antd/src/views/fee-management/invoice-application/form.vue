@@ -124,6 +124,7 @@ const {
   updateOrgBankByCurrency,
   handleClientInvoiceInfoChange,
   handleClientInvoiceHeaderChange,
+  handleClientBankChange,
   filteredClientBanks,
   filteredOrgBanks,
   clientInvoiceHeaderOptions,
@@ -743,13 +744,18 @@ onMounted(() => {
                         :client-id="formData.settlementId"
                         :value="selectedClientInvoiceInfo?.id || ''"
                         :currency-id="formData.currencyId"
+                        :bank-id="formData.clientInvoiceBankId || ''"
                         :disabled="isReadOnly || !formData.settlementId"
                         @update:value="
                           (val) => {
                             // 由 handleClientInvoiceInfoChange 处理
                           }
                         "
+                        @update:bank-id="
+                          (val) => (formData.clientInvoiceBankId = val)
+                        "
                         @change="handleClientInvoiceInfoChange"
+                        @bank-change="handleClientBankChange"
                       />
                     </div>
                   </div>
