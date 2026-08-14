@@ -77,6 +77,8 @@ import { useSeaImportCopy } from '../use-sea-import-copy';
 import {
   flattenDetail,
   normalizeOrderCtnsWithRowKey,
+  resolveCodePackageName,
+  resolveCodeSourceName,
   sumCtnNetWeight,
   toPortSelectedItems,
   toSelectedItems,
@@ -126,6 +128,12 @@ const currentUserId = computed<number | undefined>(() => {
 const pageLoading = ref(false);
 const transportOrderId = ref<string | undefined>();
 const orderCtns = ref<any[]>([]);
+/** 商品子表行 id 缓存：提交时与多选 id 合并，避免编辑全量删建 */
+const orderCodeGoodsRows = ref<
+  Array<{ codeGoodsId?: number | string; id?: number | string }>
+>([]);
+/** 委托单位联系人：暂无独立控件，编辑时原样回传避免被清空 */
+const clientContactId = ref<null | number | string | undefined>();
 
 /** 与委托信息一致：表单控件使用 small 尺寸 */
 function withSmallComponentProps(componentProps: unknown) {
@@ -185,11 +193,14 @@ const BASIC_INFO_FIELD_ORDER = [
   'warehouseId',
   'insuranceId',
   'mblNum',
+  'hblNum',
+  'throughBillNum',
   'contractNum',
   'invoiceNum',
   'batchNum',
   'clientNum',
-  'terminal',
+  'terminalId',
+  'tradeMode',
   'codeServiceId',
   'originCountryId',
 ] as const;
@@ -665,6 +676,8 @@ const collectCurrentFormValues = async (): Promise<Record<string, any>> => {
     ...reefer,
     commissionNum: entrustReadonlyInfo.value.commissionNum,
     orderUsers: orderUserRows.value,
+    orderCodeGoodsRows: orderCodeGoodsRows.value,
+    clientContactId: clientContactId.value,
   };
 };
 
@@ -703,6 +716,8 @@ const loadEditData = async (): Promise<
     const formValues = flattenDetail(detail);
     cargoType.value = to?.cargoId ?? undefined;
     orderCtns.value = normalizeOrderCtnsWithRowKey(detail.orderCtns);
+    orderCodeGoodsRows.value = formValues.orderCodeGoodsRows ?? [];
+    clientContactId.value = to?.clientContactId;
 
     // 各下拉的回显项直接由详情对象构造，避免每个 select 再各自打一次详情接口
     basicInfoFormApi.updateSchema([
@@ -710,6 +725,15 @@ const loadEditData = async (): Promise<
         fieldName: 'clientId',
         componentProps: {
           selectedItems: toSelectedItems(to?.clientId, to?.client?.name),
+        },
+      },
+      {
+        fieldName: 'terminalId',
+        componentProps: {
+          selectedItems: toSelectedItems(
+            detail.terminalId,
+            detail.terminal?.name,
+          ),
         },
       },
       {
@@ -817,7 +841,7 @@ const loadEditData = async (): Promise<
         componentProps: {
           selectedItems: toSelectedItems(
             to?.codePackageId,
-            to?.codePackage?.name,
+            resolveCodePackageName(to),
           ),
         },
       },
@@ -831,8 +855,8 @@ const loadEditData = async (): Promise<
           allowClear: true,
           selectedItems: (to?.orderCodeGoodss ?? []).map((item) => ({
             id: item.codeGoodsId,
-            name: item.codeGoods?.name,
-            hsCode: item.codeGoods?.hsCode,
+            name: item.codeGoodsName || item.codeGoods?.name,
+            hsCode: item.codeGoodsHSCode || item.codeGoods?.hsCode,
           })),
         },
       },
@@ -854,7 +878,7 @@ const loadEditData = async (): Promise<
     refreshEntrustReadonlyInfo(formValues);
     headerCodeSourceSelectedItems.value = toSelectedItems(
       to?.codeSourceId,
-      to?.codeSource?.cnName,
+      resolveCodeSourceName(to),
     );
     headerOrgSelectedItems.value = detail.orgs?.length
       ? [

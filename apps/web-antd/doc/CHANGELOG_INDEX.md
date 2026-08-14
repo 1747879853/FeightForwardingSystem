@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-14 海运进口前端对齐最新接口文档](./changelogs/change-log-2026-08-14-sea-import-api-doc-align.md)
 - [2026-08-13 业务联系单详情外键对象直接拼 selectedItems 回显](./changelogs/change-log-2026-08-13-pre-order-detail-selected-items.md)
 - [2026-08-13 业务联系单主表新增订舱代理字段](./changelogs/change-log-2026-08-13-pre-order-booking-agent.md)
 - [2026-08-13 检查更新改为比对构建产物 version.json](./changelogs/change-log-2026-08-13-check-updates-version-json.md)

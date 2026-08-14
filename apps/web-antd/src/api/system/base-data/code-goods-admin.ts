@@ -30,6 +30,22 @@ export namespace CodeGoodsAdminApi {
     remark?: string;
   }
 
+  /** 品名规格（海运进口集装箱下拉候选项，按 sortId 升序） */
+  export interface CodeGoodsSpecSimpleDto {
+    id: string;
+    codeGoodsId?: number | string;
+    name?: null | string;
+    sortId?: number;
+  }
+
+  /** 品名型号（海运进口集装箱下拉候选项，按 sortId 升序） */
+  export interface CodeGoodsModelSimpleDto {
+    id: string;
+    codeGoodsId?: number | string;
+    name?: null | string;
+    sortId?: number;
+  }
+
   /** 商品信息详情 */
   export interface CodeGoodsDto {
     id: number;
@@ -45,6 +61,10 @@ export namespace CodeGoodsAdminApi {
     remark?: string;
     creationTime?: string;
     lastModificationTime?: string;
+    /** 规格子表；未配置时为 [] / null */
+    codeGoodsSpecs?: CodeGoodsSpecSimpleDto[] | null;
+    /** 型号子表；未配置时为 [] / null */
+    codeGoodsModels?: CodeGoodsModelSimpleDto[] | null;
   }
 
   /** 分页列表响应 */

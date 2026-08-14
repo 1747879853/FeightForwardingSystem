@@ -1,19 +1,31 @@
 <script lang="ts" setup>
 import type { SeaImportAdminApi } from '#/api/sea-import/sea-import-admin';
+import type { CodeGoodsAdminApi } from '#/api/system/base-data/code-goods-admin';
 
 import { computed, ref, watch } from 'vue';
 
-import { Button, Input, InputNumber, Table, Tooltip } from 'ant-design-vue';
-
 import { IconifyIcon } from '@vben/icons';
 
-import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
-import CtnSelect from '#/adapter/component/biz-select/ctn-select.vue';
+import {
+  Button,
+  Input,
+  InputNumber,
+  Select,
+  Table,
+  Tooltip,
+} from 'ant-design-vue';
+
 import CodeGoodsSelect from '#/adapter/component/biz-select/code-goods-select.vue';
 import CodePackageSelect from '#/adapter/component/biz-select/code-package-select.vue';
+import CtnSelect from '#/adapter/component/biz-select/ctn-select.vue';
+import { getCodeGoodsDetail } from '#/api/system/base-data/code-goods-admin';
+import { getCtnCodeDetail } from '#/api/system/base-data/ctn-code-admin';
 import { $t } from '#/locales';
 
 import { calcCtnNetWeight } from '../basic-info-form/sea-import-detail-mapper';
+
+type SpecOption = CodeGoodsAdminApi.CodeGoodsSpecSimpleDto;
+type ModelOption = CodeGoodsAdminApi.CodeGoodsModelSimpleDto;
 
 const modelValue = defineModel<SeaImportAdminApi.OrderCtnEditDto[]>({
   default: () => [],
@@ -37,6 +49,41 @@ const formatSummaryNumber = (value: number) => {
 const ctnNameById = ref<Record<string, string>>({});
 const loadingCtnNameIds = new Set<string>();
 
+const specsByGoodsId = ref<Record<string, SpecOption[]>>({});
+const modelsByGoodsId = ref<Record<string, ModelOption[]>>({});
+const loadingGoodsOptionIds = new Set<string>();
+
+const sortBySortIdAsc = <T extends { sortId?: number }>(items: T[]) =>
+  [...items].sort((a, b) => (a.sortId ?? 0) - (b.sortId ?? 0));
+
+const ensureGoodsOptionsLoaded = async (codeGoodsId: unknown) => {
+  if (codeGoodsId === undefined || codeGoodsId === null || codeGoodsId === '') {
+    return;
+  }
+  const idStr = String(codeGoodsId);
+  if (
+    specsByGoodsId.value[idStr] ||
+    modelsByGoodsId.value[idStr] ||
+    loadingGoodsOptionIds.has(idStr)
+  ) {
+    return;
+  }
+  loadingGoodsOptionIds.add(idStr);
+  try {
+    const detail = await getCodeGoodsDetail(idStr);
+    specsByGoodsId.value = {
+      ...specsByGoodsId.value,
+      [idStr]: sortBySortIdAsc(detail?.codeGoodsSpecs ?? []),
+    };
+    modelsByGoodsId.value = {
+      ...modelsByGoodsId.value,
+      [idStr]: sortBySortIdAsc(detail?.codeGoodsModels ?? []),
+    };
+  } finally {
+    loadingGoodsOptionIds.delete(idStr);
+  }
+};
+
 const syncCtnNameMap = async (
   rows: SeaImportAdminApi.OrderCtnEditDto[] = [],
 ) => {
@@ -46,7 +93,7 @@ const syncCtnNameMap = async (
     if (ctnId === undefined || ctnId === null || ctnId === '') continue;
 
     const idStr = String(ctnId);
-    const localName = anyRow.ctnCodeName;
+    const localName = anyRow.ctnCodeName || anyRow.ctnCode?.ctnName;
     if (localName) {
       ctnNameById.value = { ...ctnNameById.value, [idStr]: String(localName) };
       continue;
@@ -80,6 +127,7 @@ const ctnSummary = computed(() => {
     const anyRow = row as any;
     const ctnLabel =
       anyRow.ctnCodeName ||
+      anyRow.ctnCode?.ctnName ||
       (row.ctnCodeId !== undefined && row.ctnCodeId !== null
         ? ctnNameById.value[String(row.ctnCodeId)]
         : '');
@@ -141,7 +189,7 @@ const updateRow = (
   const list = [...(modelValue.value ?? [])];
   if (!list[index])
     list[index] = { _rowKey: `ctn_${++rowKeyCounter}_${Date.now()}` } as any;
-  const next = { ...list[index], [field]: value };
+  const next = { ...list[index], [field]: value } as any;
   // 净重由毛重/皮重带出，但仍允许手改：只在改毛重或皮重时重算
   if (field === 'grossWeight' || field === 'tareWeight') {
     const derived = calcCtnNetWeight(next.grossWeight, next.tareWeight);
@@ -187,6 +235,58 @@ const handleCtnCodeChange = (
   modelValue.value = list;
 };
 
+/** 切换品名必须清空规格/型号，否则后端会拦「规格不属于该箱所选的商品信息」 */
+const handleCodeGoodsChange = (index: number, value: unknown) => {
+  const list = [...(modelValue.value ?? [])];
+  if (!list[index]) {
+    list[index] = { _rowKey: `ctn_${++rowKeyCounter}_${Date.now()}` } as any;
+  }
+  const codeGoodsId =
+    value == null || value === ''
+      ? undefined
+      : (value as SeaImportAdminApi.OrderCtnAddDto['codeGoodsId']);
+  list[index] = {
+    ...list[index],
+    codeGoodsId,
+    codeGoodsName: undefined,
+    codeGoodsSpecId: undefined,
+    codeGoodsModelId: undefined,
+    codeGoodsSpecName: undefined,
+    codeGoodsModelName: undefined,
+  } as any;
+  modelValue.value = list;
+  if (codeGoodsId != null) {
+    void ensureGoodsOptionsLoaded(codeGoodsId);
+  }
+};
+
+const getSpecOptions = (record: SeaImportAdminApi.OrderCtnEditDto) => {
+  if (record.codeGoodsId == null || record.codeGoodsId === '') return [];
+  return (specsByGoodsId.value[String(record.codeGoodsId)] ?? []).map(
+    (item) => ({
+      label: item.name || String(item.id),
+      value: item.id,
+    }),
+  );
+};
+
+const getModelOptions = (record: SeaImportAdminApi.OrderCtnEditDto) => {
+  if (record.codeGoodsId == null || record.codeGoodsId === '') return [];
+  return (modelsByGoodsId.value[String(record.codeGoodsId)] ?? []).map(
+    (item) => ({
+      label: item.name || String(item.id),
+      value: item.id,
+    }),
+  );
+};
+
+const resolveCtnDisplayName = (record: any) =>
+  record.ctnCodeName || record.ctnCode?.ctnName;
+const resolvePackageDisplayName = (record: any) =>
+  record.codePackageName || record.codePackage?.name;
+const resolveGoodsDisplayName = (record: any) =>
+  record.codeGoodsName || record.codeGoods?.name;
+
 const toSelectedItems = (id: any, name: any, labelKey = 'name') => {
   if (id == null || id === '') return [];
   if (name === undefined || name === null || name === '') return [];
@@ -209,6 +309,11 @@ watch(
   () => dataSource.value,
   (rows) => {
     void syncCtnNameMap(rows ?? []);
+    for (const row of rows ?? []) {
+      if (row?.codeGoodsId != null && row.codeGoodsId !== '') {
+        void ensureGoodsOptionsLoaded(row.codeGoodsId);
+      }
+    }
   },
   { immediate: true, deep: true },
 );
@@ -266,7 +371,11 @@ watch(
           <CtnSelect
             :model-value="record.ctnCodeId"
             :selected-items="
-              toSelectedItems(record.ctnCodeId, record.ctnCodeName, 'ctnName')
+              toSelectedItems(
+                record.ctnCodeId,
+                resolveCtnDisplayName(record),
+                'ctnName',
+              )
             "
             class="w-full min-w-[100px]"
             :placeholder="$t('ui.placeholder.select')"
@@ -303,7 +412,10 @@ watch(
           <CodePackageSelect
             :model-value="record.codePackageId"
             :selected-items="
-              toSelectedItems(record.codePackageId, record.codePackageName)
+              toSelectedItems(
+                record.codePackageId,
+                resolvePackageDisplayName(record),
+              )
             "
             class="w-full min-w-[90px]"
             :placeholder="$t('ui.placeholder.select')"
@@ -343,22 +455,6 @@ watch(
             @update:value="(v) => updateRow(index, 'netWeight', v)"
           />
         </template>
-        <template v-else-if="column.key === 'model'">
-          <Input
-            :value="record.model"
-            :placeholder="$t('seaImport.import.model')"
-            allow-clear
-            @update:value="(v) => updateRow(index, 'model', v)"
-          />
-        </template>
-        <template v-else-if="column.key === 'specification'">
-          <Input
-            :value="record.specification"
-            :placeholder="$t('seaImport.import.specification')"
-            allow-clear
-            @update:value="(v) => updateRow(index, 'specification', v)"
-          />
-        </template>
         <template v-else-if="column.key === 'volume'">
           <InputNumber
             :value="record.volume"
@@ -374,11 +470,36 @@ watch(
           <CodeGoodsSelect
             :model-value="record.codeGoodsId"
             :selected-items="
-              toSelectedItems(record.codeGoodsId, record.codeGoodsName)
+              toSelectedItems(
+                record.codeGoodsId,
+                resolveGoodsDisplayName(record),
+              )
             "
             class="w-full min-w-[90px]"
             :placeholder="$t('ui.placeholder.select')"
-            @update:model-value="(v) => updateRow(index, 'codeGoodsId', v)"
+            @update:model-value="(v) => handleCodeGoodsChange(index, v)"
+          />
+        </template>
+        <template v-else-if="column.key === 'codeGoodsSpecId'">
+          <Select
+            :value="record.codeGoodsSpecId"
+            :options="getSpecOptions(record)"
+            :disabled="record.codeGoodsId == null || record.codeGoodsId === ''"
+            :placeholder="$t('seaImport.import.specification')"
+            allow-clear
+            class="w-full min-w-[110px]"
+            @update:value="(v) => updateRow(index, 'codeGoodsSpecId', v)"
+          />
+        </template>
+        <template v-else-if="column.key === 'codeGoodsModelId'">
+          <Select
+            :value="record.codeGoodsModelId"
+            :options="getModelOptions(record)"
+            :disabled="record.codeGoodsId == null || record.codeGoodsId === ''"
+            :placeholder="$t('seaImport.import.model')"
+            allow-clear
+            class="w-full min-w-[110px]"
+            @update:value="(v) => updateRow(index, 'codeGoodsModelId', v)"
           />
         </template>
         <template v-else-if="column.key === 'remark'">
@@ -436,19 +557,19 @@ watch(
         width="90"
       />
       <Table.Column
-        key="model"
-        :title="$t('seaImport.import.model')"
-        width="110"
-      />
-      <Table.Column
-        key="specification"
-        :title="$t('seaImport.import.specification')"
-        width="110"
-      />
-      <Table.Column
         key="codeGoodsId"
         :title="$t('seaImport.import.codeGoodsId')"
         width="100"
+      />
+      <Table.Column
+        key="codeGoodsSpecId"
+        :title="$t('seaImport.import.specification')"
+        width="120"
+      />
+      <Table.Column
+        key="codeGoodsModelId"
+        :title="$t('seaImport.import.model')"
+        width="120"
       />
       <Table.Column
         key="remark"

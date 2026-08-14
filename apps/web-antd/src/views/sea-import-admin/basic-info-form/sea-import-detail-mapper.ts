@@ -50,7 +50,10 @@ export const flattenDetail = (
     podId: detail.podId,
     podRemark: detail.podRemark,
     clientNum: detail.clientNum,
-    terminal: detail.terminal,
+    terminalId: detail.terminalId,
+    throughBillNum: detail.throughBillNum,
+    hblNum: detail.hblNum,
+    tradeMode: detail.tradeMode,
     invoiceNum: detail.invoiceNum,
     batchNum: detail.batchNum,
     originCountryId: detail.originCountryId,
@@ -98,6 +101,7 @@ export const flattenDetail = (
     /** 界面上的「到港日期」 */
     etd: toDayjs(to?.etd),
     clientId: to?.clientId,
+    clientContactId: to?.clientContactId,
     teamId: to?.teamId,
     custBrokerId: to?.custBrokerId,
     warehouseId: to?.warehouseId,
@@ -111,6 +115,15 @@ export const flattenDetail = (
     orderCodeGoodss: (to?.orderCodeGoodss ?? [])
       .map((item) => item?.codeGoodsId)
       .filter((id) => id !== undefined && id !== null),
+    /** 保留商品子表行 id，编辑全量比对时回传 */
+    orderCodeGoodsRows: (to?.orderCodeGoodss ?? [])
+      .filter(
+        (item) => item?.codeGoodsId !== undefined && item?.codeGoodsId !== null,
+      )
+      .map((item) => ({
+        id: item.id,
+        codeGoodsId: item.codeGoodsId,
+      })),
     orderUsers: to?.orderUsers ?? [],
     dgLevel: to?.dgLevel,
     dgNo: to?.dgNo,
@@ -133,18 +146,23 @@ export const flattenDetail = (
   };
 };
 
-/** 为 orderCtns 每项添加 _rowKey，供 Table 使用 */
+/** 为 orderCtns 每项添加 _rowKey，供 Table 使用；并把关联对象名摊平到本地回显字段 */
 export const normalizeOrderCtnsWithRowKey = (
-  items: SeaImportAdminApi.OrderCtnEditDto[] | undefined,
+  items: SeaImportAdminApi.OrderCtnDto[] | undefined,
 ) => {
   if (!items?.length) return [];
   return items.map((item, i) => ({
     ...item,
+    ctnCodeName: item.ctnCode?.ctnName,
+    codePackageName: item.codePackage?.name,
+    codeGoodsName: item.codeGoods?.name,
+    codeGoodsSpecName: item.codeGoodsSpec?.name,
+    codeGoodsModelName: item.codeGoodsModel?.name,
     _rowKey: `ctn_${i}_${Date.now()}`,
   })) as any[];
 };
 
-/** 编辑时带上 id 表示更新，进口比出口多 model / specification / netWeight */
+/** 编辑时带上 id 表示更新，进口比出口多 codeGoodsSpecId / codeGoodsModelId / netWeight */
 const ORDER_CTN_API_KEYS: Array<
   Extract<keyof SeaImportAdminApi.OrderCtnEditDto, string>
 > = [
@@ -162,15 +180,15 @@ const ORDER_CTN_API_KEYS: Array<
   'overHeight',
   'volume',
   'codeGoodsId',
-  'model',
-  'specification',
+  'codeGoodsSpecId',
+  'codeGoodsModelId',
   'bookingNo',
   'remark',
 ];
 
 const ORDER_USER_API_KEYS: Array<
   Extract<keyof SeaImportAdminApi.OrderUserAddDto, string>
-> = ['userId', 'userAttribute', 'sortId', 'remark'];
+> = ['id', 'userId', 'userAttribute', 'sortId', 'remark'];
 
 /** 提交时移除 _rowKey 等非 API 字段，仅保留 OrderCtnEditDto 字段 */
 export const sanitizeOrderCtns = (
@@ -208,6 +226,39 @@ export const sanitizeOrderUsers = (
       return dto as SeaImportAdminApi.OrderUserAddDto;
     })
     .filter((item) => hasValidUserId(item.userId));
+};
+
+/**
+ * 商品多选 id 列表 → 提交行：尽量复用详情里的行 id，避免编辑时全量删建。
+ */
+export const buildOrderCodeGoodsSubmitRows = (
+  selectedIds: Array<number | string> | undefined,
+  existingRows:
+    | Array<{ codeGoodsId?: number | string; id?: number | string }>
+    | undefined,
+): SeaImportAdminApi.OrderCodeGoodsAddDto[] => {
+  const ids = (selectedIds ?? []).filter(
+    (codeGoodsId) => codeGoodsId !== undefined && codeGoodsId !== null,
+  );
+  if (!ids.length) return [];
+  const idByGoodsId = new Map<string, number | string>();
+  for (const row of existingRows ?? []) {
+    if (row?.codeGoodsId === undefined || row?.codeGoodsId === null) continue;
+    if (
+      row.id === undefined ||
+      row.id === null ||
+      row.id === '' ||
+      row.id === 0
+    )
+      continue;
+    idByGoodsId.set(String(row.codeGoodsId), row.id);
+  }
+  return ids.map((codeGoodsId) => {
+    const existingId = idByGoodsId.get(String(codeGoodsId));
+    return existingId === undefined
+      ? { codeGoodsId }
+      : { id: existingId, codeGoodsId };
+  });
 };
 
 /** 净重 = 毛重 − 皮重，任一缺失则不计算 */
@@ -276,3 +327,16 @@ export const toPortSelectedItems = (
   }
   return toSelectedItems(id, portName, 'portName', extra);
 };
+
+/** 业务主表平铺名 / 对象名双读 */
+export const resolveCodeSourceName = (
+  to: SeaImportAdminApi.TransportOrderDto | null | undefined,
+) => to?.codeSourceName || to?.codeSource?.cnName || '';
+
+export const resolveCodeServiceName = (
+  to: SeaImportAdminApi.TransportOrderDto | null | undefined,
+) => to?.codeServiceName || to?.codeService?.cnName || '';
+
+export const resolveCodePackageName = (
+  to: SeaImportAdminApi.TransportOrderDto | null | undefined,
+) => to?.codePackageName || to?.codePackage?.name || '';

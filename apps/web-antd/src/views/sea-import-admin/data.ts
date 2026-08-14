@@ -56,6 +56,26 @@ export const getReeferTemperatureUnitOptions = () => [
   { value: 1, label: '℉' },
 ];
 
+/**
+ * 贸易方式：后端只存整数、不校验、不参与逻辑。
+ * 取值与文案全部由前端维护。
+ */
+export const getTradeModeOptions = () => [
+  { value: 0, label: $t('seaImport.import.tradeModeOptions.general') },
+  { value: 1, label: $t('seaImport.import.tradeModeOptions.processingIn') },
+  { value: 2, label: $t('seaImport.import.tradeModeOptions.processingOut') },
+  { value: 3, label: $t('seaImport.import.tradeModeOptions.bonded') },
+  { value: 4, label: $t('seaImport.import.tradeModeOptions.other') },
+];
+
+const resolveTradeModeLabel = (value: null | number | undefined) => {
+  if (value === null || value === undefined) return '';
+  return (
+    getTradeModeOptions().find((item) => item.value === value)?.label ??
+    String(value)
+  );
+};
+
 /** 费用状态：与费用模块口径一致，列表用于渲染应收/应付状态列 */
 export const getSeaImportFeeStatusOptions = () => [
   { value: 0, label: '录入状态', color: '#b8cdd7' },
@@ -450,8 +470,8 @@ export function useGridFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Input',
-      fieldName: 'ClientNum',
-      label: $t('seaImport.import.clientNum'),
+      fieldName: 'HblNum',
+      label: $t('seaImport.import.hblNum'),
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
         allowClear: true,
@@ -459,13 +479,38 @@ export function useGridFormSchema(): VbenFormSchema[] {
     },
     {
       component: 'Input',
-      fieldName: 'Terminal',
-      label: $t('seaImport.import.terminal'),
+      fieldName: 'ThroughBillNum',
+      label: $t('seaImport.import.throughBillNum'),
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
         allowClear: true,
       },
     },
+    {
+      component: 'Select',
+      fieldName: 'TradeMode',
+      label: $t('seaImport.import.tradeMode'),
+      componentProps: {
+        allowClear: true,
+        options: getTradeModeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
+    },
+    {
+      component: 'Input',
+      fieldName: 'ClientNum',
+      label: $t('seaImport.import.clientNum'),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+      },
+    },
+    createClientSelectSchema({
+      fieldName: 'TerminalId',
+      industryCategory: 'c',
+      label: $t('seaImport.import.terminal'),
+    }),
     {
       component: 'Input',
       fieldName: 'CtnNo',
@@ -725,6 +770,18 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       showOverflow: true,
     },
     {
+      field: 'hblNum',
+      title: $t('seaImport.import.hblNum'),
+      minWidth: 130,
+      showOverflow: true,
+    },
+    {
+      field: 'throughBillNum',
+      title: $t('seaImport.import.throughBillNum'),
+      minWidth: 130,
+      showOverflow: true,
+    },
+    {
       field: 'transportOrder.contractNum',
       title: $t('seaImport.import.contractNum'),
       minWidth: 130,
@@ -809,10 +866,17 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       formatter: ({ row }) => row.originCountry?.countryName ?? '',
     },
     {
-      field: 'terminal',
+      field: 'terminal.name',
       title: $t('seaImport.import.terminal'),
       minWidth: 120,
       showOverflow: true,
+      formatter: ({ row }) => row.terminal?.name ?? '',
+    },
+    {
+      field: 'tradeMode',
+      title: $t('seaImport.import.tradeMode'),
+      minWidth: 110,
+      formatter: ({ row }) => resolveTradeModeLabel(row.tradeMode),
     },
     {
       field: 'clientNum',
@@ -825,12 +889,20 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       title: $t('seaImport.import.codeSourceId'),
       minWidth: 110,
       showOverflow: true,
+      formatter: ({ row }) =>
+        row.transportOrder?.codeSourceName ||
+        row.transportOrder?.codeSource?.cnName ||
+        '',
     },
     {
       field: 'transportOrder.codeServiceName',
       title: $t('seaImport.import.codeServiceId'),
       minWidth: 110,
       showOverflow: true,
+      formatter: ({ row }) =>
+        row.transportOrder?.codeServiceName ||
+        row.transportOrder?.codeService?.cnName ||
+        '',
     },
     {
       field: 'transportOrder.totalCtn',
@@ -957,6 +1029,10 @@ export function useColumns(): VxeTableGridOptions<SeaImportAdminApi.SeaImportDto
       minWidth: 100,
       sortable: false,
       showOverflow: true,
+      formatter: ({ row }) =>
+        row.transportOrder?.codePackageName ||
+        row.transportOrder?.codePackage?.name ||
+        '',
     },
     {
       field: 'transportOrder.kgs',
@@ -1211,25 +1287,37 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       component: 'Input',
       fieldName: 'mblNum',
       label: $t('seaImport.import.mblNum'),
+      componentProps: { allowClear: true, maxlength: 64 },
+    },
+    {
+      component: 'Input',
+      fieldName: 'hblNum',
+      label: $t('seaImport.import.hblNum'),
+      componentProps: { allowClear: true, maxlength: 32 },
+    },
+    {
+      component: 'Input',
+      fieldName: 'throughBillNum',
+      label: $t('seaImport.import.throughBillNum'),
       componentProps: { allowClear: true, maxlength: 32 },
     },
     {
       component: 'Input',
       fieldName: 'contractNum',
       label: $t('seaImport.import.contractNum'),
-      componentProps: { allowClear: true, maxlength: 32 },
+      componentProps: { allowClear: true, maxlength: 64 },
     },
     {
       component: 'Input',
       fieldName: 'invoiceNum',
       label: $t('seaImport.import.invoiceNum'),
-      componentProps: { allowClear: true, maxlength: 32 },
+      componentProps: { allowClear: true, maxlength: 64 },
     },
     {
       component: 'Input',
       fieldName: 'batchNum',
       label: $t('seaImport.import.batchNum'),
-      componentProps: { allowClear: true, maxlength: 32 },
+      componentProps: { allowClear: true, maxlength: 64 },
     },
     {
       component: 'Input',
@@ -1237,11 +1325,21 @@ export function useBasicInfoFormSchema(isEdit = false): VbenFormSchema[] {
       label: $t('seaImport.import.clientNum'),
       componentProps: { allowClear: true, maxlength: 32 },
     },
-    {
-      component: 'Input',
-      fieldName: 'terminal',
+    createClientSelectSchema({
+      fieldName: 'terminalId',
+      industryCategory: 'c',
       label: $t('seaImport.import.terminal'),
-      componentProps: { allowClear: true, maxlength: 64 },
+    }),
+    {
+      component: 'Select',
+      fieldName: 'tradeMode',
+      label: $t('seaImport.import.tradeMode'),
+      componentProps: {
+        allowClear: true,
+        options: getTradeModeOptions(),
+        placeholder: $t('ui.placeholder.select'),
+        class: 'w-full',
+      },
     },
     createClientSelectSchema({
       fieldName: 'clientId',

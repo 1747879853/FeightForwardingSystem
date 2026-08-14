@@ -136,6 +136,16 @@
     "arrivalDate": "到港日期",
     "clientNum": "客户编号",
     "terminal": "码头",
+    "throughBillNum": "联运单号",
+    "hblNum": "分单号",
+    "tradeMode": "贸易方式",
+    "tradeModeOptions": {
+      "general": "一般贸易",
+      "processingIn": "进料加工",
+      "processingOut": "来料加工",
+      "bonded": "保税仓储",
+      "other": "其他"
+    },
     "invoiceNum": "发票号",
     "batchNum": "批次号",
     "originCountryId": "原产国",

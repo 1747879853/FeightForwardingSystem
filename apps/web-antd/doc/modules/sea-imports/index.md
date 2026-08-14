@@ -2,7 +2,7 @@
 title: 海运进口列表
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-04
+last_updated: 2026-08-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -49,6 +49,7 @@ last_updated: 2026-08-04
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-14 | `Feat` | 列表列与筛选对齐最新接口：码头改为往来单位下拉；新增联运单号、分单号、贸易方式；业务来源/运输条款/包装兼容平铺名与对象名。 | 详见 `changelogs/change-log-2026-08-14-sea-import-api-doc-align.md`。 |
 | 2026-08-08 | `Fix` | 列表列与筛选去掉订舱编号；关键字 placeholder 同步。 | 详见 `changelogs/change-log-2026-08-08-sea-import-remove-booking-num.md`。 |
 | 2026-08-04 | `Style` | 侧栏菜单图标改为 `fluent-emoji-high-contrast:ship` 并水平翻转（船头朝左），与出口朝右区分。 | 路由 `meta.icon` 使用 `SeaImportShipIcon`（`hFlip: true`）。 |
 | 2026-08-04 | `Feat` | 列表按进口接口重建列与搜索；支持分组统计、复制、删除；权限 `Admin.SeaImport`。 | 复制逻辑抽至 `use-sea-import-copy.ts`。 |

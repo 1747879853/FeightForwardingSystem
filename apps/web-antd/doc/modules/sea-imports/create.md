@@ -2,7 +2,7 @@
 title: 海运进口新建
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-04
+last_updated: 2026-08-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -40,6 +40,10 @@ last_updated: 2026-08-04
 | **转站/箱使日期** | 推算结果，只读文本。 | 到港 +9 天；到港 + 免箱期 −1 | **触发/依赖：** 到港、免箱期变化时写入 `YYYY-MM-DD`。 | 不可手改。 |
 | **原产国** | 整票属性。 | `CountrySelect` | 放在基础信息「运输条款」之后。 | 可选。 |
 | **净重合计** | 货物区净重。 | 箱型行 `netWeight` 求和 | 箱型变动自动回填，可二次手改。 | 详情回填时挂起自动求和。 |
+| **码头 (`terminalId`)** | 往来单位，行业类别含码头/场站。 | `ClientSelect` `industryCategory=c` | 提交最外层 `terminalId`，读取 `terminal.name`。 | 后端只校验客户存在，不校验行业类别。 |
+| **联运单号 / 分单号** | 一票一号字段。 | 文本 | 复制时后端清空。 | 上限 32。 |
+| **贸易方式** | 前端自定义枚举。 | `getTradeModeOptions()` | 后端只存整数。 | 不校验取值。 |
+| **集装箱规格/型号** | 品名子表 id。 | 品名详情 `codeGoodsSpecs` / `codeGoodsModels` | 先选品名；切换品名清空这两列。 | 未选品名或 id 不属于该品名会被后端拦下。 |
 | **干系人** | 订单协同角色。 | `use-order-users.ts` | 右侧面板；销售必填且唯一。 | 保存前校验销售与必填角色人员。 |
 
 # 5. 核心业务卡点 (Business Blockers)
@@ -50,6 +54,7 @@ last_updated: 2026-08-04
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-14 | `Feat` | 新建表单：码头改为往来单位下拉；补联运单号、分单号、贸易方式；集装箱规格/型号改为品名下拉。 | 详见 `changelogs/change-log-2026-08-14-sea-import-api-doc-align.md`。 |
 | 2026-08-08 | `Fix` | 新建表单去掉订舱编号字段。 | 与编辑页同源 Schema；详见 `changelogs/change-log-2026-08-08-sea-import-remove-booking-num.md`。 |
 | 2026-08-04 | `Feat` | 按海运出口版式重建新建表单：流程条布局、转站/箱使只读推算、免箱期标题旁编辑、原产国入基础信息、净重随箱型合计、唛头货描与右侧 CBM 底对齐。 | 组件迁至 `basic-info-form/form.vue`；进口无服务项目流水线，干系人复用出口面板逻辑并去掉服务绑定校验。 |
 | 2026-06-07 | `Refactor` | 服务项目勾选与提交不再依赖写死 `0~4` 数值，统一从 `getEnumItems('ServiceType')` 解析后参与 `serviceTypes` 组装。 | 海运进口表单与海运出口共用 ServiceType 枚举加载能力，确保两端服务项值口径一致。 |

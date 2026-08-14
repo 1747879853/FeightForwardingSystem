@@ -2,8 +2,9 @@
  * 海运进口（SeaImportAdmin）接口层。
  *
  * 与海运出口的关键差异：
- * - 集装箱列表 `orderCtns` 位于**海运进口这一层**，不在 `transportOrder` 里，且多出型号/规格/净重三列；
+ * - 集装箱列表 `orderCtns` 位于**海运进口这一层**，不在 `transportOrder` 里，且多出规格/型号 id、净重；
  * - 关联表出参一律是对象（`pol` / `pod` / `originCountry` / `carrier` / `ctnCode` ...），不平铺成 `xxxName`；
+ * - 码头是最外层往来单位 `terminalId` + `terminal` 对象（行业类别含「码头/场站」）；
  * - 界面上的「到港日期」对应 `transportOrder.etd`；`eta` / `atd` / `goodsCompleteTime` 进口不使用。
  */
 import type { UserAttribute } from '#/api/system/user-admin';
@@ -111,6 +112,22 @@ export namespace SeaImportAdminApi {
     hsCode?: null | string;
   }
 
+  /** 品名规格简易对象（集装箱行，进口专属） */
+  export interface CodeGoodsSpecSimpleDto {
+    id: string;
+    codeGoodsId?: LongId;
+    name?: null | string;
+    sortId?: number;
+  }
+
+  /** 品名型号简易对象（集装箱行，进口专属） */
+  export interface CodeGoodsModelSimpleDto {
+    id: string;
+    codeGoodsId?: LongId;
+    name?: null | string;
+    sortId?: number;
+  }
+
   /** 集装箱新增入参（位于海运进口这一层的 orderCtns） */
   export interface OrderCtnAddDto {
     /** 箱型id，必填且必须 > 0 */
@@ -129,10 +146,16 @@ export namespace SeaImportAdminApi {
     overHeight?: number;
     volume?: number;
     codeGoodsId?: LongId;
-    /** 型号（进口专属），128 */
-    model?: string;
-    /** 规格（进口专属），128 */
-    specification?: string;
+    /**
+     * 规格 id（进口专属）。必须属于本行 `codeGoodsId` 下品名；
+     * 切换品名时前端必须清空，否则后端拦下。
+     */
+    codeGoodsSpecId?: null | string;
+    /**
+     * 型号 id（进口专属）。必须属于本行 `codeGoodsId` 下品名；
+     * 切换品名时前端必须清空，否则后端拦下。
+     */
+    codeGoodsModelId?: null | string;
     bookingNo?: string;
     remark?: string;
   }
@@ -148,6 +171,8 @@ export namespace SeaImportAdminApi {
     ctnCode?: CtnCodeSimpleDto | null;
     codePackage?: CodePackageSimpleDto | null;
     codeGoods?: CodeGoodsSimpleDto | null;
+    codeGoodsSpec?: CodeGoodsSpecSimpleDto | null;
+    codeGoodsModel?: CodeGoodsModelSimpleDto | null;
   }
 
   export interface OrderCodeGoodsAddDto {
@@ -158,7 +183,12 @@ export namespace SeaImportAdminApi {
 
   export interface OrderCodeGoodsDto extends OrderCodeGoodsAddDto {
     transportOrderId?: string;
-    /** 品名对象（替代 codeGoodsName / codeGoodsHSCode） */
+    /**
+     * 业务主表商品子表仍可能平铺 name/hsCode（与出口同结构）；
+     * 亦可能带 codeGoods 对象，读取时两者都要兜住。
+     */
+    codeGoodsName?: null | string;
+    codeGoodsHSCode?: null | string;
     codeGoods?: CodeGoodsSimpleDto | null;
     /** 该商品关联箱子的 TEU 合计；列表接口恒为 0 */
     teu?: number;
@@ -205,15 +235,16 @@ export namespace SeaImportAdminApi {
     settlementStatus?: number;
     invoiceStatus?: number;
     feeCodeId?: LongId;
-    /** 费用代码对象（替代 feeCodeName / feeCodeCode） */
+    /** 文档口径平铺名；对象化后兼容 feeCode.cnName */
+    feeCodeName?: null | string;
     feeCode?: FeeCodeSimpleDto | null;
     industryCategory?: null | number;
     settlementId?: null | string;
-    /** 结算对象（替代 settlementName / settlementCode） */
+    settlementName?: null | string;
     settlement?: ClientSimpleDto | null;
     statementId?: null | string;
     currencyId?: LongId;
-    /** 币别对象（替代 currencyName / currencyCode） */
+    currencyName?: null | string;
     currency?: CurrencySimpleDto | null;
     exchangeRate?: number;
     unitPrice?: number;
@@ -235,6 +266,17 @@ export namespace SeaImportAdminApi {
     remark?: null | string;
     creatorUserId?: null | number;
     creatorUserName?: null | string;
+  }
+
+  /** 委托单位联系人简易对象 */
+  export interface ClientContactSimpleDto {
+    id: LongId;
+    name?: null | string;
+    mobile?: null | string;
+    email?: null | string;
+    tel?: null | string;
+    position?: null | string;
+    weChat?: null | string;
   }
 
   /** 业务主表新增入参（海运进口只用得到的字段） */
@@ -260,6 +302,8 @@ export namespace SeaImportAdminApi {
     /** 界面显示为「到港日期」，保存时截断到日期部分 */
     etd?: string;
     clientId: string;
+    /** 须属于 ClientId 下的客户联系人 */
+    clientContactId?: LongId | null;
     teamId?: string;
     custBrokerId?: string;
     warehouseId?: string;
@@ -311,10 +355,11 @@ export namespace SeaImportAdminApi {
     /** 后端计算，界面只读 */
     settlementDate?: null | string;
     codeSourceId?: LongId | null;
-    /** 货源地对象（替代 codeSourceName） */
+    /** 文档口径平铺名；对象化后兼容 codeSource.cnName */
+    codeSourceName?: null | string;
     codeSource?: CodeSourceSimpleDto | null;
     codeServiceId?: LongId | null;
-    /** 运输条款对象（替代 codeServiceName） */
+    codeServiceName?: null | string;
     codeService?: CodeServiceSimpleDto | null;
     isBusinessLocking?: boolean;
     isUnfinished?: boolean;
@@ -329,7 +374,7 @@ export namespace SeaImportAdminApi {
     /** 件数大写；列表接口恒为 null */
     upperPKGS?: null | string;
     codePackageId?: LongId | null;
-    /** 包装对象（替代 codePackageName） */
+    codePackageName?: null | string;
     codePackage?: CodePackageSimpleDto | null;
     kgs?: null | number;
     cbm?: null | number;
@@ -338,6 +383,8 @@ export namespace SeaImportAdminApi {
     etd?: null | string;
     clientId: string;
     client?: ClientSimpleDto | null;
+    clientContactId?: LongId | null;
+    clientContact?: ClientContactSimpleDto | null;
     teamId?: null | string;
     team?: ClientSimpleDto | null;
     custBrokerId?: null | string;
@@ -440,8 +487,16 @@ export namespace SeaImportAdminApi {
     podRemark?: string;
     /** 客户编号，32；与委托单位无联动 */
     clientNum?: string;
-    /** 码头，64；自由文本无下拉 */
-    terminal?: string;
+    /** 码头：往来单位 id，下拉取行业类别含「码头/场站」的客户 */
+    terminalId?: string;
+    /** 联运单号，32；复制时按一票一号清空 */
+    throughBillNum?: string;
+    /** 分单号，32；复制时按一票一号清空 */
+    hblNum?: string;
+    /**
+     * 贸易方式：枚举由前端维护，后端只存整数、不校验、不参与逻辑。
+     */
+    tradeMode?: number;
     invoiceNum?: string;
     batchNum?: string;
     /** 原产国：整票只有一个 */
@@ -490,7 +545,12 @@ export namespace SeaImportAdminApi {
     pod?: PortSimpleDto | null;
     podRemark?: null | string;
     clientNum?: null | string;
-    terminal?: null | string;
+    terminalId?: null | string;
+    /** 码头往来单位对象；未选时 null */
+    terminal?: ClientSimpleDto | null;
+    throughBillNum?: null | string;
+    hblNum?: null | string;
+    tradeMode?: null | number;
     invoiceNum?: null | string;
     batchNum?: null | string;
     originCountryId?: LongId | null;
@@ -512,6 +572,16 @@ export namespace SeaImportAdminApi {
     payFeeStatus?: null | number;
     /** 应收方向组合费用状态 */
     receiveFeeStatus?: null | number;
+    /** 是否已发起飞驼集装箱跟踪订阅 */
+    isFeituoSubscribed?: boolean;
+    /** 飞驼订阅是否成功 */
+    isFeituoSubscribeSuccess?: boolean;
+    /** 飞驼运踪摘要（列表/详情）；明细字段以后端为准 */
+    feituoTracking?: null | Record<string, unknown>;
+    /** 飞驼完整跟踪数据；仅详情，列表恒为 null */
+    feituoTrackingDetail?: null | Record<string, unknown>;
+    /** 飞驼预警明细；仅详情，列表恒为 null */
+    feituoTrackingWarnings?: null | unknown[];
     orderCtns?: OrderCtnDto[];
     /** 列表接口恒为 null */
     attachmentGroup?: AttachmentGroupDto[] | null;
@@ -575,7 +645,11 @@ export namespace SeaImportAdminApi {
     PODIdEmpty?: boolean;
     PODRemark?: string;
     ClientNum?: string;
-    Terminal?: string;
+    TerminalId?: string;
+    TerminalIdEmpty?: boolean;
+    ThroughBillNum?: string;
+    HblNum?: string;
+    TradeMode?: number;
     InvoiceNum?: string;
     BatchNum?: string;
     OriginCountryId?: LongId;

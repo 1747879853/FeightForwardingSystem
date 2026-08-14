@@ -2,7 +2,7 @@
 title: 海运进口编辑工作台
 module: 海运进口
 author: auto-doc-sync
-last_updated: 2026-08-08
+last_updated: 2026-08-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -51,6 +51,7 @@ last_updated: 2026-08-08
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-14 | `Feat` | 编辑保存对齐最新接口：码头对象化、规格/型号 id、联运/分单/贸易方式；人员与商品子表回传行 id。 | 详见 `changelogs/change-log-2026-08-14-sea-import-api-doc-align.md`。 |
 | 2026-08-09 | `Fix` | 费用表带汇率时应收/应付取反修复：应收取 `drValue`、应付取 `crValue`（与海出同一处渲染器）。 | `adapter/vxe-table.ts` 两处 `props?.type` 当布尔用导致口径互换，改判 `Number(props?.type) === 1`。详见 `changelogs/change-log-2026-08-09-order-fee-exchange-rate-dr-cr-fix.md`。 |
 | 2026-08-09 | `Refactor` | 费用 Tab 的费用代码/币别/结算对象列改读嵌套对象（与海出同构）。 | `SeaImportOrderFeeAdminApi.OrderFeeDto` 对象化；列定义、`formatter`、`dataIndex`、币别聚合、Handsontable 的 `__settlementName` 缓存键与海出保持一致。详见 `changelogs/change-log-2026-08-09-order-fee-statement-foreign-key-objectification.md`。 |
 | 2026-08-08 | `Fix` | 基础信息/列表/更改单/复制文案去掉订舱编号展示（进口无此字段）。 | UI 移除 `bookingNum`；DTO/提交仍保留兼容。详见 `changelogs/change-log-2026-08-08-sea-import-remove-booking-num.md`。 |

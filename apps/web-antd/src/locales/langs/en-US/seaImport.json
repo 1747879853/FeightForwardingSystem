@@ -140,6 +140,7 @@
     "goodsEnName": "English Name",
     "goodsHsCode": "HS Code",
     "grossWeight": "Gross Weight",
+    "hblNum": "HBL No.",
     "innerVoyno": "Voyage",
     "insuranceId": "Insurance Co.",
     "internalRemark": "Internal Remark",
@@ -321,7 +322,17 @@
     "sortId": "Sort",
     "tareWeight": "Tare Weight",
     "teamId": "Fleet",
+    "terminal": "Terminal",
+    "throughBillNum": "Through Bill No.",
     "title": "Sea Import",
+    "tradeMode": "Trade Mode",
+    "tradeModeOptions": {
+      "bonded": "Bonded Warehouse",
+      "general": "General Trade",
+      "other": "Other",
+      "processingIn": "Processing with Imported Materials",
+      "processingOut": "Processing with Supplied Materials"
+    },
     "tradeTermsType": "Trade Terms",
     "tradeTermsTypeOptions": {
       "cAndF": "C&F",

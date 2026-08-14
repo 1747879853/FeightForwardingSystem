@@ -18,6 +18,7 @@ import { markListShouldRefresh } from '#/utils/list-refresh-flag';
 
 import { CARGO_TYPE } from '../data';
 import {
+  buildOrderCodeGoodsSubmitRows,
   sanitizeOrderCtns,
   sanitizeOrderUsers,
   toDateOnlyString,
@@ -45,7 +46,10 @@ export const buildSeaImportDto = (
     podId: values.podId ?? undefined,
     podRemark: values.podRemark,
     clientNum: values.clientNum,
-    terminal: values.terminal,
+    terminalId: values.terminalId ?? undefined,
+    throughBillNum: values.throughBillNum,
+    hblNum: values.hblNum,
+    tradeMode: values.tradeMode ?? undefined,
     invoiceNum: values.invoiceNum,
     batchNum: values.batchNum,
     originCountryId: values.originCountryId ?? undefined,
@@ -81,6 +85,7 @@ export const buildSeaImportDto = (
     /** 界面上的「到港日期」落在 etd */
     etd: toDateOnlyString(values.etd),
     clientId: values.clientId,
+    clientContactId: values.clientContactId ?? undefined,
     teamId: values.teamId ?? undefined,
     custBrokerId: values.custBrokerId ?? undefined,
     warehouseId: values.warehouseId ?? undefined,
@@ -91,11 +96,10 @@ export const buildSeaImportDto = (
     shipperContent: values.shipperContent,
     notifierId: values.notifierId ?? undefined,
     notifierContent: values.notifierContent,
-    orderCodeGoodss: (values.orderCodeGoodss ?? [])
-      .filter(
-        (codeGoodsId: any) => codeGoodsId !== undefined && codeGoodsId !== null,
-      )
-      .map((codeGoodsId: number | string) => ({ codeGoodsId })),
+    orderCodeGoodss: buildOrderCodeGoodsSubmitRows(
+      values.orderCodeGoodss,
+      values.orderCodeGoodsRows,
+    ),
     orderUsers: sanitizeOrderUsers(values.orderUsers),
     ...(values.cargoId === CARGO_TYPE.D
       ? {
