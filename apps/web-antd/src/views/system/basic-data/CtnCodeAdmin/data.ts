@@ -150,6 +150,7 @@ export function useFormSchema(): VbenFormSchema[] {
         .max(1),
       componentProps: {
         allowClear: false,
+        class: 'w-full',
         options: getCabinetTypeOptions().map(({ label, value }) => ({
           label,
           value,
