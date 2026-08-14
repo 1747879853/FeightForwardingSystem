@@ -189,6 +189,8 @@ export interface CtnCodeDto {
   ctnType: string;
   /** 表现形式 */
   ctnName: string;
+  /** 柜型：0-普柜，1-特种柜 */
+  cabinetType: 0 | 1;
   /** EDI代码 */
   ediCode: string;
   /** 箱皮重 */

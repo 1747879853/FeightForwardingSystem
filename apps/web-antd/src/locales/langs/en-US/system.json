@@ -92,6 +92,11 @@
       "ctnSize": "Container Type",
       "ctnType": "Container Size",
       "ctnName": "Display Name",
+      "cabinetType": "Cabinet Type",
+      "cabinetTypeOptions": {
+        "general": "General Container",
+        "special": "Special Container"
+      },
       "ediCode": "EDI Code",
       "ctnWeight": "Tare Weight",
       "cnExplain": "Explanation (CN)",

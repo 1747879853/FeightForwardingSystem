@@ -77,6 +77,8 @@ export namespace SeaImportAdminApi {
     id: LongId;
     /** 箱型表现形式，如 20GP */
     ctnName?: null | string;
+    /** 柜型：0 普柜，1 特种柜 */
+    cabinetType?: 0 | 1;
     ctnSize?: null | string;
     ctnType?: null | string;
     teu?: number;

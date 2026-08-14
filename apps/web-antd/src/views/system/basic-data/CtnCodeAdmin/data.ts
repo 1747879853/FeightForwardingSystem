@@ -11,6 +11,19 @@ const getStatusOptions = () => [
   { color: 'default', label: $t('common.disabled'), value: 1 },
 ];
 
+const getCabinetTypeOptions = () => [
+  {
+    color: 'processing',
+    label: $t('system.basicData.ctnCode.cabinetTypeOptions.general'),
+    value: 0,
+  },
+  {
+    color: 'warning',
+    label: $t('system.basicData.ctnCode.cabinetTypeOptions.special'),
+    value: 1,
+  },
+];
+
 const getIsDefaultOptions = () => [
   {
     color: 'success',
@@ -36,6 +49,20 @@ export function useGridFormSchema(): VbenFormSchema[] {
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
         allowClear: true,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'CabinetType',
+      label: $t('system.basicData.ctnCode.cabinetType'),
+      defaultValue: undefined,
+      componentProps: {
+        allowClear: true,
+        options: getCabinetTypeOptions().map(({ label, value }) => ({
+          label,
+          value,
+        })),
+        placeholder: $t('ui.placeholder.select'),
       },
     },
     {
@@ -78,52 +105,67 @@ export function useFormSchema(): VbenFormSchema[] {
       component: 'Input',
       fieldName: 'ctnSize',
       label: $t('system.basicData.ctnCode.ctnSize'),
-      rules: z
-        .string()
-        .min(1, {
-          message: $t('ui.formRules.required', [
-            $t('system.basicData.ctnCode.ctnSize'),
-          ]),
-        }),
+      rules: z.string().min(1, {
+        message: $t('ui.formRules.required', [
+          $t('system.basicData.ctnCode.ctnSize'),
+        ]),
+      }),
       componentProps: { allowClear: true },
     },
     {
       component: 'Input',
       fieldName: 'ctnType',
       label: $t('system.basicData.ctnCode.ctnType'),
-      rules: z
-        .string()
-        .min(1, {
-          message: $t('ui.formRules.required', [
-            $t('system.basicData.ctnCode.ctnType'),
-          ]),
-        }),
+      rules: z.string().min(1, {
+        message: $t('ui.formRules.required', [
+          $t('system.basicData.ctnCode.ctnType'),
+        ]),
+      }),
       componentProps: { allowClear: true },
     },
     {
       component: 'Input',
       fieldName: 'ctnName',
       label: $t('system.basicData.ctnCode.ctnName'),
-      rules: z
-        .string()
-        .min(1, {
-          message: $t('ui.formRules.required', [
-            $t('system.basicData.ctnCode.ctnName'),
-          ]),
-        }),
+      rules: z.string().min(1, {
+        message: $t('ui.formRules.required', [
+          $t('system.basicData.ctnCode.ctnName'),
+        ]),
+      }),
       componentProps: { allowClear: true },
+    },
+    {
+      component: 'Select',
+      fieldName: 'cabinetType',
+      label: $t('system.basicData.ctnCode.cabinetType'),
+      defaultValue: 0,
+      rules: z
+        .number({
+          required_error: $t('ui.formRules.required', [
+            $t('system.basicData.ctnCode.cabinetType'),
+          ]),
+        })
+        .int()
+        .min(0)
+        .max(1),
+      componentProps: {
+        allowClear: false,
+        options: getCabinetTypeOptions().map(({ label, value }) => ({
+          label,
+          value,
+        })),
+        placeholder: $t('ui.placeholder.select'),
+      },
     },
     {
       component: 'Input',
       fieldName: 'ediCode',
       label: $t('system.basicData.ctnCode.ediCode'),
-      rules: z
-        .string()
-        .min(1, {
-          message: $t('ui.formRules.required', [
-            $t('system.basicData.ctnCode.ediCode'),
-          ]),
-        }),
+      rules: z.string().min(1, {
+        message: $t('ui.formRules.required', [
+          $t('system.basicData.ctnCode.ediCode'),
+        ]),
+      }),
       componentProps: { allowClear: true },
     },
     {
@@ -228,6 +270,15 @@ export function useColumns(
       field: 'ctnType',
       title: $t('system.basicData.ctnCode.ctnType'),
       minWidth: 120,
+    },
+    {
+      field: 'cabinetType',
+      title: $t('system.basicData.ctnCode.cabinetType'),
+      minWidth: 100,
+      cellRender: {
+        name: 'CellTag',
+        options: getCabinetTypeOptions(),
+      },
     },
     {
       field: 'ediCode',

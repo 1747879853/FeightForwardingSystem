@@ -104,6 +104,8 @@ export namespace PreOrderAdminApi {
   export interface CtnCodeSimpleDto {
     id?: number | string;
     ctnName?: string;
+    /** 柜型：0 普柜，1 特种柜 */
+    cabinetType?: 0 | 1;
     ctnSize?: string;
     ctnType?: string;
     teu?: number;

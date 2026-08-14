@@ -92,6 +92,11 @@
       "ctnSize": "集装箱类型",
       "ctnType": "集装箱尺寸",
       "ctnName": "表现形式",
+      "cabinetType": "柜型",
+      "cabinetTypeOptions": {
+        "general": "普柜",
+        "special": "特种柜"
+      },
       "ediCode": "EDI代码",
       "ctnWeight": "箱皮重",
       "cnExplain": "中文说明",

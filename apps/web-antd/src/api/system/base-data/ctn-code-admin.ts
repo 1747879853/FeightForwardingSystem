@@ -1,6 +1,9 @@
 import { requestClient } from '#/api/request';
 
 export namespace CtnCodeAdminApi {
+  /** 柜型：0 普柜，1 特种柜 */
+  export type CtnCabinetType = 0 | 1;
+
   /** 新增集装箱信息参数 */
   export interface CtnCodeAddDto {
     /** 集装箱类型 */
@@ -9,6 +12,8 @@ export namespace CtnCodeAdminApi {
     ctnType?: string;
     /** 表现形式 */
     ctnName?: string;
+    /** 柜型 */
+    cabinetType: CtnCabinetType;
     /** EDI代码 */
     ediCode?: string;
     /** 箱皮重 */
@@ -50,6 +55,8 @@ export namespace CtnCodeAdminApi {
     ctnType?: string;
     /** 表现形式 */
     ctnName?: string;
+    /** 柜型 */
+    cabinetType: CtnCabinetType;
     /** EDI代码 */
     ediCode?: string;
     /** 箱皮重 */
@@ -82,6 +89,8 @@ export namespace CtnCodeAdminApi {
     ctnType?: string;
     /** 表现形式 */
     ctnName?: string;
+    /** 柜型 */
+    cabinetType: CtnCabinetType;
     /** EDI代码 */
     ediCode?: string;
     /** 箱皮重 */
@@ -134,6 +143,8 @@ export namespace CtnCodeAdminApi {
     CtnType?: string;
     /** 表现形式 */
     CtnName?: string;
+    /** 柜型 0普柜 1特种柜 */
+    CabinetType?: CtnCabinetType;
     /** EDI代码 */
     EdiCode?: string;
     /** 中文说明 */

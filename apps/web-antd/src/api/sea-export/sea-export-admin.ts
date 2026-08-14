@@ -74,6 +74,8 @@ export namespace SeaExportAdminApi {
   export interface CtnCodeSimpleDto {
     id: LongId;
     ctnName?: null | string;
+    /** 柜型：0 普柜，1 特种柜 */
+    cabinetType?: 0 | 1;
     ctnSize?: null | string;
     ctnType?: null | string;
     teu?: null | number;

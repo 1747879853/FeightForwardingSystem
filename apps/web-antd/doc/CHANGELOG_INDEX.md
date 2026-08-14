@@ -13,6 +13,7 @@
 
 ## 2026-08
 
+- [2026-08-14 集装箱信息新增柜型字段](./changelogs/change-log-2026-08-14-ctn-code-cabinet-type.md)
 - [2026-08-14 更新 public 默认 favicon 与 logo 资源](./changelogs/change-log-2026-08-14-public-favicon-logo-asset.md)
 - [2026-08-14 付费申请选费抽屉增加业务类型筛选](./changelogs/change-log-2026-08-14-payment-application-add-fee-biztype-filter.md)
 - [2026-08-14 付费申请选费港口改读业务类型简要](./changelogs/change-log-2026-08-14-payment-application-fee-group-biz-simple.md)
