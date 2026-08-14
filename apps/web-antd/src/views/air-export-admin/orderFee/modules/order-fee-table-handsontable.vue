@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { SeaExportAdminApi } from '#/api/sea-export/sea-export-admin';
+import type { AirExportAdminApi } from '#/api/air-export/air-export-admin';
 import type { OrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
 import {
   computed,
@@ -46,7 +47,10 @@ const props = defineProps<{
   parentChangeOrderId?: string;
   recAmountMap?: Record<string, any>;
   payAmountMap?: Record<string, any>;
-  orderDetail?: SeaExportAdminApi.SeaExportDto | null;
+  orderDetail?:
+    | SeaExportAdminApi.SeaExportDto
+    | AirExportAdminApi.AirExportDto
+    | null;
   allClientsByIndustry?: Record<string, Array<{ label: string; value: any }>>; // ✅ 新增：从父组件传入的客户缓存
 }>();
 
@@ -320,7 +324,7 @@ const openBatchImportModal = async () => {
     carrierId: orderDetail.carrierId,
     polId: orderDetail.polId,
     podId: orderDetail.podId,
-    bizType: 0, // 海运出口固定为 0
+    bizType: 2, // 空运出口固定为 2
   });
 
   batchImportModalRef.value?.modalApi.open();

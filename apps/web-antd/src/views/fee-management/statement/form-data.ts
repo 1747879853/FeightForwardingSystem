@@ -263,6 +263,16 @@ export function useFeeInnerColumns() {
       key: 'currencyName',
       width: 80,
     },
+    {
+      title: '已对账',
+      dataIndex: 'isStatemented',
+      key: 'isStatemented',
+      width: 70,
+      align: 'center' as const,
+      customRender: ({ record }: any) => {
+        return record.isStatemented ? '是' : '否';
+      },
+    },
   ];
 
   return [

@@ -297,6 +297,18 @@ export namespace PaymentApplicationAdminApi {
     defaultRate: number;
   }
 
+  /** 对账单简要信息（用于费用 DTO 中的 statements 数组） */
+  export interface StatementSimpleDto {
+    /** 对账 id */
+    id: string;
+    /** 对账单号 */
+    statementNum: string;
+    /** 对账时间，即该对账单的创建时间 */
+    creationTime?: string;
+    /** 对账人昵称，即该对账单的创建人；历史数据缺创建人时为 null */
+    creatorUserName?: string | null;
+  }
+
   /** 费用代码简易对象（展示用） */
   export interface FeeCodeSimpleDto {
     id?: number;
@@ -491,18 +503,31 @@ export namespace PaymentApplicationAdminApi {
     PODId?: number;
     /** 组织id */
     OrgId?: number;
-    /** 销售id */
-    SaleId?: number;
-    /** 操作id */
-    OperatorId?: number;
-    /** 客服id */
-    CustomerServiceId?: number;
+    /** 销售id（多选，原单选字段 SaleId 已废弃） */
+    SaleIds?: number[];
+    /** 操作id（多选，原单选字段 OperatorId 已废弃） */
+    OperatorIds?: number[];
+    /** 客服id（多选，原单选字段 CustomerServiceId 已废弃） */
+    CustomerServiceIds?: number[];
     /** 排序 */
     Sorting?: string;
     /** 当前页码 */
     PageIndex?: number;
     /** 每页显示记录数 */
     PageSize?: number;
+
+    /**
+     * 是否包含已对账费用
+     * 不传/false：只返回从未对账过的费用
+     * true：把已在其他对账单里的费用也返回，用于多次对账
+     */
+    includeStatemented?: boolean;
+
+    /**
+     * 给已有对账单加费用时传，用于排除本对账单已包含的费用
+     * 新建对账单时不传
+     */
+    statementId?: string;
   }
 
   /** 费用 DTO */
@@ -548,6 +573,20 @@ export namespace PaymentApplicationAdminApi {
     unInvoicedAmount: number;
     noTaxUnitPrice: number;
     noTaxAmount: number;
+
+    /**
+     * 费用所属对账单集合（多次对账支持）
+     * 未对账时为空数组 []
+     */
+    statements?: StatementSimpleDto[];
+
+    /**
+     * 是否已对账
+     * 该费用只要存在于任意一张对账单即为 true
+     * 等价于 statements.length > 0，两者不会矛盾，取其一判断即可
+     */
+    isStatemented?: boolean;
+
     isDeleted: boolean;
     creationTime: string;
     creatorUserId?: number;

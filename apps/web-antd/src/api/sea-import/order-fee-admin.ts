@@ -1,6 +1,8 @@
 import { requestClient } from '#/api/request';
 import type { ExpenseSubmissionAdminApi } from '#/api/audit-approval/expense-admin';
 import type { SeaImportAdminApi } from './sea-import-admin';
+import type { OrderFeeAdminApi as SeaExportOrderFeeAdminApi } from '#/api/sea-export/order-fee-admin';
+
 const API_PREFIX = '/services/app/OrderFeeAdmin';
 
 export namespace OrderFeeAdminApi {
@@ -386,19 +388,27 @@ export namespace OrderFeeAdminApi {
   export interface SeaImportFeeQueryInputDto {
     /** 委托单位id（TransportOrder.ClientId） */
     clientId?: string;
-    /** 订舱代理id（SeaImport.BookingAgentId） */
+    /** 订舱代理id（SeaImport.BookingAgentId）。海运进口无此字段，传了不生效 */
     bookingAgentId?: string;
     /** 船公司id（SeaImport.CarrierId） */
     carrierId?: number;
     /** 起运港id（SeaImport.POLId） */
-    pOLId?: number;
+    polId?: number;
     /** 目的港id（SeaImport.PODId） */
-    pODId?: number;
+    podId?: number;
     /** 编号，模糊匹配 委托编号(CommissionNum) + 主提单号(MblNum) */
     keyword?: string;
     /** 费用收付类型，用于过滤费用（0=收 1=付） */
     paySide?: number;
   }
+
+  /** @deprecated 请使用 sea-export/order-fee-admin.ts 中的统一 DTO */
+  export type TransportOrderFeeQueryInputDto =
+    import('#/api/sea-export/order-fee-admin').OrderFeeAdminApi.TransportOrderFeeQueryInputDto;
+
+  /** @deprecated 请使用 sea-export/order-fee-admin.ts 中的统一 DTO */
+  export type TransportOrderFeeListDto =
+    import('#/api/sea-export/order-fee-admin').OrderFeeAdminApi.TransportOrderFeeListDto;
 
   /** 海运进口业务信息子对象 */
   export interface SeaImportFeeTransportOrderDto {
@@ -410,6 +420,14 @@ export namespace OrderFeeAdminApi {
     client?: ClientSimpleDto;
     /** 箱型箱量（按箱型名分组 "箱型*数量" 空格拼接） */
     totalCtn?: string;
+  }
+
+  /** 对账单简要信息 */
+  export interface StatementSimpleDto {
+    /** 对账 id */
+    id: string;
+    /** 对账单号 */
+    statementNum: string;
   }
 
   /** 海运进口费用项 */
@@ -448,6 +466,12 @@ export namespace OrderFeeAdminApi {
     isConfidential: boolean;
     /** 备注 */
     remark?: string;
+
+    /**
+     * 费用所属对账单集合（多次对账支持）
+     * 未对账时为空数组 []
+     */
+    statements?: StatementSimpleDto[];
   }
 
   /** 海运进口费用列表项 */
@@ -579,14 +603,33 @@ export const generateOppositeOrderFees = (
   );
 };
 
-/** 查询海运进口费用 */
+/** 查询业务订单费用（支持全业务类型） */
+export const getTransportOrderFees = (
+  params: SeaExportOrderFeeAdminApi.OrderFeeAdminApi.TransportOrderFeeQueryInputDto,
+) => {
+  return requestClient.get<
+    SeaExportOrderFeeAdminApi.OrderFeeAdminApi.TransportOrderFeeListDto[]
+  >(`${API_PREFIX}/GetTransportOrderFeesAsync`, { params });
+};
+
+/** @deprecated 请使用 getTransportOrderFees */
 export const getSeaImportFees = (
   params: OrderFeeAdminApi.SeaImportFeeQueryInputDto,
 ) => {
-  return requestClient.get<OrderFeeAdminApi.SeaImportFeeListDto[]>(
-    `${API_PREFIX}/GetSeaImportFeesAsync`,
-    { params },
-  );
+  // 适配旧接口调用，转换为新接口所需的参数结构
+  const newParams: SeaExportOrderFeeAdminApi.OrderFeeAdminApi.TransportOrderFeeQueryInputDto =
+    {
+      bizType: 1, // 海运进口
+      clientId: params.clientId,
+      bookingAgentId: params.bookingAgentId,
+      carrierId: params.carrierId,
+      polId: params.polId,
+      podId: params.podId,
+      keyword: params.keyword,
+      paySide: params.paySide,
+    };
+
+  return getTransportOrderFees(newParams);
 };
 
 /** 为某条业务批量引入费用 */
