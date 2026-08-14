@@ -601,6 +601,24 @@ export namespace PaymentApplicationAdminApi {
     lane?: LaneCodeSimpleDto | null;
   }
 
+  /** 船公司简要 DTO */
+  export interface CarrierSimpleDto {
+    id?: number | string;
+    code?: string;
+    cnName?: string;
+    cnShortName?: string;
+    enName?: string;
+    ediCode?: string;
+  }
+
+  /** 空运港口简要 DTO */
+  export interface AirPortSimpleDto {
+    id?: number | string;
+    iataCode?: string;
+    enName?: string;
+    cnName?: string;
+  }
+
   /** 箱型简易对象 */
   export interface CtnCodeSimpleDto {
     id?: number | string;
@@ -658,6 +676,31 @@ export namespace PaymentApplicationAdminApi {
     polRemark?: string | null;
     pod?: PortSimpleDto | null;
     podRemark?: string | null;
+    carrier?: CarrierSimpleDto | null;
+  }
+
+  /** 选费分组的海运进口业务简要 DTO */
+  export interface SeaImportSimpleForPayAppDto {
+    id?: string;
+    vessel?: string | null;
+    innerVoyno?: string | null;
+    pol?: PortSimpleDto | null;
+    polRemark?: string | null;
+    pod?: PortSimpleDto | null;
+    podRemark?: string | null;
+    carrier?: CarrierSimpleDto | null;
+  }
+
+  /** 选费分组的空运出口业务简要 DTO */
+  export interface AirExportSimpleForPayAppDto {
+    id?: string;
+    flightNo?: string | null;
+    pol?: AirPortSimpleDto | null;
+    polRemark?: string | null;
+    pot?: AirPortSimpleDto | null;
+    potRemark?: string | null;
+    pod?: AirPortSimpleDto | null;
+    podRemark?: string | null;
   }
 
   /** 箱型箱量简要 DTO */
@@ -687,24 +730,12 @@ export namespace PaymentApplicationAdminApi {
     clientId: string;
     /** 委托单位（业务往来单位简易对象，无则为 null） */
     client?: ClientSimpleDtoForOrder | null;
-    /** 起运港对象（替代 polId / polName） */
-    pol?: PortSimpleDto | null;
-    /** 目的港对象（替代 podId / podName）；国家/航线读 pod.country / pod.lane */
-    pod?: PortSimpleDto | null;
-    /** 付费地点港口对象（替代 prepareAtId / prepareAtName） */
-    prepareAt?: PortSimpleDto | null;
-    /** 签单地点港口对象（替代 signingPortId / signingPortName） */
-    signingPort?: PortSimpleDto | null;
-    /** 中转港1对象 */
-    pot1?: PortSimpleDto | null;
-    /** 中转港2对象 */
-    pot2?: PortSimpleDto | null;
-    /** 收货地港口对象 */
-    receivePort?: PortSimpleDto | null;
-    /** 交货地港口对象 */
-    deliverPort?: PortSimpleDto | null;
-    podRemark?: string;
-    polRemark?: string;
+    /** 海运出口业务简要；仅 bizType=0 时返回 */
+    seaExport?: SeaExportSimpleForPayAppDto | null;
+    /** 海运进口业务简要；仅 bizType=1 时返回 */
+    seaImport?: SeaImportSimpleForPayAppDto | null;
+    /** 空运出口业务简要；仅 bizType=2 时返回 */
+    airExport?: AirExportSimpleForPayAppDto | null;
     /** 货源地对象（替代 codeSourceName） */
     codeSource?: CodeSourceSimpleDto | null;
     /** 付费方式对象（替代 codeFrtName） */
@@ -1098,5 +1129,3 @@ export async function addByStatement(
     data,
   );
 }
-
-

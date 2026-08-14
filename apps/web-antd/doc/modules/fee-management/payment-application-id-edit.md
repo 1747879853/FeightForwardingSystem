@@ -2,7 +2,7 @@
 title: 付款申请编辑
 module: 费用管理
 author: auto-doc-sync
-last_updated: 2026-08-11
+last_updated: 2026-08-14
 ---
 
 # 1. 业务背景说明 (Background)
@@ -52,7 +52,9 @@ last_updated: 2026-08-11
 
 | **费用分组** | 编辑页与选费抽屉外层列表的分组维度。 | `GetOrderFeeGroupAsync` / 本地 `groupFeesByOrder` | **触发/依赖：** 按「业务 + 结算对象」联合分组；`row-key` 为复合键。 | 同一业务可对应多行（不同结算对象）；底部统计为组数非票数。 |
 
-| **起运港 / 目的港** | 费用分组外层港口列展示值。 | 详情 `transportOrder.seaExport.polRemark/podRemark`；选费 `PayAppFeeGroupDto.polRemark/podRemark` | **触发/依赖：** 经 `resolvePol/PodPortDisplayName` 写入行上 `polName`/`podName`（列名不变）。 | 备注为空不回退港口名称。 |
+| **业务类型筛选** | 添加费用抽屉按业务类型过滤可选费用。 | 表单 `BizType` → `GetOrderFeeGroupParams.BizType` | **触发/依赖：** `0` 海出 / `1` 海进 / `2` 空出；清空则不传参，全业务混查。 | 可选；勿把空值传成 `0`。 |
+
+| **起运港 / 目的港** | 费用分组外层港口列展示值。 | 详情 `transportOrder.seaExport.polRemark/podRemark`；选费按 `bizType` 读取 `seaExport` / `seaImport` / `airExport` 的 `polRemark/podRemark` | **触发/依赖：** 经 `resolvePol/PodPortDisplayName` 写入行上 `polName`/`podName`（列名不变）。 | 备注为空不回退港口名称；不可再读选费分组根级港口字段。 |
 
 | **本次申请金额** | 单条费用本次申请付款金额（抽屉列「本次申请」）。 | 添加费用抽屉 `appliedAmount` → `PayAppItemAddAsync` | **触发/依赖：** 仅在抽屉内编辑；外侧明细只读展示。 | 默认取 `unRqstPaymentAmount`（可申请金额）；不得超过可申请金额；编辑模式确认添加即落库。 |
 
@@ -70,6 +72,8 @@ last_updated: 2026-08-11
 
 | 日期 | 变更类型 | 📝 业务功能变动 (针对工作流A) | 🤖 代码解析与架构洞察 (针对工作流B) |
 | :-- | :-- | :-- | :-- |
+| 2026-08-14 | `Feature` | 添加费用抽屉搜索增加「业务类型」筛选，并传给 `GetOrderFeeGroupAsync.BizType`。 | 未选不传参数，避免 `undefined` 被当成海运出口 `0`。详见 `changelogs/change-log-2026-08-14-payment-application-add-fee-biztype-filter.md`。 |
+| 2026-08-14 | `Fix` | 添加费用抽屉支持海运出口、海运进口、空运出口三类业务的起运港/目的港备注。 | `GetOrderFeeGroupAsync` 港口改按 `bizType` 读取互斥业务简要对象，删除根级港口字段依赖。详见 `changelogs/change-log-2026-08-14-payment-application-fee-group-biz-simple.md`。 |
 | 2026-08-11 | `Feature` | 附件分组卡片支持拖拽上传（可多文件），空态提示「点击或拖拽上传」。 | 与新增页共用 `attachment-groups.vue`；详见 `changelogs/change-log-2026-08-11-payment-application-attachment-drag-upload.md`。 |
 | 2026-08-11 | `Fix` | 添加费用抽屉与底部费用明细起运港/目的港改为展示港口备注。 | `resolvePol/PodPortDisplayName` 读 `seaExport.*Remark` / 平铺 `*Remark`；空备注不回退港口名。详见 `changelogs/change-log-2026-08-11-payment-application-fee-port-remark.md`。 |
 | 2026-08-11 | `Fix` | 费用明细按费用名称/币别筛选后，内层只显示命中费用，同组其他费用隐藏。 | `filterOrderGroups` 裁剪 `children` 并重算申请合计；详见 `changelogs/change-log-2026-08-11-payment-application-fee-name-filter-children.md`。 |

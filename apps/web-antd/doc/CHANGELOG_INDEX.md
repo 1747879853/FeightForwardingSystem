@@ -13,6 +13,8 @@
 
 ## 2026-08
 
+- [2026-08-14 付费申请选费抽屉增加业务类型筛选](./changelogs/change-log-2026-08-14-payment-application-add-fee-biztype-filter.md)
+- [2026-08-14 付费申请选费港口改读业务类型简要](./changelogs/change-log-2026-08-14-payment-application-fee-group-biz-simple.md)
 - [2026-08-14 海运进口前端对齐最新接口文档](./changelogs/change-log-2026-08-14-sea-import-api-doc-align.md)
 - [2026-08-13 业务联系单详情外键对象直接拼 selectedItems 回显](./changelogs/change-log-2026-08-13-pre-order-detail-selected-items.md)
 - [2026-08-13 业务联系单主表新增订舱代理字段](./changelogs/change-log-2026-08-13-pre-order-booking-agent.md)

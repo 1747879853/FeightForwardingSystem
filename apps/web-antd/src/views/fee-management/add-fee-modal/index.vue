@@ -324,6 +324,7 @@ async function fetchData(formValues?: Record<string, any>) {
     OrgId: values.OrgId,
     Keyword: values.Keyword,
     PaySide: values.PaySide ?? undefined,
+    BizType: values.BizType ?? undefined,
     ETDStart: etdStart ? dayjs(etdStart).toISOString() : undefined,
     ETDEnd: etdEnd ? dayjs(etdEnd).toISOString() : undefined,
     CurrencyId: values.CurrencyId,

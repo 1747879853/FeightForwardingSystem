@@ -3,26 +3,49 @@ import { PaymentApplicationAdminApi } from '#/api/settlement-management/payment-
 
 import { $t } from '#/locales';
 
-/**
- * 费用明细起运港展示：港口备注（与海运出口应收应付口径一致）。
- * 详情读 `seaExport.polRemark`；选费列表读平铺 `polRemark`；备注为空不回退港口名。
- */
-export function resolvePolPortDisplayName(source: {
-  polRemark?: string | null;
+interface BusinessPortRemarkSource {
+  bizType?: number;
   seaExport?: PaymentApplicationAdminApi.SeaExportSimpleForPayAppDto | null;
-}): string {
-  return source.seaExport?.polRemark ?? source.polRemark ?? '';
+  seaImport?: PaymentApplicationAdminApi.SeaImportSimpleForPayAppDto | null;
+  airExport?: PaymentApplicationAdminApi.AirExportSimpleForPayAppDto | null;
+}
+
+function resolveBusinessPortRemarks(source: BusinessPortRemarkSource) {
+  switch (source.bizType) {
+    case 0: {
+      return source.seaExport;
+    }
+    case 1: {
+      return source.seaImport;
+    }
+    case 2: {
+      return source.airExport;
+    }
+    default: {
+      // 兼容未携带 bizType 的历史详情数据。
+      return source.seaExport ?? source.seaImport ?? source.airExport;
+    }
+  }
 }
 
 /**
- * 费用明细目的港展示：港口备注。
- * 详情读 `seaExport.podRemark`；选费列表读平铺 `podRemark`；备注为空不回退港口名。
+ * 费用明细起运港展示：按业务类型读取业务简要对象中的港口备注。
+ * 备注为空不回退港口名。
  */
-export function resolvePodPortDisplayName(source: {
-  podRemark?: string | null;
-  seaExport?: PaymentApplicationAdminApi.SeaExportSimpleForPayAppDto | null;
-}): string {
-  return source.seaExport?.podRemark ?? source.podRemark ?? '';
+export function resolvePolPortDisplayName(
+  source: BusinessPortRemarkSource,
+): string {
+  return resolveBusinessPortRemarks(source)?.polRemark ?? '';
+}
+
+/**
+ * 费用明细目的港展示：按业务类型读取业务简要对象中的港口备注。
+ * 备注为空不回退港口名。
+ */
+export function resolvePodPortDisplayName(
+  source: BusinessPortRemarkSource,
+): string {
+  return resolveBusinessPortRemarks(source)?.podRemark ?? '';
 }
 
 /**
@@ -152,6 +175,13 @@ export const PaySideOptions = [
   { value: 1, label: '付' },
 ];
 
+/** 业务类型选项（与 GetOrderFeeGroupAsync.BizType 一致） */
+export const BizTypeOptions = [
+  { value: 0, label: '海运出口' },
+  { value: 1, label: '海运进口' },
+  { value: 2, label: '空运出口' },
+];
+
 export function getPaySideLabel(value: number): string {
   return PaySideOptions.find((o) => o.value === value)?.label ?? '';
 }
@@ -221,6 +251,16 @@ export function useAddFeeSearchSchema(options?: {
         placeholder: $t('ui.placeholder.select'),
         allowClear: true,
         options: PaySideOptions,
+      },
+    },
+    {
+      component: 'Select',
+      fieldName: 'BizType',
+      label: '业务类型',
+      componentProps: {
+        placeholder: $t('ui.placeholder.select'),
+        allowClear: true,
+        options: BizTypeOptions,
       },
     },
     {
