@@ -516,7 +516,11 @@ export const getPreOrderPagedList = (
 ) => {
   return requestClient.get<PreOrderAdminApi.PagedListOfPreOrderDto>(
     `${API_PREFIX}/GetPagedListAsync`,
-    { params },
+    {
+      params,
+      // ASP.NET Core [FromQuery] List 需 repeat：SaleIds=1&SaleIds=2，勿用 brackets
+      paramsSerializer: 'repeat',
+    },
   );
 };
 
@@ -526,7 +530,11 @@ export const getPreOrderGroupedList = (
 ) => {
   return requestClient.get<PreOrderAdminApi.PreOrderGroupDto[]>(
     `${API_PREFIX}/GetGroupedListAsync`,
-    { params },
+    {
+      params,
+      // ASP.NET Core [FromQuery] List 需 repeat：SaleIds=1&SaleIds=2，勿用 brackets
+      paramsSerializer: 'repeat',
+    },
   );
 };
 

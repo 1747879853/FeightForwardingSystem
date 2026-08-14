@@ -22,3 +22,4 @@ TAPD #1000794：业务联系单列表需要直接看到每票的销售、操作�
 - 销售与操作两个条件之间是 AND；与数据权限无关，无权限仍会空结果。
 - `saleNames`/`operatorNames` 仅为昵称快照，不带用户 id；需要 id 时走详情 `preOrderUsers`。
 - 下拉的 `userAttribute` 只约束候选用户列表，不影响列表接口本身的筛选语义。
+- 列表/分组 GET 须 `paramsSerializer: 'repeat'`，否则 axios 默认会把数组打成 `SaleIds[]=1`，后端绑不到。
